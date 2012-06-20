@@ -83,42 +83,42 @@ ngx_module_t ngx_http_mruby_module = {
 
 static ngx_http_request_t ngx_mruby_request_state = NULL;
  
-static int ap_mrb_push_request(ngx_http_request_t *r)
+static int ap_ngx_mrb_push_request(ngx_http_request_t *r)
 {
     ngx_mruby_request_state = r;
     return OK;
 }
 
-static ngx_http_request_t *ap_mrb_get_request()
+static ngx_http_request_t *ap_ngx_mrb_get_request()
 {
     return ngx_mruby_request_state;
 }
 
-mrb_value ap_mrb_get_request_uri(mrb_state *mrb, mrb_value str)
+mrb_value ap_ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str)
 {
-    ngx_http_request_t = ap_mrb_get_request();
+    ngx_http_request_t = ap_ngx_mrb_get_request();
     u_char *val = ngx_pstrdup(r->pool, &r->uri);
     return mrb_str_new(mrb, val, strlen(val));
 }
 
-static int ap_ngx_mruby_class_init(mrb_state *mrb)
+static int ap_ngx_mrb_class_init(mrb_state *mrb)
 {
     struct RClass *class;
     struct RClass *class_manager;
 
     class = mrb_define_module(mrb, "Nginx");
     class_request = mrb_define_class_under(mrb, class, "Request", mrb->object_class);
-    mrb_define_method(mrb, class_manager, "uri", ap_mrb_get_request_uri, ARGS_NONE());
+    mrb_define_method(mrb, class_manager, "uri", ap_ngx_mrb_get_request_uri, ARGS_NONE());
 
     return OK;
 }
 
-static int ap_ngx_mruby_run(ngx_http_request_t *r, ngx_str_t *code_file)
+static int ap_ngx_mrb_run(ngx_http_request_t *r, ngx_str_t *code_file)
 {
     FILE *mrb_file;
 
     mrb_state *mrb = mrb_open();
-    ap_mruby_class_init(mrb);
+    ap_ngx_mrb_class_init(mrb);
 
     if ((mrb_file = fopen(code_file->data, "r")) == NULL) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "mrb_file open failed.");
@@ -127,7 +127,7 @@ static int ap_ngx_mruby_run(ngx_http_request_t *r, ngx_str_t *code_file)
     struct mrb_parser_state* p = mrb_parse_file(mrb, mrb_file);
     int n = mrb_generate_code(mrb, p->tree);
     mrb_pool_close(p->pool);
-    ap_mrb_push_request(r);
+    ap_ngx_mrb_push_request(r);
     mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
 
     return NGX_OK;
@@ -136,7 +136,7 @@ static int ap_ngx_mruby_run(ngx_http_request_t *r, ngx_str_t *code_file)
 static ngx_int_t ngx_http_mruby_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-    return ap_ngx_mruby_run(r, clcf->handler_code_file);
+    return ap_ngx_mrb_run(r, clcf->handler_code_file);
 }
  
  
