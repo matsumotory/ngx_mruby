@@ -1,3 +1,20 @@
+/*
+// -------------------------------------------------------------------
+// ngx_mruby
+//      mruby module for nginx.
+//
+//      By matsumoto_r (MATSUMOTO, Ryosuke) Sep 2012 in Japan
+//          Academic Center for Computing and Media Studies, Kyoto University
+//          Graduate School of Informatics, Kyoto University
+//          email: matsumoto_r at net.ist.i.kyoto-u.ac.jp
+//
+// Date     2012/06/20
+//
+// change log
+//  2012/06/20 0.00 matsumoto_r first release
+// -------------------------------------------------------------------
+*/
+
 #include <ngx_config.h>
 #include <ngx_http.h>
 #include <ngx_conf_file.h>
