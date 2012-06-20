@@ -19,10 +19,12 @@
 #include <ngx_http.h>
 #include <ngx_conf_file.h>
 #include <nginx.h>
-#include <mruby.h>
+
 #include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
+
+#include <mruby.h>
 #include <mruby/proc.h>
 #include <mruby/data.h>
 #include <mruby/compile.h>
@@ -92,13 +94,11 @@ static ngx_http_request_t *ap_mrb_get_request()
     return ngx_mruby_request_state;
 }
 
-mrb_value ap_mrb_set_request_filename(mrb_state *mrb, mrb_value str)
+mrb_value ap_mrb_get_request_uri(mrb_state *mrb, mrb_value str)
 {
-    mrb_value val;
-    ngx_http_request_t *r = ap_mrb_get_request();
-    mrb_get_args(mrb, "o", &val);
-    r->filename = apr_pstrdup(r->pool, RSTRING_PTR(val));
-    return val;
+    ngx_http_request_t = ap_mrb_get_request();
+    u_char *val = ngx_pstrdup(r->pool, &r->uri);
+    return mrb_str_new(mrb, val, strlen(val));
 }
 
 static int ap_ngx_mruby_class_init(mrb_state *mrb)
@@ -108,8 +108,7 @@ static int ap_ngx_mruby_class_init(mrb_state *mrb)
 
     class = mrb_define_module(mrb, "Nginx");
     class_request = mrb_define_class_under(mrb, class, "Request", mrb->object_class);
-    mrb_define_method(mrb, class_manager, "filename=", ap_mrb_set_request_filename, ARGS_ANY());
-    mrb_define_method(mrb, class_manager, "filename", ap_mrb_get_request_filename, ARGS_NONE());
+    mrb_define_method(mrb, class_manager, "uri", ap_mrb_get_request_uri, ARGS_NONE());
 
     return OK;
 }
