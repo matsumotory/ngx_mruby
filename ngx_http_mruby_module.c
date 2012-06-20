@@ -94,9 +94,45 @@ static ngx_http_request_t *ap_ngx_mrb_get_request()
     return ngx_mruby_request_state;
 }
 
+mrb_value ap_ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
+{
+    mrb_value msg;
+    ngx_buf_t *b;
+    ngx_chain_t out;
+    u_char *str;
+
+    ngx_http_request_t *r = ap_ngx_mrb_get_request();
+
+    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+
+    out.buf = b;
+    out.next = NULL;
+
+    mrb_get_args(mrb, "o", &msg);
+
+    if (mrb_type(msg) != MRB_TT_STRING)
+        return self;
+
+    str = (u_char *)RSTRING_PTR(msg);
+    b->pos = str;
+    b->last = str + sizeof(str);
+    b->memory = 1;
+    b->last_buf = 1;
+
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_length_n = sizeof(str);
+
+    ngx_http_send_header(r);
+    ngx_http_output_filter(r, &out);
+
+    return str;
+}
+
+
+
 mrb_value ap_ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str)
 {
-    ngx_http_request_t = ap_ngx_mrb_get_request();
+    ngx_http_request_t *r = ap_ngx_mrb_get_request();
     u_char *val = ngx_pstrdup(r->pool, &r->uri);
     return mrb_str_new(mrb, val, strlen(val));
 }
@@ -107,6 +143,8 @@ static int ap_ngx_mrb_class_init(mrb_state *mrb)
     struct RClass *class_manager;
 
     class = mrb_define_module(mrb, "Nginx");
+    mrb_define_class_method(mrb, class, "rputs", ap_ngx_mrb_rputs, ARGS_ANY());
+
     class_request = mrb_define_class_under(mrb, class, "Request", mrb->object_class);
     mrb_define_method(mrb, class_manager, "uri", ap_ngx_mrb_get_request_uri, ARGS_NONE());
 
