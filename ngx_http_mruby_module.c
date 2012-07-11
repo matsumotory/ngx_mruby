@@ -205,7 +205,7 @@ static int ap_ngx_mrb_run(ngx_http_request_t *r, ngx_str_t *code_file)
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "mrb_file open failed.");
     }
 
-    struct mrb_parser_state* p = mrb_parse_file(mrb, mrb_file);
+    struct mrb_parser_state* p = mrb_parse_file(mrb, mrb_file, NULL);
     int n = mrb_generate_code(mrb, p->tree);
     mrb_pool_close(p->pool);
     ap_ngx_mrb_push_request(r);
