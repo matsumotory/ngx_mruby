@@ -242,10 +242,10 @@ static char * ngx_http_mruby(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     clcf->handler = ngx_http_mruby_handler;
 
     value = cf->args->elts;
-    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "value:  %V", &value[1]);
-    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "code_file:  %s", value[1].data);
+    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "value:  %V", &value[1]);
+    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "code_file:  %s", value[1].data);
     flcf->handler_code_file = (char *)value[1].data;
-    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "flcf->code_file:  %s", flcf->handler_code_file);
+    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "flcf->code_file:  %s", flcf->handler_code_file);
 
     return NGX_CONF_OK;
 }
