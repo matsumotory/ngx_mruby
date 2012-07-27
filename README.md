@@ -4,41 +4,32 @@ ngx_mruby - to provide an alternative to mod_mruby for nginx.
 nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
 ## How to use (experiment)
-
-* まずはGithubからソースをダウンロードします。
-
+* Download
     git clone git://github.com/matsumoto-r/ngx_mruby.git
 
-* そして、configファイルを開いて、mrubyがインストールされているPathを変更して下さい。僕の場合は以下のようにしています。
-
+* Set mruby directory
     mruby_root=/usr/local/src/mruby
 
-* nginx1.2.2stableをダウンロードします。
-
+* Download nginx1.2.2stable
     wget http://nginx.org/download/nginx-1.2.2.tar.gz
 
-* ダウンロード後、展開して以下のコマンドでngx_mrubyをモジュールとして指定してnginxそのものをコンパイルします。
-
+* Build nginx with ngx_mruby
     ./configure --add-module=/usr/local/src/ngx_mruby --prefix=/usr/local/nginx122
     make
     sudo make install
 
-* コンパイル後、nginx.confの設定に以下のような設定を加えます。
-
+* Add setting
     location /mruby {
         mrubyHandler /usr/local/nginx122/html/hello.mrb;
     }
 
-* 指定したmrubyスクリプト（/usr/local/nginx122/html/hello.mrb）に以下のメソッドを記述します。
-
+* Create mruby script /usr/local/nginx122/html/hello.mrb
     Nginx.rputs("hello mruby world for nginx.")
 
-* では、nginxを起動します。
-
+* Start nginx
     /usr/local/nginx122/sbin/nginx
 
-* そして、http://example.com/mrubyにアクセスしてみましょう。（example.comを自ドメインに置き換えて下さい）
-
+* Access http://example.com/mruby (sed/example.com/mydomain/）
     hello mruby world for nginx.
 
-と表示されたら成功です。ようこそ！mruby world for nginxへ！！
+Display above. Welcome mruby world for nginx!!
