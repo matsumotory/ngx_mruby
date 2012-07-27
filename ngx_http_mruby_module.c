@@ -30,11 +30,12 @@
 #include <mruby/compile.h>
 #include <mruby/string.h>
 
+static void *ngx_http_mruby_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_mruby(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 typedef struct {
 
-    ngx_str_t handler_code_file;
+    char *handler_code_file;
 
 } ngx_http_mruby_loc_conf_t;
  
@@ -42,14 +43,12 @@ static ngx_command_t ngx_http_mruby_commands[] = {
     { ngx_string("mrubyHandler"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_mruby,
-      0,
+      NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
  
     ngx_null_command
 };
- 
- 
  
 static ngx_http_module_t ngx_http_mruby_module_ctx = {
     NULL,                          /* preconfiguration */
@@ -61,7 +60,7 @@ static ngx_http_module_t ngx_http_mruby_module_ctx = {
     NULL,                          /* create server configuration */
     NULL,                          /* merge server configuration */
  
-    NULL,                          /* create location configuration */
+    ngx_http_mruby_loc_conf,       /* create location configuration */
     NULL                           /* merge location configuration */
 };
  
@@ -94,6 +93,18 @@ static ngx_http_request_t *ap_ngx_mrb_get_request()
     return ngx_mruby_request_state;
 }
 
+static void *ngx_http_mruby_loc_conf(ngx_conf_t *cf)
+{
+    ngx_http_mruby_loc_conf_t  *conf;
+
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mruby_loc_conf_t));
+    if (conf == NULL) {
+        return NULL;
+    }
+
+    return conf;
+}
+
 mrb_value ap_ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
 {
     mrb_value msg;
@@ -115,20 +126,20 @@ mrb_value ap_ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
 
     str = (u_char *)RSTRING_PTR(msg);
     b->pos = str;
-    b->last = str + sizeof(str);
+    b->last = str + strlen((char *)str);
     b->memory = 1;
     b->last_buf = 1;
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = sizeof(str);
+    r->headers_out.content_length_n = strlen((char *)str);
+    r->headers_out.content_type.len = sizeof("text/html") - 1;
+    r->headers_out.content_type.data = (u_char *)"text/html";
 
     ngx_http_send_header(r);
     ngx_http_output_filter(r, &out);
 
     return self;
 }
-
-
 
 mrb_value ap_ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str)
 {
@@ -194,14 +205,14 @@ static int ap_ngx_mrb_class_init(mrb_state *mrb)
     return NGX_OK;
 }
 
-static int ap_ngx_mrb_run(ngx_http_request_t *r, ngx_str_t *code_file)
+static int ap_ngx_mrb_run(ngx_http_request_t *r, char *code_file)
 {
     FILE *mrb_file;
 
     mrb_state *mrb = mrb_open();
     ap_ngx_mrb_class_init(mrb);
 
-    if ((mrb_file = fopen((char *)code_file->data, "r")) == NULL) {
+    if ((mrb_file = fopen((char *)code_file, "r")) == NULL) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "mrb_file open failed.");
     }
 
@@ -216,8 +227,8 @@ static int ap_ngx_mrb_run(ngx_http_request_t *r, ngx_str_t *code_file)
  
 static ngx_int_t ngx_http_mruby_handler(ngx_http_request_t *r)
 {
-    ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-    return ap_ngx_mrb_run(r, &clcf->handler_code_file);
+    ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    return ap_ngx_mrb_run(r, clcf->handler_code_file);
 }
  
  
@@ -225,14 +236,16 @@ static char * ngx_http_mruby(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 { 
     ngx_str_t *value;
     ngx_http_core_loc_conf_t *clcf;
-
     ngx_http_mruby_loc_conf_t *flcf = conf;
  
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_http_mruby_handler;
 
     value = cf->args->elts;
-    flcf->handler_code_file = value[1];
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "value:  %V", &value[1]);
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "code_file:  %s", value[1].data);
+    flcf->handler_code_file = (char *)value[1].data;
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "flcf->code_file:  %s", flcf->handler_code_file);
 
     return NGX_CONF_OK;
 }
