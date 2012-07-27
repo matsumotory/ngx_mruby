@@ -8,10 +8,10 @@
 //          Graduate School of Informatics, Kyoto University
 //          email: matsumoto_r at net.ist.i.kyoto-u.ac.jp
 //
-// Date     2012/06/20
+// Date     2012/07/28
 //
 // change log
-//  2012/06/20 0.00 matsumoto_r first release
+//  2012/07/28 0.01 matsumoto_r first release
 // -------------------------------------------------------------------
 */
 
