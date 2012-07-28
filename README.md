@@ -30,7 +30,7 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
 * Create mruby script /usr/local/nginx122/html/hello.mrb
 
-        Nginx.rputs("hello mruby world for nginx.")
+        Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
 
 * Start nginx
 
@@ -38,6 +38,6 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
 * Access http://example.com/mruby (sed/example.com/mydomain/)
 
-        hello mruby world for nginx.
+        Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
 
 Display above. Welcome mruby world for nginx!!
