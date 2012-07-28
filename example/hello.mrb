@@ -1,1 +1,1 @@
-Nginx.rputs("hello mruby world for nginx.")
+Nginx.rputs(Time.now.to_s + " hello mruby world for nginx.")
