@@ -33,6 +33,14 @@
 static void *ngx_http_mruby_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_mruby(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
+mrb_value ap_ngx_mrb_send_response(mrb_state *mrb, mrb_value self);
+mrb_value ap_ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
+mrb_value ap_ngx_mrb_rputs2(mrb_state *mrb, mrb_value self);
+mrb_value ap_ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self);
+mrb_value ap_ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self);
+mrb_value ap_ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str);
+
+
 typedef struct {
 
     char *handler_code_file;
@@ -105,6 +113,19 @@ static void *ngx_http_mruby_loc_conf(ngx_conf_t *cf)
     return conf;
 }
 
+mrb_value ap_ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
+{
+    ngx_http_request_t *r = ap_ngx_mrb_get_request();
+
+    mrb_int status = NGX_HTTP_OK;
+    mrb_get_args(mrb, "i", &status);
+
+    r->headers_out.status = status;
+    ngx_http_send_header(r);
+
+    return self;
+}
+
 mrb_value ap_ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
 {
     mrb_value msg;
@@ -141,11 +162,69 @@ mrb_value ap_ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     return self;
 }
 
+mrb_value ap_ngx_mrb_rputs2(mrb_state *mrb, mrb_value self)
+{
+    mrb_value msg;
+    ngx_buf_t *b;
+    ngx_chain_t out;
+    u_char *str;
+
+    ngx_http_request_t *r = ap_ngx_mrb_get_request();
+
+    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+
+    out.buf = b;
+    out.next = NULL;
+
+    mrb_get_args(mrb, "o", &msg);
+
+    if (mrb_type(msg) != MRB_TT_STRING)
+        return self;
+
+    str = (u_char *)RSTRING_PTR(msg);
+    b->pos = str;
+    b->last = str + strlen((char *)str);
+    b->memory = 1;
+    b->last_buf = 1;
+
+    r->headers_out.content_length_n = strlen((char *)str);
+    r->headers_out.content_type.len = sizeof("text/html") - 1;
+    r->headers_out.content_type.data = (u_char *)"text/html";
+    r->headers_out.status = NGX_HTTP_OK;
+
+    ngx_http_send_header(r);
+    ngx_http_output_filter(r, &out);
+
+    return self;
+}
+
+mrb_value ap_ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self) 
+{
+    ngx_http_request_t *r = ap_ngx_mrb_get_request();
+    u_char *val = ngx_pstrdup(r->pool, &r->headers_out.content_type);
+    return mrb_str_new(mrb, (char *)val, strlen((char *)val));
+}
+
+mrb_value ap_ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self) 
+{
+    mrb_value arg;
+    u_char *str;
+
+    ngx_http_request_t *r = ap_ngx_mrb_get_request();
+    mrb_get_args(mrb, "o", &arg);
+    str = (u_char *)RSTRING_PTR(arg);
+
+    r->headers_out.content_type.len = sizeof((char *)str) - 1;
+    r->headers_out.content_type.data = str;
+
+    return self;
+}
+
 mrb_value ap_ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str)
 {
     ngx_http_request_t *r = ap_ngx_mrb_get_request();
-    char *val = (char *)ngx_pstrdup(r->pool, &r->uri);
-    return mrb_str_new(mrb, val, strlen(val));
+    u_char *val = ngx_pstrdup(r->pool, &r->uri);
+    return mrb_str_new(mrb, (char *)val, strlen((char *)val));
 }
 
 static int ap_ngx_mrb_class_init(mrb_state *mrb)
@@ -198,8 +277,11 @@ static int ap_ngx_mrb_class_init(mrb_state *mrb)
     mrb_define_const(mrb, class, "NGX_HTTP_GATEWAY_TIME_OUT", mrb_fixnum_value(NGX_HTTP_GATEWAY_TIME_OUT));
     mrb_define_const(mrb, class, "NGX_HTTP_INSUFFICIENT_STORAGE", mrb_fixnum_value(NGX_HTTP_INSUFFICIENT_STORAGE));
     mrb_define_class_method(mrb, class, "rputs", ap_ngx_mrb_rputs, ARGS_ANY());
+    mrb_define_class_method(mrb, class, "send_header", ap_ngx_mrb_send_header, ARGS_ANY());
 
     class_request = mrb_define_class_under(mrb, class, "Request", mrb->object_class);
+    mrb_define_method(mrb, class_request, "content_type=", ap_ngx_mrb_set_content_type, ARGS_ANY());
+    mrb_define_method(mrb, class_request, "content_type", ap_ngx_mrb_get_content_type, ARGS_NONE());
     mrb_define_method(mrb, class_request, "uri", ap_ngx_mrb_get_request_uri, ARGS_NONE());
 
     return NGX_OK;
@@ -242,10 +324,10 @@ static char * ngx_http_mruby(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     clcf->handler = ngx_http_mruby_handler;
 
     value = cf->args->elts;
-    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "value:  %V", &value[1]);
-    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "code_file:  %s", value[1].data);
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "value:  %V", &value[1]);
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "code_file:  %s", value[1].data);
     flcf->handler_code_file = (char *)value[1].data;
-    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "flcf->code_file:  %s", flcf->handler_code_file);
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "flcf->code_file:  %s", flcf->handler_code_file);
 
     return NGX_CONF_OK;
 }
