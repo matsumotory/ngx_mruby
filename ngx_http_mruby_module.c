@@ -30,14 +30,21 @@
 #include <mruby/compile.h>
 #include <mruby/string.h>
 
+// set conf
 static void *ngx_http_mruby_loc_conf(ngx_conf_t *cf);
+
+// set fook function
 static ngx_int_t ngx_http_mruby_access_checker(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_handler(ngx_http_request_t *r);
+
+// set fook phase
 static char *ngx_http_mruby_access_checker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+// set init function
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf);
 
-
+// define mruby method for nginx
 mrb_value ap_ngx_mrb_send_response(mrb_state *mrb, mrb_value self);
 mrb_value ap_ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
 mrb_value ap_ngx_mrb_rputs2(mrb_state *mrb, mrb_value self);
