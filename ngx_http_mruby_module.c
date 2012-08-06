@@ -326,17 +326,13 @@ static ngx_int_t ngx_http_mruby_handler(ngx_http_request_t *r)
 static char * ngx_http_mruby(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 { 
     ngx_str_t *value;
-    //ngx_http_core_loc_conf_t *clcf;
     ngx_http_mruby_loc_conf_t *flcf = conf;
  
-    //clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-    //clcf->handler = ngx_http_mruby_handler;
-
     value = cf->args->elts;
-    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "value:  %V", &value[1]);
-    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "code_file:  %s", value[1].data);
+    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "value:  %V", &value[1]);
+    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "code_file:  %s", value[1].data);
     flcf->handler_code_file = (char *)value[1].data;
-    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "flcf->code_file:  %s", flcf->handler_code_file);
+    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "flcf->code_file:  %s", flcf->handler_code_file);
 
     return NGX_CONF_OK;
 }
