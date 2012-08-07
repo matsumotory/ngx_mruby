@@ -235,8 +235,9 @@ mrb_value ap_ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self)
     mrb_get_args(mrb, "o", &arg);
     str = (u_char *)RSTRING_PTR(arg);
 
-    r->headers_out.content_type.len = sizeof((char *)str) - 1;
-    r->headers_out.content_type.data = str;
+    //r->headers_out.content_type.len = sizeof((char *)str) - 1;
+    ngx_str_set(&r->headers_out.content_type, str);
+    //r->headers_out.content_type.data = str;
 
     return self;
 }
