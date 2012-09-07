@@ -321,7 +321,7 @@ static int ap_ngx_mrb_run(ngx_http_request_t *r, char *code_file)
     }
 
     struct mrb_parser_state* p = mrb_parse_file(mrb, mrb_file, NULL);
-    int n = mrb_generate_code(mrb, p->tree);
+    int n = mrb_generate_code(mrb, p);
     mrb_pool_close(p->pool);
     ap_ngx_mrb_push_request(r);
     mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
