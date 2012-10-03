@@ -32,7 +32,7 @@ tmp/nginx:
 
 # libmruby.a
 tmp/mruby:
-	mkdir -p tmp/mruby vendors
+	mkdir -p tmp vendors
 	cd tmp; git clone https://github.com/mruby/mruby.git
 
 libmruby.a: tmp/mruby
@@ -45,11 +45,11 @@ libmruby.a: tmp/mruby
 
 # libmruby.a (+iij extended lib)
 tmp/mruby-ex:
-	mkdir -p tmp/mruby vendors
+	mkdir -p tmp vendors
 	cd tmp; git clone git://github.com/iij/mruby.git
 
 libmruby-ex.a: tmp/mruby-ex
-	cd tmp/mruby && make
+	cd tmp && make
 	cp -r tmp/mruby/include vendors/
 	cp -r tmp/mruby/lib vendors/
 	cp -r tmp/mruby/src vendors/
