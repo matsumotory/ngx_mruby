@@ -9,11 +9,11 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
         git clone git://github.com/matsumoto-r/ngx_mruby.git
 
 * Build
-- mruby/mruby
+** mruby/mruby
 
         make
 
-- iij/mruby
+** iij/mruby
 
         make extend
 
