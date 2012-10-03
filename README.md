@@ -4,38 +4,38 @@ ngx_mruby - to provide an alternative to mod_mruby for nginx.
 nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
 ## How to use
-### Download
+### 1. Download
 
         git clone git://github.com/matsumoto-r/ngx_mruby.git
 
-### Build
+### 2. Build
 * mruby/mruby
 
         make
 
-* iij/mruby
+* iij/mruby - include extended library for mruby
 
         make extend
 
-### Install
+### 3. Install
 
         make install
 
-### Add setting
+### 4. Add setting
 
         location /mruby {
             mrubyHandler /usr/local/nginx122/html/hello.mrb;
         }
 
-### Create mruby script /usr/local/nginx122/html/hello.mrb
+### 5. Create mruby script /usr/local/nginx122/html/hello.mrb
 
         Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
 
-### Start nginx
+### 6. Start nginx
 
         /usr/local/nginx122/sbin/nginx
 
-### Access http://example.com/mruby (sed/example.com/mydomain/)
+### 7. Access http://example.com/mruby (sed/example.com/mydomain/)
 
         Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
 
