@@ -33,7 +33,7 @@ tmp/nginx:
 # libmruby.a
 tmp/mruby:
 	mkdir -p tmp vendors
-	cd tmp; git clone https://github.com/mruby/mruby.git
+	cd tmp; git clone git://github.com/mruby/mruby.git
 
 libmruby.a: tmp/mruby
 	cd tmp/mruby && make
