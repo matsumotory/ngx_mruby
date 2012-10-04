@@ -19,7 +19,7 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
 ### 3. Install
 
-        make install
+        sudo make install
 
 ### 4. Add setting
 
