@@ -32,12 +32,15 @@
 
 // set conf
 static void *ngx_http_mruby_loc_conf(ngx_conf_t *cf);
+static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
 
 // set fook function
+static ngx_int_t ngx_http_mruby_post_read_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_access_checker(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_handler(ngx_http_request_t *r);
 
 // set fook phase
+static char *ngx_http_mruby_post_read_request_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_access_checker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
@@ -56,6 +59,7 @@ typedef struct {
 
     char *handler_code_file;
     char *access_checker_code_file;
+    char *post_read_request_code_file;
 
 } ngx_http_mruby_loc_conf_t;
  
@@ -74,6 +78,13 @@ static ngx_command_t ngx_http_mruby_commands[] = {
       0,
       NULL },
  
+    { ngx_string("mruby_post_read_request"),
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      ngx_http_mruby_post_read_request_phase,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+ 
     ngx_null_command
 };
  
@@ -88,7 +99,7 @@ static ngx_http_module_t ngx_http_mruby_module_ctx = {
     NULL,                          /* merge server configuration */
  
     ngx_http_mruby_loc_conf,       /* create location configuration */
-    NULL                           /* merge location configuration */
+    ngx_http_mruby_merge_loc_conf  /* merge location configuration */
 };
  
 ngx_module_t ngx_http_mruby_module = {
@@ -128,10 +139,23 @@ static void *ngx_http_mruby_loc_conf(ngx_conf_t *cf)
         return NULL;
     }
 
-    conf->handler_code_file         = NULL;
-    conf->access_checker_code_file  = NULL;
+    conf->handler_code_file           = NGX_CONF_UNSET_PTR;
+    conf->access_checker_code_file    = NGX_CONF_UNSET_PTR;
+    conf->post_read_request_code_file = NGX_CONF_UNSET_PTR;
 
     return conf;
+}
+
+static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
+{
+    ngx_http_mruby_loc_conf_t *prev = parent;
+    ngx_http_mruby_loc_conf_t *conf = child;
+
+    if (prev->post_read_request_code_file == NGX_CONF_UNSET_PTR) {
+        prev->post_read_request_code_file = conf->post_read_request_code_file;
+    }
+
+    return NGX_CONF_OK;
 }
 
 mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
@@ -235,9 +259,7 @@ mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self)
     mrb_get_args(mrb, "o", &arg);
     str = (u_char *)RSTRING_PTR(arg);
 
-    //r->headers_out.content_type.len = sizeof((char *)str) - 1;
     ngx_str_set(&r->headers_out.content_type, str);
-    //r->headers_out.content_type.data = str;
 
     return self;
 }
@@ -329,6 +351,19 @@ static int ngx_mrb_run(ngx_http_request_t *r, char *code_file)
     return NGX_OK;
 }
  
+static ngx_int_t ngx_http_mruby_post_read_request(ngx_http_request_t *r)
+{
+    ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+
+    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
+        return NGX_DECLINED;
+
+    if (clcf->post_read_request_code_file == NULL)
+        return NGX_DECLINED;
+
+    return ngx_mrb_run(r, clcf->post_read_request_code_file);
+}
+
 static ngx_int_t ngx_http_mruby_access_checker(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
@@ -354,7 +389,18 @@ static ngx_int_t ngx_http_mruby_handler(ngx_http_request_t *r)
 
     return ngx_mrb_run(r, clcf->handler_code_file);
 }
+
+static char * ngx_http_mruby_post_read_request_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{ 
+    ngx_str_t *value;
+    ngx_http_mruby_loc_conf_t *flcf = conf;
  
+    value = cf->args->elts;
+    flcf->post_read_request_code_file = (char *)value[1].data;
+
+    return NGX_CONF_OK;
+}
+
 static char * ngx_http_mruby_access_checker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 { 
     ngx_str_t *value;
@@ -367,10 +413,10 @@ static char * ngx_http_mruby_access_checker_phase(ngx_conf_t *cf, ngx_command_t 
 }
 
 static char * ngx_http_mruby_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{ 
+{
     ngx_str_t *value;
     ngx_http_mruby_loc_conf_t *flcf = conf;
- 
+
     value = cf->args->elts;
     flcf->handler_code_file = (char *)value[1].data;
 
@@ -378,25 +424,29 @@ static char * ngx_http_mruby_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, v
 }
 
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
-{   
+{
     ngx_http_handler_pt        *h;
     ngx_http_core_main_conf_t  *cmcf;
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
+    if (h == NULL) {
+         return NGX_ERROR;
+    }
+    *h = ngx_http_mruby_handler;
+
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
     if (h == NULL) {
         return NGX_ERROR;
     }
-
     *h = ngx_http_mruby_access_checker;
 
-    h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_POST_READ_PHASE].handlers);
     if (h == NULL) {
         return NGX_ERROR;
     }
-
-    *h = ngx_http_mruby_handler;
+    *h = ngx_http_mruby_post_read_request;
 
     return NGX_OK;
 }
