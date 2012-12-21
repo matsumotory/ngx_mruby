@@ -60,14 +60,14 @@ typedef struct {
 } ngx_http_mruby_loc_conf_t;
  
 static ngx_command_t ngx_http_mruby_commands[] = {
-    { ngx_string("mrubyHandler"),
+    { ngx_string("mruby_handler"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_mruby_handler_phase,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
  
-    { ngx_string("mrubyAccessChecker"),
+    { ngx_string("mruby_access_checker"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_mruby_access_checker_phase,
       NGX_HTTP_LOC_CONF_OFFSET,
