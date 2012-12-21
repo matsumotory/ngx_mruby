@@ -45,12 +45,12 @@ static char *ngx_http_mruby_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf);
 
 // define mruby method for nginx
-mrb_value ap_ngx_mrb_send_response(mrb_state *mrb, mrb_value self);
-mrb_value ap_ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
-mrb_value ap_ngx_mrb_rputs2(mrb_state *mrb, mrb_value self);
-mrb_value ap_ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self);
-mrb_value ap_ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self);
-mrb_value ap_ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str);
+mrb_value ngx_mrb_send_response(mrb_state *mrb, mrb_value self);
+mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
+mrb_value ngx_mrb_rputs2(mrb_state *mrb, mrb_value self);
+mrb_value ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self);
+mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self);
+mrb_value ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str);
 
 typedef struct {
 
@@ -108,13 +108,13 @@ ngx_module_t ngx_http_mruby_module = {
 
 static ngx_http_request_t *ngx_mruby_request_state = NULL;
  
-static int ap_ngx_mrb_push_request(ngx_http_request_t *r)
+static int ngx_mrb_push_request(ngx_http_request_t *r)
 {
     ngx_mruby_request_state = r;
     return NGX_OK;
 }
 
-static ngx_http_request_t *ap_ngx_mrb_get_request()
+static ngx_http_request_t *ngx_mrb_get_request()
 {
     return ngx_mruby_request_state;
 }
@@ -134,9 +134,9 @@ static void *ngx_http_mruby_loc_conf(ngx_conf_t *cf)
     return conf;
 }
 
-mrb_value ap_ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
+mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
 {
-    ngx_http_request_t *r = ap_ngx_mrb_get_request();
+    ngx_http_request_t *r = ngx_mrb_get_request();
 
     mrb_int status = NGX_HTTP_OK;
     mrb_get_args(mrb, "i", &status);
@@ -147,14 +147,14 @@ mrb_value ap_ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-mrb_value ap_ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
+mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
 {
     mrb_value msg;
     ngx_buf_t *b;
     ngx_chain_t out;
     u_char *str;
 
-    ngx_http_request_t *r = ap_ngx_mrb_get_request();
+    ngx_http_request_t *r = ngx_mrb_get_request();
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
 
@@ -183,14 +183,14 @@ mrb_value ap_ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-mrb_value ap_ngx_mrb_rputs2(mrb_state *mrb, mrb_value self)
+mrb_value ngx_mrb_rputs2(mrb_state *mrb, mrb_value self)
 {
     mrb_value msg;
     ngx_buf_t *b;
     ngx_chain_t out;
     u_char *str;
 
-    ngx_http_request_t *r = ap_ngx_mrb_get_request();
+    ngx_http_request_t *r = ngx_mrb_get_request();
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
 
@@ -219,19 +219,19 @@ mrb_value ap_ngx_mrb_rputs2(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-mrb_value ap_ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self) 
+mrb_value ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self) 
 {
-    ngx_http_request_t *r = ap_ngx_mrb_get_request();
+    ngx_http_request_t *r = ngx_mrb_get_request();
     u_char *val = ngx_pstrdup(r->pool, &r->headers_out.content_type);
     return mrb_str_new(mrb, (char *)val, strlen((char *)val));
 }
 
-mrb_value ap_ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self) 
+mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self) 
 {
     mrb_value arg;
     u_char *str;
 
-    ngx_http_request_t *r = ap_ngx_mrb_get_request();
+    ngx_http_request_t *r = ngx_mrb_get_request();
     mrb_get_args(mrb, "o", &arg);
     str = (u_char *)RSTRING_PTR(arg);
 
@@ -242,14 +242,14 @@ mrb_value ap_ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-mrb_value ap_ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str)
+mrb_value ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str)
 {
-    ngx_http_request_t *r = ap_ngx_mrb_get_request();
+    ngx_http_request_t *r = ngx_mrb_get_request();
     u_char *val = ngx_pstrdup(r->pool, &r->uri);
     return mrb_str_new(mrb, (char *)val, strlen((char *)val));
 }
 
-static int ap_ngx_mrb_class_init(mrb_state *mrb)
+static int ngx_mrb_class_init(mrb_state *mrb)
 {
     struct RClass *class;
     struct RClass *class_request;
@@ -298,23 +298,23 @@ static int ap_ngx_mrb_class_init(mrb_state *mrb)
     mrb_define_const(mrb, class, "NGX_HTTP_SERVICE_UNAVAILABLE", mrb_fixnum_value(NGX_HTTP_SERVICE_UNAVAILABLE));
     mrb_define_const(mrb, class, "NGX_HTTP_GATEWAY_TIME_OUT", mrb_fixnum_value(NGX_HTTP_GATEWAY_TIME_OUT));
     mrb_define_const(mrb, class, "NGX_HTTP_INSUFFICIENT_STORAGE", mrb_fixnum_value(NGX_HTTP_INSUFFICIENT_STORAGE));
-    mrb_define_class_method(mrb, class, "rputs", ap_ngx_mrb_rputs, ARGS_ANY());
-    mrb_define_class_method(mrb, class, "send_header", ap_ngx_mrb_send_header, ARGS_ANY());
+    mrb_define_class_method(mrb, class, "rputs", ngx_mrb_rputs, ARGS_ANY());
+    mrb_define_class_method(mrb, class, "send_header", ngx_mrb_send_header, ARGS_ANY());
 
     class_request = mrb_define_class_under(mrb, class, "Request", mrb->object_class);
-    mrb_define_method(mrb, class_request, "content_type=", ap_ngx_mrb_set_content_type, ARGS_ANY());
-    mrb_define_method(mrb, class_request, "content_type", ap_ngx_mrb_get_content_type, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "uri", ap_ngx_mrb_get_request_uri, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "content_type=", ngx_mrb_set_content_type, ARGS_ANY());
+    mrb_define_method(mrb, class_request, "content_type", ngx_mrb_get_content_type, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "uri", ngx_mrb_get_request_uri, ARGS_NONE());
 
     return NGX_OK;
 }
 
-static int ap_ngx_mrb_run(ngx_http_request_t *r, char *code_file)
+static int ngx_mrb_run(ngx_http_request_t *r, char *code_file)
 {
     FILE *mrb_file;
 
     mrb_state *mrb = mrb_open();
-    ap_ngx_mrb_class_init(mrb);
+    ngx_mrb_class_init(mrb);
 
     if ((mrb_file = fopen((char *)code_file, "r")) == NULL) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "mrb_file open failed");
@@ -323,7 +323,7 @@ static int ap_ngx_mrb_run(ngx_http_request_t *r, char *code_file)
     struct mrb_parser_state* p = mrb_parse_file(mrb, mrb_file, NULL);
     int n = mrb_generate_code(mrb, p);
     mrb_pool_close(p->pool);
-    ap_ngx_mrb_push_request(r);
+    ngx_mrb_push_request(r);
     mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
 
     return NGX_OK;
@@ -339,7 +339,7 @@ static ngx_int_t ngx_http_mruby_access_checker(ngx_http_request_t *r)
     if (clcf->access_checker_code_file == NULL)
         return NGX_DECLINED;
 
-    return ap_ngx_mrb_run(r, clcf->access_checker_code_file);
+    return ngx_mrb_run(r, clcf->access_checker_code_file);
 }
 
 static ngx_int_t ngx_http_mruby_handler(ngx_http_request_t *r)
@@ -352,7 +352,7 @@ static ngx_int_t ngx_http_mruby_handler(ngx_http_request_t *r)
     if (clcf->handler_code_file == NULL)
         return NGX_DECLINED;
 
-    return ap_ngx_mrb_run(r, clcf->handler_code_file);
+    return ngx_mrb_run(r, clcf->handler_code_file);
 }
  
 static char * ngx_http_mruby_access_checker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -372,10 +372,7 @@ static char * ngx_http_mruby_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, v
     ngx_http_mruby_loc_conf_t *flcf = conf;
  
     value = cf->args->elts;
-    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "value:  %V", &value[1]);
-    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "code_file:  %s", value[1].data);
     flcf->handler_code_file = (char *)value[1].data;
-    //ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "flcf->code_file:  %s", flcf->handler_code_file);
 
     return NGX_CONF_OK;
 }
