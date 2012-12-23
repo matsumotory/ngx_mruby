@@ -38,6 +38,7 @@ static char *ngx_http_mruby_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
 
 // set init function
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf);
+static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf);
 
 typedef struct {
 
@@ -205,30 +206,53 @@ static char * ngx_http_mruby_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, v
 
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
 {
-    ngx_http_handler_pt        *h;
-    ngx_http_core_main_conf_t  *cmcf;
+    ngx_http_core_main_conf_t *cmcf;
 
     ngx_mruby_request_state = NULL;
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
-    h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
-    if (h == NULL) {
-         return NGX_ERROR;
-    }
-    *h = ngx_http_mruby_handler;
-
-    h = ngx_array_push(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
-    if (h == NULL) {
+    if (ngx_http_mruby_handler_init(cmcf) != NGX_OK) {
         return NGX_ERROR;
     }
-    *h = ngx_http_mruby_access_checker;
 
-    h = ngx_array_push(&cmcf->phases[NGX_HTTP_POST_READ_PHASE].handlers);
-    if (h == NULL) {
-        return NGX_ERROR;
+    return NGX_OK;
+}
+
+static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
+{
+    ngx_int_t i;
+    ngx_http_handler_pt *h;
+    ngx_http_phases phase;
+    ngx_http_phases phases[] = {
+        NGX_HTTP_POST_READ_PHASE,
+        NGX_HTTP_ACCESS_PHASE,
+        NGX_HTTP_CONTENT_PHASE,
+    };
+    ngx_int_t phases_c;
+
+    phases_c = sizeof(phases) / sizeof(ngx_http_phases);
+    for (i=0;i<phases_c;i++) {
+        phase = phases[i];
+        h = ngx_array_push(&cmcf->phases[phase].handlers);
+        if (h == NULL) {
+            return NGX_ERROR;
+        }
+        switch (phase) {
+        case NGX_HTTP_POST_READ_PHASE:
+            *h = ngx_http_mruby_post_read_request;
+            break;
+        case NGX_HTTP_ACCESS_PHASE:
+            *h = ngx_http_mruby_access_checker;
+            break;
+        case NGX_HTTP_CONTENT_PHASE:
+            *h = ngx_http_mruby_handler;
+            break;
+        default:
+            // not through
+            break;
+        }
     }
-    *h = ngx_http_mruby_post_read_request;
 
     return NGX_OK;
 }
