@@ -48,9 +48,9 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf);
 
 typedef struct {
 
-    char *post_read_request_code_file;
-    char *server_rewrite_request_code_file;
-    char *rewrite_request_code_file;
+    char *post_read_code_file;
+    char *server_rewrite_code_file;
+    char *rewrite_code_file;
     char *access_checker_code_file;
     char *handler_code_file;
     char *log_handler_code_file;
@@ -144,12 +144,12 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
         return NULL;
     }
 
-    conf->post_read_request_code_file      = NGX_CONF_UNSET_PTR;
-    conf->server_rewrite_request_code_file = NGX_CONF_UNSET_PTR;
-    conf->rewrite_request_code_file        = NGX_CONF_UNSET_PTR;
-    conf->access_checker_code_file         = NGX_CONF_UNSET_PTR;
-    conf->handler_code_file                = NGX_CONF_UNSET_PTR;
-    conf->log_handler_code_file            = NGX_CONF_UNSET_PTR;
+    conf->post_read_code_file      = NGX_CONF_UNSET_PTR;
+    conf->server_rewrite_code_file = NGX_CONF_UNSET_PTR;
+    conf->rewrite_code_file        = NGX_CONF_UNSET_PTR;
+    conf->access_checker_code_file = NGX_CONF_UNSET_PTR;
+    conf->handler_code_file        = NGX_CONF_UNSET_PTR;
+    conf->log_handler_code_file    = NGX_CONF_UNSET_PTR;
 
     conf->content = NGX_CONF_UNSET_PTR;
 
@@ -161,16 +161,16 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     ngx_http_mruby_loc_conf_t *prev = parent;
     ngx_http_mruby_loc_conf_t *conf = child;
 
-    if (prev->post_read_request_code_file == NGX_CONF_UNSET_PTR) {
-        prev->post_read_request_code_file = conf->post_read_request_code_file;
+    if (prev->post_read_code_file == NGX_CONF_UNSET_PTR) {
+        prev->post_read_code_file = conf->post_read_code_file;
     }
 
-    if (prev->server_rewrite_request_code_file == NGX_CONF_UNSET_PTR) {
-        prev->server_rewrite_request_code_file = conf->server_rewrite_request_code_file;
+    if (prev->server_rewrite_code_file == NGX_CONF_UNSET_PTR) {
+        prev->server_rewrite_code_file = conf->server_rewrite_code_file;
     }
 
-    if (prev->rewrite_request_code_file == NGX_CONF_UNSET_PTR) {
-        prev->rewrite_request_code_file = conf->rewrite_request_code_file;
+    if (prev->rewrite_code_file == NGX_CONF_UNSET_PTR) {
+        prev->rewrite_code_file = conf->rewrite_code_file;
     }
 
     return NGX_CONF_OK;
@@ -179,19 +179,19 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
 static ngx_int_t ngx_http_mruby_post_read_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run(r, clcf->post_read_request_code_file);
+    return ngx_mrb_run(r, clcf->post_read_code_file);
 }
 
 static ngx_int_t ngx_http_mruby_server_rewrite_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run(r, clcf->server_rewrite_request_code_file);
+    return ngx_mrb_run(r, clcf->server_rewrite_code_file);
 }
 
 static ngx_int_t ngx_http_mruby_rewrite_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run(r, clcf->rewrite_request_code_file);
+    return ngx_mrb_run(r, clcf->rewrite_code_file);
 }
 
 static ngx_int_t ngx_http_mruby_access_handler(ngx_http_request_t *r)
@@ -218,7 +218,7 @@ static char * ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_http_mruby_loc_conf_t *flcf = conf;
  
     value = cf->args->elts;
-    flcf->post_read_request_code_file = (char *)value[1].data;
+    flcf->post_read_code_file = (char *)value[1].data;
 
     return NGX_CONF_OK;
 }
@@ -229,7 +229,7 @@ static char * ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t 
     ngx_http_mruby_loc_conf_t *flcf = conf;
  
     value = cf->args->elts;
-    flcf->server_rewrite_request_code_file = (char *)value[1].data;
+    flcf->server_rewrite_code_file = (char *)value[1].data;
 
     return NGX_CONF_OK;
 }
@@ -240,7 +240,7 @@ static char * ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, v
     ngx_http_mruby_loc_conf_t *flcf = conf;
  
     value = cf->args->elts;
-    flcf->rewrite_request_code_file = (char *)value[1].data;
+    flcf->rewrite_code_file = (char *)value[1].data;
 
     return NGX_CONF_OK;
 }
