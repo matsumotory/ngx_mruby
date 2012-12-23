@@ -9,23 +9,14 @@
 
 ngx_http_request_t *ngx_mruby_request_state;
 
+static ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r);
+static ngx_http_request_t *ngx_mrb_get_request(void);
 static ngx_int_t ngx_mrb_class_init(mrb_state *mrb);
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str);
-
-int ngx_mrb_push_request(ngx_http_request_t *r)
-{
-    ngx_mruby_request_state = r;
-    return NGX_OK;
-}
-
-ngx_http_request_t *ngx_mrb_get_request()
-{
-    return ngx_mruby_request_state;
-}
 
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, char *code_file)
 {
@@ -47,7 +38,18 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, char *code_file)
     return NGX_OK;
 }
 
-ngx_int_t ngx_mrb_class_init(mrb_state *mrb)
+static ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r)
+{
+    ngx_mruby_request_state = r;
+    return NGX_OK;
+}
+
+static ngx_http_request_t *ngx_mrb_get_request(void)
+{
+    return ngx_mruby_request_state;
+}
+
+static ngx_int_t ngx_mrb_class_init(mrb_state *mrb)
 {
     struct RClass *class;
     struct RClass *class_request;
