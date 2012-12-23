@@ -23,7 +23,7 @@
 #include "ngx_http_mruby.h"
 
 // set conf
-static void *ngx_http_mruby_loc_conf(ngx_conf_t *cf);
+static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
 
 // set fook function
@@ -113,7 +113,7 @@ static ngx_http_module_t ngx_http_mruby_module_ctx = {
     NULL,                          /* create server configuration */
     NULL,                          /* merge server configuration */
  
-    ngx_http_mruby_loc_conf,       /* create location configuration */
+    ngx_http_mruby_create_loc_conf,/* create location configuration */
     ngx_http_mruby_merge_loc_conf  /* merge location configuration */
 };
  
@@ -134,7 +134,7 @@ ngx_module_t ngx_http_mruby_module = {
 
 extern ngx_http_request_t *ngx_mruby_request_state;
  
-static void *ngx_http_mruby_loc_conf(ngx_conf_t *cf)
+static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_mruby_loc_conf_t  *conf;
 
