@@ -32,6 +32,7 @@ static ngx_int_t ngx_http_mruby_server_rewrite_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_rewrite_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_access_checker(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_mruby_log_handler(ngx_http_request_t *r);
 
 // set fook phase
 static char *ngx_http_mruby_post_read_request_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -39,6 +40,7 @@ static char *ngx_http_mruby_server_rewrite_request_phase(ngx_conf_t *cf, ngx_com
 static char *ngx_http_mruby_rewrite_request_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_access_checker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_http_mruby_log_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 // set init function
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf);
@@ -49,8 +51,9 @@ typedef struct {
     char *post_read_request_code_file;
     char *server_rewrite_request_code_file;
     char *rewrite_request_code_file;
-    char *handler_code_file;
     char *access_checker_code_file;
+    char *handler_code_file;
+    char *log_handler_code_file;
 
 } ngx_http_mruby_loc_conf_t;
  
@@ -76,6 +79,13 @@ static ngx_command_t ngx_http_mruby_commands[] = {
       0,
       NULL },
  
+    { ngx_string("mruby_access_checker"),
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      ngx_http_mruby_access_checker_phase,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+ 
     { ngx_string("mruby_handler"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_mruby_handler_phase,
@@ -83,9 +93,9 @@ static ngx_command_t ngx_http_mruby_commands[] = {
       0,
       NULL },
  
-    { ngx_string("mruby_access_checker"),
+    { ngx_string("mruby_log_handler"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
-      ngx_http_mruby_access_checker_phase,
+      ngx_http_mruby_log_handler_phase,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -138,6 +148,7 @@ static void *ngx_http_mruby_loc_conf(ngx_conf_t *cf)
     conf->rewrite_request_code_file        = NGX_CONF_UNSET_PTR;
     conf->access_checker_code_file         = NGX_CONF_UNSET_PTR;
     conf->handler_code_file                = NGX_CONF_UNSET_PTR;
+    conf->log_handler_code_file            = NGX_CONF_UNSET_PTR;
 
     return conf;
 }
@@ -227,6 +238,19 @@ static ngx_int_t ngx_http_mruby_handler(ngx_http_request_t *r)
     return ngx_mrb_run(r, clcf->handler_code_file);
 }
 
+static ngx_int_t ngx_http_mruby_log_handler(ngx_http_request_t *r)
+{
+    ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+
+    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
+        return NGX_DECLINED;
+
+    if (clcf->log_handler_code_file == NGX_CONF_UNSET_PTR)
+        return NGX_DECLINED;
+
+    return ngx_mrb_run(r, clcf->log_handler_code_file);
+}
+
 static char * ngx_http_mruby_post_read_request_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 { 
     ngx_str_t *value;
@@ -282,6 +306,17 @@ static char * ngx_http_mruby_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, v
     return NGX_CONF_OK;
 }
 
+static char * ngx_http_mruby_log_handler_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t *value;
+    ngx_http_mruby_loc_conf_t *flcf = conf;
+
+    value = cf->args->elts;
+    flcf->log_handler_code_file = (char *)value[1].data;
+
+    return NGX_CONF_OK;
+}
+
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
 {
     ngx_http_core_main_conf_t *cmcf;
@@ -304,10 +339,16 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
     ngx_http_phases phase;
     ngx_http_phases phases[] = {
         NGX_HTTP_POST_READ_PHASE,
+        //NGX_HTTP_FIND_CONFIG_PHASE,
         NGX_HTTP_SERVER_REWRITE_PHASE,
         NGX_HTTP_REWRITE_PHASE,
+        //NGX_HTTP_POST_REWRITE_PHASE,
+        //NGX_HTTP_PREACCESS_PHASE,
         NGX_HTTP_ACCESS_PHASE,
+        //NGX_HTTP_POST_ACCESS_PHASE,
+        //NGX_HTTP_TRY_FILES_PHASE,
         NGX_HTTP_CONTENT_PHASE,
+        NGX_HTTP_LOG_PHASE,
     };
     ngx_int_t phases_c;
 
@@ -333,6 +374,9 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
             break;
         case NGX_HTTP_CONTENT_PHASE:
             *h = ngx_http_mruby_handler;
+            break;
+        case NGX_HTTP_LOG_PHASE:
+            *h = ngx_http_mruby_log_handler;
             break;
         default:
             // not through
