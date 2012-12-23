@@ -176,78 +176,36 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
 static ngx_int_t ngx_http_mruby_post_read_request(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-
-    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
-        return NGX_DECLINED;
-
-    if (clcf->post_read_request_code_file == NGX_CONF_UNSET_PTR)
-        return NGX_DECLINED;
-
     return ngx_mrb_run(r, clcf->post_read_request_code_file);
 }
 
 static ngx_int_t ngx_http_mruby_server_rewrite_request(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-
-    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
-        return NGX_DECLINED;
-
-    if (clcf->server_rewrite_request_code_file == NGX_CONF_UNSET_PTR)
-        return NGX_DECLINED;
-
     return ngx_mrb_run(r, clcf->server_rewrite_request_code_file);
 }
 
 static ngx_int_t ngx_http_mruby_rewrite_request(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-
-    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
-        return NGX_DECLINED;
-
-    if (clcf->rewrite_request_code_file == NGX_CONF_UNSET_PTR)
-        return NGX_DECLINED;
-
     return ngx_mrb_run(r, clcf->rewrite_request_code_file);
 }
 
 static ngx_int_t ngx_http_mruby_access_checker(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-
-    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
-        return NGX_DECLINED;
-
-    if (clcf->access_checker_code_file == NGX_CONF_UNSET_PTR)
-        return NGX_DECLINED;
-
     return ngx_mrb_run(r, clcf->access_checker_code_file);
 }
 
 static ngx_int_t ngx_http_mruby_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-
-    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
-        return NGX_DECLINED;
-
-    if (clcf->handler_code_file == NGX_CONF_UNSET_PTR)
-        return NGX_DECLINED;
-
     return ngx_mrb_run(r, clcf->handler_code_file);
 }
 
 static ngx_int_t ngx_http_mruby_log_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-
-    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
-        return NGX_DECLINED;
-
-    if (clcf->log_handler_code_file == NGX_CONF_UNSET_PTR)
-        return NGX_DECLINED;
-
     return ngx_mrb_run(r, clcf->log_handler_code_file);
 }
 

@@ -21,8 +21,15 @@ static mrb_value ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str);
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, char *code_file)
 {
     FILE *mrb_file;
+    mrb_state *mrb;
 
-    mrb_state *mrb = mrb_open();
+    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
+        return NGX_DECLINED;
+
+    if (code_file == NGX_CONF_UNSET_PTR)
+        return NGX_DECLINED;
+
+    mrb = mrb_open();
     ngx_mrb_class_init(mrb);
 
     if ((mrb_file = fopen((char *)code_file, "r")) == NULL) {
