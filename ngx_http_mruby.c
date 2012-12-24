@@ -23,6 +23,46 @@ static mrb_value ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str);
 
+void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
+{  
+    struct RString *str;
+    char *err_out;
+    
+    obj = mrb_funcall(mrb, obj, "inspect", 0);
+    
+    if (mrb_type(obj) == MRB_TT_STRING) {
+        str = mrb_str_ptr(obj);
+        err_out = str->ptr;
+        ngx_log_error(NGX_LOG_ERR
+            , r->connection->log
+            , 0
+            , "mrb_run failed. error: %s"
+            , err_out
+        );
+    }
+}
+
+
+void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r, char *code_file)
+{  
+    struct RString *str;
+    char *err_out;
+    
+    obj = mrb_funcall(mrb, obj, "inspect", 0);
+    
+    if (mrb_type(obj) == MRB_TT_STRING) {
+        str = mrb_str_ptr(obj);
+        err_out = str->ptr;
+        ngx_log_error(NGX_LOG_ERR
+            , r->connection->log
+            , 0
+            , "mrb_run failed. file: %s error: %s"
+            , code_file
+            , err_out
+        );
+    }
+}
+
 ngx_int_t ngx_mrb_run_file(ngx_http_request_t *r, char *code_file)
 {
     FILE *mrb_file;
@@ -46,6 +86,8 @@ ngx_int_t ngx_mrb_run_file(ngx_http_request_t *r, char *code_file)
     mrb_pool_close(p->pool);
     ngx_mrb_push_request(r);
     mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
+    if (mrb->exc)
+        ngx_mrb_raise_file_error(mrb, mrb_obj_value(mrb->exc), r, code_file);
 
     return NGX_OK;
 }
