@@ -128,7 +128,7 @@ static ngx_command_t ngx_http_mruby_commands[] = {
       0,
       NULL },
  
-    { ngx_string("mruby_content"),
+    { ngx_string("mruby_content_handler_code"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_mruby_content_inline,
       NGX_HTTP_LOC_CONF_OFFSET,
