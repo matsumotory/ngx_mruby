@@ -81,3 +81,10 @@ Display above. Welcome mruby world for nginx!!
         Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
 
 Display above. Welcome mruby world for nginx!!
+
+
+# License
+under the MIT License:
+
+* http://www.opensource.org/licenses/mit-license.php
+
