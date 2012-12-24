@@ -1,3 +1,9 @@
+/*
+// ngx_http_mruby.h - ngx_mruby mruby module header
+//
+// See Copyright Notice in ngx_http_mruby_module.c
+*/
+
 #ifndef NGX_HTTP_MRUBY_H
 #define NGX_HTTP_MRUBY_H
 

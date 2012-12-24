@@ -1,3 +1,8 @@
+/*
+// ngx_http_mruby.c - ngx_mruby mruby module
+//
+// See Copyright Notice in ngx_http_mruby_module.c
+*/
 
 #include "ngx_http_mruby.h"
 
