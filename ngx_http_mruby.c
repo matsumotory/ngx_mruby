@@ -44,6 +44,7 @@ ngx_int_t ngx_mrb_init_file(char *code_file_path, size_t len, ngx_mrb_state_t *s
     state->n   = mrb_generate_code(mrb, p);
     ngx_cpystrn((u_char *)state->file, (u_char *)code_file_path, len + 1);
     mrb_pool_close(p->pool);
+    fclose(mrb_file);
     return NGX_OK;
 }
 
