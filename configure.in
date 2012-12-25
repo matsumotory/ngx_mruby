@@ -1,0 +1,71 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ(2.67)
+AC_INIT()
+
+# Checks for programs.
+AC_PROG_CC
+AC_PROG_MAKE_SET
+
+# Checks for libraries.
+# FIXME: Replace `main' with a function in `-lm':
+AC_CHECK_LIB([m], [main])
+AC_CHECK_LIB([crypto], [main])
+
+# Checks for header files.
+AC_HEADER_STDC
+AC_CHECK_HEADERS([string.h unistd.h],,[AC_MSG_ERROR(not found the header file for mod_mruby.)])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+
+# Checks for library functions.
+AC_FUNC_STAT
+AC_CHECK_FUNCS([memset putenv strtol])
+
+# nginx src root
+NGX_SRC_ROOT=no
+AC_ARG_WITH(ngx_src_root, AC_HELP_STRING([--with-ngx-src-root=DIR],
+    [pathname to ngx_src_root [[ngx_src_root]]]),
+    [NGX_SRC_ROOT="$with_ngx_src_root"])
+if test "$NGX_SRC_ROOT" = no; then
+    AC_MSG_ERROR([nginx src dir not found.])
+fi
+AC_SUBST(NGX_SRC_ROOT)
+
+# nginx src root
+NGX_CONFIG_OPT=
+AC_ARG_WITH(ngx_config_opt, AC_HELP_STRING([--with-ngx-config-opt=OPT],
+    [ngxin configure option [[ngx_config_opt]]]),
+    [NGX_CONFIG_OPT="$with_ngx_config_opt"])
+#if test "$NGX_CONFIG_OPT" = no; then
+#    AC_MSG_ERROR([nginx configure option not found.])
+#fi
+AC_SUBST(NGX_CONFIG_OPT)
+
+# mruby root
+MRUBY_ROOT=./mruby
+AC_ARG_WITH(mruby_root, AC_HELP_STRING([--with-mruby-root=DIR],
+    [pathname to mruby_root [[mruby_root]]]),
+    [MRUBY_ROOT="$with_mruby_root"])
+AC_SUBST(MRUBY_ROOT)
+
+# support mrbgems
+ENABLE_GEMS=false
+AC_ARG_ENABLE([mrbgems],
+    [AS_HELP_STRING([--enable-mrbgems],
+        [mrbgems feature (default is no)])], 
+    [],
+    [enable_mrbgems=no] 
+)
+
+AS_IF([test "x$enable_mrbgems" != xno],
+    [AC_DEFINE([ENABLE_GEMS], [1], [mrbgems support])
+        ENABLE_GEMS=true
+    ]
+)
+AC_SUBST(ENABLE_GEMS)
+
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT

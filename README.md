@@ -8,15 +8,17 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 ### 1. Download
 
         git clone git://github.com/matsumoto-r/ngx_mruby.git
+        cd ngx_mruby
 
 
 ### 2. Build
-* mruby build (example: include some mrbgems)
+* sample mruby build (example: include some mrbgems)
 
-        sh mymruby_with_mrbgems.sh
+        make mruby_build
 
 * ngx_mruby build
 
+        ./configure --enable-mrbgems --with-ngx-src-root=nginx/nginx-1.2.2 --with-ngx-config-opt="--prefix=/usr/local/nginx.new"
         make
 
 

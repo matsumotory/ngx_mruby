@@ -13,4 +13,6 @@ NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
 CORE_LIBS="$CORE_LIBS $mruby_root/mrblib/mrblib.o $mruby_root/lib/libmruby.a -lm"
 CORE_INCS="$CORE_INCS $mruby_root/src $mruby_root/include"
 
-source $ngx_addon_dir/mrbgems_config
+if [ -f $ngx_addon_dir/mrbgems_config ]; then
+    source $ngx_addon_dir/mrbgems_config
+fi
