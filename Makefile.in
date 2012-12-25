@@ -3,16 +3,11 @@
 ##	  MATSUMOTO, Ryosuke
 ##
 
-# target source
-#NGINX=http://nginx.org/download/nginx-1.2.2.tar.gz
-#NGINXS=nginx-1.2.2.tar.gz
-#NGINXD=nginx-1.2.2
-
 MAKE="make"
 
+NGX_MRUBY_ROOT=$(shell pwd)
 NGX_SRC_ROOT=@NGX_SRC_ROOT@
 NGX_CONFIG_OPT=@NGX_CONFIG_OPT@
-NGX_MRUBY_ROOT=$(shell pwd)
 MRUBY_ROOT=@MRUBY_ROOT@
 ENABLE_GEMS=@ENABLE_GEMS@
 
@@ -45,15 +40,16 @@ clean:
 clobber: clean
 	-rm -rf tmp autom4te.cache config.status config.log
 
-# nginx 1.2.2
+#   nginx 1.2.2
 ngx_mruby:
 	cd $(NGX_SRC_ROOT) && ./configure --add-module=$(NGX_MRUBY_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
 
+#   create mrbgems config
 generate_gems_config:
 	@echo CORE_LIBS=\"\$$CORE_LIBS $(GEM_LDFLAGS_LIST) $(GEM_ARCHIVE_FILES) $(GEM_LIBS_LIST)\" > ./mrbgems_config
 	@echo CORE_INCS=\"\$$CORE_INCS $(NGX_MRUBY_CFLAGS)\" >> ./mrbgems_config
 
-# create sample mruby build
+#   create sample mruby build with mrbgems
 mruby_build:
 	sh mymruby_with_mrbgems.sh
 
