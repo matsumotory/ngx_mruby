@@ -387,12 +387,20 @@ static char * ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, 
 static ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_file(ngx_pool_t *pool, ngx_str_t *code_file_path)
 {
     ngx_mrb_state_t *state;
+    size_t len;
+
     state = ngx_pcalloc(pool, sizeof(*state));
     if (state == NULL) {
         return NGX_CONF_UNSET_PTR;
     }
 
-    if (ngx_mrb_init_file((char *)code_file_path->data, state) != NGX_OK) {
+    len = ngx_strlen((char *)code_file_path->data);
+    state->file = ngx_pcalloc(pool, len + 1);
+    if (state->file == NULL) {
+        return NGX_CONF_UNSET_PTR;
+    }
+
+    if (ngx_mrb_init_file((char *)code_file_path->data, len ,state) != NGX_OK) {
         return NGX_CONF_UNSET_PTR;
     }
     return state;
