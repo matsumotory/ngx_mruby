@@ -1,4 +1,7 @@
 GPATH
 GRTAGS
 GTAGS
+mruby/
+mrbgems_config
+Makefile
 
