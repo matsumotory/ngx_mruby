@@ -14,6 +14,8 @@
 
 ngx_http_request_t *ngx_mruby_request_state;
 
+static void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
+static void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r, char *code_file);
 static ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r);
 static ngx_http_request_t *ngx_mrb_get_request(void);
 static ngx_int_t ngx_mrb_class_init(mrb_state *mrb);
@@ -23,7 +25,65 @@ static mrb_value ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str);
 
-void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
+ngx_int_t ngx_mrb_init_file(char *code_file_path, size_t len, ngx_mrb_state_t *state)
+{
+    FILE *mrb_file;
+    mrb_state *mrb;
+    struct mrb_parser_state *p;
+
+    if ((mrb_file = fopen((char *)code_file_path, "r")) == NULL) {
+        return NGX_ERROR;
+    }
+
+    mrb = mrb_open();
+    ngx_mrb_class_init(mrb);
+
+    state->ai  = mrb_gc_arena_save(mrb);
+    p          = mrb_parse_file(mrb, mrb_file, NULL);
+    state->mrb = mrb;
+    state->n   = mrb_generate_code(mrb, p);
+    ngx_cpystrn((u_char *)state->file, (u_char *)code_file_path, len + 1);
+    mrb_pool_close(p->pool);
+    fclose(mrb_file);
+    return NGX_OK;
+}
+
+ngx_int_t ngx_mrb_init_string(char *code, ngx_mrb_state_t *state)
+{
+    mrb_state *mrb;
+    struct mrb_parser_state *p;
+
+    mrb = mrb_open();
+    ngx_mrb_class_init(mrb);
+
+    state->ai   = mrb_gc_arena_save(mrb);
+    p           = mrb_parse_string(mrb, code, NULL);
+    state->mrb  = mrb;
+    state->n    = mrb_generate_code(mrb, p);
+    state->file = NGX_CONF_UNSET_PTR;
+    mrb_pool_close(p->pool);
+    return NGX_OK;
+}
+
+ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state)
+{
+    if (state == NGX_CONF_UNSET_PTR) {
+        return NGX_DECLINED;
+    }
+    ngx_mrb_push_request(r);
+    mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[state->n]), mrb_nil_value());
+    if (state->mrb->exc) {
+        if (state->file != NGX_CONF_UNSET_PTR) {
+            ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, state->file);
+        } else {
+            ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
+        }
+    }
+    mrb_gc_arena_restore(state->mrb, state->ai);
+    return NGX_OK;
+}
+
+static void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
 {  
     struct RString *str;
     char *err_out;
@@ -42,8 +102,7 @@ void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
     }
 }
 
-
-void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r, char *code_file)
+static void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r, char *code_file)
 {  
     struct RString *str;
     char *err_out;
@@ -54,64 +113,13 @@ void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t 
         str = mrb_str_ptr(obj);
         err_out = str->ptr;
         ngx_log_error(NGX_LOG_ERR
-            , r->connection->log
-            , 0
-            , "mrb_run failed. file: %s error: %s"
-            , code_file
-            , err_out
-        );
+                      , r->connection->log
+                      , 0
+                      , "mrb_run failed. file: %s error: %s"
+                      , code_file
+                      , err_out
+                      );
     }
-}
-
-ngx_int_t ngx_mrb_run_file(ngx_http_request_t *r, char *code_file)
-{
-    FILE *mrb_file;
-    mrb_state *mrb;
-
-    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
-        return NGX_DECLINED;
-
-    if (code_file == NGX_CONF_UNSET_PTR)
-        return NGX_DECLINED;
-
-    mrb = mrb_open();
-    ngx_mrb_class_init(mrb);
-
-    if ((mrb_file = fopen((char *)code_file, "r")) == NULL) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "mrb_file open failed");
-    }
-
-    struct mrb_parser_state* p = mrb_parse_file(mrb, mrb_file, NULL);
-    int n = mrb_generate_code(mrb, p);
-    mrb_pool_close(p->pool);
-    ngx_mrb_push_request(r);
-    mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
-    if (mrb->exc)
-        ngx_mrb_raise_file_error(mrb, mrb_obj_value(mrb->exc), r, code_file);
-
-    return NGX_OK;
-}
-
-ngx_int_t ngx_mrb_run_string(ngx_http_request_t *r, char *code)
-{
-    mrb_state *mrb;
-
-    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
-        return NGX_DECLINED;
-
-    if (code == NGX_CONF_UNSET_PTR)
-        return NGX_DECLINED;
-
-    mrb = mrb_open();
-    ngx_mrb_class_init(mrb);
-
-    struct mrb_parser_state* p = mrb_parse_string(mrb, code, NULL);
-    int n = mrb_generate_code(mrb, p);
-    mrb_pool_close(p->pool);
-    ngx_mrb_push_request(r);
-    mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
-
-    return NGX_OK;
 }
 
 static ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r)

@@ -75,14 +75,17 @@ static char *ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, v
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf);
 static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf);
 
-typedef struct {
-    char *post_read_code_file;
-    char *server_rewrite_code_file;
-    char *rewrite_code_file;
-    char *access_checker_code_file;
-    char *handler_code_file;
-    char *log_handler_code_file;
-    char *content;
+static ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_file(ngx_pool_t *pool, ngx_str_t *value);
+static ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_string(ngx_pool_t *pool, ngx_str_t *code);
+
+typedef struct ngx_http_mruby_loc_conf_t {
+    ngx_mrb_state_t *post_read_state;
+    ngx_mrb_state_t *server_rewrite_state;
+    ngx_mrb_state_t *rewrite_state;
+    ngx_mrb_state_t *access_checker_state;
+    ngx_mrb_state_t *handler_state;
+    ngx_mrb_state_t *log_handler_state;
+    ngx_mrb_state_t *content_state;
 } ngx_http_mruby_loc_conf_t;
  
 static ngx_command_t ngx_http_mruby_commands[] = {
@@ -92,14 +95,14 @@ static ngx_command_t ngx_http_mruby_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
- 
+
     { ngx_string("mruby_server_rewrite_handler"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_mruby_server_rewrite_phase,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
- 
+
     { ngx_string("mruby_rewrite_handler"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_mruby_rewrite_phase,
@@ -178,14 +181,14 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
         return NULL;
     }
 
-    conf->post_read_code_file      = NGX_CONF_UNSET_PTR;
-    conf->server_rewrite_code_file = NGX_CONF_UNSET_PTR;
-    conf->rewrite_code_file        = NGX_CONF_UNSET_PTR;
-    conf->access_checker_code_file = NGX_CONF_UNSET_PTR;
-    conf->handler_code_file        = NGX_CONF_UNSET_PTR;
-    conf->log_handler_code_file    = NGX_CONF_UNSET_PTR;
+    conf->post_read_state      = NGX_CONF_UNSET_PTR;
+    conf->server_rewrite_state = NGX_CONF_UNSET_PTR;
+    conf->rewrite_state        = NGX_CONF_UNSET_PTR;
+    conf->access_checker_state = NGX_CONF_UNSET_PTR;
+    conf->handler_state        = NGX_CONF_UNSET_PTR;
+    conf->log_handler_state    = NGX_CONF_UNSET_PTR;
 
-    conf->content = NGX_CONF_UNSET_PTR;
+    conf->content_state = NGX_CONF_UNSET_PTR;
 
     return conf;
 }
@@ -195,20 +198,20 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     ngx_http_mruby_loc_conf_t *prev = parent;
     ngx_http_mruby_loc_conf_t *conf = child;
 
-    if (prev->post_read_code_file == NGX_CONF_UNSET_PTR) {
-        prev->post_read_code_file = conf->post_read_code_file;
+    if (prev->post_read_state == NGX_CONF_UNSET_PTR) {
+        prev->post_read_state = conf->post_read_state;
     }
 
-    if (prev->server_rewrite_code_file == NGX_CONF_UNSET_PTR) {
-        prev->server_rewrite_code_file = conf->server_rewrite_code_file;
+    if (prev->server_rewrite_state == NGX_CONF_UNSET_PTR) {
+        prev->server_rewrite_state = conf->server_rewrite_state;
     }
 
-    if (prev->rewrite_code_file == NGX_CONF_UNSET_PTR) {
-        prev->rewrite_code_file = conf->rewrite_code_file;
+    if (prev->rewrite_state == NGX_CONF_UNSET_PTR) {
+        prev->rewrite_state = conf->rewrite_state;
     }
 
-    if (prev->content == NGX_CONF_UNSET_PTR) {
-        prev->content = conf->content;
+    if (prev->content_state == NGX_CONF_UNSET_PTR) {
+        prev->content_state = conf->content_state;
     }
 
     return NGX_CONF_OK;
@@ -217,52 +220,58 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
 static ngx_int_t ngx_http_mruby_post_read_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run_file(r, clcf->post_read_code_file);
+    return ngx_mrb_run(r, clcf->post_read_state);
 }
 
 static ngx_int_t ngx_http_mruby_server_rewrite_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run_file(r, clcf->server_rewrite_code_file);
+    return ngx_mrb_run(r, clcf->server_rewrite_state);
 }
 
 static ngx_int_t ngx_http_mruby_rewrite_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run_file(r, clcf->rewrite_code_file);
+    return ngx_mrb_run(r, clcf->rewrite_state);
 }
 
 static ngx_int_t ngx_http_mruby_access_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run_file(r, clcf->access_checker_code_file);
+    return ngx_mrb_run(r, clcf->access_checker_state);
 }
 
 static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run_file(r, clcf->handler_code_file);
+    return ngx_mrb_run(r, clcf->handler_state);
 }
 
 static ngx_int_t ngx_http_mruby_log_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run_file(r, clcf->log_handler_code_file);
+    return ngx_mrb_run(r, clcf->log_handler_state);
 }
 
 static ngx_int_t ngx_http_mruby_content_inline_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run_string(r, clcf->content);
+    return ngx_mrb_run(r, clcf->content_state);
 }
 
 static char * ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 { 
     ngx_str_t *value;
     ngx_http_mruby_loc_conf_t *flcf = conf;
- 
+    ngx_mrb_state_t *state;
+
     value = cf->args->elts;
-    flcf->post_read_code_file = (char *)value[1].data;
+    state = ngx_http_mruby_mrb_state_from_file(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
+        return NGX_CONF_ERROR;
+    }
+    flcf->post_read_state = state;
 
     return NGX_CONF_OK;
 }
@@ -271,9 +280,15 @@ static char * ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t 
 { 
     ngx_str_t *value;
     ngx_http_mruby_loc_conf_t *flcf = conf;
- 
+    ngx_mrb_state_t *state;
+
     value = cf->args->elts;
-    flcf->server_rewrite_code_file = (char *)value[1].data;
+    state = ngx_http_mruby_mrb_state_from_file(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
+        return NGX_CONF_ERROR;
+    }
+    flcf->server_rewrite_state = state;
 
     return NGX_CONF_OK;
 }
@@ -282,9 +297,15 @@ static char * ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, v
 { 
     ngx_str_t *value;
     ngx_http_mruby_loc_conf_t *flcf = conf;
+    ngx_mrb_state_t *state;
  
     value = cf->args->elts;
-    flcf->rewrite_code_file = (char *)value[1].data;
+    state = ngx_http_mruby_mrb_state_from_file(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
+        return NGX_CONF_ERROR;
+    }
+    flcf->rewrite_state = state;
 
     return NGX_CONF_OK;
 }
@@ -293,9 +314,15 @@ static char * ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
 { 
     ngx_str_t *value;
     ngx_http_mruby_loc_conf_t *flcf = conf;
+    ngx_mrb_state_t *state;
  
     value = cf->args->elts;
-    flcf->access_checker_code_file = (char *)value[1].data;
+    state = ngx_http_mruby_mrb_state_from_file(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
+        return NGX_CONF_ERROR;
+    }
+    flcf->access_checker_state = state;
 
     return NGX_CONF_OK;
 }
@@ -304,9 +331,15 @@ static char * ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, v
 {
     ngx_str_t *value;
     ngx_http_mruby_loc_conf_t *flcf = conf;
+    ngx_mrb_state_t *state;
 
     value = cf->args->elts;
-    flcf->handler_code_file = (char *)value[1].data;
+    state = ngx_http_mruby_mrb_state_from_file(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
+        return NGX_CONF_ERROR;
+    }
+    flcf->handler_state = state;
 
     return NGX_CONF_OK;
 }
@@ -315,9 +348,15 @@ static char * ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void 
 {
     ngx_str_t *value;
     ngx_http_mruby_loc_conf_t *flcf = conf;
+    ngx_mrb_state_t *state;
 
     value = cf->args->elts;
-    flcf->log_handler_code_file = (char *)value[1].data;
+    state = ngx_http_mruby_mrb_state_from_file(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
+        return NGX_CONF_ERROR;
+    }
+    flcf->log_handler_state = state;
 
     return NGX_CONF_OK;
 }
@@ -325,20 +364,60 @@ static char * ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void 
 static char * ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t *value;
+    ngx_mrb_state_t *state;
     ngx_http_mruby_loc_conf_t *flcf = conf;
     ngx_http_core_loc_conf_t  *clcf;
 
     value = cf->args->elts;
-    flcf->content = (char *)value[1].data;
+    state = ngx_http_mruby_mrb_state_from_string(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        return NGX_CONF_ERROR;
+    }
+    flcf->content_state = state;
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     if (clcf == NULL) {
         return NGX_CONF_ERROR;
     }
-
     clcf->handler = ngx_http_mruby_content_inline_handler;
 
     return NGX_CONF_OK;
+}
+
+static ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_file(ngx_pool_t *pool, ngx_str_t *code_file_path)
+{
+    ngx_mrb_state_t *state;
+    size_t len;
+
+    state = ngx_pcalloc(pool, sizeof(*state));
+    if (state == NULL) {
+        return NGX_CONF_UNSET_PTR;
+    }
+
+    len = ngx_strlen((char *)code_file_path->data);
+    state->file = ngx_pcalloc(pool, len + 1);
+    if (state->file == NULL) {
+        return NGX_CONF_UNSET_PTR;
+    }
+
+    if (ngx_mrb_init_file((char *)code_file_path->data, len ,state) != NGX_OK) {
+        return NGX_CONF_UNSET_PTR;
+    }
+    return state;
+}
+
+static ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_string(ngx_pool_t *pool, ngx_str_t *code)
+{
+    ngx_mrb_state_t *state;
+    state = ngx_pcalloc(pool, sizeof(*state));
+    if (state == NULL) {
+        return NGX_CONF_UNSET_PTR;
+    }
+
+    if (ngx_mrb_init_string((char *)code->data, state) != NGX_OK) {
+        return NGX_CONF_UNSET_PTR;
+    }
+    return state;
 }
 
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
