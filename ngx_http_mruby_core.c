@@ -107,16 +107,16 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     if (mrb_type(msg) != MRB_TT_STRING)
         return self;
 
-    str         = (u_char *)RSTRING_PTR(msg);
-    b->pos      = str;
-    b->last     = str + strlen((char *)str);
-    b->memory   = 1;
-    b->last_buf = 1;
+    str                 = (u_char *)RSTRING_PTR(msg);
+    out.buf->pos        = str;
+    out.buf->last       = str + strlen((char *)str);
+    out.buf->memory     = 1;
+    out.buf->last_buf   = 1;
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = strlen((char *)str);
-    r->headers_out.content_type.len = sizeof("text/html") - 1;
-    r->headers_out.content_type.data = (u_char *)"text/html";
+    r->headers_out.content_length_n += strlen((char *)str) + 1;
+    //r->headers_out.content_type.len = sizeof("text/html") - 1;
+    //r->headers_out.content_type.data = (u_char *)"text/html";
 
     ngx_http_send_header(r);
     ngx_http_output_filter(r, &out);
