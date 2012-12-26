@@ -29,7 +29,7 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 ### 4. Add setting
 
         location /mruby {
-            mruby_handler /usr/local/nginx122/html/hello.mrb;
+            mruby_content_handler /usr/local/nginx122/html/hello.mrb;
         }
 
 ### 5. Create mruby script /usr/local/nginx122/html/hello.mrb
