@@ -46,7 +46,9 @@
 #include <ngx_conf_file.h>
 #include <nginx.h>
 
-#include "ngx_http_mruby.h"
+#include "ngx_http_mruby_core.h"
+#include "ngx_http_mruby_init.h"
+#include "ngx_http_mruby_request.h"
 
 // set conf
 static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf);

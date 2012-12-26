@@ -7,7 +7,9 @@ HTTP_MODULES="$HTTP_MODULES ngx_http_mruby_module"
 
 NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
                 $ngx_addon_dir/ngx_http_mruby_module.c
-                $ngx_addon_dir/ngx_http_mruby.c
+                $ngx_addon_dir/ngx_http_mruby_core.c
+                $ngx_addon_dir/ngx_http_mruby_init.c
+                $ngx_addon_dir/ngx_http_mruby_request.c
                 "
 
 CORE_LIBS="$CORE_LIBS $mruby_root/mrblib/mrblib.o $mruby_root/lib/libmruby.a -lm"
