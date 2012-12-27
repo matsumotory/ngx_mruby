@@ -4,6 +4,7 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
+#include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_init.h"
 #include "ngx_http_mruby_request.h"
@@ -65,8 +66,8 @@ ngx_int_t ngx_mrb_class_init(mrb_state *mrb)
 
     class = mrb_define_module(mrb, "Nginx");
 
-    ngx_mrb_core_init(mrb, class);
-    ngx_mrb_request_class_init(mrb, class);
+    ngx_mrb_core_init(mrb, class); DONE;
+    ngx_mrb_request_class_init(mrb, class); DONE;
 
     return NGX_OK;
 }
