@@ -34,7 +34,7 @@ static mrb_value ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self)
 {
     ngx_http_request_t *r = ngx_mrb_get_request();
     //u_char *val = ngx_pstrdup(r->pool, &r->headers_out.content_type);
-    return mrb_str_new2(mrb, (char *)r->headers_out.content_type.data);
+    return mrb_str_new2(mrb, r->headers_out.content_type.data);
 }
 
 static mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self) 
