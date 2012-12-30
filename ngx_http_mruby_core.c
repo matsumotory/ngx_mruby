@@ -115,7 +115,7 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     out.buf->last_buf   = 1;
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n += len + 1;
+    r->headers_out.content_length_n = len;
     //r->headers_out.content_type.len = sizeof("text/html") - 1;
     //r->headers_out.content_type.data = (u_char *)"text/html";
 
