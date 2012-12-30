@@ -94,7 +94,7 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     ngx_buf_t *b;
     ngx_chain_t out;
     u_char *str;
-
+    size_t len;
     ngx_http_request_t *r = ngx_mrb_get_request();
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
@@ -108,13 +108,14 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
         return self;
 
     str                 = (u_char *)RSTRING_PTR(msg);
+    len                 = ngx_strlen(str);
     out.buf->pos        = str;
-    out.buf->last       = str + strlen((char *)str);
+    out.buf->last       = str + len;
     out.buf->memory     = 1;
     out.buf->last_buf   = 1;
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n += strlen((char *)str) + 1;
+    r->headers_out.content_length_n += len + 1;
     //r->headers_out.content_type.len = sizeof("text/html") - 1;
     //r->headers_out.content_type.data = (u_char *)"text/html";
 
