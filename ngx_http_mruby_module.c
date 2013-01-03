@@ -90,7 +90,7 @@ typedef struct ngx_http_mruby_loc_conf_t {
     ngx_mrb_state_t *access_checker_state;
     ngx_mrb_state_t *handler_state;
     ngx_mrb_state_t *log_handler_state;
-    ngx_mrb_state_t *content_state;
+    ngx_mrb_state_t *content_inline_state;
 } ngx_http_mruby_loc_conf_t;
  
 static ngx_command_t ngx_http_mruby_commands[] = {
@@ -200,7 +200,7 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
     conf->handler_state        = NGX_CONF_UNSET_PTR;
     conf->log_handler_state    = NGX_CONF_UNSET_PTR;
 
-    conf->content_state          = NGX_CONF_UNSET_PTR;
+    conf->content_inline_state   = NGX_CONF_UNSET_PTR;
     conf->post_read_inline_state = NGX_CONF_UNSET_PTR;
 
     return conf;
@@ -227,8 +227,8 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
         prev->post_read_inline_state = conf->post_read_inline_state;
     }
 
-    if (prev->content_state == NGX_CONF_UNSET_PTR) {
-        prev->content_state = conf->content_state;
+    if (prev->content_inline_state == NGX_CONF_UNSET_PTR) {
+        prev->content_inline_state = conf->content_inline_state;
     }
 
     return NGX_CONF_OK;
@@ -279,7 +279,7 @@ static ngx_int_t ngx_http_mruby_post_read_inline_handler(ngx_http_request_t *r)
 static ngx_int_t ngx_http_mruby_content_inline_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run(r, clcf->content_state);
+    return ngx_mrb_run(r, clcf->content_inline_state);
 }
 
 static char * ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -396,13 +396,12 @@ static char * ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, 
     if (state == NGX_CONF_UNSET_PTR) {
         return NGX_CONF_ERROR;
     }
-    flcf->content_state = state;
+    flcf->content_inline_state = state;
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     if (clcf == NULL) {
         return NGX_CONF_ERROR;
     }
-    clcf->handler = ngx_http_mruby_content_inline_handler;
 
     return NGX_CONF_OK;
 }
@@ -521,6 +520,11 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
             break;
         case NGX_HTTP_CONTENT_PHASE:
             *h = ngx_http_mruby_content_handler;
+            h = ngx_array_push(&cmcf->phases[phase].handlers);
+            if (h == NULL) {
+                return NGX_ERROR;
+            }
+            *h = ngx_http_mruby_content_inline_handler;
             break;
         case NGX_HTTP_LOG_PHASE:
             *h = ngx_http_mruby_log_handler;
