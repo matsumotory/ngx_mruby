@@ -24,15 +24,21 @@ typedef struct rputs_chain_list {
     ngx_chain_t *out;
 } rputs_chain_list_t;
 
+typedef struct ngx_mruby_ctx {
+    rputs_chain_list_t *rputs_chain;
+} ngx_mruby_ctx_t;
+
+ngx_module_t  ngx_http_mruby_module;
+
 static void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
 static void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r, char *code_file);
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
 
-static void rputs_chain_list_t_free(mrb_state *mrb, rputs_chain_list_t *chain)
+static void rputs_chain_list_t_free(mrb_state *mrb, void *chain)
 {
     ngx_http_request_t *r = ngx_mrb_get_request();
-    ngx_free_chain(r->pool, chain->out);
+    ngx_free_chain(r->pool, ((rputs_chain_list_t *)chain)->out);
 }
 
 static const struct mrb_data_type rputs_chain_list_t_type = {
@@ -41,9 +47,15 @@ static const struct mrb_data_type rputs_chain_list_t_type = {
 
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state)
 {
+    ngx_mruby_ctx_t *ctx;
     if (state == NGX_CONF_UNSET_PTR) {
         return NGX_DECLINED;
     }
+    if ((ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__, __LINE__);
+        return NGX_ERROR;
+    }
+    ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
     ngx_mrb_push_request(r);
     mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[state->n]), mrb_nil_value());
     if (state->mrb->exc) {
@@ -96,40 +108,29 @@ static void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_req
     }
 }
 
-ngx_http_output_body_filter_pt ngx_http_mruby_top_body_filter;
-
-
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
 {
     rputs_chain_list_t *chain;
-    ngx_buf_t *b;
-    mrb_value context;
+    ngx_mruby_ctx_t *ctx;
 
     ngx_http_request_t *r = ngx_mrb_get_request();
-    ngx_output_chain_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
-
     mrb_int status = NGX_HTTP_OK;
     mrb_get_args(mrb, "i", &status);
 
     r->headers_out.status = status;
 
-    //out = r->pool->chain;
-    context = mrb_iv_get(mrb, self, mrb_intern(mrb, "rputs_chain_context"));
-    if (mrb_nil_p(context))
-        ngx_log_error(NGX_LOG_ERR , r->connection->log , 0 , "get rputs_chain_context failed.");
+    ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
-    Data_Get_Struct(mrb, context, &rputs_chain_list_t_type, chain);
-    //(*chain->last)->buf->sync = 1;
-    //(*chain->last)->buf->flush = 1;
-    //(*chain->last)->buf->last_in_chain = 1;
+    if (ctx == NULL)
+        ngx_log_error(NGX_LOG_ERR , r->connection->log , 0 , "get mruby context failed.");
+
+    chain = ctx->rputs_chain;
     (*chain->last)->buf->last_buf = 1;
-    //(*chain->last)->next = NULL;
-
-    //ngx_chain_update_chains(ctx->pool, &ctx->free, &ctx->busy, &chain->out, ctx->tag);
 
     ngx_http_send_header(r);
     ngx_http_output_filter(r, chain->out);
-    ngx_http_finalize_request(r, NGX_OK);
+
+    ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
 
     return self;
 }
@@ -143,19 +144,16 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     u_char *str;
     size_t len;
     ngx_http_request_t *r = ngx_mrb_get_request();
-    ngx_log_error(NGX_LOG_ERR , r->connection->log , 0 , "entering rputs");
+    ngx_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
-    mrb_value context = mrb_iv_get(mrb, self, mrb_intern(mrb, "rputs_chain_context"));
-    if (mrb_nil_p(context)) {
-        chain = ngx_pcalloc(r->pool, sizeof(rputs_chain_list_t));
-        chain->out = ngx_alloc_chain_link(r->pool);
+    if (ctx->rputs_chain == NULL) {
+        chain       = ngx_pcalloc(r->pool, sizeof(rputs_chain_list_t));
+        chain->out  = ngx_alloc_chain_link(r->pool);
         chain->last = &chain->out;
-        ngx_log_error(NGX_LOG_ERR , r->connection->log , 0 , "chain init");
     } else {
-        Data_Get_Struct(mrb, context, &rputs_chain_list_t_type, chain);
+        chain = ctx->rputs_chain;
         (*chain->last)->next = ngx_alloc_chain_link(r->pool);
         chain->last = &(*chain->last)->next;
-        ngx_log_error(NGX_LOG_ERR , r->connection->log , 0 , "next chain attached");
     }
 
     b = ngx_calloc_buf(r->pool);
@@ -167,37 +165,19 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     if (mrb_type(msg) != MRB_TT_STRING)
         return self;
 
-    str = (u_char *)RSTRING_PTR(msg);
-
-    (*chain->last)->buf->pos = str;
-    (*chain->last)->buf->last = str + strlen((char *)str);
+    str                         = (u_char *)RSTRING_PTR(msg);
+    len                         = ngx_strlen(str);
+    (*chain->last)->buf->pos    = str;
+    (*chain->last)->buf->last   = str + len;
     (*chain->last)->buf->memory = 1;
-    //(*chain->last)->buf->flush = 1;
-    //(*chain->last)->buf->sync = 1;
-    //(*chain->last)->buf->last_buf = 0;
-    //(*chain->last)->buf->last_in_chain = 0;
-    ngx_log_error(NGX_LOG_ERR , r->connection->log , 0 , "out:%p", chain->out);
-    ngx_log_error(NGX_LOG_ERR , r->connection->log , 0 , "out:%p", (*chain->last));
+    ctx->rputs_chain = chain;
+    ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
 
-    //ngx_chain_update_chains(ctx->pool, &ctx->free, &ctx->busy, &out, ctx->tag);
-
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "rputs_chain_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &rputs_chain_list_t_type
-            , chain)
-        )
-    );
-
-    r->headers_out.content_length_n += strlen((char *)str) + 1;
-    //r->headers_out.status = NGX_HTTP_OK;
-    //r->headers_out.content_type.len = sizeof("text/html") - 1;
-    //r->headers_out.content_type.data = (u_char *)"text/html";
-
-    //ngx_http_send_header(r);
-    //ngx_http_output_filter(r, out);
+    if (r->headers_out.content_length_n == -1) {
+        r->headers_out.content_length_n += len + 1;
+    } else {
+        r->headers_out.content_length_n += len;
+    }
 
     return self;
 }
