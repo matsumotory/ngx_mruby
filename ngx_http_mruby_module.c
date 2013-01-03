@@ -50,6 +50,11 @@
 #include "ngx_http_mruby_init.h"
 #include "ngx_http_mruby_request.h"
 
+#define NGX_MRUBY_MERGE_STATE(prev_state, conf_state)   \
+    if (prev_state == NGX_CONF_UNSET_PTR) {             \
+        prev_state = conf_state;                        \
+    }
+
 // set conf
 static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
@@ -62,7 +67,11 @@ static ngx_int_t ngx_http_mruby_access_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_log_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_post_read_inline_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_mruby_server_rewrite_inline_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_mruby_rewrite_inline_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_mruby_access_inline_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_content_inline_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_mruby_log_inline_handler(ngx_http_request_t *r);
 
 // set fook phase
 static char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -73,7 +82,11 @@ static char *ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
 static char *ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 static char *ngx_http_mruby_post_read_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_http_mruby_server_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_http_mruby_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 // set init function
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf);
@@ -84,13 +97,17 @@ static ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_string(ngx_pool_t *pool, n
 
 typedef struct ngx_http_mruby_loc_conf_t {
     ngx_mrb_state_t *post_read_state;
-    ngx_mrb_state_t *post_read_inline_state;
     ngx_mrb_state_t *server_rewrite_state;
     ngx_mrb_state_t *rewrite_state;
-    ngx_mrb_state_t *access_checker_state;
+    ngx_mrb_state_t *access_state;
     ngx_mrb_state_t *handler_state;
     ngx_mrb_state_t *log_handler_state;
+    ngx_mrb_state_t *post_read_inline_state;
+    ngx_mrb_state_t *server_rewrite_inline_state;
+    ngx_mrb_state_t *rewrite_inline_state;
+    ngx_mrb_state_t *access_inline_state;
     ngx_mrb_state_t *content_inline_state;
+    ngx_mrb_state_t *log_inline_state;
 } ngx_http_mruby_loc_conf_t;
  
 static ngx_command_t ngx_http_mruby_commands[] = {
@@ -143,12 +160,40 @@ static ngx_command_t ngx_http_mruby_commands[] = {
       0,
       ngx_http_mruby_post_read_inline_handler },
 
+    { ngx_string("mruby_server_rewrite_handler_code"),
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      ngx_http_mruby_server_rewrite_inline,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      ngx_http_mruby_server_rewrite_inline_handler },
+
+    { ngx_string("mruby_rewrite_handler_code"),
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      ngx_http_mruby_rewrite_inline,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      ngx_http_mruby_rewrite_inline_handler },
+
+    { ngx_string("mruby_access_handler_code"),
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      ngx_http_mruby_access_inline,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      ngx_http_mruby_access_inline_handler },
+
     { ngx_string("mruby_content_handler_code"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_mruby_content_inline,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       ngx_http_mruby_content_inline_handler },
+ 
+    { ngx_string("mruby_log_handler_code"),
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      ngx_http_mruby_log_inline,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      ngx_http_mruby_log_inline_handler },
  
     ngx_null_command
 };
@@ -196,12 +241,16 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
     conf->post_read_state      = NGX_CONF_UNSET_PTR;
     conf->server_rewrite_state = NGX_CONF_UNSET_PTR;
     conf->rewrite_state        = NGX_CONF_UNSET_PTR;
-    conf->access_checker_state = NGX_CONF_UNSET_PTR;
+    conf->access_state         = NGX_CONF_UNSET_PTR;
     conf->handler_state        = NGX_CONF_UNSET_PTR;
     conf->log_handler_state    = NGX_CONF_UNSET_PTR;
 
-    conf->content_inline_state   = NGX_CONF_UNSET_PTR;
-    conf->post_read_inline_state = NGX_CONF_UNSET_PTR;
+    conf->post_read_inline_state      = NGX_CONF_UNSET_PTR;
+    conf->server_rewrite_inline_state = NGX_CONF_UNSET_PTR;
+    conf->rewrite_inline_state        = NGX_CONF_UNSET_PTR;
+    conf->access_inline_state         = NGX_CONF_UNSET_PTR;
+    conf->content_inline_state        = NGX_CONF_UNSET_PTR;
+    conf->log_inline_state            = NGX_CONF_UNSET_PTR;
 
     return conf;
 }
@@ -211,25 +260,19 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     ngx_http_mruby_loc_conf_t *prev = parent;
     ngx_http_mruby_loc_conf_t *conf = child;
 
-    if (prev->post_read_state == NGX_CONF_UNSET_PTR) {
-        prev->post_read_state = conf->post_read_state;
-    }
+    NGX_MRUBY_MERGE_STATE(prev->post_read_state,      conf->post_read_state);
+    NGX_MRUBY_MERGE_STATE(prev->server_rewrite_state, conf->server_rewrite_state);
+    NGX_MRUBY_MERGE_STATE(prev->rewrite_state,        conf->rewrite_state);
+    NGX_MRUBY_MERGE_STATE(prev->access_state,         conf->access_state);
+    NGX_MRUBY_MERGE_STATE(prev->handler_state,        conf->handler_state);
+    NGX_MRUBY_MERGE_STATE(prev->log_handler_state,    conf->log_handler_state);
 
-    if (prev->server_rewrite_state == NGX_CONF_UNSET_PTR) {
-        prev->server_rewrite_state = conf->server_rewrite_state;
-    }
-
-    if (prev->rewrite_state == NGX_CONF_UNSET_PTR) {
-        prev->rewrite_state = conf->rewrite_state;
-    }
-
-    if (prev->post_read_inline_state == NGX_CONF_UNSET_PTR) {
-        prev->post_read_inline_state = conf->post_read_inline_state;
-    }
-
-    if (prev->content_inline_state == NGX_CONF_UNSET_PTR) {
-        prev->content_inline_state = conf->content_inline_state;
-    }
+    NGX_MRUBY_MERGE_STATE(prev->post_read_inline_state,      conf->post_read_inline_state);
+    NGX_MRUBY_MERGE_STATE(prev->server_rewrite_inline_state, conf->server_rewrite_inline_state);
+    NGX_MRUBY_MERGE_STATE(prev->rewrite_inline_state,        conf->rewrite_inline_state);
+    NGX_MRUBY_MERGE_STATE(prev->access_inline_state,         conf->access_inline_state);
+    NGX_MRUBY_MERGE_STATE(prev->content_inline_state,        conf->content_inline_state);
+    NGX_MRUBY_MERGE_STATE(prev->log_inline_state,            conf->log_inline_state);
 
     return NGX_CONF_OK;
 }
@@ -255,7 +298,7 @@ static ngx_int_t ngx_http_mruby_rewrite_handler(ngx_http_request_t *r)
 static ngx_int_t ngx_http_mruby_access_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run(r, clcf->access_checker_state);
+    return ngx_mrb_run(r, clcf->access_state);
 }
 
 static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
@@ -276,10 +319,34 @@ static ngx_int_t ngx_http_mruby_post_read_inline_handler(ngx_http_request_t *r)
     return ngx_mrb_run(r, clcf->post_read_inline_state);
 }
 
+static ngx_int_t ngx_http_mruby_server_rewrite_inline_handler(ngx_http_request_t *r)
+{
+    ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    return ngx_mrb_run(r, clcf->server_rewrite_inline_state);
+}
+
+static ngx_int_t ngx_http_mruby_rewrite_inline_handler(ngx_http_request_t *r)
+{
+    ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    return ngx_mrb_run(r, clcf->rewrite_inline_state);
+}
+
+static ngx_int_t ngx_http_mruby_access_inline_handler(ngx_http_request_t *r)
+{
+    ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    return ngx_mrb_run(r, clcf->access_inline_state);
+}
+
 static ngx_int_t ngx_http_mruby_content_inline_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
     return ngx_mrb_run(r, clcf->content_inline_state);
+}
+
+static ngx_int_t ngx_http_mruby_log_inline_handler(ngx_http_request_t *r)
+{
+    ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    return ngx_mrb_run(r, clcf->log_inline_state);
 }
 
 static char * ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -345,7 +412,7 @@ static char * ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
     }
-    flcf->access_checker_state = state;
+    flcf->access_state = state;
 
     return NGX_CONF_OK;
 }
@@ -384,28 +451,6 @@ static char * ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void 
     return NGX_CONF_OK;
 }
 
-static char * ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_str_t *value;
-    ngx_mrb_state_t *state;
-    ngx_http_mruby_loc_conf_t *flcf = conf;
-    ngx_http_core_loc_conf_t  *clcf;
-
-    value = cf->args->elts;
-    state = ngx_http_mruby_mrb_state_from_string(cf->pool, &value[1]);
-    if (state == NGX_CONF_UNSET_PTR) {
-        return NGX_CONF_ERROR;
-    }
-    flcf->content_inline_state = state;
-
-    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-    if (clcf == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    return NGX_CONF_OK;
-}
-
 static char * ngx_http_mruby_post_read_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t *value;
@@ -418,6 +463,86 @@ static char * ngx_http_mruby_post_read_inline(ngx_conf_t *cf, ngx_command_t *cmd
         return NGX_CONF_ERROR;
     }
     flcf->post_read_inline_state = state;
+
+    return NGX_CONF_OK;
+}
+
+static char * ngx_http_mruby_server_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t *value;
+    ngx_mrb_state_t *state;
+    ngx_http_mruby_loc_conf_t *flcf = conf;
+
+    value = cf->args->elts;
+    state = ngx_http_mruby_mrb_state_from_string(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        return NGX_CONF_ERROR;
+    }
+    flcf->server_rewrite_inline_state = state;
+
+    return NGX_CONF_OK;
+}
+
+static char * ngx_http_mruby_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t *value;
+    ngx_mrb_state_t *state;
+    ngx_http_mruby_loc_conf_t *flcf = conf;
+
+    value = cf->args->elts;
+    state = ngx_http_mruby_mrb_state_from_string(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        return NGX_CONF_ERROR;
+    }
+    flcf->rewrite_inline_state = state;
+
+    return NGX_CONF_OK;
+}
+
+static char * ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t *value;
+    ngx_mrb_state_t *state;
+    ngx_http_mruby_loc_conf_t *flcf = conf;
+
+    value = cf->args->elts;
+    state = ngx_http_mruby_mrb_state_from_string(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        return NGX_CONF_ERROR;
+    }
+    flcf->access_inline_state = state;
+
+    return NGX_CONF_OK;
+}
+
+static char * ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t *value;
+    ngx_mrb_state_t *state;
+    ngx_http_mruby_loc_conf_t *flcf = conf;
+
+    value = cf->args->elts;
+    state = ngx_http_mruby_mrb_state_from_string(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        return NGX_CONF_ERROR;
+    }
+    flcf->content_inline_state = state;
+
+    return NGX_CONF_OK;
+}
+
+static char * ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t *value;
+    ngx_mrb_state_t *state;
+    ngx_http_mruby_loc_conf_t *flcf = conf;
+
+    value = cf->args->elts;
+    state = ngx_http_mruby_mrb_state_from_string(cf->pool, &value[1]);
+    if (state == NGX_CONF_UNSET_PTR) {
+        return NGX_CONF_ERROR;
+    }
+    flcf->log_inline_state = state;
 
     return NGX_CONF_OK;
 }
@@ -511,12 +636,27 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
             break;
         case NGX_HTTP_SERVER_REWRITE_PHASE:
             *h = ngx_http_mruby_server_rewrite_handler;
+            h = ngx_array_push(&cmcf->phases[phase].handlers);
+            if (h == NULL) {
+                return NGX_ERROR;
+            }
+            *h = ngx_http_mruby_server_rewrite_inline_handler;
             break;
         case NGX_HTTP_REWRITE_PHASE:
             *h = ngx_http_mruby_rewrite_handler;
+            h = ngx_array_push(&cmcf->phases[phase].handlers);
+            if (h == NULL) {
+                return NGX_ERROR;
+            }
+            *h = ngx_http_mruby_rewrite_inline_handler;
             break;
         case NGX_HTTP_ACCESS_PHASE:
             *h = ngx_http_mruby_access_handler;
+            h = ngx_array_push(&cmcf->phases[phase].handlers);
+            if (h == NULL) {
+                return NGX_ERROR;
+            }
+            *h = ngx_http_mruby_access_inline_handler;
             break;
         case NGX_HTTP_CONTENT_PHASE:
             *h = ngx_http_mruby_content_handler;
@@ -528,6 +668,11 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
             break;
         case NGX_HTTP_LOG_PHASE:
             *h = ngx_http_mruby_log_handler;
+            h = ngx_array_push(&cmcf->phases[phase].handlers);
+            if (h == NULL) {
+                return NGX_ERROR;
+            }
+            *h = ngx_http_mruby_log_inline_handler;
             break;
         default:
             // not through
