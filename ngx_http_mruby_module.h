@@ -18,4 +18,4 @@
 
 extern ngx_module_t  ngx_http_mruby_module;
 
-#endif // NGX_HTTP_MRUBY_INIT_H
+#endif // NGX_HTTP_MRUBY_MODULE_H
