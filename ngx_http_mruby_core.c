@@ -188,6 +188,7 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
 {   
 
     mrb_value *argv;
+    mrb_value msg;
     mrb_int argc;
     mrb_int log_level;
     ngx_http_request_t *r = ngx_mrb_get_request();
@@ -203,9 +204,18 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
         );
         return self;
     }
+    if (mrb_type(argv[0]) != MRB_TT_FIXNUM) {
+        ngx_log_error(NGX_LOG_ERR
+                      , r->connection->log
+                      , 0
+                      , "%s ERROR %s: argv[0] is not integer"
+                      , MODULE_NAME
+                      , __func__
+        );
+        return self;
+    }
 
     log_level = mrb_fixnum(argv[0]);
-
     if (log_level < 0) {
         ngx_log_error(NGX_LOG_ERR
                       , r->connection->log
@@ -216,8 +226,10 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
         );
         return self;
     }
-
-    ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", RSTRING_PTR(argv[1]));
+    if (mrb_type(argv[1]) != MRB_TT_STRING) {
+        msg = mrb_funcall(mrb, argv[1], "to_s", 0, NULL);
+    }
+    ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", RSTRING_PTR(msg));
 
     return self;
 }
