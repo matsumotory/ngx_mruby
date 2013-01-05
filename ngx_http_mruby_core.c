@@ -15,10 +15,11 @@
 #include "mruby/string.h"
 #include "mruby/variable.h"
 
-#include "ngx_buf.h"
+#include <nginx.h>
 #include <ngx_http.h>
 #include <ngx_conf_file.h>
 #include <ngx_log.h>
+#include <ngx_buf.h>
 
 typedef struct rputs_chain_list {
     ngx_chain_t **last;
@@ -207,6 +208,15 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
     return self;
 }
 
+static mrb_value ngx_mrb_get_ngx_mruby_version(mrb_state *mrb, mrb_value self)
+{   
+    return mrb_str_new2(mrb, MODULE_VERSION);
+}
+
+static mrb_value ngx_mrb_get_nginx_version(mrb_state *mrb, mrb_value self)
+{
+    return mrb_str_new2(mrb, NGINX_VERSION);
+}
 
 void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
 {
@@ -264,8 +274,10 @@ void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
     mrb_define_const(mrb, class, "NGX_LOG_INFO",        mrb_fixnum_value(NGX_LOG_INFO));
     mrb_define_const(mrb, class, "NGX_LOG_DEBUG",       mrb_fixnum_value(NGX_LOG_DEBUG));
 
-    mrb_define_class_method(mrb, class, "rputs",       ngx_mrb_rputs, ARGS_ANY());
-    mrb_define_class_method(mrb, class, "send_header", ngx_mrb_send_header, ARGS_ANY());
-    mrb_define_class_method(mrb, class, "return",      ngx_mrb_send_header, ARGS_ANY());
-    mrb_define_class_method(mrb, class, "errlogger",   ngx_mrb_errlogger, ARGS_ANY());
+    mrb_define_class_method(mrb, class, "rputs",                ngx_mrb_rputs, ARGS_ANY());
+    mrb_define_class_method(mrb, class, "send_header",          ngx_mrb_send_header, ARGS_ANY());
+    mrb_define_class_method(mrb, class, "return",               ngx_mrb_send_header, ARGS_ANY());
+    mrb_define_class_method(mrb, class, "errlogger",            ngx_mrb_errlogger, ARGS_ANY());
+    mrb_define_class_method(mrb, class, "ngx_mruby_version",    ngx_mrb_get_ngx_mruby_version, ARGS_NONE());
+    mrb_define_class_method(mrb, class, "nginx_version",        ngx_mrb_get_nginx_version, ARGS_NONE());
 }
