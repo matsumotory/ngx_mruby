@@ -228,6 +228,8 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
     }
     if (mrb_type(argv[1]) != MRB_TT_STRING) {
         msg = mrb_funcall(mrb, argv[1], "to_s", 0, NULL);
+    } else {
+        msg = mrb_str_dup(mrb, argv[1]);
     }
     ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", RSTRING_PTR(msg));
 
