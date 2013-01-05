@@ -189,6 +189,7 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
 
     mrb_value *argv;
     mrb_int argc;
+    mrb_int log_level;
     ngx_http_request_t *r = ngx_mrb_get_request();
 
     mrb_get_args(mrb, "*", &argv, &argc);
@@ -203,7 +204,20 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
         return self;
     }
 
-    ngx_log_error(mrb_fixnum(argv[0]), r->connection->log, 0, "%s", RSTRING_PTR(argv[1]));
+    log_level = mrb_fixnum(argv[0]);
+
+    if (log_level < 0) {
+        ngx_log_error(NGX_LOG_ERR
+                      , r->connection->log
+                      , 0
+                      , "%s ERROR %s: log level is not positive number"
+                      , MODULE_NAME
+                      , __func__
+        );
+        return self;
+    }
+
+    ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", RSTRING_PTR(argv[1]));
 
     return self;
 }
