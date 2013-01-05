@@ -18,6 +18,7 @@
 #include "ngx_buf.h"
 #include <ngx_http.h>
 #include <ngx_conf_file.h>
+#include <ngx_log.h>
 
 typedef struct rputs_chain_list {
     ngx_chain_t **last;
@@ -182,6 +183,31 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     return self;
 }
 
+static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
+{   
+
+    mrb_value *argv;
+    mrb_int argc;
+    ngx_http_request_t *r = ngx_mrb_get_request();
+
+    mrb_get_args(mrb, "*", &argv, &argc);
+    if (argc != 2) {
+        ngx_log_error(NGX_LOG_ERR
+                      , r->connection->log
+                      , 0
+                      , "%s ERROR %s: argument is not 2"
+                      , MODULE_NAME
+                      , __func__
+        );
+        return self;
+    }
+
+    ngx_log_error(mrb_fixnum(argv[0]), r->connection->log, 0, "%s", RSTRING_PTR(argv[1]));
+
+    return self;
+}
+
+
 void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
 {
     mrb_define_const(mrb, class, "NGX_OK",                            mrb_fixnum_value(NGX_OK));
@@ -227,8 +253,19 @@ void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
     mrb_define_const(mrb, class, "NGX_HTTP_SERVICE_UNAVAILABLE",      mrb_fixnum_value(NGX_HTTP_SERVICE_UNAVAILABLE));
     mrb_define_const(mrb, class, "NGX_HTTP_GATEWAY_TIME_OUT",         mrb_fixnum_value(NGX_HTTP_GATEWAY_TIME_OUT));
     mrb_define_const(mrb, class, "NGX_HTTP_INSUFFICIENT_STORAGE",     mrb_fixnum_value(NGX_HTTP_INSUFFICIENT_STORAGE));
+    // error log priority
+    mrb_define_const(mrb, class, "NGX_LOG_STDERR",      mrb_fixnum_value(NGX_LOG_STDERR));
+    mrb_define_const(mrb, class, "NGX_LOG_EMERG",       mrb_fixnum_value(NGX_LOG_EMERG));
+    mrb_define_const(mrb, class, "NGX_LOG_ALERT",       mrb_fixnum_value(NGX_LOG_ALERT));
+    mrb_define_const(mrb, class, "NGX_LOG_CRIT",        mrb_fixnum_value(NGX_LOG_CRIT));
+    mrb_define_const(mrb, class, "NGX_LOG_ERR",         mrb_fixnum_value(NGX_LOG_ERR));
+    mrb_define_const(mrb, class, "NGX_LOG_WARN",        mrb_fixnum_value(NGX_LOG_WARN));
+    mrb_define_const(mrb, class, "NGX_LOG_NOTICE",      mrb_fixnum_value(NGX_LOG_NOTICE));
+    mrb_define_const(mrb, class, "NGX_LOG_INFO",        mrb_fixnum_value(NGX_LOG_INFO));
+    mrb_define_const(mrb, class, "NGX_LOG_DEBUG",       mrb_fixnum_value(NGX_LOG_DEBUG));
 
     mrb_define_class_method(mrb, class, "rputs",       ngx_mrb_rputs, ARGS_ANY());
     mrb_define_class_method(mrb, class, "send_header", ngx_mrb_send_header, ARGS_ANY());
     mrb_define_class_method(mrb, class, "return",      ngx_mrb_send_header, ARGS_ANY());
+    mrb_define_class_method(mrb, class, "errlogger",   ngx_mrb_errlogger, ARGS_ANY());
 }
