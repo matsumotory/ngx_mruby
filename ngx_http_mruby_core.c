@@ -135,12 +135,11 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
 {
-    mrb_value msg;
     mrb_value argv;
     ngx_buf_t *b;
     rputs_chain_list_t *chain;
     u_char *str;
-    size_t len;
+    ngx_str_t ns;
 
     ngx_http_request_t *r = ngx_mrb_get_request();
     ngx_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
@@ -158,23 +157,25 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     (*chain->last)->next = NULL;
 
     mrb_get_args(mrb, "o", &argv);
+
     if (mrb_type(argv) != MRB_TT_STRING) {
-        msg = mrb_funcall(mrb, argv, "to_s", 0, NULL);
-    } else {
-        msg = mrb_str_dup(mrb, argv);
+        argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
     }
-    str                         = (u_char *)RSTRING_PTR(msg);
-    len                         = ngx_strlen(str);
+
+    ns.data     = (u_char *)RSTRING_PTR(argv);
+    ns.len      = ngx_strlen(ns.data);
+    str         = ngx_pstrdup(r->pool, &ns);
+    str[ns.len] = '\0';
     (*chain->last)->buf->pos    = str;
-    (*chain->last)->buf->last   = str + len;
+    (*chain->last)->buf->last   = str + ns.len;
     (*chain->last)->buf->memory = 1;
     ctx->rputs_chain = chain;
     ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
 
     if (r->headers_out.content_length_n == -1) {
-        r->headers_out.content_length_n += len + 1;
+        r->headers_out.content_length_n += ns.len + 1;
     } else {
-        r->headers_out.content_length_n += len;
+        r->headers_out.content_length_n += ns.len;
     }
 
     return self;
