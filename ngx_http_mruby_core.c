@@ -37,16 +37,6 @@ static void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_req
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
 
-static void rputs_chain_list_t_free(mrb_state *mrb, void *chain)
-{
-    ngx_http_request_t *r = ngx_mrb_get_request();
-    ngx_free_chain(r->pool, ((rputs_chain_list_t *)chain)->out);
-}
-
-static const struct mrb_data_type rputs_chain_list_t_type = {
-    "rputs_chain_list_t", rputs_chain_list_t_free,
-};
-
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state)
 {
     ngx_mruby_ctx_t *ctx;
