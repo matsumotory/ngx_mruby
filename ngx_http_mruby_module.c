@@ -55,6 +55,18 @@
         prev_state = conf_state;                        \
     }
 
+#define NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(eval_every_time, state, reinit) \
+    do {                                                                \
+        if (eval_every_time) {                                          \
+            if (state == NGX_CONF_UNSET_PTR) {                          \
+                return NGX_DECLINED;                                    \
+            }                                                           \
+            if (reinit(state) == NGX_ERROR) {                           \
+                return NGX_ERROR;                                       \
+            }                                                           \
+        }                                                               \
+    } while(0)
+
 // set conf
 static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
@@ -90,6 +102,7 @@ static char *ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void 
 
 // set init function
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf);
+static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state);
 static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf);
 
 static ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_file(ngx_pool_t *pool, ngx_str_t *value);
@@ -108,9 +121,17 @@ typedef struct ngx_http_mruby_loc_conf_t {
     ngx_mrb_state_t *access_inline_state;
     ngx_mrb_state_t *content_inline_state;
     ngx_mrb_state_t *log_inline_state;
+    ngx_flag_t       eval_every_time;
 } ngx_http_mruby_loc_conf_t;
  
 static ngx_command_t ngx_http_mruby_commands[] = {
+    { ngx_string("mruby_eval_every_time"),
+      NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_mruby_loc_conf_t, eval_every_time),
+      NULL },
+
     { ngx_string("mruby_post_read_handler"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_mruby_post_read_phase,
@@ -252,6 +273,8 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
     conf->content_inline_state        = NGX_CONF_UNSET_PTR;
     conf->log_inline_state            = NGX_CONF_UNSET_PTR;
 
+    conf->eval_every_time = NGX_CONF_UNSET;
+
     return conf;
 }
 
@@ -274,42 +297,74 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     NGX_MRUBY_MERGE_STATE(prev->content_inline_state,        conf->content_inline_state);
     NGX_MRUBY_MERGE_STATE(prev->log_inline_state,            conf->log_inline_state);
 
+    ngx_conf_merge_value(prev->eval_every_time, conf->eval_every_time, 0);
+
     return NGX_CONF_OK;
 }
 
 static ngx_int_t ngx_http_mruby_post_read_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
+        clcf->eval_every_time, 
+        clcf->post_read_state,
+        ngx_http_mruby_state_reinit_from_file
+    );
     return ngx_mrb_run(r, clcf->post_read_state);
 }
 
 static ngx_int_t ngx_http_mruby_server_rewrite_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
+        clcf->eval_every_time, 
+        clcf->server_rewrite_state,
+        ngx_http_mruby_state_reinit_from_file
+    );
     return ngx_mrb_run(r, clcf->server_rewrite_state);
 }
 
 static ngx_int_t ngx_http_mruby_rewrite_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
+        clcf->eval_every_time, 
+        clcf->rewrite_state,
+        ngx_http_mruby_state_reinit_from_file
+    );
     return ngx_mrb_run(r, clcf->rewrite_state);
 }
 
 static ngx_int_t ngx_http_mruby_access_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
+        clcf->eval_every_time, 
+        clcf->access_state,
+        ngx_http_mruby_state_reinit_from_file
+    );
     return ngx_mrb_run(r, clcf->access_state);
 }
 
 static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
+        clcf->eval_every_time, 
+        clcf->handler_state,
+        ngx_http_mruby_state_reinit_from_file
+    );
     return ngx_mrb_run(r, clcf->handler_state);
 }
 
 static ngx_int_t ngx_http_mruby_log_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
+        clcf->eval_every_time, 
+        clcf->log_handler_state,
+        ngx_http_mruby_state_reinit_from_file
+    );
     return ngx_mrb_run(r, clcf->log_handler_state);
 }
 
@@ -558,8 +613,8 @@ static ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_file(ngx_pool_t *pool, ngx
     }
 
     len = ngx_strlen((char *)code_file_path->data);
-    state->file = ngx_pcalloc(pool, len + 1);
-    if (state->file == NULL) {
+    state->code.file = ngx_pcalloc(pool, len + 1);
+    if (state->code.file == NULL) {
         return NGX_CONF_UNSET_PTR;
     }
 
@@ -572,11 +627,19 @@ static ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_file(ngx_pool_t *pool, ngx
 static ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_string(ngx_pool_t *pool, ngx_str_t *code)
 {
     ngx_mrb_state_t *state;
+    size_t len;
+
     state = ngx_pcalloc(pool, sizeof(*state));
     if (state == NULL) {
         return NGX_CONF_UNSET_PTR;
     }
 
+    len = ngx_strlen(code->data);
+    state->code.string = ngx_pcalloc(pool, len + 1);
+    if (state->code.string == NULL) {
+        return NGX_CONF_UNSET_PTR;
+    }
+    ngx_cpystrn((u_char *)state->code.string, code->data, len + 1);
     if (ngx_mrb_init_string((char *)code->data, state) != NGX_OK) {
         return NGX_CONF_UNSET_PTR;
     }
@@ -595,6 +658,17 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
         return NGX_ERROR;
     }
 
+    return NGX_OK;
+}
+
+static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state)
+{
+    if (state == NGX_CONF_UNSET_PTR) {
+        return NGX_ERROR;
+    }
+    if (ngx_mrb_init_file(state->code.file, ngx_strlen(state->code.file), state) != NGX_OK) {
+        return NGX_ERROR;
+    }
     return NGX_OK;
 }
 

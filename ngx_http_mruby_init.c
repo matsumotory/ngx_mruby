@@ -34,7 +34,8 @@ ngx_int_t ngx_mrb_init_file(char *code_file_path, size_t len, ngx_mrb_state_t *s
     state->mrb = mrb;
     state->n   = mrb_generate_code(mrb, p);
 
-    ngx_cpystrn((u_char *)state->file, (u_char *)code_file_path, len + 1);
+    ngx_cpystrn((u_char *)state->code.file, (u_char *)code_file_path, len + 1);
+    state->code_type = NGX_MRB_CODE_TYPE_FILE;
     mrb_pool_close(p->pool);
     fclose(mrb_file);
 
@@ -53,8 +54,8 @@ ngx_int_t ngx_mrb_init_string(char *code, ngx_mrb_state_t *state)
     p           = mrb_parse_string(mrb, code, NULL);
     state->mrb  = mrb;
     state->n    = mrb_generate_code(mrb, p);
-    state->file = NGX_CONF_UNSET_PTR;
 
+    state->code_type = NGX_MRB_CODE_TYPE_STRING;
     mrb_pool_close(p->pool);
 
     return NGX_OK;

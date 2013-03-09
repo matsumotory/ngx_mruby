@@ -10,11 +10,20 @@
 #include <ngx_http.h>
 #include <mruby.h>
 
+typedef enum code_type_t {
+    NGX_MRB_CODE_TYPE_FILE,
+    NGX_MRB_CODE_TYPE_STRING
+} code_type_t;
+
 typedef struct ngx_mrb_state_t {
     mrb_state *mrb;
-    char *file;
     int n;
     int ai;
+    union code {
+        char *file;
+        char *string;
+    } code;
+    code_type_t code_type;
 } ngx_mrb_state_t;
 
 void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class);
