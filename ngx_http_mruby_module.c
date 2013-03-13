@@ -55,9 +55,9 @@
         prev_state = conf_state;                        \
     }
 
-#define NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(eval_every_time, state, reinit) \
+#define NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(cached, state, reinit)     \
     do {                                                                \
-        if (eval_every_time) {                                          \
+        if (!cached) {                                                  \
             if (state == NGX_CONF_UNSET_PTR) {                          \
                 return NGX_DECLINED;                                    \
             }                                                           \
@@ -121,15 +121,15 @@ typedef struct ngx_http_mruby_loc_conf_t {
     ngx_mrb_state_t *access_inline_state;
     ngx_mrb_state_t *content_inline_state;
     ngx_mrb_state_t *log_inline_state;
-    ngx_flag_t       eval_every_time;
+    ngx_flag_t       cached;
 } ngx_http_mruby_loc_conf_t;
  
 static ngx_command_t ngx_http_mruby_commands[] = {
-    { ngx_string("mruby_eval_every_time"),
+    { ngx_string("mruby_cache"),
       NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_mruby_loc_conf_t, eval_every_time),
+      offsetof(ngx_http_mruby_loc_conf_t, cached),
       NULL },
 
     { ngx_string("mruby_post_read_handler"),
@@ -273,7 +273,7 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
     conf->content_inline_state        = NGX_CONF_UNSET_PTR;
     conf->log_inline_state            = NGX_CONF_UNSET_PTR;
 
-    conf->eval_every_time = NGX_CONF_UNSET;
+    conf->cached = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -297,7 +297,7 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     NGX_MRUBY_MERGE_STATE(prev->content_inline_state,        conf->content_inline_state);
     NGX_MRUBY_MERGE_STATE(prev->log_inline_state,            conf->log_inline_state);
 
-    ngx_conf_merge_value(conf->eval_every_time, prev->eval_every_time, 1);
+    ngx_conf_merge_value(conf->cached, prev->cached, 0);
 
     return NGX_CONF_OK;
 }
@@ -305,8 +305,8 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
 static ngx_int_t ngx_http_mruby_post_read_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
-        clcf->eval_every_time, 
+    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
+        clcf->cached, 
         clcf->post_read_state,
         ngx_http_mruby_state_reinit_from_file
     );
@@ -316,8 +316,8 @@ static ngx_int_t ngx_http_mruby_post_read_handler(ngx_http_request_t *r)
 static ngx_int_t ngx_http_mruby_server_rewrite_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
-        clcf->eval_every_time, 
+    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
+        clcf->cached, 
         clcf->server_rewrite_state,
         ngx_http_mruby_state_reinit_from_file
     );
@@ -327,8 +327,8 @@ static ngx_int_t ngx_http_mruby_server_rewrite_handler(ngx_http_request_t *r)
 static ngx_int_t ngx_http_mruby_rewrite_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
-        clcf->eval_every_time, 
+    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
+        clcf->cached, 
         clcf->rewrite_state,
         ngx_http_mruby_state_reinit_from_file
     );
@@ -338,8 +338,8 @@ static ngx_int_t ngx_http_mruby_rewrite_handler(ngx_http_request_t *r)
 static ngx_int_t ngx_http_mruby_access_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
-        clcf->eval_every_time, 
+    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
+        clcf->cached, 
         clcf->access_state,
         ngx_http_mruby_state_reinit_from_file
     );
@@ -349,8 +349,8 @@ static ngx_int_t ngx_http_mruby_access_handler(ngx_http_request_t *r)
 static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
-        clcf->eval_every_time, 
+    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
+        clcf->cached, 
         clcf->handler_state,
         ngx_http_mruby_state_reinit_from_file
     );
@@ -360,8 +360,8 @@ static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
 static ngx_int_t ngx_http_mruby_log_handler(ngx_http_request_t *r)
 {
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_EVAL_EVERY_TIME(
-        clcf->eval_every_time, 
+    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
+        clcf->cached, 
         clcf->log_handler_state,
         ngx_http_mruby_state_reinit_from_file
     );
