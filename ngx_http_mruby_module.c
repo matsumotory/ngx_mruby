@@ -297,7 +297,7 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     NGX_MRUBY_MERGE_STATE(prev->content_inline_state,        conf->content_inline_state);
     NGX_MRUBY_MERGE_STATE(prev->log_inline_state,            conf->log_inline_state);
 
-    ngx_conf_merge_value(prev->eval_every_time, conf->eval_every_time, 0);
+    ngx_conf_merge_value(conf->eval_every_time, prev->eval_every_time, 1);
 
     return NGX_CONF_OK;
 }
