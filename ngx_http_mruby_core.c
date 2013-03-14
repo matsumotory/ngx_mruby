@@ -57,8 +57,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state)
     ngx_mrb_push_request(r);
     mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[state->n]), mrb_nil_value());
     if (state->mrb->exc) {
-        if (state->file != NGX_CONF_UNSET_PTR) {
-            ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, state->file);
+        if (state->code_type == NGX_MRB_CODE_TYPE_FILE) {
+            ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, state->code.file);
         } else {
             ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
         }
