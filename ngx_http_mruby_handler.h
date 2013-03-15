@@ -1,6 +1,8 @@
-/**
- * Copyright (c) 2013 Tatsuhiko Kubo <cubicdaiya@gmail.com>
- */
+/*
+// ngx_http_mruby_handler.h - ngx_mruby mruby handler functions
+//
+// See Copyright Notice in ngx_http_mruby_module.c
+*/
 
 #ifndef NGX_HTTP_MRUBY_HANDLER_H
 #define NGX_HTTP_MRUBY_HANDLER_H

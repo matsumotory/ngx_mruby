@@ -1,6 +1,8 @@
-/**
- * Copyright (c) 2013 Tatsuhiko Kubo <cubicdaiya@gmail.com>
- */
+/*
+// ngx_http_mruby_hook.h - ngx_mruby mruby hook functions
+//
+// See Copyright Notice in ngx_http_mruby_module.c
+*/
 
 #include "ngx_http_mruby_hook.h"
 #include "ngx_http_mruby_module.h"
