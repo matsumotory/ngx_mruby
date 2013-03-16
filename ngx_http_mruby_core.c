@@ -233,12 +233,12 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_get_ngx_mruby_version(mrb_state *mrb, mrb_value self)
 {   
-    return mrb_str_new2(mrb, MODULE_VERSION);
+    return mrb_str_new_cstr(mrb, MODULE_VERSION);
 }
 
 static mrb_value ngx_mrb_get_nginx_version(mrb_state *mrb, mrb_value self)
 {
-    return mrb_str_new2(mrb, NGINX_VERSION);
+    return mrb_str_new_cstr(mrb, NGINX_VERSION);
 }
 
 void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
