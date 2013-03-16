@@ -32,7 +32,7 @@ ngx_http_request_t *ngx_mrb_get_request(void)
 static mrb_value ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self) 
 {
     ngx_http_request_t *r = ngx_mrb_get_request();
-    return mrb_str_new2(mrb, (char *)r->headers_out.content_type.data);
+    return mrb_str_new_cstr(mrb, (char *)r->headers_out.content_type.data);
 }
 
 static mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self) 
@@ -57,7 +57,7 @@ static mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self)
 static mrb_value ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value self)
 {
     ngx_http_request_t *r = ngx_mrb_get_request();
-    return mrb_str_new2(mrb, (const char *)r->uri.data);
+    return mrb_str_new_cstr(mrb, (const char *)r->uri.data);
 }
 
 static mrb_value ngx_mrb_set_request_uri(mrb_state *mrb, mrb_value self)
