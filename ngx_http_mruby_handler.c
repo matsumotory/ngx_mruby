@@ -5,6 +5,7 @@
 */
 
 #include "ngx_http_mruby_handler.h"
+#include "ngx_http_mruby_state.h"
 
 #define NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(cached, state, reinit)     \
     do {                                                                \
@@ -17,19 +18,6 @@
             }                                                           \
         }                                                               \
     } while(0)
-
-static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state);
-
-static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state)
-{
-    if (state == NGX_CONF_UNSET_PTR) {
-        return NGX_ERROR;
-    }
-    if (ngx_mrb_init_file(state->code.file, ngx_strlen(state->code.file), state) != NGX_OK) {
-        return NGX_ERROR;
-    }
-    return NGX_OK;
-}
 
 ngx_int_t ngx_http_mruby_post_read_handler(ngx_http_request_t *r)
 {

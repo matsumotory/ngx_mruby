@@ -10,6 +10,7 @@
 #include <nginx.h>
 #include "ngx_http_mruby_core.h"
 
+ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state);
 ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_file(ngx_pool_t *pool, ngx_str_t *value);
 ngx_mrb_state_t *ngx_http_mruby_mrb_state_from_string(ngx_pool_t *pool, ngx_str_t *code);
 
