@@ -49,7 +49,7 @@
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 #include "ngx_http_mruby_handler.h"
-#include "ngx_http_mruby_hook.h"
+#include "ngx_http_mruby_directive.h"
 
 #define NGX_MRUBY_MERGE_STATE(prev_state, conf_state)   \
     if (prev_state == NGX_CONF_UNSET_PTR) {             \

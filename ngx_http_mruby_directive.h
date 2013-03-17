@@ -1,11 +1,11 @@
 /*
-// ngx_http_mruby_hook.c - ngx_mruby mruby hook functions
+// ngx_http_mruby_directive.h - ngx_mruby mruby directive functions
 //
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-#ifndef NGX_HTTP_MRUBY_HOOK_H
-#define NGX_HTTP_MRUBY_HOOK_H
+#ifndef NGX_HTTP_MRUBY_DIRECTIVE_H
+#define NGX_HTTP_MRUBY_DIRECTIVE_H
 
 #include <ngx_config.h>
 #include <ngx_conf_file.h>
@@ -24,4 +24,4 @@ char *ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *con
 char *ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
-#endif // NGX_HTTP_MRUBY_HOOK_H
+#endif // NGX_HTTP_MRUBY_DIRECTIVE_H
