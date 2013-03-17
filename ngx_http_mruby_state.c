@@ -58,12 +58,31 @@ static ngx_int_t ngx_mrb_init_string(char *code, ngx_mrb_state_t *state)
     return NGX_OK;
 }
 
+static ngx_int_t ngx_mrb_gencode_state(ngx_mrb_state_t *state)
+{
+    FILE *mrb_file;
+    struct mrb_parser_state *p;
+
+    if ((mrb_file = fopen((char *)state->code.file, "r")) == NULL) {
+        return NGX_ERROR;
+    }
+
+    state->ai  = mrb_gc_arena_save(state->mrb);
+    p          = mrb_parse_file(state->mrb, mrb_file, NULL);
+    state->n   = mrb_generate_code(state->mrb, p);
+
+    mrb_pool_close(p->pool);
+    fclose(mrb_file);
+
+    return NGX_OK;
+}
+
 ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state)
 {
     if (state == NGX_CONF_UNSET_PTR) {
         return NGX_ERROR;
     }
-    if (ngx_mrb_init_file(state->code.file, ngx_strlen(state->code.file), state) != NGX_OK) {
+    if (ngx_mrb_gencode_state(state) != NGX_OK) {
         return NGX_ERROR;
     }
     return NGX_OK;
