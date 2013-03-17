@@ -37,6 +37,19 @@ static void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_req
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
 
+static void ngx_mrb_irep_clean(ngx_mrb_state_t *state)
+{
+    state->mrb->irep_len = state->n;
+
+    if (!(state->mrb->irep[state->n]->flags & MRB_ISEQ_NO_FREE))
+      mrb_free(state->mrb, state->mrb->irep[state->n]->iseq);
+
+    mrb_free(state->mrb, state->mrb->irep[state->n]->pool);
+    mrb_free(state->mrb, state->mrb->irep[state->n]->syms);
+    mrb_free(state->mrb, state->mrb->irep[state->n]->lines);
+    mrb_free(state->mrb, state->mrb->irep[state->n]);
+}
+
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state)
 {
     ngx_mruby_ctx_t *ctx;
@@ -64,6 +77,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state)
         }
     }
     mrb_gc_arena_restore(state->mrb, state->ai);
+    ngx_mrb_irep_clean(state);
     return NGX_OK;
 }
 
