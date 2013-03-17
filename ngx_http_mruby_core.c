@@ -50,7 +50,7 @@ static void ngx_mrb_irep_clean(ngx_mrb_state_t *state)
     mrb_free(state->mrb, state->mrb->irep[state->n]);
 }
 
-ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state)
+ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t cached)
 {
     ngx_mruby_ctx_t *ctx;
     if (state == NGX_CONF_UNSET_PTR) {
@@ -77,7 +77,9 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state)
         }
     }
     mrb_gc_arena_restore(state->mrb, state->ai);
-    ngx_mrb_irep_clean(state);
+    if (!cached) {
+        ngx_mrb_irep_clean(state);
+    }
     return NGX_OK;
 }
 
