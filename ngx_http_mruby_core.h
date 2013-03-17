@@ -27,6 +27,6 @@ typedef struct ngx_mrb_state_t {
 } ngx_mrb_state_t;
 
 void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class);
-ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *mrb);
+ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t cached);
 
 #endif // NGX_HTTP_MRUBY_CORE_H
