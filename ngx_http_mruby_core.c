@@ -41,8 +41,9 @@ static void ngx_mrb_irep_clean(ngx_mrb_state_t *state)
 {
     state->mrb->irep_len = state->n;
 
-    if (!(state->mrb->irep[state->n]->flags & MRB_ISEQ_NO_FREE))
-      mrb_free(state->mrb, state->mrb->irep[state->n]->iseq);
+    if (!(state->mrb->irep[state->n]->flags & MRB_ISEQ_NO_FREE)) {
+        mrb_free(state->mrb, state->mrb->irep[state->n]->iseq);
+    }
 
     mrb_free(state->mrb, state->mrb->irep[state->n]->pool);
     mrb_free(state->mrb, state->mrb->irep[state->n]->syms);
