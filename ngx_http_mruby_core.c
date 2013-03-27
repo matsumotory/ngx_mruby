@@ -54,6 +54,7 @@ static void ngx_mrb_irep_clean(ngx_mrb_state_t *state)
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t cached)
 {
     ngx_mruby_ctx_t *ctx;
+    rputs_chain_list_t *chain;
     if (state == NGX_CONF_UNSET_PTR) {
         return NGX_DECLINED;
     }
@@ -80,6 +81,15 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t 
     mrb_gc_arena_restore(state->mrb, state->ai);
     if (!cached) {
         ngx_mrb_irep_clean(state);
+    }
+    // If mrb script does not return a status code, return 200
+    if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
+        r->headers_out.status         = NGX_HTTP_OK;
+        chain                         = ctx->rputs_chain;
+        (*chain->last)->buf->last_buf = 1;
+        ngx_http_send_header(r);
+        ngx_http_output_filter(r, chain->out);
+        ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
     }
     return NGX_OK;
 }
@@ -129,7 +139,12 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
     ngx_http_request_t *r = ngx_mrb_get_request();
     mrb_int status = NGX_HTTP_OK;
     mrb_get_args(mrb, "i", &status);
-    r->headers_out.status = status;
+
+    if (status == NGX_OK) {
+        r->headers_out.status = NGX_HTTP_OK;
+    } else {
+        r->headers_out.status = status;
+    }
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
     if (ctx == NULL) {
