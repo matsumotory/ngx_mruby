@@ -139,7 +139,12 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
     ngx_http_request_t *r = ngx_mrb_get_request();
     mrb_int status = NGX_HTTP_OK;
     mrb_get_args(mrb, "i", &status);
-    r->headers_out.status = status;
+
+    if (status == NGX_OK) {
+        r->headers_out.status = NGX_HTTP_OK;
+    } else {
+        r->headers_out.status = status;
+    }
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
     if (ctx == NULL) {
