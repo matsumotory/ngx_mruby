@@ -54,6 +54,7 @@ static void ngx_mrb_irep_clean(ngx_mrb_state_t *state)
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t cached)
 {
     ngx_mruby_ctx_t *ctx;
+    rputs_chain_list_t *chain;
     if (state == NGX_CONF_UNSET_PTR) {
         return NGX_DECLINED;
     }
@@ -80,6 +81,19 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t 
     mrb_gc_arena_restore(state->mrb, state->ai);
     if (!cached) {
         ngx_mrb_irep_clean(state);
+    }
+    if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
+        chain = ctx->rputs_chain;
+        if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
+            r->headers_out.status = NGX_HTTP_OK;
+            (*chain->last)->buf->last_buf = 1;
+            ngx_http_send_header(r);
+            ngx_http_output_filter(r, chain->out);
+            ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
+            return NGX_OK;
+        } else {
+            return r->headers_out.status;
+        }
     }
     return NGX_OK;
 }
@@ -142,9 +156,11 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
     chain = ctx->rputs_chain;
     (*chain->last)->buf->last_buf = 1;
 
-    ngx_http_send_header(r);
-    ngx_http_output_filter(r, chain->out);
-    ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
+    if (r->headers_out.status == NGX_HTTP_OK) {
+        ngx_http_send_header(r);
+        ngx_http_output_filter(r, chain->out);
+        ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
+    }
 
     return self;
 }
