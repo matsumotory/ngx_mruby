@@ -40,15 +40,8 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
 static void ngx_mrb_irep_clean(ngx_mrb_state_t *state)
 {
     state->mrb->irep_len = state->n;
-
-    if (!(state->mrb->irep[state->n]->flags & MRB_ISEQ_NO_FREE)) {
-        mrb_free(state->mrb, state->mrb->irep[state->n]->iseq);
-    }
-
-    mrb_free(state->mrb, state->mrb->irep[state->n]->pool);
-    mrb_free(state->mrb, state->mrb->irep[state->n]->syms);
-    mrb_free(state->mrb, state->mrb->irep[state->n]->lines);
-    mrb_free(state->mrb, state->mrb->irep[state->n]);
+    mrb_irep_free(state->mrb, state->mrb->irep[state->n]);
+    state->mrb->exc = 0;
 }
 
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t cached)
