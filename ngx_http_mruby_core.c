@@ -77,7 +77,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t 
     }
     if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
         chain = ctx->rputs_chain;
-        if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
+        if (r->headers_out.status == NGX_OK || !(*chain->last)->buf->last_buf) {
             r->headers_out.status = NGX_HTTP_OK;
             (*chain->last)->buf->last_buf = 1;
             ngx_http_send_header(r);
