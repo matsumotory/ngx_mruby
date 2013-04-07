@@ -1,2 +1,1 @@
 Nginx.rputs(Time.now.to_s + " hello mruby world for nginx.")
-Nginx.return Nginx::NGX_OK
