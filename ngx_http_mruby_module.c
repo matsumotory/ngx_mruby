@@ -73,84 +73,96 @@ static ngx_command_t ngx_http_mruby_commands[] = {
       NULL },
 
     { ngx_string("mruby_post_read_handler"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_post_read_phase,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
 
     { ngx_string("mruby_server_rewrite_handler"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_server_rewrite_phase,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
 
     { ngx_string("mruby_rewrite_handler"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_rewrite_phase,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
  
     { ngx_string("mruby_access_handler"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_access_phase,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
  
     { ngx_string("mruby_content_handler"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_content_phase,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
  
     { ngx_string("mruby_log_handler"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_log_phase,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
  
     { ngx_string("mruby_post_read_handler_code"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_post_read_inline,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       ngx_http_mruby_post_read_inline_handler },
 
     { ngx_string("mruby_server_rewrite_handler_code"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_server_rewrite_inline,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       ngx_http_mruby_server_rewrite_inline_handler },
 
     { ngx_string("mruby_rewrite_handler_code"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_rewrite_inline,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       ngx_http_mruby_rewrite_inline_handler },
 
     { ngx_string("mruby_access_handler_code"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_access_inline,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       ngx_http_mruby_access_inline_handler },
 
     { ngx_string("mruby_content_handler_code"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_content_inline,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       ngx_http_mruby_content_inline_handler },
  
     { ngx_string("mruby_log_handler_code"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
       ngx_http_mruby_log_inline,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
