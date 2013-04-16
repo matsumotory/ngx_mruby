@@ -17,8 +17,6 @@
 #define MODULE_NAME        "ngx_mruby"
 #define MODULE_VERSION     "0.0.1"
 
-#define DONE mrb_gc_arena_restore(mrb, 0);
-
 extern ngx_module_t  ngx_http_mruby_module;
 
 typedef struct ngx_http_mruby_loc_conf_t {
