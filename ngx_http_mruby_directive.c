@@ -238,6 +238,11 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
         filter_data->state = ngx_http_mruby_mrb_state_from_string(cf->pool, &filter_data->script);
     } 
     if (filter_data->state == NGX_CONF_UNSET_PTR) {
+        if (type == NGX_MRB_CODE_TYPE_FILE) {
+            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                               "failed to load mruby script: %s %s:%d", 
+                               filter_data->script.data, __FUNCTION__, __LINE__);
+        }
         return NGX_CONF_ERROR;
     }
 
