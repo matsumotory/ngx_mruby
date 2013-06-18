@@ -130,6 +130,9 @@ ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r, ngx_str_t *val,
 
     filter_data = data;
     if (!clcf->cached && ngx_http_mruby_state_reinit_from_file(filter_data->state)) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "failed to load mruby script: %s %s:%d", 
+                      filter_data->script.data, __FUNCTION__, __LINE__);
         return NGX_ERROR;
     }
  
