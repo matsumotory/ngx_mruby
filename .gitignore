@@ -9,3 +9,4 @@ config.log
 mruby/*
 tags
 *.swp
+example/mynginx.conf
