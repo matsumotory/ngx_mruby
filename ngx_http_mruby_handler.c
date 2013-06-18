@@ -120,3 +120,29 @@ ngx_int_t ngx_http_mruby_log_inline_handler(ngx_http_request_t *r)
     ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
     return ngx_mrb_run(r, clcf->log_inline_state, 1);
 }
+
+#if defined(NDK) && NDK
+ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r, ngx_str_t *val,
+                                     ngx_http_variable_value_t *v, void *data)
+{
+    ngx_http_mruby_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+    ngx_http_mruby_set_var_data_t *filter_data;
+
+    filter_data = data;
+    if (!clcf->cached && ngx_http_mruby_state_reinit_from_file(filter_data->state)) {
+        return NGX_ERROR;
+    }
+ 
+    return ngx_mrb_run_args(r, filter_data->state, clcf->cached, v, filter_data->size, val);
+}
+
+ngx_int_t ngx_http_mruby_set_inline_handler(ngx_http_request_t *r, ngx_str_t *val,
+                                            ngx_http_variable_value_t *v, void *data)
+{
+    ngx_http_mruby_set_var_data_t *filter_data;
+    filter_data = data;
+    return ngx_mrb_run_args(r, filter_data->state, 1, v, filter_data->size, val);
+}
+#endif
+
+

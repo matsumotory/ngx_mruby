@@ -27,4 +27,11 @@ ngx_int_t ngx_http_mruby_access_inline_handler(ngx_http_request_t *r);
 ngx_int_t ngx_http_mruby_content_inline_handler(ngx_http_request_t *r);
 ngx_int_t ngx_http_mruby_log_inline_handler(ngx_http_request_t *r);
 
+#if defined(NDK) && NDK
+ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r, ngx_str_t *val,
+                                     ngx_http_variable_value_t *v, void *data);
+ngx_int_t ngx_http_mruby_set_inline_handler(ngx_http_request_t *r, ngx_str_t *val,
+                                            ngx_http_variable_value_t *v, void *data);
+#endif
+
 #endif // NGX_HTTP_MRUBY_HANDLER_H
