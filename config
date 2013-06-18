@@ -21,3 +21,5 @@ CORE_INCS="$CORE_INCS $mruby_root/src $mruby_root/include"
 if [ -f $ngx_addon_dir/mrbgems_config ]; then
     . $ngx_addon_dir/mrbgems_config
 fi
+
+have=NDK_SET_VAR . auto/have

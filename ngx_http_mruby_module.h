@@ -14,6 +14,15 @@
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_init.h"
 
+#if defined(NDK) && NDK
+typedef struct {
+    size_t           size;
+    ngx_str_t        script;
+    ngx_mrb_state_t *state;
+} ngx_http_mruby_set_var_data_t;
+#include <ndk.h>
+#endif
+
 #define MODULE_NAME        "ngx_mruby"
 #define MODULE_VERSION     "0.0.1"
 
