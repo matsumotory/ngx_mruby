@@ -45,7 +45,7 @@ AC_ARG_WITH(ngx_config_opt, AC_HELP_STRING([--with-ngx-config-opt=OPT],
 AC_SUBST(NGX_CONFIG_OPT)
 
 # mruby root
-MRUBY_ROOT=./mruby
+MRUBY_ROOT=`pwd`/mruby
 AC_ARG_WITH(mruby_root, AC_HELP_STRING([--with-mruby-root=DIR],
     [pathname to mruby_root [[mruby_root]]]),
     [MRUBY_ROOT="$with_mruby_root"])
