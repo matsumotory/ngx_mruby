@@ -24,7 +24,7 @@ endif
 #   flags
 CFLAGS = $(MRUBY_CFLAGS)
 LDFLAGS = $(MRUBY_LDFLAGS)
-LIBS = $(MRUBY_LIBS) $(MRUBY_ROOT)/build/host/lib/libmruby.a $(MRUBY_ROOT)/build/host/mrblib/mrblib.o
+LIBS = $(MRUBY_LIBS) $(MRUBY_ROOT)/build/host/lib/libmruby.a
 
 #   the default target
 all: ngx_mruby
