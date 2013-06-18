@@ -17,6 +17,7 @@ ngx_http_request_t *ngx_mruby_request_state;
 static mrb_value ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str);
+static mrb_value ngx_mrb_get_request_headers(mrb_state *mrb, mrb_value self);
 
 ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r)
 {
@@ -73,6 +74,40 @@ static mrb_value ngx_mrb_set_request_uri(mrb_state *mrb, mrb_value self)
     return self;
 }
 
+static mrb_value ngx_mrb_get_request_headers(mrb_state *mrb, mrb_value self)
+{
+    ngx_list_part_t              *part;
+    ngx_table_elt_t              *header;
+    ngx_http_request_t           *r;
+    ngx_uint_t                    i;
+    mrb_value                    hash;
+    mrb_value                    key;
+    mrb_value                    value;
+
+    r = ngx_mrb_get_request();  
+    hash = mrb_hash_new(mrb);
+    part = &(r->headers_in.headers.part);
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+        
+        key = mrb_str_new_cstr(mrb, (const char *)header[i].key.data);
+        value = mrb_str_new_cstr(mrb, (const char *)header[i].value.data);
+        mrb_hash_set(mrb, hash, key, value);
+    }
+    return hash;
+}
+
 void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
 {
     struct RClass *class_request;
@@ -82,4 +117,5 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
     mrb_define_method(mrb, class_request, "content_type", ngx_mrb_get_content_type, ARGS_NONE());
     mrb_define_method(mrb, class_request, "uri", ngx_mrb_get_request_uri, ARGS_NONE());
     mrb_define_method(mrb, class_request, "uri=", ngx_mrb_set_request_uri, ARGS_ANY());
+    // mrb_define_method(mrb, class_request, "headers", ngx_mrb_get_request_headers, ARGS_NONE());
 }
