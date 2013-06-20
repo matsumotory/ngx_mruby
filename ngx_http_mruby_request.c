@@ -48,7 +48,6 @@ static mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self)
         return self;
 
     str = (u_char *)RSTRING_PTR(arg);
-    //ngx_str_set(&r->headers_out.content_type, str);
     r->headers_out.content_type.len = ngx_strlen(str) + 1;
     r->headers_out.content_type.data = (u_char *)str;
 
