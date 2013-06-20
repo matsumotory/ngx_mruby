@@ -17,6 +17,7 @@ ngx_http_request_t *ngx_mruby_request_state;
 static mrb_value ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str);
+static mrb_value ngx_mrb_set_request_uri(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_headers(mrb_state *mrb, mrb_value self);
 
 ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r)
