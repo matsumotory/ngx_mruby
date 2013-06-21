@@ -83,29 +83,41 @@ static mrb_value ngx_mrb_get_request_headers(mrb_state *mrb, mrb_value self)
     mrb_value                    hash;
     mrb_value                    key;
     mrb_value                    value;
+    const char               *iv_headers_str = "@iv_headers";
 
-    r = ngx_mrb_get_request();  
-    hash = mrb_hash_new(mrb);
-    part = &(r->headers_in.headers.part);
-    header = part->elts;
+    mrb_value context = mrb_iv_get(mrb, self, mrb_intern(mrb, iv_headers_str));
 
-    for (i = 0; /* void */; i++) {
+    if (!mrb_nil_p(context))
+    {
+        return context;
+    }else{
+        r = ngx_mrb_get_request();  
+        hash = mrb_hash_new(mrb);
+        part = &(r->headers_in.headers.part);
+        header = part->elts;
 
-        if (i >= part->nelts) {
-            if (part->next == NULL) {
-                break;
+        for (i = 0; /* void */; i++) {
+
+            if (i >= part->nelts) {
+                if (part->next == NULL) {
+                    break;
+                }
+
+                part = part->next;
+                header = part->elts;
+                i = 0;
             }
 
-            part = part->next;
-            header = part->elts;
-            i = 0;
+            key = mrb_str_new_cstr(mrb, (const char *)header[i].key.data);
+            value = mrb_str_new_cstr(mrb, (const char *)header[i].value.data);
+            mrb_hash_set(mrb, hash, key, value);
         }
         
-        key = mrb_str_new_cstr(mrb, (const char *)header[i].key.data);
-        value = mrb_str_new_cstr(mrb, (const char *)header[i].value.data);
-        mrb_hash_set(mrb, hash, key, value);
+        mrb_iv_set(mrb, self, mrb_intern(mrb, iv_headers_str), hash);
+
+        return hash;
     }
-    return hash;
+    return mrb_nil_value();
 }
 
 void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
