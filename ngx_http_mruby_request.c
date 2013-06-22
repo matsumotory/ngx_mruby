@@ -12,12 +12,34 @@
 #include <mruby/compile.h>
 #include <mruby/string.h>
 
+#define NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(method_suffix, member) \
+static mrb_value ngx_mrb_get_##method_suffix(mrb_state *mrb, mrb_value self);     \
+static mrb_value ngx_mrb_get_##method_suffix(mrb_state *mrb, mrb_value self)      \
+{                                                                       \
+    ngx_http_request_t *r = ngx_mrb_get_request();                      \
+    return mrb_str_new(mrb, (const char *)member.data, member.len);     \
+}
+
+#define NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(method_suffix, member) \
+static mrb_value ngx_mrb_set_##method_suffix(mrb_state *mrb, mrb_value self);     \
+static mrb_value ngx_mrb_set_##method_suffix(mrb_state *mrb, mrb_value self)      \
+{                                                                       \
+    mrb_value arg;                                                      \
+    u_char *str;                                                        \
+    ngx_http_request_t *r;                                              \
+    mrb_get_args(mrb, "o", &arg);                                       \
+    if (mrb_nil_p(arg)) {                                               \
+        return self;                                                    \
+    }                                                                   \
+    str = (u_char *)RSTRING_PTR(arg);                                   \
+    r   = ngx_mrb_get_request();                                        \
+    member.len = ngx_strlen(str) + 1;                                   \
+    member.data = (u_char *)str;                                        \
+    return self;                                                        \
+}
+
 ngx_http_request_t *ngx_mruby_request_state;
 
-static mrb_value ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self);
-static mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self);
-static mrb_value ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value str);
-static mrb_value ngx_mrb_set_request_uri(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_headers(mrb_state *mrb, mrb_value self);
 
 ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r)
@@ -31,48 +53,25 @@ ngx_http_request_t *ngx_mrb_get_request(void)
     return ngx_mruby_request_state;
 }
 
-static mrb_value ngx_mrb_get_content_type(mrb_state *mrb, mrb_value self) 
-{
-    ngx_http_request_t *r = ngx_mrb_get_request();
-    return mrb_str_new_cstr(mrb, (char *)r->headers_out.content_type.data);
-}
+// request member
+NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(request_request_line, r->request_line);
+NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(request_uri,          r->uri);
+NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(request_unparsed_uri, r->unparsed_uri);
+NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(request_method,       r->method_name);
+NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(request_protocol,     r->http_protocol);
+NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(request_args,         r->args);
 
-static mrb_value ngx_mrb_set_content_type(mrb_state *mrb, mrb_value self) 
-{
-    mrb_value arg;
-    u_char *str;
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_request_line, r->request_line);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_uri,          r->uri);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_unparsed_uri, r->unparsed_uri);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_method,       r->method_name);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_protocol,     r->http_protocol);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_args,         r->args);
 
-    ngx_http_request_t *r = ngx_mrb_get_request();
-    mrb_get_args(mrb, "o", &arg);
-    
-    if (mrb_nil_p(arg))
-        return self;
+// request->headers_out member
+NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(content_type, r->headers_out.content_type);
 
-    str = (u_char *)RSTRING_PTR(arg);
-    r->headers_out.content_type.len = ngx_strlen(str) + 1;
-    r->headers_out.content_type.data = (u_char *)str;
-
-    return self;
-}
-
-static mrb_value ngx_mrb_get_request_uri(mrb_state *mrb, mrb_value self)
-{
-    ngx_http_request_t *r = ngx_mrb_get_request();
-    return mrb_str_new_cstr(mrb, (const char *)r->uri.data);
-}
-
-static mrb_value ngx_mrb_set_request_uri(mrb_state *mrb, mrb_value self)
-{
-    mrb_value arg;
-    u_char *str;
-
-    ngx_http_request_t *r = ngx_mrb_get_request();
-    mrb_get_args(mrb, "o", &arg);
-    str = (u_char *)RSTRING_PTR(arg);
-    ngx_str_set(&r->uri, str);
-
-    return self;
-}
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(content_type, r->headers_out.content_type);
 
 static mrb_value ngx_mrb_get_request_headers(mrb_state *mrb, mrb_value self)
 {
@@ -115,7 +114,17 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
     class_request = mrb_define_class_under(mrb, class, "Request", mrb->object_class);
     mrb_define_method(mrb, class_request, "content_type=", ngx_mrb_set_content_type, ARGS_ANY());
     mrb_define_method(mrb, class_request, "content_type", ngx_mrb_get_content_type, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "request_line", ngx_mrb_get_request_request_line, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "request_line=", ngx_mrb_set_request_request_line, ARGS_ANY());
     mrb_define_method(mrb, class_request, "uri", ngx_mrb_get_request_uri, ARGS_NONE());
     mrb_define_method(mrb, class_request, "uri=", ngx_mrb_set_request_uri, ARGS_ANY());
+    mrb_define_method(mrb, class_request, "unparsed_uri", ngx_mrb_get_request_unparsed_uri, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "unparsed_uri=", ngx_mrb_set_request_unparsed_uri, ARGS_ANY());
+    mrb_define_method(mrb, class_request, "method", ngx_mrb_get_request_method, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "method=", ngx_mrb_set_request_method, ARGS_ANY());
+    mrb_define_method(mrb, class_request, "protocol", ngx_mrb_get_request_protocol, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "protocol=", ngx_mrb_set_request_protocol, ARGS_ANY());
+    mrb_define_method(mrb, class_request, "args", ngx_mrb_get_request_args, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "args=", ngx_mrb_set_request_args, ARGS_ANY());
     mrb_define_method(mrb, class_request, "headers", ngx_mrb_get_request_headers, ARGS_NONE());
 }
