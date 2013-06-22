@@ -211,6 +211,19 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
 
     ngx_http_request_t *r = ngx_mrb_get_request();
     ngx_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+
+    mrb_get_args(mrb, "o", &argv);
+
+    if (mrb_type(argv) != MRB_TT_STRING) {
+        argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
+    }
+
+    ns.data     = (u_char *)RSTRING_PTR(argv);
+    ns.len      = ngx_strlen(ns.data);
+    if (ns.len == 0) {
+        return self;
+    }
+
     if (ctx->rputs_chain == NULL) {
         chain       = ngx_pcalloc(r->pool, sizeof(rputs_chain_list_t));
         chain->out  = ngx_alloc_chain_link(r->pool);
@@ -224,14 +237,6 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     (*chain->last)->buf = b;
     (*chain->last)->next = NULL;
 
-    mrb_get_args(mrb, "o", &argv);
-
-    if (mrb_type(argv) != MRB_TT_STRING) {
-        argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
-    }
-
-    ns.data     = (u_char *)RSTRING_PTR(argv);
-    ns.len      = ngx_strlen(ns.data);
     str         = ngx_pstrdup(r->pool, &ns);
     str[ns.len] = '\0';
     (*chain->last)->buf->pos    = str;
