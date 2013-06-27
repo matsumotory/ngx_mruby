@@ -11,6 +11,8 @@
 #include <mruby/data.h>
 #include <mruby/compile.h>
 #include <mruby/string.h>
+#include <mruby/variable.h>
+#include <mruby/class.h>
 
 ngx_http_request_t *ngx_mruby_request_state;
 
@@ -120,6 +122,27 @@ static mrb_value ngx_mrb_get_request_headers(mrb_state *mrb, mrb_value self)
     return mrb_nil_value();
 }
 
+static mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
+{
+    const char               *iv_var_str         = "@iv_var";
+    mrb_value                iv_var;
+    struct RClass            *class_var, *ngx_class;
+
+    iv_var = mrb_iv_get(mrb, self, mrb_intern(mrb, iv_var_str));
+    if (mrb_nil_p(iv_var))
+    {
+        // get class from Nginx::Var
+        ngx_class = mrb_class_get(mrb, "Nginx");
+        class_var = mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, "Var")));
+        // initialize a Var instance
+        iv_var = mrb_class_new_instance(mrb, 0, 0, class_var);
+        // save Var, avoid multi initialize
+        mrb_iv_set(mrb, self, mrb_intern(mrb, iv_var_str), iv_var);
+    }
+
+    return iv_var;
+}
+
 void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
 {
     struct RClass *class_request;
@@ -130,4 +153,5 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
     mrb_define_method(mrb, class_request, "uri", ngx_mrb_get_request_uri, ARGS_NONE());
     mrb_define_method(mrb, class_request, "uri=", ngx_mrb_set_request_uri, ARGS_ANY());
     mrb_define_method(mrb, class_request, "headers", ngx_mrb_get_request_headers, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "var", ngx_mrb_get_request_var, ARGS_NONE());
 }

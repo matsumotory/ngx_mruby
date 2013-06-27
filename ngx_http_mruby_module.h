@@ -35,4 +35,7 @@ typedef struct ngx_http_mruby_loc_conf_t {
     ngx_flag_t       cached;
 } ngx_http_mruby_loc_conf_t;
 
+ngx_int_t ngx_mrb_push_ngx_conf(ngx_conf_t *cf);
+ngx_conf_t* ngx_mrb_get_ngx_conf();
+
 #endif // NGX_HTTP_MRUBY_MODULE_H
