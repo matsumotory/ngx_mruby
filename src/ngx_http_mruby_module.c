@@ -167,6 +167,24 @@ static ngx_command_t ngx_http_mruby_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       ngx_http_mruby_log_inline_handler },
+
+#if defined(NDK) && NDK
+    { ngx_string("mruby_set"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_2MORE,
+      ngx_http_mruby_set,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      ngx_http_mruby_set_handler },
+
+    { ngx_string("mruby_set_inline"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_2MORE,
+      ngx_http_mruby_set_inline,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      ngx_http_mruby_set_inline_handler },
+#endif
  
     ngx_null_command
 };

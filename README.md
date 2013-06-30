@@ -12,13 +12,16 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
 
 ### 2. Build
-* sample mruby build (example: include some mrbgems)
+* configure example
 
-        make mruby_build
+        ./configure --with-ngx-src-root=nginx/nginx-1.2.2 --with-ngx-config-opt="--prefix=/usr/local/nginx"
+
+* mruby build
+
+        make build_mruby
 
 * ngx_mruby build
 
-        ./configure --enable-mrbgems --with-ngx-src-root=nginx/nginx-1.2.2 --with-ngx-config-opt="--prefix=/usr/local/nginx.new"
         make
 
 

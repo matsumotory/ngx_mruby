@@ -24,4 +24,9 @@ char *ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *con
 char *ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
+#if defined(NDK) && NDK
+char *ngx_http_mruby_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_http_mruby_set_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+#endif
+
 #endif // NGX_HTTP_MRUBY_DIRECTIVE_H

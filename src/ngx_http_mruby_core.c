@@ -13,6 +13,7 @@
 #include "mruby/data.h"
 #include "mruby/compile.h"
 #include "mruby/string.h"
+#include "mruby/array.h"
 #include "mruby/variable.h"
 
 #include <nginx.h>
@@ -42,6 +43,47 @@ static void ngx_mrb_irep_clean(ngx_mrb_state_t *state)
     state->mrb->irep_len = state->n;
     mrb_irep_free(state->mrb, state->mrb->irep[state->n]);
     state->mrb->exc = 0;
+}
+
+ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t cached,
+                           ngx_http_variable_value_t *args, size_t nargs, ngx_str_t *result)
+{
+    ngx_uint_t i;
+    mrb_value ARGV, mrb_result;
+
+    ARGV = mrb_ary_new_capa(state->mrb, nargs);
+
+    for (i = 0; i < nargs; i++) {
+        mrb_ary_push(state->mrb, ARGV, mrb_str_new(state->mrb, (char *)args[i].data, args[i].len));
+    }
+    mrb_define_global_const(state->mrb, "ARGV", ARGV);
+
+    mrb_result = mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[state->n]), mrb_nil_value());
+    if (state->mrb->exc) {
+        if (state->code_type == NGX_MRB_CODE_TYPE_FILE) {
+            ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, state->code.file);
+        } else {
+            ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
+        }
+        mrb_gc_arena_restore(state->mrb, state->ai);
+        if (!cached) {
+            ngx_mrb_irep_clean(state);
+        }
+        return NGX_ERROR;
+    }
+    
+    if (mrb_type(mrb_result) != MRB_TT_STRING) {
+        mrb_result = mrb_funcall(state->mrb, mrb_result, "to_s", 0, NULL);
+    }
+
+    result->data = (u_char *)RSTRING_PTR(mrb_result);
+    result->len  = ngx_strlen(result->data);
+
+    mrb_gc_arena_restore(state->mrb, state->ai);
+    if (!cached) {
+        ngx_mrb_irep_clean(state);
+    }
+    return NGX_OK;
 }
 
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t cached)
@@ -169,6 +211,19 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
 
     ngx_http_request_t *r = ngx_mrb_get_request();
     ngx_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+
+    mrb_get_args(mrb, "o", &argv);
+
+    if (mrb_type(argv) != MRB_TT_STRING) {
+        argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
+    }
+
+    ns.data     = (u_char *)RSTRING_PTR(argv);
+    ns.len      = ngx_strlen(ns.data);
+    if (ns.len == 0) {
+        return self;
+    }
+
     if (ctx->rputs_chain == NULL) {
         chain       = ngx_pcalloc(r->pool, sizeof(rputs_chain_list_t));
         chain->out  = ngx_alloc_chain_link(r->pool);
@@ -182,14 +237,6 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     (*chain->last)->buf = b;
     (*chain->last)->next = NULL;
 
-    mrb_get_args(mrb, "o", &argv);
-
-    if (mrb_type(argv) != MRB_TT_STRING) {
-        argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
-    }
-
-    ns.data     = (u_char *)RSTRING_PTR(argv);
-    ns.len      = ngx_strlen(ns.data);
     str         = ngx_pstrdup(r->pool, &ns);
     str[ns.len] = '\0';
     (*chain->last)->buf->pos    = str;
@@ -267,8 +314,15 @@ static mrb_value ngx_mrb_get_nginx_version(mrb_state *mrb, mrb_value self)
     return mrb_str_new_cstr(mrb, NGINX_VERSION);
 }
 
+static mrb_value ngx_mrb_server_name(mrb_state *mrb, mrb_value self)
+{
+    return mrb_str_new_cstr(mrb, NGINX_VAR);
+}
+
 void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
 {
+    mrb_define_method(mrb, mrb->kernel_module, "server_name", ngx_mrb_server_name, ARGS_NONE());
+
     mrb_define_const(mrb, class, "NGX_OK",                              mrb_fixnum_value(NGX_OK));
     mrb_define_const(mrb, class, "NGX_ERROR",                           mrb_fixnum_value(NGX_ERROR));
     mrb_define_const(mrb, class, "NGX_AGAIN",                           mrb_fixnum_value(NGX_AGAIN));
