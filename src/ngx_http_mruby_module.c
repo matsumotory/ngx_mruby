@@ -222,6 +222,7 @@ extern ngx_http_request_t *ngx_mruby_request_state;
  
 static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
 {
+    ngx_mrb_push_ngx_conf(cf);
     ngx_http_mruby_loc_conf_t  *conf;
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mruby_loc_conf_t));
@@ -370,4 +371,17 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
     }
 
     return NGX_OK;
+}
+
+ngx_conf_t *ngx_mruby_ngx_conf;
+
+ngx_int_t ngx_mrb_push_ngx_conf(ngx_conf_t *cf)
+{
+    ngx_mruby_ngx_conf = cf;
+    return NGX_OK;
+}
+
+ngx_conf_t* ngx_mrb_get_ngx_conf()
+{
+    return ngx_mruby_ngx_conf;
 }
