@@ -8,6 +8,8 @@
 #define NGX_HTTP_MRUBY_STATE_H
 
 #include <nginx.h>
+#include <mruby.h>
+#include <mruby/value.h>
 #include "ngx_http_mruby_core.h"
 
 ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state);
