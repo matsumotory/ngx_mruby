@@ -78,6 +78,7 @@ static mrb_value ngx_mrb_get_request_headers_out(mrb_state *mrb, mrb_value self)
 static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers, ngx_uint_t assign);
 static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self);
+static mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self);
 
 ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r)
 {
@@ -226,7 +227,6 @@ static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-static mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
 {
     const char               *iv_var_str         = "@iv_var";
@@ -234,8 +234,7 @@ static mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
     struct RClass            *class_var, *ngx_class;
 
     iv_var = mrb_iv_get(mrb, self, mrb_intern(mrb, iv_var_str));
-    if (mrb_nil_p(iv_var))
-    {
+    if (mrb_nil_p(iv_var)) {
         // get class from Nginx::Var
         ngx_class = mrb_class_get(mrb, "Nginx");
         class_var = (struct RClass*)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, "Var")));
@@ -269,6 +268,7 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
     mrb_define_method(mrb, class_request, "protocol=", ngx_mrb_set_request_protocol, ARGS_ANY());
     mrb_define_method(mrb, class_request, "args", ngx_mrb_get_request_args, ARGS_NONE());
     mrb_define_method(mrb, class_request, "args=", ngx_mrb_set_request_args, ARGS_ANY());
+    mrb_define_method(mrb, class_request, "var", ngx_mrb_get_request_var, ARGS_NONE());
 
     class_headers_in = mrb_define_class_under(mrb, class, "Headers_in", mrb->object_class);
     mrb_define_method(mrb, class_headers_in, "[]", ngx_mrb_get_request_headers_in, ARGS_ANY());
@@ -279,6 +279,4 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
     mrb_define_method(mrb, class_headers_out, "[]", ngx_mrb_get_request_headers_out, ARGS_ANY());
     mrb_define_method(mrb, class_headers_out, "[]=", ngx_mrb_set_request_headers_out, ARGS_ANY());
     mrb_define_method(mrb, class_headers_out, "headers_out_hash", ngx_mrb_get_request_headers_out_hash, ARGS_ANY());
-
-    mrb_define_method(mrb, class_request, "var", ngx_mrb_get_request_var, ARGS_NONE());
 }
