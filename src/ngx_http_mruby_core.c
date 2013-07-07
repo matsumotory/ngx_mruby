@@ -37,6 +37,7 @@ static void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_
 static void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r, char *code_file);
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
+static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self);
 
 static void ngx_mrb_irep_clean(ngx_mrb_state_t *state)
 {
@@ -319,6 +320,110 @@ static mrb_value ngx_mrb_server_name(mrb_state *mrb, mrb_value self)
     return mrb_str_new_cstr(mrb, NGINX_VAR);
 }
 
+// like Nginx rewrite keywords
+// used like this:
+// => http code 3xx location in browser
+// => internal redirection in nginx
+static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
+{
+    int                     argc;
+    u_char                  *str;
+    ngx_buf_t               *b;
+    ngx_int_t               rc;
+    mrb_value               uri, code;
+    ngx_str_t               ns;
+    ngx_mruby_ctx_t         *ctx;
+    ngx_table_elt_t         *location;
+    rputs_chain_list_t      *chain;
+
+    ngx_http_request_t *r = ngx_mrb_get_request();
+    argc = mrb_get_args(mrb, "o|oo", &uri, &code);
+
+    // get status code from args
+    if (argc == 2) {
+        rc = mrb_fixnum(code);
+    } else {
+        rc = NGX_HTTP_MOVED_TEMPORARILY;
+    }
+
+    // get redirect uri from args
+    if (mrb_type(uri) != MRB_TT_STRING) {
+        uri = mrb_funcall(mrb, uri, "to_s", 0, NULL);
+    }
+
+    // save location uri to ns
+    ns.data     = (u_char *)RSTRING_PTR(uri);
+    ns.len      = ngx_strlen(ns.data);
+    if (ns.len == 0) {
+        return mrb_nil_value();
+    }
+
+    // if uri start with scheme prefix
+    // return 3xx for redirect
+    // else generate a internal redirection and response to raw request
+    // request.path is not changed
+    if (ngx_strncmp(ns.data, "http://", sizeof("http://") - 1) == 0 
+        || ngx_strncmp(ns.data, "https://", sizeof("https://") - 1) == 0 
+        || ngx_strncmp(ns.data, "$scheme", sizeof("$scheme") - 1) == 0) {    
+        ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+        if (ctx == NULL) {
+            ngx_log_error(NGX_LOG_ERR
+                , r->connection->log
+                , 0
+                , "get mruby context failed."
+            );
+        }
+
+        if (ctx->rputs_chain == NULL) {
+            chain       = ngx_pcalloc(r->pool, sizeof(rputs_chain_list_t));
+            chain->out  = ngx_alloc_chain_link(r->pool);
+            chain->last = &chain->out;
+        } else {
+            chain = ctx->rputs_chain;
+            (*chain->last)->next = ngx_alloc_chain_link(r->pool);
+            chain->last = &(*chain->last)->next;
+        }
+
+        // allocate space for body
+        b = ngx_calloc_buf(r->pool);
+        (*chain->last)->buf = b;
+        (*chain->last)->next = NULL;
+
+        str         = ngx_pstrdup(r->pool, &ns);
+        str[ns.len] = '\0';
+        (*chain->last)->buf->pos    = str;
+        (*chain->last)->buf->last   = str+ns.len;
+        (*chain->last)->buf->memory = 1;
+        ctx->rputs_chain = chain;
+        ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
+
+        if (r->headers_out.content_length_n == -1) {
+            r->headers_out.content_length_n += ns.len + 1;
+        } else {
+            r->headers_out.content_length_n += ns.len;
+        }
+
+        // build redirect location
+        location = ngx_list_push(&r->headers_out.headers);
+        location->hash = 1;
+        ngx_str_set(&location->key, "Location");
+        location->value = ns;
+        location->lowcase_key = ngx_pnalloc(r->pool, location->value.len);
+        ngx_strlow(location->lowcase_key, location->value.data, location->value.len);
+
+        // set location and response code for hreaders
+        r->headers_out.location = location;
+        r->headers_out.status = rc;
+
+        ngx_http_send_header(r);
+        ngx_http_output_filter(r, chain->out);
+    } else {
+        ngx_http_internal_redirect(r, &ns, &r->args);
+    }
+
+    return self;
+}
+
 void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
 {
     mrb_define_method(mrb, mrb->kernel_module, "server_name", ngx_mrb_server_name, ARGS_NONE());
@@ -383,4 +488,5 @@ void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
     mrb_define_class_method(mrb, class, "errlogger",                    ngx_mrb_errlogger,                  ARGS_ANY());
     mrb_define_class_method(mrb, class, "ngx_mruby_version",            ngx_mrb_get_ngx_mruby_version,      ARGS_NONE());
     mrb_define_class_method(mrb, class, "nginx_version",                ngx_mrb_get_nginx_version,          ARGS_NONE());
+    mrb_define_class_method(mrb, class, "redirect",                     ngx_mrb_redirect,                      ARGS_ANY());
 }
