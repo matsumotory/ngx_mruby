@@ -12,7 +12,7 @@
 static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *conf, code_type_t type);
 #endif
 
-char * ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 { 
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_http_mruby_loc_conf_t *flcf;
@@ -33,7 +33,7 @@ char * ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *
     return NGX_CONF_OK;
 }
 
-char * ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 { 
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_str_t *value;
@@ -54,7 +54,7 @@ char * ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, v
     return NGX_CONF_OK;
 }
 
-char * ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 { 
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_str_t *value;
@@ -73,7 +73,7 @@ char * ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     return NGX_CONF_OK;
 }
 
-char * ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 { 
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_str_t *value;
@@ -92,7 +92,7 @@ char * ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *con
     return NGX_CONF_OK;
 }
 
-char * ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_str_t *value;
@@ -111,7 +111,7 @@ char * ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     return NGX_CONF_OK;
 }
 
-char * ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_str_t *value;
@@ -130,7 +130,7 @@ char * ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
-char * ngx_http_mruby_post_read_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_post_read_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_str_t *value;
@@ -148,7 +148,7 @@ char * ngx_http_mruby_post_read_inline(ngx_conf_t *cf, ngx_command_t *cmd, void 
     return NGX_CONF_OK;
 }
 
-char * ngx_http_mruby_server_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_server_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_str_t *value;
@@ -166,7 +166,7 @@ char * ngx_http_mruby_server_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, 
     return NGX_CONF_OK;
 }
 
-char * ngx_http_mruby_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_str_t *value;
@@ -184,7 +184,7 @@ char * ngx_http_mruby_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     return NGX_CONF_OK;
 }
 
-char * ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_str_t *value;
@@ -202,7 +202,7 @@ char * ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     return NGX_CONF_OK;
 }
 
-char * ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_str_t *value;
@@ -220,7 +220,7 @@ char * ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     return NGX_CONF_OK;
 }
 
-char * ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+char *ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
     ngx_str_t *value;
