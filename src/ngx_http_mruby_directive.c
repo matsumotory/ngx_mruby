@@ -258,6 +258,10 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
     if (filter_data == NULL) {
         return NGX_CONF_ERROR;
     }
+    filter_data->state = ngx_pcalloc(cf->pool, sizeof(ngx_mrb_state_t));
+    if (filter_data->state == NULL) {
+        return NULL;
+    }
     filter_data->size   = filter.size;
     filter_data->script = value[2];
     if (type == NGX_MRB_CODE_TYPE_FILE) {
