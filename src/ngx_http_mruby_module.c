@@ -50,17 +50,21 @@
 #include "ngx_http_mruby_request.h"
 #include "ngx_http_mruby_handler.h"
 #include "ngx_http_mruby_directive.h"
+#include "ngx_http_mruby_state.h"
 
-#define NGX_MRUBY_MERGE_STATE(prev_state, conf_state)   \
-    if (prev_state == NGX_CONF_UNSET_PTR) {             \
-        prev_state = conf_state;                        \
+#define NGX_MRUBY_MERGE_CODE(prev_code, conf_code)   \
+    if (prev_code == NGX_CONF_UNSET_PTR) {             \
+        prev_code = conf_code;                        \
     }
 
 // set conf
+static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf);
+static char *ngx_http_mruby_init_main_conf(ngx_conf_t *cf, void *conf);
 static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
 
 // set init function
+static ngx_int_t ngx_http_mruby_preinit(ngx_conf_t *cf);
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf);
 static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf);
 
@@ -190,17 +194,17 @@ static ngx_command_t ngx_http_mruby_commands[] = {
 };
  
 static ngx_http_module_t ngx_http_mruby_module_ctx = {
-    NULL,                          /* preconfiguration */
-    ngx_http_mruby_init,           /* postconfiguration */
+    ngx_http_mruby_preinit,          /* preconfiguration */
+    ngx_http_mruby_init,             /* postconfiguration */
  
-    NULL,                          /* create main configuration */
-    NULL,                          /* init main configuration */
+    ngx_http_mruby_create_main_conf, /* create main configuration */
+    ngx_http_mruby_init_main_conf,   /* init main configuration */
  
-    NULL,                          /* create server configuration */
-    NULL,                          /* merge server configuration */
+    NULL,                            /* create server configuration */
+    NULL,                            /* merge server configuration */
  
-    ngx_http_mruby_create_loc_conf,/* create location configuration */
-    ngx_http_mruby_merge_loc_conf  /* merge location configuration */
+    ngx_http_mruby_create_loc_conf,  /* create location configuration */
+    ngx_http_mruby_merge_loc_conf    /* merge location configuration */
 };
  
 ngx_module_t ngx_http_mruby_module = {
@@ -218,31 +222,51 @@ ngx_module_t ngx_http_mruby_module = {
     NGX_MODULE_V1_PADDING
 };
 
-extern ngx_http_request_t *ngx_mruby_request_state;
+extern ngx_http_request_t *ngx_mruby_request;
  
+static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf)
+{
+    ngx_http_mruby_main_conf_t *mmcf;
+
+    mmcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mruby_main_conf_t));
+    if (mmcf == NULL) {
+        return NULL;
+    }
+    mmcf->state = ngx_pcalloc(cf->pool, sizeof(ngx_mrb_state_t));
+    if (mmcf->state == NULL) {
+        return NULL;
+    }
+
+    return mmcf;
+}
+
+static char *ngx_http_mruby_init_main_conf(ngx_conf_t *cf, void *conf)
+{
+    return NGX_CONF_OK;
+}
+
 static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
 {
-    ngx_mrb_push_ngx_conf(cf);
-    ngx_http_mruby_loc_conf_t  *conf;
+    ngx_http_mruby_loc_conf_t *conf;
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mruby_loc_conf_t));
     if (conf == NULL) {
         return NULL;
     }
 
-    conf->post_read_state      = NGX_CONF_UNSET_PTR;
-    conf->server_rewrite_state = NGX_CONF_UNSET_PTR;
-    conf->rewrite_state        = NGX_CONF_UNSET_PTR;
-    conf->access_state         = NGX_CONF_UNSET_PTR;
-    conf->handler_state        = NGX_CONF_UNSET_PTR;
-    conf->log_handler_state    = NGX_CONF_UNSET_PTR;
+    conf->post_read_code      = NGX_CONF_UNSET_PTR;
+    conf->server_rewrite_code = NGX_CONF_UNSET_PTR;
+    conf->rewrite_code        = NGX_CONF_UNSET_PTR;
+    conf->access_code         = NGX_CONF_UNSET_PTR;
+    conf->handler_code        = NGX_CONF_UNSET_PTR;
+    conf->log_handler_code    = NGX_CONF_UNSET_PTR;
 
-    conf->post_read_inline_state      = NGX_CONF_UNSET_PTR;
-    conf->server_rewrite_inline_state = NGX_CONF_UNSET_PTR;
-    conf->rewrite_inline_state        = NGX_CONF_UNSET_PTR;
-    conf->access_inline_state         = NGX_CONF_UNSET_PTR;
-    conf->content_inline_state        = NGX_CONF_UNSET_PTR;
-    conf->log_inline_state            = NGX_CONF_UNSET_PTR;
+    conf->post_read_inline_code      = NGX_CONF_UNSET_PTR;
+    conf->server_rewrite_inline_code = NGX_CONF_UNSET_PTR;
+    conf->rewrite_inline_code        = NGX_CONF_UNSET_PTR;
+    conf->access_inline_code         = NGX_CONF_UNSET_PTR;
+    conf->content_inline_code        = NGX_CONF_UNSET_PTR;
+    conf->log_inline_code            = NGX_CONF_UNSET_PTR;
 
     conf->cached = NGX_CONF_UNSET;
 
@@ -254,32 +278,42 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     ngx_http_mruby_loc_conf_t *prev = parent;
     ngx_http_mruby_loc_conf_t *conf = child;
 
-    NGX_MRUBY_MERGE_STATE(prev->post_read_state,      conf->post_read_state);
-    NGX_MRUBY_MERGE_STATE(prev->server_rewrite_state, conf->server_rewrite_state);
-    NGX_MRUBY_MERGE_STATE(prev->rewrite_state,        conf->rewrite_state);
-    NGX_MRUBY_MERGE_STATE(prev->access_state,         conf->access_state);
-    NGX_MRUBY_MERGE_STATE(prev->handler_state,        conf->handler_state);
-    NGX_MRUBY_MERGE_STATE(prev->log_handler_state,    conf->log_handler_state);
+    NGX_MRUBY_MERGE_CODE(prev->post_read_code,      conf->post_read_code);
+    NGX_MRUBY_MERGE_CODE(prev->server_rewrite_code, conf->server_rewrite_code);
+    NGX_MRUBY_MERGE_CODE(prev->rewrite_code,        conf->rewrite_code);
+    NGX_MRUBY_MERGE_CODE(prev->access_code,         conf->access_code);
+    NGX_MRUBY_MERGE_CODE(prev->handler_code,        conf->handler_code);
+    NGX_MRUBY_MERGE_CODE(prev->log_handler_code,    conf->log_handler_code);
 
-    NGX_MRUBY_MERGE_STATE(prev->post_read_inline_state,      conf->post_read_inline_state);
-    NGX_MRUBY_MERGE_STATE(prev->server_rewrite_inline_state, conf->server_rewrite_inline_state);
-    NGX_MRUBY_MERGE_STATE(prev->rewrite_inline_state,        conf->rewrite_inline_state);
-    NGX_MRUBY_MERGE_STATE(prev->access_inline_state,         conf->access_inline_state);
-    NGX_MRUBY_MERGE_STATE(prev->content_inline_state,        conf->content_inline_state);
-    NGX_MRUBY_MERGE_STATE(prev->log_inline_state,            conf->log_inline_state);
+    NGX_MRUBY_MERGE_CODE(prev->post_read_inline_code,      conf->post_read_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->server_rewrite_inline_code, conf->server_rewrite_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->rewrite_inline_code,        conf->rewrite_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->access_inline_code,         conf->access_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->content_inline_code,        conf->content_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->log_inline_code,            conf->log_inline_code);
 
     ngx_conf_merge_value(conf->cached, prev->cached, 0);
 
     return NGX_CONF_OK;
 }
 
+static ngx_int_t ngx_http_mruby_preinit(ngx_conf_t *cf)
+{
+    ngx_http_mruby_main_conf_t *mmcf;
+
+    mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
+    ngx_http_mruby_shared_state_init(mmcf->state);
+
+    return NGX_OK;
+}
+
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
 {
-    ngx_http_core_main_conf_t *cmcf;
-
-    ngx_mruby_request_state = NULL;
+    ngx_http_core_main_conf_t  *cmcf;
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+
+    ngx_mruby_request = NULL;
 
     if (ngx_http_mruby_handler_init(cmcf) != NGX_OK) {
         return NGX_ERROR;
@@ -371,17 +405,4 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
     }
 
     return NGX_OK;
-}
-
-ngx_conf_t *ngx_mruby_ngx_conf;
-
-ngx_int_t ngx_mrb_push_ngx_conf(ngx_conf_t *cf)
-{
-    ngx_mruby_ngx_conf = cf;
-    return NGX_OK;
-}
-
-ngx_conf_t* ngx_mrb_get_ngx_conf()
-{
-    return ngx_mruby_ngx_conf;
 }
