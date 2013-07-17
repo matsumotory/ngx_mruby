@@ -39,14 +39,14 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self);
 
-static void ngx_mrb_irep_clean(ngx_mrb_state_t *state)
+static void ngx_mrb_irep_clean(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
-    state->mrb->irep_len = state->n;
-    mrb_irep_free(state->mrb, state->mrb->irep[state->n]);
+    state->mrb->irep_len = code->n;
+    mrb_irep_free(state->mrb, state->mrb->irep[code->n]);
     state->mrb->exc = 0;
 }
 
-ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t cached,
+ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
                            ngx_http_variable_value_t *args, size_t nargs, ngx_str_t *result)
 {
     ngx_uint_t i;
@@ -59,16 +59,16 @@ ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_fl
     }
     mrb_define_global_const(state->mrb, "ARGV", ARGV);
 
-    mrb_result = mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[state->n]), mrb_nil_value());
+    mrb_result = mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[code->n]), mrb_nil_value());
     if (state->mrb->exc) {
-        if (state->code_type == NGX_MRB_CODE_TYPE_FILE) {
-            ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, state->code.file);
+        if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
+            ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, code->code.file);
         } else {
             ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
         }
         mrb_gc_arena_restore(state->mrb, state->ai);
         if (!cached) {
-            ngx_mrb_irep_clean(state);
+            ngx_mrb_irep_clean(state, code);
         }
         return NGX_ERROR;
     }
@@ -82,16 +82,16 @@ ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_fl
 
     mrb_gc_arena_restore(state->mrb, state->ai);
     if (!cached) {
-        ngx_mrb_irep_clean(state);
+        ngx_mrb_irep_clean(state, code);
     }
     return NGX_OK;
 }
 
-ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t cached)
+ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached)
 {
     ngx_mruby_ctx_t *ctx;
     rputs_chain_list_t *chain;
-    if (state == NGX_CONF_UNSET_PTR) {
+    if (state == NGX_CONF_UNSET_PTR || code == NGX_CONF_UNSET_PTR) {
         return NGX_DECLINED;
     }
     if ((ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
@@ -106,20 +106,26 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_flag_t 
     }
     ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
     ngx_mrb_push_request(r);
-    mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[state->n]), mrb_nil_value());
+    if (!cached) {
+        state->ai = mrb_gc_arena_save(state->mrb);
+    }
+    mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[code->n]), mrb_nil_value());
     if (state->mrb->exc) {
-        if (state->code_type == NGX_MRB_CODE_TYPE_FILE) {
-            ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, state->code.file);
+        if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
+            ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, code->code.file);
         } else {
             ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
         }
     }
     mrb_gc_arena_restore(state->mrb, state->ai);
     if (!cached) {
-        ngx_mrb_irep_clean(state);
+        ngx_mrb_irep_clean(state, code);
     }
     if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
         chain = ctx->rputs_chain;
+        if (chain == NULL) {
+            return NGX_OK;
+        }
         if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
             r->headers_out.status = NGX_HTTP_OK;
             (*chain->last)->buf->last_buf = 1;

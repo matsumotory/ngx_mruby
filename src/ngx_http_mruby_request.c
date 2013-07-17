@@ -70,7 +70,7 @@ static mrb_value ngx_mrb_get_request_headers_##direction##_hash(mrb_state *mrb, 
     return hash;                                                        \
 }
 
-ngx_http_request_t *ngx_mruby_request_state;
+ngx_http_request_t *ngx_mruby_request;
 
 static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers);
 static mrb_value ngx_mrb_get_request_headers_in(mrb_state *mrb, mrb_value self);
@@ -82,13 +82,13 @@ static mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self);
 
 ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r)
 {
-    ngx_mruby_request_state = r;
+    ngx_mruby_request = r;
     return NGX_OK;
 }
 
 ngx_http_request_t *ngx_mrb_get_request(void)
 {
-    return ngx_mruby_request_state;
+    return ngx_mruby_request;
 }
 
 // request member getter
