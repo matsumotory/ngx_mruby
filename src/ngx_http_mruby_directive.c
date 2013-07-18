@@ -12,6 +12,51 @@
 static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *conf, code_type_t type);
 #endif
 
+char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{ 
+    ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
+    ngx_str_t *value;
+    ngx_mrb_code_t *code;
+
+    if (mmcf->init_code != NULL) {
+        return "[Use either 'mruby_init' or 'mruby_init_inline']";
+    }
+
+    value = cf->args->elts;
+
+    code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
+    if (code == NGX_CONF_UNSET_PTR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
+        return NGX_CONF_ERROR;
+    }
+    mmcf->init_code = code;
+    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+
+    return NGX_CONF_OK;
+}
+
+char *ngx_http_mruby_init_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{ 
+    ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
+    ngx_str_t *value;
+    ngx_mrb_code_t *code;
+
+    if (mmcf->init_code != NULL) {
+        return "is duplicated";
+    }
+
+    value = cf->args->elts;
+
+    code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
+    if (code == NGX_CONF_UNSET_PTR) {
+        return NGX_CONF_ERROR;
+    }
+    mmcf->init_code = code;
+    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+
+    return NGX_CONF_OK;
+}
+
 char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 { 
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);

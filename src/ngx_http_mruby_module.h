@@ -31,6 +31,7 @@ extern ngx_module_t  ngx_http_mruby_module;
 
 typedef struct ngx_http_mruby_main_conf_t {
     ngx_mrb_state_t *state;
+    ngx_mrb_code_t  *init_code;
 } ngx_http_mruby_main_conf_t;
 
 typedef struct ngx_http_mruby_loc_conf_t {

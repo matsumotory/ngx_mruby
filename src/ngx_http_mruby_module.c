@@ -69,6 +69,21 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf);
 static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf);
 
 static ngx_command_t ngx_http_mruby_commands[] = {
+
+    { ngx_string("mruby_init_inline"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_http_mruby_init_inline,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("mruby_init"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_http_mruby_init_phase,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      0,
+      NULL },
+
     { ngx_string("mruby_cache"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -310,13 +325,19 @@ static ngx_int_t ngx_http_mruby_preinit(ngx_conf_t *cf)
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
 {
     ngx_http_core_main_conf_t  *cmcf;
+    ngx_http_mruby_main_conf_t *mmcf;
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+    mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
 
     ngx_mruby_request = NULL;
 
     if (ngx_http_mruby_handler_init(cmcf) != NGX_OK) {
         return NGX_ERROR;
+    }
+
+    if (mmcf->init_code != NULL) {
+        return ngx_mrb_run_conf(cf, mmcf->state, mmcf->init_code);
     }
 
     return NGX_OK;

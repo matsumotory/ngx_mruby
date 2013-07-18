@@ -35,6 +35,9 @@ ngx_module_t  ngx_http_mruby_module;
 
 static void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
 static void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r, char *code_file);
+static void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
+static void ngx_mrb_raise_file_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf, char *code_file);
+
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self);
@@ -44,6 +47,23 @@ static void ngx_mrb_irep_clean(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
     state->mrb->irep_len = code->n;
     mrb_irep_free(state->mrb, state->mrb->irep[code->n]);
     state->mrb->exc = 0;
+}
+
+ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
+{
+    mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[code->n]), mrb_nil_value());
+    if (state->mrb->exc) {
+        if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
+            ngx_mrb_raise_file_conf_error(state->mrb, mrb_obj_value(state->mrb->exc), cf, code->code.file);
+        } else {
+            ngx_mrb_raise_conf_error(state->mrb, mrb_obj_value(state->mrb->exc), cf);
+        }
+        mrb_gc_arena_restore(state->mrb, state->ai);
+        return NGX_ERROR;
+    }
+    
+    mrb_gc_arena_restore(state->mrb, state->ai);
+    return NGX_OK;
 }
 
 ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
@@ -158,6 +178,24 @@ static void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_
     }
 }
 
+static void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf)
+{  
+    struct RString *str;
+    char *err_out;
+    
+    obj = mrb_funcall(mrb, obj, "inspect", 0);
+    if (mrb_type(obj) == MRB_TT_STRING) {
+        str = mrb_str_ptr(obj);
+        err_out = str->ptr;
+        ngx_conf_log_error(NGX_LOG_ERR
+            , cf
+            , 0
+            , "mrb_run failed. error: %s"
+            , err_out
+        );
+    }
+}
+
 static void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r, char *code_file)
 {  
     struct RString *str;
@@ -169,6 +207,25 @@ static void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_req
         err_out = str->ptr;
         ngx_log_error(NGX_LOG_ERR
             , r->connection->log
+            , 0
+            , "mrb_run failed. file: %s error: %s"
+            , code_file
+            , err_out
+        );
+    }
+}
+
+static void ngx_mrb_raise_file_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf, char *code_file)
+{  
+    struct RString *str;
+    char *err_out;
+    
+    obj = mrb_funcall(mrb, obj, "inspect", 0);
+    if (mrb_type(obj) == MRB_TT_STRING) {
+        str = mrb_str_ptr(obj);
+        err_out = str->ptr;
+        ngx_conf_log_error(NGX_LOG_ERR
+            , cf
             , 0
             , "mrb_run failed. file: %s error: %s"
             , code_file
