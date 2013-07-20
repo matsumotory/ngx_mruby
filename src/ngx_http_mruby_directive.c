@@ -150,7 +150,7 @@ char *ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *con
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
     }
-    flcf->handler_code = code;
+    flcf->content_code = code;
     ngx_http_mruby_shared_state_compile(mmcf->state, code);
 
     return NGX_CONF_OK;
@@ -169,7 +169,7 @@ char *ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
     }
-    flcf->log_handler_code = code;
+    flcf->log_code = code;
     ngx_http_mruby_shared_state_compile(mmcf->state, code);
 
     return NGX_CONF_OK;
