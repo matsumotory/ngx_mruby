@@ -39,8 +39,8 @@ typedef struct ngx_http_mruby_loc_conf_t {
     ngx_mrb_code_t *server_rewrite_code;
     ngx_mrb_code_t *rewrite_code;
     ngx_mrb_code_t *access_code;
-    ngx_mrb_code_t *handler_code;
-    ngx_mrb_code_t *log_handler_code;
+    ngx_mrb_code_t *content_code;
+    ngx_mrb_code_t *log_code;
     ngx_mrb_code_t *post_read_inline_code;
     ngx_mrb_code_t *server_rewrite_inline_code;
     ngx_mrb_code_t *rewrite_inline_code;

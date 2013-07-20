@@ -273,8 +273,8 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
     conf->server_rewrite_code = NGX_CONF_UNSET_PTR;
     conf->rewrite_code        = NGX_CONF_UNSET_PTR;
     conf->access_code         = NGX_CONF_UNSET_PTR;
-    conf->handler_code        = NGX_CONF_UNSET_PTR;
-    conf->log_handler_code    = NGX_CONF_UNSET_PTR;
+    conf->content_code        = NGX_CONF_UNSET_PTR;
+    conf->log_code    = NGX_CONF_UNSET_PTR;
 
     conf->post_read_inline_code      = NGX_CONF_UNSET_PTR;
     conf->server_rewrite_inline_code = NGX_CONF_UNSET_PTR;
@@ -297,8 +297,8 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     NGX_MRUBY_MERGE_CODE(prev->server_rewrite_code, conf->server_rewrite_code);
     NGX_MRUBY_MERGE_CODE(prev->rewrite_code,        conf->rewrite_code);
     NGX_MRUBY_MERGE_CODE(prev->access_code,         conf->access_code);
-    NGX_MRUBY_MERGE_CODE(prev->handler_code,        conf->handler_code);
-    NGX_MRUBY_MERGE_CODE(prev->log_handler_code,    conf->log_handler_code);
+    NGX_MRUBY_MERGE_CODE(prev->content_code,        conf->content_code);
+    NGX_MRUBY_MERGE_CODE(prev->log_code,    conf->log_code);
 
     NGX_MRUBY_MERGE_CODE(prev->post_read_inline_code,      conf->post_read_inline_code);
     NGX_MRUBY_MERGE_CODE(prev->server_rewrite_inline_code, conf->server_rewrite_inline_code);
