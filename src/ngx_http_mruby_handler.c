@@ -22,125 +22,41 @@
         }                                                               \
     } while(0)
 
-ngx_int_t ngx_http_mruby_post_read_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
-        clcf->cached, 
-        mmcf->state,
-        clcf->post_read_code,
-        ngx_http_mruby_state_reinit_from_file
-    );
-    return ngx_mrb_run(r, mmcf->state, clcf->post_read_code, clcf->cached);
+#define NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(handler_name, code)         \
+ngx_int_t ngx_http_mruby_##handler_name##_handler(ngx_http_request_t *r) \
+{                                                                       \
+    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module); \
+    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module); \
+    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(                               \
+        clcf->cached,                                                   \
+        mmcf->state,                                                    \
+        code,                                                           \
+        ngx_http_mruby_state_reinit_from_file                           \
+    );                                                                  \
+    return ngx_mrb_run(r, mmcf->state, code, clcf->cached);             \
 }
 
-ngx_int_t ngx_http_mruby_server_rewrite_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
-        clcf->cached, 
-        mmcf->state,
-        clcf->server_rewrite_code,
-        ngx_http_mruby_state_reinit_from_file
-    );
-    return ngx_mrb_run(r, mmcf->state, clcf->server_rewrite_code, clcf->cached);
+#define NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(handler_name, code)  \
+ngx_int_t ngx_http_mruby_##handler_name##_inline_handler(ngx_http_request_t *r) \
+{                                                                       \
+    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module); \
+    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module); \
+    return ngx_mrb_run(r, mmcf->state, code, 1);                        \
 }
 
-ngx_int_t ngx_http_mruby_rewrite_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
-        clcf->cached, 
-        mmcf->state,
-        clcf->rewrite_code,
-        ngx_http_mruby_state_reinit_from_file
-    );
-    return ngx_mrb_run(r, mmcf->state, clcf->rewrite_code, clcf->cached);
-}
+NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(post_read,      clcf->post_read_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(server_rewrite, clcf->server_rewrite_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(rewrite,        clcf->rewrite_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(access,         clcf->access_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(content,        clcf->content_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(log,            clcf->log_code)
 
-ngx_int_t ngx_http_mruby_access_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
-        clcf->cached, 
-        mmcf->state,
-        clcf->access_code,
-        ngx_http_mruby_state_reinit_from_file
-    );
-    return ngx_mrb_run(r, mmcf->state, clcf->access_code, clcf->cached);
-}
-
-ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
-        clcf->cached, 
-        mmcf->state,
-        clcf->handler_code,
-        ngx_http_mruby_state_reinit_from_file
-    );
-    return ngx_mrb_run(r, mmcf->state, clcf->handler_code, clcf->cached);
-}
-
-ngx_int_t ngx_http_mruby_log_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
-        clcf->cached, 
-        mmcf->state,
-        clcf->log_handler_code,
-        ngx_http_mruby_state_reinit_from_file
-    );
-    return ngx_mrb_run(r, mmcf->state, clcf->log_handler_code, clcf->cached);
-}
-
-ngx_int_t ngx_http_mruby_post_read_inline_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run(r, mmcf->state, clcf->post_read_inline_code, 1);
-}
-
-ngx_int_t ngx_http_mruby_server_rewrite_inline_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run(r, mmcf->state, clcf->server_rewrite_inline_code, 1);
-}
-
-ngx_int_t ngx_http_mruby_rewrite_inline_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run(r, mmcf->state, clcf->rewrite_inline_code, 1);
-}
-
-ngx_int_t ngx_http_mruby_access_inline_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run(r, mmcf->state, clcf->access_inline_code, 1);
-}
-
-ngx_int_t ngx_http_mruby_content_inline_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run(r, mmcf->state, clcf->content_inline_code, 1);
-}
-
-ngx_int_t ngx_http_mruby_log_inline_handler(ngx_http_request_t *r)
-{
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-    ngx_http_mruby_loc_conf_t  *clcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-    return ngx_mrb_run(r, mmcf->state, clcf->log_inline_code, 1);
-}
+NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(post_read,      clcf->post_read_inline_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(server_rewrite, clcf->server_rewrite_inline_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(rewrite,        clcf->rewrite_inline_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(access,         clcf->access_inline_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(content,        clcf->content_inline_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(log,            clcf->log_inline_code)
 
 #if defined(NDK) && NDK
 ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r, ngx_str_t *val,
