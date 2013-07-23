@@ -8,6 +8,7 @@
 #include <ngx_http.h>
 
 #include "ngx_http_mruby_module.h"
+#include "ngx_http_mruby_state.h"
 #include "ngx_http_mruby_filter_handler.h"
 
 static ngx_http_output_header_filter_pt ngx_http_next_header_filter;
@@ -30,13 +31,31 @@ void ngx_http_mruby_body_filter_init(void)
 }
 ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r)
 {
-    printf("%s\n", __FUNCTION__);
+    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
+    ngx_http_mruby_loc_conf_t  *mlcf = ngx_http_get_module_loc_conf(r,  ngx_http_mruby_module);
+    ngx_int_t rc;
+    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
+        mlcf->cached,
+        mmcf->state,
+        mlcf->header_filter_inline_code,
+        ngx_http_mruby_state_reinit_from_file
+    );
+    rc = ngx_mrb_run(r, mmcf->state, mlcf->header_filter_code, 1);
+    if (rc == NGX_DECLINED || rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
     return NGX_OK;
 }
 
 ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t *r)
 {
-    printf("%s\n", __FUNCTION__);
+    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
+    ngx_http_mruby_loc_conf_t  *mlcf = ngx_http_get_module_loc_conf(r,  ngx_http_mruby_module);
+    ngx_int_t rc;
+    rc = ngx_mrb_run(r, mmcf->state, mlcf->header_filter_inline_code, 1);
+    if (rc == NGX_DECLINED || rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
     return NGX_OK;
 }
 
@@ -54,8 +73,6 @@ ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r)
 
 static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
 {
-    printf("%s\n", __FUNCTION__);
-
     ngx_http_mruby_loc_conf_t *mlcf;
     ngx_http_mruby_ctx_t     *ctx;
     ngx_pool_cleanup_t *cln;
