@@ -22,15 +22,6 @@
 #include <ngx_log.h>
 #include <ngx_buf.h>
 
-typedef struct rputs_chain_list {
-    ngx_chain_t **last;
-    ngx_chain_t *out;
-} rputs_chain_list_t;
-
-typedef struct ngx_mruby_ctx {
-    rputs_chain_list_t *rputs_chain;
-} ngx_mruby_ctx_t;
-
 ngx_module_t  ngx_http_mruby_module;
 
 static void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
@@ -107,14 +98,52 @@ ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mr
     return NGX_OK;
 }
 
+ngx_int_t ngx_mrb_run_body_filter(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached, ngx_http_mruby_ctx_t *ctx)
+{
+    mrb_value ARGV, mrb_result;
+
+    ARGV = mrb_ary_new_capa(state->mrb, 1);
+
+    mrb_ary_push(state->mrb, ARGV, mrb_str_new(state->mrb, (char *)ctx->body, ctx->body_length));
+    mrb_define_global_const(state->mrb, "ARGV", ARGV);
+
+    mrb_result = mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[code->n]), mrb_nil_value());
+    if (state->mrb->exc) {
+        if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
+            ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, code->code.file);
+        } else {
+            ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
+        }
+        mrb_gc_arena_restore(state->mrb, state->ai);
+        if (!cached) {
+            ngx_mrb_irep_clean(state, code);
+        }
+        return NGX_ERROR;
+    }
+    
+    if (mrb_type(mrb_result) != MRB_TT_STRING) {
+        mrb_result = mrb_funcall(state->mrb, mrb_result, "to_s", 0, NULL);
+    }
+
+    ctx->body        = (u_char *)RSTRING_PTR(mrb_result);
+    ctx->body_length = ngx_strlen(ctx->body);
+
+    mrb_gc_arena_restore(state->mrb, state->ai);
+    if (!cached) {
+        ngx_mrb_irep_clean(state, code);
+    }
+    return NGX_OK;
+}
+
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached)
 {
-    ngx_mruby_ctx_t *ctx;
-    rputs_chain_list_t *chain;
+    ngx_http_mruby_ctx_t *ctx;
+    ngx_mrb_rputs_chain_list_t *chain;
     if (state == NGX_CONF_UNSET_PTR || code == NGX_CONF_UNSET_PTR) {
         return NGX_DECLINED;
     }
-    if ((ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
+    ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+    if (ctx == NULL && (ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
         ngx_log_error(NGX_LOG_ERR
             , r->connection->log
             , 0
@@ -236,8 +265,8 @@ static void ngx_mrb_raise_file_conf_error(mrb_state *mrb, mrb_value obj, ngx_con
 
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
 {
-    rputs_chain_list_t *chain;
-    ngx_mruby_ctx_t *ctx;
+    ngx_mrb_rputs_chain_list_t *chain;
+    ngx_http_mruby_ctx_t *ctx;
 
     ngx_http_request_t *r = ngx_mrb_get_request();
     mrb_int status = NGX_HTTP_OK;
@@ -269,12 +298,12 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
 {
     mrb_value argv;
     ngx_buf_t *b;
-    rputs_chain_list_t *chain;
+    ngx_mrb_rputs_chain_list_t *chain;
     u_char *str;
     ngx_str_t ns;
 
     ngx_http_request_t *r = ngx_mrb_get_request();
-    ngx_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+    ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
     mrb_get_args(mrb, "o", &argv);
 
@@ -289,7 +318,7 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     }
 
     if (ctx->rputs_chain == NULL) {
-        chain       = ngx_pcalloc(r->pool, sizeof(rputs_chain_list_t));
+        chain       = ngx_pcalloc(r->pool, sizeof(ngx_mrb_rputs_chain_list_t));
         chain->out  = ngx_alloc_chain_link(r->pool);
         chain->last = &chain->out;
     } else {
@@ -395,9 +424,9 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     ngx_int_t               rc;
     mrb_value               uri, code;
     ngx_str_t               ns;
-    ngx_mruby_ctx_t         *ctx;
+    ngx_http_mruby_ctx_t         *ctx;
     ngx_table_elt_t         *location;
-    rputs_chain_list_t      *chain;
+    ngx_mrb_rputs_chain_list_t      *chain;
 
     ngx_http_request_t *r = ngx_mrb_get_request();
     argc = mrb_get_args(mrb, "o|oo", &uri, &code);
@@ -438,7 +467,7 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
         }
 
         if (ctx->rputs_chain == NULL) {
-            chain       = ngx_pcalloc(r->pool, sizeof(rputs_chain_list_t));
+            chain       = ngx_pcalloc(r->pool, sizeof(ngx_mrb_rputs_chain_list_t));
             chain->out  = ngx_alloc_chain_link(r->pool);
             chain->last = &chain->out;
         } else {

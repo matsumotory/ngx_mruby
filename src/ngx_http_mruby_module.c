@@ -49,12 +49,13 @@
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 #include "ngx_http_mruby_handler.h"
+#include "ngx_http_mruby_filter_handler.h"
 #include "ngx_http_mruby_directive.h"
 #include "ngx_http_mruby_state.h"
 
-#define NGX_MRUBY_MERGE_CODE(prev_code, conf_code)   \
+#define NGX_MRUBY_MERGE_CODE(prev_code, conf_code)     \
     if (prev_code == NGX_CONF_UNSET_PTR) {             \
-        prev_code = conf_code;                        \
+        prev_code = conf_code;                         \
     }
 
 // set conf
@@ -205,6 +206,38 @@ static ngx_command_t ngx_http_mruby_commands[] = {
       ngx_http_mruby_set_inline_handler },
 #endif
  
+    { ngx_string("mruby_header_filter"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
+      ngx_http_mruby_header_filter_phase,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      ngx_http_mruby_header_filter_handler },
+
+    { ngx_string("mruby_header_filter_code"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
+      ngx_http_mruby_header_filter_inline,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      ngx_http_mruby_header_filter_inline_handler },
+
+    { ngx_string("mruby_body_filter"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
+      ngx_http_mruby_body_filter_phase,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      ngx_http_mruby_body_filter_handler },
+
+    { ngx_string("mruby_body_filter_code"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+                        |NGX_CONF_TAKE1,
+      ngx_http_mruby_body_filter_inline,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      ngx_http_mruby_body_filter_inline_handler },
+
     ngx_null_command
 };
  
@@ -283,6 +316,11 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
     conf->content_inline_code        = NGX_CONF_UNSET_PTR;
     conf->log_inline_code            = NGX_CONF_UNSET_PTR;
 
+    conf->header_filter_code        = NGX_CONF_UNSET_PTR;
+    conf->body_filter_code          = NGX_CONF_UNSET_PTR;
+    conf->header_filter_inline_code = NGX_CONF_UNSET_PTR;
+    conf->body_filter_inline_code   = NGX_CONF_UNSET_PTR;
+
     conf->cached = NGX_CONF_UNSET;
 
     return conf;
@@ -298,7 +336,7 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     NGX_MRUBY_MERGE_CODE(prev->rewrite_code,        conf->rewrite_code);
     NGX_MRUBY_MERGE_CODE(prev->access_code,         conf->access_code);
     NGX_MRUBY_MERGE_CODE(prev->content_code,        conf->content_code);
-    NGX_MRUBY_MERGE_CODE(prev->log_code,    conf->log_code);
+    NGX_MRUBY_MERGE_CODE(prev->log_code,            conf->log_code);
 
     NGX_MRUBY_MERGE_CODE(prev->post_read_inline_code,      conf->post_read_inline_code);
     NGX_MRUBY_MERGE_CODE(prev->server_rewrite_inline_code, conf->server_rewrite_inline_code);
@@ -306,6 +344,11 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     NGX_MRUBY_MERGE_CODE(prev->access_inline_code,         conf->access_inline_code);
     NGX_MRUBY_MERGE_CODE(prev->content_inline_code,        conf->content_inline_code);
     NGX_MRUBY_MERGE_CODE(prev->log_inline_code,            conf->log_inline_code);
+
+    NGX_MRUBY_MERGE_CODE(prev->header_filter_code,        conf->header_filter_code);
+    NGX_MRUBY_MERGE_CODE(prev->body_filter_code,          conf->body_filter_code);
+    NGX_MRUBY_MERGE_CODE(prev->header_filter_inline_code, conf->header_filter_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->body_filter_inline_code,   conf->body_filter_inline_code);
 
     ngx_conf_merge_value(conf->cached, prev->cached, 0);
 
@@ -334,6 +377,13 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
 
     if (ngx_http_mruby_handler_init(cmcf) != NGX_OK) {
         return NGX_ERROR;
+    }
+
+    if (mmcf->enabled_header_filter) {
+        ngx_http_mruby_header_filter_init();
+    }
+    if (mmcf->enabled_body_filter) {
+        ngx_http_mruby_body_filter_init();
     }
 
     if (mmcf->init_code != NULL) {
