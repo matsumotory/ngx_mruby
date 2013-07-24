@@ -98,6 +98,43 @@ ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mr
     return NGX_OK;
 }
 
+ngx_int_t ngx_mrb_run_body_filter(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached, ngx_http_mruby_ctx_t *ctx)
+{
+    mrb_value ARGV, mrb_result;
+
+    ARGV = mrb_ary_new_capa(state->mrb, 1);
+
+    mrb_ary_push(state->mrb, ARGV, mrb_str_new(state->mrb, (char *)ctx->body, ctx->body_length));
+    mrb_define_global_const(state->mrb, "ARGV", ARGV);
+
+    mrb_result = mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[code->n]), mrb_nil_value());
+    if (state->mrb->exc) {
+        if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
+            ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, code->code.file);
+        } else {
+            ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
+        }
+        mrb_gc_arena_restore(state->mrb, state->ai);
+        if (!cached) {
+            ngx_mrb_irep_clean(state, code);
+        }
+        return NGX_ERROR;
+    }
+    
+    if (mrb_type(mrb_result) != MRB_TT_STRING) {
+        mrb_result = mrb_funcall(state->mrb, mrb_result, "to_s", 0, NULL);
+    }
+
+    ctx->body        = (u_char *)RSTRING_PTR(mrb_result);
+    ctx->body_length = ngx_strlen(ctx->body);
+
+    mrb_gc_arena_restore(state->mrb, state->ai);
+    if (!cached) {
+        ngx_mrb_irep_clean(state, code);
+    }
+    return NGX_OK;
+}
+
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached)
 {
     ngx_http_mruby_ctx_t *ctx;
@@ -105,7 +142,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     if (state == NGX_CONF_UNSET_PTR || code == NGX_CONF_UNSET_PTR) {
         return NGX_DECLINED;
     }
-    if ((ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
+    ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+    if (ctx == NULL && (ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
         ngx_log_error(NGX_LOG_ERR
             , r->connection->log
             , 0

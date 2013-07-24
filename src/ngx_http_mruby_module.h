@@ -60,13 +60,4 @@ typedef struct ngx_http_mruby_loc_conf_t {
     ngx_http_output_body_filter_pt body_filter_handler;
 } ngx_http_mruby_loc_conf_t;
 
-typedef struct ngx_mrb_rputs_chain_list_t {
-    ngx_chain_t **last;
-    ngx_chain_t *out;
-} ngx_mrb_rputs_chain_list_t;
-
-typedef struct ngx_http_mruby_ctx_t {
-    ngx_mrb_rputs_chain_list_t *rputs_chain;
-} ngx_http_mruby_ctx_t;
-
 #endif // NGX_HTTP_MRUBY_MODULE_H

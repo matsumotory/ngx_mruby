@@ -15,7 +15,7 @@ void ngx_http_mruby_body_filter_init(void);
 
 ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r);
 ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t *r);
-ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r);
-ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r);
+ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_chain_t *in);
+ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in);
 
 #endif // NGX_HTTP_MRUBY_FILTER_HANDLER_H
