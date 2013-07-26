@@ -375,6 +375,7 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_str_t *value;
     ndk_set_var_t filter;
     ngx_http_mruby_set_var_data_t *filter_data;
+    ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
 
     value  = cf->args->elts;
     target = value[1];
@@ -387,20 +388,16 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
     if (filter_data == NULL) {
         return NGX_CONF_ERROR;
     }
-    filter_data->state = ngx_pcalloc(cf->pool, sizeof(ngx_mrb_state_t));
-    if (filter_data->state == NULL) {
-        return NULL;
-    }
+
+    filter_data->state = mmcf->state;
     filter_data->size   = filter.size;
     filter_data->script = value[2];
     if (type == NGX_MRB_CODE_TYPE_FILE) {
         filter_data->code  = ngx_http_mruby_mrb_code_from_file(cf->pool, &filter_data->script);
-        if (ngx_mrb_init_file(&filter_data->script, filter_data->state, filter_data->code) == NGX_ERROR) {
-            return NGX_CONF_ERROR;
-        }
+        ngx_http_mruby_shared_state_compile(filter_data->state, filter_data->code);
     } else {
         filter_data->code = ngx_http_mruby_mrb_code_from_string(cf->pool, &filter_data->script);
-        ngx_mrb_init_string(&filter_data->script, filter_data->state, filter_data->code);
+        ngx_http_mruby_shared_state_compile(filter_data->state, filter_data->code);
     } 
     if (filter_data->code == NGX_CONF_UNSET_PTR) {
         if (type == NGX_MRB_CODE_TYPE_FILE) {

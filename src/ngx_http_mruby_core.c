@@ -60,16 +60,9 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
 ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
                            ngx_http_variable_value_t *args, size_t nargs, ngx_str_t *result)
 {
-    ngx_uint_t i;
-    mrb_value ARGV, mrb_result;
+    mrb_value mrb_result;
 
-    ARGV = mrb_ary_new_capa(state->mrb, nargs);
-
-    for (i = 0; i < nargs; i++) {
-        mrb_ary_push(state->mrb, ARGV, mrb_str_new(state->mrb, (char *)args[i].data, args[i].len));
-    }
-    mrb_define_global_const(state->mrb, "ARGV", ARGV);
-
+    ngx_mrb_push_request(r);
     mrb_result = mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[code->n]), mrb_nil_value());
     if (state->mrb->exc) {
         if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
@@ -90,7 +83,6 @@ ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mr
 
     result->data = (u_char *)RSTRING_PTR(mrb_result);
     result->len  = ngx_strlen(result->data);
-
     mrb_gc_arena_restore(state->mrb, state->ai);
     if (!cached) {
         ngx_mrb_irep_clean(state, code);
