@@ -117,8 +117,7 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
 static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
 {
     mrb_value name, *a;
-    int alen;
-    mrb_value s_name;
+    int alen; mrb_value s_name;
     char *c_name;
 
     // get var symble from method_missing(sym, *args)
@@ -133,10 +132,114 @@ static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
     return ngx_mrb_var_get(mrb, self, c_name);
 }
 
+static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
+{
+    ngx_http_request_t *r;
+    ngx_http_variable_t *v;
+    ngx_http_variable_value_t *vv;
+    ngx_http_core_main_conf_t *cmcf;
+    ngx_str_t key;
+    ngx_uint_t hash;
+    u_char *val, *low;
+    char *k;
+    mrb_value o;
+
+    r = ngx_mrb_get_request();
+
+    mrb_get_args(mrb, "zo", &k, &o);
+    if (mrb_type(o) != MRB_TT_STRING) {
+        o = mrb_funcall(mrb, o, "to_s", 0, NULL);
+    }
+    val       = (u_char *)RSTRING_PTR(o);
+    key.len   = strlen(k);
+    key.data  = (u_char *)k;
+    if (key.len) {
+        low = ngx_pnalloc(r->pool, key.len);
+        if (low == NULL) {
+            return mrb_nil_value();
+        }
+    } else {
+        return mrb_nil_value();
+    }
+    hash  = ngx_hash_strlow(low, key.data, key.len);
+    cmcf  = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+    v     = ngx_hash_find(&cmcf->variables_hash, hash, key.data, key.len);
+    if (v) {
+        if (!(v->flags & NGX_HTTP_VAR_CHANGEABLE)) {
+            ngx_log_error(NGX_LOG_ERR
+                , r->connection->log
+                , 0
+                , "%s ERROR :%d: %s not changeable"
+                , MODULE_NAME
+                , __func__
+                , __LINE__
+                , key.data
+            );
+            return mrb_nil_value();
+        }
+        if (v->set_handler) {
+            vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
+            if (vv == NULL) {
+                ngx_log_error(NGX_LOG_ERR
+                    , r->connection->log
+                    , 0
+                    , "%s ERROR :%d: memory allocate failed"
+                    , MODULE_NAME
+                    , __func__
+                    , __LINE__
+                );
+                return mrb_nil_value();
+            }
+            vv->valid = 1;
+            vv->not_found = 0;
+            vv->no_cacheable = 0;
+            vv->data = val;
+            vv->len = (size_t)strlen((char *)val);
+
+            v->set_handler(r, vv, v->data);
+
+            return mrb_str_new_cstr(mrb, (char *)val);
+        }
+        if (v->flags & NGX_HTTP_VAR_INDEXED) {
+            vv = &r->variables[v->index];
+
+            vv->valid = 1;
+            vv->not_found = 0;
+            vv->no_cacheable = 0;
+            vv->data = val;
+            vv->len = (size_t)strlen((char *)val);
+
+            return mrb_str_new_cstr(mrb, (char *)val);
+        }
+        ngx_log_error(NGX_LOG_ERR
+            , r->connection->log
+            , 0
+            , "%s ERROR :%d: %s is not assinged"
+            , MODULE_NAME
+            , __func__
+            , __LINE__
+            , key.data
+        );
+        return mrb_nil_value();
+    }
+
+    ngx_log_error(NGX_LOG_ERR
+        , r->connection->log
+        , 0
+        , "%s ERROR :%d: %s is not found"
+        , MODULE_NAME
+        , __func__
+        , __LINE__
+        , key.data
+    );
+    return mrb_nil_value();
+}
+
 void ngx_mrb_var_class_init(mrb_state *mrb, struct RClass *class)
 {
     struct RClass *class_var;
 
     class_var = mrb_define_class_under(mrb, class, "Var", mrb->object_class);
     mrb_define_method(mrb, class_var, "method_missing", ngx_mrb_var_method_missing, ARGS_ANY());
+    mrb_define_method(mrb, class_var, "set", ngx_mrb_var_set, ARGS_REQ(2));
 }
