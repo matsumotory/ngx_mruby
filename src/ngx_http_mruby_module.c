@@ -71,7 +71,7 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf);
 
 static ngx_command_t ngx_http_mruby_commands[] = {
 
-    { ngx_string("mruby_init_inline"),
+    { ngx_string("mruby_init_code"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
       ngx_http_mruby_init_inline,
       NGX_HTTP_MAIN_CONF_OFFSET,
@@ -197,7 +197,7 @@ static ngx_command_t ngx_http_mruby_commands[] = {
       0,
       ngx_http_mruby_set_handler },
 
-    { ngx_string("mruby_set_inline"),
+    { ngx_string("mruby_set_code"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                         |NGX_CONF_2MORE,
       ngx_http_mruby_set_inline,
