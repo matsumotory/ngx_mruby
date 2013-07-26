@@ -78,7 +78,6 @@ static mrb_value ngx_mrb_get_request_headers_out(mrb_state *mrb, mrb_value self)
 static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers, ngx_uint_t assign);
 static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self);
-static mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self);
 
 ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r)
 {
@@ -227,7 +226,8 @@ static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-static mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
+// using from ngx_http_mruby_connection.c and ngx_http_mruby_server.c
+mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
 {
     const char               *iv_var_str         = "@iv_var";
     mrb_value                iv_var;
