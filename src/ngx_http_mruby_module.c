@@ -302,24 +302,24 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
         return NULL;
     }
 
-    conf->post_read_code      = NGX_CONF_UNSET_PTR;
-    conf->server_rewrite_code = NGX_CONF_UNSET_PTR;
-    conf->rewrite_code        = NGX_CONF_UNSET_PTR;
-    conf->access_code         = NGX_CONF_UNSET_PTR;
-    conf->content_code        = NGX_CONF_UNSET_PTR;
-    conf->log_code    = NGX_CONF_UNSET_PTR;
+    conf->post_read_code              = NGX_CONF_UNSET_PTR;
+    conf->server_rewrite_code         = NGX_CONF_UNSET_PTR;
+    conf->rewrite_code                = NGX_CONF_UNSET_PTR;
+    conf->access_code                 = NGX_CONF_UNSET_PTR;
+    conf->content_code                = NGX_CONF_UNSET_PTR;
+    conf->log_code                    = NGX_CONF_UNSET_PTR;
 
-    conf->post_read_inline_code      = NGX_CONF_UNSET_PTR;
-    conf->server_rewrite_inline_code = NGX_CONF_UNSET_PTR;
-    conf->rewrite_inline_code        = NGX_CONF_UNSET_PTR;
-    conf->access_inline_code         = NGX_CONF_UNSET_PTR;
-    conf->content_inline_code        = NGX_CONF_UNSET_PTR;
-    conf->log_inline_code            = NGX_CONF_UNSET_PTR;
+    conf->post_read_inline_code       = NGX_CONF_UNSET_PTR;
+    conf->server_rewrite_inline_code  = NGX_CONF_UNSET_PTR;
+    conf->rewrite_inline_code         = NGX_CONF_UNSET_PTR;
+    conf->access_inline_code          = NGX_CONF_UNSET_PTR;
+    conf->content_inline_code         = NGX_CONF_UNSET_PTR;
+    conf->log_inline_code             = NGX_CONF_UNSET_PTR;
 
-    conf->header_filter_code        = NGX_CONF_UNSET_PTR;
-    conf->body_filter_code          = NGX_CONF_UNSET_PTR;
-    conf->header_filter_inline_code = NGX_CONF_UNSET_PTR;
-    conf->body_filter_inline_code   = NGX_CONF_UNSET_PTR;
+    conf->header_filter_code          = NGX_CONF_UNSET_PTR;
+    conf->body_filter_code            = NGX_CONF_UNSET_PTR;
+    conf->header_filter_inline_code   = NGX_CONF_UNSET_PTR;
+    conf->body_filter_inline_code     = NGX_CONF_UNSET_PTR;
 
     conf->cached = NGX_CONF_UNSET;
 
@@ -331,24 +331,24 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     ngx_http_mruby_loc_conf_t *prev = parent;
     ngx_http_mruby_loc_conf_t *conf = child;
 
-    NGX_MRUBY_MERGE_CODE(prev->post_read_code,      conf->post_read_code);
-    NGX_MRUBY_MERGE_CODE(prev->server_rewrite_code, conf->server_rewrite_code);
-    NGX_MRUBY_MERGE_CODE(prev->rewrite_code,        conf->rewrite_code);
-    NGX_MRUBY_MERGE_CODE(prev->access_code,         conf->access_code);
-    NGX_MRUBY_MERGE_CODE(prev->content_code,        conf->content_code);
-    NGX_MRUBY_MERGE_CODE(prev->log_code,            conf->log_code);
+    NGX_MRUBY_MERGE_CODE(prev->post_read_code,              conf->post_read_code);
+    NGX_MRUBY_MERGE_CODE(prev->server_rewrite_code,         conf->server_rewrite_code);
+    NGX_MRUBY_MERGE_CODE(prev->rewrite_code,                conf->rewrite_code);
+    NGX_MRUBY_MERGE_CODE(prev->access_code,                 conf->access_code);
+    NGX_MRUBY_MERGE_CODE(prev->content_code,                conf->content_code);
+    NGX_MRUBY_MERGE_CODE(prev->log_code,                    conf->log_code);
 
-    NGX_MRUBY_MERGE_CODE(prev->post_read_inline_code,      conf->post_read_inline_code);
-    NGX_MRUBY_MERGE_CODE(prev->server_rewrite_inline_code, conf->server_rewrite_inline_code);
-    NGX_MRUBY_MERGE_CODE(prev->rewrite_inline_code,        conf->rewrite_inline_code);
-    NGX_MRUBY_MERGE_CODE(prev->access_inline_code,         conf->access_inline_code);
-    NGX_MRUBY_MERGE_CODE(prev->content_inline_code,        conf->content_inline_code);
-    NGX_MRUBY_MERGE_CODE(prev->log_inline_code,            conf->log_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->post_read_inline_code,       conf->post_read_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->server_rewrite_inline_code,  conf->server_rewrite_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->rewrite_inline_code,         conf->rewrite_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->access_inline_code,          conf->access_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->content_inline_code,         conf->content_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->log_inline_code,             conf->log_inline_code);
 
-    NGX_MRUBY_MERGE_CODE(prev->header_filter_code,        conf->header_filter_code);
-    NGX_MRUBY_MERGE_CODE(prev->body_filter_code,          conf->body_filter_code);
-    NGX_MRUBY_MERGE_CODE(prev->header_filter_inline_code, conf->header_filter_inline_code);
-    NGX_MRUBY_MERGE_CODE(prev->body_filter_inline_code,   conf->body_filter_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->header_filter_code,          conf->header_filter_code);
+    NGX_MRUBY_MERGE_CODE(prev->body_filter_code,            conf->body_filter_code);
+    NGX_MRUBY_MERGE_CODE(prev->header_filter_inline_code,   conf->header_filter_inline_code);
+    NGX_MRUBY_MERGE_CODE(prev->body_filter_inline_code,     conf->body_filter_inline_code);
 
     ngx_conf_merge_value(conf->cached, prev->cached, 0);
 

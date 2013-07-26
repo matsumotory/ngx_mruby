@@ -13,18 +13,18 @@
 #include "ngx_http_mruby_core.h"
 
 #define NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(cached, state, code, reinit) \
-    do {                                                                \
-        if (!cached) {                                                  \
-            if (state == NGX_CONF_UNSET_PTR) {                          \
-                return NGX_DECLINED;                                    \
-            }                                                           \
-            if (code == NGX_CONF_UNSET_PTR) {                           \
-                return NGX_DECLINED;                                    \
-            }                                                           \
-            if (reinit(state, code) == NGX_ERROR) {                     \
-                return NGX_ERROR;                                       \
-            }                                                           \
-        }                                                               \
+    do {                                                                  \
+        if (!cached) {                                                    \
+            if (state == NGX_CONF_UNSET_PTR) {                            \
+                return NGX_DECLINED;                                      \
+            }                                                             \
+            if (code == NGX_CONF_UNSET_PTR) {                             \
+                return NGX_DECLINED;                                      \
+            }                                                             \
+            if (reinit(state, code) == NGX_ERROR) {                       \
+                return NGX_ERROR;                                         \
+            }                                                             \
+        }                                                                 \
     } while(0)
 
 ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, ngx_mrb_code_t *code);

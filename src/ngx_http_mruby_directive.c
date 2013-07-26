@@ -389,21 +389,25 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
         return NGX_CONF_ERROR;
     }
 
-    filter_data->state = mmcf->state;
+    filter_data->state  = mmcf->state;
     filter_data->size   = filter.size;
     filter_data->script = value[2];
     if (type == NGX_MRB_CODE_TYPE_FILE) {
-        filter_data->code  = ngx_http_mruby_mrb_code_from_file(cf->pool, &filter_data->script);
-        ngx_http_mruby_shared_state_compile(filter_data->state, filter_data->code);
+        filter_data->code = ngx_http_mruby_mrb_code_from_file(cf->pool, &filter_data->script);
     } else {
         filter_data->code = ngx_http_mruby_mrb_code_from_string(cf->pool, &filter_data->script);
-        ngx_http_mruby_shared_state_compile(filter_data->state, filter_data->code);
     } 
+    ngx_http_mruby_shared_state_compile(filter_data->state, filter_data->code);
     if (filter_data->code == NGX_CONF_UNSET_PTR) {
         if (type == NGX_MRB_CODE_TYPE_FILE) {
-            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
-                               "failed to load mruby script: %s %s:%d", 
-                               filter_data->script.data, __FUNCTION__, __LINE__);
+            ngx_conf_log_error(NGX_LOG_ERR
+                , cf
+                , 0
+                , "failed to load mruby script: %s %s:%d"
+                , filter_data->script.data
+                , __FUNCTION__
+                , __LINE__
+            );
         }
         return NGX_CONF_ERROR;
     }

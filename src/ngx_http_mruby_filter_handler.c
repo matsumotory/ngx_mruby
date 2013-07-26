@@ -87,7 +87,13 @@ ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_chain_t 
         if (rc == NGX_AGAIN) {
             return NGX_OK;
         }
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to read body %s:%d", __FUNCTION__, __LINE__);
+        ngx_log_error(NGX_LOG_ERR
+            , r->connection->log
+            , 0
+            , "failed to read body %s:%d"
+            , __FUNCTION__
+            , __LINE__
+        );
         return NGX_ERROR;
     }
 
@@ -107,7 +113,13 @@ ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_chain_t 
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
     if (b == NULL) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__, __LINE__);
+        ngx_log_error(NGX_LOG_ERR
+            , r->connection->log
+            , 0
+            , "failed to allocate memory from r->pool %s:%d"
+            , __FUNCTION__
+            , __LINE__
+        );
         return NGX_ERROR;
     }
     b->pos      = ctx->body;
@@ -141,7 +153,13 @@ ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r, ngx_c
         if (rc == NGX_AGAIN) {
             return NGX_OK;
         }
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to read body %s:%d", __FUNCTION__, __LINE__);
+        ngx_log_error(NGX_LOG_ERR
+            , r->connection->log
+            , 0
+            , "failed to read body %s:%d"
+            , __FUNCTION__
+            , __LINE__
+        );
         return NGX_ERROR;
     }
 
@@ -161,7 +179,13 @@ ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r, ngx_c
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
     if (b == NULL) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__, __LINE__);
+        ngx_log_error(NGX_LOG_ERR
+            , r->connection->log
+            , 0
+            , "failed to allocate memory from r->pool %s:%d"
+            , __FUNCTION__
+            , __LINE__
+        );
         return NGX_ERROR;
     }
     b->pos      = ctx->body;
@@ -204,14 +228,25 @@ static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
     }
 
     if ((ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__, __LINE__);
+        ngx_log_error(NGX_LOG_ERR
+            , r->connection->log
+            , 0
+            , "failed to allocate memory from r->pool %s:%d"
+            , __FUNCTION__
+            , __LINE__
+        );
         return NGX_ERROR;
     }
     ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
 
     cln = ngx_pool_cleanup_add(r->pool, 0);
     if (cln == NULL) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__, __LINE__);
+        ngx_log_error(NGX_LOG_ERR
+            , r->connection->log
+            , 0, "failed to allocate memory from r->pool %s:%d"
+            , __FUNCTION__
+            , __LINE__
+        );
         return NGX_ERROR;
     }
     cln->handler = ngx_http_mruby_filter_cleanup;
@@ -245,7 +280,13 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
 
     cln = ngx_pool_cleanup_add(r->pool, 0);
     if (cln == NULL) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__, __LINE__);
+        ngx_log_error(NGX_LOG_ERR
+            , r->connection->log
+            , 0
+            , "failed to allocate memory from r->pool %s:%d"
+            , __FUNCTION__
+            , __LINE__
+        );
         return NGX_ERROR;
     }
     cln->handler = ngx_http_mruby_filter_cleanup;
