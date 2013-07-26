@@ -247,6 +247,24 @@ static mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
     return iv_var;
 }
 
+static mrb_value ngx_mrb_get_request_var_hostname(mrb_state *mrb, mrb_value self)
+{
+    mrb_value v = ngx_mrb_get_request_var(mrb, self);
+    return mrb_funcall(mrb, v, "hostname", 0, NULL);
+}
+
+static mrb_value ngx_mrb_get_request_var_filename(mrb_state *mrb, mrb_value self)
+{
+    mrb_value v = ngx_mrb_get_request_var(mrb, self);
+    return mrb_funcall(mrb, v, "request_filename", 0, NULL);
+}
+
+static mrb_value ngx_mrb_get_request_var_user(mrb_state *mrb, mrb_value self)
+{
+    mrb_value v = ngx_mrb_get_request_var(mrb, self);
+    return mrb_funcall(mrb, v, "remote_user", 0, NULL);
+}
+
 void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
 {
     struct RClass *class_request;
@@ -269,6 +287,10 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
     mrb_define_method(mrb, class_request, "args", ngx_mrb_get_request_args, ARGS_NONE());
     mrb_define_method(mrb, class_request, "args=", ngx_mrb_set_request_args, ARGS_ANY());
     mrb_define_method(mrb, class_request, "var", ngx_mrb_get_request_var, ARGS_NONE());
+
+    mrb_define_method(mrb, class_request, "hostname", ngx_mrb_get_request_var_hostname, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "filename", ngx_mrb_get_request_var_filename, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "user", ngx_mrb_get_request_var_user, ARGS_NONE());
 
     class_headers_in = mrb_define_class_under(mrb, class, "Headers_in", mrb->object_class);
     mrb_define_method(mrb, class_headers_in, "[]", ngx_mrb_get_request_headers_in, ARGS_ANY());
