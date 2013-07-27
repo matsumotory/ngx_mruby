@@ -83,26 +83,15 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
     ngx_http_variable_value_t *var;
     ngx_str_t ngx_name;
 
-    u_char *low;
     size_t len;
     ngx_uint_t key;
-
 
     // ngx_str_set(&ngx_name, c_name);
     ngx_name.len = strlen(c_name);
     ngx_name.data = (u_char *)c_name;
     len = ngx_name.len;
-    // check alloced memory
-    if (len) {
-        low = ngx_pnalloc(r->pool, len);
-        if (low == NULL) {
-            return mrb_nil_value();
-        }
-    } else {
-        return mrb_nil_value();
-    }
-    // get variable with c string from nginx
-    key = ngx_hash_strlow(low, ngx_name.data, len);
+
+    key = ngx_hash_strlow(ngx_name.data, ngx_name.data, len);
     var = ngx_http_get_variable(r, &ngx_name, key);
 
     // return variable value wraped with mruby string
@@ -151,7 +140,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
     ngx_http_core_main_conf_t *cmcf;
     ngx_str_t key;
     ngx_uint_t hash;
-    u_char *val, *low;
+    u_char *val;
     char *k;
     mrb_value o;
     int ai;
@@ -176,15 +165,8 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
     val = (u_char *)RSTRING_PTR(o);
     key.len = strlen(k);
     key.data = (u_char *)k;
-    if (key.len) {
-        low = ngx_pnalloc(r->pool, key.len);
-        if (low == NULL) {
-            goto ARENA_RESTOR_AND_ERROR;
-        }
-    } else {
-        goto ARENA_RESTOR_AND_ERROR;
-    }
-    hash  = ngx_hash_strlow(low, key.data, key.len);
+
+    hash  = ngx_hash_strlow(key.data, key.data, key.len);
     cmcf  = ngx_http_get_module_main_conf(r, ngx_http_core_module);
     v     = ngx_hash_find(&cmcf->variables_hash, hash, key.data, key.len);
 
