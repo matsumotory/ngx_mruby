@@ -118,7 +118,7 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
             , __LINE__
             , c_name
         );
-        return mrb_nil_value();
+        return self;
     }
 }
 
