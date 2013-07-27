@@ -5,13 +5,22 @@
 
 2. Build
 
-    ./configure --with-ngx-src-root=nginx/nginx --with-ngx-config-opt="--prefix=/usr/local/nginx"
+    ./configure --with-ngx-src-root=/usr/local/src/nginx/nginx-1.4.1 --with-ngx-config-opt="--prefix=/usr/local/nginx"
     make build_mruby
     make
 
 3. Install
 
     sudo make install
+
+or
+
+    2' Manual Build and Install
+    
+        cd $(nginx_src_root)
+        ./configure $(some_nginx_options) --add-module=$(ngx_mruby_root) --add-module=$(nginx_ndk_root)
+        make
+        make install
 
 4. Add setting
 
