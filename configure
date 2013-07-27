@@ -620,6 +620,7 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 ENABLE_GEMS
+NDK_ROOT
 MRUBY_ROOT
 NGX_CONFIG_OPT
 NGX_SRC_ROOT
@@ -679,6 +680,7 @@ enable_option_checking
 with_ngx_src_root
 with_ngx_config_opt
 with_mruby_root
+with_ndk_root
 enable_mrbgems
 '
       ac_precious_vars='build_alias
@@ -1306,6 +1308,7 @@ Optional Packages:
   --with-ngx-config-opt=OPT
                           ngxin configure option [[ngx_config_opt]]
   --with-mruby-root=DIR   pathname to mruby_root [[mruby_root]]
+  --with-ndk-root=DIR     pathname to ndk_root [[ndk_root]]
 
 Some influential environment variables:
   CC          C compiler command
@@ -3652,6 +3655,16 @@ MRUBY_ROOT=`pwd`/mruby
 # Check whether --with-mruby_root was given.
 if test "${with_mruby_root+set}" = set; then :
   withval=$with_mruby_root; MRUBY_ROOT="$with_mruby_root"
+fi
+
+
+
+# ndk root
+NDK_ROOT=`pwd`/dependence/ngx_devel_kit
+
+# Check whether --with-ndk_root was given.
+if test "${with_ndk_root+set}" = set; then :
+  withval=$with_ndk_root; NDK_ROOT="$with_ndk_root"
 fi
 
 

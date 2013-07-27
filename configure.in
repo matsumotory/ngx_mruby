@@ -51,6 +51,13 @@ AC_ARG_WITH(mruby_root, AC_HELP_STRING([--with-mruby-root=DIR],
     [MRUBY_ROOT="$with_mruby_root"])
 AC_SUBST(MRUBY_ROOT)
 
+# ndk root
+NDK_ROOT=`pwd`/dependence/ngx_devel_kit
+AC_ARG_WITH(ndk_root, AC_HELP_STRING([--with-ndk-root=DIR],
+    [pathname to ndk_root [[ndk_root]]]),
+    [NDK_ROOT="$with_ndk_root"])
+AC_SUBST(NDK_ROOT)
+
 # support mrbgems
 ENABLE_GEMS=false
 AC_ARG_ENABLE([mrbgems],

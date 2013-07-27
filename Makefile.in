@@ -10,6 +10,7 @@ NGX_MRUBY_ROOT=$(shell pwd)
 NGX_SRC_ROOT=@NGX_SRC_ROOT@
 NGX_CONFIG_OPT=@NGX_CONFIG_OPT@
 MRUBY_ROOT=@MRUBY_ROOT@
+NDK_ROOT=@NDK_ROOT@
 
 #   suport mrbgems
 MRUBY_MAK_FILE := $(MRUBY_ROOT)/build/host/lib/libmruby.flags.mak
@@ -52,7 +53,7 @@ clean_mruby:
 
 #   nginx
 ngx_mruby: generate_gems_config
-	cd $(NGX_SRC_ROOT) && ./configure --add-module=$(NGX_MRUBY_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
+	cd $(NGX_SRC_ROOT) && ./configure --add-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
 
 #   create mrbgems config
 generate_gems_config: build_mruby
