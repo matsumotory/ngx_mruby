@@ -42,6 +42,15 @@ static void ngx_mrb_irep_clean(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 
 ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
+    ngx_log_error(NGX_LOG_INFO
+        , cf->log
+        , 0
+        , "%s INFO %s:%d: mrb_run info: irep_n=%d"
+        , MODULE_NAME
+        , __func__
+        , __LINE__
+        , code->n
+    );
     mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[code->n]), mrb_top_self(state->mrb));
     if (state->mrb->exc) {
         if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
@@ -62,7 +71,17 @@ ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mr
 {
     mrb_value mrb_result;
 
+    //state->ai = mrb_gc_arena_save(state->mrb);
     ngx_mrb_push_request(r);
+    ngx_log_error(NGX_LOG_INFO
+        , r->connection->log
+        , 0
+        , "%s INFO %s:%d: mrb_run info: irep_n=%d"
+        , MODULE_NAME
+        , __func__
+        , __LINE__
+        , code->n
+    );
     mrb_result = mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[code->n]), mrb_top_self(state->mrb));
     if (state->mrb->exc) {
         if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
@@ -83,7 +102,7 @@ ngx_int_t ngx_mrb_run_args(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mr
 
     result->data = (u_char *)RSTRING_PTR(mrb_result);
     result->len  = ngx_strlen(result->data);
-    mrb_gc_arena_restore(state->mrb, state->ai);
+    //mrb_gc_arena_restore(state->mrb, state->ai);
     if (!cached) {
         ngx_mrb_irep_clean(state, code);
     }
@@ -150,6 +169,15 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     if (!cached) {
         state->ai = mrb_gc_arena_save(state->mrb);
     }
+    ngx_log_error(NGX_LOG_INFO
+        , r->connection->log
+        , 0
+        , "%s INFO %s:%d: mrb_run info: irep_n=%d"
+        , MODULE_NAME
+        , __func__
+        , __LINE__
+        , code->n
+    );
     mrb_run(state->mrb, mrb_proc_new(state->mrb, state->mrb->irep[code->n]), mrb_top_self(state->mrb));
     if (state->mrb->exc) {
         if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {

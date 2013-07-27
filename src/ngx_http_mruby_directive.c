@@ -30,7 +30,7 @@ char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
     mmcf->init_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -52,7 +52,7 @@ char *ngx_http_mruby_init_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
     mmcf->init_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -73,7 +73,7 @@ char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         return NGX_CONF_ERROR;
     }
     mlcf->post_read_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -94,7 +94,7 @@ char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
         return NGX_CONF_ERROR;
     }
     mlcf->server_rewrite_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -113,7 +113,7 @@ char *ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *con
         return NGX_CONF_ERROR;
     }
     mlcf->rewrite_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -132,7 +132,7 @@ char *ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf
         return NGX_CONF_ERROR;
     }
     mlcf->access_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -151,7 +151,7 @@ char *ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *con
         return NGX_CONF_ERROR;
     }
     mlcf->content_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -170,7 +170,7 @@ char *ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
     mlcf->log_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -188,7 +188,7 @@ char *ngx_http_mruby_post_read_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *
         return NGX_CONF_ERROR;
     }
     mlcf->post_read_inline_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -206,7 +206,7 @@ char *ngx_http_mruby_server_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, v
         return NGX_CONF_ERROR;
     }
     mlcf->server_rewrite_inline_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -224,7 +224,7 @@ char *ngx_http_mruby_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *co
         return NGX_CONF_ERROR;
     }
     mlcf->rewrite_inline_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -242,7 +242,7 @@ char *ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *con
         return NGX_CONF_ERROR;
     }
     mlcf->access_inline_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -260,7 +260,7 @@ char *ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *co
         return NGX_CONF_ERROR;
     }
     mlcf->content_inline_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -278,7 +278,7 @@ char *ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
     mlcf->log_inline_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
     return NGX_CONF_OK;
 }
@@ -297,7 +297,7 @@ char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, voi
         return NGX_CONF_ERROR;
     }
     mlcf->header_filter_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
     mmcf->enabled_header_filter = 1;
     mlcf->header_filter_handler = cmd->post;
 
@@ -318,7 +318,7 @@ char *ngx_http_mruby_body_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void 
         return NGX_CONF_ERROR;
     }
     mlcf->body_filter_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
     mmcf->enabled_header_filter = 1;
     mmcf->enabled_body_filter   = 1;
     mlcf->body_filter_handler   = cmd->post;
@@ -339,7 +339,7 @@ char *ngx_http_mruby_header_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, vo
         return NGX_CONF_ERROR;
     }
     mlcf->header_filter_inline_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
     mmcf->enabled_header_filter = 1;
     mlcf->header_filter_handler = cmd->post;
 
@@ -359,7 +359,7 @@ char *ngx_http_mruby_body_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, void
         return NGX_CONF_ERROR;
     }
     mlcf->body_filter_inline_code = code;
-    ngx_http_mruby_shared_state_compile(mmcf->state, code);
+    ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
     mmcf->enabled_header_filter = 1;
     mmcf->enabled_body_filter   = 1;
     mlcf->body_filter_handler   = cmd->post;
@@ -397,7 +397,7 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
     } else {
         filter_data->code = ngx_http_mruby_mrb_code_from_string(cf->pool, &filter_data->script);
     } 
-    ngx_http_mruby_shared_state_compile(filter_data->state, filter_data->code);
+    ngx_http_mruby_shared_state_compile(cf, filter_data->state, filter_data->code);
     if (filter_data->code == NGX_CONF_UNSET_PTR) {
         if (type == NGX_MRB_CODE_TYPE_FILE) {
             ngx_conf_log_error(NGX_LOG_ERR

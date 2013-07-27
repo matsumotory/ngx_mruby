@@ -6,6 +6,7 @@
 
 #include "ngx_http_mruby_state.h"
 #include "ngx_http_mruby_module.h"
+#include "ngx_http_mruby_request.h"
 
 #include <mruby.h>
 #include <mruby/proc.h>
@@ -137,7 +138,7 @@ ngx_int_t ngx_http_mruby_shared_state_init(ngx_mrb_state_t *state)
     return NGX_OK;
 }
 
-ngx_int_t ngx_http_mruby_shared_state_compile(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
+ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
     FILE *mrb_file;
     struct mrb_parser_state *p;
@@ -155,7 +156,29 @@ ngx_int_t ngx_http_mruby_shared_state_compile(ngx_mrb_state_t *state, ngx_mrb_co
     code->n = mrb_generate_code(state->mrb, p);
     mrb_pool_close(p->pool);
 
+    if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
+        ngx_conf_log_error(NGX_LOG_NOTICE
+            , cf
+            , 0
+            , "%s NOTICE %s:%d: compile info: code->n=%d code->code.file=(%s)"
+            , MODULE_NAME
+            , __func__
+            , __LINE__
+            , code->n
+            , code->code.file
+        );
+    } else {
+        ngx_conf_log_error(NGX_LOG_NOTICE
+            , cf
+            , 0
+            , "%s NOTICE %s:%d: compile info: code->n=%d code->code.string"
+            , MODULE_NAME
+            , __func__
+            , __LINE__
+            , code->n
+        );
+    }
+
     return NGX_OK;
 }
-
 
