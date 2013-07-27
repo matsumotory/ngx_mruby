@@ -125,10 +125,19 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
         result->len  = ngx_strlen(result->data);
     }
 
+    // TODO: Support rputs by multi directive
     if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
         chain = ctx->rputs_chain;
         if (chain == NULL) {
-            return NGX_OK;
+            ngx_log_error(NGX_LOG_INFO
+                , r->connection->log
+                , 0
+                , "%s INFO %s:%d: rputs_chain is null and declined"
+                , MODULE_NAME
+                , __func__
+                , __LINE__
+            );
+            return NGX_DECLINED;
         }
         if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
             r->headers_out.status = NGX_HTTP_OK;
