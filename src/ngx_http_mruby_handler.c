@@ -63,7 +63,7 @@ ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r, ngx_str_t *val,
         return NGX_ERROR;
     }
  
-    return ngx_mrb_run_args(r, filter_data->state, filter_data->code, mlcf->cached, v, filter_data->size, val);
+    return ngx_mrb_run_variable(r, filter_data->state, filter_data->code, mlcf->cached, v, filter_data->size, val);
 }
 
 ngx_int_t ngx_http_mruby_set_inline_handler(ngx_http_request_t *r, ngx_str_t *val,
@@ -71,6 +71,6 @@ ngx_int_t ngx_http_mruby_set_inline_handler(ngx_http_request_t *r, ngx_str_t *va
 {
     ngx_http_mruby_set_var_data_t *filter_data;
     filter_data = data;
-    return ngx_mrb_run_args(r, filter_data->state, filter_data->code, 1, v, filter_data->size, val);
+    return ngx_mrb_run_variable(r, filter_data->state, filter_data->code, 1, v, filter_data->size, val);
 }
 #endif

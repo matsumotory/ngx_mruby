@@ -154,23 +154,35 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
     u_char *val, *low;
     char *k;
     mrb_value o;
+    int ai;
 
     r = ngx_mrb_get_request();
+    ai = mrb_gc_arena_save(mrb);
+    ngx_log_error(NGX_LOG_INFO
+        , r->connection->log
+        , 0
+        , "%s INFO %s:%d: arena info: arena_idx=%d"
+        , MODULE_NAME
+        , __func__
+        , __LINE__
+        , ai
+    );
 
     mrb_get_args(mrb, "zo", &k, &o);
     if (mrb_type(o) != MRB_TT_STRING) {
         o = mrb_funcall(mrb, o, "to_s", 0, NULL);
     }
-    val       = (u_char *)RSTRING_PTR(o);
-    key.len   = strlen(k);
-    key.data  = (u_char *)k;
+
+    val = (u_char *)RSTRING_PTR(o);
+    key.len = strlen(k);
+    key.data = (u_char *)k;
     if (key.len) {
         low = ngx_pnalloc(r->pool, key.len);
         if (low == NULL) {
-            return mrb_nil_value();
+            goto ARENA_RESTOR_AND_ERROR;
         }
     } else {
-        return mrb_nil_value();
+        goto ARENA_RESTOR_AND_ERROR;
     }
     hash  = ngx_hash_strlow(low, key.data, key.len);
     cmcf  = ngx_http_get_module_main_conf(r, ngx_http_core_module);
@@ -187,7 +199,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
                 , __LINE__
                 , key.data
             );
-            return mrb_nil_value();
+            goto ARENA_RESTOR_AND_ERROR;
         }
         if (v->set_handler) {
             vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
@@ -200,7 +212,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
                     , __func__
                     , __LINE__
                 );
-                return mrb_nil_value();
+                goto ARENA_RESTOR_AND_ERROR;
             }
             vv->valid = 1;
             vv->not_found = 0;
@@ -209,6 +221,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
             vv->len = (size_t)strlen((char *)val);
 
             v->set_handler(r, vv, v->data);
+            mrb_gc_arena_restore(mrb, ai);
 
             return mrb_str_new_cstr(mrb, (char *)val);
         }
@@ -220,6 +233,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
             vv->no_cacheable = 0;
             vv->data = val;
             vv->len = (size_t)strlen((char *)val);
+            mrb_gc_arena_restore(mrb, ai);
 
             return mrb_str_new_cstr(mrb, (char *)val);
         }
@@ -232,7 +246,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
             , __LINE__
             , key.data
         );
-        return mrb_nil_value();
+        goto ARENA_RESTOR_AND_ERROR;
     }
 
     ngx_log_error(NGX_LOG_ERR
@@ -244,6 +258,10 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
         , __LINE__
         , key.data
     );
+    goto ARENA_RESTOR_AND_ERROR;
+
+ARENA_RESTOR_AND_ERROR:
+    mrb_gc_arena_restore(mrb, ai);
     return mrb_nil_value();
 }
 
