@@ -8,9 +8,10 @@
 
 #include <mruby.h>
 #include <mruby/string.h>
+#include "ngx_log.h"
 
 static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self);
-static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_name);
+static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_name, ngx_http_request_t *r);
 
 /*
  *  ngx_http_core_variables
@@ -77,9 +78,8 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
     { ngx_string("tcpinfo_rcv_space"), NULL, ngx_http_variable_tcpinfo,
 */
 
-static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_name)
+static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_name, ngx_http_request_t *r)
 {
-    ngx_http_request_t *r;
     ngx_http_variable_value_t *var;
     ngx_str_t ngx_name;
 
@@ -87,13 +87,11 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
     size_t len;
     ngx_uint_t key;
 
-    // get ngx_http_request_t
-    r = ngx_mrb_get_request();
 
     // ngx_str_set(&ngx_name, c_name);
-    ngx_name.len  = strlen(c_name);
+    ngx_name.len = strlen(c_name);
     ngx_name.data = (u_char *)c_name;
-    len                     = ngx_name.len;
+    len = ngx_name.len;
     // check alloced memory
     if (len) {
         low = ngx_pnalloc(r->pool, len);
@@ -108,10 +106,20 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
     var = ngx_http_get_variable(r, &ngx_name, key);
 
     // return variable value wraped with mruby string
-    if (!var->not_found)
+    if (!var->not_found) {
         return mrb_str_new(mrb, (char *)var->data, var->len);
-    else
+    } else {
+        ngx_log_error(NGX_LOG_ERR
+            , r->connection->log
+            , 0
+            , "%s ERROR %s:%d: %s not found"
+            , MODULE_NAME
+            , __func__
+            , __LINE__
+            , c_name
+        );
         return mrb_nil_value();
+    }
 }
 
 static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
@@ -119,6 +127,9 @@ static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
     mrb_value name, *a;
     int alen; mrb_value s_name;
     char *c_name;
+    ngx_http_request_t *r;
+
+    r = ngx_mrb_get_request();
 
     // get var symble from method_missing(sym, *args)
     mrb_get_args(mrb, "n*", &name, &a, &alen);
@@ -129,7 +140,7 @@ static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
     s_name = mrb_sym2str(mrb, mrb_symbol(name));
     c_name = mrb_str_to_cstr(mrb, s_name);
 
-    return ngx_mrb_var_get(mrb, self, c_name);
+    return ngx_mrb_var_get(mrb, self, c_name, r);
 }
 
 static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
@@ -164,12 +175,13 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
     hash  = ngx_hash_strlow(low, key.data, key.len);
     cmcf  = ngx_http_get_module_main_conf(r, ngx_http_core_module);
     v     = ngx_hash_find(&cmcf->variables_hash, hash, key.data, key.len);
+
     if (v) {
         if (!(v->flags & NGX_HTTP_VAR_CHANGEABLE)) {
             ngx_log_error(NGX_LOG_ERR
                 , r->connection->log
                 , 0
-                , "%s ERROR :%d: %s not changeable"
+                , "%s ERROR %s:%d: %s not changeable"
                 , MODULE_NAME
                 , __func__
                 , __LINE__
@@ -183,7 +195,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
                 ngx_log_error(NGX_LOG_ERR
                     , r->connection->log
                     , 0
-                    , "%s ERROR :%d: memory allocate failed"
+                    , "%s ERROR %s:%d: memory allocate failed"
                     , MODULE_NAME
                     , __func__
                     , __LINE__
@@ -214,7 +226,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
         ngx_log_error(NGX_LOG_ERR
             , r->connection->log
             , 0
-            , "%s ERROR :%d: %s is not assinged"
+            , "%s ERROR %s:%d: %s is not assinged"
             , MODULE_NAME
             , __func__
             , __LINE__
@@ -226,7 +238,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self)
     ngx_log_error(NGX_LOG_ERR
         , r->connection->log
         , 0
-        , "%s ERROR :%d: %s is not found"
+        , "%s ERROR %s:%d: %s is not found"
         , MODULE_NAME
         , __func__
         , __LINE__
