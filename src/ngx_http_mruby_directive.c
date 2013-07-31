@@ -407,12 +407,24 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
                 , filter_data->script.data
                 , __FUNCTION__
                 , __LINE__
+                , target.data
+                , filter_data->script.data
             );
         }
         return NGX_CONF_ERROR;
     }
 
     filter.data = filter_data;
+    ngx_conf_log_error(NGX_LOG_NOTICE
+        , cf
+        , 0
+        , "%s NOTICE %s:%d: target variable=(%s) script data=(%s)"
+        , MODULE_NAME
+        , __FUNCTION__
+        , __LINE__
+        , target.data
+        , filter_data->script.data
+    );
 
     return ndk_set_var_multi_value_core(cf, &target, &value[3], &filter);
 }

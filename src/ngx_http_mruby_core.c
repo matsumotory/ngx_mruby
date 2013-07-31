@@ -68,6 +68,7 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
 
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached, ngx_str_t *result)
 {
+    int result_len;
     mrb_value mrb_result;
     ngx_http_mruby_ctx_t *ctx;
     ngx_mrb_rputs_chain_list_t *chain;
@@ -111,18 +112,37 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
             ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
         }
     }
+    if (result != NULL) {
+        if (mrb_nil_p(mrb_result)) { 
+            result->data = NULL;
+            result->len = 0;
+        } else {
+            if (mrb_type(mrb_result) != MRB_TT_STRING) {
+                mrb_result = mrb_funcall(state->mrb, mrb_result, "to_s", 0, NULL);
+            }
+            result_len = ngx_strlen((u_char *)RSTRING_PTR(mrb_result));
+            result->data = ngx_palloc(r->pool, result_len);
+            if (result->data == NULL) {
+                return NGX_ERROR;
+            }
+            ngx_memcpy(result->data, (u_char *)RSTRING_PTR(mrb_result), result_len);
+            result->len  = result_len;
+            ngx_log_error(NGX_LOG_INFO
+                , r->connection->log
+                , 0
+                , "%s INFO %s:%d: mrb_run info: return value=(%s)"
+                , MODULE_NAME
+                , __func__
+                , __LINE__
+                , result->data
+            );
+        }
+    }
 
     mrb_gc_arena_restore(state->mrb, state->ai);
 
     if (!cached) {
         ngx_mrb_irep_clean(state, code);
-    }
-    if (result != NULL) {
-        if (mrb_type(mrb_result) != MRB_TT_STRING) {
-            mrb_result = mrb_funcall(state->mrb, mrb_result, "to_s", 0, NULL);
-        }
-        result->data = (u_char *)RSTRING_PTR(mrb_result);
-        result->len  = ngx_strlen(result->data);
     }
 
     // TODO: Support rputs by multi directive
@@ -132,12 +152,12 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
             ngx_log_error(NGX_LOG_INFO
                 , r->connection->log
                 , 0
-                , "%s INFO %s:%d: rputs_chain is null and declined"
+                , "%s INFO %s:%d: rputs_chain is null and return NGX_OK"
                 , MODULE_NAME
                 , __func__
                 , __LINE__
             );
-            return NGX_DECLINED;
+            return NGX_OK;
         }
         if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
             r->headers_out.status = NGX_HTTP_OK;
