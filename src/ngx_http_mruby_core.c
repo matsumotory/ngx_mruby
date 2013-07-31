@@ -134,7 +134,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
                 , MODULE_NAME
                 , __func__
                 , __LINE__
-                , result->data
+                , RSTRING_PTR(mrb_result)
             );
         }
     }
