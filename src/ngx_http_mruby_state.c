@@ -171,11 +171,12 @@ ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *s
         ngx_conf_log_error(NGX_LOG_NOTICE
             , cf
             , 0
-            , "%s NOTICE %s:%d: compile info: code->n=%d code->code.string"
+            , "%s NOTICE %s:%d: compile info: code->n=%d code->code.string=(%s)"
             , MODULE_NAME
             , __func__
             , __LINE__
             , code->n
+            , code->code.string
         );
     }
 
