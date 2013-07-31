@@ -130,10 +130,11 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
             ngx_log_error(NGX_LOG_INFO
                 , r->connection->log
                 , 0
-                , "%s INFO %s:%d: mrb_run info: return value=(%s)"
+                , "%s INFO %s:%d: mrb_run info: irep_n=(%d) return value=(%s)"
                 , MODULE_NAME
                 , __func__
                 , __LINE__
+                , code->n
                 , RSTRING_PTR(mrb_result)
             );
         }
@@ -152,10 +153,11 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
             ngx_log_error(NGX_LOG_INFO
                 , r->connection->log
                 , 0
-                , "%s INFO %s:%d: rputs_chain is null and return NGX_OK"
+                , "%s INFO %s:%d: mrb_run info: irep_n=(%d) rputs_chain is null and return NGX_OK"
                 , MODULE_NAME
                 , __func__
                 , __LINE__
+                , code->n
             );
             return NGX_OK;
         }
