@@ -44,7 +44,7 @@ clobber: clean_mruby clean
 
 #   build mruby
 build_mruby:
-	cp build_config.rb $(MRUBY_ROOT)/build_config.rb && cd $(MRUBY_ROOT) && $(RAKE)
+	cp build_config.rb $(MRUBY_ROOT)/build_config.rb && cd $(MRUBY_ROOT) && $(RAKE) && cd $(MRUBY_ROOT) && git checkout build_config.rb
 
 #   clean mruby
 clean_mruby:
