@@ -43,7 +43,7 @@ ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r)
     NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
         mlcf->cached,
         mmcf->state,
-        mlcf->header_filter_inline_code,
+        mlcf->header_filter_code,
         ngx_http_mruby_state_reinit_from_file
     );
 
