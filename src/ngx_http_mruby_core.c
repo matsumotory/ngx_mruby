@@ -539,6 +539,15 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     return self;
 }
 
+mrb_value ngx_mrb_f_global_remove(mrb_state *mrb, mrb_value self)
+{
+    mrb_sym id;
+    mrb_get_args(mrb, "n", &id);
+    mrb_gv_remove(mrb, id);
+
+    return mrb_f_global_variables(mrb, self);
+}
+
 void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
 {
     mrb_define_method(mrb, mrb->kernel_module, "server_name", ngx_mrb_server_name, ARGS_NONE());
@@ -603,5 +612,6 @@ void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
     mrb_define_class_method(mrb, class, "errlogger",                    ngx_mrb_errlogger,                  ARGS_ANY());
     mrb_define_class_method(mrb, class, "ngx_mruby_version",            ngx_mrb_get_ngx_mruby_version,      ARGS_NONE());
     mrb_define_class_method(mrb, class, "nginx_version",                ngx_mrb_get_nginx_version,          ARGS_NONE());
-    mrb_define_class_method(mrb, class, "redirect",                     ngx_mrb_redirect,                      ARGS_ANY());
+    mrb_define_class_method(mrb, class, "redirect",                     ngx_mrb_redirect,                   ARGS_ANY());
+    mrb_define_class_method(mrb, class, "remove_global_variable",       ngx_mrb_f_global_remove,            ARGS_REQ(1));
 }
