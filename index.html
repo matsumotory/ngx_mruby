@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Ngx mruby : ngx_mruby  to provide an alternative to lua-nginx-module" />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Ngx mruby</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/matsumoto-r/ngx_mruby">View on GitHub</a>
+
+          <h1 id="project_title">Ngx mruby</h1>
+          <h2 id="project_tagline">ngx_mruby  to provide an alternative to lua-nginx-module</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/matsumoto-r/ngx_mruby/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/matsumoto-r/ngx_mruby/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h2>
+<a name="whats-ngx_mruby" class="anchor" href="#whats-ngx_mruby"><span class="octicon octicon-link"></span></a>What's ngx_mruby</h2>
+
+<p>ngx_mruby - to provide an alternative to mod_mruby for nginx.</p>
+
+<p>nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.</p>
+
+<h2>
+<a name="how-to-use" class="anchor" href="#how-to-use"><span class="octicon octicon-link"></span></a>How to use</h2>
+
+<h3>
+<a name="1-download" class="anchor" href="#1-download"><span class="octicon octicon-link"></span></a>1. Download</h3>
+
+<pre><code>    git clone git://github.com/matsumoto-r/ngx_mruby.git
+    cd ngx_mruby
+    git submodule init
+    git submodule update
+</code></pre>
+
+<h3>
+<a name="2-build" class="anchor" href="#2-build"><span class="octicon octicon-link"></span></a>2. Build</h3>
+
+<ul>
+<li>
+<p>configure example</p>
+
+<pre><code>./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="--prefix=/usr/local/nginx"
+</code></pre>
+</li>
+<li>
+<p>mruby build</p>
+
+<pre><code>make build_mruby
+</code></pre>
+</li>
+<li>
+<p>ngx_mruby build</p>
+
+<pre><code>make 
+</code></pre>
+
+<p>or  </p>
+
+<pre><code>cd ${NGINX_SRC}
+./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${SOME_MODULE}
+make
+</code></pre>
+</li>
+</ul><h3>
+<a name="3-install" class="anchor" href="#3-install"><span class="octicon octicon-link"></span></a>3. Install</h3>
+
+<pre><code>    sudo make install
+</code></pre>
+
+<h3>
+<a name="4-add-setting" class="anchor" href="#4-add-setting"><span class="octicon octicon-link"></span></a>4. Add setting</h3>
+
+<pre><code>    location /mruby {
+        mruby_content_handler /usr/local/nginx122/html/hello.rb;
+    }
+</code></pre>
+
+<h3>
+<a name="5-create-mruby-script-usrlocalnginxhtmlhellorb" class="anchor" href="#5-create-mruby-script-usrlocalnginxhtmlhellorb"><span class="octicon octicon-link"></span></a>5. Create mruby script /usr/local/nginx/html/hello.rb</h3>
+
+<pre><code>    Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
+</code></pre>
+
+<h3>
+<a name="6-start-nginx" class="anchor" href="#6-start-nginx"><span class="octicon octicon-link"></span></a>6. Start nginx</h3>
+
+<pre><code>    /usr/local/nginx/sbin/nginx
+</code></pre>
+
+<h3>
+<a name="7-access-httpexamplecommruby-sedexamplecommydomain" class="anchor" href="#7-access-httpexamplecommruby-sedexamplecommydomain"><span class="octicon octicon-link"></span></a>7. Access <a href="http://example.com/mruby">http://example.com/mruby</a> (sed/example.com/mydomain/)</h3>
+
+<pre><code>    Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
+</code></pre>
+
+<p>Display above. Welcome mruby world for nginx!!</p>
+
+<h1>
+<a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h1>
+
+<p>under the MIT License:</p>
+
+<ul>
+<li><a href="http://www.opensource.org/licenses/mit-license.php">http://www.opensource.org/licenses/mit-license.php</a></li>
+</ul>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Ngx mruby maintained by <a href="https://github.com/matsumoto-r">matsumoto-r</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
