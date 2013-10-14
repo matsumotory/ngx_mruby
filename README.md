@@ -9,7 +9,8 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
         git clone git://github.com/matsumoto-r/ngx_mruby.git
         cd ngx_mruby
-
+        git submodule init
+        git submodule update
 
 ### 2. Build
 * configure example
