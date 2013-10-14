@@ -23,9 +23,8 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
 * ngx_mruby build
 
-        make
-        
-or
+        make 
+or  
 
         cd ${NGINX_SRC}
         ./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${SOME_MODULE}
@@ -39,16 +38,16 @@ or
 ### 4. Add setting
 
         location /mruby {
-            mruby_content_handler /usr/local/nginx122/html/hello.mrb;
+            mruby_content_handler /usr/local/nginx122/html/hello.rb;
         }
 
-### 5. Create mruby script /usr/local/nginx122/html/hello.mrb
+### 5. Create mruby script /usr/local/nginx/html/hello.rb
 
         Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
 
 ### 6. Start nginx
 
-        /usr/local/nginx122/sbin/nginx
+        /usr/local/nginx/sbin/nginx
 
 ### 7. Access http://example.com/mruby (sed/example.com/mydomain/)
 
