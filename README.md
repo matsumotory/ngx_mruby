@@ -15,7 +15,7 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 ### 2. Build
 * configure example
 
-        ./configure --with-ngx-src-root=nginx/nginx-1.2.2 --with-ngx-config-opt="--prefix=/usr/local/nginx"
+        ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="--prefix=/usr/local/nginx"
 
 * mruby build
 
@@ -23,6 +23,12 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
 * ngx_mruby build
 
+        make
+        
+or
+
+        cd ${NGINX_SRC}
+        ./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${SOME_MODULE}
         make
 
 
