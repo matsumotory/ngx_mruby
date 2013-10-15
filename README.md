@@ -43,7 +43,7 @@ or
 
 ### 5. Create mruby script /usr/local/nginx/html/hello.rb
 
-        Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
+    Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
 
 ### 6. Start nginx
 
