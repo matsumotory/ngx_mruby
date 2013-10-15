@@ -7,10 +7,10 @@ nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
 ### 1. Download
 
-        git clone git://github.com/matsumoto-r/ngx_mruby.git
-        cd ngx_mruby
-        git submodule init
-        git submodule update
+    git clone git://github.com/matsumoto-r/ngx_mruby.git
+    cd ngx_mruby
+    git submodule init
+    git submodule update
 
 ### 2. Build
 * configure example
@@ -33,13 +33,13 @@ or
 
 ### 3. Install
 
-        sudo make install
+    sudo make install
 
 ### 4. Add setting
 
-        location /mruby {
-            mruby_content_handler /usr/local/nginx122/html/hello.rb;
-        }
+    location /mruby {
+        mruby_content_handler /usr/local/nginx122/html/hello.rb;
+    }
 
 ### 5. Create mruby script /usr/local/nginx/html/hello.rb
 
@@ -47,11 +47,11 @@ or
 
 ### 6. Start nginx
 
-        /usr/local/nginx/sbin/nginx
+    /usr/local/nginx/sbin/nginx
 
 ### 7. Access http://example.com/mruby (sed/example.com/mydomain/)
 
-        Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
+    Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
 
 Display above. Welcome mruby world for nginx!!
 
