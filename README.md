@@ -1,7 +1,9 @@
 ## What's ngx_mruby
 __ngx_murby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
 
-ngx_mruby is to provide an alternative to [mod_mruby](http://matsumoto-r.github.io/mod_mruby/) for nginx. You can implemet nginx modules by Ruby scripts on nginx!
+- ngx_mruby is to provide an alternative to [mod_mruby](http://matsumoto-r.github.io/mod_mruby/) for nginx. 
+- You can implemet nginx modules by Ruby scripts on nginx!
+- Supported nginx __1.2/1.3/1.4/1.5.*__
 
 ```ruby
 # location /proxy {
