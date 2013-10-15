@@ -4,11 +4,11 @@
   <head>
     <meta charset='utf-8' />
     <meta http-equiv="X-UA-Compatible" content="chrome=1" />
-    <meta name="description" content="ngx_mruby : ngx_mruby to provide an alternative to lua-nginx-module" />
+    <meta name="description" content="ngx_mruby : ngx_mruby  to provide an alternative to lua-nginx-module" />
 
     <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
-    <title>Ngx mruby</title>
+    <title>ngx_mruby</title>
   </head>
 
   <body>
@@ -18,7 +18,7 @@
         <header class="inner">
           <a id="forkme_banner" href="https://github.com/matsumoto-r/ngx_mruby">View on GitHub</a>
 
-          <h1 id="project_title">Ngx mruby</h1>
+          <h1 id="project_title">ngx_mruby</h1>
           <h2 id="project_tagline">ngx_mruby  to provide an alternative to lua-nginx-module</h2>
 
             <section id="downloads">
@@ -44,10 +44,10 @@
 <h3>
 <a name="1-download" class="anchor" href="#1-download"><span class="octicon octicon-link"></span></a>1. Download</h3>
 
-<pre><code>    git clone git://github.com/matsumoto-r/ngx_mruby.git
-    cd ngx_mruby
-    git submodule init
-    git submodule update
+<pre><code>git clone git://github.com/matsumoto-r/ngx_mruby.git
+cd ngx_mruby
+git submodule init
+git submodule update
 </code></pre>
 
 <h3>
@@ -82,33 +82,33 @@ make
 </ul><h3>
 <a name="3-install" class="anchor" href="#3-install"><span class="octicon octicon-link"></span></a>3. Install</h3>
 
-<pre><code>    sudo make install
+<pre><code>sudo make install
 </code></pre>
 
 <h3>
 <a name="4-add-setting" class="anchor" href="#4-add-setting"><span class="octicon octicon-link"></span></a>4. Add setting</h3>
 
-<pre><code>    location /mruby {
-        mruby_content_handler /usr/local/nginx122/html/hello.rb;
-    }
+<pre><code>location /mruby {
+    mruby_content_handler /usr/local/nginx122/html/hello.rb;
+}
 </code></pre>
 
 <h3>
 <a name="5-create-mruby-script-usrlocalnginxhtmlhellorb" class="anchor" href="#5-create-mruby-script-usrlocalnginxhtmlhellorb"><span class="octicon octicon-link"></span></a>5. Create mruby script /usr/local/nginx/html/hello.rb</h3>
 
-<pre><code>    Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
+<pre><code>Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
 </code></pre>
 
 <h3>
 <a name="6-start-nginx" class="anchor" href="#6-start-nginx"><span class="octicon octicon-link"></span></a>6. Start nginx</h3>
 
-<pre><code>    /usr/local/nginx/sbin/nginx
+<pre><code>/usr/local/nginx/sbin/nginx
 </code></pre>
 
 <h3>
 <a name="7-access-httpexamplecommruby-sedexamplecommydomain" class="anchor" href="#7-access-httpexamplecommruby-sedexamplecommydomain"><span class="octicon octicon-link"></span></a>7. Access <a href="http://example.com/mruby">http://example.com/mruby</a> (sed/example.com/mydomain/)</h3>
 
-<pre><code>    Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
+<pre><code>Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
 </code></pre>
 
 <p>Display above. Welcome mruby world for nginx!!</p>
@@ -127,7 +127,7 @@ make
     <!-- FOOTER  -->
     <div id="footer_wrap" class="outer">
       <footer class="inner">
-        <p class="copyright">Ngx mruby maintained by <a href="https://github.com/matsumoto-r">matsumoto-r</a></p>
+        <p class="copyright">ngx_mruby maintained by <a href="https://github.com/matsumoto-r">matsumoto-r</a></p>
         <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
       </footer>
     </div>
