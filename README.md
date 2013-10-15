@@ -3,6 +3,22 @@ ngx_mruby - to provide an alternative to mod_mruby for nginx.
 
 nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
+```ruby
+# location /proxy {
+#   mruby_set $backend "/path/to/proxy.rb";
+#   proxy_pass   http://$backend;
+# }
+
+backends = [
+  "test1",
+  "test2",
+  "test3",
+]
+
+r = Redis.new "192.168.12.251", 6379
+r.get backends[rand(backends.length)]
+```
+
 ## How to use
 
 ### 1. Download
