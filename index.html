@@ -38,6 +38,21 @@
 
 <p>nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.</p>
 
+<div class="highlight highlight-ruby"><pre><span class="c1"># location /proxy {</span>
+<span class="c1">#   mruby_set $backend "/path/to/proxy.rb";</span>
+<span class="c1">#   proxy_pass   http://$backend;</span>
+<span class="c1"># }</span>
+
+<span class="n">backends</span> <span class="o">=</span> <span class="o">[</span>
+  <span class="s2">"test1"</span><span class="p">,</span>
+  <span class="s2">"test2"</span><span class="p">,</span>
+  <span class="s2">"test3"</span><span class="p">,</span>
+<span class="o">]</span>
+
+<span class="n">r</span> <span class="o">=</span> <span class="no">Redis</span><span class="o">.</span><span class="n">new</span> <span class="s2">"192.168.12.251"</span><span class="p">,</span> <span class="mi">6379</span>
+<span class="n">r</span><span class="o">.</span><span class="n">get</span> <span class="n">backends</span><span class="o">[</span><span class="nb">rand</span><span class="p">(</span><span class="n">backends</span><span class="o">.</span><span class="n">length</span><span class="p">)</span><span class="o">]</span>
+</pre></div>
+
 <h2>
 <a name="how-to-use" class="anchor" href="#how-to-use"><span class="octicon octicon-link"></span></a>How to use</h2>
 
