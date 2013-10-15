@@ -1,5 +1,6 @@
 ## What's ngx_mruby
-ngx_mruby - to provide an alternative to mod_mruby for nginx.
+__ngx_murby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx._
+ngx_mruby is to provide an alternative to mod_mruby for nginx.
 
 nginx modules can be implemeted by mruby scripts on nginx installed ngx_mruby.
 
