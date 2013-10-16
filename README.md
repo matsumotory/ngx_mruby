@@ -25,7 +25,6 @@ r.get backends[rand(backends.length)]
 
 - see [examples](https://github.com/matsumoto-r/ngx_mruby/blob/master/example/nginx.conf)
 - __Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions__
-- Some Web Server software extensions are implemented by same Ruby code (as possible) 
 - You can implement some Web server software extensions by same Ruby code (as possible) 
 
 ```ruby
