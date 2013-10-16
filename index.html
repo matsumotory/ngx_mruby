@@ -38,7 +38,9 @@
 
 <ul>
 <li>ngx_mruby is to provide an alternative to lua-nginx-module or <a href="http://matsumoto-r.github.io/mod_mruby/">mod_mruby of Apache httpd</a>. </li>
+<li>Unified Ruby Code between Apache(mod_mruby), nginx(ngx_mruby) and other Web server software(plan) for Web server extensions.</li>
 <li>You can implemet nginx modules by Ruby scripts on nginx!</li>
+<li>You can implement some Web server software extensions by same Ruby code (as possible) </li>
 <li>Supported nginx <strong>1.2/1.3/1.4/1.5.*</strong>
 </li>
 </ul><div class="highlight highlight-ruby"><pre><span class="c1"># location /proxy {</span>
@@ -59,7 +61,36 @@
 <ul>
 <li>see <a href="https://github.com/matsumoto-r/ngx_mruby/blob/master/example/nginx.conf">examples</a>
 </li>
-</ul><h2>
+<li><strong>Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions</strong></li>
+<li>You can implement some Web server software extensions by same Ruby code (as possible) </li>
+</ul><div class="highlight highlight-ruby"><pre><span class="c1"># Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby)</span>
+<span class="c1"># for Web server extensions.</span>
+<span class="c1">#</span>
+<span class="c1"># Apache httpd.conf by mod_mruby</span>
+<span class="c1"># </span>
+<span class="c1"># &lt;Location /mruby&gt;</span>
+<span class="c1">#     mrubyHandlerMiddle "/path/to/unified_hello.rb"</span>
+<span class="c1"># &lt;/Location&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># nginx ngxin.conf by ngx_mruby</span>
+<span class="c1">#</span>
+<span class="c1"># location /mruby {</span>
+<span class="c1">#     mruby_content_handler "/path/to/unified_hello.rb";</span>
+<span class="c1"># }</span>
+<span class="c1">#</span>
+
+<span class="k">if</span> <span class="n">server_name</span> <span class="o">==</span> <span class="s2">"NGINX"</span>
+  <span class="no">Server</span> <span class="o">=</span> <span class="no">Nginx</span>
+<span class="k">elsif</span> <span class="n">server_name</span> <span class="o">==</span> <span class="s2">"Apache"</span>
+  <span class="no">Server</span> <span class="o">=</span> <span class="no">Apache</span>
+<span class="k">end</span>
+
+<span class="ss">Server</span><span class="p">:</span><span class="ss">:rputs</span> <span class="s2">"Hello </span><span class="si">#{</span><span class="ss">Server</span><span class="p">:</span><span class="ss">:module_name</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="ss">Server</span><span class="p">:</span><span class="ss">:module_version</span><span class="si">}</span><span class="s2"> world!"</span>
+<span class="c1"># mod_mruby =&gt; "Hello mod_mruby/0.9.3 world!"</span>
+<span class="c1"># ngx_mruby =&gt; "Hello ngx_mruby/0.0.1 world!"</span>
+</pre></div>
+
+<h2>
 <a name="abstract" class="anchor" href="#abstract"><span class="octicon octicon-link"></span></a>Abstract</h2>
 
 <p>As the increase of large-scale and complex Web services, not only a development of Web applications but also an implementation of Web server extensions is required in many cases. The Web server extensions were mainly implemented in C language because of fast and memory-efficient behavior, but extension methods using scripting language are proposed with consideration of maintainability and productivity. However, if the existing methods primarily intended to enhance not the implementation of Web applications but the implementation of internal processing of the Web server, the problem remains in terms of fast, memory-efficiency and safety. Therefore, we propose a fast and memory-efficient Web server extension mechanism using scripting language. We design the architecture that a server process create the region to save the state of the interpreter at the server process startup, and multiple scripts share the region in order to process fast when the script is called as internal processing from a Web server process. The server process free the global variables table, the exception flag and the byte-code which cause the increase of memory usage mainly, in order to reduce the memory usage and extend safely by preventing interference between each scripts because of sharing the region. We implement the mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and embeddable scripting language mruby. It's called "ngx_mruby".</p>
