@@ -4,6 +4,7 @@ __ngx_murby is A Fast and Memory-Efficient Web Server Extension Mechanism Using 
 - ngx_mruby is to provide an alternative to lua-nginx-module or [mod_mruby of Apache httpd](http://matsumoto-r.github.io/mod_mruby/). 
 - Unified Ruby Code between Apache(mod_mruby), nginx(ngx_mruby) and other Web server software(plan) for Web server extensions.
 - You can implemet nginx modules by Ruby scripts on nginx!
+- You can implement some Web server software extensions by same Ruby code (as possible) 
 - Supported nginx __1.2/1.3/1.4/1.5.*__
 
 ```ruby
@@ -25,6 +26,7 @@ r.get backends[rand(backends.length)]
 - see [examples](https://github.com/matsumoto-r/ngx_mruby/blob/master/example/nginx.conf)
 - __Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions__
 - Some Web Server software extensions are implemented by same Ruby code (as possible) 
+- You can implement some Web server software extensions by same Ruby code (as possible) 
 
 ```ruby
 # Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions.
