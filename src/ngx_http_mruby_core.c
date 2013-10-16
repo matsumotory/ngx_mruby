@@ -33,11 +33,28 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self);
 
-static void ngx_mrb_irep_clean(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
+static void ngx_mrb_state_clean(ngx_http_request_t *r, ngx_mrb_state_t *state)
 {
-    state->mrb->irep_len = code->n;
-    mrb_irep_free(state->mrb, state->mrb->irep[code->n]);
     state->mrb->exc = 0;
+}
+
+static void ngx_mrb_irep_clean(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
+{
+    int i;
+    int last_idx = state->mrb->irep_len;
+    state->mrb->irep_len = code->n;
+    for (i = code->n; i < last_idx; i++) {
+        ngx_log_error(NGX_LOG_INFO
+            , r->connection->log
+            , 0
+            , "%s INFO %s:%d: irep cleaning idx=[%d]"
+            , MODULE_NAME
+            , __func__
+            , __LINE__
+            , i
+        );
+        mrb_irep_free(state->mrb, state->mrb->irep[i]);
+    }
 }
 
 ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
@@ -143,7 +160,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     mrb_gc_arena_restore(state->mrb, state->ai);
 
     if (!cached) {
-        ngx_mrb_irep_clean(state, code);
+        ngx_mrb_irep_clean(r, state, code);
+        ngx_mrb_state_clean(r, state);
     }
 
     // TODO: Support rputs by multi directive
@@ -193,7 +211,8 @@ ngx_int_t ngx_mrb_run_body_filter(ngx_http_request_t *r, ngx_mrb_state_t *state,
         }
         mrb_gc_arena_restore(state->mrb, state->ai);
         if (!cached) {
-            ngx_mrb_irep_clean(state, code);
+            ngx_mrb_irep_clean(r, state, code);
+            ngx_mrb_state_clean(r, state);
         }
         return NGX_ERROR;
     }
@@ -207,7 +226,8 @@ ngx_int_t ngx_mrb_run_body_filter(ngx_http_request_t *r, ngx_mrb_state_t *state,
 
     mrb_gc_arena_restore(state->mrb, state->ai);
     if (!cached) {
-        ngx_mrb_irep_clean(state, code);
+        ngx_mrb_irep_clean(r, state, code);
+        ngx_mrb_state_clean(r, state);
     }
     return NGX_OK;
 }
