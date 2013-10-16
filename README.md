@@ -2,6 +2,7 @@
 __ngx_murby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
 
 - ngx_mruby is to provide an alternative to lua-nginx-module or [mod_mruby of Apache httpd](http://matsumoto-r.github.io/mod_mruby/). 
+- Unified Ruby Code between Apache(mod_mruby), nginx(ngx_mruby) and other Web server software(plan) for Web server extensions.
 - You can implemet nginx modules by Ruby scripts on nginx!
 - Supported nginx __1.2/1.3/1.4/1.5.*__
 
@@ -22,6 +23,34 @@ r.get backends[rand(backends.length)]
 ```
 
 - see [examples](https://github.com/matsumoto-r/ngx_mruby/blob/master/example/nginx.conf)
+- __Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions__
+
+```ruby
+# Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions.
+#
+# Apache httpd.conf by mod_mruby
+# 
+# <Location /mruby>
+#     mrubyHandlerMiddle "/path/to/unified_hello.rb"
+# </Location>
+#
+# nginx ngxin.conf by ngx_mruby
+#
+# location /mruby {
+#     mruby_content_handler "/path/to/unified_hello.rb";
+# }
+#
+
+if server_name == "NGINX"
+  Server = Nginx
+elsif server_name == "Apache"
+  Server = Apache
+end
+
+Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
+# mod_mruby => "Hello mod_mruby/0.9.3 world!"
+# ngx_mruby => "Hello ngx_mruby/0.0.1 world!"
+```
 
 ## Abstract
 
