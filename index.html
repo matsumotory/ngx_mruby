@@ -43,6 +43,7 @@
 <li>You can implement some Web server software extensions by same Ruby code (as possible) </li>
 <li>Supported nginx <strong>1.2/1.3/1.4/1.5.*</strong>
 </li>
+<li><a href="https://gist.github.com/matsumoto-r/6930672">Benchmark between ngx_mruby(19423.42 req/sec) and lua-nginx-module(13894.30 req/sec)</a></li>
 </ul><div class="highlight highlight-ruby"><pre><span class="c1"># location /proxy {</span>
 <span class="c1">#   mruby_set $backend "/path/to/proxy.rb";</span>
 <span class="c1">#   proxy_pass   http://$backend;</span>
