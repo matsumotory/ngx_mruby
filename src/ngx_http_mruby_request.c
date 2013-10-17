@@ -265,6 +265,32 @@ static mrb_value ngx_mrb_get_request_var_user(mrb_state *mrb, mrb_value self)
     return mrb_funcall(mrb, v, "remote_user", 0, NULL);
 }
 
+// TODO: combine ngx_mrb_get_request_var
+static mrb_value ngx_mrb_get_class_obj(mrb_state *mrb, mrb_value self, char *obj_id, char *class_name)
+{
+    mrb_value obj;
+    struct RClass *obj_class, *ngx_class;
+
+    obj = mrb_iv_get(mrb, self, mrb_intern(mrb, obj_id));
+    if (mrb_nil_p(obj)) {
+        ngx_class = mrb_class_get(mrb, "Nginx");
+        obj_class = (struct RClass*)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, class_name)));
+        obj = mrb_obj_new(mrb, obj_class, 0, NULL);
+        mrb_iv_set(mrb, self, mrb_intern(mrb, obj_id), obj);
+    }
+    return obj;
+}
+
+static mrb_value ngx_mrb_headers_in_obj(mrb_state *mrb, mrb_value self)
+{   
+    return ngx_mrb_get_class_obj(mrb, self, "headers_in_obj", "Headers_in");
+}
+
+static mrb_value ngx_mrb_headers_out_obj(mrb_state *mrb, mrb_value self)
+{   
+    return ngx_mrb_get_class_obj(mrb, self, "headers_out_obj", "Headers_out");
+}
+
 void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
 {
     struct RClass *class_request;
@@ -287,6 +313,8 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
     mrb_define_method(mrb, class_request, "args", ngx_mrb_get_request_args, ARGS_NONE());
     mrb_define_method(mrb, class_request, "args=", ngx_mrb_set_request_args, ARGS_ANY());
     mrb_define_method(mrb, class_request, "var", ngx_mrb_get_request_var, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "headers_in", ngx_mrb_headers_in_obj, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "headers_out", ngx_mrb_headers_out_obj, ARGS_NONE());
 
     mrb_define_method(mrb, class_request, "hostname", ngx_mrb_get_request_var_hostname, ARGS_NONE());
     mrb_define_method(mrb, class_request, "filename", ngx_mrb_get_request_var_filename, ARGS_NONE());
@@ -295,10 +323,10 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
     class_headers_in = mrb_define_class_under(mrb, class, "Headers_in", mrb->object_class);
     mrb_define_method(mrb, class_headers_in, "[]", ngx_mrb_get_request_headers_in, ARGS_ANY());
     mrb_define_method(mrb, class_headers_in, "[]=", ngx_mrb_set_request_headers_in, ARGS_ANY());
-    mrb_define_method(mrb, class_headers_in, "headers_in_hash", ngx_mrb_get_request_headers_in_hash, ARGS_ANY());
+    mrb_define_method(mrb, class_headers_in, "all", ngx_mrb_get_request_headers_in_hash, ARGS_ANY());
 
     class_headers_out = mrb_define_class_under(mrb, class, "Headers_out", mrb->object_class);
     mrb_define_method(mrb, class_headers_out, "[]", ngx_mrb_get_request_headers_out, ARGS_ANY());
     mrb_define_method(mrb, class_headers_out, "[]=", ngx_mrb_set_request_headers_out, ARGS_ANY());
-    mrb_define_method(mrb, class_headers_out, "headers_out_hash", ngx_mrb_get_request_headers_out_hash, ARGS_ANY());
+    mrb_define_method(mrb, class_headers_out, "all", ngx_mrb_get_request_headers_out_hash, ARGS_ANY());
 }
