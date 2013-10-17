@@ -6,6 +6,7 @@ __ngx_murby is A Fast and Memory-Efficient Web Server Extension Mechanism Using 
 - You can implemet nginx modules by Ruby scripts on nginx!
 - You can implement some Web server software extensions by same Ruby code (as possible) 
 - Supported nginx __1.2/1.3/1.4/1.5.*__
+- [Benchmark between ngx_mruby and lua-nginx-module](https://gist.github.com/matsumoto-r/6930672)
 
 ```ruby
 # location /proxy {
