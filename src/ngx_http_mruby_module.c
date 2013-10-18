@@ -92,6 +92,13 @@ static ngx_command_t ngx_http_mruby_commands[] = {
       offsetof(ngx_http_mruby_loc_conf_t, cached),
       NULL },
 
+    { ngx_string("mruby_add_handler"),
+      NGX_HTTP_LOC_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_mruby_loc_conf_t, add_handler),
+      NULL },
+
     { ngx_string("mruby_post_read_handler"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                         |NGX_CONF_TAKE1,
@@ -322,6 +329,7 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
     conf->body_filter_inline_code     = NGX_CONF_UNSET_PTR;
 
     conf->cached = NGX_CONF_UNSET;
+    conf->add_handler = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -351,6 +359,7 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
     NGX_MRUBY_MERGE_CODE(prev->body_filter_inline_code,     conf->body_filter_inline_code);
 
     ngx_conf_merge_value(conf->cached, prev->cached, 0);
+    ngx_conf_merge_value(conf->add_handler, prev->add_handler, 0);
 
     return NGX_CONF_OK;
 }
