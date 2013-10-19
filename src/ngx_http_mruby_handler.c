@@ -39,8 +39,27 @@ ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
 
     if (mlcf->add_handler) {
         if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
+            ngx_log_error(NGX_LOG_ERR
+                , r->connection->log
+                , 0
+                , "%s:%d request_file(%s) map failed"
+                , __FUNCTION__
+                , __LINE__
+                , path.data
+            );
             return NGX_ERROR;
         } 
+        if (access(path.data, F_OK) != 0) {
+            ngx_log_error(NGX_LOG_INFO
+                , r->connection->log
+                , 0
+                , "%s:%d request_file(%s) not found"
+                , __FUNCTION__
+                , __LINE__
+                , path.data
+            );
+            return NGX_HTTP_NOT_FOUND;
+        }
         code  = ngx_http_mruby_mrb_code_from_file(r->pool, &path);
         if (code == NGX_CONF_UNSET_PTR) {
             ngx_log_error(NGX_LOG_ERR
