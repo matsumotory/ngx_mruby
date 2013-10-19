@@ -95,7 +95,7 @@ or
 ### 4. Add setting
 
     location /mruby {
-        mruby_content_handler /usr/local/nginx122/html/hello.rb;
+        mruby_content_handler /usr/local/nginx/html/hello.rb;
     }
 
 ### 5. Create mruby script /usr/local/nginx/html/hello.rb
