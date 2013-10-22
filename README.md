@@ -64,51 +64,50 @@ As the increase of large-scale and complex Web services, not only a development 
 
 ### 1. Download
 
-    git clone git://github.com/matsumoto-r/ngx_mruby.git
-    cd ngx_mruby
-    git submodule init
-    git submodule update
+```bash
+$ git clone git://github.com/matsumoto-r/ngx_mruby.git
+$ cd ngx_mruby
+$ git submodule init
+$ git submodule update
+```
 
-### 2. Build
-* configure example
-
-        ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="--prefix=/usr/local/nginx"
-
-* mruby build
-
-        make build_mruby
-
-* ngx_mruby build
-
-        make 
-or  
-
-        cd ${NGINX_SRC}
-        ./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${SOME_MODULE}
-        make
-
-
+### 2. Build 
+Download [Nginx](http://nginx.org/en/download.html), unpack, configure with ```--add-module=${NGX_MRUBY_SRC}``` and make it
+```bash
+$ cd ngx_mruby
+$ cd ${NGINX_SRC}
+$ ./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${SOME_OTHER_MODULE}
+$ make
+```
+or manually configure (example), mruby build, ngx_mruby build.
+```bash
+$ ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="--prefix=/usr/local/nginx"
+$ make build_mruby
+$ make
+```
 ### 3. Install
-
-    sudo make install
-
+```bash
+$ sudo make install
+```
 ### 4. Add setting
-
+```nginx
     location /mruby {
         mruby_content_handler /usr/local/nginx/html/hello.rb;
     }
-
+```
 ### 5. Create mruby script /usr/local/nginx/html/hello.rb
-
-    Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
+```ruby
+Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
+```
 
 ### 6. Start nginx
-
-    /usr/local/nginx/sbin/nginx
-
+```bash
+/usr/local/nginx/sbin/nginx
+```
 ### 7. Access http://example.com/mruby (sed/example.com/mydomain/)
-
-    Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
+```
+Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
+```
 
 Display above. Welcome mruby world for nginx!!
 
