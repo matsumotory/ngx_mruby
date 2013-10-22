@@ -102,66 +102,55 @@
 <h3>
 <a name="1-download" class="anchor" href="#1-download"><span class="octicon octicon-link"></span></a>1. Download</h3>
 
-<pre><code>git clone git://github.com/matsumoto-r/ngx_mruby.git
-cd ngx_mruby
-git submodule init
-git submodule update
-</code></pre>
+<div class="highlight highlight-bash"><pre><span class="nv">$ </span>git clone git://github.com/matsumoto-r/ngx_mruby.git
+<span class="nv">$ </span><span class="nb">cd </span>ngx_mruby
+<span class="nv">$ </span>git submodule init
+<span class="nv">$ </span>git submodule update
+</pre></div>
 
 <h3>
 <a name="2-build" class="anchor" href="#2-build"><span class="octicon octicon-link"></span></a>2. Build</h3>
 
-<ul>
-<li>
-<p>configure example</p>
+<p>Download <a href="http://nginx.org/en/download.html">Nginx</a>, unpack, configure with <code>--add-module=${NGX_MRUBY_SRC}</code> and make it</p>
 
-<pre><code>./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="--prefix=/usr/local/nginx"
-</code></pre>
-</li>
-<li>
-<p>mruby build</p>
+<div class="highlight highlight-bash"><pre><span class="nv">$ </span><span class="nb">cd </span>ngx_mruby
+<span class="nv">$ </span><span class="nb">cd</span> <span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span>
+<span class="nv">$ </span>./configure --prefix<span class="o">=</span>/usr/local/nginx --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span> --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_DEVEL_KIT_SRC</span><span class="k">}</span> --add-module<span class="o">=</span><span class="k">${</span><span class="nv">SOME_OTHER_MODULE</span><span class="k">}</span>
+<span class="nv">$ </span>make
+</pre></div>
 
-<pre><code>make build_mruby
-</code></pre>
-</li>
-<li>
-<p>ngx_mruby build</p>
+<p>or manually configure (example), mruby build, ngx_mruby build.</p>
 
-<pre><code>make 
-</code></pre>
+<div class="highlight highlight-bash"><pre><span class="nv">$ </span>./configure --with-ngx-src-root<span class="o">=</span><span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span> --with-ngx-config-opt<span class="o">=</span><span class="s2">"--prefix=/usr/local/nginx"</span>
+<span class="nv">$ </span>make build_mruby
+<span class="nv">$ </span>make
+</pre></div>
 
-<p>or  </p>
-
-<pre><code>cd ${NGINX_SRC}
-./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${SOME_MODULE}
-make
-</code></pre>
-</li>
-</ul><h3>
+<h3>
 <a name="3-install" class="anchor" href="#3-install"><span class="octicon octicon-link"></span></a>3. Install</h3>
 
-<pre><code>sudo make install
-</code></pre>
+<div class="highlight highlight-bash"><pre><span class="nv">$ </span>sudo make install
+</pre></div>
 
 <h3>
 <a name="4-add-setting" class="anchor" href="#4-add-setting"><span class="octicon octicon-link"></span></a>4. Add setting</h3>
 
-<pre><code>location /mruby {
-    mruby_content_handler /usr/local/nginx/html/hello.rb;
-}
-</code></pre>
+<div class="highlight highlight-nginx"><pre>    <span class="k">location</span> <span class="s">/mruby</span> <span class="p">{</span>
+        <span class="kn">mruby_content_handler</span> <span class="s">/usr/local/nginx/html/hello.rb</span><span class="p">;</span>
+    <span class="p">}</span>
+</pre></div>
 
 <h3>
 <a name="5-create-mruby-script-usrlocalnginxhtmlhellorb" class="anchor" href="#5-create-mruby-script-usrlocalnginxhtmlhellorb"><span class="octicon octicon-link"></span></a>5. Create mruby script /usr/local/nginx/html/hello.rb</h3>
 
-<pre><code>Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
-</code></pre>
+<div class="highlight highlight-ruby"><pre><span class="no">Nginx</span><span class="o">.</span><span class="n">rputs</span><span class="p">(</span><span class="no">Time</span><span class="o">.</span><span class="n">now</span><span class="o">.</span><span class="n">to_s</span> <span class="o">+</span> <span class="s2">"hello mruby world for nginx."</span><span class="p">)</span>
+</pre></div>
 
 <h3>
 <a name="6-start-nginx" class="anchor" href="#6-start-nginx"><span class="octicon octicon-link"></span></a>6. Start nginx</h3>
 
-<pre><code>/usr/local/nginx/sbin/nginx
-</code></pre>
+<div class="highlight highlight-bash"><pre>/usr/local/nginx/sbin/nginx
+</pre></div>
 
 <h3>
 <a name="7-access-httpexamplecommruby-sedexamplecommydomain" class="anchor" href="#7-access-httpexamplecommruby-sedexamplecommydomain"><span class="octicon octicon-link"></span></a>7. Access <a href="http://example.com/mruby">http://example.com/mruby</a> (sed/example.com/mydomain/)</h3>
