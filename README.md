@@ -76,7 +76,7 @@ Download [Nginx](http://nginx.org/en/download.html), unpack, configure with ```-
 ```bash
 $ cd ngx_mruby
 $ cd ${NGINX_SRC}
-$ ./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${SOME_OTHER_MODULE}
+$ ./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${NGX_DEVEL_KIT_SRC} --add-module=${SOME_OTHER_MODULE}
 $ make
 ```
 or manually configure (example), mruby build, ngx_mruby build.
