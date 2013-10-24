@@ -70,8 +70,13 @@ $ cd ngx_mruby
 $ git submodule init
 $ git submodule update
 ```
-
-### 2. Build 
+### 2. Dependencies
+#### Ubuntu
+```bash
+$ apt-get install libhiredis-dev libpcre3-dev
+$ gem install rake
+```
+### 3. Build
 Download [Nginx](http://nginx.org/en/download.html), unpack, configure with ```--add-module=${NGX_MRUBY_SRC}``` and make it
 ```bash
 $ cd ${NGINX_SRC}
@@ -85,26 +90,26 @@ $ ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="--prefix=/
 $ make build_mruby
 $ make
 ```
-### 3. Install
+### 4. Install
 ```bash
 $ sudo make install
 ```
-### 4. Add setting
+### 5. Add setting
 ```nginx
     location /mruby {
         mruby_content_handler /usr/local/nginx/html/hello.rb;
     }
 ```
-### 5. Create mruby script /usr/local/nginx/html/hello.rb
+### 6. Create mruby script /usr/local/nginx/html/hello.rb
 ```ruby
 Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
 ```
 
-### 6. Start nginx
+### 7. Start nginx
 ```bash
 /usr/local/nginx/sbin/nginx
 ```
-### 7. Access http://example.com/mruby (sed/example.com/mydomain/)
+### 8. Access http://example.com/mruby (sed/example.com/mydomain/)
 ```
 Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
 ```
