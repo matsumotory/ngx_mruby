@@ -74,13 +74,13 @@ $ git submodule update
 ### 2. Build 
 Download [Nginx](http://nginx.org/en/download.html), unpack, configure with ```--add-module=${NGX_MRUBY_SRC}``` and make it
 ```bash
-$ cd ngx_mruby
 $ cd ${NGINX_SRC}
-$ ./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${NGX_DEVEL_KIT_SRC} --add-module=${SOME_OTHER_MODULE}
+$ ./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${NGX_MRUBY_SRC}/dependence/ngx_devel_kit --add-module=${SOME_OTHER_MODULE}
 $ make
 ```
 or manually configure (example), mruby build, ngx_mruby build.
 ```bash
+$ cd ${NGX_MRUBY_SRC}
 $ ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="--prefix=/usr/local/nginx"
 $ make build_mruby
 $ make
