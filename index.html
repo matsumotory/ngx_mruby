@@ -113,15 +113,15 @@
 
 <p>Download <a href="http://nginx.org/en/download.html">Nginx</a>, unpack, configure with <code>--add-module=${NGX_MRUBY_SRC}</code> and make it</p>
 
-<div class="highlight highlight-bash"><pre><span class="nv">$ </span><span class="nb">cd </span>ngx_mruby
-<span class="nv">$ </span><span class="nb">cd</span> <span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span>
-<span class="nv">$ </span>./configure --prefix<span class="o">=</span>/usr/local/nginx --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span> --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_DEVEL_KIT_SRC</span><span class="k">}</span> --add-module<span class="o">=</span><span class="k">${</span><span class="nv">SOME_OTHER_MODULE</span><span class="k">}</span>
+<div class="highlight highlight-bash"><pre><span class="nv">$ </span><span class="nb">cd</span> <span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span>
+<span class="nv">$ </span>./configure --prefix<span class="o">=</span>/usr/local/nginx --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span> --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span>/dependence/ngx_devel_kit --add-module<span class="o">=</span><span class="k">${</span><span class="nv">SOME_OTHER_MODULE</span><span class="k">}</span>
 <span class="nv">$ </span>make
 </pre></div>
 
 <p>or manually configure (example), mruby build, ngx_mruby build.</p>
 
-<div class="highlight highlight-bash"><pre><span class="nv">$ </span>./configure --with-ngx-src-root<span class="o">=</span><span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span> --with-ngx-config-opt<span class="o">=</span><span class="s2">"--prefix=/usr/local/nginx"</span>
+<div class="highlight highlight-bash"><pre><span class="nv">$ </span><span class="nb">cd</span> <span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span>
+<span class="nv">$ </span>./configure --with-ngx-src-root<span class="o">=</span><span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span> --with-ngx-config-opt<span class="o">=</span><span class="s2">"--prefix=/usr/local/nginx"</span>
 <span class="nv">$ </span>make build_mruby
 <span class="nv">$ </span>make
 </pre></div>
