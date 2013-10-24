@@ -49,7 +49,7 @@ ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
             );
             return NGX_ERROR;
         } 
-        if (access(path.data, F_OK) != 0) {
+        if (access((const char *)path.data, F_OK) != 0) {
             ngx_log_error(NGX_LOG_INFO
                 , r->connection->log
                 , 0
