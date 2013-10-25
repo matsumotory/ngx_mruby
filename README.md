@@ -71,20 +71,25 @@ $ git submodule init
 $ git submodule update
 ```
 
+- if you want __more features__, you can get [mrbgems](https://github.com/mruby/mruby/wiki/Related-Projects) and write to [build_config.rb](https://github.com/matsumoto-r/ngx_mruby/blob/master/build_config.rb)
+- for example, use mruby-io and implement [file base access check like .htaccess](http://opsrock.in/2013/09/25/775).
+
+
 ### 2. Build 
-Download [Nginx](http://nginx.org/en/download.html), unpack, configure with ```--add-module=${NGX_MRUBY_SRC}``` and make it
-```bash
-$ cd ${NGINX_SRC}
-$ ./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${NGX_MRUBY_SRC}/dependence/ngx_devel_kit --add-module=${SOME_OTHER_MODULE}
-$ make
-```
-or manually configure (example), mruby build, ngx_mruby build.
+Download [Nginx](http://nginx.org/en/download.html), unpack, use configure for ngx_mruby, mruby build, ngx_mruby build.
 ```bash
 $ cd ${NGX_MRUBY_SRC}
 $ ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="--prefix=/usr/local/nginx"
 $ make build_mruby
 $ make
 ```
+or configure with ```--add-module=${NGX_MRUBY_SRC}``` for nginx and make it
+```bash
+$ cd ${NGINX_SRC}
+$ ./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${NGX_MRUBY_SRC}/dependence/ngx_devel_kit --add-module=${SOME_OTHER_MODULE}
+$ make
+```
+
 ### 3. Install
 ```bash
 $ sudo make install
