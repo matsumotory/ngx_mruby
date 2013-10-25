@@ -73,7 +73,17 @@ $ git submodule update
 
 - if you want __more features__, you can get [mrbgems](https://github.com/mruby/mruby/wiki/Related-Projects) and write to [build_config.rb](https://github.com/matsumoto-r/ngx_mruby/blob/master/build_config.rb)
 - for example, use mruby-io and implement [file base access check like .htaccess](https://gist.github.com/matsumoto-r/7150832).
-
+- default mrbgems
+  - mruby-process: Process ::fork, ::kill, ::pid, ::ppid, ::waitpid...
+  - mruby-pack: pack, unpack...
+  - mruby-digest: Digest::MD5, Digest::RMD160, Digest::SHA1, Digest::SHA256, Digest::SHA384 and Digest::SHA512...
+  - mruby-jason: JSON::parse, JSON::stringify
+  - mruby-redis: Redis#set, get, [], []=...
+  - mruby-sleep: sleep, usleep...
+  - mruby-userdata: https://github.com/matsumoto-r/mruby-userdata
+  - mruby-hs-regexp: regexp engine
+  - mruby-io: https://github.com/iij/mruby-io
+- We should implement ngx_mruby/mod_mruby extensions as mrbgems, as possible. We recommend strongly the contribute to mruby.
 
 ### 2. Build 
 Download [Nginx](http://nginx.org/en/download.html), unpack, use configure for ngx_mruby, mruby build, ngx_mruby build.
