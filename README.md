@@ -107,26 +107,37 @@ $ sudo make install
 ```
 ### 4. Add setting
 ```nginx
-    location /mruby {
-        mruby_content_handler /usr/local/nginx/html/hello.rb;
-    }
+location /mruby {
+    mruby_content_handler '/usr/local/nginx/html/unified_hello.rb';
+}
 ```
-### 5. Create mruby script /usr/local/nginx/html/hello.rb
+or
+```nginx
+location ~ \.rb$ {
+    mruby_add_handler on;
+}
+```
+### 5. Create mruby script /usr/local/nginx/html/unified_hello.rb'
 ```ruby
-Nginx.rputs(Time.now.to_s + "hello mruby world for nginx.")
+if server_name == "NGINX"
+  Server = Nginx
+elsif server_name == "Apache"
+  Server = Apache
+end
+
+Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
 ```
 
 ### 6. Start nginx
 ```bash
 /usr/local/nginx/sbin/nginx
 ```
-### 7. Access http://example.com/mruby (sed/example.com/mydomain/)
+### 7. Access http://127.0.0.1/mruby or http://127.0.0.1/unified_hello.rb
 ```
-Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
+Hello ngx_mruby/0.0.1 world!
 ```
 
 Display above. Welcome mruby world for nginx!!
-
 
 
 # License
