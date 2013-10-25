@@ -84,7 +84,7 @@ $ git submodule update
   - mruby-hs-regexp: regexp engine
   - mruby-io: https://github.com/iij/mruby-io
 - __We should implement ngx_mruby/mod_mruby extensions as mrbgems, as possible.__
-- __We recommend strongly the contribute to mruby by implementing mrbgems.__
+- __We recommend the contribute to mruby by implementing mrbgems.__
 
 ### 2. Build 
 Download [Nginx](http://nginx.org/en/download.html), unpack, use configure for ngx_mruby, mruby build, ngx_mruby build.
