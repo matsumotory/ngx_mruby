@@ -157,15 +157,28 @@
 <h3>
 <a name="4-add-setting" class="anchor" href="#4-add-setting"><span class="octicon octicon-link"></span></a>4. Add setting</h3>
 
-<div class="highlight highlight-nginx"><pre>    <span class="k">location</span> <span class="s">/mruby</span> <span class="p">{</span>
-        <span class="kn">mruby_content_handler</span> <span class="s">/usr/local/nginx/html/hello.rb</span><span class="p">;</span>
-    <span class="p">}</span>
+<div class="highlight highlight-nginx"><pre><span class="k">location</span> <span class="s">/mruby</span> <span class="p">{</span>
+    <span class="kn">mruby_content_handler</span> <span class="s">'/usr/local/nginx/html/unified_hello.rb'</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+<p>or</p>
+
+<div class="highlight highlight-nginx"><pre><span class="k">location</span> <span class="p">~</span> <span class="sr">\.rb$</span> <span class="p">{</span>
+    <span class="kn">mruby_add_handler</span> <span class="no">on</span><span class="p">;</span>
+<span class="p">}</span>
 </pre></div>
 
 <h3>
-<a name="5-create-mruby-script-usrlocalnginxhtmlhellorb" class="anchor" href="#5-create-mruby-script-usrlocalnginxhtmlhellorb"><span class="octicon octicon-link"></span></a>5. Create mruby script /usr/local/nginx/html/hello.rb</h3>
+<a name="5-create-mruby-script-usrlocalnginxhtmlunified_hellorb" class="anchor" href="#5-create-mruby-script-usrlocalnginxhtmlunified_hellorb"><span class="octicon octicon-link"></span></a>5. Create mruby script /usr/local/nginx/html/unified_hello.rb'</h3>
 
-<div class="highlight highlight-ruby"><pre><span class="no">Nginx</span><span class="o">.</span><span class="n">rputs</span><span class="p">(</span><span class="no">Time</span><span class="o">.</span><span class="n">now</span><span class="o">.</span><span class="n">to_s</span> <span class="o">+</span> <span class="s2">"hello mruby world for nginx."</span><span class="p">)</span>
+<div class="highlight highlight-ruby"><pre><span class="k">if</span> <span class="n">server_name</span> <span class="o">==</span> <span class="s2">"NGINX"</span>
+  <span class="no">Server</span> <span class="o">=</span> <span class="no">Nginx</span>
+<span class="k">elsif</span> <span class="n">server_name</span> <span class="o">==</span> <span class="s2">"Apache"</span>
+  <span class="no">Server</span> <span class="o">=</span> <span class="no">Apache</span>
+<span class="k">end</span>
+
+<span class="ss">Server</span><span class="p">:</span><span class="ss">:rputs</span> <span class="s2">"Hello </span><span class="si">#{</span><span class="ss">Server</span><span class="p">:</span><span class="ss">:module_name</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="ss">Server</span><span class="p">:</span><span class="ss">:module_version</span><span class="si">}</span><span class="s2"> world!"</span>
 </pre></div>
 
 <h3>
@@ -175,9 +188,10 @@
 </pre></div>
 
 <h3>
-<a name="7-access-httpexamplecommruby-sedexamplecommydomain" class="anchor" href="#7-access-httpexamplecommruby-sedexamplecommydomain"><span class="octicon octicon-link"></span></a>7. Access <a href="http://example.com/mruby">http://example.com/mruby</a> (sed/example.com/mydomain/)</h3>
+<a name="7-access-http127001mruby-or-http127001unified_hellorb" class="anchor" href="#7-access-http127001mruby-or-http127001unified_hellorb"><span class="octicon octicon-link"></span></a>7. Access <a href="http://127.0.0.1/mruby">http://127.0.0.1/mruby</a> or <a href="http://127.0.0.1/unified_hello.rb">http://127.0.0.1/unified_hello.rb</a>
+</h3>
 
-<pre><code>Sat Jul 28 18:05:51 2012 hello mruby world for nginx.
+<pre><code>Hello ngx_mruby/0.0.1 world!
 </code></pre>
 
 <p>Display above. Welcome mruby world for nginx!!</p>
