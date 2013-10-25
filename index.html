@@ -112,6 +112,24 @@
 <li>if you want <strong>more features</strong>, you can get <a href="https://github.com/mruby/mruby/wiki/Related-Projects">mrbgems</a> and write to <a href="https://github.com/matsumoto-r/ngx_mruby/blob/master/build_config.rb">build_config.rb</a>
 </li>
 <li>for example, use mruby-io and implement <a href="https://gist.github.com/matsumoto-r/7150832">file base access check like .htaccess</a>.</li>
+<li>default mrbgems
+
+<ul>
+<li>mruby-process: Process ::fork, ::kill, ::pid, ::ppid, ::waitpid...</li>
+<li>mruby-pack: pack, unpack...</li>
+<li>mruby-digest: Digest::MD5, Digest::RMD160, Digest::SHA1, Digest::SHA256, Digest::SHA384 and Digest::SHA512...</li>
+<li>mruby-jason: JSON::parse, JSON::stringify</li>
+<li>mruby-redis: Redis#set, get, [], []=...</li>
+<li>mruby-sleep: sleep, usleep...</li>
+<li>mruby-userdata: <a href="https://github.com/matsumoto-r/mruby-userdata">https://github.com/matsumoto-r/mruby-userdata</a>
+</li>
+<li>mruby-hs-regexp: regexp engine</li>
+<li>mruby-io: <a href="https://github.com/iij/mruby-io">https://github.com/iij/mruby-io</a>
+</li>
+</ul>
+</li>
+<li><strong>We should implement ngx_mruby/mod_mruby extensions as mrbgems, as possible.</strong></li>
+<li><strong>We recommend strongly the contribute to mruby by implementing mrbgems.</strong></li>
 </ul><h3>
 <a name="2-build" class="anchor" href="#2-build"><span class="octicon octicon-link"></span></a>2. Build</h3>
 
