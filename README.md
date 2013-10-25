@@ -72,7 +72,7 @@ $ git submodule update
 ```
 
 - if you want __more features__, you can get [mrbgems](https://github.com/mruby/mruby/wiki/Related-Projects) and write to [build_config.rb](https://github.com/matsumoto-r/ngx_mruby/blob/master/build_config.rb)
-- for example, use mruby-io and implement [file base access check like .htaccess](http://opsrock.in/2013/09/25/775).
+- for example, use mruby-io and implement [file base access check like .htaccess](https://gist.github.com/matsumoto-r/7150832).
 
 
 ### 2. Build 
