@@ -73,7 +73,7 @@
 <span class="c1">#     mrubyHandlerMiddle "/path/to/unified_hello.rb"</span>
 <span class="c1"># &lt;/Location&gt;</span>
 <span class="c1">#</span>
-<span class="c1"># nginx nginx.conf by ngx_mruby</span>
+<span class="c1"># nginx ngxin.conf by ngx_mruby</span>
 <span class="c1">#</span>
 <span class="c1"># location /mruby {</span>
 <span class="c1">#     mruby_content_handler "/path/to/unified_hello.rb";</span>
@@ -108,21 +108,25 @@
 <span class="nv">$ </span>git submodule update
 </pre></div>
 
-<h3>
+<ul>
+<li>if you want <strong>more features</strong>, you can get <a href="https://github.com/mruby/mruby/wiki/Related-Projects">mrbgems</a> and write to <a href="https://github.com/matsumoto-r/ngx_mruby/blob/master/build_config.rb">build_config.rb</a>
+</li>
+<li>for example, use mruby-io and implement <a href="http://opsrock.in/2013/09/25/775">file base access check like .htaccess</a>.</li>
+</ul><h3>
 <a name="2-build" class="anchor" href="#2-build"><span class="octicon octicon-link"></span></a>2. Build</h3>
 
-<p>Download <a href="http://nginx.org/en/download.html">Nginx</a>, unpack, configure with <code>--add-module=${NGX_MRUBY_SRC}</code> and make it</p>
-
-<div class="highlight highlight-bash"><pre><span class="nv">$ </span><span class="nb">cd</span> <span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span>
-<span class="nv">$ </span>./configure --prefix<span class="o">=</span>/usr/local/nginx --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span> --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span>/dependence/ngx_devel_kit --add-module<span class="o">=</span><span class="k">${</span><span class="nv">SOME_OTHER_MODULE</span><span class="k">}</span>
-<span class="nv">$ </span>make
-</pre></div>
-
-<p>or manually configure (example), mruby build, ngx_mruby build.</p>
+<p>Download <a href="http://nginx.org/en/download.html">Nginx</a>, unpack, use configure for ngx_mruby, mruby build, ngx_mruby build.</p>
 
 <div class="highlight highlight-bash"><pre><span class="nv">$ </span><span class="nb">cd</span> <span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span>
 <span class="nv">$ </span>./configure --with-ngx-src-root<span class="o">=</span><span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span> --with-ngx-config-opt<span class="o">=</span><span class="s2">"--prefix=/usr/local/nginx"</span>
 <span class="nv">$ </span>make build_mruby
+<span class="nv">$ </span>make
+</pre></div>
+
+<p>or configure with <code>--add-module=${NGX_MRUBY_SRC}</code> for nginx and make it</p>
+
+<div class="highlight highlight-bash"><pre><span class="nv">$ </span><span class="nb">cd</span> <span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span>
+<span class="nv">$ </span>./configure --prefix<span class="o">=</span>/usr/local/nginx --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span> --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span>/dependence/ngx_devel_kit --add-module<span class="o">=</span><span class="k">${</span><span class="nv">SOME_OTHER_MODULE</span><span class="k">}</span>
 <span class="nv">$ </span>make
 </pre></div>
 
