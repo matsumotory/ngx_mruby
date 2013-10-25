@@ -83,7 +83,8 @@ $ git submodule update
   - mruby-userdata: https://github.com/matsumoto-r/mruby-userdata
   - mruby-hs-regexp: regexp engine
   - mruby-io: https://github.com/iij/mruby-io
-- We should implement ngx_mruby/mod_mruby extensions as mrbgems, as possible. We recommend strongly the contribute to mruby.
+- We should implement ngx_mruby/mod_mruby extensions as mrbgems, as possible.
+- We recommend strongly the contribute to mruby by implementing mrbgems.
 
 ### 2. Build 
 Download [Nginx](http://nginx.org/en/download.html), unpack, use configure for ngx_mruby, mruby build, ngx_mruby build.
