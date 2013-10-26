@@ -1,3 +1,0 @@
-Nginx.rputs(Time.now.to_s + " hello mruby world for nginx.")
-#Nginx.errlogger Nginx::NGX_LOG_ERR, "ngx_mruby error!"
-Nginx.return Nginx::NGX_HTTP_OK

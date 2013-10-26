@@ -1,3 +1,0 @@
-location ~ \.rb$ {
-    mruby_add_handler on;
-}
