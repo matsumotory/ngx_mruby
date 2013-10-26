@@ -12,12 +12,20 @@ ngx_int_t ngx_http_mruby_##handler_name##_handler(ngx_http_request_t *r)        
 {                                                                                                 \
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);   \
     ngx_http_mruby_loc_conf_t  *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);    \
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(                                                         \
-        mlcf->cached,                                                                             \
-        mmcf->state,                                                                              \
-        code,                                                                                     \
-        ngx_http_mruby_state_reinit_from_file                                                     \
-    );                                                                                            \
+    if (mmcf->state == NGX_CONF_UNSET_PTR) {                                                      \
+        return NGX_DECLINED;                                                                      \
+    }                                                                                             \
+    if (code == NGX_CONF_UNSET_PTR) {                                                             \
+        return NGX_DECLINED;                                                                      \
+    }                                                                                             \
+    if (!code->cache) {                                                                           \
+        NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(                                                     \
+            mlcf->cached,                                                                         \
+            mmcf->state,                                                                          \
+            code,                                                                                 \
+            ngx_http_mruby_state_reinit_from_file                                                 \
+        );                                                                                        \
+    }                                                                                             \
     return ngx_mrb_run(r, mmcf->state, code, mlcf->cached, NULL);                                 \
 }
 
@@ -75,12 +83,17 @@ ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
     } else {
         code = mlcf->content_code;
     }
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(                                                       
-        mlcf->cached,                                                                           
-        mmcf->state,                                                                            
-        code,                                                                                   
-        ngx_http_mruby_state_reinit_from_file                                                   
-    );                                                                                          
+    if (code == NGX_CONF_UNSET_PTR) {
+        return NGX_DECLINED;
+    }
+    if (!code->cache) {
+        NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(                                                       
+            mlcf->cached,                                                                           
+            mmcf->state,                                                                            
+            code,                                                                                   
+            ngx_http_mruby_state_reinit_from_file                                                   
+        );                                                                                          
+    }
     return ngx_mrb_run(r, mmcf->state, code, mlcf->cached, NULL);                               
 }
 

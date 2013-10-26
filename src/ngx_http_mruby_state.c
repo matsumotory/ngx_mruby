@@ -103,6 +103,7 @@ ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *c
     }
     ngx_cpystrn((u_char *)code->code.file, (u_char *)code_file_path->data, code_file_path->len + 1);
     code->code_type = NGX_MRB_CODE_TYPE_FILE;
+    code->cache = OFF;
     return code;
 }
 
@@ -123,6 +124,7 @@ ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t 
     }
     ngx_cpystrn((u_char *)code->code.string, code_s->data, len + 1);
     code->code_type = NGX_MRB_CODE_TYPE_STRING;
+    code->cache = ON;
     return code;
 }
 
@@ -160,23 +162,25 @@ ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *s
         ngx_conf_log_error(NGX_LOG_NOTICE
             , cf
             , 0
-            , "%s NOTICE %s:%d: compile info: code->n=%d code->code.file=(%s)"
+            , "%s NOTICE %s:%d: compile info: code->n=%d code->code.file=(%s) code->cache=(%d)"
             , MODULE_NAME
             , __func__
             , __LINE__
             , code->n
             , code->code.file
+            , code->cache
         );
     } else {
         ngx_conf_log_error(NGX_LOG_NOTICE
             , cf
             , 0
-            , "%s NOTICE %s:%d: compile info: code->n=%d code->code.string=(%s)"
+            , "%s NOTICE %s:%d: compile info: code->n=%d code->code.string=(%s) code->cache=(%d)"
             , MODULE_NAME
             , __func__
             , __LINE__
             , code->n
             , code->code.string
+            , code->cache
         );
     }
 

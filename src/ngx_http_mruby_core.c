@@ -107,7 +107,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
     ngx_mrb_push_request(r);
 
-    if (!cached) {
+    if (!cached && !code->cache) {
         state->ai = mrb_gc_arena_save(state->mrb);
     }
 
@@ -159,7 +159,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
 
     mrb_gc_arena_restore(state->mrb, state->ai);
 
-    if (!cached) {
+    if (!cached && !code->cache) {
         ngx_mrb_irep_clean(r, state, code);
         ngx_mrb_state_clean(r, state);
     }
@@ -210,7 +210,7 @@ ngx_int_t ngx_mrb_run_body_filter(ngx_http_request_t *r, ngx_mrb_state_t *state,
             ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
         }
         mrb_gc_arena_restore(state->mrb, state->ai);
-        if (!cached) {
+        if (!cached && !code->cache) {
             ngx_mrb_irep_clean(r, state, code);
             ngx_mrb_state_clean(r, state);
         }
@@ -225,7 +225,7 @@ ngx_int_t ngx_mrb_run_body_filter(ngx_http_request_t *r, ngx_mrb_state_t *state,
     ctx->body_length = ngx_strlen(ctx->body);
 
     mrb_gc_arena_restore(state->mrb, state->ai);
-    if (!cached) {
+    if (!cached && !code->cache) {
         ngx_mrb_irep_clean(r, state, code);
         ngx_mrb_state_clean(r, state);
     }

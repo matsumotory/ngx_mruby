@@ -29,6 +29,14 @@ char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
     }
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "cache") == 0) {
+            code->cache = ON;
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
     mmcf->init_code = code;
     ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
@@ -72,6 +80,14 @@ char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
     }
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "cache") == 0) {
+            code->cache = ON;
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
     mlcf->post_read_code = code;
     ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
@@ -93,6 +109,14 @@ char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
     }
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "cache") == 0) {
+            code->cache = ON;
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
     mlcf->server_rewrite_code = code;
     ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
@@ -111,6 +135,14 @@ char *ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *con
     if (code == NGX_CONF_UNSET_PTR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
+    }
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "cache") == 0) {
+            code->cache = ON;
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
     }
     mlcf->rewrite_code = code;
     ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
@@ -131,6 +163,14 @@ char *ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
     }
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "cache") == 0) {
+            code->cache = ON;
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
     mlcf->access_code = code;
     ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
@@ -150,6 +190,14 @@ char *ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *con
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
     }
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "cache") == 0) {
+            code->cache = ON;
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
     mlcf->content_code = code;
     ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
 
@@ -168,6 +216,14 @@ char *ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (code == NGX_CONF_UNSET_PTR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
+    }
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "cache") == 0) {
+            code->cache = ON;
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
     }
     mlcf->log_code = code;
     ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
@@ -296,6 +352,14 @@ char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, voi
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
     }
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "cache") == 0) {
+            code->cache = ON;
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
     mlcf->header_filter_code = code;
     ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
     mmcf->enabled_header_filter = 1;
@@ -316,6 +380,14 @@ char *ngx_http_mruby_body_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void 
     if (code == NGX_CONF_UNSET_PTR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
         return NGX_CONF_ERROR;
+    }
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "cache") == 0) {
+            code->cache = ON;
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
     }
     mlcf->body_filter_code = code;
     ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);

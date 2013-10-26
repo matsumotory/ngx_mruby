@@ -10,6 +10,9 @@
 #include <ngx_http.h>
 #include <mruby.h>
 
+#define ON  1
+#define OFF 0
+
 typedef enum code_type_t {
     NGX_MRB_CODE_TYPE_FILE,
     NGX_MRB_CODE_TYPE_STRING
@@ -27,6 +30,7 @@ typedef struct ngx_mrb_code_t {
     } code;
     code_type_t code_type;
     int n;
+    unsigned int cache;
 } ngx_mrb_code_t;
 
 typedef struct ngx_mrb_rputs_chain_list_t {
