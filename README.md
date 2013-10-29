@@ -113,7 +113,29 @@ location /mruby {
     mruby_content_handler '/usr/local/nginx/html/unified_hello.rb';
 }
 ```
-or
+or file cache enabled
+```nginx
+location /mruby {
+    mruby_content_handler '/usr/local/nginx/html/unified_hello.rb' cache;
+}
+```
+or inline code (cached)
+```nginx
+location /mruby {
+    mruby_content_handler_code '
+      
+      if server_name == "NGINX"
+        Server = Nginx
+      elsif server_name == "Apache"
+        Server = Apache
+      end
+      
+      Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
+    
+    ';
+}
+```
+or Add handler
 ```nginx
 location ~ \.rb$ {
     mruby_add_handler on;
