@@ -631,13 +631,13 @@ void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
     mrb_define_const(mrb, class, "LOG_INFO",                        mrb_fixnum_value(NGX_LOG_INFO));
     mrb_define_const(mrb, class, "LOG_DEBUG",                       mrb_fixnum_value(NGX_LOG_DEBUG));
 
-    mrb_define_class_method(mrb, class, "rputs",                        ngx_mrb_rputs,                      ARGS_ANY());
-    mrb_define_class_method(mrb, class, "send_header",                  ngx_mrb_send_header,                ARGS_ANY());
-    mrb_define_class_method(mrb, class, "return",                       ngx_mrb_send_header,                ARGS_ANY());
-    mrb_define_class_method(mrb, class, "errlogger",                    ngx_mrb_errlogger,                  ARGS_ANY());
-    mrb_define_class_method(mrb, class, "module_name",                  ngx_mrb_get_ngx_mruby_name,         ARGS_NONE());
-    mrb_define_class_method(mrb, class, "module_version",               ngx_mrb_get_ngx_mruby_version,      ARGS_NONE());
-    mrb_define_class_method(mrb, class, "nginx_version",                ngx_mrb_get_nginx_version,          ARGS_NONE());
-    mrb_define_class_method(mrb, class, "redirect",                     ngx_mrb_redirect,                   ARGS_ANY());
-    mrb_define_class_method(mrb, class, "remove_global_variable",       ngx_mrb_f_global_remove,            ARGS_REQ(1));
+    mrb_define_class_method(mrb, class, "rputs",                        ngx_mrb_rputs,                      MRB_ARGS_ANY());
+    mrb_define_class_method(mrb, class, "send_header",                  ngx_mrb_send_header,                MRB_ARGS_ANY());
+    mrb_define_class_method(mrb, class, "return",                       ngx_mrb_send_header,                MRB_ARGS_ANY());
+    mrb_define_class_method(mrb, class, "errlogger",                    ngx_mrb_errlogger,                  MRB_ARGS_ANY());
+    mrb_define_class_method(mrb, class, "module_name",                  ngx_mrb_get_ngx_mruby_name,         MRB_ARGS_NONE());
+    mrb_define_class_method(mrb, class, "module_version",               ngx_mrb_get_ngx_mruby_version,      MRB_ARGS_NONE());
+    mrb_define_class_method(mrb, class, "nginx_version",                ngx_mrb_get_nginx_version,          MRB_ARGS_NONE());
+    mrb_define_class_method(mrb, class, "redirect",                     ngx_mrb_redirect,                   MRB_ARGS_ANY());
+    mrb_define_class_method(mrb, class, "remove_global_variable",       ngx_mrb_f_global_remove,            MRB_ARGS_REQ(1));
 }
