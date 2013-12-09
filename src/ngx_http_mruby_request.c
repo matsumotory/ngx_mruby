@@ -298,35 +298,35 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
     struct RClass *class_headers_out;
 
     class_request = mrb_define_class_under(mrb, class, "Request", mrb->object_class);
-    mrb_define_method(mrb, class_request, "content_type=", ngx_mrb_set_content_type, ARGS_ANY());
-    mrb_define_method(mrb, class_request, "content_type", ngx_mrb_get_content_type, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "request_line", ngx_mrb_get_request_request_line, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "request_line=", ngx_mrb_set_request_request_line, ARGS_ANY());
-    mrb_define_method(mrb, class_request, "uri", ngx_mrb_get_request_uri, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "uri=", ngx_mrb_set_request_uri, ARGS_ANY());
-    mrb_define_method(mrb, class_request, "unparsed_uri", ngx_mrb_get_request_unparsed_uri, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "unparsed_uri=", ngx_mrb_set_request_unparsed_uri, ARGS_ANY());
-    mrb_define_method(mrb, class_request, "method", ngx_mrb_get_request_method, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "method=", ngx_mrb_set_request_method, ARGS_ANY());
-    mrb_define_method(mrb, class_request, "protocol", ngx_mrb_get_request_protocol, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "protocol=", ngx_mrb_set_request_protocol, ARGS_ANY());
-    mrb_define_method(mrb, class_request, "args", ngx_mrb_get_request_args, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "args=", ngx_mrb_set_request_args, ARGS_ANY());
-    mrb_define_method(mrb, class_request, "var", ngx_mrb_get_request_var, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "headers_in", ngx_mrb_headers_in_obj, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "headers_out", ngx_mrb_headers_out_obj, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "content_type=", ngx_mrb_set_content_type, MRB_ARGS_ANY());
+    mrb_define_method(mrb, class_request, "content_type", ngx_mrb_get_content_type, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_request, "request_line", ngx_mrb_get_request_request_line, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_request, "request_line=", ngx_mrb_set_request_request_line, MRB_ARGS_ANY());
+    mrb_define_method(mrb, class_request, "uri", ngx_mrb_get_request_uri, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_request, "uri=", ngx_mrb_set_request_uri, MRB_ARGS_ANY());
+    mrb_define_method(mrb, class_request, "unparsed_uri", ngx_mrb_get_request_unparsed_uri, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_request, "unparsed_uri=", ngx_mrb_set_request_unparsed_uri, MRB_ARGS_ANY());
+    mrb_define_method(mrb, class_request, "method", ngx_mrb_get_request_method, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_request, "method=", ngx_mrb_set_request_method, MRB_ARGS_ANY());
+    mrb_define_method(mrb, class_request, "protocol", ngx_mrb_get_request_protocol, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_request, "protocol=", ngx_mrb_set_request_protocol, MRB_ARGS_ANY());
+    mrb_define_method(mrb, class_request, "args", ngx_mrb_get_request_args, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_request, "args=", ngx_mrb_set_request_args, MRB_ARGS_ANY());
+    mrb_define_method(mrb, class_request, "var", ngx_mrb_get_request_var, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_request, "headers_in", ngx_mrb_headers_in_obj, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_request, "headers_out", ngx_mrb_headers_out_obj, MRB_ARGS_NONE());
 
-    mrb_define_method(mrb, class_request, "hostname", ngx_mrb_get_request_var_hostname, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "filename", ngx_mrb_get_request_var_filename, ARGS_NONE());
-    mrb_define_method(mrb, class_request, "user", ngx_mrb_get_request_var_user, ARGS_NONE());
+    mrb_define_method(mrb, class_request, "hostname", ngx_mrb_get_request_var_hostname, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_request, "filename", ngx_mrb_get_request_var_filename, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_request, "user", ngx_mrb_get_request_var_user, MRB_ARGS_NONE());
 
     class_headers_in = mrb_define_class_under(mrb, class, "Headers_in", mrb->object_class);
-    mrb_define_method(mrb, class_headers_in, "[]", ngx_mrb_get_request_headers_in, ARGS_ANY());
-    mrb_define_method(mrb, class_headers_in, "[]=", ngx_mrb_set_request_headers_in, ARGS_ANY());
-    mrb_define_method(mrb, class_headers_in, "all", ngx_mrb_get_request_headers_in_hash, ARGS_ANY());
+    mrb_define_method(mrb, class_headers_in, "[]", ngx_mrb_get_request_headers_in, MRB_ARGS_ANY());
+    mrb_define_method(mrb, class_headers_in, "[]=", ngx_mrb_set_request_headers_in, MRB_ARGS_ANY());
+    mrb_define_method(mrb, class_headers_in, "all", ngx_mrb_get_request_headers_in_hash, MRB_ARGS_ANY());
 
     class_headers_out = mrb_define_class_under(mrb, class, "Headers_out", mrb->object_class);
-    mrb_define_method(mrb, class_headers_out, "[]", ngx_mrb_get_request_headers_out, ARGS_ANY());
-    mrb_define_method(mrb, class_headers_out, "[]=", ngx_mrb_set_request_headers_out, ARGS_ANY());
-    mrb_define_method(mrb, class_headers_out, "all", ngx_mrb_get_request_headers_out_hash, ARGS_ANY());
+    mrb_define_method(mrb, class_headers_out, "[]", ngx_mrb_get_request_headers_out, MRB_ARGS_ANY());
+    mrb_define_method(mrb, class_headers_out, "[]=", ngx_mrb_set_request_headers_out, MRB_ARGS_ANY());
+    mrb_define_method(mrb, class_headers_out, "all", ngx_mrb_get_request_headers_out_hash, MRB_ARGS_ANY());
 }

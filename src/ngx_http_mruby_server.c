@@ -26,5 +26,5 @@ void ngx_mrb_server_class_init(mrb_state *mrb, struct RClass *class)
     struct RClass *class_server;
 
     class_server = mrb_define_class_under(mrb, class, "Server", mrb->object_class);
-    mrb_define_method(mrb, class_server, "document_root", ngx_mrb_get_server_var_docroot, ARGS_NONE());
+    mrb_define_method(mrb, class_server, "document_root", ngx_mrb_get_server_var_docroot, MRB_ARGS_NONE());
 }
