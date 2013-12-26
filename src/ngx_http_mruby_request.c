@@ -233,7 +233,7 @@ mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
     mrb_value                iv_var;
     struct RClass            *class_var, *ngx_class;
 
-    iv_var = mrb_iv_get(mrb, self, mrb_intern(mrb, iv_var_str));
+    iv_var = mrb_iv_get(mrb, self, mrb_intern_cstr(mrb, iv_var_str));
     if (mrb_nil_p(iv_var)) {
         // get class from Nginx::Var
         ngx_class = mrb_class_get(mrb, "Nginx");
@@ -241,7 +241,7 @@ mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
         // initialize a Var instance
         iv_var = mrb_class_new_instance(mrb, 0, 0, class_var);
         // save Var, avoid multi initialize
-        mrb_iv_set(mrb, self, mrb_intern(mrb, iv_var_str), iv_var);
+        mrb_iv_set(mrb, self, mrb_intern_cstr(mrb, iv_var_str), iv_var);
     }
 
     return iv_var;
@@ -271,12 +271,12 @@ static mrb_value ngx_mrb_get_class_obj(mrb_state *mrb, mrb_value self, char *obj
     mrb_value obj;
     struct RClass *obj_class, *ngx_class;
 
-    obj = mrb_iv_get(mrb, self, mrb_intern(mrb, obj_id));
+    obj = mrb_iv_get(mrb, self, mrb_intern_cstr(mrb, obj_id));
     if (mrb_nil_p(obj)) {
         ngx_class = mrb_class_get(mrb, "Nginx");
         obj_class = (struct RClass*)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, class_name)));
         obj = mrb_obj_new(mrb, obj_class, 0, NULL);
-        mrb_iv_set(mrb, self, mrb_intern(mrb, obj_id), obj);
+        mrb_iv_set(mrb, self, mrb_intern_cstr(mrb, obj_id), obj);
     }
     return obj;
 }

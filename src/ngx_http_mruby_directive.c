@@ -490,12 +490,11 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_conf_log_error(NGX_LOG_NOTICE
         , cf
         , 0
-        , "%s NOTICE %s:%d: target variable=(%s) get from irep_n=(%d)"
+        , "%s NOTICE %s:%d: target variable=(%s)"
         , MODULE_NAME
         , __FUNCTION__
         , __LINE__
         , target.data
-        , filter_data->code->n
     );
 
     return ndk_set_var_multi_value_core(cf, &target, &value[3], &filter);

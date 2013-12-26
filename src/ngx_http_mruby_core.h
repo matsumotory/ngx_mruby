@@ -31,6 +31,7 @@ typedef struct ngx_mrb_code_t {
     code_type_t code_type;
     int n;
     unsigned int cache;
+    struct RProc *proc;
 } ngx_mrb_code_t;
 
 typedef struct ngx_mrb_rputs_chain_list_t {

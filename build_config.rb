@@ -26,7 +26,8 @@ MRuby::Build.new do |conf|
   conf.gem :git => 'git://github.com/matsumoto-r/mruby-redis.git'
   conf.gem :git => 'git://github.com/matsumoto-r/mruby-sleep.git'
   conf.gem :git => 'git://github.com/matsumoto-r/mruby-userdata.git'
-  conf.gem :git => 'git://github.com/masamitsu-murase/mruby-hs-regexp.git'
+  # regexp comment out because don't support mrb_intern_cstr 2013/12/26
+  #conf.gem :git => 'git://github.com/masamitsu-murase/mruby-hs-regexp.git'
 
   # use markdown on mod_mruby
   #conf.gem :git => 'git://github.com/matsumoto-r/mruby-discount.git'

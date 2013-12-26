@@ -30,7 +30,7 @@ ngx_int_t ngx_mrb_init_file(ngx_str_t *script_file_path, ngx_mrb_state_t *state,
     state->ai  = mrb_gc_arena_save(mrb);
     p          = mrb_parse_file(mrb, mrb_file, NULL);
     state->mrb = mrb;
-    code->n    = mrb_generate_code(mrb, p);
+    code->proc = mrb_generate_code(mrb, p);
 
     mrb_pool_close(p->pool);
     fclose(mrb_file);
@@ -49,7 +49,7 @@ ngx_int_t ngx_mrb_init_string(ngx_str_t *script, ngx_mrb_state_t *state, ngx_mrb
     state->ai   = mrb_gc_arena_save(mrb);
     p           = mrb_parse_string(mrb, (char *)script->data, NULL);
     state->mrb  = mrb;
-    code->n     = mrb_generate_code(mrb, p);
+    code->proc  = mrb_generate_code(mrb, p);
 
     mrb_pool_close(p->pool);
 
@@ -67,7 +67,7 @@ static ngx_int_t ngx_mrb_gencode_state(ngx_mrb_state_t *state, ngx_mrb_code_t *c
 
     state->ai = mrb_gc_arena_save(state->mrb);
     p         = mrb_parse_file(state->mrb, mrb_file, NULL);
-    code->n   = mrb_generate_code(state->mrb, p);
+    code->proc = mrb_generate_code(state->mrb, p);
 
     mrb_pool_close(p->pool);
     fclose(mrb_file);
@@ -155,18 +155,17 @@ ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *s
         p = mrb_parse_string(state->mrb, (char *)code->code.string, NULL);
     }
 
-    code->n = mrb_generate_code(state->mrb, p);
+    code->proc = mrb_generate_code(state->mrb, p);
     mrb_pool_close(p->pool);
 
     if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
         ngx_conf_log_error(NGX_LOG_NOTICE
             , cf
             , 0
-            , "%s NOTICE %s:%d: compile info: code->n=%d code->code.file=(%s) code->cache=(%d)"
+            , "%s NOTICE %s:%d: compile info: code->code.file=(%s) code->cache=(%d)"
             , MODULE_NAME
             , __func__
             , __LINE__
-            , code->n
             , code->code.file
             , code->cache
         );
@@ -174,11 +173,10 @@ ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *s
         ngx_conf_log_error(NGX_LOG_NOTICE
             , cf
             , 0
-            , "%s NOTICE %s:%d: compile info: code->n=%d code->code.string=(%s) code->cache=(%d)"
+            , "%s NOTICE %s:%d: compile info: code->code.string=(%s) code->cache=(%d)"
             , MODULE_NAME
             , __func__
             , __LINE__
-            , code->n
             , code->code.string
             , code->cache
         );
