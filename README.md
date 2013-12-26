@@ -2,6 +2,8 @@
 
 [![ngx_mruby mod_mruby performance](http://blog.matsumoto-r.jp/wp-content/uploads/2013/12/performance_20131226.png)](http://blog.matsumoto-r.jp/?p=3974)
 
+※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
+
 ## What's ngx_mruby
 __ngx_mruby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
 
