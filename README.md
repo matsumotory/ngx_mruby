@@ -1,4 +1,4 @@
-# Welcome to ngx_mruby Pages
+# Welcome to ngx_mruby Pages  [![Build Status](https://travis-ci.org/matsumoto-r/ngx_mruby.png?branch=master)](https://travis-ci.org/matsumoto-r/ngx_mruby)
 ## What's ngx_mruby
 __ngx_mruby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
 
