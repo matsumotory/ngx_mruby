@@ -89,7 +89,20 @@ $ git submodule update
 - __We recommend the contribute to mruby by implementing mrbgems.__
 
 ### 2. Build 
-Download [Nginx](http://nginx.org/en/download.html), unpack, use configure for ngx_mruby, mruby build, ngx_mruby build.
+Using build.sh
+```bash
+# Default install
+#  download nginx into ./build/
+#  build with ngx_mruby into ./build/nginx
+
+sh build.sh
+```
+```bash
+# install with ENV
+
+NGINX_CONFIG_OPT_ENV='--prefix=/usr/local/nginx-1.4.4' NGINX_SRC_ENV='/usr/local/src/nginx-1.4.4' sh build.sh
+```
+or Download [Nginx](http://nginx.org/en/download.html), unpack, use configure for ngx_mruby, mruby build, ngx_mruby build.
 ```bash
 $ cd ${NGX_MRUBY_SRC}
 $ ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="--prefix=/usr/local/nginx"
