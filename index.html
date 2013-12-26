@@ -32,7 +32,10 @@
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
         <h1>
-<a name="welcome-to-ngx_mruby-pages" class="anchor" href="#welcome-to-ngx_mruby-pages"><span class="octicon octicon-link"></span></a>Welcome to ngx_mruby Pages</h1>
+<a name="welcome-to-ngx_mruby-pages--" class="anchor" href="#welcome-to-ngx_mruby-pages--"><span class="octicon octicon-link"></span></a>Welcome to ngx_mruby Pages  <a href="https://travis-ci.org/matsumoto-r/ngx_mruby"><img src="https://travis-ci.org/matsumoto-r/ngx_mruby.png?branch=master" alt="Build Status"></a>
+</h1>
+
+<p><a href="http://blog.matsumoto-r.jp/?p=3974"><img src="http://blog.matsumoto-r.jp/wp-content/uploads/2013/12/performance_20131226.png" alt="ngx_mruby mod_mruby performance"></a></p>
 
 <h2>
 <a name="whats-ngx_mruby" class="anchor" href="#whats-ngx_mruby"><span class="octicon octicon-link"></span></a>What's ngx_mruby</h2>
@@ -89,7 +92,7 @@
   <span class="no">Server</span> <span class="o">=</span> <span class="no">Apache</span>
 <span class="k">end</span>
 
-<span class="ss">Server</span><span class="p">:</span><span class="ss">:rputs</span> <span class="s2">"Hello </span><span class="si">#{</span><span class="ss">Server</span><span class="p">:</span><span class="ss">:module_name</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="ss">Server</span><span class="p">:</span><span class="ss">:module_version</span><span class="si">}</span><span class="s2"> world!"</span>
+<span class="no">Server</span><span class="o">::</span><span class="n">rputs</span> <span class="s2">"Hello </span><span class="si">#{</span><span class="no">Server</span><span class="o">::</span><span class="n">module_name</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="no">Server</span><span class="o">::</span><span class="n">module_version</span><span class="si">}</span><span class="s2"> world!"</span>
 <span class="c1"># mod_mruby =&gt; "Hello mod_mruby/0.9.3 world!"</span>
 <span class="c1"># ngx_mruby =&gt; "Hello ngx_mruby/0.0.1 world!"</span>
 </pre></div>
@@ -137,7 +140,21 @@
 </ul><h3>
 <a name="2-build" class="anchor" href="#2-build"><span class="octicon octicon-link"></span></a>2. Build</h3>
 
-<p>Download <a href="http://nginx.org/en/download.html">Nginx</a>, unpack, use configure for ngx_mruby, mruby build, ngx_mruby build.</p>
+<p>Using build.sh</p>
+
+<div class="highlight highlight-bash"><pre><span class="c"># Default install</span>
+<span class="c">#  download nginx into ./build/</span>
+<span class="c">#  build with ngx_mruby into ./build/nginx</span>
+
+sh build.sh
+</pre></div>
+
+<div class="highlight highlight-bash"><pre><span class="c"># install with ENV</span>
+
+<span class="nv">NGINX_CONFIG_OPT_ENV</span><span class="o">=</span><span class="s1">'--prefix=/usr/local/nginx-1.4.4'</span> <span class="nv">NGINX_SRC_ENV</span><span class="o">=</span><span class="s1">'/usr/local/src/nginx-1.4.4'</span> sh build.sh
+</pre></div>
+
+<p>or Download <a href="http://nginx.org/en/download.html">Nginx</a>, unpack, use configure for ngx_mruby, mruby build, ngx_mruby build.</p>
 
 <div class="highlight highlight-bash"><pre><span class="nv">$ </span><span class="nb">cd</span> <span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span>
 <span class="nv">$ </span>./configure --with-ngx-src-root<span class="o">=</span><span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span> --with-ngx-config-opt<span class="o">=</span><span class="s2">"--prefix=/usr/local/nginx"</span>
@@ -206,7 +223,7 @@
   <span class="no">Server</span> <span class="o">=</span> <span class="no">Apache</span>
 <span class="k">end</span>
 
-<span class="ss">Server</span><span class="p">:</span><span class="ss">:rputs</span> <span class="s2">"Hello </span><span class="si">#{</span><span class="ss">Server</span><span class="p">:</span><span class="ss">:module_name</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="ss">Server</span><span class="p">:</span><span class="ss">:module_version</span><span class="si">}</span><span class="s2"> world!"</span>
+<span class="no">Server</span><span class="o">::</span><span class="n">rputs</span> <span class="s2">"Hello </span><span class="si">#{</span><span class="no">Server</span><span class="o">::</span><span class="n">module_name</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="no">Server</span><span class="o">::</span><span class="n">module_version</span><span class="si">}</span><span class="s2"> world!"</span>
 </pre></div>
 
 <h3>
