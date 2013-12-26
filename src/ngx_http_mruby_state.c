@@ -27,8 +27,7 @@ ngx_int_t ngx_mrb_init_file(ngx_str_t *script_file_path, ngx_mrb_state_t *state,
     mrb = mrb_open();
     ngx_mrb_class_init(mrb);
 
-    state->ai  = mrb_gc_arena_save(mrb);
-    p          = mrb_parse_file(mrb, mrb_file, NULL);
+    p = mrb_parse_file(mrb, mrb_file, NULL);
     state->mrb = mrb;
     code->proc = mrb_generate_code(mrb, p);
 
@@ -46,8 +45,7 @@ ngx_int_t ngx_mrb_init_string(ngx_str_t *script, ngx_mrb_state_t *state, ngx_mrb
     mrb = mrb_open();
     ngx_mrb_class_init(mrb);
 
-    state->ai   = mrb_gc_arena_save(mrb);
-    p           = mrb_parse_string(mrb, (char *)script->data, NULL);
+    p = mrb_parse_string(mrb, (char *)script->data, NULL);
     state->mrb  = mrb;
     code->proc  = mrb_generate_code(mrb, p);
 
@@ -58,6 +56,7 @@ ngx_int_t ngx_mrb_init_string(ngx_str_t *script, ngx_mrb_state_t *state, ngx_mrb
 
 static ngx_int_t ngx_mrb_gencode_state(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
+    int ai;
     FILE *mrb_file;
     struct mrb_parser_state *p;
 
@@ -65,12 +64,13 @@ static ngx_int_t ngx_mrb_gencode_state(ngx_mrb_state_t *state, ngx_mrb_code_t *c
         return NGX_ERROR;
     }
 
-    state->ai = mrb_gc_arena_save(state->mrb);
-    p         = mrb_parse_file(state->mrb, mrb_file, NULL);
+    ai = mrb_gc_arena_save(state->mrb);
+    p = mrb_parse_file(state->mrb, mrb_file, NULL);
     code->proc = mrb_generate_code(state->mrb, p);
 
     mrb_pool_close(p->pool);
     fclose(mrb_file);
+    mrb_gc_arena_restore(state->mrb, ai);
 
     return NGX_OK;
 }
