@@ -32,7 +32,8 @@ char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
   if (cf->args->nelts == 3) {
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
-    } else {
+    }
+    else {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -83,7 +84,8 @@ char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *c
   if (cf->args->nelts == 3) {
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
-    } else {
+    }
+    else {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -112,7 +114,8 @@ char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
   if (cf->args->nelts == 3) {
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
-    } else {
+    }
+    else {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -139,7 +142,8 @@ char *ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *con
   if (cf->args->nelts == 3) {
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
-    } else {
+    }
+    else {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -166,7 +170,8 @@ char *ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf
   if (cf->args->nelts == 3) {
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
-    } else {
+    }
+    else {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -193,7 +198,8 @@ char *ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *con
   if (cf->args->nelts == 3) {
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
-    } else {
+    }
+    else {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -220,7 +226,8 @@ char *ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
   if (cf->args->nelts == 3) {
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
-    } else {
+    }
+    else {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -355,7 +362,8 @@ char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, voi
   if (cf->args->nelts == 3) {
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
-    } else {
+    }
+    else {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -384,7 +392,8 @@ char *ngx_http_mruby_body_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void 
   if (cf->args->nelts == 3) {
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
-    } else {
+    }
+    else {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"", &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -466,7 +475,8 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
   filter_data->script = value[2];
   if (type == NGX_MRB_CODE_TYPE_FILE) {
     filter_data->code = ngx_http_mruby_mrb_code_from_file(cf->pool, &filter_data->script);
-  } else {
+  }
+  else {
     filter_data->code = ngx_http_mruby_mrb_code_from_string(cf->pool, &filter_data->script);
   } 
   ngx_http_mruby_shared_state_compile(cf, filter_data->state, filter_data->code);

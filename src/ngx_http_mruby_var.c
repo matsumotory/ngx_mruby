@@ -97,7 +97,8 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
   // return variable value wraped with mruby string
   if (!var->not_found) {
     return mrb_str_new(mrb, (char *)var->data, var->len);
-  } else {
+  }
+  else {
     ngx_log_error(NGX_LOG_ERR
       , r->connection->log
       , 0
@@ -145,7 +146,8 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
         , key.data
       );
       goto ARENA_RESTOR_AND_ERROR;
-    } else if (v->set_handler) {
+    }
+    else if (v->set_handler) {
       vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
       if (vv == NULL) {
         ngx_log_error(NGX_LOG_ERR
@@ -159,9 +161,11 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
         goto ARENA_RESTOR_AND_ERROR;
       }
       v->set_handler(r, vv, v->data);
-    } else if (v->flags & NGX_HTTP_VAR_INDEXED) {
+    }
+    else if (v->flags & NGX_HTTP_VAR_INDEXED) {
       vv = &r->variables[v->index];
-    } else {
+    }
+    else {
       ngx_log_error(NGX_LOG_ERR
         , r->connection->log
         , 0
@@ -227,9 +231,10 @@ static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
   len = strlen(c_name);
 
   if (c_name[len-1] == '=') {
-  return ngx_mrb_var_set(mrb, self, strtok(c_name, "="), a[0], r);
-  } else {
-  return ngx_mrb_var_get(mrb, self, c_name, r);
+    return ngx_mrb_var_set(mrb, self, strtok(c_name, "="), a[0], r);
+  }
+  else {
+    return ngx_mrb_var_get(mrb, self, c_name, r);
   }
 }
 
@@ -271,7 +276,8 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
         , key.data
       );
       goto ARENA_RESTOR_AND_ERROR;
-    } else if (v->set_handler) {
+    }
+    else if (v->set_handler) {
       vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
       if (vv == NULL) {
         ngx_log_error(NGX_LOG_ERR
@@ -285,9 +291,11 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
         goto ARENA_RESTOR_AND_ERROR;
       }
       v->set_handler(r, vv, v->data);
-    } else if (v->flags & NGX_HTTP_VAR_INDEXED) {
+    }
+    else if (v->flags & NGX_HTTP_VAR_INDEXED) {
       vv = &r->variables[v->index];
-    } else {
+    }
+    else {
       ngx_log_error(NGX_LOG_ERR
         , r->connection->log
         , 0

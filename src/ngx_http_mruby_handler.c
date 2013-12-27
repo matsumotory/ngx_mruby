@@ -29,12 +29,12 @@ ngx_int_t ngx_http_mruby_##handler_name##_handler(ngx_http_request_t *r)        
   return ngx_mrb_run(r, mmcf->state, code, mlcf->cached, NULL);                 \
 }
 
-NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(post_read,    mlcf->post_read_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(post_read, mlcf->post_read_code)
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(server_rewrite, mlcf->server_rewrite_code)
-NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(rewrite,    mlcf->rewrite_code)
-NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(access,     mlcf->access_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(rewrite, mlcf->rewrite_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(access, mlcf->access_code)
 //NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(content,    mlcf->content_code)
-NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(log,      mlcf->log_code)
+NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(log, mlcf->log_code)
 
 ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)            
 {                                                 
@@ -80,7 +80,8 @@ ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
       );
       return NGX_ERROR;
     }
-  } else {
+  }
+  else {
     code = mlcf->content_code;
   }
   if (code == NGX_CONF_UNSET_PTR) {

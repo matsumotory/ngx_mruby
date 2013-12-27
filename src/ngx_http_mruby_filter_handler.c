@@ -322,10 +322,8 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
     if (ctx->body == NULL) {
       return NGX_ERROR;
     }
-
     ctx->last = ctx->body;
   }
-
   p = ctx->last;
 
   for (cl=in;cl!=NULL;cl=cl->next) {

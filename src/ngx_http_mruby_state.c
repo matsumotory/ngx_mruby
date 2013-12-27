@@ -151,7 +151,8 @@ ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *s
     }
     p = mrb_parse_file(state->mrb, mrb_file, NULL);
     fclose(mrb_file);
-  } else {
+  }
+  else {
     p = mrb_parse_string(state->mrb, (char *)code->code.string, NULL);
   }
 
@@ -169,7 +170,8 @@ ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *s
       , code->code.file
       , code->cache
     );
-  } else {
+  }
+  else {
     ngx_conf_log_error(NGX_LOG_NOTICE
       , cf
       , 0

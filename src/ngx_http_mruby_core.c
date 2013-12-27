@@ -58,7 +58,8 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
   if (state->mrb->exc) {
     if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
       ngx_mrb_raise_file_conf_error(state->mrb, mrb_obj_value(state->mrb->exc), cf, code->code.file);
-    } else {
+    }
+    else {
       ngx_mrb_raise_conf_error(state->mrb, mrb_obj_value(state->mrb->exc), cf);
     }
     mrb_gc_arena_restore(state->mrb, ai);
@@ -110,7 +111,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   if (state->mrb->exc) {
     if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
       ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, code->code.file);
-    } else {
+    }
+    else {
       ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
     }
   }
@@ -118,7 +120,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     if (mrb_nil_p(mrb_result)) { 
       result->data = NULL;
       result->len = 0;
-    } else {
+    }
+    else {
       if (mrb_type(mrb_result) != MRB_TT_STRING) {
         mrb_result = mrb_funcall(state->mrb, mrb_result, "to_s", 0, NULL);
       }
@@ -169,7 +172,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
       ngx_http_output_filter(r, chain->out);
       ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
       return NGX_OK;
-    } else {
+    }
+    else {
       return r->headers_out.status;
     }
   }
@@ -190,7 +194,8 @@ ngx_int_t ngx_mrb_run_body_filter(ngx_http_request_t *r, ngx_mrb_state_t *state,
   if (state->mrb->exc) {
     if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
       ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, code->code.file);
-    } else {
+    }
+    else {
       ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
     }
     mrb_gc_arena_restore(state->mrb, ai);
@@ -348,7 +353,8 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     chain     = ngx_pcalloc(r->pool, sizeof(ngx_mrb_rputs_chain_list_t));
     chain->out  = ngx_alloc_chain_link(r->pool);
     chain->last = &chain->out;
-  } else {
+  }
+  else {
     chain = ctx->rputs_chain;
     (*chain->last)->next = ngx_alloc_chain_link(r->pool);
     chain->last = &(*chain->last)->next;
@@ -367,7 +373,8 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
 
   if (r->headers_out.content_length_n == -1) {
     r->headers_out.content_length_n += ns.len + 1;
-  } else {
+  }
+  else {
     r->headers_out.content_length_n += ns.len;
   }
 
@@ -416,7 +423,8 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
   }
   if (mrb_type(argv[1]) != MRB_TT_STRING) {
     msg = mrb_funcall(mrb, argv[1], "to_s", 0, NULL);
-  } else {
+  }
+  else {
     msg = mrb_str_dup(mrb, argv[1]);
   }
   ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", RSTRING_PTR(msg));
@@ -466,7 +474,8 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   // get status code from args
   if (argc == 2) {
     rc = mrb_fixnum(code);
-  } else {
+  }
+  else {
     rc = NGX_HTTP_MOVED_TEMPORARILY;
   }
 
@@ -502,7 +511,8 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
       chain = ngx_pcalloc(r->pool, sizeof(ngx_mrb_rputs_chain_list_t));
       chain->out = ngx_alloc_chain_link(r->pool);
       chain->last = &chain->out;
-    } else {
+    }
+    else {
       chain = ctx->rputs_chain;
       (*chain->last)->next = ngx_alloc_chain_link(r->pool);
       chain->last = &(*chain->last)->next;
@@ -523,7 +533,8 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
 
     if (r->headers_out.content_length_n == -1) {
       r->headers_out.content_length_n += ns.len + 1;
-    } else {
+    }
+    else {
       r->headers_out.content_length_n += ns.len;
     }
 
@@ -541,7 +552,8 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
 
     ngx_http_send_header(r);
     ngx_http_output_filter(r, chain->out);
-  } else {
+  }
+  else {
     ngx_http_internal_redirect(r, &ns, &r->args);
   }
 
