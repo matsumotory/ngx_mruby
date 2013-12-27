@@ -14,36 +14,36 @@
 #define OFF 0
 
 typedef enum code_type_t {
-    NGX_MRB_CODE_TYPE_FILE,
-    NGX_MRB_CODE_TYPE_STRING
+  NGX_MRB_CODE_TYPE_FILE,
+  NGX_MRB_CODE_TYPE_STRING
 } code_type_t;
 
 typedef struct ngx_mrb_state_t {
-    mrb_state *mrb;
-    int ai;
+  mrb_state *mrb;
+  int ai;
 } ngx_mrb_state_t;
 
 typedef struct ngx_mrb_code_t {
-    union code {
-        char *file;
-        char *string;
-    } code;
-    code_type_t code_type;
-    int n;
-    unsigned int cache;
-    struct RProc *proc;
+  union code {
+    char *file;
+    char *string;
+  } code;
+  code_type_t code_type;
+  int n;
+  unsigned int cache;
+  struct RProc *proc;
 } ngx_mrb_code_t;
 
 typedef struct ngx_mrb_rputs_chain_list_t {
-    ngx_chain_t **last;
-    ngx_chain_t *out;
+  ngx_chain_t **last;
+  ngx_chain_t *out;
 } ngx_mrb_rputs_chain_list_t;
 
 typedef struct ngx_http_mruby_ctx_t {
-    ngx_mrb_rputs_chain_list_t *rputs_chain;
-    u_char *body;
-    u_char *last;
-    size_t body_length;
+  ngx_mrb_rputs_chain_list_t *rputs_chain;
+  u_char *body;
+  u_char *last;
+  size_t body_length;
 } ngx_http_mruby_ctx_t;
 
 void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class);

@@ -20,15 +20,15 @@
 
 ngx_int_t ngx_mrb_class_init(mrb_state *mrb)
 {
-    struct RClass *class;
+  struct RClass *class;
 
-    class = mrb_define_module(mrb, "Nginx");
+  class = mrb_define_module(mrb, "Nginx");
 
-    ngx_mrb_core_init(mrb, class); GC_ARENA_RESTORE;
-    ngx_mrb_request_class_init(mrb, class); GC_ARENA_RESTORE;
-    ngx_mrb_var_class_init(mrb, class); GC_ARENA_RESTORE;
-    ngx_mrb_conn_class_init(mrb, class); GC_ARENA_RESTORE;
-    ngx_mrb_server_class_init(mrb, class); GC_ARENA_RESTORE;
+  ngx_mrb_core_init(mrb, class); GC_ARENA_RESTORE;
+  ngx_mrb_request_class_init(mrb, class); GC_ARENA_RESTORE;
+  ngx_mrb_var_class_init(mrb, class); GC_ARENA_RESTORE;
+  ngx_mrb_conn_class_init(mrb, class); GC_ARENA_RESTORE;
+  ngx_mrb_server_class_init(mrb, class); GC_ARENA_RESTORE;
 
-    return NGX_OK;
+  return NGX_OK;
 }
