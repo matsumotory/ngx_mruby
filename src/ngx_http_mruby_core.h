@@ -9,6 +9,7 @@
 
 #include <ngx_http.h>
 #include <mruby.h>
+#include <mruby/compile.h>
 
 #define ON  1
 #define OFF 0
@@ -32,6 +33,7 @@ typedef struct ngx_mrb_code_t {
   int n;
   unsigned int cache;
   struct RProc *proc;
+  mrbc_context *ctx;
 } ngx_mrb_code_t;
 
 typedef struct ngx_mrb_rputs_chain_list_t {

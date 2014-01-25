@@ -27,7 +27,9 @@ ngx_int_t ngx_mrb_init_file(ngx_str_t *script_file_path, ngx_mrb_state_t *state,
   mrb = mrb_open();
   ngx_mrb_class_init(mrb);
 
-  p = mrb_parse_file(mrb, mrb_file, NULL);
+  code->ctx = mrbc_context_new(mrb);
+  mrbc_filename(mrb, code->ctx, (char *)script_file_path->data);
+  p = mrb_parse_file(mrb, mrb_file, code->ctx);
   state->mrb = mrb;
   code->proc = mrb_generate_code(mrb, p);
 
@@ -65,7 +67,9 @@ static ngx_int_t ngx_mrb_gencode_state(ngx_mrb_state_t *state, ngx_mrb_code_t *c
   }
 
   ai = mrb_gc_arena_save(state->mrb);
-  p = mrb_parse_file(state->mrb, mrb_file, NULL);
+  code->ctx = mrbc_context_new(state->mrb);
+  mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
+  p = mrb_parse_file(state->mrb, mrb_file, code->ctx);
   code->proc = mrb_generate_code(state->mrb, p);
 
   mrb_pool_close(p->pool);
@@ -149,7 +153,9 @@ ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *s
     if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
       return NGX_ERROR;
     }
-    p = mrb_parse_file(state->mrb, mrb_file, NULL);
+    code->ctx = mrbc_context_new(state->mrb);
+    mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
+    p = mrb_parse_file(state->mrb, mrb_file, code->ctx);
     fclose(mrb_file);
   }
   else {
