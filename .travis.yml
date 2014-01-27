@@ -11,7 +11,7 @@ script:
 notifications:
   irc:
     channels:
-      - "irc.freenode.org#backdoor-log"
+      - "irc.freenode.org#hosting-ja"
     on_success: always
     on_failure: always
     use_notice: true
