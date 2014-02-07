@@ -435,22 +435,22 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_get_ngx_mruby_name(mrb_state *mrb, mrb_value self)
 {   
-  return mrb_str_new_cstr(mrb, MODULE_NAME);
+  return mrb_str_new_lit(mrb, MODULE_NAME);
 }
 
 static mrb_value ngx_mrb_get_ngx_mruby_version(mrb_state *mrb, mrb_value self)
 {   
-  return mrb_str_new_cstr(mrb, MODULE_VERSION);
+  return mrb_str_new_lit(mrb, MODULE_VERSION);
 }
 
 static mrb_value ngx_mrb_get_nginx_version(mrb_state *mrb, mrb_value self)
 {
-  return mrb_str_new_cstr(mrb, NGINX_VERSION);
+  return mrb_str_new_lit(mrb, NGINX_VERSION);
 }
 
 static mrb_value ngx_mrb_server_name(mrb_state *mrb, mrb_value self)
 {
-  return mrb_str_new_cstr(mrb, NGINX_VAR);
+  return mrb_str_new_lit(mrb, NGINX_VAR);
 }
 
 // like Nginx rewrite keywords
