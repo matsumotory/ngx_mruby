@@ -126,12 +126,12 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
       if (mrb_type(mrb_result) != MRB_TT_STRING) {
         mrb_result = mrb_funcall(state->mrb, mrb_result, "to_s", 0, NULL);
       }
-      result_len = ngx_strlen((u_char *)RSTRING_PTR(mrb_result));
+      result_len = ngx_strlen((u_char *)mrb_str_to_cstr(mrb, mrb_result));
       result->data = ngx_palloc(r->pool, result_len);
       if (result->data == NULL) {
         return NGX_ERROR;
       }
-      ngx_memcpy(result->data, (u_char *)RSTRING_PTR(mrb_result), result_len);
+      ngx_memcpy(result->data, (u_char *)mrb_str_to_cstr(mrb, mrb_result), result_len);
       result->len  = result_len;
       ngx_log_error(NGX_LOG_INFO
         , r->connection->log
@@ -140,7 +140,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
         , MODULE_NAME
         , __func__
         , __LINE__
-        , RSTRING_PTR(mrb_result)
+        , mrb_str_to_cstr(mrb, mrb_result)
       );
     }
   }
@@ -211,7 +211,7 @@ ngx_int_t ngx_mrb_run_body_filter(ngx_http_request_t *r, ngx_mrb_state_t *state,
     mrb_result = mrb_funcall(state->mrb, mrb_result, "to_s", 0, NULL);
   }
 
-  ctx->body = (u_char *)RSTRING_PTR(mrb_result);
+  ctx->body = (u_char *)mrb_str_to_cstr(mrb, mrb_result);
   ctx->body_length = ngx_strlen(ctx->body);
 
   mrb_gc_arena_restore(state->mrb, ai);
@@ -344,7 +344,7 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
   }
 
-  ns.data   = (u_char *)RSTRING_PTR(argv);
+  ns.data   = (u_char *)mrb_str_to_cstr(mrb, argv);
   ns.len    = ngx_strlen(ns.data);
   if (ns.len == 0) {
     return self;
@@ -428,7 +428,7 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
   else {
     msg = mrb_str_dup(mrb, argv[1]);
   }
-  ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", RSTRING_PTR(msg));
+  ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", mrb_str_to_cstr(mrb, msg));
 
   return self;
 }
@@ -486,7 +486,7 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   }
 
   // save location uri to ns
-  ns.data   = (u_char *)RSTRING_PTR(uri);
+  ns.data   = (u_char *)mrb_str_to_cstr(mrb, uri);
   ns.len    = ngx_strlen(ns.data);
   if (ns.len == 0) {
     return mrb_nil_value();

@@ -125,7 +125,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
     o = mrb_funcall(mrb, o, "to_s", 0, NULL);
   }
 
-  val = (u_char *)RSTRING_PTR(o);
+  val = (u_char *)mrb_str_to_cstr(mrb, o);
   key.len = strlen(k);
   key.data = (u_char *)k;
 
@@ -255,7 +255,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     o = mrb_funcall(mrb, o, "to_s", 0, NULL);
   }
 
-  val = (u_char *)RSTRING_PTR(o);
+  val = (u_char *)mrb_str_to_cstr(mrb, o);
   key.len = strlen(k);
   key.data = (u_char *)k;
 

@@ -32,7 +32,7 @@ static mrb_value ngx_mrb_set_##method_suffix(mrb_state *mrb, mrb_value self)    
   if (mrb_nil_p(arg)) {                             \
     return self;                                \
   }                                       \
-  str = (u_char *)RSTRING_PTR(arg);                       \
+  str = (u_char *)mrb_str_to_cstr(mrb, arg);                       \
   r = ngx_mrb_get_request();                          \
   member.len = ngx_strlen(str) + 1;                       \
   member.data = (u_char *)str;                          \
@@ -124,7 +124,7 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers)
 
   mrb_get_args(mrb, "o", &mrb_key);
 
-  key = (u_char *)RSTRING_PTR(mrb_key);
+  key = (u_char *)mrb_str_to_cstr(mrb, mrb_key);
   part = &headers->part;
   header = part->elts;
 
@@ -158,8 +158,8 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
 
   mrb_get_args(mrb, "oo", &mrb_key, &mrb_val);
 
-  key = (u_char *)RSTRING_PTR(mrb_key);
-  val = (u_char *)RSTRING_PTR(mrb_val);
+  key = (u_char *)mrb_str_to_cstr(mrb, mrb_key);
+  val = (u_char *)mrb_str_to_cstr(mrb, mrb_val);
   part  = &headers->part;
   header = part->elts;
 
