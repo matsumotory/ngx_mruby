@@ -50,6 +50,13 @@
 #include "ngx_http_mruby_request.h"
 #include "ngx_http_mruby_state.h"
 
+#include <mruby.h>
+#include <mruby/proc.h>
+#include <mruby/data.h>
+#include <mruby/compile.h>
+#include <mruby/string.h>
+#include <mruby/value.h>
+
 #define NGX_MRUBY_MERGE_CODE(prev_code, conf_code)   \
   if (prev_code == NGX_CONF_UNSET_PTR) {       \
     prev_code = conf_code;             \
@@ -65,6 +72,32 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
 static ngx_int_t ngx_http_mruby_preinit(ngx_conf_t *cf);
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf);
 static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf);
+
+/*
+// ngx_mruby mruby state functions
+*/
+#define NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(cached, state, code, reinit) \
+    do {                                  \
+          if (!cached) {                          \
+                  if (state == NGX_CONF_UNSET_PTR) {              \
+                            return NGX_DECLINED;                    \
+                          }                               \
+                  if (code == NGX_CONF_UNSET_PTR) {               \
+                            return NGX_DECLINED;                    \
+                          }                               \
+                  if (reinit(state, code) == NGX_ERROR) {             \
+                            return NGX_ERROR;                     \
+                          }                               \
+                }                                 \
+        } while(0)
+
+static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, ngx_mrb_code_t *code);
+static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *code_file_path);
+static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t *code_s);
+static ngx_int_t ngx_http_mruby_shared_state_init(ngx_mrb_state_t *state);
+static ngx_int_t ngx_mrb_init_file(ngx_str_t *script_file_path, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
+static ngx_int_t ngx_mrb_init_string(ngx_str_t *script, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
+static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 
 /*
 // ngx_mruby mruby directive functions
@@ -545,6 +578,189 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
       // not through
       break;
     }
+  }
+
+  return NGX_OK;
+}
+
+/*
+// ngx_mruby mruby state functions
+*/
+
+static ngx_int_t ngx_mrb_init_file(ngx_str_t *script_file_path, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
+{
+  FILE *mrb_file;
+  mrb_state *mrb;
+  struct mrb_parser_state *p;
+
+  if ((mrb_file = fopen((char *)script_file_path->data, "r")) == NULL) {
+    return NGX_ERROR;
+  }
+
+  mrb = mrb_open();
+  ngx_mrb_class_init(mrb);
+
+  code->ctx = mrbc_context_new(mrb);
+  mrbc_filename(mrb, code->ctx, (char *)script_file_path->data);
+  p = mrb_parse_file(mrb, mrb_file, code->ctx);
+  state->mrb = mrb;
+  code->proc = mrb_generate_code(mrb, p);
+
+  mrb_pool_close(p->pool);
+  fclose(mrb_file);
+
+  return NGX_OK;
+}
+
+static ngx_int_t ngx_mrb_init_string(ngx_str_t *script, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
+{
+  mrb_state *mrb;
+  struct mrb_parser_state *p;
+
+  mrb = mrb_open();
+  ngx_mrb_class_init(mrb);
+
+  p = mrb_parse_string(mrb, (char *)script->data, NULL);
+  state->mrb = mrb;
+  code->proc = mrb_generate_code(mrb, p);
+
+  mrb_pool_close(p->pool);
+
+  return NGX_OK;
+}
+
+static ngx_int_t ngx_mrb_gencode_state(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
+{
+  int ai;
+  FILE *mrb_file;
+  struct mrb_parser_state *p;
+
+  if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
+    return NGX_ERROR;
+  }
+
+  ai = mrb_gc_arena_save(state->mrb);
+  code->ctx = mrbc_context_new(state->mrb);
+  mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
+  p = mrb_parse_file(state->mrb, mrb_file, code->ctx);
+  code->proc = mrb_generate_code(state->mrb, p);
+
+  mrb_pool_close(p->pool);
+  fclose(mrb_file);
+  mrb_gc_arena_restore(state->mrb, ai);
+
+  return NGX_OK;
+}
+
+static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
+{
+  if (state == NGX_CONF_UNSET_PTR) {
+    return NGX_ERROR;
+  }
+  if (ngx_mrb_gencode_state(state, code) != NGX_OK) {
+    return NGX_ERROR;
+  }
+  return NGX_OK;
+}
+
+static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *code_file_path)
+{
+  ngx_mrb_code_t *code;
+  size_t len;
+
+  code = ngx_pcalloc(pool, sizeof(*code));
+  if (code == NULL) {
+    return NGX_CONF_UNSET_PTR;
+  }
+
+  len = ngx_strlen((char *)code_file_path->data);
+  code->code.file = ngx_pcalloc(pool, len + 1);
+  if (code->code.file == NULL) {
+    return NGX_CONF_UNSET_PTR;
+  }
+  ngx_cpystrn((u_char *)code->code.file, (u_char *)code_file_path->data, code_file_path->len + 1);
+  code->code_type = NGX_MRB_CODE_TYPE_FILE;
+  code->cache = OFF;
+  return code;
+}
+
+static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t *code_s)
+{
+  ngx_mrb_code_t *code;
+  size_t len;
+
+  code = ngx_pcalloc(pool, sizeof(*code));
+  if (code == NULL) {
+    return NGX_CONF_UNSET_PTR;
+  }
+
+  len = ngx_strlen(code_s->data);
+  code->code.string = ngx_pcalloc(pool, len + 1);
+  if (code->code.string == NULL) {
+    return NGX_CONF_UNSET_PTR;
+  }
+  ngx_cpystrn((u_char *)code->code.string, code_s->data, len + 1);
+  code->code_type = NGX_MRB_CODE_TYPE_STRING;
+  code->cache = ON;
+  return code;
+}
+
+static ngx_int_t ngx_http_mruby_shared_state_init(ngx_mrb_state_t *state)
+{
+  mrb_state *mrb;
+
+  mrb = mrb_open();
+  ngx_mrb_class_init(mrb);
+
+  state->mrb = mrb;
+
+  return NGX_OK;
+}
+
+static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
+{
+  FILE *mrb_file;
+  struct mrb_parser_state *p;
+
+  if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
+    if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
+      return NGX_ERROR;
+    }
+    code->ctx = mrbc_context_new(state->mrb);
+    mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
+    p = mrb_parse_file(state->mrb, mrb_file, code->ctx);
+    fclose(mrb_file);
+  }
+  else {
+    p = mrb_parse_string(state->mrb, (char *)code->code.string, NULL);
+  }
+
+  code->proc = mrb_generate_code(state->mrb, p);
+  mrb_pool_close(p->pool);
+
+  if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
+    ngx_conf_log_error(NGX_LOG_NOTICE
+      , cf
+      , 0
+      , "%s NOTICE %s:%d: compile info: code->code.file=(%s) code->cache=(%d)"
+      , MODULE_NAME
+      , __func__
+      , __LINE__
+      , code->code.file
+      , code->cache
+    );
+  }
+  else {
+    ngx_conf_log_error(NGX_LOG_NOTICE
+      , cf
+      , 0
+      , "%s NOTICE %s:%d: compile info: code->code.string=(%s) code->cache=(%d)"
+      , MODULE_NAME
+      , __func__
+      , __LINE__
+      , code->code.string
+      , code->cache
+    );
   }
 
   return NGX_OK;
