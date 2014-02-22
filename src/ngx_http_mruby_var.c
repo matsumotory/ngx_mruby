@@ -10,9 +10,6 @@
 #include <mruby/string.h>
 #include "ngx_log.h"
 
-static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self);
-static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_name, ngx_http_request_t *r);
-
 /*
  *  ngx_http_core_variables
  *

@@ -24,10 +24,6 @@
 
 ngx_module_t  ngx_http_mruby_module;
 
-static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self);
-static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self);
-static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self);
-
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
 {  
   struct RString *str;
