@@ -13,7 +13,8 @@
 #include <mruby/string.h>
 #include <mruby/class.h>
 
-mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self);
+// extern from ngx_http_mruby_request.c
+extern mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self);
 
 static mrb_value ngx_mrb_get_conn_var_remote_addr(mrb_state *mrb, mrb_value self)
 {
