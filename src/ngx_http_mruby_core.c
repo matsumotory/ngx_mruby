@@ -64,44 +64,6 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf)
   }
 }
 
-void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r, char *code_file)
-{  
-  struct RString *str;
-  char *err_out;
-  
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
-    str = mrb_str_ptr(obj);
-    err_out = str->ptr;
-    ngx_log_error(NGX_LOG_ERR
-      , r->connection->log
-      , 0
-      , "mrb_run failed. file: %s error: %s"
-      , code_file
-      , err_out
-    );
-  }
-}
-
-void ngx_mrb_raise_file_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf, char *code_file)
-{  
-  struct RString *str;
-  char *err_out;
-  
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
-    str = mrb_str_ptr(obj);
-    err_out = str->ptr;
-    ngx_conf_log_error(NGX_LOG_ERR
-      , cf
-      , 0
-      , "mrb_run failed. file: %s error: %s"
-      , code_file
-      , err_out
-    );
-  }
-}
-
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
 {
   ngx_mrb_rputs_chain_list_t *chain;

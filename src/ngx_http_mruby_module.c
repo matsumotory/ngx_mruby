@@ -622,12 +622,7 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
   );  
   mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
   if (state->mrb->exc) {
-    if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
-      ngx_mrb_raise_file_conf_error(state->mrb, mrb_obj_value(state->mrb->exc), cf, code->code.file);
-    }   
-    else {
-      ngx_mrb_raise_conf_error(state->mrb, mrb_obj_value(state->mrb->exc), cf);
-    }   
+    ngx_mrb_raise_conf_error(state->mrb, mrb_obj_value(state->mrb->exc), cf);
     mrb_gc_arena_restore(state->mrb, ai);
     return NGX_ERROR;
   }
@@ -675,12 +670,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   }
   mrb_result = mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
   if (state->mrb->exc) {
-    if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
-      ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, code->code.file);
-    }
-    else {
-      ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
-    }
+    ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
   }
   if (result != NULL) {
     if (mrb_nil_p(mrb_result)) {
@@ -758,12 +748,7 @@ ngx_int_t ngx_mrb_run_body_filter(ngx_http_request_t *r, ngx_mrb_state_t *state,
 
   mrb_result = mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
   if (state->mrb->exc) {
-    if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
-      ngx_mrb_raise_file_error(state->mrb, mrb_obj_value(state->mrb->exc), r, code->code.file);
-    }
-    else {
-      ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
-    }
+    ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
     mrb_gc_arena_restore(state->mrb, ai);
     if (!cached && !code->cache) {
       ngx_mrb_code_clean(r, state, code);
@@ -938,7 +923,9 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
     fclose(mrb_file);
   }
   else {
-    p = mrb_parse_string(state->mrb, (char *)code->code.string, NULL);
+    code->ctx = mrbc_context_new(state->mrb);
+    mrbc_filename(state->mrb, code->ctx, "INLINE CODE");
+    p = mrb_parse_string(state->mrb, (char *)code->code.string, code->ctx);
   }
 
   code->proc = mrb_generate_code(state->mrb, p);
