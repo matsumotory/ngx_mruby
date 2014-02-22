@@ -11,31 +11,6 @@
 #include <mruby.h>
 #include <mruby/compile.h>
 
-#define ON  1
-#define OFF 0
-
-typedef enum code_type_t {
-  NGX_MRB_CODE_TYPE_FILE,
-  NGX_MRB_CODE_TYPE_STRING
-} code_type_t;
-
-typedef struct ngx_mrb_state_t {
-  mrb_state *mrb;
-  int ai;
-} ngx_mrb_state_t;
-
-typedef struct ngx_mrb_code_t {
-  union code {
-    char *file;
-    char *string;
-  } code;
-  code_type_t code_type;
-  int n;
-  unsigned int cache;
-  struct RProc *proc;
-  mrbc_context *ctx;
-} ngx_mrb_code_t;
-
 typedef struct ngx_mrb_rputs_chain_list_t {
   ngx_chain_t **last;
   ngx_chain_t *out;
@@ -49,8 +24,9 @@ typedef struct ngx_http_mruby_ctx_t {
 } ngx_http_mruby_ctx_t;
 
 void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class);
-ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached, ngx_str_t *result);
-ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
-ngx_int_t ngx_mrb_run_body_filter(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached, ngx_http_mruby_ctx_t *ctx);
+void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
+void ngx_mrb_raise_file_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r, char *code_file);
+void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
+void ngx_mrb_raise_file_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf, char *code_file);
 
 #endif // NGX_HTTP_MRUBY_CORE_H

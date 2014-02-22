@@ -14,6 +14,28 @@
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_init.h"
 
+typedef enum code_type_t {
+    NGX_MRB_CODE_TYPE_FILE,
+      NGX_MRB_CODE_TYPE_STRING
+} code_type_t;
+
+typedef struct ngx_mrb_state_t {
+    mrb_state *mrb;
+      int ai;
+} ngx_mrb_state_t;
+
+typedef struct ngx_mrb_code_t {
+    union code {
+          char *file;
+              char *string;
+                } code;
+      code_type_t code_type;
+        int n;
+          unsigned int cache;
+            struct RProc *proc;
+              mrbc_context *ctx;
+} ngx_mrb_code_t;
+
 #if defined(NDK) && NDK
 typedef struct {
   size_t size;
@@ -60,5 +82,6 @@ typedef struct ngx_http_mruby_loc_conf_t {
   ngx_http_handler_pt header_filter_handler;
   ngx_http_output_body_filter_pt body_filter_handler;
 } ngx_http_mruby_loc_conf_t;
+
 
 #endif // NGX_HTTP_MRUBY_MODULE_H
