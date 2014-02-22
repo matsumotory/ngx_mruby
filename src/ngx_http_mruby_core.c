@@ -334,7 +334,7 @@ mrb_value ngx_mrb_f_global_remove(mrb_state *mrb, mrb_value self)
   return mrb_f_global_variables(mrb, self);
 }
 
-void ngx_mrb_core_init(mrb_state *mrb, struct RClass *class)
+void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
 {
   mrb_define_method(mrb, mrb->kernel_module, "server_name", ngx_mrb_server_name, ARGS_NONE());
 

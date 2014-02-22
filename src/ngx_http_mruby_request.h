@@ -15,6 +15,5 @@
 
 ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r);
 ngx_http_request_t *ngx_mrb_get_request(void);
-void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *calss);
 
 #endif // NGX_HTTP_MRUBY_REQUEST_H

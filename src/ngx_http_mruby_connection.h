@@ -12,6 +12,4 @@
 #include <mruby/hash.h>
 #include <mruby/variable.h>
 
-void ngx_mrb_conn_class_init(mrb_state *mrb, struct RClass *calss);
-
 #endif // NGX_HTTP_MRUBY_CONNECTION_H
