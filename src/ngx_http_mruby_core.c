@@ -90,7 +90,6 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   return self;
 }
 
-
 static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
 {
   mrb_value argv;
@@ -108,15 +107,70 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
   }
 
-  ns.data   = (u_char *)mrb_str_to_cstr(mrb, argv);
-  ns.len    = ngx_strlen(ns.data);
+  ns.data = (u_char *)mrb_str_to_cstr(mrb, argv);
+  ns.len = ngx_strlen(ns.data);
   if (ns.len == 0) {
     return self;
   }
 
   if (ctx->rputs_chain == NULL) {
-    chain     = ngx_pcalloc(r->pool, sizeof(ngx_mrb_rputs_chain_list_t));
-    chain->out  = ngx_alloc_chain_link(r->pool);
+    chain = ngx_pcalloc(r->pool, sizeof(ngx_mrb_rputs_chain_list_t));
+    chain->out = ngx_alloc_chain_link(r->pool);
+    chain->last = &chain->out;
+  }
+  else {
+    chain = ctx->rputs_chain;
+    (*chain->last)->next = ngx_alloc_chain_link(r->pool);
+    chain->last = &(*chain->last)->next;
+  }
+  b = ngx_calloc_buf(r->pool);
+  (*chain->last)->buf = b;
+  (*chain->last)->next = NULL;
+
+  str = ngx_pstrdup(r->pool, &ns);
+  str[ns.len] = '\0';
+  (*chain->last)->buf->pos = str;
+  (*chain->last)->buf->last = str + ns.len;
+  (*chain->last)->buf->memory = 1;
+  ctx->rputs_chain = chain;
+  ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
+
+  if (r->headers_out.content_length_n == -1) {
+    r->headers_out.content_length_n += ns.len + 1;
+  }
+  else {
+    r->headers_out.content_length_n += ns.len;
+  }
+
+  return self;
+}
+
+static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
+{
+  mrb_value argv;
+  ngx_buf_t *b;
+  ngx_mrb_rputs_chain_list_t *chain;
+  u_char *str;
+  ngx_str_t ns;
+
+  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+
+  mrb_get_args(mrb, "o", &argv);
+
+  if (mrb_type(argv) != MRB_TT_STRING) {
+    argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
+  }
+
+  ns.data = (u_char *)mrb_str_to_cstr(mrb, mrb_str_plus(mrb, argv, mrb_str_new_lit(mrb, "\n")));
+  ns.len = ngx_strlen(ns.data);
+  if (ns.len == 0) {
+    return self;
+  }
+
+  if (ctx->rputs_chain == NULL) {
+    chain = ngx_pcalloc(r->pool, sizeof(ngx_mrb_rputs_chain_list_t));
+    chain->out = ngx_alloc_chain_link(r->pool);
     chain->last = &chain->out;
   }
   else {
@@ -393,6 +447,7 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_const(mrb, class, "LOG_DEBUG",             mrb_fixnum_value(NGX_LOG_DEBUG));
 
   mrb_define_class_method(mrb, class, "rputs",            ngx_mrb_rputs,            MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "echo",            ngx_mrb_echo,            MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "send_header",          ngx_mrb_send_header,        MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "return",             ngx_mrb_send_header,        MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "errlogger",          ngx_mrb_errlogger,          MRB_ARGS_ANY());
