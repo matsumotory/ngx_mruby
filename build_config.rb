@@ -18,8 +18,8 @@ MRuby::Build.new do |conf|
   # Recommended for ngx_mruby
   #
   # comment out because of moving error.h
-  #conf.gem :git => 'git://github.com/iij/mruby-process.git'
-  #conf.gem :git => 'git://github.com/iij/mruby-io.git'
+  conf.gem :git => 'git://github.com/iij/mruby-process.git'
+  conf.gem :git => 'git://github.com/iij/mruby-io.git'
   conf.gem :git => 'git://github.com/iij/mruby-pack.git'
   conf.gem :git => 'git://github.com/iij/mruby-digest.git'
   conf.gem :git => 'git://github.com/mattn/mruby-json.git'
@@ -28,6 +28,7 @@ MRuby::Build.new do |conf|
   conf.gem :git => 'git://github.com/matsumoto-r/mruby-sleep.git'
   conf.gem :git => 'git://github.com/matsumoto-r/mruby-userdata.git'
   conf.gem :git => 'git://github.com/masamitsu-murase/mruby-hs-regexp.git'
+  conf.gem :git => 'git://github.com/matsumoto-r/mruby-ngx-mruby-ext.git'
 
   # use markdown on mod_mruby
   #conf.gem :git => 'git://github.com/matsumoto-r/mruby-discount.git'
