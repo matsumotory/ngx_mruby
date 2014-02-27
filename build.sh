@@ -43,10 +43,12 @@ else
         mkdir build
     fi
     cd build
-    wget http://nginx.org/download/nginx-1.4.4.tar.gz
-    tar xf nginx-1.4.4.tar.gz
-    ln -s nginx-1.4.4 nginx_src
-    echo "nginx Downloading ... Done"
+    if [ ! -e "nginx-1.4.4" ]; then
+        wget http://nginx.org/download/nginx-1.4.4.tar.gz
+        echo "nginx Downloading ... Done"
+        tar xf nginx-1.4.4.tar.gz
+    fi
+    ln -sf nginx-1.4.4 nginx_src
     NGINX_SRC=`pwd`'/nginx_src'
     cd ..
 fi
