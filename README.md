@@ -1,6 +1,6 @@
 # Welcome to ngx_mruby Pages  [![Build Status](https://travis-ci.org/matsumoto-r/ngx_mruby.png?branch=master)](https://travis-ci.org/matsumoto-r/ngx_mruby)
 
-[![ngx_mruby mod_mruby performance](http://blog.matsumoto-r.jp/wp-content/uploads/2013/12/performance_20131226.png)](http://blog.matsumoto-r.jp/?p=3974)
+[![ngx_mruby mod_mruby performance](https://dl.dropboxusercontent.com/s/2h8wxf2b8gisvd1/performance_20140301.png)](http://blog.matsumoto-r.jp/?p=3974)
 
 ※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
 
