@@ -181,6 +181,9 @@ Hello ngx_mruby/0.0.1 world!
 
 Display above. Welcome mruby world for nginx!!
 
+# Documents
+- [Directives](https://github.com/matsumoto-r/ngx_mruby/wiki/Directives)
+
 
 # License
 under the MIT License:
