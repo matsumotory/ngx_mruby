@@ -159,7 +159,8 @@ location ~ \.rb$ {
     mruby_add_handler on;
 }
 ```
-### 5. Create mruby script /usr/local/nginx/html/unified_hello.rb'
+### 5. Create mruby script
+#### /usr/local/nginx/html/unified_hello.rb
 ```ruby
 if server_name == "NGINX"
   Server = Nginx
@@ -174,7 +175,8 @@ Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
 ```bash
 /usr/local/nginx/sbin/nginx
 ```
-### 7. Access http://127.0.0.1/mruby or http://127.0.0.1/unified_hello.rb
+### 7. Access URL 
+#### http://127.0.0.1/mruby or http://127.0.0.1/unified_hello.rb
 ```
 Hello ngx_mruby/0.0.1 world!
 ```
