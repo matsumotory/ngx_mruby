@@ -404,10 +404,14 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_const(mrb, class, "DONE",              mrb_fixnum_value(NGX_DONE));
   mrb_define_const(mrb, class, "DECLINED",            mrb_fixnum_value(NGX_DECLINED));
   mrb_define_const(mrb, class, "ABORT",               mrb_fixnum_value(NGX_ABORT));
+  mrb_define_const(mrb, class, "HTTP_CONTINUE", mrb_fixnum_value(NGX_HTTP_CONTINUE));
+  mrb_define_const(mrb, class, "HTTP_SWITCHING_PROTOCOLS", mrb_fixnum_value(NGX_HTTP_SWITCHING_PROTOCOLS));
+  mrb_define_const(mrb, class, "HTTP_PROCESSING", mrb_fixnum_value(NGX_HTTP_PROCESSING));
   mrb_define_const(mrb, class, "HTTP_OK",             mrb_fixnum_value(NGX_HTTP_OK));
   mrb_define_const(mrb, class, "HTTP_CREATED",          mrb_fixnum_value(NGX_HTTP_CREATED));
   mrb_define_const(mrb, class, "HTTP_ACCEPTED",           mrb_fixnum_value(NGX_HTTP_ACCEPTED));
   mrb_define_const(mrb, class, "HTTP_NO_CONTENT",         mrb_fixnum_value(NGX_HTTP_NO_CONTENT));
+  mrb_define_const(mrb, class, "HTTP_PARTIAL_CONTENT",         mrb_fixnum_value(NGX_HTTP_PARTIAL_CONTENT));
   mrb_define_const(mrb, class, "HTTP_SPECIAL_RESPONSE",       mrb_fixnum_value(NGX_HTTP_SPECIAL_RESPONSE));
   mrb_define_const(mrb, class, "HTTP_MOVED_PERMANENTLY",      mrb_fixnum_value(NGX_HTTP_MOVED_PERMANENTLY));
   mrb_define_const(mrb, class, "HTTP_MOVED_TEMPORARILY",      mrb_fixnum_value(NGX_HTTP_MOVED_TEMPORARILY));
