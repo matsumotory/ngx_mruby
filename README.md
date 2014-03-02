@@ -183,7 +183,7 @@ Display above. Welcome mruby world for nginx!!
 
 # Documents
 - [Directives](https://github.com/matsumoto-r/ngx_mruby/wiki/Directives)
-
+- [Class and Method](https://github.com/matsumoto-r/ngx_mruby/wiki/Class-and-Method)
 
 # License
 under the MIT License:
