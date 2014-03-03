@@ -4,6 +4,10 @@
 
 ※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
 
+## Documents
+- [Directives](https://github.com/matsumoto-r/ngx_mruby/wiki/Directives)
+- [Class and Method](https://github.com/matsumoto-r/ngx_mruby/wiki/Class-and-Method)
+
 ## What's ngx_mruby
 __ngx_mruby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
 
