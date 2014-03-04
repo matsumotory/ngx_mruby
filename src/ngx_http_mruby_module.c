@@ -105,8 +105,6 @@ static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, n
 static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *code_file_path);
 static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t *code_s);
 static ngx_int_t ngx_http_mruby_shared_state_init(ngx_mrb_state_t *state);
-//static ngx_int_t ngx_mrb_init_file(ngx_str_t *script_file_path, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
-//static ngx_int_t ngx_mrb_init_string(ngx_str_t *script, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 
 /*
@@ -161,9 +159,7 @@ static ngx_int_t ngx_http_mruby_set_inline_handler(ngx_http_request_t *r, ngx_st
 */
 static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *in);
-//static void ngx_http_mruby_filter_cleanup(void *data);
 static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in, ngx_http_mruby_ctx_t *ctx);
-
 static void ngx_http_mruby_header_filter_init(void);
 static void ngx_http_mruby_body_filter_init(void);
 static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_chain_t *in);
