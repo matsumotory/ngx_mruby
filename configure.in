@@ -58,21 +58,21 @@ AC_ARG_WITH(ndk_root, AC_HELP_STRING([--with-ndk-root=DIR],
     [NDK_ROOT="$with_ndk_root"])
 AC_SUBST(NDK_ROOT)
 
-# support mrbgems
-ENABLE_GEMS=false
-AC_ARG_ENABLE([mrbgems],
-    [AS_HELP_STRING([--enable-mrbgems],
-        [mrbgems feature (default is no)])], 
-    [],
-    [enable_mrbgems=no] 
-)
-
-AS_IF([test "x$enable_mrbgems" != xno],
-    [AC_DEFINE([ENABLE_GEMS], [1], [mrbgems support])
-        ENABLE_GEMS=true
-    ]
-)
-AC_SUBST(ENABLE_GEMS)
+## support mrbgems
+#ENABLE_GEMS=false
+#AC_ARG_ENABLE([mrbgems],
+#    [AS_HELP_STRING([--enable-mrbgems],
+#        [mrbgems feature (default is no)])], 
+#    [],
+#    [enable_mrbgems=no] 
+#)
+#
+#AS_IF([test "x$enable_mrbgems" != xno],
+#    [AC_DEFINE([ENABLE_GEMS], [1], [mrbgems support])
+#        ENABLE_GEMS=true
+#    ]
+#)
+#AC_SUBST(ENABLE_GEMS)
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
