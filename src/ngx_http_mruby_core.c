@@ -383,6 +383,7 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   }
   else {
     ngx_http_internal_redirect(r, &ns, &r->args);
+    ngx_http_finalize_request(r, NGX_DONE);
   }
 
   return self;

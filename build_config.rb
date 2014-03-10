@@ -32,6 +32,7 @@ MRuby::Build.new do |conf|
 
   # use markdown on mod_mruby
   #conf.gem :git => 'git://github.com/matsumoto-r/mruby-discount.git'
+  conf.gem '../../mruby-discount'
 
   # Linux only for mod_mruby
   #conf.gem :git => 'git://github.com/matsumoto-r/mruby-capability.git'
