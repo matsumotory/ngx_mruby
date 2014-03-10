@@ -62,7 +62,7 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf)
 
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
 {
-  ngx_mrb_rputs_chain_list_t *chain;
+  ngx_mrb_rputs_chain_list_t *chain = NULL;
   ngx_http_mruby_ctx_t *ctx;
 
   ngx_http_request_t *r = ngx_mrb_get_request();
@@ -78,12 +78,16 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
       , "get mruby context failed."
     );
   }
-  chain = ctx->rputs_chain;
-  (*chain->last)->buf->last_buf = 1;
+  if (ctx->rputs_chain) {
+    chain = ctx->rputs_chain;
+    (*chain->last)->buf->last_buf = 1;
+  }
 
   if (r->headers_out.status == NGX_HTTP_OK) {
     ngx_http_send_header(r);
-    ngx_http_output_filter(r, chain->out);
+    if (chain) {
+      ngx_http_output_filter(r, chain->out);
+    }
     ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
   }
 
