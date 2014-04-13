@@ -27,14 +27,16 @@ static mrb_value ngx_mrb_set_##method_suffix(mrb_state *mrb, mrb_value self)    
 {                                         \
   mrb_value arg;                                \
   u_char *str;                                  \
+  size_t len;                                       \
   ngx_http_request_t *r;                            \
   mrb_get_args(mrb, "o", &arg);                         \
   if (mrb_nil_p(arg)) {                             \
     return self;                                \
   }                                       \
   str = (u_char *)mrb_str_to_cstr(mrb, arg);                       \
+  len = RSTRING_LEN(arg);                                          \
   r = ngx_mrb_get_request();                          \
-  member.len = ngx_strlen(str);                       \
+  member.len = len;                                     \
   member.data = (u_char *)str;                          \
   return self;                                  \
 }
@@ -151,6 +153,7 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
 {
   mrb_value mrb_key, mrb_val;
   u_char *key, *val;
+  size_t key_len, val_len;
   ngx_uint_t i;
   ngx_list_part_t *part;
   ngx_table_elt_t *header;
@@ -160,6 +163,8 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
 
   key = (u_char *)mrb_str_to_cstr(mrb, mrb_key);
   val = (u_char *)mrb_str_to_cstr(mrb, mrb_val);
+  key_len = RSTRING_LEN(mrb_key);
+  val_len = RSTRING_LEN(mrb_val);
   part  = &headers->part;
   header = part->elts;
 
@@ -176,7 +181,7 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
 
     if (ngx_strncasecmp(key, header[i].key.data, header[i].key.len) == 0) {
       header[i].value.data = val;
-      header[i].value.len = ngx_strlen(val);
+      header[i].value.len = val_len;
       return NGX_OK;
     }
   }
@@ -188,9 +193,9 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
     }
     new_header->hash = 1;
     new_header->key.data = key;
-    new_header->key.len = ngx_strlen(key);
+    new_header->key.len = key_len;
     new_header->value.data = val;
-    new_header->value.len = ngx_strlen(val);
+    new_header->value.len = val_len;
   }
 
   return NGX_OK;

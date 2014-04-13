@@ -38,7 +38,7 @@ static mrb_value ngx_mrb_set_filter_body(mrb_state *mrb, mrb_value self)
   }
 
   ctx->body = (u_char *)mrb_str_to_cstr(mrb, body);
-  ctx->body_length = ngx_strlen(ctx->body);
+  ctx->body_length = RSTRING_LEN(body);
 
   b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
   if (b == NULL) {

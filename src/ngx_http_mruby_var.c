@@ -75,7 +75,7 @@
   { ngx_string("tcpinfo_rcv_space"), NULL, ngx_http_variable_tcpinfo,
 */
 
-static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_name, ngx_http_request_t *r)
+static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_name, size_t c_len, ngx_http_request_t *r)
 {
   ngx_http_variable_value_t *var;
   ngx_str_t ngx_name;
@@ -84,7 +84,7 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
   ngx_uint_t key;
 
   // ngx_str_set(&ngx_name, c_name);
-  ngx_name.len = strlen(c_name);
+  ngx_name.len = c_len;
   ngx_name.data = (u_char *)c_name;
   len = ngx_name.len;
 
@@ -116,13 +116,14 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
   ngx_http_core_main_conf_t *cmcf;
   ngx_str_t key;
   ngx_uint_t hash;
-  u_char *val;
+  ngx_str_t val;
 
   if (mrb_type(o) != MRB_TT_STRING) {
     o = mrb_funcall(mrb, o, "to_s", 0, NULL);
   }
 
-  val = (u_char *)mrb_str_to_cstr(mrb, o);
+  val.data = (u_char *)mrb_str_to_cstr(mrb, o);
+  val.len = RSTRING_LEN(o);
   key.len = strlen(k);
   key.data = (u_char *)k;
 
@@ -177,8 +178,8 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
     vv->valid = 1;
     vv->not_found = 0;
     vv->no_cacheable = 0;
-    vv->data = val;
-    vv->len = (size_t)strlen((char *)val) + 1;
+    vv->data = val.data;
+    vv->len = val.len + 1;
     ngx_log_error(NGX_LOG_INFO
       , r->connection->log
       , 0
@@ -210,7 +211,7 @@ ARENA_RESTOR_AND_ERROR:
 static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
 {
   mrb_value name, *a;
-  int alen, len; 
+  int alen, c_len;
   mrb_value s_name;
   char *c_name;
   ngx_http_request_t *r;
@@ -225,13 +226,13 @@ static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
   // second get mrb_string with mrb_sym2str
   s_name = mrb_sym2str(mrb, mrb_symbol(name));
   c_name = mrb_str_to_cstr(mrb, s_name);
-  len = strlen(c_name);
+  c_len = RSTRING_LEN(s_name);
 
-  if (c_name[len-1] == '=') {
+  if (c_name[c_len-1] == '=') {
     return ngx_mrb_var_set(mrb, self, strtok(c_name, "="), a[0], r);
   }
   else {
-    return ngx_mrb_var_get(mrb, self, c_name, r);
+    return ngx_mrb_var_get(mrb, self, c_name, c_len, r);
   }
 }
 
@@ -241,9 +242,8 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
   ngx_http_variable_t *v;
   ngx_http_variable_value_t *vv;
   ngx_http_core_main_conf_t *cmcf;
-  ngx_str_t key;
+  ngx_str_t key, val;
   ngx_uint_t hash;
-  u_char *val;
   char *k;
   mrb_value o;
 
@@ -252,7 +252,8 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     o = mrb_funcall(mrb, o, "to_s", 0, NULL);
   }
 
-  val = (u_char *)mrb_str_to_cstr(mrb, o);
+  val.data = (u_char *)mrb_str_to_cstr(mrb, o);
+  val.len = RSTRING_LEN(o);
   key.len = strlen(k);
   key.data = (u_char *)k;
 
@@ -307,8 +308,8 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     vv->valid = 1;
     vv->not_found = 0;
     vv->no_cacheable = 0;
-    vv->data = val;
-    vv->len = (size_t)strlen((char *)val) + 1;
+    vv->data = val.data;
+    vv->len = val.len + 1;
     ngx_log_error(NGX_LOG_INFO
       , r->connection->log
       , 0
