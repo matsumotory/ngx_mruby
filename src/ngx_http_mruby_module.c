@@ -650,7 +650,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
       if (mrb_type(mrb_result) != MRB_TT_STRING) {
         mrb_result = mrb_funcall(state->mrb, mrb_result, "to_s", 0, NULL);
       }
-      result_len = ngx_strlen((u_char *)mrb_str_to_cstr(state->mrb, mrb_result));
+      result_len = RSTRING_LEN(mrb_result);
       result->data = ngx_palloc(r->pool, result_len);
       if (result->data == NULL) {
         return NGX_ERROR;
@@ -757,7 +757,7 @@ static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_s
     return NGX_CONF_UNSET_PTR;
   }
 
-  len = ngx_strlen((char *)code_file_path->data);
+  len = code_file_path->len;
   code->code.file = ngx_pcalloc(pool, len + 1);
   if (code->code.file == NULL) {
     return NGX_CONF_UNSET_PTR;
@@ -777,8 +777,7 @@ static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx
   if (code == NULL) {
     return NGX_CONF_UNSET_PTR;
   }
-
-  len = ngx_strlen(code_s->data);
+  len = code_s->len;
   code->code.string = ngx_pcalloc(pool, len + 1);
   if (code->code.string == NULL) {
     return NGX_CONF_UNSET_PTR;
