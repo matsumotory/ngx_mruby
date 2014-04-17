@@ -43,6 +43,7 @@
 <a name="documents" class="anchor" href="#documents"><span class="octicon octicon-link"></span></a>Documents</h2>
 
 <ul>
+<li><a href="https://github.com/matsumoto-r/ngx_mruby/wiki/Install">Install</a></li>
 <li><a href="https://github.com/matsumoto-r/ngx_mruby/wiki/Directives">Directives</a></li>
 <li><a href="https://github.com/matsumoto-r/ngx_mruby/wiki/Class-and-Method">Class and Method</a></li>
 <li><a href="https://github.com/matsumoto-r/ngx_mruby/wiki/Use-Case">Use Case</a></li>
@@ -111,162 +112,14 @@
 
 <p>As the increase of large-scale and complex Web services, not only a development of Web applications but also an implementation of Web server extensions is required in many cases. The Web server extensions were mainly implemented in C language because of fast and memory-efficient behavior, but extension methods using scripting language are proposed with consideration of maintainability and productivity. However, if the existing methods primarily intended to enhance not the implementation of Web applications but the implementation of internal processing of the Web server, the problem remains in terms of speed, memory-efficiency and safety. Therefore, we propose a fast and memory-efficient Web server extension mechanism using scripting language. We design the architecture that a server process creates the region to save the state of the interpreter at the server process startup, and multiple scripts share the region in order to process fast when the script is called as internal processing from a Web server process. The server process frees the global variables table, the exception flag and the byte-code which cause the increase of memory usage mainly, in order to reduce the memory usage and extend safety by preventing interference between each scripts because of sharing the region. We implement the mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".</p>
 
-<h2>
-<a name="how-to-use" class="anchor" href="#how-to-use"><span class="octicon octicon-link"></span></a>How to use</h2>
-
-<h3>
-<a name="1-download" class="anchor" href="#1-download"><span class="octicon octicon-link"></span></a>1. Download</h3>
-
-<div class="highlight highlight-bash"><pre><span class="nv">$ </span>git clone git://github.com/matsumoto-r/ngx_mruby.git
-<span class="nv">$ </span><span class="nb">cd </span>ngx_mruby
-<span class="nv">$ </span>git submodule init
-<span class="nv">$ </span>git submodule update
-</pre></div>
-
-<ul>
-<li>if you want <strong>more features</strong>, you can get <a href="https://github.com/mruby/mruby/wiki/Related-Projects">mrbgems</a> and write to <a href="https://github.com/matsumoto-r/ngx_mruby/blob/master/build_config.rb">build_config.rb</a>
-</li>
-<li>for example, use mruby-io and implement <a href="https://gist.github.com/matsumoto-r/7150832">file base access check like .htaccess</a>.</li>
-<li>default mrbgems
-
-<ul>
-<li>gembox: mruby/mruby default mrbgems, mruby-randoma, mruby-env, mruby-print...</li>
-<li>mruby-process: Process ::fork, ::kill, ::pid, ::ppid, ::waitpid...</li>
-<li>mruby-pack: pack, unpack...</li>
-<li>mruby-digest: MD5, RMD160, SHA1, SHA256, SHA384, SHA512 and HMAC Digests</li>
-<li>mruby-json: JSON::parse, JSON::stringify</li>
-<li>mruby-redis: Redis#set, get, [], []=...</li>
-<li>mruby-vedis: Vedis#set, get, [], []=...</li>
-<li>mruby-memcached: Memcached#set, get, [], []=...</li>
-<li>mruby-sleep: sleep, usleep...</li>
-<li>mruby-userdata: <a href="https://github.com/matsumoto-r/mruby-userdata">https://github.com/matsumoto-r/mruby-userdata</a>
-</li>
-<li>mruby-onig-regexp: regexp engine</li>
-<li>mruby-io: <a href="https://github.com/iij/mruby-io">https://github.com/iij/mruby-io</a>
-</li>
-</ul>
-</li>
-<li><strong>We should implement ngx_mruby/mod_mruby extensions as mrbgems, as possible.</strong></li>
-<li><strong>We recommend the contribute to mruby by implementing mrbgems.</strong></li>
-</ul><h3>
-<a name="2-build" class="anchor" href="#2-build"><span class="octicon octicon-link"></span></a>2. Build</h3>
-
-<p>Using build.sh</p>
-
-<div class="highlight highlight-bash"><pre><span class="c"># Default install</span>
-<span class="c">#  download nginx into ./build/</span>
-<span class="c">#  build with ngx_mruby into ./build/nginx</span>
-
-sh build.sh
-</pre></div>
-
-<div class="highlight highlight-bash"><pre><span class="c"># install with ENV</span>
-
-<span class="nv">NGINX_CONFIG_OPT_ENV</span><span class="o">=</span><span class="s1">'--prefix=/usr/local/nginx-1.4.4'</span> <span class="nv">NGINX_SRC_ENV</span><span class="o">=</span><span class="s1">'/usr/local/src/nginx-1.4.4'</span> sh build.sh
-</pre></div>
-
-<p>or Download <a href="http://nginx.org/en/download.html">Nginx</a>, unpack, use configure for ngx_mruby, mruby build, ngx_mruby build.</p>
-
-<div class="highlight highlight-bash"><pre><span class="nv">$ </span><span class="nb">cd</span> <span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span>
-<span class="nv">$ </span>./configure --with-ngx-src-root<span class="o">=</span><span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span> --with-ngx-config-opt<span class="o">=</span><span class="s2">"--prefix=/usr/local/nginx"</span>
-<span class="nv">$ </span>make build_mruby
-<span class="nv">$ </span>make
-</pre></div>
-
-<p>or configure with <code>--add-module=${NGX_MRUBY_SRC}</code> for nginx and make it</p>
-
-<div class="highlight highlight-bash"><pre><span class="nv">$ </span><span class="nb">cd</span> <span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span>
-<span class="nv">$ </span>./configure --with-ngx-src-root<span class="o">=</span><span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span> --with-ngx-config-opt<span class="o">=</span><span class="s2">"--prefix=/usr/local/nginx"</span>
-<span class="nv">$ </span>make build_mruby
-<span class="nv">$ </span><span class="nb">cd</span> <span class="k">${</span><span class="nv">NGINX_SRC</span><span class="k">}</span>
-<span class="nv">$ </span>./configure --prefix<span class="o">=</span>/usr/local/nginx --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span> --add-module<span class="o">=</span><span class="k">${</span><span class="nv">NGX_MRUBY_SRC</span><span class="k">}</span>/dependence/ngx_devel_kit --add-module<span class="o">=</span><span class="k">${</span><span class="nv">SOME_OTHER_MODULE</span><span class="k">}</span>
-<span class="nv">$ </span>make
-</pre></div>
-
-<h3>
-<a name="3-install" class="anchor" href="#3-install"><span class="octicon octicon-link"></span></a>3. Install</h3>
-
-<div class="highlight highlight-bash"><pre><span class="nv">$ </span>sudo make install
-</pre></div>
-
-<h3>
-<a name="4-add-setting" class="anchor" href="#4-add-setting"><span class="octicon octicon-link"></span></a>4. Add setting</h3>
-
-<div class="highlight highlight-nginx"><pre><span class="k">location</span> <span class="s">/mruby</span> <span class="p">{</span>
-    <span class="kn">mruby_content_handler</span> <span class="s">'/usr/local/nginx/html/unified_hello.rb'</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-
-<p>or file cache enabled</p>
-
-<div class="highlight highlight-nginx"><pre><span class="k">location</span> <span class="s">/mruby</span> <span class="p">{</span>
-    <span class="kn">mruby_content_handler</span> <span class="s">'/usr/local/nginx/html/unified_hello.rb'</span> <span class="s">cache</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-
-<p>or inline code (cached)</p>
-
-<div class="highlight highlight-nginx"><pre><span class="k">location</span> <span class="s">/mruby</span> <span class="p">{</span>
-    <span class="kn">mruby_content_handler_code</span> <span class="s">'</span>
-
-      <span class="s">if</span> <span class="s">server_name</span> <span class="p">==</span> <span class="s">"NGINX"</span>
-        <span class="s">Server</span> <span class="p">=</span> <span class="s">Nginx</span>
-      <span class="s">elsif</span> <span class="s">server_name</span> <span class="p">==</span> <span class="s">"Apache"</span>
-        <span class="s">Server</span> <span class="p">=</span> <span class="s">Apache</span>
-      <span class="s">end</span>
-
-      <span class="s">Server::rputs</span> <span class="s">"Hello</span> <span class="c1">#{Server::module_name}/#{Server::module_version} world!"</span>
-
-    <span class="s">'</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-
-<p>or Add handler</p>
-
-<div class="highlight highlight-nginx"><pre><span class="k">location</span> <span class="p">~</span> <span class="sr">\.rb$</span> <span class="p">{</span>
-    <span class="kn">mruby_add_handler</span> <span class="no">on</span><span class="p">;</span>
-<span class="p">}</span>
-</pre></div>
-
-<h3>
-<a name="5-create-mruby-script" class="anchor" href="#5-create-mruby-script"><span class="octicon octicon-link"></span></a>5. Create mruby script</h3>
-
-<h4>
-<a name="usrlocalnginxhtmlunified_hellorb" class="anchor" href="#usrlocalnginxhtmlunified_hellorb"><span class="octicon octicon-link"></span></a>/usr/local/nginx/html/unified_hello.rb</h4>
-
-<div class="highlight highlight-ruby"><pre><span class="k">if</span> <span class="n">server_name</span> <span class="o">==</span> <span class="s2">"NGINX"</span>
-  <span class="no">Server</span> <span class="o">=</span> <span class="no">Nginx</span>
-<span class="k">elsif</span> <span class="n">server_name</span> <span class="o">==</span> <span class="s2">"Apache"</span>
-  <span class="no">Server</span> <span class="o">=</span> <span class="no">Apache</span>
-<span class="k">end</span>
-
-<span class="no">Server</span><span class="o">::</span><span class="n">rputs</span> <span class="s2">"Hello </span><span class="si">#{</span><span class="no">Server</span><span class="o">::</span><span class="n">module_name</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="no">Server</span><span class="o">::</span><span class="n">module_version</span><span class="si">}</span><span class="s2"> world!"</span>
-</pre></div>
-
-<h3>
-<a name="6-start-nginx" class="anchor" href="#6-start-nginx"><span class="octicon octicon-link"></span></a>6. Start nginx</h3>
-
-<div class="highlight highlight-bash"><pre>/usr/local/nginx/sbin/nginx
-</pre></div>
-
-<h3>
-<a name="7-access-url" class="anchor" href="#7-access-url"><span class="octicon octicon-link"></span></a>7. Access URL</h3>
-
-<h4>
-<a name="http127001mruby-or-http127001unified_hellorb" class="anchor" href="#http127001mruby-or-http127001unified_hellorb"><span class="octicon octicon-link"></span></a><a href="http://127.0.0.1/mruby">http://127.0.0.1/mruby</a> or <a href="http://127.0.0.1/unified_hello.rb">http://127.0.0.1/unified_hello.rb</a>
-</h4>
-
-<pre><code>Hello ngx_mruby/0.0.1 world!
-</code></pre>
-
-<p>Display above. Welcome mruby world for nginx!!</p>
-
 <h1>
 <a name="documents-1" class="anchor" href="#documents-1"><span class="octicon octicon-link"></span></a>Documents</h1>
 
 <ul>
+<li><a href="https://github.com/matsumoto-r/ngx_mruby/wiki/Install">Install</a></li>
 <li><a href="https://github.com/matsumoto-r/ngx_mruby/wiki/Directives">Directives</a></li>
 <li><a href="https://github.com/matsumoto-r/ngx_mruby/wiki/Class-and-Method">Class and Method</a></li>
+<li><a href="https://github.com/matsumoto-r/ngx_mruby/wiki/Use-Case">Use Case</a></li>
 </ul><h1>
 <a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h1>
 
