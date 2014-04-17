@@ -19,6 +19,8 @@ MRuby::Build.new do |conf|
   #
   # comment out because of moving error.h
   conf.gem :git => 'git://github.com/iij/mruby-io.git'
+  conf.gem :git => 'git://github.com/iij/mruby-env.git'
+  conf.gem :git => 'git://github.com/iij/mruby-dir.git'
   conf.gem :git => 'git://github.com/iij/mruby-process.git'
   conf.gem :git => 'git://github.com/iij/mruby-pack.git'
   conf.gem :git => 'git://github.com/iij/mruby-digest.git'
