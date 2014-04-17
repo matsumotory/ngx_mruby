@@ -123,6 +123,9 @@ $ make
 ```
 or configure with ```--add-module=${NGX_MRUBY_SRC}``` for nginx and make it
 ```bash
+$ cd ${NGX_MRUBY_SRC}
+$ ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="--prefix=/usr/local/nginx"
+$ make build_mruby
 $ cd ${NGINX_SRC}
 $ ./configure --prefix=/usr/local/nginx --add-module=${NGX_MRUBY_SRC} --add-module=${NGX_MRUBY_SRC}/dependence/ngx_devel_kit --add-module=${SOME_OTHER_MODULE}
 $ make
