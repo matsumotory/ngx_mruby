@@ -60,7 +60,7 @@ cp -p test/conf/nginx.conf ${NGINX_INSTALL_DIR}/conf/.
 cp -p test/html/* ${NGINX_INSTALL_DIR}/html/.
 cp -p test/t/ngx_mruby.rb ./mruby/test/t/.
 ${NGINX_INSTALL_DIR}/sbin/nginx &
-sleep 4
+sleep 2
 cd mruby
 rake clean
 rake all test
