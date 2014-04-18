@@ -7,7 +7,7 @@ before_install:
 install:
     - sudo apt-get -qq install rake bison libcurl4-openssl-dev libhiredis-dev
 script: 
-  - sh build.sh
+  - sh test.sh
 notifications:
   irc:
     channels:
