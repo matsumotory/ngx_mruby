@@ -1,18 +1,5 @@
 ##
-# Hash ISO Test
-
-# location /mruby {
-# location /hello {
-# location /proxy {
-# location / {
-# location /headers {
-# location /vars {
-# location /redirect {
-# location /redirect/internal {
-# location /redirect/internal/dynamic/path {
-# location /inter_var_file {
-# location /inter_var_inline {
-# location ~ \.rb$ {
+# ngx_mruby test
 
 base = 'http://127.0.0.1:58080'
 
@@ -50,5 +37,15 @@ end
 assert('ngx_mruby', 'location /inter_var_inline') do
   res = HttpRequest.new.get base + '/inter_var_inline'
   assert_equal 'fuga => 100 hoge => 200 hoge => 400', res["body"]
+end
+
+assert('ngx_mruby - output filter', 'location /filter_dynamic_arg') do
+  res = HttpRequest.new.get base + '/filter_dynamic_arg'
+  assert_equal 'output filter: static', res["body"]
+end
+
+assert('ngx_mruby - output filter', 'location /filter_dynamic_arg?hoge=fuga') do
+  res = HttpRequest.new.get base + '/filter_dynamic_arg?hoge=fuga'
+  assert_equal 'output filter: hoge=fuga', res["body"]
 end
 
