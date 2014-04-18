@@ -49,3 +49,13 @@ assert('ngx_mruby - output filter', 'location /filter_dynamic_arg?hoge=fuga') do
   assert_equal 'output filter: hoge=fuga', res["body"]
 end
 
+assert('ngx_mruby - Nginx::Connection#{local_ip,local_port}', 'location /server_ip_port') do
+  res = HttpRequest.new.get base + '/server_ip_port'
+  assert_equal '127.0.0.1:58080', res["body"]
+end
+
+assert('ngx_mruby - Nginx::Connection#{remote_ip,local_port}', 'location /client_ip') do
+  res = HttpRequest.new.get base + '/client_ip'
+  assert_equal '127.0.0.1', res["body"]
+end
+
