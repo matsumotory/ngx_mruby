@@ -111,7 +111,7 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
   }
 
-  ns.data = (u_char *)mrb_str_to_cstr(mrb, argv);
+  ns.data = (u_char *)RSTRING_PTR(argv);
   ns.len = RSTRING_LEN(argv);
   if (ns.len == 0) {
     return self;
@@ -166,7 +166,7 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
     argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
   }
 
-  ns.data = (u_char *)mrb_str_to_cstr(mrb, mrb_str_plus(mrb, argv, mrb_str_new_lit(mrb, "\n")));
+  ns.data = (u_char *)RSTRING_PTR(mrb_str_plus(mrb, argv, mrb_str_new_lit(mrb, "\n")));
   ns.len = RSTRING_LEN(argv) + sizeof("\n") - 1;
   if (ns.len == 0) {
     return self;
