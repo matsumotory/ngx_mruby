@@ -3,11 +3,13 @@
 # Default install and test
 #   download nginx into ./build/
 #   build into ./build/nginx
+#   test on ./build/nginx
 
 set -e
 
 NGINX_INSTALL_DIR=`pwd`'/build/nginx'
 NGINX_CONFIG_OPT='--prefix='${NGINX_INSTALL_DIR}
+NGINX_SRC_VER='nginx-1.4.4'
 
 if [ ! -d "./mruby/src" ]; then
     echo "mruby Downloading ..."
@@ -30,12 +32,12 @@ else
     mkdir build
 fi
 cd build
-if [ ! -e "nginx-1.4.4" ]; then
-    wget http://nginx.org/download/nginx-1.4.4.tar.gz
+if [ ! -e ${NGINX_SRC_VER} ]; then
+    wget http://nginx.org/download/${NGINX_SRC_VER}.tar.gz
     echo "nginx Downloading ... Done"
-    tar xf nginx-1.4.4.tar.gz
+    tar xf ${NGINX_SRC_VER}.tar.gz
 fi
-ln -sf nginx-1.4.4 nginx_src
+ln -sf ${NGINX_SRC_VER} nginx_src
 NGINX_SRC=`pwd`'/nginx_src'
 cd ..
 
@@ -63,8 +65,6 @@ cd mruby
 rake clean
 rake all test
 killall nginx
-echo "ngx_mruby building ... Done"
+echo "ngx_mruby testing ... Done"
 
 echo "test.sh ... successful"
-
-#sudo make install
