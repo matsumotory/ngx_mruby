@@ -122,7 +122,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
     o = mrb_funcall(mrb, o, "to_s", 0, NULL);
   }
 
-  val.data = (u_char *)mrb_str_to_cstr(mrb, o);
+  val.data = (u_char *)RSTRING_PTR(o);
   val.len = RSTRING_LEN(o);
   key.len = strlen(k);
   key.data = (u_char *)k;
@@ -141,7 +141,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
         , MODULE_NAME
         , __func__
         , __LINE__
-        , key.data
+        , ngx_pstrdup(r->pool, &key)
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -171,7 +171,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
         , MODULE_NAME
         , __func__
         , __LINE__
-        , key.data
+        , ngx_pstrdup(r->pool, &key)
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -179,7 +179,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
     vv->not_found = 0;
     vv->no_cacheable = 0;
     vv->data = val.data;
-    vv->len = val.len + 1;
+    vv->len = val.len;
     ngx_log_error(NGX_LOG_INFO
       , r->connection->log
       , 0
@@ -187,8 +187,8 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
       , MODULE_NAME
       , __func__
       , __LINE__
-      , (char *)key.data
-      , (char *)vv->data
+      , ngx_pstrdup(r->pool, &key)
+      , ngx_pstrdup(r->pool, &val)
     );
     return mrb_str_new(mrb, (char *)vv->data, vv->len);
   }
@@ -200,7 +200,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
     , MODULE_NAME
     , __func__
     , __LINE__
-    , key.data
+    , ngx_pstrdup(r->pool, &key)
   );
   goto ARENA_RESTOR_AND_ERROR;
 
@@ -252,7 +252,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     o = mrb_funcall(mrb, o, "to_s", 0, NULL);
   }
 
-  val.data = (u_char *)mrb_str_to_cstr(mrb, o);
+  val.data = (u_char *)RSTRING_PTR(o);
   val.len = RSTRING_LEN(o);
   key.len = strlen(k);
   key.data = (u_char *)k;
@@ -271,7 +271,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
         , MODULE_NAME
         , __func__
         , __LINE__
-        , key.data
+        , ngx_pstrdup(r->pool, &key)
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -301,7 +301,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
         , MODULE_NAME
         , __func__
         , __LINE__
-        , key.data
+        , ngx_pstrdup(r->pool, &key)
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -309,7 +309,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     vv->not_found = 0;
     vv->no_cacheable = 0;
     vv->data = val.data;
-    vv->len = val.len + 1;
+    vv->len = val.len;
     ngx_log_error(NGX_LOG_INFO
       , r->connection->log
       , 0
@@ -317,8 +317,8 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
       , MODULE_NAME
       , __func__
       , __LINE__
-      , (char *)key.data
-      , (char *)vv->data
+      , ngx_pstrdup(r->pool, &key)
+      , ngx_pstrdup(r->pool, &val)
     );
     return mrb_str_new(mrb, (char *)vv->data, vv->len);
   }
@@ -330,7 +330,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     , MODULE_NAME
     , __func__
     , __LINE__
-    , key.data
+    , ngx_pstrdup(r->pool, &key)
   );
   goto ARENA_RESTOR_AND_ERROR;
 
