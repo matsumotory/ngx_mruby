@@ -14,7 +14,7 @@
 # location /inter_var_inline {
 # location ~ \.rb$ {
 
-base = 'http://127.0.0.1'
+base = 'http://127.0.0.1:58080'
 
 assert('ngx_mruby', 'location /mruby') do
   res = HttpRequest.new.get base + '/mruby'
