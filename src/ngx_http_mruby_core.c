@@ -32,7 +32,7 @@ void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
     str = mrb_str_ptr(obj);
-    err_out = str->ptr;
+    err_out = str->as.heap.ptr;
     ngx_log_error(NGX_LOG_ERR
       , r->connection->log
       , 0
@@ -50,7 +50,7 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf)
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
     str = mrb_str_ptr(obj);
-    err_out = str->ptr;
+    err_out = str->as.heap.ptr;
     ngx_conf_log_error(NGX_LOG_ERR
       , cf
       , 0
