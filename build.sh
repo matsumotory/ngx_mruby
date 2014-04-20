@@ -11,8 +11,6 @@
 
 set -e
 
-. ./nginx_version                                                                
-
 if [ $NGINX_CONFIG_OPT_ENV ]; then
     NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT_ENV
 else
@@ -44,15 +42,15 @@ else
     else
         mkdir build
     fi
-    cd build                                                                         
-    if [ ! -e ${NGINX_SRC_VER} ]; then                                               
-        wget http://nginx.org/download/${NGINX_SRC_VER}.tar.gz                       
-        echo "nginx Downloading ... Done"                                            
-        tar xf ${NGINX_SRC_VER}.tar.gz                                               
-    fi                                                                               
-    ln -sf ${NGINX_SRC_VER} nginx_src                                                
-    NGINX_SRC=`pwd`'/nginx_src'                                                      
-    cd ..                                                                            
+    cd build
+    if [ ! -e "nginx-1.4.4" ]; then
+        wget http://nginx.org/download/nginx-1.4.4.tar.gz
+        echo "nginx Downloading ... Done"
+        tar xf nginx-1.4.4.tar.gz
+    fi
+    ln -sf nginx-1.4.4 nginx_src
+    NGINX_SRC=`pwd`'/nginx_src'
+    cd ..
 fi
 
 echo "ngx_mruby configure ..."

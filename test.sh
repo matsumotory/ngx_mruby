@@ -7,10 +7,9 @@
 
 set -e
 
-. ./nginx_version
-
 NGINX_INSTALL_DIR=`pwd`'/build/nginx'
 NGINX_CONFIG_OPT='--prefix='${NGINX_INSTALL_DIR}
+NGINX_SRC_VER='nginx-1.4.4'
 
 if [ ! -d "./mruby/src" ]; then
     echo "mruby Downloading ..."
