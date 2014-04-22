@@ -74,3 +74,8 @@ assert('ngx_mruby - mruby_add_handler', '*\.rb') do
   assert_equal 'add_handler', res["body"]
 end
 
+assert('ngx_mruby - all instance test', 'location /all_instance') do
+  res = HttpRequest.new.get base + '/all_instance'
+  assert_equal "OK", res["x-inst-test"]
+end
+
