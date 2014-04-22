@@ -59,3 +59,13 @@ assert('ngx_mruby - Nginx::Connection#{remote_ip,local_port}', 'location /client
   assert_equal '127.0.0.1', res["body"]
 end
 
+assert('ngx_mruby', 'location /header') do
+  res1 = HttpRequest.new.get base + '/header'
+  res2 = HttpRequest.new.get base + '/header', nil, {"X-REQUEST-HEADER" => "hoge"}
+
+  assert_equal "X-REQUEST-HEADER not found", res1["body"]
+  assert_equal "nothing", res1["x-response-header"]
+  assert_equal "X-REQUEST-HEADER found", res2["body"]
+  assert_equal "hoge", res2["x-response-header"]
+end
+
