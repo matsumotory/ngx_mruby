@@ -107,3 +107,9 @@ assert('ngx_mruby - Nginx::Var', 'location /nginx_var?name=name') do
   assert_equal 'name=query_string', HttpRequest.new.get(base + '/nginx_var?name=query_string')["body"]
 end
 
+assert('ngx_mruby - Nginx.return', 'location /service_unavailable') do
+  res = HttpRequest.new.get base + '/service_unavailable'
+  assert_equal 503, res.code
+end
+
+# see below url:
