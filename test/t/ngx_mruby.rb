@@ -93,6 +93,8 @@ assert('ngx_mruby - Kernel.server_name', 'location /kernel_servername') do
   assert_equal 'NGINX', res["body"]
 end
 
+# see below url:
+# https://github.com/matsumoto-r/ngx_mruby/wiki/Class-and-Method#refs-nginx-core-variables
 assert('ngx_mruby - Nginx::Var', 'location /nginx_var?name=name') do
   assert_equal '/nginx_var', HttpRequest.new.get(base + '/nginx_var?name=uri')["body"]
   assert_equal 'HTTP/1.0', HttpRequest.new.get(base + '/nginx_var?name=server_protocol')["body"]
@@ -102,5 +104,6 @@ assert('ngx_mruby - Nginx::Var', 'location /nginx_var?name=name') do
   assert_equal '127.0.0.1', HttpRequest.new.get(base + '/nginx_var?name=server_addr')["body"]
   assert_equal 'GET /nginx_var?name=request HTTP/1.0', HttpRequest.new.get(base + '/nginx_var?name=request')["body"]
   assert_equal '1.4.7', HttpRequest.new.get(base + '/nginx_var?name=nginx_version')["body"]
+  assert_equal 'name=query_string', HttpRequest.new.get(base + '/nginx_var?name=query_string')["body"]
 end
 
