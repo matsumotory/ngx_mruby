@@ -88,3 +88,8 @@ assert('ngx_mruby', 'location /request_method') do
   assert_equal "HEAD", res["body"]
 end
 
+assert('ngx_mruby - Kernel.server_name', 'location /kernel_servername') do
+  res = HttpRequest.new.get base + '/kernel_servername'
+  assert_equal 'NGINX', res["body"]
+end
+
