@@ -79,3 +79,12 @@ assert('ngx_mruby - all instance test', 'location /all_instance') do
   assert_equal "OK", res["x-inst-test"]
 end
 
+assert('ngx_mruby', 'location /request_method') do
+  res = HttpRequest.new.get base + '/request_method'
+  assert_equal "GET", res["body"]
+  res = HttpRequest.new.post base + '/request_method'
+  assert_equal "POST", res["body"]
+  res = HttpRequest.new.head base + '/request_method'
+  assert_equal "HEAD", res["body"]
+end
+
