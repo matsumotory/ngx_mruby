@@ -56,6 +56,7 @@ echo "ngx_mruby building ... Done"
 
 echo "ngx_mruby testing ..."
 make install
+killall nginx
 cp -p test/build_config.rb ./mruby/.
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 cp -p test/html/* ${NGINX_INSTALL_DIR}/html/.
