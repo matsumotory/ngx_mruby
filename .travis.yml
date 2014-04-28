@@ -6,7 +6,13 @@ before_install:
     - sudo apt-get -qq update
 install:
     - sudo apt-get -qq install rake bison libcurl4-openssl-dev libhiredis-dev
+env:
+  - NGINX_VERSION=nginx-1.2.9
+  - NGINX_VERSION=nginx-1.4.7
+  - NGINX_VERSION=nginx-1.6.0
+  - NGINX_VERSION=nginx-1.7.0
 script: 
+  - echo "NGINX_SRC_VER=${NGINX_VERSION}" > nginx_version
   - sh test.sh
 notifications:
   irc:
