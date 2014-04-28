@@ -103,7 +103,6 @@ assert('ngx_mruby - Nginx::Var', 'location /nginx_var?name=name') do
   assert_equal '58080', HttpRequest.new.get(base + '/nginx_var?name=server_port')["body"]
   assert_equal '127.0.0.1', HttpRequest.new.get(base + '/nginx_var?name=server_addr')["body"]
   assert_equal 'GET /nginx_var?name=request HTTP/1.0', HttpRequest.new.get(base + '/nginx_var?name=request')["body"]
-  assert_equal '1.6.0', HttpRequest.new.get(base + '/nginx_var?name=nginx_version')["body"]
   assert_equal 'name=query_string', HttpRequest.new.get(base + '/nginx_var?name=query_string')["body"]
 end
 
