@@ -1,44 +1,7 @@
 /*
 ** ngx_mruby - A Web Server Extension Mechanism Using mruby
 **
-** Copyright (c) ngx_mruby developers 2012-
-**
-** Permission is hereby granted, free of charge, to any person obtaining
-** a copy of this software and associated documentation files (the
-** "Software"), to deal in the Software without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
-** distribute, sublicense, and/or sell copies of the Software, and to
-** permit persons to whom the Software is furnished to do so, subject to
-** the following conditions:
-**
-** The above copyright notice and this permission notice shall be
-** included in all copies or substantial portions of the Software.
-**
-** THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-** SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-**
-** [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
-*/
-/*
-** -------------------------------------------------------------------
-** ngx_mruby
-**    mruby module for nginx.
-**
-**    By matsumoto_r (MATSUMOTO, Ryosuke) Sep 2012 in Japan
-**      Academic Center for Computing and Media Studies, Kyoto University
-**      Graduate School of Informatics, Kyoto University
-**      email: matsumoto_r at net.ist.i.kyoto-u.ac.jp
-**
-** Date   2012/07/28
-**
-** change log
-**  2012/07/28 0.01 matsumoto_r first release
-** -------------------------------------------------------------------
+** See Copyright Notice in LEGAL
 */
 
 #include <ngx_config.h>
