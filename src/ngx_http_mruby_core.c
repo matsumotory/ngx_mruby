@@ -166,7 +166,8 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
     argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
   }
 
-  ns.data = (u_char *)RSTRING_PTR(mrb_str_plus(mrb, argv, mrb_str_new_lit(mrb, "\n")));
+  ns.data = (u_char *)RSTRING_PTR(mrb_str_plus(mrb, argv, mrb_str_new_lit(mrb, 
+          "\n")));
   ns.len = RSTRING_LEN(argv) + sizeof("\n") - 1;
   if (ns.len == 0) {
     return self;
@@ -250,7 +251,8 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
   else {
     msg = mrb_str_dup(mrb, argv[1]);
   }
-  ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", mrb_str_to_cstr(mrb, msg));
+  ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", 
+      mrb_str_to_cstr(mrb, msg));
 
   return self;
 }
@@ -275,7 +277,8 @@ static mrb_value ngx_mrb_server_name(mrb_state *mrb, mrb_value self)
   return mrb_str_new_lit(mrb, NGINX_VAR);
 }
 
-static mrb_value ngx_http_mruby_get_nginx_configure(mrb_state *mrb, mrb_value self)
+static mrb_value ngx_http_mruby_get_nginx_configure(mrb_state *mrb, 
+    mrb_value self)
 {
     return mrb_str_new_lit(mrb, NGX_CONFIGURE);
 }

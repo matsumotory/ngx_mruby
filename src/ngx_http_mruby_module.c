@@ -24,9 +24,9 @@
 #define ON  1
 #define OFF 0
 
-#define NGX_MRUBY_MERGE_CODE(prev_code, conf_code)   \
-  if (prev_code == NGX_CONF_UNSET_PTR) {       \
-    prev_code = conf_code;             \
+#define NGX_MRUBY_MERGE_CODE(prev_code, conf_code) \
+  if (prev_code == NGX_CONF_UNSET_PTR) { \
+    prev_code = conf_code; \
   }
 
 // set conf
@@ -53,19 +53,19 @@ static ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state,
 // ngx_mruby mruby state functions
 */
 #define NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(cached, state, code, reinit) \
-    do {                                  \
-          if (!cached) {                          \
-                  if (state == NGX_CONF_UNSET_PTR) {              \
-                            return NGX_DECLINED;                    \
-                          }                               \
-                  if (code == NGX_CONF_UNSET_PTR) {               \
-                            return NGX_DECLINED;                    \
-                          }                               \
-                  if (reinit(state, code) == NGX_ERROR) {             \
-                            return NGX_ERROR;                     \
-                          }                               \
-                }                                 \
-        } while(0)
+do { \
+  if (!cached) { \
+    if (state == NGX_CONF_UNSET_PTR) { \
+      return NGX_DECLINED; \
+    } \
+    if (code == NGX_CONF_UNSET_PTR) { \
+      return NGX_DECLINED; \
+    } \
+    if (reinit(state, code) == NGX_ERROR) { \
+      return NGX_ERROR; \
+    } \
+  } \
+} while(0)
 
 static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, 
     ngx_mrb_code_t *code);
@@ -1501,25 +1501,27 @@ static char *ngx_http_mruby_set_inline(ngx_conf_t *cf, ngx_command_t *cmd,
 // ngx_mruby mruby handler functions
 */
 
-#define NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(handler_name, code)                   \
-static ngx_int_t ngx_http_mruby_##handler_name##_handler(ngx_http_request_t *r)              \
-{                                                 \
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);   \
-  ngx_http_mruby_loc_conf_t  *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);  \
-  if (mmcf->state == NGX_CONF_UNSET_PTR) {                            \
-    return NGX_DECLINED;                                    \
-  }                                               \
-  if (code == NGX_CONF_UNSET_PTR) {                               \
-    return NGX_DECLINED;                                    \
-  }                                               \
-  if (!code->cache) {                                       \
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(                           \
-      mlcf->cached,                                     \
-      mmcf->state,                                      \
-      code,                                         \
-      ngx_http_mruby_state_reinit_from_file                         \
-    );                                            \
-  }                                               \
+#define NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(handler_name, code) \
+static ngx_int_t ngx_http_mruby_##handler_name##_handler(ngx_http_request_t *r) \
+{ \
+  ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, \
+      ngx_http_mruby_module); \
+  ngx_http_mruby_loc_conf_t  *mlcf = ngx_http_get_module_loc_conf(r, \
+      ngx_http_mruby_module); \
+  if (mmcf->state == NGX_CONF_UNSET_PTR) { \
+    return NGX_DECLINED; \
+  } \
+  if (code == NGX_CONF_UNSET_PTR) { \
+    return NGX_DECLINED; \
+  } \
+  if (!code->cache) { \
+    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED( \
+      mlcf->cached, \
+      mmcf->state, \
+      code, \
+      ngx_http_mruby_state_reinit_from_file \
+    ); \
+  } \
   return ngx_mrb_run(r, mmcf->state, code, mlcf->cached, NULL);                 \
 }
 
@@ -1594,12 +1596,15 @@ static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
   return ngx_mrb_run(r, mmcf->state, code, mlcf->cached, NULL);                 
 }
 
-#define NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(handler_name, code)              \
-static ngx_int_t ngx_http_mruby_##handler_name##_inline_handler(ngx_http_request_t *r)           \
-{                                                 \
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);   \
-  ngx_http_mruby_loc_conf_t  *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);  \
-  return ngx_mrb_run(r, mmcf->state, code, 1, NULL);                      \
+#define NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(handler_name, code) \
+static ngx_int_t ngx_http_mruby_##handler_name##_inline_handler( \
+    ngx_http_request_t *r) \
+{ \
+  ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, \
+      ngx_http_mruby_module); \
+  ngx_http_mruby_loc_conf_t  *mlcf = ngx_http_get_module_loc_conf(r, \
+      ngx_http_mruby_module);  \
+  return ngx_mrb_run(r, mmcf->state, code, 1, NULL); \
 }
 
 NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(post_read, 
