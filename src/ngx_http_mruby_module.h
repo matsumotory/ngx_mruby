@@ -47,7 +47,7 @@ typedef struct {
 #endif
 
 #define MODULE_NAME "ngx_mruby"
-#define MODULE_VERSION "0.0.1"
+#define MODULE_VERSION "1.0.0"
 
 extern ngx_module_t  ngx_http_mruby_module;
 
