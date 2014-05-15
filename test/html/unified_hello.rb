@@ -20,6 +20,7 @@ elsif server_name == "Apache"
   Server = Apache
 end
 
-Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
+Server::rputs "Hello #{Server::module_name} world!"
+#Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
 # mod_mruby => "Hello mod_mruby/0.9.3 world!"
 # ngx_mruby => "Hello ngx_mruby/0.0.1 world!"

@@ -5,7 +5,7 @@ base = 'http://127.0.0.1:58080'
 
 assert('ngx_mruby', 'location /mruby') do
   res = HttpRequest.new.get base + '/mruby'
-  assert_equal 'Hello ngx_mruby/0.0.1 world!', res["body"]
+  assert_equal 'Hello ngx_mruby world!', res["body"]
 end
 
 assert('ngx_mruby', 'location /proxy') do
