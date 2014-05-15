@@ -1,6 +1,6 @@
-# Welcome to ngx_mruby Pages  [![Build Status](https://travis-ci.org/matsumoto-r/ngx_mruby.png?branch=master)](https://travis-ci.org/matsumoto-r/ngx_mruby)
+# Welcome to ngx_mruby Pages  [![Build Status](https://travis-ci.org/matsumoto-r/ngx_mruby.svg?branch=master)](https://travis-ci.org/matsumoto-r/ngx_mruby)
 
-[![ngx_mruby mod_mruby performance](https://dl.dropboxusercontent.com/s/2h8wxf2b8gisvd1/performance_20140301.png)](http://blog.matsumoto-r.jp/?p=3974)
+[![ngx_mruby mod_mruby performance](https://github.com/matsumoto-r/mod_mruby/raw/master/images/performance_20140301.png)](http://blog.matsumoto-r.jp/?p=3974)
 
 ※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
 
@@ -18,7 +18,7 @@ __ngx_mruby is A Fast and Memory-Efficient Web Server Extension Mechanism Using 
 - Unified Ruby Code between Apache(mod_mruby), nginx(ngx_mruby) and other Web server software(plan) for Web server extensions.
 - You can implement nginx modules by Ruby scripts on nginx!
 - You can implement some Web server software extensions by same Ruby code (as possible) 
-- Supported nginx __1.2/1.3/1.4/1.5.*__
+- Supported nginx __1.4/1.6/1.7.*__
 - [Benchmark between ngx_mruby(19423.42 req/sec) and lua-nginx-module(13894.30 req/sec)](https://gist.github.com/matsumoto-r/6930672)
 
 ```ruby

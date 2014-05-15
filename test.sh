@@ -7,7 +7,7 @@
 
 set -e
 
-. ./nginx_version                                                           
+. ./nginx_version
 
 NGINX_INSTALL_DIR=`pwd`'/build/nginx'
 NGINX_CONFIG_OPT='--prefix='${NGINX_INSTALL_DIR}
@@ -56,8 +56,9 @@ echo "ngx_mruby building ... Done"
 
 echo "ngx_mruby testing ..."
 make install
+ps -C nginx && killall nginx
 cp -p test/build_config.rb ./mruby/.
-cp -p test/conf/nginx.conf ${NGINX_INSTALL_DIR}/conf/.
+sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 cp -p test/html/* ${NGINX_INSTALL_DIR}/html/.
 cp -p test/t/ngx_mruby.rb ./mruby/test/t/.
 ${NGINX_INSTALL_DIR}/sbin/nginx &

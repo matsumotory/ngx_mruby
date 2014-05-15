@@ -166,7 +166,8 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
     argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
   }
 
-  ns.data = (u_char *)RSTRING_PTR(mrb_str_plus(mrb, argv, mrb_str_new_lit(mrb, "\n")));
+  ns.data = (u_char *)RSTRING_PTR(mrb_str_plus(mrb, argv, mrb_str_new_lit(mrb, 
+          "\n")));
   ns.len = RSTRING_LEN(argv) + sizeof("\n") - 1;
   if (ns.len == 0) {
     return self;
@@ -250,7 +251,8 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
   else {
     msg = mrb_str_dup(mrb, argv[1]);
   }
-  ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", mrb_str_to_cstr(mrb, msg));
+  ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", 
+      mrb_str_to_cstr(mrb, msg));
 
   return self;
 }
@@ -275,7 +277,8 @@ static mrb_value ngx_mrb_server_name(mrb_state *mrb, mrb_value self)
   return mrb_str_new_lit(mrb, NGINX_VAR);
 }
 
-static mrb_value ngx_http_mruby_get_nginx_configure(mrb_state *mrb, mrb_value self)
+static mrb_value ngx_http_mruby_get_nginx_configure(mrb_state *mrb, 
+    mrb_value self)
 {
     return mrb_str_new_lit(mrb, NGX_CONFIGURE);
 }
@@ -402,73 +405,73 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
 {
   mrb_define_method(mrb, mrb->kernel_module, "server_name", ngx_mrb_server_name, ARGS_NONE());
 
-  mrb_define_const(mrb, class, "OK",                mrb_fixnum_value(NGX_OK));
-  mrb_define_const(mrb, class, "ERROR",               mrb_fixnum_value(NGX_ERROR));
-  mrb_define_const(mrb, class, "AGAIN",               mrb_fixnum_value(NGX_AGAIN));
-  mrb_define_const(mrb, class, "BUSY",              mrb_fixnum_value(NGX_BUSY));
-  mrb_define_const(mrb, class, "DONE",              mrb_fixnum_value(NGX_DONE));
-  mrb_define_const(mrb, class, "DECLINED",            mrb_fixnum_value(NGX_DECLINED));
-  mrb_define_const(mrb, class, "ABORT",               mrb_fixnum_value(NGX_ABORT));
+  mrb_define_const(mrb, class, "OK", mrb_fixnum_value(NGX_OK));
+  mrb_define_const(mrb, class, "ERROR", mrb_fixnum_value(NGX_ERROR));
+  mrb_define_const(mrb, class, "AGAIN", mrb_fixnum_value(NGX_AGAIN));
+  mrb_define_const(mrb, class, "BUSY", mrb_fixnum_value(NGX_BUSY));
+  mrb_define_const(mrb, class, "DONE", mrb_fixnum_value(NGX_DONE));
+  mrb_define_const(mrb, class, "DECLINED", mrb_fixnum_value(NGX_DECLINED));
+  mrb_define_const(mrb, class, "ABORT", mrb_fixnum_value(NGX_ABORT));
   mrb_define_const(mrb, class, "HTTP_CONTINUE", mrb_fixnum_value(NGX_HTTP_CONTINUE));
   mrb_define_const(mrb, class, "HTTP_SWITCHING_PROTOCOLS", mrb_fixnum_value(NGX_HTTP_SWITCHING_PROTOCOLS));
   mrb_define_const(mrb, class, "HTTP_PROCESSING", mrb_fixnum_value(NGX_HTTP_PROCESSING));
-  mrb_define_const(mrb, class, "HTTP_OK",             mrb_fixnum_value(NGX_HTTP_OK));
-  mrb_define_const(mrb, class, "HTTP_CREATED",          mrb_fixnum_value(NGX_HTTP_CREATED));
-  mrb_define_const(mrb, class, "HTTP_ACCEPTED",           mrb_fixnum_value(NGX_HTTP_ACCEPTED));
-  mrb_define_const(mrb, class, "HTTP_NO_CONTENT",         mrb_fixnum_value(NGX_HTTP_NO_CONTENT));
-  mrb_define_const(mrb, class, "HTTP_PARTIAL_CONTENT",         mrb_fixnum_value(NGX_HTTP_PARTIAL_CONTENT));
-  mrb_define_const(mrb, class, "HTTP_SPECIAL_RESPONSE",       mrb_fixnum_value(NGX_HTTP_SPECIAL_RESPONSE));
-  mrb_define_const(mrb, class, "HTTP_MOVED_PERMANENTLY",      mrb_fixnum_value(NGX_HTTP_MOVED_PERMANENTLY));
-  mrb_define_const(mrb, class, "HTTP_MOVED_TEMPORARILY",      mrb_fixnum_value(NGX_HTTP_MOVED_TEMPORARILY));
-  mrb_define_const(mrb, class, "HTTP_SEE_OTHER",          mrb_fixnum_value(NGX_HTTP_SEE_OTHER));
-  mrb_define_const(mrb, class, "HTTP_NOT_MODIFIED",         mrb_fixnum_value(NGX_HTTP_NOT_MODIFIED));
-  mrb_define_const(mrb, class, "HTTP_TEMPORARY_REDIRECT",     mrb_fixnum_value(NGX_HTTP_TEMPORARY_REDIRECT));
-  mrb_define_const(mrb, class, "HTTP_BAD_REQUEST",        mrb_fixnum_value(NGX_HTTP_BAD_REQUEST));
-  mrb_define_const(mrb, class, "HTTP_UNAUTHORIZED",         mrb_fixnum_value(NGX_HTTP_UNAUTHORIZED));
-  mrb_define_const(mrb, class, "HTTP_FORBIDDEN",          mrb_fixnum_value(NGX_HTTP_FORBIDDEN));
-  mrb_define_const(mrb, class, "HTTP_NOT_FOUND",          mrb_fixnum_value(NGX_HTTP_NOT_FOUND));
-  mrb_define_const(mrb, class, "HTTP_NOT_ALLOWED",        mrb_fixnum_value(NGX_HTTP_NOT_ALLOWED));
-  mrb_define_const(mrb, class, "HTTP_REQUEST_TIME_OUT",       mrb_fixnum_value(NGX_HTTP_REQUEST_TIME_OUT));
-  mrb_define_const(mrb, class, "HTTP_CONFLICT",           mrb_fixnum_value(NGX_HTTP_CONFLICT));
-  mrb_define_const(mrb, class, "HTTP_LENGTH_REQUIRED",      mrb_fixnum_value(NGX_HTTP_LENGTH_REQUIRED));
-  mrb_define_const(mrb, class, "HTTP_PRECONDITION_FAILED",    mrb_fixnum_value(NGX_HTTP_PRECONDITION_FAILED));
-  mrb_define_const(mrb, class, "HTTP_REQUEST_ENTITY_TOO_LARGE",   mrb_fixnum_value(NGX_HTTP_REQUEST_ENTITY_TOO_LARGE));
-  mrb_define_const(mrb, class, "HTTP_REQUEST_URI_TOO_LARGE",    mrb_fixnum_value(NGX_HTTP_REQUEST_URI_TOO_LARGE));
-  mrb_define_const(mrb, class, "HTTP_UNSUPPORTED_MEDIA_TYPE",   mrb_fixnum_value(NGX_HTTP_UNSUPPORTED_MEDIA_TYPE));
-  mrb_define_const(mrb, class, "HTTP_RANGE_NOT_SATISFIABLE",    mrb_fixnum_value(NGX_HTTP_RANGE_NOT_SATISFIABLE));
-  mrb_define_const(mrb, class, "HTTP_CLOSE",            mrb_fixnum_value(NGX_HTTP_CLOSE));
-  mrb_define_const(mrb, class, "HTTP_NGINX_CODES",        mrb_fixnum_value(NGX_HTTP_NGINX_CODES));
-  mrb_define_const(mrb, class, "HTTP_REQUEST_HEADER_TOO_LARGE",   mrb_fixnum_value(NGX_HTTP_REQUEST_HEADER_TOO_LARGE));
-  mrb_define_const(mrb, class, "HTTPS_CERT_ERROR",        mrb_fixnum_value(NGX_HTTPS_CERT_ERROR));
-  mrb_define_const(mrb, class, "HTTPS_NO_CERT",           mrb_fixnum_value(NGX_HTTPS_NO_CERT));
-  mrb_define_const(mrb, class, "HTTP_TO_HTTPS",           mrb_fixnum_value(NGX_HTTP_TO_HTTPS));
-  mrb_define_const(mrb, class, "HTTP_CLIENT_CLOSED_REQUEST",    mrb_fixnum_value(NGX_HTTP_CLIENT_CLOSED_REQUEST));
-  mrb_define_const(mrb, class, "HTTP_INTERNAL_SERVER_ERROR",    mrb_fixnum_value(NGX_HTTP_INTERNAL_SERVER_ERROR));
-  mrb_define_const(mrb, class, "HTTP_NOT_IMPLEMENTED",      mrb_fixnum_value(NGX_HTTP_NOT_IMPLEMENTED));
-  mrb_define_const(mrb, class, "HTTP_BAD_GATEWAY",        mrb_fixnum_value(NGX_HTTP_BAD_GATEWAY));
-  mrb_define_const(mrb, class, "HTTP_SERVICE_UNAVAILABLE",    mrb_fixnum_value(NGX_HTTP_SERVICE_UNAVAILABLE));
-  mrb_define_const(mrb, class, "HTTP_GATEWAY_TIME_OUT",       mrb_fixnum_value(NGX_HTTP_GATEWAY_TIME_OUT));
-  mrb_define_const(mrb, class, "HTTP_INSUFFICIENT_STORAGE",     mrb_fixnum_value(NGX_HTTP_INSUFFICIENT_STORAGE));
+  mrb_define_const(mrb, class, "HTTP_OK", mrb_fixnum_value(NGX_HTTP_OK));
+  mrb_define_const(mrb, class, "HTTP_CREATED", mrb_fixnum_value(NGX_HTTP_CREATED));
+  mrb_define_const(mrb, class, "HTTP_ACCEPTED", mrb_fixnum_value(NGX_HTTP_ACCEPTED));
+  mrb_define_const(mrb, class, "HTTP_NO_CONTENT", mrb_fixnum_value(NGX_HTTP_NO_CONTENT));
+  mrb_define_const(mrb, class, "HTTP_PARTIAL_CONTENT", mrb_fixnum_value(NGX_HTTP_PARTIAL_CONTENT));
+  mrb_define_const(mrb, class, "HTTP_SPECIAL_RESPONSE", mrb_fixnum_value(NGX_HTTP_SPECIAL_RESPONSE));
+  mrb_define_const(mrb, class, "HTTP_MOVED_PERMANENTLY", mrb_fixnum_value(NGX_HTTP_MOVED_PERMANENTLY));
+  mrb_define_const(mrb, class, "HTTP_MOVED_TEMPORARILY", mrb_fixnum_value(NGX_HTTP_MOVED_TEMPORARILY));
+  mrb_define_const(mrb, class, "HTTP_SEE_OTHER", mrb_fixnum_value(NGX_HTTP_SEE_OTHER));
+  mrb_define_const(mrb, class, "HTTP_NOT_MODIFIED", mrb_fixnum_value(NGX_HTTP_NOT_MODIFIED));
+  mrb_define_const(mrb, class, "HTTP_TEMPORARY_REDIRECT", mrb_fixnum_value(NGX_HTTP_TEMPORARY_REDIRECT));
+  mrb_define_const(mrb, class, "HTTP_BAD_REQUEST", mrb_fixnum_value(NGX_HTTP_BAD_REQUEST));
+  mrb_define_const(mrb, class, "HTTP_UNAUTHORIZED", mrb_fixnum_value(NGX_HTTP_UNAUTHORIZED));
+  mrb_define_const(mrb, class, "HTTP_FORBIDDEN", mrb_fixnum_value(NGX_HTTP_FORBIDDEN));
+  mrb_define_const(mrb, class, "HTTP_NOT_FOUND", mrb_fixnum_value(NGX_HTTP_NOT_FOUND));
+  mrb_define_const(mrb, class, "HTTP_NOT_ALLOWED", mrb_fixnum_value(NGX_HTTP_NOT_ALLOWED));
+  mrb_define_const(mrb, class, "HTTP_REQUEST_TIME_OUT", mrb_fixnum_value(NGX_HTTP_REQUEST_TIME_OUT));
+  mrb_define_const(mrb, class, "HTTP_CONFLICT", mrb_fixnum_value(NGX_HTTP_CONFLICT));
+  mrb_define_const(mrb, class, "HTTP_LENGTH_REQUIRED", mrb_fixnum_value(NGX_HTTP_LENGTH_REQUIRED));
+  mrb_define_const(mrb, class, "HTTP_PRECONDITION_FAILED", mrb_fixnum_value(NGX_HTTP_PRECONDITION_FAILED));
+  mrb_define_const(mrb, class, "HTTP_REQUEST_ENTITY_TOO_LARGE", mrb_fixnum_value(NGX_HTTP_REQUEST_ENTITY_TOO_LARGE));
+  mrb_define_const(mrb, class, "HTTP_REQUEST_URI_TOO_LARGE", mrb_fixnum_value(NGX_HTTP_REQUEST_URI_TOO_LARGE));
+  mrb_define_const(mrb, class, "HTTP_UNSUPPORTED_MEDIA_TYPE", mrb_fixnum_value(NGX_HTTP_UNSUPPORTED_MEDIA_TYPE));
+  mrb_define_const(mrb, class, "HTTP_RANGE_NOT_SATISFIABLE", mrb_fixnum_value(NGX_HTTP_RANGE_NOT_SATISFIABLE));
+  mrb_define_const(mrb, class, "HTTP_CLOSE", mrb_fixnum_value(NGX_HTTP_CLOSE));
+  mrb_define_const(mrb, class, "HTTP_NGINX_CODES", mrb_fixnum_value(NGX_HTTP_NGINX_CODES));
+  mrb_define_const(mrb, class, "HTTP_REQUEST_HEADER_TOO_LARGE", mrb_fixnum_value(NGX_HTTP_REQUEST_HEADER_TOO_LARGE));
+  mrb_define_const(mrb, class, "HTTPS_CERT_ERROR", mrb_fixnum_value(NGX_HTTPS_CERT_ERROR));
+  mrb_define_const(mrb, class, "HTTPS_NO_CERT", mrb_fixnum_value(NGX_HTTPS_NO_CERT));
+  mrb_define_const(mrb, class, "HTTP_TO_HTTPS", mrb_fixnum_value(NGX_HTTP_TO_HTTPS));
+  mrb_define_const(mrb, class, "HTTP_CLIENT_CLOSED_REQUEST", mrb_fixnum_value(NGX_HTTP_CLIENT_CLOSED_REQUEST));
+  mrb_define_const(mrb, class, "HTTP_INTERNAL_SERVER_ERROR", mrb_fixnum_value(NGX_HTTP_INTERNAL_SERVER_ERROR));
+  mrb_define_const(mrb, class, "HTTP_NOT_IMPLEMENTED", mrb_fixnum_value(NGX_HTTP_NOT_IMPLEMENTED));
+  mrb_define_const(mrb, class, "HTTP_BAD_GATEWAY", mrb_fixnum_value(NGX_HTTP_BAD_GATEWAY));
+  mrb_define_const(mrb, class, "HTTP_SERVICE_UNAVAILABLE", mrb_fixnum_value(NGX_HTTP_SERVICE_UNAVAILABLE));
+  mrb_define_const(mrb, class, "HTTP_GATEWAY_TIME_OUT", mrb_fixnum_value(NGX_HTTP_GATEWAY_TIME_OUT));
+  mrb_define_const(mrb, class, "HTTP_INSUFFICIENT_STORAGE", mrb_fixnum_value(NGX_HTTP_INSUFFICIENT_STORAGE));
   // error log priority
-  mrb_define_const(mrb, class, "LOG_STDERR",            mrb_fixnum_value(NGX_LOG_STDERR));
-  mrb_define_const(mrb, class, "LOG_EMERG",             mrb_fixnum_value(NGX_LOG_EMERG));
-  mrb_define_const(mrb, class, "LOG_ALERT",             mrb_fixnum_value(NGX_LOG_ALERT));
-  mrb_define_const(mrb, class, "LOG_CRIT",            mrb_fixnum_value(NGX_LOG_CRIT));
-  mrb_define_const(mrb, class, "LOG_ERR",             mrb_fixnum_value(NGX_LOG_ERR));
-  mrb_define_const(mrb, class, "LOG_WARN",            mrb_fixnum_value(NGX_LOG_WARN));
-  mrb_define_const(mrb, class, "LOG_NOTICE",            mrb_fixnum_value(NGX_LOG_NOTICE));
-  mrb_define_const(mrb, class, "LOG_INFO",            mrb_fixnum_value(NGX_LOG_INFO));
-  mrb_define_const(mrb, class, "LOG_DEBUG",             mrb_fixnum_value(NGX_LOG_DEBUG));
+  mrb_define_const(mrb, class, "LOG_STDERR", mrb_fixnum_value(NGX_LOG_STDERR));
+  mrb_define_const(mrb, class, "LOG_EMERG", mrb_fixnum_value(NGX_LOG_EMERG));
+  mrb_define_const(mrb, class, "LOG_ALERT", mrb_fixnum_value(NGX_LOG_ALERT));
+  mrb_define_const(mrb, class, "LOG_CRIT", mrb_fixnum_value(NGX_LOG_CRIT));
+  mrb_define_const(mrb, class, "LOG_ERR", mrb_fixnum_value(NGX_LOG_ERR));
+  mrb_define_const(mrb, class, "LOG_WARN", mrb_fixnum_value(NGX_LOG_WARN));
+  mrb_define_const(mrb, class, "LOG_NOTICE", mrb_fixnum_value(NGX_LOG_NOTICE));
+  mrb_define_const(mrb, class, "LOG_INFO", mrb_fixnum_value(NGX_LOG_INFO));
+  mrb_define_const(mrb, class, "LOG_DEBUG", mrb_fixnum_value(NGX_LOG_DEBUG));
 
-  mrb_define_class_method(mrb, class, "rputs",            ngx_mrb_rputs,            MRB_ARGS_ANY());
-  mrb_define_class_method(mrb, class, "echo",            ngx_mrb_echo,            MRB_ARGS_ANY());
-  mrb_define_class_method(mrb, class, "send_header",          ngx_mrb_send_header,        MRB_ARGS_ANY());
-  mrb_define_class_method(mrb, class, "return",             ngx_mrb_send_header,        MRB_ARGS_ANY());
-  mrb_define_class_method(mrb, class, "errlogger",          ngx_mrb_errlogger,          MRB_ARGS_ANY());
-  mrb_define_class_method(mrb, class, "module_name",          ngx_mrb_get_ngx_mruby_name,     MRB_ARGS_NONE());
-  mrb_define_class_method(mrb, class, "module_version",         ngx_mrb_get_ngx_mruby_version,    MRB_ARGS_NONE());
-  mrb_define_class_method(mrb, class, "nginx_version",        ngx_mrb_get_nginx_version,      MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class, "rputs", ngx_mrb_rputs, MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "echo", ngx_mrb_echo, MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "send_header", ngx_mrb_send_header, MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "return", ngx_mrb_send_header, MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "errlogger", ngx_mrb_errlogger, MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "module_name", ngx_mrb_get_ngx_mruby_name, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class, "module_version", ngx_mrb_get_ngx_mruby_version, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class, "nginx_version", ngx_mrb_get_nginx_version, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class, "configure", ngx_http_mruby_get_nginx_configure, MRB_ARGS_NONE());
-  mrb_define_class_method(mrb, class, "redirect",           ngx_mrb_redirect,           MRB_ARGS_ANY());
-  mrb_define_class_method(mrb, class, "remove_global_variable",     ngx_mrb_f_global_remove,      MRB_ARGS_REQ(1));
+  mrb_define_class_method(mrb, class, "redirect", ngx_mrb_redirect, MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "remove_global_variable", ngx_mrb_f_global_remove, MRB_ARGS_REQ(1));
 }

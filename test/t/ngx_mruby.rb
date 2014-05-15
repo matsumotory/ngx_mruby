@@ -59,3 +59,56 @@ assert('ngx_mruby - Nginx::Connection#{remote_ip,local_port}', 'location /client
   assert_equal '127.0.0.1', res["body"]
 end
 
+assert('ngx_mruby', 'location /header') do
+  res1 = HttpRequest.new.get base + '/header'
+  res2 = HttpRequest.new.get base + '/header', nil, {"X-REQUEST-HEADER" => "hoge"}
+
+  assert_equal "X-REQUEST-HEADER not found", res1["body"]
+  assert_equal "nothing", res1["x-response-header"]
+  assert_equal "X-REQUEST-HEADER found", res2["body"]
+  assert_equal "hoge", res2["x-response-header"]
+end
+
+assert('ngx_mruby - mruby_add_handler', '*\.rb') do
+  res = HttpRequest.new.get base + '/add_handler.rb'
+  assert_equal 'add_handler', res["body"]
+end
+
+assert('ngx_mruby - all instance test', 'location /all_instance') do
+  res = HttpRequest.new.get base + '/all_instance'
+  assert_equal "OK", res["x-inst-test"]
+end
+
+assert('ngx_mruby', 'location /request_method') do
+  res = HttpRequest.new.get base + '/request_method'
+  assert_equal "GET", res["body"]
+  res = HttpRequest.new.post base + '/request_method'
+  assert_equal "POST", res["body"]
+  res = HttpRequest.new.head base + '/request_method'
+  assert_equal "HEAD", res["body"]
+end
+
+assert('ngx_mruby - Kernel.server_name', 'location /kernel_servername') do
+  res = HttpRequest.new.get base + '/kernel_servername'
+  assert_equal 'NGINX', res["body"]
+end
+
+# see below url:
+# https://github.com/matsumoto-r/ngx_mruby/wiki/Class-and-Method#refs-nginx-core-variables
+assert('ngx_mruby - Nginx::Var', 'location /nginx_var?name=name') do
+  assert_equal '/nginx_var', HttpRequest.new.get(base + '/nginx_var?name=uri')["body"]
+  assert_equal 'HTTP/1.0', HttpRequest.new.get(base + '/nginx_var?name=server_protocol')["body"]
+  assert_equal 'http', HttpRequest.new.get(base + '/nginx_var?name=scheme')["body"]
+  assert_equal '127.0.0.1', HttpRequest.new.get(base + '/nginx_var?name=remote_addr')["body"]
+  assert_equal '58080', HttpRequest.new.get(base + '/nginx_var?name=server_port')["body"]
+  assert_equal '127.0.0.1', HttpRequest.new.get(base + '/nginx_var?name=server_addr')["body"]
+  assert_equal 'GET /nginx_var?name=request HTTP/1.0', HttpRequest.new.get(base + '/nginx_var?name=request')["body"]
+  assert_equal 'name=query_string', HttpRequest.new.get(base + '/nginx_var?name=query_string')["body"]
+end
+
+assert('ngx_mruby - Nginx.return', 'location /service_unavailable') do
+  res = HttpRequest.new.get base + '/service_unavailable'
+  assert_equal 503, res.code
+end
+
+# see below url:
