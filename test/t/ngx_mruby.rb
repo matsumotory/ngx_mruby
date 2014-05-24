@@ -1,7 +1,9 @@
 ##
 # ngx_mruby test
 
-base = 'http://127.0.0.1:58080'
+def base
+  'http://127.0.0.1:58080'
+end
 
 assert('ngx_mruby', 'location /mruby') do
   res = HttpRequest.new.get base + '/mruby'
