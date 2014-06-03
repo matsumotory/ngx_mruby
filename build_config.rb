@@ -30,6 +30,7 @@ MRuby::Build.new do |conf|
   #conf.gem :git => 'git://github.com/matsumoto-r/mruby-memcached.git'
   conf.gem :git => 'git://github.com/matsumoto-r/mruby-sleep.git'
   conf.gem :git => 'git://github.com/matsumoto-r/mruby-userdata.git'
+  conf.gem :git => 'git://github.com/matsumoto-r/mruby-uname.git'
   conf.gem :git => 'git://github.com/mattn/mruby-onig-regexp.git'
 
   # ngx_mruby extended class
@@ -71,25 +72,25 @@ MRuby::Build.new do |conf|
   #   linker.option_library_path = '-L%s'
   #   linker.link_options = "%{flags} -o %{outfile} %{objs} %{libs}"
   # end
- 
+
   # Archiver settings
   # conf.archiver do |archiver|
   #   archiver.command = ENV['AR'] || 'ar'
   #   archiver.archive_options = 'rs %{outfile} %{objs}'
   # end
- 
+
   # Parser generator settings
   # conf.yacc do |yacc|
   #   yacc.command = ENV['YACC'] || 'bison'
   #   yacc.compile_options = '-o %{outfile} %{infile}'
   # end
- 
+
   # gperf settings
   # conf.gperf do |gperf|
   #   gperf.command = 'gperf'
   #   gperf.compile_options = '-L ANSI-C -C -p -j1 -i 1 -g -o -t -N mrb_reserved_word -k"1,3,$" %{infile} > %{outfile}'
   # end
-  
+
   # file extensions
   # conf.exts do |exts|
   #   exts.object = '.o'
@@ -104,12 +105,12 @@ end
 # Define cross build settings
 # MRuby::CrossBuild.new('32bit') do |conf|
 #   toolchain :gcc
-#   
+#
 #   conf.cc.flags << "-m32"
 #   conf.linker.flags << "-m32"
 #
 #   conf.build_mrbtest_lib_only
-#   
+#
 #   conf.gem 'examples/mrbgems/c_and_ruby_extension_example'
 #
 #   conf.test_runner.command = 'env'

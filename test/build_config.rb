@@ -21,6 +21,7 @@ MRuby::Build.new do |conf|
 
   conf.gem :github => 'matsumoto-r/mruby-simplehttp'
   conf.gem :github => 'matsumoto-r/mruby-httprequest'
+  conf.gem :github => 'matsumoto-r/mruby-uname'
   conf.gem :github => 'mattn/mruby-http'
   conf.gem :github => 'iij/mruby-io'
   conf.gem :github => 'iij/mruby-socket'
