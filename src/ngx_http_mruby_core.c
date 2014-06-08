@@ -75,20 +75,29 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
     ngx_log_error(NGX_LOG_ERR
       , r->connection->log
       , 0
-      , "get mruby context failed."
+      , "%s ERROR %s: get mruby context failed."
+      , MODULE_NAME
+      , __func__
     );
+    mrb_raise(mrb, E_RUNTIME_ERROR, "get mruby context failed");
   }
-  if (ctx->rputs_chain) {
-    chain = ctx->rputs_chain;
+  chain = ctx->rputs_chain;
+  if (chain) {
     (*chain->last)->buf->last_buf = 1;
   }
 
   if (r->headers_out.status == NGX_HTTP_OK) {
-    ngx_http_send_header(r);
-    if (chain) {
-      ngx_http_output_filter(r, chain->out);
+    if (chain == NULL) {
+      r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+      ngx_log_error(NGX_LOG_ERR
+        , r->connection->log
+        , 0
+        , "%s ERROR %s: status code is 200, but response body is empty."
+          "Return NGX_HTTP_INTERNAL_SERVER_ERROR"
+        , MODULE_NAME
+        , __func__
+      );
     }
-    ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
   }
 
   return self;

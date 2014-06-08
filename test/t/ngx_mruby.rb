@@ -113,4 +113,14 @@ assert('ngx_mruby - Nginx.return', 'location /service_unavailable') do
   assert_equal 503, res.code
 end
 
-# see below url:
+assert('ngx_mruby - Nginx.return 200 and body', 'location /return_and_body') do
+  res = HttpRequest.new.get base + '/return_and_body'
+  assert_equal "body", res["body"]
+  assert_equal 200, res.code
+end
+
+assert('ngx_mruby - Nginx.return 200 dont have body', 'location /return_and_error') do
+  res = HttpRequest.new.get base + '/return_and_error'
+  assert_equal 500, res.code
+end
+
