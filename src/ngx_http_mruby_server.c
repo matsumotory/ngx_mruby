@@ -18,14 +18,14 @@ extern mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self);
 
 static mrb_value ngx_mrb_get_server_var_docroot(mrb_state *mrb, mrb_value self)
 {
-  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "document_root", 
+  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "document_root",
       0, NULL);
 }
 
-static mrb_value ngx_mrb_get_server_var_realpath_root(mrb_state *mrb, 
+static mrb_value ngx_mrb_get_server_var_realpath_root(mrb_state *mrb,
     mrb_value self)
 {
-  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "realpath_root", 
+  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "realpath_root",
       0, NULL);
 }
 

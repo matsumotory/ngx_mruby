@@ -16,31 +16,31 @@
 // extern from ngx_http_mruby_request.c
 extern mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self);
 
-static mrb_value ngx_mrb_get_conn_var_remote_addr(mrb_state *mrb, 
+static mrb_value ngx_mrb_get_conn_var_remote_addr(mrb_state *mrb,
     mrb_value self)
 {
-  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "remote_addr", 0, 
+  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "remote_addr", 0,
       NULL);
 }
 
-static mrb_value ngx_mrb_get_conn_var_remote_port(mrb_state *mrb, 
+static mrb_value ngx_mrb_get_conn_var_remote_port(mrb_state *mrb,
     mrb_value self)
 {
-  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "remote_port", 0, 
+  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "remote_port", 0,
       NULL);
 }
 
-static mrb_value ngx_mrb_get_conn_var_server_addr(mrb_state *mrb, 
+static mrb_value ngx_mrb_get_conn_var_server_addr(mrb_state *mrb,
     mrb_value self)
 {
-  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "server_addr", 0, 
+  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "server_addr", 0,
       NULL);
 }
 
-static mrb_value ngx_mrb_get_conn_var_server_port(mrb_state *mrb, 
+static mrb_value ngx_mrb_get_conn_var_server_port(mrb_state *mrb,
     mrb_value self)
 {
-  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "server_port", 0, 
+  return mrb_funcall(mrb, ngx_mrb_get_request_var(mrb, self), "server_port", 0,
       NULL);
 }
 
