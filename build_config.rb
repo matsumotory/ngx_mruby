@@ -17,32 +17,31 @@ MRuby::Build.new do |conf|
   #
   # Recommended for ngx_mruby
   #
-  # comment out because of moving error.h
-  conf.gem :git => 'git://github.com/iij/mruby-io.git'
-  conf.gem :git => 'git://github.com/iij/mruby-env.git'
-  conf.gem :git => 'git://github.com/iij/mruby-dir.git'
-  conf.gem :git => 'git://github.com/iij/mruby-process.git'
-  conf.gem :git => 'git://github.com/iij/mruby-pack.git'
-  conf.gem :git => 'git://github.com/iij/mruby-digest.git'
-  conf.gem :git => 'git://github.com/mattn/mruby-json.git'
-  conf.gem :git => 'git://github.com/matsumoto-r/mruby-redis.git'
-  conf.gem :git => 'git://github.com/matsumoto-r/mruby-vedis.git'
-  #conf.gem :git => 'git://github.com/matsumoto-r/mruby-memcached.git'
-  conf.gem :git => 'git://github.com/matsumoto-r/mruby-sleep.git'
-  conf.gem :git => 'git://github.com/matsumoto-r/mruby-userdata.git'
-  conf.gem :git => 'git://github.com/matsumoto-r/mruby-uname.git'
-  conf.gem :git => 'git://github.com/mattn/mruby-onig-regexp.git'
-  conf.gem :git => 'git://github.com/ksss/mruby-file-stat.git'
+  conf.gem :github => 'iij/mruby-io'
+  conf.gem :github => 'iij/mruby-env'
+  conf.gem :github => 'iij/mruby-dir'
+  conf.gem :github => 'iij/mruby-process'
+  conf.gem :github => 'iij/mruby-pack'
+  conf.gem :github => 'iij/mruby-digest'
+  conf.gem :github => 'mattn/mruby-json'
+  conf.gem :github => 'matsumoto-r/mruby-redis'
+  conf.gem :github => 'matsumoto-r/mruby-vedis'
+  #conf.gem :github => 'matsumoto-r/mruby-memcached'
+  conf.gem :github => 'matsumoto-r/mruby-sleep'
+  conf.gem :github => 'matsumoto-r/mruby-userdata'
+  conf.gem :github => 'matsumoto-r/mruby-uname'
+  conf.gem :github => 'mattn/mruby-onig-regexp'
+  conf.gem :github => 'ksss/mruby-file-stat'
 
   # ngx_mruby extended class
-  conf.gem :git => 'git://github.com/matsumoto-r/mruby-ngx-mruby-ext.git'
+  conf.gem :github => 'matsumoto-r/mruby-ngx-mruby-ext'
 
-  # use markdown on mod_mruby
-  #conf.gem :git => 'git://github.com/matsumoto-r/mruby-discount.git'
+  # use markdown on ngx_mruby
+  #conf.gem :github => 'matsumoto-r/mruby-discount'
 
-  # Linux only for mod_mruby
-  #conf.gem :git => 'git://github.com/matsumoto-r/mruby-capability.git'
-  #conf.gem :git => 'git://github.com/matsumoto-r/mruby-cgroup.git'
+  # Linux only for ngx_mruby
+  #conf.gem :github => 'matsumoto-r/mruby-capability'
+  #conf.gem :github => 'matsumoto-r/mruby-cgroup'
 
 
   # C compiler settings
