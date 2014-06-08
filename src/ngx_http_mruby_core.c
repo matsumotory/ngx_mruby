@@ -25,10 +25,10 @@
 ngx_module_t  ngx_http_mruby_module;
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
-{  
+{
   struct RString *str;
   char *err_out;
-  
+
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
     str = mrb_str_ptr(obj);
@@ -43,10 +43,10 @@ void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
 }
 
 void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf)
-{  
+{
   struct RString *str;
   char *err_out;
-  
+
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
     str = mrb_str_ptr(obj);
@@ -166,7 +166,7 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
     argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
   }
 
-  ns.data = (u_char *)RSTRING_PTR(mrb_str_plus(mrb, argv, mrb_str_new_lit(mrb, 
+  ns.data = (u_char *)RSTRING_PTR(mrb_str_plus(mrb, argv, mrb_str_new_lit(mrb,
           "\n")));
   ns.len = RSTRING_LEN(argv) + sizeof("\n") - 1;
   if (ns.len == 0) {
@@ -206,7 +206,7 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
 }
 
 static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
-{   
+{
   mrb_value *argv;
   mrb_value msg;
   mrb_int argc;
@@ -251,19 +251,19 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
   else {
     msg = mrb_str_dup(mrb, argv[1]);
   }
-  ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", 
+  ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s",
       mrb_str_to_cstr(mrb, msg));
 
   return self;
 }
 
 static mrb_value ngx_mrb_get_ngx_mruby_name(mrb_state *mrb, mrb_value self)
-{   
+{
   return mrb_str_new_lit(mrb, MODULE_NAME);
 }
 
 static mrb_value ngx_mrb_get_ngx_mruby_version(mrb_state *mrb, mrb_value self)
-{   
+{
   return mrb_str_new_lit(mrb, MODULE_VERSION);
 }
 
@@ -277,7 +277,7 @@ static mrb_value ngx_mrb_server_name(mrb_state *mrb, mrb_value self)
   return mrb_str_new_lit(mrb, NGINX_VAR);
 }
 
-static mrb_value ngx_http_mruby_get_nginx_configure(mrb_state *mrb, 
+static mrb_value ngx_http_mruby_get_nginx_configure(mrb_state *mrb,
     mrb_value self)
 {
     return mrb_str_new_lit(mrb, NGX_CONFIGURE);
@@ -326,9 +326,9 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   // return 3xx for redirect
   // else generate a internal redirection and response to raw request
   // request.path is not changed
-  if (ngx_strncmp(ns.data, "http://", sizeof("http://") - 1) == 0 
-    || ngx_strncmp(ns.data, "https://", sizeof("https://") - 1) == 0 
-    || ngx_strncmp(ns.data, "$scheme", sizeof("$scheme") - 1) == 0) {  
+  if (ngx_strncmp(ns.data, "http://", sizeof("http://") - 1) == 0
+    || ngx_strncmp(ns.data, "https://", sizeof("https://") - 1) == 0
+    || ngx_strncmp(ns.data, "$scheme", sizeof("$scheme") - 1) == 0) {
     ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
     if (ctx == NULL) {
       ngx_log_error(NGX_LOG_ERR
