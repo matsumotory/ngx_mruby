@@ -32,6 +32,7 @@ MRuby::Build.new do |conf|
   conf.gem :git => 'git://github.com/matsumoto-r/mruby-userdata.git'
   conf.gem :git => 'git://github.com/matsumoto-r/mruby-uname.git'
   conf.gem :git => 'git://github.com/mattn/mruby-onig-regexp.git'
+  conf.gem :git => 'git://github.com/ksss/mruby-file-stat.git'
 
   # ngx_mruby extended class
   conf.gem :git => 'git://github.com/matsumoto-r/mruby-ngx-mruby-ext.git'
