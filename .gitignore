@@ -6,7 +6,6 @@ mrbgems_config
 Makefile
 config.status
 config.log
-mruby/*
 tags
 *.swp
 build/
