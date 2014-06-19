@@ -10,7 +10,7 @@ set -e
 . ./nginx_version
 
 NGINX_INSTALL_DIR=`pwd`'/build/nginx'
-NGINX_CONFIG_OPT='--prefix='${NGINX_INSTALL_DIR}
+NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module"
 
 if [ ! -d "./mruby/src" ]; then
     echo "mruby Downloading ..."
