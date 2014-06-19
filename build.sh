@@ -13,7 +13,7 @@ set -e
 
 . ./nginx_version
 
-if [ $NGINX_CONFIG_OPT_ENV ]; then
+if [ "$NGINX_CONFIG_OPT_ENV" != "" ]; then
     NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT_ENV
 else
     NGINX_CONFIG_OPT='--prefix='`pwd`'/build/nginx --with-http_stub_status_module'
