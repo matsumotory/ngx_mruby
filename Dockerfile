@@ -47,7 +47,7 @@ RUN apt-get -y install make
 RUN apt-get -y install libpcre3 libpcre3-dev
 
 RUN cd /usr/local/src/ && git clone git://github.com/matsumoto-r/ngx_mruby.git
-ENV NGINX_CONFIG_OPT_ENV '--prefix=/usr/local/nginx --with-http_stub_status_module'
+ENV NGINX_CONFIG_OPT_ENV --with-http_stub_status_module --prefix=/usr/local/nginx
 RUN cd /usr/local/src/ngx_mruby && sh build.sh && make install
 
 EXPOSE 80
