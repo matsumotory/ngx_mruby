@@ -60,7 +60,11 @@ ps -C nginx && killall nginx
 cp -p test/build_config.rb ./mruby/.
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 cp -p test/html/* ${NGINX_INSTALL_DIR}/html/.
-mkdir -p ./mruby/build/mrbgems/ngx_mruby/test/
+
+if [ ! -d "./mruby/build/mrbgems/ngx_mruby/test/" ]; then
+  mkdir -p ./mruby/build/mrbgems/ngx_mruby/test/
+fi
+
 cp -p test/t/ngx_mruby.rb ./mruby/build/mrbgems/ngx_mruby/test/.
 ${NGINX_INSTALL_DIR}/sbin/nginx &
 sleep 2
