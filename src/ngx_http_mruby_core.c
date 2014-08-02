@@ -132,11 +132,17 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
       mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
     }
     chain->out = ngx_alloc_chain_link(r->pool);
+    if (chain->out == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+    }
     chain->last = &chain->out;
   }
   else {
     chain = ctx->rputs_chain;
     (*chain->last)->next = ngx_alloc_chain_link(r->pool);
+    if ((*chain->last)->next == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+    }
     chain->last = &(*chain->last)->next;
   }
   b = ngx_calloc_buf(r->pool);
@@ -191,11 +197,17 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
       mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
     }
     chain->out = ngx_alloc_chain_link(r->pool);
+    if (chain->out == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+    }
     chain->last = &chain->out;
   }
   else {
     chain = ctx->rputs_chain;
     (*chain->last)->next = ngx_alloc_chain_link(r->pool);
+    if ((*chain->last)->next == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+    }
     chain->last = &(*chain->last)->next;
   }
   b = ngx_calloc_buf(r->pool);
@@ -359,11 +371,17 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
         mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
       }
       chain->out = ngx_alloc_chain_link(r->pool);
+      if (chain->out == NULL) {
+        mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+      }
       chain->last = &chain->out;
     }
     else {
       chain = ctx->rputs_chain;
       (*chain->last)->next = ngx_alloc_chain_link(r->pool);
+      if ((*chain->last)->next == NULL) {
+        mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+      }
       chain->last = &(*chain->last)->next;
     }
 
