@@ -146,6 +146,9 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
     chain->last = &(*chain->last)->next;
   }
   b = ngx_calloc_buf(r->pool);
+  if (b == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+  }
   (*chain->last)->buf = b;
   (*chain->last)->next = NULL;
 
@@ -211,6 +214,9 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
     chain->last = &(*chain->last)->next;
   }
   b = ngx_calloc_buf(r->pool);
+  if (b == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+  }
   (*chain->last)->buf = b;
   (*chain->last)->next = NULL;
 
@@ -387,6 +393,9 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
 
     // allocate space for body
     b = ngx_calloc_buf(r->pool);
+    if (b == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+    }
     (*chain->last)->buf = b;
     (*chain->last)->next = NULL;
 
