@@ -143,7 +143,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k,
         , MODULE_NAME
         , __func__
         , __LINE__
-        , ngx_pstrdup(r->pool, &key)
+        , key.data
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -173,7 +173,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k,
         , MODULE_NAME
         , __func__
         , __LINE__
-        , ngx_pstrdup(r->pool, &key)
+        , key.data
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -189,8 +189,8 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k,
       , MODULE_NAME
       , __func__
       , __LINE__
-      , ngx_pstrdup(r->pool, &key)
-      , ngx_pstrdup(r->pool, &val)
+      , key.data
+      , val.data
     );
     return mrb_str_new(mrb, (char *)vv->data, vv->len);
   }
@@ -202,7 +202,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k,
     , MODULE_NAME
     , __func__
     , __LINE__
-    , ngx_pstrdup(r->pool, &key)
+    , key.data
   );
   goto ARENA_RESTOR_AND_ERROR;
 
@@ -273,7 +273,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
         , MODULE_NAME
         , __func__
         , __LINE__
-        , ngx_pstrdup(r->pool, &key)
+        , key.data
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -303,7 +303,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
         , MODULE_NAME
         , __func__
         , __LINE__
-        , ngx_pstrdup(r->pool, &key)
+        , key.data
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -319,8 +319,8 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
       , MODULE_NAME
       , __func__
       , __LINE__
-      , ngx_pstrdup(r->pool, &key)
-      , ngx_pstrdup(r->pool, &val)
+      , key.data
+      , val.data
     );
     return mrb_str_new(mrb, (char *)vv->data, vv->len);
   }
@@ -332,7 +332,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     , MODULE_NAME
     , __func__
     , __LINE__
-    , ngx_pstrdup(r->pool, &key)
+    , key.data
   );
   goto ARENA_RESTOR_AND_ERROR;
 
