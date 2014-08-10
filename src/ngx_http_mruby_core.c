@@ -153,6 +153,9 @@ static mrb_value ngx_mrb_rputs(mrb_state *mrb, mrb_value self)
   (*chain->last)->next = NULL;
 
   str = ngx_pstrdup(r->pool, &ns);
+  if (str == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+  }
   str[ns.len] = '\0';
   (*chain->last)->buf->pos = str;
   (*chain->last)->buf->last = str + ns.len;
@@ -221,6 +224,9 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
   (*chain->last)->next = NULL;
 
   str = ngx_pstrdup(r->pool, &ns);
+  if (str == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+  }
   str[ns.len] = '\0';
   (*chain->last)->buf->pos = str;
   (*chain->last)->buf->last = str + ns.len;
@@ -400,6 +406,9 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     (*chain->last)->next = NULL;
 
     str = ngx_pstrdup(r->pool, &ns);
+    if (str == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+    }
     str[ns.len] = '\0';
     (*chain->last)->buf->pos = str;
     (*chain->last)->buf->last = str+ns.len;
@@ -416,10 +425,16 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
 
     // build redirect location
     location = ngx_list_push(&r->headers_out.headers);
+    if (location == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+    }
     location->hash = 1;
     ngx_str_set(&location->key, "Location");
     location->value = ns;
     location->lowcase_key = ngx_pnalloc(r->pool, location->value.len);
+    if (location->lowcase_key == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+    }
     ngx_strlow(location->lowcase_key, location->value.data, location->value.len);
 
     // set location and response code for hreaders
