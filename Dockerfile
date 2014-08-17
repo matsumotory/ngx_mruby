@@ -28,7 +28,7 @@
 #   curl http://127.0.0.1:10080/mruby-hello
 #
 
-FROM stackbrew/ubuntu:14.04
+FROM ubuntu:14.04
 MAINTAINER matsumotory
 
 RUN apt-get -y update
