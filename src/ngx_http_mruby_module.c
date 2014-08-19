@@ -441,10 +441,14 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent,
 
 static ngx_int_t ngx_http_mruby_preinit(ngx_conf_t *cf)
 {
+  ngx_int_t rc;
   ngx_http_mruby_main_conf_t *mmcf;
 
   mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_shared_state_init(mmcf->state);
+  rc = ngx_http_mruby_shared_state_init(mmcf->state);
+  if (rc == NGX_ERROR) {
+    return NGX_ERROR;
+  }
 
   return NGX_OK;
 }
@@ -732,10 +736,16 @@ static ngx_int_t ngx_mrb_gencode_state(ngx_mrb_state_t *state,
   code->ctx = mrbc_context_new(state->mrb);
   mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
   p = mrb_parse_file(state->mrb, mrb_file, code->ctx);
-  code->proc = mrb_generate_code(state->mrb, p);
-
-  mrb_pool_close(p->pool);
   fclose(mrb_file);
+  if (p == NULL) {
+    return NGX_ERROR;
+  }
+  code->proc = mrb_generate_code(state->mrb, p);
+  mrb_pool_close(p->pool);
+  if (code->proc == NULL) {
+    return NGX_ERROR;
+  }
+
   mrb_gc_arena_restore(state->mrb, ai);
 
   return NGX_OK;
@@ -765,7 +775,7 @@ static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_file(ngx_pool_t *pool,
   }
 
   len = code_file_path->len;
-  code->code.file = ngx_pcalloc(pool, len + 1);
+  code->code.file = ngx_palloc(pool, len + 1);
   if (code->code.file == NULL) {
     return NGX_CONF_UNSET_PTR;
   }
@@ -787,7 +797,7 @@ static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_string(ngx_pool_t *pool,
     return NGX_CONF_UNSET_PTR;
   }
   len = code_s->len;
-  code->code.string = ngx_pcalloc(pool, len + 1);
+  code->code.string = ngx_palloc(pool, len + 1);
   if (code->code.string == NULL) {
     return NGX_CONF_UNSET_PTR;
   }
@@ -802,6 +812,9 @@ static ngx_int_t ngx_http_mruby_shared_state_init(ngx_mrb_state_t *state)
   mrb_state *mrb;
 
   mrb = mrb_open();
+  if (mrb == NULL) {
+    return NGX_ERROR;
+  }
   ngx_mrb_class_init(mrb);
 
   state->mrb = mrb;
@@ -836,6 +849,9 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf,
 
   code->proc = mrb_generate_code(state->mrb, p);
   mrb_pool_close(p->pool);
+  if (code->proc == NULL) {
+    return NGX_ERROR;
+  }
 
   if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
     ngx_conf_log_error(NGX_LOG_NOTICE
