@@ -84,7 +84,6 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self,
   size_t len;
   ngx_uint_t key;
 
-  // ngx_str_set(&ngx_name, c_name);
   ngx_name.len = c_len;
   ngx_name.data = (u_char *)c_name;
   len = ngx_name.len;
@@ -119,6 +118,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k,
   ngx_str_t key;
   ngx_uint_t hash;
   ngx_str_t val;
+  u_char *valp;
 
   if (mrb_type(o) != MRB_TT_STRING) {
     o = mrb_funcall(mrb, o, "to_s", 0, NULL);
@@ -128,6 +128,21 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k,
   val.len = RSTRING_LEN(o);
   key.len = strlen(k);
   key.data = (u_char *)k;
+
+  /* RSTRING_PTR(o) is not always null-terminated */
+  valp = ngx_palloc(r->pool, val.len + 1);
+  if (valp == NULL) {
+    ngx_log_error(NGX_LOG_ERR
+      , r->connection->log
+      , 0
+      , "%s ERROR %s:%d: memory allocate failed"
+      , MODULE_NAME
+      , __func__
+      , __LINE__
+    );
+     goto ARENA_RESTOR_AND_ERROR;
+  }
+  ngx_cpystrn(valp, val.data, val.len + 1);
 
   hash = ngx_hash_strlow(key.data, key.data, key.len);
   r = ngx_mrb_get_request();
@@ -143,7 +158,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k,
         , MODULE_NAME
         , __func__
         , __LINE__
-        , ngx_pstrdup(r->pool, &key)
+        , k
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -173,7 +188,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k,
         , MODULE_NAME
         , __func__
         , __LINE__
-        , ngx_pstrdup(r->pool, &key)
+        , k
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -189,8 +204,8 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k,
       , MODULE_NAME
       , __func__
       , __LINE__
-      , ngx_pstrdup(r->pool, &key)
-      , ngx_pstrdup(r->pool, &val)
+      , k
+      , valp
     );
     return mrb_str_new(mrb, (char *)vv->data, vv->len);
   }
@@ -202,9 +217,8 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k,
     , MODULE_NAME
     , __func__
     , __LINE__
-    , ngx_pstrdup(r->pool, &key)
+    , k
   );
-  goto ARENA_RESTOR_AND_ERROR;
 
 ARENA_RESTOR_AND_ERROR:
   return mrb_nil_value();
@@ -246,21 +260,57 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
   ngx_http_core_main_conf_t *cmcf;
   ngx_str_t key, val;
   ngx_uint_t hash;
-  char *k;
+  mrb_value k;
   mrb_value o;
+  u_char *keyp, *valp;
 
-  mrb_get_args(mrb, "zo", &k, &o);
+  mrb_get_args(mrb, "oo", &k, &o);
+  if (mrb_type(k) != MRB_TT_STRING) {
+    k = mrb_funcall(mrb, k, "to_s", 0, NULL);
+  }
   if (mrb_type(o) != MRB_TT_STRING) {
     o = mrb_funcall(mrb, o, "to_s", 0, NULL);
   }
 
+  r = ngx_mrb_get_request();
+
+  key.data = (u_char *)RSTRING_PTR(k);
+  key.len  = RSTRING_LEN(k);
   val.data = (u_char *)RSTRING_PTR(o);
-  val.len = RSTRING_LEN(o);
-  key.len = strlen(k);
-  key.data = (u_char *)k;
+  val.len  = RSTRING_LEN(o);
+
+  /* RSTRING_PTR(k) is not always null-terminated */
+  keyp = ngx_palloc(r->pool, key.len + 1);
+  if (keyp == NULL) {
+    ngx_log_error(NGX_LOG_ERR
+      , r->connection->log
+      , 0
+      , "%s ERROR %s:%d: memory allocate failed"
+      , MODULE_NAME
+      , __func__
+      , __LINE__
+    );
+    goto ARENA_RESTOR_AND_ERROR;
+  }
+
+  /* RSTRING_PTR(o) is not always null-terminated */
+  valp = ngx_palloc(r->pool, val.len + 1);
+  if (valp == NULL) {
+    ngx_log_error(NGX_LOG_ERR
+      , r->connection->log
+      , 0
+      , "%s ERROR %s:%d: memory allocate failed"
+      , MODULE_NAME
+      , __func__
+      , __LINE__
+    );
+    goto ARENA_RESTOR_AND_ERROR;
+  }
+
+  ngx_cpystrn(keyp, key.data, key.len + 1);
+  ngx_cpystrn(valp, val.data, val.len + 1);
 
   hash = ngx_hash_strlow(key.data, key.data, key.len);
-  r = ngx_mrb_get_request();
   cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
   v = ngx_hash_find(&cmcf->variables_hash, hash, key.data, key.len);
 
@@ -273,7 +323,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
         , MODULE_NAME
         , __func__
         , __LINE__
-        , ngx_pstrdup(r->pool, &key)
+        , keyp
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -303,7 +353,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
         , MODULE_NAME
         , __func__
         , __LINE__
-        , ngx_pstrdup(r->pool, &key)
+        , keyp
       );
       goto ARENA_RESTOR_AND_ERROR;
     }
@@ -319,8 +369,8 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
       , MODULE_NAME
       , __func__
       , __LINE__
-      , ngx_pstrdup(r->pool, &key)
-      , ngx_pstrdup(r->pool, &val)
+      , keyp
+      , valp
     );
     return mrb_str_new(mrb, (char *)vv->data, vv->len);
   }
@@ -332,9 +382,8 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     , MODULE_NAME
     , __func__
     , __LINE__
-    , ngx_pstrdup(r->pool, &key)
+    , keyp
   );
-  goto ARENA_RESTOR_AND_ERROR;
 
 ARENA_RESTOR_AND_ERROR:
   return mrb_nil_value();
