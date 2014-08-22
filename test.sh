@@ -65,12 +65,13 @@ if [ ! -d "./mruby/build/mrbgems/ngx_mruby/test/" ]; then
   mkdir -p ./mruby/build/mrbgems/ngx_mruby/test/
 fi
 
-cp -p test/t/ngx_mruby.rb ./mruby/build/mrbgems/ngx_mruby/test/.
+cp -p test/t/assert.rb ./mruby/build/mrbgems/mruby-ngx-mruby-ext/mrblib/.
 ${NGINX_INSTALL_DIR}/sbin/nginx &
 sleep 2
 cd mruby
 rake clean
-rake all test
+rake
+./bin/mruby ../test/t/ngx_mruby.rb
 killall nginx
 echo "ngx_mruby testing ... Done"
 

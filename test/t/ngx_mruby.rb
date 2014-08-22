@@ -1,6 +1,18 @@
 ##
 # ngx_mruby test
 
+# assert.rb global setteings
+$ok_test = 0
+$ko_test = 0
+$kill_test = 0
+$asserts  = []
+$test_start = Time.now if Object.const_defined?(:Time)
+
+puts "---------------------"
+puts "ngx_mruby test start."
+puts "---------------------"
+puts ""
+
 def base
   'http://127.0.0.1:58080'
 end
@@ -122,5 +134,13 @@ end
 assert('ngx_mruby - Nginx.return 200 dont have body', 'location /return_and_error') do
   res = HttpRequest.new.get base + '/return_and_error'
   assert_equal 500, res.code
+end
+
+# test report
+puts ""
+report
+puts ""
+if $ko_test > 0 or $kill_test > 0
+  raise "mrbtest failed (KO:#{$ko_test}, Crash:#{$kill_test})"
 end
 
