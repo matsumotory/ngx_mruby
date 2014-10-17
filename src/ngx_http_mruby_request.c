@@ -140,6 +140,7 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers)
 {
   mrb_value mrb_key;
   u_char *key;
+  size_t key_len;
   ngx_uint_t i;
   ngx_list_part_t *part;
   ngx_table_elt_t *header;
@@ -147,6 +148,7 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers)
   mrb_get_args(mrb, "o", &mrb_key);
 
   key = (u_char *)mrb_str_to_cstr(mrb, mrb_key);
+  key_len = RSTRING_LEN(mrb_key);
   part = &headers->part;
   header = part->elts;
 
@@ -161,7 +163,7 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers)
       i = 0;
     }
 
-    if (ngx_strncasecmp(key, header[i].key.data, header[i].key.len) == 0) {
+    if (ngx_strncasecmp(header[i].key.data, key, key_len) == 0) {
       return mrb_str_new(mrb, (const char *)header[i].value.data,
           header[i].value.len);
     }
@@ -201,7 +203,7 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
       i = 0;
     }
 
-    if (ngx_strncasecmp(key, header[i].key.data, header[i].key.len) == 0) {
+    if (ngx_strncasecmp(header[i].key.data, key, key_len) == 0) {
       header[i].value.data = val;
       header[i].value.len = val_len;
       return NGX_OK;
