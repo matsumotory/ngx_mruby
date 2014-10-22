@@ -269,6 +269,10 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
   mrb_int argc;
   mrb_int log_level;
   ngx_http_request_t *r = ngx_mrb_get_request();
+  if (r == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR,
+        "can't use logger at this phase. only use at request phase");
+  }
 
   mrb_get_args(mrb, "*", &argv, &argc);
   if (argc != 2) {

@@ -78,7 +78,7 @@ static mrb_value ngx_mrb_get_request_headers_##direction##_hash( \
   return hash; \
 }
 
-ngx_http_request_t *ngx_mruby_request;
+ngx_http_request_t *ngx_mruby_request = NULL;
 
 static mrb_value ngx_mrb_get_request_header(mrb_state *mrb,
     ngx_list_t *headers);
