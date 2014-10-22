@@ -40,12 +40,15 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent,
 static ngx_int_t ngx_http_mruby_preinit(ngx_conf_t *cf);
 static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf);
 static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf);
+static ngx_int_t ngx_http_mruby_init_worker(ngx_cycle_t *cycle);
 
 /*
 // ngx_mruby mruby core functions
 */
 static ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state,
     ngx_mrb_code_t *code, ngx_flag_t cached, ngx_str_t *result);
+static ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state,
+    ngx_mrb_code_t *code);
 static ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state,
     ngx_mrb_code_t *code);
 
@@ -84,6 +87,8 @@ static char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_mruby_init_inline(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_mruby_init_worker_phase(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf,
@@ -172,6 +177,13 @@ static ngx_command_t ngx_http_mruby_commands[] = {
   { ngx_string("mruby_init"),
     NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE12,
     ngx_http_mruby_init_phase,
+    NGX_HTTP_MAIN_CONF_OFFSET,
+    0,
+    NULL },
+
+  { ngx_string("mruby_init_worker"),
+    NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE12,
+    ngx_http_mruby_init_worker_phase,
     NGX_HTTP_MAIN_CONF_OFFSET,
     0,
     NULL },
@@ -344,7 +356,7 @@ ngx_module_t ngx_http_mruby_module = {
   NGX_HTTP_MODULE,         /* module type */
   NULL,              /* init master */
   NULL,              /* init module */
-  NULL,              /* init process */
+  ngx_http_mruby_init_worker,              /* init process */
   NULL,              /* init thread */
   NULL,              /* exit thread */
   NULL,              /* exit process */
@@ -481,6 +493,19 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
   return NGX_OK;
 }
 
+static ngx_int_t ngx_http_mruby_init_worker(ngx_cycle_t *cycle)
+{
+  ngx_http_mruby_main_conf_t *mmcf;
+
+  mmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_mruby_module);
+
+  if (mmcf->init_worker_code != NULL) {
+    return ngx_mrb_run_cycle(cycle, mmcf->state, mmcf->init_worker_code);
+  }
+
+  return NGX_OK;
+}
+
 static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
 {
   ngx_int_t i;
@@ -580,6 +605,30 @@ static void ngx_mrb_code_clean(ngx_http_request_t *r, ngx_mrb_state_t *state,
 {
   //mrb_irep_decref(state->mrb, code->proc->body.irep);
   mrbc_context_free(state->mrb, code->ctx);
+}
+
+ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state,
+    ngx_mrb_code_t *code)
+{
+  int ai = mrb_gc_arena_save(state->mrb);
+  ngx_log_error(NGX_LOG_INFO
+    , cycle->log
+    , 0
+    , "%s INFO %s:%d: mrb_run"
+    , MODULE_NAME
+    , __func__
+    , __LINE__
+  );
+  mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
+  if (state->mrb->exc) {
+    ngx_mrb_raise_cycle_error(state->mrb, mrb_obj_value(state->mrb->exc),
+        cycle);
+    mrb_gc_arena_restore(state->mrb, ai);
+    return NGX_ERROR;
+  }
+
+  mrb_gc_arena_restore(state->mrb, ai);
+  return NGX_OK;
 }
 
 ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state,
@@ -951,6 +1000,49 @@ static char *ngx_http_mruby_init_inline(ngx_conf_t *cf, ngx_command_t *cmd,
   rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed",
+        value[1].data);
+    return NGX_CONF_ERROR;
+  }
+
+  return NGX_CONF_OK;
+}
+
+static char *ngx_http_mruby_init_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf,
+      ngx_http_mruby_module);
+  ngx_str_t *value;
+  ngx_mrb_code_t *code;
+  ngx_int_t rc;
+
+  if (mmcf->init_worker_code != NULL) {
+    return "[Use 'mruby_init_worker'";
+  }
+
+  value = cf->args->elts;
+
+  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
+  if (code == NGX_CONF_UNSET_PTR) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed",
+        value[1].data);
+    return NGX_CONF_ERROR;
+  }
+  if (cf->args->nelts == 3) {
+    if (ngx_strcmp(value[2].data, "cache") == 0) {
+      code->cache = ON;
+    }
+    else {
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+          "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+          &value[2]);
+      return NGX_CONF_ERROR;
+    }
+  }
+  mmcf->init_worker_code = code;
+  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
+  if (rc != NGX_OK) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed",
         value[1].data);
     return NGX_CONF_ERROR;
   }
