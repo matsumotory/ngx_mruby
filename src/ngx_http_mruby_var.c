@@ -90,6 +90,18 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self,
 
   key = ngx_hash_strlow(ngx_name.data, ngx_name.data, len);
   var = ngx_http_get_variable(r, &ngx_name, key);
+  if (var == NULL) {
+    ngx_log_error(NGX_LOG_ERR
+      , r->connection->log
+      , 0
+      , "%s ERROR %s:%d: %s is NULL"
+      , MODULE_NAME
+      , __func__
+      , __LINE__
+      , c_name
+    );
+    return mrb_nil_value();
+  }
 
   // return variable value wraped with mruby string
   if (!var->not_found) {
