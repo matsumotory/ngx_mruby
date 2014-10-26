@@ -953,7 +953,7 @@ static char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd,
   ngx_int_t rc;
 
   if (mmcf->init_code != NULL) {
-    return "[Use either 'mruby_init' or 'mruby_init_inline']";
+    return "[Use either 'mruby_init' or 'mruby_init_code']";
   }
 
   value = cf->args->elts;
