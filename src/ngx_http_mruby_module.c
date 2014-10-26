@@ -388,6 +388,9 @@ static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf)
     return NULL;
   }
 
+  mmcf->init_code = NGX_CONF_UNSET_PTR;
+  mmcf->init_worker_code = NGX_CONF_UNSET_PTR;
+
   return mmcf;
 }
 
@@ -495,7 +498,7 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
     ngx_http_mruby_body_filter_init();
   }
 
-  if (mmcf->init_code != NULL) {
+  if (mmcf->init_code != NGX_CONF_UNSET_PTR) {
     return ngx_mrb_run_conf(cf, mmcf->state, mmcf->init_code);
   }
 
@@ -508,7 +511,7 @@ static ngx_int_t ngx_http_mruby_init_worker(ngx_cycle_t *cycle)
 
   mmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_mruby_module);
 
-  if (mmcf->init_worker_code != NULL) {
+  if (mmcf->init_worker_code != NGX_CONF_UNSET_PTR) {
     return ngx_mrb_run_cycle(cycle, mmcf->state, mmcf->init_worker_code);
   }
 
@@ -952,7 +955,7 @@ static char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd,
   ngx_mrb_code_t *code;
   ngx_int_t rc;
 
-  if (mmcf->init_code != NULL) {
+  if (mmcf->init_code != NGX_CONF_UNSET_PTR) {
     return "[Use either 'mruby_init' or 'mruby_init_code']";
   }
 
@@ -995,7 +998,7 @@ static char *ngx_http_mruby_init_inline(ngx_conf_t *cf, ngx_command_t *cmd,
   ngx_mrb_code_t *code;
   ngx_int_t rc;
 
-  if (mmcf->init_code != NULL) {
+  if (mmcf->init_code != NGX_CONF_UNSET_PTR) {
     return "is duplicated";
   }
 
@@ -1025,7 +1028,7 @@ static char *ngx_http_mruby_init_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd
   ngx_mrb_code_t *code;
   ngx_int_t rc;
 
-  if (mmcf->init_worker_code != NULL) {
+  if (mmcf->init_worker_code != NGX_CONF_UNSET_PTR) {
     return "[Use either 'mruby_init_worker' or 'mruby_init_worker_code'";
   }
 
@@ -1068,7 +1071,7 @@ static char *ngx_http_mruby_init_worker_inline(ngx_conf_t *cf,
   ngx_mrb_code_t *code;
   ngx_int_t rc;
 
-  if (mmcf->init_worker_code != NULL) {
+  if (mmcf->init_worker_code != NGX_CONF_UNSET_PTR) {
     return "is duplicated";
   }
 
