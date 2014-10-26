@@ -48,7 +48,7 @@ build_mruby:
 
 #   clean mruby
 clean_mruby:
-	cd $(MRUBY_ROOT) && $(RAKE) clean && rm -rf build
+	cd $(MRUBY_ROOT) && $(RAKE) deep_clean && rm -rf build
 
 
 #   nginx
