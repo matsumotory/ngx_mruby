@@ -1,4 +1,4 @@
-# Welcome to ngx_mruby Pages  [![Build Status](https://travis-ci.org/matsumoto-r/ngx_mruby.svg?branch=master)](https://travis-ci.org/matsumoto-r/ngx_mruby)
+# Welcome to ngx_mruby Pages  [![Build Status](https://travis-ci.org/matsumoto-r/ngx_mruby.svg?branch=master)](https://travis-ci.org/matsumoto-r/ngx_mruby) [![wercker status](https://app.wercker.com/status/55f7f7af32d94b01a42f863f3635940c/s "wercker status")](https://app.wercker.com/project/bykey/55f7f7af32d94b01a42f863f3635940c)
 
 [![ngx_mruby mod_mruby performance](https://github.com/matsumoto-r/mod_mruby/raw/master/images/performance_20140301.png)](http://blog.matsumoto-r.jp/?p=3974)
 
@@ -14,10 +14,10 @@
 ## What's ngx_mruby
 __ngx_mruby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
 
-- ngx_mruby is to provide an alternative to lua-nginx-module or [mod_mruby of Apache httpd](http://mod.mruby.org/). 
+- ngx_mruby is to provide an alternative to lua-nginx-module or [mod_mruby of Apache httpd](http://mod.mruby.org/).
 - Unified Ruby Code between Apache(mod_mruby), nginx(ngx_mruby) and other Web server software(plan) for Web server extensions.
 - You can implement nginx modules by Ruby scripts on nginx!
-- You can implement some Web server software extensions by same Ruby code (as possible) 
+- You can implement some Web server software extensions by same Ruby code (as possible)
 - Supported nginx __1.4/1.6/1.7.*__
 - [Benchmark between ngx_mruby(19423.42 req/sec) and lua-nginx-module(13894.30 req/sec)](https://gist.github.com/matsumoto-r/6930672)
 
@@ -39,14 +39,14 @@ r.get backends[rand(backends.length)]
 
 - see [examples](https://github.com/matsumoto-r/ngx_mruby/blob/master/example/nginx.conf)
 - __Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions__
-- You can implement some Web server software extensions by same Ruby code (as possible) 
+- You can implement some Web server software extensions by same Ruby code (as possible)
 
 ```ruby
 # Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby)
 # for Web server extensions.
 #
 # Apache httpd.conf by mod_mruby
-# 
+#
 # <Location /mruby>
 #     mrubyHandlerMiddle "/path/to/unified_hello.rb"
 # </Location>
