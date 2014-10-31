@@ -956,10 +956,10 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf,
   }
 
   if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
-    ngx_conf_log_error(NGX_LOG_NOTICE
+    ngx_conf_log_error(NGX_LOG_INFO
       , cf
       , 0
-      , "%s NOTICE %s:%d: compile info: code->code.file=(%s) code->cache=(%d)"
+      , "%s INFO %s:%d: compile info: code->code.file=(%s) code->cache=(%d)"
       , MODULE_NAME
       , __func__
       , __LINE__
@@ -968,10 +968,10 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf,
     );
   }
   else {
-    ngx_conf_log_error(NGX_LOG_NOTICE
+    ngx_conf_log_error(NGX_LOG_INFO
       , cf
       , 0
-      , "%s NOTICE %s:%d: compile info: code->code.string=(%s) code->cache=(%d)"
+      , "%s INFO %s:%d: compile info: code->code.string=(%s) code->cache=(%d)"
       , MODULE_NAME
       , __func__
       , __LINE__
@@ -1736,10 +1736,10 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd,
   }
 
   filter.data = filter_data;
-  ngx_conf_log_error(NGX_LOG_NOTICE
+  ngx_conf_log_error(NGX_LOG_INFO
     , cf
     , 0
-    , "%s NOTICE %s:%d: target variable=(%s)"
+    , "%s INFO %s:%d: target variable=(%s)"
     , MODULE_NAME
     , __FUNCTION__
     , __LINE__
