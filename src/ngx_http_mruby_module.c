@@ -508,6 +508,14 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
 
   ngx_mruby_request = NULL;
 
+  ngx_conf_log_error(NGX_LOG_NOTICE
+    , cf
+    , 0
+    , "%s / %s mechanism enabled"
+    , MODULE_NAME
+    , MODULE_VERSION
+  );
+
   if (ngx_http_mruby_handler_init(cmcf) != NGX_OK) {
     return NGX_ERROR;
   }
