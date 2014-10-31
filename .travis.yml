@@ -9,7 +9,7 @@ install:
 env:
   - NGINX_VERSION=nginx-1.4.7
   - NGINX_VERSION=nginx-1.6.2
-  - NGINX_VERSION=nginx-1.7.6
+  - NGINX_VERSION=nginx-1.7.7
 script:
   - echo "NGINX_SRC_VER=${NGINX_VERSION}" > nginx_version
   - sh test.sh
