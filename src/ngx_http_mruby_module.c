@@ -20,6 +20,7 @@
 #include <mruby/string.h>
 #include <mruby/array.h>
 #include <mruby/value.h>
+#include <mruby/version.h>
 
 #define ON  1
 #define OFF 0
@@ -511,9 +512,11 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
   ngx_conf_log_error(NGX_LOG_NOTICE
     , cf
     , 0
-    , "%s / %s mechanism enabled"
+    , "%s/%s (%s/%s) mechanism enabled"
     , MODULE_NAME
     , MODULE_VERSION
+    , MRUBY_RUBY_ENGINE
+    , MRUBY_VERSION
   );
 
   if (ngx_http_mruby_handler_init(cmcf) != NGX_OK) {
