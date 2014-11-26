@@ -126,4 +126,9 @@ t.assert('ngx_mruby - Nginx.return 200 dont have body', 'location /return_and_er
   t.assert_equal 500, res.code
 end
 
+t.assert('ngx_mruby - raise error with no response body', 'location /raise_and_no_response') do
+  res = HttpRequest.new.get base + '/raise_and_no_response'
+  t.assert_equal 500, res.code
+end
+
 t.report

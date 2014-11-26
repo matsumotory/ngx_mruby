@@ -36,7 +36,7 @@ void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
     ngx_log_error(NGX_LOG_ERR
       , r->connection->log
       , 0
-      , "mrb_run failed. error: %s"
+      , "mrb_run failed: return 500 HTTP status code to client: error: %s"
       , err_out
     );
   }

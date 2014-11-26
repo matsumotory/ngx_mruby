@@ -751,8 +751,9 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state,
   mrb_result = mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
   if (state->mrb->exc) {
     ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
+    r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
-  if (result != NULL) {
+  else if (result != NULL) {
     if (mrb_nil_p(mrb_result)) {
       result->data = NULL;
       result->len = 0;
@@ -780,7 +781,6 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state,
       );
     }
   }
-
 
   if (!cached && !code->cache) {
     ngx_mrb_code_clean(r, state, code);
