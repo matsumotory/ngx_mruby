@@ -31,7 +31,8 @@ MRuby::Build.new do |conf|
   conf.gem :github => 'matsumoto-r/mruby-userdata'
   conf.gem :github => 'matsumoto-r/mruby-uname'
   conf.gem :github => 'mattn/mruby-onig-regexp'
-  conf.gem :github => 'ksss/mruby-file-stat'
+  # build error on travis ci 2014/12/01, commented out mruby-file-stat
+  # conf.gem :github => 'ksss/mruby-file-stat'
 
   # ngx_mruby extended class
   conf.gem :github => 'matsumoto-r/mruby-ngx-mruby-ext'

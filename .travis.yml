@@ -5,7 +5,7 @@ compiler:
 before_install:
     - sudo apt-get -qq update
 install:
-    - sudo apt-get -qq install rake bison libcurl4-openssl-dev libhiredis-dev ruby-dev
+    - sudo apt-get -qq install rake bison libcurl4-openssl-dev libhiredis-dev
 env:
   - NGINX_VERSION=nginx-1.4.7
   - NGINX_VERSION=nginx-1.6.2
