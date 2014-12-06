@@ -136,6 +136,50 @@ NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(content_type,
     r->headers_out.content_type);
 
 
+static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
+{
+  ngx_chain_t *cl;
+  size_t len;
+  u_char *p;
+  u_char *buf;
+  ngx_http_request_t *r = ngx_mrb_get_request();
+
+  if (r->request_body == NULL || r->request_body->temp_file
+      || r->request_body->bufs == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "This pahse don't have request_body");
+  }
+
+  cl = r->request_body->bufs;
+
+  if (cl->next == NULL) {
+    len = cl->buf->last - cl->buf->pos;
+    if (len == 0) {
+      return mrb_nil_value();
+    }
+
+    return mrb_str_new(mrb, (const char *)cl->buf->pos, len);
+  }
+
+  len = 0;
+
+  for (; cl; cl = cl->next) {
+    len += cl->buf->last - cl->buf->pos;
+  }
+
+  if (len == 0) {
+    return mrb_nil_value();
+  }
+
+  buf = (u_char *)mrb_malloc(mrb, len);
+
+  p = buf;
+  for (cl = r->request_body->bufs; cl; cl = cl->next) {
+      p = ngx_copy(p, cl->buf->pos, cl->buf->last - cl->buf->pos);
+  }
+
+  return mrb_str_new(mrb, (const char *)buf, len);
+}
+
 static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers)
 {
   mrb_value mrb_key;
@@ -332,6 +376,7 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
   struct RClass *class_headers_out;
 
   class_request = mrb_define_class_under(mrb, class, "Request", mrb->object_class);
+  mrb_define_method(mrb, class_request, "body", ngx_mrb_get_request_body, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "content_type=", ngx_mrb_set_content_type, MRB_ARGS_ANY());
   mrb_define_method(mrb, class_request, "content_type", ngx_mrb_get_content_type, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "request_line", ngx_mrb_get_request_request_line, MRB_ARGS_NONE());
