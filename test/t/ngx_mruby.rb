@@ -131,4 +131,9 @@ t.assert('ngx_mruby - raise error with no response body', 'location /raise_and_n
   t.assert_equal 500, res.code
 end
 
+t.assert('ngx_mruby - request_body', 'location /request_body') do
+  res = HttpRequest.new.post base + '/request_body', "request body test"
+  t.assert_equal "request body test", res["body"]
+end
+
 t.report
