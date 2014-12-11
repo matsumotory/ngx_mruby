@@ -14,6 +14,9 @@
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_init.h"
 
+#define MODULE_NAME "ngx_mruby"
+#define MODULE_VERSION "1.7.8"
+
 typedef enum code_type_t {
   NGX_MRB_CODE_TYPE_FILE,
   NGX_MRB_CODE_TYPE_STRING
@@ -45,9 +48,6 @@ typedef struct {
 } ngx_http_mruby_set_var_data_t;
 #include <ndk.h>
 #endif
-
-#define MODULE_NAME "ngx_mruby"
-#define MODULE_VERSION "1.7.7"
 
 extern ngx_module_t  ngx_http_mruby_module;
 
