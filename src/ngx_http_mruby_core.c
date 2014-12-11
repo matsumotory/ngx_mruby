@@ -411,9 +411,6 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     // set location and response code for hreaders
     r->headers_out.location = location;
     r->headers_out.status = rc;
-
-    //ngx_http_send_header(r);
-    //ngx_http_output_filter(r, NULL);
   }
   else {
     ngx_http_internal_redirect(r, &ns, &r->args);
