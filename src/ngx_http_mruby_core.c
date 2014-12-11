@@ -352,13 +352,10 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
 {
   int argc;
   u_char *str;
-  ngx_buf_t *b;
   ngx_int_t rc;
   mrb_value uri, code;
   ngx_str_t ns;
-  ngx_http_mruby_ctx_t *ctx;
   ngx_table_elt_t *location;
-  ngx_mrb_rputs_chain_list_t *chain;
 
   ngx_http_request_t *r = ngx_mrb_get_request();
   argc = mrb_get_args(mrb, "o|oo", &uri, &code);
@@ -390,60 +387,12 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   if (ngx_strncmp(ns.data, "http://", sizeof("http://") - 1) == 0
     || ngx_strncmp(ns.data, "https://", sizeof("https://") - 1) == 0
     || ngx_strncmp(ns.data, "$scheme", sizeof("$scheme") - 1) == 0) {
-    ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
-    if (ctx == NULL) {
-      ngx_log_error(NGX_LOG_ERR
-        , r->connection->log
-        , 0
-        , "get mruby context failed."
-      );
-    }
-
-    if (ctx->rputs_chain == NULL) {
-      chain = ngx_pcalloc(r->pool, sizeof(ngx_mrb_rputs_chain_list_t));
-      if (chain == NULL) {
-        mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
-      }
-      chain->out = ngx_alloc_chain_link(r->pool);
-      if (chain->out == NULL) {
-        mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
-      }
-      chain->last = &chain->out;
-    }
-    else {
-      chain = ctx->rputs_chain;
-      (*chain->last)->next = ngx_alloc_chain_link(r->pool);
-      if ((*chain->last)->next == NULL) {
-        mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
-      }
-      chain->last = &(*chain->last)->next;
-    }
-
-    // allocate space for body
-    b = ngx_calloc_buf(r->pool);
-    if (b == NULL) {
-      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
-    }
-    (*chain->last)->buf = b;
-    (*chain->last)->next = NULL;
 
     str = ngx_pstrdup(r->pool, &ns);
     if (str == NULL) {
       mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
     }
     str[ns.len] = '\0';
-    (*chain->last)->buf->pos = str;
-    (*chain->last)->buf->last = str+ns.len;
-    (*chain->last)->buf->memory = 1;
-    ctx->rputs_chain = chain;
-    ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
-
-    if (r->headers_out.content_length_n == -1) {
-      r->headers_out.content_length_n += ns.len + 1;
-    }
-    else {
-      r->headers_out.content_length_n += ns.len;
-    }
 
     // build redirect location
     location = ngx_list_push(&r->headers_out.headers);
@@ -463,8 +412,8 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     r->headers_out.location = location;
     r->headers_out.status = rc;
 
-    ngx_http_send_header(r);
-    ngx_http_output_filter(r, chain->out);
+    //ngx_http_send_header(r);
+    //ngx_http_output_filter(r, NULL);
   }
   else {
     ngx_http_internal_redirect(r, &ns, &r->args);
