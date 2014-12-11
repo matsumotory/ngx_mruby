@@ -136,4 +136,9 @@ end
 #  t.assert_equal "request body test", res["body"]
 #end
 
+t.assert('ngx_mruby - get server class name', 'location /server_class') do
+  res = HttpRequest.new.get base + '/server_class'
+  t.assert_equal "Nginx", res["body"]
+end
+
 t.report
