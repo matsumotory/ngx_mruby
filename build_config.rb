@@ -33,6 +33,9 @@ MRuby::Build.new do |conf|
   # use markdown on ngx_mruby
   # conf.gem :github => 'matsumoto-r/mruby-discount'
 
+  # use mysql on ngx_mruby
+  conf.gem :github => 'mattn/mruby-mysql'
+
   # have GeoIPCity.dat
   # conf.gem :github => 'matsumoto-r/mruby-geoip'
 
