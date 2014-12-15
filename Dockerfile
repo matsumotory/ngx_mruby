@@ -45,6 +45,7 @@ RUN apt-get -y install libcap-dev
 RUN apt-get -y install libcgroup-dev
 RUN apt-get -y install make
 RUN apt-get -y install libpcre3 libpcre3-dev
+RUN apt-get -y install libmysqlclient-dev
 
 RUN cd /usr/local/src/ && git clone https://github.com/matsumoto-r/ngx_mruby.git
 ENV NGINX_CONFIG_OPT_ENV --with-http_stub_status_module --prefix=/usr/local/nginx
