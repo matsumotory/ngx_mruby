@@ -32,16 +32,17 @@
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
         <h1>
-<a name="welcome-to-ngx_mruby-pages" class="anchor" href="#welcome-to-ngx_mruby-pages"><span class="octicon octicon-link"></span></a>Welcome to ngx_mruby Pages</h1>
+<a id="welcome-to-ngx_mruby-pages" class="anchor" href="#welcome-to-ngx_mruby-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Welcome to ngx_mruby Pages</h1>
 
-<p><a href="https://travis-ci.org/matsumoto-r/ngx_mruby"><img src="https://travis-ci.org/matsumoto-r/ngx_mruby.svg?branch=master" alt="Build Status"></a> <a href="https://app.wercker.com/project/bykey/55f7f7af32d94b01a42f863f3635940c"><img src="https://app.wercker.com/status/55f7f7af32d94b01a42f863f3635940c/s" alt="wercker status" title="wercker status"></a></p>
+<p><a href="https://gitter.im/matsumoto-r/ngx_mruby?utm_source=badge&amp;utm_medium=badge&amp;utm_campaign=pr-badge&amp;utm_content=badge"><img src="https://badges.gitter.im/Join%20Chat.svg" alt="Gitter"></a>
+<a href="https://travis-ci.org/matsumoto-r/ngx_mruby"><img src="https://travis-ci.org/matsumoto-r/ngx_mruby.svg?branch=master" alt="Build Status"></a> <a href="https://app.wercker.com/project/bykey/55f7f7af32d94b01a42f863f3635940c"><img src="https://app.wercker.com/status/55f7f7af32d94b01a42f863f3635940c/s" alt="wercker status" title="wercker status"></a></p>
 
 <p><a href="http://blog.matsumoto-r.jp/?p=3974"><img src="https://github.com/matsumoto-r/mod_mruby/raw/master/images/performance_20140301.png" alt="ngx_mruby mod_mruby performance"></a></p>
 
 <p>※ <a href="http://blog.matsumoto-r.jp/?p=3974">hello world simple benchmark, see details of blog entry.</a></p>
 
 <h2>
-<a name="documents" class="anchor" href="#documents"><span class="octicon octicon-link"></span></a>Documents</h2>
+<a id="documents" class="anchor" href="#documents" aria-hidden="true"><span class="octicon octicon-link"></span></a>Documents</h2>
 
 <ul>
 <li><a href="https://github.com/matsumoto-r/ngx_mruby/wiki/Install">Install</a></li>
@@ -52,7 +53,7 @@
 </ul>
 
 <h2>
-<a name="whats-ngx_mruby" class="anchor" href="#whats-ngx_mruby"><span class="octicon octicon-link"></span></a>What's ngx_mruby</h2>
+<a id="whats-ngx_mruby" class="anchor" href="#whats-ngx_mruby" aria-hidden="true"><span class="octicon octicon-link"></span></a>What's ngx_mruby</h2>
 
 <p><strong>ngx_mruby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.</strong></p>
 
@@ -66,20 +67,19 @@
 <li><a href="https://gist.github.com/matsumoto-r/6930672">Benchmark between ngx_mruby(19423.42 req/sec) and lua-nginx-module(13894.30 req/sec)</a></li>
 </ul>
 
-<div class="highlight highlight-ruby"><pre><span class="c1"># location /proxy {</span>
-<span class="c1">#   mruby_set $backend "/path/to/proxy.rb";</span>
-<span class="c1">#   proxy_pass   http://$backend;</span>
-<span class="c1"># }</span>
+<div class="highlight highlight-ruby"><pre><span class="pl-c"># location /proxy {</span>
+<span class="pl-c">#   mruby_set $backend "/path/to/proxy.rb";</span>
+<span class="pl-c">#   proxy_pass   http://$backend;</span>
+<span class="pl-c"># }</span>
 
-<span class="n">backends</span> <span class="o">=</span> <span class="o">[</span>
-  <span class="s2">"test1"</span><span class="p">,</span>
-  <span class="s2">"test2"</span><span class="p">,</span>
-  <span class="s2">"test3"</span><span class="p">,</span>
-<span class="o">]</span>
+backends <span class="pl-k">=</span> [
+  <span class="pl-s1"><span class="pl-pds">"</span>test1<span class="pl-pds">"</span></span>,
+  <span class="pl-s1"><span class="pl-pds">"</span>test2<span class="pl-pds">"</span></span>,
+  <span class="pl-s1"><span class="pl-pds">"</span>test3<span class="pl-pds">"</span></span>,
+]
 
-<span class="n">r</span> <span class="o">=</span> <span class="no">Redis</span><span class="o">.</span><span class="n">new</span> <span class="s2">"192.168.12.251"</span><span class="p">,</span> <span class="mi">6379</span>
-<span class="n">r</span><span class="o">.</span><span class="n">get</span> <span class="n">backends</span><span class="o">[</span><span class="nb">rand</span><span class="p">(</span><span class="n">backends</span><span class="o">.</span><span class="n">length</span><span class="p">)</span><span class="o">]</span>
-</pre></div>
+r <span class="pl-k">=</span> <span class="pl-s3">Redis</span>.<span class="pl-k">new</span> <span class="pl-s1"><span class="pl-pds">"</span>192.168.12.251<span class="pl-pds">"</span></span>, <span class="pl-c1">6379</span>
+r.get backends[rand(backends.length)]</pre></div>
 
 <ul>
 <li>see <a href="https://github.com/matsumoto-r/ngx_mruby/blob/master/example/nginx.conf">examples</a>
@@ -88,40 +88,35 @@
 <li>You can implement some Web server software extensions by same Ruby code (as possible)</li>
 </ul>
 
-<div class="highlight highlight-ruby"><pre><span class="c1"># Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby)</span>
-<span class="c1"># for Web server extensions.</span>
-<span class="c1">#</span>
-<span class="c1"># Apache httpd.conf by mod_mruby</span>
-<span class="c1">#</span>
-<span class="c1"># &lt;Location /mruby&gt;</span>
-<span class="c1">#     mrubyHandlerMiddle "/path/to/unified_hello.rb"</span>
-<span class="c1"># &lt;/Location&gt;</span>
-<span class="c1">#</span>
-<span class="c1"># nginx ngxin.conf by ngx_mruby</span>
-<span class="c1">#</span>
-<span class="c1"># location /mruby {</span>
-<span class="c1">#     mruby_content_handler "/path/to/unified_hello.rb";</span>
-<span class="c1"># }</span>
-<span class="c1">#</span>
+<div class="highlight highlight-ruby"><pre><span class="pl-c"># Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby)</span>
+<span class="pl-c"># for Web server extensions.</span>
+<span class="pl-c">#</span>
+<span class="pl-c"># Apache httpd.conf by mod_mruby</span>
+<span class="pl-c">#</span>
+<span class="pl-c"># &lt;Location /mruby&gt;</span>
+<span class="pl-c">#     mrubyHandlerMiddle "/path/to/unified_hello.rb"</span>
+<span class="pl-c"># &lt;/Location&gt;</span>
+<span class="pl-c">#</span>
+<span class="pl-c"># nginx ngxin.conf by ngx_mruby</span>
+<span class="pl-c">#</span>
+<span class="pl-c"># location /mruby {</span>
+<span class="pl-c">#     mruby_content_handler "/path/to/unified_hello.rb";</span>
+<span class="pl-c"># }</span>
+<span class="pl-c">#</span>
 
-<span class="k">if</span> <span class="n">server_name</span> <span class="o">==</span> <span class="s2">"NGINX"</span>
-  <span class="no">Server</span> <span class="o">=</span> <span class="no">Nginx</span>
-<span class="k">elsif</span> <span class="n">server_name</span> <span class="o">==</span> <span class="s2">"Apache"</span>
-  <span class="no">Server</span> <span class="o">=</span> <span class="no">Apache</span>
-<span class="k">end</span>
+<span class="pl-vo">Server</span> <span class="pl-k">=</span> get_server_class
 
-<span class="no">Server</span><span class="o">::</span><span class="n">rputs</span> <span class="s2">"Hello </span><span class="si">#{</span><span class="no">Server</span><span class="o">::</span><span class="n">module_name</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="no">Server</span><span class="o">::</span><span class="n">module_version</span><span class="si">}</span><span class="s2"> world!"</span>
-<span class="c1"># mod_mruby =&gt; "Hello mod_mruby/0.9.3 world!"</span>
-<span class="c1"># ngx_mruby =&gt; "Hello ngx_mruby/0.0.1 world!"</span>
-</pre></div>
+<span class="pl-s3">Server</span>::rputs <span class="pl-s1"><span class="pl-pds">"</span>Hello <span class="pl-pse">#{</span><span class="pl-s2"><span class="pl-s3">Server</span>::module_name</span><span class="pl-pse"><span class="pl-s2">}</span></span>/<span class="pl-pse">#{</span><span class="pl-s2"><span class="pl-s3">Server</span>::module_version</span><span class="pl-pse"><span class="pl-s2">}</span></span> world!<span class="pl-pds">"</span></span>
+<span class="pl-c"># mod_mruby =&gt; "Hello mod_mruby/0.9.3 world!"</span>
+<span class="pl-c"># ngx_mruby =&gt; "Hello ngx_mruby/0.0.1 world!"</span></pre></div>
 
 <h2>
-<a name="abstract" class="anchor" href="#abstract"><span class="octicon octicon-link"></span></a>Abstract</h2>
+<a id="abstract" class="anchor" href="#abstract" aria-hidden="true"><span class="octicon octicon-link"></span></a>Abstract</h2>
 
 <p>As the increase of large-scale and complex Web services, not only a development of Web applications but also an implementation of Web server extensions is required in many cases. The Web server extensions were mainly implemented in C language because of fast and memory-efficient behavior, but extension methods using scripting language are proposed with consideration of maintainability and productivity. However, if the existing methods primarily intended to enhance not the implementation of Web applications but the implementation of internal processing of the Web server, the problem remains in terms of speed, memory-efficiency and safety. Therefore, we propose a fast and memory-efficient Web server extension mechanism using scripting language. We design the architecture that a server process creates the region to save the state of the interpreter at the server process startup, and multiple scripts share the region in order to process fast when the script is called as internal processing from a Web server process. The server process frees the global variables table, the exception flag and the byte-code which cause the increase of memory usage mainly, in order to reduce the memory usage and extend safety by preventing interference between each scripts because of sharing the region. We implement the mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".</p>
 
 <h1>
-<a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h1>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h1>
 
 <p>under the MIT License:</p>
 
