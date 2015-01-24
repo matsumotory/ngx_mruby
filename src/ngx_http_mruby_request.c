@@ -154,11 +154,12 @@ static void read_request_body_cb(ngx_http_request_t *r)
   size_t len;
   u_char *p;
   u_char *buf;
+  ngx_str_t v;
   ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
   if (r->request_body == NULL || r->request_body->bufs == NULL) {
     //mrb_raise(mrb, E_RUNTIME_ERROR, "This pahse don't have request_body");
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_EISDIR,
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
         "This pahse don't have request_body");
     ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     return;
@@ -167,7 +168,6 @@ static void read_request_body_cb(ngx_http_request_t *r)
   cl = r->request_body->bufs;
 
   if (cl->next == NULL) {
-    ngx_str_t v;
     len = cl->buf->last - cl->buf->pos;
     if (len == 0) {
       return;
@@ -177,9 +177,13 @@ static void read_request_body_cb(ngx_http_request_t *r)
     ctx->request_body_len = len;
     v.data = cl->buf->pos;
     v.len = len;
-
-    //ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_EISDIR, "request_body: %V", &v);
-    ngx_http_finalize_request(r, NGX_DONE);
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "request_body(%d): %V", len, &v);
+    if (ctx->request_body_more) {
+      ctx->request_body_more = 0;
+      ngx_http_core_run_phases(r);
+    } else {
+      ngx_http_finalize_request(r, NGX_DONE);
+    }
     return;
   }
 
@@ -202,6 +206,9 @@ static void read_request_body_cb(ngx_http_request_t *r)
 
   ctx->request_body_buf = buf;
   ctx->request_body_len = len;
+  v.data = buf;
+  v.len = len;
+  ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "multi request_body(%d): %V", len, &v);
   ngx_http_finalize_request(r, NGX_DONE);
   return;
 }
@@ -210,12 +217,14 @@ static mrb_value ngx_mrb_read_request_body(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r = ngx_mrb_get_request();
   ngx_int_t rc;
-  //ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
-  //rc = ngx_http_read_client_request_body(r, ngx_http_core_run_phases);
   rc = ngx_http_read_client_request_body(r, read_request_body_cb);
   if (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_read_client_request_body failed");
+  }
+  if (rc == NGX_AGAIN) {
+    ctx->request_body_more = 1;
   }
 
   return mrb_fixnum_value(rc);

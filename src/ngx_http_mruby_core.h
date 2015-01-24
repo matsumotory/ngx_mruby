@@ -23,6 +23,7 @@ typedef struct ngx_http_mruby_ctx_t {
   size_t body_length;
   u_char *request_body_buf;
   size_t request_body_len;
+  unsigned request_body_more:1;
 } ngx_http_mruby_ctx_t;
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
