@@ -135,30 +135,15 @@ NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(content_type,
 NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(content_type,
     r->headers_out.content_type);
 
-/*
-static void read_request_body_cb(ngx_http_request_t *r)
-{
-  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
-
-  ctx->read_request_body_done = 1;
-  if (ctx->waiting_more_request_body) {
-    ctx->waiting_more_request_body= 0;
-    ngx_http_core_run_phases(r);
-  }
-}
-*/
-
 static void read_request_body_cb(ngx_http_request_t *r)
 {
   ngx_chain_t *cl;
   size_t len;
   u_char *p;
   u_char *buf;
-  ngx_str_t v;
   ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
   if (r->request_body == NULL || r->request_body->bufs == NULL) {
-    //mrb_raise(mrb, E_RUNTIME_ERROR, "This pahse don't have request_body");
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
         "This pahse don't have request_body");
     ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -173,11 +158,10 @@ static void read_request_body_cb(ngx_http_request_t *r)
       return;
     }
 
-    ctx->request_body_buf = cl->buf->pos;
-    ctx->request_body_len = len;
-    v.data = cl->buf->pos;
-    v.len = len;
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "request_body(%d): %V", len, &v);
+    ctx->request_body_ctx.data = cl->buf->pos;
+    ctx->request_body_ctx.len = len;
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+        "request_body(%d): %V", len, &ctx->request_body_ctx);
     if (ctx->request_body_more) {
       ctx->request_body_more = 0;
       ngx_http_core_run_phases(r);
@@ -204,11 +188,10 @@ static void read_request_body_cb(ngx_http_request_t *r)
       p = ngx_copy(p, cl->buf->pos, cl->buf->last - cl->buf->pos);
   }
 
-  ctx->request_body_buf = buf;
-  ctx->request_body_len = len;
-  v.data = buf;
-  v.len = len;
-  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "multi request_body(%d): %V", len, &v);
+  ctx->request_body_ctx.data = buf;
+  ctx->request_body_ctx.len = len;
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+      "multi request_body(%d): %V", len, &ctx->request_body_ctx);
   if (ctx->request_body_more) {
     ctx->request_body_more = 0;
     ngx_http_core_run_phases(r);
@@ -240,55 +223,9 @@ static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r = ngx_mrb_get_request();
   ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
-  return mrb_str_new(mrb, (const char *)ctx->request_body_buf, ctx->request_body_len);
+  return mrb_str_new(mrb, (const char *)ctx->request_body_ctx.data,
+      ctx->request_body_ctx.len);
 }
-
-/*
-static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
-{
-  ngx_chain_t *cl;
-  size_t len;
-  u_char *p;
-  u_char *buf;
-  ngx_http_request_t *r = ngx_mrb_get_request();
-
-  if (r->request_body == NULL || r->request_body->bufs == NULL) {
-  //if (r->request_body == NULL || r->request_body->temp_file
-  //    || r->request_body->bufs == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "This pahse don't have request_body");
-  }
-
-  cl = r->request_body->bufs;
-
-  if (cl->next == NULL) {
-    len = cl->buf->last - cl->buf->pos;
-    if (len == 0) {
-      return mrb_nil_value();
-    }
-
-    return mrb_str_new(mrb, (const char *)cl->buf->pos, len);
-  }
-
-  len = 0;
-
-  for (; cl; cl = cl->next) {
-    len += cl->buf->last - cl->buf->pos;
-  }
-
-  if (len == 0) {
-    return mrb_nil_value();
-  }
-
-  buf = (u_char *)mrb_malloc(mrb, len);
-
-  p = buf;
-  for (cl = r->request_body->bufs; cl; cl = cl->next) {
-      p = ngx_copy(p, cl->buf->pos, cl->buf->last - cl->buf->pos);
-  }
-
-  return mrb_str_new(mrb, (const char *)buf, len);
-}
-*/
 
 static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers)
 {

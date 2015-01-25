@@ -21,8 +21,7 @@ typedef struct ngx_http_mruby_ctx_t {
   u_char *body;
   u_char *last;
   size_t body_length;
-  u_char *request_body_buf;
-  size_t request_body_len;
+  ngx_str_t request_body_ctx;
   unsigned request_body_more:1;
 } ngx_http_mruby_ctx_t;
 
