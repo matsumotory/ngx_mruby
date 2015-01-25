@@ -207,6 +207,11 @@ static mrb_value ngx_mrb_read_request_body(mrb_state *mrb, mrb_value self)
   ngx_int_t rc;
   ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
+  if (r->method != NGX_HTTP_POST && r->method != NGX_HTTP_PUT) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_read_request_body can't read"
+        " when r->mehtod is neither POST nor PUT");
+  }
+
   rc = ngx_http_read_client_request_body(r, read_request_body_cb);
   if (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_read_client_request_body failed");
