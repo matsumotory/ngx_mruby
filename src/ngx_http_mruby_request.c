@@ -135,18 +135,19 @@ NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(content_type,
 NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(content_type,
     r->headers_out.content_type);
 
-
-static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
+static void read_request_body_cb(ngx_http_request_t *r)
 {
   ngx_chain_t *cl;
   size_t len;
   u_char *p;
   u_char *buf;
-  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
-  if (r->request_body == NULL || r->request_body->temp_file
-      || r->request_body->bufs == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "This pahse don't have request_body");
+  if (r->request_body == NULL || r->request_body->bufs == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+        "This pahse don't have request_body");
+    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    return;
   }
 
   cl = r->request_body->bufs;
@@ -154,10 +155,20 @@ static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
   if (cl->next == NULL) {
     len = cl->buf->last - cl->buf->pos;
     if (len == 0) {
-      return mrb_nil_value();
+      return;
     }
 
-    return mrb_str_new(mrb, (const char *)cl->buf->pos, len);
+    ctx->request_body_ctx.data = cl->buf->pos;
+    ctx->request_body_ctx.len = len;
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+        "request_body(%d): %V", len, &ctx->request_body_ctx);
+    if (ctx->request_body_more) {
+      ctx->request_body_more = 0;
+      ngx_http_core_run_phases(r);
+    } else {
+      ngx_http_finalize_request(r, NGX_DONE);
+    }
+    return;
   }
 
   len = 0;
@@ -167,17 +178,62 @@ static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
   }
 
   if (len == 0) {
-    return mrb_nil_value();
+    return;
   }
 
-  buf = (u_char *)mrb_malloc(mrb, len);
+  buf = ngx_palloc(r->pool, len);
 
   p = buf;
   for (cl = r->request_body->bufs; cl; cl = cl->next) {
       p = ngx_copy(p, cl->buf->pos, cl->buf->last - cl->buf->pos);
   }
 
-  return mrb_str_new(mrb, (const char *)buf, len);
+  ctx->request_body_ctx.data = buf;
+  ctx->request_body_ctx.len = len;
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+      "multi request_body(%d): %V", len, &ctx->request_body_ctx);
+  if (ctx->request_body_more) {
+    ctx->request_body_more = 0;
+    ngx_http_core_run_phases(r);
+  } else {
+    ngx_http_finalize_request(r, NGX_DONE);
+  }
+  return;
+}
+
+static mrb_value ngx_mrb_read_request_body(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_int_t rc;
+  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+
+  if (r->method != NGX_HTTP_POST && r->method != NGX_HTTP_PUT) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_read_request_body can't read"
+        " when r->mehtod is neither POST nor PUT");
+  }
+
+  rc = ngx_http_read_client_request_body(r, read_request_body_cb);
+  if (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_read_client_request_body failed");
+  }
+  if (rc == NGX_AGAIN) {
+    ctx->request_body_more = 1;
+  }
+
+  return mrb_fixnum_value(rc);
+}
+
+static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+
+  if (ctx->request_body_ctx.len != 0) {
+    return mrb_str_new(mrb, (const char *)ctx->request_body_ctx.data,
+        ctx->request_body_ctx.len);
+  } else {
+    return mrb_nil_value();
+  }
 }
 
 static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers)
@@ -376,7 +432,8 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
   struct RClass *class_headers_out;
 
   class_request = mrb_define_class_under(mrb, class, "Request", mrb->object_class);
-  mrb_define_method(mrb, class_request, "body", ngx_mrb_get_request_body, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_request, "get_body", ngx_mrb_get_request_body, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_request, "read_body", ngx_mrb_read_request_body, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "content_type=", ngx_mrb_set_content_type, MRB_ARGS_ANY());
   mrb_define_method(mrb, class_request, "content_type", ngx_mrb_get_content_type, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "request_line", ngx_mrb_get_request_request_line, MRB_ARGS_NONE());
