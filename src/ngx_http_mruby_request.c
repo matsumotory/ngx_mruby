@@ -432,7 +432,7 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
   struct RClass *class_headers_out;
 
   class_request = mrb_define_class_under(mrb, class, "Request", mrb->object_class);
-  mrb_define_method(mrb, class_request, "body", ngx_mrb_get_request_body, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_request, "get_body", ngx_mrb_get_request_body, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "read_body", ngx_mrb_read_request_body, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "content_type=", ngx_mrb_set_content_type, MRB_ARGS_ANY());
   mrb_define_method(mrb, class_request, "content_type", ngx_mrb_get_content_type, MRB_ARGS_NONE());
