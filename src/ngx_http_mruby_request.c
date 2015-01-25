@@ -223,8 +223,12 @@ static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r = ngx_mrb_get_request();
   ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
-  return mrb_str_new(mrb, (const char *)ctx->request_body_ctx.data,
-      ctx->request_body_ctx.len);
+  if (ctx->request_body_ctx.len != 0) {
+    return mrb_str_new(mrb, (const char *)ctx->request_body_ctx.data,
+        ctx->request_body_ctx.len);
+  } else {
+    return mrb_nil_value();
+  }
 }
 
 static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers)
