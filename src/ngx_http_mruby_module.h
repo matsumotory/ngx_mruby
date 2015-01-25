@@ -15,7 +15,7 @@
 #include "ngx_http_mruby_init.h"
 
 #define MODULE_NAME "ngx_mruby"
-#define MODULE_VERSION "1.7.8"
+#define MODULE_VERSION "1.8.8"
 
 typedef enum code_type_t {
   NGX_MRB_CODE_TYPE_FILE,
