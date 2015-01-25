@@ -177,7 +177,7 @@ static void read_request_body_cb(ngx_http_request_t *r)
     ctx->request_body_len = len;
     v.data = cl->buf->pos;
     v.len = len;
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "request_body(%d): %V", len, &v);
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "request_body(%d): %V", len, &v);
     if (ctx->request_body_more) {
       ctx->request_body_more = 0;
       ngx_http_core_run_phases(r);
@@ -208,8 +208,13 @@ static void read_request_body_cb(ngx_http_request_t *r)
   ctx->request_body_len = len;
   v.data = buf;
   v.len = len;
-  ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "multi request_body(%d): %V", len, &v);
-  ngx_http_finalize_request(r, NGX_DONE);
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "multi request_body(%d): %V", len, &v);
+  if (ctx->request_body_more) {
+    ctx->request_body_more = 0;
+    ngx_http_core_run_phases(r);
+  } else {
+    ngx_http_finalize_request(r, NGX_DONE);
+  }
   return;
 }
 
