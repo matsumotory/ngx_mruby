@@ -54,7 +54,7 @@ RUN cd /usr/local/src/ngx_mruby && sh build.sh && make install
 EXPOSE 80
 EXPOSE 443
 
-ADD docker/hook /usr/local/nginx/hook
-ADD docker/conf/nginx.conf /usr/local/nginx/conf/nginx.conf
+ONBUILD ADD docker/hook /usr/local/nginx/hook
+ONBUILD ADD docker/conf/nginx.conf /usr/local/nginx/conf/nginx.conf
 
 CMD ["/usr/local/nginx/sbin/nginx"]
