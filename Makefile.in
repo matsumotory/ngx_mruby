@@ -18,6 +18,7 @@ ifeq ($(wildcard $(MRUBY_MAK_FILE)),)
   MRUBY_CFLAGS =
   MRUBY_LDFLAGS =
   MRUBY_LIBS =
+  MRUBY_LDFLAGS_BEFORE_LIBS =
 else
   include $(MRUBY_MAK_FILE)
 endif
@@ -25,7 +26,7 @@ endif
 #   flags
 CFLAGS = $(MRUBY_CFLAGS)
 LDFLAGS = $(MRUBY_LDFLAGS)
-LIBS = $(MRUBY_LIBS) $(MRUBY_ROOT)/build/host/lib/libmruby.a
+LIBS = $(MRUBY_LIBS) $(MRUBY_LDFLAGS_BEFORE_LIBS) $(MRUBY_ROOT)/build/host/lib/libmruby.a
 
 #   the default target
 all: ngx_mruby
