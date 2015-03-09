@@ -57,7 +57,7 @@ ngx_mruby: generate_gems_config
 	cd $(NGX_SRC_ROOT) && ./configure --add-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
 
 #   create mrbgems config
-generate_gems_config: build_mruby
+generate_gems_config:
 	@echo CORE_LIBS=\"\$$CORE_LIBS $(LDFLAGS) $(LIBS)\" > ./mrbgems_config
 	@echo CORE_INCS=\"\$$CORE_INCS $(CFLAGS)\" >> ./mrbgems_config
 
