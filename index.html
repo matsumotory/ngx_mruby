@@ -1,44 +1,25 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en-us">
   <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta charset="UTF-8">
     <title>ngx_mruby by matsumoto-r</title>
-    <link rel="stylesheet" href="stylesheets/styles.css">
-    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-    <script src="javascripts/respond.js"></script>
-    <!--[if lt IE 9]>
-      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-    <!--[if lt IE 8]>
-    <link rel="stylesheet" href="stylesheets/ie.css">
-    <![endif]-->
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
   </head>
   <body>
-      <div id="header">
-        <nav>
-          <li class="fork"><a href="https://github.com/matsumoto-r/ngx_mruby">View On GitHub</a></li>
-          <li class="downloads"><a href="https://github.com/matsumoto-r/ngx_mruby/zipball/master">ZIP</a></li>
-          <li class="downloads"><a href="https://github.com/matsumoto-r/ngx_mruby/tarball/master">TAR</a></li>
-          <li class="title">DOWNLOADS</li>
-        </nav>
-      </div><!-- end header -->
+    <section class="page-header">
+      <h1 class="project-name">ngx_mruby</h1>
+      <h2 class="project-tagline">A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx</h2>
+      <a href="https://github.com/matsumoto-r/ngx_mruby" class="btn">View on GitHub</a>
+      <a href="https://github.com/matsumoto-r/ngx_mruby/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/matsumoto-r/ngx_mruby/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
 
-    <div class="wrapper">
-
-      <section>
-        <div id="title">
-          <h1>ngx_mruby</h1>
-          <p>A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx</p>
-          <hr>
-          <span class="credits left">Project maintained by <a href="https://github.com/matsumoto-r">matsumoto-r</a></span>
-          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></span>
-        </div>
-
-        <h1>
+    <section class="main-content">
+      <h1>
 <a id="welcome-to-ngx_mruby-pages" class="anchor" href="#welcome-to-ngx_mruby-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Welcome to ngx_mruby Pages</h1>
 
 <p><a href="https://gitter.im/matsumoto-r/ngx_mruby?utm_source=badge&amp;utm_medium=badge&amp;utm_campaign=pr-badge&amp;utm_content=badge"><img src="https://badges.gitter.im/Join%20Chat.svg" alt="Gitter"></a>
@@ -80,12 +61,12 @@
 <span class="pl-c"># }</span>
 
 backends <span class="pl-k">=</span> [
-  <span class="pl-s1"><span class="pl-pds">"</span>test1<span class="pl-pds">"</span></span>,
-  <span class="pl-s1"><span class="pl-pds">"</span>test2<span class="pl-pds">"</span></span>,
-  <span class="pl-s1"><span class="pl-pds">"</span>test3<span class="pl-pds">"</span></span>,
+  <span class="pl-s"><span class="pl-pds">"</span>test1<span class="pl-pds">"</span></span>,
+  <span class="pl-s"><span class="pl-pds">"</span>test2<span class="pl-pds">"</span></span>,
+  <span class="pl-s"><span class="pl-pds">"</span>test3<span class="pl-pds">"</span></span>,
 ]
 
-r <span class="pl-k">=</span> <span class="pl-s3">Redis</span>.<span class="pl-k">new</span> <span class="pl-s1"><span class="pl-pds">"</span>192.168.12.251<span class="pl-pds">"</span></span>, <span class="pl-c1">6379</span>
+r <span class="pl-k">=</span> <span class="pl-c1">Redis</span>.<span class="pl-k">new</span> <span class="pl-s"><span class="pl-pds">"</span>192.168.12.251<span class="pl-pds">"</span></span>, <span class="pl-c1">6379</span>
 r.get backends[rand(backends.length)]</pre></div>
 
 <ul>
@@ -111,9 +92,9 @@ r.get backends[rand(backends.length)]</pre></div>
 <span class="pl-c"># }</span>
 <span class="pl-c">#</span>
 
-<span class="pl-vo">Server</span> <span class="pl-k">=</span> get_server_class
+<span class="pl-c1">Server</span> <span class="pl-k">=</span> get_server_class
 
-<span class="pl-s3">Server</span>::rputs <span class="pl-s1"><span class="pl-pds">"</span>Hello <span class="pl-pse">#{</span><span class="pl-s2"><span class="pl-s3">Server</span>::module_name</span><span class="pl-pse"><span class="pl-s2">}</span></span>/<span class="pl-pse">#{</span><span class="pl-s2"><span class="pl-s3">Server</span>::module_version</span><span class="pl-pse"><span class="pl-s2">}</span></span> world!<span class="pl-pds">"</span></span>
+<span class="pl-c1">Server</span>::rputs <span class="pl-s"><span class="pl-pds">"</span>Hello <span class="pl-pse">#{</span><span class="pl-s1"><span class="pl-c1">Server</span>::module_name</span><span class="pl-pse"><span class="pl-s1">}</span></span>/<span class="pl-pse">#{</span><span class="pl-s1"><span class="pl-c1">Server</span>::module_version</span><span class="pl-pse"><span class="pl-s1">}</span></span> world!<span class="pl-pds">"</span></span>
 <span class="pl-c"># mod_mruby =&gt; "Hello mod_mruby/0.9.3 world!"</span>
 <span class="pl-c"># ngx_mruby =&gt; "Hello ngx_mruby/0.0.1 world!"</span></pre></div>
 
@@ -130,11 +111,16 @@ r.get backends[rand(backends.length)]</pre></div>
 <ul>
 <li><a href="http://www.opensource.org/licenses/mit-license.php">http://www.opensource.org/licenses/mit-license.php</a></li>
 </ul>
-      </section>
 
-    </div>
-    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
-              <script type="text/javascript">
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/matsumoto-r/ngx_mruby">ngx_mruby</a> is maintained by <a href="https://github.com/matsumoto-r">matsumoto-r</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+            <script type="text/javascript">
             var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
             document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
           </script>
@@ -147,3 +133,4 @@ r.get backends[rand(backends.length)]</pre></div>
 
   </body>
 </html>
+
