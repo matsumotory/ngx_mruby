@@ -782,6 +782,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state,
         , __LINE__
         , mrb_str_to_cstr(state->mrb, mrb_result)
       );
+      mrb_gc_arena_restore(state->mrb, exc_ai);
+      return NGX_OK;
     }
   }
 
