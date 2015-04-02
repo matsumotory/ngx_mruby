@@ -715,6 +715,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state,
 {
   int result_len;
   int ai = 0;
+  int exc_ai = 0;
   mrb_value mrb_result;
   ngx_http_mruby_ctx_t *ctx;
   ngx_mrb_rputs_chain_list_t *chain;
@@ -748,10 +749,12 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state,
       , ai
     );
   }
+  exc_ai = mrb_gc_arena_save(state->mrb);
   mrb_result = mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
   if (state->mrb->exc) {
     ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    mrb_gc_arena_restore(state->mrb, exc_ai);
   }
   else if (result != NULL) {
     if (mrb_nil_p(mrb_result)) {
