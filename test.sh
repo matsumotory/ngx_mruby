@@ -12,6 +12,18 @@ set -e
 NGINX_INSTALL_DIR=`pwd`'/build/nginx'
 NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module"
 
+if [ "$NUM_THREADS_ENV" != "" ]; then
+    NUM_THREADS=$NUM_THREADS_ENV
+else
+    NUM_THREADS=$(expr `getconf _NPROCESSORS_ONLN` / 2)
+    if [ $NUM_THREADS -eq "0" ]; then
+        NUM_THREADS=1
+    fi
+fi
+
+echo "NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT"
+echo "NUM_THREADS=$NUM_THREADS"
+
 if [ ! -d "./mruby/src" ]; then
     echo "mruby Downloading ..."
     git submodule init
@@ -47,11 +59,11 @@ echo "ngx_mruby configure ..."
 echo "ngx_mruby configure ... Done"
 
 echo "mruby building ..."
-make build_mruby
+make build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
 echo "mruby building ... Done"
 
 echo "ngx_mruby building ..."
-make
+make NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
 echo "ngx_mruby building ... Done"
 
 echo "ngx_mruby testing ..."

@@ -3,8 +3,8 @@
 ##	  MATSUMOTO, Ryosuke
 ##
 
-MAKE="make"
-RAKE="rake"
+MAKE=make -j $(NUM_THREADS)
+RAKE=rake -j $(NUM_THREADS)
 
 NGX_MRUBY_ROOT=$(shell pwd)
 NGX_SRC_ROOT=@NGX_SRC_ROOT@
