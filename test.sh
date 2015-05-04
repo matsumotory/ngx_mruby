@@ -15,8 +15,10 @@ NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module"
 if [ "$NUM_THREADS_ENV" != "" ]; then
     NUM_THREADS=$NUM_THREADS_ENV
 else
-    NUM_THREADS=$(expr `getconf _NPROCESSORS_ONLN` / 2)
-    if [ $NUM_THREADS -eq "0" ]; then
+    NUM_PROCESSORS=`getconf _NPROCESSORS_ONLN`
+    if [ $NUM_PROCESSORS -gt 1 ]; then
+        NUM_THREADS=$(expr $NUM_PROCESSORS / 2)
+    else
         NUM_THREADS=1
     fi
 fi
