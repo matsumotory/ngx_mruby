@@ -73,6 +73,11 @@ t.assert('ngx_mruby', 'location /header') do
   t.assert_equal "hoge", res2["x-response-header"]
 end
 
+t.assert('ngx_mruby', 'location /header/internal') do
+  res = HttpRequest.new.get base + '/header/internal'
+  t.assert_equal "hoge", res["x-internal-header"]
+end
+
 t.assert('ngx_mruby - mruby_add_handler', '*\.rb') do
   res = HttpRequest.new.get base + '/add_handler.rb'
   t.assert_equal 'add_handler', res["body"]
