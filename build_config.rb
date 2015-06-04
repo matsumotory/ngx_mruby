@@ -21,6 +21,8 @@ MRuby::Build.new do |conf|
   conf.gem :github => 'matsumoto-r/mruby-sleep'
   conf.gem :github => 'matsumoto-r/mruby-userdata'
   conf.gem :github => 'matsumoto-r/mruby-uname'
+  conf.gem :github => 'matsumoto-r/mruby-mutex'
+  conf.gem :github => 'matsumoto-r/mruby-cache'
 
   # ngx_mruby extended class
   conf.gem '../mrbgems/ngx_mruby_mrblib'
