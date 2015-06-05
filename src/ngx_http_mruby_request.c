@@ -85,8 +85,8 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb,
 static mrb_value ngx_mrb_get_request_headers_in(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_headers_out(mrb_state *mrb,
     mrb_value self);
-static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
-    ngx_uint_t assign);
+static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb,
+    ngx_list_t *headers);
 static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb,
     mrb_value self);
@@ -272,8 +272,7 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers)
   return mrb_nil_value();
 }
 
-static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
-    ngx_uint_t assign)
+static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers)
 {
   mrb_value mrb_key, mrb_val;
   u_char *key, *val;
@@ -310,16 +309,138 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
     }
   }
 
-  if (assign) {
-    new_header = ngx_list_push(headers);
-    if (new_header == NULL) {
-      return NGX_ERROR;
+  new_header = ngx_list_push(headers);
+  if (new_header == NULL) {
+    return NGX_ERROR;
+  }
+  new_header->hash = 1;
+  new_header->key.data = key;
+  new_header->key.len = key_len;
+  new_header->value.data = val;
+  new_header->value.len = val_len;
+
+  return NGX_OK;
+}
+
+static ngx_int_t ngx_mrb_del_request_header(mrb_state *mrb, ngx_list_t *headers)
+{
+  mrb_value mrb_key;
+  u_char *key;
+  size_t key_len;
+  ngx_uint_t i;
+  ngx_list_part_t *part, *new;
+  ngx_table_elt_t *header;
+
+  mrb_get_args(mrb, "o", &mrb_key);
+
+  key = (u_char *)mrb_str_to_cstr(mrb, mrb_key);
+  key_len = RSTRING_LEN(mrb_key);
+  part = &headers->part;
+  header = part->elts;
+
+  for (i = 0; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+      part = part->next;
+      header = part->elts;
+      i = 0;
     }
-    new_header->hash = 1;
-    new_header->key.data = key;
-    new_header->key.len = key_len;
-    new_header->value.data = val;
-    new_header->value.len = val_len;
+
+    if (ngx_strncasecmp(header[i].key.data, key, key_len) == 0) {
+      if (i == 0) {
+        // part->elts now points to the next element in the current part
+        part->elts = (char *) part->elts + headers->size;
+        // Decrement the amount of elements in the current part
+        part->nelts--;
+
+        // If this part doesn't have any more elements
+        if (part->nelts == 0) {
+          // Try to find the previous part
+          new = &headers->part;
+
+          // If our part is the first part
+          if (new == part) {
+            // If we don't have a next part
+            if (part->next == NULL) {
+              // Our element pointer is not valid, point it back where
+              // it is valid again
+              part->elts = (char *) part->elts - headers->size;
+            } else {
+              // The new first part is the next part
+              headers->part = *(part->next);
+            }
+
+            return NGX_OK;
+          }
+
+          // Find the previous part by iterating the linked list until
+          // we find our part or exit
+          while (new->next != part) {
+            if (new->next == NULL) {
+              return NGX_ERROR;
+            }
+            new = new->next;
+          }
+
+          // If our part is the last part
+          if (headers->last == part) {
+            // Set the last part to be the previous part
+            headers->last = new;
+          }
+
+          // Remove our part from the list
+          new->next = part->next;
+        }
+
+        return NGX_OK;
+
+      } else if (i == part->nelts - 1) {
+        // The last element in the part
+
+        // Decrement the element count;
+        part->nelts--;
+        // If this is the last part in the headers list
+        if (part == headers->last) {
+          // Decrement the header element count
+          headers->nalloc--;
+        }
+
+        return NGX_OK;
+      }
+
+      // Allocate some memory for our new part
+      new = ngx_palloc(headers->pool, sizeof(ngx_list_part_t));
+      if (new == NULL) {
+        return NGX_ERROR;
+      }
+
+      // Insert a new part that contains everything after
+      // the header we want to get rid of
+      new->elts = &header[i+1];
+      new->nelts = part->nelts - i - 1;
+
+      // Link the new part to the next part
+      new->next = part->next;
+
+      // The previous part only contains elements before the
+      // removed header
+      part->nelts = i;
+
+      // The next part to the previous part is the new part
+      part->next = new;
+
+      // If the previous part was the last one
+      if (part == headers->last) {
+        // Update the header list with the last part to be
+        // the new part
+        headers->last = new;
+
+        return NGX_OK;
+      }
+      return NGX_OK;
+    }
   }
 
   return NGX_OK;
@@ -343,7 +464,7 @@ static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r;
   r = ngx_mrb_get_request();
-  ngx_mrb_set_request_header(mrb, &r->headers_in.headers, 0);
+  ngx_mrb_set_request_header(mrb, &r->headers_in.headers);
   return self;
 }
 
@@ -351,7 +472,23 @@ static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r;
   r = ngx_mrb_get_request();
-  ngx_mrb_set_request_header(mrb, &r->headers_out.headers, 1);
+  ngx_mrb_set_request_header(mrb, &r->headers_out.headers);
+  return self;
+}
+
+static mrb_value ngx_mrb_del_request_headers_in(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_request_t *r;
+  r = ngx_mrb_get_request();
+  ngx_mrb_del_request_header(mrb, &r->headers_in.headers);
+  return self;
+}
+
+static mrb_value ngx_mrb_del_request_headers_out(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_request_t *r;
+  r = ngx_mrb_get_request();
+  ngx_mrb_del_request_header(mrb, &r->headers_out.headers);
   return self;
 }
 
@@ -459,10 +596,12 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
   class_headers_in = mrb_define_class_under(mrb, class, "Headers_in", mrb->object_class);
   mrb_define_method(mrb, class_headers_in, "[]", ngx_mrb_get_request_headers_in, MRB_ARGS_ANY());
   mrb_define_method(mrb, class_headers_in, "[]=", ngx_mrb_set_request_headers_in, MRB_ARGS_ANY());
+  mrb_define_method(mrb, class_headers_in, "delete", ngx_mrb_del_request_headers_in, MRB_ARGS_ANY());
   mrb_define_method(mrb, class_headers_in, "all", ngx_mrb_get_request_headers_in_hash, MRB_ARGS_ANY());
 
   class_headers_out = mrb_define_class_under(mrb, class, "Headers_out", mrb->object_class);
   mrb_define_method(mrb, class_headers_out, "[]", ngx_mrb_get_request_headers_out, MRB_ARGS_ANY());
   mrb_define_method(mrb, class_headers_out, "[]=", ngx_mrb_set_request_headers_out, MRB_ARGS_ANY());
+  mrb_define_method(mrb, class_headers_out, "delete", ngx_mrb_del_request_headers_out, MRB_ARGS_ANY());
   mrb_define_method(mrb, class_headers_out, "all", ngx_mrb_get_request_headers_out_hash, MRB_ARGS_ANY());
 }

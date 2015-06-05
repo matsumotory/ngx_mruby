@@ -73,6 +73,30 @@ t.assert('ngx_mruby', 'location /header') do
   t.assert_equal "hoge", res2["x-response-header"]
 end
 
+t.assert('ngx_mruby', 'location /header/internal') do
+  res = HttpRequest.new.get base + '/header/internal'
+  t.assert_equal "hoge", res["x-internal-header"]
+end
+
+t.assert('ngx_mruby', 'location /headers_out_delete') do
+  res = HttpRequest.new.get base + '/headers_out_delete'
+  range = (1..53).map(&:to_s)
+  expect_deleted = %w(2 1 22 21 25 42 41 43 47 40 51 53 52)
+  expect_existing = range - expect_deleted
+  expect_deleted.each do |n|
+    t.assert_equal nil, res["ext-header#{n}"], n
+  end
+  expect_existing.each do |n|
+    t.assert_equal 'foo', res["ext-header#{n}"], n
+  end
+end
+
+t.assert('ngx_mruby', 'location /headers_in_delete') do
+  res = HttpRequest.new.get base + '/headers_in_delete', nil, {"X-REQUEST-HEADER" => "hoge"}
+  t.assert_equal "hoge", res["x-internal-header"]
+  t.assert_equal "X-REQUEST-HEADER is nil", res["body"]
+end
+
 t.assert('ngx_mruby - mruby_add_handler', '*\.rb') do
   res = HttpRequest.new.get base + '/add_handler.rb'
   t.assert_equal 'add_handler', res["body"]
