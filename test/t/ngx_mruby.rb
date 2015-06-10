@@ -170,4 +170,10 @@ t.assert('ngx_mruby - get server class name', 'location /server_class') do
   t.assert_equal "Nginx", res["body"]
 end
 
+t.assert('ngx_mruby - add response header in output_filter', 'location /output_filter_header') do
+  res = HttpRequest.new.get base + '/output_filter_header/index.html'
+  t.assert_equal "output_filter_header\n", res["body"]
+  t.assert_equal "new_header", res["x-add-new-header"]
+end
+
 t.report

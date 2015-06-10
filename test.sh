@@ -73,7 +73,7 @@ make install
 ps -C nginx && killall nginx
 cp -p test/build_config.rb ./mruby/.
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
-cp -p test/html/* ${NGINX_INSTALL_DIR}/html/.
+cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
 
 ${NGINX_INSTALL_DIR}/sbin/nginx &
 sleep 2
