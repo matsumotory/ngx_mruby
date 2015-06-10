@@ -33,7 +33,7 @@ if [ ! -d "./mruby/src" ]; then
     echo "mruby Downloading ... Done"
 fi
 
-if [ "$ONLY_BUILD_NGX_MRUBY" == "" ]; then
+if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
 
   echo "nginx Downloading ..."
   if [ -d "./build" ]; then
