@@ -58,10 +58,12 @@ if [ "$ONLY_BUILD_NGX_MRUBY" == "" ]; then
   echo "mruby building ..."
   make build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
   echo "mruby building ... Done"
-fi
 
-echo "ngx_mruby building ..."
-make NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+  echo "ngx_mruby building ..."
+  make NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+else
+  make make_ngx_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+fi
 
 echo "ngx_mruby building ... Done"
 
