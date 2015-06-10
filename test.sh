@@ -32,53 +32,49 @@ if [ ! -d "./mruby/src" ]; then
     git submodule update
     echo "mruby Downloading ... Done"
 fi
-cd mruby
-if [ -d "./build" ]; then
-    echo "mruby Cleaning ..."
-    ./minirake clean
-    echo "mruby Cleaning ... Done"
-fi
-cd ..
 
-echo "nginx Downloading ..."
-if [ -d "./build" ]; then
-    echo "build directory was found"
-else
-    mkdir build
-fi
-cd build
-if [ ! -e ${NGINX_SRC_VER} ]; then
-    wget http://nginx.org/download/${NGINX_SRC_VER}.tar.gz
-    echo "nginx Downloading ... Done"
-    tar xf ${NGINX_SRC_VER}.tar.gz
-fi
-ln -sf ${NGINX_SRC_VER} nginx_src
-NGINX_SRC=`pwd`'/nginx_src'
-cd ..
+if [ "$ONLY_BUILD_NGX_MRUBY" == "" ]; then
 
-echo "ngx_mruby configure ..."
-./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}"
-echo "ngx_mruby configure ... Done"
+  echo "nginx Downloading ..."
+  if [ -d "./build" ]; then
+      echo "build directory was found"
+  else
+      mkdir build
+  fi
+  cd build
+  if [ ! -e ${NGINX_SRC_VER} ]; then
+      wget http://nginx.org/download/${NGINX_SRC_VER}.tar.gz
+      echo "nginx Downloading ... Done"
+      tar xf ${NGINX_SRC_VER}.tar.gz
+  fi
+  ln -sf ${NGINX_SRC_VER} nginx_src
+  NGINX_SRC=`pwd`'/nginx_src'
+  cd ..
 
-echo "mruby building ..."
-make build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-echo "mruby building ... Done"
+  echo "ngx_mruby configure ..."
+  ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}"
+  echo "ngx_mruby configure ... Done"
+
+  echo "mruby building ..."
+  make build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+  echo "mruby building ... Done"
+fi
 
 echo "ngx_mruby building ..."
 make NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+
 echo "ngx_mruby building ... Done"
 
 echo "ngx_mruby testing ..."
 make install
 ps -C nginx && killall nginx
-cp -p test/build_config.rb ./mruby/.
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 cp -p test/html/* ${NGINX_INSTALL_DIR}/html/.
 
 ${NGINX_INSTALL_DIR}/sbin/nginx &
 sleep 2
-cd mruby
-rake clean
+cp -p test/build_config.rb ./mruby_test/.
+cd mruby_test
 rake
 ./bin/mruby ../test/t/ngx_mruby.rb
 killall nginx

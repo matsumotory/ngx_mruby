@@ -2,6 +2,10 @@
 	path = mruby
 	url = https://github.com/mruby/mruby.git
 
+[submodule "mruby_test"]
+	path = mruby_test
+	url = https://github.com/mruby/mruby.git
+
 [submodule "ngx_devel_kit"]
 	path = dependence/ngx_devel_kit
 	url = https://github.com/simpl/ngx_devel_kit.git

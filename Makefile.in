@@ -53,6 +53,9 @@ clean_mruby:
 
 
 #   nginx
+make_ngx_mruby:
+	cd $(NGX_SRC_ROOT) && $(MAKE)
+
 ngx_mruby: generate_gems_config
 	cd $(NGX_SRC_ROOT) && ./configure --add-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
 
