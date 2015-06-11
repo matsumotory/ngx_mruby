@@ -272,6 +272,47 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers)
   return mrb_nil_value();
 }
 
+/* Inspired by h2o header lookup.  https://github.com/h2o/h2o */
+/* Reference as nghttp2 header lookup.  https://github.com/tatsuhiro-t/nghttp2 */
+/* Reference as trusterd header lookup.  https://github.com/trusterd/mruby-http2 */
+
+static int memeq(const void *a, const void *b, size_t n) {
+  return memcmp(a, b, n) == 0;
+}
+
+#define streq(A, B, N) ((sizeof((A)) - 1) == (N) && memeq((A), (B), (N)))
+
+typedef enum {
+  NGX_MRUBY_BUILDIN_HEADER_SERVER,
+  NGX_MRUBY_BUILDIN_HEADER_DATE,
+} ngx_mruby_header_token;
+
+static int ngx_mruby_builtin_header_lookup_token(u_char *name, size_t namelen) {
+  // TODO: Add other built-in headers
+  switch (namelen) {
+  case 4:
+    switch (name[namelen - 1]) {
+    case 'e':
+      if (streq("Dat", name, 3)) {
+        return NGX_MRUBY_BUILDIN_HEADER_DATE;
+      }
+      break;
+    }
+    break;
+  case 6:
+    switch (name[namelen - 1]) {
+    case 'r':
+      if (streq("Serve", name, 5)) {
+        return NGX_MRUBY_BUILDIN_HEADER_SERVER;
+      }
+      break;
+    }
+    break;
+  }
+  return -1;
+}
+
+
 static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers)
 {
   mrb_value mrb_key, mrb_val;
@@ -281,6 +322,7 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers)
   ngx_list_part_t *part;
   ngx_table_elt_t *header;
   ngx_table_elt_t *new_header;
+  ngx_http_request_t *r = ngx_mrb_get_request();
 
   mrb_get_args(mrb, "oo", &mrb_key, &mrb_val);
 
@@ -290,6 +332,24 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers)
   val_len = RSTRING_LEN(mrb_val);
   part  = &headers->part;
   header = part->elts;
+
+  switch (ngx_mruby_builtin_header_lookup_token(key, key_len)) {
+  case NGX_MRUBY_BUILDIN_HEADER_SERVER:
+    r->headers_out.server = ngx_palloc(r->pool, sizeof(ngx_table_elt_t));
+    if (r->headers_out.server == NULL) {
+      return NGX_ERROR;
+    }
+    r->headers_out.server->key.data = key;
+    r->headers_out.server->key.len = key_len;
+    r->headers_out.server->value.data = val;
+    r->headers_out.server->value.len = val_len;
+    break;
+
+  // TODO: Add other built-in headers
+
+  default:
+    break;
+  }
 
   /* TODO:optimize later(linear-search is slow) */
   for (i = 0; /* void */; i++) {
