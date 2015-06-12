@@ -183,5 +183,25 @@ t.assert('ngx_mruby - update built-in response header in output_filter', 'locati
   t.assert_equal "ngx_mruby", res["server"]
 end
 
-t.report
+t.assert('ngx_mruby - update built-in response header in http context', 'location /mruby') do
+  # content phase
+  res = HttpRequest.new.get base + '/mruby'
+  t.assert_equal "global_ngx_mruby", res["server"]
+  # proxy phase
+  res = HttpRequest.new.get base + '/proxy'
+  t.assert_equal "global_ngx_mruby", res["server"]
+  # access phase
+  res = HttpRequest.new.get base + '/headers_in_delete'
+  t.assert_equal "global_ngx_mruby", res["server"]
+  # redirect phase
+  res = HttpRequest.new.get base + '/redirect'
+  t.assert_equal "global_ngx_mruby", res["server"]
+  # output filter phase, already set other Server header
+  res = HttpRequest.new.get base + '/output_filter_builtin_header/index.html'
+  t.assert_not_equal "global_ngx_mruby", res["server"]
+  # return error
+  res = HttpRequest.new.get base + '/return_and_error'
+  t.assert_equal "global_ngx_mruby", res["server"]
+end
+
 t.report
