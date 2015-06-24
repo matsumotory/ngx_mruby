@@ -431,7 +431,7 @@ mrb_value ngx_mrb_f_global_remove(mrb_state *mrb, mrb_value self)
 
 void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
 {
-  mrb_define_method(mrb, mrb->kernel_module, "server_name", ngx_mrb_server_name, ARGS_NONE());
+  mrb_define_method(mrb, mrb->kernel_module, "server_name", ngx_mrb_server_name, MRB_ARGS_NONE());
 
   mrb_define_const(mrb, class, "OK", mrb_fixnum_value(NGX_OK));
   mrb_define_const(mrb, class, "ERROR", mrb_fixnum_value(NGX_ERROR));
