@@ -3,7 +3,7 @@
 ngx_addon_name=ngx_http_mruby_module
 mruby_root=$ngx_addon_dir/mruby
 
-HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_http_mruby_module"
+HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_http_mruby_module __ngx_http_upstream_keepalive_module"
 
 NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
                 $ngx_addon_dir/src/ngx_http_mruby_module.c \

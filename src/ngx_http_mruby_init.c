@@ -12,7 +12,6 @@
 #include "ngx_http_mruby_var.h"
 #include "ngx_http_mruby_connection.h"
 #include "ngx_http_mruby_server.h"
-#include "ngx_http_mruby_upstream.h"
 
 #include <mruby.h>
 #include <mruby/compile.h>

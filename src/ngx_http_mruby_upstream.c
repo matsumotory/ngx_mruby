@@ -5,6 +5,7 @@
 */
 
 #include "ngx_http_mruby_upstream.h"
+#include "ngx_http_mruby_request.h"
 
 #include <mruby.h>
 #include <mruby/proc.h>
@@ -59,7 +60,16 @@ static mrb_value ngx_mrb_upstream_set_keepalive(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_upstream_set_cache(mrb_state *mrb, mrb_value self)
 {
-  return mrb_nil_value();
+  ngx_mruby_upstream_context *ctx = DATA_PTR(self);
+  __ngx_http_upstream_keepalive_srv_conf_t *kcf = ngx_http_get_module_srv_conf(
+      ngx_mrb_get_request(), __ngx_http_upstream_keepalive_module);
+  unsigned int cache;
+
+  mrb_get_args(mrb, "i", &cache);
+  ctx->cache = cache;
+
+  kcf->max_cached = cache;
+  return mrb_fixnum_value(cache);
 }
 
 static mrb_value ngx_mrb_upstream_get_hostname(mrb_state *mrb, mrb_value self)
