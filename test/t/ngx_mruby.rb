@@ -204,4 +204,9 @@ t.assert('ngx_mruby - update built-in response header in http context', 'locatio
   t.assert_equal "global_ngx_mruby", res["server"]
 end
 
+t.assert('ngx_mruby - upstream keepalive', 'location /upstream-keepalive') do
+  res = HttpRequest.new.get base + '/upstream-keepalive'
+  t.assert_equal "true", res["body"]
+end
+
 t.report
