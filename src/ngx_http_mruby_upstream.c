@@ -13,9 +13,43 @@
 #include <mruby/string.h>
 #include <mruby/class.h>
 
+typedef struct {
+  unsigned int cache;
+  unsigned int keepalive:1;
+  mrb_value hostname;
+} ngx_mruby_upstream_context;
+
+static void ngx_mrb_upstream_context_free(mrb_state *mrb, void *p)
+{
+  ngx_mruby_upstream_context *ctx = p;
+  mrb_free(mrb, ctx);
+}
+
+static const struct mrb_data_type ngx_mrb_upstream_context_type = {
+  "ngx_mrb_upstream_context", ngx_mrb_upstream_context_free,
+};
+
 static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
 {
-  return mrb_nil_value();
+  mrb_value host;
+  ngx_mruby_upstream_context *ctx;
+
+  mrb_get_args(mrb, "o", &host);
+
+  ctx = (ngx_mruby_upstream_context *)DATA_PTR(self);
+  if (ctx) {
+    mrb_free(mrb, ctx);
+  }
+  DATA_TYPE(self) = &ngx_mrb_upstream_context_type;
+  DATA_PTR(self) = NULL;
+  ctx = (ngx_mruby_upstream_context *)mrb_malloc(mrb, sizeof(ngx_mruby_upstream_context));
+
+  ctx->hostname = host;
+  ctx->cache = 0;
+  ctx->keepalive = 0;
+  DATA_PTR(self) = ctx;
+
+  return self;
 }
 
 static mrb_value ngx_mrb_upstream_set_keepalive(mrb_state *mrb, mrb_value self)
@@ -30,7 +64,8 @@ static mrb_value ngx_mrb_upstream_set_cache(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_upstream_get_hostname(mrb_state *mrb, mrb_value self)
 {
-  return mrb_nil_value();
+  ngx_mruby_upstream_context *ctx = DATA_PTR(self);
+  return ctx->hostname;
 }
 
 void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *class)
