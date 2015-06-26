@@ -53,11 +53,6 @@ static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
   return self;
 }
 
-static mrb_value ngx_mrb_upstream_set_keepalive(mrb_state *mrb, mrb_value self)
-{
-  return mrb_nil_value();
-}
-
 static mrb_value ngx_mrb_upstream_set_cache(mrb_state *mrb, mrb_value self)
 {
   ngx_mruby_upstream_context *ctx = DATA_PTR(self);
@@ -93,7 +88,6 @@ void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *class)
 
   class_upstream = mrb_define_class_under(mrb, class, "Upstream", mrb->object_class);
   mrb_define_method(mrb, class_upstream, "initialize", ngx_mrb_upstream_init, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_upstream, "keepalive=", ngx_mrb_upstream_set_keepalive, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_upstream, "keepalive_cache", ngx_mrb_upstream_get_cache, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_upstream, "keepalive_cache=", ngx_mrb_upstream_set_cache, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_upstream, "hostname", ngx_mrb_upstream_get_hostname, MRB_ARGS_NONE());
