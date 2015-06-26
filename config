@@ -14,6 +14,7 @@ NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
                 $ngx_addon_dir/src/ngx_http_mruby_connection.c \
                 $ngx_addon_dir/src/ngx_http_mruby_server.c \
                 $ngx_addon_dir/src/ngx_http_mruby_filter.c \
+                $ngx_addon_dir/src/ngx_http_mruby_upstream.c \
                 "
 
 CORE_LIBS="$CORE_LIBS $mruby_root/build/host/mrblib/mrblib.o $mruby_root/build/host/lib/libmruby.a -lm"
