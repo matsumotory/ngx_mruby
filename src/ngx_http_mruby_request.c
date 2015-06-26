@@ -326,8 +326,8 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers)
 
   mrb_get_args(mrb, "oo", &mrb_key, &mrb_val);
 
-  key = (u_char *)mrb_str_to_cstr(mrb, mrb_key);
-  val = (u_char *)mrb_str_to_cstr(mrb, mrb_val);
+  key = (u_char *)RSTRING_PTR(mrb_key);
+  val = (u_char *)RSTRING_PTR(mrb_val);
   key_len = RSTRING_LEN(mrb_key);
   val_len = RSTRING_LEN(mrb_val);
   part  = &headers->part;
@@ -339,6 +339,7 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers)
     if (r->headers_out.server == NULL) {
       return NGX_ERROR;
     }
+    r->headers_out.server->hash = 1;
     r->headers_out.server->key.data = key;
     r->headers_out.server->key.len = key_len;
     r->headers_out.server->value.data = val;
