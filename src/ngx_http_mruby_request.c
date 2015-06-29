@@ -86,7 +86,7 @@ static mrb_value ngx_mrb_get_request_headers_in(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_headers_out(mrb_state *mrb,
     mrb_value self);
 static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb,
-    ngx_list_t *headers);
+    ngx_list_t *headers, ngx_pool_t *pool);
 static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb,
     mrb_value self);
@@ -313,7 +313,8 @@ static int ngx_mruby_builtin_header_lookup_token(u_char *name, size_t namelen) {
 }
 
 
-static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers)
+static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
+    ngx_pool_t *pool)
 {
   mrb_value mrb_key, mrb_val;
   u_char *key, *val;
@@ -326,10 +327,21 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers)
 
   mrb_get_args(mrb, "oo", &mrb_key, &mrb_val);
 
-  key = (u_char *)RSTRING_PTR(mrb_key);
-  val = (u_char *)RSTRING_PTR(mrb_val);
   key_len = RSTRING_LEN(mrb_key);
   val_len = RSTRING_LEN(mrb_val);
+
+  key = ngx_pnalloc(pool, key_len);
+  if (key == NULL) {
+    return NGX_ERROR;
+  }
+  val = ngx_pnalloc(pool, val_len);
+  if (val == NULL) {
+    return NGX_ERROR;
+  }
+
+  ngx_memcpy(key, (u_char *)RSTRING_PTR(mrb_key), key_len);
+  ngx_memcpy(val, (u_char *)RSTRING_PTR(mrb_val), val_len);
+
   part  = &headers->part;
   header = part->elts;
 
@@ -525,7 +537,7 @@ static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r;
   r = ngx_mrb_get_request();
-  ngx_mrb_set_request_header(mrb, &r->headers_in.headers);
+  ngx_mrb_set_request_header(mrb, &r->headers_in.headers, r->pool);
   return self;
 }
 
@@ -533,7 +545,7 @@ static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r;
   r = ngx_mrb_get_request();
-  ngx_mrb_set_request_header(mrb, &r->headers_out.headers);
+  ngx_mrb_set_request_header(mrb, &r->headers_out.headers, r->pool);
   return self;
 }
 
