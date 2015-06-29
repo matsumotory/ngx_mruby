@@ -209,7 +209,7 @@ static mrb_value ngx_mrb_read_request_body(mrb_state *mrb, mrb_value self)
 
   if (r->method != NGX_HTTP_POST && r->method != NGX_HTTP_PUT) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_read_request_body can't read"
-        " when r->mehtod is neither POST nor PUT");
+        " when r->method is neither POST nor PUT");
   }
 
   rc = ngx_http_read_client_request_body(r, read_request_body_cb);
