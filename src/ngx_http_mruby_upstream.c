@@ -69,7 +69,6 @@ static mrb_value ngx_mrb_upstream_set_cache(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_upstream_get_cache(mrb_state *mrb, mrb_value self)
 {
-  //ngx_mruby_upstream_context *ctx = DATA_PTR(self);
   __ngx_http_upstream_keepalive_srv_conf_t *kcf = ngx_http_get_module_srv_conf(
       ngx_mrb_get_request(), __ngx_http_upstream_keepalive_module);
 
