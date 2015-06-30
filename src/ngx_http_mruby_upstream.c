@@ -61,7 +61,12 @@ static mrb_value ngx_mrb_upstream_set_cache(mrb_state *mrb, mrb_value self)
   unsigned int cache;
 
   mrb_get_args(mrb, "i", &cache);
-  ctx->cache = cache;
+
+  if (cache > 1) {
+    ctx->cache = cache;
+  } else {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid upstream_cache: set value > 1");
+  }
 
   kcf->max_cached = cache;
   return mrb_fixnum_value(cache);
@@ -71,6 +76,8 @@ static mrb_value ngx_mrb_upstream_get_cache(mrb_state *mrb, mrb_value self)
 {
   __ngx_http_upstream_keepalive_srv_conf_t *kcf = ngx_http_get_module_srv_conf(
       ngx_mrb_get_request(), __ngx_http_upstream_keepalive_module);
+
+  /* max_cached is 1 by default */
 
   return mrb_fixnum_value(kcf->max_cached);
 }
