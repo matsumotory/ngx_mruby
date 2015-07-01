@@ -15,10 +15,7 @@
 #include <mruby/class.h>
 
 typedef struct {
-  unsigned int cache;
-  unsigned int keepalive:1;
   mrb_value upstream;
-  mrb_value server;
   ngx_http_upstream_rr_peer_t *target;
   ngx_http_upstream_rr_peers_t *peers;
   ngx_http_upstream_srv_conf_t *us;
@@ -37,13 +34,13 @@ static const struct mrb_data_type ngx_mrb_upstream_context_type = {
 static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
 {
   ngx_uint_t i;
-  mrb_value upstream, server;
+  mrb_value upstream;
   ngx_mruby_upstream_context *ctx;
   ngx_http_upstream_main_conf_t *umcf;
   ngx_http_upstream_srv_conf_t **usp;
   ngx_http_request_t *r = ngx_mrb_get_request();
 
-  mrb_get_args(mrb, "oo", &upstream, &server);
+  mrb_get_args(mrb, "o", &upstream);
 
   ctx = (ngx_mruby_upstream_context *)DATA_PTR(self);
   if (ctx) {
@@ -55,16 +52,12 @@ static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
       sizeof(ngx_mruby_upstream_context));
 
   ctx->upstream = upstream;
-  ctx->server = server;
-  ctx->cache = 0;
-  ctx->keepalive = 0;
-
-  umcf  = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
-  usp = umcf->upstreams.elts;
-
   ctx->target = NULL;
   ctx->peers = NULL;
   ctx->us = NULL;
+
+  umcf  = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+  usp = umcf->upstreams.elts;
 
   for (i = 0; i < umcf->upstreams.nelts; i++) {
     if (ngx_strncasecmp(usp[i]->host.data, (u_char *)RSTRING_PTR(upstream),
@@ -86,8 +79,7 @@ static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
   }
 
   if (ctx->target == NULL) {
-    mrb_raisef(mrb, E_RUNTIME_ERROR, "%S not found server config in upstream",
-        server);
+    mrb_raise(mrb, E_RUNTIME_ERROR, "not found server config in upstream");
   }
 
   return self;
@@ -103,9 +95,7 @@ static mrb_value ngx_mrb_upstream_set_cache(mrb_state *mrb, mrb_value self)
 
   mrb_get_args(mrb, "i", &cache);
 
-  if (cache > 1) {
-    ctx->cache = cache;
-  } else {
+  if (cache < 2) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid upstream_cache: set value > 1");
   }
 
@@ -142,8 +132,6 @@ static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r = ngx_mrb_get_request();
 
   mrb_get_args(mrb, "o", &host);
-
-  ctx->server = host;
 
   ngx_memzero(&u, sizeof(ngx_url_t));
   u.url.data = (u_char *)RSTRING_PTR(host);
