@@ -125,7 +125,7 @@ static mrb_value ngx_mrb_upstream_get_cache(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(kcf->max_cached);
 }
 
-static mrb_value ngx_mrb_upstream_get_hostname(mrb_state *mrb, mrb_value self)
+static mrb_value ngx_mrb_upstream_get_server(mrb_state *mrb, mrb_value self)
 {
   ngx_mruby_upstream_context *ctx = DATA_PTR(self);
   if (ctx->target == NULL) {
@@ -134,7 +134,7 @@ static mrb_value ngx_mrb_upstream_get_hostname(mrb_state *mrb, mrb_value self)
   return mrb_str_new(mrb, (char *)ctx->target->name.data, ctx->target->name.len);
 }
 
-static mrb_value ngx_mrb_upstream_set_hostname(mrb_state *mrb, mrb_value self)
+static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
 {
   ngx_mruby_upstream_context *ctx = DATA_PTR(self);
   ngx_url_t u;
@@ -176,6 +176,6 @@ void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_upstream, "initialize", ngx_mrb_upstream_init, MRB_ARGS_REQ(2));
   mrb_define_method(mrb, class_upstream, "keepalive_cache", ngx_mrb_upstream_get_cache, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_upstream, "keepalive_cache=", ngx_mrb_upstream_set_cache, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_upstream, "hostname", ngx_mrb_upstream_get_hostname, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_upstream, "hostname=", ngx_mrb_upstream_set_hostname, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_upstream, "server", ngx_mrb_upstream_get_server, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_upstream, "server=", ngx_mrb_upstream_set_server, MRB_ARGS_REQ(1));
 }
