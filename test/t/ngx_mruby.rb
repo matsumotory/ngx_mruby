@@ -7,6 +7,8 @@ end
 
 t = SimpleTest.new "ngx_mruby test"
 
+nginx_version = HttpRequest.new.get(base + '/nginx-version')["body"]
+
 t.assert('ngx_mruby', 'location /mruby') do
   res = HttpRequest.new.get base + '/mruby'
   t.assert_equal 'Hello ngx_mruby world!', res["body"]
@@ -202,6 +204,15 @@ t.assert('ngx_mruby - update built-in response header in http context', 'locatio
   # return error
   res = HttpRequest.new.get base + '/return_and_error'
   t.assert_equal "global_ngx_mruby", res["server"]
+end
+
+p nginx_version
+
+if nginx_version.split(".")[1].to_i > 6
+  t.assert('ngx_mruby - upstream keepalive', 'location /upstream-keepalive') do
+    res = HttpRequest.new.get base + '/upstream-keepalive'
+    t.assert_equal "true", res["body"]
+  end
 end
 
 t.report
