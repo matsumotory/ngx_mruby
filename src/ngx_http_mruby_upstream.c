@@ -97,7 +97,8 @@ static mrb_value ngx_mrb_upstream_set_cache(mrb_state *mrb, mrb_value self)
   ngx_mruby_upstream_context *ctx = DATA_PTR(self);
   __ngx_http_upstream_keepalive_srv_conf_t *kcf;
 
-  kcf = ngx_http_conf_upstream_srv_conf(ctx->us, __ngx_http_upstream_keepalive_module);
+  kcf = ngx_http_conf_upstream_srv_conf(ctx->us,
+      __ngx_http_upstream_keepalive_module);
 
   mrb_get_args(mrb, "i", &cache);
 
@@ -114,7 +115,8 @@ static mrb_value ngx_mrb_upstream_get_cache(mrb_state *mrb, mrb_value self)
   ngx_mruby_upstream_context *ctx = DATA_PTR(self);
   __ngx_http_upstream_keepalive_srv_conf_t *kcf;
 
-  kcf = ngx_http_conf_upstream_srv_conf(ctx->us, __ngx_http_upstream_keepalive_module);
+  kcf = ngx_http_conf_upstream_srv_conf(ctx->us,
+      __ngx_http_upstream_keepalive_module);
 
   /* max_cached is 1 by default */
 
@@ -134,32 +136,27 @@ static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
 {
   ngx_mruby_upstream_context *ctx = DATA_PTR(self);
   ngx_url_t u;
-  mrb_value host;
+  mrb_value server;
   ngx_http_request_t *r = ngx_mrb_get_request();
 
-  mrb_get_args(mrb, "o", &host);
+  mrb_get_args(mrb, "o", &server);
 
   ngx_memzero(&u, sizeof(ngx_url_t));
-  u.url.data = (u_char *)RSTRING_PTR(host);
-  u.url.len = RSTRING_LEN(host);
+  u.url.data = (u_char *)RSTRING_PTR(server);
+  u.url.len = RSTRING_LEN(server);
   u.default_port = 80;
   if (ngx_parse_url(r->pool, &u) != NGX_OK) {
     if (u.err) {
       mrb_raisef(mrb, E_RUNTIME_ERROR, "%S in upstream %S", 
-          mrb_str_new_cstr(mrb, u.err), host);
+          mrb_str_new_cstr(mrb, u.err), server);
     }
   }
-  mrb_p(mrb, mrb_str_new(mrb, (char *)u.url.data, u.url.len));
-  mrb_p(mrb, mrb_str_new(mrb, (char *)ctx->target->name.data,
-        ctx->target->name.len));
   ctx->target->name = u.url;
   ctx->target->server = u.url;
   ctx->target->sockaddr = u.addrs[0].sockaddr;
   ctx->target->socklen = u.addrs[0].socklen;
-  mrb_p(mrb, mrb_str_new(mrb, (char *)ctx->target->name.data,
-        ctx->target->name.len));
 
-  return host;
+  return server;
 }
 
 void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *class)

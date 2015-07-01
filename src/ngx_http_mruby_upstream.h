@@ -11,13 +11,8 @@
 #include <mruby/hash.h>
 #include <mruby/variable.h>
 
-/*
-#include <ngx_config.h>
-#include <ngx_core.h>
-#include <ngx_http.h>
-*/
 
-
+/* reference from src/http/modules/ngx_http_upstream_keepalive_module.c */
 
 /*
  * Copyright (C) Maxim Dounin
