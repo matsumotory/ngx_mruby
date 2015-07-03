@@ -635,6 +635,12 @@ static mrb_value ngx_mrb_headers_out_obj(mrb_state *mrb, mrb_value self)
   return ngx_mrb_get_class_obj(mrb, self, "headers_out_obj", "Headers_out");
 }
 
+static mrb_value ngx_mrb_sub_request_check(mrb_state *mrb, mrb_value str)
+{
+  ngx_http_request_t *r = ngx_mrb_get_request();
+  return (r != r->main) ? mrb_true_value() : mrb_false_value();
+}
+
 void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
 {
   struct RClass *class_request;
@@ -661,6 +667,8 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_request, "var", ngx_mrb_get_request_var, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "headers_in", ngx_mrb_headers_in_obj, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "headers_out", ngx_mrb_headers_out_obj, MRB_ARGS_NONE());
+
+  mrb_define_method(mrb, class_request, "sub_request?", ngx_mrb_sub_request_check, MRB_ARGS_NONE());
 
   mrb_define_method(mrb, class_request, "hostname", ngx_mrb_get_request_var_hostname, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "filename", ngx_mrb_get_request_var_filename, MRB_ARGS_NONE());

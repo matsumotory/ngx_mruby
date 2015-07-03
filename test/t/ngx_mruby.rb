@@ -206,6 +206,11 @@ t.assert('ngx_mruby - update built-in response header in http context', 'locatio
   t.assert_equal "global_ngx_mruby", res["server"]
 end
 
+t.assert('ngx_mruby - sub_request? check', 'location /sub_request_check') do
+  res = HttpRequest.new.get base + '/sub_request_check'
+  t.assert_equal "false", res["body"]
+end
+
 p nginx_version
 
 if nginx_version.split(".")[1].to_i > 6
