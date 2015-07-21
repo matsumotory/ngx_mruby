@@ -594,6 +594,13 @@ static mrb_value ngx_mrb_get_request_var_hostname(mrb_state *mrb,
   return mrb_funcall(mrb, v, "host", 0, NULL);
 }
 
+static mrb_value ngx_mrb_get_request_var_authority(mrb_state *mrb,
+    mrb_value self)
+{
+  mrb_value v = ngx_mrb_get_request_var(mrb, self);
+  return mrb_funcall(mrb, v, "http_host", 0, NULL);
+}
+
 static mrb_value ngx_mrb_get_request_var_filename(mrb_state *mrb,
     mrb_value self)
 {
@@ -671,6 +678,7 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_request, "sub_request?", ngx_mrb_sub_request_check, MRB_ARGS_NONE());
 
   mrb_define_method(mrb, class_request, "hostname", ngx_mrb_get_request_var_hostname, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_request, "authority", ngx_mrb_get_request_var_authority, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "filename", ngx_mrb_get_request_var_filename, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "user", ngx_mrb_get_request_var_user, MRB_ARGS_NONE());
 
