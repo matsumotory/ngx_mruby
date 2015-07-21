@@ -591,7 +591,7 @@ static mrb_value ngx_mrb_get_request_var_hostname(mrb_state *mrb,
     mrb_value self)
 {
   mrb_value v = ngx_mrb_get_request_var(mrb, self);
-  return mrb_funcall(mrb, v, "hostname", 0, NULL);
+  return mrb_funcall(mrb, v, "host", 0, NULL);
 }
 
 static mrb_value ngx_mrb_get_request_var_filename(mrb_state *mrb,
