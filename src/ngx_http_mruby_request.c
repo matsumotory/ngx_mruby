@@ -28,18 +28,16 @@ static mrb_value ngx_mrb_set_##method_suffix(mrb_state *mrb, mrb_value self); \
 static mrb_value ngx_mrb_set_##method_suffix(mrb_state *mrb, mrb_value self)    \
 { \
   mrb_value arg; \
-  u_char *str; \
   size_t len; \
-  ngx_http_request_t *r; \
+  ngx_http_request_t *r = ngx_mrb_get_request(); \
   mrb_get_args(mrb, "o", &arg); \
   if (mrb_nil_p(arg)) { \
     return self; \
   } \
-  str = (u_char *)mrb_str_to_cstr(mrb, arg); \
   len = RSTRING_LEN(arg); \
-  r = ngx_mrb_get_request(); \
   member.len = len; \
-  member.data = (u_char *)str; \
+  member.data = (u_char *)ngx_palloc(r->pool, len); \
+  ngx_memcpy(member.data, RSTRING_PTR(arg), len); \
   return self; \
 }
 
@@ -330,11 +328,11 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
   key_len = RSTRING_LEN(mrb_key);
   val_len = RSTRING_LEN(mrb_val);
 
-  key = ngx_pnalloc(pool, key_len);
+  key = ngx_palloc(pool, key_len);
   if (key == NULL) {
     return NGX_ERROR;
   }
-  val = ngx_pnalloc(pool, val_len);
+  val = ngx_palloc(pool, val_len);
   if (val == NULL) {
     return NGX_ERROR;
   }
