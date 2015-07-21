@@ -1,8 +1,13 @@
 ##
 # ngx_mruby test
+#
+
+def http_host
+  "127.0.0.1:58080"
+end
 
 def base
-  'http://127.0.0.1:58080'
+  "http://#{http_host}"
 end
 
 t = SimpleTest.new "ngx_mruby test"
@@ -218,6 +223,16 @@ if nginx_version.split(".")[1].to_i > 6
     res = HttpRequest.new.get base + '/upstream-keepalive'
     t.assert_equal "true", res["body"]
   end
+end
+
+t.assert('ngx_mruby - authority', 'location /authority') do
+  res = HttpRequest.new.get base + '/authority', nil, {"Host" => http_host}
+  t.assert_equal http_host, res["body"]
+end
+
+t.assert('ngx_mruby - hostname', 'location /hostname') do
+  res = HttpRequest.new.get base + '/hostname', nil, {"Host" => http_host}
+  t.assert_equal "127.0.0.1", res["body"]
 end
 
 t.report
