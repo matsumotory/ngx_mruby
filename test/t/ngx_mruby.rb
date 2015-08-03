@@ -235,4 +235,12 @@ t.assert('ngx_mruby - hostname', 'location /hostname') do
   t.assert_equal "127.0.0.1", res["body"]
 end
 
+t.assert('ngx_mruby - Var#exist?', 'location /var_exist') do
+  res = HttpRequest.new.get base + '/var_exist'
+  t.assert_equal "false", res["body"]
+
+  res = HttpRequest.new.get base + '/var_exist?foo=bar'
+  t.assert_equal "true", res["body"]
+end
+
 t.report

@@ -204,6 +204,32 @@ static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
   }
 }
 
+static mrb_value ngx_mrb_var_exist(mrb_state *mrb, mrb_value self)
+{
+  mrb_int m_len;
+  char *c_name;
+
+  ngx_http_request_t *r;
+  ngx_http_variable_value_t *var;
+  ngx_str_t ngx_name;
+  ngx_uint_t key;
+
+  r = ngx_mrb_get_request();
+
+  mrb_get_args(mrb, "s", &c_name, &m_len);
+
+  ngx_name.len = (size_t)m_len;
+  ngx_name.data = (u_char *)c_name;
+
+  key = ngx_hash_strlow(ngx_name.data, ngx_name.data, ngx_name.len);
+  var = ngx_http_get_variable(r, &ngx_name, key);
+  if (var != NULL && !var->not_found) {
+    return mrb_true_value();
+  }
+
+  return mrb_false_value();
+}
+
 static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r;
@@ -347,5 +373,6 @@ void ngx_mrb_var_class_init(mrb_state *mrb, struct RClass *class)
 
   class_var = mrb_define_class_under(mrb, class, "Var", mrb->object_class);
   mrb_define_method(mrb, class_var, "method_missing", ngx_mrb_var_method_missing, MRB_ARGS_ANY());
+  mrb_define_method(mrb, class_var, "exist?", ngx_mrb_var_exist, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_var, "set", ngx_mrb_var_set_func, MRB_ARGS_REQ(2));
 }
