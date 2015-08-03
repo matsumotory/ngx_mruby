@@ -48,15 +48,6 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self,
     return mrb_str_new(mrb, (char *)var->data, var->len);
   }
   else {
-    ngx_log_error(NGX_LOG_ERR
-      , r->connection->log
-      , 0
-      , "%s ERROR %s:%d: %s not found"
-      , MODULE_NAME
-      , __func__
-      , __LINE__
-      , c_name
-    );
     return mrb_nil_value();
   }
 }
