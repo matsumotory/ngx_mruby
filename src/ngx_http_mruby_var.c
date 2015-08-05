@@ -166,7 +166,8 @@ static mrb_value ngx_mrb_var_exist(mrb_state *mrb, mrb_value self)
   mrb_get_args(mrb, "s", &c_name, &m_len);
 
   ngx_name.len = (size_t)m_len;
-  ngx_name.data = (u_char *)c_name;
+  ngx_name.data = ngx_palloc(r->pool, ngx_name.len);
+  ngx_memcpy(ngx_name.data, (u_char *)c_name, ngx_name.len);
 
   key = ngx_hash_strlow(ngx_name.data, ngx_name.data, ngx_name.len);
   var = ngx_http_get_variable(r, &ngx_name, key);

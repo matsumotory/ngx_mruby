@@ -338,11 +338,12 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   }
 
   // save location uri to ns
-  ns.data = (u_char *)mrb_str_to_cstr(mrb, uri);
   ns.len = RSTRING_LEN(uri);
   if (ns.len == 0) {
     return mrb_nil_value();
   }
+  ns.data = ngx_palloc(r->pool, ns.len);
+  ngx_memcpy(ns.data, RSTRING_PTR(uri), ns.len);
 
   // if uri start with scheme prefix
   // return 3xx for redirect
