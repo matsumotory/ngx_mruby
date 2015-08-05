@@ -140,8 +140,9 @@ static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
   // first init name with mrb_symbol
   // second get mrb_string with mrb_sym2str
   s_name = mrb_sym2str(mrb, mrb_symbol(name));
-  c_name = mrb_str_to_cstr(mrb, s_name);
   c_len = RSTRING_LEN(s_name);
+  c_name = ngx_palloc(r->pool, c_len);
+  ngx_memcpy(c_name, RSTRING_PTR(s_name), c_len);
 
   if (c_name[c_len - 1] == '=') {
     return ngx_mrb_var_set(mrb, self, strtok(c_name, "="), a[0], r);
