@@ -74,7 +74,7 @@ sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${
 cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
 
 ${NGINX_INSTALL_DIR}/sbin/nginx &
-sleep 2
+#sleep 2
 cp -p test/build_config.rb ./mruby_test/.
 cd mruby_test
 rake

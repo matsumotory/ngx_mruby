@@ -238,17 +238,20 @@ static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers)
 {
-  mrb_value mrb_key;
+  char *mkey;
+  mrb_int mlen;
   u_char *key;
   size_t key_len;
   ngx_uint_t i;
   ngx_list_part_t *part;
   ngx_table_elt_t *header;
+  ngx_http_request_t *r = ngx_mrb_get_request();
 
-  mrb_get_args(mrb, "o", &mrb_key);
+  mrb_get_args(mrb, "s", &mkey, &mlen);
 
-  key = (u_char *)mrb_str_to_cstr(mrb, mrb_key);
-  key_len = RSTRING_LEN(mrb_key);
+  key_len = (size_t)mlen;
+  key = ngx_pnalloc(r->pool, key_len);
+  ngx_memcpy(key, (u_char *)mkey, key_len);
   part = &headers->part;
   header = part->elts;
 
@@ -330,14 +333,14 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
 
   mrb_get_args(mrb, "oo", &mrb_key, &mrb_val);
 
-  key_len = RSTRING_LEN(mrb_key);
-  val_len = RSTRING_LEN(mrb_val);
+  key_len = (size_t)RSTRING_LEN(mrb_key);
+  val_len = (size_t)RSTRING_LEN(mrb_val);
 
-  key = ngx_palloc(pool, key_len);
+  key = ngx_pnalloc(pool, key_len);
   if (key == NULL) {
     return NGX_ERROR;
   }
-  val = ngx_palloc(pool, val_len);
+  val = ngx_pnalloc(pool, val_len);
   if (val == NULL) {
     return NGX_ERROR;
   }
@@ -350,7 +353,7 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
 
   switch (ngx_mruby_builtin_header_lookup_token(key, key_len)) {
   case NGX_MRUBY_BUILDIN_HEADER_SERVER:
-    r->headers_out.server = ngx_palloc(r->pool, sizeof(ngx_table_elt_t));
+    r->headers_out.server = ngx_pnalloc(r->pool, sizeof(ngx_table_elt_t));
     if (r->headers_out.server == NULL) {
       return NGX_ERROR;
     }
@@ -400,17 +403,21 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
 
 static ngx_int_t ngx_mrb_del_request_header(mrb_state *mrb, ngx_list_t *headers)
 {
-  mrb_value mrb_key;
+  char *mkey;
+  mrb_int mlen;
   u_char *key;
   size_t key_len;
   ngx_uint_t i;
   ngx_list_part_t *part, *new;
   ngx_table_elt_t *header;
+  ngx_http_request_t *r = ngx_mrb_get_request();
 
-  mrb_get_args(mrb, "o", &mrb_key);
+  mrb_get_args(mrb, "s", &mkey, &mlen);
 
-  key = (u_char *)mrb_str_to_cstr(mrb, mrb_key);
-  key_len = RSTRING_LEN(mrb_key);
+  key_len = (size_t)mlen;
+  key = ngx_pnalloc(r->pool, key_len);
+  ngx_memcpy(key, (u_char *)mkey, key_len);
+
   part = &headers->part;
   header = part->elts;
 
@@ -487,7 +494,7 @@ static ngx_int_t ngx_mrb_del_request_header(mrb_state *mrb, ngx_list_t *headers)
       }
 
       // Allocate some memory for our new part
-      new = ngx_palloc(headers->pool, sizeof(ngx_list_part_t));
+      new = ngx_palloc(r->pool, sizeof(ngx_list_part_t));
       if (new == NULL) {
         return NGX_ERROR;
       }
