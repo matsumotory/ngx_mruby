@@ -1597,10 +1597,28 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd,
   if (type == NGX_MRB_CODE_TYPE_FILE) {
     filter_data->code =
         ngx_http_mruby_mrb_code_from_file(cf->pool, &filter_data->script);
+    if (filter_data->code == NGX_CONF_UNSET_PTR) {
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%V) open failed",
+                         &value[2]);
+      return NGX_CONF_ERROR;
+    }
+
+    if (cf->args->nelts == 4) {
+      if (ngx_strcmp(value[3].data, "cache") == 0) {
+        filter_data->code->cache = ON;
+      } else {
+        ngx_conf_log_error(
+            NGX_LOG_EMERG, cf, 0,
+            "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+            &value[3]);
+        return NGX_CONF_ERROR;
+      }
+    }
   } else {
     filter_data->code =
         ngx_http_mruby_mrb_code_from_string(cf->pool, &filter_data->script);
   }
+
   rc = ngx_http_mruby_shared_state_compile(cf, filter_data->state,
                                            filter_data->code);
   if (rc != NGX_OK) {
@@ -1751,12 +1769,19 @@ static ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r,
   ngx_http_mruby_set_var_data_t *filter_data;
 
   filter_data = data;
-  if (!mlcf->cached && ngx_http_mruby_state_reinit_from_file(
-                           filter_data->state, filter_data->code)) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "failed to load mruby script: %s %s:%d",
-                  filter_data->script.data, __FUNCTION__, __LINE__);
-    return NGX_ERROR;
+
+  if (filter_data->state == NGX_CONF_UNSET_PTR) {
+    return NGX_DECLINED;
+  }
+
+  if (filter_data->code == NGX_CONF_UNSET_PTR) {
+    return NGX_DECLINED;
+  }
+
+  if (!filter_data->code->cache) {
+    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(
+        mlcf->cached, filter_data->state, filter_data->code,
+        ngx_http_mruby_state_reinit_from_file);
   }
 
   return ngx_mrb_run(r, filter_data->state, filter_data->code, mlcf->cached,
