@@ -44,8 +44,12 @@ void ngx_mrb_filter_class_init(mrb_state *mrb, struct RClass *class)
 {
   struct RClass *class_filter;
 
-  class_filter = mrb_define_class_under(mrb, class, "Filter", mrb->object_class);
-  mrb_define_method(mrb, class_filter, "body", ngx_mrb_get_filter_body, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_filter, "body=", ngx_mrb_set_filter_body, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_filter, "output", ngx_mrb_set_filter_body, MRB_ARGS_REQ(1));
+  class_filter =
+      mrb_define_class_under(mrb, class, "Filter", mrb->object_class);
+  mrb_define_method(mrb, class_filter, "body", ngx_mrb_get_filter_body,
+                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_filter, "body=", ngx_mrb_set_filter_body,
+                    MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_filter, "output", ngx_mrb_set_filter_body,
+                    MRB_ARGS_REQ(1));
 }

@@ -18,7 +18,7 @@
 #define MODULE_VERSION "1.11.12"
 
 #if (nginx_version > 1007999)
-  #define NGX_USE_MRUBY_UPSTREAM
+#define NGX_USE_MRUBY_UPSTREAM
 #endif
 
 typedef enum code_type_t {
@@ -53,7 +53,7 @@ typedef struct {
 #include <ndk.h>
 #endif
 
-extern ngx_module_t  ngx_http_mruby_module;
+extern ngx_module_t ngx_http_mruby_module;
 
 typedef struct ngx_http_mruby_main_conf_t {
   ngx_mrb_state_t *state;
@@ -90,6 +90,6 @@ typedef struct ngx_http_mruby_loc_conf_t {
 } ngx_http_mruby_loc_conf_t;
 
 ngx_http_output_header_filter_pt ngx_http_next_header_filter;
-ngx_http_output_body_filter_pt   ngx_http_next_body_filter;
+ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
 #endif // NGX_HTTP_MRUBY_MODULE_H
