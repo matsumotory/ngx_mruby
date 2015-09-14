@@ -299,4 +299,16 @@ t.assert('ngx_mruby - rack base', 'location /rack_base_env') do
   t.assert_equal 200, res.code
 end
 
+t.assert('ngx_mruby - rack base auth ok', 'location /rack_base_2phase') do
+  res = HttpRequest.new.get base + '/rack_base_2phase', nil, {"auth-token" => "aaabbbccc"}
+  t.assert_equal "OK", res["body"]
+  t.assert_equal "127.0.0.1", res["x-client-ip"]
+  t.assert_equal 200, res.code
+end
+
+t.assert('ngx_mruby - rack base auth ng', 'location /rack_base_2phase') do
+  res = HttpRequest.new.get base + '/rack_base_2phase', nil, {"auth-token" => "cccbbbaaa"}
+  t.assert_equal 403, res.code
+end
+
 t.report
