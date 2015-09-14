@@ -271,4 +271,32 @@ t.assert('ngx_mruby - rack base', 'location /rack_base3') do
   t.assert_equal 404, res.code
 end
 
+t.assert('ngx_mruby - rack base', 'location /rack_base_env') do
+  res = HttpRequest.new.get base + '/rack_base_env?a=1&b=1', nil, {"Host" => "ngx.example.com:58080", "x-hoge" => "foo"}
+  body = JSON.parse res["body"]
+  puts body
+
+  t.assert_equal "GET", body["REQUEST_METHOD"]
+  t.assert_equal "", body["SCRIPT_NAME"]
+  t.assert_equal "/rack_base_env", body["PATH_INFO"]
+  t.assert_equal "/rack_base_env?a=1&b=1", body["REQUEST_URI"]
+  t.assert_equal "a=1&b=1", body["QUERY_STRING"]
+  t.assert_equal "ngx.example.com", body["SERVER_NAME"]
+  t.assert_equal "127.0.0.1", body["SERVER_ADDR"]
+  t.assert_equal "58080", body["SERVER_PORT"]
+  t.assert_equal "127.0.0.1", body["REMOTE_ADDR"]
+  t.assert_equal "http", body["rack.url_scheme"]
+  t.assert_false body["rack.multithread"]
+  t.assert_true body["rack.multiprocess"]
+  t.assert_false body["rack.run_once"]
+  t.assert_false body["rack.hijack?"]
+  t.assert_equal "NGINX", body["server.name"]
+  t.assert_equal nginx_version, body["server.version"]
+  t.assert_equal "*/*", body["HTTP_ACCEPT"]
+  t.assert_equal "close", body["HTTP_CONNECTION"]
+  t.assert_equal "ngx.example.com:58080", body["HTTP_HOST"]
+  t.assert_equal "foo", body["HTTP_X_HOGE"]
+  t.assert_equal 200, res.code
+end
+
 t.report
