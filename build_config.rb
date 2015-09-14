@@ -26,6 +26,7 @@ MRuby::Build.new do |conf|
 
   # ngx_mruby extended class
   conf.gem '../mrbgems/ngx_mruby_mrblib'
+  conf.gem '../mrbgems/rack-based-api'
 
   # use memcached
   # conf.gem :github => 'matsumoto-r/mruby-memcached'
