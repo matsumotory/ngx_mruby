@@ -243,4 +243,32 @@ t.assert('ngx_mruby - Var#exist?', 'location /var_exist') do
   t.assert_equal "true", res["body"]
 end
 
+t.assert('ngx_mruby - rack base', 'location /rack_base') do
+  res = HttpRequest.new.get base + '/rack_base'
+  t.assert_equal "rack body", res["body"]
+  t.assert_equal "foo", res["x-hoge"]
+  t.assert_equal 200, res.code
+end
+
+t.assert('ngx_mruby - rack base', 'location /rack_base1') do
+  res = HttpRequest.new.get base + '/rack_base1'
+  t.assert_equal "rack body", res["body"]
+  t.assert_equal "foo", res["x-hoge"]
+  t.assert_equal "hoge", res["x-foo"]
+  t.assert_equal 200, res.code
+end
+
+t.assert('ngx_mruby - rack base', 'location /rack_base2') do
+  res = HttpRequest.new.get base + '/rack_base2'
+  t.assert_equal "rack body", res["body"]
+  t.assert_equal "foo", res["x-hoge"]
+  t.assert_equal "hoge", res["x-foo"]
+  t.assert_equal 200, res.code
+end
+
+t.assert('ngx_mruby - rack base', 'location /rack_base3') do
+  res = HttpRequest.new.get base + '/rack_base3'
+  t.assert_equal 404, res.code
+end
+
 t.report
