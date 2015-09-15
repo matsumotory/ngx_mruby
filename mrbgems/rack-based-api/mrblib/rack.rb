@@ -15,7 +15,7 @@ module Kernel
         "SERVER_PORT" => c.local_port.to_s,
         "REMOTE_ADDR" => c.remote_ip,
         "REMOTE_PORT" => c.remote_port.to_s,
-        "rack.url_scheme" => r.var.scheme,
+        "rack.url_scheme" => r.scheme,
         "rack.multithread" => false,
         "rack.multiprocess" => true,
         "rack.run_once" => false,

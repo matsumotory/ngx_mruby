@@ -1,5 +1,8 @@
 class Nginx
   class Request
+    def scheme
+      self.var.scheme
+    end
     def document_root
       Nginx::Server.new.document_root
     end
