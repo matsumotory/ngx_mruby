@@ -5,23 +5,23 @@ module Kernel
     def self.build_env r, c
       env = {}
       env = {
-        "REQUEST_METHOD" => r.method,
-        "SCRIPT_NAME" => "",
-        "PATH_INFO" => r.uri,
-        "REQUEST_URI" => r.unparsed_uri,
-        "QUERY_STRING" => r.args,
-        "SERVER_NAME" => r.hostname,
-        "SERVER_ADDR" => c.local_ip,
-        "SERVER_PORT" => c.local_port.to_s,
-        "REMOTE_ADDR" => c.remote_ip,
-        "REMOTE_PORT" => c.remote_port.to_s,
-        "rack.url_scheme" => r.scheme,
-        "rack.multithread" => false,
+        "REQUEST_METHOD"    => r.method,
+        "SCRIPT_NAME"       => "",
+        "PATH_INFO"         => r.uri,
+        "REQUEST_URI"       => r.unparsed_uri,
+        "QUERY_STRING"      => r.args,
+        "SERVER_NAME"       => r.hostname,
+        "SERVER_ADDR"       => c.local_ip,
+        "SERVER_PORT"       => c.local_port.to_s,
+        "REMOTE_ADDR"       => c.remote_ip,
+        "REMOTE_PORT"       => c.remote_port.to_s,
+        "rack.url_scheme"   => r.scheme,
+        "rack.multithread"  => false,
         "rack.multiprocess" => true,
-        "rack.run_once" => false,
-        "rack.hijack?" => false,
-        "server.name" => server_name,
-        "server.version" => Server.server_version,
+        "rack.run_once"     => false,
+        "rack.hijack?"      => false,
+        "server.name"       => server_name,
+        "server.version"    => Server.server_version,
       }
 
       # add rquest headers into env
@@ -31,6 +31,7 @@ module Kernel
 
       env
     end
+
     def self.build_response r, res
       if res[1].kind_of?(Hash)
         res[1].keys.each { |k| r.headers_out[k] = res[1][k] }
@@ -47,6 +48,7 @@ module Kernel
       Server.return res[0].to_i
     end
   end
+
   def run obj
     Server = get_server_class
     r = Server::Request.new
