@@ -311,4 +311,10 @@ t.assert('ngx_mruby - rack base auth ng', 'location /rack_base_2phase') do
   t.assert_equal 403, res.code
 end
 
+t.assert('ngx_mruby - rack base push', 'location /rack_base_push/index.txt') do
+  res = HttpRequest.new.get base + '/rack_base_push/index.txt'
+  t.assert_equal 200, res.code
+  t.assert_equal "</index.js>; rel=preload", res["link"]
+end
+
 t.report
