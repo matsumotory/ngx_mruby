@@ -509,6 +509,8 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
                           ngx_mrb_get_ngx_mruby_version, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class, "nginx_version",
                           ngx_mrb_get_nginx_version, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class, "server_version",
+                          ngx_mrb_get_nginx_version, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class, "configure",
                           ngx_http_mruby_get_nginx_configure, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class, "redirect", ngx_mrb_redirect,

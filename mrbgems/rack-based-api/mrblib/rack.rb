@@ -21,7 +21,7 @@ module Kernel
         "rack.run_once" => false,
         "rack.hijack?" => false,
         "server.name" => server_name,
-        "server.version" => Server.nginx_version,
+        "server.version" => Server.server_version,
       }
 
       # add rquest headers into env
