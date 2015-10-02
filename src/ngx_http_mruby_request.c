@@ -337,8 +337,6 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
 {
   u_char *key, *val;
   size_t key_len, val_len;
-  ngx_list_part_t *part;
-  ngx_table_elt_t *header;
   ngx_table_elt_t *new_header;
   ngx_http_request_t *r = ngx_mrb_get_request();
 
@@ -356,9 +354,6 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
 
   ngx_memcpy(key, (u_char *)RSTRING_PTR(mrb_key), key_len);
   ngx_memcpy(val, (u_char *)RSTRING_PTR(mrb_val), val_len);
-
-  part = &headers->part;
-  header = part->elts;
 
   switch (ngx_mruby_builtin_header_lookup_token(key, key_len)) {
   case NGX_MRUBY_BUILDIN_HEADER_SERVER:
