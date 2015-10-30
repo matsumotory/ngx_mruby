@@ -3,7 +3,7 @@
 ngx_addon_name=ngx_http_mruby_module
 mruby_root=$ngx_addon_dir/mruby
 
-HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_http_mruby_module __ngx_http_upstream_keepalive_module"
+HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_http_mruby_module __ngx_http_upstream_keepalive_module ngx_stream_mruby_module"
 
 NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
                 $ngx_addon_dir/src/http/ngx_http_mruby_module.c \
@@ -16,6 +16,13 @@ NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
                 $ngx_addon_dir/src/http/ngx_http_mruby_filter.c \
                 $ngx_addon_dir/src/http/ngx_http_mruby_upstream.c \
                 "
+if [ $STREAM = YES ]; then
+  modules="$modules ngx_stream_mruby_module"
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
+                  $ngx_addon_dir/src/stream/ngx_stream_mruby_module.c \
+                  "
+fi
+
 
 CORE_LIBS="$CORE_LIBS $mruby_root/build/host/mrblib/mrblib.o $mruby_root/build/host/lib/libmruby.a -lm"
 CORE_INCS="$CORE_INCS $mruby_root/src $mruby_root/include"

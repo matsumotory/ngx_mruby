@@ -10,7 +10,7 @@ set -e
 . ./nginx_version
 
 NGINX_INSTALL_DIR=`pwd`'/build/nginx'
-NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module"
+NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module --with-stream --without-stream_access_module"
 
 if [ "$NUM_THREADS_ENV" != "" ]; then
     NUM_THREADS=$NUM_THREADS_ENV
