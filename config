@@ -20,6 +20,8 @@ if [ $STREAM = YES ]; then
   modules="$modules ngx_stream_mruby_module"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
                   $ngx_addon_dir/src/stream/ngx_stream_mruby_module.c \
+                  $ngx_addon_dir/src/stream/ngx_stream_mruby_init.c \
+                  $ngx_addon_dir/src/stream/ngx_stream_mruby_core.c \
                   "
 fi
 

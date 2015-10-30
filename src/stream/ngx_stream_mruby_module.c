@@ -10,7 +10,8 @@
 #include "mruby/array.h"
 #include "mruby/variable.h"
 
-#define MODULE_NAME "ngx_mruby-stream-module"
+#include "ngx_stream_mruby_module.h"
+#include "ngx_stream_mruby_init.h"
 
 typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
 
@@ -87,6 +88,7 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   ngx_stream_mruby_srv_conf_t *ascf = ngx_stream_get_module_srv_conf(s, ngx_stream_mruby_module);
   mrb_int ai = mrb_gc_arena_save(ascf->mrb);
 
+  ascf->mrb->ud = s;
   mrb_run(ascf->mrb, ascf->code->proc, mrb_top_self(ascf->mrb));
 
   if (ascf->mrb->exc) {
@@ -202,6 +204,7 @@ static void *ngx_stream_mruby_create_srv_conf(ngx_conf_t *cf)
   }
   conf->code = NGX_CONF_UNSET_PTR;
   conf->mrb = mrb_open();
+  ngx_stream_mrb_class_init(conf->mrb);
 
   return conf;
 }
