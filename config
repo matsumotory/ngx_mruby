@@ -6,15 +6,15 @@ mruby_root=$ngx_addon_dir/mruby
 HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_http_mruby_module __ngx_http_upstream_keepalive_module"
 
 NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
-                $ngx_addon_dir/src/ngx_http_mruby_module.c \
-                $ngx_addon_dir/src/ngx_http_mruby_core.c \
-                $ngx_addon_dir/src/ngx_http_mruby_init.c \
-                $ngx_addon_dir/src/ngx_http_mruby_request.c \
-                $ngx_addon_dir/src/ngx_http_mruby_var.c \
-                $ngx_addon_dir/src/ngx_http_mruby_connection.c \
-                $ngx_addon_dir/src/ngx_http_mruby_server.c \
-                $ngx_addon_dir/src/ngx_http_mruby_filter.c \
-                $ngx_addon_dir/src/ngx_http_mruby_upstream.c \
+                $ngx_addon_dir/src/http/ngx_http_mruby_module.c \
+                $ngx_addon_dir/src/http/ngx_http_mruby_core.c \
+                $ngx_addon_dir/src/http/ngx_http_mruby_init.c \
+                $ngx_addon_dir/src/http/ngx_http_mruby_request.c \
+                $ngx_addon_dir/src/http/ngx_http_mruby_var.c \
+                $ngx_addon_dir/src/http/ngx_http_mruby_connection.c \
+                $ngx_addon_dir/src/http/ngx_http_mruby_server.c \
+                $ngx_addon_dir/src/http/ngx_http_mruby_filter.c \
+                $ngx_addon_dir/src/http/ngx_http_mruby_upstream.c \
                 "
 
 CORE_LIBS="$CORE_LIBS $mruby_root/build/host/mrblib/mrblib.o $mruby_root/build/host/lib/libmruby.a -lm"
