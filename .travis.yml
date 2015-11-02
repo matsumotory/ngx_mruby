@@ -7,12 +7,24 @@ before_install:
 install:
     - sudo apt-get -qq install rake bison libcurl4-openssl-dev
 env:
-  - NGINX_VERSION=nginx-1.4.7
-  - NGINX_VERSION=nginx-1.6.3
-  - NGINX_VERSION=nginx-1.8.0
-  - NGINX_VERSION=nginx-1.9.5
+  - NGINX_SRC_MAJOR=1
+    NGINX_SRC_MINOR=4
+    NGINX_SRC_PATCH=7
+  - NGINX_SRC_MAJOR=1
+    NGINX_SRC_MINOR=6
+    NGINX_SRC_PATCH=3
+  - NGINX_SRC_MAJOR=1
+    NGINX_SRC_MINOR=8
+    NGINX_SRC_PATCH=0
+  - NGINX_SRC_MAJOR=1
+    NGINX_SRC_MINOR=9
+    NGINX_SRC_PATCH=6
+
 script:
-  - echo "NGINX_SRC_VER=${NGINX_VERSION}" > nginx_version
+  - echo "NGINX_SRC_MAJOR=${NGINX_SRC_MAJOR}" > nginx_version
+  - echo "NGINX_SRC_MINOR=${NGINX_SRC_MINOR}" >> nginx_version
+  - echo "NGINX_SRC_PATCH=${NGINX_SRC_PATCH}" >> nginx_version
+  - echo "NGINX_SRC_VER=nginx-${NGINX_SRC_MAJOR}.${NGINX_SRC_MINOR}.${NGINX_SRC_PATCH}" >> nginx_version
   - sh test.sh
 notifications:
   irc:

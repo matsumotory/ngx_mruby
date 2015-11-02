@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Default install and test
 #   download nginx into ./build/
@@ -10,7 +10,16 @@ set -e
 . ./nginx_version
 
 NGINX_INSTALL_DIR=`pwd`'/build/nginx'
-NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module --with-stream --without-stream_access_module"
+
+if [ $NGINX_SRC_MINOR -ge 9 ]; then
+  if [ $NGINX_SRC_PATCH -ge 6 ]; then
+    NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module --with-stream --without-stream_access_module"
+  else
+  NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module"
+  fi
+else
+  NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module"
+fi
 
 if [ "$NUM_THREADS_ENV" != "" ]; then
     NUM_THREADS=$NUM_THREADS_ENV
@@ -71,6 +80,13 @@ echo "ngx_mruby testing ..."
 make install
 ps -C nginx && killall nginx
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
+
+if [ $NGINX_SRC_MINOR -ge 9 ]; then
+  if [ $NGINX_SRC_PATCH -ge 6 ]; then
+    cat test/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
+  fi
+fi
+
 cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
 
 ${NGINX_INSTALL_DIR}/sbin/nginx &

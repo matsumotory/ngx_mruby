@@ -330,4 +330,20 @@ t.assert('ngx_mruby - multipul response headers', 'location /multi_headers_out')
   t.assert_equal ["fuga", "foo"], res["hoge"]
 end
 
+#
+# nginx stream test verison 1.9.6 later
+#
+if nginx_version.split(".")[1].to_i >= 9 && nginx_version.split(".")[2].to_i >= 6
+  base1 = "http://127.0.0.1:12345"
+  base2 = "http://127.0.0.1:12346"
+  t.assert('ngx_mruby - stream tcp load balancer', '127.0.0.1:12345 to 127.0.0.1:58080 which changed from 127.0.0.1:58081 by mruby') do
+    res = HttpRequest.new.get(base1 + '/mruby')
+    t.assert_equal 'Hello ngx_mruby world!', res["body"]
+  end
+  t.assert('ngx_mruby - stream tcp load balancer', '127.0.0.1:12346 to 127.0.0.1:58081 which changed from 127.0.0.1:58080 by mruby') do
+    res = HttpRequest.new.get(base2 + '/')
+    t.assert_equal 'proxy test ok', res["body"]
+  end
+end
+
 t.report
