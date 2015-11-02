@@ -7,7 +7,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_stream.h>
-#include <ngx_conf_file.h>
 
 #include "mruby.h"
 #include "mruby/proc.h"
@@ -413,7 +412,7 @@ static char *ngx_stream_mruby_build_file(ngx_conf_t *cf, ngx_command_t *cmd, voi
 /* set directive values from inline code*/
 static char *ngx_stream_mruby_build_code(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-  mrb_state *mrb = ngx_stream_mrb_state_conf(cf); 
+  mrb_state *mrb = ngx_stream_mrb_state_conf(cf);
   ngx_stream_mruby_srv_conf_t *ascf = conf;
   ngx_str_t *value;
   ngx_mrb_code_t *code;
