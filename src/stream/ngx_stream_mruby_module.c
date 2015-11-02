@@ -46,11 +46,11 @@ static ngx_int_t ngx_stream_mruby_init(ngx_conf_t *cf);
 
 static ngx_command_t ngx_stream_mruby_commands[] = {
 
-    {ngx_string("mruby_stream_init"), NGX_STREAM_MAIN_CONF | NGX_STREAM_SRV_CONF | NGX_CONF_TAKE1,
-     ngx_stream_mruby_init_build_file, NGX_STREAM_SRV_CONF_OFFSET, 0, NULL},
+    {ngx_string("mruby_stream_init"), NGX_STREAM_MAIN_CONF | NGX_CONF_TAKE1,
+     ngx_stream_mruby_init_build_file, NGX_STREAM_MAIN_CONF_OFFSET, 0, NULL},
 
-    {ngx_string("mruby_stream_init_code"), NGX_STREAM_MAIN_CONF | NGX_STREAM_SRV_CONF | NGX_CONF_TAKE1,
-     ngx_stream_mruby_init_build_code, NGX_STREAM_SRV_CONF_OFFSET, 0, NULL},
+    {ngx_string("mruby_stream_init_code"), NGX_STREAM_MAIN_CONF | NGX_CONF_TAKE1,
+     ngx_stream_mruby_init_build_code, NGX_STREAM_MAIN_CONF_OFFSET, 0, NULL},
 
     {ngx_string("mruby_stream"), NGX_STREAM_MAIN_CONF | NGX_STREAM_SRV_CONF | NGX_CONF_TAKE1,
      ngx_stream_mruby_build_file, NGX_STREAM_SRV_CONF_OFFSET, 0, NULL},
@@ -93,6 +93,8 @@ static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
 
   mmcf->init_code = NGX_CONF_UNSET_PTR;
   mmcf->mrb = mrb_open();
+  if (mmcf->mrb == NULL)
+    return NULL;
   ngx_stream_mrb_class_init(mmcf->mrb);
 
   return mmcf;
@@ -100,11 +102,6 @@ static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
 
 static char *ngx_stream_mruby_init_main_conf(ngx_conf_t *cf, void *conf)
 {
-  // ngx_stream_mruby_srv_conf_t *mscf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_mruby_module);
-  // ngx_stream_mruby_main_conf_t *mmcf = conf;
-
-  // mmcf->mrb = mscf->mrb;
-
   return NGX_CONF_OK;
 }
 
@@ -119,6 +116,8 @@ static void *ngx_stream_mruby_create_srv_conf(ngx_conf_t *cf)
   }
   ascf->code = NGX_CONF_UNSET_PTR;
   ascf->mrb = mrb_open();
+  if (ascf->mrb == NULL)
+    return NULL;
   ngx_stream_mrb_class_init(ascf->mrb);
 
   return ascf;
