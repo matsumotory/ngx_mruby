@@ -150,16 +150,16 @@ static char *ngx_stream_mruby_init_main_conf(ngx_conf_t *cf, void *conf)
 /* create directive template */
 static void *ngx_stream_mruby_create_srv_conf(ngx_conf_t *cf)
 {
-  ngx_stream_mruby_srv_conf_t *ascf;
+  ngx_stream_mruby_srv_conf_t *mscf;
 
-  ascf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_mruby_srv_conf_t));
-  if (ascf == NULL) {
+  mscf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_mruby_srv_conf_t));
+  if (mscf == NULL) {
     return NULL;
   }
 
-  ascf->code = NGX_CONF_UNSET_PTR;
+  mscf->code = NGX_CONF_UNSET_PTR;
 
-  return ascf;
+  return mscf;
 }
 
 /* merge directive configuration */
@@ -234,12 +234,12 @@ static void ngx_stream_mrb_state_clean(mrb_state *mrb)
 
 static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
 {
-  ngx_stream_mruby_srv_conf_t *ascf = ngx_stream_get_module_srv_conf(s, ngx_stream_mruby_module);
+  ngx_stream_mruby_srv_conf_t *mscf = ngx_stream_get_module_srv_conf(s, ngx_stream_mruby_module);
   mrb_state *mrb = ngx_stream_mrb_state(s);
   mrb_int ai = mrb_gc_arena_save(mrb);
 
   mrb->ud = s;
-  mrb_run(mrb, ascf->code->proc, mrb_top_self(mrb));
+  mrb_run(mrb, mscf->code->proc, mrb_top_self(mrb));
 
   if (mrb->exc) {
     ngx_stream_mruby_raise_error(mrb, mrb_obj_value(mrb->exc), s);
@@ -385,7 +385,7 @@ static char *ngx_stream_mruby_init_build_code(ngx_conf_t *cf, ngx_command_t *cmd
 static char *ngx_stream_mruby_build_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   mrb_state *mrb = ngx_stream_mrb_state_conf(cf);
-  ngx_stream_mruby_srv_conf_t *ascf = conf;
+  ngx_stream_mruby_srv_conf_t *mscf = conf;
   ngx_str_t *value;
   ngx_mrb_code_t *code;
   ngx_int_t rc;
@@ -399,7 +399,7 @@ static char *ngx_stream_mruby_build_file(ngx_conf_t *cf, ngx_command_t *cmd, voi
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mrb, code);
 
-  ascf->code = code;
+  mscf->code = code;
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
@@ -413,7 +413,7 @@ static char *ngx_stream_mruby_build_file(ngx_conf_t *cf, ngx_command_t *cmd, voi
 static char *ngx_stream_mruby_build_code(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   mrb_state *mrb = ngx_stream_mrb_state_conf(cf);
-  ngx_stream_mruby_srv_conf_t *ascf = conf;
+  ngx_stream_mruby_srv_conf_t *mscf = conf;
   ngx_str_t *value;
   ngx_mrb_code_t *code;
   ngx_int_t rc;
@@ -427,7 +427,7 @@ static char *ngx_stream_mruby_build_code(ngx_conf_t *cf, ngx_command_t *cmd, voi
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mrb, code);
 
-  ascf->code = code;
+  mscf->code = code;
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
