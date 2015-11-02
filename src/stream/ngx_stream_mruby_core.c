@@ -43,7 +43,8 @@ static mrb_value ngx_stream_mrb_errlogger(mrb_state *mrb, mrb_value self)
   }
   log_level = mrb_fixnum(argv[0]);
   if (log_level < 0) {
-    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "%s ERROR %s: log level is not positive number", MODULE_NAME, __func__);
+    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "%s ERROR %s: log level is not positive number", MODULE_NAME,
+                  __func__);
     return self;
   }
   if (mrb_type(argv[1]) != MRB_TT_STRING) {
