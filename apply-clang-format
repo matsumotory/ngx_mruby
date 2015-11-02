@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -e
+
+for f in `ls src/{http,stream}/*.{c,h}`
+do
+  clang-format -i $f
+done
