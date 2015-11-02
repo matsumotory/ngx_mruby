@@ -54,8 +54,7 @@ static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
   }
   DATA_TYPE(self) = &ngx_mrb_upstream_context_type;
   DATA_PTR(self) = NULL;
-  ctx = (ngx_mruby_upstream_context *)mrb_malloc(
-      mrb, sizeof(ngx_mruby_upstream_context));
+  ctx = (ngx_mruby_upstream_context *)mrb_malloc(mrb, sizeof(ngx_mruby_upstream_context));
 
   ctx->upstream = upstream;
   ctx->target = NULL;
@@ -66,8 +65,7 @@ static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
   usp = umcf->upstreams.elts;
 
   for (i = 0; i < umcf->upstreams.nelts; i++) {
-    if (ngx_strncasecmp(usp[i]->host.data, (u_char *)RSTRING_PTR(upstream),
-                        RSTRING_LEN(upstream)) == 0) {
+    if (ngx_strncasecmp(usp[i]->host.data, (u_char *)RSTRING_PTR(upstream), RSTRING_LEN(upstream)) == 0) {
       ctx->us = usp[i];
       ctx->peers = usp[i]->peer.data;
       if (ctx->peers->number > 1) {
@@ -97,8 +95,7 @@ static mrb_value ngx_mrb_upstream_set_cache(mrb_state *mrb, mrb_value self)
   ngx_mruby_upstream_context *ctx = DATA_PTR(self);
   __ngx_http_upstream_keepalive_srv_conf_t *kcf;
 
-  kcf = ngx_http_conf_upstream_srv_conf(ctx->us,
-                                        __ngx_http_upstream_keepalive_module);
+  kcf = ngx_http_conf_upstream_srv_conf(ctx->us, __ngx_http_upstream_keepalive_module);
 
   mrb_get_args(mrb, "i", &cache);
 
@@ -115,8 +112,7 @@ static mrb_value ngx_mrb_upstream_get_cache(mrb_state *mrb, mrb_value self)
   ngx_mruby_upstream_context *ctx = DATA_PTR(self);
   __ngx_http_upstream_keepalive_srv_conf_t *kcf;
 
-  kcf = ngx_http_conf_upstream_srv_conf(ctx->us,
-                                        __ngx_http_upstream_keepalive_module);
+  kcf = ngx_http_conf_upstream_srv_conf(ctx->us, __ngx_http_upstream_keepalive_module);
 
   /* max_cached is 1 by default */
 
@@ -129,8 +125,7 @@ static mrb_value ngx_mrb_upstream_get_server(mrb_state *mrb, mrb_value self)
   if (ctx->target == NULL) {
     return mrb_nil_value();
   }
-  return mrb_str_new(mrb, (char *)ctx->target->name.data,
-                     ctx->target->name.len);
+  return mrb_str_new(mrb, (char *)ctx->target->name.data, ctx->target->name.len);
 }
 
 static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
@@ -148,8 +143,7 @@ static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
   u.default_port = 80;
   if (ngx_parse_url(r->pool, &u) != NGX_OK) {
     if (u.err) {
-      mrb_raisef(mrb, E_RUNTIME_ERROR, "%S in upstream %S",
-                 mrb_str_new_cstr(mrb, u.err), server);
+      mrb_raisef(mrb, E_RUNTIME_ERROR, "%S in upstream %S", mrb_str_new_cstr(mrb, u.err), server);
     }
   }
   ctx->target->name = u.url;
@@ -164,18 +158,12 @@ void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *class)
 {
   struct RClass *class_upstream;
 
-  class_upstream =
-      mrb_define_class_under(mrb, class, "Upstream", mrb->object_class);
-  mrb_define_method(mrb, class_upstream, "initialize", ngx_mrb_upstream_init,
-                    MRB_ARGS_REQ(2));
-  mrb_define_method(mrb, class_upstream, "keepalive_cache",
-                    ngx_mrb_upstream_get_cache, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_upstream, "keepalive_cache=",
-                    ngx_mrb_upstream_set_cache, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_upstream, "server", ngx_mrb_upstream_get_server,
-                    MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_upstream, "server=", ngx_mrb_upstream_set_server,
-                    MRB_ARGS_REQ(1));
+  class_upstream = mrb_define_class_under(mrb, class, "Upstream", mrb->object_class);
+  mrb_define_method(mrb, class_upstream, "initialize", ngx_mrb_upstream_init, MRB_ARGS_REQ(2));
+  mrb_define_method(mrb, class_upstream, "keepalive_cache", ngx_mrb_upstream_get_cache, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_upstream, "keepalive_cache=", ngx_mrb_upstream_set_cache, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_upstream, "server", ngx_mrb_upstream_get_server, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_upstream, "server=", ngx_mrb_upstream_set_server, MRB_ARGS_REQ(1));
 }
 
 #endif /* NGX_USE_MRUBY_UPSTREAM */
