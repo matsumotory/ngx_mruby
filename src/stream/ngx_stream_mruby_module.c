@@ -83,6 +83,11 @@ static void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stre
   }
 }
 
+static void ngx_stream_mrb_state_clean(mrb_state *mrb)
+{
+  mrb->exc = 0;
+}
+
 static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
 {
   ngx_stream_mruby_srv_conf_t *ascf = ngx_stream_get_module_srv_conf(s, ngx_stream_mruby_module);
@@ -93,10 +98,12 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
 
   if (ascf->mrb->exc) {
     ngx_stream_mruby_raise_error(ascf->mrb, mrb_obj_value(ascf->mrb->exc), s);
+    ngx_stream_mrb_state_clean(ascf->mrb);
     mrb_gc_arena_restore(ascf->mrb, ai);
     return NGX_ABORT;
   }
 
+  ngx_stream_mrb_state_clean(ascf->mrb);
   mrb_gc_arena_restore(ascf->mrb, ai);
 
   return NGX_DECLINED;
