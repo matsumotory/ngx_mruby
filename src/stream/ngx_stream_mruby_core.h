@@ -1,7 +1,7 @@
 /*
 // ngx_stream_mruby_core.h - ngx_mruby mruby module header
 //
-// See Copyright Notice in ngx_stream_mruby_module.c
+// See Copyright Notice in ngx_http_mruby_module.c
 */
 
 #ifndef NGX_STREAM_MRUBY_CORE_H

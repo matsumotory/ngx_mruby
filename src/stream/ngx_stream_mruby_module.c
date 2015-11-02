@@ -1,3 +1,9 @@
+/*
+// ngx_stream_mruby_module.c - ngx_mruby mruby module header
+//
+// See Copyright Notice in ngx_http_mruby_module.c
+*/
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_stream.h>
