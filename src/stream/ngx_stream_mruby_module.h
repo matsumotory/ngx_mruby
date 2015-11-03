@@ -16,4 +16,9 @@
 
 extern ngx_module_t ngx_stream_mruby_module;
 
+typedef struct {
+  ngx_stream_session_t *s;
+  ngx_int_t stream_status;
+} ngx_stream_mruby_internal_ctx_t;
+
 #endif // NGX_STREAM_MRUBY_MODULE_H

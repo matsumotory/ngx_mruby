@@ -27,7 +27,9 @@ static mrb_value ngx_stream_mrb_errlogger(mrb_state *mrb, mrb_value self)
   mrb_value msg;
   mrb_int argc;
   mrb_int log_level;
-  ngx_stream_session_t *s = mrb->ud;
+  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
+  ngx_stream_session_t *s = ictx->s;
+
   if (s == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "can't use logger at this phase. only use at session stream phase");
   }

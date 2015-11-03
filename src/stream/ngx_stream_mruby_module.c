@@ -155,6 +155,7 @@ static mrb_state *ngx_stream_mrb_state_conf(ngx_conf_t *cf)
 static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
 {
   ngx_stream_mruby_main_conf_t *mmcf;
+  ngx_stream_mruby_internal_ctx_t *ictx;
 
   mmcf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_mruby_main_conf_t));
   if (mmcf == NULL) {
@@ -173,6 +174,14 @@ static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
   if (mmcf->ctx->mrb == NULL)
     return NULL;
   ngx_stream_mrb_class_init(mmcf->ctx->mrb);
+
+  ictx = ngx_pcalloc(cf->pool, sizeof(ngx_stream_mruby_internal_ctx_t));
+  if (ictx == NULL) {
+    return NULL;
+  }
+  ictx->s = NULL;
+  ictx->stream_status = NGX_DECLINED;
+  mmcf->ctx->mrb->ud = ictx;
 
   return mmcf;
 }
@@ -590,8 +599,9 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   ngx_stream_mruby_srv_conf_t *mscf = ngx_stream_get_module_srv_conf(s, ngx_stream_mruby_module);
   mrb_state *mrb = ngx_stream_mrb_state(s);
   mrb_int ai = mrb_gc_arena_save(mrb);
+  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
 
-  mrb->ud = s;
+  ictx->s = s;
   mrb_run(mrb, mscf->code->proc, mrb_top_self(mrb));
 
   if (mrb->exc) {
@@ -604,7 +614,8 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   ngx_stream_mrb_state_clean(mrb);
   mrb_gc_arena_restore(mrb, ai);
 
-  return NGX_DECLINED;
+  /* default NGX_DECLINED */
+  return ictx->stream_status;
 }
 
 /* set mruby_handler to access phase */
