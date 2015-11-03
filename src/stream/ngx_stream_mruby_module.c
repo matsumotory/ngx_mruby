@@ -40,6 +40,7 @@ typedef struct {
   ngx_stream_mruby_conf_ctx_t *ctx;
   ngx_mrb_code_t *init_code;
   ngx_mrb_code_t *init_worker_code;
+  ngx_mrb_code_t *exit_worker_code;
 
 } ngx_stream_mruby_main_conf_t;
 
@@ -71,12 +72,15 @@ static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_
 /* ngx_mruby stream module init and exit handler */
 static ngx_int_t ngx_stream_mruby_init_module(ngx_cycle_t *cycle);
 static ngx_int_t ngx_stream_mruby_init_worker(ngx_cycle_t *cycle);
+static void ngx_stream_mruby_exit_worker(ngx_cycle_t *cycle);
 
 /* ngx_mruby stream module init and exit directive functions */
 static char *ngx_stream_mruby_init_build_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_stream_mruby_init_build_code(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_stream_mruby_init_worker_build_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_stream_mruby_init_worker_build_code(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_stream_mruby_exit_worker_build_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_stream_mruby_exit_worker_build_code(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 /* setup main and srv configuration */
 static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf);
@@ -100,6 +104,12 @@ static ngx_command_t ngx_stream_mruby_commands[] = {
 
     {ngx_string("mruby_stream_init_worker_code"), NGX_STREAM_MAIN_CONF | NGX_CONF_TAKE1,
      ngx_stream_mruby_init_worker_build_code, NGX_STREAM_MAIN_CONF_OFFSET, 0, NULL},
+
+    {ngx_string("mruby_stream_exit_worker"), NGX_STREAM_MAIN_CONF | NGX_CONF_TAKE1,
+     ngx_stream_mruby_exit_worker_build_file, NGX_STREAM_MAIN_CONF_OFFSET, 0, NULL},
+
+    {ngx_string("mruby_stream_exit_worker_code"), NGX_STREAM_MAIN_CONF | NGX_CONF_TAKE1,
+     ngx_stream_mruby_exit_worker_build_code, NGX_STREAM_MAIN_CONF_OFFSET, 0, NULL},
 
     {ngx_string("mruby_stream"), NGX_STREAM_MAIN_CONF | NGX_STREAM_SRV_CONF | NGX_CONF_TAKE1,
      ngx_stream_mruby_build_file, NGX_STREAM_SRV_CONF_OFFSET, 0, NULL},
@@ -127,7 +137,7 @@ ngx_module_t ngx_stream_mruby_module = {NGX_MODULE_V1, &ngx_stream_mruby_module_
                                         ngx_stream_mruby_init_worker,                /* init process */
                                         NULL,                                        /* init thread */
                                         NULL,                                        /* exit thread */
-                                        NULL,                                        /* exit process */
+                                        ngx_stream_mruby_exit_worker,                                        /* exit process */
                                         NULL,                                        /* exit master */
                                         NGX_MODULE_V1_PADDING};
 
@@ -156,6 +166,7 @@ static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
 
   mmcf->init_code = NGX_CONF_UNSET_PTR;
   mmcf->init_worker_code = NGX_CONF_UNSET_PTR;
+  mmcf->exit_worker_code = NGX_CONF_UNSET_PTR;
 
   mmcf->ctx->mrb = mrb_open();
   if (mmcf->ctx->mrb == NULL)
@@ -244,6 +255,14 @@ static ngx_int_t ngx_stream_mruby_init_worker(ngx_cycle_t *cycle)
     return ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->init_worker_code);
 
   return NGX_OK;
+}
+
+static void ngx_stream_mruby_exit_worker(ngx_cycle_t *cycle)
+{
+  ngx_stream_mruby_main_conf_t *mmcf = ngx_stream_cycle_get_module_main_conf(cycle, ngx_stream_mruby_module);
+
+  if (mmcf->exit_worker_code != NGX_CONF_UNSET_PTR)
+    ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->exit_worker_code);
 }
 
 static void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s)
@@ -446,6 +465,48 @@ static char *ngx_stream_mruby_init_worker_build_code(ngx_conf_t *cf, ngx_command
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mmcf->ctx->mrb, code);
   mmcf->init_worker_code = code;
+
+  if (rc != NGX_OK) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
+    return NGX_CONF_ERROR;
+  }
+
+  return NGX_CONF_OK;
+}
+
+static char *ngx_stream_mruby_exit_worker_build_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+  ngx_int_t rc;
+  ngx_stream_mruby_main_conf_t *mmcf = conf;
+  ngx_str_t *value = cf->args->elts;
+  ngx_mrb_code_t *code = ngx_stream_mruby_mrb_code_from_file(cf->pool, &value[1]);
+
+  if (code == NGX_CONF_UNSET_PTR)
+    return NGX_CONF_ERROR;
+
+  rc = ngx_stream_mruby_shared_state_compile(cf, mmcf->ctx->mrb, code);
+  mmcf->exit_worker_code = code;
+
+  if (rc != NGX_OK) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
+    return NGX_CONF_ERROR;
+  }
+
+  return NGX_CONF_OK;
+}
+
+static char *ngx_stream_mruby_exit_worker_build_code(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+  ngx_int_t rc;
+  ngx_stream_mruby_main_conf_t *mmcf = conf;
+  ngx_str_t *value = cf->args->elts;
+  ngx_mrb_code_t *code = ngx_stream_mruby_mrb_code_from_string(cf->pool, &value[1]);
+
+  if (code == NGX_CONF_UNSET_PTR)
+    return NGX_CONF_ERROR;
+
+  rc = ngx_stream_mruby_shared_state_compile(cf, mmcf->ctx->mrb, code);
+  mmcf->exit_worker_code = code;
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
