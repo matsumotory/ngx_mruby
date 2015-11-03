@@ -602,6 +602,7 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
 
   ictx->s = s;
+  ictx->stream_status = NGX_DECLINED;
   mrb_run(mrb, mscf->code->proc, mrb_top_self(mrb));
 
   if (mrb->exc) {
