@@ -125,6 +125,25 @@ static mrb_value ngx_stream_mrb_upstream_set_server(mrb_state *mrb, mrb_value se
   return server;
 }
 
+static mrb_value ngx_stream_mrb_connection_get_status(mrb_state *mrb, mrb_value self)
+{
+  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
+
+  return mrb_fixnum_value((mrb_int)ictx->stream_status);
+}
+
+static mrb_value ngx_stream_mrb_connection_status(mrb_state *mrb, mrb_value self)
+{
+  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
+  mrb_int status;
+
+  mrb_get_args(mrb, "i", &status);
+
+  ictx->stream_status = (ngx_int_t)status;
+
+  return self;
+}
+
 static mrb_value ngx_stream_mrb_remote_ip(mrb_state *mrb, mrb_value self)
 {
   ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
@@ -141,5 +160,10 @@ void ngx_stream_mrb_conn_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_conn, "initialize", ngx_stream_mrb_connection_init, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_conn, "upstream_server", ngx_stream_mrb_upstream_get_server, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "upstream_server=", ngx_stream_mrb_upstream_set_server, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_conn, "stream_status", ngx_stream_mrb_connection_get_status, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_conn, "stream_status=", ngx_stream_mrb_connection_status, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_conn, "remote_ip", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class_conn, "remote_ip", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class_conn, "stream_status", ngx_stream_mrb_connection_get_status, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class_conn, "stream_status=", ngx_stream_mrb_connection_status, MRB_ARGS_REQ(1));
 }
