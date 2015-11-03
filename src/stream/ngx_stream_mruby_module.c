@@ -137,7 +137,7 @@ ngx_module_t ngx_stream_mruby_module = {NGX_MODULE_V1, &ngx_stream_mruby_module_
                                         ngx_stream_mruby_init_worker,                /* init process */
                                         NULL,                                        /* init thread */
                                         NULL,                                        /* exit thread */
-                                        ngx_stream_mruby_exit_worker,                                        /* exit process */
+                                        ngx_stream_mruby_exit_worker,                /* exit process */
                                         NULL,                                        /* exit master */
                                         NGX_MODULE_V1_PADDING};
 
