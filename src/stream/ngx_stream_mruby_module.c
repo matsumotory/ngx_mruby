@@ -58,6 +58,7 @@ static char *ngx_stream_mruby_build_file(ngx_conf_t *cf, ngx_command_t *cmd, voi
 static char *ngx_stream_mruby_build_code(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 /* mruby core functiosn for compile*/
+static void ngx_stream_mrb_state_clean(mrb_state *mrb);
 static ngx_mrb_code_t *ngx_stream_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *code_s);
 static ngx_mrb_code_t *ngx_stream_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t *code_s);
 static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code);
@@ -209,6 +210,20 @@ static char *ngx_stream_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void 
   return NGX_CONF_OK;
 }
 
+/* raise functions */
+static void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s)
+{
+  struct RString *str;
+  char *err_out;
+
+  obj = mrb_funcall(mrb, obj, "inspect", 0);
+  if (mrb_type(obj) == MRB_TT_STRING) {
+    str = mrb_str_ptr(obj);
+    err_out = str->as.heap.ptr;
+    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "mrb_run failed: return NGX_ABORT to client: error: %s", err_out);
+  }
+}
+
 static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle)
 {
   struct RString *str;
@@ -220,21 +235,6 @@ static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_
     err_out = str->as.heap.ptr;
     ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %s", err_out);
   }
-}
-
-static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ngx_mrb_code_t *code)
-{
-  mrb_int ai = mrb_gc_arena_save(mrb);
-
-  mrb_run(mrb, code->proc, mrb_top_self(mrb));
-  if (mrb->exc) {
-    ngx_stream_mrb_raise_cycle_error(mrb, mrb_obj_value(mrb->exc), cycle);
-    mrb_gc_arena_restore(mrb, ai);
-    return NGX_ERROR;
-  }
-
-  mrb_gc_arena_restore(mrb, ai);
-  return NGX_OK;
 }
 
 static ngx_int_t ngx_stream_mruby_init_module(ngx_cycle_t *cycle)
@@ -265,44 +265,10 @@ static void ngx_stream_mruby_exit_worker(ngx_cycle_t *cycle)
     ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->exit_worker_code);
 }
 
-static void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s)
-{
-  struct RString *str;
-  char *err_out;
-
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
-    str = mrb_str_ptr(obj);
-    err_out = str->as.heap.ptr;
-    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "mrb_run failed: return NGX_ABORT to client: error: %s", err_out);
-  }
-}
-
+/* ngx_mruby stream core functions */
 static void ngx_stream_mrb_state_clean(mrb_state *mrb)
 {
   mrb->exc = 0;
-}
-
-static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
-{
-  ngx_stream_mruby_srv_conf_t *mscf = ngx_stream_get_module_srv_conf(s, ngx_stream_mruby_module);
-  mrb_state *mrb = ngx_stream_mrb_state(s);
-  mrb_int ai = mrb_gc_arena_save(mrb);
-
-  mrb->ud = s;
-  mrb_run(mrb, mscf->code->proc, mrb_top_self(mrb));
-
-  if (mrb->exc) {
-    ngx_stream_mruby_raise_error(mrb, mrb_obj_value(mrb->exc), s);
-    ngx_stream_mrb_state_clean(mrb);
-    mrb_gc_arena_restore(mrb, ai);
-    return NGX_ABORT;
-  }
-
-  ngx_stream_mrb_state_clean(mrb);
-  mrb_gc_arena_restore(mrb, ai);
-
-  return NGX_DECLINED;
 }
 
 static ngx_mrb_code_t *ngx_stream_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *code_file_path)
@@ -390,10 +356,26 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
   return NGX_OK;
 }
 
+static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ngx_mrb_code_t *code)
+{
+  mrb_int ai = mrb_gc_arena_save(mrb);
+
+  mrb_run(mrb, code->proc, mrb_top_self(mrb));
+  if (mrb->exc) {
+    ngx_stream_mrb_raise_cycle_error(mrb, mrb_obj_value(mrb->exc), cycle);
+    mrb_gc_arena_restore(mrb, ai);
+    return NGX_ERROR;
+  }
+
+  mrb_gc_arena_restore(mrb, ai);
+  return NGX_OK;
+}
+
+/* ngx_mruby stream init or exit directive functions */
 static char *ngx_stream_mruby_init_build_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_int_t rc;
-  ngx_stream_mruby_main_conf_t *mmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_mruby_module);
+  ngx_stream_mruby_main_conf_t *mmcf = conf;
   ngx_str_t *value = cf->args->elts;
   ngx_mrb_code_t *code = ngx_stream_mruby_mrb_code_from_file(cf->pool, &value[1]);
 
@@ -602,6 +584,28 @@ static ngx_int_t ngx_stream_mrb_run_conf(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb
   return NGX_OK;
 }
 */
+
+static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
+{
+  ngx_stream_mruby_srv_conf_t *mscf = ngx_stream_get_module_srv_conf(s, ngx_stream_mruby_module);
+  mrb_state *mrb = ngx_stream_mrb_state(s);
+  mrb_int ai = mrb_gc_arena_save(mrb);
+
+  mrb->ud = s;
+  mrb_run(mrb, mscf->code->proc, mrb_top_self(mrb));
+
+  if (mrb->exc) {
+    ngx_stream_mruby_raise_error(mrb, mrb_obj_value(mrb->exc), s);
+    ngx_stream_mrb_state_clean(mrb);
+    mrb_gc_arena_restore(mrb, ai);
+    return NGX_ABORT;
+  }
+
+  ngx_stream_mrb_state_clean(mrb);
+  mrb_gc_arena_restore(mrb, ai);
+
+  return NGX_DECLINED;
+}
 
 /* set mruby_handler to access phase */
 static ngx_int_t ngx_stream_mruby_init(ngx_conf_t *cf)
