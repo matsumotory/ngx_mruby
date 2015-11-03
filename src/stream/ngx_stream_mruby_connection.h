@@ -7,4 +7,6 @@
 #ifndef NGX_STREAM_MRUBY_CONNECTION_H
 #define NGX_STREAM_MRUBY_CONNECTION_H
 
+#include "ngx_stream_mruby_module.h"
+
 #endif // NGX_STREAM_MRUBY_CONNECTION_H
