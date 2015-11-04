@@ -250,6 +250,9 @@ static ngx_int_t ngx_stream_mruby_init_module(ngx_cycle_t *cycle)
 {
   ngx_stream_mruby_main_conf_t *mmcf = ngx_stream_cycle_get_module_main_conf(cycle, ngx_stream_mruby_module);
 
+  if (mmcf == NULL)
+    return NGX_OK;
+
   if (mmcf->init_code != NGX_CONF_UNSET_PTR)
     return ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->init_code);
 
@@ -260,6 +263,9 @@ static ngx_int_t ngx_stream_mruby_init_worker(ngx_cycle_t *cycle)
 {
   ngx_stream_mruby_main_conf_t *mmcf = ngx_stream_cycle_get_module_main_conf(cycle, ngx_stream_mruby_module);
 
+  if (mmcf == NULL)
+    return NGX_OK;
+
   if (mmcf->init_worker_code != NGX_CONF_UNSET_PTR)
     return ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->init_worker_code);
 
@@ -269,6 +275,9 @@ static ngx_int_t ngx_stream_mruby_init_worker(ngx_cycle_t *cycle)
 static void ngx_stream_mruby_exit_worker(ngx_cycle_t *cycle)
 {
   ngx_stream_mruby_main_conf_t *mmcf = ngx_stream_cycle_get_module_main_conf(cycle, ngx_stream_mruby_module);
+
+  if (mmcf == NULL)
+    return;
 
   if (mmcf->exit_worker_code != NGX_CONF_UNSET_PTR)
     ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->exit_worker_code);
