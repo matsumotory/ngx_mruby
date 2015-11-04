@@ -12,7 +12,6 @@
 #include <nginx.h>
 
 #define MODULE_NAME "ngx_mruby-stream-module"
-#define MODULE_VERSION "0.0.1"
 
 extern ngx_module_t ngx_stream_mruby_module;
 
