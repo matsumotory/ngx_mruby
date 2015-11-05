@@ -52,7 +52,7 @@ The value below allows about 60000 recursive calls in the simplest case. */
 # define DEBUG(x)
 #endif
 
-#define ARENA_RESTORE(mrb,ai) (mrb)->arena_idx = (ai)
+#define ARENA_RESTORE(mrb,ai) (mrb)->gc.arena_idx = (ai)
 
 static inline void
 stack_clear(mrb_value *from, size_t count)
@@ -2178,6 +2178,7 @@ RETRY_TRY_BLOCK:
     CASE(OP_STRCAT) {
       /* A B    R(A).concat(R(B)) */
       mrb_str_concat(mrb, regs[GETARG_A(i)], regs[GETARG_B(i)]);
+      regs = mrb->c->stack;
       NEXT;
     }
 
