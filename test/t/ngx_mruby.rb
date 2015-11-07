@@ -61,6 +61,12 @@ t.assert('ngx_mruby - output filter', 'location /filter_dynamic_arg?hoge=fuga') 
   t.assert_equal 'hoge=fuga', res["x-new-header"]
 end
 
+t.assert('ngx_mruby - output filter', 'location /filter_dynamic_arg_file?hoge=fuga') do
+  res = HttpRequest.new.get base + '/filter_dynamic_arg_file?hoge=fuga'
+  t.assert_equal 'output filter: hoge=fuga', res["body"]
+  t.assert_equal 'hoge=fuga', res["x-new-header"]
+end
+
 t.assert('ngx_mruby - Nginx::Connection#{local_ip,local_port}', 'location /server_ip_port') do
   res = HttpRequest.new.get base + '/server_ip_port'
   t.assert_equal '127.0.0.1:58080', res["body"]
