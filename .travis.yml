@@ -18,7 +18,7 @@ env:
     NGINX_SRC_PATCH=0
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=9
-    NGINX_SRC_PATCH=6
+    NGINX_SRC_PATCH=9
 
 script:
   - echo "NGINX_SRC_MAJOR=${NGINX_SRC_MAJOR}" > nginx_version
