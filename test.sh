@@ -10,15 +10,16 @@ set -e
 . ./nginx_version
 
 NGINX_INSTALL_DIR=`pwd`'/build/nginx'
+NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-http_ssl_module'
 
 if [ $NGINX_SRC_MINOR -ge 9 ]; then
   if [ $NGINX_SRC_PATCH -ge 6 ]; then
-    NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module --with-stream --without-stream_access_module"
+    NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT} --with-stream --without-stream_access_module"
   else
-  NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module"
+  NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT}"
   fi
 else
-  NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module"
+  NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT}"
 fi
 
 if [ "$NUM_THREADS_ENV" != "" ]; then
@@ -80,6 +81,7 @@ echo "ngx_mruby testing ..."
 make install
 ps -C nginx && killall nginx
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
+cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' && sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' && cd -
 
 if [ $NGINX_SRC_MINOR -ge 9 ]; then
   if [ $NGINX_SRC_PATCH -ge 6 ]; then
