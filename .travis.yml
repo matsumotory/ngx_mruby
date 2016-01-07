@@ -6,7 +6,7 @@ before_install:
   - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
   - sudo apt-get -qq update
 install:
-  - sudo apt-get -qq install rake bison git gperf g++-4.9 libstdc++-4.9-dev libev-dev libevent-dev libjansson-dev libjemalloc-dev libxml2-dev libssl-dev zlib1g-dev
+  - sudo apt-get -qq install rake bison git gperf libssl-dev
 env:
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=4
@@ -27,17 +27,3 @@ script:
   - echo "NGINX_SRC_PATCH=${NGINX_SRC_PATCH}" >> nginx_version
   - echo "NGINX_SRC_VER=nginx-${NGINX_SRC_MAJOR}.${NGINX_SRC_MINOR}.${NGINX_SRC_PATCH}" >> nginx_version
   - sh test.sh
-notifications:
-  irc:
-    channels:
-      - "irc.freenode.org#hosting-ja"
-    on_success: always
-    on_failure: always
-    use_notice: true
-    skip_join: true
-    template:
-        - "[%{message}] %{repository} (%{commit}) by %{author}: See %{build_url}"
-  webhooks:
-    - secure: "aGWGYK++jT3o4ENZ4NzkyCHBn1f8eyqXEa7dEph+088qQlnnieqDn3xzlmBA1hiqouZ6ioTICSfYUaXk6h4zte1SX0nR2rO/XJYhseTqaiqgx+1cqw9aWEkwsAYu0oDuND5pMAa2so3zn38UuHLKvOMNEhi/xRXMFx3Bl5P8Pxk="
-
-
