@@ -341,8 +341,8 @@ t.assert('ngx_mruby - multipul response headers', 'location /multi_headers_out')
 end
 
 t.assert('ngx_mruby - ssl certificate changing') do
-  res = HttpRequest.new.get(base_ssl + '/')
-  t.assert_equal 'ssl test ok', res["body"]
+  res = `curl -k #{base_ssl + '/'}`
+  t.assert_equal 'ssl test ok', res
 end
 
 #
