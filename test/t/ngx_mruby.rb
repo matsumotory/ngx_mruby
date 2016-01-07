@@ -10,6 +10,10 @@ def base
   "http://#{http_host}"
 end
 
+def base_ssl
+  "https://127.0.0.1:58082"
+end
+
 t = SimpleTest.new "ngx_mruby test"
 
 nginx_version = HttpRequest.new.get(base + '/nginx-version')["body"]
@@ -334,6 +338,11 @@ t.assert('ngx_mruby - multipul response headers', 'location /multi_headers_out')
   t.assert_equal 200, res.code
   t.assert_equal '["fuga", "foo"]', res["body"]
   t.assert_equal ["fuga", "foo"], res["hoge"]
+end
+
+t.assert('ngx_mruby - ssl certificate changing') do
+  res = HttpRequest.new.get(base_ssl + '/')
+  t.assert_equal 'ssl test ok', res["body"]
 end
 
 #
