@@ -5,7 +5,7 @@ compiler:
 before_install:
     - sudo apt-get -qq update
 install:
-    - sudo apt-get -qq install rake bison libcurl4-openssl-dev
+    - sudo apt-get -qq install rake bison libcurl4-openssl-dev libssl-dev
 env:
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=4
