@@ -22,6 +22,7 @@ env:
     NGINX_SRC_PATCH=9
 
 script:
+  - openssl version
   - echo "NGINX_SRC_MAJOR=${NGINX_SRC_MAJOR}" > nginx_version
   - echo "NGINX_SRC_MINOR=${NGINX_SRC_MINOR}" >> nginx_version
   - echo "NGINX_SRC_PATCH=${NGINX_SRC_PATCH}" >> nginx_version
