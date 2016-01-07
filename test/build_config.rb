@@ -19,7 +19,6 @@ MRuby::Build.new do |conf|
   # conf.gem :github => 'masuidrive/mrbgems-example', :branch => 'master'
   # conf.gem :git => 'git@github.com:masuidrive/mrbgems-example.git', :branch => 'master', :options => '-v'
 
-  conf.gem :mgem => "mruby-polarssl"
   conf.gem :github => 'matsumoto-r/mruby-simplehttp'
   conf.gem :github => 'matsumoto-r/mruby-httprequest'
   conf.gem :github => 'matsumoto-r/mruby-uname'
