@@ -14,6 +14,13 @@
 #include <mruby/string.h>
 #include <mruby/class.h>
 
+static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+
+  return mrb_str_new(mrb, (char *)mscf->servername->data, mscf->servername->len);
+}
+
 static mrb_value ngx_mrb_ssl_set_cert(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
@@ -45,6 +52,7 @@ void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
   struct RClass *class_ssl;
 
   class_ssl = mrb_define_class_under(mrb, class, "SSL", mrb->object_class);
+  mrb_define_method(mrb, class_ssl, "servername", ngx_mrb_ssl_get_servername, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_ssl, "certificate=", ngx_mrb_ssl_set_cert, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_key=", ngx_mrb_ssl_set_cert_key, MRB_ARGS_REQ(1));
 }

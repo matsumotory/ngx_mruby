@@ -55,6 +55,7 @@ extern ngx_module_t ngx_http_mruby_module;
 typedef struct {
   ngx_mrb_state_t *state;
   ngx_mrb_code_t *ssl_handshake_code;
+  ngx_str_t *servername;
   ngx_str_t cert_path;
   ngx_str_t cert_key_path;
 } ngx_http_mruby_srv_conf_t;

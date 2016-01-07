@@ -1979,6 +1979,7 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
     return 1;
   }
 
+  mscf->servername = &host;
   mrb = mscf->state->mrb;
   mrb->ud = mscf;
   ai = mrb_gc_arena_save(mrb);

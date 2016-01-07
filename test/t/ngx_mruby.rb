@@ -11,7 +11,7 @@ def base
 end
 
 def base_ssl
-  "https://127.0.0.1:58082"
+  "https://localhost:58082"
 end
 
 t = SimpleTest.new "ngx_mruby test"
