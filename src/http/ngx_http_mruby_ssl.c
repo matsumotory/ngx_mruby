@@ -18,7 +18,7 @@ static mrb_value ngx_mrb_ssl_set_cert(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
   char *path;
-  size_t path_len;
+  mrb_int path_len;
 
   mrb_get_args(mrb, "s", &path, &path_len);
   mscf->cert_path.data = (u_char *)path;
@@ -31,7 +31,7 @@ static mrb_value ngx_mrb_ssl_set_cert_key(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
   char *path;
-  size_t path_len;
+  mrb_int path_len;
 
   mrb_get_args(mrb, "s", &path, &path_len);
   mscf->cert_key_path.data = (u_char *)path;

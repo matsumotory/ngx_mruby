@@ -26,6 +26,7 @@ void ngx_mrb_filter_class_init(mrb_state *mrb, struct RClass *calss);
 #ifdef NGX_USE_MRUBY_UPSTREAM
 void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *calss);
 #endif
+void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class);
 
 ngx_int_t ngx_mrb_class_init(mrb_state *mrb)
 {
@@ -49,6 +50,8 @@ ngx_int_t ngx_mrb_class_init(mrb_state *mrb)
   ngx_mrb_upstream_class_init(mrb, class);
   GC_ARENA_RESTORE;
 #endif
+  ngx_mrb_ssl_class_init(mrb, class);
+  GC_ARENA_RESTORE;
 
   return NGX_OK;
 }

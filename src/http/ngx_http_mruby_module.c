@@ -309,6 +309,11 @@ static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
     return NULL;
   }
 
+  mscf->state = ngx_pcalloc(cf->pool, sizeof(ngx_mrb_state_t));
+  if (mscf->state == NULL) {
+    return NULL;
+  }
+
   mscf->cert_path.len = 0;
   mscf->cert_key_path.len = 0;
   mscf->ssl_handshake_code = NGX_CONF_UNSET_PTR;
@@ -321,20 +326,13 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
   ngx_http_mruby_srv_conf_t *prev = parent;
   ngx_http_mruby_srv_conf_t *conf = child;
   ngx_http_ssl_srv_conf_t *sscf;
-  ngx_http_mruby_srv_conf_t *mscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_mruby_module);
 
   NGX_MRUBY_MERGE_CODE(prev->ssl_handshake_code, conf->ssl_handshake_code);
 
   if (conf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
-    ngx_int_t rc;
     sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
     if (sscf == NULL || sscf->ssl.ctx == NULL) {
       ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "cssl no ssl configured for the server");
-      return NGX_CONF_ERROR;
-    }
-    rc = ngx_http_mruby_shared_state_init(mscf->state);
-    if (rc == NGX_ERROR) {
-      ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "mruby compile failed for ssl_handshake_code");
       return NGX_CONF_ERROR;
     }
 
@@ -844,6 +842,12 @@ static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *
 
   if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
     return "is duplicated";
+  }
+
+  rc = ngx_http_mruby_shared_state_init(mscf->state);
+  if (rc == NGX_ERROR) {
+    ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "mruby compile failed for ssl_handshake_code");
+    return NGX_CONF_ERROR;
   }
 
   value = cf->args->elts;
@@ -2008,6 +2012,7 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
     return 1;
   }
 
+  ngx_log_error(NGX_LOG_DEBUG, c->log, 0, "mruby ssl handler: changing certficate to cert=%V key=%V", &mscf->cert_path, &mscf->cert_key_path);
   ngx_http_mruby_set_der_certificate(ssl_conn, &mscf->cert_path, &mscf->cert_key_path);
   return 1;
 }
