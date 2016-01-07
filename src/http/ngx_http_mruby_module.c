@@ -2012,7 +2012,8 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
     return 1;
   }
 
-  ngx_log_error(NGX_LOG_DEBUG, c->log, 0, "mruby ssl handler: changing certficate to cert=%V key=%V", &mscf->cert_path, &mscf->cert_key_path);
+  ngx_log_error(NGX_LOG_DEBUG, c->log, 0, "mruby ssl handler: changing certficate to cert=%V key=%V", &mscf->cert_path,
+                &mscf->cert_key_path);
   ngx_http_mruby_set_der_certificate(ssl_conn, &mscf->cert_path, &mscf->cert_key_path);
   return 1;
 }
