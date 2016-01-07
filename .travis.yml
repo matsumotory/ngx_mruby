@@ -28,8 +28,7 @@ before_script:
   - tar -xzvf openssl-1.0.2.tar.gz
   - rm openssl-1.0.2.tar.gz
   - cd openssl-1.0.2*
-  - ./config --prefix=/usr shared zlib
-  - make depend
+  - ./config --prefix=/usr shared
   - make
   - sudo make install
   - cd -
