@@ -29,9 +29,10 @@ before_script:
   - tar -xzf openssl-1.0.2.tar.gz
   - rm openssl-1.0.2.tar.gz
   - cd openssl-1.0.2*
-  - ./config --prefix=/usr --shared zlib -fPIC enable-tlsext >> /dev/null 2>&1
+  - ./config --prefix=/usr/local --shared zlib -fPIC enable-tlsext >> /dev/null 2>&1
   - make >> /dev/null 2>&1
   - sudo make install >> /dev/null 2>&1
+  - sudo ldconfig /usr/local/lib
   - cd -
 
 script:
