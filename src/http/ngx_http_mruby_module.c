@@ -89,7 +89,7 @@ static char *ngx_http_mruby_exit_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd
 static char *ngx_http_mruby_exit_worker_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 #if (NGX_HTTP_SSL)
 static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-#endif  /* NGX_HTTP_SSL */
+#endif /* NGX_HTTP_SSL */
 
 static char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -130,7 +130,7 @@ static ngx_int_t ngx_http_mruby_log_inline_handler(ngx_http_request_t *r);
 
 #if (NGX_HTTP_SSL)
 static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data);
-#endif  /* NGX_HTTP_SSL */
+#endif /* NGX_HTTP_SSL */
 
 #if defined(NDK) && NDK
 static ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r, ngx_str_t *val, ngx_http_variable_value_t *v,
@@ -158,7 +158,7 @@ static ngx_command_t ngx_http_mruby_commands[] = {
     {ngx_string("mruby_ssl_handshake_handler_code"), NGX_HTTP_SRV_CONF | NGX_CONF_TAKE1,
      ngx_http_mruby_ssl_handshake_inline, NGX_HTTP_SRV_CONF_OFFSET, 0, NULL},
 
-#endif  /* NGX_HTTP_SSL */
+#endif /* NGX_HTTP_SSL */
 
     /* main config */
     {ngx_string("mruby_init_code"), NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE1, ngx_http_mruby_init_inline,
@@ -354,7 +354,7 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
 #endif
   }
 
-#endif  /* NGX_HTTP_SSL */
+#endif /* NGX_HTTP_SSL */
 
   return NGX_CONF_OK;
 }
@@ -885,7 +885,7 @@ static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *
 
   return NGX_CONF_OK;
 }
-#endif  /* NGX_HTTP_SSL */
+#endif /* NGX_HTTP_SSL */
 
 static char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1955,7 +1955,7 @@ static int ngx_http_mruby_set_der_certificate(ngx_ssl_conn_t *ssl_conn, ngx_str_
   return NGX_OK;
 }
 
-#endif  /* NGX_HTTP_SSL */
+#endif /* NGX_HTTP_SSL */
 
 #if (NGX_HTTP_SSL)
 
@@ -2044,4 +2044,4 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   ngx_http_mruby_set_der_certificate(ssl_conn, &mscf->cert_path, &mscf->cert_key_path);
   return 1;
 }
-#endif  /* NGX_HTTP_SSL */
+#endif /* NGX_HTTP_SSL */

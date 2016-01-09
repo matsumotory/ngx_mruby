@@ -15,4 +15,3 @@
 
 #endif // NGX_HTTP_SSL
 #endif // NGX_HTTP_MRUBY_SSL_H
-
