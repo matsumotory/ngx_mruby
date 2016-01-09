@@ -9,10 +9,10 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "mruby.h"
-#include "mruby/array.h"
-#include "mruby/numeric.h"
-#include "mruby/string.h"
+#include <mruby.h>
+#include <mruby/array.h>
+#include <mruby/numeric.h>
+#include <mruby/string.h>
 
 #ifdef MRB_USE_FLOAT
 #define floor(f) floorf(f)
@@ -821,14 +821,28 @@ static mrb_value
 lshift(mrb_state *mrb, mrb_int val, mrb_int width)
 {
   mrb_assert(width > 0);
-  if (width > NUMERIC_SHIFT_WIDTH_MAX) {
+  if (val > 0) {
+    if ((width > NUMERIC_SHIFT_WIDTH_MAX) ||
+        (val   > (MRB_INT_MAX >> width))) {
+      goto bit_overflow;
+    }
+  } else {
+    if ((width > NUMERIC_SHIFT_WIDTH_MAX) ||
+        (val   < (MRB_INT_MIN >> width))) {
+      goto bit_overflow;
+    }
+  }
+
+  return mrb_fixnum_value(val << width);
+
+bit_overflow:
+  {
     mrb_float f = (mrb_float)val;
     while (width--) {
       f *= 2;
     }
     return mrb_float_value(mrb, f);
   }
-  return mrb_fixnum_value(val << width);
 }
 
 static mrb_value
@@ -856,7 +870,7 @@ fix_shift_get_width(mrb_state *mrb, mrb_int *width)
 /* 15.2.8.3.12 */
 /*
  * call-seq:
- *   fix << count  ->  integer
+ *   fix << count  ->  integer or float
  *
  * Shifts _fix_ left _count_ positions (right if _count_ is negative).
  */
@@ -881,7 +895,7 @@ fix_lshift(mrb_state *mrb, mrb_value x)
 /* 15.2.8.3.13 */
 /*
  * call-seq:
- *   fix >> count  ->  integer
+ *   fix >> count  ->  integer or float
  *
  * Shifts _fix_ right _count_ positions (left if _count_ is negative).
  */
@@ -950,7 +964,12 @@ mrb_flo_to_fixnum(mrb_state *mrb, mrb_value x)
     if (isnan(d)) {
       mrb_raise(mrb, E_FLOATDOMAIN_ERROR, "NaN");
     }
-    z = (mrb_int)d;
+    if (FIXABLE(d)) {
+      z = (mrb_int)d;
+    }
+    else {
+      mrb_raisef(mrb, E_ARGUMENT_ERROR, "number (%S) too big for integer", x);
+    }
   }
   return mrb_fixnum_value(z);
 }

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+git subtree pull --prefix=mruby --squash dep-mruby master
+git subtree pull --prefix=mruby_test --squash dep-mruby-test master

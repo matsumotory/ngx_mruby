@@ -6,10 +6,10 @@
 
 #include <limits.h>
 #include <string.h>
-#include "mruby.h"
-#include "mruby/khash.h"
-#include "mruby/string.h"
-#include "mruby/dump.h"
+#include <mruby.h>
+#include <mruby/khash.h>
+#include <mruby/string.h>
+#include <mruby/dump.h>
 
 /* ------------------------------------------------------ */
 typedef struct symbol_name {
@@ -354,7 +354,9 @@ symname_p(const char *name)
       if (*++m == '*') ++m;
       break;
     case '!':
-      if (*++m == '=') ++m;
+      switch (*++m) {
+        case '=': case '~': ++m;
+      }
       break;
     case '+': case '-':
       if (*++m == '@') ++m;

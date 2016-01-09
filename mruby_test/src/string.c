@@ -4,17 +4,21 @@
 ** See Copyright Notice in mruby.h
 */
 
+#ifdef _MSC_VER
+# define _CRT_NONSTDC_NO_DEPRECATE
+#endif
+
 #include <float.h>
 #include <limits.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include "mruby.h"
-#include "mruby/array.h"
-#include "mruby/class.h"
-#include "mruby/range.h"
-#include "mruby/string.h"
-#include "mruby/re.h"
+#include <mruby.h>
+#include <mruby/array.h>
+#include <mruby/class.h>
+#include <mruby/range.h>
+#include <mruby/string.h>
+#include <mruby/re.h>
 
 typedef struct mrb_shared_string {
   mrb_bool nofree : 1;
@@ -302,17 +306,20 @@ bytes2chars(char *p, mrb_int bi)
   mrb_int i, b, n;
 
   for (b=i=0; b<bi; i++) {
-    n = utf8len(p, p+bi);
+    n = utf8len_codepage[(unsigned char)*p];
     b += n;
     p += n;
   }
+  if (b != bi) return -1;
   return i;
 }
 
+#define BYTES_ALIGN_CHECK(pos) if (pos < 0) return mrb_nil_value();
 #else
 #define RSTRING_CHAR_LEN(s) RSTRING_LEN(s)
 #define chars2bytes(p, off, ci) (ci)
 #define bytes2chars(p, bi) (bi)
+#define BYTES_ALIGN_CHECK(pos)
 #endif
 
 static inline mrb_int
@@ -348,12 +355,12 @@ mrb_memsearch(const void *x0, mrb_int m, const void *y0, mrb_int n)
     return 0;
   }
   else if (m == 1) {
-    const unsigned char *ys = y, *ye = ys + n;
-    for (; y < ye; ++y) {
-      if (*x == *y)
-        return y - ys;
-    }
-    return -1;
+    const unsigned char *ys = memchr(y, *x, n);
+
+    if (ys)
+      return ys - y;
+    else
+      return -1;
   }
   return mrb_memsearch_qs((const unsigned char *)x0, m, (const unsigned char *)y0, n);
 }
@@ -1013,6 +1020,13 @@ mrb_string_value_ptr(mrb_state *mrb, mrb_value ptr)
   return RSTRING_PTR(str);
 }
 
+MRB_API mrb_int
+mrb_string_value_len(mrb_state *mrb, mrb_value ptr)
+{
+  mrb_value str = mrb_str_to_str(mrb, ptr);
+  return RSTRING_LEN(str);
+}
+
 void
 mrb_noregexp(mrb_state *mrb, mrb_value self)
 {
@@ -1597,6 +1611,7 @@ mrb_str_index(mrb_state *mrb, mrb_value str)
 
   if (pos == -1) return mrb_nil_value();
   pos = bytes2chars(RSTRING_PTR(str), pos);
+  BYTES_ALIGN_CHECK(pos);
   return mrb_fixnum_value(pos);
 }
 
@@ -1866,6 +1881,7 @@ mrb_str_rindex(mrb_state *mrb, mrb_value str)
       pos = str_rindex(mrb, str, sub, pos);
       if (pos >= 0) {
         pos = bytes2chars(RSTRING_PTR(str), pos);
+        BYTES_ALIGN_CHECK(pos);
         return mrb_fixnum_value(pos);
       }
       break;
@@ -2030,11 +2046,12 @@ mrb_str_split_m(mrb_state *mrb, mrb_value str)
 }
 
 MRB_API mrb_value
-mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
+mrb_str_len_to_inum(mrb_state *mrb, const char *str, size_t len, int base, int badcheck)
 {
-  const char *p;
+  const char *p = str;
+  const char *pend = str + len;
   char sign = 1;
-  int c, uscore;
+  int c;
   uint64_t n = 0;
   mrb_int val;
 
@@ -2044,26 +2061,23 @@ mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
      ISUPPER(c) ? ((c) - 'A' + 10) : \
      -1)
 
-  if (!str) {
+  if (!p) {
     if (badcheck) goto bad;
     return mrb_fixnum_value(0);
   }
-  while (ISSPACE(*str)) str++;
+  while (p<pend && ISSPACE(*p))
+    p++;
 
-  if (str[0] == '+') {
-    str++;
+  if (p[0] == '+') {
+    p++;
   }
-  else if (str[0] == '-') {
-    str++;
+  else if (p[0] == '-') {
+    p++;
     sign = 0;
   }
-  if (str[0] == '+' || str[0] == '-') {
-    if (badcheck) goto bad;
-    return mrb_fixnum_value(0);
-  }
   if (base <= 0) {
-    if (str[0] == '0') {
-      switch (str[1]) {
+    if (p[0] == '0') {
+      switch (p[1]) {
         case 'x': case 'X':
           base = 16;
           break;
@@ -2078,6 +2092,7 @@ mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
           break;
         default:
           base = 8;
+          break;
       }
     }
     else if (base < -1) {
@@ -2089,27 +2104,27 @@ mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
   }
   switch (base) {
     case 2:
-      if (str[0] == '0' && (str[1] == 'b'||str[1] == 'B')) {
-        str += 2;
+      if (p[0] == '0' && (p[1] == 'b'||p[1] == 'B')) {
+        p += 2;
       }
       break;
     case 3:
       break;
     case 8:
-      if (str[0] == '0' && (str[1] == 'o'||str[1] == 'O')) {
-        str += 2;
+      if (p[0] == '0' && (p[1] == 'o'||p[1] == 'O')) {
+        p += 2;
       }
     case 4: case 5: case 6: case 7:
       break;
     case 10:
-      if (str[0] == '0' && (str[1] == 'd'||str[1] == 'D')) {
-        str += 2;
+      if (p[0] == '0' && (p[1] == 'd'||p[1] == 'D')) {
+        p += 2;
       }
     case 9: case 11: case 12: case 13: case 14: case 15:
       break;
     case 16:
-      if (str[0] == '0' && (str[1] == 'x'||str[1] == 'X')) {
-        str += 2;
+      if (p[0] == '0' && (p[1] == 'x'||p[1] == 'X')) {
+        p += 2;
       }
       break;
     default:
@@ -2118,59 +2133,79 @@ mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
       }
       break;
   } /* end of switch (base) { */
-  if (*str == '0') {    /* squeeze preceding 0s */
-    uscore = 0;
-    while ((c = *++str) == '0' || c == '_') {
-      if (c == '_') {
-        if (++uscore >= 2)
-          break;
-      }
-      else
-        uscore = 0;
-    }
-    if (!(c = *str) || ISSPACE(c)) --str;
-  }
-  c = *str;
-  c = conv_digit(c);
-  if (c < 0 || c >= base) {
+  if (p>=pend) {
     if (badcheck) goto bad;
     return mrb_fixnum_value(0);
   }
-
-  uscore = 0;
-  for (p=str;*p;p++) {
-    if (*p == '_') {
-      if (uscore == 0) {
-        uscore++;
+  if (*p == '0') {    /* squeeze preceding 0s */
+    p++;
+    while (p<pend) {
+      c = *p++;
+      if (c == '_') {
+        if (p<pend && *p == '_') {
+          if (badcheck) goto bad;
+          break;
+        }
         continue;
       }
-      if (badcheck) goto bad;
-      break;
+      if (c != '0') {
+        p--;
+        break;
+      }
     }
-    uscore = 0;
+  }
+  if (p == pend) {
+    if (badcheck) goto bad;
+    return mrb_fixnum_value(0);
+  }
+  for ( ;p<pend;p++) {
+    if (*p == '_') {
+      p++;
+      if (p==pend) {
+        if (badcheck) goto bad;
+        continue;
+      }
+      if (*p == '_') {
+        if (badcheck) goto bad;
+        break;
+      }
+    }
+    if (badcheck && *p == '\0') {
+      goto nullbyte;
+    }
     c = conv_digit(*p);
     if (c < 0 || c >= base) {
-      if (badcheck) goto bad;
       break;
     }
     n *= base;
     n += c;
-    if (n > MRB_INT_MAX) {
-      mrb_raisef(mrb, E_ARGUMENT_ERROR, "string (%S) too big for integer", mrb_str_new_cstr(mrb, str));
+    if (n > (uint64_t)MRB_INT_MAX + (sign ? 0 : 1)) {
+      mrb_raisef(mrb, E_ARGUMENT_ERROR, "string (%S) too big for integer",
+                 mrb_str_new(mrb, str, pend-str));
     }
   }
-  val = n;
+  val = (mrb_int)n;
   if (badcheck) {
     if (p == str) goto bad; /* no number */
-    while (*p && ISSPACE(*p)) p++;
-    if (*p) goto bad;           /* trailing garbage */
+    while (p<pend && ISSPACE(*p)) p++;
+    if (p<pend) goto bad;       /* trailing garbage */
   }
 
   return mrb_fixnum_value(sign ? val : -val);
-bad:
-  mrb_raisef(mrb, E_ARGUMENT_ERROR, "invalid string for number(%S)", mrb_str_new_cstr(mrb, str));
+ nullbyte:
+  mrb_raise(mrb, E_ARGUMENT_ERROR, "string contains null byte");
+  /* not reached */
+ bad:
+  mrb_raisef(mrb, E_ARGUMENT_ERROR, "invalid string for number(%S)",
+             mrb_inspect(mrb, mrb_str_new(mrb, str, pend-str)));
   /* not reached */
   return mrb_fixnum_value(0);
+}
+
+MRB_API mrb_value
+mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
+{
+  return mrb_str_len_to_inum(mrb, str, strlen(str), base, badcheck);
 }
 
 MRB_API const char*
@@ -2182,6 +2217,10 @@ mrb_string_value_cstr(mrb_state *mrb, mrb_value *ptr)
   char *p = RSTR_PTR(ps);
 
   if (!p || p[len] != '\0') {
+    if (RSTR_FROZEN_P(ps)) {
+      *ptr = str = mrb_str_dup(mrb, str);
+      ps = mrb_str_ptr(str);
+    }
     mrb_str_modify(mrb, ps);
     return RSTR_PTR(ps);
   }
@@ -2194,21 +2233,9 @@ mrb_str_to_inum(mrb_state *mrb, mrb_value str, mrb_int base, mrb_bool badcheck)
   const char *s;
   mrb_int len;
 
-  if (badcheck) {
-    /* Raises if the string contains a null character (the badcheck) */
-    s = mrb_string_value_cstr(mrb, &str);
-  }
-  else {
-    s = mrb_string_value_ptr(mrb, str);
-  }
-  if (s) {
-    len = RSTRING_LEN(str);
-    if (s[len]) {    /* no sentinel somehow */
-      struct RString *temp_str = str_new(mrb, s, len);
-      s = RSTR_PTR(temp_str);
-    }
-  }
-  return mrb_cstr_to_inum(mrb, s, base, badcheck);
+  s = mrb_string_value_ptr(mrb, str);
+  len = RSTRING_LEN(str);
+  return mrb_str_len_to_inum(mrb, s, len, base, badcheck);
 }
 
 /* 15.2.10.5.38 */

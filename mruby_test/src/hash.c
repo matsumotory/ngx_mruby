@@ -4,13 +4,13 @@
 ** See Copyright Notice in mruby.h
 */
 
-#include "mruby.h"
-#include "mruby/array.h"
-#include "mruby/class.h"
-#include "mruby/hash.h"
-#include "mruby/khash.h"
-#include "mruby/string.h"
-#include "mruby/variable.h"
+#include <mruby.h>
+#include <mruby/array.h>
+#include <mruby/class.h>
+#include <mruby/hash.h>
+#include <mruby/khash.h>
+#include <mruby/string.h>
+#include <mruby/variable.h>
 
 /* a function to get hash value of a float number */
 mrb_int mrb_float_id(mrb_float f);
@@ -91,12 +91,6 @@ mrb_hash_ht_hash_equal(mrb_state *mrb, mrb_value a, mrb_value b)
   }
 }
 
-typedef struct {
-  mrb_value v;
-  mrb_int n;
-} mrb_hash_value;
-
-KHASH_DECLARE(ht, mrb_value, mrb_hash_value, TRUE)
 KHASH_DEFINE (ht, mrb_value, mrb_hash_value, TRUE, mrb_hash_ht_hash_func, mrb_hash_ht_hash_equal)
 
 static void mrb_hash_modify(mrb_state *mrb, mrb_value hash);
