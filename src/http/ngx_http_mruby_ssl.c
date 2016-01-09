@@ -5,6 +5,9 @@
 */
 
 #include "ngx_http_mruby_module.h"
+
+#if (NGX_HTTP_SSL)
+
 #include "ngx_http_mruby_ssl.h"
 
 #include <mruby.h>
@@ -56,3 +59,5 @@ void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_ssl, "certificate=", ngx_mrb_ssl_set_cert, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_key=", ngx_mrb_ssl_set_cert_key, MRB_ARGS_REQ(1));
 }
+
+#endif /* NGX_HTTP_SSL */
