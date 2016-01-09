@@ -91,8 +91,16 @@ fi
 
 cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
 
+echo "====================================="
+echo ""
+echo "ngx_mruby starting and logging"
+echo ""
+echo "====================================="
+echo ""
+echo ""
 ${NGINX_INSTALL_DIR}/sbin/nginx &
-#sleep 2
+echo ""
+echo ""
 cp -p test/build_config.rb ./mruby_test/.
 cd mruby_test
 rake
