@@ -7,7 +7,7 @@
 #ifndef MRUBY_VALUE_H
 #define MRUBY_VALUE_H
 
-#include "mruby/common.h"
+#include "common.h"
 
 /**
  * MRuby Value definition functions and macros.
@@ -22,21 +22,32 @@ struct mrb_state;
 # error "You can't define MRB_INT16 and MRB_INT64 at the same time."
 #endif
 
+#include <inttypes.h>
+
 #if defined(MRB_INT64)
   typedef int64_t mrb_int;
 # define MRB_INT_BIT 64
 # define MRB_INT_MIN (INT64_MIN>>MRB_FIXNUM_SHIFT)
 # define MRB_INT_MAX (INT64_MAX>>MRB_FIXNUM_SHIFT)
+# define MRB_PRIo PRIo64
+# define MRB_PRId PRId64
+# define MRB_PRIx PRIx64
 #elif defined(MRB_INT16)
   typedef int16_t mrb_int;
 # define MRB_INT_BIT 16
 # define MRB_INT_MIN (INT16_MIN>>MRB_FIXNUM_SHIFT)
 # define MRB_INT_MAX (INT16_MAX>>MRB_FIXNUM_SHIFT)
+# define MRB_PRIo PRIo16
+# define MRB_PRId PRId16
+# define MRB_PRIx PRIx16
 #else
   typedef int32_t mrb_int;
 # define MRB_INT_BIT 32
 # define MRB_INT_MIN (INT32_MIN>>MRB_FIXNUM_SHIFT)
 # define MRB_INT_MAX (INT32_MAX>>MRB_FIXNUM_SHIFT)
+# define MRB_PRIo PRIo32
+# define MRB_PRId PRId32
+# define MRB_PRIx PRIx32
 #endif
 
 #ifdef MRB_USE_FLOAT
@@ -96,7 +107,7 @@ enum mrb_vtype {
   MRB_TT_MAXDEFINE    /*  23 */
 };
 
-#include "mruby/object.h"
+#include <mruby/object.h>
 
 #ifdef MRB_DOCUMENTATION_BLOCK
 
