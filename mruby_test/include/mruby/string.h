@@ -7,7 +7,7 @@
 #ifndef MRUBY_STRING_H
 #define MRUBY_STRING_H
 
-#include "mruby/common.h"
+#include "common.h"
 
 /**
  * String class
@@ -123,7 +123,8 @@ MRB_API mrb_value mrb_check_string_type(mrb_state *mrb, mrb_value str);
 MRB_API mrb_value mrb_str_buf_new(mrb_state *mrb, size_t capa);
 
 MRB_API const char *mrb_string_value_cstr(mrb_state *mrb, mrb_value *ptr);
-MRB_API const char *mrb_string_value_ptr(mrb_state *mrb, mrb_value ptr);
+MRB_API const char *mrb_string_value_ptr(mrb_state *mrb, mrb_value str);
+MRB_API mrb_int mrb_string_value_len(mrb_state *mrb, mrb_value str);
 
 /*
  * Duplicates a string object.
@@ -175,7 +176,19 @@ MRB_API mrb_value mrb_str_append(mrb_state *mrb, mrb_value str, mrb_value str2);
 MRB_API int mrb_str_cmp(mrb_state *mrb, mrb_value str1, mrb_value str2);
 
 /*
- * Returns a C string from a Ruby string.
+ * Returns a newly allocated C string from a Ruby string.
+ * This is an utility function to pass a Ruby string to C library functions.
+ *
+ * - Returned string does not contain any NUL characters (but terminator).
+ * - It raises an ArgumentError exception if Ruby string contains
+ *   NUL characters.
+ * - Retured string will be freed automatically on next GC.
+ * - Caller can modify returned string without affecting Ruby string
+ *   (e.g. it can be used for mkstemp(3)).
+ *
+ * @param [mrb_state *] mrb The current mruby state.
+ * @param [mrb_value] str Ruby string. Must be an instance of String.
+ * @return [char *] A newly allocated C string.
  */
 MRB_API char *mrb_str_to_cstr(mrb_state *mrb, mrb_value str);
 
