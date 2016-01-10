@@ -342,14 +342,15 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
   if (conf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
     sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
     if (sscf == NULL || sscf->ssl.ctx == NULL) {
-      ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "ngx_mruby: no ssl configured for the server");
+      ngx_log_error(NGX_LOG_EMERG, cf->log, 0, MODULE_NAME " : no ssl configured for the server");
       return NGX_CONF_ERROR;
     }
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
     SSL_CTX_set_cert_cb(sscf->ssl.ctx, ngx_http_mruby_ssl_cert_handler, NULL);
 #else
-    ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "OpenSSL 1.0.2e or later required but found " OPENSSL_VERSION_TEXT);
+    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                  MODULE_NAME " : OpenSSL 1.0.2e or later required but found " OPENSSL_VERSION_TEXT);
     return NGX_CONF_ERROR;
 #endif
   }
@@ -865,7 +866,7 @@ static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *
 
   rc = ngx_http_mruby_shared_state_init(mscf->state);
   if (rc == NGX_ERROR) {
-    ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "mruby compile failed for ssl_handshake_code");
+    ngx_log_error(NGX_LOG_EMERG, cf->log, 0, MODULE_NAME " : mruby state init failed at ssl_handshake_code");
     return NGX_CONF_ERROR;
   }
 
@@ -878,7 +879,7 @@ static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *
   mscf->ssl_handshake_code = code;
   rc = ngx_http_mruby_shared_state_compile(cf, mscf->state, code);
   if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "ngx_http_mruby_ssl_handshake_inline mrb_string(%s) load failed",
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : mruby_ssl_handshake_inline mrb_string(%s) load failed",
                        value[1].data);
     return NGX_CONF_ERROR;
   }
@@ -1976,32 +1977,32 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
 
   hc = c->data;
   if (NULL == hc) {
-    ngx_log_error(NGX_LOG_ERR, c->log, 0, "mruby ssl handler: ssl connection data hc NULL");
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: ssl connection data hc NULL");
     return 0;
   }
 
   servername = SSL_get_servername(ssl_conn, TLSEXT_NAMETYPE_host_name);
   if (servername == NULL) {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "mruby ssl handler: SSL server name NULL");
+    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: SSL server name NULL");
     return 1;
   }
 
   host.len = ngx_strlen(servername);
   if (host.len == 0) {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "mruby ssl handler: host len == 0");
+    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: host len == 0");
     return 1;
   }
   host.data = (u_char *)servername;
-  ngx_log_error(NGX_LOG_INFO, c->log, 0, "mruby ssl handler: servername \"%V\"", &host);
+  ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: servername \"%V\"", &host);
 
   mscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_mruby_module);
   if (NULL == mscf) {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "mruby ssl handler: mscf NULL");
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: mscf NULL");
     return 1;
   }
 
   if (mscf->ssl_handshake_code == NGX_CONF_UNSET_PTR) {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "mruby ssl handler: unexpected error, mruby code not found");
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: unexpected error, mruby code not found");
     return 1;
   }
 
@@ -2018,8 +2019,8 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
     if (mrb_type(obj) == MRB_TT_STRING) {
       str = mrb_str_ptr(obj);
       err_out = str->as.heap.ptr;
-      ngx_log_error(NGX_LOG_ERR, c->log, 0, "mrb_run failed: return 500 HTTP status code to client: error: %s",
-                    err_out);
+      ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                    MODULE_NAME " : mrb_run failed: return 500 HTTP status code to client: error: %s", err_out);
     }
     ngx_mrb_state_clean(NULL, mscf->state);
     mrb_gc_arena_restore(mrb, ai);
@@ -2029,19 +2030,27 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   ngx_mrb_state_clean(NULL, mscf->state);
   mrb_gc_arena_restore(mrb, ai);
 
-  if (mscf->cert_path.len == 0 || access((const char *)mscf->cert_path.data, F_OK | R_OK) != 0) {
-    ngx_log_debug1(NGX_LOG_WARN, c->log, 0, "mruby ssl handler: cert [%V] not exists or not read", &mscf->cert_path);
-    return 1;
-  }
-  if (mscf->cert_key_path.len == 0 || access((const char *)mscf->cert_key_path.data, F_OK | R_OK) != 0) {
-    ngx_log_debug1(NGX_LOG_WARN, c->log, 0, "mruby ssl handler: cert_key [%V] not exists or not read",
-                   &mscf->cert_key_path);
+  if (mscf->cert_path.len == 0 || mscf->cert_key_path.len == 0) {
+    ngx_log_error(NGX_LOG_DEBUG, c->log, 0,
+                  MODULE_NAME " : mruby ssl handler: cert or cert key not exists or not read");
     return 1;
   }
 
-  ngx_log_error(NGX_LOG_DEBUG, c->log, 0, "mruby ssl handler: changing certficate to cert=%V key=%V", &mscf->cert_path,
-                &mscf->cert_key_path);
+  if (access((const char *)mscf->cert_path.data, F_OK | R_OK) != 0) {
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert [%V] not exists or not read",
+                  &mscf->cert_path);
+    return 1;
+  }
+  if (access((const char *)mscf->cert_key_path.data, F_OK | R_OK) != 0) {
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert_key [%V] not exists or not read",
+                  &mscf->cert_key_path);
+    return 1;
+  }
+
+  ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certficate to cert=%V key=%V",
+                &mscf->cert_path, &mscf->cert_key_path);
   ngx_http_mruby_set_der_certificate(ssl_conn, &mscf->cert_path, &mscf->cert_key_path);
+
   return 1;
 }
 #endif /* NGX_HTTP_SSL */
