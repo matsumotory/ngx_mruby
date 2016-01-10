@@ -343,6 +343,8 @@ end
 t.assert('ngx_mruby - ssl certificate changing') do
   res = `curl -k #{base_ssl + '/'}`
   t.assert_equal 'ssl test ok', res
+  res = `openssl s_client -servername localhost -connect localhost:58082 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
+  t.assert_equal "1", res
 end
 
 #
