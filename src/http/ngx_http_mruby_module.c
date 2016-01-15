@@ -2039,12 +2039,12 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   if (access((const char *)mscf->cert_path.data, F_OK | R_OK) != 0) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert [%V] not exists or not read",
                   &mscf->cert_path);
-    return 1;
+    return 0;
   }
   if (access((const char *)mscf->cert_key_path.data, F_OK | R_OK) != 0) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert_key [%V] not exists or not read",
                   &mscf->cert_key_path);
-    return 1;
+    return 0;
   }
 
   ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certficate to cert=%V key=%V",
