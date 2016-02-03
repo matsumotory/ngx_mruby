@@ -10,7 +10,7 @@ set -e
 . ./nginx_version
 
 NGINX_INSTALL_DIR=`pwd`'/build/nginx'
-NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-http_ssl_module'
+NGINX_DEFUALT_OPT="--with-http_stub_status_module --with-http_ssl_module --with-cc-opt='-Wno-error'"
 
 if [ $NGINX_SRC_MINOR -ge 9 ]; then
   if [ $NGINX_SRC_PATCH -ge 6 ]; then
