@@ -519,11 +519,14 @@ static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self)
 
   if (mrb_type(val) == MRB_TT_ARRAY) {
     mrb_value v;
+    mrb_int len, i;
     while (!mrb_nil_p(
                ngx_mrb_get_request_header(mrb, &r->headers_in.headers, (char *)RSTRING_PTR(key), RSTRING_LEN(key)))) {
       ngx_mrb_del_request_header(mrb, &r->headers_in.headers, (char *)RSTRING_PTR(key), RSTRING_LEN(key));
     }
-    while (!mrb_nil_p(v = mrb_ary_pop(mrb, val))) {
+    len = RARRAY_LEN(val);
+    for (i = 0; i < len; ++i) {
+      v = mrb_ary_ref(mrb, val, i);
       ngx_mrb_set_request_header(mrb, &r->headers_in.headers, r->pool, key, v, 0);
     }
   } else {
@@ -542,11 +545,14 @@ static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self)
 
   if (mrb_type(val) == MRB_TT_ARRAY) {
     mrb_value v;
+    mrb_int len, i;
     while (!mrb_nil_p(
                ngx_mrb_get_request_header(mrb, &r->headers_out.headers, (char *)RSTRING_PTR(key), RSTRING_LEN(key)))) {
       ngx_mrb_del_request_header(mrb, &r->headers_out.headers, (char *)RSTRING_PTR(key), RSTRING_LEN(key));
     }
-    while (!mrb_nil_p(v = mrb_ary_pop(mrb, val))) {
+    len = RARRAY_LEN(val);
+    for (i = 0; i < len; ++i) {
+      v = mrb_ary_ref(mrb, val, i);
       ngx_mrb_set_request_header(mrb, &r->headers_out.headers, r->pool, key, v, 0);
     }
   } else {

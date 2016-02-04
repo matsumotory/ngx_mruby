@@ -330,14 +330,22 @@ end
 t.assert('ngx_mruby - multipul request headers', 'location /multi_headers_in') do
   res = HttpRequest.new.get base + '/multi_headers_in', nil, {"hoge" => "foo"}
   t.assert_equal 200, res.code
-  t.assert_equal '["fuga", "foo"]', res["body"]
+  t.assert_equal '["foo", "fuga"]', res["body"]
 end
 
 t.assert('ngx_mruby - multipul response headers', 'location /multi_headers_out') do
   res = HttpRequest.new.get base + '/multi_headers_out'
   t.assert_equal 200, res.code
-  t.assert_equal '["fuga", "foo"]', res["body"]
-  t.assert_equal ["fuga", "foo"], res["hoge"]
+  t.assert_equal '["foo", "fuga"]', res["body"]
+  t.assert_equal ["foo", "fuga"], res["hoge"]
+end
+
+t.assert('ngx_mruby - fix bug issue 155', 'location /fix-bug-issue-155') do
+  res = HttpRequest.new.get base + '/fix-bug-issue-155'
+  t.assert_equal 200, res.code
+  p res
+  t.assert_equal '["abc=123", "foo=bar"]', res["body"]
+  t.assert_equal ["abc=123", "foo=bar"], res['set-cookies']
 end
 
 t.assert('ngx_mruby - ssl certificate changing') do
