@@ -14,7 +14,7 @@ class Nginx
     end
 
     def get_uri_args
-      Hash[*self.args.split("&").map{|arg| arg.split("=")}.flatten]
+      args_to_hash(self.args)
     end
 
     def set_uri_args(params)
@@ -23,7 +23,13 @@ class Nginx
     end
 
     def get_post_args
-      Hash[*self.body.split("&").map{|arg| arg.split("=")}.flatten]
+      args_to_hash(self.body)
+    end
+
+    private
+
+    def args_to_hash(args)
+      Hash[*args.split("&").map{|arg| arg.split("=")}.flatten]
     end
   end
 
