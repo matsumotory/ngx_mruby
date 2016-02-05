@@ -18,6 +18,7 @@ class Nginx
     end
 
     def set_uri_args(params)
+      raise ArgumentError unless params.is_a?(Hash)
       self.args = params.map{|k,v| "#{k}=#{v}"}.join("&")
     end
 
