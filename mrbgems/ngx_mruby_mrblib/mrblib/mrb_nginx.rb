@@ -3,21 +3,44 @@ class Nginx
     def scheme
       self.var.scheme
     end
+
     def document_root
       Nginx::Server.new.document_root
     end
-    #def document_root=(path)
-    #  Nginx::Var.new.set "document_root", path
-    #end
+
     def body
       self.read_body
       self.get_body
     end
+
+    def get_uri_args
+      args_to_hash(self.args)
+    end
+
+    def set_uri_args(params)
+      raise ArgumentError unless params.is_a?(Hash)
+      self.args = params.map{|k,v| "#{k}=#{v}"}.join("&")
+    end
+
+    def get_post_args
+      args_to_hash(self.body)
+    end
+
+    private
+
+    def args_to_hash(args)
+      Hash[*args.split("&").map{|arg| arg.split("=")}.flatten]
+    end
   end
+
   class Headers_in
     def user_agent
       self["User-Agent"]
     end
+  end
+
+  def self.var
+    Var.new
   end
 end
 
