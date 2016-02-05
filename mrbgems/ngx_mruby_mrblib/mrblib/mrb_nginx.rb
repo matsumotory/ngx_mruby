@@ -19,6 +19,10 @@ class Nginx
       self["User-Agent"]
     end
   end
+
+  def self.var
+    Var.new
+  end
 end
 
 module Kernel
