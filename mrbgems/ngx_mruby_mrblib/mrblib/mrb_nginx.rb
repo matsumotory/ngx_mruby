@@ -14,6 +14,7 @@ class Nginx
       self.get_body
     end
   end
+
   class Headers_in
     def user_agent
       self["User-Agent"]
