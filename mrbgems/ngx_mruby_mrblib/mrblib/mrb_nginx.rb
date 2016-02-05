@@ -12,6 +12,18 @@ class Nginx
       self.read_body
       self.get_body
     end
+
+    def get_uri_args
+      Hash[*self.args.split("&").map{|arg| arg.split("=")}.flatten]
+    end
+
+    def set_uri_args(params)
+      self.args = params.map{|k,v| "#{k}=#{v}"}.join("&")
+    end
+
+    def get_post_args
+      Hash[*self.body.split("&").map{|arg| arg.split("=")}.flatten]
+    end
   end
 
   class Headers_in
