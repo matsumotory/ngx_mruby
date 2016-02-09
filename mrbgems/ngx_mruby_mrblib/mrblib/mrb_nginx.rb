@@ -13,16 +13,16 @@ class Nginx
       self.get_body
     end
 
-    def get_uri_args
+    def uri_args
       args_to_hash(self.args)
     end
 
-    def set_uri_args(params)
+    def uri_args=(params)
       raise ArgumentError unless params.is_a?(Hash)
       self.args = params.map{|k,v| "#{k}=#{v}"}.join("&")
     end
 
-    def get_post_args
+    def post_args
       args_to_hash(self.body)
     end
 
