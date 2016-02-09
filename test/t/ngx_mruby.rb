@@ -348,8 +348,8 @@ t.assert('ngx_mruby - fix bug issue 155', 'location /fix-bug-issue-155') do
   t.assert_equal ["abc=123", "foo=bar"], res['set-cookies']
 end
 
-t.assert('ngx_mruby - get uri_args', 'location /uri_args') do
-  res = HttpRequest.new.get base + '/uri_args/?k=v'
+t.assert('ngx_mruby - get uri_args', 'location /get_uri_args') do
+  res = HttpRequest.new.get base + '/get_uri_args/?k=v'
   t.assert_equal "k:v\n", res["body"]
 end
 
@@ -358,8 +358,8 @@ t.assert('ngx_mruby - set uri_args', 'location /set_uri_args') do
   t.assert_equal "pass=ngx_mruby\n", res['body']
 end
 
-t.assert('ngx_mruby - get post_args', 'location /post_args') do
-  res = HttpRequest.new.post base + '/post_args', 'foo=bar&bar=buzz'
+t.assert('ngx_mruby - get post_args', 'location /get_post_args') do
+  res = HttpRequest.new.post base + '/get_post_args', 'foo=bar&bar=buzz'
   t.assert_equal "foo:bar\nbar:buzz\n", res['body']
 end
 
