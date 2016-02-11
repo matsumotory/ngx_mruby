@@ -22,7 +22,7 @@ __ngx_mruby is A Fast and Memory-Efficient TCP Load Balancing and Web Server Ext
 - You can implement nginx modules by Ruby scripts on nginx!
 - You can implement some Web server software extensions by same Ruby code (as possible)
 - Supported nginx __1.4/1.6/1.8./1.9.*__
-- [Benchmark between ngx_mruby(19423.42 req/sec) and lua-nginx-module(13894.30 req/sec)](https://gist.github.com/matsumoto-r/6930672)
+- [Benchmark between ngx_mrubyand lua-nginx-module](https://www.techempower.com/benchmarks/#section=data-r10&hw=peak&test=plaintext&w=4-0)
 
 ```ruby
 # location /proxy {
