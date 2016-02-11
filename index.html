@@ -5,7 +5,7 @@
     <title>ngx_mruby by matsumoto-r</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
-    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
     <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
   </head>
@@ -20,7 +20,7 @@
 
     <section class="main-content">
       <h1>
-<a id="welcome-to-ngx_mruby-pages" class="anchor" href="#welcome-to-ngx_mruby-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Welcome to ngx_mruby Pages</h1>
+<a id="welcome-to-ngx_mruby-pages" class="anchor" href="#welcome-to-ngx_mruby-pages" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Welcome to ngx_mruby Pages</h1>
 
 <p><a href="https://gitter.im/matsumoto-r/ngx_mruby?utm_source=badge&amp;utm_medium=badge&amp;utm_campaign=pr-badge&amp;utm_content=badge"><img src="https://badges.gitter.im/Join%20Chat.svg" alt="Gitter"></a>
 <a href="https://travis-ci.org/matsumoto-r/ngx_mruby"><img src="https://travis-ci.org/matsumoto-r/ngx_mruby.svg?branch=master" alt="Build Status"></a> <a href="https://app.wercker.com/project/bykey/55f7f7af32d94b01a42f863f3635940c"><img src="https://app.wercker.com/status/55f7f7af32d94b01a42f863f3635940c/s" alt="wercker status" title="wercker status"></a></p>
@@ -30,7 +30,7 @@
 <p>※ <a href="http://blog.matsumoto-r.jp/?p=3974">hello world simple benchmark, see details of blog entry.</a></p>
 
 <h2>
-<a id="documents" class="anchor" href="#documents" aria-hidden="true"><span class="octicon octicon-link"></span></a>Documents</h2>
+<a id="documents" class="anchor" href="#documents" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Documents</h2>
 
 <ul>
 <li><a href="https://github.com/matsumoto-r/ngx_mruby/wiki/Install">Install</a></li>
@@ -41,21 +41,21 @@
 </ul>
 
 <h2>
-<a id="whats-ngx_mruby" class="anchor" href="#whats-ngx_mruby" aria-hidden="true"><span class="octicon octicon-link"></span></a>What's ngx_mruby</h2>
+<a id="whats-ngx_mruby" class="anchor" href="#whats-ngx_mruby" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>What's ngx_mruby</h2>
 
-<p><strong>ngx_mruby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.</strong></p>
+<p><strong>ngx_mruby is A Fast and Memory-Efficient TCP Load Balancing and Web Server Extension Mechanism Using Scripting Language mruby for nginx.</strong></p>
 
 <ul>
 <li>ngx_mruby is to provide an alternative to lua-nginx-module or <a href="http://mod.mruby.org/">mod_mruby of Apache httpd</a>.</li>
 <li>Unified Ruby Code between Apache(mod_mruby), nginx(ngx_mruby) and other Web server software(plan) for Web server extensions.</li>
 <li>You can implement nginx modules by Ruby scripts on nginx!</li>
 <li>You can implement some Web server software extensions by same Ruby code (as possible)</li>
-<li>Supported nginx <strong>1.4/1.6/1.7.*</strong>
+<li>Supported nginx <strong>1.4/1.6/1.8./1.9.*</strong>
 </li>
-<li><a href="https://gist.github.com/matsumoto-r/6930672">Benchmark between ngx_mruby(19423.42 req/sec) and lua-nginx-module(13894.30 req/sec)</a></li>
+<li><a href="https://www.techempower.com/benchmarks/#section=data-r10&amp;hw=peak&amp;test=plaintext&amp;w=4-0">Benchmark between ngx_mrubyand lua-nginx-module</a></li>
 </ul>
 
-<div class="highlight highlight-ruby"><pre><span class="pl-c"># location /proxy {</span>
+<div class="highlight highlight-source-ruby"><pre><span class="pl-c"># location /proxy {</span>
 <span class="pl-c">#   mruby_set $backend "/path/to/proxy.rb";</span>
 <span class="pl-c">#   proxy_pass   http://$backend;</span>
 <span class="pl-c"># }</span>
@@ -76,7 +76,7 @@ r.get backends[rand(backends.length)]</pre></div>
 <li>You can implement some Web server software extensions by same Ruby code (as possible)</li>
 </ul>
 
-<div class="highlight highlight-ruby"><pre><span class="pl-c"># Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby)</span>
+<div class="highlight highlight-source-ruby"><pre><span class="pl-c"># Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby)</span>
 <span class="pl-c"># for Web server extensions.</span>
 <span class="pl-c">#</span>
 <span class="pl-c"># Apache httpd.conf by mod_mruby</span>
@@ -99,12 +99,12 @@ r.get backends[rand(backends.length)]</pre></div>
 <span class="pl-c"># ngx_mruby =&gt; "Hello ngx_mruby/0.0.1 world!"</span></pre></div>
 
 <h2>
-<a id="abstract" class="anchor" href="#abstract" aria-hidden="true"><span class="octicon octicon-link"></span></a>Abstract</h2>
+<a id="abstract" class="anchor" href="#abstract" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Abstract</h2>
 
 <p>As the increase of large-scale and complex Web services, not only a development of Web applications but also an implementation of Web server extensions is required in many cases. The Web server extensions were mainly implemented in C language because of fast and memory-efficient behavior, but extension methods using scripting language are proposed with consideration of maintainability and productivity. However, if the existing methods primarily intended to enhance not the implementation of Web applications but the implementation of internal processing of the Web server, the problem remains in terms of speed, memory-efficiency and safety. Therefore, we propose a fast and memory-efficient Web server extension mechanism using scripting language. We design the architecture that a server process creates the region to save the state of the interpreter at the server process startup, and multiple scripts share the region in order to process fast when the script is called as internal processing from a Web server process. The server process frees the global variables table, the exception flag and the byte-code which cause the increase of memory usage mainly, in order to reduce the memory usage and extend safety by preventing interference between each scripts because of sharing the region. We implement the mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".</p>
 
 <h1>
-<a id="license" class="anchor" href="#license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h1>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h1>
 
 <p>under the MIT License:</p>
 
@@ -133,4 +133,3 @@ r.get backends[rand(backends.length)]</pre></div>
 
   </body>
 </html>
-
