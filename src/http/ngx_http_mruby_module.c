@@ -336,6 +336,9 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
   ngx_http_mruby_srv_conf_t *prev = parent;
   ngx_http_mruby_srv_conf_t *conf = child;
   ngx_http_ssl_srv_conf_t *sscf;
+  ngx_http_mruby_srv_conf_t *mscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_mruby_module);
+  neverbleed_t nb;
+  char errbuf[NEVERBLEED_ERRBUF_SIZE];
 
   NGX_MRUBY_MERGE_CODE(prev->ssl_handshake_code, conf->ssl_handshake_code);
 
@@ -348,6 +351,11 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
     SSL_CTX_set_cert_cb(sscf->ssl.ctx, ngx_http_mruby_ssl_cert_handler, NULL);
+    if (neverbleed_init(&nb, errbuf) != 0) {
+      ngx_log_error(NGX_LOG_EMERG, cf->log, 0, MODULE_NAME " : neverbleed_init failed: %s", errbuf);
+      return NGX_CONF_ERROR;
+    }
+    mscf->nb = &nb;
 #else
     ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                   MODULE_NAME " : OpenSSL 1.0.2e or later required but found " OPENSSL_VERSION_TEXT);
@@ -1889,7 +1897,7 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
 
 #if (NGX_HTTP_SSL) && OPENSSL_VERSION_NUMBER >= 0x1000205fL
 
-static int ngx_http_mruby_set_der_certificate(ngx_ssl_conn_t *ssl_conn, ngx_str_t *cert, ngx_str_t *key)
+static int ngx_http_mruby_set_der_certificate(ngx_ssl_conn_t *ssl_conn, SSL_CTX *ssl_ctx, ngx_str_t *cert, ngx_str_t *key, ngx_http_mruby_srv_conf_t *mscf, int neverbleed)
 {
   BIO *bio = NULL;
   X509 *x509 = NULL;
@@ -1949,8 +1957,15 @@ static int ngx_http_mruby_set_der_certificate(ngx_ssl_conn_t *ssl_conn, ngx_str_
   BIO_free(bio);
   bio = NULL;
 
-  if (SSL_use_PrivateKey_file(ssl_conn, (char *)key->data, SSL_FILETYPE_PEM) != 1) {
-    return NGX_ERROR;
+  if (neverbleed) {
+    char errbuf[NEVERBLEED_ERRBUF_SIZE];
+    if (neverbleed_load_private_key_file(mscf->nb, ssl_ctx, (char *)key->data, errbuf) != 1) {
+      return NGX_ERROR;
+    }
+  } else {
+    if (SSL_use_PrivateKey_file(ssl_conn, (char *)key->data, SSL_FILETYPE_PEM) != 1) {
+      return NGX_ERROR;
+    }
   }
 
   return NGX_OK;
@@ -2061,7 +2076,7 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
 
   ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certficate to cert=%V key=%V",
                 &mscf->cert_path, &mscf->cert_key_path);
-  ngx_http_mruby_set_der_certificate(ssl_conn, &mscf->cert_path, &mscf->cert_key_path);
+  ngx_http_mruby_set_der_certificate(ssl_conn, c->ssl->session_ctx, &mscf->cert_path, &mscf->cert_key_path, mscf, 1);
 
   return 1;
 }

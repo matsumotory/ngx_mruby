@@ -12,6 +12,7 @@
 #include <ngx_config.h>
 #include <nginx.h>
 
+#include "neverbleed.h"
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_init.h"
 
@@ -59,6 +60,7 @@ typedef struct {
   ngx_str_t *servername;
   ngx_str_t cert_path;
   ngx_str_t cert_key_path;
+  neverbleed_t *nb;
 } ngx_http_mruby_srv_conf_t;
 
 typedef struct ngx_http_mruby_main_conf_t {
