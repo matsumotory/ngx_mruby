@@ -324,6 +324,8 @@ static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
 
   mscf->cert_path.len = 0;
   mscf->cert_key_path.len = 0;
+  mscf->cert_data.len = 0;
+  mscf->cert_key_data.len = 0;
   mscf->ssl_handshake_code = NGX_CONF_UNSET_PTR;
 
   return mscf;
@@ -1889,6 +1891,87 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
 
 #if (NGX_HTTP_SSL) && OPENSSL_VERSION_NUMBER >= 0x1000205fL
 
+static int ngx_http_mruby_set_der_certificate_data(ngx_ssl_conn_t *ssl_conn, ngx_str_t *cert, ngx_str_t *key)
+{
+  BIO *bio = NULL;
+  EVP_PKEY *pkey = NULL;
+  X509 *x509 = NULL;
+  u_long n;
+
+  if ((bio = BIO_new_mem_buf(cert->data, cert->len)) == NULL) {
+    goto NGX_MRUBY_SSL_ERROR;
+  }
+
+  x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL);
+  if (x509 == NULL) {
+    BIO_free(bio);
+    return NGX_ERROR;
+  }
+
+  SSL_certs_clear(ssl_conn);
+
+  if (SSL_use_certificate(ssl_conn, x509) == 0) {
+    X509_free(x509);
+    BIO_free(bio);
+    return NGX_ERROR;
+  }
+
+  X509_free(x509);
+  x509 = NULL;
+
+  /* read rest of the chain */
+  for (;;) {
+    x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+    if (x509 == NULL) {
+      n = ERR_peek_last_error();
+
+      if (ERR_GET_LIB(n) == ERR_LIB_PEM && ERR_GET_REASON(n) == PEM_R_NO_START_LINE) {
+        ERR_clear_error();
+        break;
+      }
+
+      BIO_free(bio);
+      return NGX_ERROR;
+    }
+
+    if (SSL_add0_chain_cert(ssl_conn, x509) == 0) {
+      X509_free(x509);
+      BIO_free(bio);
+      return NGX_ERROR;
+    }
+  }
+
+  BIO_free(bio);
+  bio = NULL;
+
+  if ((bio = BIO_new_mem_buf(key->data, key->len)) == NULL) {
+    goto NGX_MRUBY_SSL_ERROR;
+  }
+
+  if ((pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL)) == NULL) {
+    goto NGX_MRUBY_SSL_ERROR;
+  }
+
+  if (SSL_use_PrivateKey(ssl_conn, pkey) != 1) {
+    goto NGX_MRUBY_SSL_ERROR;
+  }
+
+  BIO_free(bio);
+  bio = NULL;
+
+  EVP_PKEY_free(pkey);
+  pkey = NULL;
+
+  return NGX_OK;
+
+NGX_MRUBY_SSL_ERROR:
+  if (pkey)
+      EVP_PKEY_free(pkey);
+  if (bio)
+      BIO_free(bio);
+  return NGX_ERROR;
+}
+
 static int ngx_http_mruby_set_der_certificate(ngx_ssl_conn_t *ssl_conn, ngx_str_t *cert, ngx_str_t *key)
 {
   BIO *bio = NULL;
@@ -2030,38 +2113,43 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   ngx_mrb_state_clean(NULL, mscf->state);
   mrb_gc_arena_restore(mrb, ai);
 
-  if (mscf->cert_path.len == 0 || mscf->cert_key_path.len == 0) {
-    ngx_log_error(NGX_LOG_DEBUG, c->log, 0,
-                  MODULE_NAME " : mruby ssl handler: cert or cert key not exists or not read");
-    return 1;
-  }
-
-  errno = 0;
-  if (access((const char *)mscf->cert_path.data, F_OK | R_OK) != 0) {
-    if (errno == EACCES) {
-      ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert [%V] permission denied",
-                    &mscf->cert_path);
-    } else {
-      ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert [%V] not exists or not read",
-                    &mscf->cert_path);
+  if (mscf->cert_data.len == 0 || mscf->cert_key_data.len == 0) {
+    if (mscf->cert_path.len == 0 || mscf->cert_key_path.len == 0) {
+      ngx_log_error(NGX_LOG_DEBUG, c->log, 0,
+                    MODULE_NAME " : mruby ssl handler: cert or cert key not exists or not read");
+      return 1;
     }
-    return 0;
-  }
-  errno = 0;
-  if (access((const char *)mscf->cert_key_path.data, F_OK | R_OK) != 0) {
-    if (errno == EACCES) {
-      ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert_key [%V] permission denied",
-                    &mscf->cert_key_path);
-    } else {
-      ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert_key [%V] not exists or not read",
-                    &mscf->cert_key_path);
-    }
-    return 0;
-  }
 
-  ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certficate to cert=%V key=%V",
-                &mscf->cert_path, &mscf->cert_key_path);
-  ngx_http_mruby_set_der_certificate(ssl_conn, &mscf->cert_path, &mscf->cert_key_path);
+    errno = 0;
+    if (access((const char *)mscf->cert_path.data, F_OK | R_OK) != 0) {
+      if (errno == EACCES) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert [%V] permission denied",
+                      &mscf->cert_path);
+      } else {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert [%V] not exists or not read",
+                      &mscf->cert_path);
+      }
+      return 0;
+    }
+    errno = 0;
+    if (access((const char *)mscf->cert_key_path.data, F_OK | R_OK) != 0) {
+      if (errno == EACCES) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert_key [%V] permission denied",
+                      &mscf->cert_key_path);
+      } else {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert_key [%V] not exists or not read",
+                      &mscf->cert_key_path);
+      }
+      return 0;
+    }
+
+    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certficate to cert=%V key=%V",
+                  &mscf->cert_path, &mscf->cert_key_path);
+    ngx_http_mruby_set_der_certificate(ssl_conn, &mscf->cert_path, &mscf->cert_key_path);
+  } else {
+    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certficate by mem buffer");
+    ngx_http_mruby_set_der_certificate_data(ssl_conn, &mscf->cert_data, &mscf->cert_key_data);
+  }
 
   return 1;
 }

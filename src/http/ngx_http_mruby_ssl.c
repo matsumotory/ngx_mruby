@@ -50,6 +50,32 @@ static mrb_value ngx_mrb_ssl_set_cert_key(mrb_state *mrb, mrb_value self)
   return mrb_str_new(mrb, (char *)mscf->cert_key_path.data, mscf->cert_key_path.len);
 }
 
+static mrb_value ngx_mrb_ssl_set_cert_data(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+  char *data;
+  mrb_int data_len;
+
+  mrb_get_args(mrb, "s", &data, &data_len);
+  mscf->cert_data.data = (u_char *)data;
+  mscf->cert_data.len = data_len;
+
+  return mrb_str_new(mrb, (char *)mscf->cert_data.data, mscf->cert_data.len);
+}
+
+static mrb_value ngx_mrb_ssl_set_cert_key_data(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+  char *data;
+  mrb_int data_len;
+
+  mrb_get_args(mrb, "s", &data, &data_len);
+  mscf->cert_key_data.data = (u_char *)data;
+  mscf->cert_key_data.len = data_len;
+
+  return mrb_str_new(mrb, (char *)mscf->cert_key_data.data, mscf->cert_key_data.len);
+}
+
 void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
 {
   struct RClass *class_ssl;
@@ -58,6 +84,8 @@ void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_ssl, "servername", ngx_mrb_ssl_get_servername, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_ssl, "certificate=", ngx_mrb_ssl_set_cert, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_key=", ngx_mrb_ssl_set_cert_key, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_ssl, "certificate_data=", ngx_mrb_ssl_set_cert_data, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_ssl, "certificate_key_data=", ngx_mrb_ssl_set_cert_key_data, MRB_ARGS_REQ(1));
 }
 
 #endif /* NGX_HTTP_SSL */
