@@ -1898,12 +1898,13 @@ static int ngx_http_mruby_set_der_certificate_data(ngx_ssl_conn_t *ssl_conn, ngx
   X509 *x509 = NULL;
   u_long n;
 
+  /* read certficate data from memory buffer */
   if ((bio = BIO_new_mem_buf(cert->data, cert->len)) == NULL) {
-    goto NGX_MRUBY_SSL_ERROR;
+    BIO_free(bio);
+    return NGX_ERROR;
   }
 
-  x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL);
-  if (x509 == NULL) {
+  if ((x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL)) == NULL) {
     BIO_free(bio);
     return NGX_ERROR;
   }
@@ -1944,6 +1945,7 @@ static int ngx_http_mruby_set_der_certificate_data(ngx_ssl_conn_t *ssl_conn, ngx
   BIO_free(bio);
   bio = NULL;
 
+  /* read key data from memory buffer */
   if ((bio = BIO_new_mem_buf(key->data, key->len)) == NULL) {
     goto NGX_MRUBY_SSL_ERROR;
   }
@@ -1966,9 +1968,9 @@ static int ngx_http_mruby_set_der_certificate_data(ngx_ssl_conn_t *ssl_conn, ngx
 
 NGX_MRUBY_SSL_ERROR:
   if (pkey)
-      EVP_PKEY_free(pkey);
+    EVP_PKEY_free(pkey);
   if (bio)
-      BIO_free(bio);
+    BIO_free(bio);
   return NGX_ERROR;
 }
 
