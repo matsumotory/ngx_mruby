@@ -10,8 +10,8 @@ def base
   "http://#{http_host}"
 end
 
-def base_ssl
-  "https://localhost:58082"
+def base_ssl(port)
+  "https://localhost:#{port}"
 end
 
 t = SimpleTest.new "ngx_mruby test"
@@ -364,11 +364,20 @@ t.assert('ngx_mruby - get post_args', 'location /get_post_args') do
 end
 
 t.assert('ngx_mruby - ssl certificate changing') do
-  res = `curl -k #{base_ssl + '/'}`
+  res = `curl -k #{base_ssl(58082) + '/'}`
   t.assert_equal 'ssl test ok', res
   res = `openssl s_client -servername localhost -connect localhost:58082 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
   t.assert_equal "1", res
   res = `openssl s_client -servername hogehoge -connect 127.0.0.1:58082 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not`.chomp
+  t.assert_equal "", res
+end
+
+t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
+  res = `curl -k #{base_ssl(58083) + '/'}`
+  t.assert_equal 'ssl test ok', res
+  res = `openssl s_client -servername localhost -connect localhost:58083 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
+  t.assert_equal "1", res
+  res = `openssl s_client -servername hogehoge -connect 127.0.0.1:58083 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not`.chomp
   t.assert_equal "", res
 end
 
