@@ -1917,7 +1917,7 @@ static int ngx_http_mruby_set_der_certificate_data(ngx_ssl_conn_t *ssl_conn, ngx
   x509 = NULL;
 
   /* read rest of the chain */
-  for (;;) {
+  while (!BIO_eof(bio)) {
     x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
     if (x509 == NULL) {
       n = ERR_peek_last_error();
