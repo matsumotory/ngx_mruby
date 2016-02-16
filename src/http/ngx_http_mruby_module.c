@@ -858,6 +858,7 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
 static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_srv_conf_t *mscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_mruby_module);
+  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
   ngx_str_t *value;
   ngx_mrb_code_t *code;
   ngx_int_t rc;
@@ -866,11 +867,8 @@ static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *
     return "is duplicated";
   }
 
-  rc = ngx_http_mruby_shared_state_init(mscf->state);
-  if (rc == NGX_ERROR) {
-    ngx_log_error(NGX_LOG_EMERG, cf->log, 0, MODULE_NAME " : mruby state init failed at ssl_handshake_code");
-    return NGX_CONF_ERROR;
-  }
+  /* share mrb_state of preinit */
+  mscf->state = mmcf->state;
 
   value = cf->args->elts;
 
