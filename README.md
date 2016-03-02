@@ -13,6 +13,7 @@
 - [Directives](https://github.com/matsumoto-r/ngx_mruby/wiki/Directives)
 - [Class and Method](https://github.com/matsumoto-r/ngx_mruby/wiki/Class-and-Method)
 - [Use Case](https://github.com/matsumoto-r/ngx_mruby/wiki/Use-Case)
+- [Examples](https://github.com/hsbt/nginx-tech-talk)
 
 ## What's ngx_mruby
 __ngx_mruby is A Fast and Memory-Efficient TCP Load Balancing and Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
