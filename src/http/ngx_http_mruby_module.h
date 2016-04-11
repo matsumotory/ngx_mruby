@@ -16,7 +16,7 @@
 #include "ngx_http_mruby_init.h"
 
 #define MODULE_NAME "ngx_mruby"
-#define MODULE_VERSION "1.17.0"
+#define MODULE_VERSION "1.17.1"
 
 #if (nginx_version > 1007999)
 #define NGX_USE_MRUBY_UPSTREAM
