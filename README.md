@@ -16,7 +16,7 @@
 - [Examples](https://github.com/hsbt/nginx-tech-talk)
 
 ## What's ngx_mruby
-__ngx_mruby is A Fast and Memory-Efficient TCP Load Balancing and Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
+__ngx_mruby is A Fast and Memory-Efficient TCP/UDP Load Balancing and Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
 
 - ngx_mruby is to provide an alternative to lua-nginx-module or [mod_mruby of Apache httpd](http://mod.mruby.org/).
 - Unified Ruby Code between Apache(mod_mruby), nginx(ngx_mruby) and other Web server software(plan) for Web server extensions.
