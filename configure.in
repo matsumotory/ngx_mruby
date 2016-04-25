@@ -34,6 +34,18 @@ if test "$NGX_SRC_ROOT" = no; then
 fi
 AC_SUBST(NGX_SRC_ROOT)
 
+NGX_OPENSSL_SRC=
+AC_ARG_WITH(openssl_src, AC_HELP_STRING([--with-openssl-src=DIR],
+    [set path to OpenSSL library sources]),
+    [NGX_OPENSSL_SRC="$with_openssl_src"])
+AC_SUBST(NGX_OPENSSL_SRC)
+
+NGX_OPENSSL_OPT=
+AC_ARG_WITH(openssl_opt, AC_HELP_STRING([--with-openssl-opt=OPTIONS],
+    [set additional build options for OpenSSL]),
+    [NGX_OPENSSL_OPT="$with_openssl_opt"])
+AC_SUBST(NGX_OPENSSL_OPT)
+
 # nginx src root
 NGX_CONFIG_OPT=
 AC_ARG_WITH(ngx_config_opt, AC_HELP_STRING([--with-ngx-config-opt=OPT],

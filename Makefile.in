@@ -30,10 +30,29 @@ else
   include $(MRUBY_MAK_FILE)
 endif
 
+NGX_OPENSSL_SRC=@NGX_OPENSSL_SRC@
+NGX_OPENSSL_OPT=@NGX_OPENSSL_OPT@
+ifdef NGX_OPENSSL_SRC
+  NGX_CONFIG_OPT := --with-openssl="$(NGX_OPENSSL_SRC)" $(NGX_CONFIG_OPT)
+endif
+
+ifdef NGX_OPENSSL_OPT
+  NGX_CONFIG_OPT := --with-openssl-opt="$(NGX_OPENSSL_OPT)" $(NGX_CONFIG_OPT)
+endif
+
 #   flags
 CFLAGS = $(MRUBY_CFLAGS) -I/usr/local/include
 LDFLAGS = $(MRUBY_LDFLAGS) -L/usr/local/lib
 LIBS = $(MRUBY_LIBS) $(MRUBY_LDFLAGS_BEFORE_LIBS) $(MRUBY_ROOT)/build/host/lib/libmruby.a
+
+build_mruby_targets=
+ifdef NGX_OPENSSL_SRC
+  NGX_OPENSSL_LIBS = $(NGX_OPENSSL_SRC)/.openssl/lib/libssl.a $(NGX_OPENSSL_SRC)/.openssl/lib/libcrypto.a
+  CFLAGS := -I$(NGX_OPENSSL_SRC)/.openssl/include $(CFLAGS)
+  LDFLAGS := -L$(NGX_OPENSSL_SRC)/.openssl/lib $(LDFLAGS)
+  LIBS := $(NGX_OPENSSL_LIBS) $(LIBS)
+  build_mruby_targets := openssl
+endif
 
 #   the default target
 all: ngx_mruby
@@ -51,7 +70,7 @@ clobber: clean_mruby clean
 	-rm -rf tmp autom4te.cache config.status config.log build
 
 #   build mruby
-build_mruby:
+build_mruby: $(build_mruby_targets)
 	cp build_config.rb $(MRUBY_ROOT)/build_config.rb && cd $(MRUBY_ROOT) && $(RAKE) && cd $(MRUBY_ROOT) && git checkout build_config.rb
 
 #   clean mruby
@@ -70,5 +89,12 @@ ngx_mruby: generate_gems_config
 generate_gems_config:
 	@echo CORE_LIBS=\"\$$CORE_LIBS $(LDFLAGS) $(LIBS)\" > ./mrbgems_config
 	@echo CORE_INCS=\"\$$CORE_INCS $(CFLAGS)\" >> ./mrbgems_config
+
+openssl:
+	cd $(NGX_OPENSSL_SRC) \
+	&& if [ -f Makefile ]; then $(MAKE) clean; fi \
+	&& ./config --prefix=$(NGX_OPENSSL_SRC)/.openssl no-shared $(NGX_OPENSSL_OPT)  \
+	&& $(MAKE) \
+	&& $(MAKE) install_sw LIBDIR=lib
 
 .PHONY: install

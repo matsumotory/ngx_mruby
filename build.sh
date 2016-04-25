@@ -68,7 +68,7 @@ else
 fi
 
 echo "ngx_mruby configure ..."
-./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}"
+./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
 echo "ngx_mruby configure ... Done"
 
 echo "mruby building ..."

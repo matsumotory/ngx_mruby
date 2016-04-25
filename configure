@@ -622,6 +622,8 @@ ac_subst_vars='LTLIBOBJS
 NDK_ROOT
 MRUBY_ROOT
 NGX_CONFIG_OPT
+NGX_OPENSSL_OPT
+NGX_OPENSSL_SRC
 NGX_SRC_ROOT
 LIBOBJS
 EGREP
@@ -677,6 +679,8 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 with_ngx_src_root
+with_openssl_src
+with_openssl_opt
 with_ngx_config_opt
 with_mruby_root
 with_ndk_root
@@ -1297,6 +1301,9 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-ngx-src-root=DIR pathname to ngx_src_root [[ngx_src_root]]
+  --with-openssl-src=DIR  set path to OpenSSL library sources
+  --with-openssl-opt=OPTIONS
+                          set additional build options for OpenSSL
   --with-ngx-config-opt=OPT
                           ngxin configure option [[ngx_config_opt]]
   --with-mruby-root=DIR   pathname to mruby_root [[mruby_root]]
@@ -3626,6 +3633,24 @@ fi
 if test "$NGX_SRC_ROOT" = no; then
     as_fn_error $? "nginx src dir not found." "$LINENO" 5
 fi
+
+
+NGX_OPENSSL_SRC=
+
+# Check whether --with-openssl_src was given.
+if test "${with_openssl_src+set}" = set; then :
+  withval=$with_openssl_src; NGX_OPENSSL_SRC="$with_openssl_src"
+fi
+
+
+
+NGX_OPENSSL_OPT=
+
+# Check whether --with-openssl_opt was given.
+if test "${with_openssl_opt+set}" = set; then :
+  withval=$with_openssl_opt; NGX_OPENSSL_OPT="$with_openssl_opt"
+fi
+
 
 
 # nginx src root
