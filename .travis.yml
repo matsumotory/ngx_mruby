@@ -23,6 +23,10 @@ env:
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=9
     NGINX_SRC_PATCH=15
+  - NGINX_SRC_MAJOR=1
+    NGINX_SRC_MINOR=10
+    NGINX_SRC_PATCH=0
+
 
 before_script:
   - curl -L https://www.openssl.org/source/openssl-1.0.2-latest.tar.gz > openssl-1.0.2.tar.gz
