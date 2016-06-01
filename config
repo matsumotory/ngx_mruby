@@ -16,6 +16,7 @@ NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
                 $ngx_addon_dir/src/http/ngx_http_mruby_filter.c \
                 $ngx_addon_dir/src/http/ngx_http_mruby_upstream.c \
                 $ngx_addon_dir/src/http/ngx_http_mruby_ssl.c \
+                $ngx_addon_dir/src/http/ngx_http_mruby_event.c \
                 "
 if [ $STREAM = YES ]; then
   HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_stream_mruby_module"
