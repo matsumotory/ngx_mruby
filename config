@@ -14,15 +14,25 @@ NGX_MRUBY_SRCS="$ngx_addon_dir/src/http/ngx_http_mruby_module.c \
                 $ngx_addon_dir/src/http/ngx_http_mruby_upstream.c \
                 $ngx_addon_dir/src/http/ngx_http_mruby_ssl.c \
                 "
+HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES __ngx_http_upstream_keepalive_module"
 
 if [ -n "$ngx_module_link" ]; then
     ngx_module_type=HTTP_AUX_FILTER
     ngx_module_name="$ngx_addon_name"
     ngx_module_srcs="$NGX_MRUBY_SRCS"
 
+    if [ $STREAM = YES ]; then
+      ngx_module_srcs="$ngx_module_srcs \
+                      $ngx_addon_dir/src/stream/ngx_stream_mruby_module.c \
+                      $ngx_addon_dir/src/stream/ngx_stream_mruby_init.c \
+                      $ngx_addon_dir/src/stream/ngx_stream_mruby_core.c \
+                      $ngx_addon_dir/src/stream/ngx_stream_mruby_connection.c \
+                      "
+    fi
+
     . auto/module
 else
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_http_mruby_module __ngx_http_upstream_keepalive_module"
+    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_http_mruby_module"
     NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
                     $NGX_MRUBY_SRCS
                     "
