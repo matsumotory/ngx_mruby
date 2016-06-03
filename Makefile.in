@@ -85,6 +85,9 @@ make_ngx_mruby:
 ngx_mruby: generate_gems_config
 	cd $(NGX_SRC_ROOT) && $(NGX_CONFIGURE) --add-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
 
+ngx_mruby_dynamic: generate_gems_config
+	cd $(NGX_SRC_ROOT) && $(NGX_CONFIGURE) --add-dynamic-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
+
 #   create mrbgems config
 generate_gems_config:
 	@echo CORE_LIBS=\"\$$CORE_LIBS $(LDFLAGS) $(LIBS)\" > ./mrbgems_config
