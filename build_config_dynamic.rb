@@ -4,7 +4,6 @@ MRuby::Build.new do |conf|
 
   conf.gembox 'full-core'
   conf.cc do |cc|
-    # cc.flags = [ENV['CFLAGS'], '-fPIC', '--static']
     cc.flags = [ENV['CFLAGS'], '-fPIC']
   end
 
@@ -20,7 +19,7 @@ MRuby::Build.new do |conf|
   conf.gem :github => 'iij/mruby-socket'
   conf.gem :github => 'mattn/mruby-json'
   conf.gem :github => 'mattn/mruby-onig-regexp'
-#   conf.gem :github => 'matsumoto-r/mruby-redis' ## Current state => ngx_http_mruby_module.so: undefined symbol: redisCommandArgv)
+  conf.gem :github => 'matsumoto-r/mruby-redis'
   conf.gem :github => 'matsumoto-r/mruby-vedis'
   conf.gem :github => 'matsumoto-r/mruby-sleep'
   conf.gem :github => 'matsumoto-r/mruby-userdata'
