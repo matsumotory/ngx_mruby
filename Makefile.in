@@ -88,13 +88,17 @@ make_ngx_mruby:
 ngx_mruby: generate_gems_config
 	cd $(NGX_SRC_ROOT) && $(NGX_CONFIGURE) --add-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
 
-ngx_mruby_dynamic: generate_gems_config
+ngx_mruby_dynamic: generate_gems_config_dynamic
 	cd $(NGX_SRC_ROOT) && $(NGX_CONFIGURE) --add-dynamic-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
 
 #   create mrbgems config
 generate_gems_config:
 	@echo CORE_LIBS=\"\$$CORE_LIBS $(LDFLAGS) $(LIBS)\" > ./mrbgems_config
 	@echo CORE_INCS=\"\$$CORE_INCS $(CFLAGS)\" >> ./mrbgems_config
+
+generate_gems_config_dynamic:
+	@echo ngx_module_libs=\"\$$ngx_module_libs $(LDFLAGS) $(LIBS)\" > ./mrbgems_config
+	@echo ngx_module_incs=\"\$$ngx_module_incs $(CFLAGS)\" >> ./mrbgems_config
 
 openssl:
 	cd $(NGX_OPENSSL_SRC) \

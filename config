@@ -38,15 +38,11 @@ if [ -n "$ngx_module_link" ]; then
     fi
     ngx_module_srcs="$NGX_MRUBY_SRCS"
 
-    CORE_LIBS="$CORE_LIBS $mruby_root/build/host/mrblib/mrblib.o $mruby_root/build/host/lib/libmruby.a -lm"
-    CORE_INCS="$CORE_INCS $mruby_root/src $mruby_root/include"
-    ngx_module_libs="$CORE_LIBS"
-    ngx_module_incs="$CORE_INCS"
+    ngx_module_libs="$CORE_LIBS $mruby_root/build/host/mrblib/mrblib.o $mruby_root/build/host/lib/libmruby.a -lm"
+    ngx_module_incs="$CORE_INCS $mruby_root/src $mruby_root/include"
 
     if [ -f $ngx_addon_dir/mrbgems_config ]; then
         . $ngx_addon_dir/mrbgems_config
-        ngx_module_libs="$CORE_LIBS"
-        ngx_module_incs="$CORE_INCS"
     fi
 
     . auto/module
