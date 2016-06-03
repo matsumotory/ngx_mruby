@@ -108,4 +108,46 @@ rake
 killall nginx
 echo "ngx_mruby testing ... Done"
 
+## Build as DynamicModule: nginx >= 1.9.11
+if [ $NGINX_SRC_MINOR -eq 9 ]; then
+    if [ $NGINX_SRC_PATCH -ge 11 ]; then
+        NGX_SUPPORTS_DYNAMIC="TRUE"
+    fi
+fi
+
+if [ $NGINX_SRC_MINOR -ge 10 ]; then
+    NGX_SUPPORTS_DYNAMIC="TRUE"
+fi
+
+if [ -n "$NGX_SUPPORTS_DYNAMIC" ]; then
+    echo "ngx_mruby as dynamic_module testing ..."
+    ### Cleanup and Rebuild
+    ps -C nginx && killall nginx
+    make clean
+    cd ..
+    cd mruby && make clean && cd ..
+    cd build/nginx_src && make clean && cd -
+    make build_mruby_with_fpic
+    make ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+
+    make install
+
+    sed "1i\load_module modules/ngx_http_mruby_module.so;" build/nginx/conf/nginx.conf -i
+
+    echo "====================================="
+    echo ""
+    echo "dynamic_module ngx_mruby starting and logging"
+    echo ""
+    echo "====================================="
+    echo ""
+    echo ""
+    ${NGINX_INSTALL_DIR}/sbin/nginx &
+    echo ""
+    echo ""
+    cd mruby_test
+    ./bin/mruby ../test/t/ngx_mruby.rb
+    killall nginx
+    echo "ngx_mruby as dynamic_module Done ..."
+fi
+
 echo "test.sh ... successful"
