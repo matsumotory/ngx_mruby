@@ -33,8 +33,8 @@ if [ $ngx_module_link = DYNAMIC ] ; then
     fi
     ngx_module_srcs="$NGX_MRUBY_SRCS"
 
-    ngx_module_libs="$mruby_root/build/host/mrblib/mrblib.o $mruby_root/build/host/lib/libmruby.a -lm"
-    ngx_module_incs="$mruby_root/src $mruby_root/include"
+    ngx_module_libs="$LDFLAGS $mruby_root/build/host/mrblib/mrblib.o $mruby_root/build/host/lib/libmruby.a -lm"
+    ngx_module_incs="$CFLAGS $mruby_root/src $mruby_root/include"
 
     if [ -f $ngx_addon_dir/mrbgems_config_dynamic ]; then
         . $ngx_addon_dir/mrbgems_config_dynamic
