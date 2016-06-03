@@ -1,9 +1,12 @@
 FROM ubuntu:14.04
 ## emulates Travis.ci environment
 # Usage:
-# docker build -f misc/Dockerfile.travis_emulate -t ngx_mruby:branch_name .
-#  or,
-# docker build -f misc/Dockerfile.travis_emulate -v `pwd`:/ngx_mruby -t ngx_mruby:branch_name .
+#   build:
+#     docker build -f misc/Dockerfile.travis_emulate -t ngx_mruby:branch_name .
+#   run:
+#     docker run -it ngx_mruby:branch_name
+#       or,
+#     docker run -it -v `pwd`:/ngx_mruby ngx_mruby:branch_name
 
 RUN apt-get update
 RUN apt-get install -y bash-completion apt-file software-properties-common && apt-file update
