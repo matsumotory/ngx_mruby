@@ -122,7 +122,6 @@ fi
 if [ -n "$NGX_SUPPORTS_DYNAMIC" ]; then
     echo "ngx_mruby as dynamic_module testing ..."
     ### Cleanup and Rebuild
-    ps -C nginx && killall nginx
     make clean
     cd ..
     cd mruby && make clean && cd ..
