@@ -98,7 +98,7 @@ generate_gems_config:
 
 generate_gems_config_dynamic:
 	@echo ngx_module_libs=\"\$(LDFLAGS) \$(LIBS)\" > ./mrbgems_config_dynamic
-	@echo CORE_LIBS=\"\$$CORE_LIBS $(LDFLAGS) \$(LIBS)\" >> ./mrbgems_config
+	@echo CORE_LIBS=\"\$$CORE_LIBS \$(LDFLAGS) \$(LIBS)\" >> ./mrbgems_config_dynamic
 
 openssl:
 	cd $(NGX_OPENSSL_SRC) \
