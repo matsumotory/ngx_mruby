@@ -3,8 +3,6 @@
 ngx_addon_name=ngx_http_mruby_module
 mruby_root=$ngx_addon_dir/mruby
 
-HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES __ngx_http_upstream_keepalive_module"
-
 NGX_MRUBY_SRCS="$ngx_addon_dir/src/http/ngx_http_mruby_module.c \
                 $ngx_addon_dir/src/http/ngx_http_mruby_core.c \
                 $ngx_addon_dir/src/http/ngx_http_mruby_init.c \
@@ -18,7 +16,6 @@ NGX_MRUBY_SRCS="$ngx_addon_dir/src/http/ngx_http_mruby_module.c \
                 "
 
 if [ $STREAM = YES ]; then
-  HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_stream_mruby_module"
   NGX_MRUBY_SRCS="$NGX_MRUBY_SRCS \
                   $ngx_addon_dir/src/stream/ngx_stream_mruby_module.c \
                   $ngx_addon_dir/src/stream/ngx_stream_mruby_init.c \
@@ -27,21 +24,39 @@ if [ $STREAM = YES ]; then
                   "
 fi
 
-if [ -n "$ngx_module_link" ]; then
+if [ $ngx_module_link = DYNAMIC ] ; then
     ngx_module_type=HTTP_AUX_FILTER
     ngx_module_name="$ngx_addon_name"
     ngx_module_srcs="$NGX_MRUBY_SRCS"
+    ngx_module_libs="$CORE_LIBS $mruby_root/build/host/mrblib/mrblib.o $mruby_root/build/host/lib/libmruby.a -lm"
+    ngx_module_incs="$CORE_INCS $mruby_root/src $mruby_root/include"
+
+    . auto/module
+elif [ $ngx_module_link = YES ] ; then
+    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES __ngx_http_upstream_keepalive_module ngx_http_mruby_module"
+    if [ $STREAM = YES ]; then
+      HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_stream_mruby_module"
+    fi
+
+    ngx_module_type=HTTP_AUX_FILTER
+    ngx_module_name="$ngx_addon_name"
+    ngx_module_srcs="$NGX_MRUBY_SRCS"
+    ngx_module_libs="$CORE_LIBS $mruby_root/build/host/mrblib/mrblib.o $mruby_root/build/host/lib/libmruby.a -lm"
+    ngx_module_incs="$CORE_INCS $mruby_root/src $mruby_root/include"
 
     . auto/module
 else
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_http_mruby_module"
+    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES __ngx_http_upstream_keepalive_module ngx_http_mruby_module"
+    if [ $STREAM = YES ]; then
+      HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_stream_mruby_module"
+    fi
     NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
                     $NGX_MRUBY_SRCS
                     "
+    CORE_LIBS="$CORE_LIBS $mruby_root/build/host/mrblib/mrblib.o $mruby_root/build/host/lib/libmruby.a -lm"
+    CORE_INCS="$CORE_INCS $mruby_root/src $mruby_root/include"
 fi
 
-CORE_LIBS="$CORE_LIBS $mruby_root/build/host/mrblib/mrblib.o $mruby_root/build/host/lib/libmruby.a -lm"
-CORE_INCS="$CORE_INCS $mruby_root/src $mruby_root/include"
 
 if [ -f $ngx_addon_dir/mrbgems_config ]; then
     . $ngx_addon_dir/mrbgems_config
