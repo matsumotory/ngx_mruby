@@ -144,6 +144,7 @@ if [ -n "$NGX_SUPPORTS_DYNAMIC" ]; then
     echo ""
     echo ""
     cd mruby_test
+    rake
     ./bin/mruby ../test/t/ngx_mruby.rb
     killall nginx
     echo "ngx_mruby as dynamic_module Done ..."
