@@ -97,7 +97,7 @@ generate_gems_config:
 	@echo CORE_INCS=\"\$$CORE_INCS $(CFLAGS)\" >> ./mrbgems_config
 
 generate_gems_config_dynamic:
-	@echo ngx_module_libs=\"\$(MRUBY_LIBS)\" > ./mrbgems_config_dynamic
+	@echo ngx_module_libs=\"\$(LIBS)\" > ./mrbgems_config_dynamic
 
 openssl:
 	cd $(NGX_OPENSSL_SRC) \
