@@ -28,7 +28,7 @@ env:
     NGINX_SRC_PATCH=0
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=11
-    NGINX_SRC_PATCH=0
+    NGINX_SRC_PATCH=1
 
 
 before_script:
