@@ -131,7 +131,7 @@ if [ -n "$NGX_SUPPORTS_DYNAMIC" ]; then
 
     make install
 
-    sed "1i\load_module modules/ngx_http_mruby_module.so;" build/nginx/conf/nginx.conf -i
+    sed "1i\load_module modules/ngx_http_mruby_module.so;" ${NGINX_INSTALL_DIR}/conf/nginx.conf -i
 
     echo "====================================="
     echo ""
