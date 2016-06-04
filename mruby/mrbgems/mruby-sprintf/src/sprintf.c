@@ -770,15 +770,7 @@ retry:
         switch (*p) {
           case 'd':
           case 'i':
-          case 'u':
             sign = 1; break;
-          case 'o':
-          case 'x':
-          case 'X':
-          case 'b':
-          case 'B':
-            if (flags&(FPLUS|FSPACE)) sign = 1;
-            break;
           default:
             break;
         }
@@ -836,18 +828,15 @@ retry:
           }
         }
         if (sign) {
-          if (v < 0) {
-            v = -v;
-            sc = '-';
-            width--;
-          }
-          else if (flags & FPLUS) {
-            sc = '+';
-            width--;
-          }
-          else if (flags & FSPACE) {
-            sc = ' ';
-            width--;
+          if (v > 0) {
+            if (flags & FPLUS) {
+              sc = '+';
+              width--;
+            }
+            else if (flags & FSPACE) {
+              sc = ' ';
+              width--;
+            }
           }
           switch (base) {
           case 2:
