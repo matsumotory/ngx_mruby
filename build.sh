@@ -13,10 +13,18 @@ set -e
 
 . ./nginx_version
 
+if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
+    BUILD_DIR='build_dynamic'
+    NGINX_INSTALL_DIR=`pwd`'/build_dynamic/nginx'
+else
+    BUILD_DIR='build'
+    NGINX_INSTALL_DIR=`pwd`'/build/nginx'
+fi
+
 if [ "$NGINX_CONFIG_OPT_ENV" != "" ]; then
     NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT_ENV
 else
-    NGINX_CONFIG_OPT='--prefix='`pwd`'/build/nginx --with-http_stub_status_module --with-stream --without-stream_access_module'
+    NGINX_CONFIG_OPT='--prefix='`pwd`"${NGINX_INSTALL_DIR} --with-http_stub_status_module --with-stream --without-stream_access_module"
 fi
 
 if [ "$NUM_THREADS_ENV" != "" ]; then
@@ -40,7 +48,7 @@ if [ ! -d "./mruby/src" ]; then
     echo "mruby Downloading ... Done"
 fi
 cd mruby
-if [ -d "./build" ]; then
+if [ -d "./${BUILD_DIR}" ]; then
     echo "mruby Cleaning ..."
     ./minirake clean
     echo "mruby Cleaning ... Done"
@@ -51,12 +59,12 @@ if [ $NGINX_SRC_ENV ]; then
     NGINX_SRC=$NGINX_SRC_ENV
 else
     echo "nginx Downloading ..."
-    if [ -d "./build" ]; then
+    if [ -d "./${BUILD_DIR}" ]; then
         echo "build directory was found"
     else
-        mkdir build
+        mkdir ${BUILD_DIR}
     fi
-    cd build
+    cd ${BUILD_DIR}
     if [ ! -e ${NGINX_SRC_VER} ]; then
         wget http://nginx.org/download/${NGINX_SRC_VER}.tar.gz
         echo "nginx Downloading ... Done"
@@ -71,13 +79,23 @@ echo "ngx_mruby configure ..."
 ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
 echo "ngx_mruby configure ... Done"
 
-echo "mruby building ..."
-make build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-echo "mruby building ... Done"
+if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
+    echo "mruby building for suppot dynamic module ..."
+    make build_mruby_with_fpic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+    echo "mruby building for suppot dynamic module ... Done"
 
-echo "ngx_mruby building ..."
-make NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-echo "ngx_mruby building ... Done"
+    echo "ngx_mruby building as dynamic module ..."
+    make ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+    echo "ngx_mruby building ... Done"
+else
+    echo "mruby building ..."
+    make build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+    echo "mruby building ... Done"
+
+    echo "ngx_mruby building ..."
+    make NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+    echo "ngx_mruby building ... Done"
+fi
 
 echo "build.sh ... successful"
 
