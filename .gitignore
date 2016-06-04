@@ -3,10 +3,12 @@ GRTAGS
 GTAGS
 GSYMS
 mrbgems_config
+mrbgems_config_dynamic
 Makefile
 config.status
 config.log
 tags
 *.swp
 build/
+build_dynamic/
 autom4te.cache/

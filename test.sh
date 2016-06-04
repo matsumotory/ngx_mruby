@@ -9,7 +9,14 @@ set -e
 
 . ./nginx_version
 
-NGINX_INSTALL_DIR=`pwd`'/build/nginx'
+if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
+    BUILD_DIR='build_dynamic'
+    NGINX_INSTALL_DIR=`pwd`'/build_dynamic/nginx'
+else
+    BUILD_DIR='build'
+    NGINX_INSTALL_DIR=`pwd`'/build/nginx'
+fi
+
 NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-http_ssl_module'
 
 if [ $NGINX_SRC_MINOR -ge 9 ]; then
@@ -46,12 +53,12 @@ fi
 if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
 
   echo "nginx Downloading ..."
-  if [ -d "./build" ]; then
+  if [ -d "./${BUILD_DIR}" ]; then
       echo "build directory was found"
   else
-      mkdir build
+      mkdir ${BUILD_DIR}
   fi
-  cd build
+  cd ${BUILD_DIR}
   if [ ! -e ${NGINX_SRC_VER} ]; then
       wget http://nginx.org/download/${NGINX_SRC_VER}.tar.gz
       echo "nginx Downloading ... Done"
@@ -65,12 +72,21 @@ if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
   ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}"
   echo "ngx_mruby configure ... Done"
 
-  echo "mruby building ..."
-  make build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-  echo "mruby building ... Done"
+  if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
+      echo "mruby building for suppot dynamic module ..."
+      make build_mruby_with_fpic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+      echo "mruby building for suppot dynamic module ... Done"
 
-  echo "ngx_mruby building ..."
-  make NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+      echo "ngx_mruby building as dynamic module ..."
+      make ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+  else
+      echo "mruby building ..."
+      make build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+      echo "mruby building ... Done"
+
+      echo "ngx_mruby building ..."
+      make NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+  fi
 else
   make make_ngx_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
 fi
@@ -87,6 +103,11 @@ if [ $NGINX_SRC_MINOR -ge 9 ]; then
   if [ $NGINX_SRC_PATCH -ge 6 ]; then
     cat test/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
   fi
+fi
+
+if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
+    sed "1i\load_module modules/ngx_http_mruby_module.so;" ${NGINX_INSTALL_DIR}/conf/nginx.conf -i
+    sed -e "s|build/nginx|build_dynamic/nginx|g" ${NGINX_INSTALL_DIR}/conf/nginx.conf -i
 fi
 
 cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
