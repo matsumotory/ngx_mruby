@@ -106,8 +106,9 @@ if [ $NGINX_SRC_MINOR -ge 9 ]; then
 fi
 
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
-    sed "1i\load_module modules/ngx_http_mruby_module.so;" ${NGINX_INSTALL_DIR}/conf/nginx.conf -i
-    sed -e "s|build/nginx|build_dynamic/nginx|g" ${NGINX_INSTALL_DIR}/conf/nginx.conf -i
+    sed -e "s|build/nginx|build_dynamic/nginx|g" ${NGINX_INSTALL_DIR}/conf/nginx.conf | tee ${NGINX_INSTALL_DIR}/conf/nginx.conf.tmp
+    echo "load_module modules/ngx_http_mruby_module.so;" > ${NGINX_INSTALL_DIR}/conf/nginx.conf
+    cat ${NGINX_INSTALL_DIR}/conf/nginx.conf.tmp >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
 fi
 
 cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
