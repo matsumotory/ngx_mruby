@@ -1845,6 +1845,8 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
     ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
   }
 
+  ctx->body_length = r->headers_out.content_length_n;
+
   rc = mlcf->body_filter_handler(r, in);
   if (rc != NGX_OK) {
     return NGX_ERROR;
