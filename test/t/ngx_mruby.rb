@@ -131,7 +131,7 @@ t.assert('ngx_mruby', 'location /request_method') do
   res = HttpRequest.new.post base + '/request_method'
   t.assert_equal "POST", res["body"]
   res = HttpRequest.new.head base + '/request_method'
-  t.assert_equal "HEAD", res["body"]
+  t.assert_equal "head", res["x-method"]
 end
 
 t.assert('ngx_mruby - Kernel.server_name', 'location /kernel_servername') do
