@@ -1832,7 +1832,7 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
   mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
   if (mlcf->body_filter_handler == NULL || in == NULL || r->headers_out.content_length_n < 0) {
     if (r->headers_out.content_length_n < 0) {
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "body filter don't support chunked response %s:%d",
+      ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "body filter don't support chunked response, go to next filter %s:%d",
                     __FUNCTION__, __LINE__);
     }
 
