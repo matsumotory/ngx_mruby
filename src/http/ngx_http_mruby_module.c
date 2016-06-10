@@ -1830,7 +1830,16 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
   ngx_int_t rc;
 
   mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-  if (mlcf->body_filter_handler == NULL) {
+  if (mlcf->body_filter_handler == NULL || in == NULL || r->headers_out.content_length_n < 0) {
+    if (r->headers_out.content_length_n < 0) {
+      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "body filter don't support chunked response %s:%d",
+                    __FUNCTION__, __LINE__);
+    }
+
+    rc = ngx_http_next_header_filter(r);
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+      return NGX_ERROR;
+    }
     return ngx_http_next_body_filter(r, in);
   }
 
@@ -1844,8 +1853,6 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
     ctx->body = NULL;
     ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
   }
-
-  ctx->body_length = r->headers_out.content_length_n;
 
   rc = mlcf->body_filter_handler(r, in);
   if (rc != NGX_OK) {
@@ -1861,7 +1868,8 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
   ngx_buf_t *b;
   ngx_chain_t *cl;
 
-  if (ctx->body == NULL) {
+  if (ctx->body == NULL && r->headers_out.content_length_n > 0) {
+    ctx->body_length = r->headers_out.content_length_n;
     ctx->body = ngx_pcalloc(r->pool, ctx->body_length);
     if (ctx->body == NULL) {
       return NGX_ERROR;
