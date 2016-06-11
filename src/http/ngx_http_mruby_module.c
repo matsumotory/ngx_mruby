@@ -1943,6 +1943,7 @@ static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
 static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
   ngx_http_mruby_loc_conf_t *mlcf;
+  ngx_http_mruby_ctx_t *ctx;
   ngx_int_t rc;
 
   mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
@@ -1954,6 +1955,18 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
 
     return ngx_http_next_body_filter(r, in);
   }
+  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  if (ctx == NULL) {
+    if ((ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
+      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
+                       __LINE__);
+      return NGX_ERROR;
+    }
+    ctx->body = NULL;
+    ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
+  }
+
+  ctx->body_length = r->headers_out.content_length_n;
 
   rc = mlcf->body_filter_handler(r, in);
   if (rc != NGX_OK) {
@@ -1970,7 +1983,6 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
   ngx_chain_t *cl;
 
   if (ctx->body == NULL && r->headers_out.content_length_n > 0) {
-    ctx->body_length = r->headers_out.content_length_n;
     ctx->body = ngx_pcalloc(r->pool, ctx->body_length);
     if (ctx->body == NULL) {
       return NGX_ERROR;

@@ -386,6 +386,11 @@ t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
   t.assert_equal "", res
 end
 
+t.assert('ngx_mruby - issue_172', 'location /issue_172') do
+  res = HttpRequest.new.get base + '/issue_172/index.html'
+  t.assert_equal 'hello world'.upcase, res["body"]
+end
+
 #
 # nginx stream test verison 1.9.6 later
 #
