@@ -194,6 +194,11 @@ t.assert('ngx_mruby - add response header in output_filter', 'location /output_f
   t.assert_equal "new_header", res["x-add-new-header"]
 end
 
+t.assert('ngx_mruby - add response header in output_header_filter', 'location /output_header_filter') do
+  res = HttpRequest.new.head base + '/output_header_filter/index.html'
+  t.assert_equal "new_header", res["x-add-new-header"]
+end
+
 t.assert('ngx_mruby - update built-in response header in output_filter', 'location /output_filter_builtin_header') do
   res = HttpRequest.new.get base + '/output_filter_builtin_header/index.html'
   t.assert_equal "output_filter_builtin_header\n", res["body"]
