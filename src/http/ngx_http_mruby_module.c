@@ -1781,10 +1781,6 @@ static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_c
   out.next = NULL;
 
   r->headers_out.content_length_n = b->last - b->pos;
-  rc = ngx_http_next_header_filter(r);
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-    return NGX_ERROR;
-  }
 
   return ngx_http_next_body_filter(r, &out);
 }
@@ -1829,10 +1825,6 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
   out.next = NULL;
 
   r->headers_out.content_length_n = b->last - b->pos;
-  rc = ngx_http_next_header_filter(r);
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-    return NGX_ERROR;
-  }
   return ngx_http_next_body_filter(r, &out);
 }
 
