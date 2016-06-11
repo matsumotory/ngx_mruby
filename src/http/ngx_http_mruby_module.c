@@ -105,6 +105,7 @@ static char *ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, v
 static char *ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_body_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_body_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_header_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 #if defined(NDK) && NDK
@@ -150,6 +151,7 @@ static void ngx_http_mruby_header_filter_init(void);
 static void ngx_http_mruby_body_filter_init(void);
 static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_chain_t *in);
 static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in);
+static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx_chain_t *in);
 static ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in);
 
 
@@ -253,6 +255,10 @@ static ngx_command_t ngx_http_mruby_commands[] = {
     {ngx_string("mruby_output_body_filter_code"),
      NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE1,
      ngx_http_mruby_body_filter_inline, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_body_filter_inline_handler},
+
+    {ngx_string("mruby_output_header_filter"),
+     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
+     ngx_http_mruby_header_filter_phase, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_header_filter_handler},
 
     {ngx_string("mruby_output_header_filter_code"),
      NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE1,
@@ -1466,6 +1472,41 @@ static char *ngx_http_mruby_body_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd
   return NGX_CONF_OK;
 }
 
+static char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
+  ngx_str_t *value;
+  ngx_http_mruby_loc_conf_t *mlcf = conf;
+  ngx_mrb_code_t *code;
+  ngx_int_t rc;
+
+  value = cf->args->elts;
+  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
+  if (code == NGX_CONF_UNSET_PTR) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
+    return NGX_CONF_ERROR;
+  }
+  if (cf->args->nelts == 3) {
+    if (ngx_strcmp(value[2].data, "cache") == 0) {
+      code->cache = ON;
+    } else {
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+                         &value[2]);
+      return NGX_CONF_ERROR;
+    }
+  }
+  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
+  if (rc != NGX_OK) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
+    return NGX_CONF_ERROR;
+  }
+  mlcf->header_filter_code = code;
+  mmcf->enabled_header_filter = 1;
+  mlcf->header_filter_handler = cmd->post;
+
+  return NGX_CONF_OK;
+}
+
 static char *ngx_http_mruby_body_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
@@ -1818,6 +1859,29 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
 
   r->headers_out.content_length_n = b->last - b->pos;
   return ngx_http_next_body_filter(r, &out);
+}
+
+static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx_chain_t *in)
+{
+  ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
+  ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+  ngx_int_t rc;
+
+  if (!mlcf->header_filter_code->cache) {
+    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(mlcf->cached, mmcf->state, mlcf->header_filter_code,
+                                         ngx_http_mruby_state_reinit_from_file);
+  }
+
+  rc = ngx_mrb_run(r, mmcf->state, mlcf->header_filter_code, mlcf->cached, NULL);
+  if (rc == NGX_ERROR) {
+    return NGX_ERROR;
+  }
+
+  rc = ngx_http_next_header_filter(r);
+  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+    return NGX_ERROR;
+  }
+  return rc;
 }
 
 static ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in)
