@@ -108,6 +108,9 @@ static char *ngx_http_mruby_body_filter_inline(ngx_conf_t *cf, ngx_command_t *cm
 static char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_header_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
+/* output directive error */
+static char *ngx_http_mruby_output_filter_error(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
 #if defined(NDK) && NDK
 static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *conf, code_type_t type);
 static char *ngx_http_mruby_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -153,7 +156,6 @@ static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_c
 static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in);
 static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx_chain_t *in);
 static ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in);
-
 
 static ngx_command_t ngx_http_mruby_commands[] = {
 
@@ -247,6 +249,14 @@ static ngx_command_t ngx_http_mruby_commands[] = {
      NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_2MORE,
      ngx_http_mruby_set_inline, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_set_inline_handler},
 #endif
+
+    {ngx_string("mruby_output_filter"),
+     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
+     ngx_http_mruby_output_filter_error, NGX_HTTP_LOC_CONF_OFFSET, 0, NULL},
+
+    {ngx_string("mruby_output_filter_code"),
+     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
+     ngx_http_mruby_output_filter_error, NGX_HTTP_LOC_CONF_OFFSET, 0, NULL},
 
     {ngx_string("mruby_output_body_filter"),
      NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
@@ -1097,6 +1107,14 @@ static char *ngx_http_mruby_exit_worker_inline(ngx_conf_t *cf, ngx_command_t *cm
   return NGX_CONF_OK;
 }
 
+static char *ngx_http_mruby_output_filter_error(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+  ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mruby_output_filter{,_code} was deleted from v1.17.2, you should use "
+                                           "mruby_output_body_filter{,_code} for response body, or use "
+                                           "mruby_output_header_filter{,_code} for response headers.");
+  return NGX_CONF_ERROR;
+}
+
 static char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
@@ -1930,8 +1948,8 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
   mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
   if (mlcf->body_filter_handler == NULL || r->headers_out.content_length_n < 0) {
     if (r->headers_out.content_length_n < 0) {
-      ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "body filter don't support chunked response, go to next filter %s:%d",
-                    __FUNCTION__, __LINE__);
+      ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
+                    "body filter don't support chunked response, go to next filter %s:%d", __FUNCTION__, __LINE__);
     }
 
     return ngx_http_next_body_filter(r, in);
