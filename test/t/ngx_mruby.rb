@@ -388,16 +388,12 @@ end
 
 t.assert('ngx_mruby - issue_172', 'location /issue_172') do
   res = HttpRequest.new.get base + '/issue_172/index.html'
-  expect_content = 'hello world'.upcase
-  t.assert_equal expect_content, res["body"]
-  t.assert_equal expect_content.length, res["content-length"].to_i
+  t.assert_equal 'hello world'.upcase, res["body"]
 end
 
 t.assert('ngx_mruby - issue_172_2', 'location /issue_172_2') do
   res = HttpRequest.new.get base + '/issue_172_2/'
-  expect_content = 'hello world'.upcase
-  t.assert_equal expect_content, res["body"]
-  t.assert_equal expect_content.length, res["content-length"].to_i
+  t.assert_equal 'hello world'.upcase, res["body"]
 end
 
 #
