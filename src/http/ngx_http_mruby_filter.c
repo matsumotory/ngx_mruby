@@ -28,6 +28,8 @@ static mrb_value ngx_mrb_set_filter_body(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r = ngx_mrb_get_request();
   ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
   mrb_value body;
+  ngx_chain_t out;
+  ngx_buf_t *b;
 
   mrb_get_args(mrb, "o", &body);
   if (mrb_type(body) != MRB_TT_STRING) {
@@ -36,6 +38,24 @@ static mrb_value ngx_mrb_set_filter_body(mrb_state *mrb, mrb_value self)
 
   ctx->body = (u_char *)mrb_str_to_cstr(mrb, body);
   ctx->body_length = RSTRING_LEN(body);
+
+  b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+  if (b == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+  }
+
+  b->pos = ctx->body;
+  b->last = ctx->body + ctx->body_length;
+  b->memory = 1;
+  b->last_buf = 1;
+
+  out.buf = b;
+  out.next = NULL;
+
+  r->headers_out.content_length_n = b->last - b->pos;
+
+  ngx_http_next_header_filter(r);
+  ngx_http_next_body_filter(r, &out);
 
   return mrb_fixnum_value(ctx->body_length);
 }
