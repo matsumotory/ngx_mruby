@@ -69,7 +69,7 @@ if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
   cd ..
 
   echo "ngx_mruby configure ..."
-  ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}"
+  ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
   echo "ngx_mruby configure ... Done"
 
   if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
