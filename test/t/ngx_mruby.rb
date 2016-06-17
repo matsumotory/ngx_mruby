@@ -327,6 +327,12 @@ t.assert('ngx_mruby - rack base push', 'location /rack_base_push/index.txt') do
   t.assert_equal "</index.js>; rel=preload", res["link"]
 end
 
+t.assert('ngx_mruby - rack base logger', 'location /rack_base_logger') do
+  res = HttpRequest.new.get base + '/rack_base_logger'
+  # just want to make sure if logger methods don't throw any exception.
+  t.assert_equal 200, res.code
+end
+
 t.assert('ngx_mruby - multipul request headers', 'location /multi_headers_in') do
   res = HttpRequest.new.get base + '/multi_headers_in', nil, {"hoge" => "foo"}
   t.assert_equal 200, res.code

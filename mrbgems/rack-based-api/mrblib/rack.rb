@@ -2,6 +2,46 @@ module Kernel
   module Rack
     Server = get_server_class
 
+    class Logger
+      def fatal(message = nil, &block)
+        add Server::LOG_EMERG, message, &block
+      end
+      def error(message = nil, &block)
+        add Server::LOG_ERR, message, &block
+      end
+      def warn(message = nil, &block)
+        add Server::LOG_WARN, message, &block
+      end
+      def info(message = nil, &block)
+        add Server::LOG_INFO, message, &block
+      end
+      def debug(message = nil, &block)
+        add Server::LOG_DEBUG, message, &block
+      end
+
+      # apache httpd/nginx specific 
+      def emerg(message = nil, &block)
+        add Server::LOG_EMERG, message, &block
+      end
+      def alert(message = nil, &block)
+        add Server::LOG_ALERT, message, &block
+      end
+      def crit(message = nil, &block) 
+        add Server::LOG_CRIT, message, &block
+      end
+      def notice(message = nil, &block) 
+        add Server::LOG_NOTICE, message, &block
+      end
+
+      private
+
+      def add(severity, message = nil)
+        message = yield if message.nil? && block_given?
+        Server.log severity, message
+      end
+
+    end
+
     def self.build_env r, c
       env = {}
       env = {
@@ -20,6 +60,7 @@ module Kernel
         "rack.multiprocess" => true,
         "rack.run_once"     => false,
         "rack.hijack?"      => false,
+        "rack.logger"       => Logger.new,
         "server.name"       => server_name,
         "server.version"    => Server.server_version,
       }
