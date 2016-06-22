@@ -7,10 +7,10 @@
 #ifndef NGX_HTTP_MRUBY_MODULE_H
 #define NGX_HTTP_MRUBY_MODULE_H
 
+#include <nginx.h>
+#include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include <ngx_config.h>
-#include <nginx.h>
 
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_init.h"
