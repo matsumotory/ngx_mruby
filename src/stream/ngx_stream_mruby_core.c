@@ -4,22 +4,22 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-#include "ngx_stream_mruby_module.h"
 #include "ngx_stream_mruby_core.h"
+#include "ngx_stream_mruby_module.h"
 
 #include "mruby.h"
-#include "mruby/proc.h"
-#include "mruby/data.h"
-#include "mruby/compile.h"
-#include "mruby/string.h"
 #include "mruby/array.h"
+#include "mruby/compile.h"
+#include "mruby/data.h"
+#include "mruby/proc.h"
+#include "mruby/string.h"
 #include "mruby/variable.h"
 
 #include <nginx.h>
-#include <ngx_stream.h>
+#include <ngx_buf.h>
 #include <ngx_conf_file.h>
 #include <ngx_log.h>
-#include <ngx_buf.h>
+#include <ngx_stream.h>
 
 static mrb_value ngx_stream_mrb_errlogger(mrb_state *mrb, mrb_value self)
 {

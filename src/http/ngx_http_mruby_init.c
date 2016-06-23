@@ -4,14 +4,14 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-#include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_init.h"
+#include "ngx_http_mruby_module.h"
 
+#include "ngx_http_mruby_connection.h"
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_request.h"
-#include "ngx_http_mruby_var.h"
-#include "ngx_http_mruby_connection.h"
 #include "ngx_http_mruby_server.h"
+#include "ngx_http_mruby_var.h"
 
 #include <mruby.h>
 #include <mruby/compile.h>

@@ -7,11 +7,11 @@
 #include "ngx_http_mruby_connection.h"
 
 #include <mruby.h>
-#include <mruby/proc.h>
-#include <mruby/data.h>
-#include <mruby/compile.h>
-#include <mruby/string.h>
 #include <mruby/class.h>
+#include <mruby/compile.h>
+#include <mruby/data.h>
+#include <mruby/proc.h>
+#include <mruby/string.h>
 
 // extern from ngx_http_mruby_request.c
 extern mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self);

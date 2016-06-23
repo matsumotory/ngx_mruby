@@ -7,9 +7,9 @@
 #ifndef NGX_HTTP_MRUBY_CONNECTION_H
 #define NGX_HTTP_MRUBY_CONNECTION_H
 
-#include <ngx_http.h>
 #include <mruby.h>
 #include <mruby/hash.h>
 #include <mruby/variable.h>
+#include <ngx_http.h>
 
 #endif // NGX_HTTP_MRUBY_CONNECTION_H

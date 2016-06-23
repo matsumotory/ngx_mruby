@@ -7,9 +7,9 @@
 #ifndef NGX_HTTP_MRUBY_CORE_H
 #define NGX_HTTP_MRUBY_CORE_H
 
-#include <ngx_http.h>
 #include <mruby.h>
 #include <mruby/compile.h>
+#include <ngx_http.h>
 
 typedef struct ngx_mrb_rputs_chain_list_t {
   ngx_chain_t **last;

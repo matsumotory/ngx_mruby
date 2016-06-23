@@ -4,8 +4,8 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-#include "ngx_stream_mruby_module.h"
 #include "ngx_stream_mruby_init.h"
+#include "ngx_stream_mruby_module.h"
 
 #include "ngx_stream_mruby_core.h"
 

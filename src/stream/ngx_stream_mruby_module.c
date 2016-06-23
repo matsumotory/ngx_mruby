@@ -9,15 +9,15 @@
 #include <ngx_stream.h>
 
 #include "mruby.h"
-#include "mruby/proc.h"
-#include "mruby/data.h"
-#include "mruby/compile.h"
-#include "mruby/string.h"
 #include "mruby/array.h"
+#include "mruby/compile.h"
+#include "mruby/data.h"
+#include "mruby/proc.h"
+#include "mruby/string.h"
 #include "mruby/variable.h"
 
-#include "ngx_stream_mruby_module.h"
 #include "ngx_stream_mruby_init.h"
+#include "ngx_stream_mruby_module.h"
 
 typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
 
@@ -130,16 +130,17 @@ static ngx_stream_module_t ngx_stream_mruby_module_ctx = {
     ngx_stream_mruby_merge_srv_conf   /* merge server configuration */
 };
 
-ngx_module_t ngx_stream_mruby_module = {NGX_MODULE_V1, &ngx_stream_mruby_module_ctx, /* module context */
-                                        ngx_stream_mruby_commands,                   /* module directives */
-                                        NGX_STREAM_MODULE,                           /* module type */
-                                        NULL,                                        /* init master */
-                                        ngx_stream_mruby_init_module,                /* init module */
-                                        ngx_stream_mruby_init_worker,                /* init process */
-                                        NULL,                                        /* init thread */
-                                        NULL,                                        /* exit thread */
-                                        ngx_stream_mruby_exit_worker,                /* exit process */
-                                        NULL,                                        /* exit master */
+ngx_module_t ngx_stream_mruby_module = {NGX_MODULE_V1,
+                                        &ngx_stream_mruby_module_ctx, /* module context */
+                                        ngx_stream_mruby_commands,    /* module directives */
+                                        NGX_STREAM_MODULE,            /* module type */
+                                        NULL,                         /* init master */
+                                        ngx_stream_mruby_init_module, /* init module */
+                                        ngx_stream_mruby_init_worker, /* init process */
+                                        NULL,                         /* init thread */
+                                        NULL,                         /* exit thread */
+                                        ngx_stream_mruby_exit_worker, /* exit process */
+                                        NULL,                         /* exit master */
                                         NGX_MODULE_V1_PADDING};
 
 static mrb_state *ngx_stream_mrb_state(ngx_stream_session_t *s)

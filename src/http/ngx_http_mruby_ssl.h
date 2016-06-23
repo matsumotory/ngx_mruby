@@ -8,10 +8,10 @@
 #define NGX_HTTP_MRUBY_SSL_H
 #if (NGX_HTTP_SSL)
 
-#include <ngx_http.h>
 #include <mruby.h>
 #include <mruby/hash.h>
 #include <mruby/variable.h>
+#include <ngx_http.h>
 
 #endif // NGX_HTTP_SSL
 #endif // NGX_HTTP_MRUBY_SSL_H

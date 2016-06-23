@@ -10,15 +10,15 @@
 #include "ngx_http_mruby_upstream.h"
 #else
 
-#include "ngx_http_mruby_upstream.h"
 #include "ngx_http_mruby_request.h"
+#include "ngx_http_mruby_upstream.h"
 
 #include <mruby.h>
-#include <mruby/proc.h>
-#include <mruby/data.h>
-#include <mruby/compile.h>
-#include <mruby/string.h>
 #include <mruby/class.h>
+#include <mruby/compile.h>
+#include <mruby/data.h>
+#include <mruby/proc.h>
+#include <mruby/string.h>
 
 typedef struct {
   mrb_value upstream;

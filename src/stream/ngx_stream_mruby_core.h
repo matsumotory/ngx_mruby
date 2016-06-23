@@ -7,9 +7,9 @@
 #ifndef NGX_STREAM_MRUBY_CORE_H
 #define NGX_STREAM_MRUBY_CORE_H
 
-#include <ngx_stream.h>
 #include <mruby.h>
 #include <mruby/compile.h>
+#include <ngx_stream.h>
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s);
 

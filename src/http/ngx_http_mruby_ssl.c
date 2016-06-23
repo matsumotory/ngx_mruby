@@ -11,11 +11,11 @@
 #include "ngx_http_mruby_ssl.h"
 
 #include <mruby.h>
-#include <mruby/proc.h>
-#include <mruby/data.h>
-#include <mruby/compile.h>
-#include <mruby/string.h>
 #include <mruby/class.h>
+#include <mruby/compile.h>
+#include <mruby/data.h>
+#include <mruby/proc.h>
+#include <mruby/string.h>
 
 static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
 {

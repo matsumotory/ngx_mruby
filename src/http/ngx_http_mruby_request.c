@@ -7,12 +7,12 @@
 #include "ngx_http_mruby_request.h"
 
 #include <mruby.h>
-#include <mruby/proc.h>
-#include <mruby/data.h>
-#include <mruby/compile.h>
-#include <mruby/string.h>
-#include <mruby/class.h>
 #include <mruby/array.h>
+#include <mruby/class.h>
+#include <mruby/compile.h>
+#include <mruby/data.h>
+#include <mruby/proc.h>
+#include <mruby/string.h>
 
 #define NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(method_suffix, member)                                      \
   static mrb_value ngx_mrb_get_##method_suffix(mrb_state *mrb, mrb_value self);                                        \
@@ -521,7 +521,7 @@ static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self)
     mrb_value v;
     mrb_int len, i;
     while (!mrb_nil_p(
-               ngx_mrb_get_request_header(mrb, &r->headers_in.headers, (char *)RSTRING_PTR(key), RSTRING_LEN(key)))) {
+        ngx_mrb_get_request_header(mrb, &r->headers_in.headers, (char *)RSTRING_PTR(key), RSTRING_LEN(key)))) {
       ngx_mrb_del_request_header(mrb, &r->headers_in.headers, (char *)RSTRING_PTR(key), RSTRING_LEN(key));
     }
     len = RARRAY_LEN(val);
@@ -547,7 +547,7 @@ static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self)
     mrb_value v;
     mrb_int len, i;
     while (!mrb_nil_p(
-               ngx_mrb_get_request_header(mrb, &r->headers_out.headers, (char *)RSTRING_PTR(key), RSTRING_LEN(key)))) {
+        ngx_mrb_get_request_header(mrb, &r->headers_out.headers, (char *)RSTRING_PTR(key), RSTRING_LEN(key)))) {
       ngx_mrb_del_request_header(mrb, &r->headers_out.headers, (char *)RSTRING_PTR(key), RSTRING_LEN(key));
     }
     len = RARRAY_LEN(val);
