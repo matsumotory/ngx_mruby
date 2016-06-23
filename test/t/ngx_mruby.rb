@@ -131,7 +131,7 @@ t.assert('ngx_mruby', 'location /request_method') do
   res = HttpRequest.new.post base + '/request_method'
   t.assert_equal "POST", res["body"]
   res = HttpRequest.new.head base + '/request_method'
-  t.assert_equal "HEAD", res["body"]
+  t.assert_equal "head", res["x-method"]
 end
 
 t.assert('ngx_mruby - Kernel.server_name', 'location /kernel_servername') do
@@ -191,6 +191,11 @@ end
 t.assert('ngx_mruby - add response header in output_filter', 'location /output_filter_header') do
   res = HttpRequest.new.get base + '/output_filter_header/index.html'
   t.assert_equal "output_filter_header\n", res["body"]
+  t.assert_equal "new_header", res["x-add-new-header"]
+end
+
+t.assert('ngx_mruby - add response header in output_header_filter', 'location /output_header_filter') do
+  res = HttpRequest.new.head base + '/output_header_filter/index.html'
   t.assert_equal "new_header", res["x-add-new-header"]
 end
 
@@ -385,6 +390,20 @@ t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
   t.assert_equal "1", res
   res = `openssl s_client -servername hogehoge -connect 127.0.0.1:58083 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not`.chomp
   t.assert_equal "", res
+end
+
+t.assert('ngx_mruby - issue_172', 'location /issue_172') do
+  res = HttpRequest.new.get base + '/issue_172/index.html'
+  expect_content = 'hello world'.upcase
+  t.assert_equal expect_content, res["body"]
+  t.assert_equal expect_content.length, res["content-length"].to_i
+end
+
+t.assert('ngx_mruby - issue_172_2', 'location /issue_172_2') do
+  res = HttpRequest.new.get base + '/issue_172_2/'
+  expect_content = 'hello world'.upcase
+  t.assert_equal expect_content, res["body"]
+  t.assert_equal expect_content.length, res["content-length"].to_i
 end
 
 #
