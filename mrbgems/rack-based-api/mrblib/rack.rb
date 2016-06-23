@@ -1,19 +1,4 @@
-
 module Kernel
-  unless Object.const_defined?(:StringIO)
-    class StringIO
-      def initialize(s)
-      end 
-      # overide gets method that is added to Kernel module by mruby-io
-      def gets(*args)
-        raise "StringIO is not linked."
-      end
-      def method_missing(name)
-        raise "StringIO is not linked."
-      end
-    end
-  end
-
   module Rack
     Server = get_server_class
 

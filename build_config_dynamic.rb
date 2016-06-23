@@ -29,7 +29,6 @@ MRuby::Build.new do |conf|
 
   # ngx_mruby extended class
   conf.gem './mrbgems/ngx_mruby_mrblib'
-  conf.gem :github => 'ksss/mruby-stringio' # required by rack-based
   conf.gem './mrbgems/rack-based-api'
 
   # use memcached
