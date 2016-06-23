@@ -2044,6 +2044,12 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
                     "body filter don't support chunked response, go to next filter %s:%d", __FUNCTION__, __LINE__);
     }
 
+    if (mlcf->body_filter_handler != NULL) {
+      rc = ngx_http_next_header_filter(r);
+      if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+        return NGX_ERROR;
+      }
+    }
     return ngx_http_next_body_filter(r, in);
   }
 
