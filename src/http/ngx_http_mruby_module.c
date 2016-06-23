@@ -1850,7 +1850,6 @@ static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_c
   ngx_int_t rc;
   ngx_chain_t out;
   ngx_buf_t *b;
-  fprintf(stderr, "Enter into %s:%d\n", __FUNCTION__, __LINE__);
 
   if ((rc = ngx_http_mruby_read_body(r, in, ctx)) != NGX_OK) {
     if (rc == NGX_AGAIN) {
@@ -1903,7 +1902,6 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
   ngx_int_t rc;
   ngx_chain_t out;
   ngx_buf_t *b;
-  fprintf(stderr, "Enter into %s:%d\n", __FUNCTION__, __LINE__);
 
   if ((rc = ngx_http_mruby_read_body(r, in, ctx)) != NGX_OK) {
     if (rc == NGX_AGAIN) {
@@ -1949,8 +1947,6 @@ static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
-  fprintf(stderr, "Enter into %s:%d\n", __FUNCTION__, __LINE__);
-
   if (!mlcf->header_filter_code->cache) {
     NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(mlcf->cached, mmcf->state, mlcf->header_filter_code,
                                          ngx_http_mruby_state_reinit_from_file);
@@ -1973,7 +1969,6 @@ static ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t 
   ngx_int_t rc;
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-  fprintf(stderr, "Enter into %s:%d\n", __FUNCTION__, __LINE__);
 
   rc = ngx_mrb_run(r, mmcf->state, mlcf->header_filter_inline_code, mlcf->cached, NULL);
   if (rc == NGX_ERROR) {
@@ -1993,7 +1988,6 @@ static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
   ngx_http_mruby_ctx_t *ctx;
   ngx_pool_cleanup_t *cln;
   ngx_int_t rc;
-  fprintf(stderr, "Enter into %s:%d\n", __FUNCTION__, __LINE__);
 
   mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
@@ -2042,7 +2036,6 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
   ngx_http_mruby_ctx_t *ctx;
   ngx_pool_cleanup_t *cln;
   ngx_int_t rc;
-  fprintf(stderr, "Enter into %s:%d\n", __FUNCTION__, __LINE__);
 
   mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
   if (mlcf->body_filter_handler == NULL || r->headers_out.content_length_n < 0) {
