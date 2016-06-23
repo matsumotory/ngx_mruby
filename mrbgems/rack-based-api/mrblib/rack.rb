@@ -43,7 +43,7 @@ module Kernel
     end
 
     def self.build_env r, c
-      env = {}
+      input = (r.method == "POST" || r.method == "PUT") ? r.body : "" 
       env = {
         "REQUEST_METHOD"    => r.method,
         "SCRIPT_NAME"       => "",
@@ -61,6 +61,7 @@ module Kernel
         "rack.run_once"     => false,
         "rack.hijack?"      => false,
         "rack.logger"       => Logger.new,
+        "rack.input"       => StringIO.new(input),
         "server.name"       => server_name,
         "server.version"    => Server.server_version,
       }

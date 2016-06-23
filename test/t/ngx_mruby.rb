@@ -338,6 +338,20 @@ t.assert('ngx_mruby - rack base logger', 'location /rack_base_logger') do
   t.assert_equal 200, res.code
 end
 
+t.assert('ngx_mruby - rack base input', 'location /rack_base_input') do
+  res = HttpRequest.new.get base + '/rack_base_input'
+  t.assert_equal 200, res.code
+  t.assert_equal "GET:", res["body"]
+
+  res = HttpRequest.new.post(base + '/rack_base_input', 'Foo')
+  t.assert_equal 200, res.code
+  t.assert_equal "POST:Foo", res["body"]
+
+  res = HttpRequest.new.put(base + '/rack_base_input', 'Bar')
+  t.assert_equal 200, res.code
+  t.assert_equal "PUT:Bar", res["body"]
+end
+
 t.assert('ngx_mruby - multipul request headers', 'location /multi_headers_in') do
   res = HttpRequest.new.get base + '/multi_headers_in', nil, {"hoge" => "foo"}
   t.assert_equal 200, res.code
