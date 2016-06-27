@@ -352,6 +352,12 @@ t.assert('ngx_mruby - rack base input', 'location /rack_base_input') do
   t.assert_equal "PUT:Bar", res["body"]
 end
 
+t.assert('ngx_mruby - rack base errorpage', 'location /rack_base_errorpage') do
+  res = HttpRequest.new.get base + '/rack_base_errorpage'
+  t.assert_equal 401, res.code
+  t.assert_equal "THIS IS AN ERROR MESSAGE FOR 401", res["body"]
+end
+
 t.assert('ngx_mruby - multipul request headers', 'location /multi_headers_in') do
   res = HttpRequest.new.get base + '/multi_headers_in', nil, {"hoge" => "foo"}
   t.assert_equal 200, res.code
