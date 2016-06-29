@@ -27,12 +27,11 @@ static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
 static mrb_value ngx_mrb_ssl_set_cert(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-  char *path;
-  mrb_int path_len;
+  mrb_value path;
 
-  mrb_get_args(mrb, "s", &path, &path_len);
-  mscf->cert_path.data = (u_char *)path;
-  mscf->cert_path.len = path_len;
+  mrb_get_args(mrb, "o", &path);
+  mscf->cert_path.data = (u_char *)mrb_str_to_cstr(mrb, path);
+  mscf->cert_path.len = RSTRING_LEN(path);
 
   return mrb_str_new(mrb, (char *)mscf->cert_path.data, mscf->cert_path.len);
 }
@@ -40,12 +39,11 @@ static mrb_value ngx_mrb_ssl_set_cert(mrb_state *mrb, mrb_value self)
 static mrb_value ngx_mrb_ssl_set_cert_key(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-  char *path;
-  mrb_int path_len;
+  mrb_value path;
 
-  mrb_get_args(mrb, "s", &path, &path_len);
-  mscf->cert_key_path.data = (u_char *)path;
-  mscf->cert_key_path.len = path_len;
+  mrb_get_args(mrb, "o", &path);
+  mscf->cert_key_path.data = (u_char *)mrb_str_to_cstr(mrb, path);
+  mscf->cert_key_path.len = RSTRING_LEN(path);
 
   return mrb_str_new(mrb, (char *)mscf->cert_key_path.data, mscf->cert_key_path.len);
 }
@@ -53,12 +51,11 @@ static mrb_value ngx_mrb_ssl_set_cert_key(mrb_state *mrb, mrb_value self)
 static mrb_value ngx_mrb_ssl_set_cert_data(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-  char *data;
-  mrb_int data_len;
+  mrb_value data;
 
-  mrb_get_args(mrb, "s", &data, &data_len);
-  mscf->cert_data.data = (u_char *)data;
-  mscf->cert_data.len = data_len;
+  mrb_get_args(mrb, "o", &data);
+  mscf->cert_data.data = (u_char *)mrb_str_to_cstr(mrb, data);
+  mscf->cert_data.len = RSTRING_LEN(data);
 
   return mrb_str_new(mrb, (char *)mscf->cert_data.data, mscf->cert_data.len);
 }
@@ -66,12 +63,11 @@ static mrb_value ngx_mrb_ssl_set_cert_data(mrb_state *mrb, mrb_value self)
 static mrb_value ngx_mrb_ssl_set_cert_key_data(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-  char *data;
-  mrb_int data_len;
+  mrb_value data;
 
-  mrb_get_args(mrb, "s", &data, &data_len);
-  mscf->cert_key_data.data = (u_char *)data;
-  mscf->cert_key_data.len = data_len;
+  mrb_get_args(mrb, "o", &data);
+  mscf->cert_key_data.data = (u_char *)mrb_str_to_cstr(mrb, data);
+  mscf->cert_key_data.len = RSTRING_LEN(data);;
 
   return mrb_str_new(mrb, (char *)mscf->cert_key_data.data, mscf->cert_key_data.len);
 }
