@@ -75,6 +75,8 @@ module Kernel
     end
 
     def self.build_response r, res
+      return if res.nil?
+
       if res[1].kind_of?(Hash)
         res[1].keys.each { |k| r.headers_out[k] = res[1][k] }
       elsif res[1].kind_of?(Array)
@@ -87,7 +89,7 @@ module Kernel
       else
         raise TypeError, "response body arg type must be Array"
       end
-      Server.return res[0].to_i
+      Server.return res[0].to_i if res[0]
     end
   end
 
