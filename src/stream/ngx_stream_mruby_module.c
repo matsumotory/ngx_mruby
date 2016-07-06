@@ -121,6 +121,7 @@ static ngx_command_t ngx_stream_mruby_commands[] = {
     ngx_null_command};
 
 static ngx_stream_module_t ngx_stream_mruby_module_ctx = {
+    NULL, /* preconfiguration */
     ngx_stream_mruby_init, /* postconfiguration */
 
     ngx_stream_mruby_create_main_conf, /* create main configuration */
