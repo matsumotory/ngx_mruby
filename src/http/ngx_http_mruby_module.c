@@ -307,6 +307,13 @@ ngx_module_t ngx_http_mruby_module = {NGX_MODULE_V1,
 
 extern ngx_http_request_t *ngx_mruby_request;
 
+static void ngx_http_mruby_cleanup(void *data)
+{
+  mrb_state *mrb = data;
+
+  mrb_close(mrb);
+}
+
 static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf)
 {
   ngx_http_mruby_main_conf_t *mmcf;
@@ -457,12 +464,21 @@ static ngx_int_t ngx_http_mruby_preinit(ngx_conf_t *cf)
 {
   ngx_int_t rc;
   ngx_http_mruby_main_conf_t *mmcf;
+  ngx_pool_cleanup_t *cln;
+
+  cln = ngx_pool_cleanup_add(cf->pool, 0);
+  if (cln == NULL) {
+    return NGX_ERROR;
+  }
 
   mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
   rc = ngx_http_mruby_shared_state_init(mmcf->state);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
   }
+
+  cln->handler = ngx_http_mruby_cleanup;
+  cln->data = mmcf->state->mrb;
 
   return NGX_OK;
 }
