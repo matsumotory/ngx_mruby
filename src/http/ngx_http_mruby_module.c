@@ -309,16 +309,13 @@ extern ngx_http_request_t *ngx_mruby_request;
 
 static void ngx_http_mruby_cleanup(void *data)
 {
-  ngx_http_mruby_main_conf_t *mmcf = data;
+  mrb_state *mrb = data;
 
-  if (mmcf->state && mmcf->state->mrb) {
-    mrb_close(mmcf->state->mrb);
-  }
+  mrb_close(mrb);
 }
 
 static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf)
 {
-  ngx_pool_cleanup_t *cln;
   ngx_http_mruby_main_conf_t *mmcf;
 
   mmcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mruby_main_conf_t));
@@ -333,14 +330,6 @@ static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf)
   mmcf->init_code = NGX_CONF_UNSET_PTR;
   mmcf->init_worker_code = NGX_CONF_UNSET_PTR;
   mmcf->exit_worker_code = NGX_CONF_UNSET_PTR;
-
-  cln = ngx_pool_cleanup_add(cf->pool, 0);
-  if (cln == NULL) {
-    return NULL;
-  }
-
-  cln->handler = ngx_http_mruby_cleanup;
-  cln->data = mmcf;
 
   return mmcf;
 }
@@ -475,12 +464,21 @@ static ngx_int_t ngx_http_mruby_preinit(ngx_conf_t *cf)
 {
   ngx_int_t rc;
   ngx_http_mruby_main_conf_t *mmcf;
+  ngx_pool_cleanup_t *cln;
+
+  cln = ngx_pool_cleanup_add(cf->pool, 0);
+  if (cln == NULL) {
+    return NGX_ERROR;
+  }
 
   mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
   rc = ngx_http_mruby_shared_state_init(mmcf->state);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
   }
+
+  cln->handler = ngx_http_mruby_cleanup;
+  cln->data = mmcf->state->mrb;
 
   return NGX_OK;
 }

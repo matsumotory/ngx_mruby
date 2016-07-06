@@ -155,11 +155,9 @@ static mrb_state *ngx_stream_mrb_state_conf(ngx_conf_t *cf)
 
 static void ngx_stream_mruby_cleanup(void *data)
 {
-  ngx_stream_mruby_main_conf_t *mmcf = data;
+  mrb_state *mrb = data;
 
-  if (mmcf->ctx && mmcf->ctx->mrb) {
-    mrb_close(mmcf->ctx->mrb);
-  }
+  mrb_close(mrb);
 }
 
 static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
@@ -167,6 +165,11 @@ static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
   ngx_stream_mruby_main_conf_t *mmcf;
   ngx_stream_mruby_internal_ctx_t *ictx;
   ngx_pool_cleanup_t *cln;
+
+  cln = ngx_pool_cleanup_add(cf->pool, 0);
+  if (cln == NULL) {
+    return NULL;
+  }
 
   mmcf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_mruby_main_conf_t));
   if (mmcf == NULL) {
@@ -186,6 +189,9 @@ static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
     return NULL;
   ngx_stream_mrb_class_init(mmcf->ctx->mrb);
 
+  cln->handler = ngx_stream_mruby_cleanup;
+  cln->data = mmcf->ctx->mrb;
+
   ictx = ngx_pcalloc(cf->pool, sizeof(ngx_stream_mruby_internal_ctx_t));
   if (ictx == NULL) {
     return NULL;
@@ -193,14 +199,6 @@ static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
   ictx->s = NULL;
   ictx->stream_status = NGX_DECLINED;
   mmcf->ctx->mrb->ud = ictx;
-
-  cln = ngx_pool_cleanup_add(cf->pool, 0);
-  if (cln == NULL) {
-    return NULL;
-  }
-
-  cln->handler = ngx_stream_mruby_cleanup;
-  cln->data = mmcf;
 
   return mmcf;
 }
