@@ -120,6 +120,18 @@ static ngx_command_t ngx_stream_mruby_commands[] = {
 
     ngx_null_command};
 
+#if (nginx_version > 1011001)
+static ngx_stream_module_t ngx_stream_mruby_module_ctx = {
+    NULL, /* preconfiguration */
+    ngx_stream_mruby_init, /* postconfiguration */
+
+    ngx_stream_mruby_create_main_conf, /* create main configuration */
+    ngx_stream_mruby_init_main_conf,   /* init main configuration */
+
+    ngx_stream_mruby_create_srv_conf, /* create server configuration */
+    ngx_stream_mruby_merge_srv_conf   /* merge server configuration */
+};
+#else
 static ngx_stream_module_t ngx_stream_mruby_module_ctx = {
     ngx_stream_mruby_init, /* postconfiguration */
 
@@ -129,6 +141,7 @@ static ngx_stream_module_t ngx_stream_mruby_module_ctx = {
     ngx_stream_mruby_create_srv_conf, /* create server configuration */
     ngx_stream_mruby_merge_srv_conf   /* merge server configuration */
 };
+#endif
 
 ngx_module_t ngx_stream_mruby_module = {NGX_MODULE_V1,
                                         &ngx_stream_mruby_module_ctx, /* module context */
