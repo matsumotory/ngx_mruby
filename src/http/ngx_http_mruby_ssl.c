@@ -67,7 +67,7 @@ static mrb_value ngx_mrb_ssl_set_cert_key_data(mrb_state *mrb, mrb_value self)
 
   mrb_get_args(mrb, "o", &data);
   mscf->cert_key_data.data = (u_char *)mrb_str_to_cstr(mrb, data);
-  mscf->cert_key_data.len = RSTRING_LEN(data);;
+  mscf->cert_key_data.len = RSTRING_LEN(data);
 
   return mrb_str_new(mrb, (char *)mscf->cert_key_data.data, mscf->cert_key_data.len);
 }
