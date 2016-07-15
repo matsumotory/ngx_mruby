@@ -1688,9 +1688,9 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
   rc = ngx_http_mruby_shared_state_compile(cf, filter_data->state, filter_data->code);
   if (rc != NGX_OK) {
     if (type == NGX_MRB_CODE_TYPE_FILE) {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[2].data);
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[2].data);
     }
     return NGX_CONF_ERROR;
   }
