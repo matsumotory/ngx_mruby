@@ -916,7 +916,7 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
     p = mrb_parse_string(state->mrb, (char *)code->code.string, code->ctx);
   }
 
-  if (p == NULL) {
+  if (p == NULL || (0 < p->nerr)) {
     return NGX_ERROR;
   }
 
