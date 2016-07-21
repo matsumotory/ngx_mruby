@@ -125,7 +125,7 @@ static void read_request_body_cb(ngx_http_request_t *r)
   ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
   if (r->request_body == NULL || r->request_body->bufs == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "This pahse don't have request_body");
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "This phase doesn't have a request_body");
     ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     return;
   }
