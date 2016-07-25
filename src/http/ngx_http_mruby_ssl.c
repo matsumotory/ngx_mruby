@@ -17,6 +17,38 @@
 #include <mruby/proc.h>
 #include <mruby/string.h>
 
+#if OPENSSL_VERSION_NUMBER >= 0x1000205fL
+extern ngx_connection_t *ngx_mruby_connection;
+#define NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(method_suffix, member)                                              \
+  static mrb_value ngx_mrb_ssl_set_##method_suffix(mrb_state *mrb, mrb_value self)                                     \
+  {                                                                                                                    \
+    ngx_http_mruby_srv_conf_t *mscf = mrb->ud;                                                                         \
+    ngx_connection_t *c = ngx_mrb_get_connection();                                                                    \
+    char *value;                                                                                                       \
+    mrb_int len;                                                                                                       \
+    u_char *valuep;                                                                                                    \
+                                                                                                                       \
+    mrb_get_args(mrb, "s", &value, &len);                                                                              \
+    valuep = ngx_palloc(c->pool, len);                                                                                 \
+    if (valuep == NULL) {                                                                                              \
+      ngx_log_error(NGX_LOG_ERR, c->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME,                     \
+                        "ngx_mrb_ssl_set_" #method_suffix, __LINE__);                                                  \
+      return mrb_nil_value();                                                                                          \
+    }                                                                                                                  \
+    ngx_memcpy(valuep, (u_char *)value, len);                                                                          \
+    mscf->member.data = valuep;                                                                                        \
+    mscf->member.len = len;                                                                                            \
+                                                                                                                       \
+    return mrb_str_new(mrb, (char *)mscf->member.data, mscf->member.len);                                              \
+  }
+#else /* ! OPENSSL_VERSION_NUMBER >= 0x1000205fL */
+#define NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(method_suffix, member)
+  static mrb_value ngx_mrb_ssl_set_##method_suffix(mrb_state *mrb, mrb_value self)                                     \
+  {                                                                                                                    \
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_set_" #method_suffix "doesn't support");                              \
+  }
+#endif /* OPENSSL_VERSION_NUMBER >= 0x1000205fL */
+
 static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
@@ -24,53 +56,10 @@ static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
   return mrb_str_new(mrb, (char *)mscf->servername->data, mscf->servername->len);
 }
 
-static mrb_value ngx_mrb_ssl_set_cert(mrb_state *mrb, mrb_value self)
-{
-  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-  mrb_value path;
-
-  mrb_get_args(mrb, "o", &path);
-  mscf->cert_path.data = (u_char *)mrb_str_to_cstr(mrb, path);
-  mscf->cert_path.len = RSTRING_LEN(path);
-
-  return mrb_str_new(mrb, (char *)mscf->cert_path.data, mscf->cert_path.len);
-}
-
-static mrb_value ngx_mrb_ssl_set_cert_key(mrb_state *mrb, mrb_value self)
-{
-  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-  mrb_value path;
-
-  mrb_get_args(mrb, "o", &path);
-  mscf->cert_key_path.data = (u_char *)mrb_str_to_cstr(mrb, path);
-  mscf->cert_key_path.len = RSTRING_LEN(path);
-
-  return mrb_str_new(mrb, (char *)mscf->cert_key_path.data, mscf->cert_key_path.len);
-}
-
-static mrb_value ngx_mrb_ssl_set_cert_data(mrb_state *mrb, mrb_value self)
-{
-  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-  mrb_value data;
-
-  mrb_get_args(mrb, "o", &data);
-  mscf->cert_data.data = (u_char *)mrb_str_to_cstr(mrb, data);
-  mscf->cert_data.len = RSTRING_LEN(data);
-
-  return mrb_str_new(mrb, (char *)mscf->cert_data.data, mscf->cert_data.len);
-}
-
-static mrb_value ngx_mrb_ssl_set_cert_key_data(mrb_state *mrb, mrb_value self)
-{
-  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-  mrb_value data;
-
-  mrb_get_args(mrb, "o", &data);
-  mscf->cert_key_data.data = (u_char *)mrb_str_to_cstr(mrb, data);
-  mscf->cert_key_data.len = RSTRING_LEN(data);
-
-  return mrb_str_new(mrb, (char *)mscf->cert_key_data.data, mscf->cert_key_data.len);
-}
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert, cert_path);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_key, cert_key_path);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_data, cert_data);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_key_data, cert_key_data);
 
 void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
 {

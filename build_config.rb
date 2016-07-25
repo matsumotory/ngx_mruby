@@ -4,6 +4,10 @@ MRuby::Build.new do |conf|
 
   conf.gembox 'full-core'
 
+  conf.cc do |cc|
+    cc.flags = [ENV['NGX_MRUBY_CFLAGS'] || %w()]
+  end
+
   #
   # Recommended for ngx_mruby
   #

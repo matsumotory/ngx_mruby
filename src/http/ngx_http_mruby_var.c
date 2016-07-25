@@ -100,7 +100,7 @@ static mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_va
     vv->valid = 1;
     vv->not_found = 0;
     vv->no_cacheable = 0;
-    vv->data = val.data;
+    vv->data = valp;
     vv->len = val.len;
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: set variable key:%s val:%s", MODULE_NAME,
                   __func__, __LINE__, k, valp);
@@ -242,7 +242,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     vv->valid = 1;
     vv->not_found = 0;
     vv->no_cacheable = 0;
-    vv->data = val.data;
+    vv->data = valp;
     vv->len = val.len;
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: set variable key:%s val:%s", MODULE_NAME,
                   __func__, __LINE__, keyp, valp);

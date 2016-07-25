@@ -134,11 +134,19 @@ static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
   ngx_url_t u;
   mrb_value server;
   ngx_http_request_t *r = ngx_mrb_get_request();
+  u_char *serverp;
 
   mrb_get_args(mrb, "o", &server);
+  serverp = ngx_palloc(r->pool, RSTRING_LEN(server) + 1);
+  if (serverp == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
+                  __LINE__);
+    return mrb_nil_value();
+  }
+  ngx_cpystrn(serverp, (u_char *)RSTRING_PTR(server), RSTRING_LEN(server) + 1);
 
   ngx_memzero(&u, sizeof(ngx_url_t));
-  u.url.data = (u_char *)RSTRING_PTR(server);
+  u.url.data = serverp;
   u.url.len = RSTRING_LEN(server);
   u.default_port = 80;
   if (ngx_parse_url(r->pool, &u) != NGX_OK) {
