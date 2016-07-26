@@ -76,6 +76,7 @@ typedef struct ngx_http_mruby_main_conf_t {
 } ngx_http_mruby_main_conf_t;
 
 typedef struct ngx_http_mruby_loc_conf_t {
+  ngx_mrb_state_t *state;
   ngx_mrb_code_t *post_read_code;
   ngx_mrb_code_t *server_rewrite_code;
   ngx_mrb_code_t *rewrite_code;
@@ -92,6 +93,7 @@ typedef struct ngx_http_mruby_loc_conf_t {
   ngx_mrb_code_t *header_filter_inline_code;
   ngx_mrb_code_t *body_filter_code;
   ngx_mrb_code_t *body_filter_inline_code;
+  ngx_list_t *set_code_list;
   ngx_flag_t cached;
   ngx_flag_t add_handler;
 
