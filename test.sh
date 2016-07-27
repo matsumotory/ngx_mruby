@@ -43,13 +43,6 @@ fi
 echo "NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT"
 echo "NUM_THREADS=$NUM_THREADS"
 
-if [ ! -d "./mruby/src" ]; then
-    echo "mruby Downloading ..."
-    git submodule init
-    git submodule update
-    echo "mruby Downloading ... Done"
-fi
-
 if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
 
   echo "nginx Downloading ..."
