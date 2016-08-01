@@ -381,6 +381,9 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
 {
   mrb_define_method(mrb, mrb->kernel_module, "server_name", ngx_mrb_server_name, MRB_ARGS_NONE());
 
+  mrb_define_const(mrb, class, "TRUE", mrb_str_new_lit(mrb, "1"));
+  mrb_define_const(mrb, class, "FALSE", mrb_str_new_lit(mrb, "0"));
+
   mrb_define_const(mrb, class, "OK", mrb_fixnum_value(NGX_OK));
   mrb_define_const(mrb, class, "ERROR", mrb_fixnum_value(NGX_ERROR));
   mrb_define_const(mrb, class, "AGAIN", mrb_fixnum_value(NGX_AGAIN));

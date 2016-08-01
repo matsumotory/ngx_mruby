@@ -426,6 +426,11 @@ t.assert('ngx_mruby - issue_172_2', 'location /issue_172_2') do
   t.assert_equal expect_content.length, res["content-length"].to_i
 end
 
+t.assert('ngx_mruby - Nginx FALSE TRUE value', 'location /nginx_false_true') do
+  res = HttpRequest.new.get base + '/nginx_false_true/'
+  t.assert_equal "01", res["body"]
+end
+
 #
 # nginx stream test verison 1.9.6 later
 #
