@@ -18,12 +18,11 @@
 #include <mruby/string.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
-extern ngx_connection_t *ngx_mruby_connection;
 #define NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(method_suffix, member)                                              \
   static mrb_value ngx_mrb_ssl_set_##method_suffix(mrb_state *mrb, mrb_value self)                                     \
   {                                                                                                                    \
     ngx_http_mruby_srv_conf_t *mscf = mrb->ud;                                                                         \
-    ngx_connection_t *c = ngx_mrb_get_connection();                                                                    \
+    ngx_connection_t *c = mscf->connection;                                                                            \
     char *value;                                                                                                       \
     mrb_int len;                                                                                                       \
     u_char *valuep;                                                                                                    \
