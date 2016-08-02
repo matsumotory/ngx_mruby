@@ -42,7 +42,7 @@
     return mrb_str_new(mrb, (char *)mscf->member.data, mscf->member.len);                                              \
   }
 #else /* ! OPENSSL_VERSION_NUMBER >= 0x1000205fL */
-#define NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(method_suffix, member)
+#define NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(method_suffix, member)                                              \
   static mrb_value ngx_mrb_ssl_set_##method_suffix(mrb_state *mrb, mrb_value self)                                     \
   {                                                                                                                    \
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_set_" #method_suffix "doesn't support");                              \
