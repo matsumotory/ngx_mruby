@@ -2322,6 +2322,7 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: mscf NULL");
     return 1;
   }
+  mscf->connection = c;
 
   if (mscf->ssl_handshake_code == NGX_CONF_UNSET_PTR) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: unexpected error, mruby code not found");

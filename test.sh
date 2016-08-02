@@ -39,6 +39,8 @@ fi
 echo "NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT"
 echo "NUM_THREADS=$NUM_THREADS"
 
+export NGX_MRUBY_CFLAGS=-DMRB_GC_STRESS
+
 if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
 
   echo "nginx Downloading ..."

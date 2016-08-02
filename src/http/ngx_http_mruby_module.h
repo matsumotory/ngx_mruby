@@ -61,6 +61,9 @@ typedef struct {
   ngx_str_t cert_key_path;
   ngx_str_t cert_data;
   ngx_str_t cert_key_data;
+#if (NGX_HTTP_SSL) && OPENSSL_VERSION_NUMBER >= 0x1000205fL
+  ngx_connection_t *connection;
+#endif
 } ngx_http_mruby_srv_conf_t;
 
 typedef struct ngx_http_mruby_main_conf_t {
