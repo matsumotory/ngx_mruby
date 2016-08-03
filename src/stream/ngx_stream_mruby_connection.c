@@ -50,8 +50,8 @@ static mrb_value ngx_stream_mrb_connection_init(mrb_state *mrb, mrb_value self)
   if (ctx) {
     mrb_free(mrb, ctx);
   }
-  DATA_TYPE(self) = &ngx_stream_mrb_upstream_context_type;
-  DATA_PTR(self) = NULL;
+  mrb_data_init(self, NULL, &ngx_stream_mrb_upstream_context_type); 
+
   ctx = (ngx_stream_mruby_upstream_context *)mrb_malloc(mrb, sizeof(ngx_stream_mruby_upstream_context));
 
   ctx->upstream = upstream;
@@ -74,7 +74,7 @@ static mrb_value ngx_stream_mrb_connection_init(mrb_state *mrb, mrb_value self)
     }
   }
 
-  DATA_PTR(self) = ctx;
+  mrb_data_init(self, ctx, &ngx_stream_mrb_upstream_context_type); 
 
   if (ctx->us == NULL || ctx->peers == NULL) {
     mrb_raisef(mrb, E_RUNTIME_ERROR, "%S not found upstream config", upstream);
@@ -166,6 +166,7 @@ void ngx_stream_mrb_conn_class_init(mrb_state *mrb, struct RClass *class)
   struct RClass *class_conn;
 
   class_conn = mrb_define_class_under(mrb, class, "Connection", mrb->object_class);
+  MRB_SET_INSTANCE_TT(class_conn, MRB_TT_DATA);
   mrb_define_method(mrb, class_conn, "initialize", ngx_stream_mrb_connection_init, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_conn, "upstream_server", ngx_stream_mrb_upstream_get_server, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "upstream_server=", ngx_stream_mrb_upstream_set_server, MRB_ARGS_REQ(1));

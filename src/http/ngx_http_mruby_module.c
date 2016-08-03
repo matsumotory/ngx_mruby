@@ -31,6 +31,12 @@
     prev_code = conf_code;                                                                                             \
   }
 
+#define NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code)                                                                    \
+  if (code != NGX_CONF_UNSET_PTR && mrb && (code)->ctx) {                                                              \
+    mrbc_context_free(mrb, (code)->ctx);                                                                               \
+    (code)->ctx = NULL;                                                                                                \
+  }
+
 // set conf
 static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child);
@@ -309,9 +315,13 @@ extern ngx_http_request_t *ngx_mruby_request;
 
 static void ngx_http_mruby_cleanup(void *data)
 {
-  mrb_state *mrb = data;
+  ngx_http_mruby_main_conf_t *mmcf = data;
 
-  mrb_close(mrb);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mmcf->state->mrb, mmcf->init_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mmcf->state->mrb, mmcf->init_worker_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mmcf->state->mrb, mmcf->exit_worker_code);
+
+  mrb_close(mmcf->state->mrb);
 }
 
 static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf)
@@ -341,9 +351,17 @@ static char *ngx_http_mruby_init_main_conf(ngx_conf_t *cf, void *conf)
 
 /* create server config phase */
 
+static void ngx_http_mruby_srv_conf_cleanup(void *data)
+{
+  ngx_http_mruby_srv_conf_t *mscf = data;
+
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mscf->state->mrb, mscf->ssl_handshake_code);
+}
+
 static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
 {
   ngx_http_mruby_srv_conf_t *mscf;
+  ngx_pool_cleanup_t *cln;
 
   mscf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mruby_srv_conf_t));
   if (mscf == NULL) {
@@ -355,11 +373,19 @@ static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
     return NULL;
   }
 
+  cln = ngx_pool_cleanup_add(cf->pool, 0);
+  if (cln == NULL) {
+    return NULL;
+  }
+
   mscf->cert_path.len = 0;
   mscf->cert_key_path.len = 0;
   mscf->cert_data.len = 0;
   mscf->cert_key_data.len = 0;
   mscf->ssl_handshake_code = NGX_CONF_UNSET_PTR;
+
+  cln->handler = ngx_http_mruby_srv_conf_cleanup;
+  cln->data = mscf;
 
   return mscf;
 }
@@ -396,12 +422,62 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
 }
 
 /* create location config phase */
+
+static void ngx_http_mruby_loc_conf_cleanup(void *data)
+{
+  ngx_http_mruby_loc_conf_t *conf = data;
+  ngx_list_part_t *part;
+  ngx_mrb_code_t **code;
+  ngx_uint_t i;
+
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->post_read_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->server_rewrite_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->rewrite_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->access_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->content_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->log_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->post_read_inline_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->server_rewrite_inline_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->rewrite_inline_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->access_inline_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->content_inline_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->log_inline_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->body_filter_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->body_filter_inline_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->header_filter_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->header_filter_inline_code);
+
+  part = &conf->set_code_list->part;
+  code = part->elts;
+  for (i = 0; ;i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+      part = part->next;
+      code = part->elts;
+      i = 0;
+    }
+    NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, *code);
+  }
+}
+
 static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
 {
   ngx_http_mruby_loc_conf_t *conf;
+  ngx_pool_cleanup_t *cln;
 
   conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mruby_loc_conf_t));
   if (conf == NULL) {
+    return NULL;
+  }
+  conf->state = ngx_pcalloc(cf->pool, sizeof(ngx_mrb_state_t));
+  if (conf->state == NULL) {
+    return NULL;
+  }
+  conf->set_code_list = ngx_list_create(cf->pool, 1, sizeof(ngx_mrb_code_t*));
+  cln = ngx_pool_cleanup_add(cf->pool, 0);
+  if (cln == NULL) {
     return NULL;
   }
 
@@ -426,6 +502,9 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
 
   conf->cached = NGX_CONF_UNSET;
   conf->add_handler = NGX_CONF_UNSET;
+
+  cln->handler = ngx_http_mruby_loc_conf_cleanup;
+  cln->data = conf;
 
   return conf;
 }
@@ -478,7 +557,7 @@ static ngx_int_t ngx_http_mruby_preinit(ngx_conf_t *cf)
   }
 
   cln->handler = ngx_http_mruby_cleanup;
-  cln->data = mmcf->state->mrb;
+  cln->data = mmcf;
 
   return NGX_OK;
 }
@@ -633,7 +712,7 @@ static void ngx_mrb_state_clean(ngx_http_request_t *r, ngx_mrb_state_t *state)
 static void ngx_mrb_code_clean(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
   // mrb_irep_decref(state->mrb, code->proc->body.irep);
-  mrbc_context_free(state->mrb, code->ctx);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
 }
 
 ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
@@ -641,6 +720,7 @@ ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_
   int ai = mrb_gc_arena_save(state->mrb);
   ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
   mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
     ngx_mrb_raise_cycle_error(state->mrb, mrb_obj_value(state->mrb->exc), cycle);
     mrb_gc_arena_restore(state->mrb, ai);
@@ -656,6 +736,7 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
   int ai = mrb_gc_arena_save(state->mrb);
   ngx_log_error(NGX_LOG_INFO, cf->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
   mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
     ngx_mrb_raise_conf_error(state->mrb, mrb_obj_value(state->mrb->exc), cf);
     mrb_gc_arena_restore(state->mrb, ai);
@@ -710,6 +791,9 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
       result_len = RSTRING_LEN(mrb_result);
       result->data = ngx_palloc(r->pool, result_len);
       if (result->data == NULL) {
+        if (!cached && !code->cache) {
+          ngx_mrb_code_clean(r, state, code);
+        }
         return NGX_ERROR;
       }
       ngx_memcpy(result->data, (u_char *)mrb_str_to_cstr(state->mrb, mrb_result), result_len);
@@ -717,13 +801,15 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
       ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: mrb_run info: return value=(%s)", MODULE_NAME,
                     __func__, __LINE__, mrb_str_to_cstr(state->mrb, mrb_result));
       mrb_gc_arena_restore(state->mrb, exc_ai);
+      if (!cached && !code->cache) {
+        ngx_mrb_code_clean(r, state, code);
+      }
       return NGX_OK;
     }
   }
 
   if (!cached && !code->cache) {
     ngx_mrb_code_clean(r, state, code);
-    // mrb_gc_arena_restore(state->mrb, ai);
   }
   ngx_mrb_state_clean(r, state);
 
@@ -812,6 +898,7 @@ static ngx_int_t ngx_mrb_gencode_state(ngx_mrb_state_t *state, ngx_mrb_code_t *c
   }
 
   ai = mrb_gc_arena_save(state->mrb);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   code->ctx = mrbc_context_new(state->mrb);
   mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
   p = mrb_parse_file(state->mrb, mrb_file, code->ctx);
@@ -906,11 +993,13 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
     if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
       return NGX_ERROR;
     }
+    NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
     code->ctx = mrbc_context_new(state->mrb);
     mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
     p = mrb_parse_file(state->mrb, mrb_file, code->ctx);
     fclose(mrb_file);
   } else {
+    NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
     code->ctx = mrbc_context_new(state->mrb);
     mrbc_filename(state->mrb, code->ctx, "INLINE CODE");
     p = mrb_parse_string(state->mrb, (char *)code->code.string, code->ctx);
@@ -1186,6 +1275,8 @@ static char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, 
   ngx_int_t rc;
 
   mlcf = conf;
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
 
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
@@ -1221,6 +1312,8 @@ static char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *
   ngx_int_t rc;
 
   mlcf = conf;
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
 
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
@@ -1255,6 +1348,9 @@ static char *ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
   ngx_mrb_code_t *code;
   ngx_int_t rc;
 
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
+
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
   if (code == NGX_CONF_UNSET_PTR) {
@@ -1287,6 +1383,9 @@ static char *ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, voi
   ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_mrb_code_t *code;
   ngx_int_t rc;
+
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
 
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
@@ -1321,6 +1420,9 @@ static char *ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
   ngx_mrb_code_t *code;
   ngx_int_t rc;
 
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
+
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
   if (code == NGX_CONF_UNSET_PTR) {
@@ -1353,6 +1455,9 @@ static char *ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *
   ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_mrb_code_t *code;
   ngx_int_t rc;
+
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
 
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
@@ -1387,6 +1492,9 @@ static char *ngx_http_mruby_post_read_inline(ngx_conf_t *cf, ngx_command_t *cmd,
   ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_int_t rc;
 
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
+
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
   if (code == NGX_CONF_UNSET_PTR) {
@@ -1409,6 +1517,9 @@ static char *ngx_http_mruby_server_rewrite_inline(ngx_conf_t *cf, ngx_command_t 
   ngx_mrb_code_t *code;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_int_t rc;
+
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
 
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
@@ -1433,6 +1544,9 @@ static char *ngx_http_mruby_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, v
   ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_int_t rc;
 
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
+
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
   if (code == NGX_CONF_UNSET_PTR) {
@@ -1455,6 +1569,9 @@ static char *ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, vo
   ngx_mrb_code_t *code;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_int_t rc;
+
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
 
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
@@ -1479,6 +1596,9 @@ static char *ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, v
   ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_int_t rc;
 
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
+
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
   if (code == NGX_CONF_UNSET_PTR) {
@@ -1502,6 +1622,9 @@ static char *ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void 
   ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_int_t rc;
 
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
+
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
   if (code == NGX_CONF_UNSET_PTR) {
@@ -1524,6 +1647,9 @@ static char *ngx_http_mruby_body_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd
   ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_mrb_code_t *code;
   ngx_int_t rc;
+
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
 
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
@@ -1561,6 +1687,9 @@ static char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *c
   ngx_mrb_code_t *code;
   ngx_int_t rc;
 
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
+
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
   if (code == NGX_CONF_UNSET_PTR) {
@@ -1596,6 +1725,9 @@ static char *ngx_http_mruby_body_filter_inline(ngx_conf_t *cf, ngx_command_t *cm
   ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_int_t rc;
 
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
+
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
   if (code == NGX_CONF_UNSET_PTR) {
@@ -1622,6 +1754,9 @@ static char *ngx_http_mruby_header_filter_inline(ngx_conf_t *cf, ngx_command_t *
   ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_int_t rc;
 
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
+
   value = cf->args->elts;
   code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
   if (code == NGX_CONF_UNSET_PTR) {
@@ -1640,7 +1775,6 @@ static char *ngx_http_mruby_header_filter_inline(ngx_conf_t *cf, ngx_command_t *
 }
 
 #if defined(NDK) && NDK
-
 static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *conf, code_type_t type)
 {
   ngx_str_t target;
@@ -1648,7 +1782,12 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
   ndk_set_var_t filter;
   ngx_http_mruby_set_var_data_t *filter_data;
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
+  ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_int_t rc;
+  ngx_mrb_code_t **code;
+
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mlcf->state = mmcf->state;
 
   value = cf->args->elts;
   target = value[1];
@@ -1701,7 +1840,9 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
     }
     return NGX_CONF_ERROR;
   }
-
+  
+  code = ngx_list_push(mlcf->set_code_list);
+  *code = filter_data->code;
   filter.data = filter_data;
   ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: target variable=(%s)", MODULE_NAME, __FUNCTION__,
                      __LINE__, target.data);
@@ -2345,11 +2486,12 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
       ngx_log_error(NGX_LOG_ERR, c->log, 0,
                     MODULE_NAME " : mrb_run failed: return 500 HTTP status code to client: error: %s", err_out);
     }
+    NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
     ngx_mrb_state_clean(NULL, mscf->state);
     mrb_gc_arena_restore(mrb, ai);
     return 0;
   }
-
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
   ngx_mrb_state_clean(NULL, mscf->state);
   mrb_gc_arena_restore(mrb, ai);
 
