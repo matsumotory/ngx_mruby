@@ -42,8 +42,22 @@ module Kernel
 
     end
 
+    class LazyStringIO
+      # Avoid naming conflicts with Kernel methods introduced by mruby-io
+      undef_method :gets, :getc
+
+      def initialize(proc)
+        @proc = proc
+        @stringio = nil
+      end
+      def method_missing(sym, *args, &block)
+        @stringio = StringIO.new(@proc.call) if @stringio.nil?
+        @stringio.send sym, *args, &block
+      end
+    end
+
     def self.build_env r, c
-      input = (r.method == "POST" || r.method == "PUT") ? r.body : "" 
+      input = (r.method == "POST" || r.method == "PUT") ? lambda {r.body} : lambda {""}
       env = {
         "REQUEST_METHOD"    => r.method,
         "SCRIPT_NAME"       => "",
@@ -61,7 +75,7 @@ module Kernel
         "rack.run_once"     => false,
         "rack.hijack?"      => false,
         "rack.logger"       => Logger.new,
-        "rack.input"       => StringIO.new(input),
+        "rack.input"       => LazyStringIO.new(input),
         "server.name"       => server_name,
         "server.version"    => Server.server_version,
       }
