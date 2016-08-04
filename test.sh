@@ -55,7 +55,7 @@ if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
       echo "nginx Downloading ... Done"
       tar xf ${NGINX_SRC_VER}.tar.gz
   fi
-  ln -sf ${NGINX_SRC_VER} nginx_src
+  ln -snf ${NGINX_SRC_VER} nginx_src
   NGINX_SRC=`pwd`'/nginx_src'
   cd ..
 
