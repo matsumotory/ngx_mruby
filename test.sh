@@ -114,6 +114,7 @@ if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
 fi
 
 cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
+sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/html/set_ssl_cert_and_key.rb > ${NGINX_INSTALL_DIR}/html/set_ssl_cert_and_key.rb
 
 echo "====================================="
 echo ""

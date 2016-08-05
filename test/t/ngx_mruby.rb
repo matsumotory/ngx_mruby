@@ -412,6 +412,15 @@ t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
   t.assert_equal "", res
 end
 
+t.assert('ngx_mruby - ssl certificate changing - reading handler from file') do
+  res = `curl -k #{base_ssl(58085) + '/'}`
+  t.assert_equal 'ssl test ok', res
+  res = `openssl s_client -servername localhost -connect localhost:58083 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
+  t.assert_equal "1", res
+  res = `openssl s_client -servername hogehoge -connect 127.0.0.1:58083 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not`.chomp
+  t.assert_equal "", res
+end
+
 t.assert('ngx_mruby - issue_172', 'location /issue_172') do
   res = HttpRequest.new.get base + '/issue_172/index.html'
   expect_content = 'hello world'.upcase
