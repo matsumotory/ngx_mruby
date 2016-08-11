@@ -21,7 +21,7 @@ else
     NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-http_ssl_module'
     MAKE=make
     KILLALL=killall
-    PS_C="ps -c"
+    PS_C="ps -C"
 fi
 
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
