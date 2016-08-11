@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Default install and test
 #   download nginx into ./build/
@@ -9,6 +9,21 @@ set -e
 
 . ./nginx_version
 
+# OS specific configuration
+if [ `uname -s` = "NetBSD" ]; then
+    NPROCESSORS_ONLN="NPROCESSORS_ONLN"
+    NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-http_ssl_module --with-ld-opt=-L/usr/pkg/lib\ -Wl,-R/usr/pkg/lib'
+    MAKE=gmake
+    KILLALL=pkill
+    PS_C="pgrep -l"
+else
+    NPROCESSORS_ONLN="_NPROCESSORS_ONLN"
+    NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-http_ssl_module'
+    MAKE=make
+    KILLALL=killall
+    PS_C="ps -c"
+fi
+
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
     BUILD_DIR='build_dynamic'
     NGINX_INSTALL_DIR=`pwd`'/build_dynamic/nginx'
@@ -17,18 +32,16 @@ else
     NGINX_INSTALL_DIR=`pwd`'/build/nginx'
 fi
 
-NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-http_ssl_module'
-
 if [ $NGINX_SRC_MINOR -ge 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT} --with-stream --without-stream_access_module"
 else
-  NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT}"
+    NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT}"
 fi
 
 if [ "$NUM_THREADS_ENV" != "" ]; then
     NUM_THREADS=$NUM_THREADS_ENV
 else
-    NUM_PROCESSORS=`getconf _NPROCESSORS_ONLN`
+    NUM_PROCESSORS=`getconf $NPROCESSORS_ONLN`
     if [ $NUM_PROCESSORS -gt 1 ]; then
         NUM_THREADS=$(expr $NUM_PROCESSORS / 2)
     else
@@ -53,7 +66,7 @@ if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
   if [ ! -e ${NGINX_SRC_VER} ]; then
       wget http://nginx.org/download/${NGINX_SRC_VER}.tar.gz
       echo "nginx Downloading ... Done"
-      tar xf ${NGINX_SRC_VER}.tar.gz
+      tar xzf ${NGINX_SRC_VER}.tar.gz
   fi
   ln -snf ${NGINX_SRC_VER} nginx_src
   NGINX_SRC=`pwd`'/nginx_src'
@@ -65,28 +78,28 @@ if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
 
   if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
       echo "mruby building for suppot dynamic module ..."
-      make build_mruby_with_fpic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+      $MAKE build_mruby_with_fpic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
       echo "mruby building for suppot dynamic module ... Done"
 
       echo "ngx_mruby building as dynamic module ..."
-      make ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+      $MAKE ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
   else
       echo "mruby building ..."
-      make build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+      $MAKE build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
       echo "mruby building ... Done"
 
       echo "ngx_mruby building ..."
-      make NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+      $MAKE NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
   fi
 else
-  make make_ngx_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+  $MAKE make_ngx_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
 fi
 
 echo "ngx_mruby building ... Done"
 
 echo "ngx_mruby testing ..."
-make install
-ps -C nginx && killall nginx
+$MAKE install
+$PS_C nginx && $KILLALL nginx
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' && sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' && cd -
 
@@ -116,7 +129,7 @@ cp -p test/build_config.rb ./mruby_test/.
 cd mruby_test
 rake
 ./bin/mruby ../test/t/ngx_mruby.rb
-killall nginx
+$KILLALL nginx
 echo "ngx_mruby testing ... Done"
 
 echo "test.sh ... successful"
