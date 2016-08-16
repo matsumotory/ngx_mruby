@@ -2,12 +2,12 @@
 # ngx_mruby test
 #
 
-def http_host
-  "127.0.0.1:58080"
+def http_host(port = 58080)
+  "127.0.0.1:#{port}"
 end
 
-def base
-  "http://#{http_host}"
+def base(port = 58080)
+  "http://#{http_host(port)}"
 end
 
 def base_ssl(port)
@@ -429,6 +429,17 @@ end
 t.assert('ngx_mruby - Nginx FALSE TRUE value', 'location /nginx_false_true') do
   res = HttpRequest.new.get base + '/nginx_false_true/'
   t.assert_equal "01", res["body"]
+end
+
+t.assert('ngx_mruby - access_handler in server scope', 'location /access_handler_in_server_scope') do
+  res = HttpRequest.new.get base(58084) + '/access_handler_in_server_scope/'
+  t.assert_equal 403, res["code"]
+end
+
+t.assert('ngx_mruby - override access_handler in server scope', 'location /override_access_handler_in_server_scope') do
+  res = HttpRequest.new.get base(58084) + '/override_access_handler_in_server_scope/'
+  t.assert_equal 200, res["code"]
+  t.assert_equal "OK", res["body"]
 end
 
 #
