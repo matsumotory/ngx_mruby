@@ -4,7 +4,7 @@
 ##
 
 NUM_THREADS?= 1
-MAKE=make -j $(NUM_THREADS)
+MAKEFLAGS=-j $(NUM_THREADS)
 RAKE=rake -j $(NUM_THREADS)
 
 NGX_MRUBY_ROOT=$(shell pwd)

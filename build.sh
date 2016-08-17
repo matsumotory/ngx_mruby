@@ -13,6 +13,17 @@ set -e
 
 . ./nginx_version
 
+# OS specific configuration
+if [ `uname -s` = "NetBSD" ]; then
+    NPROCESSORS_ONLN="NPROCESSORS_ONLN"
+    NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-stream --without-stream_access_module --with-ld-opt=-L/usr/pkg/lib\ -Wl,-R/usr/pkg/lib'
+    MAKE=gmake
+else
+    NPROCESSORS_ONLN="_NPROCESSORS_ONLN"
+    NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-stream --without-stream_access_module'
+    MAKE=make
+fi
+
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
     BUILD_DIR='build_dynamic'
     NGINX_INSTALL_DIR=`pwd`'/build_dynamic/nginx'
@@ -24,13 +35,13 @@ fi
 if [ "$NGINX_CONFIG_OPT_ENV" != "" ]; then
     NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT_ENV
 else
-    NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module --with-stream --without-stream_access_module"
+    NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT}"
 fi
 
 if [ "$NUM_THREADS_ENV" != "" ]; then
     NUM_THREADS=$NUM_THREADS_ENV
 else
-    NUM_PROCESSORS=`getconf _NPROCESSORS_ONLN`
+    NUM_PROCESSORS=`getconf $NPROCESSORS_ONLN`
     if [ $NUM_PROCESSORS -gt 1 ]; then
         NUM_THREADS=$(expr $NUM_PROCESSORS / 2)
     else
@@ -62,7 +73,7 @@ else
     if [ ! -e ${NGINX_SRC_VER} ]; then
         wget http://nginx.org/download/${NGINX_SRC_VER}.tar.gz
         echo "nginx Downloading ... Done"
-        tar xf ${NGINX_SRC_VER}.tar.gz
+        tar xzf ${NGINX_SRC_VER}.tar.gz
     fi
     ln -snf ${NGINX_SRC_VER} nginx_src
     NGINX_SRC=`pwd`'/nginx_src'
@@ -75,19 +86,19 @@ echo "ngx_mruby configure ... Done"
 
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
     echo "mruby building for suppot dynamic module ..."
-    make build_mruby_with_fpic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+    $MAKE build_mruby_with_fpic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
     echo "mruby building for suppot dynamic module ... Done"
 
     echo "ngx_mruby building as dynamic module ..."
-    make ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+    $MAKE ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
     echo "ngx_mruby building ... Done"
 else
     echo "mruby building ..."
-    make build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+    $MAKE build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
     echo "mruby building ... Done"
 
     echo "ngx_mruby building ..."
-    make NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+    $MAKE NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
     echo "ngx_mruby building ... Done"
 fi
 
