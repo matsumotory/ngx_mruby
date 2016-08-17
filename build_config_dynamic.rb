@@ -4,7 +4,8 @@ MRuby::Build.new do |conf|
 
   conf.gembox 'full-core'
   conf.cc do |cc|
-    cc.flags = [ENV['CFLAGS'], '-fPIC']
+    cc.flags << '-fPIC'
+    cc.flags << ENV['NGX_MRUBY_CFLAGS'] if ENV['NGX_MRUBY_CFLAGS']
   end
 
   #

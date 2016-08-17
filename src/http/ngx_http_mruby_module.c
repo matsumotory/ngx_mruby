@@ -26,9 +26,9 @@
 #define ON 1
 #define OFF 0
 
-#define NGX_MRUBY_MERGE_CODE(prev_code, conf_code)                                                                     \
-  if (prev_code == NGX_CONF_UNSET_PTR) {                                                                               \
-    prev_code = conf_code;                                                                                             \
+#define NGX_MRUBY_MERGE_CODE(conf_code, prev_code)                                                                     \
+  if (conf_code == NGX_CONF_UNSET_PTR) {                                                                               \
+    conf_code = prev_code;                                                                                             \
   }
 
 #define NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code)                                                                    \
@@ -398,7 +398,7 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
   ngx_http_mruby_srv_conf_t *conf = child;
   ngx_http_ssl_srv_conf_t *sscf;
 
-  NGX_MRUBY_MERGE_CODE(prev->ssl_handshake_code, conf->ssl_handshake_code);
+  NGX_MRUBY_MERGE_CODE(conf->ssl_handshake_code, prev->ssl_handshake_code);
 
   if (conf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
     sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
@@ -514,24 +514,24 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
   ngx_http_mruby_loc_conf_t *prev = parent;
   ngx_http_mruby_loc_conf_t *conf = child;
 
-  NGX_MRUBY_MERGE_CODE(prev->post_read_code, conf->post_read_code);
-  NGX_MRUBY_MERGE_CODE(prev->server_rewrite_code, conf->server_rewrite_code);
-  NGX_MRUBY_MERGE_CODE(prev->rewrite_code, conf->rewrite_code);
-  NGX_MRUBY_MERGE_CODE(prev->access_code, conf->access_code);
-  NGX_MRUBY_MERGE_CODE(prev->content_code, conf->content_code);
-  NGX_MRUBY_MERGE_CODE(prev->log_code, conf->log_code);
+  NGX_MRUBY_MERGE_CODE(conf->post_read_code, prev->post_read_code);
+  NGX_MRUBY_MERGE_CODE(conf->server_rewrite_code, prev->server_rewrite_code);
+  NGX_MRUBY_MERGE_CODE(conf->rewrite_code, prev->rewrite_code);
+  NGX_MRUBY_MERGE_CODE(conf->access_code, prev->access_code);
+  NGX_MRUBY_MERGE_CODE(conf->content_code, prev->content_code);
+  NGX_MRUBY_MERGE_CODE(conf->log_code, prev->log_code);
 
-  NGX_MRUBY_MERGE_CODE(prev->post_read_inline_code, conf->post_read_inline_code);
-  NGX_MRUBY_MERGE_CODE(prev->server_rewrite_inline_code, conf->server_rewrite_inline_code);
-  NGX_MRUBY_MERGE_CODE(prev->rewrite_inline_code, conf->rewrite_inline_code);
-  NGX_MRUBY_MERGE_CODE(prev->access_inline_code, conf->access_inline_code);
-  NGX_MRUBY_MERGE_CODE(prev->content_inline_code, conf->content_inline_code);
-  NGX_MRUBY_MERGE_CODE(prev->log_inline_code, conf->log_inline_code);
+  NGX_MRUBY_MERGE_CODE(conf->post_read_inline_code, prev->post_read_inline_code);
+  NGX_MRUBY_MERGE_CODE(conf->server_rewrite_inline_code, prev->server_rewrite_inline_code);
+  NGX_MRUBY_MERGE_CODE(conf->rewrite_inline_code, prev->rewrite_inline_code);
+  NGX_MRUBY_MERGE_CODE(conf->access_inline_code, prev->access_inline_code);
+  NGX_MRUBY_MERGE_CODE(conf->content_inline_code, prev->content_inline_code);
+  NGX_MRUBY_MERGE_CODE(conf->log_inline_code, prev->log_inline_code);
 
-  NGX_MRUBY_MERGE_CODE(prev->body_filter_code, conf->body_filter_code);
-  NGX_MRUBY_MERGE_CODE(prev->body_filter_inline_code, conf->body_filter_inline_code);
-  NGX_MRUBY_MERGE_CODE(prev->header_filter_code, conf->header_filter_code);
-  NGX_MRUBY_MERGE_CODE(prev->header_filter_inline_code, conf->header_filter_inline_code);
+  NGX_MRUBY_MERGE_CODE(conf->body_filter_code, prev->body_filter_code);
+  NGX_MRUBY_MERGE_CODE(conf->body_filter_inline_code, prev->body_filter_inline_code);
+  NGX_MRUBY_MERGE_CODE(conf->header_filter_code, prev->header_filter_code);
+  NGX_MRUBY_MERGE_CODE(conf->header_filter_inline_code, prev->header_filter_inline_code);
 
   ngx_conf_merge_value(conf->cached, prev->cached, 0);
   ngx_conf_merge_value(conf->add_handler, prev->add_handler, 0);
