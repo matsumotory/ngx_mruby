@@ -48,10 +48,13 @@ LIBS = $(MRUBY_LIBS) $(MRUBY_LDFLAGS_BEFORE_LIBS) $(MRUBY_ROOT)/build/host/lib/l
 
 build_mruby_targets=
 ifdef NGX_OPENSSL_SRC
-  NGX_OPENSSL_LIBS = $(NGX_OPENSSL_SRC)/.openssl/lib/libssl.a $(NGX_OPENSSL_SRC)/.openssl/lib/libcrypto.a
+ifdef BUILD_DYNAMIC_MODULE
+  LDFLAGS := -L$(NGX_OPENSSL_SRC)/.openssl/lib -Wl,-rpath=$(NGX_OPENSSL_SRC)/.openssl/lib $(LDFLAGS)
+else
+  LIBS := $(NGX_OPENSSL_SRC)/.openssl/lib/libssl.a $(NGX_OPENSSL_SRC)/.openssl/lib/libcrypto.a $(LIBS)
+# LDFLAGS := $(LDFLAGS) -Wl,-Bstatic -L$(NGX_OPENSSL_SRC)/.openssl/lib
+endif
   CFLAGS := -I$(NGX_OPENSSL_SRC)/.openssl/include $(CFLAGS)
-  LDFLAGS := -L$(NGX_OPENSSL_SRC)/.openssl/lib $(LDFLAGS)
-  LIBS := $(NGX_OPENSSL_LIBS) $(LIBS)
   build_mruby_targets := openssl
 endif
 
@@ -104,7 +107,7 @@ generate_gems_config_dynamic:
 openssl:
 	cd $(NGX_OPENSSL_SRC) \
 	&& if [ -f Makefile ]; then $(MAKE) clean; fi \
-	&& ./config --prefix=$(NGX_OPENSSL_SRC)/.openssl no-shared $(NGX_OPENSSL_OPT)  \
+	&& ./config --prefix=$(NGX_OPENSSL_SRC)/.openssl --shared zlib -fPIC enable-tlsext $(NGX_OPENSSL_OPT)  \
 	&& $(MAKE) \
 	&& $(MAKE) install_sw LIBDIR=lib
 
