@@ -360,6 +360,7 @@ static void ngx_http_mruby_srv_conf_cleanup(void *data)
   ngx_http_mruby_srv_conf_t *mscf = data;
 
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mscf->state->mrb, mscf->ssl_handshake_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mscf->state->mrb, mscf->ssl_handshake_inline_code);
 }
 
 static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
@@ -387,6 +388,7 @@ static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
   mscf->cert_data.len = 0;
   mscf->cert_key_data.len = 0;
   mscf->ssl_handshake_code = NGX_CONF_UNSET_PTR;
+  mscf->ssl_handshake_inline_code = NGX_CONF_UNSET_PTR;
 
   cln->handler = ngx_http_mruby_srv_conf_cleanup;
   cln->data = mscf;
@@ -403,8 +405,9 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
   ngx_http_ssl_srv_conf_t *sscf;
 
   NGX_MRUBY_MERGE_CODE(conf->ssl_handshake_code, prev->ssl_handshake_code);
+  NGX_MRUBY_MERGE_CODE(conf->ssl_handshake_inline_code, prev->ssl_handshake_inline_code);
 
-  if (conf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
+  if (conf->ssl_handshake_code != NGX_CONF_UNSET_PTR || conf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
     sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
     if (sscf == NULL || sscf->ssl.ctx == NULL) {
       ngx_log_error(NGX_LOG_EMERG, cf->log, 0, MODULE_NAME " : no ssl configured for the server");
@@ -1088,7 +1091,7 @@ static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *
   ngx_mrb_code_t *code;
   ngx_int_t rc;
 
-  if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
+  if (mscf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
     return "is duplicated";
   }
 
@@ -1101,7 +1104,7 @@ static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *
   if (code == NGX_CONF_UNSET_PTR) {
     return NGX_CONF_ERROR;
   }
-  mscf->ssl_handshake_code = code;
+  mscf->ssl_handshake_inline_code = code;
   rc = ngx_http_mruby_shared_state_compile(cf, mscf->state, code);
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : mruby_ssl_handshake_inline mrb_string(%s) load failed",
@@ -2512,7 +2515,7 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   }
   mscf->connection = c;
 
-  if (mscf->ssl_handshake_code == NGX_CONF_UNSET_PTR) {
+  if (mscf->ssl_handshake_code == NGX_CONF_UNSET_PTR && mscf->ssl_handshake_inline_code == NGX_CONF_UNSET_PTR) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: unexpected error, mruby code not found");
     return 1;
   }
@@ -2521,7 +2524,11 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   mrb = mscf->state->mrb;
   mrb->ud = mscf;
   ai = mrb_gc_arena_save(mrb);
-  mrb_run(mrb, mscf->ssl_handshake_code->proc, mrb_top_self(mrb));
+  if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
+    mrb_run(mrb, mscf->ssl_handshake_code->proc, mrb_top_self(mrb));
+  } else {
+    mrb_run(mrb, mscf->ssl_handshake_inline_code->proc, mrb_top_self(mrb));
+  }
 
   if (mrb->exc) {
     struct RString *str;
@@ -2534,11 +2541,13 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
                     MODULE_NAME " : mrb_run failed: return 500 HTTP status code to client: error: %s", err_out);
     }
     NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
+    NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_inline_code);
     ngx_mrb_state_clean(NULL, mscf->state);
     mrb_gc_arena_restore(mrb, ai);
     return 0;
   }
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_inline_code);
   ngx_mrb_state_clean(NULL, mscf->state);
   mrb_gc_arena_restore(mrb, ai);
 
