@@ -2526,7 +2526,8 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   ai = mrb_gc_arena_save(mrb);
   if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
     mrb_run(mrb, mscf->ssl_handshake_code->proc, mrb_top_self(mrb));
-  } else {
+  }
+  if (mscf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
     mrb_run(mrb, mscf->ssl_handshake_inline_code->proc, mrb_top_self(mrb));
   }
 
