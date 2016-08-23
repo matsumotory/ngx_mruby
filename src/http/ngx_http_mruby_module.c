@@ -171,8 +171,8 @@ static ngx_command_t ngx_http_mruby_commands[] = {
 #if (NGX_HTTP_SSL)
 
     /* server config */
-    {ngx_string("mruby_ssl_handshake_handler"), NGX_HTTP_SRV_CONF | NGX_CONF_TAKE12,
-     ngx_http_mruby_ssl_handshake_phase, NGX_HTTP_SRV_CONF_OFFSET, 0, NULL},
+    {ngx_string("mruby_ssl_handshake_handler"), NGX_HTTP_SRV_CONF | NGX_CONF_TAKE12, ngx_http_mruby_ssl_handshake_phase,
+     NGX_HTTP_SRV_CONF_OFFSET, 0, NULL},
 
     {ngx_string("mruby_ssl_handshake_handler_code"), NGX_HTTP_SRV_CONF | NGX_CONF_TAKE1,
      ngx_http_mruby_ssl_handshake_inline, NGX_HTTP_SRV_CONF_OFFSET, 0, NULL},
@@ -1060,7 +1060,7 @@ static char *ngx_http_mruby_ssl_handshake_phase(ngx_conf_t *cf, ngx_command_t *c
   code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
   if (code == NGX_CONF_UNSET_PTR) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : mruby_ssl_handshake_phase mrb_file(%s) open failed",
-            value[1].data);
+                       value[1].data);
     return NGX_CONF_ERROR;
   }
   if (cf->args->nelts == 3) {
@@ -1076,7 +1076,7 @@ static char *ngx_http_mruby_ssl_handshake_phase(ngx_conf_t *cf, ngx_command_t *c
   rc = ngx_http_mruby_shared_state_compile(cf, mscf->state, code);
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : mruby_ssl_handshake_phase mrb_file(%s) open failed",
-            value[1].data);
+                       value[1].data);
     return NGX_CONF_ERROR;
   }
 
@@ -2526,7 +2526,8 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   ai = mrb_gc_arena_save(mrb);
   if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
     if (!mscf->ssl_handshake_code->cache) {
-      NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(0, mscf->state, mscf->ssl_handshake_code, ngx_http_mruby_state_reinit_from_file);
+      NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(0, mscf->state, mscf->ssl_handshake_code,
+                                           ngx_http_mruby_state_reinit_from_file);
     }
     mrb_run(mrb, mscf->ssl_handshake_code->proc, mrb_top_self(mrb));
   }
