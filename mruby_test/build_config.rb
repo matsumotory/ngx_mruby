@@ -29,6 +29,7 @@ MRuby::Build.new do |conf|
   conf.gem :github => 'iij/mruby-io'
   conf.gem :github => 'iij/mruby-socket'
   conf.gem :github => 'iij/mruby-pack'
+  conf.gem :github => 'iij/mruby-env'
   # include the default GEMs
   conf.gembox 'full-core'
 

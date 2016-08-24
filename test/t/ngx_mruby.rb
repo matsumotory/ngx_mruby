@@ -412,22 +412,45 @@ t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
   t.assert_equal "", res
 end
 
-t.assert('ngx_mruby - ssl certificate changing - reading handler from file') do
+dir = ENV['BUILD_DYNAMIC_MODULE'] == 'TRUE' ? 'build_dynamic' : 'build'
+fname = File.expand_path("../../../#{dir}/nginx/html/set_ssl_cert_and_key.rb", __FILE__)
+
+t.assert('ngx_mruby - ssl certificate changing - reading handler from file without caching') do
   res = `curl -k #{base_ssl(58085) + '/'}`
   t.assert_equal 'ssl test ok', res
-  res = `openssl s_client -servername localhost -connect localhost:58085 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
-  t.assert_equal "1", res
-  res = `openssl s_client -servername hogehoge -connect 127.0.0.1:58085 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not`.chomp
-  t.assert_equal "", res
+
+  content = File.read(fname).gsub('#{ssl.servername}', 'localhost')
+  File.open(fname, 'w') { |f| f.puts content }
+
+  cmd_l = "openssl s_client -servername localhost -connect localhost:58085 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1"
+  cmd_h = "openssl s_client -servername hogehoge -connect 127.0.0.1:58085 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1"
+  t.assert_equal "1", `#{cmd_l}`.chomp
+  t.assert_equal "1", `#{cmd_h}`.chomp
+
+  content = File.read(fname).gsub('localhost', '#{ssl.servername}')
+  File.open(fname, 'w') { |f| f.puts content }
+
+  t.assert_equal "1", `#{cmd_l}`.chomp
+  t.assert_equal "", `#{cmd_h}`.chomp
 end
 
-t.assert('ngx_mruby - ssl certificate changing - reading handler from file with cache') do
+t.assert('ngx_mruby - ssl certificate changing - reading handler from file with caching') do
   res = `curl -k #{base_ssl(58086) + '/'}`
   t.assert_equal 'ssl test ok', res
-  res = `openssl s_client -servername localhost -connect localhost:58086 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
-  t.assert_equal "1", res
-  res = `openssl s_client -servername hogehoge -connect 127.0.0.1:58086 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not`.chomp
-  t.assert_equal "", res
+
+  content = File.read(fname).gsub('#{ssl.servername}', 'localhost')
+  File.open(fname, 'w') { |f| f.puts content }
+
+  cmd_l = "openssl s_client -servername localhost -connect localhost:58086 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1"
+  cmd_h = "openssl s_client -servername hogehoge -connect 127.0.0.1:58086 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not"
+  t.assert_equal "1", `#{cmd_l}`.chomp
+  t.assert_equal "", `#{cmd_h}`.chomp
+
+  content = File.read(fname).gsub('localhost', '#{ssl.servername}')
+  File.open(fname, 'w') { |f| f.puts content }
+
+  t.assert_equal "1", `#{cmd_l}`.chomp
+  t.assert_equal "", `#{cmd_h}`.chomp
 end
 
 t.assert('ngx_mruby - issue_172', 'location /issue_172') do
