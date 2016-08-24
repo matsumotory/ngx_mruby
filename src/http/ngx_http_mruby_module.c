@@ -456,7 +456,7 @@ static void ngx_http_mruby_loc_conf_cleanup(void *data)
 
   part = &conf->set_code_list->part;
   code = part->elts;
-  for (i = 0; ;i++) {
+  for (i = 0;; i++) {
     if (i >= part->nelts) {
       if (part->next == NULL) {
         break;
@@ -482,7 +482,7 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
   if (conf->state == NULL) {
     return NULL;
   }
-  conf->set_code_list = ngx_list_create(cf->pool, 1, sizeof(ngx_mrb_code_t*));
+  conf->set_code_list = ngx_list_create(cf->pool, 1, sizeof(ngx_mrb_code_t *));
   cln = ngx_pool_cleanup_add(cf->pool, 0);
   if (cln == NULL) {
     return NULL;
@@ -1890,7 +1890,7 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
     }
     return NGX_CONF_ERROR;
   }
-  
+
   code = ngx_list_push(mlcf->set_code_list);
   *code = filter_data->code;
   filter.data = filter_data;

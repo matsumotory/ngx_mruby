@@ -50,7 +50,7 @@ static mrb_value ngx_stream_mrb_connection_init(mrb_state *mrb, mrb_value self)
   if (ctx) {
     mrb_free(mrb, ctx);
   }
-  mrb_data_init(self, NULL, &ngx_stream_mrb_upstream_context_type); 
+  mrb_data_init(self, NULL, &ngx_stream_mrb_upstream_context_type);
 
   ctx = (ngx_stream_mruby_upstream_context *)mrb_malloc(mrb, sizeof(ngx_stream_mruby_upstream_context));
 
@@ -74,7 +74,7 @@ static mrb_value ngx_stream_mrb_connection_init(mrb_state *mrb, mrb_value self)
     }
   }
 
-  mrb_data_init(self, ctx, &ngx_stream_mrb_upstream_context_type); 
+  mrb_data_init(self, ctx, &ngx_stream_mrb_upstream_context_type);
 
   if (ctx->us == NULL || ctx->peers == NULL) {
     mrb_raisef(mrb, E_RUNTIME_ERROR, "%S not found upstream config", upstream);

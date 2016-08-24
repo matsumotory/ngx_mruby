@@ -32,7 +32,7 @@
     valuep = ngx_palloc(c->pool, len + 1);                                                                             \
     if (valuep == NULL) {                                                                                              \
       ngx_log_error(NGX_LOG_ERR, c->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME,                     \
-                        "ngx_mrb_ssl_set_" #method_suffix, __LINE__);                                                  \
+                    "ngx_mrb_ssl_set_" #method_suffix, __LINE__);                                                      \
       return mrb_nil_value();                                                                                          \
     }                                                                                                                  \
     ngx_cpystrn(valuep, (u_char *)value, len + 1);                                                                     \
