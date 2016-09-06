@@ -562,6 +562,7 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
 
 static ngx_int_t ngx_http_mruby_preinit(ngx_conf_t *cf)
 {
+  /* callback after creating main conf */
   return NGX_OK;
 }
 
