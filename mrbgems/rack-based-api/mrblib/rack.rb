@@ -81,8 +81,12 @@ module Kernel
       }
 
       # add rquest headers into env
-      r.headers_in.all.keys.each do |k|
-        env["HTTP_#{k.upcase.gsub('-', '_')}"] = r.headers_in[k]
+      r.headers_in.all.each do |k, v|
+        k = k.upcase.gsub('-', '_')
+        env["HTTP_#{k}"] = v 
+        # Rack spec doesn't allow env contains HTTP_CONTENT_TYPE or HTTP_CONTENT_LENGTH,
+        # but don't want to break backward compatibility.
+        env[k] = v if k == 'CONTENT_TYPE' || k == 'CONTENT_LENGTH'
       end
 
       env
