@@ -314,6 +314,18 @@ t.assert('ngx_mruby - rack base', 'location /rack_base_env') do
   t.assert_equal 200, res.code
 end
 
+t.assert('ngx_mruby - rack base', 'method POST, location /rack_base_env') do
+  req_body = 'Hello' 
+  res = HttpRequest.new.post base + '/rack_base_env', req_body, {"Content-Type" => "text/plain; charset=us-ascii", "Content-Length" => req_body.size}
+  res_body = JSON.parse res["body"]
+  puts res_body
+
+  t.assert_equal "POST", res_body["REQUEST_METHOD"]
+  t.assert_equal "text/plain; charset=us-ascii", res_body["CONTENT_TYPE"]
+  t.assert_equal req_body.size.to_s, res_body["CONTENT_LENGTH"]
+  t.assert_equal 200, res.code
+end
+
 t.assert('ngx_mruby - rack base auth ok', 'location /rack_base_2phase') do
   res = HttpRequest.new.get base + '/rack_base_2phase', nil, {"auth-token" => "aaabbbccc"}
   t.assert_equal "OK", res["body"]
