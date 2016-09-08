@@ -286,6 +286,11 @@ t.assert('ngx_mruby - rack base', 'location /rack_base3') do
   t.assert_equal 404, res.code
 end
 
+t.assert('ngx_mruby - rack base', 'location /rack_base4') do
+  res = HttpRequest.new.get base + '/rack_base4'
+  t.assert_equal 500, res.code
+end
+
 t.assert('ngx_mruby - rack base', 'location /rack_base_env') do
   res = HttpRequest.new.get base + '/rack_base_env?a=1&b=1', nil, {"Host" => "ngx.example.com:58080", "x-hoge" => "foo"}
   body = JSON.parse res["body"]

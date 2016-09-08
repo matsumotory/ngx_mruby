@@ -96,11 +96,14 @@ module Kernel
       return if res.nil?
 
       if res[1].kind_of?(Hash)
-        res[1].keys.each { |k| r.headers_out[k] = res[1][k] }
+        res[1].each { |k, v| r.headers_out[k] = v }
       elsif res[1].kind_of?(Array)
-        res[1].each { |ary| r.headers_out[ary[0]] = ary[1] }
+        res[1].each { |ary| 
+          raise TypeError, "response headers arg type must be Array of Array or Hash" unless ary.kind_of?(Array)
+          r.headers_out[ary[0]] = ary[1] 
+        }
       else
-        raise TypeError, "response headers arg type must be Array or Hash"
+        raise TypeError, "response headers arg type must be Array of Array or Hash"
       end
       if res[2].kind_of?(Array)
         res[2].each { |b| Server.rputs b.to_s }
