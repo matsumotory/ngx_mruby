@@ -26,6 +26,8 @@ get_closure_irep(mrb_state *mrb, int level)
   }
 
   if (!e) return NULL;
+  if (!MRB_ENV_STACK_SHARED_P(e)) return NULL;
+
   proc = c->cibase[e->cioff].proc;
 
   if (!proc || MRB_PROC_CFUNC_P(proc)) {
@@ -247,6 +249,7 @@ f_instance_eval(mrb_state *mrb, mrb_value self)
     cv = mrb_singleton_class(mrb, self);
     c->ci->target_class = mrb_class_ptr(cv);
     proc = create_proc_from_string(mrb, s, len, mrb_nil_value(), file, line);
+    mrb->c->ci->env = NULL;
     return mrb_vm_run(mrb, proc, mrb->c->stack[0], 0);
   }
   else {
