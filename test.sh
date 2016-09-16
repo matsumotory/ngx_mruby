@@ -12,13 +12,13 @@ set -e
 # OS specific configuration
 if [ `uname -s` = "NetBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
-    NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-http_ssl_module --with-ld-opt=-L/usr/pkg/lib\ -Wl,-R/usr/pkg/lib'
+    NGINX_DEFUALT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module --with-ld-opt=-L/usr/pkg/lib\ -Wl,-R/usr/pkg/lib'
     MAKE=gmake
     KILLALL=pkill
     PS_C="pgrep -l"
 else
     NPROCESSORS_ONLN="_NPROCESSORS_ONLN"
-    NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-http_ssl_module'
+    NGINX_DEFUALT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module'
     MAKE=make
     KILLALL=killall
     PS_C="ps -C"
