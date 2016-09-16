@@ -500,6 +500,12 @@ t.assert('ngx_mruby - override access_handler in server scope', 'location /overr
   t.assert_equal "OK", res["body"]
 end
 
+t.assert('ngx_mruby - bug; mruby_post_read_handler not running in 1.18.3+', 'location /issue_210') do
+  res = HttpRequest.new.get base + '/issue_210'
+  t.assert_equal "fuga", res["hoge"]
+  t.assert_equal "hello", res["body"]
+end
+
 #
 # nginx stream test verison 1.9.6 later
 #
