@@ -109,16 +109,6 @@ void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_ssl, "certificate_key=", ngx_mrb_ssl_set_cert_key, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_data=", ngx_mrb_ssl_set_cert_data, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_key_data=", ngx_mrb_ssl_set_cert_key_data, MRB_ARGS_REQ(1));
-
-  mrb_define_const(mrb, class_ssl, "LOG_STDERR", mrb_fixnum_value(NGX_LOG_STDERR));
-  mrb_define_const(mrb, class_ssl, "LOG_EMERG", mrb_fixnum_value(NGX_LOG_EMERG));
-  mrb_define_const(mrb, class_ssl, "LOG_ALERT", mrb_fixnum_value(NGX_LOG_ALERT));
-  mrb_define_const(mrb, class_ssl, "LOG_CRIT", mrb_fixnum_value(NGX_LOG_CRIT));
-  mrb_define_const(mrb, class_ssl, "LOG_ERR", mrb_fixnum_value(NGX_LOG_ERR));
-  mrb_define_const(mrb, class_ssl, "LOG_WARN", mrb_fixnum_value(NGX_LOG_WARN));
-  mrb_define_const(mrb, class_ssl, "LOG_NOTICE", mrb_fixnum_value(NGX_LOG_NOTICE));
-  mrb_define_const(mrb, class_ssl, "LOG_INFO", mrb_fixnum_value(NGX_LOG_INFO));
-  mrb_define_const(mrb, class_ssl, "LOG_DEBUG", mrb_fixnum_value(NGX_LOG_DEBUG));
   mrb_define_class_method(mrb, class_ssl, "errlogger", ngx_mrb_ssl_errlogger, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class_ssl, "log", ngx_mrb_ssl_errlogger, MRB_ARGS_ANY());
 }
