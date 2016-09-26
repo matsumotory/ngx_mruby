@@ -470,6 +470,13 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file with 
   t.assert_equal "", `#{cmd_h}`.chomp
 end
 
+dir = ENV['BUILD_DYNAMIC_MODULE'] == 'TRUE' ? 'build_dynamic' : 'build'
+t.assert('ngx_mruby - Nginx::SSL.errlogger') do
+  `openssl s_client -servername localhost -connect localhost:58087 < /dev/null 2>/dev/null`
+  error_log = File.read File.expand_path("../../../#{dir}/nginx/logs/error.log", __FILE__)
+  t.assert_true error_log.include? 'Servername is localhost while SSL handshaking'
+end
+
 t.assert('ngx_mruby - issue_172', 'location /issue_172') do
   res = HttpRequest.new.get base + '/issue_172/index.html'
   expect_content = 'hello world'.upcase
