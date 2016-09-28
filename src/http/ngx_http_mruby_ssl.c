@@ -41,25 +41,6 @@
                                                                                                                        \
     return mrb_str_new(mrb, (char *)mscf->member.data, mscf->member.len);                                              \
   }
-#else /* ! OPENSSL_VERSION_NUMBER >= 0x1000205fL */
-#define NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(method_suffix, member)                                              \
-  static mrb_value ngx_mrb_ssl_set_##method_suffix(mrb_state *mrb, mrb_value self)                                     \
-  {                                                                                                                    \
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_set_" #method_suffix "doesn't support");                              \
-  }
-#endif /* OPENSSL_VERSION_NUMBER >= 0x1000205fL */
-
-static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
-{
-  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-
-  return mrb_str_new(mrb, (char *)mscf->servername->data, mscf->servername->len);
-}
-
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert, cert_path);
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_key, cert_key_path);
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_data, cert_data);
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_key_data, cert_key_data);
 
 static mrb_value ngx_mrb_ssl_errlogger(mrb_state *mrb, mrb_value self)
 {
@@ -97,6 +78,37 @@ static mrb_value ngx_mrb_ssl_errlogger(mrb_state *mrb, mrb_value self)
 
   return self;
 }
+
+static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+
+  return mrb_str_new(mrb, (char *)mscf->servername->data, mscf->servername->len);
+}
+
+#else /* ! OPENSSL_VERSION_NUMBER >= 0x1000205fL */
+#define NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(method_suffix, member)                                              \
+  static mrb_value ngx_mrb_ssl_set_##method_suffix(mrb_state *mrb, mrb_value self)                                     \
+  {                                                                                                                    \
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_set_" #method_suffix "doesn't support");                              \
+  }
+
+static mrb_value ngx_mrb_ssl_errlogger(mrb_state *mrb, mrb_value self)
+{
+  mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_errlogger doesn't support");
+}
+
+static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
+{
+  mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_get_servername doesn't support");
+}
+
+#endif /* OPENSSL_VERSION_NUMBER >= 0x1000205fL */
+
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert, cert_path);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_key, cert_key_path);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_data, cert_data);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_key_data, cert_key_data);
 
 void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
 {
