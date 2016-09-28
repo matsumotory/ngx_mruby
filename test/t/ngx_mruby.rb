@@ -231,6 +231,18 @@ t.assert('ngx_mruby - sub_request? check', 'location /sub_request_check') do
   t.assert_equal "false", res["body"]
 end
 
+t.assert('ngx_mruby - bug; mruby_post_read_handler not running in 1.18.3+', 'location /issue_210') do
+  res = HttpRequest.new.get base + '/issue_210'
+  t.assert_equal "fuga", res["hoge"]
+  t.assert_equal "hello", res["body"]
+end
+
+t.assert('ngx_mruby - bug; mruby_post_read_handler not running in 1.18.3+ for file code', 'location /issue_210_2') do
+  res = HttpRequest.new.get base + '/issue_210_2'
+  t.assert_equal "fuga", res["hoge"]
+  t.assert_equal "hello2", res["body"]
+end
+
 p nginx_version
 
 if nginx_version.split(".")[1].to_i > 6
