@@ -239,7 +239,7 @@ end
 
 t.assert('ngx_mruby - bug; mruby_post_read_handler not running in 1.18.3+ for file code', 'location /issue_210_2') do
   res = HttpRequest.new.get base + '/issue_210_2'
-  t.assert_equal "hoge", res["fuga"]
+  t.assert_equal "fuga", res["hoge"]
   t.assert_equal "hello2", res["body"]
 end
 
