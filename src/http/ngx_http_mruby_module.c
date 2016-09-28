@@ -1317,12 +1317,11 @@ static char *ngx_http_mruby_output_filter_error(ngx_conf_t *cf, ngx_command_t *c
 static char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf;
+  ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_str_t *value;
   ngx_mrb_code_t *code;
   ngx_int_t rc;
 
-  mlcf = conf;
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
@@ -1355,11 +1354,10 @@ static char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
   ngx_str_t *value;
-  ngx_http_mruby_loc_conf_t *mlcf;
+  ngx_http_mruby_loc_conf_t *mlcf = conf;
   ngx_mrb_code_t *code;
   ngx_int_t rc;
 
-  mlcf = conf;
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
