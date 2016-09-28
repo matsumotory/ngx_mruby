@@ -1913,7 +1913,7 @@ static char *ngx_http_mruby_set_inline(ngx_conf_t *cf, ngx_command_t *cmd, void 
 // ngx_mruby mruby handler functions
 */
 
-#define NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(handler_name, code)                                                        \
+#define NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(handler_name, _code)                                                        \
   static ngx_int_t ngx_http_mruby_##handler_name##_handler(ngx_http_request_t *r)                                      \
   {                                                                                                                    \
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);                        \
@@ -1921,13 +1921,14 @@ static char *ngx_http_mruby_set_inline(ngx_conf_t *cf, ngx_command_t *cmd, void 
     if (mmcf->state == NGX_CONF_UNSET_PTR) {                                                                           \
       return NGX_DECLINED;                                                                                             \
     }                                                                                                                  \
-    if (code == NGX_CONF_UNSET_PTR) {                                                                                  \
+    if (_code == NGX_CONF_UNSET_PTR) {                                                                                  \
       return NGX_DECLINED;                                                                                             \
     }                                                                                                                  \
-    if (!code->cache) {                                                                                                \
-      NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(mlcf->cached, mmcf->state, code, ngx_http_mruby_state_reinit_from_file);    \
+    if (!_code->cache) {                                                                                                \
+      NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(mlcf->cached, mmcf->state, _code, ngx_http_mruby_state_reinit_from_file);    \
     }                                                                                                                  \
-    return ngx_mrb_run(r, mmcf->state, code, mlcf->cached, NULL);                                                      \
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based " #handler_name " code: %s", _code->code.file); \
+    return ngx_mrb_run(r, mmcf->state, _code, mlcf->cached, NULL);                                                      \
   }
 
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(post_read, mlcf->post_read_code)
@@ -1972,15 +1973,23 @@ static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
   if (!code->cache) {
     NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(mlcf->cached, mmcf->state, code, ngx_http_mruby_state_reinit_from_file);
   }
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based content code: %s", code->code.file);
   return ngx_mrb_run(r, mmcf->state, code, mlcf->cached, NULL);
 }
 
-#define NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(handler_name, code)                                                 \
+#define NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(handler_name, _code)                                                 \
   static ngx_int_t ngx_http_mruby_##handler_name##_inline_handler(ngx_http_request_t *r)                               \
   {                                                                                                                    \
     ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);                        \
     ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);                          \
-    return ngx_mrb_run(r, mmcf->state, code, 1, NULL);                                                                 \
+    if (mmcf->state == NGX_CONF_UNSET_PTR) {                                                                           \
+      return NGX_DECLINED;                                                                                             \
+    }                                                                                                                  \
+    if (_code == NGX_CONF_UNSET_PTR) {                                                                                  \
+      return NGX_DECLINED;                                                                                             \
+    }                                                                                                                  \
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline " #handler_name " code: %s", _code->code.string); \
+    return ngx_mrb_run(r, mmcf->state, _code, 1, NULL);                                                                 \
   }
 
 NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(post_read, mlcf->post_read_inline_code)
