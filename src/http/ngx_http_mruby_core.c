@@ -215,7 +215,6 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
   if (str == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
   }
-  str[ns.len] = '\0';
   (*chain->last)->buf->pos = str;
   (*chain->last)->buf->last = str + ns.len;
   (*chain->last)->buf->memory = 1;
