@@ -18,6 +18,23 @@
 #include <mruby/string.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
+
+static mrb_value ngx_mrb_ssl_init(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+
+  mscf->cert_path.data = NULL;
+  mscf->cert_path.len = 0;
+  mscf->cert_key_path.data = NULL;
+  mscf->cert_key_path.len = 0;
+  mscf->cert_data.data = NULL;
+  mscf->cert_data.len = 0;
+  mscf->cert_key_data.data = NULL;
+  mscf->cert_key_data.len = 0;
+
+  return self;
+}
+
 #define NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(method_suffix, member)                                              \
   static mrb_value ngx_mrb_ssl_set_##method_suffix(mrb_state *mrb, mrb_value self)                                     \
   {                                                                                                                    \
@@ -87,6 +104,12 @@ static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
 }
 
 #else /* ! OPENSSL_VERSION_NUMBER >= 0x1000205fL */
+
+static mrb_value ngx_mrb_ssl_init(mrb_state *mrb, mrb_value self)
+{
+  mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::SSL doesn't support");
+}
+
 #define NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(method_suffix, member)                                              \
   static mrb_value ngx_mrb_ssl_set_##method_suffix(mrb_state *mrb, mrb_value self)                                     \
   {                                                                                                                    \
@@ -115,6 +138,7 @@ void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
   struct RClass *class_ssl;
 
   class_ssl = mrb_define_class_under(mrb, class, "SSL", mrb->object_class);
+  mrb_define_method(mrb, class_ssl, "initialize", ngx_mrb_ssl_init, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_ssl, "servername", ngx_mrb_ssl_get_servername, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_ssl, "certificate=", ngx_mrb_ssl_set_cert, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_key=", ngx_mrb_ssl_set_cert_key, MRB_ARGS_REQ(1));
