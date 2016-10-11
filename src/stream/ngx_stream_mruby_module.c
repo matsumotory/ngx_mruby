@@ -706,7 +706,7 @@ static ngx_int_t ngx_stream_mruby_init(ngx_conf_t *cf)
 
   h = ngx_array_push(&cmcf->phases[NGX_STREAM_ACCESS_PHASE].handlers);
   if (h == NULL) {
-      return NGX_ERROR;
+    return NGX_ERROR;
   }
 
   *h = ngx_stream_mruby_handler;
