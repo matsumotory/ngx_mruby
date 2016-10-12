@@ -769,6 +769,14 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
                   __LINE__);
     return NGX_ERROR;
   }
+
+  /* prepare nginx timer context*/
+  if (ctx->event == NULL && (ctx->event = ngx_pcalloc(r->pool, sizeof(ngx_http_mruby_event_ctx_t))) == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
+                  __LINE__);
+    return NGX_ERROR;
+  }
+
   ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
   ngx_mrb_push_request(r);
 
@@ -810,6 +818,9 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
       return NGX_OK;
     }
   }
+
+  if (ctx->event->again)
+    return NGX_AGAIN;
 
   if (!cached && !code->cache) {
     ngx_mrb_code_clean(r, state, code);
