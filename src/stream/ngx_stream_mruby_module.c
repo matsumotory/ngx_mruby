@@ -699,9 +699,7 @@ static ngx_int_t ngx_stream_mruby_init(ngx_conf_t *cf)
 {
   ngx_stream_core_main_conf_t *cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
 
-#if (nginx_version < 1011005)
-  cmcf->access_handler = ngx_stream_mruby_handler;
-#else
+#if (nginx_version >= 1011005)
   ngx_stream_handler_pt *h;
 
   h = ngx_array_push(&cmcf->phases[NGX_STREAM_ACCESS_PHASE].handlers);
@@ -710,6 +708,8 @@ static ngx_int_t ngx_stream_mruby_init(ngx_conf_t *cf)
   }
 
   *h = ngx_stream_mruby_handler;
+#else
+  cmcf->access_handler = ngx_stream_mruby_handler;
 #endif
 
   return NGX_OK;
