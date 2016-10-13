@@ -44,7 +44,7 @@ endif
 #   flags
 CFLAGS = $(MRUBY_CFLAGS) -I/usr/local/include
 LDFLAGS = $(MRUBY_LDFLAGS) -L/usr/local/lib
-LIBS = $(MRUBY_LIBS) $(MRUBY_LDFLAGS_BEFORE_LIBS) $(MRUBY_ROOT)/build/host/lib/libmruby.a
+LIBS = $(MRUBY_LIBS) $(MRUBY_LDFLAGS_BEFORE_LIBS) -L$(MRUBY_LIBDIR) -lmruby
 
 build_mruby_targets=
 ifdef NGX_OPENSSL_SRC
