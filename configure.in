@@ -63,6 +63,20 @@ AC_ARG_WITH(mruby_root, AC_HELP_STRING([--with-mruby-root=DIR],
     [MRUBY_ROOT="$with_mruby_root"])
 AC_SUBST(MRUBY_ROOT)
 
+# mruby include directory
+MRUBY_INCDIR=""
+AC_ARG_WITH(mruby_incdir, AC_HELP_STRING([--with-mruby-incdir=DIR],
+    [include directory for mruby [[mruby_incdir]]]),
+    [MRUBY_INCDIR="$with_mruby_incdir"])
+AC_SUBST(MRUBY_INCDIR)
+
+# mruby library directory which contains libmruby
+MRUBY_LIBDIR=""
+AC_ARG_WITH(mruby_libdir, AC_HELP_STRING([--with-mruby-libdir=DIR],
+    [library directory to libmruby [[mruby_libdir]]]),
+    [MRUBY_LIBDIR="$with_mruby_libdir"])
+AC_SUBST(MRUBY_LIBDIR)
+
 # ndk root
 NDK_ROOT=`pwd`/dependence/ngx_devel_kit
 AC_ARG_WITH(ndk_root, AC_HELP_STRING([--with-ndk-root=DIR],
@@ -86,5 +100,5 @@ AC_SUBST(NDK_ROOT)
 #)
 #AC_SUBST(ENABLE_GEMS)
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile config])
 AC_OUTPUT
