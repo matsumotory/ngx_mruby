@@ -12,6 +12,10 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#ifdef NGX_WIN32
+#include <io.h>
+#endif
+
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_init.h"
 
