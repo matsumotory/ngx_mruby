@@ -21,14 +21,12 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
   ngx_http_variable_value_t *var;
   ngx_str_t ngx_name;
 
-  size_t len;
   ngx_uint_t key;
 
   ngx_name.len = c_len;
   ngx_name.data = (u_char *)c_name;
-  len = ngx_name.len;
 
-  key = ngx_hash_strlow(ngx_name.data, ngx_name.data, len);
+  key = ngx_hash_strlow(ngx_name.data, ngx_name.data, ngx_name.len);
   var = ngx_http_get_variable(r, &ngx_name, key);
   if (var == NULL) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: %s is NULL", MODULE_NAME, __func__, __LINE__,
