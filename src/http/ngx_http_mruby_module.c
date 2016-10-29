@@ -1063,7 +1063,7 @@ static char *ngx_http_mruby_ssl_handshake_phase(ngx_conf_t *cf, ngx_command_t *c
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1134,7 +1134,7 @@ static char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd, void 
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1198,7 +1198,7 @@ static char *ngx_http_mruby_init_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1262,7 +1262,7 @@ static char *ngx_http_mruby_exit_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1333,7 +1333,7 @@ static char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, 
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1369,7 +1369,7 @@ static char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1405,7 +1405,7 @@ static char *ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1441,7 +1441,7 @@ static char *ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, voi
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1477,7 +1477,7 @@ static char *ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, vo
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1513,7 +1513,7 @@ static char *ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1705,7 +1705,7 @@ static char *ngx_http_mruby_body_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1744,7 +1744,7 @@ static char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *c
     if (ngx_strcmp(value[2].data, "cache") == 0) {
       code->cache = ON;
     } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                          &value[2]);
       return NGX_CONF_ERROR;
     }
@@ -1859,7 +1859,7 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
       if (ngx_strcmp(value[3].data, "cache") == 0) {
         filter_data->code->cache = ON;
       } else {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", vaild parameter is only \"cache\"",
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
                            &value[3]);
         return NGX_CONF_ERROR;
       }
