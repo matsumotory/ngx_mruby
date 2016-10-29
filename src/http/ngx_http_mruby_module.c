@@ -2336,7 +2336,7 @@ static int ngx_http_mruby_set_der_certificate_data(ngx_ssl_conn_t *ssl_conn, ngx
   X509 *x509 = NULL;
   u_long n;
 
-  /* read certficate data from memory buffer */
+  /* read certificate data from memory buffer */
   if ((bio = BIO_new_mem_buf(cert->data, cert->len)) == NULL) {
     goto NGX_MRUBY_SSL_ERROR;
   }
@@ -2591,11 +2591,11 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
       return 0;
     }
 
-    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certficate to cert=%V key=%V",
+    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certificate to cert=%V key=%V",
                   &mscf->cert_path, &mscf->cert_key_path);
     ngx_http_mruby_set_der_certificate(ssl_conn, &mscf->cert_path, &mscf->cert_key_path);
   } else {
-    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certficate by mem buffer");
+    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certificate by mem buffer");
     ngx_http_mruby_set_der_certificate_data(ssl_conn, &mscf->cert_data, &mscf->cert_key_data);
   }
 
