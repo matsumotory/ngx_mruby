@@ -23,7 +23,7 @@ __ngx_mruby is A Fast and Memory-Efficient TCP/UDP Load Balancing and Web Server
 - You can implement nginx modules by Ruby scripts on nginx!
 - You can implement some Web server software extensions by same Ruby code (as possible)
 - Supported nginx __1.4/1.6/1.8./1.9./1.10./1.11.*__
-- [Benchmark between ngx_mrubyand lua-nginx-module](https://www.techempower.com/benchmarks/#section=data-r10&hw=peak&test=plaintext&w=4-0)
+- [Benchmark between ngx_mruby and lua-nginx-module](https://www.techempower.com/benchmarks/#section=data-r10&hw=peak&test=plaintext&w=4-0)
 
 ```ruby
 # location /proxy {
@@ -71,10 +71,16 @@ Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
 
 ## Abstract
 
-As the increase of large-scale and complex Web services, not only a development of Web applications but also an implementation of Web server extensions is required in many cases. The Web server extensions were mainly implemented in C language because of fast and memory-efficient behavior, but extension methods using scripting language are proposed with consideration of maintainability and productivity. However, if the existing methods primarily intended to enhance not the implementation of Web applications but the implementation of internal processing of the Web server, the problem remains in terms of speed, memory-efficiency and safety. Therefore, we propose a fast and memory-efficient Web server extension mechanism using scripting language. We design the architecture that a server process creates the region to save the state of the interpreter at the server process startup, and multiple scripts share the region in order to process fast when the script is called as internal processing from a Web server process. The server process frees the global variables table, the exception flag and the byte-code which cause the increase of memory usage mainly, in order to reduce the memory usage and extend safety by preventing interference between each scripts because of sharing the region. We implement the mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".
+As the increase of large-scale and complex Web services, not only the development of Web applications is requird, but also the implementation of Web server extensions in many cases. Most Web server extensions are mainly implemented in the C language because of fast and memory-efficient behavior, but by writing extension using a scripting language we can achieve better maintainability and productivity. 
+
+However, if the existing methods are primarily intended to enhance not the implementation of Web applications but the implementation of internal processing of the Web server, the problem remains in terms of speed, memory-efficiency and safety.
+
+Therefore, we propose a fast and memory-efficient Web server extension mechanism using a scripting language. We designed an architecture where the server process creates a region in memory to save the state of the interpreter at the server process startup, and multiple scripts share this region to process the scripts quickly when new request are made.
+
+The server process frees the global variables table, the exception flag and the byte-code which cause an increase of memory usage, in order to reduce the memory usage and extend safety by preventing interference between each script because of sharing the region. We implemented a mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".
 
 # License
-under the MIT License:
+
+This project is under the MIT License:
 
 * http://www.opensource.org/licenses/mit-license.php
-
