@@ -71,7 +71,7 @@ Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
 
 ## Abstract
 
-As the increase of large-scale and complex Web services, not only the development of Web applications is requird, but also the implementation of Web server extensions in many cases. Most Web server extensions are mainly implemented in the C language because of fast and memory-efficient behavior, but by writing extension using a scripting language we can achieve better maintainability and productivity. 
+As the increase of large-scale and complex Web services, not only the development of Web applications is required, but also the implementation of Web server extensions in many cases. Most Web server extensions are mainly implemented in the C language because of fast and memory-efficient behavior, but by writing extensions using a scripting language we can achieve better maintainability and productivity. 
 
 However, if the existing methods are primarily intended to enhance not the implementation of Web applications but the implementation of internal processing of the Web server, the problem remains in terms of speed, memory-efficiency and safety.
 
