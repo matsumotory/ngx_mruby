@@ -284,27 +284,17 @@ static char *ngx_stream_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void 
 /* raise functions */
 static void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s)
 {
-  struct RString *str;
-  char *err_out;
-
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
-    str = mrb_str_ptr(obj);
-    err_out = str->as.heap.ptr;
-    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "mrb_run failed: return NGX_ABORT to client: error: %s", err_out);
+    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "mrb_run failed: return NGX_ABORT to client: error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
   }
 }
 
 static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle)
 {
-  struct RString *str;
-  char *err_out;
-
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
-    str = mrb_str_ptr(obj);
-    err_out = str->as.heap.ptr;
-    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %s", err_out);
+    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj)); 
   }
 }
 
@@ -641,14 +631,9 @@ static char *ngx_stream_mruby_build_code(ngx_conf_t *cf, ngx_command_t *cmd, voi
 /*
 static void ngx_stream_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf)
 {
-  struct RString *str;
-  char *err_out;
-
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
-    str = mrb_str_ptr(obj);
-    err_out = str->as.heap.ptr;
-    ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "mrb_run failed. error: %s", err_out);
+    ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "mrb_run failed. error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
   }
 }
 

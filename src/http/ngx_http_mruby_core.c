@@ -27,41 +27,26 @@ ngx_module_t ngx_http_mruby_module;
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
 {
-  struct RString *str;
-  char *err_out;
-
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
-    str = mrb_str_ptr(obj);
-    err_out = str->as.heap.ptr;
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "mrb_run failed: return 500 HTTP status code to client: error: %s", err_out);
+                  "mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
   }
 }
 
 void ngx_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle)
 {
-  struct RString *str;
-  char *err_out;
-
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
-    str = mrb_str_ptr(obj);
-    err_out = str->as.heap.ptr;
-    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %s", err_out);
+    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
   }
 }
 
 void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf)
 {
-  struct RString *str;
-  char *err_out;
-
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
-    str = mrb_str_ptr(obj);
-    err_out = str->as.heap.ptr;
-    ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "mrb_run failed. error: %s", err_out);
+    ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "mrb_run failed. error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
   }
 }
 

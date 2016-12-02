@@ -508,6 +508,11 @@ t.assert('ngx_mruby - Nginx FALSE TRUE value', 'location /nginx_false_true') do
   t.assert_equal "01", res["body"]
 end
 
+t.assert('ngx_mruby - Throw my own exception for issue 238', 'location /issue_238') do
+  res = HttpRequest.new.get base + '/issue_238'
+  t.assert_equal 500, res.code 
+end
+
 t.assert('ngx_mruby - access_handler in server scope', 'location /access_handler_in_server_scope') do
   res = HttpRequest.new.get base(58084) + '/access_handler_in_server_scope/'
   t.assert_equal 403, res["code"]
