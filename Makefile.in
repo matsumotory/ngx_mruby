@@ -67,7 +67,7 @@ install:
 
 #   cleanup
 clean:
-	-rm -rf mrbgems_config
+	-rm -rf mrbgems_config mrbgems_config_dynamic
 
 #   clobber
 clobber: clean_mruby clean
