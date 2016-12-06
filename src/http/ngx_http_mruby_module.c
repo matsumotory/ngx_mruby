@@ -2415,29 +2415,19 @@ static int ngx_http_mruby_set_der_certificate(ngx_ssl_conn_t *ssl_conn, ngx_str_
 
   bio = BIO_new_file((char *)cert->data, "r");
   if (bio == NULL) {
-    return NGX_ERROR;
+    goto NGX_MRUBY_SSL_ERROR;
   }
 
   x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL);
   if (x509 == NULL) {
-    BIO_free(bio);
-    return NGX_ERROR;
+    goto NGX_MRUBY_SSL_ERROR;
   }
 
   SSL_certs_clear(ssl_conn);
-  if (SSL_use_certificate(ssl_conn, x509) == 0) {
-    X509_free(x509);
-    BIO_free(bio);
-    return NGX_ERROR;
-  }
 
-#if 0
-    if (SSL_set_ex_data(ssl_conn, ngx_ssl_certificate_index, x509) == 0) {
-        X509_free(x509);
-        BIO_free(bio);
-        return NGX_ERROR;
-    }
-#endif
+  if (SSL_use_certificate(ssl_conn, x509) == 0) {
+    goto NGX_MRUBY_SSL_ERROR;
+  }
 
   X509_free(x509);
   x509 = NULL;
@@ -2453,14 +2443,11 @@ static int ngx_http_mruby_set_der_certificate(ngx_ssl_conn_t *ssl_conn, ngx_str_
         break;
       }
 
-      BIO_free(bio);
-      return NGX_ERROR;
+      goto NGX_MRUBY_SSL_ERROR;
     }
 
     if (SSL_add0_chain_cert(ssl_conn, x509) == 0) {
-      X509_free(x509);
-      BIO_free(bio);
-      return NGX_ERROR;
+      goto NGX_MRUBY_SSL_ERROR;
     }
   }
 
@@ -2468,10 +2455,17 @@ static int ngx_http_mruby_set_der_certificate(ngx_ssl_conn_t *ssl_conn, ngx_str_
   bio = NULL;
 
   if (SSL_use_PrivateKey_file(ssl_conn, (char *)key->data, SSL_FILETYPE_PEM) != 1) {
-    return NGX_ERROR;
+    goto NGX_MRUBY_SSL_ERROR;
   }
 
   return NGX_OK;
+
+NGX_MRUBY_SSL_ERROR:
+  if (bio)
+    BIO_free(bio);
+  if (x509)
+    X509_free(x509);
+  return NGX_ERROR;
 }
 
 #endif /* NGX_HTTP_SSL */
