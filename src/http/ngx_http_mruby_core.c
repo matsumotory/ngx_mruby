@@ -234,7 +234,6 @@ static mrb_value ngx_http_mruby_get_nginx_configure(mrb_state *mrb, mrb_value se
 static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
 {
   int argc;
-  u_char *str;
   ngx_int_t rc;
   mrb_value uri, code;
   ngx_str_t ns;
@@ -271,12 +270,6 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
       ngx_strncmp(ns.data, "https://", sizeof("https://") - 1) == 0 ||
       ngx_strncmp(ns.data, "$scheme", sizeof("$scheme") - 1) == 0) {
 
-    str = ngx_pstrdup(r->pool, &ns);
-    if (str == NULL) {
-      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
-    }
-    str[ns.len] = '\0';
-
     // build redirect location
     location = ngx_list_push(&r->headers_out.headers);
     if (location == NULL) {
@@ -291,7 +284,7 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     }
     ngx_strlow(location->lowcase_key, location->value.data, location->value.len);
 
-    // set location and response code for hreaders
+    // set location and response code for headers
     r->headers_out.location = location;
     r->headers_out.status = rc;
   } else {
