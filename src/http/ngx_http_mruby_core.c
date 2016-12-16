@@ -30,7 +30,8 @@ void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
+                  "mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(obj),
+                  RSTRING_PTR(obj));
   }
 }
 

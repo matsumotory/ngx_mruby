@@ -286,7 +286,8 @@ static void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stre
 {
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "mrb_run failed: return NGX_ABORT to client: error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
+    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "mrb_run failed: return NGX_ABORT to client: error: %*s",
+                  RSTRING_LEN(obj), RSTRING_PTR(obj));
   }
 }
 
@@ -294,7 +295,7 @@ static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_
 {
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj)); 
+    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
   }
 }
 

@@ -2538,7 +2538,8 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
     mrb_value obj = mrb_funcall(mrb, mrb_obj_value(mrb->exc), "inspect", 0);
     if (mrb_type(obj) == MRB_TT_STRING) {
       ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                    MODULE_NAME " : mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj)); 
+                    MODULE_NAME " : mrb_run failed: return 500 HTTP status code to client: error: %*s",
+                    RSTRING_LEN(obj), RSTRING_PTR(obj));
     }
     NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
     NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_inline_code);
