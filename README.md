@@ -1,18 +1,18 @@
 # Welcome to ngx_mruby Pages
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/matsumoto-r/ngx_mruby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/matsumoto-r/ngx_mruby.svg?branch=master)](https://travis-ci.org/matsumoto-r/ngx_mruby) [![wercker status](https://app.wercker.com/status/55f7f7af32d94b01a42f863f3635940c/s "wercker status")](https://app.wercker.com/project/bykey/55f7f7af32d94b01a42f863f3635940c)
+[![Build Status](https://travis-ci.org/matsumotory/ngx_mruby.svg?branch=master)](https://travis-ci.org/matsumotory/ngx_mruby) [![wercker status](https://app.wercker.com/status/55f7f7af32d94b01a42f863f3635940c/s "wercker status")](https://app.wercker.com/project/bykey/55f7f7af32d94b01a42f863f3635940c)
 
-[![ngx_mruby mod_mruby performance](https://github.com/matsumoto-r/mod_mruby/raw/master/images/performance_20140301.png)](http://blog.matsumoto-r.jp/?p=3974)
+[![ngx_mruby mod_mruby performance](https://github.com/matsumotory/mod_mruby/raw/master/images/performance_20140301.png)](http://blog.matsumoto-r.jp/?p=3974)
 
 ※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
 
 ## Documents
-- [Install](https://github.com/matsumoto-r/ngx_mruby/wiki/Install)
-- [Test](https://github.com/matsumoto-r/ngx_mruby/wiki/Test)
-- [Directives](https://github.com/matsumoto-r/ngx_mruby/wiki/Directives)
-- [Class and Method](https://github.com/matsumoto-r/ngx_mruby/wiki/Class-and-Method)
-- [Use Case](https://github.com/matsumoto-r/ngx_mruby/wiki/Use-Case)
+- [Install](https://github.com/matsumotory/ngx_mruby/wiki/Install)
+- [Test](https://github.com/matsumotory/ngx_mruby/wiki/Test)
+- [Directives](https://github.com/matsumotory/ngx_mruby/wiki/Directives)
+- [Class and Method](https://github.com/matsumotory/ngx_mruby/wiki/Class-and-Method)
+- [Use Case](https://github.com/matsumotory/ngx_mruby/wiki/Use-Case)
 - [Examples](https://github.com/hsbt/nginx-tech-talk)
 
 ## What's ngx_mruby
@@ -41,7 +41,7 @@ r = Redis.new "192.168.12.251", 6379
 r.get backends[rand(backends.length)]
 ```
 
-- see [examples](https://github.com/matsumoto-r/ngx_mruby/blob/master/example/nginx.conf)
+- see [examples](https://github.com/matsumotory/ngx_mruby/blob/master/example/nginx.conf)
 - __Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions__
 - You can implement some Web server software extensions by same Ruby code (as possible)
 
