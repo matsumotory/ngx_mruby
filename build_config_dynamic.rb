@@ -20,36 +20,36 @@ MRuby::Build.new('host') do |conf|
   conf.gem :github => 'iij/mruby-socket'
   conf.gem :github => 'mattn/mruby-json'
   conf.gem :github => 'mattn/mruby-onig-regexp'
-  conf.gem :github => 'matsumoto-r/mruby-redis'
-  conf.gem :github => 'matsumoto-r/mruby-vedis'
-  conf.gem :github => 'matsumoto-r/mruby-sleep'
-  conf.gem :github => 'matsumoto-r/mruby-userdata'
-  conf.gem :github => 'matsumoto-r/mruby-uname'
-  conf.gem :github => 'matsumoto-r/mruby-mutex'
-  conf.gem :github => 'matsumoto-r/mruby-localmemcache'
+  conf.gem :github => 'matsumotory/mruby-redis'
+  conf.gem :github => 'matsumotory/mruby-vedis'
+  conf.gem :github => 'matsumotory/mruby-sleep'
+  conf.gem :github => 'matsumotory/mruby-userdata'
+  conf.gem :github => 'matsumotory/mruby-uname'
+  conf.gem :github => 'matsumotory/mruby-mutex'
+  conf.gem :github => 'matsumotory/mruby-localmemcache'
 
   # ngx_mruby extended class
   conf.gem './mrbgems/ngx_mruby_mrblib'
   conf.gem './mrbgems/rack-based-api'
 
   # use memcached
-  # conf.gem :github => 'matsumoto-r/mruby-memcached'
+  # conf.gem :github => 'matsumotory/mruby-memcached'
 
   # build error on travis ci 2014/12/01, commented out mruby-file-stat
   # conf.gem :github => 'ksss/mruby-file-stat'
 
   # use markdown on ngx_mruby
-  # conf.gem :github => 'matsumoto-r/mruby-discount'
+  # conf.gem :github => 'matsumotory/mruby-discount'
 
   # use mysql on ngx_mruby
   #conf.gem :github => 'mattn/mruby-mysql'
 
   # have GeoIPCity.dat
-  # conf.gem :github => 'matsumoto-r/mruby-geoip'
+  # conf.gem :github => 'matsumotory/mruby-geoip'
 
   # Linux only for ngx_mruby
-  # conf.gem :github => 'matsumoto-r/mruby-capability'
-  # conf.gem :github => 'matsumoto-r/mruby-cgroup'
+  # conf.gem :github => 'matsumotory/mruby-capability'
+  # conf.gem :github => 'matsumotory/mruby-cgroup'
 
 end
 
@@ -65,11 +65,11 @@ MRuby::Build.new('test') do |conf|
 
   enable_debug
 
-  conf.gem :github => 'matsumoto-r/mruby-simplehttp'
-  conf.gem :github => 'matsumoto-r/mruby-httprequest'
-  conf.gem :github => 'matsumoto-r/mruby-uname'
-  conf.gem :github => 'matsumoto-r/mruby-ngx-mruby-ext'
-  conf.gem :github => 'matsumoto-r/mruby-simpletest'
+  conf.gem :github => 'matsumotory/mruby-simplehttp'
+  conf.gem :github => 'matsumotory/mruby-httprequest'
+  conf.gem :github => 'matsumotory/mruby-uname'
+  conf.gem :github => 'matsumotory/mruby-ngx-mruby-ext'
+  conf.gem :github => 'matsumotory/mruby-simpletest'
   conf.gem :github => 'mattn/mruby-http'
   conf.gem :github => 'mattn/mruby-json'
   conf.gem :github => 'iij/mruby-io'
