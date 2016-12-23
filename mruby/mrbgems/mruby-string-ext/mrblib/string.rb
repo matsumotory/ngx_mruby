@@ -45,7 +45,7 @@ class String
   def lstrip
     a = 0
     z = self.size - 1
-    a += 1 while " \f\n\r\t\v".include?(self[a]) and a <= z
+    a += 1 while a <= z and " \f\n\r\t\v".include?(self[a])
     (z >= 0) ? self[a..z] : ""
   end
 
@@ -62,7 +62,7 @@ class String
   def rstrip
     a = 0
     z = self.size - 1
-    z -= 1 while " \f\n\r\t\v\0".include?(self[z]) and a <= z
+    z -= 1 while a <= z and " \f\n\r\t\v\0".include?(self[z])
     (z >= 0) ? self[a..z] : ""
   end
 
@@ -78,8 +78,8 @@ class String
   def strip
     a = 0
     z = self.size - 1
-    a += 1 while " \f\n\r\t\v".include?(self[a]) and a <= z
-    z -= 1 while " \f\n\r\t\v\0".include?(self[z]) and a <= z
+    a += 1 while a <= z and " \f\n\r\t\v".include?(self[a])
+    z -= 1 while a <= z and " \f\n\r\t\v\0".include?(self[z])
     (z >= 0) ? self[a..z] : ""
   end
 
@@ -207,7 +207,7 @@ class String
       else
         idx = arg1
         idx += self.size if arg1 < 0
-        validated = true if idx >=0 && arg1 < self.size   
+        validated = true if idx >=0 && arg1 < self.size
       end
       if validated
         str = self[arg1]

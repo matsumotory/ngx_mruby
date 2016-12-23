@@ -62,10 +62,6 @@ struct RString {
 #define RSTR_SET_NOFREE_FLAG(s) ((s)->flags |= MRB_STR_NOFREE)
 #define RSTR_UNSET_NOFREE_FLAG(s) ((s)->flags &= ~MRB_STR_NOFREE)
 
-#define RSTR_FROZEN_P(s) ((s)->flags & MRB_STR_FROZEN)
-#define RSTR_SET_FROZEN_FLAG(s) ((s)->flags |= MRB_STR_FROZEN)
-#define RSTR_UNSET_FROZEN_FLAG(s) ((s)->flags &= ~MRB_STR_FROZEN)
-
 /*
  * Returns a pointer from a Ruby string
  */
@@ -76,11 +72,10 @@ struct RString {
 #define RSTRING_LEN(s)       RSTR_LEN(RSTRING(s))
 #define RSTRING_CAPA(s)      RSTR_CAPA(RSTRING(s))
 #define RSTRING_END(s)       (RSTRING_PTR(s) + RSTRING_LEN(s))
-mrb_int mrb_str_strlen(mrb_state*, struct RString*);
+MRB_API mrb_int mrb_str_strlen(mrb_state*, struct RString*);
 
 #define MRB_STR_SHARED    1
 #define MRB_STR_NOFREE    2
-#define MRB_STR_FROZEN    4
 #define MRB_STR_NO_UTF    8
 #define MRB_STR_EMBED    16
 #define MRB_STR_EMBED_LEN_MASK 0x3e0
@@ -91,12 +86,12 @@ MRB_API void mrb_str_modify(mrb_state*, struct RString*);
 /*
  * Appends self to other. Returns self as a concatnated string.
  *
- * 
+ *
  *  Example:
  *
  *     !!!c
  *     int
- *     main(int argc, 
+ *     main(int argc,
  *          char **argv)
  *     {
  *       // Variable declarations.
@@ -110,8 +105,8 @@ MRB_API void mrb_str_modify(mrb_state*, struct RString*);
  *       }
  *
  *       // Creates new Ruby strings.
- *       str1 = mrb_str_new_cstr(mrb, "abc");
- *       str2 = mrb_str_new_cstr(mrb, "def");
+ *       str1 = mrb_str_new_lit(mrb, "abc");
+ *       str2 = mrb_str_new_lit(mrb, "def");
  *
  *       // Concatnates str2 to str1.
  *       mrb_str_concat(mrb, str1, str2);
@@ -138,12 +133,12 @@ MRB_API void mrb_str_concat(mrb_state*, mrb_value, mrb_value);
 /*
  * Adds two strings together.
  *
- * 
+ *
  *  Example:
  *
  *     !!!c
  *     int
- *     main(int argc, 
+ *     main(int argc,
  *          char **argv)
  *     {
  *       // Variable declarations.
@@ -158,8 +153,8 @@ MRB_API void mrb_str_concat(mrb_state*, mrb_value, mrb_value);
  *       }
  *
  *       // Creates two Ruby strings from the passed in C strings.
- *       a = mrb_str_new_cstr(mrb, "abc");
- *       b = mrb_str_new_cstr(mrb, "def");
+ *       a = mrb_str_new_lit(mrb, "abc");
+ *       b = mrb_str_new_lit(mrb, "def");
  *
  *       // Prints both C strings.
  *       mrb_p(mrb, a);
@@ -215,7 +210,7 @@ MRB_API mrb_value mrb_obj_as_string(mrb_state *mrb, mrb_value obj);
  *
  *     !!!c
  *     int
- *     main(int argc, 
+ *     main(int argc,
  *          char **argv)
  *     {
  *         // Variable declaration.
@@ -224,11 +219,11 @@ MRB_API mrb_value mrb_obj_as_string(mrb_state *mrb, mrb_value obj);
  *         mrb_state *mrb = mrb_open();
  *         if (!mrb)
  *         {
- *            // handle error 
+ *            // handle error
  *         }
  *         // Creates a new string.
- *         str = mrb_str_new_cstr(mrb, "Hello, world!");
- *         // Returns 5 characters of 
+ *         str = mrb_str_new_lit(mrb, "Hello, world!");
+ *         // Returns 5 characters of
  *         mrb_str_resize(mrb, str, 5);
  *         mrb_p(mrb, str);
  *
@@ -254,7 +249,7 @@ MRB_API mrb_value mrb_str_resize(mrb_state *mrb, mrb_value str, mrb_int len);
  *
  *     !!!c
  *     int
- *     main(int argc, 
+ *     main(int argc,
  *     char const **argv)
  *     {
  *       // Variable declarations.
@@ -267,7 +262,7 @@ MRB_API mrb_value mrb_str_resize(mrb_state *mrb, mrb_value str, mrb_int len);
  *         // handle error
  *       }
  *       // Creates new string.
- *       str1 = mrb_str_new_cstr(mrb, "Hello, world!");
+ *       str1 = mrb_str_new_lit(mrb, "Hello, world!");
  *       // Returns a sub-string within the range of 0..2
  *       str2 = mrb_str_substr(mrb, str1, 0, 2);
  *

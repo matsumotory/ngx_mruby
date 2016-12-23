@@ -1,6 +1,7 @@
 require 'pathname'
 require 'forwardable'
 require 'tsort'
+require 'shellwords'
 
 module MRuby
   module Gem
@@ -18,7 +19,7 @@ module MRuby
       alias mruby build
       attr_accessor :build_config_initializer
       attr_accessor :mrblib_dir, :objs_dir
-      
+
       attr_accessor :version
       attr_accessor :description, :summary
       attr_accessor :homepage
@@ -124,6 +125,21 @@ module MRuby
 
       def test_rbireps
         "#{build_dir}/gem_test.c"
+      end
+
+      def search_package(name, version_query=nil)
+        package_query = name
+        package_query += " #{version_query}" if version_query
+        _pp "PKG-CONFIG", package_query
+        escaped_package_query = Shellwords.escape(package_query)
+        if system("pkg-config --exists #{escaped_package_query}")
+          cc.flags += [`pkg-config --cflags #{escaped_package_query}`.strip]
+          cxx.flags += [`pkg-config --cflags #{escaped_package_query}`.strip]
+          linker.flags += [`pkg-config --libs #{escaped_package_query}`.strip]
+          true
+        else
+          false
+        end
       end
 
       def funcname
