@@ -14,6 +14,7 @@
 #include <mruby/variable.h>
 #include <mruby/error.h>
 #include <mruby/data.h>
+#include <mruby/istruct.h>
 
 KHASH_DEFINE(mt, mrb_sym, struct RProc*, TRUE, kh_int_hash_func, kh_int_hash_equal)
 
@@ -174,6 +175,14 @@ MRB_API struct RClass*
 mrb_vm_define_module(mrb_state *mrb, mrb_value outer, mrb_sym id)
 {
   check_if_class_or_module(mrb, outer);
+  if (mrb_const_defined_at(mrb, outer, id)) {
+    mrb_value old = mrb_const_get(mrb, outer, id);
+
+    if (mrb_type(old) != MRB_TT_MODULE) {
+      mrb_raisef(mrb, E_TYPE_ERROR, "%S is not a module", mrb_inspect(mrb, old));
+    }
+    return mrb_class_ptr(old);
+  }
   return define_module(mrb, id, mrb_class_ptr(outer));
 }
 
@@ -255,6 +264,21 @@ mrb_vm_define_class(mrb_state *mrb, mrb_value outer, mrb_value super, mrb_sym id
     s = 0;
   }
   check_if_class_or_module(mrb, outer);
+  if (mrb_const_defined_at(mrb, outer, id)) {
+    mrb_value old = mrb_const_get(mrb, outer, id);
+
+    if (mrb_type(old) != MRB_TT_CLASS) {
+      mrb_raisef(mrb, E_TYPE_ERROR, "%S is not a class", mrb_inspect(mrb, old));
+    }
+    c = mrb_class_ptr(old);
+    if (s) {
+      /* check super class */
+      if (mrb_class_real(c->super) != s) {
+        mrb_raisef(mrb, E_TYPE_ERROR, "superclass mismatch for class %S", old);
+      }
+    }
+    return c;
+  }
   c = define_class(mrb, id, s, mrb_class_ptr(outer));
   mrb_class_inherited(mrb, mrb_class_real(c->super), c);
 
@@ -269,6 +293,16 @@ mrb_class_defined(mrb_state *mrb, const char *name)
     return FALSE;
   }
   return mrb_const_defined(mrb, mrb_obj_value(mrb->object_class), mrb_symbol(sym));
+}
+
+MRB_API mrb_bool
+mrb_class_defined_under(mrb_state *mrb, struct RClass *outer, const char *name)
+{
+  mrb_value sym = mrb_check_intern_cstr(mrb, name);
+  if (mrb_nil_p(sym)) {
+    return FALSE;
+  }
+  return mrb_const_defined_at(mrb, mrb_obj_value(outer), mrb_symbol(sym));
 }
 
 MRB_API struct RClass *
@@ -336,6 +370,12 @@ mrb_define_method_raw(mrb_state *mrb, struct RClass *c, mrb_sym mid, struct RPro
   MRB_CLASS_ORIGIN(c);
   h = c->mt;
 
+  if (MRB_FROZEN_P(c)) {
+    if (c->tt == MRB_TT_MODULE)
+      mrb_raise(mrb, E_RUNTIME_ERROR, "can't modify frozen module");
+    else
+      mrb_raise(mrb, E_RUNTIME_ERROR, "can't modify frozen class");
+  }
   if (!h) h = c->mt = kh_init(mt, mrb);
   k = kh_put(mt, mrb, h, mid);
   kh_value(h, k) = p;
@@ -458,6 +498,7 @@ to_sym(mrb_state *mrb, mrb_value ss)
     b:      Boolean        [mrb_bool]
     n:      Symbol         [mrb_sym]
     d:      Data           [void*,mrb_data_type const] 2nd argument will be used to check data type so it won't be modified
+    I:      Inline struct  [void*]
     &:      Block          [mrb_value]
     *:      rest argument  [mrb_value*,mrb_int]   Receive the rest of the arguments as an array.
     |:      optional                              Next argument of '|' and later are optional.
@@ -665,6 +706,24 @@ mrb_get_args(mrb_state *mrb, const char *format, ...)
           a = mrb_ary_ptr(aa);
           *pb = a->ptr;
           *pl = a->len;
+          i++;
+        }
+      }
+      break;
+    case 'I':
+      {
+        void* *p;
+        mrb_value ss;
+
+        p = va_arg(ap, void**);
+        if (i < argc) {
+          ss = ARGV[arg_i];
+          if (mrb_type(ss) != MRB_TT_ISTRUCT)
+          {
+            mrb_raisef(mrb, E_TYPE_ERROR, "%S is not inline struct", ss);
+          }
+          *p = mrb_istruct_ptr(ss);
+          arg_i++;
           i++;
         }
       }
@@ -1295,6 +1354,9 @@ mrb_instance_alloc(mrb_state *mrb, mrb_value cv)
     mrb_raise(mrb, E_TYPE_ERROR, "can't create instance of singleton class");
 
   if (ttype == 0) ttype = MRB_TT_OBJECT;
+  if (ttype <= MRB_TT_CPTR) {
+    mrb_raisef(mrb, E_TYPE_ERROR, "can't create instance of %S", cv);
+  }
   o = (struct RObject*)mrb_obj_alloc(mrb, ttype, c);
   return mrb_obj_value(o);
 }
@@ -1527,9 +1589,11 @@ mrb_class_path(mrb_state *mrb, struct RClass *c)
       name = mrb_sym2name_len(mrb, sym, &len);
       path = mrb_str_new(mrb, name, len);
     }
-    mrb_obj_iv_set(mrb, (struct RObject*)c, classpath, path);
+    if (!MRB_FROZEN_P(c)) {
+      mrb_obj_iv_set(mrb, (struct RObject*)c, classpath, path);
+    }
   }
-  return path;
+  return mrb_str_dup(mrb, path);
 }
 
 MRB_API struct RClass *
@@ -1761,7 +1825,7 @@ mrb_mod_undef(mrb_state *mrb, mrb_value mod)
 
   mrb_get_args(mrb, "*", &argv, &argc);
   while (argc--) {
-    undef_method(mrb, c, mrb_symbol(*argv));
+    undef_method(mrb, c, to_sym(mrb, *argv));
     argv++;
   }
   return mrb_nil_value();
@@ -1773,9 +1837,21 @@ mod_define_method(mrb_state *mrb, mrb_value self)
   struct RClass *c = mrb_class_ptr(self);
   struct RProc *p;
   mrb_sym mid;
+  mrb_value proc = mrb_undef_value();
   mrb_value blk;
 
-  mrb_get_args(mrb, "n&", &mid, &blk);
+  mrb_get_args(mrb, "n|o&", &mid, &proc, &blk);
+  switch (mrb_type(proc)) {
+    case MRB_TT_PROC:
+      blk = proc;
+      break;
+    case MRB_TT_UNDEF:
+      /* ignored */
+      break;
+    default:
+      mrb_raisef(mrb, E_TYPE_ERROR, "wrong argument type %S (expected Proc)", mrb_obj_value(mrb_obj_class(mrb, proc)));
+      break;
+  }
   if (mrb_nil_p(blk)) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "no block given");
   }
@@ -2003,7 +2079,7 @@ mrb_mod_remove_method(mrb_state *mrb, mrb_value mod)
 
   mrb_get_args(mrb, "*", &argv, &argc);
   while (argc--) {
-    remove_method(mrb, mod, mrb_symbol(*argv));
+    remove_method(mrb, mod, to_sym(mrb, *argv));
     argv++;
   }
   return mod;
@@ -2242,7 +2318,7 @@ mrb_init_class(mrb_state *mrb)
   mrb_define_method(mrb, mod, "constants",               mrb_mod_constants,        MRB_ARGS_OPT(1)); /* 15.2.2.4.24 */
   mrb_define_method(mrb, mod, "remove_const",            mrb_mod_remove_const,     MRB_ARGS_REQ(1)); /* 15.2.2.4.40 */
   mrb_define_method(mrb, mod, "const_missing",           mrb_mod_const_missing,    MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, mod, "define_method",           mod_define_method,        MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, mod, "define_method",           mod_define_method,        MRB_ARGS_ARG(1,1));
   mrb_define_method(mrb, mod, "class_variables",         mrb_mod_class_variables,  MRB_ARGS_NONE()); /* 15.2.2.4.19 */
   mrb_define_method(mrb, mod, "===",                     mrb_mod_eqq,              MRB_ARGS_REQ(1));
   mrb_define_class_method(mrb, mod, "constants",         mrb_mod_s_constants,      MRB_ARGS_ANY());  /* 15.2.2.3.1 */
