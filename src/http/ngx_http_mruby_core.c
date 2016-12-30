@@ -169,35 +169,20 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
 {
-  mrb_value *argv;
   mrb_value msg;
-  mrb_int argc;
   mrb_int log_level;
   ngx_http_request_t *r = ngx_mrb_get_request();
   if (r == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "can't use logger at this phase. only use at request phase");
   }
 
-  mrb_get_args(mrb, "*", &argv, &argc);
-  if (argc != 2) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s: argument is not 2", MODULE_NAME, __func__);
-    return self;
-  }
-  if (mrb_type(argv[0]) != MRB_TT_FIXNUM) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s: argv[0] is not integer", MODULE_NAME, __func__);
-    return self;
-  }
-  log_level = mrb_fixnum(argv[0]);
+  mrb_get_args(mrb, "io", &log_level, &msg);
   if (log_level < 0) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s: log level is not positive number", MODULE_NAME,
                   __func__);
     return self;
   }
-  if (mrb_type(argv[1]) != MRB_TT_STRING) {
-    msg = mrb_funcall(mrb, argv[1], "to_s", 0, NULL);
-  } else {
-    msg = mrb_str_dup(mrb, argv[1]);
-  }
+  msg = mrb_obj_as_string(mrb, msg);
   ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", mrb_str_to_cstr(mrb, msg));
 
   return self;
@@ -374,8 +359,8 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_class_method(mrb, class, "echo", ngx_mrb_echo, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "send_header", ngx_mrb_send_header, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "return", ngx_mrb_send_header, MRB_ARGS_ANY());
-  mrb_define_class_method(mrb, class, "log", ngx_mrb_errlogger, MRB_ARGS_ANY());
-  mrb_define_class_method(mrb, class, "errlogger", ngx_mrb_errlogger, MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "log", ngx_mrb_errlogger, MRB_ARGS_REQ(2));
+  mrb_define_class_method(mrb, class, "errlogger", ngx_mrb_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class, "module_name", ngx_mrb_get_ngx_mruby_name, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class, "module_version", ngx_mrb_get_ngx_mruby_version, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class, "nginx_version", ngx_mrb_get_nginx_version, MRB_ARGS_NONE());
