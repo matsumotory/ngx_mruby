@@ -77,9 +77,6 @@ clobber: clean_mruby clean
 build_mruby: $(build_mruby_targets)
 	cd $(MRUBY_ROOT) && $(RAKE) MRUBY_CONFIG=$(NGX_MRUBY_ROOT)/build_config.rb
 
-build_mruby_with_fpic: $(build_mruby_targets)
-	cd $(MRUBY_ROOT) && $(RAKE) MRUBY_CONFIG=$(NGX_MRUBY_ROOT)/build_config_dynamic.rb
-
 #   clean mruby
 clean_mruby:
 	cd $(MRUBY_ROOT) && $(RAKE) deep_clean && rm -rf build

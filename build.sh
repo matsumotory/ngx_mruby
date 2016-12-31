@@ -84,23 +84,18 @@ echo "ngx_mruby configure ..."
 ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
 echo "ngx_mruby configure ... Done"
 
+echo "mruby building ..."
+$MAKE build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
+echo "mruby building ... Done"
+
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
-    echo "mruby building for suppot dynamic module ..."
-    $MAKE build_mruby_with_fpic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-    echo "mruby building for suppot dynamic module ... Done"
-
-    echo "ngx_mruby building as dynamic module ..."
-    $MAKE ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-    echo "ngx_mruby building ... Done"
+  echo "ngx_mruby building as dynamic module ..."
+  $MAKE ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
 else
-    echo "mruby building ..."
-    $MAKE build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-    echo "mruby building ... Done"
-
-    echo "ngx_mruby building ..."
-    $MAKE NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-    echo "ngx_mruby building ... Done"
+  echo "ngx_mruby building ..."
+  $MAKE NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
 fi
+echo "ngx_mruby building ... Done"
 
 echo "build.sh ... successful"
 
