@@ -524,6 +524,12 @@ t.assert('ngx_mruby - override access_handler in server scope', 'location /overr
   t.assert_equal "OK", res["body"]
 end
 
+t.assert('ngx_mruby - fix bug: body filter transfer closed with any bytes remaining to read', 'location /image_filter') do
+  res = HttpRequest.new.get base + '/image_filter'
+  t.assert_equal 3714172, res["body"].size
+  t.assert_equal 3714172, res["content-length"].to_i
+end
+
 #
 # nginx stream test verison 1.9.6 later
 #
