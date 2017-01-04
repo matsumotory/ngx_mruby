@@ -2312,6 +2312,7 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
     b = cl->buf;
     size = b->last - b->pos;
     rest = ctx->body + ctx->body_length - p;
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: filter buf: %uz rest: %uz", MODULE_NAME, __func__, __LINE__, size, rest);
     size = (rest < size) ? rest : size;
     p = ngx_cpymem(p, b->pos, size);
     b->pos += size;
