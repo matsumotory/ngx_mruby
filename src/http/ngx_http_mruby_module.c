@@ -2154,7 +2154,6 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
   }
 
   r->headers_out.content_length = NULL;
-  ngx_http_weak_etag(r);
 
   out.buf = b;
   out.next = NULL;
