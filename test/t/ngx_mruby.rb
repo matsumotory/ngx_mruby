@@ -526,8 +526,8 @@ end
 
 t.assert('ngx_mruby - fix bug: body filter transfer closed with any bytes remaining to read', 'location /image_filter') do
   res = HttpRequest.new.get base + '/image_filter'
-  t.assert_equal 3714172, res["body"].size
-  t.assert_equal 3714172, res["content-length"].to_i
+  t.assert_equal 1160568, res["body"].size
+  t.assert_equal 1160568, res["content-length"].to_i
 end
 
 #
