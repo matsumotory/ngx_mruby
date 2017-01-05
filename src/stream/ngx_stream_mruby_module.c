@@ -64,7 +64,7 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s);
 static char *ngx_stream_mruby_build_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_stream_mruby_build_code(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
-/* mruby core functiosn for compile*/
+/* mruby core functions for compile */
 static void ngx_stream_mrb_state_clean(mrb_state *mrb);
 static ngx_mrb_code_t *ngx_stream_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *code_s);
 static ngx_mrb_code_t *ngx_stream_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t *code_s);
@@ -72,12 +72,12 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
 static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ngx_mrb_code_t *code);
 // static ngx_int_t ngx_stream_mrb_run_conf(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code);
 
-/* mruby raise function */
+/* mruby raise functions */
 static void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s);
 static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle);
 // static void ngx_stream_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
 
-/* ngx_mruby stream module init and exit handler */
+/* ngx_mruby stream module init and exit handlers */
 static ngx_int_t ngx_stream_mruby_init_module(ngx_cycle_t *cycle);
 static ngx_int_t ngx_stream_mruby_init_worker(ngx_cycle_t *cycle);
 static void ngx_stream_mruby_exit_worker(ngx_cycle_t *cycle);
