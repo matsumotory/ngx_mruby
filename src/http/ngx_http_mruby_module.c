@@ -2160,7 +2160,8 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
   out.next = NULL;
   ctx->phase = NGX_HTTP_MRUBY_FILTER_PASS;
 
-  ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: data after body length: %uz", MODULE_NAME, __func__, __LINE__, ctx->body_length);
+  ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: data after body length: %uz", MODULE_NAME,
+                __func__, __LINE__, ctx->body_length);
 
   rc = ngx_http_next_header_filter(r);
 
@@ -2306,7 +2307,8 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
   cln->data = ctx;
 
   rc = mlcf->body_filter_handler(r, in);
-  ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "body filter handler return code=(%d) %s:%d", rc, __FUNCTION__, __LINE__);
+  ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "body filter handler return code=(%d) %s:%d", rc, __FUNCTION__,
+                __LINE__);
   return rc;
 }
 
@@ -2330,13 +2332,15 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
     b = cl->buf;
     size = b->last - b->pos;
     rest = ctx->body + ctx->body_length - p;
-    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: filter buf: %uz rest: %uz", MODULE_NAME, __func__, __LINE__, size, rest);
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: filter buf: %uz rest: %uz", MODULE_NAME,
+                  __func__, __LINE__, size, rest);
     size = (rest < size) ? rest : size;
     p = ngx_cpymem(p, b->pos, size);
     b->pos += size;
     if (b->last_buf) {
       ctx->last = p;
-      ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: reached last buffer", MODULE_NAME, __func__, __LINE__);
+      ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: reached last buffer", MODULE_NAME, __func__,
+                    __LINE__);
       return NGX_OK;
     }
   }

@@ -11,11 +11,11 @@
 #include <mruby/compile.h>
 #include <ngx_http.h>
 
-#define NGX_HTTP_MRUBY_FILTER_START   0
-#define NGX_HTTP_MRUBY_FILTER_READ    1
+#define NGX_HTTP_MRUBY_FILTER_START 0
+#define NGX_HTTP_MRUBY_FILTER_READ 1
 #define NGX_HTTP_MRUBY_FILTER_PROCESS 2
-#define NGX_HTTP_MRUBY_FILTER_PASS    3
-#define NGX_HTTP_MRUBY_FILTER_DONE    4
+#define NGX_HTTP_MRUBY_FILTER_PASS 3
+#define NGX_HTTP_MRUBY_FILTER_DONE 4
 
 typedef struct ngx_mrb_rputs_chain_list_t {
   ngx_chain_t **last;
