@@ -4,12 +4,14 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
+// clang-format off
 #include <nginx.h>
 #include <ngx_core.h>
 #include <ngx_buf.h>
 #include <ngx_conf_file.h>
 #include <ngx_log.h>
 #include <ngx_stream.h>
+// clang-format on
 
 #include "ngx_stream_mruby_core.h"
 #include "ngx_stream_mruby_module.h"
