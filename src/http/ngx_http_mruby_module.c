@@ -799,10 +799,10 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
         }
         return NGX_ERROR;
       }
-      ngx_memcpy(result->data, (u_char *)mrb_str_to_cstr(state->mrb, mrb_result), result_len);
+      ngx_memcpy(result->data, RSTRING_PTR(mrb_result), RSTRING_LEN(mrb_result));
       result->len = result_len;
-      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: mrb_run info: return value=(%s)", MODULE_NAME,
-                    __func__, __LINE__, mrb_str_to_cstr(state->mrb, mrb_result));
+      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: mrb_run info: return value=(%*s)", MODULE_NAME,
+                    __func__, __LINE__, result->len, result->data);
       mrb_gc_arena_restore(state->mrb, exc_ai);
       if (!cached && !code->cache) {
         ngx_mrb_code_clean(r, state, code);

@@ -183,7 +183,7 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
     return self;
   }
   msg = mrb_obj_as_string(mrb, msg);
-  ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%s", mrb_str_to_cstr(mrb, msg));
+  ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%*s", RSTRING_LEN(msg), RSTRING_PTR(msg));
 
   return self;
 }
