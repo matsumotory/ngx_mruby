@@ -11,6 +11,12 @@
 #include <mruby/compile.h>
 #include <ngx_http.h>
 
+#define NGX_HTTP_MRUBY_FILTER_START 0
+#define NGX_HTTP_MRUBY_FILTER_READ 1
+#define NGX_HTTP_MRUBY_FILTER_PROCESS 2
+#define NGX_HTTP_MRUBY_FILTER_PASS 3
+#define NGX_HTTP_MRUBY_FILTER_DONE 4
+
 typedef struct ngx_mrb_rputs_chain_list_t {
   ngx_chain_t **last;
   ngx_chain_t *out;
@@ -23,6 +29,7 @@ typedef struct ngx_http_mruby_ctx_t {
   size_t body_length;
   ngx_str_t request_body_ctx;
   unsigned request_body_more : 1;
+  ngx_uint_t phase;
 } ngx_http_mruby_ctx_t;
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
