@@ -71,7 +71,7 @@ clean:
 
 #   clobber
 clobber: clean_mruby clean
-	-rm -rf tmp autom4te.cache config.status config.log build build_dynamic
+	-rm -rf tmp autom4te.cache config config.status config.log build build_dynamic
 
 #   build mruby
 build_mruby: $(build_mruby_targets)
