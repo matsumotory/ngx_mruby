@@ -97,7 +97,7 @@ echo "ngx_mruby building ... Done"
 
 echo "ngx_mruby testing ..."
 $MAKE install
-$PS_C nginx && $KILLALL nginx
+$PS_C nginx 2>/dev/null && $KILLALL nginx
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' && sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' && cd -
 
