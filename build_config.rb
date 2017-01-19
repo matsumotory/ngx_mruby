@@ -69,7 +69,6 @@ MRuby::Build.new('test') do |conf|
   conf.gem :github => 'matsumotory/mruby-simplehttp'
   conf.gem :github => 'matsumotory/mruby-httprequest'
   conf.gem :github => 'matsumotory/mruby-uname'
-  conf.gem :github => 'matsumotory/mruby-ngx-mruby-ext'
   conf.gem :github => 'matsumotory/mruby-simpletest'
   conf.gem :github => 'mattn/mruby-http'
   conf.gem :github => 'mattn/mruby-json'
