@@ -93,6 +93,7 @@ codegen_error(codegen_scope *s, const char *message)
   if (!s) return;
   while (s->prev) {
     codegen_scope *tmp = s->prev;
+    mrb_free(s->mrb, s->iseq);
     mrb_pool_close(s->mpool);
     s = tmp;
   }
@@ -1675,7 +1676,6 @@ codegen(codegen_scope *s, node *tree, int val)
         }
         tree = tree->car;
         if (tree->car) {                /* pre */
-          int first = TRUE;
           t = tree->car;
           n = 0;
           while (t) {
@@ -1684,10 +1684,7 @@ codegen(codegen_scope *s, node *tree, int val)
               n++;
             }
             else {
-              if (first) {
-                genop(s, MKOP_A(OP_LOADNIL, rhs+n));
-                first = FALSE;
-              }
+              genop(s, MKOP_A(OP_LOADNIL, rhs+n));
               gen_assignment(s, t->car, rhs+n, NOVAL);
             }
             t = t->cdr;
@@ -2847,6 +2844,7 @@ scope_finish(codegen_scope *s)
     memcpy(fname, s->filename, fname_len);
     fname[fname_len] = '\0';
     irep->filename = fname;
+    irep->own_filename = TRUE;
   }
 
   irep->nlocals = s->nlocals;
@@ -2954,9 +2952,6 @@ mrb_generate_code(mrb_state *mrb, parser_state *p)
     return proc;
   }
   MRB_CATCH(&scope->jmp) {
-    if (scope->filename == scope->irep->filename) {
-      scope->irep->filename = NULL;
-    }
     mrb_irep_decref(mrb, scope->irep);
     mrb_pool_close(scope->mpool);
     return NULL;

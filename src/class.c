@@ -318,6 +318,20 @@ mrb_class_get(mrb_state *mrb, const char *name)
 }
 
 MRB_API struct RClass *
+mrb_exc_get(mrb_state *mrb, const char *name)
+{
+  struct RClass *exc = mrb_class_get_under(mrb, mrb->object_class, name);
+  struct RClass *e = exc;
+
+  while (e) {
+    if (e == mrb->eException_class)
+      return exc;
+    e = e->super;
+  }
+  return mrb->eException_class;
+}
+
+MRB_API struct RClass *
 mrb_module_get_under(mrb_state *mrb, struct RClass *outer, const char *name)
 {
   return module_from_sym(mrb, outer, mrb_intern_cstr(mrb, name));
@@ -901,7 +915,9 @@ boot_defclass(mrb_state *mrb, struct RClass *super)
 static void
 boot_initmod(mrb_state *mrb, struct RClass *mod)
 {
-  mod->mt = kh_init(mt, mrb);
+  if (!mod->mt) {
+    mod->mt = kh_init(mt, mrb);
+  }
 }
 
 static struct RClass*
@@ -1570,7 +1586,7 @@ mrb_class_path(mrb_state *mrb, struct RClass *c)
     if (sym == 0) {
       return mrb_nil_value();
     }
-    else if (outer && outer != mrb->object_class) {
+    else if (outer && outer != c && outer != mrb->object_class) {
       mrb_value base = mrb_class_path(mrb, outer);
       path = mrb_str_buf_new(mrb, 0);
       if (mrb_nil_p(base)) {
