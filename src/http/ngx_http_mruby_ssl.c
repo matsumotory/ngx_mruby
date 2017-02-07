@@ -92,7 +92,7 @@ static mrb_value ngx_mrb_ssl_local_port(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
 
-  return mrb_fixnum_value(ntohs(mscf->connection->sockaddr->sin_port));
+  return mrb_fixnum_value(((struct sockaddr_in *)mscf->connection->local_sockaddr)->sin_port);
 }
 
 #else /* ! OPENSSL_VERSION_NUMBER >= 0x1000205fL */

@@ -424,7 +424,7 @@ t.assert('ngx_mruby - get post_args', 'location /get_post_args') do
 end
 
 t.assert('ngx_mruby - ssl local port') do
-  res = `curl -k #{base_ssl(58082) + '/loca_port'}`
+  res = `curl -k #{base_ssl(58082) + '/local_port'}`
   t.assert_equal '58082', res
 end
 
