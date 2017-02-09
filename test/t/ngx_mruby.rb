@@ -332,7 +332,7 @@ t.assert('ngx_mruby - rack base', 'location /rack_base_env') do
 end
 
 t.assert('ngx_mruby - rack base', 'method POST, location /rack_base_env') do
-  req_body = 'Hello' 
+  req_body = 'Hello'
   res = HttpRequest.new.post base + '/rack_base_env', req_body, {"Content-Type" => "text/plain; charset=us-ascii", "Content-Length" => req_body.size}
   res_body = JSON.parse res["body"]
   puts res_body
@@ -515,7 +515,7 @@ end
 
 t.assert('ngx_mruby - Throw my own exception for issue 238', 'location /issue_238') do
   res = HttpRequest.new.get base + '/issue_238'
-  t.assert_equal 500, res.code 
+  t.assert_equal 500, res.code
 end
 
 t.assert('ngx_mruby - access_handler in server scope', 'location /access_handler_in_server_scope') do
@@ -541,6 +541,7 @@ end
 if nginx_version.split(".")[1].to_i >= 10 || (nginx_version.split(".")[1].to_i == 9 && nginx_version.split(".")[2].to_i >= 6)
   base1 = "http://127.0.0.1:12345"
   base2 = "http://127.0.0.1:12346"
+  base3 = "http://127.0.0.1:12348"
   t.assert('ngx_mruby - stream tcp load balancer', '127.0.0.1:12345 to 127.0.0.1:58080 which changed from 127.0.0.1:58081 by mruby') do
     res = HttpRequest.new.get(base1 + '/mruby')
     t.assert_equal 'Hello ngx_mruby world!', res["body"]
@@ -548,6 +549,10 @@ if nginx_version.split(".")[1].to_i >= 10 || (nginx_version.split(".")[1].to_i =
   t.assert('ngx_mruby - stream tcp load balancer', '127.0.0.1:12346 to 127.0.0.1:58081 which changed from 127.0.0.1:58080 by mruby') do
     res = HttpRequest.new.get(base2 + '/')
     t.assert_equal 'proxy test ok', res["body"]
+  end
+  t.assert('ngx_mruby - stream tcp port') do
+    res = HttpRequest.new.get(base3 + '/mruby')
+    t.assert_equal 'Hello ngx_mruby world!', res["body"]
   end
 end
 
