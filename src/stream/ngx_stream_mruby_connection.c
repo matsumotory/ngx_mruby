@@ -166,7 +166,7 @@ static mrb_value ngx_stream_mrb_local_port(mrb_state *mrb, mrb_value self)
   ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
   ngx_stream_session_t *s = ictx->s;
 
-  return mrb_fixnum_value(mrb, ntohs(get_in_port(s->connection->local_sockaddr)));
+  return mrb_fixnum_value(ntohs(get_in_port(s->connection->local_sockaddr)));
 }
 
 static mrb_value ngx_stream_mrb_remote_port(mrb_state *mrb, mrb_value self)
@@ -174,7 +174,7 @@ static mrb_value ngx_stream_mrb_remote_port(mrb_state *mrb, mrb_value self)
   ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
   ngx_stream_session_t *s = ictx->s;
 
-  return mrb_fixnum_value(mrb, ntohs(get_in_port(s->connection->sockaddr)));
+  return mrb_fixnum_value(ntohs(get_in_port(s->connection->sockaddr)));
 }
 
 static mrb_value ngx_stream_mrb_proxy_protocol_addr(mrb_state *mrb, mrb_value self)
@@ -200,9 +200,11 @@ void ngx_stream_mrb_conn_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_conn, "remote_ip", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "remote_addr", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "local_port", ngx_stream_mrb_local_port, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_conn, "remote_port", ngx_stream_mrb_remote_rpot, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_conn, "remote_port", ngx_stream_mrb_remote_port, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "proxy_protocol_ip", ngx_stream_mrb_proxy_protocol_addr, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "proxy_protocol_addr", ngx_stream_mrb_proxy_protocol_addr, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class_conn, "local_port", ngx_stream_mrb_local_port, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class_conn, "remote_port", ngx_stream_mrb_remote_port, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_conn, "remote_ip", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_conn, "remote_addr", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_conn, "proxy_protocol_ip", ngx_stream_mrb_proxy_protocol_addr, MRB_ARGS_NONE());
