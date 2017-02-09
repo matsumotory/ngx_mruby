@@ -88,11 +88,20 @@ static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
   return mrb_str_new(mrb, (char *)mscf->servername->data, mscf->servername->len);
 }
 
+static in_port_t get_in_port(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        return (((struct sockaddr_in*)sa)->sin_port);
+    }
+
+    return (((struct sockaddr_in6*)sa)->sin6_port);
+}
+
 static mrb_value ngx_mrb_ssl_local_port(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
 
-  return mrb_fixnum_value(((struct sockaddr_in *)mscf->connection->local_sockaddr)->sin_port);
+  return mrb_fixnum_value(ntohs(get_in_port(mscf->connection->local_sockaddr)));
 }
 
 #else /* ! OPENSSL_VERSION_NUMBER >= 0x1000205fL */
