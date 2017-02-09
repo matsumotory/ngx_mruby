@@ -152,6 +152,14 @@ static mrb_value ngx_stream_mrb_remote_ip(mrb_state *mrb, mrb_value self)
   return mrb_str_new(mrb, (const char *)s->connection->addr_text.data, s->connection->addr_text.len);
 }
 
+static mrb_value ngx_stream_mrb_local_ip_port(mrb_state *mrb, mrb_value self)
+{
+  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
+  ngx_stream_session_t *s = ictx->s;
+
+  return mrb_str_new(mrb, (const char *)s->connection->listening->addr_text.data, s->connection->listening->addr_text.len);
+}
+
 static mrb_value ngx_stream_mrb_local_ip(mrb_state *mrb, mrb_value self)
 {
   ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
@@ -209,21 +217,28 @@ void ngx_stream_mrb_conn_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_conn, "upstream_server=", ngx_stream_mrb_upstream_set_server, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_conn, "stream_status", ngx_stream_mrb_connection_get_status, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "stream_status=", ngx_stream_mrb_connection_status, MRB_ARGS_REQ(1));
+
   mrb_define_method(mrb, class_conn, "remote_ip", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "remote_addr", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_conn, "remote_port", ngx_stream_mrb_remote_port, MRB_ARGS_NONE());
+
   mrb_define_method(mrb, class_conn, "local_ip", ngx_stream_mrb_local_ip, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "local_addr", ngx_stream_mrb_local_ip, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "local_port", ngx_stream_mrb_local_port, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_conn, "remote_port", ngx_stream_mrb_remote_port, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_conn, "local_ip_port", ngx_stream_mrb_local_ip_port, MRB_ARGS_NONE());
+
   mrb_define_method(mrb, class_conn, "proxy_protocol_ip", ngx_stream_mrb_proxy_protocol_addr, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "proxy_protocol_addr", ngx_stream_mrb_proxy_protocol_addr, MRB_ARGS_NONE());
 
   mrb_define_class_method(mrb, class_conn, "local_ip", ngx_stream_mrb_local_ip, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_conn, "local_addr", ngx_stream_mrb_local_ip, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_conn, "local_port", ngx_stream_mrb_local_port, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class_conn, "local_ip_port", ngx_stream_mrb_local_ip_port, MRB_ARGS_NONE());
+
   mrb_define_class_method(mrb, class_conn, "remote_port", ngx_stream_mrb_remote_port, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_conn, "remote_ip", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_conn, "remote_addr", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
+
   mrb_define_class_method(mrb, class_conn, "proxy_protocol_ip", ngx_stream_mrb_proxy_protocol_addr, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_conn, "proxy_protocol_addr", ngx_stream_mrb_proxy_protocol_addr, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_conn, "stream_status", ngx_stream_mrb_connection_get_status, MRB_ARGS_NONE());
