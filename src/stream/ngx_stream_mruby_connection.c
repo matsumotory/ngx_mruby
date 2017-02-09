@@ -152,6 +152,31 @@ static mrb_value ngx_stream_mrb_remote_ip(mrb_state *mrb, mrb_value self)
   return mrb_str_new(mrb, (const char *)s->connection->addr_text.data, s->connection->addr_text.len);
 }
 
+static in_port_t get_in_port(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        return (((struct sockaddr_in*)sa)->sin_port);
+    }
+
+    return (((struct sockaddr_in6*)sa)->sin6_port);
+}
+
+static mrb_value ngx_stream_mrb_local_port(mrb_state *mrb, mrb_value self)
+{
+  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
+  ngx_stream_session_t *s = ictx->s;
+
+  return mrb_fixnum_value(mrb, ntohs(get_in_port(s->connection->local_sockaddr)));
+}
+
+static mrb_value ngx_stream_mrb_remote_port(mrb_state *mrb, mrb_value self)
+{
+  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
+  ngx_stream_session_t *s = ictx->s;
+
+  return mrb_fixnum_value(mrb, ntohs(get_in_port(s->connection->sockaddr)));
+}
+
 static mrb_value ngx_stream_mrb_proxy_protocol_addr(mrb_state *mrb, mrb_value self)
 {
   ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
@@ -174,6 +199,8 @@ void ngx_stream_mrb_conn_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_conn, "stream_status=", ngx_stream_mrb_connection_status, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_conn, "remote_ip", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "remote_addr", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_conn, "local_port", ngx_stream_mrb_local_port, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_conn, "remote_port", ngx_stream_mrb_remote_rpot, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "proxy_protocol_ip", ngx_stream_mrb_proxy_protocol_addr, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_conn, "proxy_protocol_addr", ngx_stream_mrb_proxy_protocol_addr, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_conn, "remote_ip", ngx_stream_mrb_remote_ip, MRB_ARGS_NONE());
