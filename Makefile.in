@@ -108,4 +108,7 @@ openssl:
 	&& $(MAKE) \
 	&& $(MAKE) install_sw LIBDIR=lib
 
+format:
+	./apply-clang-format
+
 .PHONY: install
