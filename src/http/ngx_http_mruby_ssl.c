@@ -90,11 +90,11 @@ static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
 
 static in_port_t get_in_port(struct sockaddr *sa)
 {
-    if (sa->sa_family == AF_INET) {
-        return (((struct sockaddr_in*)sa)->sin_port);
-    }
+  if (sa->sa_family == AF_INET) {
+    return (((struct sockaddr_in *)sa)->sin_port);
+  }
 
-    return (((struct sockaddr_in6*)sa)->sin6_port);
+  return (((struct sockaddr_in6 *)sa)->sin6_port);
 }
 
 static mrb_value ngx_mrb_ssl_local_port(mrb_state *mrb, mrb_value self)

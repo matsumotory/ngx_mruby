@@ -157,7 +157,8 @@ static mrb_value ngx_stream_mrb_local_ip_port(mrb_state *mrb, mrb_value self)
   ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
   ngx_stream_session_t *s = ictx->s;
 
-  return mrb_str_new(mrb, (const char *)s->connection->listening->addr_text.data, s->connection->listening->addr_text.len);
+  return mrb_str_new(mrb, (const char *)s->connection->listening->addr_text.data,
+                     s->connection->listening->addr_text.len);
 }
 
 static mrb_value ngx_stream_mrb_local_ip(mrb_state *mrb, mrb_value self)
@@ -167,18 +168,19 @@ static mrb_value ngx_stream_mrb_local_ip(mrb_state *mrb, mrb_value self)
   u_char ipaddr_txt[NGX_SOCKADDR_STRLEN];
   mrb_int ipaddr_len;
 
-  ipaddr_len = ngx_sock_ntop(s->connection->local_sockaddr, s->connection->local_socklen, ipaddr_txt, NGX_SOCKADDR_STRLEN, 0);
+  ipaddr_len =
+      ngx_sock_ntop(s->connection->local_sockaddr, s->connection->local_socklen, ipaddr_txt, NGX_SOCKADDR_STRLEN, 0);
 
   return mrb_str_new(mrb, (char *)ipaddr_txt, ipaddr_len);
 }
 
 static in_port_t get_in_port(struct sockaddr *sa)
 {
-    if (sa->sa_family == AF_INET) {
-        return (((struct sockaddr_in*)sa)->sin_port);
-    }
+  if (sa->sa_family == AF_INET) {
+    return (((struct sockaddr_in *)sa)->sin_port);
+  }
 
-    return (((struct sockaddr_in6*)sa)->sin6_port);
+  return (((struct sockaddr_in6 *)sa)->sin6_port);
 }
 
 static mrb_value ngx_stream_mrb_local_port(mrb_state *mrb, mrb_value self)
