@@ -44,7 +44,12 @@ module Kernel
 
     class LazyStringIO
       # Avoid naming conflicts with Kernel methods introduced by mruby-io
-      undef_method :gets, :getc
+      [
+        :gets,
+        :getc,
+      ].each do |m|
+        undef_method m if Kernel.respond_to?(m)
+      end
 
       def initialize(proc)
         @proc = proc
