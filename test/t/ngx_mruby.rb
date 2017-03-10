@@ -535,6 +535,13 @@ t.assert('ngx_mruby - fix bug: body filter transfer closed with any bytes remain
   t.assert_equal 1160568, res["content-length"].to_i
 end
 
+t.assert('ngx_mruby - BUG: request_body issue 268', 'location /issue-268') do
+  #res = HttpRequest.new.post base + '/issue-268', '{"hello": "ngx_mruby"}'
+  #t.assert_equal '{"hello": "ngx_mruby"}', res
+  res = `./test/t/issue-268-test.rb`.split("\r\n\r\n\r\n")[1]
+  t.assert_equal %({\"hello\": \"ngx_mruby\n), res
+end
+
 #
 # nginx stream test verison 1.9.6 later
 #
