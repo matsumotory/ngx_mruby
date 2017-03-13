@@ -12,7 +12,7 @@ HEAD
 
 Socket.tcp("localhost", 58080) do |s|
   s.print headers
-  s.print "\r\n\r\n"
+  s.print "\r\n"
   sleep 0.3 # <==== important!
   s.print request_body
   s.close_write
