@@ -34,6 +34,8 @@ class String
             m
           when "'"
             post
+          when "1", "2", "3", "4", "5", "6", "7", "8", "9"
+            ""
           else
             self[j, 2]
           end
@@ -52,17 +54,22 @@ class String
   # ISO 15.2.10.5.18
   def gsub(*args, &block)
     if args.size == 2
-      s = ""
-      i = 0
-      while j = index(args[0], i)
-        seplen = args[0].length
-        k = j + seplen
-        pre = self[0, j]
-        post = self[k, length-k]
-        s += self[i, j-i] + args[1].__sub_replace(pre, args[0], post)
-        i = k
+      pattern, replace = *args
+      plen = pattern.length
+      replace = replace.to_str
+      offset = 0
+      result = []
+      while found = index(pattern, offset)
+        result << self[offset, found - offset]
+        offset = found + plen
+        result << replace.__sub_replace(self[0, found], pattern, self[offset..-1] || "")
+        if plen == 0
+          result << self[offset, 1]
+          offset += 1
+        end
       end
-      s + self[i, length-i]
+      result << self[offset..-1] if offset < length
+      result.join
     elsif args.size == 1 && block
       split(args[0], -1).join(block.call(args[0]))
     else
@@ -78,6 +85,7 @@ class String
   #
   # ISO 15.2.10.5.19
   def gsub!(*args, &block)
+    raise RuntimeError, "can't modify frozen String" if frozen?
     str = self.gsub(*args, &block)
     return nil if str == self
     self.replace(str)
@@ -123,6 +131,7 @@ class String
   #
   # ISO 15.2.10.5.37
   def sub!(*args, &block)
+    raise RuntimeError, "can't modify frozen String" if frozen?
     str = self.sub(*args, &block)
     return nil if str == self
     self.replace(str)
