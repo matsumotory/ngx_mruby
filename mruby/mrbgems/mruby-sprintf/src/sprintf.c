@@ -116,8 +116,10 @@ mrb_fix2binstr(mrb_state *mrb, mrb_value x, int base)
 
 #define CHECK(l) do {\
 /*  int cr = ENC_CODERANGE(result);*/\
-  while (blen + (l) >= bsiz) {\
+  if ((l) < 0) mrb_raise(mrb, E_ARGUMENT_ERROR, "illegal specifier"); \
+  while ((l) >= bsiz - blen) {\
     bsiz*=2;\
+    if (bsiz < 0) mrb_raise(mrb, E_ARGUMENT_ERROR, "too big specifier"); \
   }\
   mrb_str_resize(mrb, result, bsiz);\
 /*  ENC_CODERANGE_SET(result, cr);*/\
@@ -565,6 +567,7 @@ mrb_str_format(mrb_state *mrb, int argc, const mrb_value *argv, mrb_value fmt)
     mrb_sym id = 0;
 
     for (t = p; t < end && *t != '%'; t++) ;
+    if (t + 1 == end) ++t;
     PUSH(p, t - p);
     if (t >= end)
       goto sprint_exit; /* end of fmt string */
@@ -765,7 +768,7 @@ retry:
             width -= (int)slen;
             if (!(flags&FMINUS)) {
               CHECK(width);
-              while (width--) {
+              while (width-- > 0) {
                 buf[blen++] = ' ';
               }
             }
@@ -774,7 +777,7 @@ retry:
             blen += len;
             if (flags&FMINUS) {
               CHECK(width);
-              while (width--) {
+              while (width-- > 0) {
                 buf[blen++] = ' ';
               }
             }
@@ -981,7 +984,7 @@ retry:
           width -= prec;
         }
 
-        if (!(flags&FMINUS)) {
+        if (!(flags&FMINUS) && width > 0) {
           CHECK(width);
           while (width-- > 0) {
             buf[blen++] = ' ';
@@ -1011,9 +1014,11 @@ retry:
         }
 
         PUSH(s, len);
-        CHECK(width);
-        while (width-- > 0) {
-          buf[blen++] = ' ';
+        if (width > 0) {
+          CHECK(width);
+          while (width-- > 0) {
+            buf[blen++] = ' ';
+          }
         }
       }
       break;
@@ -1048,7 +1053,10 @@ retry:
             need = width;
 
           CHECK(need + 1);
-          snprintf(&buf[blen], need + 1, "%*s", need, "");
+          n = snprintf(&buf[blen], need + 1, "%*s", need, "");
+          if (n < 0) {
+            mrb_raise(mrb, E_RUNTIME_ERROR, "formatting error");
+          }
           if (flags & FMINUS) {
             if (!isnan(fval) && fval < 0.0)
               buf[blen++] = '-';
@@ -1086,6 +1094,9 @@ retry:
 
         CHECK(need);
         n = snprintf(&buf[blen], need, fbuf, fval);
+        if (n < 0) {
+          mrb_raise(mrb, E_RUNTIME_ERROR, "formatting error");
+        }
         blen += n;
       }
       break;
