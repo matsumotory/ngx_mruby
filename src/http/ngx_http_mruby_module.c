@@ -204,6 +204,10 @@ static ngx_command_t ngx_http_mruby_commands[] = {
     {ngx_string("mruby_add_handler"), NGX_HTTP_LOC_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_FLAG, ngx_conf_set_flag_slot,
      NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mruby_loc_conf_t, add_handler), NULL},
 
+    {ngx_string("mruby_enable_read_reqeust_body"), NGX_HTTP_LOC_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_FLAG,
+     ngx_conf_set_flag_slot, NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mruby_loc_conf_t, enable_read_reqeust_body),
+     NULL},
+
     {ngx_string("mruby_post_read_handler"), NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_TAKE12,
      ngx_http_mruby_post_read_phase, NGX_HTTP_LOC_CONF_OFFSET, 0, NULL},
 
@@ -522,6 +526,7 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
 
   conf->cached = NGX_CONF_UNSET;
   conf->add_handler = NGX_CONF_UNSET;
+  conf->enable_read_reqeust_body = NGX_CONF_UNSET;
 
   cln->handler = ngx_http_mruby_loc_conf_cleanup;
   cln->data = conf;
@@ -555,6 +560,7 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
 
   ngx_conf_merge_value(conf->cached, prev->cached, 0);
   ngx_conf_merge_value(conf->add_handler, prev->add_handler, 0);
+  ngx_conf_merge_value(conf->enable_read_reqeust_body, prev->enable_read_reqeust_body, 0);
 
   return NGX_CONF_OK;
 }
@@ -750,6 +756,22 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
   return NGX_OK;
 }
 
+void ngx_http_mruby_read_request_body_cb(ngx_http_request_t *r)
+{
+  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+
+  ctx->read_request_body_done = 1;
+
+#if defined(nginx_version) && nginx_version >= 8011
+  r->main->count--;
+#endif
+
+  if (ctx->request_body_more) {
+    ctx->request_body_more = 0;
+    ngx_http_core_run_phases(r);
+  }
+}
+
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
                       ngx_str_t *result)
 {
@@ -759,6 +781,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   mrb_value mrb_result;
   ngx_http_mruby_ctx_t *ctx;
   ngx_mrb_rputs_chain_list_t *chain;
+  ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
   if (state == NGX_CONF_UNSET_PTR || code == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
@@ -771,6 +794,29 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   }
   ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
   ngx_mrb_push_request(r);
+
+  /* force reading body */
+  if (mlcf->enable_read_reqeust_body && !ctx->read_request_body_done) {
+    ngx_int_t rc;
+
+    r->request_body_in_single_buf = 1;
+    r->request_body_in_persistent_file = 1;
+    r->request_body_in_clean_file = 1;
+
+    rc = ngx_http_read_client_request_body(r, ngx_http_mruby_read_request_body_cb);
+
+    if (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+#if (nginx_version < 1002006) || (nginx_version >= 1003000 && nginx_version < 1003009)
+      r->main->count--;
+#endif
+      return rc;
+    }
+
+    if (rc == NGX_AGAIN) {
+      ctx->request_body_more = 1;
+      return NGX_DONE;
+    }
+  }
 
   if (!cached && !code->cache) {
     ai = mrb_gc_arena_save(state->mrb);

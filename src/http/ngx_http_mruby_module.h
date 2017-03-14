@@ -101,6 +101,7 @@ typedef struct ngx_http_mruby_loc_conf_t {
   ngx_list_t *set_code_list;
   ngx_flag_t cached;
   ngx_flag_t add_handler;
+  ngx_flag_t enable_read_reqeust_body;
 
   // filter handlers
   ngx_http_handler_pt header_filter_handler;
