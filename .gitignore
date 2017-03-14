@@ -5,6 +5,7 @@ GSYMS
 mrbgems_config
 mrbgems_config_dynamic
 Makefile
+config
 config.status
 config.log
 tags
