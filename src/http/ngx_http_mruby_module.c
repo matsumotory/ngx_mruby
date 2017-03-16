@@ -204,8 +204,8 @@ static ngx_command_t ngx_http_mruby_commands[] = {
     {ngx_string("mruby_add_handler"), NGX_HTTP_LOC_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_FLAG, ngx_conf_set_flag_slot,
      NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mruby_loc_conf_t, add_handler), NULL},
 
-    {ngx_string("mruby_enable_read_reqeust_body"), NGX_HTTP_LOC_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_FLAG,
-     ngx_conf_set_flag_slot, NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mruby_loc_conf_t, enable_read_reqeust_body),
+    {ngx_string("mruby_enable_read_request_body"), NGX_HTTP_LOC_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_FLAG,
+     ngx_conf_set_flag_slot, NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mruby_loc_conf_t, enable_read_request_body),
      NULL},
 
     {ngx_string("mruby_post_read_handler"), NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_TAKE12,
@@ -526,7 +526,7 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
 
   conf->cached = NGX_CONF_UNSET;
   conf->add_handler = NGX_CONF_UNSET;
-  conf->enable_read_reqeust_body = NGX_CONF_UNSET;
+  conf->enable_read_request_body = NGX_CONF_UNSET;
 
   cln->handler = ngx_http_mruby_loc_conf_cleanup;
   cln->data = conf;
@@ -560,7 +560,7 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
 
   ngx_conf_merge_value(conf->cached, prev->cached, 0);
   ngx_conf_merge_value(conf->add_handler, prev->add_handler, 0);
-  ngx_conf_merge_value(conf->enable_read_reqeust_body, prev->enable_read_reqeust_body, 0);
+  ngx_conf_merge_value(conf->enable_read_request_body, prev->enable_read_request_body, 0);
 
   return NGX_CONF_OK;
 }
@@ -796,7 +796,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   ngx_mrb_push_request(r);
 
   /* force reading body */
-  if (mlcf->enable_read_reqeust_body && !ctx->read_request_body_done) {
+  if (mlcf->enable_read_request_body && !ctx->read_request_body_done) {
     ngx_int_t rc;
 
     r->request_body_in_single_buf = 1;
