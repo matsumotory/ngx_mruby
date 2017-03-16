@@ -2537,17 +2537,17 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
 
   servername = SSL_get_servername(ssl_conn, TLSEXT_NAMETYPE_host_name);
   if (servername == NULL) {
+    host.len = 0;
     ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: SSL server name NULL");
-    return 1;
+  } else {
+    host.len = ngx_strlen(servername);
+    if (host.len == 0) {
+      ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: host len == 0");
+      return 1;
+    }
+    host.data = (u_char *)servername;
+    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: servername \"%V\"", &host);
   }
-
-  host.len = ngx_strlen(servername);
-  if (host.len == 0) {
-    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: host len == 0");
-    return 1;
-  }
-  host.data = (u_char *)servername;
-  ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: servername \"%V\"", &host);
 
   mscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_mruby_module);
   if (NULL == mscf) {

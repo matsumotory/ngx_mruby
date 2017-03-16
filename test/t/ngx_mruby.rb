@@ -494,6 +494,13 @@ t.assert('ngx_mruby - Nginx::SSL.errlogger') do
   t.assert_true error_log.include? 'Servername is localhost while SSL handshaking'
 end
 
+t.assert('ngx_mruby - get ssl server name') do
+  res = `echo "GET /servername" | openssl s_client -ign_eof -connect localhost:58088 2>/dev/null | sed -n '$s/closed$//p'`
+  t.assert_equal "servername is empty", res.chomp
+  res = `echo "GET /servername" | openssl s_client -ign_eof -connect localhost:58088 -servername ngx.example.com 2>/dev/null | sed -n '$s/closed$//p'`
+  t.assert_equal "ngx.example.com", res.chomp
+end
+
 t.assert('ngx_mruby - issue_172', 'location /issue_172') do
   res = HttpRequest.new.get base + '/issue_172/index.html'
   expect_content = 'hello world'.upcase
