@@ -33,6 +33,7 @@ MRuby::Build.new('host') do |conf|
   # ngx_mruby extended class
   conf.gem './mrbgems/ngx_mruby_mrblib'
   conf.gem './mrbgems/rack-based-api'
+  conf.gem './mrbgems/auto-ssl'
 
   # use memcached
   # conf.gem :github => 'matsumotory/mruby-memcached'
