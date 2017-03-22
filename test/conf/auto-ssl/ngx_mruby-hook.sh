@@ -56,4 +56,8 @@ function unchanged_cert {
     "http://127.0.0.1:$HOOK_SERVER_PORT/deploy-cert" || { echo "hook request failed"; exit 1; }
 }
 
+function exit_hook {
+  local DOMAIN="${1}" KEYFILE="${2}" CERTFILE="${3}" FULLCHAINFILE="${4}" CHAINFILE="${5}"
+}
+
 HANDLER=$1; shift; $HANDLER $@
