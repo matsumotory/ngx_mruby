@@ -28,7 +28,7 @@ class Nginx
 
         def deploy_cert_information r
           key_path = r.post_args["privkey"]
-          crt_path = r.post_args["fullchain"]
+          crt_path = r.post_args["cert"]
 
           raise "not found key file: #{key_path}" unless File.exists? key_path
           raise "not found crt file: #{crt_path}" unless File.exists? crt_path
