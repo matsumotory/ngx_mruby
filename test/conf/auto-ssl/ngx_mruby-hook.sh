@@ -57,7 +57,8 @@ function unchanged_cert {
 }
 
 function exit_hook {
-  local DOMAIN="${1}" KEYFILE="${2}" CERTFILE="${3}" FULLCHAINFILE="${4}" CHAINFILE="${5}"
+  local TMP="exit hook"
+  # do nothing
 }
 
 HANDLER=$1; shift; $HANDLER $@
