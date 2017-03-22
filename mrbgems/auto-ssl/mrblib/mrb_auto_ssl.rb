@@ -6,7 +6,7 @@ class Nginx
           if r.uri =~ /\/([A-Za-z0-9\\-_]+)$/
             token_filename = $1
           end
-          Nginx.log Nginx::LOG_ERR, "ACME chanllenge .omain:#{r.hostname} filename:#{token_filename}"
+          Nginx.log Nginx::LOG_INFO, "ACME chanllenge .omain:#{r.hostname} filename:#{token_filename}"
           token_filename
         end
 
