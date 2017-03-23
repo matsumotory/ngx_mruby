@@ -3,7 +3,7 @@ class Nginx
     class ACME
       class << self
         def token_filename_from_url r
-          if r.uri =~ /\/([A-Za-z0-9\\-_]+)$/
+          if r.uri =~ /\/([-A-Za-z0-9\\_]+)$/
             token_filename = $1
           end
           Nginx.log Nginx::LOG_INFO, "ACME chanllenge .omain:#{r.hostname} filename:#{token_filename}"
