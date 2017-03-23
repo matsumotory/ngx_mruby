@@ -23,13 +23,7 @@ function deploy_challenge {
 
 function clean_challenge {
   local DOMAIN="${1}" TOKEN_FILENAME="${2}" TOKEN_VALUE="${3}"
-
-  #curl --silent --show-error --fail -XPOST \
-  #  --header "X-Hook-Secret: $HOOK_SECRET" \
-  #  --data-urlencode "domain=$DOMAIN" \
-  #  --data-urlencode "token_filename=$TOKEN_FILENAME" \
-  #  --data-urlencode "token_value=$TOKEN_VALUE" \
-  #  "http://127.0.0.1:$HOOK_SERVER_PORT/clean-challenge" || { echo "hook request failed"; exit 1; }
+  # do nothing
 }
 
 function deploy_cert {

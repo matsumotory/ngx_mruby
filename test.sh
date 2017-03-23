@@ -111,9 +111,6 @@ if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
     cat ${NGINX_INSTALL_DIR}/conf/nginx.conf.tmp >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
 fi
 
-cp -pr test/conf/auto-ssl ${NGINX_INSTALL_DIR}/conf/.
-sudo chown nginx -R ${NGINX_INSTALL_DIR}/conf/auto-ssl
-
 cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/html/set_ssl_cert_and_key.rb > ${NGINX_INSTALL_DIR}/html/set_ssl_cert_and_key.rb
 

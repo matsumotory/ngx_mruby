@@ -1,0 +1,162 @@
+#
+# Example for FastCertificate PoC configuration
+#
+# use redis for ACME data management
+#
+
+worker_processes auto;
+events {
+    worker_connections 1024;
+}
+
+daemon off;
+user nginx;
+master_process on;
+error_log logs/error.log notice;
+
+http {
+    include mime.types;
+
+    mruby_init_worker_code '
+
+        Userdata.new.redis = Redis.new "127.0.0.1", 6379
+    ';
+
+    mruby_init_code '
+
+        secret_token = SecureRandom.uuid
+
+        # Setup dehydrated example
+        #
+        # cp -pr ngx_mruby/test/conf/auto-ssl ${NGINX_INSTALL_DIR}/conf/.
+        # sudo chown nginx -R ${NGINX_INSTALL_DIR}/conf/auto-ssl
+
+        Userdata.new.dehydrated_opts = {
+                            bin: "__NGXDOCROOT__/../conf/auto-ssl/dehydrated",
+                            conf: "__NGXDOCROOT__/../conf/auto-ssl/dehydrated.conf",
+                            hook: "__NGXDOCROOT__/../conf/auto-ssl/ngx_mruby-hook.sh",
+                            secret_token: secret_token,
+                          }
+
+        Userdata.new.allow_domains = %w(
+                            autossl.matsumoto-r.jp
+                            udzura.matsumoto-r.jp
+                            pyama.matsumoto-r.jp
+                            linyows.matsumoto-r.jp
+                            harasou.matsumoto-r.jp
+                          )
+
+        Userdata.new.auto_ssl_secret = secret_token
+        Userdata.new.auto_ssl_port = 11111
+    ';
+
+    server {
+        listen 443 ssl;
+        server_name  _;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        ssl_certificate __NGXDOCROOT__/dummy.crt;
+        ssl_certificate_key __NGXDOCROOT__/dummy.key;
+
+        mruby_ssl_handshake_handler_code '
+
+          ssl = Nginx::SSL.new
+          domain = ssl.servername
+          acme = Nginx::SSL::ACME.new domain, Userdata.new.dehydrated_opts, Userdata.new.allow_domains
+
+          raise "not allowed servername" unless acme.allow_domain?
+
+          redis = Userdata.new.redis
+          if redis["#{domain}.crt"].nil? or redis["#{domain}.key"].nil?
+            acme.auto_cert_deploy
+          end
+
+          ssl.certificate_data = redis["#{domain}.crt"]
+          ssl.certificate_key_data = redis["#{domain}.key"]
+        ';
+
+        location / {
+            mruby_content_handler_code 'Nginx.rputs "hello #{Nginx::Request.new.hostname} world!"';
+        }
+    }
+
+    server {
+        listen 80;
+        server_name _;
+
+        location ^~ /.well-known/acme-challenge/ {
+            mruby_content_handler_code '
+
+              Nginx.return -> do
+                r = Nginx::Request.new
+                redis = Userdata.new.redis
+                access_token = Nginx::SSL::ACME.token_filename_from_url(r)
+                stored_token = redis["#{r.hostname}_token_filename"]
+
+                if access_token != stored_token
+                  Nginx.log Nginx::LOG_ERR, "ACME challenge token not found"
+                  Nginx.log Nginx::LOG_ERR, "access token: #{access_token}"
+                  Nginx.log Nginx::LOG_ERR, "stored token: #{stored_token}"
+                  return Nginx::HTTP_NOT_FOUND
+                end
+
+                Nginx.rputs redis["#{r.hostname}_token_value"]
+              end.call
+            ';
+        }
+
+        location = /.well-known/acme-challenge/ {
+           return 404;
+        }
+    }
+
+    server {
+        listen 127.0.0.1:11111;
+        server_name localhost;
+
+        location /deploy-cert {
+            mruby_enable_read_request_body on;
+            mruby_content_handler_code '
+
+              Nginx.return -> do
+                r = Nginx::Request.new
+
+                if Userdata.new.auto_ssl_secret == Nginx::SSL::ACME.secret_token(r)
+                  cert_info = Nginx::SSL::ACME.deploy_cert_information r
+                  redis = Userdata.new.redis
+                  redis.mset "#{cert_info[:domain]}.key", cert_info[:key], "#{cert_info[:domain]}.crt", cert_info[:crt]
+                  Nginx.rputs "deploy cert ok"
+                  return Nginx::HTTP_OK
+                end
+
+                return Nginx::HTTP_UNAUTHORIZED
+              end.call
+            ';
+        }
+
+        location /deploy-challenge {
+            mruby_enable_read_request_body on;
+            mruby_content_handler_code '
+
+              Nginx.return -> do
+                r = Nginx::Request.new
+
+                if Userdata.new.auto_ssl_secret == Nginx::SSL::ACME.secret_token(r)
+                  domain = Nginx::SSL::ACME.challenged_domain r
+                  redis = Userdata.new.redis
+                  redis["#{domain}_token_filename"] = Nginx::SSL::ACME.challenged_token_filename r
+                  redis["#{domain}_token_value"] = Nginx::SSL::ACME.challenged_token_value r
+                  Nginx.rputs "depoy challenge ok"
+                  return Nginx::HTTP_OK
+                end
+
+                return Nginx::HTTP_UNAUTHORIZED
+              end.call
+            ';
+        }
+
+        location / {
+            mruby_content_handler_code "Nginx.rputs 'hello 11111 world'";
+        }
+    }
+}
