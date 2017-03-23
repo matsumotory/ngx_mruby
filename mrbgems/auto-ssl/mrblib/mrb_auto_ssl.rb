@@ -53,7 +53,7 @@ class Nginx
                     "--accept-terms",
                     "--config #{@dehydrated[:conf]}",
                   ].join(" ")
-        res = `#{command}`
+        res = `#{command} 2>&1`
         Nginx::SSL.log Nginx::LOG_INFO, res
       end
 
@@ -68,7 +68,7 @@ class Nginx
                       "--config #{@dehydrated[:conf]}",
                   ].join(" ")
 
-        res = `HOOK_SECRET=#{@dehydrated[:secret_token]} #{command}`
+        res = `HOOK_SECRET=#{@dehydrated[:secret_token]} #{command} 2>&1`
         Nginx::SSL.log Nginx::LOG_INFO, res
 
         if /#{license_info_str}/ === res
