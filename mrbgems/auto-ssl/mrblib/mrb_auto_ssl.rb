@@ -53,7 +53,7 @@ class Nginx
                     "--accept-terms",
                     "--config #{@dehydrated[:conf]}",
                   ].join(" ")
-        res = `#{command} 2>&1`
+        res = `#{command}`
         Nginx::SSL.log Nginx::LOG_INFO, res
       end
 
@@ -61,14 +61,15 @@ class Nginx
         license_info_str = "To use dehydrated with this certificate authority you have to agree to their terms of service which you can find here"
         command = [@dehydrated[:bin],
                       "--cron",
-                      "--no-lock",
+                      "--lock-suffix #{@domain}",
                       "--domain #{@domain}",
                       "--challenge http-01",
                       "--hook #{@dehydrated[:hook]}",
                       "--config #{@dehydrated[:conf]}",
                   ].join(" ")
 
-        res = `HOOK_SECRET=#{@dehydrated[:secret_token]} #{command} 2>&1`
+        Nginx::SSL.log Nginx::LOG_INFO, "run acme command: #{command}"
+        res = `HOOK_SECRET=#{@dehydrated[:secret_token]} #{command}`
         Nginx::SSL.log Nginx::LOG_INFO, res
 
         if /#{license_info_str}/ === res
