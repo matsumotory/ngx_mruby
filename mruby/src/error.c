@@ -148,11 +148,12 @@ exc_inspect(mrb_state *mrb, mrb_value exc)
     append_mesg = RSTRING_LEN(mesg) > 0;
   }
 
-  if (!mrb_nil_p(file) && !mrb_nil_p(line)) {
+  if (mrb_string_p(file) && mrb_fixnum_p(line)) {
+    char buf[32];
+
     str = mrb_str_dup(mrb, file);
-    mrb_str_cat_lit(mrb, str, ":");
-    mrb_str_append(mrb, str, line);
-    mrb_str_cat_lit(mrb, str, ": ");
+    snprintf(buf, sizeof(buf), ":%" MRB_PRId ": ", mrb_fixnum(line));
+    mrb_str_cat_cstr(mrb, str, buf);
     if (append_mesg) {
       mrb_str_cat_str(mrb, str, mesg);
       mrb_str_cat_lit(mrb, str, " (");
@@ -165,12 +166,9 @@ exc_inspect(mrb_state *mrb, mrb_value exc)
   else {
     const char *cname = mrb_obj_classname(mrb, exc);
     str = mrb_str_new_cstr(mrb, cname);
-    mrb_str_cat_lit(mrb, str, ": ");
     if (append_mesg) {
+      mrb_str_cat_lit(mrb, str, ": ");
       mrb_str_cat_str(mrb, str, mesg);
-    }
-    else {
-      mrb_str_cat_cstr(mrb, str, cname);
     }
   }
   return str;
@@ -317,9 +315,7 @@ mrb_exc_raise(mrb_state *mrb, mrb_value exc)
 MRB_API mrb_noreturn void
 mrb_raise(mrb_state *mrb, struct RClass *c, const char *msg)
 {
-  mrb_value mesg;
-  mesg = mrb_str_new_cstr(mrb, msg);
-  mrb_exc_raise(mrb, mrb_exc_new_str(mrb, c, mesg));
+  mrb_exc_raise(mrb, mrb_exc_new_str(mrb, c, mrb_str_new_cstr(mrb, msg)));
 }
 
 MRB_API mrb_value
@@ -329,6 +325,7 @@ mrb_vformat(mrb_state *mrb, const char *format, va_list ap)
   const char *b = p;
   ptrdiff_t size;
   mrb_value ary = mrb_ary_new_capa(mrb, 4);
+  int ai = mrb_gc_arena_save(mrb);
 
   while (*p) {
     const char c = *p++;
@@ -352,14 +349,18 @@ mrb_vformat(mrb_state *mrb, const char *format, va_list ap)
         break;
       }
     }
+    mrb_gc_arena_restore(mrb, ai);
   }
   if (b == format) {
     return mrb_str_new_cstr(mrb, format);
   }
   else {
     size = p - b;
-    mrb_ary_push(mrb, ary, mrb_str_new(mrb, b, size));
-    return mrb_ary_join(mrb, ary, mrb_str_new(mrb, NULL, 0));
+    if (size > 0) {
+      mrb_ary_push(mrb, ary, mrb_str_new(mrb, b, size));
+      mrb_gc_arena_restore(mrb, ai);
+    }
+    return mrb_ary_join(mrb, ary, mrb_nil_value());
   }
 }
 
@@ -376,32 +377,41 @@ mrb_format(mrb_state *mrb, const char *format, ...)
   return str;
 }
 
+static mrb_noreturn void
+raise_va(mrb_state *mrb, struct RClass *c, const char *fmt, va_list ap, int argc, mrb_value *argv)
+{
+  mrb_value mesg;
+
+  mesg = mrb_vformat(mrb, fmt, ap);
+  if (argv == NULL) {
+    argv = &mesg;
+  }
+  else {
+    argv[0] = mesg;
+  }
+  mrb_exc_raise(mrb, mrb_obj_new(mrb, c, argc+1, argv));
+}
+
 MRB_API mrb_noreturn void
 mrb_raisef(mrb_state *mrb, struct RClass *c, const char *fmt, ...)
 {
   va_list args;
-  mrb_value mesg;
 
   va_start(args, fmt);
-  mesg = mrb_vformat(mrb, fmt, args);
+  raise_va(mrb, c, fmt, args, 0, NULL);
   va_end(args);
-  mrb_exc_raise(mrb, mrb_exc_new_str(mrb, c, mesg));
 }
 
 MRB_API mrb_noreturn void
 mrb_name_error(mrb_state *mrb, mrb_sym id, const char *fmt, ...)
 {
-  mrb_value exc;
   mrb_value argv[2];
   va_list args;
 
   va_start(args, fmt);
-  argv[0] = mrb_vformat(mrb, fmt, args);
-  va_end(args);
-
   argv[1] = mrb_symbol_value(id);
-  exc = mrb_obj_new(mrb, E_NAME_ERROR, 2, argv);
-  mrb_exc_raise(mrb, exc);
+  raise_va(mrb, E_NAME_ERROR, fmt, args, 1, argv);
+  va_end(args);
 }
 
 MRB_API void
@@ -435,8 +445,8 @@ mrb_bug(mrb_state *mrb, const char *fmt, ...)
   exit(EXIT_FAILURE);
 }
 
-static mrb_value
-make_exception(mrb_state *mrb, int argc, const mrb_value *argv, mrb_bool isstr)
+MRB_API mrb_value
+mrb_make_exception(mrb_state *mrb, int argc, const mrb_value *argv)
 {
   mrb_value mesg;
   int n;
@@ -448,12 +458,9 @@ make_exception(mrb_state *mrb, int argc, const mrb_value *argv, mrb_bool isstr)
     case 1:
       if (mrb_nil_p(argv[0]))
         break;
-      if (isstr) {
-        mesg = mrb_check_string_type(mrb, argv[0]);
-        if (!mrb_nil_p(mesg)) {
-          mesg = mrb_exc_new_str(mrb, E_RUNTIME_ERROR, mesg);
-          break;
-        }
+      if (mrb_string_p(argv[0])) {
+        mesg = mrb_exc_new_str(mrb, E_RUNTIME_ERROR, argv[0]);
+        break;
       }
       n = 0;
       goto exception_call;
@@ -486,12 +493,6 @@ exception_call:
   }
 
   return mesg;
-}
-
-MRB_API mrb_value
-mrb_make_exception(mrb_state *mrb, int argc, const mrb_value *argv)
-{
-  return make_exception(mrb, argc, argv, TRUE);
 }
 
 MRB_API void

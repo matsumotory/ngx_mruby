@@ -221,7 +221,7 @@ check_name_arg(mrb_state *mrb, int posarg, const char *name, int len)
     tmp_v = GETNEXTARG(); \
     p = t; \
   } \
-  num = mrb_fixnum(tmp_v); \
+  num = mrb_int(mrb, tmp_v); \
 } while (0)
 
 static mrb_value
@@ -750,7 +750,8 @@ retry:
           mrb_int tmp_n = len;
           RSTRING(result)->flags &= ~MRB_STR_EMBED_LEN_MASK;
           RSTRING(result)->flags |= tmp_n << MRB_STR_EMBED_LEN_SHIFT;
-        } else {
+        }
+        else {
           RSTRING(result)->as.heap.len = blen;
         }
         if (flags&(FPREC|FWIDTH)) {
