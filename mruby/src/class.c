@@ -97,6 +97,7 @@ prepare_singleton_class(mrb_state *mrb, struct RBasic *o)
   }
   else {
     sc->super = o->c;
+    prepare_singleton_class(mrb, (struct RBasic*)sc);
   }
   o->c = sc;
   mrb_field_write_barrier(mrb, (struct RBasic*)o, (struct RBasic*)sc);
@@ -126,10 +127,19 @@ MRB_API struct RClass*
 mrb_class_outer_module(mrb_state *mrb, struct RClass *c)
 {
   mrb_value outer;
+  struct RClass *cls;
 
   outer = mrb_obj_iv_get(mrb, (struct RObject*)c, mrb_intern_lit(mrb, "__outer__"));
   if (mrb_nil_p(outer)) return NULL;
-  return mrb_class_ptr(outer);
+  cls = mrb_class_ptr(outer);
+  if (cls->tt == MRB_TT_SCLASS)
+  {
+    mrb_value klass;
+    klass = mrb_obj_iv_get(mrb, (struct RObject *)cls,
+                           mrb_intern_lit(mrb, "__attached__"));
+    cls = mrb_class_ptr(klass);
+  }
+  return cls;
 }
 
 static void
@@ -266,7 +276,8 @@ mrb_vm_define_class(mrb_state *mrb, mrb_value outer, mrb_value super, mrb_sym id
 
   if (!mrb_nil_p(super)) {
     if (mrb_type(super) != MRB_TT_CLASS) {
-      mrb_raisef(mrb, E_TYPE_ERROR, "superclass must be a Class (%S given)", super);
+      mrb_raisef(mrb, E_TYPE_ERROR, "superclass must be a Class (%S given)",
+                 mrb_inspect(mrb, super));
     }
     s = mrb_class_ptr(super);
   }
@@ -552,7 +563,8 @@ mrb_get_args(mrb_state *mrb, const char *format, ...)
 
     argc = a->len;
     array_argv = TRUE;
-  } else {
+  }
+  else {
     array_argv = FALSE;
   }
 
@@ -949,7 +961,8 @@ include_class_new(mrb_state *mrb, struct RClass *m, struct RClass *super)
   ic->super = super;
   if (m->tt == MRB_TT_ICLASS) {
     ic->c = m->c;
-  } else {
+  }
+  else {
     ic->c = m;
   }
   return ic;
@@ -1222,10 +1235,6 @@ mrb_singleton_class(mrb_state *mrb, mrb_value v)
   }
   obj = mrb_basic_ptr(v);
   prepare_singleton_class(mrb, obj);
-  if (mrb->c && mrb->c->ci && mrb->c->ci->target_class) {
-    mrb_obj_iv_set(mrb, (struct RObject*)obj->c, mrb_intern_lit(mrb, "__outer__"),
-                   mrb_obj_value(mrb->c->ci->target_class));
-  }
   return mrb_obj_value(obj->c);
 }
 
@@ -2227,7 +2236,7 @@ mrb_mod_module_function(mrb_state *mrb, mrb_value mod)
   mrb_check_type(mrb, mod, MRB_TT_MODULE);
 
   mrb_get_args(mrb, "*", &argv, &argc);
-  if(argc == 0) {
+  if (argc == 0) {
     /* set MODFUNC SCOPE if implemented */
     return mod;
   }

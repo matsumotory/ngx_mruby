@@ -9,13 +9,18 @@ class String
   # and pass the respective line.
   #
   # ISO 15.2.10.5.15
-  def each_line(&block)
+  def each_line(rs = "\n", &block)
+    return to_enum(:each_line, rs, &block) unless block
+    return block.call(self) if rs.nil?
+    rs = rs.to_str
     offset = 0
-    while pos = self.index("\n", offset)
-      block.call(self[offset, pos + 1 - offset])
-      offset = pos + 1
+    rs_len = rs.length
+    this = dup
+    while pos = this.index(rs, offset)
+      block.call(this[offset, pos + rs_len - offset])
+      offset = pos + rs_len
     end
-    block.call(self[offset, self.size - offset]) if self.size > offset
+    block.call(this[offset, this.size - offset]) if this.size > offset
     self
   end
 
@@ -53,28 +58,34 @@ class String
   #
   # ISO 15.2.10.5.18
   def gsub(*args, &block)
-    if args.size == 2
-      pattern, replace = *args
-      plen = pattern.length
-      replace = replace.to_str
-      offset = 0
-      result = []
-      while found = index(pattern, offset)
-        result << self[offset, found - offset]
-        offset = found + plen
-        result << replace.__sub_replace(self[0, found], pattern, self[offset..-1] || "")
-        if plen == 0
-          result << self[offset, 1]
-          offset += 1
-        end
-      end
-      result << self[offset..-1] if offset < length
-      result.join
-    elsif args.size == 1 && block
-      split(args[0], -1).join(block.call(args[0]))
-    else
-      raise ArgumentError, "wrong number of arguments"
+    return to_enum(:gsub, *args) if args.length == 1 && !block
+    raise ArgumentError, "wrong number of arguments" unless (1..2).include?(args.length)
+
+    pattern, replace = *args
+    plen = pattern.length
+    if args.length == 2 && block
+      block = nil
     end
+    if !replace.nil? || !block
+      replace = replace.to_str
+    end
+    offset = 0
+    result = []
+    while found = index(pattern, offset)
+      result << self[offset, found - offset]
+      offset = found + plen
+      result << if block
+        block.call(pattern).to_s
+      else
+        replace.__sub_replace(self[0, found], pattern, self[offset..-1] || "")
+      end
+      if plen == 0
+        result << self[offset, 1]
+        offset += 1
+      end
+    end
+    result << self[offset..-1] if offset < length
+    result.join
   end
 
   ##
@@ -86,6 +97,7 @@ class String
   # ISO 15.2.10.5.19
   def gsub!(*args, &block)
     raise RuntimeError, "can't modify frozen String" if frozen?
+    return to_enum(:gsub!, *args) if args.length == 1 && !block
     str = self.gsub(*args, &block)
     return nil if str == self
     self.replace(str)
@@ -112,15 +124,31 @@ class String
   #
   # ISO 15.2.10.5.36
   def sub(*args, &block)
-    if args.size == 2
-      pre, post = split(args[0], 2)
-      return self unless post # The sub target wasn't found in the string
-      pre + args[1].__sub_replace(pre, args[0], post) + post
-    elsif args.size == 1 && block
-      split(args[0], 2).join(block.call(args[0]))
-    else
-      raise ArgumentError, "wrong number of arguments"
+    unless (1..2).include?(args.length)
+      raise ArgumentError, "wrong number of arguments (given #{args.length}, expected 2)"
     end
+
+    pattern, replace = *args
+    pattern = pattern.to_str
+    if args.length == 2 && block
+      block = nil
+    end
+    if !block
+      replace = replace.to_str
+    end
+    result = []
+    this = dup
+    found = index(pattern)
+    return this unless found
+    result << this[0, found]
+    offset = found + pattern.length
+    result << if block
+      block.call(pattern).to_s
+    else
+      replace.__sub_replace(this[0, found], pattern, this[offset..-1] || "")
+    end
+    result << this[offset..-1] if offset < length
+    result.join
   end
 
   ##
