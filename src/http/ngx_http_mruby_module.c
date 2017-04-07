@@ -65,20 +65,6 @@ static ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mr
 /*
 // ngx_mruby mruby state functions
 */
-#define NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(cached, state, code, reinit)                                              \
-  do {                                                                                                                 \
-    if (!cached) {                                                                                                     \
-      if (state == NGX_CONF_UNSET_PTR) {                                                                               \
-        return NGX_DECLINED;                                                                                           \
-      }                                                                                                                \
-      if (code == NGX_CONF_UNSET_PTR) {                                                                                \
-        return NGX_DECLINED;                                                                                           \
-      }                                                                                                                \
-      if (reinit(state, code) == NGX_ERROR) {                                                                          \
-        return NGX_ERROR;                                                                                              \
-      }                                                                                                                \
-    }                                                                                                                  \
-  } while (0)
 
 static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *code_file_path);
@@ -777,7 +763,6 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
 {
   int result_len;
   int ai = 0;
-  int exc_ai = 0;
   mrb_value mrb_result;
   ngx_http_mruby_ctx_t *ctx;
   ngx_mrb_rputs_chain_list_t *chain;
@@ -818,17 +803,24 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     }
   }
 
-  if (!cached && !code->cache) {
-    ai = mrb_gc_arena_save(state->mrb);
+  ai = mrb_gc_arena_save(state->mrb);
+  if (!cached && !code->cache && code->code_type == NGX_MRB_CODE_TYPE_FILE) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: mrb_run info: ai=%d", MODULE_NAME, __func__,
                   __LINE__, ai);
+    ngx_int_t rc;
+    rc = ngx_http_mruby_state_reinit_from_file(state, code);
+    if (rc != NGX_OK) {
+      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, MODULE_NAME " : mrb_run: failed to recompile %s, rc=%d", 
+        code->code.file, rc);
+      mrb_gc_arena_restore(state->mrb, ai);
+      return rc;
+    }
   }
-  exc_ai = mrb_gc_arena_save(state->mrb);
   mrb_result = mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
   if (state->mrb->exc) {
     ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    mrb_gc_arena_restore(state->mrb, exc_ai);
+    mrb_gc_arena_restore(state->mrb, ai);
   } else if (result != NULL) {
     if (mrb_nil_p(mrb_result)) {
       result->data = NULL;
@@ -849,14 +841,14 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
       result->len = result_len;
       ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: mrb_run info: return value=(%*s)", MODULE_NAME,
                     __func__, __LINE__, result->len, result->data);
-      mrb_gc_arena_restore(state->mrb, exc_ai);
+      mrb_gc_arena_restore(state->mrb, ai);
       if (!cached && !code->cache) {
         ngx_mrb_code_clean(r, state, code);
       }
       return NGX_OK;
     }
   }
-
+  mrb_gc_arena_restore(state->mrb, ai);
   if (!cached && !code->cache) {
     ngx_mrb_code_clean(r, state, code);
   }
@@ -936,9 +928,8 @@ static ngx_int_t ngx_mrb_output_filter_run(ngx_http_request_t *r, ngx_mrb_state_
 // ngx_mruby mruby state functions
 */
 
-static ngx_int_t ngx_mrb_gencode_state(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
+static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
-  int ai;
   FILE *mrb_file;
   struct mrb_parser_state *p;
 
@@ -946,7 +937,6 @@ static ngx_int_t ngx_mrb_gencode_state(ngx_mrb_state_t *state, ngx_mrb_code_t *c
     return NGX_ERROR;
   }
 
-  ai = mrb_gc_arena_save(state->mrb);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   code->ctx = mrbc_context_new(state->mrb);
   mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
@@ -961,19 +951,6 @@ static ngx_int_t ngx_mrb_gencode_state(ngx_mrb_state_t *state, ngx_mrb_code_t *c
     return NGX_ERROR;
   }
 
-  mrb_gc_arena_restore(state->mrb, ai);
-
-  return NGX_OK;
-}
-
-static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
-{
-  if (state == NGX_CONF_UNSET_PTR) {
-    return NGX_ERROR;
-  }
-  if (ngx_mrb_gencode_state(state, code) != NGX_OK) {
-    return NGX_ERROR;
-  }
   return NGX_OK;
 }
 
@@ -1966,9 +1943,6 @@ static char *ngx_http_mruby_set_inline(ngx_conf_t *cf, ngx_command_t *cmd, void 
     if (_code == NGX_CONF_UNSET_PTR) {                                                                                 \
       return NGX_DECLINED;                                                                                             \
     }                                                                                                                  \
-    if (!_code->cache) {                                                                                               \
-      NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(mlcf->cached, mmcf->state, _code, ngx_http_mruby_state_reinit_from_file);   \
-    }                                                                                                                  \
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based " #handler_name " code: %s",           \
                   _code->code.file);                                                                                   \
     return ngx_mrb_run(r, mmcf->state, _code, mlcf->cached, NULL);                                                     \
@@ -2013,9 +1987,6 @@ static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
   if (code == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
   }
-  if (!code->cache) {
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(mlcf->cached, mmcf->state, code, ngx_http_mruby_state_reinit_from_file);
-  }
   ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based content code: %s", code->code.file);
   return ngx_mrb_run(r, mmcf->state, code, mlcf->cached, NULL);
 }
@@ -2059,12 +2030,6 @@ static ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r, ngx_str_t *va
   if (filter_data->code == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
   }
-
-  if (!filter_data->code->cache) {
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(mlcf->cached, filter_data->state, filter_data->code,
-                                         ngx_http_mruby_state_reinit_from_file);
-  }
-
   return ngx_mrb_run(r, filter_data->state, filter_data->code, mlcf->cached, val);
 }
 
@@ -2122,11 +2087,6 @@ static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_c
   }
 
   r->connection->buffered &= ~0x08;
-
-  if (!mlcf->body_filter_code->cache) {
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(mlcf->cached, mmcf->state, mlcf->body_filter_code,
-                                         ngx_http_mruby_state_reinit_from_file);
-  }
 
   rc = ngx_mrb_run(r, mmcf->state, mlcf->body_filter_code, mlcf->cached, NULL);
   if (rc == NGX_ERROR) {
@@ -2243,11 +2203,6 @@ static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx
   ngx_int_t rc;
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-
-  if (!mlcf->header_filter_code->cache) {
-    NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(mlcf->cached, mmcf->state, mlcf->header_filter_code,
-                                         ngx_http_mruby_state_reinit_from_file);
-  }
 
   rc = ngx_mrb_run(r, mmcf->state, mlcf->header_filter_code, mlcf->cached, NULL);
   if (rc == NGX_ERROR) {
@@ -2613,8 +2568,15 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   ai = mrb_gc_arena_save(mrb);
   if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
     if (!mscf->ssl_handshake_code->cache) {
-      NGX_MRUBY_STATE_REINIT_IF_NOT_CACHED(0, mscf->state, mscf->ssl_handshake_code,
-                                           ngx_http_mruby_state_reinit_from_file);
+      ngx_int_t rc;
+      rc = ngx_http_mruby_state_reinit_from_file(mscf->state, mscf->ssl_handshake_code);
+      if (rc != NGX_OK) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to recompile %s, rc=%d", 
+          mscf->ssl_handshake_code->code.file, rc);
+        ngx_mrb_state_clean(NULL, mscf->state);
+        mrb_gc_arena_restore(mrb, ai);
+        return 1;
+      }
     }
     mrb_run(mrb, mscf->ssl_handshake_code->proc, mrb_top_self(mrb));
   }
