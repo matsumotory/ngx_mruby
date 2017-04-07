@@ -136,38 +136,38 @@ mrb_f_block_given_p_m(mrb_state *mrb, mrb_value self)
 {
   mrb_callinfo *ci = mrb->c->ci;
   mrb_value *bp;
-  mrb_bool given_p;
 
   bp = ci->stackent + 1;
   ci--;
   if (ci <= mrb->c->cibase) {
-    given_p = FALSE;
+    return mrb_false_value();
   }
-  else {
-    /* block_given? called within block; check upper scope */
-    if (ci->proc->env) {
-      struct REnv *e = ci->proc->env;
-      mrb_value *sp;
+  /* block_given? called within block; check upper scope */
+  if (ci->proc->env) {
+    struct REnv *e = ci->proc->env;
 
-      while (e->c) {
-        e = (struct REnv*)e->c;
-      }
-      sp = e->stack;
-      if (sp) {
-        /* top-level does not have block slot (alway false) */
-        if (sp == mrb->c->stbase)
-          return mrb_false_value();
-        ci = mrb->c->cibase + e->cioff;
-        bp = ci[1].stackent + 1;
-      }
+    while (e->c) {
+      e = (struct REnv*)e->c;
     }
-    if (ci->argc > 0) {
-      bp += ci->argc;
+    /* top-level does not have block slot (always false) */
+    if (e->stack == mrb->c->stbase)
+      return mrb_false_value();
+    if (e->stack && e->cioff < 0) {
+      /* use saved block arg position */
+      bp = &e->stack[-e->cioff];
+      ci = 0;                 /* no callinfo available */
     }
-    given_p = !mrb_nil_p(*bp);
+    else {
+      ci = mrb->c->cibase + e->cioff;
+      bp = ci[1].stackent + 1;
+    }
   }
-
-  return mrb_bool_value(given_p);
+  if (ci && ci->argc > 0) {
+    bp += ci->argc;
+  }
+  if (mrb_nil_p(*bp))
+    return mrb_false_value();
+  return mrb_true_value();
 }
 
 /* 15.3.1.3.7  */
@@ -859,8 +859,8 @@ mrb_f_raise(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "");
     break;
   case 1:
-    a[1] = mrb_check_string_type(mrb, a[0]);
-    if (!mrb_nil_p(a[1])) {
+    if (mrb_string_p(a[0])) {
+      a[1] = a[0];
       argc = 2;
       a[0] = mrb_obj_value(E_RUNTIME_ERROR);
     }
@@ -922,7 +922,7 @@ mrb_method_missing(mrb_state *mrb, mrb_sym name, mrb_value self, mrb_value args)
     /* method missing in inspect; avoid recursion */
     repr = mrb_any_to_s(mrb, self);
   }
-  else if (mrb_respond_to(mrb, self, inspect) && mrb->c->ci - mrb->c->cibase < 64) {
+  else if (mrb_respond_to(mrb, self, inspect) && mrb->c->ci - mrb->c->cibase < 16) {
     repr = mrb_funcall_argv(mrb, self, inspect, 0, 0);
     if (mrb_string_p(repr) && RSTRING_LEN(repr) > 64) {
       repr = mrb_any_to_s(mrb, self);

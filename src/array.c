@@ -242,14 +242,19 @@ mrb_ary_resize(mrb_state *mrb, mrb_value ary, mrb_int new_len)
 }
 
 static mrb_value
-mrb_ary_s_create(mrb_state *mrb, mrb_value self)
+mrb_ary_s_create(mrb_state *mrb, mrb_value klass)
 {
+  mrb_value ary;
   mrb_value *vals;
   mrb_int len;
+  struct RArray *a;
 
   mrb_get_args(mrb, "*", &vals, &len);
+  ary = mrb_ary_new_from_values(mrb, len, vals);
+  a = mrb_ary_ptr(ary);
+  a->c = mrb_class_ptr(klass);
 
-  return mrb_ary_new_from_values(mrb, len, vals);
+  return ary;
 }
 
 static void
@@ -1048,15 +1053,17 @@ join_ary(mrb_state *mrb, mrb_value ary, mrb_value sep, mrb_value list)
       break;
 
     default:
-      tmp = mrb_check_string_type(mrb, val);
-      if (!mrb_nil_p(tmp)) {
-        val = tmp;
-        goto str_join;
-      }
-      tmp = mrb_check_convert_type(mrb, val, MRB_TT_ARRAY, "Array", "to_ary");
-      if (!mrb_nil_p(tmp)) {
-        val = tmp;
-        goto ary_join;
+      if (!mrb_immediate_p(val)) {
+        tmp = mrb_check_string_type(mrb, val);
+        if (!mrb_nil_p(tmp)) {
+          val = tmp;
+          goto str_join;
+        }
+        tmp = mrb_check_convert_type(mrb, val, MRB_TT_ARRAY, "Array", "to_ary");
+        if (!mrb_nil_p(tmp)) {
+          val = tmp;
+          goto ary_join;
+        }
       }
       val = mrb_obj_as_string(mrb, val);
       goto str_join;
@@ -1071,7 +1078,9 @@ join_ary(mrb_state *mrb, mrb_value ary, mrb_value sep, mrb_value list)
 MRB_API mrb_value
 mrb_ary_join(mrb_state *mrb, mrb_value ary, mrb_value sep)
 {
-  sep = mrb_obj_as_string(mrb, sep);
+  if (!mrb_nil_p(sep)) {
+    sep = mrb_obj_as_string(mrb, sep);
+  }
   return join_ary(mrb, ary, sep, mrb_ary_new(mrb));
 }
 
@@ -1151,6 +1160,7 @@ mrb_init_array(mrb_state *mrb)
   mrb_define_method(mrb, a, "length",          mrb_ary_size,         MRB_ARGS_NONE()); /* 15.2.12.5.19 */
   mrb_define_method(mrb, a, "pop",             mrb_ary_pop,          MRB_ARGS_NONE()); /* 15.2.12.5.21 */
   mrb_define_method(mrb, a, "push",            mrb_ary_push_m,       MRB_ARGS_ANY());  /* 15.2.12.5.22 */
+  mrb_define_method(mrb, a, "append",          mrb_ary_push_m,       MRB_ARGS_ANY());
   mrb_define_method(mrb, a, "replace",         mrb_ary_replace_m,    MRB_ARGS_REQ(1)); /* 15.2.12.5.23 */
   mrb_define_method(mrb, a, "reverse",         mrb_ary_reverse,      MRB_ARGS_NONE()); /* 15.2.12.5.24 */
   mrb_define_method(mrb, a, "reverse!",        mrb_ary_reverse_bang, MRB_ARGS_NONE()); /* 15.2.12.5.25 */
@@ -1159,6 +1169,7 @@ mrb_init_array(mrb_state *mrb)
   mrb_define_method(mrb, a, "size",            mrb_ary_size,         MRB_ARGS_NONE()); /* 15.2.12.5.28 */
   mrb_define_method(mrb, a, "slice",           mrb_ary_aget,         MRB_ARGS_ANY());  /* 15.2.12.5.29 */
   mrb_define_method(mrb, a, "unshift",         mrb_ary_unshift_m,    MRB_ARGS_ANY());  /* 15.2.12.5.30 */
+  mrb_define_method(mrb, a, "prepend",         mrb_ary_unshift_m,    MRB_ARGS_ANY());
 
   mrb_define_method(mrb, a, "__ary_eq",        mrb_ary_eq,           MRB_ARGS_REQ(1));
   mrb_define_method(mrb, a, "__ary_cmp",       mrb_ary_cmp,          MRB_ARGS_REQ(1));
