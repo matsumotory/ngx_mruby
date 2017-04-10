@@ -59,8 +59,6 @@ static ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_
                              ngx_str_t *result);
 static ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 static ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
-// static ngx_int_t ngx_mrb_output_filter_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
-// ngx_flag_t cached);
 
 /*
 // ngx_mruby mruby state functions
@@ -880,49 +878,6 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   }
   return NGX_OK;
 }
-
-/*
-static ngx_int_t ngx_mrb_output_filter_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
-                                           ngx_flag_t cached)
-{
-  int ai = 0;
-  int exc_ai = 0;
-  ngx_http_mruby_ctx_t *ctx;
-
-  if (state == NGX_CONF_UNSET_PTR || code == NGX_CONF_UNSET_PTR) {
-    return NGX_DECLINED;
-  }
-  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
-  if (ctx == NULL && (ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
-                  __LINE__);
-    return NGX_ERROR;
-  }
-  ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
-  ngx_mrb_push_request(r);
-
-  if (!cached && !code->cache) {
-    ai = mrb_gc_arena_save(state->mrb);
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: mrb_run info: ai=%d", MODULE_NAME, __func__,
-                  __LINE__, ai);
-  }
-  exc_ai = mrb_gc_arena_save(state->mrb);
-  mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
-  if (state->mrb->exc) {
-    ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
-    r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    mrb_gc_arena_restore(state->mrb, exc_ai);
-  }
-
-  if (!cached && !code->cache) {
-    ngx_mrb_code_clean(r, state, code);
-    // mrb_gc_arena_restore(state->mrb, ai);
-  }
-  ngx_mrb_state_clean(r, state);
-
-  return NGX_OK;
-}
-*/
 
 /*
 // ngx_mruby mruby state functions
