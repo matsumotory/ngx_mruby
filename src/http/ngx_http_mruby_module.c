@@ -1086,7 +1086,6 @@ static char *ngx_http_mruby_ssl_handshake_phase(ngx_conf_t *cf, ngx_command_t *c
   return ngx_http_mruby_initialize_code(cf, mscf->state, &mscf->ssl_handshake_code, __func__);
 }
 
-
 static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_srv_conf_t *mscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_mruby_module);
@@ -1314,7 +1313,6 @@ static char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *c
   if (rc != NGX_CONF_OK) {
     return rc;
   }
-
   mmcf->enabled_header_filter = 1;
   mlcf->header_filter_handler = cmd->post;
 
@@ -1354,7 +1352,6 @@ static char *ngx_http_mruby_header_filter_inline(ngx_conf_t *cf, ngx_command_t *
   if (rc != NGX_CONF_OK) {
     return rc;
   }
-
   mmcf->enabled_header_filter = 1;
   mlcf->header_filter_handler = cmd->post;
 
