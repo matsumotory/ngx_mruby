@@ -323,7 +323,6 @@ static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf)
   cln = ngx_pool_cleanup_add(cf->pool, 0);
   if (cln == NULL) {
     return NULL;
-    ;
   }
   mmcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mruby_main_conf_t));
   if (mmcf == NULL) {
