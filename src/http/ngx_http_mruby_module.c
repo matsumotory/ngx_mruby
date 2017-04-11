@@ -59,8 +59,6 @@ static ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_
                              ngx_str_t *result);
 static ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 static ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
-// static ngx_int_t ngx_mrb_output_filter_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
-// ngx_flag_t cached);
 
 /*
 // ngx_mruby mruby state functions
@@ -75,6 +73,7 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
 /*
 // ngx_mruby mruby directive functions
 */
+
 static char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_init_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_init_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -111,6 +110,10 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
 static char *ngx_http_mruby_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_set_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 #endif
+
+/* helpers */
+static char *ngx_http_mruby_initialize_inline_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code, const char* func_name);
+static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code, const char* func_name);
 
 /*
 // ngx_mruby mruby handler functions
@@ -325,7 +328,6 @@ static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf)
   cln = ngx_pool_cleanup_add(cf->pool, 0);
   if (cln == NULL) {
     return NULL;
-    ;
   }
   mmcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mruby_main_conf_t));
   if (mmcf == NULL) {
@@ -706,7 +708,6 @@ static void ngx_mrb_state_clean(ngx_http_request_t *r, ngx_mrb_state_t *state)
 
 static void ngx_mrb_code_clean(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
-  // mrb_irep_decref(state->mrb, code->proc->body.irep);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
 }
 
@@ -882,49 +883,6 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
 }
 
 /*
-static ngx_int_t ngx_mrb_output_filter_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
-                                           ngx_flag_t cached)
-{
-  int ai = 0;
-  int exc_ai = 0;
-  ngx_http_mruby_ctx_t *ctx;
-
-  if (state == NGX_CONF_UNSET_PTR || code == NGX_CONF_UNSET_PTR) {
-    return NGX_DECLINED;
-  }
-  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
-  if (ctx == NULL && (ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
-                  __LINE__);
-    return NGX_ERROR;
-  }
-  ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
-  ngx_mrb_push_request(r);
-
-  if (!cached && !code->cache) {
-    ai = mrb_gc_arena_save(state->mrb);
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: mrb_run info: ai=%d", MODULE_NAME, __func__,
-                  __LINE__, ai);
-  }
-  exc_ai = mrb_gc_arena_save(state->mrb);
-  mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
-  if (state->mrb->exc) {
-    ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
-    r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    mrb_gc_arena_restore(state->mrb, exc_ai);
-  }
-
-  if (!cached && !code->cache) {
-    ngx_mrb_code_clean(r, state, code);
-    // mrb_gc_arena_restore(state->mrb, ai);
-  }
-  ngx_mrb_state_clean(r, state);
-
-  return NGX_OK;
-}
-*/
-
-/*
 // ngx_mruby mruby state functions
 */
 
@@ -1059,274 +1017,127 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
 // ngx_mruby mruby directive functions
 */
 
+/* helpers */
+static char *ngx_http_mruby_initialize_inline_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code, const char* func_name)
+{
+  ngx_str_t *value;
+  ngx_int_t rc;
+
+  if (*code != NGX_CONF_UNSET_PTR) {
+    return "is duplicated";
+  }
+
+  value = cf->args->elts;
+  *code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
+  if (*code == NGX_CONF_UNSET_PTR) {
+    return NGX_CONF_ERROR;
+  }
+  rc = ngx_http_mruby_shared_state_compile(cf, state, *code);
+  if (rc != NGX_OK) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_string(%s) load failed", func_name, value[1].data);
+    return NGX_CONF_ERROR;
+  }
+
+  return NGX_CONF_OK;  
+}
+static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code, const char* func_name)
+{
+  ngx_str_t *value;
+  ngx_int_t rc;
+
+  if (*code != NGX_CONF_UNSET_PTR) {
+    return "is duplicated";
+  }
+
+  value = cf->args->elts;
+  *code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
+  if (*code == NGX_CONF_UNSET_PTR) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_file(%s) open failed", func_name, value[1].data);
+    return NGX_CONF_ERROR;
+  }
+  if (cf->args->nelts == 3) {
+    if (ngx_strcmp(value[2].data, "cache") == 0) {
+      (*code)->cache = ON;
+    } else {
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
+                         &value[2]);
+      return NGX_CONF_ERROR;
+    }
+  }
+  rc = ngx_http_mruby_shared_state_compile(cf, state, *code);
+  if (rc != NGX_OK) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_file(%s) open failed", func_name, value[1].data);
+    return NGX_CONF_ERROR;
+  }
+
+  return NGX_CONF_OK;
+}
+
 #if (NGX_HTTP_SSL)
 
 static char *ngx_http_mruby_ssl_handshake_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_srv_conf_t *mscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_mruby_module);
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
-  if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
-    return "is duplicated";
-  }
-
-  /* share mrb_state of preinit */
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mscf->state = mmcf->state;
 
-  value = cf->args->elts;
-
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : mruby_ssl_handshake_phase mrb_file(%s) open failed",
-                       value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  mscf->ssl_handshake_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mscf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : mruby_ssl_handshake_phase mrb_file(%s) open failed",
-                       value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_code(cf, mscf->state, &mscf->ssl_handshake_code, __func__);
 }
 
 static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_srv_conf_t *mscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_mruby_module);
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
-  if (mscf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
-    return "is duplicated";
-  }
-
-  /* share mrb_state of preinit */
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mscf->state = mmcf->state;
 
-  value = cf->args->elts;
-
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mscf->ssl_handshake_inline_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mscf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : mruby_ssl_handshake_inline mrb_string(%s) load failed",
-                       value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mscf->ssl_handshake_inline_code, __func__);
 }
 #endif /* NGX_HTTP_SSL */
 
 static char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
-  if (mmcf->init_code != NGX_CONF_UNSET_PTR) {
-    return "[Use either 'mruby_init' or 'mruby_init_code']";
-  }
-
-  value = cf->args->elts;
-
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  mmcf->init_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_code(cf, mmcf->state, &mmcf->init_code, __func__);
 }
 
 static char *ngx_http_mruby_init_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
-  if (mmcf->init_code != NGX_CONF_UNSET_PTR) {
-    return "is duplicated";
-  }
-
-  value = cf->args->elts;
-
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mmcf->init_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mmcf->init_code, __func__);
 }
 
 static char *ngx_http_mruby_init_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
-  if (mmcf->init_worker_code != NGX_CONF_UNSET_PTR) {
-    return "[Use either 'mruby_init_worker' or 'mruby_init_worker_code'";
-  }
-
-  value = cf->args->elts;
-
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  mmcf->init_worker_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_code(cf, mmcf->state, &mmcf->init_worker_code, __func__);
 }
 
 static char *ngx_http_mruby_init_worker_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
-  if (mmcf->init_worker_code != NGX_CONF_UNSET_PTR) {
-    return "is duplicated";
-  }
-
-  value = cf->args->elts;
-
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mmcf->init_worker_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mmcf->init_worker_code, __func__);
 }
 
 static char *ngx_http_mruby_exit_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
-  if (mmcf->exit_worker_code != NGX_CONF_UNSET_PTR) {
-    return "[Use either 'mruby_exit_worker' or 'mruby_exit_worker_code'";
-  }
-
-  value = cf->args->elts;
-
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  mmcf->exit_worker_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_code(cf, mmcf->state, &mmcf->exit_worker_code, __func__);
 }
 
 static char *ngx_http_mruby_exit_worker_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
-  if (mmcf->exit_worker_code != NGX_CONF_UNSET_PTR) {
-    return "is duplicated";
-  }
-
-  value = cf->args->elts;
-
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mmcf->exit_worker_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mmcf->exit_worker_code, __func__);
 }
 
 static char *ngx_http_mruby_output_filter_error(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -1341,406 +1152,147 @@ static char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, 
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  mlcf->post_read_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->post_read_code, __func__);
 }
 
 static char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  mlcf->server_rewrite_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->server_rewrite_code, __func__);
 }
 
 static char *ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  mlcf->rewrite_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->rewrite_code, __func__);
 }
 
 static char *ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  mlcf->access_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->access_code, __func__);
 }
 
 static char *ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  mlcf->content_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->content_code, __func__);
 }
 
 static char *ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  mlcf->log_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->log_code, __func__);
 }
 
 static char *ngx_http_mruby_post_read_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mlcf->post_read_inline_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->post_read_inline_code, __func__);
 }
 
 static char *ngx_http_mruby_server_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mlcf->server_rewrite_inline_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->server_rewrite_inline_code, __func__);
 }
 
 static char *ngx_http_mruby_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mlcf->rewrite_inline_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->rewrite_inline_code, __func__);
 }
 
 static char *ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mlcf->access_inline_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->access_inline_code, __func__);
 }
 
 static char *ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mlcf->content_inline_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->content_inline_code, __func__);
 }
 
 static char *ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_int_t rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mlcf->log_inline_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
+  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->log_inline_code, __func__);
 }
 
 static char *ngx_http_mruby_body_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
+  char *rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
+  rc = ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->body_filter_code, __func__);
+  if (rc != NGX_CONF_OK) {
+    return rc;
   }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  mlcf->body_filter_code = code;
   mmcf->enabled_body_filter = 1;
   mmcf->enabled_header_filter = 1;
   mlcf->body_filter_handler = cmd->post;
@@ -1751,35 +1303,16 @@ static char *ngx_http_mruby_body_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd
 static char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_mrb_code_t *code;
-  ngx_int_t rc;
+  char *rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
+  rc = ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->header_filter_code, __func__);
+  if (rc != NGX_CONF_OK) {
+    return rc;
   }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      code->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  mlcf->header_filter_code = code;
   mmcf->enabled_header_filter = 1;
   mlcf->header_filter_handler = cmd->post;
 
@@ -1789,24 +1322,15 @@ static char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *c
 static char *ngx_http_mruby_body_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_int_t rc;
+  char* rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mlcf->body_filter_inline_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
-    return NGX_CONF_ERROR;
+  rc = ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->body_filter_inline_code, __func__);
+  if (rc != NGX_CONF_OK) {
+    return rc;
   }
   mmcf->enabled_body_filter = 1;
   mmcf->enabled_header_filter = 1;
@@ -1818,24 +1342,15 @@ static char *ngx_http_mruby_body_filter_inline(ngx_conf_t *cf, ngx_command_t *cm
 static char *ngx_http_mruby_header_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_str_t *value;
-  ngx_mrb_code_t *code;
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  ngx_int_t rc;
+  char *rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
 
-  value = cf->args->elts;
-  code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  mlcf->header_filter_inline_code = code;
-  rc = ngx_http_mruby_shared_state_compile(cf, mmcf->state, code);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
-    return NGX_CONF_ERROR;
+  rc = ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->header_filter_inline_code, __func__);
+  if (rc != NGX_CONF_OK) {
+    return rc;
   }
   mmcf->enabled_header_filter = 1;
   mlcf->header_filter_handler = cmd->post;
@@ -1954,7 +1469,6 @@ NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(post_read, mlcf->post_read_code)
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(server_rewrite, mlcf->server_rewrite_code)
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(rewrite, mlcf->rewrite_code)
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(access, mlcf->access_code)
-// NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(content,    mlcf->content_code)
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(log, mlcf->log_code)
 
 static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)

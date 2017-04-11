@@ -125,8 +125,6 @@ ${NGINX_INSTALL_DIR}/sbin/nginx &
 echo ""
 echo ""
 sleep 2 # waiting for nginx
-#cd mruby
-#./build/test/bin/mruby ../test/t/ngx_mruby.rb
 ./mruby/build/test/bin/mruby ./test/t/ngx_mruby.rb
 $KILLALL nginx
 echo "ngx_mruby testing ... Done"
