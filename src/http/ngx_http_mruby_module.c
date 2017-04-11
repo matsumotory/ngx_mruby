@@ -942,9 +942,11 @@ static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, n
   mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
   p = mrb_parse_file(state->mrb, mrb_file, code->ctx);
   fclose(mrb_file);
-  if (p == NULL) {
+
+  if (p == NULL || (0 < p->nerr)) {
     return NGX_ERROR;
   }
+
   code->proc = mrb_generate_code(state->mrb, p);
   mrb_pool_close(p->pool);
   if (code->proc == NULL) {
