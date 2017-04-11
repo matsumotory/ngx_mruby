@@ -708,7 +708,6 @@ static void ngx_mrb_state_clean(ngx_http_request_t *r, ngx_mrb_state_t *state)
 
 static void ngx_mrb_code_clean(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
-  // mrb_irep_decref(state->mrb, code->proc->body.irep);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
 }
 
@@ -1473,7 +1472,6 @@ NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(post_read, mlcf->post_read_code)
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(server_rewrite, mlcf->server_rewrite_code)
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(rewrite, mlcf->rewrite_code)
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(access, mlcf->access_code)
-// NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(content,    mlcf->content_code)
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(log, mlcf->log_code)
 
 static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
