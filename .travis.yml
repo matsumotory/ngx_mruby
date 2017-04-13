@@ -60,3 +60,6 @@ script:
   - echo "NGINX_SRC_PATCH=${NGINX_SRC_PATCH}" >> nginx_version
   - echo "NGINX_SRC_VER=nginx-${NGINX_SRC_MAJOR}.${NGINX_SRC_MINOR}.${NGINX_SRC_PATCH}" >> nginx_version
   - sh test.sh
+
+after_failure:
+  - cat build/nginx/logs/error.log
