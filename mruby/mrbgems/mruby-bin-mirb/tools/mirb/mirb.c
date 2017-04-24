@@ -442,7 +442,7 @@ main(int argc, char **argv)
     char_index = 0;
     while ((last_char = getchar()) != '\n') {
       if (last_char == EOF) break;
-      if (char_index > sizeof(last_code_line)-2) {
+      if (char_index >= sizeof(last_code_line)-2) {
         fputs("input string too long\n", stderr);
         continue;
       }
@@ -551,8 +551,6 @@ done:
             mrb_top_self(mrb),
             stack_keep);
         stack_keep = proc->body.irep->nlocals;
-        /* restore to fiber */
-        mrb->c = mrb->root_c;
         /* did an exception occur? */
         if (mrb->exc) {
           p(mrb, mrb_obj_value(mrb->exc), 0);

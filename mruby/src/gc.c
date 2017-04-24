@@ -544,21 +544,29 @@ mark_context_stack(mrb_state *mrb, struct mrb_context *c)
 {
   size_t i;
   size_t e;
+  mrb_value nil;
+  int nregs;
 
+  if (c->stack == NULL) return;
   e = c->stack - c->stbase;
-  if (c->ci) e += c->ci->nregs;
+  if (c->ci) {
+    nregs = c->ci->argc + 2;
+    if (c->ci->nregs > nregs)
+      nregs = c->ci->nregs;
+    e += nregs;
+  }
   if (c->stbase + e > c->stend) e = c->stend - c->stbase;
   for (i=0; i<e; i++) {
     mrb_value v = c->stbase[i];
 
     if (!mrb_immediate_p(v)) {
-      if (mrb_basic_ptr(v)->tt == MRB_TT_FREE) {
-        c->stbase[i] = mrb_nil_value();
-      }
-      else {
-        mrb_gc_mark(mrb, mrb_basic_ptr(v));
-      }
+      mrb_gc_mark(mrb, mrb_basic_ptr(v));
     }
+  }
+  e = c->stend - c->stbase;
+  nil = mrb_nil_value();
+  for (; i<e; i++) {
+    c->stbase[i] = nil;
   }
 }
 
@@ -585,8 +593,9 @@ mark_context(mrb_state *mrb, struct mrb_context *c)
     mrb_gc_mark(mrb, (struct RBasic*)c->ensure[i]);
   }
   /* mark fibers */
-  if (c->prev && c->prev->fib) {
-    mrb_gc_mark(mrb, (struct RBasic*)c->prev->fib);
+  mrb_gc_mark(mrb, (struct RBasic*)c->fib);
+  if (c->prev) {
+    mark_context(mrb, c->prev);
   }
 }
 
@@ -638,7 +647,9 @@ gc_mark_children(mrb_state *mrb, mrb_gc *gc, struct RBasic *obj)
       struct REnv *e = (struct REnv*)obj;
       mrb_int i, len;
 
-      if MRB_ENV_STACK_SHARED_P(e) break;
+      if (MRB_ENV_STACK_SHARED_P(e) && e->cxt.c->fib) {
+        mrb_gc_mark(mrb, (struct RBasic*)e->cxt.c->fib);
+      }
       len = MRB_ENV_STACK_LEN(e);
       for (i=0; i<len; i++) {
         mrb_gc_mark_value(mrb, e->stack[i]);
@@ -753,6 +764,7 @@ obj_free(mrb_state *mrb, struct RBasic *obj, int end)
   case MRB_TT_FIBER:
     {
       struct mrb_context *c = ((struct RFiber*)obj)->cxt;
+
       if (!end && c && c != mrb->root_c) {
         mrb_callinfo *ci = c->ci;
         mrb_callinfo *ce = c->cibase;
@@ -870,13 +882,10 @@ root_scan_phase(mrb_state *mrb, mrb_gc *gc)
   mrb_gc_mark(mrb, (struct RBasic*)mrb->arena_err);
 #endif
 
-  mark_context(mrb, mrb->root_c);
-  if (mrb->root_c->fib) {
-    mrb_gc_mark(mrb, (struct RBasic*)mrb->root_c->fib);
-  }
   if (mrb->root_c != mrb->c) {
     mark_context(mrb, mrb->c);
   }
+  mark_context(mrb, mrb->root_c);
 }
 
 static size_t
@@ -988,7 +997,7 @@ incremental_marking_phase(mrb_state *mrb, mrb_gc *gc, size_t limit)
 static void
 final_marking_phase(mrb_state *mrb, mrb_gc *gc)
 {
-  mark_context_stack(mrb, mrb->root_c);
+  mark_context(mrb, mrb->root_c);
   gc_mark_gray_list(mrb, gc);
   mrb_assert(gc->gray_list == NULL);
   gc->gray_list = gc->atomic_gray_list;
@@ -1482,18 +1491,22 @@ static void
 gc_each_objects(mrb_state *mrb, mrb_gc *gc, mrb_each_object_callback *callback, void *data)
 {
   mrb_heap_page* page = gc->heaps;
+  mrb_bool old_disable = gc->disabled;
 
+  gc->disabled = TRUE;
   while (page != NULL) {
     RVALUE *p, *pend;
 
     p = objects(page);
     pend = p + MRB_HEAP_PAGE_SIZE;
     for (;p < pend; p++) {
-      (*callback)(mrb, &p->as.basic, data);
+      if ((*callback)(mrb, &p->as.basic, data) == MRB_EACH_OBJ_BREAK)
+        break;
     }
 
     page = page->next;
   }
+  gc->disabled = old_disable;
 }
 
 void
