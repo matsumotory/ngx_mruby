@@ -27,6 +27,7 @@ ifeq ($(wildcard $(MRUBY_MAK_FILE)),)
   MRUBY_LDFLAGS =
   MRUBY_LIBS =
   MRUBY_LDFLAGS_BEFORE_LIBS =
+  MRUBY_LIBMRUBY_PATH =
 else
   include $(MRUBY_MAK_FILE)
 endif
@@ -96,6 +97,7 @@ ngx_mruby_dynamic: generate_gems_config_dynamic
 generate_gems_config:
 	@echo CORE_LIBS=\"\$$CORE_LIBS $(LDFLAGS) $(LIBS)\" > ./mrbgems_config
 	@echo CORE_INCS=\"\$$CORE_INCS $(CFLAGS)\" >> ./mrbgems_config
+	@echo LINK_DEPS=\"\$$LINK_DEPS $(MRUBY_LIBMRUBY_PATH)\" >> ./mrbgems_config
 
 generate_gems_config_dynamic:
 	@echo ngx_module_libs=\"\$(LDFLAGS) \$(LIBS)\" > ./mrbgems_config_dynamic
