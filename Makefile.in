@@ -56,7 +56,7 @@ else
 # LDFLAGS := $(LDFLAGS) -Wl,-Bstatic -L$(NGX_OPENSSL_SRC)/.openssl/lib
 endif
   CFLAGS := -I$(NGX_OPENSSL_SRC)/.openssl/include $(CFLAGS)
-  build_mruby_targets := openssl
+  build_mruby_targets := .openssl_build_done
 endif
 
 #   the default target
@@ -72,7 +72,7 @@ clean:
 
 #   clobber
 clobber: clean_mruby clean
-	-rm -rf tmp autom4te.cache config config.status config.log build build_dynamic
+	-rm -rf tmp autom4te.cache config config.status config.log build build_dynamic .openssl_build_done .openssl_configure_done
 
 #   build mruby
 build_mruby: $(build_mruby_targets)
@@ -103,12 +103,24 @@ generate_gems_config_dynamic:
 	@echo ngx_module_libs=\"\$(LDFLAGS) \$(LIBS)\" > ./mrbgems_config_dynamic
 	@echo CORE_LIBS=\"\$$CORE_LIBS \$(LDFLAGS) \$(LIBS)\" >> ./mrbgems_config_dynamic
 
-openssl:
-	cd $(NGX_OPENSSL_SRC) \
+#openssl:
+#	cd $(NGX_OPENSSL_SRC) \
+#	&& if [ -f Makefile ]; then $(MAKE) clean; fi \
+#	&& ./config --prefix=$(NGX_OPENSSL_SRC)/.openssl --shared zlib -fPIC enable-tlsext $(NGX_OPENSSL_OPT)  \
+#	&& $(MAKE) \
+#	&& $(MAKE) install_sw LIBDIR=lib
+
+.openssl_build_done: .openssl_configure_done
+	(cd $(NGX_OPENSSL_SRC) \
+	&& $(MAKE) build_all install_sw) \
+	&& cp /dev/null .openssl_build_cone
+
+.openssl_configure_done:
+	(cd $(NGX_OPENSSL_SRC) \
 	&& if [ -f Makefile ]; then $(MAKE) clean; fi \
-	&& ./config --prefix=$(NGX_OPENSSL_SRC)/.openssl --shared zlib -fPIC enable-tlsext $(NGX_OPENSSL_OPT)  \
-	&& $(MAKE) \
-	&& $(MAKE) install_sw LIBDIR=lib
+	&& ./config --prefix=$(NGX_OPENSSL_SRC)/.openssl --shared zlib -fPIC enable-tlsext $(NGX_OPENSSL_OPT) \
+	&& $(MAKE) depend) \
+	&& cp /dev/null .openssl_configure_done
 
 format:
 	./apply-clang-format
