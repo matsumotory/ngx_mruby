@@ -32,9 +32,9 @@ else
     NGINX_INSTALL_DIR=`pwd`'/build/nginx'
 fi
 
-if [ $NGINX_SRC_MINOR -eq 11 -a $NGINX_SRC_PATCH -ge 5 ]; then
+if [ $NGINX_SRC_MINOR -ge 11 -a $NGINX_SRC_PATCH -ge 5 ]; then
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT} --with-stream"
-elif [ $NGINX_SRC_MINOR -eq 11 -a $NGINX_SRC_PATCH -lt 5 ] || [ $NGINX_SRC_MINOR -eq 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
+elif [ $NGINX_SRC_MINOR -ge 11 -a $NGINX_SRC_PATCH -lt 5 ] || [ $NGINX_SRC_MINOR -eq 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT} --with-stream --without-stream_access_module"
 else
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT}"
