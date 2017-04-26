@@ -77,22 +77,10 @@ if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
   echo "ngx_mruby configure ..."
   ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
   echo "ngx_mruby configure ... Done"
-
-  echo "mruby building ..."
-  $MAKE build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-  echo "mruby building ... Done"
-
-  if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
-      echo "ngx_mruby building as dynamic module ..."
-      $MAKE ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-  else
-      echo "ngx_mruby building ..."
-      $MAKE NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-  fi
-else
-  $MAKE make_ngx_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
 fi
 
+echo "ngx_mruby building ..."
+$MAKE NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
 echo "ngx_mruby building ... Done"
 
 echo "ngx_mruby testing ..."
