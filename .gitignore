@@ -13,3 +13,5 @@ tags
 build/
 build_dynamic/
 autom4te.cache/
+.openssl_build_done
+.openssl_configure_done
