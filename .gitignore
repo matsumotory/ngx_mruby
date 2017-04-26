@@ -10,6 +10,7 @@ config.status
 config.log
 tags
 *.swp
+*~
 build/
 build_dynamic/
 autom4te.cache/
