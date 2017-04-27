@@ -24,16 +24,12 @@ MRUBY_ROOT=@MRUBY_ROOT@
 NDK_ROOT=@NDK_ROOT@
 
 #   suport mrbgems
+# libmruby.flags.mak contains MRUBY_* variables, but it is created when building mruby.
 MRUBY_MAK_FILE := $(MRUBY_ROOT)/build/host/lib/libmruby.flags.mak
-ifeq ($(wildcard $(MRUBY_MAK_FILE)),)
-  MRUBY_CFLAGS =
-  MRUBY_LDFLAGS =
-  MRUBY_LIBS =
-  MRUBY_LDFLAGS_BEFORE_LIBS =
-  MRUBY_LIBMRUBY_PATH =
-else
-  include $(MRUBY_MAK_FILE)
+ifneq ($(wildcard $(MRUBY_MAK_FILE)),) 
+include $(MRUBY_MAK_FILE)
 endif
+MRUBY_LIBDIR = @MRUBY_LIBDIR@ # comes from configure
 
 NGX_OPENSSL_SRC=@NGX_OPENSSL_SRC@
 NGX_OPENSSL_OPT=@NGX_OPENSSL_OPT@
@@ -53,11 +49,11 @@ LIBS = $(MRUBY_LIBS) $(MRUBY_LDFLAGS_BEFORE_LIBS) -L$(MRUBY_LIBDIR) -lmruby
 build_mruby_targets=
 ifdef NGX_OPENSSL_SRC
 ifdef BUILD_DYNAMIC_MODULE
-  LDFLAGS := -L$(NGX_OPENSSL_SRC)/.openssl/lib -Wl,-rpath=$(NGX_OPENSSL_SRC)/.openssl/lib $(LDFLAGS)
+  LDFLAGS += -L$(NGX_OPENSSL_SRC)/.openssl/lib -Wl,-rpath=$(NGX_OPENSSL_SRC)/.openssl/lib
 else
-  LIBS := $(NGX_OPENSSL_SRC)/.openssl/lib/libssl.a $(NGX_OPENSSL_SRC)/.openssl/lib/libcrypto.a $(LIBS)
+  LIBS += $(NGX_OPENSSL_SRC)/.openssl/lib/libssl.a $(NGX_OPENSSL_SRC)/.openssl/lib/libcrypto.a
 endif # BUILD_DYNAMIC_MODULE
-  CFLAGS := -I$(NGX_OPENSSL_SRC)/.openssl/include $(CFLAGS)
+  CFLAGS += -I$(NGX_OPENSSL_SRC)/.openssl/include
   build_mruby_targets := openssl
 endif # NGX_OPENSSL_SRC
 
@@ -84,6 +80,8 @@ build_mruby: $(build_mruby_targets)
 clean_mruby:
 	cd $(MRUBY_ROOT) && $(RAKE) deep_clean && rm -rf build
 
+$(MRUBY_MAK_FILE): build_mruby
+
 #
 #   nginx
 #
@@ -100,16 +98,27 @@ $(NGX_SRC_ROOT)/objs/Makefile: mrbgems_config
 	&& $(NGX_CONFIGURE) --add-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT)
 endif
 
+# libmruby.flags.mak is generated, so invoke make to reevaluate MRUBY_* variables.
 mrbgems_config: $(MRUBY_MAK_FILE)
+	$(MAKE) generate_gems_config
+
+mrbgems_config_dynamic: $(MRUBY_MAK_FILE)
+	$(MAKE) generate_gems_config_dynamic
+
+generate_gems_config:
 	@echo CORE_LIBS=\"\$$CORE_LIBS $(LDFLAGS) $(LIBS)\" > ./mrbgems_config
 	@echo CORE_INCS=\"\$$CORE_INCS $(CFLAGS)\" >> ./mrbgems_config
 	@echo LINK_DEPS=\"\$$LINK_DEPS $(MRUBY_LIBMRUBY_PATH)\" >> ./mrbgems_config
 
-mrbgems_config_dynamic: $(MRUBY_MAK_FILE)
+generate_gems_config_dynamic:
 	@echo ngx_module_libs=\"\$(LDFLAGS) \$(LIBS)\" > ./mrbgems_config_dynamic
 	@echo CORE_LIBS=\"\$$CORE_LIBS \$(LDFLAGS) \$(LIBS)\" >> ./mrbgems_config_dynamic
 
 # for backward compatibility
+make_ngx_mruby:
+	cd $(NGX_SRC_ROOT) && $(MAKE)
+	@echo "Warning: make_ngx_mruby target will be removed. Use build_ngx_mruby instead."
+
 ngx_mruby: 
 ifdef BUILD_DYNAMIC_MODULE
 	@echo "Error: Tried to build static linked nginx with BUILD_DYNAMIC_MODULE" && false
@@ -125,12 +134,6 @@ ifdef BUILD_DYNAMIC_MODULE
 else
 	@echo "Error: Tried to build dynamic linked nginx without BUILD_DYNAMIC_MODULE" && false
 endif
-
-generate_gems_config: mrbgems_config
-	@echo "Warning: generate_gems_config target will be removed. Use mrbgems_config instead."
-
-generate_gems_config_dynamic: mrbgems_config_dynamic
-	@echo "Warning: generate_gems_config_dynamic target will be removed. Use mrbgems_config_dynamic instead."
 
 #
 # openssl
