@@ -49,11 +49,11 @@ LIBS = $(MRUBY_LIBS) $(MRUBY_LDFLAGS_BEFORE_LIBS) -L$(MRUBY_LIBDIR) -lmruby
 build_mruby_targets=
 ifdef NGX_OPENSSL_SRC
 ifdef BUILD_DYNAMIC_MODULE
-  LDFLAGS += -L$(NGX_OPENSSL_SRC)/.openssl/lib -Wl,-rpath=$(NGX_OPENSSL_SRC)/.openssl/lib
+  LDFLAGS := -L$(NGX_OPENSSL_SRC)/.openssl/lib -Wl,-rpath=$(NGX_OPENSSL_SRC)/.openssl/lib $(LDFLAGS)
 else
-  LIBS += $(NGX_OPENSSL_SRC)/.openssl/lib/libssl.a $(NGX_OPENSSL_SRC)/.openssl/lib/libcrypto.a
+  LIBS := $(NGX_OPENSSL_SRC)/.openssl/lib/libssl.a $(NGX_OPENSSL_SRC)/.openssl/lib/libcrypto.a $(LIBS)
 endif # BUILD_DYNAMIC_MODULE
-  CFLAGS += -I$(NGX_OPENSSL_SRC)/.openssl/include
+  CFLAGS := -I$(NGX_OPENSSL_SRC)/.openssl/include $(CFLAGS)
   build_mruby_targets := openssl
 endif # NGX_OPENSSL_SRC
 
