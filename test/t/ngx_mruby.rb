@@ -455,10 +455,9 @@ t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
   t.assert_equal "", res
 end
 
-dir = ENV['BUILD_DYNAMIC_MODULE'] == 'TRUE' ? 'build_dynamic' : 'build'
-fname = File.expand_path("../../../#{dir}/nginx/html/set_ssl_cert_and_key.rb", __FILE__)
-
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file without caching') do
+  fname = File.join(ENV['NGINX_INSTALL_DIR'], 'html/set_ssl_cert_and_key.rb')
+
   res = `curl -k #{base_ssl(58085) + '/'}`
   t.assert_equal 'ssl test ok', res
 
@@ -478,6 +477,8 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file witho
 end
 
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file with caching') do
+  fname = File.join(ENV['NGINX_INSTALL_DIR'], 'html/set_ssl_cert_and_key.rb')
+
   res = `curl -k #{base_ssl(58086) + '/'}`
   t.assert_equal 'ssl test ok', res
 
@@ -496,10 +497,9 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file with 
   t.assert_equal "", `#{cmd_h}`.chomp
 end
 
-dir = ENV['BUILD_DYNAMIC_MODULE'] == 'TRUE' ? 'build_dynamic' : 'build'
 t.assert('ngx_mruby - Nginx::SSL.errlogger') do
   `openssl s_client -servername localhost -connect localhost:58087 < /dev/null 2>/dev/null`
-  error_log = File.read File.expand_path("../../../#{dir}/nginx/logs/error.log", __FILE__)
+  error_log = File.read File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log');
   t.assert_true error_log.include? 'Servername is localhost while SSL handshaking'
 end
 

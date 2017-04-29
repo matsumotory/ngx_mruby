@@ -625,6 +625,16 @@ MRUBY_INCDIR
 MRUBY_ROOT
 NGX_CONFIG_OPT
 NGX_OPENSSL_OPT
+NGX_LIBS
+NGX_LDFLAGS
+NGX_CFLAGS
+NGX_OPENSSL_INSTALL_DIR
+NGX_MRUBY_CFLAGS
+BUILD_DYNAMIC_MODULE
+NGX_CONFIG_ADD_MODULE_OPT_NAME
+NGX_MAKEFILE_DEPENDS_TARGET
+BUILD_DIR
+MRUBY_BUILD_DEPEND_TARGETS
 NGX_OPENSSL_SRC
 NGX_SRC_ROOT
 LIBOBJS
@@ -658,7 +668,6 @@ infodir
 docdir
 oldincludedir
 includedir
-runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -683,6 +692,8 @@ ac_user_opts='
 enable_option_checking
 with_ngx_src_root
 with_openssl_src
+with_build_dir
+enable_dynamic_module
 with_openssl_opt
 with_ngx_config_opt
 with_mruby_root
@@ -737,7 +748,6 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
-runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -990,15 +1000,6 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
-  -runstatedir | --runstatedir | --runstatedi | --runstated \
-  | --runstate | --runstat | --runsta | --runst | --runs \
-  | --run | --ru | --r)
-    ac_prev=runstatedir ;;
-  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
-  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
-  | --run=* | --ru=* | --r=*)
-    runstatedir=$ac_optarg ;;
-
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1136,7 +1137,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir runstatedir
+		libdir localedir mandir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1289,7 +1290,6 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
-  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1313,11 +1313,18 @@ if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
 
+Optional Features:
+  --disable-option-checking  ignore unrecognized --enable/--with options
+  --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
+  --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-dynamic-module Use nginx dynamic modules
+
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-ngx-src-root=DIR pathname to ngx_src_root [[ngx_src_root]]
   --with-openssl-src=DIR  set path to OpenSSL library sources
+  --with-build-dir=DIR    set build directory path
   --with-openssl-opt=OPTIONS
                           set additional build options for OpenSSL
   --with-ngx-config-opt=OPT
@@ -3660,6 +3667,54 @@ if test "${with_openssl_src+set}" = set; then :
   withval=$with_openssl_src; NGX_OPENSSL_SRC="$with_openssl_src"
 fi
 
+if test "X$NGX_OPENSSL_SRC" != X ; then
+    MRUBY_BUILD_DEPEND_TARGETS=openssl
+fi
+
+
+
+BUILD_DIR=build
+
+# Check whether --with-build_dir was given.
+if test "${with_build_dir+set}" = set; then :
+  withval=$with_build_dir; BUILD_DIR="$with_build_dir"
+fi
+
+
+
+# Check whether --enable-dynamic_module was given.
+if test "${enable_dynamic_module+set}" = set; then :
+  enableval=$enable_dynamic_module;
+fi
+
+if test "x$enable_dynamic_module" = xyes ; then
+  NGX_MAKEFILE_DEPENDS_TARGET=mrbgems_config_dynamic
+  NGX_CONFIG_ADD_MODULE_OPT_NAME=--add-dynamic-module
+  BUILD_DYNAMIC_MODULE=TRUE
+  NGX_MRUBY_CFLAGS=-fPIC
+else
+  NGX_MAKEFILE_DEPENDS_TARGET=mrbgems_config
+  NGX_CONFIG_ADD_MODULE_OPT_NAME=--add-module
+  BUILD_DYNAMIC_MODULE=""
+  NGX_MRUBY_CFLAGS=""
+fi
+
+
+
+
+
+if test "X$NGX_OPENSSL_SRC" != X ; then
+  NGX_OPENSSL_INSTALL_DIR=$NGX_OPENSSL_SRC/.openssl
+  NGX_CFLAGS=-I$NGX_OPENSSL_INSTALL_DIR/include
+  if test "x$enable_dynamic_module" = xyes ; then
+      NGX_LDFLAGS="-L$NGX_OPENSSL_INSTALL_DIR/lib\ -Wl,-rpath=$NGX_OPENSSL_INSTALL_DIR/lib"
+  else
+      NGX_LIBS="$NGX_OPENSSL_INSTALL_DIR/lib/libssl.a $NGX_OPENSSL_INSTALL_DIR/lib/libcrypto.a"
+  fi
+fi
+
+
+
 
 
 NGX_OPENSSL_OPT=
@@ -3671,7 +3726,6 @@ fi
 
 
 
-# nginx src root
 NGX_CONFIG_OPT=
 
 # Check whether --with-ngx_config_opt was given.
@@ -3679,9 +3733,12 @@ if test "${with_ngx_config_opt+set}" = set; then :
   withval=$with_ngx_config_opt; NGX_CONFIG_OPT="$with_ngx_config_opt"
 fi
 
-#if test "$NGX_CONFIG_OPT" = no; then
-#    AC_MSG_ERROR([nginx configure option not found.])
-#fi
+if test "X$NGX_OPENSSL_SRC" != X ; then
+    NGX_CONFIG_OPT="$NGX_CONFIG_OPT --with-openssl=$NGX_OPENSSL_SRC"
+fi
+if test "X$NGX_OPENSSL_OPT" != X ; then
+    NGX_CONFIG_OPT="$NGX_CONFIG_OPT --with-openssl-opt=$NGX_OPENSSL_OPT"
+fi
 
 
 # mruby root
@@ -3723,22 +3780,6 @@ if test "${with_ndk_root+set}" = set; then :
 fi
 
 
-
-## support mrbgems
-#ENABLE_GEMS=false
-#AC_ARG_ENABLE([mrbgems],
-#    [AS_HELP_STRING([--enable-mrbgems],
-#        [mrbgems feature (default is no)])],
-#    [],
-#    [enable_mrbgems=no]
-#)
-#
-#AS_IF([test "x$enable_mrbgems" != xno],
-#    [AC_DEFINE([ENABLE_GEMS], [1], [mrbgems support])
-#        ENABLE_GEMS=true
-#    ]
-#)
-#AC_SUBST(ENABLE_GEMS)
 
 ac_config_files="$ac_config_files Makefile config"
 
