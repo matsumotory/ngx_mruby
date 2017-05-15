@@ -27,9 +27,11 @@ fi
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
     BUILD_DIR='build_dynamic'
     NGINX_INSTALL_DIR=`pwd`'/build_dynamic/nginx'
+    CONFIG_OPT="--enable-dynamic-module --with-build-dir=$BUILD_DIR"
 else
     BUILD_DIR='build'
     NGINX_INSTALL_DIR=`pwd`'/build/nginx'
+    CONFIG_OPT="--with-build-dir=$BUILD_DIR"
 fi
 
 if [ "$NGINX_CONFIG_OPT_ENV" != "" ]; then
@@ -80,7 +82,7 @@ if [ -d "./mruby/${BUILD_DIR}" ]; then
 fi
 
 echo "ngx_mruby configure ..."
-./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
+./configure ${CONFIG_OPT} --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
 echo "ngx_mruby configure ... Done"
 
 echo "ngx_mruby building ..."

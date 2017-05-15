@@ -5,7 +5,6 @@ MRuby::Build.new('host') do |conf|
   conf.gembox 'full-core'
 
   conf.cc do |cc|
-    cc.flags << '-fPIC' if ENV['BUILD_DYNAMIC_MODULE']
     cc.flags << ENV['NGX_MRUBY_CFLAGS'] if ENV['NGX_MRUBY_CFLAGS']
   end
 

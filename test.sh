@@ -27,10 +27,13 @@ fi
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
     BUILD_DIR='build_dynamic'
     NGINX_INSTALL_DIR=`pwd`'/build_dynamic/nginx'
+    CONFIG_OPT="--enable-dynamic-module --with-build-dir=$BUILD_DIR"
 else
     BUILD_DIR='build'
     NGINX_INSTALL_DIR=`pwd`'/build/nginx'
+    CONFIG_OPT="--with-build-dir=$BUILD_DIR"
 fi
+export NGINX_INSTALL_DIR # for test/t/ngx_mruby.rb
 
 if [ $NGINX_SRC_MINOR -ge 11 -a $NGINX_SRC_PATCH -ge 5 ]; then
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT} --with-stream"
@@ -75,7 +78,7 @@ if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
   cd ..
 
   echo "ngx_mruby configure ..."
-  ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
+  ./configure ${CONFIG_OPT} --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
   echo "ngx_mruby configure ... Done"
 fi
 
