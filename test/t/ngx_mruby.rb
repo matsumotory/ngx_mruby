@@ -564,7 +564,7 @@ t.assert('ngx_mruby - backtrace log', 'location /backtrace') do
 
   fname = File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log')
   found = 0
-  File.open(fname) {|f| f.each_line {|line| found += 1 if line.index('build/nginx/html/backtrace.rb:') } }
+  File.open(fname) {|f| f.each_line {|line| found += 1 if line.index('/nginx/html/backtrace.rb:') } }
   t.assert_equal 4, found
 end
 
