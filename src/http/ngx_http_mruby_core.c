@@ -25,30 +25,69 @@
 
 ngx_module_t ngx_http_mruby_module;
 
-void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r)
+static void ngx_mrb_log_backtrace(mrb_state *mrb, mrb_value obj, ngx_log_t *log)
 {
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
+  if (mrb_type(obj) == MRB_TT_EXCEPTION) {
+    mrb_value bt = mrb_funcall(mrb, obj, "backtrace", 0);
+    if (mrb_type(bt) != MRB_TT_ARRAY) {
+      ngx_log_error(NGX_LOG_DEBUG, log, 0, "backtrace must be Array. mrb_type=%d", mrb_type(bt));
+      return;
+    }
+    const mrb_value *p = RARRAY_PTR(bt);
+    const mrb_value *e = p + RARRAY_LEN(bt);
+    while (p < e) {
+      ngx_log_error(NGX_LOG_ERR, log, 0, "%*s", RSTRING_LEN(*p), RSTRING_PTR(*p));
+      p++;
+    }
+  }
+}
+
+void ngx_mrb_raise_error(mrb_state *mrb, mrb_value exc, ngx_http_request_t *r)
+{
+  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
+  if (mrb_type(s) == MRB_TT_STRING) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(obj),
-                  RSTRING_PTR(obj));
+                  "mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(s),
+                  RSTRING_PTR(s));
   }
+#if (NGX_DEBUG)
+  ngx_mrb_log_backtrace(mrb, exc, r->connection->log);
+#endif
 }
 
-void ngx_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle)
+void ngx_mrb_raise_connection_error(mrb_state *mrb, mrb_value exc, ngx_connection_t *c)
 {
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
+  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
+  if (mrb_type(s) == MRB_TT_STRING) {
+    ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                  MODULE_NAME " : mrb_run failed: return 500 HTTP status code to client: error: %*s",
+                  RSTRING_LEN(s), RSTRING_PTR(s));
   }
+#if (NGX_DEBUG)
+  ngx_mrb_log_backtrace(mrb, exc, c->log);
+#endif
 }
 
-void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf)
+void ngx_mrb_raise_cycle_error(mrb_state *mrb, mrb_value exc, ngx_cycle_t *cycle)
 {
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
-    ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "mrb_run failed. error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
+  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
+  if (mrb_type(s) == MRB_TT_STRING) {
+    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(s), RSTRING_PTR(s));
   }
+#if (NGX_DEBUG)
+  ngx_mrb_log_backtrace(mrb, exc, cycle->log); 
+#endif
+}
+
+void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
+{
+  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
+  if (mrb_type(s) == MRB_TT_STRING) {
+    ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "mrb_run failed. error: %*s", RSTRING_LEN(s), RSTRING_PTR(s));
+  }
+#if (NGX_DEBUG)
+  ngx_mrb_log_backtrace(mrb, exc, cf->log); 
+#endif
 }
 
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)

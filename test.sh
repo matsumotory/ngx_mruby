@@ -105,6 +105,17 @@ fi
 cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/html/set_ssl_cert_and_key.rb > ${NGINX_INSTALL_DIR}/html/set_ssl_cert_and_key.rb
 
+if [ -e ${NGINX_INSTALL_DIR}/logs/error.log ]; then
+    touch ${NGINX_INSTALL_DIR}/logs/error.log.bak 
+    cat ${NGINX_INSTALL_DIR}/logs/error.log >> ${NGINX_INSTALL_DIR}/logs/error.log.bak
+    cp /dev/null ${NGINX_INSTALL_DIR}/logs/error.log
+fi
+if [ -e ${NGINX_INSTALL_DIR}/logs/access.log ]; then
+    touch ${NGINX_INSTALL_DIR}/logs/access.log.bak 
+    cat ${NGINX_INSTALL_DIR}/logs/access.log >> ${NGINX_INSTALL_DIR}/logs/access.log.bak
+    cp /dev/null ${NGINX_INSTALL_DIR}/logs/access.log
+fi
+
 echo "====================================="
 echo ""
 echo "ngx_mruby starting and logging"
