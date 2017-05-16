@@ -558,6 +558,16 @@ t.assert('ngx_mruby - BUG: request_body issue 268', 'location /issue-268') do
   t.assert_equal %({\"hello\": \"ngx_mruby\"}\n), res
 end
 
+t.assert('ngx_mruby - backtrace log', 'location /backtrace') do
+  res = HttpRequest.new.get base + '/backtrace'
+  t.assert_equal 500, res["code"]
+
+  fname = File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log')
+  found = 0
+  File.open(fname) {|f| f.each_line {|line| found += 1 if line.index('build/nginx/html/backtrace.rb:') } }
+  t.assert_equal 4, found
+end
+
 #
 # nginx stream test verison 1.9.6 later
 #
