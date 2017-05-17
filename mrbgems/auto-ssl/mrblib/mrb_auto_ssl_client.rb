@@ -2,11 +2,12 @@ class Nginx
   class SSL
     class ACME
       class Client
-        def initialize(end_point, domain, allow_domains=[], redis)
+        def initialize(end_point, domain, redis, async=false, allow_domains=[])
           @end_point = end_point
           @domain = domain
-          @allow_domains = allow_domains
           @redis = redis
+          @async = async
+          @allow_domains = allow_domains
         end
 
         def allow_domain?
@@ -54,12 +55,15 @@ class Nginx
 
             @redis.set("#{@domain}_token_value", challenge.file_content.to_s)
             @redis.set("#{@domain}_authorization_uri", authorization.uri)
-            return nil
+            if @async
+              Nginx::SSL.log ::Nginx::LOG_INFO, "#{@domain} will do an asynchronous challenge"
+              return nil
+            end
           end
 
           if uri = @redis.get("#{@domain}_authorization_uri")
             challenge = client.fetch_authorization(uri).http01
-            Nginx::SSL.log ::Nginx::LOG_ERR,  challenge.authorization.verify_status
+            Nginx::SSL.log ::Nginx::LOG_INFO,  "#{@domain} acme charange status: #{challenge.authorization.verify_status}"
             if challenge.authorization.verify_status == "valid"
               csr = Acme::Client::CertificateRequest.new([@domain])
               begin

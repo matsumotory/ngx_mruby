@@ -46,7 +46,13 @@ http {
           ssl = Nginx::SSL.new
           domain = ssl.servername
           redis = Userdata.new.redis
-          acme = Nginx::SSL::ACME::Client.new "http://127.0.0.1:4000/", domain, Userdata.new.allow_domains, redis
+          acme = Nginx::SSL::ACME::Client.new(
+            "http://127.0.0.1:4000/",
+            domain,
+            redis,
+            true,
+            Userdata.new.allow_domains,
+          )
 
           raise "not allowed servername" unless acme.allow_domain?
 
