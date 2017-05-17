@@ -62,7 +62,7 @@ http {
 
           ssl = Nginx::SSL.new
           domain = ssl.servername
-          acme = Nginx::SSL::ACME.new domain, Userdata.new.dehydrated_opts, Userdata.new.allow_domains
+          acme = Nginx::SSL::ACME::Dehydrated.new domain, Userdata.new.dehydrated_opts, Userdata.new.allow_domains
 
           raise "not allowed servername" unless acme.allow_domain?
 
@@ -90,7 +90,7 @@ http {
               Nginx.return -> do
                 r = Nginx::Request.new
                 redis = Userdata.new.redis
-                access_token = Nginx::SSL::ACME.token_filename_from_url(r)
+                access_token = Nginx::SSL::ACME::Dehydrated.token_filename_from_url(r)
                 stored_token = redis["#{r.hostname}_token_filename"]
 
                 if access_token != stored_token
@@ -121,8 +121,8 @@ http {
               Nginx.return -> do
                 r = Nginx::Request.new
 
-                if Userdata.new.auto_ssl_secret == Nginx::SSL::ACME.secret_token(r)
-                  cert_info = Nginx::SSL::ACME.deploy_cert_information r
+                if Userdata.new.auto_ssl_secret == Nginx::SSL::ACME::Dehydrated.secret_token(r)
+                  cert_info = Nginx::SSL::ACME::Dehydrated.deploy_cert_information r
                   redis = Userdata.new.redis
                   redis.mset "#{cert_info[:domain]}.key", cert_info[:key], "#{cert_info[:domain]}.crt", cert_info[:crt]
                   Nginx.rputs "deploy cert ok"
@@ -141,11 +141,11 @@ http {
               Nginx.return -> do
                 r = Nginx::Request.new
 
-                if Userdata.new.auto_ssl_secret == Nginx::SSL::ACME.secret_token(r)
-                  domain = Nginx::SSL::ACME.challenged_domain r
+                if Userdata.new.auto_ssl_secret == Nginx::SSL::ACME::Dehydrated.secret_token(r)
+                  domain = Nginx::SSL::ACME::Dehydrated.challenged_domain r
                   redis = Userdata.new.redis
-                  redis["#{domain}_token_filename"] = Nginx::SSL::ACME.challenged_token_filename r
-                  redis["#{domain}_token_value"] = Nginx::SSL::ACME.challenged_token_value r
+                  redis["#{domain}_token_filename"] = Nginx::SSL::ACME::Dehydrated.challenged_token_filename r
+                  redis["#{domain}_token_value"] = Nginx::SSL::ACME::Dehydrated.challenged_token_value r
                   Nginx.rputs "depoy challenge ok"
                   return Nginx::HTTP_OK
                 end
