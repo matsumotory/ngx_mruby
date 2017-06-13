@@ -199,11 +199,13 @@ mrb_singleton_class_clone(mrb_state *mrb, mrb_value obj)
     /* copy singleton(unnamed) class */
     struct RClass *clone = (struct RClass*)mrb_obj_alloc(mrb, klass->tt, mrb->class_class);
 
-    if ((mrb_type(obj) == MRB_TT_CLASS) || (mrb_type(obj) == MRB_TT_SCLASS)) {
-      clone->c = clone;
-    }
-    else {
+    switch (mrb_type(obj)) {
+    case MRB_TT_CLASS:
+    case MRB_TT_SCLASS:
+      break;
+    default:
       clone->c = mrb_singleton_class_clone(mrb, mrb_obj_value(klass));
+      break;
     }
     clone->super = klass->super;
     if (klass->iv) {
@@ -872,7 +874,6 @@ mrb_f_raise(mrb_state *mrb, mrb_value self)
     /* fall through */
   default:
     exc = mrb_make_exception(mrb, argc, a);
-    mrb_obj_iv_set(mrb, mrb_obj_ptr(exc), mrb_intern_lit(mrb, "lastpc"), mrb_cptr_value(mrb, mrb->c->ci->pc));
     mrb_exc_raise(mrb, exc);
     break;
   }

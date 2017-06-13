@@ -431,6 +431,7 @@ mrb_define_method_raw(mrb_state *mrb, struct RClass *c, mrb_sym mid, struct RPro
   k = kh_put(mt, mrb, h, mid);
   kh_value(h, k) = p;
   if (p) {
+    p->c = NULL;
     mrb_field_write_barrier(mrb, (struct RBasic *)c, (struct RBasic *)p);
   }
 }
@@ -800,7 +801,7 @@ mrb_get_args(mrb_state *mrb, const char *format, ...)
               {
                 mrb_float f = mrb_float(ARGV[arg_i]);
 
-                if (!FIXABLE(f)) {
+                if (!FIXABLE_FLOAT(f)) {
                   mrb_raise(mrb, E_RANGE_ERROR, "float too big for int");
                 }
                 *p = (mrb_int)f;
@@ -992,7 +993,7 @@ include_module_at(mrb_state *mrb, struct RClass *c, struct RClass *ins_pos, stru
       if (p->tt == MRB_TT_ICLASS) {
         if (p->mt == m->mt) {
           if (!superclass_seen) {
-            ins_pos = p; // move insert point
+            ins_pos = p; /* move insert point */
           }
           goto skip;
         }
@@ -1159,7 +1160,7 @@ mrb_mod_initialize(mrb_state *mrb, mrb_value mod)
 {
   mrb_value b;
   struct RClass *m = mrb_class_ptr(mod);
-  boot_initmod(mrb, m); // bootstrap a newly initialized module
+  boot_initmod(mrb, m); /* bootstrap a newly initialized module */
   mrb_get_args(mrb, "|&", &b);
   if (!mrb_nil_p(b)) {
     mrb_yield_with_class(mrb, b, 1, &mod, mod, m);
