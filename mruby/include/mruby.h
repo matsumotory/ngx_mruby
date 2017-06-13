@@ -113,7 +113,7 @@ typedef struct {
   mrb_value *stackent;
   int nregs;
   int ridx;
-  int eidx;
+  int epos;
   struct REnv *env;
   mrb_code *pc;                 /* return address */
   mrb_code *err;                /* error position */
@@ -143,7 +143,7 @@ struct mrb_context {
   mrb_code **rescue;                      /* exception handler stack */
   int rsize;
   struct RProc **ensure;                  /* ensure handler stack */
-  int esize;
+  int esize, eidx;
 
   enum mrb_fiber_state status;
   mrb_bool vmexec;
@@ -151,14 +151,6 @@ struct mrb_context {
 };
 
 struct mrb_jmpbuf;
-
-typedef struct {
-  const char *filename;
-  int lineno;
-  struct RClass *klass;
-  char sep;
-  mrb_sym method_id;
-} mrb_backtrace_entry;
 
 typedef void (*mrb_atexit_func)(struct mrb_state*);
 
@@ -174,15 +166,9 @@ typedef struct mrb_state {
 
   struct mrb_context *c;
   struct mrb_context *root_c;
+  struct iv_tbl *globals;                 /* global variable table */
 
   struct RObject *exc;                    /* exception */
-  struct {
-    struct RObject *exc;
-    int n;
-    int n_allocated;
-    mrb_backtrace_entry *entries;
-  } backtrace;
-  struct iv_tbl *globals;                 /* global variable table */
 
   struct RObject *top_self;
   struct RClass *object_class;            /* Object class */
