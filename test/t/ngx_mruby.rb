@@ -23,9 +23,26 @@ def base_ssl(port)
   "https://localhost:#{port}"
 end
 
+class NginxFeatures
+  attr_reader :version_string
+  def initialize(nginx_version)
+    @version_string = nginx_version
+    @major, @minor, @patch = @version_string.split(".").map {|v| v.to_i}
+    p "version_string=#{@version_string}, major=#{@major}, minor=#{@minor}, patch=#{@patch}"
+  end
+  def is_upstream_supported?
+    # Nginx::Upstream only works with nginx 1.7 or later. See ngx_http_mruby_module.h
+    @minor > 6
+  end
+  def is_stream_supported?
+    # 1.9.6 or later
+    @minor >= 10 || (@minor == 9 && @patch >= 6)
+  end
+end
+
 t = SimpleTest.new "ngx_mruby test"
 
-nginx_version = HttpRequest.new.get(base + '/nginx-version')["body"]
+nginx_features = NginxFeatures.new(HttpRequest.new.get(base + '/nginx-version')["body"])
 
 t.assert('ngx_mruby', 'location /mruby') do
   res = HttpRequest.new.get base + '/mruby'
@@ -252,9 +269,7 @@ t.assert('ngx_mruby - bug; mruby_post_read_handler not running in 1.18.3+ for fi
   t.assert_equal "hello2", res["body"]
 end
 
-p nginx_version
-
-if nginx_version.split(".")[1].to_i > 6
+if nginx_features.is_upstream_supported?
   t.assert('ngx_mruby - upstream keepalive', 'location /upstream-keepalive') do
     res = HttpRequest.new.get base + '/upstream-keepalive'
     t.assert_equal "true", res["body"]
@@ -332,7 +347,7 @@ t.assert('ngx_mruby - rack base', 'location /rack_base_env') do
   t.assert_false body["rack.run_once"]
   t.assert_false body["rack.hijack?"]
   t.assert_equal "NGINX", body["server.name"]
-  t.assert_equal nginx_version, body["server.version"]
+  t.assert_equal nginx_features.version_string, body["server.version"]
   t.assert_equal "*/*", body["HTTP_ACCEPT"]
   t.assert_equal "close", body["HTTP_CONNECTION"]
   t.assert_equal "ngx.example.com:58080", body["HTTP_HOST"]
@@ -568,10 +583,7 @@ t.assert('ngx_mruby - backtrace log', 'location /backtrace') do
   t.assert_equal 4, found
 end
 
-#
-# nginx stream test verison 1.9.6 later
-#
-if nginx_version.split(".")[1].to_i >= 10 || (nginx_version.split(".")[1].to_i == 9 && nginx_version.split(".")[2].to_i >= 6)
+if nginx_features.is_stream_supported?
 
   base1 = "http://127.0.0.1:12345"
   base2 = "http://127.0.0.1:12346"

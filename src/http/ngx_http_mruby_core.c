@@ -116,7 +116,7 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
     if (chain == NULL) {
       r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
       ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s: status code is 200, but response body is empty."
-                                                        "Return NGX_HTTP_INTERNAL_SERVER_ERROR",
+                                                        " return NGX_HTTP_INTERNAL_SERVER_ERROR",
                     MODULE_NAME, __func__);
     }
   }
