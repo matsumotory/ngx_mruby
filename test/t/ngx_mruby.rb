@@ -588,6 +588,8 @@ t.assert('ngx_mruby - add_listener test', 'location /add_listener') do
   t.assert_equal 'add_listener test ok', res["body"]
   res = HttpRequest.new.get base(58102) + '/add_listener'
   t.assert_equal 'add_listener test ok', res["body"]
+  res = `curl -k #{base_ssl(58103) + '/add_listener'}`
+  t.assert_equal 'add_listener test ok', res["body"]
 end
 
 if nginx_features.is_stream_supported?
