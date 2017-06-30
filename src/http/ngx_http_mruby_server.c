@@ -85,7 +85,7 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 #else
     mrb_raise(mrb, E_RUNTIME_ERROR, "the ssl symbol requires ngx_http_ssl_module");
 #endif
-
+  }
     if (mrb_bool(mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "http2")))) {
 #if (NGX_HTTP_V2)
       lsopt.http2 = 1;
