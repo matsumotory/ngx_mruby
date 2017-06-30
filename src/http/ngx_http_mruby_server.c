@@ -79,6 +79,11 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 #if (NGX_HAVE_INET6)
   lsopt.ipv6only = 1;
 #endif
+#if (NGX_HTTP_SSL)
+  if (mrb_bool(mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "ssl")))) {
+    lsopt.ssl = 1;
+  }
+#endif
 
   (void)ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
   if (ngx_http_add_listen(cf, cscf, &lsopt) == NGX_OK) {
