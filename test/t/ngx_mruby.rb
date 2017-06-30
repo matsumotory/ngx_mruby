@@ -583,6 +583,13 @@ t.assert('ngx_mruby - backtrace log', 'location /backtrace') do
   t.assert_equal 4, found
 end
 
+t.assert('ngx_mruby - add_listener test', 'location /add_listener') do
+  res = HttpRequest.new.get base(58101) + '/add_listener'
+  t.assert_equal 'add_listener test ok', res["body"].size
+  res = HttpRequest.new.get base(58102) + '/add_listener'
+  t.assert_equal 'add_listener test ok', res["body"].size
+end
+
 if nginx_features.is_stream_supported?
 
   base1 = "http://127.0.0.1:12345"
