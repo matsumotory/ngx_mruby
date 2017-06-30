@@ -85,24 +85,31 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 #else
     mrb_raise(mrb, E_RUNTIME_ERROR, "the ssl symbol requires ngx_http_ssl_module");
 #endif
+
+    if (mrb_bool(mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "http2")))) {
+#if (NGX_HTTP_V2)
+      lsopt.http2 = 1;
+#else
+      mrb_raise(mrb, E_RUNTIME_ERROR, "the http2 symbol requires ngx_http_http2_module");
+#endif
+    }
+
+    (void)ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
+    if (ngx_http_add_listen(cf, cscf, &lsopt) == NGX_OK) {
+      ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "add listener %V via mruby", &addr);
+      return mrb_true_value();
+    }
+
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_add_listener ngx_http_add_listen failed");
   }
 
-  (void)ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
-  if (ngx_http_add_listen(cf, cscf, &lsopt) == NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "add listener %V via mruby", &addr);
-    return mrb_true_value();
+  void ngx_mrb_server_class_init(mrb_state * mrb, struct RClass * class)
+  {
+    struct RClass *class_server;
+
+    class_server = mrb_define_class_under(mrb, class, "Server", mrb->object_class);
+    mrb_define_method(mrb, class_server, "document_root", ngx_mrb_get_server_var_docroot, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_server, "path", ngx_mrb_get_server_var_realpath_root, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_server, "realpath_root", ngx_mrb_get_server_var_realpath_root, MRB_ARGS_NONE());
+    mrb_define_method(mrb, class_server, "add_listener", ngx_mrb_add_listener, MRB_ARGS_REQ(1));
   }
-
-  mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_add_listener ngx_http_add_listen failed");
-}
-
-void ngx_mrb_server_class_init(mrb_state *mrb, struct RClass *class)
-{
-  struct RClass *class_server;
-
-  class_server = mrb_define_class_under(mrb, class, "Server", mrb->object_class);
-  mrb_define_method(mrb, class_server, "document_root", ngx_mrb_get_server_var_docroot, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_server, "path", ngx_mrb_get_server_var_realpath_root, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_server, "realpath_root", ngx_mrb_get_server_var_realpath_root, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_server, "add_listener", ngx_mrb_add_listener, MRB_ARGS_REQ(1));
-}
