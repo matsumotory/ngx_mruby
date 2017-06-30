@@ -104,7 +104,7 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_add_listener ngx_http_add_listen failed");
 }
 
-void ngx_mrb_server_class_init(mrb_state * mrb, struct RClass * class)
+void ngx_mrb_server_class_init(mrb_state *mrb, struct RClass *class)
 {
   struct RClass *class_server;
 
