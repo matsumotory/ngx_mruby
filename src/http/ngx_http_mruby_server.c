@@ -87,7 +87,7 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 
   (void)ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
   if (ngx_http_add_listen(cf, cscf, &lsopt) == NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "add listener %V via mruby", &addr);
+    ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "add listener %V via mruby", &addr);
     return mrb_true_value();
   }
 
