@@ -4,6 +4,7 @@
 #include <mruby/irep.h>
 #include <mruby/proc.h>
 #include <mruby/opcode.h>
+#include <mruby/error.h>
 
 mrb_value mrb_exec_irep(mrb_state *mrb, mrb_value self, struct RProc *p);
 mrb_value mrb_obj_instance_eval(mrb_state *mrb, mrb_value self);
@@ -30,7 +31,7 @@ get_closure_irep(mrb_state *mrb, int level)
 
   if (!e) return NULL;
   if (!MRB_ENV_STACK_SHARED_P(e)) return NULL;
-
+  c = e->cxt.c;
   proc = c->cibase[e->cioff].proc;
 
   if (!proc || MRB_PROC_CFUNC_P(proc)) {
@@ -175,12 +176,14 @@ create_proc_from_string(mrb_state *mrb, char *s, int len, mrb_value binding, con
 
   if (0 < p->nerr) {
     /* parse error */
-    char buf[256];
-    int n;
-    n = snprintf(buf, sizeof(buf), "line %d: %s\n", p->error_buffer[0].lineno, p->error_buffer[0].message);
+    mrb_value str;
+
+    str = mrb_format(mrb, "line %S: %S",
+                     mrb_fixnum_value(p->error_buffer[0].lineno),
+                     mrb_str_new_cstr(mrb, p->error_buffer[0].message));
     mrb_parser_free(p);
     mrbc_context_free(mrb, cxt);
-    mrb_exc_raise(mrb, mrb_exc_new(mrb, E_SYNTAX_ERROR, buf, n));
+    mrb_exc_raise(mrb, mrb_exc_new_str(mrb, E_SYNTAX_ERROR, str));
   }
 
   proc = mrb_generate_code(mrb, p);
@@ -196,7 +199,7 @@ create_proc_from_string(mrb_state *mrb, char *s, int len, mrb_value binding, con
   e = c->ci[-1].proc->env;
   if (!e) e = c->ci[-1].env;
   e = (struct REnv*)mrb_obj_alloc(mrb, MRB_TT_ENV, (struct RClass*)e);
-  e->mid = c->ci[-1].mid;
+  e->cxt.c = c;
   e->cioff = c->ci - c->cibase - 1;
   e->stack = c->ci->stackent;
   MRB_SET_ENV_STACK_LEN(e, c->ci[-1].proc->body.irep->nlocals);

@@ -3,13 +3,17 @@
 ##	  MATSUMOTO, Ryosuke
 ##
 
+#
+# build configuration
+#
 NUM_THREADS?= 1
 MAKEFLAGS=-j $(NUM_THREADS)
 RAKE=rake -j $(NUM_THREADS)
 
 NGX_MRUBY_ROOT=$(shell pwd)
 NGX_SRC_ROOT=@NGX_SRC_ROOT@
-NGX_CONFIG_OPT=@NGX_CONFIG_OPT@
+BUILD_DIR=@BUILD_DIR@
+
 ifeq ($(wildcard $(NGX_SRC_ROOT)/auto/configure),)
   NGX_CONFIGURE = ./configure
 else
@@ -20,93 +24,119 @@ endif
 MRUBY_ROOT=@MRUBY_ROOT@
 NDK_ROOT=@NDK_ROOT@
 
-#   suport mrbgems
+# libmruby.flags.mak contains MRUBY_* variables. It is created while building mruby.
 MRUBY_MAK_FILE := $(MRUBY_ROOT)/build/host/lib/libmruby.flags.mak
-ifeq ($(wildcard $(MRUBY_MAK_FILE)),)
-  MRUBY_CFLAGS =
-  MRUBY_LDFLAGS =
-  MRUBY_LIBS =
-  MRUBY_LDFLAGS_BEFORE_LIBS =
-else
-  include $(MRUBY_MAK_FILE)
+ifneq ($(wildcard $(MRUBY_MAK_FILE)),) 
+include $(MRUBY_MAK_FILE)
 endif
+MRUBY_LIBDIR=@MRUBY_LIBDIR@ # comes from configure
+MRUBY_BUILD_DEPEND_TARGETS=@MRUBY_BUILD_DEPEND_TARGETS@
+NGX_MRUBY_CFLAGS+=@NGX_MRUBY_CFLAGS@ # Use it in build_config.rb to build mruby
 
 NGX_OPENSSL_SRC=@NGX_OPENSSL_SRC@
 NGX_OPENSSL_OPT=@NGX_OPENSSL_OPT@
-ifdef NGX_OPENSSL_SRC
-  NGX_CONFIG_OPT := --with-openssl="$(NGX_OPENSSL_SRC)" $(NGX_CONFIG_OPT)
-endif
-
-ifdef NGX_OPENSSL_OPT
-  NGX_CONFIG_OPT := --with-openssl-opt="$(NGX_OPENSSL_OPT)" $(NGX_CONFIG_OPT)
-endif
+NGX_OPENSSL_INSTALL_DIR=@NGX_OPENSSL_INSTALL_DIR@
+NGX_CONFIG_OPT=@NGX_CONFIG_OPT@
+NGX_CFLAGS=@NGX_CFLAGS@
+NGX_LDFLAGS=@NGX_LDFLAGS@
+NGX_LIBS=@NGX_LIBS@
+NGX_CONFIG_ADD_MODULE_OPT_NAME=@NGX_CONFIG_ADD_MODULE_OPT_NAME@
+NGX_MAKEFILE_DEPENDS_TARGET=@NGX_MAKEFILE_DEPENDS_TARGET@
+BUILD_DYNAMIC_MODULE=@BUILD_DYNAMIC_MODULE@ # DON'T USE THIS. ONLY FOR COMPAT TARGETS
 
 #   flags
-CFLAGS = $(MRUBY_CFLAGS) -I/usr/local/include
-LDFLAGS = $(MRUBY_LDFLAGS) -L/usr/local/lib
-LIBS = $(MRUBY_LIBS) $(MRUBY_LDFLAGS_BEFORE_LIBS) -L$(MRUBY_LIBDIR) -lmruby
+CFLAGS = $(NGX_CFLAGS) $(MRUBY_CFLAGS) -I/usr/local/include
+LDFLAGS = $(NGX_LDFLAGS) $(MRUBY_LDFLAGS) -L/usr/local/lib
+LIBS = $(NGX_LIBS) $(MRUBY_LIBS) $(MRUBY_LDFLAGS_BEFORE_LIBS) -L$(MRUBY_LIBDIR) -lmruby
 
-build_mruby_targets=
-ifdef NGX_OPENSSL_SRC
-ifdef BUILD_DYNAMIC_MODULE
-  LDFLAGS := -L$(NGX_OPENSSL_SRC)/.openssl/lib -Wl,-rpath=$(NGX_OPENSSL_SRC)/.openssl/lib $(LDFLAGS)
-else
-  LIBS := $(NGX_OPENSSL_SRC)/.openssl/lib/libssl.a $(NGX_OPENSSL_SRC)/.openssl/lib/libcrypto.a $(LIBS)
-# LDFLAGS := $(LDFLAGS) -Wl,-Bstatic -L$(NGX_OPENSSL_SRC)/.openssl/lib
-endif
-  CFLAGS := -I$(NGX_OPENSSL_SRC)/.openssl/include $(CFLAGS)
-  build_mruby_targets := openssl
-endif
+#
+# targets
+#
+all: build_ngx_mruby
 
-#   the default target
-all: ngx_mruby
-
-#   install
 install:
 	cd $(NGX_SRC_ROOT) && $(MAKE) install
 
-#   cleanup
 clean:
 	-rm -rf mrbgems_config mrbgems_config_dynamic
 
-#   clobber
 clobber: clean_mruby clean
-	-rm -rf tmp autom4te.cache config config.status config.log build build_dynamic
+	-rm -rf tmp autom4te.cache config config.status config.log $(BUILD_DIR) .openssl_build_done .openssl_configure_done
 
-#   build mruby
-build_mruby: $(build_mruby_targets)
-	cd $(MRUBY_ROOT) && $(RAKE) MRUBY_CONFIG=$(NGX_MRUBY_ROOT)/build_config.rb
+#
+# mruby
+#
+build_mruby: $(MRUBY_BUILD_DEPEND_TARGETS)
+	cd $(MRUBY_ROOT) && $(RAKE) MRUBY_CONFIG=$(NGX_MRUBY_ROOT)/build_config.rb NGX_MRUBY_CFLAGS="$(NGX_MRUBY_CFLAGS)"
 
-#   clean mruby
 clean_mruby:
 	cd $(MRUBY_ROOT) && $(RAKE) deep_clean && rm -rf build
 
+$(MRUBY_MAK_FILE): build_mruby
 
+#
 #   nginx
-make_ngx_mruby:
+#
+build_ngx_mruby: build_mruby $(NGX_SRC_ROOT)/objs/Makefile
 	cd $(NGX_SRC_ROOT) && $(MAKE)
 
-ngx_mruby: generate_gems_config
-	cd $(NGX_SRC_ROOT) && $(NGX_CONFIGURE) --add-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
+$(NGX_SRC_ROOT)/objs/Makefile: $(NGX_MAKEFILE_DEPENDS_TARGET)
+	cd $(NGX_SRC_ROOT) \
+	&& $(NGX_CONFIGURE) $(NGX_CONFIG_ADD_MODULE_OPT_NAME)=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT)
 
-ngx_mruby_dynamic: generate_gems_config_dynamic
-	cd $(NGX_SRC_ROOT) && $(NGX_CONFIGURE) --add-dynamic-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
+# libmruby.flags.mak is generated or updated, so invoke make command to reevaluate MRUBY_* variables in it.
+mrbgems_config: $(MRUBY_MAK_FILE)
+	$(MAKE) generate_gems_config
 
-#   create mrbgems config
+mrbgems_config_dynamic: $(MRUBY_MAK_FILE)
+	$(MAKE) generate_gems_config_dynamic
+
 generate_gems_config:
 	@echo CORE_LIBS=\"\$$CORE_LIBS $(LDFLAGS) $(LIBS)\" > ./mrbgems_config
 	@echo CORE_INCS=\"\$$CORE_INCS $(CFLAGS)\" >> ./mrbgems_config
+	@echo LINK_DEPS=\"\$$LINK_DEPS $(MRUBY_LIBMRUBY_PATH)\" >> ./mrbgems_config
 
 generate_gems_config_dynamic:
 	@echo ngx_module_libs=\"\$(LDFLAGS) \$(LIBS)\" > ./mrbgems_config_dynamic
 	@echo CORE_LIBS=\"\$$CORE_LIBS \$(LDFLAGS) \$(LIBS)\" >> ./mrbgems_config_dynamic
 
-openssl:
-	cd $(NGX_OPENSSL_SRC) \
+# for backward compatibility
+make_ngx_mruby:
+	cd $(NGX_SRC_ROOT) && $(MAKE)
+	@echo "Warning: make_ngx_mruby target will be removed. Use build_ngx_mruby instead."
+
+ngx_mruby: 
+ifdef BUILD_DYNAMIC_MODULE
+	@echo "Error: You must rerun configure without --enable-dynamic" && false
+else
+	$(MAKE) build_ngx_mruby
+	@echo "Warning: ngx_mruby target will be removed. Use build_ngx_mruby without BUILD_DYNAMIC_MODULE instead."
+endif
+
+ngx_mruby_dynamic:
+ifdef BUILD_DYNAMIC_MODULE
+	$(MAKE) build_ngx_mruby
+	@echo "Warning: ngx_mruby_dynamic target will be removed. Use build_ngx_mruby with BUILD_DYNAMIC_MODULE instead."
+else
+	@echo "Error: You must rerun configure with --enable-dynamic" && false
+endif
+
+#
+# openssl
+#
+openssl: .openssl_build_done
+
+.openssl_build_done: .openssl_configure_done
+	(cd $(NGX_OPENSSL_SRC) \
+	&& $(MAKE) build_all install_sw) \
+	&& cp /dev/null .openssl_build_done
+
+.openssl_configure_done:
+	(cd $(NGX_OPENSSL_SRC) \
 	&& if [ -f Makefile ]; then $(MAKE) clean; fi \
-	&& ./config --prefix=$(NGX_OPENSSL_SRC)/.openssl --shared zlib -fPIC enable-tlsext $(NGX_OPENSSL_OPT)  \
-	&& $(MAKE) \
-	&& $(MAKE) install_sw LIBDIR=lib
+	&& ./config --prefix=$(NGX_OPENSSL_INSTALL_DIR) --shared zlib -fPIC enable-tlsext $(NGX_OPENSSL_OPT) \
+	&& $(MAKE) depend) \
+	&& cp /dev/null .openssl_configure_done
 
 format:
 	./apply-clang-format

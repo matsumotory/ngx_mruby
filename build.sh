@@ -27,9 +27,11 @@ fi
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
     BUILD_DIR='build_dynamic'
     NGINX_INSTALL_DIR=`pwd`'/build_dynamic/nginx'
+    CONFIG_OPT="--enable-dynamic-module --with-build-dir=$BUILD_DIR"
 else
     BUILD_DIR='build'
     NGINX_INSTALL_DIR=`pwd`'/build/nginx'
+    CONFIG_OPT="--with-build-dir=$BUILD_DIR"
 fi
 
 if [ "$NGINX_CONFIG_OPT_ENV" != "" ]; then
@@ -52,14 +54,6 @@ fi
 echo "NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT"
 echo "NUM_THREADS=$NUM_THREADS"
 
-cd mruby
-if [ -d "./${BUILD_DIR}" ]; then
-    echo "mruby Cleaning ..."
-    ./minirake clean
-    echo "mruby Cleaning ... Done"
-fi
-cd ..
-
 if [ $NGINX_SRC_ENV ]; then
     NGINX_SRC=$NGINX_SRC_ENV
 else
@@ -80,21 +74,19 @@ else
     cd ..
 fi
 
+# FIXME: not sure if we really need this. even if we do, it should be moved to mruby/Rakefile
+if [ -d "./mruby/${BUILD_DIR}" ]; then
+    echo "mruby Cleaning ..."
+    (cd mruby && ./minirake clean)
+    echo "mruby Cleaning ... Done"
+fi
+
 echo "ngx_mruby configure ..."
-./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
+./configure ${CONFIG_OPT} --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
 echo "ngx_mruby configure ... Done"
 
-echo "mruby building ..."
-$MAKE build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-echo "mruby building ... Done"
-
-if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
-  echo "ngx_mruby building as dynamic module ..."
-  $MAKE ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-else
-  echo "ngx_mruby building ..."
-  $MAKE NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-fi
+echo "ngx_mruby building ..."
+$MAKE NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
 echo "ngx_mruby building ... Done"
 
 echo "build.sh ... successful"

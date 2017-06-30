@@ -1,0 +1,90 @@
+#
+# Example for FastCertificate PoC configuration
+#
+# use redis for ACME data management
+#
+
+worker_processes auto;
+events {
+    worker_connections 1024;
+}
+
+daemon off;
+user nginx;
+master_process on;
+error_log logs/error.log notice;
+
+http {
+    include mime.types;
+
+    mruby_init_worker_code '
+        Userdata.new.redis = Redis.new "127.0.0.1", 6379
+    ';
+
+    mruby_init_code '
+        Userdata.new.allow_domains = %w(
+                            autossl.matsumoto-r.jp
+                            udzura.matsumoto-r.jp
+                            pyama.matsumoto-r.jp
+                            linyows.matsumoto-r.jp
+                            harasou.matsumoto-r.jp
+                          )
+
+        Userdata.new.auto_ssl_port = 11111
+    ';
+
+    server {
+        listen 443 ssl;
+        server_name  _;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        ssl_certificate __NGXDOCROOT__/dummy.crt;
+        ssl_certificate_key __NGXDOCROOT__/dummy.key;
+
+        mruby_ssl_handshake_handler_code '
+
+          ssl = Nginx::SSL.new
+          domain = ssl.servername
+          redis = Userdata.new.redis
+          acme = Nginx::SSL::ACME::Client.new(
+            "http://127.0.0.1:4000/",
+            domain,
+            redis,
+            true,
+            Userdata.new.allow_domains,
+          )
+
+          raise "not allowed servername" unless acme.allow_domain?
+
+          if redis["#{domain}.crt"].nil? or redis["#{domain}.key"].nil?
+            acme.auto_cert_deploy
+          end
+
+          ssl.certificate_data = redis["#{domain}.crt"]
+          ssl.certificate_key_data = redis["#{domain}.key"]
+        ';
+
+        location / {
+            mruby_content_handler_code 'Nginx.rputs "hello #{Nginx::Request.new.hostname} world!"';
+        }
+    }
+
+    server {
+        listen 5002;
+        server_name _;
+
+        location ^~ /.well-known/acme-challenge/ {
+            mruby_content_handler_code '
+              Nginx.return -> do
+                r = Nginx::Request.new
+                redis = Userdata.new.redis
+                Nginx.rputs redis.get("#{r.hostname}_token_value").to_s
+              end.call
+            ';
+        }
+
+        location = /.well-known/acme-challenge/ {
+           return 404;
+        }
+    }
+}

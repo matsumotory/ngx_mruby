@@ -134,6 +134,8 @@ mrb_str_swapcase(mrb_state *mrb, mrb_value self)
   return str;
 }
 
+static mrb_value mrb_fixnum_chr(mrb_state *mrb, mrb_value num);
+
 /*
  *  call-seq:
  *     str << integer       -> str
@@ -153,7 +155,12 @@ static mrb_value
 mrb_str_concat2(mrb_state *mrb, mrb_value self)
 {
   mrb_value str;
-  mrb_get_args(mrb, "S", &str);
+
+  mrb_get_args(mrb, "o", &str);
+  if (mrb_fixnum_p(str))
+    str = mrb_fixnum_chr(mrb, str);
+  else
+    str = mrb_string_type(mrb, str);
   mrb_str_concat(mrb, self, str);
   return self;
 }
@@ -367,7 +374,7 @@ mrb_str_succ_bang(mrb_state *mrb, mrb_value self)
   unsigned char *p, *e, *b, *t;
   const char *prepend;
   struct RString *s = mrb_str_ptr(self);
-  size_t l;
+  mrb_int l;
 
   if (RSTRING_LEN(self) == 0)
     return self;

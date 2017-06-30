@@ -2,6 +2,15 @@
 # ngx_mruby test
 #
 
+# Temporary solution for https://github.com/iij/mruby-io/issues/75
+begin
+  `/bin/true`
+rescue NotImplementedError => e
+  module Kernel
+    def `(c); IO.popen(c) { |io| io.read }; end
+  end
+end
+
 def http_host(port = 58080)
   "127.0.0.1:#{port}"
 end
@@ -14,9 +23,26 @@ def base_ssl(port)
   "https://localhost:#{port}"
 end
 
+class NginxFeatures
+  attr_reader :version_string
+  def initialize(nginx_version)
+    @version_string = nginx_version
+    @major, @minor, @patch = @version_string.split(".").map {|v| v.to_i}
+    p "version_string=#{@version_string}, major=#{@major}, minor=#{@minor}, patch=#{@patch}"
+  end
+  def is_upstream_supported?
+    # Nginx::Upstream only works with nginx 1.7 or later. See ngx_http_mruby_module.h
+    @minor > 6
+  end
+  def is_stream_supported?
+    # 1.9.6 or later
+    @minor >= 10 || (@minor == 9 && @patch >= 6)
+  end
+end
+
 t = SimpleTest.new "ngx_mruby test"
 
-nginx_version = HttpRequest.new.get(base + '/nginx-version')["body"]
+nginx_features = NginxFeatures.new(HttpRequest.new.get(base + '/nginx-version')["body"])
 
 t.assert('ngx_mruby', 'location /mruby') do
   res = HttpRequest.new.get base + '/mruby'
@@ -243,9 +269,7 @@ t.assert('ngx_mruby - bug; mruby_post_read_handler not running in 1.18.3+ for fi
   t.assert_equal "hello2", res["body"]
 end
 
-p nginx_version
-
-if nginx_version.split(".")[1].to_i > 6
+if nginx_features.is_upstream_supported?
   t.assert('ngx_mruby - upstream keepalive', 'location /upstream-keepalive') do
     res = HttpRequest.new.get base + '/upstream-keepalive'
     t.assert_equal "true", res["body"]
@@ -323,7 +347,7 @@ t.assert('ngx_mruby - rack base', 'location /rack_base_env') do
   t.assert_false body["rack.run_once"]
   t.assert_false body["rack.hijack?"]
   t.assert_equal "NGINX", body["server.name"]
-  t.assert_equal nginx_version, body["server.version"]
+  t.assert_equal nginx_features.version_string, body["server.version"]
   t.assert_equal "*/*", body["HTTP_ACCEPT"]
   t.assert_equal "close", body["HTTP_CONNECTION"]
   t.assert_equal "ngx.example.com:58080", body["HTTP_HOST"]
@@ -446,10 +470,9 @@ t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
   t.assert_equal "", res
 end
 
-dir = ENV['BUILD_DYNAMIC_MODULE'] == 'TRUE' ? 'build_dynamic' : 'build'
-fname = File.expand_path("../../../#{dir}/nginx/html/set_ssl_cert_and_key.rb", __FILE__)
-
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file without caching') do
+  fname = File.join(ENV['NGINX_INSTALL_DIR'], 'html/set_ssl_cert_and_key.rb')
+
   res = `curl -k #{base_ssl(58085) + '/'}`
   t.assert_equal 'ssl test ok', res
 
@@ -469,6 +492,8 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file witho
 end
 
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file with caching') do
+  fname = File.join(ENV['NGINX_INSTALL_DIR'], 'html/set_ssl_cert_and_key.rb')
+
   res = `curl -k #{base_ssl(58086) + '/'}`
   t.assert_equal 'ssl test ok', res
 
@@ -487,10 +512,9 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file with 
   t.assert_equal "", `#{cmd_h}`.chomp
 end
 
-dir = ENV['BUILD_DYNAMIC_MODULE'] == 'TRUE' ? 'build_dynamic' : 'build'
 t.assert('ngx_mruby - Nginx::SSL.errlogger') do
   `openssl s_client -servername localhost -connect localhost:58087 < /dev/null 2>/dev/null`
-  error_log = File.read File.expand_path("../../../#{dir}/nginx/logs/error.log", __FILE__)
+  error_log = File.read File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log');
   t.assert_true error_log.include? 'Servername is localhost while SSL handshaking'
 end
 
@@ -549,10 +573,17 @@ t.assert('ngx_mruby - BUG: request_body issue 268', 'location /issue-268') do
   t.assert_equal %({\"hello\": \"ngx_mruby\"}\n), res
 end
 
-#
-# nginx stream test verison 1.9.6 later
-#
-if nginx_version.split(".")[1].to_i >= 10 || (nginx_version.split(".")[1].to_i == 9 && nginx_version.split(".")[2].to_i >= 6)
+t.assert('ngx_mruby - backtrace log', 'location /backtrace') do
+  res = HttpRequest.new.get base + '/backtrace'
+  t.assert_equal 500, res["code"]
+
+  fname = File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log')
+  found = 0
+  File.open(fname) {|f| f.each_line {|line| found += 1 if line.index('/nginx/html/backtrace.rb:') } }
+  t.assert_equal 4, found
+end
+
+if nginx_features.is_stream_supported?
 
   base1 = "http://127.0.0.1:12345"
   base2 = "http://127.0.0.1:12346"

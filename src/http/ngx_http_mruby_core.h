@@ -27,13 +27,13 @@ typedef struct ngx_http_mruby_ctx_t {
   u_char *body;
   u_char *last;
   size_t body_length;
-  ngx_str_t request_body_ctx;
   unsigned request_body_more : 1;
   unsigned read_request_body_done : 1;
   ngx_uint_t phase;
 } ngx_http_mruby_ctx_t;
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
+void ngx_mrb_raise_connection_error(mrb_state *mrb, mrb_value exc, ngx_connection_t *c);
 void ngx_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle);
 void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
 

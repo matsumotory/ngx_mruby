@@ -82,9 +82,9 @@ fiber_init(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_FIBER_ERROR, "tried to create Fiber from C defined method");
   }
 
-  f->cxt = (struct mrb_context*)mrb_malloc(mrb, sizeof(struct mrb_context));
-  *f->cxt = mrb_context_zero;
-  c = f->cxt;
+  c = (struct mrb_context*)mrb_malloc(mrb, sizeof(struct mrb_context));
+  *c = mrb_context_zero;
+  f->cxt = c;
 
   /* initialize VM stack */
   slen = FIBER_STACK_INIT_SIZE;
@@ -188,9 +188,13 @@ fiber_switch(mrb_state *mrb, mrb_value self, mrb_int len, const mrb_value *a, mr
   mrb->c->status = resume ? MRB_FIBER_RESUMED : MRB_FIBER_TRANSFERRED;
   c->prev = resume ? mrb->c : (c->prev ? c->prev : mrb->root_c);
   if (c->status == MRB_FIBER_CREATED) {
-    mrb_value *b = c->stack+1;
-    mrb_value *e = b + len;
+    mrb_value *b, *e;
 
+    if (len >= c->stend - c->stack) {
+      mrb_raise(mrb, E_FIBER_ERROR, "too many arguments to fiber");
+    }
+    b = c->stack+1;
+    e = b + len;
     while (b<e) {
       *b++ = *a++;
     }
@@ -326,6 +330,7 @@ mrb_fiber_yield(mrb_state *mrb, mrb_int len, const mrb_value *a)
     mrb_raise(mrb, E_FIBER_ERROR, "can't yield from root fiber");
   }
 
+  fiber_check_cfunc(mrb, c);
   c->prev->status = MRB_FIBER_RUNNING;
   c->status = MRB_FIBER_SUSPENDED;
   mrb->c = c->prev;

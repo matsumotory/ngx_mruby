@@ -27,14 +27,17 @@ fi
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
     BUILD_DIR='build_dynamic'
     NGINX_INSTALL_DIR=`pwd`'/build_dynamic/nginx'
+    CONFIG_OPT="--enable-dynamic-module --with-build-dir=$BUILD_DIR"
 else
     BUILD_DIR='build'
     NGINX_INSTALL_DIR=`pwd`'/build/nginx'
+    CONFIG_OPT="--with-build-dir=$BUILD_DIR"
 fi
+export NGINX_INSTALL_DIR # for test/t/ngx_mruby.rb
 
-if [ $NGINX_SRC_MINOR -eq 11 -a $NGINX_SRC_PATCH -ge 5 ]; then
+if [ $NGINX_SRC_MINOR -ge 11 -a $NGINX_SRC_PATCH -ge 5 ]; then
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT} --with-stream"
-elif [ $NGINX_SRC_MINOR -eq 11 -a $NGINX_SRC_PATCH -lt 5 ] || [ $NGINX_SRC_MINOR -eq 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
+elif [ $NGINX_SRC_MINOR -ge 11 -a $NGINX_SRC_PATCH -lt 5 ] || [ $NGINX_SRC_MINOR -eq 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT} --with-stream --without-stream_access_module"
 else
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT}"
@@ -75,24 +78,12 @@ if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
   cd ..
 
   echo "ngx_mruby configure ..."
-  ./configure --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
+  ./configure ${CONFIG_OPT} --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
   echo "ngx_mruby configure ... Done"
-
-  echo "mruby building ..."
-  $MAKE build_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-  echo "mruby building ... Done"
-
-  if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
-      echo "ngx_mruby building as dynamic module ..."
-      $MAKE ngx_mruby_dynamic NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-  else
-      echo "ngx_mruby building ..."
-      $MAKE NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
-  fi
-else
-  $MAKE make_ngx_mruby NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
 fi
 
+echo "ngx_mruby building ..."
+$MAKE NUM_THREADS=$NUM_THREADS -j $NUM_THREADS
 echo "ngx_mruby building ... Done"
 
 echo "ngx_mruby testing ..."
@@ -114,6 +105,17 @@ fi
 cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/html/set_ssl_cert_and_key.rb > ${NGINX_INSTALL_DIR}/html/set_ssl_cert_and_key.rb
 
+if [ -e ${NGINX_INSTALL_DIR}/logs/error.log ]; then
+    touch ${NGINX_INSTALL_DIR}/logs/error.log.bak 
+    cat ${NGINX_INSTALL_DIR}/logs/error.log >> ${NGINX_INSTALL_DIR}/logs/error.log.bak
+    cp /dev/null ${NGINX_INSTALL_DIR}/logs/error.log
+fi
+if [ -e ${NGINX_INSTALL_DIR}/logs/access.log ]; then
+    touch ${NGINX_INSTALL_DIR}/logs/access.log.bak 
+    cat ${NGINX_INSTALL_DIR}/logs/access.log >> ${NGINX_INSTALL_DIR}/logs/access.log.bak
+    cp /dev/null ${NGINX_INSTALL_DIR}/logs/access.log
+fi
+
 echo "====================================="
 echo ""
 echo "ngx_mruby starting and logging"
@@ -125,8 +127,6 @@ ${NGINX_INSTALL_DIR}/sbin/nginx &
 echo ""
 echo ""
 sleep 2 # waiting for nginx
-#cd mruby
-#./build/test/bin/mruby ../test/t/ngx_mruby.rb
 ./mruby/build/test/bin/mruby ./test/t/ngx_mruby.rb
 $KILLALL nginx
 echo "ngx_mruby testing ... Done"
