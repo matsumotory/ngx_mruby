@@ -84,6 +84,7 @@ static char *ngx_http_mruby_exit_worker_inline(ngx_conf_t *cf, ngx_command_t *cm
 static char *ngx_http_mruby_ssl_handshake_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 #endif /* NGX_HTTP_SSL */
+static char *ngx_http_mruby_server_config_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 static char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -112,8 +113,10 @@ static char *ngx_http_mruby_set_inline(ngx_conf_t *cf, ngx_command_t *cmd, void 
 #endif
 
 /* helpers */
-static char *ngx_http_mruby_initialize_inline_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code, const char* func_name);
-static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code, const char* func_name);
+static char *ngx_http_mruby_initialize_inline_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code,
+                                                   const char *func_name);
+static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code,
+                                            const char *func_name);
 
 /*
 // ngx_mruby mruby handler functions
@@ -156,6 +159,9 @@ static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx
 static ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in);
 
 static ngx_command_t ngx_http_mruby_commands[] = {
+
+    {ngx_string("mruby_server_context_handler_code"), NGX_HTTP_SRV_CONF | NGX_CONF_TAKE1,
+     ngx_http_mruby_server_config_inline, NGX_HTTP_SRV_CONF_OFFSET, 0, NULL},
 
 #if (NGX_HTTP_SSL)
 
@@ -366,6 +372,7 @@ static void ngx_http_mruby_srv_conf_cleanup(void *data)
 
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mscf->state->mrb, mscf->ssl_handshake_code);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mscf->state->mrb, mscf->ssl_handshake_inline_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mscf->state->mrb, mscf->server_config_inline_code);
 }
 
 static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
@@ -394,6 +401,7 @@ static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
   mscf->cert_key_data.len = 0;
   mscf->ssl_handshake_code = NGX_CONF_UNSET_PTR;
   mscf->ssl_handshake_inline_code = NGX_CONF_UNSET_PTR;
+  mscf->server_config_inline_code = NGX_CONF_UNSET_PTR;
 
   cln->handler = ngx_http_mruby_srv_conf_cleanup;
   cln->data = mscf;
@@ -403,10 +411,11 @@ static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
 
 static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 {
-#if (NGX_HTTP_SSL)
 
   ngx_http_mruby_srv_conf_t *prev = parent;
   ngx_http_mruby_srv_conf_t *conf = child;
+
+#if (NGX_HTTP_SSL)
   ngx_http_ssl_srv_conf_t *sscf;
 
   NGX_MRUBY_MERGE_CODE(conf->ssl_handshake_code, prev->ssl_handshake_code);
@@ -429,6 +438,8 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
   }
 
 #endif /* NGX_HTTP_SSL */
+
+  NGX_MRUBY_MERGE_CODE(conf->server_config_inline_code, prev->server_config_inline_code);
 
   return NGX_CONF_OK;
 }
@@ -811,8 +822,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     ngx_int_t rc;
     rc = ngx_http_mruby_state_reinit_from_file(state, code);
     if (rc != NGX_OK) {
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, MODULE_NAME " : mrb_run: failed to recompile %s, rc=%d", 
-        code->code.file, rc);
+      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, MODULE_NAME " : mrb_run: failed to recompile %s, rc=%d",
+                    code->code.file, rc);
       mrb_gc_arena_restore(state->mrb, ai);
       return rc;
     }
@@ -1018,7 +1029,8 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
 */
 
 /* helpers */
-static char *ngx_http_mruby_initialize_inline_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code, const char* func_name)
+static char *ngx_http_mruby_initialize_inline_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code,
+                                                   const char *func_name)
 {
   ngx_str_t *value;
   ngx_int_t rc;
@@ -1038,9 +1050,11 @@ static char *ngx_http_mruby_initialize_inline_code(ngx_conf_t *cf, ngx_mrb_state
     return NGX_CONF_ERROR;
   }
 
-  return NGX_CONF_OK;  
+  return NGX_CONF_OK;
 }
-static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code, const char* func_name)
+
+static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code,
+                                            const char *func_name)
 {
   ngx_str_t *value;
   ngx_int_t rc;
@@ -1068,6 +1082,34 @@ static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *sta
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_file(%s) open failed", func_name, value[1].data);
     return NGX_CONF_ERROR;
+  }
+
+  return NGX_CONF_OK;
+}
+
+static char *ngx_http_mruby_server_config_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+  ngx_http_mruby_srv_conf_t *mscf = (ngx_http_mruby_srv_conf_t *)conf;
+  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
+  char *rc;
+
+  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  mscf->state = mmcf->state;
+
+  rc = ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mscf->server_config_inline_code, __func__);
+  if (rc != NGX_CONF_OK) {
+    return rc;
+  }
+
+  if (mscf->server_config_inline_code != NGX_CONF_UNSET_PTR) {
+    ngx_int_t ret;
+    mscf->cf = cf;
+    mscf->cscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_core_module);
+    mmcf->state->mrb->ud = mscf;
+    ret = ngx_mrb_run_conf(cf, mmcf->state, mscf->server_config_inline_code);
+    if (ret != NGX_OK) {
+      return NGX_CONF_ERROR;
+    }
   }
 
   return NGX_CONF_OK;
@@ -1323,7 +1365,7 @@ static char *ngx_http_mruby_body_filter_inline(ngx_conf_t *cf, ngx_command_t *cm
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = conf;
-  char* rc;
+  char *rc;
 
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mlcf->state = mmcf->state;
@@ -2088,8 +2130,8 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
       ngx_int_t rc;
       rc = ngx_http_mruby_state_reinit_from_file(mscf->state, mscf->ssl_handshake_code);
       if (rc != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to recompile %s, rc=%d", 
-          mscf->ssl_handshake_code->code.file, rc);
+        ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to recompile %s, rc=%d",
+                      mscf->ssl_handshake_code->code.file, rc);
         ngx_mrb_state_clean(NULL, mscf->state);
         mrb_gc_arena_restore(mrb, ai);
         return 1;
@@ -2104,7 +2146,7 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_inline_code);
   if (mrb->exc) {
-    ngx_mrb_raise_connection_error(mrb, mrb_obj_value(mrb->exc), c); 
+    ngx_mrb_raise_connection_error(mrb, mrb_obj_value(mrb->exc), c);
     ngx_mrb_state_clean(NULL, mscf->state);
     mrb_gc_arena_restore(mrb, ai);
     return 0;
