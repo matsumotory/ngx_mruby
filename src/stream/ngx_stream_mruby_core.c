@@ -94,8 +94,10 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
 
   ls->socklen = u.socklen;
   ls->backlog = NGX_LISTEN_BACKLOG;
+#if (nginx_version >= 1013002)
   ls->rcvbuf = -1;
   ls->sndbuf = -1;
+#endif
   ls->type = SOCK_STREAM;
   ls->wildcard = u.wildcard;
   ls->ctx = cf->ctx;
