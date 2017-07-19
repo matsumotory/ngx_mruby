@@ -21,6 +21,7 @@
 #include "mruby/proc.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
+#include "mruby/hash.h"
 
 static mrb_value ngx_stream_mrb_errlogger(mrb_state *mrb, mrb_value self)
 {
@@ -50,6 +51,101 @@ static mrb_value ngx_stream_mrb_get_ngx_mruby_name(mrb_state *mrb, mrb_value sel
   return mrb_str_new_lit(mrb, MODULE_NAME);
 }
 
+static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
+{
+  ngx_stream_core_main_conf_t *cmcf;
+  ngx_stream_mruby_srv_conf_t *mscf = mrb->ud;
+  ngx_stream_core_srv_conf_t *cscf = mscf->ctx->cscf;
+  ngx_conf_t *cf = mscf->ctx->cf;
+  mrb_value listener, address;
+  ngx_str_t addr;
+  ngx_url_t u;
+  ngx_uint_t i;
+  ngx_stream_listen_t *ls, *als;
+
+  mrb_get_args(mrb, "H", &listener);
+  address = mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "address"));
+  addr.data = (u_char *)RSTRING_PTR(address);
+  addr.len = RSTRING_LEN(address);
+
+  ngx_memzero(&u, sizeof(ngx_url_t));
+
+  u.url = addr;
+  u.listen = 1;
+  cscf->listen = 1;
+
+  if (ngx_parse_url(cf->pool, &u) != NGX_OK) {
+    if (u.err) {
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s in \"%V\" of the \"listen\" directive via mruby", u.err, &u.url);
+    }
+
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_stream_mrb_add_listener ngx_parse_url failed");
+  }
+
+  cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
+
+  ls = ngx_array_push(&cmcf->listen);
+  if (ls == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_stream_mrb_add_listener ngx_array_push failed");
+  }
+
+  ngx_memzero(ls, sizeof(ngx_stream_listen_t));
+  ngx_memcpy(&ls->sockaddr.sockaddr, &u.sockaddr, u.socklen);
+
+  ls->socklen = u.socklen;
+  ls->backlog = NGX_LISTEN_BACKLOG;
+#if (nginx_version >= 1013000)
+  ls->rcvbuf = -1;
+  ls->sndbuf = -1;
+#endif
+  ls->type = SOCK_STREAM;
+  ls->wildcard = u.wildcard;
+  ls->ctx = cf->ctx;
+
+#if (NGX_HAVE_INET6)
+  ls->ipv6only = 1;
+#endif
+
+#if !(NGX_WIN32)
+  if (mrb_bool(mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "udp")))) {
+    ls->type = SOCK_DGRAM;
+  }
+#endif
+
+  if (ls->type == SOCK_DGRAM) {
+#if (NGX_STREAM_SSL)
+    if (ls->ssl) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "\"ssl\" parameter is incompatible with \"udp\"");
+    }
+#endif
+
+    if (ls->so_keepalive) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "\"so_keepalive\" parameter is incompatible with \"udp\"");
+    }
+
+    if (ls->proxy_protocol) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "\"proxy_protocol\" parameter is incompatible with \"udp\"");
+    }
+  }
+
+  als = cmcf->listen.elts;
+
+  for (i = 0; i < cmcf->listen.nelts - 1; i++) {
+    if (ls->type != als[i].type) {
+      continue;
+    }
+
+    if (ngx_cmp_sockaddr(&als[i].sockaddr.sockaddr, als[i].socklen, &ls->sockaddr.sockaddr, ls->socklen, 1) != NGX_OK) {
+      continue;
+    }
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "duplicate \"%V\" address and port pair", &u.url);
+    mrb_raise(mrb, E_RUNTIME_ERROR, "duplicate address and port pair");
+  }
+
+  return mrb_true_value();
+}
+
 void ngx_stream_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
 {
   mrb_define_const(mrb, class, "OK", mrb_fixnum_value(NGX_OK));
@@ -73,4 +169,5 @@ void ngx_stream_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_class_method(mrb, class, "errlogger", ngx_stream_mrb_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class, "log", ngx_stream_mrb_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class, "module_name", ngx_stream_mrb_get_ngx_mruby_name, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class, "add_listener", ngx_stream_mrb_add_listener, MRB_ARGS_REQ(1));
 }

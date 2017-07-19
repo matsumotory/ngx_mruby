@@ -615,6 +615,12 @@ if nginx_features.is_stream_supported?
     res = HttpRequest.new.get(base4 + '/mruby')
     t.assert_equal 'Hello ngx_mruby world!', res["body"]
   end
+  t.assert('ngx_mruby - add linstener', '127.0.0.1:12350 to 127.0.0.1:58080') do
+    res = HttpRequest.new.get('http://127.0.0.1:12350' + '/mruby')
+    t.assert_equal 'Hello ngx_mruby world!', res["body"]
+    res = HttpRequest.new.get('http://127.0.0.1:12351' + '/mruby')
+    t.assert_equal 'Hello ngx_mruby world!', res["body"]
+  end
 end
 
 t.report
