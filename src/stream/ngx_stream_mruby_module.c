@@ -588,6 +588,7 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
   ngx_mrb_code_t *code;
   ngx_int_t rc;
   mrb_int ai;
+  void *tmp_ud;
 
   mscf->ctx->cf = cf;
   mscf->ctx->cscf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_core_module);
@@ -608,8 +609,10 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
 
   ai = mrb_gc_arena_save(mrb);
 
+  tmp_ud = mrb->ud;
   mrb->ud = mscf;
   mrb_run(mrb, code->proc, mrb_top_self(mrb));
+  mrb->ud = tmp_ud;
 
   if (mrb->exc) {
     ngx_stream_mruby_raise_conf_error(mrb, mrb_obj_value(mrb->exc), cf);
