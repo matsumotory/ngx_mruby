@@ -94,7 +94,7 @@ static ngx_command_t ngx_stream_mruby_commands[] = {
     {ngx_string("mruby_stream_code"), NGX_STREAM_MAIN_CONF | NGX_STREAM_SRV_CONF | NGX_CONF_TAKE1,
      ngx_stream_mruby_build_code, NGX_STREAM_SRV_CONF_OFFSET, 0, NULL},
 
-    {ngx_string("mruby_server_context_code"), NGX_STREAM_SRV_CONF | NGX_CONF_TAKE1,
+    {ngx_string("mruby_stream_server_context_code"), NGX_STREAM_SRV_CONF | NGX_CONF_TAKE1,
      ngx_stream_mruby_server_context_code, NGX_STREAM_SRV_CONF_OFFSET, 0, NULL},
 
     ngx_null_command};
