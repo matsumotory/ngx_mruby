@@ -160,10 +160,7 @@ create_proc_from_string(mrb_state *mrb, char *s, int len, mrb_value binding, con
   cxt = mrbc_context_new(mrb);
   cxt->lineno = line;
 
-  if (!file) {
-    file = "(eval)";
-  }
-  mrbc_filename(mrb, cxt, file);
+  mrbc_filename(mrb, cxt, file ? file : "(eval)");
   cxt->capture_errors = TRUE;
   cxt->no_optimize = TRUE;
 
@@ -178,9 +175,17 @@ create_proc_from_string(mrb_state *mrb, char *s, int len, mrb_value binding, con
     /* parse error */
     mrb_value str;
 
-    str = mrb_format(mrb, "line %S: %S",
-                     mrb_fixnum_value(p->error_buffer[0].lineno),
-                     mrb_str_new_cstr(mrb, p->error_buffer[0].message));
+    if (file) {
+      str = mrb_format(mrb, " file %S line %S: %S",
+                       mrb_str_new_cstr(mrb, file),
+                       mrb_fixnum_value(p->error_buffer[0].lineno),
+                       mrb_str_new_cstr(mrb, p->error_buffer[0].message));
+    }
+    else {
+      str = mrb_format(mrb, " line %S: %S",
+                       mrb_fixnum_value(p->error_buffer[0].lineno),
+                       mrb_str_new_cstr(mrb, p->error_buffer[0].message));
+    }
     mrb_parser_free(p);
     mrbc_context_free(mrb, cxt);
     mrb_exc_raise(mrb, mrb_exc_new_str(mrb, E_SYNTAX_ERROR, str));
@@ -200,9 +205,9 @@ create_proc_from_string(mrb_state *mrb, char *s, int len, mrb_value binding, con
   if (!e) e = c->ci[-1].env;
   e = (struct REnv*)mrb_obj_alloc(mrb, MRB_TT_ENV, (struct RClass*)e);
   e->cxt.c = c;
-  e->cioff = c->ci - c->cibase - 1;
+  e->cioff = c->ci - c->cibase;
   e->stack = c->ci->stackent;
-  MRB_SET_ENV_STACK_LEN(e, c->ci[-1].proc->body.irep->nlocals);
+  MRB_SET_ENV_STACK_LEN(e, c->ci->proc->body.irep->nlocals);
   c->ci->target_class = proc->target_class;
   c->ci->env = 0;
   proc->env = e;
@@ -250,7 +255,7 @@ f_instance_eval(mrb_state *mrb, mrb_value self)
   mrb_value b;
   mrb_int argc; mrb_value *argv;
 
-  mrb_get_args(mrb, "*&", &argv, &argc, &b);
+  mrb_get_args(mrb, "*!&", &argv, &argc, &b);
 
   if (mrb_nil_p(b)) {
     char *s;

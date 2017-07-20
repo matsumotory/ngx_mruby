@@ -112,6 +112,7 @@ typedef struct {
     struct RProc proc;
     struct REnv env;
     struct RException exc;
+    struct RBreak brk;
 #ifdef MRB_WORD_BOXING
     struct RFloat floatv;
     struct RCptr cptr;
@@ -432,7 +433,7 @@ mrb_gc_protect(mrb_state *mrb, mrb_value obj)
 
    Register your object when it's exported to C world,
    without reference from Ruby world, e.g. callback
-   arguments.  Don't forget to remove the obejct using
+   arguments.  Don't forget to remove the object using
    mrb_gc_unregister, otherwise your object will leak.
 */
 
@@ -578,10 +579,12 @@ mark_context(mrb_state *mrb, struct mrb_context *c)
   int i;
   mrb_callinfo *ci;
 
-  /* mark stack */
-  mark_context_stack(mrb, c);
+  if (c->status == MRB_FIBER_TERMINATED) return;
 
   /* mark VM stack */
+  mark_context_stack(mrb, c);
+
+  /* mark call stack */
   if (c->cibase) {
     for (ci = c->cibase; ci <= c->ci; ci++) {
       mrb_gc_mark(mrb, (struct RBasic*)ci->env);
@@ -834,7 +837,7 @@ obj_free(mrb_state *mrb, struct RBasic *obj, int end)
 static void
 root_scan_phase(mrb_state *mrb, mrb_gc *gc)
 {
-  size_t i, e;
+  int i, e;
 
   if (!is_minor_gc(gc)) {
     gc->gray_list = NULL;
@@ -994,7 +997,16 @@ incremental_marking_phase(mrb_state *mrb, mrb_gc *gc, size_t limit)
 static void
 final_marking_phase(mrb_state *mrb, mrb_gc *gc)
 {
+  int i, e;
+
+  /* mark arena */
+  for (i=0,e=gc->arena_idx; i<e; i++) {
+    mrb_gc_mark(mrb, gc->arena[i]);
+  }
+  mrb_gc_mark_gv(mrb);
   mark_context(mrb, mrb->c);
+  mark_context(mrb, mrb->root_c);
+  mrb_gc_mark(mrb, (struct RBasic*)mrb->exc);
   gc_mark_gray_list(mrb, gc);
   mrb_assert(gc->gray_list == NULL);
   gc->gray_list = gc->atomic_gray_list;
@@ -1229,34 +1241,6 @@ MRB_API void
 mrb_garbage_collect(mrb_state *mrb)
 {
   mrb_full_gc(mrb);
-}
-
-MRB_API int
-mrb_gc_arena_save(mrb_state *mrb)
-{
-  return mrb->gc.arena_idx;
-}
-
-MRB_API void
-mrb_gc_arena_restore(mrb_state *mrb, int idx)
-{
-  mrb_gc *gc = &mrb->gc;
-
-#ifndef MRB_GC_FIXED_ARENA
-  int capa = gc->arena_capa;
-
-  if (idx < capa / 2) {
-    capa = (int)(capa * 0.66);
-    if (capa < MRB_GC_ARENA_SIZE) {
-      capa = MRB_GC_ARENA_SIZE;
-    }
-    if (capa != gc->arena_capa) {
-      gc->arena = (struct RBasic**)mrb_realloc(mrb, gc->arena, sizeof(struct RBasic*)*capa);
-      gc->arena_capa = capa;
-    }
-  }
-#endif
-  gc->arena_idx = idx;
 }
 
 /*
@@ -1526,13 +1510,9 @@ mrb_objspace_each_objects(mrb_state *mrb, mrb_each_object_callback *callback, vo
       mrb->jmp = prev_jmp;
       mrb->gc.iterating = iterating; 
    } MRB_CATCH(&c_jmp) {
-      mrb->jmp = prev_jmp;
       mrb->gc.iterating = iterating;
-      if (mrb->exc) {
-        mrb_value exc = mrb_obj_value(mrb->exc);
-        mrb->exc = NULL;
-        mrb_exc_raise(mrb, exc);
-      }
+      mrb->jmp = prev_jmp;
+      MRB_THROW(prev_jmp);
     } MRB_END_EXC(&c_jmp);
   }
 }

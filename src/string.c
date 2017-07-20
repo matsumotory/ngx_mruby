@@ -1521,13 +1521,13 @@ mrb_str_hash(mrb_state *mrb, mrb_value str)
   struct RString *s = mrb_str_ptr(str);
   mrb_int len = RSTR_LEN(s);
   char *p = RSTR_PTR(s);
-  mrb_int key = 0;
+  uint64_t key = 0;
 
   while (len--) {
     key = key*65599 + *p;
     p++;
   }
-  return key + (key>>5);
+  return (mrb_int)(key + (key>>5));
 }
 
 /* 15.2.10.5.20 */
@@ -1597,7 +1597,7 @@ mrb_str_index(mrb_state *mrb, mrb_value str)
   mrb_value sub;
   mrb_int pos, clen;
 
-  mrb_get_args(mrb, "*", &argv, &argc);
+  mrb_get_args(mrb, "*!", &argv, &argc);
   if (argc == 2) {
     mrb_get_args(mrb, "oi", &sub, &pos);
   }
@@ -1868,7 +1868,7 @@ mrb_str_rindex(mrb_state *mrb, mrb_value str)
   mrb_value sub;
   mrb_int pos, len = RSTRING_CHAR_LEN(str);
 
-  mrb_get_args(mrb, "*", &argv, &argc);
+  mrb_get_args(mrb, "*!", &argv, &argc);
   if (argc == 2) {
     mrb_get_args(mrb, "oi", &sub, &pos);
     if (pos < 0) {

@@ -106,11 +106,17 @@ ary_fill_with_nil(mrb_value *ptr, mrb_int size)
 }
 
 static void
-ary_modify(mrb_state *mrb, struct RArray *a)
+ary_modify_check(mrb_state *mrb, struct RArray *a)
 {
   if (MRB_FROZEN_P(a)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "can't modify frozen array");
   }
+}
+
+static void
+ary_modify(mrb_state *mrb, struct RArray *a)
+{
+  ary_modify_check(mrb, a);
 
   if (ARY_SHARED_P(a)) {
     mrb_shared_array *shared = a->aux.shared;
@@ -122,7 +128,7 @@ ary_modify(mrb_state *mrb, struct RArray *a)
     }
     else {
       mrb_value *ptr, *p;
-      size_t len;
+      mrb_int len;
 
       p = a->ptr;
       len = a->len * sizeof(mrb_value);
@@ -165,11 +171,11 @@ ary_make_shared(mrb_state *mrb, struct RArray *a)
 }
 
 static void
-ary_expand_capa(mrb_state *mrb, struct RArray *a, size_t len)
+ary_expand_capa(mrb_state *mrb, struct RArray *a, mrb_int len)
 {
-  size_t capa = a->aux.capa;
+  mrb_int capa = a->aux.capa;
 
-  if (len > ARY_MAX_SIZE) {
+  if (len > ARY_MAX_SIZE || len < 0) {
   size_error:
     mrb_raise(mrb, E_ARGUMENT_ERROR, "array size too big");
   }
@@ -189,10 +195,10 @@ ary_expand_capa(mrb_state *mrb, struct RArray *a, size_t len)
     goto size_error;
   }
 
-  if (capa > (size_t)a->aux.capa) {
+  if (capa > a->aux.capa) {
     mrb_value *expanded_ptr = (mrb_value *)mrb_realloc(mrb, a->ptr, sizeof(mrb_value)*capa);
 
-    a->aux.capa = (mrb_int)capa;
+    a->aux.capa = capa;
     a->ptr = expanded_ptr;
   }
 }
@@ -249,7 +255,7 @@ mrb_ary_s_create(mrb_state *mrb, mrb_value klass)
   mrb_int len;
   struct RArray *a;
 
-  mrb_get_args(mrb, "*", &vals, &len);
+  mrb_get_args(mrb, "*!", &vals, &len);
   ary = mrb_ary_new_from_values(mrb, len, vals);
   a = mrb_ary_ptr(ary);
   a->c = mrb_class_ptr(klass);
@@ -432,7 +438,7 @@ mrb_ary_push_m(mrb_state *mrb, mrb_value self)
   mrb_value *argv;
   mrb_int len;
 
-  mrb_get_args(mrb, "*", &argv, &len);
+  mrb_get_args(mrb, "*!", &argv, &len);
   while (len--) {
     mrb_ary_push(mrb, self, *argv++);
   }
@@ -445,7 +451,7 @@ mrb_ary_pop(mrb_state *mrb, mrb_value ary)
 {
   struct RArray *a = mrb_ary_ptr(ary);
 
-  ary_modify(mrb, a);
+  ary_modify_check(mrb, a);
   if (a->len == 0) return mrb_nil_value();
   return a->ptr[--a->len];
 }
@@ -458,7 +464,7 @@ mrb_ary_shift(mrb_state *mrb, mrb_value self)
   struct RArray *a = mrb_ary_ptr(self);
   mrb_value val;
 
-  ary_modify(mrb, a);
+  ary_modify_check(mrb, a);
   if (a->len == 0) return mrb_nil_value();
   if (ARY_SHARED_P(a)) {
   L_SHIFT:
@@ -520,13 +526,14 @@ mrb_ary_unshift_m(mrb_state *mrb, mrb_value self)
   mrb_value *vals;
   mrb_int len;
 
-  mrb_get_args(mrb, "*", &vals, &len);
+  mrb_get_args(mrb, "*!", &vals, &len);
   if (len > ARY_MAX_SIZE - a->len) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "array size too big");
   }
   if (ARY_SHARED_P(a)
       && a->aux.shared->refcnt == 1 /* shared only referenced from this array */
       && a->ptr - a->aux.shared->ptr >= len) /* there's room for unshifted item */ {
+    ary_modify_check(mrb, a);
     a->ptr -= len;
   }
   else {
@@ -596,7 +603,7 @@ mrb_ary_splice(mrb_state *mrb, mrb_value ary, mrb_int head, mrb_int len, mrb_val
   struct RArray *a = mrb_ary_ptr(ary);
   const mrb_value *argv;
   mrb_int argc;
-  size_t tail;
+  mrb_int tail;
 
   ary_modify(mrb, a);
 
@@ -611,7 +618,7 @@ mrb_ary_splice(mrb_state *mrb, mrb_value ary, mrb_int head, mrb_int len, mrb_val
     }
   }
   tail = head + len;
-  if (a->len < len || (size_t)a->len < tail) {
+  if (a->len < len || a->len < tail) {
     len = a->len - head;
   }
 
@@ -710,7 +717,7 @@ aget_index(mrb_state *mrb, mrb_value index)
     mrb_int i, argc;
     mrb_value *argv;
 
-    mrb_get_args(mrb, "i*", &i, &argv, &argc);
+    mrb_get_args(mrb, "i*!", &i, &argv, &argc);
     return i;
   }
 }

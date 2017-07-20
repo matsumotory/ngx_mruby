@@ -79,16 +79,32 @@ print_backtrace(mrb_state *mrb, mrb_value backtrace)
   FILE *stream = stderr;
 
   if (!mrb_array_p(backtrace)) return;
-  fprintf(stream, "trace:\n");
 
-  n = RARRAY_LEN(backtrace);
-  for (i=0; n--; i++) {
-    mrb_value entry = RARRAY_PTR(backtrace)[n];
+  n = RARRAY_LEN(backtrace) - 1;
+  if (n == 0) return;
+
+  fprintf(stream, "trace:\n");
+  for (i=0; i<n; i++) {
+    mrb_value entry = RARRAY_PTR(backtrace)[n-i-1];
 
     if (mrb_string_p(entry)) {
       fprintf(stream, "\t[%d] %.*s\n", i, (int)RSTRING_LEN(entry), RSTRING_PTR(entry));
     }
   }
+}
+
+static int
+packed_bt_len(struct backtrace_location *bt, int n)
+{
+  int len = 0;
+  int i;
+
+  for (i=0; i<n; i++) {
+    if (!bt[i].filename && !bt[i].lineno && !bt[i].method_id)
+      continue;
+    len++;
+  }
+  return len;
 }
 
 static void
@@ -97,19 +113,18 @@ print_packed_backtrace(mrb_state *mrb, mrb_value packed)
   FILE *stream = stderr;
   struct backtrace_location *bt;
   int n, i;
+  int ai = mrb_gc_arena_save(mrb);
 
   bt = (struct backtrace_location*)mrb_data_check_get_ptr(mrb, packed, &bt_type);
-  if (bt == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "broken backtrace");
-  }
+  if (bt == NULL) return;
   n = (mrb_int)RDATA(packed)->flags;
 
+  if (packed_bt_len(bt, n) == 0) return;
   fprintf(stream, "trace:\n");
-  for (i = 0; n--; i++) {
-    int ai = mrb_gc_arena_save(mrb);
-    struct backtrace_location *entry = &bt[n];
+  for (i = 0; i<n; i++) {
+    struct backtrace_location *entry = &bt[n-i-1];
     if (entry->filename == NULL) continue;
-    fprintf(stream, "\t[%d] %s:%d", (int)i, entry->filename, entry->lineno);
+    fprintf(stream, "\t[%d] %s:%d", i, entry->filename, entry->lineno);
     if (entry->method_id != 0) {
       const char *method_name;
 
@@ -154,14 +169,29 @@ mrb_print_backtrace(mrb_state *mrb)
 #endif
 
 static void
+count_backtrace_i(mrb_state *mrb,
+                 int i,
+                 struct backtrace_location *loc,
+                 void *data)
+{
+  int *lenp = (int*)data;
+
+  if (loc->filename == NULL) return;
+  (*lenp)++;
+}
+
+static void
 pack_backtrace_i(mrb_state *mrb,
                  int i,
                  struct backtrace_location *loc,
                  void *data)
 {
-  struct backtrace_location *entry = (struct backtrace_location*)data;
+  struct backtrace_location **pptr = (struct backtrace_location**)data;
+  struct backtrace_location *ptr = *pptr;
 
-  entry[i] = *loc;
+  if (loc->filename == NULL) return;
+  *ptr = *loc;
+  *pptr = ptr+1;
 }
 
 static mrb_value
@@ -169,14 +199,17 @@ packed_backtrace(mrb_state *mrb)
 {
   struct RData *backtrace;
   ptrdiff_t ciidx = mrb->c->ci - mrb->c->cibase;
-  mrb_int len = (ciidx+1)*sizeof(struct backtrace_location);
+  int len = 0;
+  int size;
   void *ptr;
 
-  ptr = mrb_malloc(mrb, len);
-  memset(ptr, 0, len);
+  each_backtrace(mrb, ciidx, mrb->c->ci->pc, count_backtrace_i, &len);
+  size = len * sizeof(struct backtrace_location);
+  ptr = mrb_malloc(mrb, size);
+  memset(ptr, 0, size);
   backtrace = mrb_data_object_alloc(mrb, NULL, ptr, &bt_type);
-  backtrace->flags = (unsigned int)ciidx+1;
-  each_backtrace(mrb, ciidx, mrb->c->ci->pc, pack_backtrace_i, ptr);
+  backtrace->flags = (unsigned int)len;
+  each_backtrace(mrb, ciidx, mrb->c->ci->pc, pack_backtrace_i, &ptr);
   return mrb_obj_value(backtrace);
 }
 
@@ -196,17 +229,19 @@ mrb_unpack_backtrace(mrb_state *mrb, mrb_value backtrace)
 {
   struct backtrace_location *bt;
   mrb_int n, i;
+  int ai;
 
-  if (mrb_nil_p(backtrace)) return mrb_ary_new_capa(mrb, 0);
+  if (mrb_nil_p(backtrace)) {
+  empty_backtrace:
+    return mrb_ary_new_capa(mrb, 0);
+  }
   if (mrb_array_p(backtrace)) return backtrace;
   bt = (struct backtrace_location*)mrb_data_check_get_ptr(mrb, backtrace, &bt_type);
-  if (bt == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "broken backtrace");
-  }
+  if (bt == NULL) goto empty_backtrace;
   n = (mrb_int)RDATA(backtrace)->flags;
   backtrace = mrb_ary_new_capa(mrb, n);
+  ai = mrb_gc_arena_save(mrb);
   for (i = 0; i < n; i++) {
-    int ai = mrb_gc_arena_save(mrb);
     struct backtrace_location *entry = &bt[i];
     mrb_value btline;
 
