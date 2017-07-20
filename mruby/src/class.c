@@ -552,9 +552,9 @@ to_sym(mrb_state *mrb, mrb_value ss)
     d:      Data           [void*,mrb_data_type const] 2nd argument will be used to check data type so it won't be modified
     I:      Inline struct  [void*]
     &:      Block          [mrb_value]
-    *:      rest argument  [mrb_value*,mrb_int]   Receive the rest of the arguments as an array.
-    |:      optional                              Next argument of '|' and later are optional.
-    ?:      optional given [mrb_bool]             true if preceding argument (optional) is given.
+    *:      rest argument  [mrb_value*,mrb_int]   The rest of the arguments as an array; *! avoid copy of the stack
+    |:      optional                              Following arguments are optional
+    ?:      optional given [mrb_bool]             true if preceding argument (optional) is given
  */
 MRB_API mrb_int
 mrb_get_args(mrb_state *mrb, const char *format, ...)
@@ -896,13 +896,25 @@ mrb_get_args(mrb_state *mrb, const char *format, ...)
       {
         mrb_value **var;
         mrb_int *pl;
+        mrb_bool nocopy = FALSE;
 
+        if (*format == '!') {
+          format++;
+          nocopy = TRUE;
+        }
         var = va_arg(ap, mrb_value**);
         pl = va_arg(ap, mrb_int*);
         if (argc > i) {
           *pl = argc-i;
           if (*pl > 0) {
-            *var = ARGV + arg_i;
+            if (nocopy) {
+              *var = ARGV+arg_i;
+            }
+            else {
+              mrb_value args = mrb_ary_new_from_values(mrb, *pl, ARGV+arg_i);
+              RARRAY(args)->c = NULL;
+              *var = (mrb_value*)RARRAY_PTR(args);
+            }
           }
           i = argc;
           arg_i += *pl;
@@ -2166,7 +2178,14 @@ mrb_mod_const_set(mrb_state *mrb, mrb_value mod)
 
   mrb_get_args(mrb, "no", &id, &value);
   check_const_name_sym(mrb, id);
-  mrb_const_set(mrb, mod, id, value);
+  if ((mrb_type(value) == MRB_TT_CLASS || mrb_type(value) == MRB_TT_MODULE)
+      && !mrb_obj_iv_defined(mrb, mrb_obj_ptr(value), mrb_intern_lit(mrb, "__classid__"))) {
+    /* name unnamed classes/modules */
+    setup_class(mrb, mrb_class_ptr(mod), mrb_class_ptr(value), id);
+  }
+  else {
+    mrb_const_set(mrb, mod, id, value);
+  }
   return value;
 }
 

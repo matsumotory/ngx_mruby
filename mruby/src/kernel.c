@@ -318,6 +318,7 @@ mrb_obj_clone(mrb_state *mrb, mrb_value self)
   }
   p = (struct RObject*)mrb_obj_alloc(mrb, mrb_type(self), mrb_obj_class(mrb, self));
   p->c = mrb_singleton_class_clone(mrb, self);
+  mrb_field_write_barrier(mrb, (struct RBasic*)p, (struct RBasic*)p->c);
   clone = mrb_obj_value(p);
   init_copy(mrb, clone, self);
 
@@ -410,11 +411,8 @@ mrb_obj_extend_m(mrb_state *mrb, mrb_value self)
 {
   mrb_value *argv;
   mrb_int argc;
-  mrb_value args;
 
   mrb_get_args(mrb, "*", &argv, &argc);
-  args = mrb_ary_new_from_values(mrb, argc, argv);
-  argv = (mrb_value*)RARRAY_PTR(args);
   return mrb_obj_extend(mrb, argc, argv, self);
 }
 
@@ -983,7 +981,7 @@ mrb_obj_missing(mrb_state *mrb, mrb_value mod)
   mrb_value *a;
   mrb_int alen;
 
-  mrb_get_args(mrb, "n*", &name, &a, &alen);
+  mrb_get_args(mrb, "n*!", &name, &a, &alen);
   mrb_method_missing(mrb, name, mod, mrb_ary_new_from_values(mrb, alen, a));
   /* not reached */
   return mrb_nil_value();
