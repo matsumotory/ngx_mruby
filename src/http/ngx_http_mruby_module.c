@@ -803,6 +803,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     rc = ngx_http_read_client_request_body(r, ngx_http_mruby_read_request_body_cb);
 
     if (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, 
+                  "%s INFO %s:%d: mrb_run: tried to read request body, but got %d.", MODULE_NAME, __func__, __LINE__, rc);
 #if (nginx_version < 1002006) || (nginx_version >= 1003000 && nginx_version < 1003009)
       r->main->count--;
 #endif
@@ -810,8 +812,11 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     }
 
     if (rc == NGX_AGAIN) {
+      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, 
+                  "%s INFO %s:%d: mrb_run: tried to read request body, but got NGX_AGAIN.", MODULE_NAME, __func__, __LINE__);
       ctx->request_body_more = 1;
-      return NGX_DONE;
+      ctx->read_request_body_done = 0;
+      return NGX_AGAIN;
     }
   }
 
