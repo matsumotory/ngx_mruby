@@ -22,7 +22,7 @@ __ngx_mruby is A Fast and Memory-Efficient TCP/UDP Load Balancing and Web Server
 - Unified Ruby Code between Apache(mod_mruby), nginx(ngx_mruby) and other Web server software(plan) for Web server extensions.
 - You can implement nginx modules by Ruby scripts on nginx!
 - You can implement some Web server software extensions by same Ruby code (as possible)
-- Supported nginx __1.4/1.6/1.8./1.9./1.10./1.11.*__
+- Supported nginx main-line and stable-line
 - [Benchmark between ngx_mruby and lua-nginx-module](https://www.techempower.com/benchmarks/#section=data-r10&hw=peak&test=plaintext&w=4-0)
 
 ```ruby
