@@ -9,6 +9,7 @@
 - [Dynamic Image Providor (in Japanese)](http://techhey.hatenablog.com/entry/2014/04/19/162323)
 - [Dynamic reverse proxy using access information (in Japanese)](http://blog.cloudpack.jp/2014/07/08/ngx-mruby-nginx-script/)
 - [Research ngx_mruby and use output filter (in Russian)](http://habrahabr.ru/post/225313/)
+- [ACME auto ssl using Let's Encrypt](https://github.com/matsumotory/ngx_mruby/blob/master/test/conf/auto-ssl/nginx.conf.client_example)
 
 ## Hello world
 #### /path/to/hello.rb
