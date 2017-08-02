@@ -8,11 +8,11 @@
 ※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
 
 ## Documents
-- [Install](https://github.com/matsumotory/ngx_mruby/wiki/Install)
-- [Test](https://github.com/matsumotory/ngx_mruby/wiki/Test)
-- [Directives](https://github.com/matsumotory/ngx_mruby/wiki/Directives)
-- [Class and Method](https://github.com/matsumotory/ngx_mruby/wiki/Class-and-Method)
-- [Use Case](https://github.com/matsumotory/ngx_mruby/wiki/Use-Case)
+- [Install](https://github.com/matsumotory/ngx_mruby/tree/master/docs/install)
+- [Test](https://github.com/matsumotory/ngx_mruby/tree/master/docs/test)
+- [Directives](https://github.com/matsumotory/ngx_mruby/tree/master/docs/directives)
+- [Class and Method](https://github.com/matsumotory/ngx_mruby/tree/master/docs/class_and_method)
+- [Use Case](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case)
 - [Examples](https://github.com/hsbt/nginx-tech-talk)
 
 ## What's ngx_mruby
