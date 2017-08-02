@@ -851,3 +851,29 @@ stream {
   }
 }
 ```
+
+### Nginx::Stream::Connection.{remote_port,local_ip,local_addr,local_port,local_ip_port}
+
+```nginx
+server {
+    listen 127.0.0.1:12348;
+    mruby_stream_code '
+      Nginx::Stream.log Nginx::Stream::LOG_NOTICE, "local is #{Nginx::Stream::Connection.local_ip}:#{Nginx::Stream::Connection.local_port} remote_port is #{Nginx::Stream::Connection.remote_ip}:#{Nginx::Stream::Connection.remote_port}"
+      if Nginx::Stream::Connection.local_port != 12348 && Nginx::Stream::Connection.local_ip != "127.0.0.1"
+        Nginx::Stream::Connection.stream_status = Nginx::Stream::ABORT
+      end
+    ';
+    proxy_pass static_server0;
+}
+
+server {
+    listen 127.0.0.1:12349;
+    mruby_stream_code '
+      Nginx::Stream.log Nginx::Stream::LOG_NOTICE, "local_ip_port is #{Nginx::Stream::Connection.local_ip_port}"
+      if Nginx::Stream::Connection.local_ip_port != "127.0.0.1:12349"
+        Nginx::Stream::Connection.stream_status = Nginx::Stream::ABORT
+      end
+    ';
+    proxy_pass static_server0;
+}
+```
