@@ -430,13 +430,13 @@ Nginx.echo r.user #=> matsumoto_r
 ```
 #### Nginx::Request#{read_body,get_body}
 
-If you use request body as Ruby method, you must use mruby_enable_read_reqeust_body on; on location config as the following:
+If you use request body as Ruby method, you must use `mruby_enable_read_request_body on;` on location config as the following:
 
 ##### nginx.conf
 
 ```nginx
 location /issue-268 {
-  mruby_enable_read_reqeust_body on;    # here
+  mruby_enable_read_request_body on;    # here
   mruby_access_handler_code '
     req = Nginx::Request.new
     Nginx.log Nginx::LOG_ERR, "method:#{req.method}"
@@ -488,7 +488,7 @@ end
 
 #### Nginx::Request#body
 
-If you use request body as Ruby method, you must use mruby_enable_read_reqeust_body on; on location config as the following:
+If you use request body as Ruby method, you must use `mruby_enable_read_request_body`on; on location config as the following:
 
 ##### nginx.conf
 ```ruby
