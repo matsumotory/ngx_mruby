@@ -689,7 +689,52 @@ hout.delete("X-Remove-Header")
 Nginx.rputs hout["X-Remove-Header"] #=> nil
 ```
 ## Nginx::Filter Class
-__Warning!!__ Nginx::Filter Class can be used only at mruby_output_filter{,_code} phase. You can NOT use ``Nginx.rputs and Nginx.echo`` at same phase.
+
+__Warning!!__ Nginx::Filter Class can be used only at mruby_output_body_filter{,_code} phase. You can NOT use ``Nginx.rputs and Nginx.echo`` at the same phase.
+
+### Example
+
+```nginx
+location /issue_172 {
+  # or mruby_output_header_filter /path/to/code.rb
+  mruby_output_header_filter_code '
+    Nginx::Request.new.headers_out["x-add-new-header"] = "new_header"
+  ';
+
+  # or mruby_output_body_filter /path/to/code.rb
+  mruby_output_body_filter_code '
+     f = Nginx::Filter.new
+     response = f.body
+     f.body = (response + " world").upcase
+  ';
+}
+
+# cat test/html/issue_172_2/index.html 
+# hello
+
+location /issue_172_2 {
+  root   html;
+  index  index.html index.htm;
+  mruby_output_body_filter_code '
+     Nginx::Request.new.headers_out["hoge"] = "fuga"
+     f = Nginx::Filter.new
+     response = f.body
+     f.body = (response + " world").upcase
+  ';
+}
+```
+
+- test
+
+```
+t.assert('ngx_mruby - issue_172_2', 'location /issue_172_2') do
+  res = HttpRequest.new.get base + '/issue_172_2/'
+  expect_content = 'hello world'.upcase
+  t.assert_equal expect_content, res["body"]
+  t.assert_equal expect_content.length, res["content-length"].to_i
+end
+```
+
 ### Method
 #### Nginx::Filter#body
 index.html
