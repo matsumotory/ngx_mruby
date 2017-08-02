@@ -227,6 +227,22 @@ Nginx::SSL.errlogger Nginx::LOG_ERR, "ngx_mruby error!"
 #### Nginx::SSL.log
 alias of Nginx::SSL.errlogger
 
+#### Nginx::SSL#local_port
+
+```nginx
+location /local_port {
+     mruby_content_handler_code "Nginx.rputs Nginx::SSL.new.local_port.to_s";
+}
+```
+
+```
+t.assert('ngx_mruby - ssl local port') do
+  res = `curl -k #{base_ssl(58082) + '/local_port'}`
+  t.assert_equal '58082', res
+end
+
+```
+
 ## Nginx::Request Class
 ### Method
 #### Nginx::Request#scheme
