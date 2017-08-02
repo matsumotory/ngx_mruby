@@ -847,6 +847,13 @@ stream {
 
 Listen port dynamicaly using Ruby on config phase
 
+```ruby
+Nginx::Stream.add_listener({address: "127.0.0.1:12350"})
+Nginx::Stream.add_listener({address: "12351"})
+```
+
+- nginx.conf example
+
 ```nginx
 stream {
   server {
