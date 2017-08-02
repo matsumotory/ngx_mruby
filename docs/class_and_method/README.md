@@ -69,14 +69,14 @@ is equal to
 Nginx.rputs "hello ngx_mruby world!\n"
 ```
 #### Nginx.return
-return [nginx status code](https://github.com/matsumotory/ngx_mruby/wiki/Class-and-Method#wiki-const-for-http-status)
+return [nginx status code](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#const-for-http-status)
 ```ruby
 return Nginx::HTTP_SERVICE_UNAVAILABLE
 ```
 #### Nginx.send_header
 alias ``Nginx.return``
 #### Nginx.errlogger
-logging to error.log with [log priority](https://github.com/matsumotory/ngx_mruby/wiki/Class-and-Method#wiki-const-for-log)
+logging to error.log with [log priority](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#const-for-log)
 ```ruby
 Nginx.errlogger Nginx::LOG_ERR, "ngx_mruby error!"
 ```
@@ -313,7 +313,7 @@ Nginx.echo r.args #=> a=1
 #### Nginx::Request#args=
 set string to args
 #### Nginx::Request#var.method_missing
-get nginx user difined variables or [core variables](https://github.com/matsumotory/ngx_mruby/wiki/Class-and-Method#refs-nginx-core-variables), alias [Nginx::Var#method_missing](https://github.com/matsumotory/ngx_mruby/wiki/Class-and-Method#nginxvarmethod_missing)
+get nginx user difined variables or [core variables](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#refs-nginx-core-variables), alias [Nginx::Var#method_missing](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#nginxvarmethod_missing)
 ```ruby
 r = Nginx::Request
 Nginx.echo "$http_host core variable is #{r.var.http_host}"

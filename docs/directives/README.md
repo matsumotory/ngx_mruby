@@ -1,6 +1,6 @@
 ## ngx_mruby HTTP module Writing Hooks by a Directive
 ### General
-Hook your ruby script each phases. See [directives](https://github.com/matsumotory/ngx_mruby/wiki/Directives#wiki-directives).
+Hook your ruby script each phases. See [directives](https://github.com/matsumotory/ngx_mruby/docs/directives#directives).
 #### Set file path
 ```nginx
 location /hello {
@@ -103,7 +103,7 @@ http, server, location | mruby_output_filter_code|output filter phase|__[locatio
 
 ## ngx_mruby STREAM module Writing Hooks by a Directive
 ### General
-Hook your ruby script each pahses. See [directives](https://github.com/matsumotory/ngx_mruby/wiki/Directives#wiki-directives).
+Hook your ruby script each pahses. See [directives](https://github.com/matsumotory/ngx_mruby/docs/directives#directives).
 #### Set file path
 ```nginx
 server {
