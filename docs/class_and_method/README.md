@@ -428,7 +428,68 @@ r = Nginx::Request.new
 # curl -v http://192.168.12.9:8001/hello?a=1 -u matsumoto_r
 Nginx.echo r.user #=> matsumoto_r
 ```
+#### Nginx::Request#{read_body,get_body}
+
+If you use request body as Ruby method, you must use mruby_enable_read_reqeust_body on; on location config as the following:
+
+##### nginx.conf
+
+```nginx
+location /issue-268 {
+  mruby_enable_read_reqeust_body on;    # here
+  mruby_access_handler_code '
+    req = Nginx::Request.new
+    Nginx.log Nginx::LOG_ERR, "method:#{req.method}"
+    rc = req.read_body
+    body = req.get_body
+    Nginx.log Nginx::LOG_ERR, "rc:#{rc}"
+    Nginx.log Nginx::LOG_ERR, "body:#{body}"
+    Userdata.new.req_body = body
+  ';
+  mruby_content_handler_code '
+    Nginx.rputs Userdata.new.req_body
+  ';
+}
+```
+
+- test
+
+```ruby
+t.assert('ngx_mruby - BUG: request_body issue 268', 'location /issue-268') do
+  res = `./test/t/issue-268-test.rb`.split("\r\n\r\n")[1]
+  t.assert_equal %({\"hello\": \"ngx_mruby\"}\n), res
+end
+```
+
+- issue-268-test.rb
+
+```ruby
+#!/usr/bin/env ruby
+
+require 'socket'
+
+request_body = %({"hello": "ngx_mruby"})
+headers = <<HEAD.gsub("\n", "\r\n")
+POST /issue-268 HTTP/1.0
+Content-Type: application/json
+User-Agent: issue-268-test
+Content-Length: #{request_body.length}
+HEAD
+
+Socket.tcp("localhost", 58080) do |s|
+  s.print headers
+  s.print "\r\n"
+  sleep 0.3 # <==== important!
+  s.print request_body
+  s.close_write
+  puts s.read
+end
+```
+
 #### Nginx::Request#body
+
+If you use request body as Ruby method, you must use mruby_enable_read_reqeust_body on; on location config as the following:
+
 ##### nginx.conf
 ```ruby
 location /request_body {
