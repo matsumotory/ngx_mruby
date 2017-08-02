@@ -526,6 +526,32 @@ f1abd03eaab90a06be0ed8ac13708e63  ngx_modules.o
 
 ## Nginx::Server Class
 ### Method
+#### Nginx::Server#add_listener
+
+```ruby
+s = Nginx::Server.new
+s.add_listener({address: "127.0.0.1:58101"})
+s.add_listener({address: "58102"})
+s.add_listener({address: "58103", ssl: true})
+```
+
+- nginx.conf example
+
+```nginx
+http {
+    server {
+        mruby_server_context_handler_code '
+          s = Nginx::Server.new
+          (20001..30000).each { |port| s.add_listener({address: (port * 2).to_s}) }
+        ';
+
+        location /mruby {
+          mruby_content_handler_code 'Nginx.rputs "#{Nginx::Connection.new.local_port} sann hello"';
+        }
+    }
+}
+```
+
 #### Nginx::Server#document_root
 ```ruby
 s = Nginx::Server.new
