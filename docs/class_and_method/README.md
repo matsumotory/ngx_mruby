@@ -817,6 +817,20 @@ stream {
   }
 }
 ```
+### Nginx::Stream.add_listener
+
+Listen port dynamicaly using Ruby on config phase
+
+```nginx
+stream {
+  server {
+      mruby_stream_server_context_code '
+        (12360..12460).each { |local_port| Nginx::Stream.add_listener({address: local_port.to_s}) }
+      ';
+  }
+}
+```
+
 ### Nginx::Stream constants
 #### stream_status code
 ```ruby
