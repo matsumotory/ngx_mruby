@@ -14,6 +14,10 @@
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 
+#ifdef NGX_USE_MRUBY_ASYNC
+#include "ngx_http_mruby_async.h"
+#endif
+
 #include <mruby.h>
 #include <mruby/array.h>
 #include <mruby/compile.h>
@@ -777,7 +781,6 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   int ai = 0;
   mrb_value mrb_result;
   ngx_http_mruby_ctx_t *ctx;
-  ngx_mrb_rputs_chain_list_t *chain;
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
   if (state == NGX_CONF_UNSET_PTR || code == NGX_CONF_UNSET_PTR) {
@@ -803,8 +806,9 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     rc = ngx_http_read_client_request_body(r, ngx_http_mruby_read_request_body_cb);
 
     if (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, 
-                  "%s INFO %s:%d: mrb_run: tried to read request body, but got %d.", MODULE_NAME, __func__, __LINE__, rc);
+      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                    "%s INFO %s:%d: mrb_run: tried to read request body, but got %d.", MODULE_NAME, __func__, __LINE__,
+                    rc);
 #if (nginx_version < 1002006) || (nginx_version >= 1003000 && nginx_version < 1003009)
       r->main->count--;
 #endif
@@ -812,8 +816,9 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     }
 
     if (rc == NGX_AGAIN) {
-      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, 
-                  "%s INFO %s:%d: mrb_run: tried to read request body, but got NGX_AGAIN.", MODULE_NAME, __func__, __LINE__);
+      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                    "%s INFO %s:%d: mrb_run: tried to read request body, but got NGX_AGAIN.", MODULE_NAME, __func__,
+                    __LINE__);
       ctx->request_body_more = 1;
       ctx->read_request_body_done = 0;
       return NGX_AGAIN;
@@ -833,7 +838,15 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
       return rc;
     }
   }
+
+#ifdef NGX_USE_MRUBY_ASYNC
+  if (mrb_test(ngx_mrb_start_fiber(r, state->mrb, code->proc, &mrb_result))) {
+    return NGX_DONE;
+  }
+#else
   mrb_result = mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
+#endif
+
   if (state->mrb->exc) {
     ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -871,30 +884,10 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   }
   ngx_mrb_state_clean(r, state);
 
-  // TODO: Support rputs by multi directive
   if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
-    chain = ctx->rputs_chain;
-    if (chain == NULL) {
-      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                    "%s INFO %s:%d: mrb_run info: rputs_chain is null and return NGX_OK", MODULE_NAME, __func__,
-                    __LINE__);
-      if (r->headers_out.status >= 100) {
-        return r->headers_out.status;
-      } else {
-        return NGX_OK;
-      }
-    }
-    if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
-      r->headers_out.status = NGX_HTTP_OK;
-      (*chain->last)->buf->last_buf = 1;
-      ngx_http_send_header(r);
-      ngx_http_output_filter(r, chain->out);
-      ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
-      return NGX_OK;
-    } else {
-      return r->headers_out.status;
-    }
+    return ngx_mrb_finalize_rputs(r, ctx);
   }
+
   return NGX_OK;
 }
 

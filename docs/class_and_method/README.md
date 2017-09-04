@@ -823,6 +823,15 @@ http {
 }
 ```
 
+## Nginx::Async Class
+### Method
+#### Nginx::Async#sleep
+Do non-blocking sleep. Currenly it supports only rewrite and access phases.
+```ruby
+# sleep 3000 millisec
+Nginx::Async.sleep 3000
+```
+
 ## Nginx::Stream class
 - example
 

@@ -25,6 +25,7 @@ NGX_MRUBY_SRCS="$ngx_addon_dir/src/http/ngx_http_mruby_module.c \
                 $ngx_addon_dir/src/http/ngx_http_mruby_filter.c \
                 $ngx_addon_dir/src/http/ngx_http_mruby_upstream.c \
                 $ngx_addon_dir/src/http/ngx_http_mruby_ssl.c \
+                $ngx_addon_dir/src/http/ngx_http_mruby_async.c \
                 "
 
 if [ $STREAM = YES ]; then

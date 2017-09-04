@@ -48,4 +48,16 @@ module Kernel
   def get_server_class
     Nginx
   end
+
+  def _ngx_mruby_prepare_fiber(app_proc)
+    fiber = Fiber.new do
+      app_proc.call
+    end
+
+    Proc.new do
+      rv = fiber.resume
+      is_alive = fiber.alive?
+      [is_alive, rv]
+    end
+  end
 end
