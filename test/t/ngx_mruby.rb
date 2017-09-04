@@ -38,6 +38,9 @@ class NginxFeatures
     # 1.9.6 or later
     @minor >= 10 || (@minor == 9 && @patch >= 6)
   end
+  def is_async_supported?
+    Nginx.const_defined?("Async")
+  end
 end
 
 t = SimpleTest.new "ngx_mruby test"
@@ -627,5 +630,13 @@ if nginx_features.is_stream_supported?
     t.assert_equal 'Hello ngx_mruby world!', res["body"]
   end
 end
+
+if nginx_features.is_async_supported?
+  t.assert('ngx_mruby - Nginx.Async.sleep', 'location /async_sleep') do
+    res = HttpRequest.new.get base + '/async_sleep'
+    t.assert_equal 200, res.code
+  end
+end
+
 
 t.report
