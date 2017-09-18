@@ -94,7 +94,7 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
 // TODO: Support rputs by multi directive
 ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
 {
-  ngx_int_t rc;
+  ngx_int_t rc = NGX_OK;
   ngx_mrb_rputs_chain_list_t *chain;
 
   chain = ctx->rputs_chain;
@@ -107,8 +107,7 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     } else {
       rc = NGX_OK;
     }
-  }
-  if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
+  } else if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
     r->headers_out.status = NGX_HTTP_OK;
     (*chain->last)->buf->last_buf = 1;
     ngx_http_send_header(r);
