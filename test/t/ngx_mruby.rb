@@ -39,7 +39,8 @@ class NginxFeatures
     @minor >= 10 || (@minor == 9 && @patch >= 6)
   end
   def is_async_supported?
-    Nginx.const_defined?("Async")
+    # Should we enable Nginx::Async as default?
+    true
   end
 end
 
