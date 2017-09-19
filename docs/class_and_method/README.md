@@ -338,11 +338,12 @@ Nginx.echo "$http_host core variable is #{r.var.http_host}"
 set nginx variables
 ```ruby
 # in nginx.conf
+# Variables that assign values with set must be defined in conf beforehand
 # location /proxy {
 #     proxy_pass http://$backend;
 # }
 
-r = Nginx::Request
+r = Nginx::Request.new
 r.var.set "backend", "http://192.168.0.9/"
 ```
 #### Nginx::Request#headers_in[]
@@ -636,6 +637,7 @@ connections_active|connections_reading|connections_writing|connections_waiting
 set nginx variables
 ```ruby
 # in nginx.conf
+# Variables that assign values with set must be defined in conf beforehand
 # location /proxy {
 #     proxy_pass http://$backend;
 # }
