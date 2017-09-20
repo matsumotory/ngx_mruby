@@ -730,7 +730,11 @@ ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_
 {
   int ai = mrb_gc_arena_save(state->mrb);
   ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
+#ifdef NGX_USE_MRUBY_ASYNC
+  ngx_mrb_run_without_stop(state->mrb, code->proc, NULL);
+#else
   mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
+#endif
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
     ngx_mrb_raise_cycle_error(state->mrb, mrb_obj_value(state->mrb->exc), cycle);
@@ -746,7 +750,12 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
 {
   int ai = mrb_gc_arena_save(state->mrb);
   ngx_log_error(NGX_LOG_INFO, cf->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
+#ifdef NGX_USE_MRUBY_ASYNC
+  ngx_mrb_run_without_stop(state->mrb, code->proc, NULL);
+#else
   mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
+#endif
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
     ngx_mrb_raise_conf_error(state->mrb, mrb_obj_value(state->mrb->exc), cf);
@@ -2135,10 +2144,18 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
         return 1;
       }
     }
+#ifdef NGX_USE_MRUBY_ASYNC
+    ngx_mrb_run_without_stop(mrb, mscf->ssl_handshake_code->proc, NULL);
+#else
     mrb_run(mrb, mscf->ssl_handshake_code->proc, mrb_top_self(mrb));
+#endif
   }
   if (mscf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
+#ifdef NGX_USE_MRUBY_ASYNC
+    ngx_mrb_run_without_stop(mrb, mscf->ssl_handshake_inline_code->proc, NULL);
+#else
     mrb_run(mrb, mscf->ssl_handshake_inline_code->proc, mrb_top_self(mrb));
+#endif
   }
 
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
