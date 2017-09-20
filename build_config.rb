@@ -8,6 +8,10 @@ MRuby::Build.new('host') do |conf|
     cc.flags << ENV['NGX_MRUBY_CFLAGS'] if ENV['NGX_MRUBY_CFLAGS']
   end
 
+  conf.linker do |linker|
+    linker.flags << ENV['NGX_MRUBY_LDFLAGS'] if ENV['NGX_MRUBY_LDFLAGS']
+  end
+
   #
   # Recommended for ngx_mruby
   #
