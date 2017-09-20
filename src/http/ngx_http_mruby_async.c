@@ -22,18 +22,32 @@ typedef struct {
   ngx_http_request_t *r;
 } ngx_mrb_reentrant_t;
 
+static void replace_stop(mrb_irep *irep)
+{
+  // A part of them refer to https://github.com/h2o/h2o
+  // Replace OP_STOP with OP_RETURN to avoid stop VM
+  irep->iseq[irep->ilen - 1] = MKOP_AB(OP_RETURN, irep->nlocals, OP_R_NORMAL);
+}
+
+void ngx_mrb_run_without_stop(mrb_state *mrb, struct RProc *rproc, mrb_value *result)
+{
+  mrb_value mrb_result;
+
+  replace_stop(rproc->body.irep);
+
+  mrb_result = mrb_run(mrb, rproc, mrb_top_self(mrb));
+  if (result != NULL) {
+    *result = mrb_result;
+  }
+}
+
 mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc, mrb_value *result)
 {
   mrb_value proc;
-  mrb_irep *irep;
   mrb_value *fiber;
 
+  replace_stop(rproc->body.irep);
   proc = mrb_obj_value(mrb_closure_new(mrb, rproc->body.irep));
-
-  // A part of them refer to https://github.com/h2o/h2o
-  // Replace OP_STOP with OP_RETURN to avoid stop VM
-  irep = rproc->body.irep;
-  irep->iseq[irep->ilen - 1] = MKOP_AB(OP_RETURN, irep->nlocals, OP_R_NORMAL);
 
   fiber = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
   *fiber = mrb_funcall(mrb, mrb_obj_value(mrb->kernel_module), "_ngx_mruby_prepare_fiber", 1, proc);
