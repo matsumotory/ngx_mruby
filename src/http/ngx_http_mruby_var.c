@@ -115,7 +115,8 @@ ARENA_RESTOR_AND_ERROR:
 static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
 {
   mrb_value name, *a;
-  int alen, c_len;
+  mrb_int alen;
+  int c_len;
   mrb_value s_name;
   char *c_name;
   ngx_http_request_t *r;

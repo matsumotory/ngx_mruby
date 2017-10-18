@@ -91,7 +91,7 @@ static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_upstream_set_cache(mrb_state *mrb, mrb_value self)
 {
-  unsigned int cache;
+  mrb_int cache;
   ngx_mruby_upstream_context *ctx = DATA_PTR(self);
   __ngx_http_upstream_keepalive_srv_conf_t *kcf;
 
