@@ -143,8 +143,8 @@ To use configure.
 
 ```bash
 $ cd ${NGX_MRUBY_SRC}
-$ ./configure --with-ngx-src-root=${NGINX_SRC}
-$ make build_mruby_with_fpic
+$ ./configure --enable-dynamic-module --with-ngx-src-root=${NGINX_SRC}
+$ make build_mruby
 $ make generate_gems_config_dynamic
 $ cd ${NGINX_SRC}
 $ ./configure --prefix=/usr/local/nginx --add-dynamic-module=${NGX_MRUBY_SRC} --add-module=${NGX_MRUBY_SRC}/dependence/ngx_devel_kit --add-module=${SOME_OTHER_MODULE}
