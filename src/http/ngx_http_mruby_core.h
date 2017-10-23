@@ -37,4 +37,6 @@ void ngx_mrb_raise_connection_error(mrb_state *mrb, mrb_value exc, ngx_connectio
 void ngx_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle);
 void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
 
+ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx);
+
 #endif // NGX_HTTP_MRUBY_CORE_H
