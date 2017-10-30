@@ -10,6 +10,11 @@ MRuby::Build.new('host') do |conf|
 
   conf.linker do |linker|
     linker.flags << ENV['NGX_MRUBY_LDFLAGS'] if ENV['NGX_MRUBY_LDFLAGS']
+
+    # when using openssl from brew
+    if RUBY_PLATFORM =~ /darwin/i
+      linker.flags << '-L/usr/local/opt/openssl/lib -lcrypto'
+    end
   end
 
   #
