@@ -1593,6 +1593,8 @@ static ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r, ngx_str_t *va
   if (filter_data->code == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
   }
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based set_handler code: %s", 
+		filter_data->code->code.file);
   return ngx_mrb_run(r, filter_data->state, filter_data->code, mlcf->cached, val);
 }
 
@@ -1601,6 +1603,7 @@ static ngx_int_t ngx_http_mruby_set_inline_handler(ngx_http_request_t *r, ngx_st
 {
   ngx_http_mruby_set_var_data_t *filter_data;
   filter_data = data;
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline set_handler code: %s", filter_data->code->code.string);
   return ngx_mrb_run(r, filter_data->state, filter_data->code, 1, val);
 }
 #endif
@@ -1651,6 +1654,8 @@ static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_c
 
   r->connection->buffered &= ~0x08;
 
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based body_filter_handler code: %s",
+		mlcf->body_filter_code->code.file);
   rc = ngx_mrb_run(r, mmcf->state, mlcf->body_filter_code, mlcf->cached, NULL);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
@@ -1718,6 +1723,8 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
 
   r->connection->buffered &= ~0x08;
 
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline body_filter_inline_handler code: %s",
+		mlcf->body_filter_inline_code->code.string);
   rc = ngx_mrb_run(r, mmcf->state, mlcf->body_filter_inline_code, mlcf->cached, NULL);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
