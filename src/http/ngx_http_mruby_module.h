@@ -59,6 +59,8 @@ extern ngx_module_t ngx_http_mruby_module;
 
 typedef struct {
   ngx_mrb_state_t *state;
+  ngx_mrb_code_t *ssl_client_hello_code;
+  ngx_mrb_code_t *ssl_client_hello_inline_code;
   ngx_mrb_code_t *ssl_handshake_code;
   ngx_mrb_code_t *ssl_handshake_inline_code;
   ngx_mrb_code_t *server_config_inline_code;
@@ -69,8 +71,10 @@ typedef struct {
   ngx_str_t cert_key_path;
   ngx_str_t cert_data;
   ngx_str_t cert_key_data;
-#if (NGX_HTTP_SSL) && OPENSSL_VERSION_NUMBER >= 0x1000205fL
+#if (NGX_HTTP_SSL)
+#if OPENSSL_VERSION_NUMBER >= 0x1000205fL
   ngx_connection_t *connection;
+#endif
 #endif
 } ngx_http_mruby_srv_conf_t;
 
