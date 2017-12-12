@@ -83,8 +83,10 @@ static char *ngx_http_mruby_exit_worker_inline(ngx_conf_t *cf, ngx_command_t *cm
 #if (NGX_HTTP_SSL)
 static char *ngx_http_mruby_ssl_handshake_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 static char *ngx_http_mruby_ssl_client_hello_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_ssl_client_hello_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+#endif
 #endif /* NGX_HTTP_SSL */
 static char *ngx_http_mruby_server_config_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
@@ -1164,6 +1166,7 @@ static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *
   return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mscf->ssl_handshake_inline_code, __func__);
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 static char *ngx_http_mruby_ssl_client_hello_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_mruby_srv_conf_t *mscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_mruby_module);
@@ -1186,6 +1189,7 @@ static char *ngx_http_mruby_ssl_client_hello_inline(ngx_conf_t *cf, ngx_command_
     mscf->state = mmcf->state;
     return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mscf->ssl_client_hello_inline_code, __func__);
 }
+#endif
 #endif /* NGX_HTTP_SSL */
 
 static char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
