@@ -178,10 +178,12 @@ static ngx_command_t ngx_http_mruby_commands[] = {
 
     {ngx_string("mruby_ssl_handshake_handler_code"), NGX_HTTP_SRV_CONF | NGX_CONF_TAKE1,
      ngx_http_mruby_ssl_handshake_inline, NGX_HTTP_SRV_CONF_OFFSET, 0, NULL},
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     {ngx_string("mruby_ssl_client_hello_handler"), NGX_HTTP_SRV_CONF | NGX_CONF_TAKE12,
      ngx_http_mruby_ssl_client_hello_phase, NGX_HTTP_SRV_CONF_OFFSET, 0, NULL},
     {ngx_string("mruby_ssl_client_hello_handler_code"), NGX_HTTP_SRV_CONF | NGX_CONF_TAKE1,
      ngx_http_mruby_ssl_client_hello_inline, NGX_HTTP_SRV_CONF_OFFSET, 0, NULL},
+#endif
 
 #endif /* NGX_HTTP_SSL */
 
