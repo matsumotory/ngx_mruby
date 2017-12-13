@@ -447,8 +447,7 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
     SSL_CTX_set_client_hello_cb(sscf->ssl.ctx, (SSL_client_hello_cb_fn)ngx_http_mruby_ssl_client_hello_handler, NULL);
 #else
-    ngx_log_error(NGX_LOG_EMERG, cf->log, 0, MODULE_NAME " : OpenSSL 1.1.1dev or later required but found " OPENSSL_VERSION_TEXT);
-    return NGX_CONF_ERROR;
+    ngx_log_error(NGX_LOG_INFO, cf->log, 0, MODULE_NAME " : mruby_ssl_client_hello_handler require OpenSSL 1.1.1dev or later but found " OPENSSL_VERSION_TEXT);
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
     SSL_CTX_set_cert_cb(sscf->ssl.ctx, ngx_http_mruby_ssl_cert_handler, NULL);
