@@ -79,6 +79,8 @@ http | mruby_init_worker /path/to/code.rb  |init worker process phase|__[http co
 http | mruby_init_worker_code inline-code |init worker process phase|__[http conf]__ write inline Ruby code in ngxin.conf 
 http | mruby_exit_worker /path/to/code.rb  |exit worker process phase|__[http conf]__ write file path in ngxin.conf 
 http | mruby_exit_worker_code inline-code |exit worker process phase|__[http conf]__ write inline Ruby code in ngxin.conf 
+server | mruby_ssl_client_hello_handler /path/to/code.rb  |ssl handshake phase|__[server conf]__ write file path in ngxin.conf 
+server | mruby_ssl_client_hello_handler_code inline-code |ssl handshake phase|__[server conf]__ write inline Ruby code in ngxin.conf 
 server | mruby_ssl_handshake_handler /path/to/code.rb  |ssl handshake phase|__[server conf]__ write file path in ngxin.conf 
 server | mruby_ssl_handshake_handler_code inline-code |ssl handshake phase|__[server conf]__ write inline Ruby code in ngxin.conf 
 server, location | mruby_add_handler|create location configuration phase|__[location conf]__  
