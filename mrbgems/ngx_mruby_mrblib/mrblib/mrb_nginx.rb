@@ -29,7 +29,7 @@ class Nginx
     private
 
     def args_to_hash(args)
-      Hash[*args.split("&").map{|arg| arg.split("=")}.flatten]
+      Hash[*args.split("&").map{|arg| arg.split("=", 2)}.flatten]
     end
   end
 

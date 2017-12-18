@@ -437,6 +437,11 @@ t.assert('ngx_mruby - get uri_args', 'location /get_uri_args') do
   t.assert_equal "k:v\n", res["body"]
 end
 
+t.assert('ngx_mruby - get uri_args includes empty value', 'location /get_uri_args') do
+  res = HttpRequest.new.get base + '/get_uri_args/?k1=v1&k2=&k3=v3'
+  t.assert_equal "k1:v1\nk2:\nk3:v3\n", res["body"]
+end
+
 t.assert('ngx_mruby - set uri_args', 'location /set_uri_args') do
   res = HttpRequest.new.get base + '/set_uri_args'
   t.assert_equal "pass=ngx_mruby\n", res['body']
