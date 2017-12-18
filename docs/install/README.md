@@ -60,7 +60,7 @@ $ cd ngx_mruby
   - mruby-userdata: https://github.com/matsumoto-r/mruby-userdata
   - mruby-onig-regexp: regexp engine
   - mruby-io: https://github.com/iij/mruby-io
-- Notice: If you want to build the ngx_mruby as dynamic module, you should set `-fPIC` flag to build_config. See [build_config_dynamic.rb](https://github.com/matsumoto-r/ngx_mruby/blob/master/build_config_dynamic.rb)
+- Notice: If you want to build the ngx_mruby as dynamic module, you should set `--enable-dynamic-module` flag to `configure`. See [build.sh](https://github.com/kenhys/ngx_mruby/blob/master/build.sh#L30)
 - __We should implement ngx_mruby/mod_mruby extensions as mrbgems, as possible.__
 - __We recommend the contribute to mruby by implementing mrbgems.__
 
