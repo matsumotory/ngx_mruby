@@ -432,7 +432,8 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
     SSL_CTX_set_cert_cb(sscf->ssl.ctx, ngx_http_mruby_ssl_cert_handler, NULL);
 #else
     ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                  MODULE_NAME " : OpenSSL 1.0.2e or later required but found " OPENSSL_VERSION_TEXT);
+                  MODULE_NAME
+                  " : mruby_ssl_handshake_handler : OpenSSL 1.0.2e or later required but found " OPENSSL_VERSION_TEXT);
     return NGX_CONF_ERROR;
 #endif
   }
