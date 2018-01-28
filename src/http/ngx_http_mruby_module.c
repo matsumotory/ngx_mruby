@@ -134,8 +134,10 @@ static ngx_int_t ngx_http_mruby_access_inline_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_content_inline_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_mruby_log_inline_handler(ngx_http_request_t *r);
 
-#if (NGX_HTTP_SSL) && OPENSSL_VERSION_NUMBER >= 0x1000205fL
+#if (NGX_HTTP_SSL)
+#if OPENSSL_VERSION_NUMBER >= 0x1000205fL
 static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data);
+#endif
 #endif /* NGX_HTTP_SSL */
 
 #if defined(NDK) && NDK
