@@ -31,7 +31,8 @@ static void ngx_stream_mrb_upstream_context_free(mrb_state *mrb, void *p)
 }
 
 static const struct mrb_data_type ngx_stream_mrb_upstream_context_type = {
-    "ngx_stream_mrb_upstream_context", ngx_stream_mrb_upstream_context_free,
+    "ngx_stream_mrb_upstream_context",
+    ngx_stream_mrb_upstream_context_free,
 };
 
 static mrb_value ngx_stream_mrb_connection_init(mrb_state *mrb, mrb_value self)

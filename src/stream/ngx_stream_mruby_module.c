@@ -400,8 +400,9 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
     ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: compile info: code->code.file=(%s)", MODULE_NAME,
                        __func__, __LINE__, code->code.file);
   } else {
-    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: compile info: "
-                                              "code->code.string=(%s)",
+    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
+                       "%s NOTICE %s:%d: compile info: "
+                       "code->code.string=(%s)",
                        MODULE_NAME, __func__, __LINE__, code->code.string);
   }
 
