@@ -636,13 +636,15 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
   ngx_http_phases phases[] = {
       NGX_HTTP_POST_READ_PHASE,
       // NGX_HTTP_FIND_CONFIG_PHASE,
-      NGX_HTTP_SERVER_REWRITE_PHASE, NGX_HTTP_REWRITE_PHASE,
+      NGX_HTTP_SERVER_REWRITE_PHASE,
+      NGX_HTTP_REWRITE_PHASE,
       // NGX_HTTP_POST_REWRITE_PHASE,
       // NGX_HTTP_PREACCESS_PHASE,
       NGX_HTTP_ACCESS_PHASE,
       // NGX_HTTP_POST_ACCESS_PHASE,
       // NGX_HTTP_TRY_FILES_PHASE,
-      NGX_HTTP_CONTENT_PHASE, NGX_HTTP_LOG_PHASE,
+      NGX_HTTP_CONTENT_PHASE,
+      NGX_HTTP_LOG_PHASE,
   };
   ngx_int_t phases_c;
 
@@ -806,8 +808,9 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     rc = ngx_http_read_client_request_body(r, ngx_http_mruby_read_request_body_cb);
 
     if (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, 
-                  "%s INFO %s:%d: mrb_run: tried to read request body, but got %d.", MODULE_NAME, __func__, __LINE__, rc);
+      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                    "%s INFO %s:%d: mrb_run: tried to read request body, but got %d.", MODULE_NAME, __func__, __LINE__,
+                    rc);
 #if (nginx_version < 1002006) || (nginx_version >= 1003000 && nginx_version < 1003009)
       r->main->count--;
 #endif
@@ -815,8 +818,9 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     }
 
     if (rc == NGX_AGAIN) {
-      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, 
-                  "%s INFO %s:%d: mrb_run: tried to read request body, but got NGX_AGAIN.", MODULE_NAME, __func__, __LINE__);
+      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                    "%s INFO %s:%d: mrb_run: tried to read request body, but got NGX_AGAIN.", MODULE_NAME, __func__,
+                    __LINE__);
       ctx->request_body_more = 1;
       ctx->read_request_body_done = 0;
       return NGX_AGAIN;
@@ -1024,8 +1028,9 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
     ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: compile info: code->code.file=(%s) code->cache=(%d)",
                        MODULE_NAME, __func__, __LINE__, code->code.file, code->cache);
   } else {
-    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: compile info: "
-                                              "code->code.string=(%s) code->cache=(%d)",
+    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
+                       "%s NOTICE %s:%d: compile info: "
+                       "code->code.string=(%s) code->cache=(%d)",
                        MODULE_NAME, __func__, __LINE__, code->code.string, code->cache);
   }
 
@@ -1192,9 +1197,10 @@ static char *ngx_http_mruby_exit_worker_inline(ngx_conf_t *cf, ngx_command_t *cm
 
 static char *ngx_http_mruby_output_filter_error(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-  ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mruby_output_filter{,_code} was deleted from v1.17.2, you should use "
-                                           "mruby_output_body_filter{,_code} for response body, or use "
-                                           "mruby_output_header_filter{,_code} for response headers.");
+  ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                     "mruby_output_filter{,_code} was deleted from v1.17.2, you should use "
+                     "mruby_output_body_filter{,_code} for response body, or use "
+                     "mruby_output_header_filter{,_code} for response headers.");
   return NGX_CONF_ERROR;
 }
 
@@ -1596,8 +1602,8 @@ static ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r, ngx_str_t *va
   if (filter_data->code == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
   }
-  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based set_handler code: %s", 
-		filter_data->code->code.file);
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based set_handler code: %s",
+                filter_data->code->code.file);
   return ngx_mrb_run(r, filter_data->state, filter_data->code, mlcf->cached, val);
 }
 
@@ -1606,7 +1612,8 @@ static ngx_int_t ngx_http_mruby_set_inline_handler(ngx_http_request_t *r, ngx_st
 {
   ngx_http_mruby_set_var_data_t *filter_data;
   filter_data = data;
-  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline set_handler code: %s", filter_data->code->code.string);
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline set_handler code: %s",
+                filter_data->code->code.string);
   return ngx_mrb_run(r, filter_data->state, filter_data->code, 1, val);
 }
 #endif
@@ -1658,7 +1665,7 @@ static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_c
   r->connection->buffered &= ~0x08;
 
   ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based body_filter_handler code: %s",
-		mlcf->body_filter_code->code.file);
+                mlcf->body_filter_code->code.file);
   rc = ngx_mrb_run(r, mmcf->state, mlcf->body_filter_code, mlcf->cached, NULL);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
@@ -1727,7 +1734,7 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
   r->connection->buffered &= ~0x08;
 
   ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline body_filter_inline_handler code: %s",
-		mlcf->body_filter_inline_code->code.string);
+                mlcf->body_filter_inline_code->code.string);
   rc = ngx_mrb_run(r, mmcf->state, mlcf->body_filter_inline_code, mlcf->cached, NULL);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
