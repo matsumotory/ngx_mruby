@@ -2093,8 +2093,9 @@ NGX_MRUBY_SSL_ERROR:
 
 #endif /* NGX_HTTP_SSL */
 
-#if (NGX_HTTP_SSL) && OPENSSL_VERSION_NUMBER >= 0x1000205fL
+#if (NGX_HTTP_SSL) 
 
+#if OPENSSL_VERSION_NUMBER >= 0x1000205fL
 static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
 {
   ngx_connection_t *c;
@@ -2220,4 +2221,5 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
 
   return 1;
 }
+#endif /* 0x1000205fL */
 #endif /* NGX_HTTP_SSL */
