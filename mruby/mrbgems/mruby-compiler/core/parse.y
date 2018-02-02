@@ -740,16 +740,18 @@ new_int(parser_state *p, const char *s, int base)
   return list3((node*)NODE_INT, (node*)strdup(s), nint(base));
 }
 
+#ifndef MRB_WITHOUT_FLOAT
 /* (:float . i) */
 static node*
 new_float(parser_state *p, const char *s)
 {
   return cons((node*)NODE_FLOAT, (node*)strdup(s));
 }
+#endif
 
 /* (:str . (s . len)) */
 static node*
-new_str(parser_state *p, const char *s, int len)
+new_str(parser_state *p, const char *s, size_t len)
 {
   return cons((node*)NODE_STR, cons((node*)strndup(s, len), nint(len)));
 }
@@ -1384,7 +1386,7 @@ command_asgn    : lhs '=' command_rhs
                       backref_error(p, $1);
                       $$ = new_begin(p, 0);
                     }
-		;
+                ;
 
 command_rhs     : command_call   %prec tOP_ASGN
                 | command_call modifier_rescue stmt
@@ -2566,7 +2568,7 @@ lambda_body     : tLAMBEG compstmt '}'
                     {
                       $$ = $2;
                     }
-                | keyword_do_LAMBDA compstmt keyword_end
+                | keyword_do_LAMBDA bodystmt keyword_end
                     {
                       $$ = $2;
                     }
@@ -2577,7 +2579,7 @@ do_block        : keyword_do_block
                       local_nest(p);
                     }
                   opt_block_param
-                  compstmt
+                  bodystmt
                   keyword_end
                     {
                       $$ = new_block(p,$3,$4);
@@ -2667,7 +2669,7 @@ brace_block     : '{'
                       $<num>$ = p->lineno;
                     }
                   opt_block_param
-                  compstmt keyword_end
+                  bodystmt keyword_end
                     {
                       $$ = new_block(p,$3,$4);
                       SET_LINENO($$, $<num>2);
@@ -2853,18 +2855,18 @@ words           : tWORDS_BEG tSTRING
 
 symbol          : basic_symbol
                     {
+                      p->lstate = EXPR_ENDARG;
                       $$ = new_sym(p, $1);
                     }
                 | tSYMBEG tSTRING_BEG string_rep tSTRING
                     {
-                      p->lstate = EXPR_END;
+                      p->lstate = EXPR_ENDARG;
                       $$ = new_dsym(p, push($3, $4));
                     }
                 ;
 
 basic_symbol    : tSYMBEG sym
                     {
-                      p->lstate = EXPR_END;
                       $$ = $2;
                     }
                 ;
@@ -2967,6 +2969,15 @@ var_ref         : variable
 
                       snprintf(buf, sizeof(buf), "%d", p->lineno);
                       $$ = new_int(p, buf, 10);
+                    }
+                | keyword__ENCODING__
+                    {
+#ifdef MRB_UTF8_STRING
+                      const char *enc = "UTF-8";
+#else
+                      const char *enc = "ASCII-8BIT";
+#endif
+                      $$ = new_str(p, enc, strlen(enc));
                     }
                 ;
 
@@ -3361,7 +3372,7 @@ static void
 yyerror(parser_state *p, const char *s)
 {
   char* c;
-  int n;
+  size_t n;
 
   if (! p->capture_errors) {
 #ifndef MRB_DISABLE_STDIO
@@ -3397,7 +3408,7 @@ static void
 yywarn(parser_state *p, const char *s)
 {
   char* c;
-  int n;
+  size_t n;
 
   if (! p->capture_errors) {
 #ifndef MRB_DISABLE_STDIO
@@ -3443,7 +3454,7 @@ backref_error(parser_state *p, node *n)
   c = (int)(intptr_t)n->car;
 
   if (c == NODE_NTH_REF) {
-    yyerror_i(p, "can't set variable $%" MRB_PRId, (mrb_int)(intptr_t)n->cdr);
+    yyerror_i(p, "can't set variable $%" MRB_PRId, (int)(intptr_t)n->cdr);
   }
   else if (c == NODE_BACK_REF) {
     yyerror_i(p, "can't set variable $%c", (int)(intptr_t)n->cdr);
@@ -3593,7 +3604,7 @@ peek_n(parser_state *p, int c, int n)
 static mrb_bool
 peeks(parser_state *p, const char *s)
 {
-  int len = strlen(s);
+  size_t len = strlen(s);
 
 #ifndef MRB_DISABLE_STDIO
   if (p->f) {
@@ -3629,7 +3640,7 @@ skips(parser_state *p, const char *s)
     }
     s++;
     if (peeks(p, s)) {
-      int len = strlen(s);
+      size_t len = strlen(s);
 
       while (len--) {
         if (nextc(p) == '\n') {
@@ -3751,28 +3762,28 @@ toklen(parser_state *p)
 #define IS_LABEL_POSSIBLE() ((p->lstate == EXPR_BEG && !cmd_state) || IS_ARG())
 #define IS_LABEL_SUFFIX(n) (peek_n(p, ':',(n)) && !peek_n(p, ':', (n)+1))
 
-static int
+static int32_t
 scan_oct(const int *start, int len, int *retlen)
 {
   const int *s = start;
-  int retval = 0;
+  int32_t retval = 0;
 
   /* mrb_assert(len <= 3) */
   while (len-- && *s >= '0' && *s <= '7') {
     retval <<= 3;
     retval |= *s++ - '0';
   }
-  *retlen = s - start;
+  *retlen = (int)(s - start);
 
   return retval;
 }
 
 static int32_t
-scan_hex(const int *start, int len, int *retlen)
+scan_hex(parser_state *p, const int *start, int len, int *retlen)
 {
   static const char hexdigit[] = "0123456789abcdef0123456789ABCDEF";
   const int *s = start;
-  int32_t retval = 0;
+  uint32_t retval = 0;
   char *tmp;
 
   /* mrb_assert(len <= 8) */
@@ -3781,22 +3792,26 @@ scan_hex(const int *start, int len, int *retlen)
     retval |= (tmp - hexdigit) & 15;
     s++;
   }
-  *retlen = s - start;
+  *retlen = (int)(s - start);
 
-  return retval;
+  return (int32_t)retval;
 }
 
 static int32_t
 read_escape_unicode(parser_state *p, int limit)
 {
-  int32_t c;
   int buf[9];
   int i;
+  int32_t hex;
 
   /* Look for opening brace */
   i = 0;
   buf[0] = nextc(p);
-  if (buf[0] < 0) goto eof;
+  if (buf[0] < 0) {
+  eof:
+    yyerror(p, "invalid escape character syntax");
+    return -1;
+  }
   if (ISXDIGIT(buf[0])) {
     /* \uxxxx form */
     for (i=1; i<limit; i++) {
@@ -3811,17 +3826,12 @@ read_escape_unicode(parser_state *p, int limit)
   else {
     pushback(p, buf[0]);
   }
-  c = scan_hex(buf, i, &i);
-  if (i == 0) {
-  eof:
-    yyerror(p, "Invalid escape character syntax");
+  hex = scan_hex(p, buf, i, &i);
+  if (i == 0 || hex > 0x10FFFF || (hex & 0xFFFFF800) == 0xD800) {
+    yyerror(p, "invalid Unicode code point");
     return -1;
   }
-  if (c < 0 || c > 0x10FFFF || (c & 0xFFFFF800) == 0xD800) {
-    yyerror(p, "Invalid Unicode code point");
-    return -1;
-  }
-  return c;
+  return hex;
 }
 
 /* Return negative to indicate Unicode code point */
@@ -3887,13 +3897,12 @@ read_escape(parser_state *p)
         break;
       }
     }
-    c = scan_hex(buf, i, &i);
     if (i == 0) {
-      yyerror(p, "Invalid escape character syntax");
-      return 0;
+      yyerror(p, "invalid hex escape");
+      return -1;
     }
+    return scan_hex(p, buf, i, &i);
   }
-  return c;
 
   case 'u':     /* Unicode */
     if (peek(p, '{')) {
@@ -3960,9 +3969,9 @@ parse_string(parser_state *p)
 {
   int c;
   string_type type = (string_type)(intptr_t)p->lex_strterm->car;
-  int nest_level = (intptr_t)p->lex_strterm->cdr->car;
-  int beg = (intptr_t)p->lex_strterm->cdr->cdr->car;
-  int end = (intptr_t)p->lex_strterm->cdr->cdr->cdr;
+  int nest_level = intn(p->lex_strterm->cdr->car);
+  int beg = intn(p->lex_strterm->cdr->cdr->car);
+  int end = intn(p->lex_strterm->cdr->cdr->cdr);
   parser_heredoc_info *hinf = (type & STR_FUNC_HEREDOC) ? parsing_heredoc_inf(p) : NULL;
   int cmd_state = p->cmd_start;
 
@@ -4118,7 +4127,7 @@ parse_string(parser_state *p)
   }
 
   tokfix(p);
-  p->lstate = EXPR_END;
+  p->lstate = EXPR_ENDARG;
   end_strterm(p);
 
   if (type & STR_FUNC_XQUOTE) {
@@ -4605,7 +4614,7 @@ parser_yylex(parser_state *p)
     }
     tokfix(p);
     pylval.nd = new_str(p, tok(p), toklen(p));
-    p->lstate = EXPR_END;
+    p->lstate = EXPR_ENDARG;
     return tCHAR;
 
   case '&':
@@ -4754,7 +4763,7 @@ parser_yylex(parser_state *p)
     int is_float, seen_point, seen_e, nondigit;
 
     is_float = seen_point = seen_e = nondigit = 0;
-    p->lstate = EXPR_END;
+    p->lstate = EXPR_ENDARG;
     newtok(p);
     if (c == '-' || c == '+') {
       tokadd(p, c);
@@ -4955,6 +4964,11 @@ parser_yylex(parser_state *p)
     }
     tokfix(p);
     if (is_float) {
+#ifdef MRB_WITHOUT_FLOAT
+      yywarning_s(p, "floating point numbers are not supported", tok(p));
+      pylval.nd = new_int(p, "0", 10);
+      return tINTEGER;
+#else
       double d;
       char *endp;
 
@@ -4969,6 +4983,7 @@ parser_yylex(parser_state *p)
       }
       pylval.nd = new_float(p, tok(p));
       return tFLOAT;
+#endif
     }
     pylval.nd = new_int(p, tok(p), 10);
     return tINTEGER;
@@ -4984,7 +4999,7 @@ parser_yylex(parser_state *p)
     if (c == ')')
       p->lstate = EXPR_ENDFN;
     else
-      p->lstate = EXPR_ENDARG;
+      p->lstate = EXPR_END;
     return c;
 
   case ':':
@@ -5069,6 +5084,9 @@ parser_yylex(parser_state *p)
       c = tLPAREN;
     }
     else if (IS_SPCARG(-1)) {
+      c = tLPAREN_ARG;
+    }
+    else if (p->lstate == EXPR_END && space_seen) {
       c = tLPAREN_ARG;
     }
     p->paren_nest++;
@@ -5490,11 +5508,9 @@ parser_yylex(parser_state *p)
       mrb_sym ident = intern_cstr(tok(p));
 
       pylval.id = ident;
-#if 0
-      if (last_state != EXPR_DOT && islower(tok(p)[0]) && lvar_defined(ident)) {
+      if (last_state != EXPR_DOT && islower(tok(p)[0]) && local_var_p(p, ident)) {
         p->lstate = EXPR_END;
       }
-#endif
     }
     return result;
   }
@@ -5674,7 +5690,7 @@ MRB_API const char*
 mrbc_filename(mrb_state *mrb, mrbc_context *c, const char *s)
 {
   if (s) {
-    int len = strlen(s);
+    size_t len = strlen(s);
     char *p = (char *)mrb_malloc(mrb, len + 1);
 
     memcpy(p, s, len + 1);
@@ -5706,16 +5722,16 @@ mrb_parser_set_filename(struct mrb_parser_state *p, const char *f)
 
   for (i = 0; i < p->filename_table_length; ++i) {
     if (p->filename_table[i] == sym) {
-      p->current_filename_index = i;
+      p->current_filename_index = (int)i;
       return;
     }
   }
 
-  p->current_filename_index = p->filename_table_length++;
+  p->current_filename_index = (int)p->filename_table_length++;
 
   new_table = (mrb_sym*)parser_palloc(p, sizeof(mrb_sym) * p->filename_table_length);
   if (p->filename_table) {
-    memmove(new_table, p->filename_table, sizeof(mrb_sym) * p->filename_table_length);
+    memmove(new_table, p->filename_table, sizeof(mrb_sym) * p->current_filename_index);
   }
   p->filename_table = new_table;
   p->filename_table[p->filename_table_length - 1] = sym;
@@ -5746,7 +5762,7 @@ mrb_parse_file(mrb_state *mrb, FILE *f, mrbc_context *c)
 #endif
 
 MRB_API parser_state*
-mrb_parse_nstring(mrb_state *mrb, const char *s, int len, mrbc_context *c)
+mrb_parse_nstring(mrb_state *mrb, const char *s, size_t len, mrbc_context *c)
 {
   parser_state *p;
 
@@ -5777,7 +5793,7 @@ mrb_load_exec(mrb_state *mrb, struct mrb_parser_state *p, mrbc_context *c)
     return mrb_undef_value();
   }
   if (!p->tree || p->nerr) {
-    c->parser_nerr = p->nerr;
+    if (c) c->parser_nerr = p->nerr;
     if (p->capture_errors) {
       char buf[256];
       int n;
@@ -5817,7 +5833,7 @@ mrb_load_exec(mrb_state *mrb, struct mrb_parser_state *p, mrbc_context *c)
       c->keep_lv = TRUE;
     }
   }
-  proc->target_class = target;
+  MRB_PROC_SET_TARGET_CLASS(proc, target);
   if (mrb->c->ci) {
     mrb->c->ci->target_class = target;
   }
@@ -5841,13 +5857,13 @@ mrb_load_file(mrb_state *mrb, FILE *f)
 #endif
 
 MRB_API mrb_value
-mrb_load_nstring_cxt(mrb_state *mrb, const char *s, int len, mrbc_context *c)
+mrb_load_nstring_cxt(mrb_state *mrb, const char *s, size_t len, mrbc_context *c)
 {
   return mrb_load_exec(mrb, mrb_parse_nstring(mrb, s, len, c), c);
 }
 
 MRB_API mrb_value
-mrb_load_nstring(mrb_state *mrb, const char *s, int len)
+mrb_load_nstring(mrb_state *mrb, const char *s, size_t len)
 {
   return mrb_load_nstring_cxt(mrb, s, len, NULL);
 }

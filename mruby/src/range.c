@@ -10,8 +10,6 @@
 #include <mruby/string.h>
 #include <mruby/array.h>
 
-#define RANGE_CLASS (mrb_class_get(mrb, "Range"))
-
 MRB_API struct RRange*
 mrb_range_ptr(mrb_state *mrb, mrb_value v)
 {
@@ -32,8 +30,12 @@ range_check(mrb_state *mrb, mrb_value a, mrb_value b)
 
   ta = mrb_type(a);
   tb = mrb_type(b);
+#ifdef MRB_WITHOUT_FLOAT
+  if (ta == MRB_TT_FIXNUM && tb == MRB_TT_FIXNUM ) {
+#else
   if ((ta == MRB_TT_FIXNUM || ta == MRB_TT_FLOAT) &&
       (tb == MRB_TT_FIXNUM || tb == MRB_TT_FLOAT)) {
+#endif
     return;
   }
 
@@ -50,7 +52,7 @@ mrb_range_new(mrb_state *mrb, mrb_value beg, mrb_value end, mrb_bool excl)
   struct RRange *r;
 
   range_check(mrb, beg, end);
-  r = (struct RRange*)mrb_obj_alloc(mrb, MRB_TT_RANGE, RANGE_CLASS);
+  r = (struct RRange*)mrb_obj_alloc(mrb, MRB_TT_RANGE, mrb->range_class);
   r->edges = (mrb_range_edges *)mrb_malloc(mrb, sizeof(mrb_range_edges));
   r->edges->beg = beg;
   r->edges->end = end;
@@ -133,7 +135,7 @@ mrb_range_initialize(mrb_state *mrb, mrb_value range)
 {
   mrb_value beg, end;
   mrb_bool exclusive;
-  int n;
+  mrb_int n;
 
   n = mrb_get_args(mrb, "oo|b", &beg, &end, &exclusive);
   if (n != 3) {
@@ -353,7 +355,7 @@ range_eql(mrb_state *mrb, mrb_value range)
   mrb_get_args(mrb, "o", &obj);
 
   if (mrb_obj_equal(mrb, range, obj)) return mrb_true_value();
-  if (!mrb_obj_is_kind_of(mrb, obj, RANGE_CLASS)) {
+  if (!mrb_obj_is_kind_of(mrb, obj, mrb->range_class)) {
     return mrb_false_value();
   }
   if (mrb_type(obj) != MRB_TT_RANGE) return mrb_false_value();
@@ -423,6 +425,7 @@ mrb_init_range(mrb_state *mrb)
   struct RClass *r;
 
   r = mrb_define_class(mrb, "Range", mrb->object_class);                                /* 15.2.14 */
+  mrb->range_class = r;
   MRB_SET_INSTANCE_TT(r, MRB_TT_RANGE);
 
   mrb_define_method(mrb, r, "begin",           mrb_range_beg,         MRB_ARGS_NONE()); /* 15.2.14.4.3  */

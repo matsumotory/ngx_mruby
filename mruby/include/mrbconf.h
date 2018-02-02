@@ -28,13 +28,37 @@
 /* add -DMRB_USE_FLOAT to use float instead of double for floating point numbers */
 //#define MRB_USE_FLOAT
 
+/* exclude floating point numbers */
+//#define MRB_WITHOUT_FLOAT
+
+/* add -DMRB_METHOD_CACHE to use method cache to improve performance */
+//#define MRB_METHOD_CACHE
+/* size of the method cache (need to be the power of 2) */
+//#define MRB_METHOD_CACHE_SIZE (1<<7)
+
+/* add -DMRB_METHOD_TABLE_INLINE to reduce the size of method table */
+/* MRB_METHOD_TABLE_INLINE requires LSB of function pointers to be zero */
+/* you might need to specify --falign-functions=n (where n>1) */
+//#define MRB_METHOD_TABLE_INLINE
+
 /* add -DMRB_INT16 to use 16bit integer for mrb_int; conflict with MRB_INT64 */
 //#define MRB_INT16
 
 /* add -DMRB_INT64 to use 64bit integer for mrb_int; conflict with MRB_INT16 */
 //#define MRB_INT64
 
-/* represent mrb_value in boxed double; conflict with MRB_USE_FLOAT */
+/* if no specific integer type is chosen */
+#if !defined(MRB_INT16) && !defined(MRB_INT32) && !defined(MRB_INT64)
+# if defined(MRB_64BIT) && !defined(MRB_NAN_BOXING)
+/* Use 64bit integers on 64bit architecture (without MRB_NAN_BOXING) */
+#  define MRB_INT64
+# else
+/* Otherwise use 32bit integers */
+#  define MRB_INT32
+# endif
+#endif
+
+/* represent mrb_value in boxed double; conflict with MRB_USE_FLOAT and MRB_WITHOUT_FLOAT */
 //#define MRB_NAN_BOXING
 
 /* define on big endian machines; used by MRB_NAN_BOXING */
@@ -51,12 +75,6 @@
 
 /* number of object per heap page */
 //#define MRB_HEAP_PAGE_SIZE 1024
-
-/* use segmented list for IV table */
-//#define MRB_USE_IV_SEGLIST
-
-/* initial size for IV khash; ignored when MRB_USE_IV_SEGLIST is set */
-//#define MRB_IVHASH_INIT_SIZE 8
 
 /* if _etext and _edata available, mruby can reduce memory used by symbols */
 //#define MRB_USE_ETEXT_EDATA
@@ -93,10 +111,10 @@
 //#define MRB_FIXED_STATE_ATEXIT_STACK
 
 /* -DMRB_DISABLE_XXXX to drop following features */
-//#define MRB_DISABLE_STDIO	/* use of stdio */
+//#define MRB_DISABLE_STDIO /* use of stdio */
 
 /* -DMRB_ENABLE_XXXX to enable following features */
-//#define MRB_ENABLE_DEBUG_HOOK	/* hooks for debugger */
+//#define MRB_ENABLE_DEBUG_HOOK /* hooks for debugger */
 
 /* end of configuration */
 

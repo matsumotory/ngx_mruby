@@ -20,7 +20,8 @@ end
 def assertion_string(err, str, iso=nil, e=nil, bt=nil)
   msg = "#{err}#{str}"
   msg += " [#{iso}]" if iso && iso != ''
-  msg += " => #{e.message}" if e
+  msg += " => #{e.cause}" if e && e.respond_to?(:cause)
+  msg += " => #{e.message}" if e && !e.respond_to?(:cause)
   msg += " (mrbgems: #{GEMNAME})" if Object.const_defined?(:GEMNAME)
   if $mrbtest_assert && $mrbtest_assert.size > 0
     $mrbtest_assert.each do |idx, assert_msg, diff|
@@ -56,7 +57,7 @@ def assert(str = 'Assertion failed', iso = '')
   rescue Exception => e
     bt = e.backtrace if $mrbtest_verbose
     if e.class.to_s == 'MRubyTestSkip'
-      $asserts.push "Skip: #{str} #{iso} #{e.cause}"
+      $asserts.push(assertion_string('Skip: ', str, iso, e, nil))
       t_print('?')
     else
       $asserts.push(assertion_string("#{e.class}: ", str, iso, e, bt))
@@ -143,52 +144,43 @@ def assert_not_include(collection, obj, msg = nil)
   assert_false(collection.include?(obj), msg, diff)
 end
 
-def assert_raise(*exp)
-  ret = true
-  if $mrbtest_assert
-    $mrbtest_assert_idx += 1
-    msg = exp.last.class == String ? exp.pop : nil
-    msg = msg.to_s + " : " if msg
-    should_raise = false
-    begin
-      yield
-      should_raise = true
-    rescue Exception => e
-      msg = "#{msg}#{exp.inspect} exception expected, not"
-      diff = "      Class: <#{e.class}>\n" +
-             "    Message: #{e.message}"
-      unless exp.any?{|ex| ex.instance_of?(Module) ? e.kind_of?(ex) : ex == e.class }
-        $mrbtest_assert.push([$mrbtest_assert_idx, msg, diff])
-        ret = false
-      end
-    end
+def assert_raise(*exc)
+  return true unless $mrbtest_assert
+  $mrbtest_assert_idx += 1
 
-    exp = exp.first if exp.first
-    if should_raise
-      msg = "#{msg}#{exp.inspect} expected but nothing was raised."
-      $mrbtest_assert.push([$mrbtest_assert_idx, msg, nil])
-      ret = false
-    end
+  msg = (exc.last.is_a? String) ? exc.pop : nil
+
+  begin
+    yield
+    msg ||= "Expected to raise #{exc} but nothing was raised."
+    diff = nil
+    $mrbtest_assert.push [$mrbtest_assert_idx, msg, diff]
+    false
+  rescue *exc
+    true
+  rescue Exception => e
+    msg ||= "Expected to raise #{exc}, not"
+    diff = "      Class: <#{e.class}>\n" +
+           "    Message: #{e.message}"
+    $mrbtest_assert.push [$mrbtest_assert_idx, msg, diff]
+    false
   end
-  ret
 end
 
-def assert_nothing_raised(*exp)
-  ret = true
-  if $mrbtest_assert
-    $mrbtest_assert_idx += 1
-    msg = exp.last.class == String ? exp.pop : ""
-    begin
-      yield
-    rescue Exception => e
-      msg = "#{msg} exception raised."
-      diff = "      Class: <#{e.class}>\n" +
-             "    Message: #{e.message}"
-      $mrbtest_assert.push([$mrbtest_assert_idx, msg, diff])
-      ret = false
-    end
+def assert_nothing_raised(msg = nil)
+  return true unless $mrbtest_assert
+  $mrbtest_assert_idx += 1
+
+  begin
+    yield
+    true
+  rescue Exception => e
+    msg ||= "Expected not to raise #{exc.join(', ')} but it raised"
+    diff =  "      Class: <#{e.class}>\n" +
+            "    Message: #{e.message}"
+    $mrbtest_assert.push [$mrbtest_assert_idx, msg, diff]
+    false
   end
-  ret
 end
 
 ##
