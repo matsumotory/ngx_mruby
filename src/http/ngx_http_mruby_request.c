@@ -176,7 +176,7 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers,
     }
   }
 
-  switch (mrb_ary_ptr(ary)->len) {
+  switch (RARRAY_LEN(ary)) {
   case 0:
     return mrb_nil_value();
   case 1:
