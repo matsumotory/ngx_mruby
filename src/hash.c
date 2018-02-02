@@ -12,45 +12,39 @@
 #include <mruby/string.h>
 #include <mruby/variable.h>
 
+#ifndef MRB_WITHOUT_FLOAT
 /* a function to get hash value of a float number */
 mrb_int mrb_float_id(mrb_float f);
+#endif
 
 static inline khint_t
 mrb_hash_ht_hash_func(mrb_state *mrb, mrb_value key)
 {
   enum mrb_vtype t = mrb_type(key);
   mrb_value hv;
-  const char *p;
-  mrb_int i, len;
   khint_t h;
 
   switch (t) {
   case MRB_TT_STRING:
-    p = RSTRING_PTR(key);
-    len = RSTRING_LEN(key);
-    h = 0;
-    for (i=0; i<len; i++) {
-      h = (h << 5) - h + *p++;
-    }
-    return h;
+    h = mrb_str_hash(mrb, key);
+    break;
 
+  case MRB_TT_TRUE:
+  case MRB_TT_FALSE:
   case MRB_TT_SYMBOL:
-    h = (khint_t)mrb_symbol(key);
-    return kh_int_hash_func(mrb, h);
-
   case MRB_TT_FIXNUM:
-    h = (khint_t)mrb_float_id((mrb_float)mrb_fixnum(key));
-    return kh_int_hash_func(mrb, h);
-
+#ifndef MRB_WITHOUT_FLOAT
   case MRB_TT_FLOAT:
-    h = (khint_t)mrb_float_id(mrb_float(key));
-    return kh_int_hash_func(mrb, h);
+#endif
+    h = (khint_t)mrb_obj_id(key);
+    break;
 
   default:
     hv = mrb_funcall(mrb, key, "hash", 0);
-    h = (khint_t)t ^ mrb_fixnum(hv);
-    return kh_int_hash_func(mrb, h);
+    h = (khint_t)t ^ (khint_t)mrb_fixnum(hv);
+    break;
   }
+  return kh_int_hash_func(mrb, h);
 }
 
 static inline khint_t
@@ -70,12 +64,15 @@ mrb_hash_ht_hash_equal(mrb_state *mrb, mrb_value a, mrb_value b)
     switch (mrb_type(b)) {
     case MRB_TT_FIXNUM:
       return mrb_fixnum(a) == mrb_fixnum(b);
+#ifndef MRB_WITHOUT_FLOAT
     case MRB_TT_FLOAT:
       return (mrb_float)mrb_fixnum(a) == mrb_float(b);
+#endif
     default:
       return FALSE;
     }
 
+#ifndef MRB_WITHOUT_FLOAT
   case MRB_TT_FLOAT:
     switch (mrb_type(b)) {
     case MRB_TT_FIXNUM:
@@ -85,6 +82,7 @@ mrb_hash_ht_hash_equal(mrb_state *mrb, mrb_value a, mrb_value b)
     default:
       return FALSE;
     }
+#endif
 
   default:
     return mrb_eql(mrb, a, b);
@@ -145,10 +143,11 @@ mrb_hash_new_capa(mrb_state *mrb, mrb_int capa)
   struct RHash *h;
 
   h = (struct RHash*)mrb_obj_alloc(mrb, MRB_TT_HASH, mrb->hash_class);
-  h->ht = kh_init(ht, mrb);
-  if (capa > 0) {
-    kh_resize(ht, mrb, h->ht, capa);
-  }
+  /* khash needs 1/4 empty space so it is not resized immediately */
+  if (capa == 0)
+    h->ht = 0;
+  else
+    h->ht = kh_init_size(ht, mrb, (khint_t)(capa*4/3));
   h->iv = 0;
   return mrb_obj_value(h);
 }
@@ -287,7 +286,7 @@ static void
 mrb_hash_modify(mrb_state *mrb, mrb_value hash)
 {
   if (MRB_FROZEN_P(mrb_hash_ptr(hash))) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "can't modify frozen hash");
+    mrb_raise(mrb, E_FROZEN_ERROR, "can't modify frozen hash");
   }
   mrb_hash_tbl(mrb, hash);
 }
@@ -759,7 +758,7 @@ mrb_hash_keys(mrb_state *mrb, mrb_value hash)
   ary = mrb_ary_new_capa(mrb, kh_size(h));
   end = kh_size(h)-1;
   mrb_ary_set(mrb, ary, end, mrb_nil_value());
-  p = mrb_ary_ptr(ary)->ptr;
+  p = RARRAY_PTR(ary);
   for (k = kh_begin(h); k != kh_end(h); k++) {
     if (kh_exist(h, k)) {
       mrb_value kv = kh_key(h, k);

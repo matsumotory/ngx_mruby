@@ -115,6 +115,22 @@ class Hash
   alias update merge!
 
   ##
+  # call-seq:
+  #    hsh.compact     -> new_hsh
+  #
+  # Returns a new hash with the nil values/key pairs removed
+  #
+  #    h = { a: 1, b: false, c: nil }
+  #    h.compact     #=> { a: 1, b: false }
+  #    h             #=> { a: 1, b: false, c: nil }
+  #
+  def compact
+    result = self.dup
+    result.compact!
+    result
+  end
+
+  ##
   #  call-seq:
   #     hsh.fetch(key [, default] )       -> obj
   #     hsh.fetch(key) {| key | block }   -> obj
@@ -149,7 +165,7 @@ class Hash
       elsif none != NONE
         none
       else
-        raise KeyError, "Key not found: #{key}"
+        raise KeyError, "Key not found: #{key.inspect}"
       end
     else
       self[key]
@@ -171,7 +187,7 @@ class Hash
   #
 
   def delete_if(&block)
-    return to_enum :delete_if unless block_given?
+    return to_enum :delete_if unless block
 
     self.each do |k, v|
       self.delete(k) if block.call(k, v)
@@ -228,7 +244,7 @@ class Hash
   #
 
   def keep_if(&block)
-    return to_enum :keep_if unless block_given?
+    return to_enum :keep_if unless block
 
     keys = []
     self.each do |k, v|
@@ -393,11 +409,11 @@ class Hash
   #
   # If no block is given, an enumerator is returned instead.
   #
-  def transform_keys(&b)
-    return to_enum :transform_keys unless block_given?
+  def transform_keys(&block)
+    return to_enum :transform_keys unless block
     hash = {}
     self.keys.each do |k|
-      new_key = yield(k)
+      new_key = block.call(k)
       hash[new_key] = self[k]
     end
     hash
@@ -412,11 +428,11 @@ class Hash
   #
   # If no block is given, an enumerator is returned instead.
   #
-  def transform_keys!(&b)
-    return to_enum :transform_keys! unless block_given?
+  def transform_keys!(&block)
+    return to_enum :transform_keys! unless block
     self.keys.each do |k|
       value = self[k]
-      new_key = yield(k)
+      new_key = block.call(k)
       self.__delete(k)
       self[new_key] = value
     end
@@ -457,5 +473,30 @@ class Hash
       self[k] = yield(self[k])
     end
     self
+  end
+
+  def to_proc
+    ->x{self[x]}
+  end
+
+  ##
+  # call-seq:
+  #   hsh.fetch_values(key, ...)                 -> array
+  #   hsh.fetch_values(key, ...) { |key| block } -> array
+  #
+  # Returns an array containing the values associated with the given keys
+  # but also raises <code>KeyError</code> when one of keys can't be found.
+  # Also see <code>Hash#values_at</code> and <code>Hash#fetch</code>.
+  #
+  #   h = { "cat" => "feline", "dog" => "canine", "cow" => "bovine" }
+  #
+  #   h.fetch_values("cow", "cat")                   #=> ["bovine", "feline"]
+  #   h.fetch_values("cow", "bird")                  # raises KeyError
+  #   h.fetch_values("cow", "bird") { |k| k.upcase } #=> ["bovine", "BIRD"]
+  #
+  def fetch_values(*keys, &block)
+    keys.map do |k|
+      self.fetch(k, &block)
+    end
   end
 end

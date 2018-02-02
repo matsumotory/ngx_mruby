@@ -228,18 +228,47 @@ end
 
 assert("Array#bsearch") do
   # Find minimum mode
-  a = [0, 4, 7, 10, 12]
-  assert_include [4, 7], a.bsearch {|x| x >= 4 }
-  assert_equal 7, a.bsearch {|x| x >= 6 }
-  assert_equal 0, a.bsearch {|x| x >= -1 }
-  assert_nil a.bsearch {|x| x >= 100 }
+  a = [0, 2, 4]
+  assert_equal 0, a.bsearch{ |x| x >= -1 }
+  assert_equal 0, a.bsearch{ |x| x >= 0 }
+  assert_equal 2, a.bsearch{ |x| x >= 1 }
+  assert_equal 2, a.bsearch{ |x| x >= 2 }
+  assert_equal 4, a.bsearch{ |x| x >= 3 }
+  assert_equal 4, a.bsearch{ |x| x >= 4 }
+  assert_nil      a.bsearch{ |x| x >= 5 }
 
   # Find any mode
-  a = [0, 4, 7, 10, 12]
-  assert_include [4, 7], a.bsearch {|x| 1 - (x / 4).truncate }
-  assert_nil a.bsearch {|x| 4 - (x / 2).truncate }
-  assert_equal(nil, a.bsearch {|x| 1 })
-  assert_equal(nil, a.bsearch {|x| -1 })
+  a = [0, 4, 8]
+  def between(lo, x, hi)
+    if x < lo
+      1
+    elsif x > hi
+      -1
+    else
+      0
+    end
+  end
+  assert_nil      a.bsearch{ |x| between(-3, x, -1) }
+  assert_equal 0, a.bsearch{ |x| between(-1, x,  1) }
+  assert_nil      a.bsearch{ |x| between( 1, x,  3) }
+  assert_equal 4, a.bsearch{ |x| between( 3, x,  5) }
+  assert_nil      a.bsearch{ |x| between( 5, x,  7) }
+  assert_equal 8, a.bsearch{ |x| between( 7, x,  9) }
+  assert_nil      a.bsearch{ |x| between( 9, x, 11) }
+
+  assert_equal 0, a.bsearch{ |x| between( 0, x,  3) }
+  assert_equal 4, a.bsearch{ |x| between( 0, x,  4) }
+  assert_equal 4, a.bsearch{ |x| between( 4, x,  8) }
+  assert_equal 8, a.bsearch{ |x| between( 5, x,  8) }
+
+  # Invalid block result
+  assert_raise TypeError, 'invalid block result (must be numeric, true, false or nil)' do
+    a.bsearch{ 'I like to watch the world burn' }
+  end
+end
+
+assert("Array#bsearch_index") do
+  # tested through Array#bsearch
 end
 
 assert("Array#delete_if") do
@@ -351,4 +380,43 @@ assert("Array#slice!") do
   assert_equal(h, 3)
   assert_equal(i, [1, 2, 3])
   assert_equal(j, nil)
+end
+
+assert("Array#permutation") do
+  a = [1, 2, 3]
+  assert_equal([[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]],
+               a.permutation.to_a)
+  assert_equal([[1],[2],[3]],
+               a.permutation(1).to_a)
+  assert_equal([[1,2],[1,3],[2,1],[2,3],[3,1],[3,2]],
+               a.permutation(2).to_a)
+  assert_equal([[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]],
+               a.permutation(3).to_a)
+  assert_equal([[]], a.permutation(0).to_a)
+  assert_equal([], a.permutation(4).to_a)
+end
+
+assert("Array#combination") do
+  a = [1, 2, 3, 4]
+  assert_equal([[1],[2],[3],[4]],
+               a.combination(1).to_a)
+  assert_equal([[1,2],[1,3],[1,4],[2,3],[2,4],[3,4]],
+               a.combination(2).to_a)
+  assert_equal([[1,2,3],[1,2,4],[1,3,4],[2,3,4]],
+               a.combination(3).to_a)
+  assert_equal([[1,2,3,4]],
+               a.combination(4).to_a)
+  assert_equal([[]], a.combination(0).to_a)
+  assert_equal([], a.combination(5).to_a)
+end
+
+assert('Array#transpose') do
+  assert_equal([].transpose, [])
+  assert_equal([[]].transpose, [])
+  assert_equal([[1]].transpose, [[1]])
+  assert_equal([[1,2,3]].transpose, [[1], [2], [3]])
+  assert_equal([[1], [2], [3]].transpose, [[1,2,3]])
+  assert_equal([[1,2], [3,4], [5,6]].transpose, [[1,3,5], [2,4,6]])
+  assert_raise(TypeError) { [1].transpose }
+  assert_raise(IndexError) { [[1], [2,3,4]].transpose } 
 end
