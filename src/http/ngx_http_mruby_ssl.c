@@ -104,6 +104,19 @@ static mrb_value ngx_mrb_ssl_local_port(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(ntohs(get_in_port(mscf->connection->local_sockaddr)));
 }
 
+static mrb_value ngx_mrb_ssl_accept_client(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+  mscf->ssl_verify_client_ok = 1;
+  return mrb_nil_value();
+}
+
+static mrb_value ngx_mrb_ssl_reject_client(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+  mscf->ssl_verify_client_ok = 0;
+  return mrb_nil_value();
+}
 #else /* ! OPENSSL_VERSION_NUMBER >= 0x1000205fL */
 
 static mrb_value ngx_mrb_ssl_init(mrb_state *mrb, mrb_value self)
@@ -132,6 +145,15 @@ static mrb_value ngx_mrb_ssl_local_port(mrb_state *mrb, mrb_value self)
   mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_local_port doesn't support");
 }
 
+static mrb_value ngx_mrb_ssl_accept_client(mrb_state *mrb, mrb_value self)
+{
+  mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_accept_client doesn't support");
+}
+
+static mrb_value ngx_mrb_ssl_reject_client(mrb_state *mrb, mrb_value self)
+{
+  mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_reject_client doesn't support");
+}
 #endif /* OPENSSL_VERSION_NUMBER >= 0x1000205fL */
 
 NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert, cert_path);
@@ -151,6 +173,8 @@ void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_ssl, "certificate_key=", ngx_mrb_ssl_set_cert_key, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_data=", ngx_mrb_ssl_set_cert_data, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_key_data=", ngx_mrb_ssl_set_cert_key_data, MRB_ARGS_REQ(1));
+  mrb_define_class_method(mrb, class_ssl, "accept_client", ngx_mrb_ssl_accept_client, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class_ssl, "reject_client", ngx_mrb_ssl_reject_client, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_ssl, "errlogger", ngx_mrb_ssl_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class_ssl, "log", ngx_mrb_ssl_errlogger, MRB_ARGS_REQ(2));
 }
