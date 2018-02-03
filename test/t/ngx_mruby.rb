@@ -530,6 +530,15 @@ t.assert('ngx_mruby - get ssl server name') do
   t.assert_equal "ngx.example.com", res.chomp
 end
 
+t.assert('ngx_mruby - ngx_mruby_ssl_verify_client_handler with Nginx::SSL.reject_client') do
+  test_dir = File.expand_path(File.dirname(__FILE__))
+  crt = "#{test_dir}/../client/client.crt"
+  key = "#{test_dir}/../client/client.key"
+  `curl -k --cert #{crt} --key #{key} #{base_ssl(58089)}/ 2>&1 > /dev/null`
+  rc = $?
+  t.assert_equal 35, rc.to_i
+end
+
 t.assert('ngx_mruby - issue_172', 'location /issue_172') do
   res = HttpRequest.new.get base + '/issue_172/index.html'
   expect_content = 'hello world'.upcase
