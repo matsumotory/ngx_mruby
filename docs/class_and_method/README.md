@@ -227,6 +227,18 @@ Nginx::SSL.errlogger Nginx::LOG_ERR, "ngx_mruby error!"
 #### Nginx::SSL.log
 alias of Nginx::SSL.errlogger
 
+### Nginx::SSL.accept_client Nginx::SSL.reject_client
+
+the methods set whether it is ok to verify client certificate in SSL Handshake.
+
+`Nginx::SSL.accept_client` accept client after verifying client certificate in SSL Handshake.
+SSL Handshake continues.
+
+`Nginx::SSL.reject_client` reject client after verifying client certificate in SSL Handshake. 
+SSL Handshake is terminated immediately.
+
+you should use in mruby_ssl_verify_client_handler and mruby_ssl_verify_client_handler_code only.
+
 #### Nginx::SSL#local_port
 
 ```nginx
@@ -242,6 +254,7 @@ t.assert('ngx_mruby - ssl local port') do
 end
 
 ```
+
 
 ## Nginx::Request Class
 ### Method
