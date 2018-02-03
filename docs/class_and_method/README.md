@@ -255,7 +255,6 @@ end
 
 ```
 
-
 ## Nginx::Request Class
 ### Method
 #### Nginx::Request#scheme
