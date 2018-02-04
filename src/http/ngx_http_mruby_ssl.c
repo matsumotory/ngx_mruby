@@ -107,14 +107,14 @@ static mrb_value ngx_mrb_ssl_local_port(mrb_state *mrb, mrb_value self)
 static mrb_value ngx_mrb_ssl_accept_client(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-  mscf->ssl_verify_client_ok = 1;
+  mscf->ssl_verify_client_ok = NGX_MRUBY_SSL_VERIFY_CLIENT_OK;
   return mrb_nil_value();
 }
 
 static mrb_value ngx_mrb_ssl_reject_client(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-  mscf->ssl_verify_client_ok = 0;
+  mscf->ssl_verify_client_ok = NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL;
   return mrb_nil_value();
 }
 #else /* ! OPENSSL_VERSION_NUMBER >= 0x1000205fL */

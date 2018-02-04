@@ -418,7 +418,7 @@ static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
   mscf->ssl_verify_client_code = NGX_CONF_UNSET_PTR;
   mscf->ssl_verify_client_inline_code = NGX_CONF_UNSET_PTR;
   mscf->ssl_verify_client_prev_cb = NULL;
-  mscf->ssl_verify_client_ok = 0;
+  mscf->ssl_verify_client_ok = NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL;
   mscf->server_config_inline_code = NGX_CONF_UNSET_PTR;
 
   cln->handler = ngx_http_mruby_srv_conf_cleanup;
@@ -2287,18 +2287,18 @@ static int ngx_http_mruby_ssl_x509_verify_handler(int preverify_ok, X509_STORE_C
 
   ssl_conn = X509_STORE_CTX_get_ex_data(x509_ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
   if (NULL == ssl_conn) {
-    return 0;
+    return NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL;
   }
 
   c = ngx_ssl_get_connection(ssl_conn);
   if (c == NULL) {
-    return 0;
+    return NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL;
   }
 
   hc = c->data;
   if (NULL == hc) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0, ERRMSG_MRUBY_SSL_X509_VERIFY_HANDLER "ssl connection data hc NULL");
-    return 0;
+    return NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL;
   }
 
   servername = SSL_get_servername(ssl_conn, TLSEXT_NAMETYPE_host_name);
@@ -2309,7 +2309,7 @@ static int ngx_http_mruby_ssl_x509_verify_handler(int preverify_ok, X509_STORE_C
     host.len = ngx_strlen(servername);
     if (host.len == 0) {
       ngx_log_error(NGX_LOG_DEBUG, c->log, 0, ERRMSG_MRUBY_SSL_X509_VERIFY_HANDLER "host len == 0");
-      return 0;
+      return NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL;
     }
     host.data = (u_char *)servername;
     ngx_log_error(NGX_LOG_DEBUG, c->log, 0, ERRMSG_MRUBY_SSL_X509_VERIFY_HANDLER "servername \"%V\"", &host);
@@ -2318,7 +2318,7 @@ static int ngx_http_mruby_ssl_x509_verify_handler(int preverify_ok, X509_STORE_C
   mscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_mruby_module);
   if (NULL == mscf) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0, ERRMSG_MRUBY_SSL_X509_VERIFY_HANDLER "mscf NULL");
-    return 1;
+    return NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL;
   }
   mscf->connection = c;
 
@@ -2330,7 +2330,7 @@ static int ngx_http_mruby_ssl_x509_verify_handler(int preverify_ok, X509_STORE_C
   if (mscf->ssl_verify_client_code == NGX_CONF_UNSET_PTR && mscf->ssl_verify_client_inline_code == NGX_CONF_UNSET_PTR) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0,
                   ERRMSG_MRUBY_SSL_X509_VERIFY_HANDLER "unexpected error, mruby code not found");
-    return 1;
+    return NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL;
   }
 
   mscf->servername = &host;
@@ -2347,7 +2347,7 @@ static int ngx_http_mruby_ssl_x509_verify_handler(int preverify_ok, X509_STORE_C
                       mscf->ssl_verify_client_code->code.file, rc);
         ngx_mrb_state_clean(NULL, mscf->state);
         mrb_gc_arena_restore(mrb, ai);
-        return 1;
+        return NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL;
       }
     }
     mrb_run(mrb, mscf->ssl_verify_client_code->proc, mrb_top_self(mrb));
@@ -2362,7 +2362,7 @@ static int ngx_http_mruby_ssl_x509_verify_handler(int preverify_ok, X509_STORE_C
     ngx_mrb_raise_connection_error(mrb, mrb_obj_value(mrb->exc), c);
     ngx_mrb_state_clean(NULL, mscf->state);
     mrb_gc_arena_restore(mrb, ai);
-    return 0;
+    return NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL;
   }
   ngx_mrb_state_clean(NULL, mscf->state);
   mrb_gc_arena_restore(mrb, ai);

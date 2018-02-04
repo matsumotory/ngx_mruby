@@ -26,6 +26,8 @@
 #define NGX_USE_MRUBY_UPSTREAM
 #endif
 
+#define NGX_MRUBY_SSL_VERIFY_CLIENT_OK 1
+#define NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL 0
 
 typedef struct x509_store_ctx_st X509_STORE_CTX;
 typedef int (*SSL_verify_cb)(int preverify_ok, X509_STORE_CTX *x509_ctx);
