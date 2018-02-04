@@ -239,6 +239,16 @@ SSL Handshake is terminated immediately.
 
 you should use in mruby_ssl_verify_client_handler and mruby_ssl_verify_client_handler_code only.
 
+```nginx
+ mruby_ssl_verify_client_handler_code '
+  if validate_something()
+    Nginx::SSL.accept_client
+  else
+    Nginx::SSL.reject_client
+  end
+ ';
+```
+
 #### Nginx::SSL#local_port
 
 ```nginx
