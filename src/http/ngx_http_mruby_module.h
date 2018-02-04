@@ -26,14 +26,9 @@
 #define NGX_USE_MRUBY_UPSTREAM
 #endif
 
-#if (NGX_HTTP_SSL)
-#include <openssl/ssl.h>
 
-#if OPENSSL_VERSION_NUMBER < 0x10101000L
 typedef struct x509_store_ctx_st X509_STORE_CTX;
 typedef int (*SSL_verify_cb)(int preverify_ok, X509_STORE_CTX *x509_ctx);
-#endif
-#endif
 
 typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
 

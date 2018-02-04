@@ -23,9 +23,6 @@
 #include <mruby/value.h>
 #include <mruby/version.h>
 
-#if (NGX_HTTP_SSL)
-#include <openssl/ssl.h>
-#endif
 
 #define ON 1
 #define OFF 0
