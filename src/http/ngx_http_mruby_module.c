@@ -2367,6 +2367,7 @@ static int ngx_http_mruby_ssl_x509_verify_handler(int preverify_ok, X509_STORE_C
   ngx_mrb_state_clean(NULL, mscf->state);
   mrb_gc_arena_restore(mrb, ai);
 
+  ngx_log_error(NGX_LOG_DEBUG, c->log, 0, ERRMSG_MRUBY_SSL_X509_VERIFY_HANDLER "verify_ok: %d", mscf->ssl_verify_client_ok);
   return mscf->ssl_verify_client_ok;
 }
 #endif /* NGX_HTTP_SSL */
