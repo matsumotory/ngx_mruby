@@ -453,12 +453,12 @@ t.assert('ngx_mruby - get post_args', 'location /get_post_args') do
 end
 
 t.assert('ngx_mruby - ssl local port') do
-  res = `curl -k #{base_ssl(58082) + '/local_port'}`
+  res = `curl -s -k #{base_ssl(58082) + '/local_port'}`
   t.assert_equal '58082', res
 end
 
 t.assert('ngx_mruby - ssl certificate changing') do
-  res = `curl -k #{base_ssl(58082) + '/'}`
+  res = `curl -s -k #{base_ssl(58082) + '/'}`
   t.assert_equal 'ssl test ok', res
   res = `openssl s_client -servername localhost -connect localhost:58082 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
   t.assert_equal "1", res
@@ -467,7 +467,7 @@ t.assert('ngx_mruby - ssl certificate changing') do
 end
 
 t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
-  res = `curl -k #{base_ssl(58083) + '/'}`
+  res = `curl -s -k #{base_ssl(58083) + '/'}`
   t.assert_equal 'ssl test ok', res
   res = `openssl s_client -servername localhost -connect localhost:58083 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
   t.assert_equal "1", res
@@ -478,7 +478,7 @@ end
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file without caching') do
   fname = File.join(ENV['NGINX_INSTALL_DIR'], 'html/set_ssl_cert_and_key.rb')
 
-  res = `curl -k #{base_ssl(58085) + '/'}`
+  res = `curl -s -k #{base_ssl(58085) + '/'}`
   t.assert_equal 'ssl test ok', res
 
   content = File.read(fname).gsub('#{ssl.servername}', 'localhost')
@@ -499,7 +499,7 @@ end
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file with caching') do
   fname = File.join(ENV['NGINX_INSTALL_DIR'], 'html/set_ssl_cert_and_key.rb')
 
-  res = `curl -k #{base_ssl(58086) + '/'}`
+  res = `curl -s -k #{base_ssl(58086) + '/'}`
   t.assert_equal 'ssl test ok', res
 
   content = File.read(fname).gsub('#{ssl.servername}', 'localhost')
@@ -593,7 +593,7 @@ t.assert('ngx_mruby - add_listener test', 'location /add_listener') do
   t.assert_equal 'add_listener test ok', res["body"]
   res = HttpRequest.new.get base(58102) + '/add_listener'
   t.assert_equal 'add_listener test ok', res["body"]
-  res = `curl -k #{base_ssl(58103) + '/add_listener'}`
+  res = `curl -s -k #{base_ssl(58103) + '/add_listener'}`
   t.assert_equal 'add_listener test ok', res
 end
 
