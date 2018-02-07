@@ -29,8 +29,9 @@
 #define NGX_MRUBY_SSL_VERIFY_CLIENT_OK 1
 #define NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL 0
 
-typedef struct x509_store_ctx_st X509_STORE_CTX;
+#if (NGX_HTTP_SSL) && OPENSSL_VERSION_NUMBER < 0x10101000L
 typedef int (*SSL_verify_cb)(int preverify_ok, X509_STORE_CTX *x509_ctx);
+#endif
 
 typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
 
@@ -69,7 +70,6 @@ typedef struct {
   ngx_mrb_code_t *ssl_handshake_inline_code;
   ngx_mrb_code_t *ssl_verify_client_code;
   ngx_mrb_code_t *ssl_verify_client_inline_code;
-  SSL_verify_cb ssl_verify_client_prev_cb;
   ngx_int_t ssl_verify_client_ok;
   ngx_mrb_code_t *server_config_inline_code;
   ngx_conf_t *cf;
@@ -79,8 +79,11 @@ typedef struct {
   ngx_str_t cert_key_path;
   ngx_str_t cert_data;
   ngx_str_t cert_key_data;
-#if (NGX_HTTP_SSL) && OPENSSL_VERSION_NUMBER >= 0x1000205fL
+#if (NGX_HTTP_SSL)
+#if OPENSSL_VERSION_NUMBER >= 0x1000205fL
   ngx_connection_t *connection;
+#endif
+  SSL_verify_cb ssl_verify_client_prev_cb;
 #endif
 } ngx_http_mruby_srv_conf_t;
 

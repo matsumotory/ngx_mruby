@@ -417,7 +417,9 @@ static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
   mscf->ssl_handshake_inline_code = NGX_CONF_UNSET_PTR;
   mscf->ssl_verify_client_code = NGX_CONF_UNSET_PTR;
   mscf->ssl_verify_client_inline_code = NGX_CONF_UNSET_PTR;
+#if (NGX_HTTP_SSL)
   mscf->ssl_verify_client_prev_cb = NULL;
+#endif
   mscf->ssl_verify_client_ok = NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL;
   mscf->server_config_inline_code = NGX_CONF_UNSET_PTR;
 
