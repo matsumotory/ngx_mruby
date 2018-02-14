@@ -375,12 +375,13 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
     if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
       return NGX_ERROR;
     }
-
+    NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code);
     code->ctx = mrbc_context_new(mrb);
     mrbc_filename(mrb, code->ctx, (char *)code->code.file);
     p = mrb_parse_file(mrb, mrb_file, code->ctx);
     fclose(mrb_file);
   } else {
+    NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code);
     code->ctx = mrbc_context_new(mrb);
     mrbc_filename(mrb, code->ctx, "INLINE CODE");
     p = mrb_parse_string(mrb, (char *)code->code.string, code->ctx);
@@ -602,6 +603,7 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
   }
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mrb, code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code);
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
