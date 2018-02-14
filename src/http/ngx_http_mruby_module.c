@@ -14,6 +14,10 @@
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 
+#ifdef NGX_USE_MRUBY_ASYNC
+#include "ngx_http_mruby_async.h"
+#endif
+
 #include <mruby.h>
 #include <mruby/array.h>
 #include <mruby/compile.h>
@@ -731,7 +735,11 @@ ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_
 {
   int ai = mrb_gc_arena_save(state->mrb);
   ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
+#ifdef NGX_USE_MRUBY_ASYNC
+  ngx_mrb_run_without_stop(state->mrb, code->proc, NULL);
+#else
   mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
+#endif
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
     ngx_mrb_raise_cycle_error(state->mrb, mrb_obj_value(state->mrb->exc), cycle);
@@ -747,7 +755,12 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
 {
   int ai = mrb_gc_arena_save(state->mrb);
   ngx_log_error(NGX_LOG_INFO, cf->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
+#ifdef NGX_USE_MRUBY_ASYNC
+  ngx_mrb_run_without_stop(state->mrb, code->proc, NULL);
+#else
   mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
+#endif
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
     ngx_mrb_raise_conf_error(state->mrb, mrb_obj_value(state->mrb->exc), cf);
@@ -782,7 +795,6 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   int ai = 0;
   mrb_value mrb_result;
   ngx_http_mruby_ctx_t *ctx;
-  ngx_mrb_rputs_chain_list_t *chain;
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
   if (state == NGX_CONF_UNSET_PTR || code == NGX_CONF_UNSET_PTR) {
@@ -840,7 +852,15 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
       return rc;
     }
   }
+
+#ifdef NGX_USE_MRUBY_ASYNC
+  if (mrb_test(ngx_mrb_start_fiber(r, state->mrb, code->proc, &mrb_result))) {
+    return NGX_DONE;
+  }
+#else
   mrb_result = mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
+#endif
+
   if (state->mrb->exc) {
     ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -878,30 +898,10 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   }
   ngx_mrb_state_clean(r, state);
 
-  // TODO: Support rputs by multi directive
   if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
-    chain = ctx->rputs_chain;
-    if (chain == NULL) {
-      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                    "%s INFO %s:%d: mrb_run info: rputs_chain is null and return NGX_OK", MODULE_NAME, __func__,
-                    __LINE__);
-      if (r->headers_out.status >= 100) {
-        return r->headers_out.status;
-      } else {
-        return NGX_OK;
-      }
-    }
-    if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
-      r->headers_out.status = NGX_HTTP_OK;
-      (*chain->last)->buf->last_buf = 1;
-      ngx_http_send_header(r);
-      ngx_http_output_filter(r, chain->out);
-      ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
-      return NGX_OK;
-    } else {
-      return r->headers_out.status;
-    }
+    return ngx_mrb_finalize_rputs(r, ctx);
   }
+
   return NGX_OK;
 }
 
@@ -2160,10 +2160,18 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
         return 1;
       }
     }
+#ifdef NGX_USE_MRUBY_ASYNC
+    ngx_mrb_run_without_stop(mrb, mscf->ssl_handshake_code->proc, NULL);
+#else
     mrb_run(mrb, mscf->ssl_handshake_code->proc, mrb_top_self(mrb));
+#endif
   }
   if (mscf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
+#ifdef NGX_USE_MRUBY_ASYNC
+    ngx_mrb_run_without_stop(mrb, mscf->ssl_handshake_inline_code->proc, NULL);
+#else
     mrb_run(mrb, mscf->ssl_handshake_inline_code->proc, mrb_top_self(mrb));
+#endif
   }
 
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
