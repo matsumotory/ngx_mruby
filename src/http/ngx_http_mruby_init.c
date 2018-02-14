@@ -29,9 +29,7 @@ void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *calss);
 #if (NGX_HTTP_SSL)
 void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class);
 #endif
-#ifdef NGX_USE_MRUBY_ASYNC
 void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *calss);
-#endif
 
 ngx_int_t ngx_mrb_class_init(mrb_state *mrb)
 {
@@ -59,10 +57,8 @@ ngx_int_t ngx_mrb_class_init(mrb_state *mrb)
   ngx_mrb_ssl_class_init(mrb, class);
   GC_ARENA_RESTORE;
 #endif
-#ifdef NGX_USE_MRUBY_ASYNC
   ngx_mrb_async_class_init(mrb, class);
   GC_ARENA_RESTORE;
-#endif
 
   return NGX_OK;
 }

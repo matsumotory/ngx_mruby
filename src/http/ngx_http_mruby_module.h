@@ -26,8 +26,6 @@
 #define NGX_USE_MRUBY_UPSTREAM
 #endif
 
-#define NGX_USE_MRUBY_ASYNC
-
 typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
 
 typedef struct ngx_mrb_state_t {
