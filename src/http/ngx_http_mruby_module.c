@@ -846,9 +846,9 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   }
 
   if (mrb_test(ngx_mrb_start_fiber(r, state->mrb, code->proc, &mrb_result))) {
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME, __func__, __LINE__);
     return NGX_DONE;
   }
-  //mrb_result = mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
 
   if (state->mrb->exc) {
     ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);

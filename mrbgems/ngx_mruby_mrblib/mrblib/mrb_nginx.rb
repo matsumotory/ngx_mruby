@@ -49,15 +49,14 @@ module Kernel
     Nginx
   end
 
-  def _ngx_mruby_prepare_fiber(app_proc)
-    fiber = Fiber.new do
-      app_proc.call
-    end
-
+  def _ngx_mrb_prepare_fiber(nginx_handler)
     Proc.new do
-      rv = fiber.resume
-      is_alive = fiber.alive?
-      [is_alive, rv]
+      fiber_handler = Fiber.new do
+        nginx_handler.call
+      end
+
+      # BUG?: return nginx_handler directly from fiber, not proc.
+      fiber_handler.resume
     end
   end
 end

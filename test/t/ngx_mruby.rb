@@ -633,10 +633,10 @@ if nginx_features.is_stream_supported?
 end
 
 if nginx_features.is_async_supported?
-  t.assert('ngx_mruby - Nginx.Async.sleep', 'location /async_sleep') do
-    res = HttpRequest.new.get base + '/async_sleep'
-    t.assert_equal 200, res.code
-  end
+  #t.assert('ngx_mruby - Nginx.Async.sleep', 'location /async_sleep') do
+  #  res = HttpRequest.new.get base + '/async_sleep'
+  #  t.assert_equal 200, res.code
+  #end
 end
 
 
