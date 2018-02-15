@@ -173,8 +173,8 @@ void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_ssl, "certificate_key=", ngx_mrb_ssl_set_cert_key, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_data=", ngx_mrb_ssl_set_cert_data, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_key_data=", ngx_mrb_ssl_set_cert_key_data, MRB_ARGS_REQ(1));
-  mrb_define_class_method(mrb, class_ssl, "accept_client", ngx_mrb_ssl_accept_client, MRB_ARGS_NONE());
-  mrb_define_class_method(mrb, class_ssl, "reject_client", ngx_mrb_ssl_reject_client, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_ssl, "accept_client", ngx_mrb_ssl_accept_client, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_ssl, "reject_client", ngx_mrb_ssl_reject_client, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_ssl, "errlogger", ngx_mrb_ssl_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class_ssl, "log", ngx_mrb_ssl_errlogger, MRB_ARGS_REQ(2));
 }

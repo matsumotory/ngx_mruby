@@ -219,6 +219,27 @@ mruby_ssl_handshake_handler_code '
   ssl.certificate_key = "/path/to/#{ssl.servername}.key"
 ';
 ```
+### Nginx::SSL#accept_client Nginx::SSL#reject_client
+
+the methods set whether it is ok to verify client certificate in SSL Handshake.
+
+`Nginx::SSL#accept_client` accept client after verifying client certificate in SSL Handshake.
+SSL Handshake continues.
+
+`Nginx::SSL#reject_client` reject client after verifying client certificate in SSL Handshake.
+SSL Handshake is terminated immediately.
+
+you should use in mruby_ssl_verify_client_handler and mruby_ssl_verify_client_handler_code only.
+
+```nginx
+ mruby_ssl_verify_client_handler_code '
+  if validate_something()
+    Nginx::SSL.new.accept_client
+  else
+    Nginx::SSL.new.reject_client
+  end
+ ';
+```
 
 #### Nginx::SSL.errlogger
 ```ruby
@@ -227,27 +248,6 @@ Nginx::SSL.errlogger Nginx::LOG_ERR, "ngx_mruby error!"
 #### Nginx::SSL.log
 alias of Nginx::SSL.errlogger
 
-### Nginx::SSL.accept_client Nginx::SSL.reject_client
-
-the methods set whether it is ok to verify client certificate in SSL Handshake.
-
-`Nginx::SSL.accept_client` accept client after verifying client certificate in SSL Handshake.
-SSL Handshake continues.
-
-`Nginx::SSL.reject_client` reject client after verifying client certificate in SSL Handshake. 
-SSL Handshake is terminated immediately.
-
-you should use in mruby_ssl_verify_client_handler and mruby_ssl_verify_client_handler_code only.
-
-```nginx
- mruby_ssl_verify_client_handler_code '
-  if validate_something()
-    Nginx::SSL.accept_client
-  else
-    Nginx::SSL.reject_client
-  end
- ';
-```
 
 #### Nginx::SSL#local_port
 
