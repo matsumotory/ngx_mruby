@@ -434,8 +434,7 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
     SSL_CTX_set_cert_cb(sscf->ssl.ctx, ngx_http_mruby_ssl_cert_handler, NULL);
 #else
-    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                  MODULE_NAME
+    ngx_log_error(NGX_LOG_EMERG, cf->log, 0, MODULE_NAME
                   " : mruby_ssl_handshake_handler : OpenSSL 1.0.2e or later required but found " OPENSSL_VERSION_TEXT);
     return NGX_CONF_ERROR;
 #endif
@@ -637,15 +636,13 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
   ngx_http_phases phases[] = {
       NGX_HTTP_POST_READ_PHASE,
       // NGX_HTTP_FIND_CONFIG_PHASE,
-      NGX_HTTP_SERVER_REWRITE_PHASE,
-      NGX_HTTP_REWRITE_PHASE,
+      NGX_HTTP_SERVER_REWRITE_PHASE, NGX_HTTP_REWRITE_PHASE,
       // NGX_HTTP_POST_REWRITE_PHASE,
       // NGX_HTTP_PREACCESS_PHASE,
       NGX_HTTP_ACCESS_PHASE,
       // NGX_HTTP_POST_ACCESS_PHASE,
       // NGX_HTTP_TRY_FILES_PHASE,
-      NGX_HTTP_CONTENT_PHASE,
-      NGX_HTTP_LOG_PHASE,
+      NGX_HTTP_CONTENT_PHASE, NGX_HTTP_LOG_PHASE,
   };
   ngx_int_t phases_c;
 
@@ -734,7 +731,7 @@ ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_
   ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
 
   ngx_mrb_run_without_stop(state->mrb, code->proc, NULL);
-  //mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
+  // mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
     ngx_mrb_raise_cycle_error(state->mrb, mrb_obj_value(state->mrb->exc), cycle);
@@ -751,7 +748,7 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
   int ai = mrb_gc_arena_save(state->mrb);
   ngx_log_error(NGX_LOG_INFO, cf->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
   ngx_mrb_run_without_stop(state->mrb, code->proc, NULL);
-  //mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
+  // mrb_run(state->mrb, code->proc, mrb_top_self(state->mrb));
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
@@ -846,7 +843,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   }
 
   if (mrb_test(ngx_mrb_start_fiber(r, state->mrb, code->proc, &mrb_result))) {
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME, __func__, __LINE__);
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
+                  __func__, __LINE__);
     return NGX_DONE;
   }
 
@@ -1017,9 +1015,8 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
     ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: compile info: code->code.file=(%s) code->cache=(%d)",
                        MODULE_NAME, __func__, __LINE__, code->code.file, code->cache);
   } else {
-    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
-                       "%s NOTICE %s:%d: compile info: "
-                       "code->code.string=(%s) code->cache=(%d)",
+    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: compile info: "
+                                              "code->code.string=(%s) code->cache=(%d)",
                        MODULE_NAME, __func__, __LINE__, code->code.string, code->cache);
   }
 
@@ -1186,10 +1183,9 @@ static char *ngx_http_mruby_exit_worker_inline(ngx_conf_t *cf, ngx_command_t *cm
 
 static char *ngx_http_mruby_output_filter_error(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-  ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                     "mruby_output_filter{,_code} was deleted from v1.17.2, you should use "
-                     "mruby_output_body_filter{,_code} for response body, or use "
-                     "mruby_output_header_filter{,_code} for response headers.");
+  ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mruby_output_filter{,_code} was deleted from v1.17.2, you should use "
+                                           "mruby_output_body_filter{,_code} for response body, or use "
+                                           "mruby_output_header_filter{,_code} for response headers.");
   return NGX_CONF_ERROR;
 }
 
@@ -2082,7 +2078,7 @@ NGX_MRUBY_SSL_ERROR:
 
 #endif /* NGX_HTTP_SSL */
 
-#if (NGX_HTTP_SSL) 
+#if (NGX_HTTP_SSL)
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
 static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
@@ -2150,11 +2146,11 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
       }
     }
     ngx_mrb_run_without_stop(mrb, mscf->ssl_handshake_code->proc, NULL);
-    //mrb_run(mrb, mscf->ssl_handshake_code->proc, mrb_top_self(mrb));
+    // mrb_run(mrb, mscf->ssl_handshake_code->proc, mrb_top_self(mrb));
   }
   if (mscf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
     ngx_mrb_run_without_stop(mrb, mscf->ssl_handshake_inline_code->proc, NULL);
-    //mrb_run(mrb, mscf->ssl_handshake_inline_code->proc, mrb_top_self(mrb));
+    // mrb_run(mrb, mscf->ssl_handshake_inline_code->proc, mrb_top_self(mrb));
   }
 
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
