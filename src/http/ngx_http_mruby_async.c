@@ -107,6 +107,10 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
       ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
       rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
+  } else {
+    ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing"
+                  MODULE_NAME, __func__, __LINE__);
+    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
 
   ctx = ngx_http_get_module_ctx(re->r, ngx_http_mruby_module);
@@ -119,13 +123,7 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
     rc = NGX_ERROR;
   }
 
-  // progress to a next handler or finalize
-  if (rc == NGX_OK) {
-    re->r->phase_handler++;
-    ngx_http_core_run_phases(re->r);
-  } else {
-    ngx_http_finalize_request(re->r, rc);
-  }
+   ngx_http_finalize_request(re->r, rc);
 }
 
 static void ngx_mrb_async_sleep_cleanup(void *data)
@@ -167,6 +165,8 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ev->log = ngx_cycle->log;
 
   ngx_add_timer(ev, (ngx_msec_t)timer);
+
+  ngx_http_run_posted_requests(r->connection);
 
   cln = ngx_http_cleanup_add(r, 0);
   if (cln == NULL) {
