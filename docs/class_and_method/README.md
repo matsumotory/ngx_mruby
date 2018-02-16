@@ -219,6 +219,33 @@ mruby_ssl_handshake_handler_code '
   ssl.certificate_key = "/path/to/#{ssl.servername}.key"
 ';
 ```
+#### Nginx::SSL#certificate_data=
+
+set certificate data (String) for a request
+
+```nginx
+mruby_ssl_handshake_handler_code '
+  ssl = Nginx::SSL.new
+  certificate_data = File.read("/path/to/#{ssl.servername}.crt")
+  key_data = File.read("/path/to/#{ssl.servername}.key")
+  ssl.certificate_data = certificate_data
+  ssl.certificate_key_data = key_data
+';
+```
+
+#### Nginx::SSL#certificate_key_data=
+
+set certificate key data (String) for a request
+
+```nginx
+mruby_ssl_handshake_handler_code '
+  ssl = Nginx::SSL.new
+  certificate_data = File.read("/path/to/#{ssl.servername}.crt")
+  key_data = File.read("/path/to/#{ssl.servername}.key")
+  ssl.certificate_data = certificate_data
+  ssl.certificate_key_data = key_data
+';
+```
 
 #### Nginx::SSL.errlogger
 ```ruby
