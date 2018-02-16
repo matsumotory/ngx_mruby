@@ -56,7 +56,8 @@ module Kernel
       end
 
       # BUG?: return nginx_handler directly from fiber, not proc.
-      fiber_handler.resume
+      result = fiber_handler.resume
+      [fiber_handler.alive?, result]
     end
   end
 end

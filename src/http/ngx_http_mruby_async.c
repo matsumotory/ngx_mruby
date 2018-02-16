@@ -58,6 +58,8 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result)
 {
   mrb_value resume_result = mrb_nil_value();
   ngx_http_request_t *r = ngx_mrb_get_request();
+  mrb_value aliving = mrb_false_value();
+  mrb_value handler_result = mrb_nil_value();
 
   mrb->ud = fiber;
 
@@ -67,11 +69,17 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result)
     return mrb_false_value();
   }
 
-  *result = resume_result;
+  if (!mrb_array_p(resume_result)) {
+    mrb->exc = mrb_obj_ptr(mrb_exc_new_str_lit(mrb, E_RUNTIME_ERROR, "_ngx_mrb_prepare_fiber proc must return array included handler_return and fiber alive status"));
+    return mrb_false_value();
+  }
+  aliving = mrb_ary_entry(resume_result, 0);
+  handler_result = mrb_ary_entry(resume_result, 1);
+  *result = handler_result;
 
   mrb_gc_protect(mrb, *fiber);
 
-  return mrb_false_value();
+  return aliving;
 }
 
 static void ngx_mrb_timer_handler(ngx_event_t *ev)
