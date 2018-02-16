@@ -853,6 +853,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
     mrb_gc_arena_restore(state->mrb, ai);
   } else if (result != NULL) {
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: fiber done in request phase", MODULE_NAME,
+                  __func__, __LINE__);
     if (mrb_nil_p(mrb_result)) {
       result->data = NULL;
       result->len = 0;

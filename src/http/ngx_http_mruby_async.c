@@ -45,13 +45,15 @@ void ngx_mrb_run_without_stop(mrb_state *mrb, struct RProc *rproc, mrb_value *re
 
 mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc, mrb_value *result)
 {
-  mrb_value proc, fiber;
+  mrb_value handler_proc;
+  mrb_value *fiber_proc;
 
   replace_stop(rproc->body.irep);
-  proc = mrb_obj_value(mrb_proc_new(mrb, rproc->body.irep));
-  fiber = mrb_funcall(mrb, mrb_obj_value(mrb->kernel_module), "_ngx_mrb_prepare_fiber", 1, proc);
+  handler_proc = mrb_obj_value(mrb_proc_new(mrb, rproc->body.irep));
+  fiber_proc = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
+  *fiber_proc = mrb_funcall(mrb, mrb_obj_value(mrb->kernel_module), "_ngx_mrb_prepare_fiber", 1, handler_proc);
 
-  return ngx_mrb_run_fiber(mrb, &fiber, result);
+  return ngx_mrb_run_fiber(mrb, fiber_proc, result);
 }
 
 mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result)
@@ -75,7 +77,10 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result)
   }
   aliving = mrb_ary_entry(resume_result, 0);
   handler_result = mrb_ary_entry(resume_result, 1);
-  *result = handler_result;
+  // result called timer_handler is NULL
+  if (result) {
+    *result = handler_result;
+  }
 
   mrb_gc_protect(mrb, *fiber);
 
