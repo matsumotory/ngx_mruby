@@ -67,12 +67,15 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result)
 
   resume_result = mrb_funcall(mrb, *fiber, "call", 0, NULL);
   if (mrb->exc) {
-    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber", MODULE_NAME, __func__, __LINE__);
+    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
+                  MODULE_NAME, __func__, __LINE__);
     return mrb_false_value();
   }
 
   if (!mrb_array_p(resume_result)) {
-    mrb->exc = mrb_obj_ptr(mrb_exc_new_str_lit(mrb, E_RUNTIME_ERROR, "_ngx_mrb_prepare_fiber proc must return array included handler_return and fiber alive status"));
+    mrb->exc = mrb_obj_ptr(mrb_exc_new_str_lit(
+        mrb, E_RUNTIME_ERROR,
+        "_ngx_mrb_prepare_fiber proc must return array included handler_return and fiber alive status"));
     return mrb_false_value();
   }
   aliving = mrb_ary_entry(resume_result, 0);
@@ -125,8 +128,7 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
   }
 }
 
-static void
-ngx_mrb_async_sleep_cleanup(void *data)
+static void ngx_mrb_async_sleep_cleanup(void *data)
 {
   ngx_event_t *ev = (ngx_event_t *)data;
 
