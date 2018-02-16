@@ -108,8 +108,8 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
       rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
   } else {
-    ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing"
-                  MODULE_NAME, __func__, __LINE__);
+    ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
+                  "%s NOTICE %s:%d: unexpected error, fiber missing" MODULE_NAME, __func__, __LINE__);
     rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
 
@@ -123,7 +123,7 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
     rc = NGX_ERROR;
   }
 
-   ngx_http_finalize_request(re->r, rc);
+  ngx_http_finalize_request(re->r, rc);
 }
 
 static void ngx_mrb_async_sleep_cleanup(void *data)
