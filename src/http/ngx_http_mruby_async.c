@@ -85,9 +85,6 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result)
     *result = handler_result;
   }
 
-  // leaves the object in the arena
-  mrb_gc_protect(mrb, *fiber);
-
   return aliving;
 }
 
@@ -104,6 +101,8 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
   if (re->fiber != NULL) {
     ngx_mrb_push_request(re->r);
     if (!mrb_test(ngx_mrb_resume_fiber(re->mrb, re->fiber))) {
+      // can not resume the fiber, the fiber was finished
+      mrb_gc_unregister(re->mrb, *re->fiber);
       re->fiber = NULL;
     }
     if (re->mrb->exc) {
@@ -160,6 +159,11 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   re->mrb = mrb;
   re->fiber = (mrb_value *)mrb->ud;
   re->r = r;
+
+  // keeps the object from GC when can resume the fiber
+  // Don't forget to remove the object using
+  // mrb_gc_unregister, otherwise your object will leak
+  mrb_gc_register(mrb, *re->fiber);
 
   ev = (ngx_event_t *)p;
   ngx_memzero(ev, sizeof(ngx_event_t));
