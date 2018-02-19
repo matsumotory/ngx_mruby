@@ -146,7 +146,7 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ngx_event_t *ev;
   ngx_mrb_reentrant_t *re;
   ngx_http_cleanup_t *cln;
-  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_http_request_t *r;
 
   mrb_get_args(mrb, "i", &timer);
 
@@ -154,6 +154,7 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   // resume the Ruby handler on ngx_mrb_resume_fiber() on ngx_mrb_timer_handler()
   mrb_fiber_yield(mrb, 0, NULL);
 
+  r = ngx_mrb_get_request();
   p = ngx_palloc(r->pool, sizeof(ngx_event_t) + sizeof(ngx_mrb_reentrant_t));
   re = (ngx_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
   re->mrb = mrb;
