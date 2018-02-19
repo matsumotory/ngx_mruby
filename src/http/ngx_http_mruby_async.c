@@ -150,6 +150,8 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
 
   mrb_get_args(mrb, "i", &timer);
 
+  // suspend the Ruby handler on Nginx::Async.sleep
+  // resume the Ruby handler on ngx_mrb_resume_fiber() on ngx_mrb_timer_handler()
   mrb_fiber_yield(mrb, 0, NULL);
 
   r = ngx_mrb_get_request();
