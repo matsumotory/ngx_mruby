@@ -54,7 +54,7 @@ module Kernel
       nginx_handler.call
     end
     Proc.new do
-      # BUG?: return nginx_handler directly from fiber, not proc.
+      # BUG?: return nginx_handler directly from fiber, not proc in any case.
       result = fiber_handler.resume
       [fiber_handler.alive?, result]
     end
