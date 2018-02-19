@@ -91,6 +91,8 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result)
   return aliving;
 }
 
+#define ngx_mrb_resume_fiber(mrb, fiber, result) ngx_mrb_run_fiber(mrb, fiber, result)
+
 static void ngx_mrb_timer_handler(ngx_event_t *ev)
 {
   ngx_mrb_reentrant_t *re;
@@ -101,7 +103,7 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
 
   if (re->fiber != NULL) {
     ngx_mrb_push_request(re->r);
-    if (!mrb_test(ngx_mrb_run_fiber(re->mrb, re->fiber, NULL))) {
+    if (!mrb_test(ngx_mrb_resume_fiber(re->mrb, re->fiber, NULL))) {
       re->fiber = NULL;
     }
     if (re->mrb->exc) {
