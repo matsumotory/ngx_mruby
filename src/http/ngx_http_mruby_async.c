@@ -85,6 +85,7 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result)
     *result = handler_result;
   }
 
+  // leaves the object in the arena
   mrb_gc_protect(mrb, *fiber);
 
   return aliving;
