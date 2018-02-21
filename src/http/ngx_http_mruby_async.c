@@ -102,8 +102,7 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
     ngx_mrb_push_request(re->r);
 
     if (mrb_test(ngx_mrb_resume_fiber(re->mrb, re->fiber))) {
-      ngx_http_core_run_phases(re->r);
-      ngx_http_run_posted_requests(re->r->connection);
+      // can resume the fiber and wait the epoll timer
       return;
     } else {
       // can not resume the fiber, the fiber was finished
