@@ -101,14 +101,14 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
   if (re->fiber != NULL) {
     ngx_mrb_push_request(re->r);
 
-    if (!mrb_test(ngx_mrb_resume_fiber(re->mrb, re->fiber))) {
-      // can not resume the fiber, the fiber was finished
-      mrb_gc_unregister(re->mrb, *re->fiber);
-      re->fiber = NULL;
-    } else {
+    if (mrb_test(ngx_mrb_resume_fiber(re->mrb, re->fiber))) {
       ngx_http_core_run_phases(re->r);
       ngx_http_run_posted_requests(re->r->connection);
       return;
+    } else {
+      // can not resume the fiber, the fiber was finished
+      mrb_gc_unregister(re->mrb, *re->fiber);
+      re->fiber = NULL;
     }
 
     ngx_http_run_posted_requests(re->r->connection);
