@@ -17,6 +17,8 @@
 #include <mruby/proc.h>
 #include <mruby/error.h>
 
+#define ngx_mrb_resume_fiber(mrb, fiber) ngx_mrb_run_fiber(mrb, fiber, NULL)
+
 typedef struct {
   mrb_state *mrb;
   mrb_value *fiber;
@@ -87,8 +89,6 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result)
 
   return aliving;
 }
-
-#define ngx_mrb_resume_fiber(mrb, fiber) ngx_mrb_run_fiber(mrb, fiber, NULL)
 
 static void ngx_mrb_timer_handler(ngx_event_t *ev)
 {
