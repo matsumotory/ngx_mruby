@@ -100,15 +100,24 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
 
   if (re->fiber != NULL) {
     ngx_mrb_push_request(re->r);
+
     if (!mrb_test(ngx_mrb_resume_fiber(re->mrb, re->fiber))) {
       // can not resume the fiber, the fiber was finished
       mrb_gc_unregister(re->mrb, *re->fiber);
       re->fiber = NULL;
+    } else {
+      ngx_http_core_run_phases(re->r);
+      ngx_http_run_posted_requests(re->r->connection);
+      return;
     }
+
+    ngx_http_run_posted_requests(re->r->connection);
+
     if (re->mrb->exc) {
       ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
       rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
+
   } else {
     ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
                   "%s NOTICE %s:%d: unexpected error, fiber missing" MODULE_NAME, __func__, __LINE__);
@@ -172,8 +181,6 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ev->log = ngx_cycle->log;
 
   ngx_add_timer(ev, (ngx_msec_t)timer);
-
-  ngx_http_run_posted_requests(r->connection);
 
   cln = ngx_http_cleanup_add(r, 0);
   if (cln == NULL) {
