@@ -58,16 +58,17 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
   return ngx_mrb_run_fiber(mrb, fiber_proc, result);
 }
 
-mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result)
+mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *result)
 {
   mrb_value resume_result = mrb_nil_value();
   ngx_http_request_t *r = ngx_mrb_get_request();
   mrb_value aliving = mrb_false_value();
   mrb_value handler_result = mrb_nil_value();
 
-  mrb->ud = fiber;
+  // Fiber wrapped in proc
+  mrb->ud = fiber_proc;
 
-  resume_result = mrb_funcall(mrb, *fiber, "call", 0, NULL);
+  resume_result = mrb_funcall(mrb, *fiber_proc, "call", 0, NULL);
   if (mrb->exc) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
