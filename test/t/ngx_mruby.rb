@@ -638,6 +638,18 @@ if nginx_features.is_async_supported?
     t.assert_equal 'body', res["body"]
     t.assert_equal 200, res.code
   end
+
+  t.assert('ngx_mruby - Nginx.Async.sleep looping', 'location /async_sleep_loop') do
+    res = HttpRequest.new.get base + '/async_sleep_loop'
+    t.assert_equal '01234', res["body"]
+    t.assert_equal 200, res.code
+  end
+
+  t.assert('ngx_mruby - enable return method', 'location /enable_return') do
+    res = HttpRequest.new.get base + '/enable_return'
+    t.assert_equal 'hoge', res["body"]
+    t.assert_equal 200, res.code
+  end
 end
 
 
