@@ -11,6 +11,7 @@
 - [Nginx::Headers_out Class](#nginxheaders_out-class)
 - [Nginx::Filter Class](#nginxfilter-class)
 - [Nginx::Upstream Class](#nginxupstream-class)
+- [Nginx::Async class](#nginxasync-class)
 - [Process Class](https://github.com/iij/mruby-process)
 - [IO Class](https://github.com/iij/mruby-io)
 - [Array Class for pack](https://github.com/iij/mruby-pack)
@@ -41,6 +42,20 @@
 Server = get_server_class
 
 Server.echo "hello world"
+```
+
+#### return
+
+ngx_mruby v2 supports `return` method.
+
+```ruby
+location /enable_return {
+    mruby_content_handler_code '
+         Nginx.rputs"hoge"
+         return if true 
+         Nginx.rputs "foo" #=> do not response
+    ';
+}
 ```
 
 #### server_name
@@ -850,6 +865,15 @@ http {
         }
     }
 }
+```
+
+## Nginx::Async Class
+### Method
+#### Nginx::Async#sleep
+Do non-blocking sleep. Currenly it supports only rewrite and access phases.
+```ruby
+# sleep 3000 millisec
+Nginx::Async.sleep 3000
 ```
 
 ## Nginx::Stream class
