@@ -279,14 +279,12 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
   if (ctx != NULL) {
     if (rc != NGX_OK) {
       re->r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+      rc = ngx_mrb_finalize_rputs(re->r, ctx);
+      ngx_http_finalize_request(re->r, rc);
     }
-    rc = ngx_mrb_finalize_rputs(re->r, ctx);
   } else {
-    rc = NGX_ERROR;
+    ngx_http_finalize_request(re->r, NGX_ERROR);
   }
-
-  ngx_http_finalize_request(re->r, rc);
-
 
   return rc;
 }
@@ -342,6 +340,11 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   // NGX_AGAIN;
   return self;
+}
+
+static mrb_value ngx_mrb_async_http_fetch_response(mrb_state *mrb, mrb_value self)
+{
+
 }
 
 void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class)
