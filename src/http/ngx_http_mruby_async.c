@@ -194,6 +194,47 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   return self;
 }
 
+static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *sr, ngx_http_mruby_ctx_t *ctx)
+{
+  u_char *p;
+  size_t size, rest;
+  ngx_buf_t *b;
+  ngx_chain_t *cl, *out;
+
+  ctx->sub_response_status = sr->headers_out.status;
+  ctx->sub_response_headsres = sr->headers_out;
+
+  if (ctx->body == NULL && sr->headers_out.content_length_n > 0) {
+    ctx->sub_response_body = ngx_pcalloc(sr->pool, ctx->sub_response_body_length);
+    if (ctx->sub_response_body == NULL) {
+      ngx_log_error(NGX_LOG_ERROR, sr->connection->log, 0, "%s ERROR %s:%d: ngx_pcalloc failed", MODULE_NAME, __func__, __LINE__);
+      return NGX_ERROR;
+    }
+    ctx->sub_response_last = ctx->sub_response_body;
+  }
+
+  p = ctx->sub_response_last;
+  out = sr->out;
+
+  for (cl = out; cl != NULL; cl = cl->next) {
+    b = cl->buf;
+    size = b->last - b->pos;
+    rest = ctx->sub_response_body + ctx->sub_response_body_length - p;
+    ngx_log_error(NGX_LOG_DEBUG, sr->connection->log, 0, "%s DEBUG %s:%d: filter buf: %uz rest: %uz", MODULE_NAME,
+                  __func__, __LINE__, size, rest);
+    size = (rest < size) ? rest : size;
+    p = ngx_cpymem(p, b->pos, size);
+    b->pos += size;
+    if (b->last_buf) {
+      ctx->sub_response_last = p;
+      ngx_log_error(NGX_LOG_DEBUG, sr->connection->log, 0, "%s DEBUG %s:%d: reached last buffer", MODULE_NAME, __func__,
+                    __LINE__);
+    }
+  }
+
+  return NGX_OK;
+}
+
 // response for sub_request
 static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, void *data, ngx_int_t rc)
 {
@@ -203,8 +244,12 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request done s:%ui", r->headers_out.status);
 
-  ctx->done = 1;
-  ctx->status = r->headers_out.status;
+  ctx->sub_response_done = 1;
+
+  // copy response data of sub_request to main response ctx 
+  if (ngx_http_mruby_read_sub_response(sr, ctx) != NGX_ERROR) {
+    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+  }
 
   if (re->fiber != NULL) {
     ngx_mrb_push_request(re->r);
@@ -306,6 +351,6 @@ void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class)
   class_async = mrb_define_class_under(mrb, class, "Async", mrb->object_class);
   mrb_define_class_method(mrb, class_async, "sleep", ngx_mrb_async_sleep, MRB_ARGS_REQ(1));
 
-  mrb_define_method(mrb, class_async, "http_request", ngx_mrb_async_http_sub_request, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_async, "http_response", ngx_mrb_async_http_sub_response, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_async, "http_sub_request", ngx_mrb_async_http_sub_request, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_async, "fetch_response", ngx_mrb_async_http_sub_response, MRB_ARGS_NONE());
 }

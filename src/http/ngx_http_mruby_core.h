@@ -30,11 +30,13 @@ typedef struct ngx_http_mruby_ctx_t {
   unsigned request_body_more : 1;
   unsigned read_request_body_done : 1;
   ngx_uint_t phase;
-  unsigned sub_request_body_done : 1;
-  u_char *sub_request_body;
-  u_char *sub_request_last;
-  size_t sub_request_body_length;
-  ngx_http_headers_out_t sub_request_headers_out;
+  // for response of sub_request using async method
+  unsigned sub_response_done : 1;
+  u_char *sub_response_body;
+  u_char *sub_response_status;
+  u_char *sub_response_last;
+  size_t sub_response_body_length;
+  ngx_http_headers_out_t sub_response_headers;
 } ngx_http_mruby_ctx_t;
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
