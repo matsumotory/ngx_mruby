@@ -26,6 +26,15 @@ typedef struct {
   ngx_http_request_t *sr;
 } ngx_mrb_reentrant_t;
 
+typedef struct {
+  ngx_mrb_reentrant_t *re;
+  ngx_str_t *uri;
+} ngx_mrb_async_http_ctx_t;
+
+static const struct mrb_data_type ngx_mrb_async_http_ctx_type = {
+    "ngx_mrb_async_http_ctx_t", mrb_free,
+};
+
 static void replace_stop(mrb_irep *irep)
 {
   // A part of them refer to https://github.com/h2o/h2o
@@ -194,6 +203,32 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   return self;
 }
 
+static mrb_value ngx_mrb_async_http_init(mrb_state *mrb, mrb_value self)
+{
+  ngx_str_t *uri;
+  ngx_mrb_async_http_ctx_t *actx;
+
+  uri = ngx_palloc(r->pool, sizeof(ngx_str_t));
+  if (uri == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for http_sub_request uri");
+  }
+
+  mrb_get_args(mrb, "s", &uri->data, &uri->len);
+
+  if (uri->len == 0) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "http_sub_request args len is 0");
+  }
+
+  actx = (ngx_mrb_async_http_ctx_t *)mrb_malloc(mrb, sizeof(ngx_mrb_async_http_ctx_t));
+  actx->uri = uri;
+  actx->re = NULL;
+
+  DATA_TYPE(self) = &ngx_mrb_async_http_ctx_type;
+  DATA_PTR(self) = actx;
+
+  return self;
+}
+
 static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *sr, ngx_http_mruby_ctx_t *ctx)
 {
   u_char *p;
@@ -238,7 +273,8 @@ static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *sr, ngx_ht
 // response for sub_request
 static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, void *data, ngx_int_t rc)
 {
-  ngx_mrb_reentrant_t *re = data;
+  ngx_mrb_async_http_ctx_t *actx = data;
+  ngx_mrb_reentrant_t *re = actx->re;
   ngx_http_request_r *r = re->r;
   ngx_int_t rc = NGX_OK;
 
@@ -296,17 +332,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r, *sr;
   ngx_str_t *uri;
   ngx_http_post_subrequest_t *ps;
-
-  uri = ngx_palloc(r->pool, sizeof(ngx_str_t));
-  if (uri == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for http_sub_request uri");
-  }
-
-  mrb_get_args(mrb, "s", &uri->data, &uri->len);
-
-  if (uri->len == 0) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "http_sub_request args len is 0");
-  }
+  ngx_mrb_async_http_ctx_t *actx = DATA_PTR(self);
 
   mrb_fiber_yield(mrb, 0, NULL);
 
@@ -324,10 +350,11 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for http_sub_request post subrequest");
   }
 
+  actx->re = re;
   ps->handler = ngx_mrb_async_http_sub_request_done;
-  ps->data = re;
+  ps->data = actx;
 
-  if (ngx_http_subrequest(r, uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_WAITED) != NGX_OK) {
+  if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_WAITED) != NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_subrequest failed for http_sub_rquest method");
   }
 
@@ -349,11 +376,13 @@ static mrb_value ngx_mrb_async_http_fetch_response(mrb_state *mrb, mrb_value sel
 
 void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class)
 {
-  struct RClass *class_async;
+  struct RClass *class_async, *class_async_http;
 
   class_async = mrb_define_class_under(mrb, class, "Async", mrb->object_class);
   mrb_define_class_method(mrb, class_async, "sleep", ngx_mrb_async_sleep, MRB_ARGS_REQ(1));
 
-  mrb_define_method(mrb, class_async, "http_sub_request", ngx_mrb_async_http_sub_request, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_async, "fetch_response", ngx_mrb_async_http_sub_response, MRB_ARGS_NONE());
+  class_async_http = mrb_define_class_under(mrb, class_async, "HTTP", mrb->object_class);
+  mrb_define_method(mrb, class_async_http, "initialize", ngx_mrb_async_http_init, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_async_http, "http_sub_request", ngx_mrb_async_http_sub_request, MRB_ARGS_NON());
+  mrb_define_method(mrb, class_async_http, "fetch_response", ngx_mrb_async_http_sub_response, MRB_ARGS_NONE());
 }
