@@ -363,7 +363,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for sr->request_body");
   }
 
-  re->subrequest = sr;
+  re->sr = sr;
 
   // NGX_AGAIN;
   return self;
@@ -371,7 +371,20 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_async_http_fetch_response(mrb_state *mrb, mrb_value self)
 {
+  ngx_http_mruby_ctx_t *ctx;
+  ngx_mrb_async_http_ctx_t *actx = DATA_PTR(self);
+  mrb_value response;
 
+  ctx = ngx_http_get_module_ctx(re->sr, ngx_http_mruby_module);
+
+  if (ctx == NULL) {
+    return mrb_nil_value();
+  }
+
+  // build response for mruby
+  response = build_response_to_obj(mrb, ctx);
+
+  return response;
 }
 
 void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class)
