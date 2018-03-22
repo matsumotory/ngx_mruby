@@ -237,7 +237,7 @@ static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *sr, ngx_ht
   ngx_chain_t *cl, *out;
 
   ctx->sub_response_status = sr->headers_out.status;
-  ctx->sub_response_headsres = sr->headers_out;
+  ctx->sub_response_headers = sr->headers_out;
 
   if (ctx->body == NULL && sr->headers_out.content_length_n > 0) {
     ctx->sub_response_body = ngx_pcalloc(sr->pool, ctx->sub_response_body_length);
@@ -369,19 +369,64 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   return self;
 }
 
+
+static mrb_value build_response_headers_to_hash(mrb_state *mrb, ngx_http_headers_out_t headers_out) 
+{                                                                                        
+  ngx_list_part_t *part;                                                                 
+  ngx_table_elt_t *header;                                                               
+  ngx_uint_t i;                                                                          
+  mrb_value hash, key, value;                                                                       
+
+  hash = mrb_hash_new(mrb);                                                              
+  part = &(headers_out.headers.part);                                         
+  header = part->elts;                                                                   
+
+  for (i = 0; /* void */; i++) {                                                         
+    if (i >= part->nelts) {                                                              
+      if (part->next == NULL) {                                                          
+        break;                                                                           
+      }                                                                                  
+      part = part->next;                                                                 
+      header = part->elts;                                                               
+      i = 0;                                                                             
+    }                                                                                    
+    key = mrb_str_new(mrb, (const char *)header[i].key.data, header[i].key.len);         
+    value = mrb_str_new(mrb, (const char *)header[i].value.data, header[i].value.len);   
+    mrb_hash_set(mrb, hash, key, value);                                                 
+  }                                                                                      
+
+  return hash;                                                                           
+}
+
+static mrb_value build_response_to_obj(mrb_state *mrb, ngx_http_mruby_ctx_t *ctx)
+{
+  mrb_value headers = build_response_headers_to_hash(mrb, ctx->sub_response_headers);
+  mrb_value status = mrb_fixnum_value(ctx->sub_response_status);
+  mrb_value body = mrb_str_new(mrb, ctx->sub_response_body, ctx->sub_response_body_length);
+  mrb_value response = mrb_hash_new(mrb);
+
+  mrb_hash_set(mrb, response, mrb_symbol_value(mrb_intern_cstr(mrb, "headers")), headers);
+  mrb_hash_set(mrb, response, mrb_symbol_value(mrb_intern_cstr(mrb, "status")), status);
+  mrb_hash_set(mrb, response, mrb_symbol_value(mrb_intern_cstr(mrb, "body")), body);
+
+  return response; 
+}
+
 static mrb_value ngx_mrb_async_http_fetch_response(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_ctx_t *ctx;
   ngx_mrb_async_http_ctx_t *actx = DATA_PTR(self);
   mrb_value response;
 
-  ctx = ngx_http_get_module_ctx(re->sr, ngx_http_mruby_module);
+  ctx = ngx_http_get_module_ctx(actx->re->sr, ngx_http_mruby_module);
 
   if (ctx == NULL) {
     return mrb_nil_value();
   }
 
   // build response for mruby
+  // return the following object:
+  // { headers: { "header1" => "hoge", "header2" => "fuga" }, status: 200, body: "hello body world"}
   response = build_response_to_obj(mrb, ctx);
 
   return response;
