@@ -16,6 +16,7 @@
 #include <mruby/opcode.h>
 #include <mruby/proc.h>
 #include <mruby/error.h>
+#include <mruby/data.h>
 
 #define ngx_mrb_resume_fiber(mrb, fiber) ngx_mrb_run_fiber(mrb, fiber, NULL)
 
@@ -207,6 +208,7 @@ static mrb_value ngx_mrb_async_http_init(mrb_state *mrb, mrb_value self)
 {
   ngx_str_t *uri;
   ngx_mrb_async_http_ctx_t *actx;
+  ngx_http_request_t *r = ngx_mrb_get_request();
 
   uri = ngx_palloc(r->pool, sizeof(ngx_str_t));
   if (uri == NULL) {
@@ -242,7 +244,7 @@ static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *sr, ngx_ht
   if (ctx->body == NULL && sr->headers_out.content_length_n > 0) {
     ctx->sub_response_body = ngx_pcalloc(sr->pool, ctx->sub_response_body_length);
     if (ctx->sub_response_body == NULL) {
-      ngx_log_error(NGX_LOG_ERROR, sr->connection->log, 0, "%s ERROR %s:%d: ngx_pcalloc failed", MODULE_NAME, __func__,
+      ngx_log_error(NGX_LOG_ERR, sr->connection->log, 0, "%s ERROR %s:%d: ngx_pcalloc failed", MODULE_NAME, __func__,
                     __LINE__);
       return NGX_ERROR;
     }
@@ -276,11 +278,18 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
 {
   ngx_mrb_async_http_ctx_t *actx = data;
   ngx_mrb_reentrant_t *re = actx->re;
-  ngx_http_request_r *r = re->r;
-  ngx_int_t rc = NGX_OK;
+  ngx_http_request_t *r = re->r;
+  ngx_http_mruby_ctx_t *ctx;
+
+  // read mruby context of parent request_rec
+  ctx = ngx_http_get_module_ctx(re->r, ngx_http_mruby_module);
+
+  if (ctx == NULL) {
+    ngx_http_finalize_request(re->r, NGX_ERROR);
+    return rc;
+  }
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request done s:%ui", r->headers_out.status);
-
   ctx->sub_response_done = 1;
 
   // copy response data of sub_request to main response ctx
@@ -312,16 +321,7 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
     rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
 
-  ctx = ngx_http_get_module_ctx(re->r, ngx_http_mruby_module);
-  if (ctx != NULL) {
-    if (rc != NGX_OK) {
-      re->r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-      rc = ngx_mrb_finalize_rputs(re->r, ctx);
-      ngx_http_finalize_request(re->r, rc);
-    }
-  } else {
-    ngx_http_finalize_request(re->r, NGX_ERROR);
-  }
+  ngx_http_finalize_request(re->r, rc);
 
   return rc;
 }
@@ -331,7 +331,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   u_char *p;
   ngx_mrb_reentrant_t *re;
   ngx_http_request_t *r, *sr;
-  ngx_str_t *uri;
   ngx_http_post_subrequest_t *ps;
   ngx_mrb_async_http_ctx_t *actx = DATA_PTR(self);
 
@@ -402,7 +401,7 @@ static mrb_value build_response_to_obj(mrb_state *mrb, ngx_http_mruby_ctx_t *ctx
 {
   mrb_value headers = build_response_headers_to_hash(mrb, ctx->sub_response_headers);
   mrb_value status = mrb_fixnum_value(ctx->sub_response_status);
-  mrb_value body = mrb_str_new(mrb, ctx->sub_response_body, ctx->sub_response_body_length);
+  mrb_value body = mrb_str_new(mrb, (char *)ctx->sub_response_body, ctx->sub_response_body_length);
   mrb_value response = mrb_hash_new(mrb);
 
   mrb_hash_set(mrb, response, mrb_symbol_value(mrb_intern_cstr(mrb, "headers")), headers);
@@ -441,6 +440,6 @@ void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class)
 
   class_async_http = mrb_define_class_under(mrb, class_async, "HTTP", mrb->object_class);
   mrb_define_method(mrb, class_async_http, "initialize", ngx_mrb_async_http_init, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_async_http, "http_sub_request", ngx_mrb_async_http_sub_request, MRB_ARGS_NON());
-  mrb_define_method(mrb, class_async_http, "fetch_response", ngx_mrb_async_http_sub_response, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_async_http, "http_sub_request", ngx_mrb_async_http_sub_request, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_async_http, "fetch_response", ngx_mrb_async_http_fetch_response, MRB_ARGS_NONE());
 }

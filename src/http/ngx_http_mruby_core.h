@@ -33,7 +33,7 @@ typedef struct ngx_http_mruby_ctx_t {
   // for response of sub_request using async method
   unsigned sub_response_done : 1;
   u_char *sub_response_body;
-  u_char *sub_response_status;
+  ngx_uint_t sub_response_status;
   u_char *sub_response_last;
   size_t sub_response_body_length;
   ngx_http_headers_out_t sub_response_headers;
