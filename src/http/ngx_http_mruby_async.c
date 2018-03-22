@@ -283,7 +283,6 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
   }
 
   if (ctx == NULL) {
-    ngx_http_finalize_request(re->r, NGX_ERROR);
     return rc;
   }
 
@@ -308,19 +307,17 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
       re->fiber = NULL;
     }
 
-    // ngx_http_run_posted_requests(re->r->connection);
-
     if (re->mrb->exc) {
-      ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
+      ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), r);
       rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+      ngx_http_finalize_request(r, rc);
     }
   } else {
-    ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
+    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                   "%s NOTICE %s:%d: unexpected error, fiber missing" MODULE_NAME, __func__, __LINE__);
-    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    rc = NGX_ERROR;
+    ngx_http_finalize_request(r, rc);
   }
-
-  // ngx_http_finalize_request(re->r, rc);
 
   return rc;
 }
