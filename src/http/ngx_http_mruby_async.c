@@ -29,7 +29,7 @@ typedef struct {
 
 typedef struct {
   ngx_mrb_reentrant_t *re;
-  ngx_str_t *uri;
+  ngx_str_t uri;
 } ngx_mrb_async_http_ctx_t;
 
 static const struct mrb_data_type ngx_mrb_async_http_ctx_type = {
@@ -206,18 +206,12 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_async_http_init(mrb_state *mrb, mrb_value self)
 {
-  ngx_str_t *uri;
+  ngx_str_t uri;
   ngx_mrb_async_http_ctx_t *actx;
-  ngx_http_request_t *r = ngx_mrb_get_request();
 
-  uri = ngx_palloc(r->pool, sizeof(ngx_str_t));
-  if (uri == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for http_sub_request uri");
-  }
+  mrb_get_args(mrb, "s", &uri.data, &uri.len);
 
-  mrb_get_args(mrb, "s", &uri->data, &uri->len);
-
-  if (uri->len == 0) {
+  if (uri.len == 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "http_sub_request args len is 0");
   }
 
@@ -284,6 +278,10 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
   // read mruby context of parent request_rec
   ctx = ngx_http_get_module_ctx(re->r, ngx_http_mruby_module);
 
+  if (ctx && ctx->sub_response_done) {
+    return NGX_OK;
+  }
+
   if (ctx == NULL) {
     ngx_http_finalize_request(re->r, NGX_ERROR);
     return rc;
@@ -291,10 +289,11 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request done s:%ui", r->headers_out.status);
   ctx->sub_response_done = 1;
+  ctx->sub_response_more = 0;
 
   // copy response data of sub_request to main response ctx
-  if (ngx_http_mruby_read_sub_response(sr, ctx) != NGX_ERROR) {
-    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+  if (ngx_http_mruby_read_sub_response(sr, ctx) != NGX_OK) {
+    return NGX_ERROR;
   }
 
   if (re->fiber != NULL) {
@@ -302,14 +301,14 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
 
     if (mrb_test(ngx_mrb_resume_fiber(re->mrb, re->fiber))) {
       // can resume the fiber and wait the epoll
-      return NGX_AGAIN;
+      return rc;
     } else {
       // can not resume the fiber, the fiber was finished
       mrb_gc_unregister(re->mrb, *re->fiber);
       re->fiber = NULL;
     }
 
-    ngx_http_run_posted_requests(re->r->connection);
+    //ngx_http_run_posted_requests(re->r->connection);
 
     if (re->mrb->exc) {
       ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
@@ -321,7 +320,7 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
     rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
 
-  ngx_http_finalize_request(re->r, rc);
+  //ngx_http_finalize_request(re->r, rc);
 
   return rc;
 }
@@ -332,6 +331,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ngx_mrb_reentrant_t *re;
   ngx_http_request_t *r, *sr;
   ngx_http_post_subrequest_t *ps;
+  ngx_http_mruby_ctx_t *ctx;
   ngx_mrb_async_http_ctx_t *actx = DATA_PTR(self);
 
   mrb_fiber_yield(mrb, 0, NULL);
@@ -354,7 +354,9 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ps->handler = ngx_mrb_async_http_sub_request_done;
   ps->data = actx;
 
-  if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_WAITED) != NGX_OK) {
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request send to %V", &actx->uri);
+  //if (ngx_http_subrequest(r, &actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_WAITED) != NGX_OK) {
+  if (ngx_http_subrequest(r, &actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_IN_MEMORY|NGX_HTTP_SUBREQUEST_WAITED) != NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_subrequest failed for http_sub_rquest method");
   }
 
@@ -366,6 +368,13 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   re->sr = sr;
 
   // NGX_AGAIN;
+  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  if (ctx == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_get_module_ctx failed on subrequest method");
+  }
+  ctx->sub_response_done = 0;
+  ctx->sub_response_more = 1;
+
   return self;
 }
 

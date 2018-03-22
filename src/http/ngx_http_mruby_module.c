@@ -840,9 +840,20 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     }
   }
 
+  ctx->sub_response_done = 0;
+  ctx->sub_response_more = 0;
+
   if (mrb_test(ngx_mrb_start_fiber(r, state->mrb, code->proc, &mrb_result))) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
                   __func__, __LINE__);
+
+    // waiting sub request response
+    if (ctx->sub_response_more) {
+      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: more sub request processing", MODULE_NAME,
+                    __func__, __LINE__);
+      return NGX_AGAIN;
+    }
+
     return NGX_DONE;
   } else {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: already finish this fiber, can not resume",
