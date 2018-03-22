@@ -308,7 +308,7 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
       re->fiber = NULL;
     }
 
-    //ngx_http_run_posted_requests(re->r->connection);
+    // ngx_http_run_posted_requests(re->r->connection);
 
     if (re->mrb->exc) {
       ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
@@ -320,7 +320,7 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
     rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
 
-  //ngx_http_finalize_request(re->r, rc);
+  // ngx_http_finalize_request(re->r, rc);
 
   return rc;
 }
@@ -355,8 +355,9 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ps->data = actx;
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request send to %V", &actx->uri);
-  //if (ngx_http_subrequest(r, &actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_WAITED) != NGX_OK) {
-  if (ngx_http_subrequest(r, &actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_IN_MEMORY|NGX_HTTP_SUBREQUEST_WAITED) != NGX_OK) {
+  // if (ngx_http_subrequest(r, &actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_WAITED) != NGX_OK) {
+  if (ngx_http_subrequest(r, &actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_IN_MEMORY | NGX_HTTP_SUBREQUEST_WAITED) !=
+      NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_subrequest failed for http_sub_rquest method");
   }
 
