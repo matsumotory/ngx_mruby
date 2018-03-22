@@ -650,6 +650,12 @@ if nginx_features.is_async_supported?
     t.assert_equal 'hoge', res["body"]
     t.assert_equal 200, res.code
   end
+
+  t.assert('ngx_mruby - Nginx::Async::HTTP.new "/dst"', 'location /async_http_sub_request') do
+    res = HttpRequest.new.get base + '/async_http_sub_request'
+    t.assert_equal 'subrequest', res["body"]
+    t.assert_equal 200, res.code
+  end
 end
 
 
