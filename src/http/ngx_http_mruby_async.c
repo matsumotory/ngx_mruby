@@ -242,7 +242,8 @@ static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *sr, ngx_ht
   if (ctx->body == NULL && sr->headers_out.content_length_n > 0) {
     ctx->sub_response_body = ngx_pcalloc(sr->pool, ctx->sub_response_body_length);
     if (ctx->sub_response_body == NULL) {
-      ngx_log_error(NGX_LOG_ERROR, sr->connection->log, 0, "%s ERROR %s:%d: ngx_pcalloc failed", MODULE_NAME, __func__, __LINE__);
+      ngx_log_error(NGX_LOG_ERROR, sr->connection->log, 0, "%s ERROR %s:%d: ngx_pcalloc failed", MODULE_NAME, __func__,
+                    __LINE__);
       return NGX_ERROR;
     }
     ctx->sub_response_last = ctx->sub_response_body;
@@ -282,7 +283,7 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
 
   ctx->sub_response_done = 1;
 
-  // copy response data of sub_request to main response ctx 
+  // copy response data of sub_request to main response ctx
   if (ngx_http_mruby_read_sub_response(sr, ctx) != NGX_ERROR) {
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
@@ -369,33 +370,32 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   return self;
 }
 
+static mrb_value build_response_headers_to_hash(mrb_state *mrb, ngx_http_headers_out_t headers_out)
+{
+  ngx_list_part_t *part;
+  ngx_table_elt_t *header;
+  ngx_uint_t i;
+  mrb_value hash, key, value;
 
-static mrb_value build_response_headers_to_hash(mrb_state *mrb, ngx_http_headers_out_t headers_out) 
-{                                                                                        
-  ngx_list_part_t *part;                                                                 
-  ngx_table_elt_t *header;                                                               
-  ngx_uint_t i;                                                                          
-  mrb_value hash, key, value;                                                                       
+  hash = mrb_hash_new(mrb);
+  part = &(headers_out.headers.part);
+  header = part->elts;
 
-  hash = mrb_hash_new(mrb);                                                              
-  part = &(headers_out.headers.part);                                         
-  header = part->elts;                                                                   
+  for (i = 0; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+      part = part->next;
+      header = part->elts;
+      i = 0;
+    }
+    key = mrb_str_new(mrb, (const char *)header[i].key.data, header[i].key.len);
+    value = mrb_str_new(mrb, (const char *)header[i].value.data, header[i].value.len);
+    mrb_hash_set(mrb, hash, key, value);
+  }
 
-  for (i = 0; /* void */; i++) {                                                         
-    if (i >= part->nelts) {                                                              
-      if (part->next == NULL) {                                                          
-        break;                                                                           
-      }                                                                                  
-      part = part->next;                                                                 
-      header = part->elts;                                                               
-      i = 0;                                                                             
-    }                                                                                    
-    key = mrb_str_new(mrb, (const char *)header[i].key.data, header[i].key.len);         
-    value = mrb_str_new(mrb, (const char *)header[i].value.data, header[i].value.len);   
-    mrb_hash_set(mrb, hash, key, value);                                                 
-  }                                                                                      
-
-  return hash;                                                                           
+  return hash;
 }
 
 static mrb_value build_response_to_obj(mrb_state *mrb, ngx_http_mruby_ctx_t *ctx)
@@ -409,7 +409,7 @@ static mrb_value build_response_to_obj(mrb_state *mrb, ngx_http_mruby_ctx_t *ctx
   mrb_hash_set(mrb, response, mrb_symbol_value(mrb_intern_cstr(mrb, "status")), status);
   mrb_hash_set(mrb, response, mrb_symbol_value(mrb_intern_cstr(mrb, "body")), body);
 
-  return response; 
+  return response;
 }
 
 static mrb_value ngx_mrb_async_http_fetch_response(mrb_state *mrb, mrb_value self)

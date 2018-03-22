@@ -41,8 +41,8 @@
   }
 
 #define NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_HEADERS_HASH(direction)                                                \
-  mrb_value ngx_mrb_get_request_headers_##direction##_hash(mrb_state *mrb, mrb_value self);                     \
-  mrb_value ngx_mrb_get_request_headers_##direction##_hash(mrb_state *mrb, mrb_value self)                      \
+  mrb_value ngx_mrb_get_request_headers_##direction##_hash(mrb_state *mrb, mrb_value self);                            \
+  mrb_value ngx_mrb_get_request_headers_##direction##_hash(mrb_state *mrb, mrb_value self)                             \
   {                                                                                                                    \
     ngx_list_part_t *part;                                                                                             \
     ngx_table_elt_t *header;                                                                                           \
