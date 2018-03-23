@@ -516,7 +516,7 @@ mrb_exec_irep(mrb_state *mrb, mrb_value self, struct RProc *p)
   }
   ci->nregs = p->body.irep->nregs;
   if (ci->argc < 0) keep = 3;
-  else keep = ci->argc + 1;
+  else keep = ci->argc + 2;
   if (ci->nregs < keep) {
     stack_extend(mrb, keep);
   }
@@ -1351,6 +1351,7 @@ RETRY_TRY_BLOCK:
       for (n=0; n<a; n++) {
         proc = mrb->c->ensure[epos+n];
         mrb->c->ensure[epos+n] = NULL;
+        if (proc == NULL) continue;
         irep = proc->body.irep;
         ci = cipush(mrb);
         ci->mid = ci[-1].mid;
@@ -1661,6 +1662,9 @@ RETRY_TRY_BLOCK:
       if (MRB_METHOD_CFUNC_P(m)) {
         mrb_value v;
         ci->nregs = (argc < 0) ? 3 : n+2;
+        if (MRB_METHOD_PROC_P(m)) {
+          ci->proc = MRB_METHOD_PROC(m);
+        }
         v = MRB_METHOD_CFUNC(m)(mrb, recv);
         mrb_gc_arena_restore(mrb, ai);
         if (mrb->exc) goto L_RAISE;
