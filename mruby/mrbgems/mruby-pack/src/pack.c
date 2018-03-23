@@ -107,6 +107,9 @@ static mrb_value
 str_len_ensure(mrb_state *mrb, mrb_value str, mrb_int len)
 {
   mrb_int n = RSTRING_LEN(str);
+  if (len < 0) {
+    mrb_raise(mrb, E_RANGE_ERROR, "negative (or overflowed) integer");
+  }
   if (len > n) {
     do {
       n *= 2;
@@ -515,7 +518,7 @@ utf8_to_uv(mrb_state *mrb, const char *p, long *lenp)
       c = *p++ & 0xff;
       if ((c & 0xc0) != 0x80) {
         *lenp -= n + 1;
-        mrb_raisef(mrb, E_ARGUMENT_ERROR, "malformed UTF-8 character");
+        mrb_raise(mrb, E_ARGUMENT_ERROR, "malformed UTF-8 character");
       }
       else {
         c &= 0x3f;
@@ -525,7 +528,7 @@ utf8_to_uv(mrb_state *mrb, const char *p, long *lenp)
   }
   n = *lenp - 1;
   if (uv < utf8_limits[n]) {
-    mrb_raisef(mrb, E_ARGUMENT_ERROR, "redundant UTF-8 sequence");
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "redundant UTF-8 sequence");
   }
   return uv;
 }
@@ -726,7 +729,7 @@ pack_m(mrb_state *mrb, mrb_value src, mrb_value dst, mrb_int didx, long count, u
     count -= count % 3;
   }
 
-  dstlen = srclen / 3 * 4;
+  dstlen = (srclen+2) / 3 * 4;
   if (count > 0) {
     dstlen += (srclen / count) + ((srclen % count) == 0 ? 0 : 1);
   }
@@ -803,7 +806,7 @@ unpack_m(mrb_state *mrb, const void *src, int slen, mrb_value ary, unsigned int 
 	  ch[i] = 0;
 	  padding++;
 	}
-      } while (ch[i] == PACK_BASE64_IGNORE);
+      } while (c >= sizeof(base64_dec_tab) || ch[i] == PACK_BASE64_IGNORE);
     }
 
     l = (ch[0] << 18) + (ch[1] << 12) + (ch[2] << 6) + ch[3];
@@ -833,16 +836,17 @@ pack_x(mrb_state *mrb, mrb_value src, mrb_value dst, mrb_int didx, long count, u
 {
   long i;
 
+  if (count < 0) return 0;
   dst = str_len_ensure(mrb, dst, didx + count);
   for (i = 0; i < count; i++) {
-    RSTRING_PTR(dst)[didx] = '\0';
+    RSTRING_PTR(dst)[didx + i] = '\0';
   }
   return count;
 }
-
 static int
 unpack_x(mrb_state *mrb, const void *src, int slen, mrb_value ary, int count, unsigned int flags)
 {
+  if (count < 0) return slen;
   if (slen < count) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "x outside of string");
   }
@@ -1050,6 +1054,9 @@ alias:
       count = ch - '0';
       while (tmpl->idx < tlen && isdigit(tptr[tmpl->idx])) {
         count = count * 10 + (tptr[tmpl->idx++] - '0');
+        if (count < 0) {
+          mrb_raisef(mrb, E_RUNTIME_ERROR, "too big template length");
+        }
       }
       continue;  /* special case */
     } else if (ch == '*')  {
@@ -1170,6 +1177,9 @@ mrb_pack_pack(mrb_state *mrb, mrb_value ary)
       if (count > 0) {
         count--;
       }
+    }
+    if (ridx < 0) {
+      mrb_raise(mrb, E_RANGE_ERROR, "negative (or overflowed) template size");
     }
   }
 
