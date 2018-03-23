@@ -79,7 +79,6 @@ MRuby::Build.new('test') do |conf|
   conf.gem :github => 'matsumotory/mruby-simpletest'
   conf.gem :github => 'mattn/mruby-http'
   conf.gem :github => 'mattn/mruby-json'
-  conf.gem :github => 'iij/mruby-pack'
   conf.gem :github => 'iij/mruby-env'
 
   # include the default GEMs
