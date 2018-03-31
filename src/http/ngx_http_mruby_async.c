@@ -17,6 +17,7 @@
 #include <mruby/proc.h>
 #include <mruby/error.h>
 #include <mruby/data.h>
+#include <mruby/string.h>
 
 #define ngx_mrb_resume_fiber(mrb, fiber) ngx_mrb_run_fiber(mrb, fiber, NULL)
 
@@ -33,7 +34,7 @@ typedef struct {
 } ngx_mrb_async_http_ctx_t;
 
 static const struct mrb_data_type ngx_mrb_async_http_ctx_type = {
-    "ngx_mrb_async_http_ctx_t", NULL,
+    "ngx_mrb_async_http_ctx_t", mrb_free,
 };
 
 static void replace_stop(mrb_irep *irep)
@@ -209,23 +210,33 @@ static mrb_value ngx_mrb_async_http_init(mrb_state *mrb, mrb_value self)
   ngx_str_t *uri;
   ngx_mrb_async_http_ctx_t *actx;
   ngx_http_request_t *r = ngx_mrb_get_request();
+  mrb_value arg;
 
   uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
   if (uri == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_pcalloc failed on ngx_mrb_async_http_init");
   }
 
-  mrb_get_args(mrb, "s", &uri->data, &uri->len);
-
+  mrb_get_args(mrb, "o", &arg);
+  uri->len = RSTRING_LEN(arg);
   if (uri->len == 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "http_sub_request args len is 0");
   }
 
-  actx = (ngx_mrb_async_http_ctx_t *)ngx_pcalloc(r->pool, sizeof(ngx_mrb_async_http_ctx_t));
+  uri->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(arg));
+  ngx_memcpy(uri->data, RSTRING_PTR(arg), uri->len);
+
+  actx = (ngx_mrb_async_http_ctx_t *)DATA_PTR(self);
+  if (actx) {
+    mrb_free(mrb, actx);
+  }
+  DATA_TYPE(self) = &ngx_mrb_async_http_ctx_type;
+  DATA_PTR(self) = NULL;
+
+  actx = (ngx_mrb_async_http_ctx_t *)mrb_malloc(mrb, sizeof(ngx_mrb_async_http_ctx_t));
   actx->uri = uri;
   actx->re = NULL;
 
-  DATA_TYPE(self) = &ngx_mrb_async_http_ctx_type;
   DATA_PTR(self) = actx;
 
   return self;
