@@ -438,8 +438,14 @@ static mrb_value build_response_to_obj(mrb_state *mrb, ngx_http_mruby_ctx_t *ctx
 static mrb_value ngx_mrb_async_http_fetch_response(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_ctx_t *ctx;
-  ngx_mrb_async_http_ctx_t *actx = DATA_PTR(self);
+  ngx_mrb_async_http_ctx_t *actx;
   mrb_value response;
+
+  actx = DATA_PTR(self);
+
+  if (!actx) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::Async::HTTP instance was missing");
+  }
 
   ctx = ngx_http_get_module_ctx(actx->re->sr, ngx_http_mruby_module);
 
