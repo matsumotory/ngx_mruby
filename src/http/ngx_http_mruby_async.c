@@ -95,7 +95,7 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   }
   aliving = mrb_ary_entry(resume_result, 0);
   handler_result = mrb_ary_entry(resume_result, 1);
-  // result called timer_handler is NULL via ngx_mrb_resume_fiber
+  // result called async mruby handler is NULL via ngx_mrb_resume_fiber
   if (result) {
     *result = handler_result;
   }
