@@ -330,8 +330,8 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
       ngx_http_finalize_request(r, rc);
     }
   } else {
-    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                  "%s NOTICE %s:%d: unexpected error, fiber missing" MODULE_NAME, __func__, __LINE__);
+    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing" MODULE_NAME,
+                  __func__, __LINE__);
     rc = NGX_ERROR;
     ngx_http_finalize_request(r, rc);
   }
