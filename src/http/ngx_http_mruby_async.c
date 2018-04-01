@@ -388,7 +388,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ctx->sub_response_done = 0;
   ctx->sub_response_more = 1;
 
-  return mrb_fiber_yield(mrb, 1, &val);
+  return mrb_fiber_yield(mrb, 0, NULL);
 }
 
 static mrb_value build_response_headers_to_hash(mrb_state *mrb, ngx_http_headers_out_t headers_out)
