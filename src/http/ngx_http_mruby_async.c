@@ -252,8 +252,9 @@ static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *sr, ngx_ht
   ctx->sub_response_status = sr->headers_out.status;
   ctx->sub_response_headers = sr->headers_out;
 
-  if (ctx->body == NULL && sr->headers_out.content_length_n > 0) {
-    ctx->sub_response_body = ngx_pcalloc(sr->pool, ctx->sub_response_body_length);
+  if (ctx->sub_response_body == NULL && sr->headers_out.content_length_n > 0) {
+    ctx->sub_response_body = ngx_pcalloc(sr->pool, sr->headers_out.content_length_n);
+    ctx->sub_response_body_length = sr->headers_out.content_length_n;
     if (ctx->sub_response_body == NULL) {
       ngx_log_error(NGX_LOG_ERR, sr->connection->log, 0, "%s ERROR %s:%d: ngx_pcalloc failed", MODULE_NAME, __func__,
                     __LINE__);
@@ -348,8 +349,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ngx_http_mruby_ctx_t *ctx;
   ngx_mrb_async_http_ctx_t *actx = DATA_PTR(self);
 
-  mrb_fiber_yield(mrb, 0, NULL);
-
   r = ngx_mrb_get_request();
   p = ngx_palloc(r->pool, sizeof(ngx_event_t) + sizeof(ngx_mrb_reentrant_t));
   re = (ngx_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
@@ -390,7 +389,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ctx->sub_response_done = 0;
   ctx->sub_response_more = 1;
 
-  return self;
+  return mrb_fiber_yield(mrb, 1, &val);
 }
 
 static mrb_value build_response_headers_to_hash(mrb_state *mrb, ngx_http_headers_out_t headers_out)
@@ -438,16 +437,10 @@ static mrb_value build_response_to_obj(mrb_state *mrb, ngx_http_mruby_ctx_t *ctx
 static mrb_value ngx_mrb_async_http_fetch_response(mrb_state *mrb, mrb_value self)
 {
   ngx_http_mruby_ctx_t *ctx;
-  ngx_mrb_async_http_ctx_t *actx;
   mrb_value response;
+  ngx_http_request_t *r = ngx_mrb_get_request();
 
-  actx = DATA_PTR(self);
-
-  if (!actx) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::Async::HTTP instance was missing");
-  }
-
-  ctx = ngx_http_get_module_ctx(actx->re->sr, ngx_http_mruby_module);
+  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
 
   if (ctx == NULL) {
     return mrb_nil_value();
@@ -471,5 +464,5 @@ void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class)
   class_async_http = mrb_define_class_under(mrb, class_async, "HTTP", mrb->object_class);
   mrb_define_method(mrb, class_async_http, "initialize", ngx_mrb_async_http_init, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_async_http, "http_sub_request", ngx_mrb_async_http_sub_request, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_async_http, "fetch_response", ngx_mrb_async_http_fetch_response, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class_async_http, "fetch_response", ngx_mrb_async_http_fetch_response, MRB_ARGS_NONE());
 }
