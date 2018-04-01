@@ -264,7 +264,8 @@ static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *sr, ngx_ht
   }
 
   p = ctx->sub_response_last;
-  out = sr->out;
+  out = sr->postponed->out;
+
   if (out == NULL) {
     ngx_log_error(NGX_LOG_ERR, sr->connection->log, 0, "%s ERROR %s:%d: http sub request filter NULL output",
                   MODULE_NAME, __func__, __LINE__);
@@ -373,7 +374,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request send to %V", actx->uri);
 
-  if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_IN_MEMORY | NGX_HTTP_SUBREQUEST_WAITED) !=
+  if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_WAITED) !=
       NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_subrequest failed for http_sub_rquest method");
   }
@@ -383,7 +384,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for sr->request_body");
   }
 
-  sr->header_only = 0;
+  sr->connection->buffered &= ~0x08;
   re->sr = sr;
 
   ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
