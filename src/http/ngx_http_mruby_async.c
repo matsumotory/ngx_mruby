@@ -368,8 +368,8 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ps->data = actx;
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request send to %V", actx->uri);
-  // if (ngx_http_subrequest(r, &actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_WAITED) != NGX_OK) {
-  if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_IN_MEMORY | NGX_HTTP_SUBREQUEST_WAITED) !=
+
+  if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_WAITED) !=
       NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_subrequest failed for http_sub_rquest method");
   }
@@ -381,7 +381,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   re->sr = sr;
 
-  // NGX_AGAIN;
   ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
   if (ctx == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_get_module_ctx failed on subrequest method");
