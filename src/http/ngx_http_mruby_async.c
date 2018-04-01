@@ -242,50 +242,34 @@ static mrb_value ngx_mrb_async_http_init(mrb_state *mrb, mrb_value self)
   return self;
 }
 
-static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *sr, ngx_http_mruby_ctx_t *ctx)
+static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *r, ngx_http_request_t *sr, ngx_http_mruby_ctx_t *ctx)
 {
-  u_char *p;
-  size_t size, rest;
-  ngx_buf_t *b;
-  ngx_chain_t *cl, *out;
+  ngx_http_mruby_ctx_t *sr_ctx;
+
+  // read mruby context of subrequest_rec
+  sr_ctx = ngx_http_get_module_ctx(sr, ngx_http_mruby_module);
+
+  if (!sr_ctx || !sr_ctx->body) {
+    ngx_log_error(NGX_LOG_ERR, sr->connection->log, 0, "%s ERROR %s:%d: You should use mruby_output_body_filter[,code] in subrequest location",
+                  MODULE_NAME, __func__, __LINE__);
+    return NGX_ERROR;
+  }
 
   ctx->sub_response_status = sr->headers_out.status;
   ctx->sub_response_headers = sr->headers_out;
 
   if (ctx->sub_response_body == NULL && sr->headers_out.content_length_n > 0) {
-    ctx->sub_response_body = ngx_pcalloc(sr->pool, sr->headers_out.content_length_n);
-    ctx->sub_response_body_length = sr->headers_out.content_length_n;
+    ctx->sub_response_body = ngx_pcalloc(sr->pool, sr_ctx->body_length);
+    ctx->sub_response_body_length = sr_ctx->body_length;
+
     if (ctx->sub_response_body == NULL) {
       ngx_log_error(NGX_LOG_ERR, sr->connection->log, 0, "%s ERROR %s:%d: ngx_pcalloc failed", MODULE_NAME, __func__,
                     __LINE__);
       return NGX_ERROR;
     }
-    ctx->sub_response_last = ctx->sub_response_body;
   }
 
-  p = ctx->sub_response_last;
-  out = sr->postponed->out;
-
-  if (out == NULL) {
-    ngx_log_error(NGX_LOG_ERR, sr->connection->log, 0, "%s ERROR %s:%d: http sub request filter NULL output",
-                  MODULE_NAME, __func__, __LINE__);
-  }
-
-  for (cl = out; cl != NULL; cl = cl->next) {
-    b = cl->buf;
-    size = b->last - b->pos;
-    rest = ctx->sub_response_body + ctx->sub_response_body_length - p;
-    ngx_log_error(NGX_LOG_DEBUG, sr->connection->log, 0, "%s DEBUG %s:%d: filter buf: %uz rest: %uz", MODULE_NAME,
-                  __func__, __LINE__, size, rest);
-    size = (rest < size) ? rest : size;
-    p = ngx_cpymem(p, b->pos, size);
-    b->pos += size;
-    if (b->last_buf) {
-      ctx->sub_response_last = p;
-      ngx_log_error(NGX_LOG_DEBUG, sr->connection->log, 0, "%s DEBUG %s:%d: reached last buffer", MODULE_NAME, __func__,
-                    __LINE__);
-    }
-  }
+  ctx->sub_response_body = ngx_cpymem(ctx->sub_response_body, sr_ctx->body, sr_ctx->body_length);
 
   return NGX_OK;
 }
@@ -314,7 +298,7 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
   ctx->sub_response_more = 0;
 
   // copy response data of sub_request to main response ctx
-  if (ngx_http_mruby_read_sub_response(sr, ctx) != NGX_OK) {
+  if (ngx_http_mruby_read_sub_response(r, sr, ctx) != NGX_OK) {
     return NGX_ERROR;
   }
 
@@ -374,7 +358,8 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request send to %V", actx->uri);
 
-  if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_WAITED) !=
+  //if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_IN_MEMORY|NGX_HTTP_SUBREQUEST_WAITED) !=
+  if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, 0) !=
       NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_subrequest failed for http_sub_rquest method");
   }
@@ -384,7 +369,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for sr->request_body");
   }
 
-  sr->connection->buffered &= ~0x08;
   re->sr = sr;
 
   ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
