@@ -20,14 +20,14 @@ env:
     NGINX_SRC_PATCH=2
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=13
-    NGINX_SRC_PATCH=8
+    NGINX_SRC_PATCH=11
   - BUILD_DYNAMIC_MODULE='TRUE'
     NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=13
-    NGINX_SRC_PATCH=8
+    NGINX_SRC_PATCH=11
 
 before_script:
-  - curl -L https://www.openssl.org/source/openssl-1.0.2-latest.tar.gz > openssl-1.0.2.tar.gz
+  - curl -sfL https://www.openssl.org/source/openssl-1.0.2-latest.tar.gz -o openssl-1.0.2.tar.gz
   - tar -xzf openssl-1.0.2.tar.gz
   - rm openssl-1.0.2.tar.gz
   - cd openssl-1.0.2*
