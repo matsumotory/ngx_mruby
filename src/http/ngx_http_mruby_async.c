@@ -137,23 +137,12 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
   ngx_http_finalize_request(re->r, rc);
 }
 
-static void ngx_mrb_async_sleep_cleanup(void *data)
-{
-  ngx_event_t *ev = (ngx_event_t *)data;
-
-  if (ev->timer_set) {
-    ngx_del_timer(ev);
-    return;
-  }
-}
-
 static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
 {
   unsigned int timer;
   u_char *p;
   ngx_event_t *ev;
   ngx_mrb_reentrant_t *re;
-  ngx_http_cleanup_t *cln;
   ngx_http_request_t *r;
 
   mrb_get_args(mrb, "i", &timer);
@@ -181,14 +170,6 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ev->log = ngx_cycle->log;
 
   ngx_add_timer(ev, (ngx_msec_t)timer);
-
-  cln = ngx_http_cleanup_add(r, 0);
-  if (cln == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_cleanup_add failed");
-  }
-
-  cln->handler = ngx_mrb_async_sleep_cleanup;
-  cln->data = ev;
 
   return self;
 }
