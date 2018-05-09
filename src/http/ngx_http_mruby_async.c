@@ -149,7 +149,7 @@ static void ngx_mrb_async_sleep_cleanup(void *data)
 
 static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
 {
-  unsigned int timer;
+  mrb_int timer;
   u_char *p;
   ngx_event_t *ev;
   ngx_mrb_reentrant_t *re;
