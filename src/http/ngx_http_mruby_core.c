@@ -22,7 +22,6 @@
 #include "mruby/proc.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
-#include "mruby/class.h"
 
 ngx_module_t ngx_http_mruby_module;
 
