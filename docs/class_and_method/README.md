@@ -90,6 +90,10 @@ return Nginx::HTTP_SERVICE_UNAVAILABLE
 ```
 #### Nginx.send_header
 alias ``Nginx.return``
+
+#### Nginx.status_code=
+alias ``Nginx.return``
+
 #### Nginx.errlogger
 logging to error.log with [log priority](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#const-for-log)
 ```ruby
