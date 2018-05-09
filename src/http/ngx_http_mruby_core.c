@@ -22,6 +22,7 @@
 #include "mruby/proc.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
+#include "mruby/class.h"
 
 ngx_module_t ngx_http_mruby_module;
 
@@ -429,6 +430,8 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_class_method(mrb, class, "echo", ngx_mrb_echo, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "send_header", ngx_mrb_send_header, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "return", ngx_mrb_send_header, MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "status_code=", ngx_mrb_send_header, MRB_ARGS_REQ(1));
+
   mrb_define_class_method(mrb, class, "log", ngx_mrb_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class, "errlogger", ngx_mrb_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class, "module_name", ngx_mrb_get_ngx_mruby_name, MRB_ARGS_NONE());
