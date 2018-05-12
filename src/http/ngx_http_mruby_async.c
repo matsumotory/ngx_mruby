@@ -160,7 +160,7 @@ static void ngx_mrb_async_sleep_cleanup(void *data)
 
 static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
 {
-  unsigned int timer;
+  mrb_int timer;
   u_char *p;
   ngx_event_t *ev;
   ngx_mrb_reentrant_t *re;
@@ -168,6 +168,10 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r;
 
   mrb_get_args(mrb, "i", &timer);
+
+  if (timer <= 0) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "value of the timer must be a positive number");
+  }
 
   // suspend the Ruby handler on Nginx::Async.sleep
   // resume the Ruby handler on on ngx_mrb_timer_handler()

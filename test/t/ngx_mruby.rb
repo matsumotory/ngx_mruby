@@ -601,6 +601,11 @@ t.assert('ngx_mruby - add_listener test', 'location /add_listener') do
   t.assert_equal 'add_listener test ok', res
 end
 
+t.assert('ngx_mruby - Nginx.set_status= alias Nginx.return', 'location /alias_return') do
+  res = HttpRequest.new.get base + '/alias_return'
+  t.assert_equal 204, res["code"]
+end
+
 if nginx_features.is_stream_supported?
 
   base1 = "http://127.0.0.1:12345"
