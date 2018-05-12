@@ -30,6 +30,7 @@ typedef struct ngx_http_mruby_ctx_t {
   unsigned request_body_more : 1;
   unsigned read_request_body_done : 1;
   ngx_uint_t phase;
+  mrb_value *async_handler_result;
 } ngx_http_mruby_ctx_t;
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
