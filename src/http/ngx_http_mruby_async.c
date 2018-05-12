@@ -140,6 +140,11 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
     rc = NGX_ERROR;
   }
 
+  if (rc == NGX_DECLINED) {
+      re->r->phase_handler++;
+      ngx_http_core_run_phases(re->r);
+      return;
+  }
   ngx_http_finalize_request(re->r, rc);
 }
 
