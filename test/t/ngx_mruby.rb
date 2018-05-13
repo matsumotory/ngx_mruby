@@ -661,6 +661,12 @@ if nginx_features.is_async_supported?
     t.assert_equal 'proxy test ok', res["body"]
     t.assert_equal 200, res.code
   end
+
+  t.assert('ngx_mruby - Nginx.Async.sleep with proxy(set_code)', 'location /sleep_with_proxy_set_code') do
+    res = HttpRequest.new.get base + '/sleep_with_proxy_set_code'
+    t.assert_equal 'proxy test ok', res["body"]
+    t.assert_equal 200, res.code
+  end
 end
 
 

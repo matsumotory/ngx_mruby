@@ -68,8 +68,10 @@ ndk_set_var_code_finalize(ngx_http_script_engine_t *e, ngx_int_t rc,
         v->no_cacheable = 1;
         break;
 
+    case NGX_DONE:
+        e->status = NGX_DONE;
+        break;
     case NGX_ERROR:
-
         e->ip = ndk_http_script_exit;
         e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         break;

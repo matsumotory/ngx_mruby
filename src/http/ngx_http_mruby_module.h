@@ -51,6 +51,7 @@ typedef struct {
   ngx_str_t script;
   ngx_mrb_state_t *state;
   ngx_mrb_code_t *code;
+  ngx_str_t target;
 } ngx_http_mruby_set_var_data_t;
 #include <ndk.h>
 #endif
