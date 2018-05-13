@@ -7,6 +7,7 @@
 #include "ngx_http_mruby_async.h"
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_request.h"
+#include "ngx_http_mruby_var.h"
 
 #include <nginx.h>
 #include <ngx_core.h>
@@ -123,6 +124,12 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
       if (re->mrb->exc) {
         ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
         rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+      }
+
+      if (ctx->set_var_target.len > 0) {
+        // Delete the leading dollar(ctx->set_var_target.data+1)
+        ngx_mrb_var_set(re->mrb, mrb_top_self(re->mrb), (char *)ctx->set_var_target.data + 1,
+                        *ctx->async_handler_result, re->r);
       }
 
     } else {
