@@ -144,8 +144,9 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   if (r->headers_out.status == NGX_HTTP_OK) {
     if (chain == NULL) {
       r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s: status code is 200, but response body is empty."
-                                                        " return NGX_HTTP_INTERNAL_SERVER_ERROR",
+      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                    "%s ERROR %s: status code is 200, but response body is empty."
+                    " return NGX_HTTP_INTERNAL_SERVER_ERROR",
                     MODULE_NAME, __func__);
     }
   }
@@ -429,6 +430,8 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_class_method(mrb, class, "echo", ngx_mrb_echo, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "send_header", ngx_mrb_send_header, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "return", ngx_mrb_send_header, MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "status_code=", ngx_mrb_send_header, MRB_ARGS_REQ(1));
+
   mrb_define_class_method(mrb, class, "log", ngx_mrb_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class, "errlogger", ngx_mrb_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class, "module_name", ngx_mrb_get_ngx_mruby_name, MRB_ARGS_NONE());
