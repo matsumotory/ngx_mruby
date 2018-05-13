@@ -14,5 +14,5 @@
 #include <mruby/variable.h>
 #include <ngx_http.h>
 
-mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_value o, ngx_http_request_t *r);
+mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int len, mrb_value o, ngx_http_request_t *r);
 #endif // NGX_HTTP_MRUBY_VAR_H

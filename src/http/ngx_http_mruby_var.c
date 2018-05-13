@@ -44,6 +44,11 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
 
 mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_value o, ngx_http_request_t *r)
 {
+  return ngx_mrb_var_set_vector(mrb, self, k, strlen(k), o, r);
+}
+
+mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int len, mrb_value o, ngx_http_request_t *r)
+{
   ngx_http_variable_t *v;
   ngx_http_variable_value_t *vv;
   ngx_http_core_main_conf_t *cmcf;
@@ -58,7 +63,7 @@ mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_value o, 
 
   val.data = (u_char *)RSTRING_PTR(o);
   val.len = RSTRING_LEN(o);
-  key.len = strlen(k);
+  key.len = len;
   key.data = (u_char *)k;
 
   /* RSTRING_PTR(o) is not always null-terminated */

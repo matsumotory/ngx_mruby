@@ -128,8 +128,8 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
 
       if (ctx->set_var_target.len > 0) {
         // Delete the leading dollar(ctx->set_var_target.data+1)
-        ngx_mrb_var_set(re->mrb, mrb_top_self(re->mrb), (char *)ctx->set_var_target.data + 1,
-                        *ctx->async_handler_result, re->r);
+        ngx_mrb_var_set_vector(re->mrb, mrb_top_self(re->mrb), (char *)ctx->set_var_target.data + 1,
+                               ctx->set_var_target.len - 1, *ctx->async_handler_result, re->r);
       }
 
     } else {
