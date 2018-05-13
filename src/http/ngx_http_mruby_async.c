@@ -126,10 +126,17 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
         rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
       }
 
-      if (ctx->set_var_target.len > 0) {
-        // Delete the leading dollar(ctx->set_var_target.data+1)
-        ngx_mrb_var_set_vector(re->mrb, mrb_top_self(re->mrb), (char *)ctx->set_var_target.data + 1,
-                               ctx->set_var_target.len - 1, *ctx->async_handler_result, re->r);
+      if (ctx->set_var_target.len > 1) {
+        if (ctx->set_var_target.data[0] != '$') {
+          ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
+                        "%s NOTICE %s:%d: invalid variable name error, name: %s" MODULE_NAME, __func__, __LINE__,
+                        ctx->set_var_target.data);
+          rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        } else {
+          // Delete the leading dollar(ctx->set_var_target.data+1)
+          ngx_mrb_var_set_vector(re->mrb, mrb_top_self(re->mrb), (char *)ctx->set_var_target.data + 1,
+                                 ctx->set_var_target.len - 1, *ctx->async_handler_result, re->r);
+        }
       }
 
     } else {
