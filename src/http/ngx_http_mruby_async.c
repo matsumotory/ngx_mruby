@@ -17,6 +17,7 @@
 #include <mruby/opcode.h>
 #include <mruby/proc.h>
 #include <mruby/error.h>
+#include <mruby/dump.h>
 
 typedef struct {
   mrb_state *mrb;
@@ -34,11 +35,8 @@ static void replace_stop(mrb_irep *irep)
 void ngx_mrb_run_without_stop(mrb_state *mrb, struct RProc *rproc, mrb_value *result)
 {
   mrb_value mrb_result;
-  mrb_value proc;
 
-  proc = mrb_obj_value(mrb_proc_new(mrb, rproc->body.irep));
-
-  mrb_result = mrb_funcall(mrb, proc, "call", 0, NULL);
+  mrb_result = mrb_run(mrb, mrb_proc_new(mrb, rproc->body.irep), mrb_top_self(mrb));
   if (result != NULL) {
     *result = mrb_result;
   }
@@ -46,7 +44,7 @@ void ngx_mrb_run_without_stop(mrb_state *mrb, struct RProc *rproc, mrb_value *re
 
 mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc, mrb_value *result)
 {
-  mrb_value handler_proc;
+  struct RProc *handler_proc;
   mrb_value *fiber_proc;
   ngx_http_mruby_ctx_t *ctx;
 
@@ -57,9 +55,11 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
   ctx->async_handler_result = result;
 
   replace_stop(rproc->body.irep);
-  handler_proc = mrb_obj_value(mrb_proc_new(mrb, rproc->body.irep));
+
+  handler_proc = mrb_closure_new(mrb, rproc->body.irep);
+
   fiber_proc = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
-  *fiber_proc = mrb_funcall(mrb, mrb_obj_value(mrb->kernel_module), "_ngx_mrb_prepare_fiber", 1, handler_proc);
+  *fiber_proc = mrb_funcall(mrb, mrb_obj_value(mrb->kernel_module), "_ngx_mrb_prepare_fiber", 1, mrb_obj_value(handler_proc));
 
   return ngx_mrb_run_fiber(mrb, fiber_proc, result);
 }
@@ -75,6 +75,7 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   mrb->ud = fiber_proc;
 
   resume_result = mrb_funcall(mrb, *fiber_proc, "call", 0, NULL);
+
   if (mrb->exc) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
