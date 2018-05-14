@@ -350,16 +350,15 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   return self;
 }
 
-
-
-ngx_http_mruby_ctx_t *ngx_mrb_http_get_module_ctx(mrb_state *mrb, ngx_http_request_t *r) {
+ngx_http_mruby_ctx_t *ngx_mrb_http_get_module_ctx(mrb_state *mrb, ngx_http_request_t *r)
+{
   ngx_http_mruby_ctx_t *ctx;
   ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
   if (ctx == NULL) {
     if ((ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
       ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
                     __LINE__);
-      if(mrb != NULL) {
+      if (mrb != NULL) {
         mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate context");
       } else {
         return NULL;

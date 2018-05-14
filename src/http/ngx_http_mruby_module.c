@@ -766,7 +766,7 @@ void ngx_http_mruby_read_request_body_cb(ngx_http_request_t *r)
 {
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(NULL, r);
 
-  if(ctx != NULL) {
+  if (ctx != NULL) {
     ctx->read_request_body_done = 1;
 
 #if defined(nginx_version) && nginx_version >= 8011
@@ -794,10 +794,10 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   }
 
   ctx = ngx_mrb_http_get_module_ctx(NULL, r);
-  if(ctx == NULL) {
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory context %s:%d", __FUNCTION__,
-                    __LINE__);
-      return NGX_ERROR;
+  if (ctx == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory context %s:%d", __FUNCTION__,
+                  __LINE__);
+    return NGX_ERROR;
   }
 
   ngx_mrb_push_request(r);
