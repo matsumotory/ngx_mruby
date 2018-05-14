@@ -7,6 +7,7 @@
 #include "ngx_http_mruby_filter.h"
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
+#include "ngx_http_mruby_core.h"
 
 #include <mruby.h>
 #include <mruby/class.h>
@@ -18,7 +19,7 @@
 static mrb_value ngx_mrb_get_filter_body(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r = ngx_mrb_get_request();
-  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
   return mrb_str_new(mrb, (char *)ctx->body, ctx->body_length);
 }
@@ -26,7 +27,7 @@ static mrb_value ngx_mrb_get_filter_body(mrb_state *mrb, mrb_value self)
 static mrb_value ngx_mrb_set_filter_body(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r = ngx_mrb_get_request();
-  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   mrb_value body;
 
   mrb_get_args(mrb, "o", &body);
