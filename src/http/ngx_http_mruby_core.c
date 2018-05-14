@@ -131,11 +131,8 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   mrb_get_args(mrb, "i", &status);
   r->headers_out.status = status;
 
-  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
-  if (ctx == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s: get mruby context failed.", MODULE_NAME, __func__);
-    mrb_raise(mrb, E_RUNTIME_ERROR, "get mruby context failed");
-  }
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+
   chain = ctx->rputs_chain;
   if (chain) {
     (*chain->last)->buf->last_buf = 1;
@@ -159,11 +156,12 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
   mrb_value argv;
   ngx_buf_t *b;
   ngx_mrb_rputs_chain_list_t *chain;
+  ngx_http_mruby_ctx_t *ctx;
   u_char *str;
   ngx_str_t ns;
 
   ngx_http_request_t *r = ngx_mrb_get_request();
-  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
   mrb_get_args(mrb, "o", &argv);
 
@@ -350,6 +348,27 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   }
 
   return self;
+}
+
+ngx_http_mruby_ctx_t *ngx_mrb_http_get_module_ctx(mrb_state *mrb, ngx_http_request_t *r)
+{
+  ngx_http_mruby_ctx_t *ctx;
+  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  if (ctx == NULL) {
+    if ((ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
+      if (mrb != NULL) {
+        mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate context");
+      } else {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "failed to allocate memory from r->pool(mrb_state is a nonexistent directive) %s:%d",
+                      __FUNCTION__, __LINE__);
+        return NULL;
+      }
+    }
+    ctx->body = NULL;
+    ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
+  }
+  return ctx;
 }
 
 mrb_value ngx_mrb_f_global_remove(mrb_state *mrb, mrb_value self)
