@@ -50,10 +50,7 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
   mrb_value *fiber_proc;
   ngx_http_mruby_ctx_t *ctx;
 
-  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
-  if (ctx == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_get_module_ctx failed");
-  }
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->async_handler_result = result;
 
   replace_stop(rproc->body.irep);
@@ -104,7 +101,7 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
   ngx_int_t rc = NGX_OK;
 
   re = ev->data;
-  ctx = ngx_http_get_module_ctx(re->r, ngx_http_mruby_module);
+  ctx = ngx_mrb_http_get_module_ctx(NULL, re->r);
 
   if (ctx != NULL) {
     if (re->fiber != NULL) {
