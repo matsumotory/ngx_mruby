@@ -126,7 +126,7 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
       if (ctx->set_var_target.len > 1) {
         if (ctx->set_var_target.data[0] != '$') {
           ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
-                        "%s NOTICE %s:%d: invalid variable name error, name: %s" MODULE_NAME, __func__, __LINE__,
+                        "%s NOTICE %s:%d: invalid variable name error name: %s", MODULE_NAME, __func__, __LINE__,
                         ctx->set_var_target.data);
           rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
         } else {
@@ -137,8 +137,8 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
       }
 
     } else {
-      ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
-                    "%s NOTICE %s:%d: unexpected error, fiber missing" MODULE_NAME, __func__, __LINE__);
+      ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing",
+                    MODULE_NAME, __func__, __LINE__);
       rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
