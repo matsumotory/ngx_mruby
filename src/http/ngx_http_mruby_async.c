@@ -121,9 +121,7 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
       if (re->mrb->exc) {
         ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
         rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-      }
-
-      if (ctx->set_var_target.len > 1) {
+      } else if (ctx->set_var_target.len > 1) {
         if (ctx->set_var_target.data[0] != '$') {
           ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
                         "%s NOTICE %s:%d: invalid variable name error name: %s", MODULE_NAME, __func__, __LINE__,
