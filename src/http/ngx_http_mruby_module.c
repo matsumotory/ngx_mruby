@@ -785,7 +785,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
 {
   int result_len;
   int ai = 0;
-  mrb_value mrb_result = mrb_nil_value();
+  mrb_value *mrb_result = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
+  *mrb_result = mrb_nil_value();
   ngx_http_mruby_ctx_t *ctx;
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
@@ -846,7 +847,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     }
   }
 
-  if (mrb_test(ngx_mrb_start_fiber(r, state->mrb, code->proc, &mrb_result))) {
+  if (mrb_test(ngx_mrb_start_fiber(r, state->mrb, code->proc, mrb_result))) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
                   __func__, __LINE__);
     return NGX_DONE;
@@ -862,14 +863,14 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   } else if (result != NULL) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: fiber done in request phase", MODULE_NAME,
                   __func__, __LINE__);
-    if (mrb_nil_p(mrb_result)) {
+    if (mrb_nil_p(*mrb_result)) {
       result->data = NULL;
       result->len = 0;
     } else {
-      if (mrb_type(mrb_result) != MRB_TT_STRING) {
-        mrb_result = mrb_funcall(state->mrb, mrb_result, "to_s", 0, NULL);
+      if (mrb_type(*mrb_result) != MRB_TT_STRING) {
+        *mrb_result = mrb_funcall(state->mrb, *mrb_result, "to_s", 0, NULL);
       }
-      result_len = RSTRING_LEN(mrb_result);
+      result_len = RSTRING_LEN(*mrb_result);
       result->data = ngx_palloc(r->pool, result_len);
       if (result->data == NULL) {
         if (!cached && !code->cache) {
@@ -877,7 +878,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
         }
         return NGX_ERROR;
       }
-      ngx_memcpy(result->data, RSTRING_PTR(mrb_result), RSTRING_LEN(mrb_result));
+      ngx_memcpy(result->data, RSTRING_PTR(*mrb_result), RSTRING_LEN(*mrb_result));
       result->len = result_len;
       ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: mrb_run info: return value=(%*s)", MODULE_NAME,
                     __func__, __LINE__, result->len, result->data);
