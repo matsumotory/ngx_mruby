@@ -4,14 +4,15 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-#include "ngx_http_mruby_module.h"
 
-#ifndef NGX_USE_MRUBY_UPSTREAM
+#define NGX_HTTP_MRUBY_UPSTREAM_C  // temporary dirty hack to include nginx code
 #include "ngx_http_mruby_upstream.h"
-#else
+
+#ifdef NGX_USE_MRUBY_UPSTREAM
+
+#define MODULE_NAME "ngx_mruby" // FIXME
 
 #include "ngx_http_mruby_request.h"
-#include "ngx_http_mruby_upstream.h"
 
 #include <mruby.h>
 #include <mruby/class.h>

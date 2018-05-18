@@ -4,17 +4,12 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-#include "ngx_http_mruby_module.h"
+#include "ngx_http_mruby_ssl.h"
 
 #if (NGX_HTTP_SSL)
 
-#include "ngx_http_mruby_ssl.h"
+#include "ngx_http_mruby_module.h" // FIXME: ngx_http_mruby_srv_conf_t and MODULE_NAME
 
-#include <mruby.h>
-#include <mruby/class.h>
-#include <mruby/compile.h>
-#include <mruby/data.h>
-#include <mruby/proc.h>
 #include <mruby/string.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
