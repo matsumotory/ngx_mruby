@@ -304,8 +304,6 @@ ngx_module_t ngx_http_mruby_module = {NGX_MODULE_V1,
                                       NULL,                       /* exit master */
                                       NGX_MODULE_V1_PADDING};
 
-extern ngx_http_request_t *ngx_mruby_request;
-
 static void ngx_http_mruby_main_conf_cleanup(void *data)
 {
   ngx_http_mruby_main_conf_t *mmcf = data;
@@ -570,9 +568,6 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
 
   cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
   mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-
-  // FIXME: remove or call the function.
-  ngx_mruby_request = NULL;
 
   ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s/%s (%s/%s) mechanism enabled", MODULE_NAME, MODULE_VERSION,
                      MRUBY_RUBY_ENGINE, MRUBY_VERSION);

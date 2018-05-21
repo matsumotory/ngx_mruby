@@ -10,7 +10,6 @@
 #include "ngx_http_mruby_connection.h"
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_filter.h"
-#include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 #include "ngx_http_mruby_ssl.h"
 #include "ngx_http_mruby_server.h"

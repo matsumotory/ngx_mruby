@@ -7,6 +7,7 @@
 #include "ngx_http_mruby_async.h"
 
 #include "ngx_http_mruby_core.h"
+#include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 #include "ngx_http_mruby_var.h"
 
@@ -15,8 +16,6 @@
 #include <mruby/irep.h>
 #include <mruby/opcode.h>
 #include <mruby/proc.h>
-
-#define MODULE_NAME "ngx_mruby" // FIXME
 
 typedef struct {
   mrb_state *mrb;

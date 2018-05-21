@@ -6,8 +6,8 @@
 
 #include "ngx_http_mruby_server.h"
 
+#include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
-#include "ngx_http_mruby_module.h" // FIXME: to define ngx_http_mruby_srv_conf_t
 
 #include <mruby/hash.h>
 #include <mruby/string.h>

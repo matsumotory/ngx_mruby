@@ -6,7 +6,7 @@
 
 #include "ngx_stream_mruby_connection.h"
 
-#include "ngx_stream_mruby_module.h" // FIXME: ngx_stream_mruby_internal_ctx_t
+#include "ngx_stream_mruby_module.h"
 
 #include <ngx_stream.h>
 

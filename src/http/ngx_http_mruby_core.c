@@ -6,14 +6,12 @@
 
 #include "ngx_http_mruby_core.h"
 
+#include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 
 #include "mruby/array.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
-
-#define MODULE_NAME "ngx_mruby" // FIXME
-#define MODULE_VERSION "FIXME"
 
 ngx_module_t ngx_http_mruby_module;
 

@@ -16,8 +16,6 @@
 
 #define MODULE_NAME "ngx_mruby-stream-module"
 
-extern ngx_module_t ngx_stream_mruby_module;
-
 typedef struct {
   ngx_stream_session_t *s;
   ngx_int_t stream_status;

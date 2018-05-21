@@ -8,7 +8,7 @@
 
 #if (NGX_HTTP_SSL)
 
-#include "ngx_http_mruby_module.h" // FIXME: ngx_http_mruby_srv_conf_t and MODULE_NAME
+#include "ngx_http_mruby_module.h"
 
 #include <mruby/string.h>
 

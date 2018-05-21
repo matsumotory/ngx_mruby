@@ -5,13 +5,14 @@
 */
 
 
-#define NGX_HTTP_MRUBY_UPSTREAM_C  // temporary dirty hack to include nginx code
+/* dirty hack to include nginx code. See ngx_http_mruby_upstream.h */
+#define NGX_HTTP_MRUBY_UPSTREAM_C  
+
 #include "ngx_http_mruby_upstream.h"
 
 #ifdef NGX_USE_MRUBY_UPSTREAM
 
-#define MODULE_NAME "ngx_mruby" // FIXME
-
+#include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 
 #include <mruby.h>
