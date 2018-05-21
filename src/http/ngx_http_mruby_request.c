@@ -9,10 +9,9 @@
 #include <mruby.h>
 #include <mruby/array.h>
 #include <mruby/class.h>
-#include <mruby/compile.h>
-#include <mruby/data.h>
-#include <mruby/proc.h>
+#include <mruby/hash.h>
 #include <mruby/string.h>
+#include <mruby/variable.h>
 
 #define NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(method_suffix, member)                                      \
   static mrb_value ngx_mrb_get_##method_suffix(mrb_state *mrb, mrb_value self);                                        \

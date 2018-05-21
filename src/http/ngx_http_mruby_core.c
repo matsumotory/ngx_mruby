@@ -4,22 +4,12 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-#include <nginx.h>
-#include <ngx_core.h>
-#include <ngx_buf.h>
-#include <ngx_conf_file.h>
-#include <ngx_http.h>
-#include <ngx_log.h>
-
 #include "ngx_http_mruby_core.h"
+
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 
-#include "mruby.h"
 #include "mruby/array.h"
-#include "mruby/compile.h"
-#include "mruby/data.h"
-#include "mruby/proc.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
 
