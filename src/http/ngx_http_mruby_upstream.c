@@ -4,9 +4,8 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-
 /* dirty hack to include nginx code. See ngx_http_mruby_upstream.h */
-#define NGX_HTTP_MRUBY_UPSTREAM_C  
+#define NGX_HTTP_MRUBY_UPSTREAM_C
 
 #include "ngx_http_mruby_upstream.h"
 
