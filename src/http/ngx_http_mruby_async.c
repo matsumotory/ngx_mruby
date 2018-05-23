@@ -30,19 +30,6 @@ static void replace_stop(mrb_irep *irep)
   irep->iseq[irep->ilen - 1] = MKOP_AB(OP_RETURN, irep->nlocals, OP_R_NORMAL);
 }
 
-void ngx_mrb_run_without_stop(mrb_state *mrb, struct RProc *rproc, mrb_value *result)
-{
-  mrb_value mrb_result;
-  mrb_value proc;
-
-  proc = mrb_obj_value(mrb_proc_new(mrb, rproc->body.irep));
-
-  mrb_result = mrb_funcall(mrb, proc, "call", 0, NULL);
-  if (result != NULL) {
-    *result = mrb_result;
-  }
-}
-
 mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc, mrb_value *result)
 {
   mrb_value handler_proc;
