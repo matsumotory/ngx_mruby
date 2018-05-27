@@ -258,7 +258,7 @@ static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *r, ngx_htt
   ngx_http_mruby_ctx_t *sr_ctx;
 
   // read mruby context of subrequest_rec
-  sr_ctx = ngx_http_get_module_ctx(sr, ngx_http_mruby_module);
+  sr_ctx = ngx_mrb_http_get_module_ctx(NULL, sr);
 
   if (!sr_ctx || !sr_ctx->body) {
     ngx_log_error(NGX_LOG_ERR, sr->connection->log, 0, "%s ERROR %s:%d: You should use mruby_output_body_filter[,code] in subrequest location",
@@ -294,7 +294,7 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
   ngx_http_mruby_ctx_t *ctx;
 
   // read mruby context of parent request_rec
-  ctx = ngx_http_get_module_ctx(re->r, ngx_http_mruby_module);
+  ctx = ngx_mrb_http_get_module_ctx(NULL, re->r);
 
   if (ctx && ctx->sub_response_done) {
     return NGX_OK;
@@ -382,10 +382,8 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   re->sr = sr;
 
-  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
-  if (ctx == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_get_module_ctx failed on subrequest method");
-  }
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+
   ctx->sub_response_done = 0;
   ctx->sub_response_more = 1;
 
@@ -440,11 +438,7 @@ static mrb_value ngx_mrb_async_http_fetch_response(mrb_state *mrb, mrb_value sel
   mrb_value response;
   ngx_http_request_t *r = ngx_mrb_get_request();
 
-  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
-
-  if (ctx == NULL) {
-    return mrb_nil_value();
-  }
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
   // build response for mruby
   // return the following object:
