@@ -9,10 +9,9 @@
 #include <mruby.h>
 #include <mruby/array.h>
 #include <mruby/class.h>
-#include <mruby/compile.h>
-#include <mruby/data.h>
-#include <mruby/proc.h>
+#include <mruby/hash.h>
 #include <mruby/string.h>
+#include <mruby/variable.h>
 
 #define NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(method_suffix, member)                                      \
   static mrb_value ngx_mrb_get_##method_suffix(mrb_state *mrb, mrb_value self);                                        \
@@ -122,8 +121,9 @@ static mrb_value ngx_mrb_read_request_body(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r = ngx_mrb_get_request();
 
   if (r->method != NGX_HTTP_POST && r->method != NGX_HTTP_PUT) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_read_request_body can't read"
-                                    " when r->method is neither POST nor PUT");
+    mrb_raise(mrb, E_RUNTIME_ERROR,
+              "ngx_mrb_read_request_body can't read"
+              " when r->method is neither POST nor PUT");
   }
 
   return self;
@@ -135,8 +135,9 @@ static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r = ngx_mrb_get_request();
 
   if (r->method != NGX_HTTP_POST && r->method != NGX_HTTP_PUT) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_read_request_body can't read"
-                                    " when r->method is neither POST nor PUT");
+    mrb_raise(mrb, E_RUNTIME_ERROR,
+              "ngx_mrb_read_request_body can't read"
+              " when r->method is neither POST nor PUT");
   }
 
   return mrb_funcall(mrb, v, "request_body", 0, NULL);
@@ -266,7 +267,7 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
     r->headers_out.server->value.len = val_len;
     break;
 
-  // TODO: Add other built-in headers
+    // TODO: Add other built-in headers
 
   default:
     break;

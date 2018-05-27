@@ -4,14 +4,15 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
+/* dirty hack to include nginx code. See ngx_http_mruby_upstream.h */
+#define NGX_HTTP_MRUBY_UPSTREAM_C
+
+#include "ngx_http_mruby_upstream.h"
+
+#ifdef NGX_USE_MRUBY_UPSTREAM
+
 #include "ngx_http_mruby_module.h"
-
-#ifndef NGX_USE_MRUBY_UPSTREAM
-#include "ngx_http_mruby_upstream.h"
-#else
-
 #include "ngx_http_mruby_request.h"
-#include "ngx_http_mruby_upstream.h"
 
 #include <mruby.h>
 #include <mruby/class.h>
@@ -34,7 +35,8 @@ static void ngx_mrb_upstream_context_free(mrb_state *mrb, void *p)
 }
 
 static const struct mrb_data_type ngx_mrb_upstream_context_type = {
-    "ngx_mrb_upstream_context", ngx_mrb_upstream_context_free,
+    "ngx_mrb_upstream_context",
+    ngx_mrb_upstream_context_free,
 };
 
 static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)

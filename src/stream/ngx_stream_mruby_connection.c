@@ -6,15 +6,12 @@
 
 #include "ngx_stream_mruby_connection.h"
 
-#include <ngx_stream.h>
-#include <ngx_stream_upstream.h>
-#include <ngx_stream_upstream_round_robin.h>
+#include "ngx_stream_mruby_module.h"
 
-#include <mruby.h>
+#include <ngx_stream.h>
+
 #include <mruby/class.h>
-#include <mruby/compile.h>
 #include <mruby/data.h>
-#include <mruby/proc.h>
 #include <mruby/string.h>
 
 typedef struct {
@@ -31,7 +28,8 @@ static void ngx_stream_mrb_upstream_context_free(mrb_state *mrb, void *p)
 }
 
 static const struct mrb_data_type ngx_stream_mrb_upstream_context_type = {
-    "ngx_stream_mrb_upstream_context", ngx_stream_mrb_upstream_context_free,
+    "ngx_stream_mrb_upstream_context",
+    ngx_stream_mrb_upstream_context_free,
 };
 
 static mrb_value ngx_stream_mrb_connection_init(mrb_state *mrb, mrb_value self)

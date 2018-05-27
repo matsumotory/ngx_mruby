@@ -4,22 +4,12 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-#include <nginx.h>
-#include <ngx_core.h>
-#include <ngx_buf.h>
-#include <ngx_conf_file.h>
-#include <ngx_http.h>
-#include <ngx_log.h>
-
 #include "ngx_http_mruby_core.h"
+
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 
-#include "mruby.h"
 #include "mruby/array.h"
-#include "mruby/compile.h"
-#include "mruby/data.h"
-#include "mruby/proc.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
 
@@ -131,11 +121,8 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   mrb_get_args(mrb, "i", &status);
   r->headers_out.status = status;
 
-  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
-  if (ctx == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s: get mruby context failed.", MODULE_NAME, __func__);
-    mrb_raise(mrb, E_RUNTIME_ERROR, "get mruby context failed");
-  }
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+
   chain = ctx->rputs_chain;
   if (chain) {
     (*chain->last)->buf->last_buf = 1;
@@ -144,8 +131,9 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   if (r->headers_out.status == NGX_HTTP_OK) {
     if (chain == NULL) {
       r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s: status code is 200, but response body is empty."
-                                                        " return NGX_HTTP_INTERNAL_SERVER_ERROR",
+      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                    "%s ERROR %s: status code is 200, but response body is empty."
+                    " return NGX_HTTP_INTERNAL_SERVER_ERROR",
                     MODULE_NAME, __func__);
     }
   }
@@ -158,11 +146,12 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
   mrb_value argv;
   ngx_buf_t *b;
   ngx_mrb_rputs_chain_list_t *chain;
+  ngx_http_mruby_ctx_t *ctx;
   u_char *str;
   ngx_str_t ns;
 
   ngx_http_request_t *r = ngx_mrb_get_request();
-  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
   mrb_get_args(mrb, "o", &argv);
 
@@ -351,6 +340,27 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   return self;
 }
 
+ngx_http_mruby_ctx_t *ngx_mrb_http_get_module_ctx(mrb_state *mrb, ngx_http_request_t *r)
+{
+  ngx_http_mruby_ctx_t *ctx;
+  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  if (ctx == NULL) {
+    if ((ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
+      if (mrb != NULL) {
+        mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate context");
+      } else {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "failed to allocate memory from r->pool(mrb_state is a nonexistent directive) %s:%d",
+                      __FUNCTION__, __LINE__);
+        return NULL;
+      }
+    }
+    ctx->body = NULL;
+    ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
+  }
+  return ctx;
+}
+
 mrb_value ngx_mrb_f_global_remove(mrb_state *mrb, mrb_value self)
 {
   mrb_sym id;
@@ -429,6 +439,8 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_class_method(mrb, class, "echo", ngx_mrb_echo, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "send_header", ngx_mrb_send_header, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "return", ngx_mrb_send_header, MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "status_code=", ngx_mrb_send_header, MRB_ARGS_REQ(1));
+
   mrb_define_class_method(mrb, class, "log", ngx_mrb_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class, "errlogger", ngx_mrb_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class, "module_name", ngx_mrb_get_ngx_mruby_name, MRB_ARGS_NONE());

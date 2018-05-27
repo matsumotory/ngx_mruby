@@ -601,6 +601,11 @@ t.assert('ngx_mruby - add_listener test', 'location /add_listener') do
   t.assert_equal 'add_listener test ok', res
 end
 
+t.assert('ngx_mruby - Nginx.set_status= alias Nginx.return', 'location /alias_return') do
+  res = HttpRequest.new.get base + '/alias_return'
+  t.assert_equal 204, res["code"]
+end
+
 if nginx_features.is_stream_supported?
 
   base1 = "http://127.0.0.1:12345"
@@ -654,6 +659,17 @@ if nginx_features.is_async_supported?
   t.assert('ngx_mruby - Nginx::Async::HTTP.new "/dst"', 'location /async_http_sub_request') do
     res = HttpRequest.new.get base + '/async_http_sub_request'
     t.assert_equal 'subrequest', res["body"]
+  end
+
+  t.assert('ngx_mruby - Nginx.Async.sleep with proxy', 'location /sleep_with_proxy') do
+    res = HttpRequest.new.get base + '/sleep_with_proxy'
+    t.assert_equal 'proxy test ok', res["body"]
+    t.assert_equal 200, res.code
+  end
+
+  t.assert('ngx_mruby - Nginx.Async.sleep with proxy(set_code)', 'location /sleep_with_proxy_set_code') do
+    res = HttpRequest.new.get base + '/sleep_with_proxy_set_code'
+    t.assert_equal 'proxy test ok', res["body"]
     t.assert_equal 200, res.code
   end
 end
