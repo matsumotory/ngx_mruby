@@ -542,12 +542,12 @@ mrb_dup(mrb_state *mrb, int fd, mrb_bool *failed)
 {
   int new_fd;
 
-  *failed = FALSE;
+  *failed = TRUE;
   if (fd < 0)
     return fd;
 
   new_fd = dup(fd);
-  if (new_fd == -1) *failed = TRUE;
+  if (new_fd > 0) *failed = FALSE;
   return new_fd;
 }
 
@@ -561,13 +561,14 @@ mrb_io_initialize_copy(mrb_state *mrb, mrb_value copy)
   mrb_bool failed = TRUE;
 
   mrb_get_args(mrb, "o", &orig);
+  fptr_orig = io_get_open_fptr(mrb, orig);
   fptr_copy = (struct mrb_io *)DATA_PTR(copy);
+  if (fptr_orig == fptr_copy) return copy;
   if (fptr_copy != NULL) {
     fptr_finalize(mrb, fptr_copy, FALSE);
     mrb_free(mrb, fptr_copy);
   }
   fptr_copy = (struct mrb_io *)mrb_io_alloc(mrb);
-  fptr_orig = io_get_open_fptr(mrb, orig);
 
   DATA_TYPE(copy) = &mrb_io_type;
   DATA_PTR(copy) = fptr_copy;
