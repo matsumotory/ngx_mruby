@@ -1656,6 +1656,7 @@ static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_c
   if (ctx->phase == NGX_HTTP_MRUBY_FILTER_PASS) {
     return ngx_http_next_body_filter(r, in);
   }
+  ctx->phase = NGX_HTTP_MRUBY_FILTER_PROCESS;
 
   if ((rc = ngx_http_mruby_read_body(r, in, ctx)) != NGX_OK) {
     if (rc == NGX_AGAIN) {
@@ -1730,6 +1731,7 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
   if (ctx->phase == NGX_HTTP_MRUBY_FILTER_PASS) {
     return ngx_http_next_body_filter(r, in);
   }
+  ctx->phase = NGX_HTTP_MRUBY_FILTER_PROCESS;
 
   if ((rc = ngx_http_mruby_read_body(r, in, ctx)) != NGX_OK) {
     if (rc == NGX_AGAIN) {
