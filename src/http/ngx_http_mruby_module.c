@@ -145,6 +145,7 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
 static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in, ngx_http_mruby_ctx_t *ctx);
 static void ngx_http_mruby_header_filter_init(void);
 static void ngx_http_mruby_body_filter_init(void);
+static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r, ngx_chain_t *in, code_type_t type);
 static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_chain_t *in);
 static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in);
 static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx_chain_t *in);
@@ -1645,8 +1646,6 @@ static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r,
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(NULL, r);
 
   ngx_int_t rc;
-  ngx_chain_t out;
-  ngx_buf_t *b;
 
   if (ctx == NULL) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate context %s:%d", __FUNCTION__, __LINE__);
@@ -1683,43 +1682,7 @@ static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r,
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
   }
-
-  b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
-  if (b == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
-                  __LINE__);
-    return NGX_ERROR;
-  }
-
-  b->pos = ctx->body;
-  b->last = ctx->body + ctx->body_length;
-  b->memory = 1;
-  b->last_buf = 1;
-
-  r->headers_out.content_length_n = b->last - b->pos;
-
-  if (r->headers_out.content_length) {
-    r->headers_out.content_length->hash = 0;
-  }
-
-  r->headers_out.content_length = NULL;
-
-  out.buf = b;
-  out.next = NULL;
-  ctx->phase = NGX_HTTP_MRUBY_FILTER_PASS;
-
-  ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: data after body length: %uz", MODULE_NAME,
-                __func__, __LINE__, ctx->body_length);
-
-  rc = ngx_http_next_header_filter(r);
-
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-    return NGX_ERROR;
-  }
-
-  rc = ngx_http_next_body_filter(r, &out);
-
-  return rc;
+  return ngx_mrb_finalize_body_filter(r, ctx);
 }
 
 static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_chain_t *in)
