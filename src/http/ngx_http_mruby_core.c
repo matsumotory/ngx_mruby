@@ -101,7 +101,11 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     r->headers_out.status = NGX_HTTP_OK;
     (*chain->last)->buf->last_buf = 1;
     ngx_http_send_header(r);
-    ngx_http_output_filter(r, chain->out);
+
+    if (ctx->phase != NGX_HTTP_MRUBY_FILTER_PROCESS) {
+      ngx_http_output_filter(r, chain->out);
+    }
+
     ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
     rc = NGX_OK;
   } else {
