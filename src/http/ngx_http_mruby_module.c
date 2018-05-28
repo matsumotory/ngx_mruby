@@ -1639,82 +1639,7 @@ static void ngx_http_mruby_filter_cleanup(void *data)
   ngx_memzero(ctx, sizeof(ngx_http_mruby_ctx_t));
 }
 
-static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_chain_t *in)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-  ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(NULL, r);
-  ngx_int_t rc;
-  ngx_chain_t out;
-  ngx_buf_t *b;
-
-  if (ctx == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate context %s:%d", __FUNCTION__, __LINE__);
-    return NGX_ERROR;
-  }
-
-  if (ctx->phase == NGX_HTTP_MRUBY_FILTER_PASS) {
-    return ngx_http_next_body_filter(r, in);
-  }
-  ctx->phase = NGX_HTTP_MRUBY_FILTER_PROCESS;
-
-  if ((rc = ngx_http_mruby_read_body(r, in, ctx)) != NGX_OK) {
-    if (rc == NGX_AGAIN) {
-      return NGX_OK;
-    }
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to read body %s:%d", __FUNCTION__, __LINE__);
-    return NGX_ERROR;
-  }
-
-  r->connection->buffered &= ~0x08;
-
-  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based body_filter_handler code: %s",
-                mlcf->body_filter_code->code.file);
-  rc = ngx_mrb_run(r, mmcf->state, mlcf->body_filter_code, mlcf->cached, NULL);
-  if (rc == NGX_ERROR) {
-    return NGX_ERROR;
-  }
-
-  b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
-  if (b == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
-                  __LINE__);
-    return NGX_ERROR;
-  }
-
-  b->pos = ctx->body;
-  b->last = ctx->body + ctx->body_length;
-  b->memory = 1;
-  b->last_buf = 1;
-
-  r->headers_out.content_length_n = b->last - b->pos;
-
-  if (r->headers_out.content_length) {
-    r->headers_out.content_length->hash = 0;
-  }
-
-  r->headers_out.content_length = NULL;
-
-  out.buf = b;
-  out.next = NULL;
-
-  ctx->phase = NGX_HTTP_MRUBY_FILTER_PASS;
-
-  ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: data after body length: %uz", MODULE_NAME,
-                __func__, __LINE__, ctx->body_length);
-
-  rc = ngx_http_next_header_filter(r);
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-    return NGX_ERROR;
-  }
-
-  rc = ngx_http_next_body_filter(r, &out);
-
-  return rc;
-}
-
-static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in)
-{
+static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r, ngx_chain_t *in, code_type_t type) {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(NULL, r);
@@ -1744,9 +1669,17 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
 
   r->connection->buffered &= ~0x08;
 
-  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline body_filter_inline_handler code: %s",
-                mlcf->body_filter_inline_code->code.string);
-  rc = ngx_mrb_run(r, mmcf->state, mlcf->body_filter_inline_code, mlcf->cached, NULL);
+  if (type == NGX_MRB_CODE_TYPE_FILE) {
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based body_filter_handler code: %s",
+                  mlcf->body_filter_code->code.file);
+    rc = ngx_mrb_run(r, mmcf->state, mlcf->body_filter_code, mlcf->cached, NULL);
+  } else {
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline body_filter_inline_handler code: %s",
+                  mlcf->body_filter_inline_code->code.string);
+
+    rc = ngx_mrb_run(r, mmcf->state, mlcf->body_filter_inline_code, mlcf->cached, NULL);
+  }
+
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
   }
@@ -1787,6 +1720,16 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
   rc = ngx_http_next_body_filter(r, &out);
 
   return rc;
+}
+
+static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_chain_t *in)
+{
+  return ngx_http_mruby_body_filter_handler_inner(r, in, NGX_MRB_CODE_TYPE_FILE);
+}
+
+static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in)
+{
+  return ngx_http_mruby_body_filter_handler_inner(r, in, NGX_MRB_CODE_TYPE_STRING);
 }
 
 static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx_chain_t *in)
