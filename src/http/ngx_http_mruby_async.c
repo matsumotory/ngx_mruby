@@ -268,21 +268,14 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
   ngx_mrb_reentrant_t *re = actx->re;
   ngx_http_request_t *r = re->r;
   ngx_http_mruby_ctx_t *ctx;
-  rc = NGX_OK;
 
   // read mruby context of parent request_rec
   ctx = ngx_mrb_http_get_module_ctx(NULL, re->r);
-
-  if (ctx && ctx->sub_response_done) {
-    return rc;
-  }
-
   if (ctx == NULL) {
     return NGX_ERROR;
   }
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request done s:%ui", r->headers_out.status);
-  ctx->sub_response_done = 1;
   ctx->sub_response_more = 0;
 
   return ngx_mrb_post_fiber(re, ctx);
@@ -317,8 +310,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request send to %V", actx->uri);
 
-  if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, 0) !=
-      NGX_OK) {
+  if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, 0) != NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_subrequest failed for http_sub_rquest method");
   }
 
@@ -330,8 +322,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   re->sr = sr;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
-
-  ctx->sub_response_done = 0;
   ctx->sub_response_more = 1;
 
   return mrb_fiber_yield(mrb, 0, NULL);

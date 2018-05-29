@@ -32,7 +32,6 @@ typedef struct ngx_http_mruby_ctx_t {
   unsigned read_request_body_done : 1;
   ngx_uint_t phase;
   // for response of sub_request using async method
-  unsigned sub_response_done : 1;
   unsigned sub_response_more : 1;
   u_char *sub_response_body;
   ngx_uint_t sub_response_status;

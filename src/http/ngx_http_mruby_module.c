@@ -833,7 +833,6 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     }
   }
 
-  ctx->sub_response_done = 0;
   ctx->sub_response_more = 0;
 
   if (mrb_test(ngx_mrb_start_fiber(r, state->mrb, code->proc, mrb_result))) {
