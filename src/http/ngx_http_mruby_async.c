@@ -93,6 +93,58 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   return aliving;
 }
 
+static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_t *ctx) {
+  ngx_int_t rc = NGX_OK;
+
+  if (re->fiber != NULL) {
+    ngx_mrb_push_request(re->r);
+
+    if (mrb_test(ngx_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result))) {
+      // can resume the fiber and wait the epoll timer
+      return NGX_DONE;
+    } else {
+      // can not resume the fiber, the fiber was finished
+      mrb_gc_unregister(re->mrb, *re->fiber);
+      re->fiber = NULL;
+    }
+
+    ngx_http_run_posted_requests(re->r->connection);
+
+    if (re->mrb->exc) {
+      ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
+      rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    } else if (ctx->set_var_target.len > 1) {
+      if (ctx->set_var_target.data[0] != '$') {
+        ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
+                      "%s NOTICE %s:%d: invalid variable name error name: %s", MODULE_NAME, __func__, __LINE__,
+                      ctx->set_var_target.data);
+        rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+      } else {
+        // Delete the leading dollar(ctx->set_var_target.data+1)
+        ngx_mrb_var_set_vector(re->mrb, mrb_top_self(re->mrb), (char *)ctx->set_var_target.data + 1,
+                               ctx->set_var_target.len - 1, *ctx->async_handler_result, re->r);
+      }
+    }
+
+  } else {
+    ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing",
+                  MODULE_NAME, __func__, __LINE__);
+    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+  }
+
+  if (rc != NGX_OK) {
+    re->r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+  }
+
+  rc = ngx_mrb_finalize_rputs(re->r, ctx);
+
+  if (rc == NGX_DECLINED) {
+    re->r->phase_handler++;
+    ngx_http_core_run_phases(re->r);
+  }
+  return rc;
+}
+
 static void ngx_mrb_timer_handler(ngx_event_t *ev)
 {
   ngx_mrb_reentrant_t *re;
@@ -102,58 +154,14 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
   re = ev->data;
   ctx = ngx_mrb_http_get_module_ctx(NULL, re->r);
 
-  if (ctx != NULL) {
-    if (re->fiber != NULL) {
-      ngx_mrb_push_request(re->r);
-
-      if (mrb_test(ngx_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result))) {
-        // can resume the fiber and wait the epoll timer
-        return;
-      } else {
-        // can not resume the fiber, the fiber was finished
-        mrb_gc_unregister(re->mrb, *re->fiber);
-        re->fiber = NULL;
-      }
-
-      ngx_http_run_posted_requests(re->r->connection);
-
-      if (re->mrb->exc) {
-        ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
-        rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-      } else if (ctx->set_var_target.len > 1) {
-        if (ctx->set_var_target.data[0] != '$') {
-          ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
-                        "%s NOTICE %s:%d: invalid variable name error name: %s", MODULE_NAME, __func__, __LINE__,
-                        ctx->set_var_target.data);
-          rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-        } else {
-          // Delete the leading dollar(ctx->set_var_target.data+1)
-          ngx_mrb_var_set_vector(re->mrb, mrb_top_self(re->mrb), (char *)ctx->set_var_target.data + 1,
-                                 ctx->set_var_target.len - 1, *ctx->async_handler_result, re->r);
-        }
-      }
-
-    } else {
-      ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing",
-                    MODULE_NAME, __func__, __LINE__);
-      rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    if (rc != NGX_OK) {
-      re->r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    rc = ngx_mrb_finalize_rputs(re->r, ctx);
-  } else {
+  if (ctx == NULL) {
     rc = NGX_ERROR;
   }
+  rc = ngx_mrb_post_fiber(re, ctx);
 
-  if (rc == NGX_DECLINED) {
-    re->r->phase_handler++;
-    ngx_http_core_run_phases(re->r);
-    return;
+  if (rc != NGX_DECLINED && rc != NGX_DONE) {
+    ngx_http_finalize_request(re->r, rc);
   }
-  ngx_http_finalize_request(re->r, rc);
 }
 
 static void ngx_mrb_async_sleep_cleanup(void *data)
@@ -253,38 +261,6 @@ static mrb_value ngx_mrb_async_http_init(mrb_state *mrb, mrb_value self)
   return self;
 }
 
-static ngx_int_t ngx_http_mruby_read_sub_response(ngx_http_request_t *r, ngx_http_request_t *sr, ngx_http_mruby_ctx_t *ctx)
-{
-  ngx_http_mruby_ctx_t *sr_ctx;
-
-  // read mruby context of subrequest_rec
-  sr_ctx = ngx_mrb_http_get_module_ctx(NULL, sr);
-
-  if (!sr_ctx || !sr_ctx->body) {
-    ngx_log_error(NGX_LOG_ERR, sr->connection->log, 0, "%s ERROR %s:%d: You should use mruby_output_body_filter[,code] in subrequest location",
-                  MODULE_NAME, __func__, __LINE__);
-    return NGX_ERROR;
-  }
-
-  ctx->sub_response_status = sr->headers_out.status;
-  ctx->sub_response_headers = sr->headers_out;
-
-  if (ctx->sub_response_body == NULL && sr->headers_out.content_length_n > 0) {
-    ctx->sub_response_body = ngx_pcalloc(sr->pool, sr_ctx->body_length);
-    ctx->sub_response_body_length = sr_ctx->body_length;
-
-    if (ctx->sub_response_body == NULL) {
-      ngx_log_error(NGX_LOG_ERR, sr->connection->log, 0, "%s ERROR %s:%d: ngx_pcalloc failed", MODULE_NAME, __func__,
-                    __LINE__);
-      return NGX_ERROR;
-    }
-  }
-
-  ctx->sub_response_body = ngx_cpymem(ctx->sub_response_body, sr_ctx->body, sr_ctx->body_length);
-
-  return NGX_OK;
-}
-
 // response for sub_request
 static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, void *data, ngx_int_t rc)
 {
@@ -292,52 +268,24 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
   ngx_mrb_reentrant_t *re = actx->re;
   ngx_http_request_t *r = re->r;
   ngx_http_mruby_ctx_t *ctx;
+  rc = NGX_OK;
 
   // read mruby context of parent request_rec
   ctx = ngx_mrb_http_get_module_ctx(NULL, re->r);
 
   if (ctx && ctx->sub_response_done) {
-    return NGX_OK;
+    return rc;
   }
 
   if (ctx == NULL) {
-    return rc;
+    return NGX_ERROR;
   }
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request done s:%ui", r->headers_out.status);
   ctx->sub_response_done = 1;
   ctx->sub_response_more = 0;
 
-  // copy response data of sub_request to main response ctx
-  if (ngx_http_mruby_read_sub_response(r, sr, ctx) != NGX_OK) {
-    return NGX_ERROR;
-  }
-
-  if (re->fiber != NULL) {
-    ngx_mrb_push_request(re->r);
-
-    if (mrb_test(ngx_mrb_run_fiber(re->mrb, re->fiber, NULL))) {
-      // can resume the fiber and wait the epoll
-      return rc;
-    } else {
-      // can not resume the fiber, the fiber was finished
-      mrb_gc_unregister(re->mrb, *re->fiber);
-      re->fiber = NULL;
-    }
-
-    if (re->mrb->exc) {
-      ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), r);
-      rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-      ngx_http_finalize_request(r, rc);
-    }
-  } else {
-    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing" MODULE_NAME,
-                  __func__, __LINE__);
-    rc = NGX_ERROR;
-    ngx_http_finalize_request(r, rc);
-  }
-
-  return rc;
+  return ngx_mrb_post_fiber(re, ctx);
 }
 
 static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
