@@ -81,9 +81,10 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
 #endif
 }
 
-void ngx_http_mrb_read_subrequest_responce(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx) {
+void ngx_http_mrb_read_subrequest_responce(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
+{
   ngx_http_mruby_ctx_t *main_ctx;
-  if(r->main != r) {
+  if (r->main != r) {
     main_ctx = ngx_mrb_http_get_module_ctx(NULL, r->main);
 
     if (main_ctx != NULL && ctx->body_length > 0) {

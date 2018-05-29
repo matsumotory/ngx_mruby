@@ -33,7 +33,8 @@ typedef struct {
 } ngx_mrb_async_http_ctx_t;
 
 static const struct mrb_data_type ngx_mrb_async_http_ctx_type = {
-    "ngx_mrb_async_http_ctx_t", mrb_free,
+    "ngx_mrb_async_http_ctx_t",
+    mrb_free,
 };
 
 static void replace_stop(mrb_irep *irep)
@@ -93,7 +94,8 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   return aliving;
 }
 
-static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_t *ctx) {
+static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_t *ctx)
+{
   ngx_int_t rc = NGX_OK;
 
   if (re->fiber != NULL) {

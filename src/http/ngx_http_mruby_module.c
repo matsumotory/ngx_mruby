@@ -1639,7 +1639,8 @@ static void ngx_http_mruby_filter_cleanup(void *data)
   ngx_memzero(ctx, sizeof(ngx_http_mruby_ctx_t));
 }
 
-static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r, ngx_chain_t *in, code_type_t type) {
+static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r, ngx_chain_t *in, code_type_t type)
+{
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(NULL, r);
