@@ -1820,10 +1820,10 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
   return rc;
 }
 
-void ngx_http_mrb_read_subrequest_responce(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
+static void ngx_http_mrb_read_subrequest_responce(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
 {
-  ngx_http_mruby_ctx_t *main_ctx;
   if (r->main != r) {
+    ngx_http_mruby_ctx_t *main_ctx;
     main_ctx = ngx_mrb_http_get_module_ctx(NULL, r->main);
 
     if (main_ctx != NULL && ctx->body_length > 0) {
