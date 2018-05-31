@@ -128,6 +128,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
       }
     }
 
+    rc = ngx_mrb_finalize_rputs(re->r, ctx);
   } else {
     ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing",
                   MODULE_NAME, __func__, __LINE__);
@@ -137,8 +138,6 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
   if (rc != NGX_OK) {
     re->r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
-
-  rc = ngx_mrb_finalize_rputs(re->r, ctx);
 
   if (rc == NGX_DECLINED) {
     re->r->phase_handler++;
