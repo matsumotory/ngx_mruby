@@ -46,7 +46,7 @@ class Nginx
   class Async
     class HTTP
       class Response
-        attr_accessor :body, :headers, :status
+        attr_reader :body, :headers, :status
       end
     end
   end
