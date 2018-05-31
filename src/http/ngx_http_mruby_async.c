@@ -22,7 +22,6 @@
 #include <mruby/variable.h>
 #include <mruby/class.h>
 
-
 typedef struct {
   mrb_state *mrb;
   mrb_value *fiber;
@@ -35,12 +34,10 @@ typedef struct {
   ngx_str_t *uri;
 } ngx_mrb_async_http_ctx_t;
 
-
 static const struct mrb_data_type ngx_mrb_async_http_ctx_type = {
     "ngx_mrb_async_http_ctx_t",
     mrb_free,
 };
-
 
 static void replace_stop(mrb_irep *irep)
 {
@@ -357,9 +354,12 @@ static mrb_value ngx_mrb_async_http_last_response(mrb_state *mrb, mrb_value self
   mrb_value body = mrb_str_new(mrb, (char *)ctx->sub_response_body, ctx->sub_response_body_length);
 
   ngx_class = mrb_class_get(mrb, "Nginx");
-  async_class = (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, "Async")));
-  http_class = (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(async_class), mrb_intern_cstr(mrb, "HTTP")));
-  response_class = (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(http_class), mrb_intern_cstr(mrb, "Response")));
+  async_class =
+      (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, "Async")));
+  http_class =
+      (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(async_class), mrb_intern_cstr(mrb, "HTTP")));
+  response_class =
+      (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(http_class), mrb_intern_cstr(mrb, "Response")));
   sub_response_instance = mrb_class_new_instance(mrb, 0, 0, response_class);
 
   mrb_iv_set(mrb, sub_response_instance, mrb_intern_cstr(mrb, "@headers"), headers);

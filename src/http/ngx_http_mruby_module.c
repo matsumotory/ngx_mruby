@@ -1841,7 +1841,6 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
   ngx_buf_t *b;
   ngx_chain_t *cl;
 
-
   if (ctx->body == NULL && r->headers_out.content_length_n > 0) {
     ctx->body = ngx_pcalloc(r->pool, ctx->body_length);
     if (ctx->body == NULL) {
