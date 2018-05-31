@@ -42,7 +42,16 @@ class Nginx
   def self.var
     Var.new
   end
+
+  class Async
+    class HTTP
+      class Response
+        attr_accessor :body, :headers, :status
+      end
+    end
+  end
 end
+
 
 module Kernel
   def get_server_class

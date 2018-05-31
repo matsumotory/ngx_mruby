@@ -19,6 +19,9 @@
 #include <mruby/data.h>
 #include <mruby/string.h>
 #include <mruby/hash.h>
+#include <mruby/variable.h>
+#include <mruby/class.h>
+
 
 typedef struct {
   mrb_state *mrb;
@@ -32,10 +35,12 @@ typedef struct {
   ngx_str_t *uri;
 } ngx_mrb_async_http_ctx_t;
 
+
 static const struct mrb_data_type ngx_mrb_async_http_ctx_type = {
     "ngx_mrb_async_http_ctx_t",
     mrb_free,
 };
+
 
 static void replace_stop(mrb_irep *irep)
 {
@@ -225,41 +230,32 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   return self;
 }
 
-static mrb_value ngx_mrb_async_http_init(mrb_state *mrb, mrb_value self)
+static mrb_value build_response_headers_to_hash(mrb_state *mrb, ngx_http_headers_out_t headers_out)
 {
-  ngx_str_t *uri;
-  ngx_mrb_async_http_ctx_t *actx;
-  ngx_http_request_t *r = ngx_mrb_get_request();
-  mrb_value arg;
+  ngx_list_part_t *part;
+  ngx_table_elt_t *header;
+  ngx_uint_t i;
+  mrb_value hash, key, value;
 
-  uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
-  if (uri == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_pcalloc failed on ngx_mrb_async_http_init");
+  hash = mrb_hash_new(mrb);
+  part = &(headers_out.headers.part);
+  header = part->elts;
+
+  for (i = 0; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+      part = part->next;
+      header = part->elts;
+      i = 0;
+    }
+    key = mrb_str_new(mrb, (const char *)header[i].key.data, header[i].key.len);
+    value = mrb_str_new(mrb, (const char *)header[i].value.data, header[i].value.len);
+    mrb_hash_set(mrb, hash, key, value);
   }
 
-  mrb_get_args(mrb, "o", &arg);
-  uri->len = RSTRING_LEN(arg);
-  if (uri->len == 0) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "http_sub_request args len is 0");
-  }
-
-  uri->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(arg));
-  ngx_memcpy(uri->data, RSTRING_PTR(arg), uri->len);
-
-  actx = (ngx_mrb_async_http_ctx_t *)DATA_PTR(self);
-  if (actx) {
-    mrb_free(mrb, actx);
-  }
-  DATA_TYPE(self) = &ngx_mrb_async_http_ctx_type;
-  DATA_PTR(self) = NULL;
-
-  actx = (ngx_mrb_async_http_ctx_t *)mrb_malloc(mrb, sizeof(ngx_mrb_async_http_ctx_t));
-  actx->uri = uri;
-  actx->re = NULL;
-
-  DATA_PTR(self) = actx;
-
-  return self;
+  return hash;
 }
 
 // response for sub_request
@@ -298,7 +294,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   r = ngx_mrb_get_request();
   uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
   if (uri == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_pcalloc failed on ngx_mrb_async_http_init");
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_pcalloc failed on ngx_mrb_async_http_sub_request");
   }
 
   uri->len = RSTRING_LEN(arg);
@@ -323,7 +319,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   mrb_gc_register(mrb, *re->fiber);
 
-  actx = (ngx_mrb_async_http_ctx_t *)mrb_malloc(mrb, sizeof(ngx_mrb_async_http_ctx_t));
+  actx = ngx_palloc(r->pool, sizeof(ngx_mrb_async_http_ctx_t));
   actx->uri = uri;
   actx->re = re;
 
@@ -343,66 +339,33 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->sub_response_more = 1;
-
   return mrb_fiber_yield(mrb, 0, NULL);
 }
 
-static mrb_value build_response_headers_to_hash(mrb_state *mrb, ngx_http_headers_out_t headers_out)
+static mrb_value ngx_mrb_async_http_last_response(mrb_state *mrb, mrb_value self)
 {
-  ngx_list_part_t *part;
-  ngx_table_elt_t *header;
-  ngx_uint_t i;
-  mrb_value hash, key, value;
+  struct RClass *response_class, *http_class, *async_class, *ngx_class;
+  ngx_http_request_t *r;
+  ngx_http_mruby_ctx_t *ctx;
+  mrb_value sub_response_instance;
 
-  hash = mrb_hash_new(mrb);
-  part = &(headers_out.headers.part);
-  header = part->elts;
+  r = ngx_mrb_get_request();
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
-  for (i = 0; /* void */; i++) {
-    if (i >= part->nelts) {
-      if (part->next == NULL) {
-        break;
-      }
-      part = part->next;
-      header = part->elts;
-      i = 0;
-    }
-    key = mrb_str_new(mrb, (const char *)header[i].key.data, header[i].key.len);
-    value = mrb_str_new(mrb, (const char *)header[i].value.data, header[i].value.len);
-    mrb_hash_set(mrb, hash, key, value);
-  }
-
-  return hash;
-}
-
-static mrb_value build_response_to_obj(mrb_state *mrb, ngx_http_mruby_ctx_t *ctx)
-{
   mrb_value headers = build_response_headers_to_hash(mrb, ctx->sub_response_headers);
   mrb_value status = mrb_fixnum_value(ctx->sub_response_status);
   mrb_value body = mrb_str_new(mrb, (char *)ctx->sub_response_body, ctx->sub_response_body_length);
-  mrb_value response = mrb_hash_new(mrb);
 
-  mrb_hash_set(mrb, response, mrb_symbol_value(mrb_intern_cstr(mrb, "headers")), headers);
-  mrb_hash_set(mrb, response, mrb_symbol_value(mrb_intern_cstr(mrb, "status")), status);
-  mrb_hash_set(mrb, response, mrb_symbol_value(mrb_intern_cstr(mrb, "body")), body);
+  ngx_class = mrb_class_get(mrb, "Nginx");
+  async_class = (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, "Async")));
+  http_class = (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(async_class), mrb_intern_cstr(mrb, "HTTP")));
+  response_class = (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(http_class), mrb_intern_cstr(mrb, "Response")));
+  sub_response_instance = mrb_class_new_instance(mrb, 0, 0, response_class);
 
-  return response;
-}
-
-static mrb_value ngx_mrb_async_http_fetch_response(mrb_state *mrb, mrb_value self)
-{
-  ngx_http_mruby_ctx_t *ctx;
-  mrb_value response;
-  ngx_http_request_t *r = ngx_mrb_get_request();
-
-  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
-
-  // build response for mruby
-  // return the following object:
-  // { headers: { "header1" => "hoge", "header2" => "fuga" }, status: 200, body: "hello body world"}
-  response = build_response_to_obj(mrb, ctx);
-
-  return response;
+  mrb_iv_set(mrb, sub_response_instance, mrb_intern_cstr(mrb, "@headers"), headers);
+  mrb_iv_set(mrb, sub_response_instance, mrb_intern_cstr(mrb, "@status"), status);
+  mrb_iv_set(mrb, sub_response_instance, mrb_intern_cstr(mrb, "@body"), body);
+  return sub_response_instance;
 }
 
 void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class)
@@ -414,5 +377,5 @@ void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class)
 
   class_async_http = mrb_define_class_under(mrb, class_async, "HTTP", mrb->object_class);
   mrb_define_class_method(mrb, class_async_http, "sub_request", ngx_mrb_async_http_sub_request, MRB_ARGS_REQ(1));
-  mrb_define_class_method(mrb, class_async_http, "fetch_response", ngx_mrb_async_http_fetch_response, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class_async_http, "last_response", ngx_mrb_async_http_last_response, MRB_ARGS_NONE());
 }
