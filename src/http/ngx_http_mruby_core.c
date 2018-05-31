@@ -81,20 +81,6 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
 #endif
 }
 
-void ngx_http_mrb_read_subrequest_responce(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
-{
-  ngx_http_mruby_ctx_t *main_ctx;
-  if (r->main != r) {
-    main_ctx = ngx_mrb_http_get_module_ctx(NULL, r->main);
-
-    if (main_ctx != NULL && ctx->body_length > 0) {
-      main_ctx->sub_response_body = ctx->body;
-      main_ctx->sub_response_body_length = ctx->body_length;
-      main_ctx->sub_response_status = r->headers_out.status;
-      main_ctx->sub_response_headers = r->headers_out;
-    }
-  }
-}
 
 // TODO: Support rputs by multi directive
 ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
@@ -104,7 +90,6 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
 
   chain = ctx->rputs_chain;
 
-  ngx_http_mrb_read_subrequest_responce(r, ctx);
 
   if (chain == NULL) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
