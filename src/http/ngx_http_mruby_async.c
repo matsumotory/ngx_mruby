@@ -289,24 +289,50 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ngx_mrb_reentrant_t *re;
   ngx_http_request_t *r, *sr;
   ngx_http_post_subrequest_t *ps;
+  ngx_str_t *uri;
+  ngx_mrb_async_http_ctx_t *actx;
   ngx_http_mruby_ctx_t *ctx;
-  ngx_mrb_async_http_ctx_t *actx = DATA_PTR(self);
+  mrb_value arg;
+
+  mrb_get_args(mrb, "o", &arg);
 
   r = ngx_mrb_get_request();
+  uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
+  if (uri == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_pcalloc failed on ngx_mrb_async_http_init");
+  }
+
+  uri->len = RSTRING_LEN(arg);
+  if (uri->len == 0) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "http_sub_request args len is 0");
+  }
+
+  uri->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(arg));
+  ngx_memcpy(uri->data, RSTRING_PTR(arg), uri->len);
+
+  sr->request_body = ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t));
+  if (sr->request_body == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for sr->request_body");
+  }
+
   p = ngx_palloc(r->pool, sizeof(ngx_event_t) + sizeof(ngx_mrb_reentrant_t));
   re = (ngx_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
   re->mrb = mrb;
   re->fiber = (mrb_value *)mrb->ud;
   re->r = r;
+  re->sr = sr;
 
   mrb_gc_register(mrb, *re->fiber);
+
+  actx = (ngx_mrb_async_http_ctx_t *)mrb_malloc(mrb, sizeof(ngx_mrb_async_http_ctx_t));
+  actx->uri = uri;
+  actx->re = re;
 
   ps = ngx_palloc(r->pool, sizeof(ngx_http_post_subrequest_t));
   if (ps == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for http_sub_request post subrequest");
   }
 
-  actx->re = re;
   ps->handler = ngx_mrb_async_http_sub_request_done;
   ps->data = actx;
 
@@ -315,13 +341,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_IN_MEMORY) != NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_subrequest failed for http_sub_rquest method");
   }
-
-  sr->request_body = ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t));
-  if (sr->request_body == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for sr->request_body");
-  }
-
-  re->sr = sr;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->sub_response_more = 1;
@@ -395,7 +414,6 @@ void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_class_method(mrb, class_async, "sleep", ngx_mrb_async_sleep, MRB_ARGS_REQ(1));
 
   class_async_http = mrb_define_class_under(mrb, class_async, "HTTP", mrb->object_class);
-  mrb_define_method(mrb, class_async_http, "initialize", ngx_mrb_async_http_init, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, class_async_http, "http_sub_request", ngx_mrb_async_http_sub_request, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, class_async_http, "sub_request", ngx_mrb_async_http_sub_request, MRB_ARGS_REQ(1));
   mrb_define_class_method(mrb, class_async_http, "fetch_response", ngx_mrb_async_http_fetch_response, MRB_ARGS_NONE());
 }
