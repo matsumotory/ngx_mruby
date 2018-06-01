@@ -658,6 +658,9 @@ if nginx_features.is_async_supported?
 
   t.assert('ngx_mruby - Nginx::Async::HTTP.new "/dst"', 'location /async_http_sub_request') do
     res = HttpRequest.new.get base + '/async_http_sub_request'
+    t.assert_equal '200 OK', res["status"]
+    t.assert_equal 'HTTP/1.1 200 OK', res["header"][0,15]
+    t.assert_equal 'global_ngx_mruby', res["header"][-16,16]
     t.assert_equal '{"query1"=>"foo", "query2"=>"bar"}', res["body"]
   end
 
