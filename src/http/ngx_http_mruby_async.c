@@ -284,9 +284,11 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ngx_str_t *uri;
   ngx_mrb_async_http_ctx_t *actx;
   ngx_http_mruby_ctx_t *ctx;
-  mrb_value arg;
+  mrb_value path, query_params;
+  ngx_str_t *args;
+  int argc;
 
-  mrb_get_args(mrb, "o", &arg);
+  argc = mrb_get_args(mrb, "o|H", &path, &query_params);
 
   r = ngx_mrb_get_request();
   uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
@@ -294,13 +296,28 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_pcalloc failed on ngx_mrb_async_http_sub_request");
   }
 
-  uri->len = RSTRING_LEN(arg);
+  uri->len = RSTRING_LEN(path);
   if (uri->len == 0) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "http_sub_request args len is 0");
+    mrb_raise(mrb, E_RUNTIME_ERROR, "http_sub_request path len is 0");
   }
 
-  uri->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(arg));
-  ngx_memcpy(uri->data, RSTRING_PTR(arg), uri->len);
+  uri->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(path));
+  ngx_memcpy(uri->data, RSTRING_PTR(path), uri->len);
+
+  if (argc == 2) {
+    struct RClass *http_class;
+    mrb_value http_instance;
+    http_class = (struct RClass *)mrb_class_ptr(
+        mrb_const_get(mrb, mrb_obj_value(mrb->object_class), mrb_intern_cstr(mrb, "HttpRequest")));
+
+    http_instance = mrb_class_new_instance(mrb, 0, 0, http_class);
+    query_params = mrb_funcall(mrb, http_instance, "encode_parameters", 1, query_params);
+    args = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
+
+    args->len = RSTRING_LEN(query_params);
+    args->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(query_params));
+    ngx_memcpy(args->data, RSTRING_PTR(query_params), args->len);
+  }
 
   sr->request_body = ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t));
   if (sr->request_body == NULL) {
@@ -330,7 +347,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http_sub_request send to %V", actx->uri);
 
-  if (ngx_http_subrequest(r, actx->uri, NULL, &sr, ps, NGX_HTTP_SUBREQUEST_IN_MEMORY) != NGX_OK) {
+  if (ngx_http_subrequest(r, actx->uri, args, &sr, ps, NGX_HTTP_SUBREQUEST_IN_MEMORY) != NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_subrequest failed for http_sub_rquest method");
   }
 
