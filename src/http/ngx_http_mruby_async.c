@@ -307,6 +307,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   uri->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(path));
   ngx_memcpy(uri->data, RSTRING_PTR(path), uri->len);
 
+  args = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
   if (argc == 2) {
     struct RClass *http_class;
     mrb_value http_instance;
@@ -315,7 +316,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
     http_instance = mrb_class_new_instance(mrb, 0, 0, http_class);
     query_params = mrb_funcall(mrb, http_instance, "encode_parameters", 1, query_params);
-    args = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
 
     args->len = RSTRING_LEN(query_params);
     args->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(query_params));
