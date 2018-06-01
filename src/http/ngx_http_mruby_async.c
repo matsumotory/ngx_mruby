@@ -26,7 +26,6 @@ typedef struct {
   mrb_state *mrb;
   mrb_value *fiber;
   ngx_http_request_t *r;
-  ngx_http_request_t *sr;
 } ngx_mrb_reentrant_t;
 
 typedef struct {
@@ -333,7 +332,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   re->mrb = mrb;
   re->fiber = (mrb_value *)mrb->ud;
   re->r = r;
-  re->sr = sr;
 
   mrb_gc_register(mrb, *re->fiber);
 
