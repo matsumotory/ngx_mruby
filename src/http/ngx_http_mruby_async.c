@@ -322,11 +322,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
     ngx_memcpy(args->data, RSTRING_PTR(query_params), args->len);
   }
 
-  sr->request_body = ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t));
-  if (sr->request_body == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for sr->request_body");
-  }
-
   p = ngx_palloc(r->pool, sizeof(ngx_event_t) + sizeof(ngx_mrb_reentrant_t));
   re = (ngx_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
   re->mrb = mrb;
@@ -335,7 +330,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   mrb_gc_register(mrb, *re->fiber);
 
-  actx = ngx_palloc(r->pool, sizeof(ngx_mrb_async_http_ctx_t));
+  actx = (ngx_mrb_async_http_ctx_t *)mrb_malloc(mrb, sizeof(ngx_mrb_async_http_ctx_t));
   actx->uri = uri;
   actx->re = re;
 
