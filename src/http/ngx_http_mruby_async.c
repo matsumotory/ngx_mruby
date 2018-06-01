@@ -249,11 +249,11 @@ static mrb_value build_response_headers_to_hash(mrb_state *mrb, ngx_http_headers
       part = part->next;
       header = part->elts;
       i = 0;
-      mrb_gc_arena_restore(mrb, ai);
     }
     key = mrb_str_new(mrb, (const char *)header[i].key.data, header[i].key.len);
     value = mrb_str_new(mrb, (const char *)header[i].value.data, header[i].value.len);
     mrb_hash_set(mrb, hash, key, value);
+    mrb_gc_arena_restore(mrb, ai);
   }
 
   return hash;
