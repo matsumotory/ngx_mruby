@@ -233,19 +233,23 @@ static mrb_value build_response_headers_to_hash(mrb_state *mrb, ngx_http_headers
   ngx_table_elt_t *header;
   ngx_uint_t i;
   mrb_value hash, key, value;
+  int ai;
 
   hash = mrb_hash_new(mrb);
   part = &(headers_out.headers.part);
   header = part->elts;
 
+  ai = mrb_gc_arena_save(mrb);
   for (i = 0; /* void */; i++) {
     if (i >= part->nelts) {
       if (part->next == NULL) {
+        mrb_gc_arena_restore(mrb, ai);
         break;
       }
       part = part->next;
       header = part->elts;
       i = 0;
+      mrb_gc_arena_restore(mrb, ai);
     }
     key = mrb_str_new(mrb, (const char *)header[i].key.data, header[i].key.len);
     value = mrb_str_new(mrb, (const char *)header[i].value.data, header[i].value.len);
