@@ -191,10 +191,6 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_ARGUMENT_ERROR, "value of the timer must be a positive number");
   }
 
-  // suspend the Ruby handler on Nginx::Async.sleep
-  // resume the Ruby handler on on ngx_mrb_timer_handler()
-  mrb_fiber_yield(mrb, 0, NULL);
-
   r = ngx_mrb_get_request();
   p = ngx_palloc(r->pool, sizeof(ngx_event_t) + sizeof(ngx_mrb_reentrant_t));
   re = (ngx_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
@@ -347,7 +343,8 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->sub_response_more = 1;
-  return mrb_fiber_yield(mrb, 0, NULL);
+
+  return self;
 }
 
 static mrb_value ngx_mrb_async_http_last_response(mrb_state *mrb, mrb_value self)
@@ -384,9 +381,9 @@ void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class)
   struct RClass *class_async, *class_async_http;
 
   class_async = mrb_define_class_under(mrb, class, "Async", mrb->object_class);
-  mrb_define_class_method(mrb, class_async, "sleep", ngx_mrb_async_sleep, MRB_ARGS_REQ(1));
+  mrb_define_class_method(mrb, class_async, "__sleep", ngx_mrb_async_sleep, MRB_ARGS_REQ(1));
 
   class_async_http = mrb_define_class_under(mrb, class_async, "HTTP", mrb->object_class);
-  mrb_define_class_method(mrb, class_async_http, "sub_request", ngx_mrb_async_http_sub_request, MRB_ARGS_REQ(1));
+  mrb_define_class_method(mrb, class_async_http, "__sub_request", ngx_mrb_async_http_sub_request, MRB_ARGS_ARG(1, 1));
   mrb_define_class_method(mrb, class_async_http, "last_response", ngx_mrb_async_http_last_response, MRB_ARGS_NONE());
 }

@@ -44,7 +44,21 @@ class Nginx
   end
 
   class Async
+    class << self
+      def sleep(*args)
+        __sleep(*args)
+        Fiber.yield
+      end
+    end
+
     class HTTP
+      class << self
+        def sub_request(*args)
+          __sub_request(*args)
+          Fiber.yield
+        end
+      end
+
       class Response
         attr_reader :body, :headers, :status
       end
