@@ -88,6 +88,7 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
   ngx_mrb_rputs_chain_list_t *chain;
 
   chain = ctx->rputs_chain;
+
   if (chain == NULL) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "%s INFO %s:%d: mrb_run info: rputs_chain is null and return NGX_OK", MODULE_NAME, __func__,
@@ -101,7 +102,11 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     r->headers_out.status = NGX_HTTP_OK;
     (*chain->last)->buf->last_buf = 1;
     ngx_http_send_header(r);
-    ngx_http_output_filter(r, chain->out);
+
+    if (ctx->phase != NGX_HTTP_MRUBY_FILTER_PROCESS) {
+      ngx_http_output_filter(r, chain->out);
+    }
+
     ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
     rc = NGX_OK;
   } else {
@@ -109,6 +114,67 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
   }
 
   return rc;
+}
+
+static void ngx_http_mrb_read_subrequest_responce(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
+{
+  ngx_http_mruby_ctx_t *main_ctx;
+  main_ctx = ngx_mrb_http_get_module_ctx(NULL, r->main);
+
+  if (main_ctx != NULL && ctx->body_length > 0) {
+    main_ctx->sub_response_body = ngx_palloc(r->pool, ctx->body_length);
+    ngx_memcpy(main_ctx->sub_response_body, ctx->body, ctx->body_length);
+    main_ctx->sub_response_body_length = ctx->body_length;
+    main_ctx->sub_response_status = r->headers_out.status;
+    main_ctx->sub_response_headers = r->headers_out;
+  }
+}
+
+ngx_int_t ngx_mrb_finalize_body_filter(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
+{
+  ngx_buf_t *b;
+  ngx_int_t rc;
+  ngx_chain_t out;
+
+  b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+  if (b == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
+                  __LINE__);
+    return NGX_ERROR;
+  }
+
+  b->pos = ctx->body;
+  b->last = ctx->body + ctx->body_length;
+  b->memory = 1;
+  b->last_buf = 1;
+
+  r->headers_out.content_length_n = b->last - b->pos;
+
+  if (r->headers_out.content_length) {
+    r->headers_out.content_length->hash = 0;
+  }
+
+  r->headers_out.content_length = NULL;
+
+  out.buf = b;
+  out.next = NULL;
+  ctx->phase = NGX_HTTP_MRUBY_FILTER_PASS;
+
+  ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: data after body length: %uz", MODULE_NAME,
+                __func__, __LINE__, ctx->body_length);
+
+  if (r->parent != NULL && r != r->parent) {
+    ngx_http_mrb_read_subrequest_responce(r, ctx);
+    return NGX_OK;
+  }
+
+  rc = ngx_http_next_header_filter(r);
+
+  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+    return NGX_ERROR;
+  }
+
+  return ngx_http_next_body_filter(r, &out);
 }
 
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)

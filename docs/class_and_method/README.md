@@ -874,10 +874,20 @@ http {
 ## Nginx::Async Class
 ### Method
 #### Nginx::Async#sleep
-Do non-blocking sleep. Currenly it supports only rewrite and access phases.
+Do non-blocking sleep. Currenly it supports only setcode and rewrite and access phases.
 ```ruby
 # sleep 3000 millisec
 Nginx::Async.sleep 3000
+```
+
+#### Nginx::Async::HTTP#sub_request
+Do non-blocking subrequest. Currenly it supports only setcode rewrite and access phases.
+```ruby
+Nginx::Async::HTTP.sub_request "/example", { query_param: "foo" }
+res = Nginx::Async::HTTP.last_response
+Nginx.rputs res.body
+Nginx.rputs res.headers
+Nginx.rputs res.status
 ```
 
 ## Nginx::Stream class

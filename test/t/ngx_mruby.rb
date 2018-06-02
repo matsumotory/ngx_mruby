@@ -656,6 +656,20 @@ if nginx_features.is_async_supported?
     t.assert_equal 200, res.code
   end
 
+  t.assert('ngx_mruby - Nginx::Async::HTTP.new "/dst"', 'location /async_http_sub_request') do
+    res = HttpRequest.new.get base + '/async_http_sub_request'
+    t.assert_equal 200, res["code"]
+    t.assert_equal '{"query1"=>"foo", "query2"=>"bar"}', res["body"]
+
+    res = HttpRequest.new.get base + '/async_http_sub_request_notfound'
+    t.assert_equal 404, res["code"]
+    t.assert_equal 'global_ngx_mruby', res["header"][-16,16]
+
+    res = HttpRequest.new.get base + '/async_http_sub_request_notfound_ok'
+    t.assert_equal 200, res["code"]
+    t.assert_equal 'ok', res["body"]
+  end
+
   t.assert('ngx_mruby - Nginx.Async.sleep with proxy', 'location /sleep_with_proxy') do
     res = HttpRequest.new.get base + '/sleep_with_proxy'
     t.assert_equal 'proxy test ok', res["body"]
