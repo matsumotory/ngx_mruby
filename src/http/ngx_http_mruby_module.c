@@ -1823,11 +1823,10 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
 static void ngx_http_mrb_read_subrequest_responce(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
 {
   ngx_http_mruby_ctx_t *main_ctx;
-  if (r->main != r) {
+  if (r->parent != NULL && r->parent != r) {
     main_ctx = ngx_mrb_http_get_module_ctx(NULL, r->main);
 
     if (main_ctx != NULL && ctx->body_length > 0) {
-
       main_ctx->sub_response_body = ngx_palloc(r->pool, ctx->body_length);
       ngx_memcpy(main_ctx->sub_response_body, ctx->body, ctx->body_length);
       main_ctx->sub_response_body_length = ctx->body_length;

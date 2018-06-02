@@ -149,6 +149,10 @@ ngx_int_t ngx_mrb_finalize_body_filter(ngx_http_request_t *r, ngx_http_mruby_ctx
   ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: data after body length: %uz", MODULE_NAME,
                 __func__, __LINE__, ctx->body_length);
 
+  if (r->parent != NULL && r != r->parent) {
+    return NGX_OK;
+  }
+
   rc = ngx_http_next_header_filter(r);
 
   if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
