@@ -1820,21 +1820,6 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
   return rc;
 }
 
-static void ngx_http_mrb_read_subrequest_responce(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
-{
-  ngx_http_mruby_ctx_t *main_ctx;
-  if (r->parent != NULL && r->parent != r) {
-    main_ctx = ngx_mrb_http_get_module_ctx(NULL, r->main);
-
-    if (main_ctx != NULL && ctx->body_length > 0) {
-      main_ctx->sub_response_body = ngx_palloc(r->pool, ctx->body_length);
-      ngx_memcpy(main_ctx->sub_response_body, ctx->body, ctx->body_length);
-      main_ctx->sub_response_body_length = ctx->body_length;
-      main_ctx->sub_response_status = r->headers_out.status;
-      main_ctx->sub_response_headers = r->headers_out;
-    }
-  }
-}
 static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in, ngx_http_mruby_ctx_t *ctx)
 {
   u_char *p;
@@ -1865,7 +1850,6 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
       ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: reached last buffer", MODULE_NAME, __func__,
                     __LINE__);
 
-      ngx_http_mrb_read_subrequest_responce(r, ctx);
       return NGX_OK;
     }
   }
