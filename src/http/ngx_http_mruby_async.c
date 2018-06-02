@@ -280,7 +280,6 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
 
 static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 {
-  u_char *p;
   ngx_mrb_reentrant_t *re;
   ngx_http_request_t *r, *sr;
   ngx_http_post_subrequest_t *ps;
@@ -322,14 +321,13 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
     ngx_memcpy(args->data, RSTRING_PTR(query_params), args->len);
   }
 
-  p = ngx_palloc(r->pool, sizeof(ngx_event_t) + sizeof(ngx_mrb_reentrant_t));
-  re = (ngx_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
+  re = (ngx_mrb_reentrant_t *) ngx_palloc(r->pool, sizeof(ngx_mrb_reentrant_t));
   re->mrb = mrb;
   re->fiber = (mrb_value *)mrb->ud;
 
   mrb_gc_register(mrb, *re->fiber);
 
-  actx = (ngx_mrb_async_http_ctx_t *)mrb_malloc(mrb, sizeof(ngx_mrb_async_http_ctx_t));
+  actx = (ngx_mrb_async_http_ctx_t *) ngx_palloc(r->pool, sizeof(ngx_mrb_async_http_ctx_t));
   actx->uri = uri;
   actx->re = re;
 
