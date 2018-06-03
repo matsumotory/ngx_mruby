@@ -1852,6 +1852,11 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
 
       return NGX_OK;
     }
+    if (r->upstream && size == rest) {
+      ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                    "%s DEBUG %s:%d: is not last buffer, but upstream buffer reached", MODULE_NAME, __func__, __LINE__);
+      return NGX_OK;
+    }
   }
 
   ctx->last = p;
