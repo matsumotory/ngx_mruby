@@ -7,9 +7,10 @@
 #ifndef NGX_STREAM_MRUBY_INIT_H
 #define NGX_STREAM_MRUBY_INIT_H
 
-#include "ngx_stream_mruby_core.h"
+#include <ngx_config.h>
+#include <ngx_core.h>
+
 #include <mruby.h>
-#include <ngx_stream.h>
 
 ngx_int_t ngx_stream_mrb_class_init(mrb_state *mrb);
 

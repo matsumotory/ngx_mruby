@@ -7,24 +7,15 @@
 #ifndef NGX_HTTP_MRUBY_MODULE_H
 #define NGX_HTTP_MRUBY_MODULE_H
 
-#include <nginx.h>
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-#ifdef NGX_WIN32
-#include <io.h>
-#endif
-
-#include "ngx_http_mruby_core.h"
-#include "ngx_http_mruby_init.h"
+#include <mruby.h>
+#include <mruby/compile.h>
 
 #define MODULE_NAME "ngx_mruby"
-#define MODULE_VERSION "1.20.2"
-
-#if (nginx_version > 1007999)
-#define NGX_USE_MRUBY_UPSTREAM
-#endif
+#define MODULE_VERSION "2.0.0"
 
 typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
 
@@ -51,6 +42,7 @@ typedef struct {
   ngx_str_t script;
   ngx_mrb_state_t *state;
   ngx_mrb_code_t *code;
+  ngx_str_t target;
 } ngx_http_mruby_set_var_data_t;
 #include <ndk.h>
 #endif

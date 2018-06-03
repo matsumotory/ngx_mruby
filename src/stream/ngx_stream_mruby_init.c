@@ -5,17 +5,13 @@
 */
 
 #include "ngx_stream_mruby_init.h"
-#include "ngx_stream_mruby_module.h"
 
 #include "ngx_stream_mruby_core.h"
+#include "ngx_stream_mruby_connection.h"
 
 #include <mruby.h>
-#include <mruby/compile.h>
 
 #define GC_ARENA_RESTORE mrb_gc_arena_restore(mrb, 0);
-
-void ngx_stream_mrb_core_class_init(mrb_state *mrb, struct RClass *calss);
-void ngx_stream_mrb_conn_class_init(mrb_state *mrb, struct RClass *class);
 
 ngx_int_t ngx_stream_mrb_class_init(mrb_state *mrb)
 {

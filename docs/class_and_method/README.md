@@ -11,6 +11,7 @@
 - [Nginx::Headers_out Class](#nginxheaders_out-class)
 - [Nginx::Filter Class](#nginxfilter-class)
 - [Nginx::Upstream Class](#nginxupstream-class)
+- [Nginx::Async class](#nginxasync-class)
 - [Process Class](https://github.com/iij/mruby-process)
 - [IO Class](https://github.com/iij/mruby-io)
 - [Array Class for pack](https://github.com/iij/mruby-pack)
@@ -41,6 +42,20 @@
 Server = get_server_class
 
 Server.echo "hello world"
+```
+
+#### return
+
+ngx_mruby v2 supports `return` method.
+
+```ruby
+location /enable_return {
+    mruby_content_handler_code '
+         Nginx.rputs"hoge"
+         return if true 
+         Nginx.rputs "foo" #=> do not response
+    ';
+}
 ```
 
 #### server_name
@@ -75,6 +90,10 @@ return Nginx::HTTP_SERVICE_UNAVAILABLE
 ```
 #### Nginx.send_header
 alias ``Nginx.return``
+
+#### Nginx.status_code=
+alias ``Nginx.return``
+
 #### Nginx.errlogger
 logging to error.log with [log priority](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#const-for-log)
 ```ruby
@@ -850,6 +869,25 @@ http {
         }
     }
 }
+```
+
+## Nginx::Async Class
+### Method
+#### Nginx::Async#sleep
+Do non-blocking sleep. Currenly it supports only setcode and rewrite and access phases.
+```ruby
+# sleep 3000 millisec
+Nginx::Async.sleep 3000
+```
+
+#### Nginx::Async::HTTP#sub_request
+Do non-blocking subrequest. Currenly it supports only setcode rewrite and access phases.
+```ruby
+Nginx::Async::HTTP.sub_request "/example", { query_param: "foo" }
+res = Nginx::Async::HTTP.last_response
+Nginx.rputs res.body
+Nginx.rputs res.headers
+Nginx.rputs res.status
 ```
 
 ## Nginx::Stream class

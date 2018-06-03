@@ -38,6 +38,10 @@ class NginxFeatures
     # 1.9.6 or later
     @minor >= 10 || (@minor == 9 && @patch >= 6)
   end
+  def is_async_supported?
+    # Should we enable Nginx::Async as default?
+    true
+  end
 end
 
 t = SimpleTest.new "ngx_mruby test"
@@ -597,6 +601,11 @@ t.assert('ngx_mruby - add_listener test', 'location /add_listener') do
   t.assert_equal 'add_listener test ok', res
 end
 
+t.assert('ngx_mruby - Nginx.set_status= alias Nginx.return', 'location /alias_return') do
+  res = HttpRequest.new.get base + '/alias_return'
+  t.assert_equal 204, res["code"]
+end
+
 if nginx_features.is_stream_supported?
 
   base1 = "http://127.0.0.1:12345"
@@ -627,5 +636,52 @@ if nginx_features.is_stream_supported?
     t.assert_equal 'Hello ngx_mruby world!', res["body"]
   end
 end
+
+if nginx_features.is_async_supported?
+  t.assert('ngx_mruby - Nginx.Async.sleep', 'location /async_sleep') do
+    res = HttpRequest.new.get base + '/async_sleep'
+    t.assert_equal 'body', res["body"]
+    t.assert_equal 200, res.code
+  end
+
+  t.assert('ngx_mruby - Nginx.Async.sleep looping', 'location /async_sleep_loop') do
+    res = HttpRequest.new.get base + '/async_sleep_loop'
+    t.assert_equal '01234', res["body"]
+    t.assert_equal 200, res.code
+  end
+
+  t.assert('ngx_mruby - enable return method', 'location /enable_return') do
+    res = HttpRequest.new.get base + '/enable_return'
+    t.assert_equal 'hoge', res["body"]
+    t.assert_equal 200, res.code
+  end
+
+  t.assert('ngx_mruby - Nginx::Async::HTTP.new "/dst"', 'location /async_http_sub_request') do
+    res = HttpRequest.new.get base + '/async_http_sub_request'
+    t.assert_equal 200, res["code"]
+    t.assert_equal '{"query1"=>"foo", "query2"=>"bar"}', res["body"]
+
+    res = HttpRequest.new.get base + '/async_http_sub_request_notfound'
+    t.assert_equal 404, res["code"]
+    t.assert_equal 'global_ngx_mruby', res["header"][-16,16]
+
+    res = HttpRequest.new.get base + '/async_http_sub_request_notfound_ok'
+    t.assert_equal 200, res["code"]
+    t.assert_equal 'ok', res["body"]
+  end
+
+  t.assert('ngx_mruby - Nginx.Async.sleep with proxy', 'location /sleep_with_proxy') do
+    res = HttpRequest.new.get base + '/sleep_with_proxy'
+    t.assert_equal 'proxy test ok', res["body"]
+    t.assert_equal 200, res.code
+  end
+
+  t.assert('ngx_mruby - Nginx.Async.sleep with proxy(set_code)', 'location /sleep_with_proxy_set_code') do
+    res = HttpRequest.new.get base + '/sleep_with_proxy_set_code'
+    t.assert_equal 'proxy test ok', res["body"]
+    t.assert_equal 200, res.code
+  end
+end
+
 
 t.report
