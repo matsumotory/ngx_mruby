@@ -839,6 +839,8 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
                   __func__, __LINE__);
 
+    mrb_gc_arena_restore(state->mrb, ai);
+
     // waiting sub request response
     if (ctx->sub_response_more) {
       ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: more sub request processing", MODULE_NAME,

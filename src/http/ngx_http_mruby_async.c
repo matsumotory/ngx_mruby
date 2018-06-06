@@ -98,12 +98,16 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
 static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_t *ctx)
 {
   ngx_int_t rc = NGX_OK;
+  int ai;
+
+  ai = mrb_gc_arena_save(re->mrb);
 
   if (re->fiber != NULL) {
     ngx_mrb_push_request(re->r);
 
     if (mrb_test(ngx_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result))) {
       // can resume the fiber and wait the epoll timer
+      mrb_gc_arena_restore(re->mrb, ai);
       return NGX_DONE;
     } else {
       // can not resume the fiber, the fiber was finished
@@ -135,6 +139,8 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
                   MODULE_NAME, __func__, __LINE__);
     rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
+
+  mrb_gc_arena_restore(re->mrb, ai);
 
   if (rc != NGX_OK) {
     re->r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
