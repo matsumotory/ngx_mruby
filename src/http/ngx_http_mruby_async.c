@@ -74,9 +74,10 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   ngx_http_request_t *r = ngx_mrb_get_request();
   mrb_value aliving = mrb_false_value();
   mrb_value handler_result = mrb_nil_value();
+  ngx_http_mruby_ctx_t *ctx;
 
-  // Fiber wrapped in proc
-  mrb->ud = fiber_proc;
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+  ctx->fiber_proc = fiber_proc;
 
   resume_result = mrb_funcall(mrb, *fiber_proc, "call", 0, NULL);
   if (mrb->exc) {
@@ -196,6 +197,7 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ngx_mrb_reentrant_t *re;
   ngx_http_cleanup_t *cln;
   ngx_http_request_t *r;
+  ngx_http_mruby_ctx_t *ctx;
 
   mrb_get_args(mrb, "i", &timer);
 
@@ -207,8 +209,11 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   p = ngx_palloc(r->pool, sizeof(ngx_event_t) + sizeof(ngx_mrb_reentrant_t));
   re = (ngx_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
   re->mrb = mrb;
-  re->fiber = (mrb_value *)mrb->ud;
   re->r = r;
+
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+  re->fiber = ctx->fiber_proc;
+
 
   // keeps the object from GC when can resume the fiber
   // Don't forget to remove the object using
@@ -333,7 +338,9 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   re = (ngx_mrb_reentrant_t *)ngx_palloc(r->pool, sizeof(ngx_mrb_reentrant_t));
   re->mrb = mrb;
-  re->fiber = (mrb_value *)mrb->ud;
+
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+  re->fiber = ctx->fiber_proc;
 
   mrb_gc_register(mrb, *re->fiber);
 
@@ -355,7 +362,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_subrequest failed for http_sub_rquest method");
   }
 
-  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->sub_response_more = 1;
 
   return self;

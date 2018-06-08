@@ -39,6 +39,7 @@ typedef struct ngx_http_mruby_ctx_t {
   ngx_http_headers_out_t sub_response_headers;
   mrb_value *async_handler_result;
   ngx_str_t set_var_target;
+  mrb_value *fiber_proc;
 } ngx_http_mruby_ctx_t;
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
