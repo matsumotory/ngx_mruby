@@ -296,7 +296,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ngx_mrb_async_http_ctx_t *actx;
   ngx_http_mruby_ctx_t *ctx;
   mrb_value path, query_params;
-  ngx_str_t *args;
+  ngx_str_t *args = NULL;
   int argc;
 
   argc = mrb_get_args(mrb, "o|H", &path, &query_params);
@@ -315,12 +315,12 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   uri->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(path));
   ngx_memcpy(uri->data, RSTRING_PTR(path), uri->len);
 
-  args = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
   if (argc == 2) {
     struct RClass *http_class;
-    mrb_value http_instance;
     struct RClass *ngx_class = mrb_class_get(mrb, "Nginx");
+    mrb_value http_instance;
 
+    args = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
     http_class = (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, "HttpUtils")));
 
     http_instance = mrb_class_new_instance(mrb, 0, 0, http_class);
