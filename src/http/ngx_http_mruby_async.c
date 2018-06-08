@@ -313,8 +313,9 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   if (argc == 2) {
     struct RClass *http_class;
     mrb_value http_instance;
-    http_class = (struct RClass *)mrb_class_ptr(
-        mrb_const_get(mrb, mrb_obj_value(mrb->object_class), mrb_intern_cstr(mrb, "HttpRequest")));
+    struct RClass *ngx_class = mrb_class_get(mrb, "Nginx");
+
+    http_class = (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, "HttpUtils")));
 
     http_instance = mrb_class_new_instance(mrb, 0, 0, http_class);
     query_params = mrb_funcall(mrb, http_instance, "encode_parameters", 1, query_params);
