@@ -56,7 +56,13 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
 
   replace_stop(rproc->body.irep);
   handler_proc = mrb_obj_value(mrb_proc_new(mrb, rproc->body.irep));
-  fiber_proc = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
+
+  if (r->parent)  {
+    fiber_proc = (mrb_value *)ngx_palloc(r->parent->pool, sizeof(mrb_value));
+  } else {
+    fiber_proc = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
+  }
+
   *fiber_proc = mrb_funcall(mrb, mrb_obj_value(mrb->kernel_module), "_ngx_mrb_prepare_fiber", 1, handler_proc);
 
   return ngx_mrb_run_fiber(mrb, fiber_proc, result);
