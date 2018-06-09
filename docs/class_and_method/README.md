@@ -883,7 +883,8 @@ Nginx::Async.sleep 3000
 #### Nginx::Async::HTTP#sub_request
 Do non-blocking subrequest. Currenly it supports only setcode rewrite and access phases.
 ```ruby
-Nginx::Async::HTTP.sub_request "/example", { query_param: "foo" }
+query_str = Nginx::HttpUtils.new.encode_parameters({query1: "foo", query2: "bar"})
+Nginx::Async::HTTP.sub_request "/example", query_str
 res = Nginx::Async::HTTP.last_response
 Nginx.rputs res.body
 Nginx.rputs res.headers

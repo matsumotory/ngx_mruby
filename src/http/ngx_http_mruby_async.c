@@ -56,6 +56,7 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
 
   replace_stop(rproc->body.irep);
   handler_proc = mrb_obj_value(mrb_proc_new(mrb, rproc->body.irep));
+
   fiber_proc = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
   *fiber_proc = mrb_funcall(mrb, mrb_obj_value(mrb->kernel_module), "_ngx_mrb_prepare_fiber", 1, handler_proc);
 
@@ -68,9 +69,10 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   ngx_http_request_t *r = ngx_mrb_get_request();
   mrb_value aliving = mrb_false_value();
   mrb_value handler_result = mrb_nil_value();
+  ngx_http_mruby_ctx_t *ctx;
 
-  // Fiber wrapped in proc
-  mrb->ud = fiber_proc;
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+  ctx->fiber_proc = fiber_proc;
 
   resume_result = mrb_funcall(mrb, *fiber_proc, "call", 0, NULL);
   if (mrb->exc) {
@@ -190,6 +192,7 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ngx_mrb_reentrant_t *re;
   ngx_http_cleanup_t *cln;
   ngx_http_request_t *r;
+  ngx_http_mruby_ctx_t *ctx;
 
   mrb_get_args(mrb, "i", &timer);
 
@@ -201,8 +204,11 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   p = ngx_palloc(r->pool, sizeof(ngx_event_t) + sizeof(ngx_mrb_reentrant_t));
   re = (ngx_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
   re->mrb = mrb;
-  re->fiber = (mrb_value *)mrb->ud;
   re->r = r;
+
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+  re->fiber = ctx->fiber_proc;
+
 
   // keeps the object from GC when can resume the fiber
   // Don't forget to remove the object using
@@ -290,10 +296,10 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ngx_mrb_async_http_ctx_t *actx;
   ngx_http_mruby_ctx_t *ctx;
   mrb_value path, query_params;
-  ngx_str_t *args;
+  ngx_str_t *args = NULL;
   int argc;
 
-  argc = mrb_get_args(mrb, "o|H", &path, &query_params);
+  argc = mrb_get_args(mrb, "o|S", &path, &query_params);
 
   r = ngx_mrb_get_request();
   uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
@@ -309,17 +315,8 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   uri->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(path));
   ngx_memcpy(uri->data, RSTRING_PTR(path), uri->len);
 
-  args = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
   if (argc == 2) {
-    struct RClass *http_class;
-    mrb_value http_instance;
-    struct RClass *ngx_class = mrb_class_get(mrb, "Nginx");
-
-    http_class = (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, "HttpUtils")));
-
-    http_instance = mrb_class_new_instance(mrb, 0, 0, http_class);
-    query_params = mrb_funcall(mrb, http_instance, "encode_parameters", 1, query_params);
-
+    args = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
     args->len = RSTRING_LEN(query_params);
     args->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(query_params));
     ngx_memcpy(args->data, RSTRING_PTR(query_params), args->len);
@@ -327,7 +324,9 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   re = (ngx_mrb_reentrant_t *)ngx_palloc(r->pool, sizeof(ngx_mrb_reentrant_t));
   re->mrb = mrb;
-  re->fiber = (mrb_value *)mrb->ud;
+
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+  re->fiber = ctx->fiber_proc;
 
   mrb_gc_register(mrb, *re->fiber);
 
@@ -349,7 +348,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_subrequest failed for http_sub_rquest method");
   }
 
-  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->sub_response_more = 1;
 
   return self;
