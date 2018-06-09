@@ -94,7 +94,6 @@ class Nginx
           tmp += "%" + chr.unpack("H*").first.upcase
         end
       end
-      #puts "#{str}: #{tmp}"
       tmp
     end
   end
