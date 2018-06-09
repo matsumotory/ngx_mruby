@@ -299,7 +299,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ngx_str_t *args = NULL;
   int argc;
 
-  argc = mrb_get_args(mrb, "o|H", &path, &query_params);
+  argc = mrb_get_args(mrb, "o|S", &path, &query_params);
 
   r = ngx_mrb_get_request();
   uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
@@ -316,16 +316,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ngx_memcpy(uri->data, RSTRING_PTR(path), uri->len);
 
   if (argc == 2) {
-    struct RClass *http_class;
-    struct RClass *ngx_class = mrb_class_get(mrb, "Nginx");
-    mrb_value http_instance;
-
     args = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
-    http_class = (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, "HttpUtils")));
-
-    http_instance = mrb_class_new_instance(mrb, 0, 0, http_class);
-    query_params = mrb_funcall(mrb, http_instance, "encode_parameters", 1, query_params);
-
     args->len = RSTRING_LEN(query_params);
     args->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(query_params));
     ngx_memcpy(args->data, RSTRING_PTR(query_params), args->len);
