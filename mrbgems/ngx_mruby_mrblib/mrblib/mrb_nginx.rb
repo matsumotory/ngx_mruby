@@ -90,7 +90,7 @@ class Nginx
       class << self
         def sub_request(location, query_param = nil)
           if query_param.is_a?(Hash)
-            __sub_request(location, ::Nginx.Utils.encode_parameters(query_param))
+            __sub_request(location, ::Nginx::Utils.encode_parameters(query_param))
           elsif query_param.is_a?(String)
             __sub_request(location, query_param)
           else
