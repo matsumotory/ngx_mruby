@@ -33,11 +33,6 @@ typedef struct {
   ngx_str_t *uri;
 } ngx_mrb_async_http_ctx_t;
 
-static const struct mrb_data_type ngx_mrb_async_http_ctx_type = {
-    "ngx_mrb_async_http_ctx_t",
-    mrb_free,
-};
-
 static void replace_stop(mrb_irep *irep)
 {
   // A part of them refer to https://github.com/h2o/h2o
