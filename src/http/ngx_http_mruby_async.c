@@ -55,8 +55,8 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
   fiber_proc = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
   *fiber_proc = mrb_funcall(mrb, mrb_obj_value(mrb->kernel_module), "_ngx_mrb_prepare_fiber", 1, handler_proc);
   if (mrb->exc) {
-    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: preparing fiber got the raise, leave the fiber",
-                  MODULE_NAME, __func__, __LINE__);
+    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
+                  "%s NOTICE %s:%d: preparing fiber got the raise, leave the fiber", MODULE_NAME, __func__, __LINE__);
     return mrb_false_value();
   }
 
@@ -208,7 +208,6 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   re->fiber = ctx->fiber_proc;
-
 
   // keeps the object from GC when can resume the fiber
   // Don't forget to remove the object using
