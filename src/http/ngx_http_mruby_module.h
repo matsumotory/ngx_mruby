@@ -15,7 +15,7 @@
 #include <mruby/compile.h>
 
 #define MODULE_NAME "ngx_mruby"
-#define MODULE_VERSION "2.0.3"
+#define MODULE_VERSION "2.0.4"
 
 typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
 
