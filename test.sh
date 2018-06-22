@@ -18,7 +18,7 @@ if [ `uname -s` = "NetBSD" ]; then
     PS_C="pgrep -l"
 else
     NPROCESSORS_ONLN="_NPROCESSORS_ONLN"
-    NGINX_DEFAULT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module --with-cc-opt=-g\ -O0 --add-module=`pwd`/../../../redis2-nginx-module'
+    NGINX_DEFAULT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module --with-cc-opt=-g\ -O0'
     MAKE=make
     KILLALL=killall
     PS_C="ps -C"
