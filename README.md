@@ -80,11 +80,9 @@ Therefore, we propose a fast and memory-efficient Web server extension mechanism
 
 The server process frees the global variables table, the exception flag and the byte-code which cause an increase of memory usage, in order to reduce the memory usage and extend safety by preventing interference between each script because of sharing the region. We implemented a mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".
 
-## Contributors
+# Contributions
 
-This project exists thanks to all the people who contribute. 
-<a href="graphs/contributors"><img src="https://opencollective.com/ngx_mruby/contributors.svg?width=890" /></a>
-
+This project exists thanks to all the people who contribute. We also welcome financial contributions in full transparency on our [open collective](https://opencollective.com/ngx_mruby).
 
 ## Backers
 
