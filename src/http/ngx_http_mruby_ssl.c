@@ -99,6 +99,24 @@ static mrb_value ngx_mrb_ssl_local_port(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(ntohs(get_in_port(mscf->connection->local_sockaddr)));
 }
 
+static mrb_value ngx_mrb_ssl_tls_version(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+  ngx_connection_t *c = mscf->connection;
+  ngx_ssl_conn_t *ssl_conn;
+
+  if (c == NULL || c->ssl == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "invalid connection.");
+  }
+
+  ssl_conn = c->ssl->connection;
+  if (ssl_conn == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "invalid ssl connection.");
+  }
+
+  return mrb_str_new_cstr(mrb, SSL_get_version(ssl_conn));
+}
+
 #else /* ! OPENSSL_VERSION_NUMBER >= 0x1000205fL */
 
 static mrb_value ngx_mrb_ssl_init(mrb_state *mrb, mrb_value self)
@@ -127,6 +145,11 @@ static mrb_value ngx_mrb_ssl_local_port(mrb_state *mrb, mrb_value self)
   mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_local_port doesn't support");
 }
 
+static mrb_value ngx_mrb_ssl_tls_version(mrb_state *mrb, mrb_value self)
+{
+  mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_ssl_tls_version doesn't support");
+}
+
 #endif /* OPENSSL_VERSION_NUMBER >= 0x1000205fL */
 
 NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert, cert_path);
@@ -142,6 +165,7 @@ void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_ssl, "initialize", ngx_mrb_ssl_init, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_ssl, "servername", ngx_mrb_ssl_get_servername, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_ssl, "local_port", ngx_mrb_ssl_local_port, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_ssl, "tls_version", ngx_mrb_ssl_tls_version, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_ssl, "certificate=", ngx_mrb_ssl_set_cert, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_key=", ngx_mrb_ssl_set_cert_key, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_data=", ngx_mrb_ssl_set_cert_data, MRB_ARGS_REQ(1));

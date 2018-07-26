@@ -289,6 +289,14 @@ end
 
 ```
 
+#### Nginx::SSL#tls_version
+
+```nginx
+location /tls_version{
+     mruby_content_handler_code "Nginx.rputs Nginx::SSL.new.tls_version.to_s";
+}
+```
+
 ## Nginx::Request Class
 ### Method
 #### Nginx::Request#scheme
