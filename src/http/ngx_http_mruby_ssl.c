@@ -147,7 +147,7 @@ static mrb_value ngx_mrb_ssl_local_port(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_ssl_tls_version(mrb_state *mrb, mrb_value self)
 {
-  mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_ssl_tls_version doesn't support");
+  mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_ssl_tls_version doesn't support");
 }
 
 #endif /* OPENSSL_VERSION_NUMBER >= 0x1000205fL */
