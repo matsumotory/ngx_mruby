@@ -276,16 +276,34 @@ alias of Nginx::SSL.errlogger
 #### Nginx::SSL#local_port
 
 ```nginx
+
+mruby_ssl_handshake_handler_code '
+  ssl = Nginx::SSL.new
+  ssl.certificate = "__NGXDOCROOT__/#{ssl.servername}.crt"
+  ssl.certificate_key = "__NGXDOCROOT__/#{ssl.servername}.key"
+  Userdata.new.ssl_local_port = ssl.local_port
+';
+
 location /local_port {
-     mruby_content_handler_code "Nginx.rputs Nginx::SSL.new.local_port.to_s";
+     mruby_content_handler_code "Nginx.rputs Userdata.new.ssl_local_port.to_s";
 }
 ```
 
-```
-t.assert('ngx_mruby - ssl local port') do
-  res = `curl -k #{base_ssl(58082) + '/local_port'}`
-  t.assert_equal '58082', res
-end
+#### Nginx::SSL#tls_version
+
+```nginx
+mruby_ssl_handshake_handler_code '
+  ssl = Nginx::SSL.new
+  ssl.certificate = "__NGXDOCROOT__/#{ssl.servername}.crt"
+  ssl.certificate_key = "__NGXDOCROOT__/#{ssl.servername}.key"
+  Userdata.new.ssl_tls_version = ssl.tls_version
+';
+
+# The return value is the value of SSL_get_version.
+# refs: https://www.openssl.org/docs/man1.1.1/man3/SSL_get_version.html
+location /tls_version {
+    mruby_content_handler_code "Nginx.rputs Userdata.new.ssl_tls_version.to_s";
+}
 
 ```
 

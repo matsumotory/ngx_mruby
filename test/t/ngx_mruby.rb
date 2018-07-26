@@ -534,6 +534,12 @@ t.assert('ngx_mruby - get ssl server name') do
   t.assert_equal "ngx.example.com", res.chomp
 end
 
+t.assert('ngx_mruby - get ssl tls version') do
+  res = `curl -s -k #{base_ssl(58082) + '/tls_version'}`
+
+  t.assert_equal "TLSv1.2", res.chomp
+end
+
 t.assert('ngx_mruby - issue_172', 'location /issue_172') do
   res = HttpRequest.new.get base + '/issue_172/index.html'
   expect_content = 'hello world'.upcase
