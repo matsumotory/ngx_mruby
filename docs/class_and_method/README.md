@@ -299,9 +299,12 @@ mruby_ssl_handshake_handler_code '
   Userdata.new.ssl_tls_version = ssl.tls_version
 ';
 
+# The return value is the value of SSL_get_version.
+# refs: https://www.openssl.org/docs/man1.1.1/man3/SSL_get_version.html
 location /tls_version {
     mruby_content_handler_code "Nginx.rputs Userdata.new.ssl_tls_version.to_s";
 }
+
 ```
 
 ## Nginx::Request Class
