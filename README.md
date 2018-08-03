@@ -1,86 +1,92 @@
-# Welcome to ngx_mruby Pages
+[![Build Status][build-status-img]][travis-ci]
 
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/matsumoto-r/ngx_mruby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/matsumotory/ngx_mruby.svg?branch=master)](https://travis-ci.org/matsumotory/ngx_mruby) [![wercker status](https://app.wercker.com/status/55f7f7af32d94b01a42f863f3635940c/s "wercker status")](https://app.wercker.com/project/bykey/55f7f7af32d94b01a42f863f3635940c)
+## What is mruby
 
-[![ngx_mruby mod_mruby performance](https://github.com/matsumotory/mod_mruby/raw/master/images/performance_20140301.png)](http://blog.matsumoto-r.jp/?p=3974)
+mruby is the lightweight implementation of the Ruby language complying to (part
+of) the [ISO standard][ISO-standard]. Its syntax is Ruby 1.9 compatible.
 
-※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
+mruby can be linked and embedded within your application.  We provide the
+interpreter program "mruby" and the interactive mruby shell "mirb" as examples.
+You can also compile Ruby programs into compiled byte code using the mruby
+compiler "mrbc".  All those tools reside in the "bin" directory.  "mrbc" is
+also able to generate compiled byte code in a C source file, see the "mrbtest"
+program under the "test" directory for an example.
 
-## Documents
-- [Install](https://github.com/matsumotory/ngx_mruby/tree/master/docs/install)
-- [Test](https://github.com/matsumotory/ngx_mruby/tree/master/docs/test)
-- [Directives](https://github.com/matsumotory/ngx_mruby/tree/master/docs/directives)
-- [Class and Method](https://github.com/matsumotory/ngx_mruby/tree/master/docs/class_and_method)
-- [Use Case](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case)
-- [Examples](https://github.com/hsbt/nginx-tech-talk)
+This achievement was sponsored by the Regional Innovation Creation R&D Programs
+of the Ministry of Economy, Trade and Industry of Japan.
 
-## What's ngx_mruby
-__ngx_mruby is A Fast and Memory-Efficient TCP/UDP Load Balancing and Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
+## How to get mruby
 
-- ngx_mruby is to provide an alternative to lua-nginx-module or [mod_mruby of Apache httpd](http://mod.mruby.org/).
-- Unified Ruby Code between Apache(mod_mruby), nginx(ngx_mruby) and other Web server software(plan) for Web server extensions.
-- You can implement nginx modules by Ruby scripts on nginx!
-- You can implement some Web server software extensions by same Ruby code (as possible)
-- Supported nginx main-line and stable-line
-- [Benchmark between ngx_mruby and lua-nginx-module](https://www.techempower.com/benchmarks/#section=data-r10&hw=peak&test=plaintext&w=4-0)
+The stable version 1.4.1 of mruby can be downloaded via the following URL: [https://github.com/mruby/mruby/archive/1.4.1.zip](https://github.com/mruby/mruby/archive/1.4.1.zip)
 
-```ruby
-# location /proxy {
-#   mruby_set $backend "/path/to/proxy.rb";
-#   proxy_pass   http://$backend;
-# }
+The latest development version of mruby can be downloaded via the following URL: [https://github.com/mruby/mruby/zipball/master](https://github.com/mruby/mruby/zipball/master)
 
-backends = [
-  "test1",
-  "test2",
-  "test3",
-]
+The trunk of the mruby source tree can be checked out with the
+following command:
 
-r = Redis.new "192.168.12.251", 6379
-r.get backends[rand(backends.length)]
-```
+    $ git clone https://github.com/mruby/mruby.git
 
-- see [examples](https://github.com/matsumotory/ngx_mruby/blob/master/example/nginx.conf)
-- __Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions__
-- You can implement some Web server software extensions by same Ruby code (as possible)
+You can also install and compile mruby using [ruby-install](https://github.com/postmodern/ruby-install), [ruby-build](https://github.com/rbenv/ruby-build) or [rvm](https://github.com/rvm/rvm).
 
-```ruby
-# Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby)
-# for Web server extensions.
-#
-# Apache httpd.conf by mod_mruby
-#
-# <Location /mruby>
-#     mrubyHandlerMiddle "/path/to/unified_hello.rb"
-# </Location>
-#
-# nginx ngxin.conf by ngx_mruby
-#
-# location /mruby {
-#     mruby_content_handler "/path/to/unified_hello.rb";
-# }
-#
+## mruby home-page
 
-Server = get_server_class
+The URL of the mruby home-page is: [http://www.mruby.org](http://www.mruby.org).
 
-Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
-# mod_mruby => "Hello mod_mruby/0.9.3 world!"
-# ngx_mruby => "Hello ngx_mruby/0.0.1 world!"
-```
+## Mailing list
 
-## Abstract
+We don't have a mailing list, but you can use [GitHub issues](https://github.com/mruby/mruby).
 
-As the increase of large-scale and complex Web services, not only the development of Web applications is required, but also the implementation of Web server extensions in many cases. Most Web server extensions are mainly implemented in the C language because of fast and memory-efficient behavior, but by writing extensions using a scripting language we can achieve better maintainability and productivity. 
+## How to compile and install (mruby and gems)
 
-However, if the existing methods are primarily intended to enhance not the implementation of Web applications but the implementation of internal processing of the Web server, the problem remains in terms of speed, memory-efficiency and safety.
+See the [doc/guides/compile.md](doc/guides/compile.md) file.
 
-Therefore, we propose a fast and memory-efficient Web server extension mechanism using a scripting language. We designed an architecture where the server process creates a region in memory to save the state of the interpreter at the server process startup, and multiple scripts share this region to process the scripts quickly when new request are made.
+## Running Tests
 
-The server process frees the global variables table, the exception flag and the byte-code which cause an increase of memory usage, in order to reduce the memory usage and extend safety by preventing interference between each script because of sharing the region. We implemented a mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".
+To run the tests, execute the following from the project's root directory.
 
-# License
+    $ make test
 
-This project is under the MIT License:
+Or
 
-* http://www.opensource.org/licenses/mit-license.php
+    $ ruby ./minirake test
+
+## How to customize mruby (mrbgems)
+
+mruby contains a package manager called *mrbgems*. To create extensions
+in C and/or Ruby you should create a *GEM*. For a documentation of how to
+use mrbgems consult the file [doc/guides/mrbgems.md](doc/guides/mrbgems.md). For example code of
+how to use mrbgems look into the folder *examples/mrbgems/*.
+
+## License
+
+mruby is released under the [MIT License](MITL).
+
+## Note for License
+
+mruby has chosen a MIT License due to its permissive license allowing
+developers to target various environments such as embedded systems.
+However, the license requires the display of the copyright notice and license
+information in manuals for instance. Doing so for big projects can be
+complicated or troublesome.  This is why mruby has decided to display "mruby
+developers" as the copyright name to make it simple conventionally.
+In the future, mruby might ask you to distribute your new code
+(that you will commit,) under the MIT License as a member of
+"mruby developers" but contributors will keep their copyright.
+(We did not intend for contributors to transfer or waive their copyrights,
+Actual copyright holder name (contributors) will be listed in the AUTHORS
+file.)
+
+Please ask us if you want to distribute your code under another license.
+
+## How to Contribute
+
+See the [contribution guidelines][contribution-guidelines], and then send a pull
+request to <http://github.com/mruby/mruby>.  We consider you have granted
+non-exclusive right to your contributed code under MIT license.  If you want to
+be named as one of mruby developers, please include an update to the AUTHORS
+file in your pull request.
+
+[ISO-standard]: http://www.iso.org/iso/iso_catalogue/catalogue_tc/catalogue_detail.htm?csnumber=59579
+[build-status-img]: https://travis-ci.org/mruby/mruby.svg?branch=master
+[contribution-guidelines]: CONTRIBUTING.md
+[travis-ci]: https://travis-ci.org/mruby/mruby
