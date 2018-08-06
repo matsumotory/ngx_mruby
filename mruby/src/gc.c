@@ -968,6 +968,9 @@ gc_gray_mark(mrb_state *mrb, mrb_gc *gc, struct RBasic *obj)
       if (!c) break;
       /* mark stack */
       i = c->stack - c->stbase;
+
+      if (c->status == MRB_FIBER_TERMINATED) break;
+
       if (c->ci) {
         i += ci_nregs(c->ci);
       }
