@@ -1328,7 +1328,7 @@ Optional Packages:
   --with-openssl-opt=OPTIONS
                           set additional build options for OpenSSL
   --with-ngx-config-opt=OPT
-                          ngxin configure option [[ngx_config_opt]]
+                          nginx configure option [[ngx_config_opt]]
   --with-mruby-root=DIR   pathname to mruby_root [[mruby_root]]
   --with-mruby-incdir=DIR include directory for mruby [[mruby_incdir]]
   --with-mruby-libdir=DIR library directory to libmruby [[mruby_libdir]]
