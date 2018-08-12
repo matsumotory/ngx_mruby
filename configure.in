@@ -90,7 +90,7 @@ AC_SUBST(NGX_OPENSSL_OPT)
 
 NGX_CONFIG_OPT=
 AC_ARG_WITH(ngx_config_opt, AC_HELP_STRING([--with-ngx-config-opt=OPT],
-    [ngxin configure option [[ngx_config_opt]]]),
+    [nginx configure option [[ngx_config_opt]]]),
     [NGX_CONFIG_OPT="$with_ngx_config_opt"])
 if test "X$NGX_OPENSSL_SRC" != X ; then
     NGX_CONFIG_OPT="$NGX_CONFIG_OPT --with-openssl=$NGX_OPENSSL_SRC"
