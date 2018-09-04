@@ -33,13 +33,6 @@ typedef struct {
   ngx_str_t *uri;
 } ngx_mrb_async_http_ctx_t;
 
-static void replace_stop(mrb_irep *irep)
-{
-  // A part of them refer to https://github.com/h2o/h2o
-  // Replace OP_STOP with OP_RETURN to avoid stop VM
-  irep->iseq[irep->ilen - 1] = MKOP_AB(OP_RETURN, irep->nlocals, OP_R_NORMAL);
-}
-
 mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc, mrb_value *result)
 {
   mrb_value handler_proc;
@@ -49,7 +42,6 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->async_handler_result = result;
 
-  replace_stop(rproc->body.irep);
   handler_proc = mrb_obj_value(mrb_proc_new(mrb, rproc->body.irep));
 
   fiber_proc = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
