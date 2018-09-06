@@ -186,7 +186,7 @@ stack_extend_alloc(mrb_state *mrb, mrb_int room)
 
   if (off > size) size = off;
 #ifdef MRB_STACK_EXTEND_DOUBLING
-  if (room <= size)
+  if (room <= (size_t)size)
     size *= 2;
   else
     size += room;
@@ -1791,21 +1791,19 @@ RETRY_TRY_BLOCK:
           kargs = 0;
         }
         else {
-          if (!mrb_hash_p(argv[argc - 1])) {
-            if (r) {
-              kdict = mrb_hash_new(mrb);
-              kargs = 0;
-            }
-            else {
-              mrb_value str = mrb_str_new_lit(mrb, "Excepcted `Hash` as last argument for keyword arguments");
-              mrb_exc_set(mrb, mrb_exc_new_str(mrb, E_ARGUMENT_ERROR, str));
-              goto L_RAISE;
-            }
+          if (argv && argc > 0 && mrb_hash_p(argv[argc-1])) {
+            kdict = argv[argc-1];
+            mrb_hash_check_kdict(mrb, kdict);
+          }
+          else if (r) {
+            kdict = mrb_hash_new(mrb);
+            kargs = 0;
           }
           else {
-            kdict = argv[argc-1];
+            mrb_value str = mrb_str_new_lit(mrb, "Excepcted `Hash` as last argument for keyword arguments");
+            mrb_exc_set(mrb, mrb_exc_new_str(mrb, E_ARGUMENT_ERROR, str));
+            goto L_RAISE;
           }
-          mrb_hash_check_kdict(mrb, kdict);
           if (MRB_ASPEC_KEY(a) > 0) {
             kdict = mrb_hash_dup(mrb, kdict);
           }

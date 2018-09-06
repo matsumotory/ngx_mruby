@@ -28,7 +28,6 @@ MRuby::Build.new('host') do |conf|
   conf.gem :github => 'mattn/mruby-onig-regexp'
   conf.gem :github => 'matsumotory/mruby-redis'
   conf.gem :github => 'matsumotory/mruby-vedis'
-  conf.gem :github => 'matsumotory/mruby-sleep'
   conf.gem :github => 'matsumotory/mruby-userdata'
   conf.gem :github => 'matsumotory/mruby-uname'
   conf.gem :github => 'matsumotory/mruby-mutex'
