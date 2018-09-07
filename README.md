@@ -6,9 +6,12 @@
   <strong>ngx_mruby</strong>: A Fast and Memory-Efficient nginx Extension Mechanism Scripting with mruby.
 </p>
 
-[![Backers on Open Collective](https://opencollective.com/ngx_mruby/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/ngx_mruby/sponsors/badge.svg)](#sponsors)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/matsumoto-r/ngx_mruby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/matsumotory/ngx_mruby.svg?branch=master)](https://travis-ci.org/matsumotory/ngx_mruby) 
+<p align="center">
+  <a href="#backers" title="Backers on Open Collective"><img src="https://opencollective.com/ngx_mruby/backers/badge.svg"></a>
+  <a href="#sponsors" title="Sponsors on Open Collective"><img src="https://opencollective.com/ngx_mruby/sponsors/badge.svg"></a>
+  <a href="https://travis-ci.org/matsumotory/ngx_mruby" title="Build Status"><img src="https://travis-ci.org/matsumotory/ngx_mruby.svg?branch=master"></a>
+  <a href="https://gitter.im/matsumoto-r/ngx_mruby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge" title="Gitter"><img src="https://badges.gitter.im/Join%20Chat.svg"></a>
+</p>
 
 ## Documents
 - [Install](https://github.com/matsumotory/ngx_mruby/tree/master/docs/install)
