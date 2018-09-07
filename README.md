@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>ngx_mruby</strong>: A Fast and Memory-Efficient nginx Extension Mechanism Scripting with mruby.
+  <strong>ngx_mruby</strong>: A Fast and Memory-Efficient Nginx Extension Mechanism Scripting with mruby.
 </p>
 
 <p align="center">
