@@ -4,7 +4,6 @@ Please see [example repository](https://github.com/matsumotory/docker-ngx_mruby)
 #### 1. Create Dockerfile
 ```
 FROM matsumotory/ngx-mruby:latest
-MAINTAINER matsumotory
 ```
 #### 2. Create docker directory
 which was included hook files and nginx.conf in same directory as Dockerfile. like [this](https://github.com/matsumoto-r/ngx_mruby/tree/master/docker)
