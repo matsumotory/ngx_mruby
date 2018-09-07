@@ -1,4 +1,12 @@
-# Welcome to ngx_mruby Pages
+<p align="center">
+  <img alt="ngx_mruby" src="https://github.com/matsumotory/ngx_mruby/blob/master/misc/logo.png?raw=true" width="500">
+</p>
+
+<p align="center">
+  <strong>ngx_mruby</strong>: ngx_mruby - A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.
+</p>
+
+<p align="center">
 
 [![Backers on Open Collective](https://opencollective.com/ngx_mruby/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/ngx_mruby/sponsors/badge.svg)](#sponsors)
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/matsumoto-r/ngx_mruby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -7,6 +15,8 @@
 [![ngx_mruby mod_mruby performance](https://github.com/matsumotory/mod_mruby/raw/master/images/performance_20140301.png)](http://blog.matsumoto-r.jp/?p=3974)
 
 ※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
+
+</p>
 
 ## Documents
 - [Install](https://github.com/matsumotory/ngx_mruby/tree/master/docs/install)
