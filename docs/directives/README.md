@@ -1,6 +1,6 @@
 ## ngx_mruby HTTP module Writing Hooks by a Directive
 ### General
-Hook your ruby script each phases. See [directives](https://github.com/matsumotory/ngx_mruby/docs/directives#directives).
+Hook your ruby script at each phase. See [directives](https://github.com/matsumotory/ngx_mruby/docs/directives#directives).
 #### Set file path
 ```nginx
 location /hello {
@@ -71,7 +71,7 @@ http {
 }
 ```
 ## ngx_mruby HTTP module Directives
-Context | Derective                    |Hook Phase               |Description
+Context | Directive                    |Hook Phase               |Description
 ----|-----------------------------|----------------------------|---------------------
 http | mruby_init /path/to/code.rb  |init main configuration phase|__[http conf]__ write file path in nginx.conf
 http | mruby_init_code inline-code|init main configuration phase|__[http conf]__ write inline Ruby code in nginx.conf
@@ -106,7 +106,7 @@ server, location | mruby_enable_read_request_body on | | enabled read request bo
 
 ## ngx_mruby STREAM module Writing Hooks by a Directive
 ### General
-Hook your ruby script each pahses. See [directives](https://github.com/matsumotory/ngx_mruby/docs/directives#directives).
+Hook your ruby script at each phase. See [directives](https://github.com/matsumotory/ngx_mruby/docs/directives#directives).
 #### Set file path
 ```nginx
 server {
