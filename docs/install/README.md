@@ -128,7 +128,7 @@ Starting from NGINX 1.9.11, you can also compile this module as a dynamic module
 load_module /path/to/modules/ngx_http_mruby_module.so;
 ```
 
-`build.sh` suppots building as dynamic module by environment value BUILD_DYNAMIC_MODULE.
+`build.sh` supports building as dynamic module by environment value BUILD_DYNAMIC_MODULE.
 
 ```sh
 # Default install

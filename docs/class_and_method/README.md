@@ -393,7 +393,7 @@ Nginx.echo r.args #=> a=1
 #### Nginx::Request#args=
 set string to args
 #### Nginx::Request#var.method_missing
-get nginx user difined variables or [core variables](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#refs-nginx-core-variables), alias [Nginx::Var#method_missing](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#nginxvarmethod_missing)
+get nginx user defined variables or [core variables](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#refs-nginx-core-variables), alias [Nginx::Var#method_missing](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#nginxvarmethod_missing)
 ```ruby
 r = Nginx::Request
 Nginx.echo "$http_host core variable is #{r.var.http_host}"
@@ -892,14 +892,14 @@ http {
 ## Nginx::Async Class
 ### Method
 #### Nginx::Async#sleep
-Do non-blocking sleep. Currenly it supports only setcode and rewrite and access phases.
+Do non-blocking sleep. Currently it supports only setcode and rewrite and access phases.
 ```ruby
 # sleep 3000 millisec
 Nginx::Async.sleep 3000
 ```
 
 #### Nginx::Async::HTTP#sub_request
-Do non-blocking subrequest. Currenly it supports only setcode rewrite and access phases.
+Do non-blocking subrequest. Currently it supports only setcode rewrite and access phases.
 ```ruby
 Nginx::Async::HTTP.sub_request "/example", "query1=foo&query2=bar"
 # or supports hash object for usability
@@ -932,7 +932,7 @@ stream {
 ```
 ### Nginx::Stream.add_listener
 
-Listen port dynamicaly using Ruby on config phase
+Listen port dynamically using Ruby on config phase
 
 ```ruby
 Nginx::Stream.add_listener({address: "127.0.0.1:12350"})
