@@ -147,6 +147,67 @@ assert('String#casecmp') do
   assert_equal 0, "abcdef".casecmp(o)
 end
 
+assert('String#count') do
+  s = "abccdeff123"
+  assert_equal 1, s.count("a")
+  assert_equal 2, s.count("ab")
+  assert_equal 9, s.count("^c")
+  assert_equal 8, s.count("a-z")
+  assert_equal 4, s.count("a0-9")
+end
+
+assert('String#tr') do  
+  assert_equal "ABC", "abc".tr('a-z', 'A-Z')
+  assert_equal "hippo", "hello".tr('el', 'ip')
+  assert_equal "Ruby", "Lisp".tr("Lisp", "Ruby")
+  assert_equal "*e**o", "hello".tr('^aeiou', '*')
+end
+
+assert('String#tr!') do
+  s = "abcdefghijklmnopqR"
+  assert_equal "ab12222hijklmnopqR", s.tr!("cdefg", "12")
+  assert_equal "ab12222hijklmnopqR", s
+end
+
+assert('String#tr_s') do  
+  assert_equal "hero", "hello".tr_s('l', 'r')
+  assert_equal "h*o", "hello".tr_s('el', '*')
+  assert_equal "hhxo", "hello".tr_s('el', 'hx')
+end
+
+assert('String#tr_s!') do
+  s = "hello"
+  assert_equal "hero", s.tr_s!('l', 'r')
+  assert_equal "hero", s
+  assert_nil s.tr_s!('l', 'r')
+end
+
+assert('String#squeeze') do
+  assert_equal "yelow mon", "yellow moon".squeeze
+  assert_equal " now is the", "  now   is  the".squeeze(" ")
+  assert_equal "puters shot balls", "putters shoot balls".squeeze("m-z")
+end
+
+assert('String#squeeze!') do
+  s = "  now   is  the"
+  assert_equal " now is the", s.squeeze!(" ")
+  assert_equal " now is the", s
+end
+
+assert('String#delete') do
+  assert_equal "he", "hello".delete("lo")
+  assert_equal "hll", "hello".delete("aeiou")
+  assert_equal "ll", "hello".delete("^l")
+  assert_equal "ho", "hello".delete("ej-m")
+end
+
+assert('String#delete!') do
+  s = "hello"
+  assert_equal "he", s.delete!("lo")
+  assert_equal "he", s
+  assert_nil s.delete!("lz")
+end
+
 assert('String#start_with?') do
   assert_true "hello".start_with?("heaven", "hell")
   assert_true !"hello".start_with?("heaven", "paradise")

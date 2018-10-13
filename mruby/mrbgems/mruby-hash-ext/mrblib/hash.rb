@@ -126,12 +126,12 @@ class Hash
   #
 
   def compact!
-    h = {}
     keys = self.keys
     nk = keys.select{|k|
       self[k] != nil
     }
     return nil if (keys.size == nk.size)
+    h = {}
     nk.each {|k|
       h[k] = self[k]
     }
@@ -461,9 +461,9 @@ class Hash
     return to_enum :transform_keys! unless block
     self.keys.each do |k|
       value = self[k]
-      new_key = block.call(k)
       self.__delete(k)
-      self[new_key] = value
+      k = block.call(k) if block
+      self[k] = value
     end
     self
   end
@@ -486,6 +486,7 @@ class Hash
     end
     hash
   end
+
   ##
   # call-seq:
   #    hsh.transform_values! {|key| block } -> hsh
