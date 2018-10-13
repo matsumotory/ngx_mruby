@@ -598,19 +598,21 @@ unpack_a(mrb_state *mrb, const void *src, int slen, mrb_value ary, long count, u
   }
   copylen = slen;
 
-  if (flags & PACK_FLAG_Z) {  /* "Z" */
+  if (slen >= 0 && flags & PACK_FLAG_Z) {  /* "Z" */
     if ((cp = (const char *)memchr(sptr, '\0', slen)) != NULL) {
       copylen = (int)(cp - sptr);
       if (count == -1) {
         slen = copylen + 1;
       }
     }
-  } else if (!(flags & PACK_FLAG_a)) {  /* "A" */
+  }
+  else if (!(flags & PACK_FLAG_a)) {  /* "A" */
     while (copylen > 0 && (sptr[copylen - 1] == '\0' || isspace(sptr[copylen - 1]))) {
       copylen--;
     }
   }
 
+  if (copylen < 0) copylen = 0;
   dst = mrb_str_new(mrb, sptr, (mrb_int)copylen);
   mrb_ary_push(mrb, ary, dst);
   return slen;
@@ -1125,7 +1127,8 @@ mrb_pack_pack(mrb_state *mrb, mrb_value ary)
 #ifndef MRB_WITHOUT_FLOAT
       } else if (type == PACK_TYPE_FLOAT) {
         if (!mrb_float_p(o)) {
-          o = mrb_funcall(mrb, o, "to_f", 0);
+          mrb_float f = mrb_to_flo(mrb, o);
+          o = mrb_float_value(mrb, f);
         }
 #endif
       } else if (type == PACK_TYPE_STRING) {
@@ -1188,7 +1191,7 @@ mrb_pack_pack(mrb_state *mrb, mrb_value ary)
 }
 
 static mrb_value
-mrb_pack_unpack(mrb_state *mrb, mrb_value str)
+pack_unpack(mrb_state *mrb, mrb_value str, int single)
 {
   mrb_value result;
   struct tmpl tmpl;
@@ -1270,9 +1273,23 @@ mrb_pack_unpack(mrb_state *mrb, mrb_value str)
         count--;
       }
     }
+    if (single) break;
   }
 
+  if (single) return RARRAY_PTR(result)[0];
   return result;
+}
+
+static mrb_value
+mrb_pack_unpack(mrb_state *mrb, mrb_value str)
+{
+  return pack_unpack(mrb, str, 0);
+}
+
+static mrb_value
+mrb_pack_unpack1(mrb_state *mrb, mrb_value str)
+{
+  return pack_unpack(mrb, str, 1);
 }
 
 void
@@ -1283,6 +1300,7 @@ mrb_mruby_pack_gem_init(mrb_state *mrb)
 
   mrb_define_method(mrb, mrb->array_class, "pack", mrb_pack_pack, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, mrb->string_class, "unpack", mrb_pack_unpack, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, mrb->string_class, "unpack1", mrb_pack_unpack1, MRB_ARGS_REQ(1));
 }
 
 void

@@ -927,10 +927,11 @@ argnum_error(mrb_state *mrb, mrb_int num)
 #define BYTECODE_DECODER(x) (x)
 #endif
 
-
+#ifndef MRB_DISABLE_DIRECT_THREADING
 #if defined __GNUC__ || defined __clang__ || defined __INTEL_COMPILER
 #define DIRECT_THREADED
 #endif
+#endif /* ifndef MRB_DISABLE_DIRECT_THREADING */
 
 #ifndef DIRECT_THREADED
 
@@ -1818,7 +1819,7 @@ RETRY_TRY_BLOCK:
         }
         regs[blk_pos] = *blk; /* move block */
         if (kd) regs[len + 1] = kdict;
- 
+
         /* copy mandatory and optional arguments */
         if (argv0 != argv) {
           value_move(&regs[1], argv, argc-mlen); /* m1 + o */
@@ -2053,21 +2054,21 @@ RETRY_TRY_BLOCK:
         case OP_R_NORMAL:
         NORMAL_RETURN:
           if (ci == mrb->c->cibase) {
-            struct mrb_context *c;
+            struct mrb_context *c = mrb->c;
 
-            if (!mrb->c->prev) { /* toplevel return */
+            if (!c->prev) { /* toplevel return */
+              regs[irep->nlocals] = v;
               goto L_STOP;
             }
-            if (mrb->c->prev->ci == mrb->c->prev->cibase) {
+            if (c->prev->ci == c->prev->cibase) {
               mrb_value exc = mrb_exc_new_str_lit(mrb, E_FIBER_ERROR, "double resume");
               mrb_exc_set(mrb, exc);
               goto L_RAISE;
             }
-            while (mrb->c->eidx > 0) {
+            while (c->eidx > 0) {
               ecall(mrb);
             }
             /* automatic yield at the end */
-            c = mrb->c;
             c->status = MRB_FIBER_TERMINATED;
             mrb->c = c->prev;
             c->prev = NULL;
@@ -2077,7 +2078,7 @@ RETRY_TRY_BLOCK:
           break;
         case OP_R_BREAK:
           if (MRB_PROC_STRICT_P(proc)) goto NORMAL_RETURN;
-          if (MRB_PROC_ORPHAN_P(proc)) { 
+          if (MRB_PROC_ORPHAN_P(proc)) {
             mrb_value exc;
 
           L_BREAK_ERROR:

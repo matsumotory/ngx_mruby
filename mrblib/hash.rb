@@ -55,10 +55,9 @@ class Hash
   # ISO 15.2.13.4.8
   def delete(key, &block)
     if block && !self.has_key?(key)
-      block.call(key)
-    else
-      self.__delete(key)
+      return block.call(key)
     end
+    self.__delete(key)
   end
 
   ##
@@ -317,29 +316,6 @@ class Hash
       end
     }
     h
-  end
-
-  ##
-  #  call-seq:
-  #    hsh.rehash -> hsh
-  #
-  #  Rebuilds the hash based on the current hash values for each key. If
-  #  values of key objects have changed since they were inserted, this
-  #  method will reindex <i>hsh</i>.
-  #
-  #     h = {"AAA" => "b"}
-  #     h.keys[0].chop!
-  #     h          #=> {"AA"=>"b"}
-  #     h["AA"]    #=> nil
-  #     h.rehash   #=> {"AA"=>"b"}
-  #     h["AA"]    #=> "b"
-  #
-  def rehash
-    h = {}
-    self.each{|k,v|
-      h[k] = v
-    }
-    self.replace(h)
   end
 end
 
