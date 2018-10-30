@@ -26,6 +26,7 @@ typedef struct {
   mrb_state *mrb;
   mrb_value *fiber;
   ngx_http_request_t *r;
+  ngx_uint_t fiber_prev_status;
 } ngx_mrb_reentrant_t;
 
 typedef struct {
@@ -98,6 +99,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
 
   if (re->fiber != NULL) {
     ngx_mrb_push_request(re->r);
+    re->r->headers_out.status = re->fiber_prev_status;
 
     if (mrb_test(ngx_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result))) {
       // can resume the fiber and wait the epoll timer
@@ -196,6 +198,7 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   p = ngx_palloc(r->pool, sizeof(ngx_event_t) + sizeof(ngx_mrb_reentrant_t));
   re = (ngx_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
   re->mrb = mrb;
+  re->fiber_prev_status = r->headers_out.status;
   re->r = r;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
@@ -315,6 +318,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   re = (ngx_mrb_reentrant_t *)ngx_palloc(r->pool, sizeof(ngx_mrb_reentrant_t));
   re->mrb = mrb;
+  re->fiber_prev_status = r->headers_out.status;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   re->fiber = ctx->fiber_proc;
