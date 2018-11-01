@@ -18,13 +18,15 @@ MRB_BEGIN_DECL
 struct RHash {
   MRB_OBJECT_HEADER;
   struct iv_tbl *iv;
-  struct kh_ht *ht;
+  struct seglist *ht;
 };
 
 #define mrb_hash_ptr(v)    ((struct RHash*)(mrb_ptr(v)))
 #define mrb_hash_value(p)  mrb_obj_value((void*)(p))
 
 MRB_API mrb_value mrb_hash_new_capa(mrb_state*, mrb_int);
+MRB_API mrb_value mrb_ensure_hash_type(mrb_state *mrb, mrb_value hash);
+MRB_API mrb_value mrb_check_hash_type(mrb_state *mrb, mrb_value hash);
 
 /*
  * Initializes a new hash.
@@ -74,7 +76,7 @@ MRB_API mrb_value mrb_hash_get(mrb_state *mrb, mrb_value hash, mrb_value key);
  *
  * Equivalent to:
  *
- *     hash.hash_key?(key) ? hash[key] : def
+ *     hash.key?(key) ? hash[key] : def
  *
  * @param mrb The mruby state reference.
  * @param hash The target hash.
@@ -110,7 +112,19 @@ MRB_API mrb_value mrb_hash_delete_key(mrb_state *mrb, mrb_value hash, mrb_value 
  * @return An array with the keys of the hash.
  */
 MRB_API mrb_value mrb_hash_keys(mrb_state *mrb, mrb_value hash);
-MRB_API mrb_value mrb_check_hash_type(mrb_state *mrb, mrb_value hash);
+/*
+ * Check if the hash has the key.
+ *
+ * Equivalent to:
+ *
+ *     hash.key?(key)
+ *
+ * @param mrb The mruby state reference.
+ * @param hash The target hash.
+ * @param key The key to check existence.
+ * @return True if the hash has the key
+ */
+MRB_API mrb_bool mrb_hash_key_p(mrb_state *mrb, mrb_value hash, mrb_value key);
 
 /*
  * Check if the hash is empty
@@ -123,7 +137,7 @@ MRB_API mrb_value mrb_check_hash_type(mrb_state *mrb, mrb_value hash);
  * @param self The target hash.
  * @return True if the hash is empty, false otherwise.
  */
-MRB_API mrb_value mrb_hash_empty_p(mrb_state *mrb, mrb_value self);
+MRB_API mrb_bool mrb_hash_empty_p(mrb_state *mrb, mrb_value self);
 
 /*
  * Gets an array of values.
@@ -151,6 +165,26 @@ MRB_API mrb_value mrb_hash_values(mrb_state *mrb, mrb_value hash);
  */
 MRB_API mrb_value mrb_hash_clear(mrb_state *mrb, mrb_value hash);
 
+/*
+ * Copies the hash.
+ *
+ *
+ * @param mrb The mruby state reference.
+ * @param hash The target hash.
+ * @return The copy of the hash
+ */
+MRB_API mrb_value mrb_hash_dup(mrb_state *mrb, mrb_value hash);
+
+/*
+ * Merges two hashes. The first hash will be modified by the
+ * second hash.
+ *
+ * @param mrb The mruby state reference.
+ * @param hash1 The target hash.
+ * @param hash2 Updating hash
+ */
+MRB_API void mrb_hash_merge(mrb_state *mrb, mrb_value hash1, mrb_value hash2);
+
 /* declaration of struct kh_ht */
 /* be careful when you touch the internal */
 typedef struct {
@@ -165,7 +199,6 @@ KHASH_DECLARE(ht, mrb_value, mrb_hash_value, TRUE)
 #define RHASH_TBL(h)          (RHASH(h)->ht)
 #define RHASH_IFNONE(h)       mrb_iv_get(mrb, (h), mrb_intern_lit(mrb, "ifnone"))
 #define RHASH_PROCDEFAULT(h)  RHASH_IFNONE(h)
-MRB_API struct kh_ht * mrb_hash_tbl(mrb_state *mrb, mrb_value hash);
 
 #define MRB_HASH_DEFAULT      1
 #define MRB_HASH_PROC_DEFAULT 2

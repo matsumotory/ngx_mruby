@@ -93,7 +93,7 @@
  */
 MRB_BEGIN_DECL
 
-typedef uint32_t mrb_code;
+typedef uint8_t mrb_code;
 
 /**
  * Required arguments signature type.
@@ -123,9 +123,8 @@ typedef struct {
   mrb_sym mid;
   struct RProc *proc;
   mrb_value *stackent;
-  int nregs;
-  int ridx;
-  int epos;
+  uint16_t ridx;
+  uint16_t epos;
   struct REnv *env;
   mrb_code *pc;                 /* return address */
   mrb_code *err;                /* error position */
@@ -152,10 +151,10 @@ struct mrb_context {
   mrb_callinfo *ci;
   mrb_callinfo *cibase, *ciend;
 
-  mrb_code **rescue;                      /* exception handler stack */
-  int rsize;
+  uint16_t *rescue;                       /* exception handler stack */
+  uint16_t rsize;
   struct RProc **ensure;                  /* ensure handler stack */
-  int esize, eidx;
+  uint16_t esize, eidx;
 
   enum mrb_fiber_state status;
   mrb_bool vmexec;
@@ -386,7 +385,7 @@ MRB_API void mrb_define_class_method(mrb_state *, struct RClass *, const char *,
 MRB_API void mrb_define_singleton_method(mrb_state*, struct RObject*, const char*, mrb_func_t, mrb_aspec);
 
 /**
- *  Defines a module fuction.
+ *  Defines a module function.
  *
  * Example:
  *
@@ -486,9 +485,10 @@ MRB_API void mrb_define_const(mrb_state*, struct RClass*, const char *name, mrb_
  *     }
  * @param [mrb_state*] mrb_state* The mruby state reference.
  * @param [struct RClass*] RClass* A class the method will be undefined from.
- * @param [const char*] constchar* The name of the method to be undefined.
+ * @param [const char] const char* The name of the method to be undefined.
  */
 MRB_API void mrb_undef_method(mrb_state*, struct RClass*, const char*);
+MRB_API void mrb_undef_method_id(mrb_state*, struct RClass*, mrb_sym);
 
 /**
  * Undefine a class method.
@@ -530,7 +530,7 @@ MRB_API void mrb_undef_method(mrb_state*, struct RClass*, const char*);
 MRB_API void mrb_undef_class_method(mrb_state*, struct RClass*, const char*);
 
 /**
- * Initialize a new object instace of c class.
+ * Initialize a new object instance of c class.
  *
  * Example:
  *
@@ -783,7 +783,7 @@ MRB_API struct RClass * mrb_define_module_under(mrb_state *mrb, struct RClass *o
 #define MRB_ARGS_REQ(n)     ((mrb_aspec)((n)&0x1f) << 18)
 
 /**
- * Funtion takes n optional arguments
+ * Function takes n optional arguments
  *
  * @param n
  *      The number of optional arguments.
@@ -791,7 +791,7 @@ MRB_API struct RClass * mrb_define_module_under(mrb_state *mrb, struct RClass *o
 #define MRB_ARGS_OPT(n)     ((mrb_aspec)((n)&0x1f) << 13)
 
 /**
- * Funtion takes n1 mandatory arguments and n2 optional arguments
+ * Function takes n1 mandatory arguments and n2 optional arguments
  *
  * @param n1
  *      The number of required arguments.
@@ -994,8 +994,8 @@ MRB_API mrb_value mrb_str_new_static(mrb_state *mrb, const char *p, size_t len);
 #define mrb_str_new_lit(mrb, lit) mrb_str_new_static(mrb, (lit), mrb_strlen_lit(lit))
 
 #ifdef _WIN32
-char* mrb_utf8_from_locale(const char *p, int len);
-char* mrb_locale_from_utf8(const char *p, int len);
+MRB_API char* mrb_utf8_from_locale(const char *p, int len);
+MRB_API char* mrb_locale_from_utf8(const char *p, int len);
 #define mrb_locale_free(p) free(p)
 #define mrb_utf8_free(p) free(p)
 #else
@@ -1094,9 +1094,6 @@ mrb_gc_arena_restore(mrb_state *mrb, int idx)
 {
   mrb->gc.arena_idx = idx;
 }
-
-MRB_API int mrb_gc_arena_save(mrb_state*);
-MRB_API void mrb_gc_arena_restore(mrb_state*,int);
 
 MRB_API void mrb_garbage_collect(mrb_state*);
 MRB_API void mrb_full_gc(mrb_state*);
@@ -1200,7 +1197,7 @@ typedef enum call_type {
   CALL_TYPE_MAX
 } call_type;
 
-MRB_API void mrb_define_alias(mrb_state *mrb, struct RClass *klass, const char *name1, const char *name2);
+MRB_API void mrb_define_alias(mrb_state *mrb, struct RClass *c, const char *a, const char *b);
 MRB_API const char *mrb_class_name(mrb_state *mrb, struct RClass* klass);
 MRB_API void mrb_define_global_const(mrb_state *mrb, const char *name, mrb_value val);
 
@@ -1238,6 +1235,7 @@ MRB_API mrb_value mrb_fiber_alive_p(mrb_state *mrb, mrb_value fib);
  * @mrbgem mruby-fiber
  */
 #define E_FIBER_ERROR (mrb_exc_get(mrb, "FiberError"))
+MRB_API void mrb_stack_extend(mrb_state*, mrb_int);
 
 /* memory pool implementation */
 typedef struct mrb_pool mrb_pool;

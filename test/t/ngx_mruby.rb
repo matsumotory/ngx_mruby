@@ -534,6 +534,12 @@ t.assert('ngx_mruby - get ssl server name') do
   t.assert_equal "ngx.example.com", res.chomp
 end
 
+t.assert('ngx_mruby - get ssl tls version') do
+  res = `curl -s -k #{base_ssl(58082) + '/tls_version'}`
+
+  t.assert_equal "TLSv1.2", res.chomp
+end
+
 t.assert('ngx_mruby - issue_172', 'location /issue_172') do
   res = HttpRequest.new.get base + '/issue_172/index.html'
   expect_content = 'hello world'.upcase
@@ -659,6 +665,30 @@ if nginx_features.is_async_supported?
   t.assert('ngx_mruby - enable iv', 'location /iv_init_worker') do
     res = HttpRequest.new.get base + '/iv_init_worker'
     t.assert_equal 'true', res["body"]
+  end
+
+  t.assert('ngx_mruby - Nginx::Async::HTTP.new sub request with proxy', 'location /async_http_sub_request_with_proxy_pass') do
+    res = HttpRequest.new.get base + '/async_http_sub_request_with_proxy_pass'
+    t.assert_equal 200, res["code"]
+    t.assert_equal 'proxy test ok', res["body"]
+  end
+
+  t.assert('ngx_mruby - Nginx::Async::HTTP.new "/dst"', 'location /async_http_sub_request') do
+    res = HttpRequest.new.get base + '/async_http_sub_request_with_hash'
+    t.assert_equal 200, res["code"]
+    t.assert_equal '{"query1"=>"foo", "query2"=>"bar"}', res["body"]
+
+    res = HttpRequest.new.get base + '/async_http_sub_request'
+    t.assert_equal 200, res["code"]
+    t.assert_equal '{"query1"=>"foo", "query2"=>"bar"}', res["body"]
+
+    res = HttpRequest.new.get base + '/async_http_sub_request_notfound'
+    t.assert_equal 404, res["code"]
+    t.assert_equal 'global_ngx_mruby', res["header"][-16,16]
+
+    res = HttpRequest.new.get base + '/async_http_sub_request_notfound_ok'
+    t.assert_equal 200, res["code"]
+    t.assert_equal 'ok', res["body"]
   end
 
   t.assert('ngx_mruby - Nginx.Async.sleep with proxy', 'location /sleep_with_proxy') do

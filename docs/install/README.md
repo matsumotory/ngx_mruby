@@ -4,7 +4,6 @@ Please see [example repository](https://github.com/matsumotory/docker-ngx_mruby)
 #### 1. Create Dockerfile
 ```
 FROM matsumotory/ngx-mruby:latest
-MAINTAINER matsumotory
 ```
 #### 2. Create docker directory
 which was included hook files and nginx.conf in same directory as Dockerfile. like [this](https://github.com/matsumoto-r/ngx_mruby/tree/master/docker)
@@ -60,7 +59,7 @@ $ cd ngx_mruby
   - mruby-userdata: https://github.com/matsumoto-r/mruby-userdata
   - mruby-onig-regexp: regexp engine
   - mruby-io: https://github.com/iij/mruby-io
-- Notice: If you want to build the ngx_mruby as dynamic module, you should set `--enable-dynamic-module` flag to `configure`. See [build.sh](https://github.com/kenhys/ngx_mruby/blob/master/build.sh#L30)
+- Notice: If you want to build the ngx_mruby as dynamic module, you should set `--enable-dynamic-module` flag to `configure`. See [build.sh](https://github.com/matsumotory/ngx_mruby/blob/master/build.sh#L30)
 - __We should implement ngx_mruby/mod_mruby extensions as mrbgems, as possible.__
 - __We recommend the contribute to mruby by implementing mrbgems.__
 
@@ -129,7 +128,7 @@ Starting from NGINX 1.9.11, you can also compile this module as a dynamic module
 load_module /path/to/modules/ngx_http_mruby_module.so;
 ```
 
-`build.sh` suppots building as dynamic module by environment value BUILD_DYNAMIC_MODULE.
+`build.sh` supports building as dynamic module by environment value BUILD_DYNAMIC_MODULE.
 
 ```sh
 # Default install

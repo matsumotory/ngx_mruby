@@ -8,8 +8,7 @@
 #define NGX_HTTP_MRUBY_SERVER_H
 
 #include <mruby.h>
-#include <mruby/hash.h>
-#include <mruby/variable.h>
-#include <ngx_http.h>
+
+void ngx_mrb_server_class_init(mrb_state *mrb, struct RClass *class);
 
 #endif // NGX_HTTP_MRUBY_SERVER_H

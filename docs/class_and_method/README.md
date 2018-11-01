@@ -276,16 +276,34 @@ alias of Nginx::SSL.errlogger
 #### Nginx::SSL#local_port
 
 ```nginx
+
+mruby_ssl_handshake_handler_code '
+  ssl = Nginx::SSL.new
+  ssl.certificate = "__NGXDOCROOT__/#{ssl.servername}.crt"
+  ssl.certificate_key = "__NGXDOCROOT__/#{ssl.servername}.key"
+  Userdata.new.ssl_local_port = ssl.local_port
+';
+
 location /local_port {
-     mruby_content_handler_code "Nginx.rputs Nginx::SSL.new.local_port.to_s";
+     mruby_content_handler_code "Nginx.rputs Userdata.new.ssl_local_port.to_s";
 }
 ```
 
-```
-t.assert('ngx_mruby - ssl local port') do
-  res = `curl -k #{base_ssl(58082) + '/local_port'}`
-  t.assert_equal '58082', res
-end
+#### Nginx::SSL#tls_version
+
+```nginx
+mruby_ssl_handshake_handler_code '
+  ssl = Nginx::SSL.new
+  ssl.certificate = "__NGXDOCROOT__/#{ssl.servername}.crt"
+  ssl.certificate_key = "__NGXDOCROOT__/#{ssl.servername}.key"
+  Userdata.new.ssl_tls_version = ssl.tls_version
+';
+
+# The return value is the value of SSL_get_version.
+# refs: https://www.openssl.org/docs/man1.1.1/man3/SSL_get_version.html
+location /tls_version {
+    mruby_content_handler_code "Nginx.rputs Userdata.new.ssl_tls_version.to_s";
+}
 
 ```
 
@@ -375,7 +393,7 @@ Nginx.echo r.args #=> a=1
 #### Nginx::Request#args=
 set string to args
 #### Nginx::Request#var.method_missing
-get nginx user difined variables or [core variables](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#refs-nginx-core-variables), alias [Nginx::Var#method_missing](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#nginxvarmethod_missing)
+get nginx user defined variables or [core variables](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#refs-nginx-core-variables), alias [Nginx::Var#method_missing](https://github.com/matsumotory/ngx_mruby/docs/class_and_method#nginxvarmethod_missing)
 ```ruby
 r = Nginx::Request
 Nginx.echo "$http_host core variable is #{r.var.http_host}"
@@ -874,10 +892,22 @@ http {
 ## Nginx::Async Class
 ### Method
 #### Nginx::Async#sleep
-Do non-blocking sleep. Currenly it supports only rewrite and access phases.
+Do non-blocking sleep. Currently it supports only setcode and rewrite and access phases.
 ```ruby
 # sleep 3000 millisec
 Nginx::Async.sleep 3000
+```
+
+#### Nginx::Async::HTTP#sub_request
+Do non-blocking subrequest. Currently it supports only setcode rewrite and access phases.
+```ruby
+Nginx::Async::HTTP.sub_request "/example", "query1=foo&query2=bar"
+# or supports hash object for usability
+# Nginx::Async::HTTP.sub_request "/example", Nginx::Utils.encode_parameters({query1: "foo", query2: "bar"})
+res = Nginx::Async::HTTP.last_response
+Nginx.rputs res.body
+Nginx.rputs res.headers
+Nginx.rputs res.status
 ```
 
 ## Nginx::Stream class
@@ -902,7 +932,7 @@ stream {
 ```
 ### Nginx::Stream.add_listener
 
-Listen port dynamicaly using Ruby on config phase
+Listen port dynamically using Ruby on config phase
 
 ```ruby
 Nginx::Stream.add_listener({address: "127.0.0.1:12350"})

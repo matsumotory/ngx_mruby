@@ -5,15 +5,10 @@
 */
 
 #include "ngx_http_mruby_filter.h"
-#include "ngx_http_mruby_module.h"
-#include "ngx_http_mruby_request.h"
-#include "ngx_http_mruby_core.h"
 
-#include <mruby.h>
-#include <mruby/class.h>
-#include <mruby/compile.h>
-#include <mruby/data.h>
-#include <mruby/proc.h>
+#include "ngx_http_mruby_core.h"
+#include "ngx_http_mruby_request.h"
+
 #include <mruby/string.h>
 
 static mrb_value ngx_mrb_get_filter_body(mrb_state *mrb, mrb_value self)

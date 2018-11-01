@@ -18,7 +18,7 @@ MRuby.each_target do
         gem_init_calls = gem_func_gems.each_with_object('') do |g, s|
           s << "  GENERATED_TMP_mrb_#{g.funcname}_gem_init(mrb);\n"
         end
-        gem_final_calls = gem_func_gems.each_with_object('') do |g, s|
+        gem_final_calls = gem_func_gems.reverse_each.with_object('') do |g, s|
           s << "  GENERATED_TMP_mrb_#{g.funcname}_gem_final(mrb);\n"
         end
         f.puts %Q[/*]
@@ -53,6 +53,7 @@ MRuby.each_target do
 
   # legal documents
   file "#{build_dir}/LEGAL" => [MRUBY_CONFIG, __FILE__] do |t|
+    FileUtils.mkdir_p File.dirname t.name
     open(t.name, 'w+') do |f|
      f.puts <<LEGAL
 Copyright (c) #{Time.now.year} mruby developers

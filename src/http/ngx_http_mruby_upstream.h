@@ -7,9 +7,20 @@
 #ifndef NGX_HTTP_MRUBY_UPSTREAM_H
 #define NGX_HTTP_MRUBY_UPSTREAM_H
 
+#include <nginx.h>
+#if (nginx_version > 1007999)
+#define NGX_USE_MRUBY_UPSTREAM
+#endif
+
+#ifdef NGX_USE_MRUBY_UPSTREAM
+
 #include <mruby.h>
-#include <mruby/hash.h>
-#include <mruby/variable.h>
+
+void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *class);
+
+#ifdef NGX_HTTP_MRUBY_UPSTREAM_C
+
+#include <ngx_config.h>
 
 /* reference from src/http/modules/ngx_http_upstream_keepalive_module.c */
 
@@ -456,5 +467,8 @@ static char *__ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, v
 
   return NGX_CONF_OK;
 }
+
+#endif // NGX_HTTP_MRUBY_UPSTREAM_C
+#endif // NGX_USE_MRUBY_UPSTREAM
 
 #endif // NGX_HTTP_MRUBY_UPSTREAM_H

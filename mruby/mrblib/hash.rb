@@ -55,10 +55,9 @@ class Hash
   # ISO 15.2.13.4.8
   def delete(key, &block)
     if block && !self.has_key?(key)
-      block.call(key)
-    else
-      self.__delete(key)
+      return block.call(key)
     end
+    self.__delete(key)
   end
 
   ##
@@ -179,10 +178,9 @@ class Hash
   #
   # ISO 15.2.13.4.22
   def merge(other, &block)
-    h = {}
     raise TypeError, "can't convert argument into Hash" unless other.respond_to?(:to_hash)
     other = other.to_hash
-    self.each_key{|k| h[k] = self[k]}
+    h = self.dup
     if block
       other.each_key{|k|
         h[k] = (self.has_key?(k))? block.call(k, self[k], other[k]): other[k]
@@ -318,34 +316,6 @@ class Hash
       end
     }
     h
-  end
-
-  ##
-  #  call-seq:
-  #    hsh.rehash -> hsh
-  #
-  #  Rebuilds the hash based on the current hash values for each key. If
-  #  values of key objects have changed since they were inserted, this
-  #  method will reindex <i>hsh</i>.
-  #
-  #     h = {"AAA" => "b"}
-  #     h.keys[0].chop!
-  #     h          #=> {"AA"=>"b"}
-  #     h["AA"]    #=> nil
-  #     h.rehash   #=> {"AA"=>"b"}
-  #     h["AA"]    #=> "b"
-  #
-  def rehash
-    h = {}
-    self.each{|k,v|
-      h[k] = v
-    }
-    self.replace(h)
-  end
-
-  def __update(h)
-    h.each_key{|k| self[k] = h[k]}
-    self
   end
 end
 

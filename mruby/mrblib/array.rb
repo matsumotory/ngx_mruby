@@ -66,7 +66,7 @@ class Array
   #
   # ISO 15.2.12.5.15
   def initialize(size=0, obj=nil, &block)
-    raise TypeError, "expected Integer for 1st argument" unless size.kind_of? Integer
+    raise TypeError, "expected Integer for 1st argument" unless size.kind_of? Integral
     raise ArgumentError, "negative array size" if size < 0
 
     self.clear
@@ -184,12 +184,6 @@ class Array
     return block.call if ret.nil? && block
     ret
   end
-
-  # internal method to convert multi-value to single value
-  def __svalue
-    return self.first if self.size < 2
-    self
-  end
 end
 
 ##
@@ -203,24 +197,28 @@ class Array
   # left  : the beginning of sort region
   # right : the end of sort region
   def __sort_sub__(left, right, &block)
-    if left < right
-      i = left
-      j = right
-      pivot = self[i + (j - i) / 2]
-      while true
-        while ((block)? block.call(self[i], pivot): (self[i] <=> pivot)) < 0
+    stack = [ [left, right] ]
+    until stack.empty?
+      left, right = stack.pop
+      if left < right
+        i = left
+        j = right
+        pivot = self[i + (j - i) / 2]
+        while true
+          while ((block)? block.call(self[i], pivot): (self[i] <=> pivot)) < 0
+            i += 1
+          end
+          while ((block)? block.call(pivot, self[j]): (pivot <=> self[j])) < 0
+            j -= 1
+          end
+          break if (i >= j)
+          tmp = self[i]; self[i] = self[j]; self[j] = tmp;
           i += 1
-        end
-        while ((block)? block.call(pivot, self[j]): (pivot <=> self[j])) < 0
           j -= 1
         end
-        break if (i >= j)
-        tmp = self[i]; self[i] = self[j]; self[j] = tmp;
-        i += 1
-        j -= 1
+        stack.push [left, i-1]
+        stack.push [j+1, right]
       end
-      __sort_sub__(left, i-1, &block)
-      __sort_sub__(j+1, right, &block)
     end
   end
   #  private :__sort_sub__

@@ -4,20 +4,11 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-#include <ngx_config.h>
-#include <ngx_core.h>
-#include <ngx_stream.h>
-
-#include "mruby.h"
-#include "mruby/array.h"
-#include "mruby/compile.h"
-#include "mruby/data.h"
-#include "mruby/proc.h"
-#include "mruby/string.h"
-#include "mruby/variable.h"
+#include "ngx_stream_mruby_module.h"
 
 #include "ngx_stream_mruby_init.h"
-#include "ngx_stream_mruby_module.h"
+
+#include "mruby/string.h"
 
 #define NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code)                                                                    \
   if (code != NGX_CONF_UNSET_PTR && mrb && (code)->ctx) {                                                              \

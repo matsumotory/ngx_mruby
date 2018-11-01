@@ -116,6 +116,31 @@ class Hash
 
   ##
   # call-seq:
+  #   hsh.compact!    -> hsh
+  #
+  # Removes all nil values from the hash. Returns the hash.
+  # Returns nil if the hash does not contain nil values.
+  #
+  #   h = { a: 1, b: false, c: nil }
+  #   h.compact!     #=> { a: 1, b: false }
+  #
+
+  def compact!
+    keys = self.keys
+    nk = keys.select{|k|
+      self[k] != nil
+    }
+    return nil if (keys.size == nk.size)
+    h = {}
+    nk.each {|k|
+      h[k] = self[k]
+    }
+    h
+    self.replace(h)
+  end
+
+  ##
+  # call-seq:
   #    hsh.compact     -> new_hsh
   #
   # Returns a new hash with the nil values/key pairs removed
@@ -125,9 +150,13 @@ class Hash
   #    h             #=> { a: 1, b: false, c: nil }
   #
   def compact
-    result = self.dup
-    result.compact!
-    result
+    h = {}
+    self.keys.select{|k|
+      self[k] != nil
+    }.each {|k|
+      h[k] = self[k]
+    }
+    h
   end
 
   ##
@@ -432,9 +461,9 @@ class Hash
     return to_enum :transform_keys! unless block
     self.keys.each do |k|
       value = self[k]
-      new_key = block.call(k)
       self.__delete(k)
-      self[new_key] = value
+      k = block.call(k) if block
+      self[k] = value
     end
     self
   end
@@ -457,6 +486,7 @@ class Hash
     end
     hash
   end
+
   ##
   # call-seq:
   #    hsh.transform_values! {|key| block } -> hsh

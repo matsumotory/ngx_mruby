@@ -6,7 +6,7 @@
 - [Output Filter Converting Markdown to HTML](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case#output-filter-convering-markdown-to-html)
 - [File Based Access List](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case#file-based-access-list)
 - [File Server like Dropbox Link](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case#file-server-like-dropbox-link)
-- [Dynamic Image Providor (in Japanese)](http://techhey.hatenablog.com/entry/2014/04/19/162323)
+- [Dynamic Image Provider (in Japanese)](http://techhey.hatenablog.com/entry/2014/04/19/162323)
 - [Dynamic reverse proxy using access information (in Japanese)](http://blog.cloudpack.jp/2014/07/08/ngx-mruby-nginx-script/)
 - [Research ngx_mruby and use output filter (in Russian)](http://habrahabr.ru/post/225313/)
 - [ACME auto ssl using Let's Encrypt](https://github.com/matsumotory/ngx_mruby/blob/master/test/conf/auto-ssl/nginx.conf.client_example)
@@ -148,7 +148,7 @@ html = md.header
 html << body.to_html
 html << md.footer
 
-# create reponse
+# create response
 Nginx.echo html
 ```
 ##### Response (images)
@@ -158,7 +158,7 @@ Access to http://example.com/md.rb
 ![response](https://dl.dropboxusercontent.com/s/fkzsuv94tr541zg/md_test.png)
 ***
 
-## Output Filter Convering Markdown to HTML
+## Output Filter Converting Markdown to HTML
 ``.md`` markdown file convert to html using output filter
 #### Activate mruby-discount when build ngx_mruby
 ```ruby

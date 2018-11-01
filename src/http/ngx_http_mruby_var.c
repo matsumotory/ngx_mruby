@@ -6,8 +6,10 @@
 
 #include "ngx_http_mruby_var.h"
 
-#include "ngx_log.h"
-#include <mruby.h>
+#include "ngx_http_mruby_module.h"
+#include "ngx_http_mruby_request.h"
+
+#include <ngx_log.h>
 #include <mruby/string.h>
 
 /**
