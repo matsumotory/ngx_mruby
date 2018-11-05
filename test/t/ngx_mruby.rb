@@ -697,6 +697,11 @@ if nginx_features.is_async_supported?
     t.assert_equal 'proxy test ok', res["body"]
     t.assert_equal 200, res.code
   end
+
+  t.assert('ngx_mruby - enable iv', 'location /iv_init_worker') do
+    res = HttpRequest.new.get base + '/iv_init_worker'
+    t.assert_equal 'true', res["body"]
+  end
 end
 
 

@@ -63,7 +63,7 @@ module MRuby
           objfile(f.relative_path_from(@dir).to_s.pathmap("#{build_dir}/%X"))
         end
 
-        @test_rbfiles = Dir.glob("#{dir}/test/**/*.rb")
+        @test_rbfiles = Dir.glob("#{dir}/test/**/*.rb").sort
         @test_objs = Dir.glob("#{dir}/test/*.{c,cpp,cxx,cc,m,asm,s,S}").map do |f|
           objfile(f.relative_path_from(dir).to_s.pathmap("#{build_dir}/%X"))
         end
@@ -87,7 +87,7 @@ module MRuby
           fail "#{name || dir} required to set name, license(s) and author(s)"
         end
 
-        build.libmruby << @objs
+        build.libmruby_objs << @objs
 
         instance_eval(&@build_config_initializer) if @build_config_initializer
       end

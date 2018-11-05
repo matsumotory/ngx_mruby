@@ -468,11 +468,11 @@ gen_return(codegen_scope *s, uint8_t op, uint16_t src)
 }
 
 static void
-gen_addsub(codegen_scope *s, uint8_t op, uint16_t dst, uint16_t idx)
+gen_addsub(codegen_scope *s, uint8_t op, uint16_t dst)
 {
   if (no_peephole(s)) {
   normal:
-    genop_2(s, op, dst, idx);
+    genop_1(s, op, dst);
     return;
   }
   else {
@@ -493,10 +493,10 @@ gen_addsub(codegen_scope *s, uint8_t op, uint16_t dst, uint16_t idx)
       if (data.b >= 128) goto normal;
       s->pc = s->lastpc;
       if (op == OP_ADD) {
-        genop_3(s, OP_ADDI, dst, idx, (uint8_t)data.b);
+        genop_2(s, OP_ADDI, dst, (uint8_t)data.b);
       }
       else {
-        genop_3(s, OP_SUBI, dst, idx, (uint8_t)data.b);
+        genop_2(s, OP_SUBI, dst, (uint8_t)data.b);
       }
       break;
     default:
@@ -973,7 +973,7 @@ static void
 gen_call(codegen_scope *s, node *tree, mrb_sym name, int sp, int val, int safe)
 {
   mrb_sym sym = name ? name : nsym(tree->cdr->car);
-  int idx, skip = 0;
+  int skip = 0;
   int n = 0, noop = 0, sendv = 0, blk = 0;
 
   codegen(s, tree->car, VAL); /* receiver */
@@ -982,7 +982,6 @@ gen_call(codegen_scope *s, node *tree, mrb_sym name, int sp, int val, int safe)
     gen_move(s, cursp(), recv, 1);
     skip = genjmp2(s, OP_JMPNIL, cursp(), 0, val);
   }
-  idx = new_sym(s, sym);
   tree = tree->cdr->cdr->car;
   if (tree) {
     n = gen_values(s, tree->car, VAL, sp?1:0);
@@ -1017,33 +1016,35 @@ gen_call(codegen_scope *s, node *tree, mrb_sym name, int sp, int val, int safe)
     const char *symname = mrb_sym2name_len(s->mrb, sym, &symlen);
 
     if (!noop && symlen == 1 && symname[0] == '+' && n == 1)  {
-      gen_addsub(s, OP_ADD, cursp(), idx);
+      gen_addsub(s, OP_ADD, cursp());
     }
     else if (!noop && symlen == 1 && symname[0] == '-' && n == 1)  {
-      gen_addsub(s, OP_SUB, cursp(), idx);
+      gen_addsub(s, OP_SUB, cursp());
     }
     else if (!noop && symlen == 1 && symname[0] == '*' && n == 1)  {
-      genop_2(s, OP_MUL, cursp(), idx);
+      genop_1(s, OP_MUL, cursp());
     }
     else if (!noop && symlen == 1 && symname[0] == '/' && n == 1)  {
-      genop_2(s, OP_DIV, cursp(), idx);
+      genop_1(s, OP_DIV, cursp());
     }
     else if (!noop && symlen == 1 && symname[0] == '<' && n == 1)  {
-      genop_2(s, OP_LT, cursp(), idx);
+      genop_1(s, OP_LT, cursp());
     }
     else if (!noop && symlen == 2 && symname[0] == '<' && symname[1] == '=' && n == 1)  {
-      genop_2(s, OP_LE, cursp(), idx);
+      genop_1(s, OP_LE, cursp());
     }
     else if (!noop && symlen == 1 && symname[0] == '>' && n == 1)  {
-      genop_2(s, OP_GT, cursp(), idx);
+      genop_1(s, OP_GT, cursp());
     }
     else if (!noop && symlen == 2 && symname[0] == '>' && symname[1] == '=' && n == 1)  {
-      genop_2(s, OP_GE, cursp(), idx);
+      genop_1(s, OP_GE, cursp());
     }
     else if (!noop && symlen == 2 && symname[0] == '=' && symname[1] == '=' && n == 1)  {
-      genop_2(s, OP_EQ, cursp(), idx);
+      genop_1(s, OP_EQ, cursp());
     }
     else {
+      int idx = new_sym(s, sym);
+
       if (sendv) {
         genop_2(s, blk ? OP_SENDVB : OP_SENDV, cursp(), idx);
       }
@@ -2023,32 +2024,32 @@ codegen(codegen_scope *s, node *tree, int val)
       push(); pop();
       pop(); pop();
 
-      idx = new_sym(s, sym);
       if (len == 1 && name[0] == '+')  {
-        gen_addsub(s, OP_ADD, cursp(), idx);
+        gen_addsub(s, OP_ADD, cursp());
       }
       else if (len == 1 && name[0] == '-')  {
-        gen_addsub(s, OP_SUB, cursp(), idx);
+        gen_addsub(s, OP_SUB, cursp());
       }
       else if (len == 1 && name[0] == '*')  {
-        genop_2(s, OP_MUL, cursp(), idx);
+        genop_1(s, OP_MUL, cursp());
       }
       else if (len == 1 && name[0] == '/')  {
-        genop_2(s, OP_DIV, cursp(), idx);
+        genop_1(s, OP_DIV, cursp());
       }
       else if (len == 1 && name[0] == '<')  {
-        genop_2(s, OP_LT, cursp(), idx);
+        genop_1(s, OP_LT, cursp());
       }
       else if (len == 2 && name[0] == '<' && name[1] == '=')  {
-        genop_2(s, OP_LE, cursp(), idx);
+        genop_1(s, OP_LE, cursp());
       }
       else if (len == 1 && name[0] == '>')  {
-        genop_2(s, OP_GT, cursp(), idx);
+        genop_1(s, OP_GT, cursp());
       }
       else if (len == 2 && name[0] == '>' && name[1] == '=')  {
-        genop_2(s, OP_GE, cursp(), idx);
+        genop_1(s, OP_GE, cursp());
       }
       else {
+        idx = new_sym(s, sym);
         genop_3(s, OP_SEND, cursp(), idx, 1);
       }
       if (callargs < 0) {
