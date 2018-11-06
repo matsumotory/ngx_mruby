@@ -993,18 +993,20 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
   FILE *mrb_file;
   struct mrb_parser_state *p;
 
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
+  code->ctx = mrbc_context_new(state->mrb);
+#ifdef NGX_MRUBY_IREP_DEBUG
+  code->ctx->dump_result = TRUE;
+#endif
+ 
   if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
     if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
       return NGX_ERROR;
     }
-    NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
-    code->ctx = mrbc_context_new(state->mrb);
     mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
     p = mrb_parse_file(state->mrb, mrb_file, code->ctx);
     fclose(mrb_file);
   } else {
-    NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
-    code->ctx = mrbc_context_new(state->mrb);
     mrbc_filename(state->mrb, code->ctx, "INLINE CODE");
     p = mrb_parse_string(state->mrb, (char *)code->code.string, code->ctx);
   }
@@ -1018,6 +1020,12 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
   if (code->proc == NULL) {
     return NGX_ERROR;
   }
+
+#ifdef NGX_MRUBY_IREP_DEBUG
+  /* mrb_codedump_all() is not declared in mruby headers. So just follows the mruby way. See mruby/src/load.c. */
+  void mrb_codedump_all(mrb_state*, struct RProc*);
+  mrb_codedump_all(state->mrb, code->proc);
+#endif
 
   if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
     ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: compile info: code->code.file=(%s) code->cache=(%d)",
