@@ -988,8 +988,6 @@ static ngx_int_t ngx_http_mruby_shared_state_init(ngx_mrb_state_t *state)
   return NGX_OK;
 }
 
-#define NGX_MRUBY_IREP_DEBUG
-
 static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
   FILE *mrb_file;
