@@ -23,5 +23,11 @@ TODO: more specific
 
 ## Updating ngx_devel_kit
 
-TODO: To be written
+If you want to update [in-tree ngx_devel_kit](../dependence/ngx_devel_kit) to latest version, you can use [update-devkit-subtree](../update-devkit-subtree) script. It adds the ngx_devel_kit upstream repo as dep-ngx_devel_kit and pull all changes to the current branch.
 
+```
+% git checkout -b BRANCH
+% update-devkit-subtree
+```
+
+If you want to update to a specific commit, you should use 'git subtree pull'.
