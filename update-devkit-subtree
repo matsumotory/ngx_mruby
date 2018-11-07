@@ -1,10 +1,9 @@
 #!/bin/sh
 
-#  git remote add dep-mruby https://github.com/mruby/mruby.git
-
 REMOTE_REPO_NAME=dep-ngx_devel_kit
 REMOTE_REPO_URL=https://github.com/simplresty/ngx_devel_kit.git
 SUBTREE_DIR=dependence/ngx_devel_kit
+REF=master
 
 git remote | grep ${REMOTE_REPO_NAME} > /dev/null
 if [ $? -ne 0 ]; then
@@ -19,7 +18,16 @@ if [ $? -ne 0 ]; then
     exit 1
   fi
 fi
+if [ $# -eq 1 ]; then
+  if [ $1 = "-h" -o $1 = "--help" ]; then
+    echo "Usage: `basename $0` [ref]"
+    echo "       'ref' can be a SHA-1 hash, tag or branch. The default ref is 'master'."
+    exit 0
+  else
+    REF=$1
+  fi
+fi
 
-git subtree pull --prefix=${SUBTREE_DIR} --squash ${REMOTE_REPO_NAME}  master
+git subtree pull --prefix=${SUBTREE_DIR} --squash ${REMOTE_REPO_NAME} ${REF}
 
 exit 0
