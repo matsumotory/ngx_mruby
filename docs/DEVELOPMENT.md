@@ -17,9 +17,11 @@ If you want to update [in-tree mruby](../mruby) to latest version, you can use [
 % update-mruby-subtree
 ```
 
-If you want to update to a specific commit, you should use 'git subtree pull'.
+If you want to update to a specific commit, you can specify a ref.
 
-TODO: more specific
+```
+% update-mruby-subtree REF
+```
 
 ## Updating ngx_devel_kit
 
@@ -30,4 +32,8 @@ If you want to update [in-tree ngx_devel_kit](../dependence/ngx_devel_kit) to la
 % update-devkit-subtree
 ```
 
-If you want to update to a specific commit, you should use 'git subtree pull'.
+If you want to update to a specific commit, you can specify a ref.
+
+```
+% update-devkit-subtree REF
+```
