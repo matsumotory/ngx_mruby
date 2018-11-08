@@ -34,17 +34,27 @@ $ curl http://127.0.0.1/mruby-hello
 server ip: 172.17.0.192: hello ngx_mruby world.
 ```
 
-## Install
-### 1. Download
+## Installing from source code
+
+### 1. Downloading source code from github.com
 
 ```bash
 $ git clone git://github.com/matsumotory/ngx_mruby.git
-$ cd ngx_mruby
 ```
+
+If you want to build a specific version of ngx_mruby, please check out the version.
+
+```bash
+$ cd ngx_mruby
+$ git checkout v2.1.2
+```
+
+### 2. Configure mruby module
 
 - if you want __more features__, you can get [mrbgems](https://github.com/mruby/mruby/wiki/Related-Projects) and write to [build_config.rb](https://github.com/matsumotory/ngx_mruby/blob/master/build_config.rb)
 - for example, use mruby-io and implement [file base access check like .htaccess](https://gist.github.com/matsumotory/7150832).
 - default mrbgems
+  XXX do we really want to have the list here? I don't think we can maintain the list.
   - gembox: mruby/mruby default mrbgems, mruby-randoma, mruby-env, mruby-print...
   - mruby-process: Process ::fork, ::kill, ::pid, ::ppid, ::waitpid...
   - mruby-pack: pack, unpack...
@@ -60,10 +70,12 @@ $ cd ngx_mruby
   - mruby-onig-regexp: regexp engine
   - mruby-io: https://github.com/iij/mruby-io
 - Notice: If you want to build the ngx_mruby as dynamic module, you should set `--enable-dynamic-module` flag to `configure`. See [build.sh](https://github.com/matsumotory/ngx_mruby/blob/master/build.sh#L30)
+  XXX not related with mrbgems. so must move to somewhere.
 - __We should implement ngx_mruby/mod_mruby extensions as mrbgems, as possible.__
 - __We recommend the contribute to mruby by implementing mrbgems.__
+  XXX for developers, not for users. must move to DEVELOPMENT.md
 
-### 2. Build 
+### 2. Building a binary
 ##### Using build.sh
 ```bash
 # Default install
