@@ -6,7 +6,7 @@ Please see [example repository](https://github.com/matsumotory/docker-ngx_mruby)
 FROM matsumotory/ngx-mruby:latest
 ```
 #### 2. Create docker directory
-which was included hook files and nginx.conf in same directory as Dockerfile. like [this](https://github.com/matsumoto-r/ngx_mruby/tree/master/docker)
+which was included hook files and nginx.conf in same directory as Dockerfile. like [this](https://github.com/matsumotory/ngx_mruby/tree/master/docker)
 ```
 $ ls -lR Dockerfile 
 -rw-rw-r-- 1 matsumotory matsumotory 1652 Feb 13 23:03 Dockerfile
@@ -38,12 +38,12 @@ server ip: 172.17.0.192: hello ngx_mruby world.
 ### 1. Download
 
 ```bash
-$ git clone git://github.com/matsumoto-r/ngx_mruby.git
+$ git clone git://github.com/matsumotory/ngx_mruby.git
 $ cd ngx_mruby
 ```
 
-- if you want __more features__, you can get [mrbgems](https://github.com/mruby/mruby/wiki/Related-Projects) and write to [build_config.rb](https://github.com/matsumoto-r/ngx_mruby/blob/master/build_config.rb)
-- for example, use mruby-io and implement [file base access check like .htaccess](https://gist.github.com/matsumoto-r/7150832).
+- if you want __more features__, you can get [mrbgems](https://github.com/mruby/mruby/wiki/Related-Projects) and write to [build_config.rb](https://github.com/matsumotory/ngx_mruby/blob/master/build_config.rb)
+- for example, use mruby-io and implement [file base access check like .htaccess](https://gist.github.com/matsumotory/7150832).
 - default mrbgems
   - gembox: mruby/mruby default mrbgems, mruby-randoma, mruby-env, mruby-print...
   - mruby-process: Process ::fork, ::kill, ::pid, ::ppid, ::waitpid...
@@ -56,7 +56,7 @@ $ cd ngx_mruby
   - mruby-vedis: Vedis#set, get, [], []=...
   - mruby-memcached: Memcached#set, get, [], []=...
   - mruby-sleep: sleep, usleep...
-  - mruby-userdata: https://github.com/matsumoto-r/mruby-userdata
+  - mruby-userdata: https://github.com/matsumotory/mruby-userdata
   - mruby-onig-regexp: regexp engine
   - mruby-io: https://github.com/iij/mruby-io
 - Notice: If you want to build the ngx_mruby as dynamic module, you should set `--enable-dynamic-module` flag to `configure`. See [build.sh](https://github.com/matsumotory/ngx_mruby/blob/master/build.sh#L30)
