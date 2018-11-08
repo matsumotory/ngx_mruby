@@ -2,6 +2,13 @@
 
 This is a collection of random tips to help ngx_mruby developers.
 
+## Format C source code
+
+```
+% cd ngx_mruby
+% apply-clang-format
+```
+
 ## Adding newer version nginx support
 
 Edit [nginx_version](../nginx_version) and [.travis.yml](../.travis.yml).
