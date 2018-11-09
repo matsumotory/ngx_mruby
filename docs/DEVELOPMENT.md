@@ -4,6 +4,8 @@ This is a collection of random tips to help ngx_mruby developers.
 
 ## Format C source code
 
+Run apply-clang-format script.
+
 ```
 $ cd ngx_mruby
 $ apply-clang-format
@@ -12,6 +14,7 @@ $ apply-clang-format
 ## Adding newer version nginx support
 
 Edit [nginx_version](../nginx_version) and [.travis.yml](../.travis.yml).
+See https://github.com/matsumotory/ngx_mruby/commit/02ddb38b68702d9abe8fb0a8c172ee1d80ad2b2d for example.
 
 TODO: retirement policy
 
