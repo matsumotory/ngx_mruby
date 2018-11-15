@@ -2,6 +2,34 @@
 
 This is a collection of random tips to help ngx_mruby developers.
 
+## Recommended development environment
+
+We use vagrant for development of ngx_mruby.
+
+You may want to develop in same development environment.
+
+- setup development environment
+
+```
+cd ngx_mruby
+vagrant up       # run provisioner automatically
+vagrant ssh
+```
+
+- in development environment using ubuntu 16.04
+
+```
+cd ngx_mruby/
+sh test.sh
+```
+
+- code formatting
+
+```
+cd ngx_mruby/
+sh apply-clang-format
+```
+
 ## Adding newer version nginx support
 
 Edit [nginx_version](../nginx_version) and [.travis.yml](../.travis.yml).
