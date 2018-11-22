@@ -283,7 +283,7 @@ Phase:   NGX_HTTP_REWRITE_PHASE
 ```
 
 The rewrite handlers are mainly used for URL rewrite.
-'mruby_server_rewrite_handler' and 'mruby_server_rewrite_handler_code' are used in a server block (and outdide a location).
+'mruby_server_rewrite_handler' and 'mruby_server_rewrite_handler_code' are used in a server block (and outside a location).
 'mruby_rewrite_handler' and 'mruby_rewrite_handler_code' are used in a location block.
 
 TODO: I'm not sure if the above contexts are correct.
@@ -304,7 +304,7 @@ Context: server, location
 Phase:   NGX_HTTP_ACCESS_PHASE
 ```
 
-'mruby_access_handler' and 'mruby_access_handler_code' are basically for authetication and authorization.
+'mruby_access_handler' and 'mruby_access_handler_code' are basically for authentication and authorization.
 
 ## mruby_content_handler and mruby_content_handler_code
 
@@ -322,7 +322,7 @@ Context: server, location
 Phase:   NGX_HTTP_CONTENT_PHASE
 ```
 
-mruby_content_handler and mruby_content_handler_code are normaly used for generating a HTTP response.
+mruby_content_handler and mruby_content_handler_code are normally used for generating a HTTP response.
 
 ## mruby_log_handler and mruby_log_handler_code
 
