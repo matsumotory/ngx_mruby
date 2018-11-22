@@ -2,17 +2,17 @@
 
 ngx_mruby enables you to run mruby scripts on nginx. For example, you can implement:
 
-* [your own auth mechanism](../use_case#file-based-access-list) like nginx's [auth_basic](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/)
+* [your own auth mechanism](../use_case#file-based-access-list) like nginx [auth_basic](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/)
 * [reverse proxy with your own backend selection algorithm](../use_case#reverse-proxy)
 * [content handler that returns any HTTP response](../use_case#hello-world)
 
-See the [Use Cases](../use_case) page for more examples.
-The scripts can be invoked at any of nginx HTTP phases. See nginx's [Phases doc](http://nginx.org/en/docs/dev/development_guide.html#http_phases) for more details of the phases.
+See [use cases](../use_case) page for more examples.
+The scripts can be invoked at any of nginx HTTP phases. See [nginx phases doc](http://nginx.org/en/docs/dev/development_guide.html#http_phases) for more details of the phases.
 
 ngx_mruby provides 2 modules. One is HTTP module for HTTP, the other is Stream module for TCP/UDP stream.
 See [HTTP module directives](#http-module-directives) and [Stream module directive](#stream-module-directives) section for more details.
 
-Here is an example of a content handler for HTTP.
+Here is a simple example of a content handler for HTTP.
 
 #### nginx.conf
 ```nginx
@@ -34,7 +34,7 @@ Hello World
 'mruby_content_handler' is a directive to specify a mruby script file that is invoked at NGX_HTTP_CONTENT_PHASE to generate the response.
 You will get 'Hello World' as a HTTP response body if you access '/hello' endpoint.
 
-'Nginx.echo' is a method to creates a response body. ngx_mruby provides classes for accessing or manipulating nginx internal data structures. See [Class for ngx_mruby](../class_and_method) for more information.
+'Nginx.echo' is a method to creates a response body. ngx_mruby provides classes for accessing or manipulating nginx internal data structures. See [classes for ngx_mruby](../class_and_method) for more information.
 
 ## Caching compile code
 
@@ -63,7 +63,7 @@ location /hello {
 
 ## Nginx variables
 
-You can set nginx variable by using a mruby script (Note: The script is invoked at NGX_HTTP_SERVER_REWRITE_PHASE or NGX_HTTP_REWRITE_PHASE).
+You can set nginx variable by a mruby script.
 The following example set a value returned from 'proxy.rb' to the variable '$backend'.
 
 #### nginx.conf
@@ -141,7 +141,7 @@ location ~ \.rb$ {
 * [mruby_output_body_filter, mruby_output_body_filter_code, mruby_output_header_filter and mruby_output_header_filter_code](#mruby_output_body_filter-mruby_output_body_filter_code-mruby_output_header_filter-and-mruby_output_header_filter_code)
 * [ruby_enable_read_request_body](#mruby_enable_read_request_body)
 
-TODO
+*TODO*
 
 * Add missing directives
   * mruby_server_context_handler_code
@@ -467,7 +467,7 @@ stream {
   }
 ```
 
-TODO
+*TODO*
 
 * Add descriptions to the above examples
 * Add directive references like HTTP module
