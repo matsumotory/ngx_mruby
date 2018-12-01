@@ -148,6 +148,7 @@ ngx_stream_mruby_ctx_t *ngx_stream_mrb_get_module_ctx(mrb_state *mrb, ngx_stream
                       __FUNCTION__, __LINE__);
         return NULL;
       }
+      ctx->cleanup = NULL;
     }
     ngx_stream_set_ctx(s, ctx, ngx_stream_mruby_module);
   }
