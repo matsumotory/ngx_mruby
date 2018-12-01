@@ -1,7 +1,7 @@
 /*
 // ngx_stream_mruby_core.c - ngx_mruby mruby module
 //
-// See Copyright Notice in ngx_http_mruby_module.c
+// See Copyright Notice in ngx_stream_mruby_module.c
 */
 
 #include "ngx_stream_mruby_core.h"
@@ -10,7 +10,7 @@
 
 #include <mruby/hash.h>
 #include <mruby/string.h>
-
+ngx_module_t ngx_stream_mruby_module;
 static mrb_value ngx_stream_mrb_errlogger(mrb_state *mrb, mrb_value self)
 {
   mrb_value msg;
@@ -134,6 +134,25 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
   return mrb_true_value();
 }
 
+ngx_stream_mruby_ctx_t *ngx_stream_mrb_get_module_ctx(mrb_state *mrb, ngx_stream_session_t *s)
+{
+  ngx_stream_mruby_ctx_t *ctx;
+  ctx = ngx_stream_get_module_ctx(s, ngx_stream_mruby_module);
+  if (ctx == NULL) {
+    if ((ctx = ngx_pcalloc(s->connection->pool, sizeof(*ctx))) == NULL) {
+      if (mrb != NULL) {
+        mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate context");
+      } else {
+        ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                      "failed to allocate memory from r->pool(mrb_state is a nonexistent directive) %s:%d",
+                      __FUNCTION__, __LINE__);
+        return NULL;
+      }
+    }
+    ngx_stream_set_ctx(s, ctx, ngx_stream_mruby_module);
+  }
+  return ctx;
+}
 void ngx_stream_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
 {
   mrb_define_const(mrb, class, "OK", mrb_fixnum_value(NGX_OK));
