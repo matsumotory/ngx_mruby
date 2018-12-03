@@ -2,15 +2,6 @@
 # ngx_mruby test
 #
 
-# Temporary solution for https://github.com/iij/mruby-io/issues/75
-begin
-  `/bin/true`
-rescue NotImplementedError => e
-  module Kernel
-    def `(c); IO.popen(c) { |io| io.read }; end
-  end
-end
-
 def http_host(port = 58080)
   "127.0.0.1:#{port}"
 end

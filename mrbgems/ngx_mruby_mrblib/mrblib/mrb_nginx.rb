@@ -8,8 +8,12 @@ class Nginx
       Nginx::Server.new.document_root
     end
 
+    def read_body
+      # NOP. Just for backward compatibility.
+      Nginx::OK
+    end
+
     def body
-      self.read_body
       self.get_body
     end
 
