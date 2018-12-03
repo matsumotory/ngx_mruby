@@ -115,20 +115,6 @@ NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_HEADERS_HASH(out);
 NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(content_type, r->headers_out.content_type);
 NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(content_type, r->headers_out.content_type);
 
-/* Methods that are no longer needed via issue-268 */
-static mrb_value ngx_mrb_read_request_body(mrb_state *mrb, mrb_value self)
-{
-  ngx_http_request_t *r = ngx_mrb_get_request();
-
-  if (r->method != NGX_HTTP_POST && r->method != NGX_HTTP_PUT) {
-    mrb_raise(mrb, E_RUNTIME_ERROR,
-              "ngx_mrb_read_request_body can't read"
-              " when r->method is neither POST nor PUT");
-  }
-
-  return self;
-}
-
 static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
 {
   mrb_value v = ngx_mrb_get_request_var(mrb, self);
@@ -602,7 +588,6 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
 
   class_request = mrb_define_class_under(mrb, class, "Request", mrb->object_class);
   mrb_define_method(mrb, class_request, "get_body", ngx_mrb_get_request_body, MRB_ARGS_NONE());
-  mrb_define_method(mrb, class_request, "read_body", ngx_mrb_read_request_body, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "content_type=", ngx_mrb_set_content_type, MRB_ARGS_ANY());
   mrb_define_method(mrb, class_request, "content_type", ngx_mrb_get_content_type, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "request_line", ngx_mrb_get_request_request_line, MRB_ARGS_NONE());
