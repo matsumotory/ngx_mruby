@@ -1243,7 +1243,7 @@ n = u.keepalive_cache
 
 ### Nginx::Upstream#keepalive_cache=(integer)
 
-Sets the keepalive cahce of the upstream.
+Sets the keepalive cache of the upstream.
 
 ```
 u = Nginx::Upstream.new "YOUR_UPSTREAM_NAME"
@@ -1303,7 +1303,7 @@ Nginx.rputs res.status                                     #=> 200
 
 You can pass a hash instead of the string.
 
-FIXME: @pyama do we really need Utils.encode_parameters? It is called in sub_request(). 
+TODO: do we really need Utils.encode_parameters? It is called in sub_request().
 Also is the following comment in test/conf/nginx.conf still true?
 "# BUG?: using Nginx::Utils.encode_parameters is sometimes missing call method for fiber_proc"
 
