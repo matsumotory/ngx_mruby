@@ -8,6 +8,8 @@ You can use these classes and methods in handlers like `mruby_content_handler_co
 Available APIs depend on your build configuration.
 See [Configuring mrbgems](../install#2-configuring-mrbgems) and [Build options](../install#build-options) for the build configuration.
 
+TODO: Sort. I don't think alphabetical order is easy to read.
+
 ## ngx_mruby HTTP module
 
 The ngx_mruby HTTP module is a nginx module to extend the HTTP server by mruby and the core of ngx_mruby.
@@ -49,7 +51,10 @@ The auto-ssl mrbgem is an optional bundled mrbgem to support
 protocol client. You can easily get SSL certificates from [Let’s Encrypt](https://letsencrypt.org/).
 
 It is still in early development phase.
-See script files in [mrbgems/auto-ssl/mrblib](https://github.com/matsumotory/ngx_mruby/tree/master/mrbgems/auto-ssl/mrblib).
+See script files in [mrbgems/auto-ssl/mrblib](https://github.com/matsumotory/ngx_mruby/tree/master/mrbgems/auto-ssl/mrblib)
+for APIs.
+
+# Add classes and methods reference.
 
 ## built-in mrbgems
 
@@ -430,8 +435,8 @@ Returns the port number used for the connection.
 
 mruby_ssl_handshake_handler_code '
   ssl = Nginx::SSL.new
-  ssl.certificate = "__NGXDOCROOT__/#{ssl.servername}.crt"
-  ssl.certificate_key = "__NGXDOCROOT__/#{ssl.servername}.key"
+  ssl.certificate = "/etc/ssl/#{ssl.servername}.crt"
+  ssl.certificate_key = "/etc/ssl/#{ssl.servername}.key"
   Userdata.new.ssl_local_port = ssl.local_port
 ';
 
@@ -448,8 +453,8 @@ This is a wrapper for SSL_get_version(). See [SSL_get_version(3)](https://www.op
 ```nginx
 mruby_ssl_handshake_handler_code '
   ssl = Nginx::SSL.new
-  ssl.certificate = "__NGXDOCROOT__/#{ssl.servername}.crt"
-  ssl.certificate_key = "__NGXDOCROOT__/#{ssl.servername}.key"
+  ssl.certificate = "/etc/ssl/#{ssl.servername}.crt"
+  ssl.certificate_key = "/etc/ssl/#{ssl.servername}.key"
   Userdata.new.ssl_tls_version = ssl.tls_version
 ';
 
@@ -752,7 +757,7 @@ location /foo {
     req = Nginx::Request.new
     body = req.get_body                       # Get the body
     Nginx.log Nginx::LOG_ERR, "body:#{body}"
-    Userdata.new.req_body = body              # Set the body to Userdata to use it in the content handler
+    Userdata.new.req_body = body              # Set the body to Userdata used in the content handler
   ';
   mruby_content_handler_code '
     Nginx.rputs Userdata.new.req_body
@@ -944,7 +949,7 @@ You can get or set the variables via Var class.
 See [Embedded Variables](http://nginx.org/en/docs/http/ngx_http_core_module.html#variables) for 
 variables supported by the ngx_http_core_module.
 
-You can use Var instance to access a nginx variable as below.
+You can use Var instance as below.
 
 ```ruby
 v = Nginx::Var.new
@@ -953,55 +958,23 @@ v.http_host = "192.168.0.1"
 Nginx.echo "$http_host is overridden to #{v.http_host}"
 ```
 
-You can use your own variable too.
+Also you can use your own variable.
 
-__Notice__: You must use `set` or `mruby_set_code` to define the variable within the accessible context in nginx.conf. You can *NOT* add a new variable from mruby code.
-
-XXX
+__Notice__: You must use `set` or `mruby_set_code` directive to define the variable within the accessible context in nginx.conf. You can *NOT* add a new variable from mruby code.
 
 ```
 location /foo {
-  set $backend api.example.com;
-  mruby_access_handler_code '
+  set $backend_user = "foo"
+  mruby_set_code $auth '
     r = Nginx::Request.new
-    r.var.backend = "sorry.example.com" if backend_is_down
+    backend_user = r.var.backend_user
+    backend_pass = lookup_pass_for(user)
+    'Basic ' + Base64.encode(backend_user + ':' + backend_pass)
   ';
-  proxy_pass  http://$backend;
+  proxy_set_header Authorization $auth;
+  proxy_pass  http://backend.example.com;
 }
 ```
-
-```nginx
-location /foo {
-  mruby_set_code $backend '
-    backends = [
-      "127.0.0.1:58081",
-      "test2.example.com",
-      "test3.example.com",
-    ]
-    backends[rand(backends.length)]
-  ';
-  proxy_pass  http://$backend;
-}
-```
-
-          mruby_content_handler_code '
-            r = Nginx::Request.new
-            Nginx.echo r.var.yyamano
-            Nginx.echo r.var.zoo
-            r.var.set("yyamano", "yyamano")
-            Nginx.echo r.var.yyamano
-            r.var.yyamano =  "NOT yyamano"
-            Nginx.echo r.var.yyamano
-            r.var.zoo = "zoo"
-            Nginx.echo r.var.zoo
-            r.var.set("zoo", "NOT zoo")
-            Nginx.echo r.var.zoo
-            Nginx.return Nginx::HTTP_OK
-          ';
-        }
-
-
-
 
 ## Instance Methods
 
@@ -1151,70 +1124,56 @@ It doesn't work in other handlers like `mruby_content_handler_code`.
 
 __Notice__: You can *NOT* use `Nginx.rputs` and `Nginx.echo` in the output body handlers.
 
-## Example
+Here is an example how it works.
 
 ```nginx
-location /issue_172 {
-  # or mruby_output_header_filter /path/to/code.rb
+location /foo {
+  return 200 hello;
+}
+
+location /bar {
   mruby_output_header_filter_code '
-    Nginx::Request.new.headers_out["x-add-new-header"] = "new_header"
+    Nginx::Request.new.headers_out["X-Filter"] = "on"
   ';
-
-  # or mruby_output_body_filter /path/to/code.rb
   mruby_output_body_filter_code '
-     f = Nginx::Filter.new
-     response = f.body
-     f.body = (response + " world").upcase
+    f = Nginx::Filter.new
+    f.body = f.body.upcase
   ';
-}
-
-# cat test/html/issue_172_2/index.html 
-# hello
-
-location /issue_172_2 {
-  root   html;
-  index  index.html index.htm;
-  mruby_output_body_filter_code '
-     Nginx::Request.new.headers_out["hoge"] = "fuga"
-     f = Nginx::Filter.new
-     response = f.body
-     f.body = (response + " world").upcase
-  ';
+  return 200 hello;
 }
 ```
 
-- test
-
-```
-t.assert('ngx_mruby - issue_172_2', 'location /issue_172_2') do
-  res = HttpRequest.new.get base + '/issue_172_2/'
-  expect_content = 'hello world'.upcase
-  t.assert_equal expect_content, res["body"]
-  t.assert_equal expect_content.length, res["content-length"].to_i
-end
-```
-
-index.html
-```
-hello
-```
-Request to index.html
 ```bash
-$ curl http://127.0.0.1/index.html
+$ curl -v http://127.0.0.1:59090/foo
+
+[snip]
+
+< HTTP/1.1 200 OK
+< Server: nginx/1.15.7
+< Date: Wed, 05 Dec 2018 06:27:19 GMT
+< Content-Type: text/plain
+< Content-Length: 5
+< Connection: keep-alive
+< 
+* Connection #0 to host 127.0.0.1 left intact
 hello
-```
-output filter by ngx_mruby
-
-```ruby
-f = Nginx::Filter.new
-
-response = f.body
-f.body = (response + " world").upcase 
 ```
 
 ```bash
-$ curl http://127.0.0.1/index.html
-HELLO WORLD
+$ curl -v http://127.0.0.1:59090/bar
+
+[snip]
+
+< HTTP/1.1 200 OK
+< Server: nginx/1.15.7
+< Date: Wed, 05 Dec 2018 06:27:24 GMT
+< Content-Type: text/plain
+< Content-Length: 5
+< Connection: keep-alive
+< X-Filter: on
+< 
+* Connection #0 to host 127.0.0.1 left intact
+HELLO
 ```
 
 ## Instance Methods
@@ -1234,9 +1193,8 @@ Sets the string to the response body
 
 ```ruby
 f = Nginx::Filter.new
-f.body = f.body
+f.body = "The original body is removed"
 ```
-XXX
 
 ### Nginx::Filter#output
 
@@ -1244,57 +1202,72 @@ Alias for `Nginx::Filter#body=`.
 
 # Nginx::Upstream Class
 
-## Instance Methods
-
-### Nginx::Upstream#new(string) -> upstream
+You can access `upstream` configuration via Nginx::Upstream. Here is an example.
 
 ```nginx
 http {
-    # defined upstream config for mruby
-    upstream mruby_upstream {
+    upstream my_upstream {
       server 127.0.0.1:80;
-      mruby_upstream_keepalive 16;
     }
     server {
-        location /upstream-keepalive {
-          # update server config of mruby_upstream config
+        location /foo {
           mruby_rewrite_handler_code '
-            u = Nginx::Upstream.new "mruby_upstream"
-            u.server = "127.0.0.1:58081"
-            Nginx.errlogger Nginx::LOG_NOTICE, "front: keepalive_cache: #{u.keepalive_cache}"
-            Nginx.errlogger Nginx::LOG_NOTICE, "front: #{u.hostname}: #{u.server}"
+            u = Nginx::Upstream.new "my_upstream"
+            u.server = "127.0.0.1:58081"          # Change 'server' to 127.0.0.1:58081 from 127.0.0.1:80
             Nginx.return Nginx::DECLINED
           ';
-
-          # proxy to mruby_upstream which was update via mruby
-          proxy_pass http://mruby_upstream/keepalive;
-
-          # connect to backend with keepalive
-          proxy_http_version 1.1;
-          proxy_set_header Connection "";
-          proxy_send_timeout 2s;
-          proxy_read_timeout 2s;
-          proxy_connect_timeout 2s;
+          proxy_pass http://my_upstream;
         }
     }
 }
 ```
 
+## Instance Methods
+
+### Nginx::Upstream#new(string) -> upstream
+
+Creates and returns an Upstream instance.
+
+```ruby
+u = Nginx::Upstream.new "YOUR_UPSTREAM_NAME"
+```
+
 ### Nginx::Upstream#keepalive_cache -> integer
 
-XXX
+Returns the keepalive cache of the upstream.
+
+```
+u = Nginx::Upstream.new "YOUR_UPSTREAM_NAME"
+n = u.keepalive_cache
+```
 
 ### Nginx::Upstream#keepalive_cache=(integer)
 
-XXX
+Sets the keepalive cahce of the upstream.
+
+```
+u = Nginx::Upstream.new "YOUR_UPSTREAM_NAME"
+u.keepalive_cache = 0
+```
 
 ### Nginx::Upstream#server -> string
 
-XXX
+Returns the server of the upstream.
+
+```
+u = Nginx::Upstream.new "YOUR_UPSTREAM_NAME"
+Nginx.echo u.server                           #=> 127.0.0.1:80
+```
 
 ### Nginx::Upstream#server=(string)
 
-XXX
+Sets the string to the server of the upstream.
+
+```
+u = Nginx::Upstream.new "YOUR_UPSTREAM_NAME"
+s = u.server                                  #=> 127.0.0.1:80
+u.server = "127.0.0.1:8080"                   #=> 127.0.0.1:8080
+```
 
 # Nginx::Async Class
 
@@ -1323,9 +1296,9 @@ Nginx::Async::HTTP.sub_request "/example", "q1=foo&q2=bar" # Send a sub request 
 
 res = Nginx::Async::HTTP.last_response                     # Get the response of the sub request
 
-Nginx.rputs res.body                                       # "hello world"
-Nginx.rputs res.headers                                    # {"Date" => "Thu, 29 Nov 2018 07:55:22 GMT", ...}
-Nginx.rputs res.status                                     # 200
+Nginx.rputs res.body                                       #=> "hello world"
+Nginx.rputs res.headers                                    #=> {"Date" => "Thu, 29 Nov 2018 07:55:22 GMT", ...}
+Nginx.rputs res.status                                     #=> 200
 ```
 
 You can pass a hash instead of the string.
@@ -1405,6 +1378,8 @@ run MyApp.new
 
 # Nginx::Stream class
 
+TODO: cleanup and add descriptions.
+
 ## example
 
 ```ruby
@@ -1425,7 +1400,7 @@ stream {
 }
 ```
 
-## XXX Methods
+## Class Methods
 
 ### Nginx::Stream.add_listener
 
@@ -1436,11 +1411,9 @@ Nginx::Stream.add_listener({address: "127.0.0.1:12350"})
 Nginx::Stream.add_listener({address: "12351"})
 ```
 
-See [Nginx::Server#add_listener()] XXX for an example to create multiple listeners
+See [Nginx::Server#add_listener()](#nginxserveradd_listenerhash) for an example to create multiple listeners
 
 ### Nginx::Stream.errlogger(log_level, string)
-
-XXX
 
 ```ruby
 Nginx::Stream.errlogger Nginx::Stream::LOG_NOTICE, "logging something"
@@ -1454,7 +1427,6 @@ Alias for `Nginx::Stream.errlogger`.
 
 Returns the module name `ngx_mruby-stream-module`.
 
-        Nginx::Stream::Connection.stream_status = Nginx::Stream::ABORT
 ```ruby
 Nginx::Stream.module_name #=> "ngx_mruby-stream-module"
 ```
