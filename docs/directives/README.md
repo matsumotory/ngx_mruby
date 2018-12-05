@@ -140,6 +140,7 @@ location ~ \.rb$ {
 * [mruby_set and mruby_set_code](#mruby_set-and-mruby_set_code)
 * [mruby_output_body_filter, mruby_output_body_filter_code, mruby_output_header_filter and mruby_output_header_filter_code](#mruby_output_body_filter-mruby_output_body_filter_code-mruby_output_header_filter-and-mruby_output_header_filter_code)
 * [ruby_enable_read_request_body](#mruby_enable_read_request_body)
+* [mruby_upstream_keepalive](#mruby_upstream_keepalive)
 
 *TODO*
 
@@ -405,6 +406,20 @@ When set to the value on, ngx_mruby reads a HTTP request body before calling mru
 
 Due to nginx event driven nature, a request body is not always read when invoking a handler like mruby_content_handler.
 The directive force to read the request body.
+
+## mruby_upstream_keepalive
+
+```
+Syntax:  mruby_upstream_keepalive connections;
+Default: -
+Context: upstream
+Phase:   initialize master process
+```
+
+Activates the cache for connections to upstream servers.
+It's same as ngx_http_upstream_module's [keepalive](http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive).
+
+TODO: describe the difference between keepalive and mruby_upstream_keepalive.
 
 # Stream module directives
 
