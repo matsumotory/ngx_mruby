@@ -140,6 +140,7 @@ location ~ \.rb$ {
 * [mruby_set and mruby_set_code](#mruby_set-and-mruby_set_code)
 * [mruby_output_body_filter, mruby_output_body_filter_code, mruby_output_header_filter and mruby_output_header_filter_code](#mruby_output_body_filter-mruby_output_body_filter_code-mruby_output_header_filter-and-mruby_output_header_filter_code)
 * [ruby_enable_read_request_body](#mruby_enable_read_request_body)
+* [mruby_upstream_keepalive](#mruby_upstream_keepalive)
 
 *TODO*
 
