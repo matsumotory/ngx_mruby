@@ -5,6 +5,8 @@
 */
 
 #include "ngx_stream_mruby_module.h"
+#include "ngx_stream_mruby_core.h"
+#include "ngx_stream_mruby_async.h"
 
 #include "ngx_stream_mruby_init.h"
 
@@ -33,7 +35,6 @@ static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ng
 // static ngx_int_t ngx_stream_mrb_run_conf(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code);
 
 /* mruby raise functions */
-static void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s);
 static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle);
 // static void ngx_stream_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
 
@@ -254,7 +255,7 @@ static void ngx_stream_mruby_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx
   }
 }
 
-static void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s)
+void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s)
 {
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
@@ -677,6 +678,18 @@ static ngx_int_t ngx_stream_mrb_run_conf(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb
 }
 */
 
+ngx_stream_session_t *ngx_mruby_session = NULL;
+ngx_int_t ngx_mrb_push_session(ngx_stream_session_t *s)
+{
+  ngx_mruby_session = s;
+  return NGX_OK;
+}
+
+ngx_stream_session_t *ngx_mrb_get_session(void)
+{
+  return ngx_mruby_session;
+}
+
 static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
 {
   ngx_stream_mruby_srv_conf_t *mscf;
@@ -695,7 +708,21 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
 
   ictx->s = s;
   ictx->stream_status = NGX_DECLINED;
-  mrb_run(mrb, mscf->code->proc, mrb_top_self(mrb));
+
+  mrb_value *mrb_result = (mrb_value *)ngx_palloc(s->connection->pool, sizeof(mrb_value));
+  *mrb_result = mrb_nil_value();
+
+  ngx_mrb_push_session(s);
+  if (mrb_test(ngx_stream_mrb_start_fiber(s, mrb, mscf->code->proc, mrb_result))) {
+    ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
+                  __func__, __LINE__);
+
+    mrb_gc_arena_restore(mrb, ai);
+    return NGX_DONE;
+  } else {
+    ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: already finish this fiber, can not resume",
+                  MODULE_NAME, __func__, __LINE__);
+  }
 
   if (mrb->exc) {
     ngx_stream_mruby_raise_error(mrb, mrb_obj_value(mrb->exc), s);

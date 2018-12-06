@@ -73,10 +73,10 @@ You can use the following classes with default build configuration.
 - [Userdata Class](https://github.com/matsumotory/mruby-userdata)
 - [Uname Class](https://github.com/matsumotory/mruby-uname)
 - [Vedis Class](https://github.com/matsumotory/mruby-vedis)
-
-You can also use classes embedded by 
-[default.gembox](https://github.com/matsumotory/ngx_mruby/blob/master/mruby/mrbgems/default.gembox) and 
-[full-core.gembox](https://github.com/matsumotory/ngx_mruby/blob/master/mruby/mrbgems/full-core.gembox).
+### ngx_mruby STREAM module(TCP/UDP Load Balancing)
+- [Nginx::Stream class](#nginxstream-class)
+- [Nginx::Stream::Connection class](#nginxstreamconnection-class)
+- [Nginx::Stream::Async class](#nginxstreamasync-class)
 
 # Kernel Module
 
@@ -1602,4 +1602,13 @@ server {
     ';
     proxy_pass static_server0;
 }
+```
+
+## Nginx::Stream::Async Class
+### Method
+#### Nginx::Stream::Async#sleep
+Do non-blocking sleep. Currently it supports only setcode and rewrite and access phases.
+```ruby
+# sleep 3000 millisec
+Nginx::Stream::Async.sleep 3000
 ```

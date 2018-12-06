@@ -82,6 +82,17 @@ class Nginx
     end
   end
 
+  class Stream
+    class Async
+      class << self
+        def sleep(*args)
+          __sleep(*args)
+          Fiber.yield
+        end
+      end
+    end
+  end
+
   class Async
     class << self
       def sleep(*args)

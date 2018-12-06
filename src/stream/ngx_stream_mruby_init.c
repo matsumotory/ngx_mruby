@@ -8,6 +8,7 @@
 
 #include "ngx_stream_mruby_core.h"
 #include "ngx_stream_mruby_connection.h"
+#include "ngx_stream_mruby_async.h"
 
 #include <mruby.h>
 
@@ -25,6 +26,8 @@ ngx_int_t ngx_stream_mrb_class_init(mrb_state *mrb)
   ngx_stream_mrb_core_class_init(mrb, class);
   GC_ARENA_RESTORE;
   ngx_stream_mrb_conn_class_init(mrb, class);
+  GC_ARENA_RESTORE;
+  ngx_stream_mrb_async_class_init(mrb, class);
   GC_ARENA_RESTORE;
 
   return NGX_OK;
