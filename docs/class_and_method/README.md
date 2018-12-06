@@ -29,6 +29,7 @@
 ### ngx_mruby STREAM module(TCP/UDP Load Balancing)
 - [Nginx::Stream class](#nginxstream-class)
 - [Nginx::Stream::Connection class](#nginxstreamconnection-class)
+- [Nginx::Stream::Async class](#nginxstreamasync-class)
 
 ### Extra(commented out in build_config.rb)
 - [Discout Class for markdown](https://github.com/matsumotory/mruby-discount)
@@ -1116,4 +1117,13 @@ server {
     ';
     proxy_pass static_server0;
 }
+```
+
+## Nginx::Stream::Async Class
+### Method
+#### Nginx::Stream::Async#sleep
+Do non-blocking sleep. Currently it supports only setcode and rewrite and access phases.
+```ruby
+# sleep 3000 millisec
+Nginx::Stream::Async.sleep 3000
 ```
