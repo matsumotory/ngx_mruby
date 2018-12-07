@@ -36,6 +36,7 @@ The ngx_mruby stream module is an optional nginx module to handle TCP and UDP st
 
 - [Nginx::Stream Class](#nginxstream-class)
 - [Nginx::Stream::Connection Class](#nginxstreamconnection-class)
+- [Nginx::Stream::Async Class](#nginxstreamasync-class)
 
 ## rack-based-api mrbgem 
 
@@ -73,10 +74,10 @@ You can use the following classes with default build configuration.
 - [Userdata Class](https://github.com/matsumotory/mruby-userdata)
 - [Uname Class](https://github.com/matsumotory/mruby-uname)
 - [Vedis Class](https://github.com/matsumotory/mruby-vedis)
-### ngx_mruby STREAM module(TCP/UDP Load Balancing)
-- [Nginx::Stream class](#nginxstream-class)
-- [Nginx::Stream::Connection class](#nginxstreamconnection-class)
-- [Nginx::Stream::Async class](#nginxstreamasync-class)
+
+You can also use classes embedded by
+[default.gembox](https://github.com/matsumotory/ngx_mruby/blob/master/mruby/mrbgems/default.gembox) and
+[full-core.gembox](https://github.com/matsumotory/ngx_mruby/blob/master/mruby/mrbgems/full-core.gembox).
 
 # Kernel Module
 
