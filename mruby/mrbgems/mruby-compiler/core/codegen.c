@@ -125,15 +125,6 @@ codegen_palloc(codegen_scope *s, size_t len)
 }
 
 static void*
-codegen_malloc(codegen_scope *s, size_t len)
-{
-  void *p = mrb_malloc_simple(s->mrb, len);
-
-  if (!p) codegen_error(s, "mrb_malloc");
-  return p;
-}
-
-static void*
 codegen_realloc(codegen_scope *s, void *p, size_t len)
 {
   p = mrb_realloc_simple(s->mrb, p, len);
@@ -162,11 +153,13 @@ emit_B(codegen_scope *s, uint32_t pc, uint8_t i)
     s->iseq = (mrb_code *)codegen_realloc(s, s->iseq, sizeof(mrb_code)*s->icapa);
     if (s->lines) {
       s->lines = (uint16_t*)codegen_realloc(s, s->lines, sizeof(uint16_t)*s->icapa);
-      s->irep->lines = s->lines;
     }
   }
   if (s->lines) {
-    s->lines[pc] = s->lineno;
+    if (s->lineno > 0 || pc == 0)
+      s->lines[pc] = s->lineno;
+    else
+      s->lines[pc] = s->lines[pc-1];
   }
   s->iseq[pc] = i;
 }
@@ -741,15 +734,13 @@ lambda_body(codegen_scope *s, node *tree, int blk)
     mrb_aspec a;
     int ma, oa, ra, pa, ka, kd, ba;
     int pos, i;
-    node *n, *opt;
+    node *opt;
+    node *margs, *pargs;
     node *tail;
 
     /* mandatory arguments */
     ma = node_len(tree->car->car);
-    n = tree->car->car;
-    while (n) {
-      n = n->cdr;
-    }
+    margs = tree->car->car;
     tail = tree->car->cdr->cdr->cdr->cdr;
 
     /* optional arguments */
@@ -758,6 +749,7 @@ lambda_body(codegen_scope *s, node *tree, int blk)
     ra = tree->car->cdr->cdr->car ? 1 : 0;
     /* mandatory arugments after rest argument */
     pa = node_len(tree->car->cdr->cdr->cdr->car);
+    pargs = tree->car->cdr->cdr->cdr->car;
     /* keyword arguments */
     ka = tail? node_len(tail->cdr->car) : 0;
     /* keyword dictionary? */
@@ -805,6 +797,7 @@ lambda_body(codegen_scope *s, node *tree, int blk)
       dispatch(s, pos+i*3+1);
     }
 
+    /* keyword arguments */
     if (tail) {
       node *kwds = tail->cdr->car;
       int kwrest = 0;
@@ -843,7 +836,34 @@ lambda_body(codegen_scope *s, node *tree, int blk)
         genop_0(s, OP_KEYEND);
       }
     }
+
+    /* argument destructuring */
+    if (margs) {
+      node *n = margs;
+
+      pos = 1;
+      while (n) {
+        if (nint(n->car->car) == NODE_MASGN) {
+          gen_vmassignment(s, n->car->cdr->car, pos, NOVAL);
+        }
+        pos++;
+        n = n->cdr;
+      }
+    }
+    if (pargs) {
+      node *n = margs;
+
+      pos = ma+oa+ra+1;
+      while (n) {
+        if (nint(n->car->car) == NODE_MASGN) {
+          gen_vmassignment(s, n->car->cdr->car, pos, NOVAL);
+        }
+        pos++;
+        n = n->cdr;
+      }
+    }
   }
+
   codegen(s, tree->cdr->car, VAL);
   pop();
   if (s->pc > 0) {
@@ -1073,6 +1093,7 @@ gen_assignment(codegen_scope *s, node *tree, int sp, int val)
     idx = new_sym(s, nsym(tree));
     genop_2(s, OP_SETGV, sp, idx);
     break;
+  case NODE_ARG:
   case NODE_LVAR:
     idx = lv_idx(s, nsym(tree));
     if (idx > 0) {
@@ -1180,7 +1201,7 @@ gen_vmassignment(codegen_scope *s, node *tree, int rhs, int val)
     pop_n(post+1);
     genop_3(s, OP_APOST, cursp(), n, post);
     n = 1;
-    if (t->car) {               /* rest */
+    if (t->car && t->car != (node*)-1) { /* rest */
       gen_assignment(s, t->car, cursp(), NOVAL);
     }
     if (t->cdr && t->cdr->car) {
@@ -1371,8 +1392,10 @@ codegen(codegen_scope *s, node *tree, int val)
     codegen_error(s, "too complex expression");
   }
   if (s->irep && s->filename_index != tree->filename_index) {
-    s->irep->filename = mrb_parser_get_filename(s->parser, s->filename_index);
-    mrb_debug_info_append_file(s->mrb, s->irep, s->debug_start_pos, s->pc);
+    const char *filename = mrb_parser_get_filename(s->parser, s->filename_index);
+
+    mrb_debug_info_append_file(s->mrb, s->irep->debug_info,
+                               filename, s->lines, s->debug_start_pos, s->pc);
     s->debug_start_pos = s->pc;
     s->filename_index = tree->filename_index;
     s->filename = mrb_parser_get_filename(s->parser, tree->filename_index);
@@ -2965,8 +2988,6 @@ scope_new(mrb_state *mrb, codegen_scope *prev, node *lv)
   p->debug_start_pos = 0;
   if (p->filename) {
     mrb_debug_info_alloc(mrb, p->irep);
-    p->irep->filename = p->filename;
-    p->irep->lines = p->lines;
   }
   else {
     p->irep->debug_info = NULL;
@@ -2984,34 +3005,22 @@ scope_finish(codegen_scope *s)
 {
   mrb_state *mrb = s->mrb;
   mrb_irep *irep = s->irep;
-  size_t fname_len;
-  char *fname;
 
   irep->flags = 0;
   if (s->iseq) {
     irep->iseq = (mrb_code *)codegen_realloc(s, s->iseq, sizeof(mrb_code)*s->pc);
     irep->ilen = s->pc;
-    if (s->lines) {
-      irep->lines = (uint16_t *)codegen_realloc(s, s->lines, sizeof(uint16_t)*s->pc);
-    }
-    else {
-      irep->lines = 0;
-    }
   }
   irep->pool = (mrb_value*)codegen_realloc(s, irep->pool, sizeof(mrb_value)*irep->plen);
   irep->syms = (mrb_sym*)codegen_realloc(s, irep->syms, sizeof(mrb_sym)*irep->slen);
   irep->reps = (mrb_irep**)codegen_realloc(s, irep->reps, sizeof(mrb_irep*)*irep->rlen);
   if (s->filename) {
-    irep->filename = mrb_parser_get_filename(s->parser, s->filename_index);
-    mrb_debug_info_append_file(mrb, irep, s->debug_start_pos, s->pc);
+    const char *filename = mrb_parser_get_filename(s->parser, s->filename_index);
 
-    fname_len = strlen(s->filename);
-    fname = (char*)codegen_malloc(s, fname_len + 1);
-    memcpy(fname, s->filename, fname_len);
-    fname[fname_len] = '\0';
-    irep->filename = fname;
-    irep->own_filename = TRUE;
+    mrb_debug_info_append_file(s->mrb, s->irep->debug_info,
+                               filename, s->lines, s->debug_start_pos, s->pc);
   }
+  mrb_free(s->mrb, s->lines);
 
   irep->nlocals = s->nlocals;
   irep->nregs = s->nregs;

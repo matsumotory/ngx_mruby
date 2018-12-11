@@ -56,6 +56,7 @@
 #include <mruby/dump.h>
 #include <mruby/string.h>
 #include <mruby/variable.h>
+#include <mruby/throw.h>
 
 #ifdef ENABLE_READLINE
 
@@ -126,10 +127,6 @@ is_code_block_open(struct mrb_parser_state *parser)
 
   /* check for heredoc */
   if (parser->parsing_heredoc != NULL) return TRUE;
-  if (parser->heredoc_end_now) {
-    parser->heredoc_end_now = FALSE;
-    return FALSE;
-  }
 
   /* check for unterminated string */
   if (parser->lex_strterm) return TRUE;
@@ -233,7 +230,7 @@ usage(const char *name)
 {
   static const char *const usage_msg[] = {
   "switches:",
-  "-d           set $DEBUG to true (same as `mruby -d`)"
+  "-d           set $DEBUG to true (same as `mruby -d`)",
   "-r library   same as `mruby -r`",
   "-v           print version number, then run in verbose mode",
   "--verbose    run in verbose mode",
@@ -495,7 +492,10 @@ main(int argc, char **argv)
 
   while (TRUE) {
     char *utf8;
+    struct mrb_jmpbuf c_jmp;
 
+    MRB_TRY(&c_jmp);
+    mrb->jmp = &c_jmp;
     if (args.rfp) {
       if (fgets(last_code_line, sizeof(last_code_line)-1, args.rfp) != NULL)
         goto done;
@@ -559,8 +559,7 @@ main(int argc, char **argv)
     MIRB_LINE_FREE(line);
 #endif
 
-done:
-
+  done:
     if (code_block_open) {
       if (strlen(ruby_code)+strlen(last_code_line) > sizeof(ruby_code)-1) {
         fputs("concatenated input string too long\n", stderr);
@@ -652,6 +651,11 @@ done:
     }
     mrb_parser_free(parser);
     cxt->lineno++;
+    MRB_CATCH(&c_jmp) {
+      p(mrb, mrb_obj_value(mrb->exc), 0);
+      mrb->exc = 0;
+    }
+    MRB_END_EXC(&c_jmp);
   }
 
 #ifdef ENABLE_READLINE
