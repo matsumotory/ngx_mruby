@@ -22,8 +22,7 @@ assert 'Enumerator.new' do
   assert_equal [1,2,3], Enumerator.new(@obj, :foo, 1,2,3).to_a
   assert_equal [1,2,3], Enumerator.new { |y| i = 0; loop { y << (i += 1) } }.take(3)
   assert_raise(ArgumentError) { Enumerator.new }
-  enum = @obj.to_enum
-  assert_raise(NoMethodError) { enum.each {} }
+  assert_raise(ArgumentError) { @obj.to_enum }
 
   # examples
   fib = Enumerator.new do |y|
@@ -53,12 +52,6 @@ assert 'Enumerator#with_index' do
   a = []
   @obj.to_enum(:foo, 1, 2, 3).with_index(10).with_index(20) { |*i| a << i }
   assert_equal [[[1, 10], 20], [[2, 11], 21], [[3, 12], 22]], a
-end
-
-assert 'Enumerator#with_index nonnum offset' do
-  s = Object.new
-  def s.to_int; 1 end
-  assert_equal([[1,1],[2,2],[3,3]], @obj.to_enum(:foo, 1, 2, 3).with_index(s).to_a)
 end
 
 assert 'Enumerator#with_index string offset' do
