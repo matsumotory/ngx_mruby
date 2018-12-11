@@ -267,7 +267,8 @@ typedef struct mrb_state {
 #else
   mrb_atexit_func *atexit_stack;
 #endif
-  mrb_int atexit_stack_len;
+  uint16_t atexit_stack_len;
+  uint16_t ecall_nest;                    /* prevent infinite recursive ecall() */
 } mrb_state;
 
 /**
@@ -716,7 +717,6 @@ MRB_API mrb_value mrb_notimplement_m(mrb_state*, mrb_value);
  * @return [mrb_value] The newly duplicated object.
  */
 MRB_API mrb_value mrb_obj_dup(mrb_state *mrb, mrb_value obj);
-MRB_API mrb_value mrb_check_to_integer(mrb_state *mrb, mrb_value val, const char *method);
 
 /**
  * Returns true if obj responds to the given method. If the method was defined for that
@@ -854,10 +854,6 @@ typedef const char *mrb_args_format;
 
 /**
  * Retrieve arguments from mrb_state.
- *
- * When applicable, implicit conversions (such as `to_str`, `to_ary`, `to_hash`) are
- * applied to received arguments.
- * Used inside a function of mrb_func_t type.
  *
  * @param mrb The current MRuby state.
  * @param format [mrb_args_format] is a list of format specifiers
@@ -1188,6 +1184,7 @@ MRB_API void mrb_gc_unregister(mrb_state *mrb, mrb_value obj);
 
 MRB_API mrb_value mrb_to_int(mrb_state *mrb, mrb_value val);
 #define mrb_int(mrb, val) mrb_fixnum(mrb_to_int(mrb, val))
+MRB_API mrb_value mrb_to_str(mrb_state *mrb, mrb_value val);
 MRB_API void mrb_check_type(mrb_state *mrb, mrb_value x, enum mrb_vtype t);
 
 typedef enum call_type {

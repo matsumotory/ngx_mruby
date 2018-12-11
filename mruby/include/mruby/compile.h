@@ -143,7 +143,6 @@ struct mrb_parser_state {
   mrb_ast_node *heredocs_from_nextline;
   mrb_ast_node *parsing_heredoc;
   mrb_ast_node *lex_strterm_before_heredoc;
-  mrb_bool heredoc_end_now:1; /* for mirb */
 
   void *ylval;
 
@@ -158,8 +157,8 @@ struct mrb_parser_state {
   struct mrb_parser_message warn_buffer[10];
 
   mrb_sym* filename_table;
-  size_t filename_table_length;
-  int current_filename_index;
+  uint16_t filename_table_length;
+  uint16_t current_filename_index;
 
   struct mrb_jmpbuf* jmp;
 };

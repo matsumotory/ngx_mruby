@@ -163,7 +163,7 @@ mrb_str_concat_m(mrb_state *mrb, mrb_value self)
   if (mrb_fixnum_p(str))
     str = mrb_fixnum_chr(mrb, str);
   else
-    str = mrb_string_type(mrb, str);
+    str = mrb_ensure_string_type(mrb, str);
   mrb_str_concat(mrb, self, str);
   return self;
 }
@@ -191,7 +191,7 @@ mrb_str_start_with(mrb_state *mrb, mrb_value self)
   for (i = 0; i < argc; i++) {
     size_t len_l, len_r;
     int ai = mrb_gc_arena_save(mrb);
-    sub = mrb_string_type(mrb, argv[i]);
+    sub = mrb_ensure_string_type(mrb, argv[i]);
     mrb_gc_arena_restore(mrb, ai);
     len_l = RSTRING_LEN(self);
     len_r = RSTRING_LEN(sub);
@@ -220,7 +220,7 @@ mrb_str_end_with(mrb_state *mrb, mrb_value self)
   for (i = 0; i < argc; i++) {
     size_t len_l, len_r;
     int ai = mrb_gc_arena_save(mrb);
-    sub = mrb_string_type(mrb, argv[i]);
+    sub = mrb_ensure_string_type(mrb, argv[i]);
     mrb_gc_arena_restore(mrb, ai);
     len_l = RSTRING_LEN(self);
     len_r = RSTRING_LEN(sub);
@@ -282,7 +282,7 @@ tr_parse_pattern(mrb_state *mrb, struct tr_pattern *ret, const mrb_value v_patte
   mrb_int pattern_length = RSTRING_LEN(v_pattern);
   mrb_bool flag_reverse = FALSE;
   struct tr_pattern *pat1;
-  int i = 0;
+  mrb_int i = 0;
 
   if(flag_reverse_enable && pattern_length >= 2 && pattern[0] == '^') {
     flag_reverse = TRUE;
@@ -313,8 +313,8 @@ tr_parse_pattern(mrb_state *mrb, struct tr_pattern *ret, const mrb_value v_patte
     }
     else {
       /* in order pattern. */
-      int start_pos = i++;
-      int len;
+      mrb_int start_pos = i++;
+      mrb_int len;
 
       while (i < pattern_length) {
 	if ((i+2) < pattern_length && pattern[i] != '\\' && pattern[i+1] == '-')
@@ -323,6 +323,9 @@ tr_parse_pattern(mrb_state *mrb, struct tr_pattern *ret, const mrb_value v_patte
       }
 
       len = i - start_pos;
+      if (len > UINT16_MAX) {
+        mrb_raise(mrb, E_ARGUMENT_ERROR, "tr pattern too long (max 65536)");
+      }
       if (pat1 == NULL && ret) {
         goto nomem;
       }
@@ -413,6 +416,59 @@ tr_get_character(const struct tr_pattern *pat, const char *pat_str, mrb_int n_th
   }
 
   return -1;
+}
+
+static inline void
+tr_bitmap_set(uint8_t bitmap[32], uint8_t ch)
+{
+  uint8_t idx1 = ch / 8;
+  uint8_t idx2 = ch % 8;
+  bitmap[idx1] |= (1<<idx2);
+}
+
+static inline mrb_bool
+tr_bitmap_detect(uint8_t bitmap[32], uint8_t ch)
+{
+  uint8_t idx1 = ch / 8;
+  uint8_t idx2 = ch % 8;
+  if (bitmap[idx1] & (1<<idx2))
+    return TRUE;
+  return FALSE;
+}
+
+/* compile patter to bitmap */
+static void
+tr_compile_pattern(const struct tr_pattern *pat, mrb_value pstr, uint8_t bitmap[32])
+{
+  const char *pattern = RSTRING_PTR(pstr);
+  mrb_int flag_reverse = pat ? pat->flag_reverse : 0;
+  int i;
+
+  for (i=0; i<32; i++) {
+    bitmap[i] = 0;
+  }
+  while (pat != NULL) {
+    if (pat->type == TR_IN_ORDER) {
+      for (i = 0; i < pat->n; i++) {
+        tr_bitmap_set(bitmap, pattern[pat->val.start_pos + i]);
+      }
+    }
+    else if (pat->type == TR_RANGE) {
+      for (i = pat->val.ch[0]; i < pat->val.ch[1]; i++) {
+        tr_bitmap_set(bitmap, i);
+      }
+    }
+    else {
+      mrb_assert(pat->type == TR_UNINITIALIZED);
+    }
+    pat = pat->next;
+  }
+
+  if (flag_reverse) {
+    for (i=0; i<32; i++) {
+      bitmap[i] ^= 0xff;
+    }
+  }
 }
 
 static mrb_bool
@@ -590,20 +646,21 @@ str_squeeze(mrb_state *mrb, mrb_value str, mrb_value v_pat)
   mrb_int len;
   mrb_bool flag_changed = FALSE;
   mrb_int lastch = -1;
+  uint8_t bitmap[32];
 
   mrb_str_modify(mrb, mrb_str_ptr(str));
   if (!mrb_nil_p(v_pat)) {
     pat = tr_parse_pattern(mrb, &pat_storage, v_pat, TRUE);
+    tr_compile_pattern(pat, v_pat, bitmap);
+    tr_free_pattern(mrb, pat);
   }
   s = RSTRING_PTR(str);
   len = RSTRING_LEN(str);
 
   if (pat) {
     for (i=j=0; i<len; i++,j++) {
-      mrb_int n = tr_find_character(pat, RSTRING_PTR(v_pat), s[i]);
-
       if (i>j) s[j] = s[i];
-      if (n >= 0 && s[i] == lastch) {
+      if (tr_bitmap_detect(bitmap, s[i]) && s[i] == lastch) {
         flag_changed = TRUE;
         j--;
       }
@@ -620,7 +677,6 @@ str_squeeze(mrb_state *mrb, mrb_value str, mrb_value v_pat)
       lastch = s[i];
     }
   }
-  tr_free_pattern(mrb, pat);
 
   if (flag_changed) {
     RSTR_SET_LEN(RSTRING(str), j);
@@ -682,22 +738,23 @@ str_delete(mrb_state *mrb, mrb_value str, mrb_value v_pat)
   char *s;
   mrb_int len;
   mrb_bool flag_changed = FALSE;
+  uint8_t bitmap[32];
 
   mrb_str_modify(mrb, mrb_str_ptr(str));
   tr_parse_pattern(mrb, &pat, v_pat, TRUE);
+  tr_compile_pattern(&pat, v_pat, bitmap);
+  tr_free_pattern(mrb, &pat);
+
   s = RSTRING_PTR(str);
   len = RSTRING_LEN(str);
 
   for (i=j=0; i<len; i++,j++) {
-    mrb_int n = tr_find_character(&pat, RSTRING_PTR(v_pat), s[i]);
-
     if (i>j) s[j] = s[i];
-    if (n >= 0) {
+    if (tr_bitmap_detect(bitmap, s[i])) {
       flag_changed = TRUE;
       j--;
     }
   }
-  tr_free_pattern(mrb, &pat);
   if (flag_changed) {
     RSTR_SET_LEN(RSTRING(str), j);
     RSTRING_PTR(str)[j] = 0;
@@ -749,17 +806,18 @@ mrb_str_count(mrb_state *mrb, mrb_value str)
   mrb_int len;
   mrb_int count = 0;
   struct tr_pattern pat = STATIC_TR_PATTERN;
+  uint8_t bitmap[32];
 
   mrb_get_args(mrb, "S", &v_pat);
   tr_parse_pattern(mrb, &pat, v_pat, TRUE);
+  tr_compile_pattern(&pat, v_pat, bitmap);
+  tr_free_pattern(mrb, &pat);
+  
   s = RSTRING_PTR(str);
   len = RSTRING_LEN(str);
   for (i = 0; i < len; i++) {
-    mrb_int n = tr_find_character(&pat, RSTRING_PTR(v_pat), s[i]);
-
-    if (n >= 0) count++;
+    if (tr_bitmap_detect(bitmap, s[i])) count++;
   }
-  tr_free_pattern(mrb, &pat);
   return mrb_fixnum_value(count);
 }
 

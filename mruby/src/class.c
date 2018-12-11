@@ -492,34 +492,31 @@ mrb_notimplement_m(mrb_state *mrb, mrb_value self)
   return mrb_nil_value();
 }
 
-static mrb_value
-check_type(mrb_state *mrb, mrb_value val, enum mrb_vtype t, const char *c, const char *m)
-{
-  mrb_value tmp;
-
-  tmp = mrb_check_convert_type(mrb, val, t, c, m);
-  if (mrb_nil_p(tmp)) {
-    mrb_raisef(mrb, E_TYPE_ERROR, "expected %S", mrb_str_new_cstr(mrb, c));
-  }
-  return tmp;
-}
+#define CHECK_TYPE(mrb, val, t, c) do { \
+  if (mrb_type(val) != (t)) {\
+    mrb_raisef(mrb, E_TYPE_ERROR, "expected %S", mrb_str_new_lit(mrb, c));\
+  }\
+} while (0)
 
 static mrb_value
 to_str(mrb_state *mrb, mrb_value val)
 {
-  return check_type(mrb, val, MRB_TT_STRING, "String", "to_str");
+  CHECK_TYPE(mrb, val, MRB_TT_STRING, "String");
+  return val;
 }
 
 static mrb_value
 to_ary(mrb_state *mrb, mrb_value val)
 {
-  return check_type(mrb, val, MRB_TT_ARRAY, "Array", "to_ary");
+  CHECK_TYPE(mrb, val, MRB_TT_ARRAY, "Array");
+  return val;
 }
 
 static mrb_value
 to_hash(mrb_state *mrb, mrb_value val)
 {
-  return check_type(mrb, val, MRB_TT_HASH, "Hash", "to_hash");
+  CHECK_TYPE(mrb, val, MRB_TT_HASH, "Hash");
+  return val;
 }
 
 #define to_sym(mrb, ss) mrb_obj_to_sym(mrb, ss)
@@ -1972,7 +1969,7 @@ mrb_mod_const_get(mrb_state *mrb, mrb_value mod)
   }
 
   /* const get with class path string */
-  path = mrb_string_type(mrb, path);
+  path = mrb_ensure_string_type(mrb, path);
   ptr = RSTRING_PTR(path);
   len = RSTRING_LEN(path);
   off = 0;

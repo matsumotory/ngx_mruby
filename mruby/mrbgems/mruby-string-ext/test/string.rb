@@ -4,13 +4,6 @@
 
 UTF8STRING = ("\343\201\202".size == 1)
 
-assert('String.try_convert') do
-  assert_nil String.try_convert(nil)
-  assert_nil String.try_convert(:foo)
-  assert_equal "", String.try_convert("")
-  assert_equal "1,2,3", String.try_convert("1,2,3")
-end
-
 assert('String#getbyte') do
   str1 = "hello"
   bytes1 = [104, 101, 108, 108, 111]
@@ -29,18 +22,6 @@ assert('String#setbyte') do
   str1.setbyte(0, h)
   assert_equal(h, str1.getbyte(0))
   assert_equal("Hello", str1)
-end
-
-assert("String#setbyte raises IndexError if arg conversion resizes String") do
-  $s = "01234\n"
-  class Tmp
-      def to_i
-          $s.chomp! ''
-          95
-      end
-  end
-  tmp = Tmp.new
-  assert_raise(IndexError) { $s.setbyte(5, tmp) }
 end
 
 assert('String#byteslice') do
@@ -126,12 +107,6 @@ assert('String#concat') do
   assert_equal "Hello World!", "Hello " << "World" << 33
   assert_equal "Hello World!", "Hello ".concat("World").concat(33)
 
-  o = Object.new
-  def o.to_str
-    "to_str"
-  end
-  assert_equal "hi to_str", "hi " << o
-
   assert_raise(TypeError) { "".concat(Object.new) }
 end
 
@@ -140,11 +115,6 @@ assert('String#casecmp') do
   assert_equal 0, "aBcDeF".casecmp("abcdef")
   assert_equal(-1, "abcdef".casecmp("abcdefg"))
   assert_equal 0, "abcdef".casecmp("ABCDEF")
-  o = Object.new
-  def o.to_str
-    "ABCDEF"
-  end
-  assert_equal 0, "abcdef".casecmp(o)
 end
 
 assert('String#count') do
