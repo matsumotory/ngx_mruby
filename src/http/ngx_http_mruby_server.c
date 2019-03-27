@@ -32,6 +32,7 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   ngx_url_t u;
   ngx_http_listen_opt_t lsopt;
   mrb_value listener, address;
+  size_t len;
   u_char *p;
 
   mrb_get_args(mrb, "H", &listener);
