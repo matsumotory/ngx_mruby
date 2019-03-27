@@ -78,8 +78,11 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
   }
 
   ngx_memzero(ls, sizeof(ngx_stream_listen_t));
+#if (nginx_version < 1015010)
   ngx_memcpy(&ls->sockaddr.sockaddr, &u.sockaddr, u.socklen);
-
+#else
+  ngx_memcpy(ls->sockaddr, &u.sockaddr, u.socklen);
+#endif
   ls->socklen = u.socklen;
   ls->backlog = NGX_LISTEN_BACKLOG;
 #if (nginx_version >= 1013000)
@@ -122,11 +125,15 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
     if (ls->type != als[i].type) {
       continue;
     }
-
+#if (nginx_version < 1015010)
     if (ngx_cmp_sockaddr(&als[i].sockaddr.sockaddr, als[i].socklen, &ls->sockaddr.sockaddr, ls->socklen, 1) != NGX_OK) {
       continue;
     }
-
+#else
+    if (ngx_cmp_sockaddr(als[i].sockaddr, als[i].socklen, ls->sockaddr, ls->socklen, 1) != NGX_OK) {
+      continue;
+    }
+#endif
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "duplicate \"%V\" address and port pair", &u.url);
     mrb_raise(mrb, E_RUNTIME_ERROR, "duplicate address and port pair");
   }
