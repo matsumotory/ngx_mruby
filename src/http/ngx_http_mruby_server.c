@@ -90,7 +90,7 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 #if (nginx_version < 1015010)
   (void)ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
 #else
-  (void)ngx_sock_ntop(lsopt.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
+  (void)ngx_sock_ntop(lsopt.sockaddr, lsopt.socklen, lsopt.sockaddr,addr_text, NGX_SOCKADDR_STRLEN, 1);
 #endif
   if (ngx_http_add_listen(cf, cscf, &lsopt) == NGX_OK) {
     ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "add listener %V via mruby", &addr);
