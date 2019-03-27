@@ -53,8 +53,11 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   }
 
   ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
+#if (nginx_version < 1015010)
+  ngx_memcpy(&lsopt.sockaddr.sockaddr, &u.sockaddr, u.socklen);
+#else
   ngx_memcpy(lsopt.sockaddr, &u.sockaddr, u.socklen);
-
+#endif
   lsopt.socklen = u.socklen;
   lsopt.backlog = NGX_LISTEN_BACKLOG;
   lsopt.rcvbuf = -1;
@@ -84,8 +87,11 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "the http2 symbol requires ngx_http_http2_module");
 #endif
   }
-
+#if (nginx_version < 1015010)
+  (void)ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
+#else
   (void)ngx_sock_ntop(lsopt.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
+#endif
   if (ngx_http_add_listen(cf, cscf, &lsopt) == NGX_OK) {
     ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "add listener %V via mruby", &addr);
     return mrb_true_value();
