@@ -32,6 +32,7 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   ngx_url_t u;
   ngx_http_listen_opt_t lsopt;
   mrb_value listener, address;
+  u_char *p;
 
   mrb_get_args(mrb, "H", &listener);
   address = mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "address"));
@@ -93,7 +94,7 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   len = NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1;
   p = ngx_pnalloc(cf->pool, len);
   if (p == NULL) {
-    return NGX_CONF_ERROR;
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_add_listener ngx_http_add_listen failed");
   }
   lsopt.addr_text.data = p;
   (void)ngx_sock_ntop(lsopt.sockaddr, lsopt.socklen, p, NGX_SOCKADDR_STRLEN, 1);
