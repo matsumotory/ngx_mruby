@@ -53,7 +53,7 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   }
 
   ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
-  ngx_memcpy(&lsopt.sockaddr.sockaddr, &u.sockaddr, u.socklen);
+  ngx_memcpy(lsopt.sockaddr, &u.sockaddr, u.socklen);
 
   lsopt.socklen = u.socklen;
   lsopt.backlog = NGX_LISTEN_BACKLOG;
@@ -85,7 +85,7 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 #endif
   }
 
-  (void)ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
+  (void)ngx_sock_ntop(lsopt.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
   if (ngx_http_add_listen(cf, cscf, &lsopt) == NGX_OK) {
     ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "add listener %V via mruby", &addr);
     return mrb_true_value();
