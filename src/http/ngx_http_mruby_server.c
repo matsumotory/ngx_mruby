@@ -90,7 +90,6 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 #if (nginx_version < 1015010)
   (void)ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr, len, 1);
 #else
-  size_t len;
   u_char *p;
   len = NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1;
   p = ngx_pnalloc(cf->pool, len);
