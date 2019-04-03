@@ -48,7 +48,11 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
   mrb_value listener, address;
   ngx_str_t addr;
   ngx_url_t u;
+#if (nginx_version > 1015009)
+  ngx_uint_t i, n;
+#else
   ngx_uint_t i;
+#endif
   ngx_stream_listen_t *ls, *als;
 
   mrb_get_args(mrb, "H", &listener);
@@ -78,7 +82,12 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
   }
 
   ngx_memzero(ls, sizeof(ngx_stream_listen_t));
+
+#if (nginx_version > 1015009)
+  ngx_memcpy(ls->sockaddr, &u.sockaddr, u.socklen);
+#else
   ngx_memcpy(&ls->sockaddr.sockaddr, &u.sockaddr, u.socklen);
+#endif
 
   ls->socklen = u.socklen;
   ls->backlog = NGX_LISTEN_BACKLOG;
@@ -118,6 +127,28 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
 
   als = cmcf->listen.elts;
 
+#if (nginx_version > 1015009)
+  for (n = 0; n < u.naddrs; n++) {
+   ls[n] = ls[0];
+   ls[n].sockaddr = u.addrs[n].sockaddr;
+   ls[n].socklen = u.addrs[n].socklen;
+   ls[n].addr_text = u.addrs[n].name;
+   ls[n].wildcard = ngx_inet_wildcard(ls[n].sockaddr);
+
+   for (i = 0; i < cmcf->listen.nelts - u.naddrs + n; i++) {
+     if (ls[n].type != als[i].type) {
+       continue;
+     }
+
+     if (ngx_cmp_sockaddr(als[i].sockaddr, als[i].socklen, ls[n].sockaddr, ls[n].socklen, 1) != NGX_OK) {
+        continue;
+     }
+
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "duplicate \"%V\" address and port pair", &ls[n].addr_text);
+      mrb_raise(mrb, E_RUNTIME_ERROR, "duplicate address and port pair");
+    }
+  }
+#else
   for (i = 0; i < cmcf->listen.nelts - 1; i++) {
     if (ls->type != als[i].type) {
       continue;
@@ -130,6 +161,7 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "duplicate \"%V\" address and port pair", &u.url);
     mrb_raise(mrb, E_RUNTIME_ERROR, "duplicate address and port pair");
   }
+#endif
 
   return mrb_true_value();
 }
