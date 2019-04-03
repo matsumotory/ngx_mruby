@@ -83,14 +83,13 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
 
   ngx_memzero(ls, sizeof(ngx_stream_listen_t));
 
-#if (nginx_version > 1015009)
-  ngx_memcpy(ls->sockaddr, &u.sockaddr, u.socklen);
-#else
+#if (nginx_version < 1015010)
   ngx_memcpy(&ls->sockaddr.sockaddr, &u.sockaddr, u.socklen);
+  ls->socklen = u.socklen;
 #endif
 
-  ls->socklen = u.socklen;
   ls->backlog = NGX_LISTEN_BACKLOG;
+
 #if (nginx_version >= 1013000)
   ls->rcvbuf = -1;
   ls->sndbuf = -1;

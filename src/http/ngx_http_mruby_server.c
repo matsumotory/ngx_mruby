@@ -59,6 +59,13 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
 
 #if (nginx_version > 1015009)
+  p = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
+  if (p == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_add_listener ngx_pcalloc failed");
+  }
+
+  lsopt.sockaddr = (struct sockaddr *) p;
+
   ngx_memcpy(lsopt.sockaddr, &u.sockaddr, u.socklen);
 #else
   ngx_memcpy(&lsopt.sockaddr.sockaddr, &u.sockaddr, u.socklen);
