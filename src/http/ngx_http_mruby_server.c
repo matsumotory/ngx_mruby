@@ -32,6 +32,10 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   ngx_url_t u;
   ngx_http_listen_opt_t lsopt;
   mrb_value listener, address;
+#if (nginx_version > 1015009)
+  size_t len;
+  u_char *p;
+#endif
 
   mrb_get_args(mrb, "H", &listener);
   address = mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "address"));
@@ -53,7 +57,19 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   }
 
   ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
+
+#if (nginx_version > 1015009)
+  p = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
+  if (p == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_add_listener ngx_pcalloc failed");
+  }
+
+  lsopt.sockaddr = (struct sockaddr *) p;
+
+  ngx_memcpy(lsopt.sockaddr, &u.sockaddr, u.socklen);
+#else
   ngx_memcpy(&lsopt.sockaddr.sockaddr, &u.sockaddr, u.socklen);
+#endif
 
   lsopt.socklen = u.socklen;
   lsopt.backlog = NGX_LISTEN_BACKLOG;
@@ -85,7 +101,20 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 #endif
   }
 
+#if (nginx_version > 1015009)
+  len = NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1;
+
+  p = ngx_pnalloc(cf->pool, len);
+  if (p == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_add_listener ngx_pnalloc failed");
+  }
+
+  lsopt.addr_text.data = p;
+  lsopt.addr_text.len = ngx_sock_ntop(lsopt.sockaddr, lsopt.socklen, p, len, 1);
+#else
   (void)ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
+#endif
+
   if (ngx_http_add_listen(cf, cscf, &lsopt) == NGX_OK) {
     ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "add listener %V via mruby", &addr);
     return mrb_true_value();
