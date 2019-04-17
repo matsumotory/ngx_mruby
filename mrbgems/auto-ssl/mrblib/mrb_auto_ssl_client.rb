@@ -43,6 +43,7 @@ class Nginx
         def clear
           @redis.del("#{@domain}_token_value")
           @redis.del("#{@domain}_authorization_uri")
+          @redis.del("#{@domain}_private_key")
         end
 
         def auto_cert_deploy
