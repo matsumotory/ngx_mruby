@@ -69,13 +69,12 @@ class Nginx
               csr = Acme::Client::CertificateRequest.new([@domain])
               begin
                 certificate = client.new_certificate(csr)
+                @redis.set("#{@domain}.crt", certificate.fullchain_to_pem)
+                @redis.set("#{@domain}.key", certificate.request.private_key.to_pem)
               rescue => e
                 Nginx::SSL.log ::Nginx::LOG_ERR, e.message
                 clear
               end
-
-              @redis.set("#{@domain}.crt", certificate.fullchain_to_pem)
-              @redis.set("#{@domain}.key", certificate.request.private_key.to_pem)
             end
           end
         end
