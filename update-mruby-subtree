@@ -10,7 +10,7 @@ if [ $? -ne 0 ]; then
   echo "Missing remote repository ${REMOTE_REPO_NAME}"
   echo -n "Do you want to add (y/n)? "
   read answer
-  if [ X$answer == "Xy" -o X$answer == "XY" ]; then
+  if [ X$answer = "Xy" -o X$answer = "XY" ]; then
     git remote add ${REMOTE_REPO_NAME} ${REMOTE_REPO_URL}
     echo "Added ${REMOTE_REPO_URL} as ${REMOTE_REPO_NAME}."
   else
