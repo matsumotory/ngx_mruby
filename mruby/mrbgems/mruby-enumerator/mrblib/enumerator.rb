@@ -109,27 +109,30 @@ class Enumerator
   #
   #     p fib.take(10) # => [1, 1, 2, 3, 5, 8, 13, 21, 34, 55]
   #
-  def initialize(obj=nil, meth=:each, *args, &block)
+  # In the second, deprecated, form, a generated Enumerator iterates over the
+  # given object using the given method with the given arguments passed. This
+  # form is left only for internal use.
+  #
+  # Use of this form is discouraged.  Use Kernel#enum_for or Kernel#to_enum
+  # instead.
+  def initialize(obj=NONE, meth=:each, *args, &block)
     if block
       obj = Generator.new(&block)
-    else
-      raise ArgumentError unless obj
-    end
-    if @obj and !self.respond_to?(meth)
-      raise NoMethodError, "undefined method #{meth}"
+    elsif obj == NONE
+      raise ArgumentError, "wrong number of arguments (given 0, expected 1+)"
     end
 
     @obj = obj
     @meth = meth
-    @args = args.dup
+    @args = args
     @fib = nil
     @dst = nil
     @lookahead = nil
     @feedvalue = nil
     @stop_exc = false
   end
-  attr_accessor :obj, :meth, :args, :fib
-  private :obj, :meth, :args, :fib
+  attr_accessor :obj, :meth, :args
+  attr_reader :fib
 
   def initialize_copy(obj)
     raise TypeError, "can't copy type #{obj.class}" unless obj.kind_of? Enumerator
@@ -221,13 +224,11 @@ class Enumerator
   end
 
   def inspect
-    return "#<#{self.class}: uninitialized>" unless @obj
-
     if @args && @args.size > 0
       args = @args.join(", ")
-      "#<#{self.class}: #{@obj}:#{@meth}(#{args})>"
+      "#<#{self.class}: #{@obj.inspect}:#{@meth}(#{args})>"
     else
-      "#<#{self.class}: #{@obj}:#{@meth}>"
+      "#<#{self.class}: #{@obj.inspect}:#{@meth}>"
     end
   end
 
@@ -612,9 +613,6 @@ module Kernel
   #     enum.first(4) # => [1, 1, 1, 2]
   #
   def to_enum(meth=:each, *args)
-    unless self.respond_to?(meth)
-      raise ArgumentError, "undefined method #{meth}"
-    end
     Enumerator.new self, meth, *args
   end
   alias enum_for to_enum

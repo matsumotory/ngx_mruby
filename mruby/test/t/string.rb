@@ -155,7 +155,7 @@ assert('String#[]=') do
     d[-10] = 'X'
   end
 
-  if class_defined?("Float")
+  if Object.const_defined?(:Float)
    e = 'abc'
    e[1.1] = 'X'
    assert_equal 'aXc', e
@@ -464,12 +464,11 @@ assert('String#reverse', '15.2.10.5.29') do
 end
 
 assert('String#reverse(UTF-8)', '15.2.10.5.29') do
-  assert_equal "ち", "こんにちは世界"[3]
-  assert_equal nil, "こんにちは世界"[20]
-  assert_equal "世", "こんにちは世界"[-2]
-  assert_equal "世界", "こんにちは世界"[-2..-1]
-  assert_equal "んに", "こんにちは世界"[1,2]
-  assert_equal "世", "こんにちは世界"["世"]
+  a = 'こんにちは世界!'
+  a.reverse
+
+  assert_equal 'こんにちは世界!', a
+  assert_equal '!界世はちにんこ', 'こんにちは世界!'.reverse
 end if UTF8STRING
 
 assert('String#reverse!', '15.2.10.5.30') do
@@ -579,7 +578,7 @@ assert('String#sub', '15.2.10.5.36') do
   str = "abc"
   miss = str.sub("X", "Z")
   assert_equal str, miss
-  assert_not_equal str.object_id, miss.object_id
+  assert_not_same str, miss
 
   a = []
   assert_equal '.abc', "abc".sub("") { |i| a << i; "." }
@@ -618,7 +617,7 @@ assert('String#to_f', '15.2.10.5.38') do
   assert_float(12345.6789, c)
   assert_float(0, d)
   assert_float(Float::INFINITY, e)
-end if class_defined?("Float")
+end if Object.const_defined?(:Float)
 
 assert('String#to_i', '15.2.10.5.39') do
   a = ''.to_i
@@ -712,5 +711,11 @@ assert('String#freeze') do
   str = "hello"
   str.freeze
 
-  assert_raise(RuntimeError) { str.upcase! }
+  assert_raise(FrozenError) { str.upcase! }
+end
+
+assert('String literal concatenation') do
+  assert_equal 2, ("A" "B").size
+  assert_equal 3, ('A' "B" 'C').size
+  assert_equal 4, (%(A) "B#{?C}" "D").size
 end

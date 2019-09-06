@@ -1,7 +1,7 @@
 /*
 ** mruby - An embeddable Ruby implementation
 **
-** Copyright (c) mruby developers 2010-2018
+** Copyright (c) mruby developers 2010-2019
 **
 ** Permission is hereby granted, free of charge, to any person obtaining
 ** a copy of this software and associated documentation files (the
@@ -34,6 +34,7 @@
 #define __STDC_FORMAT_MACROS
 #endif
 
+#include <stdarg.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
@@ -57,7 +58,7 @@
 #define mrb_assert_int_fit(t1,n,t2,max) ((void)0)
 #endif
 
-#if __STDC_VERSION__ >= 201112L
+#if defined __STDC_VERSION__ && __STDC_VERSION__ >= 201112L
 #define mrb_static_assert(exp, str) _Static_assert(exp, str)
 #else
 #define mrb_static_assert(exp, str) mrb_assert(exp)
@@ -239,9 +240,12 @@ typedef struct mrb_state {
 #endif
 
   mrb_sym symidx;
-  struct kh_n2s *name2sym;      /* symbol hash */
   struct symbol_name *symtbl;   /* symbol table */
+  mrb_sym symhash[256];
   size_t symcapa;
+#ifndef MRB_ENABLE_SYMBOLL_ALL
+  char symbuf[8];               /* buffer for small symbol names */
+#endif
 
 #ifdef MRB_ENABLE_DEBUG_HOOK
   void (*code_fetch_hook)(struct mrb_state* mrb, struct mrb_irep *irep, mrb_code *pc, mrb_value *regs);
@@ -486,7 +490,7 @@ MRB_API void mrb_define_const(mrb_state*, struct RClass*, const char *name, mrb_
  *     }
  * @param [mrb_state*] mrb_state* The mruby state reference.
  * @param [struct RClass*] RClass* A class the method will be undefined from.
- * @param [const char] const char* The name of the method to be undefined.
+ * @param [const char*] const char* The name of the method to be undefined.
  */
 MRB_API void mrb_undef_method(mrb_state*, struct RClass*, const char*);
 MRB_API void mrb_undef_method_id(mrb_state*, struct RClass*, mrb_sym);
@@ -526,7 +530,7 @@ MRB_API void mrb_undef_method_id(mrb_state*, struct RClass*, mrb_sym);
  *      }
  * @param [mrb_state*] mrb_state* The mruby state reference.
  * @param [RClass*] RClass* A class the class method will be undefined from.
- * @param [constchar*] constchar* The name of the class method to be undefined.
+ * @param [const char*] const char* The name of the class method to be undefined.
  */
 MRB_API void mrb_undef_class_method(mrb_state*, struct RClass*, const char*);
 
@@ -705,6 +709,9 @@ MRB_API struct RClass * mrb_module_get(mrb_state *mrb, const char *name);
  * @return [struct RClass *] A reference to the module.
 */
 MRB_API struct RClass * mrb_module_get_under(mrb_state *mrb, struct RClass *outer, const char *name);
+/* a function to raise NotImplementedError with current method name */
+MRB_API void mrb_notimplement(mrb_state*);
+/* a function to be replacement of unimplemented method */
 MRB_API mrb_value mrb_notimplement_m(mrb_state*, mrb_value);
 
 /**
@@ -995,8 +1002,8 @@ MRB_API char* mrb_locale_from_utf8(const char *p, int len);
 #define mrb_locale_free(p) free(p)
 #define mrb_utf8_free(p) free(p)
 #else
-#define mrb_utf8_from_locale(p, l) ((char*)p)
-#define mrb_locale_from_utf8(p, l) ((char*)p)
+#define mrb_utf8_from_locale(p, l) ((char*)(p))
+#define mrb_locale_from_utf8(p, l) ((char*)(p))
 #define mrb_locale_free(p)
 #define mrb_utf8_free(p)
 #endif
@@ -1140,6 +1147,8 @@ MRB_API void mrb_warn(mrb_state *mrb, const char *fmt, ...);
 MRB_API mrb_noreturn void mrb_bug(mrb_state *mrb, const char *fmt, ...);
 MRB_API void mrb_print_backtrace(mrb_state *mrb);
 MRB_API void mrb_print_error(mrb_state *mrb);
+/* function for `raisef` formatting */
+MRB_API mrb_value mrb_vformat(mrb_state *mrb, const char *format, va_list ap);
 
 /* macros to get typical exception objects
    note:

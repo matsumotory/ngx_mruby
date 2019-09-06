@@ -39,15 +39,15 @@ struct RString {
 #define RSTR_UNSET_EMBED_FLAG(s) ((s)->flags &= ~(MRB_STR_EMBED|MRB_STR_EMBED_LEN_MASK))
 #define RSTR_SET_EMBED_LEN(s, n) do {\
   size_t tmp_n = (n);\
-  s->flags &= ~MRB_STR_EMBED_LEN_MASK;\
-  s->flags |= (tmp_n) << MRB_STR_EMBED_LEN_SHIFT;\
+  (s)->flags &= ~MRB_STR_EMBED_LEN_MASK;\
+  (s)->flags |= (tmp_n) << MRB_STR_EMBED_LEN_SHIFT;\
 } while (0)
 #define RSTR_SET_LEN(s, n) do {\
   if (RSTR_EMBED_P(s)) {\
     RSTR_SET_EMBED_LEN((s),(n));\
   }\
   else {\
-    s->as.heap.len = (mrb_int)(n);\
+    (s)->as.heap.len = (mrb_int)(n);\
   }\
 } while (0)
 #define RSTR_EMBED_LEN(s)\
@@ -352,7 +352,9 @@ MRB_API mrb_value mrb_str_dup(mrb_state *mrb, mrb_value str);
 MRB_API mrb_value mrb_str_intern(mrb_state *mrb, mrb_value self);
 
 MRB_API mrb_value mrb_str_to_inum(mrb_state *mrb, mrb_value str, mrb_int base, mrb_bool badcheck);
+MRB_API mrb_value mrb_cstr_to_inum(mrb_state *mrb, const char *s, mrb_int base, mrb_bool badcheck);
 MRB_API double mrb_str_to_dbl(mrb_state *mrb, mrb_value str, mrb_bool badcheck);
+MRB_API double mrb_cstr_to_dbl(mrb_state *mrb, const char *s, mrb_bool badcheck);
 
 /*
  * Returns a converted string type.
@@ -438,6 +440,10 @@ void mrb_regexp_check(mrb_state *mrb, mrb_value obj);
 #define mrb_str_cat2(mrb, str, ptr) mrb_str_cat_cstr(mrb, str, ptr)
 #define mrb_str_buf_cat(mrb, str, ptr, len) mrb_str_cat(mrb, str, ptr, len)
 #define mrb_str_buf_append(mrb, str, str2) mrb_str_cat_str(mrb, str, str2)
+
+#ifdef MRB_UTF8_STRING
+mrb_int mrb_utf8_len(const char *str, mrb_int byte_len);
+#endif
 
 MRB_END_DECL
 
