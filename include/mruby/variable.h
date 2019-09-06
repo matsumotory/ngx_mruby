@@ -123,6 +123,7 @@ mrb_value mrb_obj_instance_variables(mrb_state*, mrb_value);
 mrb_value mrb_mod_class_variables(mrb_state*, mrb_value);
 mrb_value mrb_mod_cv_get(mrb_state *mrb, struct RClass * c, mrb_sym sym);
 mrb_bool mrb_mod_cv_defined(mrb_state *mrb, struct RClass * c, mrb_sym sym);
+mrb_bool mrb_ident_p(const char *s, mrb_int len);
 
 /* GC functions */
 void mrb_gc_mark_gv(mrb_state*);
@@ -130,6 +131,10 @@ void mrb_gc_free_gv(mrb_state*);
 void mrb_gc_mark_iv(mrb_state*, struct RObject*);
 size_t mrb_gc_mark_iv_size(mrb_state*, struct RObject*);
 void mrb_gc_free_iv(mrb_state*, struct RObject*);
+
+/* return non zero to break the loop */
+typedef int (mrb_iv_foreach_func)(mrb_state*,mrb_sym,mrb_value,void*);
+MRB_API void mrb_iv_foreach(mrb_state *mrb, mrb_value obj, mrb_iv_foreach_func *func, void *p);
 
 MRB_END_DECL
 

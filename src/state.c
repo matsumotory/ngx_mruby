@@ -26,6 +26,7 @@ mrb_open_core(mrb_allocf f, void *ud)
   static const struct mrb_context mrb_context_zero = { 0 };
   mrb_state *mrb;
 
+  if (f == NULL) f = mrb_default_allocf;
   mrb = (mrb_state *)(f)(NULL, NULL, sizeof(mrb_state), ud);
   if (mrb == NULL) return NULL;
 
@@ -40,6 +41,10 @@ mrb_open_core(mrb_allocf f, void *ud)
   mrb->root_c = mrb->c;
 
   mrb_init_core(mrb);
+
+#if !defined(MRB_DISABLE_STDIO) && defined(_MSC_VER) && _MSC_VER < 1900
+  _set_output_format(_TWO_DIGIT_EXPONENT);
+#endif
 
   return mrb;
 }

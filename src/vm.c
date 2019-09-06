@@ -101,7 +101,7 @@ static inline void
 stack_clear(mrb_value *from, size_t count)
 {
 #ifndef MRB_NAN_BOXING
-  const mrb_value mrb_value_zero = { 0 };
+  const mrb_value mrb_value_zero = { { 0 } };
 
   while (count-- > 0) {
     *from++ = mrb_value_zero;
@@ -593,7 +593,7 @@ mrb_exec_irep(mrb_state *mrb, mrb_value self, struct RProc *p)
  *     k = Klass.new
  *     k.send :hello, "gentle", "readers"   #=> "Hello gentle readers"
  */
-MRB_API mrb_value
+mrb_value
 mrb_f_send(mrb_state *mrb, mrb_value self)
 {
   mrb_sym name;
@@ -667,10 +667,11 @@ eval_under(mrb_state *mrb, mrb_value self, mrb_value blk, struct RClass *c)
     return MRB_PROC_CFUNC(p)(mrb, self);
   }
   nregs = p->body.irep->nregs;
-  mrb_stack_extend(mrb, (nregs < 3) ? 3 : nregs);
+  if (nregs < 3) nregs = 3;
+  mrb_stack_extend(mrb, nregs);
   mrb->c->stack[0] = self;
   mrb->c->stack[1] = self;
-  mrb->c->stack[2] = mrb_nil_value();
+  stack_clear(mrb->c->stack+2, nregs-2);
   ci = cipush(mrb);
   ci->target_class = 0;
   ci->pc = p->body.irep->iseq;
@@ -1809,7 +1810,8 @@ RETRY_TRY_BLOCK:
             kdict = argv[argc-1];
             mrb_hash_check_kdict(mrb, kdict);
           }
-          else if (r || argc <= m1+m2+o) {
+          else if (r || argc <= m1+m2+o
+                   || !(mrb->c->ci->proc && MRB_PROC_STRICT_P(mrb->c->ci->proc))) {
             kdict = mrb_hash_new(mrb);
             kargs = 0;
           }
