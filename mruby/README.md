@@ -17,7 +17,7 @@ of the Ministry of Economy, Trade and Industry of Japan.
 
 ## How to get mruby
 
-The stable version 2.0.0 of mruby can be downloaded via the following URL: [https://github.com/mruby/mruby/archive/2.0.0.zip](https://github.com/mruby/mruby/archive/2.0.0.zip)
+The stable version 2.0.1 of mruby can be downloaded via the following URL: [https://github.com/mruby/mruby/archive/2.0.1.zip](https://github.com/mruby/mruby/archive/2.0.1.zip)
 
 The latest development version of mruby can be downloaded via the following URL: [https://github.com/mruby/mruby/zipball/master](https://github.com/mruby/mruby/zipball/master)
 
@@ -59,7 +59,7 @@ how to use mrbgems look into the folder *examples/mrbgems/*.
 
 ## License
 
-mruby is released under the [MIT License](MITL).
+mruby is released under the [MIT License](LICENSE).
 
 ## Note for License
 

@@ -9,8 +9,7 @@
 #include <mruby/class.h>
 #include <mruby/proc.h>
 #include <mruby/string.h>
-
-typedef int (iv_foreach_func)(mrb_state*,mrb_sym,mrb_value,void*);
+#include <mruby/variable.h>
 
 #ifndef MRB_IV_SEGMENT_SIZE
 #define MRB_IV_SEGMENT_SIZE 4
@@ -156,14 +155,13 @@ iv_del(mrb_state *mrb, iv_tbl *t, mrb_sym sym, mrb_value *vp)
 }
 
 /* Iterates over the instance variable table. */
-static mrb_bool
-iv_foreach(mrb_state *mrb, iv_tbl *t, iv_foreach_func *func, void *p)
+static void
+iv_foreach(mrb_state *mrb, iv_tbl *t, mrb_iv_foreach_func *func, void *p)
 {
   segment *seg;
   size_t i;
-  int n;
 
-  if (t == NULL) return TRUE;
+  if (t == NULL) return;
   seg = t->rootseg;
   while (seg) {
     for (i=0; i<MRB_IV_SEGMENT_SIZE; i++) {
@@ -171,20 +169,17 @@ iv_foreach(mrb_state *mrb, iv_tbl *t, iv_foreach_func *func, void *p)
 
       /* no value in last segment after last_len */
       if (!seg->next && i >= t->last_len) {
-        return FALSE;
+        return;
       }
       if (key != 0) {
-        n =(*func)(mrb, key, seg->val[i], p);
-        if (n > 0) return FALSE;
-        if (n < 0) {
-          t->size--;
-          seg->key[i] = 0;
+        if ((*func)(mrb, key, seg->val[i], p) != 0) {
+          return;
         }
       }
     }
     seg = seg->next;
   }
-  return TRUE;
+  return;
 }
 
 /* Get the size of the instance variable table. */
@@ -363,6 +358,14 @@ mrb_obj_iv_set(mrb_state *mrb, struct RObject *obj, mrb_sym sym, mrb_value v)
   mrb_write_barrier(mrb, (struct RBasic*)obj);
 }
 
+/* Iterates over the instance variable table. */
+MRB_API void
+mrb_iv_foreach(mrb_state *mrb, mrb_value obj, mrb_iv_foreach_func *func, void *p)
+{
+  if (!obj_iv_p(obj)) return;
+  iv_foreach(mrb, mrb_obj_ptr(obj)->iv, func, p);
+}
+
 static inline mrb_bool
 namespace_p(enum mrb_vtype tt)
 {
@@ -425,22 +428,17 @@ mrb_iv_defined(mrb_state *mrb, mrb_value obj, mrb_sym sym)
   return mrb_obj_iv_defined(mrb, mrb_obj_ptr(obj), sym);
 }
 
-#define identchar(c) (ISALNUM(c) || (c) == '_' || !ISASCII(c))
-
 MRB_API mrb_bool
 mrb_iv_name_sym_p(mrb_state *mrb, mrb_sym iv_name)
 {
   const char *s;
-  mrb_int i, len;
+  mrb_int len;
 
   s = mrb_sym2name_len(mrb, iv_name, &len);
   if (len < 2) return FALSE;
   if (s[0] != '@') return FALSE;
-  if (s[1] == '@') return FALSE;
-  for (i=1; i<len; i++) {
-    if (!identchar(s[i])) return FALSE;
-  }
-  return TRUE;
+  if (ISDIGIT(s[1])) return FALSE;
+  return mrb_ident_p(s+1, len-1);
 }
 
 MRB_API void
@@ -623,7 +621,7 @@ mrb_mod_class_variables(mrb_state *mrb, mrb_value mod)
   return ary;
 }
 
-MRB_API mrb_value
+mrb_value
 mrb_mod_cv_get(mrb_state *mrb, struct RClass *c, mrb_sym sym)
 {
   struct RClass * cls = c;
@@ -716,7 +714,7 @@ mrb_cv_set(mrb_state *mrb, mrb_value mod, mrb_sym sym, mrb_value v)
   mrb_mod_cv_set(mrb, mrb_class_ptr(mod), sym, v);
 }
 
-MRB_API mrb_bool
+mrb_bool
 mrb_mod_cv_defined(mrb_state *mrb, struct RClass * c, mrb_sym sym)
 {
   while (c) {
@@ -1110,4 +1108,15 @@ mrb_class_find_path(mrb_state *mrb, struct RClass *c)
     mrb_field_write_barrier_value(mrb, (struct RBasic*)c, path);
   }
   return path;
+}
+
+#define identchar(c) (ISALNUM(c) || (c) == '_' || !ISASCII(c))
+
+mrb_bool
+mrb_ident_p(const char *s, mrb_int len)
+{
+  for (mrb_int i = 0; i < len; i++) {
+    if (!identchar(s[i])) return FALSE;
+  }
+  return TRUE;
 }

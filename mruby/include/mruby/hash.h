@@ -8,7 +8,6 @@
 #define MRUBY_HASH_H
 
 #include "common.h"
-#include <mruby/khash.h>
 
 /**
  * Hash class
@@ -166,6 +165,19 @@ MRB_API mrb_value mrb_hash_values(mrb_state *mrb, mrb_value hash);
 MRB_API mrb_value mrb_hash_clear(mrb_state *mrb, mrb_value hash);
 
 /*
+ * Get hash size.
+ *
+ * Equivalent to:
+ *
+ *      hash.size
+ *
+ * @param mrb The mruby state reference.
+ * @param hash The target hash.
+ * @return The hash size.
+ */
+MRB_API mrb_int mrb_hash_size(mrb_state *mrb, mrb_value hash);
+
+/*
  * Copies the hash.
  *
  *
@@ -185,14 +197,12 @@ MRB_API mrb_value mrb_hash_dup(mrb_state *mrb, mrb_value hash);
  */
 MRB_API void mrb_hash_merge(mrb_state *mrb, mrb_value hash1, mrb_value hash2);
 
-/* declaration of struct kh_ht */
+/* declaration of struct mrb_hash_value */
 /* be careful when you touch the internal */
 typedef struct {
   mrb_value v;
   mrb_int n;
 } mrb_hash_value;
-
-KHASH_DECLARE(ht, mrb_value, mrb_hash_value, TRUE)
 
 /* RHASH_TBL allocates st_table if not available. */
 #define RHASH(obj)   ((struct RHash*)(mrb_ptr(obj)))
@@ -209,6 +219,10 @@ KHASH_DECLARE(ht, mrb_value, mrb_hash_value, TRUE)
 void mrb_gc_mark_hash(mrb_state*, struct RHash*);
 size_t mrb_gc_mark_hash_size(mrb_state*, struct RHash*);
 void mrb_gc_free_hash(mrb_state*, struct RHash*);
+
+/* return non zero to break the loop */
+typedef int (mrb_hash_foreach_func)(mrb_state *mrb, mrb_value key, mrb_value val, void *data);
+MRB_API void mrb_hash_foreach(mrb_state *mrb, struct RHash *hash, mrb_hash_foreach_func *func, void *p);
 
 MRB_END_DECL
 

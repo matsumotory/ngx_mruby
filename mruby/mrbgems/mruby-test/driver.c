@@ -18,8 +18,9 @@
 #include <mruby/variable.h>
 #include <mruby/array.h>
 
-void
-mrb_init_mrbtest(mrb_state *);
+extern const uint8_t mrbtest_assert_irep[];
+
+void mrbgemtest_init(mrb_state* mrb);
 
 /* Print a short remark for the user */
 static void
@@ -29,56 +30,36 @@ print_hint(void)
 }
 
 static int
-check_error(mrb_state *mrb)
-{
-  /* Error check */
-  /* $ko_test and $kill_test should be 0 */
-  mrb_value ko_test = mrb_gv_get(mrb, mrb_intern_lit(mrb, "$ko_test"));
-  mrb_value kill_test = mrb_gv_get(mrb, mrb_intern_lit(mrb, "$kill_test"));
-
-  return mrb_fixnum_p(ko_test) && mrb_fixnum(ko_test) == 0 && mrb_fixnum_p(kill_test) && mrb_fixnum(kill_test) == 0;
-}
-
-static int
 eval_test(mrb_state *mrb)
 {
   /* evaluate the test */
-  mrb_funcall(mrb, mrb_top_self(mrb), "report", 0);
+  mrb_value result = mrb_funcall(mrb, mrb_top_self(mrb), "report", 0);
   /* did an exception occur? */
   if (mrb->exc) {
     mrb_print_error(mrb);
     mrb->exc = 0;
     return EXIT_FAILURE;
   }
-  else if (!check_error(mrb)) {
-    return EXIT_FAILURE;
-  }
-  return EXIT_SUCCESS;
-}
-
-static void
-t_printstr(mrb_state *mrb, mrb_value obj)
-{
-  char *s;
-  mrb_int len;
-
-  if (mrb_string_p(obj)) {
-    s = RSTRING_PTR(obj);
-    len = RSTRING_LEN(obj);
-    fwrite(s, len, 1, stdout);
-    fflush(stdout);
+  else {
+    return mrb_bool(result) ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 }
 
-mrb_value
-mrb_t_printstr(mrb_state *mrb, mrb_value self)
+/* Implementation of print due to the reason that there might be no print */
+static mrb_value
+t_print(mrb_state *mrb, mrb_value self)
 {
-  mrb_value argv;
+  mrb_value *argv;
+  mrb_int argc;
 
-  mrb_get_args(mrb, "o", &argv);
-  t_printstr(mrb, argv);
+  mrb_get_args(mrb, "*!", &argv, &argc);
+  for (mrb_int i = 0; i < argc; ++i) {
+    mrb_value s = mrb_obj_as_string(mrb, argv[i]);
+    fwrite(RSTRING_PTR(s), RSTRING_LEN(s), 1, stdout);
+  }
+  fflush(stdout);
 
-  return argv;
+  return mrb_nil_value();
 }
 
 void
@@ -87,7 +68,7 @@ mrb_init_test_driver(mrb_state *mrb, mrb_bool verbose)
   struct RClass *krn, *mrbtest;
 
   krn = mrb->kernel_module;
-  mrb_define_method(mrb, krn, "__t_printstr__", mrb_t_printstr, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, krn, "t_print", t_print, MRB_ARGS_ANY());
 
   mrbtest = mrb_define_module(mrb, "Mrbtest");
 
@@ -130,6 +111,7 @@ mrb_t_pass_result(mrb_state *mrb_dst, mrb_state *mrb_src)
   TEST_COUNT_PASS(ok_test);
   TEST_COUNT_PASS(ko_test);
   TEST_COUNT_PASS(kill_test);
+  TEST_COUNT_PASS(skip_test);
 
 #undef TEST_COUNT_PASS
 
@@ -167,7 +149,8 @@ main(int argc, char **argv)
   }
 
   mrb_init_test_driver(mrb, verbose);
-  mrb_init_mrbtest(mrb);
+  mrb_load_irep(mrb, mrbtest_assert_irep);
+  mrbgemtest_init(mrb);
   ret = eval_test(mrb);
   mrb_close(mrb);
 

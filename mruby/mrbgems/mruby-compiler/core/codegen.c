@@ -8,6 +8,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <mruby.h>
 #include <mruby/compile.h>
 #include <mruby/proc.h>
@@ -61,7 +62,7 @@ typedef struct scope {
 
   struct loopinfo *loop;
   int ensure_level;
-  char const *filename;
+  mrb_sym filename_sym;
   uint16_t lineno;
 
   mrb_code *iseq;
@@ -105,8 +106,9 @@ codegen_error(codegen_scope *s, const char *message)
     s = tmp;
   }
 #ifndef MRB_DISABLE_STDIO
-  if (s->filename && s->lineno) {
-    fprintf(stderr, "codegen error:%s:%d: %s\n", s->filename, s->lineno, message);
+  if (s->filename_sym && s->lineno) {
+    const char *filename = mrb_sym2name_len(s->mrb, s->filename_sym, NULL);
+    fprintf(stderr, "codegen error:%s:%d: %s\n", filename, s->lineno, message);
   }
   else {
     fprintf(stderr, "codegen error: %s\n", message);
@@ -566,9 +568,12 @@ new_lit(codegen_scope *s, mrb_value val)
 #ifndef MRB_WITHOUT_FLOAT
   case MRB_TT_FLOAT:
     for (i=0; i<s->irep->plen; i++) {
+      mrb_float f1, f2;
       pv = &s->irep->pool[i];
       if (mrb_type(*pv) != MRB_TT_FLOAT) continue;
-      if (mrb_float(*pv) == mrb_float(val)) return i;
+      f1 = mrb_float(*pv);
+      f2 = mrb_float(val);
+      if (f1 == f2 && !signbit(f1) == !signbit(f2)) return i;
     }
     break;
 #endif
@@ -730,7 +735,10 @@ lambda_body(codegen_scope *s, node *tree, int blk)
     lp->pc0 = new_label(s);
   }
   tree = tree->cdr;
-  if (tree->car) {
+  if (tree->car == NULL) {
+    genop_W(s, OP_ENTER, 0);
+  }
+  else {
     mrb_aspec a;
     int ma, oa, ra, pa, ka, kd, ba;
     int pos, i;
@@ -816,8 +824,8 @@ lambda_body(codegen_scope *s, node *tree, int blk)
         mrb_assert(nint(kwd->car) == NODE_KW_ARG);
 
         if (def_arg) {
-          genop_2(s, OP_KEY_P, cursp(), new_sym(s, kwd_sym));
-          jmpif_key_p = genjmp2(s, OP_JMPIF, cursp(), 0, 0);
+          genop_2(s, OP_KEY_P, lv_idx(s, kwd_sym), new_sym(s, kwd_sym));
+          jmpif_key_p = genjmp2(s, OP_JMPIF, lv_idx(s, kwd_sym), 0, 0);
           codegen(s, def_arg, VAL);
           pop();
           gen_move(s, lv_idx(s, kwd_sym), cursp(), 0);
@@ -1392,13 +1400,14 @@ codegen(codegen_scope *s, node *tree, int val)
     codegen_error(s, "too complex expression");
   }
   if (s->irep && s->filename_index != tree->filename_index) {
-    const char *filename = mrb_parser_get_filename(s->parser, s->filename_index);
+    mrb_sym fname = mrb_parser_get_filename(s->parser, s->filename_index);
+    const char *filename = mrb_sym2name_len(s->mrb, fname, NULL);
 
     mrb_debug_info_append_file(s->mrb, s->irep->debug_info,
                                filename, s->lines, s->debug_start_pos, s->pc);
     s->debug_start_pos = s->pc;
     s->filename_index = tree->filename_index;
-    s->filename = mrb_parser_get_filename(s->parser, tree->filename_index);
+    s->filename_sym = mrb_parser_get_filename(s->parser, tree->filename_index);
   }
 
   nt = nint(tree->car);
@@ -2350,13 +2359,9 @@ codegen(codegen_scope *s, node *tree, int val)
 
   case NODE_BACK_REF:
     if (val) {
-      char buf[3];
-      int sym;
+      char buf[] = {'$', nchar(tree)};
+      int sym = new_sym(s, mrb_intern(s->mrb, buf, sizeof(buf)));
 
-      buf[0] = '$';
-      buf[1] = nchar(tree);
-      buf[2] = 0;
-      sym = new_sym(s, mrb_intern_cstr(s->mrb, buf));
       genop_2(s, OP_GETGV, cursp(), sym);
       push();
     }
@@ -2802,7 +2807,10 @@ codegen(codegen_scope *s, node *tree, int val)
       idx = new_sym(s, nsym(tree->car->cdr));
       genop_2(s, OP_CLASS, cursp(), idx);
       body = tree->cdr->cdr->car;
-      if (!(nint(body->cdr->car) == NODE_BEGIN && body->cdr->cdr == NULL)) {
+      if (nint(body->cdr->car) == NODE_BEGIN && body->cdr->cdr == NULL) {
+        genop_1(s, OP_LOADNIL, cursp());
+      }
+      else {
         idx = scope_body(s, body, val);
         genop_2(s, OP_EXEC, cursp(), idx);
       }
@@ -2830,8 +2838,11 @@ codegen(codegen_scope *s, node *tree, int val)
       pop();
       idx = new_sym(s, nsym(tree->car->cdr));
       genop_2(s, OP_MODULE, cursp(), idx);
-      if (!(nint(tree->cdr->car->cdr->car) == NODE_BEGIN &&
-            tree->cdr->car->cdr->cdr == NULL)) {
+      if (nint(tree->cdr->car->cdr->car) == NODE_BEGIN &&
+          tree->cdr->car->cdr->cdr == NULL) {
+        genop_1(s, OP_LOADNIL, cursp());
+      }
+      else {
         idx = scope_body(s, tree->cdr->car, val);
         genop_2(s, OP_EXEC, cursp(), idx);
       }
@@ -2848,8 +2859,11 @@ codegen(codegen_scope *s, node *tree, int val)
       codegen(s, tree->car, VAL);
       pop();
       genop_1(s, OP_SCLASS, cursp());
-      if (!(nint(tree->cdr->car->cdr->car) == NODE_BEGIN &&
-            tree->cdr->car->cdr->cdr == NULL)) {
+      if (nint(tree->cdr->car->cdr->car) == NODE_BEGIN &&
+          tree->cdr->car->cdr->cdr == NULL) {
+        genop_1(s, OP_LOADNIL, cursp());
+      }
+      else {
         idx = scope_body(s, tree->cdr->car, val);
         genop_2(s, OP_EXEC, cursp(), idx);
       }
@@ -2978,15 +2992,15 @@ scope_new(mrb_state *mrb, codegen_scope *prev, node *lv)
   }
   p->ai = mrb_gc_arena_save(mrb);
 
-  p->filename = prev->filename;
-  if (p->filename) {
+  p->filename_sym = prev->filename_sym;
+  if (p->filename_sym) {
     p->lines = (uint16_t*)mrb_malloc(mrb, sizeof(short)*p->icapa);
   }
   p->lineno = prev->lineno;
 
   /* debug setting */
   p->debug_start_pos = 0;
-  if (p->filename) {
+  if (p->filename_sym) {
     mrb_debug_info_alloc(mrb, p->irep);
   }
   else {
@@ -3014,8 +3028,9 @@ scope_finish(codegen_scope *s)
   irep->pool = (mrb_value*)codegen_realloc(s, irep->pool, sizeof(mrb_value)*irep->plen);
   irep->syms = (mrb_sym*)codegen_realloc(s, irep->syms, sizeof(mrb_sym)*irep->slen);
   irep->reps = (mrb_irep**)codegen_realloc(s, irep->reps, sizeof(mrb_irep*)*irep->rlen);
-  if (s->filename) {
-    const char *filename = mrb_parser_get_filename(s->parser, s->filename_index);
+  if (s->filename_sym) {
+    mrb_sym fname = mrb_parser_get_filename(s->parser, s->filename_index);
+    const char *filename = mrb_sym2name_len(s->mrb, fname, NULL);
 
     mrb_debug_info_append_file(s->mrb, s->irep->debug_info,
                                filename, s->lines, s->debug_start_pos, s->pc);
@@ -3124,7 +3139,7 @@ generate_code(mrb_state *mrb, parser_state *p, int val)
   }
   scope->mrb = mrb;
   scope->parser = p;
-  scope->filename = p->filename;
+  scope->filename_sym = p->filename_sym;
   scope->filename_index = p->current_filename_index;
 
   MRB_TRY(&scope->jmp) {

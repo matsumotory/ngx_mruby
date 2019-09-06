@@ -122,6 +122,19 @@ prepare_singleton_class(mrb_state *mrb, struct RBasic *o)
   mrb_obj_iv_set(mrb, (struct RObject*)sc, mrb_intern_lit(mrb, "__attached__"), mrb_obj_value(o));
 }
 
+static mrb_value
+class_name_str(mrb_state *mrb, struct RClass* c)
+{
+  mrb_value path = mrb_class_path(mrb, c);
+  if (mrb_nil_p(path)) {
+    path = c->tt == MRB_TT_MODULE ? mrb_str_new_lit(mrb, "#<Module:") :
+                                    mrb_str_new_lit(mrb, "#<Class:");
+    mrb_str_concat(mrb, path, mrb_ptr_to_str(mrb, c));
+    mrb_str_cat_lit(mrb, path, ">");
+  }
+  return path;
+}
+
 static struct RClass*
 class_from_sym(mrb_state *mrb, struct RClass *klass, mrb_sym id)
 {
@@ -471,15 +484,11 @@ mrb_define_method(mrb_state *mrb, struct RClass *c, const char *name, mrb_func_t
 MRB_API void
 mrb_notimplement(mrb_state *mrb)
 {
-  const char *str;
-  mrb_int len;
   mrb_callinfo *ci = mrb->c->ci;
 
   if (ci->mid) {
-    str = mrb_sym2name_len(mrb, ci->mid, &len);
-    mrb_raisef(mrb, E_NOTIMP_ERROR,
-      "%S() function is unimplemented on this machine",
-      mrb_str_new_static(mrb, str, (size_t)len));
+    mrb_value str = mrb_sym2str(mrb, ci->mid);
+    mrb_raisef(mrb, E_NOTIMP_ERROR, "%S() function is unimplemented on this machine", str);
   }
 }
 
@@ -1673,11 +1682,7 @@ mrb_class_path(mrb_state *mrb, struct RClass *c)
   }
   else if (mrb_symbol_p(path)) {
     /* toplevel class/module */
-    const char *str;
-    mrb_int len;
-
-    str = mrb_sym2name_len(mrb, mrb_symbol(path), &len);
-    return mrb_str_new(mrb, str, len);
+    return mrb_sym2str(mrb, mrb_symbol(path));
   }
   return mrb_str_dup(mrb, path);
 }
@@ -1696,14 +1701,8 @@ mrb_class_real(struct RClass* cl)
 MRB_API const char*
 mrb_class_name(mrb_state *mrb, struct RClass* c)
 {
-  mrb_value path = mrb_class_path(mrb, c);
-  if (mrb_nil_p(path)) {
-    path = c->tt == MRB_TT_MODULE ? mrb_str_new_lit(mrb, "#<Module:") :
-                                    mrb_str_new_lit(mrb, "#<Class:");
-    mrb_str_concat(mrb, path, mrb_ptr_to_str(mrb, c));
-    mrb_str_cat_lit(mrb, path, ">");
-  }
-  return RSTRING_PTR(path);
+  mrb_value name = class_name_str(mrb, c);
+  return RSTRING_PTR(name);
 }
 
 MRB_API const char*
@@ -1815,15 +1814,13 @@ mrb_define_alias(mrb_state *mrb, struct RClass *klass, const char *name1, const 
  * show information on the thing we're attached to as well.
  */
 
-static mrb_value
+mrb_value
 mrb_mod_to_s(mrb_state *mrb, mrb_value klass)
 {
-  mrb_value str;
 
   if (mrb_type(klass) == MRB_TT_SCLASS) {
     mrb_value v = mrb_iv_get(mrb, klass, mrb_intern_lit(mrb, "__attached__"));
-
-    str = mrb_str_new_lit(mrb, "#<Class:");
+    mrb_value str = mrb_str_new_lit(mrb, "#<Class:");
 
     if (class_ptr_p(v)) {
       mrb_str_cat_str(mrb, str, mrb_inspect(mrb, v));
@@ -1834,34 +1831,7 @@ mrb_mod_to_s(mrb_state *mrb, mrb_value klass)
     return mrb_str_cat_lit(mrb, str, ">");
   }
   else {
-    struct RClass *c;
-    mrb_value path;
-
-    str = mrb_str_new_capa(mrb, 32);
-    c = mrb_class_ptr(klass);
-    path = mrb_class_path(mrb, c);
-
-    if (mrb_nil_p(path)) {
-      switch (mrb_type(klass)) {
-        case MRB_TT_CLASS:
-          mrb_str_cat_lit(mrb, str, "#<Class:");
-          break;
-
-        case MRB_TT_MODULE:
-          mrb_str_cat_lit(mrb, str, "#<Module:");
-          break;
-
-        default:
-          /* Shouldn't be happened? */
-          mrb_str_cat_lit(mrb, str, "#<??????:");
-          break;
-      }
-      mrb_str_concat(mrb, str, mrb_ptr_to_str(mrb, c));
-      return mrb_str_cat_lit(mrb, str, ">");
-    }
-    else {
-      return path;
-    }
+    return class_name_str(mrb, mrb_class_ptr(klass));
   }
 }
 
@@ -1917,18 +1887,20 @@ mrb_mod_undef(mrb_state *mrb, mrb_value mod)
   return mrb_nil_value();
 }
 
-static void
-check_const_name_str(mrb_state *mrb, mrb_value str)
+static mrb_bool
+const_name_p(mrb_state *mrb, const char *name, mrb_int len)
 {
-  if (RSTRING_LEN(str) < 1 || !ISUPPER(*RSTRING_PTR(str))) {
-    mrb_name_error(mrb, mrb_intern_str(mrb, str), "wrong constant name %S", str);
-  }
+  return len > 0 && ISUPPER(name[0]) && mrb_ident_p(name+1, len-1);
 }
 
 static void
 check_const_name_sym(mrb_state *mrb, mrb_sym id)
 {
-  check_const_name_str(mrb, mrb_sym2str(mrb, id));
+  mrb_int len;
+  const char *name = mrb_sym2name_len(mrb, id, &len);
+  if (!const_name_p(mrb, name, len)) {
+    mrb_name_error(mrb, id, "wrong constant name %S", mrb_sym2str(mrb, id));
+  }
 }
 
 static mrb_value
@@ -2126,7 +2098,7 @@ mrb_mod_eqq(mrb_state *mrb, mrb_value mod)
   return mrb_bool_value(eqq);
 }
 
-MRB_API mrb_value
+static mrb_value
 mrb_mod_module_function(mrb_state *mrb, mrb_value mod)
 {
   mrb_value *argv;

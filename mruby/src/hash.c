@@ -16,13 +16,10 @@
 mrb_int mrb_float_id(mrb_float f);
 #endif
 
-/* return non zero to break the loop */
-typedef int (ht_foreach_func)(mrb_state *mrb,mrb_value key, mrb_value val, void *data);
-
 #ifndef MRB_HT_INIT_SIZE
 #define MRB_HT_INIT_SIZE 4
 #endif
-#define HT_SEG_INCREASE_RATIO 1.2
+#define HT_SEG_INCREASE_RATIO 6 / 5
 
 struct segkv {
   mrb_value key;
@@ -41,7 +38,7 @@ typedef struct segindex {
   struct segkv *table[];
 } segindex;
 
-/* Instance variable table structure */
+/* hash table structure */
 typedef struct htable {
   segment *rootseg;
   segment *lastseg;
@@ -135,7 +132,7 @@ ht_hash_equal(mrb_state *mrb, htable *t, mrb_value a, mrb_value b)
   } 
 }
 
-/* Creates the instance variable table. */
+/* Creates the hash table. */
 static htable*
 ht_new(mrb_state *mrb)
 {
@@ -349,7 +346,7 @@ ht_index_put(mrb_state *mrb, htable *t, mrb_value key, mrb_value val)
   t->size++;
 }
 
-/* Set the value for the key in the table. */
+/* Set the value for the key in the hash table. */
 static void
 ht_put(mrb_state *mrb, htable *t, mrb_value key, mrb_value val)
 {
@@ -468,7 +465,7 @@ ht_get(mrb_state *mrb, htable *t, mrb_value key, mrb_value *vp)
   return FALSE;
 }
 
-/* Deletes the value for the symbol from the instance variable table. */
+/* Deletes the value for the symbol from the hash table. */
 /* Deletion is done by overwriting keys by `undef`. */
 static mrb_bool
 ht_del(mrb_state *mrb, htable *t, mrb_value key, mrb_value *vp)
@@ -499,9 +496,9 @@ ht_del(mrb_state *mrb, htable *t, mrb_value key, mrb_value *vp)
   return FALSE;
 }
 
-/* Iterates over the instance variable table. */
+/* Iterates over the hash table. */
 static void
-ht_foreach(mrb_state *mrb, htable *t, ht_foreach_func *func, void *p)
+ht_foreach(mrb_state *mrb, htable *t, mrb_hash_foreach_func *func, void *p)
 {
   segment *seg;
   mrb_int i;
@@ -522,7 +519,14 @@ ht_foreach(mrb_state *mrb, htable *t, ht_foreach_func *func, void *p)
   }
 }
 
-/* Copy the instance variable table. */
+/* Iterates over the hash table. */
+MRB_API void
+mrb_hash_foreach(mrb_state *mrb, struct RHash *hash, mrb_hash_foreach_func *func, void *p)
+{
+  ht_foreach(mrb, hash->ht, func, p);
+}
+
+/* Copy the hash table. */
 static htable*
 ht_copy(mrb_state *mrb, htable *t)
 {
@@ -532,6 +536,7 @@ ht_copy(mrb_state *mrb, htable *t)
 
   seg = t->rootseg;
   t2 = ht_new(mrb);
+  if (t->size == 0) return t2;
 
   while (seg) {
     for (i=0; i<seg->size; i++) {
@@ -548,7 +553,7 @@ ht_copy(mrb_state *mrb, htable *t)
   return t2;
 }
 
-/* Free memory of the instance variable table. */
+/* Free memory of the hash table. */
 static void
 ht_free(mrb_state *mrb, htable *t)
 {
@@ -1008,7 +1013,7 @@ mrb_hash_delete(mrb_state *mrb, mrb_value self)
   return mrb_hash_delete_key(mrb, self, key);
 }
 
-/* find first element in a hash table, and remove it. */
+/* find first element in the hash table, and remove it. */
 static void
 ht_shift(mrb_state *mrb, htable *t, mrb_value *kp, mrb_value *vp)
 {
@@ -1129,6 +1134,15 @@ mrb_hash_aset(mrb_state *mrb, mrb_value self)
   return val;
 }
 
+MRB_API mrb_int
+mrb_hash_size(mrb_state *mrb, mrb_value hash)
+{
+  htable *t = RHASH_TBL(hash);
+
+  if (!t) return 0;
+  return t->size;
+}
+
 /* 15.2.13.4.20 */
 /* 15.2.13.4.25 */
 /*
@@ -1146,10 +1160,8 @@ mrb_hash_aset(mrb_state *mrb, mrb_value self)
 static mrb_value
 mrb_hash_size_m(mrb_state *mrb, mrb_value self)
 {
-  htable *t = RHASH_TBL(self);
-
-  if (!t) return mrb_fixnum_value(0);
-  return mrb_fixnum_value(t->size);
+  mrb_int size = mrb_hash_size(mrb, self);
+  return mrb_fixnum_value(size);
 }
 
 MRB_API mrb_bool
