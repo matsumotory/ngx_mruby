@@ -8,6 +8,7 @@ export LD="gcc-4.9"
 
 grep "^deb http://dk.archive.ubuntu.com/ubuntu/ xenial main" /etc/apt/sources.list || echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial main" | sudo tee -a /etc/apt/sources.list
 grep "^deb http://dk.archive.ubuntu.com/ubuntu/ xenial universe" /etc/apt/sources.list || echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial universe" | sudo tee -a /etc/apt/sources.list
+echo "libssl1.1 libraries/restart-without-asking boolean true" | sudo debconf-set-selections
 
 sudo apt-get update
 sudo apt-get -y install build-essential rake bison git gperf automake m4 \
