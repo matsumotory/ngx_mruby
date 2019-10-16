@@ -1,14 +1,16 @@
 sudo: required
-dist: trusty
+dist: bionic
 language: cpp
 compiler:
   - gcc
 before_install:
+  - echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial main" >> /etc/apt/sources.list
+  - echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial universe" >> /etc/apt/sources.list
   - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
   - sudo apt-get -qq update
 install:
   - sudo apt-get -qq install rake bison git gperf zlib1g-dev g++-4.9 libstdc++-4.9-dev
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9"; fi
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9" LD="gcc-4.9"; fi
   - $CXX -v
 env:
   - NGINX_SRC_MAJOR=1
