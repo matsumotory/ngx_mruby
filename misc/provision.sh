@@ -1,9 +1,18 @@
 #/bin/sh
 
+echo '
+export CXX="g++-4.9"
+export CC="gcc-4.9"
+export LD="gcc-4.9"
+' | sudo tee /etc/profile.d/env.sh
+
+grep "^deb http://dk.archive.ubuntu.com/ubuntu/ xenial main" /etc/apt/sources.list || echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial main" | sudo tee -a /etc/apt/sources.list
+grep "^deb http://dk.archive.ubuntu.com/ubuntu/ xenial universe" /etc/apt/sources.list || echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial universe" | sudo tee -a /etc/apt/sources.list
+
 sudo apt-get update
 sudo apt-get -y install build-essential rake bison git gperf automake m4 \
                 autoconf libtool cmake pkg-config libcunit1-dev ragel \
-                libpcre3-dev clang-format-6.0
+                libpcre3-dev clang-format-6.0 g++-4.9 libstdc++-4.9-dev
 sudo apt-get -y remove nano
 
 sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-6.0 1000
