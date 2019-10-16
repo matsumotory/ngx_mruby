@@ -19,11 +19,12 @@ RUN apt-get install -y \
 ENV CXX "g++-4.9"
 ENV CC "gcc-4.9"
 
-RUN curl -L https://www.openssl.org/source/openssl-1.0.2-latest.tar.gz -o openssl-1.0.2.tar.gz && \
-  tar -xzf openssl-1.0.2.tar.gz && \
-  rm openssl-1.0.2.tar.gz && \
-  cd openssl-1.0.2* && \
-  ./config --prefix=/usr/local --shared zlib -fPIC enable-tlsext && \
+RUN openssl_version=1.1.1 && \
+  curl -sfL https://www.openssl.org/source/openssl-${openssl_version}-latest.tar.gz -o openssl-${openssl_version}.tar.gz && \
+  tar -xzf openssl-${openssl_version}.tar.gz && \
+  rm openssl-${openssl_version}.tar.gz && \
+  cd openssl-${openssl_version}* && \
+  ./config --prefix=/usr/local --shared zlib -fPIC >> /dev/null 2>&1 && \
   make && \
   sudo make install && \
   sudo ldconfig /usr/local/lib
