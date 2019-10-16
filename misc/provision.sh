@@ -18,4 +18,16 @@ sudo apt-get -y remove nano
 
 sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-6.0 1000
 
+openssl_version=1.1.1
+curl -sfL https://www.openssl.org/source/openssl-${openssl_version}-latest.tar.gz -o openssl-${openssl_version}.tar.gz
+tar -xzf openssl-${openssl_version}.tar.gz
+rm openssl-${openssl_version}.tar.gz
+cd openssl-${openssl_version}*
+./config --prefix=/usr/local --shared zlib -fPIC >> /dev/null 2>&1
+make >> /dev/null 2>&1
+sudo make install >> /dev/null 2>&1
+sudo ldconfig /usr/local/lib
+cd -
+openssl version
+
 git clone https://github.com/matsumotory/ngx_mruby
