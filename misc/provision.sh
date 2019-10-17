@@ -23,9 +23,9 @@ curl -sfL https://www.openssl.org/source/openssl-${openssl_version}-latest.tar.g
 tar -xzf openssl-${openssl_version}.tar.gz
 rm openssl-${openssl_version}.tar.gz
 cd openssl-${openssl_version}*
-./config --prefix=/usr/local --shared zlib -fPIC >> /dev/null 2>&1
-make >> /dev/null 2>&1
-sudo make install >> /dev/null 2>&1
+./config --prefix=/usr/local --shared zlib -fPIC
+make
+sudo make install
 sudo ldconfig /usr/local/lib
 cd -
 openssl version
