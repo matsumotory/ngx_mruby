@@ -531,6 +531,35 @@ t.assert('ngx_mruby - get ssl tls version') do
   t.assert_equal "TLSv1.2", res.chomp
 end
 
+t.assert('ngx_mruby - ngx_mruby_ssl_verify_client_handler with Nginx::SSL.reject_client') do
+  test_dir = File.expand_path(File.dirname(__FILE__))
+  crt = "#{test_dir}/../client/client.crt"
+  key = "#{test_dir}/../client/client.key"
+  `openssl s_client -cert #{crt} -key #{key} -connect localhost:58089 < /dev/null 2>&1 > /dev/null`
+  rc = $?
+  OPENSSL_S_LCINET_EXIT_FAILURE = 1
+  t.assert_equal OPENSSL_S_LCINET_EXIT_FAILURE, rc.to_i
+end
+
+t.assert('ngx_mruby - ngx_mruby_ssl_verify_client_handler with Nginx::SSL.accept_client') do
+  test_dir = File.expand_path(File.dirname(__FILE__))
+  crt = "#{test_dir}/../client/client.crt"
+  key = "#{test_dir}/../client/client.key"
+  `openssl s_client -cert #{crt} -key #{key} -connect localhost:58090 </dev/null 2>&1 > /dev/null`
+  rc = $?
+  OPENSSL_S_CLIENT_EXIT_SUCCESS = 0
+  t.assert_equal OPENSSL_S_CLIENT_EXIT_SUCCESS, rc.to_i
+end
+
+t.assert('ngx_mruby - handlers while doing in SSL Handshake can run ruby code without error') do
+  test_dir = File.expand_path(File.dirname(__FILE__))
+  crt = "#{test_dir}/../client/client.crt"
+  key = "#{test_dir}/../client/client.key"
+  `openssl s_client -cert #{crt} -key #{key} -connect localhost:58091 </dev/null 2>&1 > /dev/null`
+  OPENSSL_S_CLIENT_EXIT_SUCCESS = 0
+  rc = $?
+  t.assert_equal OPENSSL_S_CLIENT_EXIT_SUCCESS, rc.to_i
+end
 t.assert('ngx_mruby - issue_172', 'location /issue_172') do
   res = HttpRequest.new.get base + '/issue_172/index.html'
   expect_content = 'hello world'.upcase
