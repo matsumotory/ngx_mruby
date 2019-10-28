@@ -4,14 +4,15 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
+/* dirty hack to include nginx code. See ngx_http_mruby_upstream.h */
+#define NGX_HTTP_MRUBY_UPSTREAM_C
+
+#include "ngx_http_mruby_upstream.h"
+
+#ifdef NGX_USE_MRUBY_UPSTREAM
+
 #include "ngx_http_mruby_module.h"
-
-#ifndef NGX_USE_MRUBY_UPSTREAM
-#include "ngx_http_mruby_upstream.h"
-#else
-
 #include "ngx_http_mruby_request.h"
-#include "ngx_http_mruby_upstream.h"
 
 #include <mruby.h>
 #include <mruby/class.h>
@@ -155,10 +156,15 @@ static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
       mrb_raisef(mrb, E_RUNTIME_ERROR, "%S in upstream %S", mrb_str_new_cstr(mrb, u.err), server);
     }
   }
+
+  ngx_http_upstream_rr_peers_rlock(ctx->peers);
+  ngx_http_upstream_rr_peer_lock(ctx->peers, ctx->target);
   ctx->target->name = u.url;
   ctx->target->server = u.url;
   ctx->target->sockaddr = u.addrs[0].sockaddr;
   ctx->target->socklen = u.addrs[0].socklen;
+  ngx_http_upstream_rr_peer_unlock(ctx->peers, ctx->target);
+  ngx_http_upstream_rr_peers_unlock(ctx->peers);
 
   return server;
 }

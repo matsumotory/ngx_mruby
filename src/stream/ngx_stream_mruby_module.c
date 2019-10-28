@@ -4,20 +4,13 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-#include <ngx_config.h>
-#include <ngx_core.h>
-#include <ngx_stream.h>
-
-#include "mruby.h"
-#include "mruby/array.h"
-#include "mruby/compile.h"
-#include "mruby/data.h"
-#include "mruby/proc.h"
-#include "mruby/string.h"
-#include "mruby/variable.h"
+#include "ngx_stream_mruby_module.h"
+#include "ngx_stream_mruby_core.h"
+#include "ngx_stream_mruby_async.h"
 
 #include "ngx_stream_mruby_init.h"
-#include "ngx_stream_mruby_module.h"
+
+#include "mruby/string.h"
 
 #define NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code)                                                                    \
   if (code != NGX_CONF_UNSET_PTR && mrb && (code)->ctx) {                                                              \
@@ -42,7 +35,6 @@ static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ng
 // static ngx_int_t ngx_stream_mrb_run_conf(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code);
 
 /* mruby raise functions */
-static void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s);
 static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle);
 // static void ngx_stream_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
 
@@ -263,7 +255,7 @@ static void ngx_stream_mruby_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx
   }
 }
 
-static void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s)
+void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s)
 {
   obj = mrb_funcall(mrb, obj, "inspect", 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
@@ -375,12 +367,13 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
     if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
       return NGX_ERROR;
     }
-
+    NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code);
     code->ctx = mrbc_context_new(mrb);
     mrbc_filename(mrb, code->ctx, (char *)code->code.file);
     p = mrb_parse_file(mrb, mrb_file, code->ctx);
     fclose(mrb_file);
   } else {
+    NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code);
     code->ctx = mrbc_context_new(mrb);
     mrbc_filename(mrb, code->ctx, "INLINE CODE");
     p = mrb_parse_string(mrb, (char *)code->code.string, code->ctx);
@@ -602,6 +595,7 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
   }
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mrb, code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code);
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
@@ -684,6 +678,18 @@ static ngx_int_t ngx_stream_mrb_run_conf(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb
 }
 */
 
+ngx_stream_session_t *ngx_mruby_session = NULL;
+ngx_int_t ngx_mrb_push_session(ngx_stream_session_t *s)
+{
+  ngx_mruby_session = s;
+  return NGX_OK;
+}
+
+ngx_stream_session_t *ngx_mrb_get_session(void)
+{
+  return ngx_mruby_session;
+}
+
 static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
 {
   ngx_stream_mruby_srv_conf_t *mscf;
@@ -702,7 +708,21 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
 
   ictx->s = s;
   ictx->stream_status = NGX_DECLINED;
-  mrb_run(mrb, mscf->code->proc, mrb_top_self(mrb));
+
+  mrb_value *mrb_result = (mrb_value *)ngx_palloc(s->connection->pool, sizeof(mrb_value));
+  *mrb_result = mrb_nil_value();
+
+  ngx_mrb_push_session(s);
+  if (mrb_test(ngx_stream_mrb_start_fiber(s, mrb, mscf->code->proc, mrb_result))) {
+    ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
+                  __func__, __LINE__);
+
+    mrb_gc_arena_restore(mrb, ai);
+    return NGX_DONE;
+  } else {
+    ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: already finish this fiber, can not resume",
+                  MODULE_NAME, __func__, __LINE__);
+  }
 
   if (mrb->exc) {
     ngx_stream_mruby_raise_error(mrb, mrb_obj_value(mrb->exc), s);

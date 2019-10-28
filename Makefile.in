@@ -134,7 +134,11 @@ openssl: .openssl_build_done
 .openssl_configure_done:
 	(cd $(NGX_OPENSSL_SRC) \
 	&& if [ -f Makefile ]; then $(MAKE) clean; fi \
-	&& ./config --prefix=$(NGX_OPENSSL_INSTALL_DIR) --shared zlib -fPIC enable-tlsext $(NGX_OPENSSL_OPT) \
+	&& OPENSSL_VERSION=`grep '^VERSION' Makefile | head -1 | sed 's/VERSION=//'` \
+	&& OPENSSL_MAJOR_VERSION=`echo ${OPENSSL_VERSION} | awk -F '.' '{print $1}'` \
+	&& OPENSSL_MINOR_VERSION=`echo ${OPENSSL_VERSION} | awk -F '.' '{print $2}'` \
+	&& if [ ${OPENSSL_MAJOR_VERSION} -le 1 && ${OPENSSL_MINOR_VERSION} -eq 0 ]; then ENABLE_TLSEXT='enable-tlsext'; fi \
+	&& ./config --prefix=$(NGX_OPENSSL_INSTALL_DIR) --shared zlib -fPIC ${ENABLE_TLSEXT} $(NGX_OPENSSL_OPT) \
 	&& $(MAKE) depend) \
 	&& cp /dev/null .openssl_configure_done
 

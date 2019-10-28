@@ -2,15 +2,6 @@
 # ngx_mruby test
 #
 
-# Temporary solution for https://github.com/iij/mruby-io/issues/75
-begin
-  `/bin/true`
-rescue NotImplementedError => e
-  module Kernel
-    def `(c); IO.popen(c) { |io| io.read }; end
-  end
-end
-
 def http_host(port = 58080)
   "127.0.0.1:#{port}"
 end
@@ -37,6 +28,10 @@ class NginxFeatures
   def is_stream_supported?
     # 1.9.6 or later
     @minor >= 10 || (@minor == 9 && @patch >= 6)
+  end
+  def is_async_supported?
+    # Should we enable Nginx::Async as default?
+    true
   end
 end
 
@@ -453,12 +448,12 @@ t.assert('ngx_mruby - get post_args', 'location /get_post_args') do
 end
 
 t.assert('ngx_mruby - ssl local port') do
-  res = `curl -k #{base_ssl(58082) + '/local_port'}`
+  res = `curl -s -k #{base_ssl(58082) + '/local_port'}`
   t.assert_equal '58082', res
 end
 
 t.assert('ngx_mruby - ssl certificate changing') do
-  res = `curl -k #{base_ssl(58082) + '/'}`
+  res = `curl -s -k #{base_ssl(58082) + '/'}`
   t.assert_equal 'ssl test ok', res
   res = `openssl s_client -servername localhost -connect localhost:58082 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
   t.assert_equal "1", res
@@ -467,7 +462,7 @@ t.assert('ngx_mruby - ssl certificate changing') do
 end
 
 t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
-  res = `curl -k #{base_ssl(58083) + '/'}`
+  res = `curl -s -k #{base_ssl(58083) + '/'}`
   t.assert_equal 'ssl test ok', res
   res = `openssl s_client -servername localhost -connect localhost:58083 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
   t.assert_equal "1", res
@@ -478,7 +473,7 @@ end
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file without caching') do
   fname = File.join(ENV['NGINX_INSTALL_DIR'], 'html/set_ssl_cert_and_key.rb')
 
-  res = `curl -k #{base_ssl(58085) + '/'}`
+  res = `curl -s -k #{base_ssl(58085) + '/'}`
   t.assert_equal 'ssl test ok', res
 
   content = File.read(fname).gsub('#{ssl.servername}', 'localhost')
@@ -499,7 +494,7 @@ end
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file with caching') do
   fname = File.join(ENV['NGINX_INSTALL_DIR'], 'html/set_ssl_cert_and_key.rb')
 
-  res = `curl -k #{base_ssl(58086) + '/'}`
+  res = `curl -s -k #{base_ssl(58086) + '/'}`
   t.assert_equal 'ssl test ok', res
 
   content = File.read(fname).gsub('#{ssl.servername}', 'localhost')
@@ -528,6 +523,12 @@ t.assert('ngx_mruby - get ssl server name') do
   t.assert_equal "servername is empty", res.chomp
   res = `echo "GET /servername" | openssl s_client -ign_eof -connect localhost:58088 -servername ngx.example.com 2>/dev/null | sed -n '$s/closed$//p'`
   t.assert_equal "ngx.example.com", res.chomp
+end
+
+t.assert('ngx_mruby - get ssl tls version') do
+  res = `curl -s -k #{base_ssl(58082) + '/tls_version'}`
+
+  t.assert_equal "TLSv1.2", res.chomp
 end
 
 t.assert('ngx_mruby - ngx_mruby_ssl_verify_client_handler with Nginx::SSL.reject_client') do
@@ -622,8 +623,13 @@ t.assert('ngx_mruby - add_listener test', 'location /add_listener') do
   t.assert_equal 'add_listener test ok', res["body"]
   res = HttpRequest.new.get base(58102) + '/add_listener'
   t.assert_equal 'add_listener test ok', res["body"]
-  res = `curl -k #{base_ssl(58103) + '/add_listener'}`
+  res = `curl -s -k #{base_ssl(58103) + '/add_listener'}`
   t.assert_equal 'add_listener test ok', res
+end
+
+t.assert('ngx_mruby - Nginx.set_status= alias Nginx.return', 'location /alias_return') do
+  res = HttpRequest.new.get base + '/alias_return'
+  t.assert_equal 204, res["code"]
 end
 
 if nginx_features.is_stream_supported?
@@ -655,6 +661,73 @@ if nginx_features.is_stream_supported?
     res = HttpRequest.new.get('http://127.0.0.1:12351' + '/mruby')
     t.assert_equal 'Hello ngx_mruby world!', res["body"]
   end
+
+  t.assert('ngx_mruby - Nginx::Stream::Async.sleep', '127.0.0.1:12352 to 127.0.0.1:58080') do
+    res = HttpRequest.new.get('http://127.0.0.1:12352' + '/mruby')
+    t.assert_equal 'Hello ngx_mruby world!', res["body"]
+  end
 end
+
+if nginx_features.is_async_supported?
+  t.assert('ngx_mruby - Nginx.Async.sleep', 'location /async_sleep') do
+    res = HttpRequest.new.get base + '/async_sleep'
+    t.assert_equal 'body', res["body"]
+    t.assert_equal 200, res.code
+  end
+
+  t.assert('ngx_mruby - Nginx.Async.sleep looping', 'location /async_sleep_loop') do
+    res = HttpRequest.new.get base + '/async_sleep_loop'
+    t.assert_equal '01234', res["body"]
+    t.assert_equal 200, res.code
+  end
+
+  t.assert('ngx_mruby - enable return method', 'location /enable_return') do
+    res = HttpRequest.new.get base + '/enable_return'
+    t.assert_equal 'hoge', res["body"]
+    t.assert_equal 200, res.code
+  end
+
+  t.assert('ngx_mruby - Nginx::Async::HTTP.new sub request with proxy', 'location /async_http_sub_request_with_proxy_pass') do
+    res = HttpRequest.new.get base + '/async_http_sub_request_with_proxy_pass'
+    t.assert_equal 200, res["code"]
+    t.assert_equal 'proxy test ok', res["body"]
+  end
+
+  t.assert('ngx_mruby - Nginx::Async::HTTP.new "/dst"', 'location /async_http_sub_request') do
+    res = HttpRequest.new.get base + '/async_http_sub_request_with_hash'
+    t.assert_equal 200, res["code"]
+    t.assert_equal '{"query1"=>"foo", "query2"=>"bar"}', res["body"]
+
+    res = HttpRequest.new.get base + '/async_http_sub_request'
+    t.assert_equal 200, res["code"]
+    t.assert_equal '{"query1"=>"foo", "query2"=>"bar"}', res["body"]
+
+    res = HttpRequest.new.get base + '/async_http_sub_request_notfound'
+    t.assert_equal 404, res["code"]
+    t.assert_equal 'global_ngx_mruby', res["header"][-16,16]
+
+    res = HttpRequest.new.get base + '/async_http_sub_request_notfound_ok'
+    t.assert_equal 200, res["code"]
+    t.assert_equal 'ok', res["body"]
+  end
+
+  t.assert('ngx_mruby - Nginx.Async.sleep with proxy', 'location /sleep_with_proxy') do
+    res = HttpRequest.new.get base + '/sleep_with_proxy'
+    t.assert_equal 'proxy test ok', res["body"]
+    t.assert_equal 200, res.code
+  end
+
+  t.assert('ngx_mruby - Nginx.Async.sleep with proxy(set_code)', 'location /sleep_with_proxy_set_code') do
+    res = HttpRequest.new.get base + '/sleep_with_proxy_set_code'
+    t.assert_equal 'proxy test ok', res["body"]
+    t.assert_equal 200, res.code
+  end
+
+  t.assert('ngx_mruby - enable iv', 'location /iv_init_worker') do
+    res = HttpRequest.new.get base + '/iv_init_worker'
+    t.assert_equal 'true', res["body"]
+  end
+end
+
 
 t.report

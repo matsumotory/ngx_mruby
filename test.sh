@@ -20,8 +20,13 @@ else
     NPROCESSORS_ONLN="_NPROCESSORS_ONLN"
     NGINX_DEFAULT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module --with-cc-opt=-g\ -O0'
     MAKE=make
-    KILLALL=killall
-    PS_C="ps -C"
+    if [ -f /etc/centos-release ]; then
+        KILLALL=pkill
+        PS_C="pgrep -l"
+    else
+        KILLALL=killall
+        PS_C="ps -C"
+    fi
 fi
 
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then

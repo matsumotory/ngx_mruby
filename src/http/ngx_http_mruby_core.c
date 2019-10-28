@@ -4,22 +4,12 @@
 // See Copyright Notice in ngx_http_mruby_module.c
 */
 
-#include <nginx.h>
-#include <ngx_core.h>
-#include <ngx_buf.h>
-#include <ngx_conf_file.h>
-#include <ngx_http.h>
-#include <ngx_log.h>
-
 #include "ngx_http_mruby_core.h"
+
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 
-#include "mruby.h"
 #include "mruby/array.h"
-#include "mruby/compile.h"
-#include "mruby/data.h"
-#include "mruby/proc.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
 
@@ -91,6 +81,105 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
 #endif
 }
 
+// TODO: Support rputs by multi directive
+ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
+{
+  ngx_int_t rc = NGX_OK;
+  ngx_mrb_rputs_chain_list_t *chain;
+
+  chain = ctx->rputs_chain;
+
+  if (chain == NULL) {
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                  "%s INFO %s:%d: mrb_run info: rputs_chain is null and return NGX_OK", MODULE_NAME, __func__,
+                  __LINE__);
+    if (r->headers_out.status >= 100) {
+      rc = r->headers_out.status;
+    } else {
+      rc = NGX_OK;
+    }
+  } else if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
+    r->headers_out.status = NGX_HTTP_OK;
+    (*chain->last)->buf->last_buf = 1;
+    ngx_http_send_header(r);
+
+    if (ctx->phase != NGX_HTTP_MRUBY_FILTER_PROCESS) {
+      ngx_http_output_filter(r, chain->out);
+    }
+
+    ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
+    rc = NGX_OK;
+  } else {
+    rc = r->headers_out.status;
+  }
+
+  return rc;
+}
+
+static void ngx_http_mrb_read_subrequest_responce(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
+{
+  ngx_http_mruby_ctx_t *main_ctx;
+  main_ctx = ngx_mrb_http_get_module_ctx(NULL, r->main);
+
+  ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: r->main parse subrequest response", MODULE_NAME,
+                __func__, __LINE__);
+
+  if (main_ctx != NULL && ctx->body_length > 0) {
+    main_ctx->sub_response_body = ngx_palloc(r->pool, ctx->body_length);
+    ngx_memcpy(main_ctx->sub_response_body, ctx->body, ctx->body_length);
+    main_ctx->sub_response_body_length = ctx->body_length;
+    main_ctx->sub_response_status = r->headers_out.status;
+    main_ctx->sub_response_headers = r->headers_out;
+  }
+}
+
+ngx_int_t ngx_mrb_finalize_body_filter(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
+{
+  ngx_buf_t *b;
+  ngx_int_t rc;
+  ngx_chain_t out;
+
+  b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+  if (b == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
+                  __LINE__);
+    return NGX_ERROR;
+  }
+
+  b->pos = ctx->body;
+  b->last = ctx->body + ctx->body_length;
+  b->memory = 1;
+  b->last_buf = 1;
+
+  r->headers_out.content_length_n = b->last - b->pos;
+
+  if (r->headers_out.content_length) {
+    r->headers_out.content_length->hash = 0;
+  }
+
+  r->headers_out.content_length = NULL;
+
+  out.buf = b;
+  out.next = NULL;
+  ctx->phase = NGX_HTTP_MRUBY_FILTER_PASS;
+
+  ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: data after body length: %uz", MODULE_NAME,
+                __func__, __LINE__, ctx->body_length);
+
+  if (r->parent != NULL && r != r->parent) {
+    ngx_http_mrb_read_subrequest_responce(r, ctx);
+    return NGX_OK;
+  }
+
+  rc = ngx_http_next_header_filter(r);
+
+  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+    return NGX_ERROR;
+  }
+
+  return ngx_http_next_body_filter(r, &out);
+}
+
 static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
 {
   ngx_mrb_rputs_chain_list_t *chain = NULL;
@@ -101,11 +190,8 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   mrb_get_args(mrb, "i", &status);
   r->headers_out.status = status;
 
-  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
-  if (ctx == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s: get mruby context failed.", MODULE_NAME, __func__);
-    mrb_raise(mrb, E_RUNTIME_ERROR, "get mruby context failed");
-  }
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+
   chain = ctx->rputs_chain;
   if (chain) {
     (*chain->last)->buf->last_buf = 1;
@@ -129,11 +215,12 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
   mrb_value argv;
   ngx_buf_t *b;
   ngx_mrb_rputs_chain_list_t *chain;
+  ngx_http_mruby_ctx_t *ctx;
   u_char *str;
   ngx_str_t ns;
 
   ngx_http_request_t *r = ngx_mrb_get_request();
-  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
   mrb_get_args(mrb, "o", &argv);
 
@@ -322,6 +409,27 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   return self;
 }
 
+ngx_http_mruby_ctx_t *ngx_mrb_http_get_module_ctx(mrb_state *mrb, ngx_http_request_t *r)
+{
+  ngx_http_mruby_ctx_t *ctx;
+  ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  if (ctx == NULL) {
+    if ((ctx = ngx_pcalloc(r->pool, sizeof(*ctx))) == NULL) {
+      if (mrb != NULL) {
+        mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate context");
+      } else {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "failed to allocate memory from r->pool(mrb_state is a nonexistent directive) %s:%d",
+                      __FUNCTION__, __LINE__);
+        return NULL;
+      }
+    }
+    ctx->body = NULL;
+    ngx_http_set_ctx(r, ctx, ngx_http_mruby_module);
+  }
+  return ctx;
+}
+
 mrb_value ngx_mrb_f_global_remove(mrb_state *mrb, mrb_value self)
 {
   mrb_sym id;
@@ -400,6 +508,8 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_class_method(mrb, class, "echo", ngx_mrb_echo, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "send_header", ngx_mrb_send_header, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "return", ngx_mrb_send_header, MRB_ARGS_ANY());
+  mrb_define_class_method(mrb, class, "status_code=", ngx_mrb_send_header, MRB_ARGS_REQ(1));
+
   mrb_define_class_method(mrb, class, "log", ngx_mrb_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class, "errlogger", ngx_mrb_errlogger, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, class, "module_name", ngx_mrb_get_ngx_mruby_name, MRB_ARGS_NONE());

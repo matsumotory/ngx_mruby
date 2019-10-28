@@ -10,12 +10,11 @@
 #include <nginx.h>
 #include <ngx_core.h>
 #include <ngx_stream.h>
+
 #include "mruby.h"
 #include "mruby/compile.h"
 
 #define MODULE_NAME "ngx_mruby-stream-module"
-
-extern ngx_module_t ngx_stream_mruby_module;
 
 typedef struct {
   ngx_stream_session_t *s;
@@ -56,4 +55,7 @@ typedef struct {
 
 } ngx_stream_mruby_srv_conf_t;
 
+ngx_int_t ngx_mrb_push_session(ngx_stream_session_t *s);
+ngx_stream_session_t *ngx_mrb_get_session(void);
+void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s);
 #endif // NGX_STREAM_MRUBY_MODULE_H

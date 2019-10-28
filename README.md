@@ -1,11 +1,17 @@
-# Welcome to ngx_mruby Pages
+<p align="center">
+  <img alt="ngx_mruby" src="https://github.com/matsumotory/ngx_mruby/blob/master/misc/logo.png?raw=true" width="300">
+</p>
 
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/matsumoto-r/ngx_mruby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/matsumotory/ngx_mruby.svg?branch=master)](https://travis-ci.org/matsumotory/ngx_mruby) [![wercker status](https://app.wercker.com/status/55f7f7af32d94b01a42f863f3635940c/s "wercker status")](https://app.wercker.com/project/bykey/55f7f7af32d94b01a42f863f3635940c)
+<p align="center">
+  <strong>ngx_mruby</strong>: A Fast and Memory-Efficient Nginx Extension Mechanism Scripting with mruby.
+</p>
 
-[![ngx_mruby mod_mruby performance](https://github.com/matsumotory/mod_mruby/raw/master/images/performance_20140301.png)](http://blog.matsumoto-r.jp/?p=3974)
-
-※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
+<p align="center">
+  <a href="#backers" title="Backers on Open Collective"><img src="https://opencollective.com/ngx_mruby/backers/badge.svg"></a>
+  <a href="#sponsors" title="Sponsors on Open Collective"><img src="https://opencollective.com/ngx_mruby/sponsors/badge.svg"></a>
+  <a href="https://travis-ci.org/matsumotory/ngx_mruby" title="Build Status"><img src="https://travis-ci.org/matsumotory/ngx_mruby.svg?branch=master"></a>
+  <a href="https://gitter.im/matsumoto-r/ngx_mruby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge" title="Gitter"><img src="https://badges.gitter.im/Join%20Chat.svg"></a>
+</p>
 
 ## Documents
 - [Install](https://github.com/matsumotory/ngx_mruby/tree/master/docs/install)
@@ -55,7 +61,7 @@ r.get backends[rand(backends.length)]
 #     mrubyHandlerMiddle "/path/to/unified_hello.rb"
 # </Location>
 #
-# nginx ngxin.conf by ngx_mruby
+# nginx nginx.conf by ngx_mruby
 #
 # location /mruby {
 #     mruby_content_handler "/path/to/unified_hello.rb";
@@ -69,6 +75,12 @@ Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
 # ngx_mruby => "Hello ngx_mruby/0.0.1 world!"
 ```
 
+
+[![ngx_mruby mod_mruby performance](https://github.com/matsumotory/mod_mruby/raw/master/images/performance_20140301.png)](http://blog.matsumoto-r.jp/?p=3974)
+
+※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
+
+
 ## Abstract
 
 As the increase of large-scale and complex Web services, not only the development of Web applications is required, but also the implementation of Web server extensions in many cases. Most Web server extensions are mainly implemented in the C language because of fast and memory-efficient behavior, but by writing extensions using a scripting language we can achieve better maintainability and productivity. 
@@ -78,6 +90,21 @@ However, if the existing methods are primarily intended to enhance not the imple
 Therefore, we propose a fast and memory-efficient Web server extension mechanism using a scripting language. We designed an architecture where the server process creates a region in memory to save the state of the interpreter at the server process startup, and multiple scripts share this region to process the scripts quickly when new request are made.
 
 The server process frees the global variables table, the exception flag and the byte-code which cause an increase of memory usage, in order to reduce the memory usage and extend safety by preventing interference between each script because of sharing the region. We implemented a mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".
+
+# Contributions
+
+This project exists thanks to all the people who contribute. We also welcome financial contributions in full transparency on our [open collective](https://opencollective.com/ngx_mruby).
+
+## Backers
+
+Thank you to all our backers! 🙏 [[Become a backer](https://opencollective.com/ngx_mruby#backer)]
+
+<a href="https://opencollective.com/ngx_mruby#backers" target="_blank"><img src="https://opencollective.com/ngx_mruby/backers.svg?width=890"></a>
+
+
+## Sponsors
+
+Support this project by becoming a sponsor. Your logo will show up here with a link to your website. [[Become a sponsor](https://opencollective.com/ngx_mruby#sponsor)]
 
 # License
 
