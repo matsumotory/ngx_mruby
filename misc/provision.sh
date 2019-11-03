@@ -20,9 +20,9 @@ sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/c
 
 openssl_version=1.1.1
 curl -sfL https://www.openssl.org/source/openssl-${openssl_version}-latest.tar.gz -o openssl-${openssl_version}.tar.gz
-tar -xzf openssl-${openssl_version}.tar.gz
+mkdir openssl-${openssl_version} && tar -xzf openssl-${openssl_version}.tar.gz -C openssl-${openssl_version} --strip-components 1
 rm openssl-${openssl_version}.tar.gz
-cd openssl-${openssl_version}*
+cd openssl-${openssl_version}
 ./config --prefix=/usr/local --shared zlib -fPIC
 make
 sudo make install
