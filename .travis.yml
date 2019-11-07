@@ -10,6 +10,7 @@ before_install:
   - sudo apt-get -qq update
 install:
   - sudo apt-get -qq install rake bison git gperf zlib1g-dev g++-4.9 libstdc++-4.9-dev
+  - sudo apt-get remove -y libssl-dev
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9" LD="gcc-4.9"; fi
   - $CXX -v
 env:
