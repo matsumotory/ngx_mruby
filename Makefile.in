@@ -129,18 +129,19 @@ openssl: .openssl_build_done
 .openssl_build_done: .openssl_configure_done
 	(cd $(NGX_OPENSSL_SRC) \
 	&& MAKE_TARGET='build_all_generated install_sw' \
-	&& if [ `cat .openssl_major_version` -le 1 && `cat .openssl_minor_version` -eq 0 ]; then MAKE_TARGET='build_all install_sw'; fi \
-	&& $(MAKE) ${MAKE_TARGET}) \
+	&& if [ `cat openssl_version | grep -o ^1.0` ]; then MAKE_TARGET='build_all install_sw'; fi \
+	&& $(MAKE) $${MAKE_TARGET}) \
 	&& cp /dev/null .openssl_build_done
 
 .openssl_configure_done:
 	(cd $(NGX_OPENSSL_SRC) \
 	&& if [ -f Makefile ]; then $(MAKE) clean; fi \
-	&& OPENSSL_VERSION=`grep '^VERSION' Makefile | head -1 | sed 's/VERSION=//'` \
-	&& echo -n ${OPENSSL_VERSION} | awk -F '.' '{print $1}' > .openssl_major_version \
-	&& echo -n ${OPENSSL_VERSION} | awk -F '.' '{print $2}' > .openssl_minor_version \
-	&& if [ `cat .openssl_major_version` -le 1 && `cat .openssl_minor_version` -eq 0 ]; then ENABLE_TLSEXT='enable-tlsext'; fi \
-	&& ./config --prefix=$(NGX_OPENSSL_INSTALL_DIR) --shared zlib -fPIC ${ENABLE_TLSEXT} $(NGX_OPENSSL_OPT) \
+	&& OPENSSL_VERSION=`grep OPENSSL_VERSION_TEXT include/openssl/opensslv.h | grep -o 'OpenSSL [0-9].*' | head -1 | awk '{print $$2}'` \
+	&& if [ "$${OPENSSL_VERSION}" = "" ]; then OPENSSL_VERSION=`grep VERSION=[0-9] Makefile | head -1 | awk -F'=' '{print $$2}'`; fi \
+	&& echo -n $${OPENSSL_VERSION} > openssl_version \
+	&& echo "Building OpenSSL version:$${OPENSSL_VERSION}" \
+	&& if [ `cat openssl_version | grep -o ^1.0` ]; then ENABLE_TLSEXT='enable-tlsext'; fi \
+	&& ./config --prefix=$(NGX_OPENSSL_INSTALL_DIR) --shared zlib -fPIC $${ENABLE_TLSEXT} $(NGX_OPENSSL_OPT) \
 	&& $(MAKE) depend) \
 	&& cp /dev/null .openssl_configure_done
 
