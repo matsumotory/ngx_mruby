@@ -16,7 +16,7 @@ vagrant up       # run provisioner automatically
 vagrant ssh
 ```
 
-### Test in development environment using ubuntu 16.04
+### Test in development environment using ubuntu 18.04
 
 ```
 cd ngx_mruby/
