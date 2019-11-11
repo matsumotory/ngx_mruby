@@ -704,15 +704,16 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
 
   mrb = ngx_stream_mrb_state(s);
   ai = mrb_gc_arena_save(mrb);
-
   ictx = mrb->ud;
+
   ictx->s = s;
   ictx->stream_status = NGX_DECLINED;
 
   mrb_value *mrb_result = (mrb_value *)ngx_palloc(s->connection->pool, sizeof(mrb_value));
   *mrb_result = mrb_nil_value();
 
-  if (mrb_test(ngx_stream_mrb_start_fiber(ictx, mrb, mscf->code->proc, mrb_result))) {
+  ngx_mrb_push_session(s);
+  if (mrb_test(ngx_stream_mrb_start_fiber(s, mrb, mscf->code->proc, mrb_result))) {
     ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
                   __func__, __LINE__);
 
