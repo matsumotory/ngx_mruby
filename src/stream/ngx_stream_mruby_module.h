@@ -55,7 +55,5 @@ typedef struct {
 
 } ngx_stream_mruby_srv_conf_t;
 
-ngx_int_t ngx_mrb_push_session(ngx_stream_session_t *s);
-ngx_stream_session_t *ngx_mrb_get_session(void);
 void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s);
 #endif // NGX_STREAM_MRUBY_MODULE_H

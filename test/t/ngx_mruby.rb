@@ -634,7 +634,8 @@ if nginx_features.is_stream_supported?
   end
 
   t.assert('ngx_mruby - Nginx::Stream::Async.sleep', '127.0.0.1:12352 to 127.0.0.1:58080') do
-    res = HttpRequest.new.get('http://127.0.0.1:12352' + '/mruby')
+    `sleep 1 && curl -s -k http://127.0.0.1:12352/mruby -m1 \&`
+    res = HttpRequest.new.get('http://127.0.0.1:12352/mruby')
     t.assert_equal 'Hello ngx_mruby world!', res["body"]
   end
 end
