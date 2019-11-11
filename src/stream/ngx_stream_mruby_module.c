@@ -678,18 +678,6 @@ static ngx_int_t ngx_stream_mrb_run_conf(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb
 }
 */
 
-ngx_stream_session_t *ngx_mruby_session = NULL;
-ngx_int_t ngx_mrb_push_session(ngx_stream_session_t *s)
-{
-  ngx_mruby_session = s;
-  return NGX_OK;
-}
-
-ngx_stream_session_t *ngx_mrb_get_session(void)
-{
-  return ngx_mruby_session;
-}
-
 static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
 {
   ngx_stream_mruby_srv_conf_t *mscf;
@@ -712,7 +700,6 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   mrb_value *mrb_result = (mrb_value *)ngx_palloc(s->connection->pool, sizeof(mrb_value));
   *mrb_result = mrb_nil_value();
 
-  ngx_mrb_push_session(s);
   if (mrb_test(ngx_stream_mrb_start_fiber(s, mrb, mscf->code->proc, mrb_result))) {
     ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
                   __func__, __LINE__);
