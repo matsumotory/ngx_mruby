@@ -20,20 +20,21 @@ typedef struct {
   ngx_int_t stream_status;
 } ngx_stream_mrb_reentrant_t;
 
-static mrb_value ngx_stream_mrb_run_fiber(ngx_stream_session_t *s, mrb_state *mrb, mrb_value *fiber_proc,
-                                          mrb_value *result)
+static mrb_value ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *result)
 {
   mrb_value resume_result = mrb_nil_value();
   mrb_value aliving = mrb_false_value();
   mrb_value handler_result = mrb_nil_value();
   ngx_stream_mruby_ctx_t *ctx;
+  ngx_stream_mruby_internal_ctx_t *ictx;
 
-  ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
+  ictx = mrb->ud;
+  ctx = ngx_stream_mrb_get_module_ctx(mrb, ictx->s);
   ctx->fiber_proc = fiber_proc;
 
   resume_result = mrb_funcall(mrb, *fiber_proc, "call", 0, NULL);
   if (mrb->exc) {
-    ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
+    ngx_log_error(NGX_LOG_NOTICE, ictx->s->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
     return mrb_false_value();
   }
@@ -73,7 +74,7 @@ mrb_value ngx_stream_mrb_start_fiber(ngx_stream_session_t *s, mrb_state *mrb, st
     return mrb_false_value();
   }
 
-  return ngx_stream_mrb_run_fiber(s, mrb, fiber_proc, result);
+  return ngx_stream_mrb_run_fiber(mrb, fiber_proc, result);
 }
 
 static ngx_int_t ngx_stream_mrb_post_fiber(ngx_stream_mrb_reentrant_t *re, ngx_stream_mruby_ctx_t *ctx)
@@ -86,7 +87,7 @@ static ngx_int_t ngx_stream_mrb_post_fiber(ngx_stream_mrb_reentrant_t *re, ngx_s
   ictx->stream_status = re->stream_status;
 
   if (re->fiber != NULL) {
-    if (mrb_test(ngx_stream_mrb_run_fiber(re->s, re->mrb, re->fiber, ctx->async_handler_result))) {
+    if (mrb_test(ngx_stream_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result))) {
       mrb_gc_arena_restore(re->mrb, ai);
       return NGX_DONE;
     } else {
