@@ -202,8 +202,13 @@ static mrb_value ngx_stream_mrb_proxy_protocol_addr(mrb_state *mrb, mrb_value se
   ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
   ngx_stream_session_t *s = ictx->s;
 
+#if (nginx_version >= 1017006)
   return mrb_str_new(mrb, (const char *)s->connection->proxy_protocol->src_addr.data,
                      s->connection->proxy_protocol->src_addr.len);
+#else
+  return mrb_str_new(mrb, (const char *)s->connection->proxy_protocol_addr.data,
+                     s->connection->proxy_protocol_addr.len);
+#endif
 }
 
 void ngx_stream_mrb_conn_class_init(mrb_state *mrb, struct RClass *class)
