@@ -15,7 +15,7 @@
 #include <mruby/compile.h>
 
 #define MODULE_NAME "ngx_mruby"
-#define MODULE_VERSION "2.1.7"
+#define MODULE_VERSION "2.1.8"
 
 #define NGX_MRUBY_SSL_VERIFY_CLIENT_OK 1
 #define NGX_MRUBY_SSL_VERIFY_CLIENT_FAIL 0
