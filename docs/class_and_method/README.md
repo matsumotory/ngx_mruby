@@ -388,6 +388,7 @@ mruby_ssl_handshake_handler_code '
 ';
 ```
 ### Nginx::SSL#certificate_data=(string)
+### Nginx::SSL#accept_client Nginx::SSL#reject_client
 
 Sets the string representation of the certificate data used for the connection
 
@@ -420,11 +421,34 @@ mruby_ssl_handshake_handler_code '
 Sends an error to the log file via [ngx_log_error()](https://www.nginx.com/resources/wiki/extending/api/logging/#c.ngx_log_error).
 The method accepts one of [log levels](#constants-for-log-levels) and a message to send as arguments.
 
+the methods set whether it is ok to verify client certificate in SSL Handshake.
+
+`Nginx::SSL#accept_client` accept client after verifying client certificate in SSL Handshake.
+SSL Handshake continues.
+
+`Nginx::SSL#reject_client` reject client after verifying client certificate in SSL Handshake.
+SSL Handshake is terminated immediately.
+
+you should use in mruby_ssl_verify_client_handler and mruby_ssl_verify_client_handler_code only.
+
+```nginx
+ mruby_ssl_verify_client_handler_code '
+  if validate_something()
+    Nginx::SSL.new.accept_client
+  else
+    Nginx::SSL.new.reject_client
+  end
+ ';
+```
+
+#### Nginx::SSL.errlogger
 ```ruby
 Nginx::SSL.errlogger Nginx::LOG_ERR, "ngx_mruby error!"
 ```
 
 ### Nginx::SSL.log(log_level, string)
+
+#### Nginx::SSL#local_port
 
 Alias for Nginx::SSL.errlogger
 
