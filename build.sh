@@ -74,6 +74,15 @@ else
     cd ..
 fi
 
+if [ -n "$OPENSSL_SRC_VERSION" ]; then
+    cd ${BUILD_DIR}
+    curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}-latest.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz
+    mkdir openssl-${OPENSSL_SRC_VERSION} && tar -xzf openssl-${OPENSSL_SRC_VERSION}.tar.gz -C openssl-${OPENSSL_SRC_VERSION} --strip-components 1
+    rm openssl-${OPENSSL_SRC_VERSION}.tar.gz
+    OPENSSL_BUILD_OPT = "--with-openssl-src=$BUILD_DIR/openssl-$OPENSSL_SRC_VERSION"
+    cd ..
+fi
+
 # FIXME: not sure if we really need this. even if we do, it should be moved to mruby/Rakefile
 if [ -d "./mruby/${BUILD_DIR}" ]; then
     echo "mruby Cleaning ..."
@@ -82,7 +91,7 @@ if [ -d "./mruby/${BUILD_DIR}" ]; then
 fi
 
 echo "ngx_mruby configure ..."
-./configure ${CONFIG_OPT} --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" $@
+./configure ${CONFIG_OPT} --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" ${OPENSSL_BUILD_OPT} $@
 echo "ngx_mruby configure ... Done"
 
 echo "ngx_mruby building ..."
