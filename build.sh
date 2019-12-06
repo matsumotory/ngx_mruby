@@ -81,7 +81,6 @@ if [ -n "$OPENSSL_SRC_VERSION" ]; then
     rm openssl-${OPENSSL_SRC_VERSION}.tar.gz
     cd openssl-${OPENSSL_SRC_VERSION}
     ./config --prefix=/usr/local --shared zlib -fPIC >> /dev/null 2>&1
-    make >> /dev/null 2>&1
     OPENSSL_BUILD_OPT="--with-openssl-src=$BUILD_DIR/openssl-$OPENSSL_SRC_VERSION"
     cd ../..
 else
