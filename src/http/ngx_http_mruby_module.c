@@ -425,7 +425,7 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
   ngx_http_mruby_srv_conf_t *conf = child;
 
 #if (NGX_HTTP_SSL)
-  ngx_http_ssl_srv_conf_t *sscf;
+  ngx_http_ssl_srv_conf_t *sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
 
   NGX_MRUBY_MERGE_CODE(conf->ssl_handshake_code, prev->ssl_handshake_code);
   NGX_MRUBY_MERGE_CODE(conf->ssl_handshake_inline_code, prev->ssl_handshake_inline_code);
@@ -434,7 +434,6 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
 
   if (conf->ssl_handshake_code != NGX_CONF_UNSET_PTR || conf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR ||
       conf->ssl_verify_client_code != NGX_CONF_UNSET_PTR || conf->ssl_verify_client_inline_code != NGX_CONF_UNSET_PTR) {
-    sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
     if (sscf == NULL || sscf->ssl.ctx == NULL) {
       ngx_log_error(NGX_LOG_EMERG, cf->log, 0, MODULE_NAME " : no ssl configured for the server");
       return NGX_CONF_ERROR;
