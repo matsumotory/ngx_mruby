@@ -79,8 +79,13 @@ if [ -n "$OPENSSL_SRC_VERSION" ]; then
     curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}-latest.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz
     mkdir openssl-${OPENSSL_SRC_VERSION} && tar -xzf openssl-${OPENSSL_SRC_VERSION}.tar.gz -C openssl-${OPENSSL_SRC_VERSION} --strip-components 1
     rm openssl-${OPENSSL_SRC_VERSION}.tar.gz
-    OPENSSL_BUILD_OPT = "--with-openssl-src=$BUILD_DIR/openssl-$OPENSSL_SRC_VERSION"
-    cd ..
+    cd openssl-${OPENSSL_SRC_VERSION}
+    ./config --prefix=/usr/local --shared zlib -fPIC >> /dev/null 2>&1
+    make >> /dev/null 2>&1
+    OPENSSL_BUILD_OPT="--with-openssl-src=$BUILD_DIR/openssl-$OPENSSL_SRC_VERSION"
+    cd ../..
+else
+    OPENSSL_BUILD_OPT=''
 fi
 
 # FIXME: not sure if we really need this. even if we do, it should be moved to mruby/Rakefile
