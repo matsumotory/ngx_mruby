@@ -17,6 +17,7 @@ typedef struct {
   mrb_state *mrb;
   mrb_value *fiber;
   ngx_stream_session_t *s;
+  ngx_int_t stream_status;
 } ngx_stream_mrb_reentrant_t;
 
 static mrb_value ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *result)
@@ -25,14 +26,15 @@ static mrb_value ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc,
   mrb_value aliving = mrb_false_value();
   mrb_value handler_result = mrb_nil_value();
   ngx_stream_mruby_ctx_t *ctx;
+  ngx_stream_mruby_internal_ctx_t *ictx;
 
-  ngx_stream_session_t *s = ngx_mrb_get_session();
-  ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
+  ictx = mrb->ud;
+  ctx = ngx_stream_mrb_get_module_ctx(mrb, ictx->s);
   ctx->fiber_proc = fiber_proc;
 
   resume_result = mrb_funcall(mrb, *fiber_proc, "call", 0, NULL);
   if (mrb->exc) {
-    ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
+    ngx_log_error(NGX_LOG_NOTICE, ictx->s->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
     return mrb_false_value();
   }
@@ -79,11 +81,12 @@ static ngx_int_t ngx_stream_mrb_post_fiber(ngx_stream_mrb_reentrant_t *re, ngx_s
 {
   int ai;
   ai = mrb_gc_arena_save(re->mrb);
+
   ngx_stream_mruby_internal_ctx_t *ictx = re->mrb->ud;
+  ictx->s = re->s;
+  ictx->stream_status = re->stream_status;
 
   if (re->fiber != NULL) {
-    ngx_mrb_push_session(re->s);
-
     if (mrb_test(ngx_stream_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result))) {
       mrb_gc_arena_restore(re->mrb, ai);
       return NGX_DONE;
@@ -145,8 +148,8 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   mrb_int timer;
   u_char *p;
   ngx_stream_mrb_reentrant_t *re;
-  ngx_stream_session_t *s;
   ngx_stream_mruby_ctx_t *ctx;
+  ngx_stream_mruby_internal_ctx_t *ictx;
 
   mrb_get_args(mrb, "i", &timer);
 
@@ -154,13 +157,15 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_ARGUMENT_ERROR, "value of the timer must be a positive number");
   }
 
-  s = ngx_mrb_get_session();
-  p = ngx_palloc(s->connection->pool, sizeof(ngx_event_t) + sizeof(ngx_stream_mrb_reentrant_t));
+  ictx = mrb->ud;
+  p = ngx_palloc(ictx->s->connection->pool, sizeof(ngx_event_t) + sizeof(ngx_stream_mrb_reentrant_t));
   re = (ngx_stream_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
   re->mrb = mrb;
-  re->s = s;
 
-  ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
+  re->s = ictx->s;
+  re->stream_status = ictx->stream_status;
+
+  ctx = ngx_stream_mrb_get_module_ctx(mrb, ictx->s);
   re->fiber = ctx->fiber_proc;
 
   // keeps the object from GC when can resume the fiber
