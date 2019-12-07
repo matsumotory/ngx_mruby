@@ -1,4 +1,4 @@
-ngx_mruby test use mruby test.
+ngx_mruby test uses mruby test.
 ngx_mruby test is very earlier and experimental version. 
 
 Welcome pull-request!

@@ -7,10 +7,20 @@
 #ifndef NGX_STREAM_MRUBY_CORE_H
 #define NGX_STREAM_MRUBY_CORE_H
 
-#include <mruby.h>
-#include <mruby/compile.h>
+#include <ngx_config.h>
 #include <ngx_stream.h>
 
-void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s);
+#include <mruby.h>
+
+void ngx_stream_mrb_core_class_init(mrb_state *mrb, struct RClass *class);
+typedef void (*ngx_stream_mrb_cleanup_pt)(void *data);
+typedef struct ngx_stream_mruby_ctx_t {
+  mrb_value *fiber_proc;
+  mrb_value *async_handler_result;
+  ngx_stream_mrb_cleanup_pt cleanup;
+  ngx_event_t sleep;
+} ngx_stream_mruby_ctx_t;
+
+ngx_stream_mruby_ctx_t *ngx_stream_mrb_get_module_ctx(mrb_state *mrb, ngx_stream_session_t *s);
 
 #endif // NGX_STREAM_MRUBY_CORE_H

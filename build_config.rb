@@ -28,7 +28,6 @@ MRuby::Build.new('host') do |conf|
   conf.gem :github => 'mattn/mruby-onig-regexp'
   conf.gem :github => 'matsumotory/mruby-redis'
   conf.gem :github => 'matsumotory/mruby-vedis'
-  conf.gem :github => 'matsumotory/mruby-sleep'
   conf.gem :github => 'matsumotory/mruby-userdata'
   conf.gem :github => 'matsumotory/mruby-uname'
   conf.gem :github => 'matsumotory/mruby-mutex'
@@ -79,7 +78,6 @@ MRuby::Build.new('test') do |conf|
   conf.gem :github => 'matsumotory/mruby-simpletest'
   conf.gem :github => 'mattn/mruby-http'
   conf.gem :github => 'mattn/mruby-json'
-  conf.gem :github => 'iij/mruby-pack'
   conf.gem :github => 'iij/mruby-env'
 
   # include the default GEMs

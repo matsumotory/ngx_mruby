@@ -9,6 +9,7 @@
 #include <mruby.h>
 #include <mruby/class.h>
 #include <mruby/data.h>
+#include <mruby/time.h>
 
 #ifndef MRB_DISABLE_STDIO
 #include <stdio.h>
@@ -46,7 +47,7 @@ double round(double x) {
 /* #define NO_GMTIME_R */
 
 #ifdef _WIN32
-#if _MSC_VER
+#ifdef _MSC_VER
 /* Win32 platform do not provide gmtime_r/localtime_r; emulate them using gmtime_s/localtime_s */
 #define gmtime_r(tp, tm)    ((gmtime_s((tm), (tp)) == 0) ? (tm) : NULL)
 #define localtime_r(tp, tm)    ((localtime_s((tm), (tp)) == 0) ? (tm) : NULL)
@@ -166,13 +167,6 @@ timegm(struct tm *tm)
 * second level. Also, there are only 2 timezones, namely UTC and LOCAL.
 */
 
-enum mrb_timezone {
-  MRB_TIMEZONE_NONE   = 0,
-  MRB_TIMEZONE_UTC    = 1,
-  MRB_TIMEZONE_LOCAL  = 2,
-  MRB_TIMEZONE_LAST   = 3
-};
-
 typedef struct mrb_timezone_name {
   const char name[8];
   size_t len;
@@ -204,9 +198,10 @@ struct mrb_time {
 static const struct mrb_data_type mrb_time_type = { "Time", mrb_free };
 
 /** Updates the datetime of a mrb_time based on it's timezone and
-seconds setting. Returns self on success, NULL of failure. */
+    seconds setting. Returns self on success, NULL of failure.
+    if `dealloc` is set `true`, it frees `self` on error. */
 static struct mrb_time*
-time_update_datetime(mrb_state *mrb, struct mrb_time *self)
+time_update_datetime(mrb_state *mrb, struct mrb_time *self, int dealloc)
 {
   struct tm *aid;
 
@@ -217,7 +212,10 @@ time_update_datetime(mrb_state *mrb, struct mrb_time *self)
     aid = localtime_r(&self->sec, &self->datetime);
   }
   if (!aid) {
-    mrb_raisef(mrb, E_ARGUMENT_ERROR, "%S out of Time range", mrb_float_value(mrb, (mrb_float)self->sec));
+    mrb_float sec = (mrb_float)self->sec;
+
+    mrb_free(mrb, self);
+    mrb_raisef(mrb, E_ARGUMENT_ERROR, "%S out of Time range", mrb_float_value(mrb, sec));
     /* not reached */
     return NULL;
   }
@@ -269,17 +267,17 @@ time_alloc(mrb_state *mrb, double sec, double usec, enum mrb_timezone timezone)
   tm->sec  = tsec;
   tm->usec = (time_t)llround((sec - tm->sec) * 1.0e6 + usec);
   if (tm->usec < 0) {
-    long sec2 = (long)NDIV(usec,1000000); /* negative div */
+    long sec2 = (long)NDIV(tm->usec,1000000); /* negative div */
     tm->usec -= sec2 * 1000000;
     tm->sec += sec2;
   }
   else if (tm->usec >= 1000000) {
-    long sec2 = (long)(usec / 1000000);
+    long sec2 = (long)(tm->usec / 1000000);
     tm->usec -= sec2 * 1000000;
     tm->sec += sec2;
   }
   tm->timezone = timezone;
-  time_update_datetime(mrb, tm);
+  time_update_datetime(mrb, tm, TRUE);
 
   return tm;
 }
@@ -296,7 +294,7 @@ current_mrb_time(mrb_state *mrb)
   struct mrb_time *tm;
 
   tm = (struct mrb_time *)mrb_malloc(mrb, sizeof(*tm));
-#if defined(TIME_UTC)
+#if defined(TIME_UTC) && !defined(__ANDROID__)
   {
     struct timespec ts;
     if (timespec_get(&ts, TIME_UTC) == 0) {
@@ -331,7 +329,7 @@ current_mrb_time(mrb_state *mrb)
   }
 #endif
   tm->timezone = MRB_TIMEZONE_LOCAL;
-  time_update_datetime(mrb, tm);
+  time_update_datetime(mrb, tm, TRUE);
 
   return tm;
 }
@@ -343,10 +341,16 @@ mrb_time_now(mrb_state *mrb, mrb_value self)
   return mrb_time_wrap(mrb, mrb_class_ptr(self), current_mrb_time(mrb));
 }
 
+MRB_API mrb_value
+mrb_time_at(mrb_state *mrb, double sec, double usec, enum mrb_timezone zone)
+{
+  return mrb_time_make(mrb, mrb_class_get(mrb, "Time"), sec, usec, zone);
+}
+
 /* 15.2.19.6.1 */
 /* Creates an instance of time at the given time in seconds, etc. */
 static mrb_value
-mrb_time_at(mrb_state *mrb, mrb_value self)
+mrb_time_at_m(mrb_state *mrb, mrb_value self)
 {
   mrb_float f, f2 = 0;
 
@@ -616,7 +620,7 @@ mrb_time_getutc(mrb_state *mrb, mrb_value self)
   tm2 = (struct mrb_time *)mrb_malloc(mrb, sizeof(*tm));
   *tm2 = *tm;
   tm2->timezone = MRB_TIMEZONE_UTC;
-  time_update_datetime(mrb, tm2);
+  time_update_datetime(mrb, tm2, TRUE);
   return mrb_time_wrap(mrb, mrb_obj_class(mrb, self), tm2);
 }
 
@@ -631,7 +635,7 @@ mrb_time_getlocal(mrb_state *mrb, mrb_value self)
   tm2 = (struct mrb_time *)mrb_malloc(mrb, sizeof(*tm));
   *tm2 = *tm;
   tm2->timezone = MRB_TIMEZONE_LOCAL;
-  time_update_datetime(mrb, tm2);
+  time_update_datetime(mrb, tm2, TRUE);
   return mrb_time_wrap(mrb, mrb_obj_class(mrb, self), tm2);
 }
 
@@ -709,7 +713,7 @@ mrb_time_localtime(mrb_state *mrb, mrb_value self)
 
   tm = time_get_ptr(mrb, self);
   tm->timezone = MRB_TIMEZONE_LOCAL;
-  time_update_datetime(mrb, tm);
+  time_update_datetime(mrb, tm, FALSE);
   return self;
 }
 
@@ -806,7 +810,7 @@ mrb_time_utc(mrb_state *mrb, mrb_value self)
 
   tm = time_get_ptr(mrb, self);
   tm->timezone = MRB_TIMEZONE_UTC;
-  time_update_datetime(mrb, tm);
+  time_update_datetime(mrb, tm, FALSE);
   return self;
 }
 
@@ -830,7 +834,7 @@ mrb_mruby_time_gem_init(mrb_state* mrb)
   tc = mrb_define_class(mrb, "Time", mrb->object_class);
   MRB_SET_INSTANCE_TT(tc, MRB_TT_DATA);
   mrb_include_module(mrb, tc, mrb_module_get(mrb, "Comparable"));
-  mrb_define_class_method(mrb, tc, "at", mrb_time_at, MRB_ARGS_ARG(1, 1));      /* 15.2.19.6.1 */
+  mrb_define_class_method(mrb, tc, "at", mrb_time_at_m, MRB_ARGS_ARG(1, 1));      /* 15.2.19.6.1 */
   mrb_define_class_method(mrb, tc, "gm", mrb_time_gm, MRB_ARGS_ARG(1,6));       /* 15.2.19.6.2 */
   mrb_define_class_method(mrb, tc, "local", mrb_time_local, MRB_ARGS_ARG(1,6)); /* 15.2.19.6.3 */
   mrb_define_class_method(mrb, tc, "mktime", mrb_time_local, MRB_ARGS_ARG(1,6));/* 15.2.19.6.4 */

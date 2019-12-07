@@ -7,7 +7,7 @@
 #     mrubyHandlerMiddle "/path/to/unified_hello.rb"
 # </Location>
 #
-# nginx ngxin.conf by ngx_mruby
+# nginx nginx.conf by ngx_mruby
 #
 # location /mruby {
 #     mruby_content_handler "/path/to/unified_hello.rb";

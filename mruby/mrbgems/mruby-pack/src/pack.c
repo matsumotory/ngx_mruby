@@ -60,19 +60,39 @@ enum {
 #define PACK_BASE64_IGNORE	0xff
 #define PACK_BASE64_PADDING	0xfe
 
-static int littleendian = 0;
-
 const static unsigned char base64chars[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static signed char base64_dec_tab[128];
+static unsigned char base64_dec_tab[128];
 
+#if !defined(BYTE_ORDER) && defined(__BYTE_ORDER__)
+# define BYTE_ORDER __BYTE_ORDER__
+#endif
+#if !defined(BIG_ENDIAN) && defined(__ORDER_BIG_ENDIAN__)
+# define BIG_ENDIAN __ORDER_BIG_ENDIAN__
+#endif
+#if !defined(LITTLE_ENDIAN) && defined(__ORDER_LITTLE_ENDIAN__)
+# define LITTLE_ENDIAN __ORDER_LITTLE_ENDIAN__
+#endif
 
-static int
+#ifdef BYTE_ORDER
+# if BYTE_ORDER == BIG_ENDIAN
+#  define littleendian 0
+#  define check_little_endian() (void)0
+# elif BYTE_ORDER == LITTLE_ENDIAN
+#  define littleendian 1
+#  define check_little_endian() (void)0
+# endif
+#endif
+#ifndef littleendian
+/* can't distinguish endian in compile time */
+static int littleendian = 0;
+static void
 check_little_endian(void)
 {
   unsigned int n = 1;
-  return (*(unsigned char *)&n == 1);
+  littleendian = (*(unsigned char *)&n == 1);
 }
+#endif
 
 static unsigned int
 hex2int(unsigned char ch)
@@ -107,6 +127,9 @@ static mrb_value
 str_len_ensure(mrb_state *mrb, mrb_value str, mrb_int len)
 {
   mrb_int n = RSTRING_LEN(str);
+  if (len < 0) {
+    mrb_raise(mrb, E_RANGE_ERROR, "negative (or overflowed) integer");
+  }
   if (len > n) {
     do {
       n *= 2;
@@ -310,21 +333,23 @@ pack_double(mrb_state *mrb, mrb_value o, mrb_value str, mrb_int sidx, unsigned i
   d = mrb_float(o);
 
   if (flags & PACK_FLAG_LITTLEENDIAN) {
-#ifdef MRB_ENDIAN_BIG
-    for (i = 0; i < 8; ++i) {
-      RSTRING_PTR(str)[sidx + i] = buffer[8 - i - 1];
+    if (littleendian) {
+      memcpy(RSTRING_PTR(str) + sidx, buffer, 8);
     }
-#else
-    memcpy(RSTRING_PTR(str) + sidx, buffer, 8);
-#endif
+    else {
+      for (i = 0; i < 8; ++i) {
+        RSTRING_PTR(str)[sidx + i] = buffer[8 - i - 1];
+      }
+    }
   } else {
-#ifdef MRB_ENDIAN_BIG
-    memcpy(RSTRING_PTR(str) + sidx, buffer, 8);
-#else
-    for (i = 0; i < 8; ++i) {
-      RSTRING_PTR(str)[sidx + i] = buffer[8 - i - 1];
+    if (littleendian) {
+      for (i = 0; i < 8; ++i) {
+        RSTRING_PTR(str)[sidx + i] = buffer[8 - i - 1];
+      }
     }
-#endif
+    else {
+      memcpy(RSTRING_PTR(str) + sidx, buffer, 8);
+    }
   }
 
   return 8;
@@ -338,21 +363,23 @@ unpack_double(mrb_state *mrb, const unsigned char * src, int srclen, mrb_value a
   uint8_t *buffer = (uint8_t *)&d;
 
   if (flags & PACK_FLAG_LITTLEENDIAN) {
-#ifdef MRB_ENDIAN_BIG
-    for (i = 0; i < 8; ++i) {
-      buffer[8 - i - 1] = src[i];
+    if (littleendian) {
+      memcpy(buffer, src, 8);
     }
-#else
-    memcpy(buffer, src, 8);
-#endif
+    else {
+      for (i = 0; i < 8; ++i) {
+        buffer[8 - i - 1] = src[i];
+      }
+    }
   } else {
-#ifdef MRB_ENDIAN_BIG
-    memcpy(buffer, src, 8);
-#else
-    for (i = 0; i < 8; ++i) {
-      buffer[8 - i - 1] = src[i];
+    if (littleendian) {
+      for (i = 0; i < 8; ++i) {
+        buffer[8 - i - 1] = src[i];
+      }
     }
-#endif
+    else {
+      memcpy(buffer, src, 8);
+    }
   }
   mrb_ary_push(mrb, ary, mrb_float_value(mrb, d));
 
@@ -369,21 +396,23 @@ pack_float(mrb_state *mrb, mrb_value o, mrb_value str, mrb_int sidx, unsigned in
   f = (float)mrb_float(o);
 
   if (flags & PACK_FLAG_LITTLEENDIAN) {
-#ifdef MRB_ENDIAN_BIG
-    for (i = 0; i < 4; ++i) {
-      RSTRING_PTR(str)[sidx + i] = buffer[4 - i - 1];
+    if (littleendian) {
+      memcpy(RSTRING_PTR(str) + sidx, buffer, 4);
     }
-#else
-    memcpy(RSTRING_PTR(str) + sidx, buffer, 4);
-#endif
+    else {
+      for (i = 0; i < 4; ++i) {
+        RSTRING_PTR(str)[sidx + i] = buffer[4 - i - 1];
+      }
+    }
   } else {
-#ifdef MRB_ENDIAN_BIG
-    memcpy(RSTRING_PTR(str) + sidx, buffer, 4);
-#else
-    for (i = 0; i < 4; ++i) {
-      RSTRING_PTR(str)[sidx + i] = buffer[4 - i - 1];
+    if (littleendian) {
+      for (i = 0; i < 4; ++i) {
+        RSTRING_PTR(str)[sidx + i] = buffer[4 - i - 1];
+      }
     }
-#endif
+    else {
+      memcpy(RSTRING_PTR(str) + sidx, buffer, 4);
+    }
   }
 
   return 4;
@@ -397,21 +426,23 @@ unpack_float(mrb_state *mrb, const unsigned char * src, int srclen, mrb_value ar
   uint8_t *buffer = (uint8_t *)&f;
 
   if (flags & PACK_FLAG_LITTLEENDIAN) {
-#ifdef MRB_ENDIAN_BIG
-    for (i = 0; i < 4; ++i) {
-      buffer[4 - i - 1] = src[i];
+    if (littleendian) {
+      memcpy(buffer, src, 4);
     }
-#else
-    memcpy(buffer, src, 4);
-#endif
+    else {
+      for (i = 0; i < 4; ++i) {
+        buffer[4 - i - 1] = src[i];
+      }
+    }
   } else {
-#ifdef MRB_ENDIAN_BIG
-    memcpy(buffer, src, 4);
-#else
-    for (i = 0; i < 4; ++i) {
-      buffer[4 - i - 1] = src[i];
+    if (littleendian) {
+      for (i = 0; i < 4; ++i) {
+        buffer[4 - i - 1] = src[i];
+      }
     }
-#endif
+    else {
+      memcpy(buffer, src, 4);
+    }
   }
   mrb_ary_push(mrb, ary, mrb_float_value(mrb, f));
 
@@ -426,11 +457,6 @@ pack_utf8(mrb_state *mrb, mrb_value o, mrb_value str, mrb_int sidx, long count, 
   int len = 0;
   uint32_t c = 0;
 
-#ifndef MRB_WITHOUT_FLOAT
-  if (mrb_float_p(o)) {
-    goto range_error;
-  }
-#endif
   c = (uint32_t)mrb_fixnum(o);
 
   /* Unicode character */
@@ -458,9 +484,6 @@ pack_utf8(mrb_state *mrb, mrb_value o, mrb_value str, mrb_int sidx, long count, 
     len = 4;
   }
   else {
-#ifndef MRB_WITHOUT_FLOAT
-range_error:
-#endif
     mrb_raise(mrb, E_RANGE_ERROR, "pack(U): value out of range");
   }
 
@@ -507,7 +530,7 @@ utf8_to_uv(mrb_state *mrb, const char *p, long *lenp)
   }
   if (n > *lenp) {
     mrb_raisef(mrb, E_ARGUMENT_ERROR, "malformed UTF-8 character (expected %S bytes, given %S bytes)",
-    mrb_fixnum_value(n), mrb_fixnum_value(*lenp));
+               mrb_fixnum_value(n), mrb_fixnum_value(*lenp));
   }
   *lenp = n--;
   if (n != 0) {
@@ -515,7 +538,7 @@ utf8_to_uv(mrb_state *mrb, const char *p, long *lenp)
       c = *p++ & 0xff;
       if ((c & 0xc0) != 0x80) {
         *lenp -= n + 1;
-        mrb_raisef(mrb, E_ARGUMENT_ERROR, "malformed UTF-8 character");
+        mrb_raise(mrb, E_ARGUMENT_ERROR, "malformed UTF-8 character");
       }
       else {
         c &= 0x3f;
@@ -525,7 +548,7 @@ utf8_to_uv(mrb_state *mrb, const char *p, long *lenp)
   }
   n = *lenp - 1;
   if (uv < utf8_limits[n]) {
-    mrb_raisef(mrb, E_ARGUMENT_ERROR, "redundant UTF-8 sequence");
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "redundant UTF-8 sequence");
   }
   return uv;
 }
@@ -595,19 +618,21 @@ unpack_a(mrb_state *mrb, const void *src, int slen, mrb_value ary, long count, u
   }
   copylen = slen;
 
-  if (flags & PACK_FLAG_Z) {  /* "Z" */
+  if (slen >= 0 && flags & PACK_FLAG_Z) {  /* "Z" */
     if ((cp = (const char *)memchr(sptr, '\0', slen)) != NULL) {
       copylen = (int)(cp - sptr);
       if (count == -1) {
         slen = copylen + 1;
       }
     }
-  } else if (!(flags & PACK_FLAG_a)) {  /* "A" */
-    while (copylen > 0 && (sptr[copylen - 1] == '\0' || isspace(sptr[copylen - 1]))) {
+  }
+  else if (!(flags & PACK_FLAG_a)) {  /* "A" */
+    while (copylen > 0 && (sptr[copylen - 1] == '\0' || ISSPACE(sptr[copylen - 1]))) {
       copylen--;
     }
   }
 
+  if (copylen < 0) copylen = 0;
   dst = mrb_str_new(mrb, sptr, (mrb_int)copylen);
   mrb_ary_push(mrb, ary, dst);
   return slen;
@@ -726,7 +751,7 @@ pack_m(mrb_state *mrb, mrb_value src, mrb_value dst, mrb_int didx, long count, u
     count -= count % 3;
   }
 
-  dstlen = srclen / 3 * 4;
+  dstlen = (srclen+2) / 3 * 4;
   if (count > 0) {
     dstlen += (srclen / count) + ((srclen % count) == 0 ? 0 : 1);
   }
@@ -803,7 +828,7 @@ unpack_m(mrb_state *mrb, const void *src, int slen, mrb_value ary, unsigned int 
 	  ch[i] = 0;
 	  padding++;
 	}
-      } while (ch[i] == PACK_BASE64_IGNORE);
+      } while (c >= sizeof(base64_dec_tab) || ch[i] == PACK_BASE64_IGNORE);
     }
 
     l = (ch[0] << 18) + (ch[1] << 12) + (ch[2] << 6) + ch[3];
@@ -833,16 +858,17 @@ pack_x(mrb_state *mrb, mrb_value src, mrb_value dst, mrb_int didx, long count, u
 {
   long i;
 
+  if (count < 0) return 0;
   dst = str_len_ensure(mrb, dst, didx + count);
   for (i = 0; i < count; i++) {
-    RSTRING_PTR(dst)[didx] = '\0';
+    RSTRING_PTR(dst)[didx + i] = '\0';
   }
   return count;
 }
-
 static int
 unpack_x(mrb_state *mrb, const void *src, int slen, mrb_value ary, int count, unsigned int flags)
 {
+  if (count < 0) return slen;
   if (slen < count) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "x outside of string");
   }
@@ -1046,10 +1072,13 @@ alias:
   /* read suffix [0-9*_!<>] */
   while (tmpl->idx < tlen) {
     ch = tptr[tmpl->idx++];
-    if (isdigit(ch)) {
+    if (ISDIGIT(ch)) {
       count = ch - '0';
-      while (tmpl->idx < tlen && isdigit(tptr[tmpl->idx])) {
+      while (tmpl->idx < tlen && ISDIGIT(tptr[tmpl->idx])) {
         count = count * 10 + (tptr[tmpl->idx++] - '0');
+        if (count < 0) {
+          mrb_raise(mrb, E_RUNTIME_ERROR, "too big template length");
+        }
       }
       continue;  /* special case */
     } else if (ch == '*')  {
@@ -1115,13 +1144,16 @@ mrb_pack_pack(mrb_state *mrb, mrb_value ary)
       o = mrb_ary_ref(mrb, ary, aidx);
       if (type == PACK_TYPE_INTEGER) {
         o = mrb_to_int(mrb, o);
+      }
 #ifndef MRB_WITHOUT_FLOAT
-      } else if (type == PACK_TYPE_FLOAT) {
+      else if (type == PACK_TYPE_FLOAT) {
         if (!mrb_float_p(o)) {
-          o = mrb_funcall(mrb, o, "to_f", 0);
+          mrb_float f = mrb_to_flo(mrb, o);
+          o = mrb_float_value(mrb, f);
         }
+      }
 #endif
-      } else if (type == PACK_TYPE_STRING) {
+      else if (type == PACK_TYPE_STRING) {
         if (!mrb_string_p(o)) {
           mrb_raisef(mrb, E_TYPE_ERROR, "can't convert %S into String", mrb_class_path(mrb, mrb_obj_class(mrb, o)));
         }
@@ -1171,6 +1203,9 @@ mrb_pack_pack(mrb_state *mrb, mrb_value ary)
         count--;
       }
     }
+    if (ridx < 0) {
+      mrb_raise(mrb, E_RANGE_ERROR, "negative (or overflowed) template size");
+    }
   }
 
   mrb_str_resize(mrb, result, ridx);
@@ -1178,7 +1213,7 @@ mrb_pack_pack(mrb_state *mrb, mrb_value ary)
 }
 
 static mrb_value
-mrb_pack_unpack(mrb_state *mrb, mrb_value str)
+pack_unpack(mrb_state *mrb, mrb_value str, int single)
 {
   mrb_value result;
   struct tmpl tmpl;
@@ -1260,19 +1295,34 @@ mrb_pack_unpack(mrb_state *mrb, mrb_value str)
         count--;
       }
     }
+    if (single) break;
   }
 
+  if (single) return RARRAY_PTR(result)[0];
   return result;
+}
+
+static mrb_value
+mrb_pack_unpack(mrb_state *mrb, mrb_value str)
+{
+  return pack_unpack(mrb, str, 0);
+}
+
+static mrb_value
+mrb_pack_unpack1(mrb_state *mrb, mrb_value str)
+{
+  return pack_unpack(mrb, str, 1);
 }
 
 void
 mrb_mruby_pack_gem_init(mrb_state *mrb)
 {
-  littleendian = check_little_endian();
+  check_little_endian();
   make_base64_dec_tab();
 
   mrb_define_method(mrb, mrb->array_class, "pack", mrb_pack_pack, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, mrb->string_class, "unpack", mrb_pack_unpack, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, mrb->string_class, "unpack1", mrb_pack_unpack1, MRB_ARGS_REQ(1));
 }
 
 void
