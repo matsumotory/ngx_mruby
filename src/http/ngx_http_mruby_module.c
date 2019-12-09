@@ -447,7 +447,6 @@ static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *c
   if (conf->ssl_handshake_code != NGX_CONF_UNSET_PTR || conf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
     SSL_CTX_set_cert_cb(sscf->ssl.ctx, ngx_http_mruby_ssl_cert_handler, NULL);
-    SSL_CTX_set_client_cert_cb(sscf->ssl.ctx, ngx_http_mruby_ssl_client_cert_handler);
 #else
     ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                   MODULE_NAME
@@ -2075,7 +2074,6 @@ static int ngx_http_mruby_set_set_client_ca_cert_data(ngx_ssl_conn_t *ssl_conn, 
 {
   BIO *bio = NULL;
   X509 *x509 = NULL;
-  u_long n;
 
   /* read certificate data from memory buffer */
   if ((bio = BIO_new_mem_buf(cert->data, cert->len)) == NULL) {
@@ -2110,7 +2108,6 @@ static int ngx_http_mruby_set_set_client_ca_cert(ngx_ssl_conn_t *ssl_conn, ngx_s
 {
   BIO *bio = NULL;
   X509 *x509 = NULL;
-  u_long n;
 
   bio = BIO_new_file((char *)cert->data, "r");
   if (bio == NULL) {
