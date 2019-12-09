@@ -32,6 +32,12 @@ MRuby::Build.new('host') do |conf|
   conf.gem :github => 'matsumotory/mruby-uname'
   conf.gem :github => 'matsumotory/mruby-mutex'
   conf.gem :github => 'matsumotory/mruby-localmemcache'
+  conf.gem :github => 'prevs-io/mruby-jwt'
+  conf.gem :github => 'mattn/mruby-base64' # WWW-Authenticate header decoding
+  conf.gem :github => 'pbosetti/mruby-merb'
+  conf.gem :github => 'AndrewBelt/mruby-yaml'
+  # conf.gem :github => 'iij/mruby-ipaddr' # IP address range
+  conf.gem :github => 'Zogoo/mruby-ipaddr' # Customize for include? method
   conf.gem :mgem => 'mruby-secure-random'
 
   # ngx_mruby extended class
