@@ -26,8 +26,12 @@ static mrb_value ngx_mrb_ssl_init(mrb_state *mrb, mrb_value self)
   mscf->cert_data.len = 0;
   mscf->cert_key_data.data = NULL;
   mscf->cert_key_data.len = 0;
+  mscf->client_cert_path.data = NULL;
+  mscf->client_cert_path.len = 0;
+  mscf->client_cert_data.data = NULL;
+  mscf->client_cert_data.len = 0;
 
-  return self;
+      return self;
 }
 
 #define NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(method_suffix, member)                                              \
@@ -178,6 +182,8 @@ NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert, cert_path);
 NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_key, cert_key_path);
 NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_data, cert_data);
 NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(cert_key_data, cert_key_data);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(client_cert, client_cert_path);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(client_cert_data, client_cert_data);
 
 void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
 {
@@ -192,6 +198,8 @@ void ngx_mrb_ssl_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_ssl, "certificate_key=", ngx_mrb_ssl_set_cert_key, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_data=", ngx_mrb_ssl_set_cert_data, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "certificate_key_data=", ngx_mrb_ssl_set_cert_key_data, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_ssl, "client_certifcate=", ngx_mrb_ssl_set_client_cert, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, class_ssl, "client_certifcate_data=", ngx_mrb_ssl_set_client_cert_data, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_ssl, "accept_client", ngx_mrb_ssl_accept_client, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_ssl, "reject_client", ngx_mrb_ssl_reject_client, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class_ssl, "errlogger", ngx_mrb_ssl_errlogger, MRB_ARGS_REQ(2));
