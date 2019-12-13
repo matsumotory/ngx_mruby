@@ -72,7 +72,11 @@ if test "X$NGX_OPENSSL_SRC" != X ; then
   NGX_OPENSSL_INSTALL_DIR=$NGX_OPENSSL_SRC/.openssl
   NGX_CFLAGS=-I$NGX_OPENSSL_INSTALL_DIR/include
   if test "x$enable_dynamic_module" = xyes ; then
-      NGX_LDFLAGS="-L$NGX_OPENSSL_INSTALL_DIR/lib\ -Wl,-rpath=$NGX_OPENSSL_INSTALL_DIR/lib"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        NGX_LDFLAGS="-L$NGX_OPENSSL_INSTALL_DIR/lib\ -Wl,-rpath,$NGX_OPENSSL_INSTALL_DIR/lib"
+    else
+        NGX_LDFLAGS="-L$NGX_OPENSSL_INSTALL_DIR/lib\ -Wl,-rpath=$NGX_OPENSSL_INSTALL_DIR/lib"
+    fi
   else
       NGX_LIBS="$NGX_OPENSSL_INSTALL_DIR/lib/libssl.a $NGX_OPENSSL_INSTALL_DIR/lib/libcrypto.a"
   fi
