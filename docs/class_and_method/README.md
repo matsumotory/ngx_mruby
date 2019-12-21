@@ -676,7 +676,7 @@ v.exist? "foo" #=> false
 ### Nginx::Request#headers_in -> headers_in
 
 Returns a Headers_in instance of the request.
-See [Nginx::Headers_in Class](#nginxvar-class) for more details.
+See [Nginx::Headers_in Class](#nginxheaders_in-class) for more details.
 
 ```ruby
 r = Nginx::Request.new
