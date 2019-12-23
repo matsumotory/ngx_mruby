@@ -480,6 +480,7 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_const(mrb, class, "HTTP_REQUEST_URI_TOO_LARGE", mrb_fixnum_value(NGX_HTTP_REQUEST_URI_TOO_LARGE));
   mrb_define_const(mrb, class, "HTTP_UNSUPPORTED_MEDIA_TYPE", mrb_fixnum_value(NGX_HTTP_UNSUPPORTED_MEDIA_TYPE));
   mrb_define_const(mrb, class, "HTTP_RANGE_NOT_SATISFIABLE", mrb_fixnum_value(NGX_HTTP_RANGE_NOT_SATISFIABLE));
+  mrb_define_const(mrb, class, "HTTP_TOO_MANY_REQUESTS", mrb_fixnum_value(NGX_HTTP_TOO_MANY_REQUESTS));
   mrb_define_const(mrb, class, "HTTP_CLOSE", mrb_fixnum_value(NGX_HTTP_CLOSE));
   mrb_define_const(mrb, class, "HTTP_NGINX_CODES", mrb_fixnum_value(NGX_HTTP_NGINX_CODES));
   mrb_define_const(mrb, class, "HTTP_REQUEST_HEADER_TOO_LARGE", mrb_fixnum_value(NGX_HTTP_REQUEST_HEADER_TOO_LARGE));
