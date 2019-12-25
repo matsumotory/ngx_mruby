@@ -3707,11 +3707,11 @@ if test "X$NGX_OPENSSL_SRC" != X ; then
   NGX_OPENSSL_INSTALL_DIR=$NGX_OPENSSL_SRC/.openssl
   NGX_CFLAGS=-I$NGX_OPENSSL_INSTALL_DIR/include
   if test "x$enable_dynamic_module" = xyes ; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
+#if defined(__clang__)
       NGX_LDFLAGS="-L$NGX_OPENSSL_INSTALL_DIR/lib\ -Wl,-rpath,$NGX_OPENSSL_INSTALL_DIR/lib"
-    else
+#elif defined(__GNUC__) || defined(__GNUG__)
       NGX_LDFLAGS="-L$NGX_OPENSSL_INSTALL_DIR/lib\ -Wl,-rpath=$NGX_OPENSSL_INSTALL_DIR/lib"
-    fi 
+#endif
   else
       NGX_LIBS="$NGX_OPENSSL_INSTALL_DIR/lib/libssl.a $NGX_OPENSSL_INSTALL_DIR/lib/libcrypto.a"
   fi
