@@ -2221,7 +2221,7 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
     if (mscf->client_cert_path.len == 0) {
       ngx_log_error(NGX_LOG_DEBUG, c->log, 0,
                     MODULE_NAME " : mruby verify ssl handler: client ca certificate not exists or not read");
-      return mscf->ssl_verify_client_ok;
+      return 0;
     }
 
     errno = 0;
