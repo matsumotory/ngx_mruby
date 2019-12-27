@@ -390,6 +390,10 @@ static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
   mscf->cert_key_path.len = 0;
   mscf->cert_data.len = 0;
   mscf->cert_key_data.len = 0;
+  mscf->client_cert_data.data = NULL;
+  mscf->client_cert_data.len = 0;
+  mscf->cert_key_path.data = NULL;
+  mscf->cert_key_path.len = 0;
   mscf->ssl_handshake_code = NGX_CONF_UNSET_PTR;
   mscf->ssl_handshake_inline_code = NGX_CONF_UNSET_PTR;
   mscf->server_config_inline_code = NGX_CONF_UNSET_PTR;
@@ -2016,6 +2020,75 @@ NGX_MRUBY_SSL_ERROR:
   return NGX_ERROR;
 }
 
+static int ngx_http_mruby_set_set_client_ca_cert_data(ngx_ssl_conn_t *ssl_conn, ngx_str_t *cert)
+{
+  BIO *bio = NULL;
+  X509 *x509 = NULL;
+
+  /* read certificate data from memory buffer */
+  if ((bio = BIO_new_mem_buf(cert->data, cert->len)) == NULL) {
+    goto NGX_MRUBY_SSL_ERROR;
+  }
+
+  if ((x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL)) == NULL) {
+    goto NGX_MRUBY_SSL_ERROR;
+  }
+
+  if (SSL_add_client_CA(ssl_conn, x509) == 0) {
+    goto NGX_MRUBY_SSL_ERROR;
+  }
+
+  X509_free(x509);
+  x509 = NULL;
+
+  BIO_free(bio);
+  bio = NULL;
+
+  return NGX_OK;
+
+NGX_MRUBY_SSL_ERROR:
+  if (bio)
+    BIO_free(bio);
+  if (x509)
+    X509_free(x509);
+  return NGX_ERROR;
+}
+
+static int ngx_http_mruby_set_set_client_ca_cert(ngx_ssl_conn_t *ssl_conn, ngx_str_t *cert)
+{
+  BIO *bio = NULL;
+  X509 *x509 = NULL;
+
+  bio = BIO_new_file((char *)cert->data, "r");
+  if (bio == NULL) {
+    goto NGX_MRUBY_SSL_ERROR;
+  }
+
+  x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL);
+  if (x509 == NULL) {
+    goto NGX_MRUBY_SSL_ERROR;
+  }
+
+  if (SSL_add_client_CA(ssl_conn, x509) == 0) {
+    goto NGX_MRUBY_SSL_ERROR;
+  }
+
+  X509_free(x509);
+  x509 = NULL;
+
+  BIO_free(bio);
+  bio = NULL;
+
+  return NGX_OK;
+
+NGX_MRUBY_SSL_ERROR:
+  if (bio)
+    BIO_free(bio);
+  if (x509)
+    X509_free(x509);
+  return NGX_ERROR;
+}
+
 #endif /* NGX_HTTP_SSL */
 
 #if (NGX_HTTP_SSL)
@@ -2138,6 +2211,39 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   } else {
     ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certificate by mem buffer");
     rc = ngx_http_mruby_set_der_certificate_data(ssl_conn, &mscf->cert_data, &mscf->cert_key_data);
+  }
+  if (rc != NGX_OK) {
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to change certificate.\n");
+    return 0;
+  }
+
+  if (mscf->client_cert_data.len == 0) {
+    if (mscf->client_cert_path.len == 0) {
+      ngx_log_error(NGX_LOG_DEBUG, c->log, 0,
+                    MODULE_NAME " : mruby verify ssl handler: client ca certificate not exists or not read");
+      return mscf->ssl_verify_client_ok;
+    }
+
+    errno = 0;
+    if (access((const char *)mscf->client_cert_path.data, F_OK | R_OK) != 0) {
+      if (errno == EACCES) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      MODULE_NAME " : mruby ssl handler: client ca certificate [%V] permission denied",
+                      &mscf->client_cert_path);
+      } else {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      MODULE_NAME " : mruby ssl handler: client ca certificate [%V] not exists or not read",
+                      &mscf->client_cert_path);
+      }
+      return 0;
+    }
+
+    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certificate to cert=%V",
+                  &mscf->client_cert_path);
+    rc = ngx_http_mruby_set_set_client_ca_cert(ssl_conn, &mscf->client_cert_path);
+  } else {
+    ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certificate by mem buffer");
+    rc = ngx_http_mruby_set_set_client_ca_cert_data(ssl_conn, &mscf->client_cert_data);
   }
   if (rc != NGX_OK) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to change certificate.\n");
