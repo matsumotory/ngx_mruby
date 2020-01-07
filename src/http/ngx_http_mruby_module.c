@@ -392,8 +392,8 @@ static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf)
   mscf->cert_key_data.len = 0;
   mscf->client_cert_data.data = NULL;
   mscf->client_cert_data.len = 0;
-  mscf->cert_key_path.data = NULL;
-  mscf->cert_key_path.len = 0;
+  mscf->client_cert_path.data = NULL;
+  mscf->client_cert_path.len = 0;
   mscf->ssl_handshake_code = NGX_CONF_UNSET_PTR;
   mscf->ssl_handshake_inline_code = NGX_CONF_UNSET_PTR;
   mscf->server_config_inline_code = NGX_CONF_UNSET_PTR;
