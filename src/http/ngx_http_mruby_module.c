@@ -2024,22 +2024,34 @@ static int ngx_http_mruby_set_set_client_ca_cert_data(ngx_ssl_conn_t *ssl_conn, 
 {
   BIO *bio = NULL;
   X509 *x509 = NULL;
+  u_long n;
+
+  /* clear existing CA list name */ 
+  SSL_set_client_CA_list(ssl_conn, NULL);
 
   /* read certificate data from memory buffer */
   if ((bio = BIO_new_mem_buf(cert->data, cert->len)) == NULL) {
     goto NGX_MRUBY_SSL_ERROR;
   }
 
-  if ((x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL)) == NULL) {
-    goto NGX_MRUBY_SSL_ERROR;
-  }
+  /* read rest of the chain */
+  while (!BIO_eof(bio)) {
+    x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+    if (x509 == NULL) {
+      n = ERR_peek_last_error();
 
-  if (SSL_add_client_CA(ssl_conn, x509) == 0) {
-    goto NGX_MRUBY_SSL_ERROR;
-  }
+      if (ERR_GET_LIB(n) == ERR_LIB_PEM && ERR_GET_REASON(n) == PEM_R_NO_START_LINE) {
+        ERR_clear_error();
+        break;
+      }
 
-  X509_free(x509);
-  x509 = NULL;
+      goto NGX_MRUBY_SSL_ERROR;
+    }
+
+    if (SSL_add_client_CA(ssl_conn, x509) == 0) {
+      goto NGX_MRUBY_SSL_ERROR;
+    }
+  }
 
   BIO_free(bio);
   bio = NULL;
@@ -2056,36 +2068,25 @@ NGX_MRUBY_SSL_ERROR:
 
 static int ngx_http_mruby_set_set_client_ca_cert(ngx_ssl_conn_t *ssl_conn, ngx_str_t *cert)
 {
-  BIO *bio = NULL;
-  X509 *x509 = NULL;
+  STACK_OF(X509_NAME) * cert_names;
 
-  bio = BIO_new_file((char *)cert->data, "r");
-  if (bio == NULL) {
-    goto NGX_MRUBY_SSL_ERROR;
+  cert_names = SSL_load_client_CA_file((char *)cert->data);
+  if (cert_names == NULL) {
+    return NGX_ERROR;
   }
 
-  x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL);
-  if (x509 == NULL) {
-    goto NGX_MRUBY_SSL_ERROR;
-  }
+  SSL_set_client_CA_list(ssl_conn, cert_names);
 
-  if (SSL_add_client_CA(ssl_conn, x509) == 0) {
-    goto NGX_MRUBY_SSL_ERROR;
-  }
-
-  X509_free(x509);
-  x509 = NULL;
-
-  BIO_free(bio);
-  bio = NULL;
+  sk_X509_pop_free(cert_names, X509_free);
+  cert_names = NULL;
 
   return NGX_OK;
 
 NGX_MRUBY_SSL_ERROR:
-  if (bio)
-    BIO_free(bio);
-  if (x509)
-    X509_free(x509);
+  if (cert_names){
+    sk_X509_pop_free(cert_names, X509_free);
+    cert_names = NULL;
+  }
   return NGX_ERROR;
 }
 
