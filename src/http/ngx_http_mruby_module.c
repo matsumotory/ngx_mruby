@@ -2141,7 +2141,7 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
 
   sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
   if (sscf == NULL || sscf->ssl.ctx == NULL) {
-    ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : no ssl configured for the server");
+    ngx_log_error(NGX_LOG_EMERG, c->log, 0, MODULE_NAME " : no ssl configured for the server");
     return 1;
   }
   mscf->connection = c;
