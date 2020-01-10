@@ -515,7 +515,7 @@ end
 t.assert('ngx_mruby - client certificate authentication') do
   path = ENV['NGINX_INSTALL_DIR'] + '/html'
   res = `openssl s_client -servername localhost -cert #{path}/client.crt -key #{path}/client.key -connect localhost:58072 < /dev/null 2>&1 > /dev/null | awk '/verify return/ {print $2}' | tail -n1`
-  t.assert_equal "return:1", res
+  t.assert_equal "return:1\n", res
 end
 
 t.assert('ngx_mruby - Nginx::SSL.errlogger') do
