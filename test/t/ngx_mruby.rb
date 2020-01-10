@@ -512,6 +512,12 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file with 
   t.assert_equal "", `#{cmd_h}`.chomp
 end
 
+t.assert('ngx_mruby - client certificate authentication') do
+  path = ENV['NGINX_INSTALL_DIR'] + '/html'
+  res = `openssl s_client -servername localhost -cert #{path}/client.crt -key #{path}/client.key -connect localhost:58072 < /dev/null 2>&1 > /dev/null | awk '/verify return/ {print $2}' | tail -n1`
+  t.assert_equal "return:1", res
+end
+
 t.assert('ngx_mruby - Nginx::SSL.errlogger') do
   `openssl s_client -servername localhost -connect localhost:58087 < /dev/null 2>/dev/null`
   error_log = File.read File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log');
