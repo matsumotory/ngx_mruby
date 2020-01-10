@@ -96,6 +96,8 @@ $MAKE install
 $PS_C nginx 2>/dev/null && $KILLALL nginx
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' && sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' && cd -
+cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl genrsa -out client.key 2048' && sh -c 'yes "" | openssl req -new -key client.key -out client.csr -subj "/C=JP/ST=Tokyo/L=Shibuya/O=Chain Corp/OU=Engineering/OU=Team/CN=John Doe/emailAddress=john@doe.com"' && cd -
+cd ${NGINX_INSTALL_DIR}/html && sh -c "yes '' | openssl x509 -req -days 99999 -in client.csr -CA localhost.crt -CAkey localhost.key -CAcreateserial -out client.crt" && sh -c "yes '' | openssl pkcs12 -export -out client.p12 -inkey client.key -in client.crt -password pass:'!QAZ2wsx'" && cd -
 
 if [ $NGINX_SRC_MINOR -ge 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
   cat test/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
