@@ -331,6 +331,7 @@ Nginx::HTTP_REQUEST_ENTITY_TOO_LARGE|413
 Nginx::HTTP_REQUEST_URI_TOO_LARGE|414
 Nginx::HTTP_UNSUPPORTED_MEDIA_TYPE|415
 Nginx::HTTP_RANGE_NOT_SATISFIABLE|416
+Nginx::HTTP_TOO_MANY_REQUESTS|429
 Nginx::HTTP_CLOSE|444
 Nginx::HTTP_NGINX_CODES|494
 Nginx::HTTP_REQUEST_HEADER_TOO_LARGE|494
@@ -676,7 +677,7 @@ v.exist? "foo" #=> false
 ### Nginx::Request#headers_in -> headers_in
 
 Returns a Headers_in instance of the request.
-See [Nginx::Headers_in Class](#nginxvar-class) for more details.
+See [Nginx::Headers_in Class](#nginxheaders_in-class) for more details.
 
 ```ruby
 r = Nginx::Request.new
