@@ -1,94 +1,100 @@
-PACK_IS_LITTLE_ENDIAN = "\x01\00".unpack('S')[0] == 0x01
-
-def assert_pack tmpl, packed, unpacked
-  t = tmpl.inspect
-  assert "assert_pack" do
-    assert_equal packed, unpacked.pack(tmpl), "#{unpacked.inspect}.pack(#{t})"
-    assert_equal unpacked, packed.unpack(tmpl), "#{packed.inspect}.unpack(#{t})"
-  end
-end
-
 # pack & unpack 'm' (base64)
 assert('[""].pack("m")') do
-  assert_pack "m", "", [""]
+  ary = ""
+  str = ""
+  [ary].pack("m") == str and
+  str.unpack("m") == [ary]
 end
 
 assert('["\0"].pack("m")') do
-  assert_pack "m", "AA==\n", ["\0"]
+  ary = "\0"
+  str = "AA==\n"
+  [ary].pack("m") == str and
+  str.unpack("m") == [ary]
 end
 
 assert('["\0\0"].pack("m")') do
-  assert_pack "m", "AAA=\n", ["\0\0"]
+  ary = "\0\0"
+  str = "AAA=\n"
+  [ary].pack("m") == str and
+  str.unpack("m") == [ary]
 end
 
 assert('["\0\0\0"].pack("m")') do
-  assert_pack "m", "AAAA\n", ["\0\0\0"]
+  ary = "\0\0\0"
+  str = "AAAA\n"
+  [ary].pack("m") == str and
+  str.unpack("m") == [ary]
 end
 
 assert('["abc..xyzABC..XYZ"].pack("m")') do
-  assert_pack "m", "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJT\nVFVWV1hZWg==\n", ["abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"]
+  ["abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"].pack("m") == "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJT\nVFVWV1hZWg==\n"
 end
 
 assert('"YWJ...".unpack("m") should "abc..xyzABC..XYZ"') do
-  ary = ["abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"]
-  assert_equal ary, "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJT\nVFVWV1hZWg==\n".unpack("m")
-  assert_equal ary, "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWg==\n".unpack("m")
-end
-
-assert('["A", "B"].pack') do
-  assert_equal "QQ==\n", ["A", "B"].pack("m50")
-  assert_equal ["A"], "QQ==\n".unpack("m50")
-  assert_equal "QQ==Qg==", ["A", "B"].pack("m0 m0")
-  assert_equal ["A", "B"], "QQ==Qg==".unpack("m10 m10")
-end
-
-assert('["abc..xyzABC..XYZ"].pack("m0")') do
-  assert_pack "m0", "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWg==", ["abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"]
+  str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJT\nVFVWV1hZWg==\n".unpack("m") == [str] and
+  "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWg==\n".unpack("m") == [str]
 end
 
 # pack & unpack 'H'
 assert('["3031"].pack("H*")') do
-  assert_pack "H*", "01", ["3031"]
+  ary = "3031"
+  str = "01"
+  [ary].pack("H*") == str and
+  str.unpack("H*") == [ary]
 end
 
 assert('["10"].pack("H*")') do
-  assert_pack "H*", "\020", ["10"]
+  ary = "10"
+  str = "\020"
+  [ary].pack("H*") == str and
+  str.unpack("H*") == [ary]
 end
 
 assert('[0,1,127,128,255].pack("C*")') do
-  assert_pack "C*", "\x00\x01\x7F\x80\xFF", [0, 1, 127, 128, 255]
+ ary = [ 0, 1, 127, 128, 255 ]
+ str = "\x00\x01\x7F\x80\xFF"
+ ary.pack("C*") == str and str.unpack("C*") == ary
 end
 
 # pack "a"
 assert('["abc"].pack("a")') do
-  assert_equal "a", ["abc"].pack("a")
-  assert_equal "abc", ["abc"].pack("a*")
-  assert_equal "abc\0", ["abc"].pack("a4")
+  ["abc"].pack("a") == "a" and
+  ["abc"].pack("a*") == "abc" and
+  ["abc"].pack("a4") == "abc\0"
 end
 
 # upack "a"
 assert('["abc"].pack("a")') do
-  assert_equal ["abc\0"], "abc\0".unpack("a4")
-  assert_equal ["abc "], "abc ".unpack("a4")
+  "abc\0".unpack("a4") == ["abc\0"] and
+  "abc ".unpack("a4") == ["abc "]
 end
 
 # pack "A"
 assert('["abc"].pack("A")') do
-  assert_equal "a", ["abc"].pack("A")
-  assert_equal "abc", ["abc"].pack("A*")
-  assert_equal "abc ", ["abc"].pack("A4")
+  ["abc"].pack("A") == "a" and
+  ["abc"].pack("A*") == "abc" and
+  ["abc"].pack("A4") == "abc "
 end
 
 # upack "A"
 assert('["abc"].pack("A")') do
-  assert_equal ["abc"], "abc\0".unpack("A4")
-  assert_equal ["abc"], "abc ".unpack("A4")
+  "abc\0".unpack("A4") == ["abc"] and
+  "abc ".unpack("A4") == ["abc"]
 end
 
 # regression tests
 assert('issue #1') do
-  assert_equal "\000\001\000\002", [1, 2].pack("nn")
+  [1, 2].pack("nn") == "\000\001\000\002"
 end
+
+def assert_pack tmpl, packed, unpacked
+  assert_equal packed, unpacked.pack(tmpl)
+  assert_equal unpacked, packed.unpack(tmpl)
+end
+
+PACK_IS_LITTLE_ENDIAN = "\x01\00".unpack('S')[0] == 0x01
 
 assert 'pack float' do
   assert_pack 'e', "\x00\x00@@", [3.0]

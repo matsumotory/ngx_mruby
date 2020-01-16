@@ -1,5 +1,5 @@
-/**
-** @file mruby/opcode.h - RiteVM operation codes
+/*
+** mruby/opcode.h - RiteVM operation codes
 **
 ** See Copyright Notice in mruby.h
 */

@@ -79,7 +79,7 @@ io_get_open_fptr(mrb_state *mrb, mrb_value self)
 {
   struct mrb_io *fptr;
 
-  fptr = (struct mrb_io *)mrb_data_get_ptr(mrb, self, &mrb_io_type);
+  fptr = (struct mrb_io *)mrb_get_datatype(mrb, self, &mrb_io_type);
   if (fptr == NULL) {
     mrb_raise(mrb, E_IO_ERROR, "uninitialized stream.");
   }
@@ -127,7 +127,7 @@ mrb_io_modestr_to_flags(mrb_state *mrb, const char *mode)
       flags |= FMODE_WRITABLE | FMODE_APPEND | FMODE_CREATE;
       break;
     default:
-      mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal access mode %s", mode);
+      mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal access mode %S", mrb_str_new_cstr(mrb, mode));
   }
 
   while (*m) {
@@ -141,7 +141,7 @@ mrb_io_modestr_to_flags(mrb_state *mrb, const char *mode)
       case ':':
         /* XXX: PASSTHROUGH*/
       default:
-        mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal access mode %s", mode);
+        mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal access mode %S", mrb_str_new_cstr(mrb, mode));
     }
   }
 
@@ -191,7 +191,8 @@ mrb_fd_cloexec(mrb_state *mrb, int fd)
 
   flags = fcntl(fd, F_GETFD);
   if (flags == -1) {
-    mrb_bug(mrb, "mrb_fd_cloexec: fcntl(%d, F_GETFD) failed: %d", fd, errno);
+    mrb_bug(mrb, "mrb_fd_cloexec: fcntl(%S, F_GETFD) failed: %S",
+      mrb_fixnum_value(fd), mrb_fixnum_value(errno));
   }
   if (fd <= 2) {
     flags2 = flags & ~FD_CLOEXEC; /* Clear CLOEXEC for standard file descriptors: 0, 1, 2. */
@@ -201,7 +202,8 @@ mrb_fd_cloexec(mrb_state *mrb, int fd)
   }
   if (flags != flags2) {
     if (fcntl(fd, F_SETFD, flags2) == -1) {
-      mrb_bug(mrb, "mrb_fd_cloexec: fcntl(%d, F_SETFD, %d) failed: %d", fd, flags2, errno);
+      mrb_bug(mrb, "mrb_fd_cloexec: fcntl(%S, F_SETFD, %S) failed: %S",
+        mrb_fixnum_value(fd), mrb_fixnum_value(flags2), mrb_fixnum_value(errno));
     }
   }
 #endif
@@ -284,13 +286,12 @@ mrb_io_alloc(mrb_state *mrb)
 #endif
 
 static int
-option_to_fd(mrb_state *mrb, mrb_value hash, const char *key)
+option_to_fd(mrb_state *mrb, mrb_value obj, const char *key)
 {
-  mrb_value opt;
-
-  if (!mrb_hash_p(hash)) return -1;
-  opt = mrb_hash_fetch(mrb, hash, mrb_symbol_value(mrb_intern_static(mrb, key, strlen(key))), mrb_nil_value());
-  if (mrb_nil_p(opt)) return -1;
+  mrb_value opt = mrb_funcall(mrb, obj, "[]", 1, mrb_symbol_value(mrb_intern_static(mrb, key, strlen(key))));
+  if (mrb_nil_p(opt)) {
+    return -1;
+  }
 
   switch (mrb_type(opt)) {
     case MRB_TT_DATA: /* IO */
@@ -333,8 +334,8 @@ mrb_io_s_popen(mrb_state *mrb, mrb_value klass)
   mrb_get_args(mrb, "S|SH", &cmd, &mode, &opt);
   io = mrb_obj_value(mrb_data_object_alloc(mrb, mrb_class_ptr(klass), NULL, &mrb_io_type));
 
-  pname = RSTRING_CSTR(mrb, cmd);
-  flags = mrb_io_modestr_to_flags(mrb, RSTRING_CSTR(mrb, mode));
+  pname = mrb_string_value_cstr(mrb, &cmd);
+  flags = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
 
   doexec = (strcmp("-", pname) != 0);
   opt_in = option_to_fd(mrb, opt, "in");
@@ -380,7 +381,7 @@ mrb_io_s_popen(mrb_state *mrb, mrb_value klass)
       CloseHandle(ifd[1]);
       CloseHandle(ofd[0]);
       CloseHandle(ofd[1]);
-      mrb_raisef(mrb, E_IO_ERROR, "command not found: %v", cmd);
+      mrb_raisef(mrb, E_IO_ERROR, "command not found: %S", cmd);
     }
     CloseHandle(pi.hThread);
     CloseHandle(ifd[0]);
@@ -429,8 +430,8 @@ mrb_io_s_popen(mrb_state *mrb, mrb_value klass)
   mrb_get_args(mrb, "S|SH", &cmd, &mode, &opt);
   io = mrb_obj_value(mrb_data_object_alloc(mrb, mrb_class_ptr(klass), NULL, &mrb_io_type));
 
-  pname = RSTRING_CSTR(mrb, cmd);
-  flags = mrb_io_modestr_to_flags(mrb, RSTRING_CSTR(mrb, mode));
+  pname = mrb_string_value_cstr(mrb, &cmd);
+  flags = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
 
   doexec = (strcmp("-", pname) != 0);
   opt_in = option_to_fd(mrb, opt, "in");
@@ -493,7 +494,7 @@ mrb_io_s_popen(mrb_state *mrb, mrb_value klass)
           close(fd);
         }
         mrb_proc_exec(pname);
-        mrb_raisef(mrb, E_IO_ERROR, "command not found: %v", cmd);
+        mrb_raisef(mrb, E_IO_ERROR, "command not found: %S", cmd);
         _exit(127);
       }
       result = mrb_nil_value();
@@ -627,7 +628,7 @@ mrb_io_initialize(mrb_state *mrb, mrb_value io)
     opt = mrb_hash_new(mrb);
   }
 
-  flags = mrb_io_modestr_to_flags(mrb, RSTRING_CSTR(mrb, mode));
+  flags = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
 
   mrb_iv_set(mrb, io, mrb_intern_cstr(mrb, "@buf"), mrb_str_new_cstr(mrb, ""));
 
@@ -759,6 +760,7 @@ mrb_io_s_sysclose(mrb_state *mrb, mrb_value klass)
 int
 mrb_cloexec_open(mrb_state *mrb, const char *pathname, mrb_int flags, mrb_int mode)
 {
+  mrb_value emsg;
   int fd, retry = FALSE;
   char* fname = mrb_locale_from_utf8(pathname, -1);
 
@@ -781,7 +783,9 @@ reopen:
       }
     }
 
-    mrb_sys_fail(mrb, RSTRING_CSTR(mrb, mrb_format(mrb, "open %s", pathname)));
+    emsg = mrb_format(mrb, "open %S", mrb_str_new_cstr(mrb, pathname));
+    mrb_str_modify(mrb, mrb_str_ptr(emsg));
+    mrb_sys_fail(mrb, RSTRING_PTR(emsg));
   }
   mrb_locale_free(fname);
 
@@ -808,8 +812,8 @@ mrb_io_s_sysopen(mrb_state *mrb, mrb_value klass)
     perm = 0666;
   }
 
-  pat = RSTRING_CSTR(mrb, path);
-  flags = mrb_io_modestr_to_flags(mrb, RSTRING_CSTR(mrb, mode));
+  pat = mrb_string_value_cstr(mrb, &path);
+  flags = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
   modenum = mrb_io_flags_to_modenum(mrb, flags);
   fd = mrb_cloexec_open(mrb, pat, modenum, perm);
   return mrb_fixnum_value(fd);
@@ -908,7 +912,11 @@ mrb_io_syswrite(mrb_state *mrb, mrb_value io)
   }
 
   mrb_get_args(mrb, "S", &str);
-  buf = str;
+  if (mrb_type(str) != MRB_TT_STRING) {
+    buf = mrb_funcall(mrb, str, "to_s", 0);
+  } else {
+    buf = str;
+  }
 
   if (fptr->fd2 == -1) {
     fd = fptr->fd;
@@ -947,7 +955,7 @@ mrb_value
 mrb_io_closed(mrb_state *mrb, mrb_value io)
 {
   struct mrb_io *fptr;
-  fptr = (struct mrb_io *)mrb_data_get_ptr(mrb, io, &mrb_io_type);
+  fptr = (struct mrb_io *)mrb_get_datatype(mrb, io, &mrb_io_type);
   if (fptr == NULL || fptr->fd >= 0) {
     return mrb_false_value();
   }
@@ -997,7 +1005,7 @@ static int
 mrb_io_read_data_pending(mrb_state *mrb, mrb_value io)
 {
   mrb_value buf = mrb_iv_get(mrb, io, mrb_intern_cstr(mrb, "@buf"));
-  if (mrb_string_p(buf) && RSTRING_LEN(buf) > 0) {
+  if (mrb_type(buf) == MRB_TT_STRING && RSTRING_LEN(buf) > 0) {
     return 1;
   }
   return 0;
@@ -1060,7 +1068,7 @@ mrb_io_s_select(mrb_state *mrb, mrb_value klass)
   mrb_get_args(mrb, "*", &argv, &argc);
 
   if (argc < 1 || argc > 4) {
-    mrb_raisef(mrb, E_ARGUMENT_ERROR, "wrong number of arguments (%i for 1..4)", argc);
+    mrb_raisef(mrb, E_ARGUMENT_ERROR, "wrong number of arguments (%S for 1..4)", mrb_fixnum_value(argc));
   }
 
   timeout = mrb_nil_value();
@@ -1291,27 +1299,6 @@ mrb_io_sync(mrb_state *mrb, mrb_value self)
   return mrb_bool_value(fptr->sync);
 }
 
-static mrb_value
-io_bufread(mrb_state *mrb, mrb_value self)
-{
-  mrb_value str, str2;
-  mrb_int len, newlen;
-  struct RString *s;
-  char *p;
-
-  mrb_get_args(mrb, "Si", &str, &len);
-  s = RSTRING(str);
-  mrb_str_modify(mrb, s);
-  p = RSTR_PTR(s);
-  str2 = mrb_str_new(mrb, p, len);
-  newlen = RSTR_LEN(s)-len;
-  memmove(p, p+len, newlen);
-  p[newlen] = '\0';
-  RSTR_SET_LEN(s, newlen);
-
-  return str2;
-}
-
 void
 mrb_init_io(mrb_state *mrb)
 {
@@ -1347,5 +1334,6 @@ mrb_init_io(mrb_state *mrb)
   mrb_define_method(mrb, io, "pid",        mrb_io_pid,        MRB_ARGS_NONE());   /* 15.2.20.5.2 */
   mrb_define_method(mrb, io, "fileno",     mrb_io_fileno,     MRB_ARGS_NONE());
 
-  mrb_define_class_method(mrb, io, "_bufread",   io_bufread,        MRB_ARGS_REQ(2));
+
+  mrb_gv_set(mrb, mrb_intern_cstr(mrb, "$/"), mrb_str_new_cstr(mrb, "\n"));
 }

@@ -90,22 +90,6 @@ class Array
 
   ##
   # call-seq:
-  #    ary.difference(other_ary1, other_ary2, ...)   -> new_ary
-  #
-  # Returns a new array that is a copy of the original array, removing all
-  # occurrences of any item that also appear in +other_ary+. The order is
-  # preserved from the original array.
-  #
-  def difference(*args)
-    ary = self
-    args.each do |x|
-      ary = ary - x
-    end
-    ary
-  end
-
-  ##
-  # call-seq:
   #    ary | other_ary     -> new_ary
   #
   # Set Union---Returns a new array by joining this array with
@@ -171,24 +155,6 @@ class Array
       idx += 1
     end
     array
-  end
-
-  ##
-  # call-seq:
-  #    ary.intersection(other_ary,...)  -> new_ary
-  #
-  # Set Intersection---Returns a new array containing elements common to
-  # this array and <i>other_ary</i>s, removing duplicates. The order is
-  # preserved from the original array.
-  #
-  #    [1, 2, 3].intersection([3, 4, 1], [1, 3, 5])  #=> [1, 3]
-  #
-  def intersection(*args)
-    ary = self
-    args.each do |x|
-      ary = ary & x
-    end
-    ary
   end
 
   ##
@@ -849,11 +815,12 @@ class Array
   #  a.permutation(0).to_a #=> [[]] # one permutation of length 0
   #  a.permutation(4).to_a #=> []   # no permutations of length 4
   def permutation(n=self.size, &block)
-    return to_enum(:permutation, n) unless block
     size = self.size
+    return to_enum(:permutation, n) unless block
+    return if n > size
     if n == 0
-      yield []
-    elsif 0 < n && n <= size
+       yield []
+    else
       i = 0
       while i<size
         result = [self[i]]
@@ -868,7 +835,6 @@ class Array
         i += 1
       end
     end
-    self
   end
 
   ##
@@ -895,8 +861,9 @@ class Array
   #    a.combination(5).to_a  #=> []   # no combinations of length 5
 
   def combination(n, &block)
-    return to_enum(:combination, n) unless block
     size = self.size
+    return to_enum(:combination, n) unless block
+    return if n > size
     if n == 0
        yield []
     elsif n == 1
@@ -905,7 +872,7 @@ class Array
         yield [self[i]]
         i += 1
       end
-    elsif n <= size
+    else
       i = 0
       while i<size
         result = [self[i]]
@@ -915,7 +882,6 @@ class Array
         i += 1
       end
     end
-    self
   end
 
   ##
@@ -937,8 +903,8 @@ class Array
     column_count = nil
     self.each do |row|
       raise TypeError unless row.is_a?(Array)
-      column_count ||= row.size
-      raise IndexError, 'element size differs' unless column_count == row.size
+      column_count ||= row.count
+      raise IndexError, 'element size differs' unless column_count == row.count
     end
 
     Array.new(column_count) do |column_index|
@@ -970,8 +936,4 @@ class Array
     end
     h
   end
-
-  alias append push
-  alias prepend unshift
-  alias filter! select!
 end

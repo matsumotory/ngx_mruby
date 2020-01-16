@@ -1,13 +1,15 @@
 ##
 # File Test
 
-MRubyIOTestUtil.io_test_setup
+assert('File TEST SETUP') do
+  MRubyIOTestUtil.io_test_setup
+end
 
-assert('File.class', '15.2.21') do
+assert('File', '15.2.21') do
   assert_equal Class, File.class
 end
 
-assert('File.superclass', '15.2.21.2') do
+assert('File', '15.2.21.2') do
   assert_equal IO, File.superclass
 end
 
@@ -33,7 +35,6 @@ assert('File.basename') do
   assert_equal 'a', File.basename('/a/')
   assert_equal 'b', File.basename('/a/b')
   assert_equal 'b', File.basename('../a/b')
-  assert_raise(ArgumentError) { File.basename("/a/b\0") }
 end
 
 assert('File.dirname') do
@@ -107,8 +108,6 @@ assert('File.realpath') do
       MRubyIOTestUtil.rmdir dir
     end
   end
-
-  assert_raise(ArgumentError) { File.realpath("TO\0DO") }
 end
 
 assert("File.readlink") do
@@ -179,25 +178,20 @@ end
 
 assert('File.symlink') do
   target_name = "/usr/bin"
+  symlink_name = "test-bin-dummy"
   if !File.exist?(target_name)
     skip("target directory of File.symlink is not found")
-  end
-
-  begin
-    tmpdir = MRubyIOTestUtil.mkdtemp("mruby-io-test.XXXXXX")
-  rescue => e
-    skip e.message
-  end
-
-  symlink_name = "#{tmpdir}/test-bin-dummy"
-  begin
-    assert_equal 0, File.symlink(target_name, symlink_name)
-    assert_equal true, File.symlink?(symlink_name)
-  rescue NotImplementedError => e
-    skip e.message
-  ensure
-    File.delete symlink_name rescue nil
-    MRubyIOTestUtil.rmdir tmpdir rescue nil
+  else
+    begin
+      assert_equal 0, File.symlink(target_name, symlink_name)
+      begin
+        assert_equal true, File.symlink?(symlink_name)
+      ensure
+        File.delete symlink_name
+      end
+    rescue NotImplementedError => e
+      skip e.message
+    end
   end
 end
 
@@ -210,4 +204,6 @@ assert('File.chmod') do
   end
 end
 
-MRubyIOTestUtil.io_test_cleanup
+assert('File TEST CLEANUP') do
+  assert_nil MRubyIOTestUtil.io_test_cleanup
+end

@@ -40,7 +40,7 @@ module Kernel
   end
 
   # internal method for inspect
-  def _inspect(_recur_list)
+  def _inspect
     self.inspect
   end
 

@@ -186,17 +186,15 @@ class Hash
   end
 
   # internal method for Hash inspection
-  def _inspect(recur_list)
+  def _inspect
     return "{}" if self.size == 0
-    return "{...}" if recur_list[self.object_id]
-    recur_list[self.object_id] = true
     ary=[]
     keys=self.keys
     size=keys.size
     i=0
     while i<size
       k=keys[i]
-      ary<<(k._inspect(recur_list) + "=>" + self[k]._inspect(recur_list))
+      ary<<(k._inspect + "=>" + self[k]._inspect)
       i+=1
     end
     "{"+ary.join(", ")+"}"
@@ -206,7 +204,11 @@ class Hash
  #
   # ISO 15.2.13.4.30 (x)
   def inspect
-    self._inspect({})
+    begin
+      self._inspect
+    rescue SystemStackError
+      "{...}"
+    end
   end
   # ISO 15.2.13.4.31 (x)
   alias to_s inspect

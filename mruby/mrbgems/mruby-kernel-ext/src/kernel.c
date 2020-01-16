@@ -20,9 +20,9 @@ mrb_f_caller(mrb_state *mrb, mrb_value self)
       n = bt_len - lev;
       break;
     case 1:
-      if (mrb_range_p(v)) {
+      if (mrb_type(v) == MRB_TT_RANGE) {
         mrb_int beg, len;
-        if (mrb_range_beg_len(mrb, v, &beg, &len, bt_len, TRUE) == MRB_RANGE_OK) {
+        if (mrb_range_beg_len(mrb, v, &beg, &len, bt_len, TRUE) == 1) {
           lev = beg;
           n = len;
         }
@@ -31,21 +31,22 @@ mrb_f_caller(mrb_state *mrb, mrb_value self)
         }
       }
       else {
-        lev = mrb_int(mrb, v);
+        v = mrb_to_int(mrb, v);
+        lev = mrb_fixnum(v);
         if (lev < 0) {
-          mrb_raisef(mrb, E_ARGUMENT_ERROR, "negative level (%v)", v);
+          mrb_raisef(mrb, E_ARGUMENT_ERROR, "negative level (%S)", v);
         }
         n = bt_len - lev;
       }
       break;
     case 2:
-      lev = mrb_int(mrb, v);
-      n = mrb_int(mrb, length);
+      lev = mrb_fixnum(mrb_to_int(mrb, v));
+      n = mrb_fixnum(mrb_to_int(mrb, length));
       if (lev < 0) {
-        mrb_raisef(mrb, E_ARGUMENT_ERROR, "negative level (%v)", v);
+        mrb_raisef(mrb, E_ARGUMENT_ERROR, "negative level (%S)", v);
       }
       if (n < 0) {
-        mrb_raisef(mrb, E_ARGUMENT_ERROR, "negative size (%v)", length);
+        mrb_raisef(mrb, E_ARGUMENT_ERROR, "negative size (%S)", length);
       }
       break;
     default:
@@ -205,6 +206,22 @@ mrb_f_hash(mrb_state *mrb, mrb_value self)
   return mrb_ensure_hash_type(mrb, arg);
 }
 
+/*
+ *  call-seq:
+ *     obj.itself -> an_object
+ *
+ *  Returns <i>obj</i>.
+ *
+ *      string = 'my string' #=> "my string"
+ *      string.itself.object_id == string.object_id #=> true
+ *
+ */
+static mrb_value
+mrb_f_itself(mrb_state *mrb, mrb_value self)
+{
+  return self;
+}
+
 void
 mrb_mruby_kernel_ext_gem_init(mrb_state *mrb)
 {
@@ -220,6 +237,7 @@ mrb_mruby_kernel_ext_gem_init(mrb_state *mrb)
   mrb_define_module_function(mrb, krn, "String", mrb_f_string, MRB_ARGS_REQ(1));
   mrb_define_module_function(mrb, krn, "Array", mrb_f_array, MRB_ARGS_REQ(1));
   mrb_define_module_function(mrb, krn, "Hash", mrb_f_hash, MRB_ARGS_REQ(1));
+  mrb_define_module_function(mrb, krn, "itself", mrb_f_itself, MRB_ARGS_NONE());
 }
 
 void

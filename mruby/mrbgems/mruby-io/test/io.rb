@@ -1,46 +1,35 @@
 ##
 # IO Test
 
-MRubyIOTestUtil.io_test_setup
-$cr, $crlf, $cmd = MRubyIOTestUtil.win? ? [1, "\r\n", "cmd /c "] : [0, "\n", ""]
-
-def assert_io_open(meth)
-  assert "assert_io_open" do
-    fd = IO.sysopen($mrbtest_io_rfname)
-    assert_equal Fixnum, fd.class
-    io1 = IO.__send__(meth, fd)
-    begin
-      assert_equal IO, io1.class
-      assert_equal $mrbtest_io_msg, io1.read
-    ensure
-      io1.close
-    end
-
-    io2 = IO.__send__(meth, IO.sysopen($mrbtest_io_rfname))do |io|
-      if meth == :open
-        assert_equal $mrbtest_io_msg, io.read
-      else
-        flunk "IO.#{meth} does not take block"
-      end
-    end
-    io2.close unless meth == :open
-  end
+assert('IO TEST SETUP') do
+  MRubyIOTestUtil.io_test_setup
+  $cr = MRubyIOTestUtil.win? ? 1 : 0  # "\n" include CR or not
 end
 
-assert('IO.class', '15.2.20') do
+assert('IO', '15.2.20') do
   assert_equal(Class, IO.class)
 end
 
-assert('IO.superclass', '15.2.20.2') do
+assert('IO', '15.2.20.2') do
   assert_equal(Object, IO.superclass)
 end
 
-assert('IO.ancestors', '15.2.20.3') do
+assert('IO', '15.2.20.3') do
   assert_include(IO.ancestors, Enumerable)
 end
 
 assert('IO.open', '15.2.20.4.1') do
-  assert_io_open(:open)
+  fd = IO.sysopen $mrbtest_io_rfname
+  assert_equal Fixnum, fd.class
+  io = IO.open fd
+  assert_equal IO, io.class
+  assert_equal $mrbtest_io_msg, io.read
+  io.close
+
+  fd = IO.sysopen $mrbtest_io_rfname
+  IO.open(fd) do |io|
+    assert_equal $mrbtest_io_msg, io.read
+  end
 end
 
 assert('IO#close', '15.2.20.5.1') do
@@ -95,7 +84,7 @@ end
 
 assert('IO#getc', '15.2.20.5.8') do
   io = IO.new(IO.sysopen($mrbtest_io_rfname))
-  $mrbtest_io_msg.split("").each { |ch|
+  $mrbtest_io_msg.each_char { |ch|
     assert_equal ch, io.getc
   }
   assert_equal nil, io.getc
@@ -129,17 +118,16 @@ end
 
 assert "IO#read(n) with n > IO::BUF_SIZE" do
   skip "pipe is not supported on this platform" if MRubyIOTestUtil.win?
-  IO.pipe do |r,w|
-    n = IO::BUF_SIZE+1
-    w.write 'a'*n
-    assert_equal 'a'*n, r.read(n)
-  end
+  r,w = IO.pipe
+  n = IO::BUF_SIZE+1
+  w.write 'a'*n
+  assert_equal r.read(n), 'a'*n
 end
 
 assert('IO#readchar', '15.2.20.5.15') do
   # almost same as IO#getc
   IO.open(IO.sysopen($mrbtest_io_rfname)) do |io|
-    $mrbtest_io_msg.split("").each { |ch|
+    $mrbtest_io_msg.each_char { |ch|
       assert_equal ch, io.readchar
     }
     assert_raise(EOFError) do
@@ -227,15 +215,19 @@ assert('IO#dup for writable') do
 end
 
 assert('IO.for_fd') do
-  assert_io_open(:for_fd)
+  fd = IO.sysopen($mrbtest_io_rfname)
+  io = IO.for_fd(fd)
+    assert_equal $mrbtest_io_msg, io.read
+  io.close
 end
 
 assert('IO.new') do
-  assert_io_open(:new)
+  io = IO.new(0)
+  io.close
 end
 
 assert('IO gc check') do
-  assert_nothing_raised { 100.times { IO.new(0) } }
+  100.times { IO.new(0) }
 end
 
 assert('IO.sysopen("./nonexistent")') do
@@ -427,7 +419,7 @@ end
 assert('IO.popen') do
   begin
     $? = nil
-    io = IO.popen("#{$cmd}echo mruby-io")
+    io = IO.popen("echo mruby-io")
     assert_true io.close_on_exec?
     assert_equal Fixnum, io.pid.class
 
@@ -606,10 +598,12 @@ end
 
 assert('`cmd`') do
   begin
-    assert_equal `#{$cmd}echo foo`, "foo#{$crlf}"
+    assert_equal `echo foo`, "foo\n"
   rescue NotImplementedError => e
     skip e.message
   end
 end
 
-MRubyIOTestUtil.io_test_cleanup
+assert('IO TEST CLEANUP') do
+  assert_nil MRubyIOTestUtil.io_test_cleanup
+end

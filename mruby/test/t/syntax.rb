@@ -423,11 +423,10 @@ assert('parenthesed do-block in cmdarg') do
 end
 
 assert('method definition in cmdarg') do
-  result = class MethodDefinitionInCmdarg
-    def self.bar(arg); arg end
+  if false
     bar def foo; self.each do end end
   end
-  assert_equal(:foo, result)
+  true
 end
 
 assert('optional argument in the rhs default expressions') do
@@ -449,18 +448,6 @@ end
 
 assert('optional block argument in the rhs default expressions') do
   assert_nil(Proc.new {|foo = foo| foo}.call)
-end
-
-assert('local variable definition in default value and subsequent arguments') do
-  def m(a = b = 1, c) [a, b, c] end
-  assert_equal([1, 1, :c], m(:c))
-  assert_equal([:a, nil, :c], m(:a, :c))
-
-  def m(a = b = 1, &c) [a, b, c ? true : nil] end
-  assert_equal([1, 1, nil], m)
-  assert_equal([1, 1, true], m{})
-  assert_equal([:a, nil, nil], m(:a))
-  assert_equal([:a, nil, true], m(:a){})
 end
 
 assert('multiline comments work correctly') do
@@ -666,8 +653,4 @@ assert 'keyword arguments' do
   result = m(1, 2, e: 3, g: 4, h: 5, i: 6, &(l = ->{}))
   assert_equal([1, 1, [], 2, 3, 2, 4, { h: 5, i: 6 }, l], result)
 =end
-
-  def m(a: b = 1, c:) [a, b, c] end
-  assert_equal([1, 1, :c], m(c: :c))
-  assert_equal([:a, nil, :c], m(a: :a, c: :c))
 end

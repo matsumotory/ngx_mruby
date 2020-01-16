@@ -48,8 +48,14 @@ module Kernel
     args.__svalue
   end
 
-  def printf(*args)
-    __printstr__(sprintf(*args))
-    nil
+  unless Kernel.respond_to?(:sprintf)
+    def printf(*args)
+      raise NotImplementedError.new('printf not available')
+    end
+  else
+    def printf(*args)
+      __printstr__(sprintf(*args))
+      nil
+    end
   end
 end

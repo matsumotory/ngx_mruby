@@ -6,30 +6,28 @@ module Enumerable
   def chain(*args)
     Enumerator::Chain.new(self, *args)
   end
+
+  def +(other)
+    Enumerator::Chain.new(self, other)
+  end
 end
 
 class Enumerator
-  def +(other)
-    Chain.new(self, other)
-  end
-
   class Chain
     include Enumerable
 
     def initialize(*args)
-      @enums = args.freeze
-      @pos = -1
+      @enums = args
+    end
+
+    def initialize_copy(orig)
+      @enums = orig.__copy_enums
     end
 
     def each(&block)
-      return to_enum unless block
+      return to_enum unless block_given?
 
-      i = 0
-      while i < @enums.size
-        @pos = i
-        @enums[i].each(&block)
-        i += 1
-      end
+      @enums.each { |e| e.each(&block) }
 
       self
     end
@@ -42,21 +40,21 @@ class Enumerator
     end
 
     def rewind
-      while 0 <= @pos && @pos < @enums.size
-        e = @enums[@pos]
+      @enums.reverse_each do |e|
         e.rewind if e.respond_to?(:rewind)
-        @pos -= 1
       end
 
       self
     end
 
-    def +(other)
-      self.class.new(self, other)
-    end
-
     def inspect
       "#<#{self.class}: #{@enums.inspect}>"
+    end
+
+    def __copy_enums
+      @enums.each_with_object([]) do |e, a|
+        a << e.clone
+      end
     end
   end
 end

@@ -1,5 +1,5 @@
-/**
-** @file mruby/boxing_no.h - unboxed mrb_value definition
+/*
+** mruby/boxing_no.h - unboxed mrb_value definition
 **
 ** See Copyright Notice in mruby.h
 */
@@ -8,18 +8,17 @@
 #define MRUBY_BOXING_NO_H
 
 #define MRB_FIXNUM_SHIFT 0
-
-union mrb_value_union {
-#ifndef MRB_WITHOUT_FLOAT
-  mrb_float f;
-#endif
-  void *p;
-  mrb_int i;
-  mrb_sym sym;
-};
+#define MRB_TT_HAS_BASIC MRB_TT_OBJECT
 
 typedef struct mrb_value {
-  union mrb_value_union value;
+  union {
+#ifndef MRB_WITHOUT_FLOAT
+    mrb_float f;
+#endif
+    void *p;
+    mrb_int i;
+    mrb_sym sym;
+  } value;
   enum mrb_vtype tt;
 } mrb_value;
 

@@ -10,16 +10,16 @@ class Array
   # and pass the respective element.
   #
   # ISO 15.2.12.5.10
-  # def each(&block)
-  #   return to_enum :each unless block
+  def each(&block)
+    return to_enum :each unless block
 
-  #   idx = 0
-  #   while idx < length
-  #     block.call(self[idx])
-  #     idx += 1
-  #   end
-  #   self
-  # end
+    idx = 0
+    while idx < length
+      block.call(self[idx])
+      idx += 1
+    end
+    self
+  end
 
   ##
   # Calls the given block for each element of +self+
@@ -83,15 +83,13 @@ class Array
     self
   end
 
-  def _inspect(recur_list)
+  def _inspect
     size = self.size
     return "[]" if size == 0
-    return "[...]" if recur_list[self.object_id]
-    recur_list[self.object_id] = true
     ary=[]
     i=0
     while i<size
-      ary<<self[i]._inspect(recur_list)
+      ary<<self[i].inspect
       i+=1
     end
     "["+ary.join(", ")+"]"
@@ -101,7 +99,11 @@ class Array
   #
   # ISO 15.2.12.5.31 (x)
   def inspect
-    self._inspect({})
+    begin
+      self._inspect
+    rescue SystemStackError
+      "[...]"
+    end
   end
   # ISO 15.2.12.5.32 (x)
   alias to_s inspect

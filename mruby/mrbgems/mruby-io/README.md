@@ -1,5 +1,7 @@
 mruby-io
 ========
+[![Build Status](https://travis-ci.org/iij/mruby-io.svg?branch=master)](https://travis-ci.org/iij/mruby-io)
+
 
 `IO` and `File` classes for mruby
 
@@ -7,7 +9,7 @@ mruby-io
 Add the line below to your `build_config.rb`:
 
 ```
-  conf.gem core: 'mruby-io'
+  conf.gem :github => 'iij/mruby-io'
 ```
 
 ## Implemented methods

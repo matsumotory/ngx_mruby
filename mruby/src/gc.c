@@ -10,7 +10,6 @@
 #include <mruby/array.h>
 #include <mruby/class.h>
 #include <mruby/data.h>
-#include <mruby/istruct.h>
 #include <mruby/hash.h>
 #include <mruby/proc.h>
 #include <mruby/range.h>
@@ -110,10 +109,8 @@ typedef struct {
     struct RHash hash;
     struct RRange range;
     struct RData data;
-    struct RIStruct istruct;
     struct RProc proc;
     struct REnv env;
-    struct RFiber fiber;
     struct RException exc;
     struct RBreak brk;
 #ifdef MRB_WORD_BOXING
@@ -277,13 +274,6 @@ mrb_free(mrb_state *mrb, void *p)
   (mrb->allocf)(mrb, p, 0, mrb->allocf_ud);
 }
 
-MRB_API void*
-mrb_alloca(mrb_state *mrb, size_t size)
-{
-  mrb_value str = mrb_str_new(mrb, NULL, size);
-  return RSTRING_PTR(str);
-}
-
 static mrb_bool
 heap_p(mrb_gc *gc, struct RBasic *object)
 {
@@ -406,7 +396,7 @@ mrb_gc_init(mrb_state *mrb, mrb_gc *gc)
 
 static void obj_free(mrb_state *mrb, struct RBasic *obj, int end);
 
-static void
+void
 free_heap(mrb_state *mrb, mrb_gc *gc)
 {
   mrb_heap_page *page = gc->heaps;
@@ -473,13 +463,10 @@ mrb_gc_protect(mrb_state *mrb, mrb_value obj)
 MRB_API void
 mrb_gc_register(mrb_state *mrb, mrb_value obj)
 {
-  mrb_sym root;
-  mrb_value table;
+  mrb_sym root = mrb_intern_lit(mrb, GC_ROOT_NAME);
+  mrb_value table = mrb_gv_get(mrb, root);
 
-  if (mrb_immediate_p(obj)) return;
-  root = mrb_intern_lit(mrb, GC_ROOT_NAME);
-  table = mrb_gv_get(mrb, root);
-  if (mrb_nil_p(table) || !mrb_array_p(table)) {
+  if (mrb_nil_p(table) || mrb_type(table) != MRB_TT_ARRAY) {
     table = mrb_ary_new(mrb);
     mrb_gv_set(mrb, root, table);
   }
@@ -490,23 +477,20 @@ mrb_gc_register(mrb_state *mrb, mrb_value obj)
 MRB_API void
 mrb_gc_unregister(mrb_state *mrb, mrb_value obj)
 {
-  mrb_sym root;
-  mrb_value table;
+  mrb_sym root = mrb_intern_lit(mrb, GC_ROOT_NAME);
+  mrb_value table = mrb_gv_get(mrb, root);
   struct RArray *a;
   mrb_int i;
 
-  if (mrb_immediate_p(obj)) return;
-  root = mrb_intern_lit(mrb, GC_ROOT_NAME);
-  table = mrb_gv_get(mrb, root);
   if (mrb_nil_p(table)) return;
-  if (!mrb_array_p(table)) {
+  if (mrb_type(table) != MRB_TT_ARRAY) {
     mrb_gv_set(mrb, root, mrb_nil_value());
     return;
   }
   a = mrb_ary_ptr(table);
   mrb_ary_modify(mrb, a);
   for (i = 0; i < ARY_LEN(a); i++) {
-    if (mrb_ptr(ARY_PTR(a)[i]) == mrb_ptr(obj)) {
+    if (mrb_obj_eq(mrb, ARY_PTR(a)[i], obj)) {
       mrb_int len = ARY_LEN(a)-1;
       mrb_value *ptr = ARY_PTR(a);
 
@@ -521,7 +505,7 @@ MRB_API struct RBasic*
 mrb_obj_alloc(mrb_state *mrb, enum mrb_vtype ttype, struct RClass *cls)
 {
   struct RBasic *p;
-  static const RVALUE RVALUE_zero = { { { NULL, NULL, MRB_TT_FALSE } } };
+  static const RVALUE RVALUE_zero = { { { MRB_TT_FALSE } } };
   mrb_gc *gc = &mrb->gc;
 
   if (cls) {
@@ -542,7 +526,7 @@ mrb_obj_alloc(mrb_state *mrb, enum mrb_vtype ttype, struct RClass *cls)
         ttype != MRB_TT_ICLASS &&
         ttype != MRB_TT_ENV &&
         ttype != tt) {
-      mrb_raisef(mrb, E_TYPE_ERROR, "allocation failure of %C", cls);
+      mrb_raisef(mrb, E_TYPE_ERROR, "allocation failure of %S", mrb_obj_value(cls));
     }
   }
 
@@ -748,7 +732,7 @@ gc_mark_children(mrb_state *mrb, mrb_gc *gc, struct RBasic *obj)
     break;
 
   case MRB_TT_STRING:
-    if (RSTR_FSHARED_P(obj)) {
+    if (RSTR_FSHARED_P(obj) && !RSTR_NOFREE_P(obj)) {
       struct RString *s = (struct RString*)obj;
       mrb_gc_mark(mrb, (struct RBasic*)s->as.heap.aux.fshared);
     }

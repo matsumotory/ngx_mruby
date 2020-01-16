@@ -71,6 +71,7 @@ get_outfilename(mrb_state *mrb, char *infile, const char *ext)
 static int
 parse_args(mrb_state *mrb, int argc, char **argv, struct mrbc_args *args)
 {
+  char *outfile = NULL;
   static const struct mrbc_args args_zero = { 0 };
   int i;
 
@@ -85,7 +86,7 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct mrbc_args *args)
       case 'o':
         if (args->outfile) {
           fprintf(stderr, "%s: an output file is already specified. (%s)\n",
-                  args->prog, args->outfile);
+                  args->prog, outfile);
           return -1;
         }
         if (argv[i][2] == '\0' && argv[i+1]) {

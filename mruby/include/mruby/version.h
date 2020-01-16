@@ -1,5 +1,5 @@
-/**
-** @file mruby/version.h - mruby version definition
+/*
+** mruby/version.h - mruby version definition
 **
 ** See Copyright Notice in mruby.h
 */
@@ -42,12 +42,12 @@ MRB_BEGIN_DECL
 /*
  * Minor release version number.
  */
-#define MRUBY_RELEASE_MINOR 1
+#define MRUBY_RELEASE_MINOR 0
 
 /*
  * Tiny release version number.
  */
-#define MRUBY_RELEASE_TEENY 0
+#define MRUBY_RELEASE_TEENY 1
 
 /*
  * The mruby version.
@@ -67,31 +67,17 @@ MRB_BEGIN_DECL
 /*
  * Release month.
  */
-#define MRUBY_RELEASE_MONTH 11
+#define MRUBY_RELEASE_MONTH 4
 
 /*
  * Release day.
  */
-#define MRUBY_RELEASE_DAY 19
+#define MRUBY_RELEASE_DAY 4
 
 /*
  * Release date as a string.
  */
-#define MRUBY_RELEASE_DATE    \
-  MRUBY_RELEASE_YEAR_STR "-"  \
-  MRUBY_RELEASE_MONTH_STR "-" \
-  MRUBY_RELEASE_DAY_STR
-#define MRUBY_RELEASE_YEAR_STR MRB_STRINGIZE(MRUBY_RELEASE_YEAR)
-#if MRUBY_RELEASE_MONTH < 10
-#define MRUBY_RELEASE_MONTH_STR "0" MRB_STRINGIZE(MRUBY_RELEASE_MONTH)
-#else
-#define MRUBY_RELEASE_MONTH_STR MRB_STRINGIZE(MRUBY_RELEASE_MONTH)
-#endif
-#if MRUBY_RELEASE_DAY < 10
-#define MRUBY_RELEASE_DAY_STR "0" MRB_STRINGIZE(MRUBY_RELEASE_DAY)
-#else
-#define MRUBY_RELEASE_DAY_STR MRB_STRINGIZE(MRUBY_RELEASE_DAY)
-#endif
+#define MRUBY_RELEASE_DATE MRB_STRINGIZE(MRUBY_RELEASE_YEAR) "-" MRB_STRINGIZE(MRUBY_RELEASE_MONTH) "-" MRB_STRINGIZE(MRUBY_RELEASE_DAY)
 
 /*
  * The year mruby was first created.
@@ -106,9 +92,9 @@ MRB_BEGIN_DECL
 /*
  * mruby's version, and release date.
  */
-#define MRUBY_DESCRIPTION     \
-  "mruby " MRUBY_VERSION      \
-  " (" MRUBY_RELEASE_DATE ")" \
+#define MRUBY_DESCRIPTION      \
+  "mruby " MRUBY_VERSION       \
+  " (" MRUBY_RELEASE_DATE ") " \
 
 /*
  * mruby's copyright information.

@@ -1,5 +1,5 @@
-/**
-** @file mruby/re.h - Regexp class
+/*
+** mruby/re.h - Regexp class
 **
 ** See Copyright Notice in mruby.h
 */

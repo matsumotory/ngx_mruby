@@ -310,15 +310,11 @@ class String
     end
   end
 
-  ##
-  # Call the given block for each character of
-  # +self+.
   def each_char(&block)
     return to_enum :each_char unless block
-    pos = 0
-    while pos < self.size
-      block.call(self[pos])
-      pos += 1
+
+    split('').each do |i|
+      block.call(i)
     end
     self
   end
@@ -414,7 +410,7 @@ class String
       e = max.ord
       while c <= e
         break if exclusive and c == e
-        yield c.chr(__ENCODING__)
+        yield c.chr
         c += 1
       end
       return self

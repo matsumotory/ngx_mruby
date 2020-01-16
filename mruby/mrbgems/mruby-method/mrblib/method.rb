@@ -6,6 +6,18 @@ class Method
     }
   end
 
+  def owner
+    @owner
+  end
+
+  def receiver
+    @recv
+  end
+
+  def name
+    @name
+  end
+
   def <<(other)
     ->(*args, &block) { call(other.call(*args, &block)) }
   end

@@ -1,5 +1,5 @@
-/**
-** @file mruby/debug.h - mruby debug info
+/*
+** mruby/debug.h - mruby debug info
 **
 ** See Copyright Notice in mruby.h
 */
