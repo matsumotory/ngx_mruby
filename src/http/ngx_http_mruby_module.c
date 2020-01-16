@@ -2069,6 +2069,17 @@ NGX_MRUBY_SSL_ERROR:
 static int ngx_http_mruby_set_set_client_ca_cert(ngx_ssl_conn_t *ssl_conn, ngx_str_t *cert)
 {
   STACK_OF(X509_NAME) * cert_names;
+  ngx_connection_t *c;
+  SSL_CTX *ssl_ctx;
+
+  c = ngx_ssl_get_connection(ssl_conn);
+  ssl_ctx = c->ssl->session_ctx;
+
+  if (SSL_CTX_load_verify_locations(ssl_ctx, (char *)cert->data, NULL) == 0) {
+    return NGX_ERROR;
+  }
+
+  ERR_clear_error();
 
   cert_names = SSL_load_client_CA_file((char *)cert->data);
   if (cert_names == NULL) {
