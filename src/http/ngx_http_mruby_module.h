@@ -73,7 +73,8 @@ typedef struct {
   ngx_str_t cert_key_data;
   ngx_str_t client_cert_path;
   ngx_str_t client_cert_data;
-#if (NGX_HTTP_SSL) && OPENSSL_VERSION_NUMBER >= 0x1000205fL
+#if (NGX_HTTP_SSL)
+#if OPENSSL_VERSION_NUMBER >= 0x1000205fL
   ngx_connection_t *connection;
 #endif
   SSL_verify_cb ssl_verify_client_prev_cb;
