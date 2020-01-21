@@ -1,0 +1,172 @@
+---
+mruby_version:
+  version: 2.1.0
+  release_no: 20100
+builds:
+  host:
+    https://github.com/iij/mruby-env.git:
+      url: https://github.com/iij/mruby-env.git
+      branch: master
+      commit: 056ae324451ef16a50c7887e117f0ea30921b71b
+      version: 0.0.0
+    https://github.com/iij/mruby-dir.git:
+      url: https://github.com/iij/mruby-dir.git
+      branch: master
+      commit: 89dceefa1250fb1ae868d4cb52498e9e24293cd1
+      version: 0.0.0
+    https://github.com/iij/mruby-digest.git:
+      url: https://github.com/iij/mruby-digest.git
+      branch: master
+      commit: 2bd4627d3430921a4290f7622b3e891979d5cee0
+      version: 0.0.0
+    https://github.com/iij/mruby-process.git:
+      url: https://github.com/iij/mruby-process.git
+      branch: master
+      commit: 95da206a5764f4e80146979b8e35bd7a9afd6850
+      version: 0.0.0
+    https://github.com/mattn/mruby-json.git:
+      url: https://github.com/mattn/mruby-json.git
+      branch: master
+      commit: '054699892b0d681110e7348440cddb70a3fd671e'
+      version: 0.0.0
+    https://github.com/mattn/mruby-onig-regexp.git:
+      url: https://github.com/mattn/mruby-onig-regexp.git
+      branch: master
+      commit: e55923997ba33586b58c11bd3ca2d40c11a8dede
+      version: 0.0.0
+    https://github.com/matsumotory/mruby-redis.git:
+      url: https://github.com/matsumotory/mruby-redis.git
+      branch: master
+      commit: 18b3d06cf238b26eb921e019fff1a9aa9ad22e95
+      version: 0.0.1
+    https://github.com/matsumotory/mruby-vedis.git:
+      url: https://github.com/matsumotory/mruby-vedis.git
+      branch: master
+      commit: 30aced18e7c0d50aaaeb191cf3e92f1cda6edda0
+      version: 0.0.1
+    https://github.com/matsumotory/mruby-userdata.git:
+      url: https://github.com/matsumotory/mruby-userdata.git
+      branch: master
+      commit: 7ea5ed4d1053ff2b6284f91558223fa80fe5f9bb
+      version: 0.0.0
+    https://github.com/matsumotory/mruby-uname.git:
+      url: https://github.com/matsumotory/mruby-uname.git
+      branch: master
+      commit: 422f61705a1232f8d033ace3945826ea6b0421a8
+      version: 0.0.1
+    https://github.com/matsumotory/mruby-mutex.git:
+      url: https://github.com/matsumotory/mruby-mutex.git
+      branch: master
+      commit: 032a06887523b5c4d1ee6ba7914e98aa3474288d
+      version: 0.0.0
+    https://github.com/matsumotory/mruby-localmemcache.git:
+      url: https://github.com/matsumotory/mruby-localmemcache.git
+      branch: master
+      commit: ae9e0f0816a7610a1237e86ad18db01d1459498b
+      version: 0.0.0
+    https://github.com/monochromegane/mruby-secure-random.git:
+      url: https://github.com/monochromegane/mruby-secure-random.git
+      branch: master
+      commit: 4971702e8cd299054b3220b4adb6bc3031ae2881
+      version: 0.0.0
+    https://github.com/matsumotory/mruby-pointer.git:
+      url: https://github.com/matsumotory/mruby-pointer.git
+      branch: master
+      commit: 8b46506dfdb12a79a16be1d1172ef3c9324bef96
+      version: 0.0.1
+    https://github.com/ksss/mruby-stringio.git:
+      url: https://github.com/ksss/mruby-stringio.git
+      branch: master
+      commit: 390dce992e46c641a9cff6c6bd2d4126fbba6ccd
+      version: 0.0.0
+    https://github.com/pyama86/mruby-acme-client.git:
+      url: https://github.com/pyama86/mruby-acme-client.git
+      branch: master
+      commit: aad1a7d61d1c19475b5b82be3904f1ad9c386ff4
+      version: 0.0.0
+    https://github.com/pyama86/mruby-polarssl.git:
+      url: https://github.com/pyama86/mruby-polarssl.git
+      branch: disable-base64
+      commit: 13b0f40422d5800946f00fdc944b72d4a327b346
+      version: 0.0.0
+    https://github.com/takahashim/mruby-forwardable.git:
+      url: https://github.com/takahashim/mruby-forwardable.git
+      branch: master
+      commit: de5082ec98ade1833c87c3ee17913c640cba4037
+      version: 0.1.0
+    https://github.com/iij/mruby-tempfile.git:
+      url: https://github.com/iij/mruby-tempfile.git
+      branch: master
+      commit: b8e4fb65ecce9f0cc3584480d93b53a60cc6dd36
+      version: 0.0.0
+    https://github.com/matsumotory/mruby-httprequest.git:
+      url: https://github.com/matsumotory/mruby-httprequest.git
+      branch: master
+      commit: 628d43dca8b9231b75cb966a471f171e735bb907
+      version: 0.0.1
+    https://github.com/mattn/mruby-base64.git:
+      url: https://github.com/mattn/mruby-base64.git
+      branch: master
+      commit: c56d0d1a11d065ddaf7498970ef24f20136298d7
+      version: 0.0.0
+    https://github.com/iij/mruby-mtest.git:
+      url: https://github.com/iij/mruby-mtest.git
+      branch: master
+      commit: 34a477d249b0d21671058be33aa75d04c3e981ba
+      version: 0.0.0
+    https://github.com/iij/mruby-errno.git:
+      url: https://github.com/iij/mruby-errno.git
+      branch: master
+      commit: b4415207ff6ea62360619c89a1cff83259dc4db0
+      version: 0.0.0
+    https://github.com/matsumotory/mruby-simplehttp.git:
+      url: https://github.com/matsumotory/mruby-simplehttp.git
+      branch: master
+      commit: fc2ecd21eedcafd9bb7cad6a014d4f33c87a6196
+      version: 0.0.1
+    https://github.com/mattn/mruby-http.git:
+      url: https://github.com/mattn/mruby-http.git
+      branch: master
+      commit: dfabda4dc0fa8581a8760097c0cb79d4395199a5
+      version: 0.0.0
+  test:
+    https://github.com/matsumotory/mruby-simplehttp.git:
+      url: https://github.com/matsumotory/mruby-simplehttp.git
+      branch: master
+      commit: fc2ecd21eedcafd9bb7cad6a014d4f33c87a6196
+      version: 0.0.1
+    https://github.com/matsumotory/mruby-httprequest.git:
+      url: https://github.com/matsumotory/mruby-httprequest.git
+      branch: master
+      commit: 628d43dca8b9231b75cb966a471f171e735bb907
+      version: 0.0.1
+    https://github.com/matsumotory/mruby-uname.git:
+      url: https://github.com/matsumotory/mruby-uname.git
+      branch: master
+      commit: 422f61705a1232f8d033ace3945826ea6b0421a8
+      version: 0.0.1
+    https://github.com/matsumotory/mruby-simpletest.git:
+      url: https://github.com/matsumotory/mruby-simpletest.git
+      branch: master
+      commit: dbc7605ea83260a0a014101faa51bfb953100a13
+      version: 0.0.1
+    https://github.com/mattn/mruby-http.git:
+      url: https://github.com/mattn/mruby-http.git
+      branch: master
+      commit: dfabda4dc0fa8581a8760097c0cb79d4395199a5
+      version: 0.0.0
+    https://github.com/mattn/mruby-json.git:
+      url: https://github.com/mattn/mruby-json.git
+      branch: master
+      commit: '054699892b0d681110e7348440cddb70a3fd671e'
+      version: 0.0.0
+    https://github.com/iij/mruby-env.git:
+      url: https://github.com/iij/mruby-env.git
+      branch: master
+      commit: 056ae324451ef16a50c7887e117f0ea30921b71b
+      version: 0.0.0
+    https://github.com/luisbebop/mruby-polarssl.git:
+      url: https://github.com/luisbebop/mruby-polarssl.git
+      branch: master
+      commit: 2751cead7abae354b4fd74460bc611bf5d565b76
+      version: 2.1.2
