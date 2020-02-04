@@ -90,7 +90,7 @@ fi
 # FIXME: not sure if we really need this. even if we do, it should be moved to mruby/Rakefile
 if [ -d "./mruby/${BUILD_DIR}" ]; then
     echo "mruby Cleaning ..."
-    (cd mruby && ./minirake clean)
+    (cd mruby && rake clean MRUBY_CONFIG=../build_config.rb)
     echo "mruby Cleaning ... Done"
 fi
 
