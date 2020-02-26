@@ -1002,7 +1002,7 @@ If `backend` variable is not defined in nginx.conf, you will get false.
 
 ```ruby
 v = Nginx::Request.new.var
-v.exits? "backend" # => false
+v.exist? "backend" # => false
 ```
 
 # Nginx::Headers_in Class
