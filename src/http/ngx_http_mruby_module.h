@@ -103,7 +103,7 @@ typedef struct ngx_http_mruby_loc_conf_t {
   ngx_http_output_body_filter_pt body_filter_handler;
 } ngx_http_mruby_loc_conf_t;
 
-ngx_http_output_header_filter_pt ngx_http_next_header_filter;
-ngx_http_output_body_filter_pt ngx_http_next_body_filter;
+extern ngx_http_output_header_filter_pt ngx_http_next_header_filter;
+extern ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
 #endif // NGX_HTTP_MRUBY_MODULE_H

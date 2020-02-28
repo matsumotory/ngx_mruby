@@ -10,7 +10,7 @@
 
 #include <mruby/hash.h>
 #include <mruby/string.h>
-ngx_module_t ngx_stream_mruby_module;
+
 static mrb_value ngx_stream_mrb_errlogger(mrb_state *mrb, mrb_value self)
 {
   mrb_value msg;
