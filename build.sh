@@ -87,13 +87,6 @@ else
     OPENSSL_BUILD_OPT=''
 fi
 
-# FIXME: not sure if we really need this. even if we do, it should be moved to mruby/Rakefile
-if [ -d "./mruby/${BUILD_DIR}" ]; then
-    echo "mruby Cleaning ..."
-    (cd mruby && rake clean MRUBY_CONFIG=../build_config.rb)
-    echo "mruby Cleaning ... Done"
-fi
-
 echo "ngx_mruby configure ..."
 ./configure ${CONFIG_OPT} --with-ngx-src-root=${NGINX_SRC} --with-ngx-config-opt="${NGINX_CONFIG_OPT}" ${OPENSSL_BUILD_OPT} $@
 echo "ngx_mruby configure ... Done"
