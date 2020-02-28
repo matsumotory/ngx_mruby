@@ -81,7 +81,7 @@ build_mruby: $(MRUBY_BUILD_DEPEND_TARGETS)
 
 clean_mruby:
 	rm -f .mruby_version	
-	cd $(MRUBY_ROOT) && $(RAKE) deep_clean && rm -rf build
+	cd $(MRUBY_ROOT) && $(RAKE) MRUBY_CONFIG=$(NGX_MRUBY_ROOT)/build_config.rb deep_clean && rm -rf build
 
 $(MRUBY_MAK_FILE): build_mruby
 
