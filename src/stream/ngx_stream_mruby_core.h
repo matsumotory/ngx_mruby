@@ -23,4 +23,6 @@ typedef struct ngx_stream_mruby_ctx_t {
 
 ngx_stream_mruby_ctx_t *ngx_stream_mrb_get_module_ctx(mrb_state *mrb, ngx_stream_session_t *s);
 
+extern ngx_module_t ngx_stream_mruby_module;
+
 #endif // NGX_STREAM_MRUBY_CORE_H
