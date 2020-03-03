@@ -117,6 +117,17 @@ generate_gems_config_dynamic:
 #
 # openssl
 #
+# build compatibility
+# * 1.0.x tar ball
+#   * crypto/opensslv.h and Makefile exist.
+#   * enable-tlsext is supported.
+#   * Make targets are build_all and install_sw.
+# * 1.1.x tar ball
+#   * include/openssl/opensslv.h exists, but no Makefile.
+#   * No enable-tlsext suppot.
+# * github master branch (as of Feb 3 2020)
+#   * VERSION exist, but no include/openssl/opensslv.h and no Makefile.
+
 openssl: .openssl_build_done
 
 .openssl_build_done: .openssl_configure_done
