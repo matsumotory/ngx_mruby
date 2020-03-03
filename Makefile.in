@@ -111,27 +111,6 @@ generate_gems_config_dynamic:
 	@echo ngx_module_libs=\"\$(LDFLAGS) \$(LIBS)\" > ./mrbgems_config_dynamic
 	@echo CORE_LIBS=\"\$$CORE_LIBS \$(LDFLAGS) \$(LIBS)\" >> ./mrbgems_config_dynamic
 
-# for backward compatibility
-make_ngx_mruby:
-	cd $(NGX_SRC_ROOT) && $(MAKE)
-	@echo "Warning: make_ngx_mruby target will be removed. Use build_ngx_mruby instead."
-
-ngx_mruby: 
-ifdef BUILD_DYNAMIC_MODULE
-	@echo "Error: You must rerun configure without --enable-dynamic" && false
-else
-	$(MAKE) build_ngx_mruby
-	@echo "Warning: ngx_mruby target will be removed. Use build_ngx_mruby without BUILD_DYNAMIC_MODULE instead."
-endif
-
-ngx_mruby_dynamic:
-ifdef BUILD_DYNAMIC_MODULE
-	$(MAKE) build_ngx_mruby
-	@echo "Warning: ngx_mruby_dynamic target will be removed. Use build_ngx_mruby with BUILD_DYNAMIC_MODULE instead."
-else
-	@echo "Error: You must rerun configure with --enable-dynamic" && false
-endif
-
 #
 # openssl
 #
