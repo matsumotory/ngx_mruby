@@ -629,6 +629,7 @@ NGX_LIBS
 NGX_LDFLAGS
 NGX_CFLAGS
 NGX_OPENSSL_INSTALL_DIR
+NGX_MRUBY_LDFLAGS
 NGX_MRUBY_CFLAGS
 BUILD_DYNAMIC_MODULE
 NGX_CONFIG_ADD_MODULE_OPT_NAME
@@ -3698,6 +3699,26 @@ else
   BUILD_DYNAMIC_MODULE=""
   NGX_MRUBY_CFLAGS=""
 fi
+
+NGX_MRUBY_LDFLAGS=""
+# We don't want use AC_CANONICAL_HOST. It requires install-sh and other helper files.
+# AC_CANONICAL_HOST
+host_os=`uname -s | tr [:upper:] [:lower:]`
+if test "X$NGX_OPENSSL_SRC" = X ; then
+  if test "${host_os}" = darwin; then
+    # Homebrew, pkgsrc
+    for openssl_dir in /usr/local/opt/openssl /opt/pkg
+    do
+      if test -d ${openssl_dir}/include/openssl; then
+        NGX_MRUBY_LDFLAGS="-L${openssl_dir}/lib -lcrypto"
+        NGX_MRUBY_CFLAGS="${NGX_MRUBY_CFLAGS} -I${openssl_dir}/include"
+        break
+      fi
+    done
+  fi
+fi
+
+
 
 
 
