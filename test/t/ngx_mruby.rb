@@ -18,7 +18,7 @@ class NginxFeatures
   def initialize(nginx_version)
     @version_string = nginx_version
     @major, @minor, @patch = @version_string.split(".").map {|v| v.to_i}
-    p "version_string=#{@version_string}, major=#{@major}, minor=#{@minor}, patch=#{@patch}"
+    puts "Using Nginx #{@version_string} (major=#{@major}, minor=#{@minor}, patch=#{@patch})"
   end
   def is_upstream_supported?
     # Nginx::Upstream only works with nginx 1.7 or later. See ngx_http_mruby_module.h
@@ -39,6 +39,7 @@ class OpenSSLTestClient
   def run(openssl_cmd); @openssl_cmd = openssl_cmd; @request = nil; @to_text = false; self; end
   def with(request); @request = request; self; end
   def to_text; @to_text = true; self; end
+  def now; _run(); end
   def pipe(pipe_cmd)
    @pipe_cmd = pipe_cmd
    IO.pipe do |r, w|
@@ -47,7 +48,7 @@ class OpenSSLTestClient
      IO.popen(pipe_cmd, "r", in: r) { |i| i.read }
     end
   end
-  def run_again; pipe(@pipe_cmd); end
+  def run_again; @pipe_cmd.nil? ? now() : pipe(@pipe_cmd); end
   def _run
     if debug?
       puts "DEBUG: openssl_cmd: #{@openssl_cmd}" 
@@ -363,7 +364,6 @@ end
 t.assert('ngx_mruby - rack base', 'location /rack_base_env') do
   res = HttpRequest.new.get base + '/rack_base_env?a=1&b=1', nil, {"Host" => "ngx.example.com:58080", "x-hoge" => "foo"}
   body = JSON.parse res["body"]
-  puts body
 
   t.assert_equal "GET", body["REQUEST_METHOD"]
   t.assert_equal "", body["SCRIPT_NAME"]
@@ -392,7 +392,6 @@ t.assert('ngx_mruby - rack base', 'method POST, location /rack_base_env') do
   req_body = 'Hello'
   res = HttpRequest.new.post base + '/rack_base_env', req_body, {"Content-Type" => "text/plain; charset=us-ascii", "Content-Length" => req_body.size}
   res_body = JSON.parse res["body"]
-  puts res_body
 
   t.assert_equal "POST", res_body["REQUEST_METHOD"]
   t.assert_equal "text/plain; charset=us-ascii", res_body["CONTENT_TYPE"]
@@ -460,7 +459,6 @@ end
 t.assert('ngx_mruby - fix bug issue 155', 'location /fix-bug-issue-155') do
   res = HttpRequest.new.get base + '/fix-bug-issue-155'
   t.assert_equal 200, res.code
-  p res
   t.assert_equal '["abc=123", "foo=bar"]', res["body"]
   t.assert_equal ["abc=123", "foo=bar"], res['set-cookies']
 end
@@ -564,28 +562,46 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file with 
   content = File.read(fname).gsub('#{ssl.servername}', 'localhost')
   File.open(fname, 'w') { |f| f.puts content }
 
-  cmd_l = "openssl s_client -servername localhost -connect localhost:58086 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1"
-  cmd_h = "openssl s_client -servername hogehoge -connect 127.0.0.1:58086 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not"
-  t.assert_equal "1", `#{cmd_l}`.chomp
-  t.assert_equal "", `#{cmd_h}`.chomp
+  client_l = OpenSSLTestClient.new
+  client_h = OpenSSLTestClient.new
+
+  res_l = client_l
+    .run("openssl s_client -servername localhost -connect localhost:58086")
+    .to_text()
+    .pipe("grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
+  res_h = client_h
+    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58086")
+    .to_text()
+    .pipe("grep Not")
+
+  t.assert_equal "1", res_l.chomp
+  t.assert_equal "", res_h.chomp
 
   content = File.read(fname).gsub('localhost', '#{ssl.servername}')
   File.open(fname, 'w') { |f| f.puts content }
 
-  t.assert_equal "1", `#{cmd_l}`.chomp
-  t.assert_equal "", `#{cmd_h}`.chomp
+  t.assert_equal "1", client_l.run_again.chomp
+  t.assert_equal "", client_h.run_again.chomp
 end
 
 t.assert('ngx_mruby - Nginx::SSL.errlogger') do
-  `openssl s_client -servername localhost -connect localhost:58087 < /dev/null 2>/dev/null`
+  OpenSSLTestClient.new
+    .run("openssl s_client -servername localhost -connect localhost:58087").now
   error_log = File.read File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log');
   t.assert_true error_log.include? 'Servername is localhost while SSL handshaking'
 end
 
 t.assert('ngx_mruby - get ssl server name') do
-  res = `echo "GET /servername" | openssl s_client -ign_eof -connect localhost:58088 2>/dev/null | sed -n '$s/closed$//p'`
+  res = OpenSSLTestClient.new
+    .run("openssl s_client -ign_eof -connect localhost:58088")
+    .with("GET /servername")
+    .pipe("sed -n '$s/closed$//p'")
   t.assert_equal "servername is empty", res.chomp
-  res = `echo "GET /servername" | openssl s_client -ign_eof -connect localhost:58088 -servername ngx.example.com 2>/dev/null | sed -n '$s/closed$//p'`
+
+  res = OpenSSLTestClient.new
+    .run("openssl s_client -ign_eof -connect localhost:58088 -servername ngx.example.com")
+    .with("GET /servername")
+    .pipe("sed -n '$s/closed$//p'")
   t.assert_equal "ngx.example.com", res.chomp
 end
 
