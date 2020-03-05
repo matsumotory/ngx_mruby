@@ -1,4 +1,3 @@
-##
 # ngx_mruby test
 #
 
@@ -32,6 +31,45 @@ class NginxFeatures
   def is_async_supported?
     # Should we enable Nginx::Async as default?
     true
+  end
+end
+
+class OpenSSLTestClient
+  def debug?; ENV['DEBUG']; end
+  def run(openssl_cmd); @openssl_cmd = openssl_cmd; @request = nil; @to_text = false; self; end
+  def with(request); @request = request; self; end
+  def to_text; @to_text = true; self; end
+  def pipe(pipe_cmd)
+   @pipe_cmd = pipe_cmd
+   IO.pipe do |r, w|
+     w.write _run()
+     w.close
+     IO.popen(pipe_cmd, "r", in: r) { |i| i.read }
+    end
+  end
+  def run_again; pipe(@pipe_cmd); end
+  def _run
+    if debug?
+      puts "DEBUG: openssl_cmd: #{@openssl_cmd}" 
+      puts "DEBUG: request: #{@request}"
+      puts "DEBUG: to_text: #{@to_text}"
+    end
+    raise "Call run() first." if @openssl_cmd.nil?
+    @result_text = ""
+
+    cmd = @request.nil? ? 
+      "#{@openssl_cmd} < /dev/null 2> /dev/null" : 
+      "echo #{@request} | #{@openssl_cmd} 2> /dev/null"
+    cmd = cmd + " | openssl x509 -text" if @to_text
+    puts "DEBUG: cmd: #{cmd}" if debug?
+
+    @result_text = `#{cmd}`
+    if debug?
+      puts "DEBUG: result_text --- BEGIN ---"
+      puts "#{@result_text}"
+      puts "DEBUG: result_text --- END ---"
+    end
+    @result_text
   end
 end
 
@@ -455,19 +493,35 @@ end
 t.assert('ngx_mruby - ssl certificate changing') do
   res = `curl -s -k #{base_ssl(58082) + '/'}`
   t.assert_equal 'ssl test ok', res
-  res = `openssl s_client -servername localhost -connect localhost:58082 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
-  t.assert_equal "1", res
-  res = `openssl s_client -servername hogehoge -connect 127.0.0.1:58082 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not`.chomp
-  t.assert_equal "", res
+
+  res = OpenSSLTestClient.new
+    .run("openssl s_client -servername localhost -connect localhost:58082")
+    .to_text()
+    .pipe("grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
+  t.assert_equal "1", res.chomp
+
+  res = OpenSSLTestClient.new
+    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58082")
+    .to_text()
+    .pipe("grep Not")
+  t.assert_equal "", res.chomp
 end
 
 t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
   res = `curl -s -k #{base_ssl(58083) + '/'}`
   t.assert_equal 'ssl test ok', res
-  res = `openssl s_client -servername localhost -connect localhost:58083 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
-  t.assert_equal "1", res
-  res = `openssl s_client -servername hogehoge -connect 127.0.0.1:58083 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not`.chomp
-  t.assert_equal "", res
+
+  res = OpenSSLTestClient.new
+    .run("openssl s_client -servername localhost -connect localhost:58083")
+    .to_text()
+    .pipe("grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
+  t.assert_equal "1", res.chomp
+
+  res = OpenSSLTestClient.new
+    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58083")
+    .to_text()
+    .pipe("grep Not")
+  t.assert_equal "", res.chomp
 end
 
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file without caching') do
@@ -479,16 +533,26 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file witho
   content = File.read(fname).gsub('#{ssl.servername}', 'localhost')
   File.open(fname, 'w') { |f| f.puts content }
 
-  cmd_l = "openssl s_client -servername localhost -connect localhost:58085 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1"
-  cmd_h = "openssl s_client -servername hogehoge -connect 127.0.0.1:58085 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1"
-  t.assert_equal "1", `#{cmd_l}`.chomp
-  t.assert_equal "1", `#{cmd_h}`.chomp
+  client_l = OpenSSLTestClient.new
+  client_h = OpenSSLTestClient.new
+
+  res_l = client_l
+    .run("openssl s_client -servername localhost -connect localhost:58085")
+    .to_text()
+    .pipe("grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
+  res_h = client_h
+    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58085")
+    .to_text()
+    .pipe("grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
+
+  t.assert_equal "1", res_l.chomp
+  t.assert_equal "1", res_h.chomp
 
   content = File.read(fname).gsub('localhost', '#{ssl.servername}')
   File.open(fname, 'w') { |f| f.puts content }
 
-  t.assert_equal "1", `#{cmd_l}`.chomp
-  t.assert_equal "", `#{cmd_h}`.chomp
+  t.assert_equal "1", client_l.run_again.chomp
+  t.assert_equal "", client_h.run_again.chomp
 end
 
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file with caching') do
