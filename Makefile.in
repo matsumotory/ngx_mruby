@@ -104,7 +104,7 @@ mrbgems_config_dynamic: $(MRUBY_MAK_FILE)
 
 generate_gems_config:
 	@echo CORE_LIBS=\"\$$CORE_LIBS $(LDFLAGS) $(LIBS)\" > ./mrbgems_config
-	@echo CORE_INCS=\"\$$CORE_INCS $(CFLAGS)\" >> ./mrbgems_config
+	@echo CORE_INCS=\"\$$CORE_INCS `echo $(CFLAGS) | sed -e 's/-[^I][^ ]*//g'`\" >> ./mrbgems_config
 	@echo LINK_DEPS=\"\$$LINK_DEPS $(MRUBY_LIBMRUBY_PATH)\" >> ./mrbgems_config
 
 generate_gems_config_dynamic:
