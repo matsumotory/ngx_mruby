@@ -35,7 +35,8 @@ class NginxFeatures
 end
 
 class OpenSSLTestClient
-  def debug?; ENV['DEBUG']; end
+  # On Travis, always debug? returns true to narrow down build issues.
+  def debug?; ENV['DEBUG'] || ENV['TRAVIS'] ; end
   def run(openssl_cmd); @openssl_cmd = openssl_cmd; @request = nil; @to_text = false; self; end
   def with(request); @request = request; self; end
   def to_text; @to_text = true; self; end
@@ -51,9 +52,9 @@ class OpenSSLTestClient
   def run_again; @pipe_cmd.nil? ? now() : pipe(@pipe_cmd); end
   def _run
     if debug?
-      puts "DEBUG: openssl_cmd: #{@openssl_cmd}" 
-      puts "DEBUG: request: #{@request}"
-      puts "DEBUG: to_text: #{@to_text}"
+      STDERR.puts "DEBUG: openssl_cmd: #{@openssl_cmd}" 
+      STDERR.puts "DEBUG: request: #{@request}"
+      STDERR.puts "DEBUG: to_text: #{@to_text}"
     end
     raise "Call run() first." if @openssl_cmd.nil?
     @result_text = ""
@@ -62,13 +63,13 @@ class OpenSSLTestClient
       "#{@openssl_cmd} < /dev/null 2> /dev/null" : 
       "echo #{@request} | #{@openssl_cmd} 2> /dev/null"
     cmd = cmd + " | openssl x509 -text" if @to_text
-    puts "DEBUG: cmd: #{cmd}" if debug?
+    STDERR.puts "DEBUG: cmd: #{cmd}" if debug?
 
     @result_text = `#{cmd}`
     if debug?
-      puts "DEBUG: result_text --- BEGIN ---"
-      puts "#{@result_text}"
-      puts "DEBUG: result_text --- END ---"
+      STDERR.puts "DEBUG: result_text --- BEGIN ---"
+      STDERR.puts "#{@result_text}"
+      STDERR.puts "DEBUG: result_text --- END ---"
     end
     @result_text
   end
