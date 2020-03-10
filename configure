@@ -628,7 +628,11 @@ NGX_OPENSSL_OPT
 NGX_LIBS
 NGX_LDFLAGS
 NGX_CFLAGS
+OPENSSL_CONFIG_ENABLE_TLSEXT
+OPENSSL_MAKE_TARGET
+OPENSSL_VERSION
 NGX_OPENSSL_INSTALL_DIR
+NGX_MRUBY_LDFLAGS
 NGX_MRUBY_CFLAGS
 BUILD_DYNAMIC_MODULE
 NGX_CONFIG_ADD_MODULE_OPT_NAME
@@ -3699,11 +3703,32 @@ else
   NGX_MRUBY_CFLAGS=""
 fi
 
+NGX_MRUBY_LDFLAGS=""
+# We don't want use AC_CANONICAL_HOST. It requires install-sh and other helper files.
+# AC_CANONICAL_HOST
+host_os=`uname -s | tr [:upper:] [:lower:]`
+if test "X$NGX_OPENSSL_SRC" = X ; then
+  if test "${host_os}" = darwin; then
+    # Homebrew, pkgsrc
+    for openssl_dir in /usr/local/opt/openssl /opt/pkg
+    do
+      if test -d ${openssl_dir}/include/openssl; then
+        NGX_MRUBY_LDFLAGS="-L${openssl_dir}/lib -lcrypto"
+        NGX_MRUBY_CFLAGS="${NGX_MRUBY_CFLAGS} -I${openssl_dir}/include"
+        break
+      fi
+    done
+  fi
+fi
+
+
+
 
 
 
 
 if test "X$NGX_OPENSSL_SRC" != X ; then
+
   NGX_OPENSSL_INSTALL_DIR=$NGX_OPENSSL_SRC/.openssl
   NGX_CFLAGS=-I$NGX_OPENSSL_INSTALL_DIR/include
   if test "x$enable_dynamic_module" = xyes ; then
@@ -3711,7 +3736,52 @@ if test "X$NGX_OPENSSL_SRC" != X ; then
   else
       NGX_LIBS="$NGX_OPENSSL_INSTALL_DIR/lib/libssl.a $NGX_OPENSSL_INSTALL_DIR/lib/libcrypto.a"
   fi
+
+  # * github master branch (as of Feb 3 2020)
+  #   * nginx doesn't support it yet.
+  #   * VERSION exist, but no include/openssl/opensslv.h and no Makefile.
+  # * 1.1.x tar ball
+  #   * include/openssl/opensslv.h exists, but no Makefile.
+  #   * Makefile is generated at build time.
+  #   * enable-tlsext is gone.
+  #   * Makefile targets are build_all_generated install_sw
+  # * 1.0.x tar ball
+  #   * crypto/opensslv.h and Makefile exist.
+  #   * include/openssl/opensslv.h is generated at build time.
+  #   * enable-tlsext is supported.
+  #   * Makefile targets are build_all and install_sw.
+  if test -f $NGX_OPENSSL_SRC/VERSION; then
+    # MAJOR=3
+    # MINOR=0
+    # PATCH=0
+    # PRE_RELEASE_TAG=dev
+    OPENSSL_VERSION=`(. $NGX_OPENSSL_SRC/VERSION && echo "${MAJOR}.${MINOR}.${PATCH}-${PRE_RELEASE_TAG}")`
+  elif test -f $NGX_OPENSSL_SRC/crypto/opensslv.h; then
+      #  define OPENSSL_VERSION_TEXT    "OpenSSL 1.0.2u-fips  20 Dec 2019"
+      #  define OPENSSL_VERSION_TEXT    "OpenSSL 1.0.2u  20 Dec 2019"
+      OPENSSL_VERSION=`grep OPENSSL_VERSION_TEXT $NGX_OPENSSL_SRC/crypto/opensslv.h | grep -o 'OpenSSL [0-9a-z\.]*' | head -1 | awk '{print $2}'`
+  elif test -f $NGX_OPENSSL_SRC/include/openssl/opensslv.h; then
+      # define OPENSSL_VERSION_TEXT    "OpenSSL 1.1.1d  10 Sep 2019"
+      OPENSSL_VERSION=`grep OPENSSL_VERSION_TEXT $NGX_OPENSSL_SRC/include/openssl/opensslv.h | grep -o 'OpenSSL [0-9a-z\.]*' | awk '{print $2}'`
+  else
+    $as_echo "$0: Can't find openssl version information." >&2
+    exit 255
+  fi
+  echo "target openssl version is $OPENSSL_VERSION" >&2
+  eval `echo $OPENSSL_VERSION | awk -F '.' '{print "OPENSSL_MAJOR_VERSION=" $1 "\nOPENSSL_MINOR_VERSION=" $2}'`
+  echo "  major=$OPENSSL_MAJOR_VERSION minor=$OPENSSL_MINOR_VERSION"
+  if test $OPENSSL_MAJOR_VERSION -eq 1 -a $OPENSSL_MINOR_VERSION -le 0; then
+    OPENSSL_MAKE_TARGET="build_all install_sw"
+    OPENSSL_CONFIG_ENABLE_TLSEXT="enable-tlsext"
+  else
+    OPENSSL_MAKE_TARGET="build_all_generated install_sw"
+    OPENSSL_CONFIG_ENABLE_TLSEXT=""
+  fi
 fi
+
+
+
+
 
 
 
