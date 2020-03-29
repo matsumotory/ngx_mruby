@@ -250,14 +250,14 @@ $ ./configure --prefix=/usr/local/nginx-1.15.6 --add-dynamic-module=/path/to/ngx
 $ make
 ```
 
-## 3. Installing ngx_mruby
+## 4. Installing ngx_mruby
 
 ```sh
 $ cd /path/to/ngx_mruby
 $ sudo make install
 ```
 
-### 4. Writing ruby code
+## 5. Writing ruby code
 
 There are 3 ways to run you mruby code on ngx_mruby.
 
@@ -265,7 +265,7 @@ There are 3 ways to run you mruby code on ngx_mruby.
 * inline code
 * script file as a handler
 
-#### 4-A. Script file
+### 5-A. Script file
 
 You can run a script file as below.
 
@@ -296,7 +296,7 @@ location /mruby {
 }
 ```
 
-#### 4-B. inline code
+### 5-B. inline code
 
 Also you can write ruby code in nginx.conf.
 
@@ -316,7 +316,7 @@ location /mruby {
 }
 ```
 
-#### 4-C. Script file as a handler
+### 5-C. Script file as a handler
 
 You can run a ruby script file directly without location definition. 
 In this case, the script is exposed at http://127.0.0.1/unified_hello.rb instead of http://127.0.0.1/mruby.
