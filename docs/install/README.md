@@ -248,6 +248,7 @@ $ make generate_gems_config_dynamic
 $ cd /local/src/nginx-1.15.6 
 $ ./configure --prefix=/usr/local/nginx-1.15.6 --add-dynamic-module=/path/to/ngx_mruby --add-module=/path/to/ngx_mruby/dependence/ngx_devel_kit --add-module=/path/to/nginx-module-you-want-to-build
 $ make
+```
 
 ## 3. Istalling ngx_mruby
 
