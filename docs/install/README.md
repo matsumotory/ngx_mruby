@@ -250,7 +250,7 @@ $ ./configure --prefix=/usr/local/nginx-1.15.6 --add-dynamic-module=/path/to/ngx
 $ make
 ```
 
-## 3. Istalling ngx_mruby
+## 3. Installing ngx_mruby
 
 ```sh
 $ cd /path/to/ngx_mruby
