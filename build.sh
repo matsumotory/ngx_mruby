@@ -76,7 +76,7 @@ fi
 
 if [ -n "$OPENSSL_SRC_VERSION" ]; then
     cd ${BUILD_DIR}
-    curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}-latest.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz
+    curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz
     mkdir openssl-${OPENSSL_SRC_VERSION} && tar -xzf openssl-${OPENSSL_SRC_VERSION}.tar.gz -C openssl-${OPENSSL_SRC_VERSION} --strip-components 1
     rm openssl-${OPENSSL_SRC_VERSION}.tar.gz
     cd openssl-${OPENSSL_SRC_VERSION}
