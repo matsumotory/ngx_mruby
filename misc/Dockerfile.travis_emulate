@@ -22,7 +22,7 @@ ENV CXX "g++-4.9"
 ENV CC "gcc-4.9"
 ENV LD "gcc-4.9"
 
-ENV OPENSSL_SRC_VERSION "1.1.1"
+ENV OPENSSL_SRC_VERSION "1.1.1f"
 
 RUN curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz && \
   mkdir openssl-${OPENSSL_SRC_VERSION} && tar -xzf openssl-${OPENSSL_SRC_VERSION}.tar.gz -C openssl-${OPENSSL_SRC_VERSION} --strip-components 1 && \
