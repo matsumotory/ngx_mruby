@@ -18,9 +18,9 @@ sudo apt-get -y remove nano
 
 sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-6.0 1000
 
-export OPENSSL_SRC_VERSION=1.1.1
+export OPENSSL_SRC_VERSION=1.1.1f
 
-curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}-latest.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz
+curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz
 mkdir openssl-${OPENSSL_SRC_VERSION} && tar -xzf openssl-${OPENSSL_SRC_VERSION}.tar.gz -C openssl-${OPENSSL_SRC_VERSION} --strip-components 1
 rm openssl-${OPENSSL_SRC_VERSION}.tar.gz
 cd openssl-${OPENSSL_SRC_VERSION}

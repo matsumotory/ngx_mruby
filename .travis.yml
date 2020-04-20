@@ -16,63 +16,48 @@ install:
 env:
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=17
-    NGINX_SRC_PATCH=7
-    OPENSSL_SRC_VERSION='1.1.1'
+    NGINX_SRC_PATCH=10
+    OPENSSL_SRC_VERSION='1.1.1f'
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=17
-    NGINX_SRC_PATCH=7
+    NGINX_SRC_PATCH=10
     BUILD_DYNAMIC_MODULE='TRUE'
-    OPENSSL_SRC_VERSION='1.1.1'
+    OPENSSL_SRC_VERSION='1.1.1f'
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=17
-    NGINX_SRC_PATCH=7
+    NGINX_SRC_PATCH=10
     BUILD_WITH_OPENSSL_SRC='TRUE'
-    OPENSSL_SRC_VERSION='1.1.1'
-  - NGINX_SRC_MAJOR=1
-    NGINX_SRC_MINOR=17
-    NGINX_SRC_PATCH=7
-    BUILD_WITH_OPENSSL_SRC='TRUE'
-    OPENSSL_SRC_VERSION='1.0.2'
+    OPENSSL_SRC_VERSION='1.1.1f'
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=16
     NGINX_SRC_PATCH=1
-    OPENSSL_SRC_VERSION='1.1.1'
+    OPENSSL_SRC_VERSION='1.1.1f'
   - BUILD_DYNAMIC_MODULE='TRUE'
     NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=16
     NGINX_SRC_PATCH=1
-    OPENSSL_SRC_VERSION='1.1.1'
+    OPENSSL_SRC_VERSION='1.1.1f'
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=16
     NGINX_SRC_PATCH=1
     BUILD_WITH_OPENSSL_SRC='TRUE'
-    OPENSSL_SRC_VERSION='1.1.1'
-  - NGINX_SRC_MAJOR=1
-    NGINX_SRC_MINOR=16
-    NGINX_SRC_PATCH=1
-    BUILD_WITH_OPENSSL_SRC='TRUE'
-    OPENSSL_SRC_VERSION='1.0.2'
+    OPENSSL_SRC_VERSION='1.1.1f'
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=14
     NGINX_SRC_PATCH=2
-    OPENSSL_SRC_VERSION='1.1.1'
+    OPENSSL_SRC_VERSION='1.1.1f'
   - BUILD_DYNAMIC_MODULE='TRUE'
     NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=14
     NGINX_SRC_PATCH=2
-    OPENSSL_SRC_VERSION='1.1.1'
+    OPENSSL_SRC_VERSION='1.1.1f'
   - NGINX_SRC_MAJOR=1
     NGINX_SRC_MINOR=14
     NGINX_SRC_PATCH=2
     BUILD_WITH_OPENSSL_SRC='TRUE'
-    OPENSSL_SRC_VERSION='1.1.1'
-  - NGINX_SRC_MAJOR=1
-    NGINX_SRC_MINOR=14
-    NGINX_SRC_PATCH=2
-    BUILD_WITH_OPENSSL_SRC='TRUE'
-    OPENSSL_SRC_VERSION='1.0.2'
+    OPENSSL_SRC_VERSION='1.1.1f'
 before_script:
-  - curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}-latest.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz
+  - curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz
   - mkdir openssl-${OPENSSL_SRC_VERSION} && tar -xzf openssl-${OPENSSL_SRC_VERSION}.tar.gz -C openssl-${OPENSSL_SRC_VERSION} --strip-components 1
   - rm openssl-${OPENSSL_SRC_VERSION}.tar.gz
   - cd openssl-${OPENSSL_SRC_VERSION}
@@ -93,3 +78,4 @@ script:
 
 after_failure:
   - if [ -e build/nginx/logs/error.log ]; then cat build/nginx/logs/error.log ; else cat build_dynamic/nginx/logs/error.log; fi
+  - if [ -e build/nginx/logs/stderr.log ]; then cat build/nginx/logs/stderr.log ; else cat build_dynamic/nginx/logs/stderr.log; fi

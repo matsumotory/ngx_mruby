@@ -13,8 +13,6 @@
 #include "mruby/string.h"
 #include "mruby/variable.h"
 
-ngx_module_t ngx_http_mruby_module;
-
 #if (NGX_DEBUG)
 static void ngx_mrb_log_backtrace(mrb_state *mrb, mrb_value obj, ngx_log_t *log)
 {

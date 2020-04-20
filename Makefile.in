@@ -31,7 +31,10 @@ include $(MRUBY_MAK_FILE)
 endif
 MRUBY_LIBDIR=@MRUBY_LIBDIR@ # comes from configure
 MRUBY_BUILD_DEPEND_TARGETS=@MRUBY_BUILD_DEPEND_TARGETS@
-NGX_MRUBY_CFLAGS+=@NGX_MRUBY_CFLAGS@ # Use it in build_config.rb to build mruby
+
+# Used in build_config.rb to build mruby
+NGX_MRUBY_CFLAGS+=@NGX_MRUBY_CFLAGS@
+NGX_MRUBY_LDFLAGS+=@NGX_MRUBY_LDFLAGS@
 
 NGX_OPENSSL_SRC=@NGX_OPENSSL_SRC@
 NGX_OPENSSL_OPT=@NGX_OPENSSL_OPT@
@@ -42,7 +45,10 @@ NGX_LDFLAGS=@NGX_LDFLAGS@
 NGX_LIBS=@NGX_LIBS@
 NGX_CONFIG_ADD_MODULE_OPT_NAME=@NGX_CONFIG_ADD_MODULE_OPT_NAME@
 NGX_MAKEFILE_DEPENDS_TARGET=@NGX_MAKEFILE_DEPENDS_TARGET@
-BUILD_DYNAMIC_MODULE=@BUILD_DYNAMIC_MODULE@ # DON'T USE THIS. ONLY FOR COMPAT TARGETS
+
+OPENSSL_VERSION=@OPENSSL_VERSION@
+OPENSSL_MAKE_TARGET=@OPENSSL_MAKE_TARGET@
+OPENSSL_CONFIG_ENABLE_TLSEXT=@OPENSSL_CONFIG_ENABLE_TLSEXT@
 
 #   flags
 CFLAGS = $(NGX_CFLAGS) $(MRUBY_CFLAGS) -I/usr/local/include
@@ -55,22 +61,33 @@ LIBS = $(NGX_LIBS) $(MRUBY_LIBS) $(MRUBY_LDFLAGS_BEFORE_LIBS) -L$(MRUBY_LIBDIR) 
 all: build_ngx_mruby
 
 install:
-	cd $(NGX_SRC_ROOT) && $(MAKE) install
+	(cd $(NGX_SRC_ROOT) && $(MAKE) install)
 
 clean:
 	-rm -rf mrbgems_config mrbgems_config_dynamic
 
 clobber: clean_mruby clean
-	-rm -rf tmp autom4te.cache config config.status config.log $(BUILD_DIR) .openssl_build_done .openssl_configure_done
+	-rm -rf tmp autom4te.cache config config.status config.log $(BUILD_DIR) .openssl_build_done .openssl_configure_done .mruby_version
 
 #
 # mruby
 #
 build_mruby: $(MRUBY_BUILD_DEPEND_TARGETS)
-	cd $(MRUBY_ROOT) && $(RAKE) MRUBY_CONFIG=$(NGX_MRUBY_ROOT)/build_config.rb NGX_MRUBY_CFLAGS="$(NGX_MRUBY_CFLAGS)"
+	@if [ -f .mruby_version ]; then \
+		built_version=`cat .mruby_version`; \
+		current_version=`git log -1 --format="%H" mruby`; \
+		if [ $$built_version != $$current_version ]; then \
+			echo $$current_version > .mruby_version; \
+			(cd $(MRUBY_ROOT) && rm -rf build); \
+		fi; \
+	else \
+		git log -1 --format="%H" mruby > .mruby_version; \
+	fi
+	(cd $(MRUBY_ROOT) && $(RAKE) MRUBY_CONFIG=$(NGX_MRUBY_ROOT)/build_config.rb NGX_MRUBY_CFLAGS="$(NGX_MRUBY_CFLAGS)" NGX_MRUBY_LDFLAGS="$(NGX_MRUBY_LDFLAGS)")
 
 clean_mruby:
-	cd $(MRUBY_ROOT) && $(RAKE) deep_clean && rm -rf build
+	rm -f .mruby_version	
+	(cd $(MRUBY_ROOT) && $(RAKE) MRUBY_CONFIG=$(NGX_MRUBY_ROOT)/build_config.rb deep_clean && rm -rf build)
 
 $(MRUBY_MAK_FILE): build_mruby
 
@@ -78,11 +95,11 @@ $(MRUBY_MAK_FILE): build_mruby
 #   nginx
 #
 build_ngx_mruby: build_mruby $(NGX_SRC_ROOT)/objs/Makefile
-	cd $(NGX_SRC_ROOT) && $(MAKE)
+	(cd $(NGX_SRC_ROOT) && $(MAKE))
 
 $(NGX_SRC_ROOT)/objs/Makefile: $(NGX_MAKEFILE_DEPENDS_TARGET)
-	cd $(NGX_SRC_ROOT) \
-	&& $(NGX_CONFIGURE) $(NGX_CONFIG_ADD_MODULE_OPT_NAME)=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT)
+	(cd $(NGX_SRC_ROOT) \
+	&& $(NGX_CONFIGURE) $(NGX_CONFIG_ADD_MODULE_OPT_NAME)=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT))
 
 # libmruby.flags.mak is generated or updated, so invoke make command to reevaluate MRUBY_* variables in it.
 mrbgems_config: $(MRUBY_MAK_FILE)
@@ -93,33 +110,12 @@ mrbgems_config_dynamic: $(MRUBY_MAK_FILE)
 
 generate_gems_config:
 	@echo CORE_LIBS=\"\$$CORE_LIBS $(LDFLAGS) $(LIBS)\" > ./mrbgems_config
-	@echo CORE_INCS=\"\$$CORE_INCS $(CFLAGS)\" >> ./mrbgems_config
+	@echo CORE_INCS=\"\$$CORE_INCS `echo $(CFLAGS) | sed -e 's/-[^I][^ ]*//g'`\" >> ./mrbgems_config
 	@echo LINK_DEPS=\"\$$LINK_DEPS $(MRUBY_LIBMRUBY_PATH)\" >> ./mrbgems_config
 
 generate_gems_config_dynamic:
 	@echo ngx_module_libs=\"\$(LDFLAGS) \$(LIBS)\" > ./mrbgems_config_dynamic
 	@echo CORE_LIBS=\"\$$CORE_LIBS \$(LDFLAGS) \$(LIBS)\" >> ./mrbgems_config_dynamic
-
-# for backward compatibility
-make_ngx_mruby:
-	cd $(NGX_SRC_ROOT) && $(MAKE)
-	@echo "Warning: make_ngx_mruby target will be removed. Use build_ngx_mruby instead."
-
-ngx_mruby: 
-ifdef BUILD_DYNAMIC_MODULE
-	@echo "Error: You must rerun configure without --enable-dynamic" && false
-else
-	$(MAKE) build_ngx_mruby
-	@echo "Warning: ngx_mruby target will be removed. Use build_ngx_mruby without BUILD_DYNAMIC_MODULE instead."
-endif
-
-ngx_mruby_dynamic:
-ifdef BUILD_DYNAMIC_MODULE
-	$(MAKE) build_ngx_mruby
-	@echo "Warning: ngx_mruby_dynamic target will be removed. Use build_ngx_mruby with BUILD_DYNAMIC_MODULE instead."
-else
-	@echo "Error: You must rerun configure with --enable-dynamic" && false
-endif
 
 #
 # openssl
@@ -128,24 +124,14 @@ openssl: .openssl_build_done
 
 .openssl_build_done: .openssl_configure_done
 	(cd $(NGX_OPENSSL_SRC) \
-	&& . ./openssl_version \
-	&& MAKE_TARGET='build_all install_sw' \
-	&& if [ $${OPENSSL_MAJOR_VERSION} -ge 1 ] && [ $${OPENSSL_MINOR_VERSION} -ge 1 ]; then MAKE_TARGET='build_all_generated install_sw'; fi \
-	&& $(MAKE) $${MAKE_TARGET}) \
+	&& $(MAKE) $(OPENSSL_MAKE_TARGET)) \
 	&& cp /dev/null .openssl_build_done
 
 .openssl_configure_done:
 	(cd $(NGX_OPENSSL_SRC) \
 	&& if [ -f Makefile ]; then $(MAKE) clean; fi \
-	&& OPENSSL_VERSION=`grep OPENSSL_VERSION_TEXT include/openssl/opensslv.h | grep -o 'OpenSSL [0-9].*' | head -1 | awk '{print $$2}'` \
-	&& if [ "$${OPENSSL_VERSION}" = "" ]; then OPENSSL_VERSION=`grep VERSION=[0-9] Makefile | head -1 | awk -F'=' '{print $$2}'`; fi \
-	&& echo "Building OpenSSL version:$${OPENSSL_VERSION}" \
-	&& echo "OPENSSL_MAJOR_VERSION=`echo $${OPENSSL_VERSION} | awk -F '.' '{print $$1}'`" | tee openssl_version \
-	&& echo "OPENSSL_MINOR_VERSION=`echo $${OPENSSL_VERSION} | awk -F '.' '{print $$2}'`" | tee -a openssl_version \
-	&& . ./openssl_version \
-	&& ENABLE_TLSEXT='enable-tlsext' \
-	&& if [ $${OPENSSL_MAJOR_VERSION} -ge 1 ] && [ $${OPENSSL_MINOR_VERSION} -ge 1 ]; then ENABLE_TLSEXT='' ; fi \
-	&& ./config --prefix=$(NGX_OPENSSL_INSTALL_DIR) --shared zlib -fPIC $${ENABLE_TLSEXT} $(NGX_OPENSSL_OPT) \
+	&& echo "Building OpenSSL version: $(OPENSSL_VERSION)" \
+	&& ./config --prefix=$(NGX_OPENSSL_INSTALL_DIR) --shared zlib -fPIC $(OPENSSL_CONFIG_ENABLE_TLSEXT) $(NGX_OPENSSL_OPT) \
 	&& $(MAKE) depend) \
 	&& cp /dev/null .openssl_configure_done
 
