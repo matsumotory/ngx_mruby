@@ -32,12 +32,12 @@ builds:
     https://github.com/mattn/mruby-onig-regexp.git:
       url: https://github.com/mattn/mruby-onig-regexp.git
       branch: master
-      commit: e55923997ba33586b58c11bd3ca2d40c11a8dede
+      commit: db011517b97910ef8275d039de8c14961ef7a58c
       version: 0.0.0
     https://github.com/matsumotory/mruby-redis.git:
       url: https://github.com/matsumotory/mruby-redis.git
       branch: master
-      commit: 18b3d06cf238b26eb921e019fff1a9aa9ad22e95
+      commit: f1f98d9450783b8c281b5064554b12bfb9f0a65a
       version: 0.0.1
     https://github.com/matsumotory/mruby-vedis.git:
       url: https://github.com/matsumotory/mruby-vedis.git
