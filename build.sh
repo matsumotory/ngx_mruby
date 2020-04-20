@@ -16,11 +16,11 @@ set -e
 # OS specific configuration
 if [ `uname -s` = "NetBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
-    NGINX_DEFAULT_OPT='--with-http_stub_status_module --with-stream --without-stream_access_module --with-ld-opt=-L/usr/pkg/lib\ -Wl,-R/usr/pkg/lib'
+    NGINX_DEFAULT_OPT='--with-http_stub_status_module --with-stream --without-stream_access_module --with-cc-opt=-fno-common --with-ld-opt=-L/usr/pkg/lib\ -Wl,-R/usr/pkg/lib'
     MAKE=gmake
 else
     NPROCESSORS_ONLN="_NPROCESSORS_ONLN"
-    NGINX_DEFAULT_OPT='--with-http_stub_status_module --with-stream --without-stream_access_module'
+    NGINX_DEFAULT_OPT='--with-http_stub_status_module --with-stream --without-stream_access_module --with-cc-opt=-fno-common'
     MAKE=make
 fi
 
@@ -76,7 +76,7 @@ fi
 
 if [ -n "$OPENSSL_SRC_VERSION" ]; then
     cd ${BUILD_DIR}
-    curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}-latest.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz
+    curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz
     mkdir openssl-${OPENSSL_SRC_VERSION} && tar -xzf openssl-${OPENSSL_SRC_VERSION}.tar.gz -C openssl-${OPENSSL_SRC_VERSION} --strip-components 1
     rm openssl-${OPENSSL_SRC_VERSION}.tar.gz
     cd openssl-${OPENSSL_SRC_VERSION}
@@ -85,13 +85,6 @@ if [ -n "$OPENSSL_SRC_VERSION" ]; then
     cd ../..
 else
     OPENSSL_BUILD_OPT=''
-fi
-
-# FIXME: not sure if we really need this. even if we do, it should be moved to mruby/Rakefile
-if [ -d "./mruby/${BUILD_DIR}" ]; then
-    echo "mruby Cleaning ..."
-    (cd mruby && ./minirake clean)
-    echo "mruby Cleaning ... Done"
 fi
 
 echo "ngx_mruby configure ..."

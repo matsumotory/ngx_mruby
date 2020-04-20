@@ -12,13 +12,13 @@ set -e
 # OS specific configuration
 if [ `uname -s` = "NetBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
-    NGINX_DEFAULT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module --with-ld-opt=-L/usr/pkg/lib\ -Wl,-R/usr/pkg/lib --with-cc-opt=-g\ -O0'
+    NGINX_DEFAULT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module --with-ld-opt=-L/usr/pkg/lib\ -Wl,-R/usr/pkg/lib --with-cc-opt=-g\ -O0\ -fno-common'
     MAKE=gmake
     KILLALL=pkill
     PS_C="pgrep -l"
 else
     NPROCESSORS_ONLN="_NPROCESSORS_ONLN"
-    NGINX_DEFAULT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module --with-cc-opt=-g\ -O0'
+    NGINX_DEFAULT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module --with-cc-opt=-g\ -O0\ -fno-common'
     MAKE=make
     if [ -f /etc/centos-release ]; then
         KILLALL=pkill
@@ -110,16 +110,14 @@ fi
 cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/html/set_ssl_cert_and_key.rb > ${NGINX_INSTALL_DIR}/html/set_ssl_cert_and_key.rb
 
-if [ -e ${NGINX_INSTALL_DIR}/logs/error.log ]; then
-    touch ${NGINX_INSTALL_DIR}/logs/error.log.bak 
-    cat ${NGINX_INSTALL_DIR}/logs/error.log >> ${NGINX_INSTALL_DIR}/logs/error.log.bak
-    cp /dev/null ${NGINX_INSTALL_DIR}/logs/error.log
-fi
-if [ -e ${NGINX_INSTALL_DIR}/logs/access.log ]; then
-    touch ${NGINX_INSTALL_DIR}/logs/access.log.bak 
-    cat ${NGINX_INSTALL_DIR}/logs/access.log >> ${NGINX_INSTALL_DIR}/logs/access.log.bak
-    cp /dev/null ${NGINX_INSTALL_DIR}/logs/access.log
-fi
+for f in error.log access.log stderr.log
+do
+    if [ -e ${NGINX_INSTALL_DIR}/logs/${f} ]; then
+        touch ${NGINX_INSTALL_DIR}/logs/${f}.bak 
+        cat ${NGINX_INSTALL_DIR}/logs/${f} >> ${NGINX_INSTALL_DIR}/logs/${f}.bak
+        cp /dev/null ${NGINX_INSTALL_DIR}/logs/${f}
+    fi
+done
 
 echo "====================================="
 echo ""
@@ -132,7 +130,7 @@ ${NGINX_INSTALL_DIR}/sbin/nginx &
 echo ""
 echo ""
 sleep 2 # waiting for nginx
-./mruby/build/test/bin/mruby ./test/t/ngx_mruby.rb
+./mruby/build/test/bin/mruby ./test/t/ngx_mruby.rb 2> ${NGINX_INSTALL_DIR}/logs/stderr.log
 $KILLALL nginx
 echo "ngx_mruby testing ... Done"
 

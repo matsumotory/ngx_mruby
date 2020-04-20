@@ -27,6 +27,9 @@
     (code)->ctx = NULL;                                                                                                \
   }
 
+ngx_http_output_header_filter_pt ngx_http_next_header_filter;
+ngx_http_output_body_filter_pt ngx_http_next_body_filter;
+
 // set conf
 static void *ngx_http_mruby_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child);
