@@ -587,8 +587,11 @@ end
 
 t.assert('ngx_mruby - validate client certificate without validation error') do
   path = ENV['NGINX_INSTALL_DIR'] + '/html'
-  res = `openssl s_client -servername localhost -cert #{path}/client.crt -key #{path}/client.key -CAfile localhost.crt -connect localhost:58072 < /dev/null 2>&1 > /dev/null | grep 'verify error' | awk -F'[:]' -F'[=]' '{print $2}'`
-  t.assert_equal "", res
+  res = OpenSSLTestClient.new
+        .run("openssl s_client -servername localhost -cert #{path}/client.crt -key #{path}/client.key -CAfile localhost.crt -connect localhost:58072")
+        .to_text()
+        .pipe("grep 'verify error' | awk -F'[:]' -F'[=]' '{print $2}'")
+  t.assert_equal "", res.chomp
 end
 
 t.assert('ngx_mruby - Nginx::SSL.errlogger') do
