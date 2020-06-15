@@ -73,6 +73,7 @@ clobber: clean_mruby clean
 # mruby
 #
 build_mruby: $(MRUBY_BUILD_DEPEND_TARGETS)
+	# Only for ngx_mruby developers getting source code from git.
 	@if [ -f .mruby_version ]; then \
 		built_version=`cat .mruby_version`; \
 		current_version=`git log -1 --format="%H" mruby`; \
@@ -80,7 +81,7 @@ build_mruby: $(MRUBY_BUILD_DEPEND_TARGETS)
 			echo $$current_version > .mruby_version; \
 			(cd $(MRUBY_ROOT) && rm -rf build); \
 		fi; \
-	else \
+	elif [ -d .git ]; then \
 		git log -1 --format="%H" mruby > .mruby_version; \
 	fi
 	(cd $(MRUBY_ROOT) && $(RAKE) MRUBY_CONFIG=$(NGX_MRUBY_ROOT)/build_config.rb NGX_MRUBY_CFLAGS="$(NGX_MRUBY_CFLAGS)" NGX_MRUBY_LDFLAGS="$(NGX_MRUBY_LDFLAGS)")
