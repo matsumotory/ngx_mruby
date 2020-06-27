@@ -170,21 +170,16 @@ class IO
   end
 
   def _read_buf
-    return @buf if @buf && @buf.bytesize >= 4 # maximum UTF-8 character is 4 bytes
-    @buf ||= ""
-    begin
-      @buf += sysread(BUF_SIZE)
-    rescue EOFError => e
-      raise e if @buf.empty?
-    end
+    return @buf if @buf && @buf.bytesize > 0
+    sysread(BUF_SIZE, @buf)
   end
 
   def ungetc(substr)
     raise TypeError.new "expect String, got #{substr.class}" unless substr.is_a?(String)
     if @buf.empty?
-      @buf = substr.dup
+      @buf.replace(substr)
     else
-      @buf = substr + @buf
+      @buf[0,0] = substr
     end
     nil
   end
@@ -288,15 +283,15 @@ class IO
 
   def readchar
     _read_buf
-    c = @buf[0]
-    @buf[0] = ""
-    c
+    _readchar(@buf)
   end
 
   def getc
     begin
       readchar
     rescue EOFError
+      c = @buf[0]
+      @buf[0,1]="" if c
       nil
     end
   end
