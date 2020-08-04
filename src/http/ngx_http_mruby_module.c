@@ -2050,7 +2050,7 @@ static int ngx_http_mruby_set_set_client_ca_cert_data(ngx_ssl_conn_t *ssl_conn, 
 
       goto NGX_MRUBY_SSL_ERROR;
     }
-
+    // Add CA certificate name list
     if (SSL_add_client_CA(ssl_conn, x509) == 0) {
       goto NGX_MRUBY_SSL_ERROR;
     }
@@ -2078,13 +2078,7 @@ static int ngx_http_mruby_set_set_client_ca_cert(ngx_ssl_conn_t *ssl_conn, ngx_s
   c = ngx_ssl_get_connection(ssl_conn);
   ssl_ctx = c->ssl->session_ctx;
 
-  if (SSL_CTX_load_verify_locations(ssl_ctx, (char *)cert->data, NULL) == 0) {
-    ngx_ssl_error(NGX_LOG_EMERG, c->log, 0, "SSL_CTX_load_verify_locations(\"%s\") failed", cert->data);
-    return NGX_ERROR;
-  }
-
-  ERR_clear_error();
-
+  // Setup CA name list for client
   cert_names = SSL_load_client_CA_file((char *)cert->data);
   if (cert_names == NULL) {
     ngx_ssl_error(NGX_LOG_EMERG, c->log, 0, "SSL_load_client_CA_file(\"%s\") failed", cert->data);
@@ -2092,6 +2086,14 @@ static int ngx_http_mruby_set_set_client_ca_cert(ngx_ssl_conn_t *ssl_conn, ngx_s
   }
 
   SSL_set_client_CA_list(ssl_conn, cert_names);
+
+  // Setup CA for validation
+  if (SSL_CTX_load_verify_locations(ssl_ctx, (char *)cert->data, NULL) == 0) {
+    ngx_ssl_error(NGX_LOG_EMERG, c->log, 0, "SSL_CTX_load_verify_locations(\"%s\") failed", cert->data);
+    return NGX_ERROR;
+  }
+
+  ERR_clear_error();
 
   return NGX_OK;
 }
