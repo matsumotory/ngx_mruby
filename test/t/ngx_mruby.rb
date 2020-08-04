@@ -592,6 +592,7 @@ t.assert('ngx_mruby - validate client certificate without validation error') do
         .to_text()
         .pipe("grep 'verify error' | awk -F'[:]' -F'[=]' '{print $2}'")
   t.assert_equal "", res.chomp
+  t.assert_equal "client certificate test ok", res["body"]
 end
 
 t.assert('ngx_mruby - invalid client certificate') do
@@ -600,7 +601,7 @@ t.assert('ngx_mruby - invalid client certificate') do
         .run("openssl s_client -servername localhost -cert #{path}/client.crt -key #{path}/client.key -CAfile #{path}/localhost.crt -connect localhost:58073")
         .to_text()
         .pipe("grep 'verify error' | awk -F'[:]' -F'[=]' '{print $2}'")
-  t.assert_equal 403, res["code"]
+  t.assert_equal 403, res.code
 end
 
 t.assert('ngx_mruby - Nginx::SSL.errlogger') do

@@ -18,3 +18,4 @@ autom4te.cache/
 .openssl_configure_done
 .mruby_version
 .vagrant/
+build_config.rb.lock
