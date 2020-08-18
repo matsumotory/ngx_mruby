@@ -780,6 +780,11 @@ if nginx_features.is_async_supported?
     res = HttpRequest.new.get base + '/iv_init_worker'
     t.assert_equal 'true', res["body"]
   end
+
+  t.assert('ngx_mruby - BUG: header issue 471', 'location /issue-471') do
+    res = HttpRequest.new.get base + '/issue-471', nil, {"X-Foo" => "foo", "X-Foo-Bar" => "bar"}
+    t.assert_equal 'foobar', res["body"]
+  end
 end
 
 

@@ -156,7 +156,8 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers,
       i = 0;
     }
 
-    if (ngx_strncasecmp(header[i].key.data, key, key_len) == 0) {
+    if (header[i].key.len == key_len &&
+      ngx_strncasecmp(header[i].key.data, key, key_len) == 0) {
       mrb_ary_push(mrb, ary, mrb_str_new(mrb, (const char *)header[i].value.data, header[i].value.len));
     }
   }
