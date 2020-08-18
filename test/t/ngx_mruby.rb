@@ -785,6 +785,19 @@ if nginx_features.is_async_supported?
     res = HttpRequest.new.get base + '/issue-471', nil, {"X-Foo" => "foo", "X-Foo-Bar" => "bar"}
     t.assert_equal 'foobar', res["body"]
   end
+
+  t.assert('ngx_mruby - BUG: header issue 473', 'location /issue-473/in') do
+    res = HttpRequest.new.get base + '/issue-473/in', nil, {'X-Foo' => 'foo'}
+    t.assert_equal 'Accept,Connection,Host', res['body']
+  end
+
+  t.assert('ngx_mruby - BUG: header issue 473', 'location /issue-473/out') do
+    res = HttpRequest.new.get base + '/issue-473/out', nil, {'XX-Foo' => 'foo'}
+    t.assert_equal 'Server,X-Baz,hoge', res['body']
+    t.assert_equal nil, res['x-foo']
+    t.assert_equal nil, res['x-bar']
+    t.assert_equal 'Baz', res['x-baz']
+  end
 end
 
 
