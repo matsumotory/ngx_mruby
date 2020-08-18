@@ -444,13 +444,13 @@ t.assert('ngx_mruby - rack base errorpage', 'location /rack_base_errorpage') do
   t.assert_equal "THIS IS AN ERROR MESSAGE FOR 401", res["body"]
 end
 
-t.assert('ngx_mruby - multipul request headers', 'location /multi_headers_in') do
+t.assert('ngx_mruby - multiple request headers', 'location /multi_headers_in') do
   res = HttpRequest.new.get base + '/multi_headers_in', nil, {"hoge" => "foo"}
   t.assert_equal 200, res.code
   t.assert_equal '["foo", "fuga"]', res["body"]
 end
 
-t.assert('ngx_mruby - multipul response headers', 'location /multi_headers_out') do
+t.assert('ngx_mruby - multiple response headers', 'location /multi_headers_out') do
   res = HttpRequest.new.get base + '/multi_headers_out'
   t.assert_equal 200, res.code
   t.assert_equal '["foo", "fuga"]', res["body"]
