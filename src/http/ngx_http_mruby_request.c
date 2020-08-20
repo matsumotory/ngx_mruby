@@ -156,7 +156,8 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers,
       i = 0;
     }
 
-    if (ngx_strncasecmp(header[i].key.data, key, key_len) == 0) {
+    if (header[i].key.len == key_len &&
+      ngx_strncasecmp(header[i].key.data, key, key_len) == 0) {
       mrb_ary_push(mrb, ary, mrb_str_new(mrb, (const char *)header[i].value.data, header[i].value.len));
     }
   }
@@ -226,18 +227,28 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
   ngx_http_request_t *r = ngx_mrb_get_request();
 
   key_len = (size_t)RSTRING_LEN(mrb_key);
-  val_len = (size_t)RSTRING_LEN(mrb_val);
-
   key = ngx_pnalloc(pool, key_len);
   if (key == NULL) {
     return NGX_ERROR;
   }
+  ngx_memcpy(key, (u_char *)RSTRING_PTR(mrb_key), key_len);
+
+  /* TODO:optimize later(linear-search is slow) */
+  if (update || mrb_nil_p(mrb_val)) {
+    while (!mrb_nil_p(ngx_mrb_get_request_header(mrb, headers, (char *)key, key_len))) {
+      ngx_mrb_del_request_header(mrb, headers, (char *)key, key_len);
+    }
+  }
+  if (mrb_nil_p(mrb_val)) {
+    /* If the value is nil, just remove the key from the headers. */
+    return NGX_OK;
+  }
+
+  val_len = (size_t)RSTRING_LEN(mrb_val);
   val = ngx_pnalloc(pool, val_len);
   if (val == NULL) {
     return NGX_ERROR;
   }
-
-  ngx_memcpy(key, (u_char *)RSTRING_PTR(mrb_key), key_len);
   ngx_memcpy(val, (u_char *)RSTRING_PTR(mrb_val), val_len);
 
   switch (ngx_mruby_builtin_header_lookup_token(key, key_len)) {
@@ -257,13 +268,6 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
 
   default:
     break;
-  }
-
-  /* TODO:optimize later(linear-search is slow) */
-  if (update) {
-    while (!mrb_nil_p(ngx_mrb_get_request_header(mrb, headers, (char *)key, key_len))) {
-      ngx_mrb_del_request_header(mrb, headers, (char *)key, key_len);
-    }
   }
 
   new_header = ngx_list_push(headers);
