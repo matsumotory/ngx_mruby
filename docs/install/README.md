@@ -226,7 +226,7 @@ It uses 'build_dynamic' directory instead of 'build'. You will find in /path/to/
 $ env BUILD_DYNAMIC_MODULE=TRUE sh ./build.sh
 ```
 
-You need to add [load_module](http://nginx.org/en/docs/ngx_core_module.html#load_module) directive to nginx.cond as below.
+You need to add [load_module](http://nginx.org/en/docs/ngx_core_module.html#load_module) directive to nginx.conf as below.
 
 ```
 load_module /path/to/modules/ngx_http_mruby_module.so;
