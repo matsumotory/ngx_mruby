@@ -444,13 +444,13 @@ t.assert('ngx_mruby - rack base errorpage', 'location /rack_base_errorpage') do
   t.assert_equal "THIS IS AN ERROR MESSAGE FOR 401", res["body"]
 end
 
-t.assert('ngx_mruby - multipul request headers', 'location /multi_headers_in') do
+t.assert('ngx_mruby - multiple request headers', 'location /multi_headers_in') do
   res = HttpRequest.new.get base + '/multi_headers_in', nil, {"hoge" => "foo"}
   t.assert_equal 200, res.code
   t.assert_equal '["foo", "fuga"]', res["body"]
 end
 
-t.assert('ngx_mruby - multipul response headers', 'location /multi_headers_out') do
+t.assert('ngx_mruby - multiple response headers', 'location /multi_headers_out') do
   res = HttpRequest.new.get base + '/multi_headers_out'
   t.assert_equal 200, res.code
   t.assert_equal '["foo", "fuga"]', res["body"]
@@ -667,7 +667,7 @@ t.assert('ngx_mruby - backtrace log', 'location /backtrace') do
   fname = File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log')
   found = 0
   File.open(fname) {|f| f.each_line {|line| found += 1 if line.index('/nginx/html/backtrace.rb:') } }
-  t.assert_equal 4, found
+  t.assert_equal 3, found
 end
 
 t.assert('ngx_mruby - add_listener test', 'location /add_listener') do
@@ -779,6 +779,24 @@ if nginx_features.is_async_supported?
   t.assert('ngx_mruby - enable iv', 'location /iv_init_worker') do
     res = HttpRequest.new.get base + '/iv_init_worker'
     t.assert_equal 'true', res["body"]
+  end
+
+  t.assert('ngx_mruby - BUG: header issue 471', 'location /issue-471') do
+    res = HttpRequest.new.get base + '/issue-471', nil, {"X-Foo" => "foo", "X-Foo-Bar" => "bar"}
+    t.assert_equal 'foobar', res["body"]
+  end
+
+  t.assert('ngx_mruby - BUG: header issue 473', 'location /issue-473/in') do
+    res = HttpRequest.new.get base + '/issue-473/in', nil, {'X-Foo' => 'foo'}
+    t.assert_equal 'Accept,Connection,Host', res['body']
+  end
+
+  t.assert('ngx_mruby - BUG: header issue 473', 'location /issue-473/out') do
+    res = HttpRequest.new.get base + '/issue-473/out', nil, {'XX-Foo' => 'foo'}
+    t.assert_equal 'Server,X-Baz,hoge', res['body']
+    t.assert_equal nil, res['x-foo']
+    t.assert_equal nil, res['x-bar']
+    t.assert_equal 'Baz', res['x-baz']
   end
 end
 
