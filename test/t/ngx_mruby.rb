@@ -585,6 +585,22 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file with 
   t.assert_equal "", client_h.run_again.chomp
 end
 
+t.assert('ngx_mruby - validate client certificate without validation error') do
+  path = ENV['NGINX_INSTALL_DIR'] + '/html'
+  res = OpenSSLTestClient.new
+        .run("openssl s_client -servername localhost -cert #{path}/client.crt -key #{path}/client.key -CAfile #{path}/localhost.crt -connect localhost:58072")
+        .pipe("grep 'Verify return code' | awk -F'[:]' '{print $2}'")
+  t.assert_equal " 0 (ok)\n", res
+end
+
+t.assert('ngx_mruby - invalid client certificate') do
+  path = ENV['NGINX_INSTALL_DIR'] + '/html'
+  res = OpenSSLTestClient.new
+        .run("openssl s_client -servername localhost -cert #{path}/client.crt -key #{path}/client.key -CAfile #{path}/localhost.crt -connect localhost:58073")
+        .pipe("grep 'Verify return code' | awk -F'[:]' '{print $2}'")
+  t.assert_equal " 18 (self signed certificate)\n", res
+end
+
 t.assert('ngx_mruby - Nginx::SSL.errlogger') do
   OpenSSLTestClient.new
     .run("openssl s_client -servername localhost -connect localhost:58087").now
