@@ -1,0 +1,99 @@
+name: test
+
+on: push
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  OPENSSL_SRC_VERSION: 1.1.1i
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        NGINX_VERSION:
+          - 1.19.6
+          - 1.18.0
+          - 1.16.1
+          - 1.14.2
+        BUILD_DYNAMIC_MODULE:
+          - ""
+          - "TRUE"
+        BUILD_WITH_OPENSSL_SRC:
+          - ""
+          - "TRUE"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Echo matrix
+        env:
+          NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
+          BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
+          BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
+        run: |
+          echo $NGINX_VERSION
+          echo $BUILD_DYNAMIC_MODULE
+          echo $BUILD_WITH_OPENSSL_SRC
+      - name: before_install
+        env:
+          NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
+          BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
+          BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
+        run: |
+          id
+          echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial main" | sudo tee -a /etc/apt/sources.list
+          echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial universe" | sudo tee -a /etc/apt/sources.list
+          sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
+          sudo apt-get -qq update
+      - name: install
+        env:
+          NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
+          BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
+          BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
+          CXX: g++
+        run: |
+          sudo apt-get -qq install rake bison git gperf zlib1g-dev g++-4.9 libstdc++-4.9-dev
+          sudo apt-get remove -y libssl-dev
+          if [ "$CXX" = "g++" ]; then
+            export CXX="g++-4.9" CC="gcc-4.9" LD="gcc-4.9"
+            echo "CXX=g++-4.9" >> $GITHUB_ENV
+            echo "CC=gcc-4.9"  >> $GITHUB_ENV
+            echo "LD=gcc-4.9"  >> $GITHUB_ENV
+          fi
+          $CXX -v
+      - name: before_script
+        env:
+          NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
+          BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
+          BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
+        run: |
+          curl -sfL https://www.openssl.org/source/openssl-${OPENSSL_SRC_VERSION}.tar.gz -o openssl-${OPENSSL_SRC_VERSION}.tar.gz
+          mkdir openssl-${OPENSSL_SRC_VERSION} && tar -xzf openssl-${OPENSSL_SRC_VERSION}.tar.gz -C openssl-${OPENSSL_SRC_VERSION} --strip-components 1
+          rm openssl-${OPENSSL_SRC_VERSION}.tar.gz
+          cd openssl-${OPENSSL_SRC_VERSION}
+          ./config --prefix=/usr/local --shared zlib -fPIC >> /dev/null 2>&1
+          make >> /dev/null 2>&1
+          sudo make install >> /dev/null 2>&1
+          sudo ldconfig /usr/local/lib
+          cd -
+          openssl version
+      - name: script
+        env:
+          NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
+          BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
+          BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
+        run: |
+          echo "NGINX_SRC_MAJOR=$(echo $NGINX_VERSION | cut -d '.' -f 1)" > nginx_version
+          echo "NGINX_SRC_MINOR=$(echo $NGINX_VERSION | cut -d '.' -f 2)" >> nginx_version
+          echo "NGINX_SRC_PATCH=$(echo $NGINX_VERSION | cut -d '.' -f 3)" >> nginx_version
+          echo "NGINX_SRC_VER=nginx-${NGINX_VERSION}" >> nginx_version
+          if [ "${BUILD_WITH_OPENSSL_SRC}" == "TRUE" ]; then build_opts="--with-openssl-src=${PWD}/openssl-${OPENSSL_SRC_VERSION}"; fi
+          sh test.sh ${build_opts}
+
+      - name: after_failure
+        if: failure()
+        run: |
+          if [ -e build/nginx/logs/error.log ]; then cat build/nginx/logs/error.log ; else cat build_dynamic/nginx/logs/error.log; fi
+          if [ -e build/nginx/logs/stderr.log ]; then cat build/nginx/logs/stderr.log ; else cat build_dynamic/nginx/logs/stderr.log; fi
