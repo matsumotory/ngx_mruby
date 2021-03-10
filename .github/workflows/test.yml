@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         NGINX_VERSION:
-          - 1.19.6
+          - 1.19.8
           - 1.18.0
           - 1.16.1
           - 1.14.2
