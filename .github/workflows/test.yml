@@ -7,7 +7,7 @@ defaults:
     shell: bash
 
 env:
-  OPENSSL_SRC_VERSION: 1.1.1i
+  OPENSSL_SRC_VERSION: 1.1.1o
 
 jobs:
   build:
@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         NGINX_VERSION:
-          - 1.21.5
+          - 1.22.0
           - 1.20.1
           - 1.18.0
           - 1.16.1
