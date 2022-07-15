@@ -7,7 +7,10 @@
 #ifndef NGX_HTTP_MRUBY_UPSTREAM_H
 #define NGX_HTTP_MRUBY_UPSTREAM_H
 
-#include <nginx.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_http.h>
+
 #if (nginx_version > 1007999)
 #define NGX_USE_MRUBY_UPSTREAM
 #endif
@@ -19,8 +22,6 @@
 void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *class);
 
 #ifdef NGX_HTTP_MRUBY_UPSTREAM_C
-
-#include <ngx_config.h>
 
 /* reference from src/http/modules/ngx_http_upstream_keepalive_module.c */
 

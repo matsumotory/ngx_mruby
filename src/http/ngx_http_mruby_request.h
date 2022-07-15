@@ -8,6 +8,7 @@
 #define NGX_HTTP_MRUBY_REQUEST_H
 
 #include <ngx_config.h>
+#include <ngx_core.h>
 #include <ngx_http.h>
 
 #include <mruby.h>

@@ -7,7 +7,7 @@
 #ifndef NGX_STREAM_MRUBY_MODULE_H
 #define NGX_STREAM_MRUBY_MODULE_H
 
-#include <nginx.h>
+#include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_stream.h>
 
