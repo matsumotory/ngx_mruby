@@ -8,6 +8,8 @@
 #define NGX_HTTP_MRUBY_SSL_H
 
 #include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_http.h>
 
 #if (NGX_HTTP_SSL)
 
