@@ -278,7 +278,14 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
                  sr->parent->headers_out.status);
   ctx->sub_response_more = 0;
 
-  return ngx_mrb_post_fiber(re, ctx);
+  rc = ngx_mrb_post_fiber(re, ctx);
+
+  if (rc != NGX_DECLINED && rc != NGX_OK) {
+    ngx_http_finalize_request(re->r, rc);
+    return NGX_DONE;
+  }
+
+  return rc;
 }
 
 static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
