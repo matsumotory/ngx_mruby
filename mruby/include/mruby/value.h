@@ -31,7 +31,30 @@ typedef uint32_t mrb_sym;
  * Not to be confused with Ruby's boolean classes, which can be
  * obtained using mrb_false_value() and mrb_true_value()
  */
+#if defined(__cplusplus) || (defined(__bool_true_false_are_defined) && __bool_true_false_are_defined)
+typedef bool mrb_bool;
+
+# ifndef FALSE
+#  define FALSE false
+# endif
+# ifndef TRUE
+#  define TRUE true
+# endif
+#else
+# if __STDC_VERSION__ >= 199901L
+typedef _Bool mrb_bool;
+# else
 typedef uint8_t mrb_bool;
+# endif
+
+# ifndef FALSE
+#  define FALSE 0
+# endif
+# ifndef TRUE
+#  define TRUE 1
+# endif
+#endif
+
 struct mrb_state;
 
 #if defined _MSC_VER && _MSC_VER < 1800
@@ -53,17 +76,19 @@ struct mrb_state;
 
 #if defined(MRB_INT64)
   typedef int64_t mrb_int;
+  typedef uint64_t mrb_uint;
 # define MRB_INT_BIT 64
-# define MRB_INT_MIN (INT64_MIN>>MRB_FIXNUM_SHIFT)
-# define MRB_INT_MAX (INT64_MAX>>MRB_FIXNUM_SHIFT)
+# define MRB_INT_MIN INT64_MIN
+# define MRB_INT_MAX INT64_MAX
 # define MRB_PRIo PRIo64
 # define MRB_PRId PRId64
 # define MRB_PRIx PRIx64
 #else
   typedef int32_t mrb_int;
+  typedef uint32_t mrb_uint;
 # define MRB_INT_BIT 32
-# define MRB_INT_MIN (INT32_MIN>>MRB_FIXNUM_SHIFT)
-# define MRB_INT_MAX (INT32_MAX>>MRB_FIXNUM_SHIFT)
+# define MRB_INT_MIN INT32_MIN
+# define MRB_INT_MAX INT32_MAX
 # define MRB_PRIo PRIo32
 # define MRB_PRId PRId32
 # define MRB_PRIx PRIx32
@@ -75,9 +100,10 @@ struct mrb_state;
 # define MRB_ENDIAN_LOHI(a,b) b a
 #endif
 
-#ifndef MRB_WITHOUT_FLOAT
+MRB_API mrb_int mrb_int_read(const char *p, const char *e, char **endp);
+#ifndef MRB_NO_FLOAT
 MRB_API double mrb_float_read(const char*, char**);
-#ifdef MRB_USE_FLOAT
+#ifdef MRB_USE_FLOAT32
   typedef float mrb_float;
 #else
   typedef double mrb_float;
@@ -85,13 +111,11 @@ MRB_API double mrb_float_read(const char*, char**);
 #endif
 
 #if defined _MSC_VER && _MSC_VER < 1900
-# include <stdarg.h>
 MRB_API int mrb_msvc_vsnprintf(char *s, size_t n, const char *format, va_list arg);
 MRB_API int mrb_msvc_snprintf(char *s, size_t n, const char *format, ...);
 # define vsnprintf(s, n, format, arg) mrb_msvc_vsnprintf(s, n, format, arg)
 # define snprintf(s, n, format, ...) mrb_msvc_snprintf(s, n, format, __VA_ARGS__)
-# if _MSC_VER < 1800 && !defined MRB_WITHOUT_FLOAT
-#  include <float.h>
+# if _MSC_VER < 1800 && !defined MRB_NO_FLOAT
 #  define isfinite(n) _finite(n)
 #  define isnan _isnan
 #  define isinf(n) (!_finite(n) && !_isnan(n))
@@ -102,33 +126,51 @@ static const unsigned int IEEE754_INFINITY_BITS_SINGLE = 0x7F800000;
 # endif
 #endif
 
+#define MRB_VTYPE_FOREACH(f) \
+    /* mrb_vtype */     /* c type */        /* ruby class */ \
+  f(MRB_TT_FALSE,       void,               "false") \
+  f(MRB_TT_TRUE,        void,               "true") \
+  f(MRB_TT_SYMBOL,      void,               "Symbol") \
+  f(MRB_TT_UNDEF,       void,               "undefined") \
+  f(MRB_TT_FREE,        void,               "free") \
+  f(MRB_TT_FLOAT,       struct RFloat,      "Float") \
+  f(MRB_TT_INTEGER,     struct RInteger,    "Integer") \
+  f(MRB_TT_CPTR,        struct RCptr,       "cptr") \
+  f(MRB_TT_OBJECT,      struct RObject,     "Object") \
+  f(MRB_TT_CLASS,       struct RClass,      "Class") \
+  f(MRB_TT_MODULE,      struct RClass,      "Module") \
+  f(MRB_TT_ICLASS,      struct RClass,      "iClass") \
+  f(MRB_TT_SCLASS,      struct RClass,      "SClass") \
+  f(MRB_TT_PROC,        struct RProc,       "Proc") \
+  f(MRB_TT_ARRAY,       struct RArray,      "Array") \
+  f(MRB_TT_HASH,        struct RHash,       "Hash") \
+  f(MRB_TT_STRING,      struct RString,     "String") \
+  f(MRB_TT_RANGE,       struct RRange,      "Range") \
+  f(MRB_TT_EXCEPTION,   struct RException,  "Exception") \
+  f(MRB_TT_ENV,         struct REnv,        "env") \
+  f(MRB_TT_DATA,        struct RData,       "Data") \
+  f(MRB_TT_FIBER,       struct RFiber,      "Fiber") \
+  f(MRB_TT_STRUCT,      struct RArray,      "Struct") \
+  f(MRB_TT_ISTRUCT,     struct RIStruct,    "istruct") \
+  f(MRB_TT_BREAK,       struct RBreak,      "break") \
+  f(MRB_TT_COMPLEX,     struct RComplex,    "Complex") \
+  f(MRB_TT_RATIONAL,    struct RRational,   "Rational")
+
 enum mrb_vtype {
-  MRB_TT_FALSE = 0,
-  MRB_TT_TRUE,
-  MRB_TT_FLOAT,
-  MRB_TT_FIXNUM,
-  MRB_TT_SYMBOL,
-  MRB_TT_UNDEF,
-  MRB_TT_CPTR,
-  MRB_TT_FREE,
-  MRB_TT_OBJECT,
-  MRB_TT_CLASS,
-  MRB_TT_MODULE,
-  MRB_TT_ICLASS,
-  MRB_TT_SCLASS,
-  MRB_TT_PROC,
-  MRB_TT_ARRAY,
-  MRB_TT_HASH,
-  MRB_TT_STRING,
-  MRB_TT_RANGE,
-  MRB_TT_EXCEPTION,
-  MRB_TT_ENV,
-  MRB_TT_DATA,
-  MRB_TT_FIBER,
-  MRB_TT_ISTRUCT,
-  MRB_TT_BREAK,
+#define MRB_VTYPE_DEFINE(tt, type, name) tt,
+  MRB_VTYPE_FOREACH(MRB_VTYPE_DEFINE)
+#undef MRB_VTYPE_DEFINE
   MRB_TT_MAXDEFINE
 };
+
+#define MRB_VTYPE_TYPEOF(tt) MRB_TYPEOF_##tt
+
+#define MRB_VTYPE_TYPEDEF(tt, type, name) typedef type MRB_VTYPE_TYPEOF(tt);
+MRB_VTYPE_FOREACH(MRB_VTYPE_TYPEDEF)
+#undef MRB_VTYPE_TYPEDEF
+
+/* for compatibility */
+#define MRB_TT_FIXNUM MRB_TT_INTEGER
 
 #include <mruby/object.h>
 
@@ -163,22 +205,22 @@ struct RCptr {
 #include "boxing_no.h"
 #endif
 
-#define MRB_SYMBOL_BIT (sizeof(mrb_sym) * CHAR_BIT - MRB_SYMBOL_SHIFT)
-#define MRB_SYMBOL_MAX (UINT32_MAX >> MRB_SYMBOL_SHIFT)
-
 #if INTPTR_MAX < MRB_INT_MAX
   typedef intptr_t mrb_ssize;
-# define MRB_SSIZE_MAX (INTPTR_MAX>>MRB_FIXNUM_SHIFT)
+# define MRB_SSIZE_MAX INTPTR_MAX
 #else
   typedef mrb_int mrb_ssize;
 # define MRB_SSIZE_MAX MRB_INT_MAX
 #endif
 
 #ifndef mrb_immediate_p
-#define mrb_immediate_p(o) (mrb_type(o) < MRB_TT_FREE)
+#define mrb_immediate_p(o) (mrb_type(o) <= MRB_TT_CPTR)
+#endif
+#ifndef mrb_integer_p
+#define mrb_integer_p(o) (mrb_type(o) == MRB_TT_INTEGER)
 #endif
 #ifndef mrb_fixnum_p
-#define mrb_fixnum_p(o) (mrb_type(o) == MRB_TT_FIXNUM)
+#define mrb_fixnum_p(o) mrb_integer_p(o)
 #endif
 #ifndef mrb_symbol_p
 #define mrb_symbol_p(o) (mrb_type(o) == MRB_TT_SYMBOL)
@@ -195,7 +237,7 @@ struct RCptr {
 #ifndef mrb_true_p
 #define mrb_true_p(o)  (mrb_type(o) == MRB_TT_TRUE)
 #endif
-#ifndef MRB_WITHOUT_FLOAT
+#ifndef MRB_NO_FLOAT
 #ifndef mrb_float_p
 #define mrb_float_p(o) (mrb_type(o) == MRB_TT_FLOAT)
 #endif
@@ -264,7 +306,7 @@ struct RCptr {
  *
  * Takes a float and boxes it into an mrb_value
  */
-#ifndef MRB_WITHOUT_FLOAT
+#ifndef MRB_NO_FLOAT
 MRB_INLINE mrb_value mrb_float_value(struct mrb_state *mrb, mrb_float f)
 {
   mrb_value v;
@@ -284,14 +326,19 @@ mrb_cptr_value(struct mrb_state *mrb, void *p)
 }
 
 /**
- * Returns a fixnum in Ruby.
- *
- * Takes an integer and boxes it into an mrb_value
+ * Returns an integer in Ruby.
  */
+MRB_INLINE mrb_value mrb_int_value(struct mrb_state *mrb, mrb_int i)
+{
+  mrb_value v;
+  SET_INT_VALUE(mrb, v, i);
+  return v;
+}
+
 MRB_INLINE mrb_value mrb_fixnum_value(mrb_int i)
 {
   mrb_value v;
-  SET_INT_VALUE(v, i);
+  SET_FIXNUM_VALUE(v, i);
   return v;
 }
 
@@ -362,26 +409,29 @@ mrb_undef_value(void)
   return v;
 }
 
-#if defined(MRB_USE_ETEXT_EDATA) && !defined(MRB_USE_LINK_TIME_RO_DATA_P)
-# ifdef __GNUC__
-#  warning MRB_USE_ETEXT_EDATA is deprecated. Define MRB_USE_LINK_TIME_RO_DATA_P instead.
-# endif
-# define MRB_USE_LINK_TIME_RO_DATA_P
-#endif
-
 #if defined(MRB_USE_CUSTOM_RO_DATA_P)
 /* If you define `MRB_USE_CUSTOM_RO_DATA_P`, you must implement `mrb_ro_data_p()`. */
 mrb_bool mrb_ro_data_p(const char *p);
-#elif defined(MRB_USE_LINK_TIME_RO_DATA_P)
-extern char __ehdr_start[];
-extern char __init_array_start[];
-
+#elif !defined(MRB_NO_DEFAULT_RO_DATA_P)
+#if defined(MRB_USE_ETEXT_RO_DATA_P)
+#define MRB_LINK_TIME_RO_DATA_P
+extern char etext, edata;
 static inline mrb_bool
 mrb_ro_data_p(const char *p)
 {
-  return __ehdr_start < p && p < __init_array_start;
+  return &etext < p && p < &edata;
 }
-#else
+#elif defined(__APPLE__)
+#define MRB_LINK_TIME_RO_DATA_P
+#include <mach-o/getsect.h>
+static inline mrb_bool
+mrb_ro_data_p(const char *p)
+{
+  return (char*)get_etext() < p && p < (char*)get_edata();
+}
+#endif  /* Linux or macOS */
+#endif  /* MRB_NO_DEFAULT_RO_DATA_P */
+#ifndef MRB_LINK_TIME_RO_DATA_P
 # define mrb_ro_data_p(p) FALSE
 #endif
 

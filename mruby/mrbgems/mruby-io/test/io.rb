@@ -7,7 +7,7 @@ $cr, $crlf, $cmd = MRubyIOTestUtil.win? ? [1, "\r\n", "cmd /c "] : [0, "\n", ""]
 def assert_io_open(meth)
   assert "assert_io_open" do
     fd = IO.sysopen($mrbtest_io_rfname)
-    assert_equal Fixnum, fd.class
+    assert_equal Integer, fd.class
     io1 = IO.__send__(meth, fd)
     begin
       assert_equal IO, io1.class
@@ -27,7 +27,6 @@ def assert_io_open(meth)
 
     assert_raise(RuntimeError) { IO.__send__(meth, 1023) } # For Windows
     assert_raise(RuntimeError) { IO.__send__(meth, 1 << 26) }
-    assert_raise(RuntimeError) { IO.__send__(meth, 1 << 32) } if (1 << 32).kind_of?(Integer)
   end
 end
 
@@ -103,6 +102,15 @@ assert('IO#getc', '15.2.20.5.8') do
     assert_equal ch, io.getc
   }
   assert_equal nil, io.getc
+  io.close
+end
+
+assert('IO#getbyte') do
+  io = IO.new(IO.sysopen($mrbtest_io_rfname))
+  $mrbtest_io_msg.split("").each do |ch|
+    assert_equal ch.getbyte(0), io.getbyte
+  end
+  assert_equal nil, io.getbyte
   io.close
 end
 
@@ -433,7 +441,7 @@ assert('IO.popen') do
     $? = nil
     io = IO.popen("#{$cmd}echo mruby-io")
     assert_true io.close_on_exec?
-    assert_equal Fixnum, io.pid.class
+    assert_equal Integer, io.pid.class
 
     out = io.read
     assert_equal out.class, String
@@ -525,7 +533,7 @@ assert('IO#close_on_exec') do
   fd = IO.sysopen $mrbtest_io_wfname, "w"
   io = IO.new fd, "w"
   begin
-    # IO.sysopen opens a file descripter with O_CLOEXEC flag.
+    # IO.sysopen opens a file descriptor with O_CLOEXEC flag.
     assert_true io.close_on_exec?
   rescue ScriptError
     io.close

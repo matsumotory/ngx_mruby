@@ -7,8 +7,8 @@
 
 #include <mruby.h>
 
-#ifdef MRB_DISABLE_STDIO
-# error IO and File conflicts 'MRB_DISABLE_STDIO' configuration in your 'build_config.rb'
+#ifdef MRB_NO_STDIO
+# error IO and File conflicts 'MRB_NO_STDIO' in your build configuration
 #endif
 
 #if defined(__cplusplus)
@@ -59,8 +59,8 @@ struct mrb_io {
 #define MRB_O_READABLE_P(f)     ((mrb_bool)((((f) & MRB_O_ACCMODE) | 2) == 2))
 #define MRB_O_WRITABLE_P(f)     ((mrb_bool)(((((f) & MRB_O_ACCMODE) + 1) & 2) == 2))
 
-#define E_IO_ERROR                 (mrb_class_get(mrb, "IOError"))
-#define E_EOF_ERROR                (mrb_class_get(mrb, "EOFError"))
+#define E_IO_ERROR              (mrb_exc_get(mrb, "IOError"))
+#define E_EOF_ERROR             (mrb_exc_get(mrb, "EOFError"))
 
 int mrb_io_fileno(mrb_state *mrb, mrb_value io);
 

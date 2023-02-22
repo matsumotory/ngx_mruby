@@ -13,6 +13,7 @@
 #include <mruby/class.h>
 #include <mruby/opcode.h>
 #include <mruby/variable.h>
+#include <mruby/proc.h>
 
 #include "mrdb.h"
 #include "apibreak.h"
@@ -185,9 +186,9 @@ static mrb_debug_context*
 mrb_debug_context_new(mrb_state *mrb)
 {
   mrb_debug_context *dbg = (mrb_debug_context*)mrb_malloc(mrb, sizeof(mrb_debug_context));
+  static const mrb_debug_context dbg_zero = {0};
 
-  memset(dbg, 0, sizeof(mrb_debug_context));
-
+  *dbg = dbg_zero;
   dbg->xm = DBG_INIT;
   dbg->xphase = DBG_PHASE_BEFORE_RUN;
   dbg->next_bpno = 1;
@@ -224,9 +225,9 @@ static mrdb_state*
 mrdb_state_new(mrb_state *mrb)
 {
   mrdb_state *mrdb = (mrdb_state*)mrb_malloc(mrb, sizeof(mrdb_state));
+  static const mrdb_state mrdb_zero = {0};
 
-  memset(mrdb, 0, sizeof(mrdb_state));
-
+  *mrdb = mrdb_zero;
   mrdb->dbg = mrb_debug_context_get(mrb);
   mrdb->command = (char*)mrb_malloc(mrb, MAX_COMMAND_LINE+1);
   mrdb->print_no = 1;
@@ -504,7 +505,7 @@ get_and_parse_command(mrb_state *mrb, mrdb_state *mrdb)
 }
 
 static int32_t
-check_method_breakpoint(mrb_state *mrb, mrb_irep *irep, const mrb_code *pc, mrb_value *regs)
+check_method_breakpoint(mrb_state *mrb, const mrb_irep *irep, const mrb_code *pc, mrb_value *regs)
 {
   struct RClass* c;
   mrb_sym sym;
@@ -526,7 +527,7 @@ check_method_breakpoint(mrb_state *mrb, mrb_irep *irep, const mrb_code *pc, mrb_
       sym = irep->syms[insn.b];
       break;
     case OP_SUPER:
-      c = mrb->c->ci->target_class->super;
+      c = mrb_vm_ci_target_class(mrb->c->ci)->super;
       sym = mrb->c->ci->mid;
       break;
     default:
@@ -545,7 +546,7 @@ check_method_breakpoint(mrb_state *mrb, mrb_irep *irep, const mrb_code *pc, mrb_
 }
 
 static void
-mrb_code_fetch_hook(mrb_state *mrb, mrb_irep *irep, const mrb_code *pc, mrb_value *regs)
+mrb_code_fetch_hook(mrb_state *mrb, const mrb_irep *irep, const mrb_code *pc, mrb_value *regs)
 {
   const char *file;
   int32_t line;
@@ -573,7 +574,7 @@ mrb_code_fetch_hook(mrb_state *mrb, mrb_irep *irep, const mrb_code *pc, mrb_valu
 
   switch (dbg->xm) {
   case DBG_STEP:
-    if (!file || (dbg->prvfile == file && dbg->prvline == line)) {
+    if (*pc != OP_JMP && (!file || (dbg->prvfile == file && dbg->prvline == line))) {
       return;
     }
     dbg->method_bpno = 0;

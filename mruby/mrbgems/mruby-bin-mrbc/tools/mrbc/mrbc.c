@@ -1,7 +1,7 @@
 #include <mruby.h>
 
-#ifdef MRB_DISABLE_STDIO
-# error mruby-bin-mrbc conflicts 'MRB_DISABLE_STDIO' configuration in your 'build_config.rb'
+#ifdef MRB_NO_STDIO
+# error mruby-bin-mrbc conflicts 'MRB_NO_STDIO' in your build configuration
 #endif
 
 #include <stdlib.h>
@@ -14,16 +14,18 @@
 #define C_EXT       ".c"
 
 struct mrbc_args {
-  int argc;
-  char **argv;
-  int idx;
   const char *prog;
   const char *outfile;
   const char *initname;
+  char **argv;
+  int argc;
+  int idx;
+  mrb_bool dump_struct  : 1;
   mrb_bool check_syntax : 1;
   mrb_bool verbose      : 1;
   mrb_bool remove_lv    : 1;
-  unsigned int flags    : 4;
+  mrb_bool no_ext_ops   : 1;
+  uint8_t flags         : 4;
 };
 
 static void
@@ -32,11 +34,14 @@ usage(const char *name)
   static const char *const usage_msg[] = {
   "switches:",
   "-c           check syntax only",
-  "-o<outfile>  place the output into <outfile>",
+  "-o<outfile>  place the output into <outfile>; required for multi-files",
   "-v           print version number, then turn on verbose mode",
   "-g           produce debugging information",
   "-B<symbol>   binary <symbol> output in C language format",
+  "-S           dump C struct (requires -B)",
+  "-s           define <symbol> as static variable",
   "--remove-lv  remove local variables",
+  "--no-ext-ops prohibit using OP_EXTs",
   "--verbose    run at verbose mode",
   "--version    print the version",
   "--copyright  print the copyright",
@@ -44,7 +49,7 @@ usage(const char *name)
   };
   const char *const *p = usage_msg;
 
-  printf("Usage: %s [switches] programfile\n", name);
+  printf("Usage: %s [switches] programfile...\n", name);
   while (*p)
     printf("  %s\n", *p++);
 }
@@ -52,14 +57,27 @@ usage(const char *name)
 static char *
 get_outfilename(mrb_state *mrb, char *infile, const char *ext)
 {
-  size_t infilelen;
-  size_t flen;
+  size_t ilen, flen, elen;
   char *outfile;
+  char *p = NULL;
 
-  infilelen = strlen(infile);
-  flen = infilelen + strlen(ext) + 1;
-  outfile = (char*)mrb_malloc(mrb, flen);
-  snprintf(outfile, flen, "%s%s", infile, ext);
+  ilen = strlen(infile);
+  flen = ilen;
+  if (*ext) {
+    elen = strlen(ext);
+    if ((p = strrchr(infile, '.'))) {
+      ilen = p - infile;
+    }
+    flen += elen;
+  }
+  else {
+    flen = ilen;
+  }
+  outfile = (char*)mrb_malloc(mrb, flen+1);
+  strncpy(outfile, infile, ilen+1);
+  if (p) {
+    strncpy(outfile+ilen, ext, elen+1);
+  }
 
   return outfile;
 }
@@ -92,6 +110,9 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct mrbc_args *args)
           args->outfile = get_outfilename(mrb, argv[i] + 2, "");
         }
         break;
+      case 'S':
+        args->dump_struct = TRUE;
+        break;
       case 'B':
         if (argv[i][2] == '\0' && argv[i+1]) {
           i++;
@@ -113,7 +134,10 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct mrbc_args *args)
         args->verbose = TRUE;
         break;
       case 'g':
-        args->flags |= DUMP_DEBUG_INFO;
+        args->flags |= MRB_DUMP_DEBUG_INFO;
+        break;
+      case 's':
+        args->flags |= MRB_DUMP_STATIC;
         break;
       case 'E':
       case 'e':
@@ -139,6 +163,10 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct mrbc_args *args)
         }
         else if (strcmp(argv[i] + 2, "remove-lv") == 0) {
           args->remove_lv = TRUE;
+          break;
+        }
+        else if (strcmp(argv[i] + 2, "no-ext-ops") == 0) {
+          args->no_ext_ops = TRUE;
           break;
         }
         return -1;
@@ -195,6 +223,7 @@ load_file(mrb_state *mrb, struct mrbc_args *args)
   if (args->verbose)
     c->dump_result = TRUE;
   c->no_exec = TRUE;
+  c->no_ext_ops = args->no_ext_ops;
   if (input[0] == '-' && input[1] == '\0') {
     infile = stdin;
   }
@@ -225,13 +254,18 @@ static int
 dump_file(mrb_state *mrb, FILE *wfp, const char *outfile, struct RProc *proc, struct mrbc_args *args)
 {
   int n = MRB_DUMP_OK;
-  mrb_irep *irep = proc->body.irep;
+  const mrb_irep *irep = proc->body.irep;
 
   if (args->remove_lv) {
-    mrb_irep_remove_lv(mrb, irep);
+    mrb_irep_remove_lv(mrb, (mrb_irep*)irep);
   }
   if (args->initname) {
-    n = mrb_dump_irep_cfunc(mrb, irep, args->flags, wfp, args->initname);
+    if (args->dump_struct) {
+      n = mrb_dump_irep_cstruct(mrb, irep, args->flags, wfp, args->initname);
+    }
+    else {
+      n = mrb_dump_irep_cfunc(mrb, irep, args->flags, wfp, args->initname);
+    }
     if (n == MRB_DUMP_INVALID_ARGUMENT) {
       fprintf(stderr, "%s: invalid C language symbol name\n", args->initname);
     }
@@ -248,7 +282,7 @@ dump_file(mrb_state *mrb, FILE *wfp, const char *outfile, struct RProc *proc, st
 int
 main(int argc, char **argv)
 {
-  mrb_state *mrb = mrb_open();
+  mrb_state *mrb = mrb_open_core(NULL, NULL);
   int n, result;
   struct mrbc_args args;
   FILE *wfp;
@@ -321,7 +355,7 @@ mrb_init_mrblib(mrb_state *mrb)
 {
 }
 
-#ifndef DISABLE_GEMS
+#ifndef MRB_NO_GEMS
 void
 mrb_init_mrbgems(mrb_state *mrb)
 {
@@ -330,5 +364,33 @@ mrb_init_mrbgems(mrb_state *mrb)
 void
 mrb_final_mrbgems(mrb_state *mrb)
 {
+}
+#endif
+
+#ifdef MRB_USE_COMPLEX
+mrb_value mrb_complex_to_i(mrb_state *mrb, mrb_value comp)
+{
+  /* dummy method */
+  return mrb_nil_value();
+}
+mrb_value mrb_complex_to_f(mrb_state *mrb, mrb_value comp)
+{
+  /* dummy method */
+  return mrb_nil_value();
+}
+#endif
+
+#ifdef MRB_USE_RATIONAL
+mrb_value
+mrb_rational_to_i(mrb_state *mrb, mrb_value rat)
+{
+  /* dummy method */
+  return mrb_nil_value();
+}
+mrb_value
+mrb_rational_to_f(mrb_state *mrb, mrb_value rat)
+{
+  /* dummy method */
+  return mrb_nil_value();
 }
 #endif

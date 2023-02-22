@@ -4,6 +4,12 @@
 # ISO 15.2.13
 class Hash
   ##
+  # Hash is enumerable
+  #
+  # ISO 15.2.13.3
+  include Enumerable
+
+  ##
   #  Equality---Two hashes are equal if they each contain the same number
   #  of keys and if each key-value pair is equal to (according to
   #  <code>Object#==</code>) the corresponding elements in the other
@@ -145,26 +151,6 @@ class Hash
   end
 
   ##
-  # Replaces the contents of <i>hsh</i> with the contents of other hash
-  #
-  # ISO 15.2.13.4.23
-  def replace(hash)
-    raise TypeError, "Hash required (#{hash.class} given)" unless Hash === hash
-    self.clear
-    hash.each_key{|k|
-      self[k] = hash[k]
-    }
-    if hash.default_proc
-      self.default_proc = hash.default_proc
-    else
-      self.default = hash.default
-    end
-    self
-  end
-  # ISO 15.2.13.4.17
-  alias initialize_copy replace
-
-  ##
   # Return a hash which contains the content of
   # +self+ and +other+. If a block is given
   # it will be called for each element with
@@ -203,7 +189,7 @@ class Hash
   end
   ##
   # Return the contents of this hash as a string.
- #
+  #
   # ISO 15.2.13.4.30 (x)
   def inspect
     self._inspect({})
@@ -316,12 +302,4 @@ class Hash
     }
     h
   end
-end
-
-##
-# Hash is enumerable
-#
-# ISO 15.2.13.3
-class Hash
-  include Enumerable
 end
