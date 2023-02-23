@@ -121,10 +121,10 @@ ARENA_RESTOR_AND_ERROR:
 
 static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
 {
-  mrb_value name, *a;
+  mrb_sym name;
   mrb_int alen;
   int c_len;
-  mrb_value s_name;
+  mrb_value *a, s_name;
   char *c_name;
   ngx_http_request_t *r;
 
@@ -136,7 +136,7 @@ static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
   // name is a symble obj
   // first init name with mrb_symbol
   // second get mrb_string with mrb_sym2str
-  s_name = mrb_sym2str(mrb, mrb_symbol(name));
+  s_name = mrb_sym_str(mrb, name);
   c_len = RSTRING_LEN(s_name);
   c_name = ngx_palloc(r->pool, c_len);
   ngx_memcpy(c_name, RSTRING_PTR(s_name), c_len);
