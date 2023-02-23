@@ -13,14 +13,17 @@
 #include <mruby/hash.h>
 #include <mruby/range.h>
 #include <mruby/proc.h>
+#include <mruby/presym.h>
 
 #define RSTRUCT_LEN(st) RARRAY_LEN(st)
 #define RSTRUCT_PTR(st) RARRAY_PTR(st)
 
+#define mrb_struct_p(o) (mrb_type(o) == MRB_TT_STRUCT)
+
 static struct RClass *
 struct_class(mrb_state *mrb)
 {
-  return mrb_class_get(mrb, "Struct");
+  return mrb_class_get_id(mrb, MRB_SYM(Struct));
 }
 
 static inline mrb_value
@@ -42,7 +45,7 @@ struct_ivar_get(mrb_state *mrb, mrb_value cls, mrb_sym id)
 static mrb_value
 struct_s_members(mrb_state *mrb, struct RClass *klass)
 {
-  mrb_value members = struct_ivar_get(mrb, mrb_obj_value(klass), mrb_intern_lit(mrb, "__members__"));
+  mrb_value members = struct_ivar_get(mrb, mrb_obj_value(klass), MRB_SYM(__members__));
 
   if (mrb_nil_p(members)) {
     mrb_raise(mrb, E_TYPE_ERROR, "uninitialized struct");
@@ -57,18 +60,13 @@ static mrb_value
 struct_members(mrb_state *mrb, mrb_value s)
 {
   mrb_value members = struct_s_members(mrb, mrb_obj_class(mrb, s));
-  if (!mrb_array_p(s)) {
+  if (!mrb_struct_p(s) || RSTRUCT_LEN(s) == 0) {
     mrb_raise(mrb, E_TYPE_ERROR, "corrupted struct");
   }
   if (RSTRUCT_LEN(s) != RARRAY_LEN(members)) {
-    if (RSTRUCT_LEN(s) == 0) {  /* probably uninitialized */
-      mrb_ary_resize(mrb, s, RARRAY_LEN(members));
-    }
-    else {
-      mrb_raisef(mrb, E_TYPE_ERROR,
-                 "struct size differs (%i required %i given)",
-                 RARRAY_LEN(members), RSTRUCT_LEN(s));
-    }
+    mrb_raisef(mrb, E_TYPE_ERROR,
+               "struct size differs (%i required %i given)",
+               RARRAY_LEN(members), RSTRUCT_LEN(s));
   }
   return members;
 }
@@ -113,7 +111,7 @@ mrb_struct_members(mrb_state *mrb, mrb_value obj)
 static mrb_value
 mrb_struct_ref(mrb_state *mrb, mrb_value obj)
 {
-  mrb_int i = mrb_fixnum(mrb_proc_cfunc_env_get(mrb, 0));
+  mrb_int i = mrb_integer(mrb_proc_cfunc_env_get(mrb, 0));
   mrb_value *ptr = RSTRUCT_PTR(obj);
 
   if (!ptr) return mrb_nil_value();
@@ -152,7 +150,7 @@ mrb_id_attrset(mrb_state *mrb, mrb_sym id)
 static mrb_value
 mrb_struct_set_m(mrb_state *mrb, mrb_value obj)
 {
-  mrb_int i = mrb_fixnum(mrb_proc_cfunc_env_get(mrb, 0));
+  mrb_int i = mrb_integer(mrb_proc_cfunc_env_get(mrb, 0));
   mrb_value *ptr;
   mrb_value val = mrb_get_arg1(mrb);
 
@@ -201,7 +199,7 @@ make_struct(mrb_state *mrb, mrb_value name, mrb_value members, struct RClass *kl
   }
   else {
     /* old style: should we warn? */
-    mrb_to_str(mrb, name);
+    mrb_ensure_string_type(mrb, name);
     id = mrb_obj_to_sym(mrb, name);
     if (!mrb_const_name_p(mrb, RSTRING_PTR(name), RSTRING_LEN(name))) {
       mrb_name_error(mrb, id, "identifier %v needs to be constant", name);
@@ -212,9 +210,9 @@ make_struct(mrb_state *mrb, mrb_value name, mrb_value members, struct RClass *kl
     }
     c = mrb_define_class_under(mrb, klass, RSTRING_PTR(name), klass);
   }
-  MRB_SET_INSTANCE_TT(c, MRB_TT_ARRAY);
+  MRB_SET_INSTANCE_TT(c, MRB_TT_STRUCT);
   nstr = mrb_obj_value(c);
-  mrb_iv_set(mrb, nstr, mrb_intern_lit(mrb, "__members__"), members);
+  mrb_iv_set(mrb, nstr, MRB_SYM(__members__), members);
 
   mrb_define_class_method(mrb, c, "new", mrb_instance_new, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, c, "[]", mrb_instance_new, MRB_ARGS_ANY());
@@ -262,12 +260,12 @@ static mrb_value
 mrb_struct_s_def(mrb_state *mrb, mrb_value klass)
 {
   mrb_value name, rest;
-  mrb_value *pargv;
+  const mrb_value *pargv;
   mrb_int argcnt;
   mrb_int i;
   mrb_value b, st;
   mrb_sym id;
-  mrb_value *argv;
+  const mrb_value *argv;
   mrb_int argc;
 
   name = mrb_nil_value();
@@ -310,7 +308,7 @@ num_members(mrb_state *mrb, struct RClass *klass)
 {
   mrb_value members;
 
-  members = struct_ivar_get(mrb, mrb_obj_value(klass), mrb_intern_lit(mrb, "__members__"));
+  members = struct_ivar_get(mrb, mrb_obj_value(klass), MRB_SYM(__members__));
   if (!mrb_array_p(members)) {
     mrb_raise(mrb, E_TYPE_ERROR, "broken members");
   }
@@ -321,7 +319,7 @@ num_members(mrb_state *mrb, struct RClass *klass)
 /*
  */
 static mrb_value
-mrb_struct_initialize_withArg(mrb_state *mrb, mrb_int argc, mrb_value *argv, mrb_value self)
+mrb_struct_initialize_withArg(mrb_state *mrb, mrb_int argc, const mrb_value *argv, mrb_value self)
 {
   struct RClass *klass = mrb_obj_class(mrb, self);
   mrb_int i, n;
@@ -343,7 +341,7 @@ mrb_struct_initialize_withArg(mrb_state *mrb, mrb_int argc, mrb_value *argv, mrb
 static mrb_value
 mrb_struct_initialize(mrb_state *mrb, mrb_value self)
 {
-  mrb_value *argv;
+  const mrb_value *argv;
   mrb_int argc;
 
   mrb_get_args(mrb, "*!", &argv, &argc);
@@ -361,7 +359,7 @@ mrb_struct_init_copy(mrb_state *mrb, mrb_value copy)
   if (!mrb_obj_is_instance_of(mrb, s, mrb_obj_class(mrb, copy))) {
     mrb_raise(mrb, E_TYPE_ERROR, "wrong argument class");
   }
-  if (!mrb_array_p(s)) {
+  if (!mrb_struct_p(s)) {
     mrb_raise(mrb, E_TYPE_ERROR, "corrupted struct");
   }
   mrb_ary_replace(mrb, copy, s);
@@ -428,17 +426,13 @@ mrb_struct_aref(mrb_state *mrb, mrb_value s)
   mrb_value idx = mrb_get_arg1(mrb);
 
   if (mrb_string_p(idx)) {
-    mrb_value sym = mrb_check_intern_str(mrb, idx);
-
-    if (mrb_nil_p(sym)) {
-      mrb_name_error(mrb, mrb_intern_str(mrb, idx), "no member '%v' in struct", idx);
-    }
-    idx = sym;
+    mrb_sym sym = mrb_intern_str(mrb, idx);
+    idx = mrb_symbol_value(sym);
   }
   if (mrb_symbol_p(idx)) {
     return struct_aref_sym(mrb, s, mrb_symbol(idx));
   }
-  return struct_aref_int(mrb, s, mrb_int(mrb, idx));
+  return struct_aref_int(mrb, s, mrb_as_int(mrb, idx));
 }
 
 static mrb_value
@@ -495,18 +489,14 @@ mrb_struct_aset(mrb_state *mrb, mrb_value s)
   mrb_get_args(mrb, "oo", &idx, &val);
 
   if (mrb_string_p(idx)) {
-    mrb_value sym = mrb_check_intern_str(mrb, idx);
-
-    if (mrb_nil_p(sym)) {
-      mrb_name_error(mrb, mrb_intern_str(mrb, idx), "no member '%v' in struct", idx);
-    }
-    idx = sym;
+    mrb_sym sym = mrb_intern_str(mrb, idx);
+    idx = mrb_symbol_value(sym);
   }
   if (mrb_symbol_p(idx)) {
     return mrb_struct_aset_sym(mrb, s, mrb_symbol(idx), val);
   }
 
-  i = mrb_int(mrb, idx);
+  i = mrb_as_int(mrb, idx);
   if (i < 0) i = RSTRUCT_LEN(s) + i;
   if (i < 0) {
     mrb_raisef(mrb, E_INDEX_ERROR,
@@ -604,8 +594,8 @@ mrb_struct_eql(mrb_state *mrb, mrb_value s)
 
 /*
  * call-seq:
- *    struct.length   -> Fixnum
- *    struct.size     -> Fixnum
+ *    struct.length   -> Integer
+ *    struct.size     -> Integer
  *
  * Returns number of struct members.
  */
@@ -654,7 +644,7 @@ static mrb_value
 mrb_struct_values_at(mrb_state *mrb, mrb_value self)
 {
   mrb_int argc;
-  mrb_value *argv;
+  const mrb_value *argv;
 
   mrb_get_args(mrb, "*", &argv, &argc);
 

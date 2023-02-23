@@ -14,27 +14,13 @@
  */
 MRB_BEGIN_DECL
 
-typedef struct global_variable {
-  int   counter;
-  mrb_value *data;
-  mrb_value (*getter)(void);
-  void  (*setter)(void);
-  /* void  (*marker)(); */
-  /* int block_trace; */
-  /* struct trace_var *trace; */
-} global_variable;
-
-struct global_entry {
-  global_variable *var;
-  mrb_sym id;
-};
-
 mrb_value mrb_vm_special_get(mrb_state*, mrb_sym);
 void mrb_vm_special_set(mrb_state*, mrb_sym, mrb_value);
 mrb_value mrb_vm_cv_get(mrb_state*, mrb_sym);
 void mrb_vm_cv_set(mrb_state*, mrb_sym, mrb_value);
 mrb_value mrb_vm_const_get(mrb_state*, mrb_sym);
 void mrb_vm_const_set(mrb_state*, mrb_sym, mrb_value);
+size_t mrb_obj_iv_tbl_memsize(mrb_value);
 MRB_API mrb_value mrb_const_get(mrb_state*, mrb_value, mrb_sym);
 MRB_API void mrb_const_set(mrb_state*, mrb_value, mrb_sym, mrb_value);
 MRB_API mrb_bool mrb_const_defined(mrb_state*, mrb_value, mrb_sym);

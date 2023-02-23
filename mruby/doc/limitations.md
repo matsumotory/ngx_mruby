@@ -13,37 +13,6 @@ This document is collecting these limitations.
 This document does not contain a complete list of limitations.
 Please help to improve it by submitting your findings.
 
-
-## `1/2` gives `0.5`
-
-Since mruby does not have `Bignum`, bigger integers are represented
-by `Float` numbers. To enhance interoperability between `Fixnum`
-and `Float`, mruby provides `Float#upto` and other iterating
-methods for the `Float` class.  As a side effect, `1/2` gives `0.5`
-not `0`.
-
-## `Array` passed to `puts`
-
-Passing an Array to `puts` results in different output.
-
-```ruby
-puts [1,2,3]
-```
-
-#### Ruby [ruby 2.0.0p645 (2015-04-13 revision 50299)]
-
-```
-1
-2
-3
-```
-
-#### mruby [2.1.1 (2020-06-04)]
-
-```
-[1, 2, 3]
-```
-
 ## `Kernel.raise` in rescue clause
 
 `Kernel.raise` without arguments does not raise the current exception within
@@ -61,13 +30,21 @@ end
 
 `ZeroDivisionError` is raised.
 
-#### mruby [2.1.1 (2020-06-04)]
+#### mruby [3.1.0 (2022-05-12)]
 
-No exception is raised.
+`RuntimeError` is raised instead of `ZeroDivisionError`. To re-raise the exception, you have to do:
+
+```ruby
+begin
+  1 / 0
+rescue => e
+  raise e
+end
+```
 
 ## Fiber execution can't cross C function boundary
 
-mruby's `Fiber` is implemented in a similar way to Lua's co-routine. This
+mruby's `Fiber` is implemented similarly to Lua's co-routine. This
 results in the consequence that you can't switch context within C functions.
 Only exception is `mrb_fiber_yield` at return.
 
@@ -78,7 +55,7 @@ To reduce memory consumption `Array` does not support instance variables.
 ```ruby
 class Liste < Array
   def initialize(str = nil)
-    @feld = str
+    @field = str
   end
 end
 
@@ -89,14 +66,14 @@ p Liste.new "foobar"
 
 ` [] `
 
-#### mruby [2.1.1 (2020-06-04)]
+#### mruby [3.1.0 (2022-05-12)]
 
 `ArgumentError` is raised.
 
 ## Method visibility
 
 For simplicity reasons no method visibility (public/private/protected) is
-supported. Those methods are defined but they are dummy methods.
+supported. Those methods are defined, but they are dummy methods.
 
 ```ruby
 class VisibleTest
@@ -119,7 +96,7 @@ false
 true
 ```
 
-#### mruby [2.1.1 (2020-06-04)]
+#### mruby [3.1.0 (2022-05-12)]
 
 ```
 true
@@ -156,7 +133,7 @@ p 'ok'
 ok
 ```
 
-#### mruby [2.1.1 (2020-06-04)]
+#### mruby [3.1.0 (2022-05-12)]
 
 ```
 test.rb:8: undefined method 'test_func' (NoMethodError)
@@ -178,7 +155,7 @@ defined?(Foo)
 nil
 ```
 
-#### mruby [2.1.1 (2020-06-04)]
+#### mruby [3.1.0 (2022-05-12)]
 
 `NameError` is raised.
 
@@ -195,7 +172,7 @@ alias $a $__a__
 
 ` nil `
 
-#### mruby [2.1.1 (2020-06-04)]
+#### mruby [3.1.0 (2022-05-12)]
 
 Syntax error
 
@@ -217,7 +194,7 @@ end
 `ArgumentError` is raised.
 The re-defined `+` operator does not accept any arguments.
 
-#### mruby [2.1.1 (2020-06-04)]
+#### mruby [3.1.0 (2022-05-12)]
 
 ` 'ab' `
 Behavior of the operator wasn't changed.
@@ -233,7 +210,7 @@ $ ruby -e 'puts Proc.new {}.binding'
 #<Binding:0x00000e9deabb9950>
 ```
 
-#### mruby [2.1.1 (2020-06-04)]
+#### mruby [3.1.0 (2022-05-12)]
 
 ```
 $ ./bin/mruby -e 'puts Proc.new {}.binding'
@@ -241,48 +218,6 @@ trace (most recent call last):
         [0] -e:1
 -e:1: undefined method 'binding' (NoMethodError)
 ```
-
-## Keyword arguments
-
-mruby keyword arguments behave slightly different from CRuby 2.5
-to make the behavior simpler and less confusing. Maybe in the
-future, the simpler behavior will be adopted to CRuby as well.
-
-#### Ruby [ruby 2.5.1p57 (2018-03-29 revision 63029)]
-
-```
-$ ruby -e 'def m(*r,**k) p [r,k] end; m("a"=>1,:b=>2)'
-[[{"a"=>1}], {:b=>2}]
-```
-
-#### mruby [mruby 2.1.1]
-
-```
-$ ./bin/mruby -e 'def m(*r,**k) p [r,k] end; m("a"=>1,:b=>2)'
-trace (most recent call last):
-	[0] -e:1
--e:1: keyword argument hash with non symbol keys (ArgumentError)
-```
-
-## Argument Destructuring
-
-```ruby
-def m(a,(b,c),d); p [a,b,c,d]; end
-m(1,[2,3],4)  # => [1,2,3,4]
-```
-Destructured arguments (`b` and `c` in above example) cannot be accessed
-from the default expression of optional arguments and keyword arguments,
-since actual assignment is done after the evaluation of those default
-expressions. Thus:
-
-```ruby
-def f(a,(b,c),d=b)
-  p [a,b,c,d]
-end
-f(1,[2,3])
-```
-
-CRuby gives `[1,2,3,nil]`. mruby raises `NoMethodError` for `b`.
 
 ## `nil?` redefinition in conditional expressions
 
@@ -297,3 +232,24 @@ puts(a.nil? ? "truthy" : "falsy")
 ```
 
 Ruby outputs `falsy`. mruby outputs `truthy`.
+
+## Argument Destructuring
+
+```ruby
+def m(a,(b,c),d); p [a,b,c,d]; end
+m(1,[2,3],4)  # => [1,2,3,4]
+```
+
+Destructured arguments (`b` and `c` in above example) cannot be accessed
+from the default expression of optional arguments and keyword arguments,
+since actual assignment is done after the evaluation of those default
+expressions. Thus:
+
+```ruby
+def f(a,(b,c),d=b)
+  p [a,b,c,d]
+end
+f(1,[2,3])
+```
+
+CRuby gives `[1,2,3,nil]`. mruby raises `NoMethodError` for `b`.
