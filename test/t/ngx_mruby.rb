@@ -1,3 +1,4 @@
+# rubocop:disable all
 # ngx_mruby test
 #
 
@@ -745,9 +746,16 @@ if nginx_features.is_async_supported?
     t.assert_equal 200, res["code"]
     t.assert_equal 'proxy test ok', res["body"]
   end
+
   t.assert('ngx_mruby - Nginx::Async::HTTP.new sub request with proxy', 'location /async_http_sub_request_with_serverfalt') do
     res = HttpRequest.new.get base + '/async_http_sub_request_with_serverfault'
     t.assert_equal 503, res['code']
+  end
+
+  t.assert('ngx_mruby - Nginx.Async.sub request with proxy(set_code)', 'location /async_http_sub_request_with_mruby_set') do
+    res = HttpRequest.new.get base + '/async_http_sub_request_with_mruby_set'
+    t.assert_equal 'proxy test ok', res['body']
+    t.assert_equal 200, res.code
   end
 
   t.assert('ngx_mruby - Nginx::Async::HTTP.new "/dst"', 'location /async_http_sub_request') do
