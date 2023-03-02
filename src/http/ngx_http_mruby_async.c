@@ -27,6 +27,7 @@ typedef struct {
   mrb_value *fiber;
   ngx_http_request_t *r;
   ngx_uint_t fiber_prev_status;
+  ngx_http_request_t *sr;
 } ngx_mrb_reentrant_t;
 
 typedef struct {
@@ -116,7 +117,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
     if (re->mrb->exc) {
       ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
       rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    } else if (ctx->set_var_target.len > 1) {
+    } else if (re->sr == NULL && ctx->set_var_target.len > 1) {
       if (ctx->set_var_target.data[0] != '$') {
         ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
                       "%s NOTICE %s:%d: invalid variable name error name: %s", MODULE_NAME, __func__, __LINE__,
@@ -200,6 +201,7 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   re->mrb = mrb;
   re->fiber_prev_status = r->headers_out.status;
   re->r = r;
+  re->sr = NULL;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   re->fiber = ctx->fiber_proc;
@@ -267,7 +269,9 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
   ngx_mrb_reentrant_t *re = actx->re;
   ngx_http_mruby_ctx_t *ctx;
 
+  re->sr = sr;
   re->r = sr->parent;
+
   // read mruby context of parent request_rec
   ctx = ngx_mrb_http_get_module_ctx(NULL, sr->parent);
   if (ctx == NULL) {
@@ -326,6 +330,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   re = (ngx_mrb_reentrant_t *)ngx_palloc(r->pool, sizeof(ngx_mrb_reentrant_t));
   re->mrb = mrb;
   re->fiber_prev_status = r->headers_out.status;
+  re->sr = NULL;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   re->fiber = ctx->fiber_proc;
