@@ -1776,16 +1776,17 @@ static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
   cln->handler = ngx_http_mruby_filter_cleanup;
   cln->data = ctx;
 
-  if (mlcf->header_filter_handler != NULL) {
-    rc = mlcf->header_filter_handler(r);
-    if (rc != NGX_OK) {
-      return NGX_ERROR;
-    }
+  if (mlcf->header_filter_handler == NULL) {
+    return NGX_OK;
+  }
+
+  rc = mlcf->header_filter_handler(r);
+  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+    return rc;
   }
 
   ctx->body_length = r->headers_out.content_length_n;
-
-  return NGX_OK;
+  return rc;
 }
 
 static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
