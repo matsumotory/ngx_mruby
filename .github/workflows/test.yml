@@ -11,7 +11,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         NGINX_VERSION:
@@ -24,7 +24,7 @@ jobs:
           - ""
           - "TRUE"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Echo matrix
         env:
           NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
@@ -40,10 +40,6 @@ jobs:
           BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
           BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
         run: |
-          id
-          echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial main" | sudo tee -a /etc/apt/sources.list
-          echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial universe" | sudo tee -a /etc/apt/sources.list
-          sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
           sudo apt-get -qq update
       - name: install
         env:
@@ -52,13 +48,13 @@ jobs:
           BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
           CXX: g++
         run: |
-          sudo apt-get -qq install rake bison git gperf zlib1g-dev g++-4.9 libstdc++-4.9-dev
+          sudo apt-get -qq install rake bison git gperf zlib1g-dev g++-11 libstdc++-11-dev
           sudo apt-get remove -y libssl-dev
           if [ "$CXX" = "g++" ]; then
-            export CXX="g++-4.9" CC="gcc-4.9" LD="gcc-4.9"
-            echo "CXX=g++-4.9" >> $GITHUB_ENV
-            echo "CC=gcc-4.9"  >> $GITHUB_ENV
-            echo "LD=gcc-4.9"  >> $GITHUB_ENV
+            export CXX="g++-11" CC="gcc-11" LD="gcc-11"
+            echo "CXX=g++-11" >> $GITHUB_ENV
+            echo "CC=gcc-11"  >> $GITHUB_ENV
+            echo "LD=gcc-11"  >> $GITHUB_ENV
           fi
           $CXX -v
       - name: before_script
