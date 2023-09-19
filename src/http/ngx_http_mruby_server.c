@@ -72,6 +72,10 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 #endif
 
   lsopt.socklen = u.socklen;
+
+#if (nginx_version >= 1025000)
+  lsopt.type = SOCK_STREAM;
+#endif
   lsopt.backlog = NGX_LISTEN_BACKLOG;
   lsopt.rcvbuf = -1;
   lsopt.sndbuf = -1;
