@@ -1,16 +1,12 @@
 ##
 # IO
+#
+# ISO 15.2.20
 
 class IOError < StandardError; end
 class EOFError < IOError; end
 
 class IO
-  SEEK_SET = 0
-  SEEK_CUR = 1
-  SEEK_END = 2
-
-  BUF_SIZE = 4096
-
   def self.open(*args, &block)
     io = self.new(*args)
 
@@ -66,12 +62,8 @@ class IO
     fd = -1
     io = nil
     begin
-      if path[0] == "|"
-        io = IO.popen(path[1..-1], mode)
-      else
-        fd = IO.sysopen(path, mode)
-        io = IO.open(fd, mode)
-      end
+      fd = IO.sysopen(path, mode)
+      io = IO.open(fd, mode)
       io.seek(offset) if offset > 0
       str = io.read(length)
     ensure
@@ -84,27 +76,10 @@ class IO
     str
   end
 
-  def flush
-    # mruby-io always writes immediately (no output buffer).
-    raise IOError, "closed stream" if self.closed?
-    self
-  end
-
   def hash
     # We must define IO#hash here because IO includes Enumerable and
-    # Enumerable#hash will call IO#read...
+    # Enumerable#hash will call IO#read() otherwise
     self.__id__
-  end
-
-  def write(string)
-    str = string.is_a?(String) ? string : string.to_s
-    return 0 if str.empty?
-    unless @buf.empty?
-      # reset real pos ignore buf
-      seek(pos, SEEK_SET)
-    end
-    len = syswrite(str)
-    len
   end
 
   def <<(str)
@@ -112,21 +87,7 @@ class IO
     self
   end
 
-  def eof?
-    _check_readable
-    begin
-      _read_buf
-      return @buf.empty?
-    rescue EOFError
-      return true
-    end
-  end
   alias_method :eof, :eof?
-
-  def pos
-    raise IOError if closed?
-    sysseek(0, SEEK_CUR) - @buf.bytesize
-  end
   alias_method :tell, :pos
 
   def pos=(i)
@@ -135,28 +96,6 @@ class IO
 
   def rewind
     seek(0, SEEK_SET)
-  end
-
-  def seek(i, whence = SEEK_SET)
-    raise IOError if closed?
-    sysseek(i, whence)
-    @buf = ''
-    0
-  end
-
-  def _read_buf
-    return @buf if @buf && @buf.bytesize > 0
-    sysread(BUF_SIZE, @buf)
-  end
-
-  def ungetc(substr)
-    raise TypeError.new "expect String, got #{substr.class}" unless substr.is_a?(String)
-    if @buf.empty?
-      @buf.replace(substr)
-    else
-      @buf[0,0] = substr
-    end
-    nil
   end
 
   def ungetbyte(c)
@@ -168,127 +107,6 @@ class IO
     s = " "
     s.setbyte(0,c)
     ungetc s
-  end
-
-  def read(length = nil, outbuf = "")
-    unless length.nil?
-      unless length.is_a? Integer
-        raise TypeError.new "can't convert #{length.class} into Integer"
-      end
-      if length < 0
-        raise ArgumentError.new "negative length: #{length} given"
-      end
-      if length == 0
-        return ""   # easy case
-      end
-    end
-
-    array = []
-    while true
-      begin
-        _read_buf
-      rescue EOFError
-        array = nil if array.empty? and (not length.nil?) and length != 0
-        break
-      end
-
-      if length
-        consume = (length <= @buf.bytesize) ? length : @buf.bytesize
-        array.push IO._bufread(@buf, consume)
-        length -= consume
-        break if length == 0
-      else
-        array.push @buf
-        @buf = ''
-      end
-    end
-
-    if array.nil?
-      outbuf.replace("")
-      nil
-    else
-      outbuf.replace(array.join)
-    end
-  end
-
-  def readline(arg = "\n", limit = nil)
-    case arg
-    when String
-      rs = arg
-    when Integer
-      rs = "\n"
-      limit = arg
-    else
-      raise ArgumentError
-    end
-
-    if rs.nil?
-      return read
-    end
-
-    if rs == ""
-      rs = "\n\n"
-    end
-
-    array = []
-    while true
-      begin
-        _read_buf
-      rescue EOFError
-        array = nil if array.empty?
-        break
-      end
-
-      if limit && limit <= @buf.size
-        array.push @buf[0, limit]
-        @buf[0, limit] = ""
-        break
-      elsif idx = @buf.index(rs)
-        len = idx + rs.size
-        array.push @buf[0, len]
-        @buf[0, len] = ""
-        break
-      else
-        array.push @buf
-        @buf = ''
-      end
-    end
-
-    raise EOFError.new "end of file reached" if array.nil?
-
-    array.join
-  end
-
-  def gets(*args)
-    begin
-      readline(*args)
-    rescue EOFError
-      nil
-    end
-  end
-
-  def readchar
-    _read_buf
-    _readchar(@buf)
-  end
-
-  def getc
-    begin
-      readchar
-    rescue EOFError
-      nil
-    end
-  end
-
-  def readbyte
-    _read_buf
-    IO._bufread(@buf, 1).getbyte(0)
-  end
-
-  def getbyte
-    readbyte
-  rescue EOFError
-    nil
   end
 
   # 15.2.20.5.3
@@ -321,14 +139,6 @@ class IO
       block.call(char)
     end
     self
-  end
-
-  def readlines
-    ary = []
-    while (line = gets)
-      ary << line
-    end
-    ary
   end
 
   def puts(*args)
