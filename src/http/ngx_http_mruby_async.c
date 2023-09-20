@@ -21,6 +21,7 @@
 #include <mruby/hash.h>
 #include <mruby/variable.h>
 #include <mruby/class.h>
+#include <mruby/internal.h>
 
 typedef struct {
   mrb_state *mrb;
