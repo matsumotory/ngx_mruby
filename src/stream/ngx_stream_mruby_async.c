@@ -41,7 +41,7 @@ static mrb_value ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc,
   }
 
   if (!mrb_array_p(resume_result)) {
-    mrb->exc = mrb_obj_ptr(mrb_exc_new_str_lit(
+    mrb->exc = mrb_obj_ptr(mrb_exc_new_lit(
         mrb, E_RUNTIME_ERROR,
         "_ngx_mrb_prepare_fiber proc must return array included handler_return and fiber alive status"));
     return mrb_false_value();
