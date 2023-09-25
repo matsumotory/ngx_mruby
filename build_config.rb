@@ -3,7 +3,7 @@ MRuby::Build.new('host') do |conf|
 
   conf.defines << 'MRB_STR_LENGTH_MAX=10485760'
   conf.gembox 'full-core'
-  enable_debug
+
   conf.cc do |cc|
     cc.flags << ENV['NGX_MRUBY_CFLAGS'] if ENV['NGX_MRUBY_CFLAGS']
   end

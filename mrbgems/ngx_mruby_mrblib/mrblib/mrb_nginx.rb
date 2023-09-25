@@ -132,8 +132,10 @@ module Kernel
     fiber_handler = Fiber.new { nginx_handler.call }
 
     lambda do
+      GC.disable
       # BUG?: return nginx_handler directly from fiber, not proc in any case.
       result = fiber_handler.resume
+      GC.enable
       [fiber_handler.alive?, result]
     end
   end
