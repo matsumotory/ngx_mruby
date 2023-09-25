@@ -23,12 +23,14 @@ repos:
       - id: detect-private-key
       - id: end-of-file-fixer
       - id: file-contents-sorter
+        args: [--unique]
         files: ^codespell\.txt$
       - id: fix-byte-order-marker
+      - id: forbid-submodules
       - id: mixed-line-ending
       - id: trailing-whitespace
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.3.1
+    rev: v1.5.1
     hooks:
       - id: forbid-tabs
         exclude: Makefile$|Makefile\..+$|makefile$|\.mk$
@@ -36,7 +38,7 @@ repos:
         args: [--whitespaces-count, '2']
         exclude: Makefile$|Makefile\..+$|makefile$|\.mk$
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.2
+    rev: v2.2.5
     hooks:
       - id: codespell
         name: Run codespell
@@ -49,7 +51,7 @@ repos:
         name: Local policy is to exclude extension from all shell files
         types: [shell]
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.33.0
+    rev: v0.35.0
     hooks:
       - id: markdownlint
         name: Run markdownlint
@@ -57,8 +59,17 @@ repos:
         entry: markdownlint -c .github/linters/.markdown-lint.yml .
         types: [markdown]
         files: \.(md|mdown|markdown)$
+  - repo: https://github.com/tcort/markdown-link-check
+    rev: v3.11.2
+    hooks:
+      - id: markdown-link-check
+        name: Run markdown-link-check
+        description: Checks hyperlinks in Markdown files
+        args: [-q]
+        types: [markdown]
+        files: \.(md|mdown|markdown)$
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.28.0
+    rev: v1.32.0
     hooks:
       - id: yamllint
         name: Run yamllint

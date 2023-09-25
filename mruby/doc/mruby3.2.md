@@ -32,9 +32,9 @@
 
 ## New bundled gems
 
-- mruby-errno from [https://github.com/iij/mruby-errno.git]
-- mruby-set from [https://github.com/yui-knk/mruby-set.git]
-- mruby-dir from [https://github.com/iij/mruby-dir.git]
+- mruby-errno from <https://github.com/iij/mruby-errno.git>
+- mruby-set from <https://github.com/yui-knk/mruby-set.git>
+- mruby-dir from <https://github.com/iij/mruby-dir.git>
 - mruby-data
 
 # Breaking Changes
@@ -62,7 +62,6 @@ Following CVEs are fixed.
 - [CVE-2022-0080](https://nvd.nist.gov/vuln/detail/CVE-2022-0080)
 - [CVE-2022-0240](https://nvd.nist.gov/vuln/detail/CVE-2022-0240)
 - [CVE-2022-0326](https://nvd.nist.gov/vuln/detail/CVE-2022-0326)
-- [CVE-2022-0631](https://nvd.nist.gov/vuln/detail/CVE-2022-0631)
 - [CVE-2022-0481](https://nvd.nist.gov/vuln/detail/CVE-2022-0481)
 - [CVE-2022-0525](https://nvd.nist.gov/vuln/detail/CVE-2022-0525)
 - [CVE-2022-0570](https://nvd.nist.gov/vuln/detail/CVE-2022-0570)

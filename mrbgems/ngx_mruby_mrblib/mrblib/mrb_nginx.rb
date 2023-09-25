@@ -1,7 +1,7 @@
 class Nginx
   class Request
     def scheme
-      self.var.scheme
+      var.scheme
     end
 
     def document_root
@@ -14,32 +14,33 @@ class Nginx
     end
 
     def body
-      self.get_body
+      get_body
     end
 
     def uri_args
-      args_to_hash(self.args)
+      args_to_hash(args)
     end
 
     def uri_args=(params)
       raise ArgumentError unless params.is_a?(Hash)
-      self.args = params.map{|k,v| "#{k}=#{v}"}.join("&")
+
+      self.args = params.map { |k, v| "#{k}=#{v}" }.join('&')
     end
 
     def post_args
-      args_to_hash(self.body)
+      args_to_hash(body)
     end
 
     private
 
     def args_to_hash(args)
-      Hash[*args.split("&").map{|arg| arg.split("=", 2)}.flatten]
+      Hash[*args.split('&').map { |arg| arg.split('=', 2) }.flatten]
     end
   end
 
   class Headers_in
     def user_agent
-      self["User-Agent"]
+      self['User-Agent']
     end
   end
 
@@ -50,32 +51,32 @@ class Nginx
   class Utils
     class << self
       def encode_parameters(params, delimiter = '&', quote = nil)
-        if params.is_a?(Hash)
-          params = params.map do |key, value|
-            sprintf("%s=%s%s%s", escape(key), quote, escape(value), quote)
-          end
-        else
-          params = params.map { |value| escape(value) }
-        end
+        params = if params.is_a?(Hash)
+                   params.map do |key, value|
+                     format('%s=%s%s%s', escape(key), quote, escape(value), quote)
+                   end
+                 else
+                   params.map { |value| escape(value) }
+                 end
         delimiter ? params.join(delimiter) : params
       end
 
       def escape(str)
         reserved_str = [
-          "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "n", "m", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-          "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-          "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-          "-", ".", "_", "~"
+          'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'n', 'm', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+          'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+          '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+          '-', '.', '_', '~'
         ]
         tmp = ''
         str = str.to_s
         str.size.times do |idx|
           chr = str[idx]
-          if reserved_str.include?(chr)
-            tmp += chr
-          else
-            tmp += "%" + chr.unpack("H*").first.upcase
-          end
+          tmp += if reserved_str.include?(chr)
+                   chr
+                 else
+                   '%' + chr.unpack1('H*').upcase
+                 end
         end
         tmp
       end
@@ -122,7 +123,6 @@ class Nginx
   end
 end
 
-
 module Kernel
   def get_server_class
     Nginx
@@ -132,10 +132,8 @@ module Kernel
     fiber_handler = Fiber.new { nginx_handler.call }
 
     lambda do
-      GC.disable
       # BUG?: return nginx_handler directly from fiber, not proc in any case.
       result = fiber_handler.resume
-      GC.enable
       [fiber_handler.alive?, result]
     end
   end

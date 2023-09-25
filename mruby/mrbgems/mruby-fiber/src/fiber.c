@@ -93,7 +93,7 @@ fiber_init(mrb_state *mrb, mrb_value self)
   if (p->body.irep->nregs > slen) {
     slen += p->body.irep->nregs;
   }
-  c->stbase = (mrb_value *)mrb_malloc(mrb, slen*sizeof(mrb_value));
+  c->stbase = (mrb_value*)mrb_malloc(mrb, slen*sizeof(mrb_value));
   c->stend = c->stbase + slen;
 
   {
@@ -110,7 +110,7 @@ fiber_init(mrb_state *mrb, mrb_value self)
   c->stbase[0] = mrb->c->ci->stack[0];
 
   /* initialize callinfo stack */
-  c->cibase = (mrb_callinfo *)mrb_calloc(mrb, FIBER_CI_INIT_SIZE, sizeof(mrb_callinfo));
+  c->cibase = (mrb_callinfo*)mrb_calloc(mrb, FIBER_CI_INIT_SIZE, sizeof(mrb_callinfo));
   c->ciend = c->cibase + FIBER_CI_INIT_SIZE;
   c->ci = c->cibase;
 
@@ -257,7 +257,14 @@ fiber_switch(mrb_state *mrb, mrb_value self, mrb_int len, const mrb_value *a, mr
       }
     }
     c->cibase->n = (uint8_t)len;
-    value = c->stbase[0] = MRB_PROC_ENV(c->cibase->proc)->stack[0];
+    struct REnv *env = MRB_PROC_ENV(c->cibase->proc);
+    if (env && env->stack) {
+      value = env->stack[0];
+    }
+    else {
+      value = mrb_top_self(mrb);
+    }
+    c->stbase[0] = value;
   }
   else {
     value = fiber_result(mrb, a, len);
@@ -300,13 +307,9 @@ fiber_resume(mrb_state *mrb, mrb_value self)
 {
   const mrb_value *a;
   mrb_int len;
-  mrb_bool vmexec = FALSE;
 
   mrb_get_args(mrb, "*!", &a, &len);
-  if (mrb->c->ci->cci > 0) {
-    vmexec = TRUE;
-  }
-  return fiber_switch(mrb, self, len, a, TRUE, vmexec);
+  return fiber_switch(mrb, self, len, a, TRUE, FALSE);
 }
 
 MRB_API mrb_value
@@ -470,7 +473,7 @@ mrb_mruby_fiber_gem_init(mrb_state* mrb)
   mrb_define_class_method(mrb, c, "yield", fiber_yield, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, c, "current", fiber_current, MRB_ARGS_NONE());
 
-  mrb_define_class(mrb, "FiberError", mrb->eStandardError_class);
+  mrb_define_class(mrb, "FiberError", E_STANDARD_ERROR);
 }
 
 void

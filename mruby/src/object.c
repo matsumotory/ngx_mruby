@@ -53,32 +53,29 @@ mrb_obj_equal(mrb_state *mrb, mrb_value v1, mrb_value v2)
 MRB_API mrb_bool
 mrb_equal(mrb_state *mrb, mrb_value obj1, mrb_value obj2)
 {
-  mrb_value result;
-
   if (mrb_obj_eq(mrb, obj1, obj2)) return TRUE;
 #ifndef MRB_NO_FLOAT
   /* value mixing with integer and float */
-  if (mrb_integer_p(obj1) && mrb_float_p(obj2)) {
+  else if (mrb_integer_p(obj1) && mrb_float_p(obj2)) {
     if ((mrb_float)mrb_integer(obj1) == mrb_float(obj2))
       return TRUE;
-    return FALSE;
   }
   else if (mrb_float_p(obj1) && mrb_integer_p(obj2)) {
     if (mrb_float(obj1) == (mrb_float)mrb_integer(obj2))
       return TRUE;
-    return FALSE;
   }
 #endif
 #ifdef MRB_USE_BIGINT
-  if (mrb_bigint_p(obj1) &&
+  else if (mrb_bigint_p(obj1) &&
       (mrb_integer_p(obj2) || mrb_bigint_p(obj2) || mrb_float_p(obj2))) {
     if (mrb_bint_cmp(mrb, obj1, obj2) == 0)
       return TRUE;
-    return FALSE;
   }
 #endif
-  result = mrb_funcall_id(mrb, obj1, MRB_OPSYM(eq), 1, obj2);
-  if (mrb_test(result)) return TRUE;
+  else if (!mrb_func_basic_p(mrb, obj1, MRB_OPSYM(eq), mrb_obj_equal_m)) {
+    mrb_value result = mrb_funcall_argv(mrb, obj1, MRB_OPSYM(eq), 1, &obj2);
+    if (mrb_test(result)) return TRUE;
+  }
   return FALSE;
 }
 
@@ -638,7 +635,7 @@ mrb_check_hash_type(mrb_state *mrb, mrb_value hash)
 MRB_API mrb_value
 mrb_inspect(mrb_state *mrb, mrb_value obj)
 {
-  mrb_value v = mrb_funcall_id(mrb, obj, MRB_SYM(inspect), 0);
+  mrb_value v = mrb_funcall_argv(mrb, obj, MRB_SYM(inspect), 0, NULL);
   if (!mrb_string_p(v)) {
     v = mrb_obj_as_string(mrb, obj);
   }
@@ -649,5 +646,5 @@ MRB_API mrb_bool
 mrb_eql(mrb_state *mrb, mrb_value obj1, mrb_value obj2)
 {
   if (mrb_obj_eq(mrb, obj1, obj2)) return TRUE;
-  return mrb_test(mrb_funcall_id(mrb, obj1, MRB_SYM_Q(eql), 1, obj2));
+  return mrb_test(mrb_funcall_argv(mrb, obj1, MRB_SYM_Q(eql), 1, &obj2));
 }

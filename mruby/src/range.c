@@ -70,7 +70,7 @@ static void
 range_ptr_alloc_edges(mrb_state *mrb, struct RRange *r)
 {
 #ifndef MRB_RANGE_EMBED
-  r->edges = (mrb_range_edges *)mrb_malloc(mrb, sizeof(mrb_range_edges));
+  r->edges = (mrb_range_edges*)mrb_malloc(mrb, sizeof(mrb_range_edges));
 #endif
 }
 
@@ -311,7 +311,6 @@ range_eql(mrb_state *mrb, mrb_value range)
   struct RRange *r, *o;
 
   if (mrb_obj_equal(mrb, range, obj)) return mrb_true_value();
-  if (!mrb_obj_is_kind_of(mrb, obj, mrb->range_class)) return mrb_false_value();
   if (!mrb_range_p(obj)) return mrb_false_value();
 
   r = mrb_range_ptr(mrb, range);
@@ -370,8 +369,10 @@ range_num_to_a(mrb_state *mrb, mrb_value range)
         len++;
       }
       ary = mrb_ary_new_capa(mrb, len);
+      mrb_value *ptr = RARRAY_PTR(ary);
       for (mrb_int i=0; i<len; i++) {
-        mrb_ary_push(mrb, ary, mrb_int_value(mrb, a+i));
+        ptr[i] = mrb_int_value(mrb, a+i);
+        ARY_SET_LEN(RARRAY(ary), i+1);
       }
       return ary;
     }
@@ -380,16 +381,23 @@ range_num_to_a(mrb_state *mrb, mrb_value range)
       mrb_float a = (mrb_float)mrb_integer(beg);
       mrb_float b = mrb_float(end);
 
+      if (a > b) {
+        return mrb_ary_new_capa(mrb, 0);
+      }
       ary = mrb_ary_new_capa(mrb, (mrb_int)(b - a) + 1);
+      mrb_value *ptr = RARRAY_PTR(ary);
+      mrb_int i = 0;
       if (RANGE_EXCL(r)) {
         while (a < b) {
-          mrb_ary_push(mrb, ary, mrb_int_value(mrb, (mrb_int)a));
+          ptr[i++] = mrb_int_value(mrb, (mrb_int)a);
+          ARY_SET_LEN(RARRAY(ary), i);
           a += 1.0;
         }
       }
       else {
         while (a <= b) {
-          mrb_ary_push(mrb, ary, mrb_int_value(mrb, (mrb_int)a));
+          ptr[i++] = mrb_int_value(mrb, (mrb_int)a);
+          ARY_SET_LEN(RARRAY(ary), i);
           a += 1.0;
         }
       }

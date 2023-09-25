@@ -33,10 +33,10 @@ const char mrb_digitmap[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 #endif
 
 static void
-str_check_too_big(mrb_state *mrb, mrb_int len)
+str_check_length(mrb_state *mrb, mrb_int len)
 {
   if (len < 0) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "[BUG] negative string length");
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "negative (or overflowed) string size");
   }
 #if MRB_STR_LENGTH_MAX != 0
   if (len > MRB_STR_LENGTH_MAX-1) {
@@ -49,8 +49,8 @@ static struct RString*
 str_init_normal_capa(mrb_state *mrb, struct RString *s,
                      const char *p, mrb_int len, mrb_int capa)
 {
-  str_check_too_big(mrb, capa);
-  char *dst = (char *)mrb_malloc(mrb, capa + 1);
+  str_check_length(mrb, capa);
+  char *dst = (char*)mrb_malloc(mrb, capa + 1);
   if (p) memcpy(dst, p, len);
   dst[len] = '\0';
   s->as.heap.ptr = dst;
@@ -80,7 +80,7 @@ str_init_embed(struct RString *s, const char *p, mrb_int len)
 static struct RString*
 str_init_nofree(struct RString *s, const char *p, mrb_int len)
 {
-  s->as.heap.ptr = (char *)p;
+  s->as.heap.ptr = (char*)p;
   s->as.heap.len = len;
   s->as.heap.aux.capa = 0;             /* nofree */
   RSTR_SET_TYPE_FLAG(s, NOFREE);
@@ -94,7 +94,7 @@ str_init_shared(mrb_state *mrb, const struct RString *orig, struct RString *s, m
     shared->refcnt++;
   }
   else {
-    shared = (mrb_shared_string *)mrb_malloc(mrb, sizeof(mrb_shared_string));
+    shared = (mrb_shared_string*)mrb_malloc(mrb, sizeof(mrb_shared_string));
     shared->refcnt = 1;
     shared->ptr = orig->as.heap.ptr;
     shared->capa = orig->as.heap.aux.capa;
@@ -137,6 +137,7 @@ str_new_static(mrb_state *mrb, const char *p, mrb_int len)
 static struct RString*
 str_new(mrb_state *mrb, const char *p, mrb_int len)
 {
+  str_check_length(mrb, len);
   if (RSTR_EMBEDDABLE_P(len)) {
     return str_init_embed(mrb_obj_alloc_string(mrb), p, len);
   }
@@ -169,7 +170,7 @@ resize_capa(mrb_state *mrb, struct RString *s, mrb_int capacity)
     }
   }
   else {
-    str_check_too_big(mrb, capacity);
+    str_check_length(mrb, capacity);
     s->as.heap.ptr = (char*)mrb_realloc(mrb, RSTR_PTR(s), capacity+1);
     s->as.heap.aux.capa = (mrb_ssize)capacity;
   }
@@ -466,11 +467,10 @@ mrb_memsearch_qs(const unsigned char *xs, mrb_int m, const unsigned char *ys, mr
   else {
     const unsigned char *x = xs, *xe = xs + m;
     const unsigned char *y = ys;
-    int i;
     ptrdiff_t qstable[256];
 
     /* Preprocessing */
-    for (i = 0; i < 256; i++)
+    for (int i = 0; i < 256; i++)
       qstable[i] = m + 1;
     for (; x < xe; x++)
       qstable[*x] = xe - x;
@@ -486,7 +486,7 @@ mrb_memsearch_qs(const unsigned char *xs, mrb_int m, const unsigned char *ys, mr
 static mrb_int
 mrb_memsearch(const void *x0, mrb_int m, const void *y0, mrb_int n)
 {
-  const unsigned char *x = (const unsigned char *)x0, *y = (const unsigned char *)y0;
+  const unsigned char *x = (const unsigned char*)x0, *y = (const unsigned char*)y0;
 
   if (m > n) return -1;
   else if (m == n) {
@@ -496,14 +496,14 @@ mrb_memsearch(const void *x0, mrb_int m, const void *y0, mrb_int n)
     return 0;
   }
   else if (m == 1) {
-    const unsigned char *ys = (const unsigned char *)memchr(y, *x, n);
+    const unsigned char *ys = (const unsigned char*)memchr(y, *x, n);
 
     if (ys)
       return (mrb_int)(ys - y);
     else
       return -1;
   }
-  return mrb_memsearch_qs((const unsigned char *)x0, m, (const unsigned char *)y0, n);
+  return mrb_memsearch_qs((const unsigned char*)x0, m, (const unsigned char*)y0, n);
 }
 
 static void
@@ -523,7 +523,7 @@ str_share(mrb_state *mrb, struct RString *orig, struct RString *s)
   }
   else {
     if (orig->as.heap.aux.capa > orig->as.heap.len) {
-      orig->as.heap.ptr = (char *)mrb_realloc(mrb, orig->as.heap.ptr, len+1);
+      orig->as.heap.ptr = (char*)mrb_realloc(mrb, orig->as.heap.ptr, len+1);
       orig->as.heap.aux.capa = (mrb_ssize)len;
     }
     str_init_shared(mrb, orig, s, NULL);
@@ -769,9 +769,7 @@ mrb_str_resize(mrb_state *mrb, mrb_value str, mrb_int len)
   mrb_int slen;
   struct RString *s = mrb_str_ptr(str);
 
-  if (len < 0) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "negative (or overflowed) string size");
-  }
+  str_check_length(mrb, len);
   mrb_str_modify(mrb, s);
   slen = RSTR_LEN(s);
   if (len != slen) {
@@ -1249,19 +1247,16 @@ str_escape(mrb_state *mrb, mrb_value str, mrb_bool inspect)
       case 033: cc = 'e'; break;
       default: cc = 0; break;
     }
+    buf[0] = '\\';
     if (cc) {
-      buf[0] = '\\';
       buf[1] = (char)cc;
       mrb_str_cat(mrb, result, buf, 2);
-      continue;
     }
     else {
-      buf[0] = '\\';
       buf[1] = 'x';
       buf[3] = mrb_digitmap[c % 16]; c /= 16;
       buf[2] = mrb_digitmap[c % 16];
       mrb_str_cat(mrb, result, buf, 4);
-      continue;
     }
   }
   mrb_str_cat_lit(mrb, result, "\"");
@@ -2369,7 +2364,7 @@ mrb_str_len_to_integer(mrb_state *mrb, const char *str, size_t len, mrb_int base
 #ifdef MRB_USE_BIGINT
   p2 = p;
 #endif
-  for ( ;p<pend;p++) {
+  for (;p<pend; p++) {
     if (*p == '_') {
       p++;
       if (p==pend) {
@@ -2784,7 +2779,7 @@ mrb_str_bytes(mrb_state *mrb, mrb_value str)
 {
   struct RString *s = mrb_str_ptr(str);
   mrb_value a = mrb_ary_new_capa(mrb, RSTR_LEN(s));
-  unsigned char *p = (unsigned char *)(RSTR_PTR(s)), *pend = p + RSTR_LEN(s);
+  unsigned char *p = (unsigned char*)(RSTR_PTR(s)), *pend = p + RSTR_LEN(s);
 
   while (p < pend) {
     mrb_ary_push(mrb, a, mrb_fixnum_value(p[0]));
@@ -2945,6 +2940,97 @@ sub_replace(mrb_state *mrb, mrb_value self)
   return result;
 }
 
+
+static mrb_value
+str_bytesplice(mrb_state *mrb, mrb_value str, mrb_int idx1, mrb_int len1, mrb_value replace, mrb_int idx2, mrb_int len2)
+{
+  struct RString *s = RSTRING(str);
+  if (idx1 < 0) {
+    idx1 += RSTR_LEN(s);
+  }
+  if (idx2 < 0) {
+    idx2 += RSTRING_LEN(replace);
+  }
+  if (RSTR_LEN(s) < idx1 || idx1 < 0 || RSTRING_LEN(replace) < idx2 || idx2 < 0) {
+    mrb_raise(mrb, E_INDEX_ERROR, "index out of string");
+  }
+  if (len1 < 0 || len2 < 0) {
+    mrb_raise(mrb, E_INDEX_ERROR, "negative length");
+  }
+  mrb_int n;
+  if (mrb_int_add_overflow(idx1, len1, &n) || RSTR_LEN(s) < n) {
+    len1 = RSTR_LEN(s) - idx1;
+  }
+  if (mrb_int_add_overflow(idx2, len2, &n) || RSTRING_LEN(replace) < n) {
+    len2 = RSTRING_LEN(replace) - idx2;
+  }
+  mrb_str_modify(mrb, s);
+  if (len1 >= len2) {
+    memmove(RSTR_PTR(s)+idx1, RSTRING_PTR(replace)+idx2, len2);
+    if (len1 > len2) {
+      memmove(RSTR_PTR(s)+idx1+len2, RSTR_PTR(s)+idx1+len1, RSTR_LEN(s)-(idx1+len1));
+      RSTR_SET_LEN(s, RSTR_LEN(s)-(len1-len2));
+    }
+  }
+  else { /* len1 < len2 */
+    mrb_int slen = RSTR_LEN(s);
+    mrb_str_resize(mrb, str, slen+len2-len1);
+    memmove(RSTR_PTR(s)+idx1+len2, RSTR_PTR(s)+idx1+len1, slen-(idx1+len1));
+    memmove(RSTR_PTR(s)+idx1, RSTRING_PTR(replace)+idx2, len2);
+  }
+  return str;
+}
+
+/*
+ *  call-seq:
+ *    bytesplice(index, length, str) -> string
+ *    bytesplice(index, length, str, str_index, str_length) -> string
+ *    bytesplice(range, str) -> string
+ *    bytesplice(range, str, str_range) -> string
+ *
+ *  Replaces some or all of the content of +self+ with +str+, and returns +self+.
+ *  The portion of the string affected is determined using
+ *  the same criteria as String#byteslice, except that +length+ cannot be omitted.
+ *  If the replacement string is not the same length as the text it is replacing,
+ *  the string will be adjusted accordingly.
+ *
+ *  If +str_index+ and +str_length+, or +str_range+ are given, the content of +self+ is replaced by str.byteslice(str_index, str_length) or str.byteslice(str_range); however the substring of +str+ is not allocated as a new string.
+ *
+ *  The form that take an Integer will raise an IndexError if the value is out
+ *  of range; the Range form will raise a RangeError.
+ *  If the beginning or ending offset does not land on character (codepoint)
+ *  boundary, an IndexError will be raised.
+ */
+static mrb_value
+mrb_str_bytesplice(mrb_state *mrb, mrb_value str)
+{
+  mrb_int idx1, len1, idx2, len2;
+  mrb_value range1, range2, replace;
+  switch (mrb_get_argc(mrb)) {
+  case 3:
+    mrb_get_args(mrb, "ooo", &range1, &replace, &range2);
+    if (mrb_integer_p(range1)) {
+      mrb_get_args(mrb, "iiS", &idx1, &len1, &replace);
+      return str_bytesplice(mrb, str, idx1, len1, replace, 0, RSTRING_LEN(replace));
+    }
+    mrb_ensure_string_type(mrb, replace);
+    if (mrb_range_beg_len(mrb, range1, &idx1, &len1, RSTRING_LEN(str), FALSE) != MRB_RANGE_OK) break;
+    if (mrb_range_beg_len(mrb, range2, &idx2, &len2, RSTRING_LEN(replace), FALSE) != MRB_RANGE_OK) break;
+    return str_bytesplice(mrb, str, idx1, len1, replace, idx2, len2);
+  case 5:
+    mrb_get_args(mrb, "iiSii", &idx1, &len1, &replace, &idx2, &len2);
+    return str_bytesplice(mrb, str, idx1, len1, replace, idx2, len2);
+  case 2:
+    mrb_get_args(mrb, "oS", &range1, &replace);
+    if (mrb_range_beg_len(mrb, range1, &idx1, &len1, RSTRING_LEN(str), FALSE) == MRB_RANGE_OK) {
+      return str_bytesplice(mrb, str, idx1, len1, replace, 0, RSTRING_LEN(replace));
+    }
+  default:
+    break;
+  }
+  mrb_raise(mrb, E_ARGUMENT_ERROR, "wrong number of arumgnts");
+}
+
 /* ---------------------------*/
 void
 mrb_init_string(mrb_state *mrb)
@@ -3008,6 +3094,7 @@ mrb_init_string(mrb_state *mrb)
   mrb_define_method(mrb, s, "byteindex",       mrb_str_byteindex_m,     MRB_ARGS_ARG(1,1));
   mrb_define_method(mrb, s, "byterindex",      mrb_str_byterindex_m,    MRB_ARGS_ARG(1,1));
   mrb_define_method(mrb, s, "byteslice",       mrb_str_byteslice,       MRB_ARGS_ARG(1,1));
+  mrb_define_method(mrb, s, "bytesplice",      mrb_str_bytesplice,      MRB_ARGS_ANY());
 
   mrb_define_method(mrb, s, "__sub_replace",   sub_replace,             MRB_ARGS_REQ(3)); /* internal */
 }

@@ -95,7 +95,7 @@ get_history_path(mrb_state *mrb)
     int len = snprintf(NULL, 0, "%s/%s", home, history_file_name);
     if (len >= 0) {
       size_t size = len + 1;
-      path = (char *)mrb_malloc_simple(mrb, size);
+      path = (char*)mrb_malloc_simple(mrb, size);
       if (path != NULL) {
         int n = snprintf(path, size, "%s/%s", home, history_file_name);
         if (n != len) {
@@ -117,7 +117,7 @@ p(mrb_state *mrb, mrb_value obj, int prompt)
   mrb_value val;
   char* msg;
 
-  val = mrb_funcall_id(mrb, obj, MRB_SYM(inspect), 0);
+  val = mrb_funcall_argv(mrb, obj, MRB_SYM(inspect), 0, NULL);
   if (prompt) {
     if (!mrb->exc) {
       fputs(" => ", stdout);
@@ -508,7 +508,6 @@ main(int argc, char **argv)
 
   /* Load libraries */
   for (i = 0; i < args.libc; i++) {
-    struct REnv *e;
     FILE *lfp = fopen(args.libv[i], "r");
     if (lfp == NULL) {
       printf("Cannot open library file. (%s)\n", args.libv[i]);
@@ -517,9 +516,7 @@ main(int argc, char **argv)
     }
     mrb_load_file_cxt(mrb, lfp, cxt);
     fclose(lfp);
-    e = mrb_vm_ci_env(mrb->c->cibase);
-    mrb_vm_ci_env_set(mrb->c->cibase, NULL);
-    mrb_env_unshare(mrb, e, FALSE);
+    mrb_vm_ci_env_clear(mrb, mrb->c->cibase);
     mrbc_cleanup_local_variables(mrb, cxt);
   }
 

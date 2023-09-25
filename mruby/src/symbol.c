@@ -82,12 +82,11 @@ sym_inline_pack(const char *name, size_t len)
 
   char c;
   const char *p;
-  size_t i;
   mrb_sym sym = 0;
 
   if (len > pack_length_max) return 0; /* too long */
   if (len == 0) return 0; /* empty string */
-  for (i=0; i<len; i++) {
+  for (size_t i=0; i<len; i++) {
     uint32_t bits;
 
     c = name[i];
@@ -122,7 +121,6 @@ sym_inline_unpack(mrb_sym sym, char *buf, mrb_int *lenp)
 #define sym_lit_p(mrb, i) (mrb->symflags[i>>3]&(1<<(i&7)))
 #define sym_lit_set(mrb, i) mrb->symflags[i>>3]|=(1<<(i&7))
 #define sym_flags_clear(mrb, i) mrb->symflags[i>>3]&=~(1<<(i&7))
-#define sym_len(mrb, i) (size_t)(sym_lit_p(mrb, i)?strlen(mrb->symtbl[i]):mrb_packed_int_decode(mrb->symtbl[i],NULL))
 
 static mrb_bool
 sym_check(mrb_state *mrb, const char *name, size_t len, mrb_sym i)
@@ -208,15 +206,15 @@ sym_intern(mrb_state *mrb, const char *name, size_t len, mrb_bool lit)
     mrb->symcapa = symcapa;
   }
   sym_flags_clear(mrb, sym);
-  if ((lit || mrb_ro_data_p(name)) && strlen(name) == len) {
+  if ((lit || mrb_ro_data_p(name)) && name[len] == 0 && strlen(name) == len) {
     sym_lit_set(mrb, sym);
     mrb->symtbl[sym] = name;
   }
   else {
     uint32_t ulen = (uint32_t)len;
     size_t ilen = mrb_packed_int_len(ulen);
-    char *p = (char *)mrb_malloc(mrb, len+ilen+1);
-    mrb_packed_int_encode(ulen, (uint8_t*)p, (uint8_t*)p+ilen);
+    char *p = (char*)mrb_malloc(mrb, len+ilen+1);
+    mrb_packed_int_encode(ulen, (uint8_t*)p);
     memcpy(p+ilen, name, len);
     p[ilen+len] = 0;
     mrb->symtbl[sym] = p;
@@ -353,7 +351,7 @@ mrb_free_symtbl(mrb_state *mrb)
 {
   mrb_sym i, lim;
 
-  for (i=1, lim=mrb->symidx+1; i<lim; i++) {
+  for (i=1,lim=mrb->symidx+1; i<lim; i++) {
     if (!sym_lit_p(mrb, i)) {
       mrb_free(mrb, (char*)mrb->symtbl[i]);
     }
