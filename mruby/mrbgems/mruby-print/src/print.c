@@ -13,45 +13,55 @@
 # define isatty(x) _isatty(x)
 # define fileno(x) _fileno(x)
 #endif
+#else
+# include <unistd.h>
 #endif
 
 static void
-printstr(mrb_state *mrb, const char *p, mrb_int len)
+printstr(mrb_state *mrb, mrb_value s)
 {
+  if (mrb_string_p(s)) {
+    const char *p = RSTRING_PTR(s);
+    mrb_int len = RSTRING_LEN(s);
+
 #if defined(_WIN32)
-  if (isatty(fileno(stdout))) {
-    DWORD written;
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, p, (int)len, NULL, 0);
-    wchar_t* utf16 = (wchar_t*)mrb_malloc(mrb, (wlen+1) * sizeof(wchar_t));
-    if (MultiByteToWideChar(CP_UTF8, 0, p, (int)len, utf16, wlen) > 0) {
-      utf16[wlen] = 0;
-      WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE),
-                    utf16, (DWORD)wlen, &written, NULL);
+    if (isatty(fileno(stdout))) {
+      DWORD written;
+      int wlen = MultiByteToWideChar(CP_UTF8, 0, p, (int)len, NULL, 0);
+      wchar_t* utf16 = (wchar_t*)mrb_malloc(mrb, (wlen+1) * sizeof(wchar_t));
+      if (MultiByteToWideChar(CP_UTF8, 0, p, (int)len, utf16, wlen) > 0) {
+        utf16[wlen] = 0;
+        WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE),
+                      utf16, (DWORD)wlen, &written, NULL);
+      }
+      mrb_free(mrb, utf16);
+      return;
     }
-    mrb_free(mrb, utf16);
-  } else
 #endif
     fwrite(p, (size_t)len, 1, stdout);
-  fflush(stdout);
+  }
 }
 
+// ISO 15.3.1.2.10 Kernel.print
+// ISO 15.3.1.3.35 Kernel#print
 static mrb_value
-mrb_printstr(mrb_state *mrb, mrb_value self)
+mrb_print(mrb_state *mrb, mrb_value self)
 {
-  mrb_value s = mrb_get_arg1(mrb);
+  mrb_int argc = mrb_get_argc(mrb);
+  const mrb_value *argv = mrb_get_argv(mrb);
 
-  if (mrb_string_p(s)) {
-    printstr(mrb, RSTRING_PTR(s), RSTRING_LEN(s));
+  for (mrb_int i=0; i<argc; i++) {
+    mrb_value str = mrb_obj_as_string(mrb, argv[i]);
+    printstr(mrb, str);
   }
-  return s;
+  if (isatty(fileno(stdout))) fflush(stdout);
+  return mrb_nil_value();
 }
 
 void
 mrb_mruby_print_gem_init(mrb_state* mrb)
 {
-  struct RClass *krn;
-  krn = mrb->kernel_module;
-  mrb_define_method(mrb, krn, "__printstr__", mrb_printstr, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, mrb->kernel_module, "print", mrb_print, MRB_ARGS_ANY()); /* 15.3.1.3.35 */
 }
 
 void

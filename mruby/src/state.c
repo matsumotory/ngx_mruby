@@ -12,6 +12,7 @@
 #include <mruby/debug.h>
 #include <mruby/string.h>
 #include <mruby/class.h>
+#include <mruby/internal.h>
 
 void mrb_init_core(mrb_state*);
 void mrb_init_mrbgems(mrb_state*);
@@ -19,7 +20,7 @@ void mrb_init_mrbgems(mrb_state*);
 void mrb_gc_init(mrb_state*, mrb_gc *gc);
 void mrb_gc_destroy(mrb_state*, mrb_gc *gc);
 
-int mrb_core_init_protect(mrb_state *mrb, void (*body)(mrb_state *, void *), void *opaque);
+int mrb_core_init_protect(mrb_state *mrb, void (*body)(mrb_state*, void*), void *opaque);
 
 static void
 init_gc_and_core(mrb_state *mrb, void *opaque)
@@ -41,7 +42,7 @@ mrb_open_core(mrb_allocf f, void *ud)
   mrb_state *mrb;
 
   if (f == NULL) f = mrb_default_allocf;
-  mrb = (mrb_state *)(f)(NULL, NULL, sizeof(mrb_state), ud);
+  mrb = (mrb_state*)(f)(NULL, NULL, sizeof(mrb_state), ud);
   if (mrb == NULL) return NULL;
 
   *mrb = mrb_state_zero;
@@ -137,6 +138,7 @@ mrb_irep_cutref(mrb_state *mrb, mrb_irep *irep)
 
   if (irep->flags & MRB_IREP_NO_FREE) return;
   reps = (mrb_irep**)irep->reps;
+  if (!reps) return;
   for (i=0; i<irep->rlen; i++) {
     mrb_irep *tmp = reps[i];
     reps[i] = NULL;
@@ -185,7 +187,7 @@ mrb_free_context(mrb_state *mrb, struct mrb_context *c)
 
 void mrb_protect_atexit(mrb_state *mrb);
 
-  MRB_API void
+MRB_API void
 mrb_close(mrb_state *mrb)
 {
   if (!mrb) return;
@@ -205,7 +207,7 @@ mrb_add_irep(mrb_state *mrb)
   static const mrb_irep mrb_irep_zero = { 0 };
   mrb_irep *irep;
 
-  irep = (mrb_irep *)mrb_malloc(mrb, sizeof(mrb_irep));
+  irep = (mrb_irep*)mrb_malloc(mrb, sizeof(mrb_irep));
   *irep = mrb_irep_zero;
   irep->refcnt = 1;
 

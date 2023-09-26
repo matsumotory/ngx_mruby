@@ -1,11 +1,15 @@
 require "mruby/core_ext"
 require "mruby/build/load_gems"
 require "mruby/build/command"
+autoload :Find, "find"
 
 module MRuby
   autoload :Gem, "mruby/gem"
   autoload :Lockfile, "mruby/lockfile"
   autoload :Presym, "mruby/presym"
+
+  INSTALL_PREFIX = ENV['PREFIX'] || ENV['INSTALL_PREFIX'] || '/usr/local'
+  INSTALL_DESTDIR = ENV['DESTDIR'] || ''
 
   class << self
     def targets
@@ -97,6 +101,7 @@ module MRuby
         @file_separator = '/'
         @build_dir = "#{build_dir}/#{@name}"
         @gem_clone_dir = "#{build_dir}/repos/#{@name}"
+        @install_prefix = nil
         @defines = []
         @cc = Command::Compiler.new(self, %w(.c), label: "CC")
         @cxx = Command::Compiler.new(self, %w(.cc .cxx .cpp), label: "CXX")
@@ -123,6 +128,7 @@ module MRuby
         @enable_test = false
         @enable_lock = true
         @enable_presym = true
+        @enable_benchmark = true
         @mrbcfile_external = false
         @internal = internal
         @toolchains = []
@@ -161,9 +167,7 @@ module MRuby
     def enable_debug
       compilers.each do |c|
         c.defines += %w(MRB_DEBUG)
-        if toolchains.any? { |toolchain| toolchain == "gcc" }
-          c.flags += %w(-g3 -O0)
-        end
+        c.setup_debug(self)
       end
       @mrbc.compile_options += ' -g'
 
@@ -230,6 +234,14 @@ module MRuby
       }
       linker.command = cxx.command if toolchains.find { |v| v == 'gcc' }
       @cxx_abi_enabled = true
+    end
+
+    def benchmark_enabled?
+      @enable_benchmark
+    end
+
+    def disable_benchmark
+      @enable_benchmark = false
     end
 
     def compile_as_cxx(src, cxx_src = nil, obj = nil, includes = [])
@@ -361,12 +373,33 @@ EOS
       end
     end
 
-    def define_installer(src)
-      dst = "#{self.class.install_dir}/#{File.basename(src)}"
+    def define_installer_outline(src, dst)
       file dst => src do
-        install_D src, dst
+        _pp "GEN", src.relative_path, dst.relative_path
+        mkdir_p(File.dirname(dst))
+        yield dst
       end
       dst
+    end
+
+    if ENV['OS'] == 'Windows_NT'
+      def define_installer(src)
+        dst = "#{self.class.install_dir}/#{File.basename(src)}".pathmap("%X.bat")
+        define_installer_outline(src, dst) do
+          File.write dst, <<~BATCHFILE
+            @echo off
+            call "#{File.expand_path(src)}" %*
+          BATCHFILE
+        end
+      end
+    else
+      def define_installer(src)
+        dst = "#{self.class.install_dir}/#{File.basename(src)}"
+        define_installer_outline(src, dst) do
+          File.unlink(dst) rescue nil
+          File.symlink(File.expand_path(src), dst)
+        end
+      end
     end
 
     def define_installer_if_needed(bin)
@@ -431,10 +464,10 @@ EOS
     def run_bintest
       puts ">>> Bintest #{name} <<<"
       targets = @gems.select { |v| File.directory? "#{v.dir}/bintest" }.map { |v| filename v.dir }
-      targets << filename(".") if File.directory? "./bintest"
       mrbc = @gems["mruby-bin-mrbc"] ? exefile("#{@build_dir}/bin/mrbc") : mrbcfile
       env = {"BUILD_DIR" => @build_dir, "MRBCFILE" => mrbc}
-      sh env, "ruby test/bintest.rb#{verbose_flag} #{targets.join ' '}"
+      bintest = File.join(MRUBY_ROOT, "test/bintest.rb")
+      sh env, "ruby #{bintest}#{verbose_flag} #{targets.join ' '}"
     end
 
     def print_build_summary
@@ -476,6 +509,29 @@ EOS
       @internal
     end
 
+    def each_header_files(&block)
+      return to_enum(__method__) unless block
+
+      basedir = File.join(MRUBY_ROOT, "include")
+      Find.find(basedir) do |d|
+        next unless File.file? d
+        yield d
+      end
+
+      @gems.each { |g| g.each_header_files(&block) }
+
+      self
+    end
+
+    def install_prefix
+      @install_prefix || (self.name == "host" ? MRuby::INSTALL_PREFIX :
+                                                File.join(MRuby::INSTALL_PREFIX, "mruby/#{self.name}"))
+    end
+
+    def install_prefix=(dir)
+      @install_prefix = dir&.to_s
+    end
+
     protected
 
     attr_writer :presym
@@ -491,7 +547,8 @@ EOS
         v = instance_variable_get(n)
         v = case v
             when nil, true, false, Numeric; v
-            when String, Command; v.clone
+            when String; v.clone
+            when Command; v.clone.tap { |u| u.build = build }
             else Marshal.load(Marshal.dump(v))  # deep clone
             end
         build.instance_variable_set(n, v)
@@ -544,7 +601,6 @@ EOS
     def run_bintest
       puts ">>> Bintest #{name} <<<"
       targets = @gems.select { |v| File.directory? "#{v.dir}/bintest" }.map { |v| filename v.dir }
-      targets << filename(".") if File.directory? "./bintest"
       mrbc = @gems["mruby-bin-mrbc"] ? exefile("#{@build_dir}/bin/mrbc") : mrbcfile
 
       emulator = @test_runner.command
@@ -555,7 +611,8 @@ EOS
         "MRBCFILE" => mrbc,
         "EMULATOR" => @test_runner.emulator,
       }
-      sh env, "ruby test/bintest.rb#{verbose_flag} #{targets.join ' '}"
+      bintest = File.join(MRUBY_ROOT, "test/bintest.rb")
+      sh env, "ruby #{bintest}#{verbose_flag} #{targets.join ' '}"
     end
 
     protected

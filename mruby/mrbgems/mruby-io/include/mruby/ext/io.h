@@ -23,12 +23,22 @@ extern "C" {
 # endif
 #endif
 
+#define MRB_IO_BUF_SIZE 4096
+
+struct mrb_io_buf {
+  short start;
+  short len;
+  char mem[MRB_IO_BUF_SIZE];
+};
+
 struct mrb_io {
   int fd;   /* file descriptor, or -1 */
   int fd2;  /* file descriptor to write if it's different from fd, or -1 */
   int pid;  /* child's pid (for pipes)  */
+  struct mrb_io_buf *buf;
   unsigned int readable:1,
                writable:1,
+               eof:1,
                sync:1,
                is_socket:1;
 };
@@ -52,12 +62,6 @@ struct mrb_io {
 #define MRB_O_NOATIME           0x4000
 #define MRB_O_DSYNC             0x00008000
 #define MRB_O_RSYNC             0x00010000
-
-#define MRB_O_RDONLY_P(f)       ((mrb_bool)(((f) & MRB_O_ACCMODE) == MRB_O_RDONLY))
-#define MRB_O_WRONLY_P(f)       ((mrb_bool)(((f) & MRB_O_ACCMODE) == MRB_O_WRONLY))
-#define MRB_O_RDWR_P(f)         ((mrb_bool)(((f) & MRB_O_ACCMODE) == MRB_O_RDWR))
-#define MRB_O_READABLE_P(f)     ((mrb_bool)((((f) & MRB_O_ACCMODE) | 2) == 2))
-#define MRB_O_WRITABLE_P(f)     ((mrb_bool)(((((f) & MRB_O_ACCMODE) + 1) & 2) == 2))
 
 #define E_IO_ERROR              (mrb_exc_get(mrb, "IOError"))
 #define E_EOF_ERROR             (mrb_exc_get(mrb, "EOFError"))

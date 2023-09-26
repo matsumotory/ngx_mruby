@@ -7,8 +7,8 @@ def enable_debug_info?
     raise
   rescue => e
     @enable_debug_info = !e.backtrace.empty?
-    if(@enable_debug_info && e.backtrace[0].include?("(unknown)"))
-       @enable_debug_info = false
+    if @enable_debug_info && e.backtrace[0].include?("(unknown)")
+      @enable_debug_info = false
     end
     return @enable_debug_info
   end
@@ -30,7 +30,7 @@ assert('Proc#inspect') do
   else
     file = line = "-"
   end
-  assert_match "#<Proc:0x*@#{file}:#{line}>", ins
+  assert_match "#<Proc:0x* #{file}:#{line}>", ins
 end
 
 assert('Proc#parameters') do
@@ -78,7 +78,7 @@ assert('Proc#parameters') do
   assert_equal([[:req, :a]], lambda {|a|}.parameters)
   assert_equal([[:opt, :a]], lambda {|a=nil|}.parameters)
   assert_equal([[:req, :a]], ->(a){}.parameters)
-  assert_equal([[:rest]], lambda { |*| }.parameters)
+  assert_equal([[:rest, :*]], lambda { |*| }.parameters)
   assert_equal([[:rest, :a]], Proc.new {|*a|}.parameters)
   assert_equal([[:opt, :a], [:opt, :b], [:opt, :c], [:opt, :d], [:rest, :e], [:opt, :f], [:opt, :g], [:block, :h]], Proc.new {|a,b,c=:c,d=:d,*e,f,g,&h|}.parameters)
   assert_equal([[:req, :a], [:req, :b], [:opt, :c], [:opt, :d], [:rest, :e], [:req, :f], [:req, :g], [:block, :h]], lambda {|a,b,c=:c,d=:d,*e,f,g,&h|}.parameters)

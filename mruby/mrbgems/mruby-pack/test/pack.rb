@@ -1,4 +1,3 @@
-# coding: utf-8
 PACK_IS_LITTLE_ENDIAN = "\x01\00".unpack('S')[0] == 0x01
 
 def assert_pack tmpl, packed, unpacked
@@ -37,6 +36,16 @@ assert('pack("M")') do
   assert_equal ["123"], "123=\n".unpack("M")
   assert_equal ["=\n"], "=3D\n".unpack("M")
   assert_equal ["あ"], "=E3=81=82=\n".unpack("M")
+end
+
+# pack & unpack 'B'/'b'
+assert('pack("B/b")') do
+  assert_pack "b*", "\xFF\x00", ["1111111100000000"]
+  assert_pack "b*", "\x01\x02", ["1000000001000000"]
+  assert_pack "b3", "\x01", ["100"]
+
+  assert_pack "B*", "\xFF\x00", ["1111111100000000"]
+  assert_pack "B*", "\x01\x02", ["0000000100000010"]
 end
 
 # pack & unpack 'H'

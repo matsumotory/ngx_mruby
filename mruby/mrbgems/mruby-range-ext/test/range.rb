@@ -3,11 +3,25 @@
 
 assert('Range#cover?') do
   assert_true ("a".."z").cover?("c")
-  assert_true !("a".."z").cover?("5")
+  assert_false ("a".."z").cover?("5")
   assert_true ("a".."z").cover?("cc")
+  assert_false ("a".."z").cover?(nil)
   assert_true ("a"..).cover?("c")
   assert_false ("a"..).cover?("5")
   assert_true ("a"..).cover?("cc")
+  assert_true (.."z").cover?("a")
+  assert_false (..."z").cover?("z")
+  assert_true (.."z").cover?("z")
+  assert_true (nil..nil).cover?(nil)
+
+  assert_true ("a".."c").cover?("b".."d")
+  assert_true ("a"..).cover?("b"..)
+  assert_false ("a"..).cover?(1..)
+  assert_false ("d"..).cover?(.."b")
+  assert_true (.."c").cover?("b".."d")
+  assert_true (.."c").cover?(.."d")
+  assert_false (.."c").cover?(..2)
+  assert_false (.."c").cover?("d"..)
 end
 
 assert('Range#first') do
@@ -163,4 +177,38 @@ assert('Range#min given a block') do
   # returns nil when the start point is greater than the endpoint
   assert_equal nil, ((100..10).min { |x, y| x <=> y })
   assert_equal nil, ((5...5).min { |x, y| x <=> y })
+end
+
+assert('Range#overlap?') do
+  assert_false((0..2).overlap?(-2..-1))
+  assert_false((0..2).overlap?(-2...0))
+  assert_true((0..2).overlap?(-1..0))
+  assert_true((0..2).overlap?(1..2))
+  assert_true((0..2).overlap?(2..3))
+  assert_false((0..2).overlap?(3...4))
+  assert_false((0...2).overlap?(2..3))
+
+  assert_true((..0).overlap?(-1..0))
+  assert_true((...0).overlap?(-1..0))
+  assert_true((..0).overlap?(0..1))
+  assert_true((..0).overlap?(..1))
+  assert_false((..0).overlap?(1..2))
+  assert_false((...0).overlap?(0..1))
+
+  assert_false((0..).overlap?(-2..-1))
+  assert_false((0..).overlap?(...0))
+  assert_true((0..).overlap?(..0))
+  assert_true((0..).overlap?(0..1))
+  assert_true((0..).overlap?(1..2))
+  assert_true((0..).overlap?(-1..0))
+  assert_true((0..).overlap?(1..))
+
+  assert_true((0..).overlap?(-1..0))
+  assert_true((0..).overlap?(..0))
+  assert_true((0..).overlap?(0..1))
+  assert_true((0..).overlap?(1..2))
+  assert_true((0..).overlap?(1..))
+
+  assert_raise(TypeError) { (0..).overlap?(1) }
+  assert_raise(TypeError) { (0..).overlap?(nil) }
 end

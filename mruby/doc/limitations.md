@@ -64,7 +64,7 @@ p Liste.new "foobar"
 
 #### Ruby [ruby 2.0.0p645 (2015-04-13 revision 50299)]
 
-` [] `
+`[]`
 
 #### mruby [3.1.0 (2022-05-12)]
 
@@ -107,14 +107,14 @@ true
 
 The declaration form of following visibility methods are not implemented.
 
-* `public`
-* `private`
-* `protected`
-* `module_function`
+- `public`
+- `private`
+- `protected`
+- `module_function`
 
 Especially, `module_function` method is not dummy, but no declaration form.
 
-```
+```ruby
 module TestModule
   module_function
   def test_func
@@ -170,7 +170,7 @@ alias $a $__a__
 
 #### Ruby [ruby 2.0.0p645 (2015-04-13 revision 50299)]
 
-` nil `
+`nil`
 
 #### mruby [3.1.0 (2022-05-12)]
 
@@ -196,27 +196,18 @@ The re-defined `+` operator does not accept any arguments.
 
 #### mruby [3.1.0 (2022-05-12)]
 
-` 'ab' `
+`'ab'`
 Behavior of the operator wasn't changed.
 
-## `Kernel#binding` is not supported
+## `Kernel#binding` is not supported until [3.0.0 (2021-03-05)]
 
 `Kernel#binding` method is not supported.
 
 #### Ruby [ruby 2.5.1p57 (2018-03-29 revision 63029)]
 
-```
+```shell
 $ ruby -e 'puts Proc.new {}.binding'
 #<Binding:0x00000e9deabb9950>
-```
-
-#### mruby [3.1.0 (2022-05-12)]
-
-```
-$ ./bin/mruby -e 'puts Proc.new {}.binding'
-trace (most recent call last):
-        [0] -e:1
--e:1: undefined method 'binding' (NoMethodError)
 ```
 
 ## `nil?` redefinition in conditional expressions
@@ -231,7 +222,7 @@ end
 puts(a.nil? ? "truthy" : "falsy")
 ```
 
-Ruby outputs `falsy`. mruby outputs `truthy`.
+Ruby outputs `truthy`. mruby outputs `falsy`.
 
 ## Argument Destructuring
 
@@ -253,3 +244,12 @@ f(1,[2,3])
 ```
 
 CRuby gives `[1,2,3,nil]`. mruby raises `NoMethodError` for `b`.
+
+Keyword argument expansion has similar restrictions. The following example, gives `[1, 1]` for CRuby, mruby raises `NoMethodError` for `b`.
+
+```ruby
+def g(a: 1, b: a)
+  p [a,b]
+end
+g(a:1)
+```

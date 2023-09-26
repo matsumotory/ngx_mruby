@@ -4,9 +4,6 @@
 # MD001 heading-increment/header-increment - Heading levels should only increment by one level at a time
 MD001: false
 
-# MD010 no-hard-tabs - Hard tabs
-MD010: false
-
 # MD013 line-length - Line length
 MD013: false
 
@@ -22,5 +19,11 @@ MD025: false
 # MD026 no-trailing-punctuation - Trailing punctuation in heading
 MD026: false
 
+# MD033/no-inline-html - Inline HTML
+MD033: false
+
 # MD040 fenced-code-language - Fenced code blocks should have a language specified
 MD040: false
+
+# MD041 first-line-heading/first-line-h1 - First line in a file should be a top-level heading
+MD041: false

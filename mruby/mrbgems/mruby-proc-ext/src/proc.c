@@ -7,7 +7,7 @@
 #include <mruby/presym.h>
 
 static mrb_value
-mrb_proc_lambda_p(mrb_state *mrb, mrb_value self)
+proc_lambda_p(mrb_state *mrb, mrb_value self)
 {
   struct RProc *p = mrb_proc_ptr(self);
   return mrb_bool_value(MRB_PROC_STRICT_P(p));
@@ -24,22 +24,21 @@ mrb_proc_source_location(mrb_state *mrb, struct RProc *p)
     int32_t line;
     const char *filename;
 
-    filename = mrb_debug_get_filename(mrb, irep, 0);
-    line = mrb_debug_get_line(mrb, irep, 0);
-
-    return (!filename && line == -1)? mrb_nil_value()
-        : mrb_assoc_new(mrb, mrb_str_new_cstr(mrb, filename), mrb_fixnum_value(line));
+    if (!mrb_debug_get_position(mrb, irep, 0, &line, &filename)) {
+      return mrb_nil_value();
+    }
+    return mrb_assoc_new(mrb, mrb_str_new_cstr(mrb, filename), mrb_fixnum_value(line));
   }
 }
 
 static mrb_value
-mrb_proc_source_location_m(mrb_state *mrb, mrb_value self)
+proc_source_location(mrb_state *mrb, mrb_value self)
 {
   return mrb_proc_source_location(mrb, mrb_proc_ptr(self));
 }
 
 static mrb_value
-mrb_proc_inspect(mrb_state *mrb, mrb_value self)
+proc_inspect(mrb_state *mrb, mrb_value self)
 {
   struct RProc *p = mrb_proc_ptr(self);
   mrb_value str = mrb_str_new_lit(mrb, "#<Proc:");
@@ -49,18 +48,15 @@ mrb_proc_inspect(mrb_state *mrb, mrb_value self)
     const mrb_irep *irep = p->body.irep;
     const char *filename;
     int32_t line;
-    mrb_str_cat_lit(mrb, str, "@");
+    mrb_str_cat_lit(mrb, str, " ");
 
-    filename = mrb_debug_get_filename(mrb, irep, 0);
-    mrb_str_cat_cstr(mrb, str, filename ? filename : "-");
-    mrb_str_cat_lit(mrb, str, ":");
-
-    line = mrb_debug_get_line(mrb, irep, 0);
-    if (line != -1) {
+    if (mrb_debug_get_position(mrb, irep, 0, &line, &filename)) {
+      mrb_str_cat_cstr(mrb, str, filename);
+      mrb_str_cat_lit(mrb, str, ":");
       mrb_str_concat(mrb, str, mrb_fixnum_value(line));
     }
     else {
-      mrb_str_cat_lit(mrb, str, "-");
+      mrb_str_cat_lit(mrb, str, "-:-");
     }
   }
 
@@ -73,7 +69,7 @@ mrb_proc_inspect(mrb_state *mrb, mrb_value self)
 }
 
 static mrb_value
-mrb_kernel_proc(mrb_state *mrb, mrb_value self)
+kernel_proc(mrb_state *mrb, mrb_value self)
 {
   mrb_value blk;
 
@@ -99,13 +95,13 @@ mrb_proc_parameters(mrb_state *mrb, mrb_value self)
     mrb_sym name;
     int size;
   } *p, parameters_list [] = {
-    {MRB_SYM(req),   0},
-    {MRB_SYM(opt),   0},
-    {MRB_SYM(rest),  0},
-    {MRB_SYM(req),   0},
-    {MRB_SYM(keyrest),   0},
-    {MRB_SYM(block), 0},
-    {MRB_SYM(key),   0},
+    {MRB_SYM(req),    0},
+    {MRB_SYM(opt),    0},
+    {MRB_SYM(rest),   0},
+    {MRB_SYM(req),    0},
+    {MRB_SYM(keyrest),0},
+    {MRB_SYM(block),  0},
+    {MRB_SYM(key),    0},
     {0, 0}
   };
   const struct RProc *proc = mrb_proc_ptr(self);
@@ -115,20 +111,14 @@ mrb_proc_parameters(mrb_state *mrb, mrb_value self)
   mrb_value krest = mrb_nil_value();
   mrb_value block = mrb_nil_value();
   int i, j;
-  int max = -1;
+  int max = 0;
 
   if (MRB_PROC_CFUNC_P(proc)) {
     // TODO cfunc aspec is not implemented yet
     return mrb_ary_new(mrb);
   }
   irep = proc->body.irep;
-  if (!irep) {
-    return mrb_ary_new(mrb);
-  }
-  if (!irep->lv) {
-    return mrb_ary_new(mrb);
-  }
-  if (*irep->iseq != OP_ENTER) {
+  if (!irep || !irep->lv || *irep->iseq != OP_ENTER) {
     return mrb_ary_new(mrb);
   }
 
@@ -146,9 +136,11 @@ mrb_proc_parameters(mrb_state *mrb, mrb_value self)
   parameters_list[5].size = MRB_ASPEC_BLOCK(aspec);
   parameters_list[6].size = MRB_ASPEC_KEY(aspec);
 
-  parameters = mrb_ary_new_capa(mrb, irep->nlocals-1);
+  for (i = 0; parameters_list[i].name; i++) {
+    max += parameters_list[i].size;
+  }
+  parameters = mrb_ary_new_capa(mrb, max);
 
-  max = irep->nlocals-1;
   for (i = 0, p = parameters_list; p->name; p++) {
     mrb_value sname = mrb_symbol_value(p->name);
 
@@ -158,15 +150,7 @@ mrb_proc_parameters(mrb_state *mrb, mrb_value self)
       a = mrb_ary_new(mrb);
       mrb_ary_push(mrb, a, sname);
       if (i < max && irep->lv[i]) {
-        mrb_sym sym = irep->lv[i];
-        const char *name = mrb_sym_name(mrb, sym);
-        switch (name[0]) {
-        case '*': case '&':
-          break;
-        default:
-          mrb_ary_push(mrb, a, mrb_symbol_value(sym));
-          break;
-        }
+        mrb_ary_push(mrb, a, mrb_symbol_value(irep->lv[i]));
       }
       if (p->name == MRB_SYM(block)) {
         block = a; continue;
@@ -176,6 +160,8 @@ mrb_proc_parameters(mrb_state *mrb, mrb_value self)
       }
       mrb_ary_push(mrb, parameters, a);
     }
+    /* need to skip empty block slot */
+    if (p->size == 0 && p->name == MRB_SYM(block)) i++;
   }
   if (!mrb_nil_p(krest)) mrb_ary_push(mrb, parameters, krest);
   if (!mrb_nil_p(block)) mrb_ary_push(mrb, parameters, block);
@@ -186,14 +172,13 @@ void
 mrb_mruby_proc_ext_gem_init(mrb_state* mrb)
 {
   struct RClass *p = mrb->proc_class;
-  mrb_define_method(mrb, p, "lambda?",         mrb_proc_lambda_p,        MRB_ARGS_NONE());
-  mrb_define_method(mrb, p, "source_location", mrb_proc_source_location_m, MRB_ARGS_NONE());
-  mrb_define_method(mrb, p, "to_s",            mrb_proc_inspect,         MRB_ARGS_NONE());
-  mrb_define_method(mrb, p, "inspect",         mrb_proc_inspect,         MRB_ARGS_NONE());
-  mrb_define_method(mrb, p, "parameters",      mrb_proc_parameters,      MRB_ARGS_NONE());
+  mrb_define_method(mrb, p, "lambda?",         proc_lambda_p,        MRB_ARGS_NONE());
+  mrb_define_method(mrb, p, "source_location", proc_source_location, MRB_ARGS_NONE());
+  mrb_define_method(mrb, p, "to_s",            proc_inspect,         MRB_ARGS_NONE());
+  mrb_define_method(mrb, p, "inspect",         proc_inspect,         MRB_ARGS_NONE());
+  mrb_define_method(mrb, p, "parameters",      mrb_proc_parameters,  MRB_ARGS_NONE());
 
-  mrb_define_class_method(mrb, mrb->kernel_module, "proc", mrb_kernel_proc, MRB_ARGS_NONE()|MRB_ARGS_BLOCK());
-  mrb_define_method(mrb, mrb->kernel_module,       "proc", mrb_kernel_proc, MRB_ARGS_NONE()|MRB_ARGS_BLOCK());
+  mrb_define_method(mrb, mrb->kernel_module,   "proc", kernel_proc,  MRB_ARGS_NONE()|MRB_ARGS_BLOCK());
 }
 
 void

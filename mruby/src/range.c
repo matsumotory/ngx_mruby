@@ -70,7 +70,7 @@ static void
 range_ptr_alloc_edges(mrb_state *mrb, struct RRange *r)
 {
 #ifndef MRB_RANGE_EMBED
-  r->edges = (mrb_range_edges *)mrb_malloc(mrb, sizeof(mrb_range_edges));
+  r->edges = (mrb_range_edges*)mrb_malloc(mrb, sizeof(mrb_range_edges));
 #endif
 }
 
@@ -311,7 +311,6 @@ range_eql(mrb_state *mrb, mrb_value range)
   struct RRange *r, *o;
 
   if (mrb_obj_equal(mrb, range, obj)) return mrb_true_value();
-  if (!mrb_obj_is_kind_of(mrb, obj, mrb->range_class)) return mrb_false_value();
   if (!mrb_range_p(obj)) return mrb_false_value();
 
   r = mrb_range_ptr(mrb, range);
@@ -362,12 +361,18 @@ range_num_to_a(mrb_state *mrb, mrb_value range)
       mrb_int len;
 
       if (mrb_int_sub_overflow(b, a, &len)) {
+      too_long:
         mrb_raise(mrb, E_RANGE_ERROR, "integer range too long");
       }
-      if (!RANGE_EXCL(r)) len++;
+      if (!RANGE_EXCL(r)) {
+        if (len == MRB_INT_MAX) goto too_long;
+        len++;
+      }
       ary = mrb_ary_new_capa(mrb, len);
+      mrb_value *ptr = RARRAY_PTR(ary);
       for (mrb_int i=0; i<len; i++) {
-        mrb_ary_push(mrb, ary, mrb_int_value(mrb, a+i));
+        ptr[i] = mrb_int_value(mrb, a+i);
+        ARY_SET_LEN(RARRAY(ary), i+1);
       }
       return ary;
     }
@@ -376,16 +381,23 @@ range_num_to_a(mrb_state *mrb, mrb_value range)
       mrb_float a = (mrb_float)mrb_integer(beg);
       mrb_float b = mrb_float(end);
 
+      if (a > b) {
+        return mrb_ary_new_capa(mrb, 0);
+      }
       ary = mrb_ary_new_capa(mrb, (mrb_int)(b - a) + 1);
+      mrb_value *ptr = RARRAY_PTR(ary);
+      mrb_int i = 0;
       if (RANGE_EXCL(r)) {
         while (a < b) {
-          mrb_ary_push(mrb, ary, mrb_int_value(mrb, (mrb_int)a));
+          ptr[i++] = mrb_int_value(mrb, (mrb_int)a);
+          ARY_SET_LEN(RARRAY(ary), i);
           a += 1.0;
         }
       }
       else {
         while (a <= b) {
-          mrb_ary_push(mrb, ary, mrb_int_value(mrb, (mrb_int)a));
+          ptr[i++] = mrb_int_value(mrb, (mrb_int)a);
+          ARY_SET_LEN(RARRAY(ary), i);
           a += 1.0;
         }
       }
@@ -403,17 +415,17 @@ mrb_get_values_at(mrb_state *mrb, mrb_value obj, mrb_int olen, mrb_int argc, con
   mrb_value result;
   result = mrb_ary_new(mrb);
 
-  for (i = 0; i < argc; ++i) {
+  for (i = 0; i < argc; i++) {
     if (mrb_integer_p(argv[i])) {
       mrb_ary_push(mrb, result, func(mrb, obj, mrb_integer(argv[i])));
     }
     else if (mrb_range_beg_len(mrb, argv[i], &beg, &len, olen, FALSE) == MRB_RANGE_OK) {
       mrb_int const end = olen < beg + len ? olen : beg + len;
-      for (j = beg; j < end; ++j) {
+      for (j = beg; j < end; j++) {
         mrb_ary_push(mrb, result, func(mrb, obj, j));
       }
 
-      for (; j < beg + len; ++j) {
+      for (; j < beg + len; j++) {
         mrb_ary_push(mrb, result, mrb_nil_value());
       }
     }

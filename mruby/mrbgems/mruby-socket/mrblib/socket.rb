@@ -19,7 +19,6 @@ class Addrinfo
     end
     @socktype = socktype
     @protocol = protocol
-    @canonname = nil
   end
 
   def self.foreach(nodename, service, family=nil, socktype=nil, protocol=nil, flags=0, &block)
@@ -49,9 +48,7 @@ class Addrinfo
   end
 
   #def bind
-
-  attr_reader :canonname
-
+  #def canonname
   #def connect
   #def connect_from
   #def connect_to
@@ -70,10 +67,10 @@ class Addrinfo
       else
         proto = '???'
       end
-      "#<Addrinfo: #{inspect_sockaddr} #{proto}>"
     else
-      "#<Addrinfo: #{self.unix_path} SOCK_STREAM>"
+      proto = "SOCK_STREAM"
     end
+    "#<Addrinfo: #{inspect_sockaddr} #{proto}>"
   end
 
   def inspect_sockaddr
@@ -567,54 +564,6 @@ class UNIXServer < UNIXSocket
 
   def sysaccept
     Socket._accept(self.fileno)
-  end
-end
-
-class Socket
-  include Constants
-end
-
-class Socket
-  class Option
-    def initialize(family, level, optname, data)
-      @family  = family
-      @level   = level
-      @optname = optname
-      @data    = data
-    end
-
-    def self.bool(family, level, optname, bool)
-      self.new(family, level, optname, [(bool ? 1 : 0)].pack('i'))
-    end
-
-    def self.int(family, level, optname, integer)
-      self.new(family, level, optname, [integer].pack('i'))
-    end
-
-    #def self.linger(family, level, optname, integer)
-    #end
-
-    attr_reader :data, :family, :level, :optname
-
-    def bool
-      @data.unpack('i')[0] != 0
-    end
-
-    def inspect
-      "#<Socket::Option: family:#{@family} level:#{@level} optname:#{@optname} #{@data.inspect}>"
-    end
-
-    def int
-      @data.unpack('i')[0]
-    end
-
-    def linger
-      raise NotImplementedError.new
-    end
-
-    def unpack(template)
-      raise NotImplementedError.new
-    end
   end
 end
 

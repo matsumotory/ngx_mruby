@@ -38,7 +38,7 @@ To confirm mrdb was installed properly, run mrdb with the `--version` option:
 
 ```bash
 $ mrdb --version
-mruby 3.1.0 (2022-05-12)
+mruby 3.2.0 (2023-02-24)
 ```
 
 ## 2.2 Basic Operation
@@ -82,7 +82,7 @@ You can debug the mruby binary files.
 
 #### 2.2.2.1 Debugging the binary files
 
-* notice
+- notice
 To debug mruby binary files, you need to compile mruby files with option `-g`.
 
 ```bash

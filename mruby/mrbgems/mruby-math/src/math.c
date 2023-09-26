@@ -94,8 +94,7 @@ cbrt(double x)
 }
 
 /* Declaration of complementary Error function */
-double
-erfc(double x);
+double erfc(double x);
 
 /*
 ** Implementations of error functions
@@ -117,10 +116,10 @@ erf(double x)
   do {
     term *= xsqr/j;
     sum  -= term/(2*j+1);
-    ++j;
+    j++;
     term *= xsqr/j;
     sum  += term/(2*j+1);
-    ++j;
+    j++;
     if (sum == 0) break;
   } while (fabs(term/sum) > DBL_EPSILON);
   return two_sqrtpi*sum;
@@ -175,6 +174,8 @@ log2(double x)
 
 #endif
 
+#define get_float_arg(mrb) mrb_as_float((mrb), mrb_get_arg1(mrb))
+
 /*
   TRIGONOMETRIC FUNCTIONS
 */
@@ -189,11 +190,7 @@ log2(double x)
 static mrb_value
 math_sin(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = sin(x);
-
+  mrb_float x = sin(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -207,11 +204,7 @@ math_sin(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_cos(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = cos(x);
-
+  mrb_float x = cos(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -224,11 +217,7 @@ math_cos(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_tan(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = tan(x);
-
+  mrb_float x = tan(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -246,9 +235,8 @@ math_tan(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_asin(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
+  mrb_float x = get_float_arg(mrb);
 
-  mrb_get_args(mrb, "f", &x);
   if (x < -1.0 || x > 1.0) {
     domain_error(mrb, "asin");
   }
@@ -266,9 +254,8 @@ math_asin(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_acos(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
+  mrb_float x = get_float_arg(mrb);
 
-  mrb_get_args(mrb, "f", &x);
   if (x < -1.0 || x > 1.0) {
     domain_error(mrb, "acos");
   }
@@ -286,11 +273,7 @@ math_acos(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_atan(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = atan(x);
-
+  mrb_float x = atan(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -324,8 +307,6 @@ math_atan2(mrb_state *mrb, mrb_value obj)
   return mrb_float_value(mrb, x);
 }
 
-
-
 /*
   HYPERBOLIC TRIG FUNCTIONS
 */
@@ -339,11 +320,7 @@ math_atan2(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_sinh(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = sinh(x);
-
+  mrb_float x = sinh(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -356,11 +333,7 @@ math_sinh(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_cosh(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = cosh(x);
-
+  mrb_float x = cosh(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -374,11 +347,7 @@ math_cosh(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_tanh(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = tanh(x);
-
+  mrb_float x = tanh(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -396,12 +365,7 @@ math_tanh(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_asinh(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-
-  x = asinh(x);
-
+  mrb_float x = asinh(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -414,9 +378,8 @@ math_asinh(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_acosh(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
+  mrb_float x = get_float_arg(mrb);
 
-  mrb_get_args(mrb, "f", &x);
   if (x < 1.0) {
     domain_error(mrb, "acosh");
   }
@@ -434,9 +397,8 @@ math_acosh(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_atanh(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
+  mrb_float x = get_float_arg(mrb);
 
-  mrb_get_args(mrb, "f", &x);
   if (x < -1.0 || x > 1.0) {
     domain_error(mrb, "atanh");
   }
@@ -463,11 +425,7 @@ math_atanh(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_exp(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = exp(x);
-
+  mrb_float x = exp(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -521,9 +479,8 @@ math_log(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_log2(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
+  mrb_float x = get_float_arg(mrb);
 
-  mrb_get_args(mrb, "f", &x);
   if (x < 0.0) {
     domain_error(mrb, "log2");
   }
@@ -546,9 +503,8 @@ math_log2(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_log10(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
+  mrb_float x = get_float_arg(mrb);
 
-  mrb_get_args(mrb, "f", &x);
   if (x < 0.0) {
     domain_error(mrb, "log10");
   }
@@ -567,9 +523,8 @@ math_log10(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_sqrt(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
+  mrb_float x = get_float_arg(mrb);
 
-  mrb_get_args(mrb, "f", &x);
   if (x < 0.0) {
     domain_error(mrb, "sqrt");
   }
@@ -613,11 +568,7 @@ math_sqrt(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_cbrt(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = cbrt(x);
-
+  mrb_float x = cbrt(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -636,10 +587,9 @@ math_cbrt(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_frexp(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
+  mrb_float x = get_float_arg(mrb);
   int exp;
 
-  mrb_get_args(mrb, "f", &x);
   x = frexp(x, &exp);
 
   return mrb_assoc_new(mrb, mrb_float_value(mrb, x), mrb_fixnum_value(exp));
@@ -695,11 +645,7 @@ math_hypot(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_erf(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = erf(x);
-
+  mrb_float x = erf(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -713,11 +659,7 @@ math_erf(mrb_state *mrb, mrb_value obj)
 static mrb_value
 math_erfc(mrb_state *mrb, mrb_value obj)
 {
-  mrb_float x;
-
-  mrb_get_args(mrb, "f", &x);
-  x = erfc(x);
-
+  mrb_float x = erfc(get_float_arg(mrb));
   return mrb_float_value(mrb, x);
 }
 
@@ -728,7 +670,7 @@ mrb_mruby_math_gem_init(mrb_state* mrb)
   struct RClass *mrb_math;
   mrb_math = mrb_define_module(mrb, "Math");
 
-  mrb_define_class_under_id(mrb, mrb_math, MRB_SYM(DomainError), mrb->eStandardError_class);
+  mrb_define_class_under_id(mrb, mrb_math, MRB_SYM(DomainError), E_STANDARD_ERROR);
 
 #ifdef M_PI
   mrb_define_const_id(mrb, mrb_math, MRB_SYM(PI), mrb_float_value(mrb, M_PI));

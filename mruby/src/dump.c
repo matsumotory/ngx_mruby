@@ -110,7 +110,7 @@ get_pool_block_size(mrb_state *mrb, const mrb_irep *irep)
 
     switch (irep->pool[pool_no].tt) {
     case IREP_TT_INT64:
-#ifdef MRB_64BIT
+#if defined(MRB_64BIT) || defined(MRB_INT64)
       {
         int64_t i = irep->pool[pool_no].u.i64;
 
@@ -131,7 +131,6 @@ get_pool_block_size(mrb_state *mrb, const mrb_irep *irep)
       {
         mrb_int len = irep->pool[pool_no].u.str[0];
         mrb_assert_int_fit(mrb_int, len, size_t, SIZE_MAX);
-        size += sizeof(uint8_t);
         size += (size_t)len+2;
       }
       break;
@@ -173,8 +172,8 @@ write_pool_block(mrb_state *mrb, const mrb_irep *irep, uint8_t *buf)
     int ai = mrb_gc_arena_save(mrb);
 
     switch (irep->pool[pool_no].tt) {
-#ifdef MRB_64BIT
     case IREP_TT_INT64:
+#if defined(MRB_64BIT) || defined(MRB_INT64)
       {
         int64_t i = irep->pool[pool_no].u.i64;
         if (i < INT32_MIN || INT32_MAX < i) {
@@ -199,7 +198,6 @@ write_pool_block(mrb_state *mrb, const mrb_irep *irep, uint8_t *buf)
       len = irep->pool[pool_no].u.str[0];
       memcpy(cur, irep->pool[pool_no].u.str, (size_t)len+2);
       cur += len+2;
-      *cur++ = '\0';
       break;
 
     case IREP_TT_FLOAT:
@@ -454,7 +452,7 @@ get_filename_table_size(mrb_state *mrb, const mrb_irep *irep, mrb_sym **fp, uint
     if (find_filename_index(filenames, *lp, file->filename_sym) == -1) {
       /* register filename */
       *lp += 1;
-      *fp = filenames = (mrb_sym *)mrb_realloc(mrb, filenames, sizeof(mrb_sym) * (*lp));
+      *fp = filenames = (mrb_sym*)mrb_realloc(mrb, filenames, sizeof(mrb_sym) * (*lp));
       filenames[*lp - 1] = file->filename_sym;
 
       /* filename */
@@ -559,7 +557,7 @@ write_section_debug(mrb_state *mrb, const mrb_irep *irep, uint8_t *cur, mrb_sym 
     return MRB_DUMP_INVALID_ARGUMENT;
   }
 
-  header = (struct rite_section_debug_header *)bin;
+  header = (struct rite_section_debug_header*)bin;
   cur += sizeof(struct rite_section_debug_header);
   section_size += sizeof(struct rite_section_debug_header);
 
@@ -730,7 +728,7 @@ lv_section_exit:
 static int
 write_rite_binary_header(mrb_state *mrb, size_t binary_size, uint8_t *bin, uint8_t flags)
 {
-  struct rite_binary_header *header = (struct rite_binary_header *)bin;
+  struct rite_binary_header *header = (struct rite_binary_header*)bin;
 
   memcpy(header->binary_ident, RITE_BINARY_IDENT, sizeof(header->binary_ident));
   memcpy(header->major_version, RITE_BINARY_MAJOR_VER, sizeof(header->major_version));
@@ -769,8 +767,8 @@ lv_defined_p(const mrb_irep *irep)
   return FALSE;
 }
 
-static int
-dump_irep(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, uint8_t **bin, size_t *bin_size)
+int
+mrb_dump_irep(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, uint8_t **bin, size_t *bin_size)
 {
   int result = MRB_DUMP_GENERAL_FAILURE;
   size_t malloc_size;
@@ -857,12 +855,6 @@ error_exit:
   return result;
 }
 
-int
-mrb_dump_irep(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, uint8_t **bin, size_t *bin_size)
-{
-  return dump_irep(mrb, irep, flags, bin, bin_size);
-}
-
 #ifndef MRB_NO_STDIO
 
 int
@@ -876,7 +868,7 @@ mrb_dump_irep_binary(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, FILE* 
     return MRB_DUMP_INVALID_ARGUMENT;
   }
 
-  result = dump_irep(mrb, irep, flags, &bin, &bin_size);
+  result = mrb_dump_irep(mrb, irep, flags, &bin, &bin_size);
   if (result == MRB_DUMP_OK) {
     if (fwrite(bin, sizeof(bin[0]), bin_size, fp) != bin_size) {
       result = MRB_DUMP_WRITE_FAULT;
@@ -897,7 +889,7 @@ mrb_dump_irep_cfunc(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, FILE *f
   if (fp == NULL || initname == NULL || initname[0] == '\0') {
     return MRB_DUMP_INVALID_ARGUMENT;
   }
-  result = dump_irep(mrb, irep, flags, &bin, &bin_size);
+  result = mrb_dump_irep(mrb, irep, flags, &bin, &bin_size);
   if (result == MRB_DUMP_OK) {
     if (fprintf(fp, "#include <stdint.h>\n") < 0) { /* for uint8_t under at least Darwin */
       mrb_free(mrb, bin);

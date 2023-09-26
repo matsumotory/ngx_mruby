@@ -69,7 +69,7 @@ class Integer
   # Calls the given block +self+ times.
   #
   # ISO 15.2.8.3.22
-  def times &block
+  def times(&block)
     return to_enum :times unless block
 
     i = 0
@@ -125,34 +125,6 @@ class Integer
     end
     self
   end
-
-  ##
-  # Returns the receiver simply.
-  #
-  # ISO 15.2.8.3.14
-  def ceil(n=0)
-    self
-  end
-
-  ##
-  # Returns the receiver simply.
-  #
-  # ISO 15.2.8.3.17
-  def floor(n=0)
-    self
-  end
-
-  ##
-  # Returns the receiver simply.
-  #
-  # ISO 15.2.8.3.24
-  alias round floor
-
-  ##
-  # Returns the receiver simply.
-  #
-  # ISO 15.2.8.3.26
-  alias truncate floor
 end
 
 class Float

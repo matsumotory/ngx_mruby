@@ -211,6 +211,7 @@ assert('Nested const reference') do
   end
   assert_equal "hello world", Syntax4Const::CONST1
   assert_equal "hello world", Syntax4Const::Const2.new.const1
+  assert_raise(NameError) { Syntax4Const::Object }
 end
 
 assert('Abbreviated variable assignment as returns') do
@@ -531,9 +532,9 @@ this is a comment that has =end with spaces after it
 this is a comment that has extra after =begin and =end with spaces after it
 =end
   line = __LINE__
-=begin	this is a comment
+=begin  this is a comment
 this is a comment that has extra after =begin and =end with tabs after it
-=end	xxxxxxxxxxxxxxxxxxxxxxxxxx
+=end  xxxxxxxxxxxxxxxxxxxxxxxxxx
   assert_equal(line + 4, __LINE__)
 end
 

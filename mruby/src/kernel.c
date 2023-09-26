@@ -13,6 +13,7 @@
 #include <mruby/variable.h>
 #include <mruby/error.h>
 #include <mruby/istruct.h>
+#include <mruby/internal.h>
 #include <mruby/presym.h>
 
 MRB_API mrb_bool
@@ -70,11 +71,55 @@ mrb_obj_inspect(mrb_state *mrb, mrb_value obj)
  *  to provide meaningful semantics in <code>case</code> statements.
  */
 static mrb_value
-mrb_equal_m(mrb_state *mrb, mrb_value self)
+mrb_eqq_m(mrb_state *mrb, mrb_value self)
 {
   mrb_value arg = mrb_get_arg1(mrb);
 
   return mrb_bool_value(mrb_equal(mrb, self, arg));
+}
+
+static mrb_value
+mrb_cmp_m(mrb_state *mrb, mrb_value self)
+{
+  mrb_value arg = mrb_get_arg1(mrb);
+
+  /* recursion check */
+  for (mrb_callinfo *ci=&mrb->c->ci[-1]; ci>=mrb->c->cibase; ci--) {
+    if (ci->mid == MRB_OPSYM(cmp) &&
+        mrb_obj_eq(mrb, self, ci->stack[0]) &&
+        mrb_obj_eq(mrb, arg, ci->stack[1])) {
+      /* recursive <=> calling returns `nil` */
+      return mrb_nil_value();
+    }
+  }
+
+  if (mrb_equal(mrb, self, arg))
+    return mrb_fixnum_value(0);
+  return mrb_nil_value();
+}
+
+static mrb_bool
+inspect_recursive_p(mrb_state *mrb, mrb_value obj, int n)
+{
+  for (mrb_callinfo *ci=&mrb->c->ci[-1-n]; ci>=mrb->c->cibase; ci--) {
+    if (ci->mid == MRB_SYM(inspect) &&
+        mrb_obj_eq(mrb, obj, ci->stack[0])) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+mrb_bool
+mrb_inspect_recursive_p(mrb_state *mrb, mrb_value obj)
+{
+  return inspect_recursive_p(mrb, obj, 0);
+}
+
+static mrb_value
+mrb_obj_inspect_recursive_p(mrb_state *mrb, mrb_value obj)
+{
+  return mrb_bool_value(inspect_recursive_p(mrb, obj, 1));
 }
 
 /* 15.3.1.3.3  */
@@ -215,59 +260,6 @@ mrb_obj_class_m(mrb_state *mrb, mrb_value self)
   return mrb_obj_value(mrb_obj_class(mrb, self));
 }
 
-static mrb_value
-mrb_obj_extend(mrb_state *mrb, mrb_int argc, const mrb_value *argv, mrb_value obj)
-{
-  mrb_int i;
-
-  if (argc == 0) {
-    mrb_argnum_error(mrb, argc, 1, -1);
-  }
-  for (i = 0; i < argc; i++) {
-    mrb_check_type(mrb, argv[i], MRB_TT_MODULE);
-  }
-  while (argc--) {
-    mrb_funcall_id(mrb, argv[argc], MRB_SYM(extend_object), 1, obj);
-    mrb_funcall_id(mrb, argv[argc], MRB_SYM(extended), 1, obj);
-  }
-  return obj;
-}
-
-/* 15.3.1.3.13 */
-/*
- *  call-seq:
- *     obj.extend(module, ...)    -> obj
- *
- *  Adds to _obj_ the instance methods from each module given as a
- *  parameter.
- *
- *     module Mod
- *       def hello
- *         "Hello from Mod.\n"
- *       end
- *     end
- *
- *     class Klass
- *       def hello
- *         "Hello from Klass.\n"
- *       end
- *     end
- *
- *     k = Klass.new
- *     k.hello         #=> "Hello from Klass.\n"
- *     k.extend(Mod)   #=> #<Klass:0x401b3bc8>
- *     k.hello         #=> "Hello from Mod.\n"
- */
-static mrb_value
-mrb_obj_extend_m(mrb_state *mrb, mrb_value self)
-{
-  const mrb_value *argv;
-  mrb_int argc;
-
-  mrb_get_args(mrb, "*", &argv, &argc);
-  return mrb_obj_extend(mrb, argc, argv, self);
-}
-
 MRB_API mrb_value
 mrb_obj_freeze(mrb_state *mrb, mrb_value self)
 {
@@ -301,6 +293,11 @@ mrb_obj_frozen(mrb_state *mrb, mrb_value self)
 static mrb_value
 mrb_obj_hash(mrb_state *mrb, mrb_value self)
 {
+#ifdef MRB_USE_BIGINT
+  if (mrb_bigint_p(self)) {
+    return mrb_bint_hash(mrb, self);
+  }
+#endif
   return mrb_int_value(mrb, mrb_obj_id(self));
 }
 
@@ -417,24 +414,26 @@ mrb_false(mrb_state *mrb, mrb_value self)
 MRB_API mrb_value
 mrb_f_raise(mrb_state *mrb, mrb_value self)
 {
-  mrb_value a[2], exc;
+  mrb_value exc, mesg;
   mrb_int argc;
 
-  argc = mrb_get_args(mrb, "|oo", &a[0], &a[1]);
+  argc = mrb_get_args(mrb, "|oo", &exc, &mesg);
   mrb->c->ci->mid = 0;
   switch (argc) {
   case 0:
     mrb_raise(mrb, E_RUNTIME_ERROR, "");
     break;
   case 1:
-    if (mrb_string_p(a[0])) {
-      a[1] = a[0];
-      argc = 2;
-      a[0] = mrb_obj_value(E_RUNTIME_ERROR);
+    if (mrb_string_p(exc)) {
+      mesg = exc;
+      exc = mrb_obj_value(E_RUNTIME_ERROR);
+    }
+    else {
+      mesg = mrb_nil_value();
     }
     /* fall through */
   default:
-    exc = mrb_make_exception(mrb, argc, a);
+    exc = mrb_make_exception(mrb, exc, mesg);
     mrb_exc_raise(mrb, exc);
     break;
   }
@@ -478,65 +477,6 @@ mrb_obj_remove_instance_variable(mrb_state *mrb, mrb_value self)
   return val;
 }
 
-void
-mrb_method_missing(mrb_state *mrb, mrb_sym name, mrb_value self, mrb_value args)
-{
-  mrb_no_method_error(mrb, name, args, "undefined method '%n'", name);
-}
-
-/* 15.3.1.3.30 */
-/*
- *  call-seq:
- *     obj.method_missing(symbol [, *args] )   -> result
- *
- *  Invoked by Ruby when <i>obj</i> is sent a message it cannot handle.
- *  <i>symbol</i> is the symbol for the method called, and <i>args</i>
- *  are any arguments that were passed to it. By default, the interpreter
- *  raises an error when this method is called. However, it is possible
- *  to override the method to provide more dynamic behavior.
- *  If it is decided that a particular method should not be handled, then
- *  <i>super</i> should be called, so that ancestors can pick up the
- *  missing method.
- *  The example below creates
- *  a class <code>Roman</code>, which responds to methods with names
- *  consisting of roman numerals, returning the corresponding integer
- *  values.
- *
- *     class Roman
- *       def romanToInt(str)
- *         # ...
- *       end
- *       def method_missing(methId)
- *         str = methId.to_s
- *         romanToInt(str)
- *       end
- *     end
- *
- *     r = Roman.new
- *     r.iv      #=> 4
- *     r.xxiii   #=> 23
- *     r.mm      #=> 2000
- */
-mrb_value
-mrb_obj_missing(mrb_state *mrb, mrb_value mod)
-{
-  mrb_sym name;
-  const mrb_value *a;
-  mrb_int alen;
-
-  mrb->c->ci->mid = 0;
-  mrb_get_args(mrb, "n*!", &name, &a, &alen);
-  mrb_method_missing(mrb, name, mod, mrb_ary_new_from_values(mrb, alen, a));
-  /* not reached */
-  return mrb_nil_value();
-}
-
-static inline mrb_bool
-basic_obj_respond_to(mrb_state *mrb, mrb_value obj, mrb_sym id, int pub)
-{
-  return mrb_respond_to(mrb, obj, id);
-}
-
 /* 15.3.1.3.43 */
 /*
  *  call-seq:
@@ -556,18 +496,16 @@ basic_obj_respond_to(mrb_state *mrb, mrb_value obj, mrb_sym id, int pub)
 static mrb_value
 obj_respond_to(mrb_state *mrb, mrb_value self)
 {
-  mrb_sym id, rtm_id;
+  mrb_sym id;
   mrb_bool priv = FALSE, respond_to_p;
 
   mrb_get_args(mrb, "n|b", &id, &priv);
-  respond_to_p = basic_obj_respond_to(mrb, self, id, !priv);
+  respond_to_p = mrb_respond_to(mrb, self, id);
   if (!respond_to_p) {
-    rtm_id = MRB_SYM_Q(respond_to_missing);
-    if (basic_obj_respond_to(mrb, self, rtm_id, !priv)) {
-      mrb_value args[2], v;
-      args[0] = mrb_symbol_value(id);
-      args[1] = mrb_bool_value(priv);
-      v = mrb_funcall_argv(mrb, self, rtm_id, 2, args);
+    mrb_sym rtm_id = MRB_SYM_Q(respond_to_missing);
+    if (!mrb_func_basic_p(mrb, self, rtm_id, mrb_false)) {
+      mrb_value v;
+      v = mrb_funcall_id(mrb, self, rtm_id, 2, mrb_symbol_value(id), mrb_bool_value(priv));
       return mrb_bool_value(mrb_bool(v));
     }
   }
@@ -589,13 +527,13 @@ mrb_obj_ceqq(mrb_state *mrb, mrb_value self)
   else if (mrb_nil_p(self)) {
     return mrb_false_value();
   }
-  else if (!mrb_respond_to(mrb, self, mrb_intern_lit(mrb, "to_a"))) {
+  else if (!mrb_respond_to(mrb, self, MRB_SYM(to_a))) {
     mrb_value c = mrb_funcall_argv(mrb, self, eqq, 1, &v);
     if (mrb_test(c)) return mrb_true_value();
     return mrb_false_value();
   }
   else {
-    ary = mrb_funcall(mrb, self, "to_a", 0);
+    ary = mrb_funcall_argv(mrb, self, MRB_SYM(to_a), 0, NULL);
     if (mrb_nil_p(ary)) {
       return mrb_funcall_argv(mrb, self, eqq, 1, &v);
     }
@@ -603,7 +541,7 @@ mrb_obj_ceqq(mrb_state *mrb, mrb_value self)
   }
   len = RARRAY_LEN(ary);
   for (i=0; i<len; i++) {
-    mrb_value c = mrb_funcall_argv(mrb, mrb_ary_entry(ary, i), eqq, 1, &v);
+    mrb_value c = mrb_funcall_argv(mrb, RARRAY_PTR(ary)[i], eqq, 1, &v);
     if (mrb_test(c)) return mrb_true_value();
   }
   return mrb_false_value();
@@ -620,8 +558,6 @@ mrb_encoding(mrb_state *mrb, mrb_value self)
 #endif
 }
 
-mrb_value mrb_obj_equal_m(mrb_state *mrb, mrb_value);
-
 void
 mrb_init_kernel(mrb_state *mrb)
 {
@@ -630,17 +566,15 @@ mrb_init_kernel(mrb_state *mrb)
   mrb->kernel_module = krn = mrb_define_module(mrb, "Kernel");                                                    /* 15.3.1 */
   mrb_define_class_method(mrb, krn, "block_given?",         mrb_f_block_given_p_m,           MRB_ARGS_NONE());    /* 15.3.1.2.2  */
   mrb_define_class_method(mrb, krn, "iterator?",            mrb_f_block_given_p_m,           MRB_ARGS_NONE());    /* 15.3.1.2.5  */
-;     /* 15.3.1.2.11 */
   mrb_define_class_method(mrb, krn, "raise",                mrb_f_raise,                     MRB_ARGS_OPT(2));    /* 15.3.1.2.12 */
 
-
-  mrb_define_method(mrb, krn, "===",                        mrb_equal_m,                     MRB_ARGS_REQ(1));    /* 15.3.1.3.2  */
+  mrb_define_method(mrb, krn, "===",                        mrb_eqq_m,                       MRB_ARGS_REQ(1));    /* 15.3.1.3.2  */
+  mrb_define_method(mrb, krn, "<=>",                        mrb_cmp_m,                       MRB_ARGS_REQ(1));
   mrb_define_method(mrb, krn, "block_given?",               mrb_f_block_given_p_m,           MRB_ARGS_NONE());    /* 15.3.1.3.6  */
   mrb_define_method(mrb, krn, "class",                      mrb_obj_class_m,                 MRB_ARGS_NONE());    /* 15.3.1.3.7  */
   mrb_define_method(mrb, krn, "clone",                      mrb_obj_clone,                   MRB_ARGS_NONE());    /* 15.3.1.3.8  */
   mrb_define_method(mrb, krn, "dup",                        mrb_obj_dup,                     MRB_ARGS_NONE());    /* 15.3.1.3.9  */
   mrb_define_method(mrb, krn, "eql?",                       mrb_obj_equal_m,                 MRB_ARGS_REQ(1));    /* 15.3.1.3.10 */
-  mrb_define_method(mrb, krn, "extend",                     mrb_obj_extend_m,                MRB_ARGS_ANY());     /* 15.3.1.3.13 */
   mrb_define_method(mrb, krn, "freeze",                     mrb_obj_freeze,                  MRB_ARGS_NONE());
   mrb_define_method(mrb, krn, "frozen?",                    mrb_obj_frozen,                  MRB_ARGS_NONE());
   mrb_define_method(mrb, krn, "hash",                       mrb_obj_hash,                    MRB_ARGS_NONE());    /* 15.3.1.3.15 */
@@ -651,7 +585,6 @@ mrb_init_kernel(mrb_state *mrb)
   mrb_define_method(mrb, krn, "is_a?",                      mrb_obj_is_kind_of_m,            MRB_ARGS_REQ(1));    /* 15.3.1.3.24 */
   mrb_define_method(mrb, krn, "iterator?",                  mrb_f_block_given_p_m,           MRB_ARGS_NONE());    /* 15.3.1.3.25 */
   mrb_define_method(mrb, krn, "kind_of?",                   mrb_obj_is_kind_of_m,            MRB_ARGS_REQ(1));    /* 15.3.1.3.26 */
-  mrb_define_method(mrb, krn, "method_missing",             mrb_obj_missing,                 MRB_ARGS_ANY());     /* 15.3.1.3.30 */
   mrb_define_method(mrb, krn, "nil?",                       mrb_false,                       MRB_ARGS_NONE());    /* 15.3.1.3.32 */
   mrb_define_method(mrb, krn, "object_id",                  mrb_obj_id_m,                    MRB_ARGS_NONE());    /* 15.3.1.3.33 */
   mrb_define_method(mrb, krn, "raise",                      mrb_f_raise,                     MRB_ARGS_ANY());     /* 15.3.1.3.40 */
@@ -661,6 +594,8 @@ mrb_init_kernel(mrb_state *mrb)
   mrb_define_method(mrb, krn, "__case_eqq",                 mrb_obj_ceqq,                    MRB_ARGS_REQ(1));    /* internal */
   mrb_define_method(mrb, krn, "__to_int",                   mrb_ensure_int_type,             MRB_ARGS_NONE());    /* internal */
   mrb_define_method(mrb, krn, "__ENCODING__",               mrb_encoding,                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, krn, "respond_to_missing?",        mrb_false,                       MRB_ARGS_ARG(1,1));
+  mrb_define_method(mrb, krn, "__inspect_recursive?",       mrb_obj_inspect_recursive_p,     MRB_ARGS_NONE());
 
   mrb_include_module(mrb, mrb->object_class, mrb->kernel_module);
 }

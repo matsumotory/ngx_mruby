@@ -179,7 +179,7 @@ def clamp(f)
   i.to_i
 end
 
-def otherBasis(basis, n)
+def orthoBasis(basis, n)
   basis[2] = Vec.new(n.x, n.y, n.z)
   basis[1] = Vec.new(0.0, 0.0, 0.0)
 
@@ -211,7 +211,7 @@ class Scene
 
   def ambient_occlusion(isect)
     basis = Array.new(3)
-    otherBasis(basis, isect.n)
+    orthoBasis(basis, isect.n)
 
     ntheta    = NAO_SAMPLES
     nphi      = NAO_SAMPLES
@@ -243,8 +243,6 @@ class Scene
         @plane.intersect(ray, occisect)
         if occisect.hit
           occlusion = occlusion + 1.0
-        else
-          0.0
         end
       end
     end
@@ -254,8 +252,8 @@ class Scene
   end
 
   def render(w, h, nsubsamples)
-    cnt = 0
     nsf = nsubsamples.to_f
+    nsfs = nsf * nsf
     h.times do |y|
       w.times do |x|
         rad = Vec.new(0.0, 0.0, 0.0)
@@ -263,7 +261,6 @@ class Scene
         # Subsampling
         nsubsamples.times do |v|
           nsubsamples.times do |u|
-            cnt = cnt + 1
             wf = w.to_f
             hf = h.to_f
             xf = x.to_f
@@ -288,15 +285,13 @@ class Scene
               rad.x = rad.x + col.x
               rad.y = rad.y + col.y
               rad.z = rad.z + col.z
-            else
-              0.0
             end
           end
         end
 
-        r = rad.x / (nsf * nsf)
-        g = rad.y / (nsf * nsf)
-        b = rad.z / (nsf * nsf)
+        r = rad.x / nsfs
+        g = rad.y / nsfs
+        b = rad.z / nsfs
         printf("%c", clamp(r))
         printf("%c", clamp(g))
         printf("%c", clamp(b))

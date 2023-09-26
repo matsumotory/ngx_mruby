@@ -1,9 +1,8 @@
 MRuby::Gem::Specification.new('mruby-socket') do |spec|
   spec.license = 'MIT'
-  spec.authors = ['Internet Initiative Japan', 'mruby developers']
+  spec.authors = ['Internet Initiative Japan Inc.', 'mruby developers']
   spec.summary = 'standard socket class'
 
-  spec.cc.include_paths << "#{build.root}/src"
   #spec.cc.defines << "HAVE_SA_LEN=0"
 
   # If Windows, use winsock
@@ -13,6 +12,6 @@ MRuby::Gem::Specification.new('mruby-socket') do |spec|
   end
 
   spec.add_dependency('mruby-io', :core => 'mruby-io')
-  spec.add_dependency('mruby-pack', :core => 'mruby-pack')
+  spec.add_dependency('mruby-error', :core => 'mruby-error')
   # spec.add_dependency('mruby-mtest')
 end
