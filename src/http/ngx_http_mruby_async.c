@@ -113,8 +113,6 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
       re->fiber = NULL;
     }
 
-    ngx_http_run_posted_requests(re->r->connection);
-
     if (re->mrb->exc) {
       ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
       rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
