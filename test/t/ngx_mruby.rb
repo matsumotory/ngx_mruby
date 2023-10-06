@@ -752,6 +752,11 @@ if nginx_features.is_async_supported?
     t.assert_equal 503, res['code']
   end
 
+  t.assert('ngx_mruby - Nginx::Async::HTTP.new sub request with nginx rewrite', 'location /subrequest_redirect_from') do
+    res = HttpRequest.new.get base + '/subrequest_redirect_from'
+    t.assert_equal 503, res['code']
+  end
+
   t.assert('ngx_mruby - Nginx.Async.sub request with proxy(set_code)', 'location /async_http_sub_request_with_mruby_set') do
     res = HttpRequest.new.get base + '/async_http_sub_request_with_mruby_set'
     t.assert_equal 'proxy test ok', res['body']
