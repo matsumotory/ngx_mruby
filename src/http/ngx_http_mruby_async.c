@@ -267,6 +267,8 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
   ngx_mrb_async_http_ctx_t *actx = data;
   ngx_mrb_reentrant_t *re = actx->re;
   ngx_http_mruby_ctx_t *ctx;
+  ngx_buf_t *buffer = NULL;
+  ngx_int_t body_len = 0;
 
   re->sr = sr;
   re->r = sr->parent;
@@ -279,10 +281,27 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, sr->parent->connection->log, 0, "http_sub_request done s:%ui",
                  sr->parent->headers_out.status);
+
   ctx->sub_response_more = 0;
 
-  rc = ngx_mrb_post_fiber(re, ctx);
+  if (sr->upstream) {
+    buffer = &sr->upstream->buffer;
+  } else if(sr->out){
+    buffer = sr->out->buf;
+  }
 
+  if(buffer != NULL) {
+      if (buffer->pos != buffer->last) {
+        body_len = buffer->last - buffer->pos;
+      }
+      ctx->sub_response_body = ngx_palloc(re->r->pool, body_len);
+      ngx_memcpy(ctx->sub_response_body, buffer->pos, body_len);
+      ctx->sub_response_body_length = body_len;
+      ctx->sub_response_status = sr->headers_out.status;
+      ctx->sub_response_headers = sr->headers_out;
+  }
+
+  rc = ngx_mrb_post_fiber(re, ctx);
   if (rc != NGX_DECLINED && rc != NGX_OK) {
     ngx_http_finalize_request(re->r, rc);
     return NGX_DONE;
