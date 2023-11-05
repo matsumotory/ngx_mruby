@@ -18,6 +18,10 @@ if [ `uname -s` = "NetBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
     NGINX_DEFAULT_OPT='--with-http_stub_status_module --with-stream --without-stream_access_module --with-cc-opt=-fno-common --with-ld-opt=-L/usr/pkg/lib\ -Wl,-R/usr/pkg/lib'
     MAKE=gmake
+elif [ `uname -s` = "FreeBSD" ]; then
+    NPROCESSORS_ONLN="NPROCESSORS_ONLN"
+    NGINX_DEFAULT_OPT='--with-http_stub_status_module --with-stream --without-stream_access_module --with-cc-opt=-fno-common'
+    MAKE=gmake
 else
     NPROCESSORS_ONLN="_NPROCESSORS_ONLN"
     NGINX_DEFAULT_OPT='--with-http_stub_status_module --with-stream --without-stream_access_module --with-cc-opt=-fno-common'
