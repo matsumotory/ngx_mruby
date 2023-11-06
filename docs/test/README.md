@@ -34,3 +34,8 @@ end
 sh test.sh
 ```
 
+If you want to run with valgrind, set the environment variables `NGINX_RUNNER` and `NGINX_HEATTIME`.
+
+```console
+$ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh
+```

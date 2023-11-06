@@ -125,6 +125,9 @@ do
     fi
 done
 
+: ${NGINX_RUNNER:=exec}
+: ${NGINX_HEATTIME:=2}
+
 echo "====================================="
 echo ""
 echo "ngx_mruby starting and logging"
@@ -132,12 +135,13 @@ echo ""
 echo "====================================="
 echo ""
 echo ""
-${NGINX_INSTALL_DIR}/sbin/nginx &
+${NGINX_RUNNER} ${NGINX_INSTALL_DIR}/sbin/nginx &
+nginx_pid=$!
+trap "kill $nginx_pid; wait" EXIT
 echo ""
 echo ""
-sleep 2 # waiting for nginx
+sleep ${NGINX_HEATTIME} # waiting for nginx
 ./mruby/build/test/bin/mruby ./test/t/ngx_mruby.rb 2> ${NGINX_INSTALL_DIR}/logs/stderr.log
-$KILLALL nginx
 echo "ngx_mruby testing ... Done"
 
 echo "test.sh ... successful"
