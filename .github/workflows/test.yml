@@ -7,7 +7,7 @@ defaults:
     shell: bash
 
 env:
-  OPENSSL_SRC_VERSION: 1.1.1o
+  OPENSSL_SRC_VERSION: 1.1.1w
 
 jobs:
   build:
