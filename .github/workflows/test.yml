@@ -7,7 +7,7 @@ defaults:
     shell: bash
 
 env:
-  OPENSSL_SRC_VERSION: 1.1.1o
+  OPENSSL_SRC_VERSION: 1.1.1w
 
 jobs:
   build:
@@ -48,7 +48,7 @@ jobs:
           BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
           CXX: g++
         run: |
-          sudo apt-get -qq install rake bison git gperf zlib1g-dev g++-11 libstdc++-11-dev
+          sudo apt-get -qq install rake bison git gperf zlib1g-dev g++-11 libstdc++-11-dev valgrind
           sudo apt-get remove -y libssl-dev
           if [ "$CXX" = "g++" ]; then
             export CXX="g++-11" CC="gcc-11" LD="gcc-11"
@@ -78,6 +78,9 @@ jobs:
           NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
           BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
           BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
+          NUM_THREADS_ENV: 1
+          NGINX_RUNNER: valgrind
+          NGINX_HEATTIME: 10
         run: |
           echo "NGINX_SRC_MAJOR=$(echo $NGINX_VERSION | cut -d '.' -f 1)" > nginx_version
           echo "NGINX_SRC_MINOR=$(echo $NGINX_VERSION | cut -d '.' -f 2)" >> nginx_version

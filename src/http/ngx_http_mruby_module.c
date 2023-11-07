@@ -1001,7 +1001,7 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
 #ifdef NGX_MRUBY_IREP_DEBUG
   code->ctx->dump_result = TRUE;
 #endif
- 
+
   if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
     if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
       return NGX_ERROR;
@@ -1026,7 +1026,7 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
 
 #ifdef NGX_MRUBY_IREP_DEBUG
   /* mrb_codedump_all() is not declared in mruby headers. So just follows the mruby way. See mruby/src/load.c. */
-  void mrb_codedump_all(mrb_state*, struct RProc*);
+  void mrb_codedump_all(mrb_state *, struct RProc *);
   mrb_codedump_all(state->mrb, code->proc);
 #endif
 
@@ -2047,9 +2047,11 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
     return 0;
   }
 
+  host.len = 0;
+  host.data = NULL;
   servername = SSL_get_servername(ssl_conn, TLSEXT_NAMETYPE_host_name);
+
   if (servername == NULL) {
-    host.len = 0;
     ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: SSL server name NULL");
   } else {
     host.len = ngx_strlen(servername);
