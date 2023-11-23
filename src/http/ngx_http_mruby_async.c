@@ -45,7 +45,9 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->async_handler_result = result;
 
-  handler_proc = mrb_closure_new(mrb, rproc->body.irep);
+  handler_proc = rproc;
+  handler_proc->upper = NULL;
+  handler_proc->e.target_class = mrb->object_class;
   fiber_proc = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
   *fiber_proc = mrb_fiber_new(mrb, rproc);
   if (mrb->exc) {

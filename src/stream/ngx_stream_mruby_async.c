@@ -57,7 +57,9 @@ mrb_value ngx_stream_mrb_start_fiber(ngx_stream_session_t *s, mrb_state *mrb, st
   ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
   ctx->async_handler_result = result;
 
-  handler_proc = mrb_closure_new(mrb, rproc->body.irep);
+  handler_proc = rproc;
+  handler_proc->upper = NULL;
+  handler_proc->e.target_class = mrb->object_class;
   fiber_proc = (mrb_value *)ngx_palloc(s->connection->pool, sizeof(mrb_value));
   *fiber_proc = mrb_fiber_new(mrb, rproc);
   if (mrb->exc) {
