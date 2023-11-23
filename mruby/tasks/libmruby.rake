@@ -7,36 +7,32 @@ MRuby.each_target do
 
   next unless libmruby_enabled?
 
-  copy_headers_task = "expose_header_files:#{name}"
+  copy_headers_task = "expose_header_files:#{self.name}"
   file libmruby_static => libmruby_objs.flatten do |t|
     Rake::Task[copy_headers_task].invoke
     archiver.run t.name, t.prerequisites
   end
 
-  task copy_headers_task do |_t|
+  task copy_headers_task do |t|
     # Since header files may be generated dynamically and it is hard to know all of them,
     # the task is executed depending on when libmruby.a is generated.
 
-    gemsbasedir = File.join(build_dir, 'include/mruby/gems')
+    gemsbasedir = File.join(build_dir, "include/mruby/gems")
     dirmap = {
       MRUBY_ROOT => build_dir
     }
-    gems.each do |g|
+    gems.each { |g|
       dirmap[g.dir] = File.join(gemsbasedir, g.name)
       dirmap[g.build_dir] = File.join(gemsbasedir, g.name)
-    end
+    }
 
     dirs = each_header_files.to_a
     dirs.uniq!
     dirs.replace_prefix_by(dirmap).zip(dirs).each do |dest, src|
-      next unless File.mtime(src).to_i > begin
-        File.mtime(dest).to_i
-      rescue StandardError
-        0
+      if File.mtime(src).to_i > (File.mtime(dest).to_i rescue 0)
+        mkpath File.dirname(dest)
+        cp src, dest
       end
-
-      mkpath File.dirname(dest)
-      cp src, dest
     end
   end
 
@@ -50,15 +46,15 @@ MRuby.each_target do
       FLAGS_MAKE
 
       [
-        [cc,   'MRUBY_CC',   'MRUBY_CFLAGS'],
-        [cxx,  'MRUBY_CXX',  'MRUBY_CXXFLAGS'],
-        [asm,  'MRUBY_AS',   'MRUBY_ASFLAGS'],
-        [objc, 'MRUBY_OBJC', 'MRUBY_OBJCFLAGS']
+        [cc,   "MRUBY_CC",   "MRUBY_CFLAGS"],
+        [cxx,  "MRUBY_CXX",  "MRUBY_CXXFLAGS"],
+        [asm,  "MRUBY_AS",   "MRUBY_ASFLAGS"],
+        [objc, "MRUBY_OBJC", "MRUBY_OBJCFLAGS"]
       ].each do |cc, cmd, flags|
         incpaths = cc.include_paths.dup
         dirmaps = {
-          MRUBY_ROOT => '$(MRUBY_PACKAGE_DIR)',
-          build_dir => '$(MRUBY_PACKAGE_DIR)'
+          MRUBY_ROOT => "$(MRUBY_PACKAGE_DIR)",
+          build_dir => "$(MRUBY_PACKAGE_DIR)"
         }
         gems.each do |g|
           incpaths.concat g.export_include_paths
@@ -74,19 +70,19 @@ MRuby.each_target do
 
       f.puts "MRUBY_LD = #{linker.command}"
 
-      libgems = gems.reject { |g| g.bin? }
-      gem_flags = libgems.map { |g| g.linker.flags }
-      gem_library_paths = libgems.map { |g| g.linker.library_paths }
-      f.puts "MRUBY_LDFLAGS = #{linker.all_flags(gem_library_paths, gem_flags)} #{linker.option_library_path % '$(MRUBY_PACKAGE_DIR)/lib'}"
+      libgems = gems.reject{|g| g.bin?}
+      gem_flags = libgems.map {|g| g.linker.flags }
+      gem_library_paths = libgems.map {|g| g.linker.library_paths }
+      f.puts "MRUBY_LDFLAGS = #{linker.all_flags(gem_library_paths, gem_flags)} #{linker.option_library_path % "$(MRUBY_PACKAGE_DIR)/lib"}"
 
-      gem_flags_before_libraries = libgems.map { |g| g.linker.flags_before_libraries }
+      gem_flags_before_libraries = libgems.map {|g| g.linker.flags_before_libraries }
       f.puts "MRUBY_LDFLAGS_BEFORE_LIBS = #{[linker.flags_before_libraries, gem_flags_before_libraries].flatten.join(' ')}"
 
-      gem_libraries = libgems.map { |g| g.linker.libraries }
-      libmruby = toolchains.find { |e| e == 'visualcpp' } ? 'libmruby' : 'mruby'
+      gem_libraries = libgems.map {|g| g.linker.libraries }
+      libmruby = (toolchains.find { |e| e == "visualcpp" }) ? "libmruby" : "mruby"
       f.puts "MRUBY_LIBS = #{linker.option_library % libmruby} #{linker.library_flags(gem_libraries)}"
 
-      f.puts "MRUBY_LIBMRUBY_PATH = #{libmruby_static.replace_prefix_by(build_dir => '$(MRUBY_PACKAGE_DIR)')}"
+      f.puts "MRUBY_LIBMRUBY_PATH = #{libmruby_static.replace_prefix_by(build_dir => "$(MRUBY_PACKAGE_DIR)")}"
     end
   end
 

@@ -139,8 +139,7 @@ io_modestr_to_flags(mrb_state *mrb, const char *mode)
       flags = O_WRONLY | O_CREAT | O_APPEND;
       break;
     default:
-      mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal access mode %s", mode);
-      flags = 0; /* not reached */
+      goto modeerr;
   }
 
   while (*m) {
@@ -150,17 +149,25 @@ io_modestr_to_flags(mrb_state *mrb, const char *mode)
         flags |= O_BINARY;
 #endif
         break;
+      case 'x':
+        if (mode[0] != 'w') goto modeerr;
+        flags |= O_EXCL;
+        break;
       case '+':
         flags = (flags & ~OPEN_ACCESS_MODE_FLAGS) | O_RDWR;
         break;
       case ':':
         /* XXX: PASSTHROUGH*/
       default:
-        mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal access mode %s", mode);
+        goto modeerr;
     }
   }
 
   return flags;
+
+ modeerr:
+  mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal access mode %s", mode);
+  return 0; /* not reached */
 }
 
 static int
@@ -1037,13 +1044,13 @@ io_seek(mrb_state *mrb, mrb_value io)
 static mrb_value
 io_write_common(mrb_state *mrb,
     fssize_t (*writefunc)(int, const void*, fsize_t, off_t),
-    struct mrb_io *fptr, const void *buf, fsize_t blen, off_t offset)
+    struct mrb_io *fptr, const void *buf, mrb_ssize blen, off_t offset)
 {
   int fd;
   fssize_t length;
 
   fd = io_get_write_fd(fptr);
-  length = writefunc(fd, buf, blen, offset);
+  length = writefunc(fd, buf, (fsize_t)blen, offset);
   if (length == -1) {
     mrb_sys_fail(mrb, "syswrite");
   }
@@ -1571,6 +1578,9 @@ io_ungetc(mrb_state *mrb, mrb_value io)
 
   mrb_get_args(mrb, "S", &str);
   len = RSTRING_LEN(str);
+  if (len > SHRT_MAX) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "string too long to ungetc");
+  }
   if (len > MRB_IO_BUF_SIZE - buf->len) {
     fptr->buf = (struct mrb_io_buf*)mrb_realloc(mrb, buf, sizeof(struct mrb_io_buf)+buf->len+len-MRB_IO_BUF_SIZE);
     buf = fptr->buf;
@@ -1578,7 +1588,7 @@ io_ungetc(mrb_state *mrb, mrb_value io)
   memmove(buf->mem+len, buf->mem+buf->start, buf->len);
   memcpy(buf->mem, RSTRING_PTR(str), len);
   buf->start = 0;
-  buf->len += len;
+  buf->len += (short)len;
   return mrb_nil_value();
 }
 
@@ -1596,8 +1606,9 @@ io_buf_shift(struct mrb_io *fptr, mrb_int n)
 {
   struct mrb_io_buf *buf = fptr->buf;
 
-  buf->start += n;
-  buf->len -= n;
+  mrb_assert(n <= SHRT_MAX);
+  buf->start += (short)n;
+  buf->len -= (short)n;
 }
 
 #ifdef MRB_UTF8_STRING
