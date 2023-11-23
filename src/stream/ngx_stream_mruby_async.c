@@ -23,7 +23,6 @@ typedef struct {
 
 static mrb_value ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *result)
 {
-  mrb_value resume_result = mrb_nil_value();
   mrb_value aliving = mrb_false_value();
   mrb_value handler_result = mrb_nil_value();
   ngx_stream_mruby_ctx_t *ctx;
@@ -33,21 +32,14 @@ static mrb_value ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc,
   ctx = ngx_stream_mrb_get_module_ctx(mrb, ictx->s);
   ctx->fiber_proc = fiber_proc;
 
-  resume_result = mrb_funcall(mrb, *fiber_proc, "call", 0, NULL);
+  handler_result = mrb_fiber_resume(mrb, *fiber_proc, 0, NULL);
   if (mrb->exc) {
     ngx_log_error(NGX_LOG_NOTICE, ictx->s->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
     return mrb_false_value();
   }
 
-  if (!mrb_array_p(resume_result)) {
-    mrb->exc = mrb_obj_ptr(mrb_exc_new_lit(
-        mrb, E_RUNTIME_ERROR,
-        "_ngx_mrb_prepare_fiber proc must return array included handler_return and fiber alive status"));
-    return mrb_false_value();
-  }
-  aliving = mrb_ary_entry(resume_result, 0);
-  handler_result = mrb_ary_entry(resume_result, 1);
+  aliving = mrb_fiber_alive_p(mrb, *fiber_proc);
 
   if (!mrb_test(aliving) && result != NULL) {
     *result = handler_result;
@@ -67,8 +59,7 @@ mrb_value ngx_stream_mrb_start_fiber(ngx_stream_session_t *s, mrb_state *mrb, st
 
   handler_proc = mrb_closure_new(mrb, rproc->body.irep);
   fiber_proc = (mrb_value *)ngx_palloc(s->connection->pool, sizeof(mrb_value));
-  *fiber_proc =
-      mrb_funcall(mrb, mrb_obj_value(mrb->kernel_module), "_ngx_mrb_prepare_fiber", 1, mrb_obj_value(handler_proc));
+  *fiber_proc = mrb_fiber_new(mrb, rproc);
   if (mrb->exc) {
     ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
                   "%s NOTICE %s:%d: preparing fiber got the raise, leave the fiber", MODULE_NAME, __func__, __LINE__);
