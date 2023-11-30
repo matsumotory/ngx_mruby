@@ -106,11 +106,11 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
     if (mrb_test(ngx_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result))) {
       // can resume the fiber and wait the epoll timer
       mrb_gc_arena_restore(re->mrb, ai);
-      ngx_log_debug1(NGX_LOG_DEBUG_HTTP, re->r->connection->log, 0, "ngx_mrb_post_fiber mrb_test true: %d", 0);
+      ngx_log_debug1(NGX_LOG_DEBUG_HTTP, re->r->connection->log, 0, "ngx_mrb_post_fiber mrb_test true:  %zu", sizeof(re->fiber));
       return NGX_DONE;
     } else {
       // can not resume the fiber, the fiber was finished
-      ngx_log_debug1(NGX_LOG_DEBUG_HTTP, re->r->connection->log, 0, "ngx_mrb_post_fiber mrb_test false: %d", 0);
+      ngx_log_debug1(NGX_LOG_DEBUG_HTTP, re->r->connection->log, 0, "ngx_mrb_post_fiber mrb_test false: %zu", sizeof(re->fiber));
       mrb_gc_unregister(re->mrb, *re->fiber);
       re->fiber = NULL;
     }
