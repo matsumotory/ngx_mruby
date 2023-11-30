@@ -205,10 +205,12 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   re->fiber = ctx->fiber_proc;
 
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "before mrb_gc_register sizeof_mrb_value: %ld", sizeof(mrb_value));
   // keeps the object from GC when can resume the fiber
   // Don't forget to remove the object using
   // mrb_gc_unregister, otherwise your object will leak
   mrb_gc_register(mrb, *re->fiber);
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "after  mrb_gc_register sizeof_mrb_value: %ld", sizeof(mrb_value));
 
   ev = (ngx_event_t *)p;
   ngx_memzero(ev, sizeof(ngx_event_t));
