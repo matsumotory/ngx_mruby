@@ -44,6 +44,7 @@ struct RProc {
   union {
     const mrb_irep *irep;
     mrb_func_t func;
+    mrb_sym mid;
   } body;
   const struct RProc *upper;
   union {
@@ -86,6 +87,8 @@ struct RProc {
 #define MRB_PROC_SCOPE_P(p) (((p)->flags & MRB_PROC_SCOPE) != 0)
 #define MRB_PROC_NOARG 4096 /* for MRB_PROC_CFUNC_FL, it would be something like MRB_ARGS_NONE() or MRB_METHOD_NOARG_FL */
 #define MRB_PROC_NOARG_P(p) (((p)->flags & MRB_PROC_NOARG) != 0)
+#define MRB_PROC_ALIAS 8192
+#define MRB_PROC_ALIAS_P(p) (((p)->flags & MRB_PROC_ALIAS) != 0)
 
 #define mrb_proc_ptr(v)    ((struct RProc*)(mrb_ptr(v)))
 
@@ -149,25 +152,25 @@ MRB_API mrb_value mrb_load_proc(mrb_state *mrb, const struct RProc *proc);
  *      main(int argc, char **argv)
  *      {
  *        mrb_state *mrb;
- *        mrbc_context *cxt;
+ *        mrb_ccontext *cxt;
  *        mrb_value blk, ret;
  *
  *        mrb = mrb_open();
- *        cxt = mrbc_context_new(mrb);
+ *        cxt = mrb_ccontext_new(mrb);
  *        blk = mrb_load_string_cxt(mrb, "x, y, z = 1, 2, 3; proc { [x, y, z] }", cxt);
  *        mrb_vm_ci_env_clear(mrb, mrb->c->cibase);
  *        mrb_load_string_cxt(mrb, "x, y, z = 4, 5, 6", cxt);
  *        ret = mrb_funcall(mrb, blk, "call", 0);
  *        mrb_p(mrb, ret);  // => [1, 2, 3]
  *                          // => [4, 5, 6] if `mrb_vm_ci_env_clear()` is commented out
- *        mrbc_context_free(mrb, cxt);
+ *        mrb_ccontext_free(mrb, cxt);
  *        mrb_close(mrb);
  *
  *        return 0;
  *      }
  *
- *  The top-level local variable names stored in `mrbc_context` are retained.
- *  Use also `mrbc_cleanup_local_variables()` at the same time, if necessary.
+ *  The top-level local variable names stored in `mrb_ccontext` are retained.
+ *  Use also `mrb_ccontext_cleanup_local_variables()` at the same time, if necessary.
  */
 MRB_API void mrb_vm_ci_env_clear(mrb_state *mrb, mrb_callinfo *ci);
 

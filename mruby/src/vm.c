@@ -41,8 +41,18 @@ void abort(void);
 #endif
 
 /* Maximum recursive depth. Should be set lower on memory constrained systems. */
+#ifdef __clang__
+#if __has_feature(address_sanitizer) && !defined(__SANITIZE_ADDRESS__)
+#define __SANITIZE_ADDRESS__
+#endif
+#endif
+
 #ifndef MRB_CALL_LEVEL_MAX
+#if defined(__SANITIZE_ADDRESS__)
+#define MRB_CALL_LEVEL_MAX 128
+#else
 #define MRB_CALL_LEVEL_MAX 512
+#endif
 #endif
 
 /* Maximum stack depth. Should be set lower on memory constrained systems.
@@ -255,7 +265,7 @@ top_proc(mrb_state *mrb, const struct RProc *proc)
 
 #define CI_PROC_SET(ci, p) do {\
   ci->proc = p;\
-  ci->pc = (p && !MRB_PROC_CFUNC_P(p) && p->body.irep) ? p->body.irep->iseq : NULL;\
+  ci->pc = (p && !MRB_PROC_CFUNC_P(p) && !MRB_PROC_ALIAS_P(p) && p->body.irep) ? p->body.irep->iseq : NULL; \
 } while (0)
 
 void
@@ -698,6 +708,11 @@ mrb_funcall_with_block(mrb_state *mrb, mrb_value self, mrb_sym mid, mrb_int argc
       cipop(mrb);
     }
     else {
+      /* handle alias */
+      if (MRB_PROC_ALIAS_P(ci->proc)) {
+        ci->mid = ci->proc->body.mid;
+        ci->proc = ci->proc->upper;
+      }
       ci->cci = CINFO_SKIP;
       val = mrb_run(mrb, ci->proc, self);
     }
@@ -729,15 +744,20 @@ check_method_noarg(mrb_state *mrb, const mrb_callinfo *ci)
 }
 
 static mrb_value
-exec_irep(mrb_state *mrb, mrb_value self, struct RProc *p)
+exec_irep(mrb_state *mrb, mrb_value self, const struct RProc *p)
 {
   mrb_callinfo *ci = mrb->c->ci;
   mrb_int keep, nregs;
 
   ci->stack[0] = self;
+  /* handle alias */
+  if (MRB_PROC_ALIAS_P(p)) {
+    ci->mid = p->body.mid;
+    p = p->upper;
+  }
   CI_PROC_SET(ci, p);
   if (MRB_PROC_CFUNC_P(p)) {
-    if (MRB_PROC_NOARG_P(p)) {
+    if (MRB_PROC_NOARG_P(p) && (ci->n > 0 || ci->nk > 0)) {
       check_method_noarg(mrb, ci);
     }
     return MRB_PROC_CFUNC(p)(mrb, self);
@@ -767,7 +787,7 @@ mrb_exec_irep(mrb_state *mrb, mrb_value self, struct RProc *p)
   else {
     mrb_value ret;
     if (MRB_PROC_CFUNC_P(p)) {
-      if (MRB_PROC_NOARG_P(p)) {
+      if (MRB_PROC_NOARG_P(p) && (ci->n > 0 || ci->nk > 0)) {
         check_method_noarg(mrb, ci);
       }
       cipush(mrb, 0, CINFO_DIRECT, CI_TARGET_CLASS(ci), p, NULL, ci->mid, ci->n|(ci->nk<<4));
@@ -859,18 +879,23 @@ mrb_f_send(mrb_state *mrb, mrb_value self)
     ci->n--;
   }
 
-  if (MRB_METHOD_CFUNC_P(m)) {
-    if (MRB_METHOD_NOARG_P(m)) {
-      check_method_noarg(mrb, ci);
+  const struct RProc *p;
+  if (MRB_METHOD_PROC_P(m)) {
+    p = MRB_METHOD_PROC(m);
+    /* handle alias */
+    if (MRB_PROC_ALIAS_P(p)) {
+      ci->mid = p->body.mid;
+      p = p->upper;
     }
-
-    if (MRB_METHOD_PROC_P(m)) {
-      const struct RProc *p = MRB_METHOD_PROC(m);
-      CI_PROC_SET(ci, p);
+    CI_PROC_SET(ci, p);
+  }
+  if (MRB_METHOD_CFUNC_P(m)) {
+    if (MRB_METHOD_NOARG_P(m) && (ci->n > 0 || ci->nk > 0)) {
+      check_method_noarg(mrb, ci);
     }
     return MRB_METHOD_CFUNC(m)(mrb, self);
   }
-  return exec_irep(mrb, self, MRB_METHOD_PROC(m));
+  return exec_irep(mrb, self, p);
 }
 
 static void
@@ -898,6 +923,8 @@ eval_under(mrb_state *mrb, mrb_value self, mrb_value blk, struct RClass *c)
   }
   ci->u.target_class = c;
   p = mrb_proc_ptr(blk);
+  /* just in case irep is NULL; #6065 */
+  if (p->body.irep == NULL) return mrb_nil_value();
   CI_PROC_SET(ci, p);
   ci->n = 1;
   ci->nk = 0;
@@ -1050,13 +1077,8 @@ mrb_yield_cont(mrb_state *mrb, mrb_value b, mrb_value self, mrb_int argc, const 
 
 #define RBREAK_TAG_FOREACH(f) \
   f(RBREAK_TAG_BREAK, 0) \
-  f(RBREAK_TAG_BREAK_UPPER, 1) \
-  f(RBREAK_TAG_BREAK_INTARGET, 2) \
-  f(RBREAK_TAG_RETURN_BLOCK, 3) \
-  f(RBREAK_TAG_RETURN, 4) \
-  f(RBREAK_TAG_RETURN_TOPLEVEL, 5) \
-  f(RBREAK_TAG_JUMP, 6) \
-  f(RBREAK_TAG_STOP, 7)
+  f(RBREAK_TAG_JUMP, 1) \
+  f(RBREAK_TAG_STOP, 2)
 
 #define RBREAK_TAG_DEFINE(tag, i) tag = i,
 enum {
@@ -1082,12 +1104,12 @@ mrb_break_tag_set(struct RBreak *brk, uint32_t tag)
 }
 
 static struct RBreak*
-break_new(mrb_state *mrb, uint32_t tag, const struct RProc *p, mrb_value val)
+break_new(mrb_state *mrb, uint32_t tag, const mrb_callinfo *return_ci, mrb_value val)
 {
-  struct RBreak *brk;
+  mrb_assert((size_t)(return_ci - mrb->c->cibase) <= (size_t)(mrb->c->ci - mrb->c->cibase));
 
-  brk = MRB_OBJ_ALLOC(mrb, MRB_TT_BREAK, NULL);
-  mrb_break_proc_set(brk, p);
+  struct RBreak *brk = MRB_OBJ_ALLOC(mrb, MRB_TT_BREAK, NULL);
+  brk->ci_break_index = return_ci - mrb->c->cibase;
   mrb_break_value_set(brk, val);
   mrb_break_tag_set(brk, tag);
 
@@ -1191,27 +1213,27 @@ break_tag_p(struct RBreak *brk, uint32_t tag)
 }
 
 static void
-prepare_tagged_break(mrb_state *mrb, uint32_t tag, const struct RProc *proc, mrb_value val)
+prepare_tagged_break(mrb_state *mrb, uint32_t tag, const mrb_callinfo *return_ci, mrb_value val)
 {
   if (break_tag_p((struct RBreak*)mrb->exc, tag)) {
     mrb_break_tag_set((struct RBreak*)mrb->exc, tag);
   }
   else {
-    mrb->exc = (struct RObject*)break_new(mrb, tag, proc, val);
+    mrb->exc = (struct RObject*)break_new(mrb, tag, return_ci, val);
   }
 }
 
-#define THROW_TAGGED_BREAK(mrb, tag, proc, val) \
+#define THROW_TAGGED_BREAK(mrb, tag, return_ci, val) \
   do { \
-    prepare_tagged_break(mrb, tag, proc, val); \
+    prepare_tagged_break(mrb, tag, return_ci, val); \
     goto L_CATCH_TAGGED_BREAK; \
   } while (0)
 
-#define UNWIND_ENSURE(mrb, ci, pc, tag, proc, val) \
+#define UNWIND_ENSURE(mrb, ci, pc, tag, return_ci, val) \
   do { \
     ch = catch_handler_find(mrb, ci, pc, MRB_CATCH_FILTER_ENSURE); \
     if (ch) { \
-      THROW_TAGGED_BREAK(mrb, tag, proc, val); \
+      THROW_TAGGED_BREAK(mrb, tag, return_ci, val); \
     } \
   } while (0)
 
@@ -1674,7 +1696,7 @@ RETRY_TRY_BLOCK:
         if (ch) {
           /* avoiding a jump from a catch handler into the same handler */
           if (a < mrb_irep_catch_handler_unpack(ch->begin) || a >= mrb_irep_catch_handler_unpack(ch->end)) {
-            THROW_TAGGED_BREAK(mrb, RBREAK_TAG_JUMP, proc, mrb_fixnum_value(a));
+            THROW_TAGGED_BREAK(mrb, RBREAK_TAG_JUMP, mrb->c->ci, mrb_fixnum_value(a));
           }
         }
       }
@@ -1812,11 +1834,12 @@ RETRY_TRY_BLOCK:
           recv = p->body.func(mrb, recv);
         }
         else {
-          if (MRB_METHOD_NOARG_P(m)) {
+          if (MRB_METHOD_NOARG_P(m) && (ci->n > 0 || ci->nk > 0)) {
             check_method_noarg(mrb, ci);
           }
           recv = MRB_METHOD_FUNC(m)(mrb, recv);
         }
+        mrb_assert(mrb->c->ci > mrb->c->cibase);
         mrb_gc_arena_shrink(mrb, ai);
         if (mrb->exc) goto L_RAISE;
         ci = mrb->c->ci;
@@ -1841,6 +1864,11 @@ RETRY_TRY_BLOCK:
       else {
         /* setup environment for calling method */
         proc = MRB_METHOD_PROC(m);
+        /* handle alias */
+        if (MRB_PROC_ALIAS_P(proc)) {
+          ci->mid = proc->body.mid;
+          proc = proc->upper;
+        }
         CI_PROC_SET(ci, proc);
         irep = proc->body.irep;
         pool = irep->pool;
@@ -1854,18 +1882,23 @@ RETRY_TRY_BLOCK:
     CASE(OP_CALL, Z) {
       mrb_callinfo *ci = mrb->c->ci;
       mrb_value recv = ci->stack[0];
-      struct RProc *m = mrb_proc_ptr(recv);
+      const struct RProc *p = mrb_proc_ptr(recv);
 
-      /* replace callinfo */
-      ci->u.target_class = MRB_PROC_TARGET_CLASS(m);
-      CI_PROC_SET(ci, m);
-      if (MRB_PROC_ENV_P(m)) {
-        ci->mid = MRB_PROC_ENV(m)->mid;
+      /* handle alias */
+      if (MRB_PROC_ALIAS_P(p)) {
+        ci->mid = p->body.mid;
+        p = p->upper;
       }
+      else if (MRB_PROC_ENV_P(p)) {
+        ci->mid = MRB_PROC_ENV(p)->mid;
+      }
+      /* replace callinfo */
+      ci->u.target_class = MRB_PROC_TARGET_CLASS(p);
+      CI_PROC_SET(ci, p);
 
       /* prepare stack */
-      if (MRB_PROC_CFUNC_P(m)) {
-        recv = MRB_PROC_CFUNC(m)(mrb, recv);
+      if (MRB_PROC_CFUNC_P(p)) {
+        recv = MRB_PROC_CFUNC(p)(mrb, recv);
         mrb_gc_arena_shrink(mrb, ai);
         if (mrb->exc) goto L_RAISE;
         /* pop stackpos */
@@ -1876,8 +1909,8 @@ RETRY_TRY_BLOCK:
       }
       else {
         /* setup environment for calling method */
-        proc = m;
-        irep = m->body.irep;
+        proc = p;
+        irep = p->body.irep;
         if (!irep) {
           mrb->c->ci->stack[0] = mrb_nil_value();
           a = 0;
@@ -1889,8 +1922,8 @@ RETRY_TRY_BLOCK:
           stack_extend(mrb, irep->nregs);
           stack_clear(regs+nargs, irep->nregs-nargs);
         }
-        if (MRB_PROC_ENV_P(m)) {
-          regs[0] = MRB_PROC_ENV(m)->stack[0];
+        if (MRB_PROC_ENV_P(p)) {
+          regs[0] = MRB_PROC_ENV(p)->stack[0];
         }
         pc = irep->iseq;
       }
@@ -1902,14 +1935,9 @@ RETRY_TRY_BLOCK:
     CASE(OP_SUPER, BB) {
       mrb_callinfo *ci = mrb->c->ci;
       mrb_value recv;
-      const struct RProc *p = ci->proc;
       struct RClass* target_class = CI_TARGET_CLASS(ci);
 
       mid = ci->mid;
-      if (MRB_PROC_ENV_P(p) && p->e.env->mid && p->e.env->mid != mid) { /* alias support */
-        mid = p->e.env->mid;    /* restore old mid */
-      }
-
       if (mid == 0 || !target_class) {
         RAISE_LIT(mrb, E_NOMETHOD_ERROR, "super called outside of method");
       }
@@ -2198,14 +2226,14 @@ RETRY_TRY_BLOCK:
       if (mrb->exc) {
       L_RAISE:
         ci = mrb->c->ci;
-        while ((ch = catch_handler_find(mrb, ci, pc, MRB_CATCH_FILTER_ALL)) == NULL) {
+        while ((ch = catch_handler_find(mrb, ci, ci->pc, MRB_CATCH_FILTER_ALL)) == NULL) {
           if (ci != mrb->c->cibase) {
             ci = cipop(mrb);
-            if (ci[1].cci == CINFO_SKIP && prev_jmp) {
+            if (ci[1].cci == CINFO_SKIP) {
+              mrb_assert(prev_jmp != NULL);
               mrb->jmp = prev_jmp;
               MRB_THROW(prev_jmp);
             }
-            pc = ci[0].pc;
           }
           else if (mrb->c == mrb->root_c) {
             mrb->c->ci->stack = mrb->c->stbase;
@@ -2218,7 +2246,10 @@ RETRY_TRY_BLOCK:
             mrb->c = c->prev;
             if (!mrb->c) mrb->c = mrb->root_c;
             else c->prev = NULL;
-            goto L_RAISE;
+            if (!c->vmexec) goto L_RAISE;
+            mrb->jmp = prev_jmp;
+            if (!prev_jmp) return mrb_obj_value(mrb->exc);
+            MRB_THROW(prev_jmp);
           }
         }
 
@@ -2269,21 +2300,6 @@ RETRY_TRY_BLOCK:
               localjump_error(mrb, LOCALJUMP_ERROR_RETURN);
               goto L_RAISE;
             }
-            ci = mrb->c->ci;
-            while (cibase <= ci && ci->proc != dst) {
-              CHECKPOINT_RESTORE(RBREAK_TAG_RETURN_BLOCK) {
-                cibase = mrb->c->cibase;
-                dst = top_proc(mrb, proc);
-              }
-              CHECKPOINT_MAIN(RBREAK_TAG_RETURN_BLOCK) {
-                UNWIND_ENSURE(mrb, ci, pc, RBREAK_TAG_RETURN_BLOCK, proc, v);
-              }
-              CHECKPOINT_END(RBREAK_TAG_RETURN_BLOCK);
-              ci = cipop(mrb);
-              pc = ci->pc;
-            }
-            proc = ci->proc;
-            mrb->exc = NULL; /* clear break object */
             break;
           }
           /* fallthrough */
@@ -2306,34 +2322,7 @@ RETRY_TRY_BLOCK:
             else if (!c->vmexec && c->prev->ci == c->prev->cibase) {
               RAISE_LIT(mrb, E_FIBER_ERROR, "double resume");
             }
-            CHECKPOINT_RESTORE(RBREAK_TAG_RETURN_TOPLEVEL) {
-              c = mrb->c;
-            }
-            CHECKPOINT_MAIN(RBREAK_TAG_RETURN_TOPLEVEL) {
-              UNWIND_ENSURE(mrb, ci, pc, RBREAK_TAG_RETURN_TOPLEVEL, proc, v);
-            }
-            CHECKPOINT_END(RBREAK_TAG_RETURN_TOPLEVEL);
-            /* automatic yield at the end */
-            c->status = MRB_FIBER_TERMINATED;
-            mrb->c = c->prev;
-            mrb->c->status = MRB_FIBER_RUNNING;
-            c->prev = NULL;
-            if (c->vmexec) {
-              mrb_gc_arena_restore(mrb, ai);
-              c->vmexec = FALSE;
-              mrb->jmp = prev_jmp;
-              return v;
-            }
-            ci = mrb->c->ci;
           }
-          CHECKPOINT_RESTORE(RBREAK_TAG_RETURN) {
-            /* do nothing */
-          }
-          CHECKPOINT_MAIN(RBREAK_TAG_RETURN) {
-            UNWIND_ENSURE(mrb, ci, pc, RBREAK_TAG_RETURN, proc, v);
-          }
-          CHECKPOINT_END(RBREAK_TAG_RETURN);
-          mrb->exc = NULL; /* clear break object */
           break;
         case OP_R_BREAK:
           if (MRB_PROC_STRICT_P(proc)) goto NORMAL_RETURN;
@@ -2348,37 +2337,22 @@ RETRY_TRY_BLOCK:
               goto L_BREAK_ERROR;
             }
           }
-          CHECKPOINT_RESTORE(RBREAK_TAG_BREAK) {
-            /* do nothing */
+          proc = proc->upper;
+          while (mrb->c->cibase < ci && ci[-1].proc != proc) {
+            ci--;
           }
-          CHECKPOINT_MAIN(RBREAK_TAG_BREAK) {
-            UNWIND_ENSURE(mrb, ci, pc, RBREAK_TAG_BREAK, proc, v);
-          }
-          CHECKPOINT_END(RBREAK_TAG_BREAK);
-          /* break from fiber block */
-          if (ci == mrb->c->cibase && ci->pc) {
-            struct mrb_context *c = mrb->c;
-
-            mrb->c = c->prev;
-            c->prev = NULL;
-            ci = mrb->c->ci;
-          }
-          if (ci->cci > CINFO_NONE) {
-            ci = cipop(mrb);
-            mrb->exc = (struct RObject*)break_new(mrb, RBREAK_TAG_BREAK, proc, v);
-            mrb_gc_arena_restore(mrb, ai);
-            mrb->c->vmexec = FALSE;
-            mrb->jmp = prev_jmp;
-            MRB_THROW(prev_jmp);
+          if (ci == mrb->c->cibase) {
+            goto L_BREAK_ERROR;
           }
           if (FALSE) {
             struct RBreak *brk;
 
           L_BREAK:
             brk = (struct RBreak*)mrb->exc;
-            proc = mrb_break_proc_get(brk);
+            ci = &mrb->c->cibase[brk->ci_break_index];
+            proc = ci->proc;
             v = mrb_break_value_get(brk);
-            ci = mrb->c->ci;
+            pc = ci->pc;
 
             switch (mrb_break_tag_get(brk)) {
 #define DISPATCH_CHECKPOINTS(n, i) case n: goto CHECKPOINT_LABEL_MAKE(n);
@@ -2388,38 +2362,54 @@ RETRY_TRY_BLOCK:
                 mrb_assert(!"wrong break tag");
             }
           }
-          while (mrb->c->cibase < ci && ci[-1].proc != proc->upper) {
-            if (ci[-1].cci == CINFO_SKIP) {
-              goto L_BREAK_ERROR;
-            }
-            CHECKPOINT_RESTORE(RBREAK_TAG_BREAK_UPPER) {
-              /* do nothing */
-            }
-            CHECKPOINT_MAIN(RBREAK_TAG_BREAK_UPPER) {
-              UNWIND_ENSURE(mrb, ci, pc, RBREAK_TAG_BREAK_UPPER, proc, v);
-            }
-            CHECKPOINT_END(RBREAK_TAG_BREAK_UPPER);
-            ci = cipop(mrb);
-            pc = ci->pc;
-          }
-          CHECKPOINT_RESTORE(RBREAK_TAG_BREAK_INTARGET) {
-            /* do nothing */
-          }
-          CHECKPOINT_MAIN(RBREAK_TAG_BREAK_INTARGET) {
-            UNWIND_ENSURE(mrb, ci, pc, RBREAK_TAG_BREAK_INTARGET, proc, v);
-          }
-          CHECKPOINT_END(RBREAK_TAG_BREAK_INTARGET);
-          if (ci == mrb->c->cibase) {
-            goto L_BREAK_ERROR;
-          }
-          mrb->exc = NULL; /* clear break object */
           break;
         default:
           /* cannot happen */
           break;
         }
-        mrb_assert(ci == mrb->c->ci);
-        mrb_assert(mrb->exc == NULL);
+
+        for (;;) {
+          CHECKPOINT_RESTORE(RBREAK_TAG_BREAK) {
+            struct RBreak *brk = (struct RBreak*)mrb->exc;
+            ci = &mrb->c->cibase[brk->ci_break_index];
+            v = mrb_break_value_get(brk);
+            mrb_gc_protect(mrb, v);
+          }
+          CHECKPOINT_MAIN(RBREAK_TAG_BREAK) {
+            UNWIND_ENSURE(mrb, mrb->c->ci, mrb->c->ci->pc, RBREAK_TAG_BREAK, ci, v);
+          }
+          CHECKPOINT_END(RBREAK_TAG_BREAK);
+
+          if (mrb->c->ci == ci) {
+            break;
+          }
+          cipop(mrb);
+          if (mrb->c->ci[1].cci != CINFO_NONE) {
+            mrb_assert(prev_jmp != NULL);
+            mrb->exc = (struct RObject*)break_new(mrb, RBREAK_TAG_BREAK, ci, v);
+            mrb_gc_arena_restore(mrb, ai);
+            mrb->c->vmexec = FALSE;
+            mrb->jmp = prev_jmp;
+            MRB_THROW(prev_jmp);
+          }
+        }
+        mrb->exc = NULL; /* clear break object */
+
+        if (ci == mrb->c->cibase) {
+          struct mrb_context *c = mrb->c;
+          /* automatic yield at the end */
+          c->status = MRB_FIBER_TERMINATED;
+          mrb->c = c->prev;
+          mrb->c->status = MRB_FIBER_RUNNING;
+          c->prev = NULL;
+          if (c->vmexec) {
+            mrb_gc_arena_restore(mrb, ai);
+            c->vmexec = FALSE;
+            mrb->jmp = prev_jmp;
+            return v;
+          }
+          ci = mrb->c->ci;
+        }
 
         if (mrb->c->vmexec && !CI_TARGET_CLASS(ci)) {
           mrb_gc_arena_restore(mrb, ai);
@@ -3091,7 +3081,7 @@ RETRY_TRY_BLOCK:
         /* do nothing */
       }
       CHECKPOINT_MAIN(RBREAK_TAG_STOP) {
-        UNWIND_ENSURE(mrb, mrb->c->ci, pc, RBREAK_TAG_STOP, proc, mrb_nil_value());
+        UNWIND_ENSURE(mrb, mrb->c->ci, mrb->c->ci->pc, RBREAK_TAG_STOP, mrb->c->ci, mrb_nil_value());
       }
       CHECKPOINT_END(RBREAK_TAG_STOP);
     L_STOP:

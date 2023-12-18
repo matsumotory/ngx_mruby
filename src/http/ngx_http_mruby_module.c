@@ -11,6 +11,7 @@
 #include "ngx_http_mruby_init.h"
 #include "ngx_http_mruby_request.h"
 
+#include <mruby/proc.h>
 #include <mruby/string.h>
 
 #define ON 1
@@ -910,7 +911,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
 static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
   FILE *mrb_file;
-  struct mrb_parser_state *p;
+  mrb_value proc;
 
   if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
     return NGX_ERROR;
@@ -919,18 +920,15 @@ static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, n
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   code->ctx = mrbc_context_new(state->mrb);
   mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
-  p = mrb_parse_file(state->mrb, mrb_file, code->ctx);
+  code->ctx->no_exec = TRUE;
+  proc = mrb_load_file_cxt(state->mrb, mrb_file, code->ctx);
   fclose(mrb_file);
 
-  if (p == NULL || (0 < p->nerr)) {
+  if (!mrb_proc_p(proc)) {
     return NGX_ERROR;
   }
 
-  code->proc = mrb_generate_code(state->mrb, p);
-  mrb_pool_close(p->pool);
-  if (code->proc == NULL) {
-    return NGX_ERROR;
-  }
+  code->proc = mrb_proc_ptr(proc);
 
   return NGX_OK;
 }
@@ -994,10 +992,11 @@ static ngx_int_t ngx_http_mruby_shared_state_init(ngx_mrb_state_t *state)
 static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
   FILE *mrb_file;
-  struct mrb_parser_state *p;
+  mrb_value proc;
 
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   code->ctx = mrbc_context_new(state->mrb);
+  code->ctx->no_exec = TRUE;
 #ifdef NGX_MRUBY_IREP_DEBUG
   code->ctx->dump_result = TRUE;
 #endif
@@ -1007,23 +1006,18 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
       return NGX_ERROR;
     }
     mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
-    p = mrb_parse_file(state->mrb, mrb_file, code->ctx);
+    proc = mrb_load_file_cxt(state->mrb, mrb_file, code->ctx);
     fclose(mrb_file);
   } else {
     mrbc_filename(state->mrb, code->ctx, "INLINE CODE");
-    p = mrb_parse_string(state->mrb, (char *)code->code.string, code->ctx);
+    proc = mrb_load_string_cxt(state->mrb, (char *)code->code.string, code->ctx);
   }
 
-  if (p == NULL || (0 < p->nerr)) {
+  if (!mrb_proc_p(proc)) {
     return NGX_ERROR;
   }
 
-  code->proc = mrb_generate_code(state->mrb, p);
-  mrb_pool_close(p->pool);
-  if (code->proc == NULL) {
-    return NGX_ERROR;
-  }
-
+  code->proc = mrb_proc_ptr(proc);
 #ifdef NGX_MRUBY_IREP_DEBUG
   /* mrb_codedump_all() is not declared in mruby headers. So just follows the mruby way. See mruby/src/load.c. */
   void mrb_codedump_all(mrb_state *, struct RProc *);

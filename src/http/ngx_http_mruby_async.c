@@ -45,10 +45,11 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->async_handler_result = result;
 
-  handler_proc = mrb_closure_new(mrb, rproc->body.irep);
+  handler_proc = rproc;
+  handler_proc->upper = NULL;
+  handler_proc->e.target_class = mrb->object_class;
   fiber_proc = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
-  *fiber_proc =
-      mrb_funcall(mrb, mrb_obj_value(mrb->kernel_module), "_ngx_mrb_prepare_fiber", 1, mrb_obj_value(handler_proc));
+  *fiber_proc = mrb_fiber_new(mrb, rproc);
   if (mrb->exc) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                   "%s NOTICE %s:%d: preparing fiber got the raise, leave the fiber", MODULE_NAME, __func__, __LINE__);
@@ -60,7 +61,6 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
 
 mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *result)
 {
-  mrb_value resume_result = mrb_nil_value();
   ngx_http_request_t *r = ngx_mrb_get_request();
   mrb_value aliving = mrb_false_value();
   mrb_value handler_result = mrb_nil_value();
@@ -69,21 +69,14 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->fiber_proc = fiber_proc;
 
-  resume_result = mrb_funcall(mrb, *fiber_proc, "call", 0, NULL);
+  handler_result = mrb_fiber_resume(mrb, *fiber_proc, 0, NULL);
   if (mrb->exc) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
     return mrb_false_value();
   }
 
-  if (!mrb_array_p(resume_result)) {
-    mrb->exc = mrb_obj_ptr(mrb_exc_new_lit(
-        mrb, E_RUNTIME_ERROR,
-        "_ngx_mrb_prepare_fiber proc must return array included handler_return and fiber alive status"));
-    return mrb_false_value();
-  }
-  aliving = mrb_ary_entry(resume_result, 0);
-  handler_result = mrb_ary_entry(resume_result, 1);
+  aliving = mrb_fiber_alive_p(mrb, *fiber_proc);
 
   if (!mrb_test(aliving) && result != NULL) {
     *result = handler_result;

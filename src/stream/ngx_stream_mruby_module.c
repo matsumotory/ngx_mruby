@@ -10,6 +10,7 @@
 
 #include "ngx_stream_mruby_init.h"
 
+#include <mruby/proc.h>
 #include "mruby/string.h"
 
 #define NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code)                                                                    \
@@ -361,7 +362,7 @@ static ngx_mrb_code_t *ngx_stream_mruby_mrb_code_from_string(ngx_pool_t *pool, n
 static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code)
 {
   FILE *mrb_file;
-  struct mrb_parser_state *p;
+  mrb_value proc;
 
   if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
     if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
@@ -370,24 +371,22 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
     NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code);
     code->ctx = mrbc_context_new(mrb);
     mrbc_filename(mrb, code->ctx, (char *)code->code.file);
-    p = mrb_parse_file(mrb, mrb_file, code->ctx);
+    code->ctx->no_exec = TRUE;
+    proc = mrb_load_file_cxt(mrb, mrb_file, code->ctx);
     fclose(mrb_file);
   } else {
     NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code);
     code->ctx = mrbc_context_new(mrb);
     mrbc_filename(mrb, code->ctx, "INLINE CODE");
-    p = mrb_parse_string(mrb, (char *)code->code.string, code->ctx);
+    code->ctx->no_exec = TRUE;
+    proc = mrb_load_string_cxt(mrb, (char *)code->code.string, code->ctx);
   }
 
-  if (p == NULL || (0 < p->nerr)) {
+  if (!mrb_proc_p(proc)) {
     return NGX_ERROR;
   }
 
-  code->proc = mrb_generate_code(mrb, p);
-  mrb_pool_close(p->pool);
-  if (code->proc == NULL) {
-    return NGX_ERROR;
-  }
+  code->proc = mrb_proc_ptr(proc);
 
   if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
     ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: compile info: code->code.file=(%s)", MODULE_NAME,
