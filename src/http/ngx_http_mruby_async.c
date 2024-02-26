@@ -78,14 +78,14 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   if (mrb->exc) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
-    mrb_gc_unregister(re->mrb, *re->fiber);
+    mrb_gc_unregister(mrb, *fiber_proc);
     return mrb_false_value();
   }
 
   aliving = mrb_fiber_alive_p(mrb, *fiber_proc);
 
   if (!mrb_test(aliving) && result != NULL) {
-    mrb_gc_unregister(re->mrb, *re->fiber);
+    mrb_gc_unregister(mrb, *fiber_proc);
     *result = handler_result;
   }
 
