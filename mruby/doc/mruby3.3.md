@@ -1,6 +1,3 @@
-NEWS
-----
-
 # User visible changes in `mruby3.3` from `mruby3.2`
 
 "**_NOTE_**:" are changes to be aware of.

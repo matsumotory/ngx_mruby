@@ -162,11 +162,11 @@ struct mrb_state;
  *
  * The function pointing it must behave similarly as realloc except:
  * - If ptr is NULL it must allocate new space.
- * - If s is NULL, ptr must be freed.
+ * - If size is zero, ptr must be freed.
  *
  * See @see mrb_default_allocf for the default implementation.
  */
-typedef void* (*mrb_allocf) (struct mrb_state *mrb, void*, size_t, void *ud);
+typedef void* (*mrb_allocf) (struct mrb_state *mrb, void *ptr, size_t size, void *ud);
 
 #ifndef MRB_FIXED_STATE_ATEXIT_STACK_SIZE
 #define MRB_FIXED_STATE_ATEXIT_STACK_SIZE 5
@@ -798,6 +798,8 @@ MRB_API struct RClass * mrb_module_get_under_id(mrb_state *mrb, struct RClass *o
 MRB_API void mrb_notimplement(mrb_state*);
 /* a function to be replacement of unimplemented method */
 MRB_API mrb_value mrb_notimplement_m(mrb_state*, mrb_value);
+/* just return it self */
+MRB_API mrb_value mrb_obj_itself(mrb_state*, mrb_value);
 
 /**
  * Duplicate an object.

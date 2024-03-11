@@ -102,12 +102,11 @@ io_get_open_fptr(mrb_state *mrb, mrb_value io)
 static void
 io_set_process_status(mrb_state *mrb, pid_t pid, int status)
 {
-  struct RClass *c_process, *c_status;
+  struct RClass *c_status = NULL;
   mrb_value v;
 
-  c_status = NULL;
   if (mrb_class_defined_id(mrb, MRB_SYM(Process))) {
-    c_process = mrb_module_get_id(mrb, MRB_SYM(Process));
+    struct RClass *c_process = mrb_module_get_id(mrb, MRB_SYM(Process));
     if (mrb_const_defined(mrb, mrb_obj_value(c_process), MRB_SYM(Status))) {
       c_status = mrb_class_get_under_id(mrb, c_process, MRB_SYM(Status));
     }
@@ -320,7 +319,7 @@ io_free(mrb_state *mrb, void *ptr)
 }
 
 static void
-io_buf_init(mrb_state *mrb, struct mrb_io *fptr)
+io_init_buf(mrb_state *mrb, struct mrb_io *fptr)
 {
   if (fptr->readable) {
     fptr->buf = (struct mrb_io_buf*)mrb_malloc(mrb, sizeof(struct mrb_io_buf));
@@ -478,7 +477,7 @@ io_s_popen(mrb_state *mrb, mrb_value klass)
   fptr->pid = pid;
   fptr->readable = OPEN_READABLE_P(flags);
   fptr->writable = OPEN_WRITABLE_P(flags);
-  io_buf_init(mrb, fptr);
+  io_init_buf(mrb, fptr);
 
   DATA_TYPE(io) = &mrb_io_type;
   DATA_PTR(io)  = fptr;
@@ -522,8 +521,6 @@ io_s_popen(mrb_state *mrb, mrb_value klass)
   }
 
   if (!doexec) {
-    // XXX
-    fflush(stdin);
     fflush(stdout);
     fflush(stderr);
   }
@@ -587,7 +584,7 @@ io_s_popen(mrb_state *mrb, mrb_value klass)
       fptr->pid = pid;
       fptr->readable = OPEN_READABLE_P(flags);
       fptr->writable = OPEN_WRITABLE_P(flags);
-      io_buf_init(mrb, fptr);
+      io_init_buf(mrb, fptr);
 
       DATA_TYPE(io) = &mrb_io_type;
       DATA_PTR(io)  = fptr;
@@ -649,7 +646,7 @@ io_init_copy(mrb_state *mrb, mrb_value copy)
   fptr_copy->sync = fptr_orig->sync;
   fptr_copy->is_socket = fptr_orig->is_socket;
 
-  io_buf_init(mrb, fptr_copy);
+  io_init_buf(mrb, fptr_copy);
 
   DATA_TYPE(copy) = &mrb_io_type;
   DATA_PTR(copy) = fptr_copy;
@@ -680,6 +677,7 @@ check_file_descriptor(mrb_state *mrb, mrb_int fd)
 
 #if MRB_INT_MIN < INT_MIN || MRB_INT_MAX > INT_MAX
   if (fdi != fd) {
+    errno = EBADF;
     goto badfd;
   }
 #endif
@@ -695,6 +693,7 @@ check_file_descriptor(mrb_state *mrb, mrb_int fd)
   }
 
   if (fdi < 0 || fdi > _getmaxstdio()) {
+    errno = EBADF;
     goto badfd;
   }
 #endif /* _WIN32 */
@@ -745,7 +744,7 @@ io_init(mrb_state *mrb, mrb_value io)
   fptr->fd = (int)fd;
   fptr->readable = OPEN_READABLE_P(flags);
   fptr->writable = OPEN_WRITABLE_P(flags);
-  io_buf_init(mrb, fptr);
+  io_init_buf(mrb, fptr);
   return io;
 }
 
@@ -1221,26 +1220,22 @@ time2timeval(mrb_state *mrb, mrb_value time)
 static mrb_value
 io_s_pipe(mrb_state *mrb, mrb_value klass)
 {
-  mrb_value r = mrb_nil_value();
-  mrb_value w = mrb_nil_value();
-  struct mrb_io *fptr_r;
-  struct mrb_io *fptr_w;
   int pipes[2];
 
   if (io_pipe(mrb, pipes) == -1) {
     mrb_sys_fail(mrb, "pipe");
   }
 
-  r = mrb_obj_value(mrb_data_object_alloc(mrb, mrb_class_ptr(klass), NULL, &mrb_io_type));
-  fptr_r = io_alloc(mrb);
+  mrb_value r = mrb_obj_value(mrb_data_object_alloc(mrb, mrb_class_ptr(klass), NULL, &mrb_io_type));
+  struct mrb_io *fptr_r = io_alloc(mrb);
   fptr_r->fd = pipes[0];
   fptr_r->readable = 1;
   DATA_TYPE(r) = &mrb_io_type;
   DATA_PTR(r)  = fptr_r;
-  io_buf_init(mrb, fptr_r);
+  io_init_buf(mrb, fptr_r);
 
-  w = mrb_obj_value(mrb_data_object_alloc(mrb, mrb_class_ptr(klass), NULL, &mrb_io_type));
-  fptr_w = io_alloc(mrb);
+  mrb_value w = mrb_obj_value(mrb_data_object_alloc(mrb, mrb_class_ptr(klass), NULL, &mrb_io_type));
+  struct mrb_io *fptr_w = io_alloc(mrb);
   fptr_w->fd = pipes[1];
   fptr_w->writable = 1;
   fptr_w->sync = 1;
@@ -1593,19 +1588,15 @@ io_ungetc(mrb_state *mrb, mrb_value io)
 }
 
 static void
-io_buf_reset(struct mrb_io *fptr)
+io_buf_reset(struct mrb_io_buf *buf)
 {
-  struct mrb_io_buf *buf = fptr->buf;
-
   buf->start = 0;
   buf->len = 0;
 }
 
 static void
-io_buf_shift(struct mrb_io *fptr, mrb_int n)
+io_buf_shift(struct mrb_io_buf *buf, mrb_int n)
 {
-  struct mrb_io_buf *buf = fptr->buf;
-
   mrb_assert(n <= SHRT_MAX);
   buf->start += (short)n;
   buf->len -= (short)n;
@@ -1613,7 +1604,7 @@ io_buf_shift(struct mrb_io *fptr, mrb_int n)
 
 #ifdef MRB_UTF8_STRING
 static void
-io_buf_fill_comp(mrb_state *mrb, struct mrb_io *fptr)
+io_fill_buf_comp(mrb_state *mrb, struct mrb_io *fptr)
 {
   struct mrb_io_buf *buf = fptr->buf;
   int keep = buf->len;
@@ -1628,7 +1619,7 @@ io_buf_fill_comp(mrb_state *mrb, struct mrb_io *fptr)
 #endif
 
 static void
-io_buf_fill(mrb_state *mrb, struct mrb_io *fptr)
+io_fill_buf(mrb_state *mrb, struct mrb_io *fptr)
 {
   struct mrb_io_buf *buf = fptr->buf;
 
@@ -1646,40 +1637,50 @@ io_eof(mrb_state *mrb, mrb_value io)
 {
   struct mrb_io *fptr = io_get_read_fptr(mrb, io);
 
-  io_buf_fill(mrb, fptr);
+  if (fptr->eof) return mrb_true_value();
   if (fptr->buf->len > 0) return mrb_false_value();
+  io_fill_buf(mrb, fptr);
   return mrb_bool_value(fptr->eof);
 }
 
 static void
-io_buf_cat(mrb_state *mrb, mrb_value outbuf, struct mrb_io *fptr, mrb_int n)
+io_buf_cat(mrb_state *mrb, mrb_value outbuf, struct mrb_io_buf *buf, mrb_int n)
 {
-  struct mrb_io_buf *buf = fptr->buf;
-
   mrb_assert(n <= buf->len);
   mrb_str_cat(mrb, outbuf, buf->mem+buf->start, n);
-  io_buf_shift(fptr, n);
+  io_buf_shift(buf, n);
 }
 
 static void
-io_buf_cat_all(mrb_state *mrb, mrb_value outbuf, struct mrb_io *fptr)
+io_buf_cat_all(mrb_state *mrb, mrb_value outbuf, struct mrb_io_buf *buf)
 {
-  struct mrb_io_buf *buf = fptr->buf;
-
   mrb_str_cat(mrb, outbuf, buf->mem+buf->start, buf->len);
-  io_buf_reset(fptr);
+  io_buf_reset(buf);
 }
 
 static mrb_value
 io_read_all(mrb_state *mrb, struct mrb_io *fptr, mrb_value outbuf)
 {
   for (;;) {
-    io_buf_fill(mrb, fptr);
+    io_fill_buf(mrb, fptr);
     if (fptr->eof) {
       return outbuf;
     }
-    io_buf_cat_all(mrb, outbuf, fptr);
+    io_buf_cat_all(mrb, outbuf, fptr->buf);
   }
+}
+
+static mrb_value
+io_reset_outbuf(mrb_state *mrb, mrb_value outbuf, mrb_int len)
+{
+  if (mrb_nil_p(outbuf)) {
+    outbuf = mrb_str_new(mrb, NULL, 0);
+  }
+  else {
+    mrb_str_modify(mrb, mrb_str_ptr(outbuf));
+    RSTR_SET_LEN(mrb_str_ptr(outbuf), 0);
+  }
+  return outbuf;
 }
 
 static mrb_value
@@ -1702,30 +1703,31 @@ io_read(mrb_state *mrb, mrb_value io)
         mrb_raisef(mrb, E_ARGUMENT_ERROR, "negative length %d given", length);
       }
       if (length == 0) {
-        return mrb_str_new(mrb, NULL, 0);
+        return io_reset_outbuf(mrb, outbuf, 0);
       }
     }
   }
 
-  if (mrb_nil_p(outbuf)) {
-    outbuf = mrb_str_new_capa(mrb, MRB_IO_BUF_SIZE);
-  }
+  outbuf = io_reset_outbuf(mrb, outbuf, MRB_IO_BUF_SIZE);
   if (!length_given) {          /* read as much as possible */
     return io_read_all(mrb, fptr, outbuf);
   }
+
+  struct mrb_io_buf *buf = fptr->buf;
+
   for (;;) {
-    io_buf_fill(mrb, fptr);
+    io_fill_buf(mrb, fptr);
     if (fptr->eof || length == 0) {
       if (RSTRING_LEN(outbuf) == 0)
         return mrb_nil_value();
       return outbuf;
     }
-    if (fptr->buf->len < length) {
-      length -= fptr->buf->len;
-      io_buf_cat_all(mrb, outbuf, fptr);
+    if (buf->len < length) {
+      length -= buf->len;
+      io_buf_cat_all(mrb, outbuf, buf);
     }
     else {
-      io_buf_cat(mrb, outbuf, fptr, length);
+      io_buf_cat(mrb, outbuf, buf, length);
       return outbuf;
     }
   }
@@ -1797,7 +1799,7 @@ io_gets(mrb_state *mrb, mrb_value io)
     return io_read_all(mrb, fptr, mrb_str_new_capa(mrb, MRB_IO_BUF_SIZE));
   }
 
-  io_buf_fill(mrb, fptr);
+  io_fill_buf(mrb, fptr);
   if (fptr->eof) return mrb_nil_value();
 
   if (limit_given) {
@@ -1817,19 +1819,19 @@ io_gets(mrb_state *mrb, mrb_value io)
         if (limit_given && limit < n) {
           n = limit;
         }
-        io_buf_cat(mrb, outbuf, fptr, n);
+        io_buf_cat(mrb, outbuf, buf, n);
         return outbuf;
       }
     }
     if (limit_given) {
       if (limit <= buf->len) {
-        io_buf_cat(mrb, outbuf, fptr, limit);
+        io_buf_cat(mrb, outbuf, buf, limit);
         return outbuf;
       }
       limit -= buf->len;
     }
-    io_buf_cat_all(mrb, outbuf, fptr);
-    io_buf_fill(mrb, fptr);
+    io_buf_cat_all(mrb, outbuf, buf);
+    io_fill_buf(mrb, fptr);
     if (fptr->eof) {
       if (RSTRING_LEN(outbuf) == 0) return mrb_nil_value();
       return outbuf;
@@ -1864,23 +1866,23 @@ io_getc(mrb_state *mrb, mrb_value io)
 {
   mrb_int len = 1;
   struct mrb_io *fptr = io_get_read_fptr(mrb, io);
+  struct mrb_io_buf *buf = fptr->buf;
 
-  io_buf_fill(mrb, fptr);
+  io_fill_buf(mrb, fptr);
   if (fptr->eof) return mrb_nil_value();
 #ifdef MRB_UTF8_STRING
-  struct mrb_io_buf *buf = fptr->buf;
   const char *p = &buf->mem[buf->start];
   if ((*p) & 0x80) {
     len = mrb_utf8len(p, p+buf->len);
     if (len == 1 && buf->len < 4) { /* partial UTF-8 */
-      io_buf_fill_comp(mrb, fptr);
+      io_fill_buf_comp(mrb, fptr);
       p = &buf->mem[buf->start];
       len = mrb_utf8len(p, p+buf->len);
     }
   }
 #endif
-  mrb_value str = mrb_str_new(mrb, fptr->buf->mem+fptr->buf->start, len);
-  io_buf_shift(fptr, len);
+  mrb_value str = mrb_str_new(mrb, buf->mem+buf->start, len);
+  io_buf_shift(buf, len);
   return str;
 }
 
@@ -1898,12 +1900,13 @@ static mrb_value
 io_getbyte(mrb_state *mrb, mrb_value io)
 {
   struct mrb_io *fptr = io_get_read_fptr(mrb, io);
+  struct mrb_io_buf *buf = fptr->buf;
 
-  io_buf_fill(mrb, fptr);
+  io_fill_buf(mrb, fptr);
   if (fptr->eof) return mrb_nil_value();
 
-  unsigned char c = fptr->buf->mem[fptr->buf->start];
-  io_buf_shift(fptr, 1);
+  unsigned char c = buf->mem[buf->start];
+  io_buf_shift(buf, 1);
   return mrb_int_value(mrb, (mrb_int)c);
 }
 

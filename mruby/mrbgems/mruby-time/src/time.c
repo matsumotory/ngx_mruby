@@ -83,7 +83,8 @@ double round(double x) {
 
 /** end of Time class configuration */
 
-#if (defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0) && defined(CLOCK_REALTIME)
+/* protection against incorrectly defined _POSIX_TIMERS */
+#if defined(_POSIX_TIMERS) && (_POSIX_TIMERS + 0) > 0 && defined(CLOCK_REALTIME)
 # define USE_CLOCK_GETTIME
 #endif
 

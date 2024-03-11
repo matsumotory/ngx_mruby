@@ -15,7 +15,7 @@ Some values (called immediate values, e.g. integers, booleans, symbols, etc.) ar
 The Word boxing packing bit patterns are like following:
 
 | Types  | Bit Pattern                           |
-|--------|---------------------------------------|
+| ------ | ------------------------------------- |
 | object | `xxxxxxxx xxxxxxxx xxxxxxxx xxxxx000` |
 | fixnum | `xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxx1` |
 | nil    | `00000000 00000000 00000000 00000000` |
@@ -24,17 +24,17 @@ The Word boxing packing bit patterns are like following:
 | undef  | `00000000 00000000 00000000 00010100` |
 | symbol | `xxxxxxxx xxxxxxxx xxxxxxxx xxxxxx10` |
 
-On 64 bit platform (unless `MRB_WORDBOX_NO_FLOAT_TRUNCATE`), float values are also packed in the `mrb_value`. In that case, we drop least significant 2 bits from mantissa.
+On 64-bit platforms (unless `MRB_WORDBOX_NO_FLOAT_TRUNCATE`), float values are also packed in the `mrb_value`. In that case, we drop least significant 2 bits from mantissa.
 If you need full precision for floating-point numbers, define `MRB_WORDBOX_NO_FLOAT_TRUNCATE`.
 
 ## NaN Boxing
 
-NaN boxing packs the Ruby data in a floating-point numbers, which represent NaN (Not a Number) values. Under IEEE753 definitions every value that exponent is all set are considered as NaN. That means NaN can represent `2^51` values. NaN boxing is a teaching to pack the values in those NaN representation. In theory, 64 bits pointers are too big to fit in NaN, but practically most OS uses only 48 bits at most for pointers (except for some OS e.g. Solaris).
+NaN boxing packs the Ruby data in a floating-point numbers, which represent NaN (Not a Number) values. Under IEEE753 definitions every value that exponent is all set are considered as NaN. That means NaN can represent `2^51` values. NaN boxing is a teaching to pack the values in those NaN representation. In theory, 64 bit pointers are too big to fit in NaN, but practically most OS use only 48 bits at most for pointers (except for some OS e.g. Solaris).
 
 The NaN boxing packing bit patterns are like following:
 
 | Types  | Bit Pattern                                                               |
-|--------|---------------------------------------------------------------------------|
+| ------ | ------------------------------------------------------------------------- |
 | float  | `SEEEEEEE EEEEFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF` |
 | +/-inf | `S1111111 11110000 00000000 00000000 00000000 00000000 00000000 00000000` |
 | nan    | `01111111 11111000 00000000 00000000 00000000 00000000 00000000 00000000` |
