@@ -58,18 +58,6 @@ mrb_open_core(mrb_allocf f, void *ud)
   return mrb;
 }
 
-void*
-mrb_default_allocf(mrb_state *mrb, void *p, size_t size, void *ud)
-{
-  if (size == 0) {
-    free(p);
-    return NULL;
-  }
-  else {
-    return realloc(p, size);
-  }
-}
-
 MRB_API mrb_state*
 mrb_open(void)
 {
@@ -173,6 +161,9 @@ mrb_irep_free(mrb_state *mrb, mrb_irep *irep)
   }
   mrb_free(mrb, (void*)irep->lv);
   mrb_debug_info_free(mrb, irep->debug_info);
+#ifdef MRB_DEBUG
+  memset(irep, -1, sizeof(*irep));
+#endif
   mrb_free(mrb, irep);
 }
 
