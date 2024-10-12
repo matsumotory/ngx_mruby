@@ -53,7 +53,11 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
 #else
   ngx_uint_t i;
 #endif
+#if (nginx_version > 1025004)
+  ngx_stream_listen_opt_t *ls, *als;
+#else
   ngx_stream_listen_t *ls, *als;
+#endif
 
   mrb_get_args(mrb, "H", &listener);
   address = mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "address"));
@@ -81,7 +85,11 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_stream_mrb_add_listener ngx_array_push failed");
   }
 
+#if (nginx_version > 1025004)
+  ngx_memzero(ls, sizeof(ngx_stream_listen_opt_t));
+#else
   ngx_memzero(ls, sizeof(ngx_stream_listen_t));
+#endif
 
 #if (nginx_version < 1015010)
   ngx_memcpy(&ls->sockaddr.sockaddr, &u.sockaddr, u.socklen);
