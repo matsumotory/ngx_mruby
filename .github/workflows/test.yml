@@ -15,8 +15,8 @@ jobs:
     strategy:
       matrix:
         NGINX_VERSION:
-          - 1.25.2
-          - 1.24.0
+          - 1.27.2
+          - 1.26.2
         BUILD_DYNAMIC_MODULE:
           - ""
           - "TRUE"
