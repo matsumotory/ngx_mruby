@@ -41,7 +41,6 @@ static mrb_value ngx_stream_mrb_get_ngx_mruby_name(mrb_state *mrb, mrb_value sel
 
 static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_core_main_conf_t *cmcf;
   ngx_stream_mruby_srv_conf_t *mscf = mrb->ud;
   ngx_stream_core_srv_conf_t *cscf = mscf->ctx->cscf;
   ngx_conf_t *cf = mscf->ctx->cf;
@@ -53,7 +52,7 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
 #else
   ngx_uint_t i;
 #endif
-  ngx_stream_listen_t *ls, *als;
+  ngx_stream_listen_opt_t ls;
 
   mrb_get_args(mrb, "H", &listener);
   address = mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "address"));
@@ -74,93 +73,57 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_stream_mrb_add_listener ngx_parse_url failed");
   }
 
-  cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
-
-  ls = ngx_array_push(&cmcf->listen);
-  if (ls == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_stream_mrb_add_listener ngx_array_push failed");
-  }
-
-  ngx_memzero(ls, sizeof(ngx_stream_listen_t));
-
-#if (nginx_version < 1015010)
-  ngx_memcpy(&ls->sockaddr.sockaddr, &u.sockaddr, u.socklen);
-  ls->socklen = u.socklen;
-#endif
-
-  ls->backlog = NGX_LISTEN_BACKLOG;
-
-#if (nginx_version >= 1013000)
-  ls->rcvbuf = -1;
-  ls->sndbuf = -1;
-#endif
-  ls->type = SOCK_STREAM;
-  ls->wildcard = u.wildcard;
-  ls->ctx = cf->ctx;
+  ngx_memzero(&ls, sizeof(ngx_stream_listen_opt_t));
+  ls.rcvbuf = -1;
+  ls.sndbuf = -1;
+  ls.type = SOCK_STREAM;
+  ls.wildcard = u.wildcard;
 
 #if (NGX_HAVE_INET6)
-  ls->ipv6only = 1;
+  ls.ipv6only = 1;
 #endif
 
 #if !(NGX_WIN32)
   if (mrb_bool(mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "udp")))) {
-    ls->type = SOCK_DGRAM;
+    ls.type = SOCK_DGRAM;
   }
 #endif
 
-  if (ls->type == SOCK_DGRAM) {
+  if (ls.type == SOCK_DGRAM) {
 #if (NGX_STREAM_SSL)
-    if (ls->ssl) {
+    if (ls.ssl) {
       mrb_raise(mrb, E_RUNTIME_ERROR, "\"ssl\" parameter is incompatible with \"udp\"");
     }
 #endif
 
-    if (ls->so_keepalive) {
+    if (ls.so_keepalive) {
       mrb_raise(mrb, E_RUNTIME_ERROR, "\"so_keepalive\" parameter is incompatible with \"udp\"");
     }
 
-    if (ls->proxy_protocol) {
+    if (ls.proxy_protocol) {
       mrb_raise(mrb, E_RUNTIME_ERROR, "\"proxy_protocol\" parameter is incompatible with \"udp\"");
     }
   }
 
-  als = cmcf->listen.elts;
-
-#if (nginx_version > 1015009)
   for (n = 0; n < u.naddrs; n++) {
-   ls[n] = ls[0];
-   ls[n].sockaddr = u.addrs[n].sockaddr;
-   ls[n].socklen = u.addrs[n].socklen;
-   ls[n].addr_text = u.addrs[n].name;
-   ls[n].wildcard = ngx_inet_wildcard(ls[n].sockaddr);
-
-   for (i = 0; i < cmcf->listen.nelts - u.naddrs + n; i++) {
-     if (ls[n].type != als[i].type) {
-       continue;
-     }
-
-     if (ngx_cmp_sockaddr(als[i].sockaddr, als[i].socklen, ls[n].sockaddr, ls[n].socklen, 1) != NGX_OK) {
-        continue;
-     }
-
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "duplicate \"%V\" address and port pair", &ls[n].addr_text);
-      mrb_raise(mrb, E_RUNTIME_ERROR, "duplicate address and port pair");
-    }
-  }
-#else
-  for (i = 0; i < cmcf->listen.nelts - 1; i++) {
-    if (ls->type != als[i].type) {
+    for (i = 0; i < n; i++) {
+      if (ngx_cmp_sockaddr(u.addrs[n].sockaddr, u.addrs[n].socklen, u.addrs[i].sockaddr, u.addrs[i].socklen, 1) ==
+          NGX_OK) {
+        goto next;
+      }
+    next:
       continue;
     }
 
-    if (ngx_cmp_sockaddr(&als[i].sockaddr.sockaddr, als[i].socklen, &ls->sockaddr.sockaddr, ls->socklen, 1) != NGX_OK) {
-      continue;
-    }
+    ls.sockaddr = u.addrs[n].sockaddr;
+    ls.socklen = u.addrs[n].socklen;
+    ls.addr_text = u.addrs[n].name;
+    ls.wildcard = ngx_inet_wildcard(ls.sockaddr);
 
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "duplicate \"%V\" address and port pair", &u.url);
-    mrb_raise(mrb, E_RUNTIME_ERROR, "duplicate address and port pair");
+    if (ngx_stream_add_listen(cf, cscf, &ls) != NGX_OK) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "can't add strem listener");
+    }
   }
-#endif
 
   return mrb_true_value();
 }
