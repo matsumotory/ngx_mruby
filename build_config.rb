@@ -22,7 +22,8 @@ MRuby::Build.new('host') do |conf|
   conf.gem github: 'iij/mruby-process'
   conf.gem github: 'mattn/mruby-json'
   conf.gem github: 'mattn/mruby-onig-regexp'
-  conf.gem github: 'matsumotory/mruby-redis'
+  # disabled: unpinned hiredis clone in mrbgem.rake fails CI (upstream FFC_DEBUG -Wundef/-Werror)
+  # conf.gem github: 'matsumotory/mruby-redis'
   conf.gem github: 'matsumotory/mruby-vedis'
   conf.gem github: 'matsumotory/mruby-userdata'
   conf.gem github: 'matsumotory/mruby-uname'
