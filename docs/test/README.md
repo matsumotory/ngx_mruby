@@ -47,7 +47,11 @@ can live in files of its own:
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
   with `_` are helpers and are not run by test.sh; `_tcp_client.rb`,
   `_filter_connection_client.rb` and `_second_instance.rb` are CRuby
-  scripts that the prelude helpers run with `ruby`.
+  scripts that the prelude helpers run with `ruby`. `_agent_proxy_client.rb`
+  is a CRuby script (3.0 or later) that `agent_proxy.rb` runs itself: it
+  loads `test/soak/mock_llm.rb` and `test/soak/http_client.rb`, runs the mock
+  LLM upstream on 12372 and 12373 while it sends its requests (see "Mock LLM
+  upstream" below), and prints `key=value` lines.
 - Hook scripts go to `test/html/` as before; the fragment refers to them as
   `build/nginx/html/<name>.rb`.
 
@@ -155,8 +159,14 @@ $ ruby test/soak/mock_llm.rb --port 12362 --events 50 --hold-after 10
 
 A request can override the options for itself with the headers
 `x-mock-events`, `x-mock-hold-after`, `x-mock-reset-after`, `x-mock-status`
-and `x-mock-delay-ms` (`off` turns the last three off); nginx forwards them
-unless the configuration drops them.
+and `x-mock-delay-ms`, each a number of 0 or more. `x-mock-hold-after`,
+`x-mock-reset-after` and `x-mock-status` also take `off`, which turns the
+hold, the reset or the error status off; `x-mock-events` and
+`x-mock-delay-ms` do not. Any other value gets a 400 answer
+(`invalid_request_error`) that names the header. nginx forwards the headers
+unless the configuration drops them. `ruby test/soak/mock_llm_test.rb` checks
+these rules and the answers below against the mock in its own process (no
+nginx, about a second); `test/soak/run.sh` runs it before the soak.
 
 What it answers:
 
@@ -421,6 +431,7 @@ largest over all scenarios and runs of a row:
 | aarch64, 1 run, `SOAK_N=100000` | +68 kB (`file`) | +160 kB (`file`) |
 | x86_64 (CI), 4 runs, `SOAK_N=20000` | +144 kB (`filter`) | +236 kB (`sleep`) |
 | aarch64, 3 runs, `SOAK_N=20000`, the `agent_*` scenarios (2026-10-04) | +28 kB (`agent_stream`) | +32 kB (`agent_upstream_reset`) |
+| x86_64 (CI), 1 run, `SOAK_N=20000`, the `agent_*` scenarios (2026-10-04) | +4 kB (`agent_stream`, `agent_client_abort`) | +84 kB (`agent_stream`) |
 
 Without `malloc_trim(0)`, the `disconnect` scenario at `SOAK_N=300000` moved
 by +2832, -788 and +1088 kB from window to window, which is over a 512 kB
@@ -626,12 +637,29 @@ scenarios therefore count the handler, which nginx calls through a pointer.
 Two counts per request are printed after the table and kept in
 `report.json`, but not checked: `ruby_calls`, the calls of
 `ngx_mrb_start_fiber` (`ngx_mrb_run` starts one fiber per run of Ruby code,
-and nothing else calls it), and `upstream_reads`, the calls of
-`ngx_http_upstream_process_non_buffered_request`. nginx reads at most
-`proxy_buffer_size` (4k) from the upstream each time; how many reads a
-stream takes depends on how much of it had arrived at each read, so the Ir
-of the stream scenarios moves with it. With two builds, a scenario whose
-reads per request differ by more than 1% is marked.
+and nothing else calls it), and `non_buffered_calls`, the calls of
+`ngx_http_upstream_process_non_buffered_request`, which relays an
+unbuffered response. nginx calls it when the upstream connection becomes
+readable and when the client connection becomes writable. One call reads
+from the upstream until `recv()` would block, at most `proxy_buffer_size`
+(4k) at a time, and writes what it read to the client, so the count is not
+a count of 4k reads: how many calls a response takes depends on how much of
+it had arrived at each call. It also differs between builds and machines:
+2.00 per request for `proxy_plain_*`, `auth` and `route_json_*` in the
+aarch64 container, 1.00 on the CI runner (x86_64).
+
+Each call costs Ir. On aarch64, `proxy_stream_plain_50` (`PERF_N=2000`)
+with the mock writing the stream in one write, one write per event, and one
+write per event 1 ms apart made 3.00, 4.96 and 109.99 calls per request and
+cost 52270, 54255 and 142740 Ir per request: about 1010 Ir per call from the
+first to the second, and 850 from the first to the third. With two builds,
+the line of a scenario whose calls differ gives the Ir that the difference
+alone makes at 1000 Ir per call (`NON_BUFFERED_CALL_IR`), as a share of the
+base without GC, and from half of `PERF_WARN_PERCENT` on it says that the
+change of the scenario may come from when the response arrived. For
+`proxy_stream_plain_50`, about 2 more calls per request reach `WARN` and
+about 3 reach `FAIL`; between the base and the head of one run, its calls
+differed by 0.01 to 0.08 per request so far.
 
 First measurement, 2026-10-04: one run of `test/perf/perf.rb` on the head
 build of this checkout (`next` at `f62880c` plus the harness), nginx 1.31.6,
@@ -639,7 +667,7 @@ Ubuntu 22.04 (gcc 11, valgrind 3.18.1), container on aarch64,
 `PERF_N=20000`. H is `hello` in the same run, 11856 Ir per request (11158
 without GC):
 
-| Scenario | Ir/req (w/o GC) | H | Reads/req |
+| Scenario | Ir/req (w/o GC) | H | `non_buffered_calls`/req |
 |---|---|---|---|
 | `proxy_plain_2k` | 21952 (21952) | 1.85 | 2.00 |
 | `proxy_plain_64k` | 22264 (22264) | 1.88 | 2.00 |
@@ -665,7 +693,7 @@ The differences between scenarios of the same shape, from that run:
   without GC), 0.28 H.
 - One more stream event without Ruby,
   `(proxy_stream_plain_1000 - proxy_stream_plain_50) / 950`: 398 Ir, with
-  the reads per request of that run.
+  the `non_buffered_calls` of that run (4.97 and 38.43 per request).
 
 `proxy_stream_plain_1000` and `route_json_64k` took 83 and 129 seconds per
 build in that run, while all the scenarios of the default set together take
@@ -683,7 +711,10 @@ The exit status is 1 when a scenario is `FAIL`, when a measurement fails
 requests, see "In CI"), or when no scenario was compared. The one exception
 is a base that answers with an unexpected response while the head passes,
 which is what a scenario that needs a feature of the head gets: it is shown
-as `n/a` and does not fail the run.
+as `n/a` and does not fail the run. That holds only when the unexpected
+response is the base's only problem: when the same base measurement also
+logged a line at the `error` level or more, or its mock LLM failed (nginx
+then answers 502 and logs the connection error), the scenario is `ERROR`.
 
 The thresholds were checked with a null change on 2026-10-03: three runs of
 `compare.sh` on two checkouts with the same build inputs (`next` at
@@ -715,28 +746,39 @@ to `/status` that wakes `callgrind_control` costs about 12500 instructions
 most about 0.01% of the smallest window (`hello`, 235 million
 instructions).
 
-The agent proxy scenarios were checked with two null changes on
-2026-10-04 in the same kind of container, with all nine of them, the two
-left out of the default set included. Change of head against base,
-total / without GC:
+The agent proxy scenarios were checked with null changes on 2026-10-04:
+two in the same kind of container on aarch64, with all nine of them (the
+two left out of the default set included), and the `perf` job of the pull
+request that added them on the CI runner (x86_64, run 37152930938: base
+`next` at `f62880c`, head the merge commit, no build input changed), with
+the seven of the default set. Change of head against base, total / without
+GC:
 
-| Scenario | Same build twice (`next` at `4f29b06`) | `compare.sh`, `next` at `f62880c` and this checkout |
-|---|---|---|
-| `proxy_plain_2k` | +0.000% / +0.000% | +0.005% / +0.005% |
-| `proxy_plain_64k` | +0.005% / +0.005% | +0.009% / +0.009% |
-| `proxy_stream_plain_50` | +0.042% / +0.042% | +0.022% / +0.022% |
-| `proxy_stream_plain_1000` | +0.004% / +0.004% | +0.007% / +0.007% |
-| `auth` | +0.000% / +0.000% | +0.000% / +0.000% |
-| `route_json_2k` | +0.000% / +0.000% | +0.000% / +0.000% |
-| `route_json_64k` | +0.000% / +0.000% | +0.000% / +0.000% |
-| `ruby_call_1` | +0.000% / +0.000% | +0.000% / +0.000% |
-| `ruby_call_10` | +0.003% / +0.004% | +0.000% / +0.000% |
+| Scenario | aarch64, same build twice (`next` at `4f29b06`) | aarch64, `compare.sh`, `next` at `f62880c` and the pull request | x86_64, CI run 37152930938 |
+|---|---|---|---|
+| `proxy_plain_2k` | +0.000% / +0.000% | +0.005% / +0.005% | +0.000% / +0.000% |
+| `proxy_plain_64k` | +0.005% / +0.005% | +0.009% / +0.009% | -0.110% / -0.110% |
+| `proxy_stream_plain_50` | +0.042% / +0.042% | +0.023% / +0.023% | -0.063% / -0.063% |
+| `proxy_stream_plain_1000` | +0.004% / +0.004% | +0.007% / +0.007% | not run |
+| `auth` | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `route_json_2k` | +0.000% / +0.000% | +0.000% / +0.000% | -0.000% / -0.000% |
+| `route_json_64k` | +0.000% / +0.000% | +0.000% / +0.000% | not run |
+| `ruby_call_1` | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `ruby_call_10` | +0.003% / +0.004% | +0.000% / +0.000% | +0.000% / +0.000% |
 
-The stream scenarios vary the most, because their upstream reads per
-request vary (5.01 and 5.02 in base and head of the same run). Between runs
-of the same build, `auth` measured 46797 and 46977 Ir per request without
-GC (0.38%) and `route_json_2k` 106066 and 106246 (0.17%); the base and the
-head of one run, which the thresholds compare, stayed within 0.05%.
+The scenarios with an upstream vary the most, and the `non_buffered_calls`
+do not explain all of it. On aarch64, `proxy_stream_plain_50` moved by up
+to 0.042% with its calls at 5.01 and 5.02 per request in base and head. On
+the CI runner, `proxy_plain_64k` moved by -0.110% (22530 and 22506 Ir per
+request) with its calls at 1.00 in both builds, and `proxy_stream_plain_50`
+by -0.063% while its calls went from 4.86 to 4.94, which alone would add
+about 0.14%. Other work whose amount depends on timing, such as how many
+reads the 64 KB request body takes, was not counted. Between runs of the
+same build on aarch64, `auth` measured 46797 and 46977 Ir per request
+without GC (0.38%) and `route_json_2k` 106066 and 106246 (0.17%). The
+largest change between the base and the head of one run, which the
+thresholds compare, is 0.110% so far, about 27 times below the 3% of
+`WARN`.
 
 In the `compare.sh` run, the seven scenarios that count `ngx_mrb_run`
 failed their window check in both builds on aarch64: callgrind recorded
@@ -751,7 +793,9 @@ first measurement above was taken that way.
 
 To check that the thresholds fire, the head was a copy of the base with an
 empty loop of 100 iterations (`volatile` counter) at the start of
-`ngx_mrb_run`, which every scenario runs once per request. The self cost of
+`ngx_mrb_run`, which each of the seven scenarios of that time runs once per
+request (the agent proxy scenarios came later; the `proxy_*` ones run no
+Ruby, and `ruby_call_10` runs it ten times). The self cost of
 `ngx_mrb_run` grew by 604 instructions per request in every scenario, and
 the report showed `hello` +5.47% (`FAIL`), `filter` and `file` +4.62%,
 `sleep` +4.10%, `var` +3.07% (`WARN`), `headers` +1.79% and `sub_request`
@@ -823,8 +867,10 @@ gem lock of the base build, so that both have the same third-party gems; the
 report says how many gems are at different commits (0 when the lock
 worked). The measurement (`test/perf/`, the scenarios in `test/soak/`) comes
 from this checkout for both builds. The first run builds two trees (a few
-minutes each); the measurement takes about one and a half minutes per build,
-most of it in `sleep`. The report goes to `build_perf/report.txt` and
+minutes each); the measurement of the default scenarios takes about 140
+seconds per build (139 seconds on the CI runner, 28 of them in `sleep`), and
+`proxy_stream_plain_1000` and `route_json_64k` add about 80 and 130 seconds
+when `PERF_SCENARIOS` names them. The report goes to `build_perf/report.txt` and
 `build_perf/report.json`. `test.sh` kills every nginx on the machine, so do
 not run it at the same time.
 
@@ -870,12 +916,14 @@ that compared no scenario are annotations; the job fails on `FAIL` and
 `callgrind_control` fails or times out, the dump is missing, `error.log` has
 a line at the `error` level or above, or the window does not hold the
 requests: 0 Ir, or not the expected calls of the scenario's request
-function: exactly one call of `ngx_mrb_run` per request in most scenarios,
-and the counts of "Agent proxy scenarios in the comparison" in the others
+function: exactly one call of `ngx_mrb_run` per request in the seven
+scenarios of `test/soak/nginx.conf`, and in the agent proxy scenarios the
+functions and counts of "Agent proxy scenarios in the comparison"
 (`callgrind_control` prints "OK." even when vgdb did not reach the process,
 so an empty window is caught here). Only a base that answers a scenario with
-an unexpected response (a scenario that needs a feature of the head) gives
-`n/a`, and a run in which no scenario was compared fails.
+an unexpected response and has no other problem (a scenario that needs a
+feature of the head) gives `n/a`, and a run in which no scenario was
+compared fails.
 
 The calls of `ngx_mrb_run` are counted by name. A copy that GCC makes of the
 function at `-O2` (`ngx_mrb_run.part.0`, `.isra.0`, `.constprop.0`, `.cold`)
