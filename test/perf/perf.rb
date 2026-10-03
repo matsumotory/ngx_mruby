@@ -118,6 +118,12 @@ GC_SOURCE = 'mruby/src/gc.c'
 # measures both builds, so a pull request that renames the function lists
 # the old and the new name here (a call between two listed names counts
 # once as well); PERF_REQUEST_FUNCTIONS (comma-separated) overrides the list.
+# An inlined function leaves no call in the profile. ngx_mrb_start_fiber is
+# defined in ngx_http_mruby_async.c and called from ngx_http_mruby_module.c,
+# so GCC does not inline it; a change that lets the compiler inline it
+# (static in the file of its single caller, or a build with LTO) would leave
+# every window with 0 calls and has to list a function that keeps a real
+# call.
 REQUEST_FUNCTIONS = ENV.fetch('PERF_REQUEST_FUNCTIONS', 'ngx_mrb_start_fiber').split(',').map(&:strip).reject(&:empty?).freeze
 # Calls of the request function per request, by scenario; 1 when not listed.
 REQUEST_FUNCTION_CALLS = Hash.new(1).merge('ruby_call_10' => 10).freeze
@@ -716,12 +722,20 @@ def self_test_summary
   mrb_run_failed = 'error.made_up.log: 2026/10/03 22:59:25 [error] 7#0: *2 mrb_run failed: return 500 HTTP status code ' \
                    "to client: error: undefined method 'made_up' (NoMethodError), client: 127.0.0.1, server: , " \
                    'request: "POST /v1/plain HTTP/1.1", host: "localhost"'
+  # Lines that MRB_RUN_FAILED_LINE must not match, so they stay ERROR: what
+  # ngx_mrb_raise_cycle_error logs (an error outside a request, such as
+  # init_worker), and the request line of ngx_mrb_raise_error in nginx's
+  # stderr instead of error.log.
+  cycle_failed = "error.made_up.log: 2026/10/03 22:59:25 [error] 7#0: mrb_run failed. error: undefined method 'made_up' (NoMethodError)"
+  stderr_failed = mrb_run_failed.sub('error.made_up.log: ', 'stderr.made_up.log: ')
   [
     ['n/a (base: unexpected response)', [unexpected]],
     ['ERROR', [unexpected, connect]],
     ['n/a (base: unexpected response)', [unexpected, mrb_run_failed]],
     ['ERROR', [unexpected, mrb_run_failed, connect]],
-    ['ERROR', [unexpected, mrb_run_failed, log_more_lines('error.made_up.log')]]
+    ['ERROR', [unexpected, mrb_run_failed, log_more_lines('error.made_up.log')]],
+    ['ERROR', [unexpected, cycle_failed]],
+    ['ERROR', [unexpected, stderr_failed]]
   ].each do |expected, problems|
     base = { problems: problems, unexpected_response: true }
     _header, rows, = summarize(builds, [scenario], { %w[base made_up] => base, %w[head made_up] => ok })

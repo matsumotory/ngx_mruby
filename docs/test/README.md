@@ -957,8 +957,9 @@ comparison" (`callgrind_control` prints "OK." even when vgdb did not reach
 the process, so an empty window is caught here). Only a base that answers a
 scenario with an unexpected response and has no other problem than
 ngx_mruby's `mrb_run failed` lines (a scenario that needs a feature of the
-head; see "Thresholds and calibration") gives `n/a`, and a run in which no
-scenario was compared fails.
+head; see [Thresholds and calibration](#thresholds-and-calibration-1) of
+the performance comparison) gives `n/a`, and a run in which no scenario was
+compared fails.
 
 The calls of the request function are counted by name. A copy that GCC
 makes of a function at `-O2` (`ngx_mrb_start_fiber.part.0`, `.isra.0`,
@@ -968,7 +969,13 @@ fail the window. A pull request that renames `ngx_mrb_start_fiber`, or
 moves the start of the fiber of a Ruby run to another function, has to add
 the new name to `REQUEST_FUNCTIONS` in `test/perf/perf.rb` and keep the old
 one: the `perf.rb` of the head measures the base too, and a call between
-two listed names counts once.
+two listed names counts once. GCC cannot inline `ngx_mrb_start_fiber` now,
+because it is defined in `ngx_http_mruby_async.c` and called from
+`ngx_http_mruby_module.c`. A change that lets the compiler inline it (for
+example making it `static` in the file of its single caller, or a build
+with LTO) would leave no call of it in the profile, and every window of the
+seven scenarios would hold 0 calls, so such a change has to list a function
+that keeps a real call.
 `PERF_REQUEST_FUNCTIONS` (comma-separated) overrides the list for a local
 run, `REQUEST_FUNCTION_CALLS` sets another number of calls per request
 for a scenario, and `SCENARIO_REQUEST_FUNCTIONS` another function. `ruby test/perf/perf.rb --self-test` checks the name rules
