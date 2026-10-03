@@ -9,5 +9,7 @@
   output redirected to a log file, and read the log when it finishes.
 - After the first full run, iterate with `ONLY_BUILD_NGX_MRUBY=1 sh test.sh`.
 - Pull requests: `gh pr create --draft --base <master|next>`, with a body that follows
-  every section of `.github/PULL_REQUEST_TEMPLATE.md`. Do not merge, approve, tag or
+  every section of `.github/PULL_REQUEST_TEMPLATE.md`. Have a separate agent review
+  the PR with the checklist in AGENTS.md, post its findings as a PR comment, and
+  merge with a merge commit when the conditions in AGENTS.md hold. Do not tag or
   release.

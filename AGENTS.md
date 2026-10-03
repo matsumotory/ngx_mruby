@@ -34,8 +34,40 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
   Backports to 2.x: `backport/v2.x/<topic>`.
 - Never create branches named like tags (`v2.7.1`, `v3.0.0-rc.1`), and never
   create `next/*` or `v2.x/*` branches (they clash with the existing branch refs).
-- Agents open **draft** PRs and fill in every section of the PR template.
-  Agents never merge, approve, create/move/delete tags, or publish releases.
+- Agents open PRs and fill in every section of the PR template. Open them as
+  drafts while CI and the review below are running.
+- Agents never create, move or delete tags, and never publish releases or
+  security advisories. Those stay with the owner.
+
+### Review and merge
+
+Every PR gets a review by an agent (or person) that did not write it, with
+this checklist: the change is inside the agreed scope (`docs/proposals/`, an
+issue, or a fix with evidence); the code and tests are correct when read
+against `src/` and, where it matters, the nginx source; a bug fix shows the
+test failing on the base branch and passing on the head; expectations assert
+on real responses, not only on "not 500"; the CI result on the head commit;
+compatibility notes in the PR body match the diff; nothing in the diff, the
+commit messages or the PR text discloses an unpublished vulnerability or a
+secret; and `docs/` is updated when a directive, Ruby method, build option or
+the test harness changes. The reviewer posts the findings as a PR comment,
+split into "must fix" (blocks the merge) and "should fix". The author fixes
+every "must fix" and asks for a re-review of those items only.
+
+The session that owns the PR merges it, with a merge commit, when all of
+these hold:
+
+1. The base branch follows the branch table above.
+2. Every CI check on the head commit passed (`ci-ok` once it is required).
+   A run made green by skipping or disabling tests does not count.
+3. The change is inside the agreed scope, or is a bug fix with the evidence
+   above, or changes documentation only.
+4. The review above is recorded on the PR and no "must fix" item is open.
+5. The scrub for secrets and unpublished vulnerability details passed.
+6. The PR has no conflicts with its base.
+
+If any condition cannot be met, the session says which one and why, and asks
+the owner instead of merging.
 
 ## Build and test
 
