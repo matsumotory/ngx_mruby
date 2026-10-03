@@ -57,10 +57,3 @@ def second_instance(mode)
   end
   result
 end
-
-# The valgrind run checks the memory use of the nginx that test.sh starts.
-# The second nginx would run without valgrind and add nothing to that check,
-# so the cases do not start it in that run.
-def under_valgrind?
-  ENV['NGINX_RUNNER'].to_s.include?('valgrind')
-end

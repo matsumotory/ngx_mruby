@@ -84,20 +84,19 @@ t.assert('directives - nginx -t runs the mruby_init file and not the mruby_init_
   t.assert_not_include out, '"mruby_init_worker file"'
 end
 
-if under_valgrind?
-  puts 'directives: the second nginx is not started under valgrind'
-else
-  # The second nginx loads the file versions of mruby_init, mruby_init_worker
-  # and mruby_exit_worker. The reply shows that the global variable set by the
-  # init file reached the init_worker file and a request. The p lines show
-  # the order of the three hooks, the last one printed when nginx stopped.
-  t.assert('directives - mruby_init, mruby_init_worker and mruby_exit_worker files in a second nginx', '127.0.0.1:58116') do
-    r = second_instance('http')
-    t.assert_nil r['error']
-    t.assert_equal 'init,init_worker', r['reply']
-    t.assert_equal '"mruby_init file"|"mruby_init_worker file"|"mruby_exit_worker file"', r['stdout']
-    t.assert_equal 'exited 0', r['exit']
-  end
+# The second nginx loads the file versions of mruby_init, mruby_init_worker
+# and mruby_exit_worker. The reply shows that the global variable set by the
+# init file reached the init_worker file and a request. The p lines show
+# the order of the three hooks, the last one printed when nginx stopped.
+# The second nginx runs without valgrind in every cell, so this case also
+# runs in the valgrind cells.
+t.assert('directives - mruby_init, mruby_init_worker and mruby_exit_worker files in a second nginx', '127.0.0.1:58116') do
+  r = second_instance('http')
+  t.assert_nil r['error']
+  t.assert_nil r['sanitizer']
+  t.assert_equal 'init,init_worker', r['reply']
+  t.assert_equal '"mruby_init file"|"mruby_init_worker file"|"mruby_exit_worker file"', r['stdout']
+  t.assert_equal 'exited 0', r['exit']
 end
 
 # characterizes v2 behaviour; see docs/proposals/v3-plan.md

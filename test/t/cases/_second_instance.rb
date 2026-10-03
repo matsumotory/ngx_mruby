@@ -234,6 +234,16 @@ class SecondInstance
     if File.exist?(stdout)
       @result['stdout'] = File.read(stdout).split("\n").reject(&:empty?).join('|')
     end
+    # A sanitizer build writes its reports to error.log (after nginx has
+    # redirected stderr) or to stderr.log (before). Report the first one.
+    %w[error.log stderr.log].each do |name|
+      path = File.join(@prefix, name)
+      next unless File.exist?(path)
+      line = File.read(path).split("\n").find { |l| l =~ /runtime error:|AddressSanitizer|LeakSanitizer|UndefinedBehaviorSanitizer/ }
+      if line && !@result.key?('sanitizer')
+        @result['sanitizer'] = "#{name}: #{line.strip}"
+      end
+    end
     log = File.join(@prefix, 'error.log')
     return unless @mode == 'stream' && File.exist?(log)
 
@@ -252,6 +262,6 @@ end
 
 instance = SecondInstance.new(mode)
 instance.run
-%w[error reply trace stdout exit].each do |key|
+%w[error reply trace stdout exit sanitizer].each do |key|
   puts "#{key}=#{instance.result[key]}" if instance.result.key?(key)
 end

@@ -35,12 +35,18 @@ can live in files of its own:
 
 - `test/conf/conf.d/<name>.conf`: a fragment included at the end of the
   `http {}` block. It holds its own `server {}` on a port of its own (58110
-  and up). Fragments for `stream {}` go to `test/conf/conf.d/stream/`
-  (ports 12353 and up).
+  and up; 58116 is taken by the second nginx that
+  `test/t/cases/_second_instance.rb` starts). Fragments for `stream {}` go
+  to `test/conf/conf.d/stream/` (ports 12353 and up; 12357 is taken by the
+  second nginx).
 - `test/t/cases/<name>.rb`: a test file run after `test/t/ngx_mruby.rb`,
-  with `test/t/cases/_prelude.rb` (the `base`, `base_ssl` and `http_host`
-  helpers) prepended. It starts with `SimpleTest.new` and ends with
-  `t.report`. Files whose name starts with `_` are helpers and are not run.
+  with `test/t/cases/_prelude.rb` prepended. The prelude defines `base`,
+  `base_ssl`, `http_host`, `html_path`, `nginx_t` (runs `nginx -t` on a
+  generated configuration), `tcp_client` and `second_instance`. It starts
+  with `SimpleTest.new` and ends with `t.report`. Files whose name starts
+  with `_` are helpers and are not run by test.sh; `_tcp_client.rb`,
+  `_filter_connection_client.rb` and `_second_instance.rb` are CRuby
+  scripts that the prelude helpers run with `ruby`.
 - Hook scripts go to `test/html/` as before; the fragment refers to them as
   `build/nginx/html/<name>.rb`.
 

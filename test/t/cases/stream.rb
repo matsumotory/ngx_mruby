@@ -29,23 +29,20 @@ t.assert('ngx_mruby - stream init, the later of the inline and the file version 
   t.assert_not_include out, '"mruby_stream_init file"'
 end
 
-if under_valgrind?
-  puts 'stream: the second nginx is not started under valgrind'
-else
-  # characterizes v2 behaviour; see docs/proposals/v3-plan.md
-  # The second nginx has each inline *_code hook followed by its file version.
-  # The trace shows the order: the server context code while nginx reads the
-  # configuration, then the init file, then the init_worker file. The p lines
-  # show that none of the inline hooks ran and that the exit_worker file ran
-  # when nginx stopped.
-  t.assert('ngx_mruby - stream init, init_worker and exit_worker files in a second nginx', '127.0.0.1:12357') do
-    r = second_instance('stream')
-    t.assert_nil r['error']
-    t.assert_equal 'stream session ok', r['reply']
-    t.assert_equal 'server_context_code,init_file,init_worker_file', r['trace']
-    t.assert_equal '"mruby_stream_init file"|"mruby_stream_init_worker file"|"mruby_stream_exit_worker file"', r['stdout']
-    t.assert_equal 'exited 0', r['exit']
-  end
+# characterizes v2 behaviour; see docs/proposals/v3-plan.md
+# The second nginx has each inline *_code hook followed by its file version.
+# The trace shows the order: the server context code while nginx reads the
+# configuration, then the init file, then the init_worker file. The p lines
+# show that none of the inline hooks ran and that the exit_worker file ran
+# when nginx stopped. The second nginx runs without valgrind in every cell.
+t.assert('ngx_mruby - stream init, init_worker and exit_worker files in a second nginx', '127.0.0.1:12357') do
+  r = second_instance('stream')
+  t.assert_nil r['error']
+  t.assert_nil r['sanitizer']
+  t.assert_equal 'stream session ok', r['reply']
+  t.assert_equal 'server_context_code,init_file,init_worker_file', r['trace']
+  t.assert_equal '"mruby_stream_init file"|"mruby_stream_init_worker file"|"mruby_stream_exit_worker file"', r['stdout']
+  t.assert_equal 'exited 0', r['exit']
 end
 
 t.assert('ngx_mruby - stream proxy_protocol_addr and proxy_protocol_ip, IPv4', '127.0.0.1:12354') do
