@@ -121,9 +121,12 @@ sh test.sh
 
 ## Writing tests
 
-- Add the location to `test/conf/nginx.conf` (stream: `test/conf/nginx.stream.conf`),
-  scripts to `test/html/`, and assertions to `test/t/ngx_mruby.rb`
-  (see `docs/test/README.md`).
+- Prefer a fragment and a case file of their own: a `server {}` in
+  `test/conf/conf.d/<name>.conf` (stream: `test/conf/conf.d/stream/`) on a
+  port of its own (HTTP 58110 and up, stream 12353 and up), scripts in
+  `test/html/`, and assertions in `test/t/cases/<name>.rb` (see
+  `docs/test/README.md`). Edit `test/conf/nginx.conf` and
+  `test/t/ngx_mruby.rb` only for tests that need the main server.
 - A new regression test must fail without the fix and pass with it. Show both
   results in the PR.
 - Assert on the actual response (body, headers, status), not only on "not 500".

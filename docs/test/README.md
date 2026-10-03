@@ -28,6 +28,27 @@ assert('ngx_mruby', 'location /mruby') do
   assert_equal 'Hello ngx_mruby/0.0.1 world!', res["body"]
 end
 ```
+## Add a test as a fragment and a case file
+
+Instead of editing `test/conf/nginx.conf` and `test/t/ngx_mruby.rb`, a test
+can live in files of its own:
+
+- `test/conf/conf.d/<name>.conf`: a fragment included at the end of the
+  `http {}` block. It holds its own `server {}` on a port of its own (58110
+  and up). Fragments for `stream {}` go to `test/conf/conf.d/stream/`
+  (ports 12353 and up).
+- `test/t/cases/<name>.rb`: a test file run after `test/t/ngx_mruby.rb`,
+  with `test/t/cases/_prelude.rb` (the `base`, `base_ssl` and `http_host`
+  helpers) prepended. It starts with `SimpleTest.new` and ends with
+  `t.report`. Files whose name starts with `_` are helpers and are not run.
+- Hook scripts go to `test/html/` as before; the fragment refers to them as
+  `build/nginx/html/<name>.rb`.
+
+`test.sh` copies the fragments into the built nginx's `conf/conf.d/` with the
+same substitutions as `nginx.conf`, and runs every case file in turn. A
+failing case makes `test.sh` exit non-zero, like a failing assertion in
+`test/t/ngx_mruby.rb`.
+
 ## Testing
 ##### build nginx into ``./build/nginx`` and test on ``./build/nginx``
 ```
