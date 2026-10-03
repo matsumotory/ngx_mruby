@@ -209,7 +209,7 @@ run both at the same time on one machine.
 | `SOAK_WARMUP` | 2000 | requests before the first sample |
 | `SOAK_CONCURRENCY` | 8 | connections (threads, for `disconnect`) |
 | `SOAK_PORT_BASE` | 12360 | port of the scenarios; the backend of `sub_request` uses the next one |
-| `SOAK_RSS_STEP_KB` | 256 | VmRSS limit for the last window, in kB |
+| `SOAK_RSS_STEP_KB` | 512 | VmRSS limit for the last window, in kB |
 | `SOAK_RSS_TOTAL_KB` | 1024 | VmRSS limit from the first to the last sample, in kB |
 
 ### Thresholds and calibration
@@ -223,19 +223,22 @@ largest over all scenarios and runs of a row:
 |---|---|---|
 | aarch64, 3 runs, `SOAK_N=20000`, without `MRB_USE_MALLOC_TRIM` | +144 kB | +212 kB (drops down to -1076 kB) |
 | aarch64, 1 run, `SOAK_N=100000`, without `MRB_USE_MALLOC_TRIM` | +288 kB | +3396 kB (`disconnect`) |
-| aarch64, 5 runs, `SOAK_N=20000` | +100 kB (`sub_request`) | +188 kB (`sleep`) |
+| aarch64, 6 runs, `SOAK_N=20000` | +100 kB (`sub_request`) | +188 kB (`sleep`) |
 | aarch64, 1 run, `SOAK_N=100000` | +68 kB (`file`) | +160 kB (`file`) |
-| x86_64 (CI), 1 run, `SOAK_N=20000` | +20 kB (`filter`) | +208 kB (`sub_request`) |
+| x86_64 (CI), 2 runs, `SOAK_N=20000` | +144 kB (`filter`) | +216 kB (`sleep`) |
 
 Without `malloc_trim(0)`, the `disconnect` scenario at `SOAK_N=300000` moved
 by +2832, -788 and +1088 kB from window to window, which is over a 512 kB
 limit for the last window, although its counters stayed the same and it grew
-less in all than at `SOAK_N=100000`. With it, the largest growth is 208 kB.
-The default limits, 256 kB for the last window and 1024 kB in all, are about
-2.5 and 5 times the largest growth of these runs. For comparison, a build that
-leaks 4 kB per request grows by about 26 MB per window. A leak below about
-40 bytes per request stays under 256 kB per window at the default `SOAK_N`;
-raise `SOAK_N` to look for smaller ones.
+less in all than at `SOAK_N=100000`. With it, the largest growth is 144 kB in
+the last window and 216 kB in all. The default limits, 512 kB for the last
+window and 1024 kB in all, are about 3.5 and 4.7 times these. The limit for
+the last window is the looser one because one window of a shared CI runner
+grew by 144 kB; the limit in all is the one that finds small leaks: a leak
+below about 50 bytes per request stays under 1024 kB over the 20000 requests
+of the default `SOAK_N`, so raise `SOAK_N` to look for smaller ones. For
+comparison, a build that leaks 4 kB per request grows by about 26 MB per
+window.
 
 ### Adding a scenario
 
