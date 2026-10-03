@@ -6,3 +6,10 @@
 # r->args (data == NULL, len == 0), and ngx_sprintf_str() passes that NULL to
 # memcpy() with a length of 0.
 nonnull-attribute:src/core/ngx_string.c
+
+# nginx core: on x86 (NGX_HAVE_NONALIGNED) ngx_http_parse_request_line()
+# compares the method with one uint32_t load (ngx_str3_cmp and friends). A
+# request line that starts at an odd offset of the buffer, as the one after
+# the 45 byte PROXY protocol header of the request_api case does, makes that
+# load misaligned. The CPU defines it, the C standard does not.
+alignment:src/http/ngx_http_parse.c
