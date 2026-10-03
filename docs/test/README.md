@@ -55,6 +55,16 @@ same substitutions as `nginx.conf`, and runs every case file in turn. A
 failing case makes `test.sh` exit non-zero, like a failing assertion in
 `test/t/ngx_mruby.rb`.
 
+A case that starts nginx itself (`nginx_t`, `second_instance`) also runs in
+the sanitizer cell of CI, where LeakSanitizer appends its report to the
+output of a process that leaked and changes that process's exit status. Run
+such a case once with the sanitizer build (next section) before opening the
+PR. `nginx_t` turns leak detection off for its `nginx -t` run, because
+`nginx -t` returns without freeing the configuration it read, so every
+allocation of nginx itself would be reported; `second_instance` returns the
+first sanitizer line of the second nginx's `error.log` as `sanitizer`, and
+the cases print that log when the line is set.
+
 ## Testing
 ##### build nginx into ``./build/nginx`` and test on ``./build/nginx``
 ```
