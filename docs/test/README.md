@@ -28,6 +28,43 @@ assert('ngx_mruby', 'location /mruby') do
   assert_equal 'Hello ngx_mruby/0.0.1 world!', res["body"]
 end
 ```
+## Add a test as a fragment and a case file
+
+Instead of editing `test/conf/nginx.conf` and `test/t/ngx_mruby.rb`, a test
+can live in files of its own:
+
+- `test/conf/conf.d/<name>.conf`: a fragment included at the end of the
+  `http {}` block. It holds its own `server {}` on a port of its own (58110
+  and up; 58116 is taken by the second nginx that
+  `test/t/cases/_second_instance.rb` starts). Fragments for `stream {}` go
+  to `test/conf/conf.d/stream/` (ports 12353 and up; 12357 is taken by the
+  second nginx).
+- `test/t/cases/<name>.rb`: a test file run after `test/t/ngx_mruby.rb`,
+  with `test/t/cases/_prelude.rb` prepended. The prelude defines `base`,
+  `base_ssl`, `http_host`, `html_path`, `nginx_t` (runs `nginx -t` on a
+  generated configuration), `tcp_client` and `second_instance`. It starts
+  with `SimpleTest.new` and ends with `t.report`. Files whose name starts
+  with `_` are helpers and are not run by test.sh; `_tcp_client.rb`,
+  `_filter_connection_client.rb` and `_second_instance.rb` are CRuby
+  scripts that the prelude helpers run with `ruby`.
+- Hook scripts go to `test/html/` as before; the fragment refers to them as
+  `build/nginx/html/<name>.rb`.
+
+`test.sh` copies the fragments into the built nginx's `conf/conf.d/` with the
+same substitutions as `nginx.conf`, and runs every case file in turn. A
+failing case makes `test.sh` exit non-zero, like a failing assertion in
+`test/t/ngx_mruby.rb`.
+
+A case that starts nginx itself (`nginx_t`, `second_instance`) also runs in
+the sanitizer cell of CI, where LeakSanitizer appends its report to the
+output of a process that leaked and changes that process's exit status. Run
+such a case once with the sanitizer build (next section) before opening the
+PR. `nginx_t` turns leak detection off for its `nginx -t` run, because
+`nginx -t` returns without freeing the configuration it read, so every
+allocation of nginx itself would be reported; `second_instance` returns the
+first sanitizer line of the second nginx's `error.log` as `sanitizer`, and
+the cases print that log when the line is set.
+
 ## Testing
 ##### build nginx into ``./build/nginx`` and test on ``./build/nginx``
 ```
