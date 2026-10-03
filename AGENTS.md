@@ -116,7 +116,8 @@ sh test.sh
 - Run `make clobber`: it deletes the build directory (including the nginx source
   tree) and the mruby build. Only do it when the owner asks.
 - Reformat code you did not change. Format only your changed lines with the
-  repository `.clang-format` (for example `git clang-format origin/<base>`).
+  repository `.clang-format`: stage your changes, then run
+  `git clang-format origin/<base>` (it refuses files with unstaged changes).
 
 ## Security
 

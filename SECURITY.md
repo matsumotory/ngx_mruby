@@ -4,9 +4,9 @@
 
 | Version | Where | Status |
 |---|---|---|
-| Latest 2.x release | `master` (until v3.0.0 is released), `v2.x`, `v2.*` tags | Supported |
+| Latest 2.x release | `master` (until v3.0.0 is released), `v2.x`, the latest `v2.*` tag | Supported |
 | v3 pre-releases (`v3.0.0-alpha.N`, `-beta.N`, `-rc.N`) | `next` | Best effort |
-| Older 2.x minor releases, 1.x | `v2.*`/`v1.*` tags | Not supported: upgrade to the latest 2.x release |
+| Older 2.x releases, 1.x | older `v2.*` tags, `v1.*` tags | Not supported: upgrade to the latest 2.x release |
 
 Security fixes for 2.x are released as a new 2.x patch release. How long 2.x stays
 supported after v3.0.0 will be announced in the README and in this file.
