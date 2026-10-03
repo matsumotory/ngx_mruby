@@ -818,4 +818,41 @@ if nginx_features.is_async_supported?
 end
 
 
+# A configuration without an http {} block (stream only) must start. The init
+# and exit hooks of the http module have no main conf in that case.
+if nginx_features.is_stream_supported?
+t.assert('ngx_mruby - start without an http block', 'stream only configuration') do
+  install_dir = ENV['NGINX_INSTALL_DIR']
+  nginx = "#{install_dir}/sbin/nginx"
+  conf = "#{install_dir}/conf/stream_only.conf"
+  log = "#{install_dir}/logs/stream_only.error.log"
+  pidfile = "#{install_dir}/logs/stream_only.pid"
+  load_module = install_dir.include?('build_dynamic') ? "load_module modules/ngx_http_mruby_module.so;\n" : ""
+  File.open(conf, 'w') do |f|
+    f.write "#{load_module}daemon on;\nmaster_process on;\nworker_processes 1;\n"
+    f.write "error_log #{log} info;\npid #{pidfile};\nevents { worker_connections 32; }\n"
+    f.write "stream {\n  server {\n    listen 127.0.0.1:12399;\n    return \"stream only ok\";\n  }\n}\n"
+  end
+  File.delete(log) if File.exist?(log)
+  `#{nginx} -p #{install_dir} -c #{conf}`
+  `sleep 1`
+  body = 'no response'
+  begin
+    s = TCPSocket.new('127.0.0.1', 12399)
+    body = IO.select([s], nil, nil, 5) ? s.read : 'timeout'
+    s.close
+  rescue => e
+    body = "connect failed: #{e}"
+  end
+  `#{nginx} -p #{install_dir} -c #{conf} -s quit`
+  # The master removes its pid file after it has collected the workers.
+  50.times { break unless File.exist?(pidfile); usleep 200000 }
+  errors = File.exist?(log) ? File.read(log) : ''
+  t.assert_equal 'stream only ok', body
+  t.assert_equal false, File.exist?(pidfile)
+  t.assert_equal [], errors.split("\n").select { |l| l.include?('exited on signal') }
+end
+end
+
+
 t.report
