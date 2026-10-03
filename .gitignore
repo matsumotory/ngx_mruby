@@ -14,6 +14,7 @@ tags
 build/
 build_dynamic/
 build_soak/
+build_perf/
 autom4te.cache/
 .openssl_build_done
 .openssl_configure_done

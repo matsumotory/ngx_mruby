@@ -14,9 +14,10 @@
 # See docs/test/README.md, "Soak test for memory".
 
 require 'fileutils'
-require 'io/wait'
 require 'json'
 require 'socket'
+require_relative 'http_client'
+require_relative 'scenarios'
 
 def env_int(name, default)
   value = ENV[name]
@@ -55,133 +56,12 @@ LOG_PATTERNS = ['open socket', '[error]', '[alert]', '[crit]', '[emerg]', 'runti
 # Values that must be the same in every sample of a scenario.
 EXACT_KEYS = %i[gc_live gc_root gc_root_fibers gc_arena_idx timers fd active].freeze
 
-# One scenario is one location in test/soak/nginx.conf and one client behavior.
-#   mode :keepalive   HTTP/1.1 keep-alive; every response is checked
-#   mode :disconnect  one request per connection, closed without reading the
-#                     response; one response is checked before the warmup
-Scenario = Struct.new(:name, :path, :headers, :body, :response_headers, :mode, keyword_init: true)
-
-SCENARIOS = [
-  Scenario.new(name: 'hello', path: '/hello', body: 'hello'),
-  Scenario.new(name: 'headers', path: '/headers',
-               headers: { 'X-Soak-A' => 'alpha', 'X-Soak-B' => 'beta', 'User-Agent' => 'soak' },
-               body: 'alpha,beta,soak',
-               response_headers: { 'x-soak-out-a' => 'ALPHA', 'x-soak-out-b' => 'BETA' }),
-  Scenario.new(name: 'var', path: '/var?q=soak', body: 'GET:soak'),
-  Scenario.new(name: 'filter', path: '/filter', body: 'FILTERED BODY'),
-  Scenario.new(name: 'sleep', path: '/sleep', body: 'slept'),
-  Scenario.new(name: 'sub_request', path: '/sub_request', body: 'static body'),
-  Scenario.new(name: 'file', path: '/file', body: 'file:/file'),
-  Scenario.new(name: 'disconnect', path: '/disconnect', body: 'late', mode: :disconnect)
-].each { |s| s.mode ||= :keepalive; s.headers ||= {}; s.response_headers ||= {} }.freeze
-
 # Scenarios that run when SOAK_SCENARIOS is not set. A scenario that is
-# defined above but left out here runs only when SOAK_SCENARIOS names it.
+# defined in SCENARIOS (test/soak/scenarios.rb) but left out here runs only
+# when SOAK_SCENARIOS names it.
 DEFAULT_SCENARIOS = %w[hello headers var filter sleep sub_request file disconnect].freeze
 
 class SoakError < StandardError; end
-
-# A minimal HTTP/1.1 client: one connection, one request at a time.
-class Client
-  def initialize(port)
-    @sock = Socket.tcp('127.0.0.1', port, connect_timeout: 5)
-    @sock.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
-    @buf = String.new(encoding: Encoding::BINARY)
-  end
-
-  def close
-    @sock.close unless @sock.closed?
-  end
-
-  # Returns [status, headers, body, keep_alive]. With close: true the request
-  # asks the server to close, and the response is read to EOF, so the server
-  # has closed its socket when this returns.
-  def get(path, headers = {}, close: false)
-    @sock.write(request(path, headers, close))
-    status, response_headers, body = read_response
-    keep_alive = response_headers['connection'].to_s.downcase != 'close'
-    read_to_eof if close || !keep_alive
-    [status, response_headers, body, keep_alive && !close]
-  end
-
-  # Sends a request and closes the connection without reading the response.
-  def send_and_close(path, headers = {})
-    @sock.write(request(path, headers, true))
-    close
-  end
-
-  private
-
-  def request(path, headers, close)
-    req = +"GET #{path} HTTP/1.1\r\nHost: localhost\r\n"
-    headers.each { |k, v| req << "#{k}: #{v}\r\n" }
-    req << "Connection: close\r\n" if close
-    req << "\r\n"
-  end
-
-  def fill
-    loop do
-      chunk = @sock.read_nonblock(65_536, exception: false)
-      case chunk
-      when :wait_readable
-        raise SoakError, "no response within #{IO_TIMEOUT} s" unless @sock.wait_readable(IO_TIMEOUT)
-      when nil
-        raise EOFError, 'connection closed by the server'
-      else
-        @buf << chunk
-        return
-      end
-    end
-  end
-
-  def take(size)
-    fill while @buf.bytesize < size
-    @buf.slice!(0, size)
-  end
-
-  def take_line
-    fill until (idx = @buf.index("\r\n"))
-    @buf.slice!(0, idx + 2).chomp("\r\n")
-  end
-
-  def read_response
-    fill until (idx = @buf.index("\r\n\r\n"))
-    lines = @buf.slice!(0, idx + 4).split("\r\n")
-    status = lines.shift.to_s[%r{\AHTTP/1\.[01] (\d{3})}, 1].to_i
-    headers = {}
-    lines.each do |line|
-      key, value = line.split(':', 2)
-      headers[key.strip.downcase] = value.to_s.strip
-    end
-    body = if headers['transfer-encoding'].to_s.downcase.include?('chunked')
-             read_chunked
-           elsif headers.key?('content-length')
-             take(Integer(headers['content-length'], 10))
-           else
-             read_to_eof
-           end
-    [status, headers, body]
-  end
-
-  def read_chunked
-    body = String.new(encoding: Encoding::BINARY)
-    loop do
-      size = take_line.split(';', 2).first.to_i(16)
-      if size.zero?
-        nil until take_line.empty? # trailer section
-        return body
-      end
-      body << take(size)
-      take_line
-    end
-  end
-
-  def read_to_eof
-    loop { fill }
-  rescue EOFError
-    @buf.slice!(0, @buf.bytesize)
-  end
-end
 
 def log(line = '')
   puts line
@@ -318,8 +198,7 @@ class NginxProcess
 end
 
 def check_response(scenario, status, headers, body)
-  return if status == 200 && body == scenario.body &&
-            scenario.response_headers.all? { |k, v| headers[k] == v }
+  return if expected_response?(scenario, status, headers, body)
 
   raise SoakError, "#{scenario.path}: unexpected response #{status} #{body.inspect} #{headers.inspect}"
 end
@@ -327,7 +206,7 @@ end
 def keepalive_requests(scenario, count)
   client = nil
   count.times do
-    client ||= Client.new(PORT)
+    client ||= Client.new(PORT, io_timeout: IO_TIMEOUT)
     status, headers, body, keep_alive = client.get(scenario.path, scenario.headers)
     check_response(scenario, status, headers, body)
     next if keep_alive
@@ -353,7 +232,7 @@ def disconnect_requests(scenario, count)
   while sent < count
     started = monotonic
     [DISCONNECT_BURST, count - sent].min.times do
-      Client.new(PORT).send_and_close(scenario.path, scenario.headers)
+      Client.new(PORT, io_timeout: IO_TIMEOUT).send_and_close(scenario.path, scenario.headers)
       sent += 1
     end
     rest = DISCONNECT_INTERVAL - (monotonic - started)
@@ -392,7 +271,7 @@ ensure
 end
 
 def get_closed(path, headers = {})
-  client = Client.new(PORT)
+  client = Client.new(PORT, io_timeout: IO_TIMEOUT)
   client.get(path, headers, close: true)
 ensure
   client&.close
@@ -464,7 +343,7 @@ def run_scenario(scenario)
       samples << take_sample(nginx)
     end
     problems.concat(judge(samples))
-  rescue SoakError, SystemCallError, IOError, JSON::ParserError => e
+  rescue SoakError, Client::Timeout, SystemCallError, IOError, JSON::ParserError => e
     problems << "#{e.class}: #{e.message}"
   ensure
     problems.concat(nginx.stop)

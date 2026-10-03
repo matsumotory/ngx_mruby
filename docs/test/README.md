@@ -194,36 +194,15 @@ keeps the number of requests open at once the same in every window.
 
 ### The soak build and `Nginx::Debug`
 
-`test/soak/run.sh` builds nginx and ngx_mruby with `-O2 -g` and
-`-DNGX_MRUBY_DEBUG_STATS`, without `MRB_GC_STRESS` and without `--with-debug`,
-and with the gems of `build_config.rb`. mruby is built with
-`-DMRB_USE_MALLOC_TRIM`, so `mrb_full_gc()` also calls `malloc_trim(0)`.
-mruby runs a full GC only when it is asked to (`GC.start`,
-`Nginx::Debug.gc`) or in rare cases (an incremental GC that finds too many
-objects, a failed allocation), so the worker behaves as without it between
-samples. `run.sh` runs `build.sh` in a copy of the
-sources in `build_soak/tree` and installs nginx to `build_soak/nginx`, so the
-`build/` directory, `mruby/build` and the generated `Makefile`, `config` and
-`mrbgems_config` of `test.sh` are not touched. The soak build is always a
-static module built from its own nginx source with the system OpenSSL, so
-`run.sh` ignores `BUILD_DYNAMIC_MODULE`, `NGINX_SRC_ENV` and
-`OPENSSL_SRC_VERSION`. The nginx source is downloaded to
-`build_soak/tree/build/`; when nginx.org is unreachable, put it there as
-described in `AGENTS.md`.
-
-Later runs copy the sources again and rebuild only what changed. make and
-rake do not notice every change, though: the objects of a removed source or a
-dropped gem stay in `libmruby.a`, and nginx's configure does not run again.
-`run.sh` therefore records these inputs in `build_soak/build_stamp`: the
-mruby tree (its git tree id, or a checksum of its files when git or the
-repository is not available), the file names under `mrbgems/`, checksums of
-`build_config.rb`, `config.in`, `configure`, `Makefile.in`, `build.sh` and
-`nginx_version`, `NGX_MRUBY_CFLAGS` (passed to mruby, as with `test.sh`) and
-the nginx configure options. When the stamp differs from that of the last
-build, mruby and nginx are built from scratch; the downloaded nginx source is
-kept. After a change that the stamp does not cover, for example an
-uncommitted change under `mruby/` (the git tree id is that of the commit),
-reset the soak build by hand with `rm -rf build_soak`.
+`test/soak/run.sh` builds with `test/build_release.sh` in `build_soak/` (see
+"Release builds" below): nginx and ngx_mruby with `-O2 -g`, without
+`MRB_GC_STRESS` and without `--with-debug`, and with the gems of
+`build_config.rb`. It adds two defines. ngx_mruby is compiled with
+`-DNGX_MRUBY_DEBUG_STATS`, and mruby with `-DMRB_USE_MALLOC_TRIM`, so
+`mrb_full_gc()` also calls `malloc_trim(0)`. mruby runs a full GC only when
+it is asked to (`GC.start`, `Nginx::Debug.gc`) or in rare cases (an
+incremental GC that finds too many objects, a failed allocation), so the
+worker behaves as without it between samples.
 
 `-DNGX_MRUBY_DEBUG_STATS` adds the class `Nginx::Debug`. The default builds
 of `build.sh` and `test.sh` do not have it.
@@ -307,11 +286,267 @@ window.
 1. Add a location to `test/soak/nginx.conf` (and a handler file to
    `test/soak/handlers/` if it uses one). Use `__SOAK_HANDLERS__` for the path
    of that directory and `__SOAK_BACKEND_PORT__` for the second server.
-2. Add a `Scenario` to `SCENARIOS` in `test/soak/soak.rb` with the path, the
-   request headers, the expected body and response headers, and the mode
-   (`:keepalive` or `:disconnect`).
-3. Add its name to `DEFAULT_SCENARIOS`, run the soak three times, and check
-   that all counters stay the same and that VmRSS stays within the limits.
-   If a counter keeps growing, the scenario has found a problem: do not
-   raise a limit or drop the comparison to make it pass. Report it as
-   described in `SECURITY.md` when it may be a vulnerability.
+2. Add a `Scenario` to `SCENARIOS` in `test/soak/scenarios.rb` with the
+   path, the request headers, the expected body and response headers, and
+   the mode (`:keepalive` or `:disconnect`).
+3. Add its name to `DEFAULT_SCENARIOS` in `test/soak/soak.rb`, run the soak
+   three times, and check that all counters stay the same and that VmRSS
+   stays within the limits. If a counter keeps growing, the scenario has
+   found a problem: do not raise a limit or drop the comparison to make it
+   pass. Report it as described in `SECURITY.md` when it may be a
+   vulnerability.
+4. A `:keepalive` scenario can also be measured by the performance
+   comparison (below): add its name to `DEFAULT_SCENARIOS` in
+   `test/perf/perf.rb` and run the null comparison of "Thresholds and
+   calibration" there.
+
+## Release builds
+
+`sh test/build_release.sh SOURCE_DIR BUILD_DIR` builds nginx with ngx_mruby
+as a static module with release-like options: nginx and ngx_mruby with
+`-O2 -g`, mruby with the flags of its gcc toolchain (`-O3 -g`), without
+`MRB_GC_STRESS` (which `test.sh` adds) and without `--with-debug`, and with
+the gems of `build_config.rb`. The soak test and the performance comparison
+build with it, each in directories of their own, so that their options do
+not mix:
+
+| Build | Directory | Options added |
+|---|---|---|
+| soak (`test/soak/run.sh`) | `build_soak/` | `-DNGX_MRUBY_DEBUG_STATS` for ngx_mruby (`RELEASE_CC_OPT`), `-DMRB_USE_MALLOC_TRIM` for mruby (`NGX_MRUBY_CFLAGS`) |
+| perf (`test/perf/run.sh`, `test/perf/compare.sh`) | `build_perf/head/`, `build_perf/base/` | none: both defines add code to the process under measurement |
+
+`SOURCE_DIR` is the checkout to build, and its own build files are used
+(`build.sh`, `configure`, `build_config.rb`, ...), so the base of a pull
+request is built the way it builds itself. The script copies the sources to
+`BUILD_DIR/tree`, runs `build.sh` there and installs nginx to
+`BUILD_DIR/nginx`, so the `build/` directory, `mruby/build` and the generated
+`Makefile`, `config` and `mrbgems_config` of `test.sh` are not touched. The
+build is always a static module built from its own nginx source with the
+system OpenSSL, so the script ignores `BUILD_DYNAMIC_MODULE`, `NGINX_SRC_ENV`
+and `OPENSSL_SRC_VERSION`. The nginx source is downloaded to
+`BUILD_DIR/tree/build/`; when nginx.org is unreachable, put it there as
+described in `AGENTS.md`. `RELEASE_GEM_LOCK` names a `build_config.rb.lock`
+whose gem commits the build uses; without it, rake clones the default branch
+of each gem on the first build and writes the commits to
+`BUILD_DIR/tree/build_config.rb.lock`.
+
+Later runs update the copy and rebuild only what changed:
+
+- A file is written to the copy only when its content differs, and it gets
+  the time of the copy, not that of `SOURCE_DIR`. A checkout made with
+  `git archive` has the time of the commit, which can be older than the
+  objects of the last build, and make would not rebuild it.
+- Files that no longer exist in `SOURCE_DIR` are removed from the copy.
+- make does not track the headers in `src/` and `dependence/`, so when one
+  of them changed, the `.c` files there are touched.
+- Files are overwritten in place, not removed and created again. With the
+  sources on a case-insensitive file system shared with a container (Docker
+  Desktop on macOS), rake loads mruby's `Rakefile` as `rakefile`, and after
+  the file had been removed and created again, a second run in the same
+  container failed with `LoadError: cannot load such file -- .../rakefile`.
+
+make and rake do not notice every change, though: the objects of a removed
+source or a dropped gem stay in `libmruby.a`, and nginx's configure does not
+run again. The script therefore records these inputs in
+`BUILD_DIR/build_stamp`: the mruby tree (its git tree id when `SOURCE_DIR` is
+the top of a git work tree, else a checksum of its files without
+`mruby/build` and `mruby/bin`, the output of the `test.sh` build), the file
+names under `mrbgems/`, checksums of `build_config.rb`, `config.in`,
+`configure`, `Makefile.in`, `build.sh` and `nginx_version`,
+`NGX_MRUBY_CFLAGS` (passed to mruby, as with `test.sh`), the nginx configure
+options and the gem lock of `RELEASE_GEM_LOCK`. When the stamp differs from
+that of the last build, mruby and nginx are built from scratch; the
+downloaded nginx source is kept. After a change that the stamp does not
+cover, for example an uncommitted change under `mruby/` (the git tree id is
+that of the commit), reset the build by hand with `rm -rf build_soak` (or
+`build_perf`).
+
+## Performance comparison with callgrind
+
+A change to the request path can make every request do more work without
+failing any test. The performance comparison counts the instructions that
+nginx executes per request (callgrind's `Ir`) in the base and the head of a
+pull request, both release builds, and reports the change per scenario.
+Instruction counts do not depend on the speed or the load of the machine, so
+the comparison works on shared CI runners, whose throughput varies by more
+than 30% (section 3.7 of `docs/proposals/v3-plan.md`). They do not show cache misses, branch mispredictions
+or the time spent in the kernel: they measure how much work the user-space
+code of nginx, ngx_mruby, mruby and the C library does for a request.
+
+### What it measures
+
+The scenarios are those of the soak test that use keep-alive clients:
+`hello`, `headers`, `var`, `filter`, `sleep`, `sub_request` and `file` (see
+the table in "Soak test for memory"); `disconnect` is not measured. For each
+scenario, and for the base and the head in turn, `test/perf/perf.rb`:
+
+1. starts nginx with `test/soak/nginx.conf`, changed to `master_process off`,
+   under `valgrind --tool=callgrind --instr-atstart=no`, so that the startup
+   runs without instrumentation;
+2. checks one response and sends `PERF_WARMUP` requests;
+3. waits until `stub_status` shows no open connection of the warmup, and
+   switches the instrumentation on with `callgrind_control --instr=on`;
+4. sends `PERF_N` requests over keep-alive and checks every response. nginx
+   closes a connection after 1000 requests (`keepalive_requests`), and the
+   client then opens the next one;
+5. writes the profile with `callgrind_control --dump`, and stops nginx.
+
+The profile of step 5 holds the cost of the requests of step 4: not the
+startup, the configuration, the warmup or the exit. **Ir per request** is
+its total Ir divided by `PERF_N`. The alternative, the difference of two runs
+with N and 2N requests divided by N, needs three times as many requests and
+adds the variation of two runs; the window of one run has nothing but the
+requests in it.
+
+callgrind_control reaches the process through valgrind's gdbserver (`vgdb`),
+which does not serve a process that valgrind forked, such as an nginx
+worker. With `master_process off`, the one nginx process runs the event loop
+and the handlers as a worker does. When vgdb may not use ptrace to interrupt
+a process that waits in `epoll_wait`, a command runs the next time the
+process runs code, so `perf.rb` sends a request to `/status` (`stub_status`)
+every 0.2 seconds until the command has run. Parts of these requests (two
+per window in the runs so far) fall into the window.
+
+**Ir per request without GC** leaves out the cost of mruby's garbage
+collector: the inclusive cost of the calls into `mrb_incremental_gc` and
+`mrb_full_gc` made from outside the collector (from `mrb_obj_alloc`, the
+malloc wrappers, `GC.start`). It is the inclusive cost that
+`callgrind_annotate --inclusive=yes` prints for `mrb_incremental_gc` and
+`mrb_full_gc` without a recursion suffix (`'2`), without counting twice a
+full GC that `mrb_incremental_gc` runs; `perf.rb` reads it from the call
+records of the profile (see the comment of `parse_profile`). The GC runs in
+bursts: `mrb_obj_alloc` calls the collector when the number of live objects
+passes a threshold, and one cycle (root scan and marking, then sweeping) is a
+few calls. In `hello`, 20000 requests make 21 calls, about one cycle per
+2000 requests, and the GC is about 6% of the total. A change that allocates a
+few objects more or less per request moves the cycles against the window,
+and the total moves by a share of one cycle. The number without GC does not
+have that step, so the thresholds apply to it; the total is reported as
+well.
+
+The GC also changes the cost of the rest: after a sweep has freed many
+blocks, the next `malloc` calls of the request code take longer. The window
+therefore has to span many GC cycles. With `PERF_N=20000`, `hello` measured
+11039 Ir per request without GC, and 11049 (+0.1%) with the window moved by
+5000 requests (`PERF_WARMUP=7000`); with `PERF_N=1000` and
+`PERF_WARMUP=200`, a window shorter than one cycle, it measured 10726 and
+10732 in two runs (-2.8%). That is why `PERF_N` is 20000.
+
+### Thresholds and calibration
+
+A scenario is `WARN` when its Ir per request without GC is 3% or more above
+the base (`PERF_WARN_PERCENT`), and `FAIL` from 5% (`PERF_FAIL_PERCENT`).
+The exit status is 1 when a scenario is `FAIL` or a measurement of the head
+fails (an unexpected response, a line at the `error` level or above in
+`error.log`, a timeout). A scenario whose measurement fails only in the base
+(a scenario that needs a feature of the head) is shown as `n/a`.
+
+The thresholds were checked with a null change on 2026-10-03: three runs of
+`compare.sh` on two checkouts with the same build inputs (`next` at
+`f713d4e`, and a branch that changes only `test/` and the documentation),
+with nginx 1.31.6 on Ubuntu 22.04 (gcc 11, valgrind 3.18.1) in a container
+on aarch64. The first run built both trees; the other two measured the same
+builds again (`ONLY_RUN=1`). Change of head against base, total / without
+GC:
+
+| Scenario | Base Ir/req (w/o GC) | Run 1 | Run 2 | Run 3 |
+|---|---|---|---|---|
+| `hello` | 11736 (11039) | +0.002% / +0.003% | -0.000% / -0.000% | +0.008% / +0.008% |
+| `headers` | 36002 (34025) | +0.002% / +0.002% | -0.002% / -0.002% | +0.000% / +0.000% |
+| `var` | 21199 (19700) | -0.000% / -0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `filter` | 14010 (13089) | -0.002% / -0.002% | -0.002% / -0.002% | +0.002% / +0.002% |
+| `sleep` | 15427 (14654) | -0.006% / -0.007% | -0.002% / -0.002% | +0.000% / +0.000% |
+| `sub_request` | 48710 (47538) | -0.003% / -0.004% | -0.001% / -0.001% | -0.001% / -0.001% |
+| `file` | 14009 (13075) | +0.002% / +0.002% | +0.000% / +0.000% | -0.002% / -0.002% |
+
+The largest change is 0.008%, about 1 instruction per request, more than
+300 times below the 3% of `WARN`; `N` does not need to be raised. A request
+to `/status` that wakes `callgrind_control` costs about 12500 instructions
+(the connection included), and parts of two of them are in each window, at
+most about 0.01% of the smallest window (`hello`, 235 million
+instructions).
+
+To check that the thresholds fire, the head was a copy of the base with an
+empty loop of 100 iterations (`volatile` counter) at the start of
+`ngx_mrb_run`, which every scenario runs once per request. The self cost of
+`ngx_mrb_run` grew by 604 instructions per request in every scenario, and
+the report showed `hello` +5.47% (`FAIL`), `filter` and `file` +4.62%,
+`sleep` +4.10%, `var` +3.07% (`WARN`), `headers` +1.79% and `sub_request`
++1.26% (`ok`), the 604 instructions over the Ir per request without GC of
+each scenario, and `compare.sh` exited with 1. In instructions, 3% is
+about 330 per request in `hello` and 1430 in `sub_request`.
+
+The numbers of x86_64 differ from these (another instruction set), and the
+CI runner has not been calibrated yet; until it is, the CI job is advisory
+(see "In CI" below).
+
+### Running it
+
+The driver reads `/proc` and needs Linux, CRuby 3.0 or later and valgrind
+with `callgrind_control` (and its helper `vgdb`). To compare this checkout
+with `origin/next` in a container, in one command:
+
+```console
+$ rm -rf build_perf/base-src && git archive --prefix=build_perf/base-src/ origin/next | tar -x && docker run --rm -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev valgrind >/dev/null && sh test/perf/compare.sh build_perf/base-src'
+```
+
+On Linux:
+
+```console
+$ sh test/perf/compare.sh build_perf/base-src          # build both, then compare
+$ ONLY_RUN=1 sh test/perf/compare.sh build_perf/base-src
+$ ONLY_RUN=1 PERF_SCENARIOS=hello,var sh test/perf/compare.sh build_perf/base-src
+$ sh test/perf/run.sh                                  # measure this checkout only
+```
+
+`compare.sh BASE_DIR [HEAD_DIR]` builds `BASE_DIR` into `build_perf/base` and
+`HEAD_DIR` (default: this checkout) into `build_perf/head`, the head with the
+gem lock of the base build, so that both have the same third-party gems; the
+report says how many gems are at different commits (0 when the lock
+worked). The measurement (`test/perf/`, the scenarios in `test/soak/`) comes
+from this checkout for both builds. The first run builds two trees (a few
+minutes each); the measurement takes about one and a half minutes per build,
+most of it in `sleep`. The report goes to `build_perf/report.txt` and
+`build_perf/report.json`. `test.sh` kills every nginx on the machine, so do
+not run it at the same time.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `ONLY_RUN` | unset | set to skip the builds |
+| `NUM_THREADS_ENV` | half of the CPUs | build parallelism (passed to `build.sh`) |
+| `PERF_SCENARIOS` | all seven | comma-separated scenario names |
+| `PERF_N` | 20000 | requests in the measured window |
+| `PERF_WARMUP` | 2000 | requests before the window |
+| `PERF_WARN_PERCENT` | 3 | WARN from this change of Ir per request without GC |
+| `PERF_FAIL_PERCENT` | 5 | FAIL from this change |
+| `PERF_PORT_BASE` | 12370 | port of the scenarios; the backend of `sub_request` uses the next one |
+| `PERF_REPORT_DIR` | `build_perf` | where `report.txt` and `report.json` go |
+
+### In CI
+
+The `perf` job of `.github/workflows/test.yml` runs on pull requests that
+change `src/`, `mrbgems/`, `mruby/`, `build_config.rb`, `test/perf/`,
+`test/build_release.sh` or the scenarios in `test/soak/`, or that have the
+label `perf` (read when the job runs, so adding the label and re-running the
+job is enough). The checkout of a pull request is the merge commit
+(`refs/pull/N/merge`); the job compares its first parent, the base branch,
+with the merge commit, so the difference is the change of the pull request
+as it would be merged. The table is in the job summary, `WARN` and `FAIL`
+rows are annotations, and the job fails on `FAIL`. The job is advisory:
+`ci-ok` does not need it until the thresholds are calibrated on the runner.
+
+The artifact `perf-callgrind` has the report, and for `base` and `head` the
+profiles of the windows (`callgrind/callgrind.out.<scenario>`), the output
+of `callgrind_control` and valgrind, and the nginx logs. To see where a
+change comes from, print the functions of the same scenario in both builds
+and compare them:
+
+```console
+$ callgrind_annotate --inclusive=yes build_perf/head/callgrind/callgrind.out.var | head -40
+$ callgrind_annotate build_perf/base/callgrind/callgrind.out.var > base.txt
+$ callgrind_annotate build_perf/head/callgrind/callgrind.out.var > head.txt
+$ diff base.txt head.txt
+```
+
+The counts are for the whole window; divide by `PERF_N` for one request.
+KCachegrind and QCachegrind open the profiles as well.

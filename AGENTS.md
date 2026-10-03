@@ -86,6 +86,7 @@ ONLY_BUILD_NGX_MRUBY=1 sh test.sh   # fast loop: skip fetch/configure, rebuild c
 BUILD_DYNAMIC_MODULE=1 sh test.sh   # build as a dynamic module (uses build_dynamic/ instead of build/)
 NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
 sh test/soak/run.sh                 # memory soak test (Linux; own build in build_soak/, ports 12360-12361)
+sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12371)
 ```
 
 - The first full run takes a few minutes (it clones mrbgems from GitHub and builds

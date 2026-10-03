@@ -1,0 +1,626 @@
+# frozen_string_literal: true
+
+# Performance comparison driver for ngx_mruby (CRuby 3.0 or later, Linux,
+# valgrind with callgrind and callgrind_control).
+#
+#   ruby test/perf/perf.rb BUILD_DIR             # measure one build
+#   ruby test/perf/perf.rb BASE_DIR HEAD_DIR     # measure two builds and compare
+#
+# A BUILD_DIR is a build of test/build_release.sh (test/perf/run.sh and
+# test/perf/compare.sh make them). For each scenario, and for each build in
+# turn, perf.rb starts nginx with the soak test's configuration
+# (test/soak/nginx.conf, with master_process off) under
+# `valgrind --tool=callgrind --instr-atstart=no`, checks one response, sends
+# PERF_WARMUP requests, switches the instrumentation on with
+# callgrind_control, sends PERF_N requests over keep-alive, dumps the profile
+# with callgrind_control, and stops nginx. The dump holds the cost of the
+# PERF_N requests and nothing else; Ir per request is its Ir divided by
+# PERF_N. The GC-excluded number leaves out the calls into mrb_incremental_gc
+# and mrb_full_gc.
+#
+# Why master_process off: callgrind_control reaches a process through
+# valgrind's gdbserver (vgdb), and vgdb does not serve a process that valgrind
+# forked, such as an nginx worker. With master_process off, the one nginx
+# process runs the event loop and the request handlers as a worker does.
+#
+# With two builds, the change of head against base is judged per scenario on
+# the GC-excluded number: WARN from PERF_WARN_PERCENT, FAIL from
+# PERF_FAIL_PERCENT. The exit status is 1 when a scenario fails, or when a
+# measurement of the last build fails.
+#
+# See docs/test/README.md, "Performance comparison with callgrind".
+
+require 'fileutils'
+require 'json'
+require 'socket'
+require 'yaml'
+require_relative '../soak/http_client'
+require_relative '../soak/scenarios'
+
+def env_int(name, default)
+  value = ENV[name]
+  return default if value.nil? || value.empty?
+
+  Integer(value, 10)
+end
+
+def env_float(name, default)
+  value = ENV[name]
+  return default if value.nil? || value.empty?
+
+  Float(value)
+end
+
+ROOT = File.expand_path('../..', __dir__)
+CONF_TEMPLATE = File.join(ROOT, 'test/soak/nginx.conf')
+HANDLERS_DIR = File.join(ROOT, 'test/soak/handlers')
+REPORT_DIR = ENV.fetch('PERF_REPORT_DIR', File.join(ROOT, 'build_perf'))
+
+PORT = env_int('PERF_PORT_BASE', 12_370)
+BACKEND_PORT = PORT + 1
+N = env_int('PERF_N', 20_000)
+WARMUP = env_int('PERF_WARMUP', 2000)
+WARN_PERCENT = env_float('PERF_WARN_PERCENT', 3.0)
+FAIL_PERCENT = env_float('PERF_FAIL_PERCENT', 5.0)
+
+# The scenarios of test/soak/scenarios.rb that keep-alive clients can measure.
+DEFAULT_SCENARIOS = %w[hello headers var filter sleep sub_request file].freeze
+
+# The GC: the inclusive cost of the calls into the two entry points of
+# mruby's collector, made from outside the collector. See parse_profile.
+GC_ENTRIES = %w[mrb_incremental_gc mrb_full_gc].freeze
+# The functions of mruby/src/gc.c that are not part of the collector and
+# call an entry point: the allocator (mrb_obj_alloc runs an incremental GC
+# step; the malloc wrappers run a full GC when an allocation fails), GC.start,
+# mrb_garbage_collect and ObjectSpace.each_object.
+GC_ALLOCATORS = %w[mrb_obj_alloc mrb_malloc mrb_malloc_simple mrb_calloc mrb_realloc mrb_realloc_simple
+                   mrb_alloca gc_start mrb_garbage_collect mrb_objspace_each_objects].freeze
+GC_SOURCE = 'mruby/src/gc.c'
+
+# Seconds. Everything runs under valgrind, which is slow to start, and the
+# first requests after the instrumentation is switched on are translated again.
+START_TIMEOUT = 300
+IO_TIMEOUT = 120
+CONTROL_TIMEOUT = 120
+STOP_TIMEOUT = 300
+QUIET_TIMEOUT = 5
+WAKE_INTERVAL = 0.2
+
+# Lines of error.log (and nginx's stderr) that fail a measurement.
+LOG_PATTERNS = ['[error]', '[alert]', '[crit]', '[emerg]'].freeze
+
+class PerfError < StandardError; end
+
+def monotonic
+  Process.clock_gettime(Process::CLOCK_MONOTONIC)
+end
+
+def log(line = '')
+  puts line
+  $stdout.flush
+end
+
+# A build of test/build_release.sh.
+class Build
+  attr_reader :label, :dir
+
+  def initialize(label, dir)
+    @label = label
+    @dir = File.expand_path(dir)
+  end
+
+  def nginx_bin
+    File.join(@dir, 'nginx/sbin/nginx')
+  end
+
+  def prefix
+    File.join(@dir, 'nginx/perf')
+  end
+
+  def conf_path
+    File.join(prefix, 'conf/nginx.conf')
+  end
+
+  def log_dir
+    File.join(prefix, 'logs')
+  end
+
+  # The callgrind profiles of the measured windows, one per scenario.
+  def out_dir
+    File.join(@dir, 'callgrind')
+  end
+
+  def write_conf
+    template = File.read(CONF_TEMPLATE)
+    conf = template.sub(/^master_process on;$/, 'master_process off;')
+    raise PerfError, "#{CONF_TEMPLATE}: no line 'master_process on;' to replace" if conf == template
+
+    conf = conf.gsub('__SOAK_PORT__', PORT.to_s)
+               .gsub('__SOAK_BACKEND_PORT__', BACKEND_PORT.to_s)
+               .gsub('__SOAK_HANDLERS__', HANDLERS_DIR)
+    FileUtils.mkdir_p([File.dirname(conf_path), log_dir, out_dir])
+    File.write(conf_path, conf)
+  end
+end
+
+# nginx (one process, master_process off) running under callgrind for one
+# scenario.
+class NginxUnderCallgrind
+  def initialize(build, scenario)
+    @build = build
+    @name = scenario.name
+    @profile_base = File.join(build.out_dir, "callgrind.out.#{@name}")
+    @error_log = File.join(build.log_dir, 'error.log')
+    @stderr_log = File.join(build.log_dir, 'stderr.log')
+    @control_log = File.join(build.out_dir, "callgrind_control.#{@name}.log")
+  end
+
+  def start
+    FileUtils.rm_f([@error_log, @stderr_log, @control_log, @profile_base] +
+                   Dir.glob("#{@profile_base}.*") +
+                   Dir.glob(File.join(@build.out_dir, "valgrind.#{@name}.*.log")))
+    @pid = Process.spawn('valgrind', '--tool=callgrind', '--instr-atstart=no',
+                         "--callgrind-out-file=#{@profile_base}.%p",
+                         "--log-file=#{File.join(@build.out_dir, "valgrind.#{@name}.%p.log")}",
+                         @build.nginx_bin, '-p', "#{@build.prefix}/", '-c', @build.conf_path,
+                         %i[out err] => [@stderr_log, 'w'])
+    deadline = monotonic + START_TIMEOUT
+    loop do
+      raise PerfError, "nginx exited at startup:\n#{File.read(@stderr_log)}" if exited?
+      return if listening?
+      raise PerfError, "nginx not listening on #{PORT} after #{START_TIMEOUT} s" if monotonic > deadline
+
+      sleep 0.1
+    end
+  end
+
+  # Runs callgrind_control with args for nginx. callgrind_control talks to
+  # valgrind's gdbserver through vgdb. When vgdb cannot interrupt a process
+  # that waits in epoll_wait (no ptrace), the command runs the next time the
+  # process runs code, so a small request (stub_status at /status) is sent
+  # every WAKE_INTERVAL until callgrind_control returns. Returns the number of
+  # those requests. callgrind_control exits with 0 also when it did not find
+  # the process, so its output must say "OK.".
+  def control(*args)
+    output = "#{@control_log}.last"
+    pid = Process.spawn('callgrind_control', *args, @pid.to_s, %i[out err] => [output, 'w'])
+    deadline = monotonic + CONTROL_TIMEOUT
+    next_wake = monotonic + WAKE_INTERVAL
+    wakes = 0
+    loop do
+      done, status = Process.waitpid2(pid, Process::WNOHANG)
+      if done
+        text = File.read(output)
+        File.open(@control_log, 'a') { |f| f.write(text) }
+        File.delete(output)
+        unless status.success? && text.match?(/^\s*OK\.$/) && !text.include?('Error')
+          raise PerfError, "callgrind_control #{args.join(' ')} failed (#{status.inspect}): #{text.strip}"
+        end
+
+        return wakes
+      end
+      if monotonic > deadline
+        Process.kill(:KILL, pid)
+        Process.wait(pid)
+        raise PerfError, "callgrind_control #{args.join(' ')} did not return within #{CONTROL_TIMEOUT} s; see #{@control_log}"
+      end
+      if monotonic >= next_wake
+        code, = get_closed('/status')
+        raise PerfError, "/status returned #{code}" unless code == 200
+
+        wakes += 1
+        next_wake = monotonic + WAKE_INTERVAL
+      end
+      sleep 0.01
+    end
+  end
+
+  # The profile that the dump of callgrind_control wrote: valgrind adds the
+  # number of the dump to the file name. The profile at exit goes to the file
+  # name without a number.
+  def dump_file
+    file = "#{@profile_base}.#{@pid}.1"
+    raise PerfError, "callgrind_control --dump wrote no #{file}" unless File.exist?(file)
+
+    file
+  end
+
+  # Stops nginx with SIGQUIT, keeps the dump as callgrind.out.<scenario> and
+  # removes the profiles written at exit. Returns a list of problems.
+  def stop(dump)
+    return [] unless @pid
+
+    problems = []
+    begin
+      Process.kill(:QUIT, @pid)
+    rescue Errno::ESRCH
+      nil
+    end
+    deadline = monotonic + STOP_TIMEOUT
+    sleep 0.1 until exited? || monotonic > deadline
+    unless exited?
+      problems << "nginx did not exit within #{STOP_TIMEOUT} s of SIGQUIT; killed"
+      begin
+        Process.kill(:KILL, @pid)
+      rescue Errno::ESRCH
+        nil
+      end
+      Process.wait(@pid)
+    end
+    problems << "nginx exited with #{@status.inspect}" if @status && !@status.success?
+    @pid = nil
+    File.rename(dump, @profile_base) if dump && File.exist?(dump)
+    FileUtils.rm_f(Dir.glob("#{@profile_base}.*"))
+    problems + scan_logs
+  end
+
+  private
+
+  def exited?
+    return true if @status
+
+    pid, status = Process.waitpid2(@pid, Process::WNOHANG)
+    @status = status if pid
+    !pid.nil?
+  end
+
+  def listening?
+    Socket.tcp('127.0.0.1', PORT, connect_timeout: 1).close
+    true
+  rescue SystemCallError
+    false
+  end
+
+  # Keeps the logs as error.<scenario>.log and stderr.<scenario>.log and
+  # returns the lines that match LOG_PATTERNS.
+  def scan_logs
+    problems = []
+    [@error_log, @stderr_log].each do |path|
+      next unless File.exist?(path)
+
+      kept = path.sub(/\.log\z/, ".#{@name}.log")
+      File.rename(path, kept)
+      File.foreach(kept) do |line|
+        next unless LOG_PATTERNS.any? { |pattern| line.include?(pattern) }
+
+        problems << "#{File.basename(kept)}: #{line.strip}"
+        break if problems.size >= 5
+      end
+    end
+    problems
+  end
+end
+
+def get_closed(path, headers = {})
+  client = Client.new(PORT, io_timeout: IO_TIMEOUT)
+  client.get(path, headers, close: true)
+ensure
+  client&.close
+end
+
+def check_response(scenario, status, headers, body)
+  return if expected_response?(scenario, status, headers, body)
+
+  raise PerfError, "#{scenario.path}: unexpected response #{status} #{body.inspect} #{headers.inspect}"
+end
+
+# Waits until stub_status shows that the only open connection is the one
+# asking it, so that no work of the warmup is left when the instrumentation
+# is switched on.
+def wait_quiet
+  deadline = monotonic + QUIET_TIMEOUT
+  loop do
+    code, _headers, body, = get_closed('/status')
+    raise PerfError, "/status returned #{code}" unless code == 200
+    return if body[/Active connections:\s*(\d+)/, 1] == '1'
+    raise PerfError, "connections still open #{QUIET_TIMEOUT} s after the warmup: #{body.strip}" if monotonic > deadline
+
+    sleep 0.01
+  end
+end
+
+# Sends count requests over keep-alive (a new connection when nginx closes
+# one, after keepalive_requests) and checks every response. Returns the open
+# client, so that closing it is not part of the measured window.
+def keepalive_requests(scenario, count)
+  client = nil
+  count.times do
+    client ||= Client.new(PORT, io_timeout: IO_TIMEOUT)
+    status, headers, body, keep_alive = client.get(scenario.path, scenario.headers)
+    check_response(scenario, status, headers, body)
+    next if keep_alive
+
+    client.close
+    client = nil
+  end
+  client
+end
+
+# Reads a callgrind profile. Returns the total Ir, and the Ir and number of
+# the calls into the GC.
+#
+# Format: https://valgrind.org/docs/manual/cl-format.html. A cost line is
+# "<positions> <events>"; the cost line after a calls= line is the inclusive
+# cost of that call. Names may be compressed as "(id) name" on first use and
+# "(id)" afterwards. fl= names the file of the functions that follow.
+#
+# Which calls are the GC: a call into mrb_incremental_gc or mrb_full_gc whose
+# caller is outside the collector, that is, a function of another file or one
+# of GC_ALLOCATORS, and where neither name has a recursion suffix ('2, '3,
+# ...: callgrind saw the function on the call stack already). A full GC that
+# mrb_incremental_gc runs is part of the cost of the outer call and is not
+# counted again. Inside the collector, callgrind's call graph does not follow
+# the machine code: in a build for aarch64 it shows final_marking_phase
+# calling mrb_incremental_gc'2, which the code does not do. The outermost call
+# of each GC returns to its caller, and its inclusive cost is the cost of the
+# whole GC (it equals the inclusive cost that callgrind_annotate
+# --inclusive=yes prints for mrb_incremental_gc without a suffix). The GC
+# entry points do not call themselves, and the allocators do not run inside
+# the collector, so a name with a suffix is never an outermost call.
+def parse_profile(path)
+  names = { fn: {}, fl: {} }
+  resolve = lambda do |table, spec|
+    if (m = spec.match(/\A\((\d+)\)(?: (.*))?\z/))
+      names[table][m[1]] = m[2] if m[2]
+      names[table].fetch(m[1])
+    else
+      spec
+    end
+  end
+  outside_collector = lambda do |name, file|
+    !name.include?("'") && (GC_ALLOCATORS.include?(name) || !file.to_s.end_with?(GC_SOURCE))
+  end
+  positions = 1
+  ir_index = 0
+  totals = nil
+  self_ir = 0
+  gc_ir = 0
+  gc_calls = 0
+  file = fn = fn_file = cfn = nil
+  call_count = nil
+  File.foreach(path, chomp: true) do |line|
+    case line
+    when /\A[0-9+\-*]/
+      ir = line.split[positions + ir_index].to_i
+      if call_count
+        if GC_ENTRIES.include?(cfn) && outside_collector.call(fn, fn_file)
+          gc_ir += ir
+          gc_calls += call_count
+        end
+        call_count = nil
+      else
+        self_ir += ir
+      end
+    when /\Afl=(.*)\z/ then file = resolve.call(:fl, Regexp.last_match(1))
+    when /\A(?:fi|fe|cfi|cfl)=(.*)\z/ then resolve.call(:fl, Regexp.last_match(1))
+    when /\Afn=(.*)\z/
+      fn = resolve.call(:fn, Regexp.last_match(1))
+      fn_file = file
+    when /\Acfn=(.*)\z/ then cfn = resolve.call(:fn, Regexp.last_match(1))
+    when /\Acalls=(\d+)/ then call_count = Regexp.last_match(1).to_i
+    when /\Apositions:\s*(.*)\z/ then positions = Regexp.last_match(1).split.size
+    when /\Aevents:\s*(.*)\z/ then ir_index = Regexp.last_match(1).split.index('Ir') or raise PerfError, "#{path}: no Ir event"
+    when /\A(?:totals|summary):\s*(.*)\z/ then totals = Regexp.last_match(1).split[ir_index].to_i
+    end
+  end
+  raise PerfError, "#{path}: no totals line" unless totals
+  raise PerfError, "#{path}: totals #{totals} differ from the sum of the costs #{self_ir}" unless totals == self_ir
+
+  { ir: totals, gc_ir: gc_ir, gc_calls: gc_calls }
+end
+
+def measure(build, scenario)
+  nginx = NginxUnderCallgrind.new(build, scenario)
+  result = { problems: [] }
+  dump = client = nil
+  started = monotonic
+  begin
+    nginx.start
+    status, headers, body, = get_closed(scenario.path, scenario.headers)
+    check_response(scenario, status, headers, body)
+    keepalive_requests(scenario, WARMUP)&.close
+    wait_quiet
+
+    # The window: from here to the dump, on connections of its own.
+    wakes = nginx.control('--instr=on')
+    client = keepalive_requests(scenario, N)
+    wakes += nginx.control('--dump')
+    dump = nginx.dump_file
+    profile = parse_profile(dump)
+    result.merge!(profile, wakes: wakes,
+                           ir_per_request: profile[:ir].to_f / N,
+                           nogc_per_request: (profile[:ir] - profile[:gc_ir]).to_f / N,
+                           gc_calls_per_1000: profile[:gc_calls] * 1000.0 / N)
+  rescue PerfError, Client::Timeout, SystemCallError, IOError => e
+    result[:problems] << "#{e.class}: #{e.message}"
+  ensure
+    client&.close
+    result[:problems].concat(nginx.stop(dump))
+  end
+  result[:seconds] = monotonic - started
+  result
+end
+
+def percent(base, head)
+  (head - base) / base * 100.0
+end
+
+def verdict(change)
+  if change >= FAIL_PERCENT
+    'FAIL'
+  elsif change >= WARN_PERCENT
+    'WARN'
+  else
+    'ok'
+  end
+end
+
+def format_table(header, rows)
+  widths = header.each_index.map { |i| ([header] + rows).map { |row| row[i].to_s.size }.max }
+  [header, *rows].map do |row|
+    row.each_with_index.map { |cell, i| i.zero? ? cell.to_s.ljust(widths[i]) : cell.to_s.rjust(widths[i]) }.join('  ')
+  end
+end
+
+def fmt_ir(value)
+  format('%.0f', value)
+end
+
+def fmt_change(value)
+  format('%+.2f%%', value)
+end
+
+def gc_share(result)
+  format('%.1f%%', result[:gc_ir] * 100.0 / result[:ir])
+end
+
+def summarize(builds, scenarios, results)
+  rows = []
+  failed = false
+  scenarios.each do |scenario|
+    rs = builds.map { |b| results[[b.label, scenario.name]] }
+    ok = rs.map { |r| r[:problems].empty? }
+    if builds.size == 1
+      r = rs.first
+      rows << if ok.first
+                [scenario.name, fmt_ir(r[:ir_per_request]), fmt_ir(r[:nogc_per_request]), gc_share(r),
+                 format('%.1f', r[:gc_calls_per_1000]), 'ok']
+              else
+                [scenario.name, '-', '-', '-', '-', 'ERROR']
+              end
+      failed ||= !ok.first
+      next
+    end
+
+    base, head = rs
+    if ok.all?
+      total = percent(base[:ir_per_request], head[:ir_per_request])
+      nogc = percent(base[:nogc_per_request], head[:nogc_per_request])
+      v = verdict(nogc)
+      failed ||= v == 'FAIL'
+      rows << [scenario.name, fmt_ir(base[:ir_per_request]), fmt_ir(head[:ir_per_request]), fmt_change(total),
+               fmt_ir(base[:nogc_per_request]), fmt_ir(head[:nogc_per_request]), fmt_change(nogc),
+               "#{gc_share(base)}/#{gc_share(head)}", v]
+    else
+      # A scenario that only the head can serve (a new feature) is not compared.
+      failed ||= !ok.last
+      rows << [scenario.name, '-', '-', '-', '-', '-', '-', '-', ok.last ? 'n/a (base failed)' : 'ERROR']
+    end
+  end
+  header = if builds.size == 1
+             ['scenario', 'Ir/req', 'Ir/req w/o GC', 'GC share', 'GC calls/1000 req', 'result']
+           else
+             ['scenario', "#{builds[0].label} Ir/req", "#{builds[1].label} Ir/req", 'change',
+              "#{builds[0].label} w/o GC", "#{builds[1].label} w/o GC", 'change w/o GC', 'GC share', 'result']
+           end
+  [header, rows, failed]
+end
+
+def write_step_summary(header, rows)
+  path = ENV['GITHUB_STEP_SUMMARY']
+  return if path.nil? || path.empty?
+
+  File.open(path, 'a') do |f|
+    f.puts "### Instructions per request (callgrind, N=#{N})"
+    f.puts
+    f.puts "| #{header.join(' | ')} |"
+    f.puts "|#{header.map { '---' }.join('|')}|"
+    rows.each { |row| f.puts "| #{row.join(' | ')} |" }
+    f.puts
+    f.puts "WARN from #{WARN_PERCENT}% and FAIL from #{FAIL_PERCENT}% more Ir per request without the GC."
+  end
+end
+
+# The commits of the third-party gems of a build (url => commit), from the
+# gem lock that rake wrote, or nil.
+def gem_commits(build)
+  path = File.join(build.dir, 'tree/build_config.rb.lock')
+  return nil unless File.exist?(path)
+
+  host = (YAML.safe_load(File.read(path)) || {}).dig('builds', 'host') || {}
+  host.transform_values { |entry| entry['commit'] }
+end
+
+# Lines that say whether both builds have the same gems at the same commits.
+def gem_lock_lines(builds)
+  base, head = builds.map { |b| gem_commits(b) }
+  return ['perf: gems: no build_config.rb.lock in a build; cannot compare the gem commits'] unless base && head
+
+  common = base.keys & head.keys
+  differ = common.reject { |url| base[url] == head[url] }
+  lines = ["perf: gems: #{common.size} in both builds, #{differ.size} at different commits, " \
+           "#{(base.keys - head.keys).size} only in base, #{(head.keys - base.keys).size} only in head"]
+  differ.each { |url| lines << "perf:   #{url}: base #{base[url].to_s[0, 12]}, head #{head[url].to_s[0, 12]}" }
+  lines
+end
+
+# Workflow commands that GitHub Actions shows as annotations of the run.
+def annotate(header, rows)
+  return unless ENV['GITHUB_ACTIONS'] == 'true'
+
+  rows.each do |row|
+    result = row.last
+    next if result == 'ok' || result.start_with?('n/a')
+
+    level = result == 'WARN' ? 'warning' : 'error'
+    detail = header.zip(row).map { |h, v| "#{h}: #{v}" }.join(', ')
+    puts "::#{level} title=perf #{row.first}::#{detail}"
+  end
+end
+
+def selected_scenarios
+  names = ENV['PERF_SCENARIOS'].to_s.split(',').map(&:strip).reject(&:empty?)
+  names = DEFAULT_SCENARIOS if names.empty?
+  names.map do |name|
+    scenario = SCENARIOS.find { |s| s.name == name } or abort "perf: unknown scenario #{name} (known: #{DEFAULT_SCENARIOS.join(', ')})"
+    abort "perf: scenario #{name} is not a keep-alive scenario" unless scenario.mode == :keepalive
+    scenario
+  end
+end
+
+labels = ARGV.size == 2 ? %w[base head] : [nil]
+abort 'usage: ruby test/perf/perf.rb BUILD_DIR [HEAD_BUILD_DIR]' unless [1, 2].include?(ARGV.size)
+builds = ARGV.zip(labels).map { |dir, label| Build.new(label || File.basename(File.expand_path(dir)), dir) }
+builds.each do |b|
+  abort "perf: #{b.nginx_bin} not found; build it with test/perf/run.sh or test/perf/compare.sh" unless File.executable?(b.nginx_bin)
+end
+abort 'perf: Linux only (reads /proc)' unless File.directory?('/proc/self/fd')
+
+scenarios = selected_scenarios
+builds.each(&:write_conf)
+log("perf: N=#{N} WARMUP=#{WARMUP} PORTS=#{PORT},#{BACKEND_PORT} WARN=#{WARN_PERCENT}% FAIL=#{FAIL_PERCENT}%")
+builds.each { |b| log("perf: #{b.label}: #{b.dir}") }
+gem_lines = builds.size == 2 ? gem_lock_lines(builds) : []
+gem_lines.each { |line| log(line) }
+results = {}
+scenarios.each do |scenario|
+  builds.each do |b|
+    r = measure(b, scenario)
+    results[[b.label, scenario.name]] = r
+    detail = r[:problems].empty? ? format('%.1f Ir/req, %.1f w/o GC', r[:ir_per_request], r[:nogc_per_request]) : 'ERROR'
+    log(format('perf: %-11s %-4s %s (%.0f s, %d wake requests)', scenario.name, b.label, detail, r[:seconds], r[:wakes].to_i))
+  end
+end
+
+header, rows, failed = summarize(builds, scenarios, results)
+lines = format_table(header, rows)
+problems = results.reject { |_k, r| r[:problems].empty? }.flat_map do |(label, name), r|
+  ["#{name} (#{label}):", *r[:problems].map { |p| "  #{p}" }]
+end
+report = ["perf: N=#{N} WARMUP=#{WARMUP}; Ir per request of nginx; " \
+          "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number without GC", *gem_lines, '', *lines]
+report += ['', *problems] unless problems.empty?
+log
+report.each { |line| log(line) }
+
+FileUtils.mkdir_p(REPORT_DIR)
+File.write(File.join(REPORT_DIR, 'report.txt'), "#{report.join("\n")}\n")
+json = {
+  n: N, warmup: WARMUP, warn_percent: WARN_PERCENT, fail_percent: FAIL_PERCENT,
+  builds: builds.map { |b| { label: b.label, dir: b.dir } },
+  results: results.map { |(label, name), r| { build: label, scenario: name }.merge(r) }
+}
+File.write(File.join(REPORT_DIR, 'report.json'), "#{JSON.pretty_generate(json)}\n")
+write_step_summary(header, rows)
+annotate(header, rows)
+exit(failed ? 1 : 0)

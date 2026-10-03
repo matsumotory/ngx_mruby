@@ -215,6 +215,76 @@ jobs:
           path: build_soak/nginx/soak/logs
           if-no-files-found: ignore
 
+  # Performance comparison (docs/test/README.md, "Performance comparison with
+  # callgrind"): instructions per request of the PR's base and of the PR
+  # merged into it, both release builds, measured with callgrind. It runs
+  # when the PR changes the code or the measurement, or has the label "perf".
+  # Advisory for now: ci-ok does not need it until the thresholds are
+  # calibrated on the runner.
+  perf:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      # The checkout is the merge commit of the PR (refs/pull/N/merge); its
+      # first parent is the base branch it was merged into.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+      - name: Decide whether to compare
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          git diff --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed"
+          # The labels are read now, not from the event, so that adding the
+          # label and re-running the job is enough.
+          gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name' > "$RUNNER_TEMP/labels"
+          if grep -qE '^(src/|mrbgems/|mruby/|build_config\.rb$|test/perf/|test/build_release\.sh$|test/soak/(nginx\.conf|scenarios\.rb|http_client\.rb|handlers/))' "$RUNNER_TEMP/changed"; then
+            echo "The PR changes files that the comparison measures."
+            echo "run=yes" >> "$GITHUB_OUTPUT"
+          elif grep -qx perf "$RUNNER_TEMP/labels"; then
+            echo "The PR has the label perf."
+            echo "run=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "No change to the measured files and no label perf: nothing to compare."
+            echo "run=no" >> "$GITHUB_OUTPUT"
+          fi
+      - name: install
+        if: steps.scope.outputs.run == 'yes'
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get -qq install rake bison git gperf zlib1g-dev ruby valgrind
+          valgrind --version
+      - name: Check out the base
+        if: steps.scope.outputs.run == 'yes'
+        run: |
+          mkdir -p build_perf
+          git archive --prefix=build_perf/base-src/ HEAD^1 | tar -x
+          echo "base: $(git rev-parse HEAD^1), head: $(git rev-parse HEAD) (merge of $(git rev-parse HEAD^2))"
+      - name: perf
+        if: steps.scope.outputs.run == 'yes'
+        env:
+          NUM_THREADS_ENV: 1
+        run: sh test/perf/compare.sh build_perf/base-src
+      - name: Upload the profiles and the report
+        if: ${{ !cancelled() && steps.scope.outputs.run == 'yes' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: perf-callgrind
+          path: |
+            build_perf/report.txt
+            build_perf/report.json
+            build_perf/base/callgrind
+            build_perf/head/callgrind
+            build_perf/base/nginx/perf/logs
+            build_perf/head/nginx/perf/logs
+          if-no-files-found: ignore
+
   # The only status check that rulesets should require. Matrix job names
   # change whenever the matrix changes, so they cannot be required directly.
   # "always()" makes this job run, and fail, when build or soak failed or
