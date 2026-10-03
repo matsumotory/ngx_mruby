@@ -20,6 +20,18 @@
 - [Use Case](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case)
 - [Examples](https://github.com/hsbt/nginx-tech-talk)
 
+## Branches and versions
+
+| Branch | Contents |
+|---|---|
+| `master` | The 2.x line until v3.0.0 is released; after that, 3.x. |
+| `next` | Development of v3. Pre-releases are tagged `vX.Y.Z-alpha.N`, `vX.Y.Z-beta.N` and `vX.Y.Z-rc.N` and marked as pre-release on GitHub. |
+| `v2.x` | 2.x maintenance. It mirrors `master` until v3 is promoted to `master`. |
+
+Releases are tagged `vX.Y.Z`. To stay on 2.x after v3.0.0, use `git clone -b v2.x https://github.com/matsumotory/ngx_mruby.git` or a `v2.*` release tag instead of `master`.
+
+Please report security vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+
 ## What's ngx_mruby
 __ngx_mruby is A Fast and Memory-Efficient TCP/UDP Load Balancing and Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
 
