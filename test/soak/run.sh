@@ -65,6 +65,11 @@ if [ -z "$ONLY_RUN" ]; then
         printf '%s\n' "$NGX_MRUBY_CFLAGS" > "$SOAK_BUILD/mruby_cflags"
     fi
 
+    # build.sh also reads these. The soak build is always a static module,
+    # built from its own nginx source and the system OpenSSL. (The CI
+    # workflow sets OPENSSL_SRC_VERSION for every job.)
+    unset BUILD_DYNAMIC_MODULE NGINX_SRC_ENV OPENSSL_SRC_VERSION
+
     # nginx's configure splits --with-cc-opt again in the shell that make
     # runs, so the spaces are escaped (as test.sh does).
     NGINX_CC_OPT='-g\ -O2\ -fno-common\ -DNGX_MRUBY_DEBUG_STATS'
