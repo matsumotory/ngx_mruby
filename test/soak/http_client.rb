@@ -1,0 +1,113 @@
+# frozen_string_literal: true
+
+# A minimal HTTP/1.1 client (CRuby) for the memory soak test
+# (test/soak/soak.rb) and the performance comparison (test/perf/perf.rb):
+# one connection, one request at a time.
+
+require 'io/wait'
+require 'socket'
+
+class Client
+  # Raised when no response arrives within io_timeout seconds.
+  class Timeout < StandardError; end
+
+  def initialize(port, io_timeout: 30)
+    @io_timeout = io_timeout
+    @sock = Socket.tcp('127.0.0.1', port, connect_timeout: 5)
+    @sock.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+    @buf = String.new(encoding: Encoding::BINARY)
+  end
+
+  def close
+    @sock.close unless @sock.closed?
+  end
+
+  # Returns [status, headers, body, keep_alive]. With close: true the request
+  # asks the server to close, and the response is read to EOF, so the server
+  # has closed its socket when this returns.
+  def get(path, headers = {}, close: false)
+    @sock.write(request(path, headers, close))
+    status, response_headers, body = read_response
+    keep_alive = response_headers['connection'].to_s.downcase != 'close'
+    read_to_eof if close || !keep_alive
+    [status, response_headers, body, keep_alive && !close]
+  end
+
+  # Sends a request and closes the connection without reading the response.
+  def send_and_close(path, headers = {})
+    @sock.write(request(path, headers, true))
+    close
+  end
+
+  private
+
+  def request(path, headers, close)
+    req = +"GET #{path} HTTP/1.1\r\nHost: localhost\r\n"
+    headers.each { |k, v| req << "#{k}: #{v}\r\n" }
+    req << "Connection: close\r\n" if close
+    req << "\r\n"
+  end
+
+  def fill
+    loop do
+      chunk = @sock.read_nonblock(65_536, exception: false)
+      case chunk
+      when :wait_readable
+        raise Timeout, "no response within #{@io_timeout} s" unless @sock.wait_readable(@io_timeout)
+      when nil
+        raise EOFError, 'connection closed by the server'
+      else
+        @buf << chunk
+        return
+      end
+    end
+  end
+
+  def take(size)
+    fill while @buf.bytesize < size
+    @buf.slice!(0, size)
+  end
+
+  def take_line
+    fill until (idx = @buf.index("\r\n"))
+    @buf.slice!(0, idx + 2).chomp("\r\n")
+  end
+
+  def read_response
+    fill until (idx = @buf.index("\r\n\r\n"))
+    lines = @buf.slice!(0, idx + 4).split("\r\n")
+    status = lines.shift.to_s[%r{\AHTTP/1\.[01] (\d{3})}, 1].to_i
+    headers = {}
+    lines.each do |line|
+      key, value = line.split(':', 2)
+      headers[key.strip.downcase] = value.to_s.strip
+    end
+    body = if headers['transfer-encoding'].to_s.downcase.include?('chunked')
+             read_chunked
+           elsif headers.key?('content-length')
+             take(Integer(headers['content-length'], 10))
+           else
+             read_to_eof
+           end
+    [status, headers, body]
+  end
+
+  def read_chunked
+    body = String.new(encoding: Encoding::BINARY)
+    loop do
+      size = take_line.split(';', 2).first.to_i(16)
+      if size.zero?
+        nil until take_line.empty? # trailer section
+        return body
+      end
+      body << take(size)
+      take_line
+    end
+  end
+
+  def read_to_eof
+    loop { fill }
+  rescue EOFError
+    @buf.slice!(0, @buf.bytesize)
+  end
+end

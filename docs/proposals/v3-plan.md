@@ -288,8 +288,13 @@ All claims below were checked against the cited page on 2026-10-03.
   `build_config.rb.lock`. Debian Policy forbids network access during build.
 - `wrk` and `wrk2` are unmaintained; `oha` 1.16 (HTTP/1.1, 2, 3) and
   `h2load` are current. Shared CI runners vary by more than 30% in
-  throughput, so benchmarks are recorded, not gated. `/proc/<pid>/smaps_rollup`
-  gives `Pss` for soak-test leak detection.
+  throughput, so throughput benchmarks are recorded, not gated. Instruction
+  counts measured with callgrind do not depend on the runner's speed: two
+  builds of the same code, measured one after the other on the runner,
+  differed by at most about 0.05% per scenario in six runs
+  (`docs/test/README.md`, "Performance comparison with callgrind"), so they
+  can be gated against thresholds of a few percent. `/proc/<pid>/smaps_rollup` gives `Pss`
+  for soak-test leak detection.
 
 ## 4. v3 candidates by pillar
 
@@ -352,7 +357,8 @@ result; needs a migration note), **breaking** (removal or new requirement).
 | nginx-tests run against nginx with ngx_mruby loaded (`TEST_NGINX_MODULES`, `TEST_NGINX_GLOBALS_HTTP`), recorded first, required once stable. | none | 3.7 |
 | Coverage: tests for the 15 untested directives and ~20 untested methods before touching the core, so v3 refactors are checked against v2 behaviour. | none | 2.3 |
 | ClusterFuzzLite with a fuzzer that drives request headers, variables and SNI through mruby handlers. | none | 3.7 |
-| Matrix: nginx 1.30.x and 1.31.x current patch, OpenSSL 3.5 and 4.0, gcc and clang, Ubuntu 24.04, Debian, Alpine, FreeBSD; nightly build against mruby master. Benchmarks recorded with Bencher or github-action-benchmark, not gated. | none | 3.1, 3.7 |
+| Matrix: nginx 1.30.x and 1.31.x current patch, OpenSSL 3.5 and 4.0, gcc and clang, Ubuntu 24.04, Debian, Alpine, FreeBSD; nightly build against mruby master. Throughput benchmarks recorded with Bencher or github-action-benchmark, not gated. | none | 3.1, 3.7 |
+| Instructions per request (callgrind `Ir`) of the base and the head of each PR that changes the code: release builds, the keep-alive soak scenarios, WARN from 3% and FAIL from 5% more instructions without the GC (`test/perf/`, `docs/test/README.md`). Advisory first; gated through `ci-ok` once it has run on PRs that change the code without false alarms. | none | 3.7 |
 
 ### Pillar F: documentation, site, examples, video
 

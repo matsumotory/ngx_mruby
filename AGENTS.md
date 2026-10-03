@@ -86,6 +86,7 @@ ONLY_BUILD_NGX_MRUBY=1 sh test.sh   # fast loop: skip fetch/configure, rebuild c
 BUILD_DYNAMIC_MODULE=1 sh test.sh   # build as a dynamic module (uses build_dynamic/ instead of build/)
 NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
 sh test/soak/run.sh                 # memory soak test (Linux; own build in build_soak/, ports 12360-12361)
+sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12371)
 ```
 
 - The first full run takes a few minutes (it clones mrbgems from GitHub and builds
@@ -114,6 +115,12 @@ sh test/soak/run.sh                 # memory soak test (Linux; own build in buil
   stops only the nginx it started. `test.sh` kills the soak's nginx too, so do not
   run both at the same time on one machine. The soak reads `/proc`: on macOS, run
   it in a Linux container. See "Soak test for memory" in `docs/test/README.md`.
+- `test/perf/compare.sh` builds the base and the head in `build_perf/` (it does not
+  touch the `test.sh` build), listens on 12370 and 12371 (`PERF_PORT_BASE` moves
+  both) and stops only the nginx it started. `test.sh` kills it too, so do not run
+  both at the same time on one machine. It needs valgrind's `callgrind_control` and
+  `vgdb`: on macOS, run it in a Linux container. See "Performance comparison with
+  callgrind" in `docs/test/README.md`.
 
 ### When nginx.org is unreachable
 
