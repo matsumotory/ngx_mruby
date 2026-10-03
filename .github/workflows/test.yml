@@ -1,6 +1,32 @@
 name: test
 
-on: push
+# Pushes to topic branches (claude/*, backport/*, ...) do not run here:
+# they are tested through their pull request, so the matrix runs once.
+# Use "Run workflow" (workflow_dispatch) to test a branch without a PR.
+on:
+  push:
+    branches:
+      - master
+      - next
+      - 'v*.x'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - master
+      - next
+      - 'v*.x'
+  workflow_dispatch:
+
+# A new push to a pull request cancels the run for its previous commit.
+# Runs for branch and tag pushes are not cancelled once started; a newer
+# push to the same ref waits for them (only the newest waiting run is kept).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 defaults:
   run:
@@ -12,7 +38,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
     strategy:
+      fail-fast: false
       matrix:
         NGINX_VERSION:
           - 1.31.6
@@ -26,7 +54,7 @@ jobs:
           - ""
           - "TRUE"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Echo matrix
         env:
           NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
@@ -96,3 +124,24 @@ jobs:
         run: |
           if [ -e build/nginx/logs/error.log ]; then cat build/nginx/logs/error.log ; else cat build_dynamic/nginx/logs/error.log; fi
           if [ -e build/nginx/logs/stderr.log ]; then cat build/nginx/logs/stderr.log ; else cat build_dynamic/nginx/logs/stderr.log; fi
+
+  # The only status check that rulesets should require. Matrix job names
+  # change whenever the matrix changes, so they cannot be required directly.
+  # "always()" makes this job run, and fail, when build failed or was
+  # cancelled; a skipped job would count as passing.
+  ci-ok:
+    name: ci-ok
+    needs: [build]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check that every build job succeeded
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          echo "build: ${BUILD_RESULT}"
+          if [ "${BUILD_RESULT}" != "success" ]; then
+            echo "::error title=ci-ok::build finished with result '${BUILD_RESULT}', expected 'success'"
+            exit 1
+          fi
