@@ -104,7 +104,7 @@ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
   `build/nginx/logs/` (`build_dynamic/nginx/logs/` for dynamic builds);
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
-- `test.sh` listens on fixed ports (18080-18088, 18101-18103, 18110-18124,
+- `test.sh` listens on fixed ports (18080-18088, 18101-18103, 18110-18131,
   12345-12358; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 12399 to a test in
   `test/t/ngx_mruby.rb`) and
