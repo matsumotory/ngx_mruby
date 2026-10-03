@@ -18,4 +18,9 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result)
 
 void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class);
 
+#ifdef NGX_MRUBY_DEBUG_STATS
+/* The number of Nginx::Async.sleep timers that are still pending (for Nginx::Debug.stats). */
+ngx_int_t ngx_mrb_async_debug_timers(void);
+#endif
+
 #endif // NGX_HTTP_MRUBY_ASYNC_H

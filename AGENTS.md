@@ -85,6 +85,7 @@ sh test.sh                          # full run: fetch nginx (version in ./nginx_
 ONLY_BUILD_NGX_MRUBY=1 sh test.sh   # fast loop: skip fetch/configure, rebuild changed sources, re-run tests
 BUILD_DYNAMIC_MODULE=1 sh test.sh   # build as a dynamic module (uses build_dynamic/ instead of build/)
 NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
+sh test/soak/run.sh                 # memory soak test (Linux; own build in build_soak/, ports 12360-12361)
 ```
 
 - The first full run takes a few minutes (it clones mrbgems from GitHub and builds
@@ -105,6 +106,11 @@ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
 - `test.sh` listens on fixed ports (58080-58088, 58101-58103, 12345-12352) and
   kills every running `nginx` process before it starts. Run only one `test.sh` per
   machine at a time, and wait if an nginx you did not start is running.
+- `test/soak/run.sh` builds its own nginx in `build_soak/` (it does not touch the
+  `test.sh` build), listens on 12360 and 12361 (`SOAK_PORT_BASE` moves both) and
+  stops only the nginx it started. `test.sh` kills the soak's nginx too, so do not
+  run both at the same time on one machine. The soak reads `/proc`: on macOS, run
+  it in a Linux container. See "Soak test for memory" in `docs/test/README.md`.
 
 ### When nginx.org is unreachable
 
