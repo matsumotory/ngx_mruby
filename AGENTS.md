@@ -20,9 +20,9 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
 
 | Branch | Role | Who changes it |
 |---|---|---|
-| `master` | 2.x line until v3 is promoted, then 3.x | PRs only, merged by the owner |
-| `next` | v3 development (pre-release tags `vX.Y.Z-alpha.N`/`-beta.N`/`-rc.N`) | PRs only, merged by the owner |
-| `v2.x` | 2.x maintenance; an automatic mirror of `master` until v3 is promoted | Mirror automation; after promotion, PRs merged by the owner |
+| `master` | 2.x line until v3 is promoted, then 3.x | PRs only; merged as described in "Review and merge" |
+| `next` | v3 development (pre-release tags `vX.Y.Z-alpha.N`/`-beta.N`/`-rc.N`) | PRs only; merged as described in "Review and merge" |
+| `v2.x` | 2.x maintenance; an automatic mirror of `master` until v3 is promoted | Mirror automation; after promotion, PRs merged as described in "Review and merge" |
 
 - 2.x fixes: PR with base `master` until v3 is promoted (afterwards: base `v2.x`).
   A fix that also applies to v3 still goes to `master`; it reaches `next` when
@@ -42,8 +42,8 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
 ### Review and merge
 
 Every PR gets a review by an agent (or person) that did not write it, with
-this checklist: the change is inside the agreed scope (`docs/proposals/`, an
-issue, or a fix with evidence); the code and tests are correct when read
+this checklist: the change is inside the agreed scope (`docs/proposals/` on
+`next`, an issue, or a fix with evidence); the code and tests are correct when read
 against `src/` and, where it matters, the nginx source; a bug fix shows the
 test failing on the base branch and passing on the head; expectations assert
 on real responses, not only on "not 500"; the CI result on the head commit;
@@ -58,13 +58,16 @@ The session that owns the PR merges it, with a merge commit, when all of
 these hold:
 
 1. The base branch follows the branch table above.
-2. Every CI check on the head commit passed (`ci-ok` once it is required).
-   A run made green by skipping or disabling tests does not count.
+2. Every CI check on the head commit passed (`ci-ok` once it is required),
+   on a run whose merge ref includes the current base. When the base moved
+   after the last run, update the branch and let CI run again. A run made
+   green by skipping or disabling tests does not count.
 3. The change is inside the agreed scope, or is a bug fix with the evidence
    above, or changes documentation only.
 4. The review above is recorded on the PR and no "must fix" item is open.
 5. The scrub for secrets and unpublished vulnerability details passed.
 6. The PR has no conflicts with its base.
+7. The PR is marked ready for review (GitHub does not merge a draft).
 
 If any condition cannot be met, the session says which one and why, and asks
 the owner instead of merging.
