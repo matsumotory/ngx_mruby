@@ -16,8 +16,14 @@
 # with callgrind_control, and stops nginx. The dump holds the cost of the
 # PERF_N requests and nothing else; Ir per request is its Ir divided by
 # PERF_N. The GC-excluded number leaves out the calls into mrb_incremental_gc
-# and mrb_full_gc. A window with 0 Ir, or without exactly one call of
-# ngx_mrb_run per request (REQUEST_FUNCTIONS), fails the measurement.
+# and mrb_full_gc. A window with 0 Ir, or without the expected number of
+# calls of the scenario's request function (ngx_mrb_run for most scenarios;
+# see REQUEST_FUNCTIONS and request_functions), fails the measurement.
+#
+# The agent proxy scenarios (proxy_*, auth, route_json_*, ruby_call_*) use
+# the template test/soak/nginx.agent.conf, and those with an upstream also
+# get the mock LLM test/soak/mock_llm.rb on port base + 2, started before
+# nginx and stopped after it.
 #
 # Why master_process off: callgrind_control reaches a process through
 # valgrind's gdbserver (vgdb), and vgdb does not serve a process that valgrind
@@ -55,19 +61,25 @@ def env_float(name, default)
 end
 
 ROOT = File.expand_path('../..', __dir__)
-CONF_TEMPLATE = File.join(ROOT, 'test/soak/nginx.conf')
+CONF_TEMPLATE_DIR = File.join(ROOT, 'test/soak')
 HANDLERS_DIR = File.join(ROOT, 'test/soak/handlers')
 REPORT_DIR = ENV.fetch('PERF_REPORT_DIR', File.join(ROOT, 'build_perf'))
 
 PORT = env_int('PERF_PORT_BASE', 12_370)
 BACKEND_PORT = PORT + 1
+MOCK_PORT = PORT + 2
 N = env_int('PERF_N', 20_000)
 WARMUP = env_int('PERF_WARMUP', 2000)
 WARN_PERCENT = env_float('PERF_WARN_PERCENT', 3.0)
 FAIL_PERCENT = env_float('PERF_FAIL_PERCENT', 5.0)
 
-# The scenarios of test/soak/scenarios.rb that keep-alive clients can measure.
-DEFAULT_SCENARIOS = %w[hello headers var filter sleep sub_request file].freeze
+# The scenarios measured when PERF_SCENARIOS is not set: keep-alive
+# scenarios of test/soak/scenarios.rb. proxy_stream_plain_1000 and
+# route_json_64k are left out for their time (see docs/test/README.md);
+# PERF_SCENARIOS names them.
+DEFAULT_SCENARIOS = %w[hello headers var filter sleep sub_request file
+                       proxy_plain_2k proxy_plain_64k proxy_stream_plain_50 auth route_json_2k
+                       ruby_call_1 ruby_call_10].freeze
 
 # The GC: the inclusive cost of the calls into the two entry points of
 # mruby's collector, made from outside the collector. See parse_profile.
@@ -95,7 +107,40 @@ GC_SOURCE = 'mruby/src/gc.c'
 # once as well); PERF_REQUEST_FUNCTIONS (comma-separated) overrides the list.
 REQUEST_FUNCTIONS = ENV.fetch('PERF_REQUEST_FUNCTIONS', 'ngx_mrb_run').split(',').map(&:strip).reject(&:empty?).freeze
 # Calls of the request function per request, by scenario; 1 when not listed.
-REQUEST_FUNCTION_CALLS = Hash.new(1).freeze
+REQUEST_FUNCTION_CALLS = Hash.new(1).merge('ruby_call_10' => 10).freeze
+
+# The request function of the scenarios with an upstream (a mock in
+# test/soak/scenarios.rb). nginx calls ngx_http_log_request once for each
+# request it ends (for a subrequest only with log_subrequest on), with or
+# without Ruby, so the scenarios without Ruby have a count too, and all the
+# scenarios with an upstream count the same function. The /status requests
+# that wake nginx for callgrind_control (see control) end inside the window
+# when they come after the instrumentation was switched on, so the window may
+# hold up to that many calls more than PERF_N times the count.
+LOG_REQUEST_FUNCTIONS = %w[ngx_http_log_request].freeze
+
+# The request function of the ruby_call_* scenarios (mruby_set_code). Its
+# handler reaches ngx_mrb_run through a tail call, which callgrind does not
+# always record as a call of ngx_mrb_run: in an aarch64 build, one of the ten
+# calls per request of ruby_call_10 showed as a call from the handler to
+# ngx_mrb_start_fiber, and ruby_call_1 showed none. nginx calls the handler
+# through a pointer, once for each mruby_set_code.
+SET_CODE_FUNCTIONS = %w[ngx_http_mruby_set_inline_handler].freeze
+SCENARIO_REQUEST_FUNCTIONS = { 'ruby_call_1' => SET_CODE_FUNCTIONS, 'ruby_call_10' => SET_CODE_FUNCTIONS }.freeze
+
+# Functions whose calls per request are reported but not checked: the Ruby
+# runs (ngx_mrb_run starts a fiber for each run of Ruby code, and nothing
+# else calls ngx_mrb_start_fiber; callgrind records these calls also where
+# it misses one of ngx_mrb_run, see SET_CODE_FUNCTIONS) and the reads of the
+# upstream response in unbuffered mode (nginx reads up to proxy_buffer_size
+# each time; how many reads a response takes depends on how much of it had
+# arrived at each read).
+RECORDED_FUNCTIONS = { ruby_calls: %w[ngx_mrb_start_fiber],
+                       upstream_reads: %w[ngx_http_upstream_process_non_buffered_request] }.freeze
+
+def request_functions(scenario)
+  SCENARIO_REQUEST_FUNCTIONS.fetch(scenario.name) { scenario.mock ? LOG_REQUEST_FUNCTIONS : REQUEST_FUNCTIONS }
+end
 
 # The name of a function without the suffixes that callgrind ('2: seen on the
 # call stack already) and GCC (.part.0, .isra.0, .constprop.0, .cold,
@@ -149,8 +194,10 @@ class Build
     File.join(@dir, 'nginx/perf')
   end
 
-  def conf_path
-    File.join(prefix, 'conf/nginx.conf')
+  # The configuration of a scenario: its template (test/soak/nginx.conf or
+  # another one, see Scenario#conf) after the replacements.
+  def conf_path(scenario)
+    File.join(prefix, 'conf', scenario.conf)
   end
 
   def log_dir
@@ -162,16 +209,20 @@ class Build
     File.join(@dir, 'callgrind')
   end
 
-  def write_conf
-    template = File.read(CONF_TEMPLATE)
-    conf = template.sub(/^master_process on;$/, 'master_process off;')
-    raise PerfError, "#{CONF_TEMPLATE}: no line 'master_process on;' to replace" if conf == template
+  def write_confs(scenarios)
+    FileUtils.mkdir_p([File.join(prefix, 'conf'), log_dir, out_dir])
+    scenarios.uniq(&:conf).each do |scenario|
+      path = File.join(CONF_TEMPLATE_DIR, scenario.conf)
+      template = File.read(path)
+      conf = template.sub(/^master_process on;$/, 'master_process off;')
+      raise PerfError, "#{path}: no line 'master_process on;' to replace" if conf == template
 
-    conf = conf.gsub('__SOAK_PORT__', PORT.to_s)
-               .gsub('__SOAK_BACKEND_PORT__', BACKEND_PORT.to_s)
-               .gsub('__SOAK_HANDLERS__', HANDLERS_DIR)
-    FileUtils.mkdir_p([File.dirname(conf_path), log_dir, out_dir])
-    File.write(conf_path, conf)
+      conf = conf.gsub('__SOAK_PORT__', PORT.to_s)
+                 .gsub('__SOAK_BACKEND_PORT__', BACKEND_PORT.to_s)
+                 .gsub('__SOAK_MOCK_PORT__', MOCK_PORT.to_s)
+                 .gsub('__SOAK_HANDLERS__', HANDLERS_DIR)
+      File.write(conf_path(scenario), conf)
+    end
   end
 end
 
@@ -181,6 +232,7 @@ class NginxUnderCallgrind
   def initialize(build, scenario)
     @build = build
     @name = scenario.name
+    @conf_path = build.conf_path(scenario)
     @profile_base = File.join(build.out_dir, "callgrind.out.#{@name}")
     @error_log = File.join(build.log_dir, 'error.log')
     @stderr_log = File.join(build.log_dir, 'stderr.log')
@@ -194,7 +246,7 @@ class NginxUnderCallgrind
     @pid = Process.spawn('valgrind', '--tool=callgrind', '--instr-atstart=no',
                          "--callgrind-out-file=#{@profile_base}.%p",
                          "--log-file=#{File.join(@build.out_dir, "valgrind.#{@name}.%p.log")}",
-                         @build.nginx_bin, '-p', "#{@build.prefix}/", '-c', @build.conf_path,
+                         @build.nginx_bin, '-p', "#{@build.prefix}/", '-c', @conf_path,
                          %i[out err] => [@stderr_log, 'w'])
     deadline = monotonic + START_TIMEOUT
     loop do
@@ -351,7 +403,7 @@ end
 def check_response(scenario, status, headers, body)
   return if expected_response?(scenario, status, headers, body)
 
-  raise ResponseError, "#{scenario.path}: unexpected response #{status} #{body.inspect} #{headers.inspect}"
+  raise ResponseError, "#{scenario.path}: unexpected response #{status} #{body[0, 200].inspect} #{headers.inspect}"
 end
 
 # Waits until stub_status shows that the only open connection is the one
@@ -376,7 +428,7 @@ def keepalive_requests(scenario, count)
   client = nil
   count.times do
     client ||= Client.new(PORT, io_timeout: IO_TIMEOUT)
-    status, headers, body, keep_alive = client.get(scenario.path, scenario.headers)
+    status, headers, body, keep_alive = scenario_request(client, scenario)
     check_response(scenario, status, headers, body)
     next if keep_alive
 
@@ -388,8 +440,10 @@ end
 
 # Reads a callgrind profile. Returns the total Ir, the Ir and number of the
 # calls into the GC, and the number of calls of the request function: calls
-# into one of REQUEST_FUNCTIONS (compared by base_name) from a function that
-# is not one of them.
+# into one of functions (REQUEST_FUNCTIONS by default; compared by
+# base_name) from a function that is not one of them. With recorded (a Hash
+# of name => functions), also returns recorded_calls, the number of calls of
+# each of those lists counted the same way.
 #
 # Format: https://valgrind.org/docs/manual/cl-format.html. A cost line is
 # "<positions> <events>"; the cost line after a calls= line is the inclusive
@@ -412,7 +466,7 @@ end
 # call. GCC's suffixes are allowed: mrb_obj_alloc calling
 # mrb_incremental_gc.part.0 is a GC, mrb_incremental_gc calling its own
 # .part.0 is not (its caller is in the collector).
-def parse_profile(path)
+def parse_profile(path, functions = REQUEST_FUNCTIONS, recorded = {})
   names = { fn: {}, fl: {} }
   resolve = lambda do |table, spec|
     if (m = spec.match(/\A\((\d+)\)(?: (.*))?\z/))
@@ -433,6 +487,7 @@ def parse_profile(path)
   gc_ir = 0
   gc_calls = 0
   request_calls = 0
+  recorded_calls = recorded.transform_values { 0 }
   file = fn = fn_file = cfn = nil
   call_count = nil
   File.foreach(path, chomp: true) do |line|
@@ -444,8 +499,9 @@ def parse_profile(path)
           gc_ir += ir
           gc_calls += call_count
         end
-        if REQUEST_FUNCTIONS.include?(base_name(cfn)) && !REQUEST_FUNCTIONS.include?(base_name(fn))
-          request_calls += call_count
+        request_calls += call_count if functions.include?(base_name(cfn)) && !functions.include?(base_name(fn))
+        recorded.each do |key, list|
+          recorded_calls[key] += call_count if list.include?(base_name(cfn)) && !list.include?(base_name(fn))
         end
         call_count = nil
       else
@@ -466,20 +522,26 @@ def parse_profile(path)
   raise PerfError, "#{path}: no totals line" unless totals
   raise PerfError, "#{path}: totals #{totals} differ from the sum of the costs #{self_ir}" unless totals == self_ir
 
-  { ir: totals, gc_ir: gc_ir, gc_calls: gc_calls, request_calls: request_calls }
+  result = { ir: totals, gc_ir: gc_ir, gc_calls: gc_calls, request_calls: request_calls }
+  result[:recorded_calls] = recorded_calls unless recorded.empty?
+  result
 end
 
 # Fails the measurement unless the window holds the PERF_N requests of the
 # scenario: Ir above 0 and PERF_N times REQUEST_FUNCTION_CALLS calls of the
-# request function.
-def check_window(scenario, dump, profile)
+# request function (for LOG_REQUEST_FUNCTIONS, up to wakes more).
+def check_window(scenario, dump, profile, wakes)
   raise PerfError, "#{dump}: the window is empty (0 Ir); the instrumentation was not switched on" if profile[:ir].zero?
 
+  functions = request_functions(scenario)
   per_request = REQUEST_FUNCTION_CALLS[scenario.name]
-  return if profile[:request_calls] == N * per_request
+  expected = N * per_request
+  extra = functions.equal?(LOG_REQUEST_FUNCTIONS) ? wakes : 0
+  return if profile[:request_calls].between?(expected, expected + extra)
 
-  raise PerfError, "#{dump}: #{profile[:request_calls]} calls of #{REQUEST_FUNCTIONS.join('/')} in the window, " \
-                   "expected #{N * per_request} (#{per_request} per request, PERF_N=#{N}); " \
+  range = extra.zero? ? expected.to_s : "#{expected} to #{expected + extra} (#{wakes} wake requests)"
+  raise PerfError, "#{dump}: #{profile[:request_calls]} calls of #{functions.join('/')} in the window, " \
+                   "expected #{range} (#{per_request} per request, PERF_N=#{N}); " \
                    'if the function was renamed, see PERF_REQUEST_FUNCTIONS'
 end
 
@@ -564,6 +626,11 @@ def self_test
     expected = { ir: 86, gc_ir: 40, gc_calls: 2, request_calls: 4 }
     got = parse_profile(path)
     failures << "parse_profile returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
+    # Another request function, and recorded functions: the handler calls
+    # ngx_mrb_run_fiber twice; nothing calls ngx_http_log_request.
+    expected = expected.merge(request_calls: 2, recorded_calls: { ruby_calls: 4, log: 0 })
+    got = parse_profile(path, %w[ngx_mrb_run_fiber], { ruby_calls: %w[ngx_mrb_run], log: %w[ngx_http_log_request] })
+    failures << "parse_profile with other functions returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
   ensure
     File.delete(path)
   end
@@ -572,12 +639,17 @@ end
 
 def measure(build, scenario)
   nginx = NginxUnderCallgrind.new(build, scenario)
+  mock = scenario.mock && MockLLM::Child.new(MOCK_PORT, scenario.mock,
+                                             File.join(build.log_dir, "mock.#{scenario.name}.log"))
   result = { problems: [] }
   dump = client = nil
   started = monotonic
   begin
+    mock&.start(START_TIMEOUT)
     nginx.start
-    status, headers, body, = get_closed(scenario.path, scenario.headers)
+    client = Client.new(PORT, io_timeout: IO_TIMEOUT)
+    status, headers, body, = scenario_request(client, scenario, close: true)
+    client.close
     check_response(scenario, status, headers, body)
     keepalive_requests(scenario, WARMUP)&.close
     wait_quiet
@@ -587,18 +659,20 @@ def measure(build, scenario)
     client = keepalive_requests(scenario, N)
     wakes += nginx.control('--dump')
     dump = nginx.dump_file
-    profile = parse_profile(dump)
-    check_window(scenario, dump, profile)
+    profile = parse_profile(dump, request_functions(scenario), RECORDED_FUNCTIONS)
+    check_window(scenario, dump, profile, wakes)
     result.merge!(profile, wakes: wakes,
                            ir_per_request: profile[:ir].to_f / N,
                            nogc_per_request: (profile[:ir] - profile[:gc_ir]).to_f / N,
-                           gc_calls_per_1000: profile[:gc_calls] * 1000.0 / N)
-  rescue PerfError, Client::Timeout, SystemCallError, IOError => e
+                           gc_calls_per_1000: profile[:gc_calls] * 1000.0 / N,
+                           recorded_per_request: profile[:recorded_calls].transform_values { |n| n.to_f / N })
+  rescue PerfError, MockLLM::Child::Error, Client::Timeout, SystemCallError, IOError => e
     result[:problems] << "#{e.class}: #{e.message}"
     result[:unexpected_response] = e.is_a?(ResponseError)
   ensure
     client&.close
     result[:problems].concat(nginx.stop(dump))
+    result[:problems].concat(mock.stop(STOP_TIMEOUT)) if mock
   end
   result[:seconds] = monotonic - started
   result
@@ -692,6 +766,29 @@ def summarize(builds, scenarios, results)
   [header, rows, notes, failed]
 end
 
+# Lines with the calls per request of RECORDED_FUNCTIONS, which are not
+# checked. With two builds, a scenario whose upstream reads per request
+# differ by more than 1% is marked: its Ir differs for that reason as well.
+def recorded_lines(builds, scenarios, results)
+  lines = ["perf: calls per request (not checked): #{RECORDED_FUNCTIONS.map { |k, v| "#{k} = #{v.join('/')}" }.join('; ')}"]
+  scenarios.each do |scenario|
+    rs = builds.map { |b| results[[b.label, scenario.name]] }
+    next unless rs.all? { |r| r[:problems].empty? }
+
+    values = RECORDED_FUNCTIONS.keys.map do |key|
+      "#{key} #{rs.map { |r| format('%.2f', r[:recorded_per_request][key]) }.join('/')}"
+    end
+    reads = rs.map { |r| r[:recorded_per_request][:upstream_reads] }
+    mark = if rs.size == 2 && reads[0].positive? && (percent(reads[0], reads[1]).abs > 1.0)
+             ' (upstream reads differ by more than 1%)'
+           else
+             ''
+           end
+    lines << "perf:   #{scenario.name}: #{values.join(', ')}#{mark}"
+  end
+  lines
+end
+
 # The reasons of the failed measurements, by scenario: { name => ["base: ...", ...] }.
 def reasons_by_scenario(results)
   reasons = Hash.new { |h, k| h[k] = [] }
@@ -779,7 +876,8 @@ def selected_scenarios
   names = ENV['PERF_SCENARIOS'].to_s.split(',').map(&:strip).reject(&:empty?)
   names = DEFAULT_SCENARIOS if names.empty?
   names.map do |name|
-    scenario = SCENARIOS.find { |s| s.name == name } or abort "perf: unknown scenario #{name} (known: #{DEFAULT_SCENARIOS.join(', ')})"
+    scenario = SCENARIOS.find { |s| s.name == name } or
+      abort "perf: unknown scenario #{name} (known: #{SCENARIOS.select { |s| s.mode == :keepalive }.map(&:name).join(', ')})"
     abort "perf: scenario #{name} is not a keep-alive scenario" unless scenario.mode == :keepalive
     scenario
   end
@@ -805,8 +903,8 @@ unless RUBY_PLATFORM.include?('linux') && %w[valgrind callgrind_control vgdb].al
 end
 
 scenarios = selected_scenarios
-builds.each(&:write_conf)
-log("perf: N=#{N} WARMUP=#{WARMUP} PORTS=#{PORT},#{BACKEND_PORT} WARN=#{WARN_PERCENT}% FAIL=#{FAIL_PERCENT}%")
+builds.each { |b| b.write_confs(scenarios) }
+log("perf: N=#{N} WARMUP=#{WARMUP} PORTS=#{PORT},#{BACKEND_PORT},#{MOCK_PORT} WARN=#{WARN_PERCENT}% FAIL=#{FAIL_PERCENT}%")
 builds.each { |b| log("perf: #{b.label}: #{b.dir}") }
 gem_lines = builds.size == 2 ? gem_lock_lines(builds) : []
 gem_lines.each { |line| log(line) }
@@ -815,7 +913,12 @@ scenarios.each do |scenario|
   builds.each do |b|
     r = measure(b, scenario)
     results[[b.label, scenario.name]] = r
-    detail = r[:problems].empty? ? format('%.1f Ir/req, %.1f w/o GC', r[:ir_per_request], r[:nogc_per_request]) : 'ERROR'
+    detail = if r[:problems].empty?
+               format('%.1f Ir/req, %.1f w/o GC, %s', r[:ir_per_request], r[:nogc_per_request],
+                      r[:recorded_per_request].map { |k, v| format('%s %.2f/req', k, v) }.join(', '))
+             else
+               'ERROR'
+             end
     log(format('perf: %-11s %-4s %s (%.0f s, %d wake requests)', scenario.name, b.label, detail, r[:seconds], r[:wakes].to_i))
   end
 end
@@ -828,6 +931,7 @@ end
 report = ["perf: N=#{N} WARMUP=#{WARMUP}; Ir per request of nginx; " \
           "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number without GC", *gem_lines, '', *lines]
 report += ['', *notes] unless notes.empty?
+report += ['', *recorded_lines(builds, scenarios, results)]
 report += ['', *problems] unless problems.empty?
 log
 report.each { |line| log(line) }
