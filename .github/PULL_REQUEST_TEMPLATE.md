@@ -18,7 +18,8 @@ Do not describe security vulnerabilities here. Report them privately (see SECURI
 <!--
 Exact commands and their results, e.g. `sh test.sh`, `BUILD_DYNAMIC_MODULE=1 sh test.sh`,
 with the nginx version used.
-Bug fixes: show that the new test fails on the base branch and passes with this PR.
+Bug fixes: the regression test is the first commit and the fix the second; quote `sh test.sh`
+(or the valgrind/sanitizer report) at each commit, failing at the first and passing at the second.
 -->
 
 ## Memory / sanitizer checks (C changes)
