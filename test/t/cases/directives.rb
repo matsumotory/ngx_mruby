@@ -92,6 +92,11 @@ end
 # runs in the valgrind cells.
 t.assert('directives - mruby_init, mruby_init_worker and mruby_exit_worker files in a second nginx', '127.0.0.1:58116') do
   r = second_instance('http')
+  # A sanitizer report ends in the second nginx's error.log, which CI does
+  # not print, so show it here before the assertions.
+  if r['sanitizer']
+    puts File.read(File.join(ENV['NGINX_INSTALL_DIR'], 'second_instance', 'http', 'error.log'))
+  end
   t.assert_nil r['error']
   t.assert_nil r['sanitizer']
   t.assert_equal 'init,init_worker', r['reply']

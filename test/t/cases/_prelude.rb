@@ -24,6 +24,13 @@ end
 # dynamic module build loads the module with an absolute path. nginx -t runs
 # the postconfiguration and init_module handlers, so mruby_init and
 # mruby_stream_init run here, and the init_worker hooks do not.
+#
+# nginx -t returns from main() without destroying the cycle, so in a build
+# with AddressSanitizer every configuration allocation of nginx itself is
+# reported as a leak at exit, the report is appended to the output and the
+# exit status changes. Leak detection is therefore turned off for this run
+# only; the other sanitizer checks stay on, and the running server is still
+# checked for leaks when it exits.
 def nginx_t(top_level)
   dir = ENV['NGINX_INSTALL_DIR']
   conf = File.join(dir, 'conf', 'nginx_t.conf')
@@ -33,7 +40,9 @@ def nginx_t(top_level)
   File.open(conf, 'w') do |f|
     f.write "#{head}events {}\n#{top_level}\n"
   end
-  `#{dir}/sbin/nginx -t -c #{conf} -e #{File.join(dir, 'logs', 'nginx_t.log')} 2>&1`
+  asan = ENV['ASAN_OPTIONS'].to_s.split(':').reject { |o| o.start_with?('detect_leaks=') }
+  asan << 'detect_leaks=0'
+  `ASAN_OPTIONS=#{asan.join(':')} #{dir}/sbin/nginx -t -c #{conf} -e #{File.join(dir, 'logs', 'nginx_t.log')} 2>&1`
 end
 
 # Raw TCP exchange through test/t/cases/_tcp_client.rb, which runs with CRuby.

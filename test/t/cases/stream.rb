@@ -37,6 +37,11 @@ end
 # when nginx stopped. The second nginx runs without valgrind in every cell.
 t.assert('ngx_mruby - stream init, init_worker and exit_worker files in a second nginx', '127.0.0.1:12357') do
   r = second_instance('stream')
+  # A sanitizer report ends in the second nginx's error.log, which CI does
+  # not print, so show it here before the assertions.
+  if r['sanitizer']
+    puts File.read(File.join(ENV['NGINX_INSTALL_DIR'], 'second_instance', 'stream', 'error.log'))
+  end
   t.assert_nil r['error']
   t.assert_nil r['sanitizer']
   t.assert_equal 'stream session ok', r['reply']
