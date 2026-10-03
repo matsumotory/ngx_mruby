@@ -820,6 +820,7 @@ end
 
 # A configuration without an http {} block (stream only) must start. The init
 # and exit hooks of the http module have no main conf in that case.
+if nginx_features.is_stream_supported?
 t.assert('ngx_mruby - start without an http block', 'stream only configuration') do
   install_dir = ENV['NGINX_INSTALL_DIR']
   nginx = "#{install_dir}/sbin/nginx"
@@ -844,10 +845,13 @@ t.assert('ngx_mruby - start without an http block', 'stream only configuration')
     body = "connect failed: #{e}"
   end
   `#{nginx} -p #{install_dir} -c #{conf} -s quit`
-  `sleep 1`
+  # The master removes its pid file after it has collected the workers.
+  50.times { break unless File.exist?(pidfile); usleep 200000 }
   errors = File.exist?(log) ? File.read(log) : ''
   t.assert_equal 'stream only ok', body
-  t.assert_equal false, errors.include?('exited on signal')
+  t.assert_equal false, File.exist?(pidfile)
+  t.assert_equal [], errors.split("\n").select { |l| l.include?('exited on signal') }
+end
 end
 
 
