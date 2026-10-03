@@ -108,8 +108,10 @@ counters therefore do not depend on how many requests ran before:
   code path that saves the arena restores it.
 - `timers` counts the `Nginx::Async.sleep` timers that have neither fired nor
   been deleted. No request is waiting, so there are none.
-- `fd` and `active` count the listening sockets, the log files and the
-  `/debug/stats` connection. A socket or file that is not closed adds one.
+- `fd` is read after the `/debug/stats` connection closed, so it counts the
+  listening sockets, the log files and nginx's own descriptors. `active` comes
+  from the `/status` request, the only open connection at that time. A socket
+  or file that a request leaves open adds one to them.
 
 `VmRSS` is not exact, so it is bounded instead of compared. The soak build
 calls `malloc_trim(0)` in the full GC before each sample (see below), which
@@ -153,7 +155,11 @@ samples. `run.sh` runs `build.sh` in a copy of the
 sources in `build_soak/tree` and installs nginx to `build_soak/nginx`, so the
 `build/` directory, `mruby/build` and the generated `Makefile`, `config` and
 `mrbgems_config` of `test.sh` are not touched. Later runs copy the sources
-again and rebuild only what changed. The nginx source is downloaded to
+again and rebuild only what changed; the mruby build is rebuilt from scratch
+when `NGX_MRUBY_CFLAGS` (passed to mruby, as with `test.sh`) changes. The soak
+build is always a static module built from its own nginx source with the
+system OpenSSL, so `run.sh` ignores `BUILD_DYNAMIC_MODULE`, `NGINX_SRC_ENV`
+and `OPENSSL_SRC_VERSION`. The nginx source is downloaded to
 `build_soak/tree/build/`; when nginx.org is unreachable, put it there as
 described in `AGENTS.md`.
 
@@ -209,25 +215,27 @@ run both at the same time on one machine.
 ### Thresholds and calibration
 
 The two VmRSS limits were set from runs of the default scenarios on
-2026-10-03 (nginx 1.31.6, Ubuntu 22.04 container, gcc 11, glibc 2.35,
-aarch64). The values are the largest over all scenarios of the run:
+2026-10-03 with nginx 1.31.6 on Ubuntu 22.04 (gcc 11, glibc 2.35): in a
+container on aarch64, and in the CI `soak` job on x86_64. The values are the
+largest over all scenarios and runs of a row:
 
 | Runs | Growth in the last window | Growth from the first sample |
 |---|---|---|
-| 3 runs, `SOAK_N=20000`, without `MRB_USE_MALLOC_TRIM` | +144 kB | +212 kB (drops down to -1076 kB) |
-| 1 run, `SOAK_N=100000`, without `MRB_USE_MALLOC_TRIM` | +288 kB | +3396 kB (`disconnect`) |
-| 1 run, `SOAK_N=20000` | +100 kB (`sub_request`) | +140 kB (`sub_request`) |
-| 1 run, `SOAK_N=100000` | +68 kB (`file`) | +160 kB (`file`) |
+| aarch64, 3 runs, `SOAK_N=20000`, without `MRB_USE_MALLOC_TRIM` | +144 kB | +212 kB (drops down to -1076 kB) |
+| aarch64, 1 run, `SOAK_N=100000`, without `MRB_USE_MALLOC_TRIM` | +288 kB | +3396 kB (`disconnect`) |
+| aarch64, 5 runs, `SOAK_N=20000` | +100 kB (`sub_request`) | +188 kB (`sleep`) |
+| aarch64, 1 run, `SOAK_N=100000` | +68 kB (`file`) | +160 kB (`file`) |
+| x86_64 (CI), 1 run, `SOAK_N=20000` | +20 kB (`filter`) | +208 kB (`sub_request`) |
 
 Without `malloc_trim(0)`, the `disconnect` scenario at `SOAK_N=300000` moved
-by +2832, -788 and +1088 kB from window to window, and failed a 512 kB limit
-for the last window, although its counters stayed the same and it grew less
-than at `SOAK_N=100000`. With it, the largest growth is 160 kB at either
-`SOAK_N`. The default limits, 256 kB for the last window and 1024 kB in all,
-are about 2.5 and 6 times the largest growth of these runs. For comparison, a
-build that leaks 4 kB per request grows by about 26 MB per window. A leak
-below about 40 bytes per request stays under 256 kB per window at the default
-`SOAK_N`; raise `SOAK_N` to look for smaller ones.
+by +2832, -788 and +1088 kB from window to window, which is over a 512 kB
+limit for the last window, although its counters stayed the same and it grew
+less in all than at `SOAK_N=100000`. With it, the largest growth is 208 kB.
+The default limits, 256 kB for the last window and 1024 kB in all, are about
+2.5 and 5 times the largest growth of these runs. For comparison, a build that
+leaks 4 kB per request grows by about 26 MB per window. A leak below about
+40 bytes per request stays under 256 kB per window at the default `SOAK_N`;
+raise `SOAK_N` to look for smaller ones.
 
 ### Adding a scenario
 
