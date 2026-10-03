@@ -28,14 +28,15 @@ assert('ngx_mruby', 'location /mruby') do
   assert_equal 'Hello ngx_mruby/0.0.1 world!', res["body"]
 end
 ```
+
 ## Add a test as a fragment and a case file
 
 Instead of editing `test/conf/nginx.conf` and `test/t/ngx_mruby.rb`, a test
 can live in files of its own:
 
 - `test/conf/conf.d/<name>.conf`: a fragment included at the end of the
-  `http {}` block. It holds its own `server {}` on a port of its own (58110
-  and up; 58116 is taken by the second nginx that
+  `http {}` block. It holds its own `server {}` on a port of its own (18110
+  and up; 18116 is taken by the second nginx that
   `test/t/cases/_second_instance.rb` starts). Fragments for `stream {}` go
   to `test/conf/conf.d/stream/` (ports 12353 and up; 12357 is taken by the
   second nginx).
@@ -58,7 +59,8 @@ failing case makes `test.sh` exit non-zero, like a failing assertion in
 A case that starts nginx itself (`nginx_t`, `second_instance`) also runs in
 the sanitizer cell of CI, where LeakSanitizer appends its report to the
 output of a process that leaked and changes that process's exit status. Run
-such a case once with the sanitizer build (next section) before opening the
+such a case once with the sanitizer build (see "Running the tests under
+AddressSanitizer and UndefinedBehaviorSanitizer" below) before opening the
 PR. `nginx_t` turns leak detection off for its `nginx -t` run, because
 `nginx -t` returns without freeing the configuration it read, so every
 allocation of nginx itself would be reported; `second_instance` returns the

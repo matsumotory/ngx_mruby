@@ -1,9 +1,9 @@
 t = SimpleTest.new "ngx_mruby test: request API (test/conf/conf.d/10-request-api.conf)"
 
-REQUEST_API_PORT = 58111
+REQUEST_API_PORT = 18111
 
 t.assert('request API', 'rewrite handler without output or DECLINED sends no response') do
-  # characterizes v2 behaviour; see docs/proposals/v3-plan.md
+  # characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
   # The handler returns NGX_OK to the rewrite phase, so nginx finalizes the
   # request with rc 0 and closes the connection without writing a byte.
   # tcp_client in test/t/cases/_prelude.rb reads until nginx closes the
@@ -49,7 +49,7 @@ t.assert('request API', 'uri= reaches proxy_pass with a URI part') do
 end
 
 t.assert('request API', 'uri= does not reach proxy_pass without a URI part') do
-  # characterizes v2 behaviour; see docs/proposals/v3-plan.md
+  # characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
   res = HttpRequest.new.get base(REQUEST_API_PORT) + '/request_api/proxy_uri_raw/original?z=3'
   t.assert_equal 200, res.code
   t.assert_equal 'GET /request_api/proxy_uri_raw/original?z=3 HTTP/1.1', res["body"]
@@ -125,7 +125,7 @@ t.assert('request API', 'send_header 404 without a body sends the nginx error pa
 end
 
 t.assert('request API', 'send_header 404 after rputs replaces the body with the nginx error page') do
-  # characterizes v2 behaviour; see docs/proposals/v3-plan.md
+  # characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
   res = HttpRequest.new.get base(REQUEST_API_PORT) + '/request_api/send_header/body_404'
   t.assert_equal 404, res.code
   t.assert_true res["body"].include?('<title>404 Not Found</title>')
@@ -133,7 +133,7 @@ t.assert('request API', 'send_header 404 after rputs replaces the body with the 
 end
 
 t.assert('request API', 'send_header 201 after rputs drops the body') do
-  # characterizes v2 behaviour; see docs/proposals/v3-plan.md
+  # characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
   res = HttpRequest.new.get base(REQUEST_API_PORT) + '/request_api/send_header/body_201'
   t.assert_equal 201, res.code
   t.assert_equal '', res["body"]

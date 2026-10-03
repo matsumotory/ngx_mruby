@@ -9,7 +9,7 @@ def proxy_v1_line(family, src, dst, port)
   "PROXY #{family} #{src} #{dst} 40000 #{port}\r\n"
 end
 
-# characterizes v2 behaviour; see docs/proposals/v3-plan.md
+# characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
 # nginx accepts both mruby_stream_init_code and mruby_stream_init in one
 # stream block. The later directive replaces the earlier one without a
 # message, so only the later hook runs. nginx -t runs the init hook, and its
@@ -29,7 +29,7 @@ t.assert('ngx_mruby - stream init, the later of the inline and the file version 
   t.assert_not_include out, '"mruby_stream_init file"'
 end
 
-# characterizes v2 behaviour; see docs/proposals/v3-plan.md
+# characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
 # The second nginx has each inline *_code hook followed by its file version.
 # The trace shows the order: the server context code while nginx reads the
 # configuration, then the init file, then the init_worker file. The p lines
