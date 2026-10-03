@@ -501,13 +501,21 @@ changed only the documentation:
 | `sub_request` | 49996 (48854) | +0.001% / +0.001% | +0.016% / +0.016% | -0.001% / -0.001% | +0.020% / +0.021% |
 | `file` | 14309 (13360) | +0.002% / +0.002% | +0.000% / +0.000% | -0.002% / -0.003% | +0.000% / +0.001% |
 
-Between base and head of one run, the largest change is about 0.02%
-(`sub_request` in run 4: 48810 and 48820 Ir per request without GC, about
-10 instructions). Between runs, the same build moves by up to about 0.1%:
-the base of `sub_request` measured from 48810 to 48856 without GC over the
-four runs (0.095%); every other scenario stayed within 0.011%. Base and
-head are measured in the same job, one after the other, so it is the change
-within a run that the thresholds see. The numbers differ from those of
+Two more runs of the job, on the commits that applied the reviews of that
+pull request (still with no change to a build input), gave every scenario
+within 0.007% except `sub_request`, at +0.005% and -0.047% (48706 and 48683
+Ir per request without GC). Over the six runs up to 2026-10-04:
+
+- Between base and head of one run, the largest change was about 0.05%
+  (`sub_request`, about 23 instructions); every other scenario stayed
+  within 0.007%.
+- Between runs, `sub_request` measured from 48683 to 48857 Ir per request
+  without GC (0.36%); every other scenario stayed within 0.015%.
+
+`sub_request`, which proxies to a second server, is the scenario that
+varies; even its largest change within a run is about 60 times below the 3%
+of `WARN`. Base and head are measured in the same job, one after the other,
+so it is the change within a run that the thresholds see. The numbers differ from those of
 aarch64 because the instruction set differs; on x86_64, callgrind shows no
 recursion suffix on the GC entry points, and the number without GC again
 equals the inclusive cost of `mrb_incremental_gc` that `callgrind_annotate`

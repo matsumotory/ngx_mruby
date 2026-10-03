@@ -290,9 +290,10 @@ All claims below were checked against the cited page on 2026-10-03.
   `h2load` are current. Shared CI runners vary by more than 30% in
   throughput, so throughput benchmarks are recorded, not gated. Instruction
   counts measured with callgrind do not depend on the runner's speed: two
-  builds of the same code, measured on the runner, differed by at most about
-  0.02% per scenario (`docs/test/README.md`, "Performance comparison with
-  callgrind"), so they can be gated. `/proc/<pid>/smaps_rollup` gives `Pss`
+  builds of the same code, measured one after the other on the runner,
+  differed by at most about 0.05% per scenario in six runs
+  (`docs/test/README.md`, "Performance comparison with callgrind"), so they
+  can be gated against thresholds of a few percent. `/proc/<pid>/smaps_rollup` gives `Pss`
   for soak-test leak detection.
 
 ## 4. v3 candidates by pillar
