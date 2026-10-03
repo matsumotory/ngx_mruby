@@ -17,7 +17,7 @@
 # PERF_N requests and nothing else; Ir per request is its Ir divided by
 # PERF_N. The GC-excluded number leaves out the calls into mrb_incremental_gc
 # and mrb_full_gc. A window with 0 Ir, or without exactly one call of
-# ngx_mrb_run per request (REQUEST_FUNCTION), fails the measurement.
+# ngx_mrb_run per request (REQUEST_FUNCTIONS), fails the measurement.
 #
 # Why master_process off: callgrind_control reaches a process through
 # valgrind's gdbserver (vgdb), and vgdb does not serve a process that valgrind
@@ -35,6 +35,7 @@
 require 'fileutils'
 require 'json'
 require 'socket'
+require 'tmpdir'
 require 'yaml'
 require_relative '../soak/http_client'
 require_relative '../soak/scenarios'
@@ -79,14 +80,29 @@ GC_ALLOCATORS = %w[mrb_obj_alloc mrb_malloc mrb_malloc_simple mrb_calloc mrb_rea
                    mrb_alloca gc_start mrb_garbage_collect mrb_objspace_each_objects].freeze
 GC_SOURCE = 'mruby/src/gc.c'
 
-# A function that the scenarios run a known number of times per request. The
-# window must hold exactly PERF_N times that many calls of it. A window that
-# is empty (callgrind_control prints "OK." even when vgdb did not reach the
-# process, so the instrumentation may not have been switched on) or that
-# holds other requests fails the measurement instead of giving a number.
-REQUEST_FUNCTION = 'ngx_mrb_run'
-# Calls of REQUEST_FUNCTION per request, by scenario; 1 when not listed.
+# The function that the scenarios run a known number of times per request
+# (ngx_mrb_run runs the Ruby code of a handler or filter). The window must
+# hold exactly PERF_N times that many calls of it. A window that is empty
+# (callgrind_control prints "OK." even when vgdb did not reach the process, so
+# the instrumentation may not have been switched on) or that holds other
+# requests fails the measurement instead of giving a number.
+#
+# Names are compared after base_name, so a copy that GCC makes of the
+# function (ngx_mrb_run.part.0, .isra.0, .constprop.0, .cold) counts as the
+# function, and a call from one copy to another counts once. One perf.rb
+# measures both builds, so a pull request that renames the function lists
+# the old and the new name here (a call between two listed names counts
+# once as well); PERF_REQUEST_FUNCTIONS (comma-separated) overrides the list.
+REQUEST_FUNCTIONS = ENV.fetch('PERF_REQUEST_FUNCTIONS', 'ngx_mrb_run').split(',').map(&:strip).reject(&:empty?).freeze
+# Calls of the request function per request, by scenario; 1 when not listed.
 REQUEST_FUNCTION_CALLS = Hash.new(1).freeze
+
+# The name of a function without the suffixes that callgrind ('2: seen on the
+# call stack already) and GCC (.part.0, .isra.0, .constprop.0, .cold,
+# .lto_priv.0: a clone or a split part of the function) add to it.
+def base_name(name)
+  name.to_s.sub(/'\d+\z/, '').sub(/(?:\.(?:part|isra|constprop|cold|lto_priv)(?:\.\d+)?)+\z/, '')
+end
 
 # Seconds. Everything runs under valgrind, which is slow to start, and the
 # first requests after the instrumentation is switched on are translated again.
@@ -371,8 +387,9 @@ def keepalive_requests(scenario, count)
 end
 
 # Reads a callgrind profile. Returns the total Ir, the Ir and number of the
-# calls into the GC, and the number of calls of REQUEST_FUNCTION (with or
-# without a recursion suffix).
+# calls into the GC, and the number of calls of the request function: calls
+# into one of REQUEST_FUNCTIONS (compared by base_name) from a function that
+# is not one of them.
 #
 # Format: https://valgrind.org/docs/manual/cl-format.html. A cost line is
 # "<positions> <events>"; the cost line after a calls= line is the inclusive
@@ -391,7 +408,10 @@ end
 # whole GC (it equals the inclusive cost that callgrind_annotate
 # --inclusive=yes prints for mrb_incremental_gc without a suffix). The GC
 # entry points do not call themselves, and the allocators do not run inside
-# the collector, so a name with a suffix is never an outermost call.
+# the collector, so a name with a recursion suffix is never an outermost
+# call. GCC's suffixes are allowed: mrb_obj_alloc calling
+# mrb_incremental_gc.part.0 is a GC, mrb_incremental_gc calling its own
+# .part.0 is not (its caller is in the collector).
 def parse_profile(path)
   names = { fn: {}, fl: {} }
   resolve = lambda do |table, spec|
@@ -402,8 +422,9 @@ def parse_profile(path)
       spec
     end
   end
+  no_recursion = ->(name) { !name.to_s.include?("'") }
   outside_collector = lambda do |name, file|
-    !name.include?("'") && (GC_ALLOCATORS.include?(name) || !file.to_s.end_with?(GC_SOURCE))
+    no_recursion.call(name) && (GC_ALLOCATORS.include?(base_name(name)) || !file.to_s.end_with?(GC_SOURCE))
   end
   positions = 1
   ir_index = 0
@@ -419,11 +440,13 @@ def parse_profile(path)
     when /\A[0-9+\-*]/
       ir = line.split[positions + ir_index].to_i
       if call_count
-        if GC_ENTRIES.include?(cfn) && outside_collector.call(fn, fn_file)
+        if GC_ENTRIES.include?(base_name(cfn)) && no_recursion.call(cfn) && outside_collector.call(fn, fn_file)
           gc_ir += ir
           gc_calls += call_count
         end
-        request_calls += call_count if cfn.to_s.sub(/'\d+\z/, '') == REQUEST_FUNCTION
+        if REQUEST_FUNCTIONS.include?(base_name(cfn)) && !REQUEST_FUNCTIONS.include?(base_name(fn))
+          request_calls += call_count
+        end
         call_count = nil
       else
         self_ir += ir
@@ -447,16 +470,104 @@ def parse_profile(path)
 end
 
 # Fails the measurement unless the window holds the PERF_N requests of the
-# scenario: Ir above 0 and PERF_N times REQUEST_FUNCTION_CALLS calls of
-# REQUEST_FUNCTION.
+# scenario: Ir above 0 and PERF_N times REQUEST_FUNCTION_CALLS calls of the
+# request function.
 def check_window(scenario, dump, profile)
   raise PerfError, "#{dump}: the window is empty (0 Ir); the instrumentation was not switched on" if profile[:ir].zero?
 
   per_request = REQUEST_FUNCTION_CALLS[scenario.name]
   return if profile[:request_calls] == N * per_request
 
-  raise PerfError, "#{dump}: #{profile[:request_calls]} calls of #{REQUEST_FUNCTION} in the window, " \
-                   "expected #{N * per_request} (#{per_request} per request, PERF_N=#{N})"
+  raise PerfError, "#{dump}: #{profile[:request_calls]} calls of #{REQUEST_FUNCTIONS.join('/')} in the window, " \
+                   "expected #{N * per_request} (#{per_request} per request, PERF_N=#{N}); " \
+                   'if the function was renamed, see PERF_REQUEST_FUNCTIONS'
+end
+
+# A check of base_name and parse_profile on a made-up profile, run with
+# `ruby test/perf/perf.rb --self-test` (compare.sh and run.sh run it first).
+# It needs no build and no valgrind. Returns the list of failures.
+SELF_TEST_PROFILE = <<~PROFILE
+  version: 1
+  positions: line
+  events: Ir
+  summary: 86
+
+  fl=(1) /b/tree/src/http/ngx_http_mruby_module.c
+  fn=(1) ngx_http_mruby_content_handler
+  1 10
+  cfn=(2) ngx_mrb_run.isra.0
+  calls=3 2
+  1 30
+  cfn=(3) ngx_mrb_run_fiber
+  calls=2 3
+  1 4
+  fn=(2)
+  2 10
+  cfn=(4) ngx_mrb_run.part.0
+  calls=3 4
+  2 15
+  fn=(4)
+  4 10
+  cfn=(5) ngx_mrb_run.cold
+  calls=1 5
+  4 5
+  fn=(5)
+  5 5
+  fn=(3)
+  3 4
+  fn=(6) ngx_http_mruby_rewrite_handler
+  6 1
+  cfn=(7) ngx_mrb_run'2
+  calls=1 7
+  6 0
+  fl=(2) /b/tree/mruby/src/gc.c
+  fn=(8) mrb_obj_alloc
+  8 5
+  cfn=(9) mrb_incremental_gc.part.0
+  calls=2 9
+  8 40
+  fn=(9)
+  9 30
+  cfn=(10) mrb_full_gc
+  calls=1 10
+  9 10
+  fn=(10)
+  10 10
+  fn=(11) final_marking_phase
+  11 1
+  cfn=(12) mrb_incremental_gc'2
+  calls=1 12
+  11 0
+
+  totals: 86
+PROFILE
+
+def self_test
+  failures = []
+  {
+    'ngx_mrb_run' => 'ngx_mrb_run', 'ngx_mrb_run.part.0' => 'ngx_mrb_run', "ngx_mrb_run.isra.0'2" => 'ngx_mrb_run',
+    'ngx_mrb_run.constprop.0.isra.0' => 'ngx_mrb_run', 'ngx_mrb_run.cold' => 'ngx_mrb_run',
+    'ngx_mrb_run.lto_priv.0' => 'ngx_mrb_run', 'ngx_mrb_run_fiber' => 'ngx_mrb_run_fiber',
+    'gc_mark_children.constprop.0' => 'gc_mark_children', "mrb_vm_exec'3" => 'mrb_vm_exec'
+  }.each do |name, expected|
+    failures << "base_name(#{name.inspect}) is #{base_name(name).inspect}, expected #{expected.inspect}" unless base_name(name) == expected
+  end
+  path = File.join(Dir.tmpdir, "perf-self-test-#{Process.pid}.out")
+  File.write(path, SELF_TEST_PROFILE)
+  begin
+    # The handler calls the .isra.0 clone 3 times (counted); the clone calls
+    # .part.0 and .cold (copies of the same function, not counted); another
+    # handler calls ngx_mrb_run'2 once (counted); ngx_mrb_run_fiber is
+    # another function. mrb_obj_alloc calls mrb_incremental_gc.part.0 twice
+    # (40 Ir, the GC); the full GC inside it and final_marking_phase calling
+    # mrb_incremental_gc'2 are not counted again.
+    expected = { ir: 86, gc_ir: 40, gc_calls: 2, request_calls: 4 }
+    got = parse_profile(path)
+    failures << "parse_profile returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
+  ensure
+    File.delete(path)
+  end
+  failures
 end
 
 def measure(build, scenario)
@@ -581,7 +692,16 @@ def summarize(builds, scenarios, results)
   [header, rows, notes, failed]
 end
 
-def write_step_summary(header, rows)
+# The reasons of the failed measurements, by scenario: { name => ["base: ...", ...] }.
+def reasons_by_scenario(results)
+  reasons = Hash.new { |h, k| h[k] = [] }
+  results.each do |(label, name), r|
+    r[:problems].each { |p| reasons[name] << "#{label}: #{p}" }
+  end
+  reasons
+end
+
+def write_step_summary(header, rows, notes, reasons)
   path = ENV['GITHUB_STEP_SUMMARY']
   return if path.nil? || path.empty?
 
@@ -593,6 +713,15 @@ def write_step_summary(header, rows)
     rows.each { |row| f.puts "| #{row.join(' | ')} |" }
     f.puts
     f.puts "WARN from #{WARN_PERCENT}% and FAIL from #{FAIL_PERCENT}% more Ir per request without the GC."
+    notes.each { |note| f.puts "\n**#{note}**" }
+    next if reasons.empty?
+
+    f.puts
+    f.puts 'Measurements that failed (n/a and ERROR rows):'
+    f.puts
+    f.puts '```'
+    reasons.each { |name, lines| lines.each { |line| f.puts "#{name} #{line}" } }
+    f.puts '```'
   end
 end
 
@@ -619,18 +748,31 @@ def gem_lock_lines(builds)
   lines
 end
 
-# Workflow commands that GitHub Actions shows as annotations of the run.
-def annotate(header, rows)
+# The message of a workflow command, escaped as GitHub Actions requires.
+def workflow_message(text)
+  text.to_s.gsub('%', '%25').gsub("\r", '%0D').gsub("\n", '%0A')
+end
+
+# Workflow commands that GitHub Actions shows as annotations of the run: an
+# error for each FAIL and ERROR row and each note (a run in which no scenario
+# was compared), a warning for each WARN row, a notice for each n/a row, with
+# the reasons of the failed measurements.
+def annotate(header, rows, notes, reasons)
   return unless ENV['GITHUB_ACTIONS'] == 'true'
 
   rows.each do |row|
     result = row.last
-    next if result == 'ok' || result.start_with?('n/a')
+    next if result == 'ok'
 
-    level = result == 'WARN' ? 'warning' : 'error'
+    level = if result == 'WARN' then 'warning'
+            elsif result.start_with?('n/a') then 'notice'
+            else 'error'
+            end
     detail = header.zip(row).map { |h, v| "#{h}: #{v}" }.join(', ')
-    puts "::#{level} title=perf #{row.first}::#{detail}"
+    detail = ([detail] + reasons[row.first]).join("\n") if reasons.key?(row.first)
+    puts "::#{level} title=perf #{row.first}::#{workflow_message(detail)}"
   end
+  notes.each { |note| puts "::error title=perf::#{workflow_message(note)}" }
 end
 
 def selected_scenarios
@@ -643,8 +785,15 @@ def selected_scenarios
   end
 end
 
+if ARGV == ['--self-test']
+  failures = self_test
+  failures.each { |f| warn "perf: self-test: #{f}" }
+  puts "perf: self-test: #{failures.empty? ? 'ok' : "#{failures.size} failed"}"
+  exit(failures.empty? ? 0 : 1)
+end
+
 labels = ARGV.size == 2 ? %w[base head] : [nil]
-abort 'usage: ruby test/perf/perf.rb BUILD_DIR [HEAD_BUILD_DIR]' unless [1, 2].include?(ARGV.size)
+abort 'usage: ruby test/perf/perf.rb BUILD_DIR [HEAD_BUILD_DIR] | --self-test' unless [1, 2].include?(ARGV.size)
 builds = ARGV.zip(labels).map { |dir, label| Build.new(label || File.basename(File.expand_path(dir)), dir) }
 builds.each do |b|
   abort "perf: #{b.nginx_bin} not found; build it with test/perf/run.sh or test/perf/compare.sh" unless File.executable?(b.nginx_bin)
@@ -691,6 +840,7 @@ json = {
   results: results.map { |(label, name), r| { build: label, scenario: name }.merge(r) }
 }
 File.write(File.join(REPORT_DIR, 'report.json'), "#{JSON.pretty_generate(json)}\n")
-write_step_summary(header, rows)
-annotate(header, rows)
+reasons = reasons_by_scenario(results)
+write_step_summary(header, rows, notes, reasons)
+annotate(header, rows, notes, reasons)
 exit(failed ? 1 : 0)

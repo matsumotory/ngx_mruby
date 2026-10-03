@@ -556,6 +556,7 @@ not run it at the same time.
 | `PERF_FAIL_PERCENT` | 5 | FAIL from this change |
 | `PERF_PORT_BASE` | 12370 | port of the scenarios; the backend of `sub_request` uses the next one |
 | `PERF_REPORT_DIR` | `build_perf` | where `report.txt` and `report.json` go |
+| `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_run` | names of the function counted once per request (see "In CI") |
 
 ### In CI
 
@@ -578,16 +579,31 @@ ngx_mruby.
 The checkout of a pull request is the merge commit (`refs/pull/N/merge`);
 the job compares its first parent, the base branch, with the merge commit,
 so the difference is the change of the pull request as it would be merged.
-The table is in the job summary, `WARN`, `FAIL` and `ERROR` rows are
-annotations, and the job fails on `FAIL` and `ERROR`. A measurement fails
-(`ERROR`) when nginx does not start or answer, `callgrind_control` fails or
-times out, the dump is missing, `error.log` has a line at the `error` level
-or above, or the window does not hold the requests: 0 Ir, or not exactly
-one call of `ngx_mrb_run` per request (`callgrind_control` prints "OK."
-even when vgdb did not reach the process, so an empty window is caught
-here). Only a base that answers a scenario with an unexpected response (a
-scenario that needs a feature of the head) gives `n/a`, and a run in which
-no scenario was compared fails.
+The table is in the job summary, with the reasons of the failed
+measurements below it; `WARN`, `FAIL`, `ERROR` and `n/a` rows and a run
+that compared no scenario are annotations; the job fails on `FAIL` and
+`ERROR`. A measurement fails (`ERROR`) when nginx does not start or answer,
+`callgrind_control` fails or times out, the dump is missing, `error.log` has
+a line at the `error` level or above, or the window does not hold the
+requests: 0 Ir, or not exactly one call of `ngx_mrb_run` per request
+(`callgrind_control` prints "OK." even when vgdb did not reach the process,
+so an empty window is caught here). Only a base that answers a scenario with
+an unexpected response (a scenario that needs a feature of the head) gives
+`n/a`, and a run in which no scenario was compared fails.
+
+The calls of `ngx_mrb_run` are counted by name. A copy that GCC makes of the
+function at `-O2` (`ngx_mrb_run.part.0`, `.isra.0`, `.constprop.0`, `.cold`)
+counts as the function, and a call from one copy to another counts once,
+so a change that makes GCC split or clone it does not fail the window. A
+pull request that renames `ngx_mrb_run`, or moves the running of the Ruby
+code to another function, has to add the new name to `REQUEST_FUNCTIONS` in
+`test/perf/perf.rb` and keep the old one: the `perf.rb` of the head
+measures the base too, and a call between two listed names counts once.
+`PERF_REQUEST_FUNCTIONS` (comma-separated) overrides the list for a local
+run, and `REQUEST_FUNCTION_CALLS` sets another number of calls per request
+for a scenario. `ruby test/perf/perf.rb --self-test` checks the name rules
+and the reading of a profile on a made-up profile, without a build or
+valgrind; `compare.sh` and `run.sh` run it first.
 
 The job is advisory for now: `ci-ok` does not need it, so a `FAIL` does not
 block a merge. Instruction counts do not vary with the runner's speed

@@ -26,6 +26,9 @@ ROOT=$(pwd)
 SRC=${1:-$ROOT}
 NAME=${2:-head}
 
+# The check of the profile parser (no build, no valgrind; a few milliseconds).
+ruby "$ROOT/test/perf/perf.rb" --self-test
+
 if [ -z "$ONLY_RUN" ]; then
     RELEASE_CC_OPT= RELEASE_GEM_LOCK= \
         sh "$ROOT/test/build_release.sh" "$SRC" "$ROOT/build_perf/$NAME"
