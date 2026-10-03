@@ -1,0 +1,15 @@
+# LeakSanitizer suppressions for the sanitizer cell of CI
+# (LSAN_OPTIONS=suppressions=test/lsan.supp). A line suppresses every leak
+# whose stack has a frame that matches the pattern.
+#
+# nginx allocates cycle->connections, cycle->read_events and
+# cycle->write_events (and the smaller arrays of the event module) with
+# ngx_alloc in ngx_event_process_init and never frees them: at exit it
+# destroys the cycle pool and calls exit(). The three arrays point at each
+# other (c->read, c->write, ev->data), so once nothing outside them points
+# at them any more, LeakSanitizer reports all three as indirect leaks; when
+# something still does, it reports nothing. The report therefore comes and
+# goes with the platform and the run (seen on the x86-64 runner, not in the
+# arm64 container). They are nginx's own allocations, so the report says
+# nothing about ngx_mruby.
+leak:^ngx_event_process_init$
