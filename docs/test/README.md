@@ -246,7 +246,7 @@ largest over all scenarios and runs of a row:
 |---|---|---|
 | aarch64, 3 runs, `SOAK_N=20000`, without `MRB_USE_MALLOC_TRIM` | +144 kB | +212 kB (drops down to -1076 kB) |
 | aarch64, 1 run, `SOAK_N=100000`, without `MRB_USE_MALLOC_TRIM` | +288 kB | +3396 kB (`disconnect`) |
-| aarch64, 9 runs, `SOAK_N=20000` | +112 kB (`sub_request`) | +204 kB (`sleep`) |
+| aarch64, 10 runs, `SOAK_N=20000` | +112 kB (`sub_request`) | +204 kB (`sleep`) |
 | aarch64, 1 run, `SOAK_N=100000` | +68 kB (`file`) | +160 kB (`file`) |
 | x86_64 (CI), 3 runs, `SOAK_N=20000` | +144 kB (`filter`) | +228 kB (`sub_request`) |
 
