@@ -431,7 +431,7 @@ largest over all scenarios and runs of a row:
 | aarch64, 1 run, `SOAK_N=100000` | +68 kB (`file`) | +160 kB (`file`) |
 | x86_64 (CI), 4 runs, `SOAK_N=20000` | +144 kB (`filter`) | +236 kB (`sleep`) |
 | aarch64, 3 runs, `SOAK_N=20000`, the `agent_*` scenarios (2026-10-04) | +28 kB (`agent_stream`) | +32 kB (`agent_upstream_reset`) |
-| x86_64 (CI), 2 runs, `SOAK_N=20000`, the `agent_*` scenarios (2026-10-04) | +16 kB (`agent_stream`, `agent_client_abort`) | +84 kB (`agent_stream`, `agent_client_abort`) |
+| x86_64 (CI), runs 37152930938 and 37156005549, `SOAK_N=20000`, the `agent_*` scenarios (2026-10-04) | +16 kB (`agent_stream`, `agent_client_abort`) | +84 kB (`agent_stream`, `agent_client_abort`) |
 
 Without `malloc_trim(0)`, the `disconnect` scenario at `SOAK_N=300000` moved
 by +2832, -788 and +1088 kB from window to window, which is over a 512 kB
@@ -659,7 +659,8 @@ base without GC, and from half of `PERF_WARN_PERCENT` on it says that the
 change of the scenario may come from when the response arrived. For
 `proxy_stream_plain_50`, about 2 more calls per request reach `WARN` and
 about 3 reach `FAIL`; between the base and the head of one run, its calls
-differed by 0.01 to 0.25 per request so far.
+differed by 0.01 to 0.25 per request in the null changes of "Thresholds and
+calibration".
 
 First measurement, 2026-10-04: one run of `test/perf/perf.rb` on the head
 build of this checkout (`next` at `f62880c` plus the harness), nginx 1.31.6,
@@ -782,8 +783,11 @@ depends on timing, such as how many reads the 64 KB request body takes, is
 not counted. Between runs of the same build on aarch64, `auth` measured
 46797 and 46977 Ir per request without GC (0.38%) and `route_json_2k`
 106066 and 106246 (0.17%). The largest change between the base and the
-head of one run, which the thresholds compare, is 0.39% so far, about 8
-times below the 3% of `WARN`.
+head of one run, which the thresholds compare, is 0.39% in these runs,
+about 8 times below the 3% of `WARN`. Later runs on the runner can move the
+scenarios with an upstream by a few tenths of a percent as well; a change
+of these scenarios near `WARN` needs a second run, and the
+`non_buffered_calls` note, before it is taken as a regression.
 
 In the `compare.sh` run, the seven scenarios that count `ngx_mrb_run`
 failed their window check in both builds on aarch64: callgrind recorded
