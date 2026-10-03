@@ -417,6 +417,16 @@ static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ng
 }
 
 /* ngx_mruby stream init or exit directive functions */
+/* The later directive of a hook or of the server handler replaces the
+ * earlier one. The compiler context of the earlier one is malloc'ed by mruby
+ * and is lost with the pointer, so free it here; its proc stays with the GC
+ * arena like every proc compiled while the configuration is read. */
+static void ngx_stream_mruby_replace_code(mrb_state *mrb, ngx_mrb_code_t **slot, ngx_mrb_code_t *code)
+{
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, *slot);
+  *slot = code;
+}
+
 static char *ngx_stream_mruby_init_build_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_int_t rc;
@@ -428,7 +438,7 @@ static char *ngx_stream_mruby_init_build_file(ngx_conf_t *cf, ngx_command_t *cmd
     return NGX_CONF_ERROR;
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mmcf->ctx->mrb, code);
-  mmcf->init_code = code;
+  ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->init_code, code);
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
@@ -449,7 +459,7 @@ static char *ngx_stream_mruby_init_build_code(ngx_conf_t *cf, ngx_command_t *cmd
     return NGX_CONF_ERROR;
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mmcf->ctx->mrb, code);
-  mmcf->init_code = code;
+  ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->init_code, code);
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
@@ -470,7 +480,7 @@ static char *ngx_stream_mruby_init_worker_build_file(ngx_conf_t *cf, ngx_command
     return NGX_CONF_ERROR;
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mmcf->ctx->mrb, code);
-  mmcf->init_worker_code = code;
+  ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->init_worker_code, code);
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
@@ -491,7 +501,7 @@ static char *ngx_stream_mruby_init_worker_build_code(ngx_conf_t *cf, ngx_command
     return NGX_CONF_ERROR;
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mmcf->ctx->mrb, code);
-  mmcf->init_worker_code = code;
+  ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->init_worker_code, code);
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
@@ -512,7 +522,7 @@ static char *ngx_stream_mruby_exit_worker_build_file(ngx_conf_t *cf, ngx_command
     return NGX_CONF_ERROR;
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mmcf->ctx->mrb, code);
-  mmcf->exit_worker_code = code;
+  ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->exit_worker_code, code);
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
@@ -533,7 +543,7 @@ static char *ngx_stream_mruby_exit_worker_build_code(ngx_conf_t *cf, ngx_command
     return NGX_CONF_ERROR;
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mmcf->ctx->mrb, code);
-  mmcf->exit_worker_code = code;
+  ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->exit_worker_code, code);
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
@@ -563,7 +573,7 @@ static char *ngx_stream_mruby_build_file(ngx_conf_t *cf, ngx_command_t *cmd, voi
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mrb, code);
 
-  mscf->code = code;
+  ngx_stream_mruby_replace_code(mrb, &mscf->code, code);
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
@@ -641,7 +651,7 @@ static char *ngx_stream_mruby_build_code(ngx_conf_t *cf, ngx_command_t *cmd, voi
 
   rc = ngx_stream_mruby_shared_state_compile(cf, mrb, code);
 
-  mscf->code = code;
+  ngx_stream_mruby_replace_code(mrb, &mscf->code, code);
 
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_string(%s) load failed", value[1].data);
