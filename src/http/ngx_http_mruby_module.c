@@ -801,6 +801,13 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     return NGX_ERROR;
   }
 
+  // ngx_mrb_post_fiber assigns the result of a resumed fiber to
+  // ctx->set_var_target. Only the mruby_set handlers pass a result and set
+  // the target before they run, so every other handler clears it.
+  if (result == NULL) {
+    ngx_str_null(&ctx->set_var_target);
+  }
+
   ngx_mrb_push_request(r);
 
   /* force reading body */
