@@ -246,6 +246,10 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
 
     if (re->mrb->exc) {
       ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
+      // all requests share this mrb_state: clear the exception as ngx_mrb_run
+      // does (ngx_mrb_state_clean), or the next ngx_mrb_start_fiber fails
+      // with it
+      re->mrb->exc = NULL;
       rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
     } else if (re->sr == NULL && ctx->set_var_target.len > 1) {
       if (ctx->set_var_target.data[0] != '$') {
@@ -260,7 +264,11 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
       }
     }
 
-    rc = ngx_mrb_finalize_rputs(re->r, ctx);
+    // ngx_mrb_finalize_rputs would replace a 500 set above with the status
+    // the handler had set before it failed
+    if (rc == NGX_OK) {
+      rc = ngx_mrb_finalize_rputs(re->r, ctx);
+    }
   } else {
     ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing",
                   MODULE_NAME, __func__, __LINE__);
@@ -284,9 +292,13 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
 {
   ngx_mrb_reentrant_t *re;
   ngx_http_mruby_ctx_t *ctx;
+  ngx_connection_t *c;
   ngx_int_t rc = NGX_OK;
 
   re = ev->data;
+  // re is allocated from the request pool, which the finalization below can
+  // destroy
+  c = re->r->connection;
   ctx = ngx_mrb_http_get_module_ctx(NULL, re->r);
 
   if (ctx == NULL) {
@@ -296,6 +308,13 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
 
   if (rc != NGX_DECLINED && rc != NGX_DONE) {
     ngx_http_finalize_request(re->r, rc);
+    // the finalization can post requests: the parent of a finalized
+    // subrequest, or, when the response was already sent (for example by the
+    // location that Nginx.redirect ran), the request that
+    // ngx_http_terminate_request posts to close the connection. This timer
+    // runs outside ngx_http_request_handler, so it runs the posted requests
+    // itself, as nginx's ngx_http_file_cache_lock_wait_handler does
+    ngx_http_run_posted_requests(c);
   }
 }
 
