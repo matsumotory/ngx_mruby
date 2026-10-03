@@ -253,7 +253,7 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
 
   switch (ngx_mruby_builtin_header_lookup_token(key, key_len)) {
   case NGX_MRUBY_BUILDIN_HEADER_SERVER:
-    r->headers_out.server = ngx_pnalloc(r->pool, sizeof(ngx_table_elt_t));
+    r->headers_out.server = ngx_pcalloc(r->pool, sizeof(ngx_table_elt_t));
     if (r->headers_out.server == NULL) {
       return NGX_ERROR;
     }

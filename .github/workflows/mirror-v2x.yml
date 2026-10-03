@@ -1,0 +1,94 @@
+# Mirror master to v2.x (temporary).
+#
+# Until v3 is promoted to master, master is the 2.x line and v2.x must
+# follow it exactly, so that users can already pin "git clone -b v2.x".
+# On every push to master this workflow fast-forwards v2.x to the pushed
+# commit. Nobody else writes to v2.x during this period.
+#
+# - Fast-forward only. The push is never forced: if v2.x has commits that
+#   are not on master, the job fails and tells the owner how to repair it.
+# - Pushes made with GITHUB_TOKEN do not trigger other workflows, so CI
+#   does not run on v2.x for mirrored commits. That is intended: they are
+#   the same commits that were already tested on master.
+# - The ruleset on v2.x may only restrict deletions and block force
+#   pushes while this workflow exists; a pull-request rule would reject
+#   the push.
+# - Temporary. When v3 is promoted to master, delete this workflow and put
+#   v2.x under the normal branch ruleset (pull requests required), like
+#   master and next.
+name: mirror-v2x
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mirror-v2x
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  mirror:
+    # Forks have no v2.x to maintain; a manual run only makes sense on master.
+    if: github.repository == 'matsumotory/ngx_mruby' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Fast-forward v2.x to master
+        run: |
+          # When master has moved on (for example when an old run is re-run),
+          # actions/checkout points origin/master at the commit this run was
+          # started for, not at the current tip. Refresh the remote-tracking
+          # branches so that origin/master and origin/v2.x are current.
+          git fetch --quiet --prune --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+          head=$(git rev-parse HEAD)
+          tip=$(git rev-parse refs/remotes/origin/master)
+          if ! v2x=$(git rev-parse --verify --quiet 'refs/remotes/origin/v2.x^{commit}'); then
+            echo "::error title=v2.x mirror::origin has no v2.x branch. Create it once from the current master (git fetch origin && git push origin origin/master:refs/heads/v2.x) and re-run this workflow."
+            exit 1
+          fi
+
+          if [ "$v2x" = "$head" ]; then
+            echo "v2.x is already at $head; nothing to do."
+            exit 0
+          fi
+
+          # A re-run of an older master commit after a newer one was mirrored.
+          if git merge-base --is-ancestor "$head" "$v2x" &&
+             git merge-base --is-ancestor "$v2x" "$tip"; then
+            echo "::notice title=v2.x mirror::v2.x ($v2x) already contains $head; nothing to do."
+            exit 0
+          fi
+
+          if ! git merge-base --is-ancestor "$v2x" "$head"; then
+            echo "::error title=v2.x mirror diverged::v2.x ($v2x) is not an ancestor of the master commit $head, so it cannot be fast-forwarded. v2.x was not changed. See the job log for how to repair it."
+            echo "Commits on v2.x that are not on master ($tip):"
+            git log --oneline "$tip..$v2x"
+            echo
+            echo "Until v3 is promoted, v2.x must only ever be a copy of master. To repair it, either:"
+            echo "  - keep those commits: merge them into master with a pull request"
+            echo "    (for example from a branch created at $v2x), then re-run this workflow; or"
+            echo "  - drop them: reset v2.x to master. This needs a force push, so turn off"
+            echo "    'Block force pushes' in the v2.x ruleset, run"
+            echo "      git fetch origin"
+            echo "      git push --force-with-lease=refs/heads/v2.x:$v2x origin $tip:refs/heads/v2.x"
+            echo "    and turn the rule back on."
+            exit 1
+          fi
+
+          if ! git push origin HEAD:refs/heads/v2.x; then
+            echo "::error title=v2.x mirror::Pushing to v2.x was rejected (see the git output above). If v2.x moved in the meantime, re-run this workflow. If a repository rule rejected it, the rules on v2.x must allow fast-forward pushes from GitHub Actions: only 'Restrict deletions' and 'Block force pushes' until v3 is promoted. If the git output mentions the 'workflows' permission, master moved on to different workflow files during this run (GITHUB_TOKEN cannot point a branch at workflow files that are on no branch head); the run for the newer master commit, or a manual run on master, mirrors it."
+            exit 1
+          fi
+          echo "v2.x fast-forwarded from $v2x to $head."
