@@ -2,11 +2,11 @@
 # ngx_mruby test
 #
 
-def http_host(port = 58080)
+def http_host(port = 18080)
   "127.0.0.1:#{port}"
 end
 
-def base(port = 58080)
+def base(port = 18080)
   "http://#{http_host(port)}"
 end
 
@@ -135,7 +135,7 @@ end
 
 t.assert('ngx_mruby - Nginx::Connection#{local_ip,local_port}', 'location /server_ip_port') do
   res = HttpRequest.new.get base + '/server_ip_port'
-  t.assert_equal '127.0.0.1:58080', res["body"]
+  t.assert_equal '127.0.0.1:18080', res["body"]
 end
 
 t.assert('ngx_mruby - Nginx::Connection#{remote_ip,local_port}', 'location /client_ip') do
@@ -208,7 +208,7 @@ t.assert('ngx_mruby - Nginx::Var', 'location /nginx_var?name=name') do
   t.assert_equal 'HTTP/1.0', HttpRequest.new.get(base + '/nginx_var?name=server_protocol')["body"]
   t.assert_equal 'http', HttpRequest.new.get(base + '/nginx_var?name=scheme')["body"]
   t.assert_equal '127.0.0.1', HttpRequest.new.get(base + '/nginx_var?name=remote_addr')["body"]
-  t.assert_equal '58080', HttpRequest.new.get(base + '/nginx_var?name=server_port')["body"]
+  t.assert_equal '18080', HttpRequest.new.get(base + '/nginx_var?name=server_port')["body"]
   t.assert_equal '127.0.0.1', HttpRequest.new.get(base + '/nginx_var?name=server_addr')["body"]
   t.assert_equal 'GET /nginx_var?name=request HTTP/1.0', HttpRequest.new.get(base + '/nginx_var?name=request')["body"]
   t.assert_equal 'name=query_string', HttpRequest.new.get(base + '/nginx_var?name=query_string')["body"]
@@ -364,7 +364,7 @@ t.assert('ngx_mruby - rack base', 'location /rack_base4') do
 end
 
 t.assert('ngx_mruby - rack base', 'location /rack_base_env') do
-  res = HttpRequest.new.get base + '/rack_base_env?a=1&b=1', nil, {"Host" => "ngx.example.com:58080", "x-hoge" => "foo"}
+  res = HttpRequest.new.get base + '/rack_base_env?a=1&b=1', nil, {"Host" => "ngx.example.com:18080", "x-hoge" => "foo"}
   body = JSON.parse res["body"]
 
   t.assert_equal "GET", body["REQUEST_METHOD"]
@@ -374,7 +374,7 @@ t.assert('ngx_mruby - rack base', 'location /rack_base_env') do
   t.assert_equal "a=1&b=1", body["QUERY_STRING"]
   t.assert_equal "ngx.example.com", body["SERVER_NAME"]
   t.assert_equal "127.0.0.1", body["SERVER_ADDR"]
-  t.assert_equal "58080", body["SERVER_PORT"]
+  t.assert_equal "18080", body["SERVER_PORT"]
   t.assert_equal "127.0.0.1", body["REMOTE_ADDR"]
   t.assert_equal "http", body["rack.url_scheme"]
   t.assert_false body["rack.multithread"]
@@ -385,7 +385,7 @@ t.assert('ngx_mruby - rack base', 'location /rack_base_env') do
   t.assert_equal nginx_features.version_string, body["server.version"]
   t.assert_equal "*/*", body["HTTP_ACCEPT"]
   t.assert_equal "close", body["HTTP_CONNECTION"]
-  t.assert_equal "ngx.example.com:58080", body["HTTP_HOST"]
+  t.assert_equal "ngx.example.com:18080", body["HTTP_HOST"]
   t.assert_equal "foo", body["HTTP_X_HOGE"]
   t.assert_equal 200, res.code
 end
@@ -486,39 +486,39 @@ t.assert('ngx_mruby - get post_args', 'location /get_post_args') do
 end
 
 t.assert('ngx_mruby - ssl local port') do
-  res = `curl -s -k #{base_ssl(58082) + '/local_port'}`
-  t.assert_equal '58082', res
+  res = `curl -s -k #{base_ssl(18082) + '/local_port'}`
+  t.assert_equal '18082', res
 end
 
 t.assert('ngx_mruby - ssl certificate changing') do
-  res = `curl -s -k #{base_ssl(58082) + '/'}`
+  res = `curl -s -k #{base_ssl(18082) + '/'}`
   t.assert_equal 'ssl test ok', res
 
   res = OpenSSLTestClient.new
-    .run("openssl s_client -servername localhost -connect localhost:58082")
+    .run("openssl s_client -servername localhost -connect localhost:18082")
     .to_text()
     .pipe("grep -E 'Not (Before|After)' | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
   t.assert_equal "1", res.chomp
 
   res = OpenSSLTestClient.new
-    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58082")
+    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:18082")
     .to_text()
     .pipe("grep -E 'Not (Before|After)'")
   t.assert_equal "", res.chomp
 end
 
 t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
-  res = `curl -s -k #{base_ssl(58083) + '/'}`
+  res = `curl -s -k #{base_ssl(18083) + '/'}`
   t.assert_equal 'ssl test ok', res
 
   res = OpenSSLTestClient.new
-    .run("openssl s_client -servername localhost -connect localhost:58083")
+    .run("openssl s_client -servername localhost -connect localhost:18083")
     .to_text()
     .pipe("grep -E 'Not (Before|After)' | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
   t.assert_equal "1", res.chomp
 
   res = OpenSSLTestClient.new
-    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58083")
+    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:18083")
     .to_text()
     .pipe("grep -E 'Not (Before|After)'")
   t.assert_equal "", res.chomp
@@ -527,7 +527,7 @@ end
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file without caching') do
   fname = File.join(ENV['NGINX_INSTALL_DIR'], 'html/set_ssl_cert_and_key.rb')
 
-  res = `curl -s -k #{base_ssl(58085) + '/'}`
+  res = `curl -s -k #{base_ssl(18085) + '/'}`
   t.assert_equal 'ssl test ok', res
 
   content = File.read(fname).gsub('#{ssl.servername}', 'localhost')
@@ -537,11 +537,11 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file witho
   client_h = OpenSSLTestClient.new
 
   res_l = client_l
-    .run("openssl s_client -servername localhost -connect localhost:58085")
+    .run("openssl s_client -servername localhost -connect localhost:18085")
     .to_text()
     .pipe("grep -E 'Not (Before|After)' | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
   res_h = client_h
-    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58085")
+    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:18085")
     .to_text()
     .pipe("grep -E 'Not (Before|After)' | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
 
@@ -558,7 +558,7 @@ end
 t.assert('ngx_mruby - ssl certificate changing - reading handler from file with caching') do
   fname = File.join(ENV['NGINX_INSTALL_DIR'], 'html/set_ssl_cert_and_key.rb')
 
-  res = `curl -s -k #{base_ssl(58086) + '/'}`
+  res = `curl -s -k #{base_ssl(18086) + '/'}`
   t.assert_equal 'ssl test ok', res
 
   content = File.read(fname).gsub('#{ssl.servername}', 'localhost')
@@ -568,11 +568,11 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file with 
   client_h = OpenSSLTestClient.new
 
   res_l = client_l
-    .run("openssl s_client -servername localhost -connect localhost:58086")
+    .run("openssl s_client -servername localhost -connect localhost:18086")
     .to_text()
     .pipe("grep -E 'Not (Before|After)' | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
   res_h = client_h
-    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58086")
+    .run("openssl s_client -servername hogehoge -connect 127.0.0.1:18086")
     .to_text()
     .pipe("grep -E 'Not (Before|After)'")
 
@@ -588,27 +588,27 @@ end
 
 t.assert('ngx_mruby - Nginx::SSL.errlogger') do
   OpenSSLTestClient.new
-    .run("openssl s_client -servername localhost -connect localhost:58087").now
+    .run("openssl s_client -servername localhost -connect localhost:18087").now
   error_log = File.read File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log');
   t.assert_true error_log.include? 'Servername is localhost while SSL handshaking'
 end
 
 t.assert('ngx_mruby - get ssl server name') do
   res = OpenSSLTestClient.new
-    .run("openssl s_client -ign_eof -connect localhost:58088")
+    .run("openssl s_client -ign_eof -connect localhost:18088")
     .with("GET /servername")
     .pipe("sed -n '$s/closed$//p'")
   t.assert_equal "servername is empty", res.chomp
 
   res = OpenSSLTestClient.new
-    .run("openssl s_client -ign_eof -connect localhost:58088 -servername ngx.example.com")
+    .run("openssl s_client -ign_eof -connect localhost:18088 -servername ngx.example.com")
     .with("GET /servername")
     .pipe("sed -n '$s/closed$//p'")
   t.assert_equal "ngx.example.com", res.chomp
 end
 
 t.assert('ngx_mruby - get ssl tls version') do
-  res = `curl -s -k #{base_ssl(58082) + '/tls_version'}`
+  res = `curl -s -k #{base_ssl(18082) + '/tls_version'}`
 
   t.assert_equal "TLSv1.2", res.chomp
 end
@@ -638,12 +638,12 @@ t.assert('ngx_mruby - Throw my own exception for issue 238', 'location /issue_23
 end
 
 t.assert('ngx_mruby - access_handler in server scope', 'location /access_handler_in_server_scope') do
-  res = HttpRequest.new.get base(58084) + '/access_handler_in_server_scope/'
+  res = HttpRequest.new.get base(18084) + '/access_handler_in_server_scope/'
   t.assert_equal 403, res["code"]
 end
 
 t.assert('ngx_mruby - override access_handler in server scope', 'location /override_access_handler_in_server_scope') do
-  res = HttpRequest.new.get base(58084) + '/override_access_handler_in_server_scope/'
+  res = HttpRequest.new.get base(18084) + '/override_access_handler_in_server_scope/'
   t.assert_equal 200, res["code"]
   t.assert_equal "OK", res["body"]
 end
@@ -672,11 +672,11 @@ t.assert('ngx_mruby - backtrace log', 'location /backtrace') do
 end
 
 t.assert('ngx_mruby - add_listener test', 'location /add_listener') do
-  res = HttpRequest.new.get base(58101) + '/add_listener'
+  res = HttpRequest.new.get base(18101) + '/add_listener'
   t.assert_equal 'add_listener test ok', res["body"]
-  res = HttpRequest.new.get base(58102) + '/add_listener'
+  res = HttpRequest.new.get base(18102) + '/add_listener'
   t.assert_equal 'add_listener test ok', res["body"]
-  res = `curl -s -k #{base_ssl(58103) + '/add_listener'}`
+  res = `curl -s -k #{base_ssl(18103) + '/add_listener'}`
   t.assert_equal 'add_listener test ok', res
 end
 
@@ -692,11 +692,11 @@ if nginx_features.is_stream_supported?
   base3 = "http://127.0.0.1:12348"
   base4 = "http://127.0.0.1:12349"
 
-  t.assert('ngx_mruby - stream tcp load balancer', '127.0.0.1:12345 to 127.0.0.1:58080 which changed from 127.0.0.1:58081 by mruby') do
+  t.assert('ngx_mruby - stream tcp load balancer', '127.0.0.1:12345 to 127.0.0.1:18080 which changed from 127.0.0.1:18081 by mruby') do
     res = HttpRequest.new.get(base1 + '/mruby')
     t.assert_equal 'Hello ngx_mruby world!', res["body"]
   end
-  t.assert('ngx_mruby - stream tcp load balancer', '127.0.0.1:12346 to 127.0.0.1:58081 which changed from 127.0.0.1:58080 by mruby') do
+  t.assert('ngx_mruby - stream tcp load balancer', '127.0.0.1:12346 to 127.0.0.1:18081 which changed from 127.0.0.1:18080 by mruby') do
     res = HttpRequest.new.get(base2 + '/')
     t.assert_equal 'proxy test ok', res["body"]
   end
@@ -708,14 +708,14 @@ if nginx_features.is_stream_supported?
     res = HttpRequest.new.get(base4 + '/mruby')
     t.assert_equal 'Hello ngx_mruby world!', res["body"]
   end
-  t.assert('ngx_mruby - add linstener', '127.0.0.1:12350 to 127.0.0.1:58080') do
+  t.assert('ngx_mruby - add linstener', '127.0.0.1:12350 to 127.0.0.1:18080') do
     res = HttpRequest.new.get('http://127.0.0.1:12350' + '/mruby')
     t.assert_equal 'Hello ngx_mruby world!', res["body"]
     res = HttpRequest.new.get('http://127.0.0.1:12351' + '/mruby')
     t.assert_equal 'Hello ngx_mruby world!', res["body"]
   end
 
-  t.assert('ngx_mruby - Nginx::Stream::Async.sleep', '127.0.0.1:12352 to 127.0.0.1:58080') do
+  t.assert('ngx_mruby - Nginx::Stream::Async.sleep', '127.0.0.1:12352 to 127.0.0.1:18080') do
     `sleep 1 && curl -s -k http://127.0.0.1:12352/mruby -m1 \&`
     res = HttpRequest.new.get('http://127.0.0.1:12352/mruby')
     t.assert_equal 'Hello ngx_mruby world!', res["body"]
