@@ -46,9 +46,13 @@ else
 fi
 export NGINX_INSTALL_DIR # for test/t/ngx_mruby.rb
 
-if [ $NGINX_SRC_MINOR -ge 11 -a $NGINX_SRC_PATCH -ge 5 ]; then
+# Same encoding as nginx's own nginx_version macro (1.11.5 -> 1011005), so
+# that versions are compared as a whole instead of minor and patch separately.
+NGINX_SRC_VERSION_NUM=$((NGINX_SRC_MAJOR * 1000000 + NGINX_SRC_MINOR * 1000 + NGINX_SRC_PATCH))
+
+if [ "$NGINX_SRC_VERSION_NUM" -ge 1011005 ]; then
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFAULT_OPT} --with-stream"
-elif [ $NGINX_SRC_MINOR -ge 11 -a $NGINX_SRC_PATCH -lt 5 ] || [ $NGINX_SRC_MINOR -eq 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
+elif [ "$NGINX_SRC_VERSION_NUM" -ge 1009006 ]; then
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFAULT_OPT} --with-stream --without-stream_access_module"
 else
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFAULT_OPT}"
@@ -103,7 +107,7 @@ $PS_C nginx 2>/dev/null && $KILLALL nginx
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' && sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' && cd -
 
-if [ $NGINX_SRC_MINOR -ge 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
+if [ "$NGINX_SRC_VERSION_NUM" -ge 1009006 ]; then
   cat test/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
 fi
 
