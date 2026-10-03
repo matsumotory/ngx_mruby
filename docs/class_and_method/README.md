@@ -115,6 +115,7 @@ end
 ### Nginx.rputs(string)
 
 Puts response text.
+If the handler raises an exception afterwards, the request gets 500 and the text is not sent, unless the response was already started, for example by the location that `Nginx.redirect` ran.
 
 ```ruby
 Nginx.rputs "hello ngx_mruby world!"

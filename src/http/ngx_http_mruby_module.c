@@ -906,6 +906,11 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   if (state->mrb->exc) {
     ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    // drop the output of Nginx.rputs: with it, ngx_mrb_finalize_rputs would
+    // send that output as a 200 response; without it, the function returns
+    // the 500, as ngx_mrb_post_fiber does after an exception in a resumed
+    // fiber
+    ctx->rputs_chain = NULL;
     mrb_gc_arena_restore(state->mrb, ai);
   } else if (result != NULL) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: fiber done in request phase", MODULE_NAME,
