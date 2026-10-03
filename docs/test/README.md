@@ -39,3 +39,29 @@ If you want to run with valgrind, set the environment variables `NGINX_RUNNER` a
 ```console
 $ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh
 ```
+
+## Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer
+
+CI builds one matrix cell with `-fsanitize=address,undefined`. To run the
+same build locally (Linux, gcc or clang):
+
+```console
+$ sudo sysctl -w vm.mmap_rnd_bits=28     # ASan and the kernel's high-entropy ASLR do not mix
+$ export NGINX_EXTRA_CC_OPT="-fsanitize=address,undefined -fno-omit-frame-pointer"
+$ export NGINX_EXTRA_LD_OPT="-fsanitize=address,undefined"
+$ export NGX_MRUBY_CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+$ export NGX_MRUBY_LDFLAGS="-fsanitize=address,undefined"
+$ export ASAN_OPTIONS="detect_leaks=1"
+$ export UBSAN_OPTIONS="print_stacktrace=1:suppressions=$PWD/test/ubsan.supp"
+$ NGINX_RUNNER=exec sh test.sh
+$ grep -E 'AddressSanitizer|UndefinedBehaviorSanitizer|runtime error|LeakSanitizer' build/nginx/logs/error.log
+```
+
+`NGINX_EXTRA_CC_OPT` and `NGINX_EXTRA_LD_OPT` are appended to nginx's
+`--with-cc-opt` and `--with-ld-opt`; `NGX_MRUBY_CFLAGS` and `NGX_MRUBY_LDFLAGS`
+reach the mruby build. Do not combine the sanitizers with valgrind. nginx
+sends its stderr to `error.log` once the configuration is loaded, so reports
+from code that runs while nginx parses the configuration (directive handlers,
+script compilation, `mruby_init_code`) appear on the terminal instead; read
+both. `test/ubsan.supp` lists the reports that come from nginx itself, each
+with the reason.

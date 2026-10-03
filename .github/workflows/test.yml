@@ -1,6 +1,32 @@
 name: test
 
-on: push
+# Pushes to topic branches (claude/*, backport/*, ...) do not run here:
+# they are tested through their pull request, so the matrix runs once.
+# Use "Run workflow" (workflow_dispatch) to test a branch without a PR.
+on:
+  push:
+    branches:
+      - master
+      - next
+      - 'v*.x'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - master
+      - next
+      - 'v*.x'
+  workflow_dispatch:
+
+# A new push to a pull request cancels the run for its previous commit.
+# Runs for branch and tag pushes are not cancelled once started; a newer
+# push to the same ref waits for them (only the newest waiting run is kept).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 defaults:
   run:
@@ -12,7 +38,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
     strategy:
+      fail-fast: false
       matrix:
         NGINX_VERSION:
           - 1.31.6
@@ -25,17 +53,30 @@ jobs:
         BUILD_WITH_OPENSSL_SRC:
           - ""
           - "TRUE"
+        SANITIZER:
+          - ""
+        # One more job: nginx, ngx_mruby and mruby built with AddressSanitizer
+        # (LeakSanitizer included) and UndefinedBehaviorSanitizer. It runs nginx
+        # directly, because valgrind does not work with ASan; the other jobs
+        # keep running nginx under valgrind.
+        include:
+          - NGINX_VERSION: 1.31.6
+            BUILD_DYNAMIC_MODULE: ""
+            BUILD_WITH_OPENSSL_SRC: ""
+            SANITIZER: "address,undefined"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Echo matrix
         env:
           NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
           BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
           BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
+          SANITIZER: ${{ matrix.SANITIZER }}
         run: |
           echo $NGINX_VERSION
           echo $BUILD_DYNAMIC_MODULE
           echo $BUILD_WITH_OPENSSL_SRC
+          echo $SANITIZER
       - name: before_install
         env:
           NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
@@ -80,8 +121,9 @@ jobs:
           NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
           BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
           BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
+          SANITIZER: ${{ matrix.SANITIZER }}
           NUM_THREADS_ENV: 1
-          NGINX_RUNNER: valgrind
+          NGINX_RUNNER: ${{ matrix.SANITIZER == '' && 'valgrind' || 'exec' }}
           NGINX_HEATTIME: 10
         run: |
           echo "NGINX_SRC_MAJOR=$(echo $NGINX_VERSION | cut -d '.' -f 1)" > nginx_version
@@ -89,10 +131,60 @@ jobs:
           echo "NGINX_SRC_PATCH=$(echo $NGINX_VERSION | cut -d '.' -f 3)" >> nginx_version
           echo "NGINX_SRC_VER=nginx-${NGINX_VERSION}" >> nginx_version
           if [ "${BUILD_WITH_OPENSSL_SRC}" == "TRUE" ]; then build_opts="--with-openssl-src=${PWD}/openssl-${OPENSSL_SRC_VERSION}"; fi
+          if [ -n "${SANITIZER}" ]; then
+            # ASan's shadow memory layout fails with the high mmap ASLR entropy
+            # of some runner kernels; 28 bits is what ASan expects.
+            sudo sysctl -w vm.mmap_rnd_bits=28
+            # nginx compiles ngx_mruby; build_config.rb passes NGX_MRUBY_* to mruby.
+            export NGINX_EXTRA_CC_OPT="-fsanitize=${SANITIZER} -fno-omit-frame-pointer"
+            export NGINX_EXTRA_LD_OPT="-fsanitize=${SANITIZER}"
+            export NGX_MRUBY_CFLAGS="-fsanitize=${SANITIZER} -fno-omit-frame-pointer"
+            export NGX_MRUBY_LDFLAGS="-fsanitize=${SANITIZER}"
+            export ASAN_OPTIONS="detect_leaks=1"
+            export UBSAN_OPTIONS="print_stacktrace=1:suppressions=${PWD}/test/ubsan.supp"
+          fi
           sh test.sh ${build_opts}
+
+      # nginx writes its stderr, and so every sanitizer report (including the
+      # leak report printed when nginx exits), to error.log. UBSan reports do
+      # not stop nginx, so the tests can pass while reports were written.
+      - name: Check for sanitizer reports
+        if: ${{ !cancelled() && matrix.SANITIZER != '' }}
+        run: |
+          log=build/nginx/logs/error.log
+          if [ ! -s "$log" ]; then
+            echo "::error title=sanitizer::$log is missing or empty"
+            exit 1
+          fi
+          if grep -nE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' "$log"; then
+            echo "::error title=sanitizer::sanitizer reports found in $log (see the lines above)"
+            exit 1
+          fi
+          echo "no sanitizer reports in $log"
 
       - name: after_failure
         if: failure()
         run: |
           if [ -e build/nginx/logs/error.log ]; then cat build/nginx/logs/error.log ; else cat build_dynamic/nginx/logs/error.log; fi
           if [ -e build/nginx/logs/stderr.log ]; then cat build/nginx/logs/stderr.log ; else cat build_dynamic/nginx/logs/stderr.log; fi
+
+  # The only status check that rulesets should require. Matrix job names
+  # change whenever the matrix changes, so they cannot be required directly.
+  # "always()" makes this job run, and fail, when build failed or was
+  # cancelled; a skipped job would count as passing.
+  ci-ok:
+    name: ci-ok
+    needs: [build]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check that every build job succeeded
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          echo "build: ${BUILD_RESULT}"
+          if [ "${BUILD_RESULT}" != "success" ]; then
+            echo "::error title=ci-ok::build finished with result '${BUILD_RESULT}', expected 'success'"
+            exit 1
+          fi
