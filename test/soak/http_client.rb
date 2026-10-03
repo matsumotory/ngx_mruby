@@ -43,7 +43,8 @@ class Client
   # block returns true for the body read so far (decoded, when chunked) or
   # the body ends. Returns [status, headers, body, ending], where ending is
   # :complete (the whole body arrived), :stopped (the block returned true
-  # first) or :cut (the server closed the connection before the end of the
+  # first), :cut (the server closed the connection before the end of the
+  # body) or :reset (the server reset the connection before the end of the
   # body). The caller closes the client afterwards: the connection is not in
   # a state for another request.
   def stream(method, path, headers = {}, body = nil, &stop)
@@ -58,6 +59,8 @@ class Client
       end
     rescue EOFError
       :cut
+    rescue Errno::ECONNRESET
+      :reset
     end
     [status, response_headers, received, ending]
   end

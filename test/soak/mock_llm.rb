@@ -28,8 +28,12 @@
 #
 # A request can override the options for itself with the headers
 # x-mock-events, x-mock-hold-after, x-mock-reset-after, x-mock-status and
-# x-mock-delay-ms ("off" turns hold, reset and status off). nginx forwards
-# them to the upstream unless the configuration drops them.
+# x-mock-delay-ms, each a number of 0 or more. x-mock-hold-after,
+# x-mock-reset-after and x-mock-status also take "off", which turns the hold,
+# the reset or the error status off. Any other value gets a 400 answer
+# (invalid_request_error) that names the header. nginx forwards the headers
+# to the upstream unless the configuration drops them.
+# test/soak/mock_llm_test.rb checks these rules and the answers below.
 #
 # Answers:
 # - POST /v1/messages with a JSON body whose "stream" is true: 200,
@@ -172,6 +176,12 @@ module MockLLM
   # thread of its own; stop closes the listening sockets and the connections.
   class Server
     COUNTERS = %i[connections requests completed held held_closed reset write_failed].freeze
+    # The request headers that override an option, and those of them that
+    # also take "off" (no hold, no reset, no error status).
+    OVERRIDE_HEADERS = { 'x-mock-events' => :events, 'x-mock-hold-after' => :hold_after,
+                         'x-mock-reset-after' => :reset_after, 'x-mock-status' => :status,
+                         'x-mock-delay-ms' => :delay_ms }.freeze
+    OFF_HEADERS = %w[x-mock-hold-after x-mock-reset-after x-mock-status].freeze
 
     def initialize(ports, **options)
       @ports = ports
@@ -313,7 +323,9 @@ module MockLLM
       end
 
       count(:requests)
-      opts = request_options(req[:headers])
+      opts, bad_header = request_options(req[:headers])
+      return write_full(sock, head(400, 'application/json', extra, MockLLM.error_body(400, bad_header))) if bad_header
+
       json = begin
         JSON.parse(req[:body])
       rescue JSON::ParserError
@@ -329,15 +341,25 @@ module MockLLM
       write_stream(sock, extra, req[:body], opts)
     end
 
+    # The options of one request: the server's, overridden by the x-mock-*
+    # headers. Returns [options, nil], or [nil, message] for a header whose
+    # value is not a number of 0 or more (or "off" where OFF_HEADERS allow it).
     def request_options(headers)
       opts = @options.dup
-      { 'x-mock-events' => :events, 'x-mock-hold-after' => :hold_after, 'x-mock-reset-after' => :reset_after,
-        'x-mock-status' => :status, 'x-mock-delay-ms' => :delay_ms }.each do |name, key|
+      OVERRIDE_HEADERS.each do |name, key|
         next unless headers.key?(name)
 
-        opts[key] = headers[name] == 'off' ? nil : Integer(headers[name], 10)
+        value = headers[name]
+        if value == 'off' && OFF_HEADERS.include?(name)
+          opts[key] = nil
+        elsif value.match?(/\A\d+\z/)
+          opts[key] = Integer(value, 10)
+        else
+          allowed = OFF_HEADERS.include?(name) ? 'a number of 0 or more, or off' : 'a number of 0 or more'
+          return [nil, "mock: #{name} must be #{allowed}, not #{value.inspect}"]
+        end
       end
-      opts
+      [opts, nil]
     end
 
     def head(status, type, extra, body = nil)
