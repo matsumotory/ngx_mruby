@@ -1279,6 +1279,9 @@ u.server = "127.0.0.1:8080"                   #=> 127.0.0.1:8080
 
 Sleeps in non-blocking way.
 It's currently supported in the set, rewrite and access handlers.
+In a log handler (`mruby_log_handler`, `mruby_log_handler_code`) and in the
+output filters (`mruby_output_header_filter*`, `mruby_output_body_filter*`),
+nginx cannot resume a handler that waits, so it raises a `RuntimeError`.
 
 ```ruby
 Nginx::Async.sleep 3000    # Sleep 3000 millisec
@@ -1292,6 +1295,8 @@ Nginx::Async.sleep 3000    # Sleep 3000 millisec
 
 Sends a sub request in non-blocking way.
 It's currently supported in the `set`, `rewrite` and `access` handlers.
+Like `Nginx::Async.sleep`, it raises a `RuntimeError` in a log handler and in
+the output filters.
 
 ```ruby
 Nginx::Async::HTTP.sub_request "/example", "q1=foo&q2=bar" # Send a sub request with the parameters

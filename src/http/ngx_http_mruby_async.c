@@ -41,13 +41,69 @@ typedef struct {
  * with mrb_gc_register once, when it is created, and unregistered once: when
  * it ends, normally or with an exception, or when the request pool is
  * destroyed while the fiber is still suspended. ctx->fiber_proc and re->fiber
- * point to the first member.
+ * point to the first member. kind is the handler that runs the fiber, also
+ * when a timer or a subrequest resumes it.
  */
 typedef struct {
   mrb_value fiber;
   mrb_state *mrb;
   ngx_flag_t registered;
+  ngx_http_mruby_handler_kind_t kind;
 } ngx_mrb_fiber_t;
+
+// Whether Nginx::Async may suspend the fiber of this kind of handler. nginx
+// resumes it for mruby_set and the post_read, server_rewrite, rewrite and
+// access handlers; CONTENT stays allowed only so that the behavior of the
+// content handler does not change (see ngx_http_mruby_handler_kind_t).
+static ngx_flag_t ngx_mrb_handler_can_wait(ngx_http_mruby_handler_kind_t kind)
+{
+  switch (kind) {
+  case NGX_HTTP_MRUBY_HANDLER_SET:
+  case NGX_HTTP_MRUBY_HANDLER_POST_READ:
+  case NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE:
+  case NGX_HTTP_MRUBY_HANDLER_REWRITE:
+  case NGX_HTTP_MRUBY_HANDLER_ACCESS:
+  case NGX_HTTP_MRUBY_HANDLER_CONTENT:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+// The name of a handler that cannot wait, for messages.
+static const char *ngx_mrb_handler_kind_name(ngx_http_mruby_handler_kind_t kind)
+{
+  switch (kind) {
+  case NGX_HTTP_MRUBY_HANDLER_LOG:
+    return "a log handler";
+  case NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER:
+    return "a header filter";
+  case NGX_HTTP_MRUBY_HANDLER_BODY_FILTER:
+    return "a body filter";
+  default:
+    return "a context without a request handler";
+  }
+}
+
+/*
+ * Returns the current request, or raises a RuntimeError when the handler that
+ * runs now cannot wait. Nginx::Async.sleep and Nginx::Async::HTTP.sub_request
+ * call it before they arm a timer or post a subrequest, so a refused call
+ * leaves nothing behind that could touch the request later.
+ */
+static ngx_http_request_t *ngx_mrb_async_request(mrb_state *mrb, const char *method)
+{
+  ngx_http_request_t *r;
+  ngx_http_mruby_ctx_t *ctx;
+
+  r = ngx_mrb_get_request();
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+  if (!ngx_mrb_handler_can_wait(ctx->handler_kind)) {
+    mrb_raisef(mrb, E_RUNTIME_ERROR, "%s is not available in %s", method, ngx_mrb_handler_kind_name(ctx->handler_kind));
+  }
+
+  return r;
+}
 
 static void ngx_mrb_fiber_unregister(mrb_value *fiber_proc)
 {
@@ -64,7 +120,8 @@ static void ngx_mrb_fiber_cleanup(void *data)
   ngx_mrb_fiber_unregister(data);
 }
 
-mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc, mrb_value *result)
+mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc, mrb_value *result,
+                              ngx_http_mruby_handler_kind_t kind)
 {
   struct RProc *handler_proc;
   mrb_value *fiber_proc;
@@ -91,6 +148,7 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
     return mrb_false_value();
   }
   f->mrb = mrb;
+  f->kind = kind;
   fiber_proc = &f->fiber;
 
   *fiber_proc = mrb_fiber_new(mrb, rproc);
@@ -117,11 +175,22 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   mrb_value aliving = mrb_false_value();
   mrb_value handler_result = mrb_nil_value();
   ngx_http_mruby_ctx_t *ctx;
+  ngx_mrb_fiber_t *f = (ngx_mrb_fiber_t *)fiber_proc;
+  ngx_http_mruby_handler_kind_t outer_kind;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->fiber_proc = fiber_proc;
 
+  // Nginx::Async reads the kind of the handler whose fiber runs now. The kind
+  // that was set before comes back when this fiber ends or yields, so Ruby
+  // code that runs for the request outside a handler fiber sees
+  // NGX_HTTP_MRUBY_HANDLER_NONE, for example the to_s that ngx_mrb_run calls
+  // on the result of mruby_set.
+  outer_kind = ctx->handler_kind;
+  ctx->handler_kind = f->kind;
   handler_result = mrb_fiber_resume(mrb, *fiber_proc, 0, NULL);
+  ctx->handler_kind = outer_kind;
+
   if (mrb->exc) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
@@ -130,6 +199,19 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   }
 
   aliving = mrb_fiber_alive_p(mrb, *fiber_proc);
+
+  if (mrb_test(aliving) && !ngx_mrb_handler_can_wait(f->kind)) {
+    // Only a direct Fiber.yield gets here, since Nginx::Async raises in this
+    // handler. Nothing would resume the fiber, so it is dropped from the GC
+    // root, and the handler ends as a finished one with status 500, which
+    // ngx_mrb_finalize_rputs returns as it does after an exception.
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "%s ERROR %s:%d: %s yielded its fiber, but nginx cannot resume it there", MODULE_NAME, __func__,
+                  __LINE__, ngx_mrb_handler_kind_name(f->kind));
+    ngx_mrb_fiber_unregister(fiber_proc);
+    r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    return mrb_false_value();
+  }
 
   if (!mrb_test(aliving)) {
     ngx_mrb_fiber_unregister(fiber_proc);
@@ -243,7 +325,7 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_ARGUMENT_ERROR, "value of the timer must be a positive number");
   }
 
-  r = ngx_mrb_get_request();
+  r = ngx_mrb_async_request(mrb, "Nginx::Async.sleep");
   p = ngx_palloc(r->pool, sizeof(ngx_event_t) + sizeof(ngx_mrb_reentrant_t));
   re = (ngx_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
   re->mrb = mrb;
@@ -368,7 +450,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   argc = mrb_get_args(mrb, "o|S", &path, &query_params);
 
-  r = ngx_mrb_get_request();
+  r = ngx_mrb_async_request(mrb, "Nginx::Async::HTTP.sub_request");
   uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
   if (uri == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_pcalloc failed on ngx_mrb_async_http_sub_request");
