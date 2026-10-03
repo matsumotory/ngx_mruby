@@ -497,13 +497,13 @@ t.assert('ngx_mruby - ssl certificate changing') do
   res = OpenSSLTestClient.new
     .run("openssl s_client -servername localhost -connect localhost:58082")
     .to_text()
-    .pipe("grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
+    .pipe("grep -E 'Not (Before|After)' | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
   t.assert_equal "1", res.chomp
 
   res = OpenSSLTestClient.new
     .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58082")
     .to_text()
-    .pipe("grep Not")
+    .pipe("grep -E 'Not (Before|After)'")
   t.assert_equal "", res.chomp
 end
 
@@ -514,13 +514,13 @@ t.assert('ngx_mruby - ssl certificate changing using data instead of file') do
   res = OpenSSLTestClient.new
     .run("openssl s_client -servername localhost -connect localhost:58083")
     .to_text()
-    .pipe("grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
+    .pipe("grep -E 'Not (Before|After)' | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
   t.assert_equal "1", res.chomp
 
   res = OpenSSLTestClient.new
     .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58083")
     .to_text()
-    .pipe("grep Not")
+    .pipe("grep -E 'Not (Before|After)'")
   t.assert_equal "", res.chomp
 end
 
@@ -539,11 +539,11 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file witho
   res_l = client_l
     .run("openssl s_client -servername localhost -connect localhost:58085")
     .to_text()
-    .pipe("grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
+    .pipe("grep -E 'Not (Before|After)' | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
   res_h = client_h
     .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58085")
     .to_text()
-    .pipe("grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
+    .pipe("grep -E 'Not (Before|After)' | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
 
   t.assert_equal "1", res_l.chomp
   t.assert_equal "1", res_h.chomp
@@ -570,11 +570,11 @@ t.assert('ngx_mruby - ssl certificate changing - reading handler from file with 
   res_l = client_l
     .run("openssl s_client -servername localhost -connect localhost:58086")
     .to_text()
-    .pipe("grep Not | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
+    .pipe("grep -E 'Not (Before|After)' | sed -e 's/://' | awk '{print (res = $6 - res)}' | tail -n 1")
   res_h = client_h
     .run("openssl s_client -servername hogehoge -connect 127.0.0.1:58086")
     .to_text()
-    .pipe("grep Not")
+    .pipe("grep -E 'Not (Before|After)'")
 
   t.assert_equal "1", res_l.chomp
   t.assert_equal "", res_h.chomp

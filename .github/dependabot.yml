@@ -1,0 +1,23 @@
+version: 2
+updates:
+  # Keep the actions used in .github/workflows up to date. Workflows pin
+  # actions to a full commit SHA with a "# vX.Y.Z" comment; Dependabot
+  # updates both. Pull requests target the default branch (master).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # mruby/ is a vendored copy of upstream mruby. Its Gemfile and
+  # Gemfile.lock belong to mruby's own documentation tooling, which
+  # ngx_mruby neither installs nor ships, and local edits would be lost on
+  # the next mruby update. Ignore every dependency there: "ignore" also
+  # applies to Dependabot security updates, and "open-pull-requests-limit: 0"
+  # turns off version updates for this directory.
+  - package-ecosystem: "bundler"
+    directory: "/mruby"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"

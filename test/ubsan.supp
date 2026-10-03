@@ -1,0 +1,8 @@
+# UndefinedBehaviorSanitizer suppressions for the sanitizer job in CI
+# (UBSAN_OPTIONS=suppressions=test/ubsan.supp). Only list reports that are
+# not in ngx_mruby, and say why.
+
+# nginx core: with --with-debug, ngx_http_process_request_uri() logs an empty
+# r->args (data == NULL, len == 0), and ngx_sprintf_str() passes that NULL to
+# memcpy() with a length of 0.
+nonnull-attribute:src/core/ngx_string.c
