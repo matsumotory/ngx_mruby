@@ -44,8 +44,10 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
 Every PR gets a review by an agent (or person) that did not write it, with
 this checklist: the change is inside the agreed scope (`docs/proposals/` on
 `next`, an issue, or a fix with evidence); the code and tests are correct when read
-against `src/` and, where it matters, the nginx source; a bug fix shows the
-test failing on the base branch and passing on the head; expectations assert
+against `src/` and, where it matters, the nginx source; a bug fix has its
+regression test in a commit of its own before the fix commit, and the
+reviewer has run the suite at both commits (failing, then passing, with
+results matching what the author quoted); expectations assert
 on real responses, not only on "not 500"; the CI result on the head commit;
 compatibility notes in the PR body match the diff; nothing in the diff, the
 commit messages or the PR text discloses an unpublished vulnerability or a
@@ -62,8 +64,8 @@ these hold:
    on a run whose merge ref includes the current base. When the base moved
    after the last run, update the branch and let CI run again. A run made
    green by skipping or disabling tests does not count.
-3. The change is inside the agreed scope, or is a bug fix with the evidence
-   above, or changes documentation only.
+3. The change is inside the agreed scope, or is a bug fix with the two-commit
+   evidence described under "Writing tests", or changes documentation only.
 4. The review above is recorded on the PR and no "must fix" item is open.
 5. The scrub for secrets and unpublished vulnerability details passed.
 6. The PR has no conflicts with its base.
@@ -104,7 +106,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `build/nginx/logs/` (`build_dynamic/nginx/logs/` for dynamic builds);
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
-- `test.sh` listens on fixed ports (18080-18088, 18101-18103, 18110-18116,
+- `test.sh` listens on fixed ports (18080-18088, 18101-18103, 18110-18131,
   12345-12358; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 12399 to a test in
   `test/t/ngx_mruby.rb`) and
@@ -143,8 +145,26 @@ sh test.sh
   `test/html/`, and assertions in `test/t/cases/<name>.rb` (see
   `docs/test/README.md`). Edit `test/conf/nginx.conf` and
   `test/t/ngx_mruby.rb` only for tests that need the main server.
-- A new regression test must fail without the fix and pass with it. Show both
-  results in the PR.
+- A bug fix comes as two commits: the first adds the regression test and
+  nothing else, the second adds the fix.
+  - The author runs the suite at each commit (it fails at the first because
+    of the new test and nothing else, and passes at the second) and quotes
+    both results in the PR body, with the command and the nginx version. The reviewer checks out each commit and repeats
+    the two runs. A test that is only shown failing on the base branch in
+    prose, or that lands in the same commit as the fix, does not count.
+  - For a bug that only valgrind or a sanitizer reports (a leak, an
+    undefined-behavior report), "fails" means the report in
+    `build/nginx/logs/error.log` or the valgrind output that the new test
+    provokes (quote it; see `docs/test/README.md`). Sanitizer builds need a
+    checkout of their own.
+  - When switching between the two commits, touch the `.c` files that
+    include a changed header before building: headers in `src/` are not
+    make dependencies, so an unchanged `.c` is not rebuilt otherwise.
+  - The merge commit keeps the red first commit in the history, so
+    `git bisect` needs `git bisect skip` on it.
+  - When no harness test can express the bug (build, CI or packaging
+    problems), say so in the PR and ask the owner what evidence to use
+    instead.
 - Assert on the actual response (body, headers, status), not only on "not 500".
 - Do not change existing expectations, or remove or skip tests, without the
   owner's approval. If an expectation looks wrong, say so in the PR instead.
