@@ -87,8 +87,8 @@ sh test.sh                          # full run: fetch nginx (version in ./nginx_
 ONLY_BUILD_NGX_MRUBY=1 sh test.sh   # fast loop: skip fetch/configure, rebuild changed sources, re-run tests
 BUILD_DYNAMIC_MODULE=1 sh test.sh   # build as a dynamic module (uses build_dynamic/ instead of build/)
 NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
-sh test/soak/run.sh                 # memory soak test (Linux; own build in build_soak/, ports 12360-12361)
-sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12371)
+sh test/soak/run.sh                 # memory soak test (Linux; own build in build_soak/, ports 12360-12362)
+sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12372)
 ```
 
 - The first full run takes a few minutes (it clones mrbgems from GitHub and builds
@@ -106,20 +106,25 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `build/nginx/logs/` (`build_dynamic/nginx/logs/` for dynamic builds);
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
-- `test.sh` listens on fixed ports (18080-18088, 18101-18103, 18110-18131,
-  12345-12358; 18116 and 12357 belong to the second nginx that
-  `test/t/cases/_second_instance.rb` starts, 12399 to a test in
-  `test/t/ngx_mruby.rb`) and
+- `test.sh` listens on fixed ports (18080-18088, 18101-18103, 18110-18132,
+  12345-12358, 12372-12373; 18116 and 12357 belong to the second nginx that
+  `test/t/cases/_second_instance.rb` starts, 12372 and 12373 to the mock LLM
+  upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
+  in `test/t/ngx_mruby.rb`) and
   kills every running `nginx` process before it starts. Run only one `test.sh` per
   machine at a time, and wait if an nginx you did not start is running.
 - `test/soak/run.sh` builds its own nginx in `build_soak/` (it does not touch the
-  `test.sh` build), listens on 12360 and 12361 (`SOAK_PORT_BASE` moves both) and
-  stops only the nginx it started. `test.sh` kills the soak's nginx too, so do not
+  `test.sh` build), listens on 12360 and 12361, and starts the mock LLM upstream
+  (`test/soak/mock_llm.rb`) on 12362 for the `agent_*` scenarios
+  (`SOAK_PORT_BASE` moves all three). It stops only the processes it started.
+  `test.sh` kills the soak's nginx too, so do not
   run both at the same time on one machine. The soak reads `/proc`: on macOS, run
   it in a Linux container. See "Soak test for memory" in `docs/test/README.md`.
 - `test/perf/compare.sh` builds the base and the head in `build_perf/` (it does not
-  touch the `test.sh` build), listens on 12370 and 12371 (`PERF_PORT_BASE` moves
-  both) and stops only the nginx it started. `test.sh` kills it too, so do not run
+  touch the `test.sh` build), listens on 12370 and 12371, and starts the mock LLM
+  upstream on 12372 for the agent proxy scenarios (`PERF_PORT_BASE` moves all
+  three). It stops only the processes it started. `test.sh` kills it too (and uses
+  12372 for its own mock), so do not run
   both at the same time on one machine. It needs valgrind's `callgrind_control` and
   `vgdb`: on macOS, run it in a Linux container. See "Performance comparison with
   callgrind" in `docs/test/README.md`.
