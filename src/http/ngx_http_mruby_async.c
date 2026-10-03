@@ -36,6 +36,19 @@ typedef struct {
   ngx_str_t *uri;
 } ngx_mrb_async_http_ctx_t;
 
+#ifdef NGX_MRUBY_DEBUG_STATS
+/*
+// Timers added by Nginx::Async.sleep that have neither fired nor been
+// deleted. Signed, so that a timer counted down twice shows as negative.
+*/
+static ngx_int_t ngx_mrb_async_debug_timers_count = 0;
+
+ngx_int_t ngx_mrb_async_debug_timers(void)
+{
+  return ngx_mrb_async_debug_timers_count;
+}
+#endif
+
 mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc, mrb_value *result)
 {
   struct RProc *handler_proc;
@@ -155,6 +168,10 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
   ngx_http_mruby_ctx_t *ctx;
   ngx_int_t rc = NGX_OK;
 
+#ifdef NGX_MRUBY_DEBUG_STATS
+  ngx_mrb_async_debug_timers_count--;
+#endif
+
   re = ev->data;
   ctx = ngx_mrb_http_get_module_ctx(NULL, re->r);
 
@@ -173,6 +190,9 @@ static void ngx_mrb_async_sleep_cleanup(void *data)
   ngx_event_t *ev = (ngx_event_t *)data;
 
   if (ev->timer_set) {
+#ifdef NGX_MRUBY_DEBUG_STATS
+    ngx_mrb_async_debug_timers_count--;
+#endif
     ngx_del_timer(ev);
     return;
   }
@@ -212,6 +232,9 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ev->log = ngx_cycle->log;
 
   ngx_add_timer(ev, (ngx_msec_t)timer);
+#ifdef NGX_MRUBY_DEBUG_STATS
+  ngx_mrb_async_debug_timers_count++;
+#endif
 
   cln = ngx_http_cleanup_add(r, 0);
   if (cln == NULL) {

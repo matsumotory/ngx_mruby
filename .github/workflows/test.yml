@@ -184,23 +184,76 @@ jobs:
           # When nginx could not bind a test port, show who holds it.
           sudo ss -tanpo '( sport >= :58080 and sport <= :58199 ) or ( sport >= :12345 and sport <= :12399 )' || true
 
+  # Memory soak test (docs/test/README.md, "Soak test for memory"): an -O2
+  # build without MRB_GC_STRESS and --with-debug, many requests per scenario,
+  # and the worker's GC roots, live objects, timers, file descriptors,
+  # connections and RSS compared between samples.
+  soak:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      # The same reservation as in the build job, and first for the same
+      # reason: it only affects ports assigned after it is set. The soak ports
+      # (12360 and 12361) lie in the reserved block 12345-12399.
+      - name: Reserve the test ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=58080-58199,12345-12399
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The soak build uses the default gcc and no valgrind (test/soak/run.sh).
+      - name: install
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get -qq install rake bison git gperf zlib1g-dev ruby
+      - name: soak
+        env:
+          NUM_THREADS_ENV: 1
+        run: sh test/soak/run.sh
+      - name: after_failure
+        if: failure()
+        run: |
+          logs=build_soak/nginx/soak/logs
+          for f in "$logs"/error.*.log "$logs"/stderr.*.log; do
+            if [ -e "$f" ]; then
+              echo "=== $f (last 50 lines)"
+              tail -n 50 "$f"
+            fi
+          done
+          if [ -e "$logs/soak.log" ]; then
+            echo "=== $logs/soak.log (last 100 lines)"
+            tail -n 100 "$logs/soak.log"
+          fi
+      - name: Upload the soak logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: soak-logs
+          path: build_soak/nginx/soak/logs
+          if-no-files-found: ignore
+
   # The only status check that rulesets should require. Matrix job names
   # change whenever the matrix changes, so they cannot be required directly.
-  # "always()" makes this job run, and fail, when build failed or was
-  # cancelled; a skipped job would count as passing.
+  # "always()" makes this job run, and fail, when build or soak failed or
+  # was cancelled; a skipped job would count as passing.
   ci-ok:
     name: ci-ok
-    needs: [build]
+    needs: [build, soak]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check that every build job succeeded
+      - name: Check that every build and soak job succeeded
         env:
           BUILD_RESULT: ${{ needs.build.result }}
+          SOAK_RESULT: ${{ needs.soak.result }}
         run: |
           echo "build: ${BUILD_RESULT}"
+          echo "soak: ${SOAK_RESULT}"
+          failed=0
           if [ "${BUILD_RESULT}" != "success" ]; then
             echo "::error title=ci-ok::build finished with result '${BUILD_RESULT}', expected 'success'"
-            exit 1
+            failed=1
           fi
+          if [ "${SOAK_RESULT}" != "success" ]; then
+            echo "::error title=ci-ok::soak finished with result '${SOAK_RESULT}', expected 'success'"
+            failed=1
+          fi
+          exit "${failed}"

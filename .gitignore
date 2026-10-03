@@ -13,6 +13,7 @@ tags
 *~
 build/
 build_dynamic/
+build_soak/
 autom4te.cache/
 .openssl_build_done
 .openssl_configure_done

@@ -9,6 +9,7 @@
 #include "ngx_http_mruby_async.h"
 #include "ngx_http_mruby_connection.h"
 #include "ngx_http_mruby_core.h"
+#include "ngx_http_mruby_debug.h"
 #include "ngx_http_mruby_filter.h"
 #include "ngx_http_mruby_request.h"
 #include "ngx_http_mruby_ssl.h"
@@ -49,6 +50,10 @@ ngx_int_t ngx_mrb_class_init(mrb_state *mrb)
 #endif
   ngx_mrb_async_class_init(mrb, class);
   GC_ARENA_RESTORE;
+#ifdef NGX_MRUBY_DEBUG_STATS
+  ngx_mrb_debug_class_init(mrb, class);
+  GC_ARENA_RESTORE;
+#endif
 
   return NGX_OK;
 }
