@@ -5,15 +5,15 @@
 # 127.0.0.1.
 #
 # Modes:
-#   remote_port   GET /connection/remote_port on 58112 and print
+#   remote_port   GET /connection/remote_port on 18112 and print
 #                 "<client local port>|<response body>"
-#   filter_empty  GET /filter/output_empty on 58112 and print the status
+#   filter_empty  GET /filter/output_empty on 18112 and print the status
 #                 line, or "<closed>" when no byte comes back
-#   pp_v1_tcp4    PROXY protocol v1 line with TCP4 addresses to 58113
-#   pp_v1_tcp6    PROXY protocol v1 line with TCP6 addresses to 58113
-#   pp_v1_unknown PROXY protocol v1 line "PROXY UNKNOWN" to 58113
-#   pp_v2_tcp4    PROXY protocol v2 binary header with TCP4 addresses to 58113
-#   pp_none       no PROXY header to 58113
+#   pp_v1_tcp4    PROXY protocol v1 line with TCP4 addresses to 18113
+#   pp_v1_tcp6    PROXY protocol v1 line with TCP6 addresses to 18113
+#   pp_v1_unknown PROXY protocol v1 line "PROXY UNKNOWN" to 18113
+#   pp_v2_tcp4    PROXY protocol v2 binary header with TCP4 addresses to 18113
+#   pp_none       no PROXY header to 18113
 # The pp_* modes print the response body, or "<closed>" when nginx closes
 # the connection without a response. Every mode prints "<timeout>" when nginx
 # does not close the connection within LIMIT seconds. The limit only bounds a
@@ -75,25 +75,25 @@ end
 mode = ARGV[0]
 case mode
 when 'remote_port'
-  port, raw = send_raw(58112, '', '/connection/remote_port')
+  port, raw = send_raw(18112, '', '/connection/remote_port')
   puts "#{port}|#{body_of(raw)}"
 when 'filter_empty'
-  _, raw = send_raw(58112, '', '/filter/output_empty')
+  _, raw = send_raw(18112, '', '/filter/output_empty')
   puts(raw.nil? || raw.empty? ? '<closed>' : raw.split("\r\n").first)
 when 'pp_v1_tcp4'
-  _, raw = send_raw(58113, "PROXY TCP4 192.0.2.10 192.0.2.20 40000 8443\r\n", '/proxy_protocol')
+  _, raw = send_raw(18113, "PROXY TCP4 192.0.2.10 192.0.2.20 40000 8443\r\n", '/proxy_protocol')
   puts body_of(raw)
 when 'pp_v1_tcp6'
-  _, raw = send_raw(58113, "PROXY TCP6 2001:db8::1 2001:db8::2 40001 443\r\n", '/proxy_protocol')
+  _, raw = send_raw(18113, "PROXY TCP6 2001:db8::1 2001:db8::2 40001 443\r\n", '/proxy_protocol')
   puts body_of(raw)
 when 'pp_v1_unknown'
-  _, raw = send_raw(58113, "PROXY UNKNOWN\r\n", '/proxy_protocol')
+  _, raw = send_raw(18113, "PROXY UNKNOWN\r\n", '/proxy_protocol')
   puts body_of(raw)
 when 'pp_v2_tcp4'
-  _, raw = send_raw(58113, pp_v2_tcp4, '/proxy_protocol')
+  _, raw = send_raw(18113, pp_v2_tcp4, '/proxy_protocol')
   puts body_of(raw)
 when 'pp_none'
-  _, raw = send_raw(58113, '', '/proxy_protocol')
+  _, raw = send_raw(18113, '', '/proxy_protocol')
   puts body_of(raw)
 else
   warn "unknown mode: #{mode}"
