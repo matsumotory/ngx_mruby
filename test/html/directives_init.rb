@@ -1,5 +1,6 @@
-# mruby_init hook, file version, used by test/conf/nginx.conf.
-# It replaces the former mruby_init_code line, because both directives
-# share one slot and nginx rejects the second one as duplicated.
-p "[#{Process.pid}] init master process"
-$g3_init_order = ["init"]
+# mruby_init hook, file version. test/t/cases/directives.rb runs it with
+# nginx -t, and test/t/cases/_second_instance.rb starts a second nginx that
+# loads it. The p line shows that the file ran. directives_init_worker.rb and
+# a request to the second nginx read the global variable.
+p "mruby_init file"
+$init_order = ["init"]

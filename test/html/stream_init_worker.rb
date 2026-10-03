@@ -1,5 +1,4 @@
-# Loaded by mruby_stream_init_worker in test/conf/nginx.stream.conf. The file
-# directive comes after the inline mruby_stream_init_worker_code there and
-# replaces it.
-p "ngx_mruby: STREAM: mruby_stream_init_worker"
-Userdata.new.g4_stream_trace = "#{Userdata.new.g4_stream_trace},init_worker_file"
+# mruby_stream_init_worker hook, file version. test/t/cases/_second_instance.rb
+# starts a second nginx that loads it.
+p "mruby_stream_init_worker file"
+Userdata.new.init_trace = "#{Userdata.new.init_trace},init_worker_file"

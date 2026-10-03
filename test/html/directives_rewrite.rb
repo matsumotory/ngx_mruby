@@ -2,5 +2,5 @@
 # test/conf/conf.d/30-directives.conf. It returns DECLINED so that nginx
 # continues to the access phase.
 r = Nginx::Request.new
-r.headers_in["X-G3-Trace"] = "#{r.headers_in["X-G3-Trace"]},rewrite"
+r.headers_in["X-Phase-Trace"] = "#{r.headers_in["X-Phase-Trace"]},rewrite"
 Nginx.return Nginx::DECLINED
