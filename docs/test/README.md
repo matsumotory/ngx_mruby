@@ -248,14 +248,14 @@ largest over all scenarios and runs of a row:
 | aarch64, 1 run, `SOAK_N=100000`, without `MRB_USE_MALLOC_TRIM` | +288 kB | +3396 kB (`disconnect`) |
 | aarch64, 10 runs, `SOAK_N=20000` | +112 kB (`sub_request`) | +204 kB (`sleep`) |
 | aarch64, 1 run, `SOAK_N=100000` | +68 kB (`file`) | +160 kB (`file`) |
-| x86_64 (CI), 3 runs, `SOAK_N=20000` | +144 kB (`filter`) | +228 kB (`sub_request`) |
+| x86_64 (CI), 4 runs, `SOAK_N=20000` | +144 kB (`filter`) | +236 kB (`sleep`) |
 
 Without `malloc_trim(0)`, the `disconnect` scenario at `SOAK_N=300000` moved
 by +2832, -788 and +1088 kB from window to window, which is over a 512 kB
 limit for the last window, although its counters stayed the same and it grew
 less in all than at `SOAK_N=100000`. With it, the largest growth is 144 kB in
-the last window and 228 kB in all. The default limits, 512 kB for the last
-window and 1024 kB in all, are about 3.5 and 4.5 times these. The limit for
+the last window and 236 kB in all. The default limits, 512 kB for the last
+window and 1024 kB in all, are about 3.5 and 4.3 times these. The limit for
 the last window is the looser one because one window of a shared CI runner
 grew by 144 kB; the limit in all is the one that finds small leaks: a leak
 below about 50 bytes per request stays under 1024 kB over the 20000 requests
