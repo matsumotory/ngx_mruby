@@ -36,10 +36,40 @@ typedef struct {
   ngx_str_t *uri;
 } ngx_mrb_async_http_ctx_t;
 
+/*
+ * The fiber of a handler, allocated from the request pool. It is registered
+ * with mrb_gc_register once, when it is created, and unregistered once: when
+ * it ends, normally or with an exception, or when the request pool is
+ * destroyed while the fiber is still suspended. ctx->fiber_proc and re->fiber
+ * point to the first member.
+ */
+typedef struct {
+  mrb_value fiber;
+  mrb_state *mrb;
+  ngx_flag_t registered;
+} ngx_mrb_fiber_t;
+
+static void ngx_mrb_fiber_unregister(mrb_value *fiber_proc)
+{
+  ngx_mrb_fiber_t *f = (ngx_mrb_fiber_t *)fiber_proc;
+
+  if (f->registered) {
+    f->registered = 0;
+    mrb_gc_unregister(f->mrb, f->fiber);
+  }
+}
+
+static void ngx_mrb_fiber_cleanup(void *data)
+{
+  ngx_mrb_fiber_unregister(data);
+}
+
 mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc, mrb_value *result)
 {
   struct RProc *handler_proc;
   mrb_value *fiber_proc;
+  ngx_mrb_fiber_t *f;
+  ngx_pool_cleanup_t *cln;
   ngx_http_mruby_ctx_t *ctx;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
@@ -48,18 +78,35 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
   handler_proc = rproc;
   handler_proc->upper = NULL;
   handler_proc->e.target_class = mrb->object_class;
-  fiber_proc = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
+
+  f = ngx_pcalloc(r->pool, sizeof(ngx_mrb_fiber_t));
+  cln = ngx_pool_cleanup_add(r->pool, 0);
+  if (f == NULL || cln == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: failed to allocate the fiber", MODULE_NAME,
+                  __func__, __LINE__);
+    // ngx_mrb_run reads a fiber that is not alive and has no exception as a
+    // finished handler; with this status ngx_mrb_finalize_rputs returns 500,
+    // as it does after an exception
+    r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    return mrb_false_value();
+  }
+  f->mrb = mrb;
+  fiber_proc = &f->fiber;
+
   *fiber_proc = mrb_fiber_new(mrb, rproc);
   if (mrb->exc) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                   "%s NOTICE %s:%d: preparing fiber got the raise, leave the fiber", MODULE_NAME, __func__, __LINE__);
     return mrb_false_value();
-  } else {
-    // keeps the object from GC when can resume the fiber
-    // Don't forget to remove the object using
-    // mrb_gc_unregister, otherwise your object will leak
-    mrb_gc_register(mrb, *fiber_proc);
   }
+
+  // keeps the fiber from GC while it can be resumed; ngx_mrb_fiber_unregister
+  // removes it when the fiber ends, and the pool cleanup when the request
+  // ends first
+  mrb_gc_register(mrb, *fiber_proc);
+  f->registered = 1;
+  cln->handler = ngx_mrb_fiber_cleanup;
+  cln->data = f;
 
   return ngx_mrb_run_fiber(mrb, fiber_proc, result);
 }
@@ -78,15 +125,17 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   if (mrb->exc) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
-    mrb_gc_unregister(mrb, *fiber_proc);
+    ngx_mrb_fiber_unregister(fiber_proc);
     return mrb_false_value();
   }
 
   aliving = mrb_fiber_alive_p(mrb, *fiber_proc);
 
-  if (!mrb_test(aliving) && result != NULL) {
-    mrb_gc_unregister(mrb, *fiber_proc);
-    *result = handler_result;
+  if (!mrb_test(aliving)) {
+    ngx_mrb_fiber_unregister(fiber_proc);
+    if (result != NULL) {
+      *result = handler_result;
+    }
   }
 
   return aliving;
@@ -108,8 +157,8 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
       mrb_gc_arena_restore(re->mrb, ai);
       return NGX_DONE;
     } else {
-      // can not resume the fiber, the fiber was finished
-      mrb_gc_unregister(re->mrb, *re->fiber);
+      // can not resume the fiber, the fiber was finished (ngx_mrb_run_fiber
+      // has unregistered it)
       re->fiber = NULL;
     }
 
@@ -347,8 +396,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   re->fiber = ctx->fiber_proc;
-
-  mrb_gc_register(mrb, *re->fiber);
 
   actx = (ngx_mrb_async_http_ctx_t *)ngx_palloc(r->pool, sizeof(ngx_mrb_async_http_ctx_t));
   actx->uri = uri;
