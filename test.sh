@@ -101,6 +101,13 @@ echo "ngx_mruby testing ..."
 $MAKE install
 $PS_C nginx 2>/dev/null && $KILLALL nginx
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
+rm -rf ${NGINX_INSTALL_DIR}/conf/conf.d
+mkdir -p ${NGINX_INSTALL_DIR}/conf/conf.d/stream
+for f in test/conf/conf.d/*.conf test/conf/conf.d/stream/*.conf; do
+    [ -e "$f" ] || continue
+    case "$f" in */stream/*) d=${NGINX_INSTALL_DIR}/conf/conf.d/stream ;; *) d=${NGINX_INSTALL_DIR}/conf/conf.d ;; esac
+    sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" "$f" > "$d/$(basename "$f")"
+done
 cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' && sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' && cd -
 
 if [ $NGINX_SRC_MINOR -ge 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
@@ -111,6 +118,10 @@ if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
     sed -e "s|build/nginx|build_dynamic/nginx|g" ${NGINX_INSTALL_DIR}/conf/nginx.conf | tee ${NGINX_INSTALL_DIR}/conf/nginx.conf.tmp
     echo "load_module modules/ngx_http_mruby_module.so;" > ${NGINX_INSTALL_DIR}/conf/nginx.conf
     cat ${NGINX_INSTALL_DIR}/conf/nginx.conf.tmp >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
+    for f in ${NGINX_INSTALL_DIR}/conf/conf.d/*.conf ${NGINX_INSTALL_DIR}/conf/conf.d/stream/*.conf; do
+        [ -e "$f" ] || continue
+        sed -e "s|build/nginx|build_dynamic/nginx|g" "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+    done
 fi
 
 cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
@@ -142,6 +153,13 @@ echo ""
 echo ""
 sleep ${NGINX_HEATTIME} # waiting for nginx
 ./mruby/build/test/bin/mruby ./test/t/ngx_mruby.rb 2> ${NGINX_INSTALL_DIR}/logs/stderr.log
+for f in test/t/cases/*.rb; do
+    [ -e "$f" ] || continue
+    case "$f" in */_*) continue ;; esac
+    echo "ngx_mruby testing case: $f"
+    cat test/t/cases/_prelude.rb "$f" > ${NGINX_INSTALL_DIR}/logs/case.rb
+    ./mruby/build/test/bin/mruby ${NGINX_INSTALL_DIR}/logs/case.rb 2>> ${NGINX_INSTALL_DIR}/logs/stderr.log
+done
 echo "ngx_mruby testing ... Done"
 
 echo "test.sh ... successful"
