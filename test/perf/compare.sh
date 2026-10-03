@@ -20,8 +20,9 @@
 # (this script, test/perf/perf.rb and the scenarios in test/soak/) comes from
 # this checkout.
 #
-# The exit status is 1 when a scenario is 5% slower in head (PERF_FAIL_PERCENT)
-# or when a measurement of head fails.
+# The exit status is 1 when a scenario does 5% more work in head
+# (PERF_FAIL_PERCENT), when a measurement fails (in the base, an unexpected
+# response only marks the scenario n/a), or when no scenario was compared.
 
 set -e
 

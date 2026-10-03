@@ -1,9 +1,10 @@
 #!/bin/sh
 #
 # Build one checkout for the performance comparison and measure its
-# instructions per request with callgrind. Linux only, with valgrind (the
-# driver reads /proc and runs callgrind_control). See docs/test/README.md,
-# "Performance comparison with callgrind".
+# instructions per request with callgrind. Needs valgrind with
+# callgrind_control and vgdb, which work on Linux (on macOS, run it in a
+# Linux container). See docs/test/README.md, "Performance comparison with
+# callgrind".
 #
 #   sh test/perf/run.sh [SOURCE_DIR [NAME]]             # build, then measure
 #   ONLY_RUN=1 sh test/perf/run.sh [SOURCE_DIR [NAME]]  # measure the existing build

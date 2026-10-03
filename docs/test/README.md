@@ -436,10 +436,13 @@ therefore has to span many GC cycles. With `PERF_N=20000`, `hello` measured
 
 A scenario is `WARN` when its Ir per request without GC is 3% or more above
 the base (`PERF_WARN_PERCENT`), and `FAIL` from 5% (`PERF_FAIL_PERCENT`).
-The exit status is 1 when a scenario is `FAIL` or a measurement of the head
-fails (an unexpected response, a line at the `error` level or above in
-`error.log`, a timeout). A scenario whose measurement fails only in the base
-(a scenario that needs a feature of the head) is shown as `n/a`.
+The exit status is 1 when a scenario is `FAIL`, when a measurement fails
+(`ERROR`: an unexpected response, a line at the `error` level or above in
+`error.log`, a timeout, a missing dump, or a window that does not hold the
+requests, see "In CI"), or when no scenario was compared. The one exception
+is a base that answers with an unexpected response while the head passes,
+which is what a scenario that needs a feature of the head gets: it is shown
+as `n/a` and does not fail the run.
 
 The thresholds were checked with a null change on 2026-10-03: three runs of
 `compare.sh` on two checkouts with the same build inputs (`next` at
@@ -460,7 +463,12 @@ GC:
 | `file` | 14009 (13075) | +0.002% / +0.002% | +0.000% / +0.000% | -0.002% / -0.002% |
 
 The largest change is 0.008%, about 1 instruction per request, more than
-300 times below the 3% of `WARN`; `N` does not need to be raised. A request
+300 times below the 3% of `WARN`; `N` does not need to be raised. A later
+run on 2026-10-04, on new builds of the same two checkouts, measured
+`sub_request` at +0.076%
+(47501 and 47537 Ir per request without GC) and every other scenario
+within 0.011%: `sub_request`, which proxies to a second server, varies the
+most, on the CI runner as well (below). A request
 to `/status` that wakes `callgrind_control` costs about 12500 instructions
 (the connection included), and parts of two of them are in each window, at
 most about 0.01% of the smallest window (`hello`, 235 million
@@ -478,33 +486,40 @@ about 330 per request in `hello` and 1430 in `sub_request`.
 
 On the CI runner (ubuntu-22.04, x86_64, the same versions), the `perf` job
 of the pull request that added it is the same null change: the base was
-`next` at `f713d4e`, the head the merge commit. Three runs of that job (the
-first run and two re-runs of the job, each building both trees):
+`next` at `f713d4e`, the head the merge commit. Four runs of that job, each
+building both trees: runs 1 to 3 on the first commit of that pull request
+(the run and two re-runs of the job), run 4 on its second commit, which
+changed only the documentation:
 
-| Scenario | Base Ir/req (w/o GC) | Run 1 | Run 2 | Run 3 |
-|---|---|---|---|---|
-| `hello` | 11669 (11006) | -0.003% / -0.004% | -0.003% / -0.003% | +0.000% / +0.000% |
-| `headers` | 39424 (37267) | -0.002% / -0.002% | +0.000% / +0.000% | +0.000% / +0.000% |
-| `var` | 22383 (20706) | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
-| `filter` | 14569 (13636) | +0.000% / +0.001% | +0.003% / +0.004% | +0.000% / +0.000% |
-| `sleep` | 15833 (15068) | +0.006% / +0.006% | +0.000% / +0.000% | +0.001% / +0.001% |
-| `sub_request` | 49996 (48854) | +0.001% / +0.001% | +0.016% / +0.016% | -0.001% / -0.001% |
-| `file` | 14309 (13360) | +0.002% / +0.002% | +0.000% / +0.000% | -0.002% / -0.003% |
+| Scenario | Base Ir/req (w/o GC) | Run 1 | Run 2 | Run 3 | Run 4 |
+|---|---|---|---|---|---|
+| `hello` | 11669 (11006) | -0.003% / -0.004% | -0.003% / -0.003% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `headers` | 39424 (37267) | -0.002% / -0.002% | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `var` | 22383 (20706) | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `filter` | 14569 (13636) | +0.000% / +0.001% | +0.003% / +0.004% | +0.000% / +0.000% | +0.003% / +0.002% |
+| `sleep` | 15833 (15068) | +0.006% / +0.006% | +0.000% / +0.000% | +0.001% / +0.001% | +0.002% / +0.002% |
+| `sub_request` | 49996 (48854) | +0.001% / +0.001% | +0.016% / +0.016% | -0.001% / -0.001% | +0.020% / +0.021% |
+| `file` | 14309 (13360) | +0.002% / +0.002% | +0.000% / +0.000% | -0.002% / -0.003% | +0.000% / +0.001% |
 
-The largest change is 0.016% (`sub_request`, about 8 instructions per
-request); between runs, the base of `sub_request` moved by 0.042% (48836 to
-48856 without GC), the most of any scenario. The numbers differ from those
-of aarch64 because the instruction set differs; on x86_64, callgrind shows
-no recursion suffix on the GC entry points, and the number without GC again
+Between base and head of one run, the largest change is about 0.02%
+(`sub_request` in run 4: 48810 and 48820 Ir per request without GC, about
+10 instructions). Between runs, the same build moves by up to about 0.1%:
+the base of `sub_request` measured from 48810 to 48856 without GC over the
+four runs (0.095%); every other scenario stayed within 0.011%. Base and
+head are measured in the same job, one after the other, so it is the change
+within a run that the thresholds see. The numbers differ from those of
+aarch64 because the instruction set differs; on x86_64, callgrind shows no
+recursion suffix on the GC entry points, and the number without GC again
 equals the inclusive cost of `mrb_incremental_gc` that `callgrind_annotate`
 prints. The job is advisory (not needed by `ci-ok`) until it has also run on
 pull requests that change the code; see "In CI" below.
 
 ### Running it
 
-The driver reads `/proc` and needs Linux, CRuby 3.0 or later and valgrind
-with `callgrind_control` (and its helper `vgdb`). To compare this checkout
-with `origin/next` in a container, in one command:
+The driver needs CRuby 3.0 or later and valgrind with `callgrind_control`
+and its helper `vgdb`, which work on Linux; `perf.rb` stops at once
+without them. On macOS, run it in a Linux container. To compare this
+checkout with `origin/next` in a container, in one command:
 
 ```console
 $ rm -rf build_perf/base-src && git archive --prefix=build_perf/base-src/ origin/next | tar -x && docker run --rm -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev valgrind >/dev/null && sh test/perf/compare.sh build_perf/base-src'
@@ -545,18 +560,41 @@ not run it at the same time.
 ### In CI
 
 The `perf` job of `.github/workflows/test.yml` runs on pull requests that
-change `src/`, `mrbgems/`, `mruby/`, `build_config.rb`, `test/perf/`,
-`test/build_release.sh` or the scenarios in `test/soak/`, or that have the
-label `perf` (read when the job runs, so adding the label and re-running the
-job is enough). The checkout of a pull request is the merge commit
-(`refs/pull/N/merge`); the job compares its first parent, the base branch,
-with the merge commit, so the difference is the change of the pull request
-as it would be merged. The table is in the job summary, `WARN` and `FAIL`
-rows are annotations, and the job fails on `FAIL`. The job is advisory for
-now: `ci-ok` does not need it, so a `FAIL` does not block a merge. The null
-calibration on the runner is above; once the job has also run on pull
-requests that change `src/` or `mrbgems/` without false alarms, it is to be
-added to the `needs` of `ci-ok`.
+change an input of the measured binary, the measurement or the workflow, or
+that have the label `perf` (read when the job runs, so adding the label and
+re-running the job is enough). The inputs of the binary are what
+`test/build_release.sh` copies: `src/`, `mrbgems/`, `mruby/`, `dependence/`
+(ngx_devel_kit, which `Makefile.in` adds to nginx) and the top-level build
+files `build_config.rb`, `configure`, `config.in`, `Makefile.in`,
+`build.sh` and `nginx_version`. The measurement is `test/perf/`,
+`test/build_release.sh` and the scenario files in `test/soak/`
+(`nginx.conf`, `scenarios.rb`, `http_client.rb`, `handlers/`).
+
+A change of `nginx_version` builds the head with another nginx, so its
+`WARN` or `FAIL` measures nginx's own cost as well as ngx_mruby's; read the
+functions of the profiles (below) before taking it as a regression of
+ngx_mruby.
+
+The checkout of a pull request is the merge commit (`refs/pull/N/merge`);
+the job compares its first parent, the base branch, with the merge commit,
+so the difference is the change of the pull request as it would be merged.
+The table is in the job summary, `WARN`, `FAIL` and `ERROR` rows are
+annotations, and the job fails on `FAIL` and `ERROR`. A measurement fails
+(`ERROR`) when nginx does not start or answer, `callgrind_control` fails or
+times out, the dump is missing, `error.log` has a line at the `error` level
+or above, or the window does not hold the requests: 0 Ir, or not exactly
+one call of `ngx_mrb_run` per request (`callgrind_control` prints "OK."
+even when vgdb did not reach the process, so an empty window is caught
+here). Only a base that answers a scenario with an unexpected response (a
+scenario that needs a feature of the head) gives `n/a`, and a run in which
+no scenario was compared fails.
+
+The job is advisory for now: `ci-ok` does not need it, so a `FAIL` does not
+block a merge. Instruction counts do not vary with the runner's speed
+(calibration above), so the plan (Pillar E of
+`docs/proposals/v3-plan.md`) is to gate on them: once the job has also run
+on pull requests that change `src/` or `mrbgems/` without false alarms, it
+is to be added to the `needs` of `ci-ok`.
 
 The artifact `perf-callgrind` has the report, and for `base` and `head` the
 profiles of the windows (`callgrind/callgrind.out.<scenario>`), the output

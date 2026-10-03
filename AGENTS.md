@@ -115,6 +115,12 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   stops only the nginx it started. `test.sh` kills the soak's nginx too, so do not
   run both at the same time on one machine. The soak reads `/proc`: on macOS, run
   it in a Linux container. See "Soak test for memory" in `docs/test/README.md`.
+- `test/perf/compare.sh` builds the base and the head in `build_perf/` (it does not
+  touch the `test.sh` build), listens on 12370 and 12371 (`PERF_PORT_BASE` moves
+  both) and stops only the nginx it started. `test.sh` kills it too, so do not run
+  both at the same time on one machine. It needs valgrind's `callgrind_control` and
+  `vgdb`: on macOS, run it in a Linux container. See "Performance comparison with
+  callgrind" in `docs/test/README.md`.
 
 ### When nginx.org is unreachable
 

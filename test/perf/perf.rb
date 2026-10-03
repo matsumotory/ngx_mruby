@@ -16,7 +16,8 @@
 # with callgrind_control, and stops nginx. The dump holds the cost of the
 # PERF_N requests and nothing else; Ir per request is its Ir divided by
 # PERF_N. The GC-excluded number leaves out the calls into mrb_incremental_gc
-# and mrb_full_gc.
+# and mrb_full_gc. A window with 0 Ir, or without exactly one call of
+# ngx_mrb_run per request (REQUEST_FUNCTION), fails the measurement.
 #
 # Why master_process off: callgrind_control reaches a process through
 # valgrind's gdbserver (vgdb), and vgdb does not serve a process that valgrind
@@ -25,8 +26,9 @@
 #
 # With two builds, the change of head against base is judged per scenario on
 # the GC-excluded number: WARN from PERF_WARN_PERCENT, FAIL from
-# PERF_FAIL_PERCENT. The exit status is 1 when a scenario fails, or when a
-# measurement of the last build fails.
+# PERF_FAIL_PERCENT. The exit status is 1 when a scenario is FAIL, when a
+# measurement fails (in the base, only an unexpected response is not an
+# error: the scenario is shown as n/a), or when no scenario was compared.
 #
 # See docs/test/README.md, "Performance comparison with callgrind".
 
@@ -77,6 +79,15 @@ GC_ALLOCATORS = %w[mrb_obj_alloc mrb_malloc mrb_malloc_simple mrb_calloc mrb_rea
                    mrb_alloca gc_start mrb_garbage_collect mrb_objspace_each_objects].freeze
 GC_SOURCE = 'mruby/src/gc.c'
 
+# A function that the scenarios run a known number of times per request. The
+# window must hold exactly PERF_N times that many calls of it. A window that
+# is empty (callgrind_control prints "OK." even when vgdb did not reach the
+# process, so the instrumentation may not have been switched on) or that
+# holds other requests fails the measurement instead of giving a number.
+REQUEST_FUNCTION = 'ngx_mrb_run'
+# Calls of REQUEST_FUNCTION per request, by scenario; 1 when not listed.
+REQUEST_FUNCTION_CALLS = Hash.new(1).freeze
+
 # Seconds. Everything runs under valgrind, which is slow to start, and the
 # first requests after the instrumentation is switched on are translated again.
 START_TIMEOUT = 300
@@ -90,6 +101,11 @@ WAKE_INTERVAL = 0.2
 LOG_PATTERNS = ['[error]', '[alert]', '[crit]', '[emerg]'].freeze
 
 class PerfError < StandardError; end
+
+# A response that is not the one the scenario expects. In the base this is
+# what a scenario that needs a feature of the head gets; every other failure
+# of a measurement is an error of the measurement.
+class ResponseError < PerfError; end
 
 def monotonic
   Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -237,7 +253,14 @@ class NginxUnderCallgrind
       nil
     end
     deadline = monotonic + STOP_TIMEOUT
-    sleep 0.1 until exited? || monotonic > deadline
+    next_poke = monotonic + WAKE_INTERVAL
+    until exited? || monotonic > deadline
+      if monotonic >= next_poke
+        poke
+        next_poke = monotonic + WAKE_INTERVAL
+      end
+      sleep 0.1
+    end
     unless exited?
       problems << "nginx did not exit within #{STOP_TIMEOUT} s of SIGQUIT; killed"
       begin
@@ -271,6 +294,17 @@ class NginxUnderCallgrind
     false
   end
 
+  # Under valgrind, SIGQUIT did not end nginx's wait in epoll_wait: nginx
+  # logged the signal and shut down only at its next event, and with no
+  # connection open (a base that failed its first response) it was killed
+  # after STOP_TIMEOUT. A connection is such an event; it comes after the
+  # dump, so it is not in the window.
+  def poke
+    Socket.tcp('127.0.0.1', PORT, connect_timeout: 1).close
+  rescue SystemCallError
+    nil
+  end
+
   # Keeps the logs as error.<scenario>.log and stderr.<scenario>.log and
   # returns the lines that match LOG_PATTERNS.
   def scan_logs
@@ -301,7 +335,7 @@ end
 def check_response(scenario, status, headers, body)
   return if expected_response?(scenario, status, headers, body)
 
-  raise PerfError, "#{scenario.path}: unexpected response #{status} #{body.inspect} #{headers.inspect}"
+  raise ResponseError, "#{scenario.path}: unexpected response #{status} #{body.inspect} #{headers.inspect}"
 end
 
 # Waits until stub_status shows that the only open connection is the one
@@ -336,8 +370,9 @@ def keepalive_requests(scenario, count)
   client
 end
 
-# Reads a callgrind profile. Returns the total Ir, and the Ir and number of
-# the calls into the GC.
+# Reads a callgrind profile. Returns the total Ir, the Ir and number of the
+# calls into the GC, and the number of calls of REQUEST_FUNCTION (with or
+# without a recursion suffix).
 #
 # Format: https://valgrind.org/docs/manual/cl-format.html. A cost line is
 # "<positions> <events>"; the cost line after a calls= line is the inclusive
@@ -376,6 +411,7 @@ def parse_profile(path)
   self_ir = 0
   gc_ir = 0
   gc_calls = 0
+  request_calls = 0
   file = fn = fn_file = cfn = nil
   call_count = nil
   File.foreach(path, chomp: true) do |line|
@@ -387,6 +423,7 @@ def parse_profile(path)
           gc_ir += ir
           gc_calls += call_count
         end
+        request_calls += call_count if cfn.to_s.sub(/'\d+\z/, '') == REQUEST_FUNCTION
         call_count = nil
       else
         self_ir += ir
@@ -406,7 +443,20 @@ def parse_profile(path)
   raise PerfError, "#{path}: no totals line" unless totals
   raise PerfError, "#{path}: totals #{totals} differ from the sum of the costs #{self_ir}" unless totals == self_ir
 
-  { ir: totals, gc_ir: gc_ir, gc_calls: gc_calls }
+  { ir: totals, gc_ir: gc_ir, gc_calls: gc_calls, request_calls: request_calls }
+end
+
+# Fails the measurement unless the window holds the PERF_N requests of the
+# scenario: Ir above 0 and PERF_N times REQUEST_FUNCTION_CALLS calls of
+# REQUEST_FUNCTION.
+def check_window(scenario, dump, profile)
+  raise PerfError, "#{dump}: the window is empty (0 Ir); the instrumentation was not switched on" if profile[:ir].zero?
+
+  per_request = REQUEST_FUNCTION_CALLS[scenario.name]
+  return if profile[:request_calls] == N * per_request
+
+  raise PerfError, "#{dump}: #{profile[:request_calls]} calls of #{REQUEST_FUNCTION} in the window, " \
+                   "expected #{N * per_request} (#{per_request} per request, PERF_N=#{N})"
 end
 
 def measure(build, scenario)
@@ -427,12 +477,14 @@ def measure(build, scenario)
     wakes += nginx.control('--dump')
     dump = nginx.dump_file
     profile = parse_profile(dump)
+    check_window(scenario, dump, profile)
     result.merge!(profile, wakes: wakes,
                            ir_per_request: profile[:ir].to_f / N,
                            nogc_per_request: (profile[:ir] - profile[:gc_ir]).to_f / N,
                            gc_calls_per_1000: profile[:gc_calls] * 1000.0 / N)
   rescue PerfError, Client::Timeout, SystemCallError, IOError => e
     result[:problems] << "#{e.class}: #{e.message}"
+    result[:unexpected_response] = e.is_a?(ResponseError)
   ensure
     client&.close
     result[:problems].concat(nginx.stop(dump))
@@ -474,9 +526,16 @@ def gc_share(result)
   format('%.1f%%', result[:gc_ir] * 100.0 / result[:ir])
 end
 
+# Returns [header, rows, notes, failed]. With two builds, a scenario is
+# compared when both measurements succeeded. It is "n/a" when only the base
+# failed and its failure was an unexpected response (a scenario that needs a
+# feature of the head); any other failure is an ERROR and fails the run, and
+# so does a run in which no scenario was compared.
 def summarize(builds, scenarios, results)
   rows = []
+  notes = []
   failed = false
+  compared = 0
   scenarios.each do |scenario|
     rs = builds.map { |b| results[[b.label, scenario.name]] }
     ok = rs.map { |r| r[:problems].empty? }
@@ -494,6 +553,7 @@ def summarize(builds, scenarios, results)
 
     base, head = rs
     if ok.all?
+      compared += 1
       total = percent(base[:ir_per_request], head[:ir_per_request])
       nogc = percent(base[:nogc_per_request], head[:nogc_per_request])
       v = verdict(nogc)
@@ -501,11 +561,16 @@ def summarize(builds, scenarios, results)
       rows << [scenario.name, fmt_ir(base[:ir_per_request]), fmt_ir(head[:ir_per_request]), fmt_change(total),
                fmt_ir(base[:nogc_per_request]), fmt_ir(head[:nogc_per_request]), fmt_change(nogc),
                "#{gc_share(base)}/#{gc_share(head)}", v]
+    elsif ok.last && base[:unexpected_response]
+      rows << [scenario.name, '-', '-', '-', '-', '-', '-', '-', 'n/a (base: unexpected response)']
     else
-      # A scenario that only the head can serve (a new feature) is not compared.
-      failed ||= !ok.last
-      rows << [scenario.name, '-', '-', '-', '-', '-', '-', '-', ok.last ? 'n/a (base failed)' : 'ERROR']
+      failed = true
+      rows << [scenario.name, '-', '-', '-', '-', '-', '-', '-', 'ERROR']
     end
+  end
+  if builds.size == 2 && compared.zero?
+    failed = true
+    notes << 'perf: no scenario was compared'
   end
   header = if builds.size == 1
              ['scenario', 'Ir/req', 'Ir/req w/o GC', 'GC share', 'GC calls/1000 req', 'result']
@@ -513,7 +578,7 @@ def summarize(builds, scenarios, results)
              ['scenario', "#{builds[0].label} Ir/req", "#{builds[1].label} Ir/req", 'change',
               "#{builds[0].label} w/o GC", "#{builds[1].label} w/o GC", 'change w/o GC', 'GC share', 'result']
            end
-  [header, rows, failed]
+  [header, rows, notes, failed]
 end
 
 def write_step_summary(header, rows)
@@ -584,7 +649,11 @@ builds = ARGV.zip(labels).map { |dir, label| Build.new(label || File.basename(Fi
 builds.each do |b|
   abort "perf: #{b.nginx_bin} not found; build it with test/perf/run.sh or test/perf/compare.sh" unless File.executable?(b.nginx_bin)
 end
-abort 'perf: Linux only (reads /proc)' unless File.directory?('/proc/self/fd')
+# callgrind_control and vgdb, which it runs, work on Linux.
+on_path = ->(cmd) { ENV['PATH'].to_s.split(File::PATH_SEPARATOR).any? { |dir| File.executable?(File.join(dir, cmd)) } }
+unless RUBY_PLATFORM.include?('linux') && %w[valgrind callgrind_control vgdb].all?(&on_path)
+  abort 'perf: needs Linux with valgrind, callgrind_control and vgdb on PATH'
+end
 
 scenarios = selected_scenarios
 builds.each(&:write_conf)
@@ -602,13 +671,14 @@ scenarios.each do |scenario|
   end
 end
 
-header, rows, failed = summarize(builds, scenarios, results)
+header, rows, notes, failed = summarize(builds, scenarios, results)
 lines = format_table(header, rows)
 problems = results.reject { |_k, r| r[:problems].empty? }.flat_map do |(label, name), r|
   ["#{name} (#{label}):", *r[:problems].map { |p| "  #{p}" }]
 end
 report = ["perf: N=#{N} WARMUP=#{WARMUP}; Ir per request of nginx; " \
           "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number without GC", *gem_lines, '', *lines]
+report += ['', *notes] unless notes.empty?
 report += ['', *problems] unless problems.empty?
 log
 report.each { |line| log(line) }

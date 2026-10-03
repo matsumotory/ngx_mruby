@@ -218,9 +218,11 @@ jobs:
   # Performance comparison (docs/test/README.md, "Performance comparison with
   # callgrind"): instructions per request of the PR's base and of the PR
   # merged into it, both release builds, measured with callgrind. It runs
-  # when the PR changes the code or the measurement, or has the label "perf".
-  # Advisory for now: ci-ok does not need it until it has also run on pull
-  # requests that change the code (calibration in the docs).
+  # when the PR changes an input of the measured binary (the code, the
+  # vendored trees, the top-level build files, nginx_version), the
+  # measurement or this workflow, or has the label "perf". Advisory for now:
+  # ci-ok does not need it until it has also run on pull requests that change
+  # the code (calibration in the docs).
   perf:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
@@ -244,7 +246,13 @@ jobs:
           # The labels are read now, not from the event, so that adding the
           # label and re-running the job is enough.
           gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name' > "$RUNNER_TEMP/labels"
-          if grep -qE '^(src/|mrbgems/|mruby/|build_config\.rb$|test/perf/|test/build_release\.sh$|test/soak/(nginx\.conf|scenarios\.rb|http_client\.rb|handlers/))' "$RUNNER_TEMP/changed"; then
+          # The inputs of the measured binary are those that
+          # test/build_release.sh copies: src/, mrbgems/, mruby/, dependence/
+          # (ngx_devel_kit, added to nginx by Makefile.in) and the top-level
+          # build files. Then the measurement and this workflow.
+          inputs='^(src/|mrbgems/|mruby/|dependence/|(build_config\.rb|configure|config\.in|Makefile\.in|build\.sh|nginx_version)$'
+          measurement='|test/perf/|test/build_release\.sh$|test/soak/(nginx\.conf|scenarios\.rb|http_client\.rb|handlers/)|\.github/workflows/test\.yml$)'
+          if grep -qE "$inputs$measurement" "$RUNNER_TEMP/changed"; then
             echo "The PR changes files that the comparison measures."
             echo "run=yes" >> "$GITHUB_OUTPUT"
           elif grep -qx perf "$RUNNER_TEMP/labels"; then
