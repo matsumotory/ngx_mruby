@@ -601,6 +601,11 @@ static ngx_int_t ngx_http_mruby_init_worker(ngx_cycle_t *cycle)
 
   mmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_mruby_module);
 
+  /* the configuration has no http {} block */
+  if (mmcf == NULL) {
+    return NGX_OK;
+  }
+
   if (mmcf->init_worker_code != NGX_CONF_UNSET_PTR) {
     return ngx_mrb_run_cycle(cycle, mmcf->state, mmcf->init_worker_code);
   }
@@ -613,6 +618,11 @@ static void ngx_http_mruby_exit_worker(ngx_cycle_t *cycle)
   ngx_http_mruby_main_conf_t *mmcf;
 
   mmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_mruby_module);
+
+  /* the configuration has no http {} block */
+  if (mmcf == NULL) {
+    return;
+  }
 
   if (mmcf->exit_worker_code != NGX_CONF_UNSET_PTR) {
     ngx_mrb_run_cycle(cycle, mmcf->state, mmcf->exit_worker_code);
