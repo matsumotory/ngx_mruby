@@ -33,8 +33,9 @@
 # With two builds, the change of head against base is judged per scenario on
 # the GC-excluded number: WARN from PERF_WARN_PERCENT, FAIL from
 # PERF_FAIL_PERCENT. The exit status is 1 when a scenario is FAIL, when a
-# measurement fails (in the base, only an unexpected response is not an
-# error: the scenario is shown as n/a), or when no scenario was compared.
+# measurement fails (in the base, only an unexpected response with no other
+# problem is not an error: the scenario is shown as n/a), or when no scenario
+# was compared.
 #
 # See docs/test/README.md, "Performance comparison with callgrind".
 
@@ -128,18 +129,41 @@ LOG_REQUEST_FUNCTIONS = %w[ngx_http_log_request].freeze
 SET_CODE_FUNCTIONS = %w[ngx_http_mruby_set_inline_handler].freeze
 SCENARIO_REQUEST_FUNCTIONS = { 'ruby_call_1' => SET_CODE_FUNCTIONS, 'ruby_call_10' => SET_CODE_FUNCTIONS }.freeze
 
-# Functions whose calls per request are reported but not checked: the Ruby
-# runs (ngx_mrb_run starts a fiber for each run of Ruby code, and nothing
-# else calls ngx_mrb_start_fiber; callgrind records these calls also where
-# it misses one of ngx_mrb_run, see SET_CODE_FUNCTIONS) and the reads of the
-# upstream response in unbuffered mode (nginx reads up to proxy_buffer_size
-# each time; how many reads a response takes depends on how much of it had
-# arrived at each read).
+# Functions whose calls per request are reported but not checked:
+# - ruby_calls: the Ruby runs. ngx_mrb_run starts a fiber for each run of
+#   Ruby code, and nothing else calls ngx_mrb_start_fiber; callgrind records
+#   these calls also where it misses one of ngx_mrb_run (SET_CODE_FUNCTIONS).
+# - non_buffered_calls: the calls of
+#   ngx_http_upstream_process_non_buffered_request, which relays an
+#   unbuffered response. nginx calls it when the upstream connection is
+#   readable and when the client connection is writable; one call reads
+#   from the upstream until recv() would block, up to proxy_buffer_size at a
+#   time, and writes what it read to the client. How many calls a response
+#   takes depends on how much of it had arrived at each call, that is on
+#   timing, and each call costs Ir (NON_BUFFERED_CALL_IR).
 RECORDED_FUNCTIONS = { ruby_calls: %w[ngx_mrb_start_fiber],
-                       upstream_reads: %w[ngx_http_upstream_process_non_buffered_request] }.freeze
+                       non_buffered_calls: %w[ngx_http_upstream_process_non_buffered_request] }.freeze
+
+# About how many Ir per request one more non_buffered_calls costs. Measured
+# on aarch64 with proxy_stream_plain_50 and the mock writing the stream in
+# one write, one write per event, and one write per event 1 ms apart: see
+# "Agent proxy scenarios in the comparison" in docs/test/README.md.
+NON_BUFFERED_CALL_IR = 1000
 
 def request_functions(scenario)
   SCENARIO_REQUEST_FUNCTIONS.fetch(scenario.name) { scenario.mock ? LOG_REQUEST_FUNCTIONS : REQUEST_FUNCTIONS }
+end
+
+# Where the request function of a scenario is set, for the message of a
+# window that does not hold the expected calls.
+def request_functions_source(scenario)
+  if SCENARIO_REQUEST_FUNCTIONS.key?(scenario.name)
+    'SCENARIO_REQUEST_FUNCTIONS in test/perf/perf.rb'
+  elsif scenario.mock
+    'LOG_REQUEST_FUNCTIONS in test/perf/perf.rb'
+  else
+    'REQUEST_FUNCTIONS in test/perf/perf.rb (PERF_REQUEST_FUNCTIONS overrides it)'
+  end
 end
 
 # The name of a function without the suffixes that callgrind ('2: seen on the
@@ -542,7 +566,7 @@ def check_window(scenario, dump, profile, wakes)
   range = extra.zero? ? expected.to_s : "#{expected} to #{expected + extra} (#{wakes} wake requests)"
   raise PerfError, "#{dump}: #{profile[:request_calls]} calls of #{functions.join('/')} in the window, " \
                    "expected #{range} (#{per_request} per request, PERF_N=#{N}); " \
-                   'if the function was renamed, see PERF_REQUEST_FUNCTIONS'
+                   "if the function was renamed, see #{request_functions_source(scenario)}"
 end
 
 # A check of base_name and parse_profile on a made-up profile, run with
@@ -623,8 +647,10 @@ def self_test
     # another function. mrb_obj_alloc calls mrb_incremental_gc.part.0 twice
     # (40 Ir, the GC); the full GC inside it and final_marking_phase calling
     # mrb_incremental_gc'2 are not counted again.
+    # The list is given, not taken from REQUEST_FUNCTIONS, so that the
+    # self-test does not depend on PERF_REQUEST_FUNCTIONS.
     expected = { ir: 86, gc_ir: 40, gc_calls: 2, request_calls: 4 }
-    got = parse_profile(path)
+    got = parse_profile(path, %w[ngx_mrb_run])
     failures << "parse_profile returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
     # Another request function, and recorded functions: the handler calls
     # ngx_mrb_run_fiber twice; nothing calls ngx_http_log_request.
@@ -633,6 +659,47 @@ def self_test
     failures << "parse_profile with other functions returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
   ensure
     File.delete(path)
+  end
+  failures + self_test_summary
+end
+
+# The checks of self_test on the comparison of made-up results: when a base
+# is n/a and when it is an ERROR, the note on non_buffered_calls, and the
+# list that the window message names.
+def self_test_summary
+  failures = []
+  builds = [Struct.new(:label).new('base'), Struct.new(:label).new('head')]
+  scenario = Scenario.new(name: 'made_up', mock: [])
+  ok = { problems: [], ir_per_request: 50_000.0, nogc_per_request: 50_000.0, gc_ir: 0, ir: 1,
+         recorded_per_request: { ruby_calls: 0.0, non_buffered_calls: 5.0 } }
+  unexpected = 'ResponseError: /v1/plain: unexpected response 502'
+  {
+    'n/a (base: unexpected response)' => [unexpected],
+    'ERROR' => [unexpected, 'error.made_up.log: [error] connect() failed (111: Connection refused) while connecting to upstream']
+  }.each do |expected, problems|
+    base = { problems: problems, unexpected_response: true }
+    _header, rows, = summarize(builds, [scenario], { %w[base made_up] => base, %w[head made_up] => ok })
+    got = rows.first.last
+    failures << "summarize with base problems #{problems.inspect} gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
+  end
+  {
+    5.0 => '', 5.08 => '+0.08 per request: about +80 Ir, +0.16% of base w/o GC)',
+    6.6 => '+1.60 per request: about +1600 Ir, +3.20% of base w/o GC; the change of this scenario may come from when the response arrived)'
+  }.each do |head_calls, expected|
+    head = ok.merge(recorded_per_request: { ruby_calls: 0.0, non_buffered_calls: head_calls })
+    got = non_buffered_effect([ok, head])
+    failures << "non_buffered_effect with #{head_calls} calls gave #{got.inspect}, expected one ending #{expected.inspect}" unless got.end_with?(expected)
+  end
+  {
+    'made_up' => 'LOG_REQUEST_FUNCTIONS', 'ruby_call_10' => 'SCENARIO_REQUEST_FUNCTIONS', 'hello' => 'PERF_REQUEST_FUNCTIONS'
+  }.each do |name, list|
+    s = Scenario.new(name: name, mock: name == 'made_up' ? [] : nil)
+    begin
+      check_window(s, 'dump', { ir: 1, request_calls: 0 }, 0)
+      failures << "check_window accepted a window of #{name} without calls"
+    rescue PerfError => e
+      failures << "the window message of #{name} does not name #{list}: #{e.message}" unless e.message.include?(list)
+    end
   end
   failures
 end
@@ -713,9 +780,11 @@ end
 
 # Returns [header, rows, notes, failed]. With two builds, a scenario is
 # compared when both measurements succeeded. It is "n/a" when only the base
-# failed and its failure was an unexpected response (a scenario that needs a
-# feature of the head); any other failure is an ERROR and fails the run, and
-# so does a run in which no scenario was compared.
+# failed and an unexpected response was its only problem (a scenario that
+# needs a feature of the head); any other failure is an ERROR and fails the
+# run, also an unexpected response of the base that came with error.log
+# lines or a problem of the mock, and so does a run in which no scenario was
+# compared.
 def summarize(builds, scenarios, results)
   rows = []
   notes = []
@@ -746,7 +815,7 @@ def summarize(builds, scenarios, results)
       rows << [scenario.name, fmt_ir(base[:ir_per_request]), fmt_ir(head[:ir_per_request]), fmt_change(total),
                fmt_ir(base[:nogc_per_request]), fmt_ir(head[:nogc_per_request]), fmt_change(nogc),
                "#{gc_share(base)}/#{gc_share(head)}", v]
-    elsif ok.last && base[:unexpected_response]
+    elsif ok.last && base[:unexpected_response] && base[:problems].size == 1
       rows << [scenario.name, '-', '-', '-', '-', '-', '-', '-', 'n/a (base: unexpected response)']
     else
       failed = true
@@ -767,8 +836,10 @@ def summarize(builds, scenarios, results)
 end
 
 # Lines with the calls per request of RECORDED_FUNCTIONS, which are not
-# checked. With two builds, a scenario whose upstream reads per request
-# differ by more than 1% is marked: its Ir differs for that reason as well.
+# checked. With two builds, a scenario whose non_buffered_calls differ gets
+# the Ir that the difference alone makes, about (NON_BUFFERED_CALL_IR per
+# call), as a share of the base without GC; from half of PERF_WARN_PERCENT
+# on, the line says that the change of the scenario may come from that.
 def recorded_lines(builds, scenarios, results)
   lines = ["perf: calls per request (not checked): #{RECORDED_FUNCTIONS.map { |k, v| "#{k} = #{v.join('/')}" }.join('; ')}"]
   scenarios.each do |scenario|
@@ -778,15 +849,25 @@ def recorded_lines(builds, scenarios, results)
     values = RECORDED_FUNCTIONS.keys.map do |key|
       "#{key} #{rs.map { |r| format('%.2f', r[:recorded_per_request][key]) }.join('/')}"
     end
-    reads = rs.map { |r| r[:recorded_per_request][:upstream_reads] }
-    mark = if rs.size == 2 && reads[0].positive? && (percent(reads[0], reads[1]).abs > 1.0)
-             ' (upstream reads differ by more than 1%)'
-           else
-             ''
-           end
-    lines << "perf:   #{scenario.name}: #{values.join(', ')}#{mark}"
+    lines << "perf:   #{scenario.name}: #{values.join(', ')}#{non_buffered_effect(rs)}"
   end
   lines
+end
+
+# The note of recorded_lines on the difference of non_buffered_calls
+# between base and head ("" with one build or no difference).
+def non_buffered_effect(rs)
+  return '' unless rs.size == 2
+
+  base, head = rs.map { |r| r[:recorded_per_request][:non_buffered_calls] }
+  diff = head - base
+  return '' if diff.abs < 0.005
+
+  ir = diff * NON_BUFFERED_CALL_IR
+  share = ir / rs[0][:nogc_per_request] * 100.0
+  note = format(' (non_buffered_calls %+.2f per request: about %+.0f Ir, %+.2f%% of base w/o GC', diff, ir, share)
+  note += '; the change of this scenario may come from when the response arrived' if share.abs >= WARN_PERCENT / 2
+  "#{note})"
 end
 
 # The reasons of the failed measurements, by scenario: { name => ["base: ...", ...] }.
