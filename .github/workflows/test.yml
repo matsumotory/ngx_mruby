@@ -152,6 +152,9 @@ jobs:
             export NGX_MRUBY_CFLAGS="-fsanitize=${SANITIZER} -fno-omit-frame-pointer"
             export NGX_MRUBY_LDFLAGS="-fsanitize=${SANITIZER}"
             export ASAN_OPTIONS="detect_leaks=1"
+            # nginx leaves cycle->connections and the event arrays to exit();
+            # test/lsan.supp suppresses them so that only other leaks fail the job.
+            export LSAN_OPTIONS="suppressions=${PWD}/test/lsan.supp"
             export UBSAN_OPTIONS="print_stacktrace=1:suppressions=${PWD}/test/ubsan.supp"
           fi
           sh test.sh ${build_opts}
