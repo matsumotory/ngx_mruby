@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 # Raw socket client for test/t/cases/filter_connection.rb. It runs under
-# CRuby because the test build of mruby has no plain TCP socket with access
-# to the local port. It connects only to 127.0.0.1.
+# CRuby, like test/t/issue-268-test.rb, so that the raw socket handling of
+# the cases stays in one place with the other helpers. It connects only to
+# 127.0.0.1.
 #
 # Modes:
 #   remote_port   GET /connection/remote_port on 58112 and print

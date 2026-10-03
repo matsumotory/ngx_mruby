@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # Raw TCP client for test/t/cases/stream.rb and test/t/cases/request_api.rb.
-# It runs with CRuby, because the test build of mruby has no socket read with
-# a deadline.
+# It runs with CRuby, like test/t/issue-268-test.rb, so that the raw socket
+# handling of the cases stays in one place with the other helpers.
 #
 # Usage: ruby test/t/cases/_tcp_client.rb PORT [HEX_PAYLOAD]
 #
