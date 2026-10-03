@@ -17,8 +17,9 @@
 # PERF_N requests and nothing else; Ir per request is its Ir divided by
 # PERF_N. The GC-excluded number leaves out the calls into mrb_incremental_gc
 # and mrb_full_gc. A window with 0 Ir, or without the expected number of
-# calls of the scenario's request function (ngx_mrb_run for most scenarios;
-# see REQUEST_FUNCTIONS and request_functions), fails the measurement.
+# calls of the scenario's request function (ngx_mrb_start_fiber for the
+# scenarios of test/soak/nginx.conf; see REQUEST_FUNCTIONS and
+# request_functions), fails the measurement.
 #
 # The agent proxy scenarios (proxy_*, auth, route_json_*, ruby_call_*) use
 # the template test/soak/nginx.agent.conf, and those with an upstream also
@@ -33,9 +34,9 @@
 # With two builds, the change of head against base is judged per scenario on
 # the GC-excluded number: WARN from PERF_WARN_PERCENT, FAIL from
 # PERF_FAIL_PERCENT. The exit status is 1 when a scenario is FAIL, when a
-# measurement fails (in the base, only an unexpected response with no other
-# problem is not an error: the scenario is shown as n/a), or when no scenario
-# was compared.
+# measurement fails (in the base, an unexpected response is not an error when
+# its only other problems are ngx_mruby's "mrb_run failed" lines: the
+# scenario is shown as n/a; see summarize), or when no scenario was compared.
 #
 # See docs/test/README.md, "Performance comparison with callgrind".
 
@@ -93,20 +94,37 @@ GC_ALLOCATORS = %w[mrb_obj_alloc mrb_malloc mrb_malloc_simple mrb_calloc mrb_rea
                    mrb_alloca gc_start mrb_garbage_collect mrb_objspace_each_objects].freeze
 GC_SOURCE = 'mruby/src/gc.c'
 
-# The function that the scenarios run a known number of times per request
-# (ngx_mrb_run runs the Ruby code of a handler or filter). The window must
-# hold exactly PERF_N times that many calls of it. A window that is empty
-# (callgrind_control prints "OK." even when vgdb did not reach the process, so
-# the instrumentation may not have been switched on) or that holds other
-# requests fails the measurement instead of giving a number.
+# The function that the scenarios run a known number of times per request.
+# The window must hold exactly PERF_N times that many calls of it. A window
+# that is empty (callgrind_control prints "OK." even when vgdb did not reach
+# the process, so the instrumentation may not have been switched on) or that
+# holds other requests fails the measurement instead of giving a number.
+#
+# The scenarios of test/soak/nginx.conf count ngx_mrb_start_fiber:
+# ngx_mrb_run, which runs the Ruby code of a handler or filter, starts one
+# fiber for each run, and nothing else calls ngx_mrb_start_fiber. They do not
+# count ngx_mrb_run, because callgrind does not record its calls the same
+# way in every build: in the aarch64 build of next at 45c9e52 (2026-10-04),
+# it recorded a second call of ngx_mrb_run per request, in six of the seven
+# scenarios as a call from ngx_mrb_http_get_module_ctx.part.0 to
+# ngx_mrb_run'2 (although ngx_mrb_http_get_module_ctx does not call
+# ngx_mrb_run), which made their windows hold two calls per request. It
+# recorded one call of ngx_mrb_start_fiber per request in all seven, as in
+# the x86_64 builds of the CI runner.
 #
 # Names are compared after base_name, so a copy that GCC makes of the
-# function (ngx_mrb_run.part.0, .isra.0, .constprop.0, .cold) counts as the
-# function, and a call from one copy to another counts once. One perf.rb
+# function (.part.0, .isra.0, .constprop.0, .cold after the name) counts as
+# the function, and a call from one copy to another counts once. One perf.rb
 # measures both builds, so a pull request that renames the function lists
 # the old and the new name here (a call between two listed names counts
 # once as well); PERF_REQUEST_FUNCTIONS (comma-separated) overrides the list.
-REQUEST_FUNCTIONS = ENV.fetch('PERF_REQUEST_FUNCTIONS', 'ngx_mrb_run').split(',').map(&:strip).reject(&:empty?).freeze
+# An inlined function leaves no call in the profile. ngx_mrb_start_fiber is
+# defined in ngx_http_mruby_async.c and called from ngx_http_mruby_module.c,
+# so GCC does not inline it; a change that lets the compiler inline it
+# (static in the file of its single caller, or a build with LTO) would leave
+# every window with 0 calls and has to list a function that keeps a real
+# call.
+REQUEST_FUNCTIONS = ENV.fetch('PERF_REQUEST_FUNCTIONS', 'ngx_mrb_start_fiber').split(',').map(&:strip).reject(&:empty?).freeze
 # Calls of the request function per request, by scenario; 1 when not listed.
 REQUEST_FUNCTION_CALLS = Hash.new(1).merge('ruby_call_10' => 10).freeze
 
@@ -133,6 +151,8 @@ SCENARIO_REQUEST_FUNCTIONS = { 'ruby_call_1' => SET_CODE_FUNCTIONS, 'ruby_call_1
 # - ruby_calls: the Ruby runs. ngx_mrb_run starts a fiber for each run of
 #   Ruby code, and nothing else calls ngx_mrb_start_fiber; callgrind records
 #   these calls also where it misses one of ngx_mrb_run (SET_CODE_FUNCTIONS).
+#   In the scenarios of test/soak/nginx.conf, the request function counts
+#   the same calls (REQUEST_FUNCTIONS).
 # - non_buffered_calls: the calls of
 #   ngx_http_upstream_process_non_buffered_request, which relays an
 #   unbuffered response. nginx calls it when the upstream connection is
@@ -184,12 +204,29 @@ WAKE_INTERVAL = 0.2
 
 # Lines of error.log (and nginx's stderr) that fail a measurement.
 LOG_PATTERNS = ['[error]', '[alert]', '[crit]', '[emerg]'].freeze
+# How many of those lines scan_logs reports per log. When a log has more, it
+# reports one line more that says so (log_more_lines), which counts as a
+# problem like any other line (see summarize).
+LOG_LINES_KEPT = 5
+
+def log_more_lines(log_name)
+  "#{log_name}: more than #{LOG_LINES_KEPT} lines at the error level or above"
+end
+
+# The line that ngx_mruby logs at the error level when the Ruby code of a
+# request raises (ngx_mrb_raise_error in src/http/ngx_http_mruby_core.c:
+# "mrb_run failed: return 500 HTTP status code to client: error: ..."), as
+# scan_logs reports it. A base that lacks a Ruby method or class that a
+# scenario uses logs one with its unexpected response, so summarize does not
+# count it against n/a.
+MRB_RUN_FAILED_LINE = /\Aerror\.\S+\.log: \S+ \S+ \[error\] \d+#\d+: (?:\*\d+ )?mrb_run failed: /
 
 class PerfError < StandardError; end
 
 # A response that is not the one the scenario expects. In the base this is
-# what a scenario that needs a feature of the head gets; every other failure
-# of a measurement is an error of the measurement.
+# what a scenario that needs a feature of the head gets (with ngx_mruby's
+# "mrb_run failed" line in error.log when the feature is a Ruby method or
+# class); every other failure of a measurement is an error of the measurement.
 class ResponseError < PerfError; end
 
 def monotonic
@@ -398,7 +435,8 @@ class NginxUnderCallgrind
   end
 
   # Keeps the logs as error.<scenario>.log and stderr.<scenario>.log and
-  # returns the lines that match LOG_PATTERNS.
+  # returns the lines that match LOG_PATTERNS: up to LOG_LINES_KEPT of each
+  # log, and after them a line saying that the log has more.
   def scan_logs
     problems = []
     [@error_log, @stderr_log].each do |path|
@@ -406,11 +444,16 @@ class NginxUnderCallgrind
 
       kept = path.sub(/\.log\z/, ".#{@name}.log")
       File.rename(path, kept)
+      lines = 0
       File.foreach(kept) do |line|
         next unless LOG_PATTERNS.any? { |pattern| line.include?(pattern) }
 
+        if lines == LOG_LINES_KEPT
+          problems << log_more_lines(File.basename(kept))
+          break
+        end
         problems << "#{File.basename(kept)}: #{line.strip}"
-        break if problems.size >= 5
+        lines += 1
       end
     end
     problems
@@ -673,10 +716,27 @@ def self_test_summary
   ok = { problems: [], ir_per_request: 50_000.0, nogc_per_request: 50_000.0, gc_ir: 0, ir: 1,
          recorded_per_request: { ruby_calls: 0.0, non_buffered_calls: 5.0 } }
   unexpected = 'ResponseError: /v1/plain: unexpected response 502'
-  {
-    'n/a (base: unexpected response)' => [unexpected],
-    'ERROR' => [unexpected, 'error.made_up.log: [error] connect() failed (111: Connection refused) while connecting to upstream']
-  }.each do |expected, problems|
+  connect = 'error.made_up.log: [error] connect() failed (111: Connection refused) while connecting to upstream'
+  # What ngx_mrb_raise_error logs when the base lacks a method that the
+  # scenario calls (the form of a line from a real run).
+  mrb_run_failed = 'error.made_up.log: 2026/10/03 22:59:25 [error] 7#0: *2 mrb_run failed: return 500 HTTP status code ' \
+                   "to client: error: undefined method 'made_up' (NoMethodError), client: 127.0.0.1, server: , " \
+                   'request: "POST /v1/plain HTTP/1.1", host: "localhost"'
+  # Lines that MRB_RUN_FAILED_LINE must not match, so they stay ERROR: what
+  # ngx_mrb_raise_cycle_error logs (an error outside a request, such as
+  # init_worker), and the request line of ngx_mrb_raise_error in nginx's
+  # stderr instead of error.log.
+  cycle_failed = "error.made_up.log: 2026/10/03 22:59:25 [error] 7#0: mrb_run failed. error: undefined method 'made_up' (NoMethodError)"
+  stderr_failed = mrb_run_failed.sub('error.made_up.log: ', 'stderr.made_up.log: ')
+  [
+    ['n/a (base: unexpected response)', [unexpected]],
+    ['ERROR', [unexpected, connect]],
+    ['n/a (base: unexpected response)', [unexpected, mrb_run_failed]],
+    ['ERROR', [unexpected, mrb_run_failed, connect]],
+    ['ERROR', [unexpected, mrb_run_failed, log_more_lines('error.made_up.log')]],
+    ['ERROR', [unexpected, cycle_failed]],
+    ['ERROR', [unexpected, stderr_failed]]
+  ].each do |expected, problems|
     base = { problems: problems, unexpected_response: true }
     _header, rows, = summarize(builds, [scenario], { %w[base made_up] => base, %w[head made_up] => ok })
     got = rows.first.last
@@ -780,11 +840,13 @@ end
 
 # Returns [header, rows, notes, failed]. With two builds, a scenario is
 # compared when both measurements succeeded. It is "n/a" when only the base
-# failed and an unexpected response was its only problem (a scenario that
-# needs a feature of the head); any other failure is an ERROR and fails the
-# run, also an unexpected response of the base that came with error.log
-# lines or a problem of the mock, and so does a run in which no scenario was
-# compared.
+# failed, with an unexpected response, and its other problems are only
+# MRB_RUN_FAILED_LINE lines (a scenario that needs a feature of the head,
+# such as a Ruby method or class). Any other failure is an ERROR and fails
+# the run, also an unexpected response of the base that came with other
+# error.log lines (connect() or recv() errors of the upstream, the line
+# saying that a log has more than LOG_LINES_KEPT lines) or with a problem of
+# the mock, and so does a run in which no scenario was compared.
 def summarize(builds, scenarios, results)
   rows = []
   notes = []
@@ -815,7 +877,7 @@ def summarize(builds, scenarios, results)
       rows << [scenario.name, fmt_ir(base[:ir_per_request]), fmt_ir(head[:ir_per_request]), fmt_change(total),
                fmt_ir(base[:nogc_per_request]), fmt_ir(head[:nogc_per_request]), fmt_change(nogc),
                "#{gc_share(base)}/#{gc_share(head)}", v]
-    elsif ok.last && base[:unexpected_response] && base[:problems].size == 1
+    elsif ok.last && base[:unexpected_response] && base[:problems].count { |p| !p.match?(MRB_RUN_FAILED_LINE) } == 1
       rows << [scenario.name, '-', '-', '-', '-', '-', '-', '-', 'n/a (base: unexpected response)']
     else
       failed = true

@@ -610,7 +610,9 @@ These scenarios measure what an agent proxy costs per request: nginx in
 front of the mock LLM (see "Mock LLM upstream"), with `test/soak/nginx.agent.conf`
 (see "Agent proxy scenarios" in the soak section). The scenarios without
 Ruby are the baselines of the scenarios of the same shape, so that the
-difference between the two is what the Ruby adds.
+difference between the two is what the Ruby adds. The last row of the table
+is the seven scenarios of `test/soak/nginx.conf`, for their request
+function.
 
 | Scenario | Request and answer | Ruby per request | Request function (calls per request) |
 |---|---|---|---|
@@ -619,12 +621,27 @@ difference between the two is what the Ruby adds.
 | `auth` | `proxy_plain_2k` to the server `auth.agent.test`, whose server rewrite handler `agent_auth.rb` looks up the client key and sets the upstream credential | 1 handler | `ngx_http_log_request` (1) |
 | `route_json_2k`, `route_json_64k` | `proxy_plain_*` to `/v1/route`, whose access handler `agent_route.rb` parses the body with `JSON.parse` and sets the upstream block for `proxy_pass http://$agent_backend` | 1 handler | `ngx_http_log_request` (1) |
 | `ruby_call_1`, `ruby_call_10` | GET of a location with 1 or 10 `mruby_set_code` variables and `return 200`; no upstream | 1 or 10 calls | `ngx_http_mruby_set_inline_handler` (1 or 10) |
+| `hello`, `headers`, `var`, `filter`, `sleep`, `sub_request`, `file` | GET of the locations of `test/soak/nginx.conf` (see "Soak test for memory"); no mock | 1 handler or filter | `ngx_mrb_start_fiber` (1) |
+
+The seven scenarios of `test/soak/nginx.conf` count `ngx_mrb_start_fiber`:
+`ngx_mrb_run`, which runs the Ruby code of a handler or filter, starts one
+fiber for each run, and nothing else calls `ngx_mrb_start_fiber`. They do
+not count `ngx_mrb_run`, because callgrind does not record its calls the
+same way in every build. In the aarch64 build of `next` at `45c9e52`
+(2026-10-04), it recorded a second call of `ngx_mrb_run` per request: in
+`filter` as a call from `ngx_mrb_run` to `ngx_mrb_run'2`, which counts
+once, and in the other six scenarios as a call from
+`ngx_mrb_http_get_module_ctx.part.0` to `ngx_mrb_run'2`, although
+`ngx_mrb_http_get_module_ctx` does not call `ngx_mrb_run`, so their
+windows held two calls per request and failed the check. It recorded one
+call of `ngx_mrb_start_fiber` per request in all seven, as in the x86_64
+builds of the CI runner.
 
 The scenarios with an upstream count `ngx_http_log_request`, which nginx
 calls once for each request it ends, with or without Ruby (for a
 subrequest only with `log_subrequest on`): the scenarios without Ruby have
-no call of `ngx_mrb_run` to count, and all the scenarios with an upstream
-count the same function. The `/status` requests that wake nginx for
+no call of `ngx_mrb_start_fiber` to count, and all the scenarios with an
+upstream count the same function. The `/status` requests that wake nginx for
 `callgrind_control` also end in the window when they come after the
 instrumentation was switched on, so the window may hold up to that many
 calls more (2 per window in the runs so far). `mruby_set_code` reaches
@@ -637,8 +654,9 @@ scenarios therefore count the handler, which nginx calls through a pointer.
 Two counts per request are printed after the table and kept in
 `report.json`, but not checked: `ruby_calls`, the calls of
 `ngx_mrb_start_fiber` (`ngx_mrb_run` starts one fiber per run of Ruby code,
-and nothing else calls it), and `non_buffered_calls`, the calls of
-`ngx_http_upstream_process_non_buffered_request`, which relays an
+and nothing else calls it; in the seven scenarios of `test/soak/nginx.conf`
+the window check counts the same calls), and `non_buffered_calls`, the
+calls of `ngx_http_upstream_process_non_buffered_request`, which relays an
 unbuffered response. nginx calls it when the upstream connection becomes
 readable and when the client connection becomes writable. One call reads
 from the upstream until `recv()` would block, at most `proxy_buffer_size`
@@ -712,10 +730,17 @@ The exit status is 1 when a scenario is `FAIL`, when a measurement fails
 requests, see "In CI"), or when no scenario was compared. The one exception
 is a base that answers with an unexpected response while the head passes,
 which is what a scenario that needs a feature of the head gets: it is shown
-as `n/a` and does not fail the run. That holds only when the unexpected
-response is the base's only problem: when the same base measurement also
-logged a line at the `error` level or more, or its mock LLM failed (nginx
-then answers 502 and logs the connection error), the scenario is `ERROR`.
+as `n/a` and does not fail the run. That holds only when nothing else went
+wrong in the base measurement. Its `error.log` may have the lines that
+ngx_mruby logs when the Ruby code of a request raises (`mrb_run failed:
+return 500 HTTP status code to client: error: ...`), which is what a base
+that lacks a Ruby method or class of the head logs (`NoMethodError`,
+`NameError`). Any other line at the `error` level or above makes the
+scenario `ERROR`, for example the `connect()` or `recv()` error that nginx
+logs when the mock LLM failed and nginx answered 502. So do a problem of
+the mock, and more than five lines at those levels in one log: the report
+shows five lines per log and does not read the rest. A directive that only
+the head has stops the base at startup, which is `ERROR` as well.
 
 The thresholds were checked with a null change on 2026-10-03: three runs of
 `compare.sh` on two checkouts with the same build inputs (`next` at
@@ -789,16 +814,16 @@ scenarios with an upstream by a few tenths of a percent as well; a change
 of these scenarios near `WARN` needs a second run, and the
 `non_buffered_calls` note, before it is taken as a regression.
 
-In the `compare.sh` run, the seven scenarios that count `ngx_mrb_run`
-failed their window check in both builds on aarch64: callgrind recorded
-two calls of `ngx_mrb_run` per request, the second as a call from
-`ngx_mrb_http_get_module_ctx.part.0` to `ngx_mrb_run'2`, while
-`ngx_mrb_start_fiber`, which only `ngx_mrb_run` calls, was called once per
-request. The `perf` job on the CI runner (x86_64) of the pull request that
-brought these sources to `next` measured those scenarios without this. For
-a local run on aarch64,
-`PERF_REQUEST_FUNCTIONS=ngx_mrb_start_fiber` counts the fibers instead; the
-first measurement above was taken that way.
+In the `compare.sh` run, the seven scenarios of `test/soak/nginx.conf`
+failed their window check in both builds on aarch64: they counted
+`ngx_mrb_run` then, and callgrind recorded two calls of it per request (see
+"Agent proxy scenarios in the comparison"). They count
+`ngx_mrb_start_fiber` now. A null change on 2026-10-04 in the same kind of
+container (`compare.sh` with `next` at `45c9e52` as the base and a branch
+that changes only `test/perf/` and the documentation as the head) found
+exactly 20000 calls of it in each window of the seven, in both builds, and
+measured every scenario of the default set within 0.017%
+(`proxy_stream_plain_50`), the seven within 0.009%.
 
 To check that the thresholds fire, the head was a copy of the base with an
 empty loop of 100 iterations (`volatile` counter) at the start of
@@ -894,7 +919,7 @@ not run it at the same time.
 | `PERF_FAIL_PERCENT` | 5 | FAIL from this change |
 | `PERF_PORT_BASE` | 12370 | port of the scenarios; the backend of `sub_request` uses the next one, the mock LLM the one after |
 | `PERF_REPORT_DIR` | `build_perf` | where `report.txt` and `report.json` go |
-| `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_run` | names of the function counted once per request in the scenarios that count `ngx_mrb_run` (see "In CI") |
+| `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_start_fiber` | names of the function counted once per request in the seven scenarios of `test/soak/nginx.conf` (see "In CI") |
 
 ### In CI
 
@@ -925,23 +950,32 @@ that compared no scenario are annotations; the job fails on `FAIL` and
 `callgrind_control` fails or times out, the dump is missing, `error.log` has
 a line at the `error` level or above, or the window does not hold the
 requests: 0 Ir, or not the expected calls of the scenario's request
-function: exactly one call of `ngx_mrb_run` per request in the seven
-scenarios of `test/soak/nginx.conf`, and in the agent proxy scenarios the
-functions and counts of "Agent proxy scenarios in the comparison"
-(`callgrind_control` prints "OK." even when vgdb did not reach the process,
-so an empty window is caught here). Only a base that answers a scenario with
-an unexpected response and has no other problem (a scenario that needs a
-feature of the head) gives `n/a`, and a run in which no scenario was
+function: exactly one call of `ngx_mrb_start_fiber` per request in the
+seven scenarios of `test/soak/nginx.conf`, and in the agent proxy scenarios
+the functions and counts of the table in "Agent proxy scenarios in the
+comparison" (`callgrind_control` prints "OK." even when vgdb did not reach
+the process, so an empty window is caught here). Only a base that answers a
+scenario with an unexpected response and has no other problem than
+ngx_mruby's `mrb_run failed` lines (a scenario that needs a feature of the
+head; see [Thresholds and calibration](#thresholds-and-calibration-1) of
+the performance comparison) gives `n/a`, and a run in which no scenario was
 compared fails.
 
-The calls of `ngx_mrb_run` are counted by name. A copy that GCC makes of the
-function at `-O2` (`ngx_mrb_run.part.0`, `.isra.0`, `.constprop.0`, `.cold`)
-counts as the function, and a call from one copy to another counts once,
-so a change that makes GCC split or clone it does not fail the window. A
-pull request that renames `ngx_mrb_run`, or moves the running of the Ruby
-code to another function, has to add the new name to `REQUEST_FUNCTIONS` in
-`test/perf/perf.rb` and keep the old one: the `perf.rb` of the head
-measures the base too, and a call between two listed names counts once.
+The calls of the request function are counted by name. A copy that GCC
+makes of a function at `-O2` (`ngx_mrb_start_fiber.part.0`, `.isra.0`,
+`.constprop.0`, `.cold`) counts as the function, and a call from one copy to
+another counts once, so a change that makes GCC split or clone it does not
+fail the window. A pull request that renames `ngx_mrb_start_fiber`, or
+moves the start of the fiber of a Ruby run to another function, has to add
+the new name to `REQUEST_FUNCTIONS` in `test/perf/perf.rb` and keep the old
+one: the `perf.rb` of the head measures the base too, and a call between
+two listed names counts once. GCC cannot inline `ngx_mrb_start_fiber` now,
+because it is defined in `ngx_http_mruby_async.c` and called from
+`ngx_http_mruby_module.c`. A change that lets the compiler inline it (for
+example making it `static` in the file of its single caller, or a build
+with LTO) would leave no call of it in the profile, and every window of the
+seven scenarios would hold 0 calls, so such a change has to list a function
+that keeps a real call.
 `PERF_REQUEST_FUNCTIONS` (comma-separated) overrides the list for a local
 run, `REQUEST_FUNCTION_CALLS` sets another number of calls per request
 for a scenario, and `SCENARIO_REQUEST_FUNCTIONS` another function. `ruby test/perf/perf.rb --self-test` checks the name rules

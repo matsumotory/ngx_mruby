@@ -22,8 +22,8 @@
 #
 # The exit status is 1 when a scenario does 5% more work in head
 # (PERF_FAIL_PERCENT), when a measurement fails (in the base, an unexpected
-# response with no other problem only marks the scenario n/a), or when no
-# scenario was compared.
+# response whose only other problems are ngx_mruby's "mrb_run failed" lines
+# only marks the scenario n/a), or when no scenario was compared.
 
 set -e
 
