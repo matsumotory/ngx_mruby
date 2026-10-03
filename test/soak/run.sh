@@ -37,4 +37,8 @@ if [ -z "$ONLY_RUN" ]; then
         sh "$ROOT/test/build_release.sh" "$ROOT" "$ROOT/build_soak"
 fi
 
+# The checks of the mock LLM upstream that the agent_* scenarios use (no
+# nginx; about a second).
+ruby "$ROOT/test/soak/mock_llm_test.rb"
+
 exec ruby "$ROOT/test/soak/soak.rb"

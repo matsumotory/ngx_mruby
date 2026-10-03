@@ -47,7 +47,11 @@ can live in files of its own:
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
   with `_` are helpers and are not run by test.sh; `_tcp_client.rb`,
   `_filter_connection_client.rb` and `_second_instance.rb` are CRuby
-  scripts that the prelude helpers run with `ruby`.
+  scripts that the prelude helpers run with `ruby`. `_agent_proxy_client.rb`
+  is a CRuby script (3.0 or later) that `agent_proxy.rb` runs itself: it
+  loads `test/soak/mock_llm.rb` and `test/soak/http_client.rb`, runs the mock
+  LLM upstream on 12372 and 12373 while it sends its requests (see "Mock LLM
+  upstream" below), and prints `key=value` lines.
 - Hook scripts go to `test/html/` as before; the fragment refers to them as
   `build/nginx/html/<name>.rb`.
 
@@ -113,6 +117,95 @@ runtime that CI uses, a suppressed block hides nothing else; the LLVM
 runtime and gcc 12 and later also treat a suppressed block as a root, so
 there a block reachable only from those arrays is not reported either.
 
+## Mock LLM upstream
+
+`test/soak/mock_llm.rb` (CRuby 3.0 or later) is an HTTP/1.1 server that
+answers `POST /v1/messages` the way the Anthropic Messages API does. It
+stands for the upstream of an agent proxy (nginx with ngx_mruby in front of
+an LLM API) in three places:
+
+- the soak test (`agent_*` scenarios) and the performance comparison
+  (`proxy_*`, `auth`, `route_json_*`), which start it as a process of its
+  own on the port base + 2 (12362 and 12372) for each scenario, with the
+  options of the scenario (`mock` in `test/soak/scenarios.rb`);
+- the case `test/t/cases/agent_proxy.rb`, whose helper
+  `test/t/cases/_agent_proxy_client.rb` runs it in the helper's process on
+  12372 and 12373 while it sends its requests. The case checks recipes of
+  an agent proxy that work with the current build, on the server of
+  `test/conf/conf.d/60-agent-proxy.conf` (port 18132): a server rewrite
+  handler that rejects an unknown client key with 401 and a JSON body from a
+  server-level `error_page` (and the request does not reach the upstream);
+  an access handler that picks one of two upstream blocks by the `model` of
+  the JSON body and replaces the client's credential; `limit_conn` per client
+  key, whose rejection becomes a JSON 429 with `retry-after` through
+  `limit_conn_status 460` and `error_page`, and whose slot is free again
+  after the client closed its stream; an upstream 529 passed to the client
+  unchanged; and a log handler that reads `$upstream_status`.
+
+```console
+$ ruby test/soak/mock_llm.rb --port 12362 --events 50 --hold-after 10
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--port PORT` | (required) | listen on `127.0.0.1:PORT`; repeat it for more ports, which answer the same way |
+| `--events N` | 50 | `content_block_delta` events in a stream |
+| `--delta-text TEXT` | `hello ` | the text of each `content_block_delta` |
+| `--hold-after K` | off | write the first K events of a stream, then nothing more until the other side closes the connection |
+| `--reset-after K` | off | write the first K events of a stream, then reset the connection (RST) |
+| `--status CODE` | off | answer every request with this status and an Anthropic error body (`overloaded_error` for 529, `api_error` for 503), before any event |
+| `--delay-ms MS` | 0 | wait MS milliseconds between two events |
+| `--one-write` | off | write the head and the whole stream with one write |
+
+A request can override the options for itself with the headers
+`x-mock-events`, `x-mock-hold-after`, `x-mock-reset-after`, `x-mock-status`
+and `x-mock-delay-ms`, each a number of 0 or more. `x-mock-hold-after`,
+`x-mock-reset-after` and `x-mock-status` also take `off`, which turns the
+hold, the reset or the error status off; `x-mock-events` and
+`x-mock-delay-ms` do not. Any other value gets a 400 answer
+(`invalid_request_error`) that names the header. nginx forwards the headers
+unless the configuration drops them. `ruby test/soak/mock_llm_test.rb` checks
+these rules and the answers below against the mock in its own process (no
+nginx, about a second); `test/soak/run.sh` runs it before the soak.
+
+What it answers:
+
+- A JSON body with `"stream": true`: 200, `text/event-stream`, chunked. The
+  events are `message_start` (with `usage`), `content_block_start`, N
+  `content_block_delta` events with the text, `content_block_stop`,
+  `message_delta` (with `usage`) and `message_stop`: N + 5 events. Without
+  `--one-write`, each event is one chunk written with one write; the response
+  head goes with the first event and the last chunk with `message_stop`.
+- Any other JSON object: 200 with a message as JSON (`Content-Length`).
+- A body that is not a JSON object: 400; another path: 404.
+- `GET /_mock/stats`: its counters as JSON (below).
+
+The answer depends only on the request and the options: the model is the
+request's `model`, `input_tokens` is the request body's size in bytes / 4
+(rounded up), `output_tokens` is N (6 for a message), and there are no
+sleeps but `--delay-ms`. The drivers and the case compute the expected
+response with the same code (`MockLLM.stream_body`, `MockLLM.message_body`)
+and compare it byte for byte. Responses also carry `x-mock-port` (the port
+that answered) and, when the request had them, `x-mock-authorization` and
+`x-mock-x-api-key` with the values that arrived, so that a test can see
+which credential the proxy sent.
+
+The mock never closes an idle keep-alive connection. It closes one only when
+the request has `Connection: close` (the answer then has it too), when the
+other side closes it, and for `--hold-after` and `--reset-after`. The
+counters of `GET /_mock/stats`:
+
+| Counter | Meaning |
+|---|---|
+| `connections_open` | connections open now, without the one asking |
+| `connections` | connections accepted |
+| `requests` | `POST /v1/messages` requests read |
+| `completed` | answers written in full (error statuses included) |
+| `held` | streams waiting in `--hold-after` now |
+| `held_closed` | streams in `--hold-after` that the other side closed |
+| `reset` | connections reset by `--reset-after` |
+| `write_failed` | answers cut short because the other side had closed the connection |
+
 ## Soak test for memory
 
 An nginx worker serves requests for days. Anything that a finished request
@@ -137,7 +230,8 @@ shows that the only open connection is the one asking for it. A sample is:
 | `fibers` | `gc_root_fibers` of the same | same in all samples |
 | `arena` | `gc_arena_idx` of the same | same in all samples |
 | `timers` | `timers` of the same | 0 in all samples |
-| `fd` | entries in `/proc/<worker>/fd` | same in all samples |
+| `fd` | entries in `/proc/<worker>/fd` | `fd` minus `up` the same in all samples |
+| `up` | `connections_open` of the mock LLM (0 in a scenario without one) | at most `SOAK_CONCURRENCY`; 0 in the `abort` and `cut` scenarios |
 | `active` | `Active connections` of `stub_status` | 1 in all samples |
 | `rss_kb` | `VmRSS` in `/proc/<worker>/status` | last sample minus the one before it at most `SOAK_RSS_STEP_KB`; last sample minus the first at most `SOAK_RSS_TOTAL_KB` |
 
@@ -159,6 +253,15 @@ counters therefore do not depend on how many requests ran before:
   listening sockets, the log files and nginx's own descriptors. `active` comes
   from the `/status` request, the only open connection at that time. A socket
   or file that a request leaves open adds one to them.
+- `up` is the number of connections open at the mock LLM, which nginx's
+  upstream keeps for the next requests. Their number is the number of
+  upstream connections that were in use at the same time at the busiest
+  moment so far: it can grow by one in a later window that happens to be
+  busier, and each of them is also in `fd`. The soak therefore compares `fd`
+  minus `up` between samples, and bounds `up` by the number of client
+  connections. In the `abort` and `cut` scenarios no response ends normally,
+  so nginx keeps no upstream connection: the soak waits (up to 5 seconds)
+  until `up` is 0 and fails the sample otherwise.
 
 `VmRSS` is not exact, so it is bounded instead of compared. The soak build
 calls `malloc_trim(0)` in the full GC before each sample (see below), which
@@ -171,8 +274,10 @@ not exit within 30 seconds of `SIGQUIT`, or when its `error.log` or stderr
 contains `open socket`, `[error]`, `[alert]`, `[crit]`, `[emerg]`,
 `runtime error:` or `Sanitizer`. ngx_mruby logs an exception raised in a
 handler at the `error` level, and the `disconnect` client reads only its first
-response, so the log is where an exception in its later requests shows. The
-exit status is 1 when any scenario fails.
+response, so the log is where an exception in its later requests shows. A
+scenario can list lines that nginx logs at the `error` level on purpose
+(`allowed_log` in `test/soak/scenarios.rb`); they are left out before the
+check. The exit status is 1 when any scenario fails.
 
 The default scenarios, each one location in `test/soak/nginx.conf`:
 
@@ -187,10 +292,66 @@ The default scenarios, each one location in `test/soak/nginx.conf`:
 | `file` | `mruby_content_handler` with a file and `cache` | keep-alive |
 | `disconnect` | `Nginx::Async.sleep 50`, then the body | one request per connection, closed without reading the response |
 
+and three agent proxy scenarios, each in `/v1/route` of
+`test/soak/nginx.agent.conf` (see "Agent proxy scenarios" below) in front of
+the mock LLM:
+
+| Scenario | Mock | Client |
+|---|---|---|
+| `agent_stream` | streams of 50 `content_block_delta` events (55 events) | keep-alive; every stream is compared byte for byte |
+| `agent_client_abort` | writes 10 events, then holds the stream until nginx closes the connection | one request per connection: reads the head and the first 3 events, checks them, closes |
+| `agent_upstream_reset` | writes 10 events, then resets the connection | one request per connection: reads to EOF and checks that the body is exactly the 10 events, without the end of the chunked body |
+
 Keep-alive clients are `SOAK_CONCURRENCY` connections, each sending its next
 request after reading the response; every response is checked. The
 `disconnect` client sends bursts of 16 requests per thread every 100 ms, which
-keeps the number of requests open at once the same in every window.
+keeps the number of requests open at once the same in every window. The
+`agent_client_abort` (mode `:abort`) and `agent_upstream_reset` (mode
+`:cut`) clients are `SOAK_CONCURRENCY` threads, each sending one request per
+connection and checking what arrives.
+
+### Agent proxy scenarios
+
+`test/soak/nginx.agent.conf` is a configuration of its own, for the soak
+test and the performance comparison. It has no mruby filter directive: one
+body filter directive anywhere in an `http {}` block installs ngx_mruby's
+body filter for every response of that block (as the `filter` scenario does
+in `test/soak/nginx.conf`), and each chunked response, such as a stream,
+would then pass it and log a notice. Its `error_log` is at `warn`. The
+proxy settings are those of an agent proxy: `proxy_buffering off`,
+`proxy_buffer_size 4k`, `proxy_http_version 1.1`, the client's
+`Authorization` replaced by the credential that a handler picked, and an
+`upstream` block with `keepalive 32`, `keepalive_requests 1000000` and
+`keepalive_timeout 1h`, so that nginx does not close idle connections to
+the mock during a scenario either. The handlers are in `test/soak/handlers/`:
+
+- `agent_init.rb` (`mruby_init_worker`): the client key, credential and
+  model tables;
+- `agent_auth.rb` (server rewrite handler of the server `auth.agent.test`):
+  looks up the client key from `Authorization` or `x-api-key` (two Hash
+  lookups) and sets three variables;
+- `agent_route.rb` (access handler of `/v1/route`, with
+  `mruby_enable_read_request_body on`): `JSON.parse(r.body)["model"]`, one
+  Hash lookup, and `$agent_backend` for `proxy_pass http://$agent_backend`.
+
+The request bodies are Messages requests of exactly 2 KB or 64 KB
+(`MockLLM.request_body`); the bodies of `agent_*` have `"stream": true`.
+In each `agent_*` scenario the soak starts the mock (port base + 2) before
+nginx, and after the last sample checks its counters: it read exactly the
+requests that the soak sent (1 + `SOAK_WARMUP` + `SOAK_N`), and every one of
+them ended as the scenario makes it end: written in full (`agent_stream`),
+held until nginx closed the connection or found closed while the mock was
+still writing (`agent_client_abort`), or reset (`agent_upstream_reset`).
+The mock's output goes to `logs/mock.<scenario>.log`.
+
+`agent_upstream_reset` allows two lines at the `error` level, both about the
+upstream connection of `/v1/messages` at the mock: `recv() failed (104:
+Connection reset by peer)` (nginx logs errors of upstream connections at the
+`error` level, and those of client connections at `info`), and `upstream
+prematurely closed connection`, which nginx logs for an upstream that closes
+in the middle of a response in unbuffered mode. In the runs so far only the
+first appeared, with "while reading upstream" or "while sending to client"
+as the action. `agent_client_abort` logs nothing at `warn` or above.
 
 ### The soak build and `Nginx::Debug`
 
@@ -232,11 +393,13 @@ $ ONLY_RUN=1 SOAK_SCENARIOS=sleep,disconnect SOAK_N=100000 sh test/soak/run.sh
 ```
 
 The first run takes a few minutes (it clones the gems and builds mruby and
-nginx); the scenarios themselves take about 30 seconds. The table has one row
+nginx); the scenarios themselves take about a minute (the `agent_*` ones
+about 18 seconds of it, on the aarch64 container). The table has one row
 per scenario; when a value differs between samples, all four values are shown,
 separated by `/`, and the reasons are listed below the table. The logs are in
 `build_soak/nginx/soak/logs/`: `error.<scenario>.log`,
-`stderr.<scenario>.log` and `soak.log` (the output of the driver).
+`stderr.<scenario>.log`, `mock.<scenario>.log` (the mock LLM's output, for
+the `agent_*` scenarios) and `soak.log` (the output of the driver).
 
 `test.sh` kills every nginx on the machine, including the soak's, so do not
 run both at the same time on one machine.
@@ -249,7 +412,7 @@ run both at the same time on one machine.
 | `SOAK_N` | 20000 | requests per scenario after the warmup |
 | `SOAK_WARMUP` | 2000 | requests before the first sample |
 | `SOAK_CONCURRENCY` | 8 | connections (threads, for `disconnect`) |
-| `SOAK_PORT_BASE` | 12360 | port of the scenarios; the backend of `sub_request` uses the next one |
+| `SOAK_PORT_BASE` | 12360 | port of the scenarios; the backend of `sub_request` uses the next one, the mock LLM the one after |
 | `SOAK_RSS_STEP_KB` | 512 | VmRSS limit for the last window, in kB |
 | `SOAK_RSS_TOTAL_KB` | 1024 | VmRSS limit from the first to the last sample, in kB |
 
@@ -267,6 +430,8 @@ largest over all scenarios and runs of a row:
 | aarch64, 10 runs, `SOAK_N=20000` | +112 kB (`sub_request`) | +204 kB (`sleep`) |
 | aarch64, 1 run, `SOAK_N=100000` | +68 kB (`file`) | +160 kB (`file`) |
 | x86_64 (CI), 4 runs, `SOAK_N=20000` | +144 kB (`filter`) | +236 kB (`sleep`) |
+| aarch64, 3 runs, `SOAK_N=20000`, the `agent_*` scenarios (2026-10-04) | +28 kB (`agent_stream`) | +32 kB (`agent_upstream_reset`) |
+| x86_64 (CI), runs 37152930938 and 37156005549, `SOAK_N=20000`, the `agent_*` scenarios (2026-10-04) | +16 kB (`agent_stream`, `agent_client_abort`) | +84 kB (`agent_stream`, `agent_client_abort`) |
 
 Without `malloc_trim(0)`, the `disconnect` scenario at `SOAK_N=300000` moved
 by +2832, -788 and +1088 kB from window to window, which is over a 512 kB
@@ -285,10 +450,15 @@ window.
 
 1. Add a location to `test/soak/nginx.conf` (and a handler file to
    `test/soak/handlers/` if it uses one). Use `__SOAK_HANDLERS__` for the path
-   of that directory and `__SOAK_BACKEND_PORT__` for the second server.
+   of that directory and `__SOAK_BACKEND_PORT__` for the second server. A
+   scenario behind the mock LLM goes to `test/soak/nginx.agent.conf`
+   instead, with `__SOAK_MOCK_PORT__` for the mock.
 2. Add a `Scenario` to `SCENARIOS` in `test/soak/scenarios.rb` with the
    path, the request headers, the expected body and response headers, and
-   the mode (`:keepalive` or `:disconnect`).
+   the mode (`:keepalive`, `:disconnect`, `:abort` or `:cut`). A scenario of
+   the agent template also sets `conf: 'nginx.agent.conf'`, the request
+   method and body, and `mock:` with the options of the mock (`[]` for the
+   defaults); the comment at the top of that file lists the fields.
 3. Add its name to `DEFAULT_SCENARIOS` in `test/soak/soak.rb`, run the soak
    three times, and check that all counters stay the same and that VmRSS
    stays within the limits. If a counter keeps growing, the scenario has
@@ -377,12 +547,14 @@ code of nginx, ngx_mruby, mruby and the C library does for a request.
 
 The scenarios are those of the soak test that use keep-alive clients:
 `hello`, `headers`, `var`, `filter`, `sleep`, `sub_request` and `file` (see
-the table in "Soak test for memory"); `disconnect` is not measured. For each
-scenario, and for the base and the head in turn, `test/perf/perf.rb`:
+the table in "Soak test for memory"), and the agent proxy scenarios of "Agent
+proxy scenarios" below; `disconnect` is not measured. For each scenario, and
+for the base and the head in turn, `test/perf/perf.rb`:
 
-1. starts nginx with `test/soak/nginx.conf`, changed to `master_process off`,
-   under `valgrind --tool=callgrind --instr-atstart=no`, so that the startup
-   runs without instrumentation;
+1. starts the mock LLM when the scenario has one, and nginx with
+   `test/soak/nginx.conf` (or the scenario's template), changed to
+   `master_process off`, under `valgrind --tool=callgrind --instr-atstart=no`,
+   so that the startup runs without instrumentation;
 2. checks one response and sends `PERF_WARMUP` requests;
 3. waits until `stub_status` shows no open connection of the warmup, and
    switches the instrumentation on with `callgrind_control --instr=on`;
@@ -432,6 +604,104 @@ therefore has to span many GC cycles. With `PERF_N=20000`, `hello` measured
 `PERF_WARMUP=200`, a window shorter than one cycle, it measured 10726 and
 10732 in two runs (-2.8%). That is why `PERF_N` is 20000.
 
+### Agent proxy scenarios in the comparison
+
+These scenarios measure what an agent proxy costs per request: nginx in
+front of the mock LLM (see "Mock LLM upstream"), with `test/soak/nginx.agent.conf`
+(see "Agent proxy scenarios" in the soak section). The scenarios without
+Ruby are the baselines of the scenarios of the same shape, so that the
+difference between the two is what the Ruby adds.
+
+| Scenario | Request and answer | Ruby per request | Request function (calls per request) |
+|---|---|---|---|
+| `proxy_plain_2k`, `proxy_plain_64k` | POST of a Messages body of exactly 2 KB or 64 KB to `/v1/plain` (`proxy_pass` to the mock); a JSON message | none | `ngx_http_log_request` (1) |
+| `proxy_stream_plain_50`, `proxy_stream_plain_1000` | the 2 KB body with `"stream": true` to `/v1/plain`; a stream of 50 or 1000 deltas (55 or 1005 events) | none | `ngx_http_log_request` (1) |
+| `auth` | `proxy_plain_2k` to the server `auth.agent.test`, whose server rewrite handler `agent_auth.rb` looks up the client key and sets the upstream credential | 1 handler | `ngx_http_log_request` (1) |
+| `route_json_2k`, `route_json_64k` | `proxy_plain_*` to `/v1/route`, whose access handler `agent_route.rb` parses the body with `JSON.parse` and sets the upstream block for `proxy_pass http://$agent_backend` | 1 handler | `ngx_http_log_request` (1) |
+| `ruby_call_1`, `ruby_call_10` | GET of a location with 1 or 10 `mruby_set_code` variables and `return 200`; no upstream | 1 or 10 calls | `ngx_http_mruby_set_inline_handler` (1 or 10) |
+
+The scenarios with an upstream count `ngx_http_log_request`, which nginx
+calls once for each request it ends, with or without Ruby (for a
+subrequest only with `log_subrequest on`): the scenarios without Ruby have
+no call of `ngx_mrb_run` to count, and all the scenarios with an upstream
+count the same function. The `/status` requests that wake nginx for
+`callgrind_control` also end in the window when they come after the
+instrumentation was switched on, so the window may hold up to that many
+calls more (2 per window in the runs so far). `mruby_set_code` reaches
+`ngx_mrb_run` through a tail call of its handler, which callgrind does not
+always record as a call of `ngx_mrb_run`: in an aarch64 build, one of the
+ten calls per request of `ruby_call_10` showed as a call from the handler to
+`ngx_mrb_start_fiber`, and `ruby_call_1` showed none. The `ruby_call_*`
+scenarios therefore count the handler, which nginx calls through a pointer.
+
+Two counts per request are printed after the table and kept in
+`report.json`, but not checked: `ruby_calls`, the calls of
+`ngx_mrb_start_fiber` (`ngx_mrb_run` starts one fiber per run of Ruby code,
+and nothing else calls it), and `non_buffered_calls`, the calls of
+`ngx_http_upstream_process_non_buffered_request`, which relays an
+unbuffered response. nginx calls it when the upstream connection becomes
+readable and when the client connection becomes writable. One call reads
+from the upstream until `recv()` would block, at most `proxy_buffer_size`
+(4k) at a time, and writes what it read to the client, so the count is not
+a count of 4k reads: how many calls a response takes depends on how much of
+it had arrived at each call. It also differs between builds and machines:
+2.00 per request for `proxy_plain_*`, `auth` and `route_json_*` in the
+aarch64 container, 1.00 on the CI runner (x86_64).
+
+Each call costs Ir. On aarch64, `proxy_stream_plain_50` (`PERF_N=2000`)
+with the mock writing the stream in one write, one write per event, and one
+write per event 1 ms apart made 3.00, 4.96 and 109.99 calls per request and
+cost 52270, 54255 and 142740 Ir per request: about 1010 Ir per call from the
+first to the second, and 850 from the first to the third. With two builds,
+the line of a scenario whose calls differ gives the Ir that the difference
+alone makes at 1000 Ir per call (`NON_BUFFERED_CALL_IR`), as a share of the
+base without GC, and from half of `PERF_WARN_PERCENT` on it says that the
+change of the scenario may come from when the response arrived. For
+`proxy_stream_plain_50`, about 2 more calls per request reach `WARN` and
+about 3 reach `FAIL`; between the base and the head of one run, its calls
+differed by 0.01 to 0.25 per request in the null changes of "Thresholds and
+calibration".
+
+First measurement, 2026-10-04: one run of `test/perf/perf.rb` on the head
+build of this checkout (`next` at `f62880c` plus the harness), nginx 1.31.6,
+Ubuntu 22.04 (gcc 11, valgrind 3.18.1), container on aarch64,
+`PERF_N=20000`. H is `hello` in the same run, 11856 Ir per request (11158
+without GC):
+
+| Scenario | Ir/req (w/o GC) | H | `non_buffered_calls`/req |
+|---|---|---|---|
+| `proxy_plain_2k` | 21952 (21952) | 1.85 | 2.00 |
+| `proxy_plain_64k` | 22264 (22264) | 1.88 | 2.00 |
+| `proxy_stream_plain_50` | 54294 (54294) | 4.58 | 4.97 |
+| `proxy_stream_plain_1000` | 432228 (432228) | 36.5 | 38.43 |
+| `auth` | 49132 (46977) | 4.14 | 2.00 |
+| `route_json_2k` | 109396 (106246) | 9.23 | 2.00 |
+| `route_json_64k` | 1603842 (1600216) | 135.3 | 2.00 |
+| `ruby_call_1` | 11404 (10737) | 0.96 | 0 |
+| `ruby_call_10` | 41541 (35237) | 3.50 | 0 |
+
+The differences between scenarios of the same shape, from that run:
+
+- `auth` minus `proxy_plain_2k`: 27180 Ir per request (25025 without GC),
+  2.3 H, for one server rewrite handler with two Hash lookups and three
+  variable assignments.
+- `route_json_2k` minus `proxy_plain_2k`: 87444 (84294), 7.4 H, for one
+  access handler that parses a 2 KB body, plus the `proxy_pass` with a
+  variable, which looks the upstream block up by name.
+- `route_json_64k` minus `proxy_plain_64k`: 1581578 (1577952), 133 H. The
+  62 KB more of body cost about 24100 Ir per KB without GC.
+- One more Ruby call, `(ruby_call_10 - ruby_call_1) / 9`: 3349 Ir (2722
+  without GC), 0.28 H.
+- One more stream event without Ruby,
+  `(proxy_stream_plain_1000 - proxy_stream_plain_50) / 950`: 398 Ir, with
+  the `non_buffered_calls` of that run (4.97 and 38.43 per request).
+
+`proxy_stream_plain_1000` and `route_json_64k` took 83 and 129 seconds per
+build in that run, while all the scenarios of the default set together take
+about 140 seconds, so they are not in `DEFAULT_SCENARIOS`; name them in
+`PERF_SCENARIOS`. The other agent proxy scenarios are in the default set and
+add about one minute per build.
+
 ### Thresholds and calibration
 
 A scenario is `WARN` when its Ir per request without GC is 3% or more above
@@ -442,7 +712,10 @@ The exit status is 1 when a scenario is `FAIL`, when a measurement fails
 requests, see "In CI"), or when no scenario was compared. The one exception
 is a base that answers with an unexpected response while the head passes,
 which is what a scenario that needs a feature of the head gets: it is shown
-as `n/a` and does not fail the run.
+as `n/a` and does not fail the run. That holds only when the unexpected
+response is the base's only problem: when the same base measurement also
+logged a line at the `error` level or more, or its mock LLM failed (nginx
+then answers 502 and logs the connection error), the scenario is `ERROR`.
 
 The thresholds were checked with a null change on 2026-10-03: three runs of
 `compare.sh` on two checkouts with the same build inputs (`next` at
@@ -474,9 +747,64 @@ to `/status` that wakes `callgrind_control` costs about 12500 instructions
 most about 0.01% of the smallest window (`hello`, 235 million
 instructions).
 
+The agent proxy scenarios were checked with null changes on 2026-10-04:
+two in the same kind of container on aarch64, with all nine of them (the
+two left out of the default set included), and the `perf` job of the pull
+request that added them on the CI runner (x86_64, run 37152930938: base
+`next` at `f62880c`, head the merge commit, no build input changed), with
+the seven of the default set. Change of head against base, total / without
+GC:
+
+| Scenario | aarch64, same build twice (`next` at `4f29b06`) | aarch64, `compare.sh`, `next` at `f62880c` and the pull request | x86_64, CI run 37152930938 |
+|---|---|---|---|
+| `proxy_plain_2k` | +0.000% / +0.000% | +0.005% / +0.005% | +0.000% / +0.000% |
+| `proxy_plain_64k` | +0.005% / +0.005% | +0.009% / +0.009% | -0.110% / -0.110% |
+| `proxy_stream_plain_50` | +0.042% / +0.042% | +0.023% / +0.023% | -0.063% / -0.063% |
+| `proxy_stream_plain_1000` | +0.004% / +0.004% | +0.007% / +0.007% | not run |
+| `auth` | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `route_json_2k` | +0.000% / +0.000% | +0.000% / +0.000% | -0.000% / -0.000% |
+| `route_json_64k` | +0.000% / +0.000% | +0.000% / +0.000% | not run |
+| `ruby_call_1` | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `ruby_call_10` | +0.003% / +0.004% | +0.000% / +0.000% | +0.000% / +0.000% |
+
+The scenarios with an upstream vary the most, and the `non_buffered_calls`
+do not explain all of it. On aarch64, `proxy_stream_plain_50` moved by up
+to 0.042% with its calls at 5.01 and 5.02 per request in base and head. On
+the CI runner, `proxy_plain_64k` moved by -0.110% (22530 and 22506 Ir per
+request) with its calls at 1.00 in both builds, and `proxy_stream_plain_50`
+by -0.063% while its calls went from 4.86 to 4.94, which alone would add
+about 0.14%. A second run of that job (37156005549, on the commit that
+applied the review of that pull request, again with no build input
+changed) measured `proxy_plain_64k` at +0.30% (22564 and 22630 Ir per
+request, calls 1.00 in both builds) and `proxy_stream_plain_50` at +0.39%
+while its calls went from 4.92 to 5.17, which the comparison estimated at
++0.43%; every other scenario stayed within 0.02%. Other work whose amount
+depends on timing, such as how many reads the 64 KB request body takes, is
+not counted. Between runs of the same build on aarch64, `auth` measured
+46797 and 46977 Ir per request without GC (0.38%) and `route_json_2k`
+106066 and 106246 (0.17%). The largest change between the base and the
+head of one run, which the thresholds compare, is 0.39% in these runs,
+about 8 times below the 3% of `WARN`. Later runs on the runner can move the
+scenarios with an upstream by a few tenths of a percent as well; a change
+of these scenarios near `WARN` needs a second run, and the
+`non_buffered_calls` note, before it is taken as a regression.
+
+In the `compare.sh` run, the seven scenarios that count `ngx_mrb_run`
+failed their window check in both builds on aarch64: callgrind recorded
+two calls of `ngx_mrb_run` per request, the second as a call from
+`ngx_mrb_http_get_module_ctx.part.0` to `ngx_mrb_run'2`, while
+`ngx_mrb_start_fiber`, which only `ngx_mrb_run` calls, was called once per
+request. The `perf` job on the CI runner (x86_64) of the pull request that
+brought these sources to `next` measured those scenarios without this. For
+a local run on aarch64,
+`PERF_REQUEST_FUNCTIONS=ngx_mrb_start_fiber` counts the fibers instead; the
+first measurement above was taken that way.
+
 To check that the thresholds fire, the head was a copy of the base with an
 empty loop of 100 iterations (`volatile` counter) at the start of
-`ngx_mrb_run`, which every scenario runs once per request. The self cost of
+`ngx_mrb_run`, which each of the seven scenarios of that time runs once per
+request (the agent proxy scenarios came later; the `proxy_*` ones run no
+Ruby, and `ruby_call_10` runs it ten times). The self cost of
 `ngx_mrb_run` grew by 604 instructions per request in every scenario, and
 the report showed `hello` +5.47% (`FAIL`), `filter` and `file` +4.62%,
 `sleep` +4.10%, `var` +3.07% (`WARN`), `headers` +1.79% and `sub_request`
@@ -548,8 +876,10 @@ gem lock of the base build, so that both have the same third-party gems; the
 report says how many gems are at different commits (0 when the lock
 worked). The measurement (`test/perf/`, the scenarios in `test/soak/`) comes
 from this checkout for both builds. The first run builds two trees (a few
-minutes each); the measurement takes about one and a half minutes per build,
-most of it in `sleep`. The report goes to `build_perf/report.txt` and
+minutes each); the measurement of the default scenarios takes about 140
+seconds per build (139 seconds on the CI runner, 28 of them in `sleep`), and
+`proxy_stream_plain_1000` and `route_json_64k` add about 80 and 130 seconds
+when `PERF_SCENARIOS` names them. The report goes to `build_perf/report.txt` and
 `build_perf/report.json`. `test.sh` kills every nginx on the machine, so do
 not run it at the same time.
 
@@ -557,14 +887,14 @@ not run it at the same time.
 |---|---|---|
 | `ONLY_RUN` | unset | set to skip the builds |
 | `NUM_THREADS_ENV` | half of the CPUs | build parallelism (passed to `build.sh`) |
-| `PERF_SCENARIOS` | all seven | comma-separated scenario names |
+| `PERF_SCENARIOS` | `DEFAULT_SCENARIOS` of `test/perf/perf.rb` | comma-separated scenario names |
 | `PERF_N` | 20000 | requests in the measured window |
 | `PERF_WARMUP` | 2000 | requests before the window |
 | `PERF_WARN_PERCENT` | 3 | WARN from this change of Ir per request without GC |
 | `PERF_FAIL_PERCENT` | 5 | FAIL from this change |
-| `PERF_PORT_BASE` | 12370 | port of the scenarios; the backend of `sub_request` uses the next one |
+| `PERF_PORT_BASE` | 12370 | port of the scenarios; the backend of `sub_request` uses the next one, the mock LLM the one after |
 | `PERF_REPORT_DIR` | `build_perf` | where `report.txt` and `report.json` go |
-| `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_run` | names of the function counted once per request (see "In CI") |
+| `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_run` | names of the function counted once per request in the scenarios that count `ngx_mrb_run` (see "In CI") |
 
 ### In CI
 
@@ -577,7 +907,8 @@ re-running the job is enough). The inputs of the binary are what
 files `build_config.rb`, `configure`, `config.in`, `Makefile.in`,
 `build.sh` and `nginx_version`. The measurement is `test/perf/`,
 `test/build_release.sh` and the scenario files in `test/soak/`
-(`nginx.conf`, `scenarios.rb`, `http_client.rb`, `handlers/`).
+(`nginx.conf`, `nginx.agent.conf`, `scenarios.rb`, `http_client.rb`,
+`mock_llm.rb`, `handlers/`).
 
 A change of `nginx_version` builds the head with another nginx, so its
 `WARN` or `FAIL` measures nginx's own cost as well as ngx_mruby's; read the
@@ -593,11 +924,15 @@ that compared no scenario are annotations; the job fails on `FAIL` and
 `ERROR`. A measurement fails (`ERROR`) when nginx does not start or answer,
 `callgrind_control` fails or times out, the dump is missing, `error.log` has
 a line at the `error` level or above, or the window does not hold the
-requests: 0 Ir, or not exactly one call of `ngx_mrb_run` per request
+requests: 0 Ir, or not the expected calls of the scenario's request
+function: exactly one call of `ngx_mrb_run` per request in the seven
+scenarios of `test/soak/nginx.conf`, and in the agent proxy scenarios the
+functions and counts of "Agent proxy scenarios in the comparison"
 (`callgrind_control` prints "OK." even when vgdb did not reach the process,
 so an empty window is caught here). Only a base that answers a scenario with
-an unexpected response (a scenario that needs a feature of the head) gives
-`n/a`, and a run in which no scenario was compared fails.
+an unexpected response and has no other problem (a scenario that needs a
+feature of the head) gives `n/a`, and a run in which no scenario was
+compared fails.
 
 The calls of `ngx_mrb_run` are counted by name. A copy that GCC makes of the
 function at `-O2` (`ngx_mrb_run.part.0`, `.isra.0`, `.constprop.0`, `.cold`)
@@ -608,8 +943,8 @@ code to another function, has to add the new name to `REQUEST_FUNCTIONS` in
 `test/perf/perf.rb` and keep the old one: the `perf.rb` of the head
 measures the base too, and a call between two listed names counts once.
 `PERF_REQUEST_FUNCTIONS` (comma-separated) overrides the list for a local
-run, and `REQUEST_FUNCTION_CALLS` sets another number of calls per request
-for a scenario. `ruby test/perf/perf.rb --self-test` checks the name rules
+run, `REQUEST_FUNCTION_CALLS` sets another number of calls per request
+for a scenario, and `SCENARIO_REQUEST_FUNCTIONS` another function. `ruby test/perf/perf.rb --self-test` checks the name rules
 and the reading of a profile on a made-up profile, without a build or
 valgrind; `compare.sh` and `run.sh` run it first.
 
