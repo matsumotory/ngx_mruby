@@ -121,8 +121,11 @@ where the allocator happened to leave free memory.
 
 A scenario also fails when a response is not the expected one, when nginx does
 not exit within 30 seconds of `SIGQUIT`, or when its `error.log` or stderr
-contains `open socket`, `[alert]`, `[crit]`, `[emerg]`, `runtime error:` or
-`Sanitizer`. The exit status is 1 when any scenario fails.
+contains `open socket`, `[error]`, `[alert]`, `[crit]`, `[emerg]`,
+`runtime error:` or `Sanitizer`. ngx_mruby logs an exception raised in a
+handler at the `error` level, and the `disconnect` client reads only its first
+response, so the log is where an exception in its later requests shows. The
+exit status is 1 when any scenario fails.
 
 The default scenarios, each one location in `test/soak/nginx.conf`:
 
@@ -154,14 +157,26 @@ objects, a failed allocation), so the worker behaves as without it between
 samples. `run.sh` runs `build.sh` in a copy of the
 sources in `build_soak/tree` and installs nginx to `build_soak/nginx`, so the
 `build/` directory, `mruby/build` and the generated `Makefile`, `config` and
-`mrbgems_config` of `test.sh` are not touched. Later runs copy the sources
-again and rebuild only what changed; the mruby build is rebuilt from scratch
-when `NGX_MRUBY_CFLAGS` (passed to mruby, as with `test.sh`) changes. The soak
-build is always a static module built from its own nginx source with the
-system OpenSSL, so `run.sh` ignores `BUILD_DYNAMIC_MODULE`, `NGINX_SRC_ENV`
-and `OPENSSL_SRC_VERSION`. The nginx source is downloaded to
+`mrbgems_config` of `test.sh` are not touched. The soak build is always a
+static module built from its own nginx source with the system OpenSSL, so
+`run.sh` ignores `BUILD_DYNAMIC_MODULE`, `NGINX_SRC_ENV` and
+`OPENSSL_SRC_VERSION`. The nginx source is downloaded to
 `build_soak/tree/build/`; when nginx.org is unreachable, put it there as
 described in `AGENTS.md`.
+
+Later runs copy the sources again and rebuild only what changed. make and
+rake do not notice every change, though: the objects of a removed source or a
+dropped gem stay in `libmruby.a`, and nginx's configure does not run again.
+`run.sh` therefore records these inputs in `build_soak/build_stamp`: the
+mruby tree (its git tree id, or a checksum of its files when git or the
+repository is not available), the file names under `mrbgems/`, checksums of
+`build_config.rb`, `config.in`, `configure`, `Makefile.in`, `build.sh` and
+`nginx_version`, `NGX_MRUBY_CFLAGS` (passed to mruby, as with `test.sh`) and
+the nginx configure options. When the stamp differs from that of the last
+build, mruby and nginx are built from scratch; the downloaded nginx source is
+kept. After a change that the stamp does not cover, for example an
+uncommitted change under `mruby/` (the git tree id is that of the commit),
+reset the soak build by hand with `rm -rf build_soak`.
 
 `-DNGX_MRUBY_DEBUG_STATS` adds the class `Nginx::Debug`. The default builds
 of `build.sh` and `test.sh` do not have it.
@@ -223,16 +238,16 @@ largest over all scenarios and runs of a row:
 |---|---|---|
 | aarch64, 3 runs, `SOAK_N=20000`, without `MRB_USE_MALLOC_TRIM` | +144 kB | +212 kB (drops down to -1076 kB) |
 | aarch64, 1 run, `SOAK_N=100000`, without `MRB_USE_MALLOC_TRIM` | +288 kB | +3396 kB (`disconnect`) |
-| aarch64, 6 runs, `SOAK_N=20000` | +100 kB (`sub_request`) | +188 kB (`sleep`) |
+| aarch64, 9 runs, `SOAK_N=20000` | +112 kB (`sub_request`) | +204 kB (`sleep`) |
 | aarch64, 1 run, `SOAK_N=100000` | +68 kB (`file`) | +160 kB (`file`) |
-| x86_64 (CI), 2 runs, `SOAK_N=20000` | +144 kB (`filter`) | +216 kB (`sleep`) |
+| x86_64 (CI), 3 runs, `SOAK_N=20000` | +144 kB (`filter`) | +228 kB (`sub_request`) |
 
 Without `malloc_trim(0)`, the `disconnect` scenario at `SOAK_N=300000` moved
 by +2832, -788 and +1088 kB from window to window, which is over a 512 kB
 limit for the last window, although its counters stayed the same and it grew
 less in all than at `SOAK_N=100000`. With it, the largest growth is 144 kB in
-the last window and 216 kB in all. The default limits, 512 kB for the last
-window and 1024 kB in all, are about 3.5 and 4.7 times these. The limit for
+the last window and 228 kB in all. The default limits, 512 kB for the last
+window and 1024 kB in all, are about 3.5 and 4.5 times these. The limit for
 the last window is the looser one because one window of a shared CI runner
 grew by 144 kB; the limit in all is the one that finds small leaks: a leak
 below about 50 bytes per request stays under 1024 kB over the 20000 requests

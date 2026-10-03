@@ -176,14 +176,17 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The same reservation as in the build job, and first for the same
+      # reason: it only affects ports assigned after it is set. The soak ports
+      # (12360 and 12361) lie in the reserved block 12345-12399.
       - name: Reserve the test ports
-        # Keeps the kernel from using the test ports as ephemeral source ports.
         run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=58080-58199,12345-12399
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The soak build uses the default gcc and no valgrind (test/soak/run.sh).
       - name: install
         run: |
           sudo apt-get -qq update
-          sudo apt-get -qq install rake bison git gperf zlib1g-dev g++-11 libstdc++-11-dev valgrind ruby
+          sudo apt-get -qq install rake bison git gperf zlib1g-dev ruby
       - name: soak
         env:
           NUM_THREADS_ENV: 1

@@ -46,8 +46,11 @@ START_TIMEOUT = 10    # seconds to wait for the worker and the listening port
 QUIET_TIMEOUT = 5     # seconds to wait for the scenario connections to close
 STOP_TIMEOUT = 30     # seconds to wait for nginx to exit after SIGQUIT
 
-# Lines in error.log (and nginx's stderr) that fail the scenario.
-LOG_PATTERNS = ['open socket', '[alert]', '[crit]', '[emerg]', 'runtime error:', 'Sanitizer'].freeze
+# Lines in error.log (and nginx's stderr) that fail the scenario. ngx_mruby
+# logs an exception raised in a handler at the error level; the :disconnect
+# client reads only its first response, so the log is where an exception in
+# its later requests shows.
+LOG_PATTERNS = ['open socket', '[error]', '[alert]', '[crit]', '[emerg]', 'runtime error:', 'Sanitizer'].freeze
 
 # Values that must be the same in every sample of a scenario.
 EXACT_KEYS = %i[gc_live gc_root gc_root_fibers gc_arena_idx timers fd active].freeze
@@ -262,7 +265,10 @@ class NginxProcess
     sleep 0.05 until exited? || monotonic > deadline
     unless exited?
       problems << "nginx did not exit within #{STOP_TIMEOUT} s of SIGQUIT; killed"
-      [@worker, @master].compact.each do |pid|
+      # The children are listed while the master is alive: once it is
+      # killed, they are no longer its children. The list includes a worker
+      # that the master started after the one found at start.
+      ([@master] + children_of(@master)).each do |pid|
         Process.kill(:KILL, pid)
       rescue Errno::ESRCH
         nil
@@ -358,10 +364,16 @@ end
 # Sends count requests over CONCURRENCY connections (or threads, for
 # :disconnect) and returns when all of them were sent and, for :keepalive,
 # answered. Every connection is closed on return.
+#
+# When a thread raises, join re-raises its exception here. The other threads
+# are stopped and joined before it reaches the caller, which then stops
+# nginx: a thread left running could connect to the nginx of the next
+# scenario, which listens on the same port, and change its samples.
 def send_requests(scenario, count)
-  threads = Array.new(CONCURRENCY) do |i|
+  threads = []
+  CONCURRENCY.times do |i|
     share = (count / CONCURRENCY) + (i < count % CONCURRENCY ? 1 : 0)
-    Thread.new do
+    threads << Thread.new do
       if scenario.mode == :disconnect
         disconnect_requests(scenario, share)
       else
@@ -370,6 +382,13 @@ def send_requests(scenario, count)
     end
   end
   threads.each(&:join)
+ensure
+  threads.each(&:kill)
+  threads.each do |t|
+    t.join
+  rescue StandardError
+    nil # the exception that is propagating, or another thread's
+  end
 end
 
 def get_closed(path, headers = {})
