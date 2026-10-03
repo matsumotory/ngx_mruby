@@ -10,21 +10,21 @@ set -e
 . ./nginx_version
 
 # OS specific configuration
+NGINX_CC_OPT='-g -O0 -fno-common'
+NGINX_LD_OPT=''
 if [ `uname -s` = "NetBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
-    NGINX_DEFAULT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module --with-ld-opt=-L/usr/pkg/lib\ -Wl,-R/usr/pkg/lib --with-cc-opt=-g\ -O0\ -fno-common'
+    NGINX_LD_OPT='-L/usr/pkg/lib -Wl,-R/usr/pkg/lib'
     MAKE=gmake
     KILLALL=pkill
     PS_C="pgrep -l"
 elif [ `uname -s` = "FreeBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
-    NGINX_DEFAULT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module --with-cc-opt=-g\ -O0\ -fno-common'
     MAKE=gmake
     KILLALL=pkill
     PS_C="pgrep -l"
 else
     NPROCESSORS_ONLN="_NPROCESSORS_ONLN"
-    NGINX_DEFAULT_OPT='--with-debug --with-http_stub_status_module --with-http_ssl_module --with-cc-opt=-g\ -O0\ -fno-common'
     MAKE=make
     if [ -f /etc/centos-release ]; then
         KILLALL=pkill
@@ -33,6 +33,25 @@ else
         KILLALL=killall
         PS_C="ps -C"
     fi
+fi
+
+# Extra compiler and linker flags for nginx, which also compiles ngx_mruby,
+# for example for the sanitizer build in CI:
+#   NGINX_EXTRA_CC_OPT='-fsanitize=address,undefined -fno-omit-frame-pointer'
+#   NGINX_EXTRA_LD_OPT='-fsanitize=address,undefined'
+# mruby takes its extra flags from NGX_MRUBY_CFLAGS and NGX_MRUBY_LDFLAGS
+# (see build_config.rb).
+NGINX_CC_OPT="$NGINX_CC_OPT $NGINX_EXTRA_CC_OPT"
+NGINX_LD_OPT="$NGINX_LD_OPT $NGINX_EXTRA_LD_OPT"
+
+# The configure options are split again by the shell that make runs, so the
+# spaces inside one option value are escaped.
+escape_spaces() {
+    printf '%s\n' "$1" | sed -e 's/^  *//' -e 's/  *$//' -e 's/  */\\ /g'
+}
+NGINX_DEFAULT_OPT="--with-debug --with-http_stub_status_module --with-http_ssl_module --with-cc-opt=`escape_spaces "$NGINX_CC_OPT"`"
+if [ -n "`escape_spaces "$NGINX_LD_OPT"`" ]; then
+    NGINX_DEFAULT_OPT="$NGINX_DEFAULT_OPT --with-ld-opt=`escape_spaces "$NGINX_LD_OPT"`"
 fi
 
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
@@ -46,9 +65,13 @@ else
 fi
 export NGINX_INSTALL_DIR # for test/t/ngx_mruby.rb
 
-if [ $NGINX_SRC_MINOR -ge 11 -a $NGINX_SRC_PATCH -ge 5 ]; then
+# Same encoding as nginx's own nginx_version macro (1.11.5 -> 1011005), so
+# that versions are compared as a whole instead of minor and patch separately.
+NGINX_SRC_VERSION_NUM=$((NGINX_SRC_MAJOR * 1000000 + NGINX_SRC_MINOR * 1000 + NGINX_SRC_PATCH))
+
+if [ "$NGINX_SRC_VERSION_NUM" -ge 1011005 ]; then
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFAULT_OPT} --with-stream"
-elif [ $NGINX_SRC_MINOR -ge 11 -a $NGINX_SRC_PATCH -lt 5 ] || [ $NGINX_SRC_MINOR -eq 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
+elif [ "$NGINX_SRC_VERSION_NUM" -ge 1009006 ]; then
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFAULT_OPT} --with-stream --without-stream_access_module"
 else
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFAULT_OPT}"
@@ -103,7 +126,7 @@ $PS_C nginx 2>/dev/null && $KILLALL nginx
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' && sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' && cd -
 
-if [ $NGINX_SRC_MINOR -ge 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
+if [ "$NGINX_SRC_VERSION_NUM" -ge 1009006 ]; then
   cat test/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
 fi
 
