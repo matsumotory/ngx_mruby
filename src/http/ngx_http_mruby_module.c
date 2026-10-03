@@ -51,6 +51,8 @@ static void ngx_http_mruby_exit_worker(ngx_cycle_t *cycle);
 */
 static ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
                              ngx_str_t *result);
+static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
+                                     ngx_flag_t cached, ngx_str_t *result);
 static ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 static ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 
@@ -721,9 +723,14 @@ static void ngx_mrb_code_clean(ngx_http_request_t *r, ngx_mrb_state_t *state, ng
 ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
   int ai = mrb_gc_arena_save(state->mrb);
+  ngx_http_request_t *prev_r;
   ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
 
+  /* init_worker and exit_worker code runs outside of any request */
+  prev_r = ngx_mrb_get_request();
+  ngx_mrb_push_request(NULL);
   mrb_toplevel_run(state->mrb, code->proc);
+  ngx_mrb_push_request(prev_r);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
     ngx_mrb_raise_cycle_error(state->mrb, mrb_obj_value(state->mrb->exc), cycle);
@@ -752,6 +759,27 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
   return NGX_OK;
 }
 
+/*
+ * Request-scoped Ruby methods find their request through a process-wide
+ * pointer. Set it only while the code runs and restore the previous value
+ * afterwards, so that it never points to a finished request. Restoring
+ * (rather than clearing) keeps it valid when a handler runs nested, for
+ * example through an internal redirect from Ruby code.
+ */
+ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
+                      ngx_str_t *result)
+{
+  ngx_int_t rc;
+  ngx_http_request_t *prev_r;
+
+  prev_r = ngx_mrb_get_request();
+  ngx_mrb_push_request(r);
+  rc = ngx_mrb_run_request(r, state, code, cached, result);
+  ngx_mrb_push_request(prev_r);
+
+  return rc;
+}
+
 void ngx_http_mruby_read_request_body_cb(ngx_http_request_t *r)
 {
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(NULL, r);
@@ -770,8 +798,8 @@ void ngx_http_mruby_read_request_body_cb(ngx_http_request_t *r)
   }
 }
 
-ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
-                      ngx_str_t *result)
+static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
+                                     ngx_flag_t cached, ngx_str_t *result)
 {
   int result_len;
   int ai = 0;
@@ -790,8 +818,6 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
                   __LINE__);
     return NGX_ERROR;
   }
-
-  ngx_mrb_push_request(r);
 
   /* force reading body */
   if (mlcf->enable_read_request_body && !ctx->read_request_body_done) {
@@ -1116,10 +1142,16 @@ static char *ngx_http_mruby_server_config_inline(ngx_conf_t *cf, ngx_command_t *
 
   if (mscf->server_config_inline_code != NGX_CONF_UNSET_PTR) {
     ngx_int_t ret;
+    void *prev_ud;
     mscf->cf = cf;
     mscf->cscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_core_module);
+    prev_ud = mmcf->state->mrb->ud;
     mmcf->state->mrb->ud = mscf;
     ret = ngx_mrb_run_conf(cf, mmcf->state, mscf->server_config_inline_code);
+    /* cf lives only while the configuration is parsed (see ngx_mrb_add_listener()) */
+    mmcf->state->mrb->ud = prev_ud;
+    mscf->cf = NULL;
+    mscf->cscf = NULL;
     if (ret != NGX_OK) {
       return NGX_CONF_ERROR;
     }
@@ -1759,7 +1791,10 @@ static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
                   __LINE__);
     return NGX_ERROR;
   }
-  ctx->body_length = r->headers_out.content_length_n;
+  /* once the body filter has a body buffer, body_length is that buffer's length */
+  if (ctx->body == NULL) {
+    ctx->body_length = r->headers_out.content_length_n;
+  }
 
   cln = ngx_pool_cleanup_add(r->pool, 0);
   if (cln == NULL) {
@@ -1779,7 +1814,9 @@ static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
     return rc;
   }
 
-  ctx->body_length = r->headers_out.content_length_n;
+  if (ctx->body == NULL) {
+    ctx->body_length = r->headers_out.content_length_n;
+  }
   return rc;
 }
 
@@ -2019,6 +2056,66 @@ NGX_MRUBY_SSL_ERROR:
 #if (NGX_HTTP_SSL)
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
+/*
+ * Nginx::SSL keeps the state of the handshake being handled in the shared
+ * server configuration. It is valid only while the handler code runs: reset
+ * it before the code runs and clear it before returning, so that Nginx::SSL
+ * methods called at any other time raise instead of reading a finished
+ * handshake (whose servername lived on this function's stack and whose
+ * certificate strings were allocated from the connection pool).
+ */
+static void ngx_http_mruby_ssl_handshake_state_clear(ngx_http_mruby_srv_conf_t *mscf)
+{
+  mscf->connection = NULL;
+  mscf->servername = NULL;
+  ngx_str_null(&mscf->cert_path);
+  ngx_str_null(&mscf->cert_key_path);
+  ngx_str_null(&mscf->cert_data);
+  ngx_str_null(&mscf->cert_key_data);
+}
+
+static ngx_int_t ngx_http_mruby_ssl_handshake_run(ngx_http_mruby_srv_conf_t *mscf, ngx_connection_t *c)
+{
+  mrb_state *mrb = mscf->state->mrb;
+  mrb_int ai;
+  ngx_http_request_t *prev_r;
+  ngx_int_t rc = NGX_OK;
+
+  ai = mrb_gc_arena_save(mrb);
+  if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR && !mscf->ssl_handshake_code->cache) {
+    rc = ngx_http_mruby_state_reinit_from_file(mscf->state, mscf->ssl_handshake_code);
+    if (rc != NGX_OK) {
+      ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to recompile %s, rc=%d",
+                    mscf->ssl_handshake_code->code.file, rc);
+      ngx_mrb_state_clean(NULL, mscf->state);
+      mrb_gc_arena_restore(mrb, ai);
+      return NGX_DECLINED;
+    }
+  }
+
+  /* the handshake handler runs outside of any request */
+  prev_r = ngx_mrb_get_request();
+  ngx_mrb_push_request(NULL);
+  if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
+    mrb_toplevel_run(mrb, mscf->ssl_handshake_code->proc);
+  }
+  if (mscf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
+    mrb_toplevel_run(mrb, mscf->ssl_handshake_inline_code->proc);
+  }
+  ngx_mrb_push_request(prev_r);
+
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_inline_code);
+  if (mrb->exc) {
+    ngx_mrb_raise_connection_error(mrb, mrb_obj_value(mrb->exc), c);
+    rc = NGX_ERROR;
+  }
+  ngx_mrb_state_clean(NULL, mscf->state);
+  mrb_gc_arena_restore(mrb, ai);
+
+  return rc;
+}
+
 static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
 {
   ngx_connection_t *c;
@@ -2026,8 +2123,8 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   const char *servername;
   ngx_http_mruby_srv_conf_t *mscf;
   ngx_str_t host;
-  mrb_int ai;
-  mrb_state *mrb;
+  ngx_str_t cert_path, cert_key_path, cert_data, cert_key_data;
+  void *prev_ud;
   int rc;
 
   c = ngx_ssl_get_connection(ssl_conn);
@@ -2062,82 +2159,72 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: mscf NULL");
     return 1;
   }
-  mscf->connection = c;
 
   if (mscf->ssl_handshake_code == NGX_CONF_UNSET_PTR && mscf->ssl_handshake_inline_code == NGX_CONF_UNSET_PTR) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: unexpected error, mruby code not found");
     return 1;
   }
 
+  ngx_http_mruby_ssl_handshake_state_clear(mscf);
+  mscf->connection = c;
   mscf->servername = &host;
-  mrb = mscf->state->mrb;
-  mrb->ud = mscf;
-  ai = mrb_gc_arena_save(mrb);
-  if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
-    if (!mscf->ssl_handshake_code->cache) {
-      ngx_int_t rc;
-      rc = ngx_http_mruby_state_reinit_from_file(mscf->state, mscf->ssl_handshake_code);
-      if (rc != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to recompile %s, rc=%d",
-                      mscf->ssl_handshake_code->code.file, rc);
-        ngx_mrb_state_clean(NULL, mscf->state);
-        mrb_gc_arena_restore(mrb, ai);
-        return 1;
-      }
-    }
-    mrb_toplevel_run(mrb, mscf->ssl_handshake_code->proc);
-  }
-  if (mscf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
-    mrb_toplevel_run(mrb, mscf->ssl_handshake_inline_code->proc);
-  }
+  prev_ud = mscf->state->mrb->ud;
+  mscf->state->mrb->ud = mscf;
 
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_inline_code);
-  if (mrb->exc) {
-    ngx_mrb_raise_connection_error(mrb, mrb_obj_value(mrb->exc), c);
-    ngx_mrb_state_clean(NULL, mscf->state);
-    mrb_gc_arena_restore(mrb, ai);
+  rc = ngx_http_mruby_ssl_handshake_run(mscf, c);
+
+  mscf->state->mrb->ud = prev_ud;
+
+  /* the certificate strings stay valid until c->pool is destroyed */
+  cert_path = mscf->cert_path;
+  cert_key_path = mscf->cert_key_path;
+  cert_data = mscf->cert_data;
+  cert_key_data = mscf->cert_key_data;
+  ngx_http_mruby_ssl_handshake_state_clear(mscf);
+
+  if (rc == NGX_DECLINED) {
+    return 1;
+  }
+  if (rc != NGX_OK) {
     return 0;
   }
-  ngx_mrb_state_clean(NULL, mscf->state);
-  mrb_gc_arena_restore(mrb, ai);
 
-  if (mscf->cert_data.len == 0 || mscf->cert_key_data.len == 0) {
-    if (mscf->cert_path.len == 0 || mscf->cert_key_path.len == 0) {
+  if (cert_data.len == 0 || cert_key_data.len == 0) {
+    if (cert_path.len == 0 || cert_key_path.len == 0) {
       ngx_log_error(NGX_LOG_DEBUG, c->log, 0,
                     MODULE_NAME " : mruby ssl handler: cert or cert key not exists or not read");
       return 1;
     }
 
     errno = 0;
-    if (access((const char *)mscf->cert_path.data, F_OK | R_OK) != 0) {
+    if (access((const char *)cert_path.data, F_OK | R_OK) != 0) {
       if (errno == EACCES) {
         ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert [%V] permission denied",
-                      &mscf->cert_path);
+                      &cert_path);
       } else {
         ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert [%V] not exists or not read",
-                      &mscf->cert_path);
+                      &cert_path);
       }
       return 0;
     }
     errno = 0;
-    if (access((const char *)mscf->cert_key_path.data, F_OK | R_OK) != 0) {
+    if (access((const char *)cert_key_path.data, F_OK | R_OK) != 0) {
       if (errno == EACCES) {
         ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert_key [%V] permission denied",
-                      &mscf->cert_key_path);
+                      &cert_key_path);
       } else {
         ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert_key [%V] not exists or not read",
-                      &mscf->cert_key_path);
+                      &cert_key_path);
       }
       return 0;
     }
 
     ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certificate to cert=%V key=%V",
-                  &mscf->cert_path, &mscf->cert_key_path);
-    rc = ngx_http_mruby_set_der_certificate(ssl_conn, &mscf->cert_path, &mscf->cert_key_path);
+                  &cert_path, &cert_key_path);
+    rc = ngx_http_mruby_set_der_certificate(ssl_conn, &cert_path, &cert_key_path);
   } else {
     ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certificate by mem buffer");
-    rc = ngx_http_mruby_set_der_certificate_data(ssl_conn, &mscf->cert_data, &mscf->cert_key_data);
+    rc = ngx_http_mruby_set_der_certificate_data(ssl_conn, &cert_data, &cert_key_data);
   }
   if (rc != NGX_OK) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to change certificate.\n");

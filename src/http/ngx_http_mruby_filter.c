@@ -13,17 +13,35 @@
 
 static mrb_value ngx_mrb_get_filter_body(mrb_state *mrb, mrb_value self)
 {
-  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+
+  /*
+   * The body is buffered only by the body filter. Before that (for example in
+   * a header filter) ctx->body is NULL while ctx->body_length already holds the
+   * Content-Length, and mrb_str_new() would return that many uninitialized bytes.
+   */
+  if (ctx->body == NULL) {
+    return mrb_str_new(mrb, NULL, 0);
+  }
 
   return mrb_str_new(mrb, (char *)ctx->body, ctx->body_length);
 }
 
 static mrb_value ngx_mrb_set_filter_body(mrb_state *mrb, mrb_value self)
 {
-  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   mrb_value body;
+
+  /*
+   * The body filter reads the response into ctx->body and sends ctx->body
+   * afterwards. A body set anywhere else would be taken for the buffer that
+   * the body filter reads into.
+   */
+  if (ctx->phase != NGX_HTTP_MRUBY_FILTER_PROCESS) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::Filter#body= can only be used in an output body filter");
+  }
 
   mrb_get_args(mrb, "o", &body);
   if (mrb_type(body) != MRB_TT_STRING) {
