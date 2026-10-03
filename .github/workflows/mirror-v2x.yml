@@ -55,7 +55,7 @@ jobs:
           head=$(git rev-parse HEAD)
           tip=$(git rev-parse refs/remotes/origin/master)
           if ! v2x=$(git rev-parse --verify --quiet 'refs/remotes/origin/v2.x^{commit}'); then
-            echo "::error title=v2.x mirror::origin has no v2.x branch. Create it once from master (git push origin master:refs/heads/v2.x) and re-run this workflow."
+            echo "::error title=v2.x mirror::origin has no v2.x branch. Create it once from the current master (git fetch origin && git push origin origin/master:refs/heads/v2.x) and re-run this workflow."
             exit 1
           fi
 
@@ -88,7 +88,7 @@ jobs:
           fi
 
           if ! git push origin HEAD:refs/heads/v2.x; then
-            echo "::error title=v2.x mirror::Pushing to v2.x was rejected (see the git output above). If v2.x moved in the meantime, re-run this workflow. If a repository rule rejected it, the rules on v2.x must allow fast-forward pushes from GitHub Actions: only 'Restrict deletions' and 'Block force pushes' until v3 is promoted."
+            echo "::error title=v2.x mirror::Pushing to v2.x was rejected (see the git output above). If v2.x moved in the meantime, re-run this workflow. If a repository rule rejected it, the rules on v2.x must allow fast-forward pushes from GitHub Actions: only 'Restrict deletions' and 'Block force pushes' until v3 is promoted. If the git output mentions the 'workflows' permission, master moved on to different workflow files during this run (GITHUB_TOKEN cannot point a branch at workflow files that are on no branch head); the run for the newer master commit, or a manual run on master, mirrors it."
             exit 1
           fi
           echo "v2.x fast-forwarded from $v2x to $head."
