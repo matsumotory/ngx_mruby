@@ -47,7 +47,13 @@ jobs:
           fetch-depth: 0
       - name: Fast-forward v2.x to master
         run: |
+          # When master has moved on (for example when an old run is re-run),
+          # actions/checkout points origin/master at the commit this run was
+          # started for, not at the current tip. Refresh the remote-tracking
+          # branches so that origin/master and origin/v2.x are current.
+          git fetch --quiet --prune --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
           head=$(git rev-parse HEAD)
+          tip=$(git rev-parse refs/remotes/origin/master)
           if ! v2x=$(git rev-parse --verify --quiet 'refs/remotes/origin/v2.x^{commit}'); then
             echo "::error title=v2.x mirror::origin has no v2.x branch. Create it once from master (git push origin master:refs/heads/v2.x) and re-run this workflow."
             exit 1
@@ -60,14 +66,13 @@ jobs:
 
           # A re-run of an older master commit after a newer one was mirrored.
           if git merge-base --is-ancestor "$head" "$v2x" &&
-             git merge-base --is-ancestor "$v2x" refs/remotes/origin/master; then
+             git merge-base --is-ancestor "$v2x" "$tip"; then
             echo "::notice title=v2.x mirror::v2.x ($v2x) already contains $head; nothing to do."
             exit 0
           fi
 
           if ! git merge-base --is-ancestor "$v2x" "$head"; then
-            echo "::error title=v2.x mirror diverged::v2.x ($v2x) is not an ancestor of master ($head), so it cannot be fast-forwarded. v2.x was not changed. See the job log for how to repair it."
-            tip=$(git rev-parse refs/remotes/origin/master)
+            echo "::error title=v2.x mirror diverged::v2.x ($v2x) is not an ancestor of the master commit $head, so it cannot be fast-forwarded. v2.x was not changed. See the job log for how to repair it."
             echo "Commits on v2.x that are not on master ($tip):"
             git log --oneline "$tip..$v2x"
             echo
