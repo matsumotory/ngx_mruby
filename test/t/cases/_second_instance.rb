@@ -12,7 +12,7 @@
 #
 # NGINX_INSTALL_DIR names the nginx that test.sh installed. The second nginx
 # runs in the foreground as a single process, uses the prefix
-# NGINX_INSTALL_DIR/second_instance/MODE/ and listens on 127.0.0.1:58116 for
+# NGINX_INSTALL_DIR/second_instance/MODE/ and listens on 127.0.0.1:18116 for
 # http or on 127.0.0.1:12357 for stream. The hook files are the copies of
 # test/html in NGINX_INSTALL_DIR/html. A dynamic module build loads the
 # module with an absolute path.
@@ -30,7 +30,7 @@ require 'socket'
 require 'fileutils'
 
 LIMIT = 30 # seconds for the start, for each exchange and for the stop
-PORTS = { 'http' => 58116, 'stream' => 12357 }.freeze
+PORTS = { 'http' => 18116, 'stream' => 12357 }.freeze
 
 HTTP_CONF = <<'CONF'
 http {

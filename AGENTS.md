@@ -102,8 +102,8 @@ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
   `build/nginx/logs/` (`build_dynamic/nginx/logs/` for dynamic builds);
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
-- `test.sh` listens on fixed ports (58080-58088, 58101-58103, 58110-58116,
-  12345-12358; 58116 and 12357 belong to the second nginx that
+- `test.sh` listens on fixed ports (18080-18088, 18101-18103, 18110-18116,
+  12345-12358; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 12399 to a test in
   `test/t/ngx_mruby.rb`) and
   kills every running `nginx` process before it starts. Run only one `test.sh` per
@@ -126,7 +126,7 @@ sh test.sh
 
 - Prefer a fragment and a case file of their own: a `server {}` in
   `test/conf/conf.d/<name>.conf` (stream: `test/conf/conf.d/stream/`) on a
-  port of its own (HTTP 58110 and up, stream 12353 and up), scripts in
+  port of its own (HTTP 18110 and up, stream 12353 and up), scripts in
   `test/html/`, and assertions in `test/t/cases/<name>.rb` (see
   `docs/test/README.md`). Edit `test/conf/nginx.conf` and
   `test/t/ngx_mruby.rb` only for tests that need the main server.
@@ -138,7 +138,7 @@ sh test.sh
 - Do not shorten the `Nginx::Stream::Async.sleep 3000` of the 12352 server in
   `test/conf/nginx.stream.conf` or the `sleep 0.3` in `test/t/issue-268-test.rb`:
   these delays are what those tests exercise.
-- The main test server (port 58080) has server-level handlers
+- The main test server (port 18080) has server-level handlers
   (`mruby_set_code`, `mruby_server_rewrite_handler_code`,
   `mruby_post_read_handler_code`) that run for all of its locations. Tests of
   phase or return-code behavior may need their own `server {}`.

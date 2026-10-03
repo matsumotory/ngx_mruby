@@ -1,11 +1,11 @@
 # Shared prelude for test/t/cases/*.rb. test.sh concatenates this file in
 # front of each case before running it with the test build of mruby.
 
-def http_host(port = 58080)
+def http_host(port = 18080)
   "127.0.0.1:#{port}"
 end
 
-def base(port = 58080)
+def base(port = 18080)
   "http://#{http_host(port)}"
 end
 

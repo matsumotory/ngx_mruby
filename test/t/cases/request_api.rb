@@ -1,6 +1,6 @@
 t = SimpleTest.new "ngx_mruby test: request API (test/conf/conf.d/10-request-api.conf)"
 
-REQUEST_API_PORT = 58111
+REQUEST_API_PORT = 18111
 
 t.assert('request API', 'rewrite handler without output or DECLINED sends no response') do
   # characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
