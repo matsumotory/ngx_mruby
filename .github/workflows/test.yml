@@ -65,6 +65,17 @@ jobs:
             BUILD_WITH_OPENSSL_SRC: ""
             SANITIZER: "address,undefined"
     steps:
+      # The HTTP test ports (58080-58088, 58101-58103) lie inside the kernel's
+      # ephemeral port range (32768-60999 by default), so an outgoing
+      # connection of the runner itself can be assigned one of them as its
+      # local port, and nginx then cannot bind the listener (EADDRINUSE).
+      # Reserving them keeps the kernel from handing them out. The reservation
+      # only affects ports assigned after it is set, so it is the first step.
+      # Blocks are reserved so that new test ports do not need an edit here;
+      # the stream ports (12345-12399) lie outside the range but are included
+      # for the same reason.
+      - name: Reserve the test ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=58080-58199,12345-12399
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Echo matrix
         env:
@@ -126,12 +137,6 @@ jobs:
           NGINX_RUNNER: ${{ matrix.SANITIZER == '' && 'valgrind' || 'exec' }}
           NGINX_HEATTIME: 10
         run: |
-          # The test ports (58080-58088, 58101-58103) lie inside the kernel's
-          # ephemeral port range (32768-60999 by default). The runner's own
-          # outgoing connections can land on one of them and make nginx's
-          # bind() fail with EADDRINUSE. Reserve them so that the kernel does
-          # not hand them out as local ports.
-          sudo sysctl -w net.ipv4.ip_local_reserved_ports=58080-58088,58101-58103,12345-12352
           echo "NGINX_SRC_MAJOR=$(echo $NGINX_VERSION | cut -d '.' -f 1)" > nginx_version
           echo "NGINX_SRC_MINOR=$(echo $NGINX_VERSION | cut -d '.' -f 2)" >> nginx_version
           echo "NGINX_SRC_PATCH=$(echo $NGINX_VERSION | cut -d '.' -f 3)" >> nginx_version
@@ -173,6 +178,8 @@ jobs:
         run: |
           if [ -e build/nginx/logs/error.log ]; then cat build/nginx/logs/error.log ; else cat build_dynamic/nginx/logs/error.log; fi
           if [ -e build/nginx/logs/stderr.log ]; then cat build/nginx/logs/stderr.log ; else cat build_dynamic/nginx/logs/stderr.log; fi
+          # When nginx could not bind a test port, show who holds it.
+          sudo ss -tanpo '( sport >= :58080 and sport <= :58199 ) or ( sport >= :12345 and sport <= :12399 )' || true
 
   # The only status check that rulesets should require. Matrix job names
   # change whenever the matrix changes, so they cannot be required directly.
