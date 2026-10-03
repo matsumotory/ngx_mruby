@@ -126,6 +126,12 @@ jobs:
           NGINX_RUNNER: ${{ matrix.SANITIZER == '' && 'valgrind' || 'exec' }}
           NGINX_HEATTIME: 10
         run: |
+          # The test ports (58080-58088, 58101-58103) lie inside the kernel's
+          # ephemeral port range (32768-60999 by default). The runner's own
+          # outgoing connections can land on one of them and make nginx's
+          # bind() fail with EADDRINUSE. Reserve them so that the kernel does
+          # not hand them out as local ports.
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports=58080-58088,58101-58103,12345-12352
           echo "NGINX_SRC_MAJOR=$(echo $NGINX_VERSION | cut -d '.' -f 1)" > nginx_version
           echo "NGINX_SRC_MINOR=$(echo $NGINX_VERSION | cut -d '.' -f 2)" >> nginx_version
           echo "NGINX_SRC_PATCH=$(echo $NGINX_VERSION | cut -d '.' -f 3)" >> nginx_version
