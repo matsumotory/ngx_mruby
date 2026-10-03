@@ -476,9 +476,29 @@ the report showed `hello` +5.47% (`FAIL`), `filter` and `file` +4.62%,
 each scenario, and `compare.sh` exited with 1. In instructions, 3% is
 about 330 per request in `hello` and 1430 in `sub_request`.
 
-The numbers of x86_64 differ from these (another instruction set), and the
-CI runner has not been calibrated yet; until it is, the CI job is advisory
-(see "In CI" below).
+On the CI runner (ubuntu-22.04, x86_64, the same versions), the `perf` job
+of the pull request that added it is the same null change: the base was
+`next` at `f713d4e`, the head the merge commit. Three runs of that job (the
+first run and two re-runs of the job, each building both trees):
+
+| Scenario | Base Ir/req (w/o GC) | Run 1 | Run 2 | Run 3 |
+|---|---|---|---|---|
+| `hello` | 11669 (11006) | -0.003% / -0.004% | -0.003% / -0.003% | +0.000% / +0.000% |
+| `headers` | 39424 (37267) | -0.002% / -0.002% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `var` | 22383 (20706) | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `filter` | 14569 (13636) | +0.000% / +0.001% | +0.003% / +0.004% | +0.000% / +0.000% |
+| `sleep` | 15833 (15068) | +0.006% / +0.006% | +0.000% / +0.000% | +0.001% / +0.001% |
+| `sub_request` | 49996 (48854) | +0.001% / +0.001% | +0.016% / +0.016% | -0.001% / -0.001% |
+| `file` | 14309 (13360) | +0.002% / +0.002% | +0.000% / +0.000% | -0.002% / -0.003% |
+
+The largest change is 0.016% (`sub_request`, about 8 instructions per
+request); between runs, the base of `sub_request` moved by 0.042% (48836 to
+48856 without GC), the most of any scenario. The numbers differ from those
+of aarch64 because the instruction set differs; on x86_64, callgrind shows
+no recursion suffix on the GC entry points, and the number without GC again
+equals the inclusive cost of `mrb_incremental_gc` that `callgrind_annotate`
+prints. The job is advisory (not needed by `ci-ok`) until it has also run on
+pull requests that change the code; see "In CI" below.
 
 ### Running it
 
@@ -532,8 +552,11 @@ job is enough). The checkout of a pull request is the merge commit
 (`refs/pull/N/merge`); the job compares its first parent, the base branch,
 with the merge commit, so the difference is the change of the pull request
 as it would be merged. The table is in the job summary, `WARN` and `FAIL`
-rows are annotations, and the job fails on `FAIL`. The job is advisory:
-`ci-ok` does not need it until the thresholds are calibrated on the runner.
+rows are annotations, and the job fails on `FAIL`. The job is advisory for
+now: `ci-ok` does not need it, so a `FAIL` does not block a merge. The null
+calibration on the runner is above; once the job has also run on pull
+requests that change `src/` or `mrbgems/` without false alarms, it is to be
+added to the `needs` of `ci-ok`.
 
 The artifact `perf-callgrind` has the report, and for `base` and `head` the
 profiles of the windows (`callgrind/callgrind.out.<scenario>`), the output

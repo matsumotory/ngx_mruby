@@ -219,8 +219,8 @@ jobs:
   # callgrind"): instructions per request of the PR's base and of the PR
   # merged into it, both release builds, measured with callgrind. It runs
   # when the PR changes the code or the measurement, or has the label "perf".
-  # Advisory for now: ci-ok does not need it until the thresholds are
-  # calibrated on the runner.
+  # Advisory for now: ci-ok does not need it until it has also run on pull
+  # requests that change the code (calibration in the docs).
   perf:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
