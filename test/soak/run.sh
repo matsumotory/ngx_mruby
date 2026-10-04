@@ -42,10 +42,12 @@ for f in "$ROOT"/src/http/*.c "$ROOT"/src/stream/*.c; do
     fi
 done
 
+# The third-party gems are built at the commits of build_config.rb.lock, the
+# default of test/build_release.sh; RELEASE_GEM_LOCK in the environment names
+# another lock.
 if [ -z "$ONLY_RUN" ]; then
     NGX_MRUBY_CFLAGS="-DMRB_USE_MALLOC_TRIM $NGX_MRUBY_CFLAGS" \
         RELEASE_CC_OPT=-DNGX_MRUBY_DEBUG_STATS \
-        RELEASE_GEM_LOCK= \
         sh "$ROOT/test/build_release.sh" "$ROOT" "$ROOT/build_soak"
 fi
 

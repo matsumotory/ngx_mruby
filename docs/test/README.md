@@ -366,7 +366,8 @@ as the action. `agent_client_abort` logs nothing at `warn` or above.
 `test/soak/run.sh` builds with `test/build_release.sh` in `build_soak/` (see
 "Release builds" below): nginx and ngx_mruby with `-O2 -g`, without
 `MRB_GC_STRESS` and without `--with-debug`, and with the gems of
-`build_config.rb`. It adds two defines. ngx_mruby is compiled with
+`build_config.rb` at the commits of `build_config.rb.lock`. It adds two
+defines. ngx_mruby is compiled with
 `-DNGX_MRUBY_DEBUG_STATS`, and mruby with `-DMRB_USE_MALLOC_TRIM`, so
 `mrb_full_gc()` also calls `malloc_trim(0)`. mruby runs a full GC only when
 it is asked to (`GC.start`, `Nginx::Debug.gc`) or in rare cases (an
@@ -518,7 +519,8 @@ window.
 as a static module with release-like options: nginx and ngx_mruby with
 `-O2 -g`, mruby with the flags of its gcc toolchain (`-O3 -g`), without
 `MRB_GC_STRESS` (which `test.sh` adds) and without `--with-debug`, and with
-the gems of `build_config.rb`. The soak test and the performance comparison
+the gems of `build_config.rb` at the commits of a gem lock (below). The soak
+test and the performance comparison
 build with it, each in directories of their own, so that their options do
 not mix:
 
@@ -537,10 +539,17 @@ build is always a static module built from its own nginx source with the
 system OpenSSL, so the script ignores `BUILD_DYNAMIC_MODULE`, `NGINX_SRC_ENV`
 and `OPENSSL_SRC_VERSION`. The nginx source is downloaded to
 `BUILD_DIR/tree/build/`; when nginx.org is unreachable, put it there as
-described in `AGENTS.md`. `RELEASE_GEM_LOCK` names a `build_config.rb.lock`
-whose gem commits the build uses; without it, rake clones the default branch
-of each gem on the first build and writes the commits to
-`BUILD_DIR/tree/build_config.rb.lock`.
+described in `AGENTS.md`.
+
+The third-party gems are built at the commits of the `build_config.rb.lock`
+committed in `SOURCE_DIR` (see "Gem commits" in `docs/install/README.md`), or
+of the lock that `RELEASE_GEM_LOCK` names when it is set and not empty.
+`test/soak/run.sh` and `test/perf/run.sh` pass `RELEASE_GEM_LOCK` on from
+the environment, so `RELEASE_GEM_LOCK=/path/to/other.lock sh
+test/soak/run.sh` builds other commits without a change to the checkout. A
+checkout that has no lock (one from before the lock was committed) gets the
+head of each gem's branch on its first build. rake writes the commits it
+built to `BUILD_DIR/tree/build_config.rb.lock`.
 
 Later runs update the copy and rebuild only what changed:
 
@@ -567,9 +576,12 @@ names under `mrbgems/`, checksums of `build_config.rb`, `config.in`,
 `configure`, `Makefile.in`, `build.sh` and `nginx_version`,
 `NGX_MRUBY_CFLAGS` (passed to mruby, as with `test.sh`),
 `NGX_MRUBY_AUTO_SSL` (which adds the auto-ssl mrbgem to the mruby build), the
-nginx configure options and the gem lock of `RELEASE_GEM_LOCK`. When the
-stamp differs from that of the last build, mruby and nginx are built from
-scratch; the downloaded nginx source is kept. After a change that the stamp
+nginx configure options and the gem lock of the build. When the stamp
+differs from that of the last build, mruby and nginx are built from scratch,
+with new clones of the gems; the downloaded nginx source is kept. The new
+clones matter when only the lock changed: rake checks an existing clone out
+at the commit of the lock without fetching, and an older clone may not have
+that commit. After a change that the stamp
 does not cover, for example an uncommitted change under `mruby/` (the git
 tree id is that of the commit), reset the build by hand with
 `rm -rf build_soak` (or `build_perf`).
@@ -939,10 +951,14 @@ $ sh test/perf/run.sh                                  # measure this checkout o
 ```
 
 `compare.sh BASE_DIR [HEAD_DIR]` builds `BASE_DIR` into `build_perf/base` and
-`HEAD_DIR` (default: this checkout) into `build_perf/head`, the head with the
-gem lock of the base build, so that both have the same third-party gems; the
-report says how many gems are at different commits (0 when the lock
-worked). The measurement (`test/perf/`, the scenarios in `test/soak/`) comes
+`HEAD_DIR` (default: this checkout) into `build_perf/head`, each with the
+third-party gems at the commits of the `build_config.rb.lock` committed in
+it. The gems therefore differ only where the head changes the lock, and a
+pull request that moves a gem to another commit is measured with that
+commit, as it would be merged. A checkout that has no lock (one from before
+the lock was committed) takes the lock of the other side: the base the
+head's, the head the one that the base build wrote. The report says how many
+gems are at different commits and lists them. The measurement (`test/perf/`, the scenarios in `test/soak/`) comes
 from this checkout for both builds. The first run builds two trees (a few
 minutes each); the measurement of the default scenarios takes about 140
 seconds per build (139 seconds on the CI runner, 28 of them in `sleep`), and
@@ -971,9 +987,10 @@ change an input of the measured binary, the measurement or the workflow, or
 that have the label `perf` (read when the job runs, so adding the label and
 re-running the job is enough). The inputs of the binary are what
 `test/build_release.sh` copies: `src/`, `mrbgems/`, `mruby/`, `dependence/`
-(ngx_devel_kit, which `Makefile.in` adds to nginx) and the top-level build
+(ngx_devel_kit, which `Makefile.in` adds to nginx), the top-level build
 files `build_config.rb`, `configure`, `config.in`, `Makefile.in`,
-`build.sh` and `nginx_version`. The measurement is `test/perf/`,
+`build.sh` and `nginx_version`, and the gem lock `build_config.rb.lock`. The
+measurement is `test/perf/`,
 `test/build_release.sh` and the scenario files in `test/soak/`
 (`nginx.conf`, `nginx.agent.conf`, `scenarios.rb`, `http_client.rb`,
 `mock_llm.rb`, `handlers/`).

@@ -99,6 +99,99 @@ Here are the list of the default mrbgems.
 The bundled auto-ssl mrbgem is not in the default build; see
 [Building with the auto-ssl mrbgem](#building-with-the-auto-ssl-mrbgem).
 
+### Gem commits: build_config.rb.lock
+
+`build_config.rb` names the third-party mrbgems, and `build_config.rb.lock`,
+committed next to it, records the commit of each of them, so that a checkout
+of the same ngx_mruby commit builds the same gems on every machine and at any
+later time. mruby's rake writes the file at the end of every build and reads
+it at the start of the next one.
+
+The lock has a section for each mruby build of `build_config.rb`: `host`, the
+mruby that ngx_mruby links, and `test`, the `mruby` binary that runs the
+tests of `test.sh`. In each section, an entry is keyed by the URL of a gem's
+repository and records the branch, the commit and the version of the gem.
+The entries cover the gems that `build_config.rb` declares with `github:` and
+the gems that those depend on, which rake clones as well (for example
+ksss/mruby-stringio, which the bundled rack-based-api needs, in `host`). The
+gems of mruby itself (`mruby/mrbgems/`) and the bundled ones under
+`mrbgems/` are part of the source tree and have no entry. The `mruby` section
+records the version of the bundled mruby.
+
+For a gem that has an entry, rake clones the repository with its whole
+history (without `--depth 1`, which it uses for a gem without an entry) into
+`mruby/build/repos/host/` or `mruby/build/repos/test/`, and checks the
+recorded commit out (a detached HEAD). At the end of the build it writes the
+lock again from the clones it used. On the default gem list the content does
+not change, so a build leaves `git status` clean.
+
+rake clones a gem only when its directory under `mruby/build/repos/` does not
+exist. A clone that exists is checked out at the commit of the lock without a
+fetch, so that commit must already be in the clone. After a change of the
+lock, remove `mruby/build` before you build. A clone left by a build without
+the lock (from before the lock was committed) has only the commit that was
+at the head of its branch at that time.
+
+To move a gem to another commit:
+
+1. In `build_config.rb.lock`, change the `commit:` of the gem's entry, in
+   each section that has one, or delete the entry to take the current head
+   of its branch.
+2. Remove the clones: `rm -rf mruby/build`. It leaves
+   `build_config.rb.lock` in place. `make clean_mruby` does not work here:
+   it runs rake before it removes anything, and rake checks each existing
+   clone out at the commit of the lock when it loads `build_config.rb`, so
+   it stops with `fatal: reference is not a tree` when a clone does not
+   have that commit.
+3. Build (`sh test.sh` or `sh build.sh`).
+4. Commit the `build_config.rb.lock` that rake wrote.
+
+When you add a gem to `build_config.rb`, the next build clones the head of
+its branch and adds its entry, and those of the gems it depends on, to the
+lock; commit the lock with the change. When you remove a gem, rake keeps its
+entry (it writes back every entry that it read), so delete the entry from the
+lock yourself. After an update of the bundled mruby, remove `mruby/build`,
+build, and commit the lock with the update: rake records the new version, and
+a dependency that the new mruby provides as one of its own gems is no longer
+cloned, so delete its entry.
+
+The lock does not pin everything that the build fetches:
+
+- mruby/mgem-list. mruby clones the head of this list of gems to find the
+  repository of a gem declared with `mgem:`, or of a dependency declared
+  without a source that is not one of mruby's own gems. Of the default gem
+  list, only the `test` build needs it: matsumotory/mruby-simplehttp depends
+  on mruby-polarssl without a source, and the list gives the repository
+  https://github.com/luisbebop/mruby-polarssl.git. The lock pins the commit
+  of that gem; the list supplies only its URL. If the list ever gives another
+  URL, the lock has no entry for it, and rake clones the head of that
+  repository. `build_config.rb` therefore declares its gems with `github:`.
+- symisc/vedis. The `mrbgem.rake` of matsumotory/mruby-vedis clones it with
+  `git clone` into the build directory of the gem
+  (`mruby/build/host/mrbgems/mruby-vedis/vedis`) when that directory does not
+  exist, at the head of its default branch.
+- The submodule of luisbebop/mruby-polarssl (ARMmbed/mbedtls, `test` build).
+  rake clones with `--recursive`, which checks the submodule out at the
+  commit that the head of the branch records, and the checkout of the
+  pinned commit does not update submodules. The pin is the head of the
+  branch today, so the two are the same commit. If the pin moves to a commit
+  that records another submodule commit, the submodule stays at the one of
+  the branch head.
+
+Because a clone made at a commit has the whole history of the repository,
+the first build fetches more than a build without the lock. For the 21
+clones of the default build, cloned the way rake clones them, this was about
+178 MiB in 40 to 43 seconds instead of about 139 MiB in 32 to 34 seconds
+with `--depth 1` (measured on 2026-10-04, two runs each). Most of the size
+either way is the mbedtls submodule of luisbebop/mruby-polarssl, and so is
+most of the difference. `--recursive` does not make submodules shallow, so
+both clones have the whole history of the default branch of mbedtls. With
+`--depth 1`, git also clones the submodule with `--single-branch`, which
+fetches only that branch (about 119 MiB with git 2.34); without
+`--depth 1`, git fetches every branch of mbedtls (183 of them on
+2026-10-04, about 152 MiB). The other branches account for about 34 MiB of
+the 39 MiB difference; the history of mruby-polarssl itself is 1.4 MiB.
+
 ## 3. Building a binary
 
 There are 3 options to build a ngx_mruby binary
@@ -312,12 +405,19 @@ mruby is built. Before you change it in a tree that was built already, remove
 `mruby/build/host/LEGAL` is not written again.
 
 CI builds and tests only the default gem list: no CI job sets
-`NGX_MRUBY_AUTO_SSL`. The eight third-party gems above are not pinned to a
-commit: rake clones the current head of their branches, unless a
-`build_config.rb.lock` left by an earlier build in the same tree (the file is
-not committed) keeps them at the commits of that build. A build with the
-variable can therefore fail after a change in one of them or in mruby while
-the default build passes.
+`NGX_MRUBY_AUTO_SSL`. The eight third-party gems above have no entry in the
+`host` section of the committed `build_config.rb.lock` (see
+[Gem commits](#gem-commits-build_configrblock)), because the default build
+does not use them. The lock has its entries per build: the entries of
+matsumotory/mruby-httprequest, matsumotory/mruby-simplehttp and
+mattn/mruby-http in its `test` section pin only the copies that the `test`
+build clones. For the `host` build, rake clones the current head of the
+eight gems' branches and adds their entries to the `host` section of the
+lock in your tree, where they keep later builds of the same tree at those
+commits. Do not commit these entries with other changes;
+`git checkout build_config.rb.lock` restores the committed file. A build with
+the variable can therefore fail after a change in one of these gems or in
+mruby while the default build passes.
 
 ## 4. Installing ngx_mruby
 

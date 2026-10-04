@@ -25,9 +25,12 @@
 #   NGX_MRUBY_AUTO_SSL  1 adds the auto-ssl mrbgem and the gems it depends on
 #                     to the mruby build (build_config.rb), as with build.sh
 #   RELEASE_GEM_LOCK  a build_config.rb.lock: the third-party gems are built at
-#                     the commits it records. Without it, rake clones the
-#                     default branch of each gem on the first build and records
-#                     the commits in BUILD_DIR/tree/build_config.rb.lock.
+#                     the commits it records. Unset or empty: the
+#                     build_config.rb.lock committed in SOURCE_DIR. When
+#                     SOURCE_DIR has none (a checkout from before the lock was
+#                     committed), rake clones the head of each gem's branch on
+#                     the first build. Either way rake records the commits it
+#                     built in BUILD_DIR/tree/build_config.rb.lock.
 #   NUM_THREADS_ENV   build parallelism (passed to build.sh)
 #
 # nginx and ngx_mruby are compiled with -g -O2 -fno-common and
@@ -61,6 +64,14 @@ SRC=$(cd "$1" && pwd)
 mkdir -p "$2"
 OUT=$(cd "$2" && pwd)
 TREE="$OUT/tree"
+# The gem lock of the build: RELEASE_GEM_LOCK, or else the build_config.rb.lock
+# committed in SOURCE_DIR. It is copied to the tree on its own (after the
+# stamp check below), not with the build files of TOP_FILES, because it can be
+# the lock of another checkout: test/perf/compare.sh gives a checkout that has
+# no lock the lock of the other side.
+if [ -z "$RELEASE_GEM_LOCK" ] && [ -f "$SRC/build_config.rb.lock" ]; then
+    RELEASE_GEM_LOCK="$SRC/build_config.rb.lock"
+fi
 if [ -n "$RELEASE_GEM_LOCK" ]; then
     RELEASE_GEM_LOCK=$(cd "$(dirname "$RELEASE_GEM_LOCK")" && pwd)/$(basename "$RELEASE_GEM_LOCK")
     gem_lock=$(cksum < "$RELEASE_GEM_LOCK")
@@ -100,11 +111,15 @@ TOP_FILES="configure config.in Makefile.in build.sh build_config.rb nginx_versio
 # - The nginx options, RELEASE_CC_OPT included. nginx's configure runs only
 #   when objs/Makefile is missing, so later runs would keep the options of
 #   the first one.
-# - The gem lock given in RELEASE_GEM_LOCK.
+# - The gem lock of the build (RELEASE_GEM_LOCK, by default the one committed
+#   in SOURCE_DIR).
 # When the stamp differs from that of the last build, the mruby build (with
 # the gem clones), the gem lock file and nginx's objs/ are removed, which
 # makes the next steps build both from scratch, as on a fresh checkout. The
-# downloaded nginx source is kept.
+# downloaded nginx source is kept. Removing the clones also matters when only
+# the lock changed: rake checks an existing clone out at the commit of the
+# lock but does not fetch, so a clone made at an older commit, or a shallow
+# one made without a lock, may not have the new commit.
 mruby_tree=
 if top=$(git -C "$SRC" rev-parse --show-toplevel 2>/dev/null) &&
     [ "$(cd "$top" && pwd -P)" = "$(pwd -P)" ]; then
