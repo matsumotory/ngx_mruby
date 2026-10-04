@@ -872,16 +872,10 @@ void ngx_http_mruby_read_request_body_cb(ngx_http_request_t *r)
 {
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(NULL, r);
 
+  // The reference to the request that ngx_http_read_client_request_body
+  // took is dropped by ngx_mrb_run_request, not here (see there).
   if (ctx != NULL) {
     ctx->read_request_body_done = 1;
-
-#if defined(nginx_version) && nginx_version >= 8011
-    // drop the reference that ngx_http_read_client_request_body took, unless
-    // the content phase checker has dropped it (see ngx_mrb_run_request)
-    if (!ctx->request_body_ref_dropped) {
-      r->main->count--;
-    }
-#endif
 
     if (ctx->request_body_more) {
       ctx->request_body_more = 0;
@@ -973,21 +967,26 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
        * rewrite handlers) and the content phase checker pass NGX_AGAIN to
        * ngx_http_finalize_request, which ends the request: it sets the read
        * handler to ngx_http_block_reading, so the body was not read further
-       * and the handler did not run again. For NGX_DONE the content phase
-       * checker only drops the reference to the request that
-       * ngx_http_read_client_request_body took, so the callback must not
-       * drop it again. The post_read and access checkers treat NGX_AGAIN and
-       * NGX_DONE alike.
+       * and the handler did not run again. The post_read and access checkers
+       * treat NGX_AGAIN and NGX_DONE alike.
+       *
+       * The reference to the request that ngx_http_read_client_request_body
+       * took is dropped at once, as nginx's mirror module does with
+       * ngx_http_finalize_request(r, NGX_DONE); the read handler that nginx
+       * installed keeps the request until the body is read, the client
+       * closes the connection or client_body_timeout expires. For the
+       * content handler the content phase checker makes that call itself
+       * with the NGX_DONE it gets.
        */
       switch (kind) {
-      case NGX_HTTP_MRUBY_HANDLER_CONTENT:
-        ctx->request_body_more = 1;
-        ctx->request_body_ref_dropped = 1;
-        return NGX_DONE;
       case NGX_HTTP_MRUBY_HANDLER_POST_READ:
       case NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE:
       case NGX_HTTP_MRUBY_HANDLER_REWRITE:
       case NGX_HTTP_MRUBY_HANDLER_ACCESS:
+        ctx->request_body_more = 1;
+        ngx_http_finalize_request(r, NGX_DONE);
+        return NGX_DONE;
+      case NGX_HTTP_MRUBY_HANDLER_CONTENT:
         ctx->request_body_more = 1;
         return NGX_DONE;
       default:
@@ -995,12 +994,26 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
          * Not reached with nginx's own request body filters: a handler that
          * cannot wait gets here only when ngx_http_mruby_request_body_complete
          * said the read completes at once. If a third-party body filter
-         * still makes it wait, request_body_more stays 0, so the callback
-         * only drops the reference when the body is complete.
+         * still makes it wait, the reference is dropped here as well, and
+         * request_body_more stays 0, so the callback does not run the phases
+         * again. A log handler runs when the request count is already 0, so
+         * the count is decremented directly instead of through
+         * ngx_http_finalize_request.
          */
+#if defined(nginx_version) && nginx_version >= 8011
+        r->main->count--;
+#endif
         return NGX_AGAIN;
       }
     }
+
+#if defined(nginx_version) && nginx_version >= 8011
+    // The read completed at once and ngx_http_read_client_request_body has
+    // called the callback already. Drop the reference that it took; a log
+    // handler runs when the count is already 0, so this is not done through
+    // ngx_http_finalize_request either.
+    r->main->count--;
+#endif
   }
 
   ai = mrb_gc_arena_save(state->mrb);
