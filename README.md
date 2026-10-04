@@ -30,6 +30,8 @@
 
 Releases are tagged `vX.Y.Z`. To stay on 2.x after v3.0.0, use `git clone -b v2.x https://github.com/matsumotory/ngx_mruby.git` or a `v2.*` release tag instead of `master`.
 
+Before upgrading, read the "Behavior changes: read before upgrading" section of every newer release in [docs/releases/](docs/releases/).
+
 Please report security vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
 ## What's ngx_mruby

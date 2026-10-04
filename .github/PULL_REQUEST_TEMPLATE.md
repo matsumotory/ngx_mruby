@@ -36,7 +36,23 @@ reports in error.log)?
 
 ## Compatibility / behavior changes
 
-<!-- Changes to directives, the Ruby API, handler return values, build options or supported versions. -->
+<!--
+Changes to directives, the Ruby API, handler return values, build options or supported versions.
+Can a configuration or script observe a difference from the last release (status, headers or body
+of a response, what a Ruby method returns or raises, which handler runs, whether `nginx -t` accepts
+a configuration, build requirements)? A bug fix counts when the old behavior could be relied on.
+For each such change, fill in the four lines below with the same text as its entry under
+"Behavior changes: read before upgrading" in docs/releases/<version>.md (see docs/releases/README.md).
+Write "n/a" in them when nothing changes.
+-->
+
+- Before:
+- Now:
+- Affected configurations or scripts:
+- What to do:
+
+- [ ] `docs/releases/<version>.md` has the entry for every behavior change above
+- [ ] No behavior change that a configuration or script can observe
 
 ## Checklist
 
