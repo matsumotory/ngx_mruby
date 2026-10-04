@@ -31,7 +31,7 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before you
   act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-04 (15:51 JST)
+## State as of 2026-10-04 (16:17 JST)
 
 Heads: `next` is `ec22740` (merge of #565), `master` is `2966465` (merge of
 #564), and `v2.x` mirrors `master` (`2966465`).
@@ -41,10 +41,12 @@ Open pull requests, all drafts:
 | PR | Base | Change | Stage |
 |---|---|---|---|
 | #561 | `next` | Bundle mruby 4.0.0 | Three review rounds, no "must fix" left. Before the merge: the performance follow-up and the move of the mruby-uname pin (both in the queue; the `perf` check fails on `82a1577`, see "Work in progress"), the note next to item 1 of section 7 of the plan (see "Decisions"; #561 does not change `docs/proposals/` yet), and the owner's approval of the expectation commit `df1d9b8bd` (question 2 at the top of the PR), which AGENTS.md "Writing tests" requires. That approval is not recorded yet: it still waits for the owner. The answer to question 1 is under "Decisions". |
-| #563 | `master` | Stop the recursion between a content handler and a header filter in the same location (#206) | Re-reviewed at `9fd9e2c`. One "must fix" is open: a regression against `master` in the code of the PR. The re-review asks for a code fix, a regression test and corrections in three texts (the code comment, the PR body and the message of the fix commit). CI passed. |
-| #566 | `master` | Answer 500 instead of no response when a content handler writes nothing (#225, refs #200) | Narrowed to the fix of the hang and rebased onto `2966465` (head `71da105`); the title and the body describe that change. CI runs. Not reviewed since the narrowing: the review on the PR is of the earlier change to 200. |
-| #568 | `master` | The branch strategy in README.md, the 2.x support period in SECURITY.md, and how v3 is promoted to `master` in `docs/DEVELOPMENT.md` | Reviewed at `54eda76`. The author applied every item at `11864b4`, rebased onto `2966465`. CI runs; it waits for the re-review. |
-| #569 | `next` | This file | Reviewed at `92471fd` (six "must fix"). The head commit applies them; it waits for the re-review. |
+| #563 | `master` | Stop the recursion between a content handler and a header filter in the same location (#206) | Three review rounds; the re-review of `67fbed1` leaves no "must fix". CI passed. Its author holds the merge and keeps it a draft, as [its comment of 16:08 JST](https://github.com/matsumotory/ngx_mruby/pull/563#issuecomment-5977578661) says. |
+| #566 | `master` | Answer 500 instead of no response when a content handler writes nothing (#225, refs #200) | Narrowed to the fix of the hang and rebased onto `2966465` (head `71da105`). The author answered the review of `c51756f` at 16:03 JST; it waits for a review of `71da105`. CI passed. |
+| #568 | `master` | The branch strategy in README.md, the 2.x support period in SECURITY.md, and how v3 is promoted to `master` in `docs/DEVELOPMENT.md` | Re-reviewed at `11864b4` with no "must fix". `1890306` applies the should-fix items; it waits for CI on that commit. |
+| #569 | `next` | This file | Re-reviewed at `188d548`: two "must fix" (the state rows and the #321 row). The head applies them; it waits for the re-review of those rows. Merges before #570. |
+| #570 | `master` | AGENTS.md sections on the design principles, on the owner's mrbgem repositories, and on the session handoff, which points to this file | Reviewed at `fe0c87c`: two "must fix" are open. CI passed. Merges after #569, so that AGENTS.md on `master` never names a file that is missing on `next`. |
+| #571 | `next` | Proposal for the site at ngx.mruby.org and the documentation it is built from (`docs/proposals/site.md`) | Not reviewed yet. CI runs. |
 
 Merged pull requests: `gh pr list --state merged --base master --search
 'merged:>=2026-10-03' --limit 200`, and the same with `--base next`. Each
@@ -59,10 +61,10 @@ Decisions of the owner that are not yet written in the place their row names:
 | 2026-10-04 | The 2.x line puts compatibility first: stability and security fixes only, and observable behavior changes only as far as the fix of a defect requires, each with a release notes entry | AGENTS.md on `master` (#564); on `next` after the next merge of `master` into `next` |
 | 2026-10-04 | Every observable behavior change gets a release notes entry: before, now, what is affected, what to do, and why the fix had to change the behavior, in English and Japanese | `docs/releases/README.md` on `master` (#564) has before, now, affected and what to do; the reason and the Japanese text are in the queue |
 | 2026-10-04 | The branch names and structure stay as they are | AGENTS.md (unchanged); README.md, SECURITY.md and `docs/DEVELOPMENT.md` after #568 |
-| 2026-10-04 | Design principles: one `mrb_state` per worker; no blocking; keep the existing performance; measure performance regularly. The sessions' procedure for the last two: a change on the request path is compared with the callgrind lane (`test/perf`) | This file, until the AGENTS.md section in the queue; #561 is held by the third principle |
+| 2026-10-04 | Design principles: one `mrb_state` per worker; no blocking; keep the existing performance; measure performance regularly. The sessions' procedure for the last two: a change on the request path is compared with the callgrind lane (`test/perf`) | AGENTS.md on `master` when #570 merges; this file until then. #561 is held by the third principle |
 | 2026-10-04 | mruby on `next`: 4.0.0 first, then 4.1.0 when it is tagged, with Prism vendored as a subset, mruby-encoding out of the default build, and mruby-onig-regexp kept for v3.0 | This file; #561 adds a note to item 1 of section 7 of the plan before it merges |
-| 2026-10-04 | Sessions may change the owner's mrbgem repositories, mruby-uname included. The sessions' procedure: a pull request in the gem's repository, reviewed by a separate agent and merged with a merge commit, as for matsumotory/mruby-uname#1 | This file, until the AGENTS.md section in the queue |
-| 2026-10-04 | The site at ngx.mruby.org (branch `gh-pages`, last changed 2020-09-22) is redesigned. The sessions' procedure: a design survey and a proposal before the implementation | This file, until the proposal |
+| 2026-10-04 | Sessions may change the owner's mrbgem repositories, mruby-uname included. The sessions' procedure: a pull request in the gem's repository, reviewed by a separate agent and merged with a merge commit, as for matsumotory/mruby-uname#1 | AGENTS.md on `master` when #570 merges; this file until then |
+| 2026-10-04 | The site at ngx.mruby.org (branch `gh-pages`, last changed 2020-09-22) is redesigned. The sessions' procedure: a design survey and a proposal before the implementation | The proposal of #571 (`docs/proposals/site.md` on `next`) when it merges; this file until then |
 
 ## Work in progress
 
@@ -108,15 +110,15 @@ of [SECURITY.md](../SECURITY.md).
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | Merge `master` into `next`, after merges into `master`. Model: #553 (branch `merge/master-into-next-20261004b`). The rows here that say "reaches `next` by the next merge", the #200 row and the decision on the 2.x line wait for it. | `next` | Ready to start: `master` is ahead of `next` by #562 and #564 |
-| A pointer to this file in AGENTS.md (`git show origin/next:docs/HANDOFF.md`), so that a session on the default branch finds it | `master` (reaches `next` by the next merge) | This pull request (#569) merged |
-| AGENTS.md section on the design principles and on changing the owner's mrbgem repositories | `master` (reaches `next` by the next merge) | Ready to start; being written in one session, not pushed yet |
+| A pointer to this file in AGENTS.md (`git show origin/next:docs/HANDOFF.md`), so that a session on the default branch finds it | `master` (reaches `next` by the next merge) | In #570, which merges after this pull request (#569) |
+| AGENTS.md section on the design principles and on changing the owner's mrbgem repositories | `master` (reaches `next` by the next merge) | In #570 |
 | Release notes: the reason each behavior change was needed, and a Japanese text next to the English one (`docs/releases/README.md`) | `master` | Ready to start |
 | Restore `mruby-redis` in the default build with `hiredis` pinned to a release tag (plan section 5 and section 7, item 5; no later decision changes it). `master` commits no gem lock, and the gem's [`mrbgem.rake`](https://github.com/matsumotory/mruby-redis/blob/5895adbaa9fcc6e9f76b1aa1f967dbae5ff52c02/mrbgem.rake#L24-L26) clones `hiredis` unpinned (it checks out `v0.13.3` only on Darwin). First step: a pull request in matsumotory/mruby-redis that pins the clone, under the decision on the owner's mrbgem repositories; the other way is a pinned clone of `hiredis` in the build of ngx_mruby. Then a pull request to `master` enables the gem in `build_config.rb`. | `master` | Ready to start |
 | Port the perf lane (`test/perf`, `test/build_release.sh`, the `perf` CI job) to `master`, so that 2.x fixes are measured. It needs `test/soak/http_client.rb`, `test/soak/scenarios.rb` and the configuration `test/soak/nginx.conf`, which exist only on `next`. That configuration calls `Nginx::Debug`, which the perf build leaves out (it is built only with `NGX_MRUBY_DEBUG_STATS`) and which 2.x must not add (the 2.x policy), so the port must work without it. | `master` | The owner: no decision puts the port in the scope of 2.x yet. The sessions recommend it: it changes only tests and CI, as #530 did. |
 | The answer 200 with an empty body (#200) | `next` | #566 merged, then merged into `next` |
 | A row of the v3 plan for #502, then close #502 | `next` | Ready to start |
 | For the owner's decision on #502: measure what running handler code in a method or lambda frame changes (`self`, local variables, constant lookup) and what it costs in the perf lane | `next` | Ready to start |
-| Site: a proposal from a design survey, then the implementation | Proposal: `next` (`docs/proposals/`). Implementation: `gh-pages`, which the branch table of AGENTS.md does not cover yet | The survey. The survey and the proposal are being written in one session and are not pushed yet. |
+| Site: a proposal from a design survey, then the implementation | Proposal: `next` (`docs/proposals/`). Implementation: `gh-pages`, which the branch table of AGENTS.md does not cover yet | The proposal is #571. The implementation waits for its review and for the owner's answers to the open questions in its section 7. |
 | Intern the fixed names once at initialization instead of on every request (`mrb_intern_cstr` in `ngx_mrb_get_class_obj`, `ngx_mrb_get_request_var` and the `Nginx::Var` path), measured against `next` on mruby 3.3 | `next` | Ready to start; #561 waits for it |
 | Move the mruby-uname pin of #561 to `50031c8` on the gem's `master` | `next` (#561) | Ready to start |
 | mruby 4.1.0 | `next` | The 4.1.0 tag and #561 |
