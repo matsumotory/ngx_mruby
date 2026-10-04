@@ -400,12 +400,14 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
 
   code->proc = mrb_proc_ptr(proc);
 
+  /* A debugging aid for each directive, logged while nginx reads the
+     configuration through its startup log, which error_log cannot filter. */
   if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
-    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: compile info: code->code.file=(%s)", MODULE_NAME,
-                       __func__, __LINE__, code->code.file);
+    ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "%s INFO %s:%d: compile info: code->code.file=(%s)", MODULE_NAME, __func__,
+                       __LINE__, code->code.file);
   } else {
-    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
-                       "%s NOTICE %s:%d: compile info: "
+    ngx_conf_log_error(NGX_LOG_INFO, cf, 0,
+                       "%s INFO %s:%d: compile info: "
                        "code->code.string=(%s)",
                        MODULE_NAME, __func__, __LINE__, code->code.string);
   }
