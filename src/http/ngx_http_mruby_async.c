@@ -7,6 +7,7 @@
 #include "ngx_http_mruby_async.h"
 
 #include "ngx_http_mruby_core.h"
+#include "ngx_http_mruby_debug.h" // with NGX_MRUBY_DEBUG_STATS, counts the mrb_gc_register() calls
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 #include "ngx_http_mruby_var.h"

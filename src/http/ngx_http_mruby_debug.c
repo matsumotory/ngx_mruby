@@ -23,8 +23,47 @@
 #include <mruby/hash.h>
 #include <mruby/variable.h>
 
-/* The global variable that mrb_gc_register() appends to (GC_ROOT_SYM in mruby/src/gc.c). */
+/*
+// The global variable that mrb_gc_register() appends to in mruby 3.x and 4.0
+// (GC_ROOT_SYM in mruby/src/gc.c). mruby 4.1 keeps the root set in
+// mrb->gc.root instead and does not define this variable.
+*/
 #define NGX_MRB_DEBUG_GC_ROOT_NAME "_gc_root_"
+
+/*
+// The objects that ngx_mruby has registered with mrb_gc_register() and not
+// yet unregistered, and the fibers among them. They count the calls that go
+// through the macros of ngx_http_mruby_debug.h, in every mrb_state of the
+// process: the one of the http module and the one of the stream module.
+// Signed, so that more unregistrations than registrations show as negative.
+*/
+static ngx_int_t ngx_mrb_debug_gc_root_count = 0;
+static ngx_int_t ngx_mrb_debug_gc_root_fibers_count = 0;
+
+static void ngx_mrb_debug_gc_root_add(mrb_value obj, ngx_int_t n)
+{
+  /* mrb_gc_register() and mrb_gc_unregister() ignore immediate values */
+  if (mrb_immediate_p(obj)) {
+    return;
+  }
+  ngx_mrb_debug_gc_root_count += n;
+  if (mrb_type(obj) == MRB_TT_FIBER) {
+    ngx_mrb_debug_gc_root_fibers_count += n;
+  }
+}
+
+/* The parentheses around the name call the mruby function, not the macro. */
+void ngx_mrb_debug_gc_register(mrb_state *mrb, mrb_value obj)
+{
+  (mrb_gc_register)(mrb, obj);
+  ngx_mrb_debug_gc_root_add(obj, 1);
+}
+
+void ngx_mrb_debug_gc_unregister(mrb_state *mrb, mrb_value obj)
+{
+  (mrb_gc_unregister)(mrb, obj);
+  ngx_mrb_debug_gc_root_add(obj, -1);
+}
 
 static void ngx_mrb_debug_stats_set(mrb_state *mrb, mrb_value stats, const char *key, mrb_int value)
 {
@@ -49,12 +88,17 @@ static mrb_value ngx_mrb_debug_stats(mrb_state *mrb, mrb_value self)
     }
   }
 
-  stats = mrb_hash_new_capa(mrb, 5);
+  stats = mrb_hash_new_capa(mrb, 7);
   ngx_mrb_debug_stats_set(mrb, stats, "gc_live", live);
-  ngx_mrb_debug_stats_set(mrb, stats, "gc_root", root_len);
-  ngx_mrb_debug_stats_set(mrb, stats, "gc_root_fibers", root_fibers);
+  ngx_mrb_debug_stats_set(mrb, stats, "gc_root", (mrb_int)ngx_mrb_debug_gc_root_count);
+  ngx_mrb_debug_stats_set(mrb, stats, "gc_root_fibers", (mrb_int)ngx_mrb_debug_gc_root_fibers_count);
   ngx_mrb_debug_stats_set(mrb, stats, "gc_arena_idx", arena_idx);
   ngx_mrb_debug_stats_set(mrb, stats, "timers", (mrb_int)ngx_mrb_async_debug_timers());
+  /* mruby's own root set of this mrb_state, for as long as mruby keeps the array */
+  if (mrb_array_p(root)) {
+    ngx_mrb_debug_stats_set(mrb, stats, "gc_root_mruby", root_len);
+    ngx_mrb_debug_stats_set(mrb, stats, "gc_root_fibers_mruby", root_fibers);
+  }
 
   return stats;
 }
