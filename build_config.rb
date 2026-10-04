@@ -110,6 +110,16 @@ MRuby::Build.new('host') do |conf|
   # conf.gem github: 'matsumotory/mruby-redis'
   conf.gem github: 'matsumotory/mruby-vedis'
   conf.gem github: 'matsumotory/mruby-userdata'
+  # build_config.rb.lock pins mruby-uname (here and in the test build) to the
+  # head of its branch mruby-4, which declares the instances of Uname as data
+  # objects: with mruby 4.0, every method of the gem's master raises
+  # "TypeError: allocation failure of Uname". rake clones the gem with
+  # --branch mruby-4 and then checks out the pinned commit, so every fresh
+  # build (CI included) stops if that branch is deleted, or if the pinned
+  # commit is on no branch of the gem any more (for example after the branch
+  # was rewritten). Until the pin moves to master, the branch must stay as it
+  # is, and its pull request must be merged with a merge commit, not squashed
+  # or rebased; then the pin moves to that merge commit on master.
   conf.gem github: 'matsumotory/mruby-uname'
   conf.gem github: 'matsumotory/mruby-mutex'
   conf.gem github: 'matsumotory/mruby-localmemcache'
@@ -172,6 +182,7 @@ MRuby::Build.new('test') do |conf|
 
   conf.gem github: 'matsumotory/mruby-simplehttp'
   conf.gem github: 'matsumotory/mruby-httprequest'
+  # pinned to its branch mruby-4 by build_config.rb.lock (see the host build)
   conf.gem github: 'matsumotory/mruby-uname'
   conf.gem github: 'matsumotory/mruby-simpletest'
   conf.gem github: 'mattn/mruby-http'
