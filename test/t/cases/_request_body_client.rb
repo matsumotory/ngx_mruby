@@ -9,6 +9,8 @@
 #   halves, WAIT seconds apart, so that the handler starts before the body is
 #   complete. It reads until the server closes the connection or LIMIT
 #   seconds pass, and prints "STATUS:HEX" as _tcp_client.rb does.
+# whole: the same request, with the headers and the whole body written at
+#   once, so that nginx reads the body together with the headers.
 # close: opens COUNT connections that each send the headers of a POST with a
 #   100-byte body and the first 10 bytes of that body, waits WAIT seconds so
 #   that the handler starts, and closes them. It then reads /proc/net/tcp
@@ -59,16 +61,20 @@ when 'close_wait'
     count = close_wait_count(port)
   end
   print "close_wait=#{count}"
-when 'parts'
+when 'parts', 'whole'
   body = '0123456789abcdefghij'
   head = "POST #{path} HTTP/1.0\r\nHost: #{host}\r\nContent-Length: #{body.bytesize}\r\n\r\n"
   received = ''.b
   status =
     begin
       Socket.tcp('127.0.0.1', port, connect_timeout: LIMIT) do |sock|
-        sock.write(head + body[0, 10])
-        sleep WAIT
-        sock.write(body[10..])
+        if mode == 'whole'
+          sock.write(head + body)
+        else
+          sock.write(head + body[0, 10])
+          sleep WAIT
+          sock.write(body[10..])
+        end
         deadline = now + LIMIT
         loop do
           remaining = deadline - now
