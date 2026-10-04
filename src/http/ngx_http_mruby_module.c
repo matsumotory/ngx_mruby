@@ -61,7 +61,7 @@ static ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mr
 static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *code_file_path);
 static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t *code_s);
-static ngx_int_t ngx_http_mruby_shared_state_init(ngx_mrb_state_t *state);
+static ngx_int_t ngx_http_mruby_shared_state_init(ngx_conf_t *cf, ngx_mrb_state_t *state);
 static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 
 /*
@@ -343,7 +343,7 @@ static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf)
   mmcf->init_worker_code = NGX_CONF_UNSET_PTR;
   mmcf->exit_worker_code = NGX_CONF_UNSET_PTR;
 
-  rc = ngx_http_mruby_shared_state_init(mmcf->state);
+  rc = ngx_http_mruby_shared_state_init(cf, mmcf->state);
   if (rc == NGX_ERROR) {
     return NULL;
   }
@@ -993,12 +993,22 @@ static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx
   return code;
 }
 
-static ngx_int_t ngx_http_mruby_shared_state_init(ngx_mrb_state_t *state)
+static ngx_int_t ngx_http_mruby_shared_state_init(ngx_conf_t *cf, ngx_mrb_state_t *state)
 {
   mrb_state *mrb;
 
   mrb = mrb_open();
   if (mrb == NULL) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s: mrb_open() failed", MODULE_NAME);
+    return NGX_ERROR;
+  }
+  /* mruby 4.x returns the state with mrb->exc set, instead of NULL, when the
+     initialization of the core or of an mrbgem raised. What comes after the
+     raise is not initialized, so the state is not used. */
+  if (mrb->exc != NULL) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s: mrb_open() failed: %s raised while initializing mruby", MODULE_NAME,
+                       mrb_obj_classname(mrb, mrb_obj_value(mrb->exc)));
+    mrb_close(mrb);
     return NGX_ERROR;
   }
   ngx_mrb_class_init(mrb);

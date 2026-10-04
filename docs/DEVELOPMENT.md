@@ -54,11 +54,23 @@ If you want to update to a specific commit, you can specify a ref.
 sh update-mruby-subtree REF
 ```
 
+`NGX_MRUBY_CORE_GEMS` in [build_config.rb](../build_config.rb) names the mruby
+core gems that ngx_mruby builds, so an update does not change them by itself.
+The mruby build stops when a listed gem is not in the new `mruby/mrbgems`:
+remove it from the list, or replace it, as a decision of its own. To build
+anyway while you work on the update, set `NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1`;
+the build then skips the missing gems with a notice. Gems that the new mruby
+adds are not built until you add them to the list.
+
 After the update, remove `mruby/build`, build with `sh test.sh`, and commit the
 `build_config.rb.lock` that rake wrote with the update: the lock records the
-version of mruby. A dependency that the new mruby provides as one of its own
-gems is no longer cloned, but rake keeps its entry in the lock, so delete that
-entry (see "Gem commits" in [docs/install/README.md](install/README.md)).
+version of mruby. rake writes the lock at the end of a build, and the check of
+`NGX_MRUBY_CORE_GEMS` stops the build while rake loads `build_config.rb`, so
+rake writes no new lock until every listed gem is found or
+`NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1` is set. A dependency that the new mruby
+provides as one of its own gems is no longer cloned, but rake keeps its entry
+in the lock, so delete that entry (see "Gem commits" in
+[docs/install/README.md](install/README.md)).
 
 ## Updating ngx_devel_kit
 

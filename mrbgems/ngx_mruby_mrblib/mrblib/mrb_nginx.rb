@@ -70,8 +70,11 @@ class Nginx
         ]
         tmp = ''
         str = str.to_s
-        str.size.times do |idx|
-          chr = str[idx]
+        # Percent-encoding works on bytes. String#size and String#[] count
+        # characters instead when mruby is built with MRB_UTF8_STRING (the
+        # mruby-encoding gem of mruby 4.x), so walk the bytes explicitly.
+        str.bytesize.times do |idx|
+          chr = str.byteslice(idx, 1)
           tmp += if reserved_str.include?(chr)
                    chr
                  else

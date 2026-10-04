@@ -174,8 +174,20 @@ static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
   mmcf->exit_worker_code = NGX_CONF_UNSET_PTR;
 
   mmcf->ctx->mrb = mrb_open();
-  if (mmcf->ctx->mrb == NULL)
+  if (mmcf->ctx->mrb == NULL) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s: mrb_open() failed", MODULE_NAME);
     return NULL;
+  }
+  /* mruby 4.x returns the state with mrb->exc set, instead of NULL, when the
+     initialization of the core or of an mrbgem raised. What comes after the
+     raise is not initialized, so the state is not used. */
+  if (mmcf->ctx->mrb->exc != NULL) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s: mrb_open() failed: %s raised while initializing mruby", MODULE_NAME,
+                       mrb_obj_classname(mmcf->ctx->mrb, mrb_obj_value(mmcf->ctx->mrb->exc)));
+    mrb_close(mmcf->ctx->mrb);
+    mmcf->ctx->mrb = NULL;
+    return NULL;
+  }
   ngx_stream_mrb_class_init(mmcf->ctx->mrb);
 
   cln->handler = ngx_stream_mruby_cleanup;

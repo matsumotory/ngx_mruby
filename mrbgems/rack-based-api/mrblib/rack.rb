@@ -120,9 +120,15 @@ module Kernel
   end
 
   def run obj
-    Server = get_server_class
-    r = Server::Request.new
-    c = Server::Connection.new
+    server = get_server_class
+    # Keeps Kernel::Server, which application code can also reach as a
+    # top-level Server, defined after run, as the former `Server = ...` in
+    # this method did on mruby 3.3. The methods of Kernel::Rack do not need
+    # it: they find Kernel::Rack::Server. mruby 4.x (like CRuby) rejects a
+    # constant assignment inside a method at parse time, hence const_set.
+    Kernel.const_set(:Server, server)
+    r = server::Request.new
+    c = server::Connection.new
 
     env = Kernel::Rack.build_env r, c
     res = obj.call env

@@ -9,7 +9,13 @@ if [ -z "$mruby_root" ]; then
     mruby_root=$ngx_addon_dir/mruby
 fi
 if [ -z "$mruby_incdir" ]; then
-    mruby_incdir="$mruby_root/src $mruby_root/include"
+    # build/host/include has the headers that the mruby build generates
+    # (mruby/presym/id.h), which mruby.h of mruby 4.x always includes. This
+    # line is what gives it to the static and the dynamic build: nginx puts
+    # "-I " before each word of CORE_INCS, so the "-I<dir>" words that
+    # mrbgems_config adds reach the compiler as "-I -I<dir>" and name no
+    # directory that exists.
+    mruby_incdir="$mruby_root/src $mruby_root/include $mruby_root/build/host/include"
 fi
 if [ -z "$mruby_libdir" ]; then
     mruby_libdir=$mruby_root/build/host/lib

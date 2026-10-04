@@ -1,8 +1,53 @@
+# The mruby core gems of the nginx side (host) and of the test client (test),
+# selected by name. `conf.gembox 'full-core'` takes every core gem that the
+# vendored mruby has, so an mruby update would change the classes and methods
+# available to ngx_mruby scripts without a change here. For example, the
+# full-core of mruby 4.0.0 and of 4.1.0-rc2 takes mruby-task, which redefines
+# Kernel#sleep and whose POSIX implementation arms a process-wide SIGALRM
+# interval timer, and leaves mruby-sleep out.
+# This list is the set that full-core selects in mruby 3.3.0. Adding or
+# removing a name changes what scripts can use; decide each one on its own.
+# mruby-test-inline-struct has only tests and adds nothing to libmruby.
+NGX_MRUBY_CORE_GEMS = %w[
+  mruby-array-ext mruby-bigint mruby-bin-config mruby-bin-mirb mruby-bin-mrbc
+  mruby-bin-mruby mruby-bin-strip mruby-binding mruby-catch mruby-class-ext
+  mruby-cmath mruby-compar-ext mruby-compiler mruby-complex mruby-data
+  mruby-dir mruby-enum-chain mruby-enum-ext mruby-enum-lazy mruby-enumerator
+  mruby-errno mruby-error mruby-eval mruby-exit mruby-fiber mruby-hash-ext
+  mruby-io mruby-kernel-ext mruby-math mruby-metaprog mruby-method
+  mruby-numeric-ext mruby-object-ext mruby-objectspace mruby-os-memsize
+  mruby-pack mruby-print mruby-proc-binding mruby-proc-ext mruby-random
+  mruby-range-ext mruby-rational mruby-set mruby-sleep mruby-socket
+  mruby-sprintf mruby-string-ext mruby-struct mruby-symbol-ext
+  mruby-test-inline-struct mruby-time mruby-toplevel-ext
+].freeze
+
+# Adds the core gems named in `names` to the build `conf`. A name that the
+# mruby being built does not have (a gem of another mruby version) stops the
+# build, so that an mruby update cannot drop a gem from the list unnoticed.
+# While the vendored mruby is being updated, NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1
+# in the environment skips such names with a notice instead. A build that
+# needs fewer gems passes `NGX_MRUBY_CORE_GEMS - %w[...]`.
+def ngx_mruby_core_gems(conf, names = NGX_MRUBY_CORE_GEMS)
+  gem_dir = File.join(MRUBY_ROOT, 'mrbgems')
+  missing = names.reject { |name| File.file?(File.join(gem_dir, name, 'mrbgem.rake')) }
+  unless missing.empty?
+    message = "build_config.rb: core gem(s) #{missing.join(', ')} not in #{gem_dir} " \
+              "(#{conf.name} build)"
+    unless ENV['NGX_MRUBY_ALLOW_MISSING_CORE_GEMS'] == '1'
+      raise "#{message}. Edit NGX_MRUBY_CORE_GEMS in build_config.rb, or set " \
+            'NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1 to skip them while updating mruby.'
+    end
+    $stderr.puts "#{message}; skipped because NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1"
+  end
+  (names - missing).each { |name| conf.gem core: name }
+end
+
 MRuby::Build.new('host') do |conf|
   toolchain :gcc
 
   conf.defines << 'MRB_STR_LENGTH_MAX=10485760'
-  conf.gembox 'full-core'
+  ngx_mruby_core_gems(conf)
 
   conf.cc do |cc|
     cc.flags << ENV['NGX_MRUBY_CFLAGS'] if ENV['NGX_MRUBY_CFLAGS']
@@ -21,7 +66,8 @@ MRuby::Build.new('host') do |conf|
   # github:, not mgem:, so that the URL comes from this file and not from
   # mruby's clone of mruby/mgem-list, which no lock pins.
   conf.gem github: 'iij/mruby-env'
-  conf.gem github: 'iij/mruby-dir'
+  # Dir comes from the core gem mruby-dir (in NGX_MRUBY_CORE_GEMS), which
+  # started as iij/mruby-dir and has every method that one has.
   conf.gem github: 'iij/mruby-digest'
   conf.gem github: 'iij/mruby-process'
   conf.gem github: 'mattn/mruby-json'
@@ -88,6 +134,6 @@ MRuby::Build.new('test') do |conf|
   conf.gem github: 'mattn/mruby-json'
   conf.gem github: 'iij/mruby-env'
 
-  # include the default GEMs
-  conf.gembox 'full-core'
+  # the core gems listed at the top of this file
+  ngx_mruby_core_gems(conf)
 end
