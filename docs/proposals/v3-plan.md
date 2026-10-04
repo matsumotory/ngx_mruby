@@ -10,12 +10,15 @@ four commits after v2.7.0) and a survey of primary sources dated up to
 `next` and primary sources fetched that day, in these places: the
 introduction of section 4 and its last subsection, "Agent proxy: the v3.0
 use case"; the Pillar F and Pillar G rows; the heading, the priority
-paragraph and steps 2, 4, 7 and 8 of section 6; items 12 and 13 of section 7
-and the open question after them; and the related lines of sections 1, 3.5,
-8 and 9. The agent proxy rows of step 4, the order inside step 7 and the
-targets in section 8 are proposals of that amendment, not decisions. Facts
-cite a file and line or a URL with its date. Statements marked "unverified"
-come from reading code only and still need a build and a test.
+paragraph and steps 2, 4, 7 and 8 of section 6; the heading and
+introduction of section 7, its items 12 and 13 and the open question after
+them; and the related lines of sections 1, 3.5, 8 and 9. The agent proxy
+rows of step 4, the parallel start of step 7 and the order inside it, the
+release conditions that steps 7 and 8 add for `v3.0.0-rc.1` and v3.0.0,
+and the targets in section 8 are proposals of that amendment, not
+decisions. Facts cite a file and line or a URL with its date. Statements
+marked "unverified" come from reading code only and still need a build and
+a test.
 
 Security-relevant details found during the code read are deliberately not in
 this document. They are tracked in the repository's private security advisory
@@ -427,8 +430,11 @@ answers some requests itself, with its own error responses (401, 403, 429,
 504) and with the model list of `GET /v1/models`, the model discovery of
 Claude Code's gateway guide, which the reference proxy serves from the
 client's model allowlist. It forwards the `anthropic-*` request headers, the
-request body fields, every event of a stream in order and upstream error
-bodies unchanged. It does not reimplement either API and does not translate
+request body fields and every event of a stream in order unchanged. An
+upstream error that the proxy passes to the client keeps its body
+unchanged; on an upstream 529, the proxy may instead send the request to
+the fallback location of another provider (`error_page 529 = @name`,
+section 8). It does not reimplement either API and does not translate
 between them. Other wire formats (Gemini, OpenAI Chat Completions) and
 upstreams that need translation or request signing (Amazon Bedrock
 InvokeModel, Google Cloud rawPredict, AWS SigV4) are not part of the scope.
@@ -449,8 +455,9 @@ Facts the rows below rest on, checked against the cited page on 2026-10-04
   response's full event sequence without dropping, duplicating or
   reordering events, and to forward error response bodies unmodified. With
   model discovery turned on (it is off by default), Claude Code asks the
-  gateway for its models with `GET /v1/models`, with a timeout of 3 seconds,
-  and treats a redirect as a failure ("Model discovery"). Through a
+  gateway for its models with `GET /v1/models?limit=1000`, with a timeout of
+  3 seconds by default that `CLAUDE_CODE_GATEWAY_MODEL_DISCOVERY_TIMEOUT_MS`
+  changes, and treats a redirect as a failure ("Model discovery"). Through a
   gateway, Claude Code aborts a stream after 300 seconds without a byte and
   runs no first-byte deadline ("Network configuration"); it waits for the
   response headers up to `API_TIMEOUT_MS`, 600,000 ms by default ("Errors").
@@ -539,7 +546,7 @@ agent proxy):
 | Log handlers before `access_log`: ngx_mruby's log-phase handlers run before nginx's log module (today they are appended after it, `src/http/ngx_http_mruby_module.c:700-706`), and an exception in a log handler does not change the status that `access_log` and later log-phase handlers see. | The cost, the tokens and the estimate for a cut stream that the log handler computes reach the access log line of the same request. | B | behavior (`access_log` and later log-phase handlers see what the mruby log handlers set) | 4 |
 | Variable declaration (optional): `mruby_variable $name [value];` declares a variable that Ruby may assign, without a `set` that runs. | A server rewrite handler sets the variables of `proxy_set_header` and `access_log` without a declaration-only `location`: a server-level `set` runs after the handler in the same phase and would overwrite its values. | B (with the `Nginx::Var` row) | additive | 4 |
 | Shared dictionary (the Pillar C row): `mruby_shared_dict NAME SIZE;` and `Nginx::SharedDict[name]` with `get`, `set` with a TTL, an atomic `incr` with a TTL and an option not to create a missing key, `delete`, `keys(prefix)`, and an entry count for the soak test. | Token and money counters per key and period, a cooldown per provider credential after a 429, and counters per key and model for a metrics endpoint, shared by the workers of one host. A zone with the same name and size survives a reload. | C | additive | 7a |
-| JSON body read: `Nginx::Request#body_json(path)` returns one value of the JSON request body, read in C from memory or from nginx's temporary file, without a Ruby String of the whole body. | Routing by `model` at a cost that does not grow like `JSON.parse` (above), up to the 32 MB of the Messages API, which is above the 10 MiB limit of a Ruby String in the default build (`MRB_STR_LENGTH_MAX`, `build_config.rb:49`). | C | additive | 7b |
+| JSON body read: `Nginx::Request#body_json(path)` returns one value of the JSON request body, read in C from memory or from nginx's temporary file, without a Ruby String of the whole body. If the top-level key that the path starts with appears more than once, `body_json` raises an error instead of choosing one of the values, and the handler rejects the request with 400: receivers disagree on repeated names, and many keep only the last pair (RFC 8259, section 4), so a read that kept the first `model` could approve one model while the upstream serves another. To find a repeat, the read goes on to the end of the top-level object. | Routing by `model` at a cost that does not grow like `JSON.parse` (above), up to the 32 MB of the Messages API, which is above the 10 MiB limit of a Ruby String in the default build (`MRB_STR_LENGTH_MAX`, `build_config.rb:49`). | C | additive | 7b |
 | SSE event filter: `mruby_output_event_filter` (file and `_code`) with a list of event names, C-side measures of named JSON fields and a size limit per event; `Nginx::Filter::Event` with `#name`, `#data` and `#json(path)`. ngx_mruby frames the stream in C by the HTML Standard's event stream rules and runs Ruby once per complete listed event, which Ruby reads. The filter only reads (section 7, item 13): every byte of the stream, the listed events included, goes on to the client unchanged as it arrives. A listed event larger than the size limit (proposed default 1 MiB) is not given to Ruby; a variable names it for the access log, and its bytes go on unchanged. The terminal `response.*` events of the Responses API carry the whole `Response` object, so a Responses proxy sets the limit above the responses it expects. | Usage from `message_start` and `message_delta` (Messages) and from the terminal `response.*` events (Responses) with a fixed number of Ruby calls per request; counts of events and of the characters of text deltas, to estimate the output of a cut stream; variables for `access_log` without Ruby: the event count, the last event name, and the time to the first event from the start of the upstream attempt that served it. Today `mruby_output_body_filter` reads only a response of known length, as one buffer, and passes a stream on unread (`src/http/ngx_http_mruby_module.c:1826-1838`). | C, on the filter typing and merge of Pillar B | additive | 7b |
 | Upstream peer hook: ngx_mruby wraps the peer `init`, `get` and `free` functions of the named `upstream {}` blocks, outside the keepalive module, only when a directive of the `http {}` block uses the hook (the first-byte deadline, later the balancer API), as the Pillar B row registers phase handlers only where a directive exists. For a location without such a directive, the wrapper calls nginx's functions and does nothing else. | The place, per request and per attempt, where the first-byte deadline and the balancer API attach. | C | none | 7c |
 | First-byte deadline: `mruby_upstream_first_byte_timeout TIME;` per location, on the peer hook. `proxy_read_timeout` stays the idle timeout between reads, and `keepalive ... local` keeps matching connections to their location. | A provider that accepts a request and sends no response header is given up after the deadline (nginx's usual upstream timeout: 504, or the next server when `proxy_next_upstream timeout` is set), while `proxy_read_timeout` stays above the 300 seconds without a byte that Claude Code allows a stream. | C | additive | 7c |
@@ -610,11 +617,12 @@ demand from users.
    Tag `v3.0.0-beta.1` when the migration guide and examples exist.
 7. **Agent proxy** (section 4, "Agent proxy: the v3.0 use case"), after the
    safety net (step 2) and the runtime (step 3). By the priority above, it
-   does not delay steps 4, 5 and 6: parts (a) and (c) can start before step
-   4 ends and run beside it, and they do not hold back step 4 or
-   `v3.0.0-alpha.1`. Its parts and what each waits for (a proposal of the
-   2026-10-04 amendment, from the dependencies in section 4, not a
-   decision):
+   does not delay steps 4, 5 and 6. Proposed in the 2026-10-04 amendment,
+   not a decision: parts (a) and (c) can start before step 4 ends and run
+   beside it, and so that this does not delay steps 4, 5 and 6, they do not
+   hold back step 4 or `v3.0.0-alpha.1`. Its parts and what each waits for
+   (a proposal of the 2026-10-04 amendment, from the dependencies in
+   section 4, not a decision):
    (a) the shared dictionary, after step 3;
    (b) the SSE event filter and the JSON body read, after step 4;
    (c) the upstream peer hook and the first-byte deadline, after step 3;
@@ -623,15 +631,17 @@ demand from users.
    of 2026-10-03), and budgets shared across hosts, after the fiber
    lifecycle of step 4;
    (e) the reference proxy and its how-to, on the parts that exist.
-   `v3.0.0-rc.1` waits for (a), (b), (c) and the reference proxy built on
-   them. (d) does not hold back rc.1 or v3.0.0: the design of the socket
-   API is still to be evaluated (the Pillar C row), and until (d) lands the
-   reference proxy keeps its budgets in the shared dictionary of one host.
+   Proposed in the same amendment, not decisions: `v3.0.0-rc.1` waits for
+   (a), (b), (c) and the reference proxy built on them, and (d) does not
+   hold back rc.1 or v3.0.0. The design of the socket API is still to be
+   evaluated (the Pillar C row), and until (d) lands the reference proxy
+   keeps its budgets in the shared dictionary of one host.
    Each feature lands with its perf and soak scenarios (section 8).
 8. **Capabilities on demand** (Pillar C, the rows that step 7 does not
    schedule): SSL repositioning, read-only TLS facts and stream phases only
-   when asked. `v3.0.0-rc.1` when the site and the examples are complete,
-   the reference agent proxy among them (on parts (a) to (c) of step 7).
+   when asked. `v3.0.0-rc.1` when the site and the examples are complete.
+   Proposed in the 2026-10-04 amendment, not a decision: the reference
+   agent proxy is among those examples (on parts (a) to (c) of step 7).
 
 ## 7. Decisions (made by the owner on 2026-10-03 and 2026-10-04)
 
@@ -674,8 +684,10 @@ decided and why.
     that it lists. It changes only what belongs to the gateway: the
     credential, `Host` and SNI of the upstream it chooses, and its own
     responses (errors and `GET /v1/models`). It forwards the `anthropic-*`
-    request headers, the request body fields, every event and upstream
-    error bodies unchanged, and it does not reimplement the APIs. These are
+    request headers, the request body fields and every event unchanged. An
+    upstream error that it passes to the client keeps its body unchanged;
+    on a 529, it may instead send the request to the fallback location of
+    another provider (section 8). It does not reimplement the APIs. These are
     the APIs that Claude Code sends to a gateway and that Codex speaks
     (section 4), and Claude Code's gateway guide asks a gateway to pass the
     headers, body fields, events and error bodies through unchanged.
@@ -720,15 +732,16 @@ nginx spends to relay one more event (section 4).
     configuration and show no `WARN` against the base.
   - Ir targets, proposed from the baselines of section 4 and checked when
     each scenario is added:
-    - The JSON body read: at most 0.5 H at 2 KB, 64 KB, 512 KB and 4 MB when
-      `model` is the first key of the body, as in the bodies that
-      `MockLLM.request_body` builds (`test/soak/mock_llm.rb`). This assumes
-      a read that stops at the value it was asked for: 0.5 H at 4 MB is
-      about 0.0014 Ir per byte, too little to scan the body. A second set of
-      scenarios puts `model` after `messages`, so that the read scans the
-      whole body. Its target is stated per KB, set from a prototype
-      measurement and compared with the about 24,100 Ir per KB of
-      `JSON.parse` (section 4).
+    - The JSON body read: a target per KB, set from a prototype measurement
+      and compared with the about 24,100 Ir per KB of `JSON.parse` (section
+      4), in two sets of scenarios at 2 KB, 64 KB, 512 KB and 4 MB: one with
+      `model` as the first key of the body, as in the bodies that
+      `MockLLM.request_body` builds (`test/soak/mock_llm.rb`), and one with
+      `model` after `messages`. The read goes on to the end of the top-level
+      object to find a repeated key (section 4), so its cost grows with the
+      body wherever `model` is. A read that stopped at the first `model`
+      could meet 0.5 H at 4 MB, about 0.0014 Ir per byte, but it would miss
+      a repeated key, so the target does not assume an early stop.
     - The C-side scan of the event filter: a target per byte of the stream,
       stated with the scanning method it assumes and set from a prototype
       measurement. A share of nginx's relay cost per event does not work as
@@ -765,13 +778,13 @@ nginx spends to relay one more event (section 4).
     filter arrives byte for byte, compared with the stream that
     `MockLLM.stream_body` computes for the same request; an upstream error
     body arrives unmodified; `retry-after` is in integer seconds;
-    `GET /v1/models` answers without a redirect and lists only the key's
-    models; a 529 goes through `error_page 529 = @name` to the other
-    provider with its own credential, Host and SNI, and its usage is charged
-    there; the first-byte deadline answers 504 for an upstream that accepts
-    and never answers, does not cut a stream that pauses longer than the
-    deadline between events, and leaves `keepalive ... local` reusing
-    connections.
+    `GET /v1/models?limit=1000` answers without a redirect and lists only
+    the key's models; a 529 goes through `error_page 529 = @name` to the
+    other provider with its own credential, Host and SNI, and its usage is
+    charged there; the first-byte deadline answers 504 for an upstream that
+    accepts and never answers, does not cut a stream that pauses longer
+    than the deadline between events, and leaves `keepalive ... local`
+    reusing connections.
   - Several workers: N concurrent `incr` calls from 4 workers end at N. This
     needs the Pillar E harness with `master_process on`, because the perf
     lane runs `master_process off` and the soak test samples one worker.
@@ -824,6 +837,7 @@ nginx spends to relay one more event (section 4).
   https://github.com/openai/codex/blob/main/codex-rs/model-provider-info/src/lib.rs,
   https://github.com/openai/openai-openapi (`openapi.yaml`),
   https://html.spec.whatwg.org/multipage/server-sent-events.html,
+  https://www.rfc-editor.org/rfc/rfc8259 (section 4),
   https://github.com/nginx/nginx/blob/release-1.31.6/src/http/ngx_http_upstream.c
 - Process: https://github.com/google/oss-fuzz/tree/master/projects/mruby,
   https://google.github.io/clusterfuzzlite/,
