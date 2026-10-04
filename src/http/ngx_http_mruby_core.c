@@ -28,6 +28,11 @@ void ngx_http_mruby_syms_fill(mrb_state *mrb)
 #undef NGX_HTTP_MRUBY_SYM_NAME
   ngx_uint_t i;
 
+  // mrb_intern_cstr() raises NoMemoryError when the symbol table cannot grow.
+  // The table forgets the previous state before the loop writes ids of mrb, so
+  // that it never names one state while it holds ids of another: after a
+  // raise, the next call with any state fills it again.
+  ngx_http_mruby_syms.mrb = NULL;
   for (i = 0; i < NGX_HTTP_MRUBY_SYM_COUNT; i++) {
     ngx_http_mruby_syms.sym[i] = mrb_intern_cstr(mrb, names[i]);
   }
