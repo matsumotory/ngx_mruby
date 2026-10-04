@@ -10,7 +10,7 @@ User-Agent: issue-268-test
 Content-Length: #{request_body.length}
 HEAD
 
-Socket.tcp("localhost", 58080) do |s|
+Socket.tcp("localhost", 18080) do |s|
   s.print headers
   s.print "\r\n"
   sleep 0.3 # <==== important!

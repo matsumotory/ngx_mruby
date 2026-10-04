@@ -13,7 +13,10 @@
 
 #include <mruby.h>
 
-mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *proc, mrb_value *result);
+#include "ngx_http_mruby_core.h"
+
+mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *proc, mrb_value *result,
+                              ngx_http_mruby_handler_kind_t kind);
 mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber, mrb_value *result);
 
 void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class);

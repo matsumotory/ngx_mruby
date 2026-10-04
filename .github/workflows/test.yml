@@ -141,6 +141,9 @@ jobs:
             export NGX_MRUBY_CFLAGS="-fsanitize=${SANITIZER} -fno-omit-frame-pointer"
             export NGX_MRUBY_LDFLAGS="-fsanitize=${SANITIZER}"
             export ASAN_OPTIONS="detect_leaks=1"
+            # nginx leaves cycle->connections and the event arrays to exit();
+            # test/lsan.supp suppresses them so that only other leaks fail the job.
+            export LSAN_OPTIONS="suppressions=${PWD}/test/lsan.supp"
             export UBSAN_OPTIONS="print_stacktrace=1:suppressions=${PWD}/test/ubsan.supp"
           fi
           sh test.sh ${build_opts}
@@ -167,6 +170,10 @@ jobs:
         run: |
           if [ -e build/nginx/logs/error.log ]; then cat build/nginx/logs/error.log ; else cat build_dynamic/nginx/logs/error.log; fi
           if [ -e build/nginx/logs/stderr.log ]; then cat build/nginx/logs/stderr.log ; else cat build_dynamic/nginx/logs/stderr.log; fi
+          # When nginx could not bind a test port, show who holds it.
+          # The test ports lie below the kernel's ephemeral range (32768-60999),
+          # so nothing on the runner should hold one; show the holder if it does.
+          sudo ss -tanpo '( sport >= :18080 and sport <= :18199 ) or ( sport >= :12345 and sport <= :12399 )' || true
 
   # The only status check that rulesets should require. Matrix job names
   # change whenever the matrix changes, so they cannot be required directly.

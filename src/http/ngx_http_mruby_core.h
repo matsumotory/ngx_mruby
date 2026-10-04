@@ -24,6 +24,31 @@ typedef struct ngx_mrb_rputs_chain_list_t {
   ngx_chain_t *out;
 } ngx_mrb_rputs_chain_list_t;
 
+/*
+ * The kind of mruby handler whose fiber runs. Nginx::Async.sleep and
+ * Nginx::Async::HTTP.sub_request suspend that fiber, and nginx resumes it
+ * later from a timer or from the end of a subrequest. That works for mruby_set
+ * and the post_read, server_rewrite, rewrite and access handlers. The content
+ * handler is allowed too, only so that its behavior does not change. A log
+ * handler runs in ngx_http_free_request after the request cleanups and right
+ * before the request pool is destroyed, and a filter runs inside
+ * ngx_http_send_header or ngx_http_output_filter, which return to their
+ * caller, so Nginx::Async raises in those handlers and where no handler fiber
+ * runs (NGX_HTTP_MRUBY_HANDLER_NONE, the value of a new context).
+ */
+typedef enum {
+  NGX_HTTP_MRUBY_HANDLER_NONE = 0,
+  NGX_HTTP_MRUBY_HANDLER_SET,
+  NGX_HTTP_MRUBY_HANDLER_POST_READ,
+  NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE,
+  NGX_HTTP_MRUBY_HANDLER_REWRITE,
+  NGX_HTTP_MRUBY_HANDLER_ACCESS,
+  NGX_HTTP_MRUBY_HANDLER_CONTENT,
+  NGX_HTTP_MRUBY_HANDLER_LOG,
+  NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER,
+  NGX_HTTP_MRUBY_HANDLER_BODY_FILTER
+} ngx_http_mruby_handler_kind_t;
+
 typedef struct ngx_http_mruby_ctx_t {
   ngx_mrb_rputs_chain_list_t *rputs_chain;
   u_char *body;
@@ -41,6 +66,9 @@ typedef struct ngx_http_mruby_ctx_t {
   mrb_value *async_handler_result;
   ngx_str_t set_var_target;
   mrb_value *fiber_proc;
+  // the kind of the handler whose fiber runs now; ngx_mrb_run_fiber sets it
+  // for the time a fiber runs
+  ngx_http_mruby_handler_kind_t handler_kind;
 } ngx_http_mruby_ctx_t;
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value obj, ngx_http_request_t *r);
