@@ -916,6 +916,51 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   }
   ngx_mrb_state_clean(r, state);
 
+  // A filter runs while nginx sends a response (#206).
+  // - A header filter runs inside ngx_http_send_header, so it returns here
+  //   without ngx_mrb_finalize_rputs, which would call ngx_http_send_header
+  //   and so run the header filter again, without end. An rputs chain stays
+  //   in the module ctx. When the handler that started the response wrote
+  //   it, that handler sends it after the header. When the header filter
+  //   wrote it, which is not supported, the body that nginx sends does not
+  //   contain it, although Nginx.rputs added its length to Content-Length.
+  //   The next handler that finalizes, such as a log handler, sends the
+  //   chain after the response, and nginx logs "header already sent".
+  // - A body filter that runs after a header filter sent the header does not
+  //   call ngx_mrb_finalize_rputs either. With an rputs chain, that function
+  //   would call ngx_http_send_header once more, which only logs "header
+  //   already sent", and would set the status to 200 after the header went
+  //   out. The body filter drops the module ctx where that function dropped
+  //   it: when there is an rputs chain and the status is 200 or the last
+  //   buffer of the chain is not marked as the last one. A chain left in the
+  //   ctx there would be sent after the response by the next handler that
+  //   finalizes, such as a log handler. ngx_mrb_finalize_body_filter and a
+  //   handler that is sending its own chain through this filter keep their
+  //   own pointers to the ctx and the chain.
+  //   Otherwise the ctx stays, as it did. That is the case after Nginx.rputs
+  //   and then Nginx.return, Nginx.status_code= or Nginx.send_header with
+  //   another status, when nginx sends the response for that status, such
+  //   as its error page. ngx_mrb_finalize_body_filter marks the ctx so that
+  //   this filter passes on the calls that ngx_http_writer makes when the
+  //   response needs more than one write, and the next handler that
+  //   finalizes only returns the status.
+  // - A body filter without a header filter still calls
+  //   ngx_mrb_finalize_rputs: the mruby header filter has held the header
+  //   back, so nothing is sent, and running that filter again sets the body
+  //   length back to the length of the origin, which
+  //   test/t/cases/filter_connection.rb pins on 2.x.
+  if (kind == NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER) {
+    return NGX_OK;
+  }
+
+  if (kind == NGX_HTTP_MRUBY_HANDLER_BODY_FILTER && r->header_sent) {
+    if (ctx->rputs_chain != NULL &&
+        (r->headers_out.status == NGX_HTTP_OK || !(*ctx->rputs_chain->last)->buf->last_buf)) {
+      ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
+    }
+    return NGX_OK;
+  }
+
   if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
     return ngx_mrb_finalize_rputs(r, ctx);
   }
