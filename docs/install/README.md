@@ -88,13 +88,16 @@ Here are the list of the default mrbgems.
 - mruby-dir: Dir class
 - mruby-digest: MD5, RMD160, SHA1, SHA256, SHA384, SHA512 and HMAC Digests
 - mruby-json: JSON::parse, JSON::stringify
-- mruby-redis: Redis#set, get, [], []=...
 - mruby-vedis: Vedis#set, get, [], []=...
 - mruby-memcached: Memcached#set, get, [], []=...
 - mruby-sleep: sleep, usleep...
 - mruby-userdata: https://github.com/matsumotory/mruby-userdata
 - mruby-onig-regexp: regexp engine
 - mruby-io: https://github.com/iij/mruby-io
+
+mruby-redis (`Redis#set`, `get`, `[]`, `[]=`...) was in this list up to v2.7.0.
+The default `build_config.rb` no longer includes it: see
+[the release notes](../releases/v2.7.1.md) for how to add it back.
 
 ## 3. Building a binary
 
