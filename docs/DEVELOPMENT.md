@@ -2,6 +2,12 @@
 
 This is a collection of random tips to help ngx_mruby developers.
 
+Before you change the C module (`src/`), the gems in `mrbgems/` or the
+build, read [Design principles](../AGENTS.md#design-principles) in
+AGENTS.md: the owner's decisions (one `mrb_state` per worker, no blocking,
+keep the existing performance and measure it) and how sessions apply them,
+including which changes are measured and how.
+
 ## Recommended development environment
 
 We use vagrant for development of ngx_mruby.
