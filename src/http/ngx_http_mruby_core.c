@@ -80,8 +80,63 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
 #endif
 }
 
+/*
+ * Whether a content handler that ended without output would leave the client
+ * without a response. The content phase hands the return value of the handler
+ * to ngx_http_finalize_request, which answers 201, 204 and the statuses from
+ * 300 up by itself, but ends the request without sending anything for NGX_OK
+ * and the other statuses below 300: nginx closes an HTTP/1.0 connection
+ * without a byte and keeps a keep-alive connection open until
+ * keepalive_timeout. ngx_mrb_send_header already turns a 200 without output
+ * into a 500; this covers a handler that sets no status (it writes nothing, or
+ * only an empty String or nil with Nginx.rputs) or another such status.
+ *
+ * Only the main request: a subrequest without output does not leave the
+ * client without a response, because its parent answers. Nothing changes
+ * either when the header was already sent, or when the module context is no
+ * longer the one the handler ran with: Nginx.redirect makes an internal
+ * redirect, which clears the module contexts, and the location it ran answers
+ * the request.
+ */
+static ngx_flag_t ngx_mrb_content_ends_without_response(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx,
+                                                        ngx_http_mruby_handler_kind_t kind)
+{
+  ngx_uint_t status = r->headers_out.status;
+
+  if (kind != NGX_HTTP_MRUBY_HANDLER_CONTENT || r != r->main || r->header_sent ||
+      ngx_http_get_module_ctx(r, ngx_http_mruby_module) != ctx) {
+    return 0;
+  }
+
+  // Nginx.return with a negative value such as Nginx::DECLINED stores a status
+  // that wraps around above this range, and ngx_mrb_finalize_rputs returns it
+  // as that value
+  return status < NGX_HTTP_SPECIAL_RESPONSE && status != NGX_HTTP_CREATED && status != NGX_HTTP_NO_CONTENT;
+}
+
+// Answers 500 for a content handler that ended without output, as
+// ngx_mrb_send_header does for a 200 without output, and logs why
+static ngx_int_t ngx_mrb_answer_missing_body(ngx_http_request_t *r)
+{
+  if (r->headers_out.status == 0) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "%s ERROR %s: status code is not set, and response body is empty."
+                  " return NGX_HTTP_INTERNAL_SERVER_ERROR",
+                  MODULE_NAME, __func__);
+  } else {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "%s ERROR %s: status code is %ui, but response body is empty."
+                  " return NGX_HTTP_INTERNAL_SERVER_ERROR",
+                  MODULE_NAME, __func__, r->headers_out.status);
+  }
+
+  r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+
+  return NGX_HTTP_INTERNAL_SERVER_ERROR;
+}
+
 // TODO: Support rputs by multi directive
-ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
+ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx, ngx_http_mruby_handler_kind_t kind)
 {
   ngx_int_t rc = NGX_OK;
   ngx_mrb_rputs_chain_list_t *chain;
@@ -89,6 +144,9 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
   chain = ctx->rputs_chain;
 
   if (chain == NULL) {
+    if (ngx_mrb_content_ends_without_response(r, ctx, kind)) {
+      return ngx_mrb_answer_missing_body(r);
+    }
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "%s INFO %s:%d: mrb_run info: rputs_chain is null and return NGX_OK", MODULE_NAME, __func__,
                   __LINE__);
