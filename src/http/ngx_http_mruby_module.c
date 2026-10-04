@@ -1125,17 +1125,21 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   //   contain it, although Nginx.rputs added its length to Content-Length.
   //   The next handler that finalizes, such as a log handler, sends the
   //   chain after the response, and nginx logs "header already sent".
-  // - A body filter that runs after a header filter sent the header does not
-  //   call ngx_mrb_finalize_rputs either. With an rputs chain, that function
-  //   would call ngx_http_send_header once more, which only logs "header
-  //   already sent", and would set the status to 200 after the header went
-  //   out. The body filter drops the module ctx where that function dropped
-  //   it: when there is an rputs chain and the status is 200 or the last
-  //   buffer of the chain is not marked as the last one. A chain left in the
-  //   ctx there would be sent after the response by the next handler that
-  //   finalizes, such as a log handler. ngx_mrb_finalize_body_filter and a
-  //   handler that is sending its own chain through this filter keep their
-  //   own pointers to the ctx and the chain.
+  // - A body filter that runs after a header filter sent the header, or in a
+  //   location with an mruby header filter, which holds the header back
+  //   until the body filter has run (ngx_http_mruby_header_filter_send),
+  //   does not call ngx_mrb_finalize_rputs either. With an rputs chain, that
+  //   function would call ngx_http_send_header once more, which only logs
+  //   "header already sent" when the header is out, or runs the code of the
+  //   header filter a second time when it is held back, and would set the
+  //   status to 200. The body filter drops the module ctx where that
+  //   function dropped it: when there is an rputs chain and the status is 200
+  //   or the last buffer of the chain is not marked as the last one. A chain
+  //   left in the ctx there would be sent after the response by the next
+  //   handler that finalizes, such as a log handler.
+  //   ngx_mrb_finalize_body_filter and a handler that is sending its own
+  //   chain through this filter keep their own pointers to the ctx and the
+  //   chain.
   //   Otherwise the ctx stays, as it did. That is the case after Nginx.rputs
   //   and then Nginx.return, Nginx.status_code= or Nginx.send_header with
   //   another status, when nginx sends the response for that status, such
@@ -1152,7 +1156,7 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
     return NGX_OK;
   }
 
-  if (kind == NGX_HTTP_MRUBY_HANDLER_BODY_FILTER && r->header_sent) {
+  if (kind == NGX_HTTP_MRUBY_HANDLER_BODY_FILTER && (r->header_sent || mlcf->header_filter_handler != NULL)) {
     if (ctx->rputs_chain != NULL &&
         (r->headers_out.status == NGX_HTTP_OK || !(*ctx->rputs_chain->last)->buf->last_buf)) {
       ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
@@ -1973,6 +1977,31 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
   return ngx_http_mruby_body_filter_handler_inner(r, in, NGX_MRB_CODE_TYPE_STRING);
 }
 
+/*
+ * Passes the header on after the code of an mruby header filter has run,
+ * unless an mruby body filter is configured too. The body filter can change
+ * the length of the body, so the header then waits, as it does in a location
+ * with only a body filter (ngx_http_mruby_header_filter), and
+ * ngx_mrb_finalize_body_filter sends it with the length of the body that the
+ * body filter produced; ngx_http_mruby_body_filter sends it for a response
+ * without a known length. The changes that the header filter code made to
+ * headers_out go out with it.
+ */
+static ngx_int_t ngx_http_mruby_header_filter_send(ngx_http_request_t *r, ngx_http_mruby_loc_conf_t *mlcf)
+{
+  ngx_int_t rc;
+
+  if (mlcf->body_filter_handler != NULL) {
+    return NGX_OK;
+  }
+
+  rc = ngx_http_next_header_filter(r);
+  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+    return NGX_ERROR;
+  }
+  return rc;
+}
+
 static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx_chain_t *in)
 {
   ngx_int_t rc;
@@ -1984,11 +2013,7 @@ static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx
     return NGX_ERROR;
   }
 
-  rc = ngx_http_next_header_filter(r);
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-    return NGX_ERROR;
-  }
-  return rc;
+  return ngx_http_mruby_header_filter_send(r, mlcf);
 }
 
 static ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in)
@@ -2003,11 +2028,7 @@ static ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t 
     return NGX_ERROR;
   }
 
-  rc = ngx_http_next_header_filter(r);
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-    return NGX_ERROR;
-  }
-  return rc;
+  return ngx_http_mruby_header_filter_send(r, mlcf);
 }
 
 static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
