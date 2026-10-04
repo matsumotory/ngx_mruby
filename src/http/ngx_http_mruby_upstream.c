@@ -175,7 +175,7 @@ void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *class)
 
   class_upstream = mrb_define_class_under(mrb, class, "Upstream", mrb->object_class);
   MRB_SET_INSTANCE_TT(class_upstream, MRB_TT_DATA);
-  mrb_define_method(mrb, class_upstream, "initialize", ngx_mrb_upstream_init, MRB_ARGS_REQ(2));
+  mrb_define_method(mrb, class_upstream, "initialize", ngx_mrb_upstream_init, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_upstream, "keepalive_cache", ngx_mrb_upstream_get_cache, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_upstream, "keepalive_cache=", ngx_mrb_upstream_set_cache, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_upstream, "server", ngx_mrb_upstream_get_server, MRB_ARGS_NONE());
