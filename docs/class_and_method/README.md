@@ -88,12 +88,16 @@ stays. The differences:
 - `Dir.open` with a block no longer raises when the block closed the `Dir`.
 - `Dir.foreach` with a block closes the `Dir` that it opened.
 - `Dir` includes `Enumerable`, and has `Dir.children`, `Dir.empty?` and
-  `Dir#each_child`. In mruby 3.3.0, `Dir.children` and `Dir#each_child` are
-  aliases of `Dir.entries` and `Dir#each`, so they include `.` and `..`.
+  `Dir#each_child`. With the bundled mruby 4.0.0, `Dir.children` and
+  `Dir#each_child` leave out `.` and `..`, as in CRuby. (With mruby 3.3.0
+  they were aliases of `Dir.entries` and `Dir#each` and included them.)
 
 You can also use the classes of the mruby core gems that `NGX_MRUBY_CORE_GEMS` in
 [build_config.rb](../../build_config.rb) lists (the gems in [mruby/mrbgems](../../mruby/mrbgems)
-of that name). The list is the set that `full-core.gembox` of mruby 3.3.0 selects.
+of that name). [Core gems](../install/README.md#core-gems) in the install
+guide says which core gems of mruby 4.0.0 are in the list, which are left
+out and why. For the changes that mruby 4.0.0 brings to scripts, see
+[Migrating to the bundled mruby 4.0.0](../migration/README.md).
 
 # Kernel Module
 

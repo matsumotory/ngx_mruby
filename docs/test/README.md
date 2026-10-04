@@ -29,6 +29,12 @@ assert('ngx_mruby', 'location /mruby') do
 end
 ```
 
+The test client (the `test` build of `build_config.rb`) is built with
+`NO_SSL`, so `HttpRequest` and `SimpleHttp` cannot send `https` requests.
+For HTTPS, run `curl -k` with a URL from `base_ssl(port)`, or
+`openssl s_client -connect localhost:<port>`, as the existing tests do (for
+example `` `curl -s -k #{base_ssl(18082) + '/'}` `` in `test/t/ngx_mruby.rb`).
+
 ## Add a test as a fragment and a case file
 
 Instead of editing `test/conf/nginx.conf` and `test/t/ngx_mruby.rb`, a test
