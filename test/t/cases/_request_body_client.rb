@@ -11,6 +11,16 @@
 #   seconds pass, and prints "STATUS:HEX" as _tcp_client.rb does.
 # whole: the same request, with the headers and the whole body written at
 #   once, so that nginx reads the body together with the headers.
+# keepalive: the request of "parts" with HTTP/1.1 and a kept connection. It
+#   reads the response up to the end of its Content-Length, then sends
+#   "GET /plain" with "Connection: close" on the same connection and reads
+#   until the server closes it. It prints "STATUS1:HEX1:STATUS2:HEX2": the
+#   first STATUS is COMPLETE when the first response arrived whole, the
+#   second one is that of the connection after the second request.
+# timeout: sends the headers of a POST with a 100-byte body and the first 10
+#   bytes of it, then reads until the server closes the connection or LIMIT
+#   seconds pass. It prints "STATUS:SECONDS:HEX", SECONDS being the time
+#   from the last write to the end of the read.
 # close: opens COUNT connections that each send the headers of a POST with a
 #   100-byte body and the first 10 bytes of that body, waits WAIT seconds so
 #   that the handler starts, and closes them. It then reads /proc/net/tcp
@@ -94,6 +104,90 @@ when 'parts', 'whole'
       'REFUSED'
     end
   print "#{status}:#{received.unpack1('H*')}"
+when 'keepalive'
+  body = '0123456789abcdefghij'
+  head = "POST #{path} HTTP/1.1\r\nHost: #{host}\r\nContent-Length: #{body.bytesize}\r\n\r\n"
+  first = ''.b
+  second = ''.b
+  status1 = 'TIMEOUT'
+  status2 = 'SKIPPED'
+  begin
+    Socket.tcp('127.0.0.1', port, connect_timeout: LIMIT) do |sock|
+      sock.write(head + body[0, 10])
+      sleep WAIT
+      sock.write(body[10..])
+      deadline = now + LIMIT
+      loop do
+        if (header_end = first.index("\r\n\r\n"))
+          length = first[0, header_end][/^content-length: *(\d+)/i, 1]
+          if length && first.bytesize >= header_end + 4 + length.to_i
+            status1 = 'COMPLETE'
+            break
+          end
+        end
+        remaining = deadline - now
+        break if remaining <= 0
+        break unless IO.select([sock], nil, nil, remaining)
+
+        chunk = sock.read_nonblock(4096, exception: false)
+        if chunk.nil?
+          status1 = 'EOF'
+          break
+        end
+        next if chunk == :wait_readable
+
+        first << chunk
+      end
+      if status1 == 'COMPLETE'
+        sock.write("GET /plain HTTP/1.1\r\nHost: #{host}\r\nConnection: close\r\n\r\n")
+        deadline = now + LIMIT
+        status2 = loop do
+          remaining = deadline - now
+          break 'TIMEOUT' if remaining <= 0
+          break 'TIMEOUT' unless IO.select([sock], nil, nil, remaining)
+
+          chunk = sock.read_nonblock(4096, exception: false)
+          break 'EOF' if chunk.nil?
+          next if chunk == :wait_readable
+
+          second << chunk
+        end
+      end
+    end
+  rescue Errno::ECONNRESET, Errno::EPIPE
+    status2 = 'RESET'
+  rescue Errno::ECONNREFUSED
+    status1 = 'REFUSED'
+  end
+  print "#{status1}:#{first.unpack1('H*')}:#{status2}:#{second.unpack1('H*')}"
+when 'timeout'
+  received = ''.b
+  started = nil
+  status =
+    begin
+      Socket.tcp('127.0.0.1', port, connect_timeout: LIMIT) do |sock|
+        sock.write("POST #{path} HTTP/1.0\r\nHost: #{host}\r\nContent-Length: 100\r\n\r\n0123456789")
+        started = now
+        deadline = started + LIMIT
+        loop do
+          remaining = deadline - now
+          break 'TIMEOUT' if remaining <= 0
+          break 'TIMEOUT' unless IO.select([sock], nil, nil, remaining)
+
+          chunk = sock.read_nonblock(4096, exception: false)
+          break 'EOF' if chunk.nil?
+          next if chunk == :wait_readable
+
+          received << chunk
+        end
+      end
+    rescue Errno::ECONNRESET, Errno::EPIPE
+      'RESET'
+    rescue Errno::ECONNREFUSED
+      'REFUSED'
+    end
+  seconds = started ? now - started : 0
+  print "#{status}:#{format('%.1f', seconds)}:#{received.unpack1('H*')}"
 when 'close'
   unless File.readable?('/proc/net/tcp')
     print 'unsupported'

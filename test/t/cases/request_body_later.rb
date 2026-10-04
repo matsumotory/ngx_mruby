@@ -60,6 +60,52 @@ REQUEST_BODY_LATER_HANDLERS.each do |host, path, kind|
   end
 end
 
+# The paths below are those that docs/directives/README.md describes for
+# mruby_enable_read_request_body, checked for a rewrite and a content
+# handler, whose phase checkers are the two that need NGX_DONE to wait
+# (post-read, server rewrite and access handlers go through the same
+# callback).
+
+# HTTP/1.1: after the response to the late body, the connection stays open
+# for a second request.
+[['/rewrite', 'a rewrite handler'], ['/content', 'a content handler']].each do |path, handler|
+  t.assert('request body later', "the connection stays open for the next request after #{handler} answered a late body") do
+    out = `ruby test/t/cases/_request_body_client.rb keepalive 18144 localhost #{path}`
+    status1, hex1, status2, hex2 = out.split(':', 4)
+    head1, body1 = [hex1.to_s].pack('H*').split("\r\n\r\n", 2)
+    head2, body2 = [hex2.to_s].pack('H*').split("\r\n\r\n", 2)
+    t.assert_equal 'COMPLETE', status1
+    t.assert_equal 'HTTP/1.1 200 OK', head1.to_s.split("\r\n")[0].to_s
+    t.assert_equal 'body=0123456789abcdefghij', body1.to_s
+    t.assert_equal 'EOF', status2
+    t.assert_equal 'HTTP/1.1 200 OK', head2.to_s.split("\r\n")[0].to_s
+    t.assert_equal 'plain', body2.to_s
+  end
+end
+
+# client_body_timeout (2s in these locations) ends a request whose body
+# stops arriving: nginx closes the connection without a response.
+[['/rewrite_timeout', 'a rewrite handler'], ['/content_timeout', 'a content handler']].each do |path, handler|
+  t.assert('request body later', "client_body_timeout ends the request when #{handler} waits for a body that stops arriving") do
+    out = `ruby test/t/cases/_request_body_client.rb timeout 18144 localhost #{path}`
+    status, seconds, hex = out.split(':', 3)
+    t.assert_equal 'EOF', status
+    t.assert_equal '', [hex.to_s].pack('H*')
+    t.assert_true seconds.to_f >= 1.5, "closed after #{seconds} s, before client_body_timeout"
+    t.assert_true seconds.to_f < 8.0, "closed after #{seconds} s"
+  end
+end
+
+# A handler that raises after it got the late body answers 500.
+[['/rewrite_raise', 'a rewrite handler'], ['/content_raise', 'a content handler']].each do |path, handler|
+  t.assert('request body later', "#{handler} that raises after the late body answers 500") do
+    status, line, body = request_body_later_parts('localhost', path)
+    t.assert_equal 'EOF', status
+    t.assert_equal 'HTTP/1.1 500 Internal Server Error', line
+    t.assert_include body, '<title>500 Internal Server Error</title>'
+  end
+end
+
 # Port 18147: after a rewrite or an access handler has read a body that
 # arrived late, the auth_request module waits for its subrequest, and nginx
 # resumes the request through its write event handler when the subrequest
