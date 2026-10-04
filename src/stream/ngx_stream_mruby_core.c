@@ -53,9 +53,10 @@ static mrb_value ngx_stream_mrb_get_ngx_mruby_name(mrb_state *mrb, mrb_value sel
 
 static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_mruby_srv_conf_t *mscf = mrb->ud;
-  ngx_stream_core_srv_conf_t *cscf = mscf->ctx->cscf;
-  ngx_conf_t *cf = mscf->ctx->cf;
+  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
+  ngx_stream_mruby_srv_conf_t *mscf;
+  ngx_stream_core_srv_conf_t *cscf;
+  ngx_conf_t *cf;
   mrb_value listener, address;
   ngx_str_t addr;
   ngx_url_t u;
@@ -65,6 +66,14 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
   ngx_uint_t i;
 #endif
   ngx_stream_listen_opt_t ls;
+
+  /* set only while mruby_stream_server_context_code runs */
+  mscf = (ictx != NULL) ? ictx->server_context_conf : NULL;
+  if (mscf == NULL || mscf->ctx->cf == NULL || mscf->ctx->cscf == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "add_listener can only be used in mruby_stream_server_context_code");
+  }
+  cscf = mscf->ctx->cscf;
+  cf = mscf->ctx->cf;
 
   mrb_get_args(mrb, "H", &listener);
   address = mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "address"));

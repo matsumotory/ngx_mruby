@@ -1425,6 +1425,9 @@ Nginx::Stream.add_listener({address: "12351"})
 
 See [Nginx::Server#add_listener()](#nginxserveradd_listenerhash) for an example to create multiple listeners
 
+The method works only in `mruby_stream_server_context_code`, while nginx reads the configuration.
+Anywhere else, for example in `mruby_stream_code` or `mruby_stream_init_worker_code`, it raises a `RuntimeError` (since 2.7.1).
+
 ### Nginx::Stream.errlogger(log_level, string)
 
 ```ruby

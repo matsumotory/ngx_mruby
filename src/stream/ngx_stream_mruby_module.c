@@ -601,7 +601,7 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
   ngx_mrb_code_t *code;
   ngx_int_t rc;
   mrb_int ai;
-  void *tmp_ud;
+  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
 
   mscf->ctx->cf = cf;
   mscf->ctx->cscf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_core_module);
@@ -623,10 +623,17 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
 
   ai = mrb_gc_arena_save(mrb);
 
-  tmp_ud = mrb->ud;
-  mrb->ud = mscf;
+  /*
+   * mrb->ud stays the module's context (ngx_stream_mruby_create_main_conf),
+   * which every other method reads, and points Nginx::Stream.add_listener
+   * at this server configuration only while the code runs. cf is the parser
+   * state of this directive, so it is cleared when the code returns.
+   */
+  ictx->server_context_conf = mscf;
   mrb_toplevel_run(mrb, code->proc);
-  mrb->ud = tmp_ud;
+  ictx->server_context_conf = NULL;
+  mscf->ctx->cf = NULL;
+  mscf->ctx->cscf = NULL;
 
   if (mrb->exc) {
     ngx_stream_mruby_raise_conf_error(mrb, mrb_obj_value(mrb->exc), cf);
