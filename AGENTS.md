@@ -120,6 +120,9 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `test.sh` kills the soak's nginx too, so do not
   run both at the same time on one machine. The soak reads `/proc`: on macOS, run
   it in a Linux container. See "Soak test for memory" in `docs/test/README.md`.
+  A `.c` file in `src/http/` or `src/stream/` that calls `mrb_gc_register` or
+  `mrb_gc_unregister` must include `ngx_http_mruby_debug.h`, which counts the
+  calls for `Nginx::Debug.stats`; `run.sh` checks this before it builds.
 - `test/perf/compare.sh` builds the base and the head in `build_perf/` (it does not
   touch the `test.sh` build), listens on 12370 and 12371, and starts the mock LLM
   upstream on 12372 for the agent proxy scenarios (`PERF_PORT_BASE` moves all

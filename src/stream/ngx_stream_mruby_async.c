@@ -1,6 +1,7 @@
 #include "ngx_stream_mruby_core.h"
 #include "ngx_stream_mruby_module.h"
 #include "ngx_stream_mruby_async.h"
+#include "../http/ngx_http_mruby_debug.h" // with NGX_MRUBY_DEBUG_STATS, counts the mrb_gc_register() calls
 
 #include <mruby/array.h>
 #include <mruby/error.h>

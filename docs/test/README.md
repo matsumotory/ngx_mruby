@@ -241,10 +241,12 @@ counters therefore do not depend on how many requests ran before:
 
 - `gc_live` is the number of live mruby objects. `Nginx::Debug.gc` runs a
   full GC first, so the objects of finished requests are already freed.
-- `gc_root` is the length of the array that `mrb_gc_register()` appends to,
-  and `fibers` counts the fibers in it. A handler registers its fiber when it
-  starts and unregisters it when it ends, so only the fiber of `/debug/stats`
-  is left.
+- `gc_root` is the number of objects that ngx_mruby has registered with
+  `mrb_gc_register()` and not yet unregistered, and `fibers` counts the
+  fibers among them. A handler registers its fiber when it starts and
+  unregisters it when it ends, so only the fiber of `/debug/stats` is left.
+  ngx_mruby counts its own calls (see "The soak build and `Nginx::Debug`"
+  below), so the check does not depend on how mruby stores the GC roots.
 - `arena` is the depth of the mruby GC arena while `/debug/stats` runs. Each
   code path that saves the arena restores it.
 - `timers` counts the `Nginx::Async.sleep` timers that have neither fired nor
@@ -369,11 +371,45 @@ worker behaves as without it between samples.
 of `build.sh` and `test.sh` do not have it.
 
 - `Nginx::Debug.gc` runs a full GC (`mrb_full_gc`) and returns `nil`.
-- `Nginx::Debug.stats` returns a Hash with the Symbol keys `gc_live`
-  (`mrb->gc.live`), `gc_root` (the length of mruby's `_gc_root_` array, 0 when
-  it does not exist), `gc_root_fibers` (the fibers in that array),
-  `gc_arena_idx` (`mrb->gc.arena_idx`) and `timers` (the `Nginx::Async.sleep`
-  timers that have neither fired nor been deleted).
+- `Nginx::Debug.stats` returns a Hash with these Symbol keys:
+  - `gc_live`: `mrb->gc.live`.
+  - `gc_root`: the objects that ngx_mruby has registered with
+    `mrb_gc_register()` and not yet unregistered with `mrb_gc_unregister()`,
+    one per call, in the whole nginx process: the registrations of the http
+    module and those of the stream module are counted together. Immediate
+    values are not counted, because mruby does not register them. The value
+    is negative when ngx_mruby unregistered more than it registered.
+  - `gc_root_fibers`: the fibers among the objects counted in `gc_root`.
+  - `gc_arena_idx`: `mrb->gc.arena_idx`.
+  - `timers`: the `Nginx::Async.sleep` timers that have neither fired nor
+    been deleted.
+  - `gc_root_mruby` and `gc_root_fibers_mruby`: the length of mruby's own
+    `_gc_root_` array in the mrb_state of the http module, and the fibers in
+    it. mruby 3.x and 4.0 create that array at the first `mrb_gc_register()`
+    of the mrb_state; mruby 4.1 keeps the GC roots in `mrb->gc.root`
+    instead, and the two keys are then left out. Unlike `gc_root`, they
+    include the objects that mruby and the gems register, and they do not
+    include the registrations of the stream module. The soak test does not
+    check them: they are there to compare with `gc_root` on the mruby
+    versions that have the array. The two can differ on mruby 4.0: its
+    `mrb_gc_unregister` removes every entry of the object from the array,
+    while mruby 3.x removes one entry, and none when the object is not in
+    the array. The counter subtracts one per call on every version, so on
+    mruby 4.0 `gc_root_mruby` is lower than `gc_root` once an object that
+    was registered more than once has been unregistered once.
+
+`gc_root` and `gc_root_fibers` do not read the GC roots from mruby, because
+mruby 4.1 no longer keeps them in the `_gc_root_` array: a count read from
+the array would be 0 in every sample, and the soak would pass without
+checking anything. With `-DNGX_MRUBY_DEBUG_STATS`,
+`src/http/ngx_http_mruby_debug.h` defines `mrb_gc_register` and
+`mrb_gc_unregister` as macros that call the mruby function and then count
+the call, so every call in a source file that includes the header is
+counted, including a call added later. A `.c` file in `src/http/` or
+`src/stream/` that calls either function must therefore include
+`ngx_http_mruby_debug.h`; `test/soak/run.sh` checks this before it builds
+and stops otherwise. Without the define, the header defines no macro and the
+calls go to mruby directly.
 
 ### Running it
 
