@@ -391,7 +391,12 @@ of `build.sh` and `test.sh` do not have it.
     include the objects that mruby and the gems register, and they do not
     include the registrations of the stream module. The soak test does not
     check them: they are there to compare with `gc_root` on the mruby
-    versions that have the array.
+    versions that have the array. The two can differ on mruby 4.0: its
+    `mrb_gc_unregister` removes every entry of the object from the array,
+    while mruby 3.x removes one entry, and none when the object is not in
+    the array. The counter subtracts one per call on every version, so on
+    mruby 4.0 `gc_root_mruby` is lower than `gc_root` once an object that
+    was registered more than once has been unregistered once.
 
 `gc_root` and `gc_root_fibers` do not read the GC roots from mruby, because
 mruby 4.1 no longer keeps them in the `_gc_root_` array: a count read from

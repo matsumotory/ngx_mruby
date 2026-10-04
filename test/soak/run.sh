@@ -35,7 +35,7 @@ ROOT=$(pwd)
 # src/http/ngx_http_mruby_debug.h (see docs/test/README.md). A call in a file
 # without that header would not be counted, so this fails first.
 for f in "$ROOT"/src/http/*.c "$ROOT"/src/stream/*.c; do
-    if grep -q -E 'mrb_gc_(un)?register[[:space:]]*\([[:space:]]*[A-Za-z_]' "$f" &&
+    if grep -q -E 'mrb_gc_(un)?register[[:space:]]*\(([^)]|$)' "$f" &&
         ! grep -q -E '^#include "(\.\./http/)?ngx_http_mruby_debug\.h"' "$f"; then
         echo "soak: $f calls mrb_gc_register or mrb_gc_unregister without including ngx_http_mruby_debug.h" >&2
         exit 1
