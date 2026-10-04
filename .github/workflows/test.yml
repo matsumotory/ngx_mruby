@@ -248,9 +248,10 @@ jobs:
           gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name' > "$RUNNER_TEMP/labels"
           # The inputs of the measured binary are those that
           # test/build_release.sh copies: src/, mrbgems/, mruby/, dependence/
-          # (ngx_devel_kit, added to nginx by Makefile.in) and the top-level
-          # build files. Then the measurement and this workflow.
-          inputs='^(src/|mrbgems/|mruby/|dependence/|(build_config\.rb|configure|config\.in|Makefile\.in|build\.sh|nginx_version)$'
+          # (ngx_devel_kit, added to nginx by Makefile.in), the top-level
+          # build files and the gem lock. Then the measurement and this
+          # workflow.
+          inputs='^(src/|mrbgems/|mruby/|dependence/|(build_config\.rb|build_config\.rb\.lock|configure|config\.in|Makefile\.in|build\.sh|nginx_version)$'
           measurement='|test/perf/|test/build_release\.sh$|test/soak/(nginx\.conf|nginx\.agent\.conf|scenarios\.rb|http_client\.rb|mock_llm\.rb|handlers/)|\.github/workflows/test\.yml$)'
           if grep -qE "$inputs$measurement" "$RUNNER_TEMP/changed"; then
             echo "The PR changes files that the comparison measures."

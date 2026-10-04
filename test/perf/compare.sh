@@ -14,11 +14,17 @@
 #
 # BASE_DIR is built into build_perf/base and HEAD_DIR into build_perf/head,
 # both with test/build_release.sh as test/perf/run.sh builds one checkout.
-# The head build takes the gem lock of the base build (RELEASE_GEM_LOCK), so
-# both build the third-party gems at the same commits. The build files of
-# each checkout are its own (build_config.rb, build.sh, ...); the measurement
-# (this script, test/perf/perf.rb and the scenarios in test/soak/) comes from
-# this checkout.
+# The build files of each checkout are its own (build_config.rb,
+# build_config.rb.lock, build.sh, ...); the measurement (this script,
+# test/perf/perf.rb and the scenarios in test/soak/) comes from this checkout.
+#
+# Each build takes the third-party gems at the commits of the
+# build_config.rb.lock committed in its checkout, so the gems differ only
+# where the head changes the lock, and a pull request that moves a gem to
+# another commit is measured with that commit, as it would be merged. A
+# checkout that has no lock (one from before the lock was committed) takes the
+# lock of the other side: the base the head's, the head the lock that the
+# base build wrote. perf.rb reports the gems at different commits.
 #
 # The exit status is 1 when a scenario does 5% more work in head
 # (PERF_FAIL_PERCENT), when a measurement fails (in the base, an unexpected
@@ -41,9 +47,19 @@ HEAD=${2:-$ROOT}
 ruby "$ROOT/test/perf/perf.rb" --self-test
 
 if [ -z "$ONLY_RUN" ]; then
-    RELEASE_CC_OPT= RELEASE_GEM_LOCK= \
+    # An empty RELEASE_GEM_LOCK makes test/build_release.sh take the lock
+    # committed in the checkout it builds.
+    base_lock=
+    if [ ! -f "$BASE/build_config.rb.lock" ] && [ -f "$HEAD/build_config.rb.lock" ]; then
+        base_lock="$HEAD/build_config.rb.lock"
+    fi
+    RELEASE_CC_OPT= RELEASE_GEM_LOCK="$base_lock" \
         sh "$ROOT/test/build_release.sh" "$BASE" "$ROOT/build_perf/base"
-    RELEASE_CC_OPT= RELEASE_GEM_LOCK="$ROOT/build_perf/base/tree/build_config.rb.lock" \
+    head_lock=
+    if [ ! -f "$HEAD/build_config.rb.lock" ]; then
+        head_lock="$ROOT/build_perf/base/tree/build_config.rb.lock"
+    fi
+    RELEASE_CC_OPT= RELEASE_GEM_LOCK="$head_lock" \
         sh "$ROOT/test/build_release.sh" "$HEAD" "$ROOT/build_perf/head"
 fi
 

@@ -17,7 +17,10 @@
 # neither MRB_GC_STRESS nor --with-debug, as for the soak build, but also
 # without the soak build's NGX_MRUBY_DEBUG_STATS and MRB_USE_MALLOC_TRIM,
 # which change the code under measurement. NGX_MRUBY_CFLAGS from the
-# environment still reaches mruby, as with test.sh.
+# environment still reaches mruby, as with test.sh. The third-party gems are
+# built at the commits of the build_config.rb.lock of SOURCE_DIR, the default
+# of test/build_release.sh; RELEASE_GEM_LOCK in the environment names another
+# lock.
 
 set -e
 
@@ -30,7 +33,7 @@ NAME=${2:-head}
 ruby "$ROOT/test/perf/perf.rb" --self-test
 
 if [ -z "$ONLY_RUN" ]; then
-    RELEASE_CC_OPT= RELEASE_GEM_LOCK= \
+    RELEASE_CC_OPT= \
         sh "$ROOT/test/build_release.sh" "$SRC" "$ROOT/build_perf/$NAME"
 fi
 
