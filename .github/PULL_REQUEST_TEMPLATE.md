@@ -32,7 +32,12 @@ reports in error.log)?
 
 ## Leak / performance impact
 
-<!-- Required when async, filter or GC-related code is touched: what was measured, and how. -->
+<!--
+Required when async, filter or GC-related code is touched: what was measured, and how.
+Required as well when the change touches an input of the measured binary ("Design principles" in
+`AGENTS.md` lists them): the callgrind comparison goes here, with the header lines of report.txt, the
+table, and the base, head and lane commits.
+-->
 
 ## Compatibility / behavior changes
 
