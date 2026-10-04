@@ -61,4 +61,41 @@ t.assert('sync exception', 'an exception after Nginx.rputs in a server rewrite h
   t.assert_not_include body, 'content'
 end
 
+# Returns the status of the connection, the status line, the header fields
+# (names in lower case) and the body.
+def sync_exception_response(path)
+  status, raw = tcp_client(18143, "GET #{path} HTTP/1.0\r\nHost: localhost\r\n\r\n")
+  head, body = raw.split("\r\n\r\n", 2)
+  lines = head.to_s.split("\r\n")
+  fields = {}
+  lines[1..-1].to_a.each do |l|
+    name, value = l.split(':', 2)
+    fields[name.downcase] = value.to_s.strip
+  end
+  [status, lines[0].to_s, fields, body.to_s]
+end
+
+[
+  ['/set_rputs_then_raise', 'an exception after Nginx.rputs in an mruby_set handler'],
+  ['/set_raise', 'an exception without output in an mruby_set handler'],
+  ['/set_after_set_rputs_then_raise', 'an exception after Nginx.rputs in an mruby_set handler after a set directive'],
+].each do |path, what|
+  t.assert('sync exception', "#{what} sets the variable to an empty string and leaves the length of the response right") do
+    status, line, fields, body = sync_exception_response(path)
+    t.assert_equal 'EOF', status
+    t.assert_equal 'HTTP/1.1 200 OK', line
+    t.assert_equal '[""]', body
+    t.assert_equal body.bytesize.to_s, fields['content-length']
+  end
+end
+
+# The status line is the one that nginx sends after an exception in an
+# output header filter; this test checks the length and the body.
+t.assert('sync exception', 'an exception after Nginx.rputs in an output header filter leaves the length of the response right') do
+  status, line, fields, body = sync_exception_response('/header_filter_rputs_then_raise')
+  t.assert_equal 'EOF', status
+  t.assert_equal 'origin', body
+  t.assert_equal '6', fields['content-length']
+end
+
 t.report
