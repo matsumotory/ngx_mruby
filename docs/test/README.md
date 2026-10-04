@@ -46,8 +46,9 @@ can live in files of its own:
   generated configuration), `tcp_client` and `second_instance`. It starts
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
   with `_` are helpers and are not run by test.sh; `_tcp_client.rb`,
-  `_filter_connection_client.rb` and `_second_instance.rb` are CRuby
-  scripts that the prelude helpers run with `ruby`.
+  `_filter_connection_client.rb`, `_request_body_client.rb` and
+  `_second_instance.rb` are CRuby scripts that the prelude helpers and the
+  cases run with `ruby`.
 - Hook scripts go to `test/html/` as before; the fragment refers to them as
   `build/nginx/html/<name>.rb`.
 
