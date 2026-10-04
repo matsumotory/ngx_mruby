@@ -111,6 +111,11 @@ MRuby::Build.new('host') do |conf|
   # conf.gem github: 'matsumotory/mruby-redis'
   conf.gem github: 'matsumotory/mruby-vedis'
   conf.gem github: 'matsumotory/mruby-userdata'
+  # build_config.rb.lock pins mruby-uname (here and in the test build) to the
+  # merge commit of matsumotory/mruby-uname#1 on the gem's master, which
+  # declares the instances of Uname as data objects: with mruby 4.0, every
+  # method of Uname at the commits before it raises "TypeError: allocation
+  # failure of Uname".
   conf.gem github: 'matsumotory/mruby-uname'
   conf.gem github: 'matsumotory/mruby-mutex'
   conf.gem github: 'matsumotory/mruby-localmemcache'
@@ -173,6 +178,7 @@ MRuby::Build.new('test') do |conf|
 
   conf.gem github: 'matsumotory/mruby-simplehttp'
   conf.gem github: 'matsumotory/mruby-httprequest'
+  # pinned by build_config.rb.lock to the same commit as in the host build
   conf.gem github: 'matsumotory/mruby-uname'
   conf.gem github: 'matsumotory/mruby-simpletest'
   conf.gem github: 'mattn/mruby-http'

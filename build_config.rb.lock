@@ -1,7 +1,7 @@
 ---
 mruby:
-  version: 3.3.0
-  release_no: 30300
+  version: 4.0.0
+  release_no: 40000
 builds:
   host:
     https://github.com/iij/mruby-env.git:
@@ -42,7 +42,7 @@ builds:
     https://github.com/matsumotory/mruby-uname.git:
       url: https://github.com/matsumotory/mruby-uname.git
       branch: master
-      commit: 422f61705a1232f8d033ace3945826ea6b0421a8
+      commit: 50031c81b101f44e89bf482f5c31213b6c07af36
       version: 0.0.1
     https://github.com/matsumotory/mruby-mutex.git:
       url: https://github.com/matsumotory/mruby-mutex.git
@@ -78,7 +78,7 @@ builds:
     https://github.com/matsumotory/mruby-uname.git:
       url: https://github.com/matsumotory/mruby-uname.git
       branch: master
-      commit: 422f61705a1232f8d033ace3945826ea6b0421a8
+      commit: 50031c81b101f44e89bf482f5c31213b6c07af36
       version: 0.0.1
     https://github.com/matsumotory/mruby-simpletest.git:
       url: https://github.com/matsumotory/mruby-simpletest.git
@@ -100,8 +100,3 @@ builds:
       branch: master
       commit: 056ae324451ef16a50c7887e117f0ea30921b71b
       version: 0.0.0
-    https://github.com/luisbebop/mruby-polarssl.git:
-      url: https://github.com/luisbebop/mruby-polarssl.git
-      branch: master
-      commit: 37b14f7b7378bc798eb980d8649f3fcfb1a1defe
-      version: 2.1.2
