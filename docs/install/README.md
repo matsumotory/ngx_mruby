@@ -277,9 +277,13 @@ mruby-tempfile also read `TMP`, `TEMP` and `USERPROFILE` before it fell back
 to `/tmp`). In place of `Dir.mktmpdir`, create the directory with
 `Dir.mkdir(path, 0700)` under a name that no other process uses;
 `Dir.mkdir` raises `Errno::EEXIST` when the name is taken. Where
-`Dir.mktmpdir` with a block removed the directory and its files, remove them
-yourself with `File.delete` and `Dir.rmdir`. In place of `Base64`, the core
-`pack('m0')` and `unpack1('m')` work in the default build.
+`Dir.mktmpdir` with a block removed the directory and everything under it
+when the block returned, remove them yourself: list each directory with
+`Dir.entries`, tell files from directories with `File.directory?` (both
+are in the default build), delete the files with `File.delete` and the
+directories with `Dir.rmdir`, deepest first. `Dir.rmdir` on a directory
+that still has entries raises `Errno::ENOTEMPTY`. In place of `Base64`, the
+core `pack('m0')` and `unpack1('m')` work in the default build.
 
 ```ruby
 tmpdir = ENV['TMPDIR'] || '/tmp'                              # Dir.tmpdir
