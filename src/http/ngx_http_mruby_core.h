@@ -56,6 +56,9 @@ typedef struct ngx_http_mruby_ctx_t {
   size_t body_length;
   unsigned request_body_more : 1;
   unsigned read_request_body_done : 1;
+  // the content phase checker has dropped the reference to the request that
+  // ngx_http_read_client_request_body took (see ngx_mrb_run_request)
+  unsigned request_body_ref_dropped : 1;
   ngx_uint_t phase;
   // for response of sub_request using async method
   unsigned sub_response_more : 1;

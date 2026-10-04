@@ -407,6 +407,9 @@ When set to the value on, ngx_mruby reads a HTTP request body before calling mru
 Due to nginx event driven nature, a request body is not always read when invoking a handler like mruby_content_handler.
 The directive force to read the request body.
 
+When the body is not complete yet, a post-read, server rewrite, rewrite, access or content handler runs once nginx has read the rest of it.
+If the client closes the connection or `client_body_timeout` expires first, nginx ends the request and the handler does not run.
+
 ## mruby_upstream_keepalive
 
 ```

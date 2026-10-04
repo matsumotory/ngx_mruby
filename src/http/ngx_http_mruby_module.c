@@ -798,7 +798,11 @@ void ngx_http_mruby_read_request_body_cb(ngx_http_request_t *r)
     ctx->read_request_body_done = 1;
 
 #if defined(nginx_version) && nginx_version >= 8011
-    r->main->count--;
+    // drop the reference that ngx_http_read_client_request_body took, unless
+    // the content phase checker has dropped it (see ngx_mrb_run_request)
+    if (!ctx->request_body_ref_dropped) {
+      r->main->count--;
+    }
 #endif
 
     if (ctx->request_body_more) {
@@ -864,7 +868,32 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
                     __LINE__);
       ctx->request_body_more = 1;
       ctx->read_request_body_done = 0;
-      return NGX_AGAIN;
+
+      /*
+       * ngx_http_mruby_read_request_body_cb runs the phases again once the
+       * rest of the body is read. A phase handler tells nginx to wait for
+       * that with NGX_DONE. The rewrite phase checker (server_rewrite and
+       * rewrite handlers) and the content phase checker pass NGX_AGAIN to
+       * ngx_http_finalize_request, which ends the request: it sets the read
+       * handler to ngx_http_block_reading, so the body was not read further
+       * and the handler did not run again. For NGX_DONE the content phase
+       * checker only drops the reference to the request that
+       * ngx_http_read_client_request_body took, so the callback must not
+       * drop it again. The post_read and access checkers treat NGX_AGAIN and
+       * NGX_DONE alike.
+       */
+      switch (kind) {
+      case NGX_HTTP_MRUBY_HANDLER_CONTENT:
+        ctx->request_body_ref_dropped = 1;
+        return NGX_DONE;
+      case NGX_HTTP_MRUBY_HANDLER_POST_READ:
+      case NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE:
+      case NGX_HTTP_MRUBY_HANDLER_REWRITE:
+      case NGX_HTTP_MRUBY_HANDLER_ACCESS:
+        return NGX_DONE;
+      default:
+        return NGX_AGAIN;
+      }
     }
   }
 
