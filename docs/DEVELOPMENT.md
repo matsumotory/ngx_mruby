@@ -54,6 +54,12 @@ If you want to update to a specific commit, you can specify a ref.
 sh update-mruby-subtree REF
 ```
 
+After the update, remove `mruby/build`, build with `sh test.sh`, and commit the
+`build_config.rb.lock` that rake wrote with the update: the lock records the
+version of mruby. A dependency that the new mruby provides as one of its own
+gems is no longer cloned, but rake keeps its entry in the lock, so delete that
+entry (see "Gem commits" in [docs/install/README.md](install/README.md)).
+
 ## Updating ngx_devel_kit
 
 If you want to update [in-tree ngx_devel_kit](../dependence/ngx_devel_kit) to latest version, you can use [update-devkit-subtree](../update-devkit-subtree) script. It adds the ngx_devel_kit upstream repo as dep-ngx_devel_kit and pull all changes to the current branch.

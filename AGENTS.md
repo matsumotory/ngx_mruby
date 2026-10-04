@@ -91,8 +91,24 @@ sh test/soak/run.sh                 # memory soak test (Linux; own build in buil
 sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12372)
 ```
 
-- The first full run takes a few minutes (it clones mrbgems from GitHub and builds
-  mruby and nginx). After that, use `ONLY_BUILD_NGX_MRUBY=1`.
+- The first full run takes a few minutes (it clones the third-party mrbgems from
+  GitHub at the commits in `build_config.rb.lock`, and builds mruby and nginx).
+  After that, use `ONLY_BUILD_NGX_MRUBY=1`.
+- `build_config.rb.lock` pins the third-party mrbgems by commit (see "Gem
+  commits" in `docs/install/README.md`). rake writes it again at the end of every
+  build; on the default gem list the content does not change. rake does not
+  fetch into an existing clone: after any change of the lock, including one
+  that a pull or a merge (for example of `next` into your branch) brings in,
+  run `rm -rf mruby/build` before the next run. Otherwise `sh test.sh` and
+  `ONLY_BUILD_NGX_MRUBY=1 sh test.sh` stop with `fatal: reference is not a
+  tree` when a clone does not have the new commit. `make clean_mruby` stops
+  with the same error, because it runs rake, which checks the clones out at
+  the commits of the lock, before it removes anything. To move a gem to
+  another commit: change its `commit:` in each section of the lock that has
+  an entry for it (or delete those entries to take the head of its branch),
+  `rm -rf mruby/build`, run a full `sh test.sh`, and commit the lock that
+  rake wrote. A build with `NGX_MRUBY_AUTO_SSL=1` adds entries for the
+  auto-ssl gems: do not commit them (`git checkout build_config.rb.lock`).
 - `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. Do a full run again after
   changing `BUILD_DYNAMIC_MODULE`, configure options or `nginx_version`.
 - `NGX_MRUBY_AUTO_SSL=1` adds the auto-ssl mrbgem to the mruby build. Remove

@@ -16,6 +16,10 @@ MRuby::Build.new('host') do |conf|
   #
   # Recommended for ngx_mruby
   #
+  # The third-party gems are built at the commits recorded in
+  # build_config.rb.lock (see docs/install/README.md). Declare them with
+  # github:, not mgem:, so that the URL comes from this file and not from
+  # mruby's clone of mruby/mgem-list, which no lock pins.
   conf.gem github: 'iij/mruby-env'
   conf.gem github: 'iij/mruby-dir'
   conf.gem github: 'iij/mruby-digest'
@@ -29,7 +33,7 @@ MRuby::Build.new('host') do |conf|
   conf.gem github: 'matsumotory/mruby-uname'
   conf.gem github: 'matsumotory/mruby-mutex'
   conf.gem github: 'matsumotory/mruby-localmemcache'
-  conf.gem mgem: 'mruby-secure-random'
+  conf.gem github: 'monochromegane/mruby-secure-random'
 
   # ngx_mruby extended class
   conf.gem './mrbgems/ngx_mruby_mrblib'
