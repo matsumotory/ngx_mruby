@@ -9,6 +9,7 @@
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_request.h"
 
+#include <mruby/presym.h>
 #include <mruby/string.h>
 
 static mrb_value ngx_mrb_get_filter_body(mrb_state *mrb, mrb_value self)
@@ -27,7 +28,7 @@ static mrb_value ngx_mrb_set_filter_body(mrb_state *mrb, mrb_value self)
 
   mrb_get_args(mrb, "o", &body);
   if (mrb_type(body) != MRB_TT_STRING) {
-    body = mrb_funcall(mrb, body, "to_s", 0, NULL);
+    body = mrb_funcall_id(mrb, body, MRB_SYM(to_s), 0);
   }
 
   ctx->body_length = RSTRING_LEN(body);

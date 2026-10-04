@@ -563,18 +563,18 @@ static mrb_value ngx_mrb_async_http_last_response(mrb_state *mrb, mrb_value self
   mrb_value status = mrb_fixnum_value(ctx->sub_response_status);
   mrb_value body = mrb_str_new(mrb, (char *)ctx->sub_response_body, ctx->sub_response_body_length);
 
-  ngx_class = mrb_class_get(mrb, "Nginx");
+  ngx_class = mrb_class_get_id(mrb, NGX_HTTP_MRUBY_SYM(mrb, NGINX));
   async_class =
-      (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, "Async")));
+      (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), NGX_HTTP_MRUBY_SYM(mrb, ASYNC)));
   http_class =
-      (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(async_class), mrb_intern_cstr(mrb, "HTTP")));
+      (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(async_class), NGX_HTTP_MRUBY_SYM(mrb, HTTP)));
   response_class =
-      (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(http_class), mrb_intern_cstr(mrb, "Response")));
+      (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(http_class), NGX_HTTP_MRUBY_SYM(mrb, RESPONSE)));
   sub_response_instance = mrb_class_new_instance(mrb, 0, 0, response_class);
 
-  mrb_iv_set(mrb, sub_response_instance, mrb_intern_cstr(mrb, "@headers"), headers);
-  mrb_iv_set(mrb, sub_response_instance, mrb_intern_cstr(mrb, "@status"), status);
-  mrb_iv_set(mrb, sub_response_instance, mrb_intern_cstr(mrb, "@body"), body);
+  mrb_iv_set(mrb, sub_response_instance, NGX_HTTP_MRUBY_SYM(mrb, IV_HEADERS), headers);
+  mrb_iv_set(mrb, sub_response_instance, NGX_HTTP_MRUBY_SYM(mrb, IV_STATUS), status);
+  mrb_iv_set(mrb, sub_response_instance, NGX_HTTP_MRUBY_SYM(mrb, IV_BODY), body);
   return sub_response_instance;
 }
 
