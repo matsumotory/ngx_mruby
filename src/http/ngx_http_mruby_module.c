@@ -574,7 +574,9 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
   cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
   mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
 
-  ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s/%s (%s/%s) mechanism enabled", MODULE_NAME, MODULE_VERSION,
+  /* nginx reads the configuration through its startup log, which logs at
+     notice whatever error_log says (issue #320), so this goes at info. */
+  ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "%s/%s (%s/%s) mechanism enabled", MODULE_NAME, MODULE_VERSION,
                      MRUBY_RUBY_ENGINE, MRUBY_VERSION);
 
   if (ngx_http_mruby_handler_init(cmcf) != NGX_OK) {
@@ -1053,12 +1055,14 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
   mrb_codedump_all(state->mrb, code->proc);
 #endif
 
+  /* A debugging aid for each directive, logged while nginx reads the
+     configuration through its startup log, which error_log cannot filter. */
   if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
-    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: compile info: code->code.file=(%s) code->cache=(%d)",
+    ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "%s INFO %s:%d: compile info: code->code.file=(%s) code->cache=(%d)",
                        MODULE_NAME, __func__, __LINE__, code->code.file, code->cache);
   } else {
-    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
-                       "%s NOTICE %s:%d: compile info: "
+    ngx_conf_log_error(NGX_LOG_INFO, cf, 0,
+                       "%s INFO %s:%d: compile info: "
                        "code->code.string=(%s) code->cache=(%d)",
                        MODULE_NAME, __func__, __LINE__, code->code.string, code->cache);
   }
@@ -1512,8 +1516,8 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
   code = ngx_list_push(mlcf->set_code_list);
   *code = filter_data->code;
   filter.data = filter_data;
-  ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0, "%s NOTICE %s:%d: target variable=(%s)", MODULE_NAME, __FUNCTION__,
-                     __LINE__, filter_data->target.data);
+  ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "%s INFO %s:%d: target variable=(%s)", MODULE_NAME, __FUNCTION__, __LINE__,
+                     filter_data->target.data);
 
   return ndk_set_var_multi_value_core(cf, &filter_data->target, &value[3], &filter);
 }

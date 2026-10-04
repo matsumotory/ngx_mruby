@@ -125,6 +125,27 @@ location ~ \.rb$ {
 }
 ```
 
+## Messages logged while nginx reads the configuration
+
+While nginx reads the configuration, ngx_mruby logs these messages at the `info` level:
+
+* `ngx_mruby/VERSION (mruby/VERSION) mechanism enabled`, once for the `http {}` block
+* `compile info: code->code.file=(...)` or `compile info: code->code.string=(...)` for each directive with Ruby code, in `http {}` and in `stream {}`
+* `target variable=(...)` for each `mruby_set` and `mruby_set_code`
+
+nginx logs what happens while it reads the configuration through its startup log, not through the log that `error_log` configures.
+The startup log is the file given with `nginx -e` (nginx 1.19.5 and later), or else the error log path compiled into nginx (`--error-log-path`, `logs/error.log` under the prefix by default), and its level is `notice` whatever `error_log` says.
+nginx uses the configured `error_log` only after it has read the configuration. So:
+
+* A start of nginx does not write these messages, whatever the level of `error_log`.
+* `nginx -t` raises the startup log to `info`, so it writes them to the startup log.
+* A reload (`nginx -s reload`) reads the new configuration through the `error_log` of the running configuration, so it writes them when that `error_log` is at `info` or `debug`.
+
+A script file that cannot be opened, or an argument that a directive does not accept, is still logged at `emerg`, and nginx stops.
+
+In ngx_mruby 2.x these messages were logged at `notice`, so the startup log wrote them at every start, also with `error_log ... warn;` ([#320](https://github.com/matsumotory/ngx_mruby/issues/320)).
+From v3 on, run `nginx -t` to see them, or reload with `error_log` at `info`.
+
 # HTTP module directives
 
 * [mruby_init and mruby_init_code](#mruby_init-and-mruby_init_code)
