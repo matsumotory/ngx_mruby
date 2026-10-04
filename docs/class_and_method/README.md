@@ -1124,7 +1124,8 @@ Nginx.rputs hout["X-Remove-Header"] #=> nil
 Nginx::Filter class is designed to be used in the output body handlers.
 It doesn't work in other handlers like `mruby_content_handler_code`.
 
-__Notice__: You can *NOT* use `Nginx.rputs` and `Nginx.echo` in the output body handlers.
+__Notice__: You can *NOT* use `Nginx.rputs` and `Nginx.echo` in the output header and body handlers
+(`mruby_output_header_filter`, `mruby_output_body_filter` and their `_code` forms).
 
 Here is an example how it works.
 
