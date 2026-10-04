@@ -1,10 +1,10 @@
 # Proposal: the ngx.mruby.org site and the documentation it is built from
 
 Status: proposal. Nothing in it is decided. Written on 2026-10-04 from
-`next` at ec227408d, `master` at 1ea47b0a6 and `gh-pages` at 59c923a, from
-the live site and the repository's GitHub settings read that day, and from
-primary sources on design, standards and tools (appendix D, with the date
-each was read).
+`next` at ec227408d, `master` at 1ea47b0a6 (b3df70fb6 for the promotion
+text that step 7 updates) and `gh-pages` at 59c923a, from the live site and
+the repository's GitHub settings read that day, and from primary sources on
+design, standards and tools (appendix D, with the date each was read).
 
 On 2026-10-04 the owner asked for the introduction site at
 https://ngx.mruby.org, unchanged since 2020, to be rebuilt as part of the
@@ -232,12 +232,22 @@ Appendix C gives the evidence rule by rule.
    windows or decorative code.
 2. **Monospace where the text is code**: the wordmark `ngx_mruby`,
    directive and method names, configuration, commands. Prose, headings and
-   navigation stay proportional, because they are read rather than copied.
+   navigation stay proportional, because they are read rather than copied
+   (chosen here). Check: the computed `font-family` of `code`, `pre`, `kbd`
+   and the wordmark starts with IBM Plex Mono, and that of body text,
+   headings and navigation does not.
 3. **One accent from the existing logo**: the teal `#40a798` of
    [misc/logo.png](../../misc/logo.png), hue 182 in OKLCH, with neutrals of
    the same hue (4.4).
 4. **Flat surfaces**: 1 px borders separate regions; no shadows, gradients,
-   glows or translucent panels.
+   glows or translucent panels. The owner's practice forbids shadows on
+   bordered cards, purple-to-blue gradients, glows and translucent panels
+   (4.9); no shadow or gradient at all is chosen here. `tokens.css` sets
+   Starlight's shadows to `none` (4.4), and the site removes the blurred
+   backdrop of its search dialog (appendix B). Check: on three page types
+   in both themes, with the search dialog and the narrow-screen menu open,
+   every computed `box-shadow`, `text-shadow` and `backdrop-filter` is
+   `none` and no computed `background-image` holds a gradient.
 5. **Little motion** (4.6), and **structure that shows the system**: the
    sidebar mirrors the four kinds of page, and headings name the directive,
    method or task.
@@ -309,17 +319,31 @@ stack (Q7).
 - The page keeps working with the text spacing of WCAG 1.4.12 and at 200%
   text (1.4.4). Text is left-aligned, never justified (1.4.8).
 - **Wrapping.** Japanese text wraps by character (`word-break: normal`,
-  `line-break: strict`). Only page titles (h1) and section headings (h2)
-  may wrap by phrase (owner's practice: titles and section headings). The
-  home page heading is a sentence, what ngx_mruby does, so it wraps by
-  character; so do h3, captions, labels and table cells (chosen here, to
-  keep the owner's exception as narrow as the owner stated it). Phrase
-  wrapping uses `<wbr>` at the phrase boundaries in the Japanese source of
-  those headings, with `word-break: keep-all` and `overflow-wrap: anywhere`
-  on `h1` and `h2` of Japanese pages only. `word-break: auto-phrase` is not
-  relied on: MDN's compatibility data lists it for Chrome 119 and later,
-  for Safari only in Technology Preview and not for Firefox, so WebKit
-  would wrap those headings by character.
+  `line-break: strict`). The owner's practice allows phrase wrapping only
+  in titles and section headings; this proposal uses it only in section
+  headings (h2) of Japanese pages. The home page heading is a sentence,
+  what ngx_mruby does, so it wraps by character; so do h3, captions, labels
+  and table cells (chosen here, to keep the owner's exception as narrow as
+  the owner stated it).
+  - **Section headings (h2).** The Japanese Markdown source puts `<wbr>` at
+    the phrase boundaries, and `h2` of Japanese pages has
+    `word-break: keep-all` and `overflow-wrap: anywhere`. GitHub drops the
+    `<wbr>` without showing it (appendix B), so `docs/ja/` reads normally
+    there.
+  - **Page titles (h1)** wrap by character and are short instead (chosen
+    here). Starlight's `PageTitle.astro` renders `title` as an escaped
+    expression, and the generator of 5.2 takes `title` from the first
+    heading, so a `<wbr>` there would show as text or be stripped; the same
+    `title` fills `<title>`, the sidebar and search (appendix B). A
+    Japanese title fits on one line at 390 px, about 13 characters at
+    26 px, and on at most two at 320 px; the longer statement of what the
+    page covers is its first paragraph. `overflow-wrap: anywhere` on `h1`
+    breaks a long identifier, and the generator stops on a first heading
+    that contains HTML.
+  - `word-break: auto-phrase` is not relied on: MDN's compatibility data
+    lists it for Chrome 119 and later, for Safari only in Technology
+    Preview and not for Firefox, so WebKit would wrap those headings by
+    character.
 - The home page heading takes at most two lines at 1440 px and at most
   three at 390 and 320 px (owner's practice).
 - No `text-wrap: pretty` or `balance` anywhere: Safari applies `pretty` to
@@ -330,9 +354,12 @@ stack (Q7).
   figures.
 - Checks: computed font sizes equal the scale of each language; no text
   below 14 px; the built CSS has no `text-wrap: pretty` or `balance`;
-  `keep-all` and `auto-phrase` appear only on the `h1` and `h2` selectors
-  of Japanese pages; the line count of the home page heading at 1440, 390
-  and 320 px in both languages.
+  `keep-all` and `auto-phrase` appear only on the `h2` selector of
+  Japanese pages; the line count of the home page heading at 1440, 390
+  and 320 px in both languages; every Japanese h1 takes one line at 390 px
+  and at most two at 320 px; no h1, `<title>`, sidebar entry,
+  table-of-contents entry or heading `id` on `/ja/` contains the text
+  `wbr`, and the h2 of the test page of step 1 keep their `<wbr>` elements.
 
 ### 4.3 Spacing
 
@@ -417,11 +444,31 @@ at `#157c70`, which is 4.4968:1 on `surface`, it prints 4.49 and exits 1.
 - Code highlighting uses at most four token colors besides `text` and
   `text-muted` (chosen here), each 4.5:1 on `surface` in both themes; step
   2 adds them to `CODE_COLORS` in the contrast script.
+- **Code blocks.** Starlight renders them with Expressive Code, whose
+  default themes bring hex colors of their own, adjust syntax colors below
+  5.5:1 and draw shell languages as a terminal window, which rule 1 of 4.1
+  rules out (appendix B). Step 2 sets Starlight's `expressiveCode` option:
+  `themes`, a light and a dark theme that a script in `site/scripts/`
+  writes from `tokens.css`, so that every syntax color is `text`,
+  `text-muted` or a code color; `minSyntaxHighlightingColorContrast: 0`,
+  so that those values stay as written, with the contrast script as the
+  gate; `useStarlightUiThemeColors: true`, which draws the frame with the
+  `--sl-color-*` variables of `tokens.css`, and `styleOverrides` with
+  `var()` references to the tokens for the border, scrollbars, text
+  markers and title row that Starlight leaves in other colors; and
+  `defaultProps: { frame: 'code' }`, so that no block becomes a terminal
+  window and a title such as `nginx.conf` stays one flat row of text.
+  Expressive Code's stylesheet (`/_astro/ec.<hash>.css`) and the `style`
+  attributes of highlighted spans hold hex values from those themes; they
+  are exempt from the hex check, and the checks below cover them.
 - Checks: the contrast script over tokens and code colors; no hex color in
-  component CSS, and none in the built CSS outside `tokens.css` (Starlight's
-  `#fff` in `Badge.astro` included); on three page types in both themes,
-  every computed text, background and border color on the page is a token
-  value or transparent; accent tokens used only by the four roles.
+  component CSS, and none in the built CSS outside `tokens.css` and
+  Expressive Code's stylesheet (Starlight's `#fff` in `Badge.astro`
+  included); on three page types in both themes, every computed text,
+  background and border color, code blocks included, is a token value or
+  transparent; the hex values in the `style` attributes of highlighted
+  spans are code colors, `text` or `text-muted`; no element has the class
+  `is-terminal`; accent tokens used only by the four roles.
 
 ### 4.5 Light and dark
 
@@ -477,6 +524,12 @@ at `#157c70`, which is 4.4968:1 on `surface`, it prints 4.49 and exits 1.
   edge; for English blocks the check is only that no `text-wrap: pretty`
   or `balance` applies. Chromium alone does not count, because the engines
   wrap differently.
+- Japanese h2 wrap by phrase (4.2), so they are left out of the 2 em
+  check: at 390 px a 22 px h2 holds about 16 characters per line, and a
+  break before a phrase leaves that phrase's length free. Instead (chosen
+  here) they take at most two lines at 390 px, and the longest line ends
+  less than 6 em from the right edge; a longer gap marks a phrase to split
+  with another `<wbr>`. Japanese h1 take one line at 390 px (4.2).
 - Targets at least 24 by 24 CSS px (WCAG 2.5.8), header buttons 44 by 44
   (owner's practice; Apple's Human Interface Guidelines give 44 by 44
   points). The fixed header never covers the focused element (WCAG 2.4.11),
@@ -514,8 +567,8 @@ colors outside the tokens, radii outside a fixed set, em dashes, emoji,
 decorative symbols, purple-to-blue gradients, glows and framework default
 grays, and checking narrow screens in Chromium only. The values that this
 proposal adds inside those rules, the radii of 4 and 6 px, the chroma limit
-of 0.020 and the absence of entrance animation, are its own choices, decided
-with Q7.
+of 0.020, the absence of entrance animation and of any shadow or gradient,
+and monospace only for code, are its own choices, decided with Q7.
 
 Research and standards support 4.5:1 for all text, light by default with a
 dark option, body text of 16 px or more, at most about 40 Japanese
@@ -572,7 +625,8 @@ detection, or that pinned versions do not keep Starlight stable.
 - **The generator** (`site/scripts/sync-docs.mjs`) runs before
   `astro build`. For each Markdown file under `docs/` except `proposals/`, it
   writes a page into a gitignored folder under `site/src/content/docs/`: the
-  title from the first heading, `lastUpdated` from
+  title from the first heading (a heading with HTML stops the build, 4.2),
+  `lastUpdated` from
   `git log -1 --format=%cs -- <file>` (Starlight's front matter accepts a
   date that overrides Git's), `README.md` as the folder index, relative
   links rewritten to site routes, links into `src/` or `test/` turned into
@@ -588,7 +642,13 @@ detection, or that pinned versions do not keep Starlight stable.
   `docs/DEVELOPMENT.md` on `master`), the unprefixed 3.x build moves from
   `next` to `master` and the `/v2/` build from `master` to `v2.x`, whatever
   `next` becomes afterwards, so that pages of an unreleased 3.1 never become
-  the current version. The environment rule of 5.3 moves with them.
+  the current version. The environment rule of 5.3 moves with them. Step 7
+  writes this into that procedure: in its step 4, a pull request to `next`
+  makes `site.yml` run on and deploy from `master` and build `/v2/` from
+  `v2.x`, and removes `site-v2.yml` and `site-dispatch.yml`; on the day of
+  its step 5, the owner moves the deployment branch rule to `master`; in
+  its step 7, the pull request to `v2.x` points the mirrored copies of
+  those two workflows at `v2.x` and the dispatch at `--ref master`.
 - **Check scripts that exist today**:
   [check_links.py](./site/check_links.py) resolves the relative links and
   heading anchors of Markdown files, and [contrast.py](./site/contrast.py)
@@ -598,14 +658,29 @@ detection, or that pinned versions do not keep Starlight stable.
 
 ### 5.3 Deployment and previews
 
-- `.github/workflows/site.yml` on `next` runs on pushes to `next` touching
-  `site/` or `docs/`, on `workflow_dispatch`, and on a dispatch from a small
-  workflow on `master` when its `docs/` change. The build job checks out
-  `next` with full history and `master`, runs `npm ci`, the generator, both
-  builds, Pagefind and the checks of section 6, and uploads the result; the
-  deploy job runs `actions/deploy-pages` (v5.0.1) with `pages: write` and
-  `id-token: write`, one deployment at a time, actions pinned by commit SHA
-  (Pillar G).
+- `.github/workflows/site.yml` on `next` runs on pull requests to `next`
+  and pushes to `next` that touch `site/`, `docs/` or the file itself, and
+  on `workflow_dispatch`. The build job checks out `next` with full history
+  and `master`, runs `npm ci`, the generator, both builds, Pagefind and the
+  checks of section 6, and uploads the result. The deploy job runs
+  `actions/deploy-pages` (v5.0.1) with `pages: write` and
+  `id-token: write`, one deployment at a time, and only when `github.ref`
+  is `refs/heads/next`; actions are pinned by commit SHA (Pillar G). Step 7
+  adds the deploy job, since a deployment from `next` is refused before
+  the settings below and would fail every push to `next`.
+- **A change to `docs/` on `master`.** `.github/workflows/site-dispatch.yml`
+  on `master`, on pushes that touch `docs/`, calls
+  `gh workflow run site.yml --ref next` with the job's token and
+  `permissions: actions: write`. A `repository_dispatch` would run on the
+  default branch, where setting 2 refuses the deployment; a
+  `workflow_dispatch` runs on the ref it names. GitHub's documentation
+  allows that once the workflow has run, as `site.yml` has on `next` since
+  step 1, but also says that the workflow must be on the default branch
+  (appendix B). The check of step 6 settles it; if the dispatch is
+  refused, a `site.yml` with only the `workflow_dispatch` trigger goes on
+  `master`, and the dispatch still runs the file of `next`. The `master`
+  workflows trigger only for `master`, so their copies merged into `next`
+  do not run there.
 - **The 2.x documentation before it merges.** `.github/workflows/site-v2.yml`
   on `master` runs on pull requests to `master` that touch `docs/`: it
   checks out `site/` from `next`, builds `/v2/` alone and runs the checks of
@@ -614,22 +689,33 @@ detection, or that pinned versions do not keep Starlight stable.
   change to `site/` that breaks `/v2/` fails there. The deploy job then
   meets a `/v2/` failure only if `master` and `next` changed in ways that
   each passed alone.
-- Settings, for the owner:
+- Settings, for the owner, both in step 7 and in this order, which follows
+  the `actions/deploy-pages` README (Security considerations, items 4 and
+  5, quoted in appendix B): with a source branch, the environment's
+  protection rules take precedence over the source branch; with GitHub
+  Actions as the source, GitHub protects the environment by default.
   1. Switch the Pages source from "Deploy from a branch" to "GitHub
      Actions" and keep ngx.mruby.org as the custom domain in the settings,
      since under a custom workflow "no CNAME file is created, and any
      existing CNAME file is ignored" (GitHub Docs); then enforce HTTPS.
-     `gh-pages` stays as history.
+     `gh-pages` stays as history. The switch may itself add a rule for the
+     default branch, `master`.
   2. Give the `github-pages` environment a deployment branch rule that
-     allows only `next` (only `master` after the promotion). Today the
-     environment has none (`deployment_branch_policy: null`). Without a
-     rule, a workflow pushed on any branch, including the `claude/<topic>`
-     branches that agents push, can publish ngx.mruby.org without the
-     review and the merge conditions of AGENTS.md. The GitHub Pages
-     documentation recommends "a deployment protection rule so that only
-     the default branch can deploy to this environment", but the default
-     branch is `master`, so that rule as written would refuse the
-     deployment from `next`.
+     allows only `next` (only `master` after the promotion), in place of
+     any rule that setting 1 added. Today the environment has none
+     (`deployment_branch_policy: null`). Without a rule, a workflow pushed
+     on any branch, including the `claude/<topic>` branches that agents
+     push, can publish ngx.mruby.org without the review and the merge
+     conditions of AGENTS.md. The GitHub Pages documentation recommends "a
+     deployment protection rule so that only the default branch can deploy
+     to this environment", but the default branch is `master`, so that rule
+     as written would refuse the deployment from `next`.
+
+  Setting 1 comes first, because a rule for `next` set while the source is
+  still a branch would let a deployment from `next` replace the live site
+  early. The pull request that adds the deploy job passes CI before the
+  settings and merges right after them, since what the site serves in
+  between is not documented.
 - **Previews.** GitHub Pages has no public per-pull-request preview:
   `actions/deploy-pages` calls its `preview` input "only in alpha currently
   and is not available to the public". Each pull request that touches
@@ -646,13 +732,13 @@ on every pull request that touches `site/` or `docs/`.
 
 | Step | Work | Check | Owner decides first |
 |---|---|---|---|
-| 1 | Starlight pinned in `site/`, the generator, today's `docs/` rendered without design; `check_links.py` moved into `site/scripts/`; AGENTS.md updated: `site/` in the repository layout, and in "Build and test" the Node 22.12 toolchain, `npm ci`, `npm run build` and the checks | a fresh clone builds with `npm ci` and `npm run build`; every internal link of the built HTML resolves; every page has a title and the last-updated date of its source; a test page from `docs/ja/` is served under `/ja/` with `lang="ja"`; pages read with JavaScript off | Q1 |
-| 2 | tokens, type scale, code colors, Starlight's colors set from the tokens; `contrast.py` moved into `site/scripts/`, reading `tokens.css` | the contrast script passes for all token pairs and code colors in both themes; computed font sizes equal the scale of each language; no `text-wrap: pretty` or `balance` and no hex outside `tokens.css` in the built CSS; every computed color a token value (4.4); margins, paddings, gaps and radii from the sets of 4.3; durations of 4.6; at most 90 characters per English body line at 1440 px; no external font URL in the built site, and the build succeeds with network access blocked after `npm ci` | Q7 |
-| 3 | home page with the example's test (3.3, item 8), header, footer, language and version links | the example's case passes in CI and the home page shows the files it compares; Chromium and WebKit screenshots at 320, 390 by 664 and 1440 by 900, light and dark; no horizontal scroll at 320; gutters of 16 px or more; the home page heading's line count (4.2); the right-edge measurement of 4.7 on Japanese blocks and the `text-wrap` check on English ones; Lighthouse accessibility with no failed audit on three page types in both languages; visible, uncovered focus; language links answer 200; no redirect for `Accept-Language: ja` | Q3, Q8, the definition |
+| 1 | Starlight pinned in `site/`, the generator, today's `docs/` rendered without design; `check_links.py` moved into `site/scripts/`; AGENTS.md updated: `site/` in the repository layout, and in "Build and test" the Node 22.12 toolchain, `npm ci`, `npm run build` and the checks | a fresh clone builds with `npm ci` and `npm run build`; every internal link of the built HTML resolves; every page has a title and the last-updated date of its source; a test page from `docs/ja/` is served under `/ja/` with `lang="ja"`, and the `<wbr>` in its h2 is an element of the built h2 (4.2); pages read with JavaScript off | Q1 |
+| 2 | tokens, type scale, code colors, Starlight's colors and Expressive Code's themes and frames set from the tokens (4.4); `contrast.py` moved into `site/scripts/`, reading `tokens.css` | the contrast script passes for all token pairs and code colors in both themes; computed font sizes equal the scale of each language; no `text-wrap: pretty` or `balance` in the built CSS, and no hex outside `tokens.css` and Expressive Code's stylesheet; every computed color a token value, code blocks included, the span colors of Expressive Code code colors, and no `is-terminal` frame (4.4); monospace only where rule 2 of 4.1 puts it; no shadow, gradient or backdrop filter (rule 4 of 4.1); margins, paddings, gaps and radii from the sets of 4.3; durations of 4.6; at most 90 characters per English body line at 1440 px; no external font URL in the built site, and the build succeeds with network access blocked after `npm ci` | Q7 |
+| 3 | home page with the example's test (3.3, item 8), header, footer, language and version links | the example's case passes in CI and the home page shows the files it compares; Chromium and WebKit screenshots at 320, 390 by 664 and 1440 by 900, light and dark; no horizontal scroll at 320; gutters of 16 px or more; the home page heading's line count (4.2); the right-edge measurement of 4.7 on Japanese blocks and the `text-wrap` check on English ones; Lighthouse accessibility with no failed audit on three page types in both languages; visible, uncovered focus; the shadow, gradient and backdrop check of rule 4 of 4.1 with the search dialog and the menu open, in both engines; language links answer 200; no redirect for `Accept-Language: ja` | Q3, Q8, the definition |
 | 4 | Start, Guides, Reference, Concepts, Releases, Security, Contributing; the fixes of 2.2; `README.md` reduced to the definition, links and the branch table | no broken relative link or anchor in `docs/` or the built site; every directive in the `ngx_command_t` tables of `src/` has a section in the directive reference; `mruby_output_filter` appears in `docs/` only in a removal note; the default gems listed in the docs equal the uncommented `conf.gem` lines of `build_config.rb`; every Ruby block in the docs compiles with the bundled mruby's `mrbc`; each `examples/<use>/` starts in CI and returns the output its README states | Q11 |
-| 5 | Japanese pages | `lang` and reciprocal absolute `hreflang` on every page; no space between Japanese and Latin characters in `docs/ja/` outside code and URLs; at most 40 characters per Japanese body line at 1440 px; line height 1.75 to 2.0; `keep-all` and `auto-phrase` only on `h1` and `h2` (4.2); the right-edge measurement on `/ja/` in both engines | Q2 |
-| 6 | 2.x under `/v2/`; `site-v2.yml` on `master` (5.3) | no broken link under `/v2/`; the banner on every 2.x page; 2.x and 3.x search results do not mix; a pull request to `master` that breaks a `/v2/` link fails `site-v2.yml` | Q4 |
-| 7 | switch ngx.mruby.org: the settings of 5.3; on `master`, the branch paragraph of `README.md` and the open question "Which version the site shows after the promotion" in `docs/DEVELOPMENT.md` (both from #568) updated, since they say `gh-pages` holds the site and the switch is a pull request to it | `https://ngx.mruby.org/` answers 200 with the deployed `index.html`; `http://` redirects to `https://`; `/googleba3435e4002729b6.html` answers 200 with its 54 bytes unchanged, if Q5 keeps it; the `github-pages` environment read back with `gh api` has custom branch policies, and its deployment branch policies list only `next`; Lighthouse on the live home page | Q5, Q6, the date |
+| 5 | Japanese pages | `lang` and reciprocal absolute `hreflang` on every page; no space between Japanese and Latin characters in `docs/ja/` outside code and URLs; at most 40 characters per Japanese body line at 1440 px; line height 1.75 to 2.0; `keep-all` and `auto-phrase` only on `h2`; every h1 on one line at 390 px and on at most two at 320 px; no h1, `<title>`, sidebar entry, table-of-contents entry or heading `id` on `/ja/` contains the text `wbr` (4.2); the right-edge measurement on `/ja/` in both engines, with the h2 limit of 4.7 | Q2 |
+| 6 | 2.x under `/v2/`; `site-v2.yml` and `site-dispatch.yml` on `master` (5.3) | no broken link under `/v2/`; the banner on every 2.x page; 2.x and 3.x search results do not mix; a pull request to `master` that breaks a `/v2/` link fails `site-v2.yml`; a merge into `master` that changes `docs/` starts a `site.yml` run on `next` (`gh run list --workflow site.yml --branch next --event workflow_dispatch`) | Q4 |
+| 7 | switch ngx.mruby.org: settings 1 and 2 of 5.3 in that order, then the pull request that adds the deploy job; on `master`, the text that says `gh-pages` holds the site or that the switch is a pull request to it, all from #568: the branch paragraph of `README.md`, and in `docs/DEVELOPMENT.md` the last sentence of promotion step 7 and the open questions "Who gives the go for the promotion and changes the repository settings in steps 2 and 3" and "Which version the site shows after the promotion"; the move of 5.2 added to "Promoting v3 to master" | `https://ngx.mruby.org/` answers 200 with the deployed `index.html`; `http://` redirects to `https://`; `/googleba3435e4002729b6.html` answers 200 with its 54 bytes unchanged, if Q5 keeps it; the `github-pages` environment read back with `gh api` has custom branch policies, and its deployment branch policies list only `next`; the first deployment, and the one after a `docs/` change merged into `master`, come from `next` (`gh api repos/matsumotory/ngx_mruby/deployments?environment=github-pages`); Lighthouse on the live home page | Q5, Q6, the date |
 | 8 | agent proxy how-to with `examples/agent-proxy/` (v3-plan step 7, part (e)) | the example starts in CI and answers the requests of its README; Claude Code and Codex named only after both have run against it | none |
 
 Steps 1 to 7 are Pillar F's site work, which
@@ -699,11 +785,15 @@ later, choose a tool then, with its privacy and consent requirements.
 and the IBM Plex families of 4.2, chosen from specimens rendered in step 2
 (home and reference pages, light and dark) against the system font stack.
 The same specimens decide the values marked "chosen here" in section 4,
-among them the radii of 4 and 6 px, the chroma limit of 0.020 and the
-absence of entrance animation, and whether the look is slightly cyber
-enough. Recommendation for that last point: the means of 4.1 only. If the
-owner wants more within the rules of 4.9, the next steps are IBM Plex Mono
-for headings, or a dark first screen on the home page in both themes.
+among them the radii of 4 and 6 px, the chroma limit of 0.020, the absence
+of entrance animation, shadows and gradients, and the limits for Japanese
+headings of 4.2 and 4.7, and whether the look is slightly cyber enough.
+Recommendation for that last point: the means of 4.1 only. If the owner
+wants more within the rules of 4.9, the next steps are IBM Plex Mono for
+headings on English pages only, or a dark first screen on the home page in
+both themes. Plex Mono has no kana or kanji (Fontsource subsets: Latin,
+Cyrillic, Vietnamese), so Japanese headings keep IBM Plex Sans JP first, as
+4.9 requires; the option changes rule 2 of 4.1.
 
 **Q8. The 2014 benchmark.** Remove the benchmark image and the TechEmpower
 Round 10 link from the home page and `README.md`; show performance only as
@@ -766,6 +856,53 @@ script of `ThemeProvider.astro`; Shiki ships `nginx`, `ruby` and
 `shellsession` grammars; Hugo module mounts accept an absolute `source`;
 Hextra's documented workflow also installs Go, Dart Sass and Node.js.
 
+Behind 4.1, 4.2 and 4.4, at Starlight 2d37fd6e8: `PageTitle.astro` renders
+`<h1 id={PAGE_TITLE_ID}>{Astro.locals.starlightRoute.entry.data.title}</h1>`,
+an expression that Astro escapes; `Search.astro` gives the search dialog
+`box-shadow: var(--sl-shadow-lg)` and its `dialog::backdrop`
+`backdrop-filter: blur(0.25rem)` (lines 223 and 229 to 232). Code blocks go
+through Expressive Code (`astro-expressive-code` ^0.44.0 in
+`package.json`), with the default themes `starlight-dark` and
+`starlight-light`. On starlight.astro.build/getting-started/ on 2026-10-04,
+its stylesheet `ec.v4551.css` held 37 distinct hex colors, each highlighted
+span carried its colors as hex in a `style` attribute
+(`--0:#82AAFF;--1:#3B61B0`, one variable per theme), and nine blocks
+rendered as `frame is-terminal`. `minSyntaxHighlightingColorContrast`
+defaults to 5.5. `useStarlightUiThemeColors` defaults to `false` once
+`themes` is set; with it, `theming.ts` draws the frame with `--sl-color-*`
+variables, but the border with a `color-mix()` with transparency, the
+scrollbars and text markers with translucent hex, and the active tab with
+an accent line, which the style settings `frames.editorTabBarBackground`,
+`frames.editorActiveTabBackground` and
+`frames.editorActiveTabIndicatorTopColor` override. The frames plugin draws
+a terminal only for `frame` `terminal`, or `auto` with a shell language
+(`@expressive-code/plugin-frames` 0.44.2, `src/index.ts` line 140), and
+`defaultProps` sets a prop for every block. Starlight sets the radius to 0,
+the border to 1 px and the frame shadow to `none` (`preprocessor.ts` lines
+92 and 93, `theming.ts` line 94). Themes load from JSON with
+`ExpressiveCodeTheme.fromJSONString`. GitHub's Markdown API renders
+`## 設定を<wbr>読み込む` as an h2 without the `<wbr>` and without showing it.
+
+Behind 5.3: the `actions/deploy-pages` README (Security considerations)
+says in item 4, "If your Pages site is using a source branch, the
+deployment must originate from this source branch unless your environment
+is protected in which case the environment protection rules take
+precedence over the source branch rule", and in item 5, with GitHub Actions
+as the source, "we highly recommend you also protect your environment (we
+will configure it by default for you)". GitHub's "Events that trigger
+workflows" runs a `repository_dispatch` with `GITHUB_REF` set to the
+default branch, "only if the workflow file exists on the default branch",
+and a `workflow_dispatch` on the "Branch or tag that received dispatch"; it
+says "Once a workflow has run at least once, you can dispatch it against
+any branch or tag via the GitHub API or GitHub CLI", while its note and the
+page on running a workflow manually say that the workflow must be in the
+default branch. With the `GITHUB_TOKEN`, "workflow_dispatch and
+repository_dispatch events always create workflow runs" (triggering a
+workflow from a workflow). The REST endpoint "Create a workflow dispatch
+event" needs the "Actions" repository permission (write), and
+`gh workflow run --ref` names the ref "which contains the version of the
+workflow file you'd like to run".
+
 ## Appendix C. Evidence for the visual rules
 
 "Checked" means the statement used here was compared with the original
@@ -782,7 +919,7 @@ original.
 | Not justified | | WCAG 2.2, 1.4.8 (AAA; note 1 asks for a mechanism, not these values) | checked, 2026-10-04 |
 | Targets 24 px; focus not covered | | WCAG 2.2, 2.5.8 and 2.4.11 | checked, 2026-10-04 |
 | Header buttons 44 by 44 | yes | Apple Human Interface Guidelines, Accessibility | summary |
-| Motion from interaction can be turned off | no blur-in entrance, no fade over a second, no entrance animation on every element, no `transition: all`, no animation of `top`, `left`, `width` or `height` | WCAG 2.2, 2.3.3 | level checked; text summary |
+| Motion from interaction can be turned off | no blur-in entrance, no fade over a second, no entrance animation on every element, no `transition: all`, no animation of `top`, `left`, `width` or `height`; about five entrance animations per page allowed, of 0.5 s, moving only `translateY` and `opacity` | WCAG 2.2, 2.3.3 | level checked; text summary |
 | Language of page and parts; `hreflang` | | WCAG 2.2, 3.1.1, 3.1.2; W3C; Google Search Central | checked |
 | About 40 Japanese characters per line | 720 px columns | JLREQ 2.4.2 (a guide for books, an upper limit, not an optimum); w3c/jlreq-d drafts | checked |
 | Japanese line gap | | JLREQ 2.4.2, notes 3, 4 and 6 | checked |
@@ -897,7 +1034,20 @@ Tools and hosting:
   `packages/starlight/src/`: `loaders.ts`, `utils/collection.ts`,
   `style/props.css`, `style/asides.css`, `user-components/Badge.astro`,
   `components/ThemeProvider.astro`, `components/LanguageSelect.astro`,
-  `components/Banner.astro`; and `packages/starlight/CHANGELOG.md` line 327
+  `components/Banner.astro`, `components/PageTitle.astro`,
+  `components/Search.astro`, `integrations/expressive-code/theming.ts` and
+  `preprocessor.ts`; `packages/starlight/package.json`; and
+  `packages/starlight/CHANGELOG.md` line 327. Configuration reference
+  (`expressiveCode`): https://starlight.astro.build/reference/configuration/ ;
+  the rendered page https://starlight.astro.build/getting-started/ and its
+  stylesheet `ec.v4551.css`
+- Expressive Code: frames https://expressive-code.com/key-features/frames/ ,
+  configuration https://expressive-code.com/reference/configuration/ ,
+  style overrides https://expressive-code.com/reference/style-overrides/ ,
+  themes https://expressive-code.com/guides/themes/ ; source
+  https://github.com/expressive-code/expressive-code ,
+  `packages/@expressive-code/plugin-frames/src/index.ts` at the tag
+  `@expressive-code/plugin-frames@0.44.2`
 - starlight-versions: README ("still in early development")
   https://github.com/HiDeoo/starlight-versions ; folder-based versioning
   https://starlight-versions.vercel.app/guides/about-versioning/
@@ -918,16 +1068,29 @@ Tools and hosting:
   publishing source:
   https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site
 - actions/deploy-pages v5.0.1: https://github.com/actions/deploy-pages
-  (`action.yml`)
+  (`action.yml`; README, Security Considerations, at `main` 368f825)
+- GitHub Actions: events that trigger workflows
+  https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows ;
+  triggering a workflow from a workflow
+  https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow ;
+  manually running a workflow
+  https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow ;
+  REST endpoints for workflows (create a workflow dispatch event)
+  https://docs.github.com/en/rest/actions/workflows ; `gh workflow run`
+  https://cli.github.com/manual/gh_workflow_run
+- GitHub REST endpoint for Markdown, used to render a heading with `<wbr>`
+  as GitHub does: https://docs.github.com/en/rest/markdown/markdown
 - Next.js static exports: https://nextjs.org/docs/app/guides/static-exports
 - Fontsource `@fontsource/ibm-plex-sans`, `@fontsource/ibm-plex-sans-jp`,
-  `@fontsource/ibm-plex-mono` 5.3.0, license OFL-1.1 (`npm view`)
+  `@fontsource/ibm-plex-mono` 5.3.0, license OFL-1.1 (`npm view`); subsets
+  of IBM Plex Mono: https://api.fontsource.org/v1/fonts/ibm-plex-mono
 - Google Analytics, end of Universal Analytics:
   https://support.google.com/analytics/answer/11583528
 
 This repository: the files linked above, `gh-pages` at 59c923a
 (`index.html`, `googleba3435e4002729b6.html`, `git ls-tree -r -l`), the
-`ngx_command_t` tables of `src/` at ec227408d, and the GitHub API for the
+`ngx_command_t` tables of `src/` at ec227408d, `README.md` and
+`docs/DEVELOPMENT.md` on `master` at b3df70fb6, and the GitHub API for the
 Pages settings, the environments and the default branch
 (`gh api repos/matsumotory/ngx_mruby/pages`, `.../environments`,
 `repos/matsumotory/ngx_mruby`).
