@@ -10,6 +10,11 @@
 - [Directives](./directives)
 - [Class and Method](./class_and_method)
 - [Use Case](./use_case)
+- [Release notes](./releases): read "Behavior changes" before upgrading
+
+## Branches and releases
+- [Branch strategy](../README.md#branch-strategy): what `master`, `next` and `v2.x` hold, and what to pin to stay on 2.x
+- [Promoting v3 to master](./DEVELOPMENT.md#promoting-v3-to-master): the procedure, for maintainers
 
 ## What's ngx_mruby
 __ngx_mruby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
