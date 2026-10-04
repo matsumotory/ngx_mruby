@@ -226,11 +226,15 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
 static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_t *ctx)
 {
   ngx_int_t rc = NGX_OK;
+  ngx_http_mruby_handler_kind_t kind;
   int ai;
 
   ai = mrb_gc_arena_save(re->mrb);
 
   if (re->fiber != NULL) {
+    // the handler that runs the fiber, for ngx_mrb_finalize_rputs below; read
+    // before re->fiber is cleared
+    kind = ((ngx_mrb_fiber_t *)re->fiber)->kind;
     ngx_mrb_push_request(re->r);
     re->r->headers_out.status = re->fiber_prev_status;
 
@@ -267,7 +271,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
     // ngx_mrb_finalize_rputs would replace a 500 set above with the status
     // the handler had set before it failed
     if (rc == NGX_OK) {
-      rc = ngx_mrb_finalize_rputs(re->r, ctx);
+      rc = ngx_mrb_finalize_rputs(re->r, ctx, kind);
     }
   } else {
     ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing",
