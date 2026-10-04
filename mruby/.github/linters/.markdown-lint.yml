@@ -1,4 +1,5 @@
 # https://github.com/DavidAnson/markdownlint#rules--aliases
+# https://github.com/igorshubovych/markdownlint-cli
 # markdownlint -c .github/linters/.markdown-lint.yml .
 
 # MD001 heading-increment/header-increment - Heading levels should only increment by one level at a time
@@ -18,6 +19,9 @@ MD025: false
 
 # MD026 no-trailing-punctuation - Trailing punctuation in heading
 MD026: false
+
+# MD029/ol-prefix Ordered list item prefix
+MD029: false
 
 # MD033/no-inline-html - Inline HTML
 MD033: false

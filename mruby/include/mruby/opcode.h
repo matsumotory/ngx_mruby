@@ -9,9 +9,13 @@
 
 enum mrb_insn {
 #define OPCODE(x,_) OP_ ## x,
-#include "mruby/ops.h"
+#include <mruby/ops.h>
 #undef OPCODE
 };
+
+/* backward compatibility aliases */
+#define OP_LOADT OP_LOADTRUE
+#define OP_LOADF OP_LOADFALSE
 
 #define OP_L_STRICT  1
 #define OP_L_CAPTURE 2

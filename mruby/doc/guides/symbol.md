@@ -1,3 +1,5 @@
+<!-- summary: About the Symbols -->
+
 # Symbols
 
 Symbols in `mruby` C source code is represented by `mrb_sym` which is alias of
@@ -61,6 +63,7 @@ header.
 - `MRB_SYM_B(xor)` //=> xor! (Method with Bang)
 - `MRB_SYM_Q(xor)` //=> xor? (Method with Question mark)
 - `MRB_SYM_E(xor)` //=> xor= (Method with Equal)
+- `MRB_GVSYM(xor)` //=> $xor (Global Variable)
 - `MRB_CVSYM(xor)` //=> @@xor (Class Variable)
 - `MRB_IVSYM(xor)` //=> @xor (Instance Variable)
 - `MRB_OPSYM(xor)` //=> ^ (Operator)
@@ -68,16 +71,9 @@ header.
 For `MRB_OPSYM()`, specify the names corresponding to operators (see
 `MRuby::Presym::OPERATORS` in `lib/mruby/presym.rb` for the names that
 can be specified for it). Other than that, describe only word characters
-excluding leading and ending punctuations.
+excluding leading and ending punctuation.
 
-These macros are converted to static symbol IDs at compile time, unless
-preallocate symbols are disabled by `conf.disable_presym`. In that case,
-these macros are expanded to `mrb_intern_lit` calls, therefore the mruby state
-variable is required. The above macros assume the variable name is `mrb`. If
-its name is not `mrb`, you need to use macros with `_2` suffix, such as
-`MRB_SYM_2` to specify `mrb_state*` variable.
-
-### Disabling Preallocated Symbols
-
-You can disable preallocated symbols by specifying `conf.disable_presym` in the
-configuration file.
+These macros are converted to static symbol IDs at compile time.
+The `_2` suffix variants (e.g., `MRB_SYM_2`) are kept for backward
+compatibility only; they accept an explicit `mrb_state*` parameter
+but ignore it. New code should use the standard macros above.

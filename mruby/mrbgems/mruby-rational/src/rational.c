@@ -2,7 +2,6 @@
 #include <mruby/class.h>
 #include <mruby/numeric.h>
 #include <mruby/internal.h>
-#include <mruby/presym.h>
 
 #ifndef MRB_NO_FLOAT
 #include <math.h>
@@ -13,11 +12,35 @@ mrb_value mrb_complex_add(mrb_state *mrb, mrb_value, mrb_value);
 mrb_value mrb_complex_sub(mrb_state *mrb, mrb_value, mrb_value);
 mrb_value mrb_complex_mul(mrb_state *mrb, mrb_value, mrb_value);
 mrb_value mrb_complex_div(mrb_state *mrb, mrb_value, mrb_value);
+mrb_value mrb_bint_mul_n(mrb_state *mrb, mrb_value x, mrb_value y);
+void mrb_bint_reduce(mrb_state *mrb, mrb_value *x, mrb_value *y);
 
+#ifdef MRB_USE_BIGINT
+struct mrb_rational {
+  union {
+    struct {
+      mrb_int num;
+      mrb_int den;
+    } i;
+    struct {
+      struct RBasic *num;
+      struct RBasic *den;
+    } b;
+  };
+};
+#define numerator i.num
+#define denominator i.den
+#define RAT_BIGINT 1
+#define RAT_BIGINT_P(obj) (mrb_obj_ptr(obj)->flags & RAT_BIGINT)
+#else
 struct mrb_rational {
   mrb_int numerator;
   mrb_int denominator;
 };
+#endif
+
+#define ONE mrb_fixnum_value(1)
+#define ZERO mrb_fixnum_value(0)
 
 #if defined(MRB_INT64) && defined(MRB_32BIT)
 struct RRational {
@@ -26,7 +49,7 @@ struct RRational {
 };
 
 static struct mrb_rational*
-rational_ptr(mrb_state *mrb, mrb_value v)
+rat_ptr(mrb_state *mrb, mrb_value v)
 {
   struct RRational *r = (struct RRational*)mrb_obj_ptr(v);
 
@@ -41,81 +64,141 @@ struct RRational {
   MRB_OBJECT_HEADER;
   struct mrb_rational r;
 };
-#define rational_ptr(mrb, v) (&((struct RRational*)mrb_obj_ptr(v))->r)
+#define rat_ptr(mrb, v) (&((struct RRational*)mrb_obj_ptr(v))->r)
 #endif
 
 mrb_static_assert_object_size(struct RRational);
 
-static struct RBasic*
-rational_alloc(mrb_state *mrb, struct RClass *c, struct mrb_rational **p)
+static struct mrb_rational*
+rat_alloc(mrb_state *mrb, struct RClass *c, struct RBasic **obj)
 {
-  struct RRational *s;
-  s = MRB_OBJ_ALLOC(mrb, MRB_TT_RATIONAL, c);
+  struct RRational *s = MRB_OBJ_ALLOC(mrb, MRB_TT_RATIONAL, c);
+  struct mrb_rational *p;
 #ifdef RATIONAL_INLINE
-  *p = &s->r;
+  p = &s->r;
 #else
-  *p = s->p = (struct mrb_rational*)mrb_malloc(mrb, sizeof(struct mrb_rational));
+  p = s->p = (struct mrb_rational*)mrb_malloc(mrb, sizeof(struct mrb_rational));
 #endif
-  return (struct RBasic*)s;
+  *obj = (struct RBasic*)s;
+  return p;
 }
 
-static mrb_value
-rational_numerator(mrb_state *mrb, mrb_value self)
+#ifdef RAT_BIGINT
+int
+mrb_rational_mark(mrb_state *mrb, struct RBasic *rat)
 {
-  struct mrb_rational *p = rational_ptr(mrb, self);
+  if (!(rat->flags & RAT_BIGINT)) return 0;
+
+  mrb_value self = mrb_obj_value(rat);
+  struct mrb_rational *p = rat_ptr(mrb, self);
+  mrb_gc_mark(mrb, p->b.num);
+  mrb_gc_mark(mrb, p->b.den);
+  return 2;
+}
+#endif
+
+static mrb_value
+rat_numerator(mrb_state *mrb, mrb_value self)
+{
+  struct mrb_rational *p = rat_ptr(mrb, self);
+#ifdef RAT_BIGINT
+  if (RAT_BIGINT_P(self)) {
+    return mrb_obj_value(p->b.num);
+  }
+#endif
   return mrb_int_value(mrb, p->numerator);
 }
 
+/*
+ * call-seq:
+ *   rational.numerator -> integer
+ *
+ * Returns the numerator of the rational number.
+ *
+ *   Rational(3, 4).numerator  #=> 3
+ *   Rational(-2, 5).numerator #=> -2
+ *   Rational(6, 8).numerator  #=> 3 (reduced form)
+ */
+/* normalized version of rat_numerator() */
 static mrb_value
-rational_denominator(mrb_state *mrb, mrb_value self)
+rational_numerator(mrb_state *mrb, mrb_value self)
 {
-  struct mrb_rational *p = rational_ptr(mrb, self);
+  mrb_value n = rat_numerator(mrb, self);
+  if (mrb_bigint_p(n)) {
+    /* normalize bigint */
+    return mrb_bint_mul(mrb, n, ONE);
+  }
+  return n;
+}
+
+static mrb_value
+rat_denominator(mrb_state *mrb, mrb_value self)
+{
+  struct mrb_rational *p = rat_ptr(mrb, self);
+#ifdef RAT_BIGINT
+  if (RAT_BIGINT_P(self)) {
+    return mrb_obj_value(p->b.den);
+  }
+#endif
   return mrb_int_value(mrb, p->denominator);
 }
 
-static void
+/*
+ * call-seq:
+ *   rational.denominator -> integer
+ *
+ * Returns the denominator of the rational number.
+ * The denominator is always positive.
+ *
+ *   Rational(3, 4).denominator  #=> 4
+ *   Rational(-2, 5).denominator #=> 5
+ *   Rational(6, 8).denominator  #=> 4 (reduced form)
+ */
+/* normalized version of rat_denominator() */
+static mrb_value
+rational_denominator(mrb_state *mrb, mrb_value self)
+{
+  mrb_value n = rat_denominator(mrb, self);
+  if (mrb_bigint_p(n)) {
+    /* normalize bigint */
+    return mrb_bint_mul(mrb, n, ONE);
+  }
+  return n;
+}
+
+static mrb_noreturn void
 rat_overflow(mrb_state *mrb)
 {
   mrb_raise(mrb, E_RANGE_ERROR, "integer overflow in rational");
 }
 
-static void
+static mrb_noreturn void
 rat_zerodiv(mrb_state *mrb)
 {
   mrb_raise(mrb, E_ZERODIV_ERROR, "divided by 0 in rational");
 }
 
-mrb_value
-mrb_rational_new(mrb_state *mrb, mrb_int numerator, mrb_int denominator)
+static mrb_noreturn void
+rat_type_error(mrb_state *mrb, mrb_value x)
 {
-  struct RClass *c = mrb_class_get_id(mrb, MRB_SYM(Rational));
-  struct mrb_rational *p;
-  struct RBasic *rat;
-
-  if (denominator == 0) {
-    rat_zerodiv(mrb);
-  }
-  if (denominator < 0) {
-    if (numerator == MRB_INT_MIN || denominator == MRB_INT_MIN) {
-      rat_overflow(mrb);
-    }
-    numerator *= -1;
-    denominator *= -1;
-  }
-  rat = rational_alloc(mrb, c, &p);
-  p->numerator = numerator;
-  p->denominator = denominator;
-  MRB_SET_FROZEN_FLAG(rat);
-  return mrb_obj_value(rat);
+  mrb_raisef(mrb, E_TYPE_ERROR, "%T cannot be converted to Rational", x);
 }
-
-#define rational_new(mrb,n,d) mrb_rational_new(mrb, n, d)
 
 void
 mrb_rational_copy(mrb_state *mrb, mrb_value x, mrb_value y)
 {
-  struct mrb_rational *p1 = rational_ptr(mrb, x);
-  struct mrb_rational *p2 = rational_ptr(mrb, y);
+  struct mrb_rational *p1 = rat_ptr(mrb, x);
+  struct mrb_rational *p2 = rat_ptr(mrb, y);
+#ifdef RAT_BIGINT
+ struct RRational *r = (struct RRational*)mrb_obj_ptr(x);
+  if (RAT_BIGINT_P(y)) {
+    p1->b.num = p2->b.num;
+    p1->b.den = p2->b.den;
+    r->flags |= RAT_BIGINT;
+    return;
+  }
+  r->flags &= ~RAT_BIGINT;
+#endif
   p1->numerator = p2->numerator;
   p1->denominator = p2->denominator;
 }
@@ -161,20 +244,69 @@ i_gcd(mrb_int x, mrb_int y)
   return (mrb_int)(u << shift);
 }
 
+#ifdef RAT_BIGINT
 static mrb_value
-rational_new_i(mrb_state *mrb, mrb_int n, mrb_int d)
+rational_new_b(mrb_state *mrb, mrb_value n, mrb_value d)
 {
-  mrb_int a;
-
-  if (d == 0) {
+  /* bigint check */
+  mrb_assert(mrb_bigint_p(n));
+  d = mrb_as_bint(mrb, d);
+  mrb_int cmp = mrb_bint_cmp(mrb, d, ZERO);
+  if (cmp == 0) {
     rat_zerodiv(mrb);
   }
-  if (n == MRB_INT_MIN || d == MRB_INT_MIN) {
-    rat_overflow(mrb);
+  /* negative */
+  if (cmp < 0) {
+    n = mrb_bint_neg(mrb, n);
+    d = mrb_bint_neg(mrb, d);
   }
-  a = i_gcd(n, d);
-  return rational_new(mrb, n/a, d/a);
+  /* normalize (n/gcd, d/gcd) */
+  mrb_bint_reduce(mrb, &n, &d);
+  struct RClass *c = mrb_class_get_id(mrb, MRB_SYM(Rational));
+  struct RBasic *rat;
+  struct mrb_rational *p = rat_alloc(mrb, c, &rat);
+  rat->flags |= RAT_BIGINT;
+  p->b.num = (struct RBasic*)mrb_obj_ptr(n);
+  p->b.den = (struct RBasic*)mrb_obj_ptr(d);
+  rat->frozen = 1;
+  return mrb_obj_value(rat);
 }
+#endif
+
+mrb_value
+mrb_rational_new(mrb_state *mrb, mrb_int nume, mrb_int deno)
+{
+  if (deno == 0) {
+    rat_zerodiv(mrb);
+  }
+  if (nume == MRB_INT_MIN || deno == MRB_INT_MIN) {
+#ifdef RAT_BIGINT
+    mrb_value num = mrb_as_bint(mrb, mrb_int_value(mrb, nume));
+    mrb_value den = mrb_as_bint(mrb, mrb_int_value(mrb, deno));
+    return rational_new_b(mrb, num, den);
+#else
+    rat_overflow(mrb);
+#endif
+  }
+  if (deno < 0) {
+    nume *= -1;
+    deno *= -1;
+  }
+
+  mrb_int a = i_gcd(nume, deno);
+  nume /= a;
+  deno /= a;
+
+  struct RClass *c = mrb_class_get_id(mrb, MRB_SYM(Rational));
+  struct RBasic *rat;
+  struct mrb_rational *p = rat_alloc(mrb, c, &rat);
+  p->numerator = nume;
+  p->denominator = deno;
+  rat->frozen = 1;
+  return mrb_obj_value(rat);
+}
+
+#define rational_new_i(mrb,n,d) mrb_rational_new(mrb, n, d)
 
 #ifndef MRB_NO_FLOAT
 
@@ -192,113 +324,151 @@ rational_new_i(mrb_state *mrb, mrb_int n, mrb_int d)
 #define RAT_HUGE_VAL HUGE_VAL
 #endif
 
-static void
-float_decode_internal(mrb_state *mrb, mrb_float f, mrb_float *rf, int *n)
-{
-  f = (mrb_float)frexp_rat(f, n);
-  if (isinf(f)) rat_overflow(mrb);
-  f = (mrb_float)ldexp_rat(f, RAT_MANT_DIG);
-  *n -= RAT_MANT_DIG;
-  *rf = f;
-}
-
 static mrb_value
-rational_new_f(mrb_state *mrb, mrb_float f0)
+rational_new_f(mrb_state *mrb, mrb_float f)
 {
-  mrb_float f;
-  int n;
+  mrb_check_num_exact(mrb, f);
+  if (f == 0.0) {
+    return rational_new_i(mrb, 0, 1);
+  }
+  int exp;
+  // Extract mantissa and exponent
+  double mantissa = frexp_rat(f, &exp);
+  const mrb_int precision = ((mrb_int)1) << RAT_MANT_DIG;
 
-  mrb_check_num_exact(mrb, f0);
-  float_decode_internal(mrb, f0, &f, &n);
-#if FLT_RADIX == 2
-  if (n == 0)
-    return rational_new(mrb, (mrb_int)f, 1);
-  if (n > 0) {
-    f = ldexp_rat(f, n);
-    if (f == RAT_HUGE_VAL || f > (mrb_float)MRB_INT_MAX) {
+  mrb_int nume = (mrb_int)(mantissa * precision);
+  mrb_int deno = precision;
+
+  if (exp > 0) {
+    mrb_int temp;
+    /* Check exp < MRB_INT_BIT-1 to avoid undefined behavior from shifting into sign bit */
+    if (exp >= MRB_INT_BIT - 1 || mrb_int_mul_overflow(nume, ((mrb_int)1)<<exp, &temp)) {
+#ifndef RAT_BIGINT
       rat_overflow(mrb);
-    }
-    return rational_new(mrb, (mrb_uint)f, 1);
-  }
-  if (n < -RAT_INT_LIMIT) {
-    f = ldexp_rat(f, n+RAT_INT_LIMIT);
-    n = RAT_INT_LIMIT;
-  }
-  else {
-    n = -n;
-  }
-  return rational_new_i(mrb, (mrb_int)f, ((mrb_int)1)<<n);
 #else
-  mrb_int pow = 1;
-  if (n < 0) {
-    n = -n;
-    while (n > RAT_INT_LIMIT) {
-      f /= 2;
-      n--;
-    }
-    while (n--) {
-      pow *= FLT_RADIX;
-    }
-    return rational_new_i(mrb, f, pow);
-  }
-  else {
-    while (n--) {
-      if (MRB_INT_MAX/FLT_RADIX < pow) {
-        rat_overflow(mrb);
-      }
-      pow *= FLT_RADIX;
-    }
-    return rational_new(mrb, (mrb_int)f*pow, 1);
-  }
+      mrb_value n = mrb_bint_lshift(mrb, mrb_bint_new_int(mrb, nume), exp);
+      return rational_new_b(mrb, n, mrb_int_value(mrb, deno));
 #endif
+    }
+    nume = temp;
+  }
+  else if (exp < 0) {
+    /* exp is negative, so we need to multiply denominator by 2^(-exp) */
+    int neg_exp = -exp;
+    if (neg_exp >= MRB_INT_BIT - 1 || mrb_int_mul_overflow(deno, ((mrb_int)1)<<neg_exp, &deno)) {
+#ifndef RAT_BIGINT
+      rat_overflow(mrb);
+#else
+      mrb_value d = mrb_bint_lshift(mrb, mrb_bint_new_int(mrb, deno), neg_exp);
+      return rational_new_b(mrb, mrb_bint_new_int(mrb, nume), d);
+#endif
+    }
+  }
+  return rational_new_i(mrb, nume, deno);
 }
-#endif
 
-#ifndef MRB_NO_FLOAT
 static mrb_float
-rat_float(struct mrb_rational *p)
+rat_float(mrb_state *mrb, mrb_value x)
 {
-  mrb_float f;
+  struct mrb_rational *p = rat_ptr(mrb, x);
 
-  if (p->denominator == 0.0) {
-    f = INFINITY;
+#ifdef RAT_BIGINT
+  if (RAT_BIGINT_P(x)) {
+    return mrb_bint_as_float(mrb, mrb_obj_value(p->b.num)) / mrb_bint_as_float(mrb, mrb_obj_value(p->b.den));
   }
-  else {
-    f = (mrb_float)p->numerator / (mrb_float)p->denominator;
-  }
-
-  return f;
+#endif
+  return (mrb_float)p->numerator / (mrb_float)p->denominator;
 }
 
 mrb_value
 mrb_rational_to_f(mrb_state *mrb, mrb_value self)
 {
-  struct mrb_rational *p = rational_ptr(mrb, self);
-  return mrb_float_value(mrb, rat_float(p));
+  mrb_float f = rat_float(mrb, self);
+  return mrb_float_value(mrb, f);
 }
 #endif
 
+/*
+ * call-seq:
+ *   rational.to_i -> integer
+ *
+ * Returns the rational number truncated to an integer.
+ *
+ *   Rational(3, 4).to_i   #=> 0
+ *   Rational(7, 3).to_i   #=> 2
+ *   Rational(-5, 2).to_i  #=> -2
+ */
 mrb_value
 mrb_rational_to_i(mrb_state *mrb, mrb_value self)
 {
-  struct mrb_rational *p = rational_ptr(mrb, self);
-  if (p->denominator == 0) {
-    rat_zerodiv(mrb);
+  struct mrb_rational *p = rat_ptr(mrb, self);
+#ifdef RAT_BIGINT
+  if (RAT_BIGINT_P(self)) {
+    return mrb_bint_div(mrb, mrb_obj_value(p->b.num), mrb_obj_value(p->b.den));
   }
+#endif
   return mrb_int_value(mrb, p->numerator / p->denominator);
 }
 
+mrb_value
+mrb_as_rational(mrb_state *mrb, mrb_value x)
+{
+  switch(mrb_type(x)) {
+  case MRB_TT_INTEGER:
+    return rational_new_i(mrb, mrb_integer(x), 1);
+#ifdef RAT_BIGINT
+  case MRB_TT_BIGINT:
+    return rational_new_b(mrb, x, ONE);
+#endif
+  case MRB_TT_RATIONAL:
+    return x;
+#ifndef MRB_NO_FLOAT
+#ifdef MRB_USE_COMPLEX
+  case MRB_TT_COMPLEX:
+#endif
+  case MRB_TT_FLOAT:
+    return rational_new_f(mrb, mrb_as_float(mrb, x));
+#endif
+  default:
+    rat_type_error(mrb, x);
+  }
+}
+
+/*
+ * call-seq:
+ *   rational.negative? -> true or false
+ *
+ * Returns true if the rational number is negative, false otherwise.
+ *
+ *   Rational(-1, 2).negative?  #=> true
+ *   Rational(1, 2).negative?   #=> false
+ *   Rational(0, 1).negative?   #=> false
+ */
 static mrb_value
 rational_negative_p(mrb_state *mrb, mrb_value self)
 {
-  struct mrb_rational *p = rational_ptr(mrb, self);
-  if (p->numerator < 0) {
-    return mrb_true_value();
+  struct mrb_rational *p = rat_ptr(mrb, self);
+#ifdef RAT_BIGINT
+  if (RAT_BIGINT_P(self)) {
+    mrb_int cmp = mrb_bint_cmp(mrb, mrb_obj_value(p->b.num), ZERO);
+    return mrb_bool_value(cmp < 0);
   }
-  return mrb_false_value();
+#endif
+  return mrb_bool_value(p->numerator < 0);
 }
 
 #ifndef MRB_NO_FLOAT
+/*
+ * call-seq:
+ *   float.to_r -> rational
+ *
+ * Converts the float to a rational number. The conversion preserves
+ * the exact value of the float as a fraction.
+ *
+ *   0.5.to_r    #=> Rational(1, 2)
+ *   0.25.to_r   #=> Rational(1, 4)
+ *   1.5.to_r    #=> Rational(3, 2)
+ */
 static mrb_value
 float_to_r(mrb_state *mrb, mrb_value self)
 {
@@ -306,31 +476,58 @@ float_to_r(mrb_state *mrb, mrb_value self)
 }
 #endif
 
+/*
+ * call-seq:
+ *   integer.to_r -> rational
+ *
+ * Converts the integer to a rational number with denominator 1.
+ *
+ *   5.to_r     #=> Rational(5, 1)
+ *   (-3).to_r  #=> Rational(-3, 1)
+ *   0.to_r     #=> Rational(0, 1)
+ */
 static mrb_value
-fix_to_r(mrb_state *mrb, mrb_value self)
+int_to_r(mrb_state *mrb, mrb_value self)
 {
-  return rational_new(mrb, mrb_integer(self), 1);
+#ifdef RAT_BIGINT
+  if (mrb_bigint_p(self)) {
+    return rational_new_b(mrb, self, ONE);
+  }
+#endif
+  return rational_new_i(mrb, mrb_integer(self), 1);
 }
 
+/*
+ * call-seq:
+ *   nil.to_r -> rational
+ *
+ * Converts nil to Rational(0, 1).
+ *
+ *   nil.to_r  #=> Rational(0, 1)
+ */
 static mrb_value
 nil_to_r(mrb_state *mrb, mrb_value self)
 {
-  return rational_new(mrb, 0, 1);
+  return rational_new_i(mrb, 0, 1);
 }
 
+#if !defined(MRB_NO_FLOAT) || defined(RAT_BIGINT)
 static mrb_value
-rational_m(mrb_state *mrb, mrb_value self)
+rational_new(mrb_state *mrb, mrb_value a, mrb_value b)
 {
 #ifdef MRB_NO_FLOAT
-  mrb_int n, d = 1;
-  mrb_get_args(mrb, "i|i", &n, &d);
-  return rational_new_i(mrb, n, d);
+  a = mrb_as_int(mrb, a);
+  b = mrb_as_int(mrb, b);
+  return rational_new_i(mrb, mrb_integer(a), mrb_integer(b));
 #else
-  mrb_value a, b = mrb_fixnum_value(1);
-  mrb_get_args(mrb, "o|o", &a, &b);
   if (mrb_integer_p(a) && mrb_integer_p(b)) {
     return rational_new_i(mrb, mrb_integer(a), mrb_integer(b));
   }
+#ifdef RAT_BIGINT
+  else if (mrb_bigint_p(a) || mrb_bigint_p(b)) {
+    return rational_new_b(mrb, mrb_as_bint(mrb, a), b);
+  }
+#endif
   else {
     mrb_float x = mrb_as_float(mrb, a);
     mrb_float y = mrb_as_float(mrb, b);
@@ -339,11 +536,131 @@ rational_m(mrb_state *mrb, mrb_value self)
 #endif
 }
 
+/*
+ * call-seq:
+ *   Rational(numerator, denominator = 1) -> rational
+ *
+ * Creates a rational number from numerator and denominator.
+ * The rational is automatically reduced to lowest terms.
+ *
+ *   Rational(1, 2)    #=> Rational(1, 2)
+ *   Rational(6, 8)    #=> Rational(3, 4)
+ *   Rational(5)       #=> Rational(5, 1)
+ *   Rational(-2, 4)   #=> Rational(-1, 2)
+ */
+static mrb_value
+rational_m(mrb_state *mrb, mrb_value self)
+{
+  mrb_value a, b = ONE;
+  mrb_get_args(mrb, "o|o", &a, &b);
+  return rational_new(mrb, a, b);
+}
+
+#else
+
+/*
+ * call-seq:
+ *   Rational(numerator, denominator = 1) -> rational
+ *
+ * Creates a rational number from numerator and denominator.
+ * The rational is automatically reduced to lowest terms.
+ *
+ *   Rational(1, 2)    #=> Rational(1, 2)
+ *   Rational(6, 8)    #=> Rational(3, 4)
+ *   Rational(5)       #=> Rational(5, 1)
+ *   Rational(-2, 4)   #=> Rational(-1, 2)
+ */
+static mrb_value
+rational_m(mrb_state *mrb, mrb_value self)
+{
+  mrb_int n, d = 1;
+  mrb_get_args(mrb, "i|i", &n, &d);
+  return rational_new_i(mrb, n, d);
+}
+#endif
+
+static mrb_value
+rational_eq_b(mrb_state *mrb, mrb_value x, mrb_value y)
+{
+  struct mrb_rational *p1 = rat_ptr(mrb, x);
+  mrb_bool result;
+
+  switch (mrb_type(y)) {
+  case MRB_TT_INTEGER:
+    {
+      /* For bigint-backed rationals, check if denominator is 1 */
+      mrb_value den = mrb_obj_value(p1->b.den);
+      mrb_int den_cmp = mrb_bint_cmp(mrb, den, mrb_int_value(mrb, 1));
+      if (den_cmp != 0) return mrb_false_value();
+      mrb_value num = mrb_obj_value(p1->b.num);
+      result = mrb_bint_cmp(mrb, num, y) == 0;
+      break;
+    }
+#ifdef MRB_USE_BIGINT
+  case MRB_TT_BIGINT:
+    {
+      /* For bigint-backed rationals comparing with bigint */
+      mrb_value den = mrb_obj_value(p1->b.den);
+      mrb_int den_cmp = mrb_bint_cmp(mrb, den, mrb_int_value(mrb, 1));
+      if (den_cmp != 0) return mrb_false_value();
+      mrb_value num = mrb_obj_value(p1->b.num);
+      result = mrb_bint_cmp(mrb, num, y) == 0;
+      break;
+    }
+#endif
+#ifndef MRB_NO_FLOAT
+  case MRB_TT_FLOAT:
+    {
+      /* For bigint-backed rationals, convert to float and compare */
+      mrb_float num_f = mrb_bint_as_float(mrb, mrb_obj_value(p1->b.num));
+      mrb_float den_f = mrb_bint_as_float(mrb, mrb_obj_value(p1->b.den));
+      result = (num_f / den_f) == mrb_float(y);
+      break;
+    }
+#endif
+  case MRB_TT_RATIONAL:
+    {
+      /* Compare by converting to float - less precise but safe */
+      mrb_float v1 = mrb_bint_as_float(mrb, mrb_obj_value(p1->b.num)) /
+                     mrb_bint_as_float(mrb, mrb_obj_value(p1->b.den));
+      mrb_float v2 = rat_float(mrb, y);
+      result = v1 == v2;
+      break;
+    }
+
+#ifdef MRB_USE_COMPLEX
+  case MRB_TT_COMPLEX:
+   {
+      result = mrb_complex_eq(mrb, y, mrb_rational_to_f(mrb, x));
+      break;
+    }
+#endif
+  default:
+    result = mrb_equal(mrb, y, x);
+    break;
+  }
+  return mrb_bool_value(result);
+}
+
+/*
+ * call-seq:
+ *   rational == other -> true or false
+ *
+ * Returns true if rational equals other. Comparison is done by cross-multiplication
+ * to avoid floating point precision issues.
+ *
+ *   Rational(1, 2) == Rational(2, 4)  #=> true
+ *   Rational(1, 2) == 0.5             #=> true
+ *   Rational(1, 2) == Rational(1, 3)  #=> false
+ */
 static mrb_value
 rational_eq(mrb_state *mrb, mrb_value x)
 {
   mrb_value y = mrb_get_arg1(mrb);
-  struct mrb_rational *p1 = rational_ptr(mrb, x);
+#ifdef RAT_BIGINT
+  if (RAT_BIGINT_P(x)) return rational_eq_b(mrb, x, y);
+#endif
+  struct mrb_rational *p1 = rat_ptr(mrb, x);
   mrb_bool result;
 
   switch (mrb_type(y)) {
@@ -351,6 +668,13 @@ rational_eq(mrb_state *mrb, mrb_value x)
     if (p1->denominator != 1) return mrb_false_value();
     result = p1->numerator == mrb_integer(y);
     break;
+#ifdef MRB_USE_BIGINT
+  case MRB_TT_BIGINT:
+    /* Non-bigint rational comparing with bigint */
+    if (p1->denominator != 1) return mrb_false_value();
+    result = mrb_bint_cmp(mrb, y, mrb_int_value(mrb, p1->numerator)) == 0;
+    break;
+#endif
 #ifndef MRB_NO_FLOAT
   case MRB_TT_FLOAT:
     result = ((double)p1->numerator/p1->denominator) == mrb_float(y);
@@ -358,7 +682,7 @@ rational_eq(mrb_state *mrb, mrb_value x)
 #endif
   case MRB_TT_RATIONAL:
     {
-      struct mrb_rational *p2 = rational_ptr(mrb, y);
+      struct mrb_rational *p2 = rat_ptr(mrb, y);
       mrb_int a, b;
 
       if (p1->numerator == p2->numerator && p1->denominator == p2->denominator) {
@@ -391,78 +715,80 @@ rational_eq(mrb_state *mrb, mrb_value x)
   return mrb_bool_value(result);
 }
 
-static mrb_value
-rational_cmp(mrb_state *mrb, mrb_value x)
-{
-  struct mrb_rational *p1 = rational_ptr(mrb, x);
-  mrb_value y = mrb_get_arg1(mrb);
-
-  switch(mrb_type(y)) {
-  case MRB_TT_RATIONAL:
-    {
-      struct mrb_rational *p2 = rational_ptr(mrb, y);
-      mrb_int a, b;
-
-      if (mrb_int_mul_overflow(p1->numerator, p2->denominator, &a) ||
-          mrb_int_mul_overflow(p1->denominator, p2->numerator, &b)) {
-        return mrb_nil_value();
-      }
-      if (a > b)
-        return mrb_fixnum_value(1);
-      else if (a < b)
-        return mrb_fixnum_value(-1);
-      return mrb_fixnum_value(0);
-    }
-  case MRB_TT_INTEGER:
-#ifndef MRB_NO_FLOAT
-  case MRB_TT_FLOAT:
-    {
-      mrb_float a = rat_float(p1), b = mrb_as_float(mrb, y);
-      if (a > b)
-        return mrb_fixnum_value(1);
-      else if (a < b)
-        return mrb_fixnum_value(-1);
-      return mrb_fixnum_value(0);
-    }
-#else
-    {
-      mrb_int a = p1->numerator, b;
-      if (mrb_int_mul_overflow(p1->denominator, mrb_integer(y), &b)) {
-        return mrb_nil_value();
-      }
-      if (a > b)
-        return mrb_fixnum_value(1);
-      else if (a < b)
-        return mrb_fixnum_value(-1);
-      return mrb_fixnum_value(0);
-    }
-#endif
-  default:
-    x = mrb_funcall_argv(mrb, y, MRB_OPSYM(cmp), 1, &x);
-    if (mrb_integer_p(x)) {
-      mrb_int z = mrb_integer(x);
-      return mrb_fixnum_value(-z);
-    }
-    return mrb_nil_value();
- }
-}
-
+/*
+ * call-seq:
+ *   -rational -> rational
+ *
+ * Returns the negation of the rational number.
+ *
+ *   -Rational(1, 2)   #=> Rational(-1, 2)
+ *   -Rational(-3, 4)  #=> Rational(3, 4)
+ */
 static mrb_value
 rational_minus(mrb_state *mrb, mrb_value x)
 {
-  struct mrb_rational *p = rational_ptr(mrb, x);
+  struct mrb_rational *p = rat_ptr(mrb, x);
+#ifdef RAT_BIGINT
+  mrb_value num;
+  if (RAT_BIGINT_P(x)) {
+    num = mrb_obj_value(p->b.num);
+  bint:
+    return rational_new_b(mrb, mrb_bint_neg(mrb, num), mrb_obj_value(p->b.den));
+  }
+#endif
   mrb_int n = p->numerator;
-  if (n == MRB_INT_MIN) rat_overflow(mrb);
-  return rational_new(mrb, -n, p->denominator);
+  if (n == MRB_INT_MIN) {
+#ifdef RAT_BIGINT
+    num = mrb_as_bint(mrb, mrb_int_value(mrb, p->numerator));
+    goto bint;
+#else
+    rat_overflow(mrb);
+#endif
+  }
+  return rational_new_i(mrb, -n, p->denominator);
 }
+
+#ifdef RAT_BIGINT
+static mrb_value
+rat_add_b(mrb_state *mrb, mrb_value x, mrb_value y)
+{
+  mrb_value num1 = rat_numerator(mrb, x);
+  mrb_value den1 = rat_denominator(mrb, x);
+  mrb_value num2, den2;
+
+  switch(mrb_type(y)) {
+  case MRB_TT_RATIONAL:
+    num2 = rat_numerator(mrb, y);
+    den2 = rat_denominator(mrb, y);
+    break;
+  case MRB_TT_INTEGER:
+  case MRB_TT_BIGINT:
+    num2 = y;
+    den2 = ONE;
+    break;
+  default:
+    /* should not happen */
+    rat_type_error(mrb, y);
+  }
+
+  mrb_value a = mrb_bint_mul_n(mrb, mrb_as_bint(mrb, num1), den2);
+  mrb_value b = mrb_bint_mul_n(mrb, mrb_as_bint(mrb, num2), den1);
+  a = mrb_bint_add_n(mrb, a, b);
+  b = mrb_bint_mul_n(mrb, mrb_as_bint(mrb, den1), den2);
+  return rational_new_b(mrb, a, b);
+}
+#endif
 
 mrb_value
 mrb_rational_add(mrb_state *mrb, mrb_value x, mrb_value y)
 {
-  struct mrb_rational *p1 = rational_ptr(mrb, x);
+  struct mrb_rational *p1 = rat_ptr(mrb, x);
 
   switch (mrb_type(y)) {
   case MRB_TT_INTEGER:
+#ifdef RAT_BIGINT
+    if (RAT_BIGINT_P(x)) return rat_add_b(mrb, x, y);
+#endif
     {
       mrb_int z = mrb_integer(y);
       if (mrb_int_mul_overflow(z, p1->denominator, &z)) rat_overflow(mrb);
@@ -470,8 +796,12 @@ mrb_rational_add(mrb_state *mrb, mrb_value x, mrb_value y)
       return rational_new_i(mrb, z, p1->denominator);
     }
   case MRB_TT_RATIONAL:
+#ifdef RAT_BIGINT
+    if (RAT_BIGINT_P(x) || RAT_BIGINT_P(y))
+      return rat_add_b(mrb, x, y);
+#endif
     {
-      struct mrb_rational *p2 = rational_ptr(mrb, y);
+      struct mrb_rational *p2 = rat_ptr(mrb, y);
       mrb_int a, b;
 
       if (mrb_int_mul_overflow(p1->numerator, p2->denominator, &a)) rat_overflow(mrb);
@@ -489,9 +819,14 @@ mrb_rational_add(mrb_state *mrb, mrb_value x, mrb_value y)
     }
 #endif
 
+#ifdef RAT_BIGINT
+  case MRB_TT_BIGINT:
+    return rat_add_b(mrb, x, y);
+#endif
+
 #if defined(MRB_USE_COMPLEX)
   case MRB_TT_COMPLEX:
-    return mrb_complex_add(mrb, mrb_complex_new(mrb, rat_float(p1), 0), y);
+    return mrb_complex_add(mrb, mrb_complex_new(mrb, rat_float(mrb, x), 0), y);
 #endif
 
   default:
@@ -499,6 +834,17 @@ mrb_rational_add(mrb_state *mrb, mrb_value x, mrb_value y)
   }
 }
 
+/*
+ * call-seq:
+ *   rational + numeric -> rational or numeric
+ *
+ * Returns the sum of rational and numeric. If numeric is a rational,
+ * returns a rational. If numeric is a float, returns a float.
+ *
+ *   Rational(1, 2) + Rational(1, 3)  #=> Rational(5, 6)
+ *   Rational(1, 2) + 1               #=> Rational(3, 2)
+ *   Rational(1, 2) + 0.5             #=> 1.0
+ */
 static mrb_value
 rational_add(mrb_state *mrb, mrb_value x)
 {
@@ -506,13 +852,47 @@ rational_add(mrb_state *mrb, mrb_value x)
   return mrb_rational_add(mrb, x, y);
 }
 
+#ifdef RAT_BIGINT
+static mrb_value
+rat_sub_b(mrb_state *mrb, mrb_value x, mrb_value y)
+{
+  mrb_value num1 = rat_numerator(mrb, x);
+  mrb_value den1 = rat_denominator(mrb, x);
+  mrb_value num2, den2;
+
+  switch(mrb_type(y)) {
+  case MRB_TT_RATIONAL:
+    num2 = rat_numerator(mrb, y);
+    den2 = rat_denominator(mrb, y);
+    break;
+  case MRB_TT_INTEGER:
+  case MRB_TT_BIGINT:
+    num2 = y;
+    den2 = ONE;
+    break;
+  default:
+    /* should not happen */
+    rat_type_error(mrb, y);
+  }
+
+  mrb_value a = mrb_bint_mul_n(mrb, mrb_as_bint(mrb, num1), den2);
+  mrb_value b = mrb_bint_mul_n(mrb, mrb_as_bint(mrb, num2), den1);
+  a = mrb_bint_sub_n(mrb, a, b);
+  b = mrb_bint_mul_n(mrb, mrb_as_bint(mrb, den1), den2);
+  return rational_new_b(mrb, a, b);
+}
+#endif
+
 mrb_value
 mrb_rational_sub(mrb_state *mrb, mrb_value x, mrb_value y)
 {
-  struct mrb_rational *p1 = rational_ptr(mrb, x);
+  struct mrb_rational *p1 = rat_ptr(mrb, x);
 
   switch (mrb_type(y)) {
   case MRB_TT_INTEGER:
+#ifdef RAT_BIGINT
+    if (RAT_BIGINT_P(x)) return rat_sub_b(mrb, x, y);
+#endif
     {
       mrb_int z = mrb_integer(y);
       if (mrb_int_mul_overflow(z, p1->denominator, &z)) rat_overflow(mrb);
@@ -520,8 +900,12 @@ mrb_rational_sub(mrb_state *mrb, mrb_value x, mrb_value y)
       return rational_new_i(mrb, z, p1->denominator);
     }
   case MRB_TT_RATIONAL:
+#ifdef RAT_BIGINT
+    if (RAT_BIGINT_P(x) || RAT_BIGINT_P(y))
+      return rat_sub_b(mrb, x, y);
+#endif
     {
-      struct mrb_rational *p2 = rational_ptr(mrb, y);
+      struct mrb_rational *p2 = rat_ptr(mrb, y);
       mrb_int a, b;
 
       if (mrb_int_mul_overflow(p1->numerator, p2->denominator, &a)) rat_overflow(mrb);
@@ -531,9 +915,14 @@ mrb_rational_sub(mrb_state *mrb, mrb_value x, mrb_value y)
       return rational_new_i(mrb, a, b);
     }
 
+#ifdef RAT_BIGINT
+  case MRB_TT_BIGINT:
+    return rat_sub_b(mrb, x, y);
+#endif
+
 #if defined(MRB_USE_COMPLEX)
   case MRB_TT_COMPLEX:
-    return mrb_complex_sub(mrb, mrb_complex_new(mrb, rat_float(p1), 0), y);
+    return mrb_complex_sub(mrb, mrb_complex_new(mrb, rat_float(mrb, x), 0), y);
 #endif
 
 #ifndef MRB_NO_FLOAT
@@ -545,11 +934,22 @@ mrb_rational_sub(mrb_state *mrb, mrb_value x, mrb_value y)
     }
 #else
   default:
-    mrb_raise(mrb, E_TYPE_ERROR, "non integer subtraction");
+    rat_type_error(mrb, y);
 #endif
   }
 }
 
+/*
+ * call-seq:
+ *   rational - numeric -> rational or numeric
+ *
+ * Returns the difference of rational and numeric. If numeric is a rational,
+ * returns a rational. If numeric is a float, returns a float.
+ *
+ *   Rational(1, 2) - Rational(1, 3)  #=> Rational(1, 6)
+ *   Rational(3, 2) - 1               #=> Rational(1, 2)
+ *   Rational(1, 2) - 0.25            #=> 0.25
+ */
 static mrb_value
 rational_sub(mrb_state *mrb, mrb_value x)
 {
@@ -557,21 +957,55 @@ rational_sub(mrb_state *mrb, mrb_value x)
   return mrb_rational_sub(mrb, x, y);
 }
 
+#ifdef RAT_BIGINT
+static mrb_value
+rat_mul_b(mrb_state *mrb, mrb_value x, mrb_value y)
+{
+  mrb_value num, den;
+
+  switch(mrb_type(y)) {
+  case MRB_TT_RATIONAL:
+    num = rat_numerator(mrb, y);
+    den = rat_denominator(mrb, y);
+    break;
+  case MRB_TT_INTEGER:
+  case MRB_TT_BIGINT:
+    num = y;
+    den = ONE;
+    break;
+  default:
+    /* should not happen */
+    rat_type_error(mrb, y);
+  }
+
+  mrb_value a = mrb_bint_mul_n(mrb, mrb_as_bint(mrb, rat_numerator(mrb, x)), num);
+  mrb_value b = mrb_bint_mul_n(mrb, mrb_as_bint(mrb, rat_denominator(mrb, x)), den);
+  return rational_new_b(mrb, a, b);
+}
+#endif
+
 mrb_value
 mrb_rational_mul(mrb_state *mrb, mrb_value x, mrb_value y)
 {
-  struct mrb_rational *p1 = rational_ptr(mrb, x);
-
   switch (mrb_type(y)) {
   case MRB_TT_INTEGER:
+#ifdef RAT_BIGINT
+    if (RAT_BIGINT_P(x)) return rat_mul_b(mrb, x, y);
+#endif
     {
+      struct mrb_rational *p1 = rat_ptr(mrb, x);
       mrb_int z = mrb_integer(y);
       if (mrb_int_mul_overflow(p1->numerator, z, &z)) rat_overflow(mrb);
       return rational_new_i(mrb, z, p1->denominator);
     }
   case MRB_TT_RATIONAL:
+#ifdef RAT_BIGINT
+    if (RAT_BIGINT_P(x) || RAT_BIGINT_P(y))
+      return rat_mul_b(mrb, x, y);
+#endif
     {
-      struct mrb_rational *p2 = rational_ptr(mrb, y);
+      struct mrb_rational *p1 = rat_ptr(mrb, x);
+      struct mrb_rational *p2 = rat_ptr(mrb, y);
       mrb_int a, b;
 
       if (mrb_int_mul_overflow(p1->numerator, p2->numerator, &a)) rat_overflow(mrb);
@@ -579,9 +1013,15 @@ mrb_rational_mul(mrb_state *mrb, mrb_value x, mrb_value y)
       return rational_new_i(mrb, a, b);
     }
 
+#ifdef RAT_BIGINT
+  case MRB_TT_BIGINT:
+    return rat_mul_b(mrb, x, y);
+#endif
+
 #ifndef MRB_NO_FLOAT
   case MRB_TT_FLOAT:
     {
+      struct mrb_rational *p1 = rat_ptr(mrb, x);
       mrb_float z = p1->numerator * mrb_float(y);
       return mrb_float_value(mrb, mrb_div_float(z, (mrb_float)p1->denominator));
   }
@@ -589,7 +1029,7 @@ mrb_rational_mul(mrb_state *mrb, mrb_value x, mrb_value y)
 
 #if defined(MRB_USE_COMPLEX)
   case MRB_TT_COMPLEX:
-    return mrb_complex_mul(mrb, mrb_complex_new(mrb, rat_float(p1), 0), y);
+    return mrb_complex_mul(mrb, mrb_complex_new(mrb, rat_float(mrb, x), 0), y);
 #endif
 
   default:
@@ -597,6 +1037,17 @@ mrb_rational_mul(mrb_state *mrb, mrb_value x, mrb_value y)
   }
 }
 
+/*
+ * call-seq:
+ *   rational * numeric -> rational or numeric
+ *
+ * Returns the product of rational and numeric. Uses standard rational
+ * multiplication: (a/b) * (c/d) = (a*c)/(b*d).
+ *
+ *   Rational(1, 2) * Rational(2, 3)  #=> Rational(1, 3)
+ *   Rational(1, 2) * 3               #=> Rational(3, 2)
+ *   Rational(1, 2) * 2.0             #=> 1.0
+ */
 static mrb_value
 rational_mul(mrb_state *mrb, mrb_value x)
 {
@@ -604,22 +1055,57 @@ rational_mul(mrb_state *mrb, mrb_value x)
   return mrb_rational_mul(mrb, x, y);
 }
 
+#ifdef RAT_BIGINT
+static mrb_value
+rat_div_b(mrb_state *mrb, mrb_value x, mrb_value y)
+{
+  mrb_value num, den;
+
+  switch(mrb_type(y)) {
+  case MRB_TT_RATIONAL:
+    num = rat_numerator(mrb, y);
+    den = rat_denominator(mrb, y);
+    break;
+  case MRB_TT_INTEGER:
+#ifdef MRB_USE_BIGINT
+  case MRB_TT_BIGINT:
+#endif
+    num = y;
+    den = ONE;
+    break;
+  default:
+    /* should not happen */
+    rat_type_error(mrb, y);
+  }
+
+  mrb_value a = mrb_bint_mul_n(mrb, mrb_as_bint(mrb, rat_numerator(mrb, x)), den);
+  mrb_value b = mrb_bint_mul_n(mrb, mrb_as_bint(mrb, rat_denominator(mrb, x)), num);
+  return rational_new_b(mrb, a, b);
+}
+#endif
+
 mrb_value
 mrb_rational_div(mrb_state *mrb, mrb_value x, mrb_value y)
 {
-  struct mrb_rational *p1 = rational_ptr(mrb, x);
-
   switch (mrb_type(y)) {
   case MRB_TT_INTEGER:
+#ifdef RAT_BIGINT
+    if (RAT_BIGINT_P(x)) return rat_div_b(mrb, x, y);
+#endif
     {
+      struct mrb_rational *p1 = rat_ptr(mrb, x);
       mrb_int z = mrb_integer(y);
       if (z == 0) mrb_int_zerodiv(mrb);
       if (mrb_int_mul_overflow(p1->denominator, z, &z)) rat_overflow(mrb);
       return rational_new_i(mrb, p1->numerator, z);
     }
   case MRB_TT_RATIONAL:
+#ifdef RAT_BIGINT
+    if (RAT_BIGINT_P(x) || RAT_BIGINT_P(y)) return rat_div_b(mrb, x, y);
+#endif
     {
-      struct mrb_rational *p2 = rational_ptr(mrb, y);
+      struct mrb_rational *p1 = rat_ptr(mrb, x);
+      struct mrb_rational *p2 = rat_ptr(mrb, y);
       mrb_int a, b;
 
       if (mrb_int_mul_overflow(p1->numerator, p2->denominator, &a)) rat_overflow(mrb);
@@ -627,24 +1113,44 @@ mrb_rational_div(mrb_state *mrb, mrb_value x, mrb_value y)
       return rational_new_i(mrb, a, b);
     }
 
-#if defined(MRB_USE_COMPLEX)
-  case MRB_TT_COMPLEX:
-    return mrb_complex_div(mrb, mrb_complex_new(mrb, rat_float(p1), 0), y);
+#ifdef RAT_BIGINT
+  case MRB_TT_BIGINT:
+    return rat_div_b(mrb, x, y);
 #endif
 
-  default:
+#ifdef MRB_USE_COMPLEX
+  case MRB_TT_COMPLEX:
+    return mrb_complex_div(mrb, mrb_complex_new(mrb, rat_float(mrb, x), 0), y);
+#endif
+
 #ifndef MRB_NO_FLOAT
   case MRB_TT_FLOAT:
     {
+      struct mrb_rational *p1 = rat_ptr(mrb, x);
       mrb_float z = mrb_div_float((mrb_float)p1->numerator, mrb_as_float(mrb, y));
       return mrb_float_value(mrb, mrb_div_float(z, (mrb_float)p1->denominator));
     }
-#else
-    mrb_raise(mrb, E_TYPE_ERROR, "non integer division");
 #endif
+
+  default:
+    rat_type_error(mrb, y);
+    /* not reached */
+    return mrb_nil_value();
   }
 }
 
+/*
+ * call-seq:
+ *   rational / numeric -> rational or numeric
+ *   rational.quo(numeric) -> rational or numeric
+ *
+ * Returns the quotient of rational divided by numeric. Uses standard rational
+ * division: (a/b) / (c/d) = (a/b) * (d/c) = (a*d)/(b*c).
+ *
+ *   Rational(1, 2) / Rational(1, 3)  #=> Rational(3, 2)
+ *   Rational(3, 4) / 2               #=> Rational(3, 8)
+ *   Rational(1, 2) / 0.5             #=> 1.0
+ */
 static mrb_value
 rational_div(mrb_state *mrb, mrb_value x)
 {
@@ -652,102 +1158,108 @@ rational_div(mrb_state *mrb, mrb_value x)
   return mrb_rational_div(mrb, x, y);
 }
 
+mrb_value mrb_int_pow(mrb_state *mrb, mrb_value x, mrb_value y);
+
+/*
+ * call-seq:
+ *   rational ** numeric -> numeric
+ *
+ * Returns rational raised to the power of numeric. The result is typically
+ * a float unless the result can be exactly represented as a rational.
+ *
+ *   Rational(1, 2) ** 2    #=> Rational(1, 4)
+ *   Rational(4, 1) ** 0.5  #=> 2.0
+ *   Rational(2, 1) ** 3    #=> Rational(8, 1)
+ */
 static mrb_value
 rational_pow(mrb_state *mrb, mrb_value x)
 {
 #ifndef MRB_NO_FLOAT
   mrb_value y = mrb_get_arg1(mrb);
-  struct mrb_rational *p1 = rational_ptr(mrb, x);
+  double d1 = rat_float(mrb, x);
+  double d2 = mrb_as_float(mrb, y);
 
-  double d1, d2;
-
+  d1 = pow(d1, d2);
   switch (mrb_type(y)) {
-  case MRB_TT_RATIONAL:
-    {
-      struct mrb_rational *p2 = rational_ptr(mrb, y);
-      if (p2->numerator == 0) {
-        return mrb_rational_new(mrb, 1, 1);
-      }
-      if (p2->numerator == p2->denominator) {
-        return x;
-      }
-      if (p2->denominator == 1) {
-        return rational_new_i(mrb, (mrb_int)pow((mrb_float)p1->numerator, (mrb_float)p2->numerator),
-                                   (mrb_int)pow((mrb_float)p1->denominator, (mrb_float)p2->numerator));
-      }
-      d1 = rat_float(p1);
-      d2 = rat_float(p2);
-    }
-    break;
   case MRB_TT_FLOAT:
-    {
-      d1 = rat_float(p1);
-      d2 = mrb_float(y);
-    }
-    break;
+    return mrb_float_value(mrb, d1);
   case MRB_TT_INTEGER:
-    {
-      mrb_int i = mrb_integer(y);
-      if (i == 0) {
-        return mrb_rational_new(mrb, 1, 1);
-      }
-      if (i == 1) {
-        return x;
-      }
-      return rational_new_i(mrb, (mrb_int)pow((mrb_float)p1->numerator, (mrb_float)i),
-                                 (mrb_int)pow((mrb_float)p1->denominator, (mrb_float)i));
-    }
-    break;
+  case MRB_TT_RATIONAL:
+    return rational_new_f(mrb, d1);
+  case MRB_TT_BIGINT:
   default:
-    mrb_raisef(mrb, E_TYPE_ERROR, "%T cannot be converted to Rational", y);
+    return mrb_float_value(mrb, d1);
   }
-  return mrb_float_value(mrb, pow(d1, d2));
 #else
   mrb_raisef(mrb, E_NOTIMP_ERROR, "Rational#** not implemented with MRB_NO_FLOAT");
+  /* not reached */
+  return mrb_nil_value();
 #endif
 }
 
+/*
+ * call-seq:
+ *   rational.hash -> integer
+ *
+ * Returns a hash value for the rational number. Two rationals with
+ * the same value will have the same hash value.
+ *
+ *   Rational(1, 2).hash == Rational(2, 4).hash  #=> true
+ */
 static mrb_value
 rational_hash(mrb_state *mrb, mrb_value rat)
 {
-  struct mrb_rational *r = rational_ptr(mrb, rat);
-  uint32_t hash = mrb_byte_hash((uint8_t*)&r->numerator, sizeof(mrb_int));
+  struct mrb_rational *r = rat_ptr(mrb, rat);
+  uint32_t hash;
+
+#ifdef RAT_BIGINT
+  if (RAT_BIGINT_P(rat)) {
+    mrb_value tmp = mrb_bint_hash(mrb, mrb_obj_value(r->b.num));
+    hash = (uint32_t)mrb_integer(tmp);
+    tmp = mrb_bint_hash(mrb, mrb_obj_value(r->b.den));
+    hash ^= (uint32_t)mrb_integer(tmp);
+    return mrb_int_value(mrb, hash);
+  }
+#endif
+  hash = mrb_byte_hash((uint8_t*)&r->numerator, sizeof(mrb_int));
   hash = mrb_byte_hash_step((uint8_t*)&r->denominator, sizeof(mrb_int), hash);
   return mrb_int_value(mrb, hash);
 }
 
+/* ---------------------------*/
+static const mrb_mt_entry rational_rom_entries[] = {
+  MRB_MT_ENTRY(rational_numerator,   MRB_SYM(numerator), MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(rational_denominator, MRB_SYM(denominator), MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(mrb_rational_to_i,    MRB_SYM(to_i),     MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(mrb_obj_itself,       MRB_SYM(to_r),     MRB_ARGS_NONE()),  /* Returns self - already a rational */
+  MRB_MT_ENTRY(rational_negative_p,  MRB_SYM_Q(negative), MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(rational_eq,          MRB_OPSYM(eq), MRB_ARGS_REQ(1)),
+  MRB_MT_ENTRY(rational_minus,       MRB_OPSYM(minus),  MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(rational_add,         MRB_OPSYM(add), MRB_ARGS_REQ(1)),
+  MRB_MT_ENTRY(rational_sub,         MRB_OPSYM(sub), MRB_ARGS_REQ(1)),
+  MRB_MT_ENTRY(rational_mul,         MRB_OPSYM(mul), MRB_ARGS_REQ(1)),
+  MRB_MT_ENTRY(rational_div,         MRB_OPSYM(div), MRB_ARGS_REQ(1)),
+  MRB_MT_ENTRY(rational_div,         MRB_SYM(quo), MRB_ARGS_REQ(1)),
+  MRB_MT_ENTRY(rational_pow,         MRB_OPSYM(pow), MRB_ARGS_REQ(1)),
+  MRB_MT_ENTRY(rational_hash,        MRB_SYM(hash),     MRB_ARGS_NONE()),
+#ifndef MRB_NO_FLOAT
+  MRB_MT_ENTRY(mrb_rational_to_f,   MRB_SYM(to_f),     MRB_ARGS_NONE()),
+#endif
+};
+
 void mrb_mruby_rational_gem_init(mrb_state *mrb)
 {
-  struct RClass *rat;
-
-  rat = mrb_define_class_id(mrb, MRB_SYM(Rational), mrb_class_get_id(mrb, MRB_SYM(Numeric)));
+  struct RClass *rat = mrb_define_class_id(mrb, MRB_SYM(Rational), mrb_class_get_id(mrb, MRB_SYM(Numeric)));
   MRB_SET_INSTANCE_TT(rat, MRB_TT_RATIONAL);
   MRB_UNDEF_ALLOCATOR(rat);
-  mrb_undef_class_method(mrb, rat, "new");
-  mrb_define_method(mrb, rat, "numerator", rational_numerator, MRB_ARGS_NONE());
-  mrb_define_method(mrb, rat, "denominator", rational_denominator, MRB_ARGS_NONE());
+  mrb_undef_class_method_id(mrb, rat, MRB_SYM(new));
+  MRB_MT_INIT_ROM(mrb, rat, rational_rom_entries);
+  mrb_define_method_id(mrb, mrb->integer_class, MRB_SYM(to_r), int_to_r, MRB_ARGS_NONE());
+  mrb_define_method_id(mrb, mrb->nil_class, MRB_SYM(to_r), nil_to_r, MRB_ARGS_NONE());
+  mrb_define_private_method_id(mrb, mrb->kernel_module, MRB_SYM(Rational), rational_m, MRB_ARGS_REQ(1)|MRB_ARGS_OPT(1));
 #ifndef MRB_NO_FLOAT
-  mrb_define_method(mrb, rat, "to_f", mrb_rational_to_f, MRB_ARGS_NONE());
+  mrb_define_method_id(mrb, mrb->float_class, MRB_SYM(to_r), float_to_r, MRB_ARGS_NONE());
 #endif
-  mrb_define_method(mrb, rat, "to_i", mrb_rational_to_i, MRB_ARGS_NONE());
-  mrb_define_method(mrb, rat, "to_r", mrb_obj_itself, MRB_ARGS_NONE());
-  mrb_define_method(mrb, rat, "negative?", rational_negative_p, MRB_ARGS_NONE());
-  mrb_define_method(mrb, rat, "==", rational_eq, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, rat, "<=>", rational_cmp, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, rat, "-@", rational_minus, MRB_ARGS_NONE());
-  mrb_define_method(mrb, rat, "+", rational_add, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, rat, "-", rational_sub, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, rat, "*", rational_mul, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, rat, "/", rational_div, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, rat, "quo", rational_div, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, rat, "**", rational_pow, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, rat, "hash", rational_hash, MRB_ARGS_NONE());
-#ifndef MRB_NO_FLOAT
-  mrb_define_method(mrb, mrb->float_class, "to_r", float_to_r, MRB_ARGS_NONE());
-#endif
-  mrb_define_method(mrb, mrb->integer_class, "to_r", fix_to_r, MRB_ARGS_NONE());
-  mrb_define_method(mrb, mrb->nil_class, "to_r", nil_to_r, MRB_ARGS_NONE());
-  mrb_define_method(mrb, mrb->kernel_module, "Rational", rational_m, MRB_ARGS_ARG(1,1));
 }
 
 void

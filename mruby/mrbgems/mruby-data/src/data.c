@@ -13,7 +13,6 @@
 #include <mruby/hash.h>
 #include <mruby/proc.h>
 #include <mruby/internal.h>
-#include <mruby/presym.h>
 
 #define RDATA_LEN(st) RARRAY_LEN(st)
 #define RDATA_PTR(st) RARRAY_PTR(st)
@@ -36,10 +35,10 @@ static mrb_value
 data_s_members(mrb_state *mrb, struct RClass *c)
 {
   struct RClass* sclass = data_class(mrb);
-  mrb_value mem;
 
   for (;;) {
-    mem = mrb_iv_get(mrb, mrb_obj_value(c), MRB_SYM(__members__));
+    mrb_value mem = mrb_iv_get(mrb, mrb_obj_value(c), MRB_SYM(__members__));
+
     if (!mrb_nil_p(mem)) {
       if (!mrb_array_p(mem)) {
         data_corrupted(mrb);
@@ -59,6 +58,7 @@ data_members(mrb_state *mrb, mrb_value obj)
   if (!data_p(obj) || RDATA_LEN(obj) == 0) {
     data_corrupted(mrb);
   }
+
   mrb_value members = data_s_members(mrb, mrb_obj_class(mrb, obj));
   if (RDATA_LEN(obj) != RARRAY_LEN(members)) {
     mrb_raisef(mrb, E_TYPE_ERROR,
@@ -68,11 +68,21 @@ data_members(mrb_state *mrb, mrb_value obj)
   return members;
 }
 
+/*
+ * call-seq:
+ *   DataClass.members -> array
+ *
+ * Returns an array of symbols representing the names of the data
+ * structure members for this class.
+ *
+ *   Customer = Data.define(:name, :address, :zip)
+ *   Customer.members  #=> [:name, :address, :zip]
+ */
 static mrb_value
 mrb_data_s_members(mrb_state *mrb, mrb_value klass)
 {
   mrb_value members = data_s_members(mrb, mrb_class_ptr(klass));
-  return mrb_ary_new_from_values(mrb, RARRAY_LEN(members), RARRAY_PTR(members));
+  return mrb_ary_dup(mrb, members);
 }
 
 /*
@@ -174,6 +184,19 @@ make_data_define_accessors(mrb_state *mrb, mrb_value members, struct RClass *c)
 
 static mrb_value mrb_data_initialize(mrb_state *mrb, mrb_value self);
 
+/*
+ * call-seq:
+ *   DataClass.new(*args)     -> data_instance
+ *   DataClass.new(**kwargs)  -> data_instance
+ *
+ * Creates a new instance of the data structure. Arguments can be provided
+ * either positionally (in the order the members were defined) or as
+ * keyword arguments using member names.
+ *
+ *   Customer = Data.define(:name, :address, :zip)
+ *   Customer.new("Joe", "123 Main St", 12345)
+ *   Customer.new(name: "Joe", address: "123 Main St", zip: 12345)
+ */
 static mrb_value
 mrb_data_new(mrb_state *mrb, mrb_value self)
 {
@@ -229,27 +252,28 @@ make_data_class(mrb_state *mrb, mrb_value members, struct RClass *klass)
   struct RClass *c = mrb_class_new(mrb, klass);
   MRB_SET_INSTANCE_TT(c, MRB_TT_STRUCT);
   MRB_DEFINE_ALLOCATOR(c);
-  mrb_value data = mrb_obj_value(c);
-  mrb_iv_set(mrb, data, MRB_SYM(__members__), members);
 
   mrb_undef_class_method(mrb, c, "define");
   mrb_define_class_method_id(mrb, c, MRB_SYM(new), mrb_data_new, MRB_ARGS_ANY());
   mrb_define_class_method_id(mrb, c, MRB_SYM(members), mrb_data_s_members, MRB_ARGS_NONE());
   /* RSTRUCT(data)->basic.c->super = c->c; */
   make_data_define_accessors(mrb, members, c);
+
+  mrb_value data = mrb_obj_value(c);
+  mrb_iv_set(mrb, data, MRB_SYM(__members__), members);
   return data;
 }
 
 /*
  *  call-seq:
- *     DataClass.new(arg, ...)             -> obj
+ *     DataClass.define(arg, ...)       -> obj
  *
- *  <code>Data::define</code> returns a new <code>Class</code> object,
+ *  `Data::define` returns a new `Class` object,
  *  which can then be used to create specific instances of the new
  *  data structure. The number of actual parameters must be
  *  equal to the number of attributes defined for this class.
  *  Passing too many or too less parameters will raise an
- *  <code>ArgumentError</code>.
+ *  `ArgumentError`.
  *
  *  The remaining methods listed in this section (class and instance)
  *  are defined for this generated class.
@@ -261,16 +285,14 @@ make_data_class(mrb_state *mrb, mrb_value members, struct RClass *klass)
 static mrb_value
 mrb_data_s_def(mrb_state *mrb, mrb_value klass)
 {
-  mrb_value rest;
-  mrb_value b, data;
-  mrb_sym id;
   const mrb_value *argv;
   mrb_int argc;
+  mrb_value b;
 
   mrb_get_args(mrb, "*&", &argv, &argc, &b);
-  rest = mrb_ary_new_from_values(mrb, argc, argv);
+  mrb_value rest = mrb_ary_new_from_values(mrb, argc, argv);
   for (mrb_int i=0; i<argc; i++) {
-    id = mrb_obj_to_sym(mrb, RARRAY_PTR(rest)[i]);
+    mrb_sym id = mrb_obj_to_sym(mrb, RARRAY_PTR(rest)[i]);
     mrb_ary_set(mrb, rest, i, mrb_symbol_value(id));
   }
   /* check member duplication */
@@ -284,13 +306,23 @@ mrb_data_s_def(mrb_state *mrb, mrb_value klass)
       }
     }
   }
-  data = make_data_class(mrb, rest, mrb_class_ptr(klass));
+  mrb_value data = make_data_class(mrb, rest, mrb_class_ptr(klass));
   if (!mrb_nil_p(b)) {
     mrb_yield_with_class(mrb, b, 1, &data, data, mrb_class_ptr(data));
   }
   return data;
 }
 
+/*
+ * call-seq:
+ *   data.initialize(hash) -> data
+ *
+ * Initializes the data structure with values from a hash.
+ * This is typically called internally when creating data instances
+ * with custom initialize methods.
+ *
+ *   # Usually called internally, not directly by user code
+ */
 static mrb_value
 mrb_data_initialize(mrb_state *mrb, mrb_value self)
 {
@@ -315,6 +347,16 @@ mrb_data_initialize(mrb_state *mrb, mrb_value self)
   return self;
 }
 
+/*
+ * call-seq:
+ *   data.initialize_copy(other_data) -> data
+ *
+ * Initializes this data structure as a copy of another data structure.
+ * This is a private method used internally by dup and clone.
+ *
+ *   customer = Customer.new("Joe", "123 Main St", 12345)
+ *   copy = customer.dup  # calls initialize_copy internally
+ */
 static mrb_value
 mrb_data_init_copy(mrb_state *mrb, mrb_value copy)
 {
@@ -336,10 +378,10 @@ mrb_data_init_copy(mrb_state *mrb, mrb_value copy)
  *  call-seq:
  *     data == other_data     -> true or false
  *
- *  Equality---Returns <code>true</code> if <i>other_data</i> is
+ *  Equality---Returns `true` if *other_data* is
  *  equal to this one: they must be of the same class as generated by
- *  <code>Data::define</code>, and all values of must be equal
- *  (according to <code>Object#==</code>).
+ *  `Data::define`, and all values of must be equal
+ *  (according to `Object#==`).
  *
  *     Customer = Data.define(:name, :address, :zip)
  *     joe  = Customer.new("Joe Smith", "123 Maple, Anytown NC", 12345)
@@ -353,8 +395,6 @@ static mrb_value
 mrb_data_equal(mrb_state *mrb, mrb_value s)
 {
   mrb_value s2 = mrb_get_arg1(mrb);
-  mrb_value *ptr, *ptr2;
-  mrb_int len;
 
   if (mrb_obj_equal(mrb, s, s2)) {
     return mrb_true_value();
@@ -365,13 +405,15 @@ mrb_data_equal(mrb_state *mrb, mrb_value s)
   if (RDATA_LEN(s) != RDATA_LEN(s2)) {
     return mrb_false_value();
   }
-  ptr = RDATA_PTR(s);
-  ptr2 = RDATA_PTR(s2);
-  len = RDATA_LEN(s);
+  mrb_value *ptr = RDATA_PTR(s);
+  mrb_value *ptr2 = RDATA_PTR(s2);
+  mrb_int len = RDATA_LEN(s);
+  int ai = mrb_gc_arena_save(mrb);
   for (mrb_int i=0; i<len; i++) {
     if (!mrb_equal(mrb, ptr[i], ptr2[i])) {
       return mrb_false_value();
     }
+    mrb_gc_arena_restore(mrb, ai);
   }
 
   return mrb_true_value();
@@ -382,14 +424,12 @@ mrb_data_equal(mrb_state *mrb, mrb_value s)
  *   data.eql?(other)   -> true or false
  *
  * Two structures are equal if they are the same object, or if all their
- * fields are equal (using <code>Object#eql?</code>).
+ * fields are equal (using `Object#eql?`).
  */
 static mrb_value
 mrb_data_eql(mrb_state *mrb, mrb_value s)
 {
   mrb_value s2 = mrb_get_arg1(mrb);
-  mrb_value *ptr, *ptr2;
-  mrb_int len;
 
   if (mrb_obj_equal(mrb, s, s2)) {
     return mrb_true_value();
@@ -400,9 +440,9 @@ mrb_data_eql(mrb_state *mrb, mrb_value s)
   if (RDATA_LEN(s) != RDATA_LEN(s2)) {
     return mrb_false_value();
   }
-  ptr = RDATA_PTR(s);
-  ptr2 = RDATA_PTR(s2);
-  len = RDATA_LEN(s);
+  mrb_value *ptr = RDATA_PTR(s);
+  mrb_value *ptr2 = RDATA_PTR(s2);
+  mrb_int len = RDATA_LEN(s);
   for (mrb_int i=0; i<len; i++) {
     if (!mrb_eql(mrb, ptr[i], ptr2[i])) {
       return mrb_false_value();
@@ -421,13 +461,10 @@ mrb_data_eql(mrb_state *mrb, mrb_value s)
 static mrb_value
 mrb_data_to_h(mrb_state *mrb, mrb_value self)
 {
-  mrb_value members, ret;
-  mrb_value *mems;
+  mrb_value members = data_members(mrb, self);
+  mrb_value *mems = RARRAY_PTR(members);
 
-  members = data_members(mrb, self);
-  mems = RARRAY_PTR(members);
-
-  ret = mrb_hash_new_capa(mrb, RARRAY_LEN(members));
+  mrb_value ret = mrb_hash_new_capa(mrb, RARRAY_LEN(members));
   mrb_int len = RARRAY_LEN(members);
   for (mrb_int i=0; i<len; i++) {
     mrb_hash_set(mrb, ret, mems[i], RARRAY_PTR(self)[i]);
@@ -446,16 +483,13 @@ mrb_data_to_h(mrb_state *mrb, mrb_value self)
 static mrb_value
 mrb_data_to_s(mrb_state *mrb, mrb_value self)
 {
-  mrb_value members, ret, cname;
-  mrb_value *mems;
-  mrb_int mlen;
-
-  members = data_members(mrb, self);
-  mlen = RARRAY_LEN(members);
-  mems = RARRAY_PTR(members);
-  ret = mrb_str_new_lit(mrb, "#<data ");
+  mrb_value members = data_members(mrb, self);
+  mrb_int mlen = RARRAY_LEN(members);
+  mrb_value *mems = RARRAY_PTR(members);
+  mrb_value ret = mrb_str_new_lit(mrb, "#<data ");
   int ai = mrb_gc_arena_save(mrb);
-  cname = mrb_class_path(mrb, mrb_class_real(mrb_class(mrb, self)));
+  mrb_value cname = mrb_class_path(mrb, mrb_class_real(mrb_class(mrb, self)));
+
   if (!mrb_nil_p(cname)) {
     mrb_str_cat_str(mrb, ret, cname);
     mrb_str_cat_lit(mrb, ret, " ");
@@ -475,39 +509,38 @@ mrb_data_to_s(mrb_state *mrb, mrb_value self)
 }
 
 /*
- *  A <code>Data</code> is a convenient way to bundle a number of
+ *  A `Data` is a convenient way to bundle a number of
  *  attributes together, using accessor methods, without having to write
  *  an explicit class.
  *
- *  The <code>Data</code> class is a generator of specific classes,
+ *  The `Data` class is a generator of specific classes,
  *  each one of which is defined to hold a set of variables and their
  *  accessors. In these examples, we'll call the generated class
- *  "<i>Customer</i>Class," and we'll show an example instance of that
- *  class as "<i>Customer</i>Inst."
+ *  "*Customer*Class," and we'll show an example instance of that
+ *  class as "*Customer*Inst."
  *
- *  In the descriptions that follow, the parameter <i>symbol</i> refers
- *  to a symbol (such as <code>:name</code>).
+ *  In the descriptions that follow, the parameter *symbol* refers
+ *  to a symbol (such as `:name`).
  */
 void
 mrb_mruby_data_gem_init(mrb_state* mrb)
 {
-  struct RClass *d;
-  d = mrb_define_class(mrb, "Data",  mrb->object_class);
+  struct RClass *d = mrb_define_class_id(mrb, MRB_SYM(Data),  mrb->object_class);
   MRB_SET_INSTANCE_TT(d, MRB_TT_STRUCT);
   MRB_UNDEF_ALLOCATOR(d);
 
-  mrb_undef_class_method(mrb, d, "new");
-  mrb_define_class_method(mrb, d, "define",          mrb_data_s_def,      MRB_ARGS_ANY());
+  mrb_undef_class_method_id(mrb, d, MRB_SYM(new));
+  mrb_define_class_method_id(mrb, d, MRB_SYM(define), mrb_data_s_def,      MRB_ARGS_ANY());
 
-  mrb_define_method(mrb, d,       "==",              mrb_data_equal,      MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, d,       "members",         mrb_data_members,    MRB_ARGS_NONE());
-  mrb_define_method(mrb, d,       "initialize",      mrb_data_initialize, MRB_ARGS_ANY());
-  mrb_define_method(mrb, d,       "initialize_copy", mrb_data_init_copy,  MRB_ARGS_ANY());
-  mrb_define_method(mrb, d,       "eql?",            mrb_data_eql,        MRB_ARGS_REQ(1));
+  mrb_define_method_id(mrb, d, MRB_OPSYM(eq),            mrb_data_equal,      MRB_ARGS_REQ(1));
+  mrb_define_method_id(mrb, d, MRB_SYM(members),         mrb_data_members,    MRB_ARGS_NONE());
+  mrb_define_method_id(mrb, d, MRB_SYM(initialize),      mrb_data_initialize, MRB_ARGS_ANY());
+  mrb_define_private_method_id(mrb, d, MRB_SYM(initialize_copy), mrb_data_init_copy,  MRB_ARGS_ANY());
+  mrb_define_method_id(mrb, d, MRB_SYM_Q(eql),           mrb_data_eql,        MRB_ARGS_REQ(1));
 
-  mrb_define_method(mrb, d,       "to_h",            mrb_data_to_h,       MRB_ARGS_NONE());
-  mrb_define_method(mrb, d,       "to_s",            mrb_data_to_s,       MRB_ARGS_NONE());
-  mrb_define_method(mrb, d,       "inspect",         mrb_data_to_s,       MRB_ARGS_NONE());
+  mrb_define_method_id(mrb, d, MRB_SYM(to_h),            mrb_data_to_h,       MRB_ARGS_NONE());
+  mrb_define_method_id(mrb, d, MRB_SYM(to_s),            mrb_data_to_s,       MRB_ARGS_NONE());
+  mrb_define_method_id(mrb, d, MRB_SYM(inspect),         mrb_data_to_s,       MRB_ARGS_NONE());
 }
 
 void

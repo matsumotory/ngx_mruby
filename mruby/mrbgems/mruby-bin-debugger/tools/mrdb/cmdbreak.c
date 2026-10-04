@@ -26,7 +26,7 @@
 #define BREAK_ERR_MSG_INVALIDARG            "Internal error."
 #define BREAK_ERR_MSG_BLANK                 "Try \'help break\' for more information."
 #define BREAK_ERR_MSG_RANGEOVER             "The line number range is from 1 to 65535."
-#define BREAK_ERR_MSG_NUMOVER               "Exceeded the setable number of breakpoint."
+#define BREAK_ERR_MSG_NUMOVER               "Exceeded the settable number of breakpoint."
 #define BREAK_ERR_MSG_NOOVER                "Breakno is over the available number.Please 'quit' and restart mrdb."
 #define BREAK_ERR_MSG_INVALIDSTR            "String \'%s\' is invalid.\n"
 #define BREAK_ERR_MSG_INVALIDLINENO         "Line %d in file \"%s\" is unavailable.\n"
@@ -397,40 +397,30 @@ dbgcmd_info_break(mrb_state *mrb, mrdb_state *mrdb)
   return DBGST_PROMPT;
 }
 
+static dbgcmd_state
+dbgcmd_set_breakpoint(mrb_state *mrb, mrdb_state *mrdb,
+                      all_command_func all_func, select_command_func select_func)
+{
+  if (!exe_set_command_all(mrb, mrdb, all_func)) {
+    exe_set_command_select(mrb, mrdb, select_func);
+  }
+  return DBGST_PROMPT;
+}
+
 dbgcmd_state
 dbgcmd_delete(mrb_state *mrb, mrdb_state *mrdb)
 {
-  mrb_bool ret = FALSE;
-
-  ret = exe_set_command_all(mrb, mrdb, mrb_debug_delete_break_all);
-  if (ret != TRUE) {
-    exe_set_command_select(mrb, mrdb, mrb_debug_delete_break);
-  }
-
-  return DBGST_PROMPT;
+  return dbgcmd_set_breakpoint(mrb, mrdb, mrb_debug_delete_break_all, mrb_debug_delete_break);
 }
 
 dbgcmd_state
 dbgcmd_enable(mrb_state *mrb, mrdb_state *mrdb)
 {
-  mrb_bool ret = FALSE;
-
-  ret = exe_set_command_all(mrb, mrdb, mrb_debug_enable_break_all);
-  if (ret != TRUE) {
-    exe_set_command_select(mrb, mrdb, mrb_debug_enable_break);
-  }
-
-  return DBGST_PROMPT;
+  return dbgcmd_set_breakpoint(mrb, mrdb, mrb_debug_enable_break_all, mrb_debug_enable_break);
 }
 
 dbgcmd_state
 dbgcmd_disable(mrb_state *mrb, mrdb_state *mrdb)
 {
-  mrb_bool ret = FALSE;
-
-  ret = exe_set_command_all(mrb, mrdb, mrb_debug_disable_break_all);
-  if (ret != TRUE) {
-    exe_set_command_select(mrb, mrdb, mrb_debug_disable_break);
-  }
-  return DBGST_PROMPT;
+  return dbgcmd_set_breakpoint(mrb, mrdb, mrb_debug_disable_break_all, mrb_debug_disable_break);
 }

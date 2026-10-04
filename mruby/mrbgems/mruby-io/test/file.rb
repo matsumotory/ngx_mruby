@@ -3,6 +3,15 @@
 
 MRubyIOTestUtil.io_test_setup
 
+def assert_dirname_with_level(path, results)
+  assert('dirname with level') do
+    assert_raise(ArgumentError) { File.dirname path, -1 }
+    results.each do |level, expect|
+      assert_equal expect, File.dirname(path, level)
+    end
+  end
+end
+
 assert('File.class', '15.2.21') do
   assert_equal Class, File.class
 end
@@ -36,12 +45,75 @@ assert('File.basename') do
   assert_raise(ArgumentError) { File.basename("/a/b\0") }
 end
 
+assert('File.basename with suffix') do
+  assert_equal 'foo', File.basename('foo.rb', '.rb')
+  assert_equal 'foo.rb', File.basename('foo.rb', '.py')
+  assert_equal 'foo.tar', File.basename('foo.tar.gz', '.gz')
+  assert_equal 'foo.tar.gz', File.basename('foo.tar.gz', '.zip')
+  assert_equal '.profile', File.basename('.profile', '.sh')
+  assert_equal 'foo', File.basename('foo.', '.')
+  assert_equal 'foo', File.basename('foo', '')
+  assert_equal 'foo.rb', File.basename('foo.rb', '')
+  assert_equal 'foo.rb', File.basename('foo.rb', '.RB') # case-sensitive
+end
+
 assert('File.dirname') do
   assert_equal '.',    File.dirname('')
   assert_equal '.',    File.dirname('a')
   assert_equal '/',    File.dirname('/a')
+  assert_equal '/',    File.dirname('/a/')
   assert_equal 'a',    File.dirname('a/b')
+  assert_equal 'a',    File.dirname('a/b/')
+  assert_equal 'a/b',  File.dirname('a/b/c')
   assert_equal '/a',   File.dirname('/a/b')
+  assert_equal '/a',   File.dirname('/a/b/')
+  assert_equal '/a/b', File.dirname('/a/b/c')
+  assert_equal '/a/b', File.dirname('/a/b/c/')
+  assert_equal '/',    File.dirname('/a//')
+  assert_equal '/a',   File.dirname('/a//b')
+  assert_equal '/a/b', File.dirname('/a/b//c//')
+end
+
+assert('File.dirname (with level)') do
+  assert_dirname_with_level '', { 0 => '.', 1 => '.', 2 => '.' }
+  assert_dirname_with_level 'a', { 0 => 'a', 1 => '.', 2 => '.' }
+  assert_dirname_with_level '/a', { 0 => '/a', 1 => '/', 2 => '/' }
+  assert_dirname_with_level '/a/', { 0 => '/a/', 1 => '/', 2 => '/' }
+  assert_dirname_with_level 'a/b', { 0 => 'a/b', 1 => 'a', 2 => '.' }
+  assert_dirname_with_level 'a/b/', { 0 => 'a/b/', 1 => 'a', 2 => '.' }
+  assert_dirname_with_level 'a/b/c', { 0 => 'a/b/c', 1 => 'a/b', 2 => 'a' }
+  assert_dirname_with_level 'a/b/c/d', { 0 => 'a/b/c/d', 1 => 'a/b/c', 2 => 'a/b' }
+end
+
+unless MRubyIOTestUtil.win?
+  assert('File.dirname (not Windows)') do
+    assert_equal '/a',   File.dirname('//a//b/')
+  end
+else
+  assert('File.dirname (on Windows)') do
+    assert_equal 'c:.',           File.dirname('c:')
+    assert_equal 'c:.',           File.dirname('c:a')
+    assert_equal 'c:.',           File.dirname('c:a/')
+    assert_equal 'c:a',           File.dirname('c:a/b')
+    assert_equal 'c:/',           File.dirname('c:/')
+    assert_equal 'c:/',           File.dirname('c:/a')
+    assert_equal 'c:/',           File.dirname('c:/a/')
+    assert_equal 'c:/a',          File.dirname('c:/a/b')
+    assert_equal '//.',           File.dirname('//.')
+    assert_equal '//.',           File.dirname('//./')
+    assert_equal '//./a',         File.dirname('//./a')
+    assert_equal '//./a',         File.dirname('//./a/')
+    assert_equal '//./a',         File.dirname('//./a/b')
+    assert_equal '//./a/b',       File.dirname('//./a/b/c')
+    assert_equal '//?',           File.dirname('//?/')
+    assert_equal '//?/a',         File.dirname('//?/a')
+    assert_equal '//?/a',         File.dirname('//?/a/')
+    assert_equal '//?/a',         File.dirname('//?/a/b')
+    assert_equal '//host1',       File.dirname('//host1/')
+    assert_equal '//host1/a',     File.dirname('//host1/a')
+    assert_equal '//host1/a',     File.dirname('//host1/a/')
+    assert_equal '//host1/a',     File.dirname('//host1/a/b')
+  end
 end
 
 assert('File.extname') do
@@ -142,7 +214,7 @@ assert('File.realpath') do
   begin
     sep = File::ALT_SEPARATOR || File::SEPARATOR
     relative_path = "#{File.basename(dir)}#{sep}realpath_test"
-    path = "#{File._getwd}#{sep}#{relative_path}"
+    path = "#{MRubyIOTestUtil.getwd}#{sep}#{relative_path}"
     File.open(path, "w"){}
     assert_equal path, File.realpath(relative_path)
 
@@ -191,32 +263,84 @@ assert("File.readlink fails with non-symlink") do
   end
 end
 
-assert('File.expand_path') do
-  assert_equal "/",    File.expand_path("..", "/tmp"),       "parent path with base_dir (1)"
-  assert_equal "/tmp", File.expand_path("..", "/tmp/mruby"), "parent path with base_dir (2)"
+if MRubyIOTestUtil.win?
+  assert('File.expand_path (for windows)') do
+    drive = MRubyIOTestUtil.getwd[0, 2]
+    alt1 = (drive.downcase != "c:") ? "c:" : "x:"
+    alt2 = (drive.downcase != "d:") ? "d:" : "y:"
 
-  assert_equal "/home", File.expand_path("/home"),      "absolute"
-  assert_equal "/home", File.expand_path("/home", "."), "absolute with base_dir"
+    assert_equal "#{drive}/",    File.expand_path("..", "/tmp"),       "parent path with base_dir (1)"
+    assert_equal "#{drive}/tmp", File.expand_path("..", "/tmp/mruby"), "parent path with base_dir (2)"
 
-  assert_equal "/hoge", File.expand_path("/tmp/..//hoge")
-  assert_equal "/hoge", File.expand_path("////tmp/..///////hoge")
+    assert_equal "#{drive}/home", File.expand_path("/home"),      "absolute"
+    assert_equal "#{drive}/home", File.expand_path("/home", "."), "absolute with base_dir"
 
-  assert_equal "/", File.expand_path("../../../..", "/")
-  if File._getwd[1] == ":"
-    drive_letter = File._getwd[0]
-    assert_equal drive_letter + ":\\", File.expand_path(([".."] * 100).join("/"))
-  else
+    assert_equal "#{drive}/hoge", File.expand_path("/tmp/..//hoge")
+    assert_equal "//tmp/hoge", File.expand_path("////tmp/..///////hoge")
+
+    assert_equal "#{drive}/", File.expand_path("../../../..", "/")
+
+    assert_equal "#{drive}/", File.expand_path(([".."] * 100).join("/"))
+
+    assert_equal "#{alt1}/x/y", File.expand_path("#{alt1}y", "/x")
+    assert_equal "#{alt2}/x/y", File.expand_path("#{alt2}y", "/x")
+    assert_equal "#{alt1}/x", File.expand_path("#{alt1}x", "#{alt2}y")
+    assert_equal "#{alt1}/y/x", File.expand_path("#{alt1}x", "./y")
+  end
+else
+  assert('File.expand_path') do
+    assert_equal "/",    File.expand_path("..", "/tmp"),       "parent path with base_dir (1)"
+    assert_equal "/tmp", File.expand_path("..", "/tmp/mruby"), "parent path with base_dir (2)"
+
+    assert_equal "/home", File.expand_path("/home"),      "absolute"
+    assert_equal "/home", File.expand_path("/home", "."), "absolute with base_dir"
+
+    assert_equal "/hoge", File.expand_path("/tmp/..//hoge")
+    assert_equal "/hoge", File.expand_path("////tmp/..///////hoge")
+
+    assert_equal "/", File.expand_path("../../../..", "/")
+
     assert_equal "/", File.expand_path(([".."] * 100).join("/"))
+
+    assert_equal "/x/c:y", File.expand_path("c:y", "/x")
   end
 end
 
-assert('File.expand_path (with ENV)') do
-  skip unless Object.const_defined?(:ENV) && ENV['HOME']
+assert('File.expand_path (with getenv(3))') do
+  skip unless MRubyIOTestUtil.const_defined?(:ENV_HOME)
 
-  assert_equal ENV['HOME'], File.expand_path("~/"),      "home"
-  assert_equal ENV['HOME'], File.expand_path("~/", "/"), "home with base_dir"
+  assert_equal MRubyIOTestUtil::ENV_HOME, File.expand_path("~/"),      "home"
+  assert_equal MRubyIOTestUtil::ENV_HOME, File.expand_path("~/", "/"), "home with base_dir"
 
-  assert_equal "#{ENV['HOME']}/user", File.expand_path("user", ENV['HOME']), "relative with base_dir"
+  assert_equal "#{MRubyIOTestUtil::ENV_HOME}/user", File.expand_path("user", MRubyIOTestUtil::ENV_HOME), "relative with base_dir"
+end
+
+assert('File.absolute_path') do
+  assert_equal File.expand_path("./~"), File.absolute_path("~")
+  assert_equal File.expand_path("./~user1"), File.absolute_path("~user1")
+end
+
+if MRubyIOTestUtil.win?
+  assert('File.absolute_path? (for windows)') do
+    assert_true File.absolute_path?("c:/")
+    assert_true File.absolute_path?("c:/a")
+    assert_true File.absolute_path?("//")
+    assert_true File.absolute_path?("//?")
+    assert_true File.absolute_path?("//?/")
+    assert_false File.absolute_path?("")
+    assert_false File.absolute_path?("/")
+    assert_false File.absolute_path?("c:")
+  end
+else
+  assert('File.absolute_path?') do
+    assert_true File.absolute_path?("/")
+    assert_true File.absolute_path?("/a")
+    assert_true File.absolute_path?("/a/b/")
+    assert_false File.absolute_path?("")
+    assert_false File.absolute_path?("a")
+    assert_false File.absolute_path?("a/b/")
+    assert_false File.absolute_path?("c:/")
+  end
 end
 
 assert('File.path') do
@@ -256,6 +380,8 @@ assert('File.chmod') do
   begin
     assert_equal 1, File.chmod(0400, "#{$mrbtest_io_wfname}.chmod-test")
   ensure
+    # On Windows, must restore write permission before deletion
+    File.chmod(0600, "#{$mrbtest_io_wfname}.chmod-test") rescue nil
     File.delete("#{$mrbtest_io_wfname}.chmod-test")
   end
 end

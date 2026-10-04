@@ -10,22 +10,23 @@ jobs:
   build:
     permissions:
       contents: read # for actions/checkout to fetch code
-      statuses: write # for github/super-linter/slim to mark status of each linter run
+      statuses: write # for super-linter/super-linter/slim to mark status of each linter run
     name: Lint Code Base
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout ${{ github.ref }} ( ${{ github.sha }} )"
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
+          persist-credentials: false
       - name: Lint Code Base
-        uses: super-linter/super-linter/slim@v6.0.0
+        uses: super-linter/super-linter/slim@9e863354e3ff62e0727d37183162c4a88873df41 # v8.6.0
         env:
-          VALIDATE_BASH: true
           # VALIDATE_BASH_EXEC: true
+          VALIDATE_DOCKERFILE_HADOLINT: true
           # VALIDATE_EDITORCONFIG: true
           # VALIDATE_SHELL_SHFMT: true
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_ALL_CODEBASE: true

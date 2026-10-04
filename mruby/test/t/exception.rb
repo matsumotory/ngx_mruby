@@ -36,7 +36,7 @@ end
 
 assert('Exception.exception', '15.2.22.4.1') do
   e = Exception.exception()
-  e.initialize('a')
+  e.__send__(:initialize,'a')
 
   assert_equal 'a', e.message
 end
@@ -46,7 +46,7 @@ assert('NameError', '15.2.31') do
     raise NameError.new
   end
 
-  e = NameError.new "msg", "name"
+  e = NameError.new("msg", "name")
   assert_equal "msg", e.message
   assert_equal "name", e.name
 end
@@ -355,7 +355,7 @@ end
 assert('Exception#inspect') do
   assert_equal "Exception", Exception.new.inspect
   assert_equal "Exception", Exception.new("").inspect
-  assert_equal "error! (Exception)", Exception.new("error!").inspect
+  assert_equal "#<Exception: error!>", Exception.new("error!").inspect
 end
 
 assert('Exception#backtrace') do
