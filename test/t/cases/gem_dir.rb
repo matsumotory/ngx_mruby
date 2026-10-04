@@ -16,6 +16,7 @@ t.assert('mruby-dir', 'Dir lists, reads and closes test/html/gem_dir from a hand
     ".,..,one.txt,two.txt", # Dir.children (in mruby 3.3.0 an alias of Dir.entries)
     ".,..,one.txt,two.txt", # Dir#each_child (in mruby 3.3.0 an alias of Dir#each)
     "false",                # Dir.empty? of the directory
+    "0",                    # file descriptors that Dir.foreach left open (its Dir is closed)
   ], res["body"].split("\n")
 end
 
