@@ -96,6 +96,9 @@ Here are the list of the default mrbgems.
 - mruby-onig-regexp: regexp engine
 - mruby-io: https://github.com/iij/mruby-io
 
+The bundled auto-ssl mrbgem is not in the default build; see
+[Building with the auto-ssl mrbgem](#building-with-the-auto-ssl-mrbgem).
+
 ## 3. Building a binary
 
 There are 3 options to build a ngx_mruby binary
@@ -249,6 +252,68 @@ $ cd /local/src/nginx-1.15.6
 $ ./configure --prefix=/usr/local/nginx-1.15.6 --add-dynamic-module=/path/to/ngx_mruby --add-module=/path/to/ngx_mruby/dependence/ngx_devel_kit --add-module=/path/to/nginx-module-you-want-to-build
 $ make
 ```
+
+#### Building with the auto-ssl mrbgem
+
+The auto-ssl mrbgem (`mrbgems/auto-ssl`, the `Nginx::SSL::ACME` classes) is
+not in the default build. Its `Nginx::SSL::ACME::Client` speaks ACMEv1
+(`new-reg`, `new-authz`, `new-cert`), which Let's Encrypt no longer serves.
+The gem also brings in pyama86/mruby-acme-client and pyama86/mruby-polarssl,
+which is licensed under the GPL, together with matsumotory/mruby-httprequest,
+matsumotory/mruby-simplehttp, mattn/mruby-http, mattn/mruby-base64,
+takahashim/mruby-forwardable and iij/mruby-tempfile. No other gem of the
+default build needs them, so a default build does not have what they define
+either:
+
+- the classes and modules `Acme`, `CustomHttpRequest`, `OpenSSL`,
+  `PolarSSL`, `HttpRequest`, `SimpleHttp`, `HTTP`, `Base64`, `Forwardable`,
+  `FORWARDABLE`, `Tempfile` and `TempfilePath`;
+- `Dir.tmpdir` and `Dir.mktmpdir` (and their helper `Dir._tmpname`), which
+  iij/mruby-tempfile adds to `Dir`. The `Dir` class itself stays in the
+  default build.
+
+In place of `Dir.tmpdir`, use `ENV['TMPDIR'] || '/tmp'` (the `Dir.tmpdir` of
+mruby-tempfile also read `TMP`, `TEMP` and `USERPROFILE` before it fell back
+to `/tmp`). In place of `Dir.mktmpdir`, create the directory with
+`Dir.mkdir(path, 0700)` under a name that no other process uses;
+`Dir.mkdir` raises `Errno::EEXIST` when the name is taken. Where
+`Dir.mktmpdir` with a block removed the directory and its files, remove them
+yourself with `File.delete` and `Dir.rmdir`. In place of `Base64`, the core
+`pack('m0')` and `unpack1('m')` work in the default build.
+
+```ruby
+tmpdir = ENV['TMPDIR'] || '/tmp'                              # Dir.tmpdir
+path = "#{tmpdir}/myapp-#{Process.pid}-#{SecureRandom.hex(8)}"
+Dir.mkdir(path, 0700)                                         # Dir.mktmpdir('myapp-')
+```
+
+To build the gem, set `NGX_MRUBY_AUTO_SSL=1` in the environment of the mruby
+build. build.sh and test.sh pass their environment on to it.
+
+```sh
+$ env NGX_MRUBY_AUTO_SSL=1 sh ./build.sh
+```
+
+With the Makefile (3-B) or the nginx build system (3-C), set it for `make` or
+`make build_mruby`.
+
+```sh
+$ env NGX_MRUBY_AUTO_SSL=1 make build_mruby
+```
+
+Any other value, or none, builds without the gem. The variable is read when
+mruby is built. Before you change it in a tree that was built already, remove
+`mruby/build`: mruby builds and initializes the gems of the new list, but
+`mruby/build/host/lib/libmruby.a` keeps the objects of a dropped gem and
+`mruby/build/host/LEGAL` is not written again.
+
+CI builds and tests only the default gem list: no CI job sets
+`NGX_MRUBY_AUTO_SSL`. The eight third-party gems above are not pinned to a
+commit: rake clones the current head of their branches, unless a
+`build_config.rb.lock` left by an earlier build in the same tree (the file is
+not committed) keeps them at the commits of that build. A build with the
+variable can therefore fail after a change in one of them or in mruby while
+the default build passes.
 
 ## 4. Installing ngx_mruby
 

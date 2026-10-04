@@ -34,7 +34,14 @@ MRuby::Build.new('host') do |conf|
   # ngx_mruby extended class
   conf.gem './mrbgems/ngx_mruby_mrblib'
   conf.gem './mrbgems/rack-based-api'
-  conf.gem './mrbgems/auto-ssl'
+
+  # auto-ssl (Nginx::SSL::ACME) is built only with NGX_MRUBY_AUTO_SSL=1 in the
+  # environment of the mruby build (see docs/install/README.md). Its ACME
+  # client speaks ACMEv1, and it brings in pyama86/mruby-acme-client,
+  # pyama86/mruby-polarssl (GPL) and their dependencies mruby-httprequest,
+  # mruby-simplehttp, mruby-http, mruby-base64, mruby-forwardable and
+  # mruby-tempfile, which no other gem of this build needs.
+  conf.gem './mrbgems/auto-ssl' if ENV['NGX_MRUBY_AUTO_SSL'] == '1'
 
   # use memcached
   # conf.gem :github => 'matsumotory/mruby-memcached'

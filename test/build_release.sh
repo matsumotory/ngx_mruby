@@ -22,6 +22,8 @@
 #                     separated by spaces. The soak build passes
 #                     -DNGX_MRUBY_DEBUG_STATS; the perf build passes none.
 #   NGX_MRUBY_CFLAGS  extra options for the compiler of mruby (as with test.sh)
+#   NGX_MRUBY_AUTO_SSL  1 adds the auto-ssl mrbgem and the gems it depends on
+#                     to the mruby build (build_config.rb), as with build.sh
 #   RELEASE_GEM_LOCK  a build_config.rb.lock: the third-party gems are built at
 #                     the commits it records. Without it, rake clones the
 #                     default branch of each gem on the first build and records
@@ -93,6 +95,8 @@ TOP_FILES="configure config.in Makefile.in build.sh build_config.rb nginx_versio
 #   libmruby.a as well), config.in, configure and build.sh (the sources and
 #   options of nginx's configure), Makefile.in and nginx_version.
 # - NGX_MRUBY_CFLAGS: rake does not rebuild mruby when only they change.
+# - NGX_MRUBY_AUTO_SSL: build_config.rb adds or drops gems by it, and a
+#   dropped gem stays in libmruby.a.
 # - The nginx options, RELEASE_CC_OPT included. nginx's configure runs only
 #   when objs/Makefile is missing, so later runs would keep the options of
 #   the first one.
@@ -115,6 +119,7 @@ stamp=$(
     printf 'mrbgems: %s\n' "$(find mrbgems -type f | LC_ALL=C sort | cksum)"
     cksum $TOP_FILES
     printf 'NGX_MRUBY_CFLAGS: %s\n' "$NGX_MRUBY_CFLAGS"
+    printf 'NGX_MRUBY_AUTO_SSL: %s\n' "$NGX_MRUBY_AUTO_SSL"
     printf 'NGINX_CONFIG_OPT_ENV: %s\n' "$NGINX_CONFIG_OPT_ENV"
     printf 'gem lock: %s\n' "$gem_lock"
 )

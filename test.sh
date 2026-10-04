@@ -90,6 +90,10 @@ fi
 
 echo "NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT"
 echo "NUM_THREADS=$NUM_THREADS"
+# NGX_MRUBY_AUTO_SSL=1 adds the auto-ssl mrbgem and the gems it depends on to
+# the mruby build (build_config.rb reads it; see docs/install/README.md). No
+# test needs them, so the suite runs the same with and without it.
+echo "NGX_MRUBY_AUTO_SSL=$NGX_MRUBY_AUTO_SSL"
 
 export NGX_MRUBY_CFLAGS="-DMRB_GC_STRESS $NGX_MRUBY_CFLAGS"
 

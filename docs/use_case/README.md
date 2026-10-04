@@ -10,6 +10,9 @@
 - [Dynamic reverse proxy using access information (in Japanese)](http://blog.cloudpack.jp/2014/07/08/ngx-mruby-nginx-script/)
 - [Research ngx_mruby and use output filter (in Russian)](http://habrahabr.ru/post/225313/)
 - [ACME auto ssl using Let's Encrypt](https://github.com/matsumotory/ngx_mruby/blob/master/test/conf/auto-ssl/nginx.conf.client_example)
+  (needs a build with `NGX_MRUBY_AUTO_SSL=1`, see [Building with the auto-ssl mrbgem](../install/README.md#building-with-the-auto-ssl-mrbgem),
+  and with matsumotory/mruby-redis, which is commented out in `build_config.rb`, because the example keeps the certificates and the challenge tokens in Redis;
+  its ACME client speaks ACMEv1, which Let's Encrypt no longer serves)
 
 ## Hello world
 #### /path/to/hello.rb
