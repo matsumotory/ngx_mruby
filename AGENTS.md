@@ -25,6 +25,13 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
 | `next` | v3 development (pre-release tags `vX.Y.Z-alpha.N`/`-beta.N`/`-rc.N`) | PRs only; merged as described in "Review and merge" |
 | `v2.x` | 2.x maintenance; an automatic mirror of `master` until v3 is promoted | Mirror automation; after promotion, PRs merged as described in "Review and merge" |
 
+The 2.x line (`master` until v3 is promoted, then `v2.x`) puts compatibility
+first; this is the owner's decision of 2026-10-04. It takes stability fixes
+(crashes, hangs, leaks, build fixes) and security fixes, and changes behavior
+that a configuration, script or build can observe only as far as the fix of a
+defect requires, with its entry under "Behavior changes: read before
+upgrading". New behavior, API cleanups and features go to `next`.
+
 - 2.x fixes: PR with base `master` until v3 is promoted (afterwards: base `v2.x`).
   A fix that also applies to v3 still goes to `master`; it reaches `next` when
   `master` is merged into `next`, so do not open a duplicate PR unless asked.
@@ -68,8 +75,8 @@ commit messages or the PR text discloses an unpublished vulnerability or a
 secret; and `docs/` is updated when a directive, Ruby method, build option or
 the test harness changes. The reviewer posts the findings as a PR comment,
 split into "must fix" (blocks the merge) and "should fix". A behavior change
-without that entry is a "must fix"; a missing "Fixes" or "Build and test
-changes" entry is a "should fix". The author fixes
+without that entry is a "must fix"; a missing "New features", "Fixes" or
+"Build and test changes" entry is a "should fix". The author fixes
 every "must fix" and asks for a re-review of those items only.
 
 The session that owns the PR merges it, with a merge commit, when all of
