@@ -14,7 +14,6 @@
 #include <mruby/range.h>
 #include <mruby/proc.h>
 #include <mruby/internal.h>
-#include <mruby/presym.h>
 
 #define RSTRUCT_LEN(st) RARRAY_LEN(st)
 #define RSTRUCT_PTR(st) RARRAY_PTR(st)
@@ -37,10 +36,10 @@ static mrb_value
 struct_s_members(mrb_state *mrb, struct RClass *c)
 {
   struct RClass* sclass = struct_class(mrb);
-  mrb_value members;
 
   for (;;) {
-    members = mrb_iv_get(mrb, mrb_obj_value(c), MRB_SYM(__members__));
+    mrb_value members = mrb_iv_get(mrb, mrb_obj_value(c), MRB_SYM(__members__));
+
     if (!mrb_nil_p(members)) {
       if (!mrb_array_p(members)) {
         struct_corrupted(mrb);
@@ -74,10 +73,8 @@ struct_members(mrb_state *mrb, mrb_value s)
 static mrb_value
 mrb_struct_s_members_m(mrb_state *mrb, mrb_value klass)
 {
-  mrb_value members, ary;
-
-  members = struct_s_members(mrb, mrb_class_ptr(klass));
-  ary = mrb_ary_new_capa(mrb, RARRAY_LEN(members));
+  mrb_value members = struct_s_members(mrb, mrb_class_ptr(klass));
+  mrb_value ary = mrb_ary_new_capa(mrb, RARRAY_LEN(members));
   mrb_ary_replace(mrb, ary, members);
   return ary;
 }
@@ -131,13 +128,11 @@ mrb_id_attrset(mrb_state *mrb, mrb_sym id)
 #define ONSTACK_ALLOC_MAX 32
 #define ONSTACK_STRLEN_MAX (ONSTACK_ALLOC_MAX - 1) /* '=' character */
 
-  const char *name;
   char *buf;
   mrb_int len;
-  mrb_sym mid;
   char onstack[ONSTACK_ALLOC_MAX];
 
-  name = mrb_sym_name_len(mrb, id, &len);
+  const char *name = mrb_sym_name_len(mrb, id, &len);
   if (len > ONSTACK_STRLEN_MAX) {
     buf = (char*)mrb_malloc(mrb, (size_t)len+1);
   }
@@ -147,7 +142,7 @@ mrb_id_attrset(mrb_state *mrb, mrb_sym id)
   memcpy(buf, name, (size_t)len);
   buf[len] = '=';
 
-  mid = mrb_intern(mrb, buf, len+1);
+  mrb_sym mid = mrb_intern(mrb, buf, len+1);
   if (buf != onstack) {
     mrb_free(mrb, buf);
   }
@@ -168,11 +163,10 @@ static void
 make_struct_define_accessors(mrb_state *mrb, mrb_value members, struct RClass *c)
 {
   const mrb_value *ptr_members = RARRAY_PTR(members);
-  mrb_int i;
   mrb_int len = RARRAY_LEN(members);
   int ai = mrb_gc_arena_save(mrb);
 
-  for (i=0; i<len; i++) {
+  for (mrb_int i=0; i<len; i++) {
     mrb_sym id = mrb_symbol(ptr_members[i]);
     mrb_method_t m;
     mrb_value at = mrb_fixnum_value(i);
@@ -189,8 +183,6 @@ make_struct_define_accessors(mrb_state *mrb, mrb_value members, struct RClass *c
 static mrb_value
 make_struct(mrb_state *mrb, mrb_value name, mrb_value members, struct RClass *klass)
 {
-  mrb_value nstr;
-  mrb_sym id;
   struct RClass *c;
 
   if (mrb_nil_p(name)) {
@@ -199,7 +191,8 @@ make_struct(mrb_state *mrb, mrb_value name, mrb_value members, struct RClass *kl
   else {
     /* old style: should we warn? */
     mrb_ensure_string_type(mrb, name);
-    id = mrb_obj_to_sym(mrb, name);
+
+    mrb_sym id = mrb_obj_to_sym(mrb, name);
     if (!mrb_const_name_p(mrb, RSTRING_PTR(name), RSTRING_LEN(name))) {
       mrb_name_error(mrb, id, "identifier %v needs to be constant", name);
     }
@@ -211,7 +204,8 @@ make_struct(mrb_state *mrb, mrb_value name, mrb_value members, struct RClass *kl
   }
   MRB_SET_INSTANCE_TT(c, MRB_TT_STRUCT);
   MRB_DEFINE_ALLOCATOR(c);
-  nstr = mrb_obj_value(c);
+
+  mrb_value nstr = mrb_obj_value(c);
   mrb_iv_set(mrb, nstr, MRB_SYM(__members__), members);
 
   mrb_define_class_method_id(mrb, c, MRB_SYM(new), mrb_instance_new, MRB_ARGS_ANY());
@@ -225,25 +219,32 @@ make_struct(mrb_state *mrb, mrb_value name, mrb_value members, struct RClass *kl
 /* 15.2.18.3.1  */
 /*
  *  call-seq:
- *     Struct.new( [aString] [, aSym]+> )    -> StructClass
- *     StructClass.new(arg, ...)             -> obj
- *     StructClass[arg, ...]                 -> obj
+ *     Struct.new([aString] [, aSym]+, keyword_init: false)    -> StructClass
+ *     StructClass.new(arg, ...)                               -> obj
+ *     StructClass[arg, ...]                                   -> obj
  *
- *  Creates a new class, named by <i>aString</i>, containing accessor
- *  methods for the given symbols. If the name <i>aString</i> is
+ *  Creates a new class, named by *aString*, containing accessor
+ *  methods for the given symbols. If the name *aString* is
  *  omitted, an anonymous structure class will be created. Otherwise,
  *  the name of this struct will appear as a constant in class
- *  <code>Struct</code>, so it must be unique for all
- *  <code>Struct</code>s in the system and should start with a capital
+ *  `Struct`, so it must be unique for all
+ *  `Struct`s in the system and should start with a capital
  *  letter. Assigning a structure class to a constant effectively gives
  *  the class the name of the constant.
  *
- *  <code>Struct::new</code> returns a new <code>Class</code> object,
+ *  `Struct::new` returns a new `Class` object,
  *  which can then be used to create specific instances of the new
  *  structure. The number of actual parameters must be
  *  less than or equal to the number of attributes defined for this
- *  class; unset parameters default to <code>nil</code>.  Passing too many
- *  parameters will raise an <code>ArgumentError</code>.
+ *  class; unset parameters default to `nil`.  Passing too many
+ *  parameters will raise an `ArgumentError`.
+ *
+ *  If `keyword_init` is true, the struct will accept keyword
+ *  arguments for initialization instead of positional arguments:
+ *
+ *     Person = Struct.new(:name, :age, keyword_init: true)
+ *     Person.new(name: "Alice", age: 30)
+ *     #=> #<struct Person name="Alice", age=30>
  *
  *  The remaining methods listed in this section (class and instance)
  *  are defined for this generated class.
@@ -255,23 +256,39 @@ make_struct(mrb_state *mrb, mrb_value name, mrb_value members, struct RClass *kl
  *     # Create a structure named by its constant
  *     Customer = Struct.new(:name, :address)     #=> Customer
  *     Customer.new("Dave", "123 Main")           #=> #<struct Customer name="Dave", address="123 Main">
+ *
+ *     # Create a structure with keyword initialization
+ *     User = Struct.new(:id, :email, keyword_init: true)
+ *     User.new(id: 1, email: "user@example.com")
+ *     #=> #<struct User id=1, email="user@example.com">
  */
 static mrb_value
 mrb_struct_s_def(mrb_state *mrb, mrb_value klass)
 {
   mrb_value name = mrb_nil_value();
-  const mrb_value *pargv;
-  mrb_int argcnt;
-  mrb_value b, st;
+  mrb_value b;
   const mrb_value *argv;
   mrb_int argc;
+  mrb_value keyword_init_val = mrb_nil_value();
 
   mrb_get_args(mrb, "*&", &argv, &argc, &b);
   if (argc == 0) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "wrong number of arguments (given 0, expected 1+)");
   }
-  pargv = argv;
-  argcnt = argc;
+
+  /* Check for keyword_init option in arguments */
+  if (argc > 0 && mrb_hash_p(argv[argc-1])) {
+    mrb_value options = argv[argc-1];
+    mrb_value keyword_init_sym = mrb_symbol_value(MRB_SYM(keyword_init));
+
+    if (mrb_hash_key_p(mrb, options, keyword_init_sym)) {
+      keyword_init_val = mrb_hash_get(mrb, options, keyword_init_sym);
+      argc--; /* Don't treat the options hash as a member name */
+    }
+  }
+
+  const mrb_value *pargv = argv;
+  mrb_int argcnt = argc;
   if (argc > 0 && !mrb_symbol_p(argv[0])) {
     /* 1stArgument:!symbol -> name=argv[0] rest=argv[0..n] */
     name = argv[0];
@@ -294,7 +311,12 @@ mrb_struct_s_def(mrb_state *mrb, mrb_value klass)
       }
     }
   }
-  st = make_struct(mrb, name, members, mrb_class_ptr(klass));
+
+  mrb_value st = make_struct(mrb, name, members, mrb_class_ptr(klass));
+
+  /* Set keyword_init value on the struct class */
+  mrb_iv_set(mrb, st, MRB_IVSYM(__keyword_init__), keyword_init_val);
+
   if (!mrb_nil_p(b)) {
     mrb_yield_with_class(mrb, b, 1, &st, st, mrb_class_ptr(st));
   }
@@ -305,21 +327,63 @@ mrb_struct_s_def(mrb_state *mrb, mrb_value klass)
 /*
  */
 static mrb_value
-mrb_struct_initialize_withArg(mrb_state *mrb, mrb_int argc, const mrb_value *argv, mrb_value self)
+mrb_struct_init_with_args(mrb_state *mrb, mrb_int argc, const mrb_value *argv, mrb_value self)
 {
-  mrb_int i, n;
+  mrb_int n = num_members(mrb, self);
 
-  n = num_members(mrb, self);
   if (n < argc) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "struct size differs");
   }
 
-  for (i = 0; i < argc; i++) {
+  for (mrb_int i = 0; i < argc; i++) {
     mrb_ary_set(mrb, self, i, argv[i]);
   }
-  for (i = argc; i < n; i++) {
+  for (mrb_int i = argc; i < n; i++) {
     mrb_ary_set(mrb, self, i, mrb_nil_value());
   }
+  return self;
+}
+
+static mrb_value
+mrb_struct_init_with_keywords(mrb_state *mrb, mrb_value hash, mrb_value self)
+{
+  mrb_value members = struct_members(mrb, self);
+  mrb_int member_count = num_members(mrb, self);
+
+  /* Initialize members from hash, defaulting to nil */
+  for (mrb_int i = 0; i < member_count; i++) {
+    mrb_value member = RARRAY_PTR(members)[i];
+    if (mrb_hash_key_p(mrb, hash, member)) {
+      mrb_value val = mrb_hash_get(mrb, hash, member);
+      mrb_ary_set(mrb, self, i, val);
+    }
+    else {
+      mrb_ary_set(mrb, self, i, mrb_nil_value());
+    }
+  }
+
+  /* Create a hash of valid members for faster lookup */
+  mrb_value members_hash = mrb_hash_new(mrb);
+  for (mrb_int i = 0; i < RARRAY_LEN(members); i++) {
+    mrb_hash_set(mrb, members_hash, RARRAY_PTR(members)[i], mrb_true_value());
+  }
+
+  /* Check if all keys in the hash are valid members */
+  mrb_value invalid_keys = mrb_ary_new(mrb);
+  mrb_value keys = mrb_hash_keys(mrb, hash);
+  for (mrb_int i = 0; i < RARRAY_LEN(keys); i++) {
+    mrb_value key = RARRAY_PTR(keys)[i];
+    if (!mrb_hash_key_p(mrb, members_hash, key)) {
+      mrb_ary_push(mrb, invalid_keys, key);
+    }
+  }
+
+  /* If there are any invalid keys, raise an error with all of them */
+  if (RARRAY_LEN(invalid_keys) > 0) {
+    mrb_value keys_str = mrb_ary_join(mrb, invalid_keys, mrb_str_new_lit(mrb, ", "));
+    mrb_raisef(mrb, E_ARGUMENT_ERROR, "unknown keywords: %S", keys_str);
+  }
+
   return self;
 }
 
@@ -330,7 +394,28 @@ mrb_struct_initialize(mrb_state *mrb, mrb_value self)
   mrb_int argc;
 
   mrb_get_args(mrb, "*", &argv, &argc);
-  return mrb_struct_initialize_withArg(mrb, argc, argv, self);
+
+  mrb_value klass = mrb_obj_value(mrb_obj_class(mrb, self));
+  mrb_value keyword_init = mrb_iv_get(mrb, klass, MRB_IVSYM(__keyword_init__));
+
+  if (mrb_test(keyword_init)) { /* keyword_init: true or other truthy value */
+    if (argc > 1 || (argc == 1 && !mrb_hash_p(argv[0]))) {
+      mrb_raise(mrb, E_ARGUMENT_ERROR, "wrong arguments, expected keyword arguments");
+    }
+    mrb_value hash = (argc == 1) ? argv[0] : mrb_hash_new(mrb);
+    return mrb_struct_init_with_keywords(mrb, hash, self);
+  }
+  else if (mrb_equal(mrb, keyword_init, mrb_false_value())) { /* keyword_init: false */
+    return mrb_struct_init_with_args(mrb, argc, argv, self);
+  }
+  else { /* keyword_init: nil (default) */
+    if (argc == 1 && mrb_hash_p(argv[0])) {
+      return mrb_struct_init_with_keywords(mrb, argv[0], self);
+    }
+    else {
+      return mrb_struct_init_with_args(mrb, argc, argv, self);
+    }
+  }
 }
 
 /* 15.2.18.4.9  */
@@ -354,16 +439,12 @@ mrb_struct_init_copy(mrb_state *mrb, mrb_value copy)
 static mrb_value
 struct_aref_sym(mrb_state *mrb, mrb_value obj, mrb_sym id)
 {
-  mrb_value members, *ptr;
-  const mrb_value *ptr_members;
-  mrb_int i, len, plen;
-
-  members = struct_members(mrb, obj);
-  ptr_members = RARRAY_PTR(members);
-  len = RARRAY_LEN(members);
-  ptr = RSTRUCT_PTR(obj);
-  plen = RARRAY_LEN(obj);
-  for (i=0; i<len; i++) {
+  mrb_value members = struct_members(mrb, obj);
+  const mrb_value *ptr_members = RARRAY_PTR(members);
+  mrb_int len = RARRAY_LEN(members);
+  mrb_value *ptr = RSTRUCT_PTR(obj);
+  mrb_int plen = RARRAY_LEN(obj);
+  for (mrb_int i=0; i<len; i++) {
     mrb_value slot = ptr_members[i];
     if (mrb_symbol_p(slot) && mrb_symbol(slot) == id) {
       if (i < plen) return ptr[i];
@@ -403,9 +484,9 @@ struct_aref_int(mrb_state *mrb, mrb_value s, mrb_int i)
  *     struct[fixnum]    -> anObject
  *
  *  Attribute Reference---Returns the value of the instance variable
- *  named by <i>symbol</i>, or indexed (0..length-1) by
- *  <i>fixnum</i>. Will raise <code>NameError</code> if the named
- *  variable does not exist, or <code>IndexError</code> if the index is
+ *  named by *symbol*, or indexed (0..length-1) by
+ *  *fixnum*. Will raise `NameError` if the named
+ *  variable does not exist, or `IndexError` if the index is
  *  out of range.
  *
  *     Customer = Struct.new(:name, :address, :zip)
@@ -433,14 +514,10 @@ mrb_struct_aref(mrb_state *mrb, mrb_value s)
 static mrb_value
 mrb_struct_aset_sym(mrb_state *mrb, mrb_value s, mrb_sym id, mrb_value val)
 {
-  mrb_value members;
-  const mrb_value *ptr_members;
-  mrb_int i, len;
-
-  members = struct_members(mrb, s);
-  len = RARRAY_LEN(members);
-  ptr_members = RARRAY_PTR(members);
-  for (i=0; i<len; i++) {
+  mrb_value members = struct_members(mrb, s);
+  mrb_int len = RARRAY_LEN(members);
+  const mrb_value *ptr_members = RARRAY_PTR(members);
+  for (mrb_int i=0; i<len; i++) {
     if (mrb_symbol(ptr_members[i]) == id) {
       mrb_ary_set(mrb, s, i, val);
       return val;
@@ -457,9 +534,9 @@ mrb_struct_aset_sym(mrb_state *mrb, mrb_value s, mrb_sym id, mrb_value val)
  *     struct[fixnum] = obj    -> obj
  *
  *  Attribute Assignment---Assigns to the instance variable named by
- *  <i>symbol</i> or <i>fixnum</i> the value <i>obj</i> and
- *  returns it. Will raise a <code>NameError</code> if the named
- *  variable does not exist, or an <code>IndexError</code> if the index
+ *  *symbol* or *fixnum* the value *obj* and
+ *  returns it. Will raise a `NameError` if the named
+ *  variable does not exist, or an `IndexError` if the index
  *  is out of range.
  *
  *     Customer = Struct.new(:name, :address, :zip)
@@ -475,7 +552,6 @@ mrb_struct_aset_sym(mrb_state *mrb, mrb_value s, mrb_sym id, mrb_value val)
 static mrb_value
 mrb_struct_aset(mrb_state *mrb, mrb_value s)
 {
-  mrb_int i;
   mrb_value idx;
   mrb_value val;
 
@@ -489,7 +565,7 @@ mrb_struct_aset(mrb_state *mrb, mrb_value s)
     return mrb_struct_aset_sym(mrb, s, mrb_symbol(idx), val);
   }
 
-  i = struct_index(mrb, mrb_as_int(mrb, idx), num_members(mrb, s));
+  mrb_int i = struct_index(mrb, mrb_as_int(mrb, idx), num_members(mrb, s));
   mrb_ary_set(mrb, s, i, val);
   return val;
 }
@@ -499,10 +575,10 @@ mrb_struct_aset(mrb_state *mrb, mrb_value s)
  *  call-seq:
  *     struct == other_struct     -> true or false
  *
- *  Equality---Returns <code>true</code> if <i>other_struct</i> is
+ *  Equality---Returns `true` if *other_struct* is
  *  equal to this one: they must be of the same class as generated by
- *  <code>Struct::new</code>, and the values of all instance variables
- *  must be equal (according to <code>Object#==</code>).
+ *  `Struct::new`, and the values of all instance variables
+ *  must be equal (according to `Object#==`).
  *
  *     Customer = Struct.new(:name, :address, :zip)
  *     joe   = Customer.new("Joe Smith", "123 Maple, Anytown NC", 12345)
@@ -516,8 +592,6 @@ static mrb_value
 mrb_struct_equal(mrb_state *mrb, mrb_value s)
 {
   mrb_value s2 = mrb_get_arg1(mrb);
-  mrb_value *ptr, *ptr2;
-  mrb_int i, len;
 
   if (mrb_obj_equal(mrb, s, s2)) {
     return mrb_true_value();
@@ -528,13 +602,21 @@ mrb_struct_equal(mrb_state *mrb, mrb_value s)
   if (RSTRUCT_LEN(s) != RSTRUCT_LEN(s2)) {
     return mrb_false_value();
   }
-  ptr = RSTRUCT_PTR(s);
-  ptr2 = RSTRUCT_PTR(s2);
-  len = RSTRUCT_LEN(s);
-  for (i=0; i<len; i++) {
+
+  /* Check for recursion */
+  if (MRB_RECURSIVE_BINARY_FUNC_P(mrb, MRB_OPSYM(eq), s, s2)) {
+    return mrb_false_value();
+  }
+
+  mrb_value *ptr = RSTRUCT_PTR(s);
+  mrb_value *ptr2 = RSTRUCT_PTR(s2);
+  mrb_int len = RSTRUCT_LEN(s);
+  int ai = mrb_gc_arena_save(mrb);
+  for (mrb_int i=0; i<len; i++) {
     if (!mrb_equal(mrb, ptr[i], ptr2[i])) {
       return mrb_false_value();
     }
+    mrb_gc_arena_restore(mrb, ai);
   }
 
   return mrb_true_value();
@@ -546,7 +628,7 @@ mrb_struct_equal(mrb_state *mrb, mrb_value s)
  *   struct.eql?(other)   -> true or false
  *
  * Two structures are equal if they are the same object, or if all their
- * fields are equal (using <code>eql?</code>).
+ * fields are equal (using `eql?`).
  */
 static mrb_value
 mrb_struct_eql(mrb_state *mrb, mrb_value s)
@@ -564,6 +646,12 @@ mrb_struct_eql(mrb_state *mrb, mrb_value s)
   if (RSTRUCT_LEN(s) != RSTRUCT_LEN(s2)) {
     return mrb_false_value();
   }
+
+  /* Check for recursion */
+  if (MRB_RECURSIVE_BINARY_FUNC_P(mrb, MRB_SYM_Q(eql), s, s2)) {
+    return mrb_false_value();
+  }
+
   ptr = RSTRUCT_PTR(s);
   ptr2 = RSTRUCT_PTR(s2);
   len = RSTRUCT_LEN(s);
@@ -611,13 +699,10 @@ mrb_struct_to_a(mrb_state *mrb, mrb_value self)
 static mrb_value
 mrb_struct_to_h(mrb_state *mrb, mrb_value self)
 {
-  mrb_value members, ret;
-  mrb_int i;
+  mrb_value members = struct_members(mrb, self);
+  mrb_value ret = mrb_hash_new_capa(mrb, RARRAY_LEN(members));
 
-  members = struct_members(mrb, self);
-  ret = mrb_hash_new_capa(mrb, RARRAY_LEN(members));
-
-  for (i = 0; i < RARRAY_LEN(members); i++) {
+  for (mrb_int i = 0; i < RARRAY_LEN(members); i++) {
     mrb_hash_set(mrb, ret, RARRAY_PTR(members)[i], mrb_ary_ref(mrb, self, i));
   }
 
@@ -645,25 +730,21 @@ mrb_struct_values_at(mrb_state *mrb, mrb_value self)
 static mrb_value
 mrb_struct_to_s(mrb_state *mrb, mrb_value self)
 {
-  mrb_value members, ret, cname;
-  mrb_value *mems;
-  mrb_int mlen;
-
   mrb->c->ci->mid = MRB_SYM(inspect);
-  ret = mrb_str_new_lit(mrb, "#<struct ");
+  mrb_value ret = mrb_str_new_lit(mrb, "#<struct ");
   int ai = mrb_gc_arena_save(mrb);
-  cname = mrb_class_path(mrb, mrb_class_real(mrb_class(mrb, self)));
+  mrb_value cname = mrb_class_path(mrb, mrb_class_real(mrb_class(mrb, self)));
   if (!mrb_nil_p(cname)) {
     mrb_str_cat_str(mrb, ret, cname);
     mrb_str_cat_lit(mrb, ret, " ");
   }
-  if (mrb_inspect_recursive_p(mrb, self)) {
+  if (MRB_RECURSIVE_UNARY_P(mrb, MRB_SYM(inspect), self)) {
     mrb_str_cat_lit(mrb, ret, "...>");
     return ret;
   }
-  members = struct_members(mrb, self);
-  mlen = RARRAY_LEN(members);
-  mems = RARRAY_PTR(members);
+  mrb_value members = struct_members(mrb, self);
+  mrb_int mlen = RARRAY_LEN(members);
+  mrb_value *mems = RARRAY_PTR(members);
   for (mrb_int i=0; i<mlen; i++) {
     mrb_int len;
     const char *name = mrb_sym_name_len(mrb, mrb_symbol(mems[i]), &len);
@@ -679,46 +760,49 @@ mrb_struct_to_s(mrb_state *mrb, mrb_value self)
 }
 
 /*
- *  A <code>Struct</code> is a convenient way to bundle a number of
+ *  A `Struct` is a convenient way to bundle a number of
  *  attributes together, using accessor methods, without having to write
  *  an explicit class.
  *
- *  The <code>Struct</code> class is a generator of specific classes,
+ *  The `Struct` class is a generator of specific classes,
  *  each one of which is defined to hold a set of variables and their
  *  accessors. In these examples, we'll call the generated class
- *  "<i>Customer</i>Class," and we'll show an example instance of that
- *  class as "<i>Customer</i>Inst."
+ *  "*Customer*Class," and we'll show an example instance of that
+ *  class as "*Customer*Inst."
  *
- *  In the descriptions that follow, the parameter <i>symbol</i> refers
+ *  In the descriptions that follow, the parameter *symbol* refers
  *  to a symbol, which is either a quoted string or a
- *  <code>Symbol</code> (such as <code>:name</code>).
+ *  `Symbol` (such as `:name`).
  */
+/* ---------------------------*/
+static const mrb_mt_entry struct_rom_entries[] = {
+  MRB_MT_ENTRY(mrb_struct_equal,      MRB_OPSYM(eq), MRB_ARGS_REQ(1)),  /* 15.2.18.4.1  */
+  MRB_MT_ENTRY(mrb_struct_aref,       MRB_OPSYM(aref), MRB_ARGS_REQ(1)),  /* 15.2.18.4.2  */
+  MRB_MT_ENTRY(mrb_struct_aset,       MRB_OPSYM(aset), MRB_ARGS_REQ(2)),  /* 15.2.18.4.3  */
+  MRB_MT_ENTRY(mrb_struct_members,    MRB_SYM(members),      MRB_ARGS_NONE()),  /* 15.2.18.4.6  */
+  MRB_MT_ENTRY(mrb_struct_initialize, MRB_SYM(initialize), MRB_ARGS_ANY()),  /* 15.2.18.4.8  */
+  MRB_MT_ENTRY(mrb_struct_init_copy, MRB_SYM(initialize_copy), MRB_ARGS_REQ(1) | MRB_MT_PRIVATE),  /* 15.2.18.4.9  */
+  MRB_MT_ENTRY(mrb_struct_eql,        MRB_SYM_Q(eql), MRB_ARGS_REQ(1)),  /* 15.2.18.4.12(x)  */
+  MRB_MT_ENTRY(mrb_struct_to_s,       MRB_SYM(to_s),         MRB_ARGS_NONE()),  /* 15.2.18.4.11(x) */
+  MRB_MT_ENTRY(mrb_struct_to_s,       MRB_SYM(inspect),      MRB_ARGS_NONE()),  /* 15.2.18.4.10(x) */
+  MRB_MT_ENTRY(mrb_struct_len,        MRB_SYM(size),         MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(mrb_struct_len,        MRB_SYM(length),       MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(mrb_struct_to_a,       MRB_SYM(to_a),         MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(mrb_struct_to_a,       MRB_SYM(values),       MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(mrb_struct_to_h,       MRB_SYM(to_h),         MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(mrb_struct_values_at,  MRB_SYM(values_at), MRB_ARGS_ANY()),
+};
+
 void
 mrb_mruby_struct_gem_init(mrb_state* mrb)
 {
-  struct RClass *st;
-  st = mrb_define_class(mrb, "Struct",  mrb->object_class);
+  struct RClass *st = mrb_define_class_id(mrb, MRB_SYM(Struct),  mrb->object_class);
   MRB_SET_INSTANCE_TT(st, MRB_TT_STRUCT);
   MRB_UNDEF_ALLOCATOR(st);
 
-  mrb_define_class_method(mrb, st, "new",             mrb_struct_s_def,       MRB_ARGS_ANY());  /* 15.2.18.3.1  */
+  mrb_define_class_method_id(mrb, st, MRB_SYM(new), mrb_struct_s_def, MRB_ARGS_ANY());  /* 15.2.18.3.1  */
 
-  mrb_define_method(mrb, st,       "==",              mrb_struct_equal,       MRB_ARGS_REQ(1)); /* 15.2.18.4.1  */
-  mrb_define_method(mrb, st,       "[]",              mrb_struct_aref,        MRB_ARGS_REQ(1)); /* 15.2.18.4.2  */
-  mrb_define_method(mrb, st,       "[]=",             mrb_struct_aset,        MRB_ARGS_REQ(2)); /* 15.2.18.4.3  */
-  mrb_define_method(mrb, st,       "members",         mrb_struct_members,     MRB_ARGS_NONE()); /* 15.2.18.4.6  */
-  mrb_define_method(mrb, st,       "initialize",      mrb_struct_initialize,  MRB_ARGS_ANY());  /* 15.2.18.4.8  */
-  mrb_define_method(mrb, st,       "initialize_copy", mrb_struct_init_copy,   MRB_ARGS_REQ(1)); /* 15.2.18.4.9  */
-  mrb_define_method(mrb, st,       "eql?",            mrb_struct_eql,         MRB_ARGS_REQ(1)); /* 15.2.18.4.12(x)  */
-  mrb_define_method(mrb, st,       "to_s",            mrb_struct_to_s,        MRB_ARGS_NONE()); /* 15.2.18.4.11(x) */
-  mrb_define_method(mrb, st,       "inspect",         mrb_struct_to_s,        MRB_ARGS_NONE()); /* 15.2.18.4.10(x) */
-
-  mrb_define_method(mrb, st,       "size",            mrb_struct_len,         MRB_ARGS_NONE());
-  mrb_define_method(mrb, st,       "length",          mrb_struct_len,         MRB_ARGS_NONE());
-  mrb_define_method(mrb, st,       "to_a",            mrb_struct_to_a,        MRB_ARGS_NONE());
-  mrb_define_method(mrb, st,       "values",          mrb_struct_to_a,        MRB_ARGS_NONE());
-  mrb_define_method(mrb, st,       "to_h",            mrb_struct_to_h,        MRB_ARGS_NONE());
-  mrb_define_method(mrb, st,       "values_at",       mrb_struct_values_at,   MRB_ARGS_ANY());
+  MRB_MT_INIT_ROM(mrb, st, struct_rom_entries);
 }
 
 void

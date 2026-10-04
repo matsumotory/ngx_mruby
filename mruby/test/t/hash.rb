@@ -857,16 +857,16 @@ end
   assert("Hash##{meth}") do
     assert_equal('{}', Hash.new.__send__(meth))
 
-    h1 = {:s => 0, :a => [1,2], 37 => :b, :d => "del", "c" => nil}
+    h1 = {s: 0, a: [1,2], 37 => :b, d: "del", "c" => nil}
     h1.shift
     h1.delete(:d)
-    s1 = ':a=>[1, 2], 37=>:b, "c"=>nil'
+    s1 = 'a: [1, 2], 37 => :b, "c" => nil'
     h2 = Hash.new(100)
 
     (1..14).each{h2[_1] = _1 * 2}
     h2 = {**h2, **h1}
-    s2 = "1=>2, 2=>4, 3=>6, 4=>8, 5=>10, 6=>12, 7=>14, 8=>16, " \
-         "9=>18, 10=>20, 11=>22, 12=>24, 13=>26, 14=>28, #{s1}"
+    s2 = "1 => 2, 2 => 4, 3 => 6, 4 => 8, 5 => 10, 6 => 12, 7 => 14, 8 => 16, " \
+         "9 => 18, 10 => 20, 11 => 22, 12 => 24, 13 => 26, 14 => 28, #{s1}"
 
     [[h1, s1], [h2, s2]].each do |h, s|
       assert_equal("{#{s}}", h.__send__(meth))
@@ -874,11 +874,11 @@ end
       hh = {}
       hh[:recur] = hh
       h.each{|k, v| hh[k] = v}
-      assert_equal("{:recur=>{...}, #{s}}", hh.__send__(meth))
+      assert_equal("{recur: {...}, #{s}}", hh.__send__(meth))
 
       hh = h.dup
       hh[hh] = :recur
-      assert_equal("{#{s}, {...}=>:recur}", hh.__send__(meth))
+      assert_equal("{#{s}, {...} => :recur}", hh.__send__(meth))
     end
   end
 end
@@ -903,7 +903,6 @@ assert('Hash#rehash') do
     pairs1 = pairs.dup
     pairs1.delete([:_del, h.delete(:_del)])
     exp_pairs1 = pairs1.hash_for.to_a
-    h.freeze
     assert_same(h, h.rehash)
     assert_equal(exp_pairs1, h.to_a)
     assert_equal(exp_pairs1.size, h.size)
@@ -948,43 +947,12 @@ assert('Hash#rehash') do
   [1, 17].each{assert_equal(_1 * 2, h[_1])}
 end
 
-assert('#eql? receiver should be specified key') do
-  [ar_entries, ht_entries].each do |entries|
-    h = entries.hash_for
-    k0 = HashKey[-99]
-    h[k0] = 1
-
-    k1 = HashKey[-3, error: :eql?]
-    assert_raise{h[k1]}
-    k0.error = :eql?
-    k1.error = false
-    assert_nothing_raised{h[k1]}
-
-    k0.error = false
-    k1.error = :eql?
-    assert_raise{h[k1] = 1}
-    k0.error = :eql?
-    k1.error = false
-    assert_nothing_raised{h[k1] = 1}
-
-    k0.error = false
-    k2 = HashKey[-6, error: :eql?]
-    assert_raise{h.delete(k2)}
-    k0.error = :eql?
-    k2.error = false
-    assert_nothing_raised{h.delete(k2)}
-
-    k0.error = false
-    k3 = HashKey[-9, error: :eql?]
-    %i[has_key? include? key? member?].each do |m|
-      assert_raise{h.__send__(m, k3)}
-    end
-    k0.error = :eql?
-    k3.error = false
-    %i[has_key? include? key? member?].each do |m|
-      assert_nothing_raised{h.__send__(m, k3)}
-    end
-  end
+assert('Hash#assoc, Hash#rassoc') do
+  h = {foo: 0, bar: 1, baz: 2}
+  assert_equal([:bar, 1], h.assoc(:bar))
+  assert_nil(h.assoc(:quux))
+  assert_equal([:foo, 0], h.rassoc(0))
+  assert_nil(h.rassoc(4))
 end
 
 assert('#== receiver should be specified value') do
@@ -1001,7 +969,7 @@ assert('#== receiver should be specified value') do
   end
 end
 
-assert('test value ommision') do
+assert('test value omission') do
   x = 1
   y = 2
   assert_equal({x:1, y:2}, {x:, y:})

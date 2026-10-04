@@ -9,8 +9,8 @@ namespace :doc do
     begin
       sh "mrbdoc"
     rescue
-      puts "ERROR: To generate YARD documentation, you should install yard-mruby gem."
-      puts "  $ gem install yard-mruby yard-coderay"
+      puts "ERROR: To generate YARD documentation, you should install the yard-coderay and yard-mruby gems."
+      puts "  $ gem install yard-coderay yard-mruby"
       puts "https://yardoc.org/"
       puts "https://rubygems.org/gems/yard-mruby"
       puts "https://rubygems.org/gems/yard-coderay"
@@ -22,7 +22,7 @@ namespace :doc do
     begin
       sh "doxygen Doxyfile"
     rescue
-      puts "ERROR: To generate C API documents, you need Doxygen and Graphviz."
+      puts "ERROR: To generate C API documentation, you should install Doxygen and Graphviz."
       puts "On Debian-based systems:"
       puts "  $ sudo apt-get install doxygen graphviz"
       puts "On RHEL-based systems:"
@@ -40,7 +40,7 @@ namespace :doc do
   namespace :clean do
     desc 'clean yard docs'
     task :api do
-      rm_rf 'doc/api'
+      rm_rf %w(doc/api .yardoc)
     end
 
     desc 'clean doxygen docs'
@@ -79,6 +79,32 @@ namespace :doc do
     end
 
     MRuby::Documentation.update_opcode_md
+  end
+
+  task 'update-index' do
+    rev_order = %w(doc/internal/ doc/guides/ doc/)
+    cmd = %W(git --git-dir #{MRUBY_ROOT}/.git --work-tree #{MRUBY_ROOT} ls-files -- doc/*.md)
+    doc = IO.popen(cmd, "r") { |io| io.read.split("\n") }
+    doc.sort_by! { |e| [-rev_order.index { |o| e.start_with?(o) }, e] }
+    readme_path = File.join(MRUBY_ROOT, "README.md")
+    readme = File.read(readme_path)
+    matched = false
+    mark_begin = "<!-- BEGIN OF MRUBY DOCUMENT INDEX -->\n"
+    mark_end = "<!-- END OF MRUBY DOCUMENT INDEX -->\n"
+    readme1 = readme.sub(/^#{mark_begin}\n\K.*(?=^\n#{mark_end})/m) {
+      matched = true
+      doc.each_with_object("") { |d, a|
+        summary = File.open(File.join(MRUBY_ROOT, d)) { |f|
+          f.each_line.first.slice(/^<!--\s*summary:\s*(.*?)\s*-->/, 1)
+        }
+        if summary
+          summary = "Internal Implementation / #{summary}" if d.start_with?("doc/internal/")
+          a << "- [#{summary}](#{d})\n"
+        end
+      }
+    }
+    raise "missing marker for document index in README.md" unless matched
+    File.write(readme_path, readme1, mode: "wb") unless readme == readme1
   end
 end
 
