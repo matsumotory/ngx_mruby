@@ -361,6 +361,9 @@ Phase:   NGX_HTTP_SERVER_REWRITE_PHASE, NGX_HTTP_REWRITE_PHASE
 
 'mruby_set' and 'mruby_set_code' are called at one of the rewrite phases to set a nginx variable.
 
+If the code raises an exception, ngx_mruby logs it, the variable is set to an empty string (as when the code returns `nil`), also when an earlier directive of the location gave it a value, and the request goes on.
+Text that the code wrote with `Nginx.rputs` or `Nginx.echo` before the exception is not sent and does not count in the `Content-Length` of the response.
+
 ## mruby_output_body_filter, mruby_output_body_filter_code, mruby_output_header_filter and mruby_output_header_filter_code
 
 ```

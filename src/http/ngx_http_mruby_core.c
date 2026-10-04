@@ -226,6 +226,7 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
       mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
     }
     chain->last = &chain->out;
+    chain->content_length_n = r->headers_out.content_length_n;
   } else {
     chain = ctx->rputs_chain;
     (*chain->last)->next = ngx_alloc_chain_link(r->pool);

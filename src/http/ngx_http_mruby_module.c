@@ -897,6 +897,7 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
 {
   int result_len;
   int ai = 0;
+  ngx_flag_t raised = 0;
   mrb_value *mrb_result = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
   *mrb_result = mrb_nil_value();
   ngx_http_mruby_ctx_t *ctx;
@@ -1052,13 +1053,20 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   }
 
   if (state->mrb->exc) {
+    raised = 1;
     ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
     // drop the output of Nginx.rputs: with it, ngx_mrb_finalize_rputs would
     // send that output as a 200 response; without it, the function returns
     // the 500, as ngx_mrb_post_fiber does after an exception in a resumed
-    // fiber
-    ctx->rputs_chain = NULL;
+    // fiber. Nginx.rputs also added the length of that output to
+    // content_length_n: put back the value from before the first string of
+    // the chain, because after an mruby_set handler or a filter the request
+    // goes on and its response must not count the dropped output.
+    if (ctx->rputs_chain != NULL) {
+      r->headers_out.content_length_n = ctx->rputs_chain->content_length_n;
+      ctx->rputs_chain = NULL;
+    }
     mrb_gc_arena_restore(state->mrb, ai);
   } else if (result != NULL) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: fiber done in request phase", MODULE_NAME,
@@ -1094,6 +1102,18 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
     ngx_mrb_code_clean(r, state, code);
   }
   ngx_mrb_state_clean(r, state);
+
+  // Only the mruby_set handlers pass a result. After an exception the
+  // variable gets an empty string, as for a handler that returns nil. NDK has
+  // no case for the 500 that ngx_mrb_finalize_rputs returns, so nginx stored
+  // whatever value was on its script stack in the variable; NGX_DECLINED
+  // would do the same, because ngx_http_script_set_var_code takes the length
+  // and the data of that value and marks the variable as found.
+  if (raised && result != NULL) {
+    result->data = NULL;
+    result->len = 0;
+    return NGX_OK;
+  }
 
   if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
     return ngx_mrb_finalize_rputs(r, ctx);
