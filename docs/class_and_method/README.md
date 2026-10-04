@@ -67,7 +67,7 @@ for APIs.
 You can use the following classes with default build configuration.
 
 - [Cache Class](https://github.com/matsumotory/mruby-localmemcache)
-- [Dir class](https://github.com/iij/mruby-dir)
+- [Dir class](../../mruby/mrbgems/mruby-dir) (the mruby core gem mruby-dir; see the differences from iij/mruby-dir below)
 - [Digest Class](https://github.com/iij/mruby-digest)
 - [ENV class](https://github.com/iij/mruby-env)
 - [JSON Class](https://github.com/mattn/mruby-json)
@@ -80,9 +80,20 @@ You can use the following classes with default build configuration.
 - [Uname Class](https://github.com/matsumotory/mruby-uname)
 - [Vedis Class](https://github.com/matsumotory/mruby-vedis)
 
-You can also use classes embedded by
-[default.gembox](https://github.com/matsumotory/ngx_mruby/blob/master/mruby/mrbgems/default.gembox) and
-[full-core.gembox](https://github.com/matsumotory/ngx_mruby/blob/master/mruby/mrbgems/full-core.gembox).
+`Dir` comes from the mruby core gem mruby-dir. ngx_mruby 2.x took it from
+iij/mruby-dir, which the core gem started from; every method of that gem
+stays. The differences:
+
+- Reading or closing a closed `Dir` raises `IOError` instead of `RuntimeError`.
+- `Dir.open` with a block no longer raises when the block closed the `Dir`.
+- `Dir.foreach` with a block closes the `Dir` that it opened.
+- `Dir` includes `Enumerable`, and has `Dir.children`, `Dir.empty?` and
+  `Dir#each_child`. In mruby 3.3.0, `Dir.children` and `Dir#each_child` are
+  aliases of `Dir.entries` and `Dir#each`, so they include `.` and `..`.
+
+You can also use the classes of the mruby core gems that `NGX_MRUBY_CORE_GEMS` in
+[build_config.rb](../../build_config.rb) lists (the gems in [mruby/mrbgems](../../mruby/mrbgems)
+of that name). The list is the set that `full-core.gembox` of mruby 3.3.0 selects.
 
 # Kernel Module
 

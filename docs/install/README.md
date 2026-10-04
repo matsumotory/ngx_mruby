@@ -81,7 +81,7 @@ For example, you can use mruby-io to implement
 
 Here are the list of the default mrbgems.
 
-- gembox: mruby/mruby default mrbgems, mruby-randoma, mruby-env, mruby-print...
+- mruby core gems: the ones that `NGX_MRUBY_CORE_GEMS` in `build_config.rb` lists (the set that `full-core.gembox` of mruby 3.3.0 selects), for example mruby-io, mruby-pack, mruby-sleep and mruby-dir
 - mruby-process: Process ::fork, ::kill, ::pid, ::ppid, ::waitpid...
 - mruby-pack: pack, unpack...
 - mruby-env: use environment value
@@ -95,6 +95,12 @@ Here are the list of the default mrbgems.
 - mruby-userdata: https://github.com/matsumotory/mruby-userdata
 - mruby-onig-regexp: regexp engine
 - mruby-io: https://github.com/iij/mruby-io
+
+The mruby build stops when a gem that `NGX_MRUBY_CORE_GEMS` lists is not in
+the `mrbgems` directory of the mruby it builds, for example an mruby of
+another version given with `./configure --with-mruby-root`. Edit the list, or
+set `NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1` in the environment of the mruby
+build to skip those gems with a notice.
 
 The bundled auto-ssl mrbgem is not in the default build; see
 [Building with the auto-ssl mrbgem](#building-with-the-auto-ssl-mrbgem).
@@ -179,10 +185,12 @@ The lock does not pin everything that the build fetches:
   the branch head.
 
 Because a clone made at a commit has the whole history of the repository,
-the first build fetches more than a build without the lock. For the 21
-clones of the default build, cloned the way rake clones them, this was about
-178 MiB in 40 to 43 seconds instead of about 139 MiB in 32 to 34 seconds
-with `--depth 1` (measured on 2026-10-04, two runs each). Most of the size
+the first build fetches more than a build without the lock. Measured on
+2026-10-04 (two runs each), the 21 clones that the default build made at that
+time, cloned the way rake clones them, took about 178 MiB in 40 to 43 seconds
+instead of about 139 MiB in 32 to 34 seconds with `--depth 1`. The default
+build now makes 20: `Dir` comes from mruby's own mruby-dir instead of
+iij/mruby-dir, which is no longer cloned. Most of the size
 either way is the mbedtls submodule of luisbebop/mruby-polarssl, and so is
 most of the difference. `--recursive` does not make submodules shallow, so
 both clones have the whole history of the default branch of mbedtls. With

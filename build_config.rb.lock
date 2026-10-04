@@ -9,11 +9,6 @@ builds:
       branch: master
       commit: 056ae324451ef16a50c7887e117f0ea30921b71b
       version: 0.0.0
-    https://github.com/iij/mruby-dir.git:
-      url: https://github.com/iij/mruby-dir.git
-      branch: master
-      commit: 89dceefa1250fb1ae868d4cb52498e9e24293cd1
-      version: 0.0.0
     https://github.com/iij/mruby-digest.git:
       url: https://github.com/iij/mruby-digest.git
       branch: master
