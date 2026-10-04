@@ -17,6 +17,112 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
 - `docs/`: user documentation (install, directives, classes and methods) and
   release notes (`docs/releases/`)
 
+## Design principles
+
+The owner decided these on 2026-10-04. They hold on `master` and `next`:
+
+- One `mrb_state` per worker, shared by the requests of that worker, and no
+  `mrb_state` per request. A state per request would be safer, but it would
+  be slow, and sharing objects between states is costly. Changes keep this
+  balance of performance, security and convenience in mind.
+- No blocking.
+- Keep the existing performance.
+- Measure performance regularly.
+
+The rest of this section is how sessions apply these decisions. It is their
+procedure, not a decision of the owner, and it changes through PRs to this
+file. Read it before you change `src/`, `mrbgems/` or the build.
+
+- Where the state is. nginx creates the `mrb_state` of an `http {}` block
+  (and one for each `stream {}` block) while it reads the configuration, and
+  each worker gets its own copy when it is forked. The state of a request
+  lives in the request's module context (`ngx_http_get_module_ctx`; in
+  stream, the session's). The server configuration, which all requests and
+  connections of the server share, holds only state whose lifetime is
+  explicit: it is set before the code that uses it and cleared after that
+  code. Nothing fixed (a class reference, a symbol name, a buffer) is looked
+  up or allocated per request when it can be prepared once at
+  initialization.
+- What the rule against blocking covers. ngx_mruby's own code (`src/`,
+  `mrbgems/`) waits only through nginx: its events and timers, the return
+  codes `NGX_DONE` and `NGX_AGAIN`, and the fiber-based `Nginx::Async`
+  (`Nginx::Stream::Async` in stream), which suspends the Ruby code and
+  resumes it from an nginx timer or at the end of a subrequest. A change adds
+  no other wait: not for the network, a process or a timer, and not for a
+  local file on the request path unless the PR gives the reason. These
+  places block today:
+  - a handler script without `cache` is read from disk on every request
+    (`fopen`), and when a script gives `Nginx::SSL` the paths of a
+    certificate and a key, they are read during the handshake
+    (`BIO_new_file`, `SSL_use_PrivateKey_file`);
+  - the bundled `auto-ssl` gem runs the dehydrated ACME client and waits
+    for it to finish;
+  - an operator's script blocks its worker when it uses mruby-sleep,
+    mruby-socket or mruby-io, which the default build includes on both
+    branches, or matsumotory/mruby-redis (a hiredis client) in a build that
+    includes it. The rule is for ngx_mruby's own code, not for such scripts.
+- Which changes are measured. A PR that changes an input of the measured
+  binary is compared with its base in the callgrind lane ("Performance
+  comparison with callgrind" in `docs/test/README.md` on `next`). The inputs
+  are those that "In CI" in `docs/test/README.md` on `next` lists: `src/`,
+  `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `configure`,
+  `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and on `next` the
+  gem lock `build_config.rb.lock`. On `next`, the `perf` job runs the
+  comparison on such PRs. On `master`, which has no `perf` job yet, the
+  author runs the commands below. The author quotes the table in the PR body.
+  - The lane builds nginx without `--with-stream` and has no stream
+    scenario, so for a change to `src/stream/` alone both builds are the same
+    binary. Such a PR says so and states instead what the change adds per
+    session, as read from the diff (calls, allocations, copies).
+  - The reviewer writes, for the scenario with the largest change and for
+    each row that is not `ok`: its base and head Ir per request without GC,
+    and the change in instructions per request and in percent.
+  - A scenario at `WARN` (3% or more instructions per request without GC
+    than the base) or `FAIL` (5% or more) holds the merge until the owner
+    accepts the difference on the PR; the session asks the owner. `ERROR`
+    means that the scenario was not measured: fix the run or run it again.
+    The scenarios with an upstream vary with when the upstream's response
+    arrives (the report prints their relay calls per request), so a result
+    near `WARN` in them is measured again before it is taken as a
+    regression.
+  - On `next`, the `perf` job fails on `FAIL` and `ERROR`, which is a failed
+    check under condition 2 of "Review and merge". `ci-ok` does not need the
+    job yet; the plan (Pillar E of `docs/proposals/v3-plan.md` on `next`)
+    adds it once the job has run on code changes without false alarms, and
+    from then on a `FAIL` or an `ERROR` also fails `ci-ok`. On `master`, the reviewer
+    checks the author's table. On both branches, `WARN` and `FAIL` go to the
+    owner as above.
+- The `master` commands. Until the lane is ported to `master`, a `master`
+  change is measured with the lane of `next` (`test/perf/`, the scenarios in
+  `test/soak/` and `test/build_release.sh`), added to a copy of the tree
+  outside the checkout. The base is the tip of `origin/master`, so update
+  the branch to it first: a branch that is behind shows the newer `master`
+  commits as reverse differences. From a checkout of the PR's head commit:
+
+  ```sh
+  git fetch origin master next
+  git merge-base --is-ancestor origin/master HEAD   # exits 1 when the branch is behind: update it first
+  D=$HOME/ngx_mruby-perf   # any directory outside the checkout
+  rm -rf "$D" && mkdir -p "$D/base" "$D/head"
+  git archive origin/master | tar -x -C "$D/base"
+  git archive HEAD | tar -x -C "$D/head"
+  git archive origin/next test/perf test/soak test/build_release.sh | tar -x -C "$D/head"
+  cd "$D/head" && sh test/perf/compare.sh "$D/base"
+  ```
+
+  The last line needs Linux and valgrind. On macOS, run this line in its
+  place; it runs `compare.sh` in a Linux container with `$D` mounted at the
+  same path:
+
+  ```sh
+  docker run --rm -v "$D:$D" -w "$D/head" -e D="$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev valgrind >/dev/null && sh test/perf/compare.sh "$D/base"'
+  ```
+
+  The report is in `$D/head/build_perf/report.txt`.
+- Planned, not in place yet: a benchmark of the test nginx for throughput
+  and latency (Pillar E and section 8 of `docs/proposals/v3-plan.md` on
+  `next`). Where its results are recorded is decided when it is added.
+
 ## Branches and pull requests
 
 | Branch | Role | Who changes it |
@@ -66,11 +172,16 @@ regression test in a commit of its own before the fix commit, and the
 reviewer has run the suite at both commits (failing, then passing, with
 results matching what the author quoted); expectations assert
 on real responses, not only on "not 500"; the CI result on the head commit;
+when an input of the measured binary changed, the performance comparison
+quoted in the PR body and the numbers that "Design principles" asks the
+reviewer to write;
 compatibility notes in the PR body match the diff; a change of behavior that a
 configuration, script or build can observe has an entry under "Behavior
 changes: read before upgrading" in `docs/releases/<version>.md`, and
 `docs/directives/`, `docs/class_and_method/` or `docs/install/` describe the
-new behavior; nothing in the diff, the
+new behavior; a PR that moves the pin of one of the owner's gems links the
+gem's PR, which has its review and the suite results (see "Other
+repositories"); nothing in the diff, the
 commit messages or the PR text discloses an unpublished vulnerability or a
 secret; and `docs/` is updated when a directive, Ruby method, build option or
 the test harness changes. The reviewer posts the findings as a PR comment,
@@ -99,6 +210,85 @@ these hold:
 
 If any condition cannot be met, the session says which one and why, and asks
 the owner instead of merging.
+
+### Other repositories
+
+The owner decided on 2026-10-04 that sessions may change the mrbgem
+repositories that the owner maintains (`matsumotory/mruby-*`), mruby-uname
+included.
+
+The rest of this subsection is the sessions' procedure, not a decision of
+the owner. `master` commits no gem lock (its `.gitignore` lists
+`build_config.rb.lock`), and mruby clones a `github:` gem at the head of its
+`master` branch when no lock pins it. A merge into a gem's `master` branch
+therefore reaches every later build of `master`, CI included, and every
+source build of a released 2.x tag, without a PR here. The 2.x policy and
+the release notes rule above apply to such a merge as to a PR here.
+
+- Each change is a PR on the gem's repository, from a branch of that
+  repository to its default branch. An agent that did not write it reviews
+  it with the checklist of "Review and merge", as far as it applies, and
+  posts the findings on that PR.
+- Before the merge, the author runs ngx_mruby's suite (`sh test.sh`) on a
+  checkout of `master` and on one of `next`, each with the gem at the head
+  commit of the gem's PR, and quotes both results on the gem's PR, with the
+  command, the nginx version and the commits of ngx_mruby and of the gem. To
+  build a gem at a commit, add `checksum_hash: '<commit>'` to each
+  `conf.gem github: 'matsumotory/<gem>'` line of `build_config.rb` (a local
+  edit, not committed) and remove `mruby/build` first. The gem's own tests
+  run as well where it has them. Most of these gems have no CI of their own,
+  and mruby-userdata has no tests, so ngx_mruby's suite is the evidence that
+  counts.
+- The change keeps the behavior that a configuration, script or build of
+  2.x observes, unless it fixes a defect. For a fix that changes such
+  behavior, a PR to `master` adds the entry under "Behavior changes: read
+  before upgrading" (see `docs/releases/README.md`), naming the gem's PR,
+  and is merged before the gem's PR. A change of such behavior that is not
+  a defect fix (a new method, a cleanup) is not merged: the session asks the
+  owner. Other fixes and build changes that the release notes list get their
+  entry through a PR to `master` as well, so that "Before the tag" in
+  `docs/releases/README.md` finds them.
+- The session that owns the gem's PR (the one that opened it, or one that
+  took it over in a comment on it) merges it, with a merge commit, when all
+  of these hold: the review is recorded on the gem's PR and no "must fix"
+  item is open; both suite results are for the PR's current head commit,
+  which is up to date with the gem's default branch, and pass; the `master`
+  PR with the release notes entry is merged when one is needed; nothing in
+  the gem's PR discloses an unpublished vulnerability or a secret; and the
+  PR has no conflicts. If any of these cannot be met, the session asks the
+  owner instead of merging.
+- Afterwards, a PR to `next` moves the gem's pin in `build_config.rb.lock`
+  to the merge commit on the gem's default branch. The `perf` job measures
+  it like any change of the lock.
+- Do not rewrite a patch from private material into a gem. Derive the fix
+  from the symptom (the failing build, test or output).
+
+## Session handoff
+
+The owner decided on 2026-10-04 that the information about the work that
+may be public is kept in the repository, so that another session can
+continue it.
+
+How sessions do it (their procedure, not a decision of the owner):
+
+- `docs/HANDOFF.md` on `next` records the state of the work: the heads of
+  the branches, the open PRs and their stage, the owner's decisions with
+  their dates and the place where each will be written, the work in
+  progress, and the queue. The heads and stages are a snapshot as of the
+  date in its heading; check them with `git` and `gh` before you act on
+  them.
+- A PR with base `next` updates the file in the same PR when it changes
+  what the file records (for example, when it finishes an item of the
+  queue). Merges, releases and changes on `master` are recorded by a later
+  PR to `next`; a PR does not record its own merge.
+- It records state. The rules live in this file and in the plan
+  (`docs/proposals/v3-plan.md` on `next`). A decision of the owner that is
+  not written there yet is recorded in `docs/HANDOFF.md` with its date, and
+  it holds over an older text here until a PR writes it here.
+- It never holds unpublished vulnerabilities, advisory ids, names of private
+  branches, or files from outside the repository.
+- There is no copy on `master`. From a checkout of `master`, read it with
+  `git fetch origin next` and `git show origin/next:docs/HANDOFF.md`.
 
 ## Build and test
 
