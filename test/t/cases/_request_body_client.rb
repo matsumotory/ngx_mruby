@@ -3,6 +3,7 @@
 # like test/t/cases/_tcp_client.rb.
 #
 # Usage: ruby test/t/cases/_request_body_client.rb MODE PORT HOST PATH [COUNT]
+#        ruby test/t/cases/_request_body_client.rb close_wait PORT
 #
 # parts: sends a POST to 127.0.0.1:PORT whose 20-byte body is written in two
 #   halves, WAIT seconds apart, so that the handler starts before the body is
@@ -16,6 +17,9 @@
 #   "before=N after=M". A socket in CLOSE_WAIT is the server side of a
 #   connection whose client has closed it while nginx still keeps it open.
 #   Without /proc/net/tcp (not Linux) it prints "unsupported".
+# close_wait: reads /proc/net/tcp until no socket with the local port PORT is
+#   in CLOSE_WAIT, or LIMIT seconds pass, and prints "close_wait=N" with the
+#   last count. Without /proc/net/tcp it prints "unsupported".
 #
 # LIMIT only bounds a run that already fails. It is long enough for nginx
 # under valgrind.
@@ -43,6 +47,18 @@ host = ARGV[2]
 path = ARGV[3]
 
 case mode
+when 'close_wait'
+  unless File.readable?('/proc/net/tcp')
+    print 'unsupported'
+    exit
+  end
+  deadline = now + LIMIT
+  count = close_wait_count(port)
+  while count > 0 && now < deadline
+    sleep 0.1
+    count = close_wait_count(port)
+  end
+  print "close_wait=#{count}"
 when 'parts'
   body = '0123456789abcdefghij'
   head = "POST #{path} HTTP/1.0\r\nHost: #{host}\r\nContent-Length: #{body.bytesize}\r\n\r\n"

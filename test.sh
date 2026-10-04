@@ -49,7 +49,10 @@ NGINX_LD_OPT="$NGINX_LD_OPT $NGINX_EXTRA_LD_OPT"
 escape_spaces() {
     printf '%s\n' "$1" | sed -e 's/^  *//' -e 's/  *$//' -e 's/  */\\ /g'
 }
-NGINX_DEFAULT_OPT="--with-debug --with-http_stub_status_module --with-http_ssl_module --with-cc-opt=`escape_spaces "$NGINX_CC_OPT"`"
+# The tests use these modules of nginx besides the default ones:
+# http_auth_request lets a test run a phase handler of nginx that waits for a
+# subrequest after an mruby handler (test/t/cases/request_body_later.rb).
+NGINX_DEFAULT_OPT="--with-debug --with-http_stub_status_module --with-http_ssl_module --with-http_auth_request_module --with-cc-opt=`escape_spaces "$NGINX_CC_OPT"`"
 if [ -n "`escape_spaces "$NGINX_LD_OPT"`" ]; then
     NGINX_DEFAULT_OPT="$NGINX_DEFAULT_OPT --with-ld-opt=`escape_spaces "$NGINX_LD_OPT"`"
 fi

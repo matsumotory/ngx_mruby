@@ -74,6 +74,17 @@ the cases print that log when the line is set.
 sh test.sh
 ```
 
+`test.sh` configures nginx with `--with-debug`, `--with-http_stub_status_module`,
+`--with-http_ssl_module`, `--with-http_auth_request_module` and `--with-stream`
+(see `NGINX_DEFAULT_OPT` and `NGINX_CONFIG_OPT` in `test.sh`), so the test
+configuration can use the directives of these modules. CI runs the same
+`test.sh` on a fresh checkout. A local build directory keeps the options that
+nginx was first configured with: the Makefile configures nginx again only when
+`build/nginx-X.Y.Z/objs/Makefile` does not exist (`build_dynamic/...` for
+`BUILD_DYNAMIC_MODULE`). After these options change, remove that file and run
+`test.sh` once without `ONLY_BUILD_NGX_MRUBY`; otherwise nginx stops at the
+test configuration with an "unknown directive" error.
+
 If you want to run with valgrind, set the environment variables `NGINX_RUNNER` and `NGINX_HEATTIME`.
 
 ```console
