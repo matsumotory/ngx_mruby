@@ -2,11 +2,23 @@
 
 Status: in effect. The owner accepted the eleven recommendations in section 7
 on 2026-10-03, in the review of this proposal, and set the priority recorded
-in section 6 at the same time. Written 2026-10-03
-from a read of the code at `master` (78e2f89, four commits after v2.7.0) and
-a survey of primary sources dated up to 2026-10-03. Facts cite a file and line or a URL
-with its date. Statements marked "unverified" come from reading code only and
-still need a build and a test.
+in section 6 at the same time. On 2026-10-04 the owner made the agent proxy
+the scheduled use case of v3.0 and set its protocol scope (section 7, items
+12 and 13). Written 2026-10-03 from a read of the code at `master` (78e2f89,
+four commits after v2.7.0) and a survey of primary sources dated up to
+2026-10-03. Amended 2026-10-04 for the agent proxy, from measurements on
+`next` and primary sources fetched that day, in these places: the
+introduction of section 4 and its last subsection, "Agent proxy: the v3.0
+use case"; the Pillar F and Pillar G rows; the heading, the priority
+paragraph and steps 2, 4, 7 and 8 of section 6; the heading and
+introduction of section 7, its items 12 and 13 and the open question after
+them; and the related lines of sections 1, 3.5, 8 and 9. The agent proxy
+rows of step 4, the parallel start of step 7 and the order inside it, the
+release conditions that steps 7 and 8 add for `v3.0.0-rc.1` and v3.0.0,
+and the targets in section 8 are proposals of that amendment, not
+decisions. Facts cite a file and line or a URL with its date. Statements
+marked "unverified" come from reading code only and still need a build and
+a test.
 
 Security-relevant details found during the code read are deliberately not in
 this document. They are tracked in the repository's private security advisory
@@ -27,6 +39,11 @@ dependencies date from 2014 to 2019. The owner decided on 2026-10-03:
 - **v2** (branch `master`, mirrored to `v2.x` until v3 is promoted) keeps
   compatibility for existing users and receives only security fixes, nginx
   version tracking and build fixes.
+
+On 2026-10-04 the owner added the use case that v3.0 is built and measured
+against: an agent proxy, a proxy for LLM agents written in Ruby on ngx_mruby
+with good performance (section 4, "Agent proxy: the v3.0 use case"; section
+7, items 12 and 13).
 
 This document records the facts the plan rests on, the candidate changes for
 v3 grouped by pillar, the v2 policy, the order of work, and the decisions
@@ -255,7 +272,10 @@ All claims below were checked against the cited page on 2026-10-03.
   position for ngx_mruby v3 is therefore the small decisions that nginx
   configuration cannot express: authentication, routing, rate limiting,
   observability attributes, and certificate selection from external stores.
-  Not an application platform.
+  Not an application platform. The agent proxy that the owner made the v3.0
+  use case on 2026-10-04 (section 4) is a complex proxy built from these
+  decisions, for the traffic of LLM agents: Ruby decides per request and per
+  listed stream event, and nginx's proxy module moves the bytes.
 
 ### 3.6 Documentation, examples, video
 
@@ -301,6 +321,9 @@ All claims below were checked against the cited page on 2026-10-03.
 Compatibility impact uses four values: **none** (internal), **additive**
 (new API or directive, old ones unchanged), **behavior** (same API, different
 result; needs a migration note), **breaking** (removal or new requirement).
+
+The rows that the agent proxy adds to Pillars B, C and F are listed with the
+use case in "Agent proxy: the v3.0 use case" at the end of this section.
 
 ### Pillar A: runtime and dependencies
 
@@ -364,7 +387,7 @@ result; needs a migration note), **breaking** (removal or new requirement).
 
 | Candidate | Impact | Evidence |
 |---|---|---|
-| Site built with Starlight (version pinned), structured by Diátaxis: Getting Started (runs in Docker in minutes), how-to for the five standard uses (auth, routing, rate limit, observability with `ngx_otel_module`, certificate lookup), reference, explanation (lifetimes, phases, what nginx can do without Ruby). English primary, Japanese under `src/content/docs/ja/`. GitHub Pages. | none | 3.6 |
+| Site built with Starlight (version pinned), structured by Diátaxis: Getting Started (runs in Docker in minutes), how-to for the five standard uses (auth, routing, rate limit, observability with `ngx_otel_module`, certificate lookup) and for the agent proxy (below), reference, explanation (lifetimes, phases, what nginx can do without Ruby). English primary, Japanese under `src/content/docs/ja/`. GitHub Pages. | none | 3.6 |
 | Generated reference: directives extracted from `ngx_command_t` tables and checked against prose in CI; Ruby API from YARD + yard-mruby; C API from Doxygen. | none | 3.6, 2.4 |
 | `examples/<use>/` with `compose.yaml` and README with expected output, each started in CI. Drop the external `hsbt/nginx-tech-talk` reference and the fixtures that reference removed directives or unreachable hosts. | none | 3.6, 2.4 |
 | Introduction video with Remotion (license depends on who produces it) or HyperFrames; form (length, sound, aspect) decided with the owner before production. | none | 3.6 |
@@ -375,9 +398,170 @@ result; needs a migration note), **breaking** (removal or new requirement).
 | Candidate | Impact | Evidence |
 |---|---|---|
 | Adopt `AGENTS.md`, `CLAUDE.md`, `SECURITY.md` and the PR template from PR #531; CI on pull requests with `ci-ok` from #530; mirror from #532. | none | existing PRs |
-| semver, pre-release tags, migration guide listing every "behavior" and "breaking" row above, deprecation warnings one release before removal. | none | 3.1 (njs precedent) |
+| semver, pre-release tags, migration guide listing every "behavior" and "breaking" row of this section, those of "Agent proxy: the v3.0 use case" below included, deprecation warnings one release before removal. | none | 3.1 (njs precedent) |
 | Supply chain: SHA-pinned actions, Dependabot, Renovate or a scheduled job for `build_config.rb` gems, `zizmor`, OpenSSF Scorecard recorded, Best Practices badge target. | none | 3.7 |
 | Trust boundary stated in docs: ngx_mruby executes code written by the operator; multi-tenant code injection is out of scope (the ingress-nginx snippet lesson). | none | 3.2 |
+
+### Agent proxy: the v3.0 use case
+
+The owner decided on 2026-10-04 (section 7, item 12) that v3.0 is built and
+measured against an agent proxy: a complex proxy for LLM agents such as
+Claude Code and Codex, written in Ruby on ngx_mruby with good performance.
+It authenticates the client, checks the client's model
+allowlist and its token and money budgets, chooses the upstream and the
+provider credential before the first response byte, relays a long streamed
+response as it arrives, reads the token usage from the stream, and charges
+the usage to counters that all workers share when the response ends or is
+cut. Ruby makes these decisions with a number of calls per request that does
+not depend on the length of the stream; nginx's proxy module moves the
+bytes. Good performance is stated in instructions per request against the
+measured baselines below, under the relative gate of the perf lane (Pillar
+E), with throughput, latency and memory per open stream recorded beside them
+(section 8).
+
+**Protocol scope** (section 7, item 13): pass-through of the Anthropic
+Messages API and the OpenAI Responses API, including their streamed
+responses (server-sent events, SSE). The proxy reads requests (headers and
+fields of the JSON body) and the events of a stream that its configuration
+lists, one complete SSE event at a time. It changes only what belongs to the
+gateway: it replaces the client's credential with the provider's, sets
+`Host` and the TLS server name (SNI) for the upstream it chooses, and
+answers some requests itself, with its own error responses (401, 403, 429,
+504) and with the model list of `GET /v1/models`, the model discovery of
+Claude Code's gateway guide, which the reference proxy serves from the
+client's model allowlist. It forwards the `anthropic-*` request headers, the
+request body fields and every event of a stream in order unchanged. An
+upstream error that the proxy passes to the client keeps its body
+unchanged; on an upstream 529, the proxy may instead send the request to
+the fallback location of another provider (`error_page 529 = @name`,
+section 8). It does not reimplement either API and does not translate
+between them. Other wire formats (Gemini, OpenAI Chat Completions) and
+upstreams that need translation or request signing (Amazon Bedrock
+InvokeModel, Google Cloud rawPredict, AWS SigV4) are not part of the scope.
+Neither is the WebSocket transport of the Responses API: nginx relays an
+upgraded connection outside the body filters
+(`ngx_http_upstream_process_upgraded`, `src/http/ngx_http_upstream.c:3705`
+in nginx 1.31.6), so the reference proxy refuses `Upgrade`.
+
+Facts the rows below rest on, checked against the cited page on 2026-10-04
+(URLs in section 9):
+
+- Claude Code sends Anthropic Messages requests to a gateway named by
+  `ANTHROPIC_BASE_URL`, with the gateway credential in `Authorization`,
+  `x-api-key` or both. Its gateway guide ("Claude Code gateway compatibility
+  guide", the `llm-gateway-protocol` page) asks a gateway to pass the
+  `anthropic-*` request headers and the request body fields through
+  unchanged, to inspect bodies without modifying them, to deliver each
+  response's full event sequence without dropping, duplicating or
+  reordering events, and to forward error response bodies unmodified. With
+  model discovery turned on (it is off by default), Claude Code asks the
+  gateway for its models with `GET /v1/models?limit=1000`, with a timeout of
+  3 seconds by default that `CLAUDE_CODE_GATEWAY_MODEL_DISCOVERY_TIMEOUT_MS`
+  changes, and treats a redirect as a failure ("Model discovery"). Through a
+  gateway, Claude Code aborts a stream after 300 seconds without a byte and
+  runs no first-byte deadline ("Network configuration"); it waits for the
+  response headers up to `API_TIMEOUT_MS`, 600,000 ms by default ("Errors").
+- A Messages API request can be up to 32 MB (API "Errors", request size
+  limits). In a stream, `message_start` carries the first usage values and
+  `message_delta` the cumulative ones, so the output tokens are known at the
+  end ("Streaming messages").
+- Codex speaks only the Responses API: it rejects `wire_api = "chat"`, and a
+  custom provider uses the WebSocket transport only when
+  `supports_websockets` is set, which defaults to false
+  (`codex-rs/model-provider-info/src/lib.rs`). A Responses stream ends with
+  `response.completed`, `response.incomplete` or `response.failed`, each of
+  which carries the whole `Response` object (`openapi.yaml` of
+  `openai/openai-openapi`).
+- nginx arms `proxy_read_timeout` both for the wait for the response header
+  (`ngx_http_upstream_send_request`, `src/http/ngx_http_upstream.c:2269` in
+  nginx 1.31.6) and between two reads of an unbuffered body
+  (`ngx_http_upstream_process_non_buffered_request`, :4072), so a first-byte
+  deadline shorter than the idle timeout of a stream needs a module.
+  `limit_req` counts requests and `limit_conn` connections; neither counts
+  tokens.
+
+**What is on `next`.** The harness for the use case came with #554.
+`test/soak/mock_llm.rb` is a mock upstream that answers like the Messages
+API: streams of a given length, a hold or a reset after a given event, an
+error status before the first event (`docs/test/README.md`, "Mock LLM
+upstream"). The soak lane (#542, #557) runs three scenarios in front of it in
+the required `soak` job: `agent_stream`, `agent_client_abort` and
+`agent_upstream_reset`, which passed their checks in three runs on aarch64 and
+two on the CI runner on 2026-10-04 (`docs/test/README.md`, "Thresholds and
+calibration" of the soak test). The perf lane (#549, #555) measures the
+scenarios of the table below; the advisory `perf` job runs those of its
+default set. `test/t/cases/agent_proxy.rb` checks the recipes that work with
+today's build: a server rewrite handler that rejects an unknown key with a
+JSON 401 before the upstream is contacted, an access handler that routes by
+the `model` of the JSON body and replaces the client's credential,
+`limit_conn` per client key with a JSON 429, an upstream 529 passed to the
+client unchanged, and a log handler that reads `$upstream_status`.
+
+**Measured baselines.** One run of `test/perf/perf.rb` on 2026-10-04
+(`docs/test/README.md`, "Agent proxy scenarios in the comparison"): release
+builds of `next` at f62880c with the harness of #554, nginx 1.31.6, Ubuntu
+22.04 (gcc 11, valgrind 3.18.1) in a container on aarch64, `PERF_N=20000`.
+Values are callgrind instructions (Ir) per request, in total and without the
+GC. H is the `hello` scenario of the same run (`Nginx.rputs "hello"`), 11,856
+Ir per request in total (11,158 without the GC); the H column divides the
+total by 11,856.
+
+| What is measured | Scenario or difference | Ir per request (without GC) | H |
+|---|---|---|---|
+| Proxying a 2 KB POST, no Ruby | `proxy_plain_2k` | 21,952 (21,952) | 1.85 |
+| Proxying a 64 KB POST, no Ruby | `proxy_plain_64k` | 22,264 (22,264) | 1.88 |
+| Relaying a stream of 55 events, no Ruby | `proxy_stream_plain_50` | 54,294 (54,294) | 4.58 |
+| Relaying a stream of 1,005 events, no Ruby | `proxy_stream_plain_1000` | 432,228 (432,228) | 36.5 |
+| One more relayed event, no Ruby | (`proxy_stream_plain_1000` - `proxy_stream_plain_50`) / 950 | 398 (398) per event | 0.034 |
+| An authentication check: one server rewrite handler with two Hash lookups and three variable assignments | `auth` - `proxy_plain_2k` | 27,180 (25,025) | 2.3 |
+| Routing by `model`: `JSON.parse` of a 2 KB body in an access handler, and `proxy_pass` with a variable | `route_json_2k` - `proxy_plain_2k` | 87,444 (84,294) | 7.4 |
+| The same with a 64 KB body | `route_json_64k` - `proxy_plain_64k` | 1,581,578 (1,577,952) | 133 |
+| One more Ruby call (`mruby_set_code`) | (`ruby_call_10` - `ruby_call_1`) / 9 | 3,349 (2,722) | 0.28 |
+
+What the measurements show:
+
+- One Ruby call costs about 8 times what nginx spends to relay one more event
+  (3,349 against 398 Ir). A Ruby call for every event would make the cost of
+  a stream grow with its length, so the event filter below calls Ruby only
+  for the events it lists.
+- `JSON.parse` of the whole body costs about 24,100 Ir per KB without the GC
+  (the 64 KB row minus the 2 KB row, over the 62 KB between them), while a
+  Messages request can be 32 MB. Routing needs one field, so the JSON body
+  read below returns one value, read in C.
+- The authentication check in Ruby (2.3 H) costs more than proxying the 2 KB
+  request without Ruby (1.85 H). It is the baseline for the Pillar B changes
+  to the Ruby call and `Nginx::Var` paths, and for the dictionary operations
+  that the check gains.
+- The stream rows depend on how many relay calls nginx makes per request
+  (4.97 and 38.43 in this run), which depends on when the bytes arrive. Null
+  changes moved the agent proxy scenarios by at most 0.042% on aarch64 and
+  by at most 0.39% between the base and the head of one run on the CI runner
+  (x86_64), below the 3% of `WARN`.
+
+The features, in the order of section 6 (step 4 is Pillar B, step 7 the
+agent proxy):
+
+| Feature | What it adds for the proxy | Pillar | Impact | Step |
+|---|---|---|---|---|
+| Log handlers before `access_log`: ngx_mruby's log-phase handlers run before nginx's log module (today they are appended after it, `src/http/ngx_http_mruby_module.c:700-706`), and an exception in a log handler does not change the status that `access_log` and later log-phase handlers see. | The cost, the tokens and the estimate for a cut stream that the log handler computes reach the access log line of the same request. | B | behavior (`access_log` and later log-phase handlers see what the mruby log handlers set) | 4 |
+| Variable declaration (optional): `mruby_variable $name [value];` declares a variable that Ruby may assign, without a `set` that runs. | A server rewrite handler sets the variables of `proxy_set_header` and `access_log` without a declaration-only `location`: a server-level `set` runs after the handler in the same phase and would overwrite its values. | B (with the `Nginx::Var` row) | additive | 4 |
+| Shared dictionary (the Pillar C row): `mruby_shared_dict NAME SIZE;` and `Nginx::SharedDict[name]` with `get`, `set` with a TTL, an atomic `incr` with a TTL and an option not to create a missing key, `delete`, `keys(prefix)`, and an entry count for the soak test. | Token and money counters per key and period, a cooldown per provider credential after a 429, and counters per key and model for a metrics endpoint, shared by the workers of one host. A zone with the same name and size survives a reload. | C | additive | 7a |
+| JSON body read: `Nginx::Request#body_json(path)` returns one value of the JSON request body, read in C from memory or from nginx's temporary file, without a Ruby String of the whole body. If the top-level key that the path starts with appears more than once, `body_json` raises an error instead of choosing one of the values, and the handler rejects the request with 400: receivers disagree on repeated names, and many keep only the last pair (RFC 8259, section 4), so a read that kept the first `model` could approve one model while the upstream serves another. To find a repeat, the read goes on to the end of the top-level object. | Routing by `model` at a cost that does not grow like `JSON.parse` (above), up to the 32 MB of the Messages API, which is above the 10 MiB limit of a Ruby String in the default build (`MRB_STR_LENGTH_MAX`, `build_config.rb:49`). | C | additive | 7b |
+| SSE event filter: `mruby_output_event_filter` (file and `_code`) with a list of event names, C-side measures of named JSON fields and a size limit per event; `Nginx::Filter::Event` with `#name`, `#data` and `#json(path)`. ngx_mruby frames the stream in C by the HTML Standard's event stream rules and runs Ruby once per complete listed event, which Ruby reads. The filter only reads (section 7, item 13): every byte of the stream, the listed events included, goes on to the client unchanged as it arrives. A listed event larger than the size limit (proposed default 1 MiB) is not given to Ruby; a variable names it for the access log, and its bytes go on unchanged. The terminal `response.*` events of the Responses API carry the whole `Response` object, so a Responses proxy sets the limit above the responses it expects. | Usage from `message_start` and `message_delta` (Messages) and from the terminal `response.*` events (Responses) with a fixed number of Ruby calls per request; counts of events and of the characters of text deltas, to estimate the output of a cut stream; variables for `access_log` without Ruby: the event count, the last event name, and the time to the first event from the start of the upstream attempt that served it. Today `mruby_output_body_filter` reads only a response of known length, as one buffer, and passes a stream on unread (`src/http/ngx_http_mruby_module.c:1826-1838`). | C, on the filter typing and merge of Pillar B | additive | 7b |
+| Upstream peer hook: ngx_mruby wraps the peer `init`, `get` and `free` functions of the named `upstream {}` blocks, outside the keepalive module, only when a directive of the `http {}` block uses the hook (the first-byte deadline, later the balancer API), as the Pillar B row registers phase handlers only where a directive exists. For a location without such a directive, the wrapper calls nginx's functions and does nothing else. | The place, per request and per attempt, where the first-byte deadline and the balancer API attach. | C | none | 7c |
+| First-byte deadline: `mruby_upstream_first_byte_timeout TIME;` per location, on the peer hook. `proxy_read_timeout` stays the idle timeout between reads, and `keepalive ... local` keeps matching connections to their location. | A provider that accepts a request and sends no response header is given up after the deadline (nginx's usual upstream timeout: 504, or the next server when `proxy_next_upstream timeout` is set), while `proxy_read_timeout` stays above the 300 seconds without a byte that Claude Code allows a stream. | C | additive | 7c |
+| Non-blocking socket API and Redis on it (the Pillar C rows). | Budgets shared by several proxy hosts in an external store. A log handler cannot wait (`Nginx::Async` raises there since #551), so the charges are queued per worker and sent by a worker timer. | C | additive | 7d |
+| Worker timers: a repeating timer per worker, stopped when the worker exits. | Sends the queued charges, and refreshes the local copy of the shared budgets and the key and price tables without a reload. | C | additive | 7d |
+| Reference agent proxy: `examples/agent-proxy/` with `compose.yaml` and a README with the expected output, started in CI; `GET /v1/models` answered by a content handler from the client's model allowlist; a how-to page with trace export through `ngx_otel_module` by configuration; the client settings for Claude Code (`ANTHROPIC_BASE_URL`) and Codex (a custom provider). | The demonstration of the use case, and the configuration that the end-to-end perf and soak scenarios measure. | F | none | 7e |
+| Ruby balancer API: `mruby_upstream_balancer` in `upstream {}`, on the peer hook, chooses the peer and rebuilds the request headers for each attempt. | Another credential of the same provider on a retry inside one location. A fallback to another provider on 529 does not need it: 529 is not a `proxy_next_upstream` status, and `error_page 529 = @name` sends the request to a named location with its own credential, Host and SNI. | C | additive | after v3.0.0, unless the fallback through a named location fails its test (section 8) |
+| `sub_request` with a method, a body and headers, and several at once. | Calls from a handler to a key service or a ledger over HTTP. | C | additive | after v3.0.0 |
+
+The proxy also needs four existing Pillar B rows: the execution-context type
+(a per-request store across phases, and variable assignment from a filter),
+a Ruby-built body with any status (the JSON error bodies of 401, 403 and
+429), the exact-match `Headers#delete`, and the typing and merge of filter
+handler pointers (event filter settings at server level reach the named
+location of a fallback).
 
 ## 5. v2 policy
 
@@ -397,15 +581,16 @@ result; needs a migration note), **breaking** (removal or new requirement).
   item 11.
 - Next release: 2.7.1 (security fix, nginx 1.31.6/1.30.5, redis decision).
 
-## 6. Order of work (decided 2026-10-03)
+## 6. Order of work (decided 2026-10-03; the priority paragraph and steps 2, 4, 7 and 8 amended 2026-10-04)
 
 Priority: stability, performance and current dependencies come before new
 capabilities. The evidence in 2.5 shows that users are blocked by builds
 breaking on new nginx and OS releases, by builds that are not reproducible,
 and by behaviour under long-running load, not by missing features. New
-capabilities (Pillar C) are taken up only where users ask for them; the
+capabilities (Pillar C) are taken up where users ask for them and where the
+agent proxy, the v3.0 use case (section 7, item 12), needs them; the
 Redis connection pool (#428, #505) is the one item with a demonstrated
-demand.
+demand from users.
 
 1. **Finish the infrastructure PRs** (#529 to #532) and the 2.7.1 security
    release through the private fork.
@@ -413,24 +598,56 @@ demand.
    gate, valgrind exit code, GC root test hooks, tests for untested
    directives and methods, pinned gems, nginx-tests recorded. Nothing in the
    core is refactored before this exists; otherwise v3 cannot show it keeps
-   v2 behaviour.
+   v2 behaviour. The harness of the agent proxy (#554: the mock LLM
+   upstream, the `agent_*` soak scenarios, the agent proxy scenarios of the
+   perf lane, `test/t/cases/agent_proxy.rb`) is part of it.
 3. **Runtime** (Pillar A): mruby 4.1, NDK, OpenSSL 3.5/4.0, nginx floor,
    `build_config.rb` rewrite, build each bundled gem on mruby 4.
 4. **Core stability** (Pillar B): execution context, finalization, fiber
-   lifecycle, common layer, headers and variables. Tag `v3.0.0-alpha.1`
-   when the v2 suite passes under the new core with sanitizers clean.
+   lifecycle, common layer, headers and variables. Proposed in the
+   2026-10-04 amendment, not part of the 2026-10-03 decision: the two
+   Pillar B rows of the agent proxy, log handlers before `access_log`
+   (impact behavior) and the variable declaration (additive), so that this
+   behavior change comes in alpha.1 with the other behavior changes of
+   Pillar B. Tag `v3.0.0-alpha.1` when the v2 suite passes under the new
+   core with sanitizers clean.
 5. **Distribution** (Pillar D): `.so` per nginx version, images, releases
    with attestations.
 6. **Docs, site, examples, video** (Pillar F) in parallel from step 4.
    Tag `v3.0.0-beta.1` when the migration guide and examples exist.
-7. **Capabilities on demand** (Pillar C): Redis pool first; socket API,
-   shared dict, SSL repositioning and stream phases only when asked.
-   `v3.0.0-rc.1` when the site and examples are complete.
+7. **Agent proxy** (section 4, "Agent proxy: the v3.0 use case"), after the
+   safety net (step 2) and the runtime (step 3). By the priority above, it
+   does not delay steps 4, 5 and 6. Proposed in the 2026-10-04 amendment,
+   not a decision: parts (a) and (c) can start before step 4 ends and run
+   beside it, and so that this does not delay steps 4, 5 and 6, they do not
+   hold back step 4 or `v3.0.0-alpha.1`. Its parts and what each waits for
+   (a proposal of the 2026-10-04 amendment, from the dependencies in
+   section 4, not a decision):
+   (a) the shared dictionary, after step 3;
+   (b) the SSE event filter and the JSON body read, after step 4;
+   (c) the upstream peer hook and the first-byte deadline, after step 3;
+   (d) the non-blocking socket API with worker timers, Redis on it (the
+   Redis pool of #428 and #505, first among the Pillar C rows in the order
+   of 2026-10-03), and budgets shared across hosts, after the fiber
+   lifecycle of step 4;
+   (e) the reference proxy and its how-to, on the parts that exist.
+   Proposed in the same amendment, not decisions: `v3.0.0-rc.1` waits for
+   (a), (b), (c) and the reference proxy built on them, and (d) does not
+   hold back rc.1 or v3.0.0. The design of the socket API is still to be
+   evaluated (the Pillar C row), and until (d) lands the reference proxy
+   keeps its budgets in the shared dictionary of one host.
+   Each feature lands with its perf and soak scenarios (section 8).
+8. **Capabilities on demand** (Pillar C, the rows that step 7 does not
+   schedule): SSL repositioning, read-only TLS facts and stream phases only
+   when asked. `v3.0.0-rc.1` when the site and the examples are complete.
+   Proposed in the 2026-10-04 amendment, not a decision: the reference
+   agent proxy is among those examples (on parts (a) to (c) of step 7).
 
-## 7. Decisions (made by the owner on 2026-10-03)
+## 7. Decisions (made by the owner on 2026-10-03 and 2026-10-04)
 
-The owner accepted every recommendation below on 2026-10-03. The list is
-kept as the record of what was decided and why.
+The owner accepted recommendations 1 to 11 below on 2026-10-03 and decided
+items 12 and 13 on 2026-10-04. The list is kept as the record of what was
+decided and why.
 
 1. mruby target for v3: **4.1.0** (rc2 or a post-#7032 commit until
    released), not 4.0.0, because 4.1 fixes GC registration counting that the
@@ -452,6 +669,40 @@ kept as the record of what was decided and why.
 10. Video tooling: **Remotion** if produced as an individual OSS activity;
     confirm whether a Company License applies before production.
 11. v2 support period: **twelve months after v3.0.0**.
+12. Use case of v3.0: **the agent proxy is scheduled work**, and this public
+    plan says so (section 4, "Agent proxy: the v3.0 use case"; section 6,
+    step 7): a complex proxy for LLM agents, written in Ruby on ngx_mruby
+    with good performance. Its features are no longer capabilities "only
+    when asked". The owner named it the new killer use case of ngx_mruby.
+    It is made of the decisions that 3.5 gives ngx_mruby (authentication,
+    routing, rate limits, observability), taken per request in front of
+    long streamed responses, and the perf and soak lanes on `next` already
+    measure its baselines (#554).
+13. Protocol scope of the agent proxy: **pass-through of the Anthropic
+    Messages API and the OpenAI Responses API**, including their streamed
+    (SSE) responses. The proxy reads requests and the events of a stream
+    that it lists. It changes only what belongs to the gateway: the
+    credential, `Host` and SNI of the upstream it chooses, and its own
+    responses (errors and `GET /v1/models`). It forwards the `anthropic-*`
+    request headers, the request body fields and every event unchanged. An
+    upstream error that it passes to the client keeps its body unchanged;
+    on a 529, it may instead send the request to the fallback location of
+    another provider (section 8). It does not reimplement the APIs. These are
+    the APIs that Claude Code sends to a gateway and that Codex speaks
+    (section 4), and Claude Code's gateway guide asks a gateway to pass the
+    headers, body fields, events and error bodies through unchanged.
+    Pass-through keeps ngx_mruby's part to decisions on requests and events,
+    and leaves the semantics of the APIs to their providers.
+
+One question that the 2026-10-04 amendment raises is open. It is not part of
+item 13 or of any decision above. Should a later release add a mode in which
+Ruby rewrites or drops events of a stream, or changes the request body?
+Recommendation: not in v3.0, whose event filter only reads (section 4). Take
+it up after v3.0.0 only for a use case that Claude Code's gateway guide does
+not cover, since the guide asks for every event and every body field
+unchanged, and only after the perf and soak scenarios of the event filter
+have measured its cost per Ruby call: one Ruby call costs about 8 times what
+nginx spends to relay one more event (section 4).
 
 ## 8. Verification before implementation
 
@@ -466,6 +717,80 @@ kept as the record of what was decided and why.
 - Measure worker RSS and config-load time on mruby 3.3.0 versus 4.1.
 - Run the v2 suite under ASan and UBSan before and after each Pillar B
   change, and record the result in the PR.
+- Agent proxy (section 4, "Agent proxy: the v3.0 use case"). What shows that
+  the use case works and performs:
+  - Each feature of step 7 lands with scenarios of its own in the perf lane
+    and the soak lane, beside the agent proxy scenarios that exist (`proxy_*`,
+    `auth`, `route_json_*`, `ruby_call_*` in the perf lane; `agent_stream`,
+    `agent_client_abort`, `agent_upstream_reset` in the soak lane).
+  - The number of Ruby calls per request does not depend on the length of
+    the stream: the perf lane counts the entry function of the event filter,
+    and the count per request is the same at 50 and at 1,000 events.
+  - The upstream peer hook adds nothing to a location that does not use it:
+    in the PR that adds the hook, `proxy_plain_*` and `proxy_stream_plain_*`
+    are measured with the hook installed by another location of the same
+    configuration and show no `WARN` against the base.
+  - Ir targets, proposed from the baselines of section 4 and checked when
+    each scenario is added:
+    - The JSON body read: a target per KB, set from a prototype measurement
+      and compared with the about 24,100 Ir per KB of `JSON.parse` (section
+      4), in two sets of scenarios at 2 KB, 64 KB, 512 KB and 4 MB: one with
+      `model` as the first key of the body, as in the bodies that
+      `MockLLM.request_body` builds (`test/soak/mock_llm.rb`), and one with
+      `model` after `messages`. The read goes on to the end of the top-level
+      object to find a repeated key (section 4), so its cost grows with the
+      body wherever `model` is. A read that stopped at the first `model`
+      could meet 0.5 H at 4 MB, about 0.0014 Ir per byte, but it would miss
+      a repeated key, so the target does not assume an early stop.
+    - The C-side scan of the event filter: a target per byte of the stream,
+      stated with the scanning method it assumes and set from a prototype
+      measurement. A share of nginx's relay cost per event does not work as
+      the target: 10% of the 398 Ir of section 4 is about 40 Ir per event,
+      about 0.33 Ir per byte of the mock's default `content_block_delta`
+      event (121 bytes), which would also have to cover the C-side measures
+      and the count of text-delta characters, and the 398 Ir depend on when
+      the bytes arrive (section 4).
+    - The Ruby share of the event filter: at most 1 H with two listed
+      events, at both stream lengths.
+    - One dictionary operation: at most 0.1 H.
+
+    The reference proxy end to end (2 KB body, 50-event stream) is recorded,
+    and its target is set from the sum of its parts once they are measured.
+    After that, the relative gate of the lane (`WARN` from 3%, `FAIL` from
+    5% between base and head) guards them.
+  - The Responses API: the mock answers only `POST /v1/messages` today
+    (`test/soak/mock_llm.rb`). It gets a Responses mode: `POST /v1/responses`
+    answered with a stream that ends with `response.completed`,
+    `response.incomplete` or `response.failed`, chosen per request. The perf
+    lane, the soak lane and the functional tests get Responses scenarios
+    beside the Messages ones: a stream relayed without Ruby, a stream through
+    the event filter, and a terminal event larger than the filter's size
+    limit, which reaches the client unchanged while the access log names it.
+  - Recorded, not gated: throughput and p50 and p99 latency of the stream
+    and end-to-end scenarios with `oha` or `h2load`; the time to the first
+    event that the proxy adds (the client's first event through nginx minus
+    the mock's write time); VmRSS per open stream, and per 1,000 events of
+    one long stream.
+  - Functional tests with the mock (`test/t/cases/agent_proxy.rb`): the
+    request body arrives byte for byte (compared by hash); unknown
+    `anthropic-beta` values arrive unchanged; `ping` events and every other
+    event arrive in order through `message_stop`; a stream through the event
+    filter arrives byte for byte, compared with the stream that
+    `MockLLM.stream_body` computes for the same request; an upstream error
+    body arrives unmodified; `retry-after` is in integer seconds;
+    `GET /v1/models?limit=1000` answers without a redirect and lists only
+    the key's models; a 529 goes through `error_page 529 = @name` to the
+    other provider with its own credential, Host and SNI, and its usage is
+    charged there; the first-byte deadline answers 504 for an upstream that
+    accepts and never answers, does not cut a stream that pauses longer
+    than the deadline between events, and leaves `keepalive ... local`
+    reusing connections.
+  - Several workers: N concurrent `incr` calls from 4 workers end at N. This
+    needs the Pillar E harness with `master_process on`, because the perf
+    lane runs `master_process off` and the soak test samples one worker.
+  - The reference proxy (`examples/agent-proxy/`) starts in CI and answers
+    the requests of its README; Claude Code and Codex are run against it
+    before the documentation names them as supported clients.
 
 ## 9. Sources
 
@@ -503,6 +828,17 @@ kept as the record of what was decided and why.
   https://docusaurus.io/blog/releases/3.10, https://diataxis.fr/,
   https://mruby.org/docs/api/, https://github.com/docker/awesome-compose,
   https://www.remotion.dev/docs/ai/skills, https://www.remotion.pro/license
+- Agent proxy (fetched 2026-10-04):
+  https://code.claude.com/docs/en/llm-gateway-protocol,
+  https://code.claude.com/docs/en/network-config,
+  https://code.claude.com/docs/en/errors,
+  https://platform.claude.com/docs/en/api/errors,
+  https://platform.claude.com/docs/en/build-with-claude/streaming,
+  https://github.com/openai/codex/blob/main/codex-rs/model-provider-info/src/lib.rs,
+  https://github.com/openai/openai-openapi (`openapi.yaml`),
+  https://html.spec.whatwg.org/multipage/server-sent-events.html,
+  https://www.rfc-editor.org/rfc/rfc8259 (section 4),
+  https://github.com/nginx/nginx/blob/release-1.31.6/src/http/ngx_http_upstream.c
 - Process: https://github.com/google/oss-fuzz/tree/master/projects/mruby,
   https://google.github.io/clusterfuzzlite/,
   https://docs.github.com/en/actions/concepts/security/artifact-attestations,
