@@ -9,27 +9,38 @@
 
 #include "common.h"
 #include <mruby/irep.h>
+#include <string.h>
 
 /**
  * Proc class
  */
 MRB_BEGIN_DECL
 
+/*
+ * env object (for internal used)
+ *
+ * - don't create multiple envs on one ci.
+ * - don't share a env to different ci.
+ * - don't attach a closed env to any ci.
+ */
 struct REnv {
   MRB_OBJECT_HEADER;
   mrb_value *stack;
-  struct mrb_context *cxt;
+  struct mrb_context *cxt; /* if not null, it means that the stack is shared with the call frame */
   mrb_sym mid;
 };
 
-/* flags (21bits): 1(close):1(touched):1(heap):8(cioff/bidx):8(stack_len) */
+/* flags (20bits): 1(ZERO):1(separate module):2(visibility):8(cioff/bidx):8(stack_len) */
 #define MRB_ENV_SET_LEN(e,len) ((e)->flags = (((e)->flags & ~0xff)|((unsigned int)(len) & 0xff)))
 #define MRB_ENV_LEN(e) ((mrb_int)((e)->flags & 0xff))
-#define MRB_ENV_CLOSED (1<<20)
-#define MRB_ENV_CLOSE(e) ((e)->flags |= MRB_ENV_CLOSED)
-#define MRB_ENV_ONSTACK_P(e) (((e)->flags & MRB_ENV_CLOSED) == 0)
+#define MRB_ENV_CLOSE(e) ((e)->cxt = NULL)
+#define MRB_ENV_ONSTACK_P(e) ((e)->cxt != NULL)
 #define MRB_ENV_BIDX(e) (((e)->flags >> 8) & 0xff)
 #define MRB_ENV_SET_BIDX(e,idx) ((e)->flags = (((e)->flags & ~(0xff<<8))|((unsigned int)(idx) & 0xff)<<8))
+#define MRB_ENV_SET_VISIBILITY(e, vis) MRB_FLAGS_SET((e)->flags, 16, 2, vis)
+#define MRB_ENV_VISIBILITY(e) MRB_FLAGS_GET((e)->flags, 16, 2)
+#define MRB_ENV_VISIBILITY_BREAK_P(e) MRB_FLAG_CHECK((e)->flags, 18)
+#define MRB_ENV_COPY_FLAGS_FROM_CI(e, ci) MRB_FLAGS_SET((e)->flags, 16, 3, (ci)->vis)
 
 /*
  * Returns TRUE on success.
@@ -61,6 +72,7 @@ struct RProc {
 #define MRB_ASPEC_KEY(a)          (((a) >> 2) & 0x1f)
 #define MRB_ASPEC_KDICT(a)        (((a) >> 1) & 0x1)
 #define MRB_ASPEC_BLOCK(a)        ((a) & 1)
+#define MRB_ASPEC_NOBLOCK(a)      (((a) >> 23) & 0x1)
 
 #define MRB_PROC_CFUNC_FL 128
 #define MRB_PROC_CFUNC_P(p) (((p)->flags & MRB_PROC_CFUNC_FL) != 0)
@@ -85,7 +97,7 @@ struct RProc {
 } while (0)
 #define MRB_PROC_SCOPE 2048
 #define MRB_PROC_SCOPE_P(p) (((p)->flags & MRB_PROC_SCOPE) != 0)
-#define MRB_PROC_NOARG 4096 /* for MRB_PROC_CFUNC_FL, it would be something like MRB_ARGS_NONE() or MRB_METHOD_NOARG_FL */
+#define MRB_PROC_NOARG 4096 /* for MRB_PROC_CFUNC_FL, aspec == MRB_ARGS_NONE() */
 #define MRB_PROC_NOARG_P(p) (((p)->flags & MRB_PROC_NOARG) != 0)
 #define MRB_PROC_ALIAS 8192
 #define MRB_PROC_ALIAS_P(p) (((p)->flags & MRB_PROC_ALIAS) != 0)
@@ -102,40 +114,27 @@ MRB_API mrb_value mrb_proc_cfunc_env_get(mrb_state *mrb, mrb_int idx);
 /* old name */
 #define mrb_cfunc_env_get(mrb, idx) mrb_proc_cfunc_env_get(mrb, idx)
 
-#define MRB_METHOD_FUNC_FL 1
-#define MRB_METHOD_NOARG_FL 2
-
-#ifndef MRB_USE_METHOD_T_STRUCT
-
-#define MRB_METHOD_FUNC_P(m) (((uintptr_t)(m))&MRB_METHOD_FUNC_FL)
-#define MRB_METHOD_NOARG_P(m) ((((uintptr_t)(m))&MRB_METHOD_NOARG_FL)?1:0)
-#define MRB_METHOD_NOARG_SET(m) ((m)=(mrb_method_t)(((uintptr_t)(m))|MRB_METHOD_NOARG_FL))
-#define MRB_METHOD_FUNC(m) ((mrb_func_t)((uintptr_t)(m)>>2))
-#define MRB_METHOD_FROM_FUNC(m,fn) ((m)=(mrb_method_t)((((uintptr_t)(fn))<<2)|MRB_METHOD_FUNC_FL))
-#define MRB_METHOD_FROM_PROC(m,pr) ((m)=(mrb_method_t)(pr))
-#define MRB_METHOD_PROC_P(m) (!MRB_METHOD_FUNC_P(m))
-#define MRB_METHOD_PROC(m) ((struct RProc*)(m))
-#define MRB_METHOD_UNDEF_P(m) ((m)==0)
-
-#else
+#define MRB_METHOD_FUNC_FL    (1 << 24)
+#define MRB_METHOD_PUBLIC_FL  0
+#define MRB_METHOD_PRIVATE_FL (1 << 25)
+#define MRB_METHOD_PROTECTED_FL (1 << 26)
+#define MRB_METHOD_VDEFAULT_FL ((1 << 25) | (1 << 26))
+#define MRB_METHOD_VISIBILITY_MASK ((1 << 25) | (1 << 26))
 
 #define MRB_METHOD_FUNC_P(m) ((m).flags&MRB_METHOD_FUNC_FL)
-#define MRB_METHOD_NOARG_P(m) (((m).flags&MRB_METHOD_NOARG_FL)?1:0)
-#define MRB_METHOD_FUNC(m) ((m).func)
-#define MRB_METHOD_NOARG_SET(m) do{(m).flags|=MRB_METHOD_NOARG_FL;}while(0)
-#define MRB_METHOD_FROM_FUNC(m,fn) do{(m).flags=MRB_METHOD_FUNC_FL;(m).func=(fn);}while(0)
-#define MRB_METHOD_FROM_PROC(m,pr) do{(m).flags=0;(m).proc=(struct RProc*)(pr);}while(0)
+#define MRB_METHOD_FUNC(m) ((m).as.func)
+#define MRB_METHOD_FROM_FUNC(m,fn) do{(m).flags=MRB_METHOD_FUNC_FL;(m).as.func=(fn);}while(0)
+#define MRB_METHOD_FROM_PROC(m,pr) do{(m).flags=0;(m).as.proc=(pr);}while(0)
 #define MRB_METHOD_PROC_P(m) (!MRB_METHOD_FUNC_P(m))
-#define MRB_METHOD_PROC(m) ((m).proc)
-#define MRB_METHOD_UNDEF_P(m) ((m).proc==NULL)
+#define MRB_METHOD_PROC(m) ((m).as.proc)
+#define MRB_METHOD_UNDEF_P(m) ((m).as.proc==NULL)
+#define MRB_METHOD_VISIBILITY(m) ((m).flags & MRB_METHOD_VISIBILITY_MASK)
+#define MRB_SET_VISIBILITY_FLAGS(f,v) ((f)=(((f)&~MRB_METHOD_VISIBILITY_MASK)|(v)))
+#define MRB_METHOD_SET_VISIBILITY(m,v) MRB_SET_VISIBILITY_FLAGS((m).flags,(v))
 
-#endif /* MRB_USE_METHOD_T_STRUCT */
-
-#define MRB_METHOD_CFUNC_P(m) (MRB_METHOD_FUNC_P(m)?TRUE:(MRB_METHOD_PROC(m)?(MRB_PROC_CFUNC_P(MRB_METHOD_PROC(m))):FALSE))
-#define MRB_METHOD_CFUNC(m) (MRB_METHOD_FUNC_P(m)?MRB_METHOD_FUNC(m):((MRB_METHOD_PROC(m)&&MRB_PROC_CFUNC_P(MRB_METHOD_PROC(m)))?MRB_PROC_CFUNC(MRB_METHOD_PROC(m)):NULL))
-
-
-#include <mruby/khash.h>
+#define MRB_METHOD_CFUNC_P(m) (MRB_METHOD_FUNC_P(m) || (MRB_METHOD_PROC(m)?(MRB_PROC_CFUNC_P(MRB_METHOD_PROC(m))):FALSE))
+/* use MRB_METHOD_CFUNC(m) only when MRB_METHOD_CFUNC_P(m) is true */
+#define MRB_METHOD_CFUNC(m) (MRB_METHOD_FUNC_P(m)?MRB_METHOD_FUNC(m):MRB_PROC_CFUNC(MRB_METHOD_PROC(m)))
 
 MRB_API mrb_value mrb_load_proc(mrb_state *mrb, const struct RProc *proc);
 

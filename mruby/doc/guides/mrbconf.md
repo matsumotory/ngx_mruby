@@ -1,3 +1,5 @@
+<!-- summary: About Build-time Configurations -->
+
 # mruby configuration macros
 
 ## The configuration file
@@ -59,12 +61,12 @@ end
 `MRB_STACK_EXTEND_DOUBLING`
 
 - If defined doubles the stack size when extending it.
-- Otherwise extends stack with `MRB_STACK_GROWTH`.
+- Otherwise extends stack with 1.5x growth (minimum `MRB_STACK_GROWTH`).
 
 `MRB_STACK_GROWTH`
 
 - Default value is `128`.
-- Used in stack extending.
+- Minimum stack growth size when extending.
 - Ignored when `MRB_STACK_EXTEND_DOUBLING` is defined.
 
 `MRB_STACK_MAX`
@@ -93,6 +95,7 @@ end
 
 - When defined, or `MRB_INT32` are not defined on 64-bit CPU mode, `mrb_int` will be defined as `int64_t`.
 - Conflicts with `MRB_INT32`.
+- On 32-bit platforms, `MRB_INT64` requires `MRB_NO_BOXING` because heap-allocated `RInteger` needs 8-byte alignment that the GC heap may not guarantee with word or NaN boxing.
 
 ## Garbage collector configuration
 
@@ -105,7 +108,7 @@ end
 
 `MRB_GC_TURN_OFF_GENERATIONAL`
 
-- When defined turns generational GC by default.
+- When defined turns generational GC off by default.
 
 `MRB_GC_FIXED_ARENA`
 
@@ -121,13 +124,8 @@ end
 
 `MRB_HEAP_PAGE_SIZE`
 
-- Defines value is `1024`.
+- Default value is `1024`.
 - Specifies number of `RBasic` per each heap page.
-- To calculate the number of bytes per heap page, it is "(size of management data per heap page) + (size per object) \* `MRB_HEAP_PAGE_SIZE`".
-  In mruby 3.1.0, the "size of management data per heap page" is 6 words, also "size per object" is 6 words.
-  For a 32-bit CPU, `(6 * 4) + (6 * 4) * MRB_HEAP_PAGE_SIZE` gives the bytes of size per heap page.
-  Conversely, for example, to keep the size per heap page to 4 Ki bytes,
-  calculate `(4096 - (6 * 4)) / (6 * 4)` to specify `MRB_HEAP_PAGE_SIZE=169`.
 
 ## Memory pool configuration
 
@@ -171,8 +169,24 @@ end
 
 `MRB_WORD_BOXING`
 
-- If defined represent `mrb_value` as a word.
-- If defined `Float` will be a mruby object with `RBasic`.
+- If defined represent `mrb_value` as a word (natural unit of data for the processor).
+- Default boxing mode when none is specified.
+- On 64-bit platforms, floats are inlined using rotation encoding.
+- On 32-bit platforms, floats are heap-allocated as `RFloat` objects.
+
+`MRB_NO_BOXING`
+
+- If defined represent `mrb_value` as a C struct (occupies 2 words).
+- Most portable but least memory-efficient representation.
+- Required for `MRB_INT64` on 32-bit platforms.
+- Default for `host-debug` configuration.
+
+`MRB_WORDBOX_NO_INLINE_FLOAT`
+
+- If defined disables inline float values in word boxing.
+- All floats are heap-allocated as `RFloat` objects.
+- Automatically defined on 32-bit platforms (64-bit `double` cannot fit in a 32-bit word).
+- Only meaningful with `MRB_WORD_BOXING`.
 
 ## Reduce heap memory configuration
 
@@ -180,7 +194,7 @@ end
 
 - Use `etext` and `edata` section addresses defined by the linker to detect read-only data.
 - Those addresses are widely available, but not portable, nor standardized.
-- This macro is defined by default on User-mode Linux.
+- Defined by default on User-mode Linux.
 
 `MRB_NO_DEFAULT_RO_DATA_P`
 
@@ -188,16 +202,15 @@ end
 
 `MRB_USE_CUSTOM_RO_DATA_P`
 
-- Please try if `MRB_USE_LINK_TIME_RO_DATA_P` is not available.
-- The `mrb_ro_data_p()` function is implemented by the user in an arbitrary file.
+- Define to provide your own `mrb_ro_data_p()` implementation.
 - The prototype declaration is `mrb_bool mrb_ro_data_p(const char *ptr)`.
 - Return `TRUE` if `ptr` is in the read-only section, otherwise return `FALSE`.
 
 ## Other configuration
 
-`MRB_MALLOC_TRIM`
+`MRB_USE_MALLOC_TRIM`
 
-- call malloc_trim(0) for each mrb_full_gc() call
+- Call `malloc_trim(0)` for each `mrb_full_gc()` call.
 
 `MRB_UTF8_STRING`
 
@@ -206,13 +219,13 @@ end
 
 `MRB_STR_LENGTH_MAX`
 
-- The maximum length of strings (default 1MB)
-- set this value to zero to skip the check
+- The maximum length of strings (default 1048576).
+- Set this value to zero to skip the check.
 
 `MRB_ARY_LENGTH_MAX`
 
-- The maximum length of strings (default 1MB)
-- set this value to zero to skip the check
+- The maximum length of arrays (default 131072).
+- Set this value to zero to skip the check.
 
 `MRB_FUNCALL_ARGC_MAX`
 
@@ -220,10 +233,10 @@ end
 - Specifies 4th argument(`argc`) max value of `mrb_funcall`.
 - Raises `ArgumentError` when the `argc` argument is bigger then this value `mrb_funcall`.
 
-`KHASH_DEFAULT_SIZE`
+`KHASH_INITIAL_SIZE`
 
 - Default value is `32`.
-- Specifies default size of khash table bucket.
+- Specifies initial size of khash table bucket.
 - Used in `kh_init_ ## name` function.
 
 `MRB_NO_METHOD_CACHE`
@@ -236,12 +249,6 @@ end
 - Ignored if `MRB_NO_METHOD_CACHE` is defined.
 - Need to be the power of 2.
 
-`MRB_USE_METHOD_T_STRUCT`
-
-- Use C struct to represent `mrb_method_t`
-- No `MRB_USE_METHOD_T_STRUCT` requires highest 2 bits of function pointers to be zero
-- Define this macro on machines that use higher bits of pointers
-
 `MRB_USE_ALL_SYMBOLS`
 
 - Make it available `Symbol.all_symbols` in `mrbgems/mruby-symbol-ext`
@@ -249,4 +256,37 @@ end
 
 `MRB_USE_VM_SWITCH_DISPATCH`
 
-- Turn on switch dispatch in VM loop
+- Turn on switch dispatch in VM loop.
+- Otherwise, computed goto (direct threading) is used when supported by the compiler.
+
+`MRB_SYMBOL_LINEAR_THRESHOLD`
+
+- Default value is `256`.
+- Threshold for switching symbol table from linear search to hash table.
+
+## Tuning profiles
+
+Predefined profiles adjust several macros together for specific
+deployment targets. Define one of the following:
+
+`MRB_CONSTRAINED_BASELINE_PROFILE`
+
+- For micro controllers.
+- Enables `MRB_NO_METHOD_CACHE`, reduces `KHASH_INITIAL_SIZE` to `16`,
+  and `MRB_HEAP_PAGE_SIZE` to `256`.
+
+`MRB_BASELINE_PROFILE`
+
+- Default mruby profile. No additional changes.
+
+`MRB_MAIN_PROFILE`
+
+- For desktop computers or workstations.
+- Increases `MRB_METHOD_CACHE_SIZE` to `1024` and `MRB_HEAP_PAGE_SIZE`
+  to `4096`.
+
+`MRB_HIGH_PROFILE`
+
+- For long-lived server processes.
+- Increases `MRB_METHOD_CACHE_SIZE` to `4096` and `MRB_HEAP_PAGE_SIZE`
+  to `4096`.

@@ -13,8 +13,8 @@ t.assert('mruby-dir', 'Dir lists, reads and closes test/html/gem_dir from a hand
     "IOError",              # Dir#close of the closed Dir
     "block value",          # Dir.open with a block that closed the Dir
     "one.txt,two.txt",      # Enumerable#select on a Dir
-    ".,..,one.txt,two.txt", # Dir.children (in mruby 3.3.0 an alias of Dir.entries)
-    ".,..,one.txt,two.txt", # Dir#each_child (in mruby 3.3.0 an alias of Dir#each)
+    "one.txt,two.txt",      # Dir.children (without "." and ".." since mruby 3.4)
+    "one.txt,two.txt",      # Dir#each_child (without "." and ".." since mruby 3.4)
     "false",                # Dir.empty? of the directory
     "0",                    # file descriptors that Dir.foreach left open (its Dir is closed)
   ], res["body"].split("\n")

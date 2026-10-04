@@ -54,6 +54,47 @@ If you want to update to a specific commit, you can specify a ref.
 sh update-mruby-subtree REF
 ```
 
+The script runs `git subtree pull --prefix=mruby --squash dep-mruby REF`, so
+the merge starts from the last subtree squash in the history of `mruby/`.
+When that squash is old, or when `mruby/` was changed by commits that were
+not subtree pulls, the pull stops with conflicts under `mruby/`. Do not
+resolve them by hand (files under `mruby/` are never edited by hand).
+Instead, inside the merge that stopped, replace the subtree with the exact
+tree of the ref, and commit the merge:
+
+```
+git rm -r -q --cached mruby
+rm -rf mruby
+git read-tree --prefix=mruby/ -u REF^{tree}
+```
+
+Use the commit id for `REF` here if the tag was not fetched as a local tag;
+`update-mruby-subtree` fetches the ref only into `FETCH_HEAD`. `git read-tree`
+writes every file of the tree, also the ones that `.gitignore` of this
+repository would keep out of a `git add` (for example `mruby/Makefile` and
+files under `mruby/lib/mruby/build/`). Before you commit, check that the
+index holds the tree of the ref under `mruby/`; the two commands must print
+the same id:
+
+```
+git write-tree --prefix=mruby/
+git rev-parse REF^{tree}
+```
+
+Then commit the merge, and put the two ids in the commit message:
+
+```
+git commit
+```
+
+After the commit, `git rev-parse HEAD:mruby` prints the same id.
+
+The squash commit that `git subtree` made is the second parent of the merge
+and records `git-subtree-split: <commit of REF>`, so the next update merges
+from that commit instead of the older squash. Commit the merge alone, with
+nothing outside `mruby/`, and make the build changes in the commits that
+follow.
+
 `NGX_MRUBY_CORE_GEMS` in [build_config.rb](../build_config.rb) names the mruby
 core gems that ngx_mruby builds, so an update does not change them by itself.
 The mruby build stops when a listed gem is not in the new `mruby/mrbgems`:

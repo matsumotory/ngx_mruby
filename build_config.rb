@@ -5,10 +5,44 @@
 # full-core of mruby 4.0.0 and of 4.1.0-rc2 takes mruby-task, which redefines
 # Kernel#sleep and whose POSIX implementation arms a process-wide SIGALRM
 # interval timer, and leaves mruby-sleep out.
-# This list is the set that full-core selects in mruby 3.3.0. Adding or
-# removing a name changes what scripts can use; decide each one on its own.
+#
+# This list is the set that full-core selected in mruby 3.3.0, updated for
+# mruby 4.0.0 as follows. Adding or removing a name changes what scripts can
+# use; decide each one on its own.
+# - mruby-print is gone: mruby 3.4 removed it, and Kernel#print, #puts and #p
+#   come from mruby-io (from the core without mruby-io).
+# - hal-posix-io, hal-posix-dir and hal-posix-socket are the POSIX back ends
+#   that mruby-io, mruby-dir and mruby-socket of mruby 4.0.0 need. They add no
+#   class or method of their own. Without them in the list, those gems load
+#   them by themselves with a warning that asks for an explicit selection.
+#   Only 4.0.0 needs them: mruby 4.1.0-rc2 has no hal-* gems, because the
+#   POSIX back ends moved into mruby-io, mruby-dir and mruby-socket
+#   (ports/posix/), so the update to 4.1 removes these three names, which
+#   ngx_mruby_core_gems would otherwise stop the build on.
+# - Left out, although full-core of 4.0.0 takes them:
+#   - mruby-task (and its back end hal-posix-task): it redefines Kernel#sleep,
+#     arms a SIGALRM interval timer in every process that opens an mrb_state,
+#     and limits the number of mrb_states (MRB_TASK_MAX_VMS).
+#   - mruby-encoding: it defines MRB_UTF8_STRING for the whole build, so
+#     String#size, #[] and #index count characters instead of bytes, and a
+#     script that computes a Content-Length from String#size gets another
+#     number. Leaving it out removes String#valid_encoding? from scripts:
+#     mruby 3.3 defined it in mruby-string-ext, and since mruby 3.4 only
+#     mruby-encoding defines it, so a call raises NoMethodError. A script
+#     that needs it has to take mruby-encoding or drop the call; without
+#     MRB_UTF8_STRING, the 3.3 method returned true for every string, even
+#     "\xfe". Whether ngx_mruby takes the gem is the owner's decision; until
+#     then it is opt-in (see "Core gems" in docs/install/README.md).
+#   - mruby-strftime (Time#strftime) and mruby-benchmark (Benchmark): new in
+#     mruby 4.0; each would add an API that ngx_mruby has not had, which is
+#     a decision of its own.
+# - Left out, as full-core leaves them out: mruby-bin-debugger, mruby-test;
+#   and the Windows back ends hal-win-*.
+# - mruby-sleep stays: full-core of 4.0.0 leaves it out in favour of
+#   mruby-task, but Kernel#sleep and #usleep of ngx_mruby scripts come from it.
 # mruby-test-inline-struct has only tests and adds nothing to libmruby.
 NGX_MRUBY_CORE_GEMS = %w[
+  hal-posix-dir hal-posix-io hal-posix-socket
   mruby-array-ext mruby-bigint mruby-bin-config mruby-bin-mirb mruby-bin-mrbc
   mruby-bin-mruby mruby-bin-strip mruby-binding mruby-catch mruby-class-ext
   mruby-cmath mruby-compar-ext mruby-compiler mruby-complex mruby-data
@@ -16,7 +50,7 @@ NGX_MRUBY_CORE_GEMS = %w[
   mruby-errno mruby-error mruby-eval mruby-exit mruby-fiber mruby-hash-ext
   mruby-io mruby-kernel-ext mruby-math mruby-metaprog mruby-method
   mruby-numeric-ext mruby-object-ext mruby-objectspace mruby-os-memsize
-  mruby-pack mruby-print mruby-proc-binding mruby-proc-ext mruby-random
+  mruby-pack mruby-proc-binding mruby-proc-ext mruby-random
   mruby-range-ext mruby-rational mruby-set mruby-sleep mruby-socket
   mruby-sprintf mruby-string-ext mruby-struct mruby-symbol-ext
   mruby-test-inline-struct mruby-time mruby-toplevel-ext
@@ -76,6 +110,16 @@ MRuby::Build.new('host') do |conf|
   # conf.gem github: 'matsumotory/mruby-redis'
   conf.gem github: 'matsumotory/mruby-vedis'
   conf.gem github: 'matsumotory/mruby-userdata'
+  # build_config.rb.lock pins mruby-uname (here and in the test build) to the
+  # head of its branch mruby-4, which declares the instances of Uname as data
+  # objects: with mruby 4.0, every method of the gem's master raises
+  # "TypeError: allocation failure of Uname". rake clones the gem with
+  # --branch mruby-4 and then checks out the pinned commit, so every fresh
+  # build (CI included) stops if that branch is deleted, or if the pinned
+  # commit is on no branch of the gem any more (for example after the branch
+  # was rewritten). Until the pin moves to master, the branch must stay as it
+  # is, and its pull request must be merged with a merge commit, not squashed
+  # or rebased; then the pin moves to that merge commit on master.
   conf.gem github: 'matsumotory/mruby-uname'
   conf.gem github: 'matsumotory/mruby-mutex'
   conf.gem github: 'matsumotory/mruby-localmemcache'
@@ -126,8 +170,19 @@ MRuby::Build.new('test') do |conf|
 
   enable_debug
 
+  # mruby-simplehttp depends on mruby-polarssl (HTTPS in SimpleHttp) unless
+  # NO_SSL is set in the environment, and mruby-polarssl depends on
+  # mruby-print, which mruby 3.4 removed, so the test build would stop while
+  # rake loads the gems. The suite sends HTTPS requests with curl and
+  # `openssl s_client`, never with HttpRequest, so the test client builds
+  # SimpleHttp without HTTPS. rake loads the gems of all builds in one process,
+  # so this also applies to a host build that has mruby-simplehttp (only the
+  # opt-in auto-ssl brings it in).
+  ENV['NO_SSL'] ||= '1'
+
   conf.gem github: 'matsumotory/mruby-simplehttp'
   conf.gem github: 'matsumotory/mruby-httprequest'
+  # pinned to its branch mruby-4 by build_config.rb.lock (see the host build)
   conf.gem github: 'matsumotory/mruby-uname'
   conf.gem github: 'matsumotory/mruby-simpletest'
   conf.gem github: 'mattn/mruby-http'

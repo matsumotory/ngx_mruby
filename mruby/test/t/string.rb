@@ -129,7 +129,7 @@ end
 assert('String#[]=') do
   # length of args is 1
   a = 'abc'
-  a[0] = 'X'
+  assert_equal 'X', (a[0] = 'X')
   assert_equal 'Xbc', a
 
   b = 'abc'
@@ -151,6 +151,10 @@ assert('String#[]=') do
     e[1.1] = 'X'
     assert_equal 'aXc', e
   end
+
+  f = 'abc'
+  assert_equal 'X', f.[]=(0, 'X')
+  assert_equal 'Xbc', f
 
   assert_raise(TypeError) { 'a'[0] = 1 }
   assert_raise(TypeError) { 'a'[:a] = '1' }
@@ -176,21 +180,29 @@ assert('String#[]=') do
   assert_equal 'Xabc', d1
 
   e1 = 'abc'
-  e1[1, 3] = 'X'
+  assert_equal 'X', (e1[1, 3] = 'X')
   assert_equal 'aX', e1
+
+  f1 = 'abc'
+  assert_equal 'X', f1.[]=(0, 1, 'X')
+  assert_equal 'Xbc', f1
 
   # args is RegExp
   # It will be tested in mrbgems.
 
   # args is String
   a3 = 'abc'
-  a3['bc'] = 'X'
+  assert_equal 'X', (a3['bc'] = 'X')
   assert_equal a3, 'aX'
 
   b3 = 'abc'
   assert_raise(IndexError) do
     b3['XX'] = 'Y'
   end
+
+  c3 = 'abc'
+  assert_equal 'X', c3.[]=('bc', 'X')
+  assert_equal 'aX', c3
 
   assert_raise(TypeError) { 'a'[:a, 0] = '1' }
   assert_raise(TypeError) { 'a'[0, :a] = '1' }
@@ -473,16 +485,16 @@ end if UTF8STRING
 
 assert('String#initialize', '15.2.10.5.23') do
   a = ''
-  a.initialize('abc')
+  a.__send__(:initialize,'abc')
   assert_equal 'abc', a
 
-  a.initialize('abcdefghijklmnopqrstuvwxyz')
+  a.__send__(:initialize,'abcdefghijklmnopqrstuvwxyz')
   assert_equal 'abcdefghijklmnopqrstuvwxyz', a
 end
 
 assert('String#initialize_copy', '15.2.10.5.24') do
   a = ''
-  a.initialize_copy('abc')
+  a.__send__(:initialize_copy, 'abc')
 
   assert_equal 'abc', a
 end

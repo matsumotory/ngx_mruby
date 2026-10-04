@@ -10,7 +10,6 @@
 #include <mruby/proc.h>
 #include <mruby/value.h>
 #include <mruby/range.h>
-#include <mruby/presym.h>
 
 struct os_count_struct {
   mrb_int total;
@@ -50,7 +49,7 @@ os_count_object_type(mrb_state *mrb, struct RBasic *obj, void *data)
  *    # ...
  *  }
  *
- *  If the optional argument +result_hash+ is given,
+ *  If the optional argument `result_hash` is given,
  *  it is overwritten and returned. This is intended to avoid probe effect.
  *
  */
@@ -157,9 +156,9 @@ os_each_object_cb(mrb_state *mrb, struct RBasic *obj, void *ud)
  *
  *  Calls the block once for each object in this Ruby process.
  *  Returns the number of objects found.
- *  If the optional argument +module+ is given,
+ *  If the optional argument `module` is given,
  *  calls the block for only those classes or modules
- *  that match (or are a subclass of) +module+.
+ *  that match (or are a subclass of) `module`.
  *
  *  If no block is given, ArgumentError is raised.
  *

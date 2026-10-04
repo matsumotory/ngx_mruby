@@ -94,11 +94,14 @@ struct mrb_state;
 # define MRB_PRIx PRIx32
 #endif
 
-#ifdef MRB_ENDIAN_BIG
-# define MRB_ENDIAN_LOHI(a,b) a b
-#else
-# define MRB_ENDIAN_LOHI(a,b) b a
-#endif
+#define MRB_FLAGS_MASK(shift, width)    (~(~0U << (width)) << (shift))
+#define MRB_FLAGS_GET(b, s, w)          (((b) >> (s)) & MRB_FLAGS_MASK(0, w))
+#define MRB_FLAGS_SET(b, s, w, n)       ((b) = MRB_FLAGS_ZERO(b, s, w) | MRB_FLAGS_MAKE(s, w, n))
+#define MRB_FLAGS_ZERO(b, s, w)         ((b) & ~MRB_FLAGS_MASK(s, w))
+#define MRB_FLAGS_MAKE(s, w, n)         (((n) & MRB_FLAGS_MASK(0, w)) << (s))
+#define MRB_FLAG_ON(b, s)               ((b) |= MRB_FLAGS_MASK(s, 1))
+#define MRB_FLAG_OFF(b, s)              ((b) &= ~MRB_FLAGS_MASK(s, 1))
+#define MRB_FLAG_CHECK(b, s)            (!!((b) & MRB_FLAGS_MASK(s, 1)))
 
 MRB_API mrb_bool mrb_read_int(const char *p, const char *e, char **endp, mrb_int *np);
 /* obsolete; do not use mrb_int_read() */
@@ -131,7 +134,7 @@ static const unsigned int IEEE754_INFINITY_BITS_SINGLE = 0x7F800000;
 #endif
 
 #define MRB_VTYPE_FOREACH(f) \
-    /* mrb_vtype */     /* c type */        /* ruby class */ \
+    /* mrb_vtype */     /* C type */        /* Ruby class */ \
   f(MRB_TT_FALSE,       void,               "false") \
   f(MRB_TT_TRUE,        void,               "true") \
   f(MRB_TT_SYMBOL,      void,               "Symbol") \
@@ -143,16 +146,16 @@ static const unsigned int IEEE754_INFINITY_BITS_SINGLE = 0x7F800000;
   f(MRB_TT_OBJECT,      struct RObject,     "Object") \
   f(MRB_TT_CLASS,       struct RClass,      "Class") \
   f(MRB_TT_MODULE,      struct RClass,      "Module") \
-  f(MRB_TT_ICLASS,      struct RClass,      "iClass") \
   f(MRB_TT_SCLASS,      struct RClass,      "SClass") \
+  f(MRB_TT_HASH,        struct RHash,       "Hash") \
+  f(MRB_TT_CDATA,       struct RData,       "C data") \
+  f(MRB_TT_EXCEPTION,   struct RException,  "Exception") \
+  f(MRB_TT_ICLASS,      struct RClass,      "iClass") \
   f(MRB_TT_PROC,        struct RProc,       "Proc") \
   f(MRB_TT_ARRAY,       struct RArray,      "Array") \
-  f(MRB_TT_HASH,        struct RHash,       "Hash") \
   f(MRB_TT_STRING,      struct RString,     "String") \
   f(MRB_TT_RANGE,       struct RRange,      "Range") \
-  f(MRB_TT_EXCEPTION,   struct RException,  "Exception") \
   f(MRB_TT_ENV,         struct REnv,        "env") \
-  f(MRB_TT_CDATA,       struct RData,       "C data") \
   f(MRB_TT_FIBER,       struct RFiber,      "Fiber") \
   f(MRB_TT_STRUCT,      struct RArray,      "Struct") \
   f(MRB_TT_ISTRUCT,     struct RIStruct,    "istruct") \
@@ -160,7 +163,8 @@ static const unsigned int IEEE754_INFINITY_BITS_SINGLE = 0x7F800000;
   f(MRB_TT_COMPLEX,     struct RComplex,    "Complex") \
   f(MRB_TT_RATIONAL,    struct RRational,   "Rational") \
   f(MRB_TT_BIGINT,      struct RBigint,     "Integer") \
-  f(MRB_TT_BACKTRACE,   struct RBacktrace,  "backtrace")
+  f(MRB_TT_BACKTRACE,   struct RBacktrace,  "backtrace") \
+  f(MRB_TT_SET,         struct RSet,        "Set")
 
 enum mrb_vtype {
 #define MRB_VTYPE_DEFINE(tt, type, name) tt,
@@ -312,7 +316,11 @@ struct RCptr {
 #endif
 #define mrb_test(o)   mrb_bool(o)
 #ifndef mrb_bigint_p
+#ifdef MRB_USE_BIGINT
 #define mrb_bigint_p(o) (mrb_type(o) == MRB_TT_BIGINT)
+#else
+#define mrb_bigint_p(o) FALSE
+#endif
 #endif
 
 /**
@@ -321,7 +329,8 @@ struct RCptr {
  * Takes a float and boxes it into an mrb_value
  */
 #ifndef MRB_NO_FLOAT
-MRB_INLINE mrb_value mrb_float_value(struct mrb_state *mrb, mrb_float f)
+MRB_INLINE mrb_value
+mrb_float_value(struct mrb_state *mrb, mrb_float f)
 {
   mrb_value v;
   (void) mrb;
@@ -342,14 +351,16 @@ mrb_cptr_value(struct mrb_state *mrb, void *p)
 /**
  * Returns an integer in Ruby.
  */
-MRB_INLINE mrb_value mrb_int_value(struct mrb_state *mrb, mrb_int i)
+MRB_INLINE mrb_value
+mrb_int_value(struct mrb_state *mrb, mrb_int i)
 {
   mrb_value v;
   SET_INT_VALUE(mrb, v, i);
   return v;
 }
 
-MRB_INLINE mrb_value mrb_fixnum_value(mrb_int i)
+MRB_INLINE mrb_value
+mrb_fixnum_value(mrb_int i)
 {
   mrb_value v;
   SET_FIXNUM_VALUE(v, i);
@@ -378,7 +389,8 @@ mrb_obj_value(void *p)
  * @return
  *      nil mrb_value object reference.
  */
-MRB_INLINE mrb_value mrb_nil_value(void)
+MRB_INLINE mrb_value
+mrb_nil_value(void)
 {
   mrb_value v;
   SET_NIL_VALUE(v);
@@ -388,7 +400,8 @@ MRB_INLINE mrb_value mrb_nil_value(void)
 /**
  * Returns false in Ruby.
  */
-MRB_INLINE mrb_value mrb_false_value(void)
+MRB_INLINE mrb_value
+mrb_false_value(void)
 {
   mrb_value v;
   SET_FALSE_VALUE(v);
@@ -398,7 +411,8 @@ MRB_INLINE mrb_value mrb_false_value(void)
 /**
  * Returns true in Ruby.
  */
-MRB_INLINE mrb_value mrb_true_value(void)
+MRB_INLINE mrb_value
+mrb_true_value(void)
 {
   mrb_value v;
   SET_TRUE_VALUE(v);
@@ -446,10 +460,9 @@ mrb_ro_data_p(const char *p)
   struct mach_header *mhp;
 #endif
   mhp = _NSGetMachExecuteHeader();
-  unsigned long textsize, datasize;
+  unsigned long textsize;
   char *text = (char*)getsegmentdata(mhp, SEG_TEXT, &textsize);
-  char *data = (char*)getsegmentdata(mhp, SEG_DATA, &datasize);
-  return text + textsize < p && p < data + datasize;
+  return text <= p && p < text + textsize;
 }
 #endif  /* Linux or macOS */
 #endif  /* MRB_NO_DEFAULT_RO_DATA_P */

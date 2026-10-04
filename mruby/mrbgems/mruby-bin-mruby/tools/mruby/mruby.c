@@ -12,9 +12,8 @@
 #include <mruby/variable.h>
 #include <mruby/proc.h>
 #include <mruby/error.h>
-#include <mruby/presym.h>
 
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
 # include <io.h> /* for setmode */
 # include <fcntl.h>
 #endif
@@ -244,7 +243,7 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
       argc--; argv++;
     }
   }
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
   if (args->rfp == stdin) {
     _setmode(_fileno(stdin), O_BINARY);
   }
@@ -282,8 +281,9 @@ main(int argc, char **argv)
   mrb_value ARGV;
   mrb_value v;
 
-  if (mrb == NULL) {
-    fprintf(stderr, "%s: Invalid mrb_state, exiting mruby\n", *argv);
+  if (MRB_OPEN_FAILURE(mrb)) {
+    mrb_print_error(mrb);  /* handles NULL */
+    mrb_close(mrb);        /* handles NULL */
     return EXIT_FAILURE;
   }
 
@@ -339,11 +339,12 @@ main(int argc, char **argv)
       }
       fclose(lfp);
       mrb_vm_ci_env_clear(mrb, mrb->c->cibase);
-      mrb_ccontext_cleanup_local_variables(mrb, c);
+      mrb_ccontext_cleanup_local_variables(c);
     }
 
-    /* set program file name */
+    /* set program filename */
     mrb_ccontext_filename(mrb, c, cmdline);
+    c->no_return_value = TRUE;  /* main program doesn't need return value */
 
     /* Load program */
     if (args.mrbfile || mrb_extension_p(cmdline)) {

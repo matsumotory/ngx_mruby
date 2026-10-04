@@ -1,5 +1,7 @@
 #include <mruby.h>
 #include <mruby/range.h>
+#include <mruby/class.h>
+#include <mruby/internal.h>
 
 static mrb_bool
 r_less(mrb_state *mrb, mrb_value a, mrb_value b, mrb_bool excl)
@@ -18,14 +20,14 @@ r_less(mrb_state *mrb, mrb_value a, mrb_value b, mrb_bool excl)
 
 /*
  *  call-seq:
- *     rng.cover?(obj)  ->  true or false
+ *     rng.cover?(obj)   -> true or false
  *     rng.cover?(range) -> true or false
  *
- *  Returns +true+ if the given argument is within +self+, +false+ otherwise.
+ *  Returns true if the given argument is within self, false otherwise.
  *
- *  With non-range argument +object+, evaluates with <tt><=</tt> and <tt><</tt>.
+ *  With non-range argument object, evaluates with <= and <.
  *
- *  For range +self+ with included end value (<tt>#exclude_end? == false</tt>),
+ *  For range self with included end value (exclude_end? == false),
  *  evaluates thus:
  *
  *    self.begin <= object <= self.end
@@ -39,10 +41,8 @@ range_cover(mrb_state *mrb, mrb_value range)
 {
   struct RRange *r = mrb_range_ptr(mrb, range);
   mrb_value val = mrb_get_arg1(mrb);
-  mrb_value beg, end;
-
-  beg = RANGE_BEG(r);
-  end = RANGE_END(r);
+  mrb_value beg = RANGE_BEG(r);
+  mrb_value end = RANGE_END(r);
 
   if (mrb_nil_p(beg) && mrb_nil_p(end)) return mrb_true_value();
 
@@ -110,18 +110,23 @@ static mrb_value
 range_size(mrb_state *mrb, mrb_value range)
 {
   struct RRange *r = mrb_range_ptr(mrb, range);
-  mrb_value beg, end;
-  mrb_float beg_f, end_f;
-  mrb_bool num_p = TRUE;
-  mrb_bool excl;
+  mrb_value beg = RANGE_BEG(r);
+  mrb_value end = RANGE_END(r);
 
-  beg = RANGE_BEG(r);
-  end = RANGE_END(r);
-  if ((mrb_integer_p(beg) || mrb_float_p(beg)) && mrb_nil_p(end)) {
+  if (mrb_float_p(beg)) {
+    mrb_raise(mrb, E_TYPE_ERROR, "can't iterate from Float");
+  }
+  if (mrb_nil_p(beg)) {
+    mrb_raise(mrb, E_TYPE_ERROR, "can't iterate from nil");
+  }
+  if (mrb_integer_p(beg) && mrb_nil_p(end)) {
     return mrb_float_value(mrb, INFINITY);
   }
 
-  excl = RANGE_EXCL(r);
+  mrb_bool excl = RANGE_EXCL(r);
+  mrb_float beg_f, end_f;
+  mrb_bool num_p = TRUE;
+
   if (mrb_integer_p(beg)) {
     beg_f = (mrb_float)mrb_integer(beg);
   }
@@ -167,17 +172,17 @@ static mrb_value
 range_size(mrb_state *mrb, mrb_value range)
 {
   struct RRange *r = mrb_range_ptr(mrb, range);
-  mrb_value beg, end;
-  mrb_int excl;
 
-  beg = RANGE_BEG(r);
-  end = RANGE_END(r);
+  mrb_value beg = RANGE_BEG(r);
+  mrb_value end = RANGE_END(r);
+  if (mrb_nil_p(beg)) {
+    mrb_raise(mrb, E_TYPE_ERROR, "can't iterate from nil");
+  }
   if (mrb_integer_p(beg) && mrb_nil_p(end)) {
     return mrb_nil_value();
   }
 
-  excl = RANGE_EXCL(r) ? 0 : 1;
-
+  mrb_int excl = RANGE_EXCL(r) ? 0 : 1;
   if (mrb_integer_p(beg) && mrb_integer_p(end)) {
     mrb_int a = mrb_integer(beg);
     mrb_int b = mrb_integer(end);
@@ -188,6 +193,13 @@ range_size(mrb_state *mrb, mrb_value range)
   return mrb_nil_value();
 }
 #endif /* MRB_NO_FLOAT */
+
+/*
+ * Internal helper method to check if a range would be empty given
+ * the specified begin, end, and exclude_end parameters.
+ * Returns true if the range would be empty, false otherwise.
+ * Used internally by overlap? and other range methods.
+ */
 
 static mrb_value
 range_empty_p(mrb_state *mrb, mrb_value range)
@@ -203,14 +215,18 @@ range_empty_p(mrb_state *mrb, mrb_value range)
   return mrb_bool_value(comp == -2 || comp > 0 || (comp == 0 && excl));
 }
 
+static const mrb_mt_entry range_ext_rom_entries[] = {
+  MRB_MT_ENTRY(range_cover,   MRB_SYM_Q(cover), MRB_ARGS_REQ(1)),
+  MRB_MT_ENTRY(range_size,    MRB_SYM(size),          MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(range_empty_p, MRB_SYM_Q(__empty_range), MRB_ARGS_REQ(3)),
+};
+
 void
 mrb_mruby_range_ext_gem_init(mrb_state* mrb)
 {
-  struct RClass * s = mrb->range_class;
+  struct RClass *s = mrb->range_class;
 
-  mrb_define_method(mrb, s, "cover?", range_cover, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, s, "size",   range_size,  MRB_ARGS_NONE());
-  mrb_define_method(mrb, s, "__empty_range?", range_empty_p,  MRB_ARGS_REQ(3));
+  MRB_MT_INIT_ROM(mrb, s, range_ext_rom_entries);
 }
 
 void

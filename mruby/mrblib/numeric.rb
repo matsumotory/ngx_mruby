@@ -41,7 +41,7 @@ end
 class Integer
   ##
   # Calls the given block once for each Integer
-  # from +self+ downto +num+.
+  # from `self` downto `num`.
   #
   # ISO 15.2.8.3.15
   def downto(num, &block)
@@ -49,7 +49,7 @@ class Integer
 
     i = self.to_i
     while i >= num
-      block.call(i)
+      yield i
       i -= 1
     end
     self
@@ -66,15 +66,15 @@ class Integer
   alias succ next
 
   ##
-  # Calls the given block +self+ times.
+  # Calls the given block `self` times.
   #
   # ISO 15.2.8.3.22
   def times(&block)
-    return to_enum :times unless block
+    return to_enum(:times) unless block
 
     i = 0
     while i < self
-      block.call i
+      yield i
       i += 1
     end
     self
@@ -82,7 +82,7 @@ class Integer
 
   ##
   # Calls the given block once for each Integer
-  # from +self+ upto +num+.
+  # from `self` upto `num`.
   #
   # ISO 15.2.8.3.27
   def upto(num, &block)
@@ -90,21 +90,21 @@ class Integer
 
     i = self.to_i
     while i <= num
-      block.call(i)
+      yield i
       i += 1
     end
     self
   end
 
   ##
-  # Calls the given block from +self+ to +num+
-  # incremented by +step+ (default 1).
+  # Calls the given block from `self` to `num`
+  # incremented by `step` (default 1).
   #
   def step(num=nil, step=1, &block)
     raise ArgumentError, "step can't be 0" if step == 0
     return to_enum(:step, num, step) unless block
 
-    i = __coerce_step_counter(num, step)
+    i = __coerce_step_counter(step)
     if num == self || step.infinite?
       block.call(i) if step > 0 && i <= (num||i) || step < 0 && i >= (num||-i)
     elsif num == nil
@@ -129,8 +129,8 @@ end
 
 class Float
   ##
-  # Calls the given block from +self+ to +num+
-  # incremented by +step+ (default 1).
+  # Calls the given block from `self` to `num`
+  # incremented by `step` (default 1).
   #
   def step(num=nil, step=1, &block)
     raise ArgumentError, "step can't be 0" if step == 0
