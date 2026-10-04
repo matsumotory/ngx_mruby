@@ -56,12 +56,11 @@ assert('undef with 127 or more arguments') do
   end
 end
 
-assert('next in normal loop with 127 arguments') do
-  assert_raise NameError do
-    while true
-      next A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A,A
-    end
-  end
+assert('break in normal loop with 127 arguments') do
+  assert_equal 127,
+    1.times{
+      break 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+    }.size
 end
 
 assert('negate literal register alignment') do
@@ -179,7 +178,7 @@ assert('register window of calls (#3783)') do
   # NODE_REGX
   assert_raise(NoMethodError){ /static/ }
   assert_raise(NoMethodError){ /static/iu }
-  Object.remove_const :Regexp
+  Object.__send__(:remove_const,:Regexp)
 
   # NODE_UNDEF
   assert_nothing_raised do

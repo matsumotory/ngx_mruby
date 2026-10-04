@@ -1,4 +1,3 @@
-# coding: utf-8
 ##
 # String(Ext) Test
 
@@ -198,6 +197,9 @@ assert('String#partition') do
   assert_equal ["aaaa", "b", ""], "aaaab".partition("b")
   assert_equal ["", "b", "aaaa"], "baaaa".partition("b")
   assert_equal ["", "", ""],      "".partition("a")
+  assert_equal ["hello", " ", "world"], "hello world".partition(" ")
+  assert_equal ["hell", "o", " world"], "hello world".partition("o")
+  assert_equal ["hello world", "", ""], "hello world".partition("x")
 end
 
 assert('String#rpartition') do
@@ -208,6 +210,9 @@ assert('String#rpartition') do
   assert_equal ["aaaa", "b", ""], "aaaab".rpartition("b")
   assert_equal ["", "b", "aaaa"], "baaaa".rpartition("b")
   assert_equal ["", "", ""],      "".rpartition("a")
+  assert_equal ["hello", " ", "world"], "hello world".rpartition(" ")
+  assert_equal ["hello w", "o", "rld"], "hello world".rpartition("o")
+  assert_equal ["", "", "hello world"], "hello world".rpartition("x")
 end
 
 assert('String#hex') do
@@ -453,9 +458,55 @@ assert('String#insert') do
 end
 
 assert('String#prepend') do
+  # Basic prepend test
   a = "world"
   assert_equal "hello world", a.prepend("hello ")
   assert_equal "hello world", a
+
+  # Multiple arguments test
+  b = "world"
+  assert_equal "hello beautiful world", b.prepend("hello ", "beautiful ")
+  assert_equal "hello beautiful world", b
+
+  # Empty string test
+  c = "test"
+  assert_equal "test", c.prepend("")
+  assert_equal "test", c
+
+  # No arguments test
+  d = "test"
+  assert_equal "test", d.prepend()
+  assert_equal "test", d
+
+  # Prepend to empty string
+  e = ""
+  assert_equal "hello", e.prepend("hello")
+  assert_equal "hello", e
+
+  # Multiple empty strings
+  f = "world"
+  assert_equal "world", f.prepend("", "", "")
+  assert_equal "world", f
+
+  # Mixed empty and non-empty
+  g = "world"
+  assert_equal "hello world", g.prepend("", "hello ", "")
+  assert_equal "hello world", g
+
+  # Self-referencing arguments (GHSA-3hgj-g76g-878c)
+  h = "A" * 100
+  h.prepend(h, h)
+  assert_equal 300, h.length
+  assert_equal "A" * 300, h
+
+  # Mixed self-reference and literal
+  i = "AB"
+  i.prepend("XYZ", i)
+  assert_equal "XYZABAB", i
+
+  j = "AB"
+  j.prepend(j, "X", j)
+  assert_equal "ABXABAB", j
 end
 
 assert('String#ljust') do
@@ -712,4 +763,18 @@ assert('String#delete_suffix') do
   assert_equal "hello", "hello".delete_suffix("he")
   assert_equal "he", "hello".delete_suffix!("llo")
   assert_nil "hello".delete_suffix!("he")
+end
+
+assert('String#+@') do
+  a = +"abc"
+  assert_false(a.frozen?)
+  a = +(a.freeze)
+  assert_false(a.frozen?)
+end
+
+assert('String#-@') do
+  a = -"abc"
+  assert_true(a.frozen?)
+  a = -(a.freeze)
+  assert_true(a.frozen?)
 end

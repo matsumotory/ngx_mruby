@@ -1,58 +1,130 @@
 ---
-default_stages: [commit, push]
+# https://github.com/j178/prek
+default_stages: [pre-commit, pre-push]
 default_language_version:
-  # force all unspecified Python hooks to run python3
   python: python3
-minimum_pre_commit_version: "1.20.0"
+  node: 24.14.0
+minimum_pre_commit_version: "3.2.0"
+exclude: "^tools/lrama/"
 repos:
   - repo: meta
     hooks:
       - id: identity
+        name: run identity
+        description: check your identity
       - id: check-hooks-apply
+        name: run check-hooks-apply
+        description: check hooks apply to the repository
+  - repo: local
+    hooks:
+      - id: prettier
+        name: run prettier
+        description: format files with prettier
+        entry: prettier --write '**/*.md' '**/*.yaml' '**/*.yml'
+        files: \.(md|ya?ml)$
+        language: node
+        additional_dependencies: ["prettier@3.7.4"]
+        pass_filenames: false
+        stages: [manual]
+      - id: check-zip-file-is-not-committed
+        name: disallow zip files
+        description: Zip files are not allowed in the repository
+        language: fail
+        entry: |
+          Zip files are not allowed in the repository as they are hard to
+          track and have security implications. Please remove the zip file from the repository.
+        files: \.zip$
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+        name: run gitleaks
+        description: detect hardcoded secrets with gitleaks
+  - repo: https://github.com/oxipng/oxipng
+    rev: v10.1.0
+    hooks:
+      - id: oxipng
+        name: run oxipng
+        description: use lossless compression to optimize PNG files
+        args: ["--fix", "-o", "4", "--strip", "safe", "--alpha"]
+        stages: [manual]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.1.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
       - id: check-executables-have-shebangs
         exclude: ^test/t/lang\.rb$
+      - id: check-illegal-windows-names
       - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
       - id: check-vcs-permalinks
       - id: check-yaml
+      - id: destroyed-symlinks
+      - id: detect-aws-credentials
+        args: [--allow-missing-credentials]
       - id: detect-private-key
       - id: end-of-file-fixer
       - id: file-contents-sorter
-        files: ^codespell\.txt$
+        args: [--unique]
+        files: ^\.github/linters/codespell\.txt$
       - id: fix-byte-order-marker
+      - id: forbid-submodules
       - id: mixed-line-ending
       - id: trailing-whitespace
-  # - repo: git://github.com/Lucas-C/pre-commit-hooks
-  #  rev: v1.1.9
-  #  hooks:
-  #    - id: forbid-tabs
-  #    - id: remove-tabs
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.6
+    hooks:
+      - id: forbid-tabs
+        name: run no-tabs checker
+        description: check the codebase for tabs
+        exclude: Makefile$
+      - id: remove-tabs
+        name: run tabs remover
+        description: find and convert tabs to spaces
+        args: [--whitespaces-count, "2"]
+        exclude: Makefile$
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+        name: run actionlint
+        description: lint GitHub Actions workflow files
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.1.0
+    rev: v2.4.2
     hooks:
       - id: codespell
-        name: Run codespell
-        description: Check spelling with codespell
-        entry: codespell --ignore-words=codespell.txt
+        name: run codespell
+        description: check spelling with codespell
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.30.0
+    rev: v0.48.0
     hooks:
       - id: markdownlint
-        name: Run markdownlint
-        description: Checks the style of Markdown files
-        entry: markdownlint -c .github/linters/.markdown-lint.yml .
+        name: run markdownlint
+        description: checks the style of Markdown files
+        args: [--config=.github/linters/.markdown-lint.yml]
         types: [markdown]
-        files: \.(md|mdown|markdown)$
+        files: \.md$
+  - repo: https://github.com/rubocop/rubocop
+    rev: v1.86.0
+    hooks:
+      - id: rubocop
+        name: run rubocop
+        description: RuboCop is a Ruby code style checker (linter) and formatter based on the community-driven Ruby Style Guide
+        exclude: ^test/t/syntax\.rb$
+        args: [--config=.github/linters/.rubocop.yml]
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        name: run shellcheck
+        description: check shell scripts with a static analysis tool
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.26.3
+    rev: v1.38.0
     hooks:
       - id: yamllint
-        name: Run yamllint
-        description: Check YAML files with yamllint
-        entry: yamllint --strict -c .github/linters/.yaml-lint.yml
+        name: run yamllint
+        description: check YAML files with yamllint
+        args: [--strict, -c=.github/linters/.yaml-lint.yml]
         types: [yaml]
-        files: \.(yaml|yml)$
+        files: \.ya?ml$

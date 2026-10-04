@@ -1,10 +1,12 @@
+<!-- summary: About Value Boxing -->
+
 # Boxing
 
 The mruby objects and data are represented by C data type `mrb_value`. There are three options how to pack the data values in the `mrb_value`.
 
-* Word Boxing
-* NaN Boxing
-* No Boxing
+- Word Boxing
+- NaN Boxing
+- No Boxing
 
 ## Word Boxing
 
@@ -14,39 +16,81 @@ Some values (called immediate values, e.g. integers, booleans, symbols, etc.) ar
 
 The Word boxing packing bit patterns are like following:
 
-| Types  | Bit Pattern                         |
-|--------|-------------------------------------|
-| object | xxxxxxxx xxxxxxxx xxxxxxxx xxxxx000 |
-| fixnum | xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxx1 |
-| nil    | 00000000 00000000 00000000 00000000 |
-| true   | 00000000 00000000 00000000 00001100 |
-| false  | 00000000 00000000 00000000 00000100 |
-| undef  | 00000000 00000000 00000000 00010100 |
-| symbol | xxxxxxxx xxxxxxxx xxxxxxxx xxxxxx10 |
+| Types  | Bit Pattern                           |
+| ------ | ------------------------------------- |
+| object | `xxxxxxxx xxxxxxxx xxxxxxxx xxxxx000` |
+| fixnum | `xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxx1` |
+| nil    | `00000000 00000000 00000000 00000000` |
+| true   | `00000000 00000000 00000000 00001100` |
+| false  | `00000000 00000000 00000000 00000100` |
+| undef  | `00000000 00000000 00000000 00010100` |
+| symbol | `xxxxxxxx xxxxxxxx xxxxxxxx xxxxxx10` |
 
-On 64 bit platform (unless `MRB_WORDBOX_NO_FLOAT_TRUNCATE`), float values are also packed in the `mrb_value`. In that case, we drop least significant 2 bits from mantissa.
-If you need full precision for floating point numbers, define `MRB_WORDBOX_NO_FLOAT_TRUNCATE`.
+### Inline Float (64-bit)
+
+On 64-bit platforms, `double` values are packed into the word using
+rotation encoding. The IEEE 754 exponent field is rotated so that
+common exponent values (those not colliding with the pointer/tag
+patterns above) fit directly in a word. This encoding is lossless
+for most float values; only a small set of exotic exponents require
+heap allocation as `RFloat`.
+
+To disable inline float and heap-allocate all floats, define
+`MRB_WORDBOX_NO_INLINE_FLOAT`.
+
+### 32-bit Considerations
+
+On 32-bit platforms with 64-bit `double` (the common case),
+`MRB_WORDBOX_NO_INLINE_FLOAT` is automatically defined because a
+64-bit double cannot fit in a 32-bit word. All floats are
+heap-allocated as `RFloat` objects.
+
+The `RFloat` struct uses a `char[]` buffer instead of a `double`
+field to avoid alignment issues, since GC heap slots (RVALUE) on
+32-bit have only 4-byte alignment but `double` requires 8-byte.
+Accessor functions `mrb_rfloat_value()` and `mrb_rfloat_set()` use
+`memcpy` for safe access.
 
 ## NaN Boxing
 
-NaN boxing packs the Ruby data in a floating point numbers, which represent NaN (Not a Number) values. Under IEEE753 definitions every value that exponent is all set are considered as NaN. That means NaN can represent `2^51` values. NaN boxing is a teaching to pack the values in those NaN representation. In theory, 64 bits pointers are too big to fit in NaN, but practically most OS uses only 48 bits at most for pointers (except for some OS e.g. Solaris).
+NaN boxing packs the Ruby data in a floating-point numbers, which represent NaN (Not a Number) values. Under IEEE753 definitions every value that exponent is all set are considered as NaN. That means NaN can represent `2^51` values. NaN boxing is a teaching to pack the values in those NaN representation. In theory, 64-bit pointers are too big to fit in NaN, but practically most OS use only 48 bits at most for pointers (except for some OS e.g. Solaris).
 
 The NaN boxing packing bit patterns are like following:
 
-| Types  | Bit Pattern                                                             |
-|--------|-------------------------------------------------------------------------|
-| float  | SEEEEEEE EEEEFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF |
-| +/-inf | S1111111 11110000 00000000 00000000 00000000 00000000 00000000 00000000 |
-| nan    | 01111111 11111000 00000000 00000000 00000000 00000000 00000000 00000000 |
-| fixnum | 01111111 11111001 00000000 00000000 IIIIIIII IIIIIIII IIIIIIII IIIIIIII |
-| symbol | 01111111 11111110 00000000 00000000 SSSSSSSS SSSSSSSS SSSSSSSS SSSSSSSS |
-| misc   | 01111111 11111111 00000000 00000000 00000000 00000000 00TTTTTT 0000MMMM |
-| object | 01111111 11111100 PPPPPPPP PPPPPPPP PPPPPPPP PPPPPPPP PPPPPPPP PPPPPP00 |
-| ptr    | 01111111 11111100 PPPPPPPP PPPPPPPP PPPPPPPP PPPPPPPP PPPPPPPP PPPPPP01 |
-| nil    | 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 |
+| Types  | Bit Pattern                                                               |
+| ------ | ------------------------------------------------------------------------- |
+| float  | `SEEEEEEE EEEEFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF` |
+| +/-inf | `S1111111 11110000 00000000 00000000 00000000 00000000 00000000 00000000` |
+| nan    | `01111111 11111000 00000000 00000000 00000000 00000000 00000000 00000000` |
+| fixnum | `01111111 11111001 00000000 00000000 IIIIIIII IIIIIIII IIIIIIII IIIIIIII` |
+| symbol | `01111111 11111110 00000000 00000000 SSSSSSSS SSSSSSSS SSSSSSSS SSSSSSSS` |
+| misc   | `01111111 11111111 00000000 00000000 00000000 00000000 00TTTTTT 0000MMMM` |
+| object | `01111111 11111100 PPPPPPPP PPPPPPPP PPPPPPPP PPPPPPPP PPPPPPPP PPPPPP00` |
+| ptr    | `01111111 11111100 PPPPPPPP PPPPPPPP PPPPPPPP PPPPPPPP PPPPPPPP PPPPPP01` |
+| nil    | `00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000` |
 
-The object values appear far more frequently than floating point numbers, so we offset the value so that object pointers are unchanged. This technique is called "favor pointer"".
+The object values appear far more frequently than floating-point numbers, so we offset the value so that object pointers are unchanged. This technique is called "favor pointer".
 
 ## No Boxing
 
 No boxing represents `mrb_value` by the C struct with `type` and the value union. This is the most portable (but inefficient) representation. No boxing can be specified by `MRB_NO_BOXING`, and it's default for debugging configuration (e.g. `host-debug`).
+
+## Comparison
+
+| Property               | Word Boxing       | NaN Boxing       | No Boxing            |
+| ---------------------- | ----------------- | ---------------- | -------------------- |
+| `mrb_value` size       | 1 word (4/8 byte) | 8 bytes          | 2 words (8/16 bytes) |
+| Default on             | most platforms    | (manual opt-in)  | `host-debug`         |
+| Macro                  | `MRB_WORD_BOXING` | `MRB_NAN_BOXING` | `MRB_NO_BOXING`      |
+| Inline integers        | yes (31/63 bit)   | yes (32 bit)     | yes (full width)     |
+| Inline floats (64-bit) | yes (rotation)    | yes (native)     | yes (struct field)   |
+| Inline floats (32-bit) | no (heap RFloat)  | yes (native)     | yes (struct field)   |
+| Pointer size limit     | none              | 48 bits          | none                 |
+| Debugger friendly      | no                | no               | yes                  |
+
+## ABI Compatibility
+
+The boxing mode changes the layout of `mrb_value`. Code compiled with
+one boxing mode **cannot** be linked against a library built with a
+different mode. Always use `mruby-config --cflags` to get the correct
+compiler flags.

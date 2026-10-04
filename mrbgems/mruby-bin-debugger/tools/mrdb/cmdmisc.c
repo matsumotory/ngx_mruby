@@ -167,7 +167,8 @@ parse_uint(char **sp, uint16_t *n)
     return FALSE;
   }
 
-  for (p = *sp; *p != '\0' && ISDIGIT(*p); p++) ;
+  for (p = *sp; *p != '\0' && ISDIGIT(*p); p++)
+    ;
 
   if (p != *sp && (i = atoi(*sp)) >= 0) {
     *n = (uint16_t)i;
@@ -269,35 +270,37 @@ replace_ext(mrb_state *mrb, const char *filename, const char *ext)
   return s;
 }
 
+/* parse: <lineno> | <filename>:<lineno> | <filename> */
+static void
+parse_file_line_spec(mrb_state *mrb, char *arg, listcmd_parser_state *st)
+{
+  char *p = arg;
+
+  if (parse_lineno(mrb, &p, st)) {
+    /* matched <lineno> or <lineno>,<lineno> */
+  }
+  else if (parse_filename(mrb, &p, st)) {
+    if (skip_char(&p, ':') && !parse_lineno(mrb, &p, st)) {
+      st->parse_error = TRUE;
+    }
+  }
+  else {
+    st->parse_error = TRUE;
+  }
+  if (*p != '\0') {
+    st->parse_error = TRUE;
+  }
+}
+
 static mrb_bool
 parse_listcmd_args(mrb_state *mrb, mrdb_state *mrdb, listcmd_parser_state *st)
 {
-  char *p;
-
   switch (mrdb->wcnt) {
   case 2:
-    p = mrdb->words[1];
-
-    /* mrdb->words[1] ::= <lineno> | <filename> ':' <lineno> | <filename> */
-    if (!parse_lineno(mrb, &p, st)) {
-      if (parse_filename(mrb, &p, st)) {
-        if (skip_char(&p, ':')) {
-          if (!parse_lineno(mrb, &p, st)) {
-            st->parse_error = TRUE;
-          }
-        }
-      }
-      else {
-        st->parse_error = TRUE;
-      }
-    }
-    if (*p != '\0') {
-      st->parse_error = TRUE;
-    }
+    parse_file_line_spec(mrb, mrdb->words[1], st);
     break;
   case 1:
   case 0:
-    /* do nothing */
     break;
   default:
     st->parse_error = TRUE;
@@ -350,9 +353,9 @@ check_cmd_pattern(const char *pattern, const char *cmd)
   }
 
   p = lbracket + 1;
-  q = (char *)cmd + (lbracket - pattern);
+  q = (char*)cmd + (lbracket - pattern);
 
-  for ( ; p < rbracket && *q != '\0'; p++, q++) {
+  for (; p < rbracket && *q != '\0'; p++, q++) {
     if (*p != *q) {
       break;
     }
@@ -479,7 +482,8 @@ dbgcmd_quit(mrb_state *mrb, mrdb_state *mrdb)
         break;
       }
       c = buf;
-      while (buf != '\n' && (buf = getchar()) != EOF) ;
+      while (buf != '\n' && (buf = getchar()) != EOF)
+        ;
 
       if (c == 'y' || c == 'Y') {
         mrdb->dbg->xm = DBG_QUIT;
@@ -499,9 +503,7 @@ dbgcmd_quit(mrb_state *mrb, mrdb_state *mrdb)
   }
 
   if (mrdb->dbg->xm == DBG_QUIT) {
-    struct RClass *exc;
-    exc = mrb_define_class(mrb, "DebuggerExit", mrb->eException_class);
-    mrb_raise(mrb, exc, "Exit mrdb");
+    raise_debugger_exception(mrb, "DebuggerExit", "Exit mrdb");
   }
   return DBGST_PROMPT;
 }

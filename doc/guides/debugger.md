@@ -1,3 +1,5 @@
+<!-- summary: About the Debugger with the `mrdb` Command -->
+
 # How to Use the mruby Debugger
 
 copyright (c) 2014 Specified Non-Profit Corporation mruby Forum
@@ -38,7 +40,7 @@ To confirm mrdb was installed properly, run mrdb with the `--version` option:
 
 ```bash
 $ mrdb --version
-mruby 3.1.0 (2022-05-12)
+mruby 4.0.0 (2026-04-20)
 ```
 
 ## 2.2 Basic Operation
@@ -50,7 +52,7 @@ To invoke the mruby debugger, just type `mrdb`.
 To specify the script file:
 
 ```bash
-$ mrdb [option] file name
+$ mrdb [option] filename
 ```
 
 For example: Debugging sample.rb
@@ -61,20 +63,20 @@ $ mrdb sample.rb
 
 You can execute the shell commands listed below:
 
-|command|description|
-|:-:|:--|
-|run|execute programs|
-|step|execute stepping|
-|continue|execute continuing program|
-|break|configure the breaking point|
-|delete|deleting the breaking points|
-|disable|disabling the breaking points|
-|enable|enabling the breaking points|
-|info breakpoints|showing list of the breaking points|
-|print|evaluating and printing the values of the mruby expressions in the script|
-|list|displaying the source cords|
-|help|showing help|
-|quit|terminating the mruby debugger|
+|     command      | description                                                               |
+| :--------------: | :------------------------------------------------------------------------ |
+|       run        | execute programs                                                          |
+|       step       | execute stepping                                                          |
+|     continue     | execute continuing program                                                |
+|      break       | configure the breaking point                                              |
+|      delete      | deleting the breaking points                                              |
+|     disable      | disabling the breaking points                                             |
+|      enable      | enabling the breaking points                                              |
+| info breakpoints | showing list of the breaking points                                       |
+|      print       | evaluating and printing the values of the mruby expressions in the script |
+|       list       | displaying the source cords                                               |
+|       help       | showing help                                                              |
+|       quit       | terminating the mruby debugger                                            |
 
 ### 2.2.2 Debugging mruby Binary Files (mrb file) with mrdb
 
@@ -82,8 +84,8 @@ You can debug the mruby binary files.
 
 #### 2.2.2.1 Debugging the binary files
 
-* notice
-To debug mruby binary files, you need to compile mruby files with option `-g`.
+- notice
+  To debug mruby binary files, you need to compile mruby files with option `-g`.
 
 ```bash
 $ mrbc -g sample.rb
@@ -119,7 +121,7 @@ Be aware that the breakpoint command will not check the validity of the class na
 
 You can get the current breakpoint information by the following options.
 
-breakpoint breakpoint number : file name. line number
+breakpoint breakpoint number : filename. line number
 
 breakpoint breakpoint number : [class name,] method name
 
@@ -265,7 +267,7 @@ Example:
 ```
 (sample.rb:1) info breakpoints
 Num     Type           Enb What
-1       breakpoint     y   at sample.rb:3                      -> file name,line number
+1       breakpoint     y   at sample.rb:3                      -> filename,line number
 2       breakpoint     n   in Sample_class:sample_class_method -> [class:]method name
 3       breakpoint     y   in sample_global_method
 ```
@@ -299,11 +301,11 @@ When you do not specify both the `first` and `last` options, you will receive th
 Example:
 
 ```
-Specifying file name and first row number
+Specifying filename and first row number
 sample.rb:1) list sample2.rb:5
 ```
 
-Specifying the file name and the first and last row number:
+Specifying the filename and the first and last row number:
 
 ```
 (sample.rb:1) list sample2.rb:6,7

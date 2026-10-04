@@ -598,3 +598,67 @@ assert 'Enumerator.produce' do
     ], enum.to_a
   }
 end
+
+assert("Enumerable#chunk") do
+  chunk = [1, 2, 3, 1, 2].chunk
+  assert_equal Enumerator, chunk.class
+  result = chunk.with_index { |elt, i| elt - i }.to_a
+  assert_equal [[1, [1, 2, 3]], [-2, [1, 2]]], result
+
+  assert_equal Enumerator, [].chunk {}.class
+
+  e = [1, 2, 3]
+  recorded = []
+  e.chunk { |x| recorded << x }.to_a
+  assert_equal [1, 2, 3], recorded
+
+  e = [1, 2, 3, 2, 3, 2, 1]
+  result = e.chunk { |x| x < 3 && 1 || 0 }.to_a
+  assert_equal [[1, [1, 2]], [0, [3]], [1, [2]], [0, [3]], [1, [2, 1]]], result
+
+  e = [1, 2, 3]
+  assert_equal [[1, 2], [3]], e.chunk { |x| x > 2 }.map(&:last)
+
+  e = [1, 2, 3, 2, 1]
+  result = e.chunk { |x| x < 2 && :_alone }.to_a
+  assert_equal [[:_alone, [1]], [false, [2, 3, 2]], [:_alone, [1]]], result
+
+  e = [[1, 2]]
+  inner_value = []
+  e.chunk { |*x| inner_value << x }.to_a
+  assert_equal [[[1, 2]]], inner_value
+
+  e = [1, 2, 3, 3, 2, 1]
+  result = e.chunk { |x| x == 2 ? :_separator : 1 }.to_a
+  assert_equal [[1, [1]], [1, [3, 3]], [1, [1]]], result
+
+  e = [1, 2, 3, 2, 1]
+  result = e.chunk { |x| x == 2 ? nil : 1 }.to_a
+  assert_equal [[1, [1]], [1, [3]], [1, [1]]], result
+
+
+  e = [1, 2, 3, 2, 1]
+  assert_raise(RuntimeError) { e.chunk { |x| :_arbitrary }.to_a }
+
+  e = [1, 2, 3]
+  assert_raise(ArgumentError) { e.chunk(1) {} }
+
+  e = [1, 2, 3, 2, 1]
+  enum = e.chunk { |x| true }
+  assert_nil enum.size
+end
+
+assert("Enumerable#chunk_while") do
+  a = [1,2,4,9,10,11,12,15,16,19,20,21]
+  b = a.chunk_while {|i, j| i+1 == j }
+  assert_equal [[1, 2], [4], [9, 10, 11, 12], [15, 16], [19, 20, 21]], b.to_a
+  c = b.map {|a| a.length < 3 ? a : "#{a.first}-#{a.last}" }
+  assert_equal [[1, 2], [4], "9-12", [15, 16], "19-21"], c
+
+  a = [0, 9, 2, 2, 3, 2, 7, 5, 9, 5]
+  assert_equal [[0], [9], [2], [2], [3], [2], [7], [5], [9], [5]], a.chunk_while {|i, j| false }.to_a
+  assert_equal [[0, 9], [2, 2, 3], [2, 7], [5, 9], [5]], a.chunk_while {|i, j| i <= j }.to_a
+
+  a = [7, 5, 9, 2, 0, 7, 9, 4, 2, 0]
+  assert_equal [[7, 5, 9], [2, 0], [7, 9], [4, 2, 0]], a.chunk_while {|i, j| i % 2 == j % 2 }.to_a
+end

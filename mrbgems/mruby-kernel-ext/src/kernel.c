@@ -6,8 +6,30 @@
 #include <mruby/string.h>
 #include <mruby/numeric.h>
 #include <mruby/proc.h>
-#include <mruby/presym.h>
+#include <mruby/class.h>
+#include <mruby/internal.h>
 
+/*
+ * call-seq:
+ *   caller(start = 1)          -> array or nil
+ *   caller(range)              -> array or nil
+ *   caller(start, length)      -> array or nil
+ *
+ * Returns the current execution stack as an array of strings in the form
+ * "file:line" or "file:line:in `method'". The optional start parameter
+ * determines the number of initial stack entries to omit from the top of the stack.
+ *
+ *   def a(skip)
+ *     caller(skip)
+ *   end
+ *   def b
+ *     a(0)
+ *   end
+ *   def c
+ *     b
+ *   end
+ *   c  #=> ["prog:2:in `a'", "prog:5:in `b'", "prog:8:in `c'", "prog:10:in `<main>'"]
+ */
 static mrb_value
 mrb_f_caller(mrb_state *mrb, mrb_value self)
 {
@@ -58,7 +80,7 @@ mrb_f_caller(mrb_state *mrb, mrb_value self)
   if (n < 0) {
     mrb_raisef(mrb, E_ARGUMENT_ERROR, "negative size (%d)", n);
   }
-  if (n == 0 || bt_len <= lev) {
+  if (n == 0) {
     return mrb_ary_new(mrb);
   }
   if (bt_len <= n + lev) n = bt_len - lev - 1;
@@ -70,7 +92,7 @@ mrb_f_caller(mrb_state *mrb, mrb_value self)
  *     __method__         -> symbol
  *
  *  Returns the called name of the current method as a Symbol.
- *  If called outside of a method, it returns <code>nil</code>.
+ *  If called outside of a method, it returns `nil`.
  *
  */
 static mrb_value
@@ -78,7 +100,7 @@ mrb_f_method(mrb_state *mrb, mrb_value self)
 {
   mrb_callinfo *ci = mrb->c->ci;
   ci--;
-  if (ci->proc->e.env->tt == MRB_TT_ENV && ci->proc->e.env->mid)
+  if (ci->proc && ci->proc->e.env && ci->proc->e.env->tt == MRB_TT_ENV && ci->proc->e.env->mid)
     return mrb_symbol_value(ci->proc->e.env->mid);
   else if (ci->mid)
     return mrb_symbol_value(ci->mid);
@@ -91,7 +113,7 @@ mrb_f_method(mrb_state *mrb, mrb_value self)
  *     __callee__         -> symbol
  *
  *  Returns the called name of the current method as a Symbol.
- *  If called outside of a method, it returns <code>nil</code>.
+ *  If called outside of a method, it returns `nil`.
  *
  */
 static mrb_value
@@ -109,16 +131,16 @@ mrb_f_callee(mrb_state *mrb, mrb_value self)
  *  call-seq:
  *     Integer(arg,base=0)    -> integer
  *
- *  Converts <i>arg</i> to a <code>Integer</code>.
+ *  Converts *arg* to a `Integer`.
  *  Numeric types are converted directly (with floating-point numbers
- *  being truncated).    <i>base</i> (0, or between 2 and 36) is a base for
- *  integer string representation.  If <i>arg</i> is a <code>String</code>,
- *  when <i>base</i> is omitted or equals to zero, radix indicators
- *  (<code>0</code>, <code>0b</code>, and <code>0x</code>) are honored.
+ *  being truncated).    *base* (0, or between 2 and 36) is a base for
+ *  integer string representation.  If *arg* is a `String`,
+ *  when *base* is omitted or equals to zero, radix indicators
+ *  (`0`, `0b`, and `0x`) are honored.
  *  In any case, strings should be strictly conformed to numeric
  *  representation. This behavior is different from that of
- *  <code>String#to_i</code>.  Non string values will be treated as integers.
- *  Passing <code>nil</code> raises a TypeError.
+ *  `String#to_i`.  Non string values will be treated as integers.
+ *  Passing `nil` raises a TypeError.
  *
  *     Integer(123.999)    #=> 123
  *     Integer("0x1a")     #=> 26
@@ -127,6 +149,12 @@ mrb_f_callee(mrb_state *mrb, mrb_value self)
  *     Integer("111", 2)   #=> 7
  *     Integer(nil)        #=> TypeError
  */
+static mrb_noreturn void
+arg_error(mrb_state *mrb)
+{
+  mrb_raise(mrb, E_ARGUMENT_ERROR, "base specified for non string value");
+}
+
 static mrb_value
 mrb_f_integer(mrb_state *mrb, mrb_value self)
 {
@@ -135,18 +163,18 @@ mrb_f_integer(mrb_state *mrb, mrb_value self)
 
   mrb_get_args(mrb, "o|i", &val, &base);
   if (mrb_nil_p(val)) {
-    if (base != 0) goto arg_error;
+    if (base != 0) arg_error(mrb);
     mrb_raise(mrb, E_TYPE_ERROR, "can't convert nil into Integer");
   }
   switch (mrb_type(val)) {
 #ifndef MRB_NO_FLOAT
     case MRB_TT_FLOAT:
-      if (base != 0) goto arg_error;
+      if (base != 0) arg_error(mrb);
       return mrb_float_to_integer(mrb, val);
 #endif
 
     case MRB_TT_INTEGER:
-      if (base != 0) goto arg_error;
+      if (base != 0) arg_error(mrb);
       return val;
 
     case MRB_TT_STRING:
@@ -162,11 +190,10 @@ mrb_f_integer(mrb_state *mrb, mrb_value self)
       val = tmp;
       goto string_conv;
     }
-arg_error:
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "base specified for non string value");
+    arg_error(mrb);
   }
   /* to raise TypeError */
-  return mrb_to_integer(mrb, val);
+  return mrb_ensure_integer_type(mrb, val);
 }
 
 #ifndef MRB_NO_FLOAT
@@ -174,8 +201,8 @@ arg_error:
  *  call-seq:
  *     Float(arg)    -> float
  *
- *  Returns <i>arg</i> converted to a float. Numeric types are converted
- *  directly, the rest are converted using <i>arg</i>.to_f.
+ *  Returns *arg* converted to a float. Numeric types are converted
+ *  directly, the rest are converted using *arg*.to_f.
  *
  *     Float(1)           #=> 1.0
  *     Float(123.456)     #=> 123.456
@@ -190,7 +217,7 @@ mrb_f_float(mrb_state *mrb, mrb_value self)
   if (mrb_string_p(arg)) {
     return mrb_float_value(mrb, mrb_str_to_dbl(mrb, arg, TRUE));
   }
-  return mrb_to_float(mrb, arg);
+  return mrb_ensure_float_type(mrb, arg);
 }
 #endif
 
@@ -198,8 +225,8 @@ mrb_f_float(mrb_state *mrb, mrb_value self)
  *  call-seq:
  *     String(arg)   -> string
  *
- *  Returns <i>arg</i> as an <code>String</code>.
- *  converted using <code>to_s</code> method.
+ *  Returns *arg* as an `String`.
+ *  converted using `to_s` method.
  *
  *     String(self)        #=> "main"
  *     String(self.class)  #=> "Object"
@@ -209,9 +236,7 @@ static mrb_value
 mrb_f_string(mrb_state *mrb, mrb_value self)
 {
   mrb_value arg = mrb_get_arg1(mrb);
-  mrb_value tmp;
-
-  tmp = mrb_type_convert(mrb, arg, MRB_TT_STRING, MRB_SYM(to_s));
+  mrb_value tmp = mrb_type_convert(mrb, arg, MRB_TT_STRING, MRB_SYM(to_s));
   return tmp;
 }
 
@@ -219,7 +244,7 @@ mrb_f_string(mrb_state *mrb, mrb_value self)
  *  call-seq:
  *     Array(arg)    -> array
  *
- *  Returns +arg+ as an Array using to_a method.
+ *  Returns `arg` as an Array using to_a method.
  *
  *     Array(1..5)   #=> [1, 2, 3, 4, 5]
  *
@@ -228,9 +253,7 @@ static mrb_value
 mrb_f_array(mrb_state *mrb, mrb_value self)
 {
   mrb_value arg = mrb_get_arg1(mrb);
-  mrb_value tmp;
-
-  tmp = mrb_type_convert_check(mrb, arg, MRB_TT_ARRAY, MRB_SYM(to_a));
+  mrb_value tmp = mrb_type_convert_check(mrb, arg, MRB_TT_ARRAY, MRB_SYM(to_a));
   if (mrb_nil_p(tmp)) {
     return mrb_ary_new_from_values(mrb, 1, &arg);
   }
@@ -242,9 +265,9 @@ mrb_f_array(mrb_state *mrb, mrb_value self)
  *  call-seq:
  *     Hash(arg)    -> hash
  *
- *  Returns a <code>Hash</code> if <i>arg</i> is a <code>Hash</code>.
- *  Returns an empty <code>Hash</code> when <i>arg</i> is <tt>nil</tt>
- *  or <tt>[]</tt>.
+ *  Returns a `Hash` if *arg* is a `Hash`.
+ *  Returns an empty `Hash` when *arg* is `nil`
+ *  or `[]`.
  *
  *      Hash([])          #=> {}
  *      Hash(nil)         #=> {}
@@ -264,22 +287,26 @@ mrb_f_hash(mrb_state *mrb, mrb_value self)
   return arg;
 }
 
+static const mrb_mt_entry kernel_ext_rom_entries[] = {
+  MRB_MT_ENTRY(mrb_f_raise, MRB_SYM(fail),      MRB_ARGS_OPT(2) | MRB_MT_PRIVATE),
+  MRB_MT_ENTRY(mrb_f_caller, MRB_SYM(caller),    MRB_ARGS_OPT(2) | MRB_MT_PRIVATE),
+  MRB_MT_ENTRY(mrb_f_method, MRB_SYM(__method__),             MRB_ARGS_NONE() | MRB_MT_PRIVATE),
+  MRB_MT_ENTRY(mrb_f_callee, MRB_SYM(__callee__),             MRB_ARGS_NONE() | MRB_MT_PRIVATE),
+  MRB_MT_ENTRY(mrb_f_integer, MRB_SYM(Integer), MRB_ARGS_ARG(1,1) | MRB_MT_PRIVATE),
+  MRB_MT_ENTRY(mrb_f_string, MRB_SYM(String),    MRB_ARGS_REQ(1) | MRB_MT_PRIVATE),
+  MRB_MT_ENTRY(mrb_f_array, MRB_SYM(Array),     MRB_ARGS_REQ(1) | MRB_MT_PRIVATE),
+#ifndef MRB_NO_FLOAT
+  MRB_MT_ENTRY(mrb_f_float, MRB_SYM(Float),     MRB_ARGS_REQ(1) | MRB_MT_PRIVATE),
+#endif
+  MRB_MT_ENTRY(mrb_f_hash, MRB_SYM(Hash),      MRB_ARGS_REQ(1) | MRB_MT_PRIVATE),
+};
+
 void
 mrb_mruby_kernel_ext_gem_init(mrb_state *mrb)
 {
   struct RClass *krn = mrb->kernel_module;
 
-  mrb_define_module_function(mrb, krn, "fail", mrb_f_raise, MRB_ARGS_OPT(2));
-  mrb_define_module_function(mrb, krn, "caller", mrb_f_caller, MRB_ARGS_OPT(2));
-  mrb_define_method(mrb, krn, "__method__", mrb_f_method, MRB_ARGS_NONE());
-  mrb_define_method(mrb, krn, "__callee__", mrb_f_callee, MRB_ARGS_NONE());
-  mrb_define_module_function(mrb, krn, "Integer", mrb_f_integer, MRB_ARGS_ARG(1,1));
-#ifndef MRB_NO_FLOAT
-  mrb_define_module_function(mrb, krn, "Float", mrb_f_float, MRB_ARGS_REQ(1));
-#endif
-  mrb_define_module_function(mrb, krn, "String", mrb_f_string, MRB_ARGS_REQ(1));
-  mrb_define_module_function(mrb, krn, "Array", mrb_f_array, MRB_ARGS_REQ(1));
-  mrb_define_module_function(mrb, krn, "Hash", mrb_f_hash, MRB_ARGS_REQ(1));
+  MRB_MT_INIT_ROM(mrb, krn, kernel_ext_rom_entries);
 }
 
 void

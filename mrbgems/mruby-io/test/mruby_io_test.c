@@ -3,7 +3,7 @@
 #include <errno.h>
 #include <string.h>
 
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
 
 #include <winsock.h>
 #include <io.h>
@@ -60,12 +60,12 @@ mkdtemp(char *temp)
 #include <sys/stat.h>
 #include <stdlib.h>
 
-#include "mruby.h"
-#include "mruby/array.h"
-#include "mruby/error.h"
-#include "mruby/string.h"
-#include "mruby/variable.h"
-#include <mruby/ext/io.h>
+#include <mruby.h>
+#include <mruby/array.h>
+#include <mruby/error.h>
+#include <mruby/string.h>
+#include <mruby/variable.h>
+#include <mruby/io.h>
 
 static mrb_value
 mrb_io_test_io_setup(mrb_state *mrb, mrb_value self)
@@ -79,7 +79,7 @@ mrb_io_test_io_setup(mrb_state *mrb, mrb_value self)
   mode_t mask;
   FILE *fp;
   int i;
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !defined(_WIN32)
   struct sockaddr_un sun0 = { 0 }; /* Initialize them all because it is environment dependent */
 #endif
 
@@ -88,7 +88,7 @@ mrb_io_test_io_setup(mrb_state *mrb, mrb_value self)
   mask = umask(077);
   for (i = 0; i < IDX_COUNT; i++) {
     mrb_value fname = mrb_str_new_capa(mrb, 0);
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !defined(_WIN32)
     /*
      * Workaround for not being able to bind a socket to some file systems
      * (e.g. vboxsf, NFS). [#4981]
@@ -97,7 +97,8 @@ mrb_io_test_io_setup(mrb_state *mrb, mrb_value self)
     if (tmpdir && strlen(tmpdir) > 0) {
       mrb_str_cat_cstr(mrb, fname, tmpdir);
       if (*(RSTRING_END(fname)-1) != '/') mrb_str_cat_lit(mrb, fname, "/");
-    } else {
+    }
+    else {
       mrb_str_cat_lit(mrb, fname, "/tmp/");
     }
 #endif
@@ -128,7 +129,7 @@ mrb_io_test_io_setup(mrb_state *mrb, mrb_value self)
   }
   fclose(fp);
 
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !defined(_WIN32)
   unlink(fnames[IDX_LINK]);
   if (symlink(basename(fnames[IDX_READ]), fnames[IDX_LINK]) == -1) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "can't make a symbolic link");
@@ -142,7 +143,7 @@ mrb_io_test_io_setup(mrb_state *mrb, mrb_value self)
   sun0.sun_family = AF_UNIX;
   strncpy(sun0.sun_path, fnames[IDX_SOCKET], sizeof(sun0.sun_path)-1);
   sun0.sun_path[sizeof(sun0.sun_path)-1] = 0;
-  if (bind(fds[IDX_SOCKET], (struct sockaddr *)&sun0, sizeof(sun0)) == -1) {
+  if (bind(fds[IDX_SOCKET], (struct sockaddr*)&sun0, sizeof(sun0)) == -1) {
     mrb_raisef(mrb, E_RUNTIME_ERROR, "can't bind AF_UNIX socket to %s: %d",
                sun0.sun_path,
                errno);
@@ -213,7 +214,7 @@ mrb_io_test_rmdir(mrb_state *mrb, mrb_value klass)
 static mrb_value
 mrb_io_win_p(mrb_state *mrb, mrb_value klass)
 {
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
 # if defined(__CYGWIN__) || defined(__CYGWIN32__)
   return mrb_false_value();
 # else
@@ -224,10 +225,34 @@ mrb_io_win_p(mrb_state *mrb, mrb_value klass)
 #endif
 }
 
-#ifdef MRB_WITH_IO_PREAD_PWRITE
-# define MRB_WITH_IO_PREAD_PWRITE_ENABLED TRUE
+#if defined(_WIN32)
+#define MAXPATHLEN 1024
+#define getcwd _getcwd
 #else
-# define MRB_WITH_IO_PREAD_PWRITE_ENABLED FALSE
+#include <limits.h>
+#include <sys/param.h>
+#include <unistd.h>
+#endif
+
+static mrb_value
+mrb_io_test_getwd(mrb_state *mrb, mrb_value klass)
+{
+  char buf[MAXPATHLEN];
+
+  mrb->c->ci->mid = 0;
+  if (getcwd(buf, MAXPATHLEN) == NULL) {
+    mrb_sys_fail(mrb, "getcwd(2)");
+  }
+  char *utf8 = mrb_utf8_from_locale(buf, -1);
+  mrb_value path = mrb_str_new_cstr(mrb, utf8);
+  mrb_utf8_free(utf8);
+  return path;
+}
+
+#ifdef MRB_USE_IO_PREAD_PWRITE
+# define MRB_USE_IO_PREAD_PWRITE_ENABLED TRUE
+#else
+# define MRB_USE_IO_PREAD_PWRITE_ENABLED FALSE
 #endif
 
 void
@@ -237,9 +262,32 @@ mrb_mruby_io_gem_test(mrb_state* mrb)
   mrb_define_class_method(mrb, io_test, "io_test_setup", mrb_io_test_io_setup, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, io_test, "io_test_cleanup", mrb_io_test_io_cleanup, MRB_ARGS_NONE());
 
+  mrb_define_class_method(mrb, io_test, "getwd", mrb_io_test_getwd, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, io_test, "mkdtemp", mrb_io_test_mkdtemp, MRB_ARGS_REQ(1));
   mrb_define_class_method(mrb, io_test, "rmdir", mrb_io_test_rmdir, MRB_ARGS_REQ(1));
   mrb_define_class_method(mrb, io_test, "win?", mrb_io_win_p, MRB_ARGS_NONE());
 
-  mrb_define_const(mrb, io_test, "MRB_WITH_IO_PREAD_PWRITE", mrb_bool_value(MRB_WITH_IO_PREAD_PWRITE_ENABLED));
+  mrb_define_const(mrb, io_test, "MRB_USE_IO_PREAD_PWRITE", mrb_bool_value(MRB_USE_IO_PREAD_PWRITE_ENABLED));
+
+  const char *env_home = getenv("HOME");
+#ifdef _WIN32
+  if (!env_home) {
+    env_home = getenv("USERPROFILE");
+  }
+#endif
+  if (env_home) {
+    char *utf8 = mrb_utf8_from_locale(env_home, -1);
+    mrb_value path = mrb_str_new_cstr(mrb, utf8);
+#ifdef _WIN32
+    char *pathp = RSTRING_PTR(path);
+    const char *const pathend = pathp + RSTRING_LEN(path);
+    for (;;) {
+      pathp = (char*)memchr(pathp, '\\', pathend - pathp);
+      if (!pathp) break;
+      *pathp++ = '/';
+    }
+#endif
+    mrb_define_const(mrb, io_test, "ENV_HOME", path);
+    mrb_utf8_free(utf8);
+  }
 }

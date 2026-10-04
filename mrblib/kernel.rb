@@ -18,14 +18,14 @@ module Kernel
 
   ##
   # ISO 15.3.1.2.8 Kernel.loop
-  # provided by Kernel#loop
+  # not provided by mruby
 
   ##
   # Calls the given block repetitively.
   #
   # ISO 15.3.1.3.29
-  def loop(&block)
-    return to_enum :loop unless block
+  private def loop(&block)
+    return to_enum(:loop) unless block
 
     while true
       yield
@@ -37,11 +37,6 @@ module Kernel
   # 11.4.4 Step c)
   def !~(y)
     !(self =~ y)
-  end
-
-  # internal method for inspect
-  def _inspect(_recur_list)
-    self.inspect
   end
 
   def to_enum(*a)

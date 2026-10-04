@@ -9,6 +9,7 @@
 #include <mruby/dump.h>
 #include <mruby/irep.h>
 #include <mruby/debug.h>
+#include <mruby/internal.h>
 
 #include <string.h>
 
@@ -16,11 +17,15 @@
 
 #ifndef MRB_NO_FLOAT
 #include <mruby/endian.h>
+/*
+ * MRB_FLOAT_FMT - String format for dumping float values.
+ * Used when MRB_NO_FLOAT is not defined.
+ */
 #define MRB_FLOAT_FMT "%.17g"
 #endif
 
 static int
-cdump_pool(mrb_state *mrb, const mrb_pool_value *p, FILE *fp)
+cdump_pool(mrb_state *mrb, const mrb_irep_pool *p, FILE *fp)
 {
   if (p->tt & IREP_TT_NFLAG) {  /* number */
     switch (p->tt) {
@@ -39,12 +44,7 @@ cdump_pool(mrb_state *mrb, const mrb_pool_value *p, FILE *fp)
       break;
     case IREP_TT_FLOAT:
 #ifndef MRB_NO_FLOAT
-      if (p->u.f == 0) {
-        fprintf(fp, "{IREP_TT_FLOAT, {.f=%#.1f}},\n", p->u.f);
-      }
-      else {
-        fprintf(fp, "{IREP_TT_FLOAT, {.f=" MRB_FLOAT_FMT "}},\n", p->u.f);
-      }
+      fprintf(fp, "{IREP_TT_FLOAT, {.f=" MRB_FLOAT_FMT "}},\n", p->u.f);
 #endif
       break;
     case IREP_TT_BIGINT:
@@ -63,7 +63,7 @@ cdump_pool(mrb_state *mrb, const mrb_pool_value *p, FILE *fp)
   else {                        /* string */
     int i, len = p->tt>>2;
     const char *s = p->u.str;
-    fprintf(fp, "{IREP_TT_STR|(%d<<2), {\"", len);
+    fprintf(fp, "{IREP_TT_SSTR|(%d<<2), {\"", len);
     for (i=0; i<len; i++) {
       fprintf(fp, "\\x%02x", (int)s[i]&0xff);
     }
@@ -158,20 +158,17 @@ sym_operator_name(const char *sym_name, mrb_int len)
   mrb_sym table_size = sizeof(operator_table)/sizeof(struct operator_symbol);
   if (operator_table[table_size-1].sym_name_len < len) return NULL;
 
-  mrb_sym start, idx;
-  int cmp;
-  const struct operator_symbol *op_sym;
-  for (start = 0; table_size != 0; table_size/=2) {
-    idx = start+table_size/2;
-    op_sym = &operator_table[idx];
-    cmp = (int)len-(int)op_sym->sym_name_len;
+  for (mrb_sym start = 0; table_size != 0; table_size/=2) {
+    mrb_sym idx = start+table_size/2;
+    const struct operator_symbol *op_sym = &operator_table[idx];
+    int cmp = (int)len-(int)op_sym->sym_name_len;
     if (cmp == 0) {
       cmp = memcmp(sym_name, op_sym->sym_name, len);
       if (cmp == 0) return op_sym->name;
     }
     if (0 < cmp) {
       start = ++idx;
-      --table_size;
+      table_size--;
     }
   }
   return NULL;
@@ -193,9 +190,13 @@ sym_var_name(mrb_state *mrb, const char *initname, const char *key, int n)
 static int
 cdump_sym(mrb_state *mrb, mrb_sym sym, const char *var_name, int idx, mrb_value init_syms_code, FILE *fp)
 {
-  if (sym == 0) return MRB_DUMP_INVALID_ARGUMENT;
+  if (sym == 0) {
+    fputs("0,", fp);
+    return MRB_DUMP_OK;
+  }
 
   mrb_int len;
+
   const char *name = mrb_sym_name_len(mrb, sym, &len), *op_name;
   if (!name) return MRB_DUMP_INVALID_ARGUMENT;
   if (sym_name_word_p(name, len)) {
@@ -241,6 +242,7 @@ cdump_syms(mrb_state *mrb, const char *name, const char *key, int n, int syms_le
   int ai = mrb_gc_arena_save(mrb);
   mrb_int code_len = RSTRING_LEN(init_syms_code);
   const char *var_name = sym_var_name(mrb, name, key, n);
+
   fprintf(fp, "mrb_DEFINE_SYMS_VAR(%s, %d, (", var_name, syms_len);
   for (int i=0; i<syms_len; i++) {
     cdump_sym(mrb, syms[i], var_name, i, init_syms_code, fp);
@@ -268,30 +270,27 @@ simple_debug_info(mrb_irep_debug_info *info)
 //adds filenames in init_syms_code block
 static int
 cdump_debug(mrb_state *mrb, const char *name, int n, mrb_irep_debug_info *info,
-    mrb_value init_syms_code, FILE *fp)
+            mrb_value init_syms_code, FILE *fp)
 {
+  int ai = mrb_gc_arena_save(mrb);
   char buffer[256];
-  const char *filename;
-  mrb_int file_len;
-  int len, i;
   const char *line_type = "mrb_debug_line_ary";
 
   if (!simple_debug_info(info))
     return MRB_DUMP_INVALID_IREP;
 
-  len = info->files[0]->line_entry_count;
+  int len = info->files[0]->line_entry_count;
 
-  filename = mrb_sym_name_len(mrb, info->files[0]->filename_sym, &file_len);
-  snprintf(buffer, sizeof(buffer), "  %s_debug_file_%d.filename_sym = mrb_intern_lit(mrb,\"",
-      name, n);
+  const char *filename = mrb_sym_name_len(mrb, info->files[0]->filename_sym, NULL);
+  snprintf(buffer, sizeof(buffer), "  %s_debug_file_%d.filename_sym = mrb_intern_lit(mrb,", name, n);
   mrb_str_cat_cstr(mrb, init_syms_code, buffer);
-  mrb_str_cat_cstr(mrb, init_syms_code, filename);
-  mrb_str_cat_cstr(mrb, init_syms_code, "\");\n");
+  mrb_str_cat_str(mrb, init_syms_code, mrb_str_dump(mrb, mrb_str_new_cstr(mrb, filename)));
+  mrb_str_cat_cstr(mrb, init_syms_code, ");\n");
 
   switch (info->files[0]->line_type) {
   case mrb_debug_line_ary:
     fprintf(fp, "static uint16_t %s_debug_lines_%d[%d] = {", name, n, len);
-    for (i=0; i<len; i++) {
+    for (int i=0; i<len; i++) {
       if (i%10 == 0) fputs("\n", fp);
       fprintf(fp, "0x%04x,", info->files[0]->lines.ary[i]);
     }
@@ -301,8 +300,8 @@ cdump_debug(mrb_state *mrb, const char *name, int n, mrb_irep_debug_info *info,
   case mrb_debug_line_flat_map:
     line_type = "mrb_debug_line_flat_map";
     fprintf(fp, "static struct mrb_irep_debug_info_line %s_debug_lines_%d[%d] = {", name, n, len);
-    for (i=0; i<len; i++) {
-      mrb_irep_debug_info_line *fmap = &info->files[0]->lines.flat_map[i];
+    for (int i=0; i<len; i++) {
+      const mrb_irep_debug_info_line *fmap = &info->files[0]->lines.flat_map[i];
       fprintf(fp, "\t{.start_pos=0x%04x,.line=%d},\n", fmap->start_pos, fmap->line);
     }
     fputs("};\n", fp);
@@ -310,9 +309,9 @@ cdump_debug(mrb_state *mrb, const char *name, int n, mrb_irep_debug_info *info,
 
   case mrb_debug_line_packed_map:
     line_type = "mrb_debug_line_packed_map";
-    fprintf(fp, "static char %s_debug_lines_%d[] = \"", name, n);
-    uint8_t *pmap = info->files[0]->lines.packed_map;
-    for (i=0; i<len; i++) {
+    fprintf(fp, "static const char %s_debug_lines_%d[] = \"", name, n);
+    const uint8_t *pmap = info->files[0]->lines.packed_map;
+    for (int i=0; i<len; i++) {
       fprintf(fp, "\\x%02x", pmap[i]&0xff);
     }
     fputs("\";\n", fp);
@@ -324,12 +323,13 @@ cdump_debug(mrb_state *mrb, const char *name, int n, mrb_irep_debug_info *info,
           info->files[0]->filename_sym,
           info->files[0]->line_entry_count,
           line_type,
-          name,n);
+          name, n);
   fprintf(fp, "static mrb_irep_debug_info_file *%s_debug_file_%d_ = &%s_debug_file_%d;\n", name, n, name, n);
 
   fprintf(fp, "static mrb_irep_debug_info %s_debug_%d = {\n", name, n);
   fprintf(fp, "%d, %d, &%s_debug_file_%d_};\n", info->pc_count, info->flen, name, n);
 
+  mrb_gc_arena_restore(mrb, ai);
   return MRB_DUMP_OK;
 }
 
@@ -356,7 +356,7 @@ cdump_irep_struct(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, FILE *fp,
   /* dump pool */
   if (irep->pool) {
     len=irep->plen;
-    fprintf(fp,   "static const mrb_pool_value %s_pool_%d[%d] = {\n", name, n, len);
+    fprintf(fp,   "static const mrb_irep_pool %s_pool_%d[%d] = {\n", name, n, len);
     for (i=0; i<len; i++) {
       if (cdump_pool(mrb, &irep->pool[i], fp) != MRB_DUMP_OK)
         return MRB_DUMP_INVALID_ARGUMENT;
@@ -381,8 +381,7 @@ cdump_irep_struct(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, FILE *fp,
   }
   /* dump debug */
   if (flags & MRB_DUMP_DEBUG_INFO) {
-    if(cdump_debug(mrb, name, n, irep->debug_info,
-                init_syms_code, fp) == MRB_DUMP_OK) {
+    if (cdump_debug(mrb, name, n, irep->debug_info, init_syms_code, fp) == MRB_DUMP_OK) {
       debug_available = 1;
     }
   }
@@ -416,7 +415,7 @@ cdump_irep_struct(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, FILE *fp,
   else {
     fputs(      "  NULL,\t\t\t\t\t/* lv */\n", fp);
   }
-  if(debug_available) {
+  if (debug_available) {
     fprintf(fp, "  &%s_debug_%d,\n", name, n);
   }
   else {
@@ -427,6 +426,26 @@ cdump_irep_struct(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, FILE *fp,
   return MRB_DUMP_OK;
 }
 
+/**
+ * Dumps an mruby irep into a C structure representation.
+ *
+ * This function takes an mruby internal representation (irep) and generates
+ * a C source code representation of it, writing it to the provided file pointer.
+ * This is useful for embedding mruby bytecode directly into C code.
+ * This function is only available when MRB_NO_STDIO is not defined.
+ *
+ * @param mrb The current mruby state.
+ * @param irep Pointer to the mruby irep to dump.
+ * @param flags Flags to control the dumping process. Possible values include
+ *              MRB_DUMP_DEBUG_INFO (to include debug information) and
+ *              MRB_DUMP_STATIC (to declare generated structures as static).
+ * @param fp File pointer where the C structure will be written.
+ * @param initname Base name used for generated C variables and functions.
+ * @return MRB_DUMP_OK on success.
+ * @return MRB_DUMP_INVALID_ARGUMENT if `fp` or `initname` is NULL or `initname` is empty.
+ * @return MRB_DUMP_WRITE_FAULT if a file writing error occurs.
+ * @return Other non-zero values for other errors during the dump.
+ */
 int
 mrb_dump_irep_cstruct(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, FILE *fp, const char *initname)
 {
@@ -437,11 +456,21 @@ mrb_dump_irep_cstruct(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, FILE 
                   "#include <mruby/irep.h>\n"
                   "#include <mruby/debug.h>\n"
                   "#include <mruby/proc.h>\n"
-                  "#include <mruby/presym.h>\n"
                   "\n") < 0) {
     return MRB_DUMP_WRITE_FAULT;
   }
+  /*
+   * Macro to wrap variadic arguments in curly braces.
+   * Useful for array or struct initializations within other macros.
+   */
   fputs("#define mrb_BRACED(...) {__VA_ARGS__}\n", fp);
+  /*
+   * Macro to define a symbol array variable.
+   * name: Variable name for the symbol array.
+   * len: Number of symbols in the array.
+   * syms: Initializer list for the symbols, e.g., (MRB_SYM(foo), MRB_SYM(bar)).
+   * qualifier: Storage class qualifier like 'static' or 'const'.
+   */
   fputs("#define mrb_DEFINE_SYMS_VAR(name, len, syms, qualifier) \\\n", fp);
   fputs("  static qualifier mrb_sym name[len] = mrb_BRACED syms\n", fp);
   fputs("\n", fp);
@@ -457,7 +486,7 @@ mrb_dump_irep_cstruct(mrb_state *mrb, const mrb_irep *irep, uint8_t flags, FILE 
                                       "extern\n"
                                       "#endif",
           initname);
-  fprintf(fp, "NULL,NULL,MRB_TT_PROC,MRB_GC_RED,0,{&%s_irep_0},NULL,{NULL},\n}};\n", initname);
+  fprintf(fp, "NULL,MRB_TT_PROC,MRB_GC_RED,MRB_OBJ_IS_FROZEN,0,{&%s_irep_0},NULL,{NULL},\n}};\n", initname);
   fputs("static void\n", fp);
   fprintf(fp, "%s_init_syms(mrb_state *mrb)\n", initname);
   fputs("{\n", fp);

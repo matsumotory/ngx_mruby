@@ -5,65 +5,24 @@ assert('Kernel', '15.3.1') do
   assert_equal Module, Kernel.class
 end
 
-assert('Kernel.block_given?', '15.3.1.2.2') do
-  def bg_try(&b)
-    if Kernel.block_given?
-      yield
-    else
-      "no block"
-    end
-  end
-
-  assert_false Kernel.block_given?
-  # test without block
-  assert_equal "no block", bg_try
-  # test with block
-  assert_equal "block" do
-    bg_try { "block" }
-  end
-  # test with block
-  assert_equal "block" do
-    bg_try do
-      "block"
-    end
-  end
-end
+# Kernel.block_given? is not provided by mruby. '15.3.1.2.2'
 
 # Kernel.eval is provided by the mruby-eval mrbgem. '15.3.1.2.3'
 
-assert('Kernel.iterator?', '15.3.1.2.5') do
-  assert_false Kernel.iterator?
-end
+# Kernel.iterator? is not provided by mruby. '15.3.1.2.5'
 
-assert('Kernel.lambda', '15.3.1.2.6') do
-  l = Kernel.lambda do
-    true
-  end
+# Kernel.lambda is not provided by mruby. '15.3.1.2.6'
 
-  m = Kernel.lambda(&l)
+# Kernel.loop is not provided by mruby. '15.3.1.2.8'
 
-  assert_true l.call
-  assert_equal Proc, l.class
-  assert_true m.call
-  assert_equal Proc, m.class
-end
+# Kernel.p test is skipped due to the side effect. '15.3.1.2.9'
+#assert('Kernel.p', '15.3.1.2.9') do
+#  assert_equal 1, Kernel.__send__(:p, 1)
+#end
 
-assert('Kernel.loop', '15.3.1.2.8') do
-  i = 0
+# Kernel.print is provided by the mruby-io mrbgem. '15.3.1.2.10'
 
-  Kernel.loop do
-    i += 1
-    break if i == 100
-  end
-
-  assert_equal 100, i
-end
-
-# Kernel.p is provided by the mruby-print mrbgem. '15.3.1.2.9'
-
-# Kernel.print is provided by the mruby-print mrbgem. '15.3.1.2.10'
-
-# Kernel.puts is provided by the mruby-print mrbgem. '15.3.1.2.11'
+# Kernel.puts is provided by the mruby-io mrbgem. '15.3.1.2.11'
 
 assert('Kernel.raise', '15.3.1.2.12') do
   assert_raise RuntimeError do
@@ -346,13 +305,13 @@ assert('Kernel#method_missing', '15.3.1.3.30') do
     end
   end
   no_super_test = NoSuperMethodTestClass.new
-  msg = "no superclass method 'no_super_method_named_this'"
+  msg = "no superclass method 'no_super_method_named_this' for NoSuperMethodTestClass"
   assert_raise_with_message(NoMethodError, msg) do
     no_super_test.no_super_method_named_this
   end
 
   a = String.new
-  msg = "undefined method 'no_method_named_this'"
+  msg = "undefined method 'no_method_named_this' for String"
   assert_raise_with_message(NoMethodError, msg) do
     a.no_method_named_this
   end
@@ -377,11 +336,16 @@ assert('Kernel#object_id', '15.3.1.3.33') do
   assert_kind_of Numeric, 1.0.object_id
 end
 
-# Kernel#p is defined in mruby-print mrbgem. '15.3.1.3.34'
+# Kernel#p test is skipped due to the side effect. '15.3.1.3.34'
+#assert('Kernel#p', '15.3.1.3.34') do
+#  assert_equal nil, p
+#  assert_equal nil, p(p)
+#  assert_equal [:a, :b], p(:a, :b)
+#end
 
-# Kernel#print is defined in mruby-print mrbgem. '15.3.1.3.35'
+# Kernel#print is defined in mruby-io mrbgem. '15.3.1.3.35'
 
-# Kernel#puts is defined in mruby-print mrbgem. '15.3.1.3.39'
+# Kernel#puts is defined in mruby-io mrbgem. '15.3.1.3.39'
 
 assert('Kernel#raise', '15.3.1.3.40') do
   assert_raise RuntimeError do

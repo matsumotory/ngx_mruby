@@ -8,50 +8,127 @@ Contributors agree to license their contribution(s) under MIT license.
 To make it easy to review and understand your change please keep the following
 things in mind before submitting your pull request:
 
-* Work on the latest possible state of **mruby/master**
-* Create a branch which is dedicated to your change
-* Test your changes before creating a pull request (`rake test`)
-* If possible write a test case which confirms your change
-* Don't mix several features or bug-fixes in one pull request
-* Create a meaningful commit message
-* Explain your change (i.e. with a link to the issue you are fixing)
-* Use mrbgem to provide non ISO features (classes, modules and methods) unless
+- Work on the latest possible state of **mruby/master**
+- Create a branch which is dedicated to your change
+- Test your changes before creating a pull request (`rake test`)
+- If possible write a test case which confirms your change
+- Don't mix several features or bugfixes in one pull request
+- Create a meaningful commit message
+- Explain your change (i.e. with a link to the issue you are fixing)
+- Use mrbgem to provide non ISO features (classes, modules and methods) unless
   you have a special reason to implement them in the core
 
-## pre-commit
+## Security Issues
 
-A framework for managing and maintaining multi-language `pre-commit` hooks.
-`pre-commit` can be [installed](https://pre-commit.com/#installation) with `pip`, `curl`, `brew` or `conda`.
+If you discover a security vulnerability:
 
-You need to first install `pre-commit` and then install the `pre-commit` hooks with `pre-commit install`.
-Now `pre-commit` will run automatically on git commit!
+- **High priority security vulnerabilities** (RCE): Report via email to <matz@ruby.or.jp>
+- **VM crashes from valid Ruby code**: Please report as regular bug reports on our issue tracker
 
-It's usually a good idea to run the hooks against all the files when adding new hooks (usually `pre-commit` will only run on the changed files during git hooks).
-Use `pre-commit run --all-files` to check all files.
+For detailed guidance on what qualifies as a security issue and what doesn't, see [SECURITY.md](SECURITY.md).
 
-To run a single hook use `pre-commit run --all-files <hook_id>`
+## prek
 
-To update use `pre-commit autoupdate`
+We use [prek](https://github.com/j178/prek), a fast Rust-based pre-commit hook manager.
+It reads the standard `.pre-commit-config.yaml` format.
 
-* [Quick start](https://pre-commit.com/#quick-start)
-* [Usage](https://pre-commit.com/#usage)
-* [pre-commit-autoupdate](https://pre-commit.com/#pre-commit-autoupdate)
+Install `prek` following the [installation guide](https://github.com/j178/prek#installation),
+then install the hooks with `prek install`.
+Now `prek` will run automatically on git commit!
+
+It's usually a good idea to run the hooks against all the files when adding new hooks (usually `prek`
+will only run on the changed files during git hooks). Use `prek run --all-files` to check all files.
+
+To run a single hook use `prek run --all-files <hook_id>`
+
+To update use `prek autoupdate`
+
+Sometimes you might need to skip one or more hooks which can be done with the `SKIP` environment variable.
+
+`$ SKIP=yamllint git commit -m "foo"`
+
+For convenience, we have added `prek run --all-files`, `prek install` and `prek autoupdate`
+to both the Makefile and the Rakefile. Run them with:
+
+- `make check` or `rake check`
+- `make checkinstall` or `rake checkinstall`
+- `make checkupdate` or `rake checkupdate`
+
+To configure hooks you can modify the config file [.pre-commit-config.yaml](.pre-commit-config.yaml).
+We use [GitHub Actions](.github/workflows/pre-commit.yml) to run `prek` on every pull request.
+
+### prek quick links
+
+- [prek GitHub](https://github.com/j178/prek)
+- [Installation](https://github.com/j178/prek#installation)
+- [Usage](https://github.com/j178/prek#usage)
+
+## Docker
+
+We have both a `Dockerfile` and `docker-compose.yml` files in the repository root.
+You can run these with the command line or use
+[Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+The Docker image is running Debian bullseye with Ruby and Python installed.
+You can build the Docker image with:
+
+`$ docker-compose build test`
+
+So far we just have one service: `test`. Running the default `docker-compose`
+command will create the Docker image, spin up a container and then build and
+run all mruby tests.
+
+The default `docker-compose` command is:
+
+`$ docker-compose -p mruby run test`
+
+You can also use Make or Rake to run the default `docker-compose`
+command from above:
+
+- `make composetest`
+- `rake composetest`
+
+List your Docker images with:
+
+```console
+$ docker images
+REPOSITORY   TAG       IMAGE ID       CREATED          SIZE
+mruby-test   latest    ec60f9536948   29 seconds ago   1.29GB
+```
+
+You can also run any custom `docker-compose` command which will override
+the default. For example to run `prek run --all-files` type:
+
+`$ docker-compose -p mruby run test prek run --all-files`
+
+For convenience, you can also run `prek` with:
+
+- `make composecheck`
+- `rake composecheck`
+
+The bonus of running `prek` with `docker-compose` is that you won't need
+to install `prek` and the hooks on your local machine.
+
+Note limitation: currently running `prek` with `docker-compose` we
+skip the `check-executables-have-shebangs` hook.
+
+Two more examples of custom `docker-compose` commands are:
+
+- `$ docker-compose -p mruby run test ls`
+- `$ docker-compose -p mruby run test rake doc:api`
+
+If you want to test using a different `docker-compose` YAML config file you
+can use the `-f` flag:
+
+`$ docker-compose -p mruby -f docker-compose.test.yml run test`
+
+- <https://docs.docker.com/compose/>
+- <https://docs.docker.com/engine/reference/commandline/cli/>
 
 ## Spell Checking
 
-We are running [misspell](https://github.com/client9/misspell) which is mainly written in
-[Golang](https://golang.org/) to check spelling with [GitHub Actions](.github/workflows/lint.yml).
-Correct commonly misspelled English words quickly with `misspell`. You can run `misspell` locally
-against all files with:
-
-```bash
-find . -type f | xargs ./misspell -error
-```
-
-Notable `misspell` help options or flags are:
-
-* `-i` string: ignore the following corrections, comma separated
-* `-w`: Overwrite file with corrections (default is just to display)
+We are using `prek` to run [codespell](https://github.com/codespell-project/codespell)
+to check code for common misspellings. We have a small custom dictionary file [codespell.txt](.github/linters/codespell.txt).
 
 ## Coding conventions
 
@@ -99,5 +176,18 @@ language itself. Please note the following hints for your Ruby code:
 #### Comply with the Ruby standard (ISO/IEC 30170:2012)
 
 mruby is currently targeting to execute Ruby code which complies to ISO/IEC
-30170:2012 (<https://www.iso.org/iso/iso_catalogue/catalogue_tc/catalogue_detail.htm?csnumber=59579>),
+30170:2012 (<https://www.iso.org/standard/59579.html>),
 unless there's a clear reason, e.g. the latest Ruby has changed behavior from ISO.
+
+## Building documentation
+
+### mruby API
+
+- [YARD](https://yardoc.org/) - YARD is a documentation generation tool for the Ruby programming language
+- [yard-mruby](https://rubygems.org/gems/yard-mruby) - Document mruby sources with YARD
+- [yard-coderay](https://rubygems.org/gems/yard-coderay) - Adds coderay syntax highlighting to YARD docs
+
+### C API
+
+- [Doxygen](https://www.doxygen.nl/) - Generate documentation from source code
+- [Graphviz](https://graphviz.org/) - Graphviz is open source graph visualization software

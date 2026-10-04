@@ -38,12 +38,25 @@ struct RStringEmbed {
   char ary[RSTRING_EMBED_LEN_MAX+1];
 };
 
-#define RSTR_SET_TYPE_FLAG(s, type) (RSTR_UNSET_TYPE_FLAG(s), (s)->flags |= MRB_STR_##type)
-#define RSTR_UNSET_TYPE_FLAG(s) ((s)->flags &= ~(MRB_STR_TYPE_MASK|MRB_STR_EMBED_LEN_MASK))
+#define RSTR_SET_TYPE(s, type) ((s)->flags = ((s)->flags & ~(MRB_STR_TYPE_MASK|MRB_STR_EMBED_LEN_MASK)) | MRB_STR_##type)
+
+#define MRB_STR_NORMAL    0
+#define MRB_STR_SHARED    1
+#define MRB_STR_FSHARED   2
+#define MRB_STR_NOFREE    4
+#define MRB_STR_EMBED     8
+#define MRB_STR_TYPE_MASK 15
+
+#define MRB_STR_EMBED_LEN_SHIFT 6
+#define MRB_STR_EMBED_LEN_BITS 5
+#define MRB_STR_EMBED_LEN_MASK (((1 << MRB_STR_EMBED_LEN_BITS) - 1) << MRB_STR_EMBED_LEN_SHIFT)
+
+#define MRB_STR_BINARY    16
+#define MRB_STR_SINGLE_BYTE 32
+#define MRB_STR_STATE_MASK 48
 
 #define RSTR_EMBED_P(s) ((s)->flags & MRB_STR_EMBED)
 #define RSTR_SET_EMBED_FLAG(s) ((s)->flags |= MRB_STR_EMBED)
-#define RSTR_UNSET_EMBED_FLAG(s) ((s)->flags &= ~(MRB_STR_EMBED|MRB_STR_EMBED_LEN_MASK))
 #define RSTR_SET_EMBED_LEN(s, n) do {\
   size_t tmp_n = (n);\
   (s)->flags &= ~MRB_STR_EMBED_LEN_MASK;\
@@ -67,30 +80,24 @@ struct RStringEmbed {
 #define RSTR_CAPA(s) (RSTR_EMBED_P(s) ? RSTRING_EMBED_LEN_MAX : (s)->as.heap.aux.capa)
 
 #define RSTR_SHARED_P(s) ((s)->flags & MRB_STR_SHARED)
-#define RSTR_SET_SHARED_FLAG(s) ((s)->flags |= MRB_STR_SHARED)
-#define RSTR_UNSET_SHARED_FLAG(s) ((s)->flags &= ~MRB_STR_SHARED)
-
 #define RSTR_FSHARED_P(s) ((s)->flags & MRB_STR_FSHARED)
-#define RSTR_SET_FSHARED_FLAG(s) ((s)->flags |= MRB_STR_FSHARED)
-#define RSTR_UNSET_FSHARED_FLAG(s) ((s)->flags &= ~MRB_STR_FSHARED)
-
 #define RSTR_NOFREE_P(s) ((s)->flags & MRB_STR_NOFREE)
-#define RSTR_SET_NOFREE_FLAG(s) ((s)->flags |= MRB_STR_NOFREE)
-#define RSTR_UNSET_NOFREE_FLAG(s) ((s)->flags &= ~MRB_STR_NOFREE)
 
 #ifdef MRB_UTF8_STRING
-# define RSTR_ASCII_P(s) ((s)->flags & MRB_STR_ASCII)
-# define RSTR_SET_ASCII_FLAG(s) ((s)->flags |= MRB_STR_ASCII)
-# define RSTR_UNSET_ASCII_FLAG(s) ((s)->flags &= ~MRB_STR_ASCII)
-# define RSTR_WRITE_ASCII_FLAG(s, v) (RSTR_UNSET_ASCII_FLAG(s), (s)->flags |= v)
-# define RSTR_COPY_ASCII_FLAG(dst, src) RSTR_WRITE_ASCII_FLAG(dst, RSTR_ASCII_P(src))
+# define RSTR_SINGLE_BYTE_P(s) ((s)->flags & MRB_STR_SINGLE_BYTE)
+# define RSTR_SET_SINGLE_BYTE_FLAG(s) ((s)->flags |= MRB_STR_SINGLE_BYTE)
+# define RSTR_UNSET_SINGLE_BYTE_FLAG(s) ((s)->flags &= ~MRB_STR_SINGLE_BYTE)
+# define RSTR_WRITE_SINGLE_BYTE_FLAG(s, v) (RSTR_UNSET_SINGLE_BYTE_FLAG(s), (s)->flags |= v)
+# define RSTR_COPY_SINGLE_BYTE_FLAG(dst, src) RSTR_WRITE_SINGLE_BYTE_FLAG(dst, RSTR_SINGLE_BYTE_P(src))
 #else
-# define RSTR_ASCII_P(s) (void)0
-# define RSTR_SET_ASCII_FLAG(s) (void)0
-# define RSTR_UNSET_ASCII_FLAG(s) (void)0
-# define RSTR_WRITE_ASCII_FLAG(s, v) (void)0
-# define RSTR_COPY_ASCII_FLAG(dst, src) (void)0
+# define RSTR_SINGLE_BYTE_P(s) TRUE
+# define RSTR_SET_SINGLE_BYTE_FLAG(s) (void)0
+# define RSTR_UNSET_SINGLE_BYTE_FLAG(s) (void)0
+# define RSTR_WRITE_SINGLE_BYTE_FLAG(s, v) (void)0
+# define RSTR_COPY_SINGLE_BYTE_FLAG(dst, src) (void)0
 #endif
+#define RSTR_SET_ASCII_FLAG(s) RSTR_SET_SINGLE_BYTE_FLAG(s)
+#define RSTR_BINARY_P(s) ((s)->flags & MRB_STR_BINARY)
 
 /**
  * Returns a pointer from a Ruby string
@@ -102,20 +109,7 @@ struct RStringEmbed {
 #define RSTRING_LEN(s)       RSTR_LEN(RSTRING(s))
 #define RSTRING_CAPA(s)      RSTR_CAPA(RSTRING(s))
 #define RSTRING_END(s)       (RSTRING_PTR(s) + RSTRING_LEN(s))
-MRB_API mrb_int mrb_str_strlen(mrb_state*, struct RString*);
 #define RSTRING_CSTR(mrb,s)  mrb_string_cstr(mrb, s)
-
-#define MRB_STR_SHARED    1
-#define MRB_STR_FSHARED   2
-#define MRB_STR_NOFREE    4
-#define MRB_STR_EMBED     8  /* type flags up to here */
-#define MRB_STR_ASCII    16
-#define MRB_STR_EMBED_LEN_SHIFT 6
-#define MRB_STR_EMBED_LEN_BIT 5
-#define MRB_STR_EMBED_LEN_MASK (((1 << MRB_STR_EMBED_LEN_BIT) - 1) << MRB_STR_EMBED_LEN_SHIFT)
-#define MRB_STR_TYPE_MASK 15
-
-void mrb_gc_free_str(mrb_state*, struct RString*);
 
 MRB_API void mrb_str_modify(mrb_state *mrb, struct RString *s);
 /* mrb_str_modify() with keeping ASCII flag if set */
@@ -324,7 +318,7 @@ MRB_API mrb_value mrb_str_resize(mrb_state *mrb, mrb_value str, mrb_int len);
  */
 MRB_API mrb_value mrb_str_substr(mrb_state *mrb, mrb_value str, mrb_int beg, mrb_int len);
 
-MRB_API mrb_value mrb_str_new_capa(mrb_state *mrb, size_t capa);
+MRB_API mrb_value mrb_str_new_capa(mrb_state *mrb, mrb_int capa);
 #define mrb_str_buf_new(mrb, capa) mrb_str_new_capa(mrb, (capa))
 
 /* NULL terminated C string from mrb_value */
@@ -332,9 +326,11 @@ MRB_API const char *mrb_string_cstr(mrb_state *mrb, mrb_value str);
 /* NULL terminated C string from mrb_value; `str` will be updated */
 MRB_API const char *mrb_string_value_cstr(mrb_state *mrb, mrb_value *str);
 /* obsolete: use RSTRING_PTR() */
-MRB_API const char *mrb_string_value_ptr(mrb_state *mrb, mrb_value str);
+#define mrb_string_value_ptr(mrb, str) RSTRING_PTR(str)
 /* obsolete: use RSTRING_LEN() */
-MRB_API mrb_int mrb_string_value_len(mrb_state *mrb, mrb_value str);
+#define mrb_string_value_len(mrb, str) RSTRING_LEN(str)
+/* obsolete: substituted by a macro; shall be removed */
+#define mrb_str_strlen(mrb, s) strlen(RSTR_PTR(s))
 
 /**
  * Duplicates a string object.
@@ -422,26 +418,10 @@ MRB_API int mrb_str_cmp(mrb_state *mrb, mrb_value str1, mrb_value str2);
  */
 MRB_API char *mrb_str_to_cstr(mrb_state *mrb, mrb_value str);
 
-uint32_t mrb_str_hash(mrb_state *mrb, mrb_value str);
-mrb_value mrb_str_dump(mrb_state *mrb, mrb_value str);
-
-/**
- * Returns a printable version of str, surrounded by quote marks, with special characters escaped.
- */
-mrb_value mrb_str_inspect(mrb_state *mrb, mrb_value str);
-
 /* For backward compatibility */
 #define mrb_str_cat2(mrb, str, ptr) mrb_str_cat_cstr(mrb, str, ptr)
 #define mrb_str_buf_cat(mrb, str, ptr, len) mrb_str_cat(mrb, str, ptr, len)
 #define mrb_str_buf_append(mrb, str, str2) mrb_str_cat_str(mrb, str, str2)
-
-mrb_bool mrb_str_beg_len(mrb_int str_len, mrb_int *begp, mrb_int *lenp);
-mrb_value mrb_str_byte_subseq(mrb_state *mrb, mrb_value str, mrb_int beg, mrb_int len);
-
-#ifdef MRB_UTF8_STRING
-mrb_int mrb_utf8len(const char *str, const char *end);
-mrb_int mrb_utf8_strlen(const char *str, mrb_int byte_len);
-#endif
 
 MRB_END_DECL
 

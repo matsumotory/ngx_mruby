@@ -9,7 +9,7 @@ assert("Random.new") do
   assert_not_equal(r1.rand, r3.rand)
 end
 
-assert("Kernel.srand") do
+assert("Kernel#srand") do
   srand(234)
   r1 = rand
   srand(234)
@@ -45,7 +45,7 @@ assert("Random#bytes") do
   assert_equal num / 2, b.bytesize
 end
 
-assert("return class of Kernel.rand") do
+assert("return class of Kernel#rand") do
   assert_kind_of(Integer, rand(3))
   assert_kind_of(Integer, rand(1.5))
   skip unless Object.const_defined?(:Float)
@@ -73,14 +73,14 @@ end
 assert("Array#shuffle(random)") do
   assert_raise(TypeError) do
     # this will cause an exception due to the wrong argument
-    [1, 2].shuffle "Not a Random instance"
+    [1, 2].shuffle(random: "Not a Random instance")
   end
 
   # verify that the same seed causes the same results
   ary = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  shuffled1 = ary.shuffle Random.new 345
-  shuffled2 = ary.shuffle Random.new 345
-  shuffled3 = ary.shuffle Random.new 346
+  shuffled1 = ary.shuffle(random: Random.new(345))
+  shuffled2 = ary.shuffle(random: Random.new(345))
+  shuffled3 = ary.shuffle(random: Random.new(346))
   assert_equal(shuffled1, shuffled2)
   assert_not_equal(shuffled1, shuffled3)
 end
@@ -88,16 +88,16 @@ end
 assert('Array#shuffle!(random)') do
   assert_raise(TypeError) do
     # this will cause an exception due to the wrong argument
-    [1, 2].shuffle! "Not a Random instance"
+    [1, 2].shuffle!(random: "Not a Random instance")
   end
 
   # verify that the same seed causes the same results
   ary1 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  ary1.shuffle! Random.new 345
+  ary1.shuffle!(random: Random.new(345))
   ary2 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  ary2.shuffle! Random.new 345
+  ary2.shuffle!(random: Random.new(345))
   ary3 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  ary3.shuffle! Random.new 346
+  ary3.shuffle!(random: Random.new(346))
   assert_equal(ary1, ary2)
   assert_not_equal(ary1, ary3)
 end
@@ -123,15 +123,29 @@ end
 assert('Array#sample(random)') do
   assert_raise(TypeError) do
     # this will cause an exception due to the wrong argument
-    [1, 2].sample(2, "Not a Random instance")
+    [1, 2].sample(2, random: "Not a Random instance")
   end
 
   # verify that the same seed causes the same results
   ary = (1..10).to_a
   srand(15)
   samples1 = ary.sample(4)
-  samples2 = ary.sample(4, Random.new(15))
-  samples3 = ary.sample(4, Random.new(16))
+  samples2 = ary.sample(4, random: Random.new(15))
+  samples3 = ary.sample(4, random: Random.new(16))
   assert_equal(samples1, samples2)
   assert_not_equal(samples1, samples3)
+end
+
+assert("Kernel#rand()") do
+  100.times {
+    assert_include(0.0..1.0, rand)
+    assert_include(0...100, rand(0...100))
+    assert_include(0...100, rand(100))
+  }
+
+  assert_equal(rand(0...0), nil)
+  assert_equal(rand(0.0...0), nil)
+  assert_equal(rand(0...0.0), nil)
+  assert_equal(rand(0.0...0.0), nil)
+  assert_equal(rand(1..0), nil)
 end

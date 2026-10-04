@@ -10,7 +10,6 @@
 #include <mruby/proc.h>
 #include <mruby/value.h>
 #include <mruby/range.h>
-#include <mruby/presym.h>
 
 struct os_count_struct {
   mrb_int total;
@@ -50,7 +49,7 @@ os_count_object_type(mrb_state *mrb, struct RBasic *obj, void *data)
  *    # ...
  *  }
  *
- *  If the optional argument +result_hash+ is given,
+ *  If the optional argument `result_hash` is given,
  *  it is overwritten and returned. This is intended to avoid probe effect.
  *
  */
@@ -78,7 +77,7 @@ os_count_objects(mrb_state *mrb, mrb_value self)
   for (i = MRB_TT_FALSE; i < MRB_TT_MAXDEFINE; i++) {
     mrb_value type;
     switch (i) {
-#define COUNT_TYPE(t) case (MRB_T ## t): type = mrb_symbol_value(mrb_intern_lit(mrb, #t)); break;
+#define COUNT_TYPE(t) case (MRB_T ## t): type = mrb_symbol_value(MRB_SYM(t)); break;
       COUNT_TYPE(T_INTEGER);
       COUNT_TYPE(T_FLOAT);
       COUNT_TYPE(T_CPTR);
@@ -96,9 +95,12 @@ os_count_objects(mrb_state *mrb, mrb_value self)
       COUNT_TYPE(T_ENV);
       COUNT_TYPE(T_DATA);
       COUNT_TYPE(T_FIBER);
+      COUNT_TYPE(T_STRUCT);
       COUNT_TYPE(T_ISTRUCT);
+      COUNT_TYPE(T_BREAK);
       COUNT_TYPE(T_COMPLEX);
       COUNT_TYPE(T_RATIONAL);
+      COUNT_TYPE(T_BIGINT);
 #undef COUNT_TYPE
     default:
       type = mrb_fixnum_value(i); break;
@@ -154,9 +156,9 @@ os_each_object_cb(mrb_state *mrb, struct RBasic *obj, void *ud)
  *
  *  Calls the block once for each object in this Ruby process.
  *  Returns the number of objects found.
- *  If the optional argument +module+ is given,
+ *  If the optional argument `module` is given,
  *  calls the block for only those classes or modules
- *  that match (or are a subclass of) +module+.
+ *  that match (or are a subclass of) `module`.
  *
  *  If no block is given, ArgumentError is raised.
  *

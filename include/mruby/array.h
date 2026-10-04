@@ -20,7 +20,7 @@ typedef struct mrb_shared_array {
   mrb_value *ptr;
 } mrb_shared_array;
 
-#if defined(MRB_32BIT) && defined(MRB_NO_BOXING) && !defined(MRB_USE_FLOAT32) && !defined(MRB_ARY_NO_EMBED)
+#if defined(MRB_32BIT) && defined(MRB_NO_BOXING) && (!defined(MRB_USE_FLOAT32) || defined(MRB_INT64)) && !defined(MRB_ARY_NO_EMBED)
 # define MRB_ARY_NO_EMBED
 #endif
 
@@ -85,8 +85,9 @@ struct RArray {
 #define ARY_SET_SHARED_FLAG(a) ((a)->flags |= MRB_ARY_SHARED)
 #define ARY_UNSET_SHARED_FLAG(a) ((a)->flags &= ~MRB_ARY_SHARED)
 
-void mrb_ary_decref(mrb_state*, mrb_shared_array*);
 MRB_API void mrb_ary_modify(mrb_state*, struct RArray*);
+MRB_API mrb_value mrb_ary_dup(mrb_state*, mrb_value ary);
+MRB_API mrb_value mrb_ary_make_shared_copy(mrb_state*, mrb_value ary);
 MRB_API mrb_value mrb_ary_new_capa(mrb_state*, mrb_int);
 
 /*
@@ -296,8 +297,6 @@ MRB_API mrb_value mrb_ary_join(mrb_state *mrb, mrb_value ary, mrb_value sep);
  */
 MRB_API mrb_value mrb_ary_resize(mrb_state *mrb, mrb_value ary, mrb_int new_len);
 
-/* helper functions */
-mrb_value mrb_ary_subseq(mrb_state *mrb, mrb_value ary, mrb_int beg, mrb_int len);
 
 MRB_END_DECL
 

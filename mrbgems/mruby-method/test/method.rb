@@ -138,6 +138,36 @@ assert 'Method#call with undefined method' do
   assert_raise(NoMethodError) { m.call(:arg1, :arg2) }
 end
 
+assert 'Method#call with undefined method -- only kwargs' do
+  c = Class.new {
+    attr_accessor :m, :argv, :kwargs
+    def respond_to_missing?(m, b)
+      m == :foo
+    end
+
+    def method_missing(m, *argv, **kwargs)
+      @m = m
+      @argv = argv
+      @kwargs = kwargs
+      super
+    end
+  }
+  cc = c.new
+  assert_kind_of Method, cc.method(:foo)
+
+  # Calling cc.method(:foo) works
+  assert_raise(NoMethodError) { cc.method(:foo).call(kwarg1: :val1, kwarg2: :val2) }
+  assert_equal :foo, cc.m
+  assert_equal [], cc.argv
+  assert_equal({ kwarg1: :val1, kwarg2: :val2 }, cc.kwargs)
+
+  # calling cc.foo fails
+  assert_raise(NoMethodError) { cc.foo(kwarg1: :val1, kwarg2: :val2) }
+  assert_equal :foo, cc.m
+  assert_equal [], cc.argv
+  assert_equal({ kwarg1: :val1, kwarg2: :val2 }, cc.kwargs)
+end
+
 assert 'Method#source_location' do
   skip if proc{}.source_location.nil?
 
@@ -230,14 +260,14 @@ assert 'to_s' do
   o = Object.new
   def o.foo; end
   m = o.method(:foo)
-  assert_equal("#<UnboundMethod: #{ class << o; self; end.inspect }#foo>", m.unbind.inspect)
+  assert_match("#<UnboundMethod: #{ class << o; self; end.inspect }#foo*>", m.unbind.inspect)
 
   c = Class.new
   c.class_eval { def foo; end; }
   m = c.new.method(:foo)
-  assert_equal("#<Method: #{ c.inspect }#foo>", m.inspect)
+  assert_match("#<Method: #{ c.inspect }#foo*>", m.inspect)
   m = c.instance_method(:foo)
-  assert_equal("#<UnboundMethod: #{ c.inspect }#foo>", m.inspect)
+  assert_match("#<UnboundMethod: #{ c.inspect }#foo*>", m.inspect)
 end
 
 assert 'owner' do

@@ -11,8 +11,9 @@
 #include <mruby/dump.h>
 #include <mruby/variable.h>
 #include <mruby/proc.h>
+#include <mruby/error.h>
 
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
 # include <io.h> /* for setmode */
 # include <fcntl.h>
 #endif
@@ -63,6 +64,16 @@ usage(const char *name)
     printf("  %s\n", *p++);
 }
 
+static mrb_bool
+mrb_extension_p(const char *path)
+{
+  const char *e = strrchr(path, '.');
+  if (e && e[1] == 'm' && e[2] == 'r' && e[3] == 'b' && e[4] == '\0') {
+    return TRUE;
+  }
+  return FALSE;
+}
+
 static void
 options_init(struct options *opts, int argc, char **argv)
 {
@@ -86,13 +97,13 @@ options_opt(struct options *opts)
   while (++opts->argv, --opts->argc) {
     opts->opt = *opts->argv;
 
-    /*  empty         || not start with `-`  || `-` */
-    if (!opts->opt[0] || opts->opt[0] != '-' || !opts->opt[1]) return NULL;
+    /*  not start with `-`  || `-` */
+    if (opts->opt[0] != '-' || !opts->opt[1]) return NULL;
 
     if (opts->opt[1] == '-') {
       /* `--` */
       if (!opts->opt[2]) {
-        ++opts->argv, --opts->argc;
+        opts->argv++, opts->argc--;
         return NULL;
       }
       /* long option */
@@ -102,7 +113,7 @@ options_opt(struct options *opts)
     }
     else {
       /* short option */
-      ++opts->opt;
+      opts->opt++;
       goto short_opt;
     }
   }
@@ -160,8 +171,7 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
 
           cmdlinelen = strlen(args->cmdline);
           itemlen = strlen(item);
-          args->cmdline =
-            (char *)mrb_realloc(mrb, args->cmdline, cmdlinelen + itemlen + 2);
+          args->cmdline = (char*)mrb_realloc(mrb, args->cmdline, cmdlinelen + itemlen + 2);
           args->cmdline[cmdlinelen] = '\n';
           memcpy(args->cmdline + cmdlinelen + 1, item, itemlen + 1);
         }
@@ -233,7 +243,7 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
       argc--; argv++;
     }
   }
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
   if (args->rfp == stdin) {
     _setmode(_fileno(stdin), O_BINARY);
   }
@@ -267,14 +277,13 @@ main(int argc, char **argv)
 {
   mrb_state *mrb = mrb_open();
   int n = -1;
-  int i;
   struct _args args;
   mrb_value ARGV;
-  mrbc_context *c;
   mrb_value v;
 
-  if (mrb == NULL) {
-    fprintf(stderr, "%s: Invalid mrb_state, exiting mruby\n", *argv);
+  if (MRB_OPEN_FAILURE(mrb)) {
+    mrb_print_error(mrb);  /* handles NULL */
+    mrb_close(mrb);        /* handles NULL */
     return EXIT_FAILURE;
   }
 
@@ -286,7 +295,7 @@ main(int argc, char **argv)
   else {
     int ai = mrb_gc_arena_save(mrb);
     ARGV = mrb_ary_new_capa(mrb, args.argc);
-    for (i = 0; i < args.argc; i++) {
+    for (int i = 0; i < args.argc; i++) {
       char* utf8 = mrb_utf8_from_locale(args.argv[i], -1);
       if (utf8) {
         mrb_ary_push(mrb, ARGV, mrb_str_new_cstr(mrb, utf8));
@@ -296,7 +305,7 @@ main(int argc, char **argv)
     mrb_define_global_const(mrb, "ARGV", ARGV);
     mrb_gv_set(mrb, mrb_intern_lit(mrb, "$DEBUG"), mrb_bool_value(args.debug));
 
-    c = mrbc_context_new(mrb);
+    mrb_ccontext *c = mrb_ccontext_new(mrb);
     if (args.verbose)
       c->dump_result = TRUE;
     if (args.check_syntax)
@@ -313,34 +322,32 @@ main(int argc, char **argv)
     mrb_gv_set(mrb, mrb_intern_lit(mrb, "$0"), mrb_str_new_cstr(mrb, cmdline));
 
     /* Load libraries */
-    for (i = 0; i < args.libc; i++) {
-      struct REnv *e;
+    for (int i = 0; i < args.libc; i++) {
       FILE *lfp = fopen(args.libv[i], "rb");
       if (lfp == NULL) {
         fprintf(stderr, "%s: Cannot open library file: %s\n", *argv, args.libv[i]);
-        mrbc_context_free(mrb, c);
+        mrb_ccontext_free(mrb, c);
         cleanup(mrb, &args);
         return EXIT_FAILURE;
       }
-      mrbc_filename(mrb, c, args.libv[i]);
-      if (args.mrbfile) {
-        v = mrb_load_irep_file_cxt(mrb, lfp, c);
+      mrb_ccontext_filename(mrb, c, args.libv[i]);
+      if (mrb_extension_p(args.libv[i])) {
+        mrb_load_irep_file_cxt(mrb, lfp, c);
       }
       else {
-        v = mrb_load_detect_file_cxt(mrb, lfp, c);
+        mrb_load_detect_file_cxt(mrb, lfp, c);
       }
       fclose(lfp);
-      e = mrb_vm_ci_env(mrb->c->cibase);
-      mrb_vm_ci_env_set(mrb->c->cibase, NULL);
-      mrb_env_unshare(mrb, e);
-      mrbc_cleanup_local_variables(mrb, c);
+      mrb_vm_ci_env_clear(mrb, mrb->c->cibase);
+      mrb_ccontext_cleanup_local_variables(c);
     }
 
-    /* set program file name */
-    mrbc_filename(mrb, c, cmdline);
+    /* set program filename */
+    mrb_ccontext_filename(mrb, c, cmdline);
+    c->no_return_value = TRUE;  /* main program doesn't need return value */
 
     /* Load program */
-    if (args.mrbfile) {
+    if (args.mrbfile || mrb_extension_p(cmdline)) {
       v = mrb_load_irep_file_cxt(mrb, args.rfp, c);
     }
     else if (args.rfp) {
@@ -354,8 +361,9 @@ main(int argc, char **argv)
     }
 
     mrb_gc_arena_restore(mrb, ai);
-    mrbc_context_free(mrb, c);
+    mrb_ccontext_free(mrb, c);
     if (mrb->exc) {
+      MRB_EXC_CHECK_EXIT(mrb, mrb->exc);
       if (!mrb_undef_p(v)) {
         mrb_print_error(mrb);
       }

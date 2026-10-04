@@ -4,7 +4,7 @@ class Range
   #    rng.first    -> obj
   #    rng.first(n) -> an_array
   #
-  # Returns the first object in the range, or an array of the first +n+
+  # Returns the first object in the range, or an array of the first `n`
   # elements.
   #
   #   (10..20).first     #=> 10
@@ -33,10 +33,10 @@ class Range
   #    rng.last(n) -> an_array
   #
   # Returns the last object in the range,
-  # or an array of the last +n+ elements.
+  # or an array of the last `n` elements.
   #
-  # Note that with no arguments +last+ will return the object that defines
-  # the end of the range even if #exclude_end? is +true+.
+  # Note that with no arguments `last` will return the object that defines
+  # the end of the range even if #exclude_end? is `true`.
   #
   #   (10..20).last      #=> 20
   #   (10...20).last     #=> 20
@@ -53,6 +53,19 @@ class Range
     return self.to_a.last(nv)
   end
 
+  ##
+  # call-seq:
+  #    rng.max                   -> obj
+  #    rng.max {|a,b| block }    -> obj
+  #
+  # Returns the maximum value in the range. Returns nil if the range is empty
+  # or excludes its end and the end is not an Integer. For non-numeric ranges
+  # or when a block is given, it delegates to Enumerable#max.
+  #
+  #   (10..20).max      #=> 20
+  #   (10...20).max     #=> 19
+  #   ('a'..'z').max    #=> "z"
+  #
   def max(&block)
     val = self.begin
     last = self.end
@@ -75,6 +88,17 @@ class Range
     super()
   end
 
+  ##
+  # call-seq:
+  #    rng.min                   -> obj
+  #    rng.min {|a,b| block }    -> obj
+  #
+  # Returns the minimum value in the range. For non-numeric ranges or when
+  # a block is given, it delegates to Enumerable#min.
+  #
+  #   (10..20).min      #=> 10
+  #   ('a'..'z').min    #=> "a"
+  #
   def min(&block)
     val = self.begin
     last = self.end
@@ -95,5 +119,37 @@ class Range
 
     # delegate to Enumerable
     super()
+  end
+
+  ##
+  # call-seq:
+  #    rng.overlap?(other_range) -> true or false
+  #
+  # Returns true if self and other_range have at least one element in common,
+  # false otherwise.
+  #
+  #   (1..5).overlap?(4..6) #=> true
+  #   (1..5).overlap?(7..9) #=> false
+  #
+  def overlap?(other)
+    raise TypeError, "argument must be a range" unless other.kind_of?(Range)
+
+    self_begin = self.begin
+    other_end = other.end
+    other_excl = other.exclude_end?
+
+    return false if __empty_range?(self_begin, other_end, other_excl)
+
+    other_begin = other.begin
+    self_end = self.end
+    self_excl = self.exclude_end?
+
+    return false if __empty_range?(other_begin, self_end, self_excl)
+    return true if self_begin == other_begin
+
+    return false if __empty_range?(self_begin, self_end, self_excl)
+    return false if __empty_range?(other_begin, other_end, other_excl)
+
+    true
   end
 end

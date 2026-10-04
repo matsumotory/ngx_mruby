@@ -1,7 +1,7 @@
 /*
 ** mruby - An embeddable Ruby implementation
 **
-** Copyright (c) mruby developers 2010-2021
+** Copyright (c) mruby developers 2010-
 **
 ** Permission is hereby granted, free of charge, to any person obtaining
 ** a copy of this software and associated documentation files (the
@@ -139,7 +139,7 @@
 #endif
 
 /**
- * MRuby C API entry point
+ * mruby C API entry point
  */
 MRB_BEGIN_DECL
 
@@ -154,19 +154,9 @@ typedef uint8_t mrb_code;
  */
 typedef uint32_t mrb_aspec;
 
-struct mrb_irep;
-struct mrb_state;
+typedef struct mrb_irep mrb_irep;
 
-/**
- * Function pointer type of custom allocator used in @see mrb_open_allocf.
- *
- * The function pointing it must behave similarly as realloc except:
- * - If ptr is NULL it must allocate new space.
- * - If s is NULL, ptr must be freed.
- *
- * See @see mrb_default_allocf for the default implementation.
- */
-typedef void* (*mrb_allocf) (struct mrb_state *mrb, void*, size_t, void *ud);
+struct mrb_state;
 
 #ifndef MRB_FIXED_STATE_ATEXIT_STACK_SIZE
 #define MRB_FIXED_STATE_ATEXIT_STACK_SIZE 5
@@ -176,13 +166,17 @@ typedef struct {
   uint8_t n:4;                  /* (15=*) c=n|nk<<4 */
   uint8_t nk:4;                 /* (15=*) */
   uint8_t cci;                  /* called from C function */
+  uint8_t vis;                  /* 5(ZERO):1(separate module):2(method visibility) */
+                                /* under 3-bit flags are copied to env, and after that, env takes precedence */
   mrb_sym mid;
   const struct RProc *proc;
+  struct RProc *blk;
   mrb_value *stack;
   const mrb_code *pc;           /* current address on iseq of this proc */
   union {
     struct REnv *env;
     struct RClass *target_class;
+    const void *keep_context;   /* if NULL, it means that the fiber has switched; for internal use */
   } u;
 } mrb_callinfo;
 
@@ -194,6 +188,10 @@ enum mrb_fiber_state {
   MRB_FIBER_TRANSFERRED,
   MRB_FIBER_TERMINATED,
 };
+
+/* Task context status aliases */
+#define MRB_TASK_CREATED MRB_FIBER_CREATED
+#define MRB_TASK_STOPPED MRB_FIBER_TERMINATED
 
 struct mrb_context {
   struct mrb_context *prev;
@@ -228,17 +226,14 @@ mrb_static_assert_powerof2(MRB_METHOD_CACHE_SIZE);
  */
 typedef mrb_value (*mrb_func_t)(struct mrb_state *mrb, mrb_value self);
 
-#ifndef MRB_USE_METHOD_T_STRUCT
-typedef uintptr_t mrb_method_t;
-#else
 typedef struct {
-  uint8_t flags;
+  uint32_t flags;                       /* method flags (no symbol packed) */
+
   union {
-    struct RProc *proc;
+    const struct RProc *proc;
     mrb_func_t func;
-  };
+  } as;
 } mrb_method_t;
-#endif
 
 #ifndef MRB_NO_METHOD_CACHE
 struct mrb_cache_entry {
@@ -252,11 +247,21 @@ struct mrb_jmpbuf;
 
 typedef void (*mrb_atexit_func)(struct mrb_state*);
 
+#ifdef MRB_USE_TASK_SCHEDULER
+struct mrb_task;
+
+typedef struct mrb_task_state {
+  struct mrb_task *queues[4];      /* Task queues (dormant, ready, waiting, suspended) */
+  volatile uint32_t tick;           /* Current tick count */
+  volatile uint32_t wakeup_tick;    /* Next wakeup tick */
+  volatile mrb_bool switching;      /* Context switch pending flag */
+  struct mrb_task *main_task;       /* Main task wrapper for root context */
+  uint8_t scheduler_lock;           /* Lock counter for synchronous execution */
+} mrb_task_state;
+#endif
+
 typedef struct mrb_state {
   struct mrb_jmpbuf *jmp;
-
-  mrb_allocf allocf;                      /* memory allocation function */
-  void *allocf_ud;                        /* auxiliary data of allocf */
 
   struct mrb_context *c;
   struct mrb_context *root_c;
@@ -286,18 +291,19 @@ typedef struct mrb_state {
 
   mrb_gc gc;
 
+  mrb_bool bootstrapping;
+
 #ifndef MRB_NO_METHOD_CACHE
   struct mrb_cache_entry cache[MRB_METHOD_CACHE_SIZE];
 #endif
 
   mrb_sym symidx;
   const char **symtbl;
-  uint8_t *symlink;
-  uint8_t *symflags;
-  mrb_sym symhash[256];
   size_t symcapa;
+  struct mrb_sym_hash_table *symhash;
+  void *sym_pool;
 #ifndef MRB_USE_ALL_SYMBOLS
-  char symbuf[8];               /* buffer for small symbol names */
+  char symbuf[8];                         /* buffer for small symbol names */
 #endif
 
 #ifdef MRB_USE_DEBUG_HOOK
@@ -312,10 +318,14 @@ typedef struct mrb_state {
   struct RClass *eException_class;
   struct RClass *eStandardError_class;
   struct RObject *nomem_err;              /* pre-allocated NoMemoryError */
-  struct RObject *stack_err;              /* pre-allocated SysStackError */
+  struct RObject *stack_err;              /* pre-allocated SystemStackError */
 #ifdef MRB_GC_FIXED_ARENA
   struct RObject *arena_err;              /* pre-allocated arena overflow error */
 #endif
+
+  struct mrb_mt_rom_list *rom_mt;  /* heap-allocated ROM wrappers (freed at close) */
+
+  struct mrb_iv_shape *root_shape; /* root of IV shape tree */
 
   void *ud; /* auxiliary data */
 
@@ -325,6 +335,10 @@ typedef struct mrb_state {
   mrb_atexit_func *atexit_stack;
 #endif
   uint16_t atexit_stack_len;
+
+#ifdef MRB_USE_TASK_SCHEDULER
+  mrb_task_state task;                    /* Task scheduler state */
+#endif
 } mrb_state;
 
 /**
@@ -361,7 +375,18 @@ MRB_API struct RClass *mrb_define_class_id(mrb_state *mrb, mrb_sym name, struct 
 MRB_API struct RClass *mrb_define_module(mrb_state *mrb, const char *name);
 MRB_API struct RClass *mrb_define_module_id(mrb_state *mrb, mrb_sym name);
 
+/**
+ * Returns the singleton class of an object.
+ *
+ * Raises a `TypeError` exception for immediate values.
+ */
 MRB_API mrb_value mrb_singleton_class(mrb_state *mrb, mrb_value val);
+
+/**
+ * Returns the singleton class of an object.
+ *
+ * Returns `NULL` for immediate values,
+ */
 MRB_API struct RClass *mrb_singleton_class_ptr(mrb_state *mrb, mrb_value val);
 
 /**
@@ -391,7 +416,7 @@ MRB_API void mrb_include_module(mrb_state *mrb, struct RClass *cla, struct RClas
 MRB_API void mrb_prepend_module(mrb_state *mrb, struct RClass *cla, struct RClass *prepended);
 
 /**
- * Defines a global function in ruby.
+ * Defines a global function in Ruby.
  *
  * If you're creating a gem it may look something like this
  *
@@ -408,14 +433,17 @@ MRB_API void mrb_prepend_module(mrb_state *mrb, struct RClass *cla, struct RClas
  *           mrb_define_method(mrb, mrb->kernel_module, "example_method", example_method, MRB_ARGS_NONE());
  *     }
  *
- * @param mrb The MRuby state reference.
+ * @param mrb The mruby state reference.
  * @param cla The class pointer where the method will be defined.
  * @param name The name of the method being defined.
  * @param func The function pointer to the method definition.
  * @param aspec The method parameters declaration.
  */
+
 MRB_API void mrb_define_method(mrb_state *mrb, struct RClass *cla, const char *name, mrb_func_t func, mrb_aspec aspec);
 MRB_API void mrb_define_method_id(mrb_state *mrb, struct RClass *c, mrb_sym mid, mrb_func_t func, mrb_aspec aspec);
+MRB_API void mrb_define_private_method(mrb_state *mrb, struct RClass *cla, const char *name, mrb_func_t func, mrb_aspec aspec);
+MRB_API void mrb_define_private_method_id(mrb_state *mrb, struct RClass *c, mrb_sym mid, mrb_func_t func, mrb_aspec aspec);
 
 /**
  * Defines a class method.
@@ -436,7 +464,7 @@ MRB_API void mrb_define_method_id(mrb_state *mrb, struct RClass *c, mrb_sym mid,
  *       foo = mrb_define_class(mrb, "Foo", mrb->object_class);
  *       mrb_define_class_method(mrb, foo, "bar", bar_method, MRB_ARGS_NONE());
  *     }
- * @param mrb The MRuby state reference.
+ * @param mrb The mruby state reference.
  * @param cla The class where the class method will be defined.
  * @param name The name of the class method being defined.
  * @param fun The function pointer to the class method definition.
@@ -472,7 +500,7 @@ MRB_API void mrb_define_singleton_method_id(mrb_state *mrb, struct RObject *cla,
  *          foo = mrb_define_module(mrb, "Foo");
  *          mrb_define_module_function(mrb, foo, "bar", bar_method, MRB_ARGS_NONE());
  *        }
- *  @param mrb The MRuby state reference.
+ *  @param mrb The mruby state reference.
  *  @param cla The module where the module function will be defined.
  *  @param name The name of the module function being defined.
  *  @param fun The function pointer to the module function definition.
@@ -502,7 +530,7 @@ MRB_API void mrb_define_module_function_id(mrb_state *mrb, struct RClass *cla, m
  *          mrb_value
  *          mrb_example_gem_final(mrb_state* mrb){
  *          }
- *  @param mrb The MRuby state reference.
+ *  @param mrb The mruby state reference.
  *  @param cla A class or module the constant is defined in.
  *  @param name The name of the constant being defined.
  *  @param val The value for the constant.
@@ -686,9 +714,9 @@ MRB_API struct RClass * mrb_module_new(mrb_state *mrb);
  *       example_class = mrb_define_class(mrb, "ExampleClass", mrb->object_class);
  *       cd = mrb_class_defined(mrb, "ExampleClass");
  *
- *       // If mrb_class_defined returns 1 then puts "True"
- *       // If mrb_class_defined returns 0 then puts "False"
- *       if (cd == 1){
+ *       // If mrb_class_defined returns TRUE then puts "True"
+ *       // If mrb_class_defined returns FALSE then puts "False"
+ *       if (cd) {
  *         puts("True");
  *       }
  *       else {
@@ -735,9 +763,9 @@ MRB_API struct RClass* mrb_exc_get_id(mrb_state *mrb, mrb_sym name);
  *       example_inner = mrb_define_class_under(mrb, example_outer, "ExampleInner", mrb->object_class);
  *       cd = mrb_class_defined_under(mrb, example_outer, "ExampleInner");
  *
- *       // If mrb_class_defined_under returns 1 then puts "True"
- *       // If mrb_class_defined_under returns 0 then puts "False"
- *       if (cd == 1){
+ *       // If mrb_class_defined_under returns TRUE then puts "True"
+ *       // If mrb_class_defined_under returns FALSE then puts "False"
+ *       if (cd) {
  *         puts("True");
  *       }
  *       else {
@@ -786,6 +814,8 @@ MRB_API struct RClass * mrb_module_get_under_id(mrb_state *mrb, struct RClass *o
 MRB_API void mrb_notimplement(mrb_state*);
 /* a function to be replacement of unimplemented method */
 MRB_API mrb_value mrb_notimplement_m(mrb_state*, mrb_value);
+/* just return it self */
+MRB_API mrb_value mrb_obj_itself(mrb_state*, mrb_value);
 
 /**
  * Duplicate an object.
@@ -821,14 +851,14 @@ MRB_API mrb_value mrb_obj_dup(mrb_state *mrb, mrb_value obj);
  *        example_class = mrb_define_class(mrb, "ExampleClass", mrb->object_class);
  *        mrb_define_method(mrb, example_class, "example_method", exampleMethod, MRB_ARGS_NONE());
  *        mid = mrb_intern_str(mrb, mrb_str_new_lit(mrb, "example_method" ));
- *        obj_resp = mrb_obj_respond_to(mrb, example_class, mid); // => 1(true in Ruby world)
+ *        obj_resp = mrb_obj_respond_to(mrb, example_class, mid); // => TRUE (true in Ruby world)
  *
- *        // If mrb_obj_respond_to returns 1 then puts "True"
- *        // If mrb_obj_respond_to returns 0 then puts "False"
- *        if (obj_resp == 1) {
+ *        // If mrb_obj_respond_to returns TRUE then puts "True"
+ *        // If mrb_obj_respond_to returns FALSE then puts "False"
+ *        if (obj_resp) {
  *          puts("True");
  *        }
- *        else if (obj_resp == 0) {
+ *        else {
  *          puts("False");
  *        }
  *      }
@@ -897,6 +927,11 @@ MRB_API struct RClass* mrb_define_module_under_id(mrb_state *mrb, struct RClass 
 #define MRB_ARGS_BLOCK()    ((mrb_aspec)1)
 
 /**
+ * Function does not accept a block (&nil)
+ */
+#define MRB_ARGS_NOBLOCK()  ((mrb_aspec)(1 << 23))
+
+/**
  * Function accepts any number of arguments
  */
 #define MRB_ARGS_ANY()      MRB_ARGS_REST()
@@ -930,7 +965,7 @@ MRB_API struct RClass* mrb_define_module_under_id(mrb_state *mrb, struct RClass 
  * | `I`  | inline struct  | void *, struct RClass | `I!` gives `NULL` for `nil`                    |
  * | `&`  | block          | {mrb_value}       | &! raises exception if no block given.             |
  * | `*`  | rest arguments | const {mrb_value} *, {mrb_int} | Receive the rest of arguments as an array; `*!` avoid copy of the stack.  |
- * | <code>\|</code> | optional     |                   | After this spec following specs would be optional. |
+ * | `\|` | optional     |                   | After this spec following specs would be optional. |
  * | `?`  | optional given | {mrb_bool}        | `TRUE` if preceding argument is given. Used to check optional argument is given. |
  * | `:`  | keyword args   | {mrb_kwargs} const | Get keyword arguments. @see mrb_kwargs |
  *
@@ -948,14 +983,14 @@ typedef const char *mrb_args_format;
 /**
  * Get keyword arguments by `mrb_get_args()` with `:` specifier.
  *
- * `mrb_kwargs::num` indicates that the number of keyword values.
+ * `mrb_kwargs::num` indicates that the total number of keyword values.
  *
- * `mrb_kwargs::values` is an object array, and the keyword argument corresponding to the string array is assigned.
- * Note that `undef` is assigned if there is no keyword argument corresponding to `mrb_kwargs::optional`.
+ * `mrb_kwargs::required` indicates that the specified number of keywords starting from the beginning of the `mrb_sym` array are required.
  *
- * `mrb_kwargs::table` accepts a string array.
+ * `mrb_kwargs::table` accepts a `mrb_sym` array of C.
  *
- * `mrb_kwargs::required` indicates that the specified number of keywords starting from the beginning of the string array are required.
+ * `mrb_kwargs::values` is an object array of C, and the keyword argument corresponding to the `mrb_sym` array is assigned.
+ * Note that `undef` is assigned if there is no keyword argument corresponding over `mrb_kwargs::required` to `mrb_kwargs::num`.
  *
  * `mrb_kwargs::rest` is the remaining keyword argument that can be accepted as `**rest` in Ruby.
  * If `NULL` is specified, `ArgumentError` is raised when there is an undefined keyword.
@@ -964,11 +999,11 @@ typedef const char *mrb_args_format;
  *
  *      // def method(a: 1, b: 2)
  *
- *      uint32_t kw_num = 2;
- *      const char *kw_names[kw_num] = { "a", "b" };
- *      uint32_t kw_required = 0;
+ *      mrb_int kw_num = 2;
+ *      mrb_int kw_required = 0;
+ *      mrb_sym kw_names[] = { mrb_intern_lit(mrb, "a"), mrb_intern_lit(mrb, "b") };
  *      mrb_value kw_values[kw_num];
- *      const mrb_kwargs kwargs = { kw_num, kw_required, kw_names, kw_values, NULL };
+ *      mrb_kwargs kwargs = { kw_num, kw_required, kw_names, kw_values, NULL };
  *
  *      mrb_get_args(mrb, ":", &kwargs);
  *      if (mrb_undef_p(kw_values[0])) { kw_values[0] = mrb_fixnum_value(1); }
@@ -979,10 +1014,12 @@ typedef const char *mrb_args_format;
  *
  *      mrb_value str, kw_rest;
  *      uint32_t kw_num = 3;
- *      const mrb_sym kw_names[kw_num] = { MRB_SYM(x), MRB_SYM(y), MRB_SYM(z) };
  *      uint32_t kw_required = 1;
+ *      // `MRB_SYM()` is available via `mruby.h` (which includes `mruby/presym.h`).
+ *      // If the usage of `MRB_SYM()` is not desired, replace it with `mrb_intern_lit()`.
+ *      mrb_sym kw_names[] = { MRB_SYM(x), MRB_SYM(y), MRB_SYM(z) };
  *      mrb_value kw_values[kw_num];
- *      const mrb_kwargs kwargs = { kw_num, kw_required, kw_names, kw_values, &kw_rest };
+ *      mrb_kwargs kwargs = { kw_num, kw_required, kw_names, kw_values, &kw_rest };
  *
  *      mrb_get_args(mrb, "S:", &str, &kwargs);
  *      // or: mrb_get_args(mrb, ":S", &kwargs, &str);
@@ -993,8 +1030,8 @@ typedef struct mrb_kwargs mrb_kwargs;
 
 struct mrb_kwargs
 {
-  uint32_t num;                 /* number of keyword arguments */
-  uint32_t required;            /* number of required keyword arguments */
+  mrb_int num;                  /* number of keyword arguments */
+  mrb_int required;             /* number of required keyword arguments */
   const mrb_sym *table;         /* C array of symbols for keyword names */
   mrb_value *values;            /* keyword argument values */
   mrb_value *rest;              /* keyword rest (dict) */
@@ -1003,7 +1040,7 @@ struct mrb_kwargs
 /**
  * Retrieve arguments from mrb_state.
  *
- * @param mrb The current MRuby state.
+ * @param mrb The current mruby state.
  * @param format is a list of format specifiers
  * @param ... The passing variadic arguments must be a pointer of retrieving type.
  * @return the number of arguments retrieved.
@@ -1011,6 +1048,13 @@ struct mrb_kwargs
  * @see mrb_kwargs
  */
 MRB_API mrb_int mrb_get_args(mrb_state *mrb, mrb_args_format format, ...);
+
+/**
+ * Array version of mrb_get_args()
+ *
+ * @param ptr Array of void*, in the same order as the varargs version.
+ */
+MRB_API mrb_int mrb_get_args_a(mrb_state *mrb, mrb_args_format format, void** ptr);
 
 MRB_INLINE mrb_sym
 mrb_get_mid(mrb_state *mrb) /* get method symbol */
@@ -1054,13 +1098,13 @@ MRB_API mrb_bool mrb_block_given_p(mrb_state *mrb);
 #define mrb_strlen_lit(lit) (sizeof(lit "") - 1)
 
 /**
- * Call existing ruby functions.
+ * Call existing Ruby functions.
  *
  * Example:
  *
  *      #include <stdio.h>
  *      #include <mruby.h>
- *      #include "mruby/compile.h"
+ *      #include <mruby/compile.h>
  *
  *      int
  *      main()
@@ -1087,11 +1131,11 @@ MRB_API mrb_bool mrb_block_given_p(mrb_state *mrb);
 MRB_API mrb_value mrb_funcall(mrb_state *mrb, mrb_value val, const char *name, mrb_int argc, ...);
 MRB_API mrb_value mrb_funcall_id(mrb_state *mrb, mrb_value val, mrb_sym mid, mrb_int argc, ...);
 /**
- * Call existing ruby functions. This is basically the type safe version of mrb_funcall.
+ * Call existing Ruby functions. This is basically the type safe version of mrb_funcall.
  *
  *      #include <stdio.h>
  *      #include <mruby.h>
- *      #include "mruby/compile.h"
+ *      #include <mruby/compile.h>
  *      int
  *      main()
  *      {
@@ -1102,7 +1146,7 @@ MRB_API mrb_value mrb_funcall_id(mrb_state *mrb, mrb_value val, mrb_sym mid, mrb
  *
  *        FILE *fp = fopen("test.rb","r");
  *        mrb_value obj = mrb_load_file(mrb,fp);
- *        mrb_funcall_argv(mrb, obj, MRB_SYM(method_name), 1, &obj); // Calling ruby function from test.rb.
+ *        mrb_funcall_argv(mrb, obj, MRB_SYM(method_name), 1, &obj); // Calling Ruby function from test.rb.
  *        fclose(fp);
  *        mrb_close(mrb);
  *       }
@@ -1116,12 +1160,13 @@ MRB_API mrb_value mrb_funcall_id(mrb_state *mrb, mrb_value val, mrb_sym mid, mrb
  */
 MRB_API mrb_value mrb_funcall_argv(mrb_state *mrb, mrb_value val, mrb_sym name, mrb_int argc, const mrb_value *argv);
 /**
- * Call existing ruby functions with a block.
+ * Call existing Ruby functions with a block.
  */
 MRB_API mrb_value mrb_funcall_with_block(mrb_state *mrb, mrb_value val, mrb_sym name, mrb_int argc, const mrb_value *argv, mrb_value block);
 /**
- * Create a symbol from C string. But usually it's better to use MRB_SYM,
- * MRB_OPSYM, MRB_CVSYM, MRB_IVSYM, MRB_SYM_B, MRB_SYM_Q, MRB_SYM_E macros.
+ * Create a symbol from C string. But usually it's better to
+ * use MRB_SYM, MRB_OPSYM, MRB_CVSYM, MRB_IVSYM, MRB_GVSYM,
+ * MRB_SYM_B, MRB_SYM_Q, MRB_SYM_E macros.
  *
  * Example:
  *
@@ -1178,13 +1223,13 @@ MRB_API void mrb_free(mrb_state*, void*);
  */
 #define MRB_OBJ_ALLOC(mrb, tt, klass) ((MRB_VTYPE_TYPEOF(tt)*)mrb_obj_alloc(mrb, tt, klass))
 
-MRB_API mrb_value mrb_str_new(mrb_state *mrb, const char *p, size_t len);
+MRB_API mrb_value mrb_str_new(mrb_state *mrb, const char *p, mrb_int len);
 
 /**
  * Turns a C string into a Ruby string value.
  */
 MRB_API mrb_value mrb_str_new_cstr(mrb_state*, const char*);
-MRB_API mrb_value mrb_str_new_static(mrb_state *mrb, const char *p, size_t len);
+MRB_API mrb_value mrb_str_new_static(mrb_state *mrb, const char *p, mrb_int len);
 #define mrb_str_new_lit(mrb, lit) mrb_str_new_static(mrb, (lit), mrb_strlen_lit(lit))
 
 MRB_API mrb_value mrb_obj_freeze(mrb_state*, mrb_value);
@@ -1214,31 +1259,18 @@ MRB_API char* mrb_locale_from_utf8(const char *p, int len);
 MRB_API mrb_state* mrb_open(void);
 
 /**
- * Create new mrb_state with custom allocators.
+ * Create new mrb_state with just the mruby core
  *
  * @param f
  *      Reference to the allocation function.
+ *      Use mrb_basic_alloc_func for the default
  * @param ud
  *      User data will be passed to custom allocator f.
  *      If user data isn't required just pass NULL.
  * @return
  *      Pointer to the newly created mrb_state.
  */
-MRB_API mrb_state* mrb_open_allocf(mrb_allocf f, void *ud);
-
-/**
- * Create new mrb_state with just the MRuby core
- *
- * @param f
- *      Reference to the allocation function.
- *      Use mrb_default_allocf for the default
- * @param ud
- *      User data will be passed to custom allocator f.
- *      If user data isn't required just pass NULL.
- * @return
- *      Pointer to the newly created mrb_state.
- */
-MRB_API mrb_state* mrb_open_core(mrb_allocf f, void *ud);
+MRB_API mrb_state* mrb_open_core(void);
 
 /**
  * Closes and frees a mrb_state.
@@ -1247,16 +1279,75 @@ MRB_API mrb_state* mrb_open_core(mrb_allocf f, void *ud);
  *      Pointer to the mrb_state to be closed.
  */
 MRB_API void mrb_close(mrb_state *mrb);
+#ifndef MRB_NO_METHOD_CACHE
+MRB_API void mrb_method_cache_clear(mrb_state *mrb);
+#else
+#define mrb_method_cache_clear(mrb) ((void)0)
+#endif
 
 /**
- * The default allocation function.
+ * Check if mrb_open() failed
  *
- * @see mrb_allocf
+ * @param mrb
+ *      Pointer returned from mrb_open() or mrb_open_core().
+ * @return
+ *      Non-zero if initialization failed, 0 if succeeded.
+ * @note
+ *      mrb_open() may return non-NULL even on failure (with mrb->exc set).
+ *      Use this macro to check for failure:
+ *      @code
+ *      mrb_state *mrb = mrb_open();
+ *      if (MRB_OPEN_FAILURE(mrb)) {
+ *        if (mrb) {
+ *          // Inspect mrb->exc for error details
+ *          mrb_close(mrb);
+ *        }
+ *        return EXIT_FAILURE;
+ *      }
+ *      @endcode
  */
-MRB_API void* mrb_default_allocf(mrb_state*, void*, size_t, void*);
+#define MRB_OPEN_FAILURE(mrb) (!(mrb) || (mrb)->exc)
+
+/**
+ * Check if mrb_open() succeeded
+ *
+ * @param mrb
+ *      Pointer returned from mrb_open() or mrb_open_core().
+ * @return
+ *      Non-zero if initialization succeeded, 0 if failed.
+ */
+#define MRB_OPEN_SUCCESS(mrb) (!MRB_OPEN_FAILURE(mrb))
+
+/**
+ * The memory allocation function. You can redefine this function for your own allocator.
+ *
+ */
+MRB_API void* mrb_basic_alloc_func(void*, size_t);
 
 MRB_API mrb_value mrb_top_self(mrb_state *mrb);
+
+/**
+ * Enter the mruby VM and execute the proc.
+ *
+ * @param mrb
+ *      The current mruby state.
+ * @param proc
+ *      An object containing `irep`.
+ *      If supplied an object containing anything other than `irep`, it will probably crash.
+ * @param self
+ *      `self` on the execution context of `proc`.
+ * @param stack_keep
+ *      Specifies the number of values to hold from the stack top.
+ *      Values on the stack outside this range will be initialized to `nil`.
+ *
+ * @note
+ *      When called from a C function defined as a method, the current stack is destroyed.
+ *      If you want to use arguments obtained by `mrb_get_args()` or other methods after `mrb_top_run()`,
+ *      you must protect them by `mrb_gc_protect()` or other ways before this function.
+ *      Or consider using `mrb_yield()` family functions.
+ */
 MRB_API mrb_value mrb_top_run(mrb_state *mrb, const struct RProc *proc, mrb_value self, mrb_int stack_keep);
+
 MRB_API mrb_value mrb_vm_run(mrb_state *mrb, const struct RProc *proc, mrb_value self, mrb_int stack_keep);
 MRB_API mrb_value mrb_vm_exec(mrb_state *mrb, const struct RProc *proc, const mrb_code *iseq);
 /* compatibility macros */
@@ -1282,26 +1373,36 @@ MRB_API mrb_bool mrb_eql(mrb_state *mrb, mrb_value obj1, mrb_value obj2);
 /* mrb_cmp(mrb, obj1, obj2): 1:0:-1; -2 for error */
 MRB_API mrb_int mrb_cmp(mrb_state *mrb, mrb_value obj1, mrb_value obj2);
 
-MRB_INLINE int
-mrb_gc_arena_save(mrb_state *mrb)
-{
-  return mrb->gc.arena_idx;
-}
+/* recursion detection */
+MRB_API mrb_bool mrb_recursive_method_p(mrb_state *mrb, mrb_sym mid, mrb_value obj1, mrb_value obj2);
+MRB_API mrb_bool mrb_recursive_func_p(mrb_state *mrb, mrb_sym mid, mrb_value obj1, mrb_value obj2);
 
-MRB_INLINE void
-mrb_gc_arena_restore(mrb_state *mrb, int idx)
-{
-  mrb->gc.arena_idx = idx;
-}
+#define MRB_RECURSIVE_P(mrb, mid, obj1, obj2) \
+  mrb_recursive_method_p(mrb, mid, obj1, obj2)
+
+#define MRB_RECURSIVE_UNARY_P(mrb, mid, obj) \
+  mrb_recursive_method_p(mrb, mid, obj, mrb_nil_value())
+
+#define MRB_RECURSIVE_BINARY_P(mrb, mid, obj1, obj2) \
+  mrb_recursive_method_p(mrb, mid, obj1, obj2)
+
+#define MRB_RECURSIVE_FUNC_P(mrb, mid, obj) \
+  mrb_recursive_func_p(mrb, mid, obj, mrb_nil_value())
+
+#define MRB_RECURSIVE_BINARY_FUNC_P(mrb, mid, obj1, obj2) \
+  mrb_recursive_func_p(mrb, mid, obj1, obj2)
+
+#define mrb_gc_arena_save(mrb) ((mrb)->gc.arena_idx)
+#define mrb_gc_arena_restore(mrb, idx) ((mrb)->gc.arena_idx = (idx))
 
 MRB_API void mrb_garbage_collect(mrb_state*);
 MRB_API void mrb_full_gc(mrb_state*);
-MRB_API void mrb_incremental_gc(mrb_state *);
+MRB_API void mrb_incremental_gc(mrb_state*);
 MRB_API void mrb_gc_mark(mrb_state*,struct RBasic*);
 #define mrb_gc_mark_value(mrb,val) do {\
   if (!mrb_immediate_p(val)) mrb_gc_mark((mrb), mrb_basic_ptr(val)); \
 } while (0)
-MRB_API void mrb_field_write_barrier(mrb_state *, struct RBasic*, struct RBasic*);
+MRB_API void mrb_field_write_barrier(mrb_state*, struct RBasic*, struct RBasic*);
 #define mrb_field_write_barrier_value(mrb, obj, val) do{\
   if (!mrb_immediate_p(val)) mrb_field_write_barrier((mrb), (obj), mrb_basic_ptr(val)); \
 } while (0)
@@ -1336,7 +1437,7 @@ MRB_API mrb_value mrb_obj_clone(mrb_state *mrb, mrb_value self);
 #define TOLOWER(c) (ISUPPER(c) ? ((c) | 0x20) : (c))
 #endif
 
-MRB_API mrb_value mrb_exc_new(mrb_state *mrb, struct RClass *c, const char *ptr, size_t len);
+MRB_API mrb_value mrb_exc_new(mrb_state *mrb, struct RClass *c, const char *ptr, mrb_int len);
 MRB_API mrb_noreturn void mrb_exc_raise(mrb_state *mrb, mrb_value exc);
 
 MRB_API mrb_noreturn void mrb_raise(mrb_state *mrb, struct RClass *c, const char *msg);
@@ -1345,7 +1446,7 @@ MRB_API mrb_noreturn void mrb_name_error(mrb_state *mrb, mrb_sym id, const char 
 MRB_API mrb_noreturn void mrb_frozen_error(mrb_state *mrb, void *frozen_obj);
 MRB_API mrb_noreturn void mrb_argnum_error(mrb_state *mrb, mrb_int argc, int min, int max);
 MRB_API void mrb_warn(mrb_state *mrb, const char *fmt, ...);
-MRB_API mrb_noreturn void mrb_bug(mrb_state *mrb, const char *fmt, ...);
+MRB_API mrb_noreturn void mrb_bug(mrb_state *mrb, const char *mesg);
 MRB_API void mrb_print_backtrace(mrb_state *mrb);
 MRB_API void mrb_print_error(mrb_state *mrb);
 /* function for `raisef` formatting */
@@ -1357,6 +1458,8 @@ MRB_API mrb_value mrb_vformat(mrb_state *mrb, const char *format, va_list ap);
    + exception objects obtained from those macros are local to mrb
 */
 #define MRB_ERROR_SYM(sym) mrb_intern_lit(mrb, #sym)
+#define E_EXCEPTION          mrb->eException_class
+#define E_STANDARD_ERROR     mrb->eStandardError_class
 #define E_RUNTIME_ERROR      mrb_exc_get_id(mrb, MRB_ERROR_SYM(RuntimeError))
 #define E_TYPE_ERROR         mrb_exc_get_id(mrb, MRB_ERROR_SYM(TypeError))
 #define E_ZERODIV_ERROR      mrb_exc_get_id(mrb, MRB_ERROR_SYM(ZeroDivisionError))
@@ -1404,6 +1507,9 @@ MRB_API mrb_value mrb_check_string_type(mrb_state *mrb, mrb_value str);
 #define mrb_to_str(mrb, str) mrb_ensure_string_type(mrb,str)
 /* obsolete: use mrb_obj_as_string() instead */
 #define mrb_str_to_str(mrb, str) mrb_obj_as_string(mrb, str)
+/* check if val is an integer (including Bigint) */
+MRB_API mrb_value mrb_ensure_integer_type(mrb_state *mrb, mrb_value val);
+/* check if val fit in mrb_int */
 MRB_API mrb_value mrb_ensure_int_type(mrb_state *mrb, mrb_value val);
 #define mrb_as_int(mrb, val) mrb_integer(mrb_ensure_int_type(mrb, val))
 /* obsolete: use mrb_ensure_int_type() instead */
@@ -1412,12 +1518,8 @@ MRB_API mrb_value mrb_ensure_int_type(mrb_state *mrb, mrb_value val);
 
 /* string type checking (contrary to the name, it doesn't convert) */
 MRB_API void mrb_check_type(mrb_state *mrb, mrb_value x, enum mrb_vtype t);
-
-MRB_INLINE void mrb_check_frozen(mrb_state *mrb, void *o)
-{
-  if (mrb_frozen_p((struct RBasic*)o)) mrb_frozen_error(mrb, o);
-}
-
+MRB_API void mrb_check_frozen(mrb_state *mrb, void *);
+MRB_API void mrb_check_frozen_value(mrb_state *mrb, mrb_value v);
 MRB_API void mrb_define_alias(mrb_state *mrb, struct RClass *c, const char *a, const char *b);
 MRB_API void mrb_define_alias_id(mrb_state *mrb, struct RClass *c, mrb_sym a, mrb_sym b);
 MRB_API const char *mrb_class_name(mrb_state *mrb, struct RClass* klass);
@@ -1426,16 +1528,25 @@ MRB_API void mrb_define_global_const(mrb_state *mrb, const char *name, mrb_value
 MRB_API mrb_value mrb_attr_get(mrb_state *mrb, mrb_value obj, mrb_sym id);
 
 MRB_API mrb_bool mrb_respond_to(mrb_state *mrb, mrb_value obj, mrb_sym mid);
-MRB_API mrb_bool mrb_obj_is_instance_of(mrb_state *mrb, mrb_value obj, struct RClass* c);
+MRB_API mrb_bool mrb_obj_is_instance_of(mrb_state *mrb, mrb_value obj, const struct RClass* c);
 MRB_API mrb_bool mrb_func_basic_p(mrb_state *mrb, mrb_value obj, mrb_sym mid, mrb_func_t func);
 
 /* obsolete function(s); will be removed */
 #define mrb_int(mrb, val) mrb_as_int(mrb, val)
 
 /**
+ * Create a new Fiber from proc object
+ *
+ * Implemented in mruby-fiber
+ */
+MRB_API mrb_value mrb_fiber_new(mrb_state *mrb, const struct RProc *proc);
+
+/**
  * Resume a Fiber
  *
  * Implemented in mruby-fiber
+ *
+ * Switches to the specified fiber and executes. Like the `Fiber#resume` method.
  */
 MRB_API mrb_value mrb_fiber_resume(mrb_state *mrb, mrb_value fib, mrb_int argc, const mrb_value *argv);
 
@@ -1443,6 +1554,15 @@ MRB_API mrb_value mrb_fiber_resume(mrb_state *mrb, mrb_value fib, mrb_int argc, 
  * Yield a Fiber
  *
  * Implemented in mruby-fiber
+ *
+ * Passes control to the caller fiber of the running fiber. Like the `Fiber.yield` method.
+ *
+ * @note This function is only available from inside a function defined as a method by,
+ *       for example, `mrb_define_method()`.
+ *       Also, the work following `mrb_fiber_yield()` cannot be performed,
+ *       and the return value of `mrb_fiber_yield()` must be returned as is.
+ *
+ *           return mrb_fiber_yield(mrb, argc, argv);
  */
 MRB_API mrb_value mrb_fiber_yield(mrb_state *mrb, mrb_int argc, const mrb_value *argv);
 
@@ -1461,15 +1581,9 @@ MRB_API mrb_value mrb_fiber_alive_p(mrb_state *mrb, mrb_value fib);
 #define E_FIBER_ERROR mrb_exc_get_id(mrb, MRB_ERROR_SYM(FiberError))
 MRB_API void mrb_stack_extend(mrb_state*, mrb_int);
 
-/* memory pool implementation */
-typedef struct mrb_pool mrb_pool;
-MRB_API struct mrb_pool* mrb_pool_open(mrb_state*);
-MRB_API void mrb_pool_close(struct mrb_pool*);
-MRB_API void* mrb_pool_alloc(struct mrb_pool*, size_t);
-MRB_API void* mrb_pool_realloc(struct mrb_pool*, void*, size_t oldlen, size_t newlen);
-MRB_API mrb_bool mrb_pool_can_realloc(struct mrb_pool*, void*, size_t);
 /* temporary memory allocation, only effective while GC arena is kept */
-MRB_API void* mrb_alloca(mrb_state *mrb, size_t);
+MRB_API void* mrb_temp_alloc(mrb_state *mrb, size_t);
+#define mrb_alloca(mrb, size) mrb_temp_alloc(mrb, size) /* for compatibility */
 
 MRB_API void mrb_state_atexit(mrb_state *mrb, mrb_atexit_func func);
 
@@ -1480,6 +1594,8 @@ MRB_API mrb_value mrb_format(mrb_state *mrb, const char *format, ...);
 
 #ifdef MRB_PRESYM_SCANNING
 # include <mruby/presym/scanning.h>
+#else
+# include <mruby/presym.h>
 #endif
 
 #if 0
@@ -1508,6 +1624,12 @@ mrbmemset(void *s, int c, size_t n)
 }
 #define memset(a,b,c) mrbmemset(a,b,c)
 #endif
+
+#define mrb_int_hash_func(mrb,key) (uint32_t)((key)^((key)<<2)^((key)>>2))
+
+#define MRB_UNIQNAME(name)         MRB_UNIQNAME_1(name, __LINE__)
+#define MRB_UNIQNAME_1(name, line) MRB_UNIQNAME_2(name, line)
+#define MRB_UNIQNAME_2(name, line) name##line
 
 MRB_END_DECL
 

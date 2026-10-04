@@ -25,11 +25,7 @@ module MRuby
     end
 
     def shellquote(s)
-      if ENV['OS'] == 'Windows_NT'
-        "\"#{s}\""
-      else
-        "#{s}"
-      end
+      "\"#{s}\""
     end
 
     private
@@ -103,12 +99,16 @@ module MRuby
       gemrake = File.join(source_dir, "mrbgem.rake")
       rakedep = File.exist?(gemrake) ? [ gemrake ] : []
 
-      if build_dir.include? "mrbgems/"
+      bd = build_dir
+      if bd.start_with?(MRUBY_ROOT)
+        bd = bd.sub(MRUBY_ROOT, '')
+      end
+      if bd.include? "mrbgems/"
         generated_file_matcher = Regexp.new("^#{Regexp.escape build_dir}/(?!mrbc/)(.*)#{Regexp.escape out_ext}$")
       else
         generated_file_matcher = Regexp.new("^#{Regexp.escape build_dir}/(?!mrbc/|mrbgems/.+/)(.*)#{Regexp.escape out_ext}$")
       end
-      source_exts.each do |ext, compile|
+      source_exts.each do |ext|
         rule generated_file_matcher => [
           proc { |file|
             file.sub(generated_file_matcher, "#{source_dir}/\\1#{ext}")
@@ -133,18 +133,24 @@ module MRuby
       end
     end
 
+    # This method can be redefined as a singleton method where appropriate.
+    # Manipulate `flags`, `include_paths` and/or more if necessary.
+    def setup_debug(conf)
+      nil
+    end
+
     private
 
     #
     # === Example of +.d+ file
     #
-    # ==== Without <tt>-MP</tt> compiler flag
+    # ==== Without `-MP` compiler flag
     #
     #   /build/host/src/array.o: /src/array.c \
     #     /include/mruby/common.h /include/mruby/value.h \
     #     /src/value_array.h
     #
-    # ==== With <tt>-MP</tt> compiler flag
+    # ==== With `-MP` compiler flag
     #
     #   /build/host/src/array.o: /src/array.c \
     #     /include/mruby/common.h /include/mruby/value.h \
@@ -243,7 +249,7 @@ module MRuby
 
     def initialize(build)
       super
-      @command = 'bison'
+      @command = "ruby #{MRUBY_ROOT}/tools/lrama/exe/lrama"
       @compile_options = %q[-o "%{outfile}" "%{infile}"]
     end
 
@@ -260,7 +266,7 @@ module MRuby
     def initialize(build)
       super
       @command = 'gperf'
-      @compile_options = %q[-L ANSI-C -C -p -j1 -i 1 -g -o -t -N mrb_reserved_word -k"1,3,$" "%{infile}" > "%{outfile}"]
+      @compile_options = %q[-L ANSI-C -C -j1 -i 1 -o -t -N mrb_reserved_word -k"1,3,$" "%{infile}" > "%{outfile}"]
     end
 
     def run(outfile, infile)
@@ -311,7 +317,7 @@ module MRuby
     end
 
     def commit_hash(dir)
-      `#{@command} --git-dir #{shellquote(dir +'/.git')} --work-tree #{shellquote(dir)} rev-parse --verify HEAD`.strip
+      `#{@command} --git-dir #{shellquote(dir + '/.git')} --work-tree #{shellquote(dir)} rev-parse --verify HEAD`.strip
     end
 
     def current_branch(dir)
@@ -339,7 +345,7 @@ module MRuby
       opt << " -s" if static
       cmd = %["#{filename @command}" #{opt} #{filename(infiles).map{|f| %["#{f}"]}.join(' ')}]
       puts cmd if Rake.verbose
-      IO.popen(cmd, 'r+') do |io|
+      IO.popen(cmd, 'r') do |io|
         out.puts io.read
       end
       # if mrbc execution fail, drop the file

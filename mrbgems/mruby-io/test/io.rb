@@ -2,7 +2,7 @@
 # IO Test
 
 MRubyIOTestUtil.io_test_setup
-$cr, $crlf, $cmd = MRubyIOTestUtil.win? ? [1, "\r\n", "cmd /c "] : [0, "\n", ""]
+$cr, $cmd = MRubyIOTestUtil.win? ? [1, "cmd /c "] : [0, ""]
 
 def assert_io_open(meth)
   assert "assert_io_open" do
@@ -16,14 +16,15 @@ def assert_io_open(meth)
       io1.close
     end
 
-    io2 = IO.__send__(meth, IO.sysopen($mrbtest_io_rfname))do |io|
-      if meth == :open
-        assert_equal $mrbtest_io_msg, io.read
-      else
-        flunk "IO.#{meth} does not take block"
+    if meth == :open
+      io2 = IO.__send__(meth, IO.sysopen($mrbtest_io_rfname))do |io|
+        if meth == :open
+          assert_equal $mrbtest_io_msg, io.read
+        else
+          flunk "IO.#{meth} does not take block"
+        end
       end
     end
-    io2.close unless meth == :open
 
     assert_raise(RuntimeError) { IO.__send__(meth, 1023) } # For Windows
     assert_raise(RuntimeError) { IO.__send__(meth, 1 << 26) }
@@ -140,11 +141,36 @@ assert('IO#read', '15.2.20.5.14') do
 end
 
 assert "IO#read(n) with n > IO::BUF_SIZE" do
+  buf_size = 4096  # copied from io.c
   skip "pipe is not supported on this platform" if MRubyIOTestUtil.win?
   IO.pipe do |r,w|
-    n = IO::BUF_SIZE+1
+    n = buf_size+1
     w.write 'a'*n
     assert_equal 'a'*n, r.read(n)
+  end
+end
+
+assert "IO#read(n, buf)" do
+  IO.open(IO.sysopen($mrbtest_io_rfname)) do |io|
+    buf = "12345"
+    assert_same buf, io.read(0, buf)
+    assert_equal "", buf
+
+    buf = "12345"
+    assert_same buf, io.read(5, buf)
+    assert_equal "mruby", buf
+
+    buf = "12345"
+    assert_same buf, io.read(nil, buf)
+    assert_equal " io test\n", buf
+
+    buf = "12345"
+    assert_nil io.read(99, buf)
+    assert_equal "", buf
+
+    buf = "12345"
+    assert_same buf, io.read(0, buf)
+    assert_equal "", buf
   end
 end
 
@@ -186,8 +212,8 @@ assert('IO#sync=', '15.2.20.5.19') do
 end
 
 assert('IO#write', '15.2.20.5.20') do
-  io = IO.open(IO.sysopen($mrbtest_io_wfname))
-  assert_equal 0, io.write("")
+  io = IO.open(IO.sysopen($mrbtest_io_wfname, "w"), "w")
+  assert_equal 1, io.write("a")
   io.close
 
   io = IO.open(IO.sysopen($mrbtest_io_wfname, "r+"), "r+")
@@ -201,9 +227,9 @@ assert('IO#write', '15.2.20.5.20') do
 end
 
 assert('IO#<<') do
-  io = IO.open(IO.sysopen($mrbtest_io_wfname))
-  io << "" << ""
-  assert_equal 0, io.pos
+  io = IO.open(IO.sysopen($mrbtest_io_wfname, "w"), "w")
+  io << "a" << "b"
+  assert_equal 2, io.pos
   io.close
 end
 
@@ -264,7 +290,7 @@ end
 
 assert('IO.sysopen, IO#sysread') do
   fd = IO.sysopen $mrbtest_io_rfname
-  io = IO.new fd
+  io = IO.new(fd)
   str1 = "     "
   str2 = io.sysread(5, str1)
   assert_equal $mrbtest_io_msg[0,5], str1
@@ -285,14 +311,14 @@ assert('IO.sysopen, IO#sysread') do
   io.closed?
 
   fd = IO.sysopen $mrbtest_io_wfname, "w"
-  io = IO.new fd, "w"
+  io = IO.new(fd, "w")
   assert_raise(IOError) { io.sysread(1) }
   io.close
 end
 
 assert('IO.sysopen, IO#syswrite') do
   fd = IO.sysopen $mrbtest_io_wfname, "w"
-  io = IO.new fd, "w"
+  io = IO.new(fd, "w")
   str = "abcdefg"
   len = io.syswrite(str)
   assert_equal str.size, len
@@ -303,26 +329,11 @@ assert('IO.sysopen, IO#syswrite') do
   io.close
 end
 
-assert('IO#_read_buf') do
-  fd = IO.sysopen $mrbtest_io_rfname
-  io = IO.new fd
-  def io._buf
-    @buf
-  end
-  msg_len = $mrbtest_io_msg.size
-  assert_equal '', io._buf
-  assert_equal $mrbtest_io_msg, io._read_buf
-  assert_equal $mrbtest_io_msg, io._buf
-  assert_equal 'mruby', io.read(5)
-  assert_equal 5, io.pos
-  assert_equal msg_len - 5, io._buf.size
-  assert_equal $mrbtest_io_msg[5,100], io.read
-  assert_equal 0, io._buf.size
-  assert_raise EOFError do
-    io._read_buf
-  end
-  assert_equal true, io.eof
-  assert_equal true, io.eof?
+assert('IO#ungetc') do
+  io = IO.new(IO.sysopen($mrbtest_io_rfname))
+  assert_equal 'm', io.getc
+  assert_nothing_raised{io.ungetc("M")}
+  assert_equal 'M', io.getc
   io.close
 end
 
@@ -347,7 +358,7 @@ end
 
 assert('IO#pos=, IO#seek') do
   fd = IO.sysopen $mrbtest_io_rfname
-  io = IO.new fd
+  io = IO.new(fd)
   def io._buf
     @buf
   end
@@ -360,7 +371,7 @@ end
 
 assert('IO#rewind') do
   fd = IO.sysopen $mrbtest_io_rfname
-  io = IO.new fd
+  io = IO.new(fd)
   assert_equal 'm', io.getc
   assert_equal 1, io.pos
   assert_equal 0, io.rewind
@@ -370,7 +381,7 @@ end
 
 assert('IO#gets') do
   fd = IO.sysopen $mrbtest_io_rfname
-  io = IO.new fd
+  io = IO.new(fd)
 
   # gets without arguments
   assert_equal $mrbtest_io_msg, io.gets, "gets without arguments"
@@ -383,6 +394,7 @@ assert('IO#gets') do
   # gets with rs
   io.pos = 0
   assert_equal $mrbtest_io_msg[0, 6], io.gets(' '), "gets with rs"
+  assert_equal $mrbtest_io_msg[6, 3], io.gets(' '), "gets with rs(2)"
 
   # gets with rs, limit
   io.pos = 0
@@ -392,14 +404,14 @@ assert('IO#gets') do
 
   # reading many-lines file.
   fd = IO.sysopen $mrbtest_io_wfname, "w"
-  io = IO.new fd, "w"
+  io = IO.new(fd, "w")
   io.write "0123456789" * 2 + "\na"
   assert_equal 22 + $cr, io.pos
   io.close
   assert_equal true, io.closed?
 
   fd = IO.sysopen $mrbtest_io_wfname
-  io = IO.new fd
+  io = IO.new(fd)
   line = io.gets
 
   # gets first line
@@ -418,7 +430,7 @@ end
 
 assert('IO#gets - paragraph mode') do
   fd = IO.sysopen $mrbtest_io_wfname, "w"
-  io = IO.new fd, "w"
+  io = IO.new(fd, "w")
   io.write "0" * 10 + "\n"
   io.write "1" * 10 + "\n\n"
   io.write "2" * 10 + "\n"
@@ -426,7 +438,7 @@ assert('IO#gets - paragraph mode') do
   io.close
 
   fd = IO.sysopen $mrbtest_io_wfname
-  io = IO.new fd
+  io = IO.new(fd)
   para1 = "#{'0' * 10}\n#{'1' * 10}\n\n"
   text1 = io.gets("")
   assert_equal para1, text1
@@ -501,14 +513,14 @@ end
 assert('IO.read') do
   # empty file
   fd = IO.sysopen $mrbtest_io_wfname, "w"
-  io = IO.new fd, "w"
+  io = IO.new(fd, "w")
   io.close
   assert_equal "",  IO.read($mrbtest_io_wfname)
   assert_equal nil, IO.read($mrbtest_io_wfname, 1)
 
   # one byte file
   fd = IO.sysopen $mrbtest_io_wfname, "w"
-  io = IO.new fd, "w"
+  io = IO.new(fd, "w")
   io.write "123"
   io.close
   assert_equal "123", IO.read($mrbtest_io_wfname)
@@ -523,7 +535,7 @@ end
 
 assert('IO#fileno') do
   fd = IO.sysopen $mrbtest_io_rfname
-  io = IO.new fd
+  io = IO.new(fd)
   assert_equal io.fileno, fd
   assert_equal io.to_i, fd
   io.close
@@ -531,7 +543,7 @@ end
 
 assert('IO#close_on_exec') do
   fd = IO.sysopen $mrbtest_io_wfname, "w"
-  io = IO.new fd, "w"
+  io = IO.new(fd, "w")
   begin
     # IO.sysopen opens a file descriptor with O_CLOEXEC flag.
     assert_true io.close_on_exec?
@@ -577,7 +589,7 @@ assert('IO#sysseek') do
 end
 
 assert('IO#pread') do
-  skip "IO#pread is not implemented on this configuration" unless MRubyIOTestUtil::MRB_WITH_IO_PREAD_PWRITE
+  skip "IO#pread is not implemented on this configuration" unless MRubyIOTestUtil::MRB_USE_IO_PREAD_PWRITE
 
   IO.open(IO.sysopen($mrbtest_io_rfname, 'r'), 'r') do |io|
     assert_equal $mrbtest_io_msg.byteslice(5, 8), io.pread(8, 5)
@@ -589,7 +601,7 @@ assert('IO#pread') do
 end
 
 assert('IO#pwrite') do
-  skip "IO#pwrite is not implemented on this configuration" unless MRubyIOTestUtil::MRB_WITH_IO_PREAD_PWRITE
+  skip "IO#pwrite is not implemented on this configuration" unless MRubyIOTestUtil::MRB_USE_IO_PREAD_PWRITE
 
   IO.open(IO.sysopen($mrbtest_io_wfname, 'w+'), 'w+') do |io|
     assert_equal 6, io.pwrite("Warld!", 7)
@@ -646,7 +658,8 @@ end
 
 assert('`cmd`') do
   begin
-    assert_equal `#{$cmd}echo foo`, "foo#{$crlf}"
+    result = `#{$cmd}echo foo`
+    assert_equal "foo", result.chomp
   rescue NotImplementedError => e
     skip e.message
   end

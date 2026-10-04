@@ -52,12 +52,13 @@ t_print(mrb_state *mrb, mrb_value self)
 {
   const mrb_value *argv;
   mrb_int argc;
-  mrb_int i;
 
   mrb_get_args(mrb, "*!", &argv, &argc);
-  for (i = 0; i < argc; ++i) {
+  int ai = mrb_gc_arena_save(mrb);
+  for (mrb_int i = 0; i < argc; i++) {
     mrb_value s = mrb_obj_as_string(mrb, argv[i]);
     fwrite(RSTRING_PTR(s), RSTRING_LEN(s), 1, stdout);
+    mrb_gc_arena_restore(mrb, ai);
   }
   fflush(stdout);
 
@@ -76,7 +77,7 @@ str_match_bracket(const char *p, const char *pat_end,
   if (p == pat_end) return NULL;
   if (*p == '!' || *p == '^') {
     negated = TRUE;
-    ++p;
+    p++;
   }
 
   while (*p != ']') {
@@ -109,7 +110,7 @@ str_match_no_brace_p(const char *pat, mrb_int pat_len,
     if (p == pat_end) return s == str_end;
     switch (*p) {
       case '*':
-        do { ++p; } while (p != pat_end && *p == '*');
+        do { p++; } while (p != pat_end && *p == '*');
         if (UNESCAPE(p, pat_end) == pat_end) return TRUE;
         if (s == str_end) return FALSE;
         p_tmp = p;
@@ -117,15 +118,15 @@ str_match_no_brace_p(const char *pat, mrb_int pat_len,
         continue;
       case '?':
         if (s == str_end) return FALSE;
-        ++p;
-        ++s;
+        p++;
+        s++;
         continue;
       case '[': {
         const char *t;
         if (s == str_end) return FALSE;
         if ((t = str_match_bracket(p+1, pat_end, s, str_end))) {
           p = t;
-          ++s;
+          s++;
           continue;
         }
         goto L_failed;
@@ -164,7 +165,7 @@ str_match_p(mrb_state *mrb,
   int nest = 0;
   mrb_bool ret = FALSE;
 
-  for (; p != pat_end; ++p) {
+  for (; p != pat_end; p++) {
     if (*p == '{' && nest++ == 0) lbrace = p;
     else if (*p == '}' && lbrace && --nest == 0) { rbrace = p; break; }
     else if (*p == '\\' && ++p == pat_end) break;
@@ -172,7 +173,7 @@ str_match_p(mrb_state *mrb,
 
   if (lbrace && rbrace) {
     /* expand brace */
-    char *ex_pat = (char *)mrb_malloc(mrb, pat_len-2);  /* expanded pattern */
+    char *ex_pat = (char*)mrb_malloc(mrb, pat_len-2);  /* expanded pattern */
     char *ex_p = ex_pat;
 
     COPY_AND_INC(ex_p, pat, lbrace-pat);
@@ -180,9 +181,9 @@ str_match_p(mrb_state *mrb,
     while (p < rbrace) {
       char *orig_ex_p = ex_p;
       const char *t = ++p;
-      for (nest = 0; p < rbrace && !(*p == ',' && nest == 0); ++p) {
-        if (*p == '{') ++nest;
-        else if (*p == '}') --nest;
+      for (nest = 0; p < rbrace && !(*p == ',' && nest == 0); p++) {
+        if (*p == '{') nest++;
+        else if (*p == '}') nest--;
         else if (*p == '\\' && ++p == rbrace) break;
       }
       COPY_AND_INC(ex_p, t, p-t);
@@ -212,17 +213,15 @@ m_str_match_p(mrb_state *mrb, mrb_value self)
 void
 mrb_init_test_driver(mrb_state *mrb, mrb_bool verbose)
 {
-  struct RClass *krn, *mrbtest;
-
-  krn = mrb->kernel_module;
+  struct RClass *krn = mrb->kernel_module;
   mrb_define_method(mrb, krn, "t_print", t_print, MRB_ARGS_ANY());
   mrb_define_method(mrb, krn, "_str_match?", m_str_match_p, MRB_ARGS_REQ(2));
 
-  mrbtest = mrb_define_module(mrb, "Mrbtest");
+  struct RClass *mrbtest = mrb_define_module(mrb, "Mrbtest");
 
 #ifndef MRB_NO_FLOAT
 #ifdef MRB_USE_FLOAT32
-#ifdef MRB_WORDBOX_NO_FLOAT_TRUNCATE
+#ifdef MRB_WORDBOX_NO_INLINE_FLOAT
   mrb_define_const(mrb, mrbtest, "FLOAT_TOLERANCE", mrb_float_value(mrb, 1e-5));
 #else
   mrb_define_const(mrb, mrbtest, "FLOAT_TOLERANCE", mrb_float_value(mrb, 1e-4));
@@ -230,6 +229,8 @@ mrb_init_test_driver(mrb_state *mrb, mrb_bool verbose)
 #else
   mrb_define_const(mrb, mrbtest, "FLOAT_TOLERANCE", mrb_float_value(mrb, 1e-10));
 #endif
+#else
+  (void)mrbtest;
 #endif
 
   mrb_init_test_vformat(mrb);
@@ -242,8 +243,6 @@ mrb_init_test_driver(mrb_state *mrb, mrb_bool verbose)
 void
 mrb_t_pass_result(mrb_state *mrb_dst, mrb_state *mrb_src)
 {
-  mrb_value res_src;
-
   if (mrb_src->exc) {
     mrb_print_error(mrb_src);
     exit(EXIT_FAILURE);
@@ -251,7 +250,7 @@ mrb_t_pass_result(mrb_state *mrb_dst, mrb_state *mrb_src)
 
 #define TEST_COUNT_PASS(name)                                           \
   do {                                                                  \
-    res_src = mrb_gv_get(mrb_src, mrb_intern_lit(mrb_src, "$" #name));  \
+    mrb_value res_src = mrb_gv_get(mrb_src, mrb_intern_lit(mrb_src, "$" #name)); \
     if (mrb_integer_p(res_src)) {                                       \
       mrb_value res_dst = mrb_gv_get(mrb_dst, mrb_intern_lit(mrb_dst, "$" #name)); \
       mrb_gv_set(mrb_dst, mrb_intern_lit(mrb_dst, "$" #name), mrb_int_value(mrb_dst, mrb_integer(res_dst) + mrb_integer(res_src))); \
@@ -266,14 +265,17 @@ mrb_t_pass_result(mrb_state *mrb_dst, mrb_state *mrb_src)
 
 #undef TEST_COUNT_PASS
 
-  res_src = mrb_gv_get(mrb_src, mrb_intern_lit(mrb_src, "$asserts"));
+  mrb_value res_src = mrb_gv_get(mrb_src, mrb_intern_lit(mrb_src, "$asserts"));
 
   if (mrb_array_p(res_src)) {
     mrb_int i;
     mrb_value res_dst = mrb_gv_get(mrb_dst, mrb_intern_lit(mrb_dst, "$asserts"));
-    for (i = 0; i < RARRAY_LEN(res_src); ++i) {
+    int ai = mrb_gc_arena_save(mrb_dst);
+    for (i = 0; i < RARRAY_LEN(res_src); i++) {
       mrb_value val_src = RARRAY_PTR(res_src)[i];
+      mrb_ensure_string_type(mrb_dst, val_src);
       mrb_ary_push(mrb_dst, res_dst, mrb_str_new(mrb_dst, RSTRING_PTR(val_src), RSTRING_LEN(val_src)));
+      mrb_gc_arena_restore(mrb_dst, ai);
     }
   }
 }
@@ -282,15 +284,15 @@ int
 main(int argc, char **argv)
 {
   mrb_state *mrb;
-  int ret;
   mrb_bool verbose = FALSE;
 
   print_hint();
 
   /* new interpreter instance */
   mrb = mrb_open();
-  if (mrb == NULL) {
-    fprintf(stderr, "Invalid mrb_state, exiting test driver");
+  if (MRB_OPEN_FAILURE(mrb)) {
+    mrb_print_error(mrb);  /* handles NULL */
+    mrb_close(mrb);        /* handles NULL */
     return EXIT_FAILURE;
   }
 
@@ -299,10 +301,14 @@ main(int argc, char **argv)
     verbose = TRUE;
   }
 
+  int ai = mrb_gc_arena_save(mrb);
   mrb_init_test_driver(mrb, verbose);
+  mrb_gc_arena_restore(mrb, ai);
   mrb_load_irep(mrb, mrbtest_assert_irep);
+  mrb_gc_arena_restore(mrb, ai);
   mrbgemtest_init(mrb);
-  ret = eval_test(mrb);
+
+  int ret = eval_test(mrb);
   mrb_close(mrb);
 
   return ret;

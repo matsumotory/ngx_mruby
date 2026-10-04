@@ -1,71 +1,15 @@
 class Hash
 
-  #  ISO does not define Hash#each_pair, so each_pair is defined in gem.
+  # ISO does not define Hash#each_pair, so each_pair is defined in gem.
   alias each_pair each
 
-  ##
-  # call-seq:
-  #     Hash[ key, value, ... ] -> new_hash
-  #     Hash[ [ [key, value], ... ] ] -> new_hash
-  #     Hash[ object ] -> new_hash
-  #
-  # Creates a new hash populated with the given objects.
-  #
-  # Similar to the literal `{ _key_ => _value_, ... }`. In the first
-  # form, keys and values occur in pairs, so there must be an even number of
-  # arguments.
-  #
-  # The second and third form take a single argument which is either an array
-  # of key-value pairs or an object convertible to a hash.
-  #
-  #     Hash["a", 100, "b", 200] #=> {"a"=>100, "b"=>200}
-  #     Hash[ [ ["a", 100], ["b", 200] ] ] #=> {"a"=>100, "b"=>200}
-  #     Hash["a" => 100, "b" => 200] #=> {"a"=>100, "b"=>200}
-  #
-
-  def self.[](*object)
-    length = object.length
-    if length == 1
-      o = object[0]
-      if Hash === o
-        h = self.new
-        o.each { |k, v| h[k] = v }
-        return h
-      elsif o.respond_to?(:to_a)
-        h = self.new
-        o.to_a.each do |i|
-          raise ArgumentError, "wrong element type #{i.class} (expected array)" unless i.respond_to?(:to_a)
-          k, v = nil
-          case i.size
-          when 2
-            k = i[0]
-            v = i[1]
-          when 1
-            k = i[0]
-          else
-            raise ArgumentError, "invalid number of elements (#{i.size} for 1..2)"
-          end
-          h[k] = v
-        end
-        return h
-      end
-    end
-    unless length % 2 == 0
-      raise ArgumentError, 'odd number of arguments for Hash'
-    end
-    h = self.new
-    0.step(length - 2, 2) do |i|
-      h[object[i]] = object[i + 1]
-    end
-    h
-  end
 
   ##
   # call-seq:
-  #     hsh.merge!(other_hash)                                 -> hsh
-  #     hsh.merge!(other_hash){|key, oldval, newval| block}    -> hsh
+  #     hsh.merge!(other_hash..)                                 -> hsh
+  #     hsh.merge!(other_hash..){|key, oldval, newval| block}    -> hsh
   #
-  #  Adds the contents of _other_hash_ to _hsh_.  If no block is specified,
+  #  Adds the contents of _other_hash_ to _hsh_. If no block is specified,
   #  entries with duplicate keys are overwritten with the values from
   #  _other_hash_, otherwise the value of each duplicate key is determined by
   #  calling the block with the key, its value in _hsh_ and its value in
@@ -81,14 +25,16 @@ class Hash
   #                     #=> {"a"=>100, "b"=>200, "c"=>300}
   #
 
-  def merge!(other, &block)
-    raise TypeError, "Hash required (#{other.class} given)" unless Hash === other
-    if block
-      other.each_key{|k|
+  def merge!(*others, &block)
+    i = 0; len=others.size
+    return self.__merge(*others) unless block
+    while i<len
+      other = others[i]
+      i += 1
+      raise TypeError, "Hash required (#{other.class} given)" unless Hash === other
+      other.each_key {|k|
         self[k] = (self.has_key?(k))? block.call(k, self[k], other[k]): other[k]
       }
-    else
-      other.each_key{|k| self[k] = other[k]}
     end
     self
   end
@@ -107,16 +53,7 @@ class Hash
   #
 
   def compact!
-    keys = self.keys
-    nk = keys.select{|k|
-      self[k] != nil
-    }
-    return nil if (keys.size == nk.size)
-    h = {}
-    nk.each {|k|
-      h[k] = self[k]
-    }
-    self.replace(h)
+    self.__compact
   end
 
   ##
@@ -130,12 +67,8 @@ class Hash
   #    h             #=> { a: 1, b: false, c: nil }
   #
   def compact
-    h = {}
-    self.keys.select{|k|
-      self[k] != nil
-    }.each {|k|
-      h[k] = self[k]
-    }
+    h=self.dup
+    h.__compact
     h
   end
 
@@ -146,7 +79,7 @@ class Hash
   #
   #  Returns a value from the hash for the given key. If the key can't be
   #  found, there are several options: With no other arguments, it will
-  #  raise an <code>KeyError</code> exception; if <i>default</i> is
+  #  raise an `KeyError` exception; if *default* is
   #  given, then that will be returned; if the optional code block is
   #  specified, then that will be run and its result returned.
   #
@@ -171,7 +104,7 @@ class Hash
     unless self.key?(key)
       if block
         block.call(key)
-      elsif none != NONE
+      elsif !NONE.equal?(none)
         none
       else
         raise KeyError, "Key not found: #{key.inspect}"
@@ -186,8 +119,8 @@ class Hash
   #     hsh.delete_if {| key, value | block }  -> hsh
   #     hsh.delete_if                          -> an_enumerator
   #
-  #  Deletes every key-value pair from <i>hsh</i> for which <i>block</i>
-  #  evaluates to <code>true</code>.
+  #  Deletes every key-value pair from *hsh* for which *block*
+  #  evaluates to `true`.
   #
   #  If no block is given, an enumerator is returned instead.
   #
@@ -196,7 +129,7 @@ class Hash
   #
 
   def delete_if(&block)
-    return to_enum :delete_if unless block
+    return to_enum(:delete_if) unless block
 
     self.each do |k, v|
       self.delete(k) if block.call(k, v)
@@ -211,9 +144,9 @@ class Hash
   #
   #  Returns a new array that is a one-dimensional flattening of this
   #  hash. That is, for every key or value that is an array, extract
-  #  its elements into the new array.  Unlike Array#flatten, this
-  #  method does not flatten recursively by default.  The optional
-  #  <i>level</i> argument determines the level of recursion to flatten.
+  #  its elements into the new array. Unlike Array#flatten, this
+  #  method does not flatten recursively by default. The optional
+  #  *level* argument determines the level of recursion to flatten.
   #
   #     a =  {1=> "one", 2 => [2,"two"], 3 => "three"}
   #     a.flatten    # => [1, "one", 2, [2, "two"], 3, "three"]
@@ -228,7 +161,7 @@ class Hash
   #  call-seq:
   #     hsh.invert -> new_hash
   #
-  #  Returns a new hash created by using <i>hsh</i>'s values as keys, and
+  #  Returns a new hash created by using *hsh*'s values as keys, and
   #  the keys as values.
   #
   #     h = { "n" => 100, "m" => 100, "y" => 300, "d" => 200, "a" => 0 }
@@ -246,14 +179,14 @@ class Hash
   #     hsh.keep_if {| key, value | block }  -> hsh
   #     hsh.keep_if                          -> an_enumerator
   #
-  #  Deletes every key-value pair from <i>hsh</i> for which <i>block</i>
+  #  Deletes every key-value pair from *hsh* for which *block*
   #  evaluates to false.
   #
   #  If no block is given, an enumerator is returned instead.
   #
 
   def keep_if(&block)
-    return to_enum :keep_if unless block
+    return to_enum(:keep_if) unless block
 
     self.each do |k, v|
       unless block.call([k, v])
@@ -263,31 +196,12 @@ class Hash
     self
   end
 
-  ##
-  #  call-seq:
-  #     hsh.key(value)    -> key
-  #
-  #  Returns the key of an occurrence of a given value. If the value is
-  #  not found, returns <code>nil</code>.
-  #
-  #     h = { "a" => 100, "b" => 200, "c" => 300, "d" => 300 }
-  #     h.key(200)   #=> "b"
-  #     h.key(300)   #=> "c"
-  #     h.key(999)   #=> nil
-  #
-
-  def key(val)
-    self.each do |k, v|
-      return k if v == val
-    end
-    nil
-  end
 
   ##
   #  call-seq:
   #     hsh.to_h     -> hsh or new_hash
   #
-  #  Returns +self+. If called on a subclass of Hash, converts
+  #  Returns `self`. If called on a subclass of Hash, converts
   #  the receiver to a Hash object.
   #
   def to_h
@@ -298,8 +212,8 @@ class Hash
   #  call-seq:
   #    hash < other -> true or false
   #
-  #  Returns <code>true</code> if <i>hash</i> is subset of
-  #  <i>other</i>.
+  #  Returns `true` if *hash* is subset of
+  #  *other*.
   #
   #     h1 = {a:1, b:2}
   #     h2 = {a:1, b:2, c:3}
@@ -318,8 +232,8 @@ class Hash
   #  call-seq:
   #    hash <= other -> true or false
   #
-  #  Returns <code>true</code> if <i>hash</i> is subset of
-  #  <i>other</i> or equals to <i>other</i>.
+  #  Returns `true` if *hash* is subset of
+  #  *other* or equals to *other*.
   #
   #     h1 = {a:1, b:2}
   #     h2 = {a:1, b:2, c:3}
@@ -338,8 +252,8 @@ class Hash
   #  call-seq:
   #    hash > other -> true or false
   #
-  #  Returns <code>true</code> if <i>other</i> is subset of
-  #  <i>hash</i>.
+  #  Returns `true` if *other* is subset of
+  #  *hash*.
   #
   #     h1 = {a:1, b:2}
   #     h2 = {a:1, b:2, c:3}
@@ -358,8 +272,8 @@ class Hash
   #  call-seq:
   #    hash >= other -> true or false
   #
-  #  Returns <code>true</code> if <i>other</i> is subset of
-  #  <i>hash</i> or equals to <i>hash</i>.
+  #  Returns `true` if *other* is subset of
+  #  *hash* or equals to *hash*.
   #
   #     h1 = {a:1, b:2}
   #     h2 = {a:1, b:2, c:3}
@@ -378,9 +292,9 @@ class Hash
   # call-seq:
   #   hsh.dig(key,...)                 -> object
   #
-  # Extracts the nested value specified by the sequence of <i>key</i>
-  # objects by calling +dig+ at each step, returning +nil+ if any
-  # intermediate step is +nil+.
+  # Extracts the nested value specified by the sequence of *key*
+  # objects by calling `dig` at each step, returning `nil` if any
+  # intermediate step is `nil`.
   #
   def dig(idx,*args)
     n = self[idx]
@@ -402,7 +316,7 @@ class Hash
   # If no block is given, an enumerator is returned instead.
   #
   def transform_keys(&block)
-    return to_enum :transform_keys unless block
+    return to_enum(:transform_keys) unless block
     hash = {}
     self.keys.each do |k|
       new_key = block.call(k)
@@ -415,19 +329,15 @@ class Hash
   #    hsh.transform_keys! {|key| block } -> hsh
   #    hsh.transform_keys!                -> an_enumerator
   #
-  # Invokes the given block once for each key in <i>hsh</i>, replacing it
-  # with the new key returned by the block, and then returns <i>hsh</i>.
+  # Invokes the given block once for each key in *hsh*, replacing it
+  # with the new key returned by the block, and then returns *hsh*.
   #
   # If no block is given, an enumerator is returned instead.
   #
   def transform_keys!(&block)
-    return to_enum :transform_keys! unless block
-    self.keys.each do |k|
-      value = self[k]
-      self.__delete(k)
-      k = block.call(k) if block
-      self[k] = value
-    end
+    return to_enum(:transform_keys!) unless block
+    hash = self.transform_keys(&block)
+    self.replace(hash)
     self
   end
   ##
@@ -442,7 +352,7 @@ class Hash
   # If no block is given, an enumerator is returned instead.
   #
   def transform_values(&b)
-    return to_enum :transform_values unless block_given?
+    return to_enum(:transform_values) unless block_given?
     hash = {}
     self.keys.each do |k|
       hash[k] = yield(self[k])
@@ -456,12 +366,12 @@ class Hash
   #    hsh.transform_values!                -> an_enumerator
   #
   # Invokes the given block once for each value in the hash, replacing
-  # with the new value returned by the block, and then returns <i>hsh</i>.
+  # with the new value returned by the block, and then returns *hsh*.
   #
   # If no block is given, an enumerator is returned instead.
   #
   def transform_values!(&b)
-    return to_enum :transform_values! unless block_given?
+    return to_enum(:transform_values!) unless block_given?
     self.keys.each do |k|
       self[k] = yield(self[k])
     end
@@ -478,8 +388,8 @@ class Hash
   #   hsh.fetch_values(key, ...) { |key| block } -> array
   #
   # Returns an array containing the values associated with the given keys
-  # but also raises <code>KeyError</code> when one of keys can't be found.
-  # Also see <code>Hash#values_at</code> and <code>Hash#fetch</code>.
+  # but also raises `KeyError` when one of keys can't be found.
+  # Also see `Hash#values_at` and `Hash#fetch`.
   #
   #   h = { "cat" => "feline", "dog" => "canine", "cow" => "bovine" }
   #

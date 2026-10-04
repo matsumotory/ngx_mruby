@@ -1,4 +1,3 @@
-# encoding: utf-8
 # Build description.
 # basic build file for mruby
 MRUBY_ROOT = File.dirname(File.expand_path(__FILE__))
@@ -17,6 +16,11 @@ require "mruby/build"
 MRUBY_CONFIG = MRuby::Build.mruby_config_path
 load MRUBY_CONFIG
 
+# set up all gems
+MRuby.each_target do
+  gems.setup(self) if enable_gems?
+end
+
 # load basic rules
 MRuby.each_target do |build|
   build.define_rules
@@ -32,6 +36,8 @@ load "#{MRUBY_ROOT}/tasks/presym.rake"
 load "#{MRUBY_ROOT}/tasks/test.rake"
 load "#{MRUBY_ROOT}/tasks/benchmark.rake"
 load "#{MRUBY_ROOT}/tasks/doc.rake"
+load "#{MRUBY_ROOT}/tasks/install.rake"
+load "#{MRUBY_ROOT}/tasks/amalgam.rake"
 
 ##############################
 # generic build targets, rules
@@ -57,7 +63,7 @@ task :clean do
     rm_rf build.build_dir
     rm_f build.products
   end
-  puts "Cleaned up target build folder"
+  puts "Cleaned up target build directory"
 end
 
 desc "clean everything!"
@@ -65,5 +71,32 @@ task :deep_clean => %w[clean doc:clean] do
   MRuby.each_target do |build|
     rm_rf build.gem_clone_dir
   end
-  puts "Cleaned up mrbgems build folder"
+  rm_rf "#{MRUBY_ROOT}/bin"
+  rm_rf "#{MRUBY_ROOT}/build"
+  puts "Cleaned up mrbgems build directory"
+end
+
+desc "run all pre-commit hooks against all files"
+task :check do
+  sh "prek run --all-files"
+end
+
+desc "install the pre-commit hooks"
+task :checkinstall do
+  sh "prek install"
+end
+
+desc "check the pre-commit hooks for updates"
+task :checkupdate do
+  sh "prek autoupdate"
+end
+
+desc "run all pre-commit hooks against all files with docker-compose"
+task :composecheck do
+  sh "docker-compose -p mruby run test prek run --all-files"
+end
+
+desc "build and run all mruby tests with docker-compose"
+task :composetest do
+  sh "docker-compose -p mruby run test"
 end

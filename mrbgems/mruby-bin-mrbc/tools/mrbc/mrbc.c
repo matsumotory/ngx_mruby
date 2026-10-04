@@ -9,6 +9,7 @@
 #include <mruby/compile.h>
 #include <mruby/dump.h>
 #include <mruby/proc.h>
+#include <mruby/internal.h>
 
 #define RITEBIN_EXT ".mrb"
 #define C_EXT       ".c"
@@ -23,9 +24,9 @@ struct mrbc_args {
   mrb_bool dump_struct  : 1;
   mrb_bool check_syntax : 1;
   mrb_bool verbose      : 1;
-  mrb_bool remove_lv    : 1;
   mrb_bool no_ext_ops   : 1;
-  uint8_t flags         : 4;
+  mrb_bool no_optimize  : 1;
+  uint8_t flags         : 3;
 };
 
 static void
@@ -42,6 +43,7 @@ usage(const char *name)
   "-s           define <symbol> as static variable",
   "--remove-lv  remove local variables",
   "--no-ext-ops prohibit using OP_EXTs",
+  "--no-optimize disable peephole optimization",
   "--verbose    run at verbose mode",
   "--version    print the version",
   "--copyright  print the copyright",
@@ -162,11 +164,15 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct mrbc_args *args)
           exit(EXIT_SUCCESS);
         }
         else if (strcmp(argv[i] + 2, "remove-lv") == 0) {
-          args->remove_lv = TRUE;
+          args->flags |= MRB_DUMP_NO_LVAR;
           break;
         }
         else if (strcmp(argv[i] + 2, "no-ext-ops") == 0) {
           args->no_ext_ops = TRUE;
+          break;
+        }
+        else if (strcmp(argv[i] + 2, "no-optimize") == 0) {
+          args->no_optimize = TRUE;
           break;
         }
         return -1;
@@ -191,16 +197,15 @@ cleanup(mrb_state *mrb, struct mrbc_args *args)
 static int
 partial_hook(struct mrb_parser_state *p)
 {
-  mrbc_context *c = p->cxt;
-  struct mrbc_args *args = (struct mrbc_args *)c->partial_data;
-  const char *fn;
+  mrb_ccontext *c = p->cxt;
+  struct mrbc_args *args = (struct mrbc_args*)c->partial_data;
 
   if (p->f) fclose(p->f);
   if (args->idx >= args->argc) {
     p->f = NULL;
     return -1;
   }
-  fn = args->argv[args->idx++];
+  const char *fn = args->argv[args->idx++];
   p->f = fopen(fn, "rb");
   if (p->f == NULL) {
     fprintf(stderr, "%s: cannot open program file. (%s)\n", args->prog, fn);
@@ -213,17 +218,16 @@ partial_hook(struct mrb_parser_state *p)
 static mrb_value
 load_file(mrb_state *mrb, struct mrbc_args *args)
 {
-  mrbc_context *c;
-  mrb_value result;
   char *input = args->argv[args->idx];
   FILE *infile;
   mrb_bool need_close = FALSE;
 
-  c = mrbc_context_new(mrb);
+  mrb_ccontext *c = mrb_ccontext_new(mrb);
   if (args->verbose)
     c->dump_result = TRUE;
   c->no_exec = TRUE;
   c->no_ext_ops = args->no_ext_ops;
+  c->no_optimize = args->no_optimize;
   if (input[0] == '-' && input[1] == '\0') {
     infile = stdin;
   }
@@ -234,16 +238,16 @@ load_file(mrb_state *mrb, struct mrbc_args *args)
       return mrb_nil_value();
     }
   }
-  mrbc_filename(mrb, c, input);
+  mrb_ccontext_filename(mrb, c, input);
   args->idx++;
   if (args->idx < args->argc) {
     need_close = FALSE;
-    mrbc_partial_hook(mrb, c, partial_hook, (void*)args);
+    mrb_ccontext_partial_hook(c, partial_hook, (void*)args);
   }
 
-  result = mrb_load_file_cxt(mrb, infile, c);
+  mrb_value result = mrb_load_file_cxt(mrb, infile, c);
   if (need_close) fclose(infile);
-  mrbc_context_free(mrb, c);
+  mrb_ccontext_free(mrb, c);
   if (mrb_undef_p(result)) {
     return mrb_nil_value();
   }
@@ -251,14 +255,11 @@ load_file(mrb_state *mrb, struct mrbc_args *args)
 }
 
 static int
-dump_file(mrb_state *mrb, FILE *wfp, const char *outfile, struct RProc *proc, struct mrbc_args *args)
+dump_file(mrb_state *mrb, FILE *wfp, const char *outfile, const struct RProc *proc, struct mrbc_args *args)
 {
   int n = MRB_DUMP_OK;
   const mrb_irep *irep = proc->body.irep;
 
-  if (args->remove_lv) {
-    mrb_irep_remove_lv(mrb, (mrb_irep*)irep);
-  }
   if (args->initname) {
     if (args->dump_struct) {
       n = mrb_dump_irep_cstruct(mrb, irep, args->flags, wfp, args->initname);
@@ -282,18 +283,16 @@ dump_file(mrb_state *mrb, FILE *wfp, const char *outfile, struct RProc *proc, st
 int
 main(int argc, char **argv)
 {
-  mrb_state *mrb = mrb_open_core(NULL, NULL);
-  int n, result;
+  mrb_state *mrb = mrb_open_core();
   struct mrbc_args args;
   FILE *wfp;
-  mrb_value load;
 
   if (mrb == NULL) {
     fputs("Invalid mrb_state, exiting mrbc\n", stderr);
     return EXIT_FAILURE;
   }
 
-  n = parse_args(mrb, argc, argv, &args);
+  int n = parse_args(mrb, argc, argv, &args);
   if (n < 0) {
     cleanup(mrb, &args);
     usage(argv[0]);
@@ -314,7 +313,7 @@ main(int argc, char **argv)
   }
 
   args.idx = n;
-  load = load_file(mrb, &args);
+  mrb_value load = load_file(mrb, &args);
   if (mrb_nil_p(load)) {
     cleanup(mrb, &args);
     return EXIT_FAILURE;
@@ -338,10 +337,10 @@ main(int argc, char **argv)
     }
   }
   else {
-    fprintf(stderr, "Output file is required\n");
+    fputs("Output file is required\n", stderr);
     return EXIT_FAILURE;
   }
-  result = dump_file(mrb, wfp, args.outfile, mrb_proc_ptr(load), &args);
+  int result = dump_file(mrb, wfp, args.outfile, mrb_proc_ptr(load), &args);
   fclose(wfp);
   cleanup(mrb, &args);
   if (result != MRB_DUMP_OK) {
@@ -359,38 +358,5 @@ mrb_init_mrblib(mrb_state *mrb)
 void
 mrb_init_mrbgems(mrb_state *mrb)
 {
-}
-
-void
-mrb_final_mrbgems(mrb_state *mrb)
-{
-}
-#endif
-
-#ifdef MRB_USE_COMPLEX
-mrb_value mrb_complex_to_i(mrb_state *mrb, mrb_value comp)
-{
-  /* dummy method */
-  return mrb_nil_value();
-}
-mrb_value mrb_complex_to_f(mrb_state *mrb, mrb_value comp)
-{
-  /* dummy method */
-  return mrb_nil_value();
-}
-#endif
-
-#ifdef MRB_USE_RATIONAL
-mrb_value
-mrb_rational_to_i(mrb_state *mrb, mrb_value rat)
-{
-  /* dummy method */
-  return mrb_nil_value();
-}
-mrb_value
-mrb_rational_to_f(mrb_state *mrb, mrb_value rat)
-{
-  /* dummy method */
-  return mrb_nil_value();
 }
 #endif

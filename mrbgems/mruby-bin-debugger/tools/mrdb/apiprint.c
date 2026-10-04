@@ -11,30 +11,30 @@
 #include <mruby/error.h>
 #include <mruby/numeric.h>
 #include <mruby/string.h>
-#include <mruby/presym.h>
+#include <mruby/internal.h>
 #include "apiprint.h"
 
 static void
 mrdb_check_syntax(mrb_state *mrb, mrb_debug_context *dbg, const char *expr, size_t len)
 {
-  mrbc_context *c;
+  mrb_ccontext *c;
 
-  c = mrbc_context_new(mrb);
+  c = mrb_ccontext_new(mrb);
   c->no_exec = TRUE;
   c->capture_errors = TRUE;
-  mrbc_filename(mrb, c, (const char*)dbg->prvfile);
+  mrb_ccontext_filename(mrb, c, (const char*)dbg->prvfile);
   c->lineno = dbg->prvline;
 
   /* Load program */
   mrb_load_nstring_cxt(mrb, expr, len, c);
 
-  mrbc_context_free(mrb, c);
+  mrb_ccontext_free(mrb, c);
 }
 
 mrb_value
 mrb_debug_eval(mrb_state *mrb, mrb_debug_context *dbg, const char *expr, size_t len, mrb_bool *exc, int direct_eval)
 {
-  void (*tmp)(struct mrb_state *, const struct mrb_irep *, const mrb_code *, mrb_value *);
+  void (*tmp)(struct mrb_state*, const struct mrb_irep*, const mrb_code*, mrb_value*);
   mrb_value ruby_code;
   mrb_value s;
   mrb_value v;
@@ -68,14 +68,17 @@ mrb_debug_eval(mrb_state *mrb, mrb_debug_context *dbg, const char *expr, size_t 
 
     recv = dbg->regs[0];
 
-    v =  mrb_funcall_id(mrb, recv, MRB_SYM(instance_eval), 1, ruby_code);
+    v =  mrb_funcall_argv(mrb, recv, MRB_SYM(instance_eval), 1, &ruby_code);
+  }
+  mrb_bool is_exc = mrb_obj_is_kind_of(mrb, v, E_EXCEPTION);
+  if (is_exc) {
+    s = mrb_exc_get_output(mrb, mrb_obj_ptr(v));
+  }
+  else {
+    s = mrb_inspect(mrb, v);
   }
 
-  if (exc) {
-    *exc = mrb_obj_is_kind_of(mrb, v, mrb->eException_class);
-  }
-
-  s = mrb_inspect(mrb, v);
+  if (exc) *exc = is_exc;
 
   /* enable code_fetch_hook */
   mrb->code_fetch_hook = tmp;
