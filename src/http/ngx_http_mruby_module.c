@@ -790,6 +790,84 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   return rc;
 }
 
+/*
+ * Whether a handler of this kind can wait for the rest of the request body.
+ * nginx's checkers of these phases wait when the handler returns NGX_DONE,
+ * and ngx_http_mruby_read_request_body_cb runs the phases again, so the
+ * handler runs once more with the body (see ngx_mrb_run_request). mruby_set
+ * handlers run inside NDK's rewrite script, log handlers inside
+ * ngx_http_free_request, and filters inside ngx_http_send_header and
+ * ngx_http_output_filter; all of them go on as soon as the handler returns.
+ */
+static ngx_flag_t ngx_mrb_handler_waits_for_request_body(ngx_http_mruby_handler_kind_t kind)
+{
+  switch (kind) {
+  case NGX_HTTP_MRUBY_HANDLER_POST_READ:
+  case NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE:
+  case NGX_HTTP_MRUBY_HANDLER_REWRITE:
+  case NGX_HTTP_MRUBY_HANDLER_ACCESS:
+  case NGX_HTTP_MRUBY_HANDLER_CONTENT:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+// The name of a handler that cannot wait for the request body, for messages.
+static const char *ngx_mrb_request_body_kind_name(ngx_http_mruby_handler_kind_t kind)
+{
+  switch (kind) {
+  case NGX_HTTP_MRUBY_HANDLER_SET:
+    return "an mruby_set handler";
+  case NGX_HTTP_MRUBY_HANDLER_LOG:
+    return "a log handler";
+  case NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER:
+    return "a header filter";
+  case NGX_HTTP_MRUBY_HANDLER_BODY_FILTER:
+    return "a body filter";
+  default:
+    return "this handler";
+  }
+}
+
+/*
+ * Whether ngx_http_read_client_request_body would call its post handler
+ * before it returns, so that no read stays running after the call. These are
+ * its paths that complete at once: a subrequest; a body that was already
+ * read, is being read or was discarded; a request without a body; and an
+ * HTTP/1.x body with Content-Length that is entirely in the buffer that
+ * nginx read the request headers into. A chunked body and every HTTP/2 or
+ * HTTP/3 body count as not complete: nginx reads those through events.
+ */
+static ngx_flag_t ngx_http_mruby_request_body_complete(ngx_http_request_t *r)
+{
+  if (r != r->main || r->request_body != NULL || r->discard_body) {
+    return 1;
+  }
+
+#if defined(nginx_version) && nginx_version >= 1003009
+  if (r->headers_in.chunked) {
+    return 0;
+  }
+#endif
+
+  if (r->headers_in.content_length_n < 0) {
+    return 1;
+  }
+
+#ifdef NGX_HTTP_VERSION_20
+  if (r->http_version >= NGX_HTTP_VERSION_20) {
+    return 0;
+  }
+#endif
+
+  if (r->header_in == NULL) {
+    return 0;
+  }
+
+  return r->headers_in.content_length_n <= (off_t)(r->header_in->last - r->header_in->pos);
+}
+
 void ngx_http_mruby_read_request_body_cb(ngx_http_request_t *r)
 {
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(NULL, r);
@@ -849,7 +927,21 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   }
 
   /* force reading body */
-  if (mlcf->enable_read_request_body && !ctx->read_request_body_done) {
+  if (mlcf->enable_read_request_body && !ctx->read_request_body_done && !ngx_mrb_handler_waits_for_request_body(kind) &&
+      !ngx_http_mruby_request_body_complete(r)) {
+    /*
+     * A handler that cannot wait reads the body only when the read completes
+     * at once. A read that waited would keep its reference to the request
+     * after the handler returned, and its callback would run the phases
+     * again from wherever the request is then. The handler runs without the
+     * body instead; a later handler that can wait, or a module such as
+     * proxy_pass, still reads the whole body.
+     */
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                  "%s INFO %s:%d: mrb_run: the request body is not complete and %s cannot wait for it, so it runs "
+                  "without the body",
+                  MODULE_NAME, __func__, __LINE__, ngx_mrb_request_body_kind_name(kind));
+  } else if (mlcf->enable_read_request_body && !ctx->read_request_body_done) {
     ngx_int_t rc;
 
     r->request_body_in_single_buf = 1;
@@ -872,7 +964,6 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
       ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                     "%s INFO %s:%d: mrb_run: tried to read request body, but got NGX_AGAIN.", MODULE_NAME, __func__,
                     __LINE__);
-      ctx->request_body_more = 1;
       ctx->read_request_body_done = 0;
 
       /*
@@ -890,14 +981,23 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
        */
       switch (kind) {
       case NGX_HTTP_MRUBY_HANDLER_CONTENT:
+        ctx->request_body_more = 1;
         ctx->request_body_ref_dropped = 1;
         return NGX_DONE;
       case NGX_HTTP_MRUBY_HANDLER_POST_READ:
       case NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE:
       case NGX_HTTP_MRUBY_HANDLER_REWRITE:
       case NGX_HTTP_MRUBY_HANDLER_ACCESS:
+        ctx->request_body_more = 1;
         return NGX_DONE;
       default:
+        /*
+         * Not reached with nginx's own request body filters: a handler that
+         * cannot wait gets here only when ngx_http_mruby_request_body_complete
+         * said the read completes at once. If a third-party body filter
+         * still makes it wait, request_body_more stays 0, so the callback
+         * only drops the reference when the body is complete.
+         */
         return NGX_AGAIN;
       }
     }
