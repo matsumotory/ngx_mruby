@@ -14,7 +14,8 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
 - `build_config.rb`: mruby build configuration and the third-party mrbgems fetched at build time
 - `mruby/`, `dependence/ngx_devel_kit/`: vendored upstream trees (see "Do not")
 - `test/`: integration tests that start a real nginx (`test/conf/`, `test/html/`, `test/t/`)
-- `docs/`: user documentation (install, directives, classes and methods)
+- `docs/`: user documentation (install, directives, classes and methods) and
+  release notes (`docs/releases/`)
 
 ## Branches and pull requests
 
@@ -23,6 +24,13 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
 | `master` | 2.x line until v3 is promoted, then 3.x | PRs only; merged as described in "Review and merge" |
 | `next` | v3 development (pre-release tags `vX.Y.Z-alpha.N`/`-beta.N`/`-rc.N`) | PRs only; merged as described in "Review and merge" |
 | `v2.x` | 2.x maintenance; an automatic mirror of `master` until v3 is promoted | Mirror automation; after promotion, PRs merged as described in "Review and merge" |
+
+The 2.x line (`master` until v3 is promoted, then `v2.x`) puts compatibility
+first; this is the owner's decision of 2026-10-04. It takes stability fixes
+(crashes, hangs, leaks, build fixes) and security fixes, and changes behavior
+that a configuration, script or build can observe only as far as the fix of a
+defect requires, with its entry under "Behavior changes: read before
+upgrading". New behavior, API cleanups and features go to `next`.
 
 - 2.x fixes: PR with base `master` until v3 is promoted (afterwards: base `v2.x`).
   A fix that also applies to v3 still goes to `master`; it reaches `next` when
@@ -36,8 +44,17 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
   create `next/*` or `v2.x/*` branches (they clash with the existing branch refs).
 - Agents open PRs and fill in every section of the PR template. Open them as
   drafts while CI and the review below are running.
+- A PR that changes behavior a configuration, script or build can observe (a
+  bug fix, a raised build requirement and a change of the bundled mruby or
+  default mrbgems included; see `docs/releases/README.md` for what counts)
+  adds its entry under "Behavior changes: read before upgrading" in
+  `docs/releases/<version>.md`, in the same PR: before, now, what is affected,
+  what to do. Users have built on the old behavior, so the new release must
+  warn them.
 - Agents never create, move or delete tags, and never publish releases or
-  security advisories. Those stay with the owner.
+  security advisories. Those stay with the owner. Before a tag, a PR checks
+  the release notes against every PR merged since the previous release (see
+  "Before the tag" in `docs/releases/README.md`).
 
 ### Review and merge
 
@@ -49,11 +66,17 @@ regression test in a commit of its own before the fix commit, and the
 reviewer has run the suite at both commits (failing, then passing, with
 results matching what the author quoted); expectations assert
 on real responses, not only on "not 500"; the CI result on the head commit;
-compatibility notes in the PR body match the diff; nothing in the diff, the
+compatibility notes in the PR body match the diff; a change of behavior that a
+configuration, script or build can observe has an entry under "Behavior
+changes: read before upgrading" in `docs/releases/<version>.md`, and
+`docs/directives/`, `docs/class_and_method/` or `docs/install/` describe the
+new behavior; nothing in the diff, the
 commit messages or the PR text discloses an unpublished vulnerability or a
 secret; and `docs/` is updated when a directive, Ruby method, build option or
 the test harness changes. The reviewer posts the findings as a PR comment,
-split into "must fix" (blocks the merge) and "should fix". The author fixes
+split into "must fix" (blocks the merge) and "should fix". A behavior change
+without that entry is a "must fix"; a missing "New features", "Fixes" or
+"Build and test changes" entry is a "should fix". The author fixes
 every "must fix" and asks for a re-review of those items only.
 
 The session that owns the PR merges it, with a merge commit, when all of
@@ -66,6 +89,9 @@ these hold:
    green by skipping or disabling tests does not count.
 3. The change is inside the agreed scope, or is a bug fix with the two-commit
    evidence described under "Writing tests", or changes documentation only.
+   In every case, a change of behavior that a configuration, script or build
+   can observe has an entry under "Behavior changes: read before upgrading"
+   in `docs/releases/<version>.md`, and the docs describe the new behavior.
 4. The review above is recorded on the PR and no "must fix" item is open.
 5. The scrub for secrets and unpublished vulnerability details passed.
 6. The PR has no conflicts with its base.

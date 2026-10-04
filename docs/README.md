@@ -10,6 +10,7 @@
 - [Directives](./directives)
 - [Class and Method](./class_and_method)
 - [Use Case](./use_case)
+- [Release notes](./releases): read "Behavior changes" before upgrading
 
 ## What's ngx_mruby
 __ngx_mruby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
