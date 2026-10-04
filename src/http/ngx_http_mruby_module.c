@@ -807,6 +807,12 @@ void ngx_http_mruby_read_request_body_cb(ngx_http_request_t *r)
 
     if (ctx->request_body_more) {
       ctx->request_body_more = 0;
+      // ngx_http_read_client_request_body set the write event handler to
+      // ngx_http_request_empty_handler while it read the body. Restore the
+      // one of the phases before running them again, as nginx's mirror
+      // module does, so that a later phase handler that waits, such as
+      // auth_request for its subrequest, is resumed through it.
+      r->write_event_handler = ngx_http_core_run_phases;
       ngx_http_core_run_phases(r);
     }
   }
