@@ -768,11 +768,11 @@ if nginx_features.is_async_supported?
   t.assert('ngx_mruby - Nginx::Async::HTTP.new "/dst"', 'location /async_http_sub_request') do
     res = HttpRequest.new.get base + '/async_http_sub_request_with_hash'
     t.assert_equal 200, res["code"]
-    t.assert_equal '{"query1"=>"foo", "query2"=>"bar"}', res["body"]
+    t.assert_equal '{"query1" => "foo", "query2" => "bar"}', res["body"]
 
     res = HttpRequest.new.get base + '/async_http_sub_request'
     t.assert_equal 200, res["code"]
-    t.assert_equal '{"query1"=>"foo", "query2"=>"bar"}', res["body"]
+    t.assert_equal '{"query1" => "foo", "query2" => "bar"}', res["body"]
 
     res = HttpRequest.new.get base + '/async_http_sub_request_notfound'
     t.assert_equal 404, res["code"]
