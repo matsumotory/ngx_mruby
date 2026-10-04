@@ -8,6 +8,10 @@
 #
 #   NGINX_CONFIG_OPT_ENV='--prefix=/usr/local/nginx-1.4.4' NGINX_SRC_ENV='/usr/local/src/nginx-1.4.4' sh build.sh
 #
+#   NGX_MRUBY_AUTO_SSL=1 sh build.sh
+#     also builds the auto-ssl mrbgem and the gems it depends on, which are
+#     not in the default build (build_config.rb, docs/install/README.md)
+#
 
 set -e
 
@@ -57,6 +61,7 @@ fi
 
 echo "NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT"
 echo "NUM_THREADS=$NUM_THREADS"
+echo "NGX_MRUBY_AUTO_SSL=$NGX_MRUBY_AUTO_SSL"
 
 if [ $NGINX_SRC_ENV ]; then
     NGINX_SRC=$NGINX_SRC_ENV

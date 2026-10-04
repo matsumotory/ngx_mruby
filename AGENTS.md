@@ -95,6 +95,10 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   mruby and nginx). After that, use `ONLY_BUILD_NGX_MRUBY=1`.
 - `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. Do a full run again after
   changing `BUILD_DYNAMIC_MODULE`, configure options or `nginx_version`.
+- `NGX_MRUBY_AUTO_SSL=1` adds the auto-ssl mrbgem to the mruby build. Remove
+  `mruby/build` before changing it: a full run builds the new gem list, but
+  `libmruby.a` keeps the objects of a dropped gem and `mruby/build/host/LEGAL`
+  is not written again (see `docs/install/README.md`).
 - Extra arguments to `test.sh` are passed to `./configure`
   (for example `sh test.sh --with-openssl-src=/path/to/openssl`).
 - Headers in `src/` are not make dependencies: after editing a `.h`, `touch` the

@@ -47,11 +47,16 @@ It provides [RACK](https://rack.github.io/) (Ruby Webserver Interface) compatibl
 
 ## auto-ssl mrbgem
 
-The auto-ssl mrbgem is an optional bundled mrbgem to support 
-[Automatic Certificate Management Environment](https://ietf-wg-acme.github.io/acme/draft-ietf-acme-acme.html) (ACME) 
-protocol client. You can easily get SSL certificates from [Let’s Encrypt](https://letsencrypt.org/).
+The auto-ssl mrbgem is an optional bundled mrbgem with an
+[Automatic Certificate Management Environment](https://ietf-wg-acme.github.io/acme/draft-ietf-acme-acme.html) (ACME)
+protocol client (`Nginx::SSL::ACME::Client`) and helpers for the dehydrated
+ACME client (`Nginx::SSL::ACME::Dehydrated`).
 
-It is still in early development phase.
+It is not in the default build. Build ngx_mruby with `NGX_MRUBY_AUTO_SSL=1`
+to get it; see
+[Building with the auto-ssl mrbgem](../install/README.md#building-with-the-auto-ssl-mrbgem).
+`Nginx::SSL::ACME::Client` speaks ACMEv1, which
+[Let’s Encrypt](https://letsencrypt.org/) no longer serves.
 See script files in [mrbgems/auto-ssl/mrblib](https://github.com/matsumotory/ngx_mruby/tree/master/mrbgems/auto-ssl/mrblib)
 for APIs.
 
@@ -971,7 +976,7 @@ location /foo {
     r = Nginx::Request.new
     backend_user = r.var.backend_user
     backend_pass = lookup_pass_for(user)
-    'Basic ' + Base64.encode(backend_user + ':' + backend_pass)
+    'Basic ' + [backend_user + ':' + backend_pass].pack('m0')
   ';
   proxy_set_header Authorization $auth;
   proxy_pass  http://backend.example.com;

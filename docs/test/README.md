@@ -83,6 +83,12 @@ If you want to run with valgrind, set the environment variables `NGINX_RUNNER` a
 $ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh
 ```
 
+The auto-ssl mrbgem is not in the default build.
+`NGX_MRUBY_AUTO_SSL=1 sh test.sh` builds it and the gems it depends on (see
+"Building with the auto-ssl mrbgem" in `docs/install/README.md`, which also
+says when to remove `mruby/build`). No test uses them, so the suite is the
+same in both builds.
+
 ## Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer
 
 CI builds one matrix cell with `-fsanitize=address,undefined`. To run the
@@ -559,13 +565,14 @@ the top of a git work tree, else a checksum of its files without
 `mruby/build` and `mruby/bin`, the output of the `test.sh` build), the file
 names under `mrbgems/`, checksums of `build_config.rb`, `config.in`,
 `configure`, `Makefile.in`, `build.sh` and `nginx_version`,
-`NGX_MRUBY_CFLAGS` (passed to mruby, as with `test.sh`), the nginx configure
-options and the gem lock of `RELEASE_GEM_LOCK`. When the stamp differs from
-that of the last build, mruby and nginx are built from scratch; the
-downloaded nginx source is kept. After a change that the stamp does not
-cover, for example an uncommitted change under `mruby/` (the git tree id is
-that of the commit), reset the build by hand with `rm -rf build_soak` (or
-`build_perf`).
+`NGX_MRUBY_CFLAGS` (passed to mruby, as with `test.sh`),
+`NGX_MRUBY_AUTO_SSL` (which adds the auto-ssl mrbgem to the mruby build), the
+nginx configure options and the gem lock of `RELEASE_GEM_LOCK`. When the
+stamp differs from that of the last build, mruby and nginx are built from
+scratch; the downloaded nginx source is kept. After a change that the stamp
+does not cover, for example an uncommitted change under `mruby/` (the git
+tree id is that of the commit), reset the build by hand with
+`rm -rf build_soak` (or `build_perf`).
 
 ## Performance comparison with callgrind
 
