@@ -9,6 +9,7 @@
 - [Test](./test)
 - [Directives](./directives)
 - [Class and Method](./class_and_method)
+- [Migrating to the bundled mruby 4.0.0](./migration)
 - [Use Case](./use_case)
 
 ## What's ngx_mruby

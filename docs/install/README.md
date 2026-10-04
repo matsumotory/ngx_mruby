@@ -81,7 +81,7 @@ For example, you can use mruby-io to implement
 
 Here are the list of the default mrbgems.
 
-- mruby core gems: the ones that `NGX_MRUBY_CORE_GEMS` in `build_config.rb` lists (the set that `full-core.gembox` of mruby 3.3.0 selects), for example mruby-io, mruby-pack, mruby-sleep and mruby-dir
+- mruby core gems: the ones that `NGX_MRUBY_CORE_GEMS` in `build_config.rb` lists (see [Core gems](#core-gems)), for example mruby-io, mruby-pack, mruby-sleep and mruby-dir
 - mruby-process: Process ::fork, ::kill, ::pid, ::ppid, ::waitpid...
 - mruby-pack: pack, unpack...
 - mruby-env: use environment value
@@ -104,6 +104,54 @@ build to skip those gems with a notice.
 
 The bundled auto-ssl mrbgem is not in the default build; see
 [Building with the auto-ssl mrbgem](#building-with-the-auto-ssl-mrbgem).
+
+### Core gems
+
+The bundled mruby is 4.0.0. ngx_mruby builds the core gems that
+`NGX_MRUBY_CORE_GEMS` names, not mruby's `full-core.gembox`, so that the
+classes and methods of ngx_mruby scripts change only when that list
+changes. The list is the set that `full-core.gembox` of mruby 3.3.0
+selected, with these differences:
+
+- mruby-print is gone (mruby 3.4 removed it). `Kernel#print`, `#puts` and
+  `#p` come from mruby-io.
+- hal-posix-io, hal-posix-dir and hal-posix-socket are in the list. In
+  mruby 4.0.0, mruby-io, mruby-dir and mruby-socket reach the operating
+  system through one of these back ends; they add no class or method. Only
+  4.0.0 has them: in mruby 4.1.0-rc2 the POSIX back ends are part of
+  mruby-io, mruby-dir and mruby-socket, and there are no hal-* gems, so an
+  update to mruby 4.1 removes the three names from the list.
+
+Core gems of mruby 4.0.0 that the list leaves out, although
+`full-core.gembox` of 4.0.0 takes them:
+
+| Gem | What it would change | Why it is left out |
+|---|---|---|
+| mruby-task (with hal-posix-task) | `Task`; redefines `Kernel#sleep`; every process that opens an mrb_state gets a SIGALRM interval timer (`setitimer`); at most 8 mrb_states (`MRB_TASK_MAX_VMS`) | the timer and the `sleep` of nginx workers; ngx_mruby has its own `Nginx::Async` |
+| mruby-encoding | defines `MRB_UTF8_STRING` for the whole build: `String#size`, `#[]`, `#index` and others count characters instead of bytes; adds `String#valid_encoding?`, `#encoding` and `#force_encoding` | request and response data are bytes, and a script that computes a `Content-Length` from `String#size` would get another number; whether ngx_mruby takes it is not decided yet. Cost of leaving it out: `String#valid_encoding?`, which mruby 3.3 defined in mruby-string-ext, raises `NoMethodError` (since mruby 3.4 only mruby-encoding defines it) |
+| mruby-strftime | adds `Time#strftime` | new API; a decision of its own |
+| mruby-benchmark | adds `Benchmark` | new API, a development tool |
+
+`full-core.gembox` of 4.0.0 leaves out mruby-sleep, mruby-bin-debugger and
+mruby-test. ngx_mruby keeps mruby-sleep, which defines `Kernel#sleep` and
+`#usleep`.
+
+To build with one of the gems that the list leaves out, add its name to
+`NGX_MRUBY_CORE_GEMS` in `build_config.rb`, remove `mruby/build` and build
+again. With mruby-encoding, check every script that uses `String#size`,
+`#length`, `#[]`, `#slice`, `#index` or `#reverse` on request or response
+data, and use `#bytesize` and `#byteslice` where bytes are meant;
+`Nginx::Utils.escape` already works on bytes. The test suite of ngx_mruby
+does not run with mruby-encoding or mruby-task.
+
+A script that calls `String#valid_encoding?` needs mruby-encoding (with the
+checks above), or has to drop the call. With the default `build_config.rb`
+of ngx_mruby 2.x, which builds mruby 3.3.0 without `MRB_UTF8_STRING`, the
+method returned `true` for every string, even `"\xfe"`, so dropping the call
+does not change what such a script accepts. A 2.x build whose
+`build_config.rb` defines `MRB_UTF8_STRING` got `false` for a string that is
+not valid UTF-8; to keep that check, build with mruby-encoding, which
+defines both `MRB_UTF8_STRING` and the method.
 
 ### Gem commits: build_config.rb.lock
 
@@ -165,40 +213,31 @@ The lock does not pin everything that the build fetches:
 
 - mruby/mgem-list. mruby clones the head of this list of gems to find the
   repository of a gem declared with `mgem:`, or of a dependency declared
-  without a source that is not one of mruby's own gems. Of the default gem
-  list, only the `test` build needs it: matsumotory/mruby-simplehttp depends
-  on mruby-polarssl without a source, and the list gives the repository
-  https://github.com/luisbebop/mruby-polarssl.git. The lock pins the commit
-  of that gem; the list supplies only its URL. If the list ever gives another
-  URL, the lock has no entry for it, and rake clones the head of that
-  repository. `build_config.rb` therefore declares its gems with `github:`.
+  without a source that is not one of mruby's own gems. The default gem list
+  does not need it. Until the update to mruby 4.0.0, the `test` build did:
+  matsumotory/mruby-simplehttp depends on mruby-polarssl without a source
+  unless `NO_SSL` is set, and the list gave the repository
+  luisbebop/mruby-polarssl. That gem depends on mruby-print, which mruby 3.4
+  removed, so `build_config.rb` now sets `NO_SSL` for the `test` build, and
+  the test client has `SimpleHttp` without HTTPS (the suite sends its HTTPS
+  requests with curl and `openssl s_client`). If a gem that you add needs
+  the list, the lock pins the commit of the gem but the list supplies its
+  URL; if the list ever gives another URL, the lock has no entry for it, and
+  rake clones the head of that repository. `build_config.rb` therefore
+  declares its gems with `github:`.
 - symisc/vedis. The `mrbgem.rake` of matsumotory/mruby-vedis clones it with
   `git clone` into the build directory of the gem
   (`mruby/build/host/mrbgems/mruby-vedis/vedis`) when that directory does not
   exist, at the head of its default branch.
-- The submodule of luisbebop/mruby-polarssl (ARMmbed/mbedtls, `test` build).
-  rake clones with `--recursive`, which checks the submodule out at the
-  commit that the head of the branch records, and the checkout of the
-  pinned commit does not update submodules. The pin is the head of the
-  branch today, so the two are the same commit. If the pin moves to a commit
-  that records another submodule commit, the submodule stays at the one of
-  the branch head.
 
 Because a clone made at a commit has the whole history of the repository,
-the first build fetches more than a build without the lock. Measured on
-2026-10-04 (two runs each), the 21 clones that the default build made at that
-time, cloned the way rake clones them, took about 178 MiB in 40 to 43 seconds
-instead of about 139 MiB in 32 to 34 seconds with `--depth 1`. The default
-build now makes 20: `Dir` comes from mruby's own mruby-dir instead of
-iij/mruby-dir, which is no longer cloned. Most of the size
-either way is the mbedtls submodule of luisbebop/mruby-polarssl, and so is
-most of the difference. `--recursive` does not make submodules shallow, so
-both clones have the whole history of the default branch of mbedtls. With
-`--depth 1`, git also clones the submodule with `--single-branch`, which
-fetches only that branch (about 119 MiB with git 2.34); without
-`--depth 1`, git fetches every branch of mbedtls (183 of them on
-2026-10-04, about 152 MiB). The other branches account for about 34 MiB of
-the 39 MiB difference; the history of mruby-polarssl itself is 1.4 MiB.
+the first build fetches more than a build without the lock. The default
+build makes 19 clones: 12 in `mruby/build/repos/host` and 7 in
+`mruby/build/repos/test`. Measured on 2026-10-04 after a build from an
+empty `mruby/build`, they take about 9.3 MiB (7.7 MiB and 1.7 MiB). Before
+the update to mruby 4.0.0, the `test` build also cloned
+luisbebop/mruby-polarssl with its submodule ARMmbed/mbedtls, which made up
+most of the about 178 MiB that the clones of the default build took then.
 
 ## 3. Building a binary
 
@@ -391,6 +430,16 @@ tmpdir = ENV['TMPDIR'] || '/tmp'                              # Dir.tmpdir
 path = "#{tmpdir}/myapp-#{Process.pid}-#{SecureRandom.hex(8)}"
 Dir.mkdir(path, 0700)                                         # Dir.mktmpdir('myapp-')
 ```
+
+With the bundled mruby 4.0.0, a build with the gem does not finish:
+pyama86/mruby-polarssl includes `mruby/ext/io.h`, which mruby 4.0 renamed to
+`mruby/io.h`, and the mruby build stops with `fatal error: mruby/ext/io.h:
+No such file or directory` (measured on 2026-10-04 with
+`NGX_MRUBY_AUTO_SSL=1 rake` in `mruby/`). The `NO_SSL` that
+`build_config.rb` sets for the test client also applies to this build: it
+only removes the dependency of matsumotory/mruby-simplehttp on
+mruby-polarssl, while pyama86/mruby-acme-client still depends on
+pyama86/mruby-polarssl itself.
 
 To build the gem, set `NGX_MRUBY_AUTO_SSL=1` in the environment of the mruby
 build. build.sh and test.sh pass their environment on to it.
