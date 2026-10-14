@@ -138,7 +138,7 @@ Nginx.rputs "hello ngx_mruby world!"
 
 An argument that is not a String is converted with `to_s`, so `Nginx.rputs nil`
 writes nothing, as `print nil` does in CRuby. A content handler that writes
-nothing and sets no status answers 500 (see
+nothing and sets no status answers 200 with an empty body (see
 [Nginx.return](#nginxreturnnginx_status_code)).
 
 ### Nginx.echo(string)
@@ -164,25 +164,38 @@ control nginx request processing flow. The status code consists of nginx interna
 Nginx.return Nginx::HTTP_SERVICE_UNAVAILABLE  # returns HTTP status 503
 ```
 
-A content handler that ends without output answers 500 with nginx's error
-page, unless it set a status that nginx answers by itself:
-`Nginx::HTTP_CREATED`, `Nginx::HTTP_NO_CONTENT` (204 without a body) or a
-status from 300 up. This covers `Nginx::HTTP_OK` and the other 2xx statuses
-as well as a handler that sets no status. error.log gets a line at the error
-level that ends with `response body is empty. return NGX_HTTP_INTERNAL_SERVER_ERROR`.
-To answer with an empty body, use `Nginx::HTTP_NO_CONTENT`:
+A content handler that ends without output answers as nginx's `return 200;`
+does: with the status it set, 200 when it set none, `Content-Length: 0` and an
+empty body, and nginx keeps a keep-alive connection for the next request. This
+covers `Nginx::HTTP_OK` and the other statuses from 200 to 299 that nginx does
+not answer by itself (for example `Nginx::HTTP_ACCEPTED`), a handler that
+writes nothing or only `""` or `nil` with `Nginx.rputs`, and a handler that only
+sets response headers. A HEAD request gets the same header, and the output
+filters of the location run on the empty response. nginx answers
+`Nginx::HTTP_CREATED`, `Nginx::HTTP_NO_CONTENT` (204 without a body) and the
+statuses from 300 up by itself, for example with its error page. A status below
+200 without output answers 500 with nginx's error page, and error.log gets a
+line at the error level that ends with
+`response body is empty. return NGX_HTTP_INTERNAL_SERVER_ERROR`.
 
 ```nginx
 location /empty {
-    mruby_content_handler_code 'Nginx.return Nginx::HTTP_NO_CONTENT';  # 204 without a body
+    mruby_content_handler_code 'Nginx.return Nginx::HTTP_OK';  # 200 with Content-Length: 0
 }
 ```
 
-In a subrequest (`Nginx::Async::HTTP.sub_request`, an SSI include,
-`auth_request`), only `Nginx::HTTP_OK` without output answers 500. A content
-handler that writes nothing there and sets no status or another status below
-300 ends the subrequest without a response body, and the parent request
-answers.
+In the other handlers, for example a rewrite or an access handler,
+`Nginx::HTTP_OK` without output answers 500 with nginx's error page and logs
+that line. In the content handler of a subrequest
+(`Nginx::Async::HTTP.sub_request`, an SSI include, `auth_request`),
+`Nginx::HTTP_OK` without output sets the status of the subrequest to 500 and
+logs that line too. A content handler of a subrequest that writes nothing and
+sets no status or another status below 300 ends the subrequest without a
+response body, and the parent request answers.
+
+On the 2.x line, a content handler that ends without output and with no
+status or a status from 200 to 299 that nginx does not answer by itself
+answers 500 instead (see [docs/releases/v3.0.0.md](../releases/v3.0.0.md)).
 
 Don't confuse `Nginx.return` method with mruby's `return` statement.
 ngx_mruby v2 supports `return` statement in handler code as below.
@@ -1238,6 +1251,11 @@ Sets the string to the response body
 f = Nginx::Filter.new
 f.body = "The original body is removed"
 ```
+
+An empty String sends the response with `Content-Length: 0` and no body, and
+so does a body filter that leaves the body of a response without a body
+empty. The 2.x line closes the connection without a response there (see
+[docs/releases/v3.0.0.md](../releases/v3.0.0.md)).
 
 ### Nginx::Filter#output
 
