@@ -48,8 +48,29 @@ this guide do not cover yet.
   in place of `conf.gembox 'full-core'`, as that file does. A build that
   needs fewer gems passes `NGX_MRUBY_CORE_GEMS - %w[...]`. To add a gem that
   the list leaves out, follow [Core gems](../install/README.md#core-gems).
-- With `NGX_MRUBY_AUTO_SSL=1`, see
+- A build from a new checkout or a source archive gets the third-party
+  mrbgems at the commits that `build_config.rb.lock` records
+  ([The third-party mrbgems are built at the commits that `build_config.rb.lock` records](../releases/v3.0.0.md#the-third-party-mrbgems-are-built-at-the-commits-that-build_configrblock-records-558)).
+  In a tree that keeps `mruby/build`, remove it after a change of the
+  lock, before the next build; otherwise rake stops with
+  `fatal: reference is not a tree` when a clone does not have the new
+  commit:
+
+  ```sh
+  rm -rf mruby/build
+  ```
+
+  To build a gem at another commit, follow
+  [Gem commits](../install/README.md#gem-commits-build_configrblock).
+- The default build no longer has the auto-ssl mrbgem and the classes that
+  came with it
+  ([The default build leaves out the auto-ssl mrbgem and the classes that came with it](../releases/v3.0.0.md#the-default-build-leaves-out-the-auto-ssl-mrbgem-and-the-classes-that-came-with-it-556)).
+  [Scripts](#scripts) says how to find the scripts that use them. With
+  `NGX_MRUBY_AUTO_SSL=1`, see
   [A build with the auto-ssl mrbgem stops](../releases/v3.0.0.md#a-build-with-the-auto-ssl-mrbgem-stops-561).
+- With `./configure --with-mruby-incdir`, add
+  `<mruby_root>/build/host/include` to the list of directories
+  ([Sources that include `mruby.h` need the generated headers](../releases/v3.0.0.md#c-extensions-sources-that-include-mrubyh-need-the-generated-headers-561)).
 - With mrbgems of your own or of third parties, see
   [C extensions and mrbgems](#c-extensions-and-mrbgems).
 
@@ -60,7 +81,7 @@ script files of a configuration (replace `/path/to/scripts` with the
 directories of the files that the `*_handler` directives name):
 
 ```sh
-grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|instance_methods|\.methods|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[' /path/to/scripts
+grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|instance_methods|\.methods|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[|flatten_merge|RuntimeError' /path/to/scripts
 ```
 
 Search the inline code of the `*_code` directives in the `nginx.conf`
@@ -80,7 +101,8 @@ not enough, and show the change.
 
 - [`Set#inspect` and `Set#to_s` use a new format](../releases/v3.0.0.md#setinspect-and-setto_s-use-a-new-format-561):
   the same search for a Set; `set.to_a.join(",")` gives the same string on
-  both versions.
+  both versions. The search above also finds `flatten_merge`, which mruby
+  4.0.0 removed: `s.flatten_merge(t)` becomes `s.merge(t.flatten)`.
 - [The message of `NoMethodError` names the class of the receiver](../releases/v3.0.0.md#the-message-of-nomethoderror-names-the-class-of-the-receiver-561):
   look for `message` next to `rescue NoMethodError`, and for
   `undefined method` in scripts.
@@ -190,10 +212,51 @@ not enough, and show the change.
 - [`yield` with keyword arguments to a block with keyword parameters works](../releases/v3.0.0.md#yield-with-keyword-arguments-to-a-block-with-keyword-parameters-works-561):
   nothing to change; a `rescue ArgumentError` that was there for this case
   is no longer reached.
+- [`Dir` comes from mruby's core gem, and a closed `Dir` raises `IOError` instead of `RuntimeError`](../releases/v3.0.0.md#dir-comes-from-mrubys-core-gem-and-a-closed-dir-raises-ioerror-instead-of-runtimeerror-559):
+  the search above finds `RuntimeError`; look at the ones that rescue an
+  exception of a `Dir` that can be closed, or of `Dir.open` with a block
+  that closes the `Dir`.
 
-`Dir.children`, `Dir#each_child` and `Dir.empty?` are new to scripts of
-2.x; the first two leave out `.` and `..` (see
-[New features](../releases/v3.0.0.md#new-features)).
+  ```ruby
+  d = Dir.open(path)
+  d.close
+  begin
+    d.read
+  rescue RuntimeError            # 2.x: rescued   3.0.0: not rescued (IOError)
+  end
+  begin
+    d.read
+  rescue IOError, RuntimeError   # rescued on both
+  end
+  ```
+
+- [The default build leaves out the auto-ssl mrbgem and the classes that came with it](../releases/v3.0.0.md#the-default-build-leaves-out-the-auto-ssl-mrbgem-and-the-classes-that-came-with-it-556):
+  this finds the constants and the two `Dir` methods that the default
+  build no longer has:
+
+  ```sh
+  grep -rnE 'Nginx::SSL::ACME|Acme|HttpRequest|OpenSSL|PolarSSL|SimpleHttp|(^|[^:])HTTP::|Base64|Forwardable|FORWARDABLE|Tempfile|tmpdir' /path/to/scripts
+  ```
+
+  `Base64`, `Dir.tmpdir` and `Dir.mktmpdir` have replacements in the
+  default build:
+
+  ```ruby
+  Base64.encode(s)          # 3.0.0: NameError (uninitialized constant Base64)
+  [s].pack('m0')            # the same string on both
+  Base64.decode(b)          # 3.0.0: NameError
+  b.unpack1('m')            # the same string on both
+  Dir.tmpdir                # 3.0.0: NoMethodError
+  ENV['TMPDIR'] || '/tmp'   # works on both
+  ```
+
+  For `Dir.mktmpdir`, see
+  [Building with the auto-ssl mrbgem](../install/README.md#building-with-the-auto-ssl-mrbgem).
+  The other constants need a `conf.gem` line of your own.
+
+`Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
+`Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out
+`.` and `..` (see [New features](../releases/v3.0.0.md#new-features)).
 
 ## Log monitoring
 
@@ -210,6 +273,19 @@ not enough, and show the change.
 - [The message of `NoMethodError` names the class of the receiver](../releases/v3.0.0.md#the-message-of-nomethoderror-names-the-class-of-the-receiver-561):
   a pattern that ends at `undefined method 'foo'` no longer matches, because
   the message goes on with ` for <class>`.
+- [The messages logged while nginx reads the configuration are at the `info` level instead of `notice`](../releases/v3.0.0.md#the-messages-logged-while-nginx-reads-the-configuration-are-at-the-info-level-instead-of-notice-565):
+  look in log parsers, alert rules and start scripts for `mechanism enabled`,
+  `compile info`, `target variable` and `ngx_mruby NOTICE`. A start of
+  nginx no longer writes these lines; `nginx -t` writes them at `[info]`.
+
+  ```
+  2.x, start:       [notice] ... ngx_mruby/<version> (mruby/3.3.0) mechanism enabled in ...
+  3.0.0, start:     no such line
+  3.0.0, nginx -t:  [info] ... ngx_mruby/<version> (mruby/4.0.0) mechanism enabled in ...
+  ```
+
+  A check that looks for one of these lines to see that the module is
+  loaded runs `nginx -t` instead.
 
 ## C extensions and mrbgems
 
