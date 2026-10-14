@@ -1,7 +1,8 @@
 # Proposal: the method lookup of `Nginx::Var` accessors on mruby 4
 
-Status: proposed, 2026-10-14. Nothing in it is decided. The work starts
-after #561 (the bundled mruby 4.0.0) merges into `next`. Written from `next`
+Status: proposed, 2026-10-14. Nothing in it is decided. #561 (the bundled
+mruby 4.0.0) merged into `next` on 2026-10-14 as 0b76bfa6d; the work starts
+when the owner has answered the question of section 4. Written from `next`
 at e0dfdc658 (mruby 3.3.0), #561 at a33f939a9 (mruby 4.0.0; `mruby/` and
 the build inputs are those of #561's head, 872f3be2b on 2026-10-14, whose
 two later commits change only files under `docs/`), the mruby tag
@@ -27,9 +28,11 @@ scenarios reach nginx variables through `Nginx::Var#method_missing`:
 | `auth` | server rewrite handler `test/soak/handlers/agent_auth.rb`: two Hash lookups and three `v.NAME = value` | 41,737 → 45,258 | +3,520 (+8.43%) | 793 → 2,857 (+2,064) | 3 | +688 |
 
 The differences are those that `perf.rb` prints, computed before rounding.
-The last column divides the lookup difference by the accesses (1,929 / 3
-and 2,064 / 3). The lookup difference is 74% of the difference of `var`
-(1,929 of 2,618) and 59% of that of `auth` (2,064 of 3,520).
+The last column divides the lookup difference evenly by the accesses
+(1,929 / 3 and 2,064 / 3): the profile gives one number per request and does
+not separate the three accesses, so it is an average. The lookup difference
+is 74% of the difference of `var` (1,929 of 2,618) and 59% of that of `auth`
+(2,064 of 3,520).
 
 The rest of each difference is in parts of mruby that no candidate below
 changes: 4.0.0's `iv_get` (`mruby/src/variable.c`) finds a name by binary
@@ -225,23 +228,42 @@ when another method has taken the cache entry, in the table of
   - (a1) The first 32 names that the worker serves, whatever they are (35
     entries with the 3 methods of today, which fit in a table of 64
     entries, 1,024 bytes). A getter and a setter of the same variable are
-    two of the 32. The order of the requests decides which names get an
-    accessor for the life of the worker: typing errors and names that
-    request data selects through `send` count as well, so names that a
-    script reads on every request can be left on the slow path, and two
-    workers can end with different sets.
+    two of the 32, and so are two spellings of one name, such as
+    `request_method` and `Request_Method`. The order of the requests
+    decides which names get an accessor for the life of the worker: typing
+    errors and names that request data selects through `send` count as
+    well, so names that a script reads on every request can be left on the
+    slow path, and two workers can end with different sets.
   - (a2) Every declared name that a script uses, at most 16 prefix names
     (a number chosen here), and no unknown name. Setters exist only for
     declared names, because `ngx_mrb_var_set_vector` assigns only names of
     `variables_hash`; an assignment to a prefix name logs that it is not
-    found today and keeps doing so. The configuration fixes the declared
-    part of the table (at most a getter and a setter per declared variable
-    that scripts use), and the order of the requests decides only which
-    prefix names get the 16. The table has at most 3 + 2 × (the declared
-    variables that scripts use) + 16 entries.
+    found today and keeps doing so.
+  - Letter case under (a2). The getter and the setter lowercase the name
+    before they look it up (`ngx_hash_strlow`), so today `v.Request_Method`
+    and `v.REQUEST_METHOD` read `$request_method`. Each spelling is a
+    different method name, so a check that lowercased the name first would
+    let every spelling of a declared name pass and get an accessor of its
+    own, and a script that passes names from request data to `send` would
+    add accessors without a bound. (a2) therefore defines an accessor only
+    for a called name without an uppercase letter (`A` to `Z`, the letters
+    that `ngx_hash_strlow` changes); another spelling keeps working through
+    `method_missing` with the same value, and pays the check on each
+    access. Counting such spellings against the 16 would also bound the
+    table, but request data could then take the slots that the prefix names
+    read on every request need. Keeping other spellings on the slow path
+    costs little: the documentation, tests and gems of this repository
+    spell every variable in lowercase, as the nginx documentation does.
+  - With that rule, the configuration fixes the declared part of the table
+    (at most a getter and a setter per declared variable that scripts use,
+    in its lowercase spelling), and the order of the requests decides only
+    which prefix names get the 16. The table has at most 3 + 2 × (the
+    declared variables that scripts use) + 16 entries.
   - Accessors only for declared names, without prefix names, would leave
     `arg_q` of `var` on the slow path: one of its three accesses per
-    request, a third (+643 Ir) of its lookup difference of +1,929.
+    request, about a third of its lookup difference (about +643 Ir, an even
+    split of +1,929 over the three accesses; the profile does not separate
+    them).
 
   This proposal recommends (a2). The names that scripts read on every
   request are mostly declared names (the variables of nginx such as
@@ -320,8 +342,8 @@ stays as a thin path from `method_missing` into the same getter and setter.
 ### (c) Change nothing and accept the cost
 
 - Per access: +643 Ir (`var`) and +688 Ir (`auth`) in the lookup against
-  3.3.0, as measured in #561. It grows with the methods of `Object` and
-  `Kernel`.
+  3.3.0, on average (the even split of section 1.1 of what #561 measured).
+  It grows with the methods of `Object` and `Kernel`.
 - The agent proxy baseline `auth` - `proxy_plain_2k` of
   `docs/proposals/v3-plan.md` stays at 25,276 Ir per request with 4.0.0,
   against 21,934 with 3.3.0 (+15.2%, from #561).
@@ -382,8 +404,9 @@ not pursue it.
 
 The pull request that implements the change is measured with the perf lane
 of `next` (`test/perf/compare.sh`), the default scenarios and
-`PERF_N=20000`, in three comparisons. `B33` is the first parent of the merge
-commit of #561 on `next`, the last commit of `next` with mruby 3.3.0.
+`PERF_N=20000`, in three comparisons. `B33` is e0dfdc658, the first parent
+of 0b76bfa6d (the merge commit of #561), the last commit of `next` with
+mruby 3.3.0.
 
 | Comparison | Base | Head | What it shows | Acceptance |
 |---|---|---|---|---|
@@ -397,10 +420,10 @@ container as "The `master` commands" in `AGENTS.md` shows):
 
 ```sh
 git fetch origin next
-M=<merge commit of #561 on next>
+B33=e0dfdc658                 # the first parent of 0b76bfa6d, the merge of #561
 D=$HOME/ngx_mruby-perf-var    # any directory outside the checkout
 rm -rf "$D" && mkdir -p "$D/base33" "$D/head40" "$D/head41/mruby"
-git archive "$M^1" | tar -x -C "$D/base33"
+git archive "$B33" | tar -x -C "$D/base33"
 git archive HEAD | tar -x -C "$D/head40"
 git archive HEAD -- . ':!mruby' | tar -x -C "$D/head41"
 git fetch --no-tags https://github.com/mruby/mruby.git refs/tags/4.1.0-rc2   # FETCH_HEAD only
@@ -437,9 +460,12 @@ The same pull request also has:
   test nginx runs one worker, so the first request defines the accessor and
   the later ones use it); an assignment with `v.NAME = value` that nginx
   reads back (`add_header` with `$NAME`); `respond_to?(:NAME)` before and
-  after the first access; a prefix name past the bound of 16 and a name
-  that is neither declared nor a prefix name, which keep working through
-  `method_missing`; and, for (d), the value of each of the twelve methods;
+  after the first access; a prefix name past the bound of 16, a name that
+  is neither declared nor a prefix name, and a declared name spelled with an
+  uppercase letter (`v.Request_Method`), which keep working through
+  `method_missing` with the same values and get no accessor
+  (`respond_to?` stays `false`); and, for (d), the value of each of the
+  twelve methods;
 - the soak test (`sh test/soak/run.sh`) with its scenarios passing, since
   (a) adds a table that grows once per worker;
 - the "Nginx::Var Class" section of `docs/class_and_method/README.md`
@@ -453,8 +479,9 @@ The same pull request also has:
 ## 4. Recommendation and what the owner decides
 
 Recommended: (a) with the rule (a2) of section 2, and (d), together in one
-pull request to `next` after #561 merges. (c) is the state until that pull
-request merges. (b), (e) and (f) are not part of this work.
+pull request to `next`, which has mruby 4.0.0 since 0b76bfa6d (#561). (c)
+is the state until that pull request merges. (b), (e) and (f) are not part
+of this work.
 
 The reasons:
 
@@ -496,11 +523,13 @@ of the implementing pull request can change them.
 
 ## 5. Status and steps
 
-Status: proposed, 2026-10-14. The work starts after #561 merges into
-`next`.
+Status: proposed, 2026-10-14. #561 merged into `next` as 0b76bfa6d on
+2026-10-14; the work starts when the owner has answered the question of
+section 4.
 
-1. After #561 merges: a pull request to `next` with (a) and (d), its tests,
-   the docs and the release notes entries (section 3).
+1. After the owner's answer: a pull request to `next` with (a) and (d), or
+   with the fallback of section 4, its tests, the docs and the release notes
+   entries (section 3).
 2. In that pull request: the three comparisons of section 3.
 3. When `var` or `auth` stays at WARN or above against 3.3.0: the owner
    decides on that pull request, with the attribution of section 3.
