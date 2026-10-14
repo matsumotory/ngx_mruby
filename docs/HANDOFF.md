@@ -35,33 +35,33 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-14 (21:16 JST)
+## State as of 2026-10-14 (22:16 JST)
 
-Heads: `next` is `53e8d39` (merge of #577), `master` is `b017496` (merge of
-#575), and `v2.x` mirrors `master` (`b017496`). The pull request "Merge
-master into next (2026-10-14: #575, #576)" merges `master` at `b017496`
-into `next`, together with this update of the file; once it is merged,
-`next` contains `master` again.
+Heads: `next` is `7696e1c` (merge of #579), `master` is `0a1e8ac` (merge of
+#578), and `v2.x` mirrors `master` (`0a1e8ac`). The pull request "Merge
+master into next (2026-10-14: #578)" merges `master` at `0a1e8ac` into
+`next`, together with this update of the file; once it is merged, `next`
+contains `master` again.
 
 Merged on 2026-10-14, into `next`: #572 (the fixed symbol names interned
 once, `bc2488a`), #571 (the site proposal `docs/proposals/site.md`,
-`570cdab`), #569 (this file, `e0dfdc6`), #561 (mruby 4.0.0, `0b76bfa`)
-and #577 (the proposal `docs/proposals/nginx-var-method-lookup.md`,
-`53e8d39`); into `master`: #576 (`.gitignore` and `CLAUDE.md`, `9be7f02`)
-and #575 (the "Why it changed" lines and the Japanese file of the release
-notes, `b017496`). Merged on 2026-10-04: into `next` #560, #565 and #573
-(`master` into `next`); into `master` #562, #564, #566, #568 and #570. The
-full lists: `gh pr list --state merged --base next --search
-'merged:>=2026-10-03' --limit 200`, and the same with `--base master`. Each
-pull request says what it changed.
+`570cdab`), #569 (this file, `e0dfdc6`), #561 (mruby 4.0.0, `0b76bfa`),
+#577 (the proposal `docs/proposals/nginx-var-method-lookup.md`, `53e8d39`)
+and #579 (`master` at `b017496` into `next`, `7696e1c`); into `master`:
+#576 (`.gitignore` and `CLAUDE.md`, `9be7f02`), #575 (the "Why it changed"
+lines and the Japanese file of the release notes, `b017496`) and #578 (the
+`files` job of CI, `test/check_added_files.sh`, `0a1e8ac`). Merged on
+2026-10-04: into `next` #560, #565 and #573 (`master` into `next`); into
+`master` #562, #564, #566, #568 and #570. The full lists: `gh pr list
+--state merged --base next --search 'merged:>=2026-10-03' --limit 200`, and
+the same with `--base master`. Each pull request says what it changed.
 
 Open pull requests, all drafts:
 
 | PR | Base | Change | Stage |
 |---|---|---|---|
-| [#563](https://github.com/matsumotory/ngx_mruby/pull/563) | `master` | Stop the recursion between a content handler and a header filter in the same location (#206) | Three review rounds; the re-review of `67fbed1` leaves no "must fix". It conflicts with `master` at `b017496` (AGENTS.md and `docs/releases/v2.7.1.md`). CI passed. Its author holds the merge. Since #575, adding its entry to `docs/releases/v2.7.1.md` also means creating `docs/releases/v2.7.1.ja.md`, unless another pull request has created it first ("Who writes the entries, and when" in `docs/releases/README.md`). |
+| [#563](https://github.com/matsumotory/ngx_mruby/pull/563) | `master` | Stop the recursion between a content handler and a header filter in the same location (#206) | Three review rounds; the re-review of `67fbed1` leaves no "must fix". It conflicts with `master` at `0a1e8ac` (AGENTS.md and `docs/releases/v2.7.1.md`). CI passed. Its author holds the merge. Since #575, adding its entry to `docs/releases/v2.7.1.md` also means creating `docs/releases/v2.7.1.ja.md`, unless another pull request has created it first ("Who writes the entries, and when" in `docs/releases/README.md`). |
 | [#574](https://github.com/matsumotory/ngx_mruby/pull/574) | `next` | Answer 200 with `Content-Length: 0` when a content handler sends no body (#200) | A draft that waits for the next merge of `master` into `next` after the next 2.x release, then a full review round. |
-| [#578](https://github.com/matsumotory/ngx_mruby/pull/578) | `master` | CI: fail a pull request that adds files that do not belong in the repository | [The review of `7a95a1d`](https://github.com/matsumotory/ngx_mruby/pull/578#issuecomment-6166814611): no "must fix", nine "should fix". CI on `7a95a1d` passed. [The owner's agreement to the scope](https://github.com/matsumotory/ngx_mruby/pull/578#issuecomment-6168108659) is recorded on it. |
 
 ## Decisions
 
@@ -117,7 +117,7 @@ notes in [docs/releases/](releases/) list what it contains.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The next merge into `master` after the merge of `master` at `b017496` into `next` ("Merge master into next (2026-10-14: #575, #576)") |
-| The check of `docs/releases/README.md` "Before the tag" for the next 2.x release: `docs/releases/v2.7.1.md` against every pull request merged into `master` since v2.7.0, adding the missing entries (#562 has none yet), with the perf comparison against the tag that AGENTS.md "Design principles" asks for | `master` | Before the owner tags; pull requests merged after it are checked again |
+| The check of `docs/releases/README.md` "Before the tag" for the next 2.x release: `docs/releases/v2.7.1.md` against every pull request merged into `master` since v2.7.0, adding the missing entries (#562 and #578 have none yet; #578's entry under "Build and test changes" is added in this check, as #578 says), with the perf comparison against the tag that AGENTS.md "Design principles" asks for | `master` | Before the owner tags; pull requests merged after it are checked again |
 | `docs/releases/v3.0.0.md`, which #561 created, needs the entries of the pull requests merged into `next` before it existed (the merges of `master` excepted): #556, #559, #565 and #572 at least, and the test and build changes of #534, #542, #545, #549, #554, #555, #557 and #558 (`gh pr list --state merged --base next`; "What counts as a behavior change" in `docs/releases/README.md` says which need none). By "Who writes the entries, and when" in `docs/releases/README.md`, the first pull request that adds to the file creates `docs/releases/v3.0.0.ja.md` by translating the whole file. | `next` | Ready to start |
 | The `Set` entry of `docs/releases/v3.0.0.md` lacks the clause that `Set#flatten_merge`, public on mruby 3.3.0, was removed in 4.0.0 ([the re-review of #561](https://github.com/matsumotory/ngx_mruby/pull/561#issuecomment-6166344538), should fix 1) | `next` | Ready to start; the pull request also creates `v3.0.0.ja.md` if no pull request has created it before (row above) |
 | The case that #566 leaves without a response: output, then a status below 300 other than 200, 201 and 204 ([the re-review of #566](https://github.com/matsumotory/ngx_mruby/pull/566#issuecomment-5977670159), should fix 5) | `master` | Ready to start: a test commit, then a fix commit |
