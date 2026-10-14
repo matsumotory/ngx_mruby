@@ -7,7 +7,7 @@
 #ifndef MRUBY_TIME_H
 #define MRUBY_TIME_H
 
-#include "mruby/common.h"
+#include <mruby/common.h>
 #include <time.h>
 
 MRB_BEGIN_DECL
@@ -20,6 +20,7 @@ typedef enum mrb_timezone {
 } mrb_timezone;
 
 MRB_API mrb_value mrb_time_at(mrb_state *mrb, time_t sec, time_t usec, mrb_timezone timezone);
+MRB_API struct tm* mrb_time_get_tm(mrb_state *mrb, mrb_value time);
 
 MRB_END_DECL
 

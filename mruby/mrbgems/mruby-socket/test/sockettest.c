@@ -1,9 +1,9 @@
 #include <stdlib.h>
 
-#include "mruby.h"
-#include "mruby/error.h"
+#include <mruby.h>
+#include <mruby/error.h>
 
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
 
 #include <io.h>
 

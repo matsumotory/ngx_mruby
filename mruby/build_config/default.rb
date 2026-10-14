@@ -60,7 +60,7 @@ MRuby::Build.new do |conf|
   # gperf settings
   # conf.gperf do |gperf|
   #   gperf.command = 'gperf'
-  #   gperf.compile_options = %q[-L ANSI-C -C -p -j1 -i 1 -g -o -t -N mrb_reserved_word -k"1,3,$" "%{infile}" > "%{outfile}"]
+  #   gperf.compile_options = %q[-L ANSI-C -C -j1 -i 1 -o -t -N mrb_reserved_word -k"1,3,$" "%{infile}" > "%{outfile}"]
   # end
 
   # file extensions
@@ -72,6 +72,9 @@ MRuby::Build.new do |conf|
 
   # file separator
   # conf.file_separator = '/'
+
+  # change library directory name from the default "lib" if necessary
+  # conf.libdir_name = 'lib64'
 
   # Turn on `enable_debug` for better debugging
   # conf.enable_debug

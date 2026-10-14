@@ -518,6 +518,17 @@ total by 11,856.
 | The same with a 64 KB body | `route_json_64k` - `proxy_plain_64k` | 1,581,578 (1,577,952) | 133 |
 | One more Ruby call (`mruby_set_code`) | (`ruby_call_10` - `ruby_call_1`) / 9 | 3,349 (2,722) | 0.28 |
 
+These baselines were measured with mruby 3.3 and before #572, which interns
+ngx_mruby's fixed symbol names once per `mrb_state`. On 2026-10-14,
+`test/perf/compare.sh` with the same settings measured `next` at bc2488a
+(mruby 3.3 and #572) against the same tree with mruby 4.0.0 (#561): `auth` -
+`proxy_plain_2k` is 21,934 Ir per request (19,766 without the GC) on 3.3
+and 25,276 (23,305) on 4.0.0, and `route_json_2k` - `proxy_plain_2k` is
+83,317 (80,059) and 85,228 (82,097). The remaining difference of 4.0.0 is in
+mruby's method lookup on a miss, its lookup of constants and instance
+variables, and its new argument count check; 4.1.0-rc2 has the same code
+for all three.
+
 What the measurements show:
 
 - One Ruby call costs about 8 times what nginx spends to relay one more event
@@ -652,6 +663,11 @@ decided and why.
 1. mruby target for v3: **4.1.0** (rc2 or a post-#7032 commit until
    released), not 4.0.0, because 4.1 fixes GC registration counting that the
    async design depends on and adds core regexp/env/process.
+   On 2026-10-04 the owner approved a step before it (#561): `next` bundles
+   mruby 4.0.0 first and moves to 4.1.0 when 4.1.0 is tagged, with Prism
+   vendored as a subset, mruby-encoding left out of the default build with a
+   documented opt-in, and mruby-onig-regexp kept for 3.0. The target of v3
+   stays 4.1.0.
 2. nginx floor for v3: **1.30 stable and 1.31 mainline**, raised every
    April. Distro users on 1.26/1.24 stay on v2.
 3. OpenSSL: **3.5 LTS baseline, 4.0 tested**, 1.1.1 and 3.0 dropped.

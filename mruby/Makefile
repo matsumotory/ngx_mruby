@@ -1,35 +1,63 @@
 # mruby is using Rake (https://ruby.github.io/rake/) as a build tool.
 
 RAKE = rake
+DOCKER_COMPOSE = docker-compose
+PRE_COMMIT = prek
 
-all :
+define check_command
+	@command -v $(1) >/dev/null 2>&1 || { \
+		echo "Error: $(1) is not installed or not in PATH."; \
+		exit 1; \
+	}
+endef
+
+# For colors
+ifneq ($(shell tty -s),)
+	CYAN := $(shell tput setaf 6)
+	RESET := $(shell tput sgr0)
+else
+	CYAN :=
+	RESET :=
+endif
+
+.PHONY: all test clean check checkinstall checkupdate composecheck composetest check_rake check_docker_compose check_pre_commit help
+.DEFAULT_GOAL := all
+
+all: check_rake ## build all targets, install (locally) in-repo
 	$(RAKE)
-.PHONY : all
 
-test : all
+test: check_rake all ## build and run all mruby tests
 	$(RAKE) test
-.PHONY : test
 
-clean :
+clean: check_rake ## clean all built and in-repo installed artifacts
 	$(RAKE) clean
-.PHONY : clean
 
-check :
-	pre-commit run --all-files
-.PHONY : check
+check: check_pre_commit ## run all prek hooks against all files
+	$(PRE_COMMIT) run --all-files
 
-checkinstall :
-	pre-commit install
-.PHONY : checkinstall
+checkinstall: check_pre_commit ## install the prek hooks
+	$(PRE_COMMIT) install
 
-checkupdate :
-	pre-commit autoupdate
-.PHONY : checkupdate
+checkupdate: check_pre_commit ## check the prek hooks for updates
+	$(PRE_COMMIT) autoupdate
 
-composecheck :
-	docker-compose -p mruby run test pre-commit run --all-files
-.PHONY : composecheck
+composecheck: check_docker_compose check_pre_commit ## run all prek hooks against all files with docker-compose
+	$(DOCKER_COMPOSE) -p mruby run test $(PRE_COMMIT) run --all-files
 
-composetest :
-	docker-compose -p mruby run test
-.PHONY : composetest
+composetest: check_docker_compose ## build and run all mruby tests with docker-compose
+	$(DOCKER_COMPOSE) -p mruby run test
+
+check_rake: ## check if Rake is installed
+	$(call check_command, $(RAKE))
+
+check_docker_compose: ## check if docker-compose is installed
+	$(call check_command, $(DOCKER_COMPOSE))
+
+check_pre_commit: ## check if prek is installed
+	$(call check_command, $(PRE_COMMIT))
+
+help: ## display this help message
+	@echo "Usage: make <target>"
+	@echo
+	@echo "Available targets:"
+	@grep -E '^[a-z_-]+:.*##' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*## *"}; {printf "  $(CYAN)%-20s$(RESET) %s\n", $$1, $$2}'
