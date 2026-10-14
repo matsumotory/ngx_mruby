@@ -60,7 +60,7 @@ script files of a configuration (replace `/path/to/scripts` with the
 directories of the files that the `*_handler` directives name):
 
 ```sh
-grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[' /path/to/scripts
+grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|instance_methods|\.methods|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[' /path/to/scripts
 ```
 
 Search the inline code of the `*_code` directives in the `nginx.conf`
@@ -78,7 +78,7 @@ not enough, and show the change.
   Nginx.rputs JSON.generate(h)     # {"q":"x"} on both
   ```
 
-- [`Set#inspect` uses a new format](../releases/v3.0.0.md#setinspect-uses-a-new-format-561):
+- [`Set#inspect` and `Set#to_s` use a new format](../releases/v3.0.0.md#setinspect-and-setto_s-use-a-new-format-561):
   the same search for a Set; `set.to_a.join(",")` gives the same string on
   both versions.
 - [The message of `NoMethodError` names the class of the receiver](../releases/v3.0.0.md#the-message-of-nomethoderror-names-the-class-of-the-receiver-561):
@@ -91,10 +91,16 @@ not enough, and show the change.
 
   Rescue `NoMethodError` itself instead of comparing the message.
 - [`private` and `protected` are enforced](../releases/v3.0.0.md#private-and-protected-are-enforced-561):
-  look for calls, with a receiver other than `self`, of `initialize`, of
-  methods defined with `def` at the top level, of `Kernel` methods such as
-  `raise`, `sprintf` and `puts`, and of methods below `private` or
-  `protected`.
+  look for calls, with a receiver other than `self`, of `initialize`,
+  `initialize_copy`, `respond_to_missing?` and `method_missing`, of methods
+  defined with `def` at the top level, of `Kernel` methods such as `raise`,
+  `sprintf` and `puts`, and of methods below `private` or `protected`. The
+  search above finds the calls on `Kernel` (`Kernel\.`): only
+  `Kernel.format`, `.sprintf`, `.raise`, `.sleep` and `.usleep` still work,
+  and the others, such as `Kernel.Integer(x)`, become calls without a
+  receiver. It also finds `instance_methods` and `methods`, which leave
+  private methods out. Checking `respond_to?` before such a call does not
+  help: it returns `true` for a private method.
 
   ```ruby
   class Router
@@ -111,6 +117,9 @@ not enough, and show the change.
 
   Router.new.pick(r)           # 2.x: works   3.0.0: NoMethodError
   Router.new.send(:pick, r)    # works on both
+
+  Kernel.Integer("12")         # 2.x: 12   3.0.0: NoMethodError (private method 'Integer' called for Module)
+  Integer("12")                # 12 on both
   ```
 
 - [`Module#remove_const`, `#private`, `#public`, `#protected`, `#module_function` and the hooks are private](../releases/v3.0.0.md#moduleremove_const-private-public-protected-module_function-and-the-hooks-are-private-561):
@@ -182,8 +191,9 @@ not enough, and show the change.
   nothing to change; a `rescue ArgumentError` that was there for this case
   is no longer reached.
 
-`Dir.children` and `Dir#each_child` are new to scripts of 2.x, and leave
-out `.` and `..` (see [New features](../releases/v3.0.0.md#new-features)).
+`Dir.children`, `Dir#each_child` and `Dir.empty?` are new to scripts of
+2.x; the first two leave out `.` and `..` (see
+[New features](../releases/v3.0.0.md#new-features)).
 
 ## Log monitoring
 
@@ -207,7 +217,7 @@ This finds the places in the C sources of a gem, or of a program that
 embeds mruby, that the entries below are about:
 
 ```sh
-grep -rnE 'Data_Wrap_Struct|mrb_data_object_alloc|MRB_SET_INSTANCE_TT|MRB_ARGS_|mruby/ext/io\.h|mrb_alloca|mrb_open|MRB_NO_PRESYM' src/
+grep -rnE 'Data_Wrap_Struct|mrb_data_object_alloc|MRB_SET_INSTANCE_TT|MRB_ARGS_|mruby/ext/io\.h|mrb_alloca|mrb_open|allocf|MRB_NO_PRESYM' src/
 ```
 
 - [An object of a class not declared `MRB_TT_DATA` cannot wrap C data](../releases/v3.0.0.md#c-extensions-an-object-of-a-class-not-declared-mrb_tt_data-cannot-wrap-c-data-561):
@@ -221,16 +231,21 @@ grep -rnE 'Data_Wrap_Struct|mrb_data_object_alloc|MRB_SET_INSTANCE_TT|MRB_ARGS_|
 
 - [mruby checks the argument count of a C method against its spec](../releases/v3.0.0.md#c-extensions-mruby-checks-the-argument-count-of-a-c-method-against-its-spec-561):
   compare the spec of each `mrb_define_method` with what its `mrb_get_args`
-  reads. A method defined with `MRB_ARGS_REQ(2)` that reads one string
-  (`mrb_get_args(mrb, "S", &s)`) and is called with one argument raises
-  `ArgumentError`; define it with `MRB_ARGS_REQ(1)`.
+  reads, in both directions. A method defined with `MRB_ARGS_REQ(2)` that
+  reads one string (`mrb_get_args(mrb, "S", &s)`) and is called with one
+  argument raises `ArgumentError`; define it with `MRB_ARGS_REQ(1)`. A
+  method defined with `MRB_ARGS_REQ(1)` that reads `"o|o"` and is called
+  with two arguments raises too; define it with `MRB_ARGS_ARG(1, 1)`.
 - [Renamed headers and functions, and `mrb_open()` on failure](../releases/v3.0.0.md#c-extensions-renamed-headers-and-functions-and-mrb_open-on-failure-561):
 
   ```c
   #include <mruby/io.h>                    /* was <mruby/ext/io.h> */
   void *buf = mrb_temp_alloc(mrb, size);   /* was mrb_alloca(mrb, size) */
-  mrb_state *mrb = mrb_open();
+  mrb_state *mrb = mrb_open();             /* also in place of mrb_open_allocf(my_allocf, ud) */
   if (MRB_OPEN_FAILURE(mrb)) { /* ... */ } /* was: if (mrb == NULL) */
+
+  /* a custom allocator, in place of mrb_default_allocf() or my_allocf */
+  void *mrb_basic_alloc_func(void *ptr, size_t size) { /* ... */ }
   ```
 
 - [Sources that include `mruby.h` need the generated headers](../releases/v3.0.0.md#c-extensions-sources-that-include-mrubyh-need-the-generated-headers-561):
@@ -250,12 +265,13 @@ grep -rnE 'Data_Wrap_Struct|mrb_data_object_alloc|MRB_SET_INSTANCE_TT|MRB_ARGS_|
    ```
 
 2. Run the parts of a script that do not call the `Nginx` classes with both
-   versions of mruby. The entries of mruby 4.0.0 were measured this way on
-   2026-10-04 (the shift counts of the Float entry and the hooks `prepended`
-   and `singleton_method_added` on 2026-10-14): the same Ruby script ran
-   with two `mruby` binaries, one built from the mruby tree of ngx_mruby
-   2.x (mruby 3.3.0) and one from mruby 4.0.0, both with mruby's `default`
-   gembox, in Docker (Ubuntu 22.04, gcc 11). The entries that say "the test
+   versions of mruby. The entries of mruby 4.0.0 were measured this way
+   between 2026-10-04 and 2026-10-14: the same Ruby script ran with two
+   `mruby` binaries, one built from the mruby tree of ngx_mruby 2.x (mruby
+   3.3.0) and one from mruby 4.0.0, in Docker (Ubuntu 22.04, gcc 11), with
+   mruby's `default` gembox or with the core gems of each version's
+   ngx_mruby build (`full-core` and iij/mruby-dir for 3.3.0,
+   `NGX_MRUBY_CORE_GEMS` for 4.0.0). The entries that say "the test
    suite of ngx_mruby saw the change" also changed a response or a log line
    of ngx_mruby itself. To do the same, copy the `mruby/` directory of each
    version to a directory of its own, run `rake MRUBY_CONFIG=default` in
