@@ -49,17 +49,25 @@ accepts a configuration, a raised build requirement, a dropped stable nginx line
 bundled mruby or default mrbgems)? A bug fix counts when the old behavior could be relied on. An
 addition that leaves existing configurations, scripts and builds behaving as before goes under
 "New features" instead. docs/releases/README.md says what counts and has more examples.
-For each such change, fill in the four lines below with the same text as its entry under
-"Behavior changes: read before upgrading" in docs/releases/<version>.md.
+For each such change, fill in the lines below with the same text as its entry under
+"Behavior changes: read before upgrading" in docs/releases/<version>.md. "Why it changed"
+gives the defect (or, for a change that fixes no defect, "The reason:"), why the old behavior
+could not be kept (in an entry with "The reason:", what keeping it would have cost), and what
+the documentation promised; see "Template" in docs/releases/README.md.
+The same entry in Japanese goes in docs/releases/<version>.ja.md.
 Write "n/a" in them when nothing changes.
 -->
 
 - Before:
 - Now:
+- Why it changed:
+  - The defect:
+  - Why the old behavior could not be kept:
+  - What the documentation promised:
 - Affected:
 - What to do:
 
-- [ ] `docs/releases/<version>.md` has an entry under "Behavior changes: read before upgrading" for every change above
+- [ ] `docs/releases/<version>.md` has an entry under "Behavior changes: read before upgrading" for every change above, and `docs/releases/<version>.ja.md` has the same entry in Japanese
 - [ ] No behavior change that a configuration, script or build can observe
 
 - Base `master`: does the change stay within the 2.x policy in AGENTS.md (stability and security fixes; observable behavior changes only as far as the fix of a defect requires; new behavior, API cleanups and features go to `next`)? <!-- yes / no, and why; n/a for base `next` -->
