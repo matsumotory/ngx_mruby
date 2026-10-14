@@ -254,9 +254,11 @@ no frame is added per request.
   `Server` header that other code sets; `ngx_mruby - backtrace log` counts
   three lines naming `backtrace.rb` in `error.log`, which in this copy are
   the two compile errors (nginx sends its stderr to `error.log`) and the
-  line of the `raise`. The review of this proposal on #583, with a copy that
-  compiles the file in the top-level frame again, counted 16 failures, that
-  test among them.
+  line of the `raise`. The review of this proposal on #583 counted 16
+  failures, that test among them, with a copy that compiles the `raise` in
+  place of the file on each request, without compiling the file: only the
+  line of the `raise` reached `error.log`, one of the three lines that the
+  test counts.
 
 - Documented examples that stop compiling: the quick start of
   `docs/install/README.md` (5-A and 5-B, `Server = Nginx`), the example of

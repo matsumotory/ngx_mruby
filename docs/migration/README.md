@@ -128,13 +128,16 @@ not enough, and show the change.
   look for calls, with a receiver other than `self`, of `initialize`,
   `initialize_copy`, `respond_to_missing?` and `method_missing`, of methods
   defined with `def` at the top level, of `Kernel` methods such as `raise`,
-  `sprintf` and `puts`, and of methods below `private` or `protected`. The
-  search above finds the calls on `Kernel` (`Kernel\.`): only
-  `Kernel.format`, `.sprintf`, `.raise`, `.sleep` and `.usleep` still work,
-  and the others, such as `Kernel.Integer(x)`, become calls without a
-  receiver. It also finds `instance_methods` and `methods`, which leave
-  private methods out. Checking `respond_to?` before such a call does not
-  help: it returns `true` for a private method.
+  `sprintf` and `puts`, and of methods below `private` or `protected`. In
+  handler code, a method defined with `def` at the top level stays public,
+  and calls of it with a receiver need no change
+  ([the proposal for #502](../proposals/handler-code-frame.md#14-what-handler-code-shares-today),
+  section 1.4). The search above finds the calls on `Kernel`
+  (`Kernel\.`): only `Kernel.format`, `.sprintf`, `.raise`, `.sleep` and
+  `.usleep` still work, and the others, such as `Kernel.Integer(x)`, become
+  calls without a receiver. It also finds `instance_methods` and `methods`,
+  which leave private methods out. Checking `respond_to?` before such a call
+  does not help: it returns `true` for a private method.
 
   ```ruby
   class Router

@@ -35,7 +35,7 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-15 (05:25 JST)
+## State as of 2026-10-15 (05:45 JST)
 
 Heads: `next` is the merge of #583, whose first parent is `acdc82f`
 (merge of #582, whose first parent is `dcd3103`, the merge of #580, which
@@ -44,7 +44,9 @@ merged `master` at `0a1e8ac`), `master` is `0a1e8ac` (merge of #578), and
 
 Merged on 2026-10-15, into `next`: #583 (the proposal
 `docs/proposals/handler-code-frame.md` for #502, with the open question in
-section 7 of the plan) and #582 (the release notes for 3.0.0 of the pull
+section 7 of the plan, and one sentence in the `private` entry of the 3.0.0
+release notes and in the migration guide: a top-level `def` in handler code
+stays public) and #582 (the release notes for 3.0.0 of the pull
 requests merged before `docs/releases/v3.0.0.md` existed,
 `Set#flatten_merge`, the migration guide and `docs/releases/v3.0.0.ja.md`,
 `acdc82f`).
