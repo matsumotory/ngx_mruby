@@ -113,11 +113,34 @@ each requested in turn.
 | Assigns a constant (`C502 = ...`) | Yes | Yes: 1, then 2 | The target class is `Object` (1.2) |
 | Sets an instance variable of `self` (`@iv502`) | Yes; `instance_variables` of `main` lists it | Yes: 1, then 2 | `self` is `main` |
 | Sets a global variable (`$g502`) | Yes | Yes: 1, then 2 | `ngx_mrb_state_clean` clears only the exception (1.2) |
-| Defines a method with `def` | Yes, a private method of `Object` | Yes | `def` at the top level defines on `Object` |
+| Defines a method with `def` | Yes, a public method of `Object`: another location can call it with any receiver (`"x".helper502b`) | Yes | `def` at the top level defines on `Object`, with the visibility of the frame (see below the table) |
 | Defines a class (`class Handler502`) with a constant in it | Yes | Yes; the class is reopened on each run | As for constants |
 
-The responses, in the order of the requests (status lines and headers left
-out; all were `200 OK`):
+A `def` in handler code defines a public method, where a plain mruby 4.0.0
+script defines a private one (`"x".h502` raises `private method 'h502'
+called for String`). mruby takes the visibility of a `def` from the frame
+that runs it (`mruby/src/class.c:1058` to `:1060`). The first frame of the
+root context starts as private (`c->ci->vis = 1`, `mruby/src/vm.c:130`),
+and the first frame of a fiber starts as zero, which is public
+(`mruby/mrbgems/mruby-fiber/src/fiber.c:55` to `:59`). Handler code runs in
+the first frame of its fiber (1.2), so a helper that it defines can be
+called on every object of the worker. Code that runs with
+`mrb_toplevel_run`, such as `mruby_init_code`, runs in the root context and
+defines private methods, as a plain script does. Measured with a second
+configuration on `next` (3.1):
+
+```text
+GET /def_set    defined
+GET /def_call   x.helper502b with the receiver x: helper502b called
+                public_instance_methods(false) includes it: true
+                private_instance_methods(false) includes it: false
+plain mruby     "x".h502: NoMethodError: private method 'h502' called for String
+                public_instance_methods(false) includes it: false
+                private_instance_methods(false) includes it: true
+```
+
+The responses of the scenario, in the order of the requests (status lines
+and headers left out; all were `200 OK`):
 
 ```text
 GET /read   self=main id=187651254034216
@@ -171,7 +194,7 @@ would also fix `master`.
 | `return` in a block or a `for` body, on `next` | Ends the handler (1.3) | Ends the handler | Ends the handler | Ends the handler |
 | What the compiler accepts | As today | A constant assignment, `class` and `module` are a `SyntaxError`: `nginx -t` refuses the configuration | As today | The rules of a block: as today |
 | Backtrace in `error.log` | As today | As today | As today | One more line, the line of the wrapper |
-| `test.sh` (221 assertions) | 221 pass | 13 assertions use code that does not compile (2 (b)) | 221 pass | 220 pass; `ngx_mruby - backtrace log` fails |
+| `test.sh` (221 assertions) | 221 pass | 19 assertions use code that does not compile (2 (b)) | 221 pass | 220 pass; `ngx_mruby - backtrace log` fails |
 | Ir per request in the perf lane (3.3) | No change | -0.31% to +1.75% where Ruby runs, all `ok` (about +62 per run in `ruby_call_10`) | Within 0.03%, as the prototype with the top-level frame | From +1,075 to +1,941 per run of handler code: `hello` +13.88%, `ruby_call_10` +33.92%; seven `FAIL` and one `WARN` |
 | Would it fix `master` (mruby 3.3.0)? | No | No: the method body is still the bottom frame | No: the same | Yes: the lambda's frame is above the bottom frame |
 
@@ -204,17 +227,36 @@ no frame is added per request.
   "Assigning a constant in a method body is a `SyntaxError`"); option (b)
   would apply it to the whole of every handler.
 - Code that stops compiling in the test configuration: 12 pieces of
-  handler code at 11 locations of `test/conf/nginx.conf`, used by 13
-  assertions of `test/t/ngx_mruby.rb`:
+  handler code at 11 locations of `test/conf/nginx.conf`, used by 19
+  assertions of `test/t/ngx_mruby.rb`, five of them stream tests that fetch
+  `/mruby` through the stream proxies:
 
   | Location | What the code does | Assertions |
   |---|---|---|
   | `/mruby` (`test/html/unified_hello.rb`) | `Server = Nginx` | `ngx_mruby`, `ngx_mruby - update built-in response header in http context` |
   | `/all_instance` | `Server = Nginx` | `ngx_mruby - all instance test` |
-  | `/rack_base`, `/rack_base1` to `/rack_base4`, `/rack_base_env` | `class RackTest` | `ngx_mruby - rack base` (six) |
+  | `/rack_base`, `/rack_base1` to `/rack_base4`, `/rack_base_env` | `class RackTest` | `ngx_mruby - rack base` (seven: one per location, and a POST to `/rack_base_env`) |
   | `/rack_base_2phase` (access and content handlers) | `class AccessCheck`, `class RackTest` | `ngx_mruby - rack base auth ok`, `ngx_mruby - rack base auth ng` |
   | `/issue_238` | `class MyError < RuntimeError; end` | `ngx_mruby - Throw my own exception for issue 238` |
   | `/backtrace` (`test/html/backtrace.rb`) | `class Foo`, `class Bar` | `ngx_mruby - backtrace log` |
+  | `/mruby` through the stream proxies on ports 12345, 12348, 12349, 12350, 12351 and 12352 | `Server = Nginx` | `ngx_mruby - stream tcp load balancer` (port 12345), `ngx_mruby - stream tcp port`, `ngx_mruby - stream tcp ip port text`, `ngx_mruby - add linstener`, `ngx_mruby - Nginx::Stream::Async.sleep` |
+
+  A copy of the prototype whose fallback compiles
+  `raise ScriptError, ...` in place of such code, and keeps the method frame
+  when a file without `cache` is compiled again, makes each of these
+  locations raise when it runs. With it, `NGX_MRUBY_PROTO_FRAME=method` and
+  a copy of `test.sh` that goes on after a failed file, 15 of the 19 fail:
+  13 `Fail` and 2 `Crash` (`JSON::ParserError` for the GET and the POST of
+  `/rack_base_env`), the five stream assertions among them; every case
+  file passes. The other four pass for reasons that have nothing to do with
+  the code: the assertions of `/rack_base4` and `/issue_238` expect 500;
+  `ngx_mruby - update built-in response header in http context` checks a
+  `Server` header that other code sets; `ngx_mruby - backtrace log` counts
+  three lines naming `backtrace.rb` in `error.log`, which in this copy are
+  the two compile errors (nginx sends its stderr to `error.log`) and the
+  line of the `raise`. The review of this proposal on #583, with a copy that
+  compiles the file in the top-level frame again, counted 16 failures, that
+  test among them.
 
 - Documented examples that stop compiling: the quick start of
   `docs/install/README.md` (5-A and 5-B, `Server = Nginx`), the example of
@@ -291,6 +333,13 @@ with `curl` in a fixed order. The locations:
 - `/block_given`: `block_given?` at the top level (`false`).
 - `/raise`: `raise` at line 3, for the lines in `error.log`.
 
+A second configuration on the same binary (port 18503) asks the visibility
+of a `def` (1.4): `/def_set` defines `helper502b`, and `/def_call` calls
+`"x".helper502b` and reads whether `Object.public_instance_methods(false)`
+and `Object.private_instance_methods(false)` list it. The same three steps
+ran as a plain script (`def h502`) with `mruby/build/host/bin/mruby` of the
+`test.sh` build.
+
 The scenario reads names with `Object.const_defined?`, `respond_to?` and
 `rescue NameError`, not with `defined?`: mruby evaluates the operand of
 `defined?` (`mruby/doc/limitations.md`, "`defined?`"), so `defined?(C502)`
@@ -336,7 +385,9 @@ frame:
 files also ran from a copy of `test.sh` that goes on after a failure.
 Without the fallback, (b) would stop nginx at its startup, and no assertion
 would run. The suite has no stream test of a `return` in a block, and the
-prototype changes only the HTTP module.
+prototype changes only the HTTP module. Five stream tests still depend on
+(b): they fetch `/mruby` through the stream proxies, which runs
+`unified_hello.rb` (2 (b)).
 
 ### 3.3 The perf lane
 
@@ -454,7 +505,7 @@ in 2.x. The reasons:
   needed for it.
 - (b) makes `nginx -t` refuse every configuration whose handler code
   assigns a constant or defines a class: the first example of the install
-  guide, the Rack-style handler, and 13 assertions of the suite. It gives
+  guide, the Rack-style handler, and 19 assertions of the suite. It gives
   nothing in return on `next`, and it would not fix `master`.
 - (c1) changes nothing that a script can observe on mruby 4.0.0 and would
   not fix `master` either: code without an effect.
@@ -483,7 +534,13 @@ lambda frame (c1 or c2)?
      locations of #502 and the assertions of a2ikm/ngx_mruby#2, and the
      `mruby_set_code` form of 3.1. The test passes on `next`, so it needs
      no fix commit; the pull request cites the triage on `master` for the
-     500 that the same locations answer with mruby 3.3.0.
+     500 that the same locations answer with mruby 3.3.0. The same pull
+     request adds the entry of this change to `docs/releases/v3.0.0.md`
+     and `docs/releases/v3.0.0.ja.md`: it came with #561, and a script can
+     observe it (on 2.x, a `return` in a block or a `for` body of handler
+     code answers 500 with `LocalJumpError`; on 3.0.0 it ends the handler).
+     The entry "`yield` with keyword arguments to a block with keyword
+     parameters works (#561)" is the model.
   2. A pull request to `master`: a note in `docs/` that in 2.x a `return`
      inside a block or a `for` body of handler code raises
      `LocalJumpError` (500), how to write it instead, and that v3 accepts
@@ -494,7 +551,8 @@ lambda frame (c1 or c2)?
   or 2 (c2) lists (with the owner's approval, AGENTS.md "Writing tests"),
   the docs, a release notes entry and the perf comparison.
 - Not in this proposal: the texts of `README.md` and `docs/README.md` that
-  say the global variables table is freed between scripts (1.4).
+  say the global variables table is freed between scripts (1.4). A row of
+  the queue of `docs/HANDOFF.md` holds that docs change.
 
 ## Sources
 

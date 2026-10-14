@@ -35,16 +35,19 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-15 (02:35 JST)
+## State as of 2026-10-15 (05:25 JST)
 
-Heads: `next` is the merge of #582, whose first parent is `dcd3103`
-(merge of #580, which merged `master` at `0a1e8ac`), `master` is
-`0a1e8ac` (merge of #578), and `v2.x` mirrors `master` (`0a1e8ac`).
-`next` contains `master`.
+Heads: `next` is the merge of #583, whose first parent is `acdc82f`
+(merge of #582, whose first parent is `dcd3103`, the merge of #580, which
+merged `master` at `0a1e8ac`), `master` is `0a1e8ac` (merge of #578), and
+`v2.x` mirrors `master` (`0a1e8ac`). `next` contains `master`.
 
-Merged on 2026-10-15, into `next`: #582 (the release notes for 3.0.0 of
-the pull requests merged before `docs/releases/v3.0.0.md` existed,
-`Set#flatten_merge`, the migration guide and `docs/releases/v3.0.0.ja.md`).
+Merged on 2026-10-15, into `next`: #583 (the proposal
+`docs/proposals/handler-code-frame.md` for #502, with the open question in
+section 7 of the plan) and #582 (the release notes for 3.0.0 of the pull
+requests merged before `docs/releases/v3.0.0.md` existed,
+`Set#flatten_merge`, the migration guide and `docs/releases/v3.0.0.ja.md`,
+`acdc82f`).
 Merged on 2026-10-14, into `next`: #572 (the fixed symbol names interned
 once, `bc2488a`), #571 (the site proposal `docs/proposals/site.md`,
 `570cdab`), #569 (this file, `e0dfdc6`), #561 (mruby 4.0.0, `0b76bfa`),
@@ -129,6 +132,8 @@ notes in [docs/releases/](releases/) list what it contains.
 | CI: also grep the `stderr.log` files for sanitizer reports. The `Check for sanitizer reports` step of `.github/workflows/test.yml` reads only `build/nginx/logs/error.log`; `stderr.log` there holds the test client's stderr, and under `build/nginx/second_instance/` the second nginx's. | `master` (reaches `next` by the merge) | Ready to start |
 | 200 with `Content-Length: 0` for an empty body (#200), as nginx's own `return 200;` does: [#574](https://github.com/matsumotory/ngx_mruby/pull/574) | `next` | #574 is a draft that waits for the next merge of `master` into `next` after the next 2.x release, then a full review round |
 | #502: done are the row of the v3 plan (an open question in section 7) and the measurement of what a method or lambda frame changes and costs, in [the proposal for the frame of handler code](proposals/handler-code-frame.md). What follows is in its section 5: after an answer of (a), the regression test of #502 on `next` and a note in the 2.x docs on `master`, then close #502 | `next` and `master` | The owner's answer to the question of section 4 of the proposal |
+| `README.md` (line 153) and `docs/README.md` (line 76), the abstract of the paper, say that the server process frees the global variables table between scripts. On `next` and `master`, globals, constants, instance variables of `main`, methods and classes persist in a worker from one request to the next, since `ngx_mrb_state_clean` clears only `mrb->exc` (section 1.4 of [the proposal for the frame of handler code](proposals/handler-code-frame.md), measured on both branches in the review of #583). To do: a docs pull request that keeps the abstract and says beside it what persists in a worker today | `master` (reaches `next` by the merge) | Ready to start |
+| A rewrite handler that ends without `Nginx.return` (for example `mruby_rewrite_handler_code 'x = 1'` before a content handler, or before nginx's `return 200`) sends no response, and `error.log` has no line at the `error` level: with keep-alive the connection stays open until `keepalive_timeout`, with `Connection: close` it is closed with nothing sent. `ngx_mrb_finalize_rputs` (`src/http/ngx_http_mruby_core.c:179`) returns `NGX_OK` when nothing was sent and no status was set, and the rewrite phase of nginx 1.31.6 finalizes the request on `NGX_OK` (`ngx_http_core_rewrite_phase`), where the access phase goes on to the next handler. Found and measured on `next` and `master` while #583 was written and reviewed; no issue tracks it. To do: for v3, a test commit and a fix under the Pillar B row "Redesign response finalization per phase" of the plan; for 2.x, the owner decides between documenting it and a fix | `next`; `master` after the owner's decision | v3: ready to start; 2.x: the owner |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
 | Site: the implementation, in the steps of [section 6 of the proposal](proposals/site.md#6-implementation-plan) | `next` (`site/`, as Q1 proposes); steps 6 and 7 also change `master` | The owner's answers to [the open questions](proposals/site.md#7-open-questions); each step names the ones it needs |
 | Before the switch of ngx.mruby.org (step 7 of the site proposal), the owner has an item to do in the Pages settings for the custom domain | Repository settings | The owner |
