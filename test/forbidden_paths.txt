@@ -1,5 +1,6 @@
 # Paths that a change must not add to the repository, read by
-# test/check_added_files.sh (docs/test/README.md, "In CI").
+# test/check_added_files.sh (docs/test/README.md, "Files that do not belong
+# in the repository").
 #
 # One POSIX extended regular expression (grep -E) per line, matched against
 # the path from the top of the repository, such as ".claude/tmp/notes.md".
@@ -13,18 +14,39 @@
 
 # Session directories and local settings of AI coding agents: everything
 # under .claude/ except the settings, commands and skills shared with the
-# repository. The rules below still apply to the exceptions.
+# repository. The rules below still apply to the exceptions. The last line
+# fails a .claude/ below another .claude/, such as the .claude/skills/ of a
+# worktree copied into .claude/worktrees/.
 (^|/)\.claude/
 !(^|/)\.claude/settings\.json$
 !(^|/)\.claude/commands/
 !(^|/)\.claude/skills/
+(^|/)\.claude/(.*/)?\.claude/
 
 # Build directories: test.sh builds in build/ (build_dynamic/ for dynamic
-# modules), and mruby's rake in mruby/build/. mruby/lib/mruby/build/ is
-# source, so these are anchored at the top.
-^build/
-^build_dynamic/
+# modules), the soak test and the performance comparison of next in
+# build_soak/ and build_perf/, and mruby's rake in mruby/build/.
+# mruby/lib/mruby/build/ is source, so these are anchored at the top.
+^build(_[a-z]+)?/
 ^mruby/build/
+
+# Files that ./configure (Makefile, config, config.status, config.log,
+# autom4te.cache/) and the Makefile (mrbgems_config, mrbgems_config_dynamic,
+# .mruby_version, .openssl_build_done, .openssl_configure_done) write at the
+# top of the repository. mruby/Makefile and the config files of
+# dependence/ngx_devel_kit/ are source, so these are anchored at the top.
+^Makefile$
+^config$
+^config\.(status|log)$
+^autom4te\.cache/
+^mrbgems_config
+^\.mruby_version$
+^\.openssl_[a-z]+_done$
+
+# Vagrant's machine state, and the tag files of GNU Global and ctags
+(^|/)\.vagrant/
+(^|/)(GPATH|GRTAGS|GTAGS|GSYMS)$
+(^|/)tags$
 
 # Logs
 \.log$
