@@ -63,7 +63,11 @@ such a case once with the sanitizer build (see "Running the tests under
 AddressSanitizer and UndefinedBehaviorSanitizer" below) before opening the
 PR. `nginx_t` turns leak detection off for its `nginx -t` run, because
 `nginx -t` returns without freeing the configuration it read, so every
-allocation of nginx itself would be reported; `second_instance` returns the
+allocation of nginx itself would be reported. The stream-only test at the end
+of `test/t/ngx_mruby.rb` does the same for the `nginx -s quit` that stops the
+nginx it started: that process also returns from nginx's `main()` without
+freeing the pool that `main()` creates first, and its report would go to the
+test runner's `stderr.log`. `second_instance` returns the
 first sanitizer line of the second nginx's `error.log` as `sanitizer`, and
 the cases print that log when the line is set.
 
