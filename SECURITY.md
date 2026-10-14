@@ -4,12 +4,16 @@
 
 | Version | Where | Status |
 |---|---|---|
-| Latest 2.x release | `master` (until v3.0.0 is released), `v2.x`, the latest `v2.*` tag | Supported |
+| Latest 2.x release | `master` (until v3 is promoted to it at v3.0.0), `v2.x`, the latest `v2.*` tag | Supported until twelve months after v3.0.0 |
 | v3 pre-releases (`v3.0.0-alpha.N`, `-beta.N`, `-rc.N`) | `next` | Best effort |
 | Older 2.x releases, 1.x | older `v2.*` tags, `v1.*` tags | Not supported: upgrade to the latest 2.x release |
 
-Security fixes for 2.x are released as a new 2.x patch release. How long 2.x stays
-supported after v3.0.0 will be announced in the README and in this file.
+Security fixes for 2.x are released as a new 2.x patch release. 2.x stays
+supported for twelve months after v3.0.0 is released, as decided in the v3 plan
+([docs/proposals/v3-plan.md](https://github.com/matsumotory/ngx_mruby/blob/next/docs/proposals/v3-plan.md)
+on `next`, section 7, item 11). When v3.0.0 is released, the end date is added
+here and in the README, and this table gets a row for 3.x. Which branch holds
+which line is described in [Branch strategy](README.md#branch-strategy).
 
 ## Reporting a vulnerability
 

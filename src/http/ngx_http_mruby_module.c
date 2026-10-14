@@ -1199,7 +1199,7 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   }
 
   if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
-    return ngx_mrb_finalize_rputs(r, ctx);
+    return ngx_mrb_finalize_rputs(r, ctx, kind);
   }
 
   return NGX_OK;

@@ -85,7 +85,10 @@ if [ -n "$OPENSSL_SRC_VERSION" ]; then
     rm openssl-${OPENSSL_SRC_VERSION}.tar.gz
     cd openssl-${OPENSSL_SRC_VERSION}
     ./config --prefix=/usr/local --shared zlib -fPIC >> /dev/null 2>&1
-    OPENSSL_BUILD_OPT="--with-openssl-src=$BUILD_DIR/openssl-$OPENSSL_SRC_VERSION"
+    # configure derives OpenSSL's --prefix, nginx's --with-openssl and the
+    # include and library paths from this directory, so pass it as an
+    # absolute path: OpenSSL's Configure rejects a relative --prefix.
+    OPENSSL_BUILD_OPT="--with-openssl-src=$(pwd)"
     cd ../..
 else
     OPENSSL_BUILD_OPT=''
