@@ -98,4 +98,18 @@ t.assert('sync exception', 'an exception after Nginx.rputs in an output header f
   t.assert_equal '6', fields['content-length']
 end
 
+# The content handler writes "origin" with Nginx.rputs; the header filter
+# raises after Nginx.rputs or without output.
+[
+  ['/content_then_header_filter_rputs_then_raise', 'an exception after Nginx.rputs'],
+  ['/content_then_header_filter_raise', 'an exception without output'],
+].each do |path, what|
+  t.assert('sync exception', "#{what} in an output header filter keeps the output of the content handler and its length") do
+    status, line, fields, body = sync_exception_response(path)
+    t.assert_equal 'EOF', status
+    t.assert_equal 'origin', body
+    t.assert_equal '6', fields['content-length']
+  end
+end
+
 t.report
