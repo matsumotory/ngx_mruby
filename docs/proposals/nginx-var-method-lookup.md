@@ -2,9 +2,11 @@
 
 Status: proposed, 2026-10-14. Nothing in it is decided. The work starts
 after #561 (the bundled mruby 4.0.0) merges into `next`. Written from `next`
-at e0dfdc658 (mruby 3.3.0), the head of #561 at a33f939a9 (mruby 4.0.0),
-the mruby tag `4.1.0-rc2` (commit c17ffcc24; its files read with the GitHub
-API on 2026-10-14), nginx 1.31.6 (the version in `nginx_version`), and the
+at e0dfdc658 (mruby 3.3.0), #561 at a33f939a9 (mruby 4.0.0; `mruby/` and
+the build inputs are those of #561's head, 872f3be2b on 2026-10-14, whose
+two later commits change only files under `docs/`), the mruby tag
+`4.1.0-rc2` (commit c17ffcc24; its files read with the GitHub API on
+2026-10-14), nginx 1.31.6 (the version in `nginx_version`), and the
 callgrind comparison of 2026-10-14 in the body of #561. Section 4 says what
 the owner decides, with a recommendation.
 
@@ -80,13 +82,17 @@ and `set`. A read such as `v.request_method` or an assignment such as
    subclass of `Object` has exactly these ancestors.
    - 3.3.0: `mt_get` probes an open-addressing hash table
      (`kh_int_hash_func`, then the next slots until it meets the name or an
-     empty slot). The cost does not grow with the size of the table.
+     empty slot). The cost of a miss depends on how full the table is, not
+     on how many methods it holds: `mt_put` grows a table only when a probe
+     wraps around without an empty or deleted slot, so a table can be full,
+     and a miss in a full table visits every slot. The numbers of section
+     1.1 are measured and do not depend on this.
    - 4.0.0: a method table is a chain of layers (`mrb_mt_tbl`, linked by
      `next`; the entries that are added at run time sit above the read-only
      table of a core class), and `mt_get` compares the name with each entry
      of each layer. A name that no class defines is compared with every
-     entry of every layer of the four classes. The 4.0.0 build of #561's
-     head has at least 111 such entries: 3 in `Nginx::Var`, 1 in `Object`,
+     entry of every layer of the four classes. The 4.0.0 build of
+     a33f939a9 has at least 111 such entries: 3 in `Nginx::Var`, 1 in `Object`,
      93 in `Kernel` (53 public, 40 private) plus `Kernel#server_name`, which
      ngx_mruby defines at initialization (`src/http/ngx_http_mruby_core.c`),
      and 13 in `BasicObject`. The counts of `Object`, `Kernel` and
@@ -108,9 +114,11 @@ and `set`. A read such as `v.request_method` or an assignment such as
    the name up in `variables_hash`).
 
 Steps 3 and 4 do the same work on both versions; step 2 is the part that
-grew. On both versions, each access allocates two objects that the garbage
-collector frees later: the `Array` of step 3 and the `String` of the name in
-step 4.
+grew. On both versions, each access allocates three objects that the
+garbage collector frees later: the `Array` of step 3, and in step 4 the
+`String` of the name and the `String` that the access returns (`mrb_str_new`
+of the value read in `ngx_mrb_var_get`, or of the value assigned in
+`ngx_mrb_var_set_vector`).
 
 The method cache has 256 entries: `build_config.rb` selects no mruby
 profile, so `MRB_METHOD_CACHE_SIZE` keeps the default of
@@ -159,13 +167,20 @@ of that worker shares ("Design principles" in `AGENTS.md`).
 ### (a) Define an accessor on `Nginx::Var` at the first miss
 
 After `ngx_mrb_var_method_missing` has served an access, it defines a
-method of that name on `Nginx::Var` with `mrb_define_method_id`: a getter
-for `NAME`, a setter for `NAME=`. The `RClass` of `Nginx::Var` is kept from
-initialization. The two C functions take the name of the variable from the
-name they were called with (`mrb_get_mid`). The next access in the worker
-finds the method in the method cache, or, when another method has taken the
-cache entry, in the table of `Nginx::Var`, which is the first table of the
-walk.
+method of that name on `Nginx::Var` with `mrb_define_method_id`, when the
+rule under "Which names get an accessor" below allows it: a getter for
+`NAME`, a setter for `NAME=`. The `RClass` of `Nginx::Var` and the count of
+prefix accessors are kept with the `mrb_state` they belong to, in the HTTP
+module's main configuration (`ngx_http_mruby_main_conf_t`), not in C static
+variables: nginx creates a new `mrb_state` at each load of the
+configuration while the old one can still exist (the comment of
+`ngx_http_mruby_syms_t` in `src/http/ngx_http_mruby_core.h`), so a C static
+would point into whichever state was initialized last ("Where the state
+is" in "Design principles" of `AGENTS.md`). The two C functions take the
+name of the variable from the name they were called with (`mrb_get_mid`).
+The next access in the worker finds the method in the method cache, or,
+when another method has taken the cache entry, in the table of
+`Nginx::Var`, which is the first table of the walk.
 
 - For a script: the same values are read and written. The defined methods
   call the same `ngx_mrb_var_get` and `ngx_mrb_var_set` code, with the same
@@ -173,35 +188,84 @@ walk.
   They are defined with `MRB_ARGS_ANY()`, so a call with extra arguments
   behaves as it does through `method_missing` (the getter ignores them).
 - Per access, from the second access of a name in the worker: one lookup
-  that the cache answers, the argument count check of 4.0.0, and the
-  variable lookup in nginx. Steps 2 to 4 of section 1.2 do not run: no scan,
-  no `method_missing` dispatch, and neither the `Array` nor the `String` of
-  the name. The lane measures this state, because the warmup requests make
-  the first accesses.
-- Per first access of a name in the worker: the steps of today, plus
+  that the cache answers, the argument count check of 4.0.0, and the rest
+  of step 4 of section 1.2: the copy and lowercasing of the name in the
+  request pool, `ngx_http_get_variable` (for a setter, the lookup in
+  `variables_hash`) and the `String` of the value. Step 2 (the scan), step
+  3 (the `method_missing` dispatch and its `Array`) and, of step 4,
+  `mrb_get_args` and the `String` of the name do not run, so two of the
+  three objects of an access are not allocated. The lane measures this
+  state, because the warmup requests make the first accesses.
+- Per first access of a name in the worker: the steps of today, the check
+  of the rule below (`ngx_hash_find` in `variables_hash`, then a comparison
+  with each entry of `prefix_variables`), and, when the rule allows it,
   `mt_put` into the table of `Nginx::Var` and `mc_clear_by_id`, which
-  visits the 256 cache entries once.
-- Memory: one entry of 16 bytes (`mrb_mt_entry` on a 64-bit build) per name
-  in the table of `Nginx::Var`, kept for the life of the worker; the table
-  starts at 8 entries and doubles when it is full. The garbage collector
-  gets no object: a method in C is stored as a function pointer.
-- Bound: `ngx_http_get_variable` returns a value marked `not_found` for any
-  name that is not a variable, so `method_missing` cannot tell a variable
-  from a typing error, and a script such as `v.send("arg_#{x}")` can bring
-  any number of names. (a) therefore defines at most 32 names per worker
-  (a number chosen here: with the 3 methods of today, 35 entries fit in a
-  table of 64 entries, 1,024 bytes); later names go through
-  `method_missing` as today. The bound is small because a longer table of
-  `Nginx::Var` makes every walk that starts there longer.
+  visits the 256 cache entries once. A name that the rule does not allow
+  pays the check on each access.
+- Memory: one entry of 16 bytes (`mrb_mt_entry` on a 64-bit build) per
+  accessor in the table of `Nginx::Var`, kept for the life of the worker;
+  the table starts at 8 entries and doubles when it is full. The garbage
+  collector gets no object: a method in C is stored as a function pointer.
+- Which names get an accessor. nginx keeps two tables of names after the
+  configuration, and `ngx_http_get_variable` (`src/http/ngx_http_variables.c`
+  of nginx 1.31.6) looks a name up in both: first `cmcf->variables_hash`,
+  the declared variables (those of nginx and its modules, and those that
+  `set` declares), then `cmcf->prefix_variables`, the families whose names
+  start with a fixed prefix (`arg_`, `http_`, `cookie_`, `sent_http_`,
+  `sent_trailer_` and `proxy_protocol_tlv_` in `ngx_http_variables.c`,
+  `upstream_http_`, `upstream_trailer_` and `upstream_cookie_` in
+  `ngx_http_upstream.c`). A name in neither gets a value marked
+  `not_found`, and the accessor returns `nil` for it. So `method_missing`
+  can tell a declared name, a prefix name and an unknown name apart with
+  the same two lookups (`ngx_mrb_var_set_vector` already calls
+  `ngx_hash_find` on `variables_hash`). The declared names are a set that
+  the configuration fixes. The prefix names are not: every suffix makes a
+  name, so `v.send("arg_#{x}")` brings as many names as the requests
+  choose. Two rules bound the table:
+  - (a1) The first 32 names that the worker serves, whatever they are (35
+    entries with the 3 methods of today, which fit in a table of 64
+    entries, 1,024 bytes). A getter and a setter of the same variable are
+    two of the 32. The order of the requests decides which names get an
+    accessor for the life of the worker: typing errors and names that
+    request data selects through `send` count as well, so names that a
+    script reads on every request can be left on the slow path, and two
+    workers can end with different sets.
+  - (a2) Every declared name that a script uses, at most 16 prefix names
+    (a number chosen here), and no unknown name. Setters exist only for
+    declared names, because `ngx_mrb_var_set_vector` assigns only names of
+    `variables_hash`; an assignment to a prefix name logs that it is not
+    found today and keeps doing so. The configuration fixes the declared
+    part of the table (at most a getter and a setter per declared variable
+    that scripts use), and the order of the requests decides only which
+    prefix names get the 16. The table has at most 3 + 2 × (the declared
+    variables that scripts use) + 16 entries.
+  - Accessors only for declared names, without prefix names, would leave
+    `arg_q` of `var` on the slow path: one of its three accesses per
+    request, a third (+643 Ir) of its lookup difference of +1,929.
+
+  This proposal recommends (a2). The names that scripts read on every
+  request are mostly declared names (the variables of nginx such as
+  `request_method` and `remote_addr`, and the variables of `set`, as in
+  `auth`), and under (a2) they get an accessor whatever the order of the
+  requests and whatever typing errors a script makes; only the open family
+  of prefix names keeps a bound. The rest of this proposal uses (a2).
+- Past the bound, and for unknown names, an access is not as today on
+  4.0.0. Its miss scans the entries of `Nginx::Var` (3 today, 3 plus the
+  accessors with (a)) before the 111 of section 1.2, and so does every
+  lookup of a method of `Object`, `Kernel` or `BasicObject` on a `Var` (for
+  example `v.inspect`) that the cache does not answer. Under (a1) this
+  starts after 32 names, with 35 entries of `Nginx::Var` instead of 3.
 - Design principles: what is defined at the first use is shared by every
   later request of the worker. The definitions hold no request data (a
-  symbol and a function pointer), so nothing of one request reaches another.
-  No allocation per request is added, and two per access are removed.
-  Nothing blocks.
+  symbol and a function pointer), so no value of one request reaches
+  another; under (a2) only the set of prefix accessors depends on which
+  requests the worker served first. No allocation per request is added,
+  and two of the three objects per access are removed. Nothing blocks.
 - Compatibility, as behavior changes of 3.0.0 on `next`:
-  - After the first access of a name in a worker, `v.respond_to?(:NAME)`
-    returns `true`, where it returns `false` today (`Nginx::Var` defines no
-    `respond_to_missing?`), and `Nginx::Var.instance_methods(false)`,
+  - After the first access of a name that gets an accessor in a worker,
+    `v.respond_to?(:NAME)` returns `true`, where it returns `false` today
+    (`Nginx::Var` defines no `respond_to_missing?`), and
+    `Nginx::Var.instance_methods(false)`,
     `v.methods`, `Nginx::Var.method_defined?(:NAME)` and `v.method(:NAME)`
     show the method. The answer depends on what the worker has served, so
     two workers can answer differently.
@@ -273,10 +337,13 @@ and its hash key prepared once at initialization. This applies the rule of
 symbol name, a buffer) is looked up or allocated per request when it can be
 prepared once at initialization.
 
-- For a script: the same values. Per call: no `Var` object for the request
-  (`ngx_mrb_get_request_var` allocates one per `Nginx::Request` object and
-  keeps it in an instance variable), no Ruby call, no scan and no
-  `method_missing` dispatch.
+- For a script: the same values. Per call: no `Var` object, no Ruby call,
+  no scan and no `method_missing` dispatch. `ngx_mrb_get_request_var`
+  allocates a `Var` for each `Nginx::Request`, `Nginx::Connection` or
+  `Nginx::Server` object on which one of these methods is called (each
+  passes its own `self`), keeps it in an instance variable of that object,
+  and on the first call per object also looks up `Nginx` and `Nginx::Var`
+  (`mrb_class_get_id`, `mrb_const_get`); (d) removes these as well.
 - Compatibility: today, a script that defines `Nginx::Var#remote_addr` (or
   a `method_missing` of its own) changes what `Nginx::Connection#remote_ip`
   returns; after (d) it does not. This is recorded as a behavior change.
@@ -370,33 +437,37 @@ The same pull request also has:
   test nginx runs one worker, so the first request defines the accessor and
   the later ones use it); an assignment with `v.NAME = value` that nginx
   reads back (`add_header` with `$NAME`); `respond_to?(:NAME)` before and
-  after the first access; a name past the bound of 32; and, for (d), the
-  value of each of the twelve methods;
+  after the first access; a prefix name past the bound of 16 and a name
+  that is neither declared nor a prefix name, which keep working through
+  `method_missing`; and, for (d), the value of each of the twelve methods;
 - the soak test (`sh test/soak/run.sh`) with its scenarios passing, since
   (a) adds a table that grows once per worker;
 - the "Nginx::Var Class" section of `docs/class_and_method/README.md`
   updated to say that an accessor becomes a method of `Nginx::Var` at its
-  first use in a worker, up to 32 names;
+  first use in a worker, for the declared variables and for up to 16
+  prefix names;
 - an entry under "Behavior changes: read before upgrading" in
   `docs/releases/v3.0.0.md` for each compatibility item of section 2 that
   the pull request brings.
 
 ## 4. Recommendation and what the owner decides
 
-Recommended: (a) and (d) together, in one pull request to `next` after #561
-merges. (c) is the state until that pull request merges. (b), (e) and (f)
-are not part of this work.
+Recommended: (a) with the rule (a2) of section 2, and (d), together in one
+pull request to `next` after #561 merges. (c) is the state until that pull
+request merges. (b), (e) and (f) are not part of this work.
 
 The reasons:
 
 - (a) is the only candidate inside this repository that removes the cost
   for scripts as they are written today, and the lane measures that path.
-  It removes steps 2 to 4 of section 1.2: the scan, and the
-  `method_missing` dispatch of steps 3 and 4, which 3.3.0 also runs. It is
-  therefore expected to bring `var` and `auth` below their 3.3.0 numbers,
-  where removing only the extra cost of the scan would leave both at WARN
-  (section 1.1). The measurement of section 3 decides.
-- (a) costs at most 32 table entries per worker. Its behavior change is
+  It removes step 2 (the scan), step 3 (the `method_missing` dispatch,
+  which 3.3.0 also runs) and, of step 4, `mrb_get_args` and the `String` of
+  the name. It is therefore expected to bring `var` and `auth` below their
+  3.3.0 numbers, where removing only the extra cost of the scan would leave
+  both at WARN (section 1.1). The measurement of section 3 decides.
+- (a), with the rule (a2), costs one table entry of 16 bytes per accessor
+  for the life of the worker: at most two per declared variable that
+  scripts use, and at most 16 for prefix names. Its behavior change is
   limited to what introspection shows (`respond_to?`, `methods`,
   `instance_methods`) and to the order of lookup against methods defined
   later on `Object` or `Kernel`; values, errors and log lines do not
@@ -420,8 +491,8 @@ The owner decides one question:
   the documented accessor, and (b) as a separate proposal for scripts that
   want the faster path.
 
-The bound of 32 names is chosen here; the review of the implementing pull
-request can change it.
+The rule (a2) and its bound of 16 prefix names are chosen here; the review
+of the implementing pull request can change them.
 
 ## 5. Status and steps
 
@@ -447,8 +518,9 @@ Read on 2026-10-14:
 
 - `mruby/src/class.c`: `mt_get`, `mt_put`, `mrb_vm_find_method`,
   `mrb_define_method_raw`, `mrb_define_method_id`, `mc_clear_by_id`,
-  `include_module_at`; in 3.3.0 on `next` at e0dfdc658, in 4.0.0 at
-  a33f939a9 (the head of #561), in 4.1.0-rc2 at c17ffcc24 (GitHub API).
+  `include_module_at`; in 3.3.0 on `next` at e0dfdc658 (with its `mt_put`),
+  in 4.0.0 at a33f939a9 (`mruby/` of #561's head 872f3be2b), in 4.1.0-rc2
+  at c17ffcc24 (GitHub API).
 - `mruby/src/vm.c`: the send instruction, `prepare_missing`,
   `check_argument_count` (4.0.0 and 4.1.0-rc2), `check_method_noarg`
   (3.3.0), `vis_error`, `OP_STRING`; `mruby/src/variable.c`: `iv_get`;
@@ -458,11 +530,14 @@ Read on 2026-10-14:
   `mrb_mt_tbl`.
 - `src/http/ngx_http_mruby_var.c`, `src/http/ngx_http_mruby_request.c`,
   `src/http/ngx_http_mruby_connection.c`, `src/http/ngx_http_mruby_server.c`,
-  `src/http/ngx_http_mruby_core.c`,
+  `src/http/ngx_http_mruby_core.c`, `src/http/ngx_http_mruby_core.h`,
+  `src/http/ngx_http_mruby_module.h`,
   `mrbgems/ngx_mruby_mrblib/mrblib/mrb_nginx.rb` and
   `docs/class_and_method/README.md` on `next` at e0dfdc658.
 - nginx 1.31.6, `src/http/ngx_http_variables.c`: `ngx_http_get_variable`,
-  `ngx_http_variables_init_vars`; `src/core/nginx.h`: `NGINX_VAR`.
+  `ngx_http_variables_init_vars`, `ngx_http_core_variables`;
+  `src/http/ngx_http_upstream.c`: the prefix variables of the upstream
+  module; `src/core/nginx.h`: `NGINX_VAR`.
 - `test/perf/perf.rb`, `test/perf/compare.sh`, `test/soak/nginx.conf`,
   `test/soak/nginx.agent.conf`, `test/soak/handlers/agent_auth.rb` on
   `next` at e0dfdc658.

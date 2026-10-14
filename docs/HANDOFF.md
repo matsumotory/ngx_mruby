@@ -126,6 +126,7 @@ notes in [docs/releases/](releases/) list what it contains.
 | Before the switch of ngx.mruby.org (step 7 of the site proposal), the owner has an item to do in the Pages settings for the custom domain | Repository settings | The owner |
 | Move the mruby-uname pin of #561 to `50031c8` on the gem's `master` | `next` (#561) | #561's next revision (being rebased; not on origin yet) |
 | #561's remaining performance difference after #572: measure the rebased branch against `next` and quote the table; it merges by the rule of its hold comment | `next` (#561) | The same revision |
+| The implementation of [the proposal for the method lookup of `Nginx::Var` accessors](proposals/nginx-var-method-lookup.md) (#577): candidates (a) and (d), accessors defined on `Nginx::Var` at the first miss with the rule (a2), and ngx_mruby's own methods that read variables in C, with the tests, docs, release notes entries and the three comparisons of its section 3 | `next` | #561's merge, and the owner's answer to the question of section 4 of the proposal |
 | mruby 4.1.0 | `next` | The 4.1.0 tag and #561 |
 
 ## How a session continues
