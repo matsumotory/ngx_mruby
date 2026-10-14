@@ -416,6 +416,7 @@ If the client closes the connection or `client_body_timeout` expires first, ngin
 `mruby_set` and `mruby_set_code` handlers, log handlers and header and body filters cannot wait for the rest of the body, because nginx goes on as soon as they return.
 They see the body only when it is complete before they run: when an earlier handler or module has read it, or, for HTTP/1.x with a `Content-Length` header, when the whole body arrived together with the request headers.
 Otherwise they run without the body (`Nginx::Request#body` returns `nil`), and ngx_mruby logs that at the `info` level.
+A body that a post-read, server rewrite, rewrite, access or content handler is still waiting for does not count as complete either: when nginx ends that read without the rest of the body (the client closes the connection, `client_body_timeout` expires, or nginx answers 400 or 413 to the body), a log handler or a filter that runs afterwards runs without the body, and the waiting handler does not run.
 A later handler that can wait, or a module such as `proxy_pass`, still reads the whole body.
 
 ## mruby_upstream_keepalive

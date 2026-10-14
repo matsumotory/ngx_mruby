@@ -837,7 +837,10 @@ static const char *ngx_mrb_request_body_kind_name(ngx_http_mruby_handler_kind_t 
  * read, is being read or was discarded; a request without a body; and an
  * HTTP/1.x body with Content-Length that is entirely in the buffer that
  * nginx read the request headers into. A chunked body and every HTTP/2 or
- * HTTP/3 body count as not complete: nginx reads those through events.
+ * HTTP/3 body count as not complete: nginx reads those through events. A
+ * body that a waiting handler of ngx_mruby is still reading is checked with
+ * request_body_more in ngx_mrb_run_request: nginx would call the post handler
+ * at once for it too, but the body is not complete.
  */
 static ngx_flag_t ngx_http_mruby_request_body_complete(ngx_http_request_t *r)
 {
@@ -923,7 +926,7 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
 
   /* force reading body */
   if (mlcf->enable_read_request_body && !ctx->read_request_body_done && !ngx_mrb_handler_waits_for_request_body(kind) &&
-      !ngx_http_mruby_request_body_complete(r)) {
+      (ctx->request_body_more || !ngx_http_mruby_request_body_complete(r))) {
     /*
      * A handler that cannot wait reads the body only when the read completes
      * at once. A read that waited would keep its reference to the request
@@ -931,6 +934,15 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
      * again from wherever the request is then. The handler runs without the
      * body instead; a later handler that can wait, or a module such as
      * proxy_pass, still reads the whole body.
+     *
+     * request_body_more is set while the read of a waiting handler has not
+     * completed. r->request_body is set then, so nginx would call the
+     * callback at once, and the callback would run the phases again for the
+     * waiting handler from inside this one. That happens when nginx ends the
+     * read without the rest of the body and goes on with the request: a log
+     * handler after the client closed the connection or client_body_timeout
+     * expired, a filter while nginx sends its 400 or 413 page for the body.
+     * Such a body is not complete either.
      */
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "%s INFO %s:%d: mrb_run: the request body is not complete and %s cannot wait for it, so it runs "
