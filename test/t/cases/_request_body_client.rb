@@ -11,6 +11,10 @@
 #   seconds pass, and prints "STATUS:HEX" as _tcp_client.rb does.
 # whole: the same request, with the headers and the whole body written at
 #   once, so that nginx reads the body together with the headers.
+# bad_chunk: a POST with HTTP/1.1 and a chunked body: the headers and a
+#   valid first chunk, then, WAIT seconds later, a line that is not a chunk
+#   size, so that nginx rejects the body with 400 after the handler started.
+#   It reads and prints as "parts" does.
 # keepalive: the request of "parts" with HTTP/1.1 and a kept connection. It
 #   reads the response up to the end of its Content-Length, then sends
 #   "GET /plain" with "Connection: close" on the same connection and reads
@@ -71,19 +75,24 @@ when 'close_wait'
     count = close_wait_count(port)
   end
   print "close_wait=#{count}"
-when 'parts', 'whole'
+when 'parts', 'whole', 'bad_chunk'
   body = '0123456789abcdefghij'
   head = "POST #{path} HTTP/1.0\r\nHost: #{host}\r\nContent-Length: #{body.bytesize}\r\n\r\n"
   received = ''.b
   status =
     begin
       Socket.tcp('127.0.0.1', port, connect_timeout: LIMIT) do |sock|
-        if mode == 'whole'
+        case mode
+        when 'whole'
           sock.write(head + body)
-        else
+        when 'parts'
           sock.write(head + body[0, 10])
           sleep WAIT
           sock.write(body[10..])
+        else
+          sock.write("POST #{path} HTTP/1.1\r\nHost: #{host}\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nabcde\r\n")
+          sleep WAIT
+          sock.write("zz\r\n")
         end
         deadline = now + LIMIT
         loop do

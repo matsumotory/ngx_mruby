@@ -2,7 +2,7 @@
 # end when the rest of the body arrives after the handler started, and when
 # the client closes the connection before the body is complete.
 # Config: test/conf/conf.d/64-request-body-later.conf (ports 18144, 18147,
-# 18148 and 18149).
+# 18148, 18149 and 18152).
 
 t = SimpleTest.new "ngx_mruby test: request body that arrives after the handler started"
 
@@ -174,6 +174,66 @@ end
 
 t.assert('request body later', 'no connection of the mruby_set server stays open after its client closed it') do
   out = `ruby test/t/cases/_request_body_client.rb close_wait 18148`
+  t.assert_equal 'close_wait=0', out unless out == 'unsupported'
+end
+
+# Port 18152: a rewrite handler waits for the rest of the body, and the read
+# ends without it. The log handler, header filter or body filter of the
+# location then runs without the body, as these kinds do for a body that is
+# not complete, and logs that at the info level; the code of the rewrite
+# handler does not run. After client_body_timeout nginx closes the connection
+# without a response; for a malformed chunked body the client gets nginx's
+# 400 page once, and the connection is closed. No "[alert]" line may follow
+# for these requests, and afterwards no socket of port 18152 may stay in
+# CLOSE_WAIT.
+REQUEST_BODY_PENDING_RAN = 'request-body-pending-code-ran'
+
+def request_body_pending_not_complete(kind)
+  "the request body is not complete and #{kind} cannot wait for it"
+end
+
+# How many times text occurs in str.
+def request_body_count(str, text)
+  count = 0
+  pos = 0
+  while (i = str.index(text, pos))
+    count += 1
+    pos = i + text.size
+  end
+  count
+end
+
+t.assert('request body later', 'a log handler runs without the body that a rewrite handler waits for when client_body_timeout ends the request') do
+  offset = File.size(request_body_set_log_path)
+  out = `ruby test/t/cases/_request_body_client.rb timeout 18152 localhost /log_handler`
+  status, seconds, hex = out.split(':', 3)
+  t.assert_equal 'EOF', status
+  t.assert_equal '', [hex.to_s].pack('H*')
+  t.assert_true seconds.to_f >= 1.5, "closed after #{seconds} s, before client_body_timeout"
+  t.assert_true seconds.to_f < 8.0, "closed after #{seconds} s"
+  lines = request_body_set_log_lines(offset)
+  t.assert_equal 0, lines.select { |l| l.include?(REQUEST_BODY_PENDING_RAN) }.size
+  t.assert_equal 1, lines.select { |l| l.include?(request_body_pending_not_complete('a log handler')) }.size
+  t.assert_equal [], lines.select { |l| l.include?('[alert]') }
+end
+
+[['/header_filter', 'a header filter'], ['/body_filter', 'a body filter']].each do |path, kind|
+  t.assert('request body later', "#{kind} runs without the body that a rewrite handler waits for when nginx rejects a malformed chunked body") do
+    offset = File.size(request_body_set_log_path)
+    status, line, body = request_body_later_parts('localhost', path, 18152, 'bad_chunk')
+    t.assert_equal 'EOF', status
+    t.assert_equal 'HTTP/1.1 400 Bad Request', line
+    t.assert_equal 1, request_body_count(body, '<title>400 Bad Request</title>')
+    t.assert_not_include body, 'body='
+    lines = request_body_set_log_lines(offset)
+    t.assert_equal 0, lines.select { |l| l.include?(REQUEST_BODY_PENDING_RAN) }.size
+    t.assert_equal 1, lines.select { |l| l.include?(request_body_pending_not_complete(kind)) }.size
+    t.assert_equal [], lines.select { |l| l.include?('[alert]') }
+  end
+end
+
+t.assert('request body later', 'no connection of the server whose read ended without the body stays open after its client closed it') do
+  out = `ruby test/t/cases/_request_body_client.rb close_wait 18152`
   t.assert_equal 'close_wait=0', out unless out == 'unsupported'
 end
 
