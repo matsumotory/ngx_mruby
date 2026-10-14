@@ -83,7 +83,11 @@ nginx was first configured with: the Makefile configures nginx again only when
 `build/nginx-X.Y.Z/objs/Makefile` does not exist (`build_dynamic/...` for
 `BUILD_DYNAMIC_MODULE`). After these options change, remove that file and run
 `test.sh` once without `ONLY_BUILD_NGX_MRUBY`; otherwise nginx stops at the
-test configuration with an "unknown directive" error.
+test configuration with an "unknown directive" error. After changing
+`nginx_version` or `BUILD_DYNAMIC_MODULE`, run `test.sh` once without
+`ONLY_BUILD_NGX_MRUBY` as well: it then uses another build directory
+(`build/nginx-X.Y.Z` of the new version, or `build_dynamic/`), and configures
+nginx there when that file is missing in it.
 
 If you want to run with valgrind, set the environment variables `NGINX_RUNNER` and `NGINX_HEATTIME`.
 

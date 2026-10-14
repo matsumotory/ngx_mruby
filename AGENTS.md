@@ -91,8 +91,10 @@ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
 
 - The first full run takes a few minutes (it clones mrbgems from GitHub and builds
   mruby and nginx). After that, use `ONLY_BUILD_NGX_MRUBY=1`.
-- `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. Do a full run again after
-  changing `BUILD_DYNAMIC_MODULE`, configure options or `nginx_version`.
+- `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. After changing
+  `BUILD_DYNAMIC_MODULE`, configure options or `nginx_version`, nginx has to be
+  configured again: "Testing" in `docs/test/README.md` says when a full run does
+  that and what to remove first.
 - Extra arguments to `test.sh` are passed to `./configure`
   (for example `sh test.sh --with-openssl-src=/path/to/openssl`).
 - Headers in `src/` are not make dependencies: after editing a `.h`, `touch` the
