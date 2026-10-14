@@ -99,10 +99,21 @@ not enough, and show the change.
   Nginx.rputs JSON.generate(h)     # {"q":"x"} on both
   ```
 
-- [`Set#inspect` and `Set#to_s` use a new format](../releases/v3.0.0.md#setinspect-and-setto_s-use-a-new-format-561):
+- [`Set#inspect` and `Set#to_s` use a new format, and `Set#flatten_merge` is removed](../releases/v3.0.0.md#setinspect-and-setto_s-use-a-new-format-and-setflatten_merge-is-removed-561):
   the same search for a Set; `set.to_a.join(",")` gives the same string on
-  both versions. The search above also finds `flatten_merge`, which mruby
-  4.0.0 removed: `s.flatten_merge(t)` becomes `s.merge(t.flatten)`.
+  both versions. The search above also finds `flatten_merge`:
+  `s.flatten_merge(t)` becomes `s.merge(Set.new(t).flatten)`, which gives
+  the same Set on both versions when `t` is a Set or an Array.
+  `s.merge(t.flatten)` gives the same Set only when `t` is a Set, because
+  `Array#flatten` does not flatten a Set inside the Array:
+
+  ```ruby
+  t = [2, Set.new([3])]
+  Set.new([1]).flatten_merge(t)            # 2.x: the Set of 1, 2 and 3   3.0.0: NoMethodError
+  Set.new([1]).merge(Set.new(t).flatten)   # the Set of 1, 2 and 3 on both
+  Set.new([1]).merge(t.flatten)            # the Set of 1, 2 and a Set that holds 3, on both
+  ```
+
 - [The message of `NoMethodError` names the class of the receiver](../releases/v3.0.0.md#the-message-of-nomethoderror-names-the-class-of-the-receiver-561):
   look for `message` next to `rescue NoMethodError`, and for
   `undefined method` in scripts.
@@ -276,16 +287,26 @@ not enough, and show the change.
 - [The messages logged while nginx reads the configuration are at the `info` level instead of `notice`](../releases/v3.0.0.md#the-messages-logged-while-nginx-reads-the-configuration-are-at-the-info-level-instead-of-notice-565):
   look in log parsers, alert rules and start scripts for `mechanism enabled`,
   `compile info`, `target variable` and `ngx_mruby NOTICE`. A start of
-  nginx no longer writes these lines; `nginx -t` writes them at `[info]`.
+  nginx no longer writes these lines. `nginx -t` writes them at `[info]` to
+  the startup log, which is the file given with `-e`, or else the error log
+  path compiled into nginx (`logs/error.log` under the prefix by default).
+  nginx copies a line of the startup log to the terminal only at `warn` and
+  above, so the output of `nginx -t` does not show them.
 
   ```
-  2.x, start:       [notice] ... ngx_mruby/<version> (mruby/3.3.0) mechanism enabled in ...
-  3.0.0, start:     no such line
-  3.0.0, nginx -t:  [info] ... ngx_mruby/<version> (mruby/4.0.0) mechanism enabled in ...
+  2.x, start:                 [notice] ... ngx_mruby/<version> (mruby/3.3.0) mechanism enabled in ...
+  3.0.0, start:               no such line
+  3.0.0, nginx -t:            [info] ... ngx_mruby/<version> (mruby/4.0.0) mechanism enabled in ...   (startup log only)
+  3.0.0, nginx -t -e stderr:  [info] ... ngx_mruby/<version> (mruby/4.0.0) mechanism enabled in ...   (terminal)
   ```
 
   A check that looks for one of these lines to see that the module is
-  loaded runs `nginx -t` instead.
+  loaded runs `nginx -t -e stderr` and reads its output, or reads the
+  startup log after `nginx -t`:
+
+  ```sh
+  nginx -t -e stderr 2>&1 | grep 'mechanism enabled'
+  ```
 
 ## C extensions and mrbgems
 
