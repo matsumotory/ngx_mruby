@@ -144,7 +144,7 @@ nginx uses the configured `error_log` only after it has read the configuration. 
 A script file that cannot be opened, or an argument that a directive does not accept, is still logged at `emerg`, and nginx stops.
 
 In ngx_mruby 2.x these messages were logged at `notice`, so the startup log wrote them at every start, also with `error_log ... warn;` ([#320](https://github.com/matsumotory/ngx_mruby/issues/320)).
-From v3 on, run `nginx -t` to see them, or reload with `error_log` at `info`.
+From v3 on, to see them, run `nginx -t -e stderr`, read the startup log after `nginx -t`, or reload with `error_log` at `info`.
 
 # HTTP module directives
 

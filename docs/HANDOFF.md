@@ -35,12 +35,16 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-14 (23:30 JST)
+## State as of 2026-10-15 (02:35 JST)
 
-Heads: `next` is `dcd3103` (merge of #580, which merged `master` at
-`0a1e8ac`), `master` is `0a1e8ac` (merge of #578), and `v2.x` mirrors
-`master` (`0a1e8ac`). `next` contains `master`.
+Heads: `next` is the merge of #582, whose first parent is `dcd3103`
+(merge of #580, which merged `master` at `0a1e8ac`), `master` is
+`0a1e8ac` (merge of #578), and `v2.x` mirrors `master` (`0a1e8ac`).
+`next` contains `master`.
 
+Merged on 2026-10-15, into `next`: #582 (the release notes for 3.0.0 of
+the pull requests merged before `docs/releases/v3.0.0.md` existed,
+`Set#flatten_merge`, the migration guide and `docs/releases/v3.0.0.ja.md`).
 Merged on 2026-10-14, into `next`: #572 (the fixed symbol names interned
 once, `bc2488a`), #571 (the site proposal `docs/proposals/site.md`,
 `570cdab`), #569 (this file, `e0dfdc6`), #561 (mruby 4.0.0, `0b76bfa`),
@@ -60,9 +64,8 @@ Open pull requests, all drafts:
 | PR | Base | Change | Stage |
 |---|---|---|---|
 | [#563](https://github.com/matsumotory/ngx_mruby/pull/563) | `master` | Stop the recursion between a content handler and a header filter in the same location (#206) | Three review rounds; the re-review of `67fbed1` leaves no "must fix". It conflicts with `master` at `0a1e8ac` (AGENTS.md and `docs/releases/v2.7.1.md`). CI passed. Its author holds the merge. Since #575, adding its entry to `docs/releases/v2.7.1.md` also means creating `docs/releases/v2.7.1.ja.md`, unless another pull request has created it first ("Who writes the entries, and when" in `docs/releases/README.md`). |
-| [#574](https://github.com/matsumotory/ngx_mruby/pull/574) | `next` | Answer 200 with `Content-Length: 0` when a content handler sends no body (#200) | A draft that waits for the next merge of `master` into `next` after the next 2.x release, then a full review round. It conflicts with `next` at `dcd3103` (it also creates `docs/releases/v3.0.0.md`, which #561 created); its entries go into that file and, since #582, into `docs/releases/v3.0.0.ja.md` too. |
-| [#581](https://github.com/matsumotory/ngx_mruby/pull/581) | `master` | Run the `nginx -s quit` of `test/t/ngx_mruby.rb` with `detect_leaks=0`, as `nginx_t` runs `nginx -t` | One review round; the author's changes are at `eef5fd9`, and CI was running on it at the time of this heading. It comes before the queue row that greps the `stderr.log` files for sanitizer reports. |
-| [#582](https://github.com/matsumotory/ngx_mruby/pull/582) | `next` | Release notes for 3.0.0: the entries of the pull requests merged into `next` before `docs/releases/v3.0.0.md` existed, `Set#flatten_merge`, the migration guide, and `docs/releases/v3.0.0.ja.md` | A draft; CI and the review by an agent with the checklist of AGENTS.md come next. It finishes the two queue rows about `docs/releases/v3.0.0.md`. |
+| [#574](https://github.com/matsumotory/ngx_mruby/pull/574) | `next` | Answer 200 with `Content-Length: 0` when a content handler sends no body (#200) | A draft that waits for the next merge of `master` into `next` after the next 2.x release, then a full review round. It conflicts with `next` (it also creates `docs/releases/v3.0.0.md`, which #561 created); its entries go into that file and, since #582, into `docs/releases/v3.0.0.ja.md` too. |
+| [#581](https://github.com/matsumotory/ngx_mruby/pull/581) | `master` | Run the `nginx -s quit` of `test/t/ngx_mruby.rb` with `detect_leaks=0`, as `nginx_t` runs `nginx -t` | One review round; the author's changes are at `eef5fd9`, where CI passed. Its author holds the merge. It comes before the queue row that greps the `stderr.log` files for sanitizer reports. |
 
 ## Decisions
 

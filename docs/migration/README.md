@@ -103,9 +103,10 @@ not enough, and show the change.
   the same search for a Set; `set.to_a.join(",")` gives the same string on
   both versions. The search above also finds `flatten_merge`:
   `s.flatten_merge(t)` becomes `s.merge(Set.new(t).flatten)`, which gives
-  the same Set on both versions when `t` is a Set or an Array.
-  `s.merge(t.flatten)` gives the same Set only when `t` is a Set, because
-  `Array#flatten` does not flatten a Set inside the Array:
+  on both versions the Set that `s.flatten_merge(t)` gave on 2.x, when `t`
+  is a Set or an Array. `s.merge(t.flatten)` gives that Set only when `t`
+  is a Set: for an Array `t`, `Array#flatten` flattens the Arrays inside it
+  and keeps the Sets, where `flatten_merge` did the opposite:
 
   ```ruby
   t = [2, Set.new([3])]
