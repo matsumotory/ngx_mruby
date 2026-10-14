@@ -175,23 +175,71 @@ jobs:
           # so nothing on the runner should hold one; show the holder if it does.
           sudo ss -tanpo '( sport >= :18080 and sport <= :18199 ) or ( sport >= :12345 and sport <= :12399 )' || true
 
+  # Files that do not belong in the repository (docs/test/README.md,
+  # "In CI"): test/check_added_files.sh fails when the change adds a path
+  # that test/forbidden_paths.txt forbids, or an empty file. A pull request
+  # is checked from its base to its head, a push to a branch from the
+  # previous tip to the pushed commit.
+  files:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check the added files
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_SHA: ${{ github.sha }}
+        run: |
+          # A tag push, a push that creates a branch (its previous tip is
+          # the zero id) and a manual run have no range of commits to check,
+          # and pass, so that ci-ok can require this job on every event.
+          if [ "${EVENT_NAME}" = pull_request ]; then
+            base=${PR_BASE_SHA}
+            head=${PR_HEAD_SHA}
+          elif [ "${EVENT_NAME}" = push ] && [ "${REF_TYPE}" = branch ] && [[ ! "${PUSH_BEFORE}" =~ ^0+$ ]]; then
+            base=${PUSH_BEFORE}
+            head=${PUSH_SHA}
+          else
+            echo "nothing to check: event ${EVENT_NAME}, ref type ${REF_TYPE}, previous tip '${PUSH_BEFORE}'"
+            exit 0
+          fi
+          # The checkout holds one commit (for a pull request, the merge
+          # commit); git diff needs the trees of both ends.
+          git fetch --no-tags --depth=1 origin "${base}" "${head}"
+          if ! sh test/check_added_files.sh "${base}" "${head}"; then
+            echo "::error title=files::the change adds files that do not belong in the repository, or the check could not run (see the lines above)"
+            exit 1
+          fi
+
   # The only status check that rulesets should require. Matrix job names
   # change whenever the matrix changes, so they cannot be required directly.
-  # "always()" makes this job run, and fail, when build failed or was
-  # cancelled; a skipped job would count as passing.
+  # "always()" makes this job run, and fail, when build or files failed or
+  # was cancelled; a skipped job would count as passing.
   ci-ok:
     name: ci-ok
-    needs: [build]
+    needs: [build, files]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check that every build job succeeded
+      - name: Check that every build job and the files job succeeded
         env:
           BUILD_RESULT: ${{ needs.build.result }}
+          FILES_RESULT: ${{ needs.files.result }}
         run: |
           echo "build: ${BUILD_RESULT}"
+          echo "files: ${FILES_RESULT}"
+          failed=0
           if [ "${BUILD_RESULT}" != "success" ]; then
             echo "::error title=ci-ok::build finished with result '${BUILD_RESULT}', expected 'success'"
-            exit 1
+            failed=1
           fi
+          if [ "${FILES_RESULT}" != "success" ]; then
+            echo "::error title=ci-ok::files finished with result '${FILES_RESULT}', expected 'success'"
+            failed=1
+          fi
+          exit "${failed}"

@@ -67,6 +67,66 @@ allocation of nginx itself would be reported; `second_instance` returns the
 first sanitizer line of the second nginx's `error.log` as `sanitizer`, and
 the cases print that log when the line is set.
 
+## In CI
+
+`.github/workflows/test.yml` runs on pull requests to `master`, `next` and
+`v*.x`, on pushes to those branches and to `v*` tags, and on "Run workflow".
+Its `ci-ok` job is the status check that rulesets require: it fails unless
+every job of the `build` matrix and the `files` job succeeded.
+
+### Files that do not belong in the repository
+
+The `files` job runs `test/check_added_files.sh BASE HEAD`. The script lists
+the files that `HEAD` has and `BASE` does not have (`git diff --no-renames
+--diff-filter=A`, so a file that is renamed or moved counts as added at its
+new path), and fails with exit status 1 when one of them
+
+- matches a pattern of `test/forbidden_paths.txt`: a session directory or the
+  local settings of an AI coding agent under `.claude/` (everything there
+  except `.claude/settings.json`, `.claude/commands/` and `.claude/skills/`),
+  `build/`, `build_dynamic/` or `mruby/build/`, a `.log` file, `.env` or
+  `.env.*`, private key material, an editor or OS leftover, `node_modules/`,
+  `__pycache__/` or a `.pyc` file, or a core dump,
+- or is empty (0 bytes), unless its name is `.gitkeep` or `.keep`.
+
+It prints each such path with the pattern and its line in the pattern file,
+or with "empty file". When every added file passes, it prints how many files
+it checked and exits 0. It exits 2 when the pattern file is missing, a
+pattern is invalid, a revision is not in the repository or a git command
+fails. It reads only the pattern file and the git repository.
+
+For a pull request, the job compares `github.event.pull_request.base.sha`
+with `github.event.pull_request.head.sha`; for a push to a branch, the
+previous tip of the branch (`github.event.before`) with the pushed commit. A
+tag push, a push that creates a branch and a manual run have nothing to
+compare, and the job passes. A pull request that changes the script or the
+pattern file is checked with its own version of them, so the review of the
+pull request covers that change.
+
+`test/forbidden_paths.txt` holds one POSIX extended regular expression (as
+`grep -E` reads it) per line, matched against the path from the top of the
+repository. A line that starts with `!` is an exception, and the last line
+that a path matches decides, as in `.gitignore`: `.claude/skills/a/SKILL.md`
+matches `(^|/)\.claude/` and then the exception `!(^|/)\.claude/skills/`, so
+it passes, while `.claude/skills/a/.DS_Store` also matches `(^|/)\.DS_Store$`
+further down and fails. Empty lines and lines that start with `#` are
+comments. The patterns must be generic: no names of other projects, people or
+hosts.
+
+To run the check before opening a pull request, commit the change and compare
+it with the base branch (`origin/next` for a change to `next`):
+
+```console
+$ git fetch origin master
+$ sh test/check_added_files.sh origin/master HEAD
+check_added_files.sh: 2 added file(s) checked between origin/master and HEAD, none forbidden or empty
+```
+
+When a file fails, remove it from the change (`git rm --cached <path>` keeps
+it on disk), or, if it belongs in the repository, change
+`test/forbidden_paths.txt` (for an empty file, the script) in the same pull
+request and say why in its description.
+
 ## Testing
 ##### build nginx into ``./build/nginx`` and test on ``./build/nginx``
 ```
