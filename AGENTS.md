@@ -221,9 +221,12 @@ commit messages or the PR text discloses an unpublished vulnerability or a
 secret; and `docs/` is updated when a directive, Ruby method, build option or
 the test harness changes. The reviewer posts the findings as a PR comment,
 split into "must fix" (blocks the merge) and "should fix". A behavior change
-without that entry, an entry that lacks a line of the template, and an entry
-whose Japanese version is missing or says something other than the English
-entry are each a "must fix". A missing "New features", "Fixes" or "Build and
+of the PR without that entry, an entry of the PR that lacks a line of the
+template, and an entry of the PR whose Japanese version is missing or says
+something other than the English entry are each a "must fix" (which entries
+count as the PR's own, also when the PR creates the Japanese file of an
+earlier release file, is in "Who writes the entries, and when" in
+`docs/releases/README.md`). A missing "New features", "Fixes" or "Build and
 test changes" entry, and a missing or different Japanese version of one, are
 a "should fix". The author fixes every "must fix" and asks for a re-review of
 those items only.
