@@ -96,8 +96,11 @@ You can also use the classes of the mruby core gems that `NGX_MRUBY_CORE_GEMS` i
 [build_config.rb](../../build_config.rb) lists (the gems in [mruby/mrbgems](../../mruby/mrbgems)
 of that name). [Core gems](../install/README.md#core-gems) in the install
 guide says which core gems of mruby 4.0.0 are in the list, which are left
-out and why. For the changes that mruby 4.0.0 brings to scripts, see
-[Migrating to the bundled mruby 4.0.0](../migration/README.md).
+out and why. The changes that mruby 4.0.0 brings to scripts are listed
+under [Behavior changes: read before upgrading](../releases/v3.0.0.md#behavior-changes-read-before-upgrading)
+in the release notes of v3.0.0, and
+[Migrating from ngx_mruby 2.x to 3.0.0](../migration/README.md) has the
+steps for finding and changing the scripts that they affect.
 
 # Kernel Module
 
