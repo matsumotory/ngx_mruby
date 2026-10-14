@@ -35,9 +35,9 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-14 (19:43 JST)
+## State as of 2026-10-14 (21:16 JST)
 
-Heads: `next` is `0b76bfa` (merge of #561), `master` is `b017496` (merge of
+Heads: `next` is `53e8d39` (merge of #577), `master` is `b017496` (merge of
 #575), and `v2.x` mirrors `master` (`b017496`). The pull request "Merge
 master into next (2026-10-14: #575, #576)" merges `master` at `b017496`
 into `next`, together with this update of the file; once it is merged,
@@ -45,8 +45,9 @@ into `next`, together with this update of the file; once it is merged,
 
 Merged on 2026-10-14, into `next`: #572 (the fixed symbol names interned
 once, `bc2488a`), #571 (the site proposal `docs/proposals/site.md`,
-`570cdab`), #569 (this file, `e0dfdc6`) and #561 (mruby 4.0.0,
-`0b76bfa`); into `master`: #576 (`.gitignore` and `CLAUDE.md`, `9be7f02`)
+`570cdab`), #569 (this file, `e0dfdc6`), #561 (mruby 4.0.0, `0b76bfa`)
+and #577 (the proposal `docs/proposals/nginx-var-method-lookup.md`,
+`53e8d39`); into `master`: #576 (`.gitignore` and `CLAUDE.md`, `9be7f02`)
 and #575 (the "Why it changed" lines and the Japanese file of the release
 notes, `b017496`). Merged on 2026-10-04: into `next` #560, #565 and #573
 (`master` into `next`); into `master` #562, #564, #566, #568 and #570. The
@@ -60,8 +61,7 @@ Open pull requests, all drafts:
 |---|---|---|---|
 | [#563](https://github.com/matsumotory/ngx_mruby/pull/563) | `master` | Stop the recursion between a content handler and a header filter in the same location (#206) | Three review rounds; the re-review of `67fbed1` leaves no "must fix". It conflicts with `master` at `b017496` (AGENTS.md and `docs/releases/v2.7.1.md`). CI passed. Its author holds the merge. Since #575, adding its entry to `docs/releases/v2.7.1.md` also means creating `docs/releases/v2.7.1.ja.md`, unless another pull request has created it first ("Who writes the entries, and when" in `docs/releases/README.md`). |
 | [#574](https://github.com/matsumotory/ngx_mruby/pull/574) | `next` | Answer 200 with `Content-Length: 0` when a content handler sends no body (#200) | A draft that waits for the next merge of `master` into `next` after the next 2.x release, then a full review round. |
-| [#577](https://github.com/matsumotory/ngx_mruby/pull/577) | `next` | A proposal for the method lookup of `Nginx::Var` accessors on mruby 4 | Under review. |
-| [#578](https://github.com/matsumotory/ngx_mruby/pull/578) | `master` | CI: fail a pull request that adds files that do not belong in the repository | Opened on 2026-10-14; CI running, no review yet. |
+| [#578](https://github.com/matsumotory/ngx_mruby/pull/578) | `master` | CI: fail a pull request that adds files that do not belong in the repository | [The review of `7a95a1d`](https://github.com/matsumotory/ngx_mruby/pull/578#issuecomment-6166814611): no "must fix", nine "should fix". CI on `7a95a1d` passed. [The owner's agreement to the scope](https://github.com/matsumotory/ngx_mruby/pull/578#issuecomment-6168108659) is recorded on it. |
 
 ## Decisions
 
@@ -82,7 +82,8 @@ the Japanese release notes in [docs/releases/README.md](releases/README.md)
   `mruby-4`. The owner accepted the `perf` FAIL rows that remained after
   #572:
   [the record on #561](https://github.com/matsumotory/ngx_mruby/pull/561#issuecomment-6165028832).
-  #577 is the follow-up for the `var` and `auth` rows.
+  #577 (merged) is the proposal for the `var` and `auth` rows; its
+  implementation is in the queue.
 - 4.1.0 waits for its tag: the newest mruby tag on 2026-10-14 is
   `4.1.0-rc2` (`gh api repos/mruby/mruby/tags`). The choices for that step
   are in item 1 of section 7 of the plan. #561 lists what the step has to
@@ -130,7 +131,7 @@ notes in [docs/releases/](releases/) list what it contains.
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
 | Site: the implementation, in the steps of [section 6 of the proposal](proposals/site.md#6-implementation-plan) | `next` (`site/`, as Q1 proposes); steps 6 and 7 also change `master` | The owner's answers to [the open questions](proposals/site.md#7-open-questions); each step names the ones it needs |
 | Before the switch of ngx.mruby.org (step 7 of the site proposal), the owner has an item to do in the Pages settings for the custom domain | Repository settings | The owner |
-| The implementation of the proposal of [#577](https://github.com/matsumotory/ngx_mruby/pull/577), the method lookup of `Nginx::Var` accessors on mruby 4 | `next` | The merge of #577 (under review), and the owner's answer to the question of the proposal |
+| The implementation of [the proposal for the method lookup of `Nginx::Var` accessors](proposals/nginx-var-method-lookup.md) (#577): candidates (a) and (d), accessors defined on `Nginx::Var` at the first miss with the rule (a2), and ngx_mruby's own methods that read variables in C, with the tests, docs, release notes entries and the three comparisons of its section 3 | `next` | The owner's answer to the question of section 4 of the proposal (#561 merged as `0b76bfa6d`) |
 | mruby 4.1.0 | `next` | The 4.1.0 tag |
 
 ## How a session continues
