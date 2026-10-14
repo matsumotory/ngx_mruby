@@ -6,7 +6,6 @@
 #include <mruby/proc.h>
 #include <mruby/opcode.h>
 #include <mruby/error.h>
-#include <mruby/presym.h>
 #include <mruby/variable.h>
 #include <mruby/internal.h>
 
@@ -140,13 +139,17 @@ create_proc_from_string(mrb_state *mrb, const char *s, mrb_int len, mrb_value bi
 }
 
 static mrb_value
-exec_irep(mrb_state *mrb, mrb_value self, struct RProc *proc)
+eval_irep(mrb_state *mrb, mrb_value self, struct RProc *proc)
 {
+  mrb_callinfo *ci = mrb->c->ci;
+
   /* no argument passed from eval() */
-  mrb->c->ci->n = 0;
-  mrb->c->ci->nk = 0;
+  ci->n = 0;
+  ci->nk = 0;
+  /* clear visibility */
+  MRB_CI_SET_VISIBILITY_BREAK(ci);
   /* clear block */
-  mrb->c->ci->stack[1] = mrb_nil_value();
+  ci->stack[1] = mrb_nil_value();
   return mrb_exec_irep(mrb, self, proc);
 }
 
@@ -158,6 +161,10 @@ binding_eval_error_check(mrb_state *mrb, struct mrb_parser_state *p, const char 
   }
 
   if (0 < p->nerr) {
+    if (p->mrb->exc) {
+      mrb_exc_raise(mrb, mrb_obj_value(p->mrb->exc));
+    }
+
     mrb_value str;
 
     if (file) {
@@ -215,14 +222,10 @@ static mrb_value
 binding_eval_prepare_body(mrb_state *mrb, void *opaque)
 {
   struct binding_eval_prepare_body *p = (struct binding_eval_prepare_body*)opaque;
-
-  const struct RProc *proc = mrb_binding_extract_proc(mrb, p->binding);
-  mrb_assert(!MRB_PROC_CFUNC_P(proc));
-  p->cxt->upper = proc;
   binding_eval_error_check(mrb, p->pstate, p->file);
 
   struct expand_lvspace args = {
-    (mrb_irep*)proc->body.irep,
+    (mrb_irep*)p->cxt->upper->body.irep,
     mrb_binding_extract_env(mrb, p->binding),
     0,
     { 0 }
@@ -239,19 +242,40 @@ static void
 binding_eval_prepare(mrb_state *mrb, mrb_value binding, const char *expr, mrb_int exprlen, const char *file)
 {
   struct binding_eval_prepare_body d = { binding };
+  const struct RProc *proc = mrb_binding_extract_proc(mrb, binding);
+  mrb_assert(!MRB_PROC_CFUNC_P(proc));
 
   d.cxt = mrb_ccontext_new(mrb);
   d.file = mrb_ccontext_filename(mrb, d.cxt, file ? file : "(eval)");
   d.cxt->capture_errors = TRUE;
+  d.cxt->upper = proc;
   d.pstate = mrb_parse_nstring(mrb, expr, exprlen, d.cxt);
 
-  mrb_bool error;
-  mrb_value ret = mrb_protect_error(mrb, binding_eval_prepare_body, &d, &error);
-  if (d.pstate) mrb_parser_free(d.pstate);
-  if (d.cxt) mrb_ccontext_free(mrb, d.cxt);
-  if (error) mrb_exc_raise(mrb, ret);
+  mrb_value ret;
+  MRB_ENSURE(mrb, ret, binding_eval_prepare_body, &d) {
+    if (d.pstate) mrb_parser_free(d.pstate);
+    if (d.cxt) mrb_ccontext_free(mrb, d.cxt);
+  }
 }
 
+/*
+ * call-seq:
+ *   eval(string, binding = nil, filename = nil, lineno = 1) -> obj
+ *
+ * Evaluates the Ruby expression(s) in string. If binding is given,
+ * which must be a Binding object, the evaluation is performed in its
+ * context. If filename is given, it is used for error reporting.
+ * If lineno is given, it is used as the starting line number for error reporting.
+ *
+ *   eval("1 + 2")                    #=> 3
+ *   eval("x = 10; x * 2")            #=> 20
+ *
+ *   x = 5
+ *   b = binding
+ *   eval("x", b)                     #=> 5
+ *   eval("x = 100", b)               #=> 100
+ *   x                                #=> 100
+ */
 static mrb_value
 f_eval(mrb_state *mrb, mrb_value self)
 {
@@ -260,21 +284,44 @@ f_eval(mrb_state *mrb, mrb_value self)
   mrb_value binding = mrb_nil_value();
   const char *file = NULL;
   mrb_int line = 1;
-  struct RProc *proc;
 
   mrb_get_args(mrb, "s|ozi", &s, &len, &binding, &file, &line);
 
   if (!mrb_nil_p(binding)) {
     binding_eval_prepare(mrb, binding, s, len, file);
   }
-  proc = create_proc_from_string(mrb, s, len, binding, file, line);
+  struct RProc *proc = create_proc_from_string(mrb, s, len, binding, file, line);
   if (!mrb_nil_p(binding)) {
     self = mrb_iv_get(mrb, binding, MRB_SYM(recv));
   }
   mrb_assert(!MRB_PROC_CFUNC_P(proc));
-  return exec_irep(mrb, self, proc);
+  return eval_irep(mrb, self, proc);
 }
 
+/*
+ * call-seq:
+ *   obj.instance_eval(string, filename = nil, lineno = 1) -> obj
+ *   obj.instance_eval {|obj| block } -> obj
+ *
+ * Evaluates a string containing Ruby source code, or the given block,
+ * within the context of the receiver (obj). In order to set the context,
+ * the variable self is set to obj while the code is executing, giving
+ * the code access to obj's instance variables and private methods.
+ *
+ *   class KlassWithSecret
+ *     def initialize
+ *       @secret = 99
+ *     end
+ *     private
+ *     def the_secret
+ *       "Ssssh! The secret is #{@secret}."
+ *     end
+ *   end
+ *   k = KlassWithSecret.new
+ *   k.instance_eval { @secret }          #=> 99
+ *   k.instance_eval { the_secret }       #=> "Ssssh! The secret is 99."
+ *   k.instance_eval("@secret = 5")       #=> 5
+ */
 static mrb_value
 f_instance_eval(mrb_state *mrb, mrb_value self)
 {
@@ -283,16 +330,14 @@ f_instance_eval(mrb_state *mrb, mrb_value self)
     mrb_int len;
     const char *file = NULL;
     mrb_int line = 1;
-    struct RClass *c;
-    struct RProc *proc;
 
     mrb_get_args(mrb, "s|zi", &s, &len, &file, &line);
-    c = mrb_singleton_class_ptr(mrb, self);
-    proc = create_proc_from_string(mrb, s, len, mrb_nil_value(), file, line);
+    struct RClass *c = mrb_singleton_class_ptr(mrb, self);
+    struct RProc *proc = create_proc_from_string(mrb, s, len, mrb_nil_value(), file, line);
     MRB_PROC_SET_TARGET_CLASS(proc, c);
     mrb_assert(!MRB_PROC_CFUNC_P(proc));
     mrb_vm_ci_target_class_set(mrb->c->ci, c);
-    return exec_irep(mrb, self, proc);
+    return eval_irep(mrb, self, proc);
   }
   else {
     mrb_get_args(mrb, "");
@@ -300,6 +345,27 @@ f_instance_eval(mrb_state *mrb, mrb_value self)
   }
 }
 
+/*
+ * call-seq:
+ *   mod.class_eval(string, filename = nil, lineno = 1) -> obj
+ *   mod.class_eval {|mod| block } -> obj
+ *   mod.module_eval(string, filename = nil, lineno = 1) -> obj
+ *   mod.module_eval {|mod| block } -> obj
+ *
+ * Evaluates the string or block in the context of mod, except that when
+ * a block is given, constant/class variable lookup is not affected.
+ * This can be used to add methods to a class. module_eval returns the
+ * result of evaluating its argument.
+ *
+ *   class Thing
+ *   end
+ *   a = %q{def hello() "Hello there!" end}
+ *   Thing.module_eval(a)
+ *   puts Thing.new.hello()           #=> "Hello there!"
+ *
+ *   Thing.class_eval("@@var = 99")
+ *   Thing.class_eval { @@var }       #=> 99
+ */
 static mrb_value
 f_class_eval(mrb_state *mrb, mrb_value self)
 {
@@ -308,14 +374,13 @@ f_class_eval(mrb_state *mrb, mrb_value self)
     mrb_int len;
     const char *file = NULL;
     mrb_int line = 1;
-    struct RProc *proc;
 
     mrb_get_args(mrb, "s|zi", &s, &len, &file, &line);
-    proc = create_proc_from_string(mrb, s, len, mrb_nil_value(), file, line);
+    struct RProc *proc = create_proc_from_string(mrb, s, len, mrb_nil_value(), file, line);
     MRB_PROC_SET_TARGET_CLASS(proc, mrb_class_ptr(self));
     mrb_assert(!MRB_PROC_CFUNC_P(proc));
     mrb_vm_ci_target_class_set(mrb->c->ci, mrb_class_ptr(self));
-    return exec_irep(mrb, self, proc);
+    return eval_irep(mrb, self, proc);
   }
   else {
     mrb_get_args(mrb, "");
@@ -323,6 +388,20 @@ f_class_eval(mrb_state *mrb, mrb_value self)
   }
 }
 
+/*
+ * call-seq:
+ *   binding.eval(string, filename = nil, lineno = 1) -> obj
+ *
+ * Evaluates the given string in the context of the binding.
+ * This is equivalent to calling eval(string, binding, filename, lineno).
+ *
+ *   def get_binding(param)
+ *     binding
+ *   end
+ *   b = get_binding("hello")
+ *   b.eval("param")                  #=> "hello"
+ *   b.eval("x = 10; x + param.length") #=> 15
+ */
 static mrb_value
 mrb_binding_eval(mrb_state *mrb, mrb_value binding)
 {
@@ -342,13 +421,13 @@ mrb_binding_eval(mrb_state *mrb, mrb_value binding)
 void
 mrb_mruby_eval_gem_init(mrb_state* mrb)
 {
-  mrb_define_module_function(mrb, mrb->kernel_module, "eval", f_eval, MRB_ARGS_ARG(1, 3));
+  mrb_define_private_method_id(mrb, mrb->kernel_module, MRB_SYM(eval), f_eval, MRB_ARGS_ARG(1, 3));
   mrb_define_method_id(mrb, mrb_class_get_id(mrb, MRB_SYM(BasicObject)), MRB_SYM(instance_eval), f_instance_eval, MRB_ARGS_OPT(3)|MRB_ARGS_BLOCK());
   mrb_define_method_id(mrb, mrb->module_class, MRB_SYM(module_eval), f_class_eval, MRB_ARGS_OPT(3)|MRB_ARGS_BLOCK());
   mrb_define_method_id(mrb, mrb->module_class, MRB_SYM(class_eval), f_class_eval, MRB_ARGS_OPT(3)|MRB_ARGS_BLOCK());
 
   struct RClass *binding = mrb_class_get_id(mrb, MRB_SYM(Binding));
-  mrb_define_method(mrb, binding, "eval", mrb_binding_eval, MRB_ARGS_ANY());
+  mrb_define_method_id(mrb, binding, MRB_SYM(eval), mrb_binding_eval, MRB_ARGS_ANY());
 }
 
 void

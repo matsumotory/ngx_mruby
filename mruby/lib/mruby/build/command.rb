@@ -144,13 +144,13 @@ module MRuby
     #
     # === Example of +.d+ file
     #
-    # ==== Without <tt>-MP</tt> compiler flag
+    # ==== Without `-MP` compiler flag
     #
     #   /build/host/src/array.o: /src/array.c \
     #     /include/mruby/common.h /include/mruby/value.h \
     #     /src/value_array.h
     #
-    # ==== With <tt>-MP</tt> compiler flag
+    # ==== With `-MP` compiler flag
     #
     #   /build/host/src/array.o: /src/array.c \
     #     /include/mruby/common.h /include/mruby/value.h \
@@ -249,7 +249,7 @@ module MRuby
 
     def initialize(build)
       super
-      @command = 'bison'
+      @command = "ruby #{MRUBY_ROOT}/tools/lrama/exe/lrama"
       @compile_options = %q[-o "%{outfile}" "%{infile}"]
     end
 
@@ -266,7 +266,7 @@ module MRuby
     def initialize(build)
       super
       @command = 'gperf'
-      @compile_options = %q[-L ANSI-C -C -p -j1 -i 1 -g -o -t -N mrb_reserved_word -k"1,3,$" "%{infile}" > "%{outfile}"]
+      @compile_options = %q[-L ANSI-C -C -j1 -i 1 -o -t -N mrb_reserved_word -k"1,3,$" "%{infile}" > "%{outfile}"]
     end
 
     def run(outfile, infile)
@@ -317,7 +317,7 @@ module MRuby
     end
 
     def commit_hash(dir)
-      `#{@command} --git-dir #{shellquote(dir +'/.git')} --work-tree #{shellquote(dir)} rev-parse --verify HEAD`.strip
+      `#{@command} --git-dir #{shellquote(dir + '/.git')} --work-tree #{shellquote(dir)} rev-parse --verify HEAD`.strip
     end
 
     def current_branch(dir)

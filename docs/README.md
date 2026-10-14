@@ -9,6 +9,7 @@
 - [Test](./test)
 - [Directives](./directives)
 - [Class and Method](./class_and_method)
+- [Migrating from ngx_mruby 2.x to 3.0.0](./migration): the steps for the behavior changes of v3.0.0
 - [Use Case](./use_case)
 - [Release notes](./releases): read "Behavior changes" before upgrading
 

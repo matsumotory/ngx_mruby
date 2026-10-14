@@ -68,7 +68,37 @@ mrb_value mrb_rational_to_f(mrb_state *mrb, mrb_value x)
 {
   return mrb_nil_value();
 }
+mrb_value
+mrb_as_rational(mrb_state *mrb, mrb_value x)
+{
+  return mrb_nil_value();
+}
 void mrb_rational_copy(mrb_state *mrb, mrb_value x, mrb_value y)
 {
+}
+int mrb_rational_mark(mrb_state *mrb, struct RBasic *x)
+{
+  return 2;
+}
+#endif
+
+#ifdef MRB_USE_SET
+size_t mrb_gc_mark_set(mrb_state *mrb, struct RBasic *obj)
+{
+  /* stub for mrbc */
+  return 0;
+}
+
+void mrb_gc_free_set(mrb_state *mrb, struct RBasic *obj)
+{
+  /* stub for mrbc */
+}
+#endif
+
+#ifdef MRB_USE_TASK_SCHEDULER
+void mrb_task_mark_all(mrb_state *mrb)
+{
+  /* stub for mrbc */
+  (void)mrb;
 }
 #endif
