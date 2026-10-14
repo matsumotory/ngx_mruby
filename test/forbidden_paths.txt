@@ -1,0 +1,82 @@
+# Paths that a change must not add to the repository, read by
+# test/check_added_files.sh (docs/test/README.md, "Files that do not belong
+# in the repository").
+#
+# One POSIX extended regular expression (grep -E) per line, matched against
+# the path from the top of the repository, such as ".claude/tmp/notes.md".
+# A line that starts with "!" is an exception. The last line that a path
+# matches decides, as in .gitignore: a pattern fails the path, an exception
+# lets it pass, and a path that matches no line passes. Blanks around a line
+# are ignored; empty lines and lines that start with "#" are comments.
+#
+# Patterns here must be generic: no names of other projects, people or
+# hosts.
+
+# Session directories and local settings of AI coding agents: everything
+# under .claude/ except the settings, commands and skills shared with the
+# repository. The rules below still apply to the exceptions. The last line
+# fails a .claude/ below another .claude/, such as the .claude/skills/ of a
+# worktree copied into .claude/worktrees/.
+(^|/)\.claude/
+!(^|/)\.claude/settings\.json$
+!(^|/)\.claude/commands/
+!(^|/)\.claude/skills/
+(^|/)\.claude/(.*/)?\.claude/
+
+# Build directories: test.sh builds in build/ (build_dynamic/ for dynamic
+# modules), the soak test and the performance comparison of next in
+# build_soak/ and build_perf/, and mruby's rake in mruby/build/.
+# mruby/lib/mruby/build/ is source, so these are anchored at the top.
+^build(_[a-z]+)?/
+^mruby/build/
+
+# Files that ./configure (Makefile, config, config.status, config.log,
+# autom4te.cache/) and the Makefile (mrbgems_config, mrbgems_config_dynamic,
+# .mruby_version, .openssl_build_done, .openssl_configure_done) write at the
+# top of the repository. mruby/Makefile and the config files of
+# dependence/ngx_devel_kit/ are source, so these are anchored at the top.
+^Makefile$
+^config$
+^config\.(status|log)$
+^autom4te\.cache/
+^mrbgems_config
+^\.mruby_version$
+^\.openssl_[a-z]+_done$
+
+# Vagrant's machine state, and the tag files of GNU Global and ctags
+(^|/)\.vagrant/
+(^|/)(GPATH|GRTAGS|GTAGS|GSYMS)$
+(^|/)tags$
+
+# Logs
+\.log$
+
+# Environment files
+(^|/)\.env$
+(^|/)\.env\.
+
+# Private key material
+\.pem$
+\.key$
+\.p12$
+\.pfx$
+\.gpg$
+(^|/)id_(rsa|dsa|ecdsa|ed25519)$
+
+# Editor and OS leftovers
+(^|/)\.DS_Store$
+\.swp$
+~$
+\.orig$
+\.rej$
+(^|/)Thumbs\.db$
+
+# Package and bytecode directories of other languages
+(^|/)node_modules/
+(^|/)__pycache__/
+\.pyc$
+
+# Core dumps, and valgrind's vgcore.<pid>
+(^|/)core$
+(^|/)core\.[0-9]+$
+(^|/)vgcore\.

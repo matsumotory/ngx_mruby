@@ -36,6 +36,65 @@ env:
   OPENSSL_SRC_VERSION: 1.1.1w
 
 jobs:
+  # Files that do not belong in the repository (docs/test/README.md, "Files
+  # that do not belong in the repository"): test/check_added_files.sh fails
+  # when the change, or one of its commits, adds a path that
+  # test/forbidden_paths.txt forbids, or when the change adds an empty file.
+  # A pull request is checked on its merge commit against the base it was
+  # merged into, and on its own commits; a push to a branch from the
+  # previous tip to the pushed commit.
+  files:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # The whole history (all branches; about 13 MB in October 2026): only
+      # the full history tells which commits of the pull request the base
+      # does not have yet.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check the added files
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_SHA: ${{ github.sha }}
+        run: |
+          # A tag push, a push that creates a branch (its previous tip is
+          # the zero id) and a manual run have no range of commits to check,
+          # and pass, so that ci-ok can require this job on every event.
+          if [ "${EVENT_NAME}" = pull_request ]; then
+            # The checkout is the merge commit of the pull request
+            # (refs/pull/N/merge): its first parent is the base branch it
+            # was merged into, its second parent the head of the pull
+            # request. The merge commit against its first parent leaves out
+            # what the base changed after the branch was created, and the
+            # commits from the head back to the base are the pull request's
+            # own.
+            if ! base=$(git rev-parse --verify --quiet 'HEAD^1') || ! tip=$(git rev-parse --verify --quiet 'HEAD^2'); then
+              echo "::error title=files::the checkout is not the merge commit of a pull request"
+              exit 1
+            fi
+            head=$(git rev-parse HEAD)
+          elif [ "${EVENT_NAME}" = push ] && [ "${REF_TYPE}" = branch ] && [[ ! "${PUSH_BEFORE}" =~ ^0+$ ]]; then
+            base=${PUSH_BEFORE}
+            head=${PUSH_SHA}
+            tip=${PUSH_SHA}
+            # The previous tip of a push that is not a fast-forward is not
+            # in the history of any branch that the checkout fetched.
+            if [ -n "${base}" ] && ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+              git fetch --no-tags origin "${base}"
+            fi
+          else
+            echo "nothing to check: event ${EVENT_NAME}, ref type ${REF_TYPE}, previous tip '${PUSH_BEFORE}'"
+            exit 0
+          fi
+          echo "base: ${base}, head: ${head}, commits: ${base}..${tip}"
+          if ! sh test/check_added_files.sh "${base}" "${head}" "${tip}"; then
+            echo "::error title=files::the change adds files that do not belong in the repository, or the check could not run (see the lines above)"
+            exit 1
+          fi
+
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
@@ -296,22 +355,24 @@ jobs:
 
   # The only status check that rulesets should require. Matrix job names
   # change whenever the matrix changes, so they cannot be required directly.
-  # "always()" makes this job run, and fail, when build or soak failed or
-  # was cancelled; a skipped job would count as passing.
+  # "always()" makes this job run, and fail, when build, soak or files failed
+  # or was cancelled; a skipped job would count as passing.
   ci-ok:
     name: ci-ok
-    needs: [build, soak]
+    needs: [build, soak, files]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check that every build and soak job succeeded
+      - name: Check that every build job, the soak job and the files job succeeded
         env:
           BUILD_RESULT: ${{ needs.build.result }}
           SOAK_RESULT: ${{ needs.soak.result }}
+          FILES_RESULT: ${{ needs.files.result }}
         run: |
           echo "build: ${BUILD_RESULT}"
           echo "soak: ${SOAK_RESULT}"
+          echo "files: ${FILES_RESULT}"
           failed=0
           if [ "${BUILD_RESULT}" != "success" ]; then
             echo "::error title=ci-ok::build finished with result '${BUILD_RESULT}', expected 'success'"
@@ -319,6 +380,10 @@ jobs:
           fi
           if [ "${SOAK_RESULT}" != "success" ]; then
             echo "::error title=ci-ok::soak finished with result '${SOAK_RESULT}', expected 'success'"
+            failed=1
+          fi
+          if [ "${FILES_RESULT}" != "success" ]; then
+            echo "::error title=ci-ok::files finished with result '${FILES_RESULT}', expected 'success'"
             failed=1
           fi
           exit "${failed}"
