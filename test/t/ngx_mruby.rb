@@ -844,7 +844,18 @@ t.assert('ngx_mruby - start without an http block', 'stream only configuration')
   rescue => e
     body = "connect failed: #{e}"
   end
-  `#{nginx} -p #{install_dir} -c #{conf} -s quit`
+  # nginx -s quit returns from main() without freeing the pool that main()
+  # creates first (ngx_init_cycle() returns for a signal before it destroys
+  # that pool), so in a build with AddressSanitizer LeakSanitizer reports
+  # that allocation of nginx itself at exit, as it reports the configuration
+  # that nginx -t leaves. The report goes to the stderr of this process,
+  # which is the test runner's stderr.log. Leak detection is therefore turned off for this process only,
+  # as nginx_t in test/t/cases/_prelude.rb does for nginx -t; the other
+  # sanitizer checks stay on. test.sh runs this file without that prelude,
+  # so the options are built here in the same way.
+  asan = ENV['ASAN_OPTIONS'].to_s.split(':').reject { |o| o.start_with?('detect_leaks=') }
+  asan << 'detect_leaks=0'
+  `ASAN_OPTIONS=#{asan.join(':')} #{nginx} -p #{install_dir} -c #{conf} -s quit`
   # The master removes its pid file after it has collected the workers.
   50.times { break unless File.exist?(pidfile); usleep 200000 }
   errors = File.exist?(log) ? File.read(log) : ''
