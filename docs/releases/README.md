@@ -112,7 +112,15 @@ documentation changes and refactoring need no entry at all.
   reviewer may supply the Japanese text to an author who does not write
   Japanese. A missing "New features", "Fixes" or "Build and test changes"
   entry is a "should fix", and so is a missing Japanese version of one, or
-  one that says something other than the English entry.
+  one that says something other than the English entry. The review checks
+  the entries of the pull request itself. When that pull request creates the
+  Japanese file of a release file created before the Japanese version was
+  required (see above), a Japanese version of an earlier entry that is
+  missing, or says something other than the English entry, is rated like one
+  of the pull request's own: a "must fix" under "Behavior changes: read
+  before upgrading", a "should fix" in the other sections. An earlier entry
+  that lacks "Why it changed" is left to "Before the tag" below and is not a
+  finding of that pull request.
 - Before each tag, a pull request checks the file against every pull request
   merged since the previous release (see "Before the tag" below).
 
@@ -167,7 +175,7 @@ copy it with the Japanese headings and labels of "The Japanese file" below.
 - Why it changed:
   - The defect: <what the old behavior got wrong, with the issue or pull request that reports it>
   - Why the old behavior could not be kept: <what keeping it would have left
-    broken; after "The reason:", what keeping it would have cost>
+    broken; in an entry with "The reason:", what keeping it would have cost>
   - What the documentation promised: <what the docs said about it before this
     release, with a link, or that they described the old behavior or said nothing>
 - Affected: <the directives, handlers, methods, configurations or builds that see the difference>
@@ -207,11 +215,10 @@ the reader can check, not only the statement that the old behavior was wrong:
   writes "The reason:" in this line instead, with the reason for the change.
 - Why the old behavior could not be kept: why fixing the defect needed the
   difference that "Now" describes, that is, what keeping the old behavior
-  would have left broken. In an entry that writes "The reason:", no defect
-  is fixed and the old behavior could have stayed: this line says what
-  keeping it would have cost, for example the fixes that an older
-  dependency no longer gets, or the goal of the v3 change that the old
-  behavior would not meet.
+  would have left broken. In an entry that writes "The reason:", this line
+  says what keeping the old behavior would have cost, for example the fixes
+  that an older dependency no longer gets, or the goal of the v3 change that
+  the old behavior would not meet.
 - What the documentation promised: what `docs/`, or the nginx documentation
   for behavior that nginx defines, said about it before this release, with a
   link. This is usually the behavior that the fix brings back. If the

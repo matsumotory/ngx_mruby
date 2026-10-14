@@ -184,10 +184,10 @@ upgrading". New behavior, API cleanups and features go to `next`.
   adds its entry under "Behavior changes: read before upgrading" in
   `docs/releases/<version>.md`, in the same PR: before, now, why it changed,
   what is affected, what to do. The same PR adds the entry in Japanese to
-  `docs/releases/<version>.ja.md`, and creates that file if the release has
-  none yet (see "Who writes the entries, and when" in
-  `docs/releases/README.md`). Users have built on the old behavior, so the
-  new release must warn them.
+  `docs/releases/<version>.ja.md`, and creates that file by translating the
+  whole English file if the release has none yet (see "Who writes the
+  entries, and when" in `docs/releases/README.md`). Users have built on the
+  old behavior, so the new release must warn them.
 - Agents never create, move or delete tags, and never publish releases or
   security advisories. Those stay with the owner. Before a tag, a PR checks
   the release notes against every PR merged since the previous release (see

@@ -52,7 +52,8 @@ addition that leaves existing configurations, scripts and builds behaving as bef
 For each such change, fill in the lines below with the same text as its entry under
 "Behavior changes: read before upgrading" in docs/releases/<version>.md. "Why it changed"
 gives the defect (or, for a change that fixes no defect, "The reason:"), why the old behavior
-could not be kept, and what the documentation promised; see "Template" in docs/releases/README.md.
+could not be kept (in an entry with "The reason:", what keeping it would have cost), and what
+the documentation promised; see "Template" in docs/releases/README.md.
 The same entry in Japanese goes in docs/releases/<version>.ja.md.
 Write "n/a" in them when nothing changes.
 -->
