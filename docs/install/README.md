@@ -79,22 +79,29 @@ For example, you can use mruby-io to implement
 [access check using a configuration file like .htaccess](https://gist.github.com/matsumotory/7150832).
 (FIXME: This is not an appropriate example. mruby-io is a default mrbgem.)
 
-Here are the list of the default mrbgems.
+Here is the list of the mrbgems that the default build_config.rb builds.
 
-- gembox: mruby/mruby default mrbgems, mruby-randoma, mruby-env, mruby-print...
-- mruby-process: Process ::fork, ::kill, ::pid, ::ppid, ::waitpid...
-- mruby-pack: pack, unpack...
+- full-core gembox: every core mrbgem of the bundled mruby except mruby-bin-debugger and mruby-test, for example mruby-io, mruby-pack (pack, unpack...), mruby-sleep (sleep, usleep...), mruby-random, mruby-socket, mruby-time and mruby-print
 - mruby-env: use environment value
 - mruby-dir: Dir class
 - mruby-digest: MD5, RMD160, SHA1, SHA256, SHA384, SHA512 and HMAC Digests
+- mruby-process: Process ::fork, ::kill, ::pid, ::ppid, ::waitpid...
 - mruby-json: JSON::parse, JSON::stringify
-- mruby-redis: Redis#set, get, [], []=...
-- mruby-vedis: Vedis#set, get, [], []=...
-- mruby-memcached: Memcached#set, get, [], []=...
-- mruby-sleep: sleep, usleep...
-- mruby-userdata: https://github.com/matsumotory/mruby-userdata
 - mruby-onig-regexp: regexp engine
-- mruby-io: https://github.com/iij/mruby-io
+- mruby-vedis: Vedis#set, get, [], []=...
+- mruby-userdata: https://github.com/matsumotory/mruby-userdata
+- mruby-uname: https://github.com/matsumotory/mruby-uname
+- mruby-mutex: https://github.com/matsumotory/mruby-mutex
+- mruby-localmemcache: https://github.com/matsumotory/mruby-localmemcache
+- mruby-secure-random: https://github.com/monochromegane/mruby-secure-random
+- the mrbgems of ngx_mruby itself: mrbgems/ngx_mruby_mrblib, mrbgems/rack-based-api and mrbgems/auto-ssl
+
+build_config.rb also has lines for mrbgems that are not built by default.
+To build one of them, uncomment its line.
+
+- mruby-redis: Redis#set, get, [], []=... It is not built by default since 2.7.1, because its build clones the hiredis library from an unpinned branch, which broke the build of ngx_mruby. The examples that use Redis (in the README and in [Use Case](../use_case)) and the client of the auto-ssl mrbgem need it: uncomment `conf.gem github: 'matsumotory/mruby-redis'` to build it.
+- mruby-memcached: Memcached#set, get, [], []=...
+- mruby-file-stat, mruby-discount, mruby-mysql, mruby-geoip, mruby-capability and mruby-cgroup
 
 ## 3. Building a binary
 
