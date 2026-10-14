@@ -10,6 +10,7 @@
 
 #include "ngx_stream_mruby_init.h"
 
+#include <mruby/presym.h>
 #include <mruby/proc.h>
 #include "mruby/string.h"
 
@@ -261,7 +262,7 @@ static char *ngx_stream_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void 
 /* raise functions */
 static void ngx_stream_mruby_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf)
 {
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
+  obj = mrb_funcall_id(mrb, obj, MRB_SYM(inspect), 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_run failed: ngx_mruby stream module configuration failed: error: %*s",
                        RSTRING_LEN(obj), RSTRING_PTR(obj));
@@ -270,7 +271,7 @@ static void ngx_stream_mruby_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx
 
 void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s)
 {
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
+  obj = mrb_funcall_id(mrb, obj, MRB_SYM(inspect), 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
     ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "mrb_run failed: return NGX_ABORT to client: error: %*s",
                   RSTRING_LEN(obj), RSTRING_PTR(obj));
@@ -279,7 +280,7 @@ void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_sess
 
 static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle)
 {
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
+  obj = mrb_funcall_id(mrb, obj, MRB_SYM(inspect), 0);
   if (mrb_type(obj) == MRB_TT_STRING) {
     ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
   }

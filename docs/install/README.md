@@ -268,6 +268,8 @@ Usage: ./configure [OPTION]... [VAR=VALUE]...
 [snip]
 ```
 
+If you pass `--with-mruby-incdir`, its list of directories must include the `build/host/include` directory of the mruby build (the default list is `<mruby_root>/src <mruby_root>/include <mruby_root>/build/host/include`), because ngx_mruby includes `<mruby/presym.h>`, which includes the headers that the mruby build generates there.
+
 ### 3-C. Using nginx build system
 
 ngx_mruby is a nginx module, so you can simply use nginx build system with --add-module option.

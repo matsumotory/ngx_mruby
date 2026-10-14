@@ -13,12 +13,52 @@
 #include "mruby/string.h"
 #include "mruby/variable.h"
 #include "mruby/internal.h"
+#include "mruby/presym.h"
+
+ngx_http_mruby_syms_t ngx_http_mruby_syms;
+
+// Interns the names of NGX_HTTP_MRUBY_SYM_LIST in mrb, and makes mrb the state
+// of the table. ngx_http_mruby_sym() calls it the first time it is called with
+// mrb. mrb_intern_cstr() is what the request path called before, so the
+// symbol table gets the same entries.
+void ngx_http_mruby_syms_fill(mrb_state *mrb)
+{
+#define NGX_HTTP_MRUBY_SYM_NAME(id, name) name,
+  static const char *const names[NGX_HTTP_MRUBY_SYM_COUNT] = {NGX_HTTP_MRUBY_SYM_LIST(NGX_HTTP_MRUBY_SYM_NAME)};
+#undef NGX_HTTP_MRUBY_SYM_NAME
+  ngx_uint_t i;
+
+  // mrb_intern_cstr() raises NoMemoryError when the symbol table cannot grow.
+  // The table forgets the previous state before the loop writes ids of mrb, so
+  // that it never names one state while it holds ids of another: after a
+  // raise, the next call with any state fills it again.
+  ngx_http_mruby_syms.mrb = NULL;
+  for (i = 0; i < NGX_HTTP_MRUBY_SYM_COUNT; i++) {
+    ngx_http_mruby_syms.sym[i] = mrb_intern_cstr(mrb, names[i]);
+  }
+  ngx_http_mruby_syms.mrb = mrb;
+}
+
+// Called by mrb_close() before it frees the state.
+static void ngx_http_mruby_syms_forget(mrb_state *mrb)
+{
+  if (ngx_http_mruby_syms.mrb == mrb) {
+    ngx_http_mruby_syms.mrb = NULL;
+  }
+}
+
+// Called once for each mrb_state of the http module, right after mrb_open().
+// It does not intern the names: see NGX_HTTP_MRUBY_SYM_LIST.
+void ngx_http_mruby_syms_init(mrb_state *mrb)
+{
+  mrb_state_atexit(mrb, ngx_http_mruby_syms_forget);
+}
 
 #if (NGX_DEBUG)
 static void ngx_mrb_log_backtrace(mrb_state *mrb, mrb_value obj, ngx_log_t *log)
 {
   if (mrb_type(obj) == MRB_TT_EXCEPTION) {
-    mrb_value bt = mrb_funcall(mrb, obj, "backtrace", 0);
+    mrb_value bt = mrb_funcall_id(mrb, obj, MRB_SYM(backtrace), 0);
     if (mrb_type(bt) != MRB_TT_ARRAY) {
       ngx_log_error(NGX_LOG_DEBUG, log, 0, "backtrace must be Array. mrb_type=%d", mrb_type(bt));
       return;
@@ -35,7 +75,7 @@ static void ngx_mrb_log_backtrace(mrb_state *mrb, mrb_value obj, ngx_log_t *log)
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value exc, ngx_http_request_t *r)
 {
-  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
+  mrb_value s = mrb_funcall_id(mrb, exc, MRB_SYM(inspect), 0);
   if (mrb_type(s) == MRB_TT_STRING) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                   "mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(s), RSTRING_PTR(s));
@@ -47,7 +87,7 @@ void ngx_mrb_raise_error(mrb_state *mrb, mrb_value exc, ngx_http_request_t *r)
 
 void ngx_mrb_raise_connection_error(mrb_state *mrb, mrb_value exc, ngx_connection_t *c)
 {
-  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
+  mrb_value s = mrb_funcall_id(mrb, exc, MRB_SYM(inspect), 0);
   if (mrb_type(s) == MRB_TT_STRING) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0,
                   MODULE_NAME " : mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(s),
@@ -60,7 +100,7 @@ void ngx_mrb_raise_connection_error(mrb_state *mrb, mrb_value exc, ngx_connectio
 
 void ngx_mrb_raise_cycle_error(mrb_state *mrb, mrb_value exc, ngx_cycle_t *cycle)
 {
-  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
+  mrb_value s = mrb_funcall_id(mrb, exc, MRB_SYM(inspect), 0);
   if (mrb_type(s) == MRB_TT_STRING) {
     ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(s), RSTRING_PTR(s));
   }
@@ -71,7 +111,7 @@ void ngx_mrb_raise_cycle_error(mrb_state *mrb, mrb_value exc, ngx_cycle_t *cycle
 
 void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
 {
-  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
+  mrb_value s = mrb_funcall_id(mrb, exc, MRB_SYM(inspect), 0);
   if (mrb_type(s) == MRB_TT_STRING) {
     ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "mrb_run failed. error: %*s", RSTRING_LEN(s), RSTRING_PTR(s));
   }
@@ -260,7 +300,7 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
   mrb_get_args(mrb, "o", &argv);
 
   if (mrb_type(argv) != MRB_TT_STRING) {
-    argv = mrb_funcall(mrb, argv, "to_s", 0, NULL);
+    argv = mrb_funcall_id(mrb, argv, MRB_SYM(to_s), 0);
   }
 
   if (with_lf) {
@@ -400,7 +440,7 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
 
   // get redirect uri from args
   if (mrb_type(uri) != MRB_TT_STRING) {
-    uri = mrb_funcall(mrb, uri, "to_s", 0, NULL);
+    uri = mrb_funcall_id(mrb, uri, MRB_SYM(to_s), 0);
   }
 
   // save location uri to ns

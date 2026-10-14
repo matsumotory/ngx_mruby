@@ -11,6 +11,7 @@
 #include "ngx_http_mruby_init.h"
 #include "ngx_http_mruby_request.h"
 
+#include <mruby/presym.h>
 #include <mruby/proc.h>
 #include <mruby/string.h>
 
@@ -891,7 +892,7 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
       result->len = 0;
     } else {
       if (mrb_type(*mrb_result) != MRB_TT_STRING) {
-        *mrb_result = mrb_funcall(state->mrb, *mrb_result, "to_s", 0, NULL);
+        *mrb_result = mrb_funcall_id(state->mrb, *mrb_result, MRB_SYM_2(state->mrb, to_s), 0);
       }
       result_len = RSTRING_LEN(*mrb_result);
       result->data = ngx_palloc(r->pool, result_len);
@@ -1013,6 +1014,7 @@ static ngx_int_t ngx_http_mruby_shared_state_init(ngx_conf_t *cf, ngx_mrb_state_
     mrb_close(mrb);
     return NGX_ERROR;
   }
+  ngx_http_mruby_syms_init(mrb);
   ngx_mrb_class_init(mrb);
 
   state->mrb = mrb;

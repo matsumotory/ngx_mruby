@@ -10,6 +10,7 @@
 #include "ngx_http_mruby_request.h"
 
 #include <ngx_log.h>
+#include <mruby/presym.h>
 #include <mruby/string.h>
 
 /**
@@ -60,7 +61,7 @@ mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int le
   u_char *valp;
 
   if (mrb_type(o) != MRB_TT_STRING) {
-    o = mrb_funcall(mrb, o, "to_s", 0, NULL);
+    o = mrb_funcall_id(mrb, o, MRB_SYM(to_s), 0);
   }
 
   val.data = (u_char *)RSTRING_PTR(o);
@@ -189,10 +190,10 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
 
   mrb_get_args(mrb, "oo", &k, &o);
   if (mrb_type(k) != MRB_TT_STRING) {
-    k = mrb_funcall(mrb, k, "to_s", 0, NULL);
+    k = mrb_funcall_id(mrb, k, MRB_SYM(to_s), 0);
   }
   if (mrb_type(o) != MRB_TT_STRING) {
-    o = mrb_funcall(mrb, o, "to_s", 0, NULL);
+    o = mrb_funcall_id(mrb, o, MRB_SYM(to_s), 0);
   }
 
   r = ngx_mrb_get_request();

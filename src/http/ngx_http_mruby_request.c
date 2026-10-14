@@ -6,10 +6,13 @@
 
 #include "ngx_http_mruby_request.h"
 
+#include "ngx_http_mruby_core.h"
+
 #include <mruby.h>
 #include <mruby/array.h>
 #include <mruby/class.h>
 #include <mruby/hash.h>
+#include <mruby/presym.h>
 #include <mruby/string.h>
 #include <mruby/variable.h>
 
@@ -126,7 +129,7 @@ static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
               " when r->method is neither POST nor PUT");
   }
 
-  return mrb_funcall(mrb, v, "request_body", 0, NULL);
+  return mrb_funcall_id(mrb, v, NGX_HTTP_MRUBY_SYM(mrb, REQUEST_BODY), 0);
 }
 
 static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers, char *mkey, mrb_int mlen)
@@ -166,7 +169,7 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers,
   case 0:
     return mrb_nil_value();
   case 1:
-    return mrb_funcall(mrb, ary, "first", 0);
+    return mrb_funcall_id(mrb, ary, MRB_SYM(first), 0);
   default:
     break;
   }
@@ -508,20 +511,20 @@ static mrb_value ngx_mrb_del_request_headers_out(mrb_state *mrb, mrb_value self)
 // using from ngx_http_mruby_connection.c and ngx_http_mruby_server.c
 mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
 {
-  const char *iv_var_str = "@iv_var";
+  mrb_sym iv_var_sym = NGX_HTTP_MRUBY_SYM(mrb, IV_VAR);
   mrb_value iv_var;
   struct RClass *class_var, *ngx_class;
 
-  iv_var = mrb_iv_get(mrb, self, mrb_intern_cstr(mrb, iv_var_str));
+  iv_var = mrb_iv_get(mrb, self, iv_var_sym);
   if (mrb_nil_p(iv_var)) {
     // get class from Nginx::Var
-    ngx_class = mrb_class_get(mrb, "Nginx");
+    ngx_class = mrb_class_get_id(mrb, NGX_HTTP_MRUBY_SYM(mrb, NGINX));
     class_var =
-        (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, "Var")));
+        (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), NGX_HTTP_MRUBY_SYM(mrb, VAR)));
     // initialize a Var instance
     iv_var = mrb_class_new_instance(mrb, 0, 0, class_var);
     // save Var, avoid multi initialize
-    mrb_iv_set(mrb, self, mrb_intern_cstr(mrb, iv_var_str), iv_var);
+    mrb_iv_set(mrb, self, iv_var_sym, iv_var);
   }
 
   return iv_var;
@@ -530,52 +533,52 @@ mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
 static mrb_value ngx_mrb_get_request_var_hostname(mrb_state *mrb, mrb_value self)
 {
   mrb_value v = ngx_mrb_get_request_var(mrb, self);
-  return mrb_funcall(mrb, v, "host", 0, NULL);
+  return mrb_funcall_id(mrb, v, NGX_HTTP_MRUBY_SYM(mrb, HOST), 0);
 }
 
 static mrb_value ngx_mrb_get_request_var_authority(mrb_state *mrb, mrb_value self)
 {
   mrb_value v = ngx_mrb_get_request_var(mrb, self);
-  return mrb_funcall(mrb, v, "http_host", 0, NULL);
+  return mrb_funcall_id(mrb, v, NGX_HTTP_MRUBY_SYM(mrb, HTTP_HOST), 0);
 }
 
 static mrb_value ngx_mrb_get_request_var_filename(mrb_state *mrb, mrb_value self)
 {
   mrb_value v = ngx_mrb_get_request_var(mrb, self);
-  return mrb_funcall(mrb, v, "request_filename", 0, NULL);
+  return mrb_funcall_id(mrb, v, NGX_HTTP_MRUBY_SYM(mrb, REQUEST_FILENAME), 0);
 }
 
 static mrb_value ngx_mrb_get_request_var_user(mrb_state *mrb, mrb_value self)
 {
   mrb_value v = ngx_mrb_get_request_var(mrb, self);
-  return mrb_funcall(mrb, v, "remote_user", 0, NULL);
+  return mrb_funcall_id(mrb, v, NGX_HTTP_MRUBY_SYM(mrb, REMOTE_USER), 0);
 }
 
 // TODO: combine ngx_mrb_get_request_var
-static mrb_value ngx_mrb_get_class_obj(mrb_state *mrb, mrb_value self, char *obj_id, char *class_name)
+static mrb_value ngx_mrb_get_class_obj(mrb_state *mrb, mrb_value self, mrb_sym obj_id, mrb_sym class_name)
 {
   mrb_value obj;
   struct RClass *obj_class, *ngx_class;
 
-  obj = mrb_iv_get(mrb, self, mrb_intern_cstr(mrb, obj_id));
+  obj = mrb_iv_get(mrb, self, obj_id);
   if (mrb_nil_p(obj)) {
-    ngx_class = mrb_class_get(mrb, "Nginx");
-    obj_class =
-        (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), mrb_intern_cstr(mrb, class_name)));
+    ngx_class = mrb_class_get_id(mrb, NGX_HTTP_MRUBY_SYM(mrb, NGINX));
+    obj_class = (struct RClass *)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(ngx_class), class_name));
     obj = mrb_obj_new(mrb, obj_class, 0, NULL);
-    mrb_iv_set(mrb, self, mrb_intern_cstr(mrb, obj_id), obj);
+    mrb_iv_set(mrb, self, obj_id, obj);
   }
   return obj;
 }
 
 static mrb_value ngx_mrb_headers_in_obj(mrb_state *mrb, mrb_value self)
 {
-  return ngx_mrb_get_class_obj(mrb, self, "headers_in_obj", "Headers_in");
+  return ngx_mrb_get_class_obj(mrb, self, NGX_HTTP_MRUBY_SYM(mrb, HEADERS_IN_OBJ), NGX_HTTP_MRUBY_SYM(mrb, HEADERS_IN));
 }
 
 static mrb_value ngx_mrb_headers_out_obj(mrb_state *mrb, mrb_value self)
 {
-  return ngx_mrb_get_class_obj(mrb, self, "headers_out_obj", "Headers_out");
+  return ngx_mrb_get_class_obj(mrb, self, NGX_HTTP_MRUBY_SYM(mrb, HEADERS_OUT_OBJ),
+                               NGX_HTTP_MRUBY_SYM(mrb, HEADERS_OUT));
 }
 
 static mrb_value ngx_mrb_sub_request_check(mrb_state *mrb, mrb_value str)
