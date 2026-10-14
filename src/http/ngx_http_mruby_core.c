@@ -127,9 +127,9 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
  * 300 up by itself, but ends the request without sending anything for NGX_OK
  * and the other statuses below 300: nginx closes an HTTP/1.0 connection
  * without a byte and keeps a keep-alive connection open until
- * keepalive_timeout. ngx_mrb_send_header already turns a 200 without output
- * into a 500; this covers a handler that sets no status (it writes nothing, or
- * only an empty String or nil with Nginx.rputs) or another such status.
+ * keepalive_timeout. This covers a handler that sets no status (it writes
+ * nothing, or only an empty String or nil with Nginx.rputs), 200 and the
+ * other such statuses; ngx_mrb_finalize_rputs answers them.
  *
  * Only the main request: a subrequest without output does not leave the
  * client without a response, because its parent answers. Nothing changes
@@ -154,25 +154,77 @@ static ngx_flag_t ngx_mrb_content_ends_without_response(ngx_http_request_t *r, n
   return status < NGX_HTTP_SPECIAL_RESPONSE && status != NGX_HTTP_CREATED && status != NGX_HTTP_NO_CONTENT;
 }
 
-// Answers 500 for a content handler that ended without output, as
-// ngx_mrb_send_header does for a 200 without output, and logs why
+// Answers 500 for a content handler that ended without output and with a
+// status below 200, which nginx cannot send as the status of a final
+// response, and logs why
 static ngx_int_t ngx_mrb_answer_missing_body(ngx_http_request_t *r)
 {
-  if (r->headers_out.status == 0) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "%s ERROR %s: status code is not set, and response body is empty."
-                  " return NGX_HTTP_INTERNAL_SERVER_ERROR",
-                  MODULE_NAME, __func__);
-  } else {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "%s ERROR %s: status code is %ui, but response body is empty."
-                  " return NGX_HTTP_INTERNAL_SERVER_ERROR",
-                  MODULE_NAME, __func__, r->headers_out.status);
-  }
+  ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                "%s ERROR %s: status code is %ui, but response body is empty."
+                " return NGX_HTTP_INTERNAL_SERVER_ERROR",
+                MODULE_NAME, __func__, r->headers_out.status);
 
   r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
 
   return NGX_HTTP_INTERNAL_SERVER_ERROR;
+}
+
+/*
+ * Answers a content handler that ended without output and set no status, 200
+ * or another status below 300 that nginx does not answer by itself, as
+ * nginx's "return 200;" does (ngx_http_send_response): with that status, 200
+ * when none is set, Content-Length: 0 and an empty body (#200). nginx then
+ * keeps a keep-alive connection for the next request.
+ *
+ * It sends the response the way ngx_mrb_finalize_rputs sends one with output,
+ * so the header filters and the body filters of the location see it, and it
+ * returns NGX_OK once the header went out: the mruby filters return
+ * NGX_ERROR after they passed on the header of a response without a body (a
+ * HEAD request), which must not end the request. Only a header that did not
+ * go out returns the result of ngx_http_send_header, for the content phase
+ * to finalize the request with. The chain is not kept in the module context,
+ * so that a filter that runs ngx_mrb_run finds no rputs chain and only
+ * returns the status. The empty buffer is not in memory, so that the filters
+ * and the writer take it for the end of the response and not for a zero size
+ * buffer.
+ */
+static ngx_int_t ngx_mrb_send_empty_body(ngx_http_request_t *r)
+{
+  ngx_int_t rc;
+  ngx_buf_t *b;
+  ngx_chain_t out;
+
+  b = ngx_calloc_buf(r->pool);
+  if (b == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
+                  __LINE__);
+    r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+  }
+
+  b->last_buf = 1;
+  b->last_in_chain = 1;
+  out.buf = b;
+  out.next = NULL;
+
+  if (r->headers_out.status == 0) {
+    r->headers_out.status = NGX_HTTP_OK;
+  }
+  r->headers_out.content_length_n = 0;
+
+  rc = ngx_http_send_header(r);
+
+  if ((rc == NGX_ERROR || rc > NGX_OK) && !r->header_sent) {
+    return rc;
+  }
+
+  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+    return NGX_OK;
+  }
+
+  ngx_http_output_filter(r, &out);
+
+  return NGX_OK;
 }
 
 // TODO: Support rputs by multi directive
@@ -185,6 +237,9 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
 
   if (chain == NULL) {
     if (ngx_mrb_content_ends_without_response(r, ctx, kind)) {
+      if (r->headers_out.status == 0 || r->headers_out.status >= NGX_HTTP_OK) {
+        return ngx_mrb_send_empty_body(r);
+      }
       return ngx_mrb_answer_missing_body(r);
     }
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -228,7 +283,13 @@ ngx_int_t ngx_mrb_finalize_body_filter(ngx_http_request_t *r, ngx_http_mruby_ctx
 
   b->pos = ctx->body;
   b->last = ctx->body + ctx->body_length;
-  b->memory = 1;
+  // A buffer without bytes is not marked as memory, as in
+  // ngx_http_send_response: nginx's filters and writer reject a zero size
+  // buffer in memory ("zero size buf in writer"), and the response would end
+  // without being sent. A body filter gets an empty body when the response has
+  // none, for example the empty 200 of a content handler without output, or
+  // when it sets one.
+  b->memory = ctx->body_length ? 1 : 0;
   b->last_buf = 1;
 
   r->headers_out.content_length_n = b->last - b->pos;
@@ -272,7 +333,11 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
     (*chain->last)->buf->last_buf = 1;
   }
 
-  if (r->headers_out.status == NGX_HTTP_OK) {
+  // In a content handler of the main request, ngx_mrb_finalize_rputs answers
+  // 200 without output with an empty body when the handler ends, so the
+  // status stays 200 there. The other handlers and subrequests answer 500, as
+  // the 2.x line does.
+  if (r->headers_out.status == NGX_HTTP_OK && !(ctx->handler_kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && r == r->main)) {
     if (chain == NULL) {
       r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
       ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
