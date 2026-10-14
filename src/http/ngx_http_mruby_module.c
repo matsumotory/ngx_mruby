@@ -901,6 +901,9 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   int result_len;
   int ai = 0;
   ngx_flag_t raised = 0;
+  ngx_mrb_rputs_chain_list_t *rputs_chain;
+  ngx_chain_t **rputs_last;
+  off_t content_length_n;
   mrb_value *mrb_result = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
   *mrb_result = mrb_nil_value();
   ngx_http_mruby_ctx_t *ctx;
@@ -1045,6 +1048,12 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
 
   ctx->sub_response_more = 0;
 
+  // The chain of Nginx.rputs and the length of the response before the code
+  // runs, for an exception in a header filter (see below).
+  rputs_chain = ctx->rputs_chain;
+  rputs_last = rputs_chain != NULL ? rputs_chain->last : NULL;
+  content_length_n = r->headers_out.content_length_n;
+
   if (mrb_test(ngx_mrb_start_fiber(r, state->mrb, code->proc, mrb_result, kind))) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
                   __func__, __LINE__);
@@ -1075,8 +1084,21 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
     // content_length_n: put back the value from before the first string of
     // the chain, because after an mruby_set handler or a filter the request
     // goes on and its response must not count the dropped output.
+    // A header filter runs inside ngx_http_send_header. A chain that already
+    // existed when the filter started is an earlier handler's: the handler
+    // that started the response calls ngx_http_send_header from
+    // ngx_mrb_finalize_rputs and sends that chain after the header through
+    // its own pointer. Only the strings that the header filter added are
+    // taken out of it, and the length gets back the value it had when the
+    // filter started, which counts the earlier output.
     if (ctx->rputs_chain != NULL) {
-      r->headers_out.content_length_n = ctx->rputs_chain->content_length_n;
+      if (kind == NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER && ctx->rputs_chain == rputs_chain) {
+        (*rputs_last)->next = NULL;
+        rputs_chain->last = rputs_last;
+        r->headers_out.content_length_n = content_length_n;
+      } else {
+        r->headers_out.content_length_n = ctx->rputs_chain->content_length_n;
+      }
       ctx->rputs_chain = NULL;
     }
     mrb_gc_arena_restore(state->mrb, ai);
