@@ -844,11 +844,12 @@ t.assert('ngx_mruby - start without an http block', 'stream only configuration')
   rescue => e
     body = "connect failed: #{e}"
   end
-  # nginx -s quit, like nginx -t, returns from main() without freeing the
-  # pool that main() creates first, so in a build with AddressSanitizer
-  # LeakSanitizer reports that allocation of nginx itself at exit. The report
-  # goes to the stderr of this process, which is the test runner's
-  # stderr.log. Leak detection is therefore turned off for this process only,
+  # nginx -s quit returns from main() without freeing the pool that main()
+  # creates first (ngx_init_cycle() returns for a signal before it destroys
+  # that pool), so in a build with AddressSanitizer LeakSanitizer reports
+  # that allocation of nginx itself at exit, as it reports the configuration
+  # that nginx -t leaves. The report goes to the stderr of this process,
+  # which is the test runner's stderr.log. Leak detection is therefore turned off for this process only,
   # as nginx_t in test/t/cases/_prelude.rb does for nginx -t; the other
   # sanitizer checks stay on. test.sh runs this file without that prelude,
   # so the options are built here in the same way.
