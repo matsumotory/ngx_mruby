@@ -182,9 +182,9 @@ upgrading". New behavior, API cleanups and features go to `next`.
   bug fix, a raised build requirement and a change of the bundled mruby or
   default mrbgems included; see `docs/releases/README.md` for what counts)
   adds its entry under "Behavior changes: read before upgrading" in
-  `docs/releases/<version>.md`, in the same PR: before, now, what is affected,
-  what to do. Users have built on the old behavior, so the new release must
-  warn them.
+  `docs/releases/<version>.md`, in the same PR: before, now, why it changed,
+  what is affected, what to do. Users have built on the old behavior, so the
+  new release must warn them.
 - Agents never create, move or delete tags, and never publish releases or
   security advisories. Those stay with the owner. Before a tag, a PR checks
   the release notes against every PR merged since the previous release (see
