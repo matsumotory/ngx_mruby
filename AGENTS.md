@@ -183,7 +183,10 @@ upgrading". New behavior, API cleanups and features go to `next`.
   default mrbgems included; see `docs/releases/README.md` for what counts)
   adds its entry under "Behavior changes: read before upgrading" in
   `docs/releases/<version>.md`, in the same PR: before, now, why it changed,
-  what is affected, what to do. Users have built on the old behavior, so the
+  what is affected, what to do. The same PR adds the entry in Japanese to
+  `docs/releases/<version>.ja.md`, and creates that file if the release has
+  none yet (see "Who writes the entries, and when" in
+  `docs/releases/README.md`). Users have built on the old behavior, so the
   new release must warn them.
 - Agents never create, move or delete tags, and never publish releases or
   security advisories. Those stay with the owner. Before a tag, a PR checks
@@ -206,18 +209,24 @@ quoted in the PR body and the numbers that "Design principles" asks the
 reviewer to write;
 compatibility notes in the PR body match the diff; a change of behavior that a
 configuration, script or build can observe has an entry under "Behavior
-changes: read before upgrading" in `docs/releases/<version>.md`, and
-`docs/directives/`, `docs/class_and_method/` or `docs/install/` describe the
-new behavior; a PR that moves the pin of one of the owner's gems links the
+changes: read before upgrading" in `docs/releases/<version>.md` with every
+line of the template, and the same entry in Japanese in
+`docs/releases/<version>.ja.md` (see "Who writes the entries, and when" in
+`docs/releases/README.md`), and `docs/directives/`,
+`docs/class_and_method/` or `docs/install/` describe the new behavior; a PR
+that moves the pin of one of the owner's gems links the
 gem's PR, which has its review and the suite results (see "Other
 repositories"); nothing in the diff, the
 commit messages or the PR text discloses an unpublished vulnerability or a
 secret; and `docs/` is updated when a directive, Ruby method, build option or
 the test harness changes. The reviewer posts the findings as a PR comment,
 split into "must fix" (blocks the merge) and "should fix". A behavior change
-without that entry is a "must fix"; a missing "New features", "Fixes" or
-"Build and test changes" entry is a "should fix". The author fixes
-every "must fix" and asks for a re-review of those items only.
+without that entry, an entry that lacks a line of the template, and an entry
+whose Japanese version is missing or says something other than the English
+entry are each a "must fix". A missing "New features", "Fixes" or "Build and
+test changes" entry, and a missing or different Japanese version of one, are
+a "should fix". The author fixes every "must fix" and asks for a re-review of
+those items only.
 
 The session that owns the PR merges it, with a merge commit, when all of
 these hold:
@@ -231,7 +240,9 @@ these hold:
    evidence described under "Writing tests", or changes documentation only.
    In every case, a change of behavior that a configuration, script or build
    can observe has an entry under "Behavior changes: read before upgrading"
-   in `docs/releases/<version>.md`, and the docs describe the new behavior.
+   in `docs/releases/<version>.md` with every line of the template, the same
+   entry in Japanese in `docs/releases/<version>.ja.md`, and the docs
+   describe the new behavior.
 4. The review above is recorded on the PR and no "must fix" item is open.
 5. The scrub for secrets and unpublished vulnerability details passed.
 6. The PR has no conflicts with its base.

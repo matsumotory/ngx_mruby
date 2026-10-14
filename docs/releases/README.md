@@ -3,12 +3,14 @@
 Each release of ngx_mruby has a file in this directory, `vX.Y.Z.md`, that says
 what changed in it. Its first section, "Behavior changes: read before
 upgrading", lists every change that makes the same `nginx.conf`, Ruby script
-or build behave differently from the previous release, why the release could
-not keep the old behavior, who is affected, and what to do. Before you
-upgrade, read that section in every file newer than the version you run.
-`vX.Y.Z.ja.md`, next to each file, has the same notes in Japanese.
+or build behave differently from the previous release, why it changed, who
+is affected, and what to do. Before you upgrade, read that section in every
+file newer than the version you run. `vX.Y.Z.ja.md`, next to the file, has
+the same notes in Japanese. A file that has no Japanese version yet gets one
+from the next pull request that adds to it or edits it (see "Who writes the
+entries, and when").
 
-日本語版のリリースノートは、同じディレクトリの`vX.Y.Z.ja.md`にあります。
+日本語版のリリースノートは、同じディレクトリの`vX.Y.Z.ja.md`です。日本語版がまだ無いときは、英語版の`vX.Y.Z.md`を読んでください。
 
 Releases up to v2.7.0 have no file here: their
 [GitHub release pages](https://github.com/matsumotory/ngx_mruby/releases) list
@@ -93,6 +95,11 @@ documentation changes and refactoring need no entry at all.
   creates the file and its Japanese version from the template below. Later
   pull requests of the cycle add to both, so the files always describe the
   version that will be tagged next.
+- A release file that has no Japanese version yet, because it was created
+  before the Japanese version was required, gets one from the first pull
+  request that adds to it or edits it. That pull request translates the
+  whole English file, the entries of earlier pull requests included, so that
+  the two files have the same entries.
 - The same pull request updates [`docs/directives/`](../directives/),
   [`docs/class_and_method/`](../class_and_method/) or
   [`docs/install/`](../install/) so that they describe the new behavior. The
@@ -100,10 +107,12 @@ documentation changes and refactoring need no entry at all.
 - In review ([AGENTS.md](../../AGENTS.md#review-and-merge)), a behavior change
   without its entry under "Behavior changes: read before upgrading" is a
   "must fix" and blocks the merge. So is such an entry that lacks a line of
-  the template ("Why it changed" included), or whose Japanese version is
-  missing or says something other than the English entry; a reviewer may
-  supply the Japanese text to an author who does not write Japanese. A missing "New features", "Fixes" or
-  "Build and test changes" entry is a "should fix".
+  the template ("Why it changed" included), and so is one whose Japanese
+  version is missing or says something other than the English entry. A
+  reviewer may supply the Japanese text to an author who does not write
+  Japanese. A missing "New features", "Fixes" or "Build and test changes"
+  entry is a "should fix", and so is a missing Japanese version of one, or
+  one that says something other than the English entry.
 - Before each tag, a pull request checks the file against every pull request
   merged since the previous release (see "Before the tag" below).
 
@@ -112,14 +121,6 @@ documentation changes and refactoring need no entry at all.
 The file is named after the version that will be tagged. If the owner tags a
 different version, rename the file and its Japanese version with `git mv`
 before the tag.
-
-The Japanese version of `vX.Y.Z.md` is `vX.Y.Z.ja.md` in the same directory,
-for example `v2.7.1.ja.md` next to `v2.7.1.md`. It is a translation of the
-English file, which is the source: it has the same sections and the same
-entries in the same order, and each entry says what its English entry says
-(see "The Japanese file" below). Everything in this README about creating,
-adding to, editing, moving, copying or renaming the file of a release or its
-entries applies to the Japanese file as well, in the same pull request.
 
 - `master`, before v3 is promoted: the next 2.x patch release. After the tag
   `v2.<minor>.<patch>`, the file is `v2.<minor>.<patch+1>.md`.
@@ -133,6 +134,14 @@ entries applies to the Japanese file as well, in the same pull request.
 
 Users who upgrade from 2.x to 3.0.0 read the 2.x files newer than their
 version, then `v3.0.0.md`.
+
+The Japanese version of `vX.Y.Z.md` is `vX.Y.Z.ja.md` in the same directory,
+for example `v2.7.1.ja.md` next to `v2.7.1.md`. It is a translation of the
+English file, which is the source: it has the same sections and the same
+entries in the same order, and each entry says what its English entry says
+(see "The Japanese file" below). Everything in this README about creating,
+adding to, editing, moving, copying or renaming the file of a release or its
+entries applies to the Japanese file as well, in the same pull request.
 
 The v3 migration guide (planned in `docs/proposals/v3-plan.md` on `next`) is
 built on the "Behavior changes" section of `v3.0.0.md`: it covers every entry
@@ -157,8 +166,10 @@ copy it with the Japanese headings and labels of "The Japanese file" below.
 - Now: <what it observes on this release>
 - Why it changed:
   - The defect: <what the old behavior got wrong, with the issue or pull request that reports it>
-  - Why the old behavior could not be kept: <what keeping it would have left broken>
-  - What the documentation promised: <what the documentation said about it all along, with a link>
+  - Why the old behavior could not be kept: <what keeping it would have left
+    broken; after "The reason:", what keeping it would have cost>
+  - What the documentation promised: <what the docs said about it before this
+    release, with a link, or that they described the old behavior or said nothing>
 - Affected: <the directives, handlers, methods, configurations or builds that see the difference>
 - What to do: <the change to make, or "nothing", with the reason>
 
@@ -196,11 +207,19 @@ the reader can check, not only the statement that the old behavior was wrong:
   writes "The reason:" in this line instead, with the reason for the change.
 - Why the old behavior could not be kept: why fixing the defect needed the
   difference that "Now" describes, that is, what keeping the old behavior
-  would have left broken.
+  would have left broken. In an entry that writes "The reason:", no defect
+  is fixed and the old behavior could have stayed: this line says what
+  keeping it would have cost, for example the fixes that an older
+  dependency no longer gets, or the goal of the v3 change that the old
+  behavior would not meet.
 - What the documentation promised: what `docs/`, or the nginx documentation
   for behavior that nginx defines, said about it before this release, with a
   link. This is usually the behavior that the fix brings back. If the
   documentation described the old behavior, or said nothing about it, say so.
+
+An entry may end with one more line, "Not changed by this release:", that
+names a related behavior that stays as it was, when readers may expect the
+change to cover it. The line is optional and is not part of the template.
 
 ## The Japanese file
 
@@ -208,14 +227,19 @@ the reader can check, not only the statement that the old behavior was wrong:
 entry. It follows these conventions:
 
 - The headings, the line labels and "None." are the ones in the table below,
-  so that the two files can be compared line by line.
+  so that the two files can be compared entry by entry and label by label.
+  A label that the table does not list, such as "Unchanged:" inside an
+  "Affected" line, gets a Japanese label of the author's choice, followed by
+  the full-width colon.
 - No space is typed between Japanese characters and Latin letters, digits or
   code spans.
 - Japanese punctuation: 、 and 。, 「」 around quoted words, and the
   full-width colon ： after a line label.
+- No em dash (U+2014), kome mark (U+203B) or emoji.
 - What the English text explains in parentheses becomes a clause or a
   sentence of its own. Parentheses stay only around identifiers, such as the
-  pull request number in `(#566)`.
+  pull request number in `(#566)`, and around an abbreviation at its first
+  use, after the full name.
 - Code, directive, class and method names, `error.log` lines, commands, file
   paths, issue and pull request numbers and links stay as they are in the
   English text.
@@ -239,6 +263,7 @@ entry. It follows these conventions:
 | `- What the documentation promised:` | `- ドキュメントが示していた挙動：` |
 | `- Affected:` | `- 影響の範囲：` |
 | `- What to do:` | `- 必要な対応：` |
+| `- Not changed by this release:` | `- このリリースで変わらない挙動：` |
 | `## New features` | `## 新機能` |
 | `## Fixes` | `## 不具合の修正` |
 | `## Build and test changes` | `## ビルドとテストの変更` |
@@ -254,9 +279,11 @@ confirms for each one that it has its entry or changes nothing that a
 configuration, script or build can observe, and adds the entries that are
 missing. It completes each entry under "Behavior changes: read before
 upgrading" that lacks a line of the template ("Why it changed" included). It
-compares the Japanese file with the English one: the same sections, and the
-same entries in the same order, each saying what its English entry says. It
-adds the Japanese entries that are missing and corrects those that differ.
+creates the Japanese file by translating the English one if the release has
+none yet. Otherwise it compares the Japanese file with the English one: the
+same sections, and the same entries in the same order, each saying what its
+English entry says. It adds the Japanese entries that are missing and
+corrects those that differ.
 Its body lists each pull request with the section of its entry, or "no entry"
 and the reason, and says that the two files were compared. This catches pull
 requests merged before this convention, pull requests whose author did not
