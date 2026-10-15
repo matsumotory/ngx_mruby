@@ -16,9 +16,11 @@ them; and the related lines of sections 1, 3.5, 8 and 9. The agent proxy
 rows of step 4, the parallel start of step 7 and the order inside it, the
 release conditions that steps 7 and 8 add for `v3.0.0-rc.1` and v3.0.0,
 and the targets in section 8 are proposals of that amendment, not
-decisions. Facts cite a file and line or a URL with its date. Statements
-marked "unverified" come from reading code only and still need a build and
-a test.
+decisions. On 2026-10-15 a second open question, on the frame in which
+handler code runs (#502), was added after the first one in section 7; it is
+a proposal, not a decision. Facts cite a file and line or a URL with its
+date. Statements marked "unverified" come from reading code only and still
+need a build and a test.
 
 Security-relevant details found during the code read are deliberately not in
 this document. They are tracked in the repository's private security advisory
@@ -719,6 +721,22 @@ not cover, since the guide asks for every event and every body field
 unchanged, and only after the perf and soak scenarios of the event filter
 have measured its cost per Ruby call: one Ruby call costs about 8 times what
 nginx spends to relay one more event (section 4).
+
+A second question, from #502 (Pillar B), is open and waits for the owner. It
+is not part of any decision above. Should v3 keep running handler code in the
+top-level frame, or run it in a method frame or a lambda frame? On `next`,
+a `return` inside a block or a `for` body of handler code already ends the
+handler, since mruby 4.0.0 (#561); on `master` (mruby 3.3.0) it raises the
+`LocalJumpError` that #502 reports. Recommendation: keep the top-level frame,
+add the regression test of #502 to `next`, and document the 2.x workaround
+on `master`. A method frame makes `nginx -t` refuse handler code that assigns
+a constant or defines a class, and adds up to 1.75% of instructions per
+request in the perf lane. A lambda frame either changes nothing that a script
+can observe (the compiled proc marked as a lambda) or adds a frame, a
+backtrace line and 1,075 to 1,941 instructions to every run of handler code
+(a wrapper lambda). None of them changes what handler code shares between
+requests. The measurements, the options and the question are in
+[the proposal for the frame of handler code](handler-code-frame.md).
 
 ## 8. Verification before implementation
 
