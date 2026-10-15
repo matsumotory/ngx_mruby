@@ -5,8 +5,8 @@ section 6, starting with the tokens of section 4 and the specimens of step
 2, after the Starlight skeleton of step 1.
 
 Evidence: the site map and writing plan of 3.2 and 3.3, and 3.5, section
-4, section 6 and section 7 rest on `next` at 73fc9098f and on the published
-pages of the owner's profile site, read on 2026-10-15. The rest rests on
+4, section 6 and section 7 rest on `next` at 73fc9098f and on the source of
+the owner's three sites (4.1), read on 2026-10-15. The rest rests on
 `next` at ec227408d, `master` at 1ea47b0a6 (b3df70fb6 for the promotion
 text that step 7 updates) and `gh-pages` at 59c923a, on the live site and
 the repository's GitHub settings read on 2026-10-04, and on primary sources
@@ -24,13 +24,13 @@ others, that the design starts from three of the owner's sites (section 4)
 and that the site carries many diagrams and samples, especially for v3
 (3.5). Section 6 says what each step produces and what the owner reviews.
 
-Rules marked "owner's practice" are rules that the owner's other sites
-apply, stated here in general terms. The design documents and source of
-those sites are not public, so this document does not cite them; values it
-takes from the owner's profile site are cited from that site's published
-stylesheets (4.2). Values marked "chosen here" are choices of this
-proposal, with no source that fixes them; 4.12 lists those that the
-specimens of step 2 settle.
+The source and the design documents of the owner's three sites are in
+private repositories. This document takes values and rules from them,
+describes each source by its role ("the corporate site's token file"), and
+names no path in those repositories (4.1). Rules from their design
+documents are marked "owner's practice". Values marked "chosen here" are
+choices of this proposal, with no source that fixes them; 4.12 lists those
+that the specimens of step 2 settle.
 
 ## 1. Purpose and readers
 
@@ -251,10 +251,12 @@ Each diagram names the source it describes, at `next` 73fc9098f
 
 The three agent proxy diagrams show v3 features that are not merged yet.
 Until v3.0.0 they carry the label "Development version" beside "New in 3.0"
-and sit under the banner of 3.4, and each element says whether it exists
-today (the recipes of `test/t/cases/agent_proxy.rb`) or which step of the
-plan adds it (7a to 7e). They describe the plan until the features merge,
-and then the source lines.
+and sit under the banner of 3.4. Each element says whether it exists today
+(the recipes of `test/t/cases/agent_proxy.rb`) or which step of the plan
+adds it (7a to 7e), with the symbols of the owner's practice (4.2): a
+filled circle for what exists, a ring for the next step, a dashed ring for
+a later one, and a legend beside the diagram. They describe the plan until
+the features merge, and then the source lines.
 
 **Tool: SVG files written by hand, not Mermaid.** Each diagram is one
 `docs/diagrams/<name>.svg`, which the Markdown references and the generator
@@ -360,76 +362,195 @@ The owner decided Q7 on 2026-10-15 (section 7): the design starts from three
 sites the owner likes and is tuned towards a slightly cyber tone, through
 the accent, the quality of the dark theme and monospace for code and
 numbers, with no shadows, gradients or entrance animation. 4.1 says what
-each site is and what of it is public, 4.2 lists what the ngx_mruby site
-inherits, and 4.3 lists what it changes towards cyber. 4.4 to 4.10 give the
+each site is and which of its sources this section reads, 4.2 lists what
+the ngx_mruby site inherits, value by value and rule by rule, and 4.3 lists
+what it changes towards cyber. 4.4 to 4.10 give the
 rules by topic, 4.11 separates the owner's practice from research, and 4.12
 lists what the specimens of step 2 settle. Each rule names its source and
 its check; section 6 runs the checks. Appendix C gives the evidence rule by
 rule.
 
-### 4.1 The three sites
+### 4.1 The three sites and their sources
 
-| Site | Public on 2026-10-15 | Fonts | What this document takes from it |
+| Site | Built with | Sources read on 2026-10-15 | Served publicly that day |
 |---|---|---|---|
-| The owner's profile site, https://research.matsumoto-r.jp/ , built with Astro | yes: Japanese at `/`, English at `/en/` | `"Hiragino Sans", "Noto Sans JP Variable", "Noto Sans JP", sans-serif` for text; `"Inter Variable", "Inter", "Helvetica Neue", Arial, sans-serif` for Latin-only words and large numbers; both variable fonts served by the site itself from `/_astro/`; no monospace face | the values of 4.2, read from its published stylesheets |
-| The corporate site of the owner's company | no: the domain answers with a sign-in page | a Japanese face first and Inter for Latin-only words, like the profile site; no monospace face | patterns only, in general terms |
-| The owner's product landing page | no: it answers 401 | the same as the corporate site | patterns only, in general terms |
+| The owner's corporate site | Next.js | its token file, base and page stylesheets, header, footer, theme toggle and entrance-motion components, its diagram stylesheet, its design system document and its brand document | no: the domain answers with a sign-in page |
+| The owner's product landing page | Next.js | the landing page's shared module (palette, layout, header, footer, narrow screens), the shared site token module (type and radii), the shared header module, the hero and figure stylesheets, the stylesheet of the product's connection page, its Japanese typography checklist, its design skills, and its rules for procedure pages | no: it answers 401 |
+| The owner's profile site, https://research.matsumoto-r.jp/ | Astro | its token file and stylesheets, which it also publishes under `/_astro/`, and its design notes | yes: Japanese at `/`, English at `/en/` |
 
-- The three sites share one palette, one pair of font stacks, one radius set
-  and one spacing set. The profile site publishes all of them, so 4.2 cites
-  every value from its stylesheets. This document takes nothing from the
-  two other sites that the profile site does not also show.
-- None of the three sites uses IBM Plex, so IBM Plex is not a candidate.
-- The design documents and the source of the three sites are not public.
-  Rules taken from them are marked "owner's practice" and stated in general
-  terms. Values marked "chosen here" are choices of this proposal, with no
-  source that fixes them.
+- The sources are the heads of the three sites' private repositories on
+  2026-10-15. This document describes each source by its role, as in the
+  table, and names no path in those repositories. The design values are
+  not secret; the names and paths of the repositories stay out.
+- The landing page applies the corporate site's palette inside the landing
+  page only. The three sites share that palette, one pair of font stacks,
+  the radius steps 8, 12, 16 and 24 px, the ring before section headings,
+  and the rules of 4.2. None of them uses IBM Plex, so IBM Plex is not a
+  candidate. None of them shows code; the only monospace face is Geist Mono,
+  which the product's connection page uses for the value a reader copies.
+- Rules taken from their design documents are marked "owner's practice".
+  Values marked "chosen here" are choices of this proposal, with no source
+  that fixes them.
 
 ### 4.2 What the site inherits
 
-Read from the published stylesheets (`/_astro/*.css`) of
-https://research.matsumoto-r.jp/ on 2026-10-15. The custom property names
-are those of that stylesheet; the site's `tokens.css` keeps them.
+**Type and layout.** The middle columns are the three sites of 4.1, with
+the sources read; the last column says what the ngx_mruby site takes.
 
-| What | Value on the profile site | Custom property or selector | On the ngx_mruby site |
+| What | Corporate site (token file, page stylesheet) | Landing page (shared module, shared site tokens) | Profile site (token file) | ngx_mruby site |
+|---|---|---|---|---|
+| Japanese-first stack | `"Hiragino Sans"`, Noto Sans JP, `sans-serif` | the same | `"Hiragino Sans", "Noto Sans JP Variable", "Noto Sans JP", sans-serif` | first on Japanese pages (4.4) |
+| Inter | Latin-only words in headings: `Inter, "Helvetica Neue", Arial, sans-serif` | large numerals (56 px, weight 500, letter spacing -0.045em) and the copyright line | Latin-only words and large numbers: `"Inter Variable", "Inter", "Helvetica Neue", Arial, sans-serif` | first on English pages (4.4) |
+| Monospace | none | none on the landing page; the product's connection page sets the value to copy in `var(--font-geist-mono), monospace` (Geist Mono) at 15 px, line height 1.7 | none | code and numbers (4.3, 4.12) |
+| Top heading | `clamp(1.625rem, 1.1rem + 2vw, 2.375rem)`, 26 to 38 px, weight 800, line height 1.4 | 42 px, 38 px at 1000 px and below, 32 px at 760 px and below; weight 700, line height 1.4 | `clamp(1.75rem, 1.3rem + 2vw, 2.375rem)`, 28 to 38 px, weight 800, line height 1.4 | home page heading (4.4) |
+| Section heading | `clamp(1.4rem, 3vw, 2rem)`, 22 to 32 px, weight 700, line height 1.3 | 32 px, 26 px at 760 px and below; weight 700, line height 1.4 | `clamp(1.25rem, 1.1rem + 0.7vw, 1.5rem)`, 20 to 24 px, weight 700, line height 1.4 | h2 (4.4) |
+| Item heading | 1.15rem (18.4 px), weight 700 | 20 px, weight 600, line height 1.5 | 1.0625rem (17 px) | h3 (4.4) |
+| Japanese headings | letter spacing 0.02em | `font-feature-settings: "palt" 1`, letter spacing 0.02em, `word-break: keep-all` | `"palt" 1`, letter spacing 0.02em, `keep-all` with `auto-phrase` | `"palt"` and 0.02em on Japanese headings (4.4) |
+| Body | 1rem (16 px), line height 1.8 | 16 px, and 17 px for the descriptive text of its home page (16 px at 760 px and below); line height 1.8, letter spacing 0.01em | 1rem (16 px), line height 1.8 | 16 px everywhere (4.4) |
+| Notes, captions, labels | 0.875rem (14 px) | notes 15 px, captions 14 px, labels 12 to 13 px | 15 px and 14 px, line height 1.7 | 15 px and 14 px, nothing smaller (4.4) |
+| Body measure | 720 px | 720 px | 720 px | 38rem (4.4) |
+| Container | 1032 px, sections padded 80 by 24 px (60 px vertical at 640 px and below) | 1032 px with 32 px gutters, 20 px at 760 px and below; sections 88 px (56 px) | 1032 px, gutter 24 px, 20 px at 640 px and below | 1032 px for the home page, gutter 24 and 20 px (4.5) |
+| Spacing | 16 to 32 px inside a group, 80 px between groups (64 px at 640 px and below) | no fixed set of steps (gaps such as 9, 14, 22, 28 and 64 px) | 4, 8, 12, 16, 24, 32, 48, 64, 80 px | the profile site's steps (4.5) |
+| Radii | 8, 12, 16, 24 px; cards 16 px, inputs 12 px, buttons 999 px | panels 12 px, controls 8 px | 8, 12, 16, 24 px and 999 px | 0, 8, 12 and 999 px (4.5) |
+| Borders and shadows | 1 px borders; a small shadow on the header after scrolling and on icon badges; the hero has a vertical gradient and soft radial spots | 1 px lines; no shadow or gradient | 1 px borders; an inset `box-shadow` marks the current page in the header | 1 px borders only (4.3) |
+| Numbers | tabular figures in the company data table | tabular figures in prices and step numbers | tabular figures in periods and charts | monospace in tables and measurements (4.3) |
+| Transitions | color, transform and opacity in 0.2 to 0.3 s | background, border and text color in 160 ms, none under reduced motion | color and border color in 0.2 s | color only, 200 ms or less (4.8) |
+| Entrance motion | a fade-up of 12 px in 0.5 s on about five blocks per page | none | none | none (4.8) |
+
+**Color.** All three sites use the same light palette. The dark values of
+the corporate and profile sites are the same; the landing page's differ in
+muted text, border and control outline, and it adds a button fill.
+
+| Role | Light | Dark, corporate and profile | Dark, landing page |
 |---|---|---|---|
-| Japanese stack | `"Hiragino Sans", "Noto Sans JP Variable", "Noto Sans JP", sans-serif` | `--font-sans` | first on Japanese pages (4.4) |
-| Latin stack | `"Inter Variable", "Inter", "Helvetica Neue", Arial, sans-serif` | `--font-latin` | first on English pages (4.4) |
-| Body, note and small text sizes | 16, 15 and 14 px | `--fs-body`, `--fs-note`, `--fs-meta` | body; navigation, tables and code blocks; captions and footer (4.4) |
-| Line heights | 1.8 body, 1.4 headings, 1.7 small text | `--lh-body`, `--lh-heading`, `--lh-meta` | Japanese pages (4.4) |
-| Japanese section headings | weight 700, letter spacing 0.02em, `font-feature-settings: "palt" 1` | `.section-title` | Japanese h1 and h2; h3 at weight 600 (4.4) |
-| Japanese text | `text-autospace: normal`, `text-spacing-trim: trim-start`, `line-break: strict`, `overflow-wrap: anywhere` on the body | `body` | Japanese pages (4.4) |
-| Spacing | 4, 8, 12, 16, 24, 32, 48, 64 and 80 px | `--space-1` to `--space-9` | the only lengths of layout CSS (4.5) |
-| Gutter | 24 px; 20 px at 640 px and below | `--gutter` | page gutter (4.5) |
-| Content width | 1032 px | `--content-width` | sections of the home page (4.5) |
-| Radii | 8, 12, 16 and 24 px, and 999 px | `--radius-sm` to `--radius-xl`, `--radius-pill` | 8, 12 and 999 px (4.5) |
-| Light palette | page `#faf8f3`, surface `#f3f0e8`, text `#232017`, muted text `#5f5949`, border `#e7e3d8`, control outline `#8a8271` | `--color-bg-primary`, `--color-bg-tertiary`, `--color-text-primary`, `--color-text-muted`, `--color-border`, `--color-border-strong` | palette B of 4.6; its rule carried into palette A |
-| Dark palette | page `#14120d`, surface `#211e15`, text `#ece7db`, muted text `#9a937f`, border `#2b2719`, control outline `#7d7458` | the same | the same |
-| Accent split | `--color-accent` `#d4a843` for marks and `--color-accent-text` `#82672c` for text in light; one value, `#c9a34e`, for both in dark | `--color-accent`, `--color-accent-text` | the same split, with the teal of 4.3 (4.6) |
-| Theme order | light on `:root`; dark under `prefers-color-scheme: dark` for `:root:not([data-theme="light"])`, and on `:root[data-theme="dark"]` | `:root` | the same (4.7) |
-| Section heading mark | a 9 px ring with a 1.5 px border in `--color-accent` before each section heading, hung 21 px into the left margin on screens wider than 1121 px, inline with a 21 px indent of the heading otherwise | `.section-title:before` | before h2 (4.4) |
-| Links | `--color-accent-text`, underlined 1 px at an offset of 0.2em | `a` | the same, with the underline in the link color (4.6) |
-| Focus | 2 px solid outline in `--color-accent-text`, 3 px offset | `:focus-visible` | a 2 px outline in `accent`, 3 px offset (4.6) |
-| Numbers | `font-variant-numeric: tabular-nums` for periods and figures | | numbers in prose; numbers in tables become monospace (4.3) |
-| Header | 64 px, fixed, 1 px bottom border; links at least 44 px high, 15 px, weight 600; the current page marked by a 2 px accent line; the language link a pill with a 1 px outline that names the other language; the theme toggle and the menu as 44 px round buttons with a 1 px outline; at 640 px and below, the language link moves into the menu | `--header-height`, `.site-header`, `.site-nav`, `.site-language`, `.theme-toggle` | the same, opaque (4.10) |
-| Footer | 1 px top border, 14 px muted text, 48 px above and 32 px below | `.site-footer` | the same (4.10) |
-| Transitions | color and border color, 0.2 s | | the same (4.8) |
-| Languages | `lang` on `<html>`; `hreflang` for `ja`, `en` and `x-default` | | 3.4 |
+| Page | `#faf8f3` | `#14120d` | `#14120d` |
+| Surface (cards, header controls) | `#ffffff` | `#1a1811` | `#1a1811` |
+| Alternate surface (alternate section bands, notes) | `#f3f0e8` | `#211e15` | `#211e15` |
+| Text | `#232017` | `#ece7db` | `#ece7db` |
+| Secondary text | `#4b4536` | `#c9c2b1` | `#c9c2b1` |
+| Muted text | `#5f5949` | `#9a937f` | `#aaa28f` |
+| Accent, for marks and fills | `#d4a843` (2.08:1 on the page) | `#c9a34e` | `#c9a34e` |
+| Text accent, for links and the focus ring | `#82672c` (5.04:1 on the page) | `#c9a34e` | `#c9a34e` |
+| Button fill (landing page), with `#232017` text | `#c6a661` | | `#b69b60` |
+| Border | `#e7e3d8`; card border and lines `#e0dbcd` | `#2b2719`; `#332e1f` | `#3a3524` |
+| Control outline (3:1) | `#8a8271` | `#7d7458` | `#8f856a` |
 
-Computed from the table: every color of the profile site's palette, the
-gold accent included, has an OKLCH hue between 84 and 94, with the
-conversion of [contrast.py](./site/contrast.py). Neutrals and accent share
-one hue.
+Computed with the conversion of [contrast.py](./site/contrast.py), every
+color of this table except white, the gold included, has an OKLCH hue
+between 84.4 and 94.1: neutrals and accent share one hue.
 
-From the owner's practice, in general terms:
+**Components.**
 
-- Diagrams are inline SVG whose strokes and fills refer to the color tokens,
-  with the accent on one or two marks per figure, no shadow or gradient,
-  and no hover. A figure fits one screen, scales with the width instead of
-  scrolling sideways, and keeps its values readable without hover (3.5).
-- English copy uses the active voice, one statement per sentence and
-  sentence-case headings, after the Google developer documentation style
-  guide and the Microsoft Writing Style Guide; no em dashes.
+- **Theme order.** The corporate and profile sites put light tokens on
+  `:root`, dark ones under `prefers-color-scheme: dark` for
+  `:root:not([data-theme="light"])`, and on `:root[data-theme="dark"]`
+  (4.7).
+- **Section heading mark.** A ring in the accent before each section
+  heading: 9 px with a 1.5 px border on the profile site, hung 21 px into
+  the left margin on screens wider than 1121 px and inline otherwise;
+  the same 9 px ring hung 21 px into the margin on the corporate site (14 px
+  at 640 px and below); 12 px with a 2 px border (10 px at 760 px and
+  below), inline, on the landing page. The site takes the 9 px ring of the
+  corporate and profile sites, which suits headings of 22 to 26 px (4.4).
+- **Links and focus.** Links in the text accent, underlined: 1 px at an
+  offset of 0.2em on the profile site, an offset of 3 px on the corporate
+  site; the landing page underlines its text links in the control outline
+  color at an offset of 6 px. Focus is a 2 px solid outline in the text
+  accent, offset 3 px (5 px on the landing page).
+- **Buttons.** The corporate site fills its primary button with the accent
+  and rounds it fully (999 px); the landing page fills it with its button
+  color and ink text at a radius of 8 px, 15 px at weight 600, and draws a
+  secondary button with a 1 px text-accent outline. On the landing page, a
+  button that cannot be used shows at an opacity of 0.6 without a hover
+  change.
+- **Header.** Corporate site: fixed, 64 px, translucent over a 16 px blur,
+  1 px bottom border, a shadow after scrolling; its links move into a menu
+  below 1060 px; the menu button is 44 by 44 px and the theme toggle a
+  36 px square with a radius of 8 px. Landing page: sticky, opaque page
+  color, 1 px bottom border, 88 px high (64 px at 900 px and below), the
+  name at 21 px weight 700, links at 13 px (15 px from 901 px), a menu at
+  900 px and below with rows 56 px high, and a fixed bar of actions at the
+  bottom of narrow screens. Profile site: fixed, 64 px, translucent over a
+  16 px blur, 1 px bottom border, links at least 44 px high at 15 px weight
+  600, the current page marked by a 2 px accent line, the language link a
+  pill with a 1 px outline, the theme toggle and the menu as 44 px round
+  buttons with a 1 px outline, the links in the menu at 900 px and below,
+  and the language link in the menu at 640 px and below.
+- **Footer.** Corporate site: one footer component on every page, with a
+  table of contents of the site, the privacy policy and the copyright, 1 px
+  top border, 14 px text, 40 px above and 32 px below. Landing page: 1 px
+  top border, the name at 20 px, links at 12 px in muted text, the
+  copyright at 12 px, 40 px above and 32 px below. Profile site: 1 px top
+  border, 14 px muted text, 48 px above and 32 px below.
+- **Narrow screens.** One column for two-column sections below 1024 px
+  (corporate) or at 760 px and below (landing page); gutters of 20 px on the
+  landing page and the profile site, 24 px on the corporate site; the top
+  heading and the section headings step down at 760 px (landing page).
+
+**Practice from their design documents** (owner's practice), which the
+site inherits:
+
+- **Palette.** The page is a measured warm white (red at least green,
+  green above blue). One accent family is the only accent, with a darker
+  shade for text measured at 4.5:1 or more; the accent lights up only in a
+  few places (links, the section heading mark, the primary action).
+  Neutrals take the page's hue; no framework grays. Contrast is measured:
+  4.5:1 for text, 3:1 for controls (corporate design system document).
+- **Type.** A Japanese face first, the Latin face only for Latin-only
+  words. Phrase wrapping only in titles and section headings, through
+  `<wbr>` at phrase boundaries with `keep-all`; body text wraps by
+  character, at most 720 px (about 40 Japanese characters); no
+  `text-wrap: pretty` or `balance`. Headings at a line height of 1.3 to
+  1.4, body at 1.7 or more, letter spacing at most 0.02em. One descending
+  scale with the top heading largest, the same size for the same role on
+  every page (corporate design system document). Japanese headings are
+  smaller than English ones; the top heading takes two lines on a desktop
+  and at most three; Japanese sizes follow a scale of about 1.2: 38, 32,
+  26, 22, 18, 17, 16, 15 and 13 px; layouts are checked at 360, 375, 390,
+  1024, 1200, 1280 and 1440 px (landing page's Japanese typography
+  checklist).
+- **Layout.** One left axis for every section, set by one container. Small
+  gaps inside a group, large gaps between groups. One kind of section
+  heading, the ring before it; no uppercase labels above headings; no row
+  of identical cards repeated across sections (corporate design system
+  document).
+- **Surfaces.** A border or nothing, never a shadow on a bordered card; no
+  framed card inside a framed card; no hover effect on what cannot be
+  clicked; radii from a fixed set, the inner smaller than the outer; fixed
+  data in tables with tabular figures (corporate design system document).
+- **Motion.** An entrance fade-up of 0.5 s, moving only `translateY` and
+  `opacity`, on about five blocks per page; no blur-in, no fade over a
+  second, no `transition: all`; under reduced motion, nothing moves
+  (corporate design system document and entrance-motion component).
+- **Diagrams.** Colors from the tokens only; the accent on one or two
+  places per figure; no shadow, gradient or hover; strokes of 1.5 to 2 px
+  with round caps; short labels, the details in the text; a vertical
+  arrangement on narrow screens (corporate diagram stylesheet, landing
+  page's figure stylesheet). A figure is seen whole on one screen; a figure
+  read against an axis fits half of a 390 by 664 px screen; figures scale
+  with the width and never scroll sideways; values are readable without
+  hover, as a table or as numbers (profile site's design notes). A filled
+  circle means established or current, a ring means next, a dashed ring
+  means later, always with a legend or text, since the symbols alone do not
+  reach 3:1 (corporate brand document).
+- **Languages.** The language link names the other language in that
+  language; no flags; no language chosen from the browser or location; a
+  path prefix per language; `hreflang` both ways with `x-default`; a 404
+  page per language (profile site's design notes).
+- **English.** Active voice, one statement per sentence, sentence-case
+  headings, no em dashes, after the Google developer documentation style
+  guide and the Microsoft Writing Style Guide (profile site's design notes).
+  Procedure pages, after the same guides, Diátaxis and W3C COGA: the
+  conditions that stop a reader before step 1, one action per numbered
+  step, each step ending with what the reader sees, one sequence per
+  heading, the date and environment in which the steps were checked, a last
+  step that checks the result, explanations outside the numbered steps, and
+  no "simply" or "just" (landing page's rules for procedure pages).
+- **Before shipping.** A list of signs of generated design checked one by
+  one (purple-to-blue gradients, glows, framework grays, glass cards on
+  every surface, uppercase labels, a Latin face first on Japanese pages,
+  blur-in, emoji); screenshots of every page in both themes; narrow screens
+  in WebKit as well as Chromium (corporate design system document).
 
 ### 4.3 What changes towards a slightly cyber tone
 
@@ -440,14 +561,15 @@ and what the ngx_mruby site does instead.
    The home page's first example is real `nginx.conf` and Ruby from a test
    that CI runs (3.3, item 8), followed by the response that the test
    compares on every run. No mock terminal windows or decorative code.
-2. **Monospace for code and numbers.** The three sites set no monospace
-   face. The site sets one (4.12, item 2) for code, `kbd`, the wordmark
+2. **Monospace for code and numbers.** The three sites show no code; only
+   the product's connection page sets a value to copy in Geist Mono. The
+   site sets a monospace face (4.12, item 2) for code, `kbd`, the wordmark
    `ngx_mruby`, directive, method and file names, commands, and the numbers
    of tables and measurements: versions, ports, sizes, durations, and the
    perf lane's instructions per request with their date (Q8). Prose,
    headings and navigation stay proportional, because they are read rather
    than copied (chosen here). Numbers inside prose keep the text face with
-   tabular figures, as on the profile site. Check: the computed
+   tabular figures, as on the three sites. Check: the computed
    `font-family` of `code`, `pre`, `kbd`, the wordmark and the numeric cells
    of tables starts with the monospace face, and that of body text,
    headings and navigation does not.
@@ -469,26 +591,35 @@ and what the ngx_mruby site does instead.
    surface, and the dark theme works without JavaScript (4.7). The dark
    theme is where the teal on a near-black page, the monospace code and the
    1 px lines read as slightly cyber (chosen here).
-5. **Flat surfaces.** 1 px borders separate regions; there are no shadows,
-   gradients, glows or translucent panels. The profile site's header is
-   translucent over a blurred backdrop and marks the current page with an
-   inset `box-shadow`. The site's header is opaque `surface`, and the
-   current page has a 2 px bottom border in `accent`. `tokens.css` sets
+5. **An opaque header and no shadows.** 1 px borders separate regions;
+   there are no shadows, gradients, glows or translucent panels. The
+   corporate and profile headers are translucent over a blurred backdrop;
+   the corporate header adds a shadow after scrolling and its hero a
+   gradient with radial spots; the profile header marks the current page
+   with an inset `box-shadow`. The site takes the landing page's opaque
+   header in `surface`, marks the current page with a 2 px bottom border in
+   `accent`, and drops the gradient and the spots. `tokens.css` sets
    Starlight's shadows to `none` (4.6), and the site removes the blurred
    backdrop of its search dialog (appendix B). Check: on three page types
    in both themes, with the search dialog and the narrow-screen menu open,
    every computed `box-shadow`, `text-shadow` and `backdrop-filter` is
    `none`, and no computed `background-image` holds a gradient.
-6. **No entrance animation** (4.8). The owner's practice allows a few
-   entrance animations per page; this site has none.
-7. **Structure that shows the system.** The sidebar mirrors the four kinds
+6. **No entrance animation** (4.8). The corporate site's allowance of about
+   five entrance animations per page is not used.
+7. **Sharper and fewer radii.** Of the inherited steps, the site uses 8 and
+   12 px, and 999 px only for the language link and the round header
+   buttons; the 16 and 24 px of cards and the fully rounded primary button
+   of the corporate site are not used (4.5).
+8. **Structure that shows the system.** The sidebar mirrors the four kinds
    of page, headings name the directive, method or task, and diagrams show
-   where Ruby runs inside nginx (3.5).
+   where Ruby runs inside nginx (3.5). Diagram labels are at least 14 px,
+   where the landing page's figures go down to 13 px, so that no text is
+   below the floor of 4.4.
 
 Not used: decorative gradients, neon colors and glows, terminal motifs,
 grids of emoji or icons, glowing or lifting cards, rows of identical feature
 cards, uppercase labels above headings, hero illustrations, mock application
-windows.
+windows, a fixed bar of actions at the bottom of narrow screens.
 
 ### 4.4 Type
 
@@ -533,10 +664,13 @@ windows.
   practice). Japanese headings are one step smaller than English ones, with
   a line height of 1.4, because the owner's Japanese typography checklist
   sets Japanese headings smaller than English ones, with a line height of
-  1.3 to 1.4 (owner's practice). The profile site's own section size
-  (`--fs-section`, 20 to 24 px) serves one page of sections; documentation
-  pages need three levels of heading, so the levels follow the reference
-  scale (chosen here). Nothing is below 14 px, and body text is 16 px
+  1.3 to 1.4 (owner's practice). The Japanese sizes fall inside the ranges
+  of the three sites (4.2): the home page heading of 26 to 32 px inside
+  their top headings of 26 to 42 px, h2 of 22 px inside their section
+  headings of 20 to 32 px, h3 of 18 px beside their item headings of 17 to
+  20 px. Documentation pages need three levels of heading below the page
+  title, so each level takes one step of the reference scale (chosen
+  here). Nothing is below 14 px, and body text is 16 px
   (Digital Agency design system). Chosen here: the English line heights,
   with body text at 1.6 (above the 1.5 that the Digital Agency asks for
   body text and that WCAG 1.4.12 tests), and weight 600 for h3.
@@ -548,7 +682,7 @@ windows.
 - **Measure.** The text column is at most 38rem (608 px): 38 Japanese
   characters at 16 px, under the "about 40" of JLREQ 2.4.2; an estimated 75
   Latin characters, inside the U.S. Web Design System's 45 to 90 and at
-  GOV.UK's 75. The profile site's `--measure` of 720 px holds 45 Japanese
+  GOV.UK's 75. The three sites' measure of 720 px holds 45 Japanese
   characters at 16 px, so the column stays narrower (chosen here). Check at
   1440 px: Japanese body lines hold at most 40 characters (step 5) and
   English body lines at most 90, counted line by line from the client
@@ -568,8 +702,8 @@ windows.
   the owner stated it).
   - **Section headings (h2).** The Japanese Markdown source puts `<wbr>` at
     the phrase boundaries, and `h2` of Japanese pages has
-    `word-break: keep-all` and `overflow-wrap: anywhere`, as the profile
-    site's section headings do. GitHub drops the `<wbr>` without showing it
+    `word-break: keep-all` and `overflow-wrap: anywhere`, as the three
+    sites' section headings do. GitHub drops the `<wbr>` without showing it
     (appendix B), so `docs/ja/` reads normally there.
   - **Page titles (h1)** wrap by character and are short instead (chosen
     here). Starlight's `PageTitle.astro` renders `title` as an escaped
@@ -585,9 +719,10 @@ windows.
     lists it for Chrome 119 and later, for Safari only in Technology
     Preview and not for Firefox, so WebKit would wrap those headings by
     character.
-- **Section heading mark.** h2 of content pages carry the inherited ring of
-  4.2 in `accent`, hung into the left margin where the margin allows and
-  inline otherwise. It is decorative: the heading level is in the markup.
+- **Section heading mark.** h2 of content pages carry the inherited 9 px
+  ring of 4.2 in `accent`, hung into the left margin where the margin
+  allows and inline otherwise. It is decorative: the heading level is in
+  the markup.
 - The home page heading takes at most two lines at 1440 px and at most
   three at 390 and 320 px (owner's practice).
 - No `text-wrap: pretty` or `balance` anywhere: Safari applies `pretty` to
@@ -615,13 +750,15 @@ windows.
 - Space above a heading is at least twice the space below, so the heading
   groups with its text (proximity, Wertheimer 1923; Digital Agency design
   system): h2 48 and 16 px, h3 32 and 8 px (chosen here).
-- Gutters: 20 px at 640 px and below, 24 px above, as the inherited
-  `--gutter`; the header's side padding is 32 px above 640 px, as on the
-  profile site. Both stay inside the standards of appendix C: at least
-  16 px at narrow widths (the U.S. Web Design System's `grid-container`
-  padding of 2 units of 8 px) and a step at 640 px (GOV.UK's responsive
-  spacing, which grows at 640 px). Check: at 320 and 390 px, every text
-  block and any marker in the margin is at least 20 px from both edges.
+- Gutters: 20 px at 640 px and below, 24 px above, as the profile site's
+  `--gutter` (the corporate site pads its sections by 24 px; the landing
+  page uses 32 and 20 px); the header's side padding is 32 px above 640 px,
+  as on the corporate and profile sites. Both gutters stay inside the
+  standards of appendix C: at least 16 px at narrow widths (the U.S. Web
+  Design System's `grid-container` padding of 2 units of 8 px) and a step
+  at 640 px (GOV.UK's responsive spacing, which grows at 640 px). Check:
+  at 320 and 390 px, every text block and any marker in the margin is at
+  least 20 px from both edges.
 - The sections of the home page use the inherited content width of
   1032 px. Documentation pages keep Starlight's columns, with the text
   column of 4.4.
@@ -650,8 +787,9 @@ the accent, with the logo's hue; palette B keeps the three sites' neutrals.
 first table.
 
 Palette A: each token is an OKLCH source value at hue 182, converted to
-sRGB hex. Palette B: the hex values of the profile site for the neutrals,
-the accent tokens of palette A. The ratios are WCAG 2.2 contrast ratios
+sRGB hex. Palette B: the neutrals of the corporate and profile sites' token
+files (4.2), with the accent tokens of palette A; `surface` there is their
+alternate surface. The ratios are WCAG 2.2 contrast ratios
 against `bg` and `surface`, truncated to two decimals and never rounded,
 since WCAG's Understanding document for 1.4.3 says "4.499:1 would not meet
 the 4.5:1 threshold". [contrast.py](./site/contrast.py) holds both
@@ -703,8 +841,9 @@ Palette B:
   border, as the profile site marks it with a 2 px accent line (4.55:1
   light, 6.64:1 dark for the border in palette A); the button is `bg` text
   on an `accent` fill (4.91:1 light, 7.28:1 dark). The focus ring is a
-  2 px `accent` outline, which reaches 3:1 in both palettes; the profile
-  site draws it in `accent-text`, because its gold `accent` does not.
+  2 px `accent` outline, which reaches 3:1 in both palettes; the three
+  sites draw it in their text accent, because their gold `accent` does
+  not.
 - Links are underlined 1 px at an offset of 0.2em, as on the profile site,
   with the underline in the link color, so that every computed color is a
   token value (the profile site mixes the underline with transparency).
@@ -716,8 +855,8 @@ Palette B:
   inherited neutrals reach 0.027 in light and 0.042 in dark). The hex values
   are rounded, so a chroma computed back from them can be slightly higher:
   0.0201 for light `text`, 0.0203 for light `text-muted`. Palette B keeps
-  the warm neutrals at hues 84 to 94, so the teal accent has a hue of its
-  own.
+  the warm neutrals at hues of 85.8 to 94.1, so the teal accent has a hue
+  of its own.
 - **Starlight's own colors.** Starlight's `props.css` defines a gray scale
   at hue 224 (for example `hsl(224, 20%, 94%)`), its own accent, orange,
   green, blue, purple and red palettes, and three shadows. `asides.css`
@@ -771,8 +910,8 @@ Palette B:
   offering dark mode for long reading (Budiu 2020).
 - Starlight puts dark values on `:root` and needs a script for light, so
   without JavaScript every reader gets dark. The site uses the theme order
-  of the three sites (4.2): light tokens on `:root`, dark ones in
-  `@media (prefers-color-scheme: dark)` for
+  of the corporate and profile sites (4.2): light tokens on `:root`, dark
+  ones in `@media (prefers-color-scheme: dark)` for
   `:root:not([data-theme="light"])` and on `:root[data-theme="dark"]`, so
   the OS setting works without JavaScript and the toggle overrides it.
 - The dark background is not pure black (Material Design, dark theme), and
@@ -786,13 +925,14 @@ Palette B:
 
 - Only interactive elements animate, only color, background color, border
   color, opacity and transform, for 200 ms or less (Material Design 3's
-  short durations, 50 to 200 ms). The profile site changes color and border
-  color in 0.2 s.
+  short durations, 50 to 200 ms). The landing page changes background,
+  border and text color in 160 ms, the profile site color and border color
+  in 0.2 s.
 - The owner's practice forbids blur-in entrances, fades longer than a
   second, entrance animation on every element, `transition: all`, and
   animation of `top`, `left`, `width` or `height`. It allows a few entrance
   animations per page: about five, of 0.5 s, moving only `translateY` and
-  `opacity`.
+  `opacity`, which the corporate site uses (4.2).
 - This site uses no entrance or scroll-triggered animation at all, as
   decided with Q7 on 2026-10-15: documentation pages are read and searched
   more than they are presented, and the home page's first content is code.
@@ -842,7 +982,10 @@ Palette B:
   face), the five section links, search, the version link, the language
   link, the theme toggle, and GitHub with a text label and its mark in
   black or white only (GitHub's logo guidelines). 64 px high, as the
-  inherited `--header-height`, opaque `surface`, 1 px bottom border. Links
+  corporate and profile headers and the landing page's header at 900 px
+  and below; opaque `surface`, as the landing page's header; 1 px bottom
+  border. The landing page's 88 px suits a page with one call to action,
+  not a documentation header (chosen here). Links
   are at least 44 px high, 15 px at weight 600; the current page is `text`
   with a 2 px `accent` bottom border (4.6).
 - **The theme toggle and the menu button** are 44 px round buttons that
@@ -866,8 +1009,9 @@ Palette B:
   has a menu button (appendix C). The rest of the header moves into the
   menu as well.
 - **Footer**: 1 px top border, 14 px `text-muted`, 48 px above and 32 px
-  below, as on the profile site. It repeats the language link and links to
-  Releases, Security, the license and GitHub.
+  below, as on the profile site. As on the corporate site, one footer
+  component serves every page, so that every page reaches the same links:
+  the language link, Releases, Security, the license and GitHub.
 - Check: each page's language link answers 200 with the same path under the
   other prefix; `/` with `Accept-Language: ja` returns English without a
   redirect; at 320 and 390 px the header's items fit on one row without
@@ -911,16 +1055,20 @@ recommendation first.
    rule with the teal. The alternative is palette B, the three sites' warm
    neutrals with the teal accent; its light `accent` has no margin on
    `surface` (4.6).
-2. **Monospace face.** Recommendation: a face that the site serves, so that
-   code looks the same on every system; of `@fontsource-variable/geist-mono`
-   and `@fontsource-variable/jetbrains-mono` (both 5.3.0, SIL Open Font
-   License 1.1), the one whose x-height, measured on the specimen at 15 px,
-   is closer to Inter's, provided that it tells 0 from O and 1 from l and
-   I. The specimens also show the system monospace stack of 4.4, which the
-   site falls back to.
-3. **Radius of code blocks.** Recommendation: 8 px, the inherited radius of
-   the site's other small frames, so that code blocks, buttons and inputs
-   share one radius. The alternative is 0, Starlight's default.
+2. **Monospace face.** Recommendation: Geist Mono, served by the site from
+   `@fontsource-variable/geist-mono` 5.3.0 (SIL Open Font License 1.1),
+   because the owner's product already sets copyable values in it at 15 px
+   beside the same Japanese stack and Inter (4.2), and a served face looks
+   the same on every system. The specimen keeps it if it tells 0 from O and
+   1 from l and I, and if its x-height at 15 px is not larger than Inter's
+   at 16 px, so that inline code does not look larger than the prose around
+   it; otherwise JetBrains Mono (`@fontsource-variable/jetbrains-mono`
+   5.3.0, the same license) takes its place. The specimens also show the
+   system monospace stack of 4.4, which the site falls back to.
+3. **Radius of code blocks.** Recommendation: 8 px, the landing page's
+   radius for controls, which the site also gives to buttons and inputs, so
+   that code blocks, buttons and inputs share one radius. The alternative is
+   0, Starlight's default.
 4. **How cyber.** Recommendation: the means of 4.3 only. If the owner wants
    more within 4.11, two further steps remain: the monospace face for h1
    and h2 on English pages only (the monospace faces have no kana or kanji,
@@ -1436,11 +1584,16 @@ Tools and hosting:
 
 The owner's sites (2026-10-15):
 
-- The profile site: https://research.matsumoto-r.jp/ and
+- The source of the owner's corporate site, the owner's product landing
+  page and the owner's profile site: the heads of their private
+  repositories on 2026-10-15, read for 4.1 and 4.2 (token files,
+  stylesheets, components, design system documents, the brand document,
+  the Japanese typography checklist, the rules for procedure pages and the
+  design notes). This document names no path in them.
+- The profile site's published pages: https://research.matsumoto-r.jp/ and
   https://research.matsumoto-r.jp/en/ , with the stylesheets that their
-  HTML links under `/_astro/`, for every value of 4.2. The corporate site of
-  the owner's company and the owner's product landing page answered with a
-  sign-in page and with 401 that day, so nothing is cited from them.
+  HTML links under `/_astro/`. The two other sites answered with a sign-in
+  page and with 401 that day.
 
 This repository: the files linked above, `gh-pages` at 59c923a
 (`index.html`, `googleba3435e4002729b6.html`, `git ls-tree -r -l`), the

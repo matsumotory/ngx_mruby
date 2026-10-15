@@ -2,9 +2,9 @@
 """Check the color tokens proposed in docs/proposals/site.md, section 4.6.
 
 The tokens below are the OKLCH source values of palette A of the proposal:
-neutrals at the hue of the logo teal. Palette B keeps the neutrals that the
-owner's profile site publishes (INHERITED_NEUTRALS, hex values) and takes the
-two accent tokens of palette A; the script checks the same pairs for it,
+neutrals at the hue of the logo teal. Palette B keeps the neutrals of the
+owner's corporate and profile sites (INHERITED_NEUTRALS, hex values) and
+takes the two accent tokens of palette A; the script checks the same pairs for it,
 without the hue and chroma rules, which apply to source values. For each theme
 the script converts every token to sRGB (clipped to the gamut and rounded to
 8-bit hex, which is what a browser draws), computes the WCAG 2.2 contrast
@@ -93,10 +93,12 @@ PAIRS = [
     ('border', 'surface', 0.0, 'decorative separator, no threshold'),
 ]
 
-# Palette B: the neutrals of the owner's profile site, read from its
-# published stylesheet on 2026-10-15 (--color-bg-primary, --color-bg-tertiary,
-# --color-text-primary, --color-text-muted, --color-border-strong,
-# --color-border), with the accent and accent-text tokens of palette A.
+# Palette B: the neutrals of the owner's corporate and profile sites, read
+# from their token files on 2026-10-15 (--color-bg-primary,
+# --color-bg-tertiary, --color-text-primary, --color-text-muted,
+# --color-border-strong, --color-border; the same values in both), with the
+# accent and accent-text tokens of palette A. The landing page uses the same
+# light values; in dark its muted text, border and control outline differ.
 INHERITED_NEUTRALS = {
     'light': {
         'bg':            '#faf8f3',
