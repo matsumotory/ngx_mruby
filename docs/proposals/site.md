@@ -45,7 +45,7 @@ The site has three jobs:
 | people building LLM agent infrastructure | a gateway to put in front of Claude Code, Codex or a provider API | what Ruby decides and what nginx relays, the protocol scope, the measured cost per request, a reference proxy that runs |
 
 English is primary and Japanese is a translation (decision 9 in
-[v3-plan section 7](./v3-plan.md#7-decisions-made-by-the-owner-on-2026-10-03-and-2026-10-04)).
+[v3-plan section 7](./v3-plan.md#7-decisions-made-by-the-owner-on-2026-10-03-2026-10-04-and-2026-10-15)).
 Japanese readers exist (two of the three external articles in
 [docs/use_case](../use_case/README.md) are in Japanese), yet on `next` at
 ec227408d, before this proposal, no Markdown file outside the vendored trees

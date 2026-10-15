@@ -35,21 +35,23 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-15 (05:45 JST)
+## State as of 2026-10-15 (14:05 JST)
 
-Heads: `next` is the merge of #583, whose first parent is `acdc82f`
-(merge of #582, whose first parent is `dcd3103`, the merge of #580, which
-merged `master` at `0a1e8ac`), `master` is `0a1e8ac` (merge of #578), and
-`v2.x` mirrors `master` (`0a1e8ac`). `next` contains `master`.
+Heads: `next` is the merge of #584, whose first parent is `982a20e`
+(merge of #583, whose first parent is `acdc82f`, the merge of #582),
+`master` is `0a1e8ac` (merge of #578), and `v2.x` mirrors `master`
+(`0a1e8ac`). `next` contains `master`.
 
-Merged on 2026-10-15, into `next`: #583 (the proposal
-`docs/proposals/handler-code-frame.md` for #502, with the open question in
-section 7 of the plan, and one sentence in the `private` entry of the 3.0.0
-release notes and in the migration guide: a top-level `def` in handler code
-stays public) and #582 (the release notes for 3.0.0 of the pull
-requests merged before `docs/releases/v3.0.0.md` existed,
-`Set#flatten_merge`, the migration guide and `docs/releases/v3.0.0.ja.md`,
-`acdc82f`).
+Merged on 2026-10-15, into `next`: #584 (the regression test of #502,
+`test/t/cases/return_in_block.rb` on 18117, its entry in the 3.0.0 release
+notes and the migration guide, and the owner's decision on the frame of
+handler code as item 14 of section 7 of the plan), #583 (the proposal
+`docs/proposals/handler-code-frame.md` for #502, and one sentence in the
+`private` entry of the 3.0.0 release notes and in the migration guide: a
+top-level `def` in handler code stays public, `982a20e`) and #582 (the
+release notes for 3.0.0 of the pull requests merged before
+`docs/releases/v3.0.0.md` existed, `Set#flatten_merge`, the migration guide
+and `docs/releases/v3.0.0.ja.md`, `acdc82f`).
 Merged on 2026-10-14, into `next`: #572 (the fixed symbol names interned
 once, `bc2488a`), #571 (the site proposal `docs/proposals/site.md`,
 `570cdab`), #569 (this file, `e0dfdc6`), #561 (mruby 4.0.0, `0b76bfa`),
@@ -114,7 +116,7 @@ Taken up and still open:
 | #200 | `master` answers 500 since #566. `next`: 200 with `Content-Length: 0` for an empty body, in [#574](https://github.com/matsumotory/ngx_mruby/pull/574) (see "Open pull requests"; the plan accepts "empty 200 allowed" for v3, section 7, item 8). See [the status comment](https://github.com/matsumotory/ngx_mruby/issues/200#issuecomment-5977863245). |
 | #206 | #563 (`master`) |
 | #321 | Needs a design decision of the owner. Not scheduled. |
-| #502 | Reproduced on `master` (mruby 3.3.0, [the triage comment](https://github.com/matsumotory/ngx_mruby/issues/502#issuecomment-5977615799)). On `next` the two locations answer 302 since mruby 4.0.0 (#561), without a change of the frame. The measurement of the frames and the question for the owner are in [the proposal for the frame of handler code](proposals/handler-code-frame.md), an open question in section 7 of the plan; the steps after the answer are in the queue. |
+| #502 | Reproduced on `master` (mruby 3.3.0, [the triage comment](https://github.com/matsumotory/ngx_mruby/issues/502#issuecomment-5977615799)). On `next` the two locations answer 302 since mruby 4.0.0 (#561); #584 pins it with a test and records it in the 3.0.0 release notes. The owner decided on 2026-10-15 to keep the top-level frame (section 7, item 14, of the plan, after [the proposal for the frame of handler code](proposals/handler-code-frame.md)). What remains is the note in the docs of `master` (the queue); #502 is closed when it is merged. |
 
 ### The next 2.x release
 
@@ -133,7 +135,7 @@ notes in [docs/releases/](releases/) list what it contains.
 | `test.sh` waits a fixed `NGINX_HEATTIME` for nginx; wait until it listens on the test ports, as `wait_for_listen` in `test/t/cases/_second_instance.rb` does (a valgrind cell failed with `Errno::ECONNREFUSED` before nginx listened, [#564](https://github.com/matsumotory/ngx_mruby/pull/564#issuecomment-5977252444)), and update `docs/test/README.md` | `master` (reaches `next` by the merge) | Ready to start |
 | CI: also grep the `stderr.log` files for sanitizer reports. The `Check for sanitizer reports` step of `.github/workflows/test.yml` reads only `build/nginx/logs/error.log`; `stderr.log` there holds the test client's stderr, and under `build/nginx/second_instance/` the second nginx's. | `master` (reaches `next` by the merge) | Ready to start |
 | 200 with `Content-Length: 0` for an empty body (#200), as nginx's own `return 200;` does: [#574](https://github.com/matsumotory/ngx_mruby/pull/574) | `next` | #574 is a draft that waits for the next merge of `master` into `next` after the next 2.x release, then a full review round |
-| #502: done are the row of the v3 plan (an open question in section 7) and the measurement of what a method or lambda frame changes and costs, in [the proposal for the frame of handler code](proposals/handler-code-frame.md). What follows is in its section 5: after an answer of (a), the regression test of #502 on `next` and a note in the 2.x docs on `master`, then close #502 | `next` and `master` | The owner's answer to the question of section 4 of the proposal |
+| #502: a note in the docs of `master` on a `return` inside a block or a `for` body of handler code: in 2.x it raises `LocalJumpError`, which `error.log` records, and the handler answers 500, or 200 with the output that a content handler wrote before it; the two ways around it are a `return` at the top level of the code and the code in a method or a lambda; 3.0.0 accepts the `return` in a block ([the entry of 3.0.0](releases/v3.0.0.md#a-return-inside-a-block-or-a-for-body-of-handler-code-ends-the-code-561), section 7, item 14, of the plan). Then close #502, whose test and 3.0.0 entry came with #584 | `master` | The next 2.x release: `master` is held for it |
 | `README.md` (line 153) and `docs/README.md` (line 76), the abstract of the paper, say that the server process frees the global variables table between scripts. On `next` and `master`, globals, constants, instance variables of `main`, methods and classes persist in a worker from one request to the next, since `ngx_mrb_state_clean` clears only `mrb->exc` (section 1.4 of [the proposal for the frame of handler code](proposals/handler-code-frame.md), measured on both branches in the review of #583). To do: a docs pull request that keeps the abstract and says beside it what persists in a worker today | `master` (reaches `next` by the merge) | Ready to start |
 | A rewrite handler that ends without `Nginx.return` (for example `mruby_rewrite_handler_code 'x = 1'` before a content handler, or before nginx's `return 200`) sends no response, and `error.log` has no line at the `error` level: with keep-alive the connection stays open until `keepalive_timeout`, with `Connection: close` it is closed with nothing sent. `ngx_mrb_finalize_rputs` (`src/http/ngx_http_mruby_core.c:179`) returns `NGX_OK` when nothing was sent and no status was set, and the rewrite phase of nginx 1.31.6 finalizes the request on `NGX_OK` (`ngx_http_core_rewrite_phase`), where the access phase goes on to the next handler. Found and measured on `next` and `master` while #583 was written and reviewed; no issue tracks it. To do: for v3, a test commit and a fix under the Pillar B row "Redesign response finalization per phase" of the plan; for 2.x, the owner decides between documenting it and a fix | `next`; `master` after the owner's decision | v3: ready to start; 2.x: the owner |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |

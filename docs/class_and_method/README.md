@@ -192,8 +192,12 @@ handler that writes nothing there and sets no status or another status below
 answers.
 
 Don't confuse `Nginx.return` method with mruby's `return` statement.
-ngx_mruby v2 supports `return` statement in handler code as below.
-It just returns from the handler.
+ngx_mruby supports `return` statement in handler code as below.
+It just returns from the handler. Since 3.0.0 this holds also for a `return`
+inside a block or the body of `for` at the top level of the code. With 2.x,
+such a `return` raises `LocalJumpError`, which `error.log` records, and the
+handler answers 500, or 200 with the output that a content handler wrote
+before it (see [the release notes of 3.0.0](../releases/v3.0.0.md#a-return-inside-a-block-or-a-for-body-of-handler-code-ends-the-code-561)).
 
 ```nginx
 location /foo {

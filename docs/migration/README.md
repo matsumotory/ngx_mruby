@@ -227,6 +227,13 @@ not enough, and show the change.
 - [`yield` with keyword arguments to a block with keyword parameters works](../releases/v3.0.0.md#yield-with-keyword-arguments-to-a-block-with-keyword-parameters-works-561):
   nothing to change; a `rescue ArgumentError` that was there for this case
   is no longer reached.
+- [A `return` inside a block or a `for` body of handler code ends the code](../releases/v3.0.0.md#a-return-inside-a-block-or-a-for-body-of-handler-code-ends-the-code-561):
+  nothing to change in the scripts. A `return` inside a block or the body
+  of `for` at the top level of handler code no longer raises
+  `LocalJumpError`: the handler answers with the response that its code set
+  before the `return`, where 2.x answered 500, or 200 with the output that a
+  content handler had written before it. Log alerts on
+  `unexpected return (LocalJumpError)` no longer fire for it.
 - [`Dir` comes from mruby's core gem, and a closed `Dir` raises `IOError` instead of `RuntimeError`](../releases/v3.0.0.md#dir-comes-from-mrubys-core-gem-and-a-closed-dir-raises-ioerror-instead-of-runtimeerror-559):
   the search above finds `RuntimeError`; look at the ones that rescue an
   exception of a `Dir` that can be closed, or of `Dir.open` with a block

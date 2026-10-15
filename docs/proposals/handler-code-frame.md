@@ -1,12 +1,17 @@
 # Proposal: the frame in which handler code runs (#502)
 
-Status: proposed, 2026-10-15. Nothing in it is decided. Written from `next`
+Status: decided, 2026-10-15. The owner chose option (a) of section 4: keep
+the top-level frame, with the regression test and the docs. The steps of
+section 5 for (a) are under way: the test and the release notes entry in
+#584, and the note in the docs of `master` in a later pull request (section
+7, item 14, of the v3 plan). Written from `next`
 at acdc82fb1 (mruby 4.0.0, nginx 1.31.6), `master` at 0a1e8acb3 (mruby
 3.3.0) for comparison, [the triage comment on
 #502](https://github.com/matsumotory/ngx_mruby/issues/502#issuecomment-5977615799)
 (2026-10-04), and measurements made on 2026-10-15 in the container image
 `ngx-mruby-dev:22.04` (Ubuntu 22.04, gcc 11.4.0, valgrind 3.18.1) on
-aarch64. Section 4 says what the owner decides, with a recommendation.
+aarch64. Section 4 holds the question that the owner answered, with the
+recommendation.
 
 ## 1. The problem
 
@@ -529,8 +534,9 @@ lambda frame (c1 or c2)?
 
 ## 5. Status and steps
 
-- This proposal changes only docs. Section 7 of the v3 plan lists its
-  question, and `docs/HANDOFF.md` lists the steps below.
+- This proposal changes only docs. Section 7 of the v3 plan records the
+  owner's decision (item 14), and `docs/HANDOFF.md` lists the step that
+  remains.
 - After an answer of (a):
   1. A pull request to `next`: a fragment and a case file with the two
      locations of #502 and the assertions of a2ikm/ngx_mruby#2, and the

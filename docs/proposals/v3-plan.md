@@ -16,9 +16,9 @@ them; and the related lines of sections 1, 3.5, 8 and 9. The agent proxy
 rows of step 4, the parallel start of step 7 and the order inside it, the
 release conditions that steps 7 and 8 add for `v3.0.0-rc.1` and v3.0.0,
 and the targets in section 8 are proposals of that amendment, not
-decisions. On 2026-10-15 a second open question, on the frame in which
-handler code runs (#502), was added after the first one in section 7; it is
-a proposal, not a decision. Facts cite a file and line or a URL with its
+decisions. On 2026-10-15 the owner decided the frame in which handler code
+runs (#502, section 7, item 14), which had been an open question of section
+7 since earlier that day. Facts cite a file and line or a URL with its
 date. Statements marked "unverified" come from reading code only and still
 need a build and a test.
 
@@ -656,11 +656,11 @@ demand from users.
    Proposed in the 2026-10-04 amendment, not a decision: the reference
    agent proxy is among those examples (on parts (a) to (c) of step 7).
 
-## 7. Decisions (made by the owner on 2026-10-03 and 2026-10-04)
+## 7. Decisions (made by the owner on 2026-10-03, 2026-10-04 and 2026-10-15)
 
-The owner accepted recommendations 1 to 11 below on 2026-10-03 and decided
-items 12 and 13 on 2026-10-04. The list is kept as the record of what was
-decided and why.
+The owner accepted recommendations 1 to 11 below on 2026-10-03, decided
+items 12 and 13 on 2026-10-04 and item 14 on 2026-10-15. The list is kept as
+the record of what was decided and why.
 
 1. mruby target for v3: **4.1.0** (rc2 or a post-#7032 commit until
    released), not 4.0.0, because 4.1 fixes GC registration counting that the
@@ -712,6 +712,22 @@ decided and why.
     Pass-through keeps ngx_mruby's part to decisions on requests and events,
     and leaves the semantics of the APIs to their providers.
 
+14. Frame of handler code (#502), decided on 2026-10-15: **keep the
+    top-level frame**. Handler code keeps running as the top-level code of
+    its fiber, with `self` as `main`. A `return` inside a block or a `for`
+    body of handler code ends the code since mruby 4.0.0 (#561), so no
+    change of the frame is needed for #502. A method frame would make
+    `nginx -t` refuse handler code that assigns a constant or defines a
+    class, and a lambda frame would either change nothing that a script can
+    observe or add a frame, a backtrace line and 1,075 to 1,941 instructions
+    to every run of handler code; none of them would change what handler
+    code shares between requests
+    ([the proposal for the frame of handler code](handler-code-frame.md)).
+    With the decision: on `next`, a regression test and the entry in the
+    release notes of 3.0.0 (#584); on `master`, a note in the docs on how to
+    write such a handler in 2.x, in a later pull request, since `master` is
+    held for the next 2.x release. #502 is closed when both are merged.
+
 One question that the 2026-10-04 amendment raises is open. It is not part of
 item 13 or of any decision above. Should a later release add a mode in which
 Ruby rewrites or drops events of a stream, or changes the request body?
@@ -721,22 +737,6 @@ not cover, since the guide asks for every event and every body field
 unchanged, and only after the perf and soak scenarios of the event filter
 have measured its cost per Ruby call: one Ruby call costs about 8 times what
 nginx spends to relay one more event (section 4).
-
-A second question, from #502 (Pillar B), is open and waits for the owner. It
-is not part of any decision above. Should v3 keep running handler code in the
-top-level frame, or run it in a method frame or a lambda frame? On `next`,
-a `return` inside a block or a `for` body of handler code already ends the
-handler, since mruby 4.0.0 (#561); on `master` (mruby 3.3.0) it raises the
-`LocalJumpError` that #502 reports. Recommendation: keep the top-level frame,
-add the regression test of #502 to `next`, and document the 2.x workaround
-on `master`. A method frame makes `nginx -t` refuse handler code that assigns
-a constant or defines a class, and adds up to 1.75% of instructions per
-request in the perf lane. A lambda frame either changes nothing that a script
-can observe (the compiled proc marked as a lambda) or adds a frame, a
-backtrace line and 1,075 to 1,941 instructions to every run of handler code
-(a wrapper lambda). None of them changes what handler code shares between
-requests. The measurements, the options and the question are in
-[the proposal for the frame of handler code](handler-code-frame.md).
 
 ## 8. Verification before implementation
 
