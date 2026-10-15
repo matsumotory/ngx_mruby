@@ -16,6 +16,8 @@ FOUND_PAGE_TITLE = '<title>302 Found</title>'
   'block' => 'a return in a block',
   'for' => 'a return in the body of for',
   'file' => 'a return in a block of a handler file',
+  # the control: a `return` at the top level of the code, outside a block,
+  # which answered 302 on 2.x as well
   'top' => 'a return at the top level',
 }.each do |name, what|
   t.assert('ngx_mruby - return in handler code', "#{what} of a rewrite handler ends the code with the 302 it set") do

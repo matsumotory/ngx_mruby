@@ -656,7 +656,7 @@ demand from users.
    Proposed in the 2026-10-04 amendment, not a decision: the reference
    agent proxy is among those examples (on parts (a) to (c) of step 7).
 
-## 7. Decisions (made by the owner on 2026-10-03 and 2026-10-04)
+## 7. Decisions (made by the owner on 2026-10-03, 2026-10-04 and 2026-10-15)
 
 The owner accepted recommendations 1 to 11 below on 2026-10-03, decided
 items 12 and 13 on 2026-10-04 and item 14 on 2026-10-15. The list is kept as

@@ -229,9 +229,11 @@ not enough, and show the change.
   is no longer reached.
 - [A `return` inside a block or a `for` body of handler code ends the code](../releases/v3.0.0.md#a-return-inside-a-block-or-a-for-body-of-handler-code-ends-the-code-561):
   nothing to change in the scripts. A `return` inside a block or the body
-  of `for` at the top level of handler code no longer answers 500: the
-  handler answers with the response that its code set before the `return`.
-  Log alerts on `unexpected return (LocalJumpError)` no longer fire for it.
+  of `for` at the top level of handler code no longer raises
+  `LocalJumpError`: the handler answers with the response that its code set
+  before the `return`, where 2.x answered 500, or 200 with the output that a
+  content handler had written before it. Log alerts on
+  `unexpected return (LocalJumpError)` no longer fire for it.
 - [`Dir` comes from mruby's core gem, and a closed `Dir` raises `IOError` instead of `RuntimeError`](../releases/v3.0.0.md#dir-comes-from-mrubys-core-gem-and-a-closed-dir-raises-ioerror-instead-of-runtimeerror-559):
   the search above finds `RuntimeError`; look at the ones that rescue an
   exception of a `Dir` that can be closed, or of `Dir.open` with a block
