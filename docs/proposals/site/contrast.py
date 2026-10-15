@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""Check the color tokens proposed in docs/proposals/site.md, section 4.4.
+"""Check the color tokens proposed in docs/proposals/site.md, section 4.6.
 
-The tokens below are the OKLCH source values of the proposal. For each theme
+The tokens below are the OKLCH source values of palette A of the proposal:
+neutrals at the hue of the logo teal. Palette B keeps the neutrals that the
+owner's profile site publishes (INHERITED_NEUTRALS, hex values) and takes the
+two accent tokens of palette A; the script checks the same pairs for it,
+without the hue and chroma rules, which apply to source values. For each theme
 the script converts every token to sRGB (clipped to the gamut and rounded to
 8-bit hex, which is what a browser draws), computes the WCAG 2.2 contrast
 ratio of every pair that a role needs, and compares the unrounded ratio with
@@ -22,7 +26,7 @@ value. A chroma computed back from the rounded hex can be slightly higher.
 
 Usage:
   python3 contrast.py              check, print every pair, exit 1 on a failure
-  python3 contrast.py --markdown   also print the rows of the table in 4.4
+  python3 contrast.py --markdown   also print the rows of the tables in 4.6
 
 Step 2 of the proposal moves this check into site/scripts/ and makes it read
 the values from site/src/styles/tokens.css, together with the code
@@ -89,6 +93,29 @@ PAIRS = [
     ('border', 'surface', 0.0, 'decorative separator, no threshold'),
 ]
 
+# Palette B: the neutrals of the owner's profile site, read from its
+# published stylesheet on 2026-10-15 (--color-bg-primary, --color-bg-tertiary,
+# --color-text-primary, --color-text-muted, --color-border-strong,
+# --color-border), with the accent and accent-text tokens of palette A.
+INHERITED_NEUTRALS = {
+    'light': {
+        'bg':            '#faf8f3',
+        'surface':       '#f3f0e8',
+        'text':          '#232017',
+        'text-muted':    '#5f5949',
+        'border-strong': '#8a8271',
+        'border':        '#e7e3d8',
+    },
+    'dark': {
+        'bg':            '#14120d',
+        'surface':       '#211e15',
+        'text':          '#ece7db',
+        'text-muted':    '#9a937f',
+        'border-strong': '#7d7458',
+        'border':        '#2b2719',
+    },
+}
+
 # Code highlighting colors, added in step 2: name -> {theme: (L, C, H)}.
 # Each must reach 4.5:1 on surface in both themes.
 CODE_COLORS = {}
@@ -148,6 +175,19 @@ def trunc(x):
     return '%.2f' % (math.floor(x * 100 + 1e-9) / 100)
 
 
+def check_pairs(label, hexmap, failures):
+    """Print every pair of PAIRS for one theme and record the failures."""
+    for fg, bg, threshold, why in PAIRS:
+        r = ratio(hexmap[fg], hexmap[bg])
+        ok = r >= threshold
+        print('  %-4s %-13s on %-8s %s:1 (needs %s) %s'
+              % ('ok' if ok else 'FAIL', fg, bg, trunc(r),
+                 threshold if threshold else 'none', why))
+        if not ok:
+            failures.append('%s %s on %s: %.6f:1, needs %s:1'
+                            % (label, fg, bg, r, threshold))
+
+
 def main():
     markdown = '--markdown' in sys.argv[1:]
     failures = []
@@ -168,21 +208,21 @@ def main():
             if H != t['bg'][2]:
                 failures.append('%s %s: hue %s differs from bg hue %s'
                                 % (theme, name, H, t['bg'][2]))
-        for fg, bg, threshold, why in PAIRS:
-            r = ratio(hexes[theme][fg], hexes[theme][bg])
-            ok = r >= threshold
-            print('  %-4s %-13s on %-8s %s:1 (needs %s) %s'
-                  % ('ok' if ok else 'FAIL', fg, bg, trunc(r),
-                     threshold if threshold else 'none', why))
-            if not ok:
-                failures.append('%s %s on %s: %.6f:1, needs %s:1'
-                                % (theme, fg, bg, r, threshold))
+        check_pairs(theme, hexes[theme], failures)
         for name, values in CODE_COLORS.items():
             r = ratio(oklch_to_hex(*values[theme]), hexes[theme]['surface'])
             print('  %-4s code %-8s on surface %s:1 (needs 4.5)'
                   % ('ok' if r >= 4.5 else 'FAIL', name, trunc(r)))
             if r < 4.5:
                 failures.append('%s code %s on surface: %.6f:1' % (theme, name, r))
+
+    palette_b = {theme: dict(INHERITED_NEUTRALS[theme],
+                             **{'accent-text': hexes[theme]['accent-text'],
+                                'accent': hexes[theme]['accent']})
+                 for theme in TOKENS}
+    for theme in TOKENS:
+        print('== %s, palette B' % theme)
+        check_pairs('%s palette B' % theme, palette_b[theme], failures)
 
     light = hexes['light']
     print('== information')
@@ -191,7 +231,7 @@ def main():
              trunc(ratio(LOGO_TEAL, hexes['dark']['bg']))))
 
     if markdown:
-        print('== rows of the table in 4.4')
+        print('== rows of the table of palette A in 4.6')
         for name in TOKENS['light']:
             cells = ['`%s`' % name, ROLES[name]]
             for theme in ('light', 'dark'):
@@ -203,6 +243,18 @@ def main():
                 else:
                     cells.append('%s / %s' % (trunc(ratio(h, hexes[theme]['bg'])),
                                               trunc(ratio(h, hexes[theme]['surface']))))
+            print('| ' + ' | '.join(cells) + ' |')
+        print('== rows of the table of palette B in 4.6')
+        for name in TOKENS['light']:
+            cells = ['`%s`' % name]
+            for theme in ('light', 'dark'):
+                h = palette_b[theme][name]
+                cells.append('`%s`' % h)
+                if name in ('bg', 'surface'):
+                    cells.append('')
+                else:
+                    cells.append('%s / %s' % (trunc(ratio(h, palette_b[theme]['bg'])),
+                                              trunc(ratio(h, palette_b[theme]['surface']))))
             print('| ' + ' | '.join(cells) + ' |')
 
     if failures:

@@ -35,14 +35,19 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-15 (14:05 JST)
+## State as of 2026-10-15 (15:15 JST)
 
-Heads: `next` is the merge of #584, whose first parent is `982a20e`
-(merge of #583, whose first parent is `acdc82f`, the merge of #582),
+Heads: `next` is the merge of #PRNUM, whose first parent is `73fc909`
+(merge of #584, whose first parent is `982a20e`, the merge of #583),
 `master` is `0a1e8ac` (merge of #578), and `v2.x` mirrors `master`
 (`0a1e8ac`). `next` contains `master`.
 
-Merged on 2026-10-15, into `next`: #584 (the regression test of #502,
+Merged on 2026-10-15, into `next`: #PRNUM (the owner's decisions of
+2026-10-15 on the site proposal: section 7 of `docs/proposals/site.md`
+records them, section 4 derives the design from three of the owner's sites,
+3.5 plans the diagrams and samples, section 6 says what each step produces
+and what the owner reviews, and `contrast.py` checks a second palette), #584
+(the regression test of #502,
 `test/t/cases/return_in_block.rb` on 18117, its entry in the 3.0.0 release
 notes and the migration guide, and the owner's decision on the frame of
 handler code as item 14 of section 7 of the plan), #583 (the proposal
@@ -139,7 +144,7 @@ notes in [docs/releases/](releases/) list what it contains.
 | `README.md` (line 153) and `docs/README.md` (line 76), the abstract of the paper, say that the server process frees the global variables table between scripts. On `next` and `master`, globals, constants, instance variables of `main`, methods and classes persist in a worker from one request to the next, since `ngx_mrb_state_clean` clears only `mrb->exc` (section 1.4 of [the proposal for the frame of handler code](proposals/handler-code-frame.md), measured on both branches in the review of #583). To do: a docs pull request that keeps the abstract and says beside it what persists in a worker today | `master` (reaches `next` by the merge) | Ready to start |
 | A rewrite handler that ends without `Nginx.return` (for example `mruby_rewrite_handler_code 'x = 1'` before a content handler, or before nginx's `return 200`) sends no response, and `error.log` has no line at the `error` level: with keep-alive the connection stays open until `keepalive_timeout`, with `Connection: close` it is closed with nothing sent. `ngx_mrb_finalize_rputs` (`src/http/ngx_http_mruby_core.c:179`) returns `NGX_OK` when nothing was sent and no status was set, and the rewrite phase of nginx 1.31.6 finalizes the request on `NGX_OK` (`ngx_http_core_rewrite_phase`), where the access phase goes on to the next handler. Found and measured on `next` and `master` while #583 was written and reviewed; no issue tracks it. To do: for v3, a test commit and a fix under the Pillar B row "Redesign response finalization per phase" of the plan; for 2.x, the owner decides between documenting it and a fix | `next`; `master` after the owner's decision | v3: ready to start; 2.x: the owner |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
-| Site: the implementation, in the steps of [section 6 of the proposal](proposals/site.md#6-implementation-plan) | `next` (`site/`, as Q1 proposes); steps 6 and 7 also change `master` | The owner's answers to [the open questions](proposals/site.md#7-open-questions); each step names the ones it needs |
+| Site: the implementation, in the steps of [section 6 of the proposal](proposals/site.md#6-implementation-plan), starting with step 1 (Starlight in `site/`) and step 2 (the tokens of section 4 and the specimens of 4.12, which the owner reviews) | `next` (`site/`, as decided with Q1); steps 6 and 7 also change `master` | Nothing: the owner decided the questions on 2026-10-15 ([section 7 of the proposal](proposals/site.md#7-decisions-2026-10-15)). The last column of section 6 lists what the owner reviews in each step |
 | Before the switch of ngx.mruby.org (step 7 of the site proposal), the owner has an item to do in the Pages settings for the custom domain | Repository settings | The owner |
 | The implementation of [the proposal for the method lookup of `Nginx::Var` accessors](proposals/nginx-var-method-lookup.md) (#577): candidates (a) and (d), accessors defined on `Nginx::Var` at the first miss with the rule (a2), and ngx_mruby's own methods that read variables in C, with the tests, docs, release notes entries and the three comparisons of its section 3 | `next` | The owner's answer to the question of section 4 of the proposal (#561 merged as `0b76bfa6d`) |
 | mruby 4.1.0 | `next` | The 4.1.0 tag |
