@@ -1,6 +1,10 @@
 # Proposal: the frame in which handler code runs (#502)
 
-Status: proposed, 2026-10-15. Nothing in it is decided. Written from `next`
+Status: decided, 2026-10-15. The owner chose option (a) of section 4: keep
+the top-level frame, with the regression test and the docs. The steps of
+section 5 for (a) are under way: the test and the release notes entry in
+#584, and the note in the docs of `master` in a later pull request (section
+7, item 14, of the v3 plan). Written from `next`
 at acdc82fb1 (mruby 4.0.0, nginx 1.31.6), `master` at 0a1e8acb3 (mruby
 3.3.0) for comparison, [the triage comment on
 #502](https://github.com/matsumotory/ngx_mruby/issues/502#issuecomment-5977615799)
