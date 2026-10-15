@@ -37,12 +37,12 @@ that are not written down elsewhere yet, the work in progress and the queue.
 
 ## State as of 2026-10-15 (15:15 JST)
 
-Heads: `next` is the merge of #PRNUM, whose first parent is `73fc909`
+Heads: `next` is the merge of #585, whose first parent is `73fc909`
 (merge of #584, whose first parent is `982a20e`, the merge of #583),
 `master` is `0a1e8ac` (merge of #578), and `v2.x` mirrors `master`
 (`0a1e8ac`). `next` contains `master`.
 
-Merged on 2026-10-15, into `next`: #PRNUM (the owner's decisions of
+Merged on 2026-10-15, into `next`: #585 (the owner's decisions of
 2026-10-15 on the site proposal: section 7 of `docs/proposals/site.md`
 records them, section 4 derives the design from three of the owner's sites,
 3.5 plans the diagrams and samples, section 6 says what each step produces
