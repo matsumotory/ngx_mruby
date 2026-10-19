@@ -70,9 +70,22 @@ ROLES = {
     'text': 'body text',
     'text-muted': 'captions, code comments',
     'accent-text': 'links',
-    'accent': 'focus ring, current navigation item, primary button',
-    'border-strong': 'outlines of inputs and controls',
-    'border': 'separators, decorative',
+    'accent': 'focus ring, current navigation item, primary button, marks',
+    'border-strong': 'outlines of inputs and controls, lines of diagrams',
+    'border': 'separators, outlines of round buttons, decorative',
+}
+
+# The custom property of each token in tokens.css: the names of the token
+# files of the owner's corporate and profile sites (section 4.2).
+CUSTOM_PROPERTY = {
+    'bg': '--color-bg-primary',
+    'surface': '--color-bg-tertiary',
+    'text': '--color-text-primary',
+    'text-muted': '--color-text-muted',
+    'accent-text': '--color-accent-text',
+    'accent': '--color-accent',
+    'border-strong': '--color-border-strong',
+    'border': '--color-border',
 }
 
 # (foreground, background, threshold, why). Contrast is symmetric, so one
@@ -245,6 +258,7 @@ def main():
                 else:
                     cells.append('%s / %s' % (trunc(ratio(h, hexes[theme]['bg'])),
                                               trunc(ratio(h, hexes[theme]['surface']))))
+            cells.append('`%s`' % CUSTOM_PROPERTY[name])
             print('| ' + ' | '.join(cells) + ' |')
         print('== rows of the table of palette B in 4.6')
         for name in TOKENS['light']:

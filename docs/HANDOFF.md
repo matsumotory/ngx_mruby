@@ -35,18 +35,25 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-15 (15:15 JST)
+## State as of 2026-10-19 (14:50 JST)
 
 Heads: `next` is the merge of #585, whose first parent is `73fc909`
-(merge of #584, whose first parent is `982a20e`, the merge of #583),
-`master` is `0a1e8ac` (merge of #578), and `v2.x` mirrors `master`
-(`0a1e8ac`). `next` contains `master`.
+(merge of #584, whose first parent is `982a20e`, the merge of #583).
+`master` is `edc85f0` (merge of #581), whose first parent is `ce5eb11`, the
+merge of the 2.7.1 changes, tagged `v2.7.1`; `v2.x` mirrors `master`
+(`edc85f0`). `next` does not contain `master` since `ce5eb11`: the next
+merge of `master` into `next` (the queue) brings the 2.7.1 changes and
+#581.
 
-Merged on 2026-10-15, into `next`: #585 (the owner's decisions of
+Merged on or after 2026-10-19, into `next`: #585 (the owner's decisions of
 2026-10-15 on the site proposal: section 7 of `docs/proposals/site.md`
-records them, section 4 derives the design from three of the owner's sites,
-3.5 plans the diagrams and samples, section 6 says what each step produces
-and what the owner reviews, and `contrast.py` checks a second palette), #584
+records them, section 4 derives the design from the source of three of the
+owner's sites, 3.5 plans the diagrams and samples, section 6 says what each
+step produces and what the owner reviews, and `contrast.py` checks a second
+palette). Merged on 2026-10-19, into `master`: the 2.7.1 changes (`ce5eb11`,
+tagged `v2.7.1`, with `docs/releases/v2.7.1.md`) and #581 (`edc85f0`).
+#563 was closed on 2026-10-19: its change is part of 2.7.1 (its last
+comment). Merged on 2026-10-15, into `next`: #584
 (the regression test of #502,
 `test/t/cases/return_in_block.rb` on 18117, its entry in the 3.0.0 release
 notes and the migration guide, and the owner's decision on the frame of
@@ -75,9 +82,9 @@ Open pull requests, all drafts:
 
 | PR | Base | Change | Stage |
 |---|---|---|---|
-| [#563](https://github.com/matsumotory/ngx_mruby/pull/563) | `master` | Stop the recursion between a content handler and a header filter in the same location (#206) | Three review rounds; the re-review of `67fbed1` leaves no "must fix". It conflicts with `master` at `0a1e8ac` (AGENTS.md and `docs/releases/v2.7.1.md`). CI passed. Its author holds the merge. Since #575, adding its entry to `docs/releases/v2.7.1.md` also means creating `docs/releases/v2.7.1.ja.md`, unless another pull request has created it first ("Who writes the entries, and when" in `docs/releases/README.md`). |
 | [#574](https://github.com/matsumotory/ngx_mruby/pull/574) | `next` | Answer 200 with `Content-Length: 0` when a content handler sends no body (#200) | A draft that waits for the next merge of `master` into `next` after the next 2.x release, then a full review round. It conflicts with `next` (it also creates `docs/releases/v3.0.0.md`, which #561 created); its entries go into that file and, since #582, into `docs/releases/v3.0.0.ja.md` too. |
-| [#581](https://github.com/matsumotory/ngx_mruby/pull/581) | `master` | Run the `nginx -s quit` of `test/t/ngx_mruby.rb` with `detect_leaks=0`, as `nginx_t` runs `nginx -t` | One review round; the author's changes are at `eef5fd9`, where CI passed. Its author holds the merge. It comes before the queue row that greps the `stderr.log` files for sanitizer reports. |
+| [#586](https://github.com/matsumotory/ngx_mruby/pull/586) | `master` | Document the 2.x behavior of a `return` inside a block in handler code (#502) | A draft; its comments give the stage. It is the change of the queue row on #502. |
+| [#587](https://github.com/matsumotory/ngx_mruby/pull/587) | `master` | Release notes for 2.7.1 | A draft; its comments give the stage. |
 
 ## Decisions
 
