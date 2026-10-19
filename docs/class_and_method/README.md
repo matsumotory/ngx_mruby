@@ -92,7 +92,7 @@ stays. The differences:
   `Dir#each_child` leave out `.` and `..`, as in CRuby. (With mruby 3.3.0
   they were aliases of `Dir.entries` and `Dir#each` and included them.)
 
-The `Redis` class was left out of the default build in 2.7.1 and is in it again since 2.7.2 (see entry 3 of [the 2.7.2 release notes](../releases/v2.7.2.md)).
+The `Redis` class was left out of the default build in 2.7.1 and is in it again since 2.7.2 (see "Redis is in the default build again" in [the 2.7.2 release notes](../releases/v2.7.2.md)).
 
 You can also use the classes of the mruby core gems that `NGX_MRUBY_CORE_GEMS` in
 [build_config.rb](../../build_config.rb) lists (the gems in [mruby/mrbgems](../../mruby/mrbgems)
