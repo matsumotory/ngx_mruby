@@ -76,6 +76,9 @@ jobs:
           fi
 
       - name: Report the heads
+        env:
+          # gh api reads the name, default branch and archived flag of each gem.
+          GH_TOKEN: ${{ github.token }}
         run: bash test/gem_heads.sh build_config.rb previous/gem-heads.tsv gem-heads.tsv "${GITHUB_STEP_SUMMARY}"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
