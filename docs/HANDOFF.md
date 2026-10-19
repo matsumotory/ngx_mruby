@@ -35,21 +35,25 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-19 (16:45 JST)
+## State as of 2026-10-19 (17:04 JST)
 
-Heads: `next` is the merge of #590, whose first parent is `75bfa6f`
-(merge of #585). #590 merges `master` at `03aad70` into `next`, so `next`
-contains every change of `master` except #589, which the next merge of
-`master` into `next` brings (see "Queue"). `master` is `36f4c82` (merge of
-#589); `v2.x` mirrors `master` (`36f4c82`).
+Heads: `next` is the merge of #595, whose first parent is the merge of
+#590, whose first parent is `75bfa6f` (merge of #585). #590 merges
+`master` at `03aad70` into `next`, and #595 merges `master` at `36f4c82`,
+so `next` contains every change of `master`. `master` is `36f4c82` (merge
+of #589); `v2.x` mirrors `master` (`36f4c82`).
 
 2.7.1 was released on 2026-10-19: the tag `v2.7.1` is on `ce5eb11`, the
 merge of the 2.7.1 changes into `master`. Its release notes are
 `docs/releases/v2.7.1.md` and `docs/releases/v2.7.1.ja.md`. The next 2.x
 release is 2.7.2; its release notes `docs/releases/v2.7.2.md` and
-`docs/releases/v2.7.2.ja.md` are on `master` since #589.
+`docs/releases/v2.7.2.ja.md` are on `master` since #589, and on `next`
+since #595.
 
-Merged on 2026-10-19, into `next`: #590 (`master` into `next` in two merge
+Merged on 2026-10-19, into `next`: #595 (`master` at `36f4c82` into `next`,
+with #589; its description lists the conflicts in
+`src/http/ngx_http_mruby_var.c` and `AGENTS.md` and how they were
+resolved), #590 (`master` into `next` in two merge
 commits: `master` at `4091cbd`, with the 2.7.1 changes, #581, #586 and
 #587, and then `master` at `03aad70`, with #588; its description lists the
 conflicts and how they were resolved, and it makes the texts of #584 and
@@ -158,7 +162,7 @@ Taken up and still open:
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
-| Merge `master` into `next` after each merge into `master`. Model: #573. The next merge brings #589 (`master` at `36f4c82`). Its change of `src/http/ngx_http_mruby_var.c` conflicts with next's changes for mruby 4.0.0 (#561), and `AGENTS.md` conflicts as well, so that merge resolves them and quotes the ASan+UBSan and valgrind runs and the `perf` job, in a pull request of its own | `next` | #590 (`master` at `03aad70` into `next`): start right after it is merged |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The next merge into `master` after #595, which merged `master` at `36f4c82` into `next` |
 | The case that #566 leaves without a response: output, then a status below 300 other than 200, 201 and 204 ([the re-review of #566](https://github.com/matsumotory/ngx_mruby/pull/566#issuecomment-5977670159), should fix 5) | `master` | Ready to start: a test commit, then a fix commit |
 | Restore `mruby-redis` in the default build with `hiredis` pinned to a release tag (plan section 5 and section 7, item 5; [the re-review of #569](https://github.com/matsumotory/ngx_mruby/pull/569#issuecomment-5977574834), should fix 6). The pin is [matsumotory/mruby-redis#108](https://github.com/matsumotory/mruby-redis/pull/108) (hiredis v1.5.0), a draft under review. After its merge: a pull request to `master` that enables the gem in `build_config.rb` for 2.7.2, and a pull request to `next` that pins the gem in `build_config.rb.lock` to the merge commit on the gem's `master` (AGENTS.md "Other repositories"; the line in `build_config.rb` reaches `next` with the merge of `master`, and the lock has no entry for the gem today) | `master`, then `next` | The merge of matsumotory/mruby-redis#108 |
 | Port the perf lane (`test/perf`, `test/build_release.sh`, the `perf` job) to `master`, without `Nginx::Debug` (what it needs: [the review of #569](https://github.com/matsumotory/ngx_mruby/pull/569#issuecomment-5977395918), should fix 5). Until then AGENTS.md "Design principles" measures `master` changes with the lane of `next`. | `master` | Ready to start: tests and CI only (`test/perf`, `test/build_release.sh`, the `perf` job), without `Nginx::Debug`, as the owner decided on 2026-10-19 (see "Decisions") |
@@ -170,7 +174,7 @@ Taken up and still open:
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
 | Site: the implementation, in the steps of [section 6 of the proposal](proposals/site.md#6-implementation-plan). Step 1 (Starlight in `site/`) is in progress in [#591](https://github.com/matsumotory/ngx_mruby/pull/591) (see "Open pull requests"); step 2 (the tokens of section 4 and the specimens of 4.12, which the owner reviews) and the later steps follow | `next` (`site/`, as decided with Q1); steps 6 and 7 also change `master` | Step 1: #591. The later steps: nothing; the owner decided the questions on 2026-10-15 ([section 7 of the proposal](proposals/site.md#7-decisions-2026-10-15)). The last column of section 6 lists what the owner reviews in each step |
 | Before the switch of ngx.mruby.org (step 7 of the site proposal), the owner has an item to do in the Pages settings for the custom domain | Repository settings | The owner |
-| The implementation of [the proposal for the method lookup of `Nginx::Var` accessors](proposals/nginx-var-method-lookup.md) (#577): candidates (a) and (d), accessors defined on `Nginx::Var` at the first miss with the rule (a2), and ngx_mruby's own methods that read variables in C, with the tests, docs, release notes entries and the three comparisons of its section 3 | `next` | The owner's answer to the question of section 4 of the proposal (#561 merged as `0b76bfa6d`) |
+| The implementation of [the proposal for the method lookup of `Nginx::Var` accessors](proposals/nginx-var-method-lookup.md) (#577): candidates (a) and (d), accessors defined on `Nginx::Var` at the first miss with the rule (a2), and ngx_mruby's own methods that read variables in C, with the tests, docs, release notes entries and the three comparisons of its section 3 | `next` | The owner's answer to the question of section 4 of the proposal (#561 merged as `0b76bfa6d`; the `Nginx::Var` fix of `master`, #589, is on `next` since #595) |
 | mruby 4.1.0 | `next` | The 4.1.0 tag |
 
 ## How a session continues
