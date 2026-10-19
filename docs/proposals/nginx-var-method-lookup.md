@@ -1,15 +1,20 @@
 # Proposal: the method lookup of `Nginx::Var` accessors on mruby 4
 
-Status: proposed, 2026-10-14. Nothing in it is decided. #561 (the bundled
-mruby 4.0.0) merged into `next` on 2026-10-14 as 0b76bfa6d; the work starts
-when the owner has answered the question of section 4. Written from `next`
-at e0dfdc658 (mruby 3.3.0), #561 at a33f939a9 (mruby 4.0.0; `mruby/` and
-the build inputs are those of #561's head, 872f3be2b on 2026-10-14, whose
-two later commits change only files under `docs/`), the mruby tag
-`4.1.0-rc2` (commit c17ffcc24; its files read with the GitHub API on
-2026-10-14), nginx 1.31.6 (the version in `nginx_version`), and the
-callgrind comparison of 2026-10-14 in the body of #561. Section 4 says what
-the owner decides, with a recommendation.
+Status: decided. The owner answered the question of section 4 on
+2026-10-15, in a session's question: the change of (a) to introspection is
+accepted as a behavior change of 3.0.0. On 2026-10-19 the owner confirmed
+the content in a session's question, with the option
+"その内容で合っている (推奨)" ("that content is right"): (a) with the rule
+(a2), accessors defined on `Nginx::Var` at the first miss; (d), ngx_mruby's
+own methods read their variables in C; and the change that accessors appear
+in introspection. The implementation is #NNN. The proposal was written on
+2026-10-14 from `next` at e0dfdc658 (mruby 3.3.0), #561 at a33f939a9
+(mruby 4.0.0; `mruby/` and the build inputs are those of #561's head,
+872f3be2b on 2026-10-14, whose two later commits change only files under
+`docs/`), the mruby tag `4.1.0-rc2` (commit c17ffcc24; its files read with
+the GitHub API on 2026-10-14), nginx 1.31.6 (the version in
+`nginx_version`), and the callgrind comparison of 2026-10-14 in the body of
+#561. Section 4 says what the owner decided, with the recommendation.
 
 ## 1. The problem
 
@@ -523,9 +528,9 @@ of the implementing pull request can change them.
 
 ## 5. Status and steps
 
-Status: proposed, 2026-10-14. #561 merged into `next` as 0b76bfa6d on
-2026-10-14; the work starts when the owner has answered the question of
-section 4.
+Status: decided, as the Status line at the top says (the owner's answer
+of 2026-10-15 and the confirmation of 2026-10-19). #NNN implements (a)
+with the rule (a2) and (d), with the steps below.
 
 1. After the owner's answer: a pull request to `next` with (a) and (d), or
    with the fallback of section 4, its tests, the docs and the release notes
