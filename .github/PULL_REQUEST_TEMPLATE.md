@@ -25,7 +25,7 @@ Bug fixes: the regression test is the first commit and the fix the second; quote
 ## Memory / sanitizer checks (C changes)
 
 <!--
-Which of valgrind (`NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh`), ASan, UBSan
+Which of valgrind (`NGINX_RUNNER=valgrind sh test.sh`), ASan, UBSan
 did you run, and what was the result (ERROR SUMMARY, leak summary, sanitizer
 reports in error.log)?
 -->
