@@ -579,6 +579,24 @@ returns the free pages of the C heap; without it, VmRSS moved by up to about
 1 MB in both directions between samples of a correct build, depending on
 where the allocator happened to leave free memory.
 
+A scenario of `test/soak/nginx.conf` also checks `Nginx::Debug` itself, once,
+after its first response and before the warmup. It requests `/debug/check`,
+whose code runs `Nginx::Debug.gc`, reads `Nginx::Debug.stats`, makes two
+Strings that nothing references in each of the 1000 rounds of a loop, and reads
+`gc_live` again before and after a second `Nginx::Debug.gc`. The scenario
+fails unless `Nginx::Debug.stats` has the keys listed in "The soak build and
+`Nginx::Debug`" below (with `gc_root_mruby` and `gc_root_fibers_mruby`
+either both present or both absent) and only Integer values,
+`Nginx::Debug.gc` returns `nil`, `gc_live` grew by 1000 or more with the
+Strings, and the second full GC brought it down by 1000 or more, to at most
+10 above the first read. The code makes the Strings between `GC.disable`
+and `GC.enable`: with about 1000 live objects after a full GC, mruby's
+incremental GC would otherwise start within the loop and free most of the
+Strings before the second read. Without
+this check, a `Nginx::Debug.stats` that left out a key, or a
+`Nginx::Debug.gc` that freed nothing, would make every sample the same and
+the soak would pass.
+
 A scenario also fails when a response is not the expected one, when nginx does
 not exit within 30 seconds of `SIGQUIT`, or when its `error.log` or stderr
 contains `open socket`, `[error]`, `[alert]`, `[crit]`, `[emerg]`,
