@@ -54,3 +54,12 @@ export function testedNginxVersions() {
   if (!m) throw new Error('no NGINX_VERSION matrix in test.yml');
   return [...m[1].matchAll(/- ([0-9.]+)/g)].map((x) => x[1]);
 }
+
+/** The first and last line (1-based) of the C function whose definition matches re. */
+export function functionLines(text, re) {
+  const lines = text.split('\n');
+  const start = lines.findIndex((l) => re.test(l));
+  if (start < 0) throw new Error(`no function matches ${re}`);
+  const end = lines.findIndex((l, j) => j > start && l === '}');
+  return [start + 1, end + 1];
+}

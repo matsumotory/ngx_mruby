@@ -4,7 +4,7 @@
 // test, with the values that its case compares), read from the repository.
 import { Aside, Code } from '@astrojs/starlight/components';
 import FilterDiagram from './FilterDiagram.astro';
-import { read, lastChange, block, testedNginxVersions } from './source.mjs';
+import { read, lastChange, block, testedNginxVersions, functionLines } from './source.mjs';
 import './specimens.css';
 
 interface Props {
@@ -25,6 +25,11 @@ if (!status) throw new Error(`no status line in ${CASE}`);
 const sample = block(read(CONF), /^\s+location = \/rputs \{/);
 const response = [status, `X-Header-Filter: ${header}`, `Content-Length: ${new TextEncoder().encode(body).length}`, '', body].join('\n');
 const srcChange = lastChange(SRC);
+const srcText = read(SRC);
+const [initStart] = functionLines(srcText, /^static void ngx_http_mruby_header_filter_init\(void\)$/);
+const [, initEnd] = functionLines(srcText, /^static void ngx_http_mruby_body_filter_init\(void\)$/);
+const [filterStart] = functionLines(srcText, /^static ngx_int_t ngx_http_mruby_header_filter\(ngx_http_request_t \*r\)$/);
+const [, filterEnd] = functionLines(srcText, /^static ngx_int_t ngx_http_mruby_body_filter\(ngx_http_request_t \*r, ngx_chain_t \*in\)$/);
 const sampleChange = lastChange(CONF, CASE);
 const versions = testedNginxVersions();
 const matrixChange = lastChange('.github/workflows/test.yml');
@@ -55,8 +60,8 @@ const labels = ja
       note: 'A response without Content-Length goes to the next filter unread',
     };
 const caption = ja
-  ? `ngx_mrubyのヘッダのフィルタとボディのフィルタは、nginxの2つのフィルタの連鎖の先頭で動きます。<code>${SRC}</code>の1954行から1964行と2084行から2177行を、${srcChange.date}のコミット${srcChange.commit}で描いています。`
-  : `ngx_mruby's header filter and body filter run first in nginx's two filter chains. Describes <code>${SRC}</code> lines 1954 to 1964 and 2084 to 2177 at ${srcChange.commit}, ${srcChange.date}.`;
+  ? `ngx_mrubyのヘッダのフィルタとボディのフィルタは、nginxの2つのフィルタの連鎖の先頭で動きます。<code>${SRC}</code>の${initStart}行から${initEnd}行と${filterStart}行から${filterEnd}行を、${srcChange.date}のコミット${srcChange.commit}で描いています。`
+  : `ngx_mruby's header filter and body filter run first in nginx's two filter chains. Describes <code>${SRC}</code> lines ${initStart} to ${initEnd} and ${filterStart} to ${filterEnd} at ${srcChange.commit}, ${srcChange.date}.`;
 ---
 
 {
