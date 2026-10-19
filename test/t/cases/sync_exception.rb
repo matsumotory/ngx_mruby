@@ -89,17 +89,20 @@ end
   end
 end
 
-# The status line is the one that nginx sends after an exception in an
-# output header filter; this test checks the length and the body.
+# After an exception in an output header filter the response has the status
+# 500 and the body of the origin. The output of the filter is dropped, so
+# Content-Length is the length of the origin's body.
 t.assert('sync exception', 'an exception after Nginx.rputs in an output header filter leaves the length of the response right') do
   status, line, fields, body = sync_exception_response('/header_filter_rputs_then_raise')
   t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 500 Internal Server Error', line
   t.assert_equal 'origin', body
   t.assert_equal '6', fields['content-length']
 end
 
 # The content handler writes "origin" with Nginx.rputs; the header filter
-# raises after Nginx.rputs or without output.
+# raises after Nginx.rputs or without output. The response has the status
+# 500, as above, and the output of the content handler with its length.
 [
   ['/content_then_header_filter_rputs_then_raise', 'an exception after Nginx.rputs'],
   ['/content_then_header_filter_raise', 'an exception without output'],
@@ -107,6 +110,7 @@ end
   t.assert('sync exception', "#{what} in an output header filter keeps the output of the content handler and its length") do
     status, line, fields, body = sync_exception_response(path)
     t.assert_equal 'EOF', status
+    t.assert_equal 'HTTP/1.1 500 Internal Server Error', line
     t.assert_equal 'origin', body
     t.assert_equal '6', fields['content-length']
   end
