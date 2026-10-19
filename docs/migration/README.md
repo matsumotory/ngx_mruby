@@ -260,7 +260,7 @@ not enough, and show the change.
   `Nginx::Filter#body=` or `#output`, or leaves the body of a response
   without a body empty, sends the status with `Content-Length: 0`, where
   2.x closed the connection without a byte.
-- [The accessors of `Nginx::Var` become methods of `Nginx::Var` at their first use in a worker](../releases/v3.0.0.md#the-accessors-of-nginxvar-become-methods-of-nginxvar-at-their-first-use-in-a-worker-nnn):
+- [The accessors of `Nginx::Var` become methods of `Nginx::Var` at their first use in a worker](../releases/v3.0.0.md#the-accessors-of-nginxvar-become-methods-of-nginxvar-at-their-first-use-in-a-worker-610):
   the search above finds `respond_to?`, `method_defined?`, `instance_methods`
   and `methods`; look at the ones on an `Nginx::Var` or on `Nginx::Var`
   itself. Their answer for a variable now depends on whether the worker has
@@ -277,7 +277,7 @@ not enough, and show the change.
   also the name of a variable that a script reads with `v.NAME`. Once the
   accessor exists in a worker, `v.NAME` reads the variable instead of
   calling such a method. Rename the method.
-- [`Nginx::Connection`, `Nginx::Server` and `Nginx::Request` read their variables without calling `Nginx::Var`](../releases/v3.0.0.md#nginxconnection-nginxserver-and-nginxrequest-read-their-variables-without-calling-nginxvar-nnn):
+- [`Nginx::Connection`, `Nginx::Server` and `Nginx::Request` read their variables without calling `Nginx::Var`](../releases/v3.0.0.md#nginxconnection-nginxserver-and-nginxrequest-read-their-variables-without-calling-nginxvar-610):
   look for methods that a script defines on `Nginx::Var` (`class Nginx::Var`,
   `Nginx::Var.class_eval`, `define_method`) and for `iv_var`, which the search
   above finds. A method of `Nginx::Var` no longer changes what

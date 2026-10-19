@@ -7,7 +7,7 @@ the content in a session's question, with the option
 "その内容で合っている (推奨)" ("that content is right"): (a) with the rule
 (a2), accessors defined on `Nginx::Var` at the first miss; (d), ngx_mruby's
 own methods read their variables in C; and the change that accessors appear
-in introspection. The implementation is #NNN. The proposal was written on
+in introspection. The implementation is #610. The proposal was written on
 2026-10-14 from `next` at e0dfdc658 (mruby 3.3.0), #561 at a33f939a9
 (mruby 4.0.0; `mruby/` and the build inputs are those of #561's head,
 872f3be2b on 2026-10-14, whose two later commits change only files under
@@ -529,7 +529,7 @@ of the implementing pull request can change them.
 ## 5. Status and steps
 
 Status: decided, as the Status line at the top says (the owner's answer
-of 2026-10-15 and the confirmation of 2026-10-19). #NNN implements (a)
+of 2026-10-15 and the confirmation of 2026-10-19). #610 implements (a)
 with the rule (a2) and (d), with the steps below.
 
 1. After the owner's answer: a pull request to `next` with (a) and (d), or

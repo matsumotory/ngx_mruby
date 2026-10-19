@@ -131,6 +131,7 @@ Open pull requests, all drafts:
 | [#601](https://github.com/matsumotory/ngx_mruby/pull/601) | `master` | CI: the callgrind performance lane and wider sanitizer log checks on `master` (two rows of "Queue") | A draft; no review yet. |
 | [#602](https://github.com/matsumotory/ngx_mruby/pull/602) | `next` | nginx-tests: run nginx's own test suite on nginx with and without ngx_mruby | A draft; no review yet. |
 | [#603](https://github.com/matsumotory/ngx_mruby/pull/603) | `master` | Test the directives and Ruby methods that had no test | A draft; no review yet. |
+| [#610](https://github.com/matsumotory/ngx_mruby/pull/610) | `next` | Implement [the proposal for the method lookup of `Nginx::Var` accessors](proposals/nginx-var-method-lookup.md) (#577): accessors defined on `Nginx::Var` at the first miss with the rule (a2), and ngx_mruby's own methods that read variables in C (d), with the tests on port 18159, the docs, the release notes entries and the migration guide, and the three comparisons of section 3 of the proposal | A draft; the review and the comparisons run. |
 
 ## Decisions
 
@@ -139,6 +140,7 @@ names:
 
 | Date | Decision | Where it is written |
 |---|---|---|
+| 2026-10-19 | The method lookup of `Nginx::Var` accessors: the owner answered the question of section 4 of [the proposal](proposals/nginx-var-method-lookup.md) on 2026-10-15 in a session's question (the change to introspection is accepted as a behavior change of 3.0.0), and on 2026-10-19 confirmed the content in a session's question with the option "その内容で合っている (推奨)" ("that content is right"): (a) with the rule (a2), (d), and accessors in introspection. | The Status line of the proposal and the entries of `docs/releases/v3.0.0.md` and `.ja.md`, in #610. |
 | 2026-10-19 | The perf lane on `master`: asked in a session which form to port, the owner chose the option "テストと CI だけ移植する" (port the tests and the CI only): `test/perf`, `test/build_release.sh` and the `perf` job, without `Nginx::Debug`. | The pull request that ports the lane to `master` (its description, and `docs/test/README.md` on `master`); see "Queue". |
 
 The two decisions of 2026-10-04 that were recorded here before are written
@@ -158,7 +160,7 @@ the Japanese release notes in [docs/releases/README.md](releases/README.md)
   #572:
   [the record on #561](https://github.com/matsumotory/ngx_mruby/pull/561#issuecomment-6165028832).
   #577 (merged) is the proposal for the `var` and `auth` rows; its
-  implementation is in the queue.
+  implementation is #610.
 - 4.1.0 waits for its tag: the newest mruby tag on 2026-10-19 is
   `4.1.0-rc2` (`gh api repos/mruby/mruby/tags`). The choices for that step
   are in item 1 of section 7 of the plan. #561 lists what the step has to
@@ -194,7 +196,6 @@ Taken up and still open: none.
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
 | Site: the implementation, in the steps of [section 6 of the proposal](proposals/site.md#6-implementation-plan). Step 1 is merged: [#591](https://github.com/matsumotory/ngx_mruby/pull/591) (`a466688`), `site/` with Starlight 0.42.6 and Astro 7.3.8 pinned and Node.js 22.23.3, the generator `site/scripts/sync-docs.mjs` that renders `docs/` without design, its test and the checks of step 1 under `site/scripts/` (AGENTS.md, "The site"), and `.github/workflows/site.yml`, which builds the site, runs the checks and uploads the built site as a workflow artifact, without deploying. Next: step 2, the tokens of section 4 and the specimens of 4.12, which the owner reviews. In step 1 the generated pages fill all of `site/src/content/docs/` (gitignored), with `docs/README.md` as the page `/`; 5.2 puts the committed home pages `index.mdx` and `ja/index.mdx` in that folder and the generated pages in a gitignored folder under it, so step 3 moves the generated pages into such a folder (they already carry `slug`) before it adds the home pages | `next` (`site/`, as decided with Q1); steps 6 and 7 also change `master` | Step 2 (the tokens of section 4 and the specimens of 4.12, which the owner reviews): ready to start. The owner decided the questions on 2026-10-15 ([section 7 of the proposal](proposals/site.md#7-decisions-2026-10-15)); the last column of section 6 lists what the owner reviews in each step |
 | Before the switch of ngx.mruby.org (step 7 of the site proposal), the owner has an item to do in the Pages settings for the custom domain | Repository settings | The owner |
-| The implementation of [the proposal for the method lookup of `Nginx::Var` accessors](proposals/nginx-var-method-lookup.md) (#577): candidates (a) and (d), accessors defined on `Nginx::Var` at the first miss with the rule (a2), and ngx_mruby's own methods that read variables in C, with the tests, docs, release notes entries and the three comparisons of its section 3 | `next` | The owner's answer to the question of section 4 of the proposal (#561 merged as `0b76bfa6d`; the `Nginx::Var` fix of `master`, #589, is on `next` since #595) |
 | mruby 4.1.0 | `next` | The 4.1.0 tag |
 
 ## How a session continues
