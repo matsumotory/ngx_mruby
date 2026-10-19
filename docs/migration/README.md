@@ -231,8 +231,8 @@ not enough, and show the change.
   nothing to change in the scripts. A `return` inside a block or the body
   of `for` at the top level of handler code no longer raises
   `LocalJumpError`: the handler answers with the response that its code set
-  before the `return`, where 2.x answered 500, or 200 with the output that a
-  content handler had written before it. Log alerts on
+  before the `return`, where 2.x answered 500 (2.7.0 answered 200 with the
+  output that a content handler had written before it). Log alerts on
   `unexpected return (LocalJumpError)` no longer fire for it.
 - [`Dir` comes from mruby's core gem, and a closed `Dir` raises `IOError` instead of `RuntimeError`](../releases/v3.0.0.md#dir-comes-from-mrubys-core-gem-and-a-closed-dir-raises-ioerror-instead-of-runtimeerror-559):
   the search above finds `RuntimeError`; look at the ones that rescue an

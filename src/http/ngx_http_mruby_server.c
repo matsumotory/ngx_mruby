@@ -27,8 +27,8 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 {
   // ref: http/ngx_http_core_module.c ngx_http_core_listen
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
-  ngx_http_core_srv_conf_t *cscf = mscf->cscf;
-  ngx_conf_t *cf = mscf->cf;
+  ngx_http_core_srv_conf_t *cscf;
+  ngx_conf_t *cf;
   ngx_str_t addr;
   ngx_url_t u;
   ngx_http_listen_opt_t lsopt;
@@ -37,6 +37,13 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   size_t len;
   u_char *p;
 #endif
+
+  /* mscf->cf is set only while mruby_server_context_handler_code runs */
+  if (mscf == NULL || mscf->cf == NULL || mscf->cscf == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "add_listener can only be used in mruby_server_context_handler_code");
+  }
+  cscf = mscf->cscf;
+  cf = mscf->cf;
 
   mrb_get_args(mrb, "H", &listener);
   address = mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "address"));

@@ -2,9 +2,9 @@
 
 Status: decided, 2026-10-15. The owner chose option (a) of section 4: keep
 the top-level frame, with the regression test and the docs. The steps of
-section 5 for (a) are under way: the test and the release notes entry in
-#584, and the note in the docs of `master` in a later pull request (section
-7, item 14, of the v3 plan). Written from `next`
+section 5 for (a) are done: the test and the release notes entry in #584
+on `next`, the note in the docs of `master` in #586, and #502 is closed
+(section 7, item 14, of the v3 plan). Written from `next`
 at acdc82fb1 (mruby 4.0.0, nginx 1.31.6), `master` at 0a1e8acb3 (mruby
 3.3.0) for comparison, [the triage comment on
 #502](https://github.com/matsumotory/ngx_mruby/issues/502#issuecomment-5977615799)
@@ -535,10 +535,10 @@ lambda frame (c1 or c2)?
 ## 5. Status and steps
 
 - This proposal changes only docs. Section 7 of the v3 plan records the
-  owner's decision (item 14), and `docs/HANDOFF.md` lists the step that
-  remains.
+  owner's decision (item 14). The owner answered (a), and the three steps
+  for (a) below are done.
 - After an answer of (a):
-  1. A pull request to `next`: a fragment and a case file with the two
+  1. A pull request to `next` (#584): a fragment and a case file with the two
      locations of #502 and the assertions of a2ikm/ngx_mruby#2, and the
      `mruby_set_code` form of 3.1. The test passes on `next`, so it needs
      no fix commit; the pull request cites the triage on `master` for the
@@ -549,11 +549,15 @@ lambda frame (c1 or c2)?
      code answers 500 with `LocalJumpError`; on 3.0.0 it ends the handler).
      The entry "`yield` with keyword arguments to a block with keyword
      parameters works (#561)" is the model.
-  2. A pull request to `master`: a note in `docs/` that in 2.x a `return`
-     inside a block or a `for` body of handler code raises
-     `LocalJumpError` (500), how to write it instead, and that v3 accepts
-     it, with the entry that `docs/releases/README.md` asks for.
-  3. Close #502 when both are merged.
+  2. A pull request to `master` (#586): a note in
+     `docs/class_and_method/README.md` that in 2.x a `return` inside a
+     block or a `for` body of handler code raises `LocalJumpError` (500),
+     how to write it instead, and that v3 accepts it. It documents the
+     behavior of 2.x and changes none, so it adds no release notes entry.
+     On `next`, that paragraph and the paragraph of #584 are one text for
+     3.0.0 and 2.x (#590).
+  3. Close #502 when both are merged: #502 was closed on 2026-10-19,
+     after #586.
 - After another answer: a pull request to `next` with the chosen frame for
   HTTP and stream, the test of step 1, the changes of the tests that 2 (b)
   or 2 (c2) lists (with the owner's approval, AGENTS.md "Writing tests"),

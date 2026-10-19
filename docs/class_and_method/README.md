@@ -74,7 +74,6 @@ You can use the following classes with default build configuration.
 - [Mutex class](https://github.com/matsumotory/mruby-mutex)
 - [OnigRegexp Class and Regexp Engine](https://github.com/mattn/mruby-onig-regexp)
 - [Process Class](https://github.com/iij/mruby-process)
-- [Redis Class](https://github.com/matsumotory/mruby-redis)
 - [SecureRandom Class](https://github.com/monochromegane/mruby-secure-random)
 - [Userdata Class](https://github.com/matsumotory/mruby-userdata)
 - [Uname Class](https://github.com/matsumotory/mruby-uname)
@@ -91,6 +90,9 @@ stays. The differences:
   `Dir#each_child`. With the bundled mruby 4.0.0, `Dir.children` and
   `Dir#each_child` leave out `.` and `..`, as in CRuby. (With mruby 3.3.0
   they were aliases of `Dir.entries` and `Dir#each` and included them.)
+
+The `Redis` class of [mruby-redis](https://github.com/matsumotory/mruby-redis) is not in the default build since 2.7.1.
+To use it, uncomment `conf.gem github: 'matsumotory/mruby-redis'` in `build_config.rb` before you build (see [the 2.7.1 release notes](../releases/v2.7.1.md#1-redis-is-no-longer-in-the-default-build)).
 
 You can also use the classes of the mruby core gems that `NGX_MRUBY_CORE_GEMS` in
 [build_config.rb](../../build_config.rb) lists (the gems in [mruby/mrbgems](../../mruby/mrbgems)
@@ -138,6 +140,11 @@ end
 ### Nginx.rputs(string)
 
 Puts response text.
+If a post-read, server rewrite, rewrite, access or content handler raises an exception afterwards, the request gets 500 and the text is not sent, unless the response was already started, for example by the location that `Nginx.redirect` ran.
+Since 2.7.1 this also holds for a handler that raises before it waits in `Nginx::Async`; in 2.7.0 such a handler sent the text with status 200.
+In an `mruby_set*` handler, a log handler or an output filter, the text is not sent after an exception either, and the request goes on as after an exception without output: `Content-Length` does not count the text (since 2.7.1).
+For an `mruby_set*` handler this holds when the code raises before it waits in `Nginx::Async`. When it raises after `Nginx::Async.sleep`, the request gets 500; when it raises after `Nginx::Async::HTTP.sub_request`, nginx has already gone on with the content phase without waiting for the variable, so the 500 is not sent and the client gets no response, as described under [Nginx::Async#sleep](#nginxasyncsleepmsec).
+To end a content handler early after writing the text, leave it with `return` instead of `raise`.
 
 ```ruby
 Nginx.rputs "hello ngx_mruby world!"
@@ -151,6 +158,7 @@ nothing and sets no status answers 500 (see
 ### Nginx.echo(string)
 
 Puts response text with a newline.
+Like `Nginx.rputs`, the text is not sent when the handler raises an exception afterwards (since 2.7.1).
 
 ```ruby
 Nginx.echo "hello ngx_mruby world!"
@@ -194,10 +202,9 @@ answers.
 Don't confuse `Nginx.return` method with mruby's `return` statement.
 ngx_mruby supports `return` statement in handler code as below.
 It just returns from the handler. Since 3.0.0 this holds also for a `return`
-inside a block or the body of `for` at the top level of the code. With 2.x,
-such a `return` raises `LocalJumpError`, which `error.log` records, and the
-handler answers 500, or 200 with the output that a content handler wrote
-before it (see [the release notes of 3.0.0](../releases/v3.0.0.md#a-return-inside-a-block-or-a-for-body-of-handler-code-ends-the-code-561)).
+inside a block or the body of `for` at the top level of the code: the code
+after it does not run, and the response is the one that the code set before
+it (see [the release notes of 3.0.0](../releases/v3.0.0.md#a-return-inside-a-block-or-a-for-body-of-handler-code-ends-the-code-561)).
 
 ```nginx
 location /foo {
@@ -206,6 +213,50 @@ location /foo {
          Nginx.return Nginx::HTTP_OK  # returns HTTP status 200 
          return if true               # returns from this handler
          Nginx.rputs "bar"            # not reached
+    ';
+}
+```
+
+In 2.x, a `return` inside a block or inside the body of `for` at the top
+level of handler code does not return from the handler: mruby 3.3.0, which
+2.x bundles, raises `LocalJumpError` (`unexpected return`) there, and
+error.log records it as `mrb_run failed`. The handler then fails as after any
+other exception: a rewrite or content handler answers 500, and the output
+that the code wrote before the `return` is not sent (2.7.0 sent it with 200;
+see [Nginx.rputs](#nginxrputsstring)). On both versions, calling
+`Nginx.return` in a block does not end the code: it sets the status, and the
+code after the block still runs. To end the handler from a block in code
+that runs on 2.x as well as on 3.0.0, leave the block with `break` and
+`return` at the top level of the code, or put the code in a method (or in a
+lambda, `->() do ... end.call`) and call it, so that the `return` returns
+from the method or the lambda:
+
+```nginx
+location /foo_break {
+    mruby_content_handler_code '
+         done = false
+         ["foo"].each do |body|
+           Nginx.rputs body             # generates HTTP body "foo"
+           Nginx.return Nginx::HTTP_OK  # returns HTTP status 200
+           done = true
+           break                        # leaves the block
+         end
+         return if done                 # returns from this handler
+         Nginx.rputs "bar"              # not reached
+    ';
+}
+
+location /foo_method {
+    mruby_content_handler_code '
+         def foo
+           ["foo"].each do |body|
+             Nginx.rputs body             # generates HTTP body "foo"
+             Nginx.return Nginx::HTTP_OK  # returns HTTP status 200
+             return                       # returns from the method foo
+           end
+           Nginx.rputs "bar"              # not reached
+         end
+         foo
     ';
 }
 ```
@@ -233,9 +284,18 @@ You will see an error message in error.log as below.
 2014/03/03 00:07:09 [error] 37667#0: *2 ngx_mruby error!, client: 192.168.12.9, server: localhost, request: "GET /log-test HTTP/1.1", host: "192.168.12.9:8001"
 ```
 
+The code of `mruby_init*`, `mruby_init_worker*`, `mruby_exit_worker*`, `mruby_ssl_handshake_handler*` and `mruby_server_context_handler_code` runs outside a request.
+There the method writes the message to nginx's error log, without the client and request part (since 2.7.1; 2.7.0 raised a `RuntimeError` when the process had not handled a request yet, and otherwise wrote through the last request that the process had handled).
+
+Code outside a request can also call `Nginx.module_name`, `Nginx.module_version`, `Nginx.nginx_version`, `Nginx.server_version`, `Nginx.configure`, `Nginx.remove_global_variable` and `server_name`, use the constants, and use classes that do not depend on a request, such as `Userdata`.
+Since 2.7.1 the request-scoped methods raise a `RuntimeError` (`this method can only be used while processing a request`) there: the methods of `Nginx::Request`, `Nginx::Var`, `Nginx::Headers_in`, `Nginx::Headers_out`, `Nginx::Connection`, `Nginx::Server`, `Nginx::Filter`, `Nginx::Upstream` and `Nginx::Async`, and `Nginx.rputs`, `Nginx.echo`, `Nginx.return`, `Nginx.send_header`, `Nginx.status_code=` and `Nginx.redirect`.
+In 2.7.0 they crashed the process when it had not handled a request yet, and otherwise returned or changed data of the last request that the process had handled.
+`Nginx::Server#add_listener` works only in `mruby_server_context_handler_code`, and `Nginx::SSL` only in `mruby_ssl_handshake_handler*`.
+
 ### Nginx.log(log_level, string)
 
-Alias for Nginx.errlogger
+Alias for Nginx.errlogger.
+Outside a request it writes to nginx's error log, as described under `Nginx.errlogger` (since 2.7.1).
 
 ### Nginx.module_name -> string
 
@@ -401,7 +461,8 @@ Nginx::HTTP_INSUFFICIENT_STORAGE|507
 # Nginx::SSL Class
 
 Nginx::SSL class is designed to be used in the ssl handshake handlers.
-It doesn't work in other handlers like `mruby_content_handler_code`.
+Since 2.7.1 its methods raise a `RuntimeError` when they are called anywhere else, for example in `mruby_content_handler_code`; in 2.7.0 such a call could crash the worker or return meaningless values.
+A handshake whose code sets no certificate, also one whose code does not call `Nginx::SSL.new`, uses the server's `ssl_certificate` and `ssl_certificate_key` (since 2.7.1; in 2.7.0 a handshake whose code did not call `Nginx::SSL.new` could get the certificate that an earlier handshake on the same worker had set, or fail).
 
 ## Instance Methods
 
@@ -894,6 +955,8 @@ document_root|/path/to/document
 ### Nginx::Server#add_listener(hash)
 
 Create a listener on the specified IP address and the port in the hash.
+The method works only in `mruby_server_context_handler_code`, while nginx reads the configuration.
+Anywhere else, for example in a request handler, it raises a `RuntimeError` (`add_listener can only be used in mruby_server_context_handler_code`, since 2.7.1).
 
 ```ruby
 s = Nginx::Server.new
@@ -1174,9 +1237,11 @@ Nginx.rputs hout["X-Remove-Header"] #=> nil
 # Nginx::Filter Class
 
 Nginx::Filter class is designed to be used in the output body handlers.
-It doesn't work in other handlers like `mruby_content_handler_code`.
+Before the body filter has read the body, `Nginx::Filter#body` returns an empty string: in a content handler, as before, and in a header filter (since 2.7.1).
+Outside an output body filter, `Nginx::Filter#body=` and `#output` raise a `RuntimeError` (since 2.7.1).
 
-__Notice__: You can *NOT* use `Nginx.rputs` and `Nginx.echo` in the output body handlers.
+__Notice__: You can *NOT* use `Nginx.rputs` and `Nginx.echo` in the output header and body handlers
+(`mruby_output_header_filter`, `mruby_output_body_filter` and their `_code` forms).
 
 Here is an example how it works.
 
@@ -1235,6 +1300,8 @@ HELLO
 ### Nginx::Filter#body -> string
 
 Returns the response body.
+In a header filter, which runs before the body has been read, it returns an empty string (since 2.7.1; 2.7.0 returned a string as long as `Content-Length` whose bytes were not the body, or raised an `ArgumentError` when the length was unknown or 10 MB or more).
+To learn the length there, read `Nginx::Var.new.sent_http_content_length`.
 
 ```ruby
 f = Nginx::Filter.new
@@ -1243,7 +1310,9 @@ response = f.body.upcase
 
 ### Nginx::Filter#body=(string)
 
-Sets the string to the response body
+Sets the string to the response body.
+The response is sent with exactly this body, and `Content-Length` is its length; since 2.7.1 this also holds when the body was written with `Nginx.rputs` or `Nginx.echo`.
+It can only be used in an output body filter; anywhere else it raises a `RuntimeError` (since 2.7.1).
 
 ```ruby
 f = Nginx::Filter.new
@@ -1331,11 +1400,13 @@ u.server = "127.0.0.1:8080"                   #=> 127.0.0.1:8080
 
 Sleeps in non-blocking way.
 It's currently supported in the set, rewrite and access handlers.
+In a content handler (`mruby_content_handler*`) it does not raise, but nginx does not wait for the handler: the request ends at the sleep without a response (unchanged in 2.7.1; see "Known limitations" in [the 2.7.1 release notes](../releases/v2.7.1.md#known-limitations)).
 In a log handler (`mruby_log_handler`, `mruby_log_handler_code`) and in the
 output filters (`mruby_output_header_filter*`, `mruby_output_body_filter*`),
-nginx cannot resume a handler that waits, so it raises a `RuntimeError`.
+nginx cannot resume a handler that waits, so it raises a `RuntimeError` (since 2.7.1; in 2.7.0 a sleep in a log handler could crash the worker, and a sleep in a filter stopped the filter there and sent the response unfiltered).
 If the handler raises an exception after the call returns, the request gets 500 and the output of `Nginx.rputs` is not sent, unless the response was already started, for example by the location that `Nginx.redirect` ran.
 Then the 500 is not sent either.
+This holds since 2.7.1; in 2.7.0 the client got no response, the output of `Nginx.rputs` with status 200, or the status that the handler had set before the exception.
 
 ```ruby
 Nginx::Async.sleep 3000    # Sleep 3000 millisec
@@ -1350,9 +1421,10 @@ Nginx::Async.sleep 3000    # Sleep 3000 millisec
 Sends a sub request in non-blocking way.
 It's currently supported in the `set`, `rewrite` and `access` handlers.
 Like `Nginx::Async.sleep`, it raises a `RuntimeError` in a log handler and in
-the output filters.
+the output filters (since 2.7.1; 2.7.0 started the subrequest there).
 If the handler raises an exception after the call returns, the request gets 500 and the output of `Nginx.rputs` is not sent, unless the response was already started, for example by the location that `Nginx.redirect` ran.
 Then the 500 is not sent either.
+This holds since 2.7.1, as for `Nginx::Async.sleep`.
 
 ```ruby
 Nginx::Async::HTTP.sub_request "/example", "q1=foo&q2=bar" # Send a sub request with the parameters
@@ -1475,6 +1547,9 @@ Nginx::Stream.add_listener({address: "12351"})
 ```
 
 See [Nginx::Server#add_listener()](#nginxserveradd_listenerhash) for an example to create multiple listeners
+
+The method works only in `mruby_stream_server_context_code`, while nginx reads the configuration.
+Anywhere else, for example in `mruby_stream_code` or `mruby_stream_init_worker_code`, it raises a `RuntimeError` (since 2.7.1).
 
 ### Nginx::Stream.errlogger(log_level, string)
 

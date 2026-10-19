@@ -18,6 +18,7 @@
 - [Directives](https://github.com/matsumotory/ngx_mruby/tree/master/docs/directives)
 - [Class and Method](https://github.com/matsumotory/ngx_mruby/tree/master/docs/class_and_method)
 - [Use Case](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case)
+- [Release notes (behaviour changes to read before upgrading)](https://github.com/matsumotory/ngx_mruby/tree/master/docs/releases)
 - [Examples](https://github.com/hsbt/nginx-tech-talk)
 
 ## Branch strategy
@@ -107,6 +108,8 @@ backends = [
 r = Redis.new "192.168.12.251", 6379
 r.get backends[rand(backends.length)]
 ```
+
+This example needs the `Redis` class of mruby-redis. Since 2.7.1 the default `build_config.rb` does not build it: uncomment the line `conf.gem github: 'matsumotory/mruby-redis'` there before you build.
 
 - see [examples](https://github.com/matsumotory/ngx_mruby/blob/master/example/nginx.conf)
 - __Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions__

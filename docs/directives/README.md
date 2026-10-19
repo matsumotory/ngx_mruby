@@ -206,6 +206,11 @@ Phase:   initialize worker process
 After initializing nginx master process, it creates worker processes.
 'mruby_init_worker' and 'mruby_init_worker_code' are called when worker processes are created.
 
+The code runs outside any request.
+`Nginx.log` writes to nginx's error log here (since 2.7.1; 2.7.0 raised a `RuntimeError`).
+Request-scoped methods such as `Nginx::Request`, `Nginx::Var` and `Nginx.rputs` raise a `RuntimeError` here (since 2.7.1; in 2.7.0 they crashed the worker).
+See [Nginx.errlogger](../class_and_method/README.md#nginxerrloggerlog_level-string) for what code outside a request can call.
+
 ## mruby_exit_worker and mruby_exit_worker_code
 
 ```
@@ -223,6 +228,11 @@ Phase:   exit worker process
 ```
 
 'mruby_exit_worker' and 'mruby_exit_worker_code' are called when a worker process is shutdown or terminated.
+
+The code runs outside any request.
+`Nginx.log` writes to nginx's error log here (since 2.7.1).
+Request-scoped methods such as `Nginx::Request`, `Nginx::Var` and `Nginx.rputs` raise a `RuntimeError` here (since 2.7.1; in 2.7.0 they used the last request that the worker had handled, or crashed the worker when it had handled none).
+See [Nginx.errlogger](../class_and_method/README.md#nginxerrloggerlog_level-string) for what code outside a request can call.
 
 ## mruby_ssl_handshake_handler and mruby_ssl_handshake_handler_code
 
@@ -242,6 +252,11 @@ Phase:   SSL handshake
 
 'mruby_ssl_handshake_handler' and 'mruby_ssl_handshake_handler_code' are called when SSL handshake is started.
 Both are enabled only if ngx_mruby is compiled with OpenSSL.
+
+The code runs for a TLS connection, before any request on it, and uses [Nginx::SSL](../class_and_method/README.md#nginxssl-class) to read the server name and to set the certificate.
+`Nginx::SSL.log` writes to the log of the connection, and `Nginx.log` writes to nginx's error log (since 2.7.1).
+Request-scoped methods such as `Nginx::Request`, `Nginx::Var` and `Nginx.rputs` raise a `RuntimeError` here (since 2.7.1; in 2.7.0 they used the last request that the worker had handled, or crashed the worker when it had handled none).
+See [Nginx.errlogger](../class_and_method/README.md#nginxerrloggerlog_level-string) for what code outside a request can call.
 
 ## mruby_add_handler
 
@@ -382,6 +397,10 @@ Phase:   NGX_HTTP_SERVER_REWRITE_PHASE, NGX_HTTP_REWRITE_PHASE
 
 'mruby_set' and 'mruby_set_code' are called at one of the rewrite phases to set a nginx variable.
 
+If the code raises an exception before it waits in `Nginx::Async.sleep` or `Nginx::Async::HTTP.sub_request`, ngx_mruby logs it, the variable is set to an empty string (as when the code returns `nil`), also when an earlier directive of the location gave it a value, and the request goes on.
+Text that the code wrote with `Nginx.rputs` or `Nginx.echo` before the exception is not sent and does not count in the `Content-Length` of the response.
+If the code raises after such a call returned, the request gets 500 and the output of `Nginx.rputs` is not sent, as described under [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec).
+
 ## mruby_output_body_filter, mruby_output_body_filter_code, mruby_output_header_filter and mruby_output_header_filter_code
 
 ```
@@ -414,6 +433,15 @@ Phase:
 
 The filters are used for processing a response. The header filters are for HTTP header, the body filters are for HTTP body.
 
+A body filter reads the response body with `Nginx::Filter#body` and can replace it with `Nginx::Filter#body=` (or `#output`).
+The response then has exactly that body, and `Content-Length` is its length.
+Since 2.7.1 this also holds when the body was written with `Nginx.rputs` or `Nginx.echo`; in 2.7.0 such a response kept the length that `Nginx.rputs` had produced, so a replacement body of another length was cut or padded.
+
+A header filter runs before the body has been read.
+There `Nginx::Filter#body` returns an empty string and `Nginx::Filter#body=` raises a `RuntimeError` (both since 2.7.1).
+
+`Nginx::Async.sleep` and `Nginx::Async::HTTP.sub_request` raise a `RuntimeError` in both kinds of filter (since 2.7.1), because nginx cannot resume a filter that waits.
+
 ## mruby_enable_read_request_body
 
 ```
@@ -427,6 +455,20 @@ When set to the value on, ngx_mruby reads a HTTP request body before calling mru
 
 Due to nginx event driven nature, a request body is not always read when invoking a handler like mruby_content_handler.
 The directive force to read the request body.
+
+When the body is not complete yet, a post-read, server rewrite, rewrite, access or content handler runs once nginx has read the rest of it, and the request then goes on with the later phases, also with a phase handler that waits for a subrequest, such as `auth_request`.
+If the client closes the connection or `client_body_timeout` expires first, nginx ends the request and the handler does not run; after `client_body_timeout` nginx closes the connection without a response, and the access log records status 408.
+Before 2.7.1, a server rewrite, rewrite or content handler whose body was not complete never ran, and the client got no response; after a post-read or access handler had waited for the body, a later phase handler that waits for a subrequest, such as `auth_request`, was not resumed.
+
+`mruby_set` and `mruby_set_code` handlers, log handlers and header and body filters cannot wait for the rest of the body, because nginx goes on as soon as they return.
+They see the body only when it is complete before they run: when an earlier handler or module has read it, or, for HTTP/1.x with a `Content-Length` header, when the whole body is in the buffer that nginx read the request headers into (`client_header_buffer_size`, or a buffer of `large_client_header_buffers` when the headers needed one).
+A chunked body, an HTTP/2 or HTTP/3 body, and a body of which only a part is in that buffer count as not complete, even when the rest has already arrived.
+Otherwise they run without the body (`Nginx::Request#body` returns `nil`), and ngx_mruby logs that at the `info` level.
+A body that a post-read, server rewrite, rewrite, access or content handler is still waiting for does not count as complete either: when nginx ends that read without the rest of the body (the client closes the connection, `client_body_timeout` expires, or nginx answers 400 or 413 to the body), a log handler or a filter that runs afterwards runs at once, without waiting for the rest, and the waiting handler does not run.
+`Nginx::Request#body` then returns the part of the body that nginx had read before it ended the read, or `nil` when that part did not fit in `client_body_buffer_size` and nginx had written it to a temporary file.
+A later handler that can wait, or a module such as `proxy_pass`, still reads the whole body.
+To give these handlers the whole body, read it first in a handler that can wait and runs before them, such as a server-level `mruby_post_read_handler_code`.
+Before 2.7.1, such a handler did not run its code when the body was not complete, and the body read that it had started ran the phases of the request again when it completed (since 2.7.1 it runs at once, without waiting for the rest of the body, as described above).
 
 ## mruby_upstream_keepalive
 

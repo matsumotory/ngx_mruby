@@ -19,6 +19,9 @@
 typedef struct {
   ngx_stream_session_t *s;
   ngx_int_t stream_status;
+  // the ngx_stream_mruby_srv_conf_t whose mruby_stream_server_context_code
+  // runs now, for Nginx::Stream.add_listener; NULL at any other time
+  void *server_context_conf;
 } ngx_stream_mruby_internal_ctx_t;
 
 typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;

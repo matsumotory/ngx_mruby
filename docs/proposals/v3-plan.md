@@ -724,9 +724,9 @@ the record of what was decided and why.
     code shares between requests
     ([the proposal for the frame of handler code](handler-code-frame.md)).
     With the decision: on `next`, a regression test and the entry in the
-    release notes of 3.0.0 (#584); on `master`, a note in the docs on how to
-    write such a handler in 2.x, in a later pull request, since `master` is
-    held for the next 2.x release. #502 is closed when both are merged.
+    release notes of 3.0.0 (#584); on `master`, a note in
+    `docs/class_and_method/README.md` on how to write such a handler in 2.x
+    (#586). Both are merged, and #502 is closed.
 
 One question that the 2026-10-04 amendment raises is open. It is not part of
 item 13 or of any decision above. Should a later release add a mode in which

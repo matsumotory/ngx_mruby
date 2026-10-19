@@ -100,17 +100,18 @@ static const char *ngx_mrb_handler_kind_name(ngx_http_mruby_handler_kind_t kind)
 }
 
 /*
- * Returns the current request, or raises a RuntimeError when the handler that
- * runs now cannot wait. Nginx::Async.sleep and Nginx::Async::HTTP.sub_request
- * call it before they arm a timer or post a subrequest, so a refused call
- * leaves nothing behind that could touch the request later.
+ * Returns the current request, or raises a RuntimeError when there is no
+ * current request or the handler that runs now cannot wait.
+ * Nginx::Async.sleep and Nginx::Async::HTTP.sub_request call it before they
+ * arm a timer or post a subrequest, so a refused call leaves nothing behind
+ * that could touch the request later.
  */
 static ngx_http_request_t *ngx_mrb_async_request(mrb_state *mrb, const char *method)
 {
   ngx_http_request_t *r;
   ngx_http_mruby_ctx_t *ctx;
 
-  r = ngx_mrb_get_request();
+  r = ngx_mrb_get_request_or_raise(mrb);
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   if (!ngx_mrb_handler_can_wait(ctx->handler_kind)) {
     mrb_raisef(mrb, E_RUNTIME_ERROR, "%s is not available in %s", method, ngx_mrb_handler_kind_name(ctx->handler_kind));
@@ -240,10 +241,14 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
 static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_t *ctx)
 {
   ngx_int_t rc = NGX_OK;
+  ngx_http_request_t *prev_r;
   ngx_http_mruby_handler_kind_t kind;
   int ai;
 
   ai = mrb_gc_arena_save(re->mrb);
+
+  // re->r is the current request only until this function returns (see ngx_mrb_run())
+  prev_r = ngx_mrb_get_request();
 
   if (re->fiber != NULL) {
     // the handler that runs the fiber, for ngx_mrb_finalize_rputs below; read
@@ -255,6 +260,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
     if (mrb_test(ngx_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result))) {
       // can resume the fiber and wait the epoll timer
       mrb_gc_arena_restore(re->mrb, ai);
+      ngx_mrb_push_request(prev_r);
       return NGX_DONE;
     } else {
       // can not resume the fiber, the fiber was finished (ngx_mrb_run_fiber
@@ -294,6 +300,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
   }
 
   mrb_gc_arena_restore(re->mrb, ai);
+  ngx_mrb_push_request(prev_r);
 
   if (rc != NGX_OK) {
     re->r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -556,7 +563,7 @@ static mrb_value ngx_mrb_async_http_last_response(mrb_state *mrb, mrb_value self
   ngx_http_mruby_ctx_t *ctx;
   mrb_value sub_response_instance;
 
-  r = ngx_mrb_get_request();
+  r = ngx_mrb_get_request_or_raise(mrb);
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
   mrb_value headers = build_response_headers_to_hash(mrb, ctx->sub_response_headers);
