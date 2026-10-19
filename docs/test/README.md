@@ -305,8 +305,25 @@ $ export ASAN_OPTIONS="detect_leaks=1"
 $ export LSAN_OPTIONS="suppressions=$PWD/test/lsan.supp"
 $ export UBSAN_OPTIONS="print_stacktrace=1:suppressions=$PWD/test/ubsan.supp"
 $ NGINX_RUNNER=exec sh test.sh
-$ grep -E 'AddressSanitizer|UndefinedBehaviorSanitizer|runtime error|LeakSanitizer' build/nginx/logs/error.log
+$ grep -HnE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' $(find build/nginx/logs build/nginx/second_instance -type f -name '*.log')
 ```
+
+The last line reads the files that the "Check for sanitizer reports" step
+of the CI cell reads, with the same pattern; the step fails when a line
+matches. A report goes to the stderr of the process that wrote it, and that
+is one of these files:
+
+| File | Whose stderr |
+|---|---|
+| `build/nginx/logs/error.log` | the test nginx, once it has opened its log (its leak report at exit included) |
+| `build/nginx/logs/stderr.log` | the test client (`test/t/ngx_mruby.rb` and the case files; `test.sh` redirects it), and so the processes that the tests start without redirecting it: `nginx -t`, the `nginx -s quit` of the stream-only test, an nginx before it has opened its log |
+| the other `build/nginx/logs/*.log` | the nginx processes that the tests start with a log of their own, after they have opened it (`stream_only.error.log` of the stream-only test, which runs nginx with `daemon on`) |
+| `build/nginx/second_instance/<mode>/*.log` | the second nginx of `test/t/cases/_second_instance.rb` (`error.log`, `stderr.log`, `stdout.log`) |
+
+The step does not read the `*.log.bak` files, in which `test.sh` keeps the
+logs of an earlier run in the same directory. A report of the test nginx
+from before it opened `error.log` goes to the terminal (in CI, the output of
+the `script` step), as the next paragraph says.
 
 `NGINX_EXTRA_CC_OPT` and `NGINX_EXTRA_LD_OPT` are appended to nginx's
 `--with-cc-opt` and `--with-ld-opt`; `NGX_MRUBY_CFLAGS` and `NGX_MRUBY_LDFLAGS`
@@ -323,3 +340,4 @@ the suppression a run can fail on nginx's own allocations. With the gcc 11
 runtime that CI uses, a suppressed block hides nothing else; the LLVM
 runtime and gcc 12 and later also treat a suppressed block as a root, so
 there a block reachable only from those arrays is not reported either.
+

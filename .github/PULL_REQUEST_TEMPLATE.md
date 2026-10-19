@@ -27,7 +27,8 @@ Bug fixes: the regression test is the first commit and the fix the second; quote
 <!--
 Which of valgrind (`NGINX_RUNNER=valgrind sh test.sh`), ASan, UBSan
 did you run, and what was the result (ERROR SUMMARY, leak summary, sanitizer
-reports in error.log)?
+reports in the logs that the "Check for sanitizer reports" step of
+.github/workflows/test.yml reads)?
 -->
 
 ## Leak / performance impact

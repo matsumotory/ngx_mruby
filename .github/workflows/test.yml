@@ -208,9 +208,22 @@ jobs:
           fi
           sh test.sh ${build_opts}
 
-      # nginx writes its stderr, and so every sanitizer report (including the
-      # leak report printed when nginx exits), to error.log. UBSan reports do
-      # not stop nginx, so the tests can pass while reports were written.
+      # UBSan reports do not stop nginx, and LeakSanitizer reports come when a
+      # process exits, so the tests can pass while reports were written. The
+      # reports go to the stderr of the process, which is one of these files:
+      # - build/nginx/logs/error.log: the test nginx, which writes its stderr
+      #   to its error log once it has opened it (the leak report at its
+      #   exit included);
+      # - build/nginx/logs/stderr.log: the stderr of the test client
+      #   (test/t/ngx_mruby.rb and test/t/cases/*.rb; test.sh redirects it),
+      #   and so of the processes that the tests start without redirecting
+      #   it (nginx -t, nginx -s quit, an nginx before it opened its log);
+      # - the other *.log files of build/nginx/logs/: error logs of the
+      #   nginx processes that the tests start (stream_only.error.log of
+      #   the daemon on test, after it redirected its stderr there);
+      # - build/nginx/second_instance/<mode>/*.log: the error.log, stderr.log
+      #   and stdout.log of the second nginx (test/t/cases/_second_instance.rb).
+      # The *.log.bak files that test.sh keeps of an earlier run are not read.
       - name: Check for sanitizer reports
         if: ${{ !cancelled() && matrix.SANITIZER != '' }}
         run: |
@@ -219,11 +232,18 @@ jobs:
             echo "::error title=sanitizer::$log is missing or empty"
             exit 1
           fi
-          if grep -nE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' "$log"; then
-            echo "::error title=sanitizer::sanitizer reports found in $log (see the lines above)"
+          if [ ! -e build/nginx/logs/stderr.log ]; then
+            echo "::error title=sanitizer::build/nginx/logs/stderr.log is missing"
             exit 1
           fi
-          echo "no sanitizer reports in $log"
+          logs=$(find build/nginx/logs build/nginx/second_instance -type f -name '*.log' 2>/dev/null | LC_ALL=C sort)
+          echo "reading:" $logs
+          # The names are file names of the test harness, without spaces.
+          if grep -HnE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' $logs; then
+            echo "::error title=sanitizer::sanitizer reports found (see the lines above, each with its file)"
+            exit 1
+          fi
+          echo "no sanitizer reports in" $logs
 
       - name: after_failure
         if: failure()
