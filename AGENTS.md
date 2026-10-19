@@ -15,7 +15,10 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
 - `mruby/`, `dependence/ngx_devel_kit/`: vendored upstream trees (see "Do not")
 - `test/`: integration tests that start a real nginx (`test/conf/`, `test/html/`, `test/t/`)
 - `docs/`: user documentation (install, directives, classes and methods) and
-  release notes (`docs/releases/`)
+  release notes (`docs/releases/`); `docs/ja/` holds the Japanese pages
+- `site/` (on `next`): the ngx.mruby.org site, Astro with Starlight, built
+  from `docs/` (see "The site" under "Build and test", and
+  `docs/proposals/site.md`)
 
 ## Design principles
 
@@ -446,6 +449,61 @@ git clone --depth 1 --branch release-${NGINX_SRC_MAJOR}.${NGINX_SRC_MINOR}.${NGI
   https://github.com/nginx/nginx build/${NGINX_SRC_VER}    # build_dynamic/... for BUILD_DYNAMIC_MODULE
 sh test.sh
 ```
+
+### The site
+
+`site/` (on `next`) builds the ngx.mruby.org site from `docs/` with Astro
+and Starlight (`docs/proposals/site.md`). It needs git with the whole
+history and Node.js at the version in `site/.node-version` (22.23.3), with
+its npm. The proposal says "Node 22.12 or later"; the packages of
+`site/package-lock.json` need 22.22.0 or later. Install Node.js for your
+user (nvm, fnm, volta, or the archive from nodejs.org), not system-wide.
+
+```sh
+cd site
+npm ci --ignore-scripts   # the exact versions of package-lock.json, without install scripts
+npm run build             # scripts/sync-docs.mjs writes docs/ into src/content/docs/, then astro build writes dist/
+npm run test              # the generator on its fixtures
+npm run check             # the checks of the built site (below)
+npm run preview           # serves dist/ at http://localhost:4321/
+```
+
+- `npm run build` needs no network after `npm ci`. It stops in a shallow
+  clone (the last-updated date of a page is the date of the last commit
+  to its source), on a file of `docs/` without a heading or whose first
+  heading, the page title, contains HTML, and on a relative link to a path
+  that git does not track.
+- The checks of step 1 of the proposal (section 6) are scripts under
+  `site/scripts/` that exit 1 on a failure. `npm run check` runs the four
+  that read `site/dist/`; each takes `--dist`, `--repo` and `--manifest`
+  to run on a copy:
+  - `sh site/scripts/check-fresh-clone.sh [--keep DIR] [REV]`: a clone of
+    the commit (default `HEAD`) builds with `npm ci --ignore-scripts` and
+    `npm run build`;
+  - `node scripts/check-built-links.mjs`: every internal link of the built
+    HTML resolves, and no link attribute is empty or broken;
+  - `node scripts/check-pages.mjs`: every page has a title and the
+    last-updated date of its source;
+  - `node scripts/check-japanese.mjs`: the pages from `docs/ja/` are under
+    `/ja/` with `lang="ja"`, and the `<wbr>` of their h2 are elements of
+    the built h2;
+  - `node scripts/check-no-js.mjs`: the text of each source is in the HTML
+    without running scripts.
+- `node scripts/test-sync-docs.mjs` (`npm run test`) runs the generator
+  on fixtures in temporary repositories: links in raw HTML inside
+  blockquotes and list items, and an attribute value that stops the build.
+- `.github/workflows/site.yml` runs the five checks and the generator's
+  test on pull requests to `next` that touch `site/` or `docs/` and on
+  every push to `next` (a push that removes a file that `docs/` links to
+  fails there), and uploads `site/dist/` as the artifact `site`. It does
+  not deploy.
+- `site/package.json` and `site/package-lock.json` pin exact versions:
+  change them with `npm install --save-exact <package>@<version>` and
+  commit both. Nothing that the build generates is committed:
+  `site/.gitignore` ignores it, and `test/forbidden_paths.txt` fails a
+  forced add of `site/dist/`, `site/generated/` or `site/.astro/`.
+- `python3 site/scripts/check_links.py REPO_ROOT FILE...` checks the
+  relative links and anchors of Markdown files.
 
 ## Writing tests
 
