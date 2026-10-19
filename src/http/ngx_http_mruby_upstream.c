@@ -46,7 +46,7 @@ static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
   ngx_mruby_upstream_context *ctx;
   ngx_http_upstream_main_conf_t *umcf;
   ngx_http_upstream_srv_conf_t **usp;
-  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
 
   mrb_get_args(mrb, "o", &upstream);
 
@@ -135,7 +135,7 @@ static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
   ngx_mruby_upstream_context *ctx = DATA_PTR(self);
   ngx_url_t u;
   mrb_value server;
-  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
   u_char *serverp;
 
   mrb_get_args(mrb, "o", &server);

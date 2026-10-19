@@ -52,12 +52,13 @@ can live in files of its own:
   generated configuration), `tcp_client` and `second_instance`. It starts
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
   with `_` are helpers and are not run by test.sh; `_tcp_client.rb`,
-  `_filter_connection_client.rb` and `_second_instance.rb` are CRuby
-  scripts that the prelude helpers run with `ruby`. `_agent_proxy_client.rb`
-  is a CRuby script (3.0 or later) that `agent_proxy.rb` runs itself: it
-  loads `test/soak/mock_llm.rb` and `test/soak/http_client.rb`, runs the mock
-  LLM upstream on 12372 and 12373 while it sends its requests (see "Mock LLM
-  upstream" below), and prints `key=value` lines.
+  `_filter_connection_client.rb`, `_request_body_client.rb` and
+  `_second_instance.rb` are CRuby scripts that the prelude helpers and the
+  cases run with `ruby`. `_agent_proxy_client.rb` is a CRuby script (3.0 or
+  later) that `agent_proxy.rb` runs itself: it loads `test/soak/mock_llm.rb`
+  and `test/soak/http_client.rb`, runs the mock LLM upstream on 12372 and
+  12373 while it sends its requests (see "Mock LLM upstream" below), and
+  prints `key=value` lines.
 - Hook scripts go to `test/html/` as before; the fragment refers to them as
   `build/nginx/html/<name>.rb`.
 
@@ -73,9 +74,13 @@ such a case once with the sanitizer build (see "Running the tests under
 AddressSanitizer and UndefinedBehaviorSanitizer" below) before opening the
 PR. `nginx_t` turns leak detection off for its `nginx -t` run, because
 `nginx -t` returns without freeing the configuration it read, so every
-allocation of nginx itself would be reported; `second_instance` returns the
-first sanitizer line of the second nginx's `error.log` as `sanitizer`, and
-the cases print that log when the line is set.
+allocation of nginx itself would be reported. The stream-only test at the end
+of `test/t/ngx_mruby.rb` does the same for the `nginx -s quit` that stops the
+nginx it started: that process returns from nginx's `main()` without freeing
+the pool that `main()` creates first, and its report would go to the test
+runner's `stderr.log`. `second_instance` returns the first sanitizer line of
+the second nginx's `error.log` or `stderr.log` as `sanitizer`, and the cases
+print the second nginx's `error.log` when the line is set.
 
 ## Required status check
 
@@ -175,6 +180,21 @@ commit removes stays in the history: remove it from the commit that added it
 ```
 sh test.sh
 ```
+
+`test.sh` configures nginx with `--with-debug`, `--with-http_stub_status_module`,
+`--with-http_ssl_module`, `--with-http_auth_request_module` and `--with-stream`
+(see `NGINX_DEFAULT_OPT` and `NGINX_CONFIG_OPT` in `test.sh`), so the test
+configuration can use the directives of these modules. CI runs the same
+`test.sh` on a fresh checkout. A local build directory keeps the options that
+nginx was first configured with: the Makefile configures nginx again only when
+`build/nginx-X.Y.Z/objs/Makefile` does not exist (`build_dynamic/...` for
+`BUILD_DYNAMIC_MODULE`). After these options change, remove that file and run
+`test.sh` once without `ONLY_BUILD_NGX_MRUBY`; otherwise nginx stops at the
+test configuration with an "unknown directive" error. After changing
+`nginx_version` or `BUILD_DYNAMIC_MODULE`, run `test.sh` once without
+`ONLY_BUILD_NGX_MRUBY` as well: it then uses another build directory
+(`build/nginx-X.Y.Z` of the new version, or `build_dynamic/`), and configures
+nginx there when that file is missing in it.
 
 If you want to run with valgrind, set the environment variables `NGINX_RUNNER` and `NGINX_HEATTIME`.
 

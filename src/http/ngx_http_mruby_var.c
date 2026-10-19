@@ -79,7 +79,6 @@ mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int le
   ngx_cpystrn(valp, val.data, val.len + 1);
 
   hash = ngx_hash_strlow(key.data, key.data, key.len);
-  r = ngx_mrb_get_request();
   cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
   v = ngx_hash_find(&cmcf->variables_hash, hash, key.data, key.len);
 
@@ -129,7 +128,7 @@ static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
   char *c_name;
   ngx_http_request_t *r;
 
-  r = ngx_mrb_get_request();
+  r = ngx_mrb_get_request_or_raise(mrb);
 
   // get var symble from method_missing(sym, *args)
   mrb_get_args(mrb, "n*", &name, &a, &alen);
@@ -159,7 +158,7 @@ static mrb_value ngx_mrb_var_exist(mrb_state *mrb, mrb_value self)
   ngx_str_t ngx_name;
   ngx_uint_t key;
 
-  r = ngx_mrb_get_request();
+  r = ngx_mrb_get_request_or_raise(mrb);
 
   mrb_get_args(mrb, "s", &c_name, &m_len);
 
@@ -196,7 +195,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     o = mrb_funcall_id(mrb, o, MRB_SYM(to_s), 0);
   }
 
-  r = ngx_mrb_get_request();
+  r = ngx_mrb_get_request_or_raise(mrb);
 
   key.data = (u_char *)RSTRING_PTR(k);
   key.len = RSTRING_LEN(k);

@@ -8,19 +8,22 @@
 # first one cannot: the file versions of the init, init_worker and exit_worker
 # hooks, and the order in which the hooks run.
 #
-# Usage: ruby test/t/cases/_second_instance.rb http|stream
+# Usage: ruby test/t/cases/_second_instance.rb http|stream|stream_add_listener
 #
 # NGINX_INSTALL_DIR names the nginx that test.sh installed. The second nginx
 # runs in the foreground as a single process, uses the prefix
 # NGINX_INSTALL_DIR/second_instance/MODE/ and listens on 127.0.0.1:18116 for
-# http or on 127.0.0.1:12357 for stream. The hook files are the copies of
-# test/html in NGINX_INSTALL_DIR/html. A dynamic module build loads the
-# module with an absolute path.
+# http or on 127.0.0.1:12357 for the two stream modes. The hook files are the
+# copies of test/html in NGINX_INSTALL_DIR/html. A dynamic module build loads
+# the module with an absolute path.
 #
 # The script prints one "key=value" line for each observation:
 #   reply   what the second nginx answered: the HTTP body for http, the bytes
 #           of the stream session for stream
 #   trace   stream only: the trace that the session code wrote to error.log
+#   add_listener  stream_add_listener only: what Nginx::Stream.add_listener
+#           did when the session code called it, as the code wrote it to
+#           error.log ("returned" or "CLASS: MESSAGE")
 #   stdout  the lines that the hooks printed with p, joined with "|"
 #   exit    "exited N" or "ended by signal N" after SIGQUIT, or why the
 #           process did not end
@@ -30,7 +33,7 @@ require 'socket'
 require 'fileutils'
 
 LIMIT = 30 # seconds for the start, for each exchange and for the stop
-PORTS = { 'http' => 18116, 'stream' => 12357 }.freeze
+PORTS = { 'http' => 18116, 'stream' => 12357, 'stream_add_listener' => 12357 }.freeze
 
 HTTP_CONF = <<'CONF'
 http {
@@ -88,6 +91,34 @@ stream {
 }
 CONF
 
+# Nginx::Stream.add_listener at run time. The server has no listen
+# directive: its mruby_stream_server_context_code adds the listener while
+# nginx reads the configuration, the use that the method is for. The session
+# code then calls the method again and writes what happened to error.log.
+# Running it in the second nginx keeps the nginx of test.sh and the later
+# case files out of whatever the call does there.
+STREAM_ADD_LISTENER_CONF = <<'CONF'
+http {
+}
+
+stream {
+    server {
+        mruby_stream_server_context_code 'Nginx::Stream.add_listener({address: "127.0.0.1:__PORT__"})';
+
+        mruby_stream_code '
+            begin
+              Nginx::Stream.add_listener({address: "127.0.0.1:__PORT__"})
+              result = "returned"
+            rescue => e
+              result = "#{e.class}: #{e.message}"
+            end
+            Nginx::Stream.log Nginx::Stream::LOG_NOTICE, "add_listener in a session: [#{result}]"
+        ';
+        return "stream session ok";
+    }
+}
+CONF
+
 def now
   Process.clock_gettime(Process::CLOCK_MONOTONIC)
 end
@@ -96,7 +127,7 @@ def configuration(mode, install, prefix)
   html = File.join(install, 'html')
   port = PORTS.fetch(mode).to_s
   so = File.join(install, 'modules', 'ngx_http_mruby_module.so')
-  body = mode == 'http' ? HTTP_CONF : STREAM_CONF
+  body = { 'http' => HTTP_CONF, 'stream' => STREAM_CONF }.fetch(mode, STREAM_ADD_LISTENER_CONF)
   [
     File.exist?(so) ? "load_module #{so};" : '',
     'daemon off;',
@@ -245,12 +276,14 @@ class SecondInstance
       end
     end
     log = File.join(@prefix, 'error.log')
-    return unless @mode == 'stream' && File.exist?(log)
+    return unless @mode != 'http' && File.exist?(log)
 
-    # error.log also holds the source of the session code, so the pattern
-    # accepts only the characters of a trace.
+    # error.log also holds the source of the session code, so the patterns
+    # accept only the characters of a trace or of a result, not "#{".
     m = File.read(log).match(/init trace=\[([a-z_,]*)\]/)
     @result['trace'] = m[1] if m
+    m = File.read(log).match(/add_listener in a session: \[([A-Za-z][^\]#]*)\]/)
+    @result['add_listener'] = m[1] if m
   end
 end
 
@@ -262,6 +295,6 @@ end
 
 instance = SecondInstance.new(mode)
 instance.run
-%w[error reply trace stdout exit sanitizer].each do |key|
+%w[error reply trace add_listener stdout exit sanitizer].each do |key|
   puts "#{key}=#{instance.result[key]}" if instance.result.key?(key)
 end

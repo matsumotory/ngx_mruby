@@ -14,9 +14,20 @@
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
 
-static mrb_value ngx_mrb_ssl_init(mrb_state *mrb, mrb_value self)
+/* the handshake state is set only while mruby_ssl_handshake_handler code runs */
+static ngx_http_mruby_srv_conf_t *ngx_mrb_ssl_get_srv_conf(mrb_state *mrb)
 {
   ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+
+  if (mscf == NULL || mscf->connection == NULL || mscf->servername == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::SSL can only be used in mruby_ssl_handshake_handler");
+  }
+  return mscf;
+}
+
+static mrb_value ngx_mrb_ssl_init(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_mruby_srv_conf_t *mscf = ngx_mrb_ssl_get_srv_conf(mrb);
 
   mscf->cert_path.data = NULL;
   mscf->cert_path.len = 0;
@@ -33,7 +44,7 @@ static mrb_value ngx_mrb_ssl_init(mrb_state *mrb, mrb_value self)
 #define NGX_MRUBY_DEFINE_METHOD_NGX_SET_SSL_MEMBER(method_suffix, member)                                              \
   static mrb_value ngx_mrb_ssl_set_##method_suffix(mrb_state *mrb, mrb_value self)                                     \
   {                                                                                                                    \
-    ngx_http_mruby_srv_conf_t *mscf = mrb->ud;                                                                         \
+    ngx_http_mruby_srv_conf_t *mscf = ngx_mrb_ssl_get_srv_conf(mrb);                                                   \
     ngx_connection_t *c = mscf->connection;                                                                            \
     char *value;                                                                                                       \
     mrb_int len;                                                                                                       \
@@ -47,7 +58,8 @@ static mrb_value ngx_mrb_ssl_init(mrb_state *mrb, mrb_value self)
                     "ngx_mrb_ssl_set_" #method_suffix, __LINE__);                                                      \
       return mrb_nil_value();                                                                                          \
     }                                                                                                                  \
-    ngx_cpystrn(valuep, (u_char *)value, len + 1);                                                                     \
+    ngx_memcpy(valuep, value, len);                                                                                    \
+    valuep[len] = '\0';                                                                                                \
     mscf->member.data = valuep;                                                                                        \
     mscf->member.len = len;                                                                                            \
                                                                                                                        \
@@ -58,12 +70,8 @@ static mrb_value ngx_mrb_ssl_errlogger(mrb_state *mrb, mrb_value self)
 {
   mrb_value msg;
   mrb_int log_level;
-  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+  ngx_http_mruby_srv_conf_t *mscf = ngx_mrb_ssl_get_srv_conf(mrb);
   ngx_connection_t *c = mscf->connection;
-
-  if (c == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "can't use logger at this phase. only use at request phase");
-  }
 
   mrb_get_args(mrb, "io", &log_level, &msg);
   if (log_level < 0) {
@@ -78,7 +86,7 @@ static mrb_value ngx_mrb_ssl_errlogger(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_ssl_get_servername(mrb_state *mrb, mrb_value self)
 {
-  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+  ngx_http_mruby_srv_conf_t *mscf = ngx_mrb_ssl_get_srv_conf(mrb);
 
   return mrb_str_new(mrb, (char *)mscf->servername->data, mscf->servername->len);
 }
@@ -94,14 +102,14 @@ static in_port_t get_in_port(struct sockaddr *sa)
 
 static mrb_value ngx_mrb_ssl_local_port(mrb_state *mrb, mrb_value self)
 {
-  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+  ngx_http_mruby_srv_conf_t *mscf = ngx_mrb_ssl_get_srv_conf(mrb);
 
   return mrb_fixnum_value(ntohs(get_in_port(mscf->connection->local_sockaddr)));
 }
 
 static mrb_value ngx_mrb_ssl_tls_version(mrb_state *mrb, mrb_value self)
 {
-  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+  ngx_http_mruby_srv_conf_t *mscf = ngx_mrb_ssl_get_srv_conf(mrb);
   ngx_connection_t *c = mscf->connection;
   ngx_ssl_conn_t *ssl_conn;
 
