@@ -35,7 +35,7 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-19 (19:52 JST)
+## State as of 2026-10-19 (20:20 JST)
 
 Heads: `next` is the merge of #595, whose first parent is `7b5a0c4`
 (merge of #574); before it, `a466688` (merge of #591) and `3566595`
@@ -123,12 +123,14 @@ Open pull requests, all drafts:
 
 | PR | Base | Change | Stage |
 |---|---|---|---|
-| [#594](https://github.com/matsumotory/ngx_mruby/pull/594) | `master` | Send the output with the status set after it when nginx would not answer it (the case that #566 leaves without a response) | A draft (head `2e3e838`); no review yet. |
-| [#597](https://github.com/matsumotory/ngx_mruby/pull/597) | `next` | Update the bundled ngx_devel_kit (`dependence/ngx_devel_kit/`) from v0.3.1 to v0.3.4 with `./update-devkit-subtree v0.3.4` (Pillar A of the plan) | A draft whose description says that the test runs, the release notes and the `perf` comparison are added as they finish; no review yet. |
-| [#598](https://github.com/matsumotory/ngx_mruby/pull/598) | `master` | Docs: state the trust boundary (trusted configuration code, untrusted client input) in `docs/README.md`, linked from `README.md`, `docs/README.md` and `SECURITY.md` (Pillar G of the plan) | A draft; no review yet. |
-| [#599](https://github.com/matsumotory/ngx_mruby/pull/599) | `master` | Check the supply chain in CI: zizmor, OpenSSF Scorecard and the heads of the GitHub gems | A draft; no review yet. |
-| [#600](https://github.com/matsumotory/ngx_mruby/pull/600) | `next` | Mock LLM upstream: the OpenAI Responses API, with its soak, perf and agent proxy scenarios | A draft whose description follows once its `perf` comparison has finished; no review yet. |
+| [#594](https://github.com/matsumotory/ngx_mruby/pull/594) | `master` | Send the output with the status set after it when nginx would not answer it (the case that #566 leaves without a response) | A draft under review: [the review of `2e3e838`](https://github.com/matsumotory/ngx_mruby/pull/594#issuecomment-6265366574); the head is `9c73d70`. |
+| [#597](https://github.com/matsumotory/ngx_mruby/pull/597) | `next` | Update the bundled ngx_devel_kit (`dependence/ngx_devel_kit/`) from v0.3.1 to v0.3.4 with `./update-devkit-subtree v0.3.4` (Pillar A of the plan) | A draft under review: [the review of `9150c49`](https://github.com/matsumotory/ngx_mruby/pull/597#issuecomment-6265755770); the head is `9f5a9ac`. |
+| [#598](https://github.com/matsumotory/ngx_mruby/pull/598) | `master` | Docs: state the trust boundary (trusted configuration code, untrusted client input) in `docs/README.md`, linked from `README.md`, `docs/README.md` and `SECURITY.md` (Pillar G of the plan) | A draft under review: [the review of `7057acc`](https://github.com/matsumotory/ngx_mruby/pull/598#issuecomment-6265194878) and [the re-review of `4420559`](https://github.com/matsumotory/ngx_mruby/pull/598#issuecomment-6265226156); the head is `7436493`. |
+| [#599](https://github.com/matsumotory/ngx_mruby/pull/599) | `master` | Check the supply chain in CI: zizmor, OpenSSF Scorecard and the heads of the GitHub gems | A draft under review: [the review](https://github.com/matsumotory/ngx_mruby/pull/599#issuecomment-6265795773); its five "should fix" are applied, and the head `4f5a6c3` merges `master` at `a500846`. |
+| [#600](https://github.com/matsumotory/ngx_mruby/pull/600) | `next` | Mock LLM upstream: the OpenAI Responses API, with its soak, perf and agent proxy scenarios | A draft under review: [the review of `bed4827`](https://github.com/matsumotory/ngx_mruby/pull/600#issuecomment-6265828124); the head is `9bf10a4`. |
 | [#601](https://github.com/matsumotory/ngx_mruby/pull/601) | `master` | CI: the callgrind performance lane and wider sanitizer log checks on `master` (two rows of "Queue") | A draft; no review yet. |
+| [#602](https://github.com/matsumotory/ngx_mruby/pull/602) | `next` | nginx-tests: run nginx's own test suite on nginx with and without ngx_mruby | A draft; no review yet. |
+| [#603](https://github.com/matsumotory/ngx_mruby/pull/603) | `master` | Test the directives and Ruby methods that had no test | A draft; no review yet. |
 
 ## Decisions
 
@@ -192,7 +194,7 @@ Taken up and still open: none.
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
 | Site: the implementation, in the steps of [section 6 of the proposal](proposals/site.md#6-implementation-plan). Step 1 is merged: [#591](https://github.com/matsumotory/ngx_mruby/pull/591) (`a466688`), `site/` with Starlight 0.42.6 and Astro 7.3.8 pinned and Node.js 22.23.3, the generator `site/scripts/sync-docs.mjs` that renders `docs/` without design, its test and the checks of step 1 under `site/scripts/` (AGENTS.md, "The site"), and `.github/workflows/site.yml`, which builds the site, runs the checks and uploads the built site as a workflow artifact, without deploying. Next: step 2, the tokens of section 4 and the specimens of 4.12, which the owner reviews. In step 1 the generated pages fill all of `site/src/content/docs/` (gitignored), with `docs/README.md` as the page `/`; 5.2 puts the committed home pages `index.mdx` and `ja/index.mdx` in that folder and the generated pages in a gitignored folder under it, so step 3 moves the generated pages into such a folder (they already carry `slug`) before it adds the home pages | `next` (`site/`, as decided with Q1); steps 6 and 7 also change `master` | Step 2 (the tokens of section 4 and the specimens of 4.12, which the owner reviews): ready to start. The owner decided the questions on 2026-10-15 ([section 7 of the proposal](proposals/site.md#7-decisions-2026-10-15)); the last column of section 6 lists what the owner reviews in each step |
 | Before the switch of ngx.mruby.org (step 7 of the site proposal), the owner has an item to do in the Pages settings for the custom domain | Repository settings | The owner |
-| The implementation of [the proposal for the method lookup of `Nginx::Var` accessors](proposals/nginx-var-method-lookup.md) (#577): candidates (a) and (d), accessors defined on `Nginx::Var` at the first miss with the rule (a2), and ngx_mruby's own methods that read variables in C, with the tests, docs, release notes entries and the three comparisons of its section 3 | `next` | Ready to start once #595 merges (it brings #589 to `next`); the owner's answer of 2026-10-15 to section 4 is to be written into the Status line of `docs/proposals/nginx-var-method-lookup.md` by the implementation pull request |
+| The implementation of [the proposal for the method lookup of `Nginx::Var` accessors](proposals/nginx-var-method-lookup.md) (#577): candidates (a) and (d), accessors defined on `Nginx::Var` at the first miss with the rule (a2), and ngx_mruby's own methods that read variables in C, with the tests, docs, release notes entries and the three comparisons of its section 3 | `next` | The owner's answer to the question of section 4 of the proposal (#561 merged as `0b76bfa6d`; the `Nginx::Var` fix of `master`, #589, is on `next` since #595) |
 | mruby 4.1.0 | `next` | The 4.1.0 tag |
 
 ## How a session continues
