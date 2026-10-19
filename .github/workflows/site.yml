@@ -4,6 +4,12 @@ name: site
 # 6): build site/ and docs/ from a fresh clone, run the checks of step 1,
 # and upload the built site as a workflow artifact. There is no deployment
 # job: step 7 adds it, after the Pages settings of 5.3.
+#
+# Pull requests run it when they touch site/, docs/ or this file. Every push
+# to next runs it: docs/ links to files outside docs/ and site/, and a link
+# to a file that git no longer tracks stops the build, so a merge that
+# removes or renames such a file fails here, on that merge, and not on the
+# next pull request that touches docs/.
 on:
   pull_request:
     branches:
@@ -15,10 +21,6 @@ on:
   push:
     branches:
       - next
-    paths:
-      - 'site/**'
-      - 'docs/**'
-      - '.github/workflows/site.yml'
   workflow_dispatch:
 
 # A new push to a pull request cancels the run for its previous commit.

@@ -1248,8 +1248,14 @@ detection, or that pinned versions do not keep Starlight stable.
 ### 5.3 Deployment and previews
 
 - `.github/workflows/site.yml` on `next` runs on pull requests to `next`
-  and pushes to `next` that touch `site/`, `docs/` or the file itself, and
-  on `workflow_dispatch`. The build job checks out `next` with full history
+  that touch `site/`, `docs/` or the file itself, on every push to `next`,
+  and on `workflow_dispatch`. Pushes are not filtered by path because
+  `docs/` links to files outside `docs/` and `site/` (`AGENTS.md`,
+  `build_config.rb`, `.github/workflows/test.yml` and others), and the
+  generator stops on a link to a path that git does not track: a pull
+  request that removes or renames such a file without touching `docs/`
+  passes, and the push of its merge then fails, instead of the next pull
+  request that touches `docs/`. The build job checks out `next` with full history
   and `master`, runs `npm ci`, the generator, both builds, Pagefind and the
   checks of section 6, and uploads the result. The deploy job runs
   `actions/deploy-pages` (v5.0.1) with `pages: write` and

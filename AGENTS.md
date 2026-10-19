@@ -490,9 +490,10 @@ npm run preview           # serves dist/ at http://localhost:4321/
   on fixtures in temporary repositories: links in raw HTML inside
   blockquotes and list items, and an attribute value that stops the build.
 - `.github/workflows/site.yml` runs the five checks and the generator's
-  test on pull requests to `next` and pushes to `next` that touch `site/`
-  or `docs/`, and uploads `site/dist/` as the artifact `site`. It does not
-  deploy.
+  test on pull requests to `next` that touch `site/` or `docs/` and on
+  every push to `next` (a push that removes a file that `docs/` links to
+  fails there), and uploads `site/dist/` as the artifact `site`. It does
+  not deploy.
 - `site/package.json` and `site/package-lock.json` pin exact versions:
   change them with `npm install --save-exact <package>@<version>` and
   commit both. Nothing that the build generates is committed
