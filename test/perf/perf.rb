@@ -21,10 +21,10 @@
 # scenarios of test/soak/nginx.conf; see REQUEST_FUNCTIONS and
 # request_functions), fails the measurement.
 #
-# The agent proxy scenarios (proxy_*, auth, route_json_*, ruby_call_*) use
-# the template test/soak/nginx.agent.conf, and those with an upstream also
-# get the mock LLM test/soak/mock_llm.rb on port base + 2, started before
-# nginx and stopped after it.
+# The agent proxy scenarios (proxy_*, responses_stream_plain_*, auth,
+# route_json_*, ruby_call_*) use the template test/soak/nginx.agent.conf,
+# and those with an upstream also get the mock LLM test/soak/mock_llm.rb on
+# port base + 2, started before nginx and stopped after it.
 #
 # Why master_process off: callgrind_control reaches a process through
 # valgrind's gdbserver (vgdb), and vgdb does not serve a process that valgrind
@@ -76,12 +76,12 @@ WARN_PERCENT = env_float('PERF_WARN_PERCENT', 3.0)
 FAIL_PERCENT = env_float('PERF_FAIL_PERCENT', 5.0)
 
 # The scenarios measured when PERF_SCENARIOS is not set: keep-alive
-# scenarios of test/soak/scenarios.rb. proxy_stream_plain_1000 and
-# route_json_64k are left out for their time (see docs/test/README.md);
-# PERF_SCENARIOS names them.
+# scenarios of test/soak/scenarios.rb. proxy_stream_plain_1000,
+# responses_stream_plain_1000 and route_json_64k are left out for their time
+# (see docs/test/README.md); PERF_SCENARIOS names them.
 DEFAULT_SCENARIOS = %w[hello headers var filter sleep sub_request file
-                       proxy_plain_2k proxy_plain_64k proxy_stream_plain_50 auth route_json_2k
-                       ruby_call_1 ruby_call_10].freeze
+                       proxy_plain_2k proxy_plain_64k proxy_stream_plain_50 responses_stream_plain_50 auth
+                       route_json_2k ruby_call_1 ruby_call_10].freeze
 
 # The GC: the inclusive cost of the calls into the two entry points of
 # mruby's collector, made from outside the collector. See parse_profile.
