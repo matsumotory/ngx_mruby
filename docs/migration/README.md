@@ -352,6 +352,9 @@ not enough, and show the change.
   does not answer by itself; it still matches for a status below 200, and
   for `Nginx::HTTP_OK` without output in the other handlers and in
   subrequests.
+- [An output body filter that ends with an empty body sends the response instead of closing the connection](../releases/v3.0.0.md#an-output-body-filter-that-ends-with-an-empty-body-sends-the-response-instead-of-closing-the-connection-574):
+  an alert on `zero size buf in writer` no longer fires for these
+  responses, because nginx sends them.
 
 ## C extensions and mrbgems
 
