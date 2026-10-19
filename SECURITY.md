@@ -18,17 +18,16 @@ which line is described in [Branch strategy](README.md#branch-strategy).
 ## Scope
 
 ngx_mruby trusts the nginx configuration and the Ruby code that it loads, and
-treats what a client sends as untrusted input. A defect of ngx_mruby that
-makes it read or write memory outside its buffers, end or hang the worker, or
-reveal or change the data of another request, in a configuration that uses the
+treats what a client sends as untrusted input. A defect of ngx_mruby that makes
+it read or write memory outside its buffers, end or hang the worker, or reveal
+or change the data of another request, in a configuration that uses the
 directives and methods as they are documented, is in scope, in particular when
-input a client controls triggers it. What follows from the operator's own code doing what it was written to
-do (for example a script that passes client input to `eval`, a shell command or
-a file path), and a setup that takes configuration or Ruby code from parties
-that the operator does not trust, are not.
-[Trust boundary](docs/README.md#trust-boundary) describes both sides and the
-scope in full. If you are not sure whether a client can reach a defect, report
-it privately.
+input a client controls triggers it. What follows from the operator's own code
+doing what it was written to do (for example a script that passes client input
+to `eval`, a shell command or a file path), and a setup that takes configuration
+or Ruby code from parties that the operator does not trust, are not. [Trust
+boundary](docs/README.md#trust-boundary) describes both sides and the scope in
+full. If you are not sure whether a defect is in scope, report it privately.
 
 ## Reporting a vulnerability
 
