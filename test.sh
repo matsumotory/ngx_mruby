@@ -129,6 +129,13 @@ echo "ngx_mruby building ... Done"
 
 echo "ngx_mruby testing ..."
 $MAKE install
+# TEST_SH_SKIP_TESTS=1 stops after the build and the install, before the test
+# configuration is written and nginx is started: test/nginx-tests/run.sh
+# builds nginx with ngx_mruby this way and runs nginx's own test suite on it.
+if [ -n "$TEST_SH_SKIP_TESTS" ]; then
+    echo "test.sh ... built and installed to ${NGINX_INSTALL_DIR}; tests skipped (TEST_SH_SKIP_TESTS)"
+    exit 0
+fi
 $PS_C nginx 2>/dev/null && $KILLALL nginx
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 rm -rf ${NGINX_INSTALL_DIR}/conf/conf.d
