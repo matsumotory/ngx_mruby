@@ -496,8 +496,9 @@ npm run preview           # serves dist/ at http://localhost:4321/
   not deploy.
 - `site/package.json` and `site/package-lock.json` pin exact versions:
   change them with `npm install --save-exact <package>@<version>` and
-  commit both. Nothing that the build generates is committed
-  (`site/.gitignore`).
+  commit both. Nothing that the build generates is committed:
+  `site/.gitignore` ignores it, and `test/forbidden_paths.txt` fails a
+  forced add of `site/dist/`, `site/generated/` or `site/.astro/`.
 - `python3 site/scripts/check_links.py REPO_ROOT FILE...` checks the
   relative links and anchors of Markdown files.
 

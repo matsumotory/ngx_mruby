@@ -103,7 +103,8 @@ A file of either list fails with exit status 1 when it matches a pattern of
 coding agent under `.claude/` (everything there except
 `.claude/settings.json`, `.claude/commands/` and `.claude/skills/`, which also
 fail below another `.claude/`), a build directory at the top (`build/`,
-`build_dynamic/`, `build_soak/`, `build_perf/`) or `mruby/build/`, a file
+`build_dynamic/`, `build_soak/`, `build_perf/`) or `mruby/build/`, the build
+of the site (`site/dist/`, `site/generated/`, `site/.astro/`), a file
 that `./configure` or the Makefile writes at the top (`Makefile`, `config`,
 `config.status`, `autom4te.cache/`, `mrbgems_config`, `.mruby_version`, the
 `.openssl_*_done` files), `.vagrant/`, a tag file of GNU Global or ctags, a
