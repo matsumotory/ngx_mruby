@@ -112,10 +112,12 @@ t.assert('request API', 'send_header 200 after rputs sends the body') do
   t.assert_equal 'body-ok', res["body"]
 end
 
-t.assert('request API', 'send_header 200 without a body becomes 500') do
+t.assert('request API', 'send_header 200 without a body answers 200 with an empty body') do
+  # v3 answers as nginx's "return 200;" does (#200); the 2.x line answers 500
   res = HttpRequest.new.get base(REQUEST_API_PORT) + '/request_api/send_header/empty_200'
-  t.assert_equal 500, res.code
-  t.assert_include res["body"], '<title>500 Internal Server Error</title>'
+  t.assert_equal 200, res.code
+  t.assert_equal '0', res["content-length"]
+  t.assert_equal '', res["body"]
 end
 
 t.assert('request API', 'send_header 404 without a body sends the nginx error page') do

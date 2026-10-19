@@ -226,8 +226,12 @@ t.assert('ngx_mruby - Nginx.return 200 and body', 'location /return_and_body') d
 end
 
 t.assert('ngx_mruby - Nginx.return 200 dont have body', 'location /return_and_error') do
+  # v3 answers 200 with an empty body, as nginx's "return 200;" does (#200);
+  # the 2.x line answers 500
   res = HttpRequest.new.get base + '/return_and_error'
-  t.assert_equal 500, res.code
+  t.assert_equal 200, res.code
+  t.assert_equal '0', res["content-length"]
+  t.assert_equal '', res["body"]
 end
 
 t.assert('ngx_mruby - raise error with no response body', 'location /raise_and_no_response') do
