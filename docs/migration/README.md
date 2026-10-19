@@ -234,6 +234,32 @@ not enough, and show the change.
   before the `return`, where 2.x answered 500 (2.7.0 answered 200 with the
   output that a content handler had written before it). Log alerts on
   `unexpected return (LocalJumpError)` no longer fire for it.
+- [A content handler that ends without output answers 200 with an empty body instead of 500](../releases/v3.0.0.md#a-content-handler-that-ends-without-output-answers-200-with-an-empty-body-instead-of-500-574):
+  look at the `mruby_content_handler` and `mruby_content_handler_code`
+  handlers that can end without writing a body: a handler that writes only
+  when a condition holds, one that passes a value that can be `""` or
+  `nil` to `Nginx.rputs`, one that only sets response headers, and one
+  that ends with `Nginx.return Nginx::HTTP_OK` or another status from 200
+  to 299 other than 201 and 204. On 3.0.0 they answer that status (200
+  when none is set) with `Content-Length: 0`; on 2.7.1 they answered 500.
+  A handler that relied on the 500 sets the status that it means:
+
+  ```ruby
+  body = Nginx::Request.new.headers_in["X-Answer"].to_s
+  Nginx.rputs body                       # body "": 2.7.1 answers 500   3.0.0 answers 200 with Content-Length: 0
+
+  if body.empty?
+    Nginx.return Nginx::HTTP_NOT_FOUND   # 404 on both
+  else
+    Nginx.rputs body
+  end
+  ```
+
+- [An output body filter that ends with an empty body sends the response instead of closing the connection](../releases/v3.0.0.md#an-output-body-filter-that-ends-with-an-empty-body-sends-the-response-instead-of-closing-the-connection-574):
+  nothing to change. A body filter that sets `""` with
+  `Nginx::Filter#body=` or `#output`, or leaves the body of a response
+  without a body empty, sends the status with `Content-Length: 0`, where
+  2.x closed the connection without a byte.
 - [`Dir` comes from mruby's core gem, and a closed `Dir` raises `IOError` instead of `RuntimeError`](../releases/v3.0.0.md#dir-comes-from-mrubys-core-gem-and-a-closed-dir-raises-ioerror-instead-of-runtimeerror-559):
   the search above finds `RuntimeError`; look at the ones that rescue an
   exception of a `Dir` that can be closed, or of `Dir.open` with a block
@@ -318,6 +344,17 @@ not enough, and show the change.
   ```sh
   nginx -t -e stderr 2>&1 | grep 'mechanism enabled'
   ```
+
+- [A content handler that ends without output answers 200 with an empty body instead of 500](../releases/v3.0.0.md#a-content-handler-that-ends-without-output-answers-200-with-an-empty-body-instead-of-500-574):
+  a pattern on `response body is empty. return NGX_HTTP_INTERNAL_SERVER_ERROR`
+  no longer matches for the content handlers of the main request that end
+  without output and with no status or a status from 200 to 299 that nginx
+  does not answer by itself; it still matches for a status below 200, and
+  for `Nginx::HTTP_OK` without output in the other handlers and in
+  subrequests.
+- [An output body filter that ends with an empty body sends the response instead of closing the connection](../releases/v3.0.0.md#an-output-body-filter-that-ends-with-an-empty-body-sends-the-response-instead-of-closing-the-connection-574):
+  an alert on `zero size buf in writer` no longer fires for these
+  responses, because nginx sends them.
 
 ## C extensions and mrbgems
 
