@@ -123,6 +123,68 @@ EMPTY_ANSWERS.each do |path, spec|
   end
 end
 
+# A request body that the handler does not read is discarded before the empty
+# answer, as it is before an answer with output (entry 12 of
+# docs/releases/v2.7.1.md, test/t/cases/unread_request_body.rb), so the next
+# request on the connection is the one that the client sent after the body.
+EMPTY_BODY_INNER_REQUEST = "GET /with_output HTTP/1.1\r\nHost: localhost\r\n\r\n"
+
+def empty_body_post(path, body, close = false)
+  "POST #{path} HTTP/1.1\r\nHost: localhost\r\nContent-Length: #{body.bytesize}\r\n" +
+    (close ? "Connection: close\r\n" : '') + "\r\n" + body
+end
+
+# Two POSTs with a body that the handler does not read, on one connection.
+def empty_body_post_twice(path)
+  payload = empty_body_post(path, 'abc') + empty_body_post(path, 'abc', true)
+  status, raw = tcp_client(EMPTY_BODY_PORT, payload)
+  [status, empty_body_parse_all(raw, %w[POST POST POST])]
+end
+
+# A POST whose body is itself a complete request for /with_output, then
+# GET /leaf with "Connection: close". Only two responses may come back:
+# the empty answer and the answer of /leaf.
+def empty_body_post_request_body(path)
+  payload = empty_body_post(path, EMPTY_BODY_INNER_REQUEST) +
+            "GET /leaf HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+  status, raw = tcp_client(EMPTY_BODY_PORT, payload)
+  [status, empty_body_parse_all(raw, %w[POST GET GET])]
+end
+
+# path => [what the handler does, the status line, Content-Length, body]
+EMPTY_ANSWERS_WITH_REQUEST_BODY = {}
+EMPTY_ANSWERS.each { |path, spec| EMPTY_ANSWERS_WITH_REQUEST_BODY[path] = [spec[0], spec[1], '0', ''] }
+EMPTY_ANSWERS_WITH_REQUEST_BODY['/empty_with_body_filter'] =
+  ['Nginx.return Nginx::HTTP_OK with a body filter', 'HTTP/1.1 200 OK', '9', 'filtered:']
+
+EMPTY_ANSWERS_WITH_REQUEST_BODY.each do |path, spec|
+  what, status_line, length, answer = spec
+
+  t.assert('ngx_mruby - content handler without output', "#{what}: two POSTs with an unread body on one connection get two answers") do
+    status, responses = empty_body_post_twice(path)
+    t.assert_equal 'EOF', status
+    t.assert_equal 2, responses.size
+    responses.each do |line, fields, body|
+      t.assert_equal status_line, line
+      t.assert_equal length, fields['content-length']
+      t.assert_equal answer, body
+    end
+  end
+
+  t.assert('ngx_mruby - content handler without output', "#{what}: an unread body is discarded, and the next request gets its own answer") do
+    status, responses = empty_body_post_request_body(path)
+    t.assert_equal 'EOF', status
+    t.assert_equal 2, responses.size
+    line, fields, body = responses[0] || ['', {}, '']
+    t.assert_equal status_line, line
+    t.assert_equal length, fields['content-length']
+    t.assert_equal answer, body
+    next_line, _next_fields, next_body = responses[1] || ['', {}, '']
+    t.assert_equal 'HTTP/1.1 200 OK', next_line
+    t.assert_equal 'leaf', next_body
+  end
+end
+
 t.assert('ngx_mruby - content handler without output', 'a HEAD request gets the 200 header with Content-Length: 0') do
   %w[/return_http_ok /rputs_empty].each do |path|
     status, raw, lines = empty_body_get(path, 'HEAD')
