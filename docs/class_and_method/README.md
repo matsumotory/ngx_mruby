@@ -448,7 +448,7 @@ A handshake whose code sets no certificate, also one whose code does not call `N
 ### Nginx::SSL#servername -> string
 
 Returns the SNI server name from the client.
-The client chooses this name, so the script treats it as untrusted input (see [Trust boundary](../README.md#trust-boundary)): it looks the name up in a table of the names it knows and does not build a path from it.
+The client chooses this name, Treat it as untrusted input (see [Trust boundary](../README.md#trust-boundary)): look it up in a table of known names, and do not build a path from it.
 
 ```nginx
 http {
@@ -476,7 +476,7 @@ http {
 }
 ```
 
-A name that is not in `CERT_DIRS` keeps the certificate of `ssl_certificate` and `ssl_certificate_key`.
+The lookup is exact: the name is compared as the client sent it, including its case. A name that is not in `CERT_DIRS`, also an empty name from a client that sends none, keeps the certificate of `ssl_certificate` and `ssl_certificate_key`.
 
 ### Nginx::SSL#certificate=(string)
 
@@ -514,36 +514,47 @@ mruby_ssl_handshake_handler_code '
 ';
 ```
 
+`CERT_DIRS` is the table of the example under [`servername`](#nginxsslservername---string).
+
 ### Nginx::SSL#certificate_data=(string)
 
 Sets the certificate data used for the connection, as a string in PEM format (the certificate, then its chain).
 Read the files once in the init code, so that the handshake does not read a file, and look the data up by server name.
+The init code runs once, so a certificate that changes on disk reaches the handshake after `nginx -s reload`.
 
 ```nginx
-mruby_init_code '
-  CERT_DATA = {}
-  ["example.com", "www.example.com"].each do |name|
-    CERT_DATA[name] = [
-      File.read("/etc/nginx/certs/#{name}/cert.pem"),
-      File.read("/etc/nginx/certs/#{name}/key.pem"),
-    ]
-  end
-';
+http {
+    mruby_init_code '
+        CERT_DATA = {}
+        ["example.com", "www.example.com"].each do |name|
+          CERT_DATA[name] = [
+            File.read("/etc/nginx/certs/#{name}/cert.pem"),
+            File.read("/etc/nginx/certs/#{name}/key.pem"),
+          ]
+        end
+    ';
 
-mruby_ssl_handshake_handler_code '
-  ssl = Nginx::SSL.new
-  data = CERT_DATA[ssl.servername]
-  if data
-    ssl.certificate_data = data[0]
-    ssl.certificate_key_data = data[1]
-  end
-';
+    server {
+        listen 443 ssl;
+        ssl_certificate     /etc/nginx/certs/default.crt;
+        ssl_certificate_key /etc/nginx/certs/default.key;
+
+        mruby_ssl_handshake_handler_code '
+          ssl = Nginx::SSL.new
+          data = CERT_DATA[ssl.servername]
+          if data
+            ssl.certificate_data = data[0]
+            ssl.certificate_key_data = data[1]
+          end
+        ';
+    }
+}
 ```
 
 ### Nginx::SSL#certificate_key_data=(string)
 
 Sets the certificate key data used for the connection, as a string in PEM format.
-Set it together with `certificate_data=`; the handshake changes the certificate by data only when both are set.
+Set it together with `certificate_data=`; the handshake changes the certificate by data only when both are set, and then it does not use the paths.
 
 ```nginx
 mruby_ssl_handshake_handler_code '
