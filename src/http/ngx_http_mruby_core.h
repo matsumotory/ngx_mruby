@@ -171,8 +171,10 @@ void ngx_mrb_raise_connection_error(mrb_state *mrb, mrb_value exc, ngx_connectio
 void ngx_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle);
 void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
 
-// kind is the handler that ran: a content handler that ends without output
-// answers 500 there (see ngx_mrb_content_ends_without_response)
+// kind is the handler that ran: a content handler of the main request that
+// ends without output answers there, with an empty body for no status and the
+// statuses from 200 up, and 500 below 200 (see
+// ngx_mrb_content_ends_without_response)
 ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx, ngx_http_mruby_handler_kind_t kind);
 ngx_int_t ngx_mrb_finalize_body_filter(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx);
 ngx_http_mruby_ctx_t *ngx_mrb_http_get_module_ctx(mrb_state *mrb, ngx_http_request_t *r);
