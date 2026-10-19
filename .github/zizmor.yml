@@ -1,0 +1,16 @@
+# Configuration of zizmor (.github/workflows/zizmor.yml; docs/test/README.md,
+# "Static analysis of the workflows"). An ignore rule here, or a
+# "# zizmor: ignore[<audit>]" comment in a workflow, says why the finding is
+# accepted. Remove the rule when the finding is fixed.
+rules:
+  artipacked:
+    ignore:
+      # actions/checkout in the files and build jobs keeps the GITHUB_TOKEN
+      # in .git/config (persist-credentials defaults to true). Neither job
+      # uploads an artifact or needs the token after the checkout: the files
+      # job fetches from the public repository. Setting
+      # "persist-credentials: false" there is left to a pull request that
+      # changes test.yml, after the pull request that ports the performance
+      # lane to master, which changes the same file. That pull request
+      # removes this rule.
+      - test.yml

@@ -1,0 +1,86 @@
+name: gem-heads
+
+# Weekly report of the GitHub gems of build_config.rb (docs/test/README.md,
+# "Heads of the GitHub gems"). For each `conf.gem github:` line,
+# test/gem_heads.sh reads the head of the branch that a build clones and
+# compares it with the report of the previous successful scheduled or
+# manual run of this workflow on master, which it downloads as the
+# artifact "gem-heads". master commits no build_config.rb.lock, so every
+# build of master, CI included, takes these heads, and a moved head reaches
+# the next build without a pull request here.
+#
+# A moved head is a warning annotation and a row in the job summary; it does
+# not fail the job. A gem whose repository or branch cannot be read fails it.
+#
+# Pull requests that change the check or build_config.rb run it too, against
+# the same previous report; their reports are not used as previous reports.
+on:
+  schedule:
+    # Mondays at 02:41 UTC.
+    - cron: '41 2 * * 1'
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+      - next
+      - 'v*.x'
+    paths:
+      - '.github/workflows/gem-heads.yml'
+      - 'test/gem_heads.sh'
+      - 'build_config.rb'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  heads:
+    # Forks have their own schedule to keep, if any; pull requests run anywhere.
+    if: github.event_name == 'pull_request' || github.repository == 'matsumotory/ngx_mruby'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read # check out build_config.rb and test/gem_heads.sh
+      actions: read # list the runs of this workflow and download the previous report
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download the previous report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir -p previous
+          # gh run list sorts the newest run first. The run of this job is
+          # still in progress, so --status success leaves it out.
+          run=$(gh run list --repo "${REPO}" --workflow gem-heads.yml --branch master --status success --limit 100 \
+            --json databaseId,event,createdAt,url \
+            --jq '[.[] | select(.event == "schedule" or .event == "workflow_dispatch")][0] // empty | [.databaseId, .createdAt, .url] | @tsv')
+          if [ -z "${run}" ]; then
+            echo "no previous successful scheduled or manual run on master"
+            exit 0
+          fi
+          IFS=$'\t' read -r id created url <<< "${run}"
+          echo "previous run: ${url} (${created})"
+          if ! gh run download "${id}" --repo "${REPO}" --name gem-heads --dir previous; then
+            # Artifacts are kept for 90 days (retention-days below).
+            echo "::warning title=gem heads::the report of ${url} could not be downloaded; every gem is reported as new"
+          fi
+
+      - name: Report the heads
+        run: bash test/gem_heads.sh build_config.rb previous/gem-heads.tsv gem-heads.tsv "${GITHUB_STEP_SUMMARY}"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gem-heads
+          path: gem-heads.tsv
+          if-no-files-found: error
+          retention-days: 90

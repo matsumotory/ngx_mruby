@@ -24,8 +24,8 @@ on:
       - master
   workflow_dispatch:
 
-permissions:
-  contents: write
+# No permissions at the top level: the mirror job asks for the one it needs.
+permissions: {}
 
 concurrency:
   group: mirror-v2x
@@ -41,10 +41,15 @@ jobs:
     if: github.repository == 'matsumotory/ngx_mruby' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: write # push v2.x
     steps:
+      # The push below uses the GITHUB_TOKEN that actions/checkout keeps in
+      # .git/config (persist-credentials), which zizmor's artipacked audit
+      # reports. The job uploads no artifact, so the token stays on the runner.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # zizmor: ignore[artipacked]
       - name: Fast-forward v2.x to master
         run: |
           # When master has moved on (for example when an old run is re-run),
