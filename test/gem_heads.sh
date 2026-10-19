@@ -55,11 +55,15 @@ annotate() {
 # Every `conf.gem github: 'owner/repo'` line that is not a comment, also in
 # the older `conf.gem :github => 'owner/repo'` form, with its line number
 # and its `branch:` option, as "repo<TAB>branch<TAB>line".
+# A trailing Ruby comment is dropped first, so that a "branch:" in it is not
+# read as the option. A quoted string that contains "#" is not expected in
+# these lines.
 gems=$(
-  grep -n -E "^[[:space:]]*conf\.gem[[:space:]]+(github:|:github[[:space:]]*=>)" "${config}" |
+  { grep -n -E "^[[:space:]]*conf\.gem[[:space:]]+(github:|:github[[:space:]]*=>)" "${config}" || true; } |
   while IFS= read -r entry; do
     line=${entry%%:*}
     text=${entry#*:}
+    text=${text%%#*}
     repo=$(printf '%s\n' "${text}" | sed -n -E "s/.*github(:|[[:space:]]*=>)[[:space:]]*['\"]([^'\"]+)['\"].*/\2/p")
     branch=$(printf '%s\n' "${text}" | sed -n -E "s/.*branch(:|[[:space:]]*=>)[[:space:]]*['\"]([^'\"]+)['\"].*/\2/p")
     if [ -z "${repo}" ]; then

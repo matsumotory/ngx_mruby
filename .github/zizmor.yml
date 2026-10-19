@@ -8,7 +8,11 @@ rules:
       # actions/checkout in the files and build jobs keeps the GITHUB_TOKEN
       # in .git/config (persist-credentials defaults to true). Neither job
       # uploads an artifact or needs the token after the checkout: the files
-      # job fetches from the public repository. Setting
+      # job fetches from the public repository. On next, the soak and perf
+      # jobs of test.yml also check out with the default, and upload the
+      # artifacts soak-logs and perf-callgrind from build_soak/ and
+      # build_perf/, which do not contain .git/config; the rule covers them
+      # too. Setting
       # "persist-credentials: false" there is left to a pull request that
       # changes test.yml, after the pull request that ports the performance
       # lane to master, which changes the same file. That pull request

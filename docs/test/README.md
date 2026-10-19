@@ -208,6 +208,12 @@ SARIF file as an artifact of the run for 5 days. Publishing makes the
 Scorecard API check the workflow itself, so the workflow has no run steps and
 no `defaults`; the comment at its top lists the restrictions.
 
+GitHub disables the scheduled workflows of a public repository after 60 days
+without activity in the repository. Then neither this workflow nor the next
+one runs on its schedule, and nothing fails. "Run workflow", or enabling the
+workflow again (`gh workflow enable scorecard.yml`, `gh workflow enable
+gem-heads.yml`), starts them again.
+
 ### Heads of the GitHub gems
 
 `.github/workflows/gem-heads.yml` runs `test/gem_heads.sh` every Monday, on
