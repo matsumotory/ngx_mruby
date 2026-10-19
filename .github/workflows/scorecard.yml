@@ -1,0 +1,62 @@
+name: scorecard
+
+# OpenSSF Scorecard (https://github.com/ossf/scorecard-action): checks of
+# the repository's security practices, on pushes to the default branch and
+# weekly (docs/test/README.md, "OpenSSF Scorecard"). The results are
+# published to the Scorecard API (https://api.scorecard.dev/projects/github.com/matsumotory/ngx_mruby),
+# uploaded to code scanning (the Security tab), and kept as an artifact of
+# the run for 5 days.
+#
+# publish_results: true makes the Scorecard API check the workflow
+# (scorecard-action README, "Workflow Restrictions"): no top-level env or
+# defaults, no write permissions at the top level, id-token: write only in
+# the job of scorecard-action, no job-level env or defaults, no containers or
+# services, an Ubuntu runner hosted by GitHub, and only the steps
+# actions/checkout, actions/upload-artifact, github/codeql-action/upload-sarif,
+# ossf/scorecard-action and step-security/harden-runner. That is why this
+# workflow, unlike the others, sets no "defaults: run: shell: bash"; it has
+# no run steps.
+#
+# Scorecard runs only on the default branch, so pull requests do not run it.
+on:
+  push:
+    branches:
+      - master
+  schedule:
+    # Tuesdays at 03:17 UTC.
+    - cron: '17 3 * * 2'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  analysis:
+    if: github.repository == 'matsumotory/ngx_mruby'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # The permissions that scorecard-action's README asks for in a public
+    # repository with the default GITHUB_TOKEN ("Publishing Results", and
+    # its example workflow):
+    permissions:
+      security-events: write # upload the SARIF results to code scanning
+      id-token: write # the OIDC token that publish_results needs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scorecard-sarif
+          path: results.sarif
+          retention-days: 5
+
+      - uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with:
+          sarif_file: results.sarif
