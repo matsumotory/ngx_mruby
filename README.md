@@ -155,6 +155,12 @@ Therefore, we propose a fast and memory-efficient Web server extension mechanism
 
 The server process frees the global variables table, the exception flag and the byte-code which cause an increase of memory usage, in order to reduce the memory usage and extend safety by preventing interference between each script because of sharing the region. We implemented a mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".
 
+### What a worker keeps between requests
+
+The abstract above describes the design of the paper. ngx_mruby today does not free the global variables table between scripts. Each nginx worker process has one `mrb_state` for its `http {}` block (and one for each `stream {}` block), and all the mruby code of that block runs in it: the init and init_worker code and every handler and filter, in every server and location, for every client. Global variables, constants, instance variables of `main` (the `self` of handler code), methods defined with `def`, and classes and modules with their constants stay in the worker from one request to the next. What one request leaves behind is seen by every later request that the same worker handles, also when the code raised an exception after it made the change. Each worker has its own copy, so one worker does not see the values of another. After each run, ngx_mruby clears only the exception (`mrb->exc`), and the garbage collector frees the objects that nothing refers to any more. Local variables do not stay: each run of handler code starts without them.
+
+Do not keep the data of one request in global variables, constants or instance variables of `main`. Use local variables, and read and write the request through `Nginx::Request`, `Nginx::Var`, `Nginx::Headers_in` and `Nginx::Headers_out`. Keep in globals and constants only what all requests of the worker are meant to share, such as settings that `mruby_init` or `mruby_init_worker` prepare. [`Nginx.remove_global_variable`](docs/class_and_method/README.md#nginxremove_global_variable) removes a global variable.
+
 # Contributions
 
 This project exists thanks to all the people who contribute. We also welcome financial contributions in full transparency on our [open collective](https://opencollective.com/ngx_mruby).
