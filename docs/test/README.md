@@ -307,7 +307,7 @@ $ export ASAN_OPTIONS="detect_leaks=1"
 $ export LSAN_OPTIONS="suppressions=$PWD/test/lsan.supp"
 $ export UBSAN_OPTIONS="print_stacktrace=1:suppressions=$PWD/test/ubsan.supp"
 $ NGINX_RUNNER=exec sh test.sh
-$ grep -HnE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' $(find build/nginx/logs build/nginx/second_instance -type f -name '*.log')
+$ grep -HnE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name '*.log')
 ```
 
 The last line reads the files that the "Check for sanitizer reports" step
@@ -322,7 +322,9 @@ is one of these files:
 | the other `build/nginx/logs/*.log` | the nginx processes that the tests start with a log of their own, after they have opened it (`stream_only.error.log` of the stream-only test, which runs nginx with `daemon on`) |
 | `build/nginx/second_instance/<mode>/*.log` | the second nginx of `test/t/cases/_second_instance.rb` (`error.log`, `stderr.log`, `stdout.log`) |
 
-The step does not read the `*.log.bak` files, in which `test.sh` keeps the
+`build/nginx/second_instance/` is missing when `test.sh` stopped before the
+case files; the step then reads the other files and says so. The step does
+not read the `*.log.bak` files, in which `test.sh` keeps the
 logs of an earlier run in the same directory. A report of the test nginx
 from before it opened `error.log` goes to the terminal (in CI, the output of
 the `script` step), as the next paragraph says.
@@ -423,8 +425,12 @@ counters of `GET /_mock/stats`:
 `sh test/build_release.sh SOURCE_DIR BUILD_DIR` builds nginx with ngx_mruby
 as a static module with release-like options: nginx and ngx_mruby with
 `-O2 -g`, mruby with the flags of its gcc toolchain (`-O3 -g`), without
-`MRB_GC_STRESS` (which `test.sh` adds) and without `--with-debug`. The
-performance comparison builds with it (`test/perf/run.sh`,
+`MRB_GC_STRESS` (which `test.sh` adds) and without `--with-debug`. The script
+is the one of `next`, so its header comment also names the soak build of
+`next` (`test/soak/run.sh`, `-DNGX_MRUBY_DEBUG_STATS`) and
+`NGX_MRUBY_AUTO_SSL`, which on `next` adds the auto-ssl mrbgem; on `master`,
+`build_config.rb` always builds that gem, and the variable changes only the
+build stamp. The performance comparison builds with it (`test/perf/run.sh`,
 `test/perf/compare.sh`), in `build_perf/head/` and `build_perf/base/`, with
 no option added: the defines of the soak build of `next`
 (`-DNGX_MRUBY_DEBUG_STATS`, `-DMRB_USE_MALLOC_TRIM`) would add code to the
@@ -475,8 +481,7 @@ the top of a git work tree, else a checksum of its files without
 names under `mrbgems/`, checksums of `build_config.rb`, `config.in`,
 `configure`, `Makefile.in`, `build.sh` and `nginx_version`,
 `NGX_MRUBY_CFLAGS` (passed to mruby, as with `test.sh`),
-`NGX_MRUBY_AUTO_SSL` (which adds the auto-ssl mrbgem to the mruby build), the
-nginx configure options and the gem lock of the build. When the stamp
+`NGX_MRUBY_AUTO_SSL` (see above), the nginx configure options and the gem lock of the build. When the stamp
 differs from that of the last build, mruby and nginx are built from scratch,
 with new clones of the gems; the downloaded nginx source is kept. The new
 clones matter when only the lock changed: rake checks an existing clone out
@@ -705,7 +710,7 @@ build input) measured:
 | `headers` | 36364 (34388) | +0.000% |
 | `var` | 21342 (19973) | +0.000% |
 | `filter` | 14203 (13364) | +0.002% |
-| `sleep` | 15661 (14889) | +0.004% |
+| `sleep` | 15661 (14888) | +0.004% |
 | `sub_request` | 48731 (47568) | +0.002% |
 | `file` | 14069 (13231) | +0.000% |
 | `proxy_plain_2k` | 22102 (22102) | -0.004% |
@@ -724,6 +729,12 @@ binaries were byte for byte the same. The largest change, 0.018% in
 `proxy_stream_plain_50` (its `non_buffered_calls` were 3.88 and 3.87 per
 request), is about 160 times below the 3% of `WARN`. The measurement of the
 default scenarios took about 4 minutes per build, `sleep` 45 seconds of it.
+
+On `master` the absolute numbers of a scenario can differ between runs on
+different days: `master` commits no gem lock, so each run builds the gems
+at the heads of their branches at that time (both builds of one run at the
+same commits). The change between base and head of one run is what the
+thresholds compare.
 
 ### Running it
 

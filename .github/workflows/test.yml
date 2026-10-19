@@ -236,7 +236,17 @@ jobs:
             echo "::error title=sanitizer::build/nginx/logs/stderr.log is missing"
             exit 1
           fi
-          logs=$(find build/nginx/logs build/nginx/second_instance -type f -name '*.log' 2>/dev/null | LC_ALL=C sort)
+          # second_instance/ is missing when test.sh stopped before the case
+          # files (a failed assertion of test/t/ngx_mruby.rb, for example);
+          # find exits 1 for a missing directory, which -e would turn into a
+          # silent failure of the step.
+          dirs=build/nginx/logs
+          if [ -d build/nginx/second_instance ]; then
+            dirs="$dirs build/nginx/second_instance"
+          else
+            echo "build/nginx/second_instance is missing: the second nginx did not run"
+          fi
+          logs=$(find $dirs -type f -name '*.log' | LC_ALL=C sort)
           echo "reading:" $logs
           # The names are file names of the test harness, without spaces.
           if grep -HnE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' $logs; then
