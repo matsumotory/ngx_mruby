@@ -1,0 +1,19 @@
+{
+  "name": "ngx-mruby-site",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.22.0"
+  },
+  "scripts": {
+    "sync-docs": "node scripts/sync-docs.mjs",
+    "build": "node scripts/sync-docs.mjs && ASTRO_TELEMETRY_DISABLED=1 astro build --force",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "check": "node scripts/check-built-links.mjs && node scripts/check-pages.mjs && node scripts/check-japanese.mjs && node scripts/check-no-js.mjs"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.42.6",
+    "astro": "7.3.8",
+    "satteri": "0.10.5"
+  }
+}
