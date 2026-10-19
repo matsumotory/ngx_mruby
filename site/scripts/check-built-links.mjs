@@ -15,14 +15,22 @@
 // page (or the name of an a element). Other URLs (other origins, mailto:,
 // data:) are counted and not fetched.
 //
+// A URL attribute without a value (<a href>, href="") is a problem too, and
+// so is an attribute name with a quote, "<" or "=" in it on any element:
+// both are what a broken tag of a page's source turns into, such as
+// <a href/install/md"> for an href whose value the generator wrote over the
+// wrong characters, and a browser would show such a link with no
+// destination.
+//
 // One exception: Starlight's not-found page, 404.html, names its own
 // address as /404/ (and /ja/404/) in its canonical and alternate links and
 // in og:url. GitHub Pages serves 404.html for that address, as for every
 // path that has no file, so these tags of 404.html are not checked. Its
 // other links are.
 //
-// Exit status: 0 when every internal URL resolves, 1 otherwise (each
-// broken URL is printed with its page), 2 on a usage error.
+// Exit status: 0 when every internal URL resolves and no attribute has the
+// problems above, 1 otherwise (each problem is printed with its page), 2 on
+// a usage error.
 import fs from 'node:fs';
 import path from 'node:path';
 import { elements, readHtml } from './lib/html.mjs';
@@ -53,6 +61,23 @@ function isSelfReference(element) {
   const rel = [].concat(props.rel ?? []).join(' ').split(/\s+/);
   if (element.tagName === 'link') return rel.includes('canonical') || rel.includes('alternate');
   return element.tagName === 'meta' && props.property === 'og:url';
+}
+
+// The problems of the attributes of an element: a URL attribute without a
+// value, and an attribute name that a well-formed tag does not produce.
+function attributeProblems(element) {
+  const props = element.properties ?? {};
+  const problems = [];
+  for (const name of URL_ATTRIBUTES[element.tagName] ?? []) {
+    const value = props[name] ?? props[name.toLowerCase()];
+    if (value === '' || (Array.isArray(value) && value.length === 0)) {
+      problems.push(`<${element.tagName}> has an empty ${name.toLowerCase()} attribute`);
+    }
+  }
+  for (const name of Object.keys(props)) {
+    if (/["'<=]/.test(name)) problems.push(`<${element.tagName}> has an attribute named ${name}, which a well-formed tag does not have`);
+  }
+  return problems;
 }
 
 function urlsOf(element) {
@@ -116,6 +141,7 @@ for (const page of pages) {
   const pageUrl = new URL(page.replace(/(^|\/)index\.html$/, '$1'), `${site.origin}/`);
   for (const element of elements(readHtml(path.join(dist, page)))) {
     if (page === '404.html' && isSelfReference(element)) continue;
+    for (const problem of attributeProblems(element)) problems.push(`${page}: ${problem}`);
     for (const raw of urlsOf(element)) {
       let url;
       try {

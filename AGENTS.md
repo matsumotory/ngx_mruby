@@ -477,7 +477,7 @@ npm run preview   # serves dist/ at http://localhost:4321/
   - `sh site/scripts/check-fresh-clone.sh [--keep DIR] [REV]`: a clone of
     the commit (default `HEAD`) builds with `npm ci` and `npm run build`;
   - `node scripts/check-built-links.mjs`: every internal link of the built
-    HTML resolves;
+    HTML resolves, and no link attribute is empty or broken;
   - `node scripts/check-pages.mjs`: every page has a title and the
     last-updated date of its source;
   - `node scripts/check-japanese.mjs`: the pages from `docs/ja/` are under

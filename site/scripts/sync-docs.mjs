@@ -25,7 +25,8 @@
 //   repository becomes its URL on GitHub at the branch next, and an image
 //   its raw URL there. A link to a path that the repository does not track
 //   stops the build. Absolute URLs and anchors within the page stay as they
-//   are. Only the destinations change: the rest of the Markdown is copied
+//   are. The href and src attributes of raw HTML are rewritten in the same
+//   way. Only the destinations change: the rest of the Markdown is copied
 //   as it is.
 //
 // It also writes generated/pages.json, the list of the pages with their
@@ -189,6 +190,10 @@ function unescapeDestination(raw) {
     .replace(/&(amp|lt|gt|quot|#39|#x27);/g, (_, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", '#x27': "'" })[e]);
 }
 
+// An href or src attribute with a quoted value in raw HTML.
+const HTML_URL_ATTRIBUTE = /\b(href|src)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
+const attributeValue = (m) => m[2] ?? m[3];
+
 function lineOf(node) {
   return node.position.start.line;
 }
@@ -244,13 +249,28 @@ function render(page) {
         fail(`${where}: could not find the destination ${node.url} of this ${node.type} in the source`);
       }
     } else if (node.type === 'html') {
+      // The attributes are found in the source text of the node, not in
+      // node.value: inside a blockquote or a list item, node.value lacks the
+      // "> " or the indentation that starts each line after the first, so
+      // an index into it is not an offset into the source. The attributes
+      // found in node.value, which is what the page renders, must be the
+      // same ones in the same order, or the build stops.
       const base = node.position.start.offset;
-      for (const m of node.value.matchAll(/\b(href|src)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) {
-        const value = m[2] ?? m[3];
+      const text = src.slice(base, node.position.end.offset);
+      const inSource = [...text.matchAll(HTML_URL_ATTRIBUTE)];
+      const inValue = [...node.value.matchAll(HTML_URL_ATTRIBUTE)].map(attributeValue);
+      if (inSource.length !== inValue.length || inSource.some((m, i) => attributeValue(m) !== inValue[i])) {
+        fail(`${where}: the href and src attributes of this HTML differ between its source and the HTML that the page renders (an attribute value over more than one line inside a blockquote or a list item?)`);
+      }
+      for (const m of inSource) {
+        const value = attributeValue(m);
         const url = value.replace(/&amp;/g, '&');
         const next = resolve(url, page.source, m[1].toLowerCase() === 'src', where);
         if (next === null) continue;
         const valueStart = base + m.index + m[0].length - value.length - 1;
+        if (src.slice(valueStart, valueStart + value.length) !== value) {
+          fail(`${where}: could not find the value ${value} of this ${m[1]} attribute in the source`);
+        }
         edits.push([valueStart, valueStart + value.length, next.replace(/&/g, '&amp;').replace(/"/g, '&quot;')]);
       }
     }
