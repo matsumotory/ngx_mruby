@@ -1,10 +1,16 @@
 # Proposal: the ngx.mruby.org site and the documentation it is built from
 
-Status: proposal. Nothing in it is decided. Written on 2026-10-04 from
+Status: decided on 2026-10-15 (section 7). Next: the implementation of
+section 6, starting with the tokens of section 4 and the specimens of step
+2, after the Starlight skeleton of step 1.
+
+Evidence: the site map and writing plan of 3.2 and 3.3, and 3.5, section
+4, section 6 and section 7 rest on `next` at 73fc9098f and on the source of
+the owner's three sites (4.1), read on 2026-10-15. The rest rests on
 `next` at ec227408d, `master` at 1ea47b0a6 (b3df70fb6 for the promotion
-text that step 7 updates) and `gh-pages` at 59c923a, from the live site and
-the repository's GitHub settings read that day, and from primary sources on
-design, standards and tools (appendix D, with the date each was read).
+text that step 7 updates) and `gh-pages` at 59c923a, on the live site and
+the repository's GitHub settings read on 2026-10-04, and on primary sources
+on design, standards and tools (appendix D, with the date each was read).
 
 On 2026-10-04 the owner asked for the introduction site at
 https://ngx.mruby.org, unchanged since 2020, to be rebuilt as part of the
@@ -12,16 +18,21 @@ documentation work of the v3 plan
 ([Pillar F](./v3-plan.md#pillar-f-documentation-site-examples-video)), with
 a design tuned to look slightly cyber and to lean towards open source
 software and technology, with the design quality of the owner's other sites
-as the bar, and for the documentation to be reorganized. This document
-proposes how; 4.1 says how the design answers "slightly cyber". Section 7
-lists the questions the owner decides, each with a recommendation; section
-6 says which step waits for which answer.
+as the bar, and for the documentation to be reorganized. This document says
+how. The owner's decisions of 2026-10-15 (section 7) set, among others, that
+the design starts from the owner's corporate site and product landing page,
+with the owner's profile site as a third reference, and is tuned towards
+cyber in colors and atmosphere (section 4), and that the site carries many
+diagrams and samples, especially for v3 (3.5). Section 6 says what each step
+produces and what the owner reviews.
 
-Rules marked "owner's practice" are rules that the owner's other sites
-apply, stated here in general terms. The design documents and source of
-those sites are not public, so this document does not cite them. Values
-marked "chosen here" are choices of this proposal, with no source that
-fixes them; the owner decides them with Q7, from the specimens of step 2.
+The source and the design documents of the owner's three sites are in
+private repositories. This document takes values and rules from them,
+describes each source by its role ("the corporate site's token file"), and
+names no path in those repositories (4.1). Rules from their design
+documents are marked "owner's practice". Values marked "chosen here" are
+choices of this proposal, with no source that fixes them; 4.12 lists those
+that the specimens of step 2 settle.
 
 ## 1. Purpose and readers
 
@@ -45,7 +56,7 @@ The site has three jobs:
 | people building LLM agent infrastructure | a gateway to put in front of Claude Code, Codex or a provider API | what Ruby decides and what nginx relays, the protocol scope, the measured cost per request, a reference proxy that runs |
 
 English is primary and Japanese is a translation (decision 9 in
-[v3-plan section 7](./v3-plan.md#7-decisions-made-by-the-owner-on-2026-10-03-and-2026-10-04)).
+[v3-plan section 7](./v3-plan.md#7-decisions-made-by-the-owner-on-2026-10-03-2026-10-04-and-2026-10-15)).
 Japanese readers exist (two of the three external articles in
 [docs/use_case](../use_case/README.md) are in Japanese), yet on `next` at
 ec227408d, before this proposal, no Markdown file outside the vendored trees
@@ -109,8 +120,8 @@ Appendix E lists the files. What the site work has to fix, not only render:
    pages that exist only on `next` (soak test, perf comparison, mock LLM
    upstream, v3 plan) are reachable from neither.
 6. **Missing.** A plain definition, a quick start on current versions, how
-   long Ruby state lives, the agent proxy for users, a comparison with njs
-   and OpenResty, release notes on `next` (they reached `master` with #564),
+   long Ruby state lives, the agent proxy for users, diagrams and samples
+   that tests pin, release notes on `next` (they reached `master` with #564),
    a CONTRIBUTING file, Japanese text. No file has front matter.
 
 ## 3. Information architecture
@@ -141,13 +152,13 @@ Docs, Agent proxy, Releases, Security, Contributing, GitHub.
 | `/` | what it is, who it is for, one example with its real output, three ways in | `README.md`; the example from a test that CI runs (3.3, item 8) | the definition (3.3); the example's test |
 | `/start/` | run nginx with a Ruby handler in Docker, then change it | install 5-A to 5-C | `compose.yaml` and the walk-through |
 | `/guides/install/` | images and packages once Pillar D ships them, dynamic module, build from source | [docs/install](../install/README.md) | tested versions table |
-| `/guides/<task>/` | one task per page: access control, routing, rate limit, observability with `ngx_otel_module`, certificate lookup, TCP and UDP | [docs/use_case](../use_case/README.md), `test/conf/` | rate limit, observability, certificate lookup |
-| `/guides/agent-proxy/` | what Ruby decides and what nginx relays for LLM agent traffic | [v3-plan section 4](./v3-plan.md#agent-proxy-the-v30-use-case), [mock LLM upstream](../test/README.md#mock-llm-upstream) | the page; the how-to once `examples/agent-proxy/` exists |
+| `/guides/<task>/` | one task per page: access control, routing, rate limit, observability with `ngx_otel_module`, certificate lookup, TCP and UDP | [docs/use_case](../use_case/README.md), `test/conf/` | rate limit, observability, certificate lookup; a sample per page and per use case (3.5) |
+| `/guides/agent-proxy/` | what Ruby decides and what nginx relays for LLM agent traffic | [v3-plan section 4](./v3-plan.md#agent-proxy-the-v30-use-case), [mock LLM upstream](../test/README.md#mock-llm-upstream) | the page with three v3 diagrams and today's recipes as samples (3.5); the how-to once `examples/agent-proxy/` exists |
 | `/reference/directives/` | syntax, context, phase and version per directive | [docs/directives](../directives/README.md); later generated from `ngx_command_t` | missing and stream directives |
 | `/reference/ruby/` | classes and methods | [docs/class_and_method](../class_and_method/README.md); later YARD | missing methods |
-| `/reference/build/` | configure options, default gems, tested nginx, mruby and OpenSSL | docs/install, `build_config.rb`, [test.yml](../../.github/workflows/test.yml) | one version table |
-| `/concepts/` | the mruby VM per configuration and what lives across requests, phases, async, the trust boundary, ngx_mruby next to njs and OpenResty | [v3-plan 2.1, 3.1, 3.5](./v3-plan.md#21-code) | all pages |
-| `/releases/` | changes per release, behavior changes first; branches; support periods | `docs/releases/` (#564), [Branches and versions](../../README.md#branches-and-versions) | the page; the v3 migration guide |
+| `/reference/build/` | configure options, default gems, tested nginx, mruby and OpenSSL | docs/install, `build_config.rb`, [test.yml](../../.github/workflows/test.yml) | one version table; the build layout diagram (3.5) |
+| `/concepts/` | the mruby VM per configuration and what lives across requests, phases and filters, async, the trust boundary | [v3-plan 2.1, 3.1](./v3-plan.md#21-code) | all pages; four diagrams (3.5) |
+| `/releases/` | changes per release, behavior changes first; branches; support periods | `docs/releases/` (#564), [Branch strategy](../../README.md#branch-strategy) | the page; the v3 migration guide |
 | `/security/` | private reporting, supported versions, trust boundary, advisories | [SECURITY.md](../../SECURITY.md), [Pillar G](./v3-plan.md#pillar-g-process) | the trust boundary |
 | `/contributing/` | proposing a change, PR template, tests, agents and people, where to ask | [AGENTS.md](../../AGENTS.md), [PR template](../../.github/PULL_REQUEST_TEMPLATE.md), docs/test | `CONTRIBUTING.md` |
 | `/v2/…` | the 2.x pages, changed only by fixes | `docs/` on `master` (on `v2.x` after the promotion, 5.2) | a banner |
@@ -184,8 +195,7 @@ Docs, Agent proxy, Releases, Security, Contributing, GitHub.
    profile looks for it, pointing to `AGENTS.md`, the PR template and the
    test documentation.
 7. **Concepts**: one `mrb_state` per `http {}` block, with globals and
-   constants that persist in a worker; a comparison with njs and OpenResty
-   taken from their documentation, with dates.
+   constants that persist in a worker, and the diagrams of 3.5.
 8. **The home page example**: a test of its own, written the way
    [docs/test](../test/README.md#add-a-test-as-a-fragment-and-a-case-file)
    describes: a `server {}` in `test/conf/conf.d/` on a port of its own,
@@ -219,117 +229,544 @@ Docs, Agent proxy, Releases, Security, Contributing, GitHub.
   adds the gap. No em dashes or emoji; parentheses only for identifiers and
   first uses of abbreviations (owner's practice).
 
+### 3.5 Diagrams and samples
+
+The owner decided on 2026-10-15 that the site carries many diagrams and
+samples, especially for the content towards v3. This section plans them:
+which diagrams, the tool, the samples, and how both are kept true.
+
+#### Diagrams
+
+Each diagram names the source it describes, at `next` 73fc9098f
+(2026-10-15) unless a later commit is given.
+
+| Diagram | What it shows | Source it describes | Page |
+|---|---|---|---|
+| Request phases | nginx's HTTP phases in order; in which of them ngx_mruby runs a handler from a file and an inline one (post-read, server rewrite, rewrite, access, content, log); `mruby_set` inside the rewrite module's script; where the header and body filters and the SSL handshake handler come; the directive for each; and, for TCP and UDP, the one stream handler | `src/http/ngx_http_mruby_module.c` lines 635 to 718 (`ngx_http_mruby_handler_init`), 1453 to 1525 (`mruby_set` through `ndk_set_var`), 428 (the certificate callback); `src/stream/ngx_stream_mruby_module.c` line 760 (`NGX_STREAM_ACCESS_PHASE`); the `ngx_http_phases` list of nginx 1.31.6 | Concepts: phases |
+| Filter chain | ngx_mruby's header filter and body filter at the top of nginx's two filter chains; what each receives; that the body filter reads a response of known length as one buffer and passes a response without `Content-Length` on unread | `src/http/ngx_http_mruby_module.c` lines 1666 to 1676, 1824 to 1844 | Concepts: phases; Reference: directives |
+| Non-blocking wait | `Nginx::Async.sleep` in a handler: the handler's fiber yields, a timer goes into nginx's event loop, the worker serves other connections, and the timer's handler resumes the fiber | `src/http/ngx_http_mruby_async.c` lines 356 to 403 (`ngx_mrb_async_sleep`), 309 to 341 (`ngx_mrb_timer_handler`), 240 to 307 (`ngx_mrb_post_fiber`), 186 to 238 (`ngx_mrb_run_fiber`) | Concepts: async |
+| One `mrb_state` per worker | the `mrb_state` that nginx opens for an `http {}` block while it reads the configuration; the copy that each worker has after the fork; `mruby_init_worker` and `mruby_exit_worker`; what persists in a worker between requests (globals, constants, methods, classes); that only `mrb->exc` is cleared; that workers share nothing in Ruby, with the shared dictionary of v3 as the planned exception | `src/http/ngx_http_mruby_module.c` lines 999 to 1023 (`mrb_open`), 724 to 727 (`ngx_mrb_state_clean`), 601 to 633 (worker start and exit) | Concepts: lifetimes |
+| Build layout | `build_config.rb` and mruby's `rake` producing `libmruby.a`; `./configure` writing `config` and `Makefile` from `config.in` and `Makefile.in`; nginx's `--add-module` or `--add-dynamic-module` producing a static binary or one module file that holds `ngx_http_mruby_module`, `ngx_stream_mruby_module` and ngx_mruby's upstream keepalive module; where `ngx_devel_kit` comes in | `config.in` lines 1 to 81 (the dynamic and the static branch, and `have=NDK_SET_VAR` for `ngx_devel_kit`), `Makefile.in` lines 27 to 28, 103 (nginx's configure with `--add-module=$(NDK_ROOT)`) and 118, `configure.in` lines 190 to 194 (`NDK_ROOT`), `build.sh`, `build_config.rb` | Reference: build |
+| Agent proxy: the request (v3) | a client request through the server rewrite handler (the client key; 401 with a JSON body before any upstream), the access handler (the `model` of the body, the allowlist and the budget; 403 and 429; the upstream and the provider credential), and `proxy_pass` with the `Host` and SNI of the chosen provider; on an upstream 529, `error_page 529 = @name` to the location of another provider | [v3-plan, "Agent proxy: the v3.0 use case"](./v3-plan.md#agent-proxy-the-v30-use-case); for what exists today, `test/conf/conf.d/60-agent-proxy.conf` and `test/t/cases/agent_proxy.rb` | Guides: agent proxy |
+| Agent proxy: the streamed response (v3) | the provider's server-sent events relayed to the client byte for byte as they arrive; the event filter framing events in C and calling Ruby once per listed event; the usage read from `message_start` and `message_delta`, or from the terminal `response.*` event; the counters of the shared dictionary charged when the response ends or is cut; the log handlers before `access_log`; the first-byte deadline and `proxy_read_timeout` as the idle timeout | the same section of the plan, its feature rows 7a to 7c | Guides: agent proxy |
+| Agent proxy: the endpoints (v3) | what the proxy answers itself (`GET /v1/models` from the client's allowlist; its own 401, 403, 429 and 504), what it passes through unchanged (`POST /v1/messages`, `POST /v1/responses`, their streams, upstream errors with their bodies), and that it refuses `Upgrade` | the same section of the plan, "Protocol scope" | Guides: agent proxy |
+
+The three agent proxy diagrams show v3 features that are not merged yet.
+Until v3.0.0 they carry the label "Development version" beside "New in 3.0"
+and sit under the banner of 3.4. Each element says whether it exists today
+(the recipes of `test/t/cases/agent_proxy.rb`) or which step of the plan
+adds it (7a to 7e), with the symbols of the owner's practice (4.2): a
+filled circle for what exists, a ring for the next step, a dashed ring for
+a later one, and a legend beside the diagram. They describe the plan until
+the features merge, and then the source lines.
+
+**Tool: labels in HTML, lines and symbols in SVG, as the owner's sites draw
+their figures.** Each diagram has two parts:
+
+- The drawing, `site/src/diagrams/<name>.svg`: lines, boxes, arrows and
+  symbols only, with classes that refer to the tokens and no `<text>`
+  element. A diagram with a narrow arrangement has a second drawing for it.
+- The labels: a fenced block with the language `diagram` in the Markdown of
+  the page, which names the drawing on its first line and gives one label
+  per line as `key: text`. The keys are fixed by the drawing.
+
+The generator of 5.2 turns the block into an HTML `figure` with
+`role="img"` and an `aria-label` taken from the caption. The figure holds
+the drawing, inlined and hidden from screen readers, and each label as HTML
+text, placed over or beside the drawing by the diagram's own CSS grid. The
+three ways compared:
+
+| | Labels in HTML, drawing in SVG | SVG with its own text | Mermaid |
+|---|---|---|---|
+| Reading without JavaScript (5.1) | yes: the generator writes HTML and inline SVG | yes | no, unless a browser runs in the build: `astro-mermaid` 2.1.0 does "client-side rendering", and `rehype-mermaid` 3.0.0 "uses Playwright" outside browsers |
+| Colors from the tokens in both themes | yes: the classes refer to the tokens | yes, with the colors repeated inside each file for GitHub | no: Mermaid's theming engine "will only recognize hex colors", and `rehype-mermaid`'s inline SVG output does not support its `dark` option |
+| A vertical arrangement below 640 px (4.9) | yes: the labels move with CSS over a second drawing | a second file per arrangement | no: one layout for every width |
+| Size of the labels | the page's text, 14 px or more at every width, enlarged by 200% text (WCAG 1.4.4) | scales with the drawing, so it depends on the width | scales with the drawing |
+| Japanese labels (Q2) | from the Japanese page itself | a second file per language | a second source per language |
+| On GitHub | the block reads as a list of its labels; the drawing is not shown | shown as an image | rendered |
+
+The site uses the first way. It is the owner's practice: the corporate
+site's design document sets figure text in HTML and draws only lines and
+symbols in SVG, the corporate site's diagram components and the landing
+page's figure components contain no SVG `<text>` element, and the profile
+site's charts are HTML and CSS (4.2). Its cost is a small layout per
+diagram and arrangement, and that GitHub shows the label list instead of
+the picture; the facts of each diagram are also in the text (below), so
+`docs/` reads completely on GitHub. Mermaid becomes the tool if the
+hand-drawn diagrams fall behind the code (the check below lists them).
+
+**Japanese labels.** The diagram block of `docs/ja/<path>.md` gives the
+Japanese text for the same keys, so the Japanese page takes its labels from
+its own translation (Q2). The generator stops the build when the Japanese
+block lacks a key of the English block or has one that the English block
+does not have. Until a page is translated, Starlight's fallback shows the
+English page, labels included. Japanese labels wrap by phrase with `<wbr>`
+and `keep-all`, as the corporate site's figure text does (owner's
+practice). Step 5 checks that every diagram on `/ja/` takes its labels from
+`docs/ja/` and that no label overflows its place at 390 and 1440 px.
+
+**Drawing rules**, after the owner's practice (4.2) and 4.11:
+
+- Boxes and lines in `border-strong`, strokes of 1.5 to 2 px with round
+  caps and `vector-effect: non-scaling-stroke`, so that lines keep their
+  width when the drawing scales; labels in `text` or `text-muted`, never in
+  a diagram color; the accent on at most two marks; no shadow, gradient or
+  hover. Directive, function and file names are in the monospace face.
+- Labels are short HTML text at 14 or 15 px (the caption and navigation
+  sizes of 4.4), where the owner's figures go down to 13 px; details go
+  into the text around the diagram.
+- A diagram fits one screen at 390 by 664 and at 1440 by 900 px, so that the
+  reader sees it whole, and takes a vertical arrangement below 640 px
+  instead of scrolling sideways (4.9).
+- Each diagram has a caption that says what it shows, and the facts it
+  shows are also in the text or a table (WCAG 1.1.1). The figure's
+  `aria-label` says what the diagram shows, and the drawing is hidden from
+  screen readers, as on the corporate site.
+
+**Keeping them true.** A diagram's caption ends with the source it
+describes and when, for example "Describes `src/http/ngx_http_mruby_module.c`
+lines 635 to 718 at 73fc9098f, 2026-10-15". A check reads these lines: it
+fails when a named file or line range no longer exists, and lists in the
+run summary every diagram whose lines changed since its commit
+(`git log -L <start>,<end>:<file> <commit>..HEAD`). The session that
+redraws or confirms such a diagram moves the commit and the date.
+
+#### Samples
+
+**How a sample is made.** A sample is a `server {}` fragment in
+`test/conf/conf.d/`, its script in `test/html/`, and a case in
+`test/t/cases/` that compares the whole response body and the headers that
+the page shows, written as
+[docs/test](../test/README.md#add-a-test-as-a-fragment-and-a-case-file)
+describes. The generator copies the configuration, the script, the request
+and the response that the case compares into the page, as it does for the
+home page example (3.3, item 8), with a line that names the case and the
+date of the last commit to those files. Nothing is copied by hand, and the
+generator stops the build when a referenced file or case is missing.
+`examples/<use>/` of Pillar F packages the same configuration and script
+with a `compose.yaml` for readers who want to run them, and its CI job
+compares the output with the same expected response.
+
+**One sample per use case of [docs/use_case](../use_case/README.md):**
+
+| Use case | Today | As a sample |
+|---|---|---|
+| Hello world | `mruby_content_handler` with `Nginx.echo` | a fragment and a case that compares the body |
+| Reverse proxy | `mruby_set` picks a backend for `proxy_pass` at random | a fragment with two backends; the case checks that both answer |
+| Change to maintenance mode with Redis | needs `mruby-redis`, which `build_config.rb` comments out | a sample when `mruby-redis` is back in the default build (the queue of [HANDOFF](../HANDOFF.md#queue)) and the test job runs a Redis server; until then, the page marks the example as untested |
+| Markdown web page | needs `mruby-discount`, which `build_config.rb` comments out | a sample when a CI job builds that gem; until then, the page marks the example as untested |
+| Output filter converting Markdown to HTML | relies on `mruby_output_filter`, a configuration error since its removal | rewritten with `mruby_output_body_filter`; its filter part becomes a sample on the default build, the Markdown part waits as the use case above |
+| File based access list | `mruby_access_handler` reads a deny list | a fragment with a list file in `test/html/` and two locations; the cases expect 403 for a listed client and 200 for another |
+| File server like Dropbox link | needs `mruby-redis` | as the maintenance mode use case |
+
+**Guides.** Each `/guides/<task>/` page of 3.2 carries at least one sample
+with its case. The fragments that already pin such behavior are reused
+where they fit, for example `test/conf/conf.d/stream/40-stream.conf` for
+TCP and UDP.
+
+**v3 samples for the agent proxy.** The agent proxy page starts with the
+recipes that `test/t/cases/agent_proxy.rb` checks today: the client key
+checked in a server rewrite handler with a JSON 401, routing by the `model`
+of the body and the credential replaced in an access handler, a 403 for a
+model without an upstream, `limit_conn` per client key with a JSON 429, an
+upstream 529 passed to the client, and a log handler that reads
+`$upstream_status`. Those cases do not compare whole responses: the client
+of the test, `test/t/cases/_agent_proxy_client.rb`, prints one summary line
+per request, and the case compares that line. For the 401, the 429 and the
+529 the line holds the status, the content type and the whole JSON body; for
+routing, the status, the upstream port and the credential that reached the
+upstream; for the 403, the status alone; and for the log handler, the fields
+of the access log line. The page shows the configuration, the script and
+these compared values, labeled as such, and no other part of a response.
+Step 4 moves the expected values out of the case into files next to the
+scripts, which the case reads and the generator copies, so that nothing on
+the page is copied by hand. The samples of the planned features (the shared
+dictionary of step 7a, `body_json` and the event filter of 7b, the
+first-byte deadline of 7c, timers and Redis of 7d, the reference proxy of
+7e) appear when the feature and its test merge; a page never shows a sample
+of a feature that has not merged. Until v3.0.0, each v3 sample carries the
+label "Development version" beside "New in 3.0".
+
 ## 4. Visual direction
 
-Each rule names its source and its check; section 6 runs the checks.
-Appendix C gives the evidence rule by rule.
+The owner answered Q7 on 2026-10-15 (section 7): the design starts from the
+design of the owner's corporate site and the owner's product landing page,
+which the owner likes, and tunes its colors and atmosphere towards cyber;
+the owner likes the design of the owner's profile site as well. 4.1 says
+what each site is and which of its sources this section reads, 4.2 lists
+what the ngx_mruby site inherits, value by value and rule by rule, and 4.3
+lists the changes towards cyber that this proposal makes. Those changes are
+chosen here: the owner's answer names the direction, not the means, and the
+owner judges them on the specimens of step 2 (4.12, item 4). 4.4 to 4.10
+give the rules by topic, 4.11 separates the owner's practice from research,
+and 4.12 lists what the specimens of step 2 settle. Each rule names its
+source and its check; section 6 runs the checks. Appendix C gives the
+evidence rule by rule.
 
-### 4.1 How the site leans towards technology
+### 4.1 The three sites and their sources
 
-1. **Code that runs is the identity.** The home page's first example is real
-   `nginx.conf` and Ruby from a test that CI runs (3.3, item 8), followed by
-   the response that the test compares on every run. No mock terminal
-   windows or decorative code.
-2. **Monospace where the text is code**: the wordmark `ngx_mruby`,
-   directive and method names, configuration, commands. Prose, headings and
-   navigation stay proportional, because they are read rather than copied
-   (chosen here). Check: the computed `font-family` of `code`, `pre`, `kbd`
-   and the wordmark starts with IBM Plex Mono, and that of body text,
+| Site | Built with | Sources read on 2026-10-15 | Served publicly that day |
+|---|---|---|---|
+| The owner's corporate site | Next.js | its token file, base and page stylesheets, its brand page's stylesheet, header, footer, theme toggle and entrance-motion components, its diagram stylesheet, its design system document and its brand document | no: the domain answers with a sign-in page |
+| The owner's product landing page | Next.js | the landing page's shared module (palette, layout, header, footer, narrow screens), the shared site token module (type and radii), the shared header module, the hero and figure stylesheets, the stylesheet of the product's connection page, its Japanese typography checklist, its design skills, and its rules for procedure pages | no: it answers 401 |
+| The owner's profile site, https://research.matsumoto-r.jp/ | Astro | its token file and stylesheets, which it also publishes under `/_astro/`, and its design notes | yes: Japanese at `/`, English at `/en/` |
+
+- The sources are the heads of the three sites' private repositories on
+  2026-10-15. This document describes each source by its role, as in the
+  table, and names no path in those repositories. The design values are
+  not secret; the names and paths of the repositories stay out.
+- The landing page applies the corporate site's palette inside the landing
+  page only. The three sites share that palette, one pair of font stacks,
+  the radius steps 8, 12, 16 and 24 px, the ring before section headings,
+  and the rules of 4.2. None of them uses IBM Plex, so IBM Plex is not a
+  candidate.
+- Code and monospace on the three sites: the corporate site's brand page
+  shows the SVG source of each logo in `<pre><code>` blocks set in the
+  system monospace stack, and sets the stroke widths of its logo diagram,
+  numbers with units, in nearly the same stack; the product's connection
+  page sets the value a reader copies in Geist Mono. The landing page and
+  the profile site show no code (4.2).
+- Rules taken from their design documents are marked "owner's practice".
+  Values marked "chosen here" are choices of this proposal, with no source
+  that fixes them.
+
+### 4.2 What the site inherits
+
+**Type and layout.** The middle columns are the three sites of 4.1, with
+the sources read; the last column says what the ngx_mruby site takes.
+
+| What | Corporate site (token file, page stylesheet) | Landing page (shared module, shared site tokens) | Profile site (token file) | ngx_mruby site |
+|---|---|---|---|---|
+| Japanese-first stack | `"Hiragino Sans"`, Noto Sans JP, `sans-serif` | the same | `"Hiragino Sans", "Noto Sans JP Variable", "Noto Sans JP", sans-serif` | first on Japanese pages (4.4) |
+| Inter | Latin-only words in headings: `Inter, "Helvetica Neue", Arial, sans-serif` | large numerals (56 px, weight 500, letter spacing -0.045em) and the copyright line | Latin-only words and large numbers: `"Inter Variable", "Inter", "Helvetica Neue", Arial, sans-serif` | first on English pages (4.4) |
+| Monospace | the brand page's code blocks: `"SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace` at 0.8rem (12.8 px), line height 1.7, on the secondary background with a 1 px border, 20 by 24 px padding and a 12 px radius, scrolling sideways; the stroke widths of the logo diagram: `"SFMono-Regular", Menlo, Consolas, monospace` at 0.72rem, weight 600 | none on the landing page; the product's connection page sets the value to copy in `var(--font-geist-mono), monospace` (Geist Mono) at 15 px, line height 1.7 | none | code and numbers (4.3, 4.12) |
+| Top heading | `clamp(1.625rem, 1.1rem + 2vw, 2.375rem)`, 26 to 38 px, weight 800, line height 1.4 | 42 px, 38 px at 1000 px and below, 32 px at 760 px and below; weight 700, line height 1.4 | `clamp(1.75rem, 1.3rem + 2vw, 2.375rem)`, 28 to 38 px, weight 800, line height 1.4 | home page heading (4.4) |
+| Section heading | `clamp(1.4rem, 3vw, 2rem)`, 22 to 32 px, weight 700, line height 1.3 | 32 px, 26 px at 760 px and below; weight 700, line height 1.4 | `clamp(1.25rem, 1.1rem + 0.7vw, 1.5rem)`, 20 to 24 px, weight 700, line height 1.4 | h2 (4.4) |
+| Item heading | 1.15rem (18.4 px), weight 700 | 20 px, weight 600, line height 1.5 | 1.0625rem (17 px) | h3 (4.4) |
+| Japanese headings | `font-feature-settings: "palt" 1`, letter spacing 0.02em, `word-break: keep-all` then `auto-phrase`, `line-break: strict`, `overflow-wrap: anywhere` on the top and section headings | `font-feature-settings: "palt" 1`, letter spacing 0.02em, `word-break: keep-all` | `"palt" 1`, letter spacing 0.02em, `keep-all` with `auto-phrase` | `"palt"` and 0.02em on Japanese headings (4.4) |
+| Body | 1rem (16 px), line height 1.8 | 16 px, and 17 px for the descriptive text of its home page (16 px at 760 px and below); line height 1.8, letter spacing 0.01em | 1rem (16 px), line height 1.8 | 16 px everywhere (4.4) |
+| Notes, captions, labels | 0.875rem (14 px) | notes 15 px, captions 14 px, labels 12 to 13 px | 15 px and 14 px, line height 1.7 | 15 px and 14 px, nothing smaller (4.4) |
+| Body measure | 720 px | 720 px | 720 px | 38rem (4.4) |
+| Container | 1032 px, sections padded 80 by 24 px (60 px vertical at 640 px and below) | 1032 px with 32 px gutters, 20 px at 760 px and below; sections 88 px (56 px) | 1032 px, gutter 24 px, 20 px at 640 px and below | 1032 px for the home page, gutter 24 and 20 px (4.5) |
+| Spacing | 16 to 32 px inside a group, 80 px between groups (64 px at 640 px and below) | no fixed set of steps (gaps such as 9, 14, 22, 28 and 64 px) | 4, 8, 12, 16, 24, 32, 48, 64, 80 px | the profile site's steps (4.5) |
+| Radii | 8, 12, 16, 24 px; cards 16 px, inputs 12 px, buttons 999 px | panels 12 px, controls 8 px | 8, 12, 16, 24 px and 999 px | 0, 8, 12 and 999 px (4.5) |
+| Borders and shadows | 1 px borders; a small shadow on the header after scrolling and on icon badges; the hero has a vertical gradient and soft radial spots | 1 px lines; no shadow or gradient | 1 px borders; an inset `box-shadow` marks the current page in the header | 1 px borders only (4.3) |
+| Numbers | tabular figures in the company data table | tabular figures in prices and step numbers | tabular figures in periods and charts | monospace in tables and measurements (4.3) |
+| Transitions | `transition: all 0.3s` on the header and on one button; color, transform, opacity and border color in 0.2 to 0.3 s elsewhere | background, border and text color in 160 ms, none under reduced motion | color and border color in 0.2 s | color only, 200 ms or less (4.8) |
+| Entrance motion | a fade-up of 12 px in 0.5 s on about five blocks per page | none | none | none (4.8) |
+
+**Color.** All three sites use the same light palette. The dark values of
+the corporate and profile sites are the same; the landing page's differ in
+muted text, border and control outline, and it adds a button fill.
+
+| Role | Light | Dark, corporate and profile | Dark, landing page |
+|---|---|---|---|
+| Page | `#faf8f3` | `#14120d` | `#14120d` |
+| Secondary surface (header controls, code blocks) | `#ffffff` | `#1a1811` | `#1a1811` |
+| Card background | `#ffffff` | `#1b1812` | `#1a1811` (the surface) |
+| Alternate surface (alternate section bands, notes) | `#f3f0e8` | `#211e15` | `#211e15` |
+| Text | `#232017` | `#ece7db` | `#ece7db` |
+| Secondary text | `#4b4536` | `#c9c2b1` | `#c9c2b1` |
+| Muted text | `#5f5949` | `#9a937f` | `#aaa28f` |
+| Accent, for marks and fills | `#d4a843` (2.08:1 on the page) | `#c9a34e` | `#c9a34e` |
+| Text accent, for links and the focus ring | `#82672c` (5.04:1 on the page) | `#c9a34e` | `#c9a34e` |
+| Button fill (landing page), with `#232017` text | `#c6a661` | | `#b69b60` |
+| Border | `#e7e3d8`; card border and lines `#e0dbcd` | `#2b2719`; `#332e1f` | `#3a3524` |
+| Control outline (3:1) | `#8a8271` | `#7d7458` | `#8f856a` |
+
+Computed with the conversion of [contrast.py](./site/contrast.py), every
+color of this table except white, the gold included, has an OKLCH hue
+between 84.4 and 94.1: neutrals and accent share one hue.
+
+The profile site also defines colors for its charts, with light and dark
+values: five categorical colors (`--viz-series-1` to `--viz-series-5`,
+light `#2a78d6`, `#eb6834`, `#1baf7a`, `#eda100`, `#e87ba4`), a gold for
+single bars and a gold scale for counts (`--viz-single`, `--viz-heat-0` to
+`--viz-heat-4`). The ngx_mruby site plans no chart. If it charts the perf
+lane's measurements (Q8), it starts from these colors and checks them
+against both palettes of 4.6 then.
+
+**Components.**
+
+- **Theme order.** The corporate and profile sites put light tokens on
+  `:root`, dark ones under `prefers-color-scheme: dark` for
+  `:root:not([data-theme="light"])`, and on `:root[data-theme="dark"]`
+  (4.7).
+- **Section heading mark.** A ring in the accent before each section
+  heading: 9 px with a 1.5 px border on the profile site, hung 21 px into
+  the left margin on screens wider than 1121 px and inline otherwise;
+  the same 9 px ring hung 21 px into the margin on the corporate site (14 px
+  at 640 px and below); 12 px with a 2 px border (10 px at 760 px and
+  below), inline, on the landing page. The site takes the 9 px ring of the
+  corporate and profile sites, which suits headings of 22 to 26 px (4.4).
+- **Links and focus.** Links in the text accent, underlined: 1 px at an
+  offset of 0.2em on the profile site, an offset of 3 px on the corporate
+  site; the landing page underlines its text links in the control outline
+  color at an offset of 6 px. Focus is a 2 px solid outline in the text
+  accent, offset 3 px (5 px on the landing page).
+- **Buttons.** The corporate site fills its primary button with the accent
+  and rounds it fully (999 px); the landing page fills it with its button
+  color and ink text at a radius of 8 px, 15 px at weight 600, and draws a
+  secondary button with a 1 px text-accent outline. On the landing page, a
+  button that cannot be used shows at an opacity of 0.6 without a hover
+  change.
+- **Header.** Corporate site: fixed, 64 px, translucent over a 16 px blur,
+  1 px bottom border, a shadow after scrolling; its links move into a menu
+  below 1060 px; the menu button is 44 by 44 px and the theme toggle a
+  36 px square with a radius of 8 px. Landing page: sticky, opaque page
+  color, 1 px bottom border, 88 px high (64 px at 900 px and below), the
+  name at 21 px weight 700, links at 13 px (15 px from 901 px), a menu at
+  900 px and below with rows 56 px high, and a fixed bar of actions at the
+  bottom of narrow screens. Profile site: fixed, 64 px, translucent over a
+  16 px blur, 1 px bottom border, links at least 44 px high at 15 px weight
+  600, the current page marked by a 2 px accent line, the language link a
+  pill with a 1 px outline, the theme toggle and the menu as 44 px round
+  buttons with a 1 px outline, the links in the menu at 900 px and below,
+  and the language link in the menu at 640 px and below.
+- **Footer.** Corporate site: one footer component on every page, with a
+  table of contents of the site, the privacy policy and the copyright, 1 px
+  top border, 14 px text, 40 px above and 32 px below. Landing page: 1 px
+  top border, the name at 20 px, links at 12 px in muted text, the
+  copyright at 12 px, 40 px above and 32 px below. Profile site: 1 px top
+  border, 14 px muted text, 48 px above and 32 px below.
+- **Narrow screens.** One column for two-column sections below 1024 px
+  (corporate) or at 760 px and below (landing page); gutters of 20 px on the
+  landing page and the profile site, 24 px on the corporate site; the top
+  heading and the section headings step down at 760 px (landing page).
+
+**Practice from their design documents** (owner's practice), which the
+site inherits:
+
+- **Palette.** The page is a measured warm white (red at least green,
+  green above blue). One accent family is the only accent, with a darker
+  shade for text measured at 4.5:1 or more; the accent lights up only in a
+  few places (links, the section heading mark, the primary action).
+  Neutrals take the page's hue; no framework grays. Contrast is measured:
+  4.5:1 for text, 3:1 for controls (corporate design system document).
+- **Type.** A Japanese face first, the Latin face only for Latin-only
+  words. Phrase wrapping only in titles and section headings, through
+  `<wbr>` at phrase boundaries with `keep-all`; body text wraps by
+  character, at most 720 px (about 40 Japanese characters); no
+  `text-wrap: pretty` or `balance`. Headings at a line height of 1.3 to
+  1.4, body at 1.7 or more, letter spacing at most 0.02em. One descending
+  scale with the top heading largest, the same size for the same role on
+  every page (corporate design system document). Japanese headings are
+  smaller than English ones; the top heading takes two lines on a desktop
+  and at most three; Japanese sizes follow a scale of about 1.2: 38, 32,
+  26, 22, 18, 17, 16, 15 and 13 px; layouts are checked at 360, 375, 390,
+  1024, 1200, 1280 and 1440 px (landing page's Japanese typography
+  checklist).
+- **Layout.** One left axis for every section, set by one container. Small
+  gaps inside a group, large gaps between groups. One kind of section
+  heading, the ring before it; no uppercase labels above headings; no row
+  of identical cards repeated across sections (corporate design system
+  document).
+- **Surfaces.** A border or nothing, never a shadow on a bordered card; no
+  framed card inside a framed card; no hover effect on what cannot be
+  clicked; radii from a fixed set, the inner smaller than the outer; fixed
+  data in tables with tabular figures (corporate design system document).
+- **Motion.** An entrance fade-up of 0.5 s, moving only `translateY` and
+  `opacity`, on about five blocks per page; no blur-in, no fade over a
+  second, no `transition: all`; under reduced motion, nothing moves
+  (corporate design system document and entrance-motion component).
+- **Diagrams.** Figure text is set in HTML, and only lines and symbols are
+  drawn in SVG; a figure that shows relations carries `role="img"` and an
+  `aria-label`, and its SVG is hidden from screen readers; Japanese figure
+  text wraps by phrase with `keep-all`, `line-break: strict` and `<wbr>`
+  (corporate site's design document; neither the corporate site's diagram
+  components nor the landing page's figure components contain an SVG
+  `<text>` element). Colors from the tokens only; the accent on one or two
+  places per figure; no shadow, gradient or hover; strokes of 1.5 to 2 px
+  with round caps that keep their width when the drawing scales; short
+  labels, the details in the text; a vertical arrangement on narrow screens
+  (corporate diagram stylesheet, landing page's figure stylesheet). A figure
+  is seen whole on one screen; a figure read against an axis fits half of a
+  390 by 664 px screen; figures scale with the width and never scroll
+  sideways; values are readable without hover, as a table or as numbers
+  (profile site's design notes). A filled circle means established or
+  current, a ring means next, a dashed ring means later, always with a
+  legend or text, since the symbols alone do not reach 3:1 (corporate brand
+  document).
+- **Languages.** The language link names the other language in that
+  language; no flags; no language chosen from the browser or location; a
+  path prefix per language; `hreflang` both ways with `x-default`; a 404
+  page per language (profile site's design notes).
+- **English.** Active voice, one statement per sentence, sentence-case
+  headings, no em dashes, after the Google developer documentation style
+  guide and the Microsoft Writing Style Guide (profile site's design notes).
+  Procedure pages, after the same guides, Diátaxis and W3C COGA: the
+  conditions that stop a reader before step 1, one action per numbered
+  step, each step ending with what the reader sees, one sequence per
+  heading, the date and environment in which the steps were checked, a last
+  step that checks the result, explanations outside the numbered steps, and
+  no "simply" or "just" (landing page's rules for procedure pages).
+- **Before shipping.** A list of signs of generated design checked one by
+  one (purple-to-blue gradients, glows, framework grays, glass cards on
+  every surface, uppercase labels, a Latin face first on Japanese pages,
+  blur-in, emoji); screenshots of every page in both themes; narrow screens
+  in WebKit as well as Chromium (corporate design system document).
+
+### 4.3 What changes towards a slightly cyber tone
+
+The tuning keeps every rule of 4.11. Each item says what the three sites do
+and what the ngx_mruby site does instead. Every item is chosen here, as
+this proposal's way to tune the colors and atmosphere towards cyber; the
+owner judges them on the specimens of step 2 (4.12, item 4).
+
+1. **Code that runs is the first content.** Of the three sites, only the
+   corporate site's brand page shows code, the SVG source of its logos below
+   the logos. The home page's first example is real `nginx.conf` and Ruby
+   from a test that CI runs (3.3, item 8), followed by the response that the
+   test compares on every run. No mock terminal windows or decorative code.
+2. **Monospace for code and numbers.** The corporate site sets its code
+   blocks and the numbers of its logo diagram in the system monospace
+   stack, and the product's connection page sets a value to copy in Geist
+   Mono, so monospace for code and for numbers has precedents there. Code
+   blocks are 15 px on the site (4.4), where the corporate site's are
+   12.8 px, so that no text is below the floor of 4.4. The site sets a
+   monospace face (4.12, item 2) for code, `kbd`, the wordmark
+   `ngx_mruby`, directive, method and file names, commands, and the numbers
+   of tables and measurements: versions, ports, sizes, durations, and the
+   perf lane's instructions per request with their date (Q8). Prose,
+   headings and navigation stay proportional, because they are read rather
+   than copied (chosen here). Numbers inside prose keep the text face with
+   tabular figures, as on the three sites. Check: the computed
+   `font-family` of `code`, `pre`, `kbd`, the wordmark and the numeric cells
+   of tables starts with the monospace face, and that of body text,
    headings and navigation does not.
-3. **One accent from the existing logo**: the teal `#40a798` of
-   [misc/logo.png](../../misc/logo.png), hue 182 in OKLCH, with neutrals of
-   the same hue (4.4).
-4. **Flat surfaces**: 1 px borders separate regions; no shadows, gradients,
-   glows or translucent panels. The owner's practice forbids shadows on
-   bordered cards, purple-to-blue gradients, glows and translucent panels
-   (4.9); no shadow or gradient at all is chosen here. `tokens.css` sets
-   Starlight's shadows to `none` (4.4), and the site removes the blurred
+3. **The accent comes from the ngx_mruby logo.** The three sites use one
+   gold accent. The site uses the teal `#40a798` of
+   [misc/logo.png](../../misc/logo.png), hue 182 in OKLCH, with the same
+   split into `accent` for marks and fills and `accent-text` for text
+   (4.6). The project's own mark identifies the project; the gold belongs
+   to the owner's other sites.
+4. **The quality of the dark theme.** The three sites' dark page is a
+   near-black of the page's hue (`#14120d`, OKLCH lightness 0.183), with
+   surfaces one step lighter instead of shadows, and one accent value for
+   marks and text, lighter than the light theme's text accent. The site
+   keeps the near-black page and the lighter surfaces with the teal: page
+   `#0e1413` (lightness 0.185, hue 182) in palette A, surfaces one step
+   lighter. It keeps two accent values in dark, both lighter than in light:
+   `accent` `#56b1a3` for marks and fills and `accent-text` `#81cfc1` for
+   links (chosen here). Every syntax color reaches 4.5:1 on the dark
+   surface, and the dark theme works without JavaScript (4.7). The dark
+   theme is where the teal on a near-black page, the monospace code and the
+   1 px lines read as slightly cyber (chosen here).
+5. **An opaque header and no shadows.** 1 px borders separate regions;
+   there are no shadows, gradients, glows or translucent panels. The
+   corporate and profile headers are translucent over a blurred backdrop;
+   the corporate header adds a shadow after scrolling and its hero a
+   gradient with radial spots; the profile header marks the current page
+   with an inset `box-shadow`. The site takes the landing page's opaque
+   header in `surface`, marks the current page with a 2 px bottom border in
+   `accent`, and drops the gradient and the spots. `tokens.css` sets
+   Starlight's shadows to `none` (4.6), and the site removes the blurred
    backdrop of its search dialog (appendix B). Check: on three page types
    in both themes, with the search dialog and the narrow-screen menu open,
    every computed `box-shadow`, `text-shadow` and `backdrop-filter` is
-   `none` and no computed `background-image` holds a gradient.
-5. **Little motion** (4.6), and **structure that shows the system**: the
-   sidebar mirrors the four kinds of page, and headings name the directive,
-   method or task.
+   `none`, and no computed `background-image` holds a gradient.
+6. **No entrance animation** (4.8). The corporate site's allowance of about
+   five entrance animations per page is not used.
+7. **Sharper and fewer radii.** Of the inherited steps, the site uses 8 and
+   12 px, and 999 px only for the language link and the round header
+   buttons; the 16 and 24 px of cards and the fully rounded primary button
+   of the corporate site are not used (4.5).
+8. **Structure that shows the system.** The sidebar mirrors the four kinds
+   of page, headings name the directive, method or task, and diagrams show
+   where Ruby runs inside nginx (3.5). Diagram labels are at least 14 px,
+   where the landing page's figures go down to 13 px, so that no text is
+   below the floor of 4.4.
 
-Not used: decorative gradients, grids of emoji or icons, glowing or lifting
-cards, rows of identical feature cards, uppercase labels above headings,
-hero illustrations, mock application windows.
+Not used: decorative gradients, neon colors and glows, terminal motifs,
+grids of emoji or icons, glowing or lifting cards, rows of identical feature
+cards, uppercase labels above headings, hero illustrations, mock application
+windows, a fixed bar of actions at the bottom of narrow screens.
 
-**Slightly cyber.** The site reads slightly cyber through rules 1 to 4: code
-and a real response are the first content of the home page, the wordmark
-and every identifier are monospace, the dark theme puts the teal on a
-near-black background of the same hue (4.4), and flat surfaces are divided
-by 1 px lines. It does not use neon glows or purple-to-blue gradients,
-which the owner's practice forbids (4.9). Whether this is cyber enough is
-part of Q7, judged on the specimens of step 2.
+### 4.4 Type
 
-### 4.2 Type
+**Families.**
 
-**Families.** IBM Plex Sans, IBM Plex Sans JP and IBM Plex Mono (SIL Open
-Font License 1.1), served by the site from the Fontsource packages (5.3.0),
-the Japanese font split by `unicode-range`. One design across Latin,
-Japanese and code keeps lines that mix them even. Japanese uses gothic
-(sans-serif): in a calculation by Sagawa and Kurakata for a reader of 70,
-the smallest legible kanji was 13.5 pt in gothic and 14.8 pt in Mincho.
-English pages list Plex Sans first; Japanese pages list Plex Sans JP first,
-so that digits, quotation marks and symbols inside Japanese text take the
-Japanese design (owner's practice). The alternative is the system font
-stack (Q7).
+- English pages: `--font-latin`, then `--font-sans` for Japanese characters:
+  `"Inter Variable", "Inter", "Helvetica Neue", Arial, "Hiragino Sans",
+  "Noto Sans JP Variable", "Noto Sans JP", sans-serif`.
+- Japanese pages: `--font-sans` first, so that digits, quotation marks and
+  symbols inside Japanese text take the Japanese design (owner's practice).
+  Hiragino Sans is used where the system has it; the site serves Noto Sans
+  JP for the other systems.
+- Code and the numbers of 4.3, item 2: the monospace face of 4.12, then
+  the corporate site's stack `"SFMono-Regular", Menlo, Consolas,
+  "Liberation Mono", monospace`, then `--font-sans` for Japanese characters
+  in code comments, since the monospace faces have no kana or kanji.
+- The site serves its fonts from the Fontsource packages
+  `@fontsource-variable/inter` 5.3.0 and `@fontsource-variable/noto-sans-jp`
+  5.3.1 (SIL Open Font License 1.1), as the profile site does; the Japanese
+  font is split by `unicode-range`.
+- Japanese uses gothic (sans-serif): in a calculation by Sagawa and
+  Kurakata for a reader of 70, the smallest legible kanji was 13.5 pt in
+  gothic and 14.8 pt in Mincho.
 
 **Scale.** Seven sizes per language, one per role, and no others.
 
 | Role | English | Japanese | Weight | Line height, English / Japanese |
 |---|---|---|---|---|
-| Home page heading | `clamp(2rem, 1.4rem + 2vw, 2.375rem)`, 32 to 38 px | `clamp(1.625rem, 1.2rem + 1.5vw, 2rem)`, 26 to 32 px | 600 | 1.2 / 1.4 |
-| Page title (h1) | 2rem, 32 px | 1.625rem, 26 px | 600 | 1.25 / 1.4 |
-| Section heading (h2) | 1.625rem, 26 px | 1.375rem, 22 px | 600 | 1.3 / 1.4 |
+| Home page heading | `clamp(2rem, 1.4rem + 2vw, 2.375rem)`, 32 to 38 px | `clamp(1.625rem, 1.2rem + 1.5vw, 2rem)`, 26 to 32 px | 700 | 1.2 / 1.4 |
+| Page title (h1) | 2rem, 32 px | 1.625rem, 26 px | 700 | 1.25 / 1.4 |
+| Section heading (h2) | 1.625rem, 26 px | 1.375rem, 22 px | 700 | 1.3 / 1.4 |
 | Subsection heading (h3) | 1.375rem, 22 px | 1.125rem, 18 px | 600 | 1.35 / 1.4 |
-| Body text | 1.0625rem, 17 px | the same | 400 | 1.6 / 1.85 |
-| Navigation, tables, code blocks | 1rem, 16 px | the same | 400; 600 for the current item | 1.5 / 1.7 |
+| Body text | 1rem, 16 px | the same | 400 | 1.6 / 1.8 |
+| Navigation, tables, code blocks | 0.9375rem, 15 px | the same | 400; 600 for the current item | 1.5 / 1.7 |
 | Captions, footer, notes | 0.875rem, 14 px | the same | 400 | 1.5 / 1.7 |
 
-- **Where the values come from.** Every size except 14 px is a step of the
-  owner's reference scale for Japanese text, 38, 32, 26, 22, 18, 17, 16, 15
-  and 13 px, a ratio of about 1.2 (owner's practice). The smallest size is
-  14 px rather than 13 or 15: nothing below 14 px, body 16 px or more
-  (Digital Agency design system). Japanese headings are one step smaller
-  than English ones, with a line height of 1.4, because the owner's Japanese
-  typography checklist sets Japanese headings smaller than English ones,
-  with a line height of 1.3 to 1.4 (owner's practice). Chosen here: body
-  text at 17 px rather
-  than 16, weight 600, the English heading line heights, English body text
-  at 1.6 (above the 1.5 that the Digital Agency asks for body text and that
-  WCAG 1.4.12 tests), and 1.5 and 1.7 for navigation and captions.
+- **Where the values come from.** Inherited (4.2): the body, navigation and
+  caption sizes, the Japanese line heights, the heading weight of 700, and
+  `palt` with 0.02em of letter spacing on Japanese headings. The heading
+  sizes are steps of the owner's reference scale for Japanese text, 38, 32,
+  26, 22, 18, 17, 16, 15 and 13 px, a ratio of about 1.2 (owner's
+  practice). Japanese headings are one step smaller than English ones, with
+  a line height of 1.4, because the owner's Japanese typography checklist
+  sets Japanese headings smaller than English ones, with a line height of
+  1.3 to 1.4 (owner's practice). The Japanese sizes fall inside the ranges
+  of the three sites (4.2): the home page heading of 26 to 32 px inside
+  their top headings of 26 to 42 px, h2 of 22 px inside their section
+  headings of 20 to 32 px, h3 of 18 px beside their item headings of 17 to
+  20 px. Documentation pages need three levels of heading below the page
+  title, so each level takes one step of the reference scale (chosen
+  here). Nothing is below 14 px, and body text is 16 px
+  (Digital Agency design system). Chosen here: the English line heights,
+  with body text at 1.6 (above the 1.5 that the Digital Agency asks for
+  body text and that WCAG 1.4.12 tests), and weight 600 for h3.
 - **Seven sizes.** A survey summary of Material Design 3 suggested three to
   six steps, but Material Design 3 itself names five roles in three sizes
   each (summary), so the number here follows the seven roles of the table,
   with one size per role and language and no size outside the table.
 - Capitals only for acronyms (Tinker 1963: running capitals read slower).
-- **Measure.** The text column is at most 38rem (608 px): 35 Japanese
-  characters at 17 px, under the "about 40" of JLREQ 2.4.2 and at the top of
-  the 30 to 35 of the JLReq Task Force's draft; an estimated 70 Latin
-  characters, inside the U.S. Web Design System's 45 to 90 and GOV.UK's 75.
-  Check at 1440 px: Japanese body lines hold at most 40 characters (step 5)
-  and English body lines at most 90, counted line by line from the client
+- **Measure.** The text column is at most 38rem (608 px): 38 Japanese
+  characters at 16 px, under the "about 40" of JLREQ 2.4.2; an estimated 75
+  Latin characters, inside the U.S. Web Design System's 45 to 90 and at
+  GOV.UK's 75. The three sites' measure of 720 px holds 45 Japanese
+  characters at 16 px, so the column stays narrower (chosen here). Check at
+  1440 px: Japanese body lines hold at most 40 characters (step 5) and
+  English body lines at most 90, counted line by line from the client
   rectangles of the text.
 - **Line height.** JLREQ 2.4.2 puts the gap between Japanese lines between
   half and a full character, nearer a full one past 35 characters, and finds
-  no gain beyond that: 1.85 for Japanese body text, 1.6 for English.
+  no gain beyond that: 1.8 for Japanese body text (inherited), 1.6 for
+  English.
 - The page keeps working with the text spacing of WCAG 1.4.12 and at 200%
   text (1.4.4). Text is left-aligned, never justified (1.4.8).
 - **Wrapping.** Japanese text wraps by character (`word-break: normal`,
   `line-break: strict`). The owner's practice allows phrase wrapping only
   in titles and section headings; this proposal uses it only in section
-  headings (h2) of Japanese pages. The home page heading is a sentence,
-  what ngx_mruby does, so it wraps by character; so do h3, captions, labels
-  and table cells (chosen here, to keep the owner's exception as narrow as
-  the owner stated it).
+  headings (h2) of Japanese pages and in diagram labels, which the owner's
+  sites also wrap by phrase (3.5). The home page heading is a sentence,
+  what ngx_mruby does, so it wraps by character; so do h3, captions, other
+  labels and table cells (chosen here, to keep the owner's exception as
+  narrow as the owner stated it).
   - **Section headings (h2).** The Japanese Markdown source puts `<wbr>` at
     the phrase boundaries, and `h2` of Japanese pages has
-    `word-break: keep-all` and `overflow-wrap: anywhere`. GitHub drops the
-    `<wbr>` without showing it (appendix B), so `docs/ja/` reads normally
-    there.
+    `word-break: keep-all` and `overflow-wrap: anywhere`, as the three
+    sites' section headings do. GitHub drops the `<wbr>` without showing it
+    (appendix B), so `docs/ja/` reads normally there.
   - **Page titles (h1)** wrap by character and are short instead (chosen
     here). Starlight's `PageTitle.astro` renders `title` as an escaped
     expression, and the generator of 5.2 takes `title` from the first
@@ -344,89 +781,145 @@ stack (Q7).
     lists it for Chrome 119 and later, for Safari only in Technology
     Preview and not for Firefox, so WebKit would wrap those headings by
     character.
+- **Section heading mark.** h2 of content pages carry the inherited 9 px
+  ring of 4.2 in `accent`, hung into the left margin where the margin
+  allows and inline otherwise. It is decorative: the heading level is in
+  the markup.
 - The home page heading takes at most two lines at 1440 px and at most
   three at 390 and 320 px (owner's practice).
 - No `text-wrap: pretty` or `balance` anywhere: Safari applies `pretty` to
   every line and Chromium to the last four, so the same CSS wraps
   differently per engine (WebKit blog; MDN). Starlight's Banner sets
   `text-wrap: balance` (`Banner.astro` line 16); the site overrides it.
-- Prose links are underlined (WCAG 1.4.1). Version tables use tabular
-  figures.
+- Prose links are underlined (WCAG 1.4.1).
 - Checks: computed font sizes equal the scale of each language; no text
   below 14 px; the built CSS has no `text-wrap: pretty` or `balance`;
-  `keep-all` and `auto-phrase` appear only on the `h2` selector of
-  Japanese pages; the line count of the home page heading at 1440, 390
-  and 320 px in both languages; every Japanese h1 takes one line at 390 px
-  and at most two at 320 px; no h1, `<title>`, sidebar entry,
-  table-of-contents entry or heading `id` on `/ja/` contains the text
-  `wbr`, and the h2 of the test page of step 1 keep their `<wbr>` elements.
+  `keep-all` and `auto-phrase` appear only on the `h2` selector of Japanese
+  pages and on the labels of diagrams; the line count of the home page
+  heading at 1440, 390 and 320 px in both languages; every Japanese h1 takes
+  one line at 390 px and at most two at 320 px; no h1, `<title>`, sidebar
+  entry, table-of-contents entry or heading `id` on `/ja/` contains the text
+  `wbr`, and the h2 of the test page of step 1 keep their `<wbr>` elements;
+  no external font URL in the built site, and the build succeeds with
+  network access blocked after `npm ci`.
 
-### 4.3 Spacing
+### 4.5 Spacing and radii
 
-- Values 4, 8, 12, 16, 24, 32, 48, 64, 96 px, and no others in layout CSS.
-  They are multiples of the 8 CSS px base unit of the Digital Agency design
-  system's spacing page, with 4 and 12 px as half steps inside components
-  (chosen here).
+- Values 4, 8, 12, 16, 24, 32, 48, 64 and 80 px, the inherited
+  `--space-1` to `--space-9`, and no others in layout CSS. They are
+  multiples of the 8 CSS px base unit of the Digital Agency design system's
+  spacing page, with 4 and 12 px as half steps inside components.
 - Space above a heading is at least twice the space below, so the heading
   groups with its text (proximity, Wertheimer 1923; Digital Agency design
   system): h2 48 and 16 px, h3 32 and 8 px (chosen here).
-- Gutters: 16 px below 640 px, 24 px from 640, 32 px from 1024. The 16 and
-  32 px ends are the U.S. Web Design System's `grid-container` padding: 2
-  units at narrow widths and 4 units at desktop and wider, 8 px each
-  (layout grid). The 24 px step at 640 px is chosen here, after GOV.UK's
-  responsive spacing, which grows at 640 px (its spacing unit 6 is 20 px
-  below and 30 px above). Check: at 320 and 390 px, every text block and
-  any marker in the margin is at least 16 px from both edges.
-- Radius 4 px for code and inputs, 6 px for buttons, no other (chosen here,
-  for small elements on pages without cards; Starlight's badges also use
-  4 px). The owner's practice is a fixed set of radii; the owner's sites
-  use a set of larger radii for their cards. The owner decides the set
-  with Q7.
+- Gutters: 20 px at 640 px and below, 24 px above, as the profile site's
+  `--gutter` (the corporate site pads its sections by 24 px; the landing
+  page uses 32 and 20 px); the header's side padding is 32 px above 640 px,
+  as on the corporate and profile sites. Both gutters stay inside the
+  standards of appendix C: at least 16 px at narrow widths (the U.S. Web
+  Design System's `grid-container` padding of 2 units of 8 px) and a step
+  at 640 px (GOV.UK's responsive spacing, which grows at 640 px). Check:
+  at 320 and 390 px, every text block and any marker in the margin is at
+  least 20 px from both edges.
+- The sections of the home page use the inherited content width of
+  1032 px. Documentation pages keep Starlight's columns, with the text
+  column of 4.4.
+- Radii, from the inherited set: 8 px for buttons, inputs and the search
+  field; 12 px for code blocks, as the corporate site's code blocks (4.12,
+  item 3), asides, diagram frames and the frame of the home page example;
+  999 px for the language link and the round header
+  buttons, as on the profile site; 0 for inline code and table cells,
+  where the monospace face marks the code (4.3, item 2). 16 and 24 px, the
+  radii of cards, are not used, since documentation pages have no cards.
+  The owner's practice is a fixed set of radii, with the inner radius
+  smaller than the outer one when frames nest.
 - Checks: every length that the built CSS gives to a margin, padding or
   gap is 0 or a value of the set (`auto` and percentages excepted), and
-  every border radius is 0, 4 or 6 px, Starlight's own CSS included; other
-  values are listed by selector and overridden in step 2.
+  every border radius is 0, 8, 12 or 999 px or 50% (the round buttons),
+  Starlight's own CSS included; other values are listed by selector and
+  overridden in step 2.
 
-### 4.4 Color
+### 4.6 Color
 
-Each token is an OKLCH source value at hue 182, converted to sRGB hex. The
-ratios are WCAG 2.2 contrast ratios against `bg` and `surface`, truncated to
-two decimals and never rounded, since WCAG's Understanding document for
-1.4.3 says "4.499:1 would not meet the 4.5:1 threshold".
-[contrast.py](./site/contrast.py) holds the source values, converts them,
-compares the unrounded ratio of every pair a role needs with its threshold
-(4.5:1 wherever a role puts text on or in the color, 3:1 for outlines and
-the focus ring) and exits 1 on a failure. With the light `accent` planted
-at `#157c70`, which is 4.4968:1 on `surface`, it prints 4.49 and exits 1.
+Two palettes go to the specimens of step 2 (4.12). Both use the teal accent
+of 4.3, item 3, and the inherited split between `accent` and `accent-text`.
+Palette A carries over the rule of the three sites, neutrals in the hue of
+the accent, with the logo's hue; palette B keeps the three sites' neutrals.
+`tokens.css` uses the custom property names of the last column of the
+first table.
 
-| Token | Role | Light | Ratio bg / surface | Dark | Ratio bg / surface |
-|---|---|---|---|---|---|
-| `bg` | page | `#f7fbfa` oklch(0.985 0.004 182) | | `#0e1413` oklch(0.185 0.010 182) | |
-| `surface` | header, sidebar, code blocks | `#ecf3f1` oklch(0.958 0.008 182) | | `#161e1c` oklch(0.225 0.012 182) | |
-| `text` | body text | `#172522` oklch(0.250 0.020 182) | 15.20 / 14.08 | `#e2eae8` oklch(0.930 0.009 182) | 15.21 / 13.88 |
-| `text-muted` | captions, code comments | `#4c5c59` oklch(0.460 0.020 182) | 6.75 / 6.25 | `#a6b1ae` oklch(0.750 0.013 182) | 8.43 / 7.69 |
-| `accent-text` | links | `#0f695e` oklch(0.470 0.080 182) | 6.28 / 5.82 | `#81cfc1` oklch(0.800 0.080 182) | 10.30 / 9.40 |
-| `accent` | focus ring, current navigation item, primary button | `#167b6f` oklch(0.527 0.089 182) | 4.91 / 4.55 | `#56b1a3` oklch(0.700 0.090 182) | 7.28 / 6.64 |
-| `border-strong` | outlines of inputs and controls | `#748481` oklch(0.600 0.019 182) | 3.75 / 3.48 | `#6b7775` oklch(0.560 0.015 182) | 4.00 / 3.65 |
-| `border` | separators, decorative | `#d4dddb` oklch(0.890 0.010 182) | 1.32 / 1.23 | `#2c3533` oklch(0.320 0.013 182) | 1.47 / 1.34 |
+Palette A: each token is an OKLCH source value at hue 182, converted to
+sRGB hex. Palette B: the neutrals of the corporate and profile sites' token
+files (4.2), with the accent tokens of palette A; `surface` there is their
+alternate surface. The ratios are WCAG 2.2 contrast ratios
+against `bg` and `surface`, truncated to two decimals and never rounded,
+since WCAG's Understanding document for 1.4.3 says "4.499:1 would not meet
+the 4.5:1 threshold". [contrast.py](./site/contrast.py) holds both
+palettes, converts them, compares the unrounded ratio of every pair a role
+needs with its threshold (4.5:1 wherever a role puts text on or in the
+color, 3:1 for outlines and the focus ring) and exits 1 on a failure. With
+the light `accent` planted at `#157c70`, which is 4.4968:1 on `surface`, it
+prints 4.49 and exits 1; with the light `surface` of palette B planted at
+`#f0ece2`, it reports 4.345164:1 for `accent` on it and exits 1. The rows
+of both tables below are the output of `contrast.py --markdown`.
+
+Palette A:
+
+| Token | Role | Light | Ratio bg / surface | Dark | Ratio bg / surface | Custom property |
+|---|---|---|---|---|---|---|
+| `bg` | page | `#f7fbfa` oklch(0.985 0.004 182) |  | `#0e1413` oklch(0.185 0.010 182) |  | `--color-bg-primary` |
+| `surface` | header, sidebar, code blocks | `#ecf3f1` oklch(0.958 0.008 182) |  | `#161e1c` oklch(0.225 0.012 182) |  | `--color-bg-tertiary` |
+| `text` | body text | `#172522` oklch(0.250 0.020 182) | 15.20 / 14.08 | `#e2eae8` oklch(0.930 0.009 182) | 15.21 / 13.88 | `--color-text-primary` |
+| `text-muted` | captions, code comments | `#4c5c59` oklch(0.460 0.020 182) | 6.75 / 6.25 | `#a6b1ae` oklch(0.750 0.013 182) | 8.43 / 7.69 | `--color-text-muted` |
+| `accent-text` | links | `#0f695e` oklch(0.470 0.080 182) | 6.28 / 5.82 | `#81cfc1` oklch(0.800 0.080 182) | 10.30 / 9.40 | `--color-accent-text` |
+| `accent` | focus ring, current navigation item, primary button, marks | `#167b6f` oklch(0.527 0.089 182) | 4.91 / 4.55 | `#56b1a3` oklch(0.700 0.090 182) | 7.28 / 6.64 | `--color-accent` |
+| `border-strong` | outlines of inputs and controls, lines of diagrams | `#748481` oklch(0.600 0.019 182) | 3.75 / 3.48 | `#6b7775` oklch(0.560 0.015 182) | 4.00 / 3.65 | `--color-border-strong` |
+| `border` | separators, outlines of round buttons, decorative | `#d4dddb` oklch(0.890 0.010 182) | 1.32 / 1.23 | `#2c3533` oklch(0.320 0.013 182) | 1.47 / 1.34 | `--color-border` |
+
+Palette B:
+
+| Token | Light | Ratio bg / surface | Dark | Ratio bg / surface |
+|---|---|---|---|---|
+| `bg` | `#faf8f3` |  | `#14120d` |  |
+| `surface` | `#f3f0e8` |  | `#211e15` |  |
+| `text` | `#232017` | 15.33 / 14.28 | `#ece7db` | 15.16 / 13.49 |
+| `text-muted` | `#5f5949` | 6.56 / 6.12 | `#9a937f` | 6.10 / 5.43 |
+| `accent-text` | `#0f695e` | 6.17 / 5.75 | `#81cfc1` | 10.36 / 9.22 |
+| `accent` | `#167b6f` | 4.82 / 4.50 | `#56b1a3` | 7.31 / 6.51 |
+| `border-strong` | `#8a8271` | 3.58 / 3.34 | `#7d7458` | 4.02 / 3.57 |
+| `border` | `#e7e3d8` | 1.20 / 1.12 | `#2b2719` | 1.25 / 1.11 |
 
 - All text reaches 4.5:1, large Japanese headings included: WCAG 1.4.3 gives
   no pixel threshold for large CJK text, and the Digital Agency design
   system asks for 4.5:1 at every size. Outlines that are a control's only
-  cue, and the focus ring, reach 3:1 (WCAG 1.4.11).
-- The logo's teal is 2.79:1 on the light background, so it stays inside the
-  logo, as does its pink `#f5e1da`; there is no second accent.
-- The accent hue has four roles: links (`accent-text`), and the focus ring,
-  the current navigation item and the home page's one primary button
-  (`accent`). The current item is `accent` text at weight 600 on `surface`
-  (4.55:1 light, 6.64:1 dark); the button is `bg` text on an `accent` fill
-  (4.91:1 light, 7.28:1 dark).
+  cue, and the focus ring, reach 3:1 (WCAG 1.4.11). The light `accent` of
+  palette B reaches 4.501:1 on `surface`, with no margin.
+- The logo's teal is 2.79:1 on the light background of palette A, so it
+  stays inside the logo, as does its pink `#f5e1da`; there is no second
+  accent.
+- The accent hue has six roles: links (`accent-text`); and the focus ring,
+  the current navigation item, the home page's one primary button, the
+  section heading mark of 4.4 and at most two marks per diagram (`accent`).
+  The current item is `text` at weight 600 with a 2 px `accent` bottom
+  border, as the profile site marks it with a 2 px accent line (4.55:1
+  light, 6.64:1 dark for the border in palette A); the button is `bg` text
+  on an `accent` fill (4.91:1 light, 7.28:1 dark). The focus ring is a
+  2 px `accent` outline, which reaches 3:1 in both palettes; the three
+  sites draw it in their text accent, because their gold `accent` does
+  not.
+- Links are underlined 1 px at an offset of 0.2em, as on the profile site,
+  with the underline in the link color, so that every computed color is a
+  token value (the profile site mixes the underline with transparency).
 - Neutrals carry the hue of the page background, not a framework's gray
   scale, and component CSS uses tokens, not hex colors (owner's practice).
-  Here that hue is the accent's, 182, and every neutral has an OKLCH chroma
-  of at most 0.020 in its source value (chosen here). The hex values are
-  rounded, so a chroma computed back from them can be slightly higher:
-  0.0201 for light `text`, 0.0203 for light `text-muted`.
+  On the three sites, neutrals and accent share one hue (4.2). Palette A
+  carries that over with the logo's hue, 182, with an OKLCH chroma of at
+  most 0.020 for every neutral in its source value (chosen here; the
+  inherited neutrals reach 0.027 in light and 0.042 in dark). The hex values
+  are rounded, so a chroma computed back from them can be slightly higher:
+  0.0201 for light `text`, 0.0203 for light `text-muted`. Palette B keeps
+  the warm neutrals at hues of 85.8 to 94.1, so the teal accent has a hue
+  of its own.
 - **Starlight's own colors.** Starlight's `props.css` defines a gray scale
   at hue 224 (for example `hsl(224, 20%, 94%)`), its own accent, orange,
   green, blue, purple and red palettes, and three shadows. `asides.css`
@@ -442,11 +935,11 @@ at `#157c70`, which is 4.4968:1 on `surface`, it prints 4.49 and exits 1.
   `bg`, and a text label (Note, Tip, Caution, Danger) instead of a color
   (chosen here).
 - Code highlighting uses at most four token colors besides `text` and
-  `text-muted` (chosen here), each 4.5:1 on `surface` in both themes; step
-  2 adds them to `CODE_COLORS` in the contrast script.
+  `text-muted` (chosen here), each 4.5:1 on `surface` in both themes and in
+  both palettes; step 2 adds them to `CODE_COLORS` in the contrast script.
 - **Code blocks.** Starlight renders them with Expressive Code, whose
   default themes bring hex colors of their own, adjust syntax colors below
-  5.5:1 and draw shell languages as a terminal window, which rule 1 of 4.1
+  5.5:1 and draw shell languages as a terminal window, which item 1 of 4.3
   rules out (appendix B). Step 2 sets Starlight's `expressiveCode` option:
   `themes`, a light and a dark theme that a script in `site/scripts/`
   writes from `tokens.css`, so that every syntax color is `text`,
@@ -461,16 +954,17 @@ at `#157c70`, which is 4.4968:1 on `surface`, it prints 4.49 and exits 1.
   Expressive Code's stylesheet (`/_astro/ec.<hash>.css`) and the `style`
   attributes of highlighted spans hold hex values from those themes; they
   are exempt from the hex check, and the checks below cover them.
-- Checks: the contrast script over tokens and code colors; no hex color in
-  component CSS, and none in the built CSS outside `tokens.css` and
-  Expressive Code's stylesheet (Starlight's `#fff` in `Badge.astro`
-  included); on three page types in both themes, every computed text,
-  background and border color, code blocks included, is a token value or
-  transparent; the hex values in the `style` attributes of highlighted
-  spans are code colors, `text` or `text-muted`; no element has the class
-  `is-terminal`; accent tokens used only by the four roles.
+- Checks: the contrast script over both palettes and the code colors; no
+  hex color in component CSS, and none in the built CSS outside
+  `tokens.css` and Expressive Code's stylesheet (Starlight's `#fff` in
+  `Badge.astro` included); on three page types in both themes, every
+  computed text, background and border color, code blocks and diagrams
+  included, is a token value or transparent; the hex values in the `style`
+  attributes of highlighted spans are code colors, `text` or `text-muted`;
+  no element has the class `is-terminal`; accent tokens used only by the
+  six roles.
 
-### 4.5 Light and dark
+### 4.7 Light and dark
 
 - The default follows `prefers-color-scheme`; light applies when the browser
   states no preference. Dark text on a light background gave better
@@ -478,34 +972,42 @@ at `#157c70`, which is 4.4968:1 on `surface`, it prints 4.49 and exits 1.
   older adults (Piepenbrock et al. 2013); Nielsen Norman Group recommends
   offering dark mode for long reading (Budiu 2020).
 - Starlight puts dark values on `:root` and needs a script for light, so
-  without JavaScript every reader gets dark. The site defines light tokens
-  on `:root`, dark ones in `@media (prefers-color-scheme: dark)` for
-  `:root:not([data-theme="light"])` and on `:root[data-theme="dark"]`, so the
-  OS setting works without JavaScript and the toggle overrides it.
-- The dark background is not pure black (Material Design, dark theme).
+  without JavaScript every reader gets dark. The site uses the theme order
+  of the corporate and profile sites (4.2): light tokens on `:root`, dark
+  ones in `@media (prefers-color-scheme: dark)` for
+  `:root:not([data-theme="light"])` and on `:root[data-theme="dark"]`, so
+  the OS setting works without JavaScript and the toggle overrides it.
+- The dark background is not pure black (Material Design, dark theme), and
+  surfaces are lighter than the page instead of casting shadows (4.3,
+  item 4).
 - Check: three page types in both schemes, with JavaScript on and off, pass
-  the contrast check on computed colors.
+  the contrast check on computed colors; in dark, no computed color is
+  `#000000`, and `surface` is lighter than `bg`.
 
-### 4.6 Motion
+### 4.8 Motion
 
-- Only interactive elements animate, only color, background, opacity and
-  transform, for 200 ms or less (Material Design 3's short durations, 50 to
-  200 ms).
+- Only interactive elements animate, only color, background color, border
+  color, opacity and transform, for 200 ms or less (Material Design 3's
+  short durations, 50 to 200 ms). The landing page changes background,
+  border and text color in 160 ms, the profile site color and border color
+  in 0.2 s.
 - The owner's practice forbids blur-in entrances, fades longer than a
   second, entrance animation on every element, `transition: all`, and
   animation of `top`, `left`, `width` or `height`. It allows a few entrance
   animations per page: about five, of 0.5 s, moving only `translateY` and
-  `opacity`.
-- This proposal uses no entrance or scroll-triggered animation at all
-  (chosen here, decided with Q7): documentation pages are read and searched
-  more than they are presented, and the home page's first content is code.
+  `opacity`, which the corporate site uses (4.2).
+- This site uses no entrance or scroll-triggered animation at all (chosen
+  here; the owner judges it on the specimens of step 2, 4.12): documentation
+  pages are read and searched more than they are presented, and the home
+  page's first content is code.
 - `prefers-reduced-motion: reduce` sets durations to 0 (WCAG 2.3.3).
 - Checks: on three page types, every computed `transition-duration` and
   `animation-duration` is 200 ms or less, and 0 under the
   `prefers-reduced-motion: reduce` emulation; no `transition-property: all`
-  and no animation of `top`, `left`, `width` or `height` in the built CSS.
+  and no animation of `top`, `left`, `width` or `height` in the built CSS;
+  no animation runs when a page loads.
 
-### 4.7 Narrow screens
+### 4.9 Narrow screens
 
 - One column below 768 px (the Digital Agency design system's layout
   example). The sidebar becomes a menu, and "On this page" moves to the top
@@ -514,7 +1016,8 @@ at `#157c70`, which is 4.4968:1 on `surface`, it prints 4.49 and exits 1.
   tests (2023).
 - No horizontal page scroll at 320 px (WCAG 1.4.10). Code blocks and tables
   scroll in their own box and show content cut at the right edge, which
-  tells readers there is more (Nielsen Norman Group, 2017).
+  tells readers there is more (Nielsen Norman Group, 2017). Diagrams do not
+  scroll sideways; they take a vertical arrangement instead (3.5).
 - **Right edge.** At 390 px, in Chromium and in WebKit, the longest line of
   every Japanese text block (`lang="ja"`) of two or more lines ends less
   than 2 em of the block's font size from the block's right edge; failing
@@ -524,38 +1027,61 @@ at `#157c70`, which is 4.4968:1 on `surface`, it prints 4.49 and exits 1.
   edge; for English blocks the check is only that no `text-wrap: pretty`
   or `balance` applies. Chromium alone does not count, because the engines
   wrap differently.
-- Japanese h2 wrap by phrase (4.2), so they are left out of the 2 em
-  check: at 390 px a 22 px h2 holds about 16 characters per line, and a
-  break before a phrase leaves that phrase's length free. Instead (chosen
-  here) they take at most two lines at 390 px, and the longest line ends
-  less than 6 em from the right edge; a longer gap marks a phrase to split
-  with another `<wbr>`. Japanese h1 take one line at 390 px (4.2).
-- Targets at least 24 by 24 CSS px (WCAG 2.5.8), header buttons 44 by 44
-  (owner's practice; Apple's Human Interface Guidelines give 44 by 44
-  points). The fixed header never covers the focused element (WCAG 2.4.11),
-  checked by tabbing through each page in both engines.
+- Japanese h2 wrap by phrase (4.4), so they are left out of the 2 em
+  check: at 390 px a 22 px h2 holds about 14 characters per line beside the
+  inline mark of 4.4, and a break before a phrase leaves that phrase's
+  length free. Instead (chosen here) they take at most two lines at 390 px,
+  and the longest line ends less than 6 em from the right edge; a longer
+  gap marks a phrase to split with another `<wbr>`. Japanese h1 take one
+  line at 390 px (4.4).
+- Targets at least 24 by 24 CSS px (WCAG 2.5.8), header buttons and menu
+  rows 44 by 44 (owner's practice, as on the profile site; Apple's Human
+  Interface Guidelines give 44 by 44 points). The fixed header never covers
+  the focused element (WCAG 2.4.11), checked by tabbing through each page
+  in both engines.
 
-### 4.8 Header and the language link
+### 4.10 Header, footer and the language link
 
-- **Wide screens**: logo and wordmark (home), the five section links,
-  search, the version link, the language link, the theme toggle, and GitHub
-  with a text label and its mark in black or white only (GitHub's logo
-  guidelines). 56 to 64 px high (chosen here, to fit the 44 px buttons and
-  the 16 px navigation text), opaque `surface`, 1 px bottom border.
-- **Narrow screens**: logo, wordmark, search, language link and the menu
-  button stay; the rest moves into the menu.
+- **Wide screens**: logo and wordmark (home; the wordmark in the monospace
+  face), the five section links, search, the version link, the language
+  link, the theme toggle, and GitHub with a text label and its mark in
+  black or white only (GitHub's logo guidelines). 64 px high, as the
+  corporate and profile headers and the landing page's header at 900 px
+  and below; opaque `surface`, as the landing page's header; 1 px bottom
+  border. The landing page's 88 px suits a page with one call to action,
+  not a documentation header (chosen here). Links
+  are at least 44 px high, 15 px at weight 600; the current page is `text`
+  with a 2 px `accent` bottom border (4.6).
+- **The theme toggle and the menu button** are 44 px round buttons that
+  show an icon, carry their name as text for assistive technology, and
+  have a 1 px `border` outline, as on the profile site. The icon, not the
+  outline, identifies the button, so the outline needs no 3:1 contrast
+  (WCAG 1.4.11, Understanding).
 - **The language link** follows the U.S. Web Design System's pattern for two
-  languages: one control at the top right, separate from the navigation,
-  naming the other language in that language: "日本語" on English pages,
-  "English" on Japanese pages. It leads to the same page in the other
-  language. No language is picked from `Accept-Language` or location; no
-  flags. Starlight's picker is a `<select>` that navigates by script, so a
-  component override replaces it with a plain link.
+  languages on wide screens: one control at the top right, separate from
+  the navigation, before the theme toggle, naming the other language in
+  that language: "日本語" on English pages, "English" on Japanese pages. It
+  is a pill with a 1 px `border` outline, as on the profile site. It leads
+  to the same page in the other language. No language is picked from
+  `Accept-Language` or location; no flags. Starlight's picker is a
+  `<select>` that navigates by script, so a component override replaces it
+  with a plain link.
+- **Narrow screens** (640 px and below): logo, wordmark, search, the theme
+  toggle and the menu button stay. The language link becomes the first item
+  of the menu, under the heading "Language", as on the profile site; the
+  Digital Agency's language selector puts it into the menu when the page
+  has a menu button (appendix C). The rest of the header moves into the
+  menu as well.
+- **Footer**: 1 px top border, 14 px `text-muted`, 48 px above and 32 px
+  below, as on the profile site. As on the corporate site, one footer
+  component serves every page, so that every page reaches the same links:
+  the language link, Releases, Security, the license and GitHub.
 - Check: each page's language link answers 200 with the same path under the
   other prefix; `/` with `Accept-Language: ja` returns English without a
-  redirect.
+  redirect; at 320 and 390 px the header's items fit on one row without
+  overlap, in both languages.
 
-### 4.9 What the owner's practice forbids and what research supports
+### 4.11 What the owner's practice forbids and what research supports
 
 The owner's practice forbids `text-wrap: pretty` and `balance`, phrase
 wrapping in body text, a Latin face first on Japanese pages, uppercase
@@ -566,9 +1092,13 @@ fades over a second, entrance animation on every element,
 colors outside the tokens, radii outside a fixed set, em dashes, emoji,
 decorative symbols, purple-to-blue gradients, glows and framework default
 grays, and checking narrow screens in Chromium only. The values that this
-proposal adds inside those rules, the radii of 4 and 6 px, the chroma limit
-of 0.020, the absence of entrance animation and of any shadow or gradient,
-and monospace only for code, are its own choices, decided with Q7.
+proposal adds inside those rules are its own choices (chosen here), which
+the owner judges on the specimens of step 2: no shadows, gradients or
+entrance animation at all, where the corporate site has a hero gradient, a
+shadow on its header after scrolling and about five entrance animations
+per page; the teal accent and the chroma limit of 0.020 of palette A; the
+radii it uses from the inherited set; and monospace for code and
+numbers.
 
 Research and standards support 4.5:1 for all text, light by default with a
 dark option, body text of 16 px or more, at most about 40 Japanese
@@ -578,6 +1108,61 @@ Reinecke et al. 2013), and the engine differences behind the `text-wrap`
 rule. No study tests gradients, glows, emoji, radii or hover effects one by
 one; those rules rest on the owner's practice and on keeping the site close
 to the documentation layout readers know.
+
+### 4.12 Open on the specimens of step 2
+
+Step 2 renders the home page and a reference page that holds one diagram and
+one sample, in light and dark, at 390 by 664 and 1440 by 900 px, once for
+each choice below. The owner chooses on the specimens; each item gives the
+recommendation first.
+
+1. **Neutrals.** Recommendation: palette A, because on the three sites the
+   neutrals and the accent share one hue (4.2), and palette A keeps that
+   rule with the teal. The alternative is palette B, the three sites' warm
+   neutrals with the teal accent; its light `accent` has no margin on
+   `surface` (4.6).
+2. **Monospace face.** The owner's sites use two (4.2): the system stack
+   `"SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace` for
+   the corporate site's code blocks, which draws whichever of those faces
+   the reader's system has, and Geist Mono, which the product serves for
+   the value to copy on its connection page. Recommendation: Geist Mono,
+   served by the site from `@fontsource-variable/geist-mono` 5.3.0 (SIL
+   Open Font License 1.1), with the system stack after it as the fallback.
+   On this site code is the first content (4.3, item 1), and the
+   screenshots and measurements of steps 2 and 3 run in CI on Linux: with
+   the system stack they would check a face that readers on macOS and
+   Windows do not see, while a served face is the same in the checks and
+   for every reader. The specimen keeps Geist Mono if it tells 0 from O and
+   1 from l and I, and if its x-height at 15 px is not larger than Inter's
+   at 16 px, so that inline code does not look larger than the prose around
+   it; otherwise JetBrains Mono (`@fontsource-variable/jetbrains-mono`
+   5.3.0, the same license) takes its place. The alternative is the
+   inherited system stack alone, which downloads nothing; the specimens
+   show it beside the served face.
+3. **Radius of code blocks.** The corporate site's code blocks, the only
+   ones on the owner's sites, have a radius of 12 px. Recommendation: 12 px,
+   inherited, which is also the radius of the site's other content frames
+   (asides, diagram frames, the home page example), so that a code block
+   matches the frames beside it; 8 px stays the radius of controls. The
+   alternatives are 8 px, sharper and shared with buttons and inputs, and
+   0, Starlight's default.
+4. **How cyber.** The owner's answer to Q7 asks for colors and an
+   atmosphere tuned towards cyber; the means of 4.3 (the teal accent, the
+   dark theme, monospace for code and numbers, the opaque header, no
+   shadows, gradients or entrance animation, fewer radii) are this
+   proposal's. Recommendation: the means of 4.3, judged on the specimens. If
+   the owner wants more within 4.11, two further steps remain: the
+   monospace face for h1 and h2 on English pages only (the monospace faces
+   have no kana or kanji, so Japanese headings keep `--font-sans` first),
+   or a dark first screen on the home page in both themes. If the result
+   moves too far from the corporate site and the landing page, the steps
+   back are theirs: the gold instead of the teal (palette B's neutrals with
+   the inherited accent), the corporate site's shadow on the header after
+   scrolling and its few entrance animations.
+
+The other values marked "chosen here" are not a matter of preference: the
+checks of section 6 settle them, among them the limits for Japanese headings
+of 4.4 and 4.9 and the measure of 4.4.
 
 ## 5. Tooling
 
@@ -596,7 +1181,7 @@ remain. **Recommendation: Starlight.**
    Japanese, and a fallback for untranslated pages.
 2. Reading needs no JavaScript. The two places that do, the language picker
    and the light theme, are fixed by one component override and the token
-   order of 4.5.
+   order of 4.7.
 3. Pillar F already names it, so step 6 of the v3 plan starts without
    choosing again.
 4. Neither tool switches versions across two branches (Starlight only through
@@ -618,20 +1203,24 @@ detection, or that pinned versions do not keep Starlight stable.
 - `site/` on `next`: `package.json`, `package-lock.json`,
   `astro.config.mjs`, the home pages `src/content/docs/index.mdx` and
   `ja/index.mdx`, component overrides, `src/styles/tokens.css`, `public/`
-  (logo, favicon, the verification file of Q5) and `scripts/` (generator and
-  checks).
+  (logo, favicon, the verification file that Q5 keeps) and `scripts/`
+  (generator and checks).
 - `docs/` stays the English source, `docs/ja/` the Japanese one, both
-  readable on GitHub.
+  readable on GitHub. The drawings of the diagrams of 3.5 are
+  `site/src/diagrams/<name>.svg`; their labels are in the pages of `docs/`
+  and `docs/ja/`.
 - **The generator** (`site/scripts/sync-docs.mjs`) runs before
   `astro build`. For each Markdown file under `docs/` except `proposals/`, it
   writes a page into a gitignored folder under `site/src/content/docs/`: the
-  title from the first heading (a heading with HTML stops the build, 4.2),
+  title from the first heading (a heading with HTML stops the build, 4.4),
   `lastUpdated` from
   `git log -1 --format=%cs -- <file>` (Starlight's front matter accepts a
   date that overrides Git's), `README.md` as the folder index, relative
   links rewritten to site routes, links into `src/` or `test/` turned into
-  GitHub URLs. The generated reference of Pillar F goes the same way.
-  Nothing generated is committed.
+  GitHub URLs. It turns each diagram block of 3.5 into a figure with HTML
+  labels around the inlined drawing, and copies each sample of 3.5 from the
+  test files that pin it. The generated reference of Pillar
+  F goes the same way. Nothing generated is committed.
 - **Why `next`, not a separate branch**: a documentation change and its
   rendering are reviewed in one pull request, and CI builds the site on
   every pull request. `gh-pages` shows what a separate branch does over
@@ -652,8 +1241,8 @@ detection, or that pinned versions do not keep Starlight stable.
 - **Check scripts that exist today**:
   [check_links.py](./site/check_links.py) resolves the relative links and
   heading anchors of Markdown files, and [contrast.py](./site/contrast.py)
-  checks the tokens of 4.4. Both run with Python 3 and no packages. Step 1
-  moves `check_links.py` into `site/scripts/`, and step 2 moves
+  checks the two palettes of 4.6. Both run with Python 3 and no packages.
+  Step 1 moves `check_links.py` into `site/scripts/`, and step 2 moves
   `contrast.py` there and makes it read `tokens.css`.
 
 ### 5.3 Deployment and previews
@@ -728,88 +1317,72 @@ detection, or that pinned versions do not keep Starlight stable.
 
 Each step ends with checks that pass or fail on measured values. Each check
 script is first shown to fail on a planted fault; once it exists, CI runs it
-on every pull request that touches `site/` or `docs/`.
+on every pull request that touches `site/` or `docs/`. Each step is one or
+more pull requests to `next` (steps 6 and 7 also change `master`), reviewed
+and merged as AGENTS.md describes; the last column says what the owner
+reviews besides that.
 
-| Step | Work | Check | Owner decides first |
-|---|---|---|---|
-| 1 | Starlight pinned in `site/`, the generator, today's `docs/` rendered without design; `check_links.py` moved into `site/scripts/`; AGENTS.md updated: `site/` in the repository layout, and in "Build and test" the Node 22.12 toolchain, `npm ci`, `npm run build` and the checks | a fresh clone builds with `npm ci` and `npm run build`; every internal link of the built HTML resolves; every page has a title and the last-updated date of its source; a test page from `docs/ja/` is served under `/ja/` with `lang="ja"`, and the `<wbr>` in its h2 is an element of the built h2 (4.2); pages read with JavaScript off | Q1 |
-| 2 | tokens, type scale, code colors, Starlight's colors and Expressive Code's themes and frames set from the tokens (4.4); `contrast.py` moved into `site/scripts/`, reading `tokens.css` | the contrast script passes for all token pairs and code colors in both themes; computed font sizes equal the scale of each language; no `text-wrap: pretty` or `balance` in the built CSS, and no hex outside `tokens.css` and Expressive Code's stylesheet; every computed color a token value, code blocks included, the span colors of Expressive Code code colors, and no `is-terminal` frame (4.4); monospace only where rule 2 of 4.1 puts it; no shadow, gradient or backdrop filter (rule 4 of 4.1); margins, paddings, gaps and radii from the sets of 4.3; durations of 4.6; at most 90 characters per English body line at 1440 px; no external font URL in the built site, and the build succeeds with network access blocked after `npm ci` | Q7 |
-| 3 | home page with the example's test (3.3, item 8), header, footer, language and version links | the example's case passes in CI and the home page shows the files it compares; Chromium and WebKit screenshots at 320, 390 by 664 and 1440 by 900, light and dark; no horizontal scroll at 320; gutters of 16 px or more; the home page heading's line count (4.2); the right-edge measurement of 4.7 on Japanese blocks and the `text-wrap` check on English ones; Lighthouse accessibility with no failed audit on three page types in both languages; visible, uncovered focus; the shadow, gradient and backdrop check of rule 4 of 4.1 with the search dialog and the menu open, in both engines; language links answer 200; no redirect for `Accept-Language: ja` | Q3, Q8, the definition |
-| 4 | Start, Guides, Reference, Concepts, Releases, Security, Contributing; the fixes of 2.2; `README.md` reduced to the definition, links and the branch table | no broken relative link or anchor in `docs/` or the built site; every directive in the `ngx_command_t` tables of `src/` has a section in the directive reference; `mruby_output_filter` appears in `docs/` only in a removal note; the default gems listed in the docs equal the uncommented `conf.gem` lines of `build_config.rb`; every Ruby block in the docs compiles with the bundled mruby's `mrbc`; each `examples/<use>/` starts in CI and returns the output its README states | Q11 |
-| 5 | Japanese pages | `lang` and reciprocal absolute `hreflang` on every page; no space between Japanese and Latin characters in `docs/ja/` outside code and URLs; at most 40 characters per Japanese body line at 1440 px; line height 1.75 to 2.0; `keep-all` and `auto-phrase` only on `h2`; every h1 on one line at 390 px and on at most two at 320 px; no h1, `<title>`, sidebar entry, table-of-contents entry or heading `id` on `/ja/` contains the text `wbr` (4.2); the right-edge measurement on `/ja/` in both engines, with the h2 limit of 4.7 | Q2 |
-| 6 | 2.x under `/v2/`; `site-v2.yml` and `site-dispatch.yml` on `master` (5.3) | no broken link under `/v2/`; the banner on every 2.x page; 2.x and 3.x search results do not mix; a pull request to `master` that breaks a `/v2/` link fails `site-v2.yml`; a merge into `master` that changes `docs/` starts a `site.yml` run on `next` (`gh run list --workflow site.yml --branch next --event workflow_dispatch`) | Q4 |
-| 7 | switch ngx.mruby.org: settings 1 and 2 of 5.3 in that order, then the pull request that adds the deploy job; on `master`, the text that says `gh-pages` holds the site or that the switch is a pull request to it, all from #568: the branch paragraph of `README.md`, and in `docs/DEVELOPMENT.md` the last sentence of promotion step 7 and the open questions "Who gives the go for the promotion and changes the repository settings in steps 2 and 3" and "Which version the site shows after the promotion"; the move of 5.2 added to "Promoting v3 to master" | `https://ngx.mruby.org/` answers 200 with the deployed `index.html`; `http://` redirects to `https://`; `/googleba3435e4002729b6.html` answers 200 with its 54 bytes unchanged, if Q5 keeps it; the `github-pages` environment read back with `gh api` has custom branch policies, and its deployment branch policies list only `next`; the first deployment, and the one after a `docs/` change merged into `master`, come from `next` (`gh api repos/matsumotory/ngx_mruby/deployments?environment=github-pages`); Lighthouse on the live home page | Q5, Q6, the date |
-| 8 | agent proxy how-to with `examples/agent-proxy/` (v3-plan step 7, part (e)) | the example starts in CI and answers the requests of its README; Claude Code and Codex named only after both have run against it | none |
+| Step | Work | What it produces | Check | The owner reviews |
+|---|---|---|---|---|
+| 1 | Starlight pinned in `site/`, the generator, today's `docs/` rendered without design; `check_links.py` moved into `site/scripts/`; AGENTS.md updated: `site/` in the repository layout, and in "Build and test" the Node 22.12 toolchain, `npm ci`, `npm run build` and the checks | `site/`, `site.yml` with the build and the checks (no deployment), the built site as a workflow artifact | a fresh clone builds with `npm ci` and `npm run build`; every internal link of the built HTML resolves; every page has a title and the last-updated date of its source; a test page from `docs/ja/` is served under `/ja/` with `lang="ja"`, and the `<wbr>` in its h2 is an element of the built h2 (4.4); pages read with JavaScript off | nothing |
+| 2 | `tokens.css` from the inherited tokens of 4.2 and the changes of 4.3, both palettes of 4.6, the type of 4.4, the spacing and radii of 4.5, Starlight's colors and Expressive Code's themes and frames set from the tokens; `contrast.py` moved into `site/scripts/`, reading `tokens.css`; the specimens of 4.12 | `tokens.css`, and the specimens: the home page and a reference page with one diagram and one sample, light and dark, at 390 by 664 and 1440 by 900 px, in Chromium and WebKit, one set per choice of 4.12, as screenshots in the pull request and its workflow artifact | the contrast script passes for both palettes and the code colors in both themes; computed font sizes equal the scale of each language; no `text-wrap: pretty` or `balance` in the built CSS, and no hex outside `tokens.css` and Expressive Code's stylesheet; every computed color a token value, code blocks included, the span colors of Expressive Code code colors, and no `is-terminal` frame (4.6); monospace only where item 2 of 4.3 puts it; no shadow, gradient or backdrop filter (item 5 of 4.3); margins, paddings, gaps and radii from the sets of 4.5; durations of 4.8; at most 90 characters per English body line at 1440 px; no external font URL in the built site, and the build succeeds with network access blocked after `npm ci` | the specimens: the four choices of 4.12 |
+| 3 | home page with the example's test (3.3, item 8), header, footer, language and version links (4.10); the sample mechanism and the diagram mechanism of 3.5, with the request phases diagram | the home page; the first diagram, as the model for the others | the example's case passes in CI and the home page shows the files it compares, with their date; no benchmark image and no performance figure without its date and method (Q8); Chromium and WebKit screenshots at 320, 390 by 664 and 1440 by 900, light and dark; no horizontal scroll at 320; gutters of 20 px or more; the home page heading's line count (4.4); the right-edge measurement of 4.9 on Japanese blocks and the `text-wrap` check on English ones; Lighthouse accessibility with no failed audit on three page types in both languages; visible, uncovered focus; the shadow, gradient and backdrop check of item 5 of 4.3 with the search dialog and the menu open, in both engines; language links answer 200; no redirect for `Accept-Language: ja`; the generator stops on a sample whose file or case is missing; the diagram check fails on a missing file or line range and lists changed lines; the drawings hold no `<text>` element and no color outside the tokens; diagram labels are HTML text of 14 px or more at 390 and 1440 px; the generator stops on a diagram block whose keys differ from those of its drawing; the figure has `role="img"` and an `aria-label`, and the drawing is hidden from screen readers (3.5) | the definition (3.3, item 1) and the first diagram |
+| 4 | Start; Guides with the samples of 3.5; Reference with the build diagram; Concepts with the phases, filter, async and lifetime diagrams; the agent proxy page with its three v3 diagrams and today's recipes, labeled as development content; Releases, Security, Contributing; the fixes of 2.2; `README.md` reduced to the definition, links and the branch table | the pages of 3.2 except the Japanese ones and `/v2/` | no broken relative link or anchor in `docs/` or the built site; every directive in the `ngx_command_t` tables of `src/` has a section in the directive reference; `mruby_output_filter` appears in `docs/` only in a removal note; the default gems listed in the docs equal the uncommented `conf.gem` lines of `build_config.rb`; every Ruby block in the docs compiles with the bundled mruby's `mrbc`; each `examples/<use>/` starts in CI and returns the output its README states; every sample on a page names a case that exists, and every use case of `docs/use_case/` is either a sample or marked untested with the reason of 3.5; every diagram names lines that exist; every v3 diagram and sample carries the development label | nothing |
+| 5 | Japanese pages: every page written by hand translated, the generated reference in English under `/ja/` with a notice (Q2) | `docs/ja/` and the `/ja/` pages | every page written by hand has a file in `docs/ja/`, and every generated reference page under `/ja/` shows the notice; `lang` and reciprocal absolute `hreflang` on every page; no space between Japanese and Latin characters in `docs/ja/` outside code and URLs; at most 40 characters per Japanese body line at 1440 px; line height 1.75 to 2.0; `keep-all` and `auto-phrase` only on `h2` and diagram labels; every h1 on one line at 390 px and on at most two at 320 px; no h1, `<title>`, sidebar entry, table-of-contents entry or heading `id` on `/ja/` contains the text `wbr` (4.4); the right-edge measurement on `/ja/` in both engines, with the h2 limit of 4.9; every diagram on `/ja/` takes its labels from `docs/ja/`, with the keys of the English block, and no label overflows its place at 390 and 1440 px | nothing |
+| 6 | 2.x under `/v2/` (Q4); `site-v2.yml` and `site-dispatch.yml` on `master` (5.3) | `/v2/` and its banner; the two workflows on `master` | no broken link under `/v2/`; the banner on every 2.x page; 2.x and 3.x search results do not mix; a pull request to `master` that breaks a `/v2/` link fails `site-v2.yml`; a merge into `master` that changes `docs/` starts a `site.yml` run on `next` (`gh run list --workflow site.yml --branch next --event workflow_dispatch`) | nothing |
+| 7 | switch ngx.mruby.org: settings 1 and 2 of 5.3 in that order, then the pull request that adds the deploy job; on `master`, the text that says `gh-pages` holds the site or that the switch is a pull request to it, all from #568: the branch paragraph of `README.md`, and in `docs/DEVELOPMENT.md` the last sentence of promotion step 7 and the open questions "Who gives the go for the promotion and changes the repository settings in steps 2 and 3" and "Which version the site shows after the promotion"; the move of 5.2 added to "Promoting v3 to master"; Google Analytics removed (Q6), the verification file kept (Q5); Discussions turned on and linked from Contributing, the wiki turned off after the launch (Q9) | the live site at https://ngx.mruby.org/ | `https://ngx.mruby.org/` answers 200 with the deployed `index.html`; `http://` redirects to `https://`; `/googleba3435e4002729b6.html` answers 200 with its 54 bytes unchanged; no analytics script in the built site; the `github-pages` environment read back with `gh api` has custom branch policies, and its deployment branch policies list only `next`; the first deployment, and the one after a `docs/` change merged into `master`, come from `next` (`gh api repos/matsumotory/ngx_mruby/deployments?environment=github-pages`); Lighthouse on the live home page | the date of the switch; the owner changes settings 1 and 2 of 5.3 and the custom domain, and gives the go for the session to turn on Discussions and turn off the wiki with `gh api` |
+| 8 | agent proxy how-to with `examples/agent-proxy/` (v3-plan step 7, part (e)); the samples of each planned feature of 3.5 as it merges | the how-to page and its samples | the example starts in CI and answers the requests of its README; each new sample names its case; Claude Code and Codex named only after both have run against the reference proxy | nothing |
 
 Steps 1 to 7 are Pillar F's site work, which
 [the v3 plan's step 6](./v3-plan.md#6-order-of-work-decided-2026-10-03-the-priority-paragraph-and-steps-2-4-7-and-8-amended-2026-10-04)
-runs in parallel from its step 4. That plan tags `v3.0.0-beta.1` when the
-migration guide and the examples exist, and `v3.0.0-rc.1` when the site and
-the examples are complete. The switch of step 7 can come before rc.1, with
-3.x pages under the banner of 3.4.
+runs in parallel from its step 4. Step 2 comes before the pages of step 4,
+because the tokens and the four choices of 4.12 change every page. That plan
+tags `v3.0.0-beta.1` when the migration guide and the examples exist, and
+`v3.0.0-rc.1` when the site and the examples are complete. The switch of
+step 7 can come before rc.1, with 3.x pages under the banner of 3.4.
 
-## 7. Open questions
+## 7. Decisions (2026-10-15)
 
-**Q1. Tool and place.** Starlight, in `site/` on `next` (5.1, 5.2). The
-open question on the site in `docs/DEVELOPMENT.md` on `master` recommends
-preparing the switch as a pull request to `gh-pages`; building from `next`
-replaces that, and step 7 updates the text.
+The owner decided each question of the first version of this proposal on
+2026-10-15.
 
-**Q2. Japanese: a translation or a shorter guide?** A translation of every
-page written by hand, with the generated reference left in English under
-`/ja/` with a notice: the reference is regenerated from `src/`, and a
-translated copy would fall behind at every regeneration. Decision 9 says
-"English primary, Japanese translation"; that every page written by hand is
-translated is this proposal's recommendation.
+- **Q1. Tool and place.** Starlight in `site/` on `next`, built and deployed
+  from `next` (5.1, 5.2), as recommended. Step 7 replaces the text on
+  `master` that prepares the switch as a pull request to `gh-pages`.
+- **Q2. Japanese.** Every page written by hand is translated into Japanese;
+  the reference generated from `src/` stays in English under `/ja/` with a
+  notice, as recommended.
+- **Q3. A live example on the home page.** No live endpoint: the home page
+  shows the example that CI compares and its response, with the date of
+  the last change to those files (3.3, item 8), as recommended.
+- **Q4. URLs before v3.0.0.** 2.x under `/v2/` and 3.x at unprefixed paths,
+  with the development banner of 3.4 from the launch, as recommended.
+- **Q5. The Google verification file.** Kept in `site/public/`, as
+  recommended.
+- **Q6. Analytics.** The site launches without analytics, as recommended.
+- **Q7. Accent, type and how cyber.** Not one of the offered options. The
+  owner answered that the design starts from the design of the owner's
+  corporate site and the owner's product landing page, which the owner
+  likes, and tunes the colors and the atmosphere towards cyber, and that
+  the owner likes the design of the owner's profile site as well. Section 4
+  derives the design from the three sites. The means of 4.3 (the teal
+  accent, the dark theme rules, monospace for code and numbers, the opaque
+  header, no shadows, gradients or entrance animation) are chosen here; the
+  owner judges them, with the other choices of 4.12, on the specimens of
+  step 2.
+- **Q8. The 2014 benchmark.** Removed with the TechEmpower link; performance
+  appears only as perf lane measurements with their date and method, as
+  recommended.
+- **Q9. Discussions and the wiki.** Discussions on, the wiki off after the
+  launch, as recommended.
+- **Q10. The introduction video.** No place for it until it exists, as
+  recommended.
+- **Q11. A comparison with njs and OpenResty.** Not the recommendation: there
+  is no comparison page. It is removed from the site map (3.2) and the
+  writing plan (3.3).
 
-**Q3. A live example on the home page?** No live endpoint. Show the example
-of 3.3, item 8, and the response that its test compares on every CI run,
-with the date of the last change to those files: GitHub Pages serves static
-files, a live endpoint would be a server to run and secure, and the shown
-response is the one CI checks.
-
-**Q4. URLs before v3.0.0.** 2.x under `/v2/` from the launch and 3.x at
-unprefixed paths under the banner of 3.4. Putting 2.x at the root until
-v3.0.0 would change every URL at promotion.
-
-**Q5. Keep the Google verification file?** Keep
-`googleba3435e4002729b6.html` (54 bytes, added 2014-03-08) in `site/public/`
-until the owner confirms Google Search Console is not used for the domain;
-removing it can end the verification of the property.
-
-**Q6. Analytics.** Remove the Google Analytics script and launch without
-analytics; it has collected nothing since July 2023. If numbers are wanted
-later, choose a tool then, with its privacy and consent requirements.
-
-**Q7. Accent, type and how cyber.** The logo teal with the tokens of 4.4
-and the IBM Plex families of 4.2, chosen from specimens rendered in step 2
-(home and reference pages, light and dark) against the system font stack.
-The same specimens decide the values marked "chosen here" in section 4,
-among them the radii of 4 and 6 px, the chroma limit of 0.020, the absence
-of entrance animation, shadows and gradients, and the limits for Japanese
-headings of 4.2 and 4.7, and whether the look is slightly cyber enough.
-Recommendation for that last point: the means of 4.1 only. If the owner
-wants more within the rules of 4.9, the next steps are IBM Plex Mono for
-headings on English pages only, or a dark first screen on the home page in
-both themes. Plex Mono has no kana or kanji (Fontsource subsets: Latin,
-Cyrillic, Vietnamese), so Japanese headings keep IBM Plex Sans JP first, as
-4.9 requires; the option changes rule 2 of 4.1.
-
-**Q8. The 2014 benchmark.** Remove the benchmark image and the TechEmpower
-Round 10 link from the home page and `README.md`; show performance only as
-perf lane measurements with their date and method.
-
-**Q9. Discussions and the wiki.** Turn on GitHub Discussions for questions,
-which decision 7 already assumes, and link them from Contributing; turn off
-the wiki after the launch, since its one page points to `docs/`.
-
-**Q10. The introduction video.** No place for it on the home page until it
-exists; Pillar F decides its form with the owner first.
-
-**Q11. A comparison with njs and OpenResty.** A Concepts page built from
-their documentation with dates: what each runs (QuickJS, LuaJIT, mruby),
-where code attaches to nginx and how state is shared, with no performance
-comparison unless the measurement can be repeated.
+With these decisions, the owner asked on 2026-10-15 for many diagrams and
+samples, especially for the content towards v3; 3.5 plans them.
 
 ## Appendix A. Where comparable projects put things
 
@@ -856,7 +1429,7 @@ script of `ThemeProvider.astro`; Shiki ships `nginx`, `ruby` and
 `shellsession` grammars; Hugo module mounts accept an absolute `source`;
 Hextra's documented workflow also installs Go, Dart Sass and Node.js.
 
-Behind 4.1, 4.2 and 4.4, at Starlight 2d37fd6e8: `PageTitle.astro` renders
+Behind 4.3, 4.4 and 4.6, at Starlight 2d37fd6e8: `PageTitle.astro` renders
 `<h1 id={PAGE_TITLE_ID}>{Astro.locals.starlightRoute.entry.data.title}</h1>`,
 an expression that Astro escapes; `Search.astro` gives the search dialog
 `box-shadow: var(--sl-shadow-lg)` and its `dialog::backdrop`
@@ -1081,16 +1654,43 @@ Tools and hosting:
 - GitHub REST endpoint for Markdown, used to render a heading with `<wbr>`
   as GitHub does: https://docs.github.com/en/rest/markdown/markdown
 - Next.js static exports: https://nextjs.org/docs/app/guides/static-exports
-- Fontsource `@fontsource/ibm-plex-sans`, `@fontsource/ibm-plex-sans-jp`,
-  `@fontsource/ibm-plex-mono` 5.3.0, license OFL-1.1 (`npm view`); subsets
-  of IBM Plex Mono: https://api.fontsource.org/v1/fonts/ibm-plex-mono
+- Fontsource `@fontsource-variable/inter` 5.3.0,
+  `@fontsource-variable/noto-sans-jp` 5.3.1,
+  `@fontsource-variable/geist-mono` 5.3.0 and
+  `@fontsource-variable/jetbrains-mono` 5.3.0, license OFL-1.1 (`npm view`,
+  2026-10-15)
+- Mermaid, theming (2026-10-15): https://mermaid.js.org/config/theming.html ,
+  read as its source `packages/mermaid/src/docs/config/theming.md` on the
+  `develop` branch of https://github.com/mermaid-js/mermaid
+- `rehype-mermaid` 3.0.0 and `astro-mermaid` 2.1.0, their READMEs and
+  dependencies (`npm view`, 2026-10-15)
+- GitHub Docs (2026-10-15): creating diagrams
+  https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams ;
+  quickstart for writing on GitHub, "Adding an image to suit your visitors"
+  (`<picture>` with `prefers-color-scheme`):
+  https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github
 - Google Analytics, end of Universal Analytics:
   https://support.google.com/analytics/answer/11583528
+
+The owner's sites (2026-10-15):
+
+- The source of the owner's corporate site, the owner's product landing
+  page and the owner's profile site: the heads of their private
+  repositories on 2026-10-15, read for 4.1 and 4.2 (token files,
+  stylesheets, components, design system documents, the brand document,
+  the Japanese typography checklist, the rules for procedure pages and the
+  design notes). This document names no path in them.
+- The profile site's published pages: https://research.matsumoto-r.jp/ and
+  https://research.matsumoto-r.jp/en/ , with the stylesheets that their
+  HTML links under `/_astro/`. The two other sites answered with a sign-in
+  page and with 401 that day.
 
 This repository: the files linked above, `gh-pages` at 59c923a
 (`index.html`, `googleba3435e4002729b6.html`, `git ls-tree -r -l`), the
 `ngx_command_t` tables of `src/` at ec227408d, `README.md` and
-`docs/DEVELOPMENT.md` on `master` at b3df70fb6, and the GitHub API for the
+`docs/DEVELOPMENT.md` on `master` at b3df70fb6, `src/`, `config.in`,
+`Makefile.in`, `build.sh`, `build_config.rb`, `docs/use_case/` and `test/`
+on `next` at 73fc9098f for 3.5, and the GitHub API for the
 Pages settings, the environments and the default branch
 (`gh api repos/matsumotory/ngx_mruby/pages`, `.../environments`,
 `repos/matsumotory/ngx_mruby`).

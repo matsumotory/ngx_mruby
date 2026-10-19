@@ -71,15 +71,15 @@ t.assert('ngx_mruby - Filter#output', 'filters a proxied response') do
   t.assert_equal '21', res["content-length"]
 end
 
-# characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
 # When the origin is an mruby content handler (Nginx.rputs) in the same
-# location, the response keeps the origin Content-Length, so a longer body set
-# with Filter#output is cut to the origin length.
-t.assert('ngx_mruby - Filter#output', 'with an Nginx.rputs origin the origin length is kept') do
+# location, the client receives the body set with Filter#output and its
+# length, as with the other origins above, also when that body is longer
+# than the origin body.
+t.assert('ngx_mruby - Filter#output', 'with an Nginx.rputs origin the client receives the whole filter output') do
   res = HttpRequest.new.get base(18112) + '/filter/output_rputs_origin'
   t.assert_equal 200, res.code
-  t.assert_equal '[origi', res["body"]
-  t.assert_equal '6', res["content-length"]
+  t.assert_equal '[origin] and more', res["body"]
+  t.assert_equal '17', res["content-length"]
 end
 
 t.assert('ngx_mruby - Filter#body', 'outside a body filter returns an empty String') do

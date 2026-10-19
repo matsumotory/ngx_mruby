@@ -772,11 +772,11 @@ if nginx_features.is_async_supported?
   t.assert('ngx_mruby - Nginx::Async::HTTP.new "/dst"', 'location /async_http_sub_request') do
     res = HttpRequest.new.get base + '/async_http_sub_request_with_hash'
     t.assert_equal 200, res["code"]
-    t.assert_equal '{"query1"=>"foo", "query2"=>"bar"}', res["body"]
+    t.assert_equal '{"query1" => "foo", "query2" => "bar"}', res["body"]
 
     res = HttpRequest.new.get base + '/async_http_sub_request'
     t.assert_equal 200, res["code"]
-    t.assert_equal '{"query1"=>"foo", "query2"=>"bar"}', res["body"]
+    t.assert_equal '{"query1" => "foo", "query2" => "bar"}', res["body"]
 
     res = HttpRequest.new.get base + '/async_http_sub_request_notfound'
     t.assert_equal 404, res["code"]
@@ -823,6 +823,69 @@ if nginx_features.is_async_supported?
   end
 end
 
+def served_cert_fingerprint(servername, port)
+  `openssl s_client -servername #{servername} -connect 127.0.0.1:#{port} < /dev/null 2> /dev/null | openssl x509 -noout -fingerprint -sha256 2> /dev/null`.chomp
+end
+
+def cert_file_fingerprint(name)
+  `openssl x509 -noout -fingerprint -sha256 -in #{File.join(ENV['NGINX_INSTALL_DIR'], 'html', name)}`.chomp
+end
+
+t.assert('ngx_mruby - request methods raise in init_worker', 'location /init_worker_request_api') do
+  res = HttpRequest.new.get base + '/init_worker_request_api'
+  t.assert_equal 'RuntimeError', res['body']
+end
+
+t.assert('ngx_mruby - request methods raise in ssl handshake handler', 'location /ssl_request_api') do
+  # a finished request on this worker must not be visible to the handshake handler
+  HttpRequest.new.get base + '/mruby'
+  res = `curl -s -k #{base_ssl(18089) + '/ssl_request_api'}`
+  t.assert_equal 'RuntimeError', res
+  error_log = File.read File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log')
+  t.assert_true error_log.include? 'Nginx.log in ssl handshake handler: 42'
+end
+
+t.assert('ngx_mruby - Nginx::SSL raises outside of ssl handshake handler', 'location /ssl_api_outside_handshake') do
+  `curl -s -k #{base_ssl(18089) + '/ssl_request_api'}`
+  res = HttpRequest.new.get base + '/ssl_api_outside_handshake'
+  t.assert_equal 'RuntimeError', res['body']
+end
+
+t.assert('ngx_mruby - ssl handshake handler does not reuse the certificate of a previous handshake') do
+  localhost_crt = cert_file_fingerprint('localhost.crt')
+  dummy_crt = cert_file_fingerprint('dummy.crt')
+  t.assert_true localhost_crt != dummy_crt
+  # only the first handshake on 18090 sets a certificate
+  t.assert_equal localhost_crt, served_cert_fingerprint('localhost', 18090)
+  t.assert_equal dummy_crt, served_cert_fingerprint('localhost', 18090)
+end
+
+t.assert('ngx_mruby - Nginx::Filter#body in header filter', 'location /filter_body_in_header_filter') do
+  res = HttpRequest.new.get base + '/filter_body_in_header_filter'
+  t.assert_equal 200, res.code
+  t.assert_equal '0', res['x-filter-body-size']
+end
+
+t.assert('ngx_mruby - Nginx::Filter#body= raises outside of body filter', 'location /filter_body_set_in_header_filter') do
+  res = HttpRequest.new.get base + '/filter_body_set_in_header_filter'
+  t.assert_equal 200, res.code
+  t.assert_equal 'RuntimeError', res['x-filter-body-set']
+  t.assert_equal "OUTPUT_FILTER_HEADER\n", res['body']
+end
+
+if nginx_features.is_stream_supported?
+  t.assert('ngx_mruby - stream session methods raise in init_worker', '127.0.0.1:12359') do
+    HttpRequest.new.get 'http://127.0.0.1:12359/mruby'
+    error_log = File.read File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log')
+    t.assert_true error_log.include? 'Nginx::Stream.log in init_worker: 42'
+    t.assert_true error_log.include? 'stream init_worker session api: RuntimeError'
+  end
+end
+
+t.assert('ngx_mruby - add_listener raises outside of server context', 'location /add_listener_outside_server_context') do
+  res = HttpRequest.new.get base + '/add_listener_outside_server_context'
+  t.assert_equal 'RuntimeError', res['body']
+end
 
 # A configuration without an http {} block (stream only) must start. The init
 # and exit hooks of the http module have no main conf in that case.
@@ -850,7 +913,18 @@ t.assert('ngx_mruby - start without an http block', 'stream only configuration')
   rescue => e
     body = "connect failed: #{e}"
   end
-  `#{nginx} -p #{install_dir} -c #{conf} -s quit`
+  # nginx -s quit returns from main() without freeing the pool that main()
+  # creates first (ngx_init_cycle() returns for a signal before it destroys
+  # that pool), so in a build with AddressSanitizer LeakSanitizer reports
+  # that allocation of nginx itself at exit, as it reports the configuration
+  # that nginx -t leaves. The report goes to the stderr of this process,
+  # which is the test runner's stderr.log. Leak detection is therefore turned off for this process only,
+  # as nginx_t in test/t/cases/_prelude.rb does for nginx -t; the other
+  # sanitizer checks stay on. test.sh runs this file without that prelude,
+  # so the options are built here in the same way.
+  asan = ENV['ASAN_OPTIONS'].to_s.split(':').reject { |o| o.start_with?('detect_leaks=') }
+  asan << 'detect_leaks=0'
+  `ASAN_OPTIONS=#{asan.join(':')} #{nginx} -p #{install_dir} -c #{conf} -s quit`
   # The master removes its pid file after it has collected the workers.
   50.times { break unless File.exist?(pidfile); usleep 200000 }
   errors = File.exist?(log) ? File.read(log) : ''

@@ -15,13 +15,13 @@ MRuby::CrossBuild.new("i586-pc-msdosdjgpp") do |conf|
 
   conf.cc do |cc|
     cc.command = DJGPP_PATH ? File.join(DJGPP_PATH, GCC) : GCC
-    cc.defines << 'MRB_WITHOUT_IO_PREAD_PWRITE'
+    cc.defines << 'MRB_NO_IO_PREAD_PWRITE'
     cc.defines << 'MRB_UTF8_STRING'
   end
 
   conf.cxx do |cxx|
     cxx.command = DJGPP_PATH ? File.join(DJGPP_PATH, GXX) : GXX
-    cxx.defines << 'MRB_WITHOUT_IO_PREAD_PWRITE'
+    cxx.defines << 'MRB_NO_IO_PREAD_PWRITE'
     cxx.defines << 'MRB_UTF8_STRING'
   end
 
@@ -42,7 +42,6 @@ MRuby::CrossBuild.new("i586-pc-msdosdjgpp") do |conf|
   conf.gem :core => 'mruby-io'              # stdlib-io.gembox <- default.gembox
 # No socket support in DJGPP
 # conf.gem :core => 'mruby-socket'          # stdlib-io.gembox <- default.gembox
-  conf.gem :core => 'mruby-print'           # stdlib-io.gembox <- default.gembox
   conf.gem :core => 'mruby-errno'           # stdlib-io.gembox <- default.gembox
   conf.gem :core => 'mruby-dir'             # stdlib-io.gembox <- default.gembox
 

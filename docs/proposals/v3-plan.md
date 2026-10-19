@@ -16,9 +16,11 @@ them; and the related lines of sections 1, 3.5, 8 and 9. The agent proxy
 rows of step 4, the parallel start of step 7 and the order inside it, the
 release conditions that steps 7 and 8 add for `v3.0.0-rc.1` and v3.0.0,
 and the targets in section 8 are proposals of that amendment, not
-decisions. Facts cite a file and line or a URL with its date. Statements
-marked "unverified" come from reading code only and still need a build and
-a test.
+decisions. On 2026-10-15 the owner decided the frame in which handler code
+runs (#502, section 7, item 14), which had been an open question of section
+7 since earlier that day. Facts cite a file and line or a URL with its
+date. Statements marked "unverified" come from reading code only and still
+need a build and a test.
 
 Security-relevant details found during the code read are deliberately not in
 this document. They are tracked in the repository's private security advisory
@@ -518,6 +520,17 @@ total by 11,856.
 | The same with a 64 KB body | `route_json_64k` - `proxy_plain_64k` | 1,581,578 (1,577,952) | 133 |
 | One more Ruby call (`mruby_set_code`) | (`ruby_call_10` - `ruby_call_1`) / 9 | 3,349 (2,722) | 0.28 |
 
+These baselines were measured with mruby 3.3 and before #572, which interns
+ngx_mruby's fixed symbol names once per `mrb_state`. On 2026-10-14,
+`test/perf/compare.sh` with the same settings measured `next` at bc2488a
+(mruby 3.3 and #572) against the same tree with mruby 4.0.0 (#561): `auth` -
+`proxy_plain_2k` is 21,934 Ir per request (19,766 without the GC) on 3.3
+and 25,276 (23,305) on 4.0.0, and `route_json_2k` - `proxy_plain_2k` is
+83,317 (80,059) and 85,228 (82,097). The remaining difference of 4.0.0 is in
+mruby's method lookup on a miss, its lookup of constants and instance
+variables, and its new argument count check; 4.1.0-rc2 has the same code
+for all three.
+
 What the measurements show:
 
 - One Ruby call costs about 8 times what nginx spends to relay one more event
@@ -643,15 +656,20 @@ demand from users.
    Proposed in the 2026-10-04 amendment, not a decision: the reference
    agent proxy is among those examples (on parts (a) to (c) of step 7).
 
-## 7. Decisions (made by the owner on 2026-10-03 and 2026-10-04)
+## 7. Decisions (made by the owner on 2026-10-03, 2026-10-04 and 2026-10-15)
 
-The owner accepted recommendations 1 to 11 below on 2026-10-03 and decided
-items 12 and 13 on 2026-10-04. The list is kept as the record of what was
-decided and why.
+The owner accepted recommendations 1 to 11 below on 2026-10-03, decided
+items 12 and 13 on 2026-10-04 and item 14 on 2026-10-15. The list is kept as
+the record of what was decided and why.
 
 1. mruby target for v3: **4.1.0** (rc2 or a post-#7032 commit until
    released), not 4.0.0, because 4.1 fixes GC registration counting that the
    async design depends on and adds core regexp/env/process.
+   On 2026-10-04 the owner approved a step before it (#561): `next` bundles
+   mruby 4.0.0 first and moves to 4.1.0 when 4.1.0 is tagged, with Prism
+   vendored as a subset, mruby-encoding left out of the default build with a
+   documented opt-in, and mruby-onig-regexp kept for 3.0. The target of v3
+   stays 4.1.0.
 2. nginx floor for v3: **1.30 stable and 1.31 mainline**, raised every
    April. Distro users on 1.26/1.24 stay on v2.
 3. OpenSSL: **3.5 LTS baseline, 4.0 tested**, 1.1.1 and 3.0 dropped.
@@ -693,6 +711,22 @@ decided and why.
     headers, body fields, events and error bodies through unchanged.
     Pass-through keeps ngx_mruby's part to decisions on requests and events,
     and leaves the semantics of the APIs to their providers.
+
+14. Frame of handler code (#502), decided on 2026-10-15: **keep the
+    top-level frame**. Handler code keeps running as the top-level code of
+    its fiber, with `self` as `main`. A `return` inside a block or a `for`
+    body of handler code ends the code since mruby 4.0.0 (#561), so no
+    change of the frame is needed for #502. A method frame would make
+    `nginx -t` refuse handler code that assigns a constant or defines a
+    class, and a lambda frame would either change nothing that a script can
+    observe or add a frame, a backtrace line and 1,075 to 1,941 instructions
+    to every run of handler code; none of them would change what handler
+    code shares between requests
+    ([the proposal for the frame of handler code](handler-code-frame.md)).
+    With the decision: on `next`, a regression test and the entry in the
+    release notes of 3.0.0 (#584); on `master`, a note in
+    `docs/class_and_method/README.md` on how to write such a handler in 2.x
+    (#586). Both are merged, and #502 is closed.
 
 One question that the 2026-10-04 amendment raises is open. It is not part of
 item 13 or of any decision above. Should a later release add a mode in which

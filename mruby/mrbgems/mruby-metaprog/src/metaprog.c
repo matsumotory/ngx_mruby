@@ -1,26 +1,15 @@
-#include "mruby.h"
-#include "mruby/array.h"
-#include "mruby/hash.h"
-#include "mruby/variable.h"
-#include "mruby/proc.h"
-#include "mruby/class.h"
-#include "mruby/string.h"
+#include <mruby.h>
+#include <mruby/array.h>
+#include <mruby/hash.h>
+#include <mruby/variable.h>
+#include <mruby/proc.h>
+#include <mruby/class.h>
+#include <mruby/string.h>
 #include <mruby/internal.h>
-#include "mruby/presym.h"
+#include <mruby/khash.h>
 
-typedef enum {
-  NOEX_PUBLIC    = 0x00,
-  NOEX_NOSUPER   = 0x01,
-  NOEX_PRIVATE   = 0x02,
-  NOEX_PROTECTED = 0x04,
-  NOEX_MASK      = 0x06,
-  NOEX_BASIC     = 0x08,
-  NOEX_UNDEF     = NOEX_NOSUPER,
-  NOEX_MODFUNC   = 0x12,
-  NOEX_SUPER     = 0x20,
-  NOEX_VCALL     = 0x40,
-  NOEX_RESPONDS  = 0x80
-} mrb_method_flag_t;
+#define MT_PROTECTED MRB_METHOD_PROTECTED_FL
+#define MT_NOPRIV (MRB_METHOD_PRIVATE_FL|MT_PROTECTED)
 
 static mrb_value
 mrb_f_nil(mrb_state *mrb, mrb_value cv)
@@ -33,8 +22,8 @@ mrb_f_nil(mrb_state *mrb, mrb_value cv)
  *  call-seq:
  *     obj.instance_variable_defined?(symbol)    -> true or false
  *
- *  Returns <code>true</code> if the given instance variable is
- *  defined in <i>obj</i>.
+ *  Returns `true` if the given instance variable is
+ *  defined in *obj*.
  *
  *     class Fred
  *       def initialize(p1, p2)
@@ -62,9 +51,9 @@ mrb_obj_ivar_defined(mrb_state *mrb, mrb_value self)
  *     obj.instance_variable_get(symbol)    -> obj
  *
  *  Returns the value of the given instance variable, or nil if the
- *  instance variable is not set. The <code>@</code> part of the
+ *  instance variable is not set. The `@` part of the
  *  variable name should be included for regular instance
- *  variables. Throws a <code>NameError</code> exception if the
+ *  variables. Throws a `NameError` exception if the
  *  supplied symbol is not valid as an instance variable name.
  *
  *     class Fred
@@ -91,8 +80,8 @@ mrb_obj_ivar_get(mrb_state *mrb, mrb_value self)
  *  call-seq:
  *     obj.instance_variable_set(symbol, obj)    -> obj
  *
- *  Sets the instance variable names by <i>symbol</i> to
- *  <i>object</i>, thereby frustrating the efforts of the class's
+ *  Sets the instance variable names by *symbol* to
+ *  *object*, thereby frustrating the efforts of the class's
  *  author to attempt to provide proper encapsulation. The variable
  *  did not have to exist prior to this call.
  *
@@ -137,43 +126,38 @@ mrb_local_variables(mrb_state *mrb, mrb_value self)
   return mrb_proc_local_variables(mrb, mrb->c->ci[-1].proc);
 }
 
-KHASH_DECLARE(st, mrb_sym, char, FALSE)
-KHASH_DEFINE(st, mrb_sym, char, FALSE, kh_int_hash_func, kh_int_hash_equal)
+KHASH_DECLARE(st, mrb_sym, char, TRUE)
+KHASH_DEFINE(st, mrb_sym, char, TRUE, kh_int_hash_func, kh_int_hash_equal)
 
 struct mt_set {
+  unsigned int visibility;
   khash_t(st) *set;
-  khash_t(st) *undef;
 };
+
+#define vicheck(flags, visi) (((visi)==MT_NOPRIV) ? (((flags)&MRB_METHOD_VISIBILITY_MASK)!=MRB_METHOD_PRIVATE_FL) : (((flags)&MRB_METHOD_VISIBILITY_MASK)==(visi)))
 
 static int
 method_entry_i(mrb_state *mrb, mrb_sym mid, mrb_method_t m, void *p)
 {
   struct mt_set *s = (struct mt_set*)p;
 
-  if (MRB_METHOD_UNDEF_P(m)) {
-    if (s->undef) {
-      kh_put(st, mrb, s->undef, mid);
-    }
-  }
-  else if (s->undef == NULL ||
-           kh_get(st, mrb, s->undef, mid) == kh_end(s->undef)) {
-    kh_put(st, mrb, s->set, mid);
+  if (vicheck(m.flags, s->visibility) && kh_get(st, mrb, s->set, mid) == kh_end(s->set)) {
+    khint_t k = kh_put(st, mrb, s->set, mid);
+    kh_val(st, s->set, k) = !MRB_METHOD_UNDEF_P(m);
   }
   return 0;
 }
 
 static void
-method_entry_loop(mrb_state *mrb, struct RClass *klass, khash_t(st) *set, khash_t(st) *undef)
+method_entry_loop(mrb_state *mrb, struct RClass *klass, khash_t(st) *set, unsigned int visibility)
 {
-  struct mt_set s;
+  struct mt_set s = {visibility, set};
 
-  s.set = set;
-  s.undef = undef;
   mrb_mt_foreach(mrb, klass, method_entry_i, (void*)&s);
 }
 
 static mrb_value
-mrb_class_instance_method_list(mrb_state *mrb, mrb_bool recur, struct RClass *klass)
+mrb_class_instance_method_list(mrb_state *mrb, mrb_bool recur, struct RClass *klass, unsigned int flags)
 {
   mrb_value ary;
   khash_t(st) *set = kh_init(st, mrb);
@@ -182,24 +166,22 @@ mrb_class_instance_method_list(mrb_state *mrb, mrb_bool recur, struct RClass *kl
     if (klass->flags & MRB_FL_CLASS_IS_PREPENDED) {
       MRB_CLASS_ORIGIN(klass);
     }
-    method_entry_loop(mrb, klass, set, NULL);
+    method_entry_loop(mrb, klass, set, flags);
   }
   else {
-    khash_t(st) *undef = kh_init(st, mrb);
     struct RClass *oldklass = NULL;
 
     while (klass && (klass != oldklass)) {
-      method_entry_loop(mrb, klass, set, undef);
+      method_entry_loop(mrb, klass, set, flags);
       oldklass = klass;
       klass = klass->super;
     }
-    kh_destroy(st, mrb, undef);
   }
 
   ary = mrb_ary_new_capa(mrb, kh_size(set));
-  for (khint_t i=0; i<kh_end(set); i++) {
-    if (kh_exist(set, i)) {
-      mrb_ary_push(mrb, ary, mrb_symbol_value(kh_key(set, i)));
+  KHASH_FOREACH(st, set, k) {
+    if (kh_val(st, set, k)) {
+      mrb_ary_push(mrb, ary, mrb_symbol_value(kh_key(st, set, k)));
     }
   }
   kh_destroy(st, mrb, set);
@@ -208,18 +190,25 @@ mrb_class_instance_method_list(mrb_state *mrb, mrb_bool recur, struct RClass *kl
 }
 
 static mrb_value
-mrb_obj_methods(mrb_state *mrb, mrb_bool recur, mrb_value obj, mrb_method_flag_t flag)
+mrb_obj_methods(mrb_state *mrb, mrb_value obj, unsigned int flags)
 {
-  return mrb_class_instance_method_list(mrb, recur, mrb_class(mrb, obj));
+  mrb_bool regular = TRUE;
+  mrb_get_args(mrb, "|b", &regular);
+
+  return mrb_class_instance_method_list(mrb, regular, mrb_class(mrb, obj) , flags);
 }
+
 /* 15.3.1.3.31 */
 /*
  *  call-seq:
- *     obj.methods    -> array
+ *     obj.methods(regular=true)    -> array
  *
- *  Returns a list of the names of methods publicly accessible in
- *  <i>obj</i>. This will include all the methods accessible in
- *  <i>obj</i>'s ancestors.
+ *  Returns a list of the names of public and protected methods of
+ *  `obj`. This will include all the methods accessible in
+ *  `obj`'s ancestors.
+ *  If the optional parameter is `false`, it
+ *  returns an array of `obj`'s public and protected singleton methods,
+ *  the array will not include methods in modules included in `obj`.
  *
  *     class Klass
  *       def kMethod()
@@ -234,9 +223,7 @@ mrb_obj_methods(mrb_state *mrb, mrb_bool recur, mrb_value obj, mrb_method_flag_t
 static mrb_value
 mrb_obj_methods_m(mrb_state *mrb, mrb_value self)
 {
-  mrb_bool recur = TRUE;
-  mrb_get_args(mrb, "|b", &recur);
-  return mrb_obj_methods(mrb, recur, self, (mrb_method_flag_t)0); /* everything but private */
+  return mrb_obj_methods(mrb, self, MT_NOPRIV);
 }
 
 /* 15.3.1.3.36 */
@@ -244,16 +231,14 @@ mrb_obj_methods_m(mrb_state *mrb, mrb_value self)
  *  call-seq:
  *     obj.private_methods(all=true)   -> array
  *
- *  Returns the list of private methods accessible to <i>obj</i>. If
- *  the <i>all</i> parameter is set to <code>false</code>, only those methods
+ *  Returns the list of private methods accessible to *obj*. If
+ *  the *all* parameter is set to `false`, only those methods
  *  in the receiver will be listed.
  */
 static mrb_value
 mrb_obj_private_methods(mrb_state *mrb, mrb_value self)
 {
-  mrb_bool recur = TRUE;
-  mrb_get_args(mrb, "|b", &recur);
-  return mrb_obj_methods(mrb, recur, self, NOEX_PRIVATE); /* private attribute not define */
+  return mrb_obj_methods(mrb, self, MRB_METHOD_PRIVATE_FL);
 }
 
 /* 15.3.1.3.37 */
@@ -261,16 +246,14 @@ mrb_obj_private_methods(mrb_state *mrb, mrb_value self)
  *  call-seq:
  *     obj.protected_methods(all=true)   -> array
  *
- *  Returns the list of protected methods accessible to <i>obj</i>. If
- *  the <i>all</i> parameter is set to <code>false</code>, only those methods
+ *  Returns the list of protected methods accessible to *obj*. If
+ *  the *all* parameter is set to `false`, only those methods
  *  in the receiver will be listed.
  */
 static mrb_value
 mrb_obj_protected_methods(mrb_state *mrb, mrb_value self)
 {
-  mrb_bool recur = TRUE;
-  mrb_get_args(mrb, "|b", &recur);
-  return mrb_obj_methods(mrb, recur, self, NOEX_PROTECTED); /* protected attribute not define */
+  return mrb_obj_methods(mrb, self, MT_PROTECTED);
 }
 
 /* 15.3.1.3.38 */
@@ -278,16 +261,14 @@ mrb_obj_protected_methods(mrb_state *mrb, mrb_value self)
  *  call-seq:
  *     obj.public_methods(all=true)   -> array
  *
- *  Returns the list of public methods accessible to <i>obj</i>. If
- *  the <i>all</i> parameter is set to <code>false</code>, only those methods
+ *  Returns the list of public methods accessible to *obj*. If
+ *  the *all* parameter is set to `false`, only those methods
  *  in the receiver will be listed.
  */
 static mrb_value
 mrb_obj_public_methods(mrb_state *mrb, mrb_value self)
 {
-  mrb_bool recur = TRUE;
-  mrb_get_args(mrb, "|b", &recur);
-  return mrb_obj_methods(mrb, recur, self, NOEX_PUBLIC); /* public attribute not define */
+  return mrb_obj_methods(mrb, self, MRB_MT_PUBLIC);
 }
 
 static mrb_value
@@ -296,29 +277,25 @@ mrb_obj_singleton_methods(mrb_state *mrb, mrb_bool recur, mrb_value obj)
   mrb_value ary;
   struct RClass *klass;
   khash_t(st) *set = kh_init(st, mrb);
-  khash_t(st) *undef = (recur ? kh_init(st, mrb) : NULL);
 
   klass = mrb_class(mrb, obj);
 
   if (klass && (klass->tt == MRB_TT_SCLASS)) {
-      method_entry_loop(mrb, klass, set, undef);
+      method_entry_loop(mrb, klass, set, MRB_MT_PUBLIC);
       klass = klass->super;
   }
   if (recur) {
       while (klass && ((klass->tt == MRB_TT_SCLASS) || (klass->tt == MRB_TT_ICLASS))) {
-        method_entry_loop(mrb, klass, set, undef);
+        method_entry_loop(mrb, klass, set, MRB_MT_PUBLIC);
         klass = klass->super;
       }
   }
 
   ary = mrb_ary_new(mrb);
-  for (khint_t i=0;i<kh_end(set);i++) {
-    if (kh_exist(set, i)) {
-      mrb_ary_push(mrb, ary, mrb_symbol_value(kh_key(set, i)));
-    }
+  KHASH_FOREACH(st, set, k) {
+    mrb_ary_push(mrb, ary, mrb_symbol_value(kh_key(st, set, k)));
   }
   kh_destroy(st, mrb, set);
-  if (undef) kh_destroy(st, mrb, undef);
 
   return ary;
 }
@@ -328,9 +305,9 @@ mrb_obj_singleton_methods(mrb_state *mrb, mrb_bool recur, mrb_value obj)
  *  call-seq:
  *     obj.singleton_methods(all=true)    -> array
  *
- *  Returns an array of the names of singleton methods for <i>obj</i>.
- *  If the optional <i>all</i> parameter is true, the list will include
- *  methods in modules included in <i>obj</i>.
+ *  Returns an array of the names of singleton methods for *obj*.
+ *  If the optional *all* parameter is true, the list will include
+ *  methods in modules included in *obj*.
  *  Only public and protected singleton methods are returned.
  *
  *     module Other
@@ -394,7 +371,7 @@ check_cv_name_sym(mrb_state *mrb, mrb_sym id)
  *  call-seq:
  *     remove_class_variable(sym)    -> obj
  *
- *  Removes the definition of the <i>sym</i>, returning that
+ *  Removes the definition of the *sym*, returning that
  *  constant's value.
  *
  *     class Dummy
@@ -439,8 +416,8 @@ mrb_mod_remove_cvar(mrb_state *mrb, mrb_value mod)
  *  call-seq:
  *     obj.class_variable_defined?(symbol)    -> true or false
  *
- *  Returns <code>true</code> if the given class variable is defined
- *  in <i>obj</i>.
+ *  Returns `true` if the given class variable is defined
+ *  in *obj*.
  *
  *     class Fred
  *       @@foo = 99
@@ -465,7 +442,7 @@ mrb_mod_cvar_defined(mrb_state *mrb, mrb_value mod)
  *     mod.class_variable_get(symbol)    -> obj
  *
  *  Returns the value of the given class variable (or throws a
- *  <code>NameError</code> exception). The <code>@@</code> part of the
+ *  `NameError` exception). The `@@` part of the
  *  variable name should be included for regular class variables
  *
  *     class Fred
@@ -489,8 +466,8 @@ mrb_mod_cvar_get(mrb_state *mrb, mrb_value mod)
  *  call-seq:
  *     obj.class_variable_set(symbol, obj)    -> obj
  *
- *  Sets the class variable names by <i>symbol</i> to
- *  <i>object</i>.
+ *  Sets the class variable names by *symbol* to
+ *  *object*.
  *
  *     class Fred
  *       @@foo = 99
@@ -535,6 +512,15 @@ mrb_mod_included_modules(mrb_state *mrb, mrb_value self)
   return result;
 }
 
+static mrb_value
+mod_instance_methods(mrb_state *mrb, mrb_value mod, unsigned int visibility)
+{
+  struct RClass *c = mrb_class_ptr(mod);
+  mrb_bool recur = TRUE;
+  mrb_get_args(mrb, "|b", &recur);
+  return mrb_class_instance_method_list(mrb, recur, c, visibility);
+}
+
 /* 15.2.2.4.33 */
 /*
  *  call-seq:
@@ -543,9 +529,9 @@ mrb_mod_included_modules(mrb_state *mrb, mrb_value self)
  *  Returns an array containing the names of the public and protected instance
  *  methods in the receiver. For a module, these are the public and protected methods;
  *  for a class, they are the instance (not singleton) methods. With no
- *  argument, or with an argument that is <code>false</code>, the
- *  instance methods in <i>mod</i> are returned, otherwise the methods
- *  in <i>mod</i> and <i>mod</i>'s superclasses are returned.
+ *  argument, or with an argument that is `false`, the
+ *  instance methods in *mod* are returned, otherwise the methods
+ *  in *mod* and *mod*'s superclasses are returned.
  *
  *     module A
  *       def method1()  end
@@ -566,10 +552,25 @@ mrb_mod_included_modules(mrb_state *mrb, mrb_value self)
 static mrb_value
 mrb_mod_instance_methods(mrb_state *mrb, mrb_value mod)
 {
-  struct RClass *c = mrb_class_ptr(mod);
-  mrb_bool recur = TRUE;
-  mrb_get_args(mrb, "|b", &recur);
-  return mrb_class_instance_method_list(mrb, recur, c);
+  return mod_instance_methods(mrb, mod, MT_NOPRIV);
+}
+
+static mrb_value
+mrb_mod_public_instance_methods(mrb_state *mrb, mrb_value mod)
+{
+  return mod_instance_methods(mrb, mod, MRB_MT_PUBLIC);
+}
+
+static mrb_value
+mrb_mod_private_instance_methods(mrb_state *mrb, mrb_value mod)
+{
+  return mod_instance_methods(mrb, mod, MRB_METHOD_PRIVATE_FL);
+}
+
+static mrb_value
+mrb_mod_protected_instance_methods(mrb_state *mrb, mrb_value mod)
+{
+  return mod_instance_methods(mrb, mod, MT_PROTECTED);
 }
 
 static int
@@ -611,7 +612,7 @@ mrb_mod_undefined_methods(mrb_state *mrb, mrb_value mod)
  *     remove_method(symbol)   -> self
  *
  *  Removes the method identified by _symbol_ from the current
- *  class. For an example, see <code>Module.undef_method</code>.
+ *  class. For an example, see `Module.undef_method`.
  */
 
 static mrb_value
@@ -623,9 +624,10 @@ mrb_mod_remove_method(mrb_state *mrb, mrb_value mod)
 
   mrb_get_args(mrb, "*", &argv, &argc);
   mrb_check_frozen(mrb, c);
+  int ai = mrb_gc_arena_save(mrb);
   while (argc--) {
     mrb_remove_method(mrb, c, mrb_obj_to_sym(mrb, *argv));
-    mrb_funcall_argv(mrb, mod, MRB_SYM(method_removed), 1, argv);
+    mrb_gc_arena_restore(mrb, ai);
     argv++;
   }
   return mod;
@@ -634,8 +636,29 @@ mrb_mod_remove_method(mrb_state *mrb, mrb_value mod)
 static mrb_value
 mrb_mod_s_constants(mrb_state *mrb, mrb_value mod)
 {
-  mrb_raise(mrb, E_NOTIMP_ERROR, "Module.constants not implemented");
-  return mrb_nil_value();       /* not reached */
+  if (mrb_get_argc(mrb) > 0 || mrb_class_ptr(mod) != mrb->module_class) {
+    return mrb_mod_constants(mrb, mod);
+  }
+
+  const struct RProc *proc = mrb->c->ci[-1].proc;
+  struct RClass *c = MRB_PROC_TARGET_CLASS(proc);
+  mrb_value ary = mrb_ary_new(mrb);
+
+  if (!c) c = mrb->object_class;
+  mrb_mod_const_at(mrb, c, ary);
+  proc = proc->upper;
+  while (proc) {
+    struct RClass *c2 = MRB_PROC_TARGET_CLASS(proc);
+    if (!c2) c2 = mrb->object_class;
+    mrb_mod_const_at(mrb, c2, ary);
+    proc = proc->upper;
+  }
+  while (c) {
+    mrb_mod_const_at(mrb, c, ary);
+    c = c->super;
+    if (c == mrb->object_class) break;
+  }
+  return ary;
 }
 
 static mrb_value
@@ -661,41 +684,52 @@ mrb_mod_s_nesting(mrb_state *mrb, mrb_value mod)
   return ary;
 }
 
+/* ---------------------------*/
+static const mrb_mt_entry metaprog_krn_rom_entries[] = {
+  MRB_MT_ENTRY(mrb_f_global_variables, MRB_SYM(global_variables),                        MRB_ARGS_NONE() | MRB_MT_PRIVATE),  /* 15.3.1.3.14 (15.3.1.2.4) */
+  MRB_MT_ENTRY(mrb_local_variables, MRB_SYM(local_variables),                         MRB_ARGS_NONE() | MRB_MT_PRIVATE),  /* 15.3.1.3.28 (15.3.1.2.7) */
+  MRB_MT_ENTRY(mrb_singleton_class,       MRB_SYM(singleton_class),          MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(mrb_obj_ivar_defined,      MRB_SYM_Q(instance_variable_defined), MRB_ARGS_REQ(1)),  /* 15.3.1.3.20 */
+  MRB_MT_ENTRY(mrb_obj_ivar_get,          MRB_SYM(instance_variable_get), MRB_ARGS_REQ(1)),  /* 15.3.1.3.21 */
+  MRB_MT_ENTRY(mrb_obj_ivar_set,          MRB_SYM(instance_variable_set), MRB_ARGS_REQ(2)),  /* 15.3.1.3.22 */
+  MRB_MT_ENTRY(mrb_obj_instance_variables, MRB_SYM(instance_variables),      MRB_ARGS_NONE()),  /* 15.3.1.3.23 */
+  MRB_MT_ENTRY(mrb_obj_methods_m,         MRB_SYM(methods),       MRB_ARGS_OPT(1)),  /* 15.3.1.3.31 */
+  MRB_MT_ENTRY(mrb_obj_private_methods,   MRB_SYM(private_methods), MRB_ARGS_OPT(1)),  /* 15.3.1.3.36 */
+  MRB_MT_ENTRY(mrb_obj_protected_methods, MRB_SYM(protected_methods), MRB_ARGS_OPT(1)),  /* 15.3.1.3.37 */
+  MRB_MT_ENTRY(mrb_obj_public_methods,    MRB_SYM(public_methods), MRB_ARGS_OPT(1)),  /* 15.3.1.3.38 */
+  MRB_MT_ENTRY(mrb_obj_singleton_methods_m, MRB_SYM(singleton_methods), MRB_ARGS_OPT(1)),  /* 15.3.1.3.45 */
+  MRB_MT_ENTRY(mod_define_singleton_method, MRB_SYM(define_singleton_method), MRB_ARGS_REQ(1)|MRB_ARGS_BLOCK()),
+  MRB_MT_ENTRY(mrb_f_send,               MRB_SYM(send), MRB_ARGS_REQ(1)|MRB_ARGS_REST()|MRB_ARGS_BLOCK()),  /* 15.3.1.3.44 */
+  MRB_MT_ENTRY(mrb_f_public_send,        MRB_SYM(public_send), MRB_ARGS_REQ(1)|MRB_ARGS_REST()|MRB_ARGS_BLOCK()),
+};
+
+static const mrb_mt_entry metaprog_mod_rom_entries[] = {
+  MRB_MT_ENTRY(mrb_mod_class_variables,          MRB_SYM(class_variables), MRB_ARGS_OPT(1)),  /* 15.2.2.4.19 */
+  MRB_MT_ENTRY(mrb_mod_remove_cvar,              MRB_SYM(remove_class_variable), MRB_ARGS_REQ(1)),  /* 15.2.2.4.39 */
+  MRB_MT_ENTRY(mrb_mod_cvar_defined,             MRB_SYM_Q(class_variable_defined), MRB_ARGS_REQ(1)),  /* 15.2.2.4.16 */
+  MRB_MT_ENTRY(mrb_mod_cvar_get,                 MRB_SYM(class_variable_get), MRB_ARGS_REQ(1)),  /* 15.2.2.4.17 */
+  MRB_MT_ENTRY(mrb_mod_cvar_set,                 MRB_SYM(class_variable_set), MRB_ARGS_REQ(2)),  /* 15.2.2.4.18 */
+  MRB_MT_ENTRY(mrb_mod_included_modules,         MRB_SYM(included_modules),         MRB_ARGS_NONE()),  /* 15.2.2.4.30 */
+  MRB_MT_ENTRY(mrb_mod_instance_methods,         MRB_SYM(instance_methods), MRB_ARGS_ANY()),  /* 15.2.2.4.33 */
+  MRB_MT_ENTRY(mrb_mod_public_instance_methods,  MRB_SYM(public_instance_methods), MRB_ARGS_OPT(1)),
+  MRB_MT_ENTRY(mrb_mod_private_instance_methods, MRB_SYM(private_instance_methods), MRB_ARGS_OPT(1)),
+  MRB_MT_ENTRY(mrb_mod_protected_instance_methods, MRB_SYM(protected_instance_methods), MRB_ARGS_OPT(1)),
+  MRB_MT_ENTRY(mrb_mod_undefined_methods,        MRB_SYM(undefined_instance_methods), MRB_ARGS_NONE()),
+  MRB_MT_ENTRY(mrb_mod_remove_method,            MRB_SYM(remove_method),  MRB_ARGS_ANY()),  /* 15.2.2.4.41 */
+  MRB_MT_ENTRY(mrb_f_nil,                        MRB_SYM(method_removed), MRB_ARGS_REQ(1)),
+  MRB_MT_ENTRY(mrb_mod_constants,                MRB_SYM(constants),     MRB_ARGS_OPT(1)),  /* 15.2.2.4.24 */
+};
+
 void
 mrb_mruby_metaprog_gem_init(mrb_state* mrb)
 {
   struct RClass *krn = mrb->kernel_module;
   struct RClass *mod = mrb->module_class;
 
-  mrb_define_method(mrb, krn, "global_variables", mrb_f_global_variables, MRB_ARGS_NONE()); /* 15.3.1.3.14 (15.3.1.2.4) */
-  mrb_define_method(mrb, krn, "local_variables", mrb_local_variables, MRB_ARGS_NONE()); /* 15.3.1.3.28 (15.3.1.2.7) */
-
-  mrb_define_method(mrb, krn, "singleton_class", mrb_singleton_class, MRB_ARGS_NONE());
-  mrb_define_method(mrb, krn, "instance_variable_defined?", mrb_obj_ivar_defined, MRB_ARGS_REQ(1)); /* 15.3.1.3.20 */
-  mrb_define_method(mrb, krn, "instance_variable_get", mrb_obj_ivar_get, MRB_ARGS_REQ(1)); /* 15.3.1.3.21 */
-  mrb_define_method(mrb, krn, "instance_variable_set", mrb_obj_ivar_set, MRB_ARGS_REQ(2)); /* 15.3.1.3.22 */
-  mrb_define_method(mrb, krn, "instance_variables", mrb_obj_instance_variables, MRB_ARGS_NONE()); /* 15.3.1.3.23 */
-  mrb_define_method(mrb, krn, "methods", mrb_obj_methods_m, MRB_ARGS_OPT(1)); /* 15.3.1.3.31 */
-  mrb_define_method(mrb, krn, "private_methods", mrb_obj_private_methods, MRB_ARGS_OPT(1)); /* 15.3.1.3.36 */
-  mrb_define_method(mrb, krn, "protected_methods", mrb_obj_protected_methods, MRB_ARGS_OPT(1)); /* 15.3.1.3.37 */
-  mrb_define_method(mrb, krn, "public_methods", mrb_obj_public_methods, MRB_ARGS_OPT(1)); /* 15.3.1.3.38 */
-  mrb_define_method(mrb, krn, "singleton_methods", mrb_obj_singleton_methods_m, MRB_ARGS_OPT(1)); /* 15.3.1.3.45 */
-  mrb_define_method(mrb, krn, "define_singleton_method", mod_define_singleton_method, MRB_ARGS_REQ(1)|MRB_ARGS_BLOCK());
-  mrb_define_method(mrb, krn, "send", mrb_f_send, MRB_ARGS_REQ(1)|MRB_ARGS_REST()|MRB_ARGS_BLOCK()); /* 15.3.1.3.44 */
-
-  mrb_define_method(mrb, mod, "class_variables", mrb_mod_class_variables, MRB_ARGS_OPT(1)); /* 15.2.2.4.19 */
-  mrb_define_method(mrb, mod, "remove_class_variable", mrb_mod_remove_cvar, MRB_ARGS_REQ(1)); /* 15.2.2.4.39 */
-  mrb_define_method(mrb, mod, "class_variable_defined?", mrb_mod_cvar_defined, MRB_ARGS_REQ(1)); /* 15.2.2.4.16 */
-  mrb_define_method(mrb, mod, "class_variable_get", mrb_mod_cvar_get, MRB_ARGS_REQ(1)); /* 15.2.2.4.17 */
-  mrb_define_method(mrb, mod, "class_variable_set", mrb_mod_cvar_set, MRB_ARGS_REQ(2)); /* 15.2.2.4.18 */
-  mrb_define_method(mrb, mod, "included_modules", mrb_mod_included_modules, MRB_ARGS_NONE()); /* 15.2.2.4.30 */
-  mrb_define_method(mrb, mod, "instance_methods", mrb_mod_instance_methods, MRB_ARGS_ANY()); /* 15.2.2.4.33 */
-  mrb_define_method(mrb, mod, "undefined_instance_methods", mrb_mod_undefined_methods, MRB_ARGS_NONE());
-  mrb_define_method(mrb, mod, "remove_method", mrb_mod_remove_method, MRB_ARGS_ANY()); /* 15.2.2.4.41 */
-  mrb_define_method(mrb, mod, "method_removed", mrb_f_nil, MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, mod, "constants", mrb_mod_constants, MRB_ARGS_OPT(1)); /* 15.2.2.4.24 */
-  mrb_define_class_method(mrb, mod, "constants", mrb_mod_s_constants, MRB_ARGS_ANY()); /* 15.2.2.3.1 */
-  mrb_define_class_method(mrb, mod, "nesting", mrb_mod_s_nesting, MRB_ARGS_NONE()); /* 15.2.2.3.2 */
+  MRB_MT_INIT_ROM(mrb, krn, metaprog_krn_rom_entries);
+  MRB_MT_INIT_ROM(mrb, mod, metaprog_mod_rom_entries);
+  mrb_define_class_method_id(mrb, mod, MRB_SYM(constants), mrb_mod_s_constants, MRB_ARGS_ANY()); /* 15.2.2.3.1 */
+  mrb_define_class_method_id(mrb, mod, MRB_SYM(nesting), mrb_mod_s_nesting, MRB_ARGS_NONE()); /* 15.2.2.3.2 */
 }
 
 void

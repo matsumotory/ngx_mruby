@@ -29,6 +29,12 @@ assert('ngx_mruby', 'location /mruby') do
 end
 ```
 
+The test client (the `test` build of `build_config.rb`) is built with
+`NO_SSL`, so `HttpRequest` and `SimpleHttp` cannot send `https` requests.
+For HTTPS, run `curl -k` with a URL from `base_ssl(port)`, or
+`openssl s_client -connect localhost:<port>`, as the existing tests do (for
+example `` `curl -s -k #{base_ssl(18082) + '/'}` `` in `test/t/ngx_mruby.rb`).
+
 ## Add a test as a fragment and a case file
 
 Instead of editing `test/conf/nginx.conf` and `test/t/ngx_mruby.rb`, a test
@@ -46,12 +52,13 @@ can live in files of its own:
   generated configuration), `tcp_client` and `second_instance`. It starts
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
   with `_` are helpers and are not run by test.sh; `_tcp_client.rb`,
-  `_filter_connection_client.rb` and `_second_instance.rb` are CRuby
-  scripts that the prelude helpers run with `ruby`. `_agent_proxy_client.rb`
-  is a CRuby script (3.0 or later) that `agent_proxy.rb` runs itself: it
-  loads `test/soak/mock_llm.rb` and `test/soak/http_client.rb`, runs the mock
-  LLM upstream on 12372 and 12373 while it sends its requests (see "Mock LLM
-  upstream" below), and prints `key=value` lines.
+  `_filter_connection_client.rb`, `_request_body_client.rb` and
+  `_second_instance.rb` are CRuby scripts that the prelude helpers and the
+  cases run with `ruby`. `_agent_proxy_client.rb` is a CRuby script (3.0 or
+  later) that `agent_proxy.rb` runs itself: it loads `test/soak/mock_llm.rb`
+  and `test/soak/http_client.rb`, runs the mock LLM upstream on 12372 and
+  12373 while it sends its requests (see "Mock LLM upstream" below), and
+  prints `key=value` lines.
 - Hook scripts go to `test/html/` as before; the fragment refers to them as
   `build/nginx/html/<name>.rb`.
 
@@ -67,15 +74,127 @@ such a case once with the sanitizer build (see "Running the tests under
 AddressSanitizer and UndefinedBehaviorSanitizer" below) before opening the
 PR. `nginx_t` turns leak detection off for its `nginx -t` run, because
 `nginx -t` returns without freeing the configuration it read, so every
-allocation of nginx itself would be reported; `second_instance` returns the
-first sanitizer line of the second nginx's `error.log` as `sanitizer`, and
-the cases print that log when the line is set.
+allocation of nginx itself would be reported. The stream-only test at the end
+of `test/t/ngx_mruby.rb` does the same for the `nginx -s quit` that stops the
+nginx it started: that process returns from nginx's `main()` without freeing
+the pool that `main()` creates first, and its report would go to the test
+runner's `stderr.log`. `second_instance` returns the first sanitizer line of
+the second nginx's `error.log` or `stderr.log` as `sanitizer`, and the cases
+print the second nginx's `error.log` when the line is set.
+
+## Required status check
+
+`.github/workflows/test.yml` runs on pull requests to `master`, `next` and
+`v*.x`, on pushes to those branches and to `v*` tags, and on "Run workflow".
+Its `ci-ok` job is the status check that rulesets require: it fails unless
+every job that it lists in `needs` succeeded. These are every job of the
+`build` matrix and the `files` job, and on `next` also the `soak` job.
+
+### Files that do not belong in the repository
+
+The `files` job runs `test/check_added_files.sh BASE HEAD TIP`. The script
+checks two lists of files:
+
+- the files that the change adds: the paths that `HEAD` has and `BASE` does
+  not have (`git diff --no-renames --diff-filter=A`, so a file that is renamed
+  or moved counts as added at its new path);
+- the files that its commits add: each commit from `TIP` back along first
+  parents to `BASE` (`git log --first-parent BASE..TIP`), compared with its
+  first parent. A file that one commit adds and a later commit removes stays
+  in the history after the merge, so it is checked as well.
+
+A file of either list fails with exit status 1 when it matches a pattern of
+`test/forbidden_paths.txt`: a session directory or the local settings of an AI
+coding agent under `.claude/` (everything there except
+`.claude/settings.json`, `.claude/commands/` and `.claude/skills/`, which also
+fail below another `.claude/`), a build directory at the top (`build/`,
+`build_dynamic/`, `build_soak/`, `build_perf/`) or `mruby/build/`, a file
+that `./configure` or the Makefile writes at the top (`Makefile`, `config`,
+`config.status`, `autom4te.cache/`, `mrbgems_config`, `.mruby_version`, the
+`.openssl_*_done` files), `.vagrant/`, a tag file of GNU Global or ctags, a
+`.log` file, `.env` or `.env.*`, private key material, an editor or OS
+leftover, `node_modules/`, `__pycache__/` or a `.pyc` file, or a core dump. A
+file of the first list also fails when it is empty (0 bytes), unless its name
+is `.gitkeep` or `.keep`. Both lists include submodule entries (gitlinks),
+whatever the git configuration or `.gitmodules` says about ignoring
+submodules.
+
+The script prints each failing path with the pattern and its line in the
+pattern file, or with "empty file", and with the commit that added it. When
+every file passes, it prints how many files it checked and exits 0. It exits
+2 when the pattern file is missing, a pattern is invalid, a revision is not
+in the repository, the repository is a shallow clone or a git command fails.
+It reads only the pattern file and the git repository.
+
+The commits follow first parents only. A merge commit among them is compared
+with its first parent, so the files that its second parent brings in are
+checked at the paths they have in the repository, and the commits of the
+second parent are not checked one by one. This keeps out the squashed commit
+of a subtree merge (`./update-mruby-subtree`), whose paths lack the `mruby/`
+prefix. It also means that the check does not see a file that a commit of a
+merged side branch adds and a later commit of that side branch removes.
+
+For a pull request, the job checks out the merge commit of the pull request
+with the whole history (`fetch-depth: 0`). It compares the merge commit with
+its first parent, the base branch that the pull request was merged into, and
+checks the commits from the head of the pull request (the second parent) back
+to that base. So a pull request whose branch is behind its base is not blamed
+for the files that the base removed in the meantime. For a push to a branch,
+the job compares the previous tip of the branch (`github.event.before`) with
+the pushed commit, and checks the commits between them. A tag push, a push
+that creates a branch and a manual run have nothing to compare, and the job
+passes. A pull request that changes the script or the pattern file is checked
+with its own version of them, so the review of the pull request covers that
+change.
+
+`test/forbidden_paths.txt` holds one POSIX extended regular expression (as
+`grep -E` reads it) per line, matched against the path from the top of the
+repository. A line that starts with `!` is an exception, and the last line
+that a path matches decides, as in `.gitignore`: `.claude/skills/a/SKILL.md`
+matches `(^|/)\.claude/` and then the exception `!(^|/)\.claude/skills/`, so
+it passes, while `.claude/skills/a/.DS_Store` also matches `(^|/)\.DS_Store$`
+further down and fails. Empty lines and lines that start with `#` are
+comments. The patterns must be generic: no names of other projects, people or
+hosts.
+
+To run the check before opening a pull request, commit the change and compare
+it with the base branch (`origin/next` for a change to `next`). With two
+arguments, the script also checks the commits from `HEAD` back to the base.
+It needs the whole history, so run it in a clone that is not shallow:
+
+```console
+$ git fetch origin master
+$ sh test/check_added_files.sh origin/master HEAD
+check_added_files.sh: 2 added file(s) checked between origin/master and HEAD and in the 2 commit(s) of origin/master..HEAD, none forbidden or empty
+```
+
+When a file fails, remove it from the change (`git rm --cached <path>` keeps
+it on disk), or, if it belongs in the repository, change
+`test/forbidden_paths.txt` (for an empty file, the script) in the same pull
+request and say why in its description. A file that a commit adds and a later
+commit removes stays in the history: remove it from the commit that added it
+(for example with `git rebase -i`), or squash the commits.
 
 ## Testing
 ##### build nginx into ``./build/nginx`` and test on ``./build/nginx``
 ```
 sh test.sh
 ```
+
+`test.sh` configures nginx with `--with-debug`, `--with-http_stub_status_module`,
+`--with-http_ssl_module`, `--with-http_auth_request_module` and `--with-stream`
+(see `NGINX_DEFAULT_OPT` and `NGINX_CONFIG_OPT` in `test.sh`), so the test
+configuration can use the directives of these modules. CI runs the same
+`test.sh` on a fresh checkout. A local build directory keeps the options that
+nginx was first configured with: the Makefile configures nginx again only when
+`build/nginx-X.Y.Z/objs/Makefile` does not exist (`build_dynamic/...` for
+`BUILD_DYNAMIC_MODULE`). After these options change, remove that file and run
+`test.sh` once without `ONLY_BUILD_NGX_MRUBY`; otherwise nginx stops at the
+test configuration with an "unknown directive" error. After changing
+`nginx_version` or `BUILD_DYNAMIC_MODULE`, run `test.sh` once without
+`ONLY_BUILD_NGX_MRUBY` as well: it then uses another build directory
+(`build/nginx-X.Y.Z` of the new version, or `build_dynamic/`), and configures
+nginx there when that file is missing in it.
 
 If you want to run with valgrind, set the environment variables `NGINX_RUNNER` and `NGINX_HEATTIME`.
 

@@ -50,6 +50,23 @@ t.assert('ngx_mruby - stream init, init_worker and exit_worker files in a second
   t.assert_equal 'exited 0', r['exit']
 end
 
+# Nginx::Stream.add_listener changes the configuration that nginx is reading,
+# so it works only in mruby_stream_server_context_code. In the second nginx
+# that call adds the only listener of the server, and the session code calls
+# it again: that call must raise a RuntimeError, and the session goes on to
+# the return directive.
+t.assert('ngx_mruby - stream add_listener raises in a session', '127.0.0.1:12357') do
+  r = second_instance('stream_add_listener')
+  if r['sanitizer']
+    puts File.read(File.join(ENV['NGINX_INSTALL_DIR'], 'second_instance', 'stream_add_listener', 'error.log'))
+  end
+  t.assert_nil r['error']
+  t.assert_nil r['sanitizer']
+  t.assert_equal 'stream session ok', r['reply']
+  t.assert_equal 'RuntimeError: add_listener can only be used in mruby_stream_server_context_code', r['add_listener']
+  t.assert_equal 'exited 0', r['exit']
+end
+
 t.assert('ngx_mruby - stream proxy_protocol_addr and proxy_protocol_ip, IPv4', '127.0.0.1:12354') do
   res = tcp_client(12354, proxy_v1_line("TCP4", "192.0.2.10", "127.0.0.1", 12354))
   t.assert_equal ["EOF", "proxy_protocol ok 192.0.2.10"], res

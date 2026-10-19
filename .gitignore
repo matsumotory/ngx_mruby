@@ -1,3 +1,6 @@
+# Session directories of AI coding agents (CLAUDE.md): git worktrees and temporary files
+.claude/worktrees/
+.claude/tmp/
 GPATH
 GRTAGS
 GTAGS

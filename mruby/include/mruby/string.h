@@ -38,12 +38,25 @@ struct RStringEmbed {
   char ary[RSTRING_EMBED_LEN_MAX+1];
 };
 
-#define RSTR_SET_TYPE_FLAG(s, type) (RSTR_UNSET_TYPE_FLAG(s), (s)->flags |= MRB_STR_##type)
-#define RSTR_UNSET_TYPE_FLAG(s) ((s)->flags &= ~(MRB_STR_TYPE_MASK|MRB_STR_EMBED_LEN_MASK))
+#define RSTR_SET_TYPE(s, type) ((s)->flags = ((s)->flags & ~(MRB_STR_TYPE_MASK|MRB_STR_EMBED_LEN_MASK)) | MRB_STR_##type)
+
+#define MRB_STR_NORMAL    0
+#define MRB_STR_SHARED    1
+#define MRB_STR_FSHARED   2
+#define MRB_STR_NOFREE    4
+#define MRB_STR_EMBED     8
+#define MRB_STR_TYPE_MASK 15
+
+#define MRB_STR_EMBED_LEN_SHIFT 6
+#define MRB_STR_EMBED_LEN_BITS 5
+#define MRB_STR_EMBED_LEN_MASK (((1 << MRB_STR_EMBED_LEN_BITS) - 1) << MRB_STR_EMBED_LEN_SHIFT)
+
+#define MRB_STR_BINARY    16
+#define MRB_STR_SINGLE_BYTE 32
+#define MRB_STR_STATE_MASK 48
 
 #define RSTR_EMBED_P(s) ((s)->flags & MRB_STR_EMBED)
 #define RSTR_SET_EMBED_FLAG(s) ((s)->flags |= MRB_STR_EMBED)
-#define RSTR_UNSET_EMBED_FLAG(s) ((s)->flags &= ~(MRB_STR_EMBED|MRB_STR_EMBED_LEN_MASK))
 #define RSTR_SET_EMBED_LEN(s, n) do {\
   size_t tmp_n = (n);\
   (s)->flags &= ~MRB_STR_EMBED_LEN_MASK;\
@@ -67,16 +80,8 @@ struct RStringEmbed {
 #define RSTR_CAPA(s) (RSTR_EMBED_P(s) ? RSTRING_EMBED_LEN_MAX : (s)->as.heap.aux.capa)
 
 #define RSTR_SHARED_P(s) ((s)->flags & MRB_STR_SHARED)
-#define RSTR_SET_SHARED_FLAG(s) ((s)->flags |= MRB_STR_SHARED)
-#define RSTR_UNSET_SHARED_FLAG(s) ((s)->flags &= ~MRB_STR_SHARED)
-
 #define RSTR_FSHARED_P(s) ((s)->flags & MRB_STR_FSHARED)
-#define RSTR_SET_FSHARED_FLAG(s) ((s)->flags |= MRB_STR_FSHARED)
-#define RSTR_UNSET_FSHARED_FLAG(s) ((s)->flags &= ~MRB_STR_FSHARED)
-
 #define RSTR_NOFREE_P(s) ((s)->flags & MRB_STR_NOFREE)
-#define RSTR_SET_NOFREE_FLAG(s) ((s)->flags |= MRB_STR_NOFREE)
-#define RSTR_UNSET_NOFREE_FLAG(s) ((s)->flags &= ~MRB_STR_NOFREE)
 
 #ifdef MRB_UTF8_STRING
 # define RSTR_SINGLE_BYTE_P(s) ((s)->flags & MRB_STR_SINGLE_BYTE)
@@ -85,13 +90,14 @@ struct RStringEmbed {
 # define RSTR_WRITE_SINGLE_BYTE_FLAG(s, v) (RSTR_UNSET_SINGLE_BYTE_FLAG(s), (s)->flags |= v)
 # define RSTR_COPY_SINGLE_BYTE_FLAG(dst, src) RSTR_WRITE_SINGLE_BYTE_FLAG(dst, RSTR_SINGLE_BYTE_P(src))
 #else
-# define RSTR_SINGLE_BYTE_P(s) (void)1
+# define RSTR_SINGLE_BYTE_P(s) TRUE
 # define RSTR_SET_SINGLE_BYTE_FLAG(s) (void)0
 # define RSTR_UNSET_SINGLE_BYTE_FLAG(s) (void)0
 # define RSTR_WRITE_SINGLE_BYTE_FLAG(s, v) (void)0
 # define RSTR_COPY_SINGLE_BYTE_FLAG(dst, src) (void)0
 #endif
 #define RSTR_SET_ASCII_FLAG(s) RSTR_SET_SINGLE_BYTE_FLAG(s)
+#define RSTR_BINARY_P(s) ((s)->flags & MRB_STR_BINARY)
 
 /**
  * Returns a pointer from a Ruby string
@@ -104,16 +110,6 @@ struct RStringEmbed {
 #define RSTRING_CAPA(s)      RSTR_CAPA(RSTRING(s))
 #define RSTRING_END(s)       (RSTRING_PTR(s) + RSTRING_LEN(s))
 #define RSTRING_CSTR(mrb,s)  mrb_string_cstr(mrb, s)
-
-#define MRB_STR_SHARED    1
-#define MRB_STR_FSHARED   2
-#define MRB_STR_NOFREE    4
-#define MRB_STR_EMBED     8  /* type flags up to here */
-#define MRB_STR_SINGLE_BYTE    16
-#define MRB_STR_EMBED_LEN_SHIFT 6
-#define MRB_STR_EMBED_LEN_BIT 5
-#define MRB_STR_EMBED_LEN_MASK (((1 << MRB_STR_EMBED_LEN_BIT) - 1) << MRB_STR_EMBED_LEN_SHIFT)
-#define MRB_STR_TYPE_MASK 15
 
 MRB_API void mrb_str_modify(mrb_state *mrb, struct RString *s);
 /* mrb_str_modify() with keeping ASCII flag if set */

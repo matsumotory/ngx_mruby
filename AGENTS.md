@@ -182,9 +182,12 @@ upgrading". New behavior, API cleanups and features go to `next`.
   bug fix, a raised build requirement and a change of the bundled mruby or
   default mrbgems included; see `docs/releases/README.md` for what counts)
   adds its entry under "Behavior changes: read before upgrading" in
-  `docs/releases/<version>.md`, in the same PR: before, now, what is affected,
-  what to do. Users have built on the old behavior, so the new release must
-  warn them.
+  `docs/releases/<version>.md`, in the same PR: before, now, why it changed,
+  what is affected, what to do. The same PR adds the entry in Japanese to
+  `docs/releases/<version>.ja.md`, and creates that file by translating the
+  whole English file if the release has none yet (see "Who writes the
+  entries, and when" in `docs/releases/README.md`). Users have built on the
+  old behavior, so the new release must warn them.
 - Agents never create, move or delete tags, and never publish releases or
   security advisories. Those stay with the owner. Before a tag, a PR checks
   the release notes against every PR merged since the previous release (see
@@ -206,18 +209,27 @@ quoted in the PR body and the numbers that "Design principles" asks the
 reviewer to write;
 compatibility notes in the PR body match the diff; a change of behavior that a
 configuration, script or build can observe has an entry under "Behavior
-changes: read before upgrading" in `docs/releases/<version>.md`, and
-`docs/directives/`, `docs/class_and_method/` or `docs/install/` describe the
-new behavior; a PR that moves the pin of one of the owner's gems links the
+changes: read before upgrading" in `docs/releases/<version>.md` with every
+line of the template, and the same entry in Japanese in
+`docs/releases/<version>.ja.md` (see "Who writes the entries, and when" in
+`docs/releases/README.md`), and `docs/directives/`,
+`docs/class_and_method/` or `docs/install/` describe the new behavior; a PR
+that moves the pin of one of the owner's gems links the
 gem's PR, which has its review and the suite results (see "Other
 repositories"); nothing in the diff, the
 commit messages or the PR text discloses an unpublished vulnerability or a
 secret; and `docs/` is updated when a directive, Ruby method, build option or
 the test harness changes. The reviewer posts the findings as a PR comment,
 split into "must fix" (blocks the merge) and "should fix". A behavior change
-without that entry is a "must fix"; a missing "New features", "Fixes" or
-"Build and test changes" entry is a "should fix". The author fixes
-every "must fix" and asks for a re-review of those items only.
+of the PR without that entry, an entry of the PR that lacks a line of the
+template, and an entry of the PR whose Japanese version is missing or says
+something other than the English entry are each a "must fix" (which entries
+count as the PR's own, also when the PR creates the Japanese file of an
+earlier release file, is in "Who writes the entries, and when" in
+`docs/releases/README.md`). A missing "New features", "Fixes" or "Build and
+test changes" entry, and a missing or different Japanese version of one, are
+a "should fix". The author fixes every "must fix" and asks for a re-review of
+those items only.
 
 The session that owns the PR merges it, with a merge commit, when all of
 these hold:
@@ -231,7 +243,9 @@ these hold:
    evidence described under "Writing tests", or changes documentation only.
    In every case, a change of behavior that a configuration, script or build
    can observe has an entry under "Behavior changes: read before upgrading"
-   in `docs/releases/<version>.md`, and the docs describe the new behavior.
+   in `docs/releases/<version>.md` with every line of the template, the same
+   entry in Japanese in `docs/releases/<version>.ja.md`, and the docs
+   describe the new behavior.
 4. The review above is recorded on the PR and no "must fix" item is open.
 5. The scrub for secrets and unpublished vulnerability details passed.
 6. The PR has no conflicts with its base.
@@ -374,8 +388,10 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `rm -rf mruby/build`, run a full `sh test.sh`, and commit the lock that
   rake wrote. A build with `NGX_MRUBY_AUTO_SSL=1` adds entries for the
   auto-ssl gems: do not commit them (`git checkout build_config.rb.lock`).
-- `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. Do a full run again after
-  changing `BUILD_DYNAMIC_MODULE`, configure options or `nginx_version`.
+- `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. After changing
+  `BUILD_DYNAMIC_MODULE`, configure options or `nginx_version`, nginx has to be
+  configured again: "Testing" in `docs/test/README.md` says when a full run does
+  that and what to remove first.
 - `NGX_MRUBY_AUTO_SSL=1` adds the auto-ssl mrbgem to the mruby build. Remove
   `mruby/build` before changing it: a full run builds the new gem list, but
   `libmruby.a` keeps the objects of a dropped gem and `mruby/build/host/LEGAL`
@@ -391,8 +407,9 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `build/nginx/logs/` (`build_dynamic/nginx/logs/` for dynamic builds);
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
-- `test.sh` listens on fixed ports (18080-18088, 18101-18103, 18110-18132,
-  18136, 18140, 12345-12358, 12372-12373; 18116 and 12357 belong to the second nginx that
+- `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18132,
+  18136, 18138, 18140, 18143-18144, 18147-18152, 12345-12359, 12372-12373;
+  18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
   in `test/t/ngx_mruby.rb`) and

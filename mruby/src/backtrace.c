@@ -15,7 +15,10 @@
 #include <mruby/numeric.h>
 #include <mruby/data.h>
 #include <mruby/internal.h>
-#include <mruby/presym.h>
+
+#define MAX_IREP_REFCNT UINT16_MAX
+#define UNKNOWN_LINENO -1
+#define UNKNOWN_LOCATION "(unknown):0"
 
 static void
 copy_backtrace(mrb_state *mrb,
@@ -25,7 +28,7 @@ copy_backtrace(mrb_state *mrb,
 {
   ptr[n] = *loc;
   if (loc->irep) {
-    if (loc->irep->refcnt == UINT16_MAX) {
+    if (loc->irep->refcnt == MAX_IREP_REFCNT) {
       ptr[n].irep = NULL;
     }
     else {
@@ -34,6 +37,16 @@ copy_backtrace(mrb_state *mrb,
   }
 }
 
+/**
+ * Creates a packed backtrace from the current call stack
+ *
+ * @param mrb The mruby state
+ * @param ciidx The current callinfo index
+ * @param ptr Pointer to store the backtrace locations
+ * @return Number of backtrace entries
+ * @note This function handles both proc and non-proc cases, managing IREP references
+ *       and building location entries for each stack frame.
+ */
 static size_t
 pack_backtrace(mrb_state *mrb, ptrdiff_t ciidx, struct mrb_backtrace_location *ptr)
 {
@@ -45,42 +58,32 @@ pack_backtrace(mrb_state *mrb, ptrdiff_t ciidx, struct mrb_backtrace_location *p
     const mrb_code *pc;
 
     ci = &mrb->c->cibase[i];
+    loc.method_id = ci->mid;
 
-    if (!ci->proc || MRB_PROC_CFUNC_P(ci->proc)) {
-      if (!ci->mid) continue;
-      loc.irep = NULL;
-    }
-    else {
+    if (ci->proc && !MRB_PROC_CFUNC_P(ci->proc)) {
+      mrb_assert(!MRB_PROC_ALIAS_P(ci->proc));
       loc.irep = ci->proc->body.irep;
       if (!loc.irep) continue;
       if (!loc.irep->debug_info) continue;
-      if (mrb->c->cibase[i].pc) {
-        pc = &mrb->c->cibase[i].pc[-1];
-      }
-      else {
-        continue;
-      }
+      if (!ci->pc) continue;
+      pc = &ci->pc[-1];
       loc.idx = (uint32_t)(pc - loc.irep->iseq);
     }
-    loc.method_id = ci->mid;
-    if (loc.irep == NULL) {
+    else {
+      if (!loc.method_id) continue;
+      loc.irep = NULL;
       for (ptrdiff_t j=i-1; j >= 0; j--) {
         ci = &mrb->c->cibase[j];
 
         if (!ci->proc) continue;
         if (MRB_PROC_CFUNC_P(ci->proc)) continue;
+        mrb_assert(!MRB_PROC_ALIAS_P(ci->proc));
 
         const mrb_irep *irep = ci->proc->body.irep;
         if (!irep) continue;
         if (!irep->debug_info) continue;
-
-        if (mrb->c->cibase[j].pc) {
-          pc = &mrb->c->cibase[j].pc[-1];
-        }
-        else {
-          continue;
-        }
-
+        if (!ci->pc) continue;
+        pc = &ci->pc[-1];
         loc.irep = irep;
         loc.idx = (uint32_t)(pc - irep->iseq);
         break;
@@ -95,7 +98,6 @@ pack_backtrace(mrb_state *mrb, ptrdiff_t ciidx, struct mrb_backtrace_location *p
 static struct RBasic*
 packed_backtrace(mrb_state *mrb)
 {
-  struct RBacktrace *backtrace;
   ptrdiff_t ciidx = mrb->c->ci - mrb->c->cibase;
 
   if (ciidx >= mrb->c->ciend - mrb->c->cibase)
@@ -103,7 +105,7 @@ packed_backtrace(mrb_state *mrb)
 
   ptrdiff_t len = ciidx + 1;
 
-  backtrace = MRB_OBJ_ALLOC(mrb, MRB_TT_BACKTRACE, NULL);
+  struct RBacktrace *backtrace = MRB_OBJ_ALLOC(mrb, MRB_TT_BACKTRACE, NULL);
 
   void *ptr = mrb_malloc(mrb, len * sizeof(struct mrb_backtrace_location));
   backtrace->locations = (struct mrb_backtrace_location*)ptr;
@@ -140,19 +142,30 @@ decode_location(mrb_state *mrb, const struct mrb_backtrace_location *entry)
   int32_t lineno;
   const char *filename;
 
-  if (!entry->irep || !mrb_debug_get_position(mrb, entry->irep, entry->idx, &lineno, &filename)) {
-    btline = mrb_str_new_lit(mrb, "(unknown):0");
+  // Case 1: No IREP or debug info available
+  if (!entry->irep) {
+    return mrb_str_new_lit(mrb, UNKNOWN_LOCATION);
   }
-  else if (lineno != -1) {//debug info was available
+
+  // Case 2: Debug info lookup failed
+  if (!mrb_debug_get_position(mrb, entry->irep, entry->idx, &lineno, &filename)) {
+    return mrb_str_new_lit(mrb, UNKNOWN_LOCATION);
+  }
+
+  // Case 3: Valid debug info
+  if (lineno != UNKNOWN_LINENO) {
     btline = mrb_format(mrb, "%s:%d", filename, (int)lineno);
   }
   else { //all that was left was the stack frame
     btline = mrb_format(mrb, "%s:0", filename);
   }
+
+  // Add method name if available
   if (entry->method_id != 0) {
     mrb_str_cat_lit(mrb, btline, ":in ");
     mrb_str_cat_cstr(mrb, btline, mrb_sym_name(mrb, entry->method_id));
   }
+
   return btline;
 }
 
@@ -167,7 +180,7 @@ mrb_unpack_backtrace(mrb_state *mrb, struct RBasic *backtrace)
   mrb_assert(backtrace->tt == MRB_TT_BACKTRACE);
 
   struct RBacktrace *bt = (struct RBacktrace*)backtrace;
-  mrb_int n = bt ? (mrb_int)bt->len : 0;
+  mrb_int n = (mrb_int)bt->len;
   const struct mrb_backtrace_location *loc = bt->locations;
 
   backtrace = mrb_basic_ptr(mrb_ary_new_capa(mrb, n));
@@ -244,7 +257,7 @@ print_backtrace(mrb_state *mrb, struct RObject *exc, struct RBasic *ptr)
     }
   }
   else {
-    fputs("(unknown):0: ", stderr);
+    fputs(UNKNOWN_LOCATION ": ", stderr);
   }
 
   if (exc == mrb->nomem_err) {
@@ -252,8 +265,8 @@ print_backtrace(mrb_state *mrb, struct RObject *exc, struct RBasic *ptr)
     fwrite(nomem, sizeof(nomem)-1, 1, stderr);
   }
   else {
-    mrb_value mesg = mrb_exc_inspect(mrb, mrb_obj_value(exc));
-    fwrite(RSTRING_PTR(mesg), RSTRING_LEN(mesg), 1, stderr);
+    mrb_value output = mrb_exc_get_output(mrb, exc);
+    fwrite(RSTRING_PTR(output), RSTRING_LEN(output), 1, stderr);
     fputc('\n', stderr);
   }
 }
@@ -270,8 +283,7 @@ mrb_print_backtrace(mrb_state *mrb)
     return;
   }
 
-  struct RBasic *backtrace = ((struct RException*)mrb->exc)->backtrace;
-  print_backtrace(mrb, mrb->exc, backtrace);
+  print_backtrace(mrb, mrb->exc, ((struct RException*)mrb->exc)->backtrace);
 }
 #else
 MRB_API void
