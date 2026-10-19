@@ -460,6 +460,7 @@ user (nvm, fnm, volta, or the archive from nodejs.org), not system-wide.
 cd site
 npm ci            # the exact versions of package-lock.json
 npm run build     # scripts/sync-docs.mjs writes docs/ into src/content/docs/, then astro build writes dist/
+npm run test      # the generator on its fixtures
 npm run check     # the checks of the built site (below)
 npm run preview   # serves dist/ at http://localhost:4321/
 ```
@@ -484,9 +485,13 @@ npm run preview   # serves dist/ at http://localhost:4321/
     the built h2;
   - `node scripts/check-no-js.mjs`: the text of each source is in the HTML
     without running scripts.
-- `.github/workflows/site.yml` runs the five on pull requests to `next`
-  and pushes to `next` that touch `site/` or `docs/`, and uploads
-  `site/dist/` as the artifact `site`. It does not deploy.
+- `node scripts/test-sync-docs.mjs` (`npm run test`) runs the generator
+  on fixtures in temporary repositories: links in raw HTML inside
+  blockquotes and list items, and an attribute value that stops the build.
+- `.github/workflows/site.yml` runs the five checks and the generator's
+  test on pull requests to `next` and pushes to `next` that touch `site/`
+  or `docs/`, and uploads `site/dist/` as the artifact `site`. It does not
+  deploy.
 - `site/package.json` and `site/package-lock.json` pin exact versions:
   change them with `npm install --save-exact <package>@<version>` and
   commit both. Nothing that the build generates is committed

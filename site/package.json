@@ -9,6 +9,7 @@
     "sync-docs": "node scripts/sync-docs.mjs",
     "build": "node scripts/sync-docs.mjs && ASTRO_TELEMETRY_DISABLED=1 astro build --force",
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "test": "node scripts/test-sync-docs.mjs",
     "check": "node scripts/check-built-links.mjs && node scripts/check-pages.mjs && node scripts/check-japanese.mjs && node scripts/check-no-js.mjs"
   },
   "dependencies": {

@@ -56,6 +56,10 @@ jobs:
       - name: Build a fresh clone with npm ci and npm run build
         id: build
         run: sh site/scripts/check-fresh-clone.sh --keep "$RUNNER_TEMP/fresh"
+      - name: Test the generator on its fixtures
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/test-sync-docs.mjs
       - name: Check that every internal link of the built HTML resolves
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
