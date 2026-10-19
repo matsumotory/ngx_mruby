@@ -118,18 +118,7 @@ typedef struct ngx_http_mruby_ctx_t {
   X(HEADERS_OUT_OBJ, "headers_out_obj")                                                                                \
   X(IV_HEADERS, "@headers")                                                                                            \
   X(IV_STATUS, "@status")                                                                                              \
-  X(IV_BODY, "@body")                                                                                                  \
-  X(REQUEST_BODY, "request_body")                                                                                      \
-  X(HOST, "host")                                                                                                      \
-  X(HTTP_HOST, "http_host")                                                                                            \
-  X(REQUEST_FILENAME, "request_filename")                                                                              \
-  X(REMOTE_USER, "remote_user")                                                                                        \
-  X(REMOTE_ADDR, "remote_addr")                                                                                        \
-  X(REMOTE_PORT, "remote_port")                                                                                        \
-  X(SERVER_ADDR, "server_addr")                                                                                        \
-  X(SERVER_PORT, "server_port")                                                                                        \
-  X(DOCUMENT_ROOT, "document_root")                                                                                    \
-  X(REALPATH_ROOT, "realpath_root")
+  X(IV_BODY, "@body")
 
 #define NGX_HTTP_MRUBY_SYM_ENUM(id, name) NGX_HTTP_MRUBY_SYM_##id,
 typedef enum { NGX_HTTP_MRUBY_SYM_LIST(NGX_HTTP_MRUBY_SYM_ENUM) NGX_HTTP_MRUBY_SYM_COUNT } ngx_http_mruby_sym_t;

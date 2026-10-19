@@ -1123,6 +1123,17 @@ Set the 2nd arg to the variable if the symbol ends with `=`. Otherwise, returns 
 
 The variable is looked up by the name in lowercase. Since 2.7.2, a name that is empty or made only of `=` raises `NoMethodError`, and a setter called without a value raises `ArgumentError` and leaves the variable as it was.
 
+Since 3.0.0, the first `v.NAME` or `v.NAME = value` of a name in a worker process also defines the accessor as a method of `Nginx::Var`, and the later accesses of that name in the worker call the method instead of `method_missing`. The method reads and writes the variable as `method_missing` does: the same values, `nil` for a name that is not a variable, the same exceptions and the same lines in `error.log`. A worker defines:
+
+- a getter and a setter for each declared variable that scripts use: the variables of nginx and its modules, and the ones that `set` declares;
+- a getter for the first 16 names of prefix variables that scripts use, the variables whose names start with a prefix that nginx defines, such as `arg_`, `http_`, `cookie_` and `upstream_http_`. Any suffix makes such a name, so a worker keeps at most 16 of them.
+
+Only a name in lowercase gets a method: the name has to be made of `a` to `z`, `0` to `9` and `_` (with `=` at the end for a setter). `v.Request_Method` reads `$request_method` through `method_missing` and defines nothing. No method is defined for a name that is not a variable, for a setter of a prefix variable, for an instance of a subclass of `Nginx::Var`, when `Nginx::Var` is frozen, or when `Nginx::Var` or one of its ancestors already has a method of that name.
+
+The defined methods show in introspection: after the first `v.request_method` in a worker, `v.respond_to?(:request_method)` returns `true` and `Nginx::Var.instance_methods(false)` lists `request_method`. What they show depends on the requests that the worker has served, so two workers can answer differently. To tell whether a variable exists, use `Nginx::Var#exist?`. Once the method exists, a method of the same name that a script defines later on `Object` or `Kernel`, for example with a `def` at the top level of handler code, no longer hides the variable from `v.NAME`.
+
+`Nginx::Connection#remote_ip`, `#remote_port`, `#local_ip` and `#local_port`, `Nginx::Server#document_root`, `#realpath_root` and `#path`, and `Nginx::Request#hostname`, `#authority`, `#filename`, `#user` and `#get_body` read their variables from nginx directly. Since 3.0.0, a method that a script defines on `Nginx::Var` does not change what they return.
+
 ### Nginx::Var#set(name, value)
 
 Set the value to the nginx variable.
