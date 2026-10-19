@@ -363,8 +363,8 @@ end
 # ("The soak build and Nginx::Debug" in docs/test/README.md).
 DEBUG_STATS_KEYS = %w[:gc_arena_idx :gc_live :gc_root :gc_root_fibers :timers].freeze
 DEBUG_STATS_MRUBY_KEYS = %w[:gc_root_fibers_mruby :gc_root_mruby].freeze
-# The Strings that /debug/check makes: two objects per iteration, 1000
-# iterations, so a full GC frees at least this many objects.
+# The Strings that /debug/check makes: two or more objects in each of 1000
+# rounds, so a full GC frees at least this many objects.
 DEBUG_CHECK_GARBAGE = 1000
 # The objects that /debug/check still references after its second full GC:
 # the Hash of its first Nginx::Debug.stats, and what the call of the handler
@@ -388,6 +388,9 @@ def debug_problems
   problems << "Nginx::Debug.stats has values of #{check['classes'].inspect}" unless check['classes'] == ['Integer']
   problems << "Nginx::Debug.gc returned #{check['gc']}" unless check['gc'] == 'nil'
   base, filled, emptied = check.values_at('base', 'filled', 'emptied')
+  unless [base, filled, emptied].all? { |v| v.is_a?(Integer) }
+    return problems << "/debug/check returned gc_live values #{[base, filled, emptied].inspect}"
+  end
   if filled - base < DEBUG_CHECK_GARBAGE
     problems << "gc_live grew #{filled - base} with the Strings of /debug/check (#{base} -> #{filled}), expected #{DEBUG_CHECK_GARBAGE} or more"
   end
