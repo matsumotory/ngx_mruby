@@ -191,6 +191,55 @@ location /foo {
 }
 ```
 
+In 2.x, a `return` inside a block or inside the body of `for` at the top
+level of handler code does not return from the handler: mruby 3.3.0, which
+2.x bundles, raises `LocalJumpError` (`unexpected return`) there, and
+error.log records it as `mrb_run failed`. The handler then fails as after any
+other exception: a rewrite or content handler answers 500, and the output
+that the code wrote before the `return` is not sent (2.7.0 sent it with 200;
+see [Nginx.rputs](#nginxrputsstring)). Calling `Nginx.return` there does not
+end the code either: it sets the status, and the code after the block still
+runs. To end the handler from a block, leave the block with `break` and
+`return` at the top level of the code, or put the code in a method (or in a
+lambda, `->() do ... end.call`) and call it, so that the `return` returns
+from the method or the lambda:
+
+```nginx
+location /foo_break {
+    mruby_content_handler_code '
+         done = false
+         ["foo"].each do |body|
+           Nginx.rputs body             # generates HTTP body "foo"
+           Nginx.return Nginx::HTTP_OK  # returns HTTP status 200
+           done = true
+           break                        # leaves the block
+         end
+         return if done                 # returns from this handler
+         Nginx.rputs "bar"              # not reached
+    ';
+}
+
+location /foo_method {
+    mruby_content_handler_code '
+         def foo
+           ["foo"].each do |body|
+             Nginx.rputs body             # generates HTTP body "foo"
+             Nginx.return Nginx::HTTP_OK  # returns HTTP status 200
+             return                       # returns from the method foo
+           end
+           Nginx.rputs "bar"              # not reached
+         end
+         foo
+    ';
+}
+```
+
+ngx_mruby 3.0.0 handles such a `return` as the end of the handler code; see
+the entry "A `return` inside a block or a `for` body of handler code ends the
+code" in
+[docs/releases/v3.0.0.md](https://github.com/matsumotory/ngx_mruby/blob/next/docs/releases/v3.0.0.md)
+on `next`.
+
 ### Nginx.send_header(nginx_status_code)
 
 Alias for ``Nginx.return``
