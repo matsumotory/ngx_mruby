@@ -243,6 +243,166 @@ runtime that CI uses, a suppressed block hides nothing else; the LLVM
 runtime and gcc 12 and later also treat a suppressed block as a root, so
 there a block reachable only from those arrays is not reported either.
 
+## nginx's own test suite (nginx-tests)
+
+`sh test/nginx-tests/run.sh` runs nginx's own test suite,
+[nginx-tests](https://github.com/nginx/nginx-tests), with `prove` on two
+builds of the nginx version in `nginx_version`, and compares the results:
+
+- nginx with ngx_mruby, built by `test.sh` with `TEST_SH_SKIP_TESTS=1`:
+  the static module, the configure options of `test.sh` (see
+  [Testing](#testing)) and `-DMRB_GC_STRESS`, installed to `build/nginx`.
+  With `TEST_SH_SKIP_TESTS=1`, `test.sh` stops after the install: it writes
+  no test configuration, kills no nginx and starts none.
+- nginx without ngx_mruby: a copy of the same nginx source in
+  `build_nginxtests/plain/src`, configured with the options that `test.sh`
+  gave nginx (`NGX_CONFIG_OPT` of the generated `Makefile`) without the two
+  `--add-module` options that the `Makefile` adds, for ngx_mruby and for
+  ngx_devel_kit. The `configure arguments` lines of `nginx -V` in the
+  summary show both.
+
+The test files write their own nginx configurations, and none has an mruby
+directive. In the build with ngx_mruby, each start and reload of nginx
+creates ngx_mruby's `mrb_state` while nginx reads the `http {}` block
+(`mrb_open`, under `MRB_GC_STRESS`), each HTTP request passes the handlers
+that ngx_mruby adds to the post-read, server rewrite, rewrite, access,
+content and log phases, which decline when no code is configured, and each
+stream session passes its handler of the access phase. The header and body
+filters of ngx_mruby are added only when a directive asks for them, and no
+Ruby code runs. A test file that fails with ngx_mruby and passes without it
+therefore shows that the module changes nginx's behavior although nothing
+is configured for it.
+
+### The pinned commit of nginx-tests
+
+nginx-tests has no releases or tags. `run.sh` fetches the commit in
+`NGINX_TESTS_COMMIT`, `ec44bc80c4bf` (the head of `master` on 2026-10-19,
+committed on 2026-10-16), so that a test added upstream does not change the
+results without a change in this repository. A pull request of its own moves
+the pin, and quotes the summaries before and after; a change of
+`nginx_version` is a reason to move it, because new test files of
+nginx-tests test the features of new nginx versions and skip themselves on
+older ones.
+
+### Running nginx-tests
+
+`run.sh` needs Linux, a user other than root (the test files write their
+configurations to directories that only that user can read, and nginx
+started by root runs its workers as `nobody`), and what `test.sh` needs.
+The test files that need a perl module or a program that is missing are
+skipped, not failed. On Ubuntu 22.04, the job installs:
+
+```console
+$ sudo apt-get install rake bison git gperf zlib1g-dev libpcre3-dev libssl-dev ruby \
+    libio-socket-ssl-perl libnet-ssleay-perl libfcgi-perl libscgi-perl \
+    libcache-memcached-perl libcache-memcached-fast-perl libprotocol-websocket-perl memcached
+$ sh test/nginx-tests/self-test.sh
+$ sh test/nginx-tests/run.sh
+```
+
+On macOS, run it in a Linux container on a copy of the tree, mounted at the
+same path:
+
+```sh
+D=$HOME/ngx_mruby-nginx-tests   # any directory outside the checkout
+rm -rf "$D" && mkdir -p "$D" && git archive HEAD | tar -x -C "$D"
+docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential perl rake ruby bison git gperf wget ca-certificates openssl zlib1g-dev libpcre3-dev libssl-dev libio-socket-ssl-perl libnet-ssleay-perl libfcgi-perl libscgi-perl libcache-memcached-perl libcache-memcached-fast-perl libprotocol-websocket-perl memcached >/dev/null && useradd -m nt && chown -R nt "$PWD" && su nt -c "NGX_MRUBY_COMMIT='"$(git rev-parse HEAD)"' sh test/nginx-tests/run.sh"'
+```
+
+The test files start nginx on ports from 8000 to 8999 that they lock, so
+they run in parallel (`NGINX_TESTS_JOBS`, by default the number of CPUs).
+They do not use the ports of `test.sh`, but a `test.sh` that runs on the
+same machine kills every nginx, theirs included: run one of the two at a
+time, or `run.sh` in a container.
+
+Environment variables: `NGINX_TESTS_OUT` (the output directory, by default
+`build_nginxtests`), `NGINX_TESTS_SRC` (a checkout of nginx-tests at the
+pinned commit, used instead of the fetch, for example when github.com is
+unreachable), `NGINX_TESTS_JOBS`, `NGINX_TESTS_FILES` (test files to run
+instead of all, for example `NGINX_TESTS_FILES='access.t proxy.t'`) and
+`NGX_MRUBY_COMMIT` (the ngx_mruby commit that the summary names; by
+default `GITHUB_SHA` in GitHub Actions, else `HEAD` of the checkout). Extra
+arguments of `run.sh` go to `test.sh`, and so to `./configure`. The
+variables of nginx-tests itself work as well: to read the error log of a
+failed file, run it again alone with `TEST_NGINX_LEAVE=1` (keeps its
+temporary directory) or `TEST_NGINX_CATLOG=1` (prints the log).
+
+The output, in `build_nginxtests/`:
+
+| File | Content |
+|---|---|
+| `summary.md` | The counts of both builds, the failed files by build, the reasons of the skips, the configure arguments of both builds |
+| `only-mruby.txt`, `both.txt`, `only-plain.txt` | The test files that failed with ngx_mruby only, on both builds, and without ngx_mruby only |
+| `mruby/`, `plain/` | For each build: `prove.log` (the output of `prove`), `results.tsv` (a line for each test file: the file, `passed`, `failed` or `skipped`, and the reason of a skip or the failed subtests), `nginx-V.txt` |
+
+`test/nginx-tests/results.pl` reads `prove.log`: a file fails when its
+entry in prove's "Test Summary Report" has failed subtests, a wait status
+other than 0 or parse errors (a missing or wrong plan), and a file whose
+entry has only TODO subtests that passed has passed. It stops when the log
+is not a complete run of prove. `test/nginx-tests/compare.pl` writes the
+lists and the summary. `sh test/nginx-tests/self-test.sh` checks both on the
+made-up output of `test/nginx-tests/fixtures/`.
+
+`run.sh` exits with 0 when both builds were tested and their results read,
+also when test files failed. It exits with another status when a build,
+the fetch or `prove` itself failed, or when a log is not a complete run.
+
+### nginx-tests in CI
+
+`.github/workflows/nginx-tests.yml` runs the self-test and `run.sh` on
+`ubuntu-22.04`, on pull requests to `next` that change an input of the
+nginx binary (the inputs that "[In CI](#in-ci)" of the performance
+comparison lists), `test.sh`, `test/nginx-tests/` or the workflow, on every
+push to `next` and on "Run workflow". The job summary is `summary.md`, each
+file that fails with ngx_mruby only is a warning annotation, and the
+artifact `nginx-tests` has the output above without the copy of the nginx
+source.
+
+The job records; it does not gate. It fails only when the self-test, a
+build, the fetch or `prove` itself fails, or `summary.md` is missing, not
+on the result of a test file, and `ci-ok` does not need it (see
+[Required status check](#required-status-check)). Pillar E of
+`docs/proposals/v3-plan.md` makes it required once its results are stable.
+
+### Results of nginx-tests
+
+Measured on 2026-10-19, with nginx-tests at `ec44bc80c4bf`, nginx 1.31.6
+and ngx_mruby at `next` `a466688` with the change of #__PR__, in a Docker
+container of `ubuntu:22.04` on macOS (aarch64, gcc 11.4.0, OpenSSL 3.0.2,
+perl 5.34, 11 parallel test files), with the command of
+[Running nginx-tests](#running-nginx-tests); and in the job of
+__CI__.
+
+| Build | Test files | Passed | Failed | Skipped | Subtests run |
+|---|---|---|---|---|---|
+| nginx with ngx_mruby | 511 | 301 | 0 | 210 | 3991 |
+| nginx without ngx_mruby | 511 | 301 | 0 | 210 | 3991 |
+
+- Test files that fail because ngx_mruby is in nginx (they fail with
+  ngx_mruby and pass without it): none.
+- Test files that fail on nginx without ngx_mruby too: none.
+
+The same files were skipped on both builds, for the same reasons. 189 of
+the 210 skip because nginx lacks a module that `test.sh` does not build:
+`http_v2` (59 files), `stream_ssl` (25), `http_v3` (23), `mail` (16),
+`realip` (11), `sub` (9), and 18 other modules with 1 to 6 files each. The
+other 21 skip for conditions of the machine or of nginx-tests: a program or
+perl module that is not installed (`uwsgi` for 4 files, `GD`,
+`Win32API::File`, a newer `IO::Socket::SSL`), OpenSSL 3.5, Linux kTLS, root
+(3 files), a wildcard address (2), Windows (1), and 6 files that nginx-tests
+runs only with `TEST_NGINX_UNSAFE` or not at all (an orphaned process group,
+a long test, keys of an OpenSSL engine or provider). The summary of each
+run lists every reason with its count.
+
+These results cover nginx with ngx_mruby present and nothing configured for
+it. Two kinds of runs would cover more and are not in place: a build with
+the modules that the skipped files need (`--with-http_v2_module`,
+`--with-http_v3_module`, `--with-stream_ssl_module`, `--with-mail` and the
+others above), and runs in which ngx_mruby's handlers or filters run Ruby
+code on the requests of the suite (`TEST_NGINX_GLOBALS_HTTP`, as Pillar E
+of `docs/proposals/v3-plan.md` names). `docs/HANDOFF.md` lists both in its
+queue.
+
 ## Mock LLM upstream
 
 `test/soak/mock_llm.rb` (CRuby 3.0 or later) is an HTTP/1.1 server that
