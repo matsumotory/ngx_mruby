@@ -107,8 +107,7 @@ MRuby::Build.new('host') do |conf|
   conf.gem github: 'iij/mruby-process'
   conf.gem github: 'mattn/mruby-json'
   conf.gem github: 'mattn/mruby-onig-regexp'
-  # disabled: unpinned hiredis clone in mrbgem.rake fails CI (upstream FFC_DEBUG -Wundef/-Werror)
-  # conf.gem github: 'matsumotory/mruby-redis'
+  conf.gem github: 'matsumotory/mruby-redis'
   conf.gem github: 'matsumotory/mruby-vedis'
   conf.gem github: 'matsumotory/mruby-userdata'
   # build_config.rb.lock pins mruby-uname (here and in the test build) to the
