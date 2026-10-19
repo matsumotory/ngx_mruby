@@ -49,6 +49,8 @@ const labels = ja
       nbf: 'nginxの<wbr>ほかの<wbr>ボディの<wbr>フィルタ',
       client: 'クライアント',
       note: 'Content-Lengthの<wbr>無い<wbr>レスポンスは、<wbr>読まずに<wbr>次の<wbr>フィルタへ<wbr>渡す',
+      laneHeader: 'ヘッダの<wbr>フィルタの<wbr>連鎖',
+      laneBody: 'ボディの<wbr>フィルタの<wbr>連鎖',
     }
   : {
       source: 'Response of the content handler or upstream',
@@ -58,6 +60,8 @@ const labels = ja
       nbf: "nginx's other body filters",
       client: 'Client',
       note: 'A response without Content-Length goes to the next filter unread',
+      laneHeader: 'Header filter chain',
+      laneBody: 'Body filter chain',
     };
 const caption = ja
   ? `ngx_mrubyのヘッダのフィルタとボディのフィルタは、nginxの2つのフィルタの連鎖の先頭で動きます。<code>${SRC}</code>の${initStart}行から${initEnd}行と${filterStart}行から${filterEnd}行を、${srcChange.date}のコミット${srcChange.commit}で描いています。`
@@ -129,8 +133,8 @@ const caption = ja
 <Aside type="note">
   {
     ja
-      ? 'チャンクで送られるupstreamのレスポンスのように、Content-Lengthの無いレスポンスは、ボディのフィルタを通りません。nginxは、そのことをnoticeのレベルでエラーログに書きます。'
-      : 'A response without Content-Length, such as a chunked upstream response, does not reach the body filter. nginx writes a line about it to the error log at the notice level.'
+      ? 'チャンクで送られるupstreamのレスポンスのように、Content-Lengthの無いレスポンスは、ボディのフィルタを通りません。ngx_mrubyは、そのことをnoticeのレベルでエラーログに書きます。'
+      : 'A response without Content-Length, such as a chunked upstream response, does not reach the body filter. ngx_mruby writes a line about it to the error log at the notice level.'
   }
 </Aside>
 

@@ -46,11 +46,6 @@ const MOVING = new Set(['color', 'background-color', 'border-color', 'border-top
 // lets pass, each with the reason. Nothing that a checked page renders.
 const EXEMPT = [
   {
-    selector: /\.pagefind-ui__filter-value/,
-    prop: /^transition/,
-    reason: "Pagefind's filter checkbox, which Starlight's search does not show (the index has no filters)",
-  },
-  {
     selector: /^\.expressive-code \.copy button$/,
     prop: /^transition-property$/,
     reason: 'Expressive Code\'s copy button, whose stylesheet does not go through the build\'s PostCSS; site.css sets opacity, background-color and border-color, and check-styles.mjs checks the computed value',
@@ -128,7 +123,7 @@ function main() {
       }
       if (/^text-wrap(-style)?$/.test(d.prop) && /\b(pretty|balance)\b/.test(d.value)) report('text-wrap pretty or balance (4.4)');
       if (d.prop === 'word-break' && /keep-all|auto-phrase/.test(d.value)) {
-        const ok = sel.split(',').every((s) => /\[lang=["']?ja["']?\][^,]*\bh2\b/.test(s) || /\.(box|note)\b/.test(s));
+        const ok = sel.split(',').every((s) => /\[lang=["']?ja["']?\][^,]*\bh2\b/.test(s) || /\.diagram-(label|note)\b/.test(s));
         if (!ok) report(`${d.value} outside the h2 of Japanese pages and diagram labels (4.4)`);
       }
       if (d.prop === 'transition' || d.prop === 'transition-property') {

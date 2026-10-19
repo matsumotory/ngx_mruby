@@ -125,6 +125,11 @@ html:has(.home-specimen) h1#_top {
 :root[data-accent="gold"] .home-specimen .button-primary {
   color: var(--color-text-primary);
 }
+/* The owner's sites draw the focus ring in their text accent, because the
+   gold accent does not reach 3:1 (4.6) */
+:root[data-accent="gold"] :focus-visible {
+  outline-color: var(--color-accent-text);
+}
 :root[data-cyber="back"] header.header {
   box-shadow: 0 1px 8px color-mix(in srgb, var(--color-text-primary) 12%, transparent);
 }

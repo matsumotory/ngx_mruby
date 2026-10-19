@@ -10,7 +10,8 @@
 // Only custom properties whose value holds a color literal are removed;
 // the rules that use them stay, and read the values of tokens.css. The one
 // color literal of another declaration, the #fff of Pagefind's checkbox
-// tick, becomes Pagefind's background variable. Any other color literal is
+// tick, becomes Pagefind's background variable, and the transition of the
+// width and height of that tick goes. Any other color literal is
 // left as it is and reported by scripts/check-css.mjs.
 
 const FROM = /node_modules[\\/](?:@astrojs[\\/]starlight|@pagefind[\\/]default-ui)[\\/]/;
@@ -27,6 +28,14 @@ export default function themeColors() {
       if (!FROM.test(file)) return;
       // Pagefind draws the tick of its filter checkbox in #fff, its
       // default background: the site's background instead.
+      // Pagefind animates the width and height of the tick of its filter
+      // checkbox, which 4.8 rules out and Starlight's search does not show
+      // (its index has no filters): the declaration goes.
+      if (PAGEFIND.test(file) && /^transition/.test(decl.prop) && /\b(width|height)\b/.test(decl.value)) {
+        removed.push(`${file.replace(/^.*node_modules[\\/]/, '')}: ${decl.prop} ${decl.value}`);
+        decl.remove();
+        return;
+      }
       if (!decl.prop.startsWith('--')) {
         if (PAGEFIND.test(file) && /#fff\b/i.test(decl.value)) {
           removed.push(`${file.replace(/^.*node_modules[\\/]/, '')}: ${decl.prop} #fff`);

@@ -31,7 +31,8 @@ body {
   word-break: normal;
   line-break: strict;
 }
-:root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, td, th, dd) {
+:root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, td, th, dd),
+:root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, dd) code {
   overflow-wrap: anywhere;
 }
 
@@ -180,8 +181,11 @@ samp {
   border-radius: 0;
 }
 /* 4.9: on narrow screens a table scrolls in its own box instead of
-   squeezing its columns; identifiers stay on one line */
-.sl-markdown-content :is(th, td):not(:where(.not-content *)) {
+   squeezing its columns. Japanese cells, which can break between any two
+   characters, keep at least 9rem (8 characters at 15 px; chosen here), so
+   that a short label such as 静的なモジュール stays on one line;
+   identifiers stay on one line */
+:root[lang="ja"] .sl-markdown-content :is(th, td):not(:where(.not-content *)) {
   min-width: 9rem;
 }
 .sl-markdown-content td > code:only-child {
@@ -253,6 +257,12 @@ figcaption,
 }
 .starlight-aside__title + .starlight-aside__content {
   margin-top: var(--space-2);
+}
+
+/* Inside asides Starlight mixes the lines of tables, rules and quotes and
+   the background of code with transparency: tokens instead (4.6) */
+.sl-markdown-content .starlight-aside :is(th, td, hr, blockquote):not(:where(.not-content *)) {
+  border-color: var(--color-border-strong);
 }
 
 /* 4.6: badges with a 1 px border-strong border and text on bg */

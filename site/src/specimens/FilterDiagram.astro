@@ -2,11 +2,14 @@
 // The filter chain diagram of 3.5 for the reference specimen (4.12): labels
 // in HTML, lines and arrows in SVG, colors from the tokens, the accent on
 // the two ngx_mruby filters only, and a vertical arrangement below 640 px
-// (3.5 "Drawing rules", 4.9). In the specimen the boxes are the bordered
-// label cells of the grid and each arrow is a small SVG; step 3 builds the
-// diagram mechanism of 3.5 (one drawing per diagram, labels from the page).
+// (3.5 "Drawing rules", 4.9). Both arrangements show the same structure:
+// the response goes into two chains, the header chain and the body chain,
+// each with ngx_mruby's filter first, and both reach the client. In the
+// specimen the boxes are the bordered label cells of the grid and each
+// arrow is a small SVG; step 3 builds the diagram mechanism of 3.5 (one
+// drawing per diagram, labels from the page).
 interface Props {
-  labels: Record<'source' | 'hf' | 'bf' | 'nhf' | 'nbf' | 'client' | 'note', string>;
+  labels: Record<'source' | 'hf' | 'bf' | 'nhf' | 'nbf' | 'client' | 'note' | 'laneHeader' | 'laneBody', string>;
   ariaLabel: string;
   caption: string;
 }
@@ -17,24 +20,22 @@ const down = 'M8 2 V22 M3 16 L8 22 L13 16';
 
 <figure class="diagram not-content">
   <div class="diagram-grid" role="img" aria-label={ariaLabel}>
-    <div class="box source" set:html={labels.source} />
-    <svg class="arrow a1 across" viewBox="0 0 44 16" aria-hidden="true"><path d={across} /></svg>
-    <svg class="arrow a2 across" viewBox="0 0 44 16" aria-hidden="true"><path d={across} /></svg>
-    <div class="box mark hf" set:html={labels.hf} />
-    <div class="box mark bf" set:html={labels.bf} />
-    <svg class="arrow a3 across" viewBox="0 0 44 16" aria-hidden="true"><path d={across} /></svg>
-    <svg class="arrow a4 across" viewBox="0 0 44 16" aria-hidden="true"><path d={across} /></svg>
-    <div class="box nhf" set:html={labels.nhf} />
-    <div class="box nbf" set:html={labels.nbf} />
-    <svg class="arrow a5 across" viewBox="0 0 44 16" aria-hidden="true"><path d={across} /></svg>
-    <svg class="arrow a6 across" viewBox="0 0 44 16" aria-hidden="true"><path d={across} /></svg>
-    <div class="box client" set:html={labels.client} />
+    <div class="lanes" aria-hidden="true"></div>
+    <div class="diagram-label source" set:html={labels.source} />
     <svg class="arrow d1 down" viewBox="0 0 16 24" aria-hidden="true"><path d={down} /></svg>
+    <p class="diagram-lane lh" set:html={labels.laneHeader} />
+    <div class="diagram-label mark hf" set:html={labels.hf} />
+    <svg class="arrow a3 across" viewBox="0 0 44 16" aria-hidden="true"><path d={across} /></svg>
     <svg class="arrow d2 down" viewBox="0 0 16 24" aria-hidden="true"><path d={down} /></svg>
-    <svg class="arrow d3 down" viewBox="0 0 16 24" aria-hidden="true"><path d={down} /></svg>
+    <div class="diagram-label nhf" set:html={labels.nhf} />
+    <p class="diagram-lane lb" set:html={labels.laneBody} />
+    <div class="diagram-label mark bf" set:html={labels.bf} />
+    <svg class="arrow a4 across" viewBox="0 0 44 16" aria-hidden="true"><path d={across} /></svg>
     <svg class="arrow d4 down" viewBox="0 0 16 24" aria-hidden="true"><path d={down} /></svg>
+    <div class="diagram-label nbf" set:html={labels.nbf} />
     <svg class="arrow d5 down" viewBox="0 0 16 24" aria-hidden="true"><path d={down} /></svg>
-    <p class="note" set:html={labels.note} />
+    <div class="diagram-label client" set:html={labels.client} />
+    <p class="diagram-note note" set:html={labels.note} />
   </div>
   <figcaption set:html={caption} />
 </figure>
@@ -54,31 +55,30 @@ const down = 'M8 2 V22 M3 16 L8 22 L13 16';
     line-height: var(--leading-caption);
     color: var(--color-text-primary);
   }
-  .box {
+  .diagram-label {
+    position: relative;
     border: 1.5px solid var(--color-border-strong);
     border-radius: 0;
     padding: var(--space-2) var(--space-3);
     background-color: var(--color-bg-primary);
   }
-  .box.mark {
+  .diagram-label.mark {
     border-color: var(--color-accent);
   }
-  .box :global(code) {
+  .diagram-label :global(code) {
     display: block;
     font-family: var(--font-mono);
     font-size: var(--text-caption);
     overflow-wrap: anywhere;
   }
-  .box :global(span) {
-    display: block;
-    color: var(--color-text-muted);
-  }
-  .note {
+  .diagram-note,
+  .diagram-lane {
     margin: 0;
     color: var(--color-text-muted);
   }
-  :global(:root[lang='ja']) .box,
-  :global(:root[lang='ja']) .note {
+  :global(:root[lang='ja']) .diagram-label,
+  :global(:root[lang='ja']) .diagram-note,
+  :global(:root[lang='ja']) .diagram-lane {
     word-break: keep-all;
     overflow-wrap: anywhere;
     line-break: strict;
@@ -93,8 +93,17 @@ const down = 'M8 2 V22 M3 16 L8 22 L13 16';
   .arrow path {
     vector-effect: non-scaling-stroke;
   }
+  .down {
+    justify-self: center;
+    width: 16px;
+    height: 24px;
+  }
+  .across {
+    width: 44px;
+    height: 16px;
+  }
 
-  /* Wide: the response at the top, the header lane above the body lane,
+  /* Wide: the response at the top, the header chain above the body chain,
      the client at the bottom */
   @media (min-width: 641px) {
     .diagram-grid {
@@ -108,42 +117,62 @@ const down = 'M8 2 V22 M3 16 L8 22 L13 16';
         'client client client'
         'note note note';
     }
-    .a1, .a2, .a5, .a6, .d2, .d3, .d4 {
+    .d2,
+    .d4,
+    .lanes,
+    .diagram-lane {
       display: none;
     }
-    .d1, .d5 {
-      justify-self: center;
-      width: 16px;
-      height: 24px;
-    }
-    .source, .client {
+    .source,
+    .client {
       justify-self: center;
       text-align: center;
     }
-    .across {
-      width: 44px;
-      height: 16px;
-    }
-    .hf, .bf, .nhf, .nbf {
+    .hf,
+    .bf,
+    .nhf,
+    .nbf {
       align-self: stretch;
     }
   }
-  /* Narrow (4.9): one column, top to bottom */
+  /* Narrow (4.9): one column, the two chains one below the other inside
+     one frame, each named, between the response and the client */
   @media (max-width: 640px) {
     .diagram {
       padding: var(--space-4);
     }
     .diagram-grid {
       grid-template-columns: minmax(0, 1fr);
-      grid-template-areas: 'source' 'd1' 'hf' 'd2' 'nhf' 'd3' 'bf' 'd4' 'nbf' 'd5' 'client' 'note';
+      grid-template-rows: repeat(13, auto);
+      grid-template-areas: 'source' 'd1' 'lh' 'hf' 'd2' 'nhf' 'lb' 'bf' 'd4' 'nbf' 'd5' 'client' 'note';
     }
     .across {
       display: none;
     }
-    .down {
-      justify-self: center;
-      width: 16px;
-      height: 24px;
+    .lanes {
+      grid-column: 1;
+      grid-row: 3 / 11;
+      align-self: stretch;
+      border: 1px solid var(--color-border);
+    }
+    .lh,
+    .hf,
+    .d2,
+    .nhf,
+    .lb,
+    .bf,
+    .d4,
+    .nbf {
+      margin-inline: var(--space-3);
+    }
+    .lh {
+      margin-top: var(--space-3);
+    }
+    .lb {
+      margin-top: var(--space-4);
+    }
+    .nbf {
+      margin-bottom: var(--space-3);
     }
   }
   .source { grid-area: source; }
@@ -153,15 +182,12 @@ const down = 'M8 2 V22 M3 16 L8 22 L13 16';
   .nbf { grid-area: nbf; }
   .client { grid-area: client; }
   .note { grid-area: note; }
-  .a1 { grid-area: a1; }
-  .a2 { grid-area: a2; }
+  .lh { grid-area: lh; }
+  .lb { grid-area: lb; }
   .a3 { grid-area: a3; }
   .a4 { grid-area: a4; }
-  .a5 { grid-area: a5; }
-  .a6 { grid-area: a6; }
   .d1 { grid-area: d1; }
   .d2 { grid-area: d2; }
-  .d3 { grid-area: d3; }
   .d4 { grid-area: d4; }
   .d5 { grid-area: d5; }
   figcaption {

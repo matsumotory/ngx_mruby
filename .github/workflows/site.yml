@@ -111,6 +111,10 @@ jobs:
         if: ${{ !cancelled() && steps.specimens.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-styles.mjs
+      - name: Check computed styles with palette B (the specimens' second palette)
+        if: ${{ !cancelled() && steps.specimens.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-styles.mjs --palette b
       - name: Take the specimen screenshots of 4.12
         id: shots
         if: ${{ !cancelled() && steps.specimens.outcome == 'success' }}
