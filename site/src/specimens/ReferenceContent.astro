@@ -150,5 +150,9 @@ const caption = ja
   </tbody>
 </table>
 <p class="caption">
-  {ja ? `.github/workflows/test.ymlの行列から、${matrixChange.date}のコミット${matrixChange.commit}で取りました。` : `From the matrix of .github/workflows/test.yml at ${matrixChange.commit}, ${matrixChange.date}.`}
+  {ja ? (
+    <Fragment><code>.github/workflows/test.yml</code>{`の行列から、${matrixChange.date}のコミット${matrixChange.commit}で取りました。`}</Fragment>
+  ) : (
+    <Fragment>From the matrix of <code>.github/workflows/test.yml</code>{` at ${matrixChange.commit}, ${matrixChange.date}.`}</Fragment>
+  )}
 </p>

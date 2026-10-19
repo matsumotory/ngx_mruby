@@ -31,9 +31,15 @@ body {
   word-break: normal;
   line-break: strict;
 }
-:root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, td, th, dd),
-:root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, dd) code {
+:root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, td, th, dd) {
   overflow-wrap: anywhere;
+}
+/* Inline code inside Japanese text breaks between any two characters: a
+   Japanese line always offers a break before the code, so overflow-wrap
+   alone leaves the line before a long path short in Chromium */
+:root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, dd) code,
+:root[lang="ja"] .diagram figcaption code {
+  word-break: break-all;
 }
 
 /* 4.4 Headings: one size per role and language, weight 700 (h3 600) */
@@ -182,12 +188,12 @@ samp {
 }
 /* 4.9: on narrow screens a table scrolls in its own box, with the cut
    content at the right edge, instead of squeezing its columns into a few
-   characters per line. Cells keep at least 9rem (chosen here: 8 Japanese
+   characters per line. Cells keep at least 10rem (chosen here): beside the
+   16 px paddings on both sides that leaves 128 px, room for 8 Japanese
    characters at 15 px, so that a short label such as 静的なモジュール stays
-   on one line, and about 18 Latin characters); identifiers stay on one
-   line */
+   on one line; identifiers stay on one line */
 .sl-markdown-content :is(th, td):not(:where(.not-content *)) {
-  min-width: 9rem;
+  min-width: 10rem;
 }
 .sl-markdown-content td > code:only-child {
   white-space: nowrap;
