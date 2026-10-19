@@ -1064,7 +1064,7 @@ The name comes from [ngx_http_headers_in_t](https://www.nginx.com/resources/wiki
 
 ## Instance Methods
 
-### Nginx::Headers_in#[](string) -> string
+### Nginx::Headers_in#\[\](string) -> string
 
 Returns the value of the http request header.
 
@@ -1122,7 +1122,7 @@ The name comes from [ngx_http_headers_out_t](https://www.nginx.com/resources/wik
 
 ## Instance Methods
 
-### Nginx::Headers_out#[](string) -> string
+### Nginx::Headers_out#\[\](string) -> string
 
 Returns the value of the http response header.
 
