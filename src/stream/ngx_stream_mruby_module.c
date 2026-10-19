@@ -419,8 +419,18 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
 static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ngx_mrb_code_t *code)
 {
   mrb_int ai = mrb_gc_arena_save(mrb);
+  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
+  ngx_stream_session_t *prev_s = NULL;
 
+  /* init_worker and exit_worker code runs outside of any session */
+  if (ictx != NULL) {
+    prev_s = ictx->s;
+    ictx->s = NULL;
+  }
   mrb_toplevel_run(mrb, code->proc);
+  if (ictx != NULL) {
+    ictx->s = prev_s;
+  }
   if (mrb->exc) {
     ngx_stream_mrb_raise_cycle_error(mrb, mrb_obj_value(mrb->exc), cycle);
     mrb_gc_arena_restore(mrb, ai);
@@ -606,7 +616,7 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
   ngx_mrb_code_t *code;
   ngx_int_t rc;
   mrb_int ai;
-  void *tmp_ud;
+  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
 
   mscf->ctx->cf = cf;
   mscf->ctx->cscf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_core_module);
@@ -628,10 +638,17 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
 
   ai = mrb_gc_arena_save(mrb);
 
-  tmp_ud = mrb->ud;
-  mrb->ud = mscf;
+  /*
+   * mrb->ud stays the module's context (ngx_stream_mruby_create_main_conf),
+   * which every other method reads, and points Nginx::Stream.add_listener
+   * at this server configuration only while the code runs. cf is the parser
+   * state of this directive, so it is cleared when the code returns.
+   */
+  ictx->server_context_conf = mscf;
   mrb_toplevel_run(mrb, code->proc);
-  mrb->ud = tmp_ud;
+  ictx->server_context_conf = NULL;
+  mscf->ctx->cf = NULL;
+  mscf->ctx->cscf = NULL;
 
   if (mrb->exc) {
     ngx_stream_mruby_raise_conf_error(mrb, mrb_obj_value(mrb->exc), cf);
@@ -708,6 +725,7 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   mrb_state *mrb;
   mrb_int ai;
   ngx_stream_mruby_internal_ctx_t *ictx;
+  ngx_stream_session_t *prev_s;
 
   mscf = ngx_stream_get_module_srv_conf(s, ngx_stream_mruby_module);
   if (mscf->code == NGX_CONF_UNSET_PTR) {
@@ -718,6 +736,12 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   ai = mrb_gc_arena_save(mrb);
   ictx = mrb->ud;
 
+  /*
+   * Session-scoped Ruby methods find their session through ictx->s. Set it
+   * only while the code runs and restore the previous value afterwards, so
+   * that it never points to a finished session.
+   */
+  prev_s = ictx->s;
   ictx->s = s;
   ictx->stream_status = NGX_DECLINED;
 
@@ -729,6 +753,7 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
                   __func__, __LINE__);
 
     mrb_gc_arena_restore(mrb, ai);
+    ictx->s = prev_s;
     return NGX_DONE;
   } else {
     ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: already finish this fiber, can not resume",
@@ -739,11 +764,13 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
     ngx_stream_mruby_raise_error(mrb, mrb_obj_value(mrb->exc), s);
     ngx_stream_mrb_state_clean(mrb);
     mrb_gc_arena_restore(mrb, ai);
+    ictx->s = prev_s;
     return NGX_ABORT;
   }
 
   ngx_stream_mrb_state_clean(mrb);
   mrb_gc_arena_restore(mrb, ai);
+  ictx->s = prev_s;
 
   /* default NGX_DECLINED */
   return ictx->stream_status;

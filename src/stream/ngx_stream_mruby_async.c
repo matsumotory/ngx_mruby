@@ -78,12 +78,15 @@ static ngx_int_t ngx_stream_mrb_post_fiber(ngx_stream_mrb_reentrant_t *re, ngx_s
   ai = mrb_gc_arena_save(re->mrb);
 
   ngx_stream_mruby_internal_ctx_t *ictx = re->mrb->ud;
+  // re->s is the current session only until this function returns
+  ngx_stream_session_t *prev_s = ictx->s;
   ictx->s = re->s;
   ictx->stream_status = re->stream_status;
 
   if (re->fiber != NULL) {
     if (mrb_test(ngx_stream_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result))) {
       mrb_gc_arena_restore(re->mrb, ai);
+      ictx->s = prev_s;
       return NGX_DONE;
     } else {
       mrb_gc_unregister(re->mrb, *re->fiber);
@@ -92,16 +95,19 @@ static ngx_int_t ngx_stream_mrb_post_fiber(ngx_stream_mrb_reentrant_t *re, ngx_s
 
     if (re->mrb->exc) {
       ngx_stream_mruby_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->s);
+      ictx->s = prev_s;
       return NGX_ABORT;
     }
 
   } else {
     ngx_log_error(NGX_LOG_NOTICE, re->s->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing",
                   MODULE_NAME, __func__, __LINE__);
+    ictx->s = prev_s;
     return NGX_ABORT;
   }
 
   mrb_gc_arena_restore(re->mrb, ai);
+  ictx->s = prev_s;
 
   if (ictx->stream_status == NGX_DECLINED) {
     re->s->phase_handler++;
@@ -145,6 +151,7 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ngx_stream_mrb_reentrant_t *re;
   ngx_stream_mruby_ctx_t *ctx;
   ngx_stream_mruby_internal_ctx_t *ictx;
+  ngx_stream_session_t *s;
 
   mrb_get_args(mrb, "i", &timer);
 
@@ -152,15 +159,16 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_ARGUMENT_ERROR, "value of the timer must be a positive number");
   }
 
+  s = ngx_stream_mrb_get_session_or_raise(mrb);
   ictx = mrb->ud;
-  p = ngx_palloc(ictx->s->connection->pool, sizeof(ngx_event_t) + sizeof(ngx_stream_mrb_reentrant_t));
+  p = ngx_palloc(s->connection->pool, sizeof(ngx_event_t) + sizeof(ngx_stream_mrb_reentrant_t));
   re = (ngx_stream_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
   re->mrb = mrb;
 
-  re->s = ictx->s;
+  re->s = s;
   re->stream_status = ictx->stream_status;
 
-  ctx = ngx_stream_mrb_get_module_ctx(mrb, ictx->s);
+  ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
   re->fiber = ctx->fiber_proc;
 
   // keeps the object from GC when can resume the fiber
