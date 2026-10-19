@@ -1,0 +1,104 @@
+name: nginx-tests
+
+# nginx's own test suite (https://github.com/nginx/nginx-tests) against nginx
+# built with ngx_mruby, as test.sh builds it, and against nginx of the same
+# version and configure options without ngx_mruby ("nginx-tests" in
+# docs/test/README.md). The job records the results in its summary and in
+# the artifact nginx-tests; it fails only when a build, the fetch of the
+# suite or prove itself fails, not on the result of a test file. The
+# required check ci-ok (test.yml) does not need it: Pillar E of
+# docs/proposals/v3-plan.md records it first and makes it required once its
+# results are stable.
+#
+# Pull requests to next run it when they change an input of the nginx
+# binary (the inputs that the perf job of test.yml lists), test.sh, the
+# runner in test/nginx-tests/ or this file. Every push to next runs it, so
+# that each merge has a record: pushes get a concurrency group per commit,
+# so a later push neither cancels nor replaces the run of an earlier one.
+on:
+  pull_request:
+    branches:
+      - next
+    paths:
+      - 'src/**'
+      - 'mrbgems/**'
+      - 'mruby/**'
+      - 'dependence/**'
+      - 'build_config.rb'
+      - 'build_config.rb.lock'
+      - 'configure'
+      - 'config.in'
+      - 'Makefile.in'
+      - 'build.sh'
+      - 'nginx_version'
+      - 'test.sh'
+      - 'test/nginx-tests/**'
+      - '.github/workflows/nginx-tests.yml'
+  push:
+    branches:
+      - next
+  workflow_dispatch:
+
+# A new push to a pull request cancels the run for its previous commit.
+# A push to next has a group of its own commit: GitHub keeps only the newest
+# waiting run of a group, and a group per branch would drop the record of
+# a merge that was followed by another before its run started.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  nginx-tests:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The build packages of the soak job, and the perl modules and the
+      # daemon that the test files of nginx-tests look for: a test file
+      # whose module or daemon is missing is skipped, not failed.
+      - name: install
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get -qq install rake bison git gperf zlib1g-dev libpcre3-dev libssl-dev ruby \
+            libio-socket-ssl-perl libnet-ssleay-perl libfcgi-perl libscgi-perl \
+            libcache-memcached-perl libcache-memcached-fast-perl libprotocol-websocket-perl memcached
+          perl -v | sed -n 2p
+          prove --version
+      # results.pl and compare.pl on the output of prove for the small test
+      # files of test/nginx-tests/self-test/, so that a change of them that
+      # misreads a result fails here.
+      - name: Check the reading of the results
+        run: sh test/nginx-tests/self-test.sh
+      - name: nginx-tests
+        run: sh test/nginx-tests/run.sh
+      - name: Write the job summary
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -s build_nginxtests/summary.md ]; then
+            cat build_nginxtests/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error title=nginx-tests::build_nginxtests/summary.md is missing: the run stopped before the results were compared (see the step above)"
+            exit 1
+          fi
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nginx-tests
+          path: |
+            build_nginxtests/summary.md
+            build_nginxtests/*.txt
+            build_nginxtests/mruby
+            build_nginxtests/plain/*.log
+            build_nginxtests/plain/*.txt
+            build_nginxtests/plain/*.tsv
+          if-no-files-found: ignore
