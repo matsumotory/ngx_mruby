@@ -255,6 +255,9 @@ function inspect(cfg) {
   if (lang === 'ja' && cfg.width === 390) {
     for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li, figcaption, td, th), .sl-markdown-content h2')) {
       if (!visible(el) || el.closest('.expressive-code, .diagram-grid') || el.querySelector('p, ul, ol')) continue;
+      // A block of Latin text only (such as "server, location" in a table)
+      // wraps between words, as English does (4.9).
+      if (!/[\u3040-\u30ff\u3400-\u9fff]/.test(el.textContent)) continue;
       const ls = lines(el);
       if (ls.length < 2) continue;
       const box = el.getBoundingClientRect();
@@ -294,6 +297,8 @@ async function main() {
   const server = await serve(opt.dist);
   const failures = [];
   let loads = 0;
+  let menus = 0;
+  let searches = 0;
   const transitions = ['color', 'background-color', 'border-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'outline-color', 'text-decoration-color', 'opacity', 'transform'];
   for (const engineName of opt.engines) {
     const engine = { chromium, webkit }[engineName];
@@ -352,11 +357,12 @@ async function main() {
                 }
                 await tab.locator('dialog[open] input').fill('filter');
                 await tab.waitForTimeout(600);
+                searches++;
                 for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open: ${f}`);
                 for (const f of await tab.evaluate(inspect, { ...cfg, width: 0 })) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open: ${f}`);
                 await tab.keyboard.press('Escape');
               }
-              const menu = tab.locator('starlight-menu-button button');
+              const menu = tab.locator('button.sl-menu-button');
               if (await menu.isVisible()) {
                 try {
                   await menu.click({ timeout: 5000 });
@@ -364,6 +370,8 @@ async function main() {
                   failures.push(`${tag}: the menu button cannot be clicked`);
                 }
                 await tab.waitForTimeout(100);
+                if (!(await tab.locator('#starlight__sidebar:popover-open').count())) failures.push(`${tag}: the menu did not open`);
+                menus++;
                 for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} menu open: ${f}`);
                 for (const f of await tab.evaluate(inspect, { ...cfg, width: 0 })) if (!/scrolls sideways/.test(f)) failures.push(`${tag} menu open: ${f}`);
               }
@@ -399,7 +407,7 @@ async function main() {
     console.log(`check-styles: ${failures.length} failure(s), ${counted.size} distinct; ${loads} page loads of ${PAGES.length} pages in ${opt.engines.join(' and ')}`);
     process.exit(1);
   }
-  console.log(`check-styles: ok; ${loads} page loads of ${PAGES.length} pages in ${opt.engines.join(' and ')}, light and dark, ${SIZES.map((s) => `${s.width}x${s.height}`).join(' and ')}`);
+  console.log(`check-styles: ok; ${loads} page loads of ${PAGES.length} pages in ${opt.engines.join(' and ')}, light and dark, ${SIZES.map((s) => `${s.width}x${s.height}`).join(' and ')}; ${searches} with the search dialog open, ${menus} with the menu open`);
 }
 
 main().catch((e) => {
