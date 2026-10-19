@@ -19,6 +19,7 @@
 - [Class and Method](https://github.com/matsumotory/ngx_mruby/tree/master/docs/class_and_method)
 - [Use Case](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case)
 - [Release notes (behaviour changes to read before upgrading)](https://github.com/matsumotory/ngx_mruby/tree/master/docs/releases)
+- [Trust boundary](https://github.com/matsumotory/ngx_mruby/blob/master/docs/README.md#trust-boundary): the configuration and its Ruby code are trusted, what a client sends is not, and what each side is responsible for
 - [Examples](https://github.com/hsbt/nginx-tech-talk)
 
 ## Branch strategy
