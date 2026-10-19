@@ -342,7 +342,10 @@ tagged files and the release body have them:
   points to the details.
 - When the owner publishes the advisory, a pull request adds the advisory id
   (`GHSA-xxxx-xxxx-xxxx`) to the entries in both files, and the owner adds it
-  to both texts of the release body.
+  to both texts of the release body. That pull request may also list the
+  fixes that the advisory covers apart from the other fixes in "Fixes", and
+  may give the cause of the defect in "Why it changed", within what the
+  published advisory and the public fix in `src/` disclose.
 
 A release that ships a security fix is prepared in this order, so that the fix
 is public for as short a time as possible before the release:

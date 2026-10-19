@@ -17,12 +17,18 @@ REQUEST_BODY_LATER_HANDLERS = [
 
 # Sends the body in two halves (mode "parts") or with the headers ("whole");
 # returns the status of the connection, the status line and the body of the
-# response.
+# response, and then its header fields (names in lower case).
 def request_body_later_parts(host, path, port = 18144, mode = 'parts')
   out = `ruby test/t/cases/_request_body_client.rb #{mode} #{port} #{host} #{path}`
   status, hex = out.split(":", 2)
   head, body = [hex.to_s].pack("H*").split("\r\n\r\n", 2)
-  [status, head.to_s.split("\r\n")[0].to_s, body.to_s]
+  lines = head.to_s.split("\r\n")
+  fields = {}
+  lines[1..-1].to_a.each do |l|
+    name, value = l.split(':', 2)
+    fields[name.downcase] = value.to_s.strip
+  end
+  [status, lines[0].to_s, body.to_s, fields]
 end
 
 # Opens three connections that send part of the body and close them; returns
@@ -179,17 +185,31 @@ end
 
 # Port 18152: a rewrite handler waits for the rest of the body, and the read
 # ends without it. The log handler, header filter or body filter of the
-# location then runs without the body, as these kinds do for a body that is
-# not complete, and logs that at the info level; the code of the rewrite
-# handler does not run. After client_body_timeout nginx closes the connection
-# without a response; for a malformed chunked body the client gets nginx's
-# 400 page once, and the connection is closed. No "[alert]" line may follow
-# for these requests, and afterwards no socket of port 18152 may stay in
-# CLOSE_WAIT.
+# location then runs without the rest of the body, as these kinds do for a
+# body that is not complete, and ngx_mruby logs that at the info level; the
+# code of the rewrite handler does not run. Nginx::Request#body returns the
+# part of the body that nginx had read before it ended the read: the log
+# handler and the body filter log it, and the header filter writes it into
+# the header X-Request-Body, all with inspect. After client_body_timeout
+# nginx closes the connection without a response; for a malformed chunked
+# body the client gets nginx's 400 page once, and the connection is closed.
+# No "[alert]" line may follow for these requests, and afterwards no socket
+# of port 18152 may stay in CLOSE_WAIT.
 REQUEST_BODY_PENDING_RAN = 'request-body-pending-code-ran'
+REQUEST_BODY_PENDING_LOGGED = 'request-body-pending-logged'
+REQUEST_BODY_PENDING_FILTERED = 'request-body-pending-filtered'
 
 def request_body_pending_not_complete(kind)
   "the request body is not complete and #{kind} cannot wait for it"
+end
+
+# What a handler of port 18152 logged with inspect as the body after marker
+# (the log handler REQUEST_BODY_PENDING_LOGGED, the body filter
+# REQUEST_BODY_PENDING_FILTERED), for each of its notice lines in lines.
+# nginx adds the client and request data after the message, after " while
+# logging request" in the log phase and after ", client: " in a filter.
+def request_body_pending_logged(lines, marker)
+  lines.map { |l| l.split("#{marker} ", 2)[1] }.compact.map { |v| v.split(' while ', 2)[0].split(', client: ', 2)[0] }
 end
 
 # How many times text occurs in str.
@@ -215,17 +235,26 @@ t.assert('request body later', 'a log handler runs without the body that a rewri
   t.assert_equal 0, lines.select { |l| l.include?(REQUEST_BODY_PENDING_RAN) }.size
   t.assert_equal 1, lines.select { |l| l.include?(request_body_pending_not_complete('a log handler')) }.size
   t.assert_equal [], lines.select { |l| l.include?('[alert]') }
+  # The 10 bytes that the client sent before client_body_timeout expired.
+  t.assert_equal ['"0123456789"'], request_body_pending_logged(lines, REQUEST_BODY_PENDING_LOGGED)
 end
 
 [['/header_filter', 'a header filter'], ['/body_filter', 'a body filter']].each do |path, kind|
   t.assert('request body later', "#{kind} runs without the body that a rewrite handler waits for when nginx rejects a malformed chunked body") do
     offset = File.size(request_body_set_log_path)
-    status, line, body = request_body_later_parts('localhost', path, 18152, 'bad_chunk')
+    status, line, body, fields = request_body_later_parts('localhost', path, 18152, 'bad_chunk')
     t.assert_equal 'EOF', status
     t.assert_equal 'HTTP/1.1 400 Bad Request', line
     t.assert_equal 1, request_body_count(body, '<title>400 Bad Request</title>')
     t.assert_not_include body, 'body='
+    # The data of the valid first chunk, which the client sent before the
+    # malformed line.
+    t.assert_equal '"abcde"', fields['x-request-body'] if path == '/header_filter'
     lines = request_body_set_log_lines(offset)
+    # The body filter of /body_filter logs the same data of the first chunk.
+    # (The conditional assertions stay off the last line of the block: a
+    # block whose value is nil fails in SimpleTest.)
+    t.assert_equal ['"abcde"'], request_body_pending_logged(lines, REQUEST_BODY_PENDING_FILTERED) if path == '/body_filter'
     t.assert_equal 0, lines.select { |l| l.include?(REQUEST_BODY_PENDING_RAN) }.size
     t.assert_equal 1, lines.select { |l| l.include?(request_body_pending_not_complete(kind)) }.size
     t.assert_equal [], lines.select { |l| l.include?('[alert]') }
