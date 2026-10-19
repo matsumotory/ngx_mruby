@@ -464,11 +464,11 @@ Before 2.7.1, a server rewrite, rewrite or content handler whose body was not co
 They see the body only when it is complete before they run: when an earlier handler or module has read it, or, for HTTP/1.x with a `Content-Length` header, when the whole body is in the buffer that nginx read the request headers into (`client_header_buffer_size`, or a buffer of `large_client_header_buffers` when the headers needed one).
 A chunked body, an HTTP/2 or HTTP/3 body, and a body of which only a part is in that buffer count as not complete, even when the rest has already arrived.
 Otherwise they run without the body (`Nginx::Request#body` returns `nil`), and ngx_mruby logs that at the `info` level.
-A body that a post-read, server rewrite, rewrite, access or content handler is still waiting for does not count as complete either: when nginx ends that read without the rest of the body (the client closes the connection, `client_body_timeout` expires, or nginx answers 400 or 413 to the body), a log handler or a filter that runs afterwards runs without the body, and the waiting handler does not run.
+A body that a post-read, server rewrite, rewrite, access or content handler is still waiting for does not count as complete either: when nginx ends that read without the rest of the body (the client closes the connection, `client_body_timeout` expires, or nginx answers 400 or 413 to the body), a log handler or a filter that runs afterwards runs at once, without waiting for the rest, and the waiting handler does not run.
 `Nginx::Request#body` then returns the part of the body that nginx had read before it ended the read, or `nil` when that part did not fit in `client_body_buffer_size` and nginx had written it to a temporary file.
 A later handler that can wait, or a module such as `proxy_pass`, still reads the whole body.
 To give these handlers the whole body, read it first in a handler that can wait and runs before them, such as a server-level `mruby_post_read_handler_code`.
-Before 2.7.1, such a handler did not run its code when the body was not complete, and the body read that it had started ran the phases of the request again when it completed (since 2.7.1 it runs without the body).
+Before 2.7.1, such a handler did not run its code when the body was not complete, and the body read that it had started ran the phases of the request again when it completed (since 2.7.1 it runs at once, without waiting for the rest of the body, as described above).
 
 ## mruby_upstream_keepalive
 
