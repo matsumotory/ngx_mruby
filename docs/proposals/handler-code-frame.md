@@ -1,6 +1,6 @@
 # Proposal: the frame in which handler code runs (#502)
 
-Status: decided, 2026-10-15. The owner chose option (a) of section 4: keep
+Status: done (decided on 2026-10-15, every step is done). The owner chose option (a) of section 4: keep
 the top-level frame, with the regression test and the docs. The steps of
 section 5 for (a) are done: the test and the release notes entry in #584
 on `next`, the note in the docs of `master` in #586, and #502 is closed

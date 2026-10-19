@@ -1,8 +1,7 @@
 # Proposal: the ngx.mruby.org site and the documentation it is built from
 
-Status: decided on 2026-10-15 (section 7). Next: the implementation of
-section 6, starting with the tokens of section 4 and the specimens of step
-2, after the Starlight skeleton of step 1.
+Status: decided on 2026-10-15 (section 7). Step 1 of section 6 is merged
+(#591). Next: step 2, the tokens of section 4 and the specimens of 4.12.
 
 Evidence: the site map and writing plan of 3.2 and 3.3, and 3.5, section
 4, section 6 and section 7 rest on `next` at 73fc9098f and on the source of
