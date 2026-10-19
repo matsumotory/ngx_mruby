@@ -69,13 +69,13 @@ You can use the following classes with default build configuration.
 - [Mutex class](https://github.com/matsumotory/mruby-mutex)
 - [OnigRegexp Class and Regexp Engine](https://github.com/mattn/mruby-onig-regexp)
 - [Process Class](https://github.com/iij/mruby-process)
+- [Redis Class](https://github.com/matsumotory/mruby-redis)
 - [SecureRandom Class](https://github.com/monochromegane/mruby-secure-random)
 - [Userdata Class](https://github.com/matsumotory/mruby-userdata)
 - [Uname Class](https://github.com/matsumotory/mruby-uname)
 - [Vedis Class](https://github.com/matsumotory/mruby-vedis)
 
-The `Redis` class of [mruby-redis](https://github.com/matsumotory/mruby-redis) is not in the default build since 2.7.1.
-To use it, uncomment `conf.gem github: 'matsumotory/mruby-redis'` in `build_config.rb` before you build (see [the 2.7.1 release notes](../releases/v2.7.1.md#1-redis-is-no-longer-in-the-default-build)).
+The `Redis` class was left out of the default build in 2.7.1 and is in it again since 2.7.2 (see entry 3 of [the 2.7.2 release notes](../releases/v2.7.2.md)).
 
 You can also use classes embedded by
 [default.gembox](https://github.com/matsumotory/ngx_mruby/blob/master/mruby/mrbgems/default.gembox) and
