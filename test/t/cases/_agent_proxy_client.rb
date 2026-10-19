@@ -8,7 +8,7 @@
 # nginx on 18132, stops the mock, and prints one "key=value" line per
 # observation. A header that the response does not have prints as "none".
 #
-# Usage: ruby test/t/cases/_agent_proxy_client.rb auth|route|limit|log
+# Usage: ruby test/t/cases/_agent_proxy_client.rb auth|route|limit|log|stream [messages|responses]
 #
 #   auth   a wrong key, no key, and a known key in x-api-key
 #   route  models mock-model-a and mock-model-b, and an unknown model
@@ -16,8 +16,16 @@
 #          and key-2 while it is open (and the limit_conn lines that the
 #          rejection adds to NGINX_INSTALL_DIR/logs/error.log), and of key-1
 #          after the client closed the stream
-#   log    a 200 and an upstream 529, and the lines of the log hook in
+#   log    a 200 and upstream errors (529 for messages, 503 and 429 for
+#          responses), and the lines of the log hook in
 #          NGINX_INSTALL_DIR/logs/error.log
+#   stream complete streams of 50 deltas, compared byte for byte with
+#          MockLLM.stream_body (for responses, one per terminal event:
+#          completed, incomplete, failed)
+#
+# The second argument is the API: messages (the default) sends Messages
+# requests to /v1/messages, responses sends Responses requests to
+# /v1/responses.
 #
 # Every exchange has a limit of LIMIT seconds, long enough for nginx under
 # valgrind. When a step fails, the script prints error=<message> and exits
@@ -40,9 +48,16 @@ def out(key, value)
   $stdout.flush
 end
 
+API = (ARGV[1] || 'messages').to_sym
+PATH = "/v1/#{API}"
+
+def request_body(model, stream: false)
+  MockLLM.request_body(300, model: model, stream: stream, api: API)
+end
+
 def post(headers, body)
   client = Client.new(PORT, io_timeout: LIMIT)
-  client.request('POST', '/v1/messages', { 'Content-Type' => 'application/json' }.merge(headers), body, close: true)
+  client.request('POST', PATH, { 'Content-Type' => 'application/json' }.merge(headers), body, close: true)
 ensure
   client&.close
 end
@@ -58,35 +73,35 @@ def wait_for(what)
 end
 
 def run_auth(mock)
-  body = MockLLM.request_body(300, model: 'mock-model-a')
+  body = request_body('mock-model-a')
   status, headers, response, = post({ 'Authorization' => 'Bearer wrong-key' }, body)
   out('wrong_key', "#{status} #{headers['content-type']} #{response}")
   status, headers, response, = post({}, body)
   out('no_key', "#{status} #{headers['content-type']} #{response}")
   out('mock_requests_after_rejects', mock.stats[:requests])
   status, headers, response, = post({ 'x-api-key' => 'agent-test-key-2' }, body)
-  out('api_key', "#{status} #{headers['x-mock-port'] || 'none'} #{response == MockLLM.message_body(body)}")
+  out('api_key', "#{status} #{headers['x-mock-port'] || 'none'} #{response == MockLLM.answer_body(body, api: API)}")
   out('mock_requests', mock.stats[:requests])
 end
 
 def run_route(_mock)
   [['model_a', 'mock-model-a', { 'Authorization' => 'Bearer agent-test-key-1' }],
    ['model_b', 'mock-model-b', { 'x-api-key' => 'agent-test-key-2' }]].each do |key, model, credential|
-    body = MockLLM.request_body(300, model: model)
+    body = request_body(model)
     status, headers, response, = post(credential, body)
     out(key, "#{status} #{headers['x-mock-port'] || 'none'} #{headers['x-mock-authorization'] || 'none'} " \
-             "#{headers['x-mock-x-api-key'] || 'none'} #{response == MockLLM.message_body(body)}")
+             "#{headers['x-mock-x-api-key'] || 'none'} #{response == MockLLM.answer_body(body, api: API)}")
   end
-  status, = post({ 'Authorization' => 'Bearer agent-test-key-1' }, MockLLM.request_body(300, model: 'other-model'))
+  status, = post({ 'Authorization' => 'Bearer agent-test-key-1' }, request_body('other-model'))
   out('unknown_model', status)
 end
 
 def run_limit(mock)
-  body = MockLLM.request_body(300, model: 'mock-model-a')
+  body = request_body('mock-model-a')
   held = Client.new(PORT, io_timeout: LIMIT)
   begin
-    stream_body = MockLLM.request_body(300, model: 'mock-model-a', stream: true)
-    status, headers, events, ending = held.stream('POST', '/v1/messages',
+    stream_body = request_body('mock-model-a', stream: true)
+    status, headers, events, ending = held.stream('POST', PATH,
                                                   { 'Content-Type' => 'application/json',
                                                     'Authorization' => 'Bearer agent-test-key-1',
                                                     'x-mock-hold-after' => '3' }, stream_body) { |b| b.scan("\n\n").size >= 3 }
@@ -130,22 +145,51 @@ def log_line(test_id)
   line[/agent_proxy_log (.*?)(, client:|\z)/, 1].strip
 end
 
+# The upstream errors of run_log, and the key of each in the output (529:
+# overloaded, others: status_<code>).
+LOG_ERRORS = { messages: [529], responses: [503, 429] }.freeze
+
+def error_key(code)
+  code == 529 ? 'overloaded' : "status_#{code}"
+end
+
 def run_log(_mock)
-  body = MockLLM.request_body(300, model: 'mock-model-a')
-  ok_id = "ok-#{Process.pid}"
-  overloaded_id = "overloaded-#{Process.pid}"
+  body = request_body('mock-model-a')
+  ok_id = "ok-#{API}-#{Process.pid}"
   status, = post({ 'Authorization' => 'Bearer agent-test-key-1', 'x-test-id' => ok_id }, body)
   out('ok', status)
-  status, headers, response, = post({ 'Authorization' => 'Bearer agent-test-key-1', 'x-test-id' => overloaded_id,
-                                      'x-mock-status' => '529' }, body)
-  out('overloaded', "#{status} #{headers['content-type']} #{response}")
+  ids = LOG_ERRORS.fetch(API).map do |code|
+    id = "#{error_key(code)}-#{API}-#{Process.pid}"
+    status, headers, response, = post({ 'Authorization' => 'Bearer agent-test-key-1', 'x-test-id' => id,
+                                        'x-mock-status' => code.to_s }, body)
+    out(error_key(code), "#{status} #{headers['content-type']} #{response}")
+    [code, id]
+  end
   out('ok_log', log_line(ok_id))
-  out('overloaded_log', log_line(overloaded_id))
+  ids.each { |code, id| out("#{error_key(code)}_log", log_line(id)) }
+end
+
+# One stream per terminal event (for messages, the one stream of the API),
+# printed as "<status> <Content-Type> <whether the body is the mock's
+# stream byte for byte> <events>".
+def run_stream(_mock)
+  body = request_body('mock-model-a', stream: true)
+  terminals = API == :responses ? MockLLM::TERMINALS : [nil]
+  terminals.each do |terminal|
+    headers = { 'Authorization' => 'Bearer agent-test-key-1' }
+    headers['x-mock-terminal'] = terminal if terminal
+    status, response_headers, response, = post(headers, body)
+    expected = MockLLM.stream_body(body, api: API, terminal: terminal || MockLLM::DEFAULTS[:terminal])
+    out(terminal ? "stream_#{terminal}" : 'stream',
+        "#{status} #{response_headers['content-type']} #{response == expected} #{response.scan("\n\n").size}")
+  end
 end
 
 mode = ARGV[0]
-runner = { 'auth' => :run_auth, 'route' => :run_route, 'limit' => :run_limit, 'log' => :run_log }[mode]
-abort "usage: ruby #{$PROGRAM_NAME} auth|route|limit|log" unless runner
+runner = { 'auth' => :run_auth, 'route' => :run_route, 'limit' => :run_limit, 'log' => :run_log,
+           'stream' => :run_stream }[mode]
+usage = "usage: ruby #{$PROGRAM_NAME} auth|route|limit|log|stream [messages|responses]"
+abort usage unless runner && MockLLM::APIS.value?(API)
 
 Thread.report_on_exception = false
 mock = MockLLM::Server.new(MOCK_PORTS).start
