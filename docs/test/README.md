@@ -933,6 +933,27 @@ The differences between scenarios of the same shape, from that run:
   `(proxy_stream_plain_1000 - proxy_stream_plain_50) / 950`: 398 Ir, with
   the `non_buffered_calls` of that run (4.97 and 38.43 per request).
 
+The Responses streams, 2026-10-19: one run of `test/perf/compare.sh` with
+the release builds of `next` at `a466688` (base) and of the head that
+added the scenarios (the same binary), nginx 1.31.6, Ubuntu 22.04 (gcc 11,
+valgrind 3.18.1) in a container on aarch64, `PERF_N=20000`. The base
+build measured `hello` at 11618 Ir per request (11260 without GC), and:
+
+| Scenario | Ir/req (w/o GC) | H | `non_buffered_calls`/req |
+|---|---|---|---|
+| `proxy_stream_plain_50` | 53674 (53674) | 4.62 | 4.27 |
+| `responses_stream_plain_50` | 55710 (55710) | 4.80 | 5.65 |
+| `proxy_stream_plain_1000` | 433190 (433190) | 37.3 | 37.20 |
+| `responses_stream_plain_1000` | 478098 (478098) | 41.2 | 59.46 |
+
+One more relayed Responses event,
+`(responses_stream_plain_1000 - responses_stream_plain_50) / 950`, cost
+445 Ir against 399 Ir for a Messages event in the same run. A delta event
+of the Responses stream is 186 to 189 bytes (its `sequence_number` grows),
+one of the Messages stream 121 bytes; the body of the 1000-delta stream is
+215046 bytes against 121619, and it took 59.46 relay calls per request
+against 37.20.
+
 `proxy_stream_plain_1000` and `route_json_64k` took 83 and 129 seconds per
 build in that run, while all the scenarios of the default set together take
 about 140 seconds, so they are not in `DEFAULT_SCENARIOS`, nor is
