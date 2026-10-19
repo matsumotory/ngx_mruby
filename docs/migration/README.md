@@ -81,7 +81,7 @@ script files of a configuration (replace `/path/to/scripts` with the
 directories of the files that the `*_handler` directives name):
 
 ```sh
-grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|respond_to\?|method_defined\?|instance_methods|\.methods|iv_var|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[|flatten_merge|RuntimeError' /path/to/scripts
+grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|respond_to\?|method_defined\?|method_missing|instance_methods|\.methods|iv_var|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[|flatten_merge|RuntimeError' /path/to/scripts
 ```
 
 Search the inline code of the `*_code` directives in the `nginx.conf`
@@ -276,21 +276,31 @@ not enough, and show the change.
   for example with a `def` at the top level of handler code, whose name is
   also the name of a variable that a script reads with `v.NAME`. Once the
   accessor exists in a worker, `v.NAME` reads the variable instead of
-  calling such a method. Rename the method.
+  calling such a method. Rename the method. The search also finds
+  `method_missing`: a script that wraps `Nginx::Var#method_missing`, for
+  example with a module prepended to `Nginx::Var` whose `method_missing`
+  calls `super`, sees only the first access of a name that gets an
+  accessor. Move what the wrapper does to the code that reads the variable.
 - [`Nginx::Connection`, `Nginx::Server` and `Nginx::Request` read their variables without calling `Nginx::Var`](../releases/v3.0.0.md#nginxconnection-nginxserver-and-nginxrequest-read-their-variables-without-calling-nginxvar-610):
   look for methods that a script defines on `Nginx::Var` (`class Nginx::Var`,
   `Nginx::Var.class_eval`, `define_method`) and for `iv_var`, which the search
   above finds. A method of `Nginx::Var` no longer changes what
   `Nginx::Connection#remote_ip` and the other methods of the entry return;
-  define the method on their class instead:
+  define the method on their class instead, in `mruby_init_code`, which
+  runs once when nginx reads the configuration. Handler code runs on every
+  request in the same `mrb_state`, so there the second `alias_method` would
+  make `nginx_remote_ip` a copy of the new `remote_ip`, which then calls
+  itself:
 
-  ```ruby
-  class Nginx::Connection
-    alias_method :nginx_remote_ip, :remote_ip
-    def remote_ip
-      Nginx::Request.new.headers_in["X-Real-IP"] || nginx_remote_ip   # works on both
-    end
-  end
+  ```nginx
+  mruby_init_code '
+      class Nginx::Connection
+        alias_method :nginx_remote_ip, :remote_ip
+        def remote_ip
+          Nginx::Request.new.headers_in["X-Real-IP"] || nginx_remote_ip   # works on both
+        end
+      end
+  ';
   ```
 
 - [`Dir` comes from mruby's core gem, and a closed `Dir` raises `IOError` instead of `RuntimeError`](../releases/v3.0.0.md#dir-comes-from-mrubys-core-gem-and-a-closed-dir-raises-ioerror-instead-of-runtimeerror-559):

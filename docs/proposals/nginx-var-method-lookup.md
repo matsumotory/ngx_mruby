@@ -539,7 +539,12 @@ with the rule (a2) and (d), with the steps below.
 3. When `var` or `auth` stays at WARN or above against 3.3.0: the owner
    decides on that pull request, with the attribution of section 3.
 4. The pull request that updates mruby to 4.1.0 measures `var` and `auth`
-   again, as every change of `mruby/` is measured.
+   again, as every change of `mruby/` is measured. #610 could not measure
+   the row of 4.1.0-rc2: with the head's `build_config.rb` the tree of the
+   tag stops on the core gems `hal-posix-dir`, `hal-posix-io` and
+   `hal-posix-socket`, which it does not have, and with
+   `NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1` it stops in mruby-compiler, whose
+   `lib/prism` is a git submodule that a tree from `git archive` lacks.
 
 Relation with the plan: the Pillar B row of `docs/proposals/v3-plan.md`
 on `Nginx::Var` asks for one setter shared by `set` and assignment through
