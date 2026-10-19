@@ -6,6 +6,7 @@
 
 #include "ngx_stream_mruby_connection.h"
 
+#include "ngx_stream_mruby_core.h"
 #include "ngx_stream_mruby_module.h"
 
 #include <ngx_stream.h>
@@ -39,8 +40,7 @@ static mrb_value ngx_stream_mrb_connection_init(mrb_state *mrb, mrb_value self)
   ngx_stream_mruby_upstream_context *ctx;
   ngx_stream_upstream_main_conf_t *umcf;
   ngx_stream_upstream_srv_conf_t **usp;
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
-  ngx_stream_session_t *s = ictx->s;
+  ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
 
   mrb_get_args(mrb, "o", &upstream);
 
@@ -99,8 +99,7 @@ static mrb_value ngx_stream_mrb_upstream_set_server(mrb_state *mrb, mrb_value se
   ngx_stream_mruby_upstream_context *ctx = DATA_PTR(self);
   ngx_url_t u;
   mrb_value server;
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
-  ngx_stream_session_t *s = ictx->s;
+  ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
 
   mrb_get_args(mrb, "o", &server);
 
@@ -144,16 +143,14 @@ static mrb_value ngx_stream_mrb_connection_status(mrb_state *mrb, mrb_value self
 
 static mrb_value ngx_stream_mrb_remote_ip(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
-  ngx_stream_session_t *s = ictx->s;
+  ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
 
   return mrb_str_new(mrb, (const char *)s->connection->addr_text.data, s->connection->addr_text.len);
 }
 
 static mrb_value ngx_stream_mrb_local_ip_port(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
-  ngx_stream_session_t *s = ictx->s;
+  ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
 
   return mrb_str_new(mrb, (const char *)s->connection->listening->addr_text.data,
                      s->connection->listening->addr_text.len);
@@ -161,8 +158,7 @@ static mrb_value ngx_stream_mrb_local_ip_port(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_stream_mrb_local_ip(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
-  ngx_stream_session_t *s = ictx->s;
+  ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
   u_char ipaddr_txt[NGX_SOCKADDR_STRLEN];
   mrb_int ipaddr_len;
 
@@ -183,24 +179,21 @@ static in_port_t get_in_port(struct sockaddr *sa)
 
 static mrb_value ngx_stream_mrb_local_port(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
-  ngx_stream_session_t *s = ictx->s;
+  ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
 
   return mrb_fixnum_value(ntohs(get_in_port(s->connection->local_sockaddr)));
 }
 
 static mrb_value ngx_stream_mrb_remote_port(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
-  ngx_stream_session_t *s = ictx->s;
+  ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
 
   return mrb_fixnum_value(ntohs(get_in_port(s->connection->sockaddr)));
 }
 
 static mrb_value ngx_stream_mrb_proxy_protocol_addr(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
-  ngx_stream_session_t *s = ictx->s;
+  ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
 
 #if (nginx_version >= 1017006)
   return mrb_str_new(mrb, (const char *)s->connection->proxy_protocol->src_addr.data,

@@ -51,6 +51,8 @@ static void ngx_http_mruby_exit_worker(ngx_cycle_t *cycle);
 */
 static ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
                              ngx_str_t *result, ngx_http_mruby_handler_kind_t kind);
+static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
+                                     ngx_flag_t cached, ngx_str_t *result, ngx_http_mruby_handler_kind_t kind);
 static ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 static ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 
@@ -731,9 +733,14 @@ static void ngx_mrb_code_clean(ngx_http_request_t *r, ngx_mrb_state_t *state, ng
 ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
   int ai = mrb_gc_arena_save(state->mrb);
+  ngx_http_request_t *prev_r;
   ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
 
+  /* init_worker and exit_worker code runs outside of any request */
+  prev_r = ngx_mrb_get_request();
+  ngx_mrb_push_request(NULL);
   mrb_toplevel_run(state->mrb, code->proc);
+  ngx_mrb_push_request(prev_r);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
     ngx_mrb_raise_cycle_error(state->mrb, mrb_obj_value(state->mrb->exc), cycle);
@@ -762,19 +769,125 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
   return NGX_OK;
 }
 
+/*
+ * Request-scoped Ruby methods find their request through a process-wide
+ * pointer. Set it only while the code runs and restore the previous value
+ * afterwards, so that it never points to a finished request. Restoring
+ * (rather than clearing) keeps it valid when a handler runs nested, for
+ * example through an internal redirect from Ruby code.
+ */
+ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
+                      ngx_str_t *result, ngx_http_mruby_handler_kind_t kind)
+{
+  ngx_int_t rc;
+  ngx_http_request_t *prev_r;
+
+  prev_r = ngx_mrb_get_request();
+  ngx_mrb_push_request(r);
+  rc = ngx_mrb_run_request(r, state, code, cached, result, kind);
+  ngx_mrb_push_request(prev_r);
+
+  return rc;
+}
+
+/*
+ * Whether a handler of this kind can wait for the rest of the request body.
+ * nginx's checkers of these phases wait when the handler returns NGX_DONE,
+ * and ngx_http_mruby_read_request_body_cb runs the phases again, so the
+ * handler runs once more with the body (see ngx_mrb_run_request). mruby_set
+ * handlers run inside NDK's rewrite script, log handlers inside
+ * ngx_http_free_request, and filters inside ngx_http_send_header and
+ * ngx_http_output_filter; all of them go on as soon as the handler returns.
+ */
+static ngx_flag_t ngx_mrb_handler_waits_for_request_body(ngx_http_mruby_handler_kind_t kind)
+{
+  switch (kind) {
+  case NGX_HTTP_MRUBY_HANDLER_POST_READ:
+  case NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE:
+  case NGX_HTTP_MRUBY_HANDLER_REWRITE:
+  case NGX_HTTP_MRUBY_HANDLER_ACCESS:
+  case NGX_HTTP_MRUBY_HANDLER_CONTENT:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+// The name of a handler that cannot wait for the request body, for messages.
+static const char *ngx_mrb_request_body_kind_name(ngx_http_mruby_handler_kind_t kind)
+{
+  switch (kind) {
+  case NGX_HTTP_MRUBY_HANDLER_SET:
+    return "an mruby_set handler";
+  case NGX_HTTP_MRUBY_HANDLER_LOG:
+    return "a log handler";
+  case NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER:
+    return "a header filter";
+  case NGX_HTTP_MRUBY_HANDLER_BODY_FILTER:
+    return "a body filter";
+  default:
+    return "this handler";
+  }
+}
+
+/*
+ * Whether ngx_http_read_client_request_body would call its post handler
+ * before it returns, so that no read stays running after the call. These are
+ * its paths that complete at once: a subrequest; a body that was already
+ * read, is being read or was discarded; a request without a body; and an
+ * HTTP/1.x body with Content-Length that is entirely in the buffer that
+ * nginx read the request headers into. A chunked body and every HTTP/2 or
+ * HTTP/3 body count as not complete: nginx reads those through events. A
+ * body that a waiting handler of ngx_mruby is still reading is checked with
+ * request_body_more in ngx_mrb_run_request: nginx would call the post handler
+ * at once for it too, but the body is not complete.
+ */
+static ngx_flag_t ngx_http_mruby_request_body_complete(ngx_http_request_t *r)
+{
+  if (r != r->main || r->request_body != NULL || r->discard_body) {
+    return 1;
+  }
+
+#if defined(nginx_version) && nginx_version >= 1003009
+  if (r->headers_in.chunked) {
+    return 0;
+  }
+#endif
+
+  if (r->headers_in.content_length_n < 0) {
+    return 1;
+  }
+
+#ifdef NGX_HTTP_VERSION_20
+  if (r->http_version >= NGX_HTTP_VERSION_20) {
+    return 0;
+  }
+#endif
+
+  if (r->header_in == NULL) {
+    return 0;
+  }
+
+  return r->headers_in.content_length_n <= (off_t)(r->header_in->last - r->header_in->pos);
+}
+
 void ngx_http_mruby_read_request_body_cb(ngx_http_request_t *r)
 {
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(NULL, r);
 
+  // The reference to the request that ngx_http_read_client_request_body
+  // took is dropped by ngx_mrb_run_request, not here (see there).
   if (ctx != NULL) {
     ctx->read_request_body_done = 1;
 
-#if defined(nginx_version) && nginx_version >= 8011
-    r->main->count--;
-#endif
-
     if (ctx->request_body_more) {
       ctx->request_body_more = 0;
+      // ngx_http_read_client_request_body set the write event handler to
+      // ngx_http_request_empty_handler while it read the body. Restore the
+      // one of the phases before running them again, as nginx's mirror
+      // module does, so that a later phase handler that waits, such as
+      // auth_request for its subrequest, is resumed through it.
+      r->write_event_handler = ngx_http_core_run_phases;
       ngx_http_core_run_phases(r);
     }
   }
@@ -782,11 +895,15 @@ void ngx_http_mruby_read_request_body_cb(ngx_http_request_t *r)
 
 // kind is the kind of handler that calls ngx_mrb_run; it decides whether
 // Nginx::Async may suspend the fiber (see ngx_http_mruby_handler_kind_t).
-ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
-                      ngx_str_t *result, ngx_http_mruby_handler_kind_t kind)
+static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
+                                     ngx_flag_t cached, ngx_str_t *result, ngx_http_mruby_handler_kind_t kind)
 {
   int result_len;
   int ai = 0;
+  ngx_flag_t raised = 0;
+  ngx_mrb_rputs_chain_list_t *rputs_chain;
+  ngx_chain_t **rputs_last;
+  off_t content_length_n;
   mrb_value *mrb_result = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
   *mrb_result = mrb_nil_value();
   ngx_http_mruby_ctx_t *ctx;
@@ -810,10 +927,31 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     ngx_str_null(&ctx->set_var_target);
   }
 
-  ngx_mrb_push_request(r);
-
   /* force reading body */
-  if (mlcf->enable_read_request_body && !ctx->read_request_body_done) {
+  if (mlcf->enable_read_request_body && !ctx->read_request_body_done && !ngx_mrb_handler_waits_for_request_body(kind) &&
+      (ctx->request_body_more || !ngx_http_mruby_request_body_complete(r))) {
+    /*
+     * A handler that cannot wait reads the body only when the read completes
+     * at once. A read that waited would keep its reference to the request
+     * after the handler returned, and its callback would run the phases
+     * again from wherever the request is then. The handler runs without the
+     * body instead; a later handler that can wait, or a module such as
+     * proxy_pass, still reads the whole body.
+     *
+     * request_body_more is set while the read of a waiting handler has not
+     * completed. r->request_body is set then, so nginx would call the
+     * callback at once, and the callback would run the phases again for the
+     * waiting handler from inside this one. That happens when nginx ends the
+     * read without the rest of the body and goes on with the request: a log
+     * handler after the client closed the connection or client_body_timeout
+     * expired, a filter while nginx sends its 400 or 413 page for the body.
+     * Such a body is not complete either.
+     */
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                  "%s INFO %s:%d: mrb_run: the request body is not complete and %s cannot wait for it, so it runs "
+                  "without the body",
+                  MODULE_NAME, __func__, __LINE__, ngx_mrb_request_body_kind_name(kind));
+  } else if (mlcf->enable_read_request_body && !ctx->read_request_body_done) {
     ngx_int_t rc;
 
     r->request_body_in_single_buf = 1;
@@ -836,10 +974,62 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
       ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                     "%s INFO %s:%d: mrb_run: tried to read request body, but got NGX_AGAIN.", MODULE_NAME, __func__,
                     __LINE__);
-      ctx->request_body_more = 1;
       ctx->read_request_body_done = 0;
-      return NGX_AGAIN;
+
+      /*
+       * ngx_http_mruby_read_request_body_cb runs the phases again once the
+       * rest of the body is read. A phase handler tells nginx to wait for
+       * that with NGX_DONE. The rewrite phase checker (server_rewrite and
+       * rewrite handlers) and the content phase checker pass NGX_AGAIN to
+       * ngx_http_finalize_request, which ends the request: it sets the read
+       * handler to ngx_http_block_reading, so the body was not read further
+       * and the handler did not run again. The post_read and access checkers
+       * treat NGX_AGAIN and NGX_DONE alike.
+       *
+       * The reference to the request that ngx_http_read_client_request_body
+       * took is dropped at once, as nginx's mirror module does with
+       * ngx_http_finalize_request(r, NGX_DONE); the read handler that nginx
+       * installed keeps the request until the body is read, the client
+       * closes the connection or client_body_timeout expires. For the
+       * content handler the content phase checker makes that call itself
+       * with the NGX_DONE it gets.
+       */
+      switch (kind) {
+      case NGX_HTTP_MRUBY_HANDLER_POST_READ:
+      case NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE:
+      case NGX_HTTP_MRUBY_HANDLER_REWRITE:
+      case NGX_HTTP_MRUBY_HANDLER_ACCESS:
+        ctx->request_body_more = 1;
+        ngx_http_finalize_request(r, NGX_DONE);
+        return NGX_DONE;
+      case NGX_HTTP_MRUBY_HANDLER_CONTENT:
+        ctx->request_body_more = 1;
+        return NGX_DONE;
+      default:
+        /*
+         * Not reached with nginx's own request body filters: a handler that
+         * cannot wait gets here only when ngx_http_mruby_request_body_complete
+         * said the read completes at once. If a third-party body filter
+         * still makes it wait, the reference is dropped here as well, and
+         * request_body_more stays 0, so the callback does not run the phases
+         * again. A log handler runs when the request count is already 0, so
+         * the count is decremented directly instead of through
+         * ngx_http_finalize_request.
+         */
+#if defined(nginx_version) && nginx_version >= 8011
+        r->main->count--;
+#endif
+        return NGX_AGAIN;
+      }
     }
+
+#if defined(nginx_version) && nginx_version >= 8011
+    // The read completed at once and ngx_http_read_client_request_body has
+    // called the callback already. Drop the reference that it took; a log
+    // handler runs when the count is already 0, so this is not done through
+    // ngx_http_finalize_request either.
+    r->main->count--;
+#endif
   }
 
   ai = mrb_gc_arena_save(state->mrb);
@@ -857,6 +1047,12 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   }
 
   ctx->sub_response_more = 0;
+
+  // The chain of Nginx.rputs and the length of the response before the code
+  // runs, for an exception in a header filter (see below).
+  rputs_chain = ctx->rputs_chain;
+  rputs_last = rputs_chain != NULL ? rputs_chain->last : NULL;
+  content_length_n = r->headers_out.content_length_n;
 
   if (mrb_test(ngx_mrb_start_fiber(r, state->mrb, code->proc, mrb_result, kind))) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
@@ -878,8 +1074,33 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   }
 
   if (state->mrb->exc) {
+    raised = 1;
     ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    // drop the output of Nginx.rputs: with it, ngx_mrb_finalize_rputs would
+    // send that output as a 200 response; without it, the function returns
+    // the 500, as ngx_mrb_post_fiber does after an exception in a resumed
+    // fiber. Nginx.rputs also added the length of that output to
+    // content_length_n: put back the value from before the first string of
+    // the chain, because after an mruby_set handler or a filter the request
+    // goes on and its response must not count the dropped output.
+    // A header filter runs inside ngx_http_send_header. A chain that already
+    // existed when the filter started is an earlier handler's: the handler
+    // that started the response calls ngx_http_send_header from
+    // ngx_mrb_finalize_rputs and sends that chain after the header through
+    // its own pointer. Only the strings that the header filter added are
+    // taken out of it, and the length gets back the value it had when the
+    // filter started, which counts the earlier output.
+    if (ctx->rputs_chain != NULL) {
+      if (kind == NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER && ctx->rputs_chain == rputs_chain) {
+        (*rputs_last)->next = NULL;
+        rputs_chain->last = rputs_last;
+        r->headers_out.content_length_n = content_length_n;
+      } else {
+        r->headers_out.content_length_n = ctx->rputs_chain->content_length_n;
+      }
+      ctx->rputs_chain = NULL;
+    }
     mrb_gc_arena_restore(state->mrb, ai);
   } else if (result != NULL) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: fiber done in request phase", MODULE_NAME,
@@ -915,6 +1136,67 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
     ngx_mrb_code_clean(r, state, code);
   }
   ngx_mrb_state_clean(r, state);
+
+  // Only the mruby_set handlers pass a result. After an exception the
+  // variable gets an empty string, as for a handler that returns nil. NDK has
+  // no case for the 500 that ngx_mrb_finalize_rputs returns, so nginx stored
+  // whatever value was on its script stack in the variable; NGX_DECLINED
+  // would do the same, because ngx_http_script_set_var_code takes the length
+  // and the data of that value and marks the variable as found.
+  if (raised && result != NULL) {
+    result->data = NULL;
+    result->len = 0;
+    return NGX_OK;
+  }
+
+  // A filter runs while nginx sends a response (#206).
+  // - A header filter runs inside ngx_http_send_header, so it returns here
+  //   without ngx_mrb_finalize_rputs, which would call ngx_http_send_header
+  //   and so run the header filter again, without end. An rputs chain stays
+  //   in the module ctx. When the handler that started the response wrote
+  //   it, that handler sends it after the header. When the header filter
+  //   wrote it, which is not supported, the body that nginx sends does not
+  //   contain it, although Nginx.rputs added its length to Content-Length.
+  //   The next handler that finalizes, such as a log handler, sends the
+  //   chain after the response, and nginx logs "header already sent".
+  // - A body filter that runs after a header filter sent the header, or in a
+  //   location with an mruby header filter, which holds the header back
+  //   until the body filter has run (ngx_http_mruby_header_filter_send),
+  //   does not call ngx_mrb_finalize_rputs either. With an rputs chain, that
+  //   function would call ngx_http_send_header once more, which only logs
+  //   "header already sent" when the header is out, or runs the code of the
+  //   header filter a second time when it is held back, and would set the
+  //   status to 200. The body filter drops the module ctx where that
+  //   function dropped it: when there is an rputs chain and the status is 200
+  //   or the last buffer of the chain is not marked as the last one. A chain
+  //   left in the ctx there would be sent after the response by the next
+  //   handler that finalizes, such as a log handler.
+  //   ngx_mrb_finalize_body_filter and a handler that is sending its own
+  //   chain through this filter keep their own pointers to the ctx and the
+  //   chain.
+  //   Otherwise the ctx stays, as it did. That is the case after Nginx.rputs
+  //   and then Nginx.return, Nginx.status_code= or Nginx.send_header with
+  //   another status, when nginx sends the response for that status, such
+  //   as its error page. ngx_mrb_finalize_body_filter marks the ctx so that
+  //   this filter passes on the calls that ngx_http_writer makes when the
+  //   response needs more than one write, and the next handler that
+  //   finalizes only returns the status.
+  // - A body filter without a header filter still calls
+  //   ngx_mrb_finalize_rputs: the mruby header filter has held the header
+  //   back, so nothing is sent, and running that filter again keeps the
+  //   length of the body filter's output once the body filter holds a body,
+  //   which test/t/cases/filter_connection.rb pins.
+  if (kind == NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER) {
+    return NGX_OK;
+  }
+
+  if (kind == NGX_HTTP_MRUBY_HANDLER_BODY_FILTER && (r->header_sent || mlcf->header_filter_handler != NULL)) {
+    if (ctx->rputs_chain != NULL &&
+        (r->headers_out.status == NGX_HTTP_OK || !(*ctx->rputs_chain->last)->buf->last_buf)) {
+      ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
+    }
+    return NGX_OK;
+  }
 
   if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
     return ngx_mrb_finalize_rputs(r, ctx, kind);
@@ -1135,10 +1417,16 @@ static char *ngx_http_mruby_server_config_inline(ngx_conf_t *cf, ngx_command_t *
 
   if (mscf->server_config_inline_code != NGX_CONF_UNSET_PTR) {
     ngx_int_t ret;
+    void *prev_ud;
     mscf->cf = cf;
     mscf->cscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_core_module);
+    prev_ud = mmcf->state->mrb->ud;
     mmcf->state->mrb->ud = mscf;
     ret = ngx_mrb_run_conf(cf, mmcf->state, mscf->server_config_inline_code);
+    /* cf lives only while the configuration is parsed (see ngx_mrb_add_listener()) */
+    mmcf->state->mrb->ud = prev_ud;
+    mscf->cf = NULL;
+    mscf->cscf = NULL;
     if (ret != NGX_OK) {
       return NGX_CONF_ERROR;
     }
@@ -1723,6 +2011,31 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
   return ngx_http_mruby_body_filter_handler_inner(r, in, NGX_MRB_CODE_TYPE_STRING);
 }
 
+/*
+ * Passes the header on after the code of an mruby header filter has run,
+ * unless an mruby body filter is configured too. The body filter can change
+ * the length of the body, so the header then waits, as it does in a location
+ * with only a body filter (ngx_http_mruby_header_filter), and
+ * ngx_mrb_finalize_body_filter sends it with the length of the body that the
+ * body filter produced; ngx_http_mruby_body_filter sends it for a response
+ * without a known length. The changes that the header filter code made to
+ * headers_out go out with it.
+ */
+static ngx_int_t ngx_http_mruby_header_filter_send(ngx_http_request_t *r, ngx_http_mruby_loc_conf_t *mlcf)
+{
+  ngx_int_t rc;
+
+  if (mlcf->body_filter_handler != NULL) {
+    return NGX_OK;
+  }
+
+  rc = ngx_http_next_header_filter(r);
+  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+    return NGX_ERROR;
+  }
+  return rc;
+}
+
 static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx_chain_t *in)
 {
   ngx_int_t rc;
@@ -1734,11 +2047,7 @@ static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx
     return NGX_ERROR;
   }
 
-  rc = ngx_http_next_header_filter(r);
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-    return NGX_ERROR;
-  }
-  return rc;
+  return ngx_http_mruby_header_filter_send(r, mlcf);
 }
 
 static ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in)
@@ -1753,11 +2062,7 @@ static ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t 
     return NGX_ERROR;
   }
 
-  rc = ngx_http_next_header_filter(r);
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-    return NGX_ERROR;
-  }
-  return rc;
+  return ngx_http_mruby_header_filter_send(r, mlcf);
 }
 
 static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
@@ -1781,7 +2086,10 @@ static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
                   __LINE__);
     return NGX_ERROR;
   }
-  ctx->body_length = r->headers_out.content_length_n;
+  /* once the body filter has a body buffer, body_length is that buffer's length */
+  if (ctx->body == NULL) {
+    ctx->body_length = r->headers_out.content_length_n;
+  }
 
   cln = ngx_pool_cleanup_add(r->pool, 0);
   if (cln == NULL) {
@@ -1801,7 +2109,9 @@ static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
     return rc;
   }
 
-  ctx->body_length = r->headers_out.content_length_n;
+  if (ctx->body == NULL) {
+    ctx->body_length = r->headers_out.content_length_n;
+  }
   return rc;
 }
 
@@ -2041,6 +2351,66 @@ NGX_MRUBY_SSL_ERROR:
 #if (NGX_HTTP_SSL)
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
+/*
+ * Nginx::SSL keeps the state of the handshake being handled in the shared
+ * server configuration. It is valid only while the handler code runs: reset
+ * it before the code runs and clear it before returning, so that Nginx::SSL
+ * methods called at any other time raise instead of reading a finished
+ * handshake (whose servername lived on this function's stack and whose
+ * certificate strings were allocated from the connection pool).
+ */
+static void ngx_http_mruby_ssl_handshake_state_clear(ngx_http_mruby_srv_conf_t *mscf)
+{
+  mscf->connection = NULL;
+  mscf->servername = NULL;
+  ngx_str_null(&mscf->cert_path);
+  ngx_str_null(&mscf->cert_key_path);
+  ngx_str_null(&mscf->cert_data);
+  ngx_str_null(&mscf->cert_key_data);
+}
+
+static ngx_int_t ngx_http_mruby_ssl_handshake_run(ngx_http_mruby_srv_conf_t *mscf, ngx_connection_t *c)
+{
+  mrb_state *mrb = mscf->state->mrb;
+  mrb_int ai;
+  ngx_http_request_t *prev_r;
+  ngx_int_t rc = NGX_OK;
+
+  ai = mrb_gc_arena_save(mrb);
+  if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR && !mscf->ssl_handshake_code->cache) {
+    rc = ngx_http_mruby_state_reinit_from_file(mscf->state, mscf->ssl_handshake_code);
+    if (rc != NGX_OK) {
+      ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to recompile %s, rc=%d",
+                    mscf->ssl_handshake_code->code.file, rc);
+      ngx_mrb_state_clean(NULL, mscf->state);
+      mrb_gc_arena_restore(mrb, ai);
+      return NGX_DECLINED;
+    }
+  }
+
+  /* the handshake handler runs outside of any request */
+  prev_r = ngx_mrb_get_request();
+  ngx_mrb_push_request(NULL);
+  if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
+    mrb_toplevel_run(mrb, mscf->ssl_handshake_code->proc);
+  }
+  if (mscf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
+    mrb_toplevel_run(mrb, mscf->ssl_handshake_inline_code->proc);
+  }
+  ngx_mrb_push_request(prev_r);
+
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
+  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_inline_code);
+  if (mrb->exc) {
+    ngx_mrb_raise_connection_error(mrb, mrb_obj_value(mrb->exc), c);
+    rc = NGX_ERROR;
+  }
+  ngx_mrb_state_clean(NULL, mscf->state);
+  mrb_gc_arena_restore(mrb, ai);
+
+  return rc;
+}
+
 static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
 {
   ngx_connection_t *c;
@@ -2048,8 +2418,8 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   const char *servername;
   ngx_http_mruby_srv_conf_t *mscf;
   ngx_str_t host;
-  mrb_int ai;
-  mrb_state *mrb;
+  ngx_str_t cert_path, cert_key_path, cert_data, cert_key_data;
+  void *prev_ud;
   int rc;
 
   c = ngx_ssl_get_connection(ssl_conn);
@@ -2084,82 +2454,72 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: mscf NULL");
     return 1;
   }
-  mscf->connection = c;
 
   if (mscf->ssl_handshake_code == NGX_CONF_UNSET_PTR && mscf->ssl_handshake_inline_code == NGX_CONF_UNSET_PTR) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: unexpected error, mruby code not found");
     return 1;
   }
 
+  ngx_http_mruby_ssl_handshake_state_clear(mscf);
+  mscf->connection = c;
   mscf->servername = &host;
-  mrb = mscf->state->mrb;
-  mrb->ud = mscf;
-  ai = mrb_gc_arena_save(mrb);
-  if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
-    if (!mscf->ssl_handshake_code->cache) {
-      ngx_int_t rc;
-      rc = ngx_http_mruby_state_reinit_from_file(mscf->state, mscf->ssl_handshake_code);
-      if (rc != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to recompile %s, rc=%d",
-                      mscf->ssl_handshake_code->code.file, rc);
-        ngx_mrb_state_clean(NULL, mscf->state);
-        mrb_gc_arena_restore(mrb, ai);
-        return 1;
-      }
-    }
-    mrb_toplevel_run(mrb, mscf->ssl_handshake_code->proc);
-  }
-  if (mscf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
-    mrb_toplevel_run(mrb, mscf->ssl_handshake_inline_code->proc);
-  }
+  prev_ud = mscf->state->mrb->ud;
+  mscf->state->mrb->ud = mscf;
 
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_inline_code);
-  if (mrb->exc) {
-    ngx_mrb_raise_connection_error(mrb, mrb_obj_value(mrb->exc), c);
-    ngx_mrb_state_clean(NULL, mscf->state);
-    mrb_gc_arena_restore(mrb, ai);
+  rc = ngx_http_mruby_ssl_handshake_run(mscf, c);
+
+  mscf->state->mrb->ud = prev_ud;
+
+  /* the certificate strings stay valid until c->pool is destroyed */
+  cert_path = mscf->cert_path;
+  cert_key_path = mscf->cert_key_path;
+  cert_data = mscf->cert_data;
+  cert_key_data = mscf->cert_key_data;
+  ngx_http_mruby_ssl_handshake_state_clear(mscf);
+
+  if (rc == NGX_DECLINED) {
+    return 1;
+  }
+  if (rc != NGX_OK) {
     return 0;
   }
-  ngx_mrb_state_clean(NULL, mscf->state);
-  mrb_gc_arena_restore(mrb, ai);
 
-  if (mscf->cert_data.len == 0 || mscf->cert_key_data.len == 0) {
-    if (mscf->cert_path.len == 0 || mscf->cert_key_path.len == 0) {
+  if (cert_data.len == 0 || cert_key_data.len == 0) {
+    if (cert_path.len == 0 || cert_key_path.len == 0) {
       ngx_log_error(NGX_LOG_DEBUG, c->log, 0,
                     MODULE_NAME " : mruby ssl handler: cert or cert key not exists or not read");
       return 1;
     }
 
     errno = 0;
-    if (access((const char *)mscf->cert_path.data, F_OK | R_OK) != 0) {
+    if (access((const char *)cert_path.data, F_OK | R_OK) != 0) {
       if (errno == EACCES) {
         ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert [%V] permission denied",
-                      &mscf->cert_path);
+                      &cert_path);
       } else {
         ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert [%V] not exists or not read",
-                      &mscf->cert_path);
+                      &cert_path);
       }
       return 0;
     }
     errno = 0;
-    if (access((const char *)mscf->cert_key_path.data, F_OK | R_OK) != 0) {
+    if (access((const char *)cert_key_path.data, F_OK | R_OK) != 0) {
       if (errno == EACCES) {
         ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert_key [%V] permission denied",
-                      &mscf->cert_key_path);
+                      &cert_key_path);
       } else {
         ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: cert_key [%V] not exists or not read",
-                      &mscf->cert_key_path);
+                      &cert_key_path);
       }
       return 0;
     }
 
     ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certificate to cert=%V key=%V",
-                  &mscf->cert_path, &mscf->cert_key_path);
-    rc = ngx_http_mruby_set_der_certificate(ssl_conn, &mscf->cert_path, &mscf->cert_key_path);
+                  &cert_path, &cert_key_path);
+    rc = ngx_http_mruby_set_der_certificate(ssl_conn, &cert_path, &cert_key_path);
   } else {
     ngx_log_error(NGX_LOG_DEBUG, c->log, 0, MODULE_NAME " : mruby ssl handler: changing certificate by mem buffer");
-    rc = ngx_http_mruby_set_der_certificate_data(ssl_conn, &mscf->cert_data, &mscf->cert_key_data);
+    rc = ngx_http_mruby_set_der_certificate_data(ssl_conn, &cert_data, &cert_key_data);
   }
   if (rc != NGX_OK) {
     ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to change certificate.\n");

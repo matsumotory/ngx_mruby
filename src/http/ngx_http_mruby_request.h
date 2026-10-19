@@ -15,6 +15,7 @@
 
 ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r);
 ngx_http_request_t *ngx_mrb_get_request(void);
+ngx_http_request_t *ngx_mrb_get_request_or_raise(mrb_state *mrb);
 mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self);
 
 void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class);

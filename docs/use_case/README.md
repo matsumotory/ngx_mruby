@@ -55,6 +55,9 @@ server {
 
 ## Change to maintenance mode with Redis
 refs: http://takeswim.hateblo.jp/entry/2013/10/03/182748
+
+This example needs the `Redis` class of mruby-redis. Since 2.7.1 the default `build_config.rb` does not build it: uncomment the line `conf.gem github: 'matsumotory/mruby-redis'` there before you build.
+
 #### nginx.conf
 ```nginx
 worker_processes  1;
@@ -264,6 +267,9 @@ $ curl http://192.168.12.9/
 ```
 
 ## File Server like Dropbox Link
+
+This example needs the `Redis` class of mruby-redis. Since 2.7.1 the default `build_config.rb` does not build it: uncomment the line `conf.gem github: 'matsumotory/mruby-redis'` there before you build.
+
 ##### nginx.conf
 ```nginx
 location /dropbox {
