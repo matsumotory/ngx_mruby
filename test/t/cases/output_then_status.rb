@@ -36,6 +36,7 @@ end
   '/continue' => ['Nginx.rputs, then Nginx.return Nginx::HTTP_CONTINUE', 'HTTP/1.1 100 ', 'continue'],
   # 0 is no status: the output gets 200, as output without a status does.
   '/zero' => ['Nginx.rputs, then Nginx.return 0', 'HTTP/1.1 200 OK', 'zero'],
+  '/sub_request_then_accepted' => ['Nginx::Async::HTTP.sub_request, then Nginx.rputs and Nginx.return Nginx::HTTP_ACCEPTED', 'HTTP/1.1 202 Accepted', 'after sub_request'],
 }.each do |path, (what, status_line, output)|
   t.assert('ngx_mruby - output, then a status', "#{what} answers the output with that status") do
     status, raw = output_status_get(path)
