@@ -1101,9 +1101,13 @@ It is designed for providing accessor to nginx variable.
 The method is called when `Nginx::Var#VARNAME` or `Nginx::Var#VARNAME=` is evaluated.
 Set the 2nd arg to the variable if the symbol ends with `=`. Otherwise, returns the value.
 
+The variable is looked up by the name in lowercase. Since 2.7.2, a name that is empty or made only of `=` raises `NoMethodError`, and a setter called without a value raises `ArgumentError` and leaves the variable as it was.
+
 ### Nginx::Var#set(name, value)
 
 Set the value to the nginx variable.
+
+`name` is looked up in lowercase. Since 2.7.2, `set` does not change the String or Symbol passed as `name`.
 
 ```ruby
 v = Nginx::Request.new.var
