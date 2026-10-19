@@ -22,6 +22,9 @@
 typedef struct ngx_mrb_rputs_chain_list_t {
   ngx_chain_t **last;
   ngx_chain_t *out;
+  // r->headers_out.content_length_n before Nginx.rputs added the length of
+  // the first string of this chain to it
+  off_t content_length_n;
 } ngx_mrb_rputs_chain_list_t;
 
 /*

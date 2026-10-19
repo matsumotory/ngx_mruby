@@ -370,8 +370,10 @@ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
 
 - The first full run takes a few minutes (it clones mrbgems from GitHub and builds
   mruby and nginx). After that, use `ONLY_BUILD_NGX_MRUBY=1`.
-- `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. Do a full run again after
-  changing `BUILD_DYNAMIC_MODULE`, configure options or `nginx_version`.
+- `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. After changing
+  `BUILD_DYNAMIC_MODULE`, configure options or `nginx_version`, nginx has to be
+  configured again: "Testing" in `docs/test/README.md` says when a full run does
+  that and what to remove first.
 - Extra arguments to `test.sh` are passed to `./configure`
   (for example `sh test.sh --with-openssl-src=/path/to/openssl`).
 - Headers in `src/` are not make dependencies: after editing a `.h`, `touch` the
@@ -383,8 +385,8 @@ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
   `build/nginx/logs/` (`build_dynamic/nginx/logs/` for dynamic builds);
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
-- `test.sh` listens on fixed ports (18080-18088, 18101-18103, 18110-18131,
-  18136, 12345-12358; 18116 and 12357 belong to the second nginx that
+- `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18131,
+  18136, 18138, 18143-18144, 18147-18152, 12345-12359; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 12399 to a test in
   `test/t/ngx_mruby.rb`) and
   kills every running `nginx` process before it starts. Run only one `test.sh` per

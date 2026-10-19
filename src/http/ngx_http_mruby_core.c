@@ -158,6 +158,16 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
   } else if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
     r->headers_out.status = NGX_HTTP_OK;
     (*chain->last)->buf->last_buf = 1;
+    // Discard a request body that no handler read before the response
+    // starts, as nginx's own handlers do (ngx_http_send_response, the
+    // special responses): nginx then reads the next request of a kept
+    // connection after the body, not from it. A body that a handler read is
+    // left alone (r->request_body is set), and so is the request after the
+    // header went out. If the body cannot be discarded, the connection is
+    // closed after the response, as in ngx_http_special_response_handler.
+    if (!r->header_sent && ngx_http_discard_request_body(r) != NGX_OK) {
+      r->keepalive = 0;
+    }
     ngx_http_send_header(r);
 
     if (ctx->phase != NGX_HTTP_MRUBY_FILTER_PROCESS) {
@@ -220,7 +230,7 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   ngx_mrb_rputs_chain_list_t *chain = NULL;
   ngx_http_mruby_ctx_t *ctx;
 
-  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
   mrb_int status = NGX_HTTP_OK;
   mrb_get_args(mrb, "i", &status);
   r->headers_out.status = status;
@@ -254,7 +264,7 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
   u_char *str;
   ngx_str_t ns;
 
-  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
   mrb_get_args(mrb, "o", &argv);
@@ -284,6 +294,7 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
       mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
     }
     chain->last = &chain->out;
+    chain->content_length_n = r->headers_out.content_length_n;
   } else {
     chain = ctx->rputs_chain;
     (*chain->last)->next = ngx_alloc_chain_link(r->pool);
@@ -335,18 +346,16 @@ static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
   mrb_value msg;
   mrb_int log_level;
   ngx_http_request_t *r = ngx_mrb_get_request();
-  if (r == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "can't use logger at this phase. only use at request phase");
-  }
+  /* outside of a request (init_worker, exit_worker, SSL handshake) log to the cycle's log */
+  ngx_log_t *log = (r != NULL) ? r->connection->log : ngx_cycle->log;
 
   mrb_get_args(mrb, "io", &log_level, &msg);
   if (log_level < 0) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s: log level is not positive number", MODULE_NAME,
-                  __func__);
+    ngx_log_error(NGX_LOG_ERR, log, 0, "%s ERROR %s: log level is not positive number", MODULE_NAME, __func__);
     return self;
   }
   msg = mrb_obj_as_string(mrb, msg);
-  ngx_log_error((ngx_uint_t)log_level, r->connection->log, 0, "%*s", RSTRING_LEN(msg), RSTRING_PTR(msg));
+  ngx_log_error((ngx_uint_t)log_level, log, 0, "%*s", RSTRING_LEN(msg), RSTRING_PTR(msg));
 
   return self;
 }
@@ -388,7 +397,7 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   ngx_str_t ns;
   ngx_table_elt_t *location;
 
-  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
   argc = mrb_get_args(mrb, "o|oo", &uri, &code);
 
   // get status code from args
