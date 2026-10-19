@@ -700,35 +700,43 @@ calibration" under "Performance comparison with callgrind" in
 scenarios with an upstream by at most 0.39% on the CI runner, more than 7
 times below the 3% of `WARN`.
 
-On `master`, null changes on 2026-10-19 (base `master` at `a6c32a4`, head
+On `master`, two null changes on 2026-10-19 (the base `master`, the head
 the pull request that added the comparison to `master`, which changed no
 build input) measured:
 
-| Scenario | Base Ir/req (w/o GC) | aarch64 container, `compare.sh` |
-|---|---|---|
-| `hello` | 11853 (11173) | -0.003% |
-| `headers` | 36364 (34388) | +0.000% |
-| `var` | 21342 (19973) | +0.000% |
-| `filter` | 14203 (13364) | +0.002% |
-| `sleep` | 15661 (14888) | +0.004% |
-| `sub_request` | 48731 (47568) | +0.002% |
-| `file` | 14069 (13231) | +0.000% |
-| `proxy_plain_2k` | 22102 (22102) | -0.004% |
-| `proxy_plain_64k` | 22426 (22426) | -0.001% |
-| `proxy_stream_plain_50` | 53135 (53135) | -0.018% |
-| `auth` | 48206 (46038) | +0.003% |
-| `route_json_2k` | 109332 (106191) | -0.005% |
-| `ruby_call_1` | 11360 (10677) | +0.009% |
-| `ruby_call_10` | 41988 (35598) | +0.001% |
+| Scenario | aarch64: base Ir/req (w/o GC) | aarch64 container, `compare.sh` | x86_64, CI run 39240312315 |
+|---|---|---|---|
+| `hello` | 11853 (11173) | -0.003% | +0.000% |
+| `headers` | 36364 (34388) | +0.000% | -0.001% |
+| `var` | 21342 (19973) | +0.000% | +0.002% |
+| `filter` | 14203 (13364) | +0.002% | +0.000% |
+| `sleep` | 15661 (14888) | +0.004% | +0.000% |
+| `sub_request` | 48731 (47568) | +0.002% | +0.002% |
+| `file` | 14069 (13231) | +0.000% | +0.000% |
+| `proxy_plain_2k` | 22102 (22102) | -0.004% | +0.001% |
+| `proxy_plain_64k` | 22426 (22426) | -0.001% | -0.229% |
+| `proxy_stream_plain_50` | 53135 (53135) | -0.018% | -0.119% |
+| `auth` | 48206 (46038) | +0.003% | -0.001% |
+| `route_json_2k` | 109332 (106191) | -0.005% | +0.000% |
+| `ruby_call_1` | 11360 (10677) | +0.009% | +0.000% |
+| `ruby_call_10` | 41988 (35598) | +0.001% | +0.000% |
 
-The column is the change of head against base without GC. The run was
-`compare.sh` with nginx 1.31.6 on Ubuntu 22.04 (gcc 11.4, valgrind 3.18.1)
-in a container on aarch64, `PERF_N=20000`, both builds with the same 21
-third-party gems at the same commits; the `.text` sections of the two nginx
-binaries were byte for byte the same. The largest change, 0.018% in
-`proxy_stream_plain_50` (its `non_buffered_calls` were 3.88 and 3.87 per
-request), is about 160 times below the 3% of `WARN`. The measurement of the
-default scenarios took about 4 minutes per build, `sleep` 45 seconds of it.
+The last two columns are the change of head against base without GC. The
+first run was `compare.sh` with nginx 1.31.6 on Ubuntu 22.04 (gcc 11.4,
+valgrind 3.18.1) in a container on aarch64, `PERF_N=20000`, base `master` at
+`a6c32a4`; the `.text` sections of the two nginx binaries were byte for byte
+the same. The second is the `perf` job of that pull request on the CI runner
+(ubuntu-22.04, x86_64), base `master` at `a500846`. Both builds of each run
+had the same 21 third-party gems at the same commits. The scenarios of
+`test/soak/nginx.conf` and those without an upstream moved by at most
+0.009%. The scenarios with an upstream moved the most: on the CI runner
+`proxy_plain_64k` by -0.229% (22777 and 22725 Ir per request, its
+`non_buffered_calls` 1.00 in both builds) and `proxy_stream_plain_50` by
+-0.119% (its `non_buffered_calls` 4.62 and 4.54, which the report estimated
+at -0.15%). The largest, 0.229%, is about 13 times below the 3% of `WARN`.
+In the aarch64 container, the measurement of the default scenarios took
+about 4 minutes per build, `sleep` 45 seconds of it; the `perf` job took
+13 minutes, both builds included.
 
 On `master` the absolute numbers of a scenario can differ between runs on
 different days: `master` commits no gem lock, so each run builds the gems
