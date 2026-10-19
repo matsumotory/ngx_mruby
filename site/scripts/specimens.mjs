@@ -132,6 +132,34 @@ async function main() {
     lines.push('## Monospace face (4.12 item 2)', '', `x-height in Chromium: Geist Mono at 15 px ${m.geist15.toFixed(2)} px, Inter at 16 px ${m.inter16.toFixed(2)} px: ${verdict}. The glyphs 0 O 1 l I side by side: glyphs.png.`, '');
     console.log(`specimens: x-height of Geist Mono at 15 px ${m.geist15.toFixed(2)} px, of Inter at 16 px ${m.inter16.toFixed(2)} px (${verdict})`);
   }
+  // One contact sheet per set (sheets/<set>.png): the first screens of
+  // both pages in Chromium, light and dark, at both sizes, so that a set
+  // can be judged from one image.
+  {
+    const browser = await chromium.launch();
+    fs.mkdirSync(path.join(opt.out, 'sheets'), { recursive: true });
+    for (const set of sets) {
+      const img = (page, theme, size, lang = 'en') => {
+        const f = path.join(opt.out, set.id, `chromium-${page}-${lang}-${theme}-${size}-first.png`);
+        return `data:image/png;base64,${fs.readFileSync(f).toString('base64')}`;
+      };
+      const rows = PAGES.map(
+        (page) =>
+          `<div class="row"><p>${page}</p>` +
+          THEMES.map((t) => `<figure><img class="wide" src="${img(page, t, '1440x900')}"><figcaption>${t}, 1440 by 900</figcaption></figure>`).join('') +
+          THEMES.map((t) => `<figure><img class="narrow" src="${img(page, t, '390x664')}"><figcaption>${t}, 390 by 664</figcaption></figure>`).join('') +
+          '</div>',
+      ).join('');
+      const tab = await browser.newPage({ viewport: { width: 1480, height: 800 } });
+      await tab.setContent(
+        `<style>body{margin:16px;font:14px/1.5 sans-serif;background:#fff;color:#111}h1{font-size:16px;margin:0 0 8px}.row{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}.row>p{writing-mode:vertical-rl;margin:0}figure{margin:0}img{display:block;border:1px solid #888}.wide{width:480px}.narrow{width:180px}figcaption{font-size:12px}</style><h1>${set.id}: ${set.choice}</h1>${rows}`,
+      );
+      await tab.screenshot({ path: path.join(opt.out, 'sheets', `${set.id}.png`), fullPage: true });
+      await tab.close();
+    }
+    await browser.close();
+    lines.push('## Contact sheets', '', 'sheets/<set>.png: the first screens of both pages in Chromium, light and dark, at both sizes.', '');
+  }
   for (const set of sets) {
     lines.push(`## ${set.id}`, '', set.choice, '');
     for (const f of fs.readdirSync(path.join(opt.out, set.id)).filter((x) => x.endsWith('.png')).sort()) lines.push(`- ${set.id}/${f}`);

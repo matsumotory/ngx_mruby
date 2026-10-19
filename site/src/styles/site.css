@@ -180,12 +180,13 @@ samp {
   border-bottom: 1px solid var(--color-border);
   border-radius: 0;
 }
-/* 4.9: on narrow screens a table scrolls in its own box instead of
-   squeezing its columns. Japanese cells, which can break between any two
-   characters, keep at least 9rem (8 characters at 15 px; chosen here), so
-   that a short label such as 静的なモジュール stays on one line;
-   identifiers stay on one line */
-:root[lang="ja"] .sl-markdown-content :is(th, td):not(:where(.not-content *)) {
+/* 4.9: on narrow screens a table scrolls in its own box, with the cut
+   content at the right edge, instead of squeezing its columns into a few
+   characters per line. Cells keep at least 9rem (chosen here: 8 Japanese
+   characters at 15 px, so that a short label such as 静的なモジュール stays
+   on one line, and about 18 Latin characters); identifiers stay on one
+   line */
+.sl-markdown-content :is(th, td):not(:where(.not-content *)) {
   min-width: 9rem;
 }
 .sl-markdown-content td > code:only-child {
