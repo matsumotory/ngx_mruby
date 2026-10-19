@@ -366,33 +366,44 @@ on the result of a test file, and `ci-ok` does not need it (see
 
 ### Results of nginx-tests
 
-Measured on 2026-10-19, with nginx-tests at `ec44bc80c4bf`, nginx 1.31.6
-and ngx_mruby at `next` `a466688` with the change of #__PR__, in a Docker
-container of `ubuntu:22.04` on macOS (aarch64, gcc 11.4.0, OpenSSL 3.0.2,
-perl 5.34, 11 parallel test files), with the command of
-[Running nginx-tests](#running-nginx-tests); and in the job of
-__CI__.
+Measured on 2026-10-19, with nginx-tests at `ec44bc80c4bf`, nginx 1.31.6,
+gcc 11.4.0, OpenSSL 3.0.2 and perl 5.34 on both machines:
 
-| Build | Test files | Passed | Failed | Skipped | Subtests run |
-|---|---|---|---|---|---|
-| nginx with ngx_mruby | 511 | 301 | 0 | 210 | 3991 |
-| nginx without ngx_mruby | 511 | 301 | 0 | 210 | 3991 |
+- CI: the `nginx-tests` job of
+  [run 39241352263](https://github.com/matsumotory/ngx_mruby/actions/runs/39241352263)
+  on `ubuntu-22.04` (x86_64, 4 parallel test files), on the merge commit
+  `401cf56` of #602 (`093e47d`) into `next` at `7b5a0c4`.
+- A Docker container of `ubuntu:22.04` on macOS (aarch64, 11 parallel test
+  files), with the command of [Running nginx-tests](#running-nginx-tests),
+  on `093e47d`.
+
+| Machine | Build | Test files | Passed | Failed | Skipped | Subtests run |
+|---|---|---|---|---|---|---|
+| CI (x86_64) | nginx with ngx_mruby | 511 | 302 | 0 | 209 | 3994 |
+| CI (x86_64) | nginx without ngx_mruby | 511 | 302 | 0 | 209 | 3994 |
+| Container (aarch64) | nginx with ngx_mruby | 511 | 301 | 0 | 210 | 3991 |
+| Container (aarch64) | nginx without ngx_mruby | 511 | 301 | 0 | 210 | 3991 |
 
 - Test files that fail because ngx_mruby is in nginx (they fail with
-  ngx_mruby and pass without it): none.
-- Test files that fail on nginx without ngx_mruby too: none.
+  ngx_mruby and pass without it): none, on both machines.
+- Test files that fail on nginx without ngx_mruby too: none, on both
+  machines.
 
-The same files were skipped on both builds, for the same reasons. 189 of
-the 210 skip because nginx lacks a module that `test.sh` does not build:
-`http_v2` (59 files), `stream_ssl` (25), `http_v3` (23), `mail` (16),
-`realip` (11), `sub` (9), and 18 other modules with 1 to 6 files each. The
-other 21 skip for conditions of the machine or of nginx-tests: a program or
-perl module that is not installed (`uwsgi` for 4 files, `GD`,
-`Win32API::File`, a newer `IO::Socket::SSL`), OpenSSL 3.5, Linux kTLS, root
-(3 files), a wildcard address (2), Windows (1), and 6 files that nginx-tests
-runs only with `TEST_NGINX_UNSAFE` or not at all (an orphaned process group,
-a long test, keys of an OpenSSL engine or provider). The summary of each
-run lists every reason with its count.
+The two machines differ in one file, `ssl_ktls.t`: it passes on the runner
+and skips in the container ("no Linux KTLS"), whose kernel has no kTLS. On
+each machine, the same files were skipped on both builds, for the same
+reasons. Of the 209 on the runner, 189 skip because nginx lacks a module
+that `test.sh` does not build: `http_v2` (59 files), `stream_ssl` (25),
+`http_v3` (23), `mail` (16), `realip` (11), `sub` (9), and 18 other modules
+with 1 to 6 files each. The other 20 skip for conditions of the machine or
+of nginx-tests: a program or perl module that is not installed (`uwsgi` for
+4 files, `GD`, `Win32API::File`, a newer `IO::Socket::SSL`), OpenSSL 3.5,
+root (3 files), a wildcard address (2), Windows (1), and 6 files that
+nginx-tests runs only with `TEST_NGINX_UNSAFE` or not at all (an orphaned
+process group, a long test, keys of an OpenSSL engine or provider). The
+summary of each run lists every reason with its count. On the runner, the
+job took about 8 minutes: 2 minutes 37 seconds for the two builds and 2
+minutes 37 seconds for `prove` on each build.
 
 These results cover nginx with ngx_mruby present and nothing configured for
 it. Two kinds of runs would cover more and are not in place: a build with
