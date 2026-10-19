@@ -6,3 +6,10 @@
 /generated/
 /.astro/
 /dist/
+# The specimens of step 2: SITE_SPECIMENS=1 npm run build (with
+# SITE_CODE_PALETTE=b for the second), scripts/specimens.mjs, and the log of
+# scripts/check-offline-build.sh
+/dist-specimens/
+/dist-specimens-b/
+/build-specimens/
+/offline-build.log
