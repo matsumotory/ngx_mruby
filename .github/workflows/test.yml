@@ -183,7 +183,8 @@ jobs:
           SANITIZER: ${{ matrix.SANITIZER }}
           NUM_THREADS_ENV: 1
           NGINX_RUNNER: ${{ matrix.SANITIZER == '' && 'valgrind' || 'exec' }}
-          NGINX_HEATTIME: 10
+          # NGINX_HEATTIME is left to the default of test.sh: the upper bound of
+          # the wait for nginx to listen, which ends as soon as nginx does.
         run: |
           echo "NGINX_SRC_MAJOR=$(echo $NGINX_VERSION | cut -d '.' -f 1)" > nginx_version
           echo "NGINX_SRC_MINOR=$(echo $NGINX_VERSION | cut -d '.' -f 2)" >> nginx_version
