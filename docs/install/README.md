@@ -99,7 +99,7 @@ Here is the list of the mrbgems that the default build_config.rb builds.
 build_config.rb also has lines for mrbgems that are not built by default.
 To build one of them, uncomment its line.
 
-- mruby-redis: Redis#set, get, [], []=... It is not built by default since 2.7.1, because its build clones the hiredis library from an unpinned branch, which broke the build of ngx_mruby. The examples that use Redis (in the README and in [Use Case](../use_case)) and the client of the auto-ssl mrbgem need it: uncomment `conf.gem github: 'matsumotory/mruby-redis'` to build it.
+- mruby-redis: Redis#set, get, [], []=... It is not built by default since 2.7.1, because its build cloned the hiredis library from an unpinned branch, which broke the build of ngx_mruby. Since [matsumotory/mruby-redis#108](https://github.com/matsumotory/mruby-redis/pull/108), the build of the gem clones hiredis v1.5.0 and checks its commit (see entry 3 of [the 2.7.2 release notes](../releases/v2.7.2.md)). The examples that use Redis (in the README and in [Use Case](../use_case)) and the client of the auto-ssl mrbgem need it: uncomment `conf.gem github: 'matsumotory/mruby-redis'` to build it.
 - mruby-memcached: Memcached#set, get, [], []=...
 - mruby-file-stat, mruby-discount, mruby-mysql, mruby-geoip, mruby-capability and mruby-cgroup
 
