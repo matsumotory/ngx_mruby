@@ -458,11 +458,11 @@ user (nvm, fnm, volta, or the archive from nodejs.org), not system-wide.
 
 ```sh
 cd site
-npm ci            # the exact versions of package-lock.json
-npm run build     # scripts/sync-docs.mjs writes docs/ into src/content/docs/, then astro build writes dist/
-npm run test      # the generator on its fixtures
-npm run check     # the checks of the built site (below)
-npm run preview   # serves dist/ at http://localhost:4321/
+npm ci --ignore-scripts   # the exact versions of package-lock.json, without install scripts
+npm run build             # scripts/sync-docs.mjs writes docs/ into src/content/docs/, then astro build writes dist/
+npm run test              # the generator on its fixtures
+npm run check             # the checks of the built site (below)
+npm run preview           # serves dist/ at http://localhost:4321/
 ```
 
 - `npm run build` needs no network after `npm ci`. It stops in a shallow
@@ -475,7 +475,8 @@ npm run preview   # serves dist/ at http://localhost:4321/
   that read `site/dist/`; each takes `--dist`, `--repo` and `--manifest`
   to run on a copy:
   - `sh site/scripts/check-fresh-clone.sh [--keep DIR] [REV]`: a clone of
-    the commit (default `HEAD`) builds with `npm ci` and `npm run build`;
+    the commit (default `HEAD`) builds with `npm ci --ignore-scripts` and
+    `npm run build`;
   - `node scripts/check-built-links.mjs`: every internal link of the built
     HTML resolves, and no link attribute is empty or broken;
   - `node scripts/check-pages.mjs`: every page has a title and the

@@ -7,12 +7,19 @@
 # It clones the git repository of the current directory into a new
 # directory with its whole history (git clone --no-local; the last-updated
 # dates of the pages come from git log), checks out REV (default HEAD)
-# there, and runs npm ci and npm run build in its site/. Only what REV
-# commits takes part, so a file that is in the working tree but not
-# committed, or a package-lock.json out of step with package.json, fails
-# the check. The clone is removed afterwards, unless --keep DIR names the
-# directory to make it in (DIR must not exist yet): the workflow site.yml
-# keeps it, runs the other checks on its build and uploads it.
+# there, and runs npm ci --ignore-scripts and npm run build in its site/.
+# Only what REV commits takes part, so a file that is in the working tree
+# but not committed, or a package-lock.json out of step with package.json,
+# fails the check. The clone is removed afterwards, unless --keep DIR
+# names the directory to make it in (DIR must not exist yet): the workflow
+# site.yml keeps it, runs the other checks on its build and uploads it.
+#
+# --ignore-scripts keeps the install scripts of the packages from running.
+# None of the packages that npm ci installs on Linux has one today (the
+# only package of the lock flagged with one is fsevents, which installs on
+# macOS alone). If an update of the lock brings one, the build either does
+# not need it or fails here, in the review of that update, and its code
+# does not run.
 #
 # npm ci needs the npm registry (or npm's cache); npm run build needs no
 # network.
@@ -69,7 +76,7 @@ echo "$me: cloning $repo at $sha into $clone"
 git clone --quiet --no-local --no-checkout "$repo" "$clone" || fail "git clone failed"
 git -C "$clone" -c advice.detachedHead=false checkout --quiet --detach "$sha" || fail "git checkout $sha failed"
 cd "$clone/site" || fail "$sha has no site/"
-npm ci --no-audit --no-fund || fail "npm ci failed"
+npm ci --ignore-scripts --no-audit --no-fund || fail "npm ci failed"
 npm run build || fail "npm run build failed"
 [ -f dist/index.html ] || fail "npm run build wrote no dist/index.html"
-echo "$me: ok; a clone of $sha built with npm ci and npm run build in $clone/site"
+echo "$me: ok; a clone of $sha built with npm ci --ignore-scripts and npm run build in $clone/site"

@@ -53,7 +53,7 @@ jobs:
       # of the checked-out commit (for a pull request, its merge commit), in
       # $RUNNER_TEMP/fresh, is the build that the other checks read and that
       # the artifact holds.
-      - name: Build a fresh clone with npm ci and npm run build
+      - name: Build a fresh clone with npm ci --ignore-scripts and npm run build
         id: build
         run: sh site/scripts/check-fresh-clone.sh --keep "$RUNNER_TEMP/fresh"
       - name: Test the generator on its fixtures
