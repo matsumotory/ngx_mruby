@@ -1,9 +1,10 @@
 name: site
 
-# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and step 1 of section
-# 6): build site/ and docs/ from a fresh clone, run the checks of step 1,
-# and upload the built site as a workflow artifact. There is no deployment
-# job: step 7 adds it, after the Pages settings of 5.3.
+# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and steps 1 and 2 of
+# section 6): build site/ and docs/ from a fresh clone, run the checks of
+# steps 1 and 2, and upload the built site and the specimen screenshots of
+# 4.12 as workflow artifacts. There is no deployment job: step 7 adds it,
+# after the Pages settings of 5.3.
 #
 # Pull requests run it when they touch site/, docs/ or this file. Every push
 # to next runs it: docs/ links to files outside docs/ and site/, and a link
@@ -38,7 +39,7 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       # The whole history: the last-updated date of each page is the date of
       # the last commit that changed its source (git log).
@@ -58,6 +59,14 @@ jobs:
       - name: Build a fresh clone with npm ci --ignore-scripts and npm run build
         id: build
         run: sh site/scripts/check-fresh-clone.sh --keep "$RUNNER_TEMP/fresh"
+      # Check of step 2: the build succeeds with network access blocked after
+      # npm ci (4.4). It builds dist/ again in the clone, so the checks
+      # below and the artifact read a build made without network.
+      - name: Build again with network access blocked
+        id: offline
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: sh scripts/check-offline-build.sh
       - name: Test the generator on its fixtures
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
@@ -78,6 +87,42 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-no-js.mjs
+      - name: Check the color tokens of tokens.css (both palettes and the code colors)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: python3 scripts/contrast.py
+      - name: Check the built CSS (hex colors, text-wrap, keep-all, transitions, terminal frames, external fonts)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-css.mjs
+      # The browsers of the version of playwright in package-lock.json,
+      # with the system libraries they need.
+      - name: Install Chromium and WebKit for Playwright
+        id: browsers
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: npx playwright install --with-deps chromium webkit
+      - name: Build the specimens of 4.12 (SITE_SPECIMENS=1, palettes A and B)
+        id: specimens
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: npm run build:specimens
+      - name: Check computed styles in Chromium and WebKit (sizes, colors, monospace, shadows, spacing, durations, lines)
+        if: ${{ !cancelled() && steps.specimens.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-styles.mjs
+      - name: Take the specimen screenshots of 4.12
+        id: shots
+        if: ${{ !cancelled() && steps.specimens.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/specimens.mjs --out build-specimens
+      - name: Upload the specimen screenshots
+        if: ${{ !cancelled() && steps.shots.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: specimens
+          path: ${{ runner.temp }}/fresh/site/build-specimens
+          if-no-files-found: error
       - name: Upload the built site
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

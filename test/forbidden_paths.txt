@@ -32,9 +32,12 @@
 
 # The build of the site (AGENTS.md, "The site"): npm run build writes the
 # list of pages to site/generated/ and the built site to site/dist/, and
-# Astro writes its types and caches to site/.astro/. site/.gitignore ignores
-# them; these lines also fail a forced add.
-^site/(dist|generated|\.astro)/
+# Astro writes its types and caches to site/.astro/; the specimens of step
+# 2 of the proposal are built into site/dist-specimens/ and
+# site/dist-specimens-b/ and their screenshots written to
+# site/build-specimens/. site/.gitignore ignores them; these lines also fail
+# a forced add.
+^site/(dist|dist-specimens|dist-specimens-b|build-specimens|generated|\.astro)/
 
 # Files that ./configure (Makefile, config, config.status, config.log,
 # autom4te.cache/) and the Makefile (mrbgems_config, mrbgems_config_dynamic,
