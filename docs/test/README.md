@@ -166,6 +166,99 @@ request and say why in its description. A file that a commit adds and a later
 commit removes stays in the history: remove it from the commit that added it
 (for example with `git rebase -i`), or squash the commits.
 
+## Supply chain checks
+
+Three more workflows check the supply chain of the build. None of them is in
+the `needs` of `ci-ok`, so none of them blocks a merge through the ruleset;
+"Review and merge" in `AGENTS.md` asks for every CI check on the head commit
+to pass, which includes the `zizmor` job of a pull request that runs it.
+
+### Static analysis of the workflows
+
+`.github/workflows/zizmor.yml` runs [zizmor](https://docs.zizmor.sh/) on
+pull requests and pushes that change `.github/workflows/`,
+`.github/dependabot.yml` or `.github/zizmor.yml`, and on "Run workflow". It
+audits the files under `.github/` with the default persona, including the
+audits that query GitHub (for example known vulnerable actions and commits
+that are not on the action's repository), and fails on any finding. The
+vendored `mruby/` tree has workflows of its own, which ngx_mruby does not
+run; they are not audited. The version of zizmor is pinned in the workflow
+(`version:`): Dependabot updates the pin of the action but not that input.
+
+A finding is fixed in the workflow, or accepted with its reason: by a
+`# zizmor: ignore[<audit>]` comment on a line of the finding, with the
+reason in a comment above it, or by an `ignore` rule in `.github/zizmor.yml`
+with the reason next to it. To run the same check before opening a pull
+request (the online audits need a GitHub token):
+
+```console
+$ python3 -m venv .claude/tmp/zizmor && .claude/tmp/zizmor/bin/pip install zizmor==1.31.1
+$ GH_TOKEN=$(gh auth token) .claude/tmp/zizmor/bin/zizmor --config .github/zizmor.yml .github
+```
+
+### OpenSSF Scorecard
+
+`.github/workflows/scorecard.yml` runs
+[OpenSSF Scorecard](https://github.com/ossf/scorecard-action) on pushes to
+`master`, weekly, and on "Run workflow". Scorecard supports only the default
+branch, so pull requests do not run it. It publishes the results to the Scorecard API
+(<https://api.scorecard.dev/projects/github.com/matsumotory/ngx_mruby>),
+uploads them to code scanning (the repository's Security tab), and keeps the
+SARIF file as an artifact of the run for 5 days. Publishing makes the
+Scorecard API check the workflow itself, so the workflow has no run steps and
+no `defaults`; the comment at its top lists the restrictions.
+
+GitHub disables the scheduled workflows of a public repository after 60 days
+without activity in the repository. Then neither this workflow nor the next
+one runs on its schedule, and nothing fails. "Run workflow", or enabling the
+workflow again (`gh workflow enable scorecard.yml`, `gh workflow enable
+gem-heads.yml`), starts them again.
+
+### Heads of the GitHub gems
+
+`.github/workflows/gem-heads.yml` runs `test/gem_heads.sh` every Monday, on
+"Run workflow", and on pull requests that change `build_config.rb`, the
+script or the workflow. For each `conf.gem github:` line of
+`build_config.rb`, it reports the head of the branch that a build clones
+(the line's `branch:`, or `master`, mruby's default when the line has
+none), whether the gem's default branch is another branch, whether the
+repository was renamed or archived, and whether the head moved since the
+previous report. The `conf.gem mgem:` line (`mruby-secure-random`) is not
+checked: mruby resolves it through the mgem-list repository.
+
+The previous report is the artifact `gem-heads` of the newest successful
+scheduled or manual run of the workflow on `master`; artifacts are kept for
+90 days. `master` commits no `build_config.rb.lock`, so this report is the
+only record of the heads that earlier builds took. A run with no previous
+report reports every gem as `new`. A moved head is a warning annotation and
+a row in the job summary, with a link that compares the two commits; the job
+still passes. A gem whose repository or branch cannot be read fails the job,
+and so does a failure to list the earlier runs. A previous report that cannot
+be downloaded is a warning, and every gem is then reported as `new`.
+
+To run the script on a checkout (it needs `gh` with a token):
+
+```console
+$ bash test/gem_heads.sh build_config.rb "" .claude/tmp/gem-heads.tsv
+```
+
+When a run reports a move, a session does the following. This is the
+sessions' procedure, not a decision of the owner.
+
+- Read the commits behind the comparison link. Every build of `master`, CI
+  included, and every source build of a released 2.x tag already takes the
+  new head; CI does not run for a move by itself, so run the `test` workflow
+  on `master` (`gh workflow run test.yml --ref master`) and read its result.
+- When the new head breaks the build or the suite, or changes what a 2.x
+  configuration, script or build observes, report it to the owner with the
+  run, and propose a pull request to `master`: a fix, or a `checksum_hash:`
+  that pins the gem to the last good commit, with its release notes entry
+  (see `docs/releases/README.md`). For the owner's gems
+  (`matsumotory/mruby-*`), "Other repositories" in `AGENTS.md` applies.
+- On `next`, `build_config.rb.lock` pins each gem, so the move reaches `next`
+  only through a pull request that moves the pin; the `perf` job measures
+  that pull request like any change of the lock.
+
 ## Testing
 ##### build nginx into ``./build/nginx`` and test on ``./build/nginx``
 ```
