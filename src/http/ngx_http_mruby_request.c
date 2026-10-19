@@ -7,6 +7,7 @@
 #include "ngx_http_mruby_request.h"
 
 #include "ngx_http_mruby_core.h"
+#include "ngx_http_mruby_var.h"
 
 #include <mruby.h>
 #include <mruby/array.h>
@@ -134,7 +135,6 @@ NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(content_type, r->headers_out.
 
 static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
 {
-  mrb_value v = ngx_mrb_get_request_var(mrb, self);
   ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
 
   if (r->method != NGX_HTTP_POST && r->method != NGX_HTTP_PUT) {
@@ -143,7 +143,7 @@ static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
               " when r->method is neither POST nor PUT");
   }
 
-  return mrb_funcall_id(mrb, v, NGX_HTTP_MRUBY_SYM(mrb, REQUEST_BODY), 0);
+  return ngx_mrb_var_get_fixed(mrb, NGX_MRB_VAR_REQUEST_BODY);
 }
 
 static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers, char *mkey, mrb_int mlen)
@@ -546,26 +546,22 @@ mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_get_request_var_hostname(mrb_state *mrb, mrb_value self)
 {
-  mrb_value v = ngx_mrb_get_request_var(mrb, self);
-  return mrb_funcall_id(mrb, v, NGX_HTTP_MRUBY_SYM(mrb, HOST), 0);
+  return ngx_mrb_var_get_fixed(mrb, NGX_MRB_VAR_HOST);
 }
 
 static mrb_value ngx_mrb_get_request_var_authority(mrb_state *mrb, mrb_value self)
 {
-  mrb_value v = ngx_mrb_get_request_var(mrb, self);
-  return mrb_funcall_id(mrb, v, NGX_HTTP_MRUBY_SYM(mrb, HTTP_HOST), 0);
+  return ngx_mrb_var_get_fixed(mrb, NGX_MRB_VAR_HTTP_HOST);
 }
 
 static mrb_value ngx_mrb_get_request_var_filename(mrb_state *mrb, mrb_value self)
 {
-  mrb_value v = ngx_mrb_get_request_var(mrb, self);
-  return mrb_funcall_id(mrb, v, NGX_HTTP_MRUBY_SYM(mrb, REQUEST_FILENAME), 0);
+  return ngx_mrb_var_get_fixed(mrb, NGX_MRB_VAR_REQUEST_FILENAME);
 }
 
 static mrb_value ngx_mrb_get_request_var_user(mrb_state *mrb, mrb_value self)
 {
-  mrb_value v = ngx_mrb_get_request_var(mrb, self);
-  return mrb_funcall_id(mrb, v, NGX_HTTP_MRUBY_SYM(mrb, REMOTE_USER), 0);
+  return ngx_mrb_var_get_fixed(mrb, NGX_MRB_VAR_REMOTE_USER);
 }
 
 // TODO: combine ngx_mrb_get_request_var

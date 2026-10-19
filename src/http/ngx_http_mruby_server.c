@@ -9,18 +9,19 @@
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
+#include "ngx_http_mruby_var.h"
 
 #include <mruby/hash.h>
 #include <mruby/string.h>
 
 static mrb_value ngx_mrb_get_server_var_docroot(mrb_state *mrb, mrb_value self)
 {
-  return mrb_funcall_id(mrb, ngx_mrb_get_request_var(mrb, self), NGX_HTTP_MRUBY_SYM(mrb, DOCUMENT_ROOT), 0);
+  return ngx_mrb_var_get_fixed(mrb, NGX_MRB_VAR_DOCUMENT_ROOT);
 }
 
 static mrb_value ngx_mrb_get_server_var_realpath_root(mrb_state *mrb, mrb_value self)
 {
-  return mrb_funcall_id(mrb, ngx_mrb_get_request_var(mrb, self), NGX_HTTP_MRUBY_SYM(mrb, REALPATH_ROOT), 0);
+  return ngx_mrb_var_get_fixed(mrb, NGX_MRB_VAR_REALPATH_ROOT);
 }
 
 static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)

@@ -350,6 +350,7 @@ static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf)
   if (rc == NGX_ERROR) {
     return NULL;
   }
+  mmcf->var_class = mrb_class_get_under(mmcf->state->mrb, mrb_class_get(mmcf->state->mrb, "Nginx"), "Var");
 
   cln->handler = ngx_http_mruby_main_conf_cleanup;
   cln->data = mmcf;

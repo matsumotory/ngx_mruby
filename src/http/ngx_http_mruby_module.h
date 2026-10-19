@@ -73,7 +73,24 @@ typedef struct ngx_http_mruby_main_conf_t {
   ngx_mrb_code_t *exit_worker_code;
   ngx_int_t enabled_header_filter;
   ngx_int_t enabled_body_filter;
+  /*
+   * For the accessors that Nginx::Var#method_missing defines (see
+   * ngx_mrb_var_define_accessor in ngx_http_mruby_var.c). They belong to the
+   * mrb_state of this configuration, not to C static variables: a reload
+   * creates the state of the new configuration while the old one can still
+   * exist. Each worker has its own copy after the fork.
+   * - var_class: Nginx::Var of the state. It is only compared with the class
+   *   of a receiver, so a script that removes the constant leaves no
+   *   pointer that is used.
+   * - var_prefix_accessors: how many accessors of prefix variables (arg_,
+   *   http_, ...) the worker has defined, at most
+   *   NGX_HTTP_MRUBY_VAR_PREFIX_ACCESSORS_MAX.
+   */
+  struct RClass *var_class;
+  ngx_uint_t var_prefix_accessors;
 } ngx_http_mruby_main_conf_t;
+
+#define NGX_HTTP_MRUBY_VAR_PREFIX_ACCESSORS_MAX 16
 
 typedef struct ngx_http_mruby_loc_conf_t {
   ngx_mrb_state_t *state;
