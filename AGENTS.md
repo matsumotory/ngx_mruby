@@ -411,7 +411,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
 - `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18132,
-  18136, 18138, 18140, 18143-18144, 18147-18152, 12345-12359, 12372-12373;
+  18136, 18138, 18140, 18143-18144, 18147-18153, 12345-12359, 12372-12373;
   18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test

@@ -10,6 +10,8 @@
 #include "ngx_http_mruby_request.h"
 
 #include <ngx_log.h>
+#include <mruby/array.h>
+#include <mruby/error.h>
 #include <mruby/presym.h>
 #include <mruby/string.h>
 
@@ -32,8 +34,9 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
   key = ngx_hash_strlow(ngx_name.data, ngx_name.data, ngx_name.len);
   var = ngx_http_get_variable(r, &ngx_name, key);
   if (var == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: %s is NULL", MODULE_NAME, __func__, __LINE__,
-                  c_name);
+    // c_name has no NUL byte at its end: log c_len bytes of it
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: %*s is NULL", MODULE_NAME, __func__, __LINE__,
+                  c_len, c_name);
     return mrb_nil_value();
   }
 
@@ -119,12 +122,21 @@ ARENA_RESTOR_AND_ERROR:
   return mrb_nil_value();
 }
 
+/*
+ * A method name that names no variable gets the NoMethodError that Ruby
+ * raises for a method that the receiver does not have.
+ */
+static mrb_noreturn void ngx_mrb_var_no_variable_error(mrb_state *mrb, mrb_sym name, const mrb_value *a, mrb_int alen)
+{
+  mrb_no_method_error(mrb, name, mrb_ary_new_from_values(mrb, alen, a), "undefined method '%n' for Nginx::Var", name);
+}
+
 static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
 {
   mrb_sym name;
-  mrb_int alen;
-  int c_len;
+  mrb_int alen, len, start, end;
   mrb_value *a, s_name;
+  const char *p;
   char *c_name;
   ngx_http_request_t *r;
 
@@ -133,19 +145,56 @@ static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
   // get var symble from method_missing(sym, *args)
   mrb_get_args(mrb, "n*", &name, &a, &alen);
 
-  // name is a symble obj
-  // first init name with mrb_symbol
-  // second get mrb_string with mrb_sym2str
   s_name = mrb_sym_str(mrb, name);
-  c_len = RSTRING_LEN(s_name);
-  c_name = ngx_palloc(r->pool, c_len);
-  ngx_memcpy(c_name, RSTRING_PTR(s_name), c_len);
+  p = RSTRING_PTR(s_name);
+  len = RSTRING_LEN(s_name);
 
-  if (c_name[c_len - 1] == '=') {
-    return ngx_mrb_var_set(mrb, self, strtok(c_name, "="), a[0], r);
-  } else {
-    return ngx_mrb_var_get(mrb, self, c_name, c_len, r);
+  if (len == 0) {
+    ngx_mrb_var_no_variable_error(mrb, name, a, alen);
   }
+
+  if (p[len - 1] != '=') {
+    // Nginx::Var#<name>: the variable is the whole name
+    c_name = ngx_pnalloc(r->pool, len);
+    if (c_name == NULL) {
+      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
+                    __LINE__);
+      return mrb_nil_value();
+    }
+    ngx_memcpy(c_name, p, len);
+    return ngx_mrb_var_get(mrb, self, c_name, len, r);
+  }
+
+  /*
+   * Nginx::Var#<name>=: the variable is the first run of characters other
+   * than '=' and NUL in the name, the token that strtok(name, "=") returned
+   * here before. A name made only of '=' has none.
+   */
+  for (start = 0; start < len && p[start] == '='; start++) {
+    /* void */
+  }
+  if (start == len || p[start] == '\0') {
+    ngx_mrb_var_no_variable_error(mrb, name, a, alen);
+  }
+  if (alen == 0) {
+    mrb_raisef(mrb, E_ARGUMENT_ERROR, "wrong number of arguments (given %i, expected 1) for Nginx::Var#%n", alen, name);
+  }
+  // the name ends with '=', so this stops inside the name
+  for (end = start; p[end] != '=' && p[end] != '\0'; end++) {
+    /* void */
+  }
+
+  // ngx_mrb_var_set takes a name that ends with a NUL byte
+  c_name = ngx_pnalloc(r->pool, end - start + 1);
+  if (c_name == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
+                  __LINE__);
+    return mrb_nil_value();
+  }
+  ngx_memcpy(c_name, p + start, end - start);
+  c_name[end - start] = '\0';
+
+  return ngx_mrb_var_set(mrb, self, c_name, a[0], r);
 }
 
 static mrb_value ngx_mrb_var_exist(mrb_state *mrb, mrb_value self)
@@ -185,7 +234,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
   ngx_uint_t hash;
   mrb_value k;
   mrb_value o;
-  u_char *keyp, *valp;
+  u_char *keyp, *lowkey, *valp;
 
   mrb_get_args(mrb, "oo", &k, &o);
   if (mrb_type(k) != MRB_TT_STRING) {
@@ -218,12 +267,25 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     goto ARENA_RESTOR_AND_ERROR;
   }
 
+  /*
+   * The lookup takes the lowercased name. Lowercase a copy: k is the
+   * caller's String, which can be frozen or share its bytes with other
+   * Strings, or the String of a Symbol, which can share the bytes of the
+   * name that the mrb_state keeps for the Symbol.
+   */
+  lowkey = ngx_pnalloc(r->pool, key.len);
+  if (lowkey == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
+                  __LINE__);
+    goto ARENA_RESTOR_AND_ERROR;
+  }
+
   ngx_cpystrn(keyp, key.data, key.len + 1);
   ngx_cpystrn(valp, val.data, val.len + 1);
 
-  hash = ngx_hash_strlow(key.data, key.data, key.len);
+  hash = ngx_hash_strlow(lowkey, key.data, key.len);
   cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-  v = ngx_hash_find(&cmcf->variables_hash, hash, key.data, key.len);
+  v = ngx_hash_find(&cmcf->variables_hash, hash, lowkey, key.len);
 
   if (v) {
     if (!(v->flags & NGX_HTTP_VAR_CHANGEABLE)) {
