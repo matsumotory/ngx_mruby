@@ -228,7 +228,7 @@ CRuby twice:
   ```
 
 The ports are those of every `listen` directive in `test/conf/nginx.conf`
-and `test/conf/conf.d/*.conf`, the `http {}` servers (33 ports as of
+and `test/conf/conf.d/*.conf`, the `http {}` servers (36 ports as of
 2026-10). nginx opens all its listening sockets in one loop
 (`ngx_open_listening_sockets()`) after it has read the whole configuration,
 so one port would almost always show that the others are open. Each port

@@ -37,13 +37,17 @@ t.assert('ngx_mruby - stream Connection instance methods, class local_addr, upst
     values[key] = value
   end
 
+  # The client and the server are both 127.0.0.1, so the addresses do not
+  # tell the methods of the peer from those of the local side; the ports
+  # do (12363 against the port of the client).
   t.assert_equal remote_addr, values['remote_ip']
+  t.assert_equal remote_addr, values['remote_addr']
   t.assert_equal remote_port, values['remote_port']
   t.assert_equal server_addr, values['local_ip']
   t.assert_equal server_addr, values['local_addr']
   t.assert_equal server_port, values['local_port']
   t.assert_equal "#{server_addr}:#{server_port}", values['local_ip_port']
-  %w[remote_ip remote_port local_ip local_addr local_port local_ip_port].each do |name|
+  %w[remote_ip remote_addr remote_port local_ip local_addr local_port local_ip_port].each do |name|
     t.assert_equal values[name], values["class_#{name}"]
   end
   t.assert_equal '127.0.0.1:12358', values['upstream_server']
