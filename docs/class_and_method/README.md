@@ -181,7 +181,9 @@ Nginx.return Nginx::HTTP_SERVICE_UNAVAILABLE  # returns HTTP status 503
 
 A content handler that ends without output answers as nginx's `return 200;`
 does: with the status it set, 200 when it set none, `Content-Length: 0` and an
-empty body, and nginx keeps a keep-alive connection for the next request. This
+empty body, and nginx keeps a keep-alive connection for the next request. A
+request body that no handler read is discarded before the empty answer, as
+before an answer with output. This
 covers `Nginx::HTTP_OK` and the other statuses from 200 to 299 that nginx does
 not answer by itself (for example `Nginx::HTTP_ACCEPTED`), a handler that
 writes nothing or only `""` or `nil` with `Nginx.rputs`, and a handler that only

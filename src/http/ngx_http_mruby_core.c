@@ -170,11 +170,29 @@ static ngx_int_t ngx_mrb_answer_missing_body(ngx_http_request_t *r)
 }
 
 /*
+ * Discards a request body that no handler read before the response starts,
+ * as nginx's own handlers do (ngx_http_send_response, the special
+ * responses): nginx then reads the next request of a kept connection after
+ * the body, not from it. A body that a handler read is left alone
+ * (r->request_body is set), and so is the request after the header went out.
+ * If the body cannot be discarded, the connection is closed after the
+ * response, as in ngx_http_special_response_handler. Both answers of
+ * ngx_mrb_finalize_rputs call it: the one with output and the empty one.
+ */
+static void ngx_mrb_discard_unread_body(ngx_http_request_t *r)
+{
+  if (!r->header_sent && ngx_http_discard_request_body(r) != NGX_OK) {
+    r->keepalive = 0;
+  }
+}
+
+/*
  * Answers a content handler that ended without output and set no status, 200
  * or another status below 300 that nginx does not answer by itself, as
  * nginx's "return 200;" does (ngx_http_send_response): with that status, 200
  * when none is set, Content-Length: 0 and an empty body (#200). nginx then
- * keeps a keep-alive connection for the next request.
+ * keeps a keep-alive connection for the next request, after it discarded a
+ * request body that no handler read, as for the answer with output.
  *
  * It sends the response the way ngx_mrb_finalize_rputs sends one with output,
  * so the header filters and the body filters of the location see it, and it
@@ -212,6 +230,7 @@ static ngx_int_t ngx_mrb_send_empty_body(ngx_http_request_t *r)
   }
   r->headers_out.content_length_n = 0;
 
+  ngx_mrb_discard_unread_body(r);
   rc = ngx_http_send_header(r);
 
   if ((rc == NGX_ERROR || rc > NGX_OK) && !r->header_sent) {
@@ -253,16 +272,7 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
   } else if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
     r->headers_out.status = NGX_HTTP_OK;
     (*chain->last)->buf->last_buf = 1;
-    // Discard a request body that no handler read before the response
-    // starts, as nginx's own handlers do (ngx_http_send_response, the
-    // special responses): nginx then reads the next request of a kept
-    // connection after the body, not from it. A body that a handler read is
-    // left alone (r->request_body is set), and so is the request after the
-    // header went out. If the body cannot be discarded, the connection is
-    // closed after the response, as in ngx_http_special_response_handler.
-    if (!r->header_sent && ngx_http_discard_request_body(r) != NGX_OK) {
-      r->keepalive = 0;
-    }
+    ngx_mrb_discard_unread_body(r);
     ngx_http_send_header(r);
 
     if (ctx->phase != NGX_HTTP_MRUBY_FILTER_PROCESS) {
