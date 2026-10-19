@@ -63,25 +63,21 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     includes it. The rule is for ngx_mruby's own code, not for such scripts.
 - Which changes are measured. A PR that changes an input of the measured
   binary is compared with its base in the callgrind lane ("Performance
-  comparison with callgrind" in `docs/test/README.md` on `next`). The inputs
-  are those that "In CI" in `docs/test/README.md` on `next` lists: `src/`,
-  `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `configure`,
-  `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and on `next` the
-  gem lock `build_config.rb.lock`. On `next`, the `perf` job runs the
-  comparison on such PRs. On `master`, which has no `perf` job yet, the
-  author runs the commands below.
+  comparison with callgrind" in `docs/test/README.md`). The inputs are
+  those that "In CI" in `docs/test/README.md` lists: `src/`, `mrbgems/`,
+  `mruby/`, `dependence/`, `build_config.rb`, `configure`, `config.in`,
+  `Makefile.in`, `build.sh`, `nginx_version`, and on `next` the gem lock
+  `build_config.rb.lock` (`master` commits no lock). The `perf` job of
+  `.github/workflows/test.yml` runs the comparison on such PRs, on `master`
+  and on `next`.
   - The author quotes the comparison in the PR body, under "Leak /
     performance impact" (see `.github/PULL_REQUEST_TEMPLATE.md`): the table
     with the header lines of `report.txt` above it (the line with `N`,
-    `WARMUP` and the thresholds, and the lines on the gems; on `next`, in
-    the job's log), and the commits compared. On `next`, these are the run
-    of the `perf` job and the commits that its log prints (`base: ...,
-    head: ...`). On `master`, they are the `origin/master` commit used as
-    the base, the head commit, and the `next` commit that the lane came
-    from. When the base branch gains a change to a measured input before
-    the merge, the comparison is made and quoted again: on `next` by the CI
-    run that condition 2 of "Review and merge" asks for, on `master` by the
-    author with the commands below.
+    `WARMUP` and the thresholds, and the lines on the gems; in the job's
+    log), the run of the `perf` job, and the commits that its log prints
+    (`base: ..., head: ...`). When the base branch gains a change to a
+    measured input before the merge, the comparison is made and quoted
+    again by the CI run that condition 2 of "Review and merge" asks for.
   - The lane builds nginx without `--with-stream` and has no stream
     scenario, so for a change to `src/stream/` alone both builds are the same
     binary. Such a PR says so and states instead what the change adds per
@@ -100,33 +96,32 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     note `the change of this scenario may come from when the response arrived`,
     which the report prints when the difference of those calls alone makes
     half of the `WARN` threshold or more ("Agent proxy scenarios in the
-    comparison" in `docs/test/README.md` on `next`). Both runs are quoted,
-    and the second replaces the first. In every other case, the `WARN` or
-    `FAIL` goes to the owner without a second run.
+    comparison" in `docs/test/README.md`). Both runs are quoted, and the
+    second replaces the first. In every other case, the `WARN` or `FAIL`
+    goes to the owner without a second run.
   - A session does not merge a PR while the latest run of its `perf` job
     reports `FAIL` or `ERROR`, except for a `FAIL` that the owner accepted
-    on the PR. This holds although `ci-ok` does not need the job yet, and
-    although "In CI" in `docs/test/README.md` on `next` calls the job
-    advisory; a follow-up PR to `next` aligns that text. The plan (Pillar E
-    of `docs/proposals/v3-plan.md` on `next`) adds the job to the `needs` of
+    on the PR. This holds although `ci-ok` does not need the job yet (on
+    `next`, "In CI" in `docs/test/README.md` still calls the job advisory;
+    a follow-up PR to `next` aligns that text). The plan (Pillar E of
+    `docs/proposals/v3-plan.md` on `next`) adds the job to the `needs` of
     `ci-ok` once it has run on code changes without false alarms; from then
-    on a `FAIL` or an `ERROR` also fails `ci-ok`. On `master`, which has no
-    `perf` job, the reviewer checks the author's table by the same rules.
-- The `master` commands. Until the lane is ported to `master`, a `master`
-  change is measured with the lane of `next` (`test/perf/`, the scenarios in
-  `test/soak/` and `test/build_release.sh`), added to a copy of the tree
-  outside the checkout. The base is the tip of `origin/master`, so update
-  the branch to it first: a branch that is behind shows the newer `master`
-  commits as reverse differences. From a checkout of the PR's head commit:
+    on a `FAIL` or an `ERROR` also fails `ci-ok`.
+- Before a tag. Each PR is compared only with its base, so changes that
+  stay below `WARN` can add up. The check PR of "Before the tag" (see
+  `docs/releases/README.md`) therefore also compares its head with the tag
+  where the range of the check starts. The base is that tag, and the head
+  must contain the tip of its base branch, so update the branch first. From
+  a checkout of the check PR's head commit (`<base>` is `master` or
+  `next`):
 
   ```sh
-  git fetch origin master next
-  git merge-base --is-ancestor origin/master HEAD   # exits 1 when the branch is behind: update it first
+  git fetch origin <base> --tags
+  git merge-base --is-ancestor origin/<base> HEAD   # exits 1 when the branch is behind: update it first
   D=$HOME/ngx_mruby-perf   # any directory outside the checkout
   rm -rf "$D" && mkdir -p "$D/base" "$D/head"
-  git archive origin/master | tar -x -C "$D/base"
+  git archive <tag> | tar -x -C "$D/base"
   git archive HEAD | tar -x -C "$D/head"
-  git archive origin/next test/perf test/soak test/build_release.sh | tar -x -C "$D/head"
   cd "$D/head" && sh test/perf/compare.sh "$D/base"
   ```
 
@@ -138,15 +133,11 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
   docker run --rm -v "$D:$D" -w "$D/head" -e D="$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev valgrind >/dev/null && sh test/perf/compare.sh "$D/base"'
   ```
 
-  The report is in `$D/head/build_perf/report.txt`.
-- Before a tag. Each PR is compared only with its base, so changes that
-  stay below `WARN` can add up. The check PR of "Before the tag" (see
-  `docs/releases/README.md`) therefore also compares its head with the tag
-  where the range of the check starts. It uses the commands above with the
-  base made from that tag (`git archive <tag> | tar -x -C "$D/base"`); on
-  `next`, the up-to-date check is against `origin/next`, and the line that
-  adds the lane is left out. It quotes the table as above, and a `WARN` or
-  `FAIL` there goes to the owner.
+  The report is in `$D/head/build_perf/report.txt`. The measurement
+  (`test/perf/`, the scenarios in `test/soak/`) comes from the head, so a
+  tag from before the lane was added is measured as well. The check PR
+  quotes the table as above, and a `WARN` or `FAIL` there goes to the
+  owner.
 - Planned, not in place yet: a benchmark of the test nginx for throughput
   and latency (Pillar E and section 8 of `docs/proposals/v3-plan.md` on
   `next`). Where its results are recorded is decided when it is added.
@@ -366,6 +357,7 @@ sh test.sh                          # full run: fetch nginx (version in ./nginx_
 ONLY_BUILD_NGX_MRUBY=1 sh test.sh   # fast loop: skip fetch/configure, rebuild changed sources, re-run tests
 BUILD_DYNAMIC_MODULE=1 sh test.sh   # build as a dynamic module (uses build_dynamic/ instead of build/)
 NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
+sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12372)
 ```
 
 - The first full run takes a few minutes (it clones mrbgems from GitHub and builds
@@ -393,6 +385,14 @@ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
   `test/t/ngx_mruby.rb`) and
   kills every running `nginx` process before it starts. Run only one `test.sh` per
   machine at a time, and wait if an nginx you did not start is running.
+- `test/perf/compare.sh` builds the base and the head in `build_perf/` (it does not
+  touch the `test.sh` build), listens on 12370 and 12371, and starts the mock LLM
+  upstream (`test/soak/mock_llm.rb`) on 12372 for the agent proxy scenarios
+  (`PERF_PORT_BASE` moves all three). It stops only the processes it started.
+  `test.sh` kills its nginx too, so do not run both at the same time on one
+  machine. It needs valgrind's `callgrind_control` and `vgdb`: on macOS, run it
+  in a Linux container. See "Performance comparison with callgrind" in
+  `docs/test/README.md`.
 
 ### When nginx.org is unreachable
 
