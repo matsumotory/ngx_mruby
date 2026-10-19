@@ -18,8 +18,7 @@ release conditions that steps 7 and 8 add for `v3.0.0-rc.1` and v3.0.0,
 and the targets in section 8 are proposals of that amendment, not
 decisions. On 2026-10-15 the owner decided the frame in which handler code
 runs (#502, section 7, item 14), which had been an open question of section
-7 since earlier that day; the decisions of section 7 are those of
-2026-10-03, 2026-10-04 and 2026-10-15, as its heading says. Facts cite a file and line or a URL with its
+7 since earlier that day. Facts cite a file and line or a URL with its
 date. Statements marked "unverified" come from reading code only and still
 need a build and a test.
 
