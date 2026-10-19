@@ -189,24 +189,27 @@ end
 # body that is not complete, and ngx_mruby logs that at the info level; the
 # code of the rewrite handler does not run. Nginx::Request#body returns the
 # part of the body that nginx had read before it ended the read: the log
-# handler logs it, and the header filter writes it into the header
-# X-Request-Body, both with inspect. After client_body_timeout nginx closes
-# the connection without a response; for a malformed chunked body the client
-# gets nginx's 400 page once, and the connection is closed. No "[alert]" line
-# may follow for these requests, and afterwards no socket of port 18152 may
-# stay in CLOSE_WAIT.
+# handler and the body filter log it, and the header filter writes it into
+# the header X-Request-Body, all with inspect. After client_body_timeout
+# nginx closes the connection without a response; for a malformed chunked
+# body the client gets nginx's 400 page once, and the connection is closed.
+# No "[alert]" line may follow for these requests, and afterwards no socket
+# of port 18152 may stay in CLOSE_WAIT.
 REQUEST_BODY_PENDING_RAN = 'request-body-pending-code-ran'
 REQUEST_BODY_PENDING_LOGGED = 'request-body-pending-logged'
+REQUEST_BODY_PENDING_FILTERED = 'request-body-pending-filtered'
 
 def request_body_pending_not_complete(kind)
   "the request body is not complete and #{kind} cannot wait for it"
 end
 
-# What the log handler of /log_handler logged with inspect as the body, for
-# each of its notice lines in lines. nginx adds " while logging request" and
-# the client and request data after the message.
-def request_body_pending_logged(lines)
-  lines.map { |l| l.split("#{REQUEST_BODY_PENDING_LOGGED} ", 2)[1] }.compact.map { |v| v.split(' while ', 2)[0] }
+# What a handler of port 18152 logged with inspect as the body after marker
+# (the log handler REQUEST_BODY_PENDING_LOGGED, the body filter
+# REQUEST_BODY_PENDING_FILTERED), for each of its notice lines in lines.
+# nginx adds the client and request data after the message, after " while
+# logging request" in the log phase and after ", client: " in a filter.
+def request_body_pending_logged(lines, marker)
+  lines.map { |l| l.split("#{marker} ", 2)[1] }.compact.map { |v| v.split(' while ', 2)[0].split(', client: ', 2)[0] }
 end
 
 # How many times text occurs in str.
@@ -233,7 +236,7 @@ t.assert('request body later', 'a log handler runs without the body that a rewri
   t.assert_equal 1, lines.select { |l| l.include?(request_body_pending_not_complete('a log handler')) }.size
   t.assert_equal [], lines.select { |l| l.include?('[alert]') }
   # The 10 bytes that the client sent before client_body_timeout expired.
-  t.assert_equal ['"0123456789"'], request_body_pending_logged(lines)
+  t.assert_equal ['"0123456789"'], request_body_pending_logged(lines, REQUEST_BODY_PENDING_LOGGED)
 end
 
 [['/header_filter', 'a header filter'], ['/body_filter', 'a body filter']].each do |path, kind|
@@ -248,6 +251,10 @@ end
     # malformed line.
     t.assert_equal '"abcde"', fields['x-request-body'] if path == '/header_filter'
     lines = request_body_set_log_lines(offset)
+    # The body filter of /body_filter logs the same data of the first chunk.
+    # (The conditional assertions stay off the last line of the block: a
+    # block whose value is nil fails in SimpleTest.)
+    t.assert_equal ['"abcde"'], request_body_pending_logged(lines, REQUEST_BODY_PENDING_FILTERED) if path == '/body_filter'
     t.assert_equal 0, lines.select { |l| l.include?(REQUEST_BODY_PENDING_RAN) }.size
     t.assert_equal 1, lines.select { |l| l.include?(request_body_pending_not_complete(kind)) }.size
     t.assert_equal [], lines.select { |l| l.include?('[alert]') }

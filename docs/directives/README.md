@@ -447,7 +447,7 @@ A body that a post-read, server rewrite, rewrite, access or content handler is s
 `Nginx::Request#body` then returns the part of the body that nginx had read before it ended the read, or `nil` when that part did not fit in `client_body_buffer_size` and nginx had written it to a temporary file.
 A later handler that can wait, or a module such as `proxy_pass`, still reads the whole body.
 To give these handlers the whole body, read it first in a handler that can wait and runs before them, such as a server-level `mruby_post_read_handler_code`.
-Before 2.7.1, such a handler did not run its code when the body was not complete, and the body read that it had started ran the phases of the request again when it completed (since 2.7.1 it runs without the body).
+Before 2.7.1, such a handler did not run its code when the body was not complete, and the body read that it had started ran the phases of the request again when it completed (since 2.7.1 it runs at once, without waiting for the rest of the body, as described above).
 
 ## mruby_upstream_keepalive
 
