@@ -1,0 +1,8 @@
+# npm ci
+/node_modules/
+# npm run build: the pages and the list of them that scripts/sync-docs.mjs
+# writes, Astro's generated types and caches, and the built site
+/src/content/docs/
+/generated/
+/.astro/
+/dist/
