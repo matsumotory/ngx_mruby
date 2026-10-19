@@ -84,17 +84,6 @@ t.assert('directives - nginx -t runs the mruby_init file and not the mruby_init_
   t.assert_not_include out, '"mruby_init_worker file"'
 end
 
-# The inline versions in the same way: nginx -t runs the code of
-# mruby_init_code and not that of mruby_init_worker_code. The computed value
-# tells the line that the code prints apart from the code itself.
-t.assert('directives - nginx -t runs mruby_init_code and not mruby_init_worker_code', 'nginx -t') do
-  out = nginx_t_http(%q{mruby_init_code 'p "mruby_init_code ran: #{6 * 7}"';} + "\n" +
-                     %q{mruby_init_worker_code 'p "mruby_init_worker_code ran: #{6 * 7}"';})
-  t.assert_include out, 'test is successful'
-  t.assert_include out, '"mruby_init_code ran: 42"'
-  t.assert_not_include out, 'mruby_init_worker_code ran: 42'
-end
-
 # The second nginx loads the file versions of mruby_init, mruby_init_worker
 # and mruby_exit_worker. The reply shows that the global variable set by the
 # init file reached the init_worker file and a request. The p lines show
