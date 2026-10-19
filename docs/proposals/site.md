@@ -474,7 +474,7 @@ muted text, border and control outline, and it adds a button fill.
 | Border | `#e7e3d8`; card border and lines `#e0dbcd` | `#2b2719`; `#332e1f` | `#3a3524` |
 | Control outline (3:1) | `#8a8271` | `#7d7458` | `#8f856a` |
 
-Computed with the conversion of [contrast.py](./site/contrast.py), every
+Computed with the conversion of [contrast.py](../../site/scripts/contrast.py), every
 color of this table except white, the gold included, has an OKLCH hue
 between 84.4 and 94.1: neutrals and accent share one hue.
 
@@ -854,8 +854,9 @@ files (4.2), with the accent tokens of palette A; `surface` there is their
 alternate surface. The ratios are WCAG 2.2 contrast ratios
 against `bg` and `surface`, truncated to two decimals and never rounded,
 since WCAG's Understanding document for 1.4.3 says "4.499:1 would not meet
-the 4.5:1 threshold". [contrast.py](./site/contrast.py) holds both
-palettes, converts them, compares the unrounded ratio of every pair a role
+the 4.5:1 threshold". [contrast.py](../../site/scripts/contrast.py) reads
+both palettes and the code colors from `site/src/styles/tokens.css`,
+converts the OKLCH source values of palette A, compares the unrounded ratio of every pair a role
 needs with its threshold (4.5:1 wherever a role puts text on or in the
 color, 3:1 for outlines and the focus ring) and exits 1 on a failure. With
 the light `accent` planted at `#157c70`, which is 4.4968:1 on `surface`, it
@@ -1238,12 +1239,12 @@ detection, or that pinned versions do not keep Starlight stable.
   its step 5, the owner moves the deployment branch rule to `master`; in
   its step 7, the pull request to `v2.x` points the mirrored copies of
   those two workflows at `v2.x` and the dispatch at `--ref master`.
-- **Check scripts that exist today**:
+- **Check scripts in Python**:
   [check_links.py](../../site/scripts/check_links.py) resolves the relative links and
-  heading anchors of Markdown files, and [contrast.py](./site/contrast.py)
-  checks the two palettes of 4.6. Both run with Python 3 and no packages.
-  Step 1 moves `check_links.py` into `site/scripts/`, and step 2 moves
-  `contrast.py` there and makes it read `tokens.css`.
+  heading anchors of Markdown files, and [contrast.py](../../site/scripts/contrast.py)
+  checks the two palettes of 4.6 and the code colors in `tokens.css`. Both
+  run with Python 3 and no packages. The other checks of section 6 are
+  Node.js scripts beside them ("The site" in AGENTS.md).
 
 ### 5.3 Deployment and previews
 
