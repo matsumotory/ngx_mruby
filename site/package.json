@@ -8,13 +8,26 @@
   "scripts": {
     "sync-docs": "node scripts/sync-docs.mjs",
     "build": "node scripts/sync-docs.mjs && ASTRO_TELEMETRY_DISABLED=1 astro build --force",
+    "build:specimens": "SITE_SPECIMENS=1 npm run build && SITE_SPECIMENS=1 SITE_CODE_PALETTE=b npm run build",
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "test": "node scripts/test-sync-docs.mjs",
-    "check": "node scripts/check-built-links.mjs && node scripts/check-pages.mjs && node scripts/check-japanese.mjs && node scripts/check-no-js.mjs"
+    "check": "node scripts/check-built-links.mjs && node scripts/check-pages.mjs && node scripts/check-japanese.mjs && node scripts/check-no-js.mjs && node scripts/check-css.mjs",
+    "check:contrast": "python3 scripts/contrast.py",
+    "check:styles": "node scripts/check-styles.mjs",
+    "check:offline": "sh scripts/check-offline-build.sh",
+    "specimens": "node scripts/specimens.mjs"
   },
   "dependencies": {
     "@astrojs/starlight": "0.42.6",
+    "@fontsource-variable/geist-mono": "5.3.0",
+    "@fontsource-variable/inter": "5.3.0",
+    "@fontsource-variable/noto-sans-jp": "5.3.1",
     "astro": "7.3.8",
+    "astro-expressive-code": "0.44.2",
+    "postcss": "8.5.31",
     "satteri": "0.10.5"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
   }
 }

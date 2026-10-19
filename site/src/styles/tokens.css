@@ -1,0 +1,379 @@
+/*
+ * The design tokens of the ngx.mruby.org site (docs/proposals/site.md,
+ * section 4). This file holds every color of the site: no other file under
+ * site/src/ writes a hex value, and the built CSS holds hex values only from
+ * this file and from Expressive Code's stylesheet (scripts/check-css.mjs).
+ *
+ * Colors are hex, which is what a browser computes and what the checks
+ * compare; the comment after each value of palette A and of the code colors
+ * is its OKLCH source value, from which scripts/contrast.py converts and
+ * compares it. Palette B and the gold of the step back of 4.12, item 4, have
+ * no OKLCH source: their values are those of the owner's sites (4.2).
+ *
+ * Theme order (4.2 "Theme order", 4.7): light tokens on :root, dark ones in
+ * @media (prefers-color-scheme: dark) for :root:not([data-theme="light"])
+ * and on :root[data-theme="dark"]. Starlight writes data-theme="dark" into
+ * the served HTML (Page.astro), so the forced-dark selector also needs
+ * [data-theme-script], which only the theme script sets
+ * (src/components/ThemeProvider.astro): without JavaScript the OS setting
+ * decides, with it the theme toggle does. scripts/contrast.py checks that
+ * the two dark blocks of each palette hold the same values.
+ *
+ * Palette B (4.6, 4.12 item 1) applies under :root[data-palette="b"], which
+ * only the specimens of step 2 set. The palette that the owner does not
+ * choose leaves this file with step 3.
+ */
+
+/* Palette A, light (4.6, table "Palette A"; 4.3 items 3 and 4) */
+:root {
+  color-scheme: light;
+  --color-bg-primary: #f7fbfa; /* oklch(0.985 0.004 182) */
+  --color-bg-tertiary: #ecf3f1; /* oklch(0.958 0.008 182) */
+  --color-text-primary: #172522; /* oklch(0.250 0.020 182) */
+  --color-text-muted: #4c5c59; /* oklch(0.460 0.020 182) */
+  --color-accent-text: #0f695e; /* oklch(0.470 0.080 182) */
+  --color-accent: #167b6f; /* oklch(0.527 0.089 182) */
+  --color-border-strong: #748481; /* oklch(0.600 0.019 182) */
+  --color-border: #d4dddb; /* oklch(0.890 0.010 182) */
+  /* Code colors (4.6: at most four besides text and text-muted) */
+  --color-code-keyword: #1b6684; /* oklch(0.480 0.085 230) */
+  --color-code-string: #386f3b; /* oklch(0.490 0.100 145) */
+  --color-code-number: #8b5511; /* oklch(0.500 0.105 65) */
+  --color-code-name: #a03e43; /* oklch(0.500 0.130 20) */
+}
+
+/* Palette A, dark */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-bg-primary: #0e1413; /* oklch(0.185 0.010 182) */
+    --color-bg-tertiary: #161e1c; /* oklch(0.225 0.012 182) */
+    --color-text-primary: #e2eae8; /* oklch(0.930 0.009 182) */
+    --color-text-muted: #a6b1ae; /* oklch(0.750 0.013 182) */
+    --color-accent-text: #81cfc1; /* oklch(0.800 0.080 182) */
+    --color-accent: #56b1a3; /* oklch(0.700 0.090 182) */
+    --color-border-strong: #6b7775; /* oklch(0.560 0.015 182) */
+    --color-border: #2c3533; /* oklch(0.320 0.013 182) */
+    --color-code-keyword: #82c8ea; /* oklch(0.800 0.085 230) */
+    --color-code-string: #90d192; /* oklch(0.800 0.110 145) */
+    --color-code-number: #ecba74; /* oklch(0.820 0.105 75) */
+    --color-code-name: #f2a7a6; /* oklch(0.800 0.090 20) */
+  }
+}
+:root[data-theme="dark"][data-theme-script] {
+  color-scheme: dark;
+  --color-bg-primary: #0e1413; /* oklch(0.185 0.010 182) */
+  --color-bg-tertiary: #161e1c; /* oklch(0.225 0.012 182) */
+  --color-text-primary: #e2eae8; /* oklch(0.930 0.009 182) */
+  --color-text-muted: #a6b1ae; /* oklch(0.750 0.013 182) */
+  --color-accent-text: #81cfc1; /* oklch(0.800 0.080 182) */
+  --color-accent: #56b1a3; /* oklch(0.700 0.090 182) */
+  --color-border-strong: #6b7775; /* oklch(0.560 0.015 182) */
+  --color-border: #2c3533; /* oklch(0.320 0.013 182) */
+  --color-code-keyword: #82c8ea; /* oklch(0.800 0.085 230) */
+  --color-code-string: #90d192; /* oklch(0.800 0.110 145) */
+  --color-code-number: #ecba74; /* oklch(0.820 0.105 75) */
+  --color-code-name: #f2a7a6; /* oklch(0.800 0.090 20) */
+}
+
+/* Palette B, light (4.6, table "Palette B"): the neutrals of the owner's
+   corporate and profile sites with the accent tokens of palette A */
+:root[data-palette="b"] {
+  --color-bg-primary: #faf8f3;
+  --color-bg-tertiary: #f3f0e8;
+  --color-text-primary: #232017;
+  --color-text-muted: #5f5949;
+  --color-accent-text: #0f695e;
+  --color-accent: #167b6f;
+  --color-border-strong: #8a8271;
+  --color-border: #e7e3d8;
+}
+
+/* Palette B, dark */
+@media (prefers-color-scheme: dark) {
+  :root[data-palette="b"]:not([data-theme="light"]) {
+    --color-bg-primary: #14120d;
+    --color-bg-tertiary: #211e15;
+    --color-text-primary: #ece7db;
+    --color-text-muted: #9a937f;
+    --color-accent-text: #81cfc1;
+    --color-accent: #56b1a3;
+    --color-border-strong: #7d7458;
+    --color-border: #2b2719;
+  }
+}
+:root[data-palette="b"][data-theme="dark"][data-theme-script] {
+  --color-bg-primary: #14120d;
+  --color-bg-tertiary: #211e15;
+  --color-text-primary: #ece7db;
+  --color-text-muted: #9a937f;
+  --color-accent-text: #81cfc1;
+  --color-accent: #56b1a3;
+  --color-border-strong: #7d7458;
+  --color-border: #2b2719;
+}
+
+/* The step back of 4.12, item 4: the gold accent of the owner's sites
+   (4.2, table "Color") with palette B's neutrals. A specimen only; the
+   contrast script prints it without gating on it. */
+:root[data-palette="b"][data-accent="gold"] {
+  --color-accent-text: #82672c;
+  --color-accent: #d4a843;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-palette="b"][data-accent="gold"]:not([data-theme="light"]) {
+    --color-accent-text: #c9a34e;
+    --color-accent: #c9a34e;
+  }
+}
+:root[data-palette="b"][data-accent="gold"][data-theme="dark"][data-theme-script] {
+  --color-accent-text: #c9a34e;
+  --color-accent: #c9a34e;
+}
+
+/* 4.12 item 4, a dark first screen on the home page specimen: the dark
+   tokens of palette A on the header, the title panel and the first section,
+   in both themes. A specimen only; contrast.py checks that the values are
+   those of palette A, dark. */
+:root[data-cyber="dark-hero"] :is(header.header, main:has(.home-specimen) > .content-panel:first-child, .home-first) {
+  color-scheme: dark;
+  --color-bg-primary: #0e1413;
+  --color-bg-tertiary: #161e1c;
+  --color-text-primary: #e2eae8;
+  --color-text-muted: #a6b1ae;
+  --color-accent-text: #81cfc1;
+  --color-accent: #56b1a3;
+  --color-border-strong: #6b7775;
+  --color-border: #2c3533;
+}
+
+/* Everything that does not depend on the theme */
+:root {
+  /* Families (4.4). The Japanese faces have no generic family here, so
+     that the monospace stack can put them before "monospace". */
+  --font-ja-faces: "Hiragino Sans", "Noto Sans JP Variable", "Noto Sans JP";
+  --font-latin: "Inter Variable", "Inter", "Helvetica Neue", Arial;
+  --font-sans: var(--font-ja-faces), sans-serif;
+  /* 4.12 item 2: Geist Mono served by the site, the system stack of the
+     corporate site's code blocks as the fallback, then the Japanese faces
+     for Japanese characters in code comments (4.4). */
+  --font-mono-face: "Geist Mono Variable";
+  --font-mono: var(--font-mono-face), "SFMono-Regular", Menlo, Consolas, "Liberation Mono",
+    var(--font-ja-faces), monospace;
+  /* English pages: --font-latin, then --font-sans (4.4) */
+  --font-body: var(--font-latin), var(--font-sans);
+
+  /* Type scale, English (4.4, table "Scale") */
+  --text-home: clamp(2rem, 1.4rem + 2vw, 2.375rem);
+  --text-h1: 2rem;
+  --text-h2: 1.625rem;
+  --text-h3: 1.375rem;
+  --text-body: 1rem;
+  --text-nav: 0.9375rem;
+  --text-caption: 0.875rem;
+  --leading-home: 1.2;
+  --leading-h1: 1.25;
+  --leading-h2: 1.3;
+  --leading-h3: 1.35;
+  --leading-body: 1.6;
+  --leading-nav: 1.5;
+  --leading-caption: 1.5;
+  --weight-heading: 700;
+  --weight-h3: 600;
+  --weight-current: 600;
+
+  /* Spacing (4.5): the inherited --space-1 to --space-9 and no others */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 80px;
+  /* Gutters (4.5): 24 px above 640 px, 20 px at 640 px and below */
+  --gutter: 24px;
+  --header-pad-x: 32px;
+  /* The text column (4.4) and the home page's content width (4.5) */
+  --measure: 38rem;
+  --content-width-home: 1032px;
+  --header-height: 64px;
+
+  /* Radii (4.5, 4.12 item 3) */
+  --radius-control: 8px;
+  --radius-frame: 12px;
+  --radius-code: var(--radius-frame);
+  --radius-pill: 999px;
+
+  /* Motion (4.8): only color, background color, border color, opacity and
+     transform, for 200 ms or less */
+  --duration-short: 150ms;
+}
+
+/* 20 px is not a step of --space-*: it is the profile site's narrow
+   gutter, which 4.5 takes ("Gutters: 20 px at 640 px and below"). */
+@media (max-width: 640px) {
+  :root {
+    --gutter: 20px;
+    --header-pad-x: 20px;
+  }
+}
+
+/* Type scale, Japanese (4.4): one step smaller headings, line height 1.4,
+   body 1.8, navigation and captions 1.7 */
+:root[lang="ja"] {
+  --font-body: var(--font-sans);
+  --text-home: clamp(1.625rem, 1.2rem + 1.5vw, 2rem);
+  --text-h1: 1.625rem;
+  --text-h2: 1.375rem;
+  --text-h3: 1.125rem;
+  --leading-home: 1.4;
+  --leading-h1: 1.4;
+  --leading-h2: 1.4;
+  --leading-h3: 1.4;
+  --leading-body: 1.8;
+  --leading-nav: 1.7;
+  --leading-caption: 1.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-short: 0s;
+  }
+}
+
+/*
+ * Starlight's variables, from the tokens (4.6 "Starlight's own colors").
+ * Starlight's own definitions of these variables, which hold a gray scale
+ * at hue 224 and five hue palettes, are removed from its stylesheets at
+ * build time (scripts/lib/postcss-theme-colors.mjs), so these are the only
+ * ones in the built CSS. The second selector recomputes the colors where
+ * the dark first screen of the specimen sets dark tokens on an element.
+ */
+:root,
+:root[data-cyber="dark-hero"] :is(header.header, main:has(.home-specimen) > .content-panel:first-child, .home-first) {
+  --sl-color-white: var(--color-text-primary);
+  --sl-color-gray-1: var(--color-text-primary);
+  --sl-color-gray-2: var(--color-text-primary);
+  --sl-color-gray-3: var(--color-text-muted);
+  --sl-color-gray-4: var(--color-border-strong);
+  --sl-color-gray-5: var(--color-border);
+  --sl-color-gray-6: var(--color-bg-tertiary);
+  --sl-color-gray-7: var(--color-bg-tertiary);
+  --sl-color-black: var(--color-bg-primary);
+
+  --sl-color-accent-low: var(--color-bg-primary);
+  --sl-color-accent: var(--color-accent);
+  --sl-color-accent-high: var(--color-accent-text);
+
+  --sl-color-text: var(--color-text-primary);
+  --sl-color-text-accent: var(--color-accent-text);
+  --sl-color-text-invert: var(--color-bg-primary);
+  --sl-color-bg: var(--color-bg-primary);
+  --sl-color-bg-nav: var(--color-bg-tertiary);
+  --sl-color-bg-sidebar: var(--color-bg-tertiary);
+  --sl-color-bg-inline-code: var(--color-bg-tertiary);
+  --sl-color-bg-accent: var(--color-accent);
+  --sl-color-hairline-light: var(--color-border);
+  --sl-color-hairline: var(--color-border);
+  --sl-color-hairline-shade: var(--color-border);
+  --sl-color-backdrop-overlay: transparent;
+
+  /* The five hue palettes: asides and badges carry a text label instead of
+     a color (4.6), so every hue is a neutral */
+  --sl-color-orange-low: var(--color-bg-primary);
+  --sl-color-orange: var(--color-border-strong);
+  --sl-color-orange-high: var(--color-text-primary);
+  --sl-color-green-low: var(--color-bg-primary);
+  --sl-color-green: var(--color-border-strong);
+  --sl-color-green-high: var(--color-text-primary);
+  --sl-color-blue-low: var(--color-bg-primary);
+  --sl-color-blue: var(--color-border-strong);
+  --sl-color-blue-high: var(--color-text-primary);
+  --sl-color-purple-low: var(--color-bg-primary);
+  --sl-color-purple: var(--color-border-strong);
+  --sl-color-purple-high: var(--color-text-primary);
+  --sl-color-red-low: var(--color-bg-primary);
+  --sl-color-red: var(--color-border-strong);
+  --sl-color-red-high: var(--color-text-primary);
+
+  --sl-badge-default-bg: var(--color-bg-primary);
+  --sl-badge-default-border: var(--color-border-strong);
+  --sl-badge-default-text: var(--color-text-primary);
+  --sl-badge-note-bg: var(--color-bg-primary);
+  --sl-badge-note-border: var(--color-border-strong);
+  --sl-badge-note-text: var(--color-text-primary);
+  --sl-badge-danger-bg: var(--color-bg-primary);
+  --sl-badge-danger-border: var(--color-border-strong);
+  --sl-badge-danger-text: var(--color-text-primary);
+  --sl-badge-success-bg: var(--color-bg-primary);
+  --sl-badge-success-border: var(--color-border-strong);
+  --sl-badge-success-text: var(--color-text-primary);
+  --sl-badge-caution-bg: var(--color-bg-primary);
+  --sl-badge-caution-border: var(--color-border-strong);
+  --sl-badge-caution-text: var(--color-text-primary);
+  --sl-badge-tip-bg: var(--color-bg-primary);
+  --sl-badge-tip-border: var(--color-border-strong);
+  --sl-badge-tip-text: var(--color-text-primary);
+
+  /* Pagefind's search UI inside Starlight's search dialog */
+  --pagefind-ui-primary: var(--color-text-primary);
+  --pagefind-ui-text: var(--color-text-primary);
+  --pagefind-ui-background: var(--color-bg-primary);
+  --pagefind-ui-border: var(--color-border-strong);
+  --pagefind-ui-tag: var(--color-bg-tertiary);
+}
+
+/* Starlight's and Pagefind's other variables, which do not depend on the
+   theme: shadows, families, sizes and layout */
+:root {
+  /* 4.3 item 5: no shadows */
+  --sl-shadow-sm: none;
+  --sl-shadow-md: none;
+  --sl-shadow-lg: none;
+  --pagefind-ui-border-radius: var(--radius-control);
+  --pagefind-ui-image-border-radius: var(--radius-control);
+  --pagefind-ui-scale: 1;
+
+  /* Families */
+  --sl-font: var(--font-body);
+  --sl-font-mono: var(--font-mono);
+
+  /* Sizes: every size Starlight reads is a size of the scale (4.4) */
+  --sl-text-2xs: var(--text-caption);
+  --sl-text-xs: var(--text-caption);
+  --sl-text-sm: var(--text-caption);
+  --sl-text-base: var(--text-body);
+  --sl-text-lg: var(--text-body);
+  --sl-text-xl: var(--text-h3);
+  --sl-text-2xl: var(--text-h2);
+  --sl-text-3xl: var(--text-h1);
+  --sl-text-4xl: var(--text-h1);
+  --sl-text-5xl: var(--text-h1);
+  --sl-text-6xl: var(--text-h1);
+  --sl-text-body: var(--text-body);
+  --sl-text-body-sm: var(--text-caption);
+  --sl-text-code: var(--text-nav);
+  --sl-text-code-sm: var(--text-nav);
+  --sl-text-h1: var(--text-h1);
+  --sl-text-h2: var(--text-h2);
+  --sl-text-h3: var(--text-h3);
+  --sl-text-h4: var(--text-body);
+  --sl-text-h5: var(--text-body);
+  --sl-text-h6: var(--text-body);
+  --sl-line-height: var(--leading-body);
+  --sl-line-height-headings: var(--leading-h2);
+
+  /* Layout: 64 px header at every width (4.10), Starlight's content column
+     of 45rem for code blocks, tables and diagrams, with text blocks held to
+     the text column of 4.4 by site.css, and the gutters of 4.5 */
+  --sl-nav-height: var(--header-height);
+  --sl-nav-pad-x: var(--header-pad-x);
+  --sl-nav-pad-y: var(--space-3);
+  --sl-content-width: 45rem;
+  --sl-content-pad-x: var(--gutter);
+  --sl-sidebar-pad-x: var(--gutter);
+  --sl-menu-button-size: 44px;
+  --sl-nav-gap: var(--space-4);
+}
