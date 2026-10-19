@@ -268,10 +268,11 @@ creates an `mrb_state` of ngx_mruby for each `http {}` and each `stream {}`
 block while nginx reads the configuration (`mrb_open`, under
 `MRB_GC_STRESS`), and `mrb_open` runs the Ruby code of mruby's core and
 of the bundled gems. Each HTTP request passes the handlers that ngx_mruby
-adds to the post-read, server rewrite, rewrite and access phases and to
-the log phase, and the one of the content phase unless the location has a
-content handler of its own (`proxy_pass` and the like), which nginx runs
-instead of the handlers of that phase. These handlers decline when no
+adds to the post-read, server rewrite, rewrite, access and log phases, in
+the phases that the request reaches (a `return` or a `rewrite` can end it
+before the later ones), and the one of the content phase unless the
+location has a content handler of its own (`proxy_pass` and the like),
+which nginx runs instead of the handlers of that phase. These handlers decline when no
 code is configured. Each stream session passes ngx_mruby's handler of the
 access phase. The header and body filters of ngx_mruby are added only when
 a directive asks for them, and no handler, filter or init code of a
