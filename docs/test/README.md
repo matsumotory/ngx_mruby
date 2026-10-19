@@ -45,10 +45,11 @@ can live in files of its own:
   `base_ssl`, `http_host`, `html_path`, `nginx_t` (runs `nginx -t` on a
   generated configuration), `tcp_client` and `second_instance`. It starts
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
-  with `_` are helpers and are not run by test.sh; `_tcp_client.rb`,
+  with `_` are helpers and are not run as cases; `_tcp_client.rb`,
   `_filter_connection_client.rb`, `_request_body_client.rb` and
   `_second_instance.rb` are CRuby scripts that the prelude helpers and the
-  cases run with `ruby`.
+  cases run with `ruby`, and `_wait_for_listen.rb` is the CRuby script that
+  test.sh runs to wait for nginx (see "Waiting for nginx to listen" below).
 - Hook scripts go to `test/html/` as before; the fragment refers to them as
   `build/nginx/html/<name>.rb`.
 
@@ -186,11 +187,108 @@ test configuration with an "unknown directive" error. After changing
 (`build/nginx-X.Y.Z` of the new version, or `build_dynamic/`), and configures
 nginx there when that file is missing in it.
 
-If you want to run with valgrind, set the environment variables `NGINX_RUNNER` and `NGINX_HEATTIME`.
+To run nginx under valgrind, set the environment variable `NGINX_RUNNER`:
 
 ```console
-$ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh
+$ NGINX_RUNNER=valgrind sh test.sh
 ```
+
+### Waiting for nginx to listen
+
+`test.sh` starts the test nginx in the background (`$NGINX_RUNNER
+build/nginx/sbin/nginx &`) and sends the first request only after nginx
+accepts TCP connections. It runs `test/t/cases/_wait_for_listen.rb` with
+CRuby twice:
+
+- Before it starts nginx, the script waits until no process accepts a
+  connection on the ports below. A port that another process listens on
+  would make the wait after the start succeed without nginx, so the run
+  fails when one still accepts after `NGINX_HEATTIME` seconds, with the
+  ports:
+
+  ```text
+  wait_for_listen: before nginx starts, 1 of 33 ports still accept connections after 60.05 seconds (limit 60.00): 18080; another process listens on them
+  ```
+
+- After it starts nginx, the script connects to each port every 0.1
+  seconds until every port has accepted one connection, and prints the time
+  that took, counted from the start of the script, right after nginx was
+  started:
+
+  ```text
+  wait_for_listen: nginx (pid 1234) accepted connections on all 33 ports after 0.21 seconds (limit 60.00)
+  ```
+
+  It fails when the nginx process ends first, or when `NGINX_HEATTIME`
+  seconds pass, and names the ports that still refused connections:
+
+  ```text
+  wait_for_listen: nginx (pid 1234) ended after 0.47 seconds, before it accepted connections on 33 of 33 ports: 18080, 18081, ...; see its output above and logs/error.log
+  wait_for_listen: nginx (pid 1234) did not accept connections within 60.00 seconds (NGINX_HEATTIME) on 33 of 33 ports: 18080, 18081, ...
+  ```
+
+The ports are those of every `listen` directive in `test/conf/nginx.conf`
+and `test/conf/conf.d/*.conf`, the `http {}` servers (33 ports as of
+2026-10). nginx opens all its listening sockets in one loop
+(`ngx_open_listening_sockets()`) after it has read the whole configuration,
+so one port would almost always show that the others are open. Each port
+costs one connection of well under a millisecond, though, and checking every
+one leaves no gap between the first socket and the last, and also catches a
+fragment of `conf.d` that did not reach the installed configuration. The
+`stream {}` ports (`test/conf/nginx.stream.conf` and
+`test/conf/conf.d/stream/`) are left out: a connection to a stream server
+runs that server's session code, such as the `Nginx::Stream::Async.sleep
+3000` of the 12352 server, and the cases read what that code writes to
+`error.log`. nginx opens the stream sockets in the same loop, right after
+those of `http {}`, and the first test that connects to a stream port
+runs after many HTTP tests of `test/t/ngx_mruby.rb` have passed. The ports that
+`Nginx::Server#add_listener` and `Nginx::Stream.add_listener` add are opened
+in the same loop as well, and are not checked.
+
+`NGINX_HEATTIME` is the upper bound, in seconds, of each of the two waits.
+The default is 60, and CI does not set it. A command that sets it, such as
+`NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh`, waits at most that
+long: the run goes on as soon as nginx listens, and fails at 10 seconds only
+when nginx is not listening by then, where a first request sent at that time
+would have been refused (`Errno::ECONNREFUSED`).
+
+The default rests on these measurements. On 2026-10-19, the test nginx
+built from `master` at 03aad7031 (nginx 1.31.6, static module) was started
+the way `test.sh` starts it, in a container of Ubuntu 22.04 on an aarch64
+host with 11 CPUs whose load average was about 15 from other builds, and
+the script above measured the time until all ports accepted connections:
+
+- `NGINX_RUNNER=exec`, 10 starts: 0.10 to 0.11 seconds each, that is, every
+  port accepted on the second round of attempts (the script tries every 0.1
+  seconds);
+- `NGINX_RUNNER=valgrind` (valgrind 3.18.1), 5 starts: 2.27 to 2.61 seconds.
+
+In CI, a cell under valgrind (nginx 1.28.3 on an x86_64 runner) was still
+reading the configuration 10 seconds after the start: valgrind's report at
+the SIGTERM of `test.sh` shows nginx inside `ngx_conf_parse()`
+([the run](https://github.com/matsumotory/ngx_mruby/actions/runs/37181065564),
+reported in
+[#564](https://github.com/matsumotory/ngx_mruby/pull/564#issuecomment-5977252444)).
+The time is longer on a loaded CI runner, under valgrind (here more than 20
+times the time without it), with the sanitizer build (not measured here) and
+with more configuration to read. 60 seconds is 6 times the 10 seconds of
+that CI run and about 23 times the slowest start under valgrind above.
+
+The upper bound can create these races:
+
+- A start slower than the bound fails the run although nginx would have
+  started. Raise `NGINX_HEATTIME` for slower setups; the wait still ends as
+  soon as nginx listens, so a higher bound costs time only when nginx hangs
+  without ending (an nginx that exits is reported at once).
+- A listening socket is not yet a running handler. The kernel accepts a
+  connection as soon as nginx listens, and the test nginx is a single
+  process (`master_process off`) that runs the `init_worker` hooks before it
+  reads any connection. The first request then waits in the socket's backlog
+  until nginx reads it; the test client (mruby-simplehttp) reads without a
+  timeout, so it waits too.
+- nginx later reads each probe connection of the wait, finds it closed
+  without a request, and closes it. No handler runs for it, and nginx writes
+  only `debug` lines about it to `error.log`.
 
 ## Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer
 
