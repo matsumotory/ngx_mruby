@@ -112,7 +112,7 @@ function inspect(cfg) {
     if (!tokens.has(c.hex)) fail(el, `${prop}${where} ${c.hex} is not a token value`);
     if (cfg.theme === 'dark' && c.hex === '#000000') fail(el, `${prop}${where} is #000000 in dark`);
   };
-  const all = [...document.querySelectorAll('body *')].filter((el) => !(el instanceof SVGElement) || el.closest('svg'));
+  const all = [document.body, ...document.querySelectorAll('body *')];
   for (const el of all) {
     if (!visible(el)) continue;
     const cs = getComputedStyle(el);
@@ -275,7 +275,7 @@ function inspect(cfg) {
 
 function shadowsOnly() {
   const fails = [];
-  const els = [document.documentElement, ...document.querySelectorAll('body *')];
+  const els = [document.documentElement, document.body, ...document.querySelectorAll('body *')];
   for (const el of els) {
     for (const where of ['', '::before', '::after', '::backdrop']) {
       if (where === '::backdrop' && el.tagName !== 'DIALOG') continue;
