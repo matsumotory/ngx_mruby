@@ -1,0 +1,81 @@
+name: site
+
+# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and step 1 of section
+# 6): build site/ and docs/ from a fresh clone, run the checks of step 1,
+# and upload the built site as a workflow artifact. There is no deployment
+# job: step 7 adds it, after the Pages settings of 5.3.
+on:
+  pull_request:
+    branches:
+      - next
+    paths:
+      - 'site/**'
+      - 'docs/**'
+      - '.github/workflows/site.yml'
+  push:
+    branches:
+      - next
+    paths:
+      - 'site/**'
+      - 'docs/**'
+      - '.github/workflows/site.yml'
+  workflow_dispatch:
+
+# A new push to a pull request cancels the run for its previous commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      # The whole history: the last-updated date of each page is the date of
+      # the last commit that changed its source (git log).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # The Node.js version of site/.node-version. No npm cache: npm ci
+      # takes about 20 seconds without one.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: site/.node-version
+      # Check: a fresh clone builds with npm ci and npm run build. The clone
+      # of the checked-out commit (for a pull request, its merge commit), in
+      # $RUNNER_TEMP/fresh, is the build that the other checks read and that
+      # the artifact holds.
+      - name: Build a fresh clone with npm ci and npm run build
+        id: build
+        run: sh site/scripts/check-fresh-clone.sh --keep "$RUNNER_TEMP/fresh"
+      - name: Check that every internal link of the built HTML resolves
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-built-links.mjs
+      - name: Check that every page has a title and the last-updated date of its source
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-pages.mjs
+      - name: Check the Japanese pages (lang="ja" under /ja/, <wbr> elements in h2)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-japanese.mjs
+      - name: Check that pages read with JavaScript off
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-no-js.mjs
+      - name: Upload the built site
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: site
+          path: ${{ runner.temp }}/fresh/site/dist
+          if-no-files-found: error
