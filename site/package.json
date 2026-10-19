@@ -8,7 +8,7 @@
   "scripts": {
     "sync-docs": "node scripts/sync-docs.mjs",
     "build": "node scripts/sync-docs.mjs && ASTRO_TELEMETRY_DISABLED=1 astro build --force",
-    "build:specimens": "SITE_SPECIMENS=1 npm run build && SITE_SPECIMENS=1 SITE_CODE_PALETTE=b npm run build",
+    "build:specimens": "SITE_SPECIMENS=1 npm run build",
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "test": "node scripts/test-sync-docs.mjs",
     "check": "node scripts/check-built-links.mjs && node scripts/check-pages.mjs && node scripts/check-japanese.mjs && node scripts/check-no-js.mjs && node scripts/check-css.mjs",

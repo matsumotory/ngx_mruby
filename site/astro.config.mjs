@@ -6,14 +6,15 @@
 //
 // SITE_SPECIMENS=1 adds the specimen pages of step 2 (4.12) under
 // /specimens/ and /ja/specimens/ and builds into dist-specimens/; the
-// normal build has no specimen page.
+// normal build has no specimen page. The browser checks and the
+// screenshots run on them, since they hold a diagram, code blocks and
+// tables before the pages of step 3 and 4 do.
 import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
 import { SITE_URL } from './scripts/lib/site.mjs';
 import themeColors from './scripts/lib/postcss-theme-colors.mjs';
 
 const specimens = process.env.SITE_SPECIMENS === '1';
-const codePaletteB = process.env.SITE_CODE_PALETTE === 'b';
 
 /** Injects the specimen pages of 4.12 when SITE_SPECIMENS=1. */
 function specimenPages() {
@@ -38,7 +39,7 @@ function specimenPages() {
 
 export default defineConfig({
   site: SITE_URL,
-  outDir: specimens ? (codePaletteB ? './dist-specimens-b' : './dist-specimens') : './dist',
+  outDir: specimens ? './dist-specimens' : './dist',
   vite: {
     css: { postcss: { plugins: [themeColors()] } },
   },

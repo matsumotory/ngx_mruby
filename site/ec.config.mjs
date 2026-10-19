@@ -4,13 +4,8 @@
 import { defineEcConfig } from '@astrojs/starlight/expressive-code';
 import { codeThemes } from './scripts/lib/code-themes.mjs';
 
-// The palette whose text colors the code themes take. The specimens of
-// palette B are built with SITE_CODE_PALETTE=b (into dist-specimens-b/),
-// because Expressive Code writes the color of each span into the HTML.
-const codePalette = process.env.SITE_CODE_PALETTE === 'b' ? 'b' : 'a';
-
 export default defineEcConfig({
-  themes: codeThemes(codePalette),
+  themes: codeThemes(),
   // Keep the colors of the themes as written; scripts/contrast.py is
   // the gate for their contrast.
   minSyntaxHighlightingColorContrast: 0,

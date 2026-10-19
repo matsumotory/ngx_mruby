@@ -13,21 +13,13 @@ const here = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 export const SITE_ROOT = fs.existsSync(path.join(here, 'src/styles/tokens.css')) ? here : process.cwd();
 export const TOKENS_CSS = path.join(SITE_ROOT, 'src/styles/tokens.css');
 
-// The selector of each block of tokens.css, by palette, theme and place.
-// The two dark blocks of a palette (the media query and the forced dark
+// The selector of each block of tokens.css, by theme and place. The two
+// dark blocks (the media query and the forced dark
 // theme) must hold the same values; contrast.py checks that.
 export const BLOCKS = {
   'a-light': { selector: ':root', media: false },
   'a-dark': { selector: ':root[data-theme="dark"][data-theme-script]', media: false },
   'a-dark-media': { selector: ':root:not([data-theme="light"])', media: true },
-  'b-light': { selector: ':root[data-palette="b"]', media: false },
-  'b-dark': { selector: ':root[data-palette="b"][data-theme="dark"][data-theme-script]', media: false },
-  'b-dark-media': { selector: ':root[data-palette="b"]:not([data-theme="light"])', media: true },
-  'gold-light': { selector: ':root[data-palette="b"][data-accent="gold"]', media: false },
-  'gold-dark': {
-    selector: ':root[data-palette="b"][data-accent="gold"][data-theme="dark"][data-theme-script]',
-    media: false,
-  },
 };
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -51,14 +43,7 @@ export function readTokenBlocks(file = TOKENS_CSS) {
   return found;
 }
 
-/**
- * The full color set of a palette and theme: palette B and the gold take
- * the values they do not set from palette A, as the cascade does.
- */
-export function paletteColors(palette = 'a', theme = 'light', file = TOKENS_CSS) {
-  const blocks = readTokenBlocks(file);
-  const out = { ...blocks[`a-${theme}`] };
-  if (palette === 'b' || palette === 'gold') Object.assign(out, blocks[`b-${theme}`]);
-  if (palette === 'gold') Object.assign(out, blocks[`gold-${theme}`]);
-  return out;
+/** The color tokens of a theme ('light' or 'dark'). */
+export function themeColors(theme = 'light', file = TOKENS_CSS) {
+  return { ...readTokenBlocks(file)[`a-${theme}`] };
 }

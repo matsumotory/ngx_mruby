@@ -4,7 +4,7 @@
 // frame (background, border, title row) comes from the --sl-color-*
 // variables and the styleOverrides in astro.config.mjs, not from here.
 import { ExpressiveCodeTheme } from 'astro-expressive-code';
-import { paletteColors } from './tokens.mjs';
+import { themeColors } from './tokens.mjs';
 
 // TextMate scopes of the Shiki grammars that the docs use (nginx, ruby,
 // shellsession, sh, json, c), by code color.
@@ -46,11 +46,11 @@ const SCOPES = {
   ],
 };
 
-/** The VS Code theme object of one palette and theme. */
-export function codeThemeJson(palette, type) {
-  const c = paletteColors(palette, type);
+/** The VS Code theme object of one theme. */
+export function codeThemeJson(type) {
+  const c = themeColors(type);
   return {
-    name: `ngx-mruby-${palette}-${type}`,
+    name: `ngx-mruby-${type}`,
     type,
     colors: {
       'editor.background': c['--color-bg-tertiary'],
@@ -64,17 +64,15 @@ export function codeThemeJson(palette, type) {
 }
 
 /** The light and the dark theme, light first: the base theme (4.7). */
-export function codeThemes(palette = 'a') {
-  return ['light', 'dark'].map((type) =>
-    ExpressiveCodeTheme.fromJSONString(JSON.stringify(codeThemeJson(palette, type))),
-  );
+export function codeThemes() {
+  return ['light', 'dark'].map((type) => ExpressiveCodeTheme.fromJSONString(JSON.stringify(codeThemeJson(type))));
 }
 
-/** The hex values that a highlighted span may carry in a palette. */
-export function allowedSpanColors(palette = 'a') {
+/** The hex values that a highlighted span may carry. */
+export function allowedSpanColors() {
   const out = new Set();
   for (const type of ['light', 'dark']) {
-    const c = paletteColors(palette, type);
+    const c = themeColors(type);
     for (const k of ['--color-text-primary', '--color-text-muted', ...Object.keys(SCOPES)]) out.add(c[k]);
   }
   return out;

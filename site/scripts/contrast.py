@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Check the color tokens of site/src/styles/tokens.css (docs/proposals/site.md, 4.6).
 
-The script reads tokens.css: palette A, whose light and dark values carry
-their OKLCH source value in a comment after the hex value; palette B, the
-neutrals of the owner's corporate and profile sites (hex only) with the
-accent tokens of palette A; and the code colors (--color-code-*). For each
-palette and theme it computes the WCAG 2.2 contrast ratio of every pair that
+The script reads tokens.css: palette A, which the owner chose on 2026-10-19
+(4.12, item 1), whose light and dark values carry their OKLCH source value
+in a comment after the hex value, and the code colors (--color-code-*).
+For each theme it computes the WCAG 2.2 contrast ratio of every pair that
 a role needs and compares the unrounded ratio with the threshold of that pair:
 
 - 4.5:1 when a role draws text on the color or text in the color
@@ -17,20 +16,18 @@ Ratios are printed truncated to two decimals, never rounded: the WCAG
 Understanding document for SC 1.4.3 says "4.499:1 would not meet the 4.5:1
 threshold".
 
-It also checks, for palette A, that each hex value is the conversion of its
-OKLCH source (clipped to the gamut and rounded to 8-bit hex, which is what a
-browser draws), that every neutral token has the hue of the page background
-and an OKLCH chroma of at most NEUTRAL_MAX_CHROMA in its source value, and,
-for both palettes, that the two dark blocks (the media query and the forced
-dark theme) hold the same values. Each code color must reach 4.5:1 on
-surface in both themes and both palettes. The gold of the step back of 4.12,
-item 4, is printed and not gated.
+It also checks that each hex value is the conversion of its OKLCH source
+(clipped to the gamut and rounded to 8-bit hex, which is what a browser
+draws), that every neutral token has the hue of the page background and an
+OKLCH chroma of at most NEUTRAL_MAX_CHROMA in its source value, and that the
+two dark blocks (the media query and the forced dark theme) hold the same
+values. Each code color must reach 4.5:1 on surface in both themes.
 
 Usage:
   python3 site/scripts/contrast.py [--tokens FILE] [--markdown]
 
   --tokens FILE  read FILE instead of site/src/styles/tokens.css
-  --markdown     also print the rows of the tables in 4.6
+  --markdown     also print the rows of the table of palette A in 4.6
 
 It exits 1 on a failure. It needs Python 3 and no packages.
 """
@@ -50,12 +47,6 @@ BLOCKS = {
     'a-light': (':root', False),
     'a-dark': (':root[data-theme="dark"][data-theme-script]', False),
     'a-dark-media': (':root:not([data-theme="light"])', True),
-    'b-light': (':root[data-palette="b"]', False),
-    'b-dark': (':root[data-palette="b"][data-theme="dark"][data-theme-script]', False),
-    'b-dark-media': (':root[data-palette="b"]:not([data-theme="light"])', True),
-    'gold-light': (':root[data-palette="b"][data-accent="gold"]', False),
-    'gold-dark': (':root[data-palette="b"][data-accent="gold"][data-theme="dark"][data-theme-script]', False),
-    'dark-hero': (':root[data-cyber="dark-hero"] :is(header.header, main:has(.home-specimen) > .content-panel:first-child, .home-first)', False),
 }
 
 # token name: (custom property, role)
@@ -213,14 +204,9 @@ def main():
     failures = []
     print('tokens: %s' % os.path.relpath(path))
 
-    # The two dark blocks of each palette, and the dark first screen of the
-    # specimen, hold the values of palette A's dark block.
-    for a, b in (('a-dark', 'a-dark-media'), ('b-dark', 'b-dark-media')):
-        if {k: v[0] for k, v in blocks[a].items()} != {k: v[0] for k, v in blocks[b].items()}:
-            failures.append('the blocks %s and %s of tokens.css differ' % (a, b))
-    for prop, (h, _) in blocks['dark-hero'].items():
-        if blocks['a-dark'].get(prop, (None,))[0] != h:
-            failures.append('dark-hero %s %s is not the dark value of palette A' % (prop, h))
+    # The two dark blocks hold the same values.
+    if {k: v[0] for k, v in blocks['a-dark'].items()} != {k: v[0] for k, v in blocks['a-dark-media'].items()}:
+        failures.append('the blocks a-dark and a-dark-media of tokens.css differ')
 
     codes = sorted(p for p in blocks['a-light'] if p.startswith('--color-code-'))
     if len(codes) > 4:
@@ -248,33 +234,22 @@ def main():
                 failures.append('%s %s: hue %g differs from bg hue %g' % (theme, name, H, bg_hue))
         palette[('a', theme)] = by_token(block)
         check_pairs('palette A %s' % theme, palette[('a', theme)], failures)
-        palette[('b', theme)] = dict(palette[('a', theme)], **by_token(blocks['b-%s' % theme]))
-
-    for theme in ('light', 'dark'):
-        print('== palette B, %s' % theme)
-        check_pairs('palette B %s' % theme, palette[('b', theme)], failures)
 
     print('== code colors on surface')
     for prop in codes:
         for theme in ('light', 'dark'):
             h = blocks['a-%s' % theme][prop][0]
-            for pal in ('a', 'b'):
-                r = ratio(h, palette[(pal, theme)]['surface'])
-                ok = r >= 4.5
-                print('  %-4s %-22s %-5s %s on surface of palette %s: %s:1 (needs 4.5)'
-                      % ('ok' if ok else 'FAIL', prop, theme, h, pal.upper(), trunc(r)))
-                if not ok:
-                    failures.append('code %s %s on surface of palette %s: %.6f:1' % (prop, theme, pal.upper(), r))
+            r = ratio(h, palette[('a', theme)]['surface'])
+            ok = r >= 4.5
+            print('  %-4s %-22s %-5s %s on surface: %s:1 (needs 4.5)'
+                  % ('ok' if ok else 'FAIL', prop, theme, h, trunc(r)))
+            if not ok:
+                failures.append('code %s %s on surface: %.6f:1' % (prop, theme, r))
 
     print('== information (not gated)')
     light = palette[('a', 'light')]
     print('  logo teal %s on light bg: %s:1; on dark bg: %s:1'
           % (LOGO_TEAL, trunc(ratio(LOGO_TEAL, light['bg'])), trunc(ratio(LOGO_TEAL, palette[('a', 'dark')]['bg']))))
-    for theme in ('light', 'dark'):
-        gold = dict(palette[('b', theme)], **by_token(blocks['gold-%s' % theme]))
-        print('  gold of the step back, %s: accent %s on bg %s:1, accent-text %s on bg %s:1'
-              % (theme, gold['accent'], trunc(ratio(gold['accent'], gold['bg'])),
-                 gold['accent-text'], trunc(ratio(gold['accent-text'], gold['bg']))))
 
     if markdown:
         print('== rows of the table of palette A in 4.6')
@@ -286,14 +261,6 @@ def main():
                 p = palette[('a', theme)]
                 cells.append('' if name in ('bg', 'surface') else '%s / %s' % (trunc(ratio(h, p['bg'])), trunc(ratio(h, p['surface']))))
             cells.append('`%s`' % prop)
-            print('| ' + ' | '.join(cells) + ' |')
-        print('== rows of the table of palette B in 4.6')
-        for name in TOKENS:
-            cells = ['`%s`' % name]
-            for theme in ('light', 'dark'):
-                p = palette[('b', theme)]
-                cells.append('`%s`' % p[name])
-                cells.append('' if name in ('bg', 'surface') else '%s / %s' % (trunc(ratio(p[name], p['bg'])), trunc(ratio(p[name], p['surface']))))
             print('| ' + ' | '.join(cells) + ' |')
 
     if failures:

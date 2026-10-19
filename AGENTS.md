@@ -505,7 +505,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
     host, and `site/src/` no hex color outside `tokens.css`.
   The others:
   - `python3 scripts/contrast.py [--tokens FILE] [--markdown]` (`npm run
-    check:contrast`): the contrast of both palettes of 4.6 and of the code
+    check:contrast`): the contrast of palette A of 4.6 and of the code
     colors in both themes, read from `tokens.css`;
   - `sh scripts/check-offline-build.sh [SITE_DIR]` (`npm run
     check:offline`): `npm run build` succeeds with network access blocked
@@ -521,13 +521,15 @@ npm run preview           # serves dist/ at http://localhost:4321/
     4.8, at most 90 characters per English line at 1440 px, no horizontal
     scroll, the right edge of Japanese text at 390 px, and the theme
     without JavaScript.
-- The specimens of 4.12: `npm run build:specimens` builds the site with
-  the specimen pages (`src/specimens/`, under `/specimens/` and
-  `/ja/specimens/`) into `dist-specimens/` and, with the code colors of
-  palette B, into `dist-specimens-b/`; `npm run specimens` (`node
-  scripts/specimens.mjs [--out DIR] [--set ID]`) writes the screenshots of
-  each set of 4.12 to `build-specimens/` with an `index.md` of them. The
-  normal build has no specimen page. The browser checks and the
+- The specimen pages of 4.12 (the owner chose the four options on
+  2026-10-19; the site builds only that configuration): `npm run
+  build:specimens` builds the site with the specimen pages
+  (`src/specimens/`, under `/specimens/` and `/ja/specimens/`) into
+  `dist-specimens/`, and `npm run specimens` (`node scripts/specimens.mjs
+  [--out DIR]`) writes their screenshots to `build-specimens/`, with a
+  contact sheet and an `index.md`. The normal build has no specimen page;
+  `check-styles.mjs` runs on the specimen build, whose pages hold a
+  diagram, code blocks and tables before the pages of steps 3 and 4 do. The browser checks and the
   screenshots need Chromium and WebKit for the `playwright` of
   `package-lock.json`: `npx playwright install chromium webkit` (locally,
   with `PLAYWRIGHT_BROWSERS_PATH` set to a directory under `.claude/tmp/`
@@ -545,8 +547,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
   commit both. Nothing that the build generates is committed:
   `site/.gitignore` ignores it, and `test/forbidden_paths.txt` fails a
   forced add of `site/dist/`, `site/dist-specimens/`,
-  `site/dist-specimens-b/`, `site/build-specimens/`, `site/generated/` or
-  `site/.astro/`.
+  `site/build-specimens/`, `site/generated/` or `site/.astro/`.
 - `python3 site/scripts/check_links.py REPO_ROOT FILE...` checks the
   relative links and anchors of Markdown files.
 

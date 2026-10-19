@@ -1,17 +1,14 @@
 // Screenshots of the specimens of step 2 (docs/proposals/site.md, 4.12):
-// the home page and the reference page, light and dark, at 390 by 664 and
-// 1440 by 900 px, in Chromium and WebKit, one set per choice of 4.12.
+// the home page and the reference page, in English and Japanese, light and
+// dark, at 390 by 664 and 1440 by 900 px, in Chromium and WebKit.
 //
 //   node scripts/specimens.mjs [--out DIR] [--set ID ...]
 //
-// It reads dist-specimens/ and dist-specimens-b/, the builds of
-// `SITE_SPECIMENS=1 npm run build` and of the same with
-// SITE_CODE_PALETTE=b, and writes DIR/<set>/<engine>-<page>-<lang>-<theme>-<size>.png
+// It reads dist-specimens/, the build of `SITE_SPECIMENS=1 npm run build`,
+// and writes DIR/<set>/<engine>-<page>-<lang>-<theme>-<size>.png
 // -first.png (the first screen) and -full.png (the whole page)
-// (default DIR: build-specimens/) and DIR/index.md, the list of the files
-// with the choice each set shows. Each set changes one choice of 4.12 from
-// the recommended set, by attributes of <html> that tokens.css and
-// src/specimens/specimens.css read.
+// (default DIR: build-specimens/), DIR/sheets/<set>.png, DIR/glyphs.png and
+// DIR/index.md, the list of the files.
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
@@ -19,24 +16,14 @@ import { serve } from './lib/serve.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
+// The configuration that the owner chose on 2026-10-19 (4.12): palette A,
+// Geist Mono, code blocks at 12 px and the means of 4.3. The other sets of
+// the decision are gone with their CSS.
 export const SETS = [
   {
-    id: 'recommended',
-    choice: 'The four recommendations of 4.12: palette A, Geist Mono, code blocks at 12 px, the means of 4.3',
-    attrs: {},
+    id: 'site',
+    choice: 'The configuration chosen on 2026-10-19: palette A, Geist Mono, code blocks at 12 px, the means of 4.3',
     langs: ['en', 'ja'],
-  },
-  { id: 'palette-b', choice: '4.12 item 1, the alternative: palette B (the three sites\' warm neutrals with the teal accent)', attrs: { palette: 'b' }, dist: 'b' },
-  { id: 'mono-system', choice: '4.12 item 2, the alternative: the system monospace stack alone', attrs: { mono: 'system' } },
-  { id: 'radius-8', choice: '4.12 item 3, the alternative: code blocks at 8 px', attrs: { radius: '8' } },
-  { id: 'radius-0', choice: '4.12 item 3, the alternative: code blocks at 0 px', attrs: { radius: '0' } },
-  { id: 'cyber-mono-headings', choice: '4.12 item 4, one step further: the monospace face for h1 and h2 on English pages', attrs: { cyber: 'mono-headings' } },
-  { id: 'cyber-dark-hero', choice: '4.12 item 4, the other step further: a dark first screen on the home page in both themes', attrs: { cyber: 'dark-hero' } },
-  {
-    id: 'cyber-step-back',
-    choice: "4.12 item 4, the step back: the gold accent with palette B's neutrals, the header shadow and the entrance motion of the corporate site",
-    attrs: { cyber: 'back', palette: 'b', accent: 'gold' },
-    dist: 'b',
   },
 ];
 export const PAGES = ['home', 'reference'];
@@ -63,7 +50,7 @@ async function main() {
   const sets = opt.sets.length ? SETS.filter((s) => opt.sets.includes(s.id)) : SETS;
   const servers = {};
   for (const d of new Set(sets.map((s) => s.dist ?? 'a'))) {
-    const dir = path.join(SITE, d === 'b' ? 'dist-specimens-b' : 'dist-specimens');
+    const dir = path.join(SITE, 'dist-specimens');
     if (!fs.existsSync(path.join(dir, 'specimens/home/index.html'))) throw new Error(`${dir} has no specimen pages: build it first`);
     servers[d] = await serve(dir);
   }
@@ -82,12 +69,8 @@ async function main() {
               const tab = await context.newPage();
               const url = `${servers[set.dist ?? 'a'].url}${lang === 'ja' ? '/ja' : ''}/specimens/${page}/`;
               await tab.goto(url, { waitUntil: 'load' });
-              await tab.evaluate((attrs) => {
-                for (const [k, v] of Object.entries(attrs)) document.documentElement.setAttribute(`data-${k}`, v);
-              }, set.attrs);
               await tab.evaluate(() => document.fonts.ready);
-              // The entrance motion of the step back lasts 0.5 s.
-              await tab.waitForTimeout(set.attrs.cyber === 'back' ? 900 : 150);
+              await tab.waitForTimeout(150);
               // The first screen at the size of 4.12, and the whole page. In
               // the whole page, Starlight's fixed header and sidebar keep
               // the height of the first screen.

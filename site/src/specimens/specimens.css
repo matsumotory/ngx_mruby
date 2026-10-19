@@ -1,9 +1,8 @@
 /*
  * The specimen pages of step 2 (docs/proposals/site.md, 4.12): the layout
- * of the home page specimen, and the options of 4.12 that the specimen
- * script (scripts/specimens.mjs) turns on with attributes of <html>. Only
- * the specimen pages load this file; no attribute below is set on a page
- * of the normal build.
+ * of the home page specimen. Only the specimen pages load this file. The
+ * options of 4.12 that the owner did not choose on 2026-10-19 are gone;
+ * step 3 moves this layout into the home page.
  */
 
 /* The home page heading (4.4, "Home page heading") */
@@ -77,72 +76,4 @@ html:has(.home-specimen) h1#_top {
 .home-specimen .ways p {
   margin-top: var(--space-1);
   color: var(--color-text-primary);
-}
-
-/* 4.12 item 2: the system stack alone */
-:root[data-mono="system"] {
-  --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", var(--font-ja-faces), monospace;
-}
-
-/* 4.12 item 3: the radius of code blocks */
-:root[data-radius="8"] {
-  --radius-code: var(--radius-control);
-}
-:root[data-radius="0"] {
-  --radius-code: 0;
-}
-
-/* 4.12 item 4, one step further: the monospace face for h1 and h2 on
-   English pages only */
-:root[data-cyber="mono-headings"]:not([lang="ja"]) :is(h1#_top, .sl-markdown-content h2) {
-  font-family: var(--font-mono);
-}
-
-/* 4.12 item 4, the other step further: a dark first screen on the home
-   page in both themes. tokens.css gives the header, the title panel and the
-   first section the dark tokens of palette A; here the first section spans
-   the width of the page and joins the title panel. */
-:root[data-cyber="dark-hero"] .home-first {
-  margin-inline: calc(50% - 50vw);
-  padding-inline: calc(50vw - 50%);
-  margin-top: calc(-1 * var(--space-5));
-  padding-top: var(--space-2);
-  padding-bottom: var(--space-7);
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
-}
-:root[data-cyber="dark-hero"] main:has(.home-specimen) > .content-panel:first-child {
-  background-color: var(--color-bg-primary);
-  border-bottom: 0;
-}
-:root[data-cyber="dark-hero"] main:has(.home-specimen) > .content-panel + .content-panel {
-  border-top: 0;
-}
-
-/* 4.12 item 4, the step back: the corporate site's shadow on the header
-   and its entrance motion, a fade-up of 12 px in 0.5 s on the first five
-   blocks (4.2). The gold and palette B come from tokens.css. */
-:root[data-accent="gold"] .home-specimen .button-primary {
-  color: var(--color-text-primary);
-}
-/* The owner's sites draw the focus ring in their text accent, because the
-   gold accent does not reach 3:1 (4.6) */
-:root[data-accent="gold"] :focus-visible {
-  outline-color: var(--color-accent-text);
-}
-:root[data-cyber="back"] header.header {
-  box-shadow: 0 1px 8px color-mix(in srgb, var(--color-text-primary) 12%, transparent);
-}
-@keyframes specimen-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-:root[data-cyber="back"] .sl-markdown-content > :nth-child(-n + 5) {
-  animation: specimen-fade-up 0.5s ease-out both;
 }

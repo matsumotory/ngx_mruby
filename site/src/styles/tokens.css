@@ -5,10 +5,8 @@
  * this file and from Expressive Code's stylesheet (scripts/check-css.mjs).
  *
  * Colors are hex, which is what a browser computes and what the checks
- * compare; the comment after each value of palette A and of the code colors
- * is its OKLCH source value, from which scripts/contrast.py converts and
- * compares it. Palette B and the gold of the step back of 4.12, item 4, have
- * no OKLCH source: their values are those of the owner's sites (4.2).
+ * compare; the comment after each value is its OKLCH source value, from
+ * which scripts/contrast.py converts and compares it.
  *
  * Theme order (4.2 "Theme order", 4.7): light tokens on :root, dark ones in
  * @media (prefers-color-scheme: dark) for :root:not([data-theme="light"])
@@ -17,11 +15,10 @@
  * [data-theme-script], which only the theme script sets
  * (src/components/ThemeProvider.astro): without JavaScript the OS setting
  * decides, with it the theme toggle does. scripts/contrast.py checks that
- * the two dark blocks of each palette hold the same values.
+ * the two dark blocks hold the same values.
  *
- * Palette B (4.6, 4.12 item 1) applies under :root[data-palette="b"], which
- * only the specimens of step 2 set. The palette that the owner does not
- * choose leaves this file with step 3.
+ * Palette A is the palette that the owner chose on 2026-10-19 (4.12,
+ * item 1).
  */
 
 /* Palette A, light (4.6, table "Palette A"; 4.3 items 3 and 4) */
@@ -76,77 +73,6 @@
   --color-code-name: #f2a7a6; /* oklch(0.800 0.090 20) */
 }
 
-/* Palette B, light (4.6, table "Palette B"): the neutrals of the owner's
-   corporate and profile sites with the accent tokens of palette A */
-:root[data-palette="b"] {
-  --color-bg-primary: #faf8f3;
-  --color-bg-tertiary: #f3f0e8;
-  --color-text-primary: #232017;
-  --color-text-muted: #5f5949;
-  --color-accent-text: #0f695e;
-  --color-accent: #167b6f;
-  --color-border-strong: #8a8271;
-  --color-border: #e7e3d8;
-}
-
-/* Palette B, dark */
-@media (prefers-color-scheme: dark) {
-  :root[data-palette="b"]:not([data-theme="light"]) {
-    --color-bg-primary: #14120d;
-    --color-bg-tertiary: #211e15;
-    --color-text-primary: #ece7db;
-    --color-text-muted: #9a937f;
-    --color-accent-text: #81cfc1;
-    --color-accent: #56b1a3;
-    --color-border-strong: #7d7458;
-    --color-border: #2b2719;
-  }
-}
-:root[data-palette="b"][data-theme="dark"][data-theme-script] {
-  --color-bg-primary: #14120d;
-  --color-bg-tertiary: #211e15;
-  --color-text-primary: #ece7db;
-  --color-text-muted: #9a937f;
-  --color-accent-text: #81cfc1;
-  --color-accent: #56b1a3;
-  --color-border-strong: #7d7458;
-  --color-border: #2b2719;
-}
-
-/* The step back of 4.12, item 4: the gold accent of the owner's sites
-   (4.2, table "Color") with palette B's neutrals. A specimen only; the
-   contrast script prints it without gating on it. */
-:root[data-palette="b"][data-accent="gold"] {
-  --color-accent-text: #82672c;
-  --color-accent: #d4a843;
-}
-@media (prefers-color-scheme: dark) {
-  :root[data-palette="b"][data-accent="gold"]:not([data-theme="light"]) {
-    --color-accent-text: #c9a34e;
-    --color-accent: #c9a34e;
-  }
-}
-:root[data-palette="b"][data-accent="gold"][data-theme="dark"][data-theme-script] {
-  --color-accent-text: #c9a34e;
-  --color-accent: #c9a34e;
-}
-
-/* 4.12 item 4, a dark first screen on the home page specimen: the dark
-   tokens of palette A on the header, the title panel and the first section,
-   in both themes. A specimen only; contrast.py checks that the values are
-   those of palette A, dark. */
-:root[data-cyber="dark-hero"] :is(header.header, main:has(.home-specimen) > .content-panel:first-child, .home-first) {
-  color-scheme: dark;
-  --color-bg-primary: #0e1413;
-  --color-bg-tertiary: #161e1c;
-  --color-text-primary: #e2eae8;
-  --color-text-muted: #a6b1ae;
-  --color-accent-text: #81cfc1;
-  --color-accent: #56b1a3;
-  --color-border-strong: #6b7775;
-  --color-border: #2c3533;
-}
-
 /* Everything that does not depend on the theme */
 :root {
   /* Families (4.4). The Japanese faces have no generic family here, so
@@ -154,7 +80,7 @@
   --font-ja-faces: "Hiragino Sans", "Noto Sans JP Variable", "Noto Sans JP";
   --font-latin: "Inter Variable", "Inter", "Helvetica Neue", Arial;
   --font-sans: var(--font-ja-faces), sans-serif;
-  /* 4.12 item 2: Geist Mono served by the site, the system stack of the
+  /* 4.12 item 2 (decided 2026-10-19): Geist Mono served by the site, the system stack of the
      corporate site's code blocks as the fallback, then the Japanese faces
      for Japanese characters in code comments (4.4). */
   --font-mono-face: "Geist Mono Variable";
@@ -200,7 +126,7 @@
   --content-width-home: 1032px;
   --header-height: 64px;
 
-  /* Radii (4.5, 4.12 item 3) */
+  /* Radii (4.5; code blocks at 12 px, 4.12 item 3, decided 2026-10-19) */
   --radius-control: 8px;
   --radius-frame: 12px;
   --radius-code: var(--radius-frame);
@@ -248,11 +174,9 @@
  * Starlight's own definitions of these variables, which hold a gray scale
  * at hue 224 and five hue palettes, are removed from its stylesheets at
  * build time (scripts/lib/postcss-theme-colors.mjs), so these are the only
- * ones in the built CSS. The second selector recomputes the colors where
- * the dark first screen of the specimen sets dark tokens on an element.
+ * ones in the built CSS.
  */
-:root,
-:root[data-cyber="dark-hero"] :is(header.header, main:has(.home-specimen) > .content-panel:first-child, .home-first) {
+:root {
   --sl-color-white: var(--color-text-primary);
   --sl-color-gray-1: var(--color-text-primary);
   --sl-color-gray-2: var(--color-text-primary);

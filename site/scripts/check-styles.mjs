@@ -21,20 +21,16 @@
 //   Japanese text blocks (4.9);
 // - with JavaScript off, the OS setting chooses the theme (4.7).
 //
-//   node scripts/check-styles.mjs [--dist DIR] [--palette a|b] [--engine chromium|webkit]
+//   node scripts/check-styles.mjs [--dist DIR] [--engine chromium|webkit]
 //
 // DIR defaults to dist-specimens/, the build of `SITE_SPECIMENS=1 npm run
-// build`, whose specimen pages hold a diagram, code blocks and tables. With
-// --palette b it checks palette B of 4.6 on dist-specimens-b/ (the build
-// with SITE_CODE_PALETTE=b): it sets data-palette="b" on each page after
-// the load, as the specimens do, and leaves out the check without
-// JavaScript, which cannot set the attribute. It exits 1 and lists every
-// failure by page, engine, theme, size and element.
+// build`, whose specimen pages hold a diagram, code blocks and tables. It
+// exits 1 and lists every failure by page, engine, theme, size and element.
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
-import { paletteColors } from './lib/tokens.mjs';
+import { themeColors } from './lib/tokens.mjs';
 import { allowedSpanColors } from './lib/code-themes.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -66,14 +62,9 @@ const RADII = [0, 8, 12, 999];
 
 function args() {
   const a = process.argv.slice(2);
-  const out = { dist: path.join(SITE, 'dist-specimens'), palette: 'a', engines: ['chromium', 'webkit'] };
+  const out = { dist: path.join(SITE, 'dist-specimens'), engines: ['chromium', 'webkit'] };
   for (let i = 0; i < a.length; i++) {
     if (a[i] === '--dist') out.dist = path.resolve(a[++i]);
-    else if (a[i] === '--palette') {
-      out.palette = a[++i];
-      if (!['a', 'b'].includes(out.palette)) throw new Error('--palette is a or b');
-      if (out.palette === 'b' && !a.includes('--dist')) out.dist = path.join(SITE, 'dist-specimens-b');
-    }
     else if (a[i] === '--engine') out.engines = [a[++i]];
     else throw new Error(`unknown argument ${a[i]}`);
   }
@@ -317,7 +308,7 @@ async function main() {
     })());
     for (const page of PAGES) {
       for (const theme of ['light', 'dark']) {
-        const colors = paletteColors(opt.palette, theme);
+        const colors = themeColors(theme);
         const tokens = Object.values(colors);
         for (const size of SIZES) {
           for (const reduced of [false, true]) {
@@ -330,22 +321,12 @@ async function main() {
             const tag = `${page} ${engineName} ${theme} ${size.width}x${size.height}${reduced ? ' reduced-motion' : ''}`;
             const running = await tab.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running').length);
             if (running) failures.push(`${tag}: ${running} animation(s) running after the load`);
-            // Palette B: the attribute changes colors after the load, which
-            // starts the color transitions of 4.8; the check reads the
-            // colors after they end.
-            if (opt.palette === 'b') {
-              await tab.evaluate(async () => {
-                document.documentElement.setAttribute('data-palette', 'b');
-                await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-                await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {})));
-              });
-            }
             const lang = await tab.evaluate(() => document.documentElement.lang);
             const cfg = {
               scale: SCALE,
               home: homeSize(lang === 'ja' ? 'ja' : 'en', size.width),
               tokens,
-              spans: [...allowedSpanColors(opt.palette)],
+              spans: [...allowedSpanColors()],
               theme,
               spaces: SPACES,
               gutterNarrow: GUTTER_NARROW,
@@ -398,7 +379,6 @@ async function main() {
           }
         }
         // 4.7: without JavaScript the OS setting chooses the theme
-        if (opt.palette === 'b') continue;
         const context = await browser.newContext({ viewport: SIZES[1], colorScheme: theme, javaScriptEnabled: false });
         const tab = await context.newPage();
         await tab.goto(server.url + page, { waitUntil: 'load' });
@@ -426,7 +406,7 @@ async function main() {
     console.log(`check-styles: ${failures.length} failure(s), ${counted.size} distinct; ${loads} page loads of ${PAGES.length} pages in ${opt.engines.join(' and ')}`);
     process.exit(1);
   }
-  console.log(`check-styles: ok; palette ${opt.palette.toUpperCase()}; ${loads} page loads of ${PAGES.length} pages in ${opt.engines.join(' and ')}, light and dark, ${SIZES.map((s) => `${s.width}x${s.height}`).join(' and ')}; ${searches} with the search dialog open, ${menus} with the menu open`);
+  console.log(`check-styles: ok; ${loads} page loads of ${PAGES.length} pages in ${opt.engines.join(' and ')}, light and dark, ${SIZES.map((s) => `${s.width}x${s.height}`).join(' and ')}; ${searches} with the search dialog open, ${menus} with the menu open`);
 }
 
 main().catch((e) => {
