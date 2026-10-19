@@ -30,6 +30,12 @@
 ^build(_[a-z]+)?/
 ^mruby/build/
 
+# The build of the site (AGENTS.md, "The site"): npm run build writes the
+# list of pages to site/generated/ and the built site to site/dist/, and
+# Astro writes its types and caches to site/.astro/. site/.gitignore ignores
+# them; these lines also fail a forced add.
+^site/(dist|generated|\.astro)/
+
 # Files that ./configure (Makefile, config, config.status, config.log,
 # autom4te.cache/) and the Makefile (mrbgems_config, mrbgems_config_dynamic,
 # .mruby_version, .openssl_build_done, .openssl_configure_done) write at the
