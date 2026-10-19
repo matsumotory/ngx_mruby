@@ -191,4 +191,16 @@ t.assert('request API', 'Nginx::TRUE and Nginx::FALSE drive the rewrite module i
   t.assert_equal 'flag-off', HttpRequest.new.get(base(REQUEST_API_PORT) + '/request_api/flag/false')["body"]
 end
 
+t.assert('request API', 'Nginx::Utils.escape percent-encodes bytes, also of multibyte characters') do
+  res = HttpRequest.new.get base(REQUEST_API_PORT) + '/request_api/utils_escape'
+  t.assert_equal 200, res.code
+  t.assert_equal ['AZaz09-._~',
+                  'a%20b%2Fc%3Fd%3De%26f%2Bg%25h%23i',
+                  '%E3%81%82',
+                  'caf%C3%A9',
+                  '%FF%00',
+                  '123',
+                  'k%E3%81%82=%E3%81%82%20a%2F'].join('|'), res["body"]
+end
+
 t.report
