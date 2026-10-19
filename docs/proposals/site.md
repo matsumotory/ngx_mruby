@@ -485,7 +485,7 @@ light `#2a78d6`, `#eb6834`, `#1baf7a`, `#eda100`, `#e87ba4`), a gold for
 single bars and a gold scale for counts (`--viz-single`, `--viz-heat-0` to
 `--viz-heat-4`). The ngx_mruby site plans no chart. If it charts the perf
 lane's measurements (Q8), it starts from these colors and checks them
-against both palettes of 4.6 then.
+against palette A of 4.6 then.
 
 **Components.**
 
@@ -910,7 +910,8 @@ Palette B:
   border, as the profile site marks it with a 2 px accent line (4.55:1
   light, 6.64:1 dark for the border in palette A); the button is `bg` text
   on an `accent` fill (4.91:1 light, 7.28:1 dark). The focus ring is a
-  2 px `accent` outline, which reaches 3:1 in both palettes; the three
+  2 px `accent` outline, which reaches 3:1 in palette A (and reached it in
+  palette B while it was compared); the three
   sites draw it in their text accent, because their gold `accent` does
   not.
 - Links are underlined 1 px at an offset of 0.2em, as on the profile site,
@@ -941,8 +942,8 @@ Palette B:
   `bg`, and a text label (Note, Tip, Caution, Danger) instead of a color
   (chosen here).
 - Code highlighting uses at most four token colors besides `text` and
-  `text-muted` (chosen here), each 4.5:1 on `surface` in both themes and in
-  both palettes; step 2 adds them to `CODE_COLORS` in the contrast script.
+  `text-muted` (chosen here), each 4.5:1 on `surface` in both themes; the
+  contrast script reads them from `tokens.css` (`--color-code-*`).
 - **Code blocks.** Starlight renders them with Expressive Code, whose
   default themes bring hex colors of their own, adjust syntax colors below
   5.5:1 and draw shell languages as a terminal window, which item 1 of 4.3
@@ -960,7 +961,7 @@ Palette B:
   Expressive Code's stylesheet (`/_astro/ec.<hash>.css`) and the `style`
   attributes of highlighted spans hold hex values from those themes; they
   are exempt from the hex check, and the checks below cover them.
-- Checks: the contrast script over both palettes and the code colors; no
+- Checks: the contrast script over palette A and the code colors; no
   hex color in component CSS, and none in the built CSS outside
   `tokens.css` and Expressive Code's stylesheet (Starlight's `#fff` in
   `Badge.astro` included); on three page types in both themes, every
@@ -1246,7 +1247,7 @@ detection, or that pinned versions do not keep Starlight stable.
 - **Check scripts in Python**:
   [check_links.py](../../site/scripts/check_links.py) resolves the relative links and
   heading anchors of Markdown files, and [contrast.py](../../site/scripts/contrast.py)
-  checks the two palettes of 4.6 and the code colors in `tokens.css`. Both
+  checks palette A of 4.6 and the code colors in `tokens.css`. Both
   run with Python 3 and no packages. The other checks of section 6 are
   Node.js scripts beside them ("The site" in AGENTS.md).
 
@@ -1336,7 +1337,7 @@ reviews besides that.
 | Step | Work | What it produces | Check | The owner reviews |
 |---|---|---|---|---|
 | 1 | Starlight pinned in `site/`, the generator, today's `docs/` rendered without design; `check_links.py` moved into `site/scripts/`; AGENTS.md updated: `site/` in the repository layout, and in "Build and test" the Node 22.12 toolchain, `npm ci`, `npm run build` and the checks | `site/`, `site.yml` with the build and the checks (no deployment), the built site as a workflow artifact | a fresh clone builds with `npm ci` and `npm run build`; every internal link of the built HTML resolves; every page has a title and the last-updated date of its source; a test page from `docs/ja/` is served under `/ja/` with `lang="ja"`, and the `<wbr>` in its h2 is an element of the built h2 (4.4); pages read with JavaScript off | nothing |
-| 2 | `tokens.css` from the inherited tokens of 4.2 and the changes of 4.3, both palettes of 4.6, the type of 4.4, the spacing and radii of 4.5, Starlight's colors and Expressive Code's themes and frames set from the tokens; `contrast.py` moved into `site/scripts/`, reading `tokens.css`; the specimens of 4.12 | `tokens.css`, and the specimens: the home page and a reference page with one diagram and one sample, light and dark, at 390 by 664 and 1440 by 900 px, in Chromium and WebKit, one set per choice of 4.12, as screenshots and one contact sheet per set in the workflow artifact `specimens` of the `site` run; after the owner's choice, the site builds only the chosen configuration | the contrast script passes for both palettes and the code colors in both themes; computed font sizes equal the scale of each language; no `text-wrap: pretty` or `balance` in the built CSS, and no hex outside `tokens.css` and Expressive Code's stylesheet; every computed color a token value, code blocks included, the span colors of Expressive Code code colors, and no `is-terminal` frame (4.6); monospace only where item 2 of 4.3 puts it; no shadow, gradient or backdrop filter (item 5 of 4.3); margins, paddings, gaps and radii from the sets of 4.5; durations of 4.8; at most 90 characters per English body line at 1440 px; no external font URL in the built site, and the build succeeds with network access blocked after `npm ci` | the specimens of the workflow artifact, in a session: the four choices of 4.12 (decided on 2026-10-19) |
+| 2 | `tokens.css` from the inherited tokens of 4.2 and the changes of 4.3, both palettes of 4.6, the type of 4.4, the spacing and radii of 4.5, Starlight's colors and Expressive Code's themes and frames set from the tokens; `contrast.py` moved into `site/scripts/`, reading `tokens.css`; the specimens of 4.12 | `tokens.css`, and the specimens: the home page and a reference page with one diagram and one sample, light and dark, at 390 by 664 and 1440 by 900 px, in Chromium and WebKit, one set per choice of 4.12, as screenshots and one contact sheet per set in the workflow artifact `specimens` of the `site` run; after the owner's choice, the site builds only the chosen configuration | the contrast script passes for palette A (for both palettes while they were compared) and the code colors in both themes; computed font sizes equal the scale of each language; no `text-wrap: pretty` or `balance` in the built CSS, and no hex outside `tokens.css` and Expressive Code's stylesheet; every computed color a token value, code blocks included, the span colors of Expressive Code code colors, and no `is-terminal` frame (4.6); monospace only where item 2 of 4.3 puts it; no shadow, gradient or backdrop filter (item 5 of 4.3); margins, paddings, gaps and radii from the sets of 4.5; durations of 4.8; at most 90 characters per English body line at 1440 px; no external font URL in the built site, and the build succeeds with network access blocked after `npm ci` | the specimens of the workflow artifact, in a session: the four choices of 4.12 (decided on 2026-10-19) |
 | 3 | home page with the example's test (3.3, item 8), header, footer, language and version links (4.10); the sample mechanism and the diagram mechanism of 3.5, with the request phases diagram | the home page; the first diagram, as the model for the others | the example's case passes in CI and the home page shows the files it compares, with their date; no benchmark image and no performance figure without its date and method (Q8); Chromium and WebKit screenshots at 320, 390 by 664 and 1440 by 900, light and dark; no horizontal scroll at 320; gutters of 20 px or more; the home page heading's line count (4.4); the right-edge measurement of 4.9 on Japanese blocks and the `text-wrap` check on English ones; Lighthouse accessibility with no failed audit on three page types in both languages; visible, uncovered focus; the shadow, gradient and backdrop check of item 5 of 4.3 with the search dialog and the menu open, in both engines; language links answer 200; no redirect for `Accept-Language: ja`; the generator stops on a sample whose file or case is missing; the diagram check fails on a missing file or line range and lists changed lines; the drawings hold no `<text>` element and no color outside the tokens; diagram labels are HTML text of 14 px or more at 390 and 1440 px; the generator stops on a diagram block whose keys differ from those of its drawing; the figure has `role="img"` and an `aria-label`, and the drawing is hidden from screen readers (3.5) | the definition (3.3, item 1) and the first diagram |
 | 4 | Start; Guides with the samples of 3.5; Reference with the build diagram; Concepts with the phases, filter, async and lifetime diagrams; the agent proxy page with its three v3 diagrams and today's recipes, labeled as development content; Releases, Security, Contributing; the fixes of 2.2; `README.md` reduced to the definition, links and the branch table | the pages of 3.2 except the Japanese ones and `/v2/` | no broken relative link or anchor in `docs/` or the built site; every directive in the `ngx_command_t` tables of `src/` has a section in the directive reference; `mruby_output_filter` appears in `docs/` only in a removal note; the default gems listed in the docs equal the uncommented `conf.gem` lines of `build_config.rb`; every Ruby block in the docs compiles with the bundled mruby's `mrbc`; each `examples/<use>/` starts in CI and returns the output its README states; every sample on a page names a case that exists, and every use case of `docs/use_case/` is either a sample or marked untested with the reason of 3.5; every diagram names lines that exist; every v3 diagram and sample carries the development label | nothing |
 | 5 | Japanese pages: every page written by hand translated, the generated reference in English under `/ja/` with a notice (Q2) | `docs/ja/` and the `/ja/` pages | every page written by hand has a file in `docs/ja/`, and every generated reference page under `/ja/` shows the notice; `lang` and reciprocal absolute `hreflang` on every page; no space between Japanese and Latin characters in `docs/ja/` outside code and URLs; at most 40 characters per Japanese body line at 1440 px; line height 1.75 to 2.0; `keep-all` and `auto-phrase` only on `h2` and diagram labels; every h1 on one line at 390 px and on at most two at 320 px; no h1, `<title>`, sidebar entry, table-of-contents entry or heading `id` on `/ja/` contains the text `wbr` (4.4); the right-edge measurement on `/ja/` in both engines, with the h2 limit of 4.9; every diagram on `/ja/` takes its labels from `docs/ja/`, with the keys of the English block, and no label overflows its place at 390 and 1440 px | nothing |
