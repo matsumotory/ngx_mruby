@@ -75,7 +75,7 @@ You can use the following classes with default build configuration.
 - [Uname Class](https://github.com/matsumotory/mruby-uname)
 - [Vedis Class](https://github.com/matsumotory/mruby-vedis)
 
-The `Redis` class was left out of the default build in 2.7.1 and is in it again since 2.7.2 (see entry 3 of [the 2.7.2 release notes](../releases/v2.7.2.md)).
+The `Redis` class was left out of the default build in 2.7.1 and is in it again since 2.7.2 (see "Redis is in the default build again" in [the 2.7.2 release notes](../releases/v2.7.2.md)).
 
 You can also use classes embedded by
 [default.gembox](https://github.com/matsumotory/ngx_mruby/blob/master/mruby/mrbgems/default.gembox) and
