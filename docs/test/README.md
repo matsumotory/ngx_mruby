@@ -428,14 +428,16 @@ queue.
 ## Mock LLM upstream
 
 `test/soak/mock_llm.rb` (CRuby 3.0 or later) is an HTTP/1.1 server that
-answers `POST /v1/messages` the way the Anthropic Messages API does. It
-stands for the upstream of an agent proxy (nginx with ngx_mruby in front of
-an LLM API) in three places:
+answers `POST /v1/messages` the way the Anthropic Messages API does and
+`POST /v1/responses` the way the OpenAI Responses API does. It stands for
+the upstream of an agent proxy (nginx with ngx_mruby in front of an LLM
+API) in three places:
 
 - the soak test (`agent_*` scenarios) and the performance comparison
-  (`proxy_*`, `auth`, `route_json_*`), which start it as a process of its
-  own on the port base + 2 (12362 and 12372) for each scenario, with the
-  options of the scenario (`mock` in `test/soak/scenarios.rb`);
+  (`proxy_*`, `responses_stream_plain_*`, `auth`, `route_json_*`), which
+  start it as a process of its own on the port base + 2 (12362 and 12372)
+  for each scenario, with the options of the scenario (`mock` in
+  `test/soak/scenarios.rb`);
 - the case `test/t/cases/agent_proxy.rb`, whose helper
   `test/t/cases/_agent_proxy_client.rb` runs it in the helper's process on
   12372 and 12373 while it sends its requests. The case checks recipes of
@@ -448,7 +450,12 @@ an LLM API) in three places:
   key, whose rejection becomes a JSON 429 with `retry-after` through
   `limit_conn_status 460` and `error_page`, and whose slot is free again
   after the client closed its stream; an upstream 529 passed to the client
-  unchanged; and a log handler that reads `$upstream_status`.
+  unchanged; and a log handler that reads `$upstream_status`. The same
+  recipes run on `location = /v1/responses` with Responses requests, where
+  the proxy's own 401 and 429 bodies use the error format of the Responses
+  API and the upstream errors are a 503 and a 429. The case also checks
+  that a stream of 50 deltas arrives byte for byte: one Messages stream,
+  and one Responses stream for each terminal event.
 
 ```console
 $ ruby test/soak/mock_llm.rb --port 12362 --events 50 --hold-after 10
@@ -457,17 +464,19 @@ $ ruby test/soak/mock_llm.rb --port 12362 --events 50 --hold-after 10
 | Option | Default | Meaning |
 |---|---|---|
 | `--port PORT` | (required) | listen on `127.0.0.1:PORT`; repeat it for more ports, which answer the same way |
-| `--events N` | 50 | `content_block_delta` events in a stream |
-| `--delta-text TEXT` | `hello ` | the text of each `content_block_delta` |
+| `--events N` | 50 | text delta events in a stream: `content_block_delta` (Messages), `response.output_text.delta` (Responses) |
+| `--delta-text TEXT` | `hello ` | the text of each text delta event |
 | `--hold-after K` | off | write the first K events of a stream, then nothing more until the other side closes the connection |
 | `--reset-after K` | off | write the first K events of a stream, then reset the connection (RST) |
-| `--status CODE` | off | answer every request with this status and an Anthropic error body (`overloaded_error` for 529, `api_error` for 503), before any event |
+| `--status CODE` | off | answer every request with this status and an error body of its API, before any event: on `/v1/messages` an Anthropic error (`overloaded_error` for 529, `api_error` for 503), on `/v1/responses` an OpenAI error (`rate_limit_error` for 429, `service_unavailable_error` for 503, `invalid_request_error` for the other 4xx, `server_error` for the other 5xx) |
 | `--delay-ms MS` | 0 | wait MS milliseconds between two events |
 | `--one-write` | off | write the head and the whole stream with one write |
+| `--terminal NAME` | `completed` | the event that ends a Responses stream: `completed`, `incomplete` or `failed` |
 
 A request can override the options for itself with the headers
 `x-mock-events`, `x-mock-hold-after`, `x-mock-reset-after`, `x-mock-status`
-and `x-mock-delay-ms`, each a number of 0 or more. `x-mock-hold-after`,
+and `x-mock-delay-ms`, each a number of 0 or more, and `x-mock-terminal`,
+one of `completed`, `incomplete` and `failed`. `x-mock-hold-after`,
 `x-mock-reset-after` and `x-mock-status` also take `off`, which turns the
 hold, the reset or the error status off; `x-mock-events` and
 `x-mock-delay-ms` do not. Any other value gets a 400 answer
@@ -476,23 +485,49 @@ unless the configuration drops them. `ruby test/soak/mock_llm_test.rb` checks
 these rules and the answers below against the mock in its own process (no
 nginx, about a second); `test/soak/run.sh` runs it before the soak.
 
-What it answers:
+What it answers on `POST /v1/messages`:
 
 - A JSON body with `"stream": true`: 200, `text/event-stream`, chunked. The
   events are `message_start` (with `usage`), `content_block_start`, N
   `content_block_delta` events with the text, `content_block_stop`,
-  `message_delta` (with `usage`) and `message_stop`: N + 5 events. Without
-  `--one-write`, each event is one chunk written with one write; the response
-  head goes with the first event and the last chunk with `message_stop`.
+  `message_delta` (with `usage`) and `message_stop`: N + 5 events.
 - Any other JSON object: 200 with a message as JSON (`Content-Length`).
-- A body that is not a JSON object: 400; another path: 404.
-- `GET /_mock/stats`: its counters as JSON (below).
+
+On `POST /v1/responses`, with the event types and fields of `openapi.yaml`
+in [openai/openai-openapi](https://github.com/openai/openai-openapi) (read
+at commit `33248a6`, 2026-10-19):
+
+- A JSON body with `"stream": true`: 200, `text/event-stream`, chunked. Each
+  event has an `event:` line with its type and a `data:` line whose JSON
+  has the same `type` and a `sequence_number` that counts from 0. The
+  events are `response.created` and `response.in_progress` (the `Response`
+  object in status `in_progress`, `usage` null),
+  `response.output_item.added`, `response.content_part.added` and N
+  `response.output_text.delta` events with the text. For the terminal
+  event `completed` or `incomplete` follow `response.output_text.done`,
+  `response.content_part.done`, `response.output_item.done` and
+  `response.completed` or `response.incomplete`, which carries the whole
+  `Response` object with the output text and `usage` (`input_tokens`,
+  `input_tokens_details`, `output_tokens`, `output_tokens_details`,
+  `total_tokens`): N + 8 events. For `failed`, `response.failed` follows
+  the deltas, with status `failed`, an `error` and `usage` null: N + 5
+  events.
+- Any other JSON object: 200 with a `Response` object as JSON (status
+  `completed`, `Content-Length`).
+
+On both paths, without `--one-write`, each event is one chunk written with
+one write; the response head goes with the first event and the last chunk
+with the last event. A body that is not a JSON object gets a 400 with an
+`invalid_request_error` in the error format of the API. Another path gets
+a 404 (Anthropic format), and `GET /_mock/stats` its counters as JSON
+(below).
 
 The answer depends only on the request and the options: the model is the
 request's `model`, `input_tokens` is the request body's size in bytes / 4
-(rounded up), `output_tokens` is N (6 for a message), and there are no
-sleeps but `--delay-ms`. The drivers and the case compute the expected
-response with the same code (`MockLLM.stream_body`, `MockLLM.message_body`)
+(rounded up), `output_tokens` is N (6 for an answer without a stream), the
+ids and times of a `Response` are fixed, and there are no sleeps but
+`--delay-ms`. The drivers and the case compute the expected response with
+the same code (`MockLLM.stream_body`, `MockLLM.answer_body`)
 and compare it byte for byte. Responses also carry `x-mock-port` (the port
 that answered) and, when the request had them, `x-mock-authorization` and
 `x-mock-x-api-key` with the values that arrived, so that a test can see
@@ -507,7 +542,7 @@ counters of `GET /_mock/stats`:
 |---|---|
 | `connections_open` | connections open now, without the one asking |
 | `connections` | connections accepted |
-| `requests` | `POST /v1/messages` requests read |
+| `requests` | `POST /v1/messages` and `POST /v1/responses` requests read |
 | `completed` | answers written in full (error statuses included) |
 | `held` | streams waiting in `--hold-after` now |
 | `held_closed` | streams in `--hold-after` that the other side closed |
@@ -602,15 +637,16 @@ The default scenarios, each one location in `test/soak/nginx.conf`:
 | `file` | `mruby_content_handler` with a file and `cache` | keep-alive |
 | `disconnect` | `Nginx::Async.sleep 50`, then the body | one request per connection, closed without reading the response |
 
-and three agent proxy scenarios, each in `/v1/route` of
-`test/soak/nginx.agent.conf` (see "Agent proxy scenarios" below) in front of
-the mock LLM:
+and four agent proxy scenarios, each in `/v1/route` or
+`/v1/responses/route` of `test/soak/nginx.agent.conf` (see "Agent proxy
+scenarios" below) in front of the mock LLM:
 
 | Scenario | Mock | Client |
 |---|---|---|
 | `agent_stream` | streams of 50 `content_block_delta` events (55 events) | keep-alive; every stream is compared byte for byte |
 | `agent_client_abort` | writes 10 events, then holds the stream until nginx closes the connection | one request per connection: reads the head and the first 3 events, checks them, closes |
 | `agent_upstream_reset` | writes 10 events, then resets the connection | one request per connection: reads to EOF and checks that the body is exactly the 10 events, without the end of the chunked body |
+| `agent_responses_stream` | Responses streams of 50 `response.output_text.delta` events and `response.completed` (58 events), through `/v1/responses/route` | keep-alive; every stream is compared byte for byte |
 
 Keep-alive clients are `SOAK_CONCURRENCY` connections, each sending its next
 request after reading the response; every response is checked. The
@@ -640,12 +676,19 @@ the mock during a scenario either. The handlers are in `test/soak/handlers/`:
 - `agent_auth.rb` (server rewrite handler of the server `auth.agent.test`):
   looks up the client key from `Authorization` or `x-api-key` (two Hash
   lookups) and sets three variables;
-- `agent_route.rb` (access handler of `/v1/route`, with
-  `mruby_enable_read_request_body on`): `JSON.parse(r.body)["model"]`, one
-  Hash lookup, and `$agent_backend` for `proxy_pass http://$agent_backend`.
+- `agent_route.rb` (access handler of `/v1/route` and
+  `/v1/responses/route`, with `mruby_enable_read_request_body on`):
+  `JSON.parse(r.body)["model"]`, one Hash lookup, and `$agent_backend` for
+  `proxy_pass http://$agent_backend`.
 
-The request bodies are Messages requests of exactly 2 KB or 64 KB
-(`MockLLM.request_body`); the bodies of `agent_*` have `"stream": true`.
+`/v1/plain` and `/v1/route` proxy to the mock's `/v1/messages`, and
+`/v1/responses/plain` and `/v1/responses/route` to its `/v1/responses`.
+The request bodies are Messages requests of exactly 2 KB or 64 KB, and
+Responses requests of exactly 2 KB for the `responses_*` and
+`agent_responses_*` scenarios (`MockLLM.request_body`, with `api:
+:responses`); `"model"` is the first key of each, and the bodies of the
+streams have `"stream": true`. The abort and reset scenarios have no
+Responses counterpart: nginx relays the bytes of either API the same way.
 In each `agent_*` scenario the soak starts the mock (port base + 2) before
 nginx, and after the last sample checks its counters: it read exactly the
 requests that the soak sent (1 + `SOAK_WARMUP` + `SOAK_N`), and every one of
@@ -975,6 +1018,7 @@ function.
 |---|---|---|---|
 | `proxy_plain_2k`, `proxy_plain_64k` | POST of a Messages body of exactly 2 KB or 64 KB to `/v1/plain` (`proxy_pass` to the mock); a JSON message | none | `ngx_http_log_request` (1) |
 | `proxy_stream_plain_50`, `proxy_stream_plain_1000` | the 2 KB body with `"stream": true` to `/v1/plain`; a stream of 50 or 1000 deltas (55 or 1005 events) | none | `ngx_http_log_request` (1) |
+| `responses_stream_plain_50`, `responses_stream_plain_1000` | a 2 KB Responses body with `"stream": true` to `/v1/responses/plain` (`proxy_pass` to the mock's `/v1/responses`); a Responses stream of 50 or 1000 deltas and `response.completed` (58 or 1008 events) | none | `ngx_http_log_request` (1) |
 | `auth` | `proxy_plain_2k` to the server `auth.agent.test`, whose server rewrite handler `agent_auth.rb` looks up the client key and sets the upstream credential | 1 handler | `ngx_http_log_request` (1) |
 | `route_json_2k`, `route_json_64k` | `proxy_plain_*` to `/v1/route`, whose access handler `agent_route.rb` parses the body with `JSON.parse` and sets the upstream block for `proxy_pass http://$agent_backend` | 1 handler | `ngx_http_log_request` (1) |
 | `ruby_call_1`, `ruby_call_10` | GET of a location with 1 or 10 `mruby_set_code` variables and `return 200`; no upstream | 1 or 10 calls | `ngx_http_mruby_set_inline_handler` (1 or 10) |
@@ -1071,11 +1115,33 @@ The differences between scenarios of the same shape, from that run:
   `(proxy_stream_plain_1000 - proxy_stream_plain_50) / 950`: 398 Ir, with
   the `non_buffered_calls` of that run (4.97 and 38.43 per request).
 
+The Responses streams, 2026-10-19: one run of `test/perf/compare.sh` with
+the release builds of `next` at `a466688` (base) and of the head that
+added the scenarios (the same binary), nginx 1.31.6, Ubuntu 22.04 (gcc 11,
+valgrind 3.18.1) in a container on aarch64, `PERF_N=20000`. The base
+build measured `hello` at 11618 Ir per request (11260 without GC), and:
+
+| Scenario | Ir/req (w/o GC) | H | `non_buffered_calls`/req |
+|---|---|---|---|
+| `proxy_stream_plain_50` | 53674 (53674) | 4.62 | 4.27 |
+| `responses_stream_plain_50` | 55710 (55710) | 4.80 | 5.65 |
+| `proxy_stream_plain_1000` | 433190 (433190) | 37.3 | 37.20 |
+| `responses_stream_plain_1000` | 478098 (478098) | 41.2 | 59.46 |
+
+One more relayed Responses event,
+`(responses_stream_plain_1000 - responses_stream_plain_50) / 950`, cost
+445 Ir against 399 Ir for a Messages event in the same run. A delta event
+of the Responses stream is 186 to 189 bytes (its `sequence_number` grows),
+one of the Messages stream 121 bytes; the body of the 1000-delta stream is
+215046 bytes against 121619, and it took 59.46 relay calls per request
+against 37.20.
+
 `proxy_stream_plain_1000` and `route_json_64k` took 83 and 129 seconds per
 build in that run, while all the scenarios of the default set together take
-about 140 seconds, so they are not in `DEFAULT_SCENARIOS`; name them in
-`PERF_SCENARIOS`. The other agent proxy scenarios are in the default set and
-add about one minute per build.
+about 140 seconds, so they are not in `DEFAULT_SCENARIOS`, nor is
+`responses_stream_plain_1000`; name them in `PERF_SCENARIOS`. The other
+agent proxy scenarios are in the default set and add about one minute per
+build.
 
 ### Thresholds and calibration
 
