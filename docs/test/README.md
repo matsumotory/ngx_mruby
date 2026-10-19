@@ -253,7 +253,8 @@ builds of the nginx version in `nginx_version`, and compares the results:
   the static module, the configure options of `test.sh` (see
   [Testing](#testing)) and `-DMRB_GC_STRESS`, installed to `build/nginx`.
   With `TEST_SH_SKIP_TESTS=1`, `test.sh` stops after the install: it writes
-  no test configuration, kills no nginx and starts none.
+  no test configuration, kills no nginx and starts none. `run.sh` unsets
+  `BUILD_DYNAMIC_MODULE`, which would build into `build_dynamic/` instead.
 - nginx without ngx_mruby: a copy of the same nginx source in
   `build_nginxtests/plain/src`, configured with the options that `test.sh`
   gave nginx (`NGX_CONFIG_OPT` of the generated `Makefile`) without the two
@@ -263,15 +264,20 @@ builds of the nginx version in `nginx_version`, and compares the results:
 
 The test files write their own nginx configurations, and none has an mruby
 directive. In the build with ngx_mruby, each start and reload of nginx
-creates ngx_mruby's `mrb_state` while nginx reads the `http {}` block
-(`mrb_open`, under `MRB_GC_STRESS`), each HTTP request passes the handlers
-that ngx_mruby adds to the post-read, server rewrite, rewrite, access,
-content and log phases, which decline when no code is configured, and each
-stream session passes its handler of the access phase. The header and body
-filters of ngx_mruby are added only when a directive asks for them, and no
-Ruby code runs. A test file that fails with ngx_mruby and passes without it
-therefore shows that the module changes nginx's behavior although nothing
-is configured for it.
+creates an `mrb_state` of ngx_mruby for each `http {}` and each `stream {}`
+block while nginx reads the configuration (`mrb_open`, under
+`MRB_GC_STRESS`), and `mrb_open` runs the Ruby code of mruby's core and
+of the bundled gems. Each HTTP request passes the handlers that ngx_mruby
+adds to the post-read, server rewrite, rewrite and access phases and to
+the log phase, and the one of the content phase unless the location has a
+content handler of its own (`proxy_pass` and the like), which nginx runs
+instead of the handlers of that phase. These handlers decline when no
+code is configured. Each stream session passes ngx_mruby's handler of the
+access phase. The header and body filters of ngx_mruby are added only when
+a directive asks for them, and no handler, filter or init code of a
+configuration runs. A test file that fails with ngx_mruby and passes
+without it therefore shows that the module changes nginx's behavior
+although nothing is configured for it.
 
 ### The pinned commit of nginx-tests
 
@@ -340,8 +346,11 @@ entry in prove's "Test Summary Report" has failed subtests, a wait status
 other than 0 or parse errors (a missing or wrong plan), and a file whose
 entry has only TODO subtests that passed has passed. It stops when the log
 is not a complete run of prove. `test/nginx-tests/compare.pl` writes the
-lists and the summary. `sh test/nginx-tests/self-test.sh` checks both on the
-made-up output of `test/nginx-tests/fixtures/`.
+lists and the summary. `sh test/nginx-tests/self-test.sh` checks both on
+the output of `prove` for the small test files in
+`test/nginx-tests/self-test/`, which pass, fail, skip or break their plan
+on purpose, differently for the two builds (the table at the top of
+`self-test.sh`).
 
 `run.sh` exits with 0 when both builds were tested and their results read,
 also when test files failed. It exits with another status when a build,
@@ -353,7 +362,8 @@ the fetch or `prove` itself failed, or when a log is not a complete run.
 `ubuntu-22.04`, on pull requests to `next` that change an input of the
 nginx binary (the inputs that "[In CI](#in-ci)" of the performance
 comparison lists), `test.sh`, `test/nginx-tests/` or the workflow, on every
-push to `next` and on "Run workflow". The job summary is `summary.md`, each
+push to `next` (each push gets a run of its own, also when the next push
+comes before it finished) and on "Run workflow". The job summary is `summary.md`, each
 file that fails with ngx_mruby only is a warning annotation, and the
 artifact `nginx-tests` has the output above without the copy of the nginx
 source.

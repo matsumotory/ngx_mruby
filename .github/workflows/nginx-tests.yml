@@ -13,7 +13,8 @@ name: nginx-tests
 # Pull requests to next run it when they change an input of the nginx
 # binary (the inputs that the perf job of test.yml lists), test.sh, the
 # runner in test/nginx-tests/ or this file. Every push to next runs it, so
-# that each merge has a record.
+# that each merge has a record: pushes get a concurrency group per commit,
+# so a later push neither cancels nor replaces the run of an earlier one.
 on:
   pull_request:
     branches:
@@ -39,8 +40,11 @@ on:
   workflow_dispatch:
 
 # A new push to a pull request cancels the run for its previous commit.
+# A push to next has a group of its own commit: GitHub keeps only the newest
+# waiting run of a group, and a group per branch would drop the record of
+# a merge that was followed by another before its run started.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -69,8 +73,9 @@ jobs:
             libcache-memcached-perl libcache-memcached-fast-perl libprotocol-websocket-perl memcached
           perl -v | sed -n 2p
           prove --version
-      # results.pl and compare.pl on made-up prove output, so that a
-      # change of them that misreads a result fails here.
+      # results.pl and compare.pl on the output of prove for the small test
+      # files of test/nginx-tests/self-test/, so that a change of them that
+      # misreads a result fails here.
       - name: Check the reading of the results
         run: sh test/nginx-tests/self-test.sh
       - name: nginx-tests

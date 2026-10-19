@@ -11,9 +11,10 @@
 # prove prints a line for each file ("access.t .. ok", "h2.t .. skipped:
 # no http_v2 available", "foo.t .. Failed 1/12 subtests"), and after all of
 # them a "Test Summary Report" with an entry for each file that failed or
-# had TODO subtests that passed:
+# had TODO subtests that passed. prove pads the names of these entries to
+# the longest of them, so the name is followed by one or more spaces:
 #
-#   foo.t (Wstat: 256 (exited 1) Tests: 12 Failed: 1)
+#   foo.t       (Wstat: 256 (exited 1) Tests: 12 Failed: 1)
 #     Failed test:  3
 #     Non-zero exit status: 1
 #
@@ -49,7 +50,7 @@ while (my $line = <$fh>) {
 
 	if ($in_summary) {
 		next if $line =~ /^-+$/;
-		if ($line =~ /^(\S+\.t) \(Wstat: (\d+).*?Tests: (\d+) Failed: (\d+)\)$/) {
+		if ($line =~ /^(\S+\.t)\s+\(Wstat: (\d+).*?Tests: (\d+) Failed: (\d+)\)$/) {
 			my ($file, $wstat, $tests, $failed) = ($1, $2, $3, $4);
 			($entry = $file) =~ s{^\./}{};
 			$summary{$entry} = { wstat => $wstat, tests => $tests,

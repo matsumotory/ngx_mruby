@@ -78,7 +78,10 @@ fi
 
 # nginx with ngx_mruby, built as test.sh builds it (static module, the
 # configure options of test.sh, -DMRB_GC_STRESS), installed to build/nginx.
+# BUILD_DYNAMIC_MODULE would make test.sh build into build_dynamic/ and leave
+# build/nginx as it was, so it is unset: the run is of the static module.
 echo "run.sh: building nginx with ngx_mruby (test.sh)"
+unset BUILD_DYNAMIC_MODULE
 TEST_SH_SKIP_TESTS=1 sh ./test.sh "$@"
 MRUBY_NGINX="$TOP/build/nginx/sbin/nginx"
 
