@@ -1,5 +1,5 @@
 # Hook script of test/conf/conf.d/68-var-accessor.conf (port 18159), for
-# test/t/cases/var_accessor.rb. It makes the calls that the path of the
+# test/t/cases/var_method_lookup.rb. It makes the calls that the path of the
 # request names and answers 200 with one line per call, each the inspect of
 # an Array. "defined" stands for [v.respond_to?(NAME),
 # Nginx::Var.instance_methods(false).include?(NAME)]: whether Nginx::Var has
@@ -111,6 +111,11 @@ lines =
     r = Nginx::Request.new
     [c, s, r].each { |o| o.instance_variable_set(:@iv_var, fake) }
     [[c.remote_ip, s.document_root, r.hostname]]
+  when '/alias'
+    # An alias of a defined accessor reads the variable of the name that it
+    # is called with, as method_missing would.
+    Nginx::Var.send(:alias_method, :var_accessor_alias, :var_accessor_declared)
+    [[v.var_accessor_alias, v.var_accessor_declared, defined.call(:var_accessor_alias)]]
   when '/frozen'
     # Last of the cases: Nginx::Var stays frozen for the rest of the worker.
     Nginx::Var.freeze

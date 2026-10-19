@@ -8,7 +8,11 @@
 # test.sh runs a single nginx process, so the first request of a name defines
 # its accessor and the later requests use it. The variables of the server are
 # read by no other test, so their accessors do not exist before these cases.
-# The cases run in this order; the last one freezes Nginx::Var.
+# The cases run in this order; the last one freezes Nginx::Var for the rest
+# of the worker. test.sh runs the case files in the order of their names, so
+# this file comes after test/t/cases/var_input.rb, whose cases then use the
+# accessors that they define, on a Nginx::Var that is not frozen. A case file
+# that needs Nginx::Var unfrozen sorts before this one.
 
 t = SimpleTest.new "ngx_mruby test: Nginx::Var accessors"
 
@@ -163,6 +167,12 @@ CONF
     t.assert_include out, "var_accessor init #{name}: RuntimeError: this method can only be used while processing a request"
   end
   t.assert_not_include out, ': returned'
+end
+
+t.assert('Nginx::Var - an alias of a defined accessor reads the variable of its own name', 'GET /alias on 18159') do
+  res = var_accessor('/alias')
+  t.assert_equal 200, res.code
+  t.assert_equal '["alias value", "initial", [true, true]]', res["body"]
 end
 
 # Last: this freezes Nginx::Var for the rest of the worker. The accessors

@@ -522,7 +522,7 @@ static mrb_value ngx_mrb_del_request_headers_out(mrb_state *mrb, mrb_value self)
   return self;
 }
 
-// using from ngx_http_mruby_connection.c and ngx_http_mruby_server.c
+// Nginx::Request#var
 mrb_value ngx_mrb_get_request_var(mrb_state *mrb, mrb_value self)
 {
   mrb_sym iv_var_sym = NGX_HTTP_MRUBY_SYM(mrb, IV_VAR);
