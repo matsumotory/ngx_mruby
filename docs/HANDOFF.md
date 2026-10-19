@@ -35,18 +35,19 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-19 (16:30 JST)
+## State as of 2026-10-19 (16:45 JST)
 
 Heads: `next` is the merge of #590, whose first parent is `75bfa6f`
 (merge of #585). #590 merges `master` at `03aad70` into `next`, so `next`
-contains every change of `master`. `master` is `03aad70` (merge of #588);
-`v2.x` mirrors `master` (`03aad70`).
+contains every change of `master` except #589, which the next merge of
+`master` into `next` brings (see "Queue"). `master` is `36f4c82` (merge of
+#589); `v2.x` mirrors `master` (`36f4c82`).
 
 2.7.1 was released on 2026-10-19: the tag `v2.7.1` is on `ce5eb11`, the
 merge of the 2.7.1 changes into `master`. Its release notes are
 `docs/releases/v2.7.1.md` and `docs/releases/v2.7.1.ja.md`. The next 2.x
-release is 2.7.2; #589 creates its release notes `docs/releases/v2.7.2.md`
-and `docs/releases/v2.7.2.ja.md`.
+release is 2.7.2; its release notes `docs/releases/v2.7.2.md` and
+`docs/releases/v2.7.2.ja.md` are on `master` since #589.
 
 Merged on 2026-10-19, into `next`: #590 (`master` into `next` in two merge
 commits: `master` at `4091cbd`, with the 2.7.1 changes, #581, #586 and
@@ -61,10 +62,15 @@ and `contrast.py` checks a second palette, `75bfa6f`). Into `master`: the
 2.7.1 changes (`ce5eb11`), #581 (the test harness runs `nginx -s quit` with
 `detect_leaks=0`, `edc85f0`), #586 (the note on a `return` inside a block
 of handler code in 2.x, `5e7d57e`), #587 (a change of the 2.7.1 release
-notes, `4091cbd`) and #588 (tests: the request body that a log handler or a
+notes, `4091cbd`), #588 (tests: the request body that a log handler or a
 filter sees after nginx ended a body read, and the status 500 after an
 exception in an output header filter; and two sentences of
-`docs/directives/README.md` on such a handler, `03aad70`). #563 was closed
+`docs/directives/README.md` on such a handler, `03aad70`) and #589
+(`Nginx::Var` rejects names and setter calls that name no variable, and
+leaves the name passed to `set` unchanged; it creates
+`docs/releases/v2.7.2.md` and `docs/releases/v2.7.2.ja.md` and the test
+fragment `test/conf/conf.d/67-var-input.conf`; merged at 16:35 JST,
+`36f4c82`). #563 was closed
 on 2026-10-19: its change is part of 2.7.1 (its last comment). #502 was
 closed on 2026-10-19 after #586; its test and its entry in the 3.0.0
 release notes came with #584. Merged on
@@ -98,7 +104,6 @@ Open pull requests, all drafts:
 | PR | Base | Change | Stage |
 |---|---|---|---|
 | [#574](https://github.com/matsumotory/ngx_mruby/pull/574) | `next` | Answer 200 with `Content-Length: 0` when a content handler sends no body (#200) | A draft that waited for #590, which brought 2.7.1 into `next`. Next: a rebase on `next`, then a full review round ([the last review](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549) was of `1be3f86` on 2026-10-14). It conflicts with `next` (it also creates `docs/releases/v3.0.0.md`, which #561 created); its entries go into that file and, since #582, into `docs/releases/v3.0.0.ja.md` too. |
-| [#589](https://github.com/matsumotory/ngx_mruby/pull/589) | `master` | `Nginx::Var`: reject names and setter calls that name no variable, and leave the name passed to `set` unchanged; creates `docs/releases/v2.7.2.md` and `docs/releases/v2.7.2.ja.md` | A draft. [The review of `4198ee4`](https://github.com/matsumotory/ngx_mruby/pull/589#issuecomment-6261621251) has one "must fix": `docs/class_and_method/README.md` does not describe the new behavior. The head `e064b77` adds those sentences (`187bbe8`) and updates the branch to `master` at `03aad70`. Next: the re-review of that item, CI on the head, and the merge. |
 | [#591](https://github.com/matsumotory/ngx_mruby/pull/591) | `next` | Site step 1: Starlight in `site/`, the generator of `docs/`, the checks and `site.yml` | A draft. [The review of `9fc4a2d`](https://github.com/matsumotory/ngx_mruby/pull/591#issuecomment-6261562761) has one "must fix" (`site/scripts/sync-docs.mjs` breaks a link in raw HTML inside a blockquote or a list item) and four "should fix"; a session [took it over](https://github.com/matsumotory/ngx_mruby/pull/591#issuecomment-6261964654) to fix them. Its change of this file conflicts with that of #590: after #590 is merged, #591 resolves it. |
 
 ## Decisions
@@ -153,7 +158,7 @@ Taken up and still open:
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The next merge into `master` after #590, which merged `master` at `03aad70` into `next` |
+| Merge `master` into `next` after each merge into `master`. Model: #573. The next merge brings #589 (`master` at `36f4c82`). Its change of `src/http/ngx_http_mruby_var.c` conflicts with next's changes for mruby 4.0.0 (#561), and `AGENTS.md` conflicts as well, so that merge resolves them and quotes the ASan+UBSan and valgrind runs and the `perf` job, in a pull request of its own | `next` | #590 (`master` at `03aad70` into `next`): start right after it is merged |
 | The case that #566 leaves without a response: output, then a status below 300 other than 200, 201 and 204 ([the re-review of #566](https://github.com/matsumotory/ngx_mruby/pull/566#issuecomment-5977670159), should fix 5) | `master` | Ready to start: a test commit, then a fix commit |
 | Restore `mruby-redis` in the default build with `hiredis` pinned to a release tag (plan section 5 and section 7, item 5; [the re-review of #569](https://github.com/matsumotory/ngx_mruby/pull/569#issuecomment-5977574834), should fix 6). The pin is [matsumotory/mruby-redis#108](https://github.com/matsumotory/mruby-redis/pull/108) (hiredis v1.5.0), a draft under review. After its merge: a pull request to `master` that enables the gem in `build_config.rb` for 2.7.2, and a pull request to `next` that pins the gem in `build_config.rb.lock` to the merge commit on the gem's `master` (AGENTS.md "Other repositories"; the line in `build_config.rb` reaches `next` with the merge of `master`, and the lock has no entry for the gem today) | `master`, then `next` | The merge of matsumotory/mruby-redis#108 |
 | Port the perf lane (`test/perf`, `test/build_release.sh`, the `perf` job) to `master`, without `Nginx::Debug` (what it needs: [the review of #569](https://github.com/matsumotory/ngx_mruby/pull/569#issuecomment-5977395918), should fix 5). Until then AGENTS.md "Design principles" measures `master` changes with the lane of `next`. | `master` | Ready to start: tests and CI only (`test/perf`, `test/build_release.sh`, the `perf` job), without `Nginx::Debug`, as the owner decided on 2026-10-19 (see "Decisions") |
