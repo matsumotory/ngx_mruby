@@ -93,7 +93,7 @@ paper what a worker keeps between requests; merged at 19:10 JST,
 for the builds that enable mruby-redis, which get hiredis v1.5.0 since
 matsumotory/mruby-redis#108; `a500846`), #599 (the supply chain checks
 in CI: zizmor, OpenSSF Scorecard and the heads of the GitHub gems; merged
-at 20:43 JST, `ee0a57f`), #598 (the trust boundary of the docs: trusted configuration code, untrusted client input; merged at 21:35 JST, `5eec909`) #601 (the callgrind performance lane and wider sanitizer log checks on `master`; merged at 22:33 JST, `68032bb6a`) and #609 (the `Nginx::SSL` examples of the docs look the SNI name up in a table; merged at 23:20 JST, `2135d68a4`). Issue #200 was closed at 19:42 JST, after #574.
+at 20:43 JST, `ee0a57f`), #598 (the trust boundary of the docs: trusted configuration code, untrusted client input; merged at 21:35 JST, `5eec909`), #601 (the callgrind performance lane and wider sanitizer log checks on `master`; merged at 22:33 JST, `68032bb6a`) and #609 (the `Nginx::SSL` examples of the docs look the SNI name up in a table; merged at 23:20 JST, `2135d68a4`). Issue #200 was closed at 19:42 JST, after #574.
 #563 was closed
 on 2026-10-19: its change is part of 2.7.1 (its last comment). #502 was
 closed on 2026-10-19 after #586; its test and its entry in the 3.0.0
