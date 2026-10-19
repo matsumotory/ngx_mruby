@@ -49,10 +49,13 @@ jobs:
     steps:
       # The whole history (all branches; about 13 MB in October 2026): only
       # the full history tells which commits of the pull request the base
-      # does not have yet.
+      # does not have yet. No later step needs the token that actions/checkout
+      # would keep (persist-credentials): the fetch of the previous tip of a
+      # push reads the public repository without it.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Check the added files
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -124,7 +127,10 @@ jobs:
             BUILD_WITH_OPENSSL_SRC: ""
             SANITIZER: "address,undefined"
     steps:
+      # No later step runs git against this repository with credentials.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Echo matrix
         env:
           NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
@@ -285,10 +291,13 @@ jobs:
       pull-requests: read
     steps:
       # The checkout is the merge commit of the PR (refs/pull/N/merge); its
-      # first parent is the base branch it was merged into.
+      # first parent is the base branch it was merged into. The later steps
+      # read both commits locally (git diff, git archive) and give gh the
+      # token in GH_TOKEN, so the checkout keeps no credential.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
+          persist-credentials: false
       - name: Decide whether to compare
         id: scope
         env:
