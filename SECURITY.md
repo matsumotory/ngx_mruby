@@ -15,6 +15,20 @@ on `next`, section 7, item 11). When v3.0.0 is released, the end date is added
 here and in the README, and this table gets a row for 3.x. Which branch holds
 which line is described in [Branch strategy](README.md#branch-strategy).
 
+## Scope
+
+ngx_mruby trusts the nginx configuration and the Ruby code that it loads, and
+treats what a client sends as untrusted input. A defect of ngx_mruby that lets
+input a client controls make it read or write memory outside its buffers, end
+or hang the worker, or reveal or change the data of another request is in
+scope. What follows from the operator's own code doing what it was written to
+do (for example a script that passes client input to `eval`, a shell command or
+a file path), and a setup that takes configuration or Ruby code from parties
+that the operator does not trust, are not.
+[Trust boundary](docs/README.md#trust-boundary) describes both sides and the
+scope in full. If you are not sure whether a client can reach a defect, report
+it privately.
+
 ## Reporting a vulnerability
 
 Please do **not** report security vulnerabilities through public GitHub issues,
