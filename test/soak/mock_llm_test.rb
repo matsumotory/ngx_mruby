@@ -100,6 +100,16 @@ begin
     end
   end
 
+  stats = server.stats
+  check('requests counted', stats[:requests], sent)
+  check('answers written in full', stats[:completed], sent - 2)
+  check('resets', stats[:reset], 1)
+  check('streams held now', stats[:held], 0)
+  check('failed writes', stats[:write_failed], 0)
+  check('open connections', wait_for(server, :connections_open, 0), 0)
+  messages_stats = stats
+  messages_sent = sent
+
   # The Responses API on /v1/responses: the same options, its own events,
   # bodies and error format.
   r_path = '/v1/responses'
@@ -166,9 +176,16 @@ begin
   %w[done COMPLETED 1].each do |value|
     status, _headers, answer, = post(port, { 'x-mock-hold-after' => 'off', 'x-mock-terminal' => value }, r_body, r_path)
     sent += 1
-    check("Responses: x-mock-terminal: #{value}", [status, (JSON.parse(answer)['error']['type'] rescue answer)],
-          [400, 'invalid_request_error'])
+    message = "mock: x-mock-terminal must be one of completed, incomplete, failed, not #{value.inspect}"
+    check("Responses: x-mock-terminal: #{value}", [status, answer], [400, MockLLM.responses_error_body(400, message)])
   end
+
+  status, _headers, answer, = post(port, {}, 'not json', r_path)
+  sent += 1
+  check('Responses: a body that is not JSON', [status, answer],
+        [400, MockLLM.responses_error_body(400, 'mock: the body is not a JSON object')])
+  check('Responses: the error body', JSON.parse(MockLLM.responses_error_body(400, 'm')),
+        { 'error' => { 'message' => 'm', 'type' => 'invalid_request_error', 'param' => nil, 'code' => nil } })
 
   check('--terminal on the command line', MockLLM.parse_args(%w[--port 1 --terminal failed]), [[1], MockLLM::DEFAULTS.merge(terminal: 'failed')])
   begin
@@ -178,13 +195,15 @@ begin
     nil
   end
 
+  # The counters of the Responses requests: the differences from the
+  # counters after the Messages requests.
   stats = server.stats
-  check('requests counted', stats[:requests], sent)
-  check('answers written in full', stats[:completed], sent - 4)
-  check('resets', stats[:reset], 2)
-  check('streams held now', stats[:held], 0)
-  check('failed writes', stats[:write_failed], 0)
-  check('open connections', wait_for(server, :connections_open, 0), 0)
+  check('Responses: requests counted', stats[:requests] - messages_stats[:requests], sent - messages_sent)
+  check('Responses: answers written in full', stats[:completed] - messages_stats[:completed], sent - messages_sent - 2)
+  check('Responses: resets', stats[:reset] - messages_stats[:reset], 1)
+  check('Responses: streams held now', stats[:held], 0)
+  check('Responses: failed writes', stats[:write_failed] - messages_stats[:write_failed], 0)
+  check('Responses: open connections', wait_for(server, :connections_open, 0), 0)
 ensure
   server.stop
 end
