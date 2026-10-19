@@ -1239,7 +1239,7 @@ detection, or that pinned versions do not keep Starlight stable.
   its step 7, the pull request to `v2.x` points the mirrored copies of
   those two workflows at `v2.x` and the dispatch at `--ref master`.
 - **Check scripts that exist today**:
-  [check_links.py](./site/check_links.py) resolves the relative links and
+  [check_links.py](../../site/scripts/check_links.py) resolves the relative links and
   heading anchors of Markdown files, and [contrast.py](./site/contrast.py)
   checks the two palettes of 4.6. Both run with Python 3 and no packages.
   Step 1 moves `check_links.py` into `site/scripts/`, and step 2 moves
