@@ -59,8 +59,8 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     for it to finish;
   - an operator's script blocks its worker when it uses mruby-sleep,
     mruby-socket or mruby-io, which the default build includes on both
-    branches, or matsumotory/mruby-redis (a hiredis client) in a build that
-    includes it. The rule is for ngx_mruby's own code, not for such scripts.
+    branches, or matsumotory/mruby-redis (a hiredis client), which the
+    default build includes again since 2.7.2. The rule is for ngx_mruby's own code, not for such scripts.
 - Which changes are measured. A PR that changes an input of the measured
   binary is compared with its base in the callgrind lane ("Performance
   comparison with callgrind" in `docs/test/README.md`). The inputs are
@@ -275,8 +275,8 @@ merge as to a PR here.
   edit, not committed) and remove `mruby/build` first. On `next`, the build
   also rewrites the committed `build_config.rb.lock`: restore both files
   afterwards with `git checkout -- build_config.rb build_config.rb.lock`. A
-  gem that the default build leaves out (matsumotory/mruby-redis, whose
-  line is commented out on both branches) has no such line: enable it in
+  gem that the default build leaves out has no such line (its line is
+  commented out, or there is none): enable it in
   the same local edit for the run and say so with the quoted results, or
   quote the gem's own tests and name the later PR that enables it, whose
   suite runs then cover it. The gem's own tests run as well where it has
