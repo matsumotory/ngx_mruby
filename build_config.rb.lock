@@ -64,15 +64,15 @@ builds:
       branch: master
       commit: 32acb9ea9ad1aa1db8088625252988e98770188a
       version: 0.0.0
-    https://github.com/matsumotory/mruby-redis.git:
-      url: https://github.com/matsumotory/mruby-redis.git
-      branch: master
-      commit: 747bbd5ac0b4ad0b36204fd98be121f1780d316e
-      version: 0.0.1
     https://github.com/matsumotory/mruby-pointer.git:
       url: https://github.com/matsumotory/mruby-pointer.git
       branch: master
       commit: 8b46506dfdb12a79a16be1d1172ef3c9324bef96
+      version: 0.0.1
+    https://github.com/matsumotory/mruby-redis.git:
+      url: https://github.com/matsumotory/mruby-redis.git
+      branch: master
+      commit: 8d939104923bc86bb16d2c203d91e22bfa3196df
       version: 0.0.1
   test:
     https://github.com/matsumotory/mruby-simplehttp.git:
