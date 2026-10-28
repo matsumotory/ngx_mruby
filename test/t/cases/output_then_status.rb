@@ -116,4 +116,13 @@ t.assert('ngx_mruby - output, then a status', 'a subrequest whose content handle
   t.assert_equal 'status:0 body:', body
 end
 
+t.assert('ngx_mruby - output, then a status', 'HEAD of a handler that sets 202 after output gets the header without a body') do
+  status, raw = tcp_client(18154, "HEAD /accepted HTTP/1.0\r\nHost: localhost\r\n\r\n")
+  line, fields, body = output_status_parse(raw)
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 202 Accepted', line
+  t.assert_equal '8', fields['content-length']
+  t.assert_equal '', body
+end
+
 t.report
