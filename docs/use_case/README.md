@@ -51,7 +51,7 @@ location ~ \.md$ {
 # /path/to/filter.rb
 f = Nginx::Filter.new
 
-css = "https://gist.github.com/andyferra/2554919/raw/2e66cabdafe1c9a7f354aa2ebf5bc38265e638e5/github.css"
+css = "/css/markdown.css"   # a stylesheet that your server serves
 md = Discount.new css, "markdown"
 
 f.body = md.md2html f.body
@@ -101,7 +101,7 @@ location ~ \.rb$ {
 r = Nginx::Request.new
 r.content_type = "text/html"
 
-md = Discount.new "https://gist.github.com/andyferra/2554919/raw/2e66cabdafe1c9a7f354aa2ebf5bc38265e638e5/github.css", "md test"
+md = Discount.new "/css/markdown.css", "md test"
 
 body = <<DATA
 # Section

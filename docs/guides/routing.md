@@ -31,8 +31,9 @@ backend `a`, on port 18164.
   connects to the backend ([Request phases](../concepts/request-phases.md)).
   The script reads the request through `Nginx::Request`; it does not see
   the response.
-- `proxy_pass` with a variable takes the address as it is. A name instead
-  of an address needs nginx's `resolver` directive.
+- `proxy_pass` with a variable takes an address as it is. A value that
+  names an `upstream` block uses that block; any other host name needs
+  nginx's `resolver` directive.
 - The request header is client input: the script compares it with the
   keys of its table, so that a client can only reach the backends that the
   table lists ([Trust boundary](../README.md#trust-boundary)).

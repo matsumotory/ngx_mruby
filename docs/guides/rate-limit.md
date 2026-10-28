@@ -36,4 +36,5 @@ The case sends the request twice. The first answers 200 with the body
   worker has its own mruby state, and a counter in a Ruby global would
   count the requests of one worker only.
 - `limit_req_zone` is a directive of the `http` block; `limit_req` and
-  `limit_req_status` go into the `server` or the `location`.
+  `limit_req_status` go into the `http` block, a `server` or a
+  `location`.

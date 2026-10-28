@@ -95,4 +95,4 @@ try {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
-finish('check-ruby-blocks', problems, `${blocks - scripts.size} Ruby block(s) of the pages (${errors} marked syntax-error, which do not compile) and ${scripts.size} script(s) of their samples compiled with ${path.relative(process.cwd(), mrbc) || mrbc}`);
+finish('check-ruby-blocks', problems, `${blocks - scripts.size - errors} Ruby block(s) of the pages and ${scripts.size} script(s) of their samples compiled, and ${errors} block(s) marked syntax-error did not compile, with ${path.relative(process.cwd(), mrbc) || mrbc}`);

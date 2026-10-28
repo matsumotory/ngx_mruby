@@ -536,7 +536,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
   - `node scripts/check-home.mjs`: the home pages show the files that the
     example's case compares, with the case, the date and the commit, and
     no benchmark image or performance figure (Q8);
-  - `node scripts/check-samples.mjs`: every sample block of the pages
+  - `node scripts/check-samples.mjs [--repo DIR]`: every sample block of the pages
     names a case of `test/t/cases/` and files that exist, and every use
     case of `docs/use_case/README.md` has a sample, a link to a page with
     one, or a paragraph "**Untested.**" with the reason (3.5);

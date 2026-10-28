@@ -79,7 +79,9 @@ guide_compare(t, 'use case: hello world', 18161, 'guide_hello.request', 'guide_h
 
 guide_compare(t, 'guide: routing', 18163, 'guide_routing.request', 'guide_routing.response')
 t.assert('guide: routing', 'a request without X-Tenant goes to backend a') do
-  _, _, got_status, _, got_body = guide_send(18163, 'guide_hello.request')
+  status, raw = tcp_client(18163, "GET /orders HTTP/1.1\r\nHost: 127.0.0.1:18163\r\nConnection: close\r\n\r\n")
+  got_status, _, got_body = guide_parse(raw)
+  t.assert_equal 'EOF', status
   t.assert_equal 'HTTP/1.1 200 OK', got_status
   t.assert_equal "backend a on port 18164\n", got_body
 end
