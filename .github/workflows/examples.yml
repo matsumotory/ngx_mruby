@@ -1,0 +1,76 @@
+name: examples
+
+# The examples of examples/ (docs/proposals/site.md, step 4 of section 6:
+# "each examples/<use>/ starts in CI and returns the output its README
+# states"). For each example, examples/check_example.py compares the files
+# that its README shows with the files of the example, runs the commands of
+# the README in order (docker compose builds nginx with ngx_mruby from this
+# checkout and starts it), and compares what each command prints with what
+# the README states.
+#
+# It runs on pull requests to next and on pushes to next that change an
+# example, this file, or an input of the build that the examples' images
+# make (build.sh and the files it reads); test.yml tests the module itself.
+on:
+  pull_request:
+    branches:
+      - next
+    paths:
+      - 'examples/**'
+      - '.github/workflows/examples.yml'
+      - 'build.sh'
+      - 'build_config.rb'
+      - 'build_config.rb.lock'
+      - 'nginx_version'
+      - 'configure'
+      - 'config.in'
+      - 'Makefile.in'
+  push:
+    branches:
+      - next
+    paths:
+      - 'examples/**'
+      - '.github/workflows/examples.yml'
+      - 'build.sh'
+      - 'build_config.rb'
+      - 'build_config.rb.lock'
+      - 'nginx_version'
+      - 'configure'
+      - 'config.in'
+      - 'Makefile.in'
+  workflow_dispatch:
+
+# A new push to a pull request cancels the run for its previous commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  start:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The versions that the start page names as the environment of its
+      # check.
+      - name: Print the versions of Docker and Compose
+        run: docker version --format 'Docker Engine {{.Server.Version}}' && docker compose version
+      - name: Run the steps of examples/start/README.md and compare their output
+        run: python3 examples/check_example.py examples/start
+      - name: Print the log of nginx
+        if: ${{ !cancelled() }}
+        working-directory: examples/start
+        run: docker compose logs --no-color || true
+      - name: Stop the example
+        if: ${{ always() }}
+        working-directory: examples/start
+        run: docker compose down || true

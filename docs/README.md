@@ -5,12 +5,14 @@
 ※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
 
 ## Documents
+- [Get started](../examples/start/README.md): run nginx with a Ruby handler in Docker, then change the script
 - [Install](./install)
 - [Test](./test)
 - [Directives](./directives)
 - [Class and Method](./class_and_method)
 - [Migrating from ngx_mruby 2.x to 3.0.0](./migration): the steps for the behavior changes of v3.0.0
 - [Use Case](./use_case)
+- [Request phases](./concepts/request-phases.md): where nginx runs each handler of ngx_mruby
 - [Release notes](./releases): read "Behavior changes" before upgrading
 - [Trust boundary](#trust-boundary): what ngx_mruby trusts, what it treats as client input, and what a script is responsible for
 

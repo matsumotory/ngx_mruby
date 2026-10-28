@@ -19,6 +19,10 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
 - `site/` (on `next`): the ngx.mruby.org site, Astro with Starlight, built
   from `docs/` (see "The site" under "Build and test", and
   `docs/proposals/site.md`)
+- `examples/` (on `next`): examples that run with `docker compose`, each
+  with a `README.md` whose commands and outputs the `examples` workflow
+  checks (`examples/check_example.py`); `examples/start/` is the start
+  page of the site
 
 ## Design principles
 
@@ -466,7 +470,16 @@ npm run preview           # serves dist/ at http://localhost:4321/
 - Pages: `scripts/sync-docs.mjs` writes the pages of `docs/` into
   `src/content/docs/` (gitignored), `docs/README.md` as `/docs/`; the home
   pages `/` and `/ja/` are the committed `src/content/docs/index.mdx` and
-  `ja/index.mdx`. The header, the menu, the footer and the language link
+  `ja/index.mdx`. A page takes the route of its path under `docs/`, except
+  the pages of `SOURCE_ROUTES` in `scripts/lib/site.mjs`, which sort the
+  existing files into the four kinds of page of 3.1 of the proposal
+  (`docs/install/README.md` is `/guides/install/`,
+  `docs/directives/README.md` `/reference/directives/`, and so on) and add
+  `examples/start/README.md` as `/start/`; a Japanese page takes the route
+  of its English page under `/ja/`. The sidebar of `astro.config.mjs` has
+  the groups Start, Guides, Reference, Concepts, Releases and
+  Contributing, each made from the folder of its routes, ordered by
+  `SIDEBAR_ORDER` of the same file. The header, the menu, the footer and the language link
   of 4.10 are component overrides in `src/components/` (`Header`,
   `PageFrame`, `Footer`, `MobileMenuFooter`), with their links in
   `src/site-nav.mjs`.
@@ -590,7 +603,17 @@ npm run preview           # serves dist/ at http://localhost:4321/
   forced add of `site/dist/`, `site/build-screenshots/`,
   `site/generated/` or `site/.astro/`.
 - `python3 site/scripts/check_links.py REPO_ROOT FILE...` checks the
-  relative links and anchors of Markdown files.
+  relative links and anchors of Markdown files. `site.yml` runs it on every
+  Markdown file that git tracks outside `mruby/` and `dependence/`
+  (`git ls-files -z -- '*.md' ':!:mruby/' ':!:dependence/' | xargs -0
+  python3 site/scripts/check_links.py .`).
+- `python3 examples/check_example.py [--files-only] examples/<use>` runs
+  the commands of the example's `README.md` in order and compares their
+  output with what the README states, and compares each code block titled
+  with a file name (`title="nginx.conf"`) with that file of the example.
+  It needs Docker with Compose; `--files-only` runs no command. The
+  `examples` workflow runs it on pull requests to `next` and pushes to
+  `next` that change `examples/`, the workflow or an input of the build.
 
 ## Writing tests
 

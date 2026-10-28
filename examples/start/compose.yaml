@@ -1,0 +1,19 @@
+# The example of the start page (README.md in this folder).
+services:
+  nginx:
+    build:
+      context: ../..
+      dockerfile: examples/start/Dockerfile
+    ports:
+      - "8080:8080"
+    # This folder, so that nginx reads hello.rb as it is on your disk.
+    volumes:
+      - .:/example:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8080/hello"]
+      # Every second while nginx starts, then every 30 seconds.
+      start_period: 120s
+      start_interval: 1s
+      interval: 30s
+      timeout: 2s
+      retries: 3
