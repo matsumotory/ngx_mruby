@@ -40,11 +40,13 @@ body {
 .sl-markdown-content :is(p, li, figcaption, dd, td) code {
   overflow-wrap: anywhere;
 }
-/* Inline code inside Japanese text breaks between any two characters: a
-   Japanese line always offers a break before the code, so overflow-wrap
-   alone leaves the line before a long path short in Chromium */
+/* Inline code inside Japanese text, and the paths in the captions of
+   diagrams, break between any two characters: a Japanese line always
+   offers a break before the code, so overflow-wrap alone leaves the line
+   before a long path short in Chromium, and an English caption left a
+   lone "and" before a path at 390 px */
 :root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, dd) code,
-:root[lang="ja"] .diagram figcaption code {
+.diagram figcaption code {
   word-break: break-all;
 }
 
