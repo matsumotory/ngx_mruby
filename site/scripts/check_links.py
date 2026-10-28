@@ -13,7 +13,7 @@ import os
 import re
 import sys
 
-LINK = re.compile(r'(?<!!)\[(?:[^\[\]]|\[[^\]]*\])*\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
+LINK = re.compile(r'(?<![!\\])\[(?:[^\[\]]|\[[^\]]*\])*\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
 IMAGE = re.compile(r'!\[[^\]]*\]\(([^)\s]+)\)')
 FENCE = re.compile(r'^\s*(```|~~~)')
 CODE_SPAN = re.compile(r'`[^`]*`')

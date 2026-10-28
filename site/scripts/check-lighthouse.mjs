@@ -15,7 +15,7 @@ import { chromium } from 'playwright';
 import { serve } from './lib/serve.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/directives/', '/ja/directives/'];
+export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/reference/directives/', '/ja/reference/directives/'];
 
 function args() {
   const a = process.argv.slice(2);

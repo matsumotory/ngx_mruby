@@ -1,8 +1,8 @@
 name: site
 
-# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and steps 1 to 3 of
+# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and steps 1 to 4 of
 # section 6): build site/ and docs/ from a fresh clone, run the checks of
-# steps 1 to 3, and upload the built site and the screenshots of step 3 as
+# steps 1 to 4, and upload the built site and the screenshots of step 3 as
 # workflow artifacts. There is no deployment job: step 7 adds it, after the
 # Pages settings of 5.3.
 #
@@ -18,6 +18,7 @@ on:
     paths:
       - 'site/**'
       - 'docs/**'
+      - 'examples/**'
       - '.github/workflows/site.yml'
   push:
     branches:
@@ -71,6 +72,13 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/test-sync-docs.mjs
+      # Step 4: the relative links and the heading anchors of the Markdown
+      # files that git tracks, outside the vendored trees, as GitHub shows
+      # them.
+      - name: Check the relative links and anchors of the Markdown files
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh
+        run: git ls-files -z -- '*.md' ':!:mruby/' ':!:dependence/' | xargs -0 python3 site/scripts/check_links.py .
       - name: Check that every internal link of the built HTML resolves
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site

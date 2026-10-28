@@ -26,6 +26,37 @@ export const HOME_PAGES = ['index.mdx', 'ja/index.mdx'];
 export const manifestFile = path.join(siteDir, 'generated', 'pages.json');
 export const distDir = path.join(siteDir, 'dist');
 
+// The pages whose route is not the path of their source (the site map of
+// docs/proposals/site.md, 3.2, and the four kinds of page of 3.1). The
+// files stay where GitHub and the 2.x branch have them, and the page moves
+// on the site. A source outside docs/ is rendered only when it is listed
+// here: the README of examples/start/, which readers on GitHub read beside
+// the files of the example. A Japanese page (docs/ja/<path>) takes the
+// route of its English page under /ja/.
+export const SOURCE_ROUTES = {
+  'examples/start/README.md': 'start',
+  'docs/install/README.md': 'guides/install',
+  'docs/use_case/README.md': 'guides/use-cases',
+  'docs/directives/README.md': 'reference/directives',
+  'docs/class_and_method/README.md': 'reference/ruby',
+  'docs/migration/README.md': 'releases/migration',
+  'docs/test/README.md': 'contributing/test',
+  'docs/DEVELOPMENT.md': 'contributing/development',
+  'docs/HANDOFF.md': 'contributing/handoff',
+};
+
+// The place of a page in its group of the sidebar (astro.config.mjs), by
+// route without the /ja/ prefix. The other pages of a group follow, in the
+// order of their routes.
+export const SIDEBAR_ORDER = {
+  'guides/install': 1,
+  'guides/use-cases': 99,
+  'reference/directives': 1,
+  'reference/ruby': 2,
+  releases: 1,
+  'releases/migration': 2,
+};
+
 // Options of the checks: --dist DIR (the built site, default site/dist),
 // --repo DIR (the git repository of the sources, default the parent of
 // site/) and --manifest FILE (default site/generated/pages.json). They let a

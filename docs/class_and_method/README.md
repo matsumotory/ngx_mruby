@@ -6,7 +6,7 @@ ngx_mruby provides mruby APIs to access and manipulate nginx internal data struc
 You can use these classes and methods in handlers like `mruby_content_handler_code`.
 
 Available APIs depend on your build configuration.
-See [Configuring mrbgems](../install#2-configuring-mrbgems) and [Build options](../install#build-options) for the build configuration.
+See [Configuring mrbgems](../install/README.md#2-configuring-mrbgems) and [Build options](../install/README.md#build-options) for the build configuration.
 
 TODO: Sort. I don't think alphabetical order is easy to read.
 

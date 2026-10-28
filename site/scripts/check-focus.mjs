@@ -18,7 +18,7 @@ import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/directives/'];
+export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/reference/directives/'];
 const SIZES = [
   { width: 390, height: 664 },
   { width: 1440, height: 900 },
