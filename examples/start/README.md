@@ -14,7 +14,7 @@ nginx with ngx_mruby from the source in your checkout with the
   mrbgems of `build_config.rb` from GitHub.
 - No image of ngx_mruby is published yet, so the first run compiles mruby
   and nginx. On 2026-10-29, on GitHub's `ubuntu-24.04` runner with Docker
-  Engine 28.0.4 and Docker Compose 2.38.2, step 2 took 170 seconds. Later
+  Engine 28.0.4 and Docker Compose 2.38.2, step 3 took 170 seconds. Later
   runs reuse the built image.
 - These steps run in CI on every pull request that changes `examples/`
   (the workflow `.github/workflows/examples.yml`), which compares every
