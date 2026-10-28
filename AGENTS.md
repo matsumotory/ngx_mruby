@@ -473,10 +473,18 @@ npm run preview           # serves dist/ at http://localhost:4321/
   to its source), on a file of `docs/` without a heading or whose first
   heading, the page title, contains HTML, and on a relative link to a path
   that git does not track.
-- The checks of step 1 of the proposal (section 6) are scripts under
-  `site/scripts/` that exit 1 on a failure. `npm run check` runs the four
-  that read `site/dist/`; each takes `--dist`, `--repo` and `--manifest`
-  to run on a copy:
+- The design comes from `site/src/styles/tokens.css` (step 2 of the
+  proposal, section 4): every color of the site is a token there, and no
+  other file under `site/src/` writes a hex color. `src/styles/site.css`
+  applies the tokens to Starlight's pages, `ec.config.mjs` sets Expressive
+  Code's themes (written from `tokens.css` by `scripts/lib/code-themes.mjs`)
+  and frames, and `scripts/lib/postcss-theme-colors.mjs` removes
+  Starlight's and Pagefind's own color variables from their stylesheets at
+  build time, so that the built CSS holds only the tokens' colors.
+- The checks of the proposal (section 6) are scripts under `site/scripts/`
+  that exit 1 on a failure. `npm run check` runs the five that read
+  `site/dist/`; the first four take `--dist`, `--repo` and `--manifest`
+  to run on a copy, `check-css.mjs` takes `--dist`:
   - `sh site/scripts/check-fresh-clone.sh [--keep DIR] [REV]`: a clone of
     the commit (default `HEAD`) builds with `npm ci --ignore-scripts` and
     `npm run build`;
@@ -488,20 +496,58 @@ npm run preview           # serves dist/ at http://localhost:4321/
     `/ja/` with `lang="ja"`, and the `<wbr>` of their h2 are elements of
     the built h2;
   - `node scripts/check-no-js.mjs`: the text of each source is in the HTML
-    without running scripts.
+    without running scripts;
+  - `node scripts/check-css.mjs`: the built CSS has no hex color outside
+    the declarations of `tokens.css` and Expressive Code's stylesheet, no
+    `text-wrap: pretty` or `balance`, `keep-all` only on the h2 of Japanese
+    pages and diagram labels, transitions only of the properties of 4.8
+    and for 200 ms or less, no terminal frame and no font from another
+    host, and `site/src/` no hex color outside `tokens.css`.
+  The others:
+  - `python3 scripts/contrast.py [--tokens FILE] [--markdown]` (`npm run
+    check:contrast`): the contrast of palette A of 4.6 and of the code
+    colors in both themes, read from `tokens.css`;
+  - `sh scripts/check-offline-build.sh [SITE_DIR]` (`npm run
+    check:offline`): `npm run build` succeeds with network access blocked
+    (`sudo unshare --net` on Linux, `sandbox-exec` on macOS), after a probe
+    shows that the sandbox refuses a request;
+  - `node scripts/check-styles.mjs [--dist DIR] [--engine chromium|webkit]`
+    (`npm run check:styles`): computed styles in Chromium and WebKit on the
+    specimen build (below): font sizes of the scale of each language,
+    token colors (code blocks and the colors of highlighted spans
+    included), monospace only for code and numbers, no shadow, gradient or
+    backdrop filter (also with the search dialog and the menu open),
+    margins, paddings, gaps and radii from the sets of 4.5, durations of
+    4.8, at most 90 characters per English line at 1440 px, no horizontal
+    scroll, the right edge of Japanese text at 390 px, and the theme
+    without JavaScript.
+- The specimen pages of 4.12 (the owner chose the four options on
+  2026-10-19; the site builds only that configuration): `npm run
+  build:specimens` builds the site with the specimen pages
+  (`src/specimens/`, under `/specimens/` and `/ja/specimens/`) into
+  `dist-specimens/`, and `npm run specimens` (`node scripts/specimens.mjs
+  [--out DIR]`) writes their screenshots to `build-specimens/`, with a
+  contact sheet and an `index.md`. The normal build has no specimen page;
+  `check-styles.mjs` runs on the specimen build, whose pages hold a
+  diagram, code blocks and tables before the pages of steps 3 and 4 do. The browser checks and the
+  screenshots need Chromium and WebKit for the `playwright` of
+  `package-lock.json`: `npx playwright install chromium webkit` (locally,
+  with `PLAYWRIGHT_BROWSERS_PATH` set to a directory under `.claude/tmp/`
+  to keep them out of your home directory).
 - `node scripts/test-sync-docs.mjs` (`npm run test`) runs the generator
   on fixtures in temporary repositories: links in raw HTML inside
   blockquotes and list items, and an attribute value that stops the build.
-- `.github/workflows/site.yml` runs the five checks and the generator's
-  test on pull requests to `next` that touch `site/` or `docs/` and on
-  every push to `next` (a push that removes a file that `docs/` links to
-  fails there), and uploads `site/dist/` as the artifact `site`. It does
-  not deploy.
+- `.github/workflows/site.yml` runs the checks and the generator's test on
+  pull requests to `next` that touch `site/` or `docs/` and on every push
+  to `next` (a push that removes a file that `docs/` links to fails
+  there), and uploads `site/dist/` as the artifact `site` and the specimen
+  screenshots as the artifact `specimens`. It does not deploy.
 - `site/package.json` and `site/package-lock.json` pin exact versions:
   change them with `npm install --save-exact <package>@<version>` and
   commit both. Nothing that the build generates is committed:
   `site/.gitignore` ignores it, and `test/forbidden_paths.txt` fails a
-  forced add of `site/dist/`, `site/generated/` or `site/.astro/`.
+  forced add of `site/dist/`, `site/dist-specimens/`,
+  `site/build-specimens/`, `site/generated/` or `site/.astro/`.
 - `python3 site/scripts/check_links.py REPO_ROOT FILE...` checks the
   relative links and anchors of Markdown files.
 
