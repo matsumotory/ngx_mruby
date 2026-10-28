@@ -20,6 +20,8 @@ on:
       - 'docs/**'
       - 'examples/**'
       - 'test/**'
+      - 'src/**'
+      - 'build_config.rb'
       - '**.md'
       - '.github/workflows/site.yml'
   push:
@@ -124,6 +126,14 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-samples.mjs
+      # Step 4: every directive of the ngx_command_t tables has a section
+      # in the directive reference, mruby_output_filter appears only in
+      # removal notes, and the default mrbgems of the build reference are
+      # those of build_config.rb.
+      - name: Check the reference (directives, removed directives, default mrbgems)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-reference.mjs
       # Step 4: every Ruby block of the pages compiles with the mrbc of the
       # bundled mruby, built alone (about ten seconds).
       - name: Build mrbc from the bundled mruby
