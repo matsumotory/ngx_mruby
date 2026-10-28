@@ -1,0 +1,10 @@
+---
+// Specimen page of step 2 (docs/proposals/site.md, 4.12), built only with
+// SITE_SPECIMENS=1 (astro.config.mjs).
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import HomeContent from './HomeContent.astro';
+---
+
+<StarlightPage frontmatter={{ title: 'Write the decisions of an nginx server in Ruby', template: 'splash', pagefind: false }} headings={[]}>
+  <HomeContent lang="en" />
+</StarlightPage>

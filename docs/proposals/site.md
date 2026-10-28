@@ -1,8 +1,8 @@
 # Proposal: the ngx.mruby.org site and the documentation it is built from
 
-Status: decided on 2026-10-15 (section 7). Step 1 of section 6 is merged
-(#591). Next: step 2, the tokens of section 4 and the specimens of 4.12
-(#607 is open for it).
+Status: decided on 2026-10-15 (section 7); the four choices of 4.12
+decided on 2026-10-19 on the specimens of step 2. Steps 1 and 2 of
+section 6 are implemented (#591, #607). Next: step 3.
 
 Evidence: the site map and writing plan of 3.2 and 3.3, and 3.5, section
 4, section 6 and section 7 rest on `next` at 73fc9098f and on the source of
@@ -31,8 +31,8 @@ private repositories. This document takes values and rules from them,
 describes each source by its role ("the corporate site's token file"), and
 names no path in those repositories (4.1). Rules from their design
 documents are marked "owner's practice". Values marked "chosen here" are
-choices of this proposal, with no source that fixes them; 4.12 lists those
-that the specimens of step 2 settle.
+choices of this proposal, with no source that fixes them; 4.12 records
+those that the owner settled on the specimens of step 2.
 
 ## 1. Purpose and readers
 
@@ -397,9 +397,10 @@ what each site is and which of its sources this section reads, 4.2 lists
 what the ngx_mruby site inherits, value by value and rule by rule, and 4.3
 lists the changes towards cyber that this proposal makes. Those changes are
 chosen here: the owner's answer names the direction, not the means, and the
-owner judges them on the specimens of step 2 (4.12, item 4). 4.4 to 4.10
-give the rules by topic, 4.11 separates the owner's practice from research,
-and 4.12 lists what the specimens of step 2 settle. Each rule names its
+owner chose them on the specimens of step 2 on 2026-10-19 (4.12, item 4).
+4.4 to 4.10 give the rules by topic, 4.11 separates the owner's practice
+from research, and 4.12 records what the owner settled on the specimens of
+step 2. Each rule names its
 source and its check; section 6 runs the checks. Appendix C gives the
 evidence rule by rule.
 
@@ -474,7 +475,7 @@ muted text, border and control outline, and it adds a button fill.
 | Border | `#e7e3d8`; card border and lines `#e0dbcd` | `#2b2719`; `#332e1f` | `#3a3524` |
 | Control outline (3:1) | `#8a8271` | `#7d7458` | `#8f856a` |
 
-Computed with the conversion of [contrast.py](./site/contrast.py), every
+Computed with the conversion of [contrast.py](../../site/scripts/contrast.py), every
 color of this table except white, the gold included, has an OKLCH hue
 between 84.4 and 94.1: neutrals and accent share one hue.
 
@@ -484,7 +485,7 @@ light `#2a78d6`, `#eb6834`, `#1baf7a`, `#eda100`, `#e87ba4`), a gold for
 single bars and a gold scale for counts (`--viz-single`, `--viz-heat-0` to
 `--viz-heat-4`). The ngx_mruby site plans no chart. If it charts the perf
 lane's measurements (Q8), it starts from these colors and checks them
-against both palettes of 4.6 then.
+against palette A of 4.6 then.
 
 **Components.**
 
@@ -611,7 +612,7 @@ site inherits:
 The tuning keeps every rule of 4.11. Each item says what the three sites do
 and what the ngx_mruby site does instead. Every item is chosen here, as
 this proposal's way to tune the colors and atmosphere towards cyber; the
-owner judges them on the specimens of step 2 (4.12, item 4).
+owner chose them on the specimens of step 2 on 2026-10-19 (4.12, item 4).
 
 1. **Code that runs is the first content.** Of the three sites, only the
    corporate site's brand page shows code, the SVG source of its logos below
@@ -841,12 +842,14 @@ windows, a fixed bar of actions at the bottom of narrow screens.
 
 ### 4.6 Color
 
-Two palettes go to the specimens of step 2 (4.12). Both use the teal accent
-of 4.3, item 3, and the inherited split between `accent` and `accent-text`.
-Palette A carries over the rule of the three sites, neutrals in the hue of
-the accent, with the logo's hue; palette B keeps the three sites' neutrals.
-`tokens.css` uses the custom property names of the last column of the
-first table.
+Two palettes went to the specimens of step 2, and the owner chose palette A
+on 2026-10-19 (4.12, item 1); palette B is kept below as the alternative
+that was compared. Both use the teal accent of 4.3, item 3, and the
+inherited split between `accent` and `accent-text`. Palette A carries over
+the rule of the three sites, neutrals in the hue of the accent, with the
+logo's hue; palette B keeps the three sites' neutrals. `tokens.css` holds
+palette A, with the custom property names of the last column of the first
+table.
 
 Palette A: each token is an OKLCH source value at hue 182, converted to
 sRGB hex. Palette B: the neutrals of the corporate and profile sites' token
@@ -854,14 +857,17 @@ files (4.2), with the accent tokens of palette A; `surface` there is their
 alternate surface. The ratios are WCAG 2.2 contrast ratios
 against `bg` and `surface`, truncated to two decimals and never rounded,
 since WCAG's Understanding document for 1.4.3 says "4.499:1 would not meet
-the 4.5:1 threshold". [contrast.py](./site/contrast.py) holds both
-palettes, converts them, compares the unrounded ratio of every pair a role
+the 4.5:1 threshold". [contrast.py](../../site/scripts/contrast.py) reads
+palette A and the code colors from `site/src/styles/tokens.css`, converts
+the OKLCH source values, compares the unrounded ratio of every pair a role
 needs with its threshold (4.5:1 wherever a role puts text on or in the
 color, 3:1 for outlines and the focus ring) and exits 1 on a failure. With
-the light `accent` planted at `#157c70`, which is 4.4968:1 on `surface`, it
-prints 4.49 and exits 1; with the light `surface` of palette B planted at
-`#f0ece2`, it reports 4.345164:1 for `accent` on it and exits 1. The rows
-of both tables below are the output of `contrast.py --markdown`.
+the light `accent` planted at `oklch(0.528 0.089 182)`, `#167c6f`, which is
+4.4992:1 on `surface`, it prints 4.49 and exits 1. The rows of the table of
+palette A below are the output of `contrast.py --markdown`; those of palette
+B are its output while palette B was in `tokens.css` for the specimens
+(#607), when the light `surface` of palette B planted at `#f0ece2` gave
+4.345164:1 for `accent` on it and exit 1.
 
 Palette A:
 
@@ -904,7 +910,8 @@ Palette B:
   border, as the profile site marks it with a 2 px accent line (4.55:1
   light, 6.64:1 dark for the border in palette A); the button is `bg` text
   on an `accent` fill (4.91:1 light, 7.28:1 dark). The focus ring is a
-  2 px `accent` outline, which reaches 3:1 in both palettes; the three
+  2 px `accent` outline, which reaches 3:1 in palette A (and reached it in
+  palette B while it was compared); the three
   sites draw it in their text accent, because their gold `accent` does
   not.
 - Links are underlined 1 px at an offset of 0.2em, as on the profile site,
@@ -935,8 +942,8 @@ Palette B:
   `bg`, and a text label (Note, Tip, Caution, Danger) instead of a color
   (chosen here).
 - Code highlighting uses at most four token colors besides `text` and
-  `text-muted` (chosen here), each 4.5:1 on `surface` in both themes and in
-  both palettes; step 2 adds them to `CODE_COLORS` in the contrast script.
+  `text-muted` (chosen here), each 4.5:1 on `surface` in both themes; the
+  contrast script reads them from `tokens.css` (`--color-code-*`).
 - **Code blocks.** Starlight renders them with Expressive Code, whose
   default themes bring hex colors of their own, adjust syntax colors below
   5.5:1 and draw shell languages as a terminal window, which item 1 of 4.3
@@ -954,7 +961,7 @@ Palette B:
   Expressive Code's stylesheet (`/_astro/ec.<hash>.css`) and the `style`
   attributes of highlighted spans hold hex values from those themes; they
   are exempt from the hex check, and the checks below cover them.
-- Checks: the contrast script over both palettes and the code colors; no
+- Checks: the contrast script over palette A and the code colors; no
   hex color in component CSS, and none in the built CSS outside
   `tokens.css` and Expressive Code's stylesheet (Starlight's `#fff` in
   `Badge.astro` included); on three page types in both themes, every
@@ -997,7 +1004,7 @@ Palette B:
   animations per page: about five, of 0.5 s, moving only `translateY` and
   `opacity`, which the corporate site uses (4.2).
 - This site uses no entrance or scroll-triggered animation at all (chosen
-  here; the owner judges it on the specimens of step 2, 4.12): documentation
+  here; the owner chose it on the specimens of step 2, 4.12): documentation
   pages are read and searched more than they are presented, and the home
   page's first content is code.
 - `prefers-reduced-motion: reduce` sets durations to 0 (WCAG 2.3.3).
@@ -1093,7 +1100,7 @@ colors outside the tokens, radii outside a fixed set, em dashes, emoji,
 decorative symbols, purple-to-blue gradients, glows and framework default
 grays, and checking narrow screens in Chromium only. The values that this
 proposal adds inside those rules are its own choices (chosen here), which
-the owner judges on the specimens of step 2: no shadows, gradients or
+the owner chose on the specimens of step 2 (4.12): no shadows, gradients or
 entrance animation at all, where the corporate site has a hero gradient, a
 shadow on its header after scrolling and about five entrance animations
 per page; the teal accent and the chroma limit of 0.020 of palette A; the
@@ -1109,56 +1116,55 @@ rule. No study tests gradients, glows, emoji, radii or hover effects one by
 one; those rules rest on the owner's practice and on keeping the site close
 to the documentation layout readers know.
 
-### 4.12 Open on the specimens of step 2
+### 4.12 Decided on the specimens of step 2 (2026-10-19)
 
-Step 2 renders the home page and a reference page that holds one diagram and
-one sample, in light and dark, at 390 by 664 and 1440 by 900 px, once for
-each choice below. The owner chooses on the specimens; each item gives the
-recommendation first.
+Step 2 rendered the home page and a reference page that holds one diagram
+and one sample, in light and dark, at 390 by 664 and 1440 by 900 px, in
+Chromium and WebKit, once for each choice below (#607). The owner chose on
+2026-10-19, in a session, after seeing one contact sheet per set of the
+workflow artifact `specimens` and a full-size crop of the corners of the
+code blocks, and took the recommendation in each item. The option labels
+the owner chose are quoted.
 
-1. **Neutrals.** Recommendation: palette A, because on the three sites the
+1. **Neutrals: palette A** ("配色 A (推奨)"). On the three sites the
    neutrals and the accent share one hue (4.2), and palette A keeps that
-   rule with the teal. The alternative is palette B, the three sites' warm
-   neutrals with the teal accent; its light `accent` has no margin on
+   rule with the teal. The alternative was palette B, the three sites' warm
+   neutrals with the teal accent, whose light `accent` has no margin on
    `surface` (4.6).
-2. **Monospace face.** The owner's sites use two (4.2): the system stack
-   `"SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace` for
-   the corporate site's code blocks, which draws whichever of those faces
-   the reader's system has, and Geist Mono, which the product serves for
-   the value to copy on its connection page. Recommendation: Geist Mono,
-   served by the site from `@fontsource-variable/geist-mono` 5.3.0 (SIL
-   Open Font License 1.1), with the system stack after it as the fallback.
-   On this site code is the first content (4.3, item 1), and the
-   screenshots and measurements of steps 2 and 3 run in CI on Linux: with
-   the system stack they would check a face that readers on macOS and
-   Windows do not see, while a served face is the same in the checks and
-   for every reader. The specimen keeps Geist Mono if it tells 0 from O and
-   1 from l and I, and if its x-height at 15 px is not larger than Inter's
-   at 16 px, so that inline code does not look larger than the prose around
-   it; otherwise JetBrains Mono (`@fontsource-variable/jetbrains-mono`
-   5.3.0, the same license) takes its place. The alternative is the
-   inherited system stack alone, which downloads nothing; the specimens
-   show it beside the served face.
-3. **Radius of code blocks.** The corporate site's code blocks, the only
-   ones on the owner's sites, have a radius of 12 px. Recommendation: 12 px,
-   inherited, which is also the radius of the site's other content frames
-   (asides, diagram frames, the home page example), so that a code block
-   matches the frames beside it; 8 px stays the radius of controls. The
-   alternatives are 8 px, sharper and shared with buttons and inputs, and
-   0, Starlight's default.
-4. **How cyber.** The owner's answer to Q7 asks for colors and an
-   atmosphere tuned towards cyber; the means of 4.3 (the teal accent, the
-   dark theme, monospace for code and numbers, the opaque header, no
-   shadows, gradients or entrance animation, fewer radii) are this
-   proposal's. Recommendation: the means of 4.3, judged on the specimens. If
-   the owner wants more within 4.11, two further steps remain: the
-   monospace face for h1 and h2 on English pages only (the monospace faces
-   have no kana or kanji, so Japanese headings keep `--font-sans` first),
-   or a dark first screen on the home page in both themes. If the result
-   moves too far from the corporate site and the landing page, the steps
-   back are theirs: the gold instead of the teal (palette B's neutrals with
-   the inherited accent), the corporate site's shadow on the header after
-   scrolling and its few entrance animations.
+2. **Monospace face: Geist Mono** ("Geist Mono (推奨)"), served by the site
+   from `@fontsource-variable/geist-mono` 5.3.0 (SIL Open Font License 1.1),
+   with the corporate site's system stack `"SFMono-Regular", Menlo,
+   Consolas, "Liberation Mono", monospace` after it as the fallback. On this
+   site code is the first content (4.3, item 1), and the screenshots and
+   measurements of the steps run in CI on Linux: with the system stack they
+   would check a face that readers on macOS and Windows do not see, while a
+   served face is the same in the checks and for every reader. Geist Mono
+   met the two conditions of the specimen: it tells 0 from O and 1 from l
+   and I, and its x-height at 15 px is not larger than Inter's at 16 px
+   (7.95 px against 8.73 px in Chromium on macOS, 8.00 px against 9.00 px in
+   Chromium on Linux), so JetBrains Mono was not needed. The alternative was
+   the system stack alone, which downloads nothing.
+3. **Radius of code blocks: 12 px** ("12 px (推奨)"), inherited from the
+   corporate site's code blocks, the only ones on the owner's sites, and the
+   radius of the site's other content frames (asides, diagram frames, the
+   home page example), so that a code block matches the frames beside it;
+   8 px stays the radius of controls. The alternatives were 8 px and 0,
+   Starlight's default.
+4. **How cyber: the means of 4.3** ("4.3 の手段のまま (推奨)"): the teal
+   accent, the dark theme, monospace for code and numbers, the opaque
+   header, no shadows, gradients or entrance animation, and fewer radii.
+   The specimens also showed the two further steps within 4.11 (the
+   monospace face for h1 and h2 on English pages; a dark first screen on the
+   home page in both themes) and the step back towards the corporate site
+   and the landing page (the gold accent with palette B's neutrals, the
+   corporate site's shadow on the header and its entrance animations).
+
+Where the specimens live: the workflow artifact of the `site` run and the
+owner's review in a session ("CI の artifact とこの会話 (推奨)"); no image
+is committed or attached to the pull request. After the decision the site
+builds only the chosen configuration; the specimen pages and their
+screenshot script stay for the browser checks and the screenshots of the
+later steps (5.2, section 6).
 
 The other values marked "chosen here" are not a matter of preference: the
 checks of section 6 settle them, among them the limits for Japanese headings
@@ -1238,12 +1244,12 @@ detection, or that pinned versions do not keep Starlight stable.
   its step 5, the owner moves the deployment branch rule to `master`; in
   its step 7, the pull request to `v2.x` points the mirrored copies of
   those two workflows at `v2.x` and the dispatch at `--ref master`.
-- **Check scripts that exist today**:
+- **Check scripts in Python**:
   [check_links.py](../../site/scripts/check_links.py) resolves the relative links and
-  heading anchors of Markdown files, and [contrast.py](./site/contrast.py)
-  checks the two palettes of 4.6. Both run with Python 3 and no packages.
-  Step 1 moves `check_links.py` into `site/scripts/`, and step 2 moves
-  `contrast.py` there and makes it read `tokens.css`.
+  heading anchors of Markdown files, and [contrast.py](../../site/scripts/contrast.py)
+  checks palette A of 4.6 and the code colors in `tokens.css`. Both
+  run with Python 3 and no packages. The other checks of section 6 are
+  Node.js scripts beside them ("The site" in AGENTS.md).
 
 ### 5.3 Deployment and previews
 
@@ -1331,7 +1337,7 @@ reviews besides that.
 | Step | Work | What it produces | Check | The owner reviews |
 |---|---|---|---|---|
 | 1 | Starlight pinned in `site/`, the generator, today's `docs/` rendered without design; `check_links.py` moved into `site/scripts/`; AGENTS.md updated: `site/` in the repository layout, and in "Build and test" the Node 22.12 toolchain, `npm ci`, `npm run build` and the checks | `site/`, `site.yml` with the build and the checks (no deployment), the built site as a workflow artifact | a fresh clone builds with `npm ci` and `npm run build`; every internal link of the built HTML resolves; every page has a title and the last-updated date of its source; a test page from `docs/ja/` is served under `/ja/` with `lang="ja"`, and the `<wbr>` in its h2 is an element of the built h2 (4.4); pages read with JavaScript off | nothing |
-| 2 | `tokens.css` from the inherited tokens of 4.2 and the changes of 4.3, both palettes of 4.6, the type of 4.4, the spacing and radii of 4.5, Starlight's colors and Expressive Code's themes and frames set from the tokens; `contrast.py` moved into `site/scripts/`, reading `tokens.css`; the specimens of 4.12 | `tokens.css`, and the specimens: the home page and a reference page with one diagram and one sample, light and dark, at 390 by 664 and 1440 by 900 px, in Chromium and WebKit, one set per choice of 4.12, as screenshots in the pull request and its workflow artifact | the contrast script passes for both palettes and the code colors in both themes; computed font sizes equal the scale of each language; no `text-wrap: pretty` or `balance` in the built CSS, and no hex outside `tokens.css` and Expressive Code's stylesheet; every computed color a token value, code blocks included, the span colors of Expressive Code code colors, and no `is-terminal` frame (4.6); monospace only where item 2 of 4.3 puts it; no shadow, gradient or backdrop filter (item 5 of 4.3); margins, paddings, gaps and radii from the sets of 4.5; durations of 4.8; at most 90 characters per English body line at 1440 px; no external font URL in the built site, and the build succeeds with network access blocked after `npm ci` | the specimens: the four choices of 4.12 |
+| 2 | `tokens.css` from the inherited tokens of 4.2 and the changes of 4.3, both palettes of 4.6, the type of 4.4, the spacing and radii of 4.5, Starlight's colors and Expressive Code's themes and frames set from the tokens; `contrast.py` moved into `site/scripts/`, reading `tokens.css`; the specimens of 4.12 | `tokens.css`, and the specimens: the home page and a reference page with one diagram and one sample, light and dark, at 390 by 664 and 1440 by 900 px, in Chromium and WebKit, one set per choice of 4.12, as screenshots and one contact sheet per set in the workflow artifact `specimens` of the `site` run; after the owner's choice, the site builds only the chosen configuration | the contrast script passes for palette A (for both palettes while they were compared) and the code colors in both themes; computed font sizes equal the scale of each language; no `text-wrap: pretty` or `balance` in the built CSS, and no hex outside `tokens.css` and Expressive Code's stylesheet; every computed color a token value, code blocks included, the span colors of Expressive Code code colors, and no `is-terminal` frame (4.6); monospace only where item 2 of 4.3 puts it; no shadow, gradient or backdrop filter (item 5 of 4.3); margins, paddings, gaps and radii from the sets of 4.5; durations of 4.8; at most 90 characters per English body line at 1440 px; no external font URL in the built site, and the build succeeds with network access blocked after `npm ci` | the specimens of the workflow artifact, in a session: the four choices of 4.12 (decided on 2026-10-19) |
 | 3 | home page with the example's test (3.3, item 8), header, footer, language and version links (4.10); the sample mechanism and the diagram mechanism of 3.5, with the request phases diagram | the home page; the first diagram, as the model for the others | the example's case passes in CI and the home page shows the files it compares, with their date; no benchmark image and no performance figure without its date and method (Q8); Chromium and WebKit screenshots at 320, 390 by 664 and 1440 by 900, light and dark; no horizontal scroll at 320; gutters of 20 px or more; the home page heading's line count (4.4); the right-edge measurement of 4.9 on Japanese blocks and the `text-wrap` check on English ones; Lighthouse accessibility with no failed audit on three page types in both languages; visible, uncovered focus; the shadow, gradient and backdrop check of item 5 of 4.3 with the search dialog and the menu open, in both engines; language links answer 200; no redirect for `Accept-Language: ja`; the generator stops on a sample whose file or case is missing; the diagram check fails on a missing file or line range and lists changed lines; the drawings hold no `<text>` element and no color outside the tokens; diagram labels are HTML text of 14 px or more at 390 and 1440 px; the generator stops on a diagram block whose keys differ from those of its drawing; the figure has `role="img"` and an `aria-label`, and the drawing is hidden from screen readers (3.5) | the definition (3.3, item 1) and the first diagram |
 | 4 | Start; Guides with the samples of 3.5; Reference with the build diagram; Concepts with the phases, filter, async and lifetime diagrams; the agent proxy page with its three v3 diagrams and today's recipes, labeled as development content; Releases, Security, Contributing; the fixes of 2.2; `README.md` reduced to the definition, links and the branch table | the pages of 3.2 except the Japanese ones and `/v2/` | no broken relative link or anchor in `docs/` or the built site; every directive in the `ngx_command_t` tables of `src/` has a section in the directive reference; `mruby_output_filter` appears in `docs/` only in a removal note; the default gems listed in the docs equal the uncommented `conf.gem` lines of `build_config.rb`; every Ruby block in the docs compiles with the bundled mruby's `mrbc`; each `examples/<use>/` starts in CI and returns the output its README states; every sample on a page names a case that exists, and every use case of `docs/use_case/` is either a sample or marked untested with the reason of 3.5; every diagram names lines that exist; every v3 diagram and sample carries the development label | nothing |
 | 5 | Japanese pages: every page written by hand translated, the generated reference in English under `/ja/` with a notice (Q2) | `docs/ja/` and the `/ja/` pages | every page written by hand has a file in `docs/ja/`, and every generated reference page under `/ja/` shows the notice; `lang` and reciprocal absolute `hreflang` on every page; no space between Japanese and Latin characters in `docs/ja/` outside code and URLs; at most 40 characters per Japanese body line at 1440 px; line height 1.75 to 2.0; `keep-all` and `auto-phrase` only on `h2` and diagram labels; every h1 on one line at 390 px and on at most two at 320 px; no h1, `<title>`, sidebar entry, table-of-contents entry or heading `id` on `/ja/` contains the text `wbr` (4.4); the right-edge measurement on `/ja/` in both engines, with the h2 limit of 4.9; every diagram on `/ja/` takes its labels from `docs/ja/`, with the keys of the English block, and no label overflows its place at 390 and 1440 px | nothing |
@@ -1374,8 +1380,8 @@ The owner decided each question of the first version of this proposal on
   derives the design from the three sites. The means of 4.3 (the teal
   accent, the dark theme rules, monospace for code and numbers, the opaque
   header, no shadows, gradients or entrance animation) are chosen here; the
-  owner judges them, with the other choices of 4.12, on the specimens of
-  step 2.
+  owner chose them, with the other choices of 4.12, on the specimens of
+  step 2 on 2026-10-19 (below).
 - **Q8. The 2014 benchmark.** Removed with the TechEmpower link; performance
   appears only as perf lane measurements with their date and method, as
   recommended.
@@ -1389,6 +1395,13 @@ The owner decided each question of the first version of this proposal on
 
 With these decisions, the owner asked on 2026-10-15 for many diagrams and
 samples, especially for the content towards v3; 3.5 plans them.
+
+On 2026-10-19 the owner decided the four choices of 4.12 on the specimens
+of step 2, each as recommended: palette A ("配色 A (推奨)"), Geist Mono
+("Geist Mono (推奨)"), code blocks at 12 px ("12 px (推奨)") and the means of
+4.3 ("4.3 の手段のまま (推奨)"); and that the specimens live in the workflow
+artifact and the owner's review in a session ("CI の artifact とこの会話
+(推奨)"), with no image committed or attached to the pull request (4.12).
 
 ## Appendix A. Where comparable projects put things
 
