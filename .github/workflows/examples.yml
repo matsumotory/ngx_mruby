@@ -10,7 +10,8 @@ name: examples
 #
 # It runs on pull requests to next and on pushes to next that change an
 # example, this file, or an input of the build that the examples' images
-# make (build.sh and the files it reads); test.yml tests the module itself.
+# make: the module and its gems, the vendored trees, build.sh and the files
+# it reads. test.yml tests the module itself.
 on:
   pull_request:
     branches:
@@ -18,6 +19,10 @@ on:
     paths:
       - 'examples/**'
       - '.github/workflows/examples.yml'
+      - 'src/**'
+      - 'mrbgems/**'
+      - 'mruby/**'
+      - 'dependence/**'
       - 'build.sh'
       - 'build_config.rb'
       - 'build_config.rb.lock'
@@ -31,6 +36,10 @@ on:
     paths:
       - 'examples/**'
       - '.github/workflows/examples.yml'
+      - 'src/**'
+      - 'mrbgems/**'
+      - 'mruby/**'
+      - 'dependence/**'
       - 'build.sh'
       - 'build_config.rb'
       - 'build_config.rb.lock'

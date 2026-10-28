@@ -2,14 +2,15 @@
 
 This page runs nginx with ngx_mruby in Docker, sends a request that a Ruby
 script answers, and then changes the script. The example is the folder
-[examples/start](.) of the repository: `compose.yaml` builds nginx with
-ngx_mruby from the source in your checkout and starts it with the
-`nginx.conf` and `hello.rb` of the folder.
+`examples/start` of the repository: [`compose.yaml`](compose.yaml) builds
+nginx with ngx_mruby from the source in your checkout with the
+[`Dockerfile`](Dockerfile), and starts it with the `nginx.conf` and
+`hello.rb` of the folder.
 
 ## Before you start
 
-- You need Docker with the Compose plugin (`docker compose`), git, and a
-  network connection: the build downloads nginx from nginx.org and the
+- You need Docker with the Compose plugin (`docker compose`), git, curl
+  and a network connection: the build downloads nginx from nginx.org and the
   mrbgems of `build_config.rb` from GitHub.
 - No image of ngx_mruby is published yet, so the first run compiles mruby
   and nginx. On 2026-10-29, on GitHub's `ubuntu-24.04` runner with Docker
@@ -21,15 +22,21 @@ ngx_mruby from the source in your checkout and starts it with the
 
 ## Run nginx with a Ruby handler
 
-1. Clone the repository and go to the folder of the example. The site
-   documents ngx_mruby 3.x, which is developed on the branch `next`.
+The site documents ngx_mruby 3.x, which is developed on the branch `next`.
+
+1. Clone the branch `next` of the repository.
 
    ```console
    $ git clone --branch next https://github.com/matsumotory/ngx_mruby.git
+   ```
+
+2. Go to the folder of the example.
+
+   ```console
    $ cd ngx_mruby/examples/start
    ```
 
-2. Build the image and start nginx. With `--wait`, the command returns
+3. Build the image and start nginx. With `--wait`, the command returns
    when nginx answers the health check of `compose.yaml`, and Compose
    reports the container `start-nginx-1` as healthy.
 
@@ -37,7 +44,7 @@ ngx_mruby from the source in your checkout and starts it with the
    $ docker compose up --build --wait
    ```
 
-3. Send a request to `/hello` with the argument `name`. The Ruby script
+4. Send a request to `/hello` with the argument `name`. The Ruby script
    writes the response.
 
    ```console
@@ -112,11 +119,16 @@ request, without a reload.
    Good morning, Ruby! hello.rb answered GET /hello.
    ```
 
-3. Put the original script back, then stop and remove the container.
-   Compose reports the container `start-nginx-1` as removed.
+3. Put the original script back.
 
    ```console
    $ mv hello.rb.orig hello.rb
+   ```
+
+4. Stop and remove the container. Compose reports the container
+   `start-nginx-1` as removed.
+
+   ```console
    $ docker compose down
    ```
 

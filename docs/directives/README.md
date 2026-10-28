@@ -1,4 +1,4 @@
-# Overview
+# Directives
 
 ngx_mruby enables you to run mruby scripts on nginx. For example, you can implement:
 

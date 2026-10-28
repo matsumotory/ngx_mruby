@@ -477,9 +477,10 @@ npm run preview           # serves dist/ at http://localhost:4321/
   `docs/directives/README.md` `/reference/directives/`, and so on) and add
   `examples/start/README.md` as `/start/`; a Japanese page takes the route
   of its English page under `/ja/`. The sidebar of `astro.config.mjs` has
-  the groups Start, Guides, Reference, Concepts, Releases and
-  Contributing, each made from the folder of its routes, ordered by
-  `SIDEBAR_ORDER` of the same file. The header, the menu, the footer and the language link
+  the links Overview (`/docs/`) and Start, then the groups Guides,
+  Reference, Concepts, Releases and Contributing, each made from the
+  folder of its routes and ordered by `SIDEBAR_ORDER` of
+  `scripts/lib/site.mjs`. The header, the menu, the footer and the language link
   of 4.10 are component overrides in `src/components/` (`Header`,
   `PageFrame`, `Footer`, `MobileMenuFooter`), with their links in
   `src/site-nav.mjs`.
@@ -613,7 +614,9 @@ npm run preview           # serves dist/ at http://localhost:4321/
   with a file name (`title="nginx.conf"`) with that file of the example.
   It needs Docker with Compose; `--files-only` runs no command. The
   `examples` workflow runs it on pull requests to `next` and pushes to
-  `next` that change `examples/`, the workflow or an input of the build.
+  `next` that change `examples/`, the workflow or an input of the build
+  (`src/`, `mrbgems/`, `mruby/`, `dependence/`, `build.sh` and the files it
+  reads).
 
 ## Writing tests
 
