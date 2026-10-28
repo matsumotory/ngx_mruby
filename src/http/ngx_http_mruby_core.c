@@ -183,7 +183,12 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     }
     ngx_http_send_header(r);
 
-    if (ctx->phase != NGX_HTTP_MRUBY_FILTER_PROCESS) {
+    // A HEAD request must receive the headers only; nginx sets r->header_only.
+    // Do not send the body chain for it, as nginx's own content handlers skip
+    // the body after ngx_http_send_header when r->header_only is set. The
+    // headers, Content-Length included, are already set, so the HEAD response
+    // still reports the length the body would have had.
+    if (ctx->phase != NGX_HTTP_MRUBY_FILTER_PROCESS && !r->header_only) {
       ngx_http_output_filter(r, chain->out);
     }
 
