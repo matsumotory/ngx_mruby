@@ -1,0 +1,26 @@
+---
+// Starlight's Banner without text-wrap: balance (docs/proposals/site.md,
+// 4.4: no text-wrap: pretty or balance anywhere, because the engines wrap
+// such text differently) and without a shadow (4.3 item 5). The 3.x
+// development banner of 3.4 uses it.
+const { banner } = Astro.locals.starlightRoute.entry.data;
+---
+
+{banner && <div class="sl-banner" data-pagefind-ignore set:html={banner.content} />}
+
+<style>
+	@layer starlight.core {
+		.sl-banner {
+			padding: var(--space-3) var(--header-pad-x);
+			background-color: var(--color-bg-tertiary);
+			border-bottom: 1px solid var(--color-border-strong);
+			color: var(--color-text-primary);
+			font-size: var(--text-nav);
+			line-height: var(--leading-nav);
+			text-align: start;
+		}
+		.sl-banner :global(a) {
+			color: var(--color-accent-text);
+		}
+	}
+</style>

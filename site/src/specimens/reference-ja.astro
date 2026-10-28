@@ -1,0 +1,10 @@
+---
+// Specimen page of step 2 (docs/proposals/site.md, 4.12), built only with
+// SITE_SPECIMENS=1 (astro.config.mjs).
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import ReferenceContent from './ReferenceContent.astro';
+---
+
+<StarlightPage frontmatter={{ title: '出力のフィルタ', pagefind: false }} headings={[{ depth: 2, slug: 'where', text: 'フィルタが動く位置' }, { depth: 2, slug: 'example', text: '例' }, { depth: 2, slug: 'tested', text: 'テストするnginxのバージョン' }]}>
+  <ReferenceContent lang="ja" />
+</StarlightPage>

@@ -1,0 +1,10 @@
+---
+// Specimen page of step 2 (docs/proposals/site.md, 4.12), built only with
+// SITE_SPECIMENS=1 (astro.config.mjs).
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import ReferenceContent from './ReferenceContent.astro';
+---
+
+<StarlightPage frontmatter={{ title: 'Output filters', pagefind: false }} headings={[{ depth: 2, slug: 'where', text: 'Where the filters run' }, { depth: 2, slug: 'example', text: 'Example' }, { depth: 2, slug: 'tested', text: 'Tested nginx versions' }]}>
+  <ReferenceContent lang="en" />
+</StarlightPage>

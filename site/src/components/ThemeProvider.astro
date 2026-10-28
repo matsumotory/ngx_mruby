@@ -1,0 +1,12 @@
+---
+// Starlight's theme script, then a marker that the script ran
+// (docs/proposals/site.md, 4.7). Starlight writes data-theme="dark" into the
+// served HTML, so tokens.css applies its forced-dark tokens only together
+// with data-theme-script: without JavaScript the OS setting decides.
+import Default from '@astrojs/starlight/components/ThemeProvider.astro';
+---
+
+<Default />
+<script is:inline>
+	document.documentElement.dataset.themeScript = '';
+</script>

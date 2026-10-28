@@ -1,0 +1,79 @@
+/*
+ * The specimen pages of step 2 (docs/proposals/site.md, 4.12): the layout
+ * of the home page specimen. Only the specimen pages load this file. The
+ * options of 4.12 that the owner did not choose on 2026-10-19 are gone;
+ * step 3 moves this layout into the home page.
+ */
+
+/* The home page heading (4.4, "Home page heading") */
+html:has(.home-specimen) h1#_top {
+  font-size: var(--text-home);
+  line-height: var(--leading-home);
+  max-width: var(--content-width-home);
+}
+.home-specimen p,
+.home-specimen ul {
+  max-width: var(--measure);
+}
+.home-specimen .lede {
+  margin-top: var(--space-4);
+}
+.home-specimen .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+/* 4.2 "Buttons" and 4.6: the one primary button, bg text on an accent fill,
+   radius 8; a secondary button with a 1 px outline */
+.home-specimen :is(.button-primary, .button-secondary) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-control);
+  font-size: var(--text-nav);
+  font-weight: var(--weight-current);
+  text-decoration: none;
+}
+.home-specimen .button-primary {
+  background-color: var(--color-accent);
+  color: var(--color-bg-primary);
+  border: 1px solid var(--color-accent);
+}
+.home-specimen .button-secondary {
+  color: var(--color-accent-text);
+  border: 1px solid var(--color-accent-text);
+}
+.home-specimen .button-primary:hover,
+.home-specimen .button-secondary:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.home-specimen .caption {
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--color-text-muted);
+}
+/* "Where to start": a list with 1 px separators, not a row of cards
+   (4.2 "Layout"; 4.3 "Not used") */
+.home-specimen .ways {
+  list-style: none;
+  padding: 0;
+}
+.home-specimen .ways li {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-3) 0;
+  margin: 0;
+}
+.home-specimen .ways li:last-child {
+  border-bottom: 1px solid var(--color-border);
+}
+.home-specimen .ways a {
+  font-weight: var(--weight-current);
+}
+.home-specimen .ways p {
+  margin-top: var(--space-1);
+  color: var(--color-text-primary);
+}
