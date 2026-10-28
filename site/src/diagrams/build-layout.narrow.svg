@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 100" preserveAspectRatio="none" data-labels="mruby-config rake libmruby configure nginx-configure make modules">
+  <!-- The build layout diagram, narrow arrangement (docs/reference/build.md): one line down the first column of the grid of build-layout.css, beside the labels, which follow each other in the order of the build. -->
+  <path class="d-line" d="M6 0 V100" />
+</svg>

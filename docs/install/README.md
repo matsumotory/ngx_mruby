@@ -34,36 +34,16 @@ or https://github.com/matsumotory/ngx_mruby/releases .
 
 ## 2. Configuring mrbgems
 
-ngx_mruby's default mrbgem configuration contains basic features. But if you want to have __more features__, 
-you will find additional mrbgems at [the list of mrbgems](https://github.com/mruby/mruby/wiki/Related-Projects) 
-and add them to [build_config.rb](https://github.com/matsumotory/ngx_mruby/blob/master/build_config.rb).
-
-For example, you can use mruby-io to implement 
-[access check using a configuration file like .htaccess](https://gist.github.com/matsumotory/7150832).
-(FIXME: This is not an appropriate example. mruby-io is a default mrbgem.)
-
-Here is the list of the mrbgems that the default build_config.rb builds.
-
-- mruby core gems: the ones that `NGX_MRUBY_CORE_GEMS` in `build_config.rb` lists (see [Core gems](#core-gems)), for example mruby-io, mruby-pack (pack, unpack...), mruby-sleep (sleep, usleep...), mruby-dir (Dir class), mruby-random, mruby-socket and mruby-time
-- mruby-env: use environment value
-- mruby-digest: MD5, RMD160, SHA1, SHA256, SHA384, SHA512 and HMAC Digests
-- mruby-process: Process ::fork, ::kill, ::pid, ::ppid, ::waitpid...
-- mruby-json: JSON::parse, JSON::stringify
-- mruby-onig-regexp: regexp engine
-- mruby-redis: Redis#set, get, [], []=... The build of the gem clones the hiredis library at the tag v1.5.0, checks its commit, and links it statically ([matsumotory/mruby-redis#108](https://github.com/matsumotory/mruby-redis/pull/108)); the build also clones matsumotory/mruby-pointer, which the gem depends on. The default build left the gem out in 2.7.1, because the build of the gem cloned hiredis from an unpinned branch, which broke the build of ngx_mruby, and includes it again since 2.7.2 (see "Redis is in the default build again" in [the 2.7.2 release notes](../releases/v2.7.2.md)). A script that calls Redis needs a running Redis server, and the gem waits for each answer of the server in the worker (it uses the blocking API of hiredis), so the worker serves no other request meanwhile. The examples that use Redis (in the README and in [Use Case](../use_case)) and the client of the auto-ssl mrbgem need the gem.
-- mruby-vedis: Vedis#set, get, [], []=...
-- mruby-userdata: https://github.com/matsumotory/mruby-userdata
-- mruby-uname: https://github.com/matsumotory/mruby-uname
-- mruby-mutex: https://github.com/matsumotory/mruby-mutex
-- mruby-localmemcache: https://github.com/matsumotory/mruby-localmemcache
-- mruby-secure-random: https://github.com/monochromegane/mruby-secure-random
-- the mrbgems of ngx_mruby itself: mrbgems/ngx_mruby_mrblib and mrbgems/rack-based-api
-
-build_config.rb also has lines for mrbgems that are not built by default.
-To build one of them, uncomment its line.
-
-- mruby-memcached: Memcached#set, get, [], []=...
-- mruby-file-stat, mruby-discount, mruby-mysql, mruby-geoip, mruby-capability and mruby-cgroup
+`build_config.rb` lists the mrbgems that the build puts into mruby: the
+mruby core gems of `NGX_MRUBY_CORE_GEMS` ([Core gems](#core-gems)) and
+third-party gems. [Default mrbgems](../reference/build.md#default-mrbgems)
+in the build reference lists the third-party gems of the default build,
+with the classes that each one adds. To add a gem, add a `conf.gem` line
+to the host build of `build_config.rb`; the
+[list of mrbgems](https://github.com/mruby/mruby/wiki/Related-Projects)
+of mruby names more. The lines that are comments in `build_config.rb` name
+gems that the default build leaves out, such as mruby-discount and
+mruby-memcached: uncomment one to build with it.
 
 The mruby build stops when a gem that `NGX_MRUBY_CORE_GEMS` lists is not in
 the `mrbgems` directory of the mruby it builds, for example an mruby of

@@ -10,6 +10,7 @@
 - [Test](./test)
 - [Directives](./directives)
 - [Class and Method](./class_and_method)
+- [Build](./reference/build.md): how the build fits together, the options of `configure`, the default mrbgems and the versions that CI tests
 - [Migrating from ngx_mruby 2.x to 3.0.0](./migration): the steps for the behavior changes of v3.0.0
 - Guides: [Route requests to a backend](./guides/routing.md), [Deny clients listed in a file](./guides/access-control.md), [Limit the rate per API key](./guides/rate-limit.md), [Change a response body](./guides/body-filter.md), [Allow TCP connections in Ruby](./guides/tcp.md)
 - [Use cases](./use_case): each with a sample that CI runs, or marked untested with the reason

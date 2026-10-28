@@ -497,6 +497,13 @@ npm run preview           # serves dist/ at http://localhost:4321/
   (`scripts/lib/diagrams.mjs`), placed by `src/diagrams/<name>.css`. The
   build stops on a sample whose file or case is missing and on a diagram
   block whose keys differ from those of its drawing.
+- After `astro build`, `npm run build` runs `scripts/mark-num-cells.mjs`,
+  which gives the table cells that hold only numbers the class `num`
+  (monospace, 4.3 item 2), because the Markdown processor of Astro 7 runs
+  no rehype plugin without another package. The generator puts a `<wbr>`
+  after each underscore of a name of three or more parts in the text of a
+  page outside code (`mruby_ssl_handshake_handler_code`), so that a
+  heading or list item breaks there on a narrow screen.
 - `npm run build` needs no network after `npm ci`. It stops in a shallow
   clone (the last-updated date of a page is the date of the last commit
   to its source), on a file of `docs/` without a heading or whose first
@@ -511,7 +518,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
   Starlight's and Pagefind's own color variables from their stylesheets at
   build time, so that the built CSS holds only the tokens' colors.
 - The checks of the proposal (section 6) are scripts under `site/scripts/`
-  that exit 1 on a failure. `npm run check` runs the eight that need no
+  that exit 1 on a failure. `npm run check` runs the nine that need no
   browser; the first four take `--dist`, `--repo` and `--manifest` to run
   on a copy, `check-css.mjs` takes `--dist`, `check-home.mjs` `--dist` and
   `--repo`, and `check-diagrams.mjs` `--repo`:
@@ -540,6 +547,13 @@ npm run preview           # serves dist/ at http://localhost:4321/
     names a case of `test/t/cases/` and files that exist, and every use
     case of `docs/use_case/README.md` has a sample, a link to a page with
     one, or a paragraph "**Untested.**" with the reason (3.5);
+  - `node scripts/check-reference.mjs [--repo DIR]`: every directive of
+    the `ngx_command_t` tables of `src/` has a heading in
+    `docs/directives/README.md`, `mruby_output_filter` appears in `docs/`
+    only in removal notes, and the list "Default mrbgems" of
+    `docs/reference/build.md` equals the `conf.gem` lines of the host
+    build of `build_config.rb` that are not comments and have no
+    condition;
   - `node scripts/check-diagrams.mjs`: the drawings hold lines and boxes
     only (no `<text>`, no color outside the tokens' classes), the source
     files and lines of each diagram exist at its commit, and the diagrams

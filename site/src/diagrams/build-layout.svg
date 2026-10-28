@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2100 392" preserveAspectRatio="none" data-labels="mruby-config rake libmruby configure nginx-configure make modules">
+  <!-- The build layout diagram, wide arrangement (docs/reference/build.md). Lines and boxes only: the labels are HTML text placed by build-layout.css, whose grid has the rows and columns of this drawing (16 px to the rem; columns 10fr, 1fr and 10fr of 2100 units). Left: mruby's build; right: the configure scripts; below: the build of nginx that joins them. -->
+  <rect class="d-box" x="0" y="0" width="1000" height="56" />
+  <rect class="d-box" x="0" y="80" width="1000" height="56" />
+  <rect class="d-box" x="0" y="160" width="1000" height="56" />
+  <rect class="d-box" x="1100" y="0" width="1000" height="56" />
+  <rect class="d-box" x="1100" y="80" width="1000" height="136" />
+  <rect class="d-box" x="0" y="240" width="2100" height="56" />
+  <rect class="d-box" x="0" y="320" width="2100" height="72" />
+  <path class="d-line" d="M500 56 V80" />
+  <path class="d-line" d="M500 136 V160" />
+  <path class="d-line" d="M1600 56 V80" />
+  <path class="d-line" d="M500 216 V240" />
+  <path class="d-line" d="M1600 216 V240" />
+  <path class="d-line" d="M1050 296 V320" />
+</svg>

@@ -1,0 +1,88 @@
+/*
+ * The build layout diagram (docs/reference/build.md; 3.5 of
+ * docs/proposals/site.md): the grids that place the labels of the page
+ * over the drawings build-layout.svg (wide) and build-layout.narrow.svg
+ * (narrow). Narrow: the labels one below the other in the order of the
+ * build, beside a line in a 1 rem column; the rows take the height of
+ * their labels, and the line stretches over all of them. Wide: two
+ * columns of 10 and one gap of 1 part (2100 units), with the rows of the
+ * drawing in rem (16 units to the rem), so that each box stays under its
+ * label; mruby's build on the left, the configure scripts on the right,
+ * and the build of nginx below both. The wide arrangement is taken when
+ * the content of the figure is 30rem wide or more, where the longest label
+ * of a column fits its box in four lines.
+ */
+.diagram-build-layout .diagram-grid {
+  grid-template-columns: 1rem minmax(0, 1fr);
+  grid-template-areas:
+    ". mruby-config"
+    ". rake"
+    ". libmruby"
+    ". configure"
+    ". nginx-configure"
+    ". make"
+    ". modules";
+  row-gap: var(--space-3);
+}
+.diagram-build-layout .diagram-drawing-narrow {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+.diagram-build-layout .diagram-drawing-wide {
+  display: none;
+}
+/* A name or an option of a label does not break inside: the longest,
+   `--enable-dynamic-module`, takes 24 characters at 14 px, which fit the
+   narrow arrangement at 320 px */
+.diagram-build-layout .diagram-label code {
+  white-space: nowrap;
+}
+@container diagram (min-width: 30rem) {
+  .diagram-build-layout .diagram-grid {
+    grid-template-columns: minmax(0, 10fr) minmax(0, 1fr) minmax(0, 10fr);
+    grid-template-rows: 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 4.5rem;
+    grid-template-areas:
+      "mruby-config . configure"
+      ". . ."
+      "rake . nginx-configure"
+      ". . nginx-configure"
+      "libmruby . nginx-configure"
+      ". . ."
+      "make make make"
+      ". . ."
+      "modules modules modules";
+    row-gap: 0;
+  }
+  .diagram-build-layout .diagram-drawing-wide {
+    display: block;
+    grid-area: 1 / 1 / -1 / -1;
+  }
+  .diagram-build-layout .diagram-drawing-narrow {
+    display: none;
+  }
+  .diagram-build-layout .diagram-label {
+    align-self: center;
+    padding-inline: var(--space-3);
+  }
+}
+.diagram-build-layout [data-key="mruby-config"] {
+  grid-area: mruby-config;
+}
+.diagram-build-layout [data-key="rake"] {
+  grid-area: rake;
+}
+.diagram-build-layout [data-key="libmruby"] {
+  grid-area: libmruby;
+}
+.diagram-build-layout [data-key="configure"] {
+  grid-area: configure;
+}
+.diagram-build-layout [data-key="nginx-configure"] {
+  grid-area: nginx-configure;
+}
+.diagram-build-layout [data-key="make"] {
+  grid-area: make;
+}
+.diagram-build-layout [data-key="modules"] {
+  grid-area: modules;
+}
