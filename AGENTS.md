@@ -63,7 +63,9 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
   - an operator's script blocks its worker when it uses mruby-sleep,
     mruby-socket or mruby-io, which the default build includes on both
     branches, or matsumotory/mruby-redis (a hiredis client), which the
-    default build includes again since 2.7.2. The rule is for ngx_mruby's own code, not for such scripts.
+    default build of `master` includes again since 2.7.2 (on `next`, the
+    line is still commented out). The rule is for ngx_mruby's own code, not
+    for such scripts.
 - Which changes are measured. A PR that changes an input of the measured
   binary is compared with its base in the callgrind lane ("Performance
   comparison with callgrind" in `docs/test/README.md`). The inputs are

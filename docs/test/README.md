@@ -403,6 +403,7 @@ The upper bound can create these races:
 - nginx later reads each probe connection of the wait, finds it closed
   without a request, and closes it. No handler runs for it, and nginx writes
   only `debug` lines about it to `error.log`.
+
 ## Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer
 
 CI builds one matrix cell with `-fsanitize=address,undefined`. To run the

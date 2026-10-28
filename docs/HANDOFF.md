@@ -37,11 +37,11 @@ that are not written down elsewhere yet, the work in progress and the queue.
 
 ## State as of 2026-10-29 (01:20 JST)
 
-Heads: `next` is the merge of the pull request "Merge master into next
-(2026-10-29: 2.7.2's public changes)", whose first parent is `5999a0cc7`
+Heads: `next` is the merge of #615 (`master` at `6b27f08da` into `next`),
+whose first parent is `5999a0cc7`
 (merge of #605); before it, `0e7fba441` (merge of #607), `a0f4b97a2`
 (merge of #610), `39e870c9f` (merge of #608) and `620e65718` (merge of
-#602). That pull request merges `master` at `6b27f08da` (merge of #613), so
+#602). #615 merges `master` at `6b27f08da` (merge of #613), so
 `next` contains every change of `master`. `master` is `6b27f08da`; `v2.x`
 is `6b27f08da` (`git ls-remote origin refs/heads/v2.x`), so it mirrors
 `master`.
