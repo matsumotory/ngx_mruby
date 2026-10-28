@@ -1,6 +1,6 @@
 # リクエストのフェーズ
 
-nginxは、HTTPのリクエストを決まった順のフェーズで処理します。ngx_mrubyは、そのうちの6つのフェーズにハンドラを加えます。また、rewriteモジュールの中で`mruby_set`を実行し、ヘッダとボディのフィルタをnginxのフィルタの連鎖の先頭に置きます。TLSのハンドシェイクの間にも、ハンドラを1つ実行します。TCPとUDPでは、streamモジュールのaccessフェーズでハンドラを1つ実行します。
+nginxは、HTTPのリクエストを決まった順のフェーズで処理します。ngx_mrubyは、そのうちの6つのフェーズにハンドラを加えます。また、rewriteモジュールの中で`mruby_set`を実行し、nginxのフィルタチェーンにヘッダフィルタとボディフィルタを加えます。TLSのハンドシェイクの間にもハンドラを1つ実行します。TCPとUDPでは、streamモジュールのaccessフェーズでハンドラを実行します。
 
 ```diagram
 request-phases
@@ -28,9 +28,9 @@ access-h: `mruby_access_handler`
 post-access: post-accessと<wbr>precontent
 content: content
 content-h: `mruby_content_handler`
-header-filter: ヘッダの<wbr>フィルタ
+header-filter: ヘッダフィルタ
 header-filter-h: `mruby_output_header_filter`
-body-filter: ボディの<wbr>フィルタ
+body-filter: ボディフィルタ
 body-filter-h: `mruby_output_body_filter`
 log: log
 log-h: `mruby_log_handler`
@@ -54,4 +54,4 @@ stream-h: `mruby_stream`
 | rewriteモジュールが動くserver rewriteとrewrite | `mruby_set` |
 | streamモジュールのaccess | `mruby_stream` |
 
-nginxは、リクエストを読む前にTLSのハンドシェイクを済ませます。find config、post-rewrite、preaccess、post-access、precontentの各フェーズでは、ngx_mrubyのハンドラは動きません。`mruby_set`は、rewriteモジュールが`set`を実行するところで、Rubyで変数を設定します。`server`ブロックに書いた`mruby_set`はserver rewriteフェーズで動き、`location`に書いた`mruby_set`はrewriteフェーズで動きます。ヘッダのフィルタとボディのフィルタは、contentフェーズかupstreamのレスポンスをnginxが送る間に動くので、logフェーズより前に来ます。`mruby_post_read_handler`は`http`と`server`のブロックに、`mruby_ssl_handshake_handler`は`server`ブロックに書けます。ほかのハンドラは`location`にも書けます。
+nginxは、リクエストを読む前にTLSのハンドシェイクを済ませます。find config、post-rewrite、preaccess、post-access、precontentの各フェーズでは、ngx_mrubyのハンドラは動きません。`mruby_set`は、rewriteモジュールが`set`を実行するところで、Rubyで変数を設定します。`server`ブロックに書いた`mruby_set`はserver rewriteフェーズで動き、`location`に書いた`mruby_set`はrewriteフェーズで動きます。ヘッダフィルタとボディフィルタは、nginxがレスポンスを送る間に動きます。レスポンスを作ったのが、contentフェーズのハンドラでも、upstreamでも、前のフェーズの`return`やエラーでも同じなので、logフェーズより前に来ます。nginxのフィルタチェーンの中では、ngx_mrubyのフィルタは、nginxのnot modifiedのヘッダフィルタと、rangeとcopyのボディフィルタの後に動き、ほかのモジュールのフィルタより先に動きます。`mruby_post_read_handler`は`http`と`server`のブロックに、`mruby_ssl_handshake_handler`は`server`ブロックに書けます。そのほかのハンドラは`location`にも書けます。

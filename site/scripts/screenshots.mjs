@@ -62,6 +62,9 @@ async function main() {
   fs.mkdirSync(pagesDir, { recursive: true });
   fs.mkdirSync(reviewDir, { recursive: true });
   let count = 0;
+  // A failed shot does not stop the others: the images written so far are
+  // uploaded, and the script exits 1 at the end.
+  const failures = [];
   for (const [engineName, engine] of Object.entries(ENGINES)) {
     const browser = await engine.launch();
     for (const page of PAGES) {
@@ -70,10 +73,21 @@ async function main() {
           for (const size of SIZES) {
             const { context, tab } = await open(browser, server.url + page.path[lang], size, theme);
             const base = `${engineName}-${page.id}-${lang}-${theme}-${size.width}x${size.height}`;
-            await tab.screenshot({ path: path.join(pagesDir, `${base}-first.png`) });
-            await tab.screenshot({ path: path.join(pagesDir, `${base}-full.png`), fullPage: true });
+            try {
+              await tab.screenshot({ path: path.join(pagesDir, `${base}-first.png`) });
+              count++;
+              // Browsers on Linux refuse an image of more than 32767 device
+              // pixels: a long page is taken at one device pixel per CSS
+              // pixel, and cut at 32000 px when it is still longer.
+              const height = await tab.evaluate(() => document.documentElement.scrollHeight);
+              const scale = height * (size.width < 640 ? 2 : 1) > 32000 ? 'css' : 'device';
+              const clip = height > 32000 ? { x: 0, y: 0, width: size.width, height: 32000 } : undefined;
+              await tab.screenshot({ path: path.join(pagesDir, `${base}-full.png`), fullPage: true, scale, clip });
+              count++;
+            } catch (e) {
+              failures.push(`${base}: ${e.message.split('\n')[0]}`);
+            }
             await context.close();
-            count += 2;
           }
         }
       }
@@ -98,6 +112,7 @@ async function main() {
           await home.tab.screenshot({ path: f1, clip: box, fullPage: true });
           await home.context.close();
           const phases = await open(browser, server.url + PAGES[1].path[lang], size, theme);
+          // The figure, with its caption
           const f2 = path.join(reviewDir, `request-phases-${lang}-${theme}-${size.width}.png`);
           await phases.tab.locator('figure.diagram').screenshot({ path: f2 });
           await phases.context.close();
@@ -115,7 +130,9 @@ async function main() {
   lines.push('', '## Pages: Chromium and WebKit, light and dark, 320x664, 390x664, 1440x900', '');
   for (const f of fs.readdirSync(pagesDir).sort()) lines.push(`- pages/${f}`);
   fs.writeFileSync(path.join(opt.out, 'index.md'), `${lines.join('\n')}\n`);
+  for (const f of failures) console.log(`screenshots: failed: ${f}`);
   console.log(`screenshots: ${count} screenshots in ${opt.out} (${review.length} for the owner's review in review/)`);
+  if (failures.length) process.exit(1);
 }
 
 main().catch((e) => {

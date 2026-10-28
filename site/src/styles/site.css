@@ -40,13 +40,11 @@ body {
 .sl-markdown-content :is(p, li, figcaption, dd, td) code {
   overflow-wrap: anywhere;
 }
-/* Inline code inside Japanese text, and the paths in the captions of
-   diagrams, break between any two characters: a Japanese line always
-   offers a break before the code, so overflow-wrap alone leaves the line
-   before a long path short in Chromium, and an English caption left a
-   lone "and" before a path at 390 px */
+/* Inline code inside Japanese text breaks between any two characters: a
+   Japanese line always offers a break before the code, so overflow-wrap
+   alone leaves the line before a long path short in Chromium */
 :root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, dd) code,
-.diagram figcaption code {
+:root[lang="ja"] .diagram figcaption code {
   word-break: break-all;
 }
 
@@ -221,6 +219,11 @@ figcaption,
   font-size: var(--text-caption);
   line-height: var(--leading-caption);
   color: var(--color-text-muted);
+}
+/* At 14 px the 38rem column holds more than the 90 characters per English
+   line of 4.4 (91 on Linux in CI): captions take 34rem */
+.sl-markdown-content :is(figcaption, .caption) {
+  max-width: 34rem;
 }
 
 /* Lists: Starlight's 1.25rem is not a step of 4.5 */
@@ -532,6 +535,10 @@ button.sl-menu-button svg {
    title panel and the content */
 html:has(.home) .content-panel + .content-panel {
   border-top: 0;
+  padding-top: 0;
+}
+html:has(.home) .content-panel:has(+ .content-panel) {
+  padding-bottom: 0;
 }
 /* The heading takes the home page's width: held to the text column it
    left its last word alone on a line at 1000 px */
@@ -544,7 +551,7 @@ html:has(.home) h1#_top {
   max-width: var(--measure);
 }
 .home .lede {
-  margin-top: var(--space-4);
+  margin-top: var(--space-5);
 }
 .home .actions {
   display: flex;

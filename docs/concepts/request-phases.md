@@ -1,8 +1,8 @@
 # Request phases
 
 nginx handles an HTTP request in a fixed order of phases. ngx_mruby adds a
-handler to six of them, runs `mruby_set` inside the rewrite module, puts
-its header and body filters first in nginx's filter chains, and runs a
+handler to six of them, runs `mruby_set` inside the rewrite module, adds
+a header filter and a body filter to nginx's filter chains, and runs a
 handler during the TLS handshake. For TCP and UDP, it runs one handler in
 the access phase of nginx's stream module.
 
@@ -66,7 +66,10 @@ without an ngx_mruby handler. `mruby_set` sets a
 variable from Ruby where the rewrite module runs `set`: in the server
 rewrite phase for a `mruby_set` in a `server` block, and in the rewrite
 phase for one in a `location`. The header filter and the body filter run
-while nginx sends the response of the content phase or of an upstream, so
-they come before the log phase. `mruby_post_read_handler` is accepted in
+while nginx sends a response, whichever phase made it: a content handler,
+an upstream, or a `return` or an error of an earlier phase; so they come
+before the log phase. In nginx's filter chains, ngx_mruby's filters run
+after nginx's not-modified header filter and its range and copy body
+filters, and before the filters of nginx's other modules. `mruby_post_read_handler` is accepted in
 the `http` and `server` blocks, and `mruby_ssl_handshake_handler` in a
 `server` block; the other handlers are also accepted in a `location`.

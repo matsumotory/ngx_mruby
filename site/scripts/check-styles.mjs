@@ -25,7 +25,11 @@
 //   390 and 320 px (4.4);
 // - at 390 px the right edge of Japanese text blocks (4.9), and on English
 //   blocks no computed text-wrap pretty or balance (4.9);
-// - diagrams (3.5): the figure has role="img" and an aria-label, the
+// - at every size, no paragraph, list item, caption, table cell or heading
+//   whose last line holds only one or two characters (the owner's rule),
+//   on the pages of step 3; on the other pages, a note;
+// - diagrams (3.5): the drawing and its labels have role="img" and an
+//   aria-label, the caption is outside them, the
 //   drawings are hidden from screen readers and hold no text, every label
 //   is HTML text of 14 px or more that stays inside its place, and the
 //   figure fits the screen below the header at 390 by 664 and 1440 by 900;
@@ -48,6 +52,9 @@ const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 // a page with a diagram, and reference pages rendered from docs/; in
 // English and Japanese. /ja/docs/ has the h2 with <wbr> of step 1.
 export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/directives/', '/install/', '/ja/docs/'];
+// The pages that step 3 writes, where a last line of one or two characters
+// fails; on the others, which steps 4 and 5 rewrite, it is a note.
+const LAST_LINE_STRICT = new Set(['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/']);
 const SIZES = [
   { width: 320, height: 664 },
   { width: 390, height: 664 },
@@ -281,6 +288,20 @@ function inspect(cfg) {
       } else if (gap >= 2 * fsz) fail(el, `the longest line ends ${gap.toFixed(1)} px from the right edge, 2 em (${2 * fsz} px) or more: "${el.textContent.trim().slice(0, 30)}..."`);
     }
   }
+  // No paragraph, list item, caption, table cell or heading ends with a
+  // last line of one or two characters (the owner's rule for text: fix it
+  // by adding or removing a few characters, not by breaking lines)
+  if (cfg.width > 0) {
+    for (const el of document.querySelectorAll('main :is(p, li, figcaption, td, th, dd, h1, h2, h3, h4)')) {
+      if (!visible(el) || el.closest('.expressive-code, .diagram-grid') || el.querySelector('p, ul, ol')) continue;
+      const ls = lines(el);
+      if (ls.length < 2) continue;
+      const last = ls.at(-1).text.trim();
+      // A failure on the pages of step 3, a note on the pages of docs/
+      // that steps 4 and 5 rewrite
+      if (last.length <= 2) fails.push(`${cfg.lastLineStrict ? '' : 'note: '}${name(el)}: the last line holds "${last}", ${last.length} character(s): "${el.textContent.trim().slice(0, 30)}..."`);
+    }
+  }
   // English blocks wrap between words; no text-wrap pretty or balance may
   // apply to them (4.9)
   if (lang === 'en') {
@@ -331,8 +352,10 @@ function inspect(cfg) {
   // Diagrams (3.5)
   for (const fig of document.querySelectorAll('figure.diagram')) {
     cfg.counts.diagrams = (cfg.counts.diagrams ?? 0) + 1;
-    if (fig.getAttribute('role') !== 'img') fail(fig, 'a diagram figure without role="img"');
-    if (!(fig.getAttribute('aria-label') ?? '').trim()) fail(fig, 'a diagram figure without an aria-label');
+    const img = fig.querySelector(':scope > .diagram-grid');
+    if (!img || img.getAttribute('role') !== 'img') fail(fig, 'a diagram whose drawing and labels are not in an element with role="img"');
+    else if (!(img.getAttribute('aria-label') ?? '').trim()) fail(fig, 'a diagram whose element with role="img" has no aria-label');
+    if (!fig.querySelector(':scope > figcaption')) fail(fig, 'a diagram without a caption outside the element with role="img"');
     for (const svg of fig.querySelectorAll('svg')) {
       if (svg.getAttribute('aria-hidden') !== 'true') fail(svg, 'a drawing of a diagram is not hidden from screen readers');
       if (svg.querySelector('text')) fail(svg, 'a drawing of a diagram holds a <text> element');
@@ -395,6 +418,7 @@ async function main() {
   let menus = 0;
   let searches = 0;
   let diagramLoads = 0;
+  const notes = [];
   const headings = [];
   const transitions = ['color', 'background-color', 'border-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'outline-color', 'text-decoration-color', 'opacity', 'transform'];
   for (const engineName of opt.engines) {
@@ -434,6 +458,7 @@ async function main() {
               transitions,
               mono: monoFace,
               counts: {},
+              lastLineStrict: LAST_LINE_STRICT.has(page),
               layoutOffsets: [
                 ['.main-frame', 'padding-top'],
                 ['.main-frame', 'padding-left'],
@@ -442,7 +467,7 @@ async function main() {
               ],
             };
             const result = await tab.evaluate(inspect, cfg);
-            for (const f of result.fails) failures.push(`${tag}: ${f}`);
+            for (const f of result.fails) (f.startsWith('note: ') ? notes : failures).push(`${tag}: ${f.slice(f.startsWith('note: ') ? 6 : 0)}`);
             if (result.counts.diagrams) diagramLoads++;
             if (result.counts.homeHeading) headings.push(`${tag.split(' ').slice(0, 2).join(' ')} ${size.width}: ${result.counts.homeHeading}`);
             if (!reduced) {
@@ -480,7 +505,7 @@ async function main() {
                 try {
                   await placeholders.first().waitFor({ timeout: 10000 });
                   for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open, loading: ${f}`);
-                  for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0 })).fails) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open, loading: ${f}`);
+                  for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0 })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open, loading: ${f}`);
                   // The loading state was checked only if the fragments were
                   // held and the placeholders were still there afterwards.
                   const left = await placeholders.count();
@@ -496,7 +521,7 @@ async function main() {
                   await tab.waitForFunction(() => !document.querySelector('#starlight__search .pagefind-ui__loading') && document.querySelector('#starlight__search .pagefind-ui__result-link'), null, { timeout: 10000 });
                   states.push('settled');
                   for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open: ${f}`);
-                  for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0 })).fails) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open: ${f}`);
+                  for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0 })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open: ${f}`);
                 } catch (e) {
                   timedOut(e);
                   failures.push(`${tag}: the results of the search for "filter" did not finish loading within 10 s`);
@@ -516,7 +541,7 @@ async function main() {
                 if (!(await tab.locator('#starlight__sidebar:popover-open').count())) failures.push(`${tag}: the menu did not open`);
                 menus++;
                 for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} menu open: ${f}`);
-                for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0 })).fails) if (!/scrolls sideways/.test(f)) failures.push(`${tag} menu open: ${f}`);
+                for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0 })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} menu open: ${f}`);
               }
             }
             await context.close();
@@ -537,6 +562,9 @@ async function main() {
     await browser.close();
   }
   await server.close();
+  const distinctNotes = [...new Set(notes.map((n) => n.replace(/^\S+ \S+ \S+ \S+: /, (m) => m.split(' ')[0] + ': ')))];
+  for (const n of distinctNotes) console.log(`note: ${n}`);
+  if (distinctNotes.length) console.log(`check-styles: ${distinctNotes.length} note(s): last lines of one or two characters on pages of docs/ that steps 4 and 5 rewrite`);
   // One line per distinct failure; the same element fails on many pages.
   const counted = new Map();
   for (const f of failures) {

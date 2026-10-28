@@ -36,7 +36,7 @@ const PAGES = {
   'site/src/content/docs/index.mdx': '---\ntitle: Home\n---\n',
   'site/src/content/docs/ja/index.mdx': '---\ntitle: ホーム\n---\n',
   // A sample: a case that names the request, the response and the port
-  'test/t/cases/demo.rb': "# Config: test/conf/conf.d/99-demo.conf (port 18999)\nrequest = html_path('demo.request')\nresponse = html_path('demo.response')\n",
+  'test/t/cases/demo.rb': "# Config: test/conf/conf.d/99-demo.conf (port 18999)\nrequest = html_path('demo.request')\nresponse = html_path('demo.response')\nport = 18999\n",
   'test/conf/conf.d/99-demo.conf': '# Port 18999.\nserver {\n    listen 18999;\n}\n',
   'test/html/demo.rb': 'Nginx.rputs "demo"\n',
   'test/html/demo.request': 'GET / HTTP/1.1\n',
@@ -132,9 +132,15 @@ const fixtures = [
     error: 'the case test/t/cases/demo.rb does not name other.response',
   },
   {
+    name: 'a sample whose case names the response only in a comment stops the build',
+    files: { 'test/t/cases/demo.rb': "# Config: test/conf/conf.d/99-demo.conf (port 18999)\n# compares demo.response\nrequest = html_path('demo.request')\nport = 18999\n" },
+    source: `# A sample\n\n${SAMPLE()}`,
+    error: 'the case test/t/cases/demo.rb does not name demo.response in its code',
+  },
+  {
     name: 'a diagram block becomes a figure with its drawing and HTML labels',
     source: `# A diagram\n\n${DIAGRAM('a: First `label`\nb: Second\n')}`,
-    contains: ['<figure class="diagram diagram-demo not-content" role="img" aria-label="A demo diagram.">', 'aria-hidden="true"', '<div class="diagram-label" data-key="a">First <code>label</code></div>'],
+    contains: ['<figure class="diagram diagram-demo not-content"><div class="diagram-grid" role="img" aria-label="A demo diagram.">', 'aria-hidden="true"', '<div class="diagram-label" data-key="a">First <code>label</code></div>'],
   },
   {
     name: 'a diagram block whose keys differ from those of its drawing stops the build',

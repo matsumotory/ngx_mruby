@@ -244,7 +244,7 @@ Each diagram names the source it describes, at `next` 73fc9098f
 | Diagram | What it shows | Source it describes | Page |
 |---|---|---|---|
 | Request phases | nginx's HTTP phases in order; in which of them ngx_mruby runs a handler from a file and an inline one (post-read, server rewrite, rewrite, access, content, log); `mruby_set` inside the rewrite module's script; where the header and body filters and the SSL handshake handler come; the directive for each; and, for TCP and UDP, the one stream handler | `src/http/ngx_http_mruby_module.c` lines 635 to 718 (`ngx_http_mruby_handler_init`), 1453 to 1525 (`mruby_set` through `ndk_set_var`), 428 (the certificate callback); `src/stream/ngx_stream_mruby_module.c` line 760 (`NGX_STREAM_ACCESS_PHASE`); the `ngx_http_phases` list of nginx 1.31.6 | Concepts: phases |
-| Filter chain | ngx_mruby's header filter and body filter at the top of nginx's two filter chains; what each receives; that the body filter reads a response of known length as one buffer and passes a response without `Content-Length` on unread | `src/http/ngx_http_mruby_module.c` lines 1666 to 1676, 1824 to 1844 | Concepts: phases; Reference: directives |
+| Filter chain | ngx_mruby's header filter and body filter in nginx's two filter chains, after nginx's not-modified header filter and its range and copy body filters and before the filters of nginx's other modules; what each receives; that the body filter reads a response of known length as one buffer and passes a response without `Content-Length` on unread | `src/http/ngx_http_mruby_module.c` lines 1666 to 1676, 1824 to 1844 | Concepts: phases; Reference: directives |
 | Non-blocking wait | `Nginx::Async.sleep` in a handler: the handler's fiber yields, a timer goes into nginx's event loop, the worker serves other connections, and the timer's handler resumes the fiber | `src/http/ngx_http_mruby_async.c` lines 356 to 403 (`ngx_mrb_async_sleep`), 309 to 341 (`ngx_mrb_timer_handler`), 240 to 307 (`ngx_mrb_post_fiber`), 186 to 238 (`ngx_mrb_run_fiber`) | Concepts: async |
 | One `mrb_state` per worker | the `mrb_state` that nginx opens for an `http {}` block while it reads the configuration; the copy that each worker has after the fork; `mruby_init_worker` and `mruby_exit_worker`; what persists in a worker between requests (globals, constants, methods, classes); that only `mrb->exc` is cleared; that workers share nothing in Ruby, with the shared dictionary of v3 as the planned exception | `src/http/ngx_http_mruby_module.c` lines 999 to 1023 (`mrb_open`), 724 to 727 (`ngx_mrb_state_clean`), 601 to 633 (worker start and exit) | Concepts: lifetimes |
 | Build layout | `build_config.rb` and mruby's `rake` producing `libmruby.a`; `./configure` writing `config` and `Makefile` from `config.in` and `Makefile.in`; nginx's `--add-module` or `--add-dynamic-module` producing a static binary or one module file that holds `ngx_http_mruby_module`, `ngx_stream_mruby_module` and ngx_mruby's upstream keepalive module; where `ngx_devel_kit` comes in | `config.in` lines 1 to 81 (the dynamic and the static branch, and `have=NDK_SET_VAR` for `ngx_devel_kit`), `Makefile.in` lines 27 to 28, 103 (nginx's configure with `--add-module=$(NDK_ROOT)`) and 118, `configure.in` lines 190 to 194 (`NDK_ROOT`), `build.sh`, `build_config.rb` | Reference: build |
@@ -271,10 +271,13 @@ their figures.** Each diagram has two parts:
   the page, which names the drawing on its first line and gives one label
   per line as `key: text`. The keys are fixed by the drawing.
 
-The generator of 5.2 turns the block into an HTML `figure` with
-`role="img"` and an `aria-label` taken from the caption. The figure holds
-the drawing, inlined and hidden from screen readers, and each label as HTML
-text, placed over or beside the drawing by the diagram's own CSS grid. The
+The generator of 5.2 turns the block into an HTML `figure`. The figure
+holds a grid with `role="img"` and an `aria-label` taken from the caption,
+which holds the drawing, inlined and hidden from screen readers, and each
+label as HTML text, placed over or beside the drawing by the grid; the
+`figcaption` stays outside the element with `role="img"`, whose children
+are presentational, so that screen readers read the source lines too
+(step 3). The
 three ways compared:
 
 | | Labels in HTML, drawing in SVG | SVG with its own text | Mermaid |
@@ -1218,7 +1221,10 @@ detection, or that pinned versions do not keep Starlight stable.
   and `docs/ja/`.
 - **The generator** (`site/scripts/sync-docs.mjs`) runs before
   `astro build`. For each Markdown file under `docs/` except `proposals/`, it
-  writes a page into a gitignored folder under `site/src/content/docs/`: the
+  writes a page into `site/src/content/docs/`, at the folder of its route,
+  beside the committed home pages, which `.gitignore` keeps tracked while
+  it ignores the rest of the folder (in a subfolder, Starlight's sidebar
+  showed the subfolder as a group; step 3): the
   title from the first heading (a heading with HTML stops the build, 4.4),
   `lastUpdated` from
   `git log -1 --format=%cs -- <file>` (Starlight's front matter accepts a

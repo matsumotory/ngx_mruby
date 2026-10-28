@@ -33,8 +33,8 @@ function args() {
 }
 
 // A number with a unit of throughput or latency, or a percentage of faster
-// or slower.
-const PERFORMANCE = /\b\d[\d,.]*\s*(k|K|M)?\s*(req\/s|requests?\s*(per|\/)\s*s(ec(ond)?)?|rps|qps|ops\/s|ms\b|µs|usec|instructions per request)|\b\d+(\.\d+)?\s*%\s*(faster|slower|quicker|less|more)|\b(faster|slower) than\b/i;
+// or slower, in English or in Japanese.
+const PERFORMANCE = /\b\d[\d,.]*\s*(k|K|M)?\s*(req\/s|requests?\s*(per|\/)\s*s(ec(ond)?)?|rps|qps|ops\/s|ms\b|µs|usec|instructions per request)|\b\d+(\.\d+)?\s*%\s*(faster|slower|quicker|less|more)|\b(faster|slower) than\b|[\d０-９][\d０-９,.，．]*\s*[万千億]?\s*(リクエスト|件|回)?\s*(毎秒|\/秒|／秒|ミリ秒|マイクロ秒)|[\d０-９]+\s*[%％]\s*(速|高速|遅|短|少な|多)|倍(速|高速)|より(速|高速|遅)い/;
 
 // The text of each code block: Expressive Code renders each line as a
 // div.ec-line inside <pre>.

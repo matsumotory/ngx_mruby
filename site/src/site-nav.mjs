@@ -21,7 +21,7 @@ const T = {
   },
   ja: {
     docs: 'ドキュメント',
-    agentProxy: 'エージェントのプロキシ',
+    agentProxy: 'エージェントプロキシ',
     releases: 'リリース',
     security: 'セキュリティ',
     contributing: '開発に参加する',

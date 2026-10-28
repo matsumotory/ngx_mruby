@@ -138,8 +138,10 @@ jobs:
       # The screenshots stay in the artifact: no image is committed or
       # attached to the pull request (4.12, the owner's decision of
       # 2026-10-19).
+      # Uploaded also when a shot failed, so that the images written before
+      # the failure, those for the owner's review among them, are there.
       - name: Upload the screenshots
-        if: ${{ !cancelled() && steps.shots.outcome == 'success' }}
+        if: ${{ !cancelled() && (steps.shots.outcome == 'success' || steps.shots.outcome == 'failure') }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: screenshots

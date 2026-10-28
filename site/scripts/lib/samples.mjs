@@ -17,9 +17,9 @@
 //   ```
 //
 // loadSample stops (throws) when a key is missing or unknown, when a file
-// is missing or not tracked by git, and when the case does not name the
-// request and the response files, so a page never shows a file that the
-// case does not compare.
+// is missing or not tracked by git, and when the code of the case (not
+// only a comment) does not name the request and the response files and the
+// port of the configuration.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -70,11 +70,14 @@ export function loadSample(spec, repo, where) {
     if (!tracked.has(file)) throw new Error(`${where}: the ${key} of the sample, ${file}, is not tracked by git`);
     files[key] = fs.readFileSync(path.join(repo, file), 'utf8');
   }
-  const caseText = files.case;
+  // The case names the request, the response and the port in its code, not
+  // only in a comment. This checks the name, not what the case does with
+  // the file; the case's own assertions are the test.
+  const caseCode = files.case.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
   for (const key of ['request', 'response', 'conf']) {
     const name = key === 'conf' ? portOf(files.conf, spec.conf, where) : path.posix.basename(spec[key]);
-    if (!caseText.includes(name)) {
-      throw new Error(`${where}: the case ${spec.case} does not name ${key === 'conf' ? `the port ${name} of ${spec.conf}` : name}, so it does not compare what the page would show`);
+    if (!caseCode.includes(name)) {
+      throw new Error(`${where}: the case ${spec.case} does not name ${key === 'conf' ? `the port ${name} of ${spec.conf}` : name} in its code, so it does not compare what the page would show`);
     }
   }
   const out = execFileSync('git', ['-C', repo, 'log', '-1', '--format=%h %cs', '--', ...SAMPLE_KEYS.map((k) => spec[k])], { encoding: 'utf8' }).trim();
@@ -109,8 +112,8 @@ export function sampleCaptionHtml(sample, lang) {
   const date = `<span class="nowrap">${sample.date}</span>`;
   const commit = `<code class="nowrap">${sample.commit}</code>`;
   return lang === 'ja'
-    ? `CIを実行するたびに、ケースの${c}がこのリクエストを送ります。比べるのは、ステータス行、表示したヘッダ、ボディの全体です。5つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
-    : `On every CI run, the case ${c} sends this request and compares the status line, the headers shown and the whole body. The five files last changed on ${date} in commit ${commit}.`;
+    ? `CIを実行するたびに、ケースの${c}がこのリクエストを送ります。ケースは、ステータス行と、このページに載せたヘッダと、ボディの全体を比べます。5つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
+    : `On every CI run, the case ${c} sends this request and compares the status line, the headers shown on this page and the whole body. The five files last changed on ${date} in commit ${commit}.`;
 }
 
 // The titles of the code blocks of a sample.

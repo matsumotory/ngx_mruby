@@ -148,11 +148,13 @@ export function captionHtml(block, lang) {
   if (lang === 'ja') {
     // The files are joined with と, their lines with 、
     const files = repo.length > 1 ? `${repo.slice(0, -1).join('、')}と、${repo.at(-1)}` : repo[0];
-    text = `${labelHtml(block.caption)}${files}を、${nowrap(at.date)}のコミット${code(at.commit)}で描きました。`;
-    for (const n of block.nginx) text += `nginx ${nowrap(n.version)}では、${code(n.file)}の${linesText(n.ranges, lang)}を元に描きました。`;
+    text = `${labelHtml(block.caption)}${nowrap(at.date)}のコミット${code(at.commit)}の、${files}を元に描きました。`;
+    for (const n of block.nginx) text += `nginx ${nowrap(n.version)}の${code(n.file)}の${linesText(n.ranges, lang)}も元にしました。`;
   } else {
-    text = `${labelHtml(block.caption)} Describes ${joinList(repo, lang)} at ${code(at.commit)}, ${nowrap(at.date)}`;
-    for (const n of block.nginx) text += `, and ${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}`;
+    // The files are joined with "; ", so that each file's list of lines
+    // ends where the next file starts
+    text = `${labelHtml(block.caption)} Describes ${repo.join('; ')}; at ${code(at.commit)}, ${nowrap(at.date)}`;
+    for (const n of block.nginx) text += `; and ${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}`;
     text += '.';
   }
   return text;
@@ -169,12 +171,15 @@ function inlineSvg(svg, arrangement) {
     .trim();
 }
 
-// The figure of 3.5: role="img" with the caption as its aria-label, the
+// The figure of 3.5: the drawing and its labels in a grid with role="img"
+// and what the caption says the diagram shows as its aria-label, the
 // drawings inlined and hidden from screen readers, and each label as HTML
-// text, which the diagram's CSS places on its grid. One line of HTML, so
+// text, which the diagram's CSS places on its grid. The figcaption stays
+// outside the element with role="img", whose children are presentational,
+// so that screen readers also read the source and the commit. One line of HTML, so
 // that Markdown keeps it as one HTML block.
 export function diagramHtml(block, drawings, lang) {
   const labels = [...block.labels].map(([key, text]) => `<div class="diagram-label" data-key="${key}">${labelHtml(text)}</div>`).join('');
   const svgs = drawings.map((d) => inlineSvg(d.svg, d.arrangement)).join('');
-  return `<figure class="diagram diagram-${block.name} not-content" role="img" aria-label="${escapeHtml(plainLabel(block.caption))}"><div class="diagram-grid">${svgs}${labels}</div><figcaption>${captionHtml(block, lang)}</figcaption></figure>`;
+  return `<figure class="diagram diagram-${block.name} not-content"><div class="diagram-grid" role="img" aria-label="${escapeHtml(plainLabel(block.caption))}">${svgs}${labels}</div><figcaption>${captionHtml(block, lang)}</figcaption></figure>`;
 }

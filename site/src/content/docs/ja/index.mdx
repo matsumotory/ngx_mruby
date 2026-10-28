@@ -1,6 +1,6 @@
 ---
-title: nginxのサーバが下す判断をRubyで書く
-description: ngx_mrubyは、nginxに組み込んだmrubyのVMで、指定したフェーズにRubyのスクリプトを実行します。
+title: nginxが下す判断をRubyで書く
+description: ngx_mrubyは、nginxに組み込んだmrubyのVMで、指定したフェーズでRubyのスクリプトを実行します。
 template: splash
 sidebar:
   hidden: true
@@ -15,7 +15,7 @@ import Sample from '../../../components/Sample.astro';
 
 <div class="home">
 
-<p class="lede">nginx.confでRubyのスクリプトを指定すると、nginxは組み込んだmrubyのVMでそのスクリプトを実行します。実行する時点は、リクエストが届いたとき、変数を計算するとき、アクセスを許す前、レスポンスを作るとき、ヘッダとボディを変えるとき、TLSのハンドシェイクの間、TCPかUDPのセッションの中から選べます。ネットワークの入出力はnginxが受け持つので、アプリケーションサーバを横で動かす必要はありません。ngx_mrubyは、手を加えていないnginxの静的なモジュールか動的なモジュールとしてビルドできます。</p>
+<p class="lede">nginx.confでRubyのスクリプトを指定すると、nginxは組み込んだmrubyのVMでそのスクリプトを実行します。実行する時点は、リクエストが届いたとき、変数を計算するとき、アクセスを許す前、レスポンスを作るとき、ヘッダとボディを変えるとき、TLSのハンドシェイクの間、TCPかUDPのセッションの中から選べます。ネットワークの入出力はnginxが受け持つので、nginxとは別にアプリケーションサーバを動かす必要はありません。ngx_mrubyは、手を加えていないnginxの静的なモジュールか動的なモジュールとしてビルドできます。</p>
 
 <p class="actions"><a class="button-primary" href="/ja/install/">ngx_mrubyをインストールする</a> <a class="button-secondary" href="/ja/concepts/request-phases/">Rubyが動く場所を見る</a></p>
 
