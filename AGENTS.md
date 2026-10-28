@@ -500,10 +500,12 @@ npm run preview           # serves dist/ at http://localhost:4321/
 - After `astro build`, `npm run build` runs `scripts/mark-num-cells.mjs`,
   which gives the table cells that hold only numbers the class `num`
   (monospace, 4.3 item 2), because the Markdown processor of Astro 7 runs
-  no rehype plugin without another package. The generator puts a `<wbr>`
-  after each underscore of a name of three or more parts in the text of a
-  page outside code (`mruby_ssl_handshake_handler_code`), so that a
-  heading or list item breaks there on a narrow screen.
+  no rehype plugin without another package. The generator puts `<wbr>`
+  into long names in the text of a page outside code and outside URLs
+  (`breakName` in `scripts/sync-docs.mjs`): after `::`, before `#`, `.`
+  and `(`, and after an underscore that four or more characters of the
+  name follow, so that a heading or list item breaks there on a narrow
+  screen.
 - `npm run build` needs no network after `npm ci`. It stops in a shallow
   clone (the last-updated date of a page is the date of the last commit
   to its source), on a file of `docs/` without a heading or whose first

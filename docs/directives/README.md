@@ -288,7 +288,8 @@ Context: server, location
 Phase:   initialize master process
 ```
 
-When set to the value on, nginx compiles every script file of the handlers, the filters and `mruby_set` of the server or location once, when it reads the configuration, as the parameter `cache` does for one directive.
+When set to the value on, nginx compiles the script files of the post-read, server rewrite, rewrite, access, content and log handlers, the header and body filters and `mruby_set` of the server or location once, when it reads the configuration, as the parameter `cache` does for one directive.
+`mruby_ssl_handshake_handler` and the init and exit hooks take only their own parameter `cache`.
 With off, a script file without `cache` is read from disk and compiled for every request, so that a change of the file takes effect at the next request (see [Caching compile code](#caching-compile-code)).
 
 ## mruby_post_read_handler and mruby_post_read_handler_code

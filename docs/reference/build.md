@@ -9,35 +9,39 @@ steps.
 
 ```diagram
 build-layout
-caption: The two inputs of the build, mruby with the mrbgems of `build_config.rb` and the configure scripts of ngx_mruby, and the build of nginx that links them.
-source: config.in 1-81
-source: Makefile.in 87 98-103
+caption: The steps of the build of ngx_mruby, in the order in which `./configure` and `make` run them.
 source: configure.in 53-62 190-194
+source: Makefile.in 27-28 87 98-119
+source: config.in 48-81
+source: build_config.rb 81-153
 source: build.sh 103 107
 at: c35606b0e 2026-10-19
-mruby-config: `build_config.rb` and its lock: the mrbgems
-rake: mruby's `rake`, in `mruby/`
-libmruby: `libmruby.a` in `mruby/build/host/lib`
-configure: `./configure`: `config` and `Makefile`
-nginx-configure: nginx's `configure`, with ngx_mruby by `--add-module` (`--add-dynamic-module` after `--enable-dynamic-module`) and `ngx_devel_kit` by `--add-module`
-make: `make`: nginx with ngx_mruby built in, or a module file that nginx loads
+configure: `./configure` writes `config` and `Makefile` from `config.in` and `Makefile.in`
+rake: `make` runs mruby's `rake` with `build_config.rb` and its lock: `libmruby.a` with the mrbgems
+mrbgems-config: `make` writes `mrbgems_config` (`mrbgems_config_dynamic`) from the flags of that mruby build
+nginx-configure: nginx's `configure` with ngx_mruby by `--add-module` (`--add-dynamic-module` after `--enable-dynamic-module`) and `ngx_devel_kit`; `config` reads `mrbgems_config`
+nginx-make: nginx's `make`: nginx with ngx_mruby built in, or a module file that nginx loads
 modules: in it: `ngx_http_mruby_module`, `ngx_stream_mruby_module` with nginx's stream module, and the upstream keepalive module of ngx_mruby
 ```
 
-- `make` first builds mruby: in `mruby/`, `rake` reads
-  `build_config.rb`, which names the core gems and the third-party mrbgems,
-  and `build_config.rb.lock`, which pins the commit of each third-party
-  mrbgem. The result is the library `libmruby.a` with the gems in it.
 - `./configure` writes `config` and `Makefile` from `config.in` and
   `Makefile.in`. `--enable-dynamic-module` makes the `Makefile` pass
   ngx_mruby to nginx's `configure` with `--add-dynamic-module` instead of
   `--add-module`. It always passes `dependence/ngx_devel_kit` with
   `--add-module`; `mruby_set` uses its `set_var` part.
+- `make` first builds mruby: in `mruby/`, `rake` reads `build_config.rb`,
+  which names the core gems and the third-party mrbgems, and
+  `build_config.rb.lock`, which pins the commit of each third-party
+  mrbgem. The result is the library `libmruby.a` with the gems in it, and
+  `libmruby.flags.mak` with the compiler and linker flags that the gems
+  need, from which `make` writes `mrbgems_config`
+  (`mrbgems_config_dynamic` for a dynamic build).
 - `make` then runs nginx's `configure` and `make` in the nginx source
-  tree. `config` links `libmruby.a` into nginx, or into the module file
-  of a dynamic build, which holds `ngx_http_mruby_module`, the
-  upstream keepalive module of ngx_mruby (`mruby_upstream_keepalive`) and,
-  in a build with nginx's stream module, `ngx_stream_mruby_module`.
+  tree. `config` reads `mrbgems_config` and links `libmruby.a` into nginx,
+  or into the module file of a dynamic build. The module holds
+  `ngx_http_mruby_module`, the upstream keepalive module of ngx_mruby
+  (`mruby_upstream_keepalive`) and, in a build with nginx's stream module,
+  `ngx_stream_mruby_module`.
 - `build.sh` runs `./configure` with the nginx source that it downloads,
   and then `make`.
 
@@ -48,7 +52,7 @@ modules: in it: `ngx_http_mruby_module`, `ngx_stream_mruby_module` with nginx's 
 | `--with-ngx-src-root=DIR` | the nginx source tree | none: `configure` stops without it |
 | `--with-ngx-config-opt=OPT` | the options that `make` passes to nginx's `configure` | none |
 | `--enable-dynamic-module` | builds ngx_mruby as a dynamic module | a static module |
-| `--with-build-dir=DIR` | the build directory | `build` |
+| `--with-build-dir=DIR` | the directory that `make clobber` removes; `build.sh` passes `build` or `build_dynamic`, where it puts the nginx source | `build` |
 | `--with-openssl-src=DIR` | OpenSSL sources that nginx builds with (`--with-openssl` of nginx) | the system's OpenSSL |
 | `--with-openssl-opt=OPTIONS` | more options for the build of OpenSSL (`--with-openssl-opt` of nginx) | none |
 | `--with-mruby-root=DIR` | the mruby tree to build | `mruby/` of this repository |
@@ -60,7 +64,7 @@ modules: in it: `ngx_http_mruby_module`, `ngx_stream_mruby_module` with nginx's 
 
 | Variable | Read by | What it does |
 |---|---|---|
-| `NGINX_CONFIG_OPT_ENV` | `build.sh` | the options of nginx's `configure`, in place of the default prefix `build/nginx` (`build_dynamic/nginx` for a dynamic build) with the stream module |
+| `NGINX_CONFIG_OPT_ENV` | `build.sh` | all the options of nginx's `configure`, in place of the default set: the prefix `build/nginx` (`build_dynamic/nginx` for a dynamic build), `--with-http_stub_status_module`, `--with-stream`, `--without-stream_access_module` and `--with-cc-opt=-fno-common` |
 | `NGINX_SRC_ENV` | `build.sh` | an nginx source tree to use instead of the download of the version in `nginx_version` |
 | `BUILD_DYNAMIC_MODULE` | `build.sh` | any value builds a dynamic module in `build_dynamic/` |
 | `NUM_THREADS_ENV` | `build.sh` | the number of jobs of `make`; by default half the processors |
@@ -77,24 +81,24 @@ besides the mruby core gems that `NGX_MRUBY_CORE_GEMS` lists
 the commit of each third-party gem
 ([Gem commits](../install/README.md#gem-commits-build_configrblock)).
 
-- `iij/mruby-env`: `ENV`
-- `iij/mruby-digest`: `Digest` (MD5, RMD160, SHA1, SHA256, SHA384, SHA512 and HMAC)
-- `iij/mruby-process`: `Process`
-- `mattn/mruby-json`: `JSON`
-- `mattn/mruby-onig-regexp`: `OnigRegexp`
-- `matsumotory/mruby-redis`: `Redis`, a client that waits for each answer in the worker
-- `matsumotory/mruby-vedis`: `Vedis`
-- `matsumotory/mruby-userdata`: `Userdata`
-- `matsumotory/mruby-uname`: `Uname`
-- `matsumotory/mruby-mutex`: `Mutex`
-- `matsumotory/mruby-localmemcache`: `Cache`
-- `monochromegane/mruby-secure-random`: `SecureRandom`
-- `mrbgems/ngx_mruby_mrblib`: the Ruby part of the classes of ngx_mruby
-- `mrbgems/rack-based-api`: the Rack compatible API (`run`)
+- `iij/mruby-env` ([repository](https://github.com/iij/mruby-env)): `ENV`
+- `iij/mruby-digest` ([repository](https://github.com/iij/mruby-digest)): `Digest` (MD5, RMD160, SHA1, SHA256, SHA384, SHA512 and HMAC)
+- `iij/mruby-process` ([repository](https://github.com/iij/mruby-process)): `Process`
+- `mattn/mruby-json` ([repository](https://github.com/mattn/mruby-json)): `JSON`
+- `mattn/mruby-onig-regexp` ([repository](https://github.com/mattn/mruby-onig-regexp)): `OnigRegexp`
+- `matsumotory/mruby-redis` ([repository](https://github.com/matsumotory/mruby-redis)): `Redis`, a client that waits for each answer of the Redis server in the worker. Its build clones the hiredis library at the tag v1.5.0, checks its commit and links it statically, and clones matsumotory/mruby-pointer, which the gem depends on. A script that calls it needs a running Redis server
+- `matsumotory/mruby-vedis` ([repository](https://github.com/matsumotory/mruby-vedis)): `Vedis`
+- `matsumotory/mruby-userdata` ([repository](https://github.com/matsumotory/mruby-userdata)): `Userdata`
+- `matsumotory/mruby-uname` ([repository](https://github.com/matsumotory/mruby-uname)): `Uname`
+- `matsumotory/mruby-mutex` ([repository](https://github.com/matsumotory/mruby-mutex)): `Mutex`
+- `matsumotory/mruby-localmemcache` ([repository](https://github.com/matsumotory/mruby-localmemcache)): `Cache`
+- `monochromegane/mruby-secure-random` ([repository](https://github.com/monochromegane/mruby-secure-random)): `SecureRandom`
+- `mrbgems/ngx_mruby_mrblib` ([source](../../mrbgems/ngx_mruby_mrblib)): the Ruby part of the classes of ngx_mruby
+- `mrbgems/rack-based-api` ([source](../../mrbgems/rack-based-api)): the Rack compatible API (`run`)
 
 The check `site/scripts/check-reference.mjs` compares this list with the
 lines `conf.gem` of the host build in `build_config.rb` that are not
-comments. The lines that are comments name gems that the default build
+comments and have no condition. The lines that are comments name gems that the default build
 leaves out, such as mruby-discount and mruby-memcached: to build with one,
 uncomment its line and remove `mruby/build`.
 

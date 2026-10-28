@@ -14,8 +14,11 @@
 //   lines of build_config.rb": the items of the list under "Default
 //   mrbgems" in docs/reference/build.md, by the name in their first code
 //   span, are the gems of the conf.gem lines of the host build of
-//   build_config.rb that are not comments and have no condition (github:
-//   'owner/name' as owner/name, './mrbgems/name' as mrbgems/name).
+//   build_config.rb that are not comments and have no condition
+//   (github: 'owner/name' or :github => 'owner/name' as owner/name, mgem:
+//   'name' as name, git: '.../owner/name.git' as owner/name, and
+//   './mrbgems/name' as mrbgems/name); a conf.gem line of another form is
+//   a problem, so that no gem escapes the comparison.
 //
 //   node scripts/check-reference.mjs [--repo DIR]
 //
@@ -111,12 +114,20 @@ const host = /MRuby::Build\.new\('host'\) do \|conf\|([\s\S]*?)\nend\n/.exec(con
 const gems = new Set();
 if (!host) problems.push("build_config.rb: no MRuby::Build.new('host') block");
 else {
-  for (const line of host[1].split('\n')) {
-    // A comment, or a gem that a condition adds (auto-ssl with
-    // NGX_MRUBY_AUTO_SSL=1), is not in the default build
-    if (/^\s*#/.test(line) || /\b(if|unless)\b/.test(line)) continue;
-    const m = /^\s*conf\.gem\s+(?:github:\s*'([^']+)'|'\.\/(mrbgems\/[^']+)')/.exec(line);
-    if (m) gems.add(m[1] ?? m[2]);
+  for (const raw of host[1].split('\n')) {
+    // The code of the line without a trailing comment
+    const line = raw.replace(/\s+#.*$/, '');
+    if (/^\s*#/.test(raw) || !/^\s*conf\.gem\b/.test(line)) continue;
+    // A gem that a condition adds (auto-ssl with NGX_MRUBY_AUTO_SSL=1) is
+    // not in the default build
+    if (/\b(if|unless)\b/.test(line)) continue;
+    const m =
+      /(?:github:|:github\s*=>)\s*['"]([^'"]+)['"]/.exec(line) ??
+      /(?:mgem:|:mgem\s*=>)\s*['"]([^'"]+)['"]/.exec(line) ??
+      /(?:git:|:git\s*=>)\s*['"][^'"]*?([^/'"]+\/[^/'"]+?)(?:\.git)?['"]/.exec(line) ??
+      /conf\.gem\s+['"]\.\/(mrbgems\/[^'"]+)['"]/.exec(line);
+    if (m) gems.add(m[1]);
+    else problems.push(`build_config.rb: a conf.gem line of the host build that the check cannot read: ${raw.trim()}`);
   }
 }
 const listed = new Set();

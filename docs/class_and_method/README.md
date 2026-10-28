@@ -64,10 +64,11 @@ for APIs.
 
 The default build adds the classes of the mrbgems that
 [Default mrbgems](../reference/build.md#default-mrbgems) in the build
-reference lists, with the class of each gem, and `Dir` from the mruby core
-gem mruby-dir ([mruby/mrbgems/mruby-dir](../../mruby/mrbgems/mruby-dir)).
+reference lists, with the class of each gem and a link to the repository
+that documents it.
 
-`Dir` comes from the mruby core gem mruby-dir. ngx_mruby 2.x took it from
+`Dir` comes from the mruby core gem mruby-dir
+([mruby/mrbgems/mruby-dir](../../mruby/mrbgems/mruby-dir)). ngx_mruby 2.x took it from
 iij/mruby-dir, which the core gem started from; every method of that gem
 stays. The differences:
 
@@ -1380,7 +1381,7 @@ HELLO
 
 Returns the response body.
 In a header filter, which runs before the body has been read, it returns an empty string (since 2.7.1; 2.7.0 returned a string as long as `Content-Length` whose bytes were not the body, or raised an `ArgumentError` when the length was unknown or 10 MB or more).
-To learn the length there, read the nginx variable `$sent_http_content_length` through `Nginx::Var`.
+To learn the length there, call `Nginx::Var.new.sent_http_content_length`, which reads the variable.
 
 ```ruby
 f = Nginx::Filter.new

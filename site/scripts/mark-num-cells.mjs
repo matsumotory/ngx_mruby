@@ -13,22 +13,33 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { distDir, htmlFiles } from './lib/site.mjs';
 
-const NUMERIC = /^[0-9][0-9.,:/x%+ -]*( ?(px|ms|s|KiB|MiB|GiB|KB|MB|GB))?$/;
+const NUMERIC = /^[0-9][0-9.,:/x%+() -]*( ?(px|ms|s|KiB|MiB|GiB|KB|MB|GB))?$/;
 export const isNumeric = (text) => NUMERIC.test(text.trim());
 
-const decode = (s) => s.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
-const argv = process.argv.slice(2);
-const dist = argv[0] === '--dist' && argv[1] ? path.resolve(argv[1]) : distDir;
-let cells = 0;
-for (const file of htmlFiles(dist)) {
-  const full = path.join(dist, file);
-  const html = fs.readFileSync(full, 'utf8');
+// Gives the class num to the cells of numbers in the HTML of one page.
+export function markCells(html) {
+  let cells = 0;
   const out = html.replace(/<(td|th)((?:\s[^>]*)?)>([\s\S]*?)<\/\1>/g, (all, tag, attrs, inner) => {
     if (!isNumeric(decode(inner)) || /\bclass="[^"]*\bnum\b/.test(attrs)) return all;
     cells++;
     const withClass = /\bclass="/.test(attrs) ? attrs.replace(/\bclass="/, 'class="num ') : `${attrs} class="num"`;
     return `<${tag}${withClass}>${inner}</${tag}>`;
   });
-  if (out !== html) fs.writeFileSync(full, out);
+  return { html: out, cells };
 }
-console.log(`mark-num-cells: ${cells} table cell(s) of numbers marked with the class num`);
+
+const decode = (s) => s.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const argv = process.argv.slice(2);
+  const dist = argv[0] === '--dist' && argv[1] ? path.resolve(argv[1]) : distDir;
+  let cells = 0;
+  for (const file of htmlFiles(dist)) {
+    const full = path.join(dist, file);
+    const html = fs.readFileSync(full, 'utf8');
+    const marked = markCells(html);
+    cells += marked.cells;
+    if (marked.html !== html) fs.writeFileSync(full, marked.html);
+  }
+  console.log(`mark-num-cells: ${cells} table cell(s) of numbers marked with the class num`);
+}

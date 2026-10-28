@@ -344,9 +344,15 @@ function render(page) {
     for (const child of node.children ?? []) collect(child);
   };
   collect(tree);
+  const inUrl = new Set();
   const visit = (node) => {
     if (inRemoved(node)) return;
     const where = `${page.source}:${node.position?.start.line}`;
+    // The text of a link written as its URL (an autolink, or a bare URL
+    // that GFM makes a link) is the URL: it gets no <wbr>
+    if (node.type === 'link' && src[node.position.start.offset] !== '[') {
+      for (const child of node.children ?? []) inUrl.add(child);
+    }
     if (node.type === 'link' || node.type === 'image' || node.type === 'definition') {
       const range = destinationRange(src, node);
       if (range) {
@@ -360,7 +366,7 @@ function render(page) {
       } else if (node.type !== 'link') {
         fail(`${where}: could not find the destination ${node.url} of this ${node.type} in the source`);
       }
-    } else if (node.type === 'text' && SNAKE.test(node.value)) {
+    } else if (node.type === 'text' && SNAKE.test(node.value) && !inUrl.has(node)) {
       // Long identifiers such as mruby_ssl_handshake_handler_code break
       // after their underscores, not at any character, so that no line of a
       // heading or list item ends with one or two characters of a name
@@ -368,7 +374,8 @@ function render(page) {
       const start = node.position.start.offset;
       const end = node.position.end.offset;
       if (src.slice(start, end) === node.value) {
-        edits.push([start, end, node.value.replace(SNAKE_ALL, breakName)]);
+        // Not inside a URL of the text (http://host/YOUR_MRUBY_SCRIPT.rb)
+        edits.push([start, end, node.value.replace(SNAKE_ALL, (w, at, all) => (/\S*:\/\/\S*$/.test(all.slice(0, at)) ? w : breakName(w)))]);
       }
     } else if (node.type === 'html') {
       // The attributes are found in the source text of the node, not in
