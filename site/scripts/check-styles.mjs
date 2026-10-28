@@ -361,20 +361,32 @@ async function main() {
                 // checked, so that both states are checked on every run,
                 // whatever the timing of the requests.
                 let release;
+                let heldRequests = 0;
                 const held = new Promise((resolve) => (release = resolve));
                 await tab.route('**/pagefind/fragment/**', async (route) => {
+                  heldRequests++;
                   await held;
                   await route.continue();
                 });
                 await tab.locator('dialog[open] input').fill('filter');
                 const states = [];
+                const placeholders = tab.locator('#starlight__search .pagefind-ui__loading');
+                // Only a timeout means that a state did not come; any other
+                // error is a fault of this check and stops it.
+                const timedOut = (e) => {
+                  if (e?.name !== 'TimeoutError') throw e;
+                };
                 try {
-                  await tab.locator('#starlight__search .pagefind-ui__loading').first().waitFor({ timeout: 10000 });
-                  states.push('loading');
+                  await placeholders.first().waitFor({ timeout: 10000 });
                   for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open, loading: ${f}`);
                   for (const f of await tab.evaluate(inspect, { ...cfg, width: 0 })) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open, loading: ${f}`);
-                } catch {
-                  failures.push(`${tag}: the search for "filter" showed no result placeholder`);
+                  // The loading state was checked only if the fragments were
+                  // held and the placeholders were still there afterwards.
+                  if (heldRequests === 0 || (await placeholders.count()) === 0) failures.push(`${tag}: the fragments of the search results were not held (${heldRequests} held), so the placeholders may not have been checked`);
+                  else states.push('loading');
+                } catch (e) {
+                  timedOut(e);
+                  failures.push(`${tag}: the search for "filter" showed no result placeholder within 10 s`);
                 }
                 release();
                 try {
@@ -382,8 +394,9 @@ async function main() {
                   states.push('settled');
                   for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open: ${f}`);
                   for (const f of await tab.evaluate(inspect, { ...cfg, width: 0 })) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open: ${f}`);
-                } catch {
-                  failures.push(`${tag}: the results of the search for "filter" did not finish loading`);
+                } catch (e) {
+                  timedOut(e);
+                  failures.push(`${tag}: the results of the search for "filter" did not finish loading within 10 s`);
                 }
                 await tab.unroute('**/pagefind/fragment/**');
                 if (states.length === 2) searches++;
