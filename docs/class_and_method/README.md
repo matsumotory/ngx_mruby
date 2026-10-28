@@ -489,65 +489,126 @@ A handshake whose code sets no certificate, also one whose code does not call `N
 ### Nginx::SSL#servername -> string
 
 Returns the SNI server name from the client.
+The client chooses this name, Treat it as untrusted input (see [Trust boundary](../README.md#trust-boundary)): look it up in a table of known names, and do not build a path from it.
 
 ```nginx
-mruby_ssl_handshake_handler_code '
-  ssl = Nginx::SSL.new
-  ssl.certificate = "/path/to/#{ssl.servername}.crt"
-  ssl.certificate_key = "/path/to/#{ssl.servername}.key"
-';
+http {
+    mruby_init_code '
+        CERT_DIRS = {
+          "example.com"     => "/etc/nginx/certs/example.com",
+          "www.example.com" => "/etc/nginx/certs/www.example.com",
+        }
+    ';
 
+    server {
+        listen 443 ssl;
+        ssl_certificate     /etc/nginx/certs/default.crt;
+        ssl_certificate_key /etc/nginx/certs/default.key;
+
+        mruby_ssl_handshake_handler_code '
+          ssl = Nginx::SSL.new
+          dir = CERT_DIRS[ssl.servername]
+          if dir
+            ssl.certificate = "#{dir}/cert.pem"
+            ssl.certificate_key = "#{dir}/key.pem"
+          end
+        ';
+    }
+}
 ```
+
+The lookup is exact: the name is compared as the client sent it, including its case. A name that is not in `CERT_DIRS`, also an empty name from a client that sends none, keeps the certificate of `ssl_certificate` and `ssl_certificate_key`.
+
 ### Nginx::SSL#certificate=(string)
 
 Sets the certificate file path used for the connection.
+The worker reads the file during the handshake.
+Take the path from a table, not from the server name.
 
 ```nginx
 mruby_ssl_handshake_handler_code '
   ssl = Nginx::SSL.new
-  ssl.certificate = "/path/to/#{ssl.servername}.crt"
-  ssl.certificate_key = "/path/to/#{ssl.servername}.key"
+  dir = CERT_DIRS[ssl.servername]
+  if dir
+    ssl.certificate = "#{dir}/cert.pem"
+    ssl.certificate_key = "#{dir}/key.pem"
+  end
 ';
 ```
+
+`CERT_DIRS` is the table of the example under [`servername`](#nginxsslservername---string).
 
 ### Nginx::SSL#certificate_key=(string)
 
 Sets the certificate key file path used for the connection.
+Set it together with `certificate=`; the handshake changes the certificate only when both are set.
+Take the path from a table, not from the server name.
 
 ```nginx
 mruby_ssl_handshake_handler_code '
   ssl = Nginx::SSL.new
-  ssl.certificate = "/path/to/#{ssl.servername}.crt"
-  ssl.certificate_key = "/path/to/#{ssl.servername}.key"
+  dir = CERT_DIRS[ssl.servername]
+  if dir
+    ssl.certificate = "#{dir}/cert.pem"
+    ssl.certificate_key = "#{dir}/key.pem"
+  end
 ';
 ```
+
+`CERT_DIRS` is the table of the example under [`servername`](#nginxsslservername---string).
+
 ### Nginx::SSL#certificate_data=(string)
 
-Sets the string representation of the certificate data used for the connection
+Sets the certificate data used for the connection, as a string in PEM format (the certificate, then its chain).
+Read the files once in the init code, so that the handshake does not read a file, and look the data up by server name.
+The init code runs once, so a certificate that changes on disk reaches the handshake after `nginx -s reload`.
 
 ```nginx
-mruby_ssl_handshake_handler_code '
-  ssl = Nginx::SSL.new
-  certificate_data = File.read("/path/to/#{ssl.servername}.crt")
-  key_data = File.read("/path/to/#{ssl.servername}.key")
-  ssl.certificate_data = certificate_data
-  ssl.certificate_key_data = key_data
-';
+http {
+    mruby_init_code '
+        CERT_DATA = {}
+        ["example.com", "www.example.com"].each do |name|
+          CERT_DATA[name] = [
+            File.read("/etc/nginx/certs/#{name}/cert.pem"),
+            File.read("/etc/nginx/certs/#{name}/key.pem"),
+          ]
+        end
+    ';
+
+    server {
+        listen 443 ssl;
+        ssl_certificate     /etc/nginx/certs/default.crt;
+        ssl_certificate_key /etc/nginx/certs/default.key;
+
+        mruby_ssl_handshake_handler_code '
+          ssl = Nginx::SSL.new
+          data = CERT_DATA[ssl.servername]
+          if data
+            ssl.certificate_data = data[0]
+            ssl.certificate_key_data = data[1]
+          end
+        ';
+    }
+}
 ```
 
 ### Nginx::SSL#certificate_key_data=(string)
 
-Sets the string representation of the certificate key data used for the connection
+Sets the certificate key data used for the connection, as a string in PEM format.
+Set it together with `certificate_data=`; the handshake changes the certificate by data only when both are set, and then it does not use the paths.
 
 ```nginx
 mruby_ssl_handshake_handler_code '
   ssl = Nginx::SSL.new
-  certificate_data = File.read("/path/to/#{ssl.servername}.crt")
-  key_data = File.read("/path/to/#{ssl.servername}.key")
-  ssl.certificate_data = certificate_data
-  ssl.certificate_key_data = key_data
+  data = CERT_DATA[ssl.servername]
+  if data
+    ssl.certificate_data = data[0]
+    ssl.certificate_key_data = data[1]
+  end
 ';
 ```
+
+`CERT_DATA` is the table of the example under [`certificate_data=`](#nginxsslcertificate_datastring).
 
 ### Nginx::SSL.errlogger(log_level, string)
 
@@ -570,8 +631,6 @@ Returns the port number used for the connection.
 
 mruby_ssl_handshake_handler_code '
   ssl = Nginx::SSL.new
-  ssl.certificate = "/etc/ssl/#{ssl.servername}.crt"
-  ssl.certificate_key = "/etc/ssl/#{ssl.servername}.key"
   Userdata.new.ssl_local_port = ssl.local_port
 ';
 
@@ -588,8 +647,6 @@ This is a wrapper for SSL_get_version(). See [SSL_get_version(3)](https://www.op
 ```nginx
 mruby_ssl_handshake_handler_code '
   ssl = Nginx::SSL.new
-  ssl.certificate = "/etc/ssl/#{ssl.servername}.crt"
-  ssl.certificate_key = "/etc/ssl/#{ssl.servername}.key"
   Userdata.new.ssl_tls_version = ssl.tls_version
 ';
 
@@ -1122,6 +1179,17 @@ The method is called when `Nginx::Var#VARNAME` or `Nginx::Var#VARNAME=` is evalu
 Set the 2nd arg to the variable if the symbol ends with `=`. Otherwise, returns the value.
 
 The variable is looked up by the name in lowercase. Since 2.7.2, a name that is empty or made only of `=` raises `NoMethodError`, and a setter called without a value raises `ArgumentError` and leaves the variable as it was.
+
+Since 3.0.0, the first `v.NAME` or `v.NAME = value` of a name in a worker process also defines the accessor as a method of `Nginx::Var`, and the later accesses of that name in the worker call the method instead of `method_missing`. The method reads and writes the variable as `method_missing` does: the same values, `nil` for a name that is not a variable, the same exceptions and the same lines in `error.log`. A worker defines:
+
+- a getter and a setter for each declared variable that scripts use: the variables of nginx and its modules, and the ones that `set` declares;
+- a getter for the first 16 names of prefix variables that scripts use, the variables whose names start with a prefix that nginx defines, such as `arg_`, `http_`, `cookie_` and `upstream_http_`. Any suffix makes such a name, so a worker keeps at most 16 of them.
+
+Only a name in lowercase gets a method: the name has to be made of `a` to `z`, `0` to `9` and `_` (with `=` at the end for a setter). `v.Request_Method` reads `$request_method` through `method_missing` and defines nothing. No method is defined for a name that is not a variable, for a setter of a prefix variable, for an instance of a subclass of `Nginx::Var`, when `Nginx::Var` is frozen, or when `Nginx::Var` or one of its ancestors already has a method of that name.
+
+The defined methods show in introspection: after the first `v.request_method` in a worker, `v.respond_to?(:request_method)` returns `true` and `Nginx::Var.instance_methods(false)` lists `request_method`. What they show depends on the requests that the worker has served, so two workers can answer differently. To tell whether a variable exists, use `Nginx::Var#exist?`. Once the method exists, a method of the same name that a script defines later on `Object` or `Kernel`, for example with a `def` at the top level of handler code, no longer hides the variable from `v.NAME`.
+
+`Nginx::Connection#remote_ip`, `#remote_port`, `#local_ip` and `#local_port`, `Nginx::Server#document_root`, `#realpath_root` and `#path`, and `Nginx::Request#hostname`, `#authority`, `#filename`, `#user` and `#get_body` read their variables from nginx directly. Since 3.0.0, a method that a script defines on `Nginx::Var` does not change what they return.
 
 ### Nginx::Var#set(name, value)
 

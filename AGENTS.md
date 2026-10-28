@@ -63,28 +63,25 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
   - an operator's script blocks its worker when it uses mruby-sleep,
     mruby-socket or mruby-io, which the default build includes on both
     branches, or matsumotory/mruby-redis (a hiredis client), which the
-    default build includes again since 2.7.2. The rule is for ngx_mruby's own code, not for such scripts.
+    default build includes again since 2.7.2. The rule is for ngx_mruby's
+    own code, not for such scripts.
 - Which changes are measured. A PR that changes an input of the measured
   binary is compared with its base in the callgrind lane ("Performance
-  comparison with callgrind" in `docs/test/README.md` on `next`). The inputs
-  are those that "In CI" in `docs/test/README.md` on `next` lists: `src/`,
-  `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `configure`,
-  `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and on `next` the
-  gem lock `build_config.rb.lock`. On `next`, the `perf` job runs the
-  comparison on such PRs. On `master`, which has no `perf` job yet, the
-  author runs the commands below.
+  comparison with callgrind" in `docs/test/README.md`). The inputs are
+  those that "In CI" in `docs/test/README.md` lists: `src/`, `mrbgems/`,
+  `mruby/`, `dependence/`, `build_config.rb`, `configure`, `config.in`,
+  `Makefile.in`, `build.sh`, `nginx_version`, and on `next` the gem lock
+  `build_config.rb.lock` (`master` commits no lock). The `perf` job of
+  `.github/workflows/test.yml` runs the comparison on such PRs, on `master`
+  and on `next`.
   - The author quotes the comparison in the PR body, under "Leak /
     performance impact" (see `.github/PULL_REQUEST_TEMPLATE.md`): the table
     with the header lines of `report.txt` above it (the line with `N`,
-    `WARMUP` and the thresholds, and the lines on the gems; on `next`, in
-    the job's log), and the commits compared. On `next`, these are the run
-    of the `perf` job and the commits that its log prints (`base: ...,
-    head: ...`). On `master`, they are the `origin/master` commit used as
-    the base, the head commit, and the `next` commit that the lane came
-    from. When the base branch gains a change to a measured input before
-    the merge, the comparison is made and quoted again: on `next` by the CI
-    run that condition 2 of "Review and merge" asks for, on `master` by the
-    author with the commands below.
+    `WARMUP` and the thresholds, and the lines on the gems; in the job's
+    log), the run of the `perf` job, and the commits that its log prints
+    (`base: ..., head: ...`). When the base branch gains a change to a
+    measured input before the merge, the comparison is made and quoted
+    again by the CI run that condition 2 of "Review and merge" asks for.
   - The lane builds nginx without `--with-stream` and has no stream
     scenario, so for a change to `src/stream/` alone both builds are the same
     binary. Such a PR says so and states instead what the change adds per
@@ -103,33 +100,32 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     note `the change of this scenario may come from when the response arrived`,
     which the report prints when the difference of those calls alone makes
     half of the `WARN` threshold or more ("Agent proxy scenarios in the
-    comparison" in `docs/test/README.md` on `next`). Both runs are quoted,
-    and the second replaces the first. In every other case, the `WARN` or
-    `FAIL` goes to the owner without a second run.
+    comparison" in `docs/test/README.md`). Both runs are quoted, and the
+    second replaces the first. In every other case, the `WARN` or `FAIL`
+    goes to the owner without a second run.
   - A session does not merge a PR while the latest run of its `perf` job
     reports `FAIL` or `ERROR`, except for a `FAIL` that the owner accepted
-    on the PR. This holds although `ci-ok` does not need the job yet, and
-    although "In CI" in `docs/test/README.md` on `next` calls the job
-    advisory; a follow-up PR to `next` aligns that text. The plan (Pillar E
-    of `docs/proposals/v3-plan.md` on `next`) adds the job to the `needs` of
+    on the PR. This holds although `ci-ok` does not need the job yet (on
+    `next`, "In CI" in `docs/test/README.md` still calls the job advisory;
+    a follow-up PR to `next` aligns that text). The plan (Pillar E of
+    `docs/proposals/v3-plan.md` on `next`) adds the job to the `needs` of
     `ci-ok` once it has run on code changes without false alarms; from then
-    on a `FAIL` or an `ERROR` also fails `ci-ok`. On `master`, which has no
-    `perf` job, the reviewer checks the author's table by the same rules.
-- The `master` commands. Until the lane is ported to `master`, a `master`
-  change is measured with the lane of `next` (`test/perf/`, the scenarios in
-  `test/soak/` and `test/build_release.sh`), added to a copy of the tree
-  outside the checkout. The base is the tip of `origin/master`, so update
-  the branch to it first: a branch that is behind shows the newer `master`
-  commits as reverse differences. From a checkout of the PR's head commit:
+    on a `FAIL` or an `ERROR` also fails `ci-ok`.
+- Before a tag. Each PR is compared only with its base, so changes that
+  stay below `WARN` can add up. The check PR of "Before the tag" (see
+  `docs/releases/README.md`) therefore also compares its head with the tag
+  where the range of the check starts. The base is that tag, and the head
+  must contain the tip of its base branch, so update the branch first. From
+  a checkout of the check PR's head commit (`<base>` is `master` or
+  `next`):
 
   ```sh
-  git fetch origin master next
-  git merge-base --is-ancestor origin/master HEAD   # exits 1 when the branch is behind: update it first
+  git fetch origin <base> --tags
+  git merge-base --is-ancestor origin/<base> HEAD   # exits 1 when the branch is behind: update it first
   D=$HOME/ngx_mruby-perf   # any directory outside the checkout
   rm -rf "$D" && mkdir -p "$D/base" "$D/head"
-  git archive origin/master | tar -x -C "$D/base"
+  git archive <tag> | tar -x -C "$D/base"
   git archive HEAD | tar -x -C "$D/head"
-  git archive origin/next test/perf test/soak test/build_release.sh | tar -x -C "$D/head"
   cd "$D/head" && sh test/perf/compare.sh "$D/base"
   ```
 
@@ -141,15 +137,11 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
   docker run --rm -v "$D:$D" -w "$D/head" -e D="$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev valgrind >/dev/null && sh test/perf/compare.sh "$D/base"'
   ```
 
-  The report is in `$D/head/build_perf/report.txt`.
-- Before a tag. Each PR is compared only with its base, so changes that
-  stay below `WARN` can add up. The check PR of "Before the tag" (see
-  `docs/releases/README.md`) therefore also compares its head with the tag
-  where the range of the check starts. It uses the commands above with the
-  base made from that tag (`git archive <tag> | tar -x -C "$D/base"`); on
-  `next`, the up-to-date check is against `origin/next`, and the line that
-  adds the lane is left out. It quotes the table as above, and a `WARN` or
-  `FAIL` there goes to the owner.
+  The report is in `$D/head/build_perf/report.txt`. The measurement
+  (`test/perf/`, the scenarios in `test/soak/`) comes from the head, so a
+  tag from before the lane was added is measured as well. The check PR
+  quotes the table as above, and a `WARN` or `FAIL` there goes to the
+  owner.
 - Planned, not in place yet: a benchmark of the test nginx for throughput
   and latency (Pillar E and section 8 of `docs/proposals/v3-plan.md` on
   `next`). Where its results are recorded is decided when it is added.
@@ -411,9 +403,10 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
 - `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18132,
-  18136, 18138, 18140, 18143-18144, 18147-18153, 12345-12359, 12372-12373;
-  18116 and 12357 belong to the second nginx that
-  `test/t/cases/_second_instance.rb` starts, 12372 and 12373 to the mock LLM
+  18136, 18138, 18140, 18143-18144, 18147-18153, 18155-18159, 12345-12359,
+  12363, 12372-12373; 18116 and 12357 belong to the second nginx that
+  `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
+  `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
   in `test/t/ngx_mruby.rb`) and
   kills every running `nginx` process before it starts. Run only one `test.sh` per
@@ -473,10 +466,18 @@ npm run preview           # serves dist/ at http://localhost:4321/
   to its source), on a file of `docs/` without a heading or whose first
   heading, the page title, contains HTML, and on a relative link to a path
   that git does not track.
-- The checks of step 1 of the proposal (section 6) are scripts under
-  `site/scripts/` that exit 1 on a failure. `npm run check` runs the four
-  that read `site/dist/`; each takes `--dist`, `--repo` and `--manifest`
-  to run on a copy:
+- The design comes from `site/src/styles/tokens.css` (step 2 of the
+  proposal, section 4): every color of the site is a token there, and no
+  other file under `site/src/` writes a hex color. `src/styles/site.css`
+  applies the tokens to Starlight's pages, `ec.config.mjs` sets Expressive
+  Code's themes (written from `tokens.css` by `scripts/lib/code-themes.mjs`)
+  and frames, and `scripts/lib/postcss-theme-colors.mjs` removes
+  Starlight's and Pagefind's own color variables from their stylesheets at
+  build time, so that the built CSS holds only the tokens' colors.
+- The checks of the proposal (section 6) are scripts under `site/scripts/`
+  that exit 1 on a failure. `npm run check` runs the five that read
+  `site/dist/`; the first four take `--dist`, `--repo` and `--manifest`
+  to run on a copy, `check-css.mjs` takes `--dist`:
   - `sh site/scripts/check-fresh-clone.sh [--keep DIR] [REV]`: a clone of
     the commit (default `HEAD`) builds with `npm ci --ignore-scripts` and
     `npm run build`;
@@ -488,20 +489,58 @@ npm run preview           # serves dist/ at http://localhost:4321/
     `/ja/` with `lang="ja"`, and the `<wbr>` of their h2 are elements of
     the built h2;
   - `node scripts/check-no-js.mjs`: the text of each source is in the HTML
-    without running scripts.
+    without running scripts;
+  - `node scripts/check-css.mjs`: the built CSS has no hex color outside
+    the declarations of `tokens.css` and Expressive Code's stylesheet, no
+    `text-wrap: pretty` or `balance`, `keep-all` only on the h2 of Japanese
+    pages and diagram labels, transitions only of the properties of 4.8
+    and for 200 ms or less, no terminal frame and no font from another
+    host, and `site/src/` no hex color outside `tokens.css`.
+  The others:
+  - `python3 scripts/contrast.py [--tokens FILE] [--markdown]` (`npm run
+    check:contrast`): the contrast of palette A of 4.6 and of the code
+    colors in both themes, read from `tokens.css`;
+  - `sh scripts/check-offline-build.sh [SITE_DIR]` (`npm run
+    check:offline`): `npm run build` succeeds with network access blocked
+    (`sudo unshare --net` on Linux, `sandbox-exec` on macOS), after a probe
+    shows that the sandbox refuses a request;
+  - `node scripts/check-styles.mjs [--dist DIR] [--engine chromium|webkit]`
+    (`npm run check:styles`): computed styles in Chromium and WebKit on the
+    specimen build (below): font sizes of the scale of each language,
+    token colors (code blocks and the colors of highlighted spans
+    included), monospace only for code and numbers, no shadow, gradient or
+    backdrop filter (also with the search dialog and the menu open),
+    margins, paddings, gaps and radii from the sets of 4.5, durations of
+    4.8, at most 90 characters per English line at 1440 px, no horizontal
+    scroll, the right edge of Japanese text at 390 px, and the theme
+    without JavaScript.
+- The specimen pages of 4.12 (the owner chose the four options on
+  2026-10-19; the site builds only that configuration): `npm run
+  build:specimens` builds the site with the specimen pages
+  (`src/specimens/`, under `/specimens/` and `/ja/specimens/`) into
+  `dist-specimens/`, and `npm run specimens` (`node scripts/specimens.mjs
+  [--out DIR]`) writes their screenshots to `build-specimens/`, with a
+  contact sheet and an `index.md`. The normal build has no specimen page;
+  `check-styles.mjs` runs on the specimen build, whose pages hold a
+  diagram, code blocks and tables before the pages of steps 3 and 4 do. The browser checks and the
+  screenshots need Chromium and WebKit for the `playwright` of
+  `package-lock.json`: `npx playwright install chromium webkit` (locally,
+  with `PLAYWRIGHT_BROWSERS_PATH` set to a directory under `.claude/tmp/`
+  to keep them out of your home directory).
 - `node scripts/test-sync-docs.mjs` (`npm run test`) runs the generator
   on fixtures in temporary repositories: links in raw HTML inside
   blockquotes and list items, and an attribute value that stops the build.
-- `.github/workflows/site.yml` runs the five checks and the generator's
-  test on pull requests to `next` that touch `site/` or `docs/` and on
-  every push to `next` (a push that removes a file that `docs/` links to
-  fails there), and uploads `site/dist/` as the artifact `site`. It does
-  not deploy.
+- `.github/workflows/site.yml` runs the checks and the generator's test on
+  pull requests to `next` that touch `site/` or `docs/` and on every push
+  to `next` (a push that removes a file that `docs/` links to fails
+  there), and uploads `site/dist/` as the artifact `site` and the specimen
+  screenshots as the artifact `specimens`. It does not deploy.
 - `site/package.json` and `site/package-lock.json` pin exact versions:
   change them with `npm install --save-exact <package>@<version>` and
   commit both. Nothing that the build generates is committed:
   `site/.gitignore` ignores it, and `test/forbidden_paths.txt` fails a
-  forced add of `site/dist/`, `site/generated/` or `site/.astro/`.
+  forced add of `site/dist/`, `site/dist-specimens/`,
+  `site/build-specimens/`, `site/generated/` or `site/.astro/`.
 - `python3 site/scripts/check_links.py REPO_ROOT FILE...` checks the
   relative links and anchors of Markdown files.
 

@@ -7,6 +7,12 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Propose a release only once it is 7 days old, so that a release that
+    # is compromised or withdrawn soon after its publication is not picked
+    # up. Security updates do not wait (Dependabot options reference,
+    # "cooldown").
+    cooldown:
+      default-days: 7
 
   # mruby/ is a vendored copy of upstream mruby. Its Gemfile and
   # Gemfile.lock belong to mruby's own documentation tooling, which
@@ -19,5 +25,9 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 0
+    # No version update is opened here; the cooldown only keeps zizmor's
+    # dependabot-cooldown audit quiet for this entry.
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "*"

@@ -129,6 +129,13 @@ echo "ngx_mruby building ... Done"
 
 echo "ngx_mruby testing ..."
 $MAKE install
+# TEST_SH_SKIP_TESTS=1 stops after the build and the install, before the test
+# configuration is written and nginx is started: test/nginx-tests/run.sh
+# builds nginx with ngx_mruby this way and runs nginx's own test suite on it.
+if [ -n "$TEST_SH_SKIP_TESTS" ]; then
+    echo "test.sh ... built and installed to ${NGINX_INSTALL_DIR}; tests skipped (TEST_SH_SKIP_TESTS)"
+    exit 0
+fi
 $PS_C nginx 2>/dev/null && $KILLALL nginx
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 rm -rf ${NGINX_INSTALL_DIR}/conf/conf.d
@@ -167,7 +174,15 @@ do
 done
 
 : ${NGINX_RUNNER:=exec}
-: ${NGINX_HEATTIME:=2}
+# The upper bound, in seconds, of each wait for the ports of the test nginx
+# below; test.sh goes on as soon as nginx accepts connections. See "Waiting
+# for nginx to listen" in docs/test/README.md for what the value is based on.
+: ${NGINX_HEATTIME:=60}
+
+# The ports to wait for are those of the listen directives of the http {}
+# configuration (see test/t/cases/_wait_for_listen.rb). They must be free
+# before nginx starts, so that the wait cannot take another process for it.
+ruby test/t/cases/_wait_for_listen.rb free ${NGINX_HEATTIME} test/conf/nginx.conf test/conf/conf.d/*.conf
 
 echo "====================================="
 echo ""
@@ -181,7 +196,7 @@ nginx_pid=$!
 trap "kill $nginx_pid; wait" EXIT
 echo ""
 echo ""
-sleep ${NGINX_HEATTIME} # waiting for nginx
+ruby test/t/cases/_wait_for_listen.rb listen ${NGINX_HEATTIME} $nginx_pid test/conf/nginx.conf test/conf/conf.d/*.conf
 ./mruby/build/test/bin/mruby ./test/t/ngx_mruby.rb 2> ${NGINX_INSTALL_DIR}/logs/stderr.log
 for f in test/t/cases/*.rb; do
     [ -e "$f" ] || continue

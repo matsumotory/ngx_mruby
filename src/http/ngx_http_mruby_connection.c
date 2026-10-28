@@ -6,27 +6,26 @@
 
 #include "ngx_http_mruby_connection.h"
 
-#include "ngx_http_mruby_core.h"
-#include "ngx_http_mruby_request.h"
+#include "ngx_http_mruby_var.h"
 
 static mrb_value ngx_mrb_get_conn_var_remote_addr(mrb_state *mrb, mrb_value self)
 {
-  return mrb_funcall_id(mrb, ngx_mrb_get_request_var(mrb, self), NGX_HTTP_MRUBY_SYM(mrb, REMOTE_ADDR), 0);
+  return ngx_mrb_var_get_fixed(mrb, NGX_MRB_VAR_REMOTE_ADDR);
 }
 
 static mrb_value ngx_mrb_get_conn_var_remote_port(mrb_state *mrb, mrb_value self)
 {
-  return mrb_funcall_id(mrb, ngx_mrb_get_request_var(mrb, self), NGX_HTTP_MRUBY_SYM(mrb, REMOTE_PORT), 0);
+  return ngx_mrb_var_get_fixed(mrb, NGX_MRB_VAR_REMOTE_PORT);
 }
 
 static mrb_value ngx_mrb_get_conn_var_server_addr(mrb_state *mrb, mrb_value self)
 {
-  return mrb_funcall_id(mrb, ngx_mrb_get_request_var(mrb, self), NGX_HTTP_MRUBY_SYM(mrb, SERVER_ADDR), 0);
+  return ngx_mrb_var_get_fixed(mrb, NGX_MRB_VAR_SERVER_ADDR);
 }
 
 static mrb_value ngx_mrb_get_conn_var_server_port(mrb_state *mrb, mrb_value self)
 {
-  return mrb_funcall_id(mrb, ngx_mrb_get_request_var(mrb, self), NGX_HTTP_MRUBY_SYM(mrb, SERVER_PORT), 0);
+  return ngx_mrb_var_get_fixed(mrb, NGX_MRB_VAR_SERVER_PORT);
 }
 
 void ngx_mrb_conn_class_init(mrb_state *mrb, struct RClass *class)
