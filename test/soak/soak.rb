@@ -68,7 +68,7 @@ EXACT_KEYS = %i[gc_live gc_root gc_root_fibers gc_arena_idx timers fd_own active
 # defined in SCENARIOS (test/soak/scenarios.rb) but left out here runs only
 # when SOAK_SCENARIOS names it.
 DEFAULT_SCENARIOS = %w[hello headers var filter sleep sub_request file disconnect
-                       agent_stream agent_client_abort agent_upstream_reset].freeze
+                       agent_stream agent_client_abort agent_upstream_reset agent_responses_stream].freeze
 
 class SoakError < StandardError; end
 

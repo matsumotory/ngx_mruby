@@ -484,8 +484,9 @@ Facts the rows below rest on, checked against the cited page on 2026-10-04
 
 **What is on `next`.** The harness for the use case came with #554.
 `test/soak/mock_llm.rb` is a mock upstream that answers like the Messages
-API: streams of a given length, a hold or a reset after a given event, an
-error status before the first event (`docs/test/README.md`, "Mock LLM
+API and the Responses API: streams of a given length, a hold or a reset
+after a given event, an error status before the first event, and for
+Responses the terminal event (`docs/test/README.md`, "Mock LLM
 upstream"). The soak lane (#542, #557) runs three scenarios in front of it in
 the required `soak` job: `agent_stream`, `agent_client_abort` and
 `agent_upstream_reset`, which passed their checks in three runs on aarch64 and
@@ -792,14 +793,20 @@ nginx spends to relay one more event (section 4).
     and its target is set from the sum of its parts once they are measured.
     After that, the relative gate of the lane (`WARN` from 3%, `FAIL` from
     5% between base and head) guards them.
-  - The Responses API: the mock answers only `POST /v1/messages` today
-    (`test/soak/mock_llm.rb`). It gets a Responses mode: `POST /v1/responses`
-    answered with a stream that ends with `response.completed`,
+  - The Responses API: the mock answers `POST /v1/responses` as well
+    (`test/soak/mock_llm.rb`, "Mock LLM upstream" in `docs/test/README.md`),
+    with a stream that ends with `response.completed`,
     `response.incomplete` or `response.failed`, chosen per request. The perf
     lane, the soak lane and the functional tests get Responses scenarios
     beside the Messages ones: a stream relayed without Ruby, a stream through
     the event filter, and a terminal event larger than the filter's size
     limit, which reaches the client unchanged while the access log names it.
+    The first is in place: `responses_stream_plain_50` and `_1000` in the
+    perf lane, `agent_responses_stream` (through the access handler of
+    `/v1/route`) in the soak lane, and the recipes of
+    `test/t/cases/agent_proxy.rb` on `/v1/responses`, with a stream for each
+    terminal event compared byte for byte. The other two come with the event
+    filter (step 7b).
   - Recorded, not gated: throughput and p50 and p99 latency of the stream
     and end-to-end scenarios with `oha` or `h2load`; the time to the first
     event that the proxy adds (the client's first event through nginx minus
