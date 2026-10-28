@@ -493,6 +493,17 @@ dialog {
 #starlight__search .pagefind-ui__result-inner > * + * {
   border-top: 1px solid var(--color-border);
 }
+/* A result's title, and a nested result's: Pagefind sets both to 21 px.
+   While a result loads, its title is a placeholder with text of its own,
+   which then showed at 21 px; the titles take the size of the links they
+   hold, sizes of 4.4. Loaded rows take the line height of that text, so
+   they are 8 to 11 px lower than with Pagefind's size. */
+#starlight__search .pagefind-ui__result-title {
+  font-size: var(--text-body);
+}
+#starlight__search .pagefind-ui__result-nested .pagefind-ui__result-title {
+  font-size: var(--text-nav);
+}
 #starlight__search .pagefind-ui__result-link {
   font-size: var(--text-body);
 }

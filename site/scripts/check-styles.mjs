@@ -11,7 +11,8 @@
 //   in dark, no color is #000000 and surface is lighter than bg (4.7);
 // - monospace only where 4.3, item 2 puts it;
 // - no box-shadow, text-shadow, backdrop-filter or gradient (4.3 item 5),
-//   also with the search dialog open, and at 390 px with the menu open;
+//   also with the search dialog open (while its results load and after
+//   they have loaded), and at 390 px with the menu open;
 // - margins, paddings, gaps and radii from the sets of 4.5 (computed values
 //   through the CSS Typed OM, so that auto and percentages stay keywords);
 // - durations of 4.8: 200 ms or less, 0 under prefers-reduced-motion, no
@@ -354,11 +355,51 @@ async function main() {
                   await context.close();
                   continue;
                 }
+                // Pagefind shows each result first as a placeholder, while
+                // the result's fragment loads, and then as the result. The
+                // fragments are held until the placeholders have been
+                // checked, so that both states are checked on every run,
+                // whatever the timing of the requests.
+                let release;
+                let heldRequests = 0;
+                const held = new Promise((resolve) => (release = resolve));
+                await tab.route('**/pagefind/fragment/**', async (route) => {
+                  heldRequests++;
+                  await held;
+                  await route.continue();
+                });
                 await tab.locator('dialog[open] input').fill('filter');
-                await tab.waitForTimeout(600);
-                searches++;
-                for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open: ${f}`);
-                for (const f of await tab.evaluate(inspect, { ...cfg, width: 0 })) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open: ${f}`);
+                const states = [];
+                const placeholders = tab.locator('#starlight__search .pagefind-ui__loading');
+                // Only a timeout means that a state did not come; any other
+                // error is a fault of this check and stops it.
+                const timedOut = (e) => {
+                  if (e?.name !== 'TimeoutError') throw e;
+                };
+                try {
+                  await placeholders.first().waitFor({ timeout: 10000 });
+                  for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open, loading: ${f}`);
+                  for (const f of await tab.evaluate(inspect, { ...cfg, width: 0 })) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open, loading: ${f}`);
+                  // The loading state was checked only if the fragments were
+                  // held and the placeholders were still there afterwards.
+                  if (heldRequests === 0 || (await placeholders.count()) === 0) failures.push(`${tag}: the fragments of the search results were not held (${heldRequests} held), so the placeholders may not have been checked`);
+                  else states.push('loading');
+                } catch (e) {
+                  timedOut(e);
+                  failures.push(`${tag}: the search for "filter" showed no result placeholder within 10 s`);
+                }
+                release();
+                try {
+                  await tab.waitForFunction(() => !document.querySelector('#starlight__search .pagefind-ui__loading') && document.querySelector('#starlight__search .pagefind-ui__result-link'), null, { timeout: 10000 });
+                  states.push('settled');
+                  for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open: ${f}`);
+                  for (const f of await tab.evaluate(inspect, { ...cfg, width: 0 })) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open: ${f}`);
+                } catch (e) {
+                  timedOut(e);
+                  failures.push(`${tag}: the results of the search for "filter" did not finish loading within 10 s`);
+                }
+                await tab.unroute('**/pagefind/fragment/**');
+                if (states.length === 2) searches++;
                 await tab.keyboard.press('Escape');
               }
               const menu = tab.locator('button.sl-menu-button');
@@ -396,7 +437,7 @@ async function main() {
   // One line per distinct failure; the same element fails on many pages.
   const counted = new Map();
   for (const f of failures) {
-    const key = f.replace(/^\S+ \S+ \S+ \S+( reduced-motion)?( search open| menu open)?: /, '');
+    const key = f.replace(/^\S+ \S+ \S+ \S+( reduced-motion)?( search open(, loading)?| menu open)?: /, '');
     const e = counted.get(key) ?? { n: 0, first: f };
     e.n++;
     counted.set(key, e);
@@ -406,7 +447,7 @@ async function main() {
     console.log(`check-styles: ${failures.length} failure(s), ${counted.size} distinct; ${loads} page loads of ${PAGES.length} pages in ${opt.engines.join(' and ')}`);
     process.exit(1);
   }
-  console.log(`check-styles: ok; ${loads} page loads of ${PAGES.length} pages in ${opt.engines.join(' and ')}, light and dark, ${SIZES.map((s) => `${s.width}x${s.height}`).join(' and ')}; ${searches} with the search dialog open, ${menus} with the menu open`);
+  console.log(`check-styles: ok; ${loads} page loads of ${PAGES.length} pages in ${opt.engines.join(' and ')}, light and dark, ${SIZES.map((s) => `${s.width}x${s.height}`).join(' and ')}; ${searches} with the search dialog open (results loading and loaded), ${menus} with the menu open`);
 }
 
 main().catch((e) => {
