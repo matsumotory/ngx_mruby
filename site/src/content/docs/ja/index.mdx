@@ -21,7 +21,7 @@ import Sample from '../../../components/Sample.astro';
 
 ## CIが<wbr />毎回<wbr />実行する<wbr />例
 
-次の4つのファイルは、このリポジトリのテストのファイルです。nginxは、`/hello`へのリクエストを受けるたびにスクリプトを実行します。レスポンスは、そのスクリプトが書きます。
+次の4つのファイルは、このリポジトリのテストのファイルです。nginxは、`/hello`へのリクエストを受けるたびにスクリプトを実行します。レスポンスはそのスクリプトが書きます。
 
 <Sample lang="ja" case="test/t/cases/home_example.rb" conf="test/conf/conf.d/70-home-example.conf" script="test/html/home_example.rb" request="test/html/home_example.request" response="test/html/home_example.response" />
 
@@ -30,7 +30,7 @@ import Sample from '../../../components/Sample.astro';
 <ul class="ways">
 <li><a href="/ja/install/">インストール</a><p>ngx_mrubyを組み込んだnginxをソースからビルドするか、Dockerのイメージで試します。</p></li>
 <li><a href="/ja/directives/">リファレンス</a><p>ディレクティブと、スクリプトが呼ぶRubyのクラスとメソッドを載せています。</p></li>
-<li><a href="/ja/concepts/request-phases/">リクエストのフェーズ</a><p>nginxがリクエストを処理する順の中で、各Rubyのハンドラが動く場所を示します。</p></li>
+<li><a href="/ja/concepts/request-phases/">リクエストのフェーズ</a><p>nginxがリクエストを処理する順で、Rubyの各ハンドラが動く場所を示します。</p></li>
 </ul>
 
 </div>

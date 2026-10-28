@@ -1,4 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 100" preserveAspectRatio="none" data-labels="h-phase h-handler tls tls-h post-read post-read-h server-rewrite server-rewrite-h server-rewrite-set find-config rewrite rewrite-h rewrite-set post-rewrite access access-h post-access content content-h header-filter header-filter-h body-filter body-filter-h log log-h stream stream-h">
-  <!-- The request phases diagram, narrow arrangement (docs/concepts/request-phases.md): one line beside the HTTP phases, from the TLS handshake to the log phase. request-phases.css stretches it over those rows of its grid; the labels are HTML text. -->
-  <path class="d-line" d="M12 0 V100" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 541" preserveAspectRatio="none" data-labels="h-phase h-handler tls tls-h post-read post-read-h server-rewrite server-rewrite-h server-rewrite-set find-config rewrite rewrite-h rewrite-set post-rewrite access access-h post-access content content-h header-filter header-filter-h body-filter body-filter-h log log-h stream stream-h">
+  <!-- The request phases diagram, narrow arrangement (docs/concepts/request-phases.md): from each phase a line down and a branch to each of its handlers. request-phases.css puts it in the first column of its grid, whose rows (21 px each, 16 px between the HTTP phases and the stream handler) are the rows of this drawing; the labels are HTML text. -->
+  <path class="d-line" d="M6 18 V31.5" />
+  <path class="d-line" d="M6 31.5 H14" />
+  <path class="d-line" d="M6 60 V73.5" />
+  <path class="d-line" d="M6 73.5 H14" />
+  <path class="d-line" d="M6 102 V136.5" />
+  <path class="d-line" d="M6 115.5 H14" />
+  <path class="d-line" d="M6 136.5 H14" />
+  <path class="d-line" d="M6 186 V220.5" />
+  <path class="d-line" d="M6 199.5 H14" />
+  <path class="d-line" d="M6 220.5 H14" />
+  <path class="d-line" d="M6 270 V283.5" />
+  <path class="d-line" d="M6 283.5 H14" />
+  <path class="d-line" d="M6 333 V346.5" />
+  <path class="d-line" d="M6 346.5 H14" />
+  <path class="d-line" d="M6 375 V388.5" />
+  <path class="d-line" d="M6 388.5 H14" />
+  <path class="d-line" d="M6 417 V430.5" />
+  <path class="d-line" d="M6 430.5 H14" />
+  <path class="d-line" d="M6 459 V472.5" />
+  <path class="d-line" d="M6 472.5 H14" />
+  <path class="d-line" d="M6 517 V530.5" />
+  <path class="d-line" d="M6 530.5 H14" />
 </svg>

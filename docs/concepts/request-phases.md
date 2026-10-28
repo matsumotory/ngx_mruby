@@ -57,7 +57,7 @@ takes the Ruby code itself.
 | as the response header goes out | `mruby_output_header_filter` |
 | as the response body goes out | `mruby_output_body_filter` |
 | log phase | `mruby_log_handler` |
-| server rewrite and rewrite phases, where the rewrite module runs | `mruby_set` |
+| server rewrite and rewrite phases | `mruby_set` |
 | access phase of the stream module | `mruby_stream` |
 
 The TLS handshake comes before nginx reads the request. nginx runs the

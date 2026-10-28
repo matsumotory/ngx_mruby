@@ -35,9 +35,8 @@ export default defineConfig({
         ja: { label: '日本語', lang: 'ja' },
       },
       // The pages of docs/ carry the date of the last commit to their
-      // source in their front matter (scripts/sync-docs.mjs); the home
-      // pages take the date of the last commit to their MDX file.
-      lastUpdated: true,
+      // source in their front matter (scripts/sync-docs.mjs); the footer
+      // gives the home pages the date of the last commit to their MDX file.
       // The fonts are served by the site from the Fontsource packages
       // (4.4, 4.12 item 2); tokens.css and site.css come after them.
       customCss: [

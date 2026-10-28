@@ -531,10 +531,12 @@ button.sl-menu-button svg {
 html:has(.home) .content-panel + .content-panel {
   border-top: 0;
 }
+/* The heading takes the home page's width: held to the text column it
+   left its last word alone on a line at 1000 px */
 html:has(.home) h1#_top {
   font-size: var(--text-home);
   line-height: var(--leading-home);
-  max-width: var(--measure);
+  max-width: none;
 }
 .home :is(p, ul) {
   max-width: var(--measure);

@@ -1,6 +1,6 @@
 # リクエストのフェーズ
 
-nginxは、HTTPのリクエストを決まった順のフェーズで処理します。ngx_mrubyは、そのうちの6つのフェーズにハンドラを加えます。また、rewriteモジュールの中で`mruby_set`を実行し、ヘッダとボディのフィルタをnginxのフィルタの連鎖の先頭に置きます。TLSのハンドシェイクの間にも、ハンドラを1つ実行します。TCPとUDPでは、nginxのstreamモジュールのaccessフェーズで、ハンドラを1つ実行します。
+nginxは、HTTPのリクエストを決まった順のフェーズで処理します。ngx_mrubyは、そのうちの6つのフェーズにハンドラを加えます。また、rewriteモジュールの中で`mruby_set`を実行し、ヘッダとボディのフィルタをnginxのフィルタの連鎖の先頭に置きます。TLSのハンドシェイクの間にも、ハンドラを1つ実行します。TCPとUDPでは、streamモジュールのaccessフェーズでハンドラを1つ実行します。
 
 ```diagram
 request-phases
@@ -38,11 +38,11 @@ stream: TCPか<wbr>UDPの<wbr>access
 stream-h: `mruby_stream`
 ```
 
-表の各ディレクティブは、Rubyのスクリプトのパスを受け取ります。どのディレクティブにも、`mruby_access_handler_code`のように名前の最後に`_code`が付く形があります。その形は、Rubyのコードを直接受け取ります。
+表の各ディレクティブは、Rubyのスクリプトのパスを受け取ります。どのディレクティブにも、`mruby_access_handler_code`のように名前の最後に`_code`が付く形があります。その形はRubyのコードを直接受け取ります。
 
 | 実行する時点 | ディレクティブ |
 |---|---|
-| TLSのハンドシェイク | `mruby_ssl_handshake_handler` |
+| TLSのハンドシェイクの間 | `mruby_ssl_handshake_handler` |
 | post-read | `mruby_post_read_handler` |
 | server rewrite | `mruby_server_rewrite_handler` |
 | rewrite | `mruby_rewrite_handler` |

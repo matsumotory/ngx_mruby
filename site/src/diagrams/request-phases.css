@@ -1,64 +1,63 @@
 /*
  * The request phases diagram (docs/concepts/request-phases.md; 3.5 of
- * docs/proposals/site.md): the grid that places the labels of the page
+ * docs/proposals/site.md): the grids that place the labels of the page
  * over the drawings request-phases.svg (wide) and
- * request-phases.narrow.svg (narrow). The rows and columns of the wide
- * grid are those of the wide drawing (16 px to the rem; columns of 5, 2
- * and 9 parts of 1600 units), so its boxes stay under their labels when
- * the drawing stretches. The narrow arrangement is one column beside a
- * line, taken when the content of the figure is narrower than 37rem: the
- * widest label of the phase column, post-rewrite, preaccess, then no
- * longer fits its column (and Starlight's sidebar makes the column
- * narrower from 50em than it is at 640 px, so the switch is a container
- * query on the figure, not a media query).
+ * request-phases.narrow.svg (narrow). The rows and columns of each grid
+ * are those of its drawing (16 px to the rem), so the boxes and lines stay
+ * at their labels when a drawing stretches. Wide: columns of 5, 2 and 9
+ * parts of 1600 units. Narrow: one row of 21 px per label, the phases at
+ * the left and their handlers beside a 16 px column that holds the tree of
+ * lines, so that the longest name, 28 characters at 14 px, keeps one line
+ * at 320 px. The narrow arrangement is taken when the content of the
+ * figure is narrower than 37rem, where the widest label of the phase
+ * column, post-rewrite, preaccess, no longer fits its column; Starlight's
+ * sidebar makes the column narrower from 50em than it is at 640 px, so the
+ * switch is a container query on the figure, not a media query.
  */
 .diagram-request-phases .diagram-grid {
-  grid-template-columns: 1.5rem minmax(0, 1fr);
+  grid-template-columns: 1rem minmax(0, 1fr);
+  grid-template-rows: 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1rem 1.3125rem 1.3125rem;
   grid-template-areas:
-  ". h-phase"
-  ". h-handler"
-  ". tls"
-  ". tls-h"
-  ". post-read"
-  ". post-read-h"
-  ". server-rewrite"
-  ". server-rewrite-h"
-  ". server-rewrite-set"
-  ". find-config"
-  ". rewrite"
-  ". rewrite-h"
-  ". rewrite-set"
-  ". post-rewrite"
-  ". access"
-  ". access-h"
-  ". post-access"
-  ". content"
-  ". content-h"
-  ". header-filter"
-  ". header-filter-h"
-  ". body-filter"
-  ". body-filter-h"
-  ". log"
-  ". log-h"
-  ". stream"
-  ". stream-h";
+      "tls tls"
+      ". tls-h"
+      "post-read post-read"
+      ". post-read-h"
+      "server-rewrite server-rewrite"
+      ". server-rewrite-h"
+      ". server-rewrite-set"
+      "find-config find-config"
+      "rewrite rewrite"
+      ". rewrite-h"
+      ". rewrite-set"
+      "post-rewrite post-rewrite"
+      "access access"
+      ". access-h"
+      "post-access post-access"
+      "content content"
+      ". content-h"
+      "header-filter header-filter"
+      ". header-filter-h"
+      "body-filter body-filter"
+      ". body-filter-h"
+      "log log"
+      ". log-h"
+      ". ."
+      "stream stream"
+      ". stream-h";
 }
 .diagram-request-phases .diagram-drawing-narrow {
   grid-column: 1;
-  grid-row: tls-start / log-h-end;
+  grid-row: 1 / -1;
 }
 .diagram-request-phases .diagram-drawing-wide {
   display: none;
 }
-.diagram-request-phases :is([data-key="tls-h"], [data-key="post-read-h"], [data-key="server-rewrite-h"], [data-key="server-rewrite-set"], [data-key="rewrite-h"], [data-key="rewrite-set"], [data-key="access-h"], [data-key="content-h"], [data-key="header-filter-h"], [data-key="body-filter-h"], [data-key="log-h"], [data-key="stream-h"]) {
-  padding-inline-start: var(--space-4);
+.diagram-request-phases .diagram-label {
+  white-space: nowrap;
 }
-.diagram-request-phases [data-key="stream"] {
-  margin-top: var(--space-4);
-}
-/* The narrow arrangement leaves out the two column headings: the indent
-   and the monospace face mark the handlers there, and without the two
-   lines the diagram fits the screen at 390 by 664 px (3.5) */
+/* The narrow arrangement leaves out the two column headings: the tree of
+   lines and the monospace face mark the handlers there, and without the
+   two lines the diagram fits the screen at 390 by 664 px (3.5) */
 .diagram-request-phases :is([data-key="h-phase"], [data-key="h-handler"]) {
   display: none;
 }
@@ -110,6 +109,7 @@
     align-self: center;
     margin: 0;
     padding-inline: var(--space-3);
+    white-space: normal;
   }
   .diagram-request-phases :is([data-key="h-phase"], [data-key="h-handler"]) {
     display: block;

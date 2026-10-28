@@ -146,8 +146,10 @@ export function captionHtml(block, lang) {
   const repo = block.sources.map((s) => (lang === 'ja' ? `${code(s.file)}の${linesText(s.ranges, lang)}` : `${code(s.file)} ${linesText(s.ranges, lang)}`));
   let text;
   if (lang === 'ja') {
-    text = `${labelHtml(block.caption)}${joinList(repo, lang)}を、${nowrap(at.date)}のコミット${code(at.commit)}で描いています。`;
-    for (const n of block.nginx) text += `nginx ${nowrap(n.version)}の${code(n.file)}の${linesText(n.ranges, lang)}も描いています。`;
+    // The files are joined with と, their lines with 、
+    const files = repo.length > 1 ? `${repo.slice(0, -1).join('、')}と、${repo.at(-1)}` : repo[0];
+    text = `${labelHtml(block.caption)}${files}を、${nowrap(at.date)}のコミット${code(at.commit)}で描きました。`;
+    for (const n of block.nginx) text += `nginx ${nowrap(n.version)}では、${code(n.file)}の${linesText(n.ranges, lang)}を元に描きました。`;
   } else {
     text = `${labelHtml(block.caption)} Describes ${joinList(repo, lang)} at ${code(at.commit)}, ${nowrap(at.date)}`;
     for (const n of block.nginx) text += `, and ${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}`;

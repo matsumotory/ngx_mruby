@@ -75,8 +75,10 @@
 .diagram figcaption code {
   font-size: inherit;
 }
+/* At 640 px and below a 12 px frame leaves the longest directive name of
+   a label, 28 characters at 14 px, its line at 320 px */
 @media (max-width: 640px) {
   .diagram {
-    padding: var(--space-4);
+    padding: var(--space-3);
   }
 }

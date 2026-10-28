@@ -109,7 +109,7 @@ export function sampleCaptionHtml(sample, lang) {
   const date = `<span class="nowrap">${sample.date}</span>`;
   const commit = `<code class="nowrap">${sample.commit}</code>`;
   return lang === 'ja'
-    ? `CIを実行するたびに、ケースの${c}がこのリクエストを送ります。比べるのは、ステータス行、表示したヘッダ、ボディの全体です。5つのファイルを最後に変更したのは、${date}のコミット${commit}です。`
+    ? `CIを実行するたびに、ケースの${c}がこのリクエストを送ります。比べるのは、ステータス行、表示したヘッダ、ボディの全体です。5つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
     : `On every CI run, the case ${c} sends this request and compares the status line, the headers shown and the whole body. The five files last changed on ${date} in commit ${commit}.`;
 }
 
