@@ -25,9 +25,10 @@ Bug fixes: the regression test is the first commit and the fix the second; quote
 ## Memory / sanitizer checks (C changes)
 
 <!--
-Which of valgrind (`NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh`), ASan, UBSan
+Which of valgrind (`NGINX_RUNNER=valgrind sh test.sh`), ASan, UBSan
 did you run, and what was the result (ERROR SUMMARY, leak summary, sanitizer
-reports in error.log)?
+reports in the logs that the "Check for sanitizer reports" step of
+.github/workflows/test.yml reads)?
 -->
 
 ## Leak / performance impact
@@ -36,7 +37,7 @@ reports in error.log)?
 Required when async, filter or GC-related code is touched: what was measured, and how.
 Required as well when the change touches an input of the measured binary ("Design principles" in
 `AGENTS.md` lists them): the callgrind comparison goes here, with the header lines of report.txt, the
-table, and the base, head and lane commits.
+table, the run of the `perf` job, and the base and head commits that its log prints.
 -->
 
 ## Compatibility / behavior changes
