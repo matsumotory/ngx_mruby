@@ -44,7 +44,7 @@ r = Redis.new "192.168.12.251", 6379
 r.get backends[rand(backends.length)]
 ```
 
-This example needs the `Redis` class of mruby-redis. Since 2.7.1 the default `build_config.rb` does not build it: uncomment the line `conf.gem github: 'matsumotory/mruby-redis'` there before you build.
+This example needs the `Redis` class of mruby-redis, and a running Redis server. The default `build_config.rb` builds mruby-redis again since 2.7.2; 2.7.1 left it out.
 
 - see [examples](https://github.com/matsumotory/ngx_mruby/blob/master/example/nginx.conf)
 - __Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions__
