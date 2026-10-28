@@ -358,6 +358,48 @@ def take_sample(nginx, mock, scenario)
   stats.merge(status).merge(rss_kb: vm_rss_kb(nginx.worker), fd: fd, upstream: upstream, fd_own: fd - upstream)
 end
 
+# The keys of Nginx::Debug.stats: always these, and the two keys of mruby's
+# own _gc_root_ array together when the mruby of the build keeps the array
+# ("The soak build and Nginx::Debug" in docs/test/README.md).
+DEBUG_STATS_KEYS = %w[:gc_arena_idx :gc_live :gc_root :gc_root_fibers :timers].freeze
+DEBUG_STATS_MRUBY_KEYS = %w[:gc_root_fibers_mruby :gc_root_mruby].freeze
+# The Strings that /debug/check makes: two or more objects in each of 1000
+# rounds, so a full GC frees at least this many objects.
+DEBUG_CHECK_GARBAGE = 1000
+# The objects that /debug/check still references after its second full GC:
+# the Hash of its first Nginx::Debug.stats, and what the call of the handler
+# holds. gc_live of the first read is taken before that Hash exists.
+DEBUG_CHECK_KEPT = 10
+
+# Checks Nginx::Debug through /debug/check of test/soak/nginx.conf: the keys
+# and values of Nginx::Debug.stats, the value of Nginx::Debug.gc, and that
+# the full GC frees the objects that nothing references. Returns a list of
+# problems (empty when none).
+def debug_problems
+  code, _headers, body, = get_closed('/debug/check')
+  return ["/debug/check returned #{code}: #{body}"] unless code == 200
+
+  check = JSON.parse(body)
+  problems = []
+  keys = check['keys']
+  unless [DEBUG_STATS_KEYS, (DEBUG_STATS_KEYS + DEBUG_STATS_MRUBY_KEYS).sort].include?(keys)
+    problems << "Nginx::Debug.stats has the keys #{keys.inspect}"
+  end
+  problems << "Nginx::Debug.stats has values of #{check['classes'].inspect}" unless check['classes'] == ['Integer']
+  problems << "Nginx::Debug.gc returned #{check['gc']}" unless check['gc'] == 'nil'
+  base, filled, emptied = check.values_at('base', 'filled', 'emptied')
+  unless [base, filled, emptied].all? { |v| v.is_a?(Integer) }
+    return problems << "/debug/check returned gc_live values #{[base, filled, emptied].inspect}"
+  end
+  if filled - base < DEBUG_CHECK_GARBAGE
+    problems << "gc_live grew #{filled - base} with the Strings of /debug/check (#{base} -> #{filled}), expected #{DEBUG_CHECK_GARBAGE} or more"
+  end
+  if filled - emptied < DEBUG_CHECK_GARBAGE || emptied - base > DEBUG_CHECK_KEPT
+    problems << "gc_live after Nginx::Debug.gc is #{emptied} (#{base} before the Strings, #{filled} with them)"
+  end
+  problems
+end
+
 def judge(samples, scenario)
   problems = []
   samples.each_with_index do |s, i|
@@ -421,6 +463,7 @@ def run_scenario(scenario)
     mock&.start(START_TIMEOUT)
     nginx.start
     first_response(scenario)
+    problems.concat(debug_problems) if scenario.conf == 'nginx.conf'
 
     send_requests(scenario, WARMUP)
     samples << take_sample(nginx, mock, scenario)
