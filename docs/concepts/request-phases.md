@@ -67,8 +67,8 @@ variable from Ruby where the rewrite module runs `set`: in the server
 rewrite phase for a `mruby_set` in a `server` block, and in the rewrite
 phase for one in a `location`. The header filter and the body filter run
 while nginx sends a response, whichever phase made it: a content handler,
-an upstream, or a `return` or an error of an earlier phase; so they come
-before the log phase. In nginx's filter chains, ngx_mruby's filters run
+an upstream, or a `return` or an error of an earlier phase. The log phase
+comes after the response is sent. In nginx's filter chains, ngx_mruby's filters run
 after nginx's not-modified header filter and its range and copy body
 filters, and before the filters of nginx's other modules. `mruby_post_read_handler` is accepted in
 the `http` and `server` blocks, and `mruby_ssl_handshake_handler` in a

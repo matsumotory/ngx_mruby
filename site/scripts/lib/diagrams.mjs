@@ -153,9 +153,9 @@ export function captionHtml(block, lang) {
   } else {
     // The files are joined with "; ", so that each file's list of lines
     // ends where the next file starts
-    text = `${labelHtml(block.caption)} Describes ${repo.join('; ')}; at ${code(at.commit)}, ${nowrap(at.date)}`;
-    for (const n of block.nginx) text += `; and ${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}`;
-    text += '.';
+    const files = repo.length > 1 ? `${repo.slice(0, -1).join('; ')}; and ${repo.at(-1)}` : repo[0];
+    text = `${labelHtml(block.caption)} Describes, at ${code(at.commit)} of ${nowrap(at.date)}, ${files}.`;
+    for (const n of block.nginx) text += ` Also describes ${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}.`;
   }
   return text;
 }

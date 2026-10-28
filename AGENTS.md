@@ -527,7 +527,10 @@ npm run preview           # serves dist/ at http://localhost:4321/
     files and lines of each diagram exist at its commit, and the diagrams
     whose lines changed since then are listed (also in the run summary).
   `npm run check:browser` runs four on `site/dist/` (`--dist`; the first
-  two also `--engine chromium|webkit`):
+  two also `--engine chromium|webkit`; on macOS, Japanese is set in
+  Hiragino Sans and breaks at other places than in CI, where it is the
+  served Noto Sans JP: `node scripts/check-styles.mjs --ja-face noto`
+  sees what CI sees):
   - `node scripts/check-styles.mjs` (`npm run check:styles`): computed
     styles in Chromium and WebKit at 320 by 664, 390 by 664 and 1440 by
     900 px: font sizes of the scale of each language, token colors (code

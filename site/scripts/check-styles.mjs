@@ -35,7 +35,12 @@
 //   figure fits the screen below the header at 390 by 664 and 1440 by 900;
 // - with JavaScript off, the OS setting chooses the theme (4.7).
 //
-//   node scripts/check-styles.mjs [--dist DIR] [--engine chromium|webkit]
+//   node scripts/check-styles.mjs [--dist DIR] [--engine chromium|webkit] [--ja-face noto]
+//
+// Japanese text takes Hiragino Sans where the system has it (macOS) and the
+// served Noto Sans JP elsewhere (Linux, CI), so its lines break at other
+// places. --ja-face noto sets Japanese in Noto Sans JP on any system, so
+// that a run on macOS sees what CI sees.
 //
 // DIR defaults to dist/ (npm run build). It exits 1 and lists every
 // failure by page, engine, theme, size and element.
@@ -83,6 +88,10 @@ function args() {
   for (let i = 0; i < a.length; i++) {
     if (a[i] === '--dist') out.dist = path.resolve(a[++i]);
     else if (a[i] === '--engine') out.engines = [a[++i]];
+    else if (a[i] === '--ja-face' && a[i + 1] === 'noto') {
+      out.noto = true;
+      i++;
+    }
     else throw new Error(`unknown argument ${a[i]}`);
   }
   return out;
@@ -438,6 +447,7 @@ async function main() {
             const context = await browser.newContext({ viewport: size, colorScheme: theme, reducedMotion: reduced ? 'reduce' : 'no-preference' });
             const tab = await context.newPage();
             await tab.goto(server.url + page, { waitUntil: 'load' });
+            if (opt.noto) await tab.addStyleTag({ content: ':root { --font-ja-faces: "Noto Sans JP Variable", "Noto Sans JP" !important; }' });
             await tab.evaluate(() => document.fonts.ready);
             loads++;
             const tag = `${page} ${engineName} ${theme} ${size.width}x${size.height}${reduced ? ' reduced-motion' : ''}`;
@@ -562,7 +572,8 @@ async function main() {
     await browser.close();
   }
   await server.close();
-  const distinctNotes = [...new Set(notes.map((n) => n.replace(/^\S+ \S+ \S+ \S+: /, (m) => m.split(' ')[0] + ': ')))];
+  // One note per page and element, whatever the engine, theme or size
+  const distinctNotes = [...new Set(notes.map((n) => n.replace(/^(\S+) \S+ \S+ \S+( reduced-motion)?: /, '$1: ')))];
   for (const n of distinctNotes) console.log(`note: ${n}`);
   if (distinctNotes.length) console.log(`check-styles: ${distinctNotes.length} note(s): last lines of one or two characters on pages of docs/ that steps 4 and 5 rewrite`);
   // One line per distinct failure; the same element fails on many pages.
