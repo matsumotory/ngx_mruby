@@ -39,11 +39,12 @@ require_relative 'mock_llm'
 ABORT_AFTER_EVENTS = 3
 
 # Request bodies of the agent proxy scenarios: Messages requests of exactly
-# 2 KB and 64 KB for the model that test/soak/handlers/agent_init.rb routes
-# to the mock.
+# 2 KB and 64 KB, and a Responses request of 2 KB, for the model that
+# test/soak/handlers/agent_init.rb routes to the mock.
 AGENT_BODY_2K = MockLLM.request_body(2048)
 AGENT_BODY_64K = MockLLM.request_body(65_536)
 AGENT_STREAM_2K = MockLLM.request_body(2048, stream: true)
+AGENT_RESPONSES_STREAM_2K = MockLLM.request_body(2048, stream: true, api: :responses)
 AGENT_JSON = { 'Content-Type' => 'application/json' }.freeze
 AGENT_SSE = { 'content-type' => 'text/event-stream' }.freeze
 
@@ -53,8 +54,8 @@ def agent_message(request_body)
   MockLLM.message_body(request_body)
 end
 
-def agent_stream(request_body, deltas, events: nil)
-  list = MockLLM.stream_events(request_body, events: deltas)
+def agent_stream(request_body, deltas, events: nil, api: :messages)
+  list = MockLLM.stream_events(request_body, api: api, events: deltas)
   (events ? list.first(events) : list).join
 end
 
@@ -97,6 +98,17 @@ SCENARIOS = [
   Scenario.new(name: 'proxy_stream_plain_1000', conf: 'nginx.agent.conf', mock: %w[--events 1000],
                method: 'POST', path: '/v1/plain', headers: AGENT_JSON, request_body: AGENT_STREAM_2K,
                body: agent_stream(AGENT_STREAM_2K, 1000), response_headers: AGENT_SSE),
+  # responses_stream_plain_*: the same for a Responses stream (POST
+  # /v1/responses at the mock), 50 or 1000 response.output_text.delta events
+  # and response.completed (58 or 1008 events).
+  Scenario.new(name: 'responses_stream_plain_50', conf: 'nginx.agent.conf', mock: %w[--events 50],
+               method: 'POST', path: '/v1/responses/plain', headers: AGENT_JSON,
+               request_body: AGENT_RESPONSES_STREAM_2K,
+               body: agent_stream(AGENT_RESPONSES_STREAM_2K, 50, api: :responses), response_headers: AGENT_SSE),
+  Scenario.new(name: 'responses_stream_plain_1000', conf: 'nginx.agent.conf', mock: %w[--events 1000],
+               method: 'POST', path: '/v1/responses/plain', headers: AGENT_JSON,
+               request_body: AGENT_RESPONSES_STREAM_2K,
+               body: agent_stream(AGENT_RESPONSES_STREAM_2K, 1000, api: :responses), response_headers: AGENT_SSE),
   # auth: proxy_plain_2k behind a server rewrite handler that checks the
   # client key and picks the upstream credential.
   Scenario.new(name: 'auth', conf: 'nginx.agent.conf', mock: [],
@@ -125,7 +137,13 @@ SCENARIOS = [
   Scenario.new(name: 'agent_upstream_reset', conf: 'nginx.agent.conf', mock: %w[--events 50 --reset-after 10],
                method: 'POST', path: '/v1/route', headers: AGENT_JSON, request_body: AGENT_STREAM_2K,
                body: agent_stream(AGENT_STREAM_2K, 50, events: 10), response_headers: AGENT_SSE, mode: :cut,
-               allowed_log: UPSTREAM_RESET_LOG)
+               allowed_log: UPSTREAM_RESET_LOG),
+  # agent_responses_stream: agent_stream for a Responses stream, through the
+  # same access handler (it reads "model", the first key of both bodies).
+  Scenario.new(name: 'agent_responses_stream', conf: 'nginx.agent.conf', mock: %w[--events 50],
+               method: 'POST', path: '/v1/responses/route', headers: AGENT_JSON,
+               request_body: AGENT_RESPONSES_STREAM_2K,
+               body: agent_stream(AGENT_RESPONSES_STREAM_2K, 50, api: :responses), response_headers: AGENT_SSE)
 ].each do |s|
   s.mode ||= :keepalive
   s.method ||= 'GET'
