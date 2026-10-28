@@ -51,10 +51,12 @@ can live in files of its own:
   `base_ssl`, `http_host`, `html_path`, `nginx_t` (runs `nginx -t` on a
   generated configuration), `tcp_client` and `second_instance`. It starts
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
-  with `_` are helpers and are not run by test.sh; `_tcp_client.rb`,
+  with `_` are helpers and are not run as cases; `_tcp_client.rb`,
   `_filter_connection_client.rb`, `_request_body_client.rb` and
   `_second_instance.rb` are CRuby scripts that the prelude helpers and the
-  cases run with `ruby`. `_agent_proxy_client.rb` is a CRuby script (3.0 or
+  cases run with `ruby`, and `_wait_for_listen.rb` is the CRuby script that
+  test.sh runs to wait for nginx (see "Waiting for nginx to listen" below).
+  `_agent_proxy_client.rb` is a CRuby script (3.0 or
   later) that `agent_proxy.rb` runs itself: it loads `test/soak/mock_llm.rb`
   and `test/soak/http_client.rb`, runs the mock LLM upstream on 12372 and
   12373 while it sends its requests (see "Mock LLM upstream" below), and
@@ -88,7 +90,9 @@ print the second nginx's `error.log` when the line is set.
 `v*.x`, on pushes to those branches and to `v*` tags, and on "Run workflow".
 Its `ci-ok` job is the status check that rulesets require: it fails unless
 every job that it lists in `needs` succeeded. These are every job of the
-`build` matrix and the `files` job, and on `next` also the `soak` job.
+`build` matrix and the `files` job, and on `next` also the `soak` job. The
+`perf` job (see "In CI" under "Performance comparison with callgrind") is
+not among them yet.
 
 ### Files that do not belong in the repository
 
@@ -177,6 +181,99 @@ request and say why in its description. A file that a commit adds and a later
 commit removes stays in the history: remove it from the commit that added it
 (for example with `git rebase -i`), or squash the commits.
 
+## Supply chain checks
+
+Three more workflows check the supply chain of the build. None of them is in
+the `needs` of `ci-ok`, so none of them blocks a merge through the ruleset;
+"Review and merge" in `AGENTS.md` asks for every CI check on the head commit
+to pass, which includes the `zizmor` job of a pull request that runs it.
+
+### Static analysis of the workflows
+
+`.github/workflows/zizmor.yml` runs [zizmor](https://docs.zizmor.sh/) on
+pull requests and pushes that change `.github/workflows/`,
+`.github/dependabot.yml` or `.github/zizmor.yml`, and on "Run workflow". It
+audits the files under `.github/` with the default persona, including the
+audits that query GitHub (for example known vulnerable actions and commits
+that are not on the action's repository), and fails on any finding. The
+vendored `mruby/` tree has workflows of its own, which ngx_mruby does not
+run; they are not audited. The version of zizmor is pinned in the workflow
+(`version:`): Dependabot updates the pin of the action but not that input.
+
+A finding is fixed in the workflow, or accepted with its reason: by a
+`# zizmor: ignore[<audit>]` comment on a line of the finding, with the
+reason in a comment above it, or by an `ignore` rule in `.github/zizmor.yml`
+with the reason next to it. To run the same check before opening a pull
+request (the online audits need a GitHub token):
+
+```console
+$ python3 -m venv .claude/tmp/zizmor && .claude/tmp/zizmor/bin/pip install zizmor==1.31.1
+$ GH_TOKEN=$(gh auth token) .claude/tmp/zizmor/bin/zizmor --config .github/zizmor.yml .github
+```
+
+### OpenSSF Scorecard
+
+`.github/workflows/scorecard.yml` runs
+[OpenSSF Scorecard](https://github.com/ossf/scorecard-action) on pushes to
+`master`, weekly, and on "Run workflow". Scorecard supports only the default
+branch, so pull requests do not run it. It publishes the results to the Scorecard API
+(<https://api.scorecard.dev/projects/github.com/matsumotory/ngx_mruby>),
+uploads them to code scanning (the repository's Security tab), and keeps the
+SARIF file as an artifact of the run for 5 days. Publishing makes the
+Scorecard API check the workflow itself, so the workflow has no run steps and
+no `defaults`; the comment at its top lists the restrictions.
+
+GitHub disables the scheduled workflows of a public repository after 60 days
+without activity in the repository. Then neither this workflow nor the next
+one runs on its schedule, and nothing fails. "Run workflow", or enabling the
+workflow again (`gh workflow enable scorecard.yml`, `gh workflow enable
+gem-heads.yml`), starts them again.
+
+### Heads of the GitHub gems
+
+`.github/workflows/gem-heads.yml` runs `test/gem_heads.sh` every Monday, on
+"Run workflow", and on pull requests that change `build_config.rb`, the
+script or the workflow. For each `conf.gem github:` line of
+`build_config.rb`, it reports the head of the branch that a build clones
+(the line's `branch:`, or `master`, mruby's default when the line has
+none), whether the gem's default branch is another branch, whether the
+repository was renamed or archived, and whether the head moved since the
+previous report. The `conf.gem mgem:` line (`mruby-secure-random`) is not
+checked: mruby resolves it through the mgem-list repository.
+
+The previous report is the artifact `gem-heads` of the newest successful
+scheduled or manual run of the workflow on `master`; artifacts are kept for
+90 days. `master` commits no `build_config.rb.lock`, so this report is the
+only record of the heads that earlier builds took. A run with no previous
+report reports every gem as `new`. A moved head is a warning annotation and
+a row in the job summary, with a link that compares the two commits; the job
+still passes. A gem whose repository or branch cannot be read fails the job,
+and so does a failure to list the earlier runs. A previous report that cannot
+be downloaded is a warning, and every gem is then reported as `new`.
+
+To run the script on a checkout (it needs `gh` with a token):
+
+```console
+$ bash test/gem_heads.sh build_config.rb "" .claude/tmp/gem-heads.tsv
+```
+
+When a run reports a move, a session does the following. This is the
+sessions' procedure, not a decision of the owner.
+
+- Read the commits behind the comparison link. Every build of `master`, CI
+  included, and every source build of a released 2.x tag already takes the
+  new head; CI does not run for a move by itself, so run the `test` workflow
+  on `master` (`gh workflow run test.yml --ref master`) and read its result.
+- When the new head breaks the build or the suite, or changes what a 2.x
+  configuration, script or build observes, report it to the owner with the
+  run, and propose a pull request to `master`: a fix, or a `checksum_hash:`
+  that pins the gem to the last good commit, with its release notes entry
+  (see `docs/releases/README.md`). For the owner's gems
+  (`matsumotory/mruby-*`), "Other repositories" in `AGENTS.md` applies.
+- On `next`, `build_config.rb.lock` pins each gem, so the move reaches `next`
+  only through a pull request that moves the pin; the `perf` job measures
+  that pull request like any change of the lock.
+
 ## Testing
 ##### build nginx into ``./build/nginx`` and test on ``./build/nginx``
 ```
@@ -198,10 +295,10 @@ test configuration with an "unknown directive" error. After changing
 (`build/nginx-X.Y.Z` of the new version, or `build_dynamic/`), and configures
 nginx there when that file is missing in it.
 
-If you want to run with valgrind, set the environment variables `NGINX_RUNNER` and `NGINX_HEATTIME`.
+To run nginx under valgrind, set the environment variable `NGINX_RUNNER`:
 
 ```console
-$ NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh
+$ NGINX_RUNNER=valgrind sh test.sh
 ```
 
 The auto-ssl mrbgem is not in the default build.
@@ -209,6 +306,103 @@ The auto-ssl mrbgem is not in the default build.
 "Building with the auto-ssl mrbgem" in `docs/install/README.md`, which also
 says when to remove `mruby/build`). No test uses them, so the suite is the
 same in both builds.
+
+### Waiting for nginx to listen
+
+`test.sh` starts the test nginx in the background (`$NGINX_RUNNER
+build/nginx/sbin/nginx &`) and sends the first request only after nginx
+accepts TCP connections. It runs `test/t/cases/_wait_for_listen.rb` with
+CRuby twice:
+
+- Before it starts nginx, the script waits until no process accepts a
+  connection on the ports below. A port that another process listens on
+  would make the wait after the start succeed without nginx, so the run
+  fails when one still accepts after `NGINX_HEATTIME` seconds, with the
+  ports:
+
+  ```text
+  wait_for_listen: before nginx starts, 1 of 33 ports still accept connections after 60.05 seconds (limit 60.00): 18080; another process listens on them
+  ```
+
+- After it starts nginx, the script connects to each port every 0.1
+  seconds until every port has accepted one connection, and prints the time
+  that took, counted from the start of the script, right after nginx was
+  started:
+
+  ```text
+  wait_for_listen: nginx (pid 1234) accepted connections on all 33 ports after 0.21 seconds (limit 60.00)
+  ```
+
+  It fails when the nginx process ends first, or when `NGINX_HEATTIME`
+  seconds pass, and names the ports that still refused connections:
+
+  ```text
+  wait_for_listen: nginx (pid 1234) ended after 0.47 seconds, before it accepted connections on 33 of 33 ports: 18080, 18081, ...; see its output above and logs/error.log
+  wait_for_listen: nginx (pid 1234) did not accept connections within 60.00 seconds (NGINX_HEATTIME) on 33 of 33 ports: 18080, 18081, ...
+  ```
+
+The ports are those of every `listen` directive in `test/conf/nginx.conf`
+and `test/conf/conf.d/*.conf`, the `http {}` servers (42 ports on `next` as of
+2026-10-29). nginx opens all its listening sockets in one loop
+(`ngx_open_listening_sockets()`) after it has read the whole configuration,
+so one port would almost always show that the others are open. Each port
+costs one connection of well under a millisecond, though, and checking every
+one leaves no gap between the first socket and the last, and also catches a
+fragment of `conf.d` that did not reach the installed configuration. The
+`stream {}` ports (`test/conf/nginx.stream.conf` and
+`test/conf/conf.d/stream/`) are left out: a connection to a stream server
+runs that server's session code, such as the `Nginx::Stream::Async.sleep
+3000` of the 12352 server, and the cases read what that code writes to
+`error.log`. nginx opens the stream sockets in the same loop, right after
+those of `http {}`, and the first test that connects to a stream port
+runs after many HTTP tests of `test/t/ngx_mruby.rb` have passed. The ports that
+`Nginx::Server#add_listener` and `Nginx::Stream.add_listener` add are opened
+in the same loop as well, and are not checked.
+
+`NGINX_HEATTIME` is the upper bound, in seconds, of each of the two waits.
+The default is 60, and CI does not set it. A command that sets it, such as
+`NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh`, waits at most that
+long: the run goes on as soon as nginx listens, and fails at 10 seconds only
+when nginx is not listening by then, where a first request sent at that time
+would have been refused (`Errno::ECONNREFUSED`).
+
+The default rests on these measurements. On 2026-10-19, the test nginx
+built from `master` at 03aad7031 (nginx 1.31.6, static module) was started
+the way `test.sh` starts it, in a container of Ubuntu 22.04 on an aarch64
+host with 11 CPUs whose load average was about 15 from other builds, and
+the script above measured the time until all ports accepted connections:
+
+- `NGINX_RUNNER=exec`, 10 starts: 0.10 to 0.11 seconds each, that is, every
+  port accepted on the second round of attempts (the script tries every 0.1
+  seconds);
+- `NGINX_RUNNER=valgrind` (valgrind 3.18.1), 5 starts: 2.27 to 2.61 seconds.
+
+In CI, a cell under valgrind (nginx 1.28.3 on an x86_64 runner) was still
+reading the configuration 10 seconds after the start: valgrind's report at
+the SIGTERM of `test.sh` shows nginx inside `ngx_conf_parse()`
+([the run](https://github.com/matsumotory/ngx_mruby/actions/runs/37181065564),
+reported in
+[#564](https://github.com/matsumotory/ngx_mruby/pull/564#issuecomment-5977252444)).
+The time is longer on a loaded CI runner, under valgrind (here more than 20
+times the time without it), with the sanitizer build (not measured here) and
+with more configuration to read. 60 seconds is 6 times the 10 seconds of
+that CI run and about 23 times the slowest start under valgrind above.
+
+The upper bound can create these races:
+
+- A start slower than the bound fails the run although nginx would have
+  started. Raise `NGINX_HEATTIME` for slower setups; the wait still ends as
+  soon as nginx listens, so a higher bound costs time only when nginx hangs
+  without ending (an nginx that exits is reported at once).
+- A listening socket is not yet a running handler. The kernel accepts a
+  connection as soon as nginx listens, and the test nginx is a single
+  process (`master_process off`) that runs the `init_worker` hooks before it
+  reads any connection. The first request then waits in the socket's backlog
+  until nginx reads it; the test client (mruby-simplehttp) reads without a
+  timeout, so it waits too.
+- nginx later reads each probe connection of the wait, finds it closed
+  without a request, and closes it. No handler runs for it, and nginx writes
+  only `debug` lines about it to `error.log`.
 
 ## Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer
 
@@ -225,8 +419,27 @@ $ export ASAN_OPTIONS="detect_leaks=1"
 $ export LSAN_OPTIONS="suppressions=$PWD/test/lsan.supp"
 $ export UBSAN_OPTIONS="print_stacktrace=1:suppressions=$PWD/test/ubsan.supp"
 $ NGINX_RUNNER=exec sh test.sh
-$ grep -E 'AddressSanitizer|UndefinedBehaviorSanitizer|runtime error|LeakSanitizer' build/nginx/logs/error.log
+$ grep -HnE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name '*.log')
 ```
+
+The last line reads the files that the "Check for sanitizer reports" step
+of the CI cell reads, with the same pattern; the step fails when a line
+matches. A report goes to the stderr of the process that wrote it, and that
+is one of these files:
+
+| File | Whose stderr |
+|---|---|
+| `build/nginx/logs/error.log` | the test nginx, once it has opened its log (its leak report at exit included) |
+| `build/nginx/logs/stderr.log` | the test client (`test/t/ngx_mruby.rb` and the case files; `test.sh` redirects it), and so the processes that the tests start without redirecting it: `nginx -t`, the `nginx -s quit` of the stream-only test, an nginx before it has opened its log |
+| the other `build/nginx/logs/*.log` | the nginx processes that the tests start with a log of their own, after they have opened it (`stream_only.error.log` of the stream-only test, which runs nginx with `daemon on`) |
+| `build/nginx/second_instance/<mode>/*.log` | the second nginx of `test/t/cases/_second_instance.rb` (`error.log`, `stderr.log`, `stdout.log`) |
+
+`build/nginx/second_instance/` is missing when `test.sh` stopped before the
+case files; the step then reads the other files and says so. The step does
+not read the `*.log.bak` files, in which `test.sh` keeps the
+logs of an earlier run in the same directory. A report of the test nginx
+from before it opened `error.log` goes to the terminal (in CI, the output of
+the `script` step), as the next paragraph says.
 
 `NGINX_EXTRA_CC_OPT` and `NGINX_EXTRA_LD_OPT` are appended to nginx's
 `--with-cc-opt` and `--with-ld-opt`; `NGX_MRUBY_CFLAGS` and `NGX_MRUBY_LDFLAGS`
@@ -614,6 +827,24 @@ calls `malloc_trim(0)` in the full GC before each sample (see below), which
 returns the free pages of the C heap; without it, VmRSS moved by up to about
 1 MB in both directions between samples of a correct build, depending on
 where the allocator happened to leave free memory.
+
+A scenario of `test/soak/nginx.conf` also checks `Nginx::Debug` itself, once,
+after its first response and before the warmup. It requests `/debug/check`,
+whose code runs `Nginx::Debug.gc`, reads `Nginx::Debug.stats`, makes two
+Strings that nothing references in each of the 1000 rounds of a loop, and reads
+`gc_live` again before and after a second `Nginx::Debug.gc`. The scenario
+fails unless `Nginx::Debug.stats` has the keys listed in "The soak build and
+`Nginx::Debug`" below (with `gc_root_mruby` and `gc_root_fibers_mruby`
+either both present or both absent) and only Integer values,
+`Nginx::Debug.gc` returns `nil`, `gc_live` grew by 1000 or more with the
+Strings, and the second full GC brought it down by 1000 or more, to at most
+10 above the first read. The code makes the Strings between `GC.disable`
+and `GC.enable`: with about 1000 live objects after a full GC, mruby's
+incremental GC would otherwise start within the loop and free most of the
+Strings before the second read. Without
+this check, a `Nginx::Debug.stats` that left out a key, or a
+`Nginx::Debug.gc` that freed nothing, would make every sample the same and
+the soak would pass.
 
 A scenario also fails when a response is not the expected one, when nginx does
 not exit within 30 seconds of `SIGQUIT`, or when its `error.log` or stderr
@@ -1362,7 +1593,11 @@ files `build_config.rb`, `configure`, `config.in`, `Makefile.in`,
 measurement is `test/perf/`,
 `test/build_release.sh` and the scenario files in `test/soak/`
 (`nginx.conf`, `nginx.agent.conf`, `scenarios.rb`, `http_client.rb`,
-`mock_llm.rb`, `handlers/`).
+`mock_llm.rb`, `handlers/`). The job of `master` is the same, with two
+differences: `master` commits no gem lock, so the lock is not an input
+there, and `master` has no soak job, so its `perf` job first runs the check
+of the mock LLM (`ruby test/soak/mock_llm_test.rb`) that `test/soak/run.sh`
+runs on `next`; on `master` the whole of `test/soak/` is the measurement.
 
 A change of `nginx_version` builds the head with another nginx, so its
 `WARN` or `FAIL` measures nginx's own cost as well as ngx_mruby's; read the

@@ -19,6 +19,7 @@
 - [Class and Method](https://github.com/matsumotory/ngx_mruby/tree/master/docs/class_and_method)
 - [Use Case](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case)
 - [Release notes (behaviour changes to read before upgrading)](https://github.com/matsumotory/ngx_mruby/tree/master/docs/releases)
+- [Trust boundary](https://github.com/matsumotory/ngx_mruby/blob/master/docs/README.md#trust-boundary): the configuration and its Ruby code are trusted, what a client sends is not, and what each side is responsible for
 - [Examples](https://github.com/hsbt/nginx-tech-talk)
 
 ## Branch strategy
@@ -109,7 +110,7 @@ r = Redis.new "192.168.12.251", 6379
 r.get backends[rand(backends.length)]
 ```
 
-This example needs the `Redis` class of mruby-redis. Since 2.7.1 the default `build_config.rb` does not build it: uncomment the line `conf.gem github: 'matsumotory/mruby-redis'` there before you build.
+This example needs the `Redis` class of mruby-redis, and a running Redis server. The default `build_config.rb` builds mruby-redis again since 2.7.2; 2.7.1 left it out.
 
 - see [examples](https://github.com/matsumotory/ngx_mruby/blob/master/example/nginx.conf)
 - __Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions__
@@ -154,6 +155,14 @@ However, if the existing methods are primarily intended to enhance not the imple
 Therefore, we propose a fast and memory-efficient Web server extension mechanism using a scripting language. We designed an architecture where the server process creates a region in memory to save the state of the interpreter at the server process startup, and multiple scripts share this region to process the scripts quickly when new request are made.
 
 The server process frees the global variables table, the exception flag and the byte-code which cause an increase of memory usage, in order to reduce the memory usage and extend safety by preventing interference between each script because of sharing the region. We implemented a mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".
+
+### What a worker keeps between requests
+
+The abstract above describes the design of the paper. ngx_mruby today does not free the global variables table between scripts. nginx creates one `mrb_state` for the `http {}` block (and one for the `stream {}` block) while it reads the configuration, and runs the init code (`mruby_init`, `mruby_stream_init`) and the server configuration code (`mruby_server_context_handler_code`) in it before it starts the workers, in the master process. Each worker process gets its own copy when nginx forks it, and runs all the other mruby code of the block in that copy: the init_worker and exit_worker code and every handler and filter, in every server and location, for every client. A reload or a restart starts new workers with a new state.
+
+Global variables, constants, instance variables of `main` (the `self` of handler code), methods defined with `def`, classes and modules with their constants, and what `Userdata` holds (it keeps its values in a global variable) stay in the worker from one request to the next. What one request leaves behind is seen by every later request that the same worker handles, also when the code raised an exception after it made the change. Each worker has its own copy, so one worker does not see the values of another. After each run, ngx_mruby clears the exception (`mrb->exc`); a script file without `cache` is read and compiled again for the next run, and inline code and cached scripts keep the byte-code compiled at startup. The garbage collector frees the objects that nothing refers to any more. Local variables do not stay: each run of handler code starts without them.
+
+Do not keep the data of one request in global variables, constants, instance variables of `main` or `Userdata`, since the next request of the worker, from any client, sees it. Use local variables, and read and write the request through `Nginx::Request`, `Nginx::Var`, `Nginx::Headers_in` and `Nginx::Headers_out` (in `stream {}`, where code runs per session, `Nginx::Stream::Connection`). To pass data from one handler to a later handler of the same request, declare an nginx variable with `set $name "";` and read and write it through `Nginx::Var`, or set the `Userdata` value in every request before it is read. A `set` in the location runs after `mruby_rewrite_handler` and empties the variable again, so declare a variable that a rewrite handler writes with `set` in the `server {}` block. Keep in globals and constants only what all requests of the worker are meant to share, such as settings that the init or init_worker code prepares. [`Nginx.remove_global_variable`](docs/class_and_method/README.md#nginxremove_global_variable) removes a global variable.
 
 # Contributions
 
