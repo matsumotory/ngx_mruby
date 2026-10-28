@@ -174,7 +174,15 @@ do
 done
 
 : ${NGINX_RUNNER:=exec}
-: ${NGINX_HEATTIME:=2}
+# The upper bound, in seconds, of each wait for the ports of the test nginx
+# below; test.sh goes on as soon as nginx accepts connections. See "Waiting
+# for nginx to listen" in docs/test/README.md for what the value is based on.
+: ${NGINX_HEATTIME:=60}
+
+# The ports to wait for are those of the listen directives of the http {}
+# configuration (see test/t/cases/_wait_for_listen.rb). They must be free
+# before nginx starts, so that the wait cannot take another process for it.
+ruby test/t/cases/_wait_for_listen.rb free ${NGINX_HEATTIME} test/conf/nginx.conf test/conf/conf.d/*.conf
 
 echo "====================================="
 echo ""
@@ -188,7 +196,7 @@ nginx_pid=$!
 trap "kill $nginx_pid; wait" EXIT
 echo ""
 echo ""
-sleep ${NGINX_HEATTIME} # waiting for nginx
+ruby test/t/cases/_wait_for_listen.rb listen ${NGINX_HEATTIME} $nginx_pid test/conf/nginx.conf test/conf/conf.d/*.conf
 ./mruby/build/test/bin/mruby ./test/t/ngx_mruby.rb 2> ${NGINX_INSTALL_DIR}/logs/stderr.log
 for f in test/t/cases/*.rb; do
     [ -e "$f" ] || continue

@@ -1,0 +1,67 @@
+name: zizmor
+
+# Static analysis of the GitHub Actions workflows and the Dependabot
+# configuration with zizmor (https://docs.zizmor.sh/), on every pull request
+# and push that changes them (docs/test/README.md, "Static analysis of the
+# workflows"). The job fails on any finding of the default persona that is
+# not ignored in .github/zizmor.yml or by a "# zizmor: ignore[...]" comment
+# with its reason.
+#
+# zizmor-action installs the zizmor release named by "version" from PyPI,
+# checked against the hashes that the action's lock file for that version
+# records. Dependabot updates the action's pin, not "version": raise it in
+# the same pull request as the action, or on its own.
+on:
+  pull_request:
+    branches:
+      - master
+      - next
+      - 'v*.x'
+    paths:
+      - '.github/workflows/**'
+      - '.github/dependabot.yml'
+      - '.github/zizmor.yml'
+  push:
+    branches:
+      - master
+      - next
+      - 'v*.x'
+    paths:
+      - '.github/workflows/**'
+      - '.github/dependabot.yml'
+      - '.github/zizmor.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  zizmor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # No permissions: the repository is public, so the checkout and the
+    # online audits read it without any, and advanced-security: false
+    # prints the findings instead of uploading them to code scanning
+    # (zizmor-action README, "Permissions").
+    permissions: {}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+        with:
+          version: 1.31.1
+          # Only this repository's own files: the vendored mruby/ tree has
+          # workflows of its own, which ngx_mruby does not run.
+          inputs: .github
+          config: .github/zizmor.yml
+          advanced-security: false
+          annotations: true
