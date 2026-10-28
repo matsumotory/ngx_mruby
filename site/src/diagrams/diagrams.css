@@ -1,0 +1,100 @@
+/*
+ * The rules that every diagram of 3.5 of docs/proposals/site.md shares
+ * (the "Drawing rules" there and "Diagrams" in 4.2). Each diagram adds its
+ * own grid in site/src/diagrams/<name>.css. The generator writes
+ * <figure class="diagram diagram-<name>"> with the drawings and one
+ * .diagram-label per label of the page (scripts/lib/diagrams.mjs).
+ */
+.diagram {
+  container: diagram / inline-size;
+  margin-top: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-frame);
+  padding: var(--space-5);
+}
+.diagram-grid {
+  display: grid;
+  font-size: var(--text-caption);
+  /* Labels are short (3.5): one line of 14 px each, so they take the
+     English caption line height of 1.5 in Japanese too (chosen here); the
+     1.7 of 4.4 is for running Japanese text */
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+/* The drawings: lines, boxes and marks in the tokens' colors, strokes of
+   1.5 px with round caps that keep their width when the drawing stretches
+   with its grid, no fill, no shadow, gradient or hover */
+.diagram-drawing {
+  fill: none;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.diagram-drawing :is(.d-box, .d-line, .d-mark) {
+  fill: none;
+  stroke: var(--color-border-strong);
+  stroke-width: 1.5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.diagram-drawing .d-quiet {
+  stroke: var(--color-border);
+}
+/* At most two marks per diagram take the accent (4.6) */
+.diagram-drawing .d-mark {
+  stroke: var(--color-accent);
+}
+/* The labels: HTML text at the caption size, in text or text-muted, never
+   in a diagram color; names of directives in the monospace face */
+.diagram-label {
+  position: relative;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.diagram-label code {
+  font-family: var(--font-mono);
+  font-size: inherit;
+  padding: 0;
+  background: none;
+  overflow-wrap: anywhere;
+}
+/* Japanese labels wrap by phrase at their <wbr> (4.4, 3.5) */
+:root[lang="ja"] .diagram-label {
+  word-break: keep-all;
+  line-break: strict;
+}
+.diagram figcaption {
+  margin-top: var(--space-4);
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--color-text-muted);
+}
+.diagram figcaption code {
+  font-size: inherit;
+}
+/* The caption, then the source as a note: a lead line and one item per
+   file, at the caption size, the floor of 4.4 */
+.diagram figcaption .diagram-caption,
+.diagram figcaption span.diagram-source {
+  display: block;
+}
+.diagram figcaption span.diagram-source {
+  margin-top: var(--space-2);
+}
+.diagram figcaption ul.diagram-source {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+}
+.diagram figcaption ul.diagram-source li {
+  margin: 0;
+}
+/* At 640 px and below a 12 px frame leaves the longest directive name of
+   a label, 28 characters at 14 px, its line at 320 px */
+@media (max-width: 640px) {
+  .diagram {
+    padding: var(--space-3);
+  }
+}

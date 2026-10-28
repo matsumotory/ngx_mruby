@@ -1,0 +1,36 @@
+---
+title: nginxが下す判断をRubyのコードで書く
+description: ngx_mrubyは、nginxに組み込んだmrubyのVMで、指定したフェーズでRubyのスクリプトを実行します。
+template: splash
+sidebar:
+  hidden: true
+prev: false
+next: false
+---
+
+{/* The home page in Japanese (docs/proposals/site.md, 3.2, 3.3 items 1
+and 8, 3.4): the translation of index.mdx. */}
+
+import Sample from '../../../components/Sample.astro';
+
+<div class="home">
+
+<p class="lede">nginx.confでRubyのスクリプトを指定すると、nginxは組み込んだmrubyのVMでそのスクリプトを実行します。実行する時点は、リクエストが届いたとき、変数を計算するとき、アクセスを許す前、レスポンスを作るとき、ヘッダとボディを変えるとき、TLSのハンドシェイクの間、TCPかUDPのセッションの中から選べます。ネットワークのI/Oはnginxが受け持つので、nginxとは別にアプリケーションサーバを動かす必要はありません。ngx_mrubyは、手を加えていないnginxの静的なモジュールか動的なモジュールとしてビルドできます。</p>
+
+<p class="actions"><a class="button-primary" href="/ja/install/">ngx_mrubyをインストールする</a> <a class="button-secondary" href="/ja/concepts/request-phases/">Rubyが動く場所を見る</a></p>
+
+## CIが<wbr />毎回<wbr />実行する<wbr />例
+
+次の4つのファイルは、このリポジトリのテストのファイルです。nginxは、`/hello`へのリクエストを受けるたびにスクリプトを実行します。レスポンスはそのスクリプトが書きます。
+
+<Sample lang="ja" case="test/t/cases/home_example.rb" conf="test/conf/conf.d/70-home-example.conf" script="test/html/home_example.rb" request="test/html/home_example.request" response="test/html/home_example.response" />
+
+## 最初に<wbr />読む<wbr />ページ
+
+<ul class="ways">
+<li><a href="/ja/install/">インストール</a><p>ngx_mrubyを組み込んだnginxをソースからビルドするか、Dockerのイメージで試します。</p></li>
+<li><a href="/ja/directives/">リファレンス</a><p>ディレクティブと、スクリプトから呼ぶRubyのクラスとメソッドを載せています。</p></li>
+<li><a href="/ja/concepts/request-phases/">リクエストのフェーズ</a><p>リクエストを処理する中で、Rubyの各ハンドラが動く場所を示します。</p></li>
+</ul>
+
+</div>

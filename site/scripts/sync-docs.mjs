@@ -3,13 +3,15 @@
 // build`; `npm run sync-docs` runs it alone.
 //
 // For each Markdown file under docs/ except docs/proposals/, it writes a
-// page under src/content/docs/ (gitignored; removed and written again on
-// every run):
+// page under src/content/docs/ (gitignored, beside the committed home pages;
+// removed and written again on every run):
 //
 // - Language and route. docs/<path>.md is an English page at /<path>/.
 //   docs/ja/<path>.md, and docs/<path>.ja.md (the Japanese release notes of
 //   docs/releases/README.md), are Japanese pages at /ja/<path>/. README.md
-//   is the index of its folder, and routes are lowercase.
+//   is the index of its folder, except docs/README.md, which is /docs/
+//   (and docs/ja/README.md /ja/docs/), since / and /ja/ are the committed
+//   home pages (5.2). Routes are lowercase.
 // - title: the text of the first heading of the file. The build stops when
 //   the file has no heading at the top level, or when that heading contains
 //   HTML (4.4). The heading is removed from the body when it is the first
@@ -29,13 +31,27 @@
 //   way. Only the destinations change: the rest of the Markdown is copied
 //   as it is.
 //
+// - Samples and diagrams (3.5). A fenced block with the language `sample`
+//   becomes the code blocks of the files that a case of test/t/cases/
+//   compares, with a line that names the case and the date of the last
+//   commit to the files (scripts/lib/samples.mjs). A fenced block with the
+//   language `diagram` becomes a figure with the drawing of
+//   site/src/diagrams/ and the labels of the block as HTML text
+//   (scripts/lib/diagrams.mjs). The build stops on a sample whose file or
+//   case is missing, on a diagram block whose keys differ from those of its
+//   drawing, and on a diagram block of a Japanese page whose keys or
+//   sources differ from the block of the English page. Both blocks must be
+//   at the top level of the file.
+//
 // It also writes generated/pages.json, the list of the pages with their
 // source, language, route, title and date, which the checks read.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { containsHtml, isFirstBlock, parseMarkdown, plainText, titleHeading } from './lib/markdown.mjs';
-import { contentDir, GITHUB_REF, GITHUB_URL, isShallow, lastCommitDate, manifestFile, repoDir } from './lib/site.mjs';
+import { contentDir, contentRoot, GITHUB_REF, GITHUB_URL, HOME_PAGES, isShallow, lastCommitDate, manifestFile, repoDir, siteDir } from './lib/site.mjs';
+import { checkKeys, diagramHtml, loadDrawings, parseDiagramBlock } from './lib/diagrams.mjs';
+import { loadSample, parseSampleBlock, sampleMarkdown } from './lib/samples.mjs';
 
 const posix = path.posix;
 
@@ -81,7 +97,9 @@ function pageOf(source) {
   }
   const parts = rel.slice(0, -'.md'.length).split('/');
   if (parts.at(-1) === 'README') parts.pop();
-  let route = parts.join('/').toLowerCase();
+  // docs/README.md, the index of the documentation, is /docs/: the home
+  // pages of the site are / and /ja/ (5.2).
+  let route = parts.length ? parts.join('/').toLowerCase() : 'docs';
   if (lang === 'ja') route = route ? `ja/${route}` : 'ja';
   if (!/^[a-z0-9._-]+(\/[a-z0-9._-]+)*$|^$/.test(route)) {
     fail(`${source}: the route ${route} would need characters other than a-z, 0-9, ".", "_" and "-"`);
@@ -198,6 +216,25 @@ function lineOf(node) {
   return node.position.start.line;
 }
 
+// The diagram blocks of the English page of a Japanese page, by name.
+function englishDiagramBlocks(page) {
+  const rel = page.source.startsWith('docs/ja/') ? `docs/${page.source.slice('docs/ja/'.length)}` : page.source.replace(/\.ja\.md$/, '.md');
+  const blocks = new Map();
+  if (!fs.existsSync(path.join(repoDir, rel))) return blocks;
+  const tree = parseMarkdown(fs.readFileSync(path.join(repoDir, rel), 'utf8'));
+  for (const node of tree.children) {
+    if (node.type === 'code' && node.lang === 'diagram') {
+      try {
+        const block = parseDiagramBlock(node.value, `${rel}:${node.position.start.line}`);
+        blocks.set(block.name, block);
+      } catch (e) {
+        fail(e.message);
+      }
+    }
+  }
+  return blocks;
+}
+
 function render(page) {
   const file = path.join(repoDir, page.source);
   const src = fs.readFileSync(file, 'utf8');
@@ -225,6 +262,41 @@ function render(page) {
   // A node inside the removed heading needs no edit.
   const inRemoved = (node) =>
     removed !== null && node.position.start.offset >= removed[0] && node.position.end.offset <= removed[1];
+  // Samples and diagrams (3.5), at the top level of the file.
+  const englishBlocks = page.lang === 'ja' ? englishDiagramBlocks(page) : null;
+  const generated = (node) => node.type === 'code' && (node.lang === 'sample' || node.lang === 'diagram');
+  const nested = (node, top) => {
+    if (!top && generated(node)) fail(`${page.source}:${lineOf(node)}: a ${node.lang} block must be at the top level of the file, not inside a list or a quote`);
+    for (const child of node.children ?? []) nested(child, false);
+  };
+  for (const child of tree.children) nested(child, true);
+  const diagrams = [];
+  for (const node of tree.children) {
+    if (!generated(node)) continue;
+    const where = `${page.source}:${lineOf(node)}`;
+    let text;
+    try {
+      if (node.lang === 'sample') {
+        text = sampleMarkdown(loadSample(parseSampleBlock(node.value, where), repoDir, where), page.lang);
+      } else {
+        const block = parseDiagramBlock(node.value, where);
+        const drawings = loadDrawings(siteDir, block.name, where);
+        checkKeys(block, drawings[0].keys, where, `the drawing site/src/diagrams/${block.name}.svg`);
+        if (englishBlocks) {
+          const en = englishBlocks.get(block.name);
+          if (!en) fail(`${where}: the English page of ${page.source} has no diagram block ${block.name}`);
+          checkKeys(block, [...en.labels.keys()], where, 'the diagram block of the English page');
+          const lines = (b) => JSON.stringify([b.sources, b.nginx, b.at]);
+          if (lines(block) !== lines(en)) fail(`${where}: the source, nginx and at lines of the diagram block ${block.name} differ from those of the English page`);
+        }
+        diagrams.push({ name: block.name, sources: block.sources, nginx: block.nginx, at: block.at });
+        text = diagramHtml(block, drawings, page.lang);
+      }
+    } catch (e) {
+      fail(e.message);
+    }
+    edits.push([node.position.start.offset, node.position.end.offset, text]);
+  }
   // A definition that an image refers to (![alt][id]) gets the raw URL.
   const imageIds = new Set();
   const collect = (node) => {
@@ -289,19 +361,38 @@ function render(page) {
 
   const lastUpdated = lastCommitDate(repoDir, page.source);
   if (!lastUpdated) console.warn(`sync-docs: warning: ${page.source} has no commit yet, so its page has no last-updated date`);
-  const front = ['---', `title: ${JSON.stringify(title)}`];
-  if (page.route !== '') front.push(`slug: ${JSON.stringify(page.route)}`);
+  const front = ['---', `title: ${JSON.stringify(title)}`, `slug: ${JSON.stringify(page.route)}`];
   if (lastUpdated) front.push(`lastUpdated: ${lastUpdated}`);
   front.push('---', '');
-  const out = path.join(contentDir, page.route === '' ? 'index.md' : `${page.route}/index.md`);
+  const out = path.join(contentDir, `${page.route}/index.md`);
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, `${front.join('\n')}\n${body}`);
-  return { ...page, title, lastUpdated, titleRemoved: removed !== null };
+  return { ...page, title, lastUpdated, titleRemoved: removed !== null, diagrams };
 }
 
-fs.rmSync(contentDir, { recursive: true, force: true });
+// Remove what the last run wrote: everything in the content folder except
+// the committed home pages.
+for (const entry of fs.readdirSync(contentRoot, { withFileTypes: true })) {
+  if (entry.name === 'index.mdx') continue;
+  const full = path.join(contentRoot, entry.name);
+  if (entry.name === 'ja' && entry.isDirectory()) {
+    for (const sub of fs.readdirSync(full)) if (sub !== 'index.mdx') fs.rmSync(path.join(full, sub), { recursive: true, force: true });
+  } else {
+    fs.rmSync(full, { recursive: true, force: true });
+  }
+}
 fs.rmSync(path.dirname(manifestFile), { recursive: true, force: true });
 const manifest = pages.map(render);
+// The home pages are committed MDX files (5.2): the checks read them from
+// the list too.
+for (const [lang, rel, route] of [['en', HOME_PAGES[0], ''], ['ja', HOME_PAGES[1], 'ja']]) {
+  const file = path.join(contentRoot, rel);
+  if (!fs.existsSync(file)) fail(`site/src/content/docs/${rel}, the home page of 5.2, is missing`);
+  const title = /^title:\s*(.+)$/m.exec(fs.readFileSync(file, 'utf8'))?.[1]?.replace(/^["']|["']$/g, '');
+  if (!title) fail(`site/src/content/docs/${rel} has no title in its front matter`);
+  const source = path.relative(repoDir, file).split(path.sep).join('/');
+  manifest.push({ source, lang, route, title, lastUpdated: lastCommitDate(repoDir, source), home: true, diagrams: [] });
+}
 fs.mkdirSync(path.dirname(manifestFile), { recursive: true });
 fs.writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(`sync-docs: wrote ${manifest.length} pages from docs/ to ${path.relative(repoDir, contentDir)}/`);

@@ -14,14 +14,14 @@ See [HTTP module directives](#http-module-directives) and [Stream module directi
 
 Here is a simple example of a content handler for HTTP.
 
-#### nginx.conf
+**nginx.conf**
 ```nginx
 location /hello {
     mruby_content_handler /path/to/hello.rb;
 }
 ```
 
-#### /path/to/hello.rb
+**/path/to/hello.rb**
 ```
 Nginx.echo "Hello World"
 ```
@@ -41,7 +41,7 @@ You will get 'Hello World' as a HTTP response body if you access '/hello' endpoi
 By default, mruby script is compiled whenever it is invoked.
 You can enable compiled code cache with 'cache' argument for performance.
 
-#### nginx.conf
+**nginx.conf**
 ```nginx
 location /hello {
     mruby_content_handler /path/to/hello.rb cache;
@@ -52,7 +52,7 @@ location /hello {
 
 You can write mruby code in nginx.conf instead of creating a script file. The compiled code is cached.
 
-#### nginx.conf
+**nginx.conf**
 ```nginx
 location /hello {
     mruby_content_handler_code '
@@ -66,7 +66,7 @@ location /hello {
 You can set nginx variable by a mruby script.
 The following example set a value returned from 'proxy.rb' to the variable '$backend'.
 
-#### nginx.conf
+**nginx.conf**
 ```nginx
 location /proxy {
     mruby_set $backend /path/to/proxy.rb;
@@ -75,14 +75,14 @@ location /proxy {
 
 Also you can enable caching, or write inline mruby code as same as other directives.
 
-#### nginx.conf
+**nginx.conf**
 ```nginx
 location /proxy {
     mruby_set $backend /path/to/proxy.rb cache;
 }
 ```
 
-#### nginx.conf
+**nginx.conf**
 ```nginx
 location /proxy {
     mruby_set_code $backend '
@@ -489,14 +489,14 @@ TODO: describe the difference between keepalive and mruby_upstream_keepalive.
 ngx_mruby also supports TCP/UDP stream. The stream module directives are similar to The HTTP module directives.
 Here are examples of the stream module directives.
 
-#### nginx.conf
+**nginx.conf**
 ```nginx
 server {
     mruby_stream /path/to/stream.rb;
 }
 ```
 
-#### nginx.conf
+**nginx.conf**
 ```nginx
 stream {
   upstream dynamic_server0 {
@@ -515,7 +515,7 @@ stream {
 }
 ```
 
-#### nginx.conf
+**nginx.conf**
 
 ```nginx
 stream {

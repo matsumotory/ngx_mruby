@@ -2,12 +2,15 @@
 /node_modules/
 # npm run build: the pages and the list of them that scripts/sync-docs.mjs
 # writes, Astro's generated types and caches, and the built site
-/src/content/docs/
+/src/content/docs/*
+!/src/content/docs/index.mdx
+!/src/content/docs/ja/
+/src/content/docs/ja/*
+!/src/content/docs/ja/index.mdx
 /generated/
 /.astro/
 /dist/
-# The specimens of step 2: SITE_SPECIMENS=1 npm run build,
-# scripts/specimens.mjs, and the log of scripts/check-offline-build.sh
-/dist-specimens/
-/build-specimens/
+# The screenshots of scripts/screenshots.mjs and the log of
+# scripts/check-offline-build.sh
+/build-screenshots/
 /offline-build.log

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 541" preserveAspectRatio="none" data-labels="h-phase h-handler tls tls-h post-read post-read-h server-rewrite server-rewrite-h server-rewrite-set find-config rewrite rewrite-h rewrite-set post-rewrite access access-h post-access content content-h header-filter header-filter-h body-filter body-filter-h log log-h stream stream-h">
+  <!-- The request phases diagram, narrow arrangement (docs/concepts/request-phases.md): from each phase a line down and a branch to each of its handlers. request-phases.css puts it in the first column of its grid, whose rows (21 px each, 16 px between the HTTP phases and the stream handler) are the rows of this drawing; the labels are HTML text. -->
+  <path class="d-line" d="M6 21 V31.5" />
+  <path class="d-line" d="M6 31.5 H14" />
+  <path class="d-line" d="M6 63 V73.5" />
+  <path class="d-line" d="M6 73.5 H14" />
+  <path class="d-line" d="M6 105 V136.5" />
+  <path class="d-line" d="M6 115.5 H14" />
+  <path class="d-line" d="M6 136.5 H14" />
+  <path class="d-line" d="M6 189 V220.5" />
+  <path class="d-line" d="M6 199.5 H14" />
+  <path class="d-line" d="M6 220.5 H14" />
+  <path class="d-line" d="M6 273 V283.5" />
+  <path class="d-line" d="M6 283.5 H14" />
+  <path class="d-line" d="M6 336 V346.5" />
+  <path class="d-line" d="M6 346.5 H14" />
+  <path class="d-line" d="M6 378 V388.5" />
+  <path class="d-line" d="M6 388.5 H14" />
+  <path class="d-line" d="M6 420 V430.5" />
+  <path class="d-line" d="M6 430.5 H14" />
+  <path class="d-line" d="M6 462 V472.5" />
+  <path class="d-line" d="M6 472.5 H14" />
+  <path class="d-line" d="M6 520 V530.5" />
+  <path class="d-line" d="M6 530.5 H14" />
+</svg>

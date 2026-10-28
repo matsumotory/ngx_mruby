@@ -16,8 +16,13 @@ export const GITHUB_REF = 'next';
 
 export const siteDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const repoDir = path.resolve(siteDir, '..');
-// Where scripts/sync-docs.mjs writes the pages and the list of them.
-export const contentDir = path.join(siteDir, 'src', 'content', 'docs');
+// Where scripts/sync-docs.mjs writes the pages and the list of them. The
+// pages go into Starlight's content folder beside the committed home pages
+// index.mdx and ja/index.mdx (docs/proposals/site.md, 5.2), each at the
+// folder of its route; .gitignore ignores everything else there.
+export const contentRoot = path.join(siteDir, 'src', 'content', 'docs');
+export const contentDir = contentRoot;
+export const HOME_PAGES = ['index.mdx', 'ja/index.mdx'];
 export const manifestFile = path.join(siteDir, 'generated', 'pages.json');
 export const distDir = path.join(siteDir, 'dist');
 

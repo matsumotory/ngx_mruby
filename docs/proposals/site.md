@@ -2,7 +2,9 @@
 
 Status: decided on 2026-10-15 (section 7); the four choices of 4.12
 decided on 2026-10-19 on the specimens of step 2. Steps 1 and 2 of
-section 6 are implemented (#591, #607). Next: step 3.
+section 6 are implemented (#591, #607). Step 3 (#617): the owner approved
+the definition and the first diagram on 2026-10-29 with two small fixes
+(section 7). Next: step 4.
 
 Evidence: the site map and writing plan of 3.2 and 3.3, and 3.5, section
 4, section 6 and section 7 rest on `next` at 73fc9098f and on the source of
@@ -243,7 +245,7 @@ Each diagram names the source it describes, at `next` 73fc9098f
 | Diagram | What it shows | Source it describes | Page |
 |---|---|---|---|
 | Request phases | nginx's HTTP phases in order; in which of them ngx_mruby runs a handler from a file and an inline one (post-read, server rewrite, rewrite, access, content, log); `mruby_set` inside the rewrite module's script; where the header and body filters and the SSL handshake handler come; the directive for each; and, for TCP and UDP, the one stream handler | `src/http/ngx_http_mruby_module.c` lines 635 to 718 (`ngx_http_mruby_handler_init`), 1453 to 1525 (`mruby_set` through `ndk_set_var`), 428 (the certificate callback); `src/stream/ngx_stream_mruby_module.c` line 760 (`NGX_STREAM_ACCESS_PHASE`); the `ngx_http_phases` list of nginx 1.31.6 | Concepts: phases |
-| Filter chain | ngx_mruby's header filter and body filter at the top of nginx's two filter chains; what each receives; that the body filter reads a response of known length as one buffer and passes a response without `Content-Length` on unread | `src/http/ngx_http_mruby_module.c` lines 1666 to 1676, 1824 to 1844 | Concepts: phases; Reference: directives |
+| Filter chain | ngx_mruby's header filter and body filter in nginx's two filter chains, after nginx's not-modified header filter and its range and copy body filters and before the filters of nginx's other modules; what each receives; that the body filter reads a response of known length as one buffer and passes a response without `Content-Length` on unread | `src/http/ngx_http_mruby_module.c` lines 1666 to 1676, 1824 to 1844 | Concepts: phases; Reference: directives |
 | Non-blocking wait | `Nginx::Async.sleep` in a handler: the handler's fiber yields, a timer goes into nginx's event loop, the worker serves other connections, and the timer's handler resumes the fiber | `src/http/ngx_http_mruby_async.c` lines 356 to 403 (`ngx_mrb_async_sleep`), 309 to 341 (`ngx_mrb_timer_handler`), 240 to 307 (`ngx_mrb_post_fiber`), 186 to 238 (`ngx_mrb_run_fiber`) | Concepts: async |
 | One `mrb_state` per worker | the `mrb_state` that nginx opens for an `http {}` block while it reads the configuration; the copy that each worker has after the fork; `mruby_init_worker` and `mruby_exit_worker`; what persists in a worker between requests (globals, constants, methods, classes); that only `mrb->exc` is cleared; that workers share nothing in Ruby, with the shared dictionary of v3 as the planned exception | `src/http/ngx_http_mruby_module.c` lines 999 to 1023 (`mrb_open`), 724 to 727 (`ngx_mrb_state_clean`), 601 to 633 (worker start and exit) | Concepts: lifetimes |
 | Build layout | `build_config.rb` and mruby's `rake` producing `libmruby.a`; `./configure` writing `config` and `Makefile` from `config.in` and `Makefile.in`; nginx's `--add-module` or `--add-dynamic-module` producing a static binary or one module file that holds `ngx_http_mruby_module`, `ngx_stream_mruby_module` and ngx_mruby's upstream keepalive module; where `ngx_devel_kit` comes in | `config.in` lines 1 to 81 (the dynamic and the static branch, and `have=NDK_SET_VAR` for `ngx_devel_kit`), `Makefile.in` lines 27 to 28, 103 (nginx's configure with `--add-module=$(NDK_ROOT)`) and 118, `configure.in` lines 190 to 194 (`NDK_ROOT`), `build.sh`, `build_config.rb` | Reference: build |
@@ -270,10 +272,13 @@ their figures.** Each diagram has two parts:
   the page, which names the drawing on its first line and gives one label
   per line as `key: text`. The keys are fixed by the drawing.
 
-The generator of 5.2 turns the block into an HTML `figure` with
-`role="img"` and an `aria-label` taken from the caption. The figure holds
-the drawing, inlined and hidden from screen readers, and each label as HTML
-text, placed over or beside the drawing by the diagram's own CSS grid. The
+The generator of 5.2 turns the block into an HTML `figure`. The figure
+holds a grid with `role="img"` and an `aria-label` taken from the caption,
+which holds the drawing, inlined and hidden from screen readers, and each
+label as HTML text, placed over or beside the drawing by the grid; the
+`figcaption` stays outside the element with `role="img"`, whose children
+are presentational, so that screen readers read the source lines too
+(step 3). The
 three ways compared:
 
 | | Labels in HTML, drawing in SVG | SVG with its own text | Mermaid |
@@ -323,9 +328,11 @@ practice). Step 5 checks that every diagram on `/ja/` takes its labels from
   `aria-label` says what the diagram shows, and the drawing is hidden from
   screen readers, as on the corporate site.
 
-**Keeping them true.** A diagram's caption ends with the source it
-describes and when, for example "Describes `src/http/ngx_http_mruby_module.c`
-lines 635 to 718 at 73fc9098f, 2026-10-15". A check reads these lines: it
+**Keeping them true.** Under a diagram's caption, a note gives the source
+it describes and when: a lead line with the commit and its date, then one
+item per file with its lines, for example "`src/http/ngx_http_mruby_module.c`
+lines 635 to 718", at the caption size of 14 px (step 3, the owner's
+review of 2026-10-29). A check reads these lines: it
 fails when a named file or line range no longer exists, and lists in the
 run summary every diagram whose lines changed since its commit
 (`git log -L <start>,<end>:<file> <commit>..HEAD`). The session that
@@ -1217,7 +1224,10 @@ detection, or that pinned versions do not keep Starlight stable.
   and `docs/ja/`.
 - **The generator** (`site/scripts/sync-docs.mjs`) runs before
   `astro build`. For each Markdown file under `docs/` except `proposals/`, it
-  writes a page into a gitignored folder under `site/src/content/docs/`: the
+  writes a page into `site/src/content/docs/`, at the folder of its route,
+  beside the committed home pages, which `.gitignore` keeps tracked while
+  it ignores the rest of the folder (in a subfolder, Starlight's sidebar
+  showed the subfolder as a group; step 3): the
   title from the first heading (a heading with HTML stops the build, 4.4),
   `lastUpdated` from
   `git log -1 --format=%cs -- <file>` (Starlight's front matter accepts a
@@ -1402,6 +1412,17 @@ of step 2, each as recommended: palette A ("配色 A (推奨)"), Geist Mono
 4.3 ("4.3 の手段のまま (推奨)"); and that the specimens live in the workflow
 artifact and the owner's review in a session ("CI の artifact とこの会話
 (推奨)"), with no image committed or attached to the pull request (4.12).
+
+On 2026-10-29 the owner reviewed what step 3 puts before the owner, the
+definition (3.3 item 1) and the first diagram, the request phases diagram,
+on the screenshots of #617 (the workflow artifact `screenshots`,
+`review/`), and chose "小さな直しを入れて承認 (推奨)": approve with two small
+fixes. The Japanese definition says 「ネットワークのI/O」 instead of
+「ネットワークの入出力」, the term that engineers use, as the English says
+"network I/O". The source lines under a diagram are set as a note under
+the caption, a lead line and one item per file, at the caption size of
+14 px, the floor of 4.4, so that at 390 px the Japanese caption does not
+read as a long paragraph (3.5, "Keeping them true").
 
 ## Appendix A. Where comparable projects put things
 

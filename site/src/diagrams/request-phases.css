@@ -1,0 +1,201 @@
+/*
+ * The request phases diagram (docs/concepts/request-phases.md; 3.5 of
+ * docs/proposals/site.md): the grids that place the labels of the page
+ * over the drawings request-phases.svg (wide) and
+ * request-phases.narrow.svg (narrow). The rows and columns of each grid
+ * are those of its drawing (16 px to the rem), so the boxes and lines stay
+ * at their labels when a drawing stretches. Wide: columns of 5, 2 and 9
+ * parts of 1600 units. Narrow: one row of 21 px per label, the phases at
+ * the left and their handlers beside a 16 px column that holds the tree of
+ * lines, so that the longest name, 28 characters at 14 px, keeps one line
+ * at 320 px. The narrow arrangement is taken when the content of the
+ * figure is narrower than 37rem, where the widest label of the phase
+ * column, post-rewrite, preaccess, no longer fits its column; Starlight's
+ * sidebar makes the column narrower from 50em than it is at 640 px, so the
+ * switch is a container query on the figure, not a media query.
+ */
+.diagram-request-phases .diagram-grid {
+  grid-template-columns: 1rem minmax(0, 1fr);
+  grid-template-rows: 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1.3125rem 1rem 1.3125rem 1.3125rem;
+  grid-template-areas:
+      "tls tls"
+      ". tls-h"
+      "post-read post-read"
+      ". post-read-h"
+      "server-rewrite server-rewrite"
+      ". server-rewrite-h"
+      ". server-rewrite-set"
+      "find-config find-config"
+      "rewrite rewrite"
+      ". rewrite-h"
+      ". rewrite-set"
+      "post-rewrite post-rewrite"
+      "access access"
+      ". access-h"
+      "post-access post-access"
+      "content content"
+      ". content-h"
+      "header-filter header-filter"
+      ". header-filter-h"
+      "body-filter body-filter"
+      ". body-filter-h"
+      "log log"
+      ". log-h"
+      ". ."
+      "stream stream"
+      ". stream-h";
+}
+.diagram-request-phases .diagram-drawing-narrow {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+.diagram-request-phases .diagram-drawing-wide {
+  display: none;
+}
+.diagram-request-phases .diagram-label {
+  white-space: nowrap;
+}
+/* The narrow arrangement leaves out the two column headings: the tree of
+   lines and the monospace face mark the handlers there, and without the
+   two lines the diagram fits the screen at 390 by 664 px (3.5) */
+.diagram-request-phases :is([data-key="h-phase"], [data-key="h-handler"]) {
+  display: none;
+}
+.diagram-request-phases :is([data-key="h-phase"], [data-key="h-handler"], [data-key="find-config"], [data-key="post-rewrite"], [data-key="post-access"]) {
+  color: var(--color-text-muted);
+}
+@container diagram (min-width: 37rem) {
+  .diagram-request-phases .diagram-grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 2fr) minmax(0, 9fr);
+    grid-template-rows: 2rem 2rem 0.5rem 2rem 0.5rem 2rem 2rem 0.5rem 2rem 0.5rem 2rem 2rem 0.5rem 2rem 0.5rem 2rem 0.5rem 2rem 0.5rem 2rem 0.5rem 2rem 0.5rem 2rem 0.5rem 2rem 1.5rem 2rem;
+    grid-template-areas:
+  "h-phase . h-handler"
+  "tls . tls-h"
+  ". . ."
+  "post-read . post-read-h"
+  ". . ."
+  "server-rewrite . server-rewrite-h"
+  "server-rewrite . server-rewrite-set"
+  ". . ."
+  "find-config . ."
+  ". . ."
+  "rewrite . rewrite-h"
+  "rewrite . rewrite-set"
+  ". . ."
+  "post-rewrite . ."
+  ". . ."
+  "access . access-h"
+  ". . ."
+  "post-access . ."
+  ". . ."
+  "content . content-h"
+  ". . ."
+  "header-filter . header-filter-h"
+  ". . ."
+  "body-filter . body-filter-h"
+  ". . ."
+  "log . log-h"
+  ". . ."
+  "stream . stream-h";
+  }
+  .diagram-request-phases .diagram-drawing-wide {
+    display: block;
+    grid-area: 1 / 1 / -1 / -1;
+  }
+  .diagram-request-phases .diagram-drawing-narrow {
+    display: none;
+  }
+  .diagram-request-phases .diagram-label {
+    align-self: center;
+    margin: 0;
+    padding-inline: var(--space-3);
+    white-space: normal;
+  }
+  .diagram-request-phases :is([data-key="h-phase"], [data-key="h-handler"]) {
+    display: block;
+    align-self: end;
+    padding-inline: 0;
+    padding-bottom: var(--space-1);
+  }
+}
+.diagram-request-phases [data-key="h-phase"] {
+  grid-area: h-phase;
+}
+.diagram-request-phases [data-key="h-handler"] {
+  grid-area: h-handler;
+}
+.diagram-request-phases [data-key="tls"] {
+  grid-area: tls;
+}
+.diagram-request-phases [data-key="tls-h"] {
+  grid-area: tls-h;
+}
+.diagram-request-phases [data-key="post-read"] {
+  grid-area: post-read;
+}
+.diagram-request-phases [data-key="post-read-h"] {
+  grid-area: post-read-h;
+}
+.diagram-request-phases [data-key="server-rewrite"] {
+  grid-area: server-rewrite;
+}
+.diagram-request-phases [data-key="server-rewrite-h"] {
+  grid-area: server-rewrite-h;
+}
+.diagram-request-phases [data-key="server-rewrite-set"] {
+  grid-area: server-rewrite-set;
+}
+.diagram-request-phases [data-key="find-config"] {
+  grid-area: find-config;
+}
+.diagram-request-phases [data-key="rewrite"] {
+  grid-area: rewrite;
+}
+.diagram-request-phases [data-key="rewrite-h"] {
+  grid-area: rewrite-h;
+}
+.diagram-request-phases [data-key="rewrite-set"] {
+  grid-area: rewrite-set;
+}
+.diagram-request-phases [data-key="post-rewrite"] {
+  grid-area: post-rewrite;
+}
+.diagram-request-phases [data-key="access"] {
+  grid-area: access;
+}
+.diagram-request-phases [data-key="access-h"] {
+  grid-area: access-h;
+}
+.diagram-request-phases [data-key="post-access"] {
+  grid-area: post-access;
+}
+.diagram-request-phases [data-key="content"] {
+  grid-area: content;
+}
+.diagram-request-phases [data-key="content-h"] {
+  grid-area: content-h;
+}
+.diagram-request-phases [data-key="header-filter"] {
+  grid-area: header-filter;
+}
+.diagram-request-phases [data-key="header-filter-h"] {
+  grid-area: header-filter-h;
+}
+.diagram-request-phases [data-key="body-filter"] {
+  grid-area: body-filter;
+}
+.diagram-request-phases [data-key="body-filter-h"] {
+  grid-area: body-filter-h;
+}
+.diagram-request-phases [data-key="log"] {
+  grid-area: log;
+}
+.diagram-request-phases [data-key="log-h"] {
+  grid-area: log-h;
+}
+.diagram-request-phases [data-key="stream"] {
+  grid-area: stream;
+}
+.diagram-request-phases [data-key="stream-h"] {
+  grid-area: stream-h;
+}

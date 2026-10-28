@@ -1,5 +1,5 @@
 // A static file server for the built site, for the browser checks and the
-// specimen screenshots: serves a dist directory on 127.0.0.1 at a free
+// screenshots: serves a dist directory on 127.0.0.1 at a free
 // port, with /path/ answered by path/index.html, as GitHub Pages does.
 import fs from 'node:fs';
 import http from 'node:http';

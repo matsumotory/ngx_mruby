@@ -403,7 +403,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
 - `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18132,
-  18136, 18138, 18140, 18143-18144, 18147-18153, 18155-18159, 12345-12359,
+  18136, 18138, 18140, 18143-18144, 18147-18153, 18155-18160, 12345-12359,
   12363, 12372-12373; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
   `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
@@ -457,10 +457,32 @@ cd site
 npm ci --ignore-scripts   # the exact versions of package-lock.json, without install scripts
 npm run build             # scripts/sync-docs.mjs writes docs/ into src/content/docs/, then astro build writes dist/
 npm run test              # the generator on its fixtures
-npm run check             # the checks of the built site (below)
+npm run check             # the checks of the built site that need no browser (below)
+npm run check:browser     # the checks in Chromium and WebKit (below)
+npm run screenshots       # the screenshots of step 3 (below)
 npm run preview           # serves dist/ at http://localhost:4321/
 ```
 
+- Pages: `scripts/sync-docs.mjs` writes the pages of `docs/` into
+  `src/content/docs/` (gitignored), `docs/README.md` as `/docs/`; the home
+  pages `/` and `/ja/` are the committed `src/content/docs/index.mdx` and
+  `ja/index.mdx`. The header, the menu, the footer and the language link
+  of 4.10 are component overrides in `src/components/` (`Header`,
+  `PageFrame`, `Footer`, `MobileMenuFooter`), with their links in
+  `src/site-nav.mjs`.
+- Samples and diagrams (3.5 of the proposal). A fenced block with the
+  language `sample` in `docs/` names a case of `test/t/cases/` and its
+  configuration, script, request and response files; the generator writes
+  them as code blocks with a line that names the case and the date of the
+  last commit to them (`scripts/lib/samples.mjs`; the home pages use
+  `src/components/Sample.astro`). A fenced block with the language
+  `diagram` names a drawing `src/diagrams/<name>.svg` (and
+  `<name>.narrow.svg`), its caption, the source lines it describes and
+  their commit (`at:`), and the labels as `key: text`; the generator
+  writes a figure with the drawings inlined and the labels as HTML
+  (`scripts/lib/diagrams.mjs`), placed by `src/diagrams/<name>.css`. The
+  build stops on a sample whose file or case is missing and on a diagram
+  block whose keys differ from those of its drawing.
 - `npm run build` needs no network after `npm ci`. It stops in a shallow
   clone (the last-updated date of a page is the date of the last commit
   to its source), on a file of `docs/` without a heading or whose first
@@ -475,9 +497,10 @@ npm run preview           # serves dist/ at http://localhost:4321/
   Starlight's and Pagefind's own color variables from their stylesheets at
   build time, so that the built CSS holds only the tokens' colors.
 - The checks of the proposal (section 6) are scripts under `site/scripts/`
-  that exit 1 on a failure. `npm run check` runs the five that read
-  `site/dist/`; the first four take `--dist`, `--repo` and `--manifest`
-  to run on a copy, `check-css.mjs` takes `--dist`:
+  that exit 1 on a failure. `npm run check` runs the seven that need no
+  browser; the first four take `--dist`, `--repo` and `--manifest` to run
+  on a copy, `check-css.mjs` takes `--dist`, `check-home.mjs` `--dist` and
+  `--repo`, and `check-diagrams.mjs` `--repo`:
   - `sh site/scripts/check-fresh-clone.sh [--keep DIR] [REV]`: a clone of
     the commit (default `HEAD`) builds with `npm ci --ignore-scripts` and
     `npm run build`;
@@ -495,7 +518,43 @@ npm run preview           # serves dist/ at http://localhost:4321/
     `text-wrap: pretty` or `balance`, `keep-all` only on the h2 of Japanese
     pages and diagram labels, transitions only of the properties of 4.8
     and for 200 ms or less, no terminal frame and no font from another
-    host, and `site/src/` no hex color outside `tokens.css`.
+    host, and `site/src/` no hex color outside `tokens.css`;
+  - `node scripts/check-home.mjs`: the home pages show the files that the
+    example's case compares, with the case, the date and the commit, and
+    no benchmark image or performance figure (Q8);
+  - `node scripts/check-diagrams.mjs`: the drawings hold lines and boxes
+    only (no `<text>`, no color outside the tokens' classes), the source
+    files and lines of each diagram exist at its commit, and the diagrams
+    whose lines changed since then are listed (also in the run summary).
+  `npm run check:browser` runs four on `site/dist/` (`--dist`; the first
+  two also `--engine chromium|webkit`; on macOS, Japanese is set in
+  Hiragino Sans and breaks at other places than in CI, where it is the
+  served Noto Sans JP: `node scripts/check-styles.mjs --ja-face noto`
+  sees what CI sees):
+  - `node scripts/check-styles.mjs` (`npm run check:styles`): computed
+    styles in Chromium and WebKit at 320 by 664, 390 by 664 and 1440 by
+    900 px: font sizes of the scale of each language, token colors (code
+    blocks and the colors of highlighted spans included), monospace only
+    for code and numbers, no shadow, gradient or backdrop filter (also
+    with the search dialog open, while its results load and after, and
+    with the menu open), margins, paddings, gaps and radii from the sets
+    of 4.5, durations of 4.8, at most 90 characters per English line at
+    1440 px, no horizontal scroll, gutters of 20 px or more at 320 and 390
+    px, the line count of the home page heading, the right edge of
+    Japanese text at 390 px and no `text-wrap` pretty or balance on
+    English text, the diagrams (`role="img"` and an `aria-label`, drawings
+    hidden from screen readers, labels of 14 px or more inside their
+    place, the drawing and its labels within one screen), and the theme
+    without JavaScript;
+  - `node scripts/check-focus.mjs`: tabbing through each page in Chromium
+    and WebKit (Option-Tab there), every focused element has a focus ring
+    and the fixed header does not cover it;
+  - `node scripts/check-language-links.mjs`: every language link leads to
+    the same path in the other language and answers 200, and `/` with
+    `Accept-Language: ja` answers in English without a redirect;
+  - `node scripts/check-lighthouse.mjs`: Lighthouse's accessibility
+    category with no failed audit on three page types in both languages
+    (`lighthouse` of `package-lock.json`, in Playwright's Chromium).
   The others:
   - `python3 scripts/contrast.py [--tokens FILE] [--markdown]` (`npm run
     check:contrast`): the contrast of palette A of 4.6 and of the code
@@ -504,43 +563,32 @@ npm run preview           # serves dist/ at http://localhost:4321/
     check:offline`): `npm run build` succeeds with network access blocked
     (`sudo unshare --net` on Linux, `sandbox-exec` on macOS), after a probe
     shows that the sandbox refuses a request;
-  - `node scripts/check-styles.mjs [--dist DIR] [--engine chromium|webkit]`
-    (`npm run check:styles`): computed styles in Chromium and WebKit on the
-    specimen build (below): font sizes of the scale of each language,
-    token colors (code blocks and the colors of highlighted spans
-    included), monospace only for code and numbers, no shadow, gradient or
-    backdrop filter (also with the search dialog and the menu open),
-    margins, paddings, gaps and radii from the sets of 4.5, durations of
-    4.8, at most 90 characters per English line at 1440 px, no horizontal
-    scroll, the right edge of Japanese text at 390 px, and the theme
-    without JavaScript.
-- The specimen pages of 4.12 (the owner chose the four options on
-  2026-10-19; the site builds only that configuration): `npm run
-  build:specimens` builds the site with the specimen pages
-  (`src/specimens/`, under `/specimens/` and `/ja/specimens/`) into
-  `dist-specimens/`, and `npm run specimens` (`node scripts/specimens.mjs
-  [--out DIR]`) writes their screenshots to `build-specimens/`, with a
-  contact sheet and an `index.md`. The normal build has no specimen page;
-  `check-styles.mjs` runs on the specimen build, whose pages hold a
-  diagram, code blocks and tables before the pages of steps 3 and 4 do. The browser checks and the
-  screenshots need Chromium and WebKit for the `playwright` of
+- `npm run screenshots` (`node scripts/screenshots.mjs [--dist DIR] [--out
+  DIR]`) writes the screenshots of step 3 to `build-screenshots/`: the
+  home page, the page of the request phases diagram and a reference page,
+  in both languages, light and dark, at 320 by 664, 390 by 664 and 1440 by
+  900 px, in Chromium and WebKit, and in `review/` the definition and the
+  diagram that the owner reviews, with an `index.md`. No image is
+  committed or attached to a pull request (4.12). The browser checks and
+  the screenshots need Chromium and WebKit for the `playwright` of
   `package-lock.json`: `npx playwright install chromium webkit` (locally,
   with `PLAYWRIGHT_BROWSERS_PATH` set to a directory under `.claude/tmp/`
   to keep them out of your home directory).
 - `node scripts/test-sync-docs.mjs` (`npm run test`) runs the generator
   on fixtures in temporary repositories: links in raw HTML inside
-  blockquotes and list items, and an attribute value that stops the build.
+  blockquotes and list items, an attribute value that stops the build, a
+  sample and a diagram, and the samples and diagram blocks that stop it.
 - `.github/workflows/site.yml` runs the checks and the generator's test on
   pull requests to `next` that touch `site/` or `docs/` and on every push
   to `next` (a push that removes a file that `docs/` links to fails
-  there), and uploads `site/dist/` as the artifact `site` and the specimen
-  screenshots as the artifact `specimens`. It does not deploy.
+  there), and uploads `site/dist/` as the artifact `site` and the
+  screenshots as the artifact `screenshots`. It does not deploy.
 - `site/package.json` and `site/package-lock.json` pin exact versions:
   change them with `npm install --save-exact <package>@<version>` and
   commit both. Nothing that the build generates is committed:
   `site/.gitignore` ignores it, and `test/forbidden_paths.txt` fails a
-  forced add of `site/dist/`, `site/dist-specimens/`,
-  `site/build-specimens/`, `site/generated/` or `site/.astro/`.
+  forced add of `site/dist/`, `site/build-screenshots/`,
+  `site/generated/` or `site/.astro/`.
 - `python3 site/scripts/check_links.py REPO_ROOT FILE...` checks the
   relative links and anchors of Markdown files.
 

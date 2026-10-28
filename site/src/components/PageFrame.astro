@@ -1,0 +1,133 @@
+---
+// Starlight's page frame, with a menu on every page (docs/proposals/site.md,
+// 4.10). Starlight renders its menu button and its menu (the sidebar pane)
+// only on pages with a sidebar, so the home page had no way to reach the
+// items that move out of the header on narrow screens. Here the pane is on
+// every page and holds the site's items (SiteMenu.astro) before the
+// sidebar. On pages with a sidebar, from 50em, the pane is the sidebar, as
+// in Starlight, and shows the section links at its top until the header
+// holds them. On pages without a sidebar the pane is the menu at every
+// width, and its button shows until the header holds the section links.
+// The menu opens and closes without JavaScript (the popover attribute);
+// the script only keeps the sidebar from being a popover on wide screens
+// and traps the focus in the open menu, as Starlight's does.
+import { Icon } from '@astrojs/starlight/components';
+import SiteMenu from './SiteMenu.astro';
+import { strings } from '../site-nav.mjs';
+
+const { hasSidebar } = Astro.locals.starlightRoute;
+const t = strings(Astro.locals.starlightRoute.locale);
+const sidebarLabel = Astro.locals.t('sidebarNav.accessibleLabel');
+---
+
+<div class="page sl-flex">
+  <header class="header"><slot name="header" /></header>
+  <nav class="sidebar print:hidden" aria-label={hasSidebar ? sidebarLabel : t.menu}>
+    <button popovertarget="starlight__sidebar" class="sl-menu-button round-button sl-flex">
+      <Icon name="bars" class="open-menu" />
+      <Icon name="close" class="close-menu" />
+      <span class="sr-only">{Astro.locals.t('menuButton.accessibleLabel')}</span>
+    </button>
+    <sl-sidebar-pane popover="" id="starlight__sidebar" class="sidebar-pane">
+      <div class="sidebar-content sl-flex">
+        <SiteMenu />
+        <slot name="sidebar" />
+      </div>
+    </sl-sidebar-pane>
+  </nav>
+  <div class="main-frame"><slot /></div>
+</div>
+
+<script>
+  class SitePane extends HTMLElement {
+    constructor() {
+      super();
+      const hasSidebar = document.documentElement.hasAttribute('data-has-sidebar');
+      const desktop = matchMedia('(min-width: 50em)');
+      const reset = () => {
+        this.popover = hasSidebar && desktop.matches ? null : 'auto';
+      };
+      reset();
+      desktop.addEventListener('change', reset);
+      this.addEventListener('toggle', (e) => {
+        const open = (e as ToggleEvent).newState === 'open';
+        document.querySelectorAll<HTMLElement>('.main-frame, .sl-skip-link').forEach((el) => el.toggleAttribute('inert', open));
+      });
+    }
+  }
+  customElements.define('sl-sidebar-pane', SitePane);
+</script>
+
+<style>
+  @layer starlight.core {
+    .page {
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    .header {
+      z-index: var(--sl-z-index-navbar);
+      position: fixed;
+      inset-inline-start: 0;
+      inset-block-start: 0;
+      width: 100%;
+      height: var(--sl-nav-height);
+    }
+    .sidebar-pane {
+      border: unset;
+      padding: unset;
+      height: unset;
+      color: unset;
+      position: fixed;
+      z-index: var(--sl-z-index-menu);
+      inset-block: var(--sl-nav-height) 0;
+      inset-inline-start: 0;
+      width: 100%;
+      background-color: var(--sl-color-black);
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+    }
+    .sidebar-content {
+      height: 100%;
+      min-height: max-content;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+    .main-frame {
+      padding-top: calc(var(--sl-nav-height) + var(--sl-mobile-toc-height));
+      padding-inline-start: var(--sl-content-inline-start);
+    }
+    .sl-menu-button {
+      position: fixed;
+      top: calc((var(--sl-nav-height) - var(--sl-menu-button-size)) / 2);
+      inset-inline-end: var(--sl-nav-pad-x);
+      z-index: var(--sl-z-index-navbar);
+      width: var(--sl-menu-button-size);
+      height: var(--sl-menu-button-size);
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .sl-menu-button:has(~ :popover-open) .open-menu,
+    .sl-menu-button:not(:has(~ :popover-open)) .close-menu {
+      display: none;
+    }
+    @media (min-width: 50em) {
+      :global([data-has-sidebar]) .sidebar-pane {
+        display: block;
+        width: var(--sl-sidebar-width);
+        background-color: var(--sl-color-bg-sidebar);
+        border-inline-end: 1px solid var(--sl-color-hairline-shade);
+      }
+      :global([data-has-sidebar]) .sl-menu-button {
+        display: none;
+      }
+    }
+  }
+</style>
+<style is:global>
+  @layer starlight.core {
+    body:has(#starlight__sidebar:popover-open) {
+      overflow: hidden;
+    }
+  }
+</style>

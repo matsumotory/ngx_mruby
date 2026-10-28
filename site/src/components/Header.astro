@@ -1,0 +1,44 @@
+---
+// The header of 4.10: logo and wordmark, the five section links of 3.2,
+// search, the version link, the language link, the theme toggle and GitHub
+// with a text label. 64 px high on an opaque surface with a 1 px bottom
+// border (site.css). The links move into the menu below the width where
+// they fit, and at 640 px and below everything but the logo, the wordmark,
+// search, the theme toggle and the menu button moves into the menu
+// (SiteMenu.astro, PageFrame.astro).
+import { Icon } from '@astrojs/starlight/components';
+import Search from 'virtual:starlight/components/Search';
+import LanguageLink from './LanguageLink.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import { GITHUB_URL, sectionLinks, strings, versionLink, currentSection } from '../site-nav.mjs';
+
+const lang = Astro.locals.starlightRoute.locale === 'ja' ? 'ja' : 'en';
+const t = strings(lang);
+const current = currentSection(lang, Astro.url.pathname);
+const version = versionLink(lang);
+---
+
+<div class="site-header">
+  <a class="site-title" href={lang === 'ja' ? '/ja/' : '/'} aria-label={t.home}>
+    <img src="/favicon.png" alt="" width="32" height="32" />
+    <span translate="no">ngx_mruby</span>
+  </a>
+  <nav class="site-nav" aria-label={t.sections}>
+    <ul>
+      {
+        sectionLinks(lang).map((link) => (
+          <li>
+            <a href={link.href} aria-current={link.key === current ? 'page' : undefined}>
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+  <div class="site-search print:hidden"><Search /></div>
+  <a class="header-link version-link print:hidden" href={version.href}>{version.label}</a>
+  <LanguageLink class="header-link pill print:hidden" />
+  <ThemeToggle />
+  <a class="header-link github-link print:hidden" href={GITHUB_URL}><Icon name="github" class="github-mark" />GitHub</a>
+</div>

@@ -1,0 +1,5 @@
+HTTP/1.1 200 OK
+Content-Type: text/plain
+X-Greeting-For: Ruby
+
+Hello, Ruby! nginx ran this Ruby script for GET /hello.
