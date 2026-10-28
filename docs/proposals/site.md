@@ -2,8 +2,9 @@
 
 Status: decided on 2026-10-15 (section 7); the four choices of 4.12
 decided on 2026-10-19 on the specimens of step 2. Steps 1 and 2 of
-section 6 are implemented (#591, #607). Step 3 is in #617, where the
-owner reviews the definition and the first diagram.
+section 6 are implemented (#591, #607). Step 3 (#617): the owner approved
+the definition and the first diagram on 2026-10-29 with two small fixes
+(section 7). Next: step 4.
 
 Evidence: the site map and writing plan of 3.2 and 3.3, and 3.5, section
 4, section 6 and section 7 rest on `next` at 73fc9098f and on the source of
@@ -327,9 +328,11 @@ practice). Step 5 checks that every diagram on `/ja/` takes its labels from
   `aria-label` says what the diagram shows, and the drawing is hidden from
   screen readers, as on the corporate site.
 
-**Keeping them true.** A diagram's caption ends with the source it
-describes and when, for example "Describes `src/http/ngx_http_mruby_module.c`
-lines 635 to 718 at 73fc9098f, 2026-10-15". A check reads these lines: it
+**Keeping them true.** Under a diagram's caption, a note gives the source
+it describes and when: a lead line with the commit and its date, then one
+item per file with its lines, for example "`src/http/ngx_http_mruby_module.c`
+lines 635 to 718", at the caption size of 14 px (step 3, the owner's
+review of 2026-10-29). A check reads these lines: it
 fails when a named file or line range no longer exists, and lists in the
 run summary every diagram whose lines changed since its commit
 (`git log -L <start>,<end>:<file> <commit>..HEAD`). The session that
@@ -1409,6 +1412,17 @@ of step 2, each as recommended: palette A ("配色 A (推奨)"), Geist Mono
 4.3 ("4.3 の手段のまま (推奨)"); and that the specimens live in the workflow
 artifact and the owner's review in a session ("CI の artifact とこの会話
 (推奨)"), with no image committed or attached to the pull request (4.12).
+
+On 2026-10-29 the owner reviewed what step 3 puts before the owner, the
+definition (3.3 item 1) and the first diagram, the request phases diagram,
+on the screenshots of #617 (the workflow artifact `screenshots`,
+`review/`), and chose "小さな直しを入れて承認 (推奨)": approve with two small
+fixes. The Japanese definition says 「ネットワークのI/O」 instead of
+「ネットワークの入出力」, the term that engineers use, as the English says
+"network I/O". The source lines under a diagram are set as a note under
+the caption, a lead line and one item per file, at the caption size of
+14 px, the floor of 4.4, so that at 390 px the Japanese caption does not
+read as a long paragraph (3.5, "Keeping them true").
 
 ## Appendix A. Where comparable projects put things
 

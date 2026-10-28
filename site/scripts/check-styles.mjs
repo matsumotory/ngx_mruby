@@ -278,7 +278,7 @@ function inspect(cfg) {
     }
   }
   if (lang === 'ja' && cfg.width === 390) {
-    for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li, figcaption, td, th), .sl-markdown-content h2')) {
+    for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li, figcaption, figcaption > span, td, th), .sl-markdown-content h2')) {
       if (!visible(el) || el.closest('.expressive-code, .diagram-grid') || el.querySelector('p, ul, ol')) continue;
       // A row of buttons is not running text
       if (getComputedStyle(el).display === 'flex') continue;
@@ -301,7 +301,7 @@ function inspect(cfg) {
   // last line of one or two characters (the owner's rule for text: fix it
   // by adding or removing a few characters, not by breaking lines)
   if (cfg.width > 0) {
-    for (const el of document.querySelectorAll('main :is(p, li, figcaption, td, th, dd, h1, h2, h3, h4)')) {
+    for (const el of document.querySelectorAll('main :is(p, li, figcaption, figcaption > span, td, th, dd, h1, h2, h3, h4)')) {
       if (!visible(el) || el.closest('.expressive-code, .diagram-grid') || el.querySelector('p, ul, ol')) continue;
       const ls = lines(el);
       if (ls.length < 2) continue;

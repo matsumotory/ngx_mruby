@@ -137,27 +137,21 @@ const linesText = (ranges, lang) => {
   return `${ranges.length === 1 && ranges[0][0] === ranges[0][1] ? 'line' : 'lines'} ${list}`;
 };
 
-// The figcaption: what the diagram shows, then the source it describes and
-// when (3.5, "Keeping them true").
+// The figcaption: what the diagram shows, then, as a note, the source it
+// describes and when (3.5, "Keeping them true"): a lead line and one list
+// item per file, so that at 390 px the source does not read as a long
+// paragraph (the owner's review of step 3, 2026-10-29).
 export function captionHtml(block, lang) {
   const nowrap = (s) => `<span class="nowrap">${s}</span>`;
   const code = (s) => `<code>${escapeHtml(s)}</code>`;
   const at = block.at;
-  const repo = block.sources.map((s) => (lang === 'ja' ? `${code(s.file)}の${linesText(s.ranges, lang)}` : `${code(s.file)} ${linesText(s.ranges, lang)}`));
-  let text;
-  if (lang === 'ja') {
-    // The files are joined with と, their lines with 、
-    const files = repo.length > 1 ? `${repo.slice(0, -1).join('、')}と、${repo.at(-1)}` : repo[0];
-    text = `${labelHtml(block.caption)}${nowrap(at.date)}のコミット${code(at.commit)}の、${files}を元に描きました。`;
-    for (const n of block.nginx) text += `nginx ${nowrap(n.version)}の${code(n.file)}の${linesText(n.ranges, lang)}も元にしました。`;
-  } else {
-    // The files are joined with "; ", so that each file's list of lines
-    // ends where the next file starts
-    const files = repo.length > 1 ? `${repo.slice(0, -1).join('; ')}; and ${repo.at(-1)}` : repo[0];
-    text = `${labelHtml(block.caption)} Describes, at ${code(at.commit)} of ${nowrap(at.date)}, ${files}.`;
-    for (const n of block.nginx) text += ` Also describes ${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}.`;
-  }
-  return text;
+  const ja = lang === 'ja';
+  const items = block.sources.map((s) => (ja ? `${code(s.file)}の${linesText(s.ranges, lang)}` : `${code(s.file)} ${linesText(s.ranges, lang)}`));
+  for (const n of block.nginx) items.push(ja ? `nginx ${nowrap(n.version)}では、${code(n.file)}の${linesText(n.ranges, lang)}` : `${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}`);
+  const lead = ja
+    ? `ngx_mrubyの${nowrap(at.date)}のコミット${nowrap(code(at.commit))}${block.nginx.length ? 'と、nginxのソースの、' : 'の、'}次の行を元に描きました。`
+    : `Drawn from these lines of ngx_mruby at ${nowrap(code(at.commit))} (${nowrap(at.date)})${block.nginx.length ? ' and of nginx' : ''}:`;
+  return `<span class="diagram-caption">${labelHtml(block.caption)}</span><span class="diagram-source">${lead}</span><ul class="diagram-source">${items.map((x) => `<li>${x}</li>`).join('')}</ul>`;
 }
 
 // The drawing, inlined: comments and line breaks removed, hidden from

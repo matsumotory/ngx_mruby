@@ -4,7 +4,7 @@ nginxは、HTTPのリクエストを決まった順のフェーズで処理し�
 
 ```diagram
 request-phases
-caption: nginxがHTTPのリクエストを処理するフェーズを順に並べ、各フェーズでRubyを実行するngx_mrubyのディレクティブを示します。TCPとUDPのセッションで実行するハンドラも示します。
+caption: nginxがHTTPのリクエストを処理するフェーズを順に並べ、各フェーズでRubyを実行するngx_mrubyのディレクティブを示します。TCPとUDPのセッションで動くハンドラも示します。
 source: src/http/ngx_http_mruby_module.c 431 638-721 1742-1824 1954-1965
 source: src/stream/ngx_stream_mruby_module.c 787
 nginx: 1.31.6 src/http/ngx_http_core_module.h 111-128

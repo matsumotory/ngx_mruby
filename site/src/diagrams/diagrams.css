@@ -75,6 +75,22 @@
 .diagram figcaption code {
   font-size: inherit;
 }
+/* The caption, then the source as a note: a lead line and one item per
+   file, at the caption size, the floor of 4.4 */
+.diagram figcaption .diagram-caption,
+.diagram figcaption span.diagram-source {
+  display: block;
+}
+.diagram figcaption span.diagram-source {
+  margin-top: var(--space-2);
+}
+.diagram figcaption ul.diagram-source {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+}
+.diagram figcaption ul.diagram-source li {
+  margin: 0;
+}
 /* At 640 px and below a 12 px frame leaves the longest directive name of
    a label, 28 characters at 14 px, its line at 320 px */
 @media (max-width: 640px) {
