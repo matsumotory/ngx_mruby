@@ -97,7 +97,8 @@ export function loadSample(spec, repo, where) {
 }
 
 function portOf(conf, file, where) {
-  const m = /^\s*listen\s+(\d+)/m.exec(conf);
+  // listen 18161; or, in a stream fragment, listen 127.0.0.1:12364;
+  const m = /^\s*listen\s+(?:[0-9.]+:)?(\d+)/m.exec(conf);
   if (!m) throw new Error(`${where}: ${file} has no listen directive with a port`);
   return m[1];
 }

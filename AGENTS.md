@@ -407,8 +407,8 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
 - `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18132,
-  18136, 18138, 18140, 18143-18144, 18147-18153, 18155-18160, 12345-12359,
-  12363, 12372-12373; 18116 and 12357 belong to the second nginx that
+  18136, 18138, 18140, 18143-18144, 18147-18153, 18155-18168, 12345-12359,
+  12363-12364, 12372-12373; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
   `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
@@ -511,7 +511,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
   Starlight's and Pagefind's own color variables from their stylesheets at
   build time, so that the built CSS holds only the tokens' colors.
 - The checks of the proposal (section 6) are scripts under `site/scripts/`
-  that exit 1 on a failure. `npm run check` runs the seven that need no
+  that exit 1 on a failure. `npm run check` runs the eight that need no
   browser; the first four take `--dist`, `--repo` and `--manifest` to run
   on a copy, `check-css.mjs` takes `--dist`, `check-home.mjs` `--dist` and
   `--repo`, and `check-diagrams.mjs` `--repo`:
@@ -536,10 +536,22 @@ npm run preview           # serves dist/ at http://localhost:4321/
   - `node scripts/check-home.mjs`: the home pages show the files that the
     example's case compares, with the case, the date and the commit, and
     no benchmark image or performance figure (Q8);
+  - `node scripts/check-samples.mjs`: every sample block of the pages
+    names a case of `test/t/cases/` and files that exist, and every use
+    case of `docs/use_case/README.md` has a sample, a link to a page with
+    one, or a paragraph "**Untested.**" with the reason (3.5);
   - `node scripts/check-diagrams.mjs`: the drawings hold lines and boxes
     only (no `<text>`, no color outside the tokens' classes), the source
     files and lines of each diagram exist at its commit, and the diagrams
     whose lines changed since then are listed (also in the run summary).
+  `node scripts/check-ruby-blocks.mjs --mrbc PATH` (not in `npm run
+  check`, because it needs mrbc) compiles every Ruby block of the pages
+  and every script of their samples with the mrbc of the bundled mruby,
+  built alone in about ten seconds with `cd mruby &&
+  MRUBY_CONFIG=build_config/mrbc.rb MRUBY_BUILD_DIR=DIR rake`
+  (`DIR/host/bin/mrbc`); a block that shows a syntax error on purpose is
+  marked ```` ```ruby syntax-error ```` and must not compile. `site.yml`
+  runs both.
   `npm run check:browser` runs four on `site/dist/` (`--dist`; the first
   two also `--engine chromium|webkit`; on macOS, Japanese is set in
   Hiragino Sans and breaks at other places than in CI, where it is the

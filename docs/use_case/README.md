@@ -1,317 +1,161 @@
-# Use Case
-- [Hello World](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case#hello-world)
-- [Reverse Proxy](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case#reverse-proxy)
-- [Change to maintenance mode with Redis](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case#change-to-maintenance-mode-with-redis)
-- [Markdown Web Page](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case#markdown-web-page)
-- [Output Filter Converting Markdown to HTML](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case#output-filter-convering-markdown-to-html)
-- [File Based Access List](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case#file-based-access-list)
-- [File Server like Dropbox Link](https://github.com/matsumotory/ngx_mruby/tree/master/docs/use_case#file-server-like-dropbox-link)
-- [Dynamic Image Provider (in Japanese)](http://techhey.hatenablog.com/entry/2014/04/19/162323)
-- [Dynamic reverse proxy using access information (in Japanese)](http://blog.cloudpack.jp/2014/07/08/ngx-mruby-nginx-script/)
-- [Research ngx_mruby and use output filter (in Russian)](http://habrahabr.ru/post/225313/)
-- [ACME auto ssl using Let's Encrypt](https://github.com/matsumotory/ngx_mruby/blob/master/test/conf/auto-ssl/nginx.conf.client_example)
-  (needs a build with `NGX_MRUBY_AUTO_SSL=1`, see [Building with the auto-ssl mrbgem](../install/README.md#building-with-the-auto-ssl-mrbgem),
-  with matsumotory/mruby-redis, which the default `build_config.rb` includes, and with a running Redis server, because the example keeps the certificates and the challenge tokens in Redis;
-  its ACME client speaks ACMEv1, which Let's Encrypt no longer serves)
+# Use cases
+
+Each use case below has a sample that CI runs, on this page or on the
+guide it links to, or is marked untested with the reason. A sample shows
+the files of a test of this repository and the response that the test
+compares on every CI run (3.5 of the site proposal).
 
 ## Hello world
-#### /path/to/hello.rb
-```ruby
-Nginx.echo "Hello World"
+
+A content handler writes the response.
+
+```sample
+case: test/t/cases/guides.rb
+conf: test/conf/conf.d/72-guide-hello.conf
+script: test/html/guide_hello.rb
+request: test/html/guide_hello.request
+response: test/html/guide_hello.response
 ```
 
-#### nginx.conf
+[The start page](../../examples/start/README.md) runs a handler of the same
+kind in Docker.
+
+## Reverse proxy
+
+A script chooses the backend of `proxy_pass` for each request. The sample
+is on the guide [Route requests to a backend](../guides/routing.md).
+
+## File based access list
+
+An access handler answers 403 for clients that a file lists. The sample is
+on the guide [Deny clients listed in a file](../guides/access-control.md).
+
+## Output filter converting Markdown to HTML
+
+A body filter converts the body of a `.md` file into HTML. The filter part
+is the sample of the guide [Change a response body](../guides/body-filter.md),
+which wraps a text file in an HTML page.
+
+**Untested.** The conversion of Markdown needs the gem mruby-discount,
+which `build_config.rb` leaves out (its line is commented out), and no CI
+job builds it. To try it, uncomment the line of mruby-discount in
+`build_config.rb` and build again.
+
 ```nginx
-server {
-  location /hello {
-    mruby_content_handler /path/to/hello.rb;
-  }
+location ~ \.md$ {
+    mruby_output_body_filter /path/to/filter.rb cache;
 }
 ```
 
-#### Access
-```bash
-$ curl http://127.0.0.1/hello
-Hello World
-```
-
-## Reverse Proxy
-#### /path/to/proxy.rb
 ```ruby
-backends = [
-  "127.0.0.1:8001",
-  "127.0.0.1:8002",
-  "127.0.0.1:8003",
-]
-# write algorithm for selecting backend
-backends[rand(backends.length)]
-```
-#### nginx.conf
-```nginx
-server {
-  location /proxy {
-    mruby_set $backend /path/to/proxy.rb;
-    proxy_pass  http://$backend;
-  }
-}
+# /path/to/filter.rb
+f = Nginx::Filter.new
+
+css = "https://gist.github.com/andyferra/2554919/raw/2e66cabdafe1c9a7f354aa2ebf5bc38265e638e5/github.css"
+md = Discount.new css, "markdown"
+
+f.body = md.md2html f.body
 ```
 
 ## Change to maintenance mode with Redis
-refs: http://takeswim.hateblo.jp/entry/2013/10/03/182748
 
-This example needs the `Redis` class of mruby-redis, and a running Redis server. The default `build_config.rb` builds mruby-redis again since 2.7.2; 2.7.1 left it out.
+An access handler reads a flag from Redis and answers 503 while the flag is
+set; otherwise nginx proxies the request. After an article by takeswim
+([in Japanese](https://takeswim.hateblo.jp/entry/2013/10/03/182748)).
 
-#### nginx.conf
+**Untested.** The test job of CI runs no Redis server, so no sample runs
+this use case. The default build includes the gem mruby-redis, whose
+`Redis` class it uses.
+
 ```nginx
-worker_processes  1;
-
-daemon off;
-master_process off;
-
-events {
-    worker_connections  1024;
-}
-
-http {
-    # Create redis connection object at startup,
-    # and set it into user-data object
-    mruby_init_code '
-        userdata = Userdata.new "redis_data_key"
-        userdata.redis = Redis.new "127.0.0.1", 6379
+location / {
+    mruby_access_handler_code '
+        redis = Redis.new "127.0.0.1", 6379
+        maintenance = redis.get("maintenance") == "on"
+        redis.close
+        Nginx.return Nginx::HTTP_SERVICE_UNAVAILABLE if maintenance
     ';
-
-    server {
-        listen       7777;
-        location / {
-          echo "port 7777 contents";
-        }
-    }
-
-    server {
-        listen       57777;
-
-        location /mruby {
-          mruby_set_code $maint '
-              userdata = Userdata.new "redis_data_key"
-              redis = userdata.redis
-              redis.get "ngx_maint"
-          ';
-          if ($maint = "TRUE") {
-            mruby_set_code $res_maint '
-              JSON::stringify({"result"=>"ERR", "time"=>Time.now.to_i})
-          ';
-            echo $res_maint;
-          }
-          if ($maint != "TRUE") {
-             proxy_pass   http://127.0.0.1:7777;
-          }
-        }
-    }
+    proxy_pass http://127.0.0.1:8080;
 }
 ```
-## Markdown Web Page
-##### Activate mruby-discount when build ngx_mruby
-```ruby
-  # use markdown on mod_mruby
-  conf.gem :git => 'git://github.com/matsumotory/mruby-discount.git'
-```
-##### nginx.conf
+
+mruby-redis waits for each answer of the Redis server in the worker, so the
+worker serves no other request meanwhile.
+
+## Markdown web page
+
+A content handler renders a Markdown text as an HTML page.
+
+**Untested.** It needs the gem mruby-discount, which `build_config.rb`
+leaves out (its line is commented out), and no CI job builds it. To try it,
+uncomment that line and build again.
+
 ```nginx
 location ~ \.rb$ {
     mruby_add_handler on;
 }
 ```
-##### md.rb
+
 ```ruby
+# md.rb, under the root of the location
 r = Nginx::Request.new
 r.content_type = "text/html"
 
-# setup markdown engine
-title = "md test"
-css = "https://gist.github.com/andyferra/2554919/raw/2e66cabdafe1c9a7f354aa2ebf5bc38265e638e5/github.css"
-md = Discount.new css, title
+md = Discount.new "https://gist.github.com/andyferra/2554919/raw/2e66cabdafe1c9a7f354aa2ebf5bc38265e638e5/github.css", "md test"
 
-# create markdown data
 body = <<DATA
-
 # Section
-## aaa
 
-- hoge
-- foo
-
-## bbb
-
-__code__
-
-    a = 1
-    b = a + 1
-
+- item 1
+- item 2
 DATA
 
-# create html
-html = md.header
-html << body.to_html
-html << md.footer
-
-# create response
-Nginx.echo html
-```
-##### Response (images)
-Access to http://example.com/md.rb
-
-***
-![response](https://dl.dropboxusercontent.com/s/fkzsuv94tr541zg/md_test.png)
-***
-
-## Output Filter Converting Markdown to HTML
-``.md`` markdown file convert to html using output filter
-#### Activate mruby-discount when build ngx_mruby
-```ruby
-  # use markdown on ngx_mruby
-  conf.gem :git => 'git://github.com/matsumotory/mruby-discount.git'
-```
-#### nginx.conf
-```nginx
-location ~ \.md$ {
-    mruby_output_filter /path/to/filter.rb cache;
-}
-```
-#### /path/to/filter.rb
-```ruby
-f = Nginx::Filter.new
-
-# setup markdown convert engine
-css = "https://gist.github.com/andyferra/2554919/raw/2e66cabdafe1c9a7f354aa2ebf5bc38265e638e5/github.css"
-title = "markdown"
-md = Discount.new css, title
-
-# convert markdown to html,
-# and add output filter
-f.body = md.md2html f.body
-```
-#### test.md
-```markdown
-# Section
-## aaa
-
-- hoge
-- foo
-
-## bbb
-
-__code__
-
-    a = 1
-    b = a + 1
-
-```
-#### Access markdown file  
-http://example.com/test.md image
-
-***
-![response](https://dl.dropboxusercontent.com/s/fkzsuv94tr541zg/md_test.png)
-***
-
-## File Based Access List
-##### nginx.conf
-```nginx
-location / {
-    mruby_access_handler /path/to/access_check.rb;
-}
-```
-##### /path/to/access_check.rb
-```ruby
-r = Nginx::Request.new
-
-filename = File.join r.var.document_root, ".access_list"
-if File.exists? filename
-  deny_list = Array.new
-  File.open(filename) do |file|
-    while line = file.gets
-      deny_list << line.chomp
-    end
-  end
-  if deny_list.include? r.var.remote_addr
-    Nginx.errlogger Nginx::LOG_ERR, "ACL: FORBIDDEN Client Matched in #{filename}"
-    Nginx.return Nginx::HTTP_FORBIDDEN
-  else
-    Nginx.errlogger Nginx::LOG_ERR, "ACL: OK Client Unmatched in #{filename}"
-    Nginx.return Nginx::HTTP_OK
-  end
-else
-  Nginx.return Nginx::HTTP_OK
-end
-```
-##### /path/to/.access_list
-```
-192.168.12.9
-192.168.12.10
-```
-##### Access to nginx(run with 192.168.12.9 listening 0.0.0.0:80)
-```bash
-$ curl http://127.0.0.1/
-hello world
-
-$ curl http://192.168.12.9/
-<html>
-<head><title>403 Forbidden</title></head>
-<body bgcolor="white">
-<center><h1>403 Forbidden</h1></center>
-<hr><center>nginx/1.4.4</center>
-</body>
-</html>
-```
-##### error.log
-```
-2014/03/10 17:14:20 [error] 11376#0: *4 ACL: OK Client Unmatched in /usr/local/nginx-1.4.4/html/.access_list, client: 127.0.0.1, server: localhost, request: "GET / HTTP/1.1", host: "127.0.0.1"
-
-2014/03/10 17:15:09 [error] 11376#0: *7 ACL: FORBIDDEN Client Matched in /usr/local/nginx-1.4.4/html/.access_list, client: 192.168.12.9, server: localhost, request: "GET / HTTP/1.1", host: "192.168.12.9"
+Nginx.echo md.header + body.to_html + md.footer
 ```
 
-## File Server like Dropbox Link
+## File server like Dropbox link
 
-This example needs the `Redis` class of mruby-redis, and a running Redis server. The default `build_config.rb` builds mruby-redis again since 2.7.2; 2.7.1 left it out.
+A rewrite handler looks up the path of the request in Redis and redirects
+to a file until the link expires.
 
-##### nginx.conf
+**Untested.** The test job of CI runs no Redis server, so no sample runs
+this use case. The default build includes the gem mruby-redis.
+
 ```nginx
 location /dropbox {
     mruby_rewrite_handler /path/to/dropbox.rb;
 }
 ```
-##### /path/to/dropbox.rb
+
 ```ruby
+# /path/to/dropbox.rb
 redis = Redis.new "127.0.0.1", 6379
-reqst = Nginx::Request.new
-
-file = redis.hget reqst.uri, "file"
-expr = redis.hget reqst.uri, "expire"
-
-Nginx.errlogger Nginx::LOG_ERR, "dropbox: uri=#{reqst.uri} file=#{file} expire=#{Time.at expr.to_i}"
-
+r = Nginx::Request.new
+file = redis.hget r.uri, "file"
+expire = redis.hget r.uri, "expire"
 redis.close
 
-if expr.to_i >= Time.now.to_i
+if file && expire.to_i >= Time.now.to_i
   Nginx.redirect file
 else
   Nginx.return Nginx::DECLINED
 end
 ```
-##### Input data by redis-cli
-```redis
+
+The link is a hash in Redis, for example with `redis-cli`:
+
+```text
 HSET /dropbox/aaabbbcccddd file /files/hoge.html
-HSET /dropbox/aaabbbcccddd expire 1400000000
+HSET /dropbox/aaabbbcccddd expire 1900000000
 ```
-##### /files/hoge.html
-```html
-hoge
-```
-##### access to http://127.0.0.1/dropbox/aaabbbcccddd
-```curl
-$ curl http://127.0.0.1/dropbox/aaabbbcccddd
-hoge
-```
-##### error.log
-```
-2014/03/11 00:02:30 [error] 12245#0: *109 dropbox: uri=/dropbox/aaabbbcccddd file=/files/hoge.html expire=Wed May 14 01:53:20 2014, client: 127.0.0.1, server: localhost, request: "GET /dropbox/aaabbbcccddd HTTP/1.1", host: "127.0.0.1"
-```
+
+## Articles and other examples
+
+- [Dynamic Image Provider (in Japanese)](https://techhey.hatenablog.com/entry/2014/04/19/162323)
+- [Research ngx_mruby and use output filter (in Russian)](https://habr.com/ru/articles/225313/)
+- [ACME auto ssl using Let's Encrypt](../../test/conf/auto-ssl/nginx.conf.client_example):
+  needs a build with `NGX_MRUBY_AUTO_SSL=1` (see
+  [Building with the auto-ssl mrbgem](../install/README.md#building-with-the-auto-ssl-mrbgem))
+  and a running Redis server, because the example keeps the certificates
+  and the challenge tokens in Redis. Its ACME client speaks ACMEv1, which
+  Let's Encrypt no longer serves.
