@@ -1,0 +1,9 @@
+HTTP/1.1 200 OK
+Content-Type: text/html
+
+<!doctype html>
+<title>notes</title>
+<pre>
+Notes from disk.
+The filter escapes &lt;b&gt; and &amp;.
+</pre>
