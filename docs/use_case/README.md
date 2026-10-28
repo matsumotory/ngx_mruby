@@ -11,7 +11,7 @@
 - [Research ngx_mruby and use output filter (in Russian)](http://habrahabr.ru/post/225313/)
 - [ACME auto ssl using Let's Encrypt](https://github.com/matsumotory/ngx_mruby/blob/master/test/conf/auto-ssl/nginx.conf.client_example)
   (needs a build with `NGX_MRUBY_AUTO_SSL=1`, see [Building with the auto-ssl mrbgem](../install/README.md#building-with-the-auto-ssl-mrbgem),
-  and with matsumotory/mruby-redis, which is commented out in `build_config.rb`, because the example keeps the certificates and the challenge tokens in Redis;
+  with matsumotory/mruby-redis, which the default `build_config.rb` includes, and with a running Redis server, because the example keeps the certificates and the challenge tokens in Redis;
   its ACME client speaks ACMEv1, which Let's Encrypt no longer serves)
 
 ## Hello world
@@ -59,7 +59,7 @@ server {
 ## Change to maintenance mode with Redis
 refs: http://takeswim.hateblo.jp/entry/2013/10/03/182748
 
-This example needs the `Redis` class of mruby-redis. Since 2.7.1 the default `build_config.rb` does not build it: uncomment the line `conf.gem github: 'matsumotory/mruby-redis'` there before you build.
+This example needs the `Redis` class of mruby-redis, and a running Redis server. The default `build_config.rb` builds mruby-redis again since 2.7.2; 2.7.1 left it out.
 
 #### nginx.conf
 ```nginx
@@ -271,7 +271,7 @@ $ curl http://192.168.12.9/
 
 ## File Server like Dropbox Link
 
-This example needs the `Redis` class of mruby-redis. Since 2.7.1 the default `build_config.rb` does not build it: uncomment the line `conf.gem github: 'matsumotory/mruby-redis'` there before you build.
+This example needs the `Redis` class of mruby-redis, and a running Redis server. The default `build_config.rb` builds mruby-redis again since 2.7.2; 2.7.1 left it out.
 
 ##### nginx.conf
 ```nginx
