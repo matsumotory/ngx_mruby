@@ -34,6 +34,12 @@ body {
 :root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, td, th, dd) {
   overflow-wrap: anywhere;
 }
+/* Inline code inside text may break anywhere when a path or a name is
+   wider than the line: WebKit does not break Starlight's break-word there
+   and the text crosses the 20 px gutter at 320 px (4.5, 4.9) */
+.sl-markdown-content :is(p, li, figcaption, dd, td) code {
+  overflow-wrap: anywhere;
+}
 /* Inline code inside Japanese text breaks between any two characters: a
    Japanese line always offers a break before the code, so overflow-wrap
    alone leaves the line before a long path short in Chromium */
@@ -280,26 +286,309 @@ figcaption,
   padding: 0 var(--space-1);
 }
 
-/* 4.10 and 4.3 item 5: an opaque surface header, 64 px, 1 px bottom border */
+/*
+ * 4.10 and 4.3 item 5: the header, 64 px on an opaque surface with a 1 px
+ * bottom border. Wide: logo and wordmark, the five section links, search,
+ * the version link, the language link, the theme toggle and GitHub. The
+ * section links move into the menu below 76rem, where they no longer fit
+ * beside the rest (measured at 1216 px with the English labels; the
+ * profile site moves its links at 900 px, 4.2). At 640 px and below the
+ * version link, the language link and GitHub move into the menu too.
+ * Links are at least 44 px high, 15 px at weight 600; the current section
+ * is text with a 2 px accent bottom border (4.6).
+ */
 header.header {
   background-color: var(--color-bg-tertiary);
   border-bottom: 1px solid var(--color-border);
-  padding: var(--space-3) var(--header-pad-x);
+  padding: var(--space-2) var(--header-pad-x);
 }
-/* Below 50em Starlight places the 44 px menu button at the end of the
-   header: the header keeps 80 px free for it (20 px gutter, 44 px button,
-   16 px gap at 640 px and below) */
-@media (max-width: 49.99em) {
-  [data-has-sidebar] header.header {
-    padding-inline-end: var(--space-9);
-  }
+.site-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 100%;
 }
 .site-title {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  min-height: 44px;
+  gap: var(--space-2);
   font-family: var(--font-mono);
   font-size: var(--text-body);
   font-weight: var(--weight-heading);
   color: var(--color-text-primary);
+  text-decoration: none;
+}
+.site-title img {
+  width: 32px;
+  height: 32px;
+}
+.site-nav {
+  display: none;
+}
+.site-nav ul,
+.site-menu ul,
+.site-footer ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.site-nav ul {
+  display: flex;
+  gap: var(--space-1);
+}
+.site-nav a,
+.header-link {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
   gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-nav);
+  font-weight: var(--weight-current);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.site-nav a[aria-current="page"] {
+  border-bottom-color: var(--color-accent);
+}
+.site-nav a:hover,
+.header-link:hover,
+.site-menu-row:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.site-search {
+  display: flex;
+  margin-inline-start: auto;
+}
+/* The language link: a pill with a 1 px border outline (4.10) */
+.header-link.pill {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 0 var(--space-4);
+}
+.github-mark {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+/* The theme toggle and the menu button: 44 px round buttons with a 1 px
+   border outline that show an icon (4.10) */
+.round-button,
+button.sl-menu-button,
+button.sl-menu-button:has(~ :popover-open),
+[data-theme] button.sl-menu-button:has(~ :popover-open) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+.round-button svg,
+button.sl-menu-button svg {
+  width: 20px;
+  height: 20px;
+}
+:root:not([data-theme-script]) ngx-theme-toggle {
+  display: none;
+}
+:root[data-theme="dark"] .theme-icon-dark,
+:root[data-theme="light"] .theme-icon-light {
+  display: none;
+}
+/* The menu (SiteMenu.astro): rows 44 px high (4.9), the language link
+   first under its heading at 640 px and below (4.10) */
+.site-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.site-menu-heading {
+  margin: 0;
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  font-weight: var(--weight-current);
+  color: var(--color-text-muted);
+}
+.site-menu-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  min-height: 44px;
+  font-size: var(--text-nav);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.site-menu-row[aria-current="page"] {
+  font-weight: var(--weight-current);
+  border-bottom-color: var(--color-accent);
+}
+
+/* The menu button shows on pages without a sidebar until the header holds
+   the section links, and on pages with a sidebar below 50em (PageFrame);
+   the header keeps its room free: the gutter, the 44 px button and a
+   16 px gap */
+@media (max-width: 75.99rem) {
+  :root:not([data-has-sidebar]) header.header {
+    padding-inline-end: calc(var(--header-pad-x) + 44px + var(--space-4));
+  }
+}
+@media (min-width: 50em) {
+  :root[data-has-sidebar] button.sl-menu-button {
+    display: none;
+  }
+}
+@media (max-width: 49.99em) {
+  :root[data-has-sidebar] header.header {
+    padding-inline-end: calc(var(--header-pad-x) + 44px + var(--space-4));
+  }
+}
+@media (min-width: 76rem) {
+  .site-nav {
+    display: block;
+  }
+  :root:not([data-has-sidebar]) button.sl-menu-button {
+    display: none;
+  }
+  .site-menu {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  .site-header {
+    gap: var(--space-2);
+  }
+  .site-header > .header-link {
+    display: none;
+  }
+}
+@media (min-width: 641px) {
+  .site-menu-language,
+  .site-menu-more {
+    display: none;
+  }
+}
+
+/* The site's footer (4.10): 1 px top border, 14 px muted text, 48 px
+   above and 32 px below */
+.site-footer {
+  margin-top: var(--space-7);
+  padding: var(--space-5) 0 var(--space-6);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--color-text-muted);
+}
+.site-footer ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+}
+.site-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  color: var(--color-text-muted);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+/* Numbers with units, dates and commits do not break inside (owner's
+   practice); the captions of samples and diagrams use it */
+.nowrap {
+  white-space: nowrap;
+}
+
+/*
+ * The home page (3.2, 3.3 items 1 and 8, 4.3 item 1): the heading of 4.4,
+ * the definition, one primary and one secondary button, the example that
+ * CI runs, and three ways in as a list with 1 px separators instead of a
+ * row of cards (4.2 "Layout"; 4.3 "Not used"). The sections use the home
+ * page's content width of 1032 px (4.5).
+ */
+:root:not([data-has-sidebar]) {
+  --sl-content-width: var(--content-width-home);
+}
+/* The heading and the definition read as one block: no line between the
+   title panel and the content */
+html:has(.home) .content-panel + .content-panel {
+  border-top: 0;
+}
+html:has(.home) h1#_top {
+  font-size: var(--text-home);
+  line-height: var(--leading-home);
+  max-width: var(--measure);
+}
+.home :is(p, ul) {
+  max-width: var(--measure);
+}
+.home .lede {
+  margin-top: var(--space-4);
+}
+.home .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+.sl-markdown-content .home :is(.button-primary, .button-secondary) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-control);
+  font-size: var(--text-nav);
+  font-weight: var(--weight-current);
+  text-decoration: none;
+}
+.sl-markdown-content .home .button-primary {
+  background-color: var(--color-accent);
+  color: var(--color-bg-primary);
+  border: 1px solid var(--color-accent);
+}
+.sl-markdown-content .home .button-secondary {
+  color: var(--color-accent-text);
+  border: 1px solid var(--color-accent-text);
+}
+.sl-markdown-content .home :is(.button-primary, .button-secondary):hover {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.home .ways {
+  list-style: none;
+  padding: 0;
+}
+.home .ways li {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-3) 0;
+  margin: 0;
+}
+.home .ways li:last-child {
+  border-bottom: 1px solid var(--color-border);
+}
+.home .ways a {
+  font-weight: var(--weight-current);
+}
+.home .ways p {
+  margin-top: var(--space-1);
 }
 
 /* Sidebar and table of contents: navigation at 15 px; the current item is
@@ -445,17 +734,6 @@ mobile-starlight-toc a {
 }
 mobile-starlight-toc .dropdown {
   margin-top: 0;
-}
-/* The menu button below 50em: 44 px round, a 1 px border outline and the
-   icon in text, as on the profile site (4.10) */
-button.sl-menu-button,
-button.sl-menu-button:has(~ :popover-open),
-[data-theme] button.sl-menu-button:has(~ :popover-open) {
-  background-color: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-  border-radius: 50%;
-  padding: var(--space-3);
 }
 /* The search dialog (4.3 item 5: no shadow, no blurred backdrop) */
 dialog {

@@ -23,6 +23,11 @@
 // - every heading of the source is a heading element of the same level in
 //   the content of the page, with the same words, in the same order.
 //
+// The text of a diagram block is the text of its labels and its caption
+// (the generator draws the rest); a sample block is left out, since its
+// files are code blocks that check-home.mjs compares on the home pages; and
+// the home pages, MDX with components, are left to check-home.mjs.
+//
 // What it does not measure: CSS that hides content (the screenshots of
 // step 3 run in browsers), and what needs scripts besides reading: the
 // search, the language picker and the theme switch (5.1, 4.7).
@@ -72,6 +77,8 @@ for (const file of htmlFiles(dist)) {
     problems.push(`${file}: no source in docs/ for the route /${route}/`);
     continue;
   }
+  // The home pages are MDX with components; check-home.mjs reads them.
+  if (page.home) continue;
   checked++;
   const expected = expectedOf(page.source);
   const tree = readHtml(path.join(dist, file));

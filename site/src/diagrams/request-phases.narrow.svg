@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 100" preserveAspectRatio="none" data-labels="h-phase h-handler tls tls-h post-read post-read-h server-rewrite server-rewrite-h server-rewrite-set find-config rewrite rewrite-h rewrite-set post-rewrite access access-h post-access content content-h header-filter header-filter-h body-filter body-filter-h log log-h stream stream-h">
+  <!-- The request phases diagram, narrow arrangement (docs/concepts/request-phases.md): one line beside the HTTP phases, from the TLS handshake to the log phase. request-phases.css stretches it over those rows of its grid; the labels are HTML text. -->
+  <path class="d-line" d="M12 0 V100" />
+</svg>

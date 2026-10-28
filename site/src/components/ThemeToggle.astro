@@ -1,0 +1,39 @@
+---
+// The theme toggle of 4.10: a 44 px round button with an icon and its name
+// as text for assistive technology. It switches between the light and the
+// dark theme and keeps the choice where Starlight's theme script reads it
+// (localStorage starlight-theme). Without JavaScript the button is hidden
+// and the OS setting chooses the theme (4.7).
+import { Icon } from '@astrojs/starlight/components';
+
+const ja = Astro.locals.starlightRoute.locale === 'ja';
+---
+
+<ngx-theme-toggle>
+  <button type="button" class="round-button theme-toggle" aria-pressed="false">
+    <Icon name="moon" class="theme-icon theme-icon-dark" />
+    <Icon name="sun" class="theme-icon theme-icon-light" />
+    <span class="sr-only">{ja ? 'ダークテーマ' : 'Dark theme'}</span>
+  </button>
+</ngx-theme-toggle>
+
+<script>
+  class NgxThemeToggle extends HTMLElement {
+    constructor() {
+      super();
+      const button = this.querySelector('button');
+      const root = document.documentElement;
+      const sync = () => button?.setAttribute('aria-pressed', String(root.dataset.theme === 'dark'));
+      sync();
+      button?.addEventListener('click', () => {
+        const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+        root.dataset.theme = next;
+        try {
+          localStorage.setItem('starlight-theme', next);
+        } catch {}
+        sync();
+      });
+    }
+  }
+  customElements.define('ngx-theme-toggle', NgxThemeToggle);
+</script>

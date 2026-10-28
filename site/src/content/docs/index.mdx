@@ -1,0 +1,38 @@
+---
+title: Write the decisions of nginx in Ruby
+description: ngx_mruby runs Ruby scripts inside nginx, at the request phase you choose, with an embedded mruby VM.
+template: splash
+sidebar:
+  hidden: true
+prev: false
+next: false
+---
+
+{/* The home page (docs/proposals/site.md, 3.2, 3.3 items 1 and 8). The
+heading and the first paragraph are the definition of 3.3 item 1, a draft
+for the owner to edit. The example comes from the test files that
+test/t/cases/home_example.rb compares on every CI run. */}
+
+import Sample from '../../components/Sample.astro';
+
+<div class="home">
+
+<p class="lede">You reference a Ruby script from nginx.conf, and nginx runs it with an embedded mruby VM at the point you choose: when a request arrives, to compute a variable, before access is granted, to produce the response, to change headers and body, during the TLS handshake, or for a TCP or UDP session. nginx keeps doing the network I/O, and no application server runs beside it. ngx_mruby builds as a static or dynamic module of unmodified nginx.</p>
+
+<p class="actions"><a class="button-primary" href="/install/">Install ngx_mruby</a> <a class="button-secondary" href="/concepts/request-phases/">See where Ruby runs</a></p>
+
+## An example that CI runs
+
+The four files below are files of a test in this repository. nginx runs the script for every request to `/hello`, and the script writes the response.
+
+<Sample lang="en" case="test/t/cases/home_example.rb" conf="test/conf/conf.d/70-home-example.conf" script="test/html/home_example.rb" request="test/html/home_example.request" response="test/html/home_example.response" />
+
+## Where to start
+
+<ul class="ways">
+<li><a href="/install/">Install</a><p>Build nginx with ngx_mruby from source, or try it in a Docker image.</p></li>
+<li><a href="/directives/">Reference</a><p>Lists the directives, and the Ruby classes and methods that scripts call.</p></li>
+<li><a href="/concepts/request-phases/">Request phases</a><p>Shows where nginx runs each Ruby handler while it processes a request.</p></li>
+</ul>
+
+</div>

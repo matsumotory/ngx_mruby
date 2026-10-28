@@ -1,0 +1,17 @@
+---
+// The language link of 4.10: one plain link that names the other language
+// in that language and leads to the same page in it. No language is picked
+// from Accept-Language or location, and no flag is shown.
+import { otherLanguage } from '../site-nav.mjs';
+
+interface Props {
+  class?: string;
+}
+const lang = Astro.locals.starlightRoute.locale === 'ja' ? 'ja' : 'en';
+const other = otherLanguage(lang, Astro.url.pathname);
+// The 404 page has no page of its own in the other language: its language
+// link leads to the other language's home page.
+if (Astro.locals.starlightRoute.entry.id === '404') other.href = lang === 'ja' ? '/' : '/ja/';
+---
+
+<a class:list={['language-link', Astro.props.class]} href={other.href} hreflang={other.lang} lang={other.lang}>{other.label}</a>

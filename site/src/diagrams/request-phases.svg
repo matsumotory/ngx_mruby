@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 624" preserveAspectRatio="none" data-labels="h-phase h-handler tls tls-h post-read post-read-h server-rewrite server-rewrite-h server-rewrite-set find-config rewrite rewrite-h rewrite-set post-rewrite access access-h post-access content content-h header-filter header-filter-h body-filter body-filter-h log log-h stream stream-h">
+  <!-- The request phases diagram, wide arrangement (docs/concepts/request-phases.md). Lines and boxes only: the labels are HTML text placed by request-phases.css, whose grid has the rows and columns of this drawing (16 px to the rem, columns 5fr, 2fr and 9fr of 1600 units). -->
+  <rect class="d-box" x="0" y="32" width="500" height="32" />
+  <rect class="d-box" x="0" y="72" width="500" height="32" />
+  <rect class="d-box" x="0" y="112" width="500" height="64" />
+  <rect class="d-box" x="0" y="224" width="500" height="64" />
+  <rect class="d-box" x="0" y="336" width="500" height="32" />
+  <rect class="d-box" x="0" y="416" width="500" height="32" />
+  <rect class="d-box" x="0" y="456" width="500" height="32" />
+  <rect class="d-box" x="0" y="496" width="500" height="32" />
+  <rect class="d-box" x="0" y="536" width="500" height="32" />
+  <rect class="d-box" x="0" y="592" width="500" height="32" />
+  <rect class="d-box d-quiet" x="0" y="184" width="500" height="32" />
+  <rect class="d-box d-quiet" x="0" y="296" width="500" height="32" />
+  <rect class="d-box d-quiet" x="0" y="376" width="500" height="32" />
+  <rect class="d-box" x="700" y="36" width="900" height="24" />
+  <rect class="d-box" x="700" y="76" width="900" height="24" />
+  <rect class="d-box" x="700" y="116" width="900" height="24" />
+  <rect class="d-box" x="700" y="148" width="900" height="24" />
+  <rect class="d-box" x="700" y="228" width="900" height="24" />
+  <rect class="d-box" x="700" y="260" width="900" height="24" />
+  <rect class="d-box" x="700" y="340" width="900" height="24" />
+  <rect class="d-box" x="700" y="420" width="900" height="24" />
+  <rect class="d-box" x="700" y="460" width="900" height="24" />
+  <rect class="d-box" x="700" y="500" width="900" height="24" />
+  <rect class="d-box" x="700" y="540" width="900" height="24" />
+  <rect class="d-box" x="700" y="596" width="900" height="24" />
+  <path class="d-line" d="M500 48 H700" />
+  <path class="d-line" d="M500 88 H700" />
+  <path class="d-line" d="M250 64 V72" />
+  <path class="d-line" d="M500 128 H700" />
+  <path class="d-line" d="M500 160 H700" />
+  <path class="d-line" d="M250 104 V112" />
+  <path class="d-line" d="M250 176 V184" />
+  <path class="d-line" d="M500 240 H700" />
+  <path class="d-line" d="M500 272 H700" />
+  <path class="d-line" d="M250 216 V224" />
+  <path class="d-line" d="M250 288 V296" />
+  <path class="d-line" d="M500 352 H700" />
+  <path class="d-line" d="M250 328 V336" />
+  <path class="d-line" d="M250 368 V376" />
+  <path class="d-line" d="M500 432 H700" />
+  <path class="d-line" d="M250 408 V416" />
+  <path class="d-line" d="M500 472 H700" />
+  <path class="d-line" d="M250 448 V456" />
+  <path class="d-line" d="M500 512 H700" />
+  <path class="d-line" d="M250 488 V496" />
+  <path class="d-line" d="M500 552 H700" />
+  <path class="d-line" d="M250 528 V536" />
+  <path class="d-line" d="M500 608 H700" />
+</svg>

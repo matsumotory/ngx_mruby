@@ -1,0 +1,43 @@
+---
+// The footer of every page (4.10): Starlight's last-updated date and the
+// previous and next links of documentation pages, then the site's footer
+// with a 1 px top border, 14 px muted text, 48 px above and 32 px below:
+// the language link, Releases, Security, the license and GitHub.
+import LastUpdated from 'virtual:starlight/components/LastUpdated';
+import Pagination from 'virtual:starlight/components/Pagination';
+import LanguageLink from './LanguageLink.astro';
+import { GITHUB_URL, strings } from '../site-nav.mjs';
+
+const lang = Astro.locals.starlightRoute.locale === 'ja' ? 'ja' : 'en';
+const t = strings(lang);
+const p = lang === 'ja' ? '/ja' : '';
+---
+
+<footer class="sl-flex">
+  <div class="meta sl-flex">
+    <LastUpdated />
+  </div>
+  <Pagination />
+  <div class="site-footer">
+    <ul>
+      <li><LanguageLink /></li>
+      <li><a href={`${p}/releases/`}>{t.releases}</a></li>
+      <li><a href={`${GITHUB_URL}/blob/next/SECURITY.md`}>{t.security}</a></li>
+      <li><a href={`${GITHUB_URL}/blob/next/MITL`}>{t.license}</a></li>
+      <li><a href={GITHUB_URL}>GitHub</a></li>
+    </ul>
+  </div>
+</footer>
+
+<style>
+  @layer starlight.core {
+    footer {
+      flex-direction: column;
+      gap: var(--space-5);
+    }
+    .meta {
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+  }
+</style>
