@@ -35,6 +35,50 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## Continuation checkpoint, 2026-10-29 19:18 UTC
+
+This supplements the historical snapshot below. Verify these references
+again before acting; [#658](https://github.com/matsumotory/ngx_mruby/pull/658)
+carries the full integration update.
+
+- `master` and its `v2.x` mirror reached `7d81d417a` after #654. The site
+  cutover PRs #655, #657, #656 and #654 are merged. The subsequent production
+  [run 40928646131](https://github.com/matsumotory/ngx_mruby/actions/runs/40928646131)
+  was verified: all 26 `/v2/` pages matched its artifact,
+  English/Japanese search remained version-specific, and mobile checks
+  passed.
+- `next` remains `e469b259c`. Integration PR #658, head `ee0025f5d`, imports
+  that master tip. Its checks passed on merge ref `7c0c9ee0a`, which includes
+  the current base. Its
+  [independent source review](https://github.com/matsumotory/ngx_mruby/pull/658#issuecomment-6505569705)
+  has no open code finding; the
+  [performance comparison](https://github.com/matsumotory/ngx_mruby/actions/runs/40934491055/job/123661313714)
+  has 15 `ok` rows, largest increase +0.21%.
+  It remains draft. The merge has not executed; explicit owner confirmation
+  is pending. Do not retry it until that prerequisite is resolved. Recording
+  the final site result and numerical review comment on the PR also remains.
+  Read the PR for current evidence; do not rerun passing CI by default.
+- A separate English/Japanese homepage proposal is in progress on
+  `codex/site-technical-design`, based on `e469b259c`. Its source remains
+  uncommitted and is not yet recoverable from `origin`; the existing task
+  worktree must be preserved. Local build, static checks, homepage styles,
+  focus, language links and accessibility checks passed. The full style
+  regression passed 440 page loads in Chromium and WebKit. The owner
+  requested a logo refresh on 2026-10-29;
+  design approval and publication remain pending. The subsequent brief also
+  asks for phone reading, PC implementation and agent-readable documentation
+  from the same source. That broader redesign and machine-readable export
+  are not implemented by the current preview. No reference photograph or
+  new logo asset has been published.
+- `codex/shared-handoff-process` records the shared continuation procedure
+  requested on 2026-10-29. Its scope is documentation, separate from the
+  integration and visual design. It preserves AGENTS as the rule source,
+  this file as the queue, and PRs as the detailed validation record.
+- The upstream setter D/E work and the stable empty-filter follow-up remain
+  queued after the site work. #658 is the technical prerequisite for D/E.
+  Unrelated open design questions in the v3 plan and upstream proposal are
+  not settled by this continuation.
+
 ## State as of 2026-10-29 (21:45 JST)
 
 Heads: `next` is the merge of the pull request "Merge `master` (c6d3b3b9b)
@@ -335,36 +379,11 @@ Taken up and still open: none.
 
 ## How a session continues
 
-1. Fetch first (`git fetch origin`) and work from `origin/<base>`: local
-   checkouts fall behind as other sessions merge.
-2. One `git worktree` per task, on a branch `claude/<topic>` made from
-   `origin/<base>` (see [CLAUDE.md](../CLAUDE.md)).
-3. Follow [AGENTS.md](../AGENTS.md): the branch table, the two commits of a
-   bug fix, the review checklist and the merge conditions.
-4. Builds and tests are run on Linux. On macOS, build a Linux container that
-   matches CI: [.github/workflows/test.yml](../.github/workflows/test.yml)
-   runs on `ubuntu-22.04` and installs its packages in the `apt-get install`
-   lines (valgrind among them: the `build` job runs nginx under valgrind,
-   and the `perf` job uses it for callgrind). The root `Dockerfile` is a
-   runtime image, not this environment. Run one `test.sh` per machine at a
-   time.
-5. Before you act on a pull request, read its newest comments: reviews and
-   the author's answers are posted there.
-6. To take over an open pull request from another session (one that
-   stopped, or one on another machine), post a comment on it that takes it
-   over from its head commit, then push.
-7. Before you start a row of the queue, look for it with
-   `gh pr list --state open` and `git ls-remote origin 'refs/heads/claude/*'`:
-   another session may have started it. Then push a `claude/<topic>` branch
-   or open a draft pull request, so that a session on another machine sees
-   the work, and name it in the row: in your own pull request when its base
-   is `next`, otherwise in the next update of this file.
-8. Possible vulnerabilities go to the security process of
-   [SECURITY.md](../SECURITY.md), never into issues, pull requests, commit
-   messages or this file.
-9. When your work changes a list in this file, update it as "How to use
-   this file" says. For a pull request on `master`, the session that merged
-   it opens the update on `next`.
+Use [Continuing shared work](DEVELOPMENT.md#continuing-shared-work) for
+startup, ownership, checkpoints, temporary files and resumption. The rules
+are in [AGENTS.md](../AGENTS.md#session-handoff); this file records the
+queue and decisions, while each PR records its current head and evidence.
+The procedure applies to Claude, Codex and human contributors alike.
 
 ## Private material
 

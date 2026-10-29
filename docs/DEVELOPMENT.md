@@ -1,12 +1,66 @@
 # Developing ngx_mruby
 
-This is a collection of random tips to help ngx_mruby developers.
+Development procedures for human contributors and coding agents.
 
 Before you change the C module (`src/`), the gems in `mrbgems/` or the
 build, read [Design principles](../AGENTS.md#design-principles) in
 AGENTS.md: the owner's decisions (one `mrb_state` per worker, no blocking,
 keep the existing performance and measure it) and how sessions apply them,
 including which changes are measured and how.
+
+## Continuing shared work
+
+[AGENTS.md](../AGENTS.md#session-handoff) defines the shared handoff rules.
+The current queue is [HANDOFF.md](HANDOFF.md) on `next`; the active PR holds
+the detailed evidence. Claude's and Codex's private memories are optional
+context, not prerequisites for continuing work.
+
+1. Read AGENTS, the relevant plan, code and tests, then HANDOFF and the PR's
+   latest body, review comments and CI results. Fetch `origin` and verify
+   the recorded base and head; a dated snapshot is not a live branch tip.
+   Search open PRs and all topic branches, including `claude/*` and
+   `codex/*`, before starting a queue item.
+2. Inspect `git worktree list`, the intended worktree's branch and
+   `git status --short`. Reuse the existing task worktree when possible.
+   Confirm that its previous writer and local build/preview processes have
+   stopped before taking over; external CI may continue and should be
+   inspected rather than restarted. Preserve uncommitted work. If another
+   task needs a worktree, create its own `<tool>/<topic>` branch from the
+   appropriate base under the branch rules in AGENTS. Do not reset a shared
+   checkout to make its files match a handoff.
+3. Claim an existing PR with a comment naming the head being taken over.
+   For new work, open a draft PR once the scoped changes are reviewable.
+   Keep its template sections current as the head or evidence changes;
+   update the queue through HANDOFF as AGENTS requires. Use commit messages
+   to preserve the problem, reasoning, relevant tradeoffs and validation,
+   with explicit limits when something was not tested.
+4. Before stopping or transferring work, put a dated checkpoint in that PR:
+   **scope and decisions** (link the accepted decision, distinguish open
+   questions); **state** (branch, head/base, stage and remaining diff);
+   **evidence** (commands, environment/nginx version, tested commits,
+   results and run/review links); **unfinished work** (not run, in progress,
+   failed, denied or uncertain outcomes); **next step** (the concrete action
+   and its prerequisite). Confirm which writer has stopped. If there is no
+   PR yet, record the public scope and next step in HANDOFF via the normal
+   documentation PR; preserve unfinished files locally without publishing
+   raw scratch data. A successor must not assume unpushed work is available
+   on another machine.
+5. Keep temporary logs, screenshots, PR drafts and personal references
+   outside the repository or in narrowly ignored directories. Before each
+   commit inspect `git status --short --untracked-files=all`,
+   `git check-ignore -v <generated-path>`, `git ls-files <generated-path>`,
+   and `git diff --cached --name-status` / `git diff --cached`. Source,
+   tests and public documentation must remain visible; never hide a broad
+   directory merely to make status clean. Run the added-file check in
+   [Files that do not belong in the repository](test/README.md#files-that-do-not-belong-in-the-repository)
+   and review the public text for private material.
+6. On resumption, check running CI and any operation with an uncertain
+   outcome before retrying. Follow AGENTS for builds, test-port isolation,
+   independent review and merge gates; a checkpoint does not waive them.
+   On macOS, use a Linux container matching the packages in
+   [.github/workflows/test.yml](../.github/workflows/test.yml) for the Linux
+   suite, sanitizer and callgrind evidence. The root Dockerfile is a runtime
+   image, not that test environment.
 
 ## Recommended development environment
 
