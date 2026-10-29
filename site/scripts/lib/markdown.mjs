@@ -124,6 +124,51 @@ export function textPieces(tree, source, skip) {
   return pieces;
 }
 
+// Long names in text outside code: a directive or constant of three or
+// more parts joined by underscores (mruby_ssl_handshake_handler_code,
+// Nginx::HTTP_MOVED_TEMPORARILY), and a Ruby method with its class
+// (Nginx::Stream::Connection#remote_port, Nginx::Headers_in#delete(string)).
+// breakName gives such a name a <wbr> after each "::" and before each "#",
+// "." and "(" between names, and after an underscore that is followed by
+// four or more characters of the name, so that no line ends with one or two
+// characters of it.
+export const SNAKE = /[A-Za-z0-9]+(?:_[A-Za-z0-9]+){2,}|[A-Z][A-Za-z0-9_]*(?:::[A-Za-z0-9_]+)+(?:[#.][a-z_][A-Za-z0-9_?!=]*(?:\([^)\s]*\))?)?/;
+const SNAKE_ALL = new RegExp(SNAKE.source, 'g');
+function breakName(name) {
+  let out = '';
+  for (let i = 0; i < name.length; i++) {
+    const c = name[i];
+    const rest = name.length - i - 1;
+    if ((c === '#' || c === '.' || c === '(') && i > 0) out += '<wbr>';
+    out += c;
+    if (c === ':' && name[i - 1] === ':' && rest > 0) out += '<wbr>';
+    else if (c === '_' && rest >= 4 && !/[#.(]/.test(name.slice(i + 1, i + 5))) out += '<wbr>';
+  }
+  return out;
+}
+
+// The text of a text node of the Markdown with breakName applied to each
+// long name, except a name inside a URL of the text
+// (http://host/YOUR_MRUBY_SCRIPT.rb). scripts/sync-docs.mjs writes it into
+// the page, and scripts/check-japanese.mjs counts the <wbr> that it adds to
+// a heading.
+export function breakNames(text) {
+  return text.replace(SNAKE_ALL, (w, at, all) => (/\S*:\/\/\S*$/.test(all.slice(0, at)) ? w : breakName(w)));
+}
+
+// The number of <wbr> that breakNames adds to the text nodes of a node,
+// for the text nodes that sync-docs.mjs rewrites: those whose source text
+// is their value (no escapes or entities).
+export function addedWbr(node, source) {
+  if (node.type === 'text') {
+    if (source.slice(node.position.start.offset, node.position.end.offset) !== node.value) return 0;
+    return (breakNames(node.value).match(/<wbr>/g) ?? []).length;
+  }
+  if (node.type === 'link' && source[node.position.start.offset] !== '[') return 0;
+  return (node.children ?? []).reduce((n, c) => n + addedWbr(c, source), 0);
+}
+
+
 // The plain text of a heading, as the title of a page or the text of a
 // heading element: what a reader sees, with runs of white space made one
 // space.

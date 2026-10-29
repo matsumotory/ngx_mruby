@@ -63,19 +63,20 @@ export const SOURCE_ROUTES = {
 // generation, so these pages have no Japanese source: /ja/ shows the English
 // page with the notice of src/components/FallbackContentNotice.astro.
 export const GENERATED_REFERENCE = ['reference/directives', 'reference/ruby'];
+// REWRITTEN_OFTEN: the pages written by hand that stay in English under
+// /ja/ because almost every pull request rewrites their source, so that a
+// translation would be out of date after each merge (the owner's decision
+// of 2026-10-29, Q2 of section 7). /ja/ shows the English page with the
+// notice of src/components/FallbackContentNotice.astro that says why.
+export const REWRITTEN_OFTEN = ['contributing/handoff'];
 // NOT_TRANSLATED_YET: the pages written by hand whose translation is still
-// to come in step 5. /ja/ shows the English page with the notice of
+// to come. /ja/ shows the English page with the notice of
 // src/components/FallbackContentNotice.astro that the translation is not
-// there yet.
-// check-japanese.mjs fails on a page written by hand that is in neither list
-// and has no Japanese source, and on a page of this list that has one, so
-// that each pull request of step 5 removes the pages it translates.
-export const NOT_TRANSLATED_YET = [
-  'contributing',
-  'contributing/handoff',
-  'security',
-  'security/trust-boundary',
-];
+// there yet. Step 5 translated every page, so the list is empty.
+// check-japanese.mjs fails on a page written by hand that is in none of the
+// three lists and has no Japanese source, and on a page of a list that has
+// one.
+export const NOT_TRANSLATED_YET = [];
 
 // The place of a page in its group of the sidebar (astro.config.mjs), by
 // route without the /ja/ prefix. The other pages of a group follow, in the

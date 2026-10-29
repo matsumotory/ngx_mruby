@@ -5,15 +5,16 @@
 //
 // - Translations. Every English page of generated/pages.json written by hand
 //   has a Japanese page (docs/ja/, or docs/<path>.ja.md), except the pages
-//   of NOT_TRANSLATED_YET in scripts/lib/site.mjs, which step 5 empties. The
-//   generated reference (GENERATED_REFERENCE) has no Japanese page, and
-//   its page under /ja/ shows the notice that says why it stays in English
-//   (data-notice="generated-reference"); a page of NOT_TRANSLATED_YET shows
-//   the notice that its translation is not there yet
-//   (data-notice="untranslated"); a translated page shows neither. Each
-//   notice holds Japanese text. Both
-//   lists name only English routes, and NOT_TRANSLATED_YET no page that has
-//   a Japanese page.
+//   of the lists of scripts/lib/site.mjs. The pages of GENERATED_REFERENCE
+//   and REWRITTEN_OFTEN have no Japanese page: under /ja/, a page of the
+//   generated reference shows the notice that says why it stays in English
+//   (data-notice="generated-reference"), and a page of REWRITTEN_OFTEN the
+//   notice that almost every pull request rewrites it
+//   (data-notice="rewritten-often"). A page of NOT_TRANSLATED_YET, which
+//   step 5 emptied, shows the notice that its translation is not there yet
+//   (data-notice="untranslated"). A translated page shows none of them.
+//   Each notice holds Japanese text. The lists name only English routes,
+//   and none of them a page that has a Japanese page.
 // - Languages. Every page of the built site (404.html left out: it has no
 //   route, and Starlight gives it no language links) has <html lang="en"> or, under
 //   /ja/, lang="ja", and links with hreflang en, ja and x-default (English)
@@ -21,8 +22,9 @@
 //   other language, which exists and links back.
 // - The pages from docs/ja/ (and docs/<path>.ja.md) are under /ja/ with
 //   lang="ja" on <html> and <main>, and each h2 of the source that holds
-//   <wbr> has a built h2 with the same text and as many wbr elements (step
-//   1). It fails as well when no page comes from docs/ja/, or when no h2 of
+//   <wbr> has a built h2 with the same text and as many wbr elements, plus
+//   those that the generator gives a long name of its text (breakNames of
+//   scripts/lib/markdown.mjs) (step 1). It fails as well when no page comes from docs/ja/, or when no h2 of
 //   those pages holds <wbr>.
 // - Spaces. In the sources of the Japanese pages, outside code, URLs and
 //   HTML, no space between a Japanese character and a Latin letter or digit
@@ -43,9 +45,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { elements, findElement, hasClass, readHtml, textContent } from './lib/html.mjs';
-import { headings, parseMarkdown, plainText, titleHeading } from './lib/markdown.mjs';
+import { addedWbr, headings, parseMarkdown, plainText, titleHeading } from './lib/markdown.mjs';
 import { parseDiagramBlock, plainLabel } from './lib/diagrams.mjs';
-import { checkOptions, fileOfRoute, finish, GENERATED_REFERENCE, htmlFiles, loadManifest, NOT_TRANSLATED_YET, routeOfFile, SITE_URL } from './lib/site.mjs';
+import { checkOptions, fileOfRoute, finish, GENERATED_REFERENCE, htmlFiles, loadManifest, NOT_TRANSLATED_YET, REWRITTEN_OFTEN, routeOfFile, SITE_URL } from './lib/site.mjs';
 
 const { dist, repo, manifest } = checkOptions();
 const all = loadManifest(manifest);
@@ -66,11 +68,12 @@ const notices = (tree) => elements(tree).filter((e) => e.properties?.dataNotice 
 
 // Translations
 const englishRoutes = new Set(english.map((p) => p.route));
-for (const [name, list] of [['GENERATED_REFERENCE', GENERATED_REFERENCE], ['NOT_TRANSLATED_YET', NOT_TRANSLATED_YET]]) {
+for (const [name, list] of [['GENERATED_REFERENCE', GENERATED_REFERENCE], ['REWRITTEN_OFTEN', REWRITTEN_OFTEN], ['NOT_TRANSLATED_YET', NOT_TRANSLATED_YET]]) {
   for (const route of list) if (!englishRoutes.has(route)) problems.push(`${name} in scripts/lib/site.mjs names /${route}/, which is not an English page`);
 }
 let translated = 0;
 let generatedNotices = 0;
+let rewrittenNotices = 0;
 let pendingNotices = 0;
 for (const page of english) {
   const ja = jaRoute(page.route);
@@ -81,8 +84,9 @@ for (const page of english) {
     continue;
   }
   const shown = notices(tree);
-  const want = GENERATED_REFERENCE.includes(page.route) ? 'generated-reference' : NOT_TRANSLATED_YET.includes(page.route) ? 'untranslated' : null;
+  const want = GENERATED_REFERENCE.includes(page.route) ? 'generated-reference' : REWRITTEN_OFTEN.includes(page.route) ? 'rewritten-often' : NOT_TRANSLATED_YET.includes(page.route) ? 'untranslated' : null;
   if (want === 'generated-reference' && hasJa) problems.push(`${byRoute.get(ja).source}: a translation of the generated reference page /${page.route}/, which stays in English under /ja/ (Q2)`);
+  if (want === 'rewritten-often' && hasJa) problems.push(`${byRoute.get(ja).source}: a translation of /${page.route}/, which almost every pull request rewrites and which stays in English under /ja/ (Q2)`);
   if (want === 'untranslated' && hasJa) problems.push(`${byRoute.get(ja).source} translates /${page.route}/: remove the route from NOT_TRANSLATED_YET in scripts/lib/site.mjs`);
   if (want === null && !hasJa) problems.push(`${page.source}: a page written by hand without a Japanese page (docs/ja/, or the .ja.md beside it) for /${ja}/`);
   if (hasJa) {
@@ -96,6 +100,7 @@ for (const page of english) {
   else if (!/[\u3040-\u30ff\u3400-\u9fff]/.test(found[0].text)) problems.push(`${fileOfRoute(ja)}: the notice ${want} holds no Japanese text`);
   else if (found[0].lang !== 'ja') problems.push(`${fileOfRoute(ja)}: the notice ${want} has lang="${found[0].lang ?? ''}", expected "ja" inside the English <main>`);
   else if (want === 'generated-reference') generatedNotices++;
+  else if (want === 'rewritten-often') rewrittenNotices++;
   else pendingNotices++;
 }
 
@@ -149,8 +154,12 @@ for (const page of pages) {
   const source = parseMarkdown(text);
   const title = titleHeading(source);
   for (const heading of headings(source).filter((h) => h.depth === 2 && h !== title)) {
-    const expected = countWbr(heading);
-    if (expected === 0) continue;
+    const own = countWbr(heading);
+    if (own === 0) continue;
+    // sync-docs.mjs also breaks a long name of the heading's text
+    // (breakNames of scripts/lib/markdown.mjs): ngx_devel_kit gets one <wbr>
+    const added = addedWbr(heading, text);
+    const expected = own + added;
     wbrHeadings++;
     const label = plainText(heading, text);
     const match = built.find((h2) => textContent(h2).replace(/<wbr\s*\/?>/gi, '').replace(/\s+/g, ' ').trim() === label);
@@ -159,7 +168,7 @@ for (const page of pages) {
       continue;
     }
     const found = elements(match).filter((e) => e.tagName === 'wbr').length;
-    if (found !== expected) problems.push(`${file}: the h2 "${label}" holds ${found} wbr element(s), but ${page.source}:${heading.position.start.line} has ${expected} <wbr>`);
+    if (found !== expected) problems.push(`${file}: the h2 "${label}" holds ${found} wbr element(s), but ${page.source}:${heading.position.start.line} has ${own} <wbr>${added ? ` and the generator adds ${added} to its long names` : ''}`);
     if (/wbr/i.test(textContent(match))) problems.push(`${file}: the h2 "${label}" shows "wbr" as text`);
   }
 }
@@ -299,5 +308,5 @@ for (const file of htmlFiles(dist).filter((f) => f.startsWith('ja/'))) {
 finish(
   'check-japanese',
   problems,
-  `${english.length} English pages: ${translated} translated, ${generatedNotices} generated reference page(s) with their notice, ${pendingNotices} not translated yet with theirs; hreflang on ${hreflangPages} pages; ${pages.length} Japanese pages (${fromDocsJa} from docs/ja/), ${wbrHeadings} h2 with <wbr>, ${spaceBlocks} text blocks checked for spaces, the code blocks of ${codePages} pages, wbr on ${wbrPages} pages under /ja/, ${jaDiagrams} diagram(s) under /ja/`,
+  `${english.length} English pages: ${translated} translated, ${generatedNotices} generated reference page(s) with their notice, ${rewrittenNotices} page(s) rewritten by almost every pull request with theirs, ${pendingNotices} not translated yet with theirs; hreflang on ${hreflangPages} pages; ${pages.length} Japanese pages (${fromDocsJa} from docs/ja/), ${wbrHeadings} h2 with <wbr>, ${spaceBlocks} text blocks checked for spaces, the code blocks of ${codePages} pages, wbr on ${wbrPages} pages under /ja/, ${jaDiagrams} diagram(s) under /ja/`,
 );

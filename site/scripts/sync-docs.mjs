@@ -36,7 +36,8 @@
 //   are. The href and src attributes of raw HTML are rewritten in the same
 //   way. Only the destinations change, and a long name in text outside
 //   code (a directive, a constant, a Ruby method with its class) gets
-//   <wbr> where it may break on a narrow screen (breakName): the rest of
+//   <wbr> where it may break on a narrow screen (breakName of
+//   scripts/lib/markdown.mjs): the rest of
 //   the Markdown is copied as it is.
 //
 // - Samples and diagrams (3.5). A fenced block with the language `sample`
@@ -56,7 +57,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { containsHtml, isFirstBlock, parseMarkdown, plainText, titleHeading } from './lib/markdown.mjs';
+import { breakNames, containsHtml, isFirstBlock, parseMarkdown, plainText, SNAKE, titleHeading } from './lib/markdown.mjs';
 import { contentDir, contentRoot, GITHUB_REF, GITHUB_URL, HOME_PAGES, isShallow, lastCommitDate, manifestFile, repoDir, SIDEBAR_ORDER, siteDir, SOURCE_ROUTES } from './lib/site.mjs';
 import { checkKeys, diagramHtml, loadDrawings, parseDiagramBlock } from './lib/diagrams.mjs';
 import { loadSample, parseSampleBlock, sampleMarkdown } from './lib/samples.mjs';
@@ -235,29 +236,6 @@ function unescapeDestination(raw) {
 const HTML_URL_ATTRIBUTE = /\b(href|src)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
 const attributeValue = (m) => m[2] ?? m[3];
 
-// Long names in text outside code: a directive or constant of three or
-// more parts joined by underscores (mruby_ssl_handshake_handler_code,
-// Nginx::HTTP_MOVED_TEMPORARILY), and a Ruby method with its class
-// (Nginx::Stream::Connection#remote_port, Nginx::Headers_in#delete(string)).
-// breakName gives such a name a <wbr> after each "::" and before each "#",
-// "." and "(" between names, and after an underscore that is followed by
-// four or more characters of the name, so that no line ends with one or two
-// characters of it.
-const SNAKE = /[A-Za-z0-9]+(?:_[A-Za-z0-9]+){2,}|[A-Z][A-Za-z0-9_]*(?:::[A-Za-z0-9_]+)+(?:[#.][a-z_][A-Za-z0-9_?!=]*(?:\([^)\s]*\))?)?/;
-const SNAKE_ALL = new RegExp(SNAKE.source, 'g');
-function breakName(name) {
-  let out = '';
-  for (let i = 0; i < name.length; i++) {
-    const c = name[i];
-    const rest = name.length - i - 1;
-    if ((c === '#' || c === '.' || c === '(') && i > 0) out += '<wbr>';
-    out += c;
-    if (c === ':' && name[i - 1] === ':' && rest > 0) out += '<wbr>';
-    else if (c === '_' && rest >= 4 && !/[#.(]/.test(name.slice(i + 1, i + 5))) out += '<wbr>';
-  }
-  return out;
-}
-
 function lineOf(node) {
   return node.position.start.line;
 }
@@ -381,7 +359,7 @@ function render(page) {
       const end = node.position.end.offset;
       if (src.slice(start, end) === node.value) {
         // Not inside a URL of the text (http://host/YOUR_MRUBY_SCRIPT.rb)
-        edits.push([start, end, node.value.replace(SNAKE_ALL, (w, at, all) => (/\S*:\/\/\S*$/.test(all.slice(0, at)) ? w : breakName(w)))]);
+        edits.push([start, end, breakNames(node.value)]);
       }
     } else if (node.type === 'html') {
       // The attributes are found in the source text of the node, not in
