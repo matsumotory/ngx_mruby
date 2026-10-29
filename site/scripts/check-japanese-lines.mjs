@@ -132,8 +132,8 @@ function inspect(cfg) {
   const content = document.querySelector('.sl-markdown-content');
   if (!content) return { fails: ['the page has no .sl-markdown-content'], counts };
   // Body text: paragraphs and list items outside code, diagrams, tables
-  // and samples
-  const body = [...content.querySelectorAll('p, li')].filter((el) => visible(el) && !el.closest('.expressive-code, figure, table, .not-content') && !el.querySelector('p, ul, ol'));
+  // and samples; captions (p.caption) have the caption size and line height
+  const body = [...content.querySelectorAll('p:not(.caption), li')].filter((el) => visible(el) && !el.closest('.expressive-code, figure, table, .not-content') && !el.querySelector('p, ul, ol'));
   if (cfg.width === 1440) {
     for (const el of body) {
       for (const l of lines(el)) {
