@@ -46,10 +46,11 @@ can live in files of its own:
   generated configuration), `tcp_client` and `second_instance`. It starts
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
   with `_` are helpers and are not run as cases; `_tcp_client.rb`,
-  `_filter_connection_client.rb`, `_request_body_client.rb` and
-  `_second_instance.rb` are CRuby scripts that the prelude helpers and the
-  cases run with `ruby`, and `_wait_for_listen.rb` is the CRuby script that
-  test.sh runs to wait for nginx (see "Waiting for nginx to listen" below).
+  `_filter_connection_client.rb`, `_request_body_client.rb`,
+  `_second_instance.rb` and `_redis_client.rb` are CRuby scripts that the
+  prelude helpers and the cases run with `ruby`, and `_wait_for_listen.rb`
+  is the CRuby script that test.sh runs to wait for nginx (see "Waiting for
+  nginx to listen" below).
 - Hook scripts go to `test/html/` as before; the fragment refers to them as
   `build/nginx/html/<name>.rb`.
 
@@ -384,6 +385,77 @@ The upper bound can create these races:
 - nginx later reads each probe connection of the wait, finds it closed
   without a request, and closes it. No handler runs for it, and nginx writes
   only `debug` lines about it to `error.log`.
+
+## Testing the auto-ssl mrbgem
+
+`test/t/cases/auto_ssl.rb` tests `Nginx::SSL::ACME::Dehydrated` and
+`Nginx::SSL::ACME::Client` (`mrbgems/auto-ssl`) with real services: Redis, the
+ACME test server [Pebble](https://github.com/letsencrypt/pebble) and the
+[dehydrated](https://github.com/dehydrated-io/dehydrated) client.
+`test/auto_ssl/deps.sh` provides them:
+
+- Redis 7.4 on `127.0.0.1:6379`;
+- Pebble with its ACME API on `127.0.0.1:14000` and its management API on
+  `127.0.0.1:15000`. It validates the http-01 challenges on port 18174;
+- a second Pebble that requires external account binding, with its ACME
+  API on `127.0.0.1:14001` and its management API on `127.0.0.1:15001`, so
+  that every account registration there fails;
+- `pebble-challtestsrv` as Pebble's DNS server on `127.0.0.1:8053` (its
+  management API on `127.0.0.1:8055`), which answers every A query with
+  `127.0.0.1` and no AAAA query, so that Pebble connects to the test nginx;
+- dehydrated 0.7.2, downloaded from its GitHub release and checked against
+  its SHA-256.
+
+The services run in Docker containers whose images the script pins by
+digest. They use the host network by default, because Pebble has to connect
+to the nginx that the case starts on 127.0.0.1, and test.sh has to reach
+Redis and Pebble there. The case also needs `curl`, the `openssl` command,
+`hexdump` (for dehydrated; package `bsdextrautils` on Ubuntu 22.04) and CRuby.
+It runs only when `NGX_MRUBY_TEST_AUTO_SSL` names the directory that
+`deps.sh start` prepared:
+
+```console
+$ sh test/auto_ssl/deps.sh start /tmp/auto-ssl
+$ NGX_MRUBY_TEST_AUTO_SSL=/tmp/auto-ssl sh test.sh
+$ sh test/auto_ssl/deps.sh stop
+```
+
+Without `NGX_MRUBY_TEST_AUTO_SSL`, or in a build without the gem, the case
+prints why it skips and checks nothing. CI starts the services in every cell
+of the `build` matrix before `test.sh` ("Start the services of the auto-ssl
+tests" in `.github/workflows/test.yml`), so the case runs there.
+
+To run `test.sh` in a container, start that container first and let the
+services share its network namespace: `AUTO_SSL_DOCKER_NETWORK=container:NAME`
+makes `deps.sh` start them with `--network container:NAME`.
+`AUTO_SSL_CONTAINER_PREFIX` changes the names of the containers
+(`ngx-mruby-auto-ssl-redis`, `-challtestsrv`, `-pebble` and `-pebble-eab`
+by default), so
+that several runs on one machine do not take the same names; `deps.sh stop`
+removes only the containers with that prefix. Start the test container with
+`--init`: the case and `test/t/cases/config_hooks.rb` start an nginx as a
+daemon and wait until it has exited, and without an init process its exited
+process stays a zombie that `kill -0` still finds.
+
+The test nginx gets its certificate in the TLS handshake on 18172
+(`test/conf/conf.d/78-auto-ssl.conf`), as
+`test/conf/auto-ssl/nginx.conf.dehydrated_example` does:
+`Nginx::SSL::ACME::Dehydrated#auto_cert_deploy` runs dehydrated and waits for
+it. The test nginx runs as a single process, so it cannot answer the requests
+that dehydrated and Pebble make in that time. The case therefore starts a
+second nginx (`test/auto_ssl/peer.conf`, prefix
+`NGINX_INSTALL_DIR/auto_ssl/peer/`, `error.log` in
+`NGINX_INSTALL_DIR/logs/auto_ssl_peer.error.log`) with the hook server of
+`test/auto_ssl/hook.sh` on 18173 and the http-01 challenge server on 18174.
+The account of dehydrated is new in each run, so the first run of dehydrated
+stops at the terms of service of Pebble, and the case checks that
+`#auto_accept_terms` registers the account and that the second run gets the
+certificate. For `eab.autossl.test`, dehydrated uses the second Pebble: the
+registration fails, dehydrated removes the account key it made, and the
+case checks that `#auto_cert_deploy` accepts the terms only once and returns
+after two runs of dehydrated. The case reads Redis with `test/t/cases/_redis_client.rb`, a
+client of its own in CRuby, not with the mruby-redis of the nginx under
+test.
 
 ## Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer
 
