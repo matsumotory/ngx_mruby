@@ -34,7 +34,7 @@ https://github.com/matsumotory/ngx_mruby/archive/master.zip か https://github.c
 
 `NGX_MRUBY_CORE_GEMS`が挙げるgemが、ビルドするmrubyの`mrbgems`ディレクトリに無いと、mrubyのビルドは止まります。たとえば、`./configure --with-mruby-root`で別のバージョンのmrubyを指定したときです。一覧を書き換えるか、mrubyのビルドの環境で`NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1`を設定して、通知を出してそれらのgemを飛ばしてください。
 
-同梱のauto-sslのmrbgemは、デフォルトのビルドに含まれません。詳しくは[auto-sslのmrbgemを入れる](#auto-sslのmrbgemを入れる)にあります。
+ngx_mruby 3.0.0には、auto-sslのmrbgemがありません。詳しくは[auto-sslのmrbgemと、それと一緒に入っていたクラス](#auto-sslのmrbgemとそれと一緒に入っていたクラス)にあります。
 
 ### コアのgem
 
@@ -235,9 +235,11 @@ $ ./configure --prefix=/usr/local/nginx-1.15.6 --add-dynamic-module=/path/to/ngx
 $ make
 ```
 
-#### auto-sslのmrbgemを入れる
+#### auto-sslのmrbgemと、それと一緒に入っていたクラス
 
-auto-sslのmrbgemは`mrbgems/auto-ssl`にあり、`Nginx::SSL::ACME`のクラスを定義します。このgemは、デフォルトのビルドに入りません。その`Nginx::SSL::ACME::Client`はACMEv1の`new-reg`、`new-authz`、`new-cert`を使いますが、Let's EncryptはACMEv1のサービスを終えています。このgemは、pyama86/mruby-acme-clientと、GPLでライセンスされたpyama86/mruby-polarsslも持ち込みます。加えて、matsumotory/mruby-httprequest、matsumotory/mruby-simplehttp、mattn/mruby-http、mattn/mruby-base64、takahashim/mruby-forwardable、iij/mruby-tempfileも持ち込みます。デフォルトのビルドのほかのgemはこれらを必要としないので、デフォルトのビルドには、これらが定義するものもありません。
+ngx_mruby 3.0.0には、auto-sslのmrbgemがありません。このgemは`mrbgems/auto-ssl`にあり、`Nginx::SSL::ACME`のクラスを定義していました。mrubyのビルドは、`NGX_MRUBY_AUTO_SSL`をもう読みません。詳しくは[auto-sslのmrbgemと`NGX_MRUBY_AUTO_SSL`が無くなる](../../releases/v3.0.0.ja.md#auto-sslのmrbgemとngx_mruby_auto_sslが無くなる640)にあります。このgemの`Nginx::SSL::ACME::Client`はACMEv1の`new-reg`、`new-authz`、`new-cert`を使いますが、Let's EncryptはACMEv1のサービスを終えています。このgemがTLSのために必要とするpyama86/mruby-polarsslは、2017-03-03からコミットが無く、mruby 4ではビルドできません。`mruby/ext/io.h`をインクルードしますが、mruby 4.0はこのヘッダを`mruby/io.h`に改名しました。ACMEのサーバーから証明書を取得するには、nginx自身のモジュールである[ngx_http_acme_module](https://nginx.org/en/docs/http/ngx_http_acme_module.html)、つまりnginx-acmeを使ってください。`Nginx::SSL::ACME`が必要なサーバーは、2.xのビルドを使い続けてください。このgemの説明は[2.xのドキュメント](https://github.com/matsumotory/ngx_mruby/blob/v2.7.2/docs/class_and_method/README.md#auto-ssl-mrbgem)にあります。
+
+ngx_mruby 2.xは、auto-sslが依存するgemもビルドしていました。pyama86/mruby-acme-client、GPLでライセンスされたpyama86/mruby-polarssl、matsumotory/mruby-httprequest、matsumotory/mruby-simplehttp、mattn/mruby-http、mattn/mruby-base64、takahashim/mruby-forwardable、iij/mruby-tempfileです。デフォルトのビルドのほかのgemはこれらを必要としないので、3.0.0のデフォルトのビルドには、これらが定義するものもありません。
 
 - クラスとモジュールの`Acme`、`CustomHttpRequest`、`OpenSSL`、`PolarSSL`、`HttpRequest`、`SimpleHttp`、`HTTP`、`Base64`、`Forwardable`、`FORWARDABLE`、`Tempfile`、`TempfilePath`
 - iij/mruby-tempfileが`Dir`に加える`Dir.tmpdir`と`Dir.mktmpdir`、それらの補助の`Dir._tmpname`。`Dir`のクラス自体は、デフォルトのビルドに残ります。
@@ -250,23 +252,7 @@ path = "#{tmpdir}/myapp-#{Process.pid}-#{SecureRandom.hex(8)}"
 Dir.mkdir(path, 0700)                                         # Dir.mktmpdir('myapp-')
 ```
 
-同梱のmruby 4.0.0では、このgemを入れたビルドは最後まで通りません。pyama86/mruby-polarsslは`mruby/ext/io.h`をインクルードします。mruby 4.0は、このヘッダを`mruby/io.h`に改名しました。そのためmrubyのビルドは`fatal error: mruby/ext/io.h: No such file or directory`で止まります。2026年10月4日に`mruby/`で`NGX_MRUBY_AUTO_SSL=1 rake`を実行して確かめました。`build_config.rb`がテストのクライアントに設定する`NO_SSL`は、このビルドにも効きます。ただし`NO_SSL`が消すのはmatsumotory/mruby-simplehttpのmruby-polarsslへの依存だけで、pyama86/mruby-acme-clientは自分でpyama86/mruby-polarsslに依存しています。
-
-このgemをビルドするには、mrubyのビルドの環境で`NGX_MRUBY_AUTO_SSL=1`を設定してください。build.shとtest.shは、自分の環境変数をmrubyのビルドに渡します。
-
-```sh
-$ env NGX_MRUBY_AUTO_SSL=1 sh ./build.sh
-```
-
-3-BのMakefileや3-Cのnginxのconfigureとmakeでは、`make`か`make build_mruby`の環境で設定してください。
-
-```sh
-$ env NGX_MRUBY_AUTO_SSL=1 make build_mruby
-```
-
-ほかの値を設定するか、何も設定しないと、このgemを入れずにビルドします。この変数はmrubyをビルドするときに読みます。既にビルドしたツリーでこの変数を変える前に、`mruby/build`を消してください。mrubyは新しい一覧のgemをビルドして初期化しますが、`mruby/build/host/lib/libmruby.a`には外したgemのオブジェクトが残り、`mruby/build/host/LEGAL`は書き直されません。
-
-CIがビルドしてテストするのは、デフォルトのgemの一覧だけで、`NGX_MRUBY_AUTO_SSL`を設定するCIのジョブはありません。上のサードパーティの8つのgemは、デフォルトのビルドが使わないので、コミットした`build_config.rb.lock`の`host`のセクションにエントリーがありません。詳しくは[gemのコミットとbuild_config.rb.lock](#gemのコミットとbuild_configrblock)にあります。ロックのエントリーはビルドごとにあり、`test`のセクションにあるmatsumotory/mruby-httprequest、matsumotory/mruby-simplehttp、mattn/mruby-httpのエントリーが固定するのは、`test`のビルドがクローンするコピーだけです。`host`のビルドでは、rakeは8つのgemのブランチの現在の先頭をクローンし、手元のツリーのロックの`host`のセクションにそのエントリーを加えます。そのエントリーは、同じツリーの後のビルドをそれらのコミットに留めます。これらのエントリーを、ほかの変更と一緒にコミットしないでください。`git checkout build_config.rb.lock`で、コミットしたファイルに戻せます。そのため、この変数を設定したビルドは、デフォルトのビルドが通っていても、これらのgemかmrubyが変わると失敗することがあります。
+ほかの定数が要るなら、それを定義するgemを、自分の`build_config.rb`に`conf.gem`の行で加えてください。pyama86/mruby-polarsslに依存するgemは、mruby 4ではビルドが通りません。
 
 ## 4. ngx_mrubyを<wbr>インストールする
 

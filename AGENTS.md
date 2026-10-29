@@ -62,8 +62,6 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     on every request (`fopen`), and when a script gives `Nginx::SSL` the
     paths of a certificate and a key, they are read during the handshake
     (`BIO_new_file`, `SSL_use_PrivateKey_file`);
-  - the bundled `auto-ssl` gem runs the dehydrated ACME client and waits
-    for it to finish;
   - an operator's script blocks its worker when it uses mruby-sleep,
     mruby-socket or mruby-io, which the default build includes on both
     branches, or matsumotory/mruby-redis (a hiredis client), which the
@@ -392,16 +390,11 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   another commit: change its `commit:` in each section of the lock that has
   an entry for it (or delete those entries to take the head of its branch),
   `rm -rf mruby/build`, run a full `sh test.sh`, and commit the lock that
-  rake wrote. A build with `NGX_MRUBY_AUTO_SSL=1` adds entries for the
-  auto-ssl gems: do not commit them (`git checkout build_config.rb.lock`).
+  rake wrote.
 - `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. After changing
   `BUILD_DYNAMIC_MODULE`, configure options or `nginx_version`, nginx has to be
   configured again: "Testing" in `docs/test/README.md` says when a full run does
   that and what to remove first.
-- `NGX_MRUBY_AUTO_SSL=1` adds the auto-ssl mrbgem to the mruby build. Remove
-  `mruby/build` before changing it: a full run builds the new gem list, but
-  `libmruby.a` keeps the objects of a dropped gem and `mruby/build/host/LEGAL`
-  is not written again (see `docs/install/README.md`).
 - Extra arguments to `test.sh` are passed to `./configure`
   (for example `sh test.sh --with-openssl-src=/path/to/openssl`).
 - Headers in `src/` are not make dependencies: after editing a `.h`, `touch` the

@@ -118,8 +118,7 @@ else {
     // The code of the line without a trailing comment
     const line = raw.replace(/\s+#.*$/, '');
     if (/^\s*#/.test(raw) || !/^\s*conf\.gem\b/.test(line)) continue;
-    // A gem that a condition adds (auto-ssl with NGX_MRUBY_AUTO_SSL=1) is
-    // not in the default build
+    // A gem that a condition adds is not in the default build
     if (/\b(if|unless)\b/.test(line)) continue;
     const m =
       /(?:github:|:github\s*=>)\s*['"]([^'"]+)['"]/.exec(line) ??
