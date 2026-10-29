@@ -24,7 +24,7 @@
 
 ## Branch strategy
 
-ngx_mruby has three long-lived code branches: `master`, `next` and `v2.x` (the `gh-pages` branch holds the site, [ngx.mruby.org](https://ngx.mruby.org/)). Their names and roles stay as they are. `master` is the 2.x line until v3 is promoted to it, so that everyone who builds from the default branch keeps receiving the 2.x security fixes. v3 is developed on `next` and becomes `master` at v3.0.0 (the promotion). From then on, `v2.x` carries 2.x.
+ngx_mruby has three long-lived code branches: `master`, `next` and `v2.x`. Their names and roles stay as they are. `master` is the 2.x line until v3 is promoted to it, so that everyone who builds from the default branch keeps receiving the 2.x security fixes. v3 is developed on `next` and becomes `master` at v3.0.0 (the promotion). From then on, `v2.x` carries 2.x. The site, [ngx.mruby.org](https://ngx.mruby.org/), is built from `docs/` by `.github/workflows/site.yml` on `next` and deployed by GitHub Actions: 3.x from `next` at the unprefixed paths, 2.x from `master` under `/v2/`. The `gh-pages` branch keeps the old site as history.
 
 ```text
               until the promotion                 |  after the promotion
