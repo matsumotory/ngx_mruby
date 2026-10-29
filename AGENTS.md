@@ -384,7 +384,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `test/t/cases/config_hooks.rb` starts, 18173 and 18174 to the nginx that
   `test/t/cases/auto_ssl.rb` starts, 12399 to a test in
   `test/t/ngx_mruby.rb`; with the services of `test/auto_ssl/deps.sh`, also
-  6379, 8053, 8055, 14000 and 15000, see "Testing the auto-ssl mrbgem" in
+  6379, 8053, 8055, 14000, 14001, 15000 and 15001, see "Testing the auto-ssl mrbgem" in
   `docs/test/README.md`) and
   kills every running `nginx` process before it starts. Run only one `test.sh` per
   machine at a time, and wait if an nginx you did not start is running.

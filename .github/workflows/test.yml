@@ -280,7 +280,7 @@ jobs:
           if [ -e build/nginx/logs/stderr.log ]; then cat build/nginx/logs/stderr.log ; else cat build_dynamic/nginx/logs/stderr.log; fi
           # The services of the auto-ssl tests, and the log of the second
           # nginx of test/t/cases/auto_ssl.rb.
-          for c in redis challtestsrv pebble; do docker logs "ngx-mruby-auto-ssl-$c" 2>&1 | tail -n 50 || true; done
+          for c in redis challtestsrv pebble pebble-eab; do docker logs "ngx-mruby-auto-ssl-$c" 2>&1 | tail -n 50 || true; done
           if [ -e build/nginx/logs/auto_ssl_peer.error.log ]; then cat build/nginx/logs/auto_ssl_peer.error.log; else cat build_dynamic/nginx/logs/auto_ssl_peer.error.log || true; fi
           # When nginx could not bind a test port, show who holds it.
           # The test ports lie below the kernel's ephemeral range (32768-60999),
