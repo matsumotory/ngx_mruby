@@ -90,7 +90,10 @@ print the second nginx's `error.log` when the line is set.
 `v*.x`, on pushes to those branches and to `v*` tags, and on "Run workflow".
 Its `ci-ok` job is the status check that rulesets require: it fails unless
 every job that it lists in `needs` succeeded. These are every job of the
-`build` matrix and the `files` job, and on `next` also the `soak` job. The
+`build` matrix and the `files` job, and on `next` also the `soak` job. On
+`next`, the job of the cell that runs nginx under valgrind on every run is
+one of them, so a valgrind error in that cell fails `ci-ok` ([valgrind in
+CI](#valgrind-in-ci)). The
 `perf` job (see "In CI" under "Performance comparison with callgrind") is
 not among them yet.
 
@@ -301,6 +304,19 @@ To run nginx under valgrind, set the environment variable `NGINX_RUNNER`:
 $ NGINX_RUNNER=valgrind sh test.sh
 ```
 
+valgrind writes its report when nginx exits at the end of `test.sh`, and
+`test.sh` does not take valgrind's errors into its exit status (it prints
+the exit status of nginx, 99 with the option `--error-exitcode=99` below
+when valgrind counted errors). To check a
+run as CI does, give valgrind the options of CI and read the `ERROR SUMMARY`
+line of the log (see [valgrind in CI](#valgrind-in-ci)):
+
+```console
+$ rm -rf build/valgrind && mkdir -p build/valgrind
+$ NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=$PWD/test/valgrind.supp --log-file=$PWD/build/valgrind/valgrind.%p.log" sh test.sh
+$ grep 'ERROR SUMMARY' build/valgrind/valgrind.*.log
+```
+
 The auto-ssl mrbgem is not in the default build.
 `NGX_MRUBY_AUTO_SSL=1 sh test.sh` builds it and the gems it depends on (see
 "Building with the auto-ssl mrbgem" in `docs/install/README.md`, which also
@@ -403,6 +419,198 @@ The upper bound can create these races:
 - nginx later reads each probe connection of the wait, finds it closed
   without a request, and closes it. No handler runs for it, and nginx writes
   only `debug` lines about it to `error.log`.
+
+### Stopping nginx
+
+`test.sh` stops only the nginx processes that it started, by their pid. It
+never signals a process by its name (`killall`, `pkill`), so the nginx
+processes of other checkouts, of the soak test, of nginx-tests and of other
+users keep running. Two runs of `test.sh` on one machine still use the
+same ports, so run one at a time: the second run fails in the wait before
+the start, as "Waiting for nginx to listen" above shows.
+
+- When `test.sh` exits, after the last case, after a failure, or on SIGHUP,
+  SIGINT or SIGTERM, it stops the test nginx with SIGTERM and waits until the
+  process has ended. It then prints how long that took and the exit status
+  of nginx; the status does not change the exit status of `test.sh`:
+
+  ```text
+  test.sh: nginx (pid 374) ended within about 0.1 seconds of the first SIGTERM; SIGTERM sent 1 times
+  test.sh: nginx (pid 374) exit status 0
+  ```
+
+  The shell runs the trap of a signal only after the command that runs at
+  that moment has ended, such as the wait for nginx, `test/t/ngx_mruby.rb`
+  or the current case file, so the stop starts then. A shell that is not
+  interactive also starts a command run with `&` with SIGINT ignored, so
+  `sh test.sh &` does not stop on SIGINT; send SIGTERM instead.
+
+- Before each signal, `test.sh` checks that the pid still runs
+  `build/nginx/sbin/nginx` of this checkout: its command line, from `ps -ww
+  -o args=`, contains that absolute path, also under valgrind. The shell
+  collects a background process that has ended, so after a crash of nginx
+  its pid may belong to another process by the time of the stop. Such a pid
+  counts as ended and gets no signal:
+
+  ```text
+  test.sh: nginx (pid 374) had ended before the stop; no signal sent
+  ```
+
+- Before it starts nginx, `test.sh` reads `build/nginx/logs/nginx.pid`
+  (`build_dynamic/...` for `BUILD_DYNAMIC_MODULE`). When an earlier run was
+  killed before it could stop its nginx, that nginx still runs and the file
+  names it. `test.sh` stops it in the same way if the process runs
+  `build/nginx/sbin/nginx` of this checkout, by the check above, and leaves
+  any other process alone:
+
+  ```text
+  test.sh: stopping the nginx (pid 7) that an earlier run left running
+  test.sh: logs/nginx.pid names pid 7, which does not run /path/to/build/nginx/sbin/nginx; left running
+  ```
+
+The test nginx is a single process (`master_process off`). It checks for a
+signal only after it has handled its events, in the loop of
+`ngx_single_process_cycle()`: the signal handler sets `ngx_terminate`, and
+the loop exits once `ngx_process_events_and_timers()` returns. A SIGTERM
+that arrives after that check and before the next `epoll_wait()` does not
+interrupt the wait, and with no timer and no connection, `epoll_wait()`
+waits without a time limit. nginx then logs `signal 15 (SIGTERM) received`
+and keeps running. A master process does not have this gap: it waits for
+signals with `sigsuspend()`, and while its workers still run after a
+SIGTERM, it sends them the command to terminate again, over the socket pair
+of each worker that the worker's event loop watches (SIGTERM only where that
+write fails), with a delay that starts at 50 milliseconds and doubles, and
+it sends SIGKILL once the delay exceeds one second, about 1.6 seconds after
+the first signal (`ngx_master_process_cycle()`). `test.sh` does the same for
+the single process with the signal: it sends SIGTERM again 1, 3, 7, 15 and
+31 seconds after the first one while the process still runs, and a SIGTERM
+that arrives during `epoll_wait()` ends the wait. It waits longer than the
+master before SIGKILL because the test nginx may run under valgrind, which
+checks for leaks at the exit, and SIGKILL would lose that report. After
+`NGINX_STOPTIME` seconds (default 60) it sends SIGKILL, prints
+
+```text
+test.sh: nginx (pid 374) did not end within 60 seconds (NGINX_STOPTIME) after 6 SIGTERM; sent SIGKILL
+```
+
+and exits 1. `test.sh` counts these times in rounds of `sleep 0.1` and a
+`ps`, so the real times are somewhat longer than the printed ones. The
+second nginx of `test/t/cases/_second_instance.rb`, also a single process,
+is stopped with SIGQUIT, sent again in the same way.
+
+How often a run hits the gap was measured on 2026-10-29, with the test
+nginx built from `next` at `c9c49023e` (nginx 1.31.6, static module), started
+as `test.sh` starts it, in a container of Ubuntu 22.04 on an aarch64 host
+with 11 CPUs:
+
+- 800 starts of the test nginx, each followed by one SIGTERM: 400 right after
+  the response to one request, and 400 at 0 to 20 milliseconds after three
+  requests were sent. nginx ended after the one SIGTERM every time. The gap
+  lasts from the check of `ngx_terminate` to the call of `epoll_wait()`, a
+  debug log line and a lookup of the timer tree, so a loop of this size does
+  not find it.
+- gdb attached to the test nginx, waited until nginx had closed the
+  connection of a request, stopped it at the next call of
+  `ngx_epoll_process_events()`, with no event and no timer left
+  (`timer=-1`), and delivered SIGTERM there. nginx logged `signal 15
+  (SIGTERM) received from ..., exiting` and then `epoll timer: -1`, and
+  still ran 10 seconds later. A second SIGTERM ended it within 0.1 seconds.
+  This is the state of the run of `test.sh` at `7926f72`
+  ([#600](https://github.com/matsumotory/ngx_mruby/pull/600)), where nginx
+  logged the SIGTERM and stayed in `epoll_wait()` for 20 minutes.
+
+### valgrind in CI
+
+The `build` matrix of `.github/workflows/test.yml` runs `test.sh` in each
+cell. Which cells run nginx under valgrind depends on the run:
+
+- On pull requests and pushes, one cell runs nginx under valgrind: nginx
+  1.31.6, static module, without `--with-openssl-src`, the job
+  `build (1.31.6)` (the matrix gives it `VALGRIND_ON_EVERY_RUN`). The other cells without a sanitizer run nginx
+  directly (`NGINX_RUNNER=exec`), and the sanitizer cell runs nginx built
+  with AddressSanitizer and UndefinedBehaviorSanitizer (see the next
+  section).
+- A manual run of `test.yml` with the input `valgrind` runs every cell
+  except the sanitizer cell under valgrind:
+
+  ```console
+  $ gh workflow run test.yml --ref next -f valgrind=true
+  ```
+
+- The nightly run: `.github/workflows/valgrind-nightly.yml` starts such a
+  run of `test.yml` every day at 18:23 UTC for each branch of its matrix
+  (`next`), waits for it, and fails when it fails. GitHub runs a schedule
+  only from the workflow file on the default branch, `master`, so the
+  schedule takes effect once the file is on `master`. Until then, the file
+  on `next` runs on pull requests that change it, `test.yml` or
+  `test/valgrind.supp`: there it starts the run under valgrind on the head
+  branch of the pull request. Neither run is a status check that `ci-ok`
+  needs.
+
+valgrind adds little time to a cell. The part of `test.sh` from the start
+of nginx to `test.sh ... successful` took 67 to 94 seconds in the 16 cells
+under valgrind of the run with the input `valgrind`
+[40824932917](https://github.com/matsumotory/ngx_mruby/actions/runs/40824932917),
+and 57 to 75 seconds in the 15 cells that ran nginx directly in the run of
+the same commit for its pull request
+[40824899601](https://github.com/matsumotory/ngx_mruby/actions/runs/40824899601)
+(2026-10-29). A cell takes 4 to 13 minutes in all, most of it for the
+builds of OpenSSL, mruby and nginx.
+
+A cell under valgrind runs nginx with these options:
+
+```text
+valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=test/valgrind.supp --log-file=$RUNNER_TEMP/valgrind/valgrind.%p.log
+```
+
+valgrind counts an error for each memory error that occurs (an invalid
+read or write, a conditional jump or a system call on an uninitialised
+value, an invalid or mismatched free) and for each loss record of the
+kinds `definite` and `indirect` that `test/valgrind.supp` does not
+suppress, and prints the count, with the number of distinct stacks
+(contexts), in its `ERROR SUMMARY` line when nginx exits: an invalid read
+in a handler that 20 requests ran gives `20 errors from 1 contexts`. With
+`--error-exitcode=99`, valgrind also exits with 99 when the count is not 0.
+`test.sh` prints the exit status of nginx when it has stopped it
+(`test.sh: nginx (pid 374) exit status 99` after valgrind counted errors;
+see [Stopping nginx](#stopping-nginx)), but does not take it into its own,
+so the step "Check the valgrind reports" reads the logs instead: it prints each log, and fails unless at least one
+log has an `ERROR SUMMARY` and every `ERROR SUMMARY` counts 0 errors. A
+cell without any `ERROR SUMMARY` fails as well: valgrind did not finish its
+report.
+
+Possibly lost blocks are printed with their stacks, but are not errors. At
+the exit of the test nginx (`master_process off`), nginx has destroyed the
+pool of the cycle, and the arrays of connections and events that
+`ngx_event_process_init()` allocated, the table of `ngx_crc32_table_init()`
+and the pools of the connections that are still open are left. valgrind
+finds only interior pointers to them and reports them as possibly lost.
+Their number depends on the connections that are open when nginx exits: in
+the CI runs
+[40819115837](https://github.com/matsumotory/ngx_mruby/actions/runs/40819115837),
+[40820233191](https://github.com/matsumotory/ngx_mruby/actions/runs/40820233191)
+and
+[40821209339](https://github.com/matsumotory/ngx_mruby/actions/runs/40821209339)
+of 2026-10-29, each of the 16 cells under valgrind reported from 5 blocks
+(85,440 bytes) to 8 blocks (86,208 bytes), and the cell of nginx 1.31.6
+with the static module gave 5, 7 and 7 blocks in these three runs. A leak
+of ngx_mruby, mruby or a gem that drops the last pointer to a block is
+definitely lost, and fails the cell. A request or connection that ngx_mruby
+never finalizes keeps its pools until nginx exits, and valgrind reports
+them as possibly lost, so it does not fail the cell. In the run
+40824899601, the pool of an upstream connection that was still open at exit
+is possibly lost, with `ngx_mrb_post_fiber` in the stack of its allocation.
+The `soak` job, which compares the connections, timers and file descriptors
+of the worker between samples ([Soak test for
+memory](#soak-test-for-memory)), is the check for such leaks.
+
+`test/valgrind.supp` suppresses only allocations of nginx itself, each with
+its stack and the reason in a comment: today the environment array of
+`ngx_set_environment()` (8 bytes, definitely lost in every cell), which
+nginx leaves allocated at exit on purpose (`ngx_cleanup_environment()` in
+`nginx.c`). An entry is added only with the stack of the report and the
+reason why the block is not ngx_mruby's; a leak with a frame of ngx_mruby,
+mruby or a gem is not suppressed.
 
 ## Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer
 
@@ -532,9 +740,8 @@ docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEB
 
 The test files start nginx on ports from 8000 to 8999 that they lock, so
 they run in parallel (`NGINX_TESTS_JOBS`, by default the number of CPUs).
-They do not use the ports of `test.sh`, but a `test.sh` that runs on the
-same machine kills every nginx, theirs included: run one of the two at a
-time, or `run.sh` in a container.
+They do not use the ports of `test.sh`, and `test.sh` stops only the nginx
+that it started ("Stopping nginx" above).
 
 Environment variables: `NGINX_TESTS_OUT` (the output directory, by default
 `build_nginxtests`), `NGINX_TESTS_SRC` (a checkout of nginx-tests at the
@@ -1021,8 +1228,8 @@ separated by `/`, and the reasons are listed below the table. The logs are in
 `stderr.<scenario>.log`, `mock.<scenario>.log` (the mock LLM's output, for
 the `agent_*` scenarios) and `soak.log` (the output of the driver).
 
-`test.sh` kills every nginx on the machine, including the soak's, so do not
-run both at the same time on one machine.
+`test.sh` stops only the nginx that it started ("Stopping nginx" above),
+and its ports are not those of the soak.
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -1564,8 +1771,8 @@ minutes each); the measurement of the default scenarios takes about 140
 seconds per build (139 seconds on the CI runner, 28 of them in `sleep`), and
 `proxy_stream_plain_1000` and `route_json_64k` add about 80 and 130 seconds
 when `PERF_SCENARIOS` names them. The report goes to `build_perf/report.txt` and
-`build_perf/report.json`. `test.sh` kills every nginx on the machine, so do
-not run it at the same time.
+`build_perf/report.json`. `test.sh` starts its mock LLM upstream on 12372
+too, so do not run it at the same time.
 
 | Variable | Default | Meaning |
 |---|---|---|
