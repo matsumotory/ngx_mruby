@@ -9,8 +9,10 @@
 // English pages that /v2/ja/ shows with the notice, and the Japanese
 // release notes. scripts/check-v2.mjs finds it by its data-banner
 // attribute.
-import { SITE_VERSION } from '../../scripts/lib/site.mjs';
+import { releaseState } from '../../scripts/lib/release-state.mjs';
+import { SITE_VERSION, repoDir } from '../../scripts/lib/site.mjs';
 
+const release = SITE_VERSION === 2 ? releaseState(repoDir, 2) : null;
 const { banner } = Astro.locals.starlightRoute.entry.data;
 const ja = Astro.locals.starlightRoute.locale === 'ja';
 ---
@@ -19,11 +21,11 @@ const ja = Astro.locals.starlightRoute.locale === 'ja';
   SITE_VERSION === 2 ? (
     ja ? (
       <div class="sl-banner" data-pagefind-ignore data-banner="v2" lang="ja">
-        ngx_mruby 2.xのドキュメントです。2.xは現在のリリースです。開発中の3.xについては、<a href="/ja/docs/">3.xのドキュメント</a>を読んでください。
+        2.x保守ブランチのドキュメントです。最新リリースタグは {release.latest_release_tag}。{release.unreleased_versions.length > 0 && `${release.unreleased_versions.join('、')} の変更は未リリースです。`}導入例の対象バージョンを確認してください。開発中の3.xは、<a href="/ja/docs/">3.xのドキュメント</a>を読んでください。
       </div>
     ) : (
       <div class="sl-banner" data-pagefind-ignore data-banner="v2">
-        This is the documentation of ngx_mruby 2.x, the current release. For 3.x, which is in development, read the <a href="/docs/">3.x documentation</a>.
+        These are 2.x maintenance-branch docs. Latest release tag: {release.latest_release_tag}. {release.unreleased_versions.length > 0 && `${release.unreleased_versions.join(', ')} changes are unreleased.`} Check the version targeted by each example. For development, read the <a href="/docs/">3.x documentation</a>.
       </div>
     )
   ) : (

@@ -504,7 +504,14 @@ has no misleading link to its old bytes at HEAD. Sources not yet present
 in HEAD stop export. The generator retains full Markdown bodies for the
 build checker, and preserves code while omitting display word breaks and
 SVG. Diagram labels and source provenance remain; label order is not a
-claim about connections. The page footer exposes the outputs.
+claim about connections. The page footer exposes the outputs. The 2.x channel is
+`maintenance`, not a release guarantee. Its shared banner and machine metadata
+read the latest reachable stable release tag and newer release-note filenames
+from the documented source tree. They name the released tag and unreleased
+versions without duplicating version constants in components. A full-history,
+full-tag checkout is required; no tag fails the build instead of guessing.
+Examples keep their explicitly tested target (such as the released tag in the
+installation guide), which can differ from maintenance-branch API changes.
 
 An independent reader using only those outputs could identify version and
 sample provenance, and distinguish callgrind instruction counts from

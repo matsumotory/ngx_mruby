@@ -8,17 +8,20 @@ import { distDir, GITHUB_URL, htmlFiles, manifestFile, pageOfRoute, repoDir, SIT
 import { loadSample, parseSampleBlock } from './lib/samples.mjs';
 import { parseMarkdown } from './lib/markdown.mjs';
 
+import { releaseState } from './lib/release-state.mjs';
 const problems = [];
 const v2 = JSON.parse(fs.readFileSync(v2ManifestFile, 'utf8'));
 let checked = 0;
 for (const spec of [
   { version: '3.x', channel: 'development', prefix: '', repo: repoDir, revision: execFileSync('git', ['-C', repoDir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), manifest: JSON.parse(fs.readFileSync(manifestFile, 'utf8')) },
-  { version: '2.x', channel: 'stable', prefix: '/v2', repo: v2.tree, revision: v2.commit, manifest: v2.pages },
+  { version: '2.x', channel: 'maintenance', prefix: '/v2', repo: v2.tree, revision: v2.commit, manifest: v2.pages },
 ]) {
   const root = path.join(distDir, spec.prefix);
   const index = JSON.parse(fs.readFileSync(path.join(root, 'docs-index.json'), 'utf8'));
   const where = `${spec.version} export`;
   if (index.schema_version !== 1 || index.documentation_version !== spec.version || index.channel !== spec.channel || index.source_revision !== spec.revision) problems.push(`${where}: index version/revision mismatch`);
+  const release = spec.version === '2.x' ? releaseState(spec.repo, 2) : null;
+  if (JSON.stringify(index.release_context) !== JSON.stringify(release)) problems.push(`${where}: release context mismatch`);
   const clean = execFileSync('git', ['-C', spec.repo, 'status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' }).trim() === '';
   if (index.working_tree_clean !== clean) problems.push(`${where}: index clean state mismatch`);
   const expected = spec.manifest.filter((p) => !p.home);
@@ -32,13 +35,14 @@ for (const spec of [
     if (seen.has(entry.markdown_url)) problems.push(`${where}: duplicate Markdown URL`);
     seen.add(entry.markdown_url);
     if (entry.language !== page.lang || entry.source_path !== page.source || entry.source_revision !== spec.revision || entry.documentation_version !== spec.version || entry.channel !== spec.channel || entry.working_tree_clean !== clean || entry.title !== page.title || entry.last_updated !== (page.lastUpdated ?? null)) problems.push(`${where}: metadata mismatch for ${page.source}`);
+    if (JSON.stringify(entry.release_context) !== JSON.stringify(release)) problems.push(`${where}: page release context mismatch`);
     const expectedPath = `${spec.prefix}/markdown/${page.route || 'index'}.md`;
     if (entry.markdown_url !== SITE_URL + expectedPath) problems.push(`${where}: wrong version/path for ${page.source}`);
     const text = fs.readFileSync(path.join(distDir, expectedPath), 'utf8');
     const front = /^---\n([\s\S]*?)\n---\n\n/.exec(text);
     if (!front) { problems.push(`${where}: missing metadata for ${page.source}`); continue; }
     const meta = Object.fromEntries(front[1].split('\n').map((line) => { const at = line.indexOf(': '); return [line.slice(0, at), JSON.parse(line.slice(at + 2))]; }));
-    for (const [key, value] of Object.entries(entry)) if (meta[key] !== value) problems.push(`${where}: index/Markdown differ for ${page.source} ${key}`);
+    for (const [key, value] of Object.entries(entry)) if (JSON.stringify(meta[key]) !== JSON.stringify(value)) problems.push(`${where}: index/Markdown differ for ${page.source} ${key}`);
     const source = fs.readFileSync(path.join(spec.repo, page.source), 'utf8');
     if (createHash('sha256').update(source).digest('hex') !== entry.source_sha256) problems.push(`${where}: wrong source hash for ${page.source}`);
     const committed = execFileSync('git', ['-C', spec.repo, 'show', `${spec.revision}:${page.source}`], { encoding: 'utf8' });
@@ -57,6 +61,11 @@ for (const spec of [
     checked++;
   }
   for (const file of htmlFiles(root)) {
+    if (release && file !== '404.html') {
+      const markup = fs.readFileSync(path.join(root, file), 'utf8');
+      for (const value of [release.latest_release_tag, ...release.unreleased_versions]) if (!markup.includes(value)) problems.push(`${where}: ${file} misses release context ${value}`);
+      if (markup.includes('2.x, the current release') || markup.includes('2.xは現在のリリース')) problems.push(`${where}: ${file} mislabels a branch as a release`);
+    }
     if (file === '404.html') continue;
     const route = file === 'index.html' ? '' : file.slice(0, -'/index.html'.length);
     const { page, fallback } = pageOfRoute(spec.manifest, route);
