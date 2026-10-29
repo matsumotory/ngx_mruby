@@ -33,12 +33,11 @@ t.assert('ngx_mruby - Filter#output', 'a non-String argument is converted with t
   t.assert_equal '5', res["content-length"]
 end
 
-# characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
-# Filter#output with an empty String makes the body filter pass a zero size
-# last buffer, nginx rejects it, and the connection is closed before the
-# status line is written. The client receives no byte.
-t.assert('ngx_mruby - Filter#output', 'an empty String closes the connection without a response') do
-  t.assert_equal '<closed>', connection_client('filter_empty')
+# The owner approved changing the old connection-close expectation for
+# 2.7.3 on 2026-10-29. An empty replacement is a complete HTTP response,
+# with the original status, Content-Length: 0 and no body bytes.
+t.assert('ngx_mruby - Filter#output', 'an empty String sends the status and an empty body') do
+  t.assert_equal '200|0|""', connection_client('filter_empty')
 end
 
 t.assert('ngx_mruby - Filter#output', 'the returned length counts bytes, not characters') do
