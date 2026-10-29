@@ -6,10 +6,15 @@
 // themes and frames, the type scale, spacing, radii and durations are set
 // from it. The stylesheets of the diagrams of 3.5 are the CSS files of
 // src/diagrams/.
+//
+// The same configuration builds the 2.x pages under /v2/ from docs/ of
+// master (step 6): scripts/build-v2.mjs runs the build in a copy of site/
+// with NGX_MRUBY_SITE_VERSION=2, which sets the base /v2/ and the sidebar
+// of the 2.x pages, and has its own search index in /v2/pagefind/.
 import fs from 'node:fs';
 import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
-import { SITE_URL } from './scripts/lib/site.mjs';
+import { SITE_URL, SITE_VERSION } from './scripts/lib/site.mjs';
 import themeColors from './scripts/lib/postcss-theme-colors.mjs';
 
 const diagramCss = fs
@@ -18,8 +23,36 @@ const diagramCss = fs
   .sort((a, b) => (a === 'diagrams.css' ? -1 : b === 'diagrams.css' ? 1 : a.localeCompare(b)))
   .map((f) => `./src/diagrams/${f}`);
 
+// The sidebar shows the four kinds of page of 3.1 (Start, Guides,
+// Reference, Concepts), then Releases, Security and Contributing (3.2). The
+// routes come from the paths under docs/ and from SOURCE_ROUTES of
+// scripts/lib/site.mjs; SIDEBAR_ORDER there orders a group. The 2.x pages
+// have no Start or Concepts, and their index is /v2/.
+const group = (label, ja, directory) => ({ label, translations: { ja }, items: [{ autogenerate: { directory } }] });
+const sidebar =
+  SITE_VERSION === 2
+    ? [
+        { label: 'Overview', translations: { ja: '概要' }, slug: 'index' },
+        group('Guides', 'ガイド', 'guides'),
+        group('Reference', 'リファレンス', 'reference'),
+        group('Releases', 'リリース', 'releases'),
+        group('Security', 'セキュリティ', 'security'),
+        group('Contributing', '開発に参加する', 'contributing'),
+      ]
+    : [
+        { label: 'Overview', translations: { ja: '概要' }, slug: 'docs' },
+        { label: 'Start', translations: { ja: 'はじめに' }, slug: 'start' },
+        group('Guides', 'ガイド', 'guides'),
+        group('Reference', 'リファレンス', 'reference'),
+        group('Concepts', 'コンセプト', 'concepts'),
+        group('Releases', 'リリース', 'releases'),
+        group('Security', 'セキュリティ', 'security'),
+        group('Contributing', '開発に参加する', 'contributing'),
+      ];
+
 export default defineConfig({
   site: SITE_URL,
+  base: SITE_VERSION === 2 ? '/v2' : undefined,
   vite: {
     css: { postcss: { plugins: [themeColors()] } },
   },
@@ -47,20 +80,7 @@ export default defineConfig({
         './src/styles/site.css',
         ...diagramCss,
       ],
-      // The sidebar shows the four kinds of page of 3.1 (Start, Guides,
-      // Reference, Concepts), then Releases, Security and Contributing (3.2). The
-      // routes come from the paths under docs/ and from SOURCE_ROUTES of
-      // scripts/lib/site.mjs; SIDEBAR_ORDER there orders a group.
-      sidebar: [
-        { label: 'Overview', translations: { ja: '概要' }, slug: 'docs' },
-        { label: 'Start', translations: { ja: 'はじめに' }, slug: 'start' },
-        { label: 'Guides', translations: { ja: 'ガイド' }, items: [{ autogenerate: { directory: 'guides' } }] },
-        { label: 'Reference', translations: { ja: 'リファレンス' }, items: [{ autogenerate: { directory: 'reference' } }] },
-        { label: 'Concepts', translations: { ja: 'コンセプト' }, items: [{ autogenerate: { directory: 'concepts' } }] },
-        { label: 'Releases', translations: { ja: 'リリース' }, items: [{ autogenerate: { directory: 'releases' } }] },
-        { label: 'Security', translations: { ja: 'セキュリティ' }, items: [{ autogenerate: { directory: 'security' } }] },
-        { label: 'Contributing', translations: { ja: '開発に参加する' }, items: [{ autogenerate: { directory: 'contributing' } }] },
-      ],
+      sidebar,
       components: {
         Banner: './src/components/Banner.astro',
         FallbackContentNotice: './src/components/FallbackContentNotice.astro',

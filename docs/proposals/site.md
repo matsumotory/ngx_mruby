@@ -220,8 +220,10 @@ Docs, Agent proxy, Releases, Security, Contributing, GitHub.
   "no live version switcher". The header links each page's version to the
   other version's index.
 - Until v3.0.0, every 3.x page carries a banner: 3.x is in development, the
-  current release is 2.7.0, its documentation is under `/v2/`. Then the
-  banner moves to 2.x pages and gives the end of 2.x support.
+  current release is 2.x, its documentation is under `/v2/`; and every 2.x
+  page carries one that names 2.x the current release and links to the
+  3.x documentation (step 6). Then the 2.x banner gives the end of 2.x
+  support instead, and the 3.x pages carry none.
 - Items added or changed in 3.x say "New in 3.0" or "Changed in 3.0", as
   nginx.org and njs mark the version that introduced each directive.
 - Japanese pages live under `/ja/`, from `docs/ja/<path>.md`. An
@@ -1251,8 +1253,10 @@ detection, or that pinned versions do not keep Starlight stable.
   rendering are reviewed in one pull request, and CI builds the site on
   every pull request. `gh-pages` shows what a separate branch does over
   time: no content change since 2016.
-- **2.x**: the deploy workflow checks out `docs/` of `master` and builds it
-  with the base `/v2/`.
+- **2.x**: the site workflow checks out `master` and builds its `docs/`
+  with the base `/v2/` (`site/scripts/build-v2.mjs`: the build of `site/`
+  in a copy of it, with `docs/` of `master` and its own search index),
+  into `dist/v2/` beside the 3.x build.
 - **At the promotion** (the procedure is "Promoting v3 to master" in
   `docs/DEVELOPMENT.md` on `master`), the unprefixed 3.x build moves from
   `next` to `master` and the `/v2/` build from `master` to `v2.x`, whatever
@@ -1290,22 +1294,29 @@ detection, or that pinned versions do not keep Starlight stable.
   adds the deploy job, since a deployment from `next` is refused before
   the settings below and would fail every push to `next`.
 - **A change to `docs/` on `master`.** `.github/workflows/site-dispatch.yml`
-  on `master`, on pushes that touch `docs/`, calls
+  on `master`, on every push (not filtered by path, for the reason above:
+  the 2.x pages link to files outside `docs/`), calls
   `gh workflow run site.yml --ref next` with the job's token and
-  `permissions: actions: write`. A `repository_dispatch` would run on the
-  default branch, where setting 2 refuses the deployment; a
-  `workflow_dispatch` runs on the ref it names. GitHub's documentation
-  allows that once the workflow has run, as `site.yml` has on `next` since
-  step 1, but also says that the workflow must be on the default branch
-  (appendix B). The check of step 6 settles it; if the dispatch is
-  refused, a `site.yml` with only the `workflow_dispatch` trigger goes on
-  `master`, and the dispatch still runs the file of `next`. The `master`
-  workflows trigger only for `master`, so their copies merged into `next`
-  do not run there.
+  `permissions: actions: write`, and fails when it cannot name the run
+  that the dispatch started. A
+  `repository_dispatch` would run on the default branch, where setting 2
+  refuses the deployment; a `workflow_dispatch` runs on the ref it names.
+  GitHub's documentation allows that once the workflow has run, as
+  `site.yml` has on `next` since step 1, but also says that the workflow
+  must be on the default branch (appendix B). The check of step 6 settled
+  it on 2026-10-30 (#656): with `actions: write` the job's token started
+  `site.yml` on `next`, which was not on `master`; with `actions: read`
+  GitHub refused the dispatch with HTTP 403. No token or `site.yml` on
+  `master` is needed. The `master` workflows trigger only for `master`, so
+  their copies merged into `next` do not run there.
 - **The 2.x documentation before it merges.** `.github/workflows/site-v2.yml`
-  on `master` runs on pull requests to `master` that touch `docs/`: it
-  checks out `site/` from `next`, builds `/v2/` alone and runs the checks of
+  on `master` runs on every pull request to `master`, without a path
+  filter for the same reason: it checks out `next`, builds the site with `site/` and the 3.x pages of
+  `next` and the 2.x pages of the pull request, and runs the checks of
   step 6, so a change to the 2.x documentation sees them before it merges.
+  It builds the 3.x pages too, because the 2.x pages link to 3.x pages
+  (the banner and the version link) and the search check needs both
+  indexes.
   Pull requests to `next` build both parts, with `docs/` of `master`, so a
   change to `site/` that breaks `/v2/` fails there. The deploy job then
   meets a `/v2/` failure only if `master` and `next` changed in ways that
