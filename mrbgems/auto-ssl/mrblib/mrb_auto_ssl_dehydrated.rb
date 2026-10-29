@@ -70,7 +70,7 @@ class Nginx
                     ].join(" ")
 
           Nginx::SSL.log Nginx::LOG_INFO, "run acme command: #{command}"
-          res = `HOOK_SECRET=#{@dehydrated[:secret_token]} #{command}`
+          res = `HOOK_SECRET=#{@dehydrated[:secret_token]} #{command} 2>&1`
           Nginx::SSL.log Nginx::LOG_INFO, res
 
           if /#{license_info_str}/ === res
