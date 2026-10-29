@@ -1427,6 +1427,8 @@ http {
 
 Creates and returns an Upstream instance.
 
+The string is the whole name of an `upstream {}` block, compared case-insensitively as nginx compares upstream names. The method raises `RuntimeError` when no upstream has that name, and `TypeError` when the argument is not a String. Up to 2.7.2 the method compared only the length of the argument, so it also found the first upstream whose name started with it, and it did not check the class of the argument.
+
 ```ruby
 u = Nginx::Upstream.new "YOUR_UPSTREAM_NAME"
 ```
@@ -1462,9 +1464,9 @@ Nginx.echo u.server                           #=> 127.0.0.1:80
 
 Sets the string to the server of the upstream.
 
-The servers of the upstream block that are not `backup` must have one address in all: `Nginx::Upstream.new` raises `RuntimeError` for more, for example for two `server` lines, or for one whose host name nginx resolved to two addresses. `backup` servers are not counted, and the method does not change them. The new server is that peer's for every later request that the worker sends to the upstream, not only for the current request, until the worker exits or the configuration is reloaded; each worker keeps its own. An upstream with a `zone` is not supported: the method does not check for one, and what it changes is not valid in the other workers (see "Not changed by this release" of the `Nginx::Upstream#server=` entry in [the 2.7.2 release notes](../releases/v2.7.2.md)).
+The servers of the upstream block that are not `backup` must have one address in all: `Nginx::Upstream.new` raises `RuntimeError` for more, for example for two `server` lines, or for one whose host name nginx resolved to two addresses. `backup` servers are not counted, and the method does not change them. The new server is that peer's for every later request that the worker sends to the upstream, not only for the current request, until the worker exits or the configuration is reloaded; each worker keeps its own. An upstream with a `zone` is not supported: since 2.7.3 the method raises `RuntimeError` for one and leaves its server. Up to 2.7.2 it changed the server, and the change was not valid in the other workers (see "Not changed by this release" of the `Nginx::Upstream#server=` entry in [the 2.7.2 release notes](../releases/v2.7.2.md)).
 
-The string is an address and a port, read as nginx reads the address of a `server` directive: an IPv6 address goes in brackets, and `unix:` with a path names a UNIX-domain socket. The port is 80 when the string has none. A host name is resolved when the method is called, with the system resolver, and its first address is used; the worker serves no other client while it waits (see "What the operator's code is responsible for" in [the documentation](../README.md#what-the-operators-code-is-responsible-for)), so give an IP address. The method raises `ArgumentError` when the string is empty or 256 bytes or longer, and `RuntimeError` when nginx cannot read or resolve it; the server stays as it was then.
+The string is an address and a port, read as nginx reads the address of a `server` directive: an IPv6 address goes in brackets, and `unix:` with a path names a UNIX-domain socket. The port is 80 when the string has none. A host name is resolved when the method is called, with the system resolver, and its first address is used; the worker serves no other client while it waits (see "What the operator's code is responsible for" in [the documentation](../README.md#what-the-operators-code-is-responsible-for)), so give an IP address. The method raises `TypeError` when the argument is not a String (since 2.7.3), `ArgumentError` when the string is empty or 256 bytes or longer, and `RuntimeError` when nginx cannot read or resolve it; the server stays as it was then.
 
 ```
 u = Nginx::Upstream.new "YOUR_UPSTREAM_NAME"
@@ -1722,6 +1724,8 @@ stream {
 
 get the upstream configuration via upstream name
 
+As for `Nginx::Upstream.new`, the string is the whole name of an `upstream {}` block of the `stream {}` block, compared case-insensitively; the method raises `RuntimeError` when no upstream has that name, and `TypeError` when the argument is not a String (since 2.7.3; up to 2.7.2 it also found an upstream whose name started with the argument).
+
 ```ruby
 # == nginx.conf ==
 #   upstream dynamic_server0 {
@@ -1743,9 +1747,9 @@ c.upstream_server #=> "127.0.0.1:58080"
 
 ### Nginx::Stream::Connection#upstream_server=
 
-Sets the server of the upstream that `Nginx::Stream::Connection.new` named. As for `Nginx::Upstream#server=`, the servers of the upstream block that are not `backup` must have one address in all, and `backup` servers are not changed. The new server is that peer's for every later session that the worker sends to the upstream, until the worker exits or the configuration is reloaded; each worker keeps its own, and an upstream with a `zone` is not supported: the method does not check for one.
+Sets the server of the upstream that `Nginx::Stream::Connection.new` named. As for `Nginx::Upstream#server=`, the servers of the upstream block that are not `backup` must have one address in all, and `backup` servers are not changed. The new server is that peer's for every later session that the worker sends to the upstream, until the worker exits or the configuration is reloaded; each worker keeps its own. An upstream with a `zone` is not supported: since 2.7.3 the method raises `RuntimeError` for one and leaves its server.
 
-The string is an IP address and a port, such as `127.0.0.1:12345` or `[::1]:12345`, or `unix:` with a path; host names are not resolved and raise. A string without a port is accepted, and the port is then 0. The method raises `RuntimeError` when the string is empty or 256 bytes or longer, or when nginx cannot read it as an address; the server stays as it was then.
+The string is an IP address and a port, such as `127.0.0.1:12345` or `[::1]:12345`, or `unix:` with a path; host names are not resolved and raise. A string without a port is accepted, and the port is then 0. The method raises `TypeError` when the argument is not a String (since 2.7.3), and `RuntimeError` when the string is empty or 256 bytes or longer, or when nginx cannot read it as an address; the server stays as it was then.
 
 ```ruby
 # == nginx.conf ==

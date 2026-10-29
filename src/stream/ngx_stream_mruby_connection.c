@@ -42,7 +42,7 @@ static mrb_value ngx_stream_mrb_connection_init(mrb_state *mrb, mrb_value self)
   ngx_stream_upstream_srv_conf_t **usp;
   ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
 
-  mrb_get_args(mrb, "o", &upstream);
+  mrb_get_args(mrb, "S", &upstream);
 
   ctx = (ngx_stream_mruby_upstream_context *)DATA_PTR(self);
   if (ctx) {
@@ -61,7 +61,9 @@ static mrb_value ngx_stream_mrb_connection_init(mrb_state *mrb, mrb_value self)
   usp = umcf->upstreams.elts;
 
   for (i = 0; i < umcf->upstreams.nelts; i++) {
-    if (ngx_strncasecmp(usp[i]->host.data, (u_char *)RSTRING_PTR(upstream), RSTRING_LEN(upstream)) == 0) {
+    // the whole name, case-insensitively, as nginx compares upstream names
+    if (usp[i]->host.len == (size_t)RSTRING_LEN(upstream) &&
+        ngx_strncasecmp(usp[i]->host.data, (u_char *)RSTRING_PTR(upstream), RSTRING_LEN(upstream)) == 0) {
       ctx->us = usp[i];
       ctx->peers = usp[i]->peer.data;
       if (ctx->peers->number > 1) {
@@ -154,11 +156,20 @@ static mrb_value ngx_stream_mrb_upstream_set_server(mrb_state *mrb, mrb_value se
   u_char *serverp;
   ngx_stream_mrb_upstream_server_store_t *store;
 
-  mrb_get_args(mrb, "o", &server);
+  mrb_get_args(mrb, "S", &server);
 
   if (RSTRING_LEN(server) <= 0 || (size_t)RSTRING_LEN(server) >= NGX_STREAM_MRB_UPSTREAM_SERVER_MAX) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "invalid upstream server (empty or too long)");
   }
+
+#if (NGX_STREAM_UPSTREAM_ZONE)
+  // The peers of an upstream with a zone are in shared memory that every
+  // worker reads, and the store below is in the memory of this worker.
+  if (ctx->peers->shpool) {
+    mrb_raise(mrb, E_RUNTIME_ERROR,
+              "Nginx::Stream::Connection#upstream_server= does not support an upstream with a zone");
+  }
+#endif
 
   serverp = ngx_palloc(s->connection->pool, RSTRING_LEN(server) + 1);
   if (serverp == NULL) {
