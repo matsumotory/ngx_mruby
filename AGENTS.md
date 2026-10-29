@@ -471,8 +471,10 @@ user (nvm, fnm, volta, or the archive from nodejs.org), not system-wide.
 cd site
 npm ci --ignore-scripts   # the exact versions of package-lock.json, without install scripts
 npm run build             # scripts/sync-docs.mjs writes docs/ into src/content/docs/, then astro build writes dist/
+npm run build:v2 -- --tree DIR   # the 2.x pages under dist/v2/ from docs/ of DIR, a work tree of master (below)
 npm run test              # the generator on its fixtures
-npm run check             # the checks of the built site that need no browser (below)
+npm run check             # the checks of the built site that need no browser (below; after build:v2)
+npm run check:v2          # the checks of step 6 on the 2.x pages, with the search in Chromium (below)
 npm run check:browser     # the checks in Chromium and WebKit (below)
 npm run screenshots       # the screenshots of step 3 (below)
 npm run preview           # serves dist/ at http://localhost:4321/
@@ -512,6 +514,24 @@ npm run preview           # serves dist/ at http://localhost:4321/
   `PageFrame`, `Footer`, `MobileMenuFooter`, and `FallbackContentNotice`
   for the notice above an English page under `/ja/`), with their links in
   `src/site-nav.mjs`.
+- The 2.x pages (3.4 and step 6 of the proposal). `/v2/` holds the
+  documentation of 2.x, built from `docs/` of `master` (`v2.x` after the
+  promotion). `node scripts/build-v2.mjs --tree DIR`, after `npm run
+  build`, runs the same build in a copy of `site/` (`generated/v2-site/`)
+  with `NGX_MRUBY_SITE_VERSION=2` and `NGX_MRUBY_SITE_REPO=DIR`, which
+  `scripts/lib/site.mjs` reads: the pages of `DIR/docs/` (and `SECURITY.md`
+  and `CONTRIBUTING.md`) at the routes of `SOURCE_ROUTES` under `/v2/`,
+  `docs/README.md` as `/v2/`, links to other files going to GitHub at
+  `master`, the sidebar of the 2.x pages in `astro.config.mjs`, and the
+  2.x banner of 3.4 on every page (`src/components/Banner.astro`). It
+  writes them into `dist/v2/`, with their own search index in
+  `dist/v2/pagefind/` (the 3.x index of `dist/pagefind/` stays without
+  them), and their list into `generated/pages-v2.json`. DIR needs the whole
+  history, like the 3.x build; locally, a worktree of `origin/master` does.
+  The version link of the header leads from 3.x pages to `/v2/` and from
+  2.x pages to `/docs/`. The checks of steps 1 to 5 read the 3.x pages
+  (`htmlFiles()` leaves `dist/v2/` out); `check-built-links.mjs` reads the
+  2.x pages too, so `npm run check` needs the 2.x build first.
 - Samples and diagrams (3.5 of the proposal). A fenced block with the
   language `sample` in `docs/` names a case of `test/t/cases/` and its
   configuration, script, request and response files; the generator writes
@@ -600,6 +620,15 @@ npm run preview           # serves dist/ at http://localhost:4321/
     `docs/reference/build.md` equals the `conf.gem` lines of the host
     build of `build_config.rb` that are not comments and have no
     condition;
+  - `node scripts/check-v2.mjs [--dist DIR] [--manifest FILE]
+    [--no-browser]` (`npm run check:v2`, not in `npm run check`, because
+    it opens Chromium): every page of `generated/pages-v2.json` is built
+    under `/v2/`; every 2.x page carries the 2.x banner (`data-banner="v2"`)
+    in its language with its link to the 3.x documentation, and no 3.x page
+    does; the version links lead from 3.x to `/v2/` and from 2.x to
+    `/docs/`, and the language links of the 2.x pages stay under `/v2/`;
+    and the search of a 3.x and of a 2.x page, in both languages, shows
+    results of its own version only and loads only its own index;
   - `node scripts/check-diagrams.mjs`: the drawings hold lines and boxes
     only (no `<text>`, no color outside the tokens' classes), the source
     files and lines of each diagram exist at its commit, and the diagrams
@@ -682,10 +711,24 @@ npm run preview           # serves dist/ at http://localhost:4321/
   blockquotes and list items, an attribute value that stops the build, a
   sample and a diagram, and the samples and diagram blocks that stop it.
 - `.github/workflows/site.yml` runs the checks and the generator's test on
-  pull requests to `next` that touch `site/` or `docs/` and on every push
+  pull requests to `next` that touch `site/` or `docs/`, on every push
   to `next` (a push that removes a file that `docs/` links to fails
-  there), and uploads `site/dist/` as the artifact `site` and the
-  screenshots as the artifact `screenshots`. It does not deploy.
+  there) and on `workflow_dispatch`, and uploads `site/dist/` (with
+  `dist/v2/`) as the artifact `site` and the screenshots as the artifact
+  `screenshots`. It checks out `master` with its whole history and builds
+  `/v2/` from it. It does not deploy.
+- Two workflows on `master` serve the 2.x pages (5.3 of the proposal).
+  `site-v2.yml` runs on every pull request to `master` (no path filter:
+  the 2.x pages link to files anywhere in the repository): it builds the site from `site/` of `next`, with the 3.x pages of `next` and
+  the 2.x pages from the pull request, and runs `check_links.py` on the
+  sources of the 2.x pages, `check-built-links.mjs` and `check-v2.mjs`, so
+  a pull request that breaks a `/v2/` link fails there. `site-dispatch.yml`
+  runs on every push to `master` and starts `site.yml` on `next` with
+  `gh workflow run site.yml --ref next` and the job's `GITHUB_TOKEN`
+  (`actions: write`); it fails when it cannot name the run that the
+  dispatch started. A
+  change to `site/` that breaks `/v2/` fails `site.yml` on its pull
+  request to `next`, which builds `/v2/` from `master`.
 - `site/package.json` and `site/package-lock.json` pin exact versions:
   change them with `npm install --save-exact <package>@<version>` and
   commit both. Nothing that the build generates is committed:
