@@ -59,7 +59,7 @@ modules: その中に<wbr>あるもの：<wbr>`ngx_http_mruby_module`、<wbr>ngi
 デフォルトの`build_config.rb`は、`NGX_MRUBY_CORE_GEMS`が挙げるmrubyのコアのgemに加えて、次のmrbgemsを`libmruby.a`に入れてビルドします。コアのgemの説明は[コアのgem](../install/README.md#コアのgem)にあります。`build_config.rb.lock`は、サードパーティの各gemのコミットを固定します。詳しくは[gemのコミット](../install/README.md#gemのコミットとbuild_configrblock)にあります。
 
 - [`iij/mruby-env`](https://github.com/iij/mruby-env)：`ENV`
-- [`iij/mruby-digest`](https://github.com/iij/mruby-digest)：MD5、RMD160、SHA1、SHA256、SHA384、SHA512、HMACを計算する`Digest`
+- [`iij/mruby-digest`](https://github.com/iij/mruby-digest)：`Digest`。MD5、RMD160、SHA1のハッシュと、SHA256、SHA384、SHA512のハッシュとHMACを計算します
 - [`iij/mruby-process`](https://github.com/iij/mruby-process)：`Process`
 - [`mattn/mruby-json`](https://github.com/mattn/mruby-json)：`JSON`
 - [`mattn/mruby-onig-regexp`](https://github.com/mattn/mruby-onig-regexp)：正規表現の`OnigRegexp`
