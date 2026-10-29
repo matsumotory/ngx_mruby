@@ -194,14 +194,14 @@ jobs:
       # the failure, those for the owner's review among them, are there.
       - name: Upload the screenshots
         if: ${{ !cancelled() && (steps.shots.outcome == 'success' || steps.shots.outcome == 'failure') }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: screenshots
           path: ${{ runner.temp }}/fresh/site/build-screenshots
           if-no-files-found: error
       - name: Upload the built site
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: site
           path: ${{ runner.temp }}/fresh/site/dist
