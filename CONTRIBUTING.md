@@ -9,7 +9,7 @@ first, and it is the reference for people as well.
 
 | Change | Base branch |
 |---|---|
-| A fix of a crash, a hang, a leak, a build failure or a security defect of 2.x | `master`, until v3 is promoted to it at v3.0.0 |
+| A fix of a crash, a hang, a leak or a build failure of 2.x | `master`, until v3 is promoted to it at v3.0.0 |
 | New behavior, a new directive or method, an API cleanup, any work for v3 | `next` |
 
 The 2.x line puts compatibility first: it changes behavior a
@@ -18,18 +18,20 @@ defect requires. A fix that also applies to v3 goes to `master`, which is
 merged into `next`. [Branch strategy](README.md#branch-strategy) describes
 the branches.
 
-Do not report a security vulnerability in an issue or a pull request:
-[SECURITY.md](SECURITY.md) says how to report it privately.
+A security vulnerability does not go into an issue or a pull request:
+[SECURITY.md](SECURITY.md) says how to report it privately, and its fix is
+prepared privately too.
 
 ## What a pull request needs
 
 - Every section of the
   [pull request template](.github/PULL_REQUEST_TEMPLATE.md), with "n/a"
   where one does not apply.
-- Tests in `test/` that assert on the actual response: a server fragment in
-  `test/conf/conf.d/`, its scripts in `test/html/` and a case in
-  `test/t/cases/` ([Testing](docs/test/README.md)). Run the suite with
-  `sh test.sh`.
+- For a change of the code, tests in `test/` that assert on the actual
+  response, preferably a server fragment in `test/conf/conf.d/`, its
+  scripts in `test/html/` and a case in `test/t/cases/`
+  ([Testing](docs/test/README.md)). Run the suite with `sh test.sh`. A
+  change of the documentation alone needs no test.
 - For a bug fix, two commits: the first adds the regression test, which
   fails, and the second adds the fix, which makes it pass. The pull
   request quotes the result of the suite at each commit.

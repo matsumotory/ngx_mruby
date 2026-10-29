@@ -26,7 +26,7 @@ ngx_mruby lets you write the decisions of an nginx server in Ruby. You reference
 - [Security policy](SECURITY.md) and [trust boundary](docs/security/trust-boundary.md)
 - [Contributing](CONTRIBUTING.md)
 
-[docs/README.md](docs/README.md) lists every page.
+[docs/README.md](docs/README.md) lists the pages by their kind.
 
 ## Branch strategy
 
