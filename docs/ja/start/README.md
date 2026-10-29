@@ -111,6 +111,6 @@ Composeは、`compose.yaml`に従ってこのフォルダをコンテナにマ�
 
 ## 次に<wbr>読む<wbr>ページ
 
-- [インストール](../../install/README.md)：ngx_mrubyを、静的なモジュールか動的なモジュールとして、自分のnginxに組み込んでビルドします。
+- [インストール](../install/README.md)：ngx_mrubyを、静的なモジュールか動的なモジュールとして、自分のnginxに組み込んでビルドします。
 - [ディレクティブ](../../directives/README.md)：nginxがRubyを実行するフェーズと、各フェーズのディレクティブを載せています。
 - [リクエストのフェーズ](../concepts/request-phases.md)：nginxが1つのリクエストのハンドラを実行する順序を説明しています。

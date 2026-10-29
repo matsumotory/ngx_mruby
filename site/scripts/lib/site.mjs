@@ -75,11 +75,7 @@ export const NOT_TRANSLATED_YET = [
   'contributing/development',
   'contributing/handoff',
   'contributing/test',
-  'guides/install',
-  'guides/use-cases',
-  'reference/build',
   'releases',
-  'releases/migration',
   'security',
   'security/trust-boundary',
 ];

@@ -18,4 +18,4 @@ response: test/html/guide_body_filter.response
 
 - ボディフィルタは、ディスクのファイルのような長さの分かるレスポンスを、1つのバッファとして読みます。`Content-Length`の無いレスポンスは、フィルタが読まないまま、nginxが先へ渡します。詳しくは[Nginx::Filter](../../class_and_method/README.md#nginxfilter-class)にあります。
 - ngx_mrubyは、新しいボディの長さを`Content-Length`に入れて送ります。
-- [ユースケース](../../use_case/README.md)の[Output filter converting Markdown to HTML](../../use_case/README.md#output-filter-converting-markdown-to-html)は、同じ場所で、gemのmruby-discountを使ってMarkdownを変換します。
+- [ユースケース](../use_case/README.md)の[MarkdownをHTMLに変換する出力フィルタ](../use_case/README.md#markdownをhtmlに変換する出力フィルタ)は、同じ場所で、gemのmruby-discountを使ってMarkdownを変換します。
