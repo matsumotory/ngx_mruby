@@ -256,7 +256,7 @@ promotion (Q1 and Q4, decided by the owner on 2026-10-15, in section 7 of
 [`docs/proposals/site.md`](https://github.com/matsumotory/ngx_mruby/blob/next/docs/proposals/site.md#7-decisions-2026-10-15)
 on `next`). The site, ngx.mruby.org, is built from `docs/` by
 `.github/workflows/site.yml` on `next` and deployed by GitHub Actions:
-3.x from `next` at the unprefixed paths, with the development banner, and
+3.x from `next` at the unprefixed paths, and
 2.x from `master` under `/v2/`. From the promotion on, the unprefixed
 paths show the released 3.x from `master` and `/v2/` shows 2.x from
 `v2.x`: steps 4, 5 and 7 move the workflows and the deployment branch
