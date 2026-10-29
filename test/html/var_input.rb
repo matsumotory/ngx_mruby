@@ -51,6 +51,20 @@ begin
       v.send('var_input_target=')
     when '/equal_sign_only'
       v.send('=', 'x')
+    when '/set_nul_value'
+      sent = "ab" + 0.chr + "cd"
+      v.var_input_target = sent
+      got = v.var_input_target
+      same = (got == sent)
+      v.var_input_target = 'restored'
+      [same, got.length]
+    when '/set_nul_value_via_set'
+      sent = "ab" + 0.chr + "cd"
+      v.set('var_input_target', sent)
+      got = v.var_input_target
+      same = (got == sent)
+      v.set('var_input_target', 'restored')
+      [same, got.length]
     else
       raise "no call for #{path}"
     end
