@@ -36,8 +36,8 @@ require_relative '../../soak/mock_llm'
 require_relative '../../soak/http_client'
 
 LIMIT = 60
-PORT = Integer(ARGV[2] || 18_132)
-MOCK_PORTS = [12_372, 12_373].freeze
+PORT = Integer(ARGV[2] || 18132)
+MOCK_PORTS = [12372, 12373].freeze
 
 def now
   Process.clock_gettime(Process::CLOCK_MONOTONIC)

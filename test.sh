@@ -208,10 +208,20 @@ if [ -s ${NGINX_INSTALL_DIR}/logs/nginx.pid ]; then
         echo "test.sh: logs/nginx.pid names pid $old_pid, which does not run ${NGINX_INSTALL_DIR}/sbin/nginx; left running"
     fi
 fi
-sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
+# The tests run from a copy of the suite in the build directory, in which
+# every port of the suite is moved by TEST_SH_PORT_OFFSET (default 0), so
+# that two checkouts can run test.sh at the same time with different offsets
+# (see "Ports" in docs/test/README.md). The steps below read the
+# configuration, the hook scripts and the tests from that copy.
+: ${TEST_SH_PORT_OFFSET:=0}
+STAGE_DIR=${NGINX_INSTALL_DIR}/harness
+STAGED=${STAGE_DIR}/test
+ruby test/t/cases/_stage.rb "${TEST_SH_PORT_OFFSET}" ${STAGE_DIR}
+
+sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" ${STAGED}/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 rm -rf ${NGINX_INSTALL_DIR}/conf/conf.d
 mkdir -p ${NGINX_INSTALL_DIR}/conf/conf.d/stream
-for f in test/conf/conf.d/*.conf test/conf/conf.d/stream/*.conf; do
+for f in ${STAGED}/conf/conf.d/*.conf ${STAGED}/conf/conf.d/stream/*.conf; do
     [ -e "$f" ] || continue
     case "$f" in */stream/*) d=${NGINX_INSTALL_DIR}/conf/conf.d/stream ;; *) d=${NGINX_INSTALL_DIR}/conf/conf.d ;; esac
     sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" "$f" > "$d/$(basename "$f")"
@@ -219,7 +229,7 @@ done
 cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' && sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' && cd -
 
 if [ "$NGINX_SRC_VERSION_NUM" -ge 1009006 ]; then
-  cat test/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
+  cat ${STAGED}/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
 fi
 
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
@@ -232,8 +242,8 @@ if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
     done
 fi
 
-cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
-sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/html/set_ssl_cert_and_key.rb > ${NGINX_INSTALL_DIR}/html/set_ssl_cert_and_key.rb
+cp -pr ${STAGED}/html/* ${NGINX_INSTALL_DIR}/html/.
+sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" ${STAGED}/html/set_ssl_cert_and_key.rb > ${NGINX_INSTALL_DIR}/html/set_ssl_cert_and_key.rb
 
 for f in error.log access.log stderr.log
 do
@@ -253,7 +263,7 @@ done
 # The ports to wait for are those of the listen directives of the http {}
 # configuration (see test/t/cases/_wait_for_listen.rb). They must be free
 # before nginx starts, so that the wait cannot take another process for it.
-ruby test/t/cases/_wait_for_listen.rb free ${NGINX_HEATTIME} test/conf/nginx.conf test/conf/conf.d/*.conf
+ruby test/t/cases/_wait_for_listen.rb free ${NGINX_HEATTIME} ${STAGED}/conf/nginx.conf ${STAGED}/conf/conf.d/*.conf
 
 echo "====================================="
 echo ""
@@ -286,13 +296,18 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 echo ""
 echo ""
-ruby test/t/cases/_wait_for_listen.rb listen ${NGINX_HEATTIME} $nginx_pid test/conf/nginx.conf test/conf/conf.d/*.conf
-./mruby/build/test/bin/mruby ./test/t/ngx_mruby.rb 2> ${NGINX_INSTALL_DIR}/logs/stderr.log
-for f in test/t/cases/*.rb; do
+ruby test/t/cases/_wait_for_listen.rb listen ${NGINX_HEATTIME} $nginx_pid ${STAGED}/conf/nginx.conf ${STAGED}/conf/conf.d/*.conf
+# The tests run the CRuby helpers of the copy (suite_path in
+# test/t/cases/_prelude.rb and test/t/ngx_mruby.rb). They run from the root
+# of the checkout, as nginx does, because the configuration names the hook
+# scripts with paths relative to it (build/nginx/html/...).
+export TEST_SH_STAGE_DIR=${STAGE_DIR}
+./mruby/build/test/bin/mruby ${STAGED}/t/ngx_mruby.rb 2> ${NGINX_INSTALL_DIR}/logs/stderr.log
+for f in ${STAGED}/t/cases/*.rb; do
     [ -e "$f" ] || continue
-    case "$f" in */_*) continue ;; esac
-    echo "ngx_mruby testing case: $f"
-    cat test/t/cases/_prelude.rb "$f" > ${NGINX_INSTALL_DIR}/logs/case.rb
+    case "${f##*/}" in _*) continue ;; esac
+    echo "ngx_mruby testing case: ${f#${STAGE_DIR}/}"
+    cat ${STAGED}/t/cases/_prelude.rb "$f" > ${NGINX_INSTALL_DIR}/logs/case.rb
     ./mruby/build/test/bin/mruby ${NGINX_INSTALL_DIR}/logs/case.rb 2>> ${NGINX_INSTALL_DIR}/logs/stderr.log
 done
 echo "ngx_mruby testing ... Done"

@@ -406,14 +406,18 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `build/nginx/logs/` (`build_dynamic/nginx/logs/` for dynamic builds);
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
-- `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18132,
+- `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18132,
   18136-18140, 18143-18144, 18147-18168, 12345-12359, 12363-12366,
   12372-12373; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
   `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
-  in `test/t/ngx_mruby.rb`). Run only one `test.sh` per machine at a time: a
-  second run fails when it finds the ports taken. `test.sh` stops only the
+  in `test/t/ngx_mruby.rb`). `TEST_SH_PORT_OFFSET=N` moves every port of the
+  suite by N (from -2345 to 47336): two checkouts can run `test.sh` at the
+  same time on one machine with different offsets; with the same ports, the
+  second run fails when it finds them taken. A new test writes each port as
+  five digits within 12345-12399 or 18080-18199, and runs a CRuby helper
+  through `suite_path` (see "Ports" in `docs/test/README.md`). `test.sh` stops only the
   nginx that it started, by its pid, and at the start the nginx that an
   earlier run in the same build directory left running (the pid in
   `logs/nginx.pid`); it never stops a process by its name. See "Stopping
@@ -662,7 +666,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
 
 - Prefer a fragment and a case file of their own: a `server {}` in
   `test/conf/conf.d/<name>.conf` (stream: `test/conf/conf.d/stream/`) on a
-  port of its own (HTTP 18110 and up, stream 12353 and up), scripts in
+  port of its own (HTTP 18110 to 18199, stream 12353 to 12399), scripts in
   `test/html/`, and assertions in `test/t/cases/<name>.rb` (see
   `docs/test/README.md`). Edit `test/conf/nginx.conf` and
   `test/t/ngx_mruby.rb` only for tests that need the main server.
