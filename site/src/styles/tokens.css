@@ -306,6 +306,10 @@
 /* Homepage proposal, 2026-10-29: graphite/navy and small copper accents.
    Explicit homepage roles match the global rebrand preview above. */
 :root:has(.home) {
+  --color-button-fill: #6e2826; /* oklch(0.38 0.10 25) */
+  --color-button-edge: #cc8e6b; /* oklch(0.70 0.09 50) */
+  --color-button-low: #462220; /* oklch(0.30 0.055 25) */
+  --color-button-text: #e8ebf1; /* oklch(0.94 0.009 265) */
   --color-bg-primary: #f9fafd; /* oklch(0.985 0.004 265) */
   --color-bg-tertiary: #eef1f7; /* oklch(0.958 0.008 265) */
   --color-text-primary: #1d222b; /* oklch(0.25 0.02 265) */
@@ -317,6 +321,10 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):has(.home) {
+    --color-button-fill: #6e2826; /* oklch(0.38 0.10 25) */
+    --color-button-edge: #cc8e6b; /* oklch(0.70 0.09 50) */
+    --color-button-low: #462220; /* oklch(0.30 0.055 25) */
+    --color-button-text: #e8ebf1; /* oklch(0.94 0.009 265) */
     --color-bg-primary: #0c0f16; /* oklch(0.17 0.014 265) */
     --color-bg-tertiary: #151922; /* oklch(0.215 0.018 265) */
     --color-text-primary: #e8ebf1; /* oklch(0.94 0.009 265) */
@@ -328,6 +336,10 @@
   }
 }
 :root[data-theme="dark"][data-theme-script]:has(.home) {
+  --color-button-fill: #6e2826; /* oklch(0.38 0.10 25) */
+  --color-button-edge: #cc8e6b; /* oklch(0.70 0.09 50) */
+  --color-button-low: #462220; /* oklch(0.30 0.055 25) */
+  --color-button-text: #e8ebf1; /* oklch(0.94 0.009 265) */
   --color-bg-primary: #0c0f16; /* oklch(0.17 0.014 265) */
   --color-bg-tertiary: #151922; /* oklch(0.215 0.018 265) */
   --color-text-primary: #e8ebf1; /* oklch(0.94 0.009 265) */

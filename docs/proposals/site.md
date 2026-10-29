@@ -1971,3 +1971,24 @@ The agent-proxy guide therefore states the completed v3 target while labeling
 current recipes and planned capabilities. The same status table is exported
 as Markdown, and the JSON index defines implemented/planned/under-design.
 Undecided details remain undecided; new art makes no performance claim.
+
+
+### Local surface and mobile-spacing iteration, 2026-10-29
+
+The homepage CTA now uses a deep red face with a narrow copper upper edge
+and a darker lower edge. The runtime panel has a restrained silver upper
+edge. These are solid color roles; the existing no-gradient, no-shadow,
+no-animation checks remain intact. Links, code colors and reference-page
+styles are unchanged. The four new homepage button tokens have explicit
+OKLCH sources; contrast.py additionally checks button text against its face
+(8.81:1 in both themes, above the existing 4.5:1 requirement).
+
+Below 800px the title's top padding, lead/action/version gaps, runtime
+padding and section gaps are smaller. In Chromium at 390 by 844 pixels,
+the Japanese sample-section entry moved from y=950.70 to y=838.70; the
+runtime starts 40px earlier and is fully visible in the first viewport.
+The desktop layout positions are unchanged. These are layout measurements,
+not loading-performance results. Native and Noto checks cover 80 page loads
+of the English/Japanese homepages in Chromium/WebKit, both themes and
+320/390/1440px widths, including search/menu states. This local iteration
+is separate from the shared-image work and has not been published.

@@ -35,6 +35,20 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## Local surface continuation, 2026-10-29
+
+- Branch `codex/site-metal-surfaces`, based on published next `6d65a12ec`,
+  adjusts the homepage CTA and mobile spacing only. The
+  [site plan](proposals/site.md#local-surface-and-mobile-spacing-iteration-2026-10-29)
+  records the roles, contrast and measured viewport differences. Existing
+  style expectations are preserved; the new contrast assertion is additive.
+- Local visual/viewport checks passed; final independent review is pending.
+  No push, PR creation, merge or deployment has been performed for this unit.
+- `codex/brand-sharing` separately preserves the completed README/OG work.
+  [#663](https://github.com/matsumotory/ngx_mruby/pull/663) preserves the
+  installation integration. Public operations remain pending; consult the
+  current PR and owner authorization before resuming them.
+
 ## Site continuation checkpoint, 2026-10-29 20:25 UTC
 
 - `next` is `2588cfd26`, the merge of shared-process PR
