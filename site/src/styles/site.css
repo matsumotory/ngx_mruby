@@ -832,3 +832,12 @@ dialog {
   color: var(--color-text-primary);
   border-radius: var(--radius-control);
 }
+
+/* Rebrand preview: the same two paths in flat monochrome variants. */
+.site-title .brand-dark { display: none; }
+html[data-theme="dark"][data-theme-script] .site-title .brand-light { display: none; }
+html[data-theme="dark"][data-theme-script] .site-title .brand-dark { display: block; }
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .site-title .brand-light { display: none; }
+  html:not([data-theme="light"]) .site-title .brand-dark { display: block; }
+}

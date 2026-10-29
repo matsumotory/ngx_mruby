@@ -17,21 +17,22 @@
  * decides, with it the theme toggle does. scripts/contrast.py checks that
  * the two dark blocks hold the same values.
  *
- * Palette A is the palette that the owner chose on 2026-10-19 (4.12,
- * item 1).
+ * The 2026-10-29 rebrand preview applies the owner-painted reference
+ * direction across the site: deep navy/graphite, silver text and copper accents.
+ * The earlier palette A remains documented for comparison, not as this preview.
  */
 
-/* Palette A, light (4.6, table "Palette A"; 4.3 items 3 and 4) */
+/* Rebrand preview, light reading surface. */
 :root {
   color-scheme: light;
-  --color-bg-primary: #f7fbfa; /* oklch(0.985 0.004 182) */
-  --color-bg-tertiary: #ecf3f1; /* oklch(0.958 0.008 182) */
-  --color-text-primary: #172522; /* oklch(0.250 0.020 182) */
-  --color-text-muted: #4c5c59; /* oklch(0.460 0.020 182) */
-  --color-accent-text: #0f695e; /* oklch(0.470 0.080 182) */
-  --color-accent: #167b6f; /* oklch(0.527 0.089 182) */
-  --color-border-strong: #748481; /* oklch(0.600 0.019 182) */
-  --color-border: #d4dddb; /* oklch(0.890 0.010 182) */
+  --color-bg-primary: #f9fafd; /* oklch(0.985 0.004 265) */
+  --color-bg-tertiary: #eef1f7; /* oklch(0.958 0.008 265) */
+  --color-text-primary: #1d222b; /* oklch(0.25 0.02 265) */
+  --color-text-muted: #535864; /* oklch(0.46 0.02 265) */
+  --color-accent-text: #9a3130; /* oklch(0.47 0.14 25) */
+  --color-accent: #a83634; /* oklch(0.5 0.15 25) */
+  --color-border-strong: #7b808c; /* oklch(0.6 0.019 265) */
+  --color-border: #d7dbe2; /* oklch(0.89 0.01 265) */
   /* Code colors (4.6: at most four besides text and text-muted) */
   --color-code-keyword: #1b6684; /* oklch(0.480 0.085 230) */
   --color-code-string: #386f3b; /* oklch(0.490 0.100 145) */
@@ -39,18 +40,18 @@
   --color-code-name: #a03e43; /* oklch(0.500 0.130 20) */
 }
 
-/* Palette A, dark */
+/* Rebrand preview, dark painted surface. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --color-bg-primary: #0e1413; /* oklch(0.185 0.010 182) */
-    --color-bg-tertiary: #161e1c; /* oklch(0.225 0.012 182) */
-    --color-text-primary: #e2eae8; /* oklch(0.930 0.009 182) */
-    --color-text-muted: #a6b1ae; /* oklch(0.750 0.013 182) */
-    --color-accent-text: #81cfc1; /* oklch(0.800 0.080 182) */
-    --color-accent: #56b1a3; /* oklch(0.700 0.090 182) */
-    --color-border-strong: #6b7775; /* oklch(0.560 0.015 182) */
-    --color-border: #2c3533; /* oklch(0.320 0.013 182) */
+    --color-bg-primary: #0c0f16; /* oklch(0.17 0.014 265) */
+    --color-bg-tertiary: #151922; /* oklch(0.215 0.018 265) */
+    --color-text-primary: #e8ebf1; /* oklch(0.94 0.009 265) */
+    --color-text-muted: #adb1ba; /* oklch(0.76 0.013 265) */
+    --color-accent-text: #ffac8e; /* oklch(0.82 0.11 40) */
+    --color-accent: #fa9075; /* oklch(0.76 0.135 35) */
+    --color-border-strong: #767a84; /* oklch(0.58 0.015 265) */
+    --color-border: #35383f; /* oklch(0.34 0.013 265) */
     --color-code-keyword: #82c8ea; /* oklch(0.800 0.085 230) */
     --color-code-string: #90d192; /* oklch(0.800 0.110 145) */
     --color-code-number: #ecba74; /* oklch(0.820 0.105 75) */
@@ -59,14 +60,14 @@
 }
 :root[data-theme="dark"][data-theme-script] {
   color-scheme: dark;
-  --color-bg-primary: #0e1413; /* oklch(0.185 0.010 182) */
-  --color-bg-tertiary: #161e1c; /* oklch(0.225 0.012 182) */
-  --color-text-primary: #e2eae8; /* oklch(0.930 0.009 182) */
-  --color-text-muted: #a6b1ae; /* oklch(0.750 0.013 182) */
-  --color-accent-text: #81cfc1; /* oklch(0.800 0.080 182) */
-  --color-accent: #56b1a3; /* oklch(0.700 0.090 182) */
-  --color-border-strong: #6b7775; /* oklch(0.560 0.015 182) */
-  --color-border: #2c3533; /* oklch(0.320 0.013 182) */
+  --color-bg-primary: #0c0f16; /* oklch(0.17 0.014 265) */
+  --color-bg-tertiary: #151922; /* oklch(0.215 0.018 265) */
+  --color-text-primary: #e8ebf1; /* oklch(0.94 0.009 265) */
+  --color-text-muted: #adb1ba; /* oklch(0.76 0.013 265) */
+  --color-accent-text: #ffac8e; /* oklch(0.82 0.11 40) */
+  --color-accent: #fa9075; /* oklch(0.76 0.135 35) */
+  --color-border-strong: #767a84; /* oklch(0.58 0.015 265) */
+  --color-border: #35383f; /* oklch(0.34 0.013 265) */
   --color-code-keyword: #82c8ea; /* oklch(0.800 0.085 230) */
   --color-code-string: #90d192; /* oklch(0.800 0.110 145) */
   --color-code-number: #ecba74; /* oklch(0.820 0.105 75) */
@@ -300,4 +301,39 @@
   --sl-sidebar-pad-x: var(--gutter);
   --sl-menu-button-size: 44px;
   --sl-nav-gap: var(--space-4);
+}
+
+/* Homepage proposal, 2026-10-29: graphite/navy and small copper accents.
+   Explicit homepage roles match the global rebrand preview above. */
+:root:has(.home) {
+  --color-bg-primary: #f9fafd; /* oklch(0.985 0.004 265) */
+  --color-bg-tertiary: #eef1f7; /* oklch(0.958 0.008 265) */
+  --color-text-primary: #1d222b; /* oklch(0.25 0.02 265) */
+  --color-text-muted: #535864; /* oklch(0.46 0.02 265) */
+  --color-accent-text: #9a3130; /* oklch(0.47 0.14 25) */
+  --color-accent: #a83634; /* oklch(0.5 0.15 25) */
+  --color-border-strong: #7b808c; /* oklch(0.6 0.019 265) */
+  --color-border: #d7dbe2; /* oklch(0.89 0.01 265) */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):has(.home) {
+    --color-bg-primary: #0c0f16; /* oklch(0.17 0.014 265) */
+    --color-bg-tertiary: #151922; /* oklch(0.215 0.018 265) */
+    --color-text-primary: #e8ebf1; /* oklch(0.94 0.009 265) */
+    --color-text-muted: #adb1ba; /* oklch(0.76 0.013 265) */
+    --color-accent-text: #ffac8e; /* oklch(0.82 0.11 40) */
+    --color-accent: #fa9075; /* oklch(0.76 0.135 35) */
+    --color-border-strong: #767a84; /* oklch(0.58 0.015 265) */
+    --color-border: #35383f; /* oklch(0.34 0.013 265) */
+  }
+}
+:root[data-theme="dark"][data-theme-script]:has(.home) {
+  --color-bg-primary: #0c0f16; /* oklch(0.17 0.014 265) */
+  --color-bg-tertiary: #151922; /* oklch(0.215 0.018 265) */
+  --color-text-primary: #e8ebf1; /* oklch(0.94 0.009 265) */
+  --color-text-muted: #adb1ba; /* oklch(0.76 0.013 265) */
+  --color-accent-text: #ffac8e; /* oklch(0.82 0.11 40) */
+  --color-accent: #fa9075; /* oklch(0.76 0.135 35) */
+  --color-border-strong: #767a84; /* oklch(0.58 0.015 265) */
+  --color-border: #35383f; /* oklch(0.34 0.013 265) */
 }

@@ -34,7 +34,7 @@ https://github.com/matsumotory/ngx_mruby/archive/master.zip か https://github.c
 
 `NGX_MRUBY_CORE_GEMS`が挙げるgemが、ビルドするmrubyの`mrbgems`ディレクトリに無いと、mrubyのビルドは止まります。たとえば、`./configure --with-mruby-root`で別のバージョンのmrubyを指定したときです。一覧を書き換えるか、mrubyのビルドの環境で`NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1`を設定して、通知を出してそれらのgemを飛ばしてください。
 
-ngx_mruby 3.0.0には、auto-sslのmrbgemがありません。詳しくは[auto-sslのmrbgemと、それと一緒に入っていたクラス](#auto-sslのmrbgemとそれと一緒に入っていたクラス)にあります。
+3.0.0ではauto-sslを除外しました。[auto-sslのmrbgemと、それと一緒に入っていたクラス](#auto-sslのmrbgemとそれと一緒に入っていたクラス)で移行手順を説明します。
 
 ### コアのgem
 
@@ -237,7 +237,7 @@ $ make
 
 #### auto-sslのmrbgemと、それと一緒に入っていたクラス
 
-ngx_mruby 3.0.0には、auto-sslのmrbgemがありません。このgemは`mrbgems/auto-ssl`にあり、`Nginx::SSL::ACME`のクラスを定義していました。mrubyのビルドは、`NGX_MRUBY_AUTO_SSL`をもう読みません。詳しくは[auto-sslのmrbgemと`NGX_MRUBY_AUTO_SSL`が無くなる](../../releases/v3.0.0.ja.md#auto-sslのmrbgemとngx_mruby_auto_sslが無くなる640)にあります。このgemの`Nginx::SSL::ACME::Client`はACMEv1の`new-reg`、`new-authz`、`new-cert`を使いますが、Let's EncryptはACMEv1のサービスを終えています。このgemがTLSのために必要とするpyama86/mruby-polarsslは、2017-03-03からコミットが無く、mruby 4ではビルドできません。`mruby/ext/io.h`をインクルードしますが、mruby 4.0はこのヘッダを`mruby/io.h`に改名しました。ACMEのサーバーから証明書を取得するには、nginx自身のモジュールである[ngx_http_acme_module](https://nginx.org/en/docs/http/ngx_http_acme_module.html)、つまりnginx-acmeを使ってください。`Nginx::SSL::ACME`が必要なサーバーは、2.xのビルドを使い続けてください。このgemの説明は[2.xのドキュメント](https://github.com/matsumotory/ngx_mruby/blob/v2.7.2/docs/class_and_method/README.md#auto-ssl-mrbgem)にあります。
+ngx_mruby 3.0.0には、auto-sslのmrbgemがありません。このgemは`mrbgems/auto-ssl`にあり、`Nginx::SSL::ACME`のクラスを定義していました。mrubyのビルドは、`NGX_MRUBY_AUTO_SSL`をもう読みません。詳しくは[auto-sslのmrbgemと`NGX_MRUBY_AUTO_SSL`が無くなる](../../releases/v3.0.0.ja.md#auto-sslのmrbgemとngx_mruby_auto_sslが無くなる640)にあります。このgemの`Nginx::SSL::ACME::Client`はACMEv1の`new-reg`、`new-authz`、`new-cert`を使いますが、Let's EncryptはACMEv1のサービスを終えています。このgemがTLSのために必要とするpyama86/mruby-polarsslは、2017-03-03からコミットが無く、mruby 4ではビルドできません。`mruby/ext/io.h`をインクルードしますが、mruby 4.0はこのヘッダを`mruby/io.h`に改名しました。ACMEのサーバーから証明書を取得するには、nginx自身のモジュールである[ngx_http_acme_module](https://nginx.org/en/docs/http/ngx_http_acme_module.html)、つまりnginx-acmeを使ってください。`Nginx::SSL::ACME`が必要なサーバーは、2.xのビルドを使い続けてください。詳細は[2.xのドキュメント](https://github.com/matsumotory/ngx_mruby/blob/v2.7.2/docs/class_and_method/README.md#auto-ssl-mrbgem)を参照。
 
 ngx_mruby 2.xは、auto-sslが依存するgemもビルドしていました。pyama86/mruby-acme-client、GPLでライセンスされたpyama86/mruby-polarssl、matsumotory/mruby-httprequest、matsumotory/mruby-simplehttp、mattn/mruby-http、mattn/mruby-base64、takahashim/mruby-forwardable、iij/mruby-tempfileです。デフォルトのビルドのほかのgemはこれらを必要としないので、3.0.0のデフォルトのビルドには、これらが定義するものもありません。
 

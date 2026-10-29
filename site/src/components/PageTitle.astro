@@ -1,0 +1,5 @@
+---
+import DefaultPageTitle from '@astrojs/starlight/components/PageTitle.astro';
+const home = Astro.locals.starlightRoute.entry.data.template === 'splash';
+---
+{home ? <div class="brand-title"><DefaultPageTitle /><img class="brand-showcase" src="/brand/ngx-mruby-http.svg" alt="" width="192" height="192" /></div> : <DefaultPageTitle />}

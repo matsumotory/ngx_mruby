@@ -1,6 +1,6 @@
 ---
-title: nginxが下す判断をRubyのコードで書く
-description: ngx_mrubyは、nginxに組み込んだmrubyのVMで、指定したフェーズでRubyのスクリプトを実行します。
+title: nginxの処理を、Rubyで書く。
+description: nginxにmrubyを組み込み、リクエストの処理をRubyで記述するモジュール。実際のコードとHTTP応答から始められます。
 template: splash
 sidebar:
   hidden: true
@@ -8,29 +8,57 @@ prev: false
 next: false
 ---
 
-{/* The home page in Japanese (docs/proposals/site.md, 3.2, 3.3 items 1
-and 8, 3.4): the translation of index.mdx. */}
-
 import Sample from '../../../components/Sample.astro';
+import '../../../styles/home.css';
 
 <div class="home">
+<div class="home-intro">
+<div>
+<p class="lede">リクエストを読む。行き先を決める。レスポンスを作る。nginxに組み込んだmrubyで、必要な処理をRubyのコードに。ネットワークのI/Oはnginxが受け持ちます。</p>
+<p class="actions"><a class="button-primary" href="/ja/start/">Dockerで動かす <span aria-hidden="true">↗</span></a><a class="button-secondary" href="/ja/reference/directives/">APIを見る</a></p>
+<div class="home-version"><p><span class="version-mark">3.x</span> 開発版のドキュメント</p><p><a href="/v2/ja/">安定版2.xはこちら <span aria-hidden="true">→</span></a></p></div>
+</div>
+<div class="runtime-map" role="group" aria-labelledby="runtime-title">
+<span id="runtime-title" class="runtime-label">実行する場所</span>
+<div class="runtime-host"><span class="runtime-name">nginx</span><span class="runtime-sub">リクエスト・ネットワークI/O</span><div class="runtime-vm"><span>mruby VM</span><code>あなたのRubyコード</code></div></div>
+<span class="runtime-note">別のアプリケーションサーバは不要。</span>
+</div>
+</div>
 
-<p class="lede">nginx.confでRubyのスクリプトを指定すると、nginxは組み込んだmrubyのVMでそのスクリプトを実行します。実行する時点は、リクエストが届いたとき、変数を計算するとき、アクセスを許す前、レスポンスを作るとき、ヘッダとボディを変えるとき、TLSのハンドシェイクの間、TCPかUDPのセッションの中から選べます。ネットワークのI/Oはnginxが受け持つので、nginxとは別にアプリケーションサーバを動かす必要はありません。ngx_mrubyは、手を加えていないnginxの静的なモジュールか動的なモジュールとしてビルドできます。</p>
+<section class="home-workbench" aria-labelledby="workbench-title">
+<div class="section-heading"><span class="section-index" aria-hidden="true">01 /</span><h2 id="workbench-title">設定から、レスポンスまで。</h2></div>
+<p class="section-copy">/helloへのリクエストをRubyで処理する、実際にテストしているコードです。4つのファイルをそのまま掲載しています。</p>
+<Sample lang="ja" presentation="workbench" case="test/t/cases/home_example.rb" conf="test/conf/conf.d/70-home-example.conf" script="test/html/home_example.rb" request="test/html/home_example.request" response="test/html/home_example.response" />
+</section>
 
-<p class="actions"><a class="button-primary" href="/ja/start/">Dockerで試す</a> <a class="button-secondary" href="/ja/concepts/request-phases/">Rubyが動く場所を見る</a></p>
+<section class="home-phases" aria-labelledby="phases-title">
+<div class="section-heading"><span class="section-index" aria-hidden="true">02 /</span><h2 id="phases-title">必要なフェーズに、Rubyを。</h2></div>
+<p class="section-copy">nginx.confのディレクティブで、スクリプトを実行する場所を指定します。アクセスを判定し、応答を生成・加工できます。</p>
+<ol class="phase-track" aria-label="HTTP処理の流れ（抜粋）">
+<li><span class="phase-number">01</span><strong>Rewrite</strong><span>URI・変数</span></li>
+<li><span class="phase-number">02</span><strong>Access</strong><span>アクセスの可否を判断</span></li>
+<li><span class="phase-number">03</span><strong>Content</strong><span>応答を生成</span></li>
+<li><span class="phase-number">04</span><strong>Filter</strong><span>ヘッダ・ボディを変更</span></li>
+</ol>
+<a class="section-link" href="/ja/concepts/request-phases/">実行フェーズとAPIの制約を見る <span aria-hidden="true">→</span></a>
+</section>
 
-## CIが<wbr />毎回<wbr />実行する<wbr />例
-
-次の4つのファイルは、このリポジトリのテストのファイルです。nginxは、`/hello`へのリクエストを受けるたびにスクリプトを実行します。レスポンスはそのスクリプトが書きます。
-
-<Sample lang="ja" case="test/t/cases/home_example.rb" conf="test/conf/conf.d/70-home-example.conf" script="test/html/home_example.rb" request="test/html/home_example.request" response="test/html/home_example.response" />
-
-## 最初に<wbr />読む<wbr />ページ
-
-<ul class="ways">
-<li><a href="/ja/start/">はじめに</a><p>Dockerでnginxを動かし、Rubyのスクリプトの応答を確かめてから、そのスクリプトを書き換えます。</p></li>
-<li><a href="/ja/guides/install/">インストール</a><p>ngx_mrubyを、nginxの静的なモジュールか動的なモジュールとしてソースからビルドします。</p></li>
-<li><a href="/ja/reference/directives/">リファレンス</a><p>ディレクティブと、スクリプトから呼ぶRubyのクラスとメソッドを載せています。</p></li>
+<section class="home-capabilities" aria-labelledby="capabilities-title">
+<div class="section-heading"><span class="section-index" aria-hidden="true">03 /</span><h2 id="capabilities-title">nginxの中で、用途を広げる。</h2></div>
+<ul class="capability-grid">
+<li><img src="/brand/ngx-mruby-http.svg" alt="" width="80" height="80" /><h3>HTTP</h3><p class="capability-state">2.7で利用可能</p><p>Rubyで振り分けとアクセスを判定し、応答を生成します。</p><a href="/v2/ja/reference/directives/">安定版のHTTPディレクティブ →</a></li>
+<li><img src="/brand/ngx-mruby-stream.svg" alt="" width="80" height="80" /><h3>Stream</h3><p class="capability-state">2.7で利用可能</p><p>TCP・UDPの接続処理を、nginxの中でRubyから制御します。</p><a href="/ja/guides/tcp/">TCPの実装例を読む →</a></li>
+<li><img src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="80" height="80" /><h3>LLM proxy</h3><p class="capability-state">3.x・開発中</p><p>現在動くプロキシの例から、イベント処理・使用量の計上・プロバイダ制御を備えるv3の完成像へ。</p><a href="/ja/guides/agent-proxy/">現在の実装と計画を見る →</a></li>
 </ul>
+</section>
 
+<section class="home-start" aria-labelledby="start-title">
+<div class="section-heading"><span class="section-index" aria-hidden="true">04 /</span><h2 id="start-title">小さなスクリプトから始める。</h2></div>
+<ul class="ways">
+<li><a href="/ja/start/">Dockerで試す <span aria-hidden="true">↗</span></a><p>nginxを起動して応答を確認。Rubyを書き換え、変化を確かめます。</p></li>
+<li><a href="/ja/guides/install/">ソースからビルド <span aria-hidden="true">↗</span></a><p>nginxを改造せずに、静的または動的モジュールとして組み込みます。</p></li>
+<li><a href="/ja/guides/use-cases/">実装例を読む <span aria-hidden="true">↗</span></a><p>ルーティングやアクセス制御など、目的に合う実装とAPIを探します。</p></li>
+</ul>
+<p class="home-roadmap">3.xは開発中です。エージェントプロキシの実装状況と計画は、専用のガイドで区別して説明しています。 <a href="/ja/guides/agent-proxy/">開発状況を見る</a></p>
+</section>
 </div>

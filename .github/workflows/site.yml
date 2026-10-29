@@ -99,10 +99,14 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/build-v2.mjs --tree "$GITHUB_WORKSPACE/master"
-      - name: Test the generator on its fixtures
+      - name: Test the generator fixtures and release-state classification
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/test-sync-docs.mjs
+        run: npm test
+      - name: Check complete Markdown exports, source metadata and release context
+        if: ${{ !cancelled() && steps.v2.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-docs-export.mjs
       # Step 4: the relative links and the heading anchors of the Markdown
       # files that git tracks, outside the vendored trees, as GitHub shows
       # them.

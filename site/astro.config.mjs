@@ -59,8 +59,8 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'ngx_mruby',
-      // A copy of misc/logo.png.
-      favicon: '/favicon.png',
+      // Local rebrand preview: flat white geometry on an opaque dark tile.
+      favicon: '/favicon.svg',
       // English at unprefixed paths, Japanese under /ja/ (3.4).
       defaultLocale: 'root',
       locales: {
@@ -86,6 +86,7 @@ export default defineConfig({
         FallbackContentNotice: './src/components/FallbackContentNotice.astro',
         Footer: './src/components/Footer.astro',
         Header: './src/components/Header.astro',
+        PageTitle: './src/components/PageTitle.astro',
         MobileMenuFooter: './src/components/MobileMenuFooter.astro',
         PageFrame: './src/components/PageFrame.astro',
         ThemeProvider: './src/components/ThemeProvider.astro',

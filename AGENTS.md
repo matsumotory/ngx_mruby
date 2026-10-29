@@ -508,6 +508,23 @@ npm run screenshots       # the screenshots of step 3 (below)
 npm run preview           # serves dist/ at http://localhost:4321/
 ```
 
+- Machine-readable documentation: the same generator also writes complete
+  Markdown bodies to ignored `generated/markdown/`. `scripts/export-docs.mjs`
+  adds version, channel, language, revision, source hash and canonical URLs
+  after the HTML build, under `dist/markdown/` and `dist/docs-index.json`.
+  `build:v2` makes independent `/v2/` outputs and retains its canonical bodies
+  in ignored `generated/markdown-v2/` for verification. Missing Japanese
+  translations link to English Markdown. A release line is not a release tag.
+  A source must exist at HEAD before export; a modified source is marked
+  `source_at_revision: false` with no source URL, and untracked files count
+  towards the working tree's dirty state. Review previews accordingly.
+  Display-only word breaks and diagram SVG are omitted from Markdown;
+  diagram labels, development status, source ranges, commit and date remain.
+  Literal code and tested samples stay intact. `npm run check` compares every
+  complete exported body with the generator's canonical body, metadata and
+  source hashes, and checks per-version/fallback links. The generator tests
+  verify identifier search, literal code and diagram provenance. Do not
+  maintain separate agent prose or infer missing API contracts from 2.x.
 - Pages: `scripts/sync-docs.mjs` writes the pages of `docs/` into
   `src/content/docs/` (gitignored), `docs/README.md` as `/docs/`; the home
   pages `/` and `/ja/` are the committed `src/content/docs/index.mdx` and
@@ -690,7 +707,9 @@ npm run preview           # serves dist/ at http://localhost:4321/
   and `node scripts/check-japanese-lines.mjs --ja-face noto` come close to
   what CI sees, but the Linux runner can still break a line a few pixels
   elsewhere, so the run of `site.yml` decides):
-  - `node scripts/check-styles.mjs` (`npm run check:styles`): computed
+  - `node scripts/check-styles.mjs` (`npm run check:styles`;
+    `--pages /,/ja/` limits a local run to known pages, while CI keeps the
+    default complete page set): computed
     styles in Chromium and WebKit at 320 by 664, 390 by 664 and 1440 by
     900 px: font sizes of the scale of each language, token colors (code
     blocks and the colors of highlighted spans included), monospace only
@@ -752,7 +771,9 @@ npm run preview           # serves dist/ at http://localhost:4321/
   on fixtures in temporary repositories: links in raw HTML inside
   blockquotes and list items, an attribute value that stops the build, a
   sample and a diagram, and the samples and diagram blocks that stop it.
-- `.github/workflows/site.yml` runs the checks and the generator's test on
+- `.github/workflows/site.yml` runs the checks and `npm test` (generator
+  fixtures and release-state classification), plus complete Markdown export
+  and metadata checks after both version builds, on
   pull requests to `next` that touch `site/` or `docs/`, on every push
   to `next` (a push that removes a file that `docs/` links to fails
   there) and on `workflow_dispatch`, and uploads `site/dist/` (with

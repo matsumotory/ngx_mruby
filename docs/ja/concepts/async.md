@@ -21,7 +21,17 @@ resume: コードは<wbr>`sleep`の<wbr>後から<wbr>続く。<wbr>コードが
 - ngx_mrubyは、`ngx_mrb_start_fiber`で、各ハンドラのコードをmrubyのファイバーの中で実行します。`Nginx::Async.sleep`は、nginxのタイマーをセットしてファイバーを中断します。ファイバーが中断している間、ハンドラは既に`NGX_DONE`を返していて、ワーカーはほかの接続を処理します。
 - タイマーが切れると、`ngx_mrb_timer_handler`が、ファイバーを、それが属するリクエストとともに再開します。コードが終わると、ngx_mrubyはハンドラの結果をnginxに渡します。結果が`Nginx::DECLINED`ならそのフェーズの次のハンドラが動き、ほかの結果ならnginxはリクエストを終えます。
 - `Nginx::Async::HTTP.sub_request`も同じように動きます。このメソッドはnginxのサブリクエストを始めてファイバーを中断し、サブリクエストが終わるとnginxがファイバーを再開します。
-- nginxがハンドラを再開するのは、`mruby_set`と、post-read、server rewrite、rewrite、accessのハンドラだけです。これらのどれかが待っている間、ngx_mrubyはnginxに`NGX_DONE`を返し、サブリクエストが続いている間は`NGX_AGAIN`を返します。この処理は`ngx_http_mruby_module.c`の1066行から1074行にあります。contentハンドラでは、`Nginx::Async.sleep`は例外を起こしませんが、nginxはハンドラを待ちません。リクエストは、sleepのところでレスポンスなしに終わります。`mruby_set`では、`Nginx::Async::HTTP.sub_request`はリクエストを止めておきません。nginxは、変数を待たずにcontentフェーズへ進みます。ヘッダフィルタ、ボディフィルタ、logハンドラでは、どちらのメソッドも`RuntimeError`を起こします。このことは、[2.7.1のリリースノート](../../releases/v2.7.1.ja.md#既知の制限)の「既知の制限」と、[Nginx::Async#sleep](../../class_and_method/README.md#nginxasyncsleepmsec)に書いてあります。
+- `mruby_set`とpost-read、server rewrite、rewrite、accessのハンドラは待機して再開できます。中断したハンドラは`NGX_DONE`を返し、サブリクエストの処理中は`NGX_AGAIN`を返します。
+- 2.7.3の修正以降、通常のcontentハンドラも`Nginx::Async.sleep`で待てます。この修正は3.xにも統合されています。nginxがリクエストを保持し、タイマーでファイバーを再開します。その応答や戻り値のステータスでリクエストが完了します。リリース済みの2.7.2までは、sleepの時点で応答せずに終了していました。
+- Rubyの`Nginx.redirect`から呼ばれたcontentハンドラには、sleep時点で終了する制限が残ります。呼び出し元も処理を続け、その場で応答する場合があります。
+- contentハンドラで`Nginx::Async.sleep`の待機後に`Nginx::Async::HTTP.sub_request`を呼ぶと、例外は`RuntimeError`。
+- `mruby_set`のサブリクエストはリクエストを保持しません。変数の完了を待たず、nginxはcontentフェーズへ進みます。
+- ヘッダフィルタ、ボディフィルタ、logハンドラでは、両メソッドが`RuntimeError`を起こします。
 - mruby-sleepの`sleep`、mruby-socketのソケット、ファイル、シェルのコマンド、Redisの呼び出しで待つコードは、その間ワーカーをブロックします。詳しくは[信頼境界](../../security/trust-boundary.md)にあります。
 
 リファレンスの[Nginx::Async](../../class_and_method/README.md#nginxasync-class)に、両方のメソッドの説明があります。
+
+関連する制約の資料：
+
+- [2.7.3の挙動変更](../../releases/v2.7.3.ja.md)
+- [Nginx::Async#sleep](../../class_and_method/README.md#nginxasyncsleepmsec)

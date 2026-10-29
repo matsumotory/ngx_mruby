@@ -210,7 +210,7 @@ grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|m
   ENV['TMPDIR'] || '/tmp'   # works on both
   ```
 
-  `Dir.mktmpdir`の代わりの方法は、[auto-sslのmrbgemと、それと一緒に入っていたクラス](../install/README.md#auto-sslのmrbgemとそれと一緒に入っていたクラス)にあります。ほかの定数には、自分で`conf.gem`の行を加えてください。
+  `Dir.mktmpdir`の代替は、[auto-sslのmrbgemと、それと一緒に入っていたクラス](../install/README.md#auto-sslのmrbgemとそれと一緒に入っていたクラス)にあります。ほかの定数に必要なgemは`conf.gem`で追加します。
 
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 

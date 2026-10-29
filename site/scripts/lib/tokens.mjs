@@ -20,6 +20,9 @@ export const BLOCKS = {
   'a-light': { selector: ':root', media: false },
   'a-dark': { selector: ':root[data-theme="dark"][data-theme-script]', media: false },
   'a-dark-media': { selector: ':root:not([data-theme="light"])', media: true },
+  'home-light': { selector: ':root:has(.home)', media: false },
+  'home-dark': { selector: ':root[data-theme="dark"][data-theme-script]:has(.home)', media: false },
+  'home-dark-media': { selector: ':root:not([data-theme="light"]):has(.home)', media: true },
 };
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -46,4 +49,9 @@ export function readTokenBlocks(file = TOKENS_CSS) {
 /** The color tokens of a theme ('light' or 'dark'). */
 export function themeColors(theme = 'light', file = TOKENS_CSS) {
   return { ...readTokenBlocks(file)[`a-${theme}`] };
+}
+
+/** Homepage role overrides; syntax highlighting keeps the shared code themes. */
+export function homeColors(theme = "light", file = TOKENS_CSS) {
+  return { ...themeColors(theme, file), ...readTokenBlocks(file)[`home-${theme}`] };
 }

@@ -189,3 +189,18 @@ export function diagramHtml(block, drawings, lang) {
   const development = block.label === 'development' ? `<p class="caption development-label">${DEVELOPMENT_LABEL[lang === 'ja' ? 'ja' : 'en']}</p>` : '';
   return `<figure class="diagram diagram-${block.name} not-content">${development}<div class="diagram-grid" role="img" aria-label="${escapeHtml(plainLabel(block.caption))}">${svgs}${labels}</div><figcaption>${captionHtml(block, lang)}</figcaption></figure>`;
 }
+
+// The same labels and provenance as the visual figure, without decorative SVG.
+// This is a label inventory; it does not infer edges from their visual order.
+export function diagramMarkdown(block, lang) {
+  const clean = (text) => text.replace(/<wbr>/g, '');
+  const ranges = (source) => source.ranges.map(([a, b]) => a === b ? `${a}` : `${a}-${b}`).join(', ');
+  const lines = [clean(block.caption), ''];
+  if (block.label === 'development') lines.push(DEVELOPMENT_LABEL[lang === 'ja' ? 'ja' : 'en'], '');
+  lines.push(lang === 'ja' ? '図のラベル（順序は接続を表しません）:' : 'Diagram labels (order does not imply connections):', '');
+  for (const [key, text] of block.labels) lines.push(`- ${key}: ${clean(text)}`);
+  lines.push('', `Source: ngx_mruby ${block.at.commit} (${block.at.date})`, '');
+  for (const source of block.sources) lines.push(`- \`${source.file}\`: ${ranges(source)}`);
+  for (const source of block.nginx) lines.push(`- nginx ${source.version}, \`${source.file}\`: ${ranges(source)}`);
+  return lines.join('\n');
+}
