@@ -1048,6 +1048,7 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
 
   ctx->sub_response_more = 0;
   ctx->async_sleep_pending = 0;
+  ctx->async_content_waiting = 0;
 
   // The chain of Nginx.rputs and the length of the response before the code
   // runs, for an exception in a header filter (see below).

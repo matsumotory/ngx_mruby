@@ -68,9 +68,9 @@ typedef struct ngx_http_mruby_ctx_t {
   // clears it before the handler runs and reads it when the fiber yields
   unsigned async_sleep_pending : 1;
   // set by ngx_mrb_run_request when a content handler keeps the request for
-  // the timer of Nginx::Async.sleep; Nginx::Async::HTTP.sub_request raises
-  // after that, because nothing would finalize the request after the
-  // subrequest
+  // the timer of Nginx::Async.sleep, and cleared before the next handler
+  // runs; Nginx::Async::HTTP.sub_request raises while it is set, because
+  // nothing would finalize the request after the subrequest
   unsigned async_content_waiting : 1;
   u_char *sub_response_body;
   ngx_uint_t sub_response_status;
