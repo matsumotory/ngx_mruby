@@ -1,0 +1,106 @@
+/*
+ * The filter chain diagram (docs/concepts/filters.md; 3.5 of
+ * docs/proposals/site.md): the grids that place the labels of the page
+ * over the drawings filter-chain.svg (wide) and filter-chain.narrow.svg
+ * (narrow). Narrow: the header filters, then the body filters, one label
+ * below the other beside a line in a 1 rem column, the rows as high as
+ * their labels. Wide: the two chains side by side, columns of 10 and one
+ * gap of 1 part (2100 units), the rows of the drawing in rem (16 units to
+ * the rem), from a figure width of 36rem, where the name
+ * mruby_output_header_filter keeps one line in its column.
+ */
+.diagram-filter-chain .diagram-grid {
+  grid-template-columns: 1rem minmax(0, 1fr);
+  grid-template-areas:
+    ". h-header"
+    ". hn"
+    ". hm"
+    ". ho"
+    ". hw"
+    ". h-body"
+    ". bn"
+    ". bm"
+    ". bo"
+    ". bw";
+  row-gap: var(--space-3);
+}
+.diagram-filter-chain .diagram-drawing-narrow {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+.diagram-filter-chain .diagram-drawing-wide {
+  display: none;
+}
+.diagram-filter-chain :is([data-key="h-header"], [data-key="h-body"]) {
+  color: var(--color-text-muted);
+}
+.diagram-filter-chain [data-key="h-body"] {
+  margin-top: var(--space-3);
+}
+/* A name of a label does not break inside: the longest, `mruby_output_header_filter`, 26 characters
+   at 14 px, fits the narrow arrangement at 320 px */
+.diagram-filter-chain .diagram-label code {
+  white-space: nowrap;
+}
+@container diagram (min-width: 36rem) {
+  .diagram-filter-chain .diagram-grid {
+    grid-template-columns: minmax(0, 10fr) minmax(0, 1fr) minmax(0, 10fr);
+    grid-template-rows: 2rem 3.5rem 1.5rem 4.5rem 1.5rem 3.5rem 1.5rem 3.5rem;
+    grid-template-areas:
+      "h-header . h-body"
+      "hn . bn"
+      ". . ."
+      "hm . bm"
+      ". . ."
+      "ho . bo"
+      ". . ."
+      "hw . bw";
+    row-gap: 0;
+  }
+  .diagram-filter-chain .diagram-drawing-wide {
+    display: block;
+    grid-area: 1 / 1 / -1 / -1;
+  }
+  .diagram-filter-chain .diagram-drawing-narrow {
+    display: none;
+  }
+  .diagram-filter-chain .diagram-label {
+    align-self: center;
+    padding-inline: var(--space-3);
+  }
+  .diagram-filter-chain :is([data-key="h-header"], [data-key="h-body"]) {
+    align-self: start;
+    margin-top: 0;
+    padding-inline: 0;
+  }
+}
+.diagram-filter-chain [data-key="h-header"] {
+  grid-area: h-header;
+}
+.diagram-filter-chain [data-key="hn"] {
+  grid-area: hn;
+}
+.diagram-filter-chain [data-key="hm"] {
+  grid-area: hm;
+}
+.diagram-filter-chain [data-key="ho"] {
+  grid-area: ho;
+}
+.diagram-filter-chain [data-key="hw"] {
+  grid-area: hw;
+}
+.diagram-filter-chain [data-key="h-body"] {
+  grid-area: h-body;
+}
+.diagram-filter-chain [data-key="bn"] {
+  grid-area: bn;
+}
+.diagram-filter-chain [data-key="bm"] {
+  grid-area: bm;
+}
+.diagram-filter-chain [data-key="bo"] {
+  grid-area: bo;
+}
+.diagram-filter-chain [data-key="bw"] {
+  grid-area: bw;
+}

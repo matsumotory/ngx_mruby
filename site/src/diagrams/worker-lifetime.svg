@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 440" preserveAspectRatio="none" data-labels="open fork init-worker requests exit-worker">
+  <!-- The one mrb_state per worker diagram, wide arrangement (docs/concepts/lifetimes.md): one box per step, in order, joined by lines. Lines and boxes only: the labels are HTML text placed by worker-lifetime.css, whose grid has the rows of this drawing (16 units to the rem). -->
+  <rect class="d-box" x="0" y="0" width="100" height="80" />
+  <rect class="d-box" x="0" y="104" width="100" height="56" />
+  <rect class="d-box" x="0" y="184" width="100" height="56" />
+  <rect class="d-box" x="0" y="264" width="100" height="96" />
+  <rect class="d-box" x="0" y="384" width="100" height="56" />
+  <path class="d-line" d="M50 80 V104" />
+  <path class="d-line" d="M50 160 V184" />
+  <path class="d-line" d="M50 240 V264" />
+  <path class="d-line" d="M50 360 V384" />
+</svg>

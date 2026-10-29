@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 456" preserveAspectRatio="none" data-labels="call timer done serve fire resume">
+  <!-- The non-blocking wait diagram, wide arrangement (docs/concepts/async.md): one box per step, in order, joined by lines. Lines and boxes only: the labels are HTML text placed by async-sleep.css, whose grid has the rows of this drawing (16 units to the rem). -->
+  <rect class="d-box" x="0" y="0" width="100" height="56" />
+  <rect class="d-box" x="0" y="80" width="100" height="56" />
+  <rect class="d-box" x="0" y="160" width="100" height="56" />
+  <rect class="d-box" x="0" y="240" width="100" height="56" />
+  <rect class="d-box" x="0" y="320" width="100" height="56" />
+  <rect class="d-box" x="0" y="400" width="100" height="56" />
+  <path class="d-line" d="M50 56 V80" />
+  <path class="d-line" d="M50 136 V160" />
+  <path class="d-line" d="M50 216 V240" />
+  <path class="d-line" d="M50 296 V320" />
+  <path class="d-line" d="M50 376 V400" />
+</svg>

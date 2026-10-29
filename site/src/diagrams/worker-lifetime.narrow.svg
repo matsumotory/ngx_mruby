@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 100" preserveAspectRatio="none" data-labels="open fork init-worker requests exit-worker">
+  <!-- The one mrb_state per worker diagram, narrow arrangement (docs/concepts/lifetimes.md): one line down the first column of the grid of worker-lifetime.css, beside the labels, which follow each other in the order of the steps. -->
+  <path class="d-line" d="M6 0 V100" />
+</svg>

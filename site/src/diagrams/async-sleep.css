@@ -1,0 +1,81 @@
+/*
+ * The non-blocking wait diagram (docs/concepts/async.md; 3.5 of docs/proposals/site.md): the grids
+ * that place the labels of the page over the drawings async-sleep.svg (wide)
+ * and async-sleep.narrow.svg (narrow). The steps follow each other in order.
+ * Narrow: the labels one below the other beside a line in a 1 rem column;
+ * the rows take the height of their labels, which change with the width,
+ * and the line stretches over all of them. Wide: one box per step, with
+ * the rows of the drawing in rem (16 units to the rem), from a figure width
+ * of 30rem, where every label fits its box.
+ */
+.diagram-async-sleep .diagram-grid {
+  grid-template-columns: 1rem minmax(0, 1fr);
+  grid-template-areas:
+    ". call"
+    ". timer"
+    ". done"
+    ". serve"
+    ". fire"
+    ". resume";
+  row-gap: var(--space-3);
+}
+.diagram-async-sleep .diagram-drawing-narrow {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+.diagram-async-sleep .diagram-drawing-wide {
+  display: none;
+}
+/* A name of a label does not break inside: the longest, `Nginx::Async.sleep(500)`, 23 characters
+   at 14 px, fits the narrow arrangement at 320 px */
+.diagram-async-sleep .diagram-label code {
+  white-space: nowrap;
+}
+@container diagram (min-width: 30rem) {
+  .diagram-async-sleep .diagram-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem;
+    grid-template-areas:
+      "call"
+      "."
+      "timer"
+      "."
+      "done"
+      "."
+      "serve"
+      "."
+      "fire"
+      "."
+      "resume";
+    row-gap: 0;
+  }
+  .diagram-async-sleep .diagram-drawing-wide {
+    display: block;
+    grid-area: 1 / 1 / -1 / -1;
+  }
+  .diagram-async-sleep .diagram-drawing-narrow {
+    display: none;
+  }
+  .diagram-async-sleep .diagram-label {
+    align-self: center;
+    padding-inline: var(--space-3);
+  }
+}
+.diagram-async-sleep [data-key="call"] {
+  grid-area: call;
+}
+.diagram-async-sleep [data-key="timer"] {
+  grid-area: timer;
+}
+.diagram-async-sleep [data-key="done"] {
+  grid-area: done;
+}
+.diagram-async-sleep [data-key="serve"] {
+  grid-area: serve;
+}
+.diagram-async-sleep [data-key="fire"] {
+  grid-area: fire;
+}
+.diagram-async-sleep [data-key="resume"] {
+  grid-area: resume;
+}
