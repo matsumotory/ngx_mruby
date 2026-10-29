@@ -181,8 +181,20 @@ jobs:
           sudo ldconfig /usr/local/lib
           cd -
           openssl version
+      # The services of test/t/cases/auto_ssl.rb ("Testing the auto-ssl
+      # mrbgem" in docs/test/README.md): Redis, Pebble and Pebble's DNS
+      # server in containers on the host network, and dehydrated, whose
+      # release the script checks against its SHA-256. The images are pinned
+      # by digest in the script. dehydrated needs hexdump.
+      - name: Start the services of the auto-ssl tests
+        env:
+          AUTO_SSL_DIR: ${{ runner.temp }}/auto-ssl
+        run: |
+          command -v hexdump >/dev/null || sudo apt-get -qq install bsdextrautils
+          sh test/auto_ssl/deps.sh start "$AUTO_SSL_DIR"
       - name: script
         env:
+          NGX_MRUBY_TEST_AUTO_SSL: ${{ runner.temp }}/auto-ssl
           NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
           BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
           BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
@@ -266,6 +278,10 @@ jobs:
         run: |
           if [ -e build/nginx/logs/error.log ]; then cat build/nginx/logs/error.log ; else cat build_dynamic/nginx/logs/error.log; fi
           if [ -e build/nginx/logs/stderr.log ]; then cat build/nginx/logs/stderr.log ; else cat build_dynamic/nginx/logs/stderr.log; fi
+          # The services of the auto-ssl tests, and the log of the second
+          # nginx of test/t/cases/auto_ssl.rb.
+          for c in redis challtestsrv pebble; do docker logs "ngx-mruby-auto-ssl-$c" 2>&1 | tail -n 50 || true; done
+          if [ -e build/nginx/logs/auto_ssl_peer.error.log ]; then cat build/nginx/logs/auto_ssl_peer.error.log; else cat build_dynamic/nginx/logs/auto_ssl_peer.error.log || true; fi
           # When nginx could not bind a test port, show who holds it.
           # The test ports lie below the kernel's ephemeral range (32768-60999),
           # so nothing on the runner should hold one; show the holder if it does.
