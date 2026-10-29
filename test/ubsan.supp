@@ -13,3 +13,11 @@ nonnull-attribute:src/core/ngx_string.c
 # the 45 byte PROXY protocol header of the request_api case does, makes that
 # load misaligned. The CPU defines it, the C standard does not.
 alignment:src/http/ngx_http_parse.c
+
+# Onigmo 6.2.0, which mattn/mruby-onig-regexp builds for Regexp: on x86
+# (UNALIGNED_WORD_ACCESS in its regint.h) the matcher reads the operands of a
+# compiled pattern with word loads at any offset (PLATFORM_GET_INC in
+# match_at). The loads stay inside the pattern buffer; the CPU defines them,
+# the C standard does not. test/t/cases/auto_ssl.rb matches Regexps in nginx
+# (Nginx::SSL::ACME::Dehydrated, mruby-acme-client).
+alignment:onigmo-*/regexec.c
