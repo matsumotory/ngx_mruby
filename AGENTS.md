@@ -378,11 +378,14 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
 - `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18131,
-  18136-18139, 18143-18144, 18147-18158, 12345-12359, 12363-12365;
-  18116 and 12357 belong to the second nginx that
+  18136-18139, 18143-18144, 18147-18158, 18171-18174, 12345-12359,
+  12363-12365; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
-  `test/t/cases/config_hooks.rb` starts, 12399 to a test in
-  `test/t/ngx_mruby.rb`) and
+  `test/t/cases/config_hooks.rb` starts, 18173 and 18174 to the nginx that
+  `test/t/cases/auto_ssl.rb` starts, 12399 to a test in
+  `test/t/ngx_mruby.rb`; with the services of `test/auto_ssl/deps.sh`, also
+  6379, 8053, 8055, 14000, 14001, 15000 and 15001, see "Testing the auto-ssl mrbgem" in
+  `docs/test/README.md`) and
   kills every running `nginx` process before it starts. Run only one `test.sh` per
   machine at a time, and wait if an nginx you did not start is running.
 - `test/perf/compare.sh` builds the base and the head in `build_perf/` (it does not
