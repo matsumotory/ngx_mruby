@@ -362,6 +362,11 @@ See [error_page](http://nginx.org/en/docs/http/ngx_http_core_module.html#error_p
 [internal](http://nginx.org/en/docs/http/ngx_http_core_module.html#internal) directives, and
 [Creating NGINX Rewrite Rules](https://www.nginx.com/blog/creating-nginx-rewrite-rules/) for more about the internal redirect.
 
+The internal redirect runs the handlers of the other location before the call returns.
+When an mruby handler or filter of that location raises an exception, the exception ends that handler as it does without the redirect: the request gets 500 unless its response was already started.
+The exception does not reach the code that called `Nginx.redirect`, which goes on after the call.
+This holds since 2.7.3; up to 2.7.2 the exception reached the calling code, which could rescue it, and nginx did not finish the request.
+
 ```nginx
 location /secret-location {
   internal;
@@ -1457,6 +1462,10 @@ Nginx.echo u.server                           #=> 127.0.0.1:80
 
 Sets the string to the server of the upstream.
 
+The servers of the upstream block that are not `backup` must have one address in all: `Nginx::Upstream.new` raises `RuntimeError` for more, for example for two `server` lines, or for one whose host name nginx resolved to two addresses. `backup` servers are not counted, and the method does not change them. The new server is that peer's for every later request that the worker sends to the upstream, not only for the current request, until the worker exits or the configuration is reloaded; each worker keeps its own. An upstream with a `zone` is not supported: the method does not check for one, and what it changes is not valid in the other workers (see "Not changed by this release" of the `Nginx::Upstream#server=` entry in [the 2.7.2 release notes](../releases/v2.7.2.md)).
+
+The string is an address and a port, read as nginx reads the address of a `server` directive: an IPv6 address goes in brackets, and `unix:` with a path names a UNIX-domain socket. The port is 80 when the string has none. A host name is resolved when the method is called, with the system resolver, and its first address is used; the worker serves no other client while it waits (see "What the operator's code is responsible for" in [the documentation](../README.md#what-the-operators-code-is-responsible-for)), so give an IP address. The method raises `ArgumentError` when the string is empty or 256 bytes or longer, and `RuntimeError` when nginx cannot read or resolve it; the server stays as it was then.
+
 ```
 u = Nginx::Upstream.new "YOUR_UPSTREAM_NAME"
 s = u.server                                  #=> 127.0.0.1:80
@@ -1470,8 +1479,10 @@ u.server = "127.0.0.1:8080"                   #=> 127.0.0.1:8080
 ### Nginx::Async#sleep(msec)
 
 Sleeps in non-blocking way.
-It's currently supported in the set, rewrite and access handlers.
-In a content handler (`mruby_content_handler*`) it does not raise, but nginx does not wait for the handler: the request ends at the sleep without a response (unchanged in 2.7.1; see "Known limitations" in [the 2.7.1 release notes](../releases/v2.7.1.md#known-limitations)).
+It's currently supported in the set, rewrite, access and content handlers.
+In a content handler (`mruby_content_handler*`) nginx waits for the handler since 2.7.3: the code after the sleep runs, and the request gets the response that the handler writes or the status that it returns. Up to 2.7.2 the request ended at the sleep without a response (see "Known limitations" in [the 2.7.1 release notes](../releases/v2.7.1.md#known-limitations)).
+A content handler that runs in the location that `Nginx.redirect` runs from Ruby code still ends the request at the sleep, because the handler that called `Nginx.redirect` goes on after the call and may answer the request itself.
+After the sleep, `Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in a content handler.
 In a log handler (`mruby_log_handler`, `mruby_log_handler_code`) and in the
 output filters (`mruby_output_header_filter*`, `mruby_output_body_filter*`),
 nginx cannot resume a handler that waits, so it raises a `RuntimeError` (since 2.7.1; in 2.7.0 a sleep in a log handler could crash the worker, and a sleep in a filter stopped the filter there and sent the response unfiltered).
@@ -1491,6 +1502,7 @@ Nginx::Async.sleep 3000    # Sleep 3000 millisec
 
 Sends a sub request in non-blocking way.
 It's currently supported in the `set`, `rewrite` and `access` handlers.
+In a content handler that has waited in `Nginx::Async.sleep`, it raises a `RuntimeError` (since 2.7.3), because nginx would not finish the request after the subrequest.
 Like `Nginx::Async.sleep`, it raises a `RuntimeError` in a log handler and in
 the output filters (since 2.7.1; 2.7.0 started the subrequest there).
 If the handler raises an exception after the call returns, the request gets 500 and the output of `Nginx.rputs` is not sent, unless the response was already started, for example by the location that `Nginx.redirect` ran.
@@ -1730,6 +1742,10 @@ c.upstream_server #=> "127.0.0.1:58080"
 ```
 
 ### Nginx::Stream::Connection#upstream_server=
+
+Sets the server of the upstream that `Nginx::Stream::Connection.new` named. As for `Nginx::Upstream#server=`, the servers of the upstream block that are not `backup` must have one address in all, and `backup` servers are not changed. The new server is that peer's for every later session that the worker sends to the upstream, until the worker exits or the configuration is reloaded; each worker keeps its own, and an upstream with a `zone` is not supported: the method does not check for one.
+
+The string is an IP address and a port, such as `127.0.0.1:12345` or `[::1]:12345`, or `unix:` with a path; host names are not resolved and raise. A string without a port is accepted, and the port is then 0. The method raises `RuntimeError` when the string is empty or 256 bytes or longer, or when nginx cannot read it as an address; the server stays as it was then.
 
 ```ruby
 # == nginx.conf ==
