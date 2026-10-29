@@ -52,9 +52,8 @@ typedef struct {
 } ngx_mrb_fiber_t;
 
 // Whether Nginx::Async may suspend the fiber of this kind of handler. nginx
-// resumes it for mruby_set and the post_read, server_rewrite, rewrite and
-// access handlers; CONTENT stays allowed only so that the behavior of the
-// content handler does not change (see ngx_http_mruby_handler_kind_t).
+// resumes it for mruby_set and the post_read, server_rewrite, rewrite,
+// access and content handlers (see ngx_http_mruby_handler_kind_t).
 static ngx_flag_t ngx_mrb_handler_can_wait(ngx_http_mruby_handler_kind_t kind)
 {
   switch (kind) {
@@ -506,6 +505,17 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   argc = mrb_get_args(mrb, "o|S", &path, &query_params);
 
   r = ngx_mrb_async_request(mrb, "Nginx::Async::HTTP.sub_request");
+
+  // A content handler that waited in Nginx::Async.sleep runs from its timer,
+  // and its write event handler ignores events (see ngx_mrb_run_request).
+  // When the subrequest ended, nginx would run that handler for the request,
+  // and nothing would finalize it.
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+  if (ctx->handler_kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && ctx->async_content_waiting) {
+    mrb_raise(mrb, E_RUNTIME_ERROR,
+              "Nginx::Async::HTTP.sub_request is not available after Nginx::Async.sleep in a content handler");
+  }
+
   uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
   if (uri == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_pcalloc failed on ngx_mrb_async_http_sub_request");
@@ -530,11 +540,9 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   re->mrb = mrb;
   re->fiber_prev_status = r->headers_out.status;
   re->sr = NULL;
-
-  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   re->fiber = ctx->fiber_proc;
 
-  actx = (ngx_mrb_async_http_ctx_t *)ngx_palloc(r->pool, sizeof(ngx_mrb_async_http_ctx_t));
+  actx =(ngx_mrb_async_http_ctx_t *)ngx_palloc(r->pool, sizeof(ngx_mrb_async_http_ctx_t));
   actx->uri = uri;
   actx->re = re;
 

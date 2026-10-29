@@ -1068,7 +1068,7 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
       return NGX_AGAIN;
     }
 
-    if (kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && ctx->async_sleep_pending) {
+    if (kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && ctx->async_sleep_pending && state->mrb->jmp == NULL) {
       /*
        * The checker of the content phase finalizes the request with the
        * NGX_DONE below, which drops one reference to the request
@@ -1083,9 +1083,16 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
        * event handler only for r->content_handler, not for a phase handler
        * like this one. Install it here, so that a write event while the
        * fiber waits does not run the phases, and this handler, again.
+       *
+       * A content handler that runs inside another mruby call (mrb->jmp is
+       * set), in the location that Nginx.redirect runs from Ruby code, does
+       * not keep the request: the calling handler goes on after the call and
+       * may answer the request itself, and the output of this handler would
+       * follow that response. The request ends at the sleep there, as before.
        */
       r->main->count++;
       r->write_event_handler = ngx_http_request_empty_handler;
+      ctx->async_content_waiting = 1;
     }
 
     return NGX_DONE;
