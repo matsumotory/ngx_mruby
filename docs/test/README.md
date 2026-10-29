@@ -177,10 +177,11 @@ are built from `docs/` of this branch, so two workflows here serve them:
 
 - `.github/workflows/site-v2.yml` runs on every pull request to `master`,
   without a path filter, since the 2.x pages link to files anywhere in the
-  repository (`.travis.yml`, `nginx_version`, the workflows). It checks out `next` beside the pull request, builds the
-  site with `site/` and the 3.x pages of `next` and the 2.x pages from the
-  pull request's `docs/` (`node site/scripts/build-v2.mjs --tree DIR` of
-  `next`), and fails on a relative link or anchor of the sources of the
+  repository (`.travis.yml`, `nginx_version`, the workflows). It checks
+  out `next` beside the pull request, builds the site with `site/` and
+  the 3.x pages of `next` and the 2.x pages from the pull request's
+  `docs/` (`node site/scripts/build-v2.mjs --tree DIR` of `next`), and
+  fails on a relative link or anchor of the sources of the
   2.x pages that does not resolve, on a link to a file that git does not
   track, on a broken link of the built site, on a 2.x page without its
   banner, and when the search of a version shows pages of the other. The

@@ -9,8 +9,7 @@ name: site-v2
 # 3.4 on every 2.x page, the version links, and 2.x and 3.x search results
 # that do not mix. The built site is uploaded as the workflow artifact
 # site-v2. site.yml of next builds the same site from master on every push
-# to next and on every push to master that changes the 2.x pages
-# (site-dispatch.yml).
+# to next and on every push to master (site-dispatch.yml).
 #
 # It runs on every pull request to master, without a path filter: the 2.x
 # pages link to files anywhere in the repository (.travis.yml,

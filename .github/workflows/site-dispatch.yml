@@ -1,7 +1,7 @@
 name: site-dispatch
 
-# Every push to master starts site.yml on next (docs/proposals/site.md on next, 5.3 and step 6 of
-# section 6), which builds the site with its 2.x pages under /v2/ from
+# Every push to master starts site.yml on next (docs/proposals/site.md on
+# next, 5.3 and step 6 of section 6), which builds the site with its 2.x pages under /v2/ from
 # docs/ of master. A workflow_dispatch runs on the branch that it names,
 # here next, which is the branch that the site is built from; a
 # repository_dispatch would run on the default branch, master. With the
