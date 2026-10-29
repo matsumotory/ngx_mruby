@@ -35,8 +35,9 @@ resume: The code goes on after `sleep`; when it ends, the request goes on with t
   nginx subrequest and yields, and nginx resumes the fiber when the
   subrequest has finished.
 - nginx resumes the handler only in `mruby_set` and the post-read,
-  server rewrite, rewrite and access handlers, which return `NGX_DONE` to
-  nginx's phase checkers while they wait. In a content handler,
+  server rewrite, rewrite and access handlers. While one of them waits,
+  ngx_mruby returns `NGX_DONE` to nginx, or `NGX_AGAIN` while a subrequest
+  goes on (`ngx_http_mruby_module.c` 1066 to 1074). In a content handler,
   `Nginx::Async.sleep` does not raise, but nginx does not wait for the
   handler: the request ends at the sleep without a response. In
   `mruby_set`, `Nginx::Async::HTTP.sub_request` does not hold the request:
