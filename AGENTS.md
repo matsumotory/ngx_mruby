@@ -480,6 +480,23 @@ npm run screenshots       # the screenshots of step 3 (below)
 npm run preview           # serves dist/ at http://localhost:4321/
 ```
 
+- Machine-readable documentation: the same generator also writes complete
+  Markdown bodies to ignored `generated/markdown/`. `scripts/export-docs.mjs`
+  adds version, channel, language, revision, source hash and canonical URLs
+  after the HTML build, under `dist/markdown/` and `dist/docs-index.json`.
+  `build:v2` makes independent `/v2/` outputs and retains its canonical bodies
+  in ignored `generated/markdown-v2/` for verification. Missing Japanese
+  translations link to English Markdown. A release line is not a release tag.
+  A source must exist at HEAD before export; a modified source is marked
+  `source_at_revision: false` with no source URL, and untracked files count
+  towards the working tree's dirty state. Review previews accordingly.
+  Display-only word breaks and diagram SVG are omitted from Markdown;
+  diagram labels, development status, source ranges, commit and date remain.
+  Literal code and tested samples stay intact. `npm run check` compares every
+  complete exported body with the generator's canonical body, metadata and
+  source hashes, and checks per-version/fallback links. The generator tests
+  verify identifier search, literal code and diagram provenance. Do not
+  maintain separate agent prose or infer missing API contracts from 2.x.
 - Pages: `scripts/sync-docs.mjs` writes the pages of `docs/` into
   `src/content/docs/` (gitignored), `docs/README.md` as `/docs/`; the home
   pages `/` and `/ja/` are the committed `src/content/docs/index.mdx` and

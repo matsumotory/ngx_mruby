@@ -47,6 +47,9 @@ BLOCKS = {
     'a-light': (':root', False),
     'a-dark': (':root[data-theme="dark"][data-theme-script]', False),
     'a-dark-media': (':root:not([data-theme="light"])', True),
+    'home-light': (':root:has(.home)', False),
+    'home-dark': (':root[data-theme="dark"][data-theme-script]:has(.home)', False),
+    'home-dark-media': (':root:not([data-theme="light"]):has(.home)', True),
 }
 
 # token name: (custom property, role)
@@ -245,6 +248,31 @@ def main():
                   % ('ok' if ok else 'FAIL', prop, theme, h, trunc(r)))
             if not ok:
                 failures.append('code %s %s on surface: %.6f:1' % (prop, theme, r))
+
+    # Homepage overrides have their own role palette. Syntax spans continue
+    # using the shared Shiki colors, including its plain text and comments.
+    if blocks['home-dark'] != blocks['home-dark-media']:
+        failures.append('the homepage dark and dark-media blocks differ')
+    for theme in ('light', 'dark'):
+        block = blocks['home-' + theme]
+        label = 'homepage ' + theme
+        print('== ' + label)
+        for prop, (h, src) in block.items():
+            if src is None or oklch_to_hex(*src) != h:
+                failures.append(label + ' ' + prop + ': missing or incorrect OKLCH source')
+        bg_hue = block['--color-bg-primary'][1][2]
+        for name in NEUTRALS:
+            L, C, H = block[TOKENS[name][0]][1]
+            if C > NEUTRAL_MAX_CHROMA or H != bg_hue:
+                failures.append(label + ' ' + name + ': inconsistent neutral hue/chroma')
+        home = by_token(block)
+        check_pairs(label, home, failures)
+        for prop in codes + ['--color-text-primary', '--color-text-muted']:
+            h = blocks['a-' + theme][prop][0]
+            r = ratio(h, home['surface'])
+            print('  shared syntax %s on home surface: %s:1' % (prop, trunc(r)))
+            if r < 4.5:
+                failures.append('%s %s on surface: %.6f:1' % (label, prop, r))
 
     print('== information (not gated)')
     light = palette[('a', 'light')]

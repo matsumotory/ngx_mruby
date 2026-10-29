@@ -17,6 +17,26 @@ Anthropic Messages API (`/v1/messages`) and the OpenAI Responses API
 (`/v1/responses`) through, with their streamed responses (server-sent
 events); it does not translate between them.
 
+## Implementation status and the v3 target
+
+The completed v3 design is the destination described by the diagrams below.
+Use this status vocabulary when implementing from this page. `implemented`
+means present on `next`, not released in 2.7. `planned` means the agreed plan
+names the work, not that an API or executable example is available.
+`under-design` is reserved for unresolved details; no proposal becomes an
+implemented contract merely because it appears in documentation.
+
+| Status | Capability | Evidence or next step |
+|---|---|---|
+| implemented | Client-key checks, per-key concurrent-request limit, model routing and credential replacement | The recipes and `test/t/cases/agent_proxy.rb` below |
+| implemented | Byte-for-byte streamed Messages/Responses relay and upstream-error passthrough | The same integration case and mock upstream |
+| planned | Shared usage accounting, event framing/filtering and first-byte deadline | Plan steps 7a, 7b and 7c; diagram labels below |
+| planned | Provider-specific Host/SNI, fallback policy and reference-proxy transport boundaries | Plan step 7e; request and endpoints diagrams below |
+
+The stable 2.7 documentation describes current behavior. Planned v3 APIs
+must not be copied into a 2.7 configuration. A future API example is not
+runnable evidence until its implementation and corresponding tests land.
+
 ## Recipes that run today
 
 The configuration below serves both APIs with the same recipes. In front

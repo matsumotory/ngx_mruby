@@ -47,7 +47,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
-import { themeColors } from './lib/tokens.mjs';
+import { themeColors, homeColors } from './lib/tokens.mjs';
 import { allowedSpanColors } from './lib/code-themes.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -71,11 +71,10 @@ const SCALE = {
   en: { h1: 32, h2: 26, h3: 22, body: 16, nav: 15, caption: 14 },
   ja: { h1: 26, h2: 22, h3: 18, body: 16, nav: 15, caption: 14 },
 };
-// The home page heading: clamp(2rem, 1.4rem + 2vw, 2.375rem) and
-// clamp(1.625rem, 1.2rem + 1.5vw, 2rem).
+// The homepage scale of home.css; reference pages retain the scale above.
 function homeSize(lang, vw) {
   const clamp = (lo, v, hi) => Math.min(Math.max(lo, v), hi);
-  return lang === 'ja' ? clamp(26, 19.2 + 0.015 * vw, 32) : clamp(32, 22.4 + 0.02 * vw, 38);
+  return lang === 'ja' ? clamp(32, 16 + 0.035 * vw, 56) : clamp(38, 16 + 0.045 * vw, 72);
 }
 // 4.5: --space-1 to --space-9, and 20 px, the narrow gutter of 4.5.
 const SPACES = [0, 4, 8, 12, 16, 24, 32, 48, 64, 80];
@@ -134,7 +133,8 @@ function inspect(cfg) {
     const c = hex(value);
     if (c.transparent) return;
     if (c.other) return fail(el, `${prop}${where} ${c.other} is not a token value`);
-    if (!tokens.has(c.hex)) fail(el, `${prop}${where} ${c.hex} is not a token value`);
+    const sharedSyntax = prop === 'color' && el.closest('.expressive-code') && cfg.syntax.includes(c.hex);
+    if (!tokens.has(c.hex) && !sharedSyntax) fail(el, `${prop}${where} ${c.hex} is not a token value`);
     if (cfg.theme === 'dark' && c.hex === '#000000') fail(el, `${prop}${where} is #000000 in dark`);
   };
   const all = [document.body, ...document.querySelectorAll('body *')];
@@ -441,8 +441,11 @@ async function main() {
     })());
     for (const page of PAGES) {
       for (const theme of ['light', 'dark']) {
-        const colors = themeColors(theme);
+        const isHome = page === '/' || page === '/ja/';
+        const colors = isHome ? homeColors(theme) : themeColors(theme);
         const tokens = Object.values(colors);
+        // Only current-theme shared syntax text may use the documentation palette.
+        const syntax = Object.entries(themeColors(theme)).filter(([k]) => k.startsWith('--color-code-') || k === '--color-text-primary' || k === '--color-text-muted').map(([, v]) => v);
         for (const size of SIZES) {
           for (const reduced of [false, true]) {
             if (reduced && size.width !== 1440) continue;
@@ -460,6 +463,7 @@ async function main() {
               scale: SCALE,
               home: homeSize(lang === 'ja' ? 'ja' : 'en', size.width),
               tokens,
+              syntax,
               spans: [...allowedSpanColors()],
               theme,
               spaces: SPACES,

@@ -3,13 +3,14 @@
 // previous and next links of documentation pages, then the site's footer
 // with a 1 px top border, 14 px muted text, 48 px above and 32 px below:
 // the language link, Releases, Security, the license and GitHub.
+import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import LastUpdated from 'virtual:starlight/components/LastUpdated';
 import Pagination from 'virtual:starlight/components/Pagination';
 import LanguageLink from './LanguageLink.astro';
 import { GITHUB_URL, strings } from '../site-nav.mjs';
-import { BASE, GITHUB_REF } from '../../scripts/lib/site.mjs';
+import { BASE, GITHUB_REF, pageOfRoute } from '../../scripts/lib/site.mjs';
 
 const lang = Astro.locals.starlightRoute.locale === 'ja' ? 'ja' : 'en';
 const t = strings(lang);
@@ -21,6 +22,9 @@ const p = `${BASE}${lang === 'ja' ? '/ja' : ''}`;
 // is how the generator dates the pages of docs/ (Starlight's own git date
 // is the UTC day, which differs from it in the hours after midnight JST).
 const route = Astro.locals.starlightRoute;
+const routePath = Astro.url.pathname.slice(BASE.length).replace(/^\/|\/$/g, '');
+const { page: sourcePage, fallback } = pageOfRoute(JSON.parse(fs.readFileSync(path.join(process.cwd(), 'generated/pages.json'), 'utf8')), routePath);
+const markdown = sourcePage && !sourcePage.home ? `${BASE}/markdown/${sourcePage.route || 'index'}.md` : null;
 if (route.entry.filePath && route.entry.filePath.endsWith('index.mdx')) {
   const file = path.resolve(process.cwd(), route.entry.filePath);
   const date = execFileSync('git', ['log', '-1', '--format=%cs', '--', file], { cwd: process.cwd(), encoding: 'utf8' }).trim();
@@ -30,6 +34,8 @@ if (route.entry.filePath && route.entry.filePath.endsWith('index.mdx')) {
 
 <footer class="sl-flex">
   <div class="meta sl-flex">
+    {markdown && <a class="doc-markdown" href={markdown}>{fallback ? 'Markdown (English)' : 'Markdown'}</a>}
+    <a class="doc-index" href={`${BASE}/docs-index.json`}>{lang === 'ja' ? '文書索引 JSON' : 'Docs index JSON'}</a>
     <LastUpdated />
   </div>
   <Pagination />
@@ -50,9 +56,18 @@ if (route.entry.filePath && route.entry.filePath.endsWith('index.mdx')) {
       flex-direction: column;
       gap: var(--space-5);
     }
+    .meta a {
+      color: var(--color-text-muted);
+      min-height: 24px;
+      display: inline-flex;
+      align-items: center;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.2em;
+    }
     .meta {
       flex-wrap: wrap;
       justify-content: flex-end;
+      gap: var(--space-4);
     }
   }
 </style>

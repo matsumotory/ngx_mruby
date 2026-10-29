@@ -61,7 +61,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { containsHtml, isFirstBlock, parseMarkdown, plainText, titleHeading } from './lib/markdown.mjs';
 import { BASE, contentDir, contentRoot, GITHUB_REF, GITHUB_URL, HOME_PAGES, isShallow, lastCommitDate, manifestFile, repoDir, SIDEBAR_ORDER, siteDir, SITE_VERSION, SOURCE_ROUTES } from './lib/site.mjs';
-import { checkKeys, diagramHtml, loadDrawings, parseDiagramBlock } from './lib/diagrams.mjs';
+import { checkKeys, diagramHtml, diagramMarkdown, loadDrawings, parseDiagramBlock } from './lib/diagrams.mjs';
 import { loadSample, parseSampleBlock, sampleMarkdown } from './lib/samples.mjs';
 
 const posix = path.posix;
@@ -308,7 +308,7 @@ function render(page) {
     let end = heading.position.end.offset;
     while (src[end] === '\n' || src[end] === '\r') end++;
     removed = [0, end];
-    edits.push([0, end, '']);
+    edits.push([0, end, '', src.slice(0, end)]);
   }
   // A node inside the removed heading needs no edit.
   const inRemoved = (node) =>
@@ -326,6 +326,7 @@ function render(page) {
     if (!generated(node)) continue;
     const where = `${page.source}:${lineOf(node)}`;
     let text;
+    let machineText;
     try {
       if (node.lang === 'sample') {
         text = sampleMarkdown(loadSample(parseSampleBlock(node.value, where), repoDir, where), page.lang);
@@ -342,11 +343,12 @@ function render(page) {
         }
         diagrams.push({ name: block.name, sources: block.sources, nginx: block.nginx, at: block.at });
         text = diagramHtml(block, drawings, page.lang);
+        machineText = diagramMarkdown(block, page.lang);
       }
     } catch (e) {
       fail(e.message);
     }
-    edits.push([node.position.start.offset, node.position.end.offset, text]);
+    edits.push([node.position.start.offset, node.position.end.offset, text, machineText]);
   }
   // A definition that an image refers to (![alt][id]) gets the raw URL.
   const imageIds = new Set();
@@ -386,7 +388,7 @@ function render(page) {
       const end = node.position.end.offset;
       if (src.slice(start, end) === node.value) {
         // Not inside a URL of the text (http://host/YOUR_MRUBY_SCRIPT.rb)
-        edits.push([start, end, node.value.replace(SNAKE_ALL, (w, at, all) => (/\S*:\/\/\S*$/.test(all.slice(0, at)) ? w : breakName(w)))]);
+        edits.push([start, end, node.value.replace(SNAKE_ALL, (w, at, all) => (/\S*:\/\/\S*$/.test(all.slice(0, at)) ? w : breakName(w))), node.value]);
       }
     } else if (node.type === 'html') {
       // The attributes are found in the source text of the node, not in
@@ -397,6 +399,7 @@ function render(page) {
       // same ones in the same order, or the build stops.
       const base = node.position.start.offset;
       const text = src.slice(base, node.position.end.offset);
+      if (/^<wbr\s*\/?\s*>$/i.test(text)) edits.push([base, node.position.end.offset, text, '']);
       const inSource = [...text.matchAll(HTML_URL_ATTRIBUTE)];
       const inValue = [...node.value.matchAll(HTML_URL_ATTRIBUTE)].map(attributeValue);
       if (inSource.length !== inValue.length || inSource.some((m, i) => attributeValue(m) !== inValue[i])) {
@@ -420,10 +423,12 @@ function render(page) {
 
   edits.sort((a, b) => b[0] - a[0]);
   let body = src;
+  let machineBody = src;
   let previousStart = Infinity;
-  for (const [start, end, text] of edits) {
+  for (const [start, end, text, machineText = text] of edits) {
     if (end > previousStart) fail(`${page.source}: overlapping edits at offset ${start}`);
     body = body.slice(0, start) + text + body.slice(end);
+    machineBody = machineBody.slice(0, start) + machineText + machineBody.slice(end);
     previousStart = start;
   }
 
@@ -442,6 +447,9 @@ function render(page) {
   const out = path.join(contentDir, page.route.includes('/') ? `${page.route}.md` : `${page.route}/index.md`);
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, `${front.join('\n')}\n${body}`);
+  const machine = path.join(path.dirname(manifestFile), 'markdown', `${page.route || 'index'}.md`);
+  fs.mkdirSync(path.dirname(machine), { recursive: true });
+  fs.writeFileSync(machine, machineBody);
   return { ...page, title, lastUpdated, titleRemoved: removed !== null, diagrams };
 }
 

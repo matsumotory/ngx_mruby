@@ -15,8 +15,12 @@ interface Props {
   request: string;
   response: string;
   lang: 'en' | 'ja';
+  presentation?: 'workbench';
 }
 const props = Astro.props;
+const labels = props.lang === 'ja'
+  ? { conf: 'nginx.conf', script: 'Rubyハンドラ', request: 'リクエスト', response: '期待する応答' }
+  : { conf: 'nginx.conf', script: 'Ruby handler', request: 'Request', response: 'Expected response' };
 // The build runs in site/ (npm run build); Astro bundles this component,
 // so import.meta.url does not point to src/components/ when it runs.
 const repo = path.resolve(process.cwd(), '..');
@@ -24,7 +28,12 @@ const spec = specFromProps(props);
 const sample = loadSample(spec, repo, `the sample of ${Astro.url.pathname}`);
 ---
 
-<div class="sample">
-  {sample.shown.map((item) => <Code code={item.text.replace(/\n$/, '')} lang={item.lang} title={sampleTitle(item, props.lang)} />)}
+<div class:list={["sample", { "sample-workbench": props.presentation === 'workbench' }]}>
+  <div class="sample-files">
+  {sample.shown.map((item, index) => <div class:list={["sample-file", `sample-${item.key}`]}>
+    {props.presentation === 'workbench' && <div class="sample-file-label"><span title={item.file}>{String(index + 1).padStart(2, '0')} / {labels[item.key]}</span><span aria-hidden="true">{item.lang === 'ruby' ? 'RUBY' : item.lang === 'nginx' ? 'NGINX' : 'HTTP'}</span></div>}
+    <Code code={item.text.replace(/\n$/, '')} lang={item.lang} title={props.presentation === 'workbench' ? undefined : sampleTitle(item, props.lang)} />
+  </div>)}
+  </div>
   <p class="caption sample-caption" set:html={sampleCaptionHtml(sample, props.lang)} />
 </div>

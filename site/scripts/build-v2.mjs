@@ -75,6 +75,7 @@ if (!fs.existsSync(path.join(distDir, 'index.html')) || !fs.existsSync(manifestF
 const target = path.join(distDir, V2_DIR);
 fs.rmSync(target, { recursive: true, force: true });
 fs.rmSync(v2ManifestFile, { force: true });
+fs.rmSync(path.join(siteDir, 'generated', 'markdown-v2'), { recursive: true, force: true });
 fs.rmSync(stage, { recursive: true, force: true });
 const skip = new Set(['node_modules', 'dist', 'generated', '.astro', 'build-screenshots', 'offline-build.log']);
 const content = path.join(siteDir, 'src', 'content', 'docs');
@@ -104,6 +105,7 @@ fs.rmSync(path.join(built, '404.html'), { force: true });
 for (const { file } of VERBATIM_FILES) fs.rmSync(path.join(built, file), { force: true });
 fs.cpSync(built, target, { recursive: true });
 const pages = JSON.parse(fs.readFileSync(path.join(stage, 'generated', 'pages.json'), 'utf8'));
+fs.cpSync(path.join(stage, 'generated', 'markdown'), path.join(siteDir, 'generated', 'markdown-v2'), { recursive: true });
 fs.writeFileSync(v2ManifestFile, `${JSON.stringify({ tree, commit, pages }, null, 2)}\n`);
 fs.rmSync(stage, { recursive: true, force: true });
 console.log(`${me}: ok; ${pages.length} pages of ${commit} in ${path.relative(siteDir, target)}/, the list in ${path.relative(siteDir, v2ManifestFile)}`);

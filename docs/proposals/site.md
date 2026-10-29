@@ -408,6 +408,18 @@ label "Development version" beside "New in 3.0".
 
 ## 4. Visual direction
 
+The 2026-10-29 local rebrand preview now applies the painted-reference
+navy/graphite surfaces, silver text/edges and small copper interaction accents
+to documentation pages as well as the home pages. The owner's later direction
+supersedes retaining palette A for the new preview. The dark references show
+near-black blue armor and concentrated reflections; the lighter references
+show gunmetal/silver panels with copper joints and small metallic-red parts.
+These establish roles, not a requirement to scatter all colors equally. Gold
+is concentrated in the primary logo inset; purple is its comparison variant.
+Code keeps distinguishable, contrast-checked syntax colors; large reading
+surfaces stay quiet. The photos themselves are not published.
+
+
 The owner answered Q7 on 2026-10-15 (section 7): the design starts from the
 design of the owner's corporate site and the owner's product landing page,
 which the owner likes, and tunes its colors and atmosphere towards cyber;
@@ -422,6 +434,168 @@ from research, and 4.12 records what the owner settled on the specimens of
 step 2. Each rule names its
 source and its check; section 6 runs the checks. Appendix C gives the
 evidence rule by rule.
+
+### Working design: reading, implementation and agent use (2026-10-29)
+
+The owner's later instruction removes the constraint of retaining the old
+layout: "今の既存のさいとにとらわれなくていい。あなたが良いと思うものに作り直して欲しい。"
+The requested uses are reading and understanding on a phone, implementation
+on a PC, and reliable documentation retrieval and task assistance for agents.
+The owner also requested a logo refresh; the name remains ngx_mruby. The
+homepage preview below is an intermediate comparison, not a finished brand.
+
+Implementation direction, subject to verification rather than a new runtime
+API decision:
+
+1. Keep one documentation source. Generate page-level Markdown and a compact
+   machine-readable index from the same source/route/sample pipeline as HTML.
+   Include the documentation version, source revision, source path, language,
+   canonical HTML URL and sample provenance. Keep stable 2.x and development
+   3.x in separate indexes. A missing translation must name its English
+   source instead of pretending to be Japanese documentation.
+2. Present the version and prerequisites before commands. On PC, bring the
+   configuration, Ruby, request and expected result together with copyable
+   code and links to API constraints. On phones, prioritize reading order,
+   short sections and legible text rather than fitting a desktop workbench
+   into a narrow viewport. Preserve stable routes and heading anchors.
+3. Provide a visible Markdown/source route on documentation pages and a
+   concise starting point for agent-assisted tasks. It must link to build
+   requirements, execution phase/lifetime limits, reproducible examples,
+   failure checks and verification. Do not fabricate a known-good result or
+   silently present planned agent-proxy behavior as an available feature.
+4. Validate the machine path with representative tasks: starting the correct
+   version, choosing a handler for a phase, and finding the constraints of an
+   upstream setter. A reader using only the exported material must find the
+   version, prerequisites, source and verification evidence without guessing.
+   Check version isolation, link targets and example fidelity automatically;
+   use an independent reader for the task exercise. A standalone llms.txt is
+   not sufficient evidence of agent usability.
+5. Expand implementation guidance from reviewed code and tests, not just
+   page summaries: normal and error cases; argument types, return values and
+   exceptions; valid execution phases, lifetime and worker constraints; and
+   versioned configuration/Ruby/request/expected-result examples. Each
+   example names the case that checks it. Internal stress fixtures and
+   deliberately invalid configurations are not recommendations. Preserve
+   enough detail for an agent to implement a task without guessing.
+6. Publish performance evidence with its method: tested source/base commits,
+   nginx/mruby versions, build options, OS/CPU when actually recorded,
+   request/workload counts, warm-up, repetitions or known variability,
+   reproduction steps and limits. Distinguish historical measurements from
+   current guarantees. Do not invent missing environment details or compare
+   numbers from different conditions as a product superiority claim. The
+   existing callgrind lane is an initial evidence source, not a throughput
+   benchmark. Link back to the public CI artifact and comparison report.
+7. Keep the visual language technical, with dark navy/graphite, metallic
+   contrast and restrained accents. Treat the old icon as a temporary asset;
+   new mark, monochrome/small-size variants and horizontal wordmark require
+   owner review together with the site. Publish coherent iterations after the normal PR, independent-review and
+   deployment checks; the owner authorized iterative site deployment on
+   2026-10-29. This is not authorization for a v3 software release. No new external service, account, payment or
+   authentication change is needed for these static site capabilities.
+
+#### First retrieval experiment and remaining content work
+
+The preview exports 51 development and 16 stable source pages, each from
+its HTML source pipeline, at `/markdown/<route>.md` and
+`/v2/markdown/<route>.md`, indexed by `/docs-index.json` and
+`/v2/docs-index.json`. These are source-language pages: Japanese HTML
+fallbacks link to English Markdown. Metadata records the release line,
+channel, language, source revision/hash and dirty state; an edited source
+has no misleading link to its old bytes at HEAD. Sources not yet present
+in HEAD stop export. The generator retains full Markdown bodies for the
+build checker, and preserves code while omitting display word breaks and
+SVG. Diagram labels and source provenance remain; label order is not a
+claim about connections. The page footer exposes the outputs.
+
+An independent reader using only those outputs could identify version and
+sample provenance, and distinguish callgrind instruction counts from
+throughput. It also found substantive gaps, which export alone does not fix:
+
+- The stable install page still has historical version/output/path examples;
+  a complete versioned configure/build/nginx-test/request walkthrough needs
+  a separate source documentation change on the stable branch, verified
+  against the actual build. Do not present the old example as current proof.
+- The development upstream API lacks constraints documented by the stable
+  fixes. The pending master-to-next integration supplies that text; planned
+  rejection of hostnames and exception normalization are not implemented by
+  this site change. Re-run the reader task after integration and the later
+  code/test changes, rather than copying a future contract into this preview.
+- Historical performance tables must stay beside their recorded conditions.
+  Add current, reproducible comparisons only from actual runs and preserve
+  missing-environment and upstream timing limitations.
+
+These are acceptance work still open, not a claim that agent-assisted
+implementation is complete. The next content pass will connect prerequisites,
+complete examples, errors and verification before broadening the landing page.
+
+The owner selected logo direction C on 2026-10-29: "白黒にした時のバランスがCがいいのでCが好き。ロゴ自体はメタリックなやつかっこいいね".
+The owner clarified later the same day: "最初のcの1番下が好き" and
+"隙間が金のやつ、あれ系で紫とか金の差し色使えると良い". The preferred
+primary treatment is the initial metallic C with gold in the gap; the
+monochrome balance was a selection criterion, not a request to make a flat
+mark the primary identity. The earlier silver-only conversion is not
+adopted. The revised metallic gold-inset SVG is used in the local desktop hero;
+the purple-inset SVG is retained as the comparison variant. Both were
+visually checked against the supplied reference before use.
+Flat black/white are small-size and single-color derivatives only. The
+header can preview those derivatives while the primary metallic asset remains the larger display treatment.
+The favicon uses white on an opaque dark tile for visibility in either
+browser tab theme. The existing Geist Mono wordmark keeps `ngx_mruby`.
+
+Asset adoption checklist: header uses a monochrome candidate in this
+preview; the homepage previews the gold-inset metallic treatment; favicon points to the background-backed SVG; README still uses
+`misc/logo.png` pending approval; there is no dedicated OG image configured.
+The old `site/public/favicon.png` and `misc/logo.png` remain for comparison
+and existing links. Source geometry, surface treatment and favicon background
+are distinct. The reference photographs, kit builder, kit README, QA sheet
+and temporary metadata are not repository assets. Final adoption must review
+README, favicon, header, home and social sharing together before deployment.
+
+### Homepage revision requested on 2026-10-29
+
+The owner asked for a more technical, engineer-facing site and for richer
+code and terminal examples: "ソフトウェアのサイトなのでサンプルとかターミナル画面とかそういうのを色々リッチにみせたい".
+The direction uses how Linear and Resend present software as a reference,
+without copying their layout, wording or assets. The owner also supplied
+painted-model photographs as references for color and material: dark navy,
+graphite, silver edges and small warm or violet accents. The photographs
+are not site assets.
+
+The homepage implementation is a review proposal. The owner has not yet
+approved its exact palette or production publication. It changes the home
+pages only; the documentation pages keep the scale and palette of 4.4–4.7.
+For the home pages, this revision supersedes the earlier small heading,
+teal palette and plain sample layout. The request for real software and
+terminal examples also supersedes the earlier blanket rejection of terminal
+motifs; this implementation shows the actual HTTP exchange with labelled
+code panels and adds no fictional shell prompt or operating-system chrome.
+
+- `home.css` uses a two-column introduction and nginx/mruby execution
+  structure, followed by a configuration, Ruby handler, request and response
+  workbench. The four panels stack on narrow screens. Selected HTTP phases
+  and links into the existing guides complete the page.
+- The home title uses `clamp(2.375rem, 1rem + 4.5vw, 4.5rem)` in English
+  and `clamp(2rem, 1rem + 3.5vw, 3.5rem)` in Japanese. Other text retains
+  the existing type scale, gutters and spacing tokens. Controls retain a
+  minimum height of 44 px and visible focus rings.
+- The scoped homepage token blocks in `tokens.css` define the proposed
+  graphite/navy surfaces, silver text and warm accent. Light and dark themes
+  still follow the theme control and the OS setting without JavaScript.
+  There are no new image assets, gradients, shadows or animations.
+- `Sample.astro` reads the same case and fixtures as before. Its caption
+  identifies the compared response fields, date and commit; no measured
+  performance or terminal output is invented. 3.x is labelled development
+  and the stable 2.x documentation has its own link. The agent proxy guide
+  retains the distinction between current implementation and planned work.
+- `check-styles.mjs` checks the home scale and palette separately while
+  retaining the documentation checks. `contrast.py` checks both palettes,
+  matching dark-media tokens, and the shared syntax colors on the new home
+  surfaces. `check-home.mjs` continues checking the actual code and fixture
+  text, provenance and absence of unsupported performance claims. The
+  existing language, keyboard, no-JavaScript and mobile checks still apply.
+- Python bytecode from the site checks is ignored only under
+  `site/scripts/__pycache__/`; source, tests and documentation remain
+  visible to Git. Screenshots and local work records are not committed.
 
 ### 4.1 The three sites and their sources
 
@@ -1769,3 +1943,20 @@ Pages settings, the environments and the default branch
 | [docs/test](../test/README.md) | 1,066 | the test harness, sanitizers, mock LLM upstream, soak test, callgrind comparison; starts without a heading |
 | [docs/DEVELOPMENT.md](../DEVELOPMENT.md) | 88 | Vagrant on Ubuntu 18.04, subtree updates |
 | [SECURITY.md](../../SECURITY.md) | 56 | supported versions, private reporting |
+
+### Rebrand family iteration, 2026-10-29
+
+The owner requested different inset colors for HTTP and stream, with a
+stronger v3 LLM proxy variant. The current design iteration maps HTTP to
+gold, stream to purple, and LLM proxy to a gold/purple inset and stronger
+metallic body. The color assignment is an implementation proposal, not an
+additional owner decision. Names and availability text accompany every
+feature mark; color never carries the distinction alone. The metallic
+SVGs are external images with no external dependencies, keeping filter IDs
+isolated. Flat marks remain small-size derivatives, not the primary style.
+
+The owner also clarified the documentation scope: "v2.7系は現状をしっかり描きつつ、v3は完成予定の実装や機能をベースに書いていけばよさそう".
+The agent-proxy guide therefore states the completed v3 target while labeling
+current recipes and planned capabilities. The same status table is exported
+as Markdown, and the JSON index defines implemented/planned/under-design.
+Undecided details remain undecided; new art makes no performance claim.

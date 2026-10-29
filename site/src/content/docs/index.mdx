@@ -1,6 +1,7 @@
 ---
-title: Write the decisions of nginx in Ruby
-description: ngx_mruby runs Ruby scripts inside nginx, at the request phase you choose, with an embedded mruby VM.
+title: Program nginx.
+  With Ruby.
+description: Embed mruby in nginx. Write request logic in Ruby, from routing and access checks to response headers and content.
 template: splash
 sidebar:
   hidden: true
@@ -8,31 +9,57 @@ prev: false
 next: false
 ---
 
-{/* The home page (docs/proposals/site.md, 3.2, 3.3 items 1 and 8). The
-heading and the first paragraph are the definition of 3.3 item 1, a draft
-for the owner to edit. The example comes from the test files that
-test/t/cases/home_example.rb compares on every CI run. */}
-
 import Sample from '../../components/Sample.astro';
+import '../../styles/home.css';
 
 <div class="home">
+<div class="home-intro">
+<div>
+<p class="lede">Read a request. Choose its route. Write a response. Put Ruby where the decision happens, with mruby embedded inside nginx. nginx handles the network I/O.</p>
+<p class="actions"><a class="button-primary" href="/start/">Run it in Docker <span aria-hidden="true">↗</span></a><a class="button-secondary" href="/reference/directives/">Explore the API</a></p>
+<div class="home-version"><p><span class="version-mark">3.x</span> Development documentation</p><p><a href="/v2/">Using the stable release? Read the 2.x docs <span aria-hidden="true">→</span></a></p></div>
+</div>
+<div class="runtime-map" role="group" aria-labelledby="runtime-title">
+<span id="runtime-title" class="runtime-label">THE EXECUTION MODEL</span>
+<div class="runtime-host"><span class="runtime-name">nginx</span><span class="runtime-sub">Requests · Network I/O</span><div class="runtime-vm"><span>mruby VM</span><code>your Ruby code</code></div></div>
+<span class="runtime-note">No separate application server.</span>
+</div>
+</div>
 
-<p class="lede">You reference a Ruby script from nginx.conf, and nginx runs it with an embedded mruby VM at the point you choose: when a request arrives, to compute a variable, before access is granted, to produce the response, to change headers and body, during the TLS handshake, or for a TCP or UDP session. nginx keeps doing the network I/O, and no application server runs beside it. ngx_mruby builds as a static or dynamic module of unmodified nginx.</p>
+<section class="home-workbench" aria-labelledby="workbench-title">
+<div class="section-heading"><span class="section-index" aria-hidden="true">01 /</span><h2 id="workbench-title">From configuration to response.</h2></div>
+<p class="section-copy">A real handler for /hello. These four files are taken directly from the repository test, including the request and expected response.</p>
+<Sample lang="en" presentation="workbench" case="test/t/cases/home_example.rb" conf="test/conf/conf.d/70-home-example.conf" script="test/html/home_example.rb" request="test/html/home_example.request" response="test/html/home_example.response" />
+</section>
 
-<p class="actions"><a class="button-primary" href="/start/">Get started</a> <a class="button-secondary" href="/concepts/request-phases/">See where Ruby runs</a></p>
+<section class="home-phases" aria-labelledby="phases-title">
+<div class="section-heading"><span class="section-index" aria-hidden="true">02 /</span><h2 id="phases-title">Your logic. At the right phase.</h2></div>
+<p class="section-copy">Choose where your script runs with a directive in nginx.conf. Make an access decision, generate content, or change response headers.</p>
+<ol class="phase-track" aria-label="Selected stages of HTTP processing">
+<li><span class="phase-number">01</span><strong>Rewrite</strong><span>Work with URI and variables</span></li>
+<li><span class="phase-number">02</span><strong>Access</strong><span>Decide who gets through</span></li>
+<li><span class="phase-number">03</span><strong>Content</strong><span>Build the response</span></li>
+<li><span class="phase-number">04</span><strong>Filter</strong><span>Change headers and body</span></li>
+</ol>
+<a class="section-link" href="/concepts/request-phases/">Explore the phases and their API constraints <span aria-hidden="true">→</span></a>
+</section>
 
-## An example that CI runs on every change
-
-The four files below are files of a test in this repository. nginx runs the script for every request to `/hello`, and the script writes the response.
-
-<Sample lang="en" case="test/t/cases/home_example.rb" conf="test/conf/conf.d/70-home-example.conf" script="test/html/home_example.rb" request="test/html/home_example.request" response="test/html/home_example.response" />
-
-## Where to start
-
-<ul class="ways">
-<li><a href="/start/">Get started</a><p>Runs nginx with a Ruby handler in Docker, then changes the script.</p></li>
-<li><a href="/guides/install/">Install</a><p>Builds ngx_mruby into nginx from source, as a static or a dynamic module.</p></li>
-<li><a href="/reference/directives/">Reference</a><p>Lists the directives, and the Ruby classes and methods that scripts call.</p></li>
+<section class="home-capabilities" aria-labelledby="capabilities-title">
+<div class="section-heading"><span class="section-index" aria-hidden="true">03 /</span><h2 id="capabilities-title">One nginx. Different kinds of work.</h2></div>
+<ul class="capability-grid">
+<li><img src="/brand/ngx-mruby-http.svg" alt="" width="80" height="80" /><h3>HTTP</h3><p class="capability-state">Available in 2.7</p><p>Route requests, decide access and shape responses with Ruby handlers.</p><a href="/v2/reference/directives/">Stable HTTP directives →</a></li>
+<li><img src="/brand/ngx-mruby-stream.svg" alt="" width="80" height="80" /><h3>Stream</h3><p class="capability-state">Available in 2.7</p><p>Use Ruby in nginx's stream module for TCP and UDP connection handling.</p><a href="/guides/tcp/">Read the TCP example →</a></li>
+<li><img src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="80" height="80" /><h3>LLM proxy</h3><p class="capability-state">3.x · In development</p><p>Current proxy recipes and the planned v3 architecture: event handling, usage accounting and provider control.</p><a href="/guides/agent-proxy/">Implementation and roadmap →</a></li>
 </ul>
+</section>
 
+<section class="home-start" aria-labelledby="start-title">
+<div class="section-heading"><span class="section-index" aria-hidden="true">04 /</span><h2 id="start-title">Start with one small script.</h2></div>
+<ul class="ways">
+<li><a href="/start/">Run the example <span aria-hidden="true">↗</span></a><p>Start nginx, make a request, then edit the Ruby handler and see the response change.</p></li>
+<li><a href="/guides/install/">Build from source <span aria-hidden="true">↗</span></a><p>Build a static or dynamic module for unmodified nginx.</p></li>
+<li><a href="/guides/use-cases/">Find your use case <span aria-hidden="true">↗</span></a><p>Follow working examples for routing, access control and other request decisions.</p></li>
+</ul>
+<p class="home-roadmap">3.x is in development. The agent proxy guide separates the implementation available today from the work still planned. <a href="/guides/agent-proxy/">Read the development status</a></p>
+</section>
 </div>
