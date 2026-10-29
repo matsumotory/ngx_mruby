@@ -553,7 +553,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
   Starlight's and Pagefind's own color variables from their stylesheets at
   build time, so that the built CSS holds only the tokens' colors.
 - The checks of the proposal (section 6) are scripts under `site/scripts/`
-  that exit 1 on a failure. `npm run check` runs the nine that need no
+  that exit 1 on a failure. `npm run check` runs the ten that need no
   browser; the first four take `--dist`, `--repo` and `--manifest` to run
   on a copy, `check-css.mjs` takes `--dist`, `check-home.mjs` `--dist` and
   `--repo`, and `check-diagrams.mjs` `--repo`:
@@ -603,7 +603,15 @@ npm run preview           # serves dist/ at http://localhost:4321/
   - `node scripts/check-diagrams.mjs`: the drawings hold lines and boxes
     only (no `<text>`, no color outside the tokens' classes), the source
     files and lines of each diagram exist at its commit, and the diagrams
-    whose lines changed since then are listed (also in the run summary).
+    whose lines changed since then are listed (also in the run summary);
+  - `node scripts/check-deploy.mjs [--dist DIR]`: the files of
+    `VERBATIM_FILES` in `scripts/lib/site.mjs`, the Google verification
+    file `googleba3435e4002729b6.html` that Q5 of the proposal keeps from
+    the old site, are in the built site with the 54 bytes and the SHA-256
+    of the `gh-pages` copy and equal to their copy in `public/`, and no
+    HTML or JavaScript file names an analytics script (Q6) or loads a
+    script from another host. The checks of pages leave those files out
+    (`htmlFiles`).
   `node scripts/check-ruby-blocks.mjs --mrbc PATH` (not in `npm run
   check`, because it needs mrbc) compiles every Ruby block of the pages
   and every script of their samples with the mrbc of the bundled mruby,
@@ -684,8 +692,39 @@ npm run preview           # serves dist/ at http://localhost:4321/
 - `.github/workflows/site.yml` runs the checks and the generator's test on
   pull requests to `next` that touch `site/` or `docs/` and on every push
   to `next` (a push that removes a file that `docs/` links to fails
-  there), and uploads `site/dist/` as the artifact `site` and the
-  screenshots as the artifact `screenshots`. It does not deploy.
+  there), and uploads `site/dist/` as the artifact `site`, the
+  screenshots as the artifact `screenshots`, and `site/dist/` again with
+  `actions/upload-pages-artifact` as the artifact `github-pages`, a step
+  that runs only when every step before it passed.
+- Deployment (5.3 of the proposal). The job `deploy` of `site.yml` runs
+  after the job `build` passed, on a push to `next` and on a
+  `workflow_dispatch` on `next`, never for a pull request: it reads the
+  Pages settings with `actions/configure-pages`, stops unless they give
+  the origin `https://ngx.mruby.org`, and publishes the artifact
+  `github-pages` with `actions/deploy-pages` into the environment
+  `github-pages`, with only `pages: write` and `id-token: write`, one
+  deployment at a time. The repository settings are the owner's, made
+  once, in this order:
+  1. Settings, Pages, "Build and deployment": "Source" changed from
+     "Deploy from a branch" to "GitHub Actions", with the custom domain
+     `ngx.mruby.org` kept and "Enforce HTTPS" checked. `gh-pages` stays as
+     history.
+  2. Settings, Environments, `github-pages`: "Deployment branches" set to
+     "Selected branches and tags", with one rule added by "Add deployment
+     branch or tag rule", "Ref type" "Branch" and the name `next`
+     (`master` after the promotion), in place of any rule that setting 1
+     added.
+
+  Without setting 2, a workflow pushed on any branch could publish the
+  site. After the first deployment, and after a deployment that should
+  change what the site serves, a session builds the deployed commit and
+  runs `node scripts/check-live.mjs` (`npm run check:live`; not in CI):
+  `https://ngx.mruby.org/` answers 200 with the built `index.html`,
+  `http://` redirects to `https://`, the verification file answers 200
+  with its 54 bytes, `gh api` reads back the environment's branch policies
+  (only `next`) and that the latest deployment came from `next`, and
+  Lighthouse runs on the live home page with no failed accessibility
+  audit (`--no-gh` and `--no-lighthouse` leave those out).
 - `site/package.json` and `site/package-lock.json` pin exact versions:
   change them with `npm install --save-exact <package>@<version>` and
   commit both. Nothing that the build generates is committed:
