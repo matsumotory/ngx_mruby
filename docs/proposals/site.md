@@ -220,8 +220,10 @@ Docs, Agent proxy, Releases, Security, Contributing, GitHub.
   "no live version switcher". The header links each page's version to the
   other version's index.
 - Until v3.0.0, every 3.x page carries a banner: 3.x is in development, the
-  current release is 2.7.0, its documentation is under `/v2/`. Then the
-  banner moves to 2.x pages and gives the end of 2.x support.
+  current release is 2.x, its documentation is under `/v2/`; and every 2.x
+  page carries one that names 2.x the current release and links to the
+  3.x documentation (step 6). Then the 2.x banner gives the end of 2.x
+  support instead, and the 3.x pages carry none.
 - Items added or changed in 3.x say "New in 3.0" or "Changed in 3.0", as
   nginx.org and njs mark the version that introduced each directive.
 - Japanese pages live under `/ja/`, from `docs/ja/<path>.md`. An

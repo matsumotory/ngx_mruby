@@ -530,8 +530,11 @@ npm run preview           # serves dist/ at http://localhost:4321/
   history, like the 3.x build; locally, a worktree of `origin/master` does.
   The version link of the header leads from 3.x pages to `/v2/` and from
   2.x pages to `/docs/`. The checks of steps 1 to 5 read the 3.x pages
-  (`htmlFiles()` leaves `dist/v2/` out); `check-built-links.mjs` reads the
-  2.x pages too, so `npm run check` needs the 2.x build first.
+  (`htmlFiles()` leaves `dist/v2/` out), except `check-built-links.mjs`,
+  which reads the 2.x pages too, so `npm run check` needs the 2.x build
+  first, and `check-css.mjs`, which walks the HTML of `dist/v2/` as well
+  but reads the stylesheets of `dist/_astro/` only (those of
+  `dist/v2/_astro/` come from the same sources).
 - Samples and diagrams (3.5 of the proposal). A fenced block with the
   language `sample` in `docs/` names a case of `test/t/cases/` and its
   configuration, script, request and response files; the generator writes
@@ -573,7 +576,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
   Starlight's and Pagefind's own color variables from their stylesheets at
   build time, so that the built CSS holds only the tokens' colors.
 - The checks of the proposal (section 6) are scripts under `site/scripts/`
-  that exit 1 on a failure. `npm run check` runs the nine that need no
+  that exit 1 on a failure. `npm run check` runs the ten that need no
   browser; the first four take `--dist`, `--repo` and `--manifest` to run
   on a copy, `check-css.mjs` takes `--dist`, `check-home.mjs` `--dist` and
   `--repo`, and `check-diagrams.mjs` `--repo`:
@@ -632,7 +635,18 @@ npm run preview           # serves dist/ at http://localhost:4321/
   - `node scripts/check-diagrams.mjs`: the drawings hold lines and boxes
     only (no `<text>`, no color outside the tokens' classes), the source
     files and lines of each diagram exist at its commit, and the diagrams
-    whose lines changed since then are listed (also in the run summary).
+    whose lines changed since then are listed (also in the run summary);
+  - `node scripts/check-deploy.mjs [--dist DIR]`: the files of
+    `VERBATIM_FILES` in `scripts/lib/site.mjs`, the Google verification
+    file `googleba3435e4002729b6.html` that Q5 of the proposal keeps from
+    the old site, are in the built site with the 54 bytes and the SHA-256
+    of the `gh-pages` copy and equal to their copy in `public/`, no HTML
+    or JavaScript file names Google Analytics, Google Tag Manager or
+    `gtag` (Q6), and no `<script src>` of an HTML file points at another
+    host. It reads names and `src` attributes only: a loader that builds a
+    host name at run time, or an `import` from another host inside a
+    script, passes it. The checks of pages leave those files out
+    (`htmlFiles`).
   `node scripts/check-ruby-blocks.mjs --mrbc PATH` (not in `npm run
   check`, because it needs mrbc) compiles every Ruby block of the pages
   and every script of their samples with the mrbc of the bundled mruby,
@@ -714,21 +728,55 @@ npm run preview           # serves dist/ at http://localhost:4321/
   pull requests to `next` that touch `site/` or `docs/`, on every push
   to `next` (a push that removes a file that `docs/` links to fails
   there) and on `workflow_dispatch`, and uploads `site/dist/` (with
-  `dist/v2/`) as the artifact `site` and the screenshots as the artifact
-  `screenshots`. It checks out `master` with its whole history and builds
-  `/v2/` from it. It does not deploy.
+  `dist/v2/`) as the artifact `site`, the
+  screenshots as the artifact `screenshots`, and `site/dist/` again with
+  `actions/upload-pages-artifact` as the artifact `github-pages`, a step
+  that runs only when every step before it passed.
+  It checks out `master` with its whole history and builds `/v2/` from
+  it.
+- Deployment (5.3 of the proposal). The job `deploy` of `site.yml` runs
+  after the job `build` passed, on a push to `next` and on a
+  `workflow_dispatch` on `next`, in this repository only (not in forks),
+  never for a pull request: it reads the
+  Pages settings with `actions/configure-pages`, stops unless they give
+  the origin `https://ngx.mruby.org`, and publishes the artifact
+  `github-pages` with `actions/deploy-pages` into the environment
+  `github-pages`, with only `pages: write` and `id-token: write`, one
+  deployment at a time. The repository settings are the owner's, made
+  once, in this order:
+  1. Settings, Pages, "Build and deployment": "Source" changed from
+     "Deploy from a branch" to "GitHub Actions", with the custom domain
+     `ngx.mruby.org` kept and "Enforce HTTPS" checked. `gh-pages` stays as
+     history.
+  2. Settings, Environments, `github-pages`: "Deployment branches" set to
+     "Selected branches and tags", with one rule added by "Add deployment
+     branch or tag rule", "Ref type" "Branch" and the name `next`
+     (`master` after the promotion), in place of any rule that setting 1
+     added.
+
+  Without setting 2, a workflow pushed on any branch could publish the
+  site. After the first deployment, and after a deployment that should
+  change what the site serves, a session builds the deployed commit and
+  runs `node scripts/check-live.mjs` (`npm run check:live`; not in CI):
+  `https://ngx.mruby.org/` answers 200 with the built `index.html`,
+  `http://` redirects to `https://`, the verification file answers 200
+  with its 54 bytes, `gh api` reads back the environment's branch policies
+  (only `next`) and that the latest deployment came from `next`, and
+  Lighthouse runs on the live home page with no failed accessibility
+  audit (`--no-gh` and `--no-lighthouse` leave those out).
 - Two workflows on `master` serve the 2.x pages (5.3 of the proposal).
   `site-v2.yml` runs on every pull request to `master` (no path filter:
-  the 2.x pages link to files anywhere in the repository): it builds the site from `site/` of `next`, with the 3.x pages of `next` and
+  the 2.x pages link to files anywhere in the repository): it builds the
+  site from `site/` of `next`, with the 3.x pages of `next` and
   the 2.x pages from the pull request, and runs `check_links.py` on the
   sources of the 2.x pages, `check-built-links.mjs` and `check-v2.mjs`, so
   a pull request that breaks a `/v2/` link fails there. `site-dispatch.yml`
   runs on every push to `master` and starts `site.yml` on `next` with
   `gh workflow run site.yml --ref next` and the job's `GITHUB_TOKEN`
   (`actions: write`); it fails when it cannot name the run that the
-  dispatch started. A
-  change to `site/` that breaks `/v2/` fails `site.yml` on its pull
-  request to `next`, which builds `/v2/` from `master`.
+  dispatch started. A change to `site/` that breaks `/v2/` fails
+  `site.yml` on its pull request to `next`, which builds `/v2/` from
+  `master`.
 - `site/package.json` and `site/package-lock.json` pin exact versions:
   change them with `npm install --save-exact <package>@<version>` and
   commit both. Nothing that the build generates is committed:

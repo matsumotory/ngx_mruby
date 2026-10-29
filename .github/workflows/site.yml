@@ -1,11 +1,16 @@
 name: site
 
-# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and steps 1 to 6 of
+# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and steps 1 to 7 of
 # section 6): build site/ and docs/ from a fresh clone, and the 2.x pages
 # under /v2/ from docs/ of master, run the checks of steps 1 to 6, and
 # upload the built site and the screenshots of step 3 as workflow
-# artifacts. There is no deployment job: step 7 adds it, after the
-# Pages settings of 5.3.
+# artifacts. On next (a push, or a workflow_dispatch such as the one
+# that site-dispatch.yml on master starts after every push there),
+# the deploy job publishes the built site to GitHub Pages at
+# https://ngx.mruby.org/ once every check has passed (step 7). Pull requests
+# never deploy. The Pages settings of 5.3 (the source "GitHub Actions", and
+# the github-pages environment limited to next) are the owner's; "The site"
+# in AGENTS.md lists them.
 #
 # Pull requests run it when they touch site/, docs/ or this file. Every push
 # to next runs it: docs/ links to files outside docs/ and site/, and a link
@@ -13,11 +18,10 @@ name: site
 # removes or renames such a file fails here, on that merge, and not on the
 # next pull request that touches docs/.
 #
-# A push to master that changes the 2.x pages starts it on next through
-# site-dispatch.yml of master (workflow_dispatch), so that /v2/ is built
-# again from the new docs/ of master. Pull requests to master that change
-# them run site-v2.yml of master, which builds the same site with the
-# pull request's docs/.
+# Every push to master starts it on next through site-dispatch.yml of
+# master (workflow_dispatch), so that /v2/ is built again from the new
+# docs/ of master. Every pull request to master runs site-v2.yml of
+# master, which builds the same site with the pull request's docs/.
 on:
   pull_request:
     branches:
@@ -163,6 +167,13 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-reference.mjs
+      # Step 7: the Google verification file of the old site at its URL,
+      # with the 54 bytes of the gh-pages copy (Q5), and no analytics
+      # script and no script from another host in the built site (Q6).
+      - name: Check the files kept from the old site and that no analytics script is built
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-deploy.mjs
       # Step 4: every Ruby block of the pages compiles with the mrbc of the
       # bundled mruby, built alone (about ten seconds).
       - name: Build mrbc from the bundled mruby
@@ -236,3 +247,56 @@ jobs:
           name: site
           path: ${{ runner.temp }}/fresh/site/dist
           if-no-files-found: error
+      # The artifact that the deploy job publishes, uploaded on every run so
+      # that pull requests exercise the step. Without an if, it runs only
+      # when every step above passed, so a failed check never reaches the
+      # deploy job.
+      - name: Upload the built site for GitHub Pages
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ runner.temp }}/fresh/site/dist
+
+  # Step 7: publish the artifact of the build job to GitHub Pages. It runs
+  # only in this repository (not in forks), only on next, never for a pull request (github.ref is then
+  # refs/pull/...), and only after the build job and all its checks passed.
+  # The github-pages environment allows deployments from next only
+  # (setting 2 of 5.3), so a workflow pushed on another branch cannot
+  # publish the site even if it names the environment.
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: ${{ github.repository == 'matsumotory/ngx_mruby' && github.ref == 'refs/heads/next' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # One deployment at a time; a newer run waits instead of cancelling one
+    # that is publishing.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    # The permissions that actions/deploy-pages names (its README,
+    # "Security considerations"): pages to create the deployment, id-token
+    # for the OIDC token that proves the run to Pages.
+    permissions:
+      pages: write # create the Pages deployment
+      id-token: write # request the OIDC token for the deployment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # Reads the Pages settings; the origin must be the custom domain over
+      # https (setting 1 of 5.3), or the deployment would publish the site
+      # at another address.
+      - name: Read the Pages settings
+        id: pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - name: Check that Pages serves https://ngx.mruby.org
+        env:
+          ORIGIN: ${{ steps.pages.outputs.origin }}
+        run: |
+          if [ "$ORIGIN" != 'https://ngx.mruby.org' ]; then
+            echo "::error::GitHub Pages reports the origin '$ORIGIN', not https://ngx.mruby.org: check the custom domain and Enforce HTTPS in the Pages settings"
+            exit 1
+          fi
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

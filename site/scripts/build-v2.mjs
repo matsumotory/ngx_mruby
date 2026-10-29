@@ -26,16 +26,20 @@
 //
 // Afterwards dist/v2/ holds the 2.x pages, without the 404 page (GitHub
 // Pages serves /404.html for every path without a file, /v2/ paths
-// included), and generated/pages-v2.json the list of them, which
+// included) and without the copies of VERBATIM_FILES, which the site
+// serves at its top only, and generated/pages-v2.json the list of them,
+// which
 // scripts/check-v2.mjs reads. Run npm run build first: the 3.x build
-// removes generated/ and dist/.
+// removes generated/ and dist/. The previous dist/v2/ and the list are
+// removed first, and the copy of site/ also when the build fails, so that
+// a failed build leaves no 2.x pages for the checks to read.
 //
 // Exit status: 0 when the build succeeds, 1 when it fails, 2 on a usage
 // error.
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { distDir, manifestFile, siteDir, V2_DIR, v2ManifestFile } from './lib/site.mjs';
+import { distDir, manifestFile, siteDir, V2_DIR, v2ManifestFile, VERBATIM_FILES } from './lib/site.mjs';
 
 const me = 'build-v2';
 function usage(message) {
@@ -43,7 +47,9 @@ function usage(message) {
   console.error('usage: node scripts/build-v2.mjs --tree DIR');
   process.exit(2);
 }
+const stage = path.join(siteDir, 'generated', 'v2-site');
 function fail(message) {
+  fs.rmSync(stage, { recursive: true, force: true });
   console.error(`${me}: ${message}`);
   process.exit(1);
 }
@@ -66,7 +72,9 @@ if (!fs.existsSync(path.join(distDir, 'index.html')) || !fs.existsSync(manifestF
 // The copy of site/: what the build reads, without what npm ci, the 3.x
 // build and the checks wrote, and without the home pages and the pages
 // that the generator wrote for 3.x.
-const stage = path.join(siteDir, 'generated', 'v2-site');
+const target = path.join(distDir, V2_DIR);
+fs.rmSync(target, { recursive: true, force: true });
+fs.rmSync(v2ManifestFile, { force: true });
 fs.rmSync(stage, { recursive: true, force: true });
 const skip = new Set(['node_modules', 'dist', 'generated', '.astro', 'build-screenshots', 'offline-build.log']);
 const content = path.join(siteDir, 'src', 'content', 'docs');
@@ -93,8 +101,7 @@ const built = path.join(stage, 'dist');
 if (!fs.existsSync(path.join(built, 'index.html'))) fail('the 2.x build wrote no index.html');
 if (!fs.existsSync(path.join(built, 'pagefind'))) fail('the 2.x build wrote no search index (pagefind/)');
 fs.rmSync(path.join(built, '404.html'), { force: true });
-const target = path.join(distDir, V2_DIR);
-fs.rmSync(target, { recursive: true, force: true });
+for (const { file } of VERBATIM_FILES) fs.rmSync(path.join(built, file), { force: true });
 fs.cpSync(built, target, { recursive: true });
 const pages = JSON.parse(fs.readFileSync(path.join(stage, 'generated', 'pages.json'), 'utf8'));
 fs.writeFileSync(v2ManifestFile, `${JSON.stringify({ tree, commit, pages }, null, 2)}\n`);
