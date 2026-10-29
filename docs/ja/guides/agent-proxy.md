@@ -8,7 +8,7 @@
 
 次に示す設定は、同じレシピで、両方のAPIを処理します。プロキシの後ろには、2つのAPIのモックがあります。モックは`test/soak/mock_llm.rb`で、テストのクライアントがポート12372と12373で起動します。
 
-- server rewriteハンドラの`agent_proxy_auth.rb`は、`Authorization`の`Bearer`か`x-api-key`から、クライアントのキーを探します。既知でないキーには401を返し、nginxは`error_page 401 @agent_proxy_401`に従って、APIのエラーの形式のJSONのボディを付けます。このリクエストはupstreamに届きません。
+- server rewriteハンドラの`agent_proxy_auth.rb`は、`Authorization`の`Bearer`か`x-api-key`から、クライアントのキーを探します。既知でないキーには401を返します。nginxは、`error_page 401 @agent_proxy_401`に従って、そのレスポンスにAPIのエラーの形式のJSONのボディを付けます。このリクエストはupstreamに届かずに終わります。
 - クライアントのキーごとに数える`limit_conn`は、同時に1つのリクエストだけを許します。1つ目のレスポンスがストリームで届いている間に同じキーで送った2つ目のリクエストには、JSONのボディと`retry-after`の付いた429が返ります。この429は、どのupstreamも送らないステータス460を経由して返すので、upstream自身の429はそのまま通ります。
 - accessハンドラの`agent_proxy_route.rb`は、JSONのボディの`model`を読んでupstreamブロックを選び、クライアントの認証情報の代わりにupstreamが受け取る認証情報を設定します。upstreamの無いモデルには403を返します。
 - `proxy_buffering off`にした`proxy_pass`は、レスポンスを届くたびに中継します。529のようなupstreamのエラーは、ボディとともにクライアントに届きます。
@@ -96,7 +96,7 @@ upgrade: ステップ7e：<wbr>参照実装の<wbr>プロキシは、<wbr>Respon
 
 ## リクエスト<wbr>あたりの<wbr>コスト
 
-perfのレーンの`test/perf/compare.sh`は、nginxがリクエストごとに実行する命令の数を、callgrindで数えます。`test/soak/handlers/`にあるレーンのハンドラの`agent_auth.rb`と`agent_route.rb`は、レーン自身の設定で、上のレシピと同じようにクライアントのキーを探し、ボディの`model`で振り分けます。測った日は2026年10月14日です。条件は、`PERF_N=20000`、nginx 1.31.6、aarch64のUbuntu 22.04のコンテナです。測ったツリーは、mruby 4.0.0にした#561の後の、`next`のコミット`bc2488a`です。結果は次のとおりです。
+perfのレーンの`test/perf/compare.sh`は、nginxがリクエストごとに実行する命令の数を、callgrindで数えます。`test/soak/handlers/`にあるレーンのハンドラの`agent_auth.rb`と`agent_route.rb`は、レーン自身の設定で、上のレシピと同じようにクライアントのキーを探し、ボディの`model`で振り分けます。測った日は2026年10月14日です。条件は、`PERF_N=20000`、nginx 1.31.6、aarch64のUbuntu 22.04のコンテナです。測ったのは、`next`のコミット`bc2488a`のツリーに、#561のmruby 4.0.0を入れたものです。結果を次に示します。
 
 | 測った処理 | リクエストあたりの命令の数。括弧の中はGCを除いた数 |
 |---|---|

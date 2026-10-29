@@ -1,6 +1,6 @@
 # アクセスを拒否する
 
-accessハンドラは、locationのcontentの前に、nginxのaccessフェーズで動きます。そこで動くスクリプトは、403のようなステータスでリクエストを終えるか、ステータスを設定せずに戻ってリクエストを先へ進めます。詳しくは[`mruby_access_handler`](../../directives/README.md#mruby_access_handler-and-mruby_access_handler_code)にあります。
+accessハンドラは、locationのcontentの前に、nginxのaccessフェーズで動きます。そこで動くスクリプトは、403のようなステータスでリクエストを終えるか、ステータスを設定せずに戻ってリクエストを先へ進めます。詳しくは[`mruby_access_handler`](../../directives/README.md#mruby_access_handler-and-mruby_access_handler_code)にあります。このガイドでは、ファイルに載せたクライアントを、accessハンドラで拒否します。
 
 ## サンプル
 
