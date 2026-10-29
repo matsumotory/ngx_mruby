@@ -35,26 +35,24 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-29 (13:52 JST)
+## State as of 2026-10-29 (14:40 JST)
 
-Heads: `next` is `2969426f6`, the merge of #625 (this file and the state
-of site step 4 in `docs/proposals/site.md`); before it, on its first
-parent, `69b245bdb` (#623), `807865280` (#622), `ca7b473b0` (#621),
+Heads: `next` is `c9c49023e`, the merge of #628 (`master` at `93432cf69`
+into `next`, with #616, #624 and #627); before it, on its first parent,
+`2969426f6` (#625, this file and the state of site step 4 in
+`docs/proposals/site.md`), `69b245bdb` (#623), `807865280` (#622), `ca7b473b0` (#621),
 `28faff6c2` (#620), `ac7d569c3` (#619), `d5548db41` (#618), `dbe4acf5b`
 (#617), `0d1b3d756` (#600), `571212d58` (#614), `5ca7c955b` (#606) and
 `216df0ceb` (#615, `master` at `6b27f08da` into `next`). `master` is
 `93432cf69`, the merge of #627; before it, `d5ae75547`, the merge of #624.
-[#628](https://github.com/matsumotory/ngx_mruby/pull/628) merges `master`
-at `93432cf69` into `next`, with #616, #624 and #627, and records this
-state; once it is merged, `next` has every commit of `master`. `v2.x` is
+`next` has every commit of `master` since #628. `v2.x` is
 `93432cf69` (`git ls-remote origin refs/heads/v2.x`), so it mirrors
 `master`.
 
 2.7.2 was released on 2026-10-29: the tag `v2.7.2` is on `d5ae75547`, the
 merge of #624 into `master`, and the release was published at 13:26 JST.
 Its release notes are `docs/releases/v2.7.2.md` and
-`docs/releases/v2.7.2.ja.md`, on `next` with the same content once #628 is
-merged. 2.7.1 was released on 2026-10-19: the tag `v2.7.1` is on
+`docs/releases/v2.7.2.ja.md`, on `next` with the same content since #628. 2.7.1 was released on 2026-10-19: the tag `v2.7.1` is on
 `ce5eb11`, the merge of the 2.7.1 changes into `master`. Its release notes
 are `docs/releases/v2.7.1.md` and `docs/releases/v2.7.1.ja.md`. The next
 2.x release has no file of release notes yet; the first pull request to
@@ -65,7 +63,10 @@ Merged on 2026-10-29 (JST) after 13:20, into `master`: #624 (the 2.7.2
 release: #594 and the other changes of the release; merged at 13:25,
 `d5ae75547`; GitHub marks #594 merged with it) and #627 (the two sentences
 of `README.md` "Branch strategy" in the present; 13:52, `93432cf69`). Into
-`next`: #625 (this file; 13:40, `2969426f6`).
+`next`: #625 (this file; 13:40, `2969426f6`) and #628 (`master` at
+`93432cf69` into `next`; 14:26, `c9c49023e`; its description lists the
+conflicts, how they were resolved, and the test ports of `master` that it
+moved on `next`).
 
 Merged on 2026-10-29 (JST) after 01:20, into `next`: #615 (`master` at
 `6b27f08da` into `next`; merged at 01:46, `216df0ceb`), #606 (mruby-redis in the default build of `next` again,
@@ -166,7 +167,7 @@ lines and the Japanese file of the release notes, `b017496`) and #578 (the
 --state merged --base next --search 'merged:>=2026-10-03' --limit 200`, and
 the same with `--base master`. Each pull request says what it changed.
 
-Open pull requests, all drafts (`gh pr list --state open` at 13:52 JST; the table leaves out #628, the merge of `master` into `next` that writes it):
+Open pull requests, all drafts (`gh pr list --state open` at 14:40 JST; the table leaves out #633, which writes it, and #629 to #632 of site step 5, which add their own rows):
 
 | PR | Base | Change | Stage |
 |---|---|---|---|
@@ -235,7 +236,7 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The next merge into `master`: #628 brings `master` at `93432cf69` (#616, #624 and #627) |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The next merge into `master`: `next` has every commit of `master` since #628 (`c9c49023e`) |
 | The output body filter that ends with an empty body sends a zero size buffer marked as memory, and the client gets no byte (`Nginx::Filter#output ""`, pinned by `test/t/cases/filter_connection.rb` on `master`): the same change to `ngx_mrb_finalize_body_filter` as in #574, as a 2.x stability fix | `master` (reaches `next` by the merge) | The owner's answer to the question on #574 |
 | `Nginx::Async.sleep` in a content handler ends the request without any response, with or without output after the sleep (found while testing #574). 2.7.1 documents it under "Known limitations" of `docs/releases/v2.7.1.md`, which plans a later release that lets a content handler wait. To do: raise there as the output filters do, or let nginx wait for the timer | `master`, which has it too (it reaches `next` by the merge) | Ready to start: a test commit, then a fix commit |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output still sets status 500, where nginx's `return 200;` gives 200. Answering 200 there would make `auth_request` allow such a request (#574 keeps the 500) | `next` | The owner's decision (the question on #574) |
