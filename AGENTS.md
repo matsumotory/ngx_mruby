@@ -608,9 +608,12 @@ npm run preview           # serves dist/ at http://localhost:4321/
     `VERBATIM_FILES` in `scripts/lib/site.mjs`, the Google verification
     file `googleba3435e4002729b6.html` that Q5 of the proposal keeps from
     the old site, are in the built site with the 54 bytes and the SHA-256
-    of the `gh-pages` copy and equal to their copy in `public/`, and no
-    HTML or JavaScript file names an analytics script (Q6) or loads a
-    script from another host. The checks of pages leave those files out
+    of the `gh-pages` copy and equal to their copy in `public/`, no HTML
+    or JavaScript file names Google Analytics, Google Tag Manager or
+    `gtag` (Q6), and no `<script src>` of an HTML file points at another
+    host. It reads names and `src` attributes only: a loader that builds a
+    host name at run time, or an `import` from another host inside a
+    script, passes it. The checks of pages leave those files out
     (`htmlFiles`).
   `node scripts/check-ruby-blocks.mjs --mrbc PATH` (not in `npm run
   check`, because it needs mrbc) compiles every Ruby block of the pages
@@ -698,7 +701,8 @@ npm run preview           # serves dist/ at http://localhost:4321/
   that runs only when every step before it passed.
 - Deployment (5.3 of the proposal). The job `deploy` of `site.yml` runs
   after the job `build` passed, on a push to `next` and on a
-  `workflow_dispatch` on `next`, never for a pull request: it reads the
+  `workflow_dispatch` on `next`, in this repository only (not in forks),
+  never for a pull request: it reads the
   Pages settings with `actions/configure-pages`, stops unless they give
   the origin `https://ngx.mruby.org`, and publishes the artifact
   `github-pages` with `actions/deploy-pages` into the environment

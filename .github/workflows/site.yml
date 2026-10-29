@@ -228,7 +228,7 @@ jobs:
           path: ${{ runner.temp }}/fresh/site/dist
 
   # Step 7: publish the artifact of the build job to GitHub Pages. It runs
-  # only on next, never for a pull request (github.ref is then
+  # only in this repository (not in forks), only on next, never for a pull request (github.ref is then
   # refs/pull/...), and only after the build job and all its checks passed.
   # The github-pages environment allows deployments from next only
   # (setting 2 of 5.3), so a workflow pushed on another branch cannot
@@ -236,7 +236,7 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: build
-    if: ${{ github.ref == 'refs/heads/next' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    if: ${{ github.repository == 'matsumotory/ngx_mruby' && github.ref == 'refs/heads/next' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     # One deployment at a time; a newer run waits instead of cancelling one
