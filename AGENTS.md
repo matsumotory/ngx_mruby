@@ -489,7 +489,12 @@ npm run preview           # serves dist/ at http://localhost:4321/
   configuration, script, request and response files; the generator writes
   them as code blocks with a line that names the case and the date of the
   last commit to them (`scripts/lib/samples.mjs`; the home pages use
-  `src/components/Sample.astro`). A fenced block with the language
+  `src/components/Sample.astro`). A block may name several scripts, and,
+  for a case whose client prints values instead of whole responses, files
+  of the compared values (`compared:`) in place of the request and the
+  response. `label: development` in a sample or diagram block marks a
+  feature of v3 before v3.0.0 with the label "Development version, New in
+  3.0". A fenced block with the language
   `diagram` names a drawing `src/diagrams/<name>.svg` (and
   `<name>.narrow.svg`), its caption, the source lines it describes and
   their commit (`at:`), and the labels as `key: text`; the generator
@@ -545,10 +550,13 @@ npm run preview           # serves dist/ at http://localhost:4321/
   - `node scripts/check-home.mjs`: the home pages show the files that the
     example's case compares, with the case, the date and the commit, and
     no benchmark image or performance figure (Q8);
-  - `node scripts/check-samples.mjs [--repo DIR]`: every sample block of the pages
-    names a case of `test/t/cases/` and files that exist, and every use
-    case of `docs/use_case/README.md` has a sample, a link to a page with
-    one, or a paragraph "**Untested.**" with the reason (3.5);
+  - `node scripts/check-samples.mjs [--repo DIR] [--dist DIR]`: every
+    sample block of the pages names a case of `test/t/cases/` and files
+    that exist, every use case of `docs/use_case/README.md` has a sample,
+    a link to a page with one, or a paragraph "**Untested.**" with the
+    reason (3.5), and every sample and diagram block of the agent proxy
+    page carries `label: development`, shown once for each in the built
+    page;
   - `node scripts/check-reference.mjs [--repo DIR]`: every directive of
     the `ngx_command_t` tables of `src/` has a heading in
     `docs/directives/README.md`, `mruby_output_filter` appears in `docs/`

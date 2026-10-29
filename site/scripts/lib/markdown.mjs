@@ -93,7 +93,7 @@ export function textPieces(tree, source, skip) {
           let caption = '';
           for (const l of node.value.split('\n').slice(1)) {
             const m = /^([a-z0-9-]+):\s*(.*)$/.exec(l);
-            if (!m || ['source', 'nginx', 'at'].includes(m[1])) continue;
+            if (!m || ['source', 'nginx', 'at', 'label'].includes(m[1])) continue;
             const text = m[2].replace(/<wbr>/g, '').replace(/`/g, '');
             if (m[1] === 'caption') caption = text;
             else pieces.push({ text, line });

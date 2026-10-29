@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 544 476" preserveAspectRatio="none" data-labels="leg-now leg-next leg-later own-errors models pass upstream-errors upgrade">
+  <!-- The agent proxy endpoints diagram, wide arrangement (docs/guides/agent-proxy.md): a legend of the three symbols of the owner's practice (a filled circle for what exists today, a ring for the next step, a dashed ring for a later one), then one box per step with the symbol of its status; the boxes are kinds of request, not a sequence, and no line joins them. The grid of agent-proxy-endpoints.css is 544 px (34rem) wide, so the drawing keeps its proportions. The labels are HTML text. -->
+  <circle class="d-now" cx="12" cy="14" r="6" />
+  <circle class="d-next" cx="12" cy="42" r="6" />
+  <circle class="d-later" cx="12" cy="70" r="6" />
+  <rect class="d-box" x="32" y="100" width="512" height="56" />
+  <circle class="d-now" cx="12" cy="128" r="6" />
+  <rect class="d-box" x="32" y="180" width="512" height="56" />
+  <circle class="d-later" cx="12" cy="208" r="6" />
+  <rect class="d-box" x="32" y="260" width="512" height="56" />
+  <circle class="d-now" cx="12" cy="288" r="6" />
+  <rect class="d-box" x="32" y="340" width="512" height="56" />
+  <circle class="d-now" cx="12" cy="368" r="6" />
+  <rect class="d-box" x="32" y="420" width="512" height="56" />
+  <circle class="d-later" cx="12" cy="448" r="6" />
+</svg>

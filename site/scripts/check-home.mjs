@@ -16,7 +16,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { elements, hasClass, readHtml, textContent, visibleText } from './lib/html.mjs';
-import { loadSample, SAMPLE_KEYS } from './lib/samples.mjs';
+import { loadSample, specFromProps } from './lib/samples.mjs';
 import { HOME_PAGES } from './lib/site.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -69,7 +69,7 @@ function main() {
       const spec = Object.fromEntries([...tag[1].matchAll(/(\w+)="([^"]*)"/g)].map((m) => [m[1], m[2]]));
       let sample;
       try {
-        sample = loadSample(Object.fromEntries(SAMPLE_KEYS.map((k) => [k, spec[k]])), opt.repo, where);
+        sample = loadSample(specFromProps(spec), opt.repo, where);
       } catch (e) {
         problems.push(e.message);
         continue;

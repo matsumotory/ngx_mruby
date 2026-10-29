@@ -1,0 +1,102 @@
+/*
+ * The agent proxy endpoints diagram (docs/guides/agent-proxy.md; 3.5 of
+ * docs/proposals/site.md, the agent proxy diagrams of v3): the grids that
+ * place the labels of the page over the drawings agent-proxy-endpoints.svg (wide) and
+ * agent-proxy-endpoints.narrow.svg (narrow). Narrow: the legend and the steps, one label
+ * below the other beside a line, each label starting with its status in
+ * words. Wide, from a figure width of 36rem: a grid of a fixed 34rem, a
+ * 2rem column of the symbols of the legend and of each step, and the boxes
+ * of the steps with the rows of the drawing (16 px to the rem), so that the
+ * drawing is not stretched.
+ */
+.diagram-agent-proxy-endpoints .diagram-grid {
+  grid-template-columns: 1rem minmax(0, 1fr);
+  grid-template-areas:
+    ". own-errors"
+    ". models"
+    ". pass"
+    ". upstream-errors"
+    ". upgrade";
+  row-gap: var(--space-3);
+}
+.diagram-agent-proxy-endpoints .diagram-drawing-narrow {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+.diagram-agent-proxy-endpoints .diagram-drawing-wide {
+  display: none;
+}
+.diagram-agent-proxy-endpoints :is([data-key="leg-now"], [data-key="leg-next"], [data-key="leg-later"]) {
+  color: var(--color-text-muted);
+}
+/* Below 36rem the labels start with their status in words, and the
+   legend of the symbols, which this arrangement does not draw, is left out
+   (it has no row there) so that the diagram fits the screen at 390 by 664
+   px (3.5) */
+.diagram-agent-proxy-endpoints :is([data-key="leg-now"], [data-key="leg-next"], [data-key="leg-later"]) {
+  display: none;
+}
+.diagram-agent-proxy-endpoints .diagram-label code {
+  white-space: nowrap;
+}
+@container diagram (min-width: 36rem) {
+  .diagram-agent-proxy-endpoints .diagram-grid {
+    width: 34rem;
+    grid-template-columns: 2rem 32rem;
+    grid-template-rows: 1.75rem 1.75rem 1.75rem 1rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem;
+    grid-template-areas:
+      ". leg-now"
+      ". leg-next"
+      ". leg-later"
+      ". ."
+      ". own-errors"
+      ". ."
+      ". models"
+      ". ."
+      ". pass"
+      ". ."
+      ". upstream-errors"
+      ". ."
+      ". upgrade";
+    row-gap: 0;
+  }
+  .diagram-agent-proxy-endpoints .diagram-drawing-wide {
+    display: block;
+    grid-area: 1 / 1 / -1 / -1;
+  }
+  .diagram-agent-proxy-endpoints .diagram-drawing-narrow {
+    display: none;
+  }
+  .diagram-agent-proxy-endpoints .diagram-label {
+    align-self: center;
+    padding-inline: var(--space-3);
+  }
+  .diagram-agent-proxy-endpoints :is([data-key="leg-now"], [data-key="leg-next"], [data-key="leg-later"]) {
+    display: block;
+    padding-inline: var(--space-2);
+  }
+}
+.diagram-agent-proxy-endpoints [data-key="leg-now"] {
+  grid-area: leg-now;
+}
+.diagram-agent-proxy-endpoints [data-key="leg-next"] {
+  grid-area: leg-next;
+}
+.diagram-agent-proxy-endpoints [data-key="leg-later"] {
+  grid-area: leg-later;
+}
+.diagram-agent-proxy-endpoints [data-key="own-errors"] {
+  grid-area: own-errors;
+}
+.diagram-agent-proxy-endpoints [data-key="models"] {
+  grid-area: models;
+}
+.diagram-agent-proxy-endpoints [data-key="pass"] {
+  grid-area: pass;
+}
+.diagram-agent-proxy-endpoints [data-key="upstream-errors"] {
+  grid-area: upstream-errors;
+}
+.diagram-agent-proxy-endpoints [data-key="upgrade"] {
+  grid-area: upgrade;
+}

@@ -14,6 +14,7 @@
 - [Migrating from ngx_mruby 2.x to 3.0.0](./migration): the steps for the behavior changes of v3.0.0
 - Guides: [Route requests to a backend](./guides/routing.md), [Deny clients listed in a file](./guides/access-control.md), [Limit the rate per API key](./guides/rate-limit.md), [Change a response body](./guides/body-filter.md), [Allow TCP connections in Ruby](./guides/tcp.md)
 - [Use cases](./use_case): each with a sample that CI runs, or marked untested with the reason
+- [Agent proxy](./guides/agent-proxy.md): the recipes of an LLM agent proxy that run on `next` today, and the plan for v3.0 (development version)
 - [Concepts](./concepts/README.md): [request phases](./concepts/request-phases.md), [filters](./concepts/filters.md), [waiting without blocking](./concepts/async.md) and [lifetimes](./concepts/lifetimes.md)
 - [Release notes](./releases): read "Behavior changes" before upgrading
 - [Trust boundary](#trust-boundary): what ngx_mruby trusts, what it treats as client input, and what a script is responsible for

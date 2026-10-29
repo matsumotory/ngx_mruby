@@ -17,14 +17,18 @@
 // caption's lines: what the diagram shows (also its aria-label), the files
 // and lines of this repository that it describes, the lines of nginx's
 // source, and the commit and date at which the lines were read. Every other
-// line is a label, `key: text`; the keys are the ones that the drawings
+// line is a label, `key: text`, except `label: development`, which marks a
+// diagram of a feature of v3 before v3.0.0; the keys are the ones that the drawings
 // list in their data-labels attribute, and the generator stops on a block
 // whose keys differ. In a label, `code` is set in the monospace face and
 // <wbr> marks a phrase boundary (Japanese labels, 4.4).
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const CAPTION_KEYS = ['caption', 'source', 'nginx', 'at'];
+export const CAPTION_KEYS = ['caption', 'source', 'nginx', 'at', 'label'];
+// The label of a diagram of a feature of v3 before v3.0.0 (3.4, 3.5):
+// label: development
+export const DEVELOPMENT_LABEL = { en: 'Development version, New in 3.0', ja: '開発中のバージョン、3.0で追加' };
 
 export function diagramsDir(siteDir) {
   return path.join(siteDir, 'src', 'diagrams');
@@ -34,7 +38,7 @@ export function parseDiagramBlock(text, where) {
   const lines = text.split('\n');
   const name = (lines.shift() ?? '').trim();
   if (!/^[a-z0-9-]+$/.test(name)) throw new Error(`${where}: the first line of a diagram block names its drawing (a-z, 0-9 and "-"), not "${name}"`);
-  const block = { name, caption: '', sources: [], nginx: [], at: null, labels: new Map() };
+  const block = { name, caption: '', sources: [], nginx: [], at: null, label: null, labels: new Map() };
   for (const [i, line] of lines.entries()) {
     if (!line.trim()) continue;
     const m = /^([a-z0-9-]+):\s*(.*\S)\s*$/.exec(line);
@@ -49,6 +53,9 @@ export function parseDiagramBlock(text, where) {
       const [version, file, ...ranges] = value.split(/\s+/);
       if (!/^\d+\.\d+\.\d+$/.test(version ?? '')) throw new Error(`${where}: the diagram block ${name}: "nginx:" starts with nginx's version, not "${version}"`);
       block.nginx.push({ version, ...parseSource([file, ...ranges].join(' '), `${where}: the diagram block ${name}, nginx`) });
+    } else if (key === 'label') {
+      if (value !== 'development') throw new Error(`${where}: the label of the diagram block ${name} is development, not ${value}`);
+      block.label = value;
     } else if (key === 'at') {
       const am = /^([0-9a-f]{7,40})\s+(\d{4}-\d{2}-\d{2})$/.exec(value);
       if (!am) throw new Error(`${where}: the diagram block ${name}: "at:" is a commit and its date (YYYY-MM-DD), not "${value}"`);
@@ -175,5 +182,6 @@ function inlineSvg(svg, arrangement) {
 export function diagramHtml(block, drawings, lang) {
   const labels = [...block.labels].map(([key, text]) => `<div class="diagram-label" data-key="${key}">${labelHtml(text)}</div>`).join('');
   const svgs = drawings.map((d) => inlineSvg(d.svg, d.arrangement)).join('');
-  return `<figure class="diagram diagram-${block.name} not-content"><div class="diagram-grid" role="img" aria-label="${escapeHtml(plainLabel(block.caption))}">${svgs}${labels}</div><figcaption>${captionHtml(block, lang)}</figcaption></figure>`;
+  const development = block.label === 'development' ? `<p class="caption development-label">${DEVELOPMENT_LABEL[lang === 'ja' ? 'ja' : 'en']}</p>` : '';
+  return `<figure class="diagram diagram-${block.name} not-content">${development}<div class="diagram-grid" role="img" aria-label="${escapeHtml(plainLabel(block.caption))}">${svgs}${labels}</div><figcaption>${captionHtml(block, lang)}</figcaption></figure>`;
 }

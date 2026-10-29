@@ -37,7 +37,7 @@ function args() {
 }
 
 const ELEMENTS = new Set(['svg', 'g', 'rect', 'line', 'path', 'circle', 'ellipse', 'polyline', 'polygon']);
-const CLASSES = new Set(['d-box', 'd-line', 'd-mark', 'd-quiet']);
+const CLASSES = new Set(['d-box', 'd-line', 'd-mark', 'd-quiet', 'd-now', 'd-next', 'd-later']);
 const ATTRIBUTES = new Set(['xmlns', 'viewBox', 'preserveAspectRatio', 'data-labels', 'class', 'x', 'y', 'width', 'height', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'd', 'points']);
 
 export function checkDrawing(file, svg) {
