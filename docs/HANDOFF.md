@@ -57,10 +57,10 @@ changes" since the merge of `master` at `6b27f08da`.
 
 Merged on 2026-10-29 (JST) after 01:20, into `next`: #615 (`master` at
 `6b27f08da` into `next`; merged at 01:46, `216df0ceb`), #606 (mruby-redis in the default build of `next` again,
-pinned in `build_config.rb.lock` at `8d9391049`; 02:11, `5ca7c955b`), #600
+pinned in `build_config.rb.lock` at `8d9391049`; 02:11, `5ca7c955b`), #614
+(the Pagefind result titles at a size of the scale, and the search check
+with the results loading and loaded; 03:38, `571212d58`), #600
 (the OpenAI Responses API in the mock LLM upstream; 05:30, `0d1b3d756`),
-#614 (the Pagefind result titles at a size of the scale, and the search
-check with the results loading and loaded; 03:38, `571212d58`),
 #617 (site step 3; 05:58, `dbe4acf5b`) and the six parts of site step 4,
 #618 to #623 (12:02 to 13:13, `d5548db41` to `69b245bdb`; the site row of
 "Queue" lists them). Into `master`: #616 (the check of the 2.7.2 release
@@ -159,12 +159,19 @@ Open pull requests, all drafts (`gh pr list --state open` at 13:20 JST; the tabl
 | PR | Base | Change | Stage |
 |---|---|---|---|
 | [#594](https://github.com/matsumotory/ngx_mruby/pull/594) | `master` | Send the output with the status set after it when nginx would not answer it (the case that #566 leaves without a response) | A draft. [#624](https://github.com/matsumotory/ngx_mruby/pull/624) merges its branch; it is closed once #624 is merged. Other sessions do not merge it. |
-| [#624](https://github.com/matsumotory/ngx_mruby/pull/624) | `master` | The 2.7.2 release: merges #594 and the other changes of the release onto `master` at `f70b24031` | A draft, owned by the session that prepares the release, which merges it and tags `v2.7.2`. Other sessions do not merge it. |
+| [#624](https://github.com/matsumotory/ngx_mruby/pull/624) | `master` | The 2.7.2 release: merges #594 and the other changes of the release onto `master` at `f70b24031` | A draft, owned by the session that prepares the release. That session merges it, tags `v2.7.2` and publishes the release, as the owner decided on 2026-10-29 (see "Decisions"). Other sessions do not merge it. |
 
 ## Decisions
 
 Decisions of the owner that are not yet written in the place their row
-names: none. The choices among the options of 4.12 of the site proposal
+names: one. On 2026-10-29 at 05:34 JST, in a session's question on who
+merges the pull request of the 2.7.2 release, tags `v2.7.2` and publishes
+the release, the owner chose "セッションが進める (推奨)" ("the session goes
+ahead"). For this release it holds over the rule of AGENTS.md "Branches and
+pull requests" that agents never create tags and never publish releases:
+the session that prepares the release does these three steps for #624. It
+is to be written in AGENTS.md if the owner keeps it for later releases;
+until then it covers 2.7.2 only. The choices among the options of 4.12 of the site proposal
 are written in `docs/proposals/site.md` (#607). The decision of 2026-10-19
 on the perf lane of `master` (port the tests and the CI only, without
 `Nginx::Debug`) is written in #601 (its description and
