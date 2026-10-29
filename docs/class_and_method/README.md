@@ -207,6 +207,38 @@ On the 2.x line, a content handler that ends without output and with no
 status or a status from 200 to 299 that nginx does not answer by itself
 answers 500 instead (see [docs/releases/v3.0.0.md](../releases/v3.0.0.md)).
 
+A content handler on the main request that writes output with `Nginx.rputs`
+or `Nginx.echo` and then calls `Nginx.return` (or `Nginx.send_header`,
+`Nginx.status_code=`) answers as follows, also after
+`Nginx::Async::HTTP.sub_request` resumed it:
+
+- `Nginx::HTTP_OK`, or another status below 300 other than
+  `Nginx::HTTP_CREATED` and `Nginx::HTTP_NO_CONTENT`: the output, with that
+  status and `Content-Length` of the output, like nginx's own
+  `return 202 "text";` without its `Content-Type`. A status below 200
+  goes out the same way, although HTTP does not allow a final response with
+  it. `Nginx.return 0` sets no status, and the output gets 200. Since 2.7.2;
+  in 2.7.1 these statuses, other than 200, left the client without a
+  response.
+- `Nginx::HTTP_CREATED`, `Nginx::HTTP_NO_CONTENT` or a status from 300 up:
+  nginx's own response for that status, without the output.
+
+A status set before the first `Nginx.rputs` or `Nginx.echo` does not apply to
+the output: the response is 200.
+
+```nginx
+location /accepted {
+    mruby_content_handler_code '
+         Nginx.rputs "queued"
+         Nginx.return Nginx::HTTP_ACCEPTED  # 202 with the body "queued"
+    ';
+}
+```
+
+In the content handler of a subrequest, a status other than `Nginx::HTTP_OK`
+set after output ends the subrequest without a response body, and the parent
+request answers.
+
 Don't confuse `Nginx.return` method with mruby's `return` statement.
 ngx_mruby supports `return` statement in handler code as below.
 It just returns from the handler. Since 3.0.0 this holds also for a `return`
