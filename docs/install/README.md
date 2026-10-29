@@ -348,7 +348,7 @@ $ make
 
 ngx_mruby 3.0.0 does not have the auto-ssl mrbgem (`mrbgems/auto-ssl`, the
 `Nginx::SSL::ACME` classes), and the mruby build no longer reads
-`NGX_MRUBY_AUTO_SSL` ([The auto-ssl mrbgem and `NGX_MRUBY_AUTO_SSL` are removed](../releases/v3.0.0.md#the-auto-ssl-mrbgem-and-ngx_mruby_auto_ssl-are-removed-PRNUM)).
+`NGX_MRUBY_AUTO_SSL` ([The auto-ssl mrbgem and `NGX_MRUBY_AUTO_SSL` are removed](../releases/v3.0.0.md#the-auto-ssl-mrbgem-and-ngx_mruby_auto_ssl-are-removed-640)).
 Its `Nginx::SSL::ACME::Client` speaks ACMEv1 (`new-reg`, `new-authz`,
 `new-cert`), which Let's Encrypt no longer serves, and the gem that it needs
 for TLS, pyama86/mruby-polarssl, has had no commit since 2017-03-03 and does
