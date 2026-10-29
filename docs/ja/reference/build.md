@@ -50,7 +50,6 @@ modules: その中に<wbr>あるもの：<wbr>`ngx_http_mruby_module`、<wbr>ngi
 | `BUILD_DYNAMIC_MODULE` | `build.sh` | 値があれば、`build_dynamic/`に動的なモジュールをビルドする |
 | `NUM_THREADS_ENV` | `build.sh` | `make`のジョブの数。デフォルトはプロセッサの数の半分 |
 | `OPENSSL_SRC_VERSION` | `build.sh` | そのバージョンのOpenSSLをダウンロードし、nginxと一緒にビルドする |
-| `NGX_MRUBY_AUTO_SSL=1` | `build_config.rb` | auto-sslのmrbgemと、それが依存するgemを加える。詳しくは[auto-sslのmrbgemを入れる](../install/README.md#auto-sslのmrbgemを入れる)にある |
 | `NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1` | `build_config.rb` | `NGX_MRUBY_CORE_GEMS`の名前のうち、ビルドするmrubyに無いものを、通知を出して読み飛ばす |
 | `NGX_MRUBY_CFLAGS`、`NGX_MRUBY_LDFLAGS`、`NGX_MRUBY_LIBS` | `build_config.rb` | mrubyのビルドに足すコンパイラのフラグ、リンカのフラグ、ライブラリ |
 
@@ -81,8 +80,8 @@ modules: その中に<wbr>あるもの：<wbr>`ngx_http_mruby_module`、<wbr>ngi
 
 | nginx | モジュール | OpenSSL | nginxを動かす環境 |
 |---|---|---|---|
-| 1.31.6, 1.30.5, 1.28.3, 1.26.3 | 静的と動的 | インストールした1.1.1wと、`--with-openssl-src`でnginxに組み込んだ1.1.1w | valgrind |
-| 1.31.6 | 静的 | システムにインストールした1.1.1w | AddressSanitizerとUndefinedBehaviorSanitizer |
+| 1.31.8, 1.30.6, 1.28.3, 1.26.3 | 静的と動的 | インストールした1.1.1wと、`--with-openssl-src`でnginxに組み込んだ1.1.1w | valgrind |
+| 1.31.8 | 静的 | システムにインストールした1.1.1w | AddressSanitizerとUndefinedBehaviorSanitizer |
 
 - ランナーは、GCC 11のUbuntu 22.04です。同梱のmrubyは4.0.0です。バージョンは`build_config.rb.lock`にあります。
-- `nginx_version`は`build.sh`と`test.sh`がダウンロードするバージョン1.31.6を指定します。
+- `nginx_version`は`build.sh`と`test.sh`がダウンロードするバージョン1.31.8を指定します。

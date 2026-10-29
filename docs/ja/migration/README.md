@@ -29,7 +29,12 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
   ```
 
   gemを別のコミットでビルドするには、[gemのコミットとbuild_config.rb.lock](../install/README.md#gemのコミットとbuild_configrblock)に従ってください。
-- デフォルトのビルドには、auto-sslのmrbgemと、それと一緒に入っていたクラスがありません。詳しくは[既定のビルドからauto-sslのmrbgemと、それに伴うクラスが無くなる](../../releases/v3.0.0.ja.md#既定のビルドからauto-sslのmrbgemとそれに伴うクラスが無くなる556)にあります。それらを使うスクリプトの見つけ方は、[スクリプト](#スクリプト)にあります。`NGX_MRUBY_AUTO_SSL=1`を使うなら、[auto-sslのmrbgemを入れたビルドが止まる](../../releases/v3.0.0.ja.md#auto-sslのmrbgemを入れたビルドが止まる561)を見てください。
+- デフォルトのビルドには、auto-sslのmrbgemと、それと一緒に入っていたクラスがありません。詳しくは[既定のビルドからauto-sslのmrbgemと、それに伴うクラスが無くなる](../../releases/v3.0.0.ja.md#既定のビルドからauto-sslのmrbgemとそれに伴うクラスが無くなる556)にあります。それらを使うスクリプトを探す手順は、[スクリプト](#スクリプト)の節に書いてあります。
+- このリリースのどのビルドにもauto-sslのmrbgemはなく、mrubyのビルドは`NGX_MRUBY_AUTO_SSL`をもう読みません。詳しくは[auto-sslのmrbgemと`NGX_MRUBY_AUTO_SSL`が無くなる](../../releases/v3.0.0.ja.md#auto-sslのmrbgemとngx_mruby_auto_sslが無くなる640)にあります。この変数は効かないので、ビルドの環境から外してください。`Nginx::SSL::ACME`で証明書を取得しているサーバーは、アップグレードの前にnginxの[ngx_http_acme_module](https://nginx.org/en/docs/http/ngx_http_acme_module.html)、つまりnginx-acmeに移るか、2.xを使い続けてください。次のコマンドで、それを使うビルドと設定を探します。
+
+  ```sh
+  grep -rnE 'NGX_MRUBY_AUTO_SSL|auto-ssl|Nginx::SSL::ACME' /path/to/build/scripts /path/to/nginx/conf
+  ```
 - `./configure --with-mruby-incdir`を使うなら、ディレクトリの一覧に`<mruby_root>/build/host/include`を加えてください。詳しくは[C拡張：`mruby.h`をインクルードするソースに、生成されたヘッダが必要になる](../../releases/v3.0.0.ja.md#c拡張mrubyhをインクルードするソースに生成されたヘッダが必要になる561)にあります。
 - 自前やサードパーティのmrbgemsを使っているなら、[C拡張とmrbgems](#c拡張とmrbgems)の節を見てください。
 
@@ -67,7 +72,7 @@ grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|m
   ```
 
   メッセージを比べる代わりに、`NoMethodError`そのものをrescueしてください。
-- [`private`と`protected`の制限が効く](../../releases/v3.0.0.ja.md#privateとprotectedの制限が効く561)：`self`以外のレシーバで呼んでいるものを探してください。対象は、`initialize`、`initialize_copy`、`respond_to_missing?`、`method_missing`、トップレベルで`def`で定義したメソッド、`raise`、`sprintf`、`puts`のような`Kernel`のメソッド、`private`か`protected`の下のメソッドです。ただし、ハンドラのコードでは、トップレベルで`def`で定義したメソッドはpublicのままなので、レシーバを付けた呼び出しを変える必要はありません。詳しくは[#502の構想](../../proposals/handler-code-frame.md#14-what-handler-code-shares-today)の1.4節にあります。上の検索は、`Kernel`に対する呼び出しの`Kernel\.`を見つけます。今も動くのは、`Kernel.format`、`.sprintf`、`.raise`、`.sleep`、`.usleep`だけで、`Kernel.Integer(x)`のようなほかのものは、レシーバの無い呼び出しにします。検索は`instance_methods`と`methods`も見つけます。この2つはprivateのメソッドを含みません。そのような呼び出しの前に`respond_to?`で確かめても役に立ちません。`respond_to?`は、privateのメソッドにも`true`を返します。
+- [`private`と`protected`の制限が効く](../../releases/v3.0.0.ja.md#privateとprotectedの制限が効く561)：`self`以外のレシーバで呼んでいるものを探してください。対象は、`initialize`、`initialize_copy`、`respond_to_missing?`、`method_missing`、トップレベルで`def`で定義したメソッド、`raise`、`sprintf`、`puts`のような`Kernel`のメソッド、`private`か`protected`の下のメソッドです。ただし、ハンドラのコードでは、トップレベルで`def`で定義したメソッドはpublicのままなので、レシーバを付けた呼び出しを変える必要はありません。詳しくは[#502の構想](../../proposals/archive/handler-code-frame.md#14-what-handler-code-shares-today)の1.4節にあります。上の検索は、`Kernel`に対する呼び出しの`Kernel\.`を見つけます。今も動くのは、`Kernel.format`、`.sprintf`、`.raise`、`.sleep`、`.usleep`だけで、`Kernel.Integer(x)`のようなほかのものは、レシーバの無い呼び出しにします。検索は`instance_methods`と`methods`も見つけます。この2つはprivateのメソッドを含みません。そのような呼び出しの前に`respond_to?`で確かめても役に立ちません。`respond_to?`は、privateのメソッドにも`true`を返します。
 
   ```ruby
   class Router
@@ -205,7 +210,7 @@ grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|m
   ENV['TMPDIR'] || '/tmp'   # works on both
   ```
 
-  `Dir.mktmpdir`の代わりの方法は、[auto-sslのmrbgemを入れる](../install/README.md#auto-sslのmrbgemを入れる)にあります。ほかの定数を使うには、自分で`conf.gem`の行を加えてください。
+  `Dir.mktmpdir`の代わりの方法は、[auto-sslのmrbgemと、それと一緒に入っていたクラス](../install/README.md#auto-sslのmrbgemとそれと一緒に入っていたクラス)にあります。ほかの定数には、自分で`conf.gem`の行を加えてください。
 
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 

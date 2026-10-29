@@ -16,23 +16,12 @@ if [ `uname -s` = "NetBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
     NGINX_LD_OPT='-L/usr/pkg/lib -Wl,-R/usr/pkg/lib'
     MAKE=gmake
-    KILLALL=pkill
-    PS_C="pgrep -l"
 elif [ `uname -s` = "FreeBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
     MAKE=gmake
-    KILLALL=pkill
-    PS_C="pgrep -l"
 else
     NPROCESSORS_ONLN="_NPROCESSORS_ONLN"
     MAKE=make
-    if [ -f /etc/centos-release ]; then
-        KILLALL=pkill
-        PS_C="pgrep -l"
-    else
-        KILLALL=killall
-        PS_C="ps -C"
-    fi
 fi
 
 # Extra compiler and linker flags for nginx, which also compiles ngx_mruby,
@@ -93,10 +82,6 @@ fi
 
 echo "NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT"
 echo "NUM_THREADS=$NUM_THREADS"
-# NGX_MRUBY_AUTO_SSL=1 adds the auto-ssl mrbgem and the gems it depends on to
-# the mruby build (build_config.rb reads it; see docs/install/README.md). No
-# test needs them, so the suite runs the same with and without it.
-echo "NGX_MRUBY_AUTO_SSL=$NGX_MRUBY_AUTO_SSL"
 
 export NGX_MRUBY_CFLAGS="-DMRB_GC_STRESS $NGX_MRUBY_CFLAGS"
 
@@ -136,11 +121,106 @@ if [ -n "$TEST_SH_SKIP_TESTS" ]; then
     echo "test.sh ... built and installed to ${NGINX_INSTALL_DIR}; tests skipped (TEST_SH_SKIP_TESTS)"
     exit 0
 fi
-$PS_C nginx 2>/dev/null && $KILLALL nginx
-sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
+
+# test.sh stops only the nginx processes that it started, by their pid (see
+# "Stopping nginx" in docs/test/README.md). It never signals an nginx by its
+# name, so the nginx processes of other checkouts and of other users stay.
+
+# The upper bound, in seconds, of each stop of an nginx below.
+: ${NGINX_STOPTIME:=60}
+
+# True when process $1 is gone, or has ended and waits to be collected (a
+# zombie): kill -0 still succeeds for a zombie.
+nginx_ended() {
+    nginx_stat=`ps -o stat= -p "$1" 2>/dev/null | tr -d ' '` || nginx_stat=
+    case "$nginx_stat" in
+        ''|Z*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# True when process $1 runs the nginx of this build directory: its command
+# line contains the absolute path of sbin/nginx (also under valgrind). The
+# shell may have collected an nginx that ended, and its pid may then belong
+# to another process, so test.sh checks this before each signal. -ww keeps
+# ps from cutting the line at COLUMNS.
+nginx_is_ours() {
+    ps -ww -o args= -p "$1" 2>/dev/null | grep -F "${NGINX_INSTALL_DIR}/sbin/nginx" >/dev/null
+}
+
+# Sends SIGTERM to the nginx with pid $1 and waits until it has ended. A
+# single nginx process (master_process off) checks for the signal only after
+# it has handled its events, so a SIGTERM that arrives after that check and
+# before it waits for events again stays unseen until the next event, which
+# may never come (ngx_single_process_cycle). The signal is therefore sent
+# again 1, 3, 7, 15 and 31 seconds after the first one, as the master
+# process of nginx sends it again to its workers with a delay that doubles.
+# After NGINX_STOPTIME seconds the process gets SIGKILL and the stop fails.
+# The times are counted in rounds of "sleep 0.1" and a ps, so the real times
+# are somewhat longer. A pid that no longer runs this build's nginx counts as
+# ended and gets no signal.
+stop_nginx() {
+    stop_pid=$1
+    stop_signals=0
+    stop_ticks=0
+    stop_next=10
+    stop_step=10
+    if nginx_is_ours "$stop_pid"; then
+        kill -TERM "$stop_pid" 2>/dev/null || true
+        stop_signals=1
+    fi
+    while ! nginx_ended "$stop_pid" && nginx_is_ours "$stop_pid"; do
+        if [ "$stop_ticks" -ge $((NGINX_STOPTIME * 10)) ]; then
+            if nginx_is_ours "$stop_pid"; then
+                kill -KILL "$stop_pid" 2>/dev/null || true
+                echo "test.sh: nginx (pid $stop_pid) did not end within ${NGINX_STOPTIME} seconds (NGINX_STOPTIME) after $stop_signals SIGTERM; sent SIGKILL"
+                return 1
+            fi
+            break
+        fi
+        sleep 0.1
+        stop_ticks=$((stop_ticks + 1))
+        if [ "$stop_ticks" -eq "$stop_next" ] && nginx_is_ours "$stop_pid"; then
+            kill -TERM "$stop_pid" 2>/dev/null || true
+            stop_signals=$((stop_signals + 1))
+            stop_step=$((stop_step * 2))
+            stop_next=$((stop_next + stop_step))
+        fi
+    done
+    if [ "$stop_signals" -eq 0 ]; then
+        echo "test.sh: nginx (pid $stop_pid) had ended before the stop; no signal sent"
+    else
+        echo "test.sh: nginx (pid $stop_pid) ended within about $((stop_ticks / 10)).$((stop_ticks % 10)) seconds of the first SIGTERM; SIGTERM sent $stop_signals times"
+    fi
+}
+
+# An earlier run of test.sh that was killed before it could stop its nginx
+# leaves that nginx running, with its pid in logs/nginx.pid. Stop it if the
+# process still runs the nginx of this build directory; the pid may belong to
+# another process by now.
+if [ -s ${NGINX_INSTALL_DIR}/logs/nginx.pid ]; then
+    old_pid=`cat ${NGINX_INSTALL_DIR}/logs/nginx.pid`
+    if nginx_is_ours "$old_pid"; then
+        echo "test.sh: stopping the nginx (pid $old_pid) that an earlier run left running"
+        stop_nginx "$old_pid"
+    elif ! nginx_ended "$old_pid"; then
+        echo "test.sh: logs/nginx.pid names pid $old_pid, which does not run ${NGINX_INSTALL_DIR}/sbin/nginx; left running"
+    fi
+fi
+# The tests run from a copy of the suite in the build directory, in which
+# every port of the suite is moved by TEST_SH_PORT_OFFSET (default 0), so
+# that two checkouts can run test.sh at the same time with different offsets
+# (see "Ports" in docs/test/README.md). The steps below read the
+# configuration, the hook scripts and the tests from that copy.
+: ${TEST_SH_PORT_OFFSET:=0}
+STAGE_DIR=${NGINX_INSTALL_DIR}/harness
+STAGED=${STAGE_DIR}/test
+ruby test/t/cases/_stage.rb "${TEST_SH_PORT_OFFSET}" ${STAGE_DIR}
+
+sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" ${STAGED}/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 rm -rf ${NGINX_INSTALL_DIR}/conf/conf.d
 mkdir -p ${NGINX_INSTALL_DIR}/conf/conf.d/stream
-for f in test/conf/conf.d/*.conf test/conf/conf.d/stream/*.conf; do
+for f in ${STAGED}/conf/conf.d/*.conf ${STAGED}/conf/conf.d/stream/*.conf; do
     [ -e "$f" ] || continue
     case "$f" in */stream/*) d=${NGINX_INSTALL_DIR}/conf/conf.d/stream ;; *) d=${NGINX_INSTALL_DIR}/conf/conf.d ;; esac
     sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" "$f" > "$d/$(basename "$f")"
@@ -148,7 +228,7 @@ done
 cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' && sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' && cd -
 
 if [ "$NGINX_SRC_VERSION_NUM" -ge 1009006 ]; then
-  cat test/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
+  cat ${STAGED}/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
 fi
 
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
@@ -161,8 +241,8 @@ if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
     done
 fi
 
-cp -pr test/html/* ${NGINX_INSTALL_DIR}/html/.
-sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/html/set_ssl_cert_and_key.rb > ${NGINX_INSTALL_DIR}/html/set_ssl_cert_and_key.rb
+cp -pr ${STAGED}/html/* ${NGINX_INSTALL_DIR}/html/.
+sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" ${STAGED}/html/set_ssl_cert_and_key.rb > ${NGINX_INSTALL_DIR}/html/set_ssl_cert_and_key.rb
 
 for f in error.log access.log stderr.log
 do
@@ -182,7 +262,7 @@ done
 # The ports to wait for are those of the listen directives of the http {}
 # configuration (see test/t/cases/_wait_for_listen.rb). They must be free
 # before nginx starts, so that the wait cannot take another process for it.
-ruby test/t/cases/_wait_for_listen.rb free ${NGINX_HEATTIME} test/conf/nginx.conf test/conf/conf.d/*.conf
+ruby test/t/cases/_wait_for_listen.rb free ${NGINX_HEATTIME} ${STAGED}/conf/nginx.conf ${STAGED}/conf/conf.d/*.conf
 
 echo "====================================="
 echo ""
@@ -193,16 +273,40 @@ echo ""
 echo ""
 ${NGINX_RUNNER} ${NGINX_INSTALL_DIR}/sbin/nginx &
 nginx_pid=$!
-trap "kill $nginx_pid; wait" EXIT
+# Stop nginx when test.sh exits, also after a failure or a signal, and keep
+# the exit status of test.sh unless the stop itself fails. The exit status of
+# nginx is printed and does not change it.
+on_exit() {
+    exit_status=$1
+    trap - EXIT
+    if stop_nginx "$nginx_pid"; then
+        nginx_status=0
+        wait "$nginx_pid" || nginx_status=$?
+        echo "test.sh: nginx (pid $nginx_pid) exit status $nginx_status"
+    else
+        wait "$nginx_pid" || true
+        exit_status=1
+    fi
+    exit "$exit_status"
+}
+trap 'on_exit $?' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 echo ""
 echo ""
-ruby test/t/cases/_wait_for_listen.rb listen ${NGINX_HEATTIME} $nginx_pid test/conf/nginx.conf test/conf/conf.d/*.conf
-./mruby/build/test/bin/mruby ./test/t/ngx_mruby.rb 2> ${NGINX_INSTALL_DIR}/logs/stderr.log
-for f in test/t/cases/*.rb; do
+ruby test/t/cases/_wait_for_listen.rb listen ${NGINX_HEATTIME} $nginx_pid ${STAGED}/conf/nginx.conf ${STAGED}/conf/conf.d/*.conf
+# The tests run the CRuby helpers of the copy (suite_path in
+# test/t/cases/_prelude.rb and test/t/ngx_mruby.rb). They run from the root
+# of the checkout, as nginx does, because the configuration names the hook
+# scripts with paths relative to it (build/nginx/html/...).
+export TEST_SH_STAGE_DIR=${STAGE_DIR}
+./mruby/build/test/bin/mruby ${STAGED}/t/ngx_mruby.rb 2> ${NGINX_INSTALL_DIR}/logs/stderr.log
+for f in ${STAGED}/t/cases/*.rb; do
     [ -e "$f" ] || continue
-    case "$f" in */_*) continue ;; esac
-    echo "ngx_mruby testing case: $f"
-    cat test/t/cases/_prelude.rb "$f" > ${NGINX_INSTALL_DIR}/logs/case.rb
+    case "${f##*/}" in _*) continue ;; esac
+    echo "ngx_mruby testing case: ${f#${STAGE_DIR}/}"
+    cat ${STAGED}/t/cases/_prelude.rb "$f" > ${NGINX_INSTALL_DIR}/logs/case.rb
     ./mruby/build/test/bin/mruby ${NGINX_INSTALL_DIR}/logs/case.rb 2>> ${NGINX_INSTALL_DIR}/logs/stderr.log
 done
 echo "ngx_mruby testing ... Done"

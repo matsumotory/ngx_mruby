@@ -133,4 +133,4 @@ HSET /dropbox/aaabbbcccddd expire 1900000000
 
 - 日本語の記事の[Dynamic Image Provider](https://techhey.hatenablog.com/entry/2014/04/19/162323)
 - ロシア語の記事の[Research ngx_mruby and use output filter](https://habr.com/ru/articles/225313/)
-- [Let's Encryptを使ったACMEのauto ssl](../../../test/conf/auto-ssl/nginx.conf.client_example)：`NGX_MRUBY_AUTO_SSL=1`を付けたビルドと、動いているRedisのサーバが要ります。この例は、証明書とチャレンジのトークンをRedisに保存するからです。ビルドの方法は、[auto-sslのmrbgemを入れる](../install/README.md#auto-sslのmrbgemを入れる)にあります。この例のACMEのクライアントはACMEv1を使いますが、Let's EncryptはもうACMEv1を提供していません。
+- [Let's Encryptを使ったACMEのauto ssl](https://github.com/matsumotory/ngx_mruby/blob/v2.7.2/test/conf/auto-ssl/nginx.conf.client_example)(ngx_mruby 2.x)：auto-sslのmrbgemと、動いているRedisのサーバが要ります。ngx_mruby 3.0.0にはこのgemがありません。詳しくは[auto-sslのmrbgemと、それと一緒に入っていたクラス](../install/README.md#auto-sslのmrbgemとそれと一緒に入っていたクラス)にあります。この例のACMEのクライアントはACMEv1を使いますが、Let's EncryptはもうACMEv1を提供していません。

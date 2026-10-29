@@ -62,8 +62,6 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     on every request (`fopen`), and when a script gives `Nginx::SSL` the
     paths of a certificate and a key, they are read during the handshake
     (`BIO_new_file`, `SSL_use_PrivateKey_file`);
-  - the bundled `auto-ssl` gem runs the dehydrated ACME client and waits
-    for it to finish;
   - an operator's script blocks its worker when it uses mruby-sleep,
     mruby-socket or mruby-io, which the default build includes on both
     branches, or matsumotory/mruby-redis (a hiredis client), which the
@@ -234,7 +232,8 @@ The session that owns the PR merges it, with a merge commit, when all of
 these hold:
 
 1. The base branch follows the branch table above.
-2. Every CI check on the head commit passed (`ci-ok` once it is required),
+2. Every CI check on the head commit passed (`ci-ok`, the check that the
+   branch rules of `master` and `next` require),
    on a run whose merge ref includes the current base. When the base moved
    after the last run, update the branch and let CI run again. A run made
    green by skipping or disabling tests does not count.
@@ -258,6 +257,13 @@ the owner instead of merging.
 The owner decided on 2026-10-04 that sessions may change the mrbgem
 repositories that the owner maintains (`matsumotory/mruby-*`), mruby-uname
 included.
+
+The owner decided on 2026-10-29, in the words 「僕管理のmrbgemは更新して対応できるなら更新すべき、なんでも外すとかではなく。只中で使ってるライブラリとかの更新が止まってたらもういいかな」
+("a gem I maintain should be updated, if updating copes with the change, not
+removed; if a library it uses inside has stopped being updated, it is fine to
+drop it"): a gem that the owner maintains is updated to cope with a change and not
+removed from a build. Removing one is
+acceptable when a library that the gem uses inside has stopped being updated.
 
 The rest of this subsection is the sessions' procedure, not a decision of
 the owner. It names the branches as they are until v3 is promoted, as the
@@ -364,7 +370,7 @@ headers, and `test.sh` uses `wget` and the `openssl` command. mruby is built wit
 sh test.sh                          # full run: fetch nginx (version in ./nginx_version), configure, build, test
 ONLY_BUILD_NGX_MRUBY=1 sh test.sh   # fast loop: skip fetch/configure, rebuild changed sources, re-run tests
 BUILD_DYNAMIC_MODULE=1 sh test.sh   # build as a dynamic module (uses build_dynamic/ instead of build/)
-NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
+NGINX_RUNNER=valgrind sh test.sh   # run nginx under valgrind (NGINX_HEATTIME, 60 s by default, bounds each wait of test.sh for ports and for nginx)
 sh test/soak/run.sh                 # memory soak test (Linux; own build in build_soak/, ports 12360-12362)
 sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12372)
 ```
@@ -385,16 +391,11 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   another commit: change its `commit:` in each section of the lock that has
   an entry for it (or delete those entries to take the head of its branch),
   `rm -rf mruby/build`, run a full `sh test.sh`, and commit the lock that
-  rake wrote. A build with `NGX_MRUBY_AUTO_SSL=1` adds entries for the
-  auto-ssl gems: do not commit them (`git checkout build_config.rb.lock`).
+  rake wrote.
 - `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. After changing
   `BUILD_DYNAMIC_MODULE`, configure options or `nginx_version`, nginx has to be
   configured again: "Testing" in `docs/test/README.md` says when a full run does
   that and what to remove first.
-- `NGX_MRUBY_AUTO_SSL=1` adds the auto-ssl mrbgem to the mruby build. Remove
-  `mruby/build` before changing it: a full run builds the new gem list, but
-  `libmruby.a` keeps the objects of a dropped gem and `mruby/build/host/LEGAL`
-  is not written again (see `docs/install/README.md`).
 - Extra arguments to `test.sh` are passed to `./configure`
   (for example `sh test.sh --with-openssl-src=/path/to/openssl`).
 - Headers in `src/` are not make dependencies: after editing a `.h`, `touch` the
@@ -405,22 +406,33 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
 - Results: the test runner exits non-zero on a failed assertion. nginx logs are in
   `build/nginx/logs/` (`build_dynamic/nginx/logs/` for dynamic builds);
   `error.log` is at debug level. valgrind errors do **not** change the exit status
-  of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
-- `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18132,
+  of `test.sh`: run valgrind with the options of CI and read the `ERROR SUMMARY`
+  line of its log yourself. In CI, the step "Check the valgrind reports" fails a
+  cell on that line: one cell runs under valgrind on pull requests, and every
+  cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
+  what counts as an error and the suppressions).
+- `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18132,
   18136-18140, 18143-18144, 18147-18168, 12345-12359, 12363-12366,
-  12372-12373; 18116 and 12357 belong to the second nginx that
+  12368-12369, 12372-12373; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
   `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
-  in `test/t/ngx_mruby.rb`) and
-  kills every running `nginx` process before it starts. Run only one `test.sh` per
-  machine at a time, and wait if an nginx you did not start is running.
+  in `test/t/ngx_mruby.rb`). `TEST_SH_PORT_OFFSET=N` moves every port of the
+  suite by N (from -2345 to 47336): two checkouts can run `test.sh` at the
+  same time on one machine with offsets 120 or more apart (the other limits
+  are under "Ports" in `docs/test/README.md`); with the same ports, the
+  second run fails when it finds them taken. A new test writes each port as
+  five digits within 12345-12399 or 18080-18199, and runs a CRuby helper
+  through `suite_path` (see "Ports" in `docs/test/README.md`). `test.sh` stops only the
+  nginx that it started, by its pid, and at the start the nginx that an
+  earlier run in the same build directory left running (the pid in
+  `logs/nginx.pid`); it never stops a process by its name. See "Stopping
+  nginx" in `docs/test/README.md`.
 - `test/soak/run.sh` builds its own nginx in `build_soak/` (it does not touch the
   `test.sh` build), listens on 12360 and 12361, and starts the mock LLM upstream
   (`test/soak/mock_llm.rb`) on 12362 for the `agent_*` scenarios
-  (`SOAK_PORT_BASE` moves all three). It stops only the processes it started.
-  `test.sh` kills the soak's nginx too, so do not
-  run both at the same time on one machine. The soak reads `/proc`: on macOS, run
+  (`SOAK_PORT_BASE` moves all three). It stops only the processes it started,
+  and its ports are not those of `test.sh`. The soak reads `/proc`: on macOS, run
   it in a Linux container. See "Soak test for memory" in `docs/test/README.md`.
   A `.c` file in `src/http/` or `src/stream/` that calls `mrb_gc_register` or
   `mrb_gc_unregister` must include `ngx_http_mruby_debug.h`, which counts the
@@ -428,9 +440,8 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
 - `test/perf/compare.sh` builds the base and the head in `build_perf/` (it does not
   touch the `test.sh` build), listens on 12370 and 12371, and starts the mock LLM
   upstream on 12372 for the agent proxy scenarios (`PERF_PORT_BASE` moves all
-  three). It stops only the processes it started. `test.sh` kills it too (and uses
-  12372 for its own mock), so do not run
-  both at the same time on one machine. It needs valgrind's `callgrind_control` and
+  three). It stops only the processes it started. `test.sh` uses 12372 for its
+  own mock too, so do not run both at the same time on one machine. It needs valgrind's `callgrind_control` and
   `vgdb`: on macOS, run it in a Linux container. See "Performance comparison with
   callgrind" in `docs/test/README.md`.
 
@@ -700,7 +711,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
 
 - Prefer a fragment and a case file of their own: a `server {}` in
   `test/conf/conf.d/<name>.conf` (stream: `test/conf/conf.d/stream/`) on a
-  port of its own (HTTP 18110 and up, stream 12353 and up), scripts in
+  port of its own (HTTP 18110 to 18199, stream 12353 to 12399), scripts in
   `test/html/`, and assertions in `test/t/cases/<name>.rb` (see
   `docs/test/README.md`). Edit `test/conf/nginx.conf` and
   `test/t/ngx_mruby.rb` only for tests that need the main server.
@@ -744,8 +755,8 @@ npm run preview           # serves dist/ at http://localhost:4321/
   (outputs of `./configure`; edit `config.in` / `Makefile.in` instead).
   `configure` is autoconf output: edit `configure.in`, regenerate with `autoconf`
   and commit both.
-- Run `killall nginx` or `pkill nginx` yourself (outside `test.sh`): other
-  sessions may own those processes. Stop only processes you started.
+- Run `killall nginx` or `pkill nginx`: other sessions may own those
+  processes. Stop only processes you started, by their pid, as `test.sh` does.
 - Run `make clobber`: it deletes the build directory (including the nginx source
   tree) and the mruby build. Only do it when the owner asks.
 - Reformat code you did not change. Format only your changed lines with the
