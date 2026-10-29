@@ -226,7 +226,8 @@ The session that owns the PR merges it, with a merge commit, when all of
 these hold:
 
 1. The base branch follows the branch table above.
-2. Every CI check on the head commit passed (`ci-ok` once it is required),
+2. Every CI check on the head commit passed (`ci-ok`, the check that the
+   branch rules of `master` and `next` require),
    on a run whose merge ref includes the current base. When the base moved
    after the last run, update the branch and let CI run again. A run made
    green by skipping or disabling tests does not count.
@@ -250,6 +251,13 @@ the owner instead of merging.
 The owner decided on 2026-10-04 that sessions may change the mrbgem
 repositories that the owner maintains (`matsumotory/mruby-*`), mruby-uname
 included.
+
+The owner decided on 2026-10-29, in the words 「僕管理のmrbgemは更新して対応できるなら更新すべき、なんでも外すとかではなく。只中で使ってるライブラリとかの更新が止まってたらもういいかな」
+("a gem I maintain should be updated, if updating copes with the change, not
+removed; if a library it uses inside has stopped being updated, it is fine to
+drop it"): a gem that the owner maintains is updated to cope with a change and not
+removed from a build. Removing one is
+acceptable when a library that the gem uses inside has stopped being updated.
 
 The rest of this subsection is the sessions' procedure, not a decision of
 the owner. It names the branches as they are until v3 is promoted, as the
@@ -356,7 +364,7 @@ headers, and `test.sh` uses `wget` and the `openssl` command. mruby is built wit
 sh test.sh                          # full run: fetch nginx (version in ./nginx_version), configure, build, test
 ONLY_BUILD_NGX_MRUBY=1 sh test.sh   # fast loop: skip fetch/configure, rebuild changed sources, re-run tests
 BUILD_DYNAMIC_MODULE=1 sh test.sh   # build as a dynamic module (uses build_dynamic/ instead of build/)
-NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
+NGINX_RUNNER=valgrind sh test.sh   # run nginx under valgrind (NGINX_HEATTIME, 60 s by default, bounds each wait of test.sh for ports and for nginx)
 sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12372)
 ```
 
