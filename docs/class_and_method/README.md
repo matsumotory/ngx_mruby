@@ -1457,6 +1457,10 @@ Nginx.echo u.server                           #=> 127.0.0.1:80
 
 Sets the string to the server of the upstream.
 
+The upstream block must have one server (`Nginx::Upstream.new` raises for more). The new server is that peer's for every later request that the worker sends to the upstream, not only for the current request, until the worker exits or the configuration is reloaded; each worker keeps its own. An upstream with a `zone` is not supported.
+
+The string is `address:port`, read as nginx reads the address of a `server` directive; the port is 80 when the string has none. A host name is resolved when the method is called, with the system resolver, and the worker serves no other client while it waits (see "Avoid blocking calls" in [the documentation](../README.md)), so give an IP address. The method raises `ArgumentError` when the string is empty or 256 bytes or longer, and `RuntimeError` when nginx cannot read or resolve it; the server stays as it was then.
+
 ```
 u = Nginx::Upstream.new "YOUR_UPSTREAM_NAME"
 s = u.server                                  #=> 127.0.0.1:80
@@ -1730,6 +1734,10 @@ c.upstream_server #=> "127.0.0.1:58080"
 ```
 
 ### Nginx::Stream::Connection#upstream_server=
+
+Sets the server of the upstream that `Nginx::Stream::Connection.new` named. The upstream block must have one server. As with `Nginx::Upstream#server=`, the new server is that peer's for every later session that the worker sends to the upstream, until the worker exits or the configuration is reloaded; each worker keeps its own, and an upstream with a `zone` is not supported.
+
+The string is `IP address:port`; host names are not resolved and raise. The method raises `RuntimeError` when the string is empty or 256 bytes or longer, or when nginx cannot read it as an address; the server stays as it was then.
 
 ```ruby
 # == nginx.conf ==
