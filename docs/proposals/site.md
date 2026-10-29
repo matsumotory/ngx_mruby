@@ -486,9 +486,8 @@ API decision:
    existing callgrind lane is an initial evidence source, not a throughput
    benchmark. Link back to the public CI artifact and comparison report.
 7. Keep the visual language technical, with dark navy/graphite, metallic
-   contrast and restrained accents. Treat the old icon as a temporary asset;
-   new mark, monochrome/small-size variants and horizontal wordmark require
-   owner review together with the site. Publish coherent iterations after the normal PR, independent-review and
+   contrast and restrained accents. Use the selected metallic C mark, with small-size derivatives and the
+   existing wordmark. Review their visual consistency together with the site. Publish coherent iterations after the normal PR, independent-review and
    deployment checks; the owner authorized iterative site deployment on
    2026-10-29. This is not authorization for a v3 software release. No new external service, account, payment or
    authentication change is needed for these static site capabilities.
@@ -511,21 +510,23 @@ An independent reader using only those outputs could identify version and
 sample provenance, and distinguish callgrind instruction counts from
 throughput. It also found substantive gaps, which export alone does not fix:
 
-- The stable install page still has historical version/output/path examples;
-  a complete versioned configure/build/nginx-test/request walkthrough needs
-  a separate source documentation change on the stable branch, verified
-  against the actual build. Do not present the old example as current proof.
-- The development upstream API lacks constraints documented by the stable
-  fixes. The pending master-to-next integration supplies that text; planned
-  rejection of hostnames and exception normalization are not implemented by
-  this site change. Re-run the reader task after integration and the later
-  code/test changes, rather than copying a future contract into this preview.
+- The stable install page had historical version/output/path examples.
+  [PR #660](https://github.com/matsumotory/ngx_mruby/pull/660) replaces them
+  with a versioned source-build and HTTP walkthrough, executed on released
+  ngx_mruby 2.7.2 with nginx 1.31.8. Its local preview is verified; the
+  stable PR and its current CI remain the authoritative publication record.
+- The development upstream API lacked constraints documented by the stable
+  fixes. [PR #658](https://github.com/matsumotory/ngx_mruby/pull/658), merged
+  into next at `258c852fa`, supplies that text and is included in this branch.
+  Planned rejection of HTTP setter hostnames and exception normalization
+  are not implemented by this site change. Check the actual source contract
+  when reading examples; future runtime changes need their own tests.
 - Historical performance tables must stay beside their recorded conditions.
   Add current, reproducible comparisons only from actual runs and preserve
   missing-environment and upstream timing limitations.
 
-These are acceptance work still open, not a claim that agent-assisted
-implementation is complete. The next content pass will connect prerequisites,
+The export and first two source corrections are implemented; this is not
+a claim that agent-assisted implementation coverage is complete. The next content pass will connect prerequisites,
 complete examples, errors and verification before broadening the landing page.
 
 The owner selected logo direction C on 2026-10-29: "白黒にした時のバランスがCがいいのでCが好き。ロゴ自体はメタリックなやつかっこいいね".
@@ -544,12 +545,12 @@ browser tab theme. The existing Geist Mono wordmark keeps `ngx_mruby`.
 
 Asset adoption checklist: header uses a monochrome candidate in this
 preview; the homepage previews the gold-inset metallic treatment; favicon points to the background-backed SVG; README still uses
-`misc/logo.png` pending approval; there is no dedicated OG image configured.
+`misc/logo.png`; its replacement is a separate adoption task; there is no dedicated OG image configured.
 The old `site/public/favicon.png` and `misc/logo.png` remain for comparison
 and existing links. Source geometry, surface treatment and favicon background
 are distinct. The reference photographs, kit builder, kit README, QA sheet
-and temporary metadata are not repository assets. Final adoption must review
-README, favicon, header, home and social sharing together before deployment.
+and temporary metadata are not repository assets. Each deployment reviews the changed favicon, header and home together.
+README and a dedicated social-sharing image remain explicit follow-up work.
 
 ### Homepage revision requested on 2026-10-29
 
@@ -561,9 +562,10 @@ painted-model photographs as references for color and material: dark navy,
 graphite, silver edges and small warm or violet accents. The photographs
 are not site assets.
 
-The homepage implementation is a review proposal. The owner has not yet
-approved its exact palette or production publication. It changes the home
-pages only; the documentation pages keep the scale and palette of 4.4–4.7.
+The owner authorized iterative site publication on 2026-10-29. This
+revision applies the dark navy/graphite palette to the home and documentation
+pages, preserving the documentation type scale and layout. Normal PR,
+independent-review and deployment checks still precede publication.
 For the home pages, this revision supersedes the earlier small heading,
 teal palette and plain sample layout. The request for real software and
 terminal examples also supersedes the earlier blanket rejection of terminal
@@ -578,10 +580,12 @@ code panels and adds no fictional shell prompt or operating-system chrome.
   and `clamp(2rem, 1rem + 3.5vw, 3.5rem)` in Japanese. Other text retains
   the existing type scale, gutters and spacing tokens. Controls retain a
   minimum height of 44 px and visible focus rings.
-- The scoped homepage token blocks in `tokens.css` define the proposed
-  graphite/navy surfaces, silver text and warm accent. Light and dark themes
-  still follow the theme control and the OS setting without JavaScript.
-  There are no new image assets, gradients, shadows or animations.
+- Shared and homepage token blocks in `tokens.css` define graphite/navy
+  surfaces, silver text and a restrained copper accent. Light and dark themes
+  follow the theme control and the OS setting without JavaScript. The
+  metallic SVG family uses gradients and subtle surface filters; six SVG
+  assets cover the family, small monochrome derivatives and favicon. There
+  are no new page animations.
 - `Sample.astro` reads the same case and fixtures as before. Its caption
   identifies the compared response fields, date and commit; no measured
   performance or terminal output is invented. 3.x is labelled development

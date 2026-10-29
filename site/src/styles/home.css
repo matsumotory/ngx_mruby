@@ -85,7 +85,7 @@ html:has(.home) .brand-showcase { width: 192px; height: 192px; }
 .home .capability-grid img { width: 80px; height: 80px; }
 .home .capability-grid h3 { margin-top: var(--space-4); }
 .home .capability-grid p { color: var(--color-text-muted); margin-top: var(--space-3); }
-.home .capability-grid .capability-state { color: var(--color-accent-text); font-size: var(--text-caption); }
+.home .capability-grid .capability-state { color: var(--color-accent-text); }
 .home .capability-grid a { display: inline-block; margin-top: var(--space-4); }
 @media (max-width: 800px) {
   .home .capability-grid { grid-template-columns: 1fr; gap: var(--space-7); }
