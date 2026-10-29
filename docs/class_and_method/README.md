@@ -1,4 +1,4 @@
-# Mruby API documentation for ngx_mruby
+# Ruby classes and methods
 
 This is the mruby API documentation for ngx_mruby.
 
@@ -7,8 +7,6 @@ You can use these classes and methods in handlers like `mruby_content_handler_co
 
 Available APIs depend on your build configuration.
 See [Configuring mrbgems](../install/README.md#2-configuring-mrbgems) and [Build options](../install/README.md#build-options) for the build configuration.
-
-TODO: Sort. I don't think alphabetical order is easy to read.
 
 ## ngx_mruby HTTP module
 
@@ -64,23 +62,13 @@ for APIs.
 
 ## built-in mrbgems
 
-You can use the following classes with default build configuration.
+The default build adds the classes of the mrbgems that
+[Default mrbgems](../reference/build.md#default-mrbgems) in the build
+reference lists, with the class of each gem and a link to the repository
+that documents it.
 
-- [Cache Class](https://github.com/matsumotory/mruby-localmemcache)
-- [Dir class](../../mruby/mrbgems/mruby-dir) (the mruby core gem mruby-dir; see the differences from iij/mruby-dir below)
-- [Digest Class](https://github.com/iij/mruby-digest)
-- [ENV class](https://github.com/iij/mruby-env)
-- [JSON Class](https://github.com/mattn/mruby-json)
-- [Mutex class](https://github.com/matsumotory/mruby-mutex)
-- [OnigRegexp Class and Regexp Engine](https://github.com/mattn/mruby-onig-regexp)
-- [Process Class](https://github.com/iij/mruby-process)
-- [Redis Class](https://github.com/matsumotory/mruby-redis)
-- [SecureRandom Class](https://github.com/monochromegane/mruby-secure-random)
-- [Userdata Class](https://github.com/matsumotory/mruby-userdata)
-- [Uname Class](https://github.com/matsumotory/mruby-uname)
-- [Vedis Class](https://github.com/matsumotory/mruby-vedis)
-
-`Dir` comes from the mruby core gem mruby-dir. ngx_mruby 2.x took it from
+`Dir` comes from the mruby core gem mruby-dir
+([mruby/mrbgems/mruby-dir](../../mruby/mrbgems/mruby-dir)). ngx_mruby 2.x took it from
 iij/mruby-dir, which the core gem started from; every method of that gem
 stays. The differences:
 
@@ -1393,7 +1381,7 @@ HELLO
 
 Returns the response body.
 In a header filter, which runs before the body has been read, it returns an empty string (since 2.7.1; 2.7.0 returned a string as long as `Content-Length` whose bytes were not the body, or raised an `ArgumentError` when the length was unknown or 10 MB or more).
-To learn the length there, read `Nginx::Var.new.sent_http_content_length`.
+To learn the length there, call `Nginx::Var.new.sent_http_content_length`, which reads the variable.
 
 ```ruby
 f = Nginx::Filter.new
@@ -1687,7 +1675,7 @@ Nginx::Stream::LOG_DEBUG|Debug log level
 
 ### Constants for status
 
-Return status for `Nginx::Stream::Connection.stream_status`.
+The values of the session status that `Nginx::Stream::Connection.stream_status` returns and `.stream_status=` sets.
 
 Name|Value
 -----|-----------

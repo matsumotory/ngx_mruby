@@ -33,8 +33,10 @@
 //   its raw URL there. A link to a path that the repository does not track
 //   stops the build. Absolute URLs and anchors within the page stay as they
 //   are. The href and src attributes of raw HTML are rewritten in the same
-//   way. Only the destinations change: the rest of the Markdown is copied
-//   as it is.
+//   way. Only the destinations change, and a long name in text outside
+//   code (a directive, a constant, a Ruby method with its class) gets
+//   <wbr> where it may break on a narrow screen (breakName): the rest of
+//   the Markdown is copied as it is.
 //
 // - Samples and diagrams (3.5). A fenced block with the language `sample`
 //   becomes the code blocks of the files that a case of test/t/cases/
@@ -227,6 +229,29 @@ function unescapeDestination(raw) {
 const HTML_URL_ATTRIBUTE = /\b(href|src)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
 const attributeValue = (m) => m[2] ?? m[3];
 
+// Long names in text outside code: a directive or constant of three or
+// more parts joined by underscores (mruby_ssl_handshake_handler_code,
+// Nginx::HTTP_MOVED_TEMPORARILY), and a Ruby method with its class
+// (Nginx::Stream::Connection#remote_port, Nginx::Headers_in#delete(string)).
+// breakName gives such a name a <wbr> after each "::" and before each "#",
+// "." and "(" between names, and after an underscore that is followed by
+// four or more characters of the name, so that no line ends with one or two
+// characters of it.
+const SNAKE = /[A-Za-z0-9]+(?:_[A-Za-z0-9]+){2,}|[A-Z][A-Za-z0-9_]*(?:::[A-Za-z0-9_]+)+(?:[#.][a-z_][A-Za-z0-9_?!=]*(?:\([^)\s]*\))?)?/;
+const SNAKE_ALL = new RegExp(SNAKE.source, 'g');
+function breakName(name) {
+  let out = '';
+  for (let i = 0; i < name.length; i++) {
+    const c = name[i];
+    const rest = name.length - i - 1;
+    if ((c === '#' || c === '.' || c === '(') && i > 0) out += '<wbr>';
+    out += c;
+    if (c === ':' && name[i - 1] === ':' && rest > 0) out += '<wbr>';
+    else if (c === '_' && rest >= 4 && !/[#.(]/.test(name.slice(i + 1, i + 5))) out += '<wbr>';
+  }
+  return out;
+}
+
 function lineOf(node) {
   return node.position.start.line;
 }
@@ -319,9 +344,15 @@ function render(page) {
     for (const child of node.children ?? []) collect(child);
   };
   collect(tree);
+  const inUrl = new Set();
   const visit = (node) => {
     if (inRemoved(node)) return;
     const where = `${page.source}:${node.position?.start.line}`;
+    // The text of a link written as its URL (an autolink, or a bare URL
+    // that GFM makes a link) is the URL: it gets no <wbr>
+    if (node.type === 'link' && src[node.position.start.offset] !== '[') {
+      for (const child of node.children ?? []) inUrl.add(child);
+    }
     if (node.type === 'link' || node.type === 'image' || node.type === 'definition') {
       const range = destinationRange(src, node);
       if (range) {
@@ -334,6 +365,17 @@ function render(page) {
         if (next !== null) edits.push([range[0], range[1], next.replace(/[ ()<>\\]/g, (c) => encodeURIComponent(c))]);
       } else if (node.type !== 'link') {
         fail(`${where}: could not find the destination ${node.url} of this ${node.type} in the source`);
+      }
+    } else if (node.type === 'text' && SNAKE.test(node.value) && !inUrl.has(node)) {
+      // Long identifiers such as mruby_ssl_handshake_handler_code break
+      // after their underscores, not at any character, so that no line of a
+      // heading or list item ends with one or two characters of a name
+      // (the owner's rule for text); the source in docs/ is unchanged
+      const start = node.position.start.offset;
+      const end = node.position.end.offset;
+      if (src.slice(start, end) === node.value) {
+        // Not inside a URL of the text (http://host/YOUR_MRUBY_SCRIPT.rb)
+        edits.push([start, end, node.value.replace(SNAKE_ALL, (w, at, all) => (/\S*:\/\/\S*$/.test(all.slice(0, at)) ? w : breakName(w)))]);
       }
     } else if (node.type === 'html') {
       // The attributes are found in the source text of the node, not in

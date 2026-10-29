@@ -152,7 +152,9 @@ From v3 on, to see them, run `nginx -t -e stderr`, read the startup log after `n
 * [mruby_init_worker and mruby_init_worker_code](#mruby_init_worker-and-mruby_init_worker_code)
 * [mruby_exit_worker and mruby_exit_worker_code](#mruby_exit_worker-and-mruby_exit_worker_code)
 * [mruby_ssl_handshake_handler and mruby_ssl_handshake_handler_code](#mruby_ssl_handshake_handler-and-mruby_ssl_handshake_handler_code)
+* [mruby_server_context_handler_code](#mruby_server_context_handler_code)
 * [mruby_add_handler](#mruby_add_handler)
+* [mruby_cache](#mruby_cache)
 * [mruby_post_read_handler and mruby_post_read_handler_code](#mruby_post_read_handler-and-mruby_post_read_handler_code)
 * [mruby_server_rewrite_handler, mruby_server_rewrite_handler_code, mruby_rewrite_handler and mruby_rewrite_handler_code](#mruby_server_rewrite_handler-mruby_server_rewrite_handler_code-mruby_rewrite_handler-and-mruby_rewrite_handler_code)
 * [mruby_access_handler and mruby_access_handler_code](#mruby_access_handler-and-mruby_access_handler_code)
@@ -160,15 +162,9 @@ From v3 on, to see them, run `nginx -t -e stderr`, read the startup log after `n
 * [mruby_log_handler and mruby_log_handler_code](#mruby_log_handler-and-mruby_log_handler_code)
 * [mruby_set and mruby_set_code](#mruby_set-and-mruby_set_code)
 * [mruby_output_body_filter, mruby_output_body_filter_code, mruby_output_header_filter and mruby_output_header_filter_code](#mruby_output_body_filter-mruby_output_body_filter_code-mruby_output_header_filter-and-mruby_output_header_filter_code)
-* [ruby_enable_read_request_body](#mruby_enable_read_request_body)
+* [mruby_enable_read_request_body](#mruby_enable_read_request_body)
 * [mruby_upstream_keepalive](#mruby_upstream_keepalive)
-
-*TODO*
-
-* Add missing directives
-  * mruby_server_context_handler_code
-  * mruby_cache
-* Add examples
+* [mruby_output_filter and mruby_output_filter_code (removed)](#mruby_output_filter-and-mruby_output_filter_code-removed)
 
 ## mruby_init and mruby_init_code
 
@@ -258,6 +254,19 @@ The code runs for a TLS connection, before any request on it, and uses [Nginx::S
 Request-scoped methods such as `Nginx::Request`, `Nginx::Var` and `Nginx.rputs` raise a `RuntimeError` here (since 2.7.1; in 2.7.0 they used the last request that the worker had handled, or crashed the worker when it had handled none).
 See [Nginx.errlogger](../class_and_method/README.md#nginxerrloggerlog_level-string) for what code outside a request can call.
 
+## mruby_server_context_handler_code
+
+```
+Syntax:  mruby_server_context_handler_code 'YOUR MRUBY CODE HERE';
+Default: -
+Context: server
+Phase:   read the configuration, in the master process
+```
+
+The code runs once for its `server` block, while nginx reads the configuration, in the master process.
+It configures the server: [`Nginx::Server#add_listener`](../class_and_method/README.md#nginxserveradd_listenerhash) adds a `listen` address to it.
+No request exists yet, so the request-scoped methods raise a `RuntimeError` here.
+
 ## mruby_add_handler
 
 ```
@@ -269,6 +278,19 @@ Phase:   initialize master process
 
 When set to the value on, mruby scripts are added as handlers.
 You can run the script files directly without endpoint definition.
+
+## mruby_cache
+
+```
+Syntax:  mruby_cache on | off;
+Default: off
+Context: server, location
+Phase:   initialize master process
+```
+
+When set to the value on, nginx compiles the script files of the post-read, server rewrite, rewrite, access, content and log handlers, the header and body filters and `mruby_set` of the server or location once, when it reads the configuration, as the parameter `cache` does for one directive.
+`mruby_ssl_handshake_handler` and the init and exit hooks take only their own parameter `cache`.
+With off, a script file without `cache` is read from disk and compiled for every request, so that a change of the file takes effect at the next request (see [Caching compile code](#caching-compile-code)).
 
 ## mruby_post_read_handler and mruby_post_read_handler_code
 
@@ -484,68 +506,131 @@ It's same as ngx_http_upstream_module's [keepalive](http://nginx.org/en/docs/htt
 
 TODO: describe the difference between keepalive and mruby_upstream_keepalive.
 
+## mruby_output_filter and mruby_output_filter_code (removed)
+
+Both directives were removed in v1.17.2. `nginx -t` rejects a configuration that has one of them, with the message `mruby_output_filter{,_code} was deleted from v1.17.2, you should use mruby_output_body_filter{,_code} for response body, or use mruby_output_header_filter{,_code} for response headers.`
+Use [mruby_output_body_filter and mruby_output_header_filter](#mruby_output_body_filter-mruby_output_body_filter_code-mruby_output_header_filter-and-mruby_output_header_filter_code) instead.
+
 # Stream module directives
 
-ngx_mruby also supports TCP/UDP stream. The stream module directives are similar to The HTTP module directives.
-Here are examples of the stream module directives.
+The stream module directives run Ruby for TCP and UDP sessions in the `stream {}` block, which has an mruby state of its own.
+nginx compiles the code of each directive once, when it reads the configuration.
 
-**nginx.conf**
-```nginx
-server {
-    mruby_stream /path/to/stream.rb;
-}
-```
-
-**nginx.conf**
-```nginx
-stream {
-  upstream dynamic_server0 {
-    server 127.0.0.1:58080;
-  }
-
-  server {
-      listen 12346;
-      mruby_stream_code '
-        c = Nginx::Stream::Connection.new "dynamic_server0"
-        c.upstream_server = "192.168.0.3:54321"
-        Nginx::Stream.log Nginx::Stream::LOG_NOTICE, "dynamic_server0 was changed to 192.168.0.3:54321"
-      ';
-      proxy_pass dynamic_server0;
-  }
-}
-```
+* [mruby_stream_init and mruby_stream_init_code](#mruby_stream_init-and-mruby_stream_init_code)
+* [mruby_stream_init_worker and mruby_stream_init_worker_code](#mruby_stream_init_worker-and-mruby_stream_init_worker_code)
+* [mruby_stream_exit_worker and mruby_stream_exit_worker_code](#mruby_stream_exit_worker-and-mruby_stream_exit_worker_code)
+* [mruby_stream and mruby_stream_code](#mruby_stream-and-mruby_stream_code)
+* [mruby_stream_server_context_code](#mruby_stream_server_context_code)
 
 **nginx.conf**
 
 ```nginx
 stream {
-  upstream dynamic_server0 {
-    server 127.0.0.1:58080;
-  }
-
   mruby_stream_init_code '
-    Userdata.new.new_upstream = "127.0.0.1:58081"
+    Userdata.new.allowed = ["127.0.0.1"]
   ';
 
-  mruby_stream_init_worker_code '
-    p "ngx_mruby: STREAM: mruby_stream_init_worker_code"
-  ';
-
-  mruby_stream_exit_worker_code '
-    p "ngx_mruby: STREAM: mruby_stream_exit_worker_code"
-  ';
+  upstream backend {
+    server 127.0.0.1:8080;
+  }
 
   server {
-      listen 12346;
-      mruby_stream_code '
-        c = Nginx::Stream::Connection.new "dynamic_server0"
-        c.upstream_server = Userdata.new.new_upstream
-      ';
-      proxy_pass dynamic_server0;
+    listen 12346;
+    mruby_stream_code '
+      c = Nginx::Stream::Connection
+      c.stream_status = Nginx::Stream::ABORT unless Userdata.new.allowed.include?(c.remote_ip)
+    ';
+    proxy_pass backend;
   }
+}
 ```
 
-*TODO*
+The guide [Allow TCP connections in Ruby](../guides/tcp.md) has a sample that CI runs.
 
-* Add descriptions to the above examples
-* Add directive references like HTTP module
+## mruby_stream_init and mruby_stream_init_code
+
+```
+Syntax:  mruby_stream_init /PATH/TO/YOUR/MRUBY/SCRIPT.rb;
+Default: -
+Context: stream
+Phase:   initialize master process
+```
+
+```
+Syntax:  mruby_stream_init_code 'YOUR MRUBY CODE HERE';
+Default: -
+Context: stream
+Phase:   initialize master process
+```
+
+The code runs once while nginx reads the configuration, in the master process, before nginx starts the workers.
+Each worker gets a copy of what it leaves in the mruby state of the `stream {}` block.
+
+## mruby_stream_init_worker and mruby_stream_init_worker_code
+
+```
+Syntax:  mruby_stream_init_worker /PATH/TO/YOUR/MRUBY/SCRIPT.rb;
+Default: -
+Context: stream
+Phase:   initialize worker process
+```
+
+```
+Syntax:  mruby_stream_init_worker_code 'YOUR MRUBY CODE HERE';
+Default: -
+Context: stream
+Phase:   initialize worker process
+```
+
+The code runs in each worker process when nginx starts it, outside any session.
+Session-scoped methods such as `Nginx::Stream::Connection.remote_ip` raise a `RuntimeError` here; `Nginx::Stream.log` writes to nginx's error log.
+
+## mruby_stream_exit_worker and mruby_stream_exit_worker_code
+
+```
+Syntax:  mruby_stream_exit_worker /PATH/TO/YOUR/MRUBY/SCRIPT.rb;
+Default: -
+Context: stream
+Phase:   exit worker process
+```
+
+```
+Syntax:  mruby_stream_exit_worker_code 'YOUR MRUBY CODE HERE';
+Default: -
+Context: stream
+Phase:   exit worker process
+```
+
+The code runs in each worker process when nginx stops it, outside any session.
+
+## mruby_stream and mruby_stream_code
+
+```
+Syntax:  mruby_stream /PATH/TO/YOUR/MRUBY/SCRIPT.rb;
+Default: -
+Context: stream, server
+Phase:   NGX_STREAM_ACCESS_PHASE
+```
+
+```
+Syntax:  mruby_stream_code 'YOUR MRUBY CODE HERE';
+Default: -
+Context: stream, server
+Phase:   NGX_STREAM_ACCESS_PHASE
+```
+
+The code runs once per session, in the access phase of the stream module, before nginx reads data from the client and before it connects to the upstream of `proxy_pass`.
+It reads the session through [Nginx::Stream::Connection](../class_and_method/README.md#nginxstreamconnection-class), and closes the session by setting `Nginx::Stream::Connection.stream_status = Nginx::Stream::ABORT`.
+In the `stream` block, the code applies to every `server` that has none of its own.
+
+## mruby_stream_server_context_code
+
+```
+Syntax:  mruby_stream_server_context_code 'YOUR MRUBY CODE HERE';
+Default: -
+Context: server
+Phase:   read the configuration, in the master process
+```
+
+The code runs once for its `server` block, while nginx reads the configuration.
+[`Nginx::Stream.add_listener`](../class_and_method/README.md#nginxstreamadd_listener) adds a `listen` address to the server.

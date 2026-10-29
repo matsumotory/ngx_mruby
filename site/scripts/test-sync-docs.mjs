@@ -25,6 +25,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { siteDir } from './lib/site.mjs';
+import { markCells } from './mark-num-cells.mjs';
 
 const RAW = 'https://github.com/matsumotory/ngx_mruby/raw/next';
 
@@ -171,6 +172,19 @@ fixtures.push({
   },
 });
 
+fixtures.push({
+  name: 'long names get <wbr> in text, not in code, links written as URLs, or URLs of the text',
+  source: '# Names\n\n## mruby_upstream_keepalive\n\nCall Nginx::Stream::Connection#remote_port and Nginx::Headers_in#delete(string) with `mruby_ssl_handshake_handler_code`.\n\nThe script is at http://127.0.0.1/YOUR_MRUBY_SCRIPT.rb and <https://example.com/a_b_c_d>.\n',
+  contains: [
+    '## mruby_<wbr>upstream_<wbr>keepalive',
+    'Nginx::<wbr>Stream::<wbr>Connection<wbr>#remote_<wbr>port',
+    'Nginx::<wbr>Headers_in<wbr>#delete<wbr>(string)',
+    '`mruby_ssl_handshake_handler_code`',
+    'http://127.0.0.1/YOUR_MRUBY_SCRIPT.rb and',
+    '<https://example.com/a_b_c_d>',
+  ],
+});
+
 function run(fixture) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ngx_mruby-sync-docs-'));
   try {
@@ -225,6 +239,18 @@ function run(fixture) {
 }
 
 let failed = 0;
+// scripts/mark-num-cells.mjs on the cells of a table: numbers, versions,
+// sizes and numbers in parentheses take the class num, words do not
+{
+  const html = '<table><tr><th>Name</th><th>1.31.6</th></tr><tr><td>mruby</td><td>4.0.0, 3.3.0</td><td>21952 (21952)</td><td>1.5 MiB</td><td class="x">80</td><td>a_1</td></tr></table>';
+  const want = '<table><tr><th>Name</th><th class="num">1.31.6</th></tr><tr><td>mruby</td><td class="num">4.0.0, 3.3.0</td><td class="num">21952 (21952)</td><td class="num">1.5 MiB</td><td class="num x">80</td><td>a_1</td></tr></table>';
+  const got = markCells(html).html;
+  if (got === want) console.log('ok: mark-num-cells marks the cells of numbers');
+  else {
+    failed++;
+    console.log(`not ok: mark-num-cells marks the cells of numbers\n  expected: ${want}\n  actual:   ${got}`);
+  }
+}
 for (const fixture of fixtures) {
   const problems = run(fixture);
   if (problems.length > 0) {
@@ -236,7 +262,7 @@ for (const fixture of fixtures) {
   }
 }
 if (failed > 0) {
-  console.log(`test-sync-docs: ${failed} of ${fixtures.length} fixture(s) failed`);
+  console.log(`test-sync-docs: ${failed} of ${fixtures.length + 1} test(s) failed`);
   process.exit(1);
 }
-console.log(`test-sync-docs: ok; ${fixtures.length} fixtures`);
+console.log(`test-sync-docs: ok; ${fixtures.length} fixtures and the cells of mark-num-cells.mjs`);

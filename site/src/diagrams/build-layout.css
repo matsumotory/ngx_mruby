@@ -1,0 +1,85 @@
+/*
+ * The build layout diagram (docs/reference/build.md; 3.5 of
+ * docs/proposals/site.md): the grids that place the labels of the page
+ * over the drawings build-layout.svg (wide) and build-layout.narrow.svg
+ * (narrow). The steps follow each other in the order in which ./configure
+ * and make run them. Narrow: the labels one below the other beside a line
+ * in a 1 rem column; the rows take the height of their labels, which
+ * change with the width, and the line stretches over all of them (boxes of
+ * fixed height for the longest label at 320 px would not fit the screen at
+ * 390 by 664 px, 3.5). Wide: one box per step, with the rows of the
+ * drawing in rem (16 units to the rem), from a figure width of 30rem,
+ * where the longest label takes three lines of its 4.5rem box.
+ */
+.diagram-build-layout .diagram-grid {
+  grid-template-columns: 1rem minmax(0, 1fr);
+  grid-template-areas:
+    ". configure"
+    ". rake"
+    ". mrbgems-config"
+    ". nginx-configure"
+    ". nginx-make"
+    ". modules";
+  row-gap: var(--space-3);
+}
+.diagram-build-layout .diagram-drawing-narrow {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+.diagram-build-layout .diagram-drawing-wide {
+  display: none;
+}
+/* A name or an option of a label does not break inside: the longest,
+   `--enable-dynamic-module`, takes 24 characters at 14 px, which fit the
+   narrow arrangement at 320 px */
+.diagram-build-layout .diagram-label code {
+  white-space: nowrap;
+}
+@container diagram (min-width: 30rem) {
+  .diagram-build-layout .diagram-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 4.5rem 1.5rem 3.5rem 1.5rem 3.5rem;
+    grid-template-areas:
+      "configure"
+      "."
+      "rake"
+      "."
+      "mrbgems-config"
+      "."
+      "nginx-configure"
+      "."
+      "nginx-make"
+      "."
+      "modules";
+    row-gap: 0;
+  }
+  .diagram-build-layout .diagram-drawing-wide {
+    display: block;
+    grid-area: 1 / 1 / -1 / -1;
+  }
+  .diagram-build-layout .diagram-drawing-narrow {
+    display: none;
+  }
+  .diagram-build-layout .diagram-label {
+    align-self: center;
+    padding-inline: var(--space-3);
+  }
+}
+.diagram-build-layout [data-key="configure"] {
+  grid-area: configure;
+}
+.diagram-build-layout [data-key="rake"] {
+  grid-area: rake;
+}
+.diagram-build-layout [data-key="mrbgems-config"] {
+  grid-area: mrbgems-config;
+}
+.diagram-build-layout [data-key="nginx-configure"] {
+  grid-area: nginx-configure;
+}
+.diagram-build-layout [data-key="nginx-make"] {
+  grid-area: nginx-make;
+}
+.diagram-build-layout [data-key="modules"] {
+  grid-area: modules;
+}
