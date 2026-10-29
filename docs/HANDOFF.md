@@ -35,6 +35,38 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## Installation and process continuation, 2026-10-29
+
+- The first rebrand and versioned-documentation iteration is published.
+  [#661](https://github.com/matsumotory/ngx_mruby/pull/661) merged as
+  `6d65a12ec`. Production run 40959681713 and deployment 7425112363
+  succeeded. All 614 shipped files match the live site; four versioned
+  English/Japanese searches, mobile/desktop views, code interaction and
+  HTTPS checks pass. Final evidence is in the
+  [completion record](https://github.com/matsumotory/ngx_mruby/pull/661#issuecomment-6509229800).
+- The common continuation procedure from #659 is being aligned to master
+  in [#662](https://github.com/matsumotory/ngx_mruby/pull/662). HANDOFF
+  remains on next, and master links that source. Branch-specific test
+  process/port handling is preserved; a common workflow does not imply
+  identical harness capabilities.
+- Branch `codex/integrate-stable-install` merges the installation correction
+  of [#660](https://github.com/matsumotory/ngx_mruby/pull/660) from master
+  `da0d1172d` into next `6d65a12ec`. The conflict resolution selects next
+  development source and preserves the v3 core-gem, lock and removed
+  auto-ssl contracts. English/Japanese commands are identical. A fresh
+  clone of `6d65a12ec` built and installed nginx 1.31.8 on Ubuntu 22.04
+  aarch64; the exact documented HTTP trial passed both response assertions,
+  configuration validation, reload and quit. These are documentation
+  changes, with no measured binary input changed. Current head, final CI
+  and independent review belong in the integration PR.
+- Next site work: shared README/social branding and controlled metallic
+  surface/CTA refinements, then deeper executable HTTP/stream examples
+  and reproducible performance records. Keep human and agent output on
+  the same sources; retain implementation/planned/under-design distinctions.
+  The upstream setter D/E work and stable empty-filter follow-up remain
+  separate runtime items. No new runtime contract or software release was
+  decided by this documentation integration.
+
 ## Site continuation checkpoint, 2026-10-29 20:25 UTC
 
 - `next` is `2588cfd26`, the merge of shared-process PR
