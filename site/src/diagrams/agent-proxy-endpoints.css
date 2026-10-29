@@ -2,26 +2,23 @@
  * The agent proxy endpoints diagram (docs/guides/agent-proxy.md; 3.5 of
  * docs/proposals/site.md, the agent proxy diagrams of v3): the grids that
  * place the labels of the page over the drawings agent-proxy-endpoints.svg (wide) and
- * agent-proxy-endpoints.narrow.svg (narrow). Narrow: the legend and the steps, one label
- * below the other beside a line, each label starting with its status in
- * words. Wide, from a figure width of 36rem: a grid of a fixed 34rem, a
+ * no drawing (narrow). Narrow: the steps, one label below the other in
+ * one column, each label starting with its status in words, and no line:
+ * the steps are kinds of request, not a sequence, as in the wide drawing,
+ * which joins no box to another (3.5). Wide, from a figure width of 36rem: a grid of a fixed 34rem, a
  * 2rem column of the symbols of the legend and of each step, and the boxes
  * of the steps with the rows of the drawing (16 px to the rem), so that the
  * drawing is not stretched.
  */
 .diagram-agent-proxy-endpoints .diagram-grid {
-  grid-template-columns: 1rem minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
-    ". own-errors"
-    ". models"
-    ". pass"
-    ". upstream-errors"
-    ". upgrade";
+    "own-errors"
+    "models"
+    "pass"
+    "upstream-errors"
+    "upgrade";
   row-gap: var(--space-3);
-}
-.diagram-agent-proxy-endpoints .diagram-drawing-narrow {
-  grid-column: 1;
-  grid-row: 1 / -1;
 }
 .diagram-agent-proxy-endpoints .diagram-drawing-wide {
   display: none;
@@ -63,9 +60,6 @@
   .diagram-agent-proxy-endpoints .diagram-drawing-wide {
     display: block;
     grid-area: 1 / 1 / -1 / -1;
-  }
-  .diagram-agent-proxy-endpoints .diagram-drawing-narrow {
-    display: none;
   }
   .diagram-agent-proxy-endpoints .diagram-label {
     align-self: center;
