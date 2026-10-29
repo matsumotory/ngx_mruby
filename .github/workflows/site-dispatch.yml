@@ -1,0 +1,71 @@
+name: site-dispatch
+
+# A push to master that changes the 2.x pages of ngx.mruby.org starts
+# site.yml on next (docs/proposals/site.md on next, 5.3 and step 6 of
+# section 6), which builds the site with its 2.x pages under /v2/ from
+# docs/ of master. A workflow_dispatch runs on the branch that it names,
+# here next, which is the branch that the site is built from; a
+# repository_dispatch would run on the default branch, master. With the
+# job's GITHUB_TOKEN, a workflow_dispatch still starts a run (GitHub Docs,
+# "Triggering a workflow from a workflow"); the token needs the actions
+# permission to write.
+#
+# The paths are those of site-v2.yml: the 2.x pages and the files they
+# link to.
+on:
+  # TEMPORARY, for the check of step 6 on this pull request: the dispatch
+  # with the job's token, before the workflow is on master. Removed before
+  # the merge.
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/site-dispatch.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'docs/**'
+      - 'src/**'
+      - 'test/**'
+      - 'build_config.rb'
+      - '**.md'
+      - '.github/workflows/site-dispatch.yml'
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      # TEMPORARY planted fault: without the actions permission to write,
+      # the dispatch must be refused and the job must fail.
+      actions: read
+    steps:
+      # The job fails when GitHub refuses the dispatch, and when no run of
+      # site.yml on next started by workflow_dispatch appears within 60
+      # seconds of it; the run goes to the job summary.
+      - name: Start site.yml on next
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # 30 seconds back, for a difference between the clocks of the runner and GitHub
+          since=$(date -u -d "-30 seconds" +%Y-%m-%dT%H:%M:%SZ)
+          gh workflow run site.yml --ref next
+          for _ in $(seq 1 12); do
+            sleep 5
+            run=$(gh run list --workflow site.yml --branch next --event workflow_dispatch --limit 5 \
+              --json createdAt,url --jq "[.[] | select(.createdAt >= \"$since\")][0].url // empty")
+            if [ -n "$run" ]; then
+              echo "site.yml on next: $run" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+          echo "no run of site.yml on next by workflow_dispatch since $since" >&2
+          exit 1
