@@ -140,7 +140,9 @@ const joinList = (items, lang) => {
 const rangeText = ([a, b], lang) => (lang === 'ja' ? (a === b ? `${a}行` : `${a}行から${b}行`) : a === b ? `${a}` : `${a} to ${b}`);
 const linesText = (ranges, lang) => {
   const list = joinList(ranges.map((r) => rangeText(r, lang)), lang);
-  if (lang === 'ja') return list;
+  // Japanese: the last number and its 行 stay together, so that no line of
+  // the note holds 行 alone (the owner's rule for last lines)
+  if (lang === 'ja') return list.replace(/(\d+行)$/, '<span class="nowrap">$1</span>');
   return `${ranges.length === 1 && ranges[0][0] === ranges[0][1] ? 'line' : 'lines'} ${list}`;
 };
 
