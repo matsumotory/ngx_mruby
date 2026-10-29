@@ -26,7 +26,6 @@
 - [License](#license)
 - [Note for License](#note-for-license)
 - [How to Contribute](#how-to-contribute)
-- [Star History](#star-history)
 - [Contributors](#contributors)
 
 ## What is mruby
@@ -51,7 +50,7 @@ To get mruby, you can download the stable version 4.0.0 from the official mruby
 GitHub repository or clone the trunk of the mruby source tree with the "git
 clone" command. You can also install and compile mruby using [ruby-install](https://github.com/postmodern/ruby-install), [ruby-build](https://github.com/rbenv/ruby-build), [rvm](https://github.com/rvm/rvm), [conda](https://anaconda.org/channels/conda-forge/packages/mruby/overview) or [Homebrew](https://formulae.brew.sh/formula/mruby).
 
-The release candidate version 4.0.0 of mruby can be downloaded via the following URL: [https://github.com/mruby/mruby/archive/4.0.0-rc3.zip](https://github.com/mruby/mruby/archive/4.0.0-rc3.zip)
+The release candidate version 4.1.0 of mruby can be downloaded via the following URL: [https://github.com/mruby/mruby/archive/4.1.0-rc2.zip](https://github.com/mruby/mruby/archive/4.1.0-rc2.zip)
 
 The latest development version of mruby can be downloaded via the following URL: [https://github.com/mruby/mruby/zipball/master](https://github.com/mruby/mruby/zipball/master)
 
@@ -173,10 +172,6 @@ Please ask us if you want to distribute your code under another license.
 
 To contribute to mruby, please refer to the [contribution guidelines][contribution-guidelines] and send a pull request to the [mruby GitHub repository](https://github.com/mruby/mruby).
 By contributing, you grant non-exclusive rights to your code under the MIT License.
-
-## Star History
-
-[![mruby Star History](https://api.star-history.com/svg?repos=mruby/mruby&type=Date)](https://www.star-history.com/#mruby/mruby&Date)
 
 ## Contributors
 
