@@ -16,8 +16,10 @@
 void ngx_stream_mrb_core_class_init(mrb_state *mrb, struct RClass *class);
 typedef void (*ngx_stream_mrb_cleanup_pt)(void *data);
 typedef struct ngx_stream_mruby_ctx_t {
+  mrb_state *mrb;
   mrb_value *fiber_proc;
   mrb_value *async_handler_result;
+  ngx_flag_t fiber_registered;
   ngx_stream_mrb_cleanup_pt cleanup;
   ngx_event_t sleep;
 } ngx_stream_mruby_ctx_t;
