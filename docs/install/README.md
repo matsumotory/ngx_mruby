@@ -95,7 +95,7 @@ Here is the list of the mrbgems that the default build_config.rb builds.
 - mruby-mutex: https://github.com/matsumotory/mruby-mutex
 - mruby-localmemcache: https://github.com/matsumotory/mruby-localmemcache
 - mruby-secure-random: https://github.com/monochromegane/mruby-secure-random
-- the mrbgems of ngx_mruby itself: mrbgems/ngx_mruby_mrblib, mrbgems/rack-based-api and mrbgems/auto-ssl
+- the mrbgems of ngx_mruby itself: mrbgems/ngx_mruby_mrblib, mrbgems/rack-based-api and mrbgems/auto-ssl (its `Nginx::SSL::ACME::Client` speaks ACMEv1, which Let's Encrypt planned to disable entirely in June 2021, see [the class and method reference](../class_and_method/README.md#auto-ssl-mrbgem))
 
 build_config.rb also has lines for mrbgems that are not built by default.
 To build one of them, uncomment its line.

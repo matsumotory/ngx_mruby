@@ -51,6 +51,8 @@ The auto-ssl mrbgem is an optional bundled mrbgem to support
 [Automatic Certificate Management Environment](https://ietf-wg-acme.github.io/acme/draft-ietf-acme-acme.html) (ACME) 
 protocol client. You can easily get SSL certificates from [Let’s Encrypt](https://letsencrypt.org/).
 
+`Nginx::SSL::ACME::Client` speaks ACMEv1, which Let’s Encrypt planned to disable entirely in June 2021 ([End of Life Plan for ACMEv1](https://community.letsencrypt.org/t/end-of-life-plan-for-acmev1/88430)), so it gets no certificate from Let’s Encrypt. The helpers for the dehydrated ACME client (`Nginx::SSL::ACME::Dehydrated`) do not use it.
+
 It is still in early development phase.
 See script files in [mrbgems/auto-ssl/mrblib](https://github.com/matsumotory/ngx_mruby/tree/master/mrbgems/auto-ssl/mrblib)
 for APIs.
