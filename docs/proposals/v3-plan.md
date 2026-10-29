@@ -698,7 +698,13 @@ the record of what was decided and why.
    is removed from `next` (3.0.0), with its entry under "Behavior changes:
    read before upgrading" in the 3.0.0 release notes and in the migration
    guide; 2.x keeps it. The replacement by nginx-acme examples is not part
-   of this amendment.
+   of this amendment. The reason: `auto-ssl` depends on
+   `pyama86/mruby-polarssl`, which is not the owner's gem, has had no
+   commit since March 2017 and does not build on mruby 4, and the ACMEv1
+   protocol that its ACME client speaks was turned off at Let's Encrypt in
+   2021. This follows the owner's rule of 2026-10-29 in AGENTS.md ("Other
+   repositories"): a gem is removed only when a library it uses has stopped
+   being updated.
 7. `mruby_stream`: **keep in v3** and ask users in a GitHub Discussion
    before investing in new stream features.
 8. Behavior changes in v3 (exceptions outside phase, 500 after `rputs`

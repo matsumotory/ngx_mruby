@@ -216,6 +216,13 @@ and security fixes, so the owner answers whether the rewrite goes to
 `master` as decided or to `next`. The queue rows of the three decisions
 carry their dates.
 
+On 2026-10-29 the owner decided how the gems that the owner maintains are
+treated; the decision is written in AGENTS.md, "Other repositories", with
+the owner's words (this pull request; on `master` in the pull request that
+adds it there). The decisions of the same day to bundle mruby 4.1.0-rc2 and
+to remove `auto-ssl` from `next` are written in items 1 and 6 of section 7
+of the plan.
+
 The two decisions of 2026-10-04 that were recorded here before are written
 where their rows said: the mruby steps in item 1 of section 7 of
 [the plan](proposals/v3-plan.md) (#561), and the "Why it changed" lines and
