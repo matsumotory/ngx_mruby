@@ -57,6 +57,9 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     (`BIO_new_file`, `SSL_use_PrivateKey_file`);
   - the bundled `auto-ssl` gem runs the dehydrated ACME client and waits
     for it to finish;
+  - `Nginx::Upstream#server=` resolves a host name with the system resolver
+    when it is called (`ngx_parse_url` without `no_resolve`) and waits for
+    the answer; an IP address does not wait;
   - an operator's script blocks its worker when it uses mruby-sleep,
     mruby-socket or mruby-io, which the default build includes on both
     branches, or matsumotory/mruby-redis (a hiredis client), which the
