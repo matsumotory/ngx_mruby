@@ -325,7 +325,9 @@ jobs:
           for log in "${logs[@]}"; do
             echo "=== ${log}"
             cat "${log}"
-            line=$(grep -E '^==[0-9]+== ERROR SUMMARY: ' "${log}" | tail -n 1)
+            # The step runs with bash -e -o pipefail: without "|| true", a
+            # log without a summary (grep exits 1) would end the step here.
+            line=$(grep -E '^==[0-9]+== ERROR SUMMARY: ' "${log}" | tail -n 1) || true
             if [ -z "${line}" ]; then
               echo "(no ERROR SUMMARY in ${log})"
               continue

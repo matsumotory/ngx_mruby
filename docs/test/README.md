@@ -462,11 +462,13 @@ A cell under valgrind runs nginx with these options:
 valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=test/valgrind.supp --log-file=$RUNNER_TEMP/valgrind/valgrind.%p.log
 ```
 
-valgrind counts an error for each context of a memory error (an invalid
+valgrind counts an error for each memory error that occurs (an invalid
 read or write, a conditional jump or a system call on an uninitialised
-value, an invalid or mismatched free) and for each leak of the kinds
-`definite` and `indirect` that `test/valgrind.supp` does not suppress, and
-prints the count in its `ERROR SUMMARY` line when nginx exits. With
+value, an invalid or mismatched free) and for each loss record of the
+kinds `definite` and `indirect` that `test/valgrind.supp` does not
+suppress, and prints the count, with the number of distinct stacks
+(contexts), in its `ERROR SUMMARY` line when nginx exits: an invalid read
+in a handler that 20 requests ran gives `20 errors from 1 contexts`. With
 `--error-exitcode=99`, valgrind also exits with 99 when the count is not 0.
 `test.sh` stops nginx with SIGTERM in its `EXIT` trap and does not take the
 exit status of nginx into its own, so the step "Check the valgrind reports"
@@ -482,13 +484,23 @@ pool of the cycle, and the arrays of connections and events that
 and the pools of the connections that are still open are left. valgrind
 finds only interior pointers to them and reports them as possibly lost.
 Their number depends on the connections that are open when nginx exits: in
-the CI runs [40819115837](https://github.com/matsumotory/ngx_mruby/actions/runs/40819115837),
+the CI runs
+[40819115837](https://github.com/matsumotory/ngx_mruby/actions/runs/40819115837),
 [40820233191](https://github.com/matsumotory/ngx_mruby/actions/runs/40820233191)
-and [40821209339](https://github.com/matsumotory/ngx_mruby/actions/runs/40821209339)
+and
+[40821209339](https://github.com/matsumotory/ngx_mruby/actions/runs/40821209339)
 of 2026-10-29, each of the 16 cells under valgrind reported from 5 blocks
 (85,440 bytes) to 8 blocks (86,208 bytes), and the cell of nginx 1.31.6
-with the static module gave 5, 7 and 7 blocks in these three runs. A leak of ngx_mruby, mruby or a gem that drops the
-last pointer to a block is definitely lost, and fails the cell.
+with the static module gave 5, 7 and 7 blocks in these three runs. A leak
+of ngx_mruby, mruby or a gem that drops the last pointer to a block is
+definitely lost, and fails the cell. A request or connection that ngx_mruby
+never finalizes keeps its pools until nginx exits, and valgrind reports
+them as possibly lost, so it does not fail the cell. In the run
+40824899601, the pool of an upstream connection that was still open at exit
+is possibly lost, with `ngx_mrb_post_fiber` in the stack of its allocation.
+The `soak` job, which compares the connections, timers and file descriptors
+of the worker between samples ([Soak test for
+memory](#soak-test-for-memory)), is the check for such leaks.
 
 `test/valgrind.supp` suppresses only allocations of nginx itself, each with
 its stack and the reason in a comment: today the environment array of

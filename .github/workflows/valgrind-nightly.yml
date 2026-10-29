@@ -77,23 +77,31 @@ jobs:
             branch=${MATRIX_BRANCH}
           fi
           since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          gh workflow run test.yml --repo "${REPO}" --ref "${branch}" -f valgrind=true
-          # gh workflow run prints no run id. The run is the newest manual
-          # run of test.yml on the branch that was created since the
-          # dispatch; GitHub lists it within seconds.
+          out=$(gh workflow run test.yml --repo "${REPO}" --ref "${branch}" -f valgrind=true)
+          echo "${out}"
+          # gh workflow run prints the URL of the run it started. When it
+          # does not (an older gh), the run is the newest manual run of
+          # test.yml on the branch that was created since the dispatch.
           id=
+          if [[ "${out}" =~ /actions/runs/([0-9]+) ]]; then
+            id=${BASH_REMATCH[1]}
+          fi
           for _ in $(seq 1 30); do
-            id=$(gh run list --repo "${REPO}" --workflow test.yml --branch "${branch}" --event workflow_dispatch \
-              --created ">=${since}" --limit 1 --json databaseId --jq '.[0].databaseId // empty')
             if [ -n "${id}" ]; then
               break
             fi
             sleep 10
+            id=$(gh run list --repo "${REPO}" --workflow test.yml --branch "${branch}" --event workflow_dispatch \
+              --created ">=${since}" --limit 1 --json databaseId --jq '.[0].databaseId // empty')
           done
           if [ -z "${id}" ]; then
             echo "::error title=valgrind-nightly::no run of test.yml on ${branch} appeared within 300 seconds of the dispatch"
             exit 1
           fi
+          # The next step cancels the run when this job is cancelled, for
+          # example by a newer push to the pull request. A file, because the
+          # step may be cancelled before its environment file is read.
+          echo "${id}" > "${RUNNER_TEMP}/dispatched-run"
           url=$(gh run view "${id}" --repo "${REPO}" --json url --jq .url)
           echo "run of test.yml on ${branch}: ${url}"
           echo "test.yml under valgrind on \`${branch}\`: ${url}" >> "${GITHUB_STEP_SUMMARY}"
@@ -102,3 +110,14 @@ jobs:
             exit 1
           fi
           echo "the run of test.yml under valgrind on ${branch} passed: ${url}"
+      - name: Cancel the run of test.yml when this job is cancelled
+        if: ${{ cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -s "${RUNNER_TEMP}/dispatched-run" ]; then
+            id=$(cat "${RUNNER_TEMP}/dispatched-run")
+            echo "cancelling https://github.com/${REPO}/actions/runs/${id}"
+            gh run cancel "${id}" --repo "${REPO}" || true
+          fi

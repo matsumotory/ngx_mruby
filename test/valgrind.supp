@@ -7,9 +7,12 @@
 # nginx.c, ngx_set_environment(): the environment array that the process
 # runs with (environ). Its pool cleanup, ngx_cleanup_environment(), leaves
 # the array allocated while environ still points to it, "as it happens on
-# exit, the only option is to leak it" (the comment in nginx.c). valgrind
-# reports it as 8 bytes in 1 block definitely lost in every cell of the
-# build matrix (nginx 1.26.3 to 1.31.6), with the stack
+# exit, the only option is to leak it" (the comment in nginx.c). At exit,
+# valgrind runs glibc's __libc_freeres, whose free_mem in stdlib/setenv.c
+# calls clearenv(), which sets environ to NULL; no pointer to the array is
+# left, so valgrind reports it as definitely lost, not still reachable:
+# 8 bytes in 1 block in every cell of the build matrix (nginx 1.26.3 to
+# 1.31.6), with the stack
 # malloc / ngx_alloc / ngx_set_environment (nginx.c:613 in 1.31.6) /
 # ngx_single_process_cycle / main.
 {
