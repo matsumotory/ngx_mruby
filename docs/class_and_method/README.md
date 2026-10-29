@@ -6,7 +6,7 @@ ngx_mruby provides mruby APIs to access and manipulate nginx internal data struc
 You can use these classes and methods in handlers like `mruby_content_handler_code`.
 
 Available APIs depend on your build configuration.
-See [Configuring mrbgems](../install#2-configuring-mrbgems) and [Build options](../install#build-options) for the build configuration.
+See [Configuring mrbgems](../install/README.md#2-configuring-mrbgems) and [Build options](../install/README.md#build-options) for the build configuration.
 
 TODO: Sort. I don't think alphabetical order is easy to read.
 
@@ -1203,7 +1203,7 @@ The name comes from [ngx_http_headers_in_t](https://www.nginx.com/resources/wiki
 
 ## Instance Methods
 
-### Nginx::Headers_in#[](string) -> string
+### Nginx::Headers_in#\[\](string) -> string
 
 Returns the value of the http request header.
 
@@ -1261,7 +1261,7 @@ The name comes from [ngx_http_headers_out_t](https://www.nginx.com/resources/wik
 
 ## Instance Methods
 
-### Nginx::Headers_out#[](string) -> string
+### Nginx::Headers_out#\[\](string) -> string
 
 Returns the value of the http response header.
 
