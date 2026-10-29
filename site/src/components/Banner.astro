@@ -3,10 +3,33 @@
 // 4.4: no text-wrap: pretty or balance anywhere, because the engines wrap
 // such text differently) and without a shadow (4.3 item 5). The 3.x
 // development banner of 3.4 uses it.
+//
+// Every page of the 2.x build under /v2/ (step 6) carries the 2.x banner of
+// 3.4, whatever its front matter says: the pages of docs/ of master, the
+// English pages that /v2/ja/ shows with the notice, and the Japanese
+// release notes. scripts/check-v2.mjs finds it by its data-banner
+// attribute.
+import { SITE_VERSION } from '../../scripts/lib/site.mjs';
+
 const { banner } = Astro.locals.starlightRoute.entry.data;
+const ja = Astro.locals.starlightRoute.locale === 'ja';
 ---
 
-{banner && <div class="sl-banner" data-pagefind-ignore set:html={banner.content} />}
+{
+  SITE_VERSION === 2 ? (
+    ja ? (
+      <div class="sl-banner" data-pagefind-ignore data-banner="v2" lang="ja">
+        ngx_mruby 2.xのドキュメントです。2.xは現在のリリースです。開発中の3.xについては、<a href="/ja/docs/">3.xのドキュメント</a>を読んでください。
+      </div>
+    ) : (
+      <div class="sl-banner" data-pagefind-ignore data-banner="v2">
+        This is the documentation of ngx_mruby 2.x, the current release. For 3.x, which is in development, read the <a href="/docs/">3.x documentation</a>.
+      </div>
+    )
+  ) : (
+    banner && <div class="sl-banner" data-pagefind-ignore set:html={banner.content} />
+  )
+}
 
 <style>
 	@layer starlight.core {

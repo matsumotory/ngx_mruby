@@ -6,15 +6,21 @@
 // in English; the pages still to be translated say that the translation is
 // not there yet. The notice is Japanese inside the English <main>, so it
 // carries lang="ja" (WCAG 3.1.2). site/scripts/check-japanese.mjs checks
-// which notice each fallback page shows, by its data-notice attribute.
-import { GENERATED_REFERENCE } from '../../scripts/lib/site.mjs';
+// which notice each fallback page shows, by its data-notice attribute. The
+// 2.x pages under /v2/ja/ (step 6) say that 2.x is documented in English,
+// except for its release notes, which docs/releases/ of master translates.
+import { BASE, GENERATED_REFERENCE, SITE_VERSION } from '../../scripts/lib/site.mjs';
 
-const route = Astro.url.pathname.replace(/^\/ja\/?/, '').replace(/\/$/, '');
+const route = Astro.url.pathname.slice(BASE.length).replace(/^\/ja\/?/, '').replace(/\/$/, '');
 const generated = GENERATED_REFERENCE.includes(route);
 ---
 
 {
-  generated ? (
+  SITE_VERSION === 2 ? (
+    <p class="site-notice" lang="ja" data-notice="v2-english">
+      2.xのドキュメントは、リリースノートを除いて英語で載せています。このページにも日本語訳はありません。
+    </p>
+  ) : generated ? (
     <p class="site-notice" lang="ja" data-notice="generated-reference">
       このリファレンスは英語で載せています。v3の計画では、このリファレンスを今後<code>src/</code>のコードから生成します。そのため、生成のたびに古くなる日本語訳は作りません。
     </p>

@@ -3,7 +3,8 @@
 //
 //   node scripts/check-built-links.mjs [--dist DIR]
 //
-// It reads every HTML file of the built site and every URL in the
+// It reads every HTML file of the built site, the 2.x pages of dist/v2/
+// included (step 6: no broken link under /v2/) and every URL in the
 // attributes that make a browser load or open something: a and area
 // (href), link (href), script, img, source, iframe, embed, audio, video and
 // track (src, srcset, poster), object (data), form (action), and the
@@ -136,7 +137,7 @@ function fileOf(pathname) {
 const problems = [];
 let internal = 0;
 let external = 0;
-const pages = htmlFiles(dist);
+const pages = htmlFiles(dist, { v2: true });
 for (const page of pages) {
   const pageUrl = new URL(page.replace(/(^|\/)index\.html$/, '$1'), `${site.origin}/`);
   for (const element of elements(readHtml(path.join(dist, page)))) {

@@ -9,10 +9,13 @@ import LastUpdated from 'virtual:starlight/components/LastUpdated';
 import Pagination from 'virtual:starlight/components/Pagination';
 import LanguageLink from './LanguageLink.astro';
 import { GITHUB_URL, strings } from '../site-nav.mjs';
+import { BASE, GITHUB_REF } from '../../scripts/lib/site.mjs';
 
 const lang = Astro.locals.starlightRoute.locale === 'ja' ? 'ja' : 'en';
 const t = strings(lang);
-const p = lang === 'ja' ? '/ja' : '';
+// The 2.x build (step 6) links to its own Releases and Security pages,
+// and to the license on master.
+const p = `${BASE}${lang === 'ja' ? '/ja' : ''}`;
 // The home pages are committed MDX files: their last-updated date is the
 // date of the last commit to them, as git log --format=%cs gives it, which
 // is how the generator dates the pages of docs/ (Starlight's own git date
@@ -35,7 +38,7 @@ if (route.entry.filePath && route.entry.filePath.endsWith('index.mdx')) {
       <li><LanguageLink /></li>
       <li><a href={`${p}/releases/`}>{t.releases}</a></li>
       <li><a href={`${p}/security/`}>{t.security}</a></li>
-      <li><a href={`${GITHUB_URL}/blob/next/MITL`}>{t.license}</a></li>
+      <li><a href={`${GITHUB_URL}/blob/${GITHUB_REF}/MITL`}>{t.license}</a></li>
       <li><a href={GITHUB_URL}>GitHub</a></li>
     </ul>
   </div>

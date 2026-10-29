@@ -1,9 +1,10 @@
 name: site
 
-# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and steps 1 to 5 of
-# section 6): build site/ and docs/ from a fresh clone, run the checks of
-# steps 1 to 5, and upload the built site and the screenshots of step 3 as
-# workflow artifacts. There is no deployment job: step 7 adds it, after the
+# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and steps 1 to 6 of
+# section 6): build site/ and docs/ from a fresh clone, and the 2.x pages
+# under /v2/ from docs/ of master, run the checks of steps 1 to 6, and
+# upload the built site and the screenshots of step 3 as workflow
+# artifacts. There is no deployment job: step 7 adds it, after the
 # Pages settings of 5.3.
 #
 # Pull requests run it when they touch site/, docs/ or this file. Every push
@@ -11,6 +12,12 @@ name: site
 # to a file that git no longer tracks stops the build, so a merge that
 # removes or renames such a file fails here, on that merge, and not on the
 # next pull request that touches docs/.
+#
+# A push to master that changes the 2.x pages starts it on next through
+# site-dispatch.yml of master (workflow_dispatch), so that /v2/ is built
+# again from the new docs/ of master. Pull requests to master that change
+# them run site-v2.yml of master, which builds the same site with the
+# pull request's docs/.
 on:
   pull_request:
     branches:
@@ -52,6 +59,14 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # Step 6: the 2.x pages under /v2/ are built from docs/ of master,
+      # with its whole history for their last-updated dates.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: master
+          path: master
+          fetch-depth: 0
+          persist-credentials: false
       # The Node.js version of site/.node-version. No npm cache: npm ci
       # takes about 20 seconds without one.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -72,6 +87,14 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: sh scripts/check-offline-build.sh
+      # Step 6: the 2.x pages, built from docs/ of master into dist/v2/
+      # with their own search index, after the 3.x build above, whose
+      # index stays without them (scripts/build-v2.mjs).
+      - name: Build the 2.x pages under /v2/ from docs/ of master
+        id: v2
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/build-v2.mjs --tree "$GITHUB_WORKSPACE/master"
       - name: Test the generator on its fixtures
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
@@ -83,7 +106,8 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh
         run: git ls-files -z -- '*.md' ':!:mruby/' ':!:dependence/' | xargs -0 python3 site/scripts/check_links.py .
-      - name: Check that every internal link of the built HTML resolves
+      # With the 2.x pages: no broken link under /v2/ (step 6).
+      - name: Check that every internal link of the built HTML resolves, under /v2/ too
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-built-links.mjs
@@ -178,6 +202,12 @@ jobs:
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-language-links.mjs
+      # Step 6: the banner of 3.4 on every 2.x page, the version links, and
+      # 2.x and 3.x search results that do not mix.
+      - name: Check the 2.x pages (banner, version links, search results of their own version)
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' && steps.v2.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-v2.mjs
       - name: Check Lighthouse accessibility on three page types in both languages
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site

@@ -11,7 +11,10 @@
 //   docs/releases/README.md), are Japanese pages at /ja/<path>/. README.md
 //   is the index of its folder, except docs/README.md, which is /docs/
 //   (and docs/ja/README.md /ja/docs/), since / and /ja/ are the committed
-//   home pages (5.2). Routes are lowercase. The pages of SOURCE_ROUTES
+//   home pages (5.2); in the 2.x build (NGX_MRUBY_SITE_VERSION=2, step 6),
+//   which has no home pages, docs/README.md is the index /v2/. Routes are
+//   lowercase, and the pages of the 2.x build are under /v2/ (BASE of
+//   scripts/lib/site.mjs). The pages of SOURCE_ROUTES
 //   (scripts/lib/site.mjs) take the route given there instead, so that
 //   the site shows the four kinds of page of 3.1 while the files stay
 //   where they are; the README of examples/start/ is the one page from
@@ -57,7 +60,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { containsHtml, isFirstBlock, parseMarkdown, plainText, titleHeading } from './lib/markdown.mjs';
-import { contentDir, contentRoot, GITHUB_REF, GITHUB_URL, HOME_PAGES, isShallow, lastCommitDate, manifestFile, repoDir, SIDEBAR_ORDER, siteDir, SOURCE_ROUTES } from './lib/site.mjs';
+import { BASE, contentDir, contentRoot, GITHUB_REF, GITHUB_URL, HOME_PAGES, isShallow, lastCommitDate, manifestFile, repoDir, SIDEBAR_ORDER, siteDir, SITE_VERSION, SOURCE_ROUTES } from './lib/site.mjs';
 import { checkKeys, diagramHtml, loadDrawings, parseDiagramBlock } from './lib/diagrams.mjs';
 import { loadSample, parseSampleBlock, sampleMarkdown } from './lib/samples.mjs';
 
@@ -107,8 +110,10 @@ function pageOf(source) {
   const parts = rel.slice(0, -'.md'.length).split('/');
   if (parts.at(-1) === 'README') parts.pop();
   // docs/README.md, the index of the documentation, is /docs/: the home
-  // pages of the site are / and /ja/ (5.2).
-  let route = SOURCE_ROUTES[`docs/${rel}`] ?? (parts.length ? parts.join('/').toLowerCase() : 'docs');
+  // pages of the site are / and /ja/ (5.2). The 2.x build has no home
+  // pages, and docs/README.md is its index, /v2/.
+  const index = SITE_VERSION === 2 ? '' : 'docs';
+  let route = SOURCE_ROUTES[`docs/${rel}`] ?? (parts.length ? parts.join('/').toLowerCase() : index);
   if (lang === 'ja') route = route ? `ja/${route}` : 'ja';
   if (!/^[a-z0-9._-]+(\/[a-z0-9._-]+)*$|^$/.test(route)) {
     fail(`${source}: the route ${route} would need characters other than a-z, 0-9, ".", "_" and "-"`);
@@ -132,7 +137,7 @@ for (const page of pages) {
   if (other) fail(`${page.source} and ${other.source} would both be the page /${page.route}/`);
 }
 
-const routeUrl = (route) => (route === '' ? '/' : `/${route}/`);
+const routeUrl = (route) => (route === '' ? `${BASE}/` : `${BASE}/${route}/`);
 
 // The new destination of a link or image of `source`, or null to keep it.
 function resolve(url, source, image, where) {
@@ -455,7 +460,7 @@ fs.rmSync(path.dirname(manifestFile), { recursive: true, force: true });
 const manifest = pages.map(render);
 // The home pages are committed MDX files (5.2): the checks read them from
 // the list too.
-for (const [lang, rel, route] of [['en', HOME_PAGES[0], ''], ['ja', HOME_PAGES[1], 'ja']]) {
+for (const [lang, rel, route] of [['en', HOME_PAGES[0], ''], ['ja', HOME_PAGES[1], 'ja']].filter(([, rel]) => rel)) {
   const file = path.join(contentRoot, rel);
   if (!fs.existsSync(file)) fail(`site/src/content/docs/${rel}, the home page of 5.2, is missing`);
   const title = /^title:\s*(.+)$/m.exec(fs.readFileSync(file, 'utf8'))?.[1]?.replace(/^["']|["']$/g, '');

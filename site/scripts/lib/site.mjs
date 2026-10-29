@@ -9,22 +9,37 @@ import { fileURLToPath } from 'node:url';
 // link check treats URLs on this origin as links into the built site.
 export const SITE_URL = 'https://ngx.mruby.org';
 
+// The version of the documentation that a build makes (docs/proposals/
+// site.md, 3.4 and step 6 of section 6). By default, 3.x at unprefixed
+// paths from docs/ of the repository that holds site/ (next). With
+// NGX_MRUBY_SITE_VERSION=2, which scripts/build-v2.mjs sets, 2.x under /v2/
+// from docs/ of the git work tree that NGX_MRUBY_SITE_REPO names (master,
+// v2.x after the promotion of 5.2).
+export const SITE_VERSION = process.env.NGX_MRUBY_SITE_VERSION === '2' ? 2 : 3;
+// The path prefix of the pages of this build: '' for 3.x, '/v2' for 2.x.
+export const BASE = SITE_VERSION === 2 ? '/v2' : '';
+
 // Links to files of the repository that the site does not render go to
-// GitHub, on the branch that the site is built from.
+// GitHub, on the branch that the pages are built from.
 export const GITHUB_URL = 'https://github.com/matsumotory/ngx_mruby';
-export const GITHUB_REF = 'next';
+export const GITHUB_REF = SITE_VERSION === 2 ? 'master' : 'next';
 
 export const siteDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-export const repoDir = path.resolve(siteDir, '..');
+export const repoDir = SITE_VERSION === 2 && process.env.NGX_MRUBY_SITE_REPO ? path.resolve(process.env.NGX_MRUBY_SITE_REPO) : path.resolve(siteDir, '..');
 // Where scripts/sync-docs.mjs writes the pages and the list of them. The
 // pages go into Starlight's content folder beside the committed home pages
 // index.mdx and ja/index.mdx (docs/proposals/site.md, 5.2), each at the
 // folder of its route; .gitignore ignores everything else there.
 export const contentRoot = path.join(siteDir, 'src', 'content', 'docs');
 export const contentDir = contentRoot;
-export const HOME_PAGES = ['index.mdx', 'ja/index.mdx'];
+// The 2.x build has no home pages: docs/README.md is its index, /v2/.
+export const HOME_PAGES = SITE_VERSION === 2 ? [] : ['index.mdx', 'ja/index.mdx'];
 export const manifestFile = path.join(siteDir, 'generated', 'pages.json');
 export const distDir = path.join(siteDir, 'dist');
+// What scripts/build-v2.mjs leaves beside the 3.x build: the 2.x pages in
+// dist/v2/ and the list of them, which scripts/check-v2.mjs reads.
+export const V2_DIR = 'v2';
+export const v2ManifestFile = path.join(siteDir, 'generated', 'pages-v2.json');
 
 // The pages whose route is not the path of their source (the site map of
 // docs/proposals/site.md, 3.2, and the four kinds of page of 3.1). The
@@ -136,12 +151,16 @@ export function loadManifest(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-// The HTML files of the built site, as paths relative to it.
-export function htmlFiles(dist) {
+// The HTML files of the built site, as paths relative to it. The 2.x pages
+// of dist/v2/ are left out unless `v2` is true: the checks of steps 1 to 5
+// read the 3.x pages of the manifest, and scripts/check-v2.mjs and
+// check-built-links.mjs read the 2.x pages.
+export function htmlFiles(dist, { v2 = false } = {}) {
   const files = [];
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
+      if (entry.isDirectory() && !v2 && dir === dist && entry.name === V2_DIR) continue;
       if (entry.isDirectory()) walk(full);
       else if (entry.name.endsWith('.html')) files.push(path.relative(dist, full).split(path.sep).join('/'));
     }
