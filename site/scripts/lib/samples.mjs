@@ -23,6 +23,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { DEVELOPMENT_LABEL } from './diagrams.mjs';
 
 export const SAMPLE_KEYS = ['case', 'conf', 'script', 'request', 'response', 'compared', 'label'];
 // A key that a block may give more than once: a sample of several scripts,
@@ -40,9 +41,6 @@ const PLACES = {
 };
 // The language of each file in the page's code blocks.
 export const SAMPLE_LANGS = { conf: 'nginx', script: 'ruby', request: 'http', response: 'http', compared: 'text' };
-// The label of a sample of a feature of v3 before v3.0.0 (3.5, 3.4):
-// label: development
-export const DEVELOPMENT_LABEL = { en: 'Development version, New in 3.0', ja: '開発中のバージョン、3.0で追加' };
 
 // A sample block gives one file per line, and either a request and the
 // response that the case compares, or one or more files of the values that
@@ -148,15 +146,16 @@ export function sampleCaptionHtml(sample, lang) {
   const c = `<code>${escapeHtml(sample.spec.case)}</code>`;
   const date = `<span class="nowrap">${sample.date}</span>`;
   const commit = `<code class="nowrap">${sample.commit}</code>`;
-  const n = sample.shown.length + 1;
+  const count = sample.shown.length + 1;
+  const n = { en: ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][count] ?? String(count), ja: String(count) };
   if (sample.spec.compared.length) {
     return lang === 'ja'
-      ? `CIを実行するたびに、ケースの${c}がクライアントでリクエストを送り、クライアントが出力する値を、このページに載せた値と比べます。${n}つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
-      : `On every CI run, the case ${c} sends the requests of its client and compares the values that the client prints with the values shown on this page. The ${n} files last changed on ${date} in commit ${commit}.`;
+      ? `CIを実行するたびに、ケースの${c}がクライアントでリクエストを送り、クライアントが出力する値を、このページに載せた値と比べます。${n.ja}つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
+      : `On every CI run, the case ${c} sends the requests of its client and compares the values that the client prints with the values shown on this page. The ${n.en} files last changed on ${date} in commit ${commit}.`;
   }
   return lang === 'ja'
-    ? `CIを実行するたびに、ケースの${c}がこのリクエストを送ります。ケースは、ステータス行と、このページに載せたヘッダと、ボディの全体を比べます。${n}つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
-    : `On every CI run, the case ${c} sends this request and compares the status line, the headers shown on this page and the whole body. The ${n} files last changed on ${date} in commit ${commit}.`;
+    ? `CIを実行するたびに、ケースの${c}がこのリクエストを送ります。ケースは、ステータス行と、このページに載せたヘッダと、ボディの全体を比べます。${n.ja}つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
+    : `On every CI run, the case ${c} sends this request and compares the status line, the headers shown on this page and the whole body. The ${n.en} files last changed on ${date} in commit ${commit}.`;
 }
 
 // The titles of the code blocks of a sample.

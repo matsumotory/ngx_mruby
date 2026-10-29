@@ -12,15 +12,12 @@
 .diagram-agent-proxy-stream .diagram-grid {
   grid-template-columns: 1rem minmax(0, 1fr);
   grid-template-areas:
-    ". leg-now"
-    ". leg-next"
-    ". leg-later"
+    ". deadline"
     ". relay"
     ". frame"
     ". usage"
     ". charge"
-    ". log"
-    ". deadline";
+    ". log";
   row-gap: var(--space-3);
 }
 .diagram-agent-proxy-stream .diagram-drawing-narrow {
@@ -35,7 +32,8 @@
 }
 /* Below 36rem the labels start with their status in words, and the
    legend of the symbols, which this arrangement does not draw, is left out
-   so that the diagram fits the screen at 390 by 664 px (3.5) */
+   (it has no row there) so that the diagram fits the screen at 390 by 664
+   px (3.5) */
 .diagram-agent-proxy-stream :is([data-key="leg-now"], [data-key="leg-next"], [data-key="leg-later"]) {
   display: none;
 }
@@ -52,6 +50,8 @@
       ". leg-next"
       ". leg-later"
       ". ."
+      ". deadline"
+      ". ."
       ". relay"
       ". ."
       ". frame"
@@ -60,9 +60,7 @@
       ". ."
       ". charge"
       ". ."
-      ". log"
-      ". ."
-      ". deadline";
+      ". log";
     row-gap: 0;
   }
   .diagram-agent-proxy-stream .diagram-drawing-wide {
@@ -90,6 +88,9 @@
 .diagram-agent-proxy-stream [data-key="leg-later"] {
   grid-area: leg-later;
 }
+.diagram-agent-proxy-stream [data-key="deadline"] {
+  grid-area: deadline;
+}
 .diagram-agent-proxy-stream [data-key="relay"] {
   grid-area: relay;
 }
@@ -104,7 +105,4 @@
 }
 .diagram-agent-proxy-stream [data-key="log"] {
   grid-area: log;
-}
-.diagram-agent-proxy-stream [data-key="deadline"] {
-  grid-area: deadline;
 }

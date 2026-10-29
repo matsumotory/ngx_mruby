@@ -12,9 +12,6 @@
 .diagram-agent-proxy-endpoints .diagram-grid {
   grid-template-columns: 1rem minmax(0, 1fr);
   grid-template-areas:
-    ". leg-now"
-    ". leg-next"
-    ". leg-later"
     ". own-errors"
     ". models"
     ". pass"
@@ -34,7 +31,8 @@
 }
 /* Below 36rem the labels start with their status in words, and the
    legend of the symbols, which this arrangement does not draw, is left out
-   so that the diagram fits the screen at 390 by 664 px (3.5) */
+   (it has no row there) so that the diagram fits the screen at 390 by 664
+   px (3.5) */
 .diagram-agent-proxy-endpoints :is([data-key="leg-now"], [data-key="leg-next"], [data-key="leg-later"]) {
   display: none;
 }

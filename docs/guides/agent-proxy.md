@@ -10,7 +10,7 @@ runs today or which step of
 An agent proxy is nginx in front of the API of an LLM provider, between
 coding agents and the provider. Ruby decides per request: whether the
 client key is known, which upstream and which provider credential the
-request gets, and whether the key may start another stream. nginx moves
+request gets, and the key that `limit_conn` counts. nginx moves
 the bytes: it reads the request, relays the response of the provider as it
 arrives, and enforces the limits of its own modules. The proxy passes the
 Anthropic Messages API (`/v1/messages`) and the OpenAI Responses API
@@ -74,7 +74,7 @@ leg-later: Steps 7a to 7e: later steps of the v3 plan
 key: Today: the server rewrite handler checks the client key; an unknown key gets 401 with a JSON body
 limit: Today: `limit_conn` per client key; a second stream of the key gets 429
 route: Today: the access handler routes by the `model` of the body and swaps the credential; 403 for an unknown model
-budget: Steps 7a and 7b: the model allowlist and the budgets of the key in a shared dictionary; `body_json` reads the `model` in C
+budget: Steps 7a and 7b: the token and money budgets of the key in a shared dictionary; `body_json` reads the `model` in C
 upstream: Today: `proxy_pass` relays the request to the chosen upstream with the provider's credential
 overloaded: Today: an upstream 529 reaches the client with its body
 fallback: Step 7e: the reference proxy sets Host and SNI per provider, and sends a 529 to another provider with `error_page 529 = @name`
@@ -92,12 +92,12 @@ at: 8d1500bf0 2026-10-29
 leg-now: Today: on `next`, checked by `agent_proxy.rb`
 leg-next: Step 4: the next step of the v3 plan
 leg-later: Steps 7a to 7e: later steps of the v3 plan
+deadline: Step 7c: a first-byte deadline gives up a provider that sends no header; `proxy_read_timeout` stays the idle timeout
 relay: Today: nginx relays the events of the provider byte for byte as they arrive
 frame: Step 7b: the event filter frames the events in C and calls Ruby once per listed event
 usage: Step 7b: Ruby reads the usage from `message_start` and `message_delta`, or from the terminal `response.*` event
 charge: Step 7a: the counters of the shared dictionary are charged when the response ends or is cut
 log: Step 4: the log handlers run before `access_log`, which then logs the cost and the tokens
-deadline: Step 7c: a first-byte deadline; `proxy_read_timeout` stays the idle timeout of the stream
 ```
 
 ## The endpoints in v3.0
@@ -105,14 +105,14 @@ deadline: Step 7c: a first-byte deadline; `proxy_read_timeout` stays the idle ti
 ```diagram
 agent-proxy-endpoints
 label: development
-caption: What the agent proxy of v3.0 answers itself, what it passes through and what it refuses, each with whether it runs today or which step of the v3 plan adds it.
+caption: What the agent proxy of v3.0 answers itself, what it passes through and what it refuses, as a list of the kinds of request, each with whether it runs today or which step of the v3 plan adds it.
 source: docs/proposals/v3-plan.md 424-447
 source: test/conf/conf.d/60-agent-proxy.conf 93-110
 at: 8d1500bf0 2026-10-29
 leg-now: Today: on `next`, checked by `agent_proxy.rb`
 leg-next: Step 4: the next step of the v3 plan
 leg-later: Steps 7a to 7e: later steps of the v3 plan
-own-errors: Today: the proxy answers 401, 403 and 429 itself, with JSON bodies
+own-errors: Today: the proxy answers 401 and 429 itself with JSON bodies, and 403 with nginx's error page
 models: Steps 7c and 7e: `GET /v1/models` from the client's model allowlist, and 504 after the first-byte deadline
 pass: Today: `POST /v1/messages` and `POST /v1/responses` with their streams pass through unchanged
 upstream-errors: Today: an error of the upstream reaches the client with its body
@@ -128,9 +128,11 @@ the feature and its test merge.
 ## Cost per request
 
 The perf lane counts the instructions that nginx runs per request with
-callgrind (`test/perf/compare.sh`). On 2026-10-14, with `PERF_N=20000`,
-nginx 1.31.6 and the bundled mruby 4.0.0, in an Ubuntu 22.04 container on
-aarch64, the tree of `next` at `bc2488a` with mruby 4.0.0 (#561) measured:
+callgrind (`test/perf/compare.sh`). Its handlers `agent_auth.rb` and
+`agent_route.rb` of `test/soak/handlers/` look up the client key and route by the `model` of the body as the recipes above do,
+in the perf lane's own configuration. On 2026-10-14, with `PERF_N=20000`
+and nginx 1.31.6, in an Ubuntu 22.04 container on aarch64, the tree of
+`next` at `bc2488a` with mruby 4.0.0 (#561) measured:
 
 | What | Instructions per request (without GC) |
 |---|---|
