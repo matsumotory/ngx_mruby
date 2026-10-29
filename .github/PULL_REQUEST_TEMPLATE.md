@@ -82,3 +82,9 @@ Write "n/a" in them when nothing changes.
 ## AI assistance
 
 <!-- Was an AI tool used? Which one, and for what (code, tests, docs, PR text)? Did a human review the result? -->
+
+<!-- When handing this PR to another session, follow "Continuing shared work"
+in docs/DEVELOPMENT.md. Keep the evidence above current and leave a dated
+checkpoint comment with head/base, decisions, remaining work, checks not run
+or still running, and the next step. Use public repository/PR/run references;
+do not paste private logs, local absolute paths or tool memory. -->
