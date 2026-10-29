@@ -645,7 +645,8 @@ demand from users.
    start after the safety net, beside step 4 and not after step 3, and they
    do not hold back step 4 or `v3.0.0-alpha.1`. Its parts and what each waits for
    (a proposal of the 2026-10-04 amendment, from the dependencies in
-   section 4, not a decision):
+   section 4, not a decision, except the waits of (a) and (c), which item 15
+   of section 7 decides):
    (a) the shared dictionary, after the safety net of step 2, beside step 4;
    (b) the SSE event filter and the JSON body read, after step 4;
    (c) the upstream peer hook and the first-byte deadline, after the safety
@@ -707,8 +708,8 @@ the record of what was decided and why.
    does not build on mruby 4, and the ACMEv1
    protocol that its ACME client speaks was turned off at Let's Encrypt in
    2021. This follows the owner's rule of 2026-10-29 in AGENTS.md ("Other
-   repositories"): a gem is removed only when a library it uses has stopped
-   being updated.
+   repositories"): a library that a gem uses having stopped
+   being updated is the reason to drop it.
 7. `mruby_stream`: **keep in v3** and ask users in a GitHub Discussion
    before investing in new stream features.
 8. Behavior changes in v3 (exceptions outside phase, 500 after `rputs`
