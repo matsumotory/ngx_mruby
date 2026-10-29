@@ -6,8 +6,10 @@ section 6 are implemented (#591, #607), and step 3 (#617): the owner
 approved the definition and the first diagram on 2026-10-29 with two small
 fixes (section 7). Step 4 is implemented (#618 to #623), except the
 observability and certificate lookup guides of 3.2, which wait for a test
-build with `ngx_otel_module` and a TLS client in the sample's case. Next:
-step 5, the Japanese pages, by 2026-11-05.
+build with `ngx_otel_module` and a TLS client in the sample's case, and
+the narrow drawing of the agent proxy endpoints diagram, which still joins
+the kinds of request with a line (should fix 1 of the review of #622).
+Next: step 5, the Japanese pages, by 2026-11-05.
 
 Evidence: the site map and writing plan of 3.2 and 3.3, and 3.5, section
 4, section 6 and section 7 rest on `next` at 73fc9098f and on the source of
