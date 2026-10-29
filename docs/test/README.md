@@ -404,6 +404,84 @@ The upper bound can create these races:
   without a request, and closes it. No handler runs for it, and nginx writes
   only `debug` lines about it to `error.log`.
 
+### Stopping nginx
+
+`test.sh` stops only the nginx processes that it started, by their pid. It
+never signals a process by its name (`killall`, `pkill`), so the nginx
+processes of other checkouts, of the soak test, of nginx-tests and of other
+users keep running. Two runs of `test.sh` on one machine still use the
+same ports, so run one at a time: the second run fails in the wait before
+the start, as "Waiting for nginx to listen" above shows.
+
+- When `test.sh` exits, after the last case, after a failure, or on SIGHUP,
+  SIGINT or SIGTERM, it stops the test nginx with SIGTERM and waits until the
+  process has ended. It then prints how long that took and the exit status
+  of nginx; the status does not change the exit status of `test.sh`:
+
+  ```text
+  test.sh: nginx (pid 374) ended within 0.1 seconds of the first SIGTERM; SIGTERM sent 1 times
+  test.sh: nginx (pid 374) exit status 0
+  ```
+
+- Before it starts nginx, `test.sh` reads `build/nginx/logs/nginx.pid`
+  (`build_dynamic/...` for `BUILD_DYNAMIC_MODULE`). When an earlier run was
+  killed before it could stop its nginx, that nginx still runs and the file
+  names it. `test.sh` stops it in the same way if the process runs
+  `build/nginx/sbin/nginx` of this checkout (its command line, from `ps -o
+  args=`, contains that absolute path), and leaves any other process alone,
+  since the pid may have been given to another process by then:
+
+  ```text
+  test.sh: stopping the nginx (pid 7) that an earlier run left running
+  test.sh: logs/nginx.pid names pid 7, which does not run /path/to/build/nginx/sbin/nginx; left running
+  ```
+
+The test nginx is a single process (`master_process off`). It checks for a
+signal only after it has handled its events, in the loop of
+`ngx_single_process_cycle()`: the signal handler sets `ngx_terminate`, and
+the loop exits once `ngx_process_events_and_timers()` returns. A SIGTERM
+that arrives after that check and before the next `epoll_wait()` does not
+interrupt the wait, and with no timer and no connection, `epoll_wait()`
+waits without a time limit. nginx then logs `signal 15 (SIGTERM) received`
+and keeps running. A master process does not have this gap: it waits for
+signals with `sigsuspend()`, and while its workers still run after a
+SIGTERM, it sends them the command to terminate again, over the socket pair
+of each worker that the worker's event loop watches (SIGTERM only where that
+write fails), with a delay that starts at 50 milliseconds and doubles
+(`ngx_master_process_cycle()`). `test.sh` does the same for the single
+process with the signal: it sends SIGTERM again 1, 3, 7, 15 and 31 seconds after the first
+one while the process still runs, and a SIGTERM that arrives during
+`epoll_wait()` ends the wait. After `NGINX_STOPTIME` seconds (default 60) it
+sends SIGKILL, prints
+
+```text
+test.sh: nginx (pid 374) did not end within 60 seconds (NGINX_STOPTIME) after 6 SIGTERM; sent SIGKILL
+```
+
+and exits 1. The second nginx of `test/t/cases/_second_instance.rb`, also a
+single process, is stopped with SIGQUIT, sent again in the same way.
+
+How often a run hits the gap was measured on 2026-10-29, with the test
+nginx built from `next` at `c9c49023e` (nginx 1.31.6, static module), started
+as `test.sh` starts it, in a container of Ubuntu 22.04 on an aarch64 host
+with 11 CPUs:
+
+- 800 starts of the test nginx, each followed by one SIGTERM: 400 right after
+  the response to one request, and 400 at 0 to 20 milliseconds after three
+  requests were sent. nginx ended after the one SIGTERM every time. The gap
+  lasts from the check of `ngx_terminate` to the call of `epoll_wait()`, a
+  debug log line and a lookup of the timer tree, so a loop of this size does
+  not find it.
+- gdb attached to the test nginx, waited until nginx had closed the
+  connection of a request, stopped it at the next call of
+  `ngx_epoll_process_events()`, with no event and no timer left
+  (`timer=-1`), and delivered SIGTERM there. nginx logged `signal 15
+  (SIGTERM) received from ..., exiting` and then `epoll timer: -1`, and
+  still ran 10 seconds later. A second SIGTERM ended it within 0.1 seconds.
+  This is the state of the run of `test.sh` at `7926f72`
+  ([#600](https://github.com/matsumotory/ngx_mruby/pull/600)), where nginx
+  logged the SIGTERM and stayed in `epoll_wait()` for 20 minutes.
+
 ## Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer
 
 CI builds one matrix cell with `-fsanitize=address,undefined`. To run the
@@ -532,9 +610,8 @@ docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEB
 
 The test files start nginx on ports from 8000 to 8999 that they lock, so
 they run in parallel (`NGINX_TESTS_JOBS`, by default the number of CPUs).
-They do not use the ports of `test.sh`, but a `test.sh` that runs on the
-same machine kills every nginx, theirs included: run one of the two at a
-time, or `run.sh` in a container.
+They do not use the ports of `test.sh`, and `test.sh` stops only the nginx
+that it started ("Stopping nginx" above).
 
 Environment variables: `NGINX_TESTS_OUT` (the output directory, by default
 `build_nginxtests`), `NGINX_TESTS_SRC` (a checkout of nginx-tests at the
@@ -1021,8 +1098,8 @@ separated by `/`, and the reasons are listed below the table. The logs are in
 `stderr.<scenario>.log`, `mock.<scenario>.log` (the mock LLM's output, for
 the `agent_*` scenarios) and `soak.log` (the output of the driver).
 
-`test.sh` kills every nginx on the machine, including the soak's, so do not
-run both at the same time on one machine.
+`test.sh` stops only the nginx that it started ("Stopping nginx" above),
+and its ports are not those of the soak.
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -1564,8 +1641,8 @@ minutes each); the measurement of the default scenarios takes about 140
 seconds per build (139 seconds on the CI runner, 28 of them in `sleep`), and
 `proxy_stream_plain_1000` and `route_json_64k` add about 80 and 130 seconds
 when `PERF_SCENARIOS` names them. The report goes to `build_perf/report.txt` and
-`build_perf/report.json`. `test.sh` kills every nginx on the machine, so do
-not run it at the same time.
+`build_perf/report.json`. `test.sh` starts its mock LLM upstream on 12372
+too, so do not run it at the same time.
 
 | Variable | Default | Meaning |
 |---|---|---|
