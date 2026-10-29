@@ -175,9 +175,12 @@ stop_nginx() {
     fi
     while ! nginx_ended "$stop_pid" && nginx_is_ours "$stop_pid"; do
         if [ "$stop_ticks" -ge $((NGINX_STOPTIME * 10)) ]; then
-            if nginx_is_ours "$stop_pid"; then kill -KILL "$stop_pid" 2>/dev/null || true; fi
-            echo "test.sh: nginx (pid $stop_pid) did not end within ${NGINX_STOPTIME} seconds (NGINX_STOPTIME) after $stop_signals SIGTERM; sent SIGKILL"
-            return 1
+            if nginx_is_ours "$stop_pid"; then
+                kill -KILL "$stop_pid" 2>/dev/null || true
+                echo "test.sh: nginx (pid $stop_pid) did not end within ${NGINX_STOPTIME} seconds (NGINX_STOPTIME) after $stop_signals SIGTERM; sent SIGKILL"
+                return 1
+            fi
+            break
         fi
         sleep 0.1
         stop_ticks=$((stop_ticks + 1))
