@@ -1,6 +1,6 @@
 # はじめに
 
-このページでは、ngx_mrubyを組み込んだnginxをDockerで動かし、Rubyのスクリプトが答えるリクエストを送ってから、そのスクリプトを書き換えます。例は、リポジトリのフォルダ`examples/start`にあります。[`compose.yaml`](../../../examples/start/compose.yaml)は、[`Dockerfile`](../../../examples/start/Dockerfile)を使って、チェックアウトしたソースからngx_mrubyを組み込んだnginxをビルドし、フォルダの`nginx.conf`と`hello.rb`で起動します。
+このページでは、ngx_mrubyを組み込んだnginxをDockerで動かし、Rubyのスクリプトが答えるリクエストを送ってから、そのスクリプトを書き換えます。例は、リポジトリのフォルダ`examples/start`にあります。Composeは、[`compose.yaml`](../../../examples/start/compose.yaml)に従い、[`Dockerfile`](../../../examples/start/Dockerfile)を使って、チェックアウトしたソースからngx_mrubyを組み込んだnginxをビルドします。次に、フォルダの`nginx.conf`と`hello.rb`でそのnginxを起動します。
 
 ## 始める<wbr>前に
 
@@ -76,7 +76,7 @@ r.content_type = "text/plain"
 Nginx.rputs "Hello, #{name}! hello.rb answered #{r.method} #{r.uri}.\n"
 ```
 
-nginxは、ngx_mrubyがnginxに組み込んだmrubyのVMで、ワーカープロセスでスクリプトを実行します。ほかのプロセスは関わりません。スクリプトが使えるクラスとメソッドは、[Rubyのリファレンス](../../class_and_method/README.md)にあります。
+nginxは、ワーカープロセスの中でngx_mrubyがnginxに組み込んだmrubyのVMを使ってスクリプトを実行します。ほかのプロセスは関わりません。スクリプトが使えるクラスとメソッドは、[Rubyのリファレンス](../../class_and_method/README.md)にあります。
 
 ## スクリプトを<wbr>書き換える
 

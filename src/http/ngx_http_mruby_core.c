@@ -121,17 +121,21 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
 }
 
 /*
- * Whether a content handler that ended without output would leave the client
- * without a response. The content phase hands the return value of the handler
- * to ngx_http_finalize_request, which answers 201, 204 and the statuses from
- * 300 up by itself, but ends the request without sending anything for NGX_OK
- * and the other statuses below 300: nginx closes an HTTP/1.0 connection
- * without a byte and keeps a keep-alive connection open until
- * keepalive_timeout. This covers a handler that sets no status (it writes
- * nothing, or only an empty String or nil with Nginx.rputs), 200 and the
- * other such statuses; ngx_mrb_finalize_rputs answers them.
+ * Whether a content handler would leave the client without a response if
+ * ngx_mrb_finalize_rputs returned the status: when it ended without output,
+ * or when it wrote output and then set the status with Nginx.return,
+ * Nginx.send_header or Nginx.status_code=. The content phase hands the value
+ * that the handler returns to ngx_http_finalize_request, which answers 201,
+ * 204 and the statuses from 300 up by itself, but ends the request without
+ * sending anything for NGX_OK and the other statuses below 300: nginx closes
+ * an HTTP/1.0 connection without a byte and keeps a keep-alive connection
+ * open until keepalive_timeout. Without output, this covers a handler that
+ * sets no status (it writes nothing, or only an empty String or nil with
+ * Nginx.rputs), 200 and the other such statuses; ngx_mrb_finalize_rputs
+ * answers them. After output, a 200 is sent with the output, and so is
+ * another such status.
  *
- * Only the main request: a subrequest without output does not leave the
+ * Only the main request: a subrequest, with or without output, does not leave the
  * client without a response, because its parent answers. Nothing changes
  * either when the header was already sent, or when the module context is no
  * longer the one the handler ran with: Nginx.redirect makes an internal
@@ -269,13 +273,27 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     } else {
       rc = NGX_OK;
     }
-  } else if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf) {
-    r->headers_out.status = NGX_HTTP_OK;
+  } else if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf ||
+             ngx_mrb_content_ends_without_response(r, ctx, kind)) {
+    // A status set after the output marks the last buffer. nginx answers 201,
+    // 204 and the statuses from 300 up by itself (the else branch below), but
+    // would end the request without a response for another status below 300:
+    // the output goes out with that status, as nginx's own "return 202 text"
+    // sends it. 0 is no status, and the output gets 200, as when the status
+    // was set before the output.
+    if (!(*chain->last)->buf->last_buf || r->headers_out.status == 0) {
+      r->headers_out.status = NGX_HTTP_OK;
+    }
     (*chain->last)->buf->last_buf = 1;
     ngx_mrb_discard_unread_body(r);
     ngx_http_send_header(r);
 
-    if (ctx->phase != NGX_HTTP_MRUBY_FILTER_PROCESS) {
+    // A HEAD request must receive the headers only; nginx sets r->header_only.
+    // Do not send the body chain for it, as nginx's own content handlers skip
+    // the body after ngx_http_send_header when r->header_only is set. The
+    // headers, Content-Length included, are already set, so the HEAD response
+    // still reports the length the body would have had.
+    if (ctx->phase != NGX_HTTP_MRUBY_FILTER_PROCESS && !r->header_only) {
       ngx_http_output_filter(r, chain->out);
     }
 

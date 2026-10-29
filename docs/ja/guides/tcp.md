@@ -1,6 +1,6 @@
 # TCPの接続を許可する
 
-streamモジュールは、TCPの接続をプロキシし、`listen ... udp`ではUDPのセッションもプロキシします。`stream`ブロックの`server`では、[`mruby_stream`](../../directives/README.md#stream-module-directives)で指定したRubyのスクリプトが、streamモジュールのaccessフェーズで動きます。スクリプトは、nginxがupstreamに接続する前に、セッションごとに1回動きます。スクリプトは`Nginx::Stream::Connection`でセッションのアドレスを読み、`stream_status`を`Nginx::Stream::ABORT`にしてセッションを閉じます。
+streamモジュールは、TCPの接続をプロキシし、`listen ... udp`ではUDPのセッションもプロキシします。`stream`ブロックの`server`では、[`mruby_stream`](../../directives/README.md#stream-module-directives)で指定したRubyのスクリプトが、streamモジュールのaccessフェーズで動きます。スクリプトは、nginxがupstreamに接続する前に、セッションごとに1回動きます。スクリプトは`Nginx::Stream::Connection`でセッションのアドレスを読みます。スクリプトが`stream_status`を`Nginx::Stream::ABORT`にすると、セッションが閉じます。
 
 ## サンプル
 
@@ -18,4 +18,4 @@ response: test/html/guide_tcp.response
 
 - streamモジュールは、UDPのセッションでもスクリプトを実行します。テストスイートが送るのはTCPだけです。
 - スクリプトはnginxがクライアントのデータを読む前に動くので、判断に使えるのは、クライアントが送る内容ではなく、セッションのアドレスとポートです。
-- `stream`ブロックは、`http`ブロックとは別に自分専用の`mrb_state`を持ちます。起動時のコードにも、`stream`ブロック専用のディレクティブの`mruby_stream_init`と`mruby_stream_init_worker`があります。
+- `stream`ブロックは、`http`ブロックとは別に独自の`mrb_state`を持ちます。起動時に動くコードにも、`stream`ブロック専用のディレクティブの`mruby_stream_init`と`mruby_stream_init_worker`があります。

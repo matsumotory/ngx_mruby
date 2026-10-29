@@ -4,13 +4,13 @@
 
 ## ページの<wbr>一覧
 
-- はじめに：[はじめに](start/README.md)では、DockerでRubyのハンドラを持つnginxを動かし、スクリプトを書き換えます
+- [はじめに](start/README.md)：DockerでRubyのハンドラを持つnginxを動かしてから、スクリプトを書き換えます
 - ガイド：[インストール](install/README.md)、[バックエンドへリクエストを振り分ける](guides/routing.md)、[ファイルに載せたクライアントを拒否する](guides/access-control.md)、[APIキーごとにレートを制限する](guides/rate-limit.md)、[レスポンスのボディを変える](guides/body-filter.md)、[RubyでTCPの接続を許可する](guides/tcp.md)、[ユースケースの一覧](use_case/README.md)、開発版の[エージェントプロキシ](guides/agent-proxy.md)
 - リファレンス：[ディレクティブ](../directives/README.md)、[Rubyのクラスとメソッド](../class_and_method/README.md)、[ビルド](reference/build.md)
-- コンセプト：[リクエストのフェーズ](concepts/request-phases.md)、[フィルタ](concepts/filters.md)、[ブロックせずに待つ](concepts/async.md)、[ライフタイム](concepts/lifetimes.md)
-- リリース：アップグレードの前に読む挙動の変更から始まる[リリースノート](../releases/README.md)と、[ngx_mruby 2.xから3.0.0への移行](migration/README.md)
-- セキュリティ：[セキュリティポリシー](../../SECURITY.md)と、ngx_mrubyが何を信頼し、何をクライアントの入力として扱い、スクリプトが何に責任を持つかを書いた[信頼境界](../security/trust-boundary.md)
-- 開発に参加する：[開発に参加する](../../CONTRIBUTING.md)、[テスト](../test/README.md)、[ngx_mrubyの開発](../DEVELOPMENT.md)と[作業の状態](../HANDOFF.md)
+- コンセプト：[リクエストのフェーズ](concepts/request-phases.md)、[フィルタ](concepts/filters.md)、[ブロックせずに待つ](concepts/async.md)、[ライフタイム](concepts/lifetimes.md)の4つのページ
+- リリース：[リリースノート](../releases/README.md)、[ngx_mruby 2.xから3.0.0への移行](migration/README.md)。リリースノートは、アップグレードする前に読む挙動の変更から始まります
+- セキュリティ：[セキュリティポリシー](../../SECURITY.md)、[信頼境界](../security/trust-boundary.md)。信頼境界のページには、ngx_mrubyが何を信頼し、何をクライアントの入力として扱い、スクリプトが何に責任を持つかを書いています
+- 開発に参加する：[開発に参加する](../../CONTRIBUTING.md)、[テスト](../test/README.md)、[ngx_mrubyの開発](../DEVELOPMENT.md)、[作業の状態](../HANDOFF.md)
 
 ## ブランチと<wbr>リリース
 
