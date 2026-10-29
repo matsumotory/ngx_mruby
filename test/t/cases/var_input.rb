@@ -129,4 +129,16 @@ t.assert('Nginx::Var - a setter without its value raises ArgumentError and leave
   t.assert_equal "raised: ArgumentError: wrong number of arguments (given 0, expected 1) for Nginx::Var#var_input_target=\nvar_input_target: \"initial\"", res["body"]
 end
 
+t.assert('Nginx::Var - the accessor keeps a value that contains a NUL byte', 'GET /set_nul_value on 18153') do
+  res = var_input('/set_nul_value')
+  t.assert_equal 200, res.code
+  t.assert_equal "returned: [true, 5]\nvar_input_target: \"restored\"", res["body"]
+end
+
+t.assert('Nginx::Var - set keeps a value that contains a NUL byte', 'GET /set_nul_value_via_set on 18153') do
+  res = var_input('/set_nul_value_via_set')
+  t.assert_equal 200, res.code
+  t.assert_equal "returned: [true, 5]\nvar_input_target: \"restored\"", res["body"]
+end
+
 t.report
