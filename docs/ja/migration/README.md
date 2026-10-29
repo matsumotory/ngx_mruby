@@ -220,7 +220,7 @@ grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|m
 
   `\(RuntimeError\)$`のようなパターンは、`#<RuntimeError: `に書き換えます。
 - [`NoMethodError`のメッセージがレシーバのクラスを示す](../../releases/v3.0.0.ja.md#nomethoderrorのメッセージがレシーバのクラスを示す561)：メッセージの後に` for <class>`が続くので、`undefined method 'foo'`で終わるパターンはもう一致しなくなりました。
-- [nginxが設定を読む間のメッセージのレベルが`notice`から`info`になる](../../releases/v3.0.0.ja.md#nginxが設定を読む間のメッセージのレベルがnoticeからinfoになる565)：ログのパーサ、アラートのルール、起動のスクリプトで、`mechanism enabled`、`compile info`、`target variable`、`ngx_mruby NOTICE`を探してください。nginxを起動しても、もうこれらの行は書きません。`nginx -t`は、これらを`[info]`で起動時のログに書きます。起動時のログは`-e`で指定したファイルで、指定しなければnginxに組み込んだエラーログのパスです。デフォルトでは、プレフィックスの下の`logs/error.log`です。nginxが起動時のログの行を端末にも出すのは`warn`以上だけなので、`nginx -t`の出力にはこれらの行が出ません。
+- [nginxが設定を読む間のメッセージのレベルが`notice`から`info`になる](../../releases/v3.0.0.ja.md#nginxが設定を読む間のメッセージのレベルがnoticeからinfoになる565)：ログのパーサ、アラートのルール、起動のスクリプトで、`mechanism enabled`、`compile info`、`target variable`、`ngx_mruby NOTICE`を探してください。nginxは、起動しても、もうこれらの行を書きません。`nginx -t`は、これらを`[info]`で起動時のログに書きます。起動時のログは`-e`で指定したファイルで、指定しなければnginxに組み込んだエラーログのパスです。デフォルトでは、プレフィックスの下の`logs/error.log`です。nginxが起動時のログの行を端末にも出すのは`warn`以上だけなので、`nginx -t`の出力にはこれらの行が出ません。
 
   ```
   2.x, start:                 [notice] ... ngx_mruby/<version> (mruby/3.3.0) mechanism enabled in ...
@@ -270,13 +270,13 @@ grep -rnE 'Data_Wrap_Struct|mrb_data_object_alloc|MRB_SET_INSTANCE_TT|MRB_ARGS_|
 
 ## 結果を<wbr>確かめる
 
-1. すべてのスクリプトを、mruby 4.0.0の`mrbc`でコンパイルします。このリリースを`sh build.sh`か`sh test.sh`でビルドした後は、`mruby/bin/mrbc -c`でスクリプトの構文を確かめられます。`mrbc -c`は`Syntax OK`を出力するか、エラーの行を出力して1で終わります。メソッドの本体で定数に代入したときのエラーの行は、`<file>:2:3: dynamic constant assignment`です。
+1. すべてのスクリプトを、mruby 4.0.0の`mrbc`でコンパイルします。このリリースを`sh build.sh`か`sh test.sh`でビルドした後なら、`mruby/bin/mrbc -c`でスクリプトの構文を確かめられます。`mrbc -c`は`Syntax OK`を出力するか、エラーの行を出力して終了ステータス1で終わります。メソッドの本体で定数に代入したときのエラーの行は、`<file>:2:3: dynamic constant assignment`です。
 
    ```sh
    for f in /path/to/scripts/*.rb; do mruby/bin/mrbc -c "$f" || echo "check: $f"; done
    ```
 
-2. スクリプトのうち`Nginx`のクラスを呼ばない部分を、両方のバージョンのmrubyで実行します。mruby 4.0.0のエントリーは、2026年10月4日から10月14日の間に、この方法で測りました。同じRubyのスクリプトを2つの`mruby`のバイナリで実行しました。1つはngx_mruby 2.xに同梱のmruby 3.3.0から、もう1つは、mruby 4.0.0からビルドしたものです。どちらもUbuntu 22.04とgcc 11のDockerの中でビルドし、mrubyの`default`のgemboxか、各バージョンのngx_mrubyのビルドのコアのgemを使いました。コアのgemは、3.3.0では`full-core`とiij/mruby-dir、4.0.0では`NGX_MRUBY_CORE_GEMS`です。「ngx_mrubyのテストスイートでもこの変化が出ました」と書いたエントリーは、ngx_mruby自身のレスポンスかログの行も変わったものです。同じことをするには、各バージョンの`mruby/`ディレクトリを別々のディレクトリにコピーし、それぞれで`rake MRUBY_CONFIG=default`を実行して、両方の`bin/mruby`でスクリプトを実行します。このrakeをngx_mrubyのチェックアウトの`mruby/`で実行しないでください。rakeは`mruby/build`にビルドします。そこには、モジュールのビルドが使うmrubyがあります。
+2. スクリプトのうち`Nginx`のクラスを呼ばない部分を、両方のバージョンのmrubyで実行します。mruby 4.0.0のエントリーは、2026年10月4日から10月14日の間に、この方法で測りました。同じRubyのスクリプトを2つの`mruby`のバイナリで実行しました。1つはngx_mruby 2.xに同梱のmruby 3.3.0から、もう1つは、mruby 4.0.0からビルドしたものです。どちらもUbuntu 22.04とgcc 11を使うDockerのコンテナの中でビルドし、mrubyの`default`のgemboxか、各バージョンのngx_mrubyのビルドのコアのgemを使いました。コアのgemは、3.3.0では`full-core`とiij/mruby-dir、4.0.0では`NGX_MRUBY_CORE_GEMS`です。「ngx_mrubyのテストスイートでもこの変化が出ました」と書いたエントリーは、ngx_mruby自身のレスポンスかログの行も変わったものです。同じことをするには、各バージョンの`mruby/`ディレクトリを別々のディレクトリにコピーし、それぞれで`rake MRUBY_CONFIG=default`を実行して、両方の`bin/mruby`でスクリプトを実行します。rakeは`mruby/build`にビルドし、そこにはモジュールのビルドが使うmrubyがあります。そのため、このrakeをngx_mrubyのチェックアウトの`mruby/`で実行しないでください。
 3. テスト用のサーバに、このリリースのモジュールと設定を入れて動かし、各ハンドラに届くリクエストを送ります。そして、`error.log`で、`NoMethodError`、`TypeError`、`ArgumentError`、`SyntaxError`を含む`mrb_run failed`の行を探します。
 
 次のものは同じ方法で確かめて変わっていなかったので、確かめる必要はありません。`String#size`と`#length`はバイトを数えます。mruby-encodingのgemはデフォルトのビルドに入っていません。詳しくは[コアのgem](../install/README.md#コアのgem)にあります。ほかに、引数の数が違うときの`ArgumentError`、`Exception#message`、`Struct#inspect`、`Float#to_s`、Integerの除算と剰余、mruby-sleepの`Kernel#sleep`と`#usleep`も変わっていません。

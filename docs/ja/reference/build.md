@@ -59,11 +59,11 @@ modules: その中に<wbr>あるもの：<wbr>`ngx_http_mruby_module`、<wbr>ngi
 デフォルトの`build_config.rb`は、`NGX_MRUBY_CORE_GEMS`が挙げるmrubyのコアのgemに加えて、次のmrbgemsを`libmruby.a`に入れてビルドします。コアのgemの説明は[コアのgem](../install/README.md#コアのgem)にあります。`build_config.rb.lock`は、サードパーティの各gemのコミットを固定します。詳しくは[gemのコミット](../install/README.md#gemのコミットとbuild_configrblock)にあります。
 
 - [`iij/mruby-env`](https://github.com/iij/mruby-env)：`ENV`
-- [`iij/mruby-digest`](https://github.com/iij/mruby-digest)：MD5、RMD160、SHA1、SHA256、SHA384、SHA512、HMACを扱う`Digest`
+- [`iij/mruby-digest`](https://github.com/iij/mruby-digest)：MD5、RMD160、SHA1、SHA256、SHA384、SHA512、HMACを計算する`Digest`
 - [`iij/mruby-process`](https://github.com/iij/mruby-process)：`Process`
 - [`mattn/mruby-json`](https://github.com/mattn/mruby-json)：`JSON`
 - [`mattn/mruby-onig-regexp`](https://github.com/mattn/mruby-onig-regexp)：正規表現の`OnigRegexp`
-- [`matsumotory/mruby-redis`](https://github.com/matsumotory/mruby-redis)：`Redis`。Redisのサーバの応答を、ワーカーの中で1つずつ待つクライアントです。このgemのビルドは、hiredisのライブラリをタグv1.5.0でクローンし、そのコミットを確かめて静的にリンクします。また、このgemが依存するmatsumotory/mruby-pointerもクローンします。`Redis`を呼ぶスクリプトには、動いているRedisのサーバが要ります
+- [`matsumotory/mruby-redis`](https://github.com/matsumotory/mruby-redis)：`Redis`。Redisのサーバの応答を、ワーカーの中で1つずつ待つクライアントです。このgemのビルドは、hiredisのライブラリをタグv1.5.0でクローンし、そのコミットを確かめて静的にリンクします。また、このgemが依存するmatsumotory/mruby-pointerもクローンします。`Redis`を呼ぶスクリプトには、動いているRedisのサーバが要ります。
 - [`matsumotory/mruby-vedis`](https://github.com/matsumotory/mruby-vedis)：`Vedis`
 - [`matsumotory/mruby-userdata`](https://github.com/matsumotory/mruby-userdata)：クラスの`Userdata`
 - [`matsumotory/mruby-uname`](https://github.com/matsumotory/mruby-uname)：`Uname`

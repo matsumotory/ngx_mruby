@@ -1,6 +1,6 @@
 # ユースケース
 
-次のユースケースには、それぞれ、CIが実行するサンプルがこのページかリンク先のガイドにあるか、テストしていないことと、その理由を書いています。サンプルは、このリポジトリのテストのファイルと、そのテストがCIのたびに比べるレスポンスを示します。サンプルの仕組みは、サイトの構想の3.5にあります。
+このページでは、ユースケースごとに、CIが実行するサンプルをこのページかリンク先のガイドに載せるか、テストしていないことと、その理由を書いています。サンプルは、このリポジトリのテストのファイルと、そのテストがCIのたびに比べるレスポンスを示します。サンプルの仕組みは、サイトの構想の3.5にあります。
 
 ## Hello world
 
@@ -28,7 +28,7 @@ accessハンドラは、ファイルに載ったクライアントに403を返�
 
 ボディフィルタが、`.md`のファイルのボディをHTMLに変換します。フィルタの部分は、ガイドの[レスポンスのボディを変える](../guides/body-filter.md)のサンプルです。そのサンプルは、テキストファイルをHTMLのページで包みます。
 
-**テストしていません**。Markdownの変換には、gemのmruby-discountが要ります。`build_config.rb`はmruby-discountの行をコメントにしてこのgemを外しており、このgemをビルドするCIのジョブもありません。試すには、`build_config.rb`のmruby-discountの行のコメントを外し、ビルドし直してください。
+**テストしていません**。Markdownの変換には、gemのmruby-discountが要ります。`build_config.rb`ではmruby-discountの行がコメントになっていて、このgemはビルドに入りません。このgemをビルドするCIのジョブもありません。試すには、`build_config.rb`のmruby-discountの行のコメントを外し、ビルドし直してください。
 
 ```nginx
 location ~ \.md$ {
@@ -70,7 +70,7 @@ mruby-redisは、Redisのサーバの応答をワーカーの中で1つずつ待
 
 このcontentハンドラは、MarkdownのテキストをHTMLのページに変換します。
 
-**テストしていません**。gemのmruby-discountが要ります。`build_config.rb`はmruby-discountの行をコメントにしてこのgemを外しており、このgemをビルドするCIのジョブもありません。試すには、mruby-discountの行のコメントを外し、ビルドし直してください。
+**テストしていません**。gemのmruby-discountが要ります。`build_config.rb`ではmruby-discountの行がコメントになっていて、このgemはビルドに入りません。このgemをビルドするCIのジョブもありません。試すには、mruby-discountの行のコメントを外し、ビルドし直してください。
 
 ```nginx
 location ~ \.rb$ {

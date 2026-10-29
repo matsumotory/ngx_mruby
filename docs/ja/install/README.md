@@ -54,7 +54,7 @@ mruby 4.0.0のコアのgemのうち、4.0.0の`full-core.gembox`は入れるの�
 
 4.0.0の`full-core.gembox`は、mruby-sleep、mruby-bin-debugger、mruby-testを入れません。ngx_mrubyは、`Kernel#sleep`と`#usleep`を定義するmruby-sleepを残しています。
 
-一覧が入れないgemを入れてビルドするには、`build_config.rb`の`NGX_MRUBY_CORE_GEMS`にその名前を足し、`mruby/build`を消してビルドし直してください。mruby-encodingを入れるときはリクエストやレスポンスのデータに`String#size`、`#length`、`#[]`、`#slice`、`#index`、`#reverse`を使うスクリプトをすべて確かめ、バイトを扱うところでは`#bytesize`と`#byteslice`を使ってください。`Nginx::Utils.escape`はもともとバイトを扱います。ngx_mruby自身のテストスイートは、mruby-encodingやmruby-taskを入れたビルドでは実行しません。
+一覧に載っていないgemを入れてビルドするには、`build_config.rb`の`NGX_MRUBY_CORE_GEMS`にその名前を足し、`mruby/build`を消してビルドし直してください。mruby-encodingを入れるときはリクエストやレスポンスのデータに`String#size`、`#length`、`#[]`、`#slice`、`#index`、`#reverse`を使うスクリプトをすべて確かめ、バイトを扱うところでは`#bytesize`と`#byteslice`を使ってください。`Nginx::Utils.escape`はもともとバイトを扱います。ngx_mruby自身のテストスイートは、mruby-encodingやmruby-taskを入れたビルドでは実行しません。
 
 `String#valid_encoding?`を呼ぶスクリプトでは、上の確認をしたうえでmruby-encodingを入れるか、その呼び出しを消してください。2.xのデフォルトの`build_config.rb`は、`MRB_UTF8_STRING`を定義せずにmruby 3.3.0をビルドします。そのビルドでは、このメソッドはすべての文字列に`true`を返し、`"\xfe"`にも`true`を返しました。そのため、呼び出しを消しても、そのようなスクリプトが受け付けるものは変わりません。`build_config.rb`で`MRB_UTF8_STRING`を定義した2.xのビルドでは、UTF-8として正しくない文字列に`false`が返りました。その確認を残すには、`MRB_UTF8_STRING`とこのメソッドの両方を定義するmruby-encodingを入れてビルドしてください。
 
@@ -66,7 +66,7 @@ mruby 4.0.0のコアのgemのうち、4.0.0の`full-core.gembox`は入れるの�
 
 エントリーのあるgemでは、rakeはリポジトリを履歴ごと、`mruby/build/repos/host/`か`mruby/build/repos/test/`にクローンします。エントリーの無いgemに使う`--depth 1`は付けません。そして、記録したコミットをチェックアウトします。HEADはdetachedになります。ビルドの最後に、rakeは使ったクローンからロックを書き直します。デフォルトのgemの一覧では内容が変わらないので、ビルドの後も`git status`はきれいなままです。
 
-rakeは、`mruby/build/repos/`の下にgemのディレクトリが無いときだけ、gemをクローンします。既にあるクローンは、fetchせずにロックのコミットでチェックアウトするので、そのコミットがクローンの中に無ければなりません。ロックを変えたら、ビルドの前に`mruby/build`を消してください。ロックをコミットする前の、ロックの無いビルドが残したクローンには、そのときブランチの先頭だったコミットしかありません。
+rakeは、`mruby/build/repos/`の下にgemのディレクトリが無いときだけ、gemをクローンします。既にあるクローンは、fetchせずにロックのコミットでチェックアウトするので、そのコミットがクローンの中に無ければなりません。ロックを変えたときは、ビルドの前に`mruby/build`を消してください。`build_config.rb.lock`をまだコミットしていなかった頃の、ロックの無いビルドが残したクローンには、そのときブランチの先頭だったコミットしかありません。
 
 gemを別のコミットに移すには、次のようにします。
 
@@ -79,7 +79,7 @@ gemを別のコミットに移すには、次のようにします。
 
 ビルドが取ってくるもののうち、ロックが固定しないものが2つあります。
 
-- mruby/mgem-list。mrubyは、`mgem:`で宣言したgemのリポジトリや、ソースを指定せずに宣言した依存先のうちmruby自身のgemでないもののリポジトリを探すために、このgemの一覧の先頭をクローンします。デフォルトのgemの一覧には、mruby/mgem-listは必要ありません。mruby 4.0.0に更新する前までは、`test`のビルドに要りました。matsumotory/mruby-simplehttpは、`NO_SSL`を設定しない限り、ソースを指定せずにmruby-polarsslに依存し、その一覧がリポジトリのluisbebop/mruby-polarsslを返していました。そのgemはmruby 3.4で削除されたmruby-printに依存するので、今は`build_config.rb`が`test`のビルドに`NO_SSL`を設定しています。テストのクライアントの`SimpleHttp`はHTTPSを使えず、テストスイートはHTTPSのリクエストをcurlと`openssl s_client`で送ります。加えたgemにこの一覧が要る場合、ロックはgemのコミットを固定しますが、URLは一覧が決めます。一覧が別のURLを返すようになると、ロックにはそのエントリーが無いので、rakeはそのリポジトリの先頭をクローンします。そのため、`build_config.rb`はすべてのgemを`github:`で宣言しています。
+- mruby/mgem-list。mrubyは、`mgem:`で宣言したgemのリポジトリや、ソースを指定せずに宣言した依存先のうちmruby自身のgemでないもののリポジトリを探すために、このgemの一覧の先頭をクローンします。デフォルトのgemの一覧には、mruby/mgem-listは必要ありません。mruby 4.0.0に更新する前までは、`test`のビルドに要りました。matsumotory/mruby-simplehttpは、`NO_SSL`を設定しない限り、ソースを指定せずにmruby-polarsslに依存し、その一覧がリポジトリのluisbebop/mruby-polarsslを返していました。そのgemはmruby 3.4で削除されたmruby-printに依存するので、今は`build_config.rb`が`test`のビルドに`NO_SSL`を設定しています。テストのクライアントの`SimpleHttp`はHTTPSを使えず、テストスイートはHTTPSのリクエストをcurlと`openssl s_client`で送ります。加えたgemにこの一覧が要る場合、ロックはgemのコミットを固定しますが、URLは一覧が決めます。一覧が別のURLを返すようになると、ロックにはそのエントリーが無いので、rakeはそのリポジトリの先頭をクローンします。そのため、`build_config.rb`はサードパーティのgemを`github:`で宣言します。
 - symisc/vedis。matsumotory/mruby-vedisの`mrbgem.rake`は、gemのビルドのディレクトリの`mruby/build/host/mrbgems/mruby-vedis/vedis`が無いとき、`git clone`でvedisをそこにクローンします。このときクローンするのは、デフォルトのブランチの先頭です。
 
 コミットを指定したクローンはリポジトリの履歴をすべて持つので、最初のビルドは、ロックの無いビルドより多くのデータを取ってきます。デフォルトのビルドは19個のクローンを作ります。`mruby/build/repos/host`に12個、`mruby/build/repos/test`に7個です。2026年10月4日に、空の`mruby/build`からビルドした後に測ると、クローンは約9.3 MiBで、内訳は7.7 MiBと1.7 MiBでした。mruby 4.0.0に更新する前は、`test`のビルドがluisbebop/mruby-polarsslとそのサブモジュールのARMmbed/mbedtlsもクローンしていました。当時デフォルトのビルドのクローンが使っていた約178 MiBの大部分は、これらでした。
