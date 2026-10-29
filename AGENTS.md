@@ -405,7 +405,11 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
 - Results: the test runner exits non-zero on a failed assertion. nginx logs are in
   `build/nginx/logs/` (`build_dynamic/nginx/logs/` for dynamic builds);
   `error.log` is at debug level. valgrind errors do **not** change the exit status
-  of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
+  of `test.sh`: run valgrind with the options of CI and read the `ERROR SUMMARY`
+  line of its log yourself. In CI, the step "Check the valgrind reports" fails a
+  cell on that line: one cell runs under valgrind on pull requests, every cell
+  in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
+  what counts as an error and the suppressions).
 - `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18132,
   18136-18140, 18143-18144, 18147-18168, 12345-12359, 12363-12366,
   12372-12373; 18116 and 12357 belong to the second nginx that
