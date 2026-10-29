@@ -571,8 +571,10 @@ The rule is textual, so a new test keeps to it:
   in those ranges only where it is a port or a value that the test compares
   with a number of the same file set. `_stage.rb` fails, naming the file
   and the line, for such a number written with an underscore (`18_132`),
-  which the rule would not see. A port built by arithmetic (`18110 + 1`) is
-  not moved, so write the number out.
+  which the rule would not see. A port built by arithmetic is moved only
+  when its five-digit part is in the ranges: `18110 + 1` becomes
+  `19110 + 1` with an offset of 1000, but `18000 + 110` and a port built
+  from strings stay as they are, so write the number out.
 - One number in the ranges is not a port: `test/conf/conf.d/20-filter-connection.conf`
   outputs `f.output 12345`, and `test/t/cases/filter_connection.rb` compares
   the body with `'12345'` and its length with `'5'`. Both files are moved
@@ -587,7 +589,16 @@ The rule is textual, so a new test keeps to it:
   12372.
 
 Two runs need two checkouts as well as two offsets: one build directory
-holds one test nginx, its logs and its copy of the suite.
+holds one test nginx, its logs and its copy of the suite. The two offsets
+must keep the ranges of the two runs apart. The range from 18080 to 18199
+has 120 numbers, so the offsets differ by 120 or more. The range from 12345
+to 12399 of one run lands on the range from 18080 to 18199 of the other
+when the difference of the offsets is from 5681 (18080 - 12399) to 5854
+(18199 - 12345), with either sign, so the difference is not in that
+interval. With an offset above 14568 (32767 - 18199), the ports of 18080 to
+18199 reach the default ephemeral range of Linux (32768 to 60999), where a
+client socket can take a port before nginx binds it. The offsets 0 and 1000
+of the example meet all three conditions.
 
 ### valgrind in CI
 

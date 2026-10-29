@@ -414,8 +414,8 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: run valgrind with the options of CI and read the `ERROR SUMMARY`
   line of its log yourself. In CI, the step "Check the valgrind reports" fails a
-  cell on that line: one cell runs under valgrind on pull requests, every cell
-  in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
+  cell on that line: one cell runs under valgrind on pull requests, and every
+  cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
   what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18132,
   18136-18140, 18143-18144, 18147-18168, 12345-12359, 12363-12366,
@@ -425,7 +425,8 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
   in `test/t/ngx_mruby.rb`). `TEST_SH_PORT_OFFSET=N` moves every port of the
   suite by N (from -2345 to 47336): two checkouts can run `test.sh` at the
-  same time on one machine with different offsets; with the same ports, the
+  same time on one machine with offsets 120 or more apart (the other limits
+  are under "Ports" in `docs/test/README.md`); with the same ports, the
   second run fails when it finds them taken. A new test writes each port as
   five digits within 12345-12399 or 18080-18199, and runs a CRuby helper
   through `suite_path` (see "Ports" in `docs/test/README.md`). `test.sh` stops only the
