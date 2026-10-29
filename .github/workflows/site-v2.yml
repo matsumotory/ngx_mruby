@@ -42,7 +42,7 @@ defaults:
 env:
   # The branch whose site/ builds the site and whose docs/ gives the 3.x
   # pages.
-  SITE_REF: claude/site-step6-v2
+  SITE_REF: next
 
 jobs:
   build:

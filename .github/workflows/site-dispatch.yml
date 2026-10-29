@@ -11,16 +11,9 @@ name: site-dispatch
 # permission to write.
 #
 # The paths are those of site-v2.yml: the 2.x pages and the files they
-# link to.
+# link to. There is no pull_request trigger: a pull request does not start
+# runs on next (site-v2.yml builds the site for it instead).
 on:
-  # TEMPORARY, for the check of step 6 on this pull request: the dispatch
-  # with the job's token, before the workflow is on master. Removed before
-  # the merge.
-  pull_request:
-    branches:
-      - master
-    paths:
-      - '.github/workflows/site-dispatch.yml'
   push:
     branches:
       - master
