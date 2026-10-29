@@ -457,6 +457,12 @@ after two runs of dehydrated. The case reads Redis with `test/t/cases/_redis_cli
 client of its own in CRuby, not with the mruby-redis of the nginx under
 test.
 
+`Nginx::SSL::ACME::Client#register` and `#auto_cert_deploy` are not tested.
+They speak ACME v1 (`new-reg`, `new-authz`, `new-cert`), which Let's Encrypt
+turned off in 2021 and which Pebble does not implement, so no ACME server
+that the tests could use answers them. The other methods of the Client are
+tested without an ACME server.
+
 ## Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer
 
 CI builds one matrix cell with `-fsanitize=address,undefined`. To run the
