@@ -69,10 +69,6 @@ export const GENERATED_REFERENCE = ['reference/directives', 'reference/ruby'];
 // and has no Japanese source, and on a page of this list that has one, so
 // that each pull request of step 5 removes the pages it translates.
 export const NOT_TRANSLATED_YET = [
-  'concepts',
-  'concepts/async',
-  'concepts/filters',
-  'concepts/lifetimes',
   'contributing',
   'contributing/development',
   'contributing/handoff',
@@ -90,7 +86,6 @@ export const NOT_TRANSLATED_YET = [
   'releases/migration',
   'security',
   'security/trust-boundary',
-  'start',
 ];
 
 // The place of a page in its group of the sidebar (astro.config.mjs), by

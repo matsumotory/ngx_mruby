@@ -4,10 +4,10 @@
 
 ## ページの<wbr>一覧
 
-- はじめに：[はじめに](../../examples/start/README.md)では、DockerでRubyのハンドラを持つnginxを動かし、スクリプトを書き換えます
-- ガイド：[インストール](../install/README.md)、[リクエストを振り分ける](../guides/routing.md)、[クライアントを拒否する](../guides/access-control.md)、[APIキーごとに制限する](../guides/rate-limit.md)、[レスポンスのボディを変える](../guides/body-filter.md)、[RubyでTCPの接続を許可する](../guides/tcp.md)、開発版の[エージェントプロキシ](../guides/agent-proxy.md)と、[ユースケース](../use_case/README.md)
+- はじめに：[はじめに](start/README.md)では、DockerでRubyのハンドラを持つnginxを動かし、スクリプトを書き換えます
+- ガイド：[インストール](../install/README.md)、[バックエンドへリクエストを振り分ける](../guides/routing.md)、[ファイルに載せたクライアントを拒否する](../guides/access-control.md)、[APIキーごとにレートを制限する](../guides/rate-limit.md)、[レスポンスのボディを変える](../guides/body-filter.md)、[RubyでTCPの接続を許可する](../guides/tcp.md)、開発版の[エージェントプロキシ](../guides/agent-proxy.md)と、[ユースケース](../use_case/README.md)
 - リファレンス：[ディレクティブ](../directives/README.md)、[Rubyのクラスとメソッド](../class_and_method/README.md)、[ビルド](../reference/build.md)
-- コンセプト：[リクエストのフェーズ](concepts/request-phases.md)、[フィルタ](../concepts/filters.md)、[ブロックせずに待つ](../concepts/async.md)、[ライフタイム](../concepts/lifetimes.md)
+- コンセプト：[リクエストのフェーズ](concepts/request-phases.md)、[フィルタ](concepts/filters.md)、[ブロックせずに待つ](concepts/async.md)、[ライフタイム](concepts/lifetimes.md)
 - リリース：アップグレードの前に読む挙動の変更から始まる[リリースノート](../releases/README.md)と、[ngx_mruby 2.xから3.0.0への移行](../migration/README.md)
 - セキュリティ：[セキュリティポリシー](../../SECURITY.md)と、ngx_mrubyが何を信頼し、何をクライアントの入力として扱い、スクリプトが何に責任を持つかを書いた[信頼境界](../security/trust-boundary.md)
 - 開発に参加する：[開発に参加する](../../CONTRIBUTING.md)、[テスト](../test/README.md)、[ngx_mrubyの開発](../DEVELOPMENT.md)と[作業の状態](../HANDOFF.md)
@@ -19,7 +19,7 @@
 
 ## ライセンス
 
-ライセンスは[MITライセンス](../../MITL)です。
+ngx_mrubyのソフトウェアライセンスは[MITライセンス](../../MITL)です。
 
 <!--
 The h2 headings of this page have <wbr> at their phrase boundaries

@@ -154,9 +154,11 @@ export function captionHtml(block, lang) {
   const at = block.at;
   const ja = lang === 'ja';
   const items = block.sources.map((s) => (ja ? `${code(s.file)}の${linesText(s.ranges, lang)}` : `${code(s.file)} ${linesText(s.ranges, lang)}`));
-  for (const n of block.nginx) items.push(ja ? `nginx ${nowrap(n.version)}では、${code(n.file)}の${linesText(n.ranges, lang)}` : `${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}`);
+  for (const n of block.nginx) items.push(ja ? `nginx ${nowrap(n.version)}のソースツリーの${code(n.file)}の${linesText(n.ranges, lang)}` : `${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}`);
   const lead = ja
-    ? `ngx_mrubyの${nowrap(at.date)}のコミット${nowrap(code(at.commit))}${block.nginx.length ? 'と、nginxのソースの、' : 'の、'}次の行を元に描きました。`
+    ? block.nginx.length
+      ? `ngx_mrubyの${nowrap(at.date)}のコミット${nowrap(code(at.commit))}と、nginxのソースの、次の行から描きました。`
+      : `ngx_mrubyのソースの次の行から描きました。${nowrap(at.date)}のコミット${nowrap(code(at.commit))}の行です。`
     : `Drawn from these lines of ngx_mruby at ${nowrap(code(at.commit))} (${nowrap(at.date)})${block.nginx.length ? ' and of nginx' : ''}:`;
   return `<span class="diagram-caption">${labelHtml(block.caption)}</span><span class="diagram-source">${lead}</span><ul class="diagram-source">${items.map((x) => `<li>${x}</li>`).join('')}</ul>`;
 }
