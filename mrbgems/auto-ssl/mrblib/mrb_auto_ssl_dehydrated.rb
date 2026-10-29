@@ -69,14 +69,18 @@ class Nginx
                         "--config #{@dehydrated[:conf]}",
                     ].join(" ")
 
-          Nginx::SSL.log Nginx::LOG_INFO, "run acme command: #{command}"
-          res = `HOOK_SECRET=#{@dehydrated[:secret_token]} #{command}`
-          Nginx::SSL.log Nginx::LOG_INFO, res
+          # Accept the terms of service at most once per call: when the
+          # registration fails, dehydrated removes the account key it made,
+          # and the next run asks for the terms again.
+          2.times do |i|
+            Nginx::SSL.log Nginx::LOG_INFO, "run acme command: #{command}"
+            res = `HOOK_SECRET=#{@dehydrated[:secret_token]} #{command} 2>&1`
+            Nginx::SSL.log Nginx::LOG_INFO, res
 
-          if /#{license_info_str}/ === res
+            break unless i == 0 && /#{license_info_str}/ === res
             auto_accept_terms
-            auto_cert_deploy
           end
+          nil
         end
       end
     end
