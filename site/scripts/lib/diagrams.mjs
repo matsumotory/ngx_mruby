@@ -140,7 +140,9 @@ const joinList = (items, lang) => {
 const rangeText = ([a, b], lang) => (lang === 'ja' ? (a === b ? `${a}行` : `${a}行から${b}行`) : a === b ? `${a}` : `${a} to ${b}`);
 const linesText = (ranges, lang) => {
   const list = joinList(ranges.map((r) => rangeText(r, lang)), lang);
-  if (lang === 'ja') return list;
+  // Japanese: the last number and its 行 stay together, so that no line of
+  // the note holds 行 alone (the owner's rule for last lines)
+  if (lang === 'ja') return list.replace(/(\d+行)$/, '<span class="nowrap">$1</span>');
   return `${ranges.length === 1 && ranges[0][0] === ranges[0][1] ? 'line' : 'lines'} ${list}`;
 };
 
@@ -154,10 +156,10 @@ export function captionHtml(block, lang) {
   const at = block.at;
   const ja = lang === 'ja';
   const items = block.sources.map((s) => (ja ? `${code(s.file)}の${linesText(s.ranges, lang)}` : `${code(s.file)} ${linesText(s.ranges, lang)}`));
-  for (const n of block.nginx) items.push(ja ? `nginx ${nowrap(n.version)}のソースツリーの${code(n.file)}の${linesText(n.ranges, lang)}` : `${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}`);
+  for (const n of block.nginx) items.push(ja ? `nginx ${nowrap(n.version)}のソースツリーにある${code(n.file)}の${linesText(n.ranges, lang)}` : `${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}`);
   const lead = ja
     ? block.nginx.length
-      ? `ngx_mrubyの${nowrap(at.date)}のコミット${nowrap(code(at.commit))}と、nginxのソースの、次の行から描きました。`
+      ? `ngx_mrubyとnginxのソースの次の行から描きました。ngx_mrubyの行は、${nowrap(at.date)}のコミット${nowrap(code(at.commit))}の行です。`
       : `ngx_mrubyのソースの次の行から描きました。${nowrap(at.date)}のコミット${nowrap(code(at.commit))}の行です。`
     : `Drawn from these lines of ngx_mruby at ${nowrap(code(at.commit))} (${nowrap(at.date)})${block.nginx.length ? ' and of nginx' : ''}:`;
   return `<span class="diagram-caption">${labelHtml(block.caption)}</span><span class="diagram-source">${lead}</span><ul class="diagram-source">${items.map((x) => `<li>${x}</li>`).join('')}</ul>`;

@@ -28,4 +28,4 @@ bw: nginxの<wbr>writeフィルタが<wbr>ボディを<wbr>送る
 - locationにボディフィルタがあると、ngx_mrubyは、ボディフィルタが動き終わるまでヘッダを送らずに待ちます。こうして、`Content-Length`を新しいボディの長さにします。
 - どちらのフィルタでも待てません。フィルタの中では、`Nginx::Async.sleep`と`Nginx::Async::HTTP.sub_request`は`RuntimeError`を起こし、`Nginx.rputs`と`Nginx.echo`は使えません。
 
-ガイドの[レスポンスのボディを変える](../../guides/body-filter.md)には、CIが実行する両方のフィルタのサンプルがあります。フィルタの構文は、[ディレクティブのリファレンス](../../directives/README.md#mruby_output_body_filter-mruby_output_body_filter_code-mruby_output_header_filter-and-mruby_output_header_filter_code)にあります。
+ガイドの[レスポンスのボディを変える](../guides/body-filter.md)には、CIが実行する両方のフィルタのサンプルがあります。フィルタの構文は、[ディレクティブのリファレンス](../../directives/README.md#mruby_output_body_filter-mruby_output_body_filter_code-mruby_output_header_filter-and-mruby_output_header_filter_code)にあります。

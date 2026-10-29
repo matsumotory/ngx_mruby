@@ -5,7 +5,7 @@
 ## ページの<wbr>一覧
 
 - はじめに：[はじめに](start/README.md)では、DockerでRubyのハンドラを持つnginxを動かし、スクリプトを書き換えます
-- ガイド：[インストール](../install/README.md)、[バックエンドへリクエストを振り分ける](../guides/routing.md)、[ファイルに載せたクライアントを拒否する](../guides/access-control.md)、[APIキーごとにレートを制限する](../guides/rate-limit.md)、[レスポンスのボディを変える](../guides/body-filter.md)、[RubyでTCPの接続を許可する](../guides/tcp.md)、開発版の[エージェントプロキシ](../guides/agent-proxy.md)と、[ユースケース](../use_case/README.md)
+- ガイド：[インストール](../install/README.md)、[バックエンドへリクエストを振り分ける](guides/routing.md)、[ファイルに載せたクライアントを拒否する](guides/access-control.md)、[APIキーごとにレートを制限する](guides/rate-limit.md)、[レスポンスのボディを変える](guides/body-filter.md)、[RubyでTCPの接続を許可する](guides/tcp.md)、[ユースケースの一覧](../use_case/README.md)、開発版の[エージェントプロキシ](guides/agent-proxy.md)
 - リファレンス：[ディレクティブ](../directives/README.md)、[Rubyのクラスとメソッド](../class_and_method/README.md)、[ビルド](../reference/build.md)
 - コンセプト：[リクエストのフェーズ](concepts/request-phases.md)、[フィルタ](concepts/filters.md)、[ブロックせずに待つ](concepts/async.md)、[ライフタイム](concepts/lifetimes.md)
 - リリース：アップグレードの前に読む挙動の変更から始まる[リリースノート](../releases/README.md)と、[ngx_mruby 2.xから3.0.0への移行](../migration/README.md)
