@@ -242,7 +242,8 @@ async function main() {
         if (opt.noto) await tab.addStyleTag({ content: ':root { --font-ja-faces: "Noto Sans JP Variable", "Noto Sans JP" !important; }' });
         await tab.evaluate(() => document.fonts.ready);
         const result = await tab.evaluate(inspect, { width: size.width, noticeOnly: noticePages.includes(page) });
-        for (const f of result.fails) (NOTES_ONLY.includes(page) ? notes : failures).push(`${page} ${engineName} ${size.width}x${size.height}: ${f}`);
+        // A note leaves out the lines of its block, which only failures need
+        for (const f of result.fails) (NOTES_ONLY.includes(page) ? notes : failures).push(`${page} ${engineName} ${size.width}x${size.height}: ${NOTES_ONLY.includes(page) ? f.replace(/ lines: .*$/, '') : f}`);
         blocks += result.counts.blocks;
         labels += result.counts.labels;
         maxChars = Math.max(maxChars, result.counts.maxChars);
@@ -262,12 +263,15 @@ async function main() {
   const summary = `${loads} page loads of ${pages.length} Japanese pages in ${opt.engines.join(' and ')}${opt.noto ? ' (Noto Sans JP)' : ''} at ${SIZES.map((s) => s.width).join(', ')} px; ${blocks} blocks of two or more lines measured at 390 px, ${labels} diagram labels, at most ${maxChars} Japanese characters on a line of body text at 1440 px`;
   if (failures.length) {
     console.log(`check-japanese-lines: ${failures.length} failure(s); ${summary}`);
-    process.exit(1);
+    // exitCode, not process.exit(): stdout to a pipe (CI) is written
+    // asynchronously, and process.exit() dropped the lines still queued
+    process.exitCode = 1;
+    return;
   }
   console.log(`check-japanese-lines: ok; ${summary}`);
 }
 
 main().catch((e) => {
   console.error(e);
-  process.exit(1);
+  process.exitCode = 1;
 });

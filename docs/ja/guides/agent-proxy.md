@@ -2,7 +2,7 @@
 
 **開発版です。** このページは、まだリリースしていないブランチ`next`のngx_mruby 3.xを説明します。現在のリリースは2.7です。下のレシピは現在の`next`で動き、CIが確かめています。図は、v3の計画に沿ってv3.0.0に向けて作るエージェントプロキシを示します。図の各ステップには、現在動くか、[計画](../../proposals/v3-plan.md#agent-proxy-the-v30-use-case)のどのステップで加わるかを書いています。
 
-エージェントプロキシは、LLMのプロバイダが提供するAPIの前に置くnginxです。このnginxは、コーディングエージェントとプロバイダの間に入ります。Rubyは、リクエストごとに次の3つを決めます。クライアントのキーが既知か、リクエストがどのupstreamとどのプロバイダの認証情報を使うか、`limit_conn`が数えるキーは何かです。バイトを運ぶのはnginxです。nginxはリクエストを読み、プロバイダのレスポンスを届くたびに中継し、nginx自身のモジュールの制限をかけます。このプロキシは、Anthropic Messages APIの`/v1/messages`と、OpenAI Responses APIの`/v1/responses`を、server-sent eventsのストリームのレスポンスも含めてそのまま通します。両者の間の変換はしません。
+エージェントプロキシは、LLMのプロバイダが提供するAPIの前に置くnginxです。このnginxは、コーディングエージェントとプロバイダの間に入ります。Rubyは、リクエストごとに次の3つを決めます。クライアントのキーが既知か、リクエストがどのupstreamとどのプロバイダの認証情報を使うか、`limit_conn`が数えるキーは何かです。バイトを運ぶのはnginxです。nginxはリクエストを読み、プロバイダのレスポンスを届くたびに中継し、nginx自身のモジュールの制限をかけます。このプロキシは、Anthropic Messages APIの`/v1/messages`と、OpenAI Responses APIの`/v1/responses`を、server-sent eventsのストリームのレスポンスも含めてそのまま通します。2つのAPIの間で形式の変換はしません。
 
 ## 現在<wbr>動く<wbr>レシピ
 
