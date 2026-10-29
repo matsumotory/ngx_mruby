@@ -182,9 +182,10 @@ What this means for the question of #502:
 - `README.md` (line 153) and `docs/README.md` (line 76) said that the server
   process frees the global variables table between scripts. The
   measurement and `ngx_mrb_state_clean` show that `next` does not. #592 on
-  `master` (merged on 2026-10-19) replaced those texts with what a worker
-  keeps between requests, and #623 on `next` (merged on 2026-10-29) reduced
-  `README.md` and `docs/README.md`, which no longer contain them.
+  `master` (merged on 2026-10-19) added, next to the abstract, a section on
+  what a worker keeps between requests, and #623 on `next` (merged on
+  2026-10-29) reduced `README.md` and `docs/README.md`, which no longer
+  contain the abstract.
 
 ## 2. Options
 
@@ -566,7 +567,7 @@ lambda frame (c1 or c2)?
   the docs, a release notes entry and the perf comparison.
 - Not in this proposal: the texts of `README.md` and `docs/README.md` that
   said the global variables table is freed between scripts (1.4). #592
-  (`master`) and #623 (`next`) replaced them.
+  (`master`) added a section next to them, and #623 (`next`) removed them.
 
 ## Sources
 
