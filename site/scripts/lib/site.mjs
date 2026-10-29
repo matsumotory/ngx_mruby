@@ -136,7 +136,22 @@ export function loadManifest(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-// The HTML files of the built site, as paths relative to it.
+// Files of public/ that the site serves unchanged at the URL they had on
+// the old site, and that are not pages: the Google site verification file
+// that Q5 of docs/proposals/site.md keeps, with its size in bytes and its
+// SHA-256, those of the copy on the gh-pages branch. check-deploy.mjs
+// checks them; htmlFiles leaves them out, so that the checks of pages do
+// not take them for pages.
+export const VERBATIM_FILES = [
+  {
+    file: 'googleba3435e4002729b6.html',
+    bytes: 54,
+    sha256: '1e10ca6b5856c96f4a15c00ee5a7b50a530f19231dca2e0aa307063276140f6d',
+  },
+];
+
+// The HTML files of the built site, as paths relative to it, without the
+// files of VERBATIM_FILES.
 export function htmlFiles(dist) {
   const files = [];
   const walk = (dir) => {
@@ -147,7 +162,8 @@ export function htmlFiles(dist) {
     }
   };
   walk(dist);
-  return files.sort();
+  const verbatim = new Set(VERBATIM_FILES.map((v) => v.file));
+  return files.filter((f) => !verbatim.has(f)).sort();
 }
 
 // The route of a built page ('install/index.html' -> 'install'), or null for
