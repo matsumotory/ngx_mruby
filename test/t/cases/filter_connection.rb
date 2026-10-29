@@ -6,7 +6,7 @@
 t = SimpleTest.new "ngx_mruby test: filter, upstream keepalive_cache, connection"
 
 def connection_client(mode)
-  `ruby ./test/t/cases/_filter_connection_client.rb #{mode}`.chomp
+  `ruby #{suite_path('test/t/cases/_filter_connection_client.rb')} #{mode}`.chomp
 end
 
 # Nginx::Filter#output

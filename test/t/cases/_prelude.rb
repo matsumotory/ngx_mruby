@@ -13,6 +13,14 @@ def base_ssl(port)
   "https://localhost:#{port}"
 end
 
+# Path of a file of the suite in the copy that test.sh runs, in which every
+# port is moved by TEST_SH_PORT_OFFSET (test/t/cases/_stage.rb), for example
+# suite_path('test/t/cases/_tcp_client.rb'). Without TEST_SH_STAGE_DIR, as
+# when a case runs outside test.sh, it is the path in the checkout.
+def suite_path(path)
+  File.join(ENV['TEST_SH_STAGE_DIR'] || '.', path)
+end
+
 # Path of a file that test.sh copied from test/html into the installed nginx.
 def html_path(name)
   File.join(ENV['NGINX_INSTALL_DIR'], 'html', name)
@@ -49,7 +57,7 @@ end
 # It returns the status of the connection (EOF, RESET, REFUSED or TIMEOUT)
 # and the exact bytes received.
 def tcp_client(port, payload = "")
-  out = `ruby test/t/cases/_tcp_client.rb #{port} #{payload.unpack("H*")[0]}`
+  out = `ruby #{suite_path('test/t/cases/_tcp_client.rb')} #{port} #{payload.unpack("H*")[0]}`
   status, hex = out.split(":", 2)
   [status, [hex.to_s].pack("H*")]
 end
@@ -58,7 +66,7 @@ end
 # with CRuby, and returns its "key=value" lines as a Hash. That file lists
 # the keys.
 def second_instance(mode)
-  out = `ruby test/t/cases/_second_instance.rb #{mode}`
+  out = `ruby #{suite_path('test/t/cases/_second_instance.rb')} #{mode}`
   result = {}
   out.split("\n").each do |line|
     key, value = line.split("=", 2)
