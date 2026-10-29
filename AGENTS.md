@@ -695,6 +695,9 @@ npm run preview           # serves dist/ at http://localhost:4321/
 - Edit `mruby/` or `dependence/ngx_devel_kit/` by hand. They are vendored with
   git subtree and updated only with `./update-mruby-subtree [ref]` and
   `./update-devkit-subtree [ref]` (see `docs/DEVELOPMENT.md`), in a PR of their own.
+  The Prism sources under `mruby/mrbgems/mruby-compiler/lib/prism`, which
+  mruby's tree has as a submodule, are vendored only with
+  `./vendor-mruby-prism`, right after the merge commit of an mruby update.
 - Edit generated files: `config`, `Makefile`, `config.status`, `config.log`
   (outputs of `./configure`; edit `config.in` / `Makefile.in` instead).
   `configure` is autoconf output: edit `configure.in`, regenerate with `autoconf`
