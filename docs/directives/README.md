@@ -1,10 +1,10 @@
-# Overview
+# Directives
 
 ngx_mruby enables you to run mruby scripts on nginx. For example, you can implement:
 
-* [your own auth mechanism](../use_case#file-based-access-list) like nginx [auth_basic](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/)
-* [reverse proxy with your own backend selection algorithm](../use_case#reverse-proxy)
-* [content handler that returns any HTTP response](../use_case#hello-world)
+* [your own auth mechanism](../use_case/README.md#file-based-access-list) like nginx [auth_basic](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/)
+* [reverse proxy with your own backend selection algorithm](../use_case/README.md#reverse-proxy)
+* [content handler that returns any HTTP response](../use_case/README.md#hello-world)
 
 See [use cases](../use_case) page for more examples.
 The scripts can be invoked at any of nginx HTTP phases. See [nginx phases doc](http://nginx.org/en/docs/dev/development_guide.html#http_phases) for more details of the phases.

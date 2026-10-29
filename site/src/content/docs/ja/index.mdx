@@ -17,7 +17,7 @@ import Sample from '../../../components/Sample.astro';
 
 <p class="lede">nginx.confでRubyのスクリプトを指定すると、nginxは組み込んだmrubyのVMでそのスクリプトを実行します。実行する時点は、リクエストが届いたとき、変数を計算するとき、アクセスを許す前、レスポンスを作るとき、ヘッダとボディを変えるとき、TLSのハンドシェイクの間、TCPかUDPのセッションの中から選べます。ネットワークのI/Oはnginxが受け持つので、nginxとは別にアプリケーションサーバを動かす必要はありません。ngx_mrubyは、手を加えていないnginxの静的なモジュールか動的なモジュールとしてビルドできます。</p>
 
-<p class="actions"><a class="button-primary" href="/ja/install/">ngx_mrubyをインストールする</a> <a class="button-secondary" href="/ja/concepts/request-phases/">Rubyが動く場所を見る</a></p>
+<p class="actions"><a class="button-primary" href="/ja/start/">Dockerで試す</a> <a class="button-secondary" href="/ja/concepts/request-phases/">Rubyが動く場所を見る</a></p>
 
 ## CIが<wbr />毎回<wbr />実行する<wbr />例
 
@@ -28,9 +28,9 @@ import Sample from '../../../components/Sample.astro';
 ## 最初に<wbr />読む<wbr />ページ
 
 <ul class="ways">
-<li><a href="/ja/install/">インストール</a><p>ngx_mrubyを組み込んだnginxをソースからビルドするか、Dockerのイメージで試します。</p></li>
-<li><a href="/ja/directives/">リファレンス</a><p>ディレクティブと、スクリプトから呼ぶRubyのクラスとメソッドを載せています。</p></li>
-<li><a href="/ja/concepts/request-phases/">リクエストのフェーズ</a><p>リクエストを処理する中で、Rubyの各ハンドラが動く場所を示します。</p></li>
+<li><a href="/ja/start/">はじめに</a><p>Dockerでnginxを動かし、Rubyのスクリプトの応答を確かめてから、そのスクリプトを書き換えます。</p></li>
+<li><a href="/ja/guides/install/">インストール</a><p>ngx_mrubyを、nginxの静的なモジュールか動的なモジュールとしてソースからビルドします。</p></li>
+<li><a href="/ja/reference/directives/">リファレンス</a><p>ディレクティブと、スクリプトから呼ぶRubyのクラスとメソッドを載せています。</p></li>
 </ul>
 
 </div>

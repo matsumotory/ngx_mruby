@@ -24,7 +24,7 @@ const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 export const PAGES = [
   { id: 'home', path: { en: '/', ja: '/ja/' } },
   { id: 'request-phases', path: { en: '/concepts/request-phases/', ja: '/ja/concepts/request-phases/' } },
-  { id: 'directives', path: { en: '/directives/', ja: '/ja/directives/' } },
+  { id: 'directives', path: { en: '/reference/directives/', ja: '/ja/reference/directives/' } },
 ];
 export const SIZES = [
   { width: 320, height: 664 },

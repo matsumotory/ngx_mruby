@@ -80,28 +80,28 @@ const fixtures = [
 > then <a href="install/README.md">an inline link</a> and [a Markdown link](directives/README.md).
 `,
     page: `<div>
-<a href="/install/">at the top level</a>
+<a href="/guides/install/">at the top level</a>
 </div>
 
 > <div>
-> <a href="/install/">in a blockquote</a>
+> <a href="/guides/install/">in a blockquote</a>
 > <img src="${RAW}/misc/logo.png" alt="">
 > </div>
 
 - An item
 
   <div>
-  <a href='/directives/#anchor'>in a list item</a>
+  <a href='/reference/directives/#anchor'>in a list item</a>
   </div>
 
 > - A list item in a blockquote
 >
 >   <p>
->   <a href="/directives/">nested</a> and <a href="https://example.com/">absolute</a>
+>   <a href="/reference/directives/">nested</a> and <a href="https://example.com/">absolute</a>
 >   </p>
 
 > One line,
-> then <a href="/install/">an inline link</a> and [a Markdown link](/directives/).
+> then <a href="/guides/install/">an inline link</a> and [a Markdown link](/reference/directives/).
 `,
   },
   {
@@ -155,6 +155,22 @@ const fixtures = [
   },
 ];
 
+fixtures.push({
+  name: 'the routes of SOURCE_ROUTES: a page moved on the site, and the start page from examples/start/',
+  source: '# Routes\n\n[Install](install/README.md), [start](../examples/start/README.md) and [Japanese](ja/install/README.md#anchor).\n',
+  files: {
+    'examples/start/README.md': '# Get started\n\n[Install](../../docs/install/README.md) and [the configuration](nginx.conf).\n',
+    'examples/start/nginx.conf': 'events {}\n',
+    'docs/ja/install/README.md': '# インストール\n\n## Anchor\n',
+  },
+  contains: ['[Install](/guides/install/)', '[start](/start/)', '[Japanese](/ja/guides/install/#anchor)'],
+  others: {
+    'start/index.md': ['title: "Get started"', 'slug: "start"', '[Install](/guides/install/)', '(https://github.com/matsumotory/ngx_mruby/blob/next/examples/start/nginx.conf)'],
+    'guides/install.md': ['slug: "guides/install"', 'sidebar:\n  order: 1'],
+    'ja/guides/install.md': ['slug: "ja/guides/install"', 'sidebar:\n  order: 1'],
+  },
+});
+
 function run(fixture) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ngx_mruby-sync-docs-'));
   try {
@@ -176,7 +192,7 @@ function run(fixture) {
     const at = git('log', '-1', '--format=%h %cs').trim();
     const withAt = (text) => text.replaceAll('COMMIT DATE', at);
     write(Object.fromEntries(Object.entries({ ...fixture.files, 'docs/README.md': fixture.source }).map(([f, t]) => [f, withAt(t)])));
-    git('add', 'docs', 'misc', 'test', 'site/src');
+    git('add', 'docs', 'misc', 'test', 'site/src', ...(fs.existsSync(path.join(dir, 'examples')) ? ['examples'] : []));
     git('commit', '--quiet', '-m', 'fixture page');
     const result = spawnSync(process.execPath, [path.join(dir, 'site', 'scripts', 'sync-docs.mjs')], { cwd: dir, encoding: 'utf8' });
     if (fixture.error) {
@@ -189,6 +205,13 @@ function run(fixture) {
     const body = written.replace(/^---\n[\s\S]*?\n---\n\n/, '');
     if (fixture.contains) {
       const missing = fixture.contains.filter((c) => !body.includes(c));
+      // Other pages that the fixture writes, with the text each must hold
+      for (const [file, texts] of Object.entries(fixture.others ?? {})) {
+        const full = path.join(dir, 'site', 'src', 'content', 'docs', file);
+        if (!fs.existsSync(full)) return [`the generator wrote no ${file}`];
+        const text = fs.readFileSync(full, 'utf8');
+        for (const t of texts) if (!text.includes(t)) missing.push(`${t} (in ${file})`);
+      }
       return missing.map((m) => `the page lacks: ${m}\n  page: ${body.slice(0, 600)}`);
     }
     if (body === fixture.page) return [];

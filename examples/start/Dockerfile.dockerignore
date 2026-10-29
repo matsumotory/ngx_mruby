@@ -1,0 +1,17 @@
+# The build context of examples/start/Dockerfile is the top of the
+# repository. These paths are build output, local tools and packages, which
+# the image does not need and which a checkout that has run test.sh or
+# built the site holds, and examples/, which compose.yaml mounts, so that a
+# change of an example's script does not rebuild the image.
+.git
+.claude
+build
+build_dynamic
+build_perf
+mruby/build
+site/node_modules
+site/dist
+site/generated
+site/.astro
+site/build-screenshots
+examples

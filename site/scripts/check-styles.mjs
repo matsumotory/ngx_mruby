@@ -55,11 +55,13 @@ const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 
 // Three page types (4.3 item 5, 4.6, 4.8): the home page with its sample,
 // a page with a diagram, and reference pages rendered from docs/; in
-// English and Japanese. /ja/docs/ has the h2 with <wbr> of step 1.
-export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/directives/', '/install/', '/ja/docs/'];
-// The pages that step 3 writes, where a last line of one or two characters
-// fails; on the others, which steps 4 and 5 rewrite, it is a note.
-const LAST_LINE_STRICT = new Set(['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/']);
+// English and Japanese. /ja/docs/ has the h2 with <wbr> of step 1. Step 4
+// adds the pages it writes.
+export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/reference/directives/', '/guides/install/', '/ja/docs/', '/start/'];
+// The pages that steps 3 and 4 write, where a last line of one or two
+// characters fails; on the others, which steps 4 and 5 rewrite later, it
+// is a note.
+const LAST_LINE_STRICT = new Set(['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/start/']);
 const SIZES = [
   { width: 320, height: 664 },
   { width: 390, height: 664 },
@@ -343,7 +345,9 @@ function inspect(cfg) {
       let bad = null;
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let n = walker.nextNode(); n && !bad; n = walker.nextNode()) {
-        if (!n.data.trim()) continue;
+        // A code block inside a list item scrolls on its own, as one
+        // outside it does
+        if (!n.data.trim() || scrolls(n.parentElement)) continue;
         const range = document.createRange();
         range.selectNodeContents(n);
         bad = [...range.getClientRects()].find((r) => r.width > 0 && (r.left < 19.5 || r.right > W - 19.5));

@@ -1,46 +1,9 @@
-# Playing with an example Docker image
+# Install
 
-If you just want to play with ngx_mruby, you can use an example Docker image.
-
-## Prerequisites
-
-* git
-* Docker
-* Docker Hub account
-* curl
-
-## 1. Downloading examples configuration from github.com
-
-```sh
-$ git clone https://github.com/matsumotory/docker-ngx_mruby.git
-```
-
-## 2. Building a Docker image
-
-```sh
-$ cd /path/to/docker-ngx_mruby
-$ docker login
-$ docker build  -t local/docker-ngx_mruby .
-```
-
-## 3. Running ngx_mruby with Docker
-
-```sh
-$ docker run -p 80:80 local/docker-ngx_mruby
-```
-
-## 4. Trying it out
-
-```sh
-$ curl http://127.0.0.1/mruby-hello
-server ip: 172.17.0.192: hello ngx_mruby world.
-```
-
-Welcome mruby world for nginx!
-
-# Installing from source
-
-You can build and install you own ngx_mruby binary from source.
+This page builds nginx with ngx_mruby from source and installs it. To try
+ngx_mruby before you install it, run
+[the example of the start page](../../examples/start/README.md): it builds
+the same source in Docker and starts nginx with a Ruby script.
 
 ## Prerequisites
 
@@ -491,88 +454,12 @@ $ cd /path/to/ngx_mruby
 $ sudo make install
 ```
 
-## 5. Writing ruby code
+## 5. Running a Ruby script
 
-There are 3 ways to run you mruby code on ngx_mruby.
-
-* script file
-* inline code
-* script file as a handler
-
-### 5-A. Script file
-
-You can run a script file as below.
-
-```nginx
-location /mruby {
-    mruby_content_handler '/usr/local/nginx/html/unified_hello.rb';
-}
-```
-
-Here is an example script /usr/local/nginx/html/unified_hello.rb.
-
-```ruby
-if server_name == "NGINX"
-  Server = Nginx
-elsif server_name == "Apache"
-  Server = Apache
-end
-
-Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
-```
-
-You can use 'cache' arg to cache compiled mruby code.
-By default, ruby code is compiled when every time received a request.
-
-```nginx
-location /mruby {
-    mruby_content_handler '/usr/local/nginx/html/unified_hello.rb' cache;
-}
-```
-
-### 5-B. inline code
-
-Also you can write ruby code in nginx.conf.
-
-```nginx
-location /mruby {
-    mruby_content_handler_code '
-      
-      if server_name == "NGINX"
-        Server = Nginx
-      elsif server_name == "Apache"
-        Server = Apache
-      end
-      
-      Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
-    
-    ';
-}
-```
-
-### 5-C. Script file as a handler
-
-You can run a ruby script file directly without location definition. 
-In this case, the script is exposed at http://127.0.0.1/unified_hello.rb instead of http://127.0.0.1/mruby.
-
-```nginx
-location ~ \.rb$ {
-    mruby_add_handler on;
-}
-```
-
-## 6. Running ngxinx
-
-```sh
-$ /usr/local/nginx/sbin/nginx
-```
-
-## 7. Trying it out
-
-```
-$ curl http://127.0.0.1/mruby
-Hello ngx_mruby/0.0.1 world!
-```
-
-Welcome mruby world for nginx!
-
+nginx runs Ruby where a directive of ngx_mruby names a script file or holds
+the code itself. [The start page](../../examples/start/README.md) shows a
+configuration and a script, and the change of a script without a reload.
+The [directives](../directives/README.md) list the forms: a script file,
+inline code ([Inline code](../directives/README.md#inline-code)), and a
+script file as a handler
+([Script file as a handler](../directives/README.md#script-file-as-a-handler)).

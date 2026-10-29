@@ -19,7 +19,7 @@ import Sample from '../../components/Sample.astro';
 
 <p class="lede">You reference a Ruby script from nginx.conf, and nginx runs it with an embedded mruby VM at the point you choose: when a request arrives, to compute a variable, before access is granted, to produce the response, to change headers and body, during the TLS handshake, or for a TCP or UDP session. nginx keeps doing the network I/O, and no application server runs beside it. ngx_mruby builds as a static or dynamic module of unmodified nginx.</p>
 
-<p class="actions"><a class="button-primary" href="/install/">Install ngx_mruby</a> <a class="button-secondary" href="/concepts/request-phases/">See where Ruby runs</a></p>
+<p class="actions"><a class="button-primary" href="/start/">Get started</a> <a class="button-secondary" href="/concepts/request-phases/">See where Ruby runs</a></p>
 
 ## An example that CI runs on every change
 
@@ -30,9 +30,9 @@ The four files below are files of a test in this repository. nginx runs the scri
 ## Where to start
 
 <ul class="ways">
-<li><a href="/install/">Install</a><p>Build nginx with ngx_mruby from source, or try it in a Docker image.</p></li>
-<li><a href="/directives/">Reference</a><p>Lists the directives, and the Ruby classes and methods that scripts call.</p></li>
-<li><a href="/concepts/request-phases/">Request phases</a><p>Shows where nginx runs each Ruby handler while it processes a request.</p></li>
+<li><a href="/start/">Get started</a><p>Runs nginx with a Ruby handler in Docker, then changes the script.</p></li>
+<li><a href="/guides/install/">Install</a><p>Builds ngx_mruby into nginx from source, as a static or a dynamic module.</p></li>
+<li><a href="/reference/directives/">Reference</a><p>Lists the directives, and the Ruby classes and methods that scripts call.</p></li>
 </ul>
 
 </div>
