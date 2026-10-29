@@ -64,7 +64,9 @@ export const SOURCE_ROUTES = {
 // page with the notice of src/components/FallbackContentNotice.astro.
 export const GENERATED_REFERENCE = ['reference/directives', 'reference/ruby'];
 // NOT_TRANSLATED_YET: the pages written by hand whose translation is still
-// to come in step 5. /ja/ shows the English page with Starlight's notice.
+// to come in step 5. /ja/ shows the English page with the notice of
+// src/components/FallbackContentNotice.astro that the translation is not
+// there yet.
 // check-japanese.mjs fails on a page written by hand that is in neither list
 // and has no Japanese source, and on a page of this list that has one, so
 // that each pull request of step 5 removes the pages it translates.

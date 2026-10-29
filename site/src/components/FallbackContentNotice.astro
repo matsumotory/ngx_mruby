@@ -16,11 +16,11 @@ const generated = GENERATED_REFERENCE.includes(route);
 {
   generated ? (
     <p class="site-notice" lang="ja" data-notice="generated-reference">
-      このリファレンスは英語のまま載せています。v3の計画では、このリファレンスを<code>src/</code>のコードから生成します。生成を始めると、訳は生成のたびに古くなるので、日本語には訳しません。
+      このリファレンスは英語で載せています。v3の計画では、このリファレンスを今後<code>src/</code>のコードから生成します。そのため、生成のたびに古くなる日本語訳は作りません。
     </p>
   ) : (
     <p class="site-notice" lang="ja" data-notice="untranslated">
-      このページの日本語訳はまだありません。英語の本文を表示しています。
+      このページの日本語訳はまだありません。代わりに英語の本文を表示しています。
     </p>
   )
 }
