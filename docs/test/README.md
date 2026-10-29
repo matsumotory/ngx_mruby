@@ -169,6 +169,31 @@ request and say why in its description. A file that a commit adds and a later
 commit removes stays in the history: remove it from the commit that added it
 (for example with `git rebase -i`), or squash the commits.
 
+## The 2.x pages of the site
+
+The site ngx.mruby.org is built on `next` (`site/` there, and
+`docs/proposals/site.md` there for the plan). Its 2.x pages under `/v2/`
+are built from `docs/` of this branch, so two workflows here serve them:
+
+- `.github/workflows/site-v2.yml` runs on every pull request to `master`,
+  without a path filter, since the 2.x pages link to files anywhere in the
+  repository (`.travis.yml`, `nginx_version`, the workflows). It checks
+  out `next` beside the pull request, builds the site with `site/` and
+  the 3.x pages of `next` and the 2.x pages from the pull request's
+  `docs/` (`node site/scripts/build-v2.mjs --tree DIR` of `next`), and
+  fails on a relative link or anchor of the sources of the
+  2.x pages that does not resolve, on a link to a file that git does not
+  track, on a broken link of the built site, on a 2.x page without its
+  banner, and when the search of a version shows pages of the other. The
+  built site is the workflow artifact `site-v2`.
+- `.github/workflows/site-dispatch.yml` runs on every push to `master`,
+  and starts `site.yml` on `next` with `gh workflow run site.yml --ref
+  next`, so that the site is built again with the new 2.x pages. It fails
+  when GitHub refuses the dispatch or it cannot name the run that the
+  dispatch started.
+
+Neither is in the `needs` of `ci-ok`.
+
 ## Supply chain checks
 
 Three more workflows check the supply chain of the build. None of them is in
