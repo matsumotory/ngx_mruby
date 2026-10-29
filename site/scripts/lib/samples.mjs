@@ -24,7 +24,10 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const SAMPLE_KEYS = ['case', 'conf', 'script', 'request', 'response'];
+export const SAMPLE_KEYS = ['case', 'conf', 'script', 'request', 'response', 'compared', 'label'];
+// A key that a block may give more than once: a sample of several scripts,
+// or of several files of compared values.
+const REPEATED = new Set(['script', 'compared']);
 // Where each file of a sample lives (docs/test/README.md, "Add a test as a
 // fragment and a case file").
 const PLACES = {
@@ -33,21 +36,40 @@ const PLACES = {
   script: /^test\/html\/[^/]+\.rb$/,
   request: /^test\/html\/[^/]+$/,
   response: /^test\/html\/[^/]+$/,
+  compared: /^test\/html\/[^/]+$/,
 };
 // The language of each file in the page's code blocks.
-export const SAMPLE_LANGS = { conf: 'nginx', script: 'ruby', request: 'http', response: 'http' };
+export const SAMPLE_LANGS = { conf: 'nginx', script: 'ruby', request: 'http', response: 'http', compared: 'text' };
+// The label of a sample of a feature of v3 before v3.0.0 (3.5, 3.4):
+// label: development
+export const DEVELOPMENT_LABEL = { en: 'Development version, New in 3.0', ja: '開発中のバージョン、3.0で追加' };
 
+// A sample block gives one file per line, and either a request and the
+// response that the case compares, or one or more files of the values that
+// the case compares (compared:), for a case whose client prints values
+// instead of whole responses (the agent proxy recipes).
 export function parseSampleBlock(text, where) {
-  const spec = {};
+  const spec = { script: [], compared: [] };
   for (const [i, line] of text.split('\n').entries()) {
     if (!line.trim()) continue;
     const m = /^([a-z]+):\s*(\S+)\s*$/.exec(line);
     if (!m) throw new Error(`${where}: line ${i + 1} of the sample block is not "key: path": ${line}`);
     if (!SAMPLE_KEYS.includes(m[1])) throw new Error(`${where}: the sample block has the unknown key ${m[1]} (keys: ${SAMPLE_KEYS.join(', ')})`);
+    if (REPEATED.has(m[1])) {
+      spec[m[1]].push(m[2]);
+      continue;
+    }
     if (spec[m[1]]) throw new Error(`${where}: the sample block gives ${m[1]} twice`);
     spec[m[1]] = m[2];
   }
-  for (const key of SAMPLE_KEYS) if (!spec[key]) throw new Error(`${where}: the sample block has no ${key}`);
+  if (spec.label !== undefined && spec.label !== 'development') throw new Error(`${where}: the label of a sample block is development, not ${spec.label}`);
+  for (const key of ['case', 'conf']) if (!spec[key]) throw new Error(`${where}: the sample block has no ${key}`);
+  if (!spec.script.length) throw new Error(`${where}: the sample block has no script`);
+  if (spec.compared.length) {
+    if (spec.request || spec.response) throw new Error(`${where}: a sample block gives either request and response, or compared`);
+  } else {
+    for (const key of ['request', 'response']) if (!spec[key]) throw new Error(`${where}: the sample block has no ${key}`);
+  }
   return spec;
 }
 
@@ -60,39 +82,53 @@ function withoutLeadingComments(text) {
   return lines.slice(i).join('\n').replace(/\n+$/, '\n');
 }
 
+// The spec of a sample from the attributes of <Sample> on the home pages
+// (one script, a request and a response).
+export function specFromProps(props) {
+  return { case: props.case, conf: props.conf, script: [props.script], request: props.request, response: props.response, compared: [] };
+}
+
+// The files of a sample, in the order of the page: [key, path].
+function sampleFiles(spec) {
+  const files = [['conf', spec.conf], ...spec.script.map((f) => ['script', f])];
+  if (spec.compared.length) files.push(...spec.compared.map((f) => ['compared', f]));
+  else files.push(['request', spec.request], ['response', spec.response]);
+  return files;
+}
+
 export function loadSample(spec, repo, where) {
   const tracked = new Set(execFileSync('git', ['-C', repo, 'ls-files', '-z', '--', 'test'], { encoding: 'utf8' }).split('\0'));
-  const files = {};
-  for (const key of SAMPLE_KEYS) {
-    const file = spec[key];
+  const text = {};
+  for (const [key, file] of [['case', spec.case], ...sampleFiles(spec)]) {
     if (!PLACES[key].test(file)) throw new Error(`${where}: the ${key} of the sample, ${file}, is not where docs/test/README.md puts it`);
     if (!fs.existsSync(path.join(repo, file))) throw new Error(`${where}: the ${key} of the sample, ${file}, is missing`);
     if (!tracked.has(file)) throw new Error(`${where}: the ${key} of the sample, ${file}, is not tracked by git`);
-    files[key] = fs.readFileSync(path.join(repo, file), 'utf8');
+    text[file] = fs.readFileSync(path.join(repo, file), 'utf8');
   }
-  // The case names the request, the response and the port in its code, not
-  // only in a comment. This checks the name, not what the case does with
-  // the file; the case's own assertions are the test.
-  const caseCode = files.case.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
-  for (const key of ['request', 'response', 'conf']) {
-    const name = key === 'conf' ? portOf(files.conf, spec.conf, where) : path.posix.basename(spec[key]);
+  // The case names the request and the response (or each file of compared
+  // values) and the port in its code, not only in a comment. This checks
+  // the name, not what the case does with the file; the case's own
+  // assertions are the test.
+  const caseCode = text[spec.case].split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  const named = [portOf(text[spec.conf], spec.conf, where), ...sampleFiles(spec).filter(([k]) => k === 'request' || k === 'response' || k === 'compared').map(([, f]) => path.posix.basename(f))];
+  for (const name of named) {
     if (!caseCode.includes(name)) {
-      throw new Error(`${where}: the case ${spec.case} does not name ${key === 'conf' ? `the port ${name} of ${spec.conf}` : name} in its code, so it does not compare what the page would show`);
+      throw new Error(`${where}: the case ${spec.case} does not name ${/^\d+$/.test(name) ? `the port ${name} of ${spec.conf}` : name} in its code, so it does not compare what the page would show`);
     }
   }
-  const out = execFileSync('git', ['-C', repo, 'log', '-1', '--format=%h %cs', '--', ...SAMPLE_KEYS.map((k) => spec[k])], { encoding: 'utf8' }).trim();
+  const out = execFileSync('git', ['-C', repo, 'log', '-1', '--format=%h %cs', '--', spec.case, ...sampleFiles(spec).map(([, f]) => f)], { encoding: 'utf8' }).trim();
   const [commit, date] = out.split(' ');
   if (!commit) throw new Error(`${where}: no commit changed the files of the sample yet`);
   return {
     spec,
     commit,
     date,
-    shown: [
-      { key: 'conf', file: spec.conf, lang: SAMPLE_LANGS.conf, text: withoutLeadingComments(files.conf) },
-      { key: 'script', file: spec.script, lang: SAMPLE_LANGS.script, text: withoutLeadingComments(files.script) },
-      { key: 'request', file: spec.request, lang: SAMPLE_LANGS.request, text: files.request },
-      { key: 'response', file: spec.response, lang: SAMPLE_LANGS.response, text: files.response },
-    ],
+    shown: sampleFiles(spec).map(([key, file]) => ({
+      key,
+      file,
+      lang: SAMPLE_LANGS[key],
+      text: key === 'conf' || key === 'script' ? withoutLeadingComments(text[file]) : text[file],
+    })),
   };
 }
 
@@ -112,15 +148,22 @@ export function sampleCaptionHtml(sample, lang) {
   const c = `<code>${escapeHtml(sample.spec.case)}</code>`;
   const date = `<span class="nowrap">${sample.date}</span>`;
   const commit = `<code class="nowrap">${sample.commit}</code>`;
+  const n = sample.shown.length + 1;
+  if (sample.spec.compared.length) {
+    return lang === 'ja'
+      ? `CIを実行するたびに、ケースの${c}がクライアントでリクエストを送り、クライアントが出力する値を、このページに載せた値と比べます。${n}つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
+      : `On every CI run, the case ${c} sends the requests of its client and compares the values that the client prints with the values shown on this page. The ${n} files last changed on ${date} in commit ${commit}.`;
+  }
   return lang === 'ja'
-    ? `CIを実行するたびに、ケースの${c}がこのリクエストを送ります。ケースは、ステータス行と、このページに載せたヘッダと、ボディの全体を比べます。5つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
-    : `On every CI run, the case ${c} sends this request and compares the status line, the headers shown on this page and the whole body. The five files last changed on ${date} in commit ${commit}.`;
+    ? `CIを実行するたびに、ケースの${c}がこのリクエストを送ります。ケースは、ステータス行と、このページに載せたヘッダと、ボディの全体を比べます。${n}つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
+    : `On every CI run, the case ${c} sends this request and compares the status line, the headers shown on this page and the whole body. The ${n} files last changed on ${date} in commit ${commit}.`;
 }
 
 // The titles of the code blocks of a sample.
 export function sampleTitle(item, lang) {
   if (item.key === 'request') return lang === 'ja' ? `${item.file}: ケースが送るリクエスト` : `${item.file}: the request that the case sends`;
   if (item.key === 'response') return lang === 'ja' ? `${item.file}: ケースが比べるレスポンス` : `${item.file}: the response that the case compares`;
+  if (item.key === 'compared') return lang === 'ja' ? `${item.file}: ケースが比べる値` : `${item.file}: the values that the case compares`;
   return item.file;
 }
 
@@ -132,5 +175,6 @@ export function sampleMarkdown(sample, lang) {
     while (item.text.includes(fence)) fence += '`';
     return `${fence}${item.lang} title=${JSON.stringify(sampleTitle(item, lang))}\n${item.text.replace(/\n$/, '')}\n${fence}`;
   });
-  return `${blocks.join('\n\n')}\n\n<p class="caption sample-caption">${sampleCaptionHtml(sample, lang)}</p>`;
+  const label = sample.spec.label === 'development' ? `<p class="caption development-label">${DEVELOPMENT_LABEL[lang === 'ja' ? 'ja' : 'en']}</p>\n\n` : '';
+  return `${label}${blocks.join('\n\n')}\n\n<p class="caption sample-caption">${sampleCaptionHtml(sample, lang)}</p>`;
 }

@@ -50,6 +50,7 @@ export const SOURCE_ROUTES = {
 // order of their routes.
 export const SIDEBAR_ORDER = {
   'guides/install': 1,
+  'guides/agent-proxy': 2,
   'guides/use-cases': 99,
   'reference/directives': 1,
   'reference/ruby': 2,

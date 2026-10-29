@@ -78,7 +78,7 @@ try {
         compile(node.value, `${source}:${node.position.start.line}`, /(^|\s)syntax-error(\s|$)/.test(node.meta ?? ''));
       } else if (node.type === 'code' && node.lang === 'sample') {
         try {
-          scripts.add(parseSampleBlock(node.value, source).script);
+          for (const script of parseSampleBlock(node.value, source).script) scripts.add(script);
         } catch {
           // check-samples.mjs and the generator report a broken sample block
         }
