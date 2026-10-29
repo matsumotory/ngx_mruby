@@ -407,8 +407,8 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
 - `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18132,
-  18136, 18138, 18140, 18143-18144, 18147-18153, 18155-18168, 12345-12359,
-  12363-12364, 12372-12373; 18116 and 12357 belong to the second nginx that
+  18136-18140, 18143-18144, 18147-18168, 12345-12359, 12363-12366,
+  12372-12373; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
   `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
@@ -487,7 +487,10 @@ npm run preview           # serves dist/ at http://localhost:4321/
   Ruby classes and methods), which `/ja/` shows in English with a notice
   that says why (`src/components/FallbackContentNotice.astro`), and the pages
   of `NOT_TRANSLATED_YET` there, which step 5 empties. A link from a
-  Japanese page to an English page goes to that page under `/ja/`. A
+  Japanese page to an English page goes to that page under `/ja/`; to link
+  to the English page itself, write its absolute URL
+  (`https://ngx.mruby.org/<route>/`), which `check-built-links.mjs` checks
+  as an internal link. A
   Japanese page keeps the code blocks of its English page, and its h2 have
   `<wbr>` at their phrase boundaries (4.4 of the proposal). The sidebar of `astro.config.mjs` has
   the links Overview (`/docs/`) and Start, then the groups Guides,
@@ -602,8 +605,9 @@ npm run preview           # serves dist/ at http://localhost:4321/
   three also `--engine chromium|webkit`; on macOS, Japanese is set in
   Hiragino Sans and breaks at other places than in CI, where it is the
   served Noto Sans JP: `node scripts/check-styles.mjs --ja-face noto`
-  and `node scripts/check-japanese-lines.mjs --ja-face noto` see what CI
-  sees):
+  and `node scripts/check-japanese-lines.mjs --ja-face noto` come close to
+  what CI sees, but the Linux runner can still break a line a few pixels
+  elsewhere, so the run of `site.yml` decides):
   - `node scripts/check-styles.mjs` (`npm run check:styles`): computed
     styles in Chromium and WebKit at 320 by 664, 390 by 664 and 1440 by
     900 px: font sizes of the scale of each language, token colors (code
@@ -630,7 +634,8 @@ npm run preview           # serves dist/ at http://localhost:4321/
     390 px and on at most two at 320 px, the right edge of Japanese blocks
     at 390 px (2 em; an h2 at most two lines and 6 em), no last line of one
     or two characters at any size, and diagram labels of 14 px or more
-    inside their place at 390 and 1440 px; on the release notes of
+    inside their place at 390 and 1440 px, and the notice above an English
+    page under `/ja/` on one page of each kind; on the release notes of
     `NOTES_ONLY` in the script, failures are notes until step 5 rewrites
     them;
   - `node scripts/check-focus.mjs`: tabbing through each page in Chromium

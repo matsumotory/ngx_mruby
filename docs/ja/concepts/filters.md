@@ -4,7 +4,7 @@ nginxは、レスポンスのヘッダとボディを2つのフィルタチェ�
 
 ```diagram
 filter-chain
-caption: nginxが呼ぶ順にヘッダフィルタとボディフィルタを並べ、ngx_mrubyのフィルタと、ngx_mrubyの各フィルタが受け取るものを示します。
+caption: nginxが呼ぶ順にヘッダフィルタとボディフィルタを並べ、ngx_mrubyのフィルタと、それぞれが受け取るものを示します。
 source: src/http/ngx_http_mruby_module.c 591-595 1676-1677 1955-1965 2041-2054 2085-2122 2135-2154
 source: config.in 48-69
 nginx: 1.31.6 auto/modules 165-187 386-427 1494-1495
@@ -24,7 +24,7 @@ bw: nginxの<wbr>writeフィルタが<wbr>ボディを<wbr>送る
 
 - nginxは、各チェーンのフィルタを先頭から順に呼びます。ngx_mrubyのフィルタは、nginxのnot modifiedのヘッダフィルタと、rangeとcopyのボディフィルタの後に動きます。また、`gzip`やchunkedのフィルタのような、nginxのほかのモジュールのフィルタより先に動きます。そのため、ngx_mrubyのフィルタは、nginxが圧縮したりチャンクに分けたりする前のレスポンスを受け取ります。nginxは、`auto/modules`に並んだモジュールの順にチェーンを組みます。その順では、ngx_mrubyはnginx自身のフィルタのモジュールの後、copy、range body、not modified、sliceの各フィルタの前にあります。チェーンを組むとき、nginxは各フィルタを、それより前に並んだフィルタの手前に入れます。sliceのフィルタは、`--with-http_slice_module`を付けたビルドにだけあります。
 - ヘッダフィルタは、`Nginx::Request`と`Nginx::Headers_out`でステータスとヘッダを読み、書き換えます。ヘッダフィルタはボディを読む前に動くので、そこでは`Nginx::Filter#body`は空の文字列を返します。
-- ボディフィルタの処理には、レスポンスの長さが要ります。`Content-Length`のあるレスポンスでは、ngx_mrubyはボディ全体を1つのバッファに集め、そのボディを`Nginx::Filter#body`に入れてスクリプトを1回実行します。そして、スクリプトが`Nginx::Filter#body=`に入れたものを送ります。upstreamのチャンク形式のレスポンスのような、`Content-Length`の無いレスポンスは、読まれずにフィルタを通ります。ngx_mrubyは、そのことを`notice`のレベルでログに書きます。
+- ボディフィルタの処理には、レスポンスの長さが要ります。`Content-Length`のあるレスポンスでは、ngx_mrubyはボディ全体を1つのバッファに集め、そのボディを`Nginx::Filter#body`に入れてスクリプトを1回実行します。そして、ngx_mrubyは、スクリプトが`Nginx::Filter#body=`に入れたものを送ります。upstreamのチャンク形式のレスポンスのような、`Content-Length`の無いレスポンスは、読まれずにフィルタを通ります。ngx_mrubyは、そのことを`notice`のレベルでログに書きます。
 - locationにボディフィルタがあると、ngx_mrubyは、ボディフィルタが動き終わるまでヘッダを送らずに待ちます。こうして、`Content-Length`を新しいボディの長さにします。
 - どちらのフィルタでも待てません。フィルタの中では、`Nginx::Async.sleep`と`Nginx::Async::HTTP.sub_request`は`RuntimeError`を起こし、`Nginx.rputs`と`Nginx.echo`は使えません。
 

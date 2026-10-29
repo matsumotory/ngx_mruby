@@ -10,10 +10,12 @@
 //   its page under /ja/ shows the notice that says why it stays in English
 //   (data-notice="generated-reference"); a page of NOT_TRANSLATED_YET shows
 //   the notice that its translation is not there yet
-//   (data-notice="untranslated"); a translated page shows neither. Both
+//   (data-notice="untranslated"); a translated page shows neither. Each
+//   notice holds Japanese text. Both
 //   lists name only English routes, and NOT_TRANSLATED_YET no page that has
 //   a Japanese page.
-// - Languages. Every page of the built site has <html lang="en"> or, under
+// - Languages. Every page of the built site (404.html left out: it has no
+//   route, and Starlight gives it no language links) has <html lang="en"> or, under
 //   /ja/, lang="ja", and links with hreflang en, ja and x-default (English)
 //   to absolute URLs of the site: the page itself and the same page in the
 //   other language, which exists and links back.
@@ -60,7 +62,7 @@ const load = (file) => {
   if (!html.has(file)) html.set(file, fs.existsSync(path.join(dist, file)) ? readHtml(path.join(dist, file)) : null);
   return html.get(file);
 };
-const notices = (tree) => elements(tree).filter((e) => e.properties?.dataNotice !== undefined).map((e) => ({ kind: String(e.properties.dataNotice), lang: e.properties.lang }));
+const notices = (tree) => elements(tree).filter((e) => e.properties?.dataNotice !== undefined).map((e) => ({ kind: String(e.properties.dataNotice), lang: e.properties.lang, text: textContent(e).trim() }));
 
 // Translations
 const englishRoutes = new Set(english.map((p) => p.route));
@@ -91,6 +93,7 @@ for (const page of english) {
   if (!want) continue;
   const found = shown.filter((n) => n.kind === want);
   if (found.length !== 1 || shown.length !== 1) problems.push(`${fileOfRoute(ja)}: shows the notices [${shown.map((n) => n.kind).join(', ')}], expected one ${want}`);
+  else if (!/[\u3040-\u30ff\u3400-\u9fff]/.test(found[0].text)) problems.push(`${fileOfRoute(ja)}: the notice ${want} holds no Japanese text`);
   else if (found[0].lang !== 'ja') problems.push(`${fileOfRoute(ja)}: the notice ${want} has lang="${found[0].lang ?? ''}", expected "ja" inside the English <main>`);
   else if (want === 'generated-reference') generatedNotices++;
   else pendingNotices++;
@@ -167,7 +170,8 @@ if (wbrHeadings === 0) problems.push('no h2 of the Japanese pages holds <wbr>: t
 const JA = '\\u3000-\\u303f\\u3040-\\u30ff\\u3400-\\u9fff\\uf900-\\ufaff\\uff00-\\uffef';
 const CODE = '';
 const URLMARK = '';
-const SPACE = new RegExp(`[${JA}][ \\t\\u00a0]+[A-Za-z0-9${CODE}]|[A-Za-z0-9${CODE}][ \\t\\u00a0]+[${JA}]`, 'g');
+// A line break in the source renders as a space, as a typed space does.
+const SPACE = new RegExp(`[${JA}][ \\t\\n\\r\\u00a0]+[A-Za-z0-9${CODE}]|[A-Za-z0-9${CODE}][ \\t\\n\\r\\u00a0]+[${JA}]`, 'g');
 // The text of inline content as a reader sees it: inline code as one
 // placeholder character, the text of a link written as its URL as another
 // one (spaces around a URL are allowed), HTML left out.
@@ -180,7 +184,7 @@ const inline = (node, src) => {
     case 'html':
       return '';
     case 'break':
-      return '\n';
+      return '\u0002';
     case 'link':
       if (src[node.position.start.offset] !== '[') return URLMARK;
       return (node.children ?? []).map((c) => inline(c, src)).join('');
