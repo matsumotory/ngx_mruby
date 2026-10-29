@@ -80,8 +80,8 @@ modules: その中に<wbr>あるもの：<wbr>`ngx_http_mruby_module`、<wbr>ngi
 
 | nginx | モジュール | OpenSSL | nginxを動かす環境 |
 |---|---|---|---|
-| 1.31.6, 1.30.5, 1.28.3, 1.26.3 | 静的と動的 | インストールした1.1.1wと、`--with-openssl-src`でnginxに組み込んだ1.1.1w | valgrind |
-| 1.31.6 | 静的 | システムにインストールした1.1.1w | AddressSanitizerとUndefinedBehaviorSanitizer |
+| 1.31.8, 1.30.6, 1.28.3, 1.26.3 | 静的と動的 | インストールした1.1.1wと、`--with-openssl-src`でnginxに組み込んだ1.1.1w | valgrind |
+| 1.31.8 | 静的 | システムにインストールした1.1.1w | AddressSanitizerとUndefinedBehaviorSanitizer |
 
 - ランナーは、GCC 11のUbuntu 22.04です。同梱のmrubyは4.0.0です。バージョンは`build_config.rb.lock`にあります。
-- `nginx_version`は`build.sh`と`test.sh`がダウンロードするバージョン1.31.6を指定します。
+- `nginx_version`は`build.sh`と`test.sh`がダウンロードするバージョン1.31.8を指定します。
