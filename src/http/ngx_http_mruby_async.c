@@ -382,6 +382,9 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   cln->handler = ngx_mrb_async_sleep_cleanup;
   cln->data = ev;
 
+  // tells ngx_mrb_run_request that the fiber yields to this timer (see there)
+  ctx->async_sleep_pending = 1;
+
   return self;
 }
 

@@ -1470,8 +1470,8 @@ u.server = "127.0.0.1:8080"                   #=> 127.0.0.1:8080
 ### Nginx::Async#sleep(msec)
 
 Sleeps in non-blocking way.
-It's currently supported in the set, rewrite and access handlers.
-In a content handler (`mruby_content_handler*`) it does not raise, but nginx does not wait for the handler: the request ends at the sleep without a response (unchanged in 2.7.1; see "Known limitations" in [the 2.7.1 release notes](../releases/v2.7.1.md#known-limitations)).
+It's currently supported in the set, rewrite, access and content handlers.
+In a content handler (`mruby_content_handler*`) nginx waits for the handler since 2.7.3: the code after the sleep runs, and the request gets the response that the handler writes or the status that it returns. Up to 2.7.2 the request ended at the sleep without a response (see "Known limitations" in [the 2.7.1 release notes](../releases/v2.7.1.md#known-limitations)).
 In a log handler (`mruby_log_handler`, `mruby_log_handler_code`) and in the
 output filters (`mruby_output_header_filter*`, `mruby_output_body_filter*`),
 nginx cannot resume a handler that waits, so it raises a `RuntimeError` (since 2.7.1; in 2.7.0 a sleep in a log handler could crash the worker, and a sleep in a filter stopped the filter there and sent the response unfiltered).

@@ -1047,6 +1047,7 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   }
 
   ctx->sub_response_more = 0;
+  ctx->async_sleep_pending = 0;
 
   // The chain of Nginx.rputs and the length of the response before the code
   // runs, for an exception in a header filter (see below).
@@ -1065,6 +1066,26 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
       ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: more sub request processing", MODULE_NAME,
                     __func__, __LINE__);
       return NGX_AGAIN;
+    }
+
+    if (kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && ctx->async_sleep_pending) {
+      /*
+       * The checker of the content phase finalizes the request with the
+       * NGX_DONE below, which drops one reference to the request
+       * (ngx_http_finalize_connection). Take that reference first, as nginx's
+       * own handlers do before they return NGX_DONE, so that the request
+       * stays until the timer of Nginx::Async.sleep resumes the fiber and
+       * ngx_mrb_timer_handler finalizes the request. A later sleep of the
+       * same fiber returns to that timer, not here, so it takes no second
+       * reference.
+       *
+       * The checker installs ngx_http_request_empty_handler as the write
+       * event handler only for r->content_handler, not for a phase handler
+       * like this one. Install it here, so that a write event while the
+       * fiber waits does not run the phases, and this handler, again.
+       */
+      r->main->count++;
+      r->write_event_handler = ngx_http_request_empty_handler;
     }
 
     return NGX_DONE;

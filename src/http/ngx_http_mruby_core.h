@@ -62,6 +62,9 @@ typedef struct ngx_http_mruby_ctx_t {
   ngx_uint_t phase;
   // for response of sub_request using async method
   unsigned sub_response_more : 1;
+  // set by Nginx::Async.sleep when it arms its timer; ngx_mrb_run_request
+  // clears it before the handler runs and reads it when the fiber yields
+  unsigned async_sleep_pending : 1;
   u_char *sub_response_body;
   ngx_uint_t sub_response_status;
   size_t sub_response_body_length;
