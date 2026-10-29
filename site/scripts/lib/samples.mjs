@@ -147,22 +147,22 @@ export function sampleCaptionHtml(sample, lang) {
   const date = `<span class="nowrap">${sample.date}</span>`;
   const commit = `<code class="nowrap">${sample.commit}</code>`;
   const count = sample.shown.length + 1;
-  const n = { en: ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][count] ?? String(count), ja: String(count) };
+  const n = { en: ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][count] ?? String(count) };
   if (sample.spec.compared.length) {
     return lang === 'ja'
-      ? `CIを実行するたびに、ケースの${c}がクライアントでリクエストを送り、クライアントが出力する値を、このページに載せた値と比べます。${n.ja}つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
+      ? `CIが動くたびに、ケースの${c}がクライアントでリクエストを送り、クライアントが出力する値を、ここに載せた値と比べます。<span class="nowrap">${count}個</span>のファイルを最後に変えたのは、${date}のコミット<span class="nowrap"><code>${sample.commit}</code>です。</span>`
       : `On every CI run, the case ${c} sends the requests of its client and compares the values that the client prints with the values shown on this page. The ${n.en} files last changed on ${date} in commit ${commit}.`;
   }
   return lang === 'ja'
-    ? `CIを実行するたびに、ケースの${c}がこのリクエストを送ります。ケースは、ステータス行と、このページに載せたヘッダと、ボディの全体を比べます。${n.ja}つのファイルを最後に変更したコミットは${commit}で、その日付は${date}です。`
+    ? `CIが動くたびに、ケースの${c}がこのリクエストを送ります。ケースは、ステータス行、ここに載せたヘッダ、ボディ全体を比べます。<span class="nowrap">${count}個</span>のファイルを最後に変えたのは、${date}のコミット<span class="nowrap"><code>${sample.commit}</code>です。</span>`
     : `On every CI run, the case ${c} sends this request and compares the status line, the headers shown on this page and the whole body. The ${n.en} files last changed on ${date} in commit ${commit}.`;
 }
 
 // The titles of the code blocks of a sample.
 export function sampleTitle(item, lang) {
-  if (item.key === 'request') return lang === 'ja' ? `${item.file}: ケースが送るリクエスト` : `${item.file}: the request that the case sends`;
-  if (item.key === 'response') return lang === 'ja' ? `${item.file}: ケースが比べるレスポンス` : `${item.file}: the response that the case compares`;
-  if (item.key === 'compared') return lang === 'ja' ? `${item.file}: ケースが比べる値` : `${item.file}: the values that the case compares`;
+  if (item.key === 'request') return lang === 'ja' ? `${item.file}：ケースが送るリクエスト` : `${item.file}: the request that the case sends`;
+  if (item.key === 'response') return lang === 'ja' ? `${item.file}：ケースが比べるレスポンス` : `${item.file}: the response that the case compares`;
+  if (item.key === 'compared') return lang === 'ja' ? `${item.file}：ケースが比べる値` : `${item.file}: the values that the case compares`;
   return item.file;
 }
 

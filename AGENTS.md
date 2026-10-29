@@ -259,6 +259,13 @@ The owner decided on 2026-10-04 that sessions may change the mrbgem
 repositories that the owner maintains (`matsumotory/mruby-*`), mruby-uname
 included.
 
+The owner decided on 2026-10-29, in the words 「僕管理のmrbgemは更新して対応できるなら更新すべき、なんでも外すとかではなく。只中で使ってるライブラリとかの更新が止まってたらもういいかな」
+("a gem I maintain should be updated, if updating copes with the change, not
+removed; if a library it uses inside has stopped being updated, it is fine to
+drop it"): a gem that the owner maintains is updated to cope with a change and not
+removed from a build. Removing one is
+acceptable when a library that the gem uses inside has stopped being updated.
+
 The rest of this subsection is the sessions' procedure, not a decision of
 the owner. It names the branches as they are until v3 is promoted, as the
 branch table does; step 4 of "Promoting v3 to master" in
@@ -405,7 +412,11 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
 - Results: the test runner exits non-zero on a failed assertion. nginx logs are in
   `build/nginx/logs/` (`build_dynamic/nginx/logs/` for dynamic builds);
   `error.log` is at debug level. valgrind errors do **not** change the exit status
-  of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
+  of `test.sh`: run valgrind with the options of CI and read the `ERROR SUMMARY`
+  line of its log yourself. In CI, the step "Check the valgrind reports" fails a
+  cell on that line: one cell runs under valgrind on pull requests, every cell
+  in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
+  what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18132,
   18136-18140, 18143-18144, 18147-18168, 12345-12359, 12363-12366,
   12372-12373; 18116 and 12357 belong to the second nginx that
@@ -482,13 +493,29 @@ npm run preview           # serves dist/ at http://localhost:4321/
   `docs/directives/README.md` `/reference/directives/`, and so on) and add
   `examples/start/README.md` as `/start/`, `SECURITY.md` as `/security/`
   and `CONTRIBUTING.md` as `/contributing/`; a Japanese page takes the route
-  of its English page under `/ja/`. The sidebar of `astro.config.mjs` has
+  of its English page under `/ja/`. The Japanese source of `docs/<path>.md`
+  is `docs/ja/<path>.md` (of a release file, `docs/releases/<version>.ja.md`),
+  and that of a page from outside `docs/` is `docs/ja/<route>/README.md`
+  (`docs/ja/start/README.md`, `docs/ja/security/README.md`,
+  `docs/ja/contributing/README.md`). Every page written by hand has one
+  (Q2 of the proposal), except the generated reference of
+  `GENERATED_REFERENCE` in `scripts/lib/site.mjs` (the directives and the
+  Ruby classes and methods), which `/ja/` shows in English with a notice
+  that says why (`src/components/FallbackContentNotice.astro`), and the pages
+  of `NOT_TRANSLATED_YET` there, which step 5 empties. A link from a
+  Japanese page to an English page goes to that page under `/ja/`; to link
+  to the English page itself, write its absolute URL
+  (`https://ngx.mruby.org/<route>/`), which `check-built-links.mjs` checks
+  as an internal link. A
+  Japanese page keeps the code blocks of its English page, and its h2 have
+  `<wbr>` at their phrase boundaries (4.4 of the proposal). The sidebar of `astro.config.mjs` has
   the links Overview (`/docs/`) and Start, then the groups Guides,
   Reference, Concepts, Releases, Security and Contributing, each made from the
   folder of its routes and ordered by `SIDEBAR_ORDER` of
   `scripts/lib/site.mjs`. The header, the menu, the footer and the language link
   of 4.10 are component overrides in `src/components/` (`Header`,
-  `PageFrame`, `Footer`, `MobileMenuFooter`), with their links in
+  `PageFrame`, `Footer`, `MobileMenuFooter`, and `FallbackContentNotice`
+  for the notice above an English page under `/ja/`), with their links in
   `src/site-nav.mjs`.
 - Samples and diagrams (3.5 of the proposal). A fenced block with the
   language `sample` in `docs/` names a case of `test/t/cases/` and its
@@ -542,9 +569,17 @@ npm run preview           # serves dist/ at http://localhost:4321/
     HTML resolves, and no link attribute is empty or broken;
   - `node scripts/check-pages.mjs`: every page has a title and the
     last-updated date of its source;
-  - `node scripts/check-japanese.mjs`: the pages from `docs/ja/` are under
+  - `node scripts/check-japanese.mjs`: every English page written by hand
+    has a Japanese page, outside `GENERATED_REFERENCE` and
+    `NOT_TRANSLATED_YET`, whose pages under `/ja/` show their notice; every
+    page has `lang` and the `hreflang` links en, ja and x-default to the
+    absolute URLs of both languages; the pages from `docs/ja/` are under
     `/ja/` with `lang="ja"`, and the `<wbr>` of their h2 are elements of
-    the built h2;
+    the built h2; no space between Japanese and Latin text in the Japanese
+    sources outside code and URLs; a Japanese page has the code blocks of
+    its English page; no `<title>`, h1, sidebar or table-of-contents entry
+    or heading `id` under `/ja/` contains `wbr`; and every diagram under
+    `/ja/` shows the labels of the Japanese source;
   - `node scripts/check-no-js.mjs`: the text of each source is in the HTML
     without running scripts;
   - `node scripts/check-css.mjs`: the built CSS has no hex color outside
@@ -582,11 +617,13 @@ npm run preview           # serves dist/ at http://localhost:4321/
   (`DIR/host/bin/mrbc`); a block that shows a syntax error on purpose is
   marked ```` ```ruby syntax-error ```` and must not compile. `site.yml`
   runs both.
-  `npm run check:browser` runs four on `site/dist/` (`--dist`; the first
-  two also `--engine chromium|webkit`; on macOS, Japanese is set in
+  `npm run check:browser` runs five on `site/dist/` (`--dist`; the first
+  three also `--engine chromium|webkit`; on macOS, Japanese is set in
   Hiragino Sans and breaks at other places than in CI, where it is the
   served Noto Sans JP: `node scripts/check-styles.mjs --ja-face noto`
-  sees what CI sees):
+  and `node scripts/check-japanese-lines.mjs --ja-face noto` come close to
+  what CI sees, but the Linux runner can still break a line a few pixels
+  elsewhere, so the run of `site.yml` decides):
   - `node scripts/check-styles.mjs` (`npm run check:styles`): computed
     styles in Chromium and WebKit at 320 by 664, 390 by 664 and 1440 by
     900 px: font sizes of the scale of each language, token colors (code
@@ -604,6 +641,19 @@ npm run preview           # serves dist/ at http://localhost:4321/
     hidden from screen readers, labels of 14 px or more inside their
     place, the drawing and its labels within one screen), and the theme
     without JavaScript;
+  - `node scripts/check-japanese-lines.mjs` (`npm run
+    check:japanese-lines`; `--pages /ja/a/,/ja/b/` for some pages only):
+    every page under `/ja/` from a Japanese source but the home page, in
+    Chromium and WebKit at 320 by 664, 390 by 664, 1000 by 900 and 1440 by
+    900 px: at most 40 Japanese characters on a line of body text and a
+    line height of 1.75 to 2.0 at 1440 px, the page title on one line at
+    390 px and on at most two at 320 px, the right edge of Japanese blocks
+    at 390 px (2 em; an h2 at most two lines and 6 em), no last line of one
+    or two characters at any size, and diagram labels of 14 px or more
+    inside their place at 390 and 1440 px, and the notice above an English
+    page under `/ja/` on one page of each kind; on the release notes of
+    `NOTES_ONLY` in the script, failures are notes until step 5 rewrites
+    them;
   - `node scripts/check-focus.mjs`: tabbing through each page in Chromium
     and WebKit (Option-Tab there), every focused element has a focus ring
     and the fixed header does not cover it;

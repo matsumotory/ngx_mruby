@@ -63,6 +63,7 @@ export default defineConfig({
       ],
       components: {
         Banner: './src/components/Banner.astro',
+        FallbackContentNotice: './src/components/FallbackContentNotice.astro',
         Footer: './src/components/Footer.astro',
         Header: './src/components/Header.astro',
         MobileMenuFooter: './src/components/MobileMenuFooter.astro',
