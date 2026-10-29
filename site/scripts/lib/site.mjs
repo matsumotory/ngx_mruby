@@ -48,6 +48,38 @@ export const SOURCE_ROUTES = {
   'docs/HANDOFF.md': 'contributing/handoff',
 };
 
+// The Japanese pages (docs/proposals/site.md, 3.4, Q2 of section 7, step 5
+// of section 6). Every page written by hand has a Japanese source:
+// docs/ja/<path>.md for docs/<path>.md, docs/<path>.ja.md for the release
+// notes, and docs/ja/<route>/README.md for the pages from outside docs/
+// (docs/ja/start/README.md for examples/start/README.md,
+// docs/ja/security/README.md for SECURITY.md, docs/ja/contributing/README.md
+// for CONTRIBUTING.md). The Japanese page takes the route of its English page
+// under /ja/.
+//
+// GENERATED_REFERENCE: the reference that Pillar F of the v3 plan generates
+// from src/ (the directives from the ngx_command_t tables, the Ruby classes
+// and methods with YARD). A translation would be out of date after each
+// generation, so these pages have no Japanese source: /ja/ shows the English
+// page with the notice of src/components/FallbackContentNotice.astro.
+export const GENERATED_REFERENCE = ['reference/directives', 'reference/ruby'];
+// NOT_TRANSLATED_YET: the pages written by hand whose translation is still
+// to come in step 5. /ja/ shows the English page with the notice of
+// src/components/FallbackContentNotice.astro that the translation is not
+// there yet.
+// check-japanese.mjs fails on a page written by hand that is in neither list
+// and has no Japanese source, and on a page of this list that has one, so
+// that each pull request of step 5 removes the pages it translates.
+export const NOT_TRANSLATED_YET = [
+  'contributing',
+  'contributing/development',
+  'contributing/handoff',
+  'contributing/test',
+  'releases',
+  'security',
+  'security/trust-boundary',
+];
+
 // The place of a page in its group of the sidebar (astro.config.mjs), by
 // route without the /ja/ prefix. The other pages of a group follow, in the
 // order of their routes.

@@ -28,7 +28,8 @@
 //   changed yet gets no date, with a warning.
 // - Links. A relative link, or one from the top of the repository
 //   (/path), to a file that the site renders becomes the route of its page,
-//   with the anchor kept. A link to any other file or folder of the
+//   with the anchor kept; from a Japanese page, a link to an English page
+//   becomes the route of that page under /ja/. A link to any other file or folder of the
 //   repository becomes its URL on GitHub at the branch next, and an image
 //   its raw URL there. A link to a path that the repository does not track
 //   stops the build. Absolute URLs and anchors within the page stay as they
@@ -148,7 +149,12 @@ function resolve(url, source, image, where) {
   if (target === '..' || target.startsWith('../')) fail(`${where}: the link ${url} points outside the repository`);
   if (!image) {
     const page = bySource.get(target) ?? bySource.get(`${target}/README.md`);
-    if (page) return routeUrl(page.route) + query + fragment;
+    // From a Japanese page, a link to an English page goes to that page
+    // under /ja/: its translation, or the English page with the notice of
+    // 3.4 (a generated reference page, or one not translated yet), so that
+    // the reader stays on the Japanese pages.
+    const fromJapanese = bySource.get(source)?.lang === 'ja';
+    if (page) return routeUrl(fromJapanese && page.lang === 'en' ? (page.route ? `ja/${page.route}` : 'ja') : page.route) + query + fragment;
   }
   const isDir = target === '.' || tracked.has(`${target}/`);
   if (!isDir && !tracked.has(target)) {
