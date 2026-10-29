@@ -216,7 +216,9 @@ ngx_int_t ngx_mrb_finalize_body_filter(ngx_http_request_t *r, ngx_http_mruby_ctx
 
   b->pos = ctx->body;
   b->last = ctx->body + ctx->body_length;
-  b->memory = 1;
+  // An empty final buffer must be special, not memory: nginx's writer
+  // rejects a zero size memory buffer instead of sending the response.
+  b->memory = ctx->body_length ? 1 : 0;
   b->last_buf = 1;
 
   r->headers_out.content_length_n = b->last - b->pos;
