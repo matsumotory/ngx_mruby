@@ -1,0 +1,66 @@
+name: site-dispatch
+
+# Every push to master starts site.yml on next (docs/proposals/site.md on
+# next, 5.3 and step 6 of section 6), which builds the site with its 2.x pages under /v2/ from
+# docs/ of master. A workflow_dispatch runs on the branch that it names,
+# here next, which is the branch that the site is built from; a
+# repository_dispatch would run on the default branch, master. With the
+# job's GITHUB_TOKEN, a workflow_dispatch still starts a run (GitHub Docs,
+# "Triggering a workflow from a workflow"); the token needs the actions
+# permission to write.
+#
+# Pushes are not filtered by path, as the pushes of site.yml on next are
+# not: the 2.x pages link to files anywhere in the repository (.travis.yml,
+# nginx_version, the workflows, ...), and the generator stops on a link to
+# a file that git no longer tracks, so a push that removes such a file
+# must build the site again. There is no pull_request trigger: a pull
+# request does not start runs on next (site-v2.yml builds the site for it
+# instead).
+on:
+  push:
+    branches:
+      - master
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      # The job fails when GitHub refuses the dispatch, and when it cannot
+      # name the run that the dispatch started; the run goes to the job
+      # summary. gh prints the URL of the run when the REST endpoint returns
+      # it; otherwise the newest run of site.yml on next by workflow_dispatch
+      # created since the dispatch, within 60 seconds, is taken.
+      - name: Start site.yml on next
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # 30 seconds back, for a difference between the clocks of the runner and GitHub
+          since=$(date -u -d "-30 seconds" +%Y-%m-%dT%H:%M:%SZ)
+          out=$(gh workflow run site.yml --ref next)
+          echo "$out"
+          run=$(grep -Eo 'https://github\.com/[^ ]+/actions/runs/[0-9]+' <<< "$out" | head -n 1 || true)
+          if [ -n "$run" ]; then
+            echo "site.yml on next: $run" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          for _ in $(seq 1 12); do
+            sleep 5
+            run=$(gh run list --workflow site.yml --branch next --event workflow_dispatch --limit 5 \
+              --json createdAt,url --jq "[.[] | select(.createdAt >= \"$since\")][0].url // empty")
+            if [ -n "$run" ]; then
+              echo "site.yml on next: $run" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+          echo "no run of site.yml on next by workflow_dispatch since $since" >&2
+          exit 1

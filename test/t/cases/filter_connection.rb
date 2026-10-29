@@ -139,12 +139,15 @@ t.assert('ngx_mruby - Upstream#keepalive_cache=', 'puts back the configured valu
   t.assert_equal '3|2|2', res["body"]
 end
 
-# characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
-# Upstream.new compares the given name case-insensitively and only over the
-# length of the given name, so a prefix selects the first matching upstream.
-t.assert('ngx_mruby - Upstream.new', 'matches a prefix of the name and ignores case') do
+# Upstream.new compares the whole name, case-insensitively, as nginx compares
+# upstream names: "keepalive_cache_prefix" only starts the name of the
+# upstream keepalive_cache_prefix_target and raises (before 2.7.3 it found
+# that upstream), and "KEEPALIVE_CACHE_CONFIGURED" finds
+# keepalive_cache_configured. The owner approved this change of the
+# expectation on 2026-10-29.
+t.assert('ngx_mruby - Upstream.new', 'matches the whole name and ignores case') do
   res = HttpRequest.new.get base(18112) + '/upstream/name_match'
-  t.assert_equal '7|4', res["body"]
+  t.assert_equal 'RuntimeError|4', res["body"]
 end
 
 t.assert('ngx_mruby - Upstream.new', 'an unknown name raises RuntimeError') do
