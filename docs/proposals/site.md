@@ -1985,8 +1985,10 @@ OKLCH sources; contrast.py additionally checks button text against its face
 
 Below 800px the title's top padding, lead/action/version gaps, runtime
 padding and section gaps are smaller. In Chromium at 390 by 844 pixels,
-the Japanese sample-section entry moved from y=950.70 to y=838.70; the
-runtime starts 40px earlier and is fully visible in the first viewport.
+the Japanese sample-section entry moved from y=950.70 to y=838.70;
+the `.runtime-map` layout box moved from y=540.75 to y=500.75.
+This box includes padding; these coordinates do not identify the visible
+inner panel border. The runtime diagram is fully visible in the first viewport.
 The desktop layout positions are unchanged. These are layout measurements,
 not loading-performance results. Native and Noto checks cover 80 page loads
 of the English/Japanese homepages in Chromium/WebKit, both themes and
