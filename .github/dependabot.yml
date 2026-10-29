@@ -17,8 +17,9 @@ updates:
   # The workflows that exist only on next (nginx-tests.yml, site.yml,
   # examples.yml) are not updated by the entry above, which reads the default
   # branch. Dependabot reads this file from the default branch, so this entry
-  # is here, with the pull requests targeting next. Security updates use the
-  # default branch.
+  # is here, with the pull requests targeting next. An update of an action
+  # that both branches use opens one pull request for each branch. Security
+  # updates use the default branch.
   - package-ecosystem: "github-actions"
     directory: "/"
     target-branch: "next"

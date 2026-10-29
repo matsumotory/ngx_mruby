@@ -254,11 +254,10 @@ included.
 
 The owner decided on 2026-10-29, in the words 「僕管理のmrbgemは更新して対応できるなら更新すべき、なんでも外すとかではなく。只中で使ってるライブラリとかの更新が止まってたらもういいかな」
 ("a gem I maintain should be updated, if updating copes with the change, not
-removed; if a library it uses inside has stopped being updated, it is
-enough"): a gem that the owner maintains (`matsumotory/mruby-*` and the
-mrbgems of this repository) is updated to cope with a change (a new mruby, a
-build failure) and not removed from a build. Removing one is acceptable only
-when a library that the gem uses inside has stopped being updated.
+removed; if a library it uses inside has stopped being updated, it is fine to
+drop it"): a gem that the owner maintains is updated to cope with a change (a
+new mruby, a build failure) and not removed from a build. Removing one is
+acceptable when a library that the gem uses inside has stopped being updated.
 
 The rest of this subsection is the sessions' procedure, not a decision of
 the owner. It names the branches as they are until v3 is promoted, as the
@@ -365,7 +364,7 @@ headers, and `test.sh` uses `wget` and the `openssl` command. mruby is built wit
 sh test.sh                          # full run: fetch nginx (version in ./nginx_version), configure, build, test
 ONLY_BUILD_NGX_MRUBY=1 sh test.sh   # fast loop: skip fetch/configure, rebuild changed sources, re-run tests
 BUILD_DYNAMIC_MODULE=1 sh test.sh   # build as a dynamic module (uses build_dynamic/ instead of build/)
-NGINX_RUNNER=valgrind sh test.sh   # run nginx under valgrind (test.sh waits up to NGINX_HEATTIME seconds, 60 by default, for nginx to listen)
+NGINX_RUNNER=valgrind sh test.sh   # run nginx under valgrind (NGINX_HEATTIME, 60 s by default, bounds each wait of test.sh for ports and for nginx)
 sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12372)
 ```
 
