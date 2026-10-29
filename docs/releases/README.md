@@ -61,11 +61,21 @@ new Ruby class or method, or a new value that a directive accepts. It goes
 under "New features" (additive build changes go under "Build and test
 changes").
 
-A bug fix is a behavior change when a working configuration or script could
-see the old behavior: for example, a response whose status or headers differ
-after the fix, or a method that returned a value and now raises. A fix of a
-crash or a leak alone is not one, because no configuration relies on a worker
-crashing. When in doubt, record it as a behavior change.
+The owner said on 2026-10-29:
+「修正対象をしようとして使ってた場合に変更で変わる場合はノート必須」 ("when
+someone used the behavior being fixed as if it were specified, and the fix
+changes it, the note is required"; 「しようとして」 reads as 「仕様として」, "as
+the specification"). The sessions read it as follows. A bug fix is a
+behavior change when a configuration or script that used the code being
+fixed sees a difference after the fix: for example, a response whose status
+or headers differ, or a method that returned a value or accepted an argument
+and now raises. This holds also when the old behavior was the defect itself,
+because someone may have built on it. A fix is not a behavior change in one
+case only: it removes a crash, a hang or a leak, and nothing else that a
+configuration or script sees changes, so no one could have built on the old
+behavior. A fix that turns some uses into an exception or a new result while
+it removes a crash for others changes those uses, and is one. When in doubt,
+record it as a behavior change.
 
 "Previous release" means the last release tag `vX.Y.Z`, not the previous
 commit. Pre-release tags (`-alpha.N`, `-beta.N`, `-rc.N`) are not releases in
