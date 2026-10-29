@@ -43,9 +43,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
-      # TEMPORARY planted fault: without the actions permission to write,
-      # the dispatch must be refused and the job must fail.
-      actions: read
+      actions: write
     steps:
       # The job fails when GitHub refuses the dispatch, and when no run of
       # site.yml on next started by workflow_dispatch appears within 60
