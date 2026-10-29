@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2100 344" preserveAspectRatio="none" data-labels="h-header hn hm ho hw h-body bn bm bo bw">
+  <!-- The filter chain diagram, wide arrangement (docs/concepts/filters.md): nginx's header filters on the left and its body filters on the right, in the order in which nginx calls them, with the filters of ngx_mruby second. Lines and boxes only: the labels are HTML text placed by filter-chain.css, whose grid has the rows and columns of this drawing (16 units to the rem; columns 10fr, 1fr and 10fr of 2100 units). The two filters of ngx_mruby are the two marks in the accent. -->
+  <rect class="d-box" x="0" y="32" width="1000" height="56" />
+  <rect class="d-mark" x="0" y="112" width="1000" height="72" />
+  <rect class="d-box" x="0" y="208" width="1000" height="56" />
+  <rect class="d-box" x="0" y="288" width="1000" height="56" />
+  <rect class="d-box" x="1100" y="32" width="1000" height="56" />
+  <rect class="d-mark" x="1100" y="112" width="1000" height="72" />
+  <rect class="d-box" x="1100" y="208" width="1000" height="56" />
+  <rect class="d-box" x="1100" y="288" width="1000" height="56" />
+  <path class="d-line" d="M500 88 V112" />
+  <path class="d-line" d="M500 184 V208" />
+  <path class="d-line" d="M500 264 V288" />
+  <path class="d-line" d="M1600 88 V112" />
+  <path class="d-line" d="M1600 184 V208" />
+  <path class="d-line" d="M1600 264 V288" />
+</svg>

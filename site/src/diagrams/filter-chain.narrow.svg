@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 100" preserveAspectRatio="none" data-labels="h-header hn hm ho hw h-body bn bm bo bw">
+  <!-- The filter chain diagram, narrow arrangement (docs/concepts/filters.md): one line down the first column of the grid of filter-chain.css, beside the labels: the header filters, then the body filters, each in the order in which nginx calls them. -->
+  <path class="d-line" d="M6 0 V100" />
+</svg>

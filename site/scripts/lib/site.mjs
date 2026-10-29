@@ -55,6 +55,11 @@ export const SIDEBAR_ORDER = {
   'reference/ruby': 2,
   releases: 1,
   'releases/migration': 2,
+  concepts: 1,
+  'concepts/request-phases': 2,
+  'concepts/filters': 3,
+  'concepts/async': 4,
+  'concepts/lifetimes': 5,
 };
 
 // Options of the checks: --dist DIR (the built site, default site/dist),

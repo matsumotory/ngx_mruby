@@ -29,7 +29,7 @@ The case also sends `GET /open/report` and expects 200 with the body
 - The script reads the list file for every request, which blocks the
   worker while the disk answers. To read it once per worker, load the list
   in `mruby_init_worker_code` into a constant, and reload nginx after a
-  change of the file ([What a worker keeps between requests](../README.md#what-a-worker-keeps-between-requests)).
+  change of the file ([What a worker keeps between requests](../concepts/lifetimes.md#what-a-worker-keeps-between-requests)).
 - `r.var.remote_addr` is the address of the TCP peer. Behind a load
   balancer, that is the load balancer, unless nginx's realip module sets
   it from a header that the load balancer sends.

@@ -1,0 +1,70 @@
+/*
+ * The one mrb_state per worker diagram (docs/concepts/lifetimes.md; 3.5 of docs/proposals/site.md): the grids
+ * that place the labels of the page over the drawings worker-lifetime.svg (wide)
+ * and worker-lifetime.narrow.svg (narrow). The steps follow each other in order.
+ * Narrow: the labels one below the other beside a line in a 1 rem column;
+ * the rows take the height of their labels, which change with the width,
+ * and the line stretches over all of them. Wide: one box per step, with
+ * the rows of the drawing in rem (16 units to the rem), from a figure width
+ * of 30rem, where every label fits its box.
+ */
+.diagram-worker-lifetime .diagram-grid {
+  grid-template-columns: 1rem minmax(0, 1fr);
+  grid-template-areas:
+    ". open"
+    ". fork"
+    ". init-worker"
+    ". requests"
+    ". exit-worker";
+  row-gap: var(--space-3);
+}
+.diagram-worker-lifetime .diagram-drawing-narrow {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+.diagram-worker-lifetime .diagram-drawing-wide {
+  display: none;
+}
+@container diagram (min-width: 30rem) {
+  .diagram-worker-lifetime .diagram-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 5.0rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 6.0rem 1.5rem 3.5rem;
+    grid-template-areas:
+      "open"
+      "."
+      "fork"
+      "."
+      "init-worker"
+      "."
+      "requests"
+      "."
+      "exit-worker";
+    row-gap: 0;
+  }
+  .diagram-worker-lifetime .diagram-drawing-wide {
+    display: block;
+    grid-area: 1 / 1 / -1 / -1;
+  }
+  .diagram-worker-lifetime .diagram-drawing-narrow {
+    display: none;
+  }
+  .diagram-worker-lifetime .diagram-label {
+    align-self: center;
+    padding-inline: var(--space-3);
+  }
+}
+.diagram-worker-lifetime [data-key="open"] {
+  grid-area: open;
+}
+.diagram-worker-lifetime [data-key="fork"] {
+  grid-area: fork;
+}
+.diagram-worker-lifetime [data-key="init-worker"] {
+  grid-area: init-worker;
+}
+.diagram-worker-lifetime [data-key="requests"] {
+  grid-area: requests;
+}
+.diagram-worker-lifetime [data-key="exit-worker"] {
+  grid-area: exit-worker;
+}
