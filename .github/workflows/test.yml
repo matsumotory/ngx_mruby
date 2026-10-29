@@ -105,8 +105,8 @@ jobs:
       fail-fast: false
       matrix:
         NGINX_VERSION:
-          - 1.31.6
-          - 1.30.5
+          - 1.31.8
+          - 1.30.6
           - 1.28.3
           - 1.26.3
         BUILD_DYNAMIC_MODULE:
@@ -122,7 +122,7 @@ jobs:
         # directly, because valgrind does not work with ASan; the other jobs
         # keep running nginx under valgrind.
         include:
-          - NGINX_VERSION: 1.31.6
+          - NGINX_VERSION: 1.31.8
             BUILD_DYNAMIC_MODULE: ""
             BUILD_WITH_OPENSSL_SRC: ""
             SANITIZER: "address,undefined"
