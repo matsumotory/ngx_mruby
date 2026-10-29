@@ -52,9 +52,8 @@ typedef struct {
 } ngx_mrb_fiber_t;
 
 // Whether Nginx::Async may suspend the fiber of this kind of handler. nginx
-// resumes it for mruby_set and the post_read, server_rewrite, rewrite and
-// access handlers; CONTENT stays allowed only so that the behavior of the
-// content handler does not change (see ngx_http_mruby_handler_kind_t).
+// resumes it for mruby_set and the post_read, server_rewrite, rewrite,
+// access and content handlers (see ngx_http_mruby_handler_kind_t).
 static ngx_flag_t ngx_mrb_handler_can_wait(ngx_http_mruby_handler_kind_t kind)
 {
   switch (kind) {
@@ -170,6 +169,11 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
   return ngx_mrb_run_fiber(mrb, fiber_proc, result);
 }
 
+static mrb_value ngx_mrb_fiber_resume_body(mrb_state *mrb, void *fiber_proc)
+{
+  return mrb_fiber_resume(mrb, *(mrb_value *)fiber_proc, 0, NULL);
+}
+
 mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *result)
 {
   ngx_http_request_t *r = ngx_mrb_get_request();
@@ -178,6 +182,7 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   ngx_http_mruby_ctx_t *ctx;
   ngx_mrb_fiber_t *f = (ngx_mrb_fiber_t *)fiber_proc;
   ngx_http_mruby_handler_kind_t outer_kind;
+  mrb_bool raised;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->fiber_proc = fiber_proc;
@@ -189,7 +194,23 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   // on the result of mruby_set.
   outer_kind = ctx->handler_kind;
   ctx->handler_kind = f->kind;
-  handler_result = mrb_fiber_resume(mrb, *fiber_proc, 0, NULL);
+  // mruby passes an exception that ends a fiber resumed from C by longjmp to
+  // the innermost mrb_vm_exec or mrb_protect_error, if one runs (mrb->jmp is
+  // set); otherwise it returns with mrb->exc set. When this fiber runs inside
+  // another one, for example in the location that Nginx.redirect runs from
+  // Ruby code, that longjmp would leave through the nginx functions between
+  // the two (ngx_http_internal_redirect, the phase checkers), and nginx would
+  // not finish the request. mrb_protect_error stops the exception here; it
+  // clears mrb->exc, which the callers read, so set it again. A handler that
+  // nginx runs directly needs no protection, and skips its cost.
+  if (mrb->jmp == NULL) {
+    handler_result = mrb_fiber_resume(mrb, *fiber_proc, 0, NULL);
+  } else {
+    handler_result = mrb_protect_error(mrb, ngx_mrb_fiber_resume_body, fiber_proc, &raised);
+    if (raised) {
+      mrb->exc = mrb_obj_ptr(handler_result);
+    }
+  }
   ctx->handler_kind = outer_kind;
 
   if (mrb->exc) {
@@ -382,6 +403,9 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   cln->handler = ngx_mrb_async_sleep_cleanup;
   cln->data = ev;
 
+  // tells ngx_mrb_run_request that the fiber yields to this timer (see there)
+  ctx->async_sleep_pending = 1;
+
   return self;
 }
 
@@ -481,6 +505,17 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   argc = mrb_get_args(mrb, "o|S", &path, &query_params);
 
   r = ngx_mrb_async_request(mrb, "Nginx::Async::HTTP.sub_request");
+
+  // A content handler that waited in Nginx::Async.sleep runs from its timer,
+  // and its write event handler ignores events (see ngx_mrb_run_request).
+  // When the subrequest ended, nginx would run that handler for the request,
+  // and nothing would finalize it.
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+  if (ctx->handler_kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && ctx->async_content_waiting) {
+    mrb_raise(mrb, E_RUNTIME_ERROR,
+              "Nginx::Async::HTTP.sub_request is not available after Nginx::Async.sleep in a content handler");
+  }
+
   uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
   if (uri == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_pcalloc failed on ngx_mrb_async_http_sub_request");
@@ -505,8 +540,6 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   re->mrb = mrb;
   re->fiber_prev_status = r->headers_out.status;
   re->sr = NULL;
-
-  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   re->fiber = ctx->fiber_proc;
 
   actx = (ngx_mrb_async_http_ctx_t *)ngx_palloc(r->pool, sizeof(ngx_mrb_async_http_ctx_t));
