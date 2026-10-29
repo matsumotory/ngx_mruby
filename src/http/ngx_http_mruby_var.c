@@ -78,7 +78,10 @@ mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int le
                   __LINE__);
     goto ARENA_RESTOR_AND_ERROR;
   }
-  ngx_cpystrn(valp, val.data, val.len + 1);
+  /* copy the whole value; ngx_cpystrn stops at an embedded NUL and would leave
+   * the rest of valp uninitialised while vv->len keeps the full length */
+  ngx_memcpy(valp, val.data, val.len);
+  valp[val.len] = '\0';
 
   hash = ngx_hash_strlow(key.data, key.data, key.len);
   cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
@@ -280,7 +283,10 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
   }
 
   ngx_cpystrn(keyp, key.data, key.len + 1);
-  ngx_cpystrn(valp, val.data, val.len + 1);
+  /* copy the whole value; ngx_cpystrn stops at an embedded NUL and would leave
+   * the rest of valp uninitialised while vv->len keeps the full length */
+  ngx_memcpy(valp, val.data, val.len);
+  valp[val.len] = '\0';
 
   hash = ngx_hash_strlow(lowkey, key.data, key.len);
   cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
