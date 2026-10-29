@@ -268,7 +268,8 @@ their figures.** Each diagram has two parts:
 
 - The drawing, `site/src/diagrams/<name>.svg`: lines, boxes, arrows and
   symbols only, with classes that refer to the tokens and no `<text>`
-  element. A diagram with a narrow arrangement has a second drawing for it.
+  element. A diagram with a narrow arrangement may have a second drawing
+  for it; without one, the narrow arrangement shows the labels alone.
 - The labels: a fenced block with the language `diagram` in the Markdown of
   the page, which names the drawing on its first line and gives one label
   per line as `key: text`. The keys are fixed by the drawing.
@@ -318,6 +319,10 @@ practice). Step 5 checks that every diagram on `/ja/` takes its labels from
   width when the drawing scales; labels in `text` or `text-muted`, never in
   a diagram color; the accent on at most two marks; no shadow, gradient or
   hover. Directive, function and file names are in the monospace face.
+- A line joins two elements only where the diagram states a relation
+  between them, such as an order or a flow. A diagram of kinds, such as
+  the agent proxy endpoints, draws no line between its items, in either
+  arrangement (chosen here, after the review of #622).
 - Labels are short HTML text at 14 or 15 px (the caption and navigation
   sizes of 4.4), where the owner's figures go down to 13 px; details go
   into the text around the diagram.
