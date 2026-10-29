@@ -18,7 +18,10 @@
 //   or heading whose last line holds one or two characters (the owner's
 //   rule for text);
 // - at 390 and 1440 px, every diagram label is 14 px or more and its text
-//   stays inside its place (3.5).
+//   stays inside its place (3.5);
+// - the notice above an English page under /ja/ (FallbackContentNotice.astro):
+//   on one page of each kind of notice, its last line and, at 390 px, its
+//   right edge.
 //
 //   node scripts/check-japanese-lines.mjs [--dist DIR] [--manifest FILE] [--engine chromium|webkit] [--ja-face noto] [--pages /ja/a/,/ja/b/]
 //
@@ -33,7 +36,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
-import { loadManifest, manifestFile } from './lib/site.mjs';
+import { GENERATED_REFERENCE, loadManifest, manifestFile, NOT_TRANSLATED_YET } from './lib/site.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 // The release notes in Japanese, written before step 5 and longer than any
@@ -80,7 +83,9 @@ function inspect(cfg) {
     return s;
   };
   const snippet = (el) => el.textContent.trim().replace(/\s+/g, ' ').slice(0, 30);
-  const fail = (el, what) => fails.push(`${name(el)}: ${what}: "${snippet(el)}..."`);
+  // The lines of the block, so that a failure in CI shows where the runner
+  // broke them (its font rendering differs from that of other systems)
+  const fail = (el, what) => fails.push(`${name(el)}: ${what}: "${snippet(el)}..." lines: ${lines(el).map((l) => `[${l.text.trim()}]`).join(' ')}`);
   const visible = (el) => {
     const cs = getComputedStyle(el);
     if (cs.visibility === 'hidden' || cs.display === 'none') return false;
@@ -109,6 +114,21 @@ function inspect(cfg) {
     }
     return [...out.values()];
   };
+  // A page that shows an English page under /ja/: only its Japanese notice
+  if (cfg.noticeOnly) {
+    const notice = document.querySelector('[data-notice]');
+    if (!notice) return { fails: ['the page has no [data-notice]'], counts };
+    const ls = lines(notice);
+    counts.lines += ls.length;
+    if (ls.length >= 2 && ls.at(-1).text.trim().length <= 2) fail(notice, `the last line holds "${ls.at(-1).text.trim()}", ${ls.at(-1).text.trim().length} character(s)`);
+    if (cfg.width === 390 && ls.length >= 2) {
+      const box = notice.getBoundingClientRect();
+      const fsz = parseFloat(getComputedStyle(notice).fontSize);
+      const gap = box.right - parseFloat(getComputedStyle(notice).paddingRight) - Math.max(...ls.map((l) => l.right));
+      if (gap >= 2 * fsz) fail(notice, `the longest line ends ${gap.toFixed(1)} px from the right edge, 2 em (${2 * fsz} px) or more`);
+    }
+    return { fails, counts };
+  }
   const content = document.querySelector('.sl-markdown-content');
   if (!content) return { fails: ['the page has no .sl-markdown-content'], counts };
   // Body text: paragraphs and list items outside code, diagrams, tables
@@ -193,6 +213,9 @@ async function main() {
     process.exit(2);
   }
   const pages = opt.pages ?? loadManifest(opt.manifest).filter((p) => p.lang === 'ja' && !p.home).map((p) => `/${p.route}/`);
+  // One page of each kind of notice (its English text is not measured)
+  const noticePages = opt.pages ? [] : [GENERATED_REFERENCE[0], NOT_TRANSLATED_YET[0]].filter(Boolean).map((r) => `/ja/${r}/`);
+  pages.push(...noticePages);
   if (!pages.length) {
     console.error('check-japanese-lines: no Japanese page to check');
     process.exit(1);
@@ -218,7 +241,7 @@ async function main() {
         }
         if (opt.noto) await tab.addStyleTag({ content: ':root { --font-ja-faces: "Noto Sans JP Variable", "Noto Sans JP" !important; }' });
         await tab.evaluate(() => document.fonts.ready);
-        const result = await tab.evaluate(inspect, { width: size.width });
+        const result = await tab.evaluate(inspect, { width: size.width, noticeOnly: noticePages.includes(page) });
         for (const f of result.fails) (NOTES_ONLY.includes(page) ? notes : failures).push(`${page} ${engineName} ${size.width}x${size.height}: ${f}`);
         blocks += result.counts.blocks;
         labels += result.counts.labels;
