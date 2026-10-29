@@ -1,8 +1,9 @@
 # Proposal: the upstream server setters with a `zone`, and their form in v3
 
 Status: question 1 of section 4 decided on 2026-10-29 (option A for
-2.7.3); questions 2 and 3 are open. Next step: step 1 of section 5, a pull
-request to `master`, by 2026-11-05; the owner answers questions 2 and 3 by
+2.7.3), with two more 2.7.3 changes of the setters (the end of section 4);
+questions 2 and 3 are open. Next step: step 1 of section 5, a pull request
+to `master` with the three changes, by 2026-11-05; the owner answers questions 2 and 3 by
 the same date. Written on 2026-10-29 from `master` at `c6d3b3b9b` (2.7.2
 and #645), `next` at `67ad9b919`, and the source of nginx 1.31.8 (the version
 in `nginx_version`). It follows the review of #624, which left three points
