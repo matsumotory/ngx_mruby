@@ -707,7 +707,9 @@ npm run preview           # serves dist/ at http://localhost:4321/
   and `node scripts/check-japanese-lines.mjs --ja-face noto` come close to
   what CI sees, but the Linux runner can still break a line a few pixels
   elsewhere, so the run of `site.yml` decides):
-  - `node scripts/check-styles.mjs` (`npm run check:styles`): computed
+  - `node scripts/check-styles.mjs` (`npm run check:styles`;
+    `--pages /,/ja/` limits a local run to known pages, while CI keeps the
+    default complete page set): computed
     styles in Chromium and WebKit at 320 by 664, 390 by 664 and 1440 by
     900 px: font sizes of the scale of each language, token colors (code
     blocks and the colors of highlighted spans included), monospace only

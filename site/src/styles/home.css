@@ -42,7 +42,7 @@ html[lang="ja"]:has(.home) h1#_top { max-width: 16em; letter-spacing: -0.03em; }
 .home .sample-file .expressive-code { margin: 0; }
 .home .sample-file .expressive-code .frame { border: 0; border-radius: 0; }
 .home .sample-file .expressive-code pre { border-radius: 0; background: var(--color-bg-tertiary); }
-.home .sample-caption { max-width: var(--measure); margin-top: var(--space-4); }
+.home .sample-caption { max-width: min(var(--measure), 68ch); margin-top: var(--space-4); }
 .home .phase-track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; padding: 0; max-width: none; margin-top: var(--space-6); border: 1px solid var(--color-border-strong); }
 .home .phase-track li { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-5); margin: 0; border-right: 1px solid var(--color-border); }
 .home .phase-track li:last-child { border-right: 0; }
