@@ -35,6 +35,26 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## Sharing image continuation, 2026-10-29
+
+- The initial site/rebrand in [#661](https://github.com/matsumotory/ngx_mruby/pull/661)
+  is published at next `6d65a12ec`; its completion record links the deployed
+  artifact and live checks. [#662](https://github.com/matsumotory/ngx_mruby/pull/662)
+  aligned maintenance process docs at master `967b61cc6` (mirrored to v2.x).
+- [#663](https://github.com/matsumotory/ngx_mruby/pull/663) integrates the
+  maintenance docs and verifies the development installation walkthrough.
+  Check that PR for its current head, CI and review-recording stage.
+- Branch `codex/brand-sharing` uses the selected metallic mark in one
+  product sharing image for the README and both site versions. The public
+  source, render command, metadata checks and limits are in the
+  [site plan](proposals/site.md#sharing-and-readme-identity-2026-10-29).
+  Existing header/favicon derivatives remain; old image URLs are preserved.
+  Local static checks and full-size/300/390-pixel visual checks pass. Final
+  PR review, CI and deployment are pending; this is not a release change.
+- The later site work remains distinct: restrained surface/CTA refinements,
+  deeper verified HTTP/stream examples and contextual performance records.
+  The v3 setter work follows those site units under its existing plan.
+
 ## Site continuation checkpoint, 2026-10-29 20:25 UTC
 
 - `next` is `2588cfd26`, the merge of shared-process PR
