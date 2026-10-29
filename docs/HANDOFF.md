@@ -35,6 +35,45 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## Site continuation checkpoint, 2026-10-29 20:25 UTC
+
+- `next` is `2588cfd26`, the merge of shared-process PR
+  [#659](https://github.com/matsumotory/ngx_mruby/pull/659). Its final head
+  `71d136799` passed test run 40946099772 and site run 40946099800 against
+  the current base. The independent review has no unresolved findings.
+- Integration [#658](https://github.com/matsumotory/ngx_mruby/pull/658)
+  is merged. Production run 40945526052 deployed `258c852fa`; the live
+  home matches its artifact, HTTPS and the verification file pass, the
+  environment permits only next, and Lighthouse categories score 100.
+- `master` is `da0d1172d`, the merge of installation-guide
+  [#660](https://github.com/matsumotory/ngx_mruby/pull/660). All final-head
+  CI passed against master `7d81d417a`. Its released v2.7.2 / explicit
+  nginx 1.31.8 static build and HTTP lifecycle passed. Its documentation
+  still needs the normal master-to-next integration; do not reimplement
+  stable changes on next. The v2 site build reads the merged master source.
+- This PR, branch `codex/site-technical-design`, introduces the technical
+  home pages, shared navy/graphite palette, metallic C logo family and
+  versioned Markdown/JSON exports. Its design and source rules are in
+  [the site proposal](proposals/site.md#working-design-reading-implementation-and-agent-use-2026-10-29).
+  The owner authorized iterative publication on 2026-10-29; this does not
+  authorize a software release or publication of the reference photos.
+  HTTP gold / stream purple is the current design assignment, with labels;
+  LLM proxy is explicitly development with implemented/planned features.
+- Generator fixtures, 67 complete Markdown bodies and source metadata,
+  contrast, 26 v2 HTML pages and four version-specific searches pass.
+  Independent retrieval reconstructed the upstream contract and the stable
+  installation steps without confusing versions. Independent source and
+  representative desktop/mobile/favicon image review has no open findings.
+  The first logo-family browser run found a body-font mismatch and a short
+  Japanese line; implementation fixes are committed. The corrected full
+  browser run and final PR CI are in progress; consult the PR for final
+  results, current head and the deployment record.
+- Next site steps: complete that validation, merge under the normal gates,
+  verify the live artifact and search, then iterate on deeper examples,
+  README brand adoption and a dedicated social-sharing image. Runtime
+  upstream setter D/E and the stable empty-filter follow-up remain separate
+  queue items. No runtime implementation changed in this site PR.
+
 ## Continuation checkpoint, 2026-10-29 20:05 UTC
 
 This supplements the integration snapshot below. Verify branch and PR state
