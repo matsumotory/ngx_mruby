@@ -13,14 +13,17 @@ use case"; the Pillar F and Pillar G rows; the heading, the priority
 paragraph and steps 2, 4, 7 and 8 of section 6; the heading and
 introduction of section 7, its items 12 and 13 and the open question after
 them; and the related lines of sections 1, 3.5, 8 and 9. The agent proxy
-rows of step 4, the parallel start of step 7 and the order inside it, the
+rows of step 4 and the parallel start of parts (a) and (c) of step 7 were
+decided on 2026-10-29 (section 7, item 15); the order inside step 7, the
 release conditions that steps 7 and 8 add for `v3.0.0-rc.1` and v3.0.0,
 and the targets in section 8 are proposals of that amendment, not
-decisions. On 2026-10-15 the owner decided the frame in which handler code
+decisions. On 2026-10-29 the owner also amended items 1 and 6 of section 7
+and decided item 15. On 2026-10-15 the owner decided the frame in which handler code
 runs (#502, section 7, item 14), which had been an open question of section
 7 since earlier that day. Facts cite a file and line or a URL with its
 date. Statements marked "unverified" come from reading code only and still
-need a build and a test.
+need a build and a test. The state of each step is in `docs/HANDOFF.md`,
+Queue.
 
 Security-relevant details found during the code read are deliberately not in
 this document. They are tracked in the repository's private security advisory
@@ -164,10 +167,13 @@ All claims below were checked against the cited page on 2026-10-03.
 
 ### 3.1 nginx
 
-- Mainline 1.31.6, stable 1.30.5 (both 2026-09-15); legacy 1.28.3, 1.26.3
-  (nginx.org/en/download.html). A new stable branch appears every April;
-  fixes after 1.30.0 went only to 1.30.x and 1.31.x. 2026 had seven
-  security releases.
+- Mainline 1.31.8 (2026-10-22 JST), stable 1.30.6 (2026-10-15 JST); legacy
+  1.28.3, 1.26.3 (nginx.org/en/download.html, read 2026-10-29). 1.31.7 and
+  1.30.6 (both 2026-10-15 JST) are security releases with fixes for five
+  vulnerabilities, among them two buffer overflows (nginx.org/en/security_advisories.html;
+  GitHub releases of nginx/nginx). A new stable branch appears every April;
+  fixes after 1.30.0 went only to 1.30.x and 1.31.x. 2026 had several
+  security releases (nginx.org/en/security_advisories.html).
 - 1.30 brought Early Hints, HTTP/2 to upstreams, Encrypted Client Hello,
   upstream sticky, MPTCP, and `proxy_http_version 1.1` with keepalive by
   default. 1.31 brought a forward proxy module, `least_time`, PROXY protocol
@@ -331,7 +337,7 @@ use case in "Agent proxy: the v3.0 use case" at the end of this section.
 
 | Candidate | Impact | Evidence |
 |---|---|---|
-| Bundle mruby 4.1.0 (rc2 until released; a commit after the #7032 fix). Rewrite `build_config.rb` to select gems explicitly instead of `full-core`; replace `iij/mruby-env`, `-process`, `-dir` with core gems; choose between core `mruby-regexp` and `mruby-onig-regexp`. | breaking (Ruby-level: `private`/`protected`, `initialize` private, regex engine) | 3.3, 2.2 |
+| Bundle mruby 4.1.0 (4.1.0-rc2, which contains the #7032 fix, until 4.1.0 is tagged). Rewrite `build_config.rb` to select gems explicitly instead of `full-core`; replace `iij/mruby-env`, `-process`, `-dir` with core gems; choose between core `mruby-regexp` and `mruby-onig-regexp`. | breaking (Ruby-level: `private`/`protected`, `initialize` private, regex engine) | 3.3, 2.2 |
 | Pin every third-party gem by commit and commit `build_config.rb.lock`; move toward a source tarball that builds without network. | behavior (same tag now builds the same binary) | 3.7, 2.2 |
 | Update `ngx_devel_kit` to v0.3.4 via `update-devkit-subtree`. | none | 2.2 |
 | Require nginx 1.30 stable and 1.31 mainline; remove `nginx_version` branches older than 1.25.5; raise the floor each April. | breaking (older nginx) | 3.1, 2.1 |
@@ -343,23 +349,23 @@ use case in "Agent proxy: the v3.0 use case" at the end of this section.
 | Candidate | Impact | Evidence |
 |---|---|---|
 | Introduce one execution-context type per request (HTTP) and per connection (stream, SSL handshake) and derive every Ruby API from it. Calling an API outside the phase it is designed for raises a Ruby exception. | behavior (code that "worked by accident" in the wrong phase now raises) | 2.1 |
-| Redesign response finalization per phase: allow `Nginx.return 200` with an empty body, allow a body with any status, return 500 when an exception follows `rputs`, make `Nginx.return` type-independent of `headers_out.status`, fix the header-filter recursion. | behavior (fixes #200 #225 #484 #206) | 2.1 |
-| One fiber lifecycle for HTTP and stream: register once at start, unregister once in the pool cleanup; `sub_request` returns the response directly (`last_response` kept); clear `mrb->exc` on every exit path of `ngx_mrb_run` and `post_fiber`; raise when async APIs are used outside supported phases; replace the `RProc` mutation with public mruby API. | behavior (async errors become 500; fewer leaks) | 2.1 |
+| Redesign response finalization per phase: allow `Nginx.return 200` with an empty body, allow a body with any status, return 500 when an exception follows `rputs`, make `Nginx.return` type-independent of `headers_out.status`, fix the header-filter recursion. | behavior (#200 is fixed on `next` by #574; #225 is fixed by #566 on 2.x and by #574; #206 is fixed in 2.7.1; #484 was closed on 2026-10-04 with the answer to use `error_page`; an exception after `rputs` answers 500 since 2.7.1, and output followed by a status below 300 is sent since 2.7.2 (#594); left: a body with any status, `Nginx.return` independent of `headers_out.status`, and a rewrite handler that ends without `Nginx.return`) | 2.1 |
+| One fiber lifecycle for HTTP and stream: register once at start, unregister once in the pool cleanup; `sub_request` returns the response directly (`last_response` kept); clear `mrb->exc` on every exit path of `ngx_mrb_run` and `post_fiber`; raise when async APIs are used outside supported phases; replace the `RProc` mutation with public mruby API. For HTTP, registering once (#547), clearing `mrb->exc` (#550) and refusing async APIs where a handler cannot wait (#551) are in 2.7.1; left: the stream path, the return value of `sub_request`, the `RProc` mutation and `Nginx::Async.sleep` in a content handler. The rewrite of how resumed handlers end lands here, on `next` (item 15 of section 7). | behavior (async errors become 500; fewer leaks) | 2.1 |
 | Common layer for HTTP and stream (code loading, fiber run/resume, sleep, upstream switching, error logging, duplicate directive check) so a fix lands once. | none | 2.1 |
 | Headers: `delete` matches the full name and removes all matches; builtin headers (`Content-Type`, `Content-Length`, `Location`, `Date`) are kept in sync with `headers_out`; setters accept non-String via `to_s` or raise `TypeError`. | behavior | 2.1 |
 | `Nginx::Var`: one setter implementation shared by `set` and assignment through `method_missing`, built on the execution-context type. | behavior (minor) | 2.1 |
 | Give filter handler pointers the type of their handlers; merge filter handler pointers so server-level filters apply in locations; register phase handlers only where a directive exists; mark cached procs with `mrb_gc_register`. | behavior (server-level filters start applying) | 2.1 |
 | Table-driven directive definitions (file/inline pairs) so adding a field touches one place. | none | 2.1 |
-| Request/response naming: add `Nginx::Request#response_content_type` style accessors; keep old names as aliases (#410, #411). | additive | 2.5 |
+| Request/response naming: add `Nginx::Request#response_content_type` style accessors; keep old names as aliases. #411 was closed on 2026-10-04 (renaming is a breaking change that is not scheduled; the request's value is `headers_in['Content-Type']`), and #410 was closed as by design (the `:authority` value carries no userinfo). | additive | 2.5 |
 
 ### Pillar C: capabilities for 2026
 
 | Candidate | Impact | Evidence |
 |---|---|---|
-| Non-blocking socket API on the nginx event loop with a per-worker connection pool (Redis, HTTP APIs, certificate stores). Evaluate mruby 4.0 `mruby-task` with an nginx HAL versus extending the Fiber design. This is the prerequisite for Redis (#505, #428), external auth and certificate lookup. | additive | 3.5, 2.5 |
+| Non-blocking socket API on the nginx event loop with a per-worker connection pool (Redis, HTTP APIs, certificate stores). Evaluate mruby 4.0 `mruby-task` with an nginx HAL versus extending the Fiber design. This is the prerequisite for Redis, external auth and certificate lookup (#505 and #428 were closed on 2026-10-04 with the answer that connection reuse belongs to the gem). | additive | 3.5, 2.5 |
 | Shared dictionary over nginx slab shared memory (like `lua_shared_dict` and `js_shared_dict_zone`) for rate limiting and caches. | additive | 3.5 |
-| `Nginx::SSL`: keep for lookups nginx variables cannot express (external stores, tenant logic, ECH outer SNI); chain with nginx's own `cert_cb` or reject the combination at config time; add an in-process certificate cache with TTL; verify behaviour under HTTP/3 and ECH. Replace `auto-ssl` with examples that combine nginx-acme (fixed names) and an external ACME client with store lookup (on-demand). | breaking (`auto-ssl` removed from default) | 3.1, 3.4 |
-| Redis: restore as an optional, pinned gem built on the new socket API. | additive | 2.5 |
+| `Nginx::SSL`: keep for lookups nginx variables cannot express (external stores, tenant logic, ECH outer SNI); chain with nginx's own `cert_cb` or reject the combination at config time; add an in-process certificate cache with TTL; verify behaviour under HTTP/3 and ECH. Replace `auto-ssl` with examples that combine nginx-acme (fixed names) and an external ACME client with store lookup (on-demand). | breaking (`auto-ssl` removed from `next`) | 3.1, 3.4 |
+| Redis: restore as an optional, pinned gem built on the new socket API. mruby-redis is in the default build of `next` again, pinned in `build_config.rb.lock` (#606), and of 2.7.2 (#604); the socket API is not built yet. | additive | 2.5 |
 | Read-only TLS facts for Ruby (`$ssl_curve`, ECH status, protocol). | additive | 3.4 |
 | stream: `preread` and `content` phase handlers, variables, SNI-based routing; stream APIs share their implementation with HTTP through the common layer (Pillar B). | additive / behavior | 2.1 |
 
@@ -399,10 +405,10 @@ use case in "Agent proxy: the v3.0 use case" at the end of this section.
 
 | Candidate | Impact | Evidence |
 |---|---|---|
-| Adopt `AGENTS.md`, `CLAUDE.md`, `SECURITY.md` and the PR template from PR #531; CI on pull requests with `ci-ok` from #530; mirror from #532. | none | existing PRs |
+| Adopt `AGENTS.md`, `CLAUDE.md`, `SECURITY.md` and the PR template from PR #531; CI on pull requests with `ci-ok` from #530; mirror from #532. | none | existing PRs; done: #530, #531 and #532 were merged on 2026-10-03 |
 | semver, pre-release tags, migration guide listing every "behavior" and "breaking" row of this section, those of "Agent proxy: the v3.0 use case" below included, deprecation warnings one release before removal. | none | 3.1 (njs precedent) |
-| Supply chain: SHA-pinned actions, Dependabot, Renovate or a scheduled job for `build_config.rb` gems, `zizmor`, OpenSSF Scorecard recorded, Best Practices badge target. | none | 3.7 |
-| Trust boundary stated in docs: ngx_mruby executes code written by the operator; multi-tenant code injection is out of scope (the ingress-nginx snippet lesson). | none | 3.2 |
+| Supply chain: SHA-pinned actions, Dependabot, Renovate or a scheduled job for `build_config.rb` gems, `zizmor`, OpenSSF Scorecard recorded, Best Practices badge target. | none | 3.7; done: SHA-pinned actions, Dependabot, the scheduled job for the gem heads, `zizmor` and Scorecard (#530, #599, #611); open: the badge (`docs/HANDOFF.md`, Queue) |
+| Trust boundary stated in docs: ngx_mruby executes code written by the operator; multi-tenant code injection is out of scope (the ingress-nginx snippet lesson). | none | 3.2; done: #598, and `docs/security/trust-boundary.md` on `next` |
 
 ### Agent proxy: the v3.0 use case
 
@@ -487,10 +493,10 @@ Facts the rows below rest on, checked against the cited page on 2026-10-04
 API and the Responses API: streams of a given length, a hold or a reset
 after a given event, an error status before the first event, and for
 Responses the terminal event (`docs/test/README.md`, "Mock LLM
-upstream"). The soak lane (#542, #557) runs three scenarios in front of it in
-the required `soak` job: `agent_stream`, `agent_client_abort` and
-`agent_upstream_reset`, which passed their checks in three runs on aarch64 and
-two on the CI runner on 2026-10-04 (`docs/test/README.md`, "Thresholds and
+upstream"). The soak lane (#542, #557, #600) runs four scenarios in front of it
+in the required `soak` job: `agent_stream`, `agent_client_abort`,
+`agent_upstream_reset` and `agent_responses_stream`; the first three passed
+their checks in three runs on aarch64 and two on the CI runner on 2026-10-04 (`docs/test/README.md`, "Thresholds and
 calibration" of the soak test). The perf lane (#549, #555) measures the
 scenarios of the table below; the advisory `perf` job runs those of its
 default set. `test/t/cases/agent_proxy.rb` checks the recipes that work with
@@ -593,7 +599,9 @@ location of a fallback).
 - Support period: recommended until twelve months after v3.0.0, revisited
   when Debian trixie's nginx 1.26 leaves support. Decided: see section 7,
   item 11.
-- Next release: 2.7.1 (security fix, nginx 1.31.6/1.30.5, redis decision).
+- Released since this plan: 2.7.1 (2026-10-19) and 2.7.2 (2026-10-29). The next
+  2.x release is 2.7.3 (the pull requests to `master` that need an entry create
+  its release notes).
 
 ## 6. Order of work (decided 2026-10-03; the priority paragraph and steps 2, 4, 7 and 8 amended 2026-10-04)
 
@@ -607,7 +615,8 @@ Redis connection pool (#428, #505) is the one item with a demonstrated
 demand from users.
 
 1. **Finish the infrastructure PRs** (#529 to #532) and the 2.7.1 security
-   release through the private fork.
+   release through the private fork. Done: #529 to #532 were merged on
+   2026-10-03, and 2.7.1 was released on 2026-10-19.
 2. **Safety net first** (Pillar E, parts of G): harness rewrite, ASan+UBSan
    gate, valgrind exit code, GC root test hooks, tests for untested
    directives and methods, pinned gems, nginx-tests recorded. Nothing in the
@@ -618,9 +627,8 @@ demand from users.
 3. **Runtime** (Pillar A): mruby 4.1, NDK, OpenSSL 3.5/4.0, nginx floor,
    `build_config.rb` rewrite, build each bundled gem on mruby 4.
 4. **Core stability** (Pillar B): execution context, finalization, fiber
-   lifecycle, common layer, headers and variables. Proposed in the
-   2026-10-04 amendment, not part of the 2026-10-03 decision: the two
-   Pillar B rows of the agent proxy, log handlers before `access_log`
+   lifecycle, common layer, headers and variables. Decided on 2026-10-29
+   (item 15 of section 7): the two Pillar B rows of the agent proxy, log handlers before `access_log`
    (impact behavior) and the variable declaration (additive), so that this
    behavior change comes in alpha.1 with the other behavior changes of
    Pillar B. Tag `v3.0.0-alpha.1` when the v2 suite passes under the new
@@ -628,18 +636,21 @@ demand from users.
 5. **Distribution** (Pillar D): `.so` per nginx version, images, releases
    with attestations.
 6. **Docs, site, examples, video** (Pillar F) in parallel from step 4.
-   Tag `v3.0.0-beta.1` when the migration guide and examples exist.
+   Tag `v3.0.0-beta.1` when the migration guide and examples exist. The site
+   proceeds in the steps of section 6 of `site.md`, which do not wait for
+   step 4 of this plan (the owner decided the site proposal on 2026-10-15).
 7. **Agent proxy** (section 4, "Agent proxy: the v3.0 use case"), after the
-   safety net (step 2) and the runtime (step 3). By the priority above, it
-   does not delay steps 4, 5 and 6. Proposed in the 2026-10-04 amendment,
-   not a decision: parts (a) and (c) can start before step 4 ends and run
-   beside it, and so that this does not delay steps 4, 5 and 6, they do not
-   hold back step 4 or `v3.0.0-alpha.1`. Its parts and what each waits for
+   safety net (step 2). By the priority above, it does not delay steps 4, 5
+   and 6. Decided on 2026-10-29 (item 15 of section 7): parts (a) and (c)
+   start after the safety net, beside step 4 and not after step 3, and they
+   do not hold back step 4 or `v3.0.0-alpha.1`. Its parts and what each waits for
    (a proposal of the 2026-10-04 amendment, from the dependencies in
-   section 4, not a decision):
-   (a) the shared dictionary, after step 3;
+   section 4, not a decision, except the waits of (a) and (c), which item 15
+   of section 7 decides):
+   (a) the shared dictionary, after the safety net of step 2, beside step 4;
    (b) the SSE event filter and the JSON body read, after step 4;
-   (c) the upstream peer hook and the first-byte deadline, after step 3;
+   (c) the upstream peer hook and the first-byte deadline, after the safety
+   net of step 2, beside step 4;
    (d) the non-blocking socket API with worker timers, Redis on it (the
    Redis pool of #428 and #505, first among the Pillar C rows in the order
    of 2026-10-03), and budgets shared across hosts, after the fiber
@@ -660,25 +671,45 @@ demand from users.
 ## 7. Decisions (made by the owner on 2026-10-03, 2026-10-04 and 2026-10-15)
 
 The owner accepted recommendations 1 to 11 below on 2026-10-03, decided
-items 12 and 13 on 2026-10-04 and item 14 on 2026-10-15. The list is kept as
+items 12 and 13 on 2026-10-04, item 14 on 2026-10-15, and on 2026-10-29
+amended items 1 and 6 and decided item 15. The list is kept as
 the record of what was decided and why.
 
-1. mruby target for v3: **4.1.0** (rc2 or a post-#7032 commit until
-   released), not 4.0.0, because 4.1 fixes GC registration counting that the
+1. mruby target for v3: **4.1.0** (4.1.0-rc2, which contains the
+   #7032 fix, until released), not 4.0.0, because 4.1 fixes GC registration counting that the
    async design depends on and adds core regexp/env/process.
    On 2026-10-04 the owner approved a step before it (#561): `next` bundles
    mruby 4.0.0 first and moves to 4.1.0 when 4.1.0 is tagged, with Prism
    vendored as a subset, mruby-encoding left out of the default build with a
    documented opt-in, and mruby-onig-regexp kept for 3.0. The target of v3
-   stays 4.1.0.
+   stays 4.1.0. On 2026-10-29 the owner amended this, in a session's
+   question, with the option "rc2 へ上げる (推奨)" ("move up to rc2"): `next`
+   bundles mruby 4.1.0-rc2 now, in one pull request, and moves to 4.1.0 in
+   a small subtree pull request when 4.1.0 is tagged; it no longer waits for
+   the tag.
 2. nginx floor for v3: **1.30 stable and 1.31 mainline**, raised every
    April. Distro users on 1.26/1.24 stay on v2.
 3. OpenSSL: **3.5 LTS baseline, 4.0 tested**, 1.1.1 and 3.0 dropped.
 4. Default artifact: **dynamic module**; static build documented, not
    released as a binary.
-5. `mruby-redis` in 2.7.1: **restore with pinned `hiredis`**.
+5. `mruby-redis` in 2.7.1: **restore with pinned `hiredis`**. Carried out
+   in 2.7.2 (#604); 2.7.1 shipped without mruby-redis.
 6. `auto-ssl`: **remove from the default build in v3**; replace with
-   nginx-acme plus store-lookup examples; document breakage in v2.
+   nginx-acme plus store-lookup examples; document breakage in v2. On
+   2026-10-29 the owner amended this, in a session's question, with the
+   option "next から外す (推奨)" ("remove it from next"): `mrbgems/auto-ssl`
+   is removed from `next` (3.0.0), with its entry under "Behavior changes:
+   read before upgrading" in the 3.0.0 release notes and in the migration
+   guide; 2.x keeps it. The replacement by nginx-acme examples is not part
+   of this amendment. The reason: `auto-ssl` depends on
+   `pyama86/mruby-polarssl` (through `pyama86/mruby-acme-client`, which pins
+   its branch `disable-base64`, last changed in May 2020), which is not the
+   owner's gem, has had no commit on its default branch since March 2017 and
+   does not build on mruby 4, and the ACMEv1
+   protocol that its ACME client speaks was turned off at Let's Encrypt in
+   2021. This follows the owner's rule of 2026-10-29 in AGENTS.md ("Other
+   repositories"): a library that a gem uses having stopped
+   being updated is the reason to drop it.
 7. `mruby_stream`: **keep in v3** and ask users in a GitHub Discussion
    before investing in new stream features.
 8. Behavior changes in v3 (exceptions outside phase, 500 after `rputs`
@@ -723,11 +754,43 @@ the record of what was decided and why.
     observe or add a frame, a backtrace line and 1,075 to 1,941 instructions
     to every run of handler code; none of them would change what handler
     code shares between requests
-    ([the proposal for the frame of handler code](handler-code-frame.md)).
+    ([the proposal for the frame of handler code](archive/handler-code-frame.md)).
     With the decision: on `next`, a regression test and the entry in the
     release notes of 3.0.0 (#584); on `master`, a note in
     `docs/class_and_method/README.md` on how to write such a handler in 2.x
     (#586). Both are merged, and #502 is closed.
+
+15. Decisions of 2026-10-29, each in a session's question with the option
+    named; the amendments of items 1 and 6 are in those items.
+    - The two agent proxy rows of step 4 of section 6 (mruby log handlers
+      run before nginx's `access_log`, a behavior change of 3.0.0, and the
+      directive `mruby_variable $name [value];`) are part of step 4 and ship
+      in `v3.0.0-alpha.1`, among the behavior changes of item 8. Option
+      "alpha.1 に入れる (推奨)".
+    - Parts (a) and (c) of step 7 (`mruby_shared_dict NAME SIZE;` with
+      `Nginx::SharedDict[name]`, and the upstream peer hook with
+      `mruby_upstream_first_byte_timeout TIME;`) start after the safety net
+      of step 2 is merged, beside the core stabilization of step 4, not
+      after step 3. Option "安全網の後、コアの安定化と並べて (推奨)".
+    - The rewrite of how resumed handlers end (the resume of a handler after
+      `Nginx::Async::HTTP.sub_request` from its own request) lands on
+      `next`, in the core stabilization of 3.0.0; `master` (2.x) gets only
+      the minimal fix for `Nginx::Async.sleep` in a content handler, which
+      ends the request without a response. This amends the decision of
+      2026-10-04 to put the rewrite into `master` after 2.7.1. Option
+      "master は最小の直し、書き直しは next (推奨)".
+    - 2.x (the next release, 2.7.3) gets the fix for an output body filter
+      that ends with an empty body, the same change as #574 on `next`: the
+      response is sent with its status and `Content-Length: 0` instead of
+      nothing. The owner approved changing the expectation "an empty String
+      closes the connection without a response" of
+      `test/t/cases/filter_connection.rb` on `master`. Option "入れる (推奨)".
+    - In 3.0.0 the content handler of a subrequest that returns
+      `Nginx::HTTP_OK` without output keeps answering 500, so that
+      `auth_request` fails closed. Option "500 のまま (推奨)".
+    - The body of the published GitHub release v2.7.2 gets the section
+      "Behavior changes: read before upgrading" in English and then in
+      Japanese, as the body of v2.7.1 has. Option "足す (推奨)".
 
 One question that the 2026-10-04 amendment raises is open. It is not part of
 item 13 or of any decision above. Should a later release add a mode in which
