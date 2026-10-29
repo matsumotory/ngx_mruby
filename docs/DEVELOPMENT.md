@@ -159,6 +159,12 @@ The owner checks that all of these hold and gives the go before step 1:
      the default branch, and an entry without `target-branch` updates only the
      default branch, so without the new entry nothing would update the
      SHA-pinned actions in the workflows of `v2.x` while 2.x is supported.
+     It also moves the site with the lines, so that pages of an unreleased
+     3.1 never become the current version (5.2 of
+     [the site proposal](https://github.com/matsumotory/ngx_mruby/blob/next/docs/proposals/site.md#52-repository-layout)):
+     `.github/workflows/site.yml` runs on and deploys from `master` and
+     builds `/v2/` from `docs/` of `v2.x`, and `site-v2.yml` and
+     `site-dispatch.yml` are removed.
    - The check pull request of
      ["Before the tag"](releases/README.md#before-the-tag) for
      `docs/releases/v3.0.0.md`. As that section says for `next`, its range
@@ -176,7 +182,10 @@ The owner checks that all of these hold and gives the go before step 1:
    that they tag it in step 6 right away, so that `master` is not an untagged
    3.x line in between. It has no conflicts, because step 1 merged `master`
    into `next`. `master` stays the default branch; nothing about the default
-   branch changes.
+   branch changes. Right before the merge, the owner changes the deployment
+   branch rule of the `github-pages` environment from `next` to `master`
+   (Settings, Environments, `github-pages`, "Deployment branches"), so that
+   the push of the merge deploys the site from `master`.
 6. **Tag and release (owner), right after step 5.** Tag `v3.0.0` on the merge
    commit of step 5 and publish its GitHub release, not marked as a
    pre-release, with the release notes. Tagging that commit instead of the
@@ -204,12 +213,14 @@ The owner checks that all of these hold and gives the go before step 1:
      (`git clone https://github.com/matsumotory/ngx_mruby.git` without `-b`)
      in `docs/install/README.md`, `Dockerfile` and `misc/provision.sh`.
      Without it, a 2.x user who follows the install guide on `v2.x`, or builds
-     the Dockerfile from a `v2.x` checkout, gets 3.x.
+     the Dockerfile from a `v2.x` checkout, gets 3.x;
+   - points its copies of `site-v2.yml` and `site-dispatch.yml`, which run
+     only for `master`, at `v2.x`, and makes the dispatch start `site.yml`
+     with `--ref master`, so that a change to the 2.x documentation still
+     reaches `/v2/`.
 
    This command lists the links, the badge and the clones:
    `git grep -n -E 'ngx_mruby/(tree|blob|archive)/master|branch=master|clone https://github\.com/matsumotory/ngx_mruby'`.
-   If the site is switched to v3 (see "Open questions"), that change is
-   merged in this step too.
 8. **Afterwards.** 2.x fixes target `v2.x`, and v3 fixes target `master`. The
    owner publishes each 2.x release so that it does not become the
    repository's latest release, which stays with 3.x:
@@ -238,16 +249,14 @@ requires them to be decided before step 1.
   in steps 2 and 3.** Recommendation: the owner. Whether condition 1 holds is
   a judgment, the tag of step 6 is the owner's, and the settings need admin
   rights; a mistake there lets `v2.x` move to 3.x. AGENTS.md does not cover
-  the go, the repository settings or pull requests to `gh-pages` (the site,
-  see the next question) yet. Its branch table lists only `master`, `next` and
-  `v2.x`, so today an agent cannot merge a pull request to `gh-pages`:
-  condition 1 of "Review and merge" does not hold.
-- **Which version the site shows after the promotion.** The site,
-  ngx.mruby.org, is served by GitHub Pages from the `gh-pages` branch, a
-  single page last changed in 2020, and the v3 plan tags `v3.0.0-rc.1` when
-  the site is complete (section 6, step 8). Recommendation: from v3.0.0 on,
-  the site shows v3 and links the 2.x documentation on the `v2.x` branch
-  (`https://github.com/matsumotory/ngx_mruby/tree/v2.x/docs`), so that 2.x
-  users still find it. An agent prepares the switch as a pull request to
-  `gh-pages` before step 5 and merges it in step 7, after the owner's tag,
-  once AGENTS.md covers `gh-pages` (see the previous question).
+  the go or the repository settings yet.
+- **Which version the site shows after the promotion.** Decided with the
+  site proposal on 2026-10-15 (Q1 and Q4 of
+  [`docs/proposals/site.md`](https://github.com/matsumotory/ngx_mruby/blob/next/docs/proposals/site.md#7-decisions-2026-10-15)
+  on `next`). The site, ngx.mruby.org, is built from `docs/` by
+  `.github/workflows/site.yml` on `next` and deployed by GitHub Actions:
+  3.x from `next` at the unprefixed paths, with the development banner, and
+  2.x from `master` under `/v2/`. From the promotion on, the unprefixed
+  paths show the released 3.x from `master` and `/v2/` shows 2.x from
+  `v2.x`: steps 4, 5 and 7 move the workflows and the deployment branch
+  rule.
