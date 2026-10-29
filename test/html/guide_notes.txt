@@ -1,0 +1,2 @@
+Notes from disk.
+The filter escapes <b> and &.

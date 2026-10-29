@@ -190,7 +190,7 @@ not enough, and show the change.
 - [Assigning a constant in a method body is a `SyntaxError`](../releases/v3.0.0.md#assigning-a-constant-in-a-method-body-is-a-syntaxerror-561):
   compiling the scripts finds it (see [Checking the result](#checking-the-result)).
 
-  ```ruby
+  ```ruby syntax-error
   def setup
     Table = {}                       # 3.0.0: SyntaxError when the script is compiled
     Object.const_set(:Table, {})     # works on both

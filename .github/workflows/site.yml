@@ -19,6 +19,7 @@ on:
       - 'site/**'
       - 'docs/**'
       - 'examples/**'
+      - 'test/**'
       - '**.md'
       - '.github/workflows/site.yml'
   push:
@@ -116,6 +117,26 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-diagrams.mjs
+      # Step 4: every sample block of the pages names a case and files that
+      # exist, and every use case of docs/use_case/ has a sample or the
+      # reason why it has none.
+      - name: Check the samples and the use cases
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-samples.mjs
+      # Step 4: every Ruby block of the pages compiles with the mrbc of the
+      # bundled mruby, built alone (about ten seconds).
+      - name: Build mrbc from the bundled mruby
+        id: mrbc
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/mruby
+        run: |
+          command -v rake > /dev/null || { sudo apt-get -qq update && sudo apt-get -qq install rake; }
+          MRUBY_CONFIG=build_config/mrbc.rb MRUBY_BUILD_DIR="$RUNNER_TEMP/mrbc" rake -j4
+      - name: Check that every Ruby block of the pages compiles with mrbc
+        if: ${{ !cancelled() && steps.mrbc.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-ruby-blocks.mjs --mrbc "$RUNNER_TEMP/mrbc/host/bin/mrbc"
       # The browsers of the version of playwright in package-lock.json,
       # with the system libraries they need.
       - name: Install Chromium and WebKit for Playwright

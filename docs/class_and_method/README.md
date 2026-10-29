@@ -871,8 +871,8 @@ See [Nginx::Headers_in Class](#nginxheaders_in-class) for more details.
 
 ```ruby
 r = Nginx::Request.new
-in = r.headers_in
-in.["User-Agent"] #=> curl/7.52.1
+headers = r.headers_in
+headers["User-Agent"] #=> curl/7.52.1
 ```
 
 ### Nginx::Request#headers_out -> headers_out
@@ -882,8 +882,8 @@ See [Nginx::Headers_out Class](#nginxheaders_out-class) for more details.
 
 ```ruby
 r = Nginx::Request.new
-out = r.headers_out
-out.["X-NGX-MRUBY-INTERACTION-ID"] = Uuid.uuid
+headers = r.headers_out
+headers["X-Request-Id"] = r.var.request_id
 ```
 
 ### Nginx::Request#hostname -> string
@@ -1614,7 +1614,7 @@ TODO: cleanup and add descriptions.
 
 ## example
 
-```ruby
+```nginx
 stream {
   upstream dynamic_server0 {
     server 127.0.0.1:58080;
@@ -1703,7 +1703,7 @@ Nginx::Stream::ABORT|-6
 
 - example
 
-```ruby
+```nginx
 stream {
   upstream dynamic_server0 {
     server 127.0.0.1:58080;
