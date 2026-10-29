@@ -1832,9 +1832,9 @@ server {
 ## Nginx::Stream::Async Class
 ### Method
 #### Nginx::Stream::Async#sleep
-Do non-blocking sleep. Currently it supports only setcode and rewrite and access phases.
+Do non-blocking sleep. It works in the code of `mruby_stream` and `mruby_stream_code`, which runs in the access phase of the stream session.
 
-After the sleep, the session goes on as it does when the code does not sleep, by the result of the code: the next handler for `Nginx::Stream::DECLINED` (the default of `Nginx::Stream::Connection.stream_status`), the next phase for `Nginx::Stream::OK`, and the end of the session for `Nginx::Stream::ABORT` or another status, and for an exception, which `error.log` records.
+After the sleep, the session goes on as it does when the code does not sleep, by the result of the code: the next handler for `Nginx::Stream::DECLINED` (the default of `Nginx::Stream::Connection.stream_status`), the next phase for `Nginx::Stream::OK`, the wait of the session for `Nginx::Stream::DONE` and `Nginx::Stream::AGAIN`, and the end of the session for `Nginx::Stream::ABORT` or another status, and for an exception, which `error.log` records.
 This holds since 2.7.3; up to 2.7.2 a session whose code raised or set a status other than `Nginx::Stream::DECLINED` after the sleep was neither ended nor continued, and an exception after the sleep also aborted the next session.
 
 ```ruby
