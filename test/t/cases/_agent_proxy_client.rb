@@ -8,7 +8,7 @@
 # nginx on 18132, stops the mock, and prints one "key=value" line per
 # observation. A header that the response does not have prints as "none".
 #
-# Usage: ruby test/t/cases/_agent_proxy_client.rb auth|route|limit|log|stream [messages|responses]
+# Usage: ruby test/t/cases/_agent_proxy_client.rb auth|route|limit|log|stream [messages|responses] [PORT]
 #
 #   auth   a wrong key, no key, and a known key in x-api-key
 #   route  models mock-model-a and mock-model-b, and an unknown model
@@ -25,7 +25,7 @@
 #
 # The second argument is the API: messages (the default) sends Messages
 # requests to /v1/messages, responses sends Responses requests to
-# /v1/responses.
+# /v1/responses. The third is the port of nginx, 18132 by default.
 #
 # Every exchange has a limit of LIMIT seconds, long enough for nginx under
 # valgrind. When a step fails, the script prints error=<message> and exits
@@ -36,7 +36,7 @@ require_relative '../../soak/mock_llm'
 require_relative '../../soak/http_client'
 
 LIMIT = 60
-PORT = 18_132
+PORT = Integer(ARGV[2] || 18_132)
 MOCK_PORTS = [12_372, 12_373].freeze
 
 def now

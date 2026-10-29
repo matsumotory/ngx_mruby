@@ -1,0 +1,12 @@
+# What test/t/cases/agent_proxy.rb compares for limit_conn per client key:
+# held is the first stream of key-1 (status, Content-Type, how the client
+# stopped reading, events read); same_key is a second request of key-1
+# while it is open (status, retry-after, Content-Type, body); other_key and
+# after_close are requests of key-2 and of key-1 after the stream (status,
+# port of the upstream); limit_log_lines counts the lines of limit_conn in
+# error.log.
+held=200 text/event-stream stopped 3
+same_key=429 1 application/json {"type":"error","error":{"type":"rate_limit_error","message":"too many concurrent requests"}}
+other_key=200 12372
+limit_log_lines=1
+after_close=200 12372

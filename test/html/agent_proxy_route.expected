@@ -1,0 +1,6 @@
+# What test/t/cases/agent_proxy.rb compares for routing by model: status,
+# port of the upstream, Authorization and x-api-key at the upstream, and
+# whether the upstream got the client's body unchanged.
+model_a=200 12372 Bearer upstream-test-key-a none true
+model_b=200 12373 Bearer upstream-test-key-b none true
+unknown_model=403

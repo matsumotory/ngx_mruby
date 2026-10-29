@@ -1,0 +1,8 @@
+# What test/t/cases/agent_proxy.rb compares for the client key, one value
+# per line: status, Content-Type and body of the response; mock_requests
+# counts the requests that reached the mock upstream.
+wrong_key=401 application/json {"type":"error","error":{"type":"authentication_error","message":"invalid API key"}}
+no_key=401 application/json {"type":"error","error":{"type":"authentication_error","message":"invalid API key"}}
+mock_requests_after_rejects=0
+api_key=200 12372 true
+mock_requests=1

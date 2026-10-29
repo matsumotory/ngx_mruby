@@ -1,0 +1,8 @@
+# What test/t/cases/agent_proxy.rb compares for an upstream error and the
+# log handler: ok and overloaded are the status (with Content-Type and body)
+# of a request that the mock answers with 200 and with 529; a key with ~=
+# is a text that the line of the log handler in error.log contains.
+ok=200
+overloaded=529 application/json {"type":"error","error":{"type":"overloaded_error","message":"mock: status 529"}}
+ok_log~=key=key-1 upstream_status=200 status=200
+overloaded_log~=key=key-1 upstream_status=529 status=529
