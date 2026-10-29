@@ -36,7 +36,7 @@ backend `a`, on port 18164.
   nginx's `resolver` directive.
 - The request header is client input: the script compares it with the
   keys of its table, so that a client can only reach the backends that the
-  table lists ([Trust boundary](../README.md#trust-boundary)).
+  table lists ([Trust boundary](../security/trust-boundary.md)).
 - Without `cache`, nginx reads the script file for every request. Add
   `cache` to the directive, or use `mruby_set_code`, in production
   ([Caching compile code](../directives/README.md#caching-compile-code)).

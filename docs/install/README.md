@@ -326,7 +326,7 @@ You need to add [load_module](http://nginx.org/en/docs/ngx_core_module.html#load
 load_module /path/to/modules/ngx_http_mruby_module.so;
 ```
 
-If you don't use build.sh, you need to 
+A dynamic build without build.sh needs these three steps of its own:
 
 * Pass --enable-dynamic-module to ngx_mruby's configure script
 * Generate mrbgems_config_dynamic instead of mrbgems_config

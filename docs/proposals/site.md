@@ -2,9 +2,10 @@
 
 Status: decided on 2026-10-15 (section 7); the four choices of 4.12
 decided on 2026-10-19 on the specimens of step 2. Steps 1 and 2 of
-section 6 are implemented (#591, #607). Step 3 (#617): the owner approved
-the definition and the first diagram on 2026-10-29 with two small fixes
-(section 7). Next: step 4.
+section 6 are implemented (#591, #607), and step 3 (#617): the owner
+approved the definition and the first diagram on 2026-10-29 with two small
+fixes (section 7). Step 4 is in the pull requests #618 to #623, each
+starting from the one before it.
 
 Evidence: the site map and writing plan of 3.2 and 3.3, and 3.5, section
 4, section 6 and section 7 rest on `next` at 73fc9098f and on the source of

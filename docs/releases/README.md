@@ -10,7 +10,7 @@ the same notes in Japanese. A file that has no Japanese version yet gets one
 from the next pull request that adds to it or edits it (see "Who writes the
 entries, and when").
 
-日本語版のリリースノートは、同じディレクトリの`vX.Y.Z.ja.md`です。日本語版がまだ無いときは、英語版の`vX.Y.Z.md`を読んでください。
+日本語版のリリースノートは、同じディレクトリの`vX.Y.Z.ja.md`です。日本語版がまだ無いときは、英語版の`vX.Y.Z.md`を読んでください。英語版が原文です。
 
 Releases up to v2.7.0 have no file here: their
 [GitHub release pages](https://github.com/matsumotory/ngx_mruby/releases) list
@@ -22,6 +22,15 @@ form that convinces a reader who built on the old behavior, and that the
 release notes are written precisely, in English and in Japanese. The "Why it
 changed" lines of the template, the Japanese file, the GitHub release body
 and the check before the tag below are how the sessions carry that out.
+
+## Branches and support
+
+`master` holds the 2.x line until v3 is promoted to it at v3.0.0, and
+`next` the development of v3 with its pre-releases;
+[Branch strategy](../../README.md#branch-strategy) says which branch or tag
+to build from to stay on 2.x. 2.x stays supported for twelve months after
+v3.0.0, and only its latest release is supported
+([Supported versions](../../SECURITY.md#supported-versions)).
 
 ## What counts as a behavior change
 

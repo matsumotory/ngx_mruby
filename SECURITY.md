@@ -26,7 +26,7 @@ input a client controls triggers it. What follows from the operator's own code
 doing what it was written to do (for example a script that passes client input
 to `eval`, a shell command or a file path), and a setup that takes configuration
 or Ruby code from parties that the operator does not trust, are not. [Trust
-boundary](docs/README.md#trust-boundary) describes both sides and the scope in
+boundary](docs/security/trust-boundary.md) describes both sides and the scope in
 full. If you are not sure whether a defect is in scope, report it privately.
 
 ## Reporting a vulnerability

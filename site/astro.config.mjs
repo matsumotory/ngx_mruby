@@ -48,7 +48,7 @@ export default defineConfig({
         ...diagramCss,
       ],
       // The sidebar shows the four kinds of page of 3.1 (Start, Guides,
-      // Reference, Concepts), then Releases and Contributing (3.2). The
+      // Reference, Concepts), then Releases, Security and Contributing (3.2). The
       // routes come from the paths under docs/ and from SOURCE_ROUTES of
       // scripts/lib/site.mjs; SIDEBAR_ORDER there orders a group.
       sidebar: [
@@ -58,6 +58,7 @@ export default defineConfig({
         { label: 'Reference', translations: { ja: 'リファレンス' }, items: [{ autogenerate: { directory: 'reference' } }] },
         { label: 'Concepts', translations: { ja: 'コンセプト' }, items: [{ autogenerate: { directory: 'concepts' } }] },
         { label: 'Releases', translations: { ja: 'リリース' }, items: [{ autogenerate: { directory: 'releases' } }] },
+        { label: 'Security', translations: { ja: 'セキュリティ' }, items: [{ autogenerate: { directory: 'security' } }] },
         { label: 'Contributing', translations: { ja: '開発に参加する' }, items: [{ autogenerate: { directory: 'contributing' } }] },
       ],
       components: {

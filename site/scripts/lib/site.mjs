@@ -31,10 +31,13 @@ export const distDir = path.join(siteDir, 'dist');
 // files stay where GitHub and the 2.x branch have them, and the page moves
 // on the site. A source outside docs/ is rendered only when it is listed
 // here: the README of examples/start/, which readers on GitHub read beside
-// the files of the example. A Japanese page (docs/ja/<path>) takes the
+// the files of the example, and SECURITY.md and CONTRIBUTING.md, which
+// GitHub shows from the top of the repository. A Japanese page (docs/ja/<path>) takes the
 // route of its English page under /ja/.
 export const SOURCE_ROUTES = {
   'examples/start/README.md': 'start',
+  'SECURITY.md': 'security',
+  'CONTRIBUTING.md': 'contributing',
   'docs/install/README.md': 'guides/install',
   'docs/use_case/README.md': 'guides/use-cases',
   'docs/directives/README.md': 'reference/directives',
@@ -57,6 +60,8 @@ export const SIDEBAR_ORDER = {
   releases: 1,
   'releases/migration': 2,
   concepts: 1,
+  security: 1,
+  contributing: 1,
   'concepts/request-phases': 2,
   'concepts/filters': 3,
   'concepts/async': 4,

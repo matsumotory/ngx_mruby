@@ -48,7 +48,7 @@ resume: The code goes on after `sleep`; when it ends, the request goes on with t
   [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec)).
 - Code that waits in `sleep` of mruby-sleep, a socket of mruby-socket, a
   file, a shell command or a Redis call blocks the worker for that time
-  ([Trust boundary](../README.md#trust-boundary)).
+  ([Trust boundary](../security/trust-boundary.md)).
 
 [Nginx::Async](../class_and_method/README.md#nginxasync-class) in the
 Ruby reference describes both methods.
