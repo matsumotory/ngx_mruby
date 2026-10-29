@@ -255,8 +255,8 @@ included.
 The owner decided on 2026-10-29, in the words 「僕管理のmrbgemは更新して対応できるなら更新すべき、なんでも外すとかではなく。只中で使ってるライブラリとかの更新が止まってたらもういいかな」
 ("a gem I maintain should be updated, if updating copes with the change, not
 removed; if a library it uses inside has stopped being updated, it is fine to
-drop it"): a gem that the owner maintains is updated to cope with a change (a
-new mruby, a build failure) and not removed from a build. Removing one is
+drop it"): a gem that the owner maintains is updated to cope with a change and not
+removed from a build. Removing one is
 acceptable when a library that the gem uses inside has stopped being updated.
 
 The rest of this subsection is the sessions' procedure, not a decision of
