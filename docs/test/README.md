@@ -175,9 +175,9 @@ The site ngx.mruby.org is built on `next` (`site/` there, and
 `docs/proposals/site.md` there for the plan). Its 2.x pages under `/v2/`
 are built from `docs/` of this branch, so two workflows here serve them:
 
-- `.github/workflows/site-v2.yml` runs on pull requests to `master` that
-  change `docs/`, `src/`, `test/`, `build_config.rb`, a Markdown file or
-  the workflow. It checks out `next` beside the pull request, builds the
+- `.github/workflows/site-v2.yml` runs on every pull request to `master`,
+  without a path filter, since the 2.x pages link to files anywhere in the
+  repository (`.travis.yml`, `nginx_version`, the workflows). It checks out `next` beside the pull request, builds the
   site with `site/` and the 3.x pages of `next` and the 2.x pages from the
   pull request's `docs/` (`node site/scripts/build-v2.mjs --tree DIR` of
   `next`), and fails on a relative link or anchor of the sources of the
@@ -185,11 +185,11 @@ are built from `docs/` of this branch, so two workflows here serve them:
   track, on a broken link of the built site, on a 2.x page without its
   banner, and when the search of a version shows pages of the other. The
   built site is the workflow artifact `site-v2`.
-- `.github/workflows/site-dispatch.yml` runs on pushes to `master` that
-  change the same paths, and starts `site.yml` on `next` with
-  `gh workflow run site.yml --ref next`, so that the site is built again
-  with the new 2.x pages. It fails when GitHub refuses the dispatch or no
-  new run of `site.yml` on `next` shows within 60 seconds.
+- `.github/workflows/site-dispatch.yml` runs on every push to `master`,
+  and starts `site.yml` on `next` with `gh workflow run site.yml --ref
+  next`, so that the site is built again with the new 2.x pages. It fails
+  when GitHub refuses the dispatch or it cannot name the run that the
+  dispatch started.
 
 Neither is in the `needs` of `ci-ok`.
 

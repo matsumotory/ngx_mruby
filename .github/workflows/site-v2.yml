@@ -12,20 +12,15 @@ name: site-v2
 # to next and on every push to master that changes the 2.x pages
 # (site-dispatch.yml).
 #
-# The paths are those of site.yml of next that master has: the 2.x pages
-# link to files outside docs/, and the generator stops on a link to a file
-# that git does not track.
+# It runs on every pull request to master, without a path filter: the 2.x
+# pages link to files anywhere in the repository (.travis.yml,
+# nginx_version, the workflows, ...), and the generator stops on a link to
+# a file that git does not track, so a pull request that removes or
+# renames such a file fails here.
 on:
   pull_request:
     branches:
       - master
-    paths:
-      - 'docs/**'
-      - 'src/**'
-      - 'test/**'
-      - 'build_config.rb'
-      - '**.md'
-      - '.github/workflows/site-v2.yml'
 
 # A new push to a pull request cancels the run for its previous commit.
 concurrency:
