@@ -34,18 +34,22 @@ resume: The code goes on after `sleep`; when it ends, the request goes on with t
 - `Nginx::Async::HTTP.sub_request` works in the same way: it starts an
   nginx subrequest and yields, and nginx resumes the fiber when the
   subrequest has finished.
-- nginx resumes the handler only in `mruby_set` and the post-read,
-  server rewrite, rewrite and access handlers. While one of them waits,
-  ngx_mruby returns `NGX_DONE` to nginx, or `NGX_AGAIN` while a subrequest
-  goes on (`ngx_http_mruby_module.c` 1066 to 1074). In a content handler,
-  `Nginx::Async.sleep` does not raise, but nginx does not wait for the
-  handler: the request ends at the sleep without a response. In
-  `mruby_set`, `Nginx::Async::HTTP.sub_request` does not hold the request:
-  nginx goes on with the content phase without waiting for the variable.
-  In the header and body filters and the log handler, both methods raise
-  a `RuntimeError` (the "Known limitations" of
-  [the 2.7.1 release notes](../releases/v2.7.1.md#known-limitations), and
-  [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec)).
+- `mruby_set` and the post-read, server rewrite, rewrite and access
+  handlers can wait and resume. A suspended handler returns `NGX_DONE`,
+  or `NGX_AGAIN` while a subrequest continues.
+- Since the 2.7.3 changes, also integrated into 3.x, nginx keeps a normal
+  content handler's request while `Nginx::Async.sleep` waits. The timer
+  resumes the fiber; its response or returned status completes the request.
+  Up to released 2.7.2, the request ended at the sleep without a response.
+  A content handler reached by `Nginx.redirect` from Ruby still has that
+  limitation: the caller continues and can answer the request itself.
+- A content handler cannot call `Nginx::Async::HTTP.sub_request` after
+  it has waited in `Nginx::Async.sleep`; this raises `RuntimeError`.
+  In `mruby_set`, a subrequest does not hold the request: nginx continues
+  to the content phase without waiting for the variable. In header/body
+  filters and the log handler, both async methods raise `RuntimeError`.
+  See [the 2.7.3 behavior changes](../releases/v2.7.3.md) and
+  [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec).
 - Code that waits in `sleep` of mruby-sleep, a socket of mruby-socket, a
   file, a shell command or a Redis call blocks the worker for that time
   ([Trust boundary](../security/trust-boundary.md)).
