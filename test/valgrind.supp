@@ -1,0 +1,23 @@
+# valgrind suppressions for the test nginx (docs/test/README.md, "valgrind in
+# CI"). Each entry is an allocation of nginx itself that valgrind reports as
+# a leak when the test nginx exits, with the reason why it is not
+# ngx_mruby's. Leaks with a frame of ngx_mruby, mruby or a gem are never
+# suppressed here.
+
+# nginx.c, ngx_set_environment(): the environment array that the process
+# runs with (environ). Its pool cleanup, ngx_cleanup_environment(), leaves
+# the array allocated while environ still points to it, "as it happens on
+# exit, the only option is to leak it" (the comment in nginx.c). valgrind
+# reports it as 8 bytes in 1 block definitely lost in every cell of the
+# build matrix (nginx 1.26.3 to 1.31.6), with the stack
+# malloc / ngx_alloc / ngx_set_environment (nginx.c:613 in 1.31.6) /
+# ngx_single_process_cycle / main.
+{
+   nginx-environment-at-exit
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:ngx_alloc
+   fun:ngx_set_environment
+   ...
+}
