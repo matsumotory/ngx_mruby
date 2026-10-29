@@ -143,6 +143,15 @@ nginx_ended() {
     esac
 }
 
+# True when process $1 runs the nginx of this build directory: its command
+# line contains the absolute path of sbin/nginx (also under valgrind). The
+# shell may have collected an nginx that ended, and its pid may then belong
+# to another process, so test.sh checks this before each signal. -ww keeps
+# ps from cutting the line at COLUMNS.
+nginx_is_ours() {
+    ps -ww -o args= -p "$1" 2>/dev/null | grep -F "${NGINX_INSTALL_DIR}/sbin/nginx" >/dev/null
+}
+
 # Sends SIGTERM to the nginx with pid $1 and waits until it has ended. A
 # single nginx process (master_process off) checks for the signal only after
 # it has handled its events, so a SIGTERM that arrives after that check and
@@ -151,29 +160,39 @@ nginx_ended() {
 # again 1, 3, 7, 15 and 31 seconds after the first one, as the master
 # process of nginx sends it again to its workers with a delay that doubles.
 # After NGINX_STOPTIME seconds the process gets SIGKILL and the stop fails.
+# The times are counted in rounds of "sleep 0.1" and a ps, so the real times
+# are somewhat longer. A pid that no longer runs this build's nginx counts as
+# ended and gets no signal.
 stop_nginx() {
     stop_pid=$1
-    stop_signals=1
+    stop_signals=0
     stop_ticks=0
     stop_next=10
     stop_step=10
-    kill -TERM "$stop_pid" 2>/dev/null || true
-    while ! nginx_ended "$stop_pid"; do
+    if nginx_is_ours "$stop_pid"; then
+        kill -TERM "$stop_pid" 2>/dev/null || true
+        stop_signals=1
+    fi
+    while ! nginx_ended "$stop_pid" && nginx_is_ours "$stop_pid"; do
         if [ "$stop_ticks" -ge $((NGINX_STOPTIME * 10)) ]; then
-            kill -KILL "$stop_pid" 2>/dev/null || true
+            if nginx_is_ours "$stop_pid"; then kill -KILL "$stop_pid" 2>/dev/null || true; fi
             echo "test.sh: nginx (pid $stop_pid) did not end within ${NGINX_STOPTIME} seconds (NGINX_STOPTIME) after $stop_signals SIGTERM; sent SIGKILL"
             return 1
         fi
         sleep 0.1
         stop_ticks=$((stop_ticks + 1))
-        if [ "$stop_ticks" -eq "$stop_next" ]; then
+        if [ "$stop_ticks" -eq "$stop_next" ] && nginx_is_ours "$stop_pid"; then
             kill -TERM "$stop_pid" 2>/dev/null || true
             stop_signals=$((stop_signals + 1))
             stop_step=$((stop_step * 2))
             stop_next=$((stop_next + stop_step))
         fi
     done
-    echo "test.sh: nginx (pid $stop_pid) ended within $((stop_ticks / 10)).$((stop_ticks % 10)) seconds of the first SIGTERM; SIGTERM sent $stop_signals times"
+    if [ "$stop_signals" -eq 0 ]; then
+        echo "test.sh: nginx (pid $stop_pid) had ended before the stop; no signal sent"
+    else
+        echo "test.sh: nginx (pid $stop_pid) ended within about $((stop_ticks / 10)).$((stop_ticks % 10)) seconds of the first SIGTERM; SIGTERM sent $stop_signals times"
+    fi
 }
 
 # An earlier run of test.sh that was killed before it could stop its nginx
@@ -182,7 +201,7 @@ stop_nginx() {
 # another process by now.
 if [ -s ${NGINX_INSTALL_DIR}/logs/nginx.pid ]; then
     old_pid=`cat ${NGINX_INSTALL_DIR}/logs/nginx.pid`
-    if ps -o args= -p "$old_pid" 2>/dev/null | grep -F "${NGINX_INSTALL_DIR}/sbin/nginx" >/dev/null; then
+    if nginx_is_ours "$old_pid"; then
         echo "test.sh: stopping the nginx (pid $old_pid) that an earlier run left running"
         stop_nginx "$old_pid"
     elif ! nginx_ended "$old_pid"; then

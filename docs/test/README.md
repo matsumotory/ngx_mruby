@@ -419,17 +419,33 @@ the start, as "Waiting for nginx to listen" above shows.
   of nginx; the status does not change the exit status of `test.sh`:
 
   ```text
-  test.sh: nginx (pid 374) ended within 0.1 seconds of the first SIGTERM; SIGTERM sent 1 times
+  test.sh: nginx (pid 374) ended within about 0.1 seconds of the first SIGTERM; SIGTERM sent 1 times
   test.sh: nginx (pid 374) exit status 0
+  ```
+
+  The shell runs the trap of a signal only after the command that runs at
+  that moment has ended, such as the wait for nginx, `test/t/ngx_mruby.rb`
+  or the current case file, so the stop starts then. A shell that is not
+  interactive also starts a command run with `&` with SIGINT ignored, so
+  `sh test.sh &` does not stop on SIGINT; send SIGTERM instead.
+
+- Before each signal, `test.sh` checks that the pid still runs
+  `build/nginx/sbin/nginx` of this checkout: its command line, from `ps -ww
+  -o args=`, contains that absolute path, also under valgrind. The shell
+  collects a background process that has ended, so after a crash of nginx
+  its pid may belong to another process by the time of the stop. Such a pid
+  counts as ended and gets no signal:
+
+  ```text
+  test.sh: nginx (pid 374) had ended before the stop; no signal sent
   ```
 
 - Before it starts nginx, `test.sh` reads `build/nginx/logs/nginx.pid`
   (`build_dynamic/...` for `BUILD_DYNAMIC_MODULE`). When an earlier run was
   killed before it could stop its nginx, that nginx still runs and the file
   names it. `test.sh` stops it in the same way if the process runs
-  `build/nginx/sbin/nginx` of this checkout (its command line, from `ps -o
-  args=`, contains that absolute path), and leaves any other process alone,
-  since the pid may have been given to another process by then:
+  `build/nginx/sbin/nginx` of this checkout, by the check above, and leaves
+  any other process alone:
 
   ```text
   test.sh: stopping the nginx (pid 7) that an earlier run left running
@@ -447,19 +463,24 @@ and keeps running. A master process does not have this gap: it waits for
 signals with `sigsuspend()`, and while its workers still run after a
 SIGTERM, it sends them the command to terminate again, over the socket pair
 of each worker that the worker's event loop watches (SIGTERM only where that
-write fails), with a delay that starts at 50 milliseconds and doubles
-(`ngx_master_process_cycle()`). `test.sh` does the same for the single
-process with the signal: it sends SIGTERM again 1, 3, 7, 15 and 31 seconds after the first
-one while the process still runs, and a SIGTERM that arrives during
-`epoll_wait()` ends the wait. After `NGINX_STOPTIME` seconds (default 60) it
-sends SIGKILL, prints
+write fails), with a delay that starts at 50 milliseconds and doubles, and
+it sends SIGKILL once the delay exceeds one second, about 1.6 seconds after
+the first signal (`ngx_master_process_cycle()`). `test.sh` does the same for
+the single process with the signal: it sends SIGTERM again 1, 3, 7, 15 and
+31 seconds after the first one while the process still runs, and a SIGTERM
+that arrives during `epoll_wait()` ends the wait. It waits longer than the
+master before SIGKILL because the test nginx may run under valgrind, which
+checks for leaks at the exit, and SIGKILL would lose that report. After
+`NGINX_STOPTIME` seconds (default 60) it sends SIGKILL, prints
 
 ```text
 test.sh: nginx (pid 374) did not end within 60 seconds (NGINX_STOPTIME) after 6 SIGTERM; sent SIGKILL
 ```
 
-and exits 1. The second nginx of `test/t/cases/_second_instance.rb`, also a
-single process, is stopped with SIGQUIT, sent again in the same way.
+and exits 1. `test.sh` counts these times in rounds of `sleep 0.1` and a
+`ps`, so the real times are somewhat longer than the printed ones. The
+second nginx of `test/t/cases/_second_instance.rb`, also a single process,
+is stopped with SIGQUIT, sent again in the same way.
 
 How often a run hits the gap was measured on 2026-10-29, with the test
 nginx built from `next` at `c9c49023e` (nginx 1.31.6, static module), started
