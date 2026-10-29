@@ -769,7 +769,9 @@ npm run preview           # serves dist/ at http://localhost:4321/
   on fixtures in temporary repositories: links in raw HTML inside
   blockquotes and list items, an attribute value that stops the build, a
   sample and a diagram, and the samples and diagram blocks that stop it.
-- `.github/workflows/site.yml` runs the checks and the generator's test on
+- `.github/workflows/site.yml` runs the checks and `npm test` (generator
+  fixtures and release-state classification), plus complete Markdown export
+  and metadata checks after both version builds, on
   pull requests to `next` that touch `site/` or `docs/`, on every push
   to `next` (a push that removes a file that `docs/` links to fails
   there) and on `workflow_dispatch`, and uploads `site/dist/` (with
