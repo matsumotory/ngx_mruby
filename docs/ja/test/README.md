@@ -34,17 +34,17 @@ end
 
 `test/conf/nginx.conf`と`test/t/ngx_mruby.rb`を編集する代わりに、テストを専用のファイルに置くこともできます。
 
-- `test/conf/conf.d/<name>.conf`：`http {}`ブロックの最後でインクルードするフラグメントです。フラグメントは、専用のポートの`server {}`を持ちます。ポートは18110以上です。ただし18116は、`test/t/cases/_second_instance.rb`が起動する2つ目のnginxが使います。`stream {}`のフラグメントは`test/conf/conf.d/stream/`に置きます。そのポートは12353以上で、12357は2つ目のnginxが使います。
-- `test/t/cases/<name>.rb`：`test/t/ngx_mruby.rb`の後に実行するテストのファイルです。`test.sh`は、このファイルの先頭に`test/t/cases/_prelude.rb`を付けて実行します。`_prelude.rb`は、`base`、`base_ssl`、`http_host`、`html_path`、`nginx_t`、`tcp_client`、`second_instance`を定義します。`nginx_t`は、生成した設定で`nginx -t`を実行します。ケースのファイルは`SimpleTest.new`で始まり、`t.report`で終わります。名前が`_`で始まるファイルはヘルパーで、ケースとしては実行しません。`_tcp_client.rb`、`_filter_connection_client.rb`、`_request_body_client.rb`、`_second_instance.rb`は、`_prelude.rb`のヘルパーとケースが`ruby`で実行するCRubyのスクリプトです。`_wait_for_listen.rb`は、test.shがnginxを待つために実行するCRubyのスクリプトです。説明は下の「nginxがlistenするまで待つ」にあります。`_agent_proxy_client.rb`は、`agent_proxy.rb`が自分で実行するCRubyのスクリプトで、CRuby 3.0以降が要ります。このスクリプトは`test/soak/mock_llm.rb`と`test/soak/http_client.rb`を読み込み、リクエストを送る間、LLMのモックのupstreamを12372と12373で動かします。説明は下の「LLMのモックのupstream」にあります。このスクリプトは、`key=value`の行を出力します。
+- `test/conf/conf.d/<name>.conf`：`http {}`ブロックの最後でインクルードするフラグメントです。フラグメントは、専用のポートの`server {}`を持ちます。ポートは18110から18199です。ただし18116は、`test/t/cases/_second_instance.rb`が起動する2つ目のnginxが使います。`stream {}`のフラグメントは`test/conf/conf.d/stream/`に置きます。そのポートは12353から12399で、12357は2つ目のnginxが使います。各ポートは、これらの範囲の5桁の数で書いてください。そう書くと、`TEST_SH_PORT_OFFSET`がそのポートをずらします。説明は下の「ポート」にあります。
+- `test/t/cases/<name>.rb`：`test/t/ngx_mruby.rb`の後に実行するテストのファイルです。`test.sh`は、このファイルの先頭に`test/t/cases/_prelude.rb`を付けて実行します。`_prelude.rb`は、`base`、`base_ssl`、`http_host`、`html_path`、`nginx_t`、`tcp_client`、`second_instance`、`suite_path`を定義します。`nginx_t`は、生成した設定で`nginx -t`を実行します。`suite_path`は、`test.sh`が実行するスイートのコピーの中で、スイートのファイルのパスを返します。CRubyのヘルパーは、`` `ruby #{suite_path('test/t/cases/_x.rb')}` ``のように実行してください。説明は下の「ポート」にあります。ケースのファイルは`SimpleTest.new`で始まり、`t.report`で終わります。名前が`_`で始まるファイルはヘルパーで、ケースとしては実行しません。`_tcp_client.rb`、`_filter_connection_client.rb`、`_request_body_client.rb`、`_second_instance.rb`は、`_prelude.rb`のヘルパーとケースが`ruby`で実行するCRubyのスクリプトです。`_wait_for_listen.rb`は、test.shがnginxを待つために実行するCRubyのスクリプトです。説明は下の「nginxがlistenするまで待つ」にあります。`_agent_proxy_client.rb`は、`agent_proxy.rb`が自分で実行するCRubyのスクリプトで、CRuby 3.0以降が要ります。このスクリプトは`test/soak/mock_llm.rb`と`test/soak/http_client.rb`を読み込み、リクエストを送る間、LLMのモックのupstreamを12372と12373で動かします。説明は下の「LLMのモックのupstream」にあります。このスクリプトは、`key=value`の行を出力します。
 - フックのスクリプトは、これまでどおり`test/html/`に置きます。フラグメントは、そのスクリプトを`build/nginx/html/<name>.rb`として参照します。
 
-`test.sh`は、フラグメントに`nginx.conf`と同じ置き換えをして、ビルドしたnginxの`conf/conf.d/`にコピーします。そして、ケースのファイルを1つずつ順に実行します。ケースが失敗すると、`test/t/ngx_mruby.rb`のアサーションが失敗したときと同じく、`test.sh`は0以外のステータスで終了します。
+`test.sh`は、スイートのコピーにあるフラグメントに`nginx.conf`と同じ置き換えをして、ビルドしたnginxの`conf/conf.d/`にコピーします。スイートのコピーの説明は、下の「ポート」にあります。そして、ケースのファイルを1つずつ順に実行します。ケースが失敗すると、`test/t/ngx_mruby.rb`のアサーションが失敗したときと同じく、`test.sh`は0以外のステータスで終了します。
 
 nginxを自分で起動するケースは、CIのsanitizerのセルでも動きます。そうしたケースは`nginx_t`か`second_instance`を使います。sanitizerのセルでは、リークしたプロセスがあると、LeakSanitizerがそのプロセスの出力にレポートを書き足し、終了ステータスを変えます。そのため、そうしたケースは、プルリクエストを開く前に、sanitizerのビルドで1回実行してください。手順は下の「AddressSanitizerとUndefinedBehaviorSanitizerでテストを実行する」にあります。`nginx_t`は、`nginx -t`の実行ではリークの検出を切ります。`nginx -t`は読んだ設定を解放せずに戻るので、検出を切らないと、nginx自身のメモリの確保がすべて報告されるからです。`test/t/ngx_mruby.rb`の最後にあるstreamだけのテストも、自分が起動したnginxを止める`nginx -s quit`で、同じように検出を切ります。そのプロセスは、`main()`が最初に作るプールを解放せずに、nginxの`main()`から戻ります。検出を切らないと、そのレポートはテストのランナーの`stderr.log`に入ります。`second_instance`は、2つ目のnginxの`error.log`か`stderr.log`にある、sanitizerの最初の行を、`sanitizer`として返します。ケースは、その行があるときに、2つ目のnginxの`error.log`を出力します。
 
 ## 必須の<wbr>ステータスチェック
 
-`.github/workflows/test.yml`が動くのは、`master`、`next`、`v*.x`へのプルリクエスト、これらのブランチと`v*`のタグへのpush、「Run workflow」です。このワークフローの`ci-ok`ジョブは、ルールセットが必須とするステータスチェックです。`ci-ok`は、`needs`に挙げたジョブがすべて成功したときだけ成功し、それ以外では失敗します。`needs`にあるのは、`build`のマトリクスのすべてのジョブと`files`ジョブで、`next`では`soak`ジョブもあります。`perf`ジョブは、まだ`needs`にありません。`perf`ジョブの説明は、「callgrindで性能を比べる」の「CIで実行する」にあります。
+`.github/workflows/test.yml`が動くのは、`master`、`next`、`v*.x`へのプルリクエスト、これらのブランチと`v*`のタグへのpush、「Run workflow」です。このワークフローの`ci-ok`ジョブは、ルールセットが必須とするステータスチェックです。`ci-ok`は、`needs`に挙げたジョブがすべて成功したときだけ成功し、それ以外では失敗します。`needs`にあるのは、`build`のマトリクスのすべてのジョブと`files`ジョブで、`next`では`soak`ジョブもあります。`next`では、毎回の実行でvalgrindの下でnginxを動かすセルのジョブも、その1つです。そのため、そのセルでvalgrindのエラーが出ると、`ci-ok`は失敗します。説明は[CIのvalgrind](#ciのvalgrind)にあります。`perf`ジョブは、まだ`needs`にありません。`perf`ジョブの説明は、「callgrindで性能を比べる」の「CIで実行する」にあります。
 
 ### リポジトリに<wbr>置かない<wbr>ファイル
 
@@ -156,7 +156,13 @@ valgrindの下でnginxを動かすには、環境変数`NGINX_RUNNER`を設定�
 $ NGINX_RUNNER=valgrind sh test.sh
 ```
 
-auto-sslのmrbgemは、デフォルトのビルドに入りません。`NGX_MRUBY_AUTO_SSL=1 sh test.sh`は、このgemと、それが依存するgemを入れてビルドします。説明は`docs/install/README.md`の「auto-sslのmrbgemを入れる」にあり、`mruby/build`を消すべきときも、そこに書いてあります。これらのgemを使うテストは無いので、どちらのビルドでもテストスイートは同じです。
+valgrindは、`test.sh`の最後にnginxが終了するときに、レポートを書きます。`test.sh`は、valgrindのエラーを自分の終了ステータスに含めません。`test.sh`が出力するのは、nginxの終了ステータスです。下のコマンドのように`--error-exitcode=99`を付けると、valgrindがエラーを数えたときの終了ステータスは99になります。CIと同じように実行を確かめるには、valgrindにCIのオプションを渡し、ログの`ERROR SUMMARY`の行を読んでください。説明は[CIのvalgrind](#ciのvalgrind)にあります。
+
+```console
+$ rm -rf build/valgrind && mkdir -p build/valgrind
+$ NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=$PWD/test/valgrind.supp --log-file=$PWD/build/valgrind/valgrind.%p.log" sh test.sh
+$ grep 'ERROR SUMMARY' build/valgrind/valgrind.*.log
+```
 
 ### nginxが<wbr>listenするまで<wbr>待つ
 
@@ -181,7 +187,7 @@ auto-sslのmrbgemは、デフォルトのビルドに入りません。`NGX_MRUB
   wait_for_listen: nginx (pid 1234) did not accept connections within 60.00 seconds (NGINX_HEATTIME) on 33 of 33 ports: 18080, 18081, ...
   ```
 
-対象のポートは、`test/conf/nginx.conf`と`test/conf/conf.d/*.conf`にあるすべての`listen`ディレクティブのポートで、`http {}`のサーバーのポートです。2026年10月29日の時点で、`next`には54個あります。nginxは、設定をすべて読んだ後に、listenするソケットをすべて1つのループで開きます。このループは`ngx_open_listening_sockets()`です。そのため、1つのポートが開いていれば、ほとんどの場合、ほかのポートも開いています。それでも、1つのポートにかかるのは1回の接続で、1ミリ秒を大きく下回ります。すべてのポートを調べると、最初のソケットと最後のソケットの間に隙間が残りません。また、インストールした設定に届かなかった`conf.d`のフラグメントも見つけられます。`test/conf/nginx.stream.conf`と`test/conf/conf.d/stream/`にある、`stream {}`のポートは対象から外します。streamのサーバーに接続すると、そのサーバーのセッションのコードが動くからです。たとえば、12352のサーバーの`Nginx::Stream::Async.sleep 3000`が動きます。そして、ケースは、そのコードが`error.log`に書くものを読みます。nginxは、streamのソケットを同じループで、`http {}`のソケットの直後に開きます。また、streamのポートに接続する最初のテストは、`test/t/ngx_mruby.rb`の多くのHTTPのテストが通った後に動きます。`Nginx::Server#add_listener`と`Nginx::Stream.add_listener`が加えるポートも、同じループで開きます。これらのポートは調べません。
+対象のポートは、`http {}`のサーバーのポートです。具体的には、下の「ポート」が説明するコピーの`test/conf/nginx.conf`と`test/conf/conf.d/*.conf`にある、すべての`listen`ディレクティブのポートを、`TEST_SH_PORT_OFFSET`でずらしたものです。2026年10月29日の時点で、`next`には54個あります。nginxは、設定をすべて読んだ後に、listenするソケットをすべて1つのループで開きます。このループは`ngx_open_listening_sockets()`です。そのため、1つのポートが開いていれば、ほとんどの場合、ほかのポートも開いています。それでも、1つのポートにかかるのは1回の接続で、1ミリ秒を大きく下回ります。すべてのポートを調べると、最初のソケットと最後のソケットの間に隙間が残りません。また、インストールした設定に届かなかった`conf.d`のフラグメントも見つけられます。`test/conf/nginx.stream.conf`と`test/conf/conf.d/stream/`にある、`stream {}`のポートは対象から外します。streamのサーバーに接続すると、そのサーバーのセッションのコードが動くからです。たとえば、12352のサーバーの`Nginx::Stream::Async.sleep 3000`が動きます。そして、ケースは、そのコードが`error.log`に書くものを読みます。nginxは、streamのソケットを同じループで、`http {}`のソケットの直後に開きます。また、streamのポートに接続する最初のテストは、`test/t/ngx_mruby.rb`の多くのHTTPのテストが通った後に動きます。`Nginx::Server#add_listener`と`Nginx::Stream.add_listener`が加えるポートも、同じループで開きます。これらのポートは調べません。
 
 `NGINX_HEATTIME`は、2つの待ちのそれぞれの上限で、単位は秒です。デフォルトは60で、CIはこの変数を設定しません。`NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh`のように設定したコマンドは、最大でその秒数まで待ちます。nginxがlistenすると、実行はすぐに先へ進みます。10秒で失敗するのは、そのときまでにnginxがlistenしていない場合だけです。その場合、その時点で最初のリクエストを送っていたら、そのリクエストは拒否され、`Errno::ECONNREFUSED`になっていたはずです。
 
@@ -197,6 +203,106 @@ CIでは、valgrindの下のセルが、起動から10秒たってもまだ設�
 - 起動が上限より遅いと、nginxがいずれ起動するはずでも、実行は失敗します。遅い環境では、`NGINX_HEATTIME`を上げてください。待ちはnginxがlistenした時点で終わるので、上限を上げて時間が余計にかかるのは、nginxが終了せずにハングしたときだけです。nginxが終了したときは、スクリプトがすぐに報告します。
 - listenしているソケットは、まだ動いているハンドラではありません。nginxがlistenすると、カーネルはすぐに接続を受け付けます。テストのnginxは`master_process off`の1つのプロセスで、どの接続を読むよりも前に、`init_worker`のフックを実行します。その間、最初のリクエストは、nginxが読むまでソケットのbacklogで待ちます。テストのクライアントのmruby-simplehttpはタイムアウトなしで読むので、クライアントも待ちます。
 - nginxは後で、スクリプトが待つ間に試した接続を1つずつ読みます。そして、接続がリクエストの無いまま閉じられていると分かると、その接続を閉じます。これらの接続ではハンドラは動きません。nginxは、これらの接続について、`error.log`に`debug`の行だけを書きます。
+
+### nginxを<wbr>止める
+
+`test.sh`は、自分が起動したnginxのプロセスだけを、そのpidで止めます。`test.sh`は、`killall`や`pkill`のようにプロセスの名前でシグナルを送りません。そのため、ほかのチェックアウト、ソークテスト、nginx-tests、ほかのユーザーのnginxのプロセスは動き続けます。1台のマシンで`test.sh`を2つ実行するには、別々のポートが要ります。説明は下の「ポート」にあります。同じポートを使うと、上の「nginxがlistenするまで待つ」にあるように、2つ目の実行は起動の前の待ちで失敗します。
+
+- `test.sh`は終了するときに、テストのnginxにSIGTERMを送って止め、そのプロセスが終わるまで待ちます。終了するのは、最後のケースの後、失敗の後、SIGHUP、SIGINT、SIGTERMを受けたときです。その後、`test.sh`は、止めるのにかかった時間と、nginxの終了ステータスを出力します。nginxの終了ステータスは、`test.sh`の終了ステータスを変えません。
+
+  ```text
+  test.sh: nginx (pid 374) ended within about 0.1 seconds of the first SIGTERM; SIGTERM sent 1 times
+  test.sh: nginx (pid 374) exit status 0
+  ```
+
+  シェルは、シグナルのtrapを、そのとき動いているコマンドが終わった後にだけ実行します。そのコマンドは、nginxを待つ処理、`test/t/ngx_mruby.rb`、実行中のケースのファイルなどです。そのため、nginxを止める処理は、そのコマンドが終わったときに始まります。また、対話的でないシェルは、`&`で実行するコマンドを、SIGINTを無視する状態で起動します。そのため、`sh test.sh &`はSIGINTでは止まりません。代わりにSIGTERMを送ってください。
+
+- `test.sh`は、シグナルを送る前に毎回、そのpidがまだこのチェックアウトの`build/nginx/sbin/nginx`を動かしているかを確かめます。`ps -ww -o args=`で読んだそのpidのコマンドラインにその絶対パスが含まれていれば、`test.sh`は、そのpidがnginxを動かしていると判断します。valgrindの下でも同じです。シェルは、終わったバックグラウンドのプロセスを回収します。そのため、nginxがクラッシュした後は、止める時点で、そのpidが別のプロセスのものになっていることがあります。`test.sh`は、そのようなpidを終わったものとして扱い、シグナルを送りません。
+
+  ```text
+  test.sh: nginx (pid 374) had ended before the stop; no signal sent
+  ```
+
+- `test.sh`は、nginxを起動する前に`build/nginx/logs/nginx.pid`を読みます。`BUILD_DYNAMIC_MODULE`では、このファイルは`build_dynamic/...`にあります。前の実行がnginxを止める前にkillされると、そのnginxは動き続けます。このファイルは、そのnginxのpidを持っています。上の確認で、そのプロセスがこのチェックアウトの`build/nginx/sbin/nginx`を動かしていれば、`test.sh`は同じ方法でそのプロセスを止めます。ほかのプロセスには触れません。
+
+  ```text
+  test.sh: stopping the nginx (pid 7) that an earlier run left running
+  test.sh: logs/nginx.pid names pid 7, which does not run /path/to/build/nginx/sbin/nginx; left running
+  ```
+
+テストのnginxは`master_process off`の1つのプロセスです。このプロセスは、`ngx_single_process_cycle()`のループで、イベントを処理した後にだけシグナルを調べます。シグナルハンドラが`ngx_terminate`を設定し、ループは`ngx_process_events_and_timers()`が戻った時点で終わります。シグナルを調べた後、次の`epoll_wait()`の前にSIGTERMが届くと、そのSIGTERMは待ちを中断しません。タイマーも接続も無いと、`epoll_wait()`は時間の制限なしに待ちます。そのときnginxは、`signal 15 (SIGTERM) received`をログに書き、動き続けます。マスタープロセスには、この隙間がありません。マスタープロセスは、`sigsuspend()`でシグナルを待ちます。SIGTERMの後もワーカーがまだ動いていると、マスタープロセスは、終了のコマンドをワーカーに送り直します。送り先は各ワーカーのソケットペアで、ワーカーのイベントループがこのソケットペアを監視しています。この書き込みに失敗したときだけ、マスタープロセスはSIGTERMを送ります。送り直す間隔は50ミリ秒から始まって2倍ずつ延び、間隔が1秒を超えると、マスタープロセスはSIGKILLを送ります。SIGKILLを送るのは、最初のシグナルから約1.6秒後です。この処理は`ngx_master_process_cycle()`にあります。`test.sh`は、1つのプロセスのnginxにシグナルを送り直して、マスタープロセスと同じように止めます。プロセスがまだ動いていれば、`test.sh`は、最初のSIGTERMの1、3、7、15、31秒後にSIGTERMを送り直します。`epoll_wait()`の間にSIGTERMが届くと、待ちは終わります。`test.sh`がSIGKILLまでマスタープロセスより長く待つのは、テストのnginxがvalgrindの下で動くことがあるからです。valgrindは終了時にリークを調べるので、SIGKILLを送ると、そのレポートが失われます。`NGINX_STOPTIME`秒の後に、`test.sh`はSIGKILLを送ります。`NGINX_STOPTIME`のデフォルトは60です。そして、`test.sh`は次の行を出力します。
+
+```text
+test.sh: nginx (pid 374) did not end within 60 seconds (NGINX_STOPTIME) after 6 SIGTERM; sent SIGKILL
+```
+
+その後、`test.sh`は終了ステータス1で終了します。`test.sh`は、これらの時間を、`sleep 0.1`と`ps`の繰り返しで数えます。そのため、実際の時間は、出力する時間より少し長くなります。`test/t/cases/_second_instance.rb`の2つ目のnginxも1つのプロセスで、`test.sh`はこのnginxをSIGQUITで止めます。SIGQUITも同じように送り直します。
+
+実行がこの隙間に当たる頻度を、2026年10月29日に測りました。テストのnginxは、`next`の`c9c49023e`からビルドしました。nginxは1.31.6で、静的なモジュールです。このnginxを、`test.sh`と同じ方法で起動しました。環境は、CPUが11個あるaarch64のホストで動かした、Ubuntu 22.04のコンテナです。
+
+- テストのnginxを800回起動し、それぞれに1回SIGTERMを送りました。400回は、1つのリクエストにレスポンスが返った直後に送りました。残りの400回は、3つのリクエストを送ってから0から20ミリ秒後に送りました。nginxは毎回、1回のSIGTERMで終わりました。隙間は、`ngx_terminate`の確認から`epoll_wait()`の呼び出しまでです。その間にあるのは、デバッグのログを1行書く処理と、タイマーのツリーを検索する処理だけです。そのため、この規模のループでは、隙間に当たりません。
+- gdbをテストのnginxにアタッチし、nginxがリクエストの接続を閉じるまで待ちました。そして、次の`ngx_epoll_process_events()`の呼び出しでnginxを止め、そこでSIGTERMを届けました。そのとき、イベントもタイマーも残っていませんでした。その呼び出しは`timer=-1`でした。nginxは`signal 15 (SIGTERM) received from ..., exiting`をログに書き、続けて`epoll timer: -1`を書きました。そして、10秒後もまだ動いていました。2回目のSIGTERMで、nginxは0.1秒以内に終わりました。これは、[#600](https://github.com/matsumotory/ngx_mruby/pull/600)の`7926f72`で`test.sh`を実行したときと同じ状態です。その実行では、nginxはSIGTERMをログに書き、20分間`epoll_wait()`の中に留まりました。
+
+### ポート
+
+スイートのポートは、12345から12399までと、18080から18199までの数です。次のポートがこれにあたります。
+
+- `test/conf/`にある`listen`ディレクティブのポート
+- `add_listener`に渡すアドレスのポート
+- `test/t/cases/_second_instance.rb`が起動する2つ目のnginxが使う、18116と12357
+- `test/t/cases/config_hooks.rb`が起動するnginxが使う18158
+- `test/t/cases/_agent_proxy_client.rb`が動かすLLMのモックのupstreamが使う、12372と12373
+- `test/t/ngx_mruby.rb`にあるstreamだけのテストが使う12399
+- テストと、`test/html/`にあるフックのスクリプトと期待する出力が挙げるポート
+
+`TEST_SH_PORT_OFFSET`は整数で、デフォルトは0です。この変数は、これらのポートをすべて同じ数だけずらします。そのため、2つのチェックアウトが、それぞれ別のオフセットで、1台のマシンで同時に`test.sh`を実行できます。
+
+```console
+$ TEST_SH_PORT_OFFSET=1000 sh test.sh    # 13345 to 13399 and 19080 to 19199
+```
+
+`test.sh`は、設定をインストールする前に`test/t/cases/_stage.rb`を実行します。このスクリプトは、`test/t`、`test/conf`、`test/html`、`test/soak/mock_llm.rb`、`test/soak/http_client.rb`を`build/nginx/harness/test/`にコピーします。`BUILD_DYNAMIC_MODULE`では、コピー先は`build_dynamic/...`です。コピーにあるすべてのテキストファイルで、2つの範囲の数は、その数にオフセットを足した数になります。対象は5桁で書いた数で、その隣に数字、英字、`_`が無いものです。
+
+```text
+stage: copied 164 files to /path/to/build/nginx/harness/test; 593 port numbers moved by 1000
+```
+
+その後、`test.sh`は、コピーから設定とフックのスクリプトをインストールし、コピーのポートを待ちます。そして、コピーの`test/t/ngx_mruby.rb`とケースのファイルを実行します。テストは、`suite_path`を使って、コピーのCRubyのヘルパーを実行します。`suite_path`は`test/t/cases/_prelude.rb`にあり、`test/t/ngx_mruby.rb`にも自分で使う`suite_path`があります。`suite_path`は、スイートのパスを`TEST_SH_STAGE_DIR`につなげます。`TEST_SH_STAGE_DIR`は、`test.sh`が設定するディレクトリです。ケースを`test.sh`の外で実行するときのように、この変数が無いと、`suite_path`はチェックアウトのパスを返します。テストは今も、チェックアウトの最上位から実行します。設定が、フックのスクリプトを、最上位からの相対パスの`build/nginx/html/<name>.rb`で指すからです。オフセットが0なら、コピーは元のファイルと同じです。
+
+ポートをずらす規則はテキストの置き換えなので、新しいテストは次のことを守ってください。
+
+- ポートは、2つの範囲のどちらかの5桁の数で書いてください。また、これらの範囲の数は、ポートか、テストが同じファイルの集まりにある数と比べる値にだけ使ってください。このような数を`18_132`のように`_`入りで書くと、規則はその数を見つけられません。そのため、`_stage.rb`は、ファイルと行を挙げて失敗します。計算で作るポートは、その5桁の部分が範囲にあるときだけずれます。オフセットが1000なら、`18110 + 1`は`19110 + 1`になります。一方、`18000 + 110`と、文字列から作るポートはそのままです。そのため、ポートの数をそのまま書いてください。
+- 範囲の中の数で、ポートでないものが1つあります。`test/conf/conf.d/20-filter-connection.conf`は`f.output 12345`を出力し、`test/t/cases/filter_connection.rb`は、ボディを`'12345'`と、その長さを`'5'`と比べます。両方のファイルが同じようにずれるので、このケースは今も、`Filter#output`がIntegerを`to_s`で5バイトに変換することを確かめます。
+- オフセットは、すべてのポートを10000から65535の間に保ち、すべての数を5桁のままにする値にしてください。そのようなオフセットは-2345から47336までで、それ以外のオフセットでは`_stage.rb`が失敗します。また、オフセットは、ポートをほかの実行のポートから離しておく値にしてください。ソークテストのポートは12360から12362で、`SOAK_PORT_BASE`で決まります。性能の比較のポートは12370から12372で、`PERF_PORT_BASE`で決まります。nginx-testsのポートは8000から8999です。オフセットが0だと、`test.sh`と性能の比較は、どちらも12372を使います。
+
+2つの実行には、2つのオフセットのほかに、2つのチェックアウトが要ります。1つのビルドのディレクトリには、1つのテストのnginxと、そのログと、そのスイートのコピーが入るからです。2つのオフセットは、2つの実行の範囲を離しておく必要があります。18080から18199の範囲には120個の数があるので、オフセットの差は120以上にします。オフセットの差が5681から5854のとき、一方の実行の12345から12399の範囲は、もう一方の実行の18080から18199の範囲に重なります。差の符号は問いません。5681は18080 - 12399で、5854は18199 - 12345です。そのため、差はこの区間に入らないようにします。オフセットが14568を超えると、18080から18199のポートは、Linuxがデフォルトでエフェメラルポートに使う範囲に入ります。14568は32767 - 18199で、その範囲は32768から60999です。その範囲では、nginxがbindする前に、クライアントのソケットがそのポートを取ることがあります。例のオフセットの0と1000は、3つの条件をすべて満たします。
+
+### CIの<wbr>valgrind
+
+`.github/workflows/test.yml`の`build`のマトリクスは、各セルで`test.sh`を実行します。どのセルがvalgrindの下でnginxを動かすかは、実行によって違います。
+
+- プルリクエストとpushでは、1つのセルがvalgrindの下でnginxを動かします。そのセルは、nginx 1.31.8を、静的なモジュールとして`--with-openssl-src`なしでビルドします。ジョブの名前は`build (1.31.8)`です。マトリクスは、このセルに`VALGRIND_ON_EVERY_RUN`を与えます。sanitizerを使わないほかのセルは、`NGINX_RUNNER=exec`でnginxを直接動かします。sanitizerのセルは、AddressSanitizerとUndefinedBehaviorSanitizerを付けてビルドしたnginxを動かします。説明は次の節にあります。
+- `test.yml`を入力`valgrind`を付けて手動で実行すると、sanitizerのセルを除くすべてのセルが、valgrindの下でnginxを動かします。
+
+  ```console
+  $ gh workflow run test.yml --ref next -f valgrind=true
+  ```
+
+- 毎日の実行：`.github/workflows/valgrind-nightly.yml`は、毎日18:23 UTCに、このような`test.yml`の実行を、マトリクスの各ブランチで起動します。マトリクスのブランチは`next`です。このワークフローは、その実行を待ち、実行が失敗すると失敗します。GitHubは、デフォルトブランチの`master`にあるワークフローのファイルからしか、スケジュールを実行しません。そのため、スケジュールが効くのは、このファイルが`master`に入ってからです。それまでは、`next`にあるこのワークフローが、そのファイル自身、`test.yml`、`test/valgrind.supp`のどれかを変えるプルリクエストで動きます。そのときこのワークフローは、プルリクエストのheadのブランチで、valgrindの下の実行を起動します。どちらの実行も、`ci-ok`が必要とするステータスチェックではありません。
+
+valgrindを使っても、セルの時間はあまり増えません。入力`valgrind`を付けた実行[40824932917](https://github.com/matsumotory/ngx_mruby/actions/runs/40824932917)では、valgrindの下の16のセルで、`test.sh`のうちnginxの起動から`test.sh ... successful`までの部分に、67から94秒かかりました。同じコミットのプルリクエストの実行[40824899601](https://github.com/matsumotory/ngx_mruby/actions/runs/40824899601)では、nginxを直接動かした15のセルで57から75秒でした。どちらも2026年10月29日の実行です。1つのセルは全体で4から13分かかり、その大部分はOpenSSL、mruby、nginxのビルドの時間です。
+
+valgrindの下のセルは、次のオプションでnginxを動かします。
+
+```text
+valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=test/valgrind.supp --log-file=$RUNNER_TEMP/valgrind/valgrind.%p.log
+```
+
+valgrindは、起きたメモリのエラー1つごとに、エラーを1つ数えます。メモリのエラーは、不正な読み込みか書き込み、初期化していない値による条件分岐かシステムコール、不正な解放か対応しない解放です。また、valgrindは、種類が`definite`か`indirect`のloss recordのうち、`test/valgrind.supp`がsuppressしないもの1つごとに、エラーを1つ数えます。nginxが終了するとき、valgrindは、エラーの数と、異なるスタックの数を、`ERROR SUMMARY`の行に出力します。valgrindは、異なるスタックをcontextsと呼びます。たとえば、20のリクエストが動かしたハンドラで不正な読み込みがあると、この行は`20 errors from 1 contexts`になります。`--error-exitcode=99`を付けると、エラーの数が0でないとき、valgrindは99で終了します。`test.sh`は、nginxを止めたときに、nginxの終了ステータスを出力します。valgrindがエラーを数えた後は、`test.sh: nginx (pid 374) exit status 99`です。説明は[nginxを止める](#nginxを止める)にあります。しかし、`test.sh`は、この終了ステータスを自分の終了ステータスに含めません。そのため、ステップ「Check the valgrind reports」は、代わりにログを読みます。このステップは各ログを出力します。そして、少なくとも1つのログに`ERROR SUMMARY`があり、すべての`ERROR SUMMARY`が数えたエラーが0のときだけ通ります。それ以外では失敗します。`ERROR SUMMARY`が1つも無いセルも失敗します。そのセルでは、valgrindがレポートを書き終えていません。
+
+possibly lostのブロックは、スタックとともに出力されますが、エラーにはなりません。`master_process off`のテストのnginxが終了する時点で、nginxはcycleのプールを破棄しています。残るのは、`ngx_event_process_init()`が確保した接続とイベントの配列、`ngx_crc32_table_init()`のテーブル、まだ開いている接続のプールです。valgrindは、これらのブロックの途中を指すポインタしか見つけないので、これらをpossibly lostとして報告します。その数は、nginxが終了するときに開いている接続によって変わります。2026年10月29日のCIの実行のうち、[40819115837](https://github.com/matsumotory/ngx_mruby/actions/runs/40819115837)、[40820233191](https://github.com/matsumotory/ngx_mruby/actions/runs/40820233191)、[40821209339](https://github.com/matsumotory/ngx_mruby/actions/runs/40821209339)の3つを見ました。これらの実行では、valgrindの下の16のセルが、それぞれ5ブロックの85,440バイトから8ブロックの86,208バイトまでを報告しました。nginx 1.31.6を静的なモジュールでビルドしたセルは、この3つの実行で、5、7、7ブロックを報告しました。ngx_mruby、mruby、gemのどれかがブロックを指す最後のポインタを失うと、そのリークはdefinitely lostになります。そのため、そのセルは失敗します。ngx_mrubyがfinalizeしないリクエストや接続は、nginxが終了するまで、そのプールを持ち続けます。valgrindはそのプールをpossibly lostとして報告するので、そのセルは失敗しません。実行40824899601では、終了時にまだ開いていたupstreamの接続のプールが、possibly lostでした。そのプールを確保したときのスタックには、`ngx_mrb_post_fiber`があります。このようなリークを調べるのは`soak`ジョブです。このジョブは、ワーカーの接続、タイマー、ファイルディスクリプタを、サンプルの間で比べます。説明は[メモリのソークテスト](#メモリのソークテスト)にあります。
+
+`test/valgrind.supp`がsuppressするのは、nginx自身の確保だけです。各エントリーには、スタックと、コメントに書いた理由があります。今あるエントリーは、`ngx_set_environment()`の環境変数の配列だけです。この配列は8バイトで、どのセルでもdefinitely lostになります。nginxは、終了時にこの配列をわざと確保したまま残します。根拠は、`nginx.c`の`ngx_cleanup_environment()`です。エントリーを加えるのは、レポートのスタックと、そのブロックがngx_mrubyのものでない理由があるときだけです。ngx_mruby、mruby、gemのフレームを持つリークは、suppressしません。
 
 ## AddressSanitizerと<wbr>UndefinedBehaviorSanitizerで<wbr>テストを<wbr>実行する
 
@@ -261,7 +367,7 @@ rm -rf "$D" && mkdir -p "$D" && git archive HEAD | tar -x -C "$D"
 docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential perl rake ruby bison git gperf wget ca-certificates openssl zlib1g-dev libpcre3-dev libssl-dev libio-socket-ssl-perl libnet-ssleay-perl libfcgi-perl libscgi-perl libcache-memcached-perl libcache-memcached-fast-perl libprotocol-websocket-perl memcached >/dev/null && useradd -m nt && chown -R nt "$PWD" && su nt -c "NGX_MRUBY_COMMIT='"$(git rev-parse HEAD)"' sh test/nginx-tests/run.sh"'
 ```
 
-テストファイルは、8000から8999のポートのうち自分がロックしたポートで、nginxを起動します。そのため、テストファイルは並列に動きます。並列の数は`NGINX_TESTS_JOBS`で決まり、デフォルトはCPUの数です。テストファイルは`test.sh`のポートを使いません。しかし、同じマシンで動く`test.sh`は、テストファイルのnginxも含めて、すべてのnginxをkillします。一度に2つのうち1つだけを実行するか、`run.sh`をコンテナで実行してください。
+テストファイルは、8000から8999のポートのうち自分がロックしたポートで、nginxを起動します。そのため、テストファイルは並列に動きます。並列の数は`NGINX_TESTS_JOBS`で決まり、デフォルトはCPUの数です。テストファイルは`test.sh`のポートを使いません。また、`test.sh`が止めるのは、自分が起動したnginxだけです。説明は上の「nginxを止める」にあります。
 
 環境変数は次のとおりです。`NGINX_TESTS_OUT`は出力のディレクトリで、デフォルトは`build_nginxtests`です。`NGINX_TESTS_SRC`は、固定したコミットのnginx-testsのチェックアウトです。指定すると、`run.sh`はfetchの代わりにそれを使います。たとえば、github.comに接続できないときに使います。`NGINX_TESTS_JOBS`は並列の数です。`NGINX_TESTS_FILES`は、すべてのテストファイルの代わりに実行するテストファイルで、たとえば`NGINX_TESTS_FILES='access.t proxy.t'`と指定します。`NGX_MRUBY_COMMIT`は、サマリーに書くngx_mrubyのコミットです。デフォルトは、GitHub Actionsでは`GITHUB_SHA`で、それ以外ではチェックアウトの`HEAD`です。`run.sh`に足した引数は`test.sh`に渡り、そこから`./configure`に渡ります。nginx-tests自身の変数も使えます。失敗したファイルのエラーログを読むには、そのファイルだけを、`TEST_NGINX_LEAVE=1`か`TEST_NGINX_CATLOG=1`を付けて実行し直してください。`TEST_NGINX_LEAVE=1`は一時ディレクトリを残し、`TEST_NGINX_CATLOG=1`はログを出力します。
 
@@ -486,7 +592,7 @@ $ ONLY_RUN=1 SOAK_SCENARIOS=sleep,disconnect SOAK_N=100000 sh test/soak/run.sh
 
 最初の実行には数分かかります。gemをクローンし、mrubyとnginxをビルドするからです。シナリオの実行には約1分かかり、aarch64のコンテナでは、そのうち`agent_*`のシナリオが約18秒です。結果のテーブルには、シナリオごとに1つのレコードがあります。ある値がサンプルの間で違うときは、4つの値をすべて`/`で区切って示し、その理由をテーブルの下に挙げます。ログは`build_soak/nginx/soak/logs/`にあり、`error.<scenario>.log`、`stderr.<scenario>.log`、`mock.<scenario>.log`、`soak.log`の4種類です。`mock.<scenario>.log`は、`agent_*`のシナリオでモックのLLMが出力したもので、`soak.log`は`soak.rb`の出力です。
 
-`test.sh`は、ソークテストのnginxを含め、マシンのすべてのnginxを止めます。そのため、1台のマシンで両方を同時に実行しないでください。
+`test.sh`が止めるのは、自分が起動したnginxだけです。説明は上の「nginxを止める」にあります。また、`test.sh`のポートは、ソークテストのポートと重なりません。
 
 | 変数 | デフォルト | 意味 |
 |---|---|---|
@@ -549,7 +655,6 @@ VmRSSの2つの上限は、2026年10月3日にデフォルトのシナリオを�
 - `mrbgems/`の下のファイルの名前
 - `build_config.rb`、`config.in`、`configure`、`Makefile.in`、`build.sh`、`nginx_version`のチェックサム
 - `NGX_MRUBY_CFLAGS`。スクリプトは、`test.sh`と同じように、この値をmrubyに渡します。
-- `NGX_MRUBY_AUTO_SSL`。この変数を設定すると、mrubyのビルドにauto-sslのmrbgemが加わります。
 - nginxのconfigureのオプション
 - そのビルドのgemのロック
 
@@ -708,7 +813,7 @@ $ ONLY_RUN=1 PERF_SCENARIOS=hello,var sh test/perf/compare.sh build_perf/base-sr
 $ sh test/perf/run.sh                                  # measure this checkout only
 ```
 
-`compare.sh BASE_DIR [HEAD_DIR]`は、`BASE_DIR`を`build_perf/base`に、`HEAD_DIR`を`build_perf/head`にビルドします。`HEAD_DIR`のデフォルトはこのチェックアウトです。どちらのビルドでも、サードパーティのgemは、そのツリーにコミットした`build_config.rb.lock`のコミットです。そのため、gemが違うのはヘッドがロックを変えたところだけです。gemを別のコミットへ動かすプルリクエストは、マージしたときと同じく、そのコミットで測ります。ロックの無いチェックアウトは、反対側のロックを使います。ロックをコミットする前のチェックアウトがこれに当たります。ベースはヘッドのロックを、ヘッドはベースのビルドが書いたロックを使います。レポートは、コミットの違うgemの数を示し、その一覧を出します。測定に使う`test/perf/`と`test/soak/`のシナリオは、両方のビルドとも、このチェックアウトのものです。最初の実行は2つのツリーをビルドし、それぞれ数分かかります。デフォルトのシナリオの測定は、ビルドごとに約140秒かかります。CIのランナーでは139秒で、そのうち28秒が`sleep`です。`PERF_SCENARIOS`で`proxy_stream_plain_1000`と`route_json_64k`を挙げると、それぞれ約80秒と130秒が加わります。レポートは`build_perf/report.txt`と`build_perf/report.json`に書きます。`test.sh`はマシンのすべてのnginxをkillするので、同時に実行しないでください。
+`compare.sh BASE_DIR [HEAD_DIR]`は、`BASE_DIR`を`build_perf/base`に、`HEAD_DIR`を`build_perf/head`にビルドします。`HEAD_DIR`のデフォルトはこのチェックアウトです。どちらのビルドでも、サードパーティのgemは、そのツリーにコミットした`build_config.rb.lock`のコミットです。そのため、gemが違うのはヘッドがロックを変えたところだけです。gemを別のコミットへ動かすプルリクエストは、マージしたときと同じく、そのコミットで測ります。ロックの無いチェックアウトは、反対側のロックを使います。ロックをコミットする前のチェックアウトがこれに当たります。ベースはヘッドのロックを、ヘッドはベースのビルドが書いたロックを使います。レポートは、コミットの違うgemの数を示し、その一覧を出します。測定に使う`test/perf/`と`test/soak/`のシナリオは、両方のビルドとも、このチェックアウトのものです。最初の実行は2つのツリーをビルドし、それぞれ数分かかります。デフォルトのシナリオの測定は、ビルドごとに約140秒かかります。CIのランナーでは139秒で、そのうち28秒が`sleep`です。`PERF_SCENARIOS`で`proxy_stream_plain_1000`と`route_json_64k`を挙げると、それぞれ約80秒と130秒が加わります。レポートは`build_perf/report.txt`と`build_perf/report.json`に書きます。`test.sh`も12372でLLMのモックのupstreamを起動するので、同時に実行しないでください。
 
 | 変数 | デフォルト | 意味 |
 |---|---|---|
