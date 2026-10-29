@@ -51,8 +51,8 @@ another version given with `./configure --with-mruby-root`. Edit the list, or
 set `NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1` in the environment of the mruby
 build to skip those gems with a notice.
 
-The bundled auto-ssl mrbgem is not in the default build; see
-[Building with the auto-ssl mrbgem](#building-with-the-auto-ssl-mrbgem).
+ngx_mruby 3.0.0 has no auto-ssl mrbgem; see
+[The auto-ssl mrbgem and the classes that came with it](#the-auto-ssl-mrbgem-and-the-classes-that-came-with-it).
 
 ### Core gems
 
@@ -344,17 +344,26 @@ $ ./configure --prefix=/usr/local/nginx-1.15.6 --add-dynamic-module=/path/to/ngx
 $ make
 ```
 
-#### Building with the auto-ssl mrbgem
+#### The auto-ssl mrbgem and the classes that came with it
 
-The auto-ssl mrbgem (`mrbgems/auto-ssl`, the `Nginx::SSL::ACME` classes) is
-not in the default build. Its `Nginx::SSL::ACME::Client` speaks ACMEv1
-(`new-reg`, `new-authz`, `new-cert`), which Let's Encrypt no longer serves.
-The gem also brings in pyama86/mruby-acme-client and pyama86/mruby-polarssl,
-which is licensed under the GPL, together with matsumotory/mruby-httprequest,
-matsumotory/mruby-simplehttp, mattn/mruby-http, mattn/mruby-base64,
-takahashim/mruby-forwardable and iij/mruby-tempfile. No other gem of the
-default build needs them, so a default build does not have what they define
-either:
+ngx_mruby 3.0.0 does not have the auto-ssl mrbgem (`mrbgems/auto-ssl`, the
+`Nginx::SSL::ACME` classes), and the mruby build no longer reads
+`NGX_MRUBY_AUTO_SSL` ([The auto-ssl mrbgem and `NGX_MRUBY_AUTO_SSL` are removed](../releases/v3.0.0.md#the-auto-ssl-mrbgem-and-ngx_mruby_auto_ssl-are-removed-PRNUM)).
+Its `Nginx::SSL::ACME::Client` speaks ACMEv1 (`new-reg`, `new-authz`,
+`new-cert`), which Let's Encrypt no longer serves, and the gem that it needs
+for TLS, pyama86/mruby-polarssl, has had no commit since 2017-03-03 and does
+not build with mruby 4: it includes `mruby/ext/io.h`, which mruby 4.0 renamed
+to `mruby/io.h`. To get certificates from an ACME server, use nginx's own
+module [ngx_http_acme_module](https://nginx.org/en/docs/http/ngx_http_acme_module.html) (nginx-acme). A server that needs
+`Nginx::SSL::ACME` keeps a 2.x build; the
+[documentation of 2.x](https://github.com/matsumotory/ngx_mruby/blob/v2.7.2/docs/class_and_method/README.md#auto-ssl-mrbgem) describes the gem.
+
+ngx_mruby 2.x also built the gems that auto-ssl depends on:
+pyama86/mruby-acme-client, pyama86/mruby-polarssl, which is licensed under
+the GPL, matsumotory/mruby-httprequest, matsumotory/mruby-simplehttp,
+mattn/mruby-http, mattn/mruby-base64, takahashim/mruby-forwardable and
+iij/mruby-tempfile. No other gem of the default build needs them, so a
+default build of 3.0.0 does not have what they define either:
 
 - the classes and modules `Acme`, `CustomHttpRequest`, `OpenSSL`,
   `PolarSSL`, `HttpRequest`, `SimpleHttp`, `HTTP`, `Base64`, `Forwardable`,
@@ -382,50 +391,9 @@ path = "#{tmpdir}/myapp-#{Process.pid}-#{SecureRandom.hex(8)}"
 Dir.mkdir(path, 0700)                                         # Dir.mktmpdir('myapp-')
 ```
 
-With the bundled mruby 4.0.0, a build with the gem does not finish:
-pyama86/mruby-polarssl includes `mruby/ext/io.h`, which mruby 4.0 renamed to
-`mruby/io.h`, and the mruby build stops with `fatal error: mruby/ext/io.h:
-No such file or directory` (measured on 2026-10-04 with
-`NGX_MRUBY_AUTO_SSL=1 rake` in `mruby/`). The `NO_SSL` that
-`build_config.rb` sets for the test client also applies to this build: it
-only removes the dependency of matsumotory/mruby-simplehttp on
-mruby-polarssl, while pyama86/mruby-acme-client still depends on
-pyama86/mruby-polarssl itself.
-
-To build the gem, set `NGX_MRUBY_AUTO_SSL=1` in the environment of the mruby
-build. build.sh and test.sh pass their environment on to it.
-
-```sh
-$ env NGX_MRUBY_AUTO_SSL=1 sh ./build.sh
-```
-
-With the Makefile (3-B) or the nginx build system (3-C), set it for `make` or
-`make build_mruby`.
-
-```sh
-$ env NGX_MRUBY_AUTO_SSL=1 make build_mruby
-```
-
-Any other value, or none, builds without the gem. The variable is read when
-mruby is built. Before you change it in a tree that was built already, remove
-`mruby/build`: mruby builds and initializes the gems of the new list, but
-`mruby/build/host/lib/libmruby.a` keeps the objects of a dropped gem and
-`mruby/build/host/LEGAL` is not written again.
-
-CI builds and tests only the default gem list: no CI job sets
-`NGX_MRUBY_AUTO_SSL`. The eight third-party gems above have no entry in the
-`host` section of the committed `build_config.rb.lock` (see
-[Gem commits](#gem-commits-build_configrblock)), because the default build
-does not use them. The lock has its entries per build: the entries of
-matsumotory/mruby-httprequest, matsumotory/mruby-simplehttp and
-mattn/mruby-http in its `test` section pin only the copies that the `test`
-build clones. For the `host` build, rake clones the current head of the
-eight gems' branches and adds their entries to the `host` section of the
-lock in your tree, where they keep later builds of the same tree at those
-commits. Do not commit these entries with other changes;
-`git checkout build_config.rb.lock` restores the committed file. A build with
-the variable can therefore fail after a change in one of these gems or in
-mruby while the default build passes.
+For the other constants, add the gem that defines them with a `conf.gem` line
+in a `build_config.rb` of your own. The gems that depend on
+pyama86/mruby-polarssl do not build with mruby 4.
 
 ## 4. Installing ngx_mruby
 

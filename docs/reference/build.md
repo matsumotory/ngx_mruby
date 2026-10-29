@@ -69,7 +69,6 @@ modules: in it: `ngx_http_mruby_module`, `ngx_stream_mruby_module` with nginx's 
 | `BUILD_DYNAMIC_MODULE` | `build.sh` | any value builds a dynamic module in `build_dynamic/` |
 | `NUM_THREADS_ENV` | `build.sh` | the number of jobs of `make`; by default half the processors |
 | `OPENSSL_SRC_VERSION` | `build.sh` | downloads that version of OpenSSL and builds nginx with it |
-| `NGX_MRUBY_AUTO_SSL=1` | `build_config.rb` | adds the auto-ssl mrbgem and its dependencies ([Building with the auto-ssl mrbgem](../install/README.md#building-with-the-auto-ssl-mrbgem)) |
 | `NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1` | `build_config.rb` | skips, with a notice, the names of `NGX_MRUBY_CORE_GEMS` that the mruby being built does not have |
 | `NGX_MRUBY_CFLAGS`, `NGX_MRUBY_LDFLAGS`, `NGX_MRUBY_LIBS` | `build_config.rb` | more compiler flags, linker flags and libraries for the mruby build |
 

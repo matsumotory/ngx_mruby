@@ -124,14 +124,6 @@ MRuby::Build.new('host') do |conf|
   conf.gem './mrbgems/ngx_mruby_mrblib'
   conf.gem './mrbgems/rack-based-api'
 
-  # auto-ssl (Nginx::SSL::ACME) is built only with NGX_MRUBY_AUTO_SSL=1 in the
-  # environment of the mruby build (see docs/install/README.md). Its ACME
-  # client speaks ACMEv1, and it brings in pyama86/mruby-acme-client,
-  # pyama86/mruby-polarssl (GPL) and their dependencies mruby-httprequest,
-  # mruby-simplehttp, mruby-http, mruby-base64, mruby-forwardable and
-  # mruby-tempfile, which no other gem of this build needs.
-  conf.gem './mrbgems/auto-ssl' if ENV['NGX_MRUBY_AUTO_SSL'] == '1'
-
   # use memcached
   # conf.gem :github => 'matsumotory/mruby-memcached'
 
@@ -171,8 +163,7 @@ MRuby::Build.new('test') do |conf|
   # rake loads the gems. The suite sends HTTPS requests with curl and
   # `openssl s_client`, never with HttpRequest, so the test client builds
   # SimpleHttp without HTTPS. rake loads the gems of all builds in one process,
-  # so this also applies to a host build that has mruby-simplehttp (only the
-  # opt-in auto-ssl brings it in).
+  # so this also applies to a host build of your own that has mruby-simplehttp.
   ENV['NO_SSL'] ||= '1'
 
   conf.gem github: 'matsumotory/mruby-simplehttp'

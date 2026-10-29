@@ -45,18 +45,11 @@ It provides [RACK](https://rack.github.io/) (Ruby Webserver Interface) compatibl
 
 ## auto-ssl mrbgem
 
-The auto-ssl mrbgem is an optional bundled mrbgem with an
-[Automatic Certificate Management Environment](https://ietf-wg-acme.github.io/acme/draft-ietf-acme-acme.html) (ACME)
-protocol client (`Nginx::SSL::ACME::Client`) and helpers for the dehydrated
-ACME client (`Nginx::SSL::ACME::Dehydrated`).
-
-It is not in the default build. Build ngx_mruby with `NGX_MRUBY_AUTO_SSL=1`
-to get it; see
-[Building with the auto-ssl mrbgem](../install/README.md#building-with-the-auto-ssl-mrbgem).
-`Nginx::SSL::ACME::Client` speaks ACMEv1, which
-[Let’s Encrypt](https://letsencrypt.org/) no longer serves.
-See script files in [mrbgems/auto-ssl/mrblib](https://github.com/matsumotory/ngx_mruby/tree/master/mrbgems/auto-ssl/mrblib)
-for APIs.
+ngx_mruby 3.0.0 does not have the auto-ssl mrbgem (`Nginx::SSL::ACME::Client`
+and `Nginx::SSL::ACME::Dehydrated`). The
+[documentation of 2.x](https://github.com/matsumotory/ngx_mruby/blob/v2.7.2/docs/class_and_method/README.md#auto-ssl-mrbgem) describes it, and
+[The auto-ssl mrbgem and `NGX_MRUBY_AUTO_SSL` are removed](../releases/v3.0.0.md#the-auto-ssl-mrbgem-and-ngx_mruby_auto_ssl-are-removed-PRNUM)
+says why it was removed and what to use instead.
 
 # Add classes and methods reference.
 
