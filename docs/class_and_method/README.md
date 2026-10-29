@@ -48,7 +48,7 @@ It provides [RACK](https://rack.github.io/) (Ruby Webserver Interface) compatibl
 ngx_mruby 3.0.0 does not have the auto-ssl mrbgem (`Nginx::SSL::ACME::Client`
 and `Nginx::SSL::ACME::Dehydrated`). The
 [documentation of 2.x](https://github.com/matsumotory/ngx_mruby/blob/v2.7.2/docs/class_and_method/README.md#auto-ssl-mrbgem) describes it, and
-[The auto-ssl mrbgem and `NGX_MRUBY_AUTO_SSL` are removed](../releases/v3.0.0.md#the-auto-ssl-mrbgem-and-ngx_mruby_auto_ssl-are-removed-PRNUM)
+[The auto-ssl mrbgem and `NGX_MRUBY_AUTO_SSL` are removed](../releases/v3.0.0.md#the-auto-ssl-mrbgem-and-ngx_mruby_auto_ssl-are-removed-640)
 says why it was removed and what to use instead.
 
 # Add classes and methods reference.

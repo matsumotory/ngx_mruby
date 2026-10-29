@@ -68,7 +68,7 @@ this guide do not cover yet.
   [Scripts](#scripts) says how to find the scripts that use them.
 - No build of this release has the auto-ssl mrbgem, and the mruby build no
   longer reads `NGX_MRUBY_AUTO_SSL`
-  ([The auto-ssl mrbgem and `NGX_MRUBY_AUTO_SSL` are removed](../releases/v3.0.0.md#the-auto-ssl-mrbgem-and-ngx_mruby_auto_ssl-are-removed-PRNUM)).
+  ([The auto-ssl mrbgem and `NGX_MRUBY_AUTO_SSL` are removed](../releases/v3.0.0.md#the-auto-ssl-mrbgem-and-ngx_mruby_auto_ssl-are-removed-640)).
   Remove the variable from the environment of your builds; it has no
   effect. A server that gets its certificates with `Nginx::SSL::ACME`
   moves to nginx's
