@@ -21,6 +21,9 @@ AUTO_SSL_DEPS = ENV['NGX_MRUBY_TEST_AUTO_SSL'].to_s
 AUTO_SSL_DOMAIN = 'dehydrated.autossl.test'
 AUTO_SSL_CLIENT_DOMAIN = 'client.autossl.test'
 AUTO_SSL_OTHER_DOMAIN = 'other.autossl.test'
+# The domain whose dehydrated configuration names the second Pebble, which
+# requires external account binding, so that the registration fails.
+AUTO_SSL_EAB_DOMAIN = 'eab.autossl.test'
 AUTO_SSL_SECRET = 'auto-ssl-test-secret'
 AUTO_SSL_PORT = 18171
 AUTO_SSL_TLS_PORT = 18172
@@ -128,27 +131,29 @@ end
 
 # curl, with the status and the exit code after the body:
 # [exit code, HTTP status, body].
-def auto_ssl_curl(args)
+def auto_ssl_curl(args, max_time = 300)
   out_file = File.join(auto_ssl_dir, 'curl.out')
   `rm -f #{out_file}`
-  status = `curl -4 -sS --max-time 300 -o #{out_file} -w '%{http_code}' #{args} 2>#{out_file}.err; echo " $?"`
+  status = `curl -4 -sS --max-time #{max_time} -o #{out_file} -w '%{http_code}' #{args} 2>#{out_file}.err; echo " $?"`
   code, exit_code = status.strip.split(' ')
   body = File.exist?(out_file) ? File.read(out_file) : ''
   [exit_code.to_i, code.to_i, body]
 end
 
-def auto_ssl_tls_request(domain)
+def auto_ssl_tls_request(domain, max_time = 300)
   auto_ssl_curl("--cacert #{File.join(auto_ssl_dir, 'pebble-root.pem')} " \
-                "--resolve #{domain}:#{AUTO_SSL_TLS_PORT}:127.0.0.1 https://#{domain}:#{AUTO_SSL_TLS_PORT}/")
+                "--resolve #{domain}:#{AUTO_SSL_TLS_PORT}:127.0.0.1 https://#{domain}:#{AUTO_SSL_TLS_PORT}/", max_time)
 end
 
-def auto_ssl_dehydrated_conf(dir)
+# The configuration of dehydrated: base is its directory under
+# NGINX_INSTALL_DIR/auto_ssl/, port the ACME API of the Pebble to use.
+def auto_ssl_dehydrated_conf(dir, base, port)
   <<CONF
-CA="https://localhost:14000/dir"
+CA="https://localhost:#{port}/dir"
 CURL_OPTS="--cacert #{File.join(AUTO_SSL_DEPS, 'pebble.minica.pem')}"
 IP_VERSION=4
-BASEDIR="#{dir}/base"
-WELLKNOWN="#{dir}/base/wellknown"
+BASEDIR="#{dir}/#{base}"
+WELLKNOWN="#{dir}/#{base}/wellknown"
 KEY_ALGO=rsa
 KEYSIZE=2048
 ACCOUNT_KEYSIZE=2048
@@ -185,12 +190,13 @@ end
 def auto_ssl_setup
   dir = auto_ssl_dir
   install = ENV['NGINX_INSTALL_DIR']
-  `rm -rf #{dir} && mkdir -p #{dir}/base/wellknown #{dir}/direct #{auto_ssl_peer_prefix}logs`
+  `rm -rf #{dir} && mkdir -p #{dir}/base/wellknown #{dir}/base-eab/wellknown #{dir}/direct #{auto_ssl_peer_prefix}logs`
   `cp #{File.join(AUTO_SSL_DEPS, 'dehydrated')} #{dir}/dehydrated && cp test/auto_ssl/hook.sh #{dir}/hook.sh && chmod +x #{dir}/dehydrated #{dir}/hook.sh`
   return 'dehydrated or the hook was not copied' unless File.exist?("#{dir}/dehydrated") && File.exist?("#{dir}/hook.sh")
-  auto_ssl_write("#{dir}/dehydrated.conf", auto_ssl_dehydrated_conf(dir))
+  auto_ssl_write("#{dir}/dehydrated.conf", auto_ssl_dehydrated_conf(dir, 'base', 14000))
+  auto_ssl_write("#{dir}/dehydrated-eab.conf", auto_ssl_dehydrated_conf(dir, 'base-eab', 14001))
 
-  keys = [AUTO_SSL_DOMAIN, AUTO_SSL_CLIENT_DOMAIN, AUTO_SSL_OTHER_DOMAIN].map { |d| auto_ssl_keys(d) }.flatten
+  keys = [AUTO_SSL_DOMAIN, AUTO_SSL_CLIENT_DOMAIN, AUTO_SSL_OTHER_DOMAIN, AUTO_SSL_EAB_DOMAIN].map { |d| auto_ssl_keys(d) }.flatten
   out = auto_ssl_redis_del(keys)
   return "Redis on 127.0.0.1:6379: #{out}" if out.start_with?('error:')
 
@@ -415,6 +421,27 @@ else
       auto_ssl_assert_logged t, log, "not allowed servername: #{AUTO_SSL_OTHER_DOMAIN}"
       auto_ssl_assert_not_logged t, log, 'run acme command: '
       t.assert_nil auto_ssl_redis_get("#{AUTO_SSL_OTHER_DOMAIN}.crt")
+    end
+
+    # dehydrated 0.5.0 and later remove the account key that they made when
+    # the registration fails, so the next run asks for the terms of service
+    # again. #auto_cert_deploy accepts them once per call, and returns
+    # without a certificate when dehydrated asks again. The limit of curl
+    # is short, because the handshake takes a few seconds when the method
+    # stops, and blocks the test nginx as long as it does not.
+    t.assert('auto-ssl - Dehydrated#auto_cert_deploy accepts the terms of service once when the registration fails', "TLS to #{AUTO_SSL_EAB_DOMAIN} on #{AUTO_SSL_TLS_PORT}") do
+      dir = auto_ssl_dir
+      d = AUTO_SSL_EAB_DOMAIN
+      command = "run acme command: #{auto_ssl_conf_path('dehydrated')} --cron --lock-suffix #{d} --domain #{d} " \
+                "--challenge http-01 --hook #{auto_ssl_conf_path('hook.sh')} --config #{auto_ssl_conf_path('dehydrated-eab.conf')}"
+      offset = auto_ssl_log_size
+      exit_code = auto_ssl_tls_request(d, 60)[0]
+      log = auto_ssl_log_since(offset)
+      t.assert_not_equal 0, exit_code
+      t.assert_equal 2, auto_ssl_count(log, command)
+      t.assert_equal 1, auto_ssl_count(log, 'This CA requires an external account')
+      t.assert_equal '', `find #{dir}/base-eab/accounts -type f 2>/dev/null`.strip
+      t.assert_nil auto_ssl_redis_get("#{d}.crt")
     end
   end
 

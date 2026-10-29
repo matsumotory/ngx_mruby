@@ -24,8 +24,8 @@
 # that 127.0.0.1 is the same for them and for the test nginx. To run test.sh
 # in a container, start that container first and set
 # AUTO_SSL_DOCKER_NETWORK=container:NAME. The containers are named
-# AUTO_SSL_CONTAINER_PREFIX-redis, -challtestsrv and -pebble (default prefix:
-# ngx-mruby-auto-ssl); stop removes those three only.
+# AUTO_SSL_CONTAINER_PREFIX-redis, -challtestsrv, -pebble and -pebble-eab
+# (default prefix: ngx-mruby-auto-ssl); stop removes those four only.
 
 set -eu
 
@@ -75,7 +75,7 @@ wait_for_log() {
 }
 
 stop() {
-    for c in pebble challtestsrv redis; do
+    for c in pebble-eab pebble challtestsrv redis; do
         if docker inspect "$PREFIX-$c" >/dev/null 2>&1; then
             docker rm -f "$PREFIX-$c" >/dev/null
             echo "removed $PREFIX-$c"
@@ -116,6 +116,23 @@ start() {
 }
 JSON
 
+    # The same with external account binding required and no key, so that
+    # every account registration fails.
+    cat > "$dir/pebble-eab-config.json" <<'JSON'
+{
+  "pebble": {
+    "listenAddress": "127.0.0.1:14001",
+    "managementListenAddress": "127.0.0.1:15001",
+    "certificate": "test/certs/localhost/cert.pem",
+    "privateKey": "test/certs/localhost/key.pem",
+    "httpPort": 18174,
+    "tlsPort": 18175,
+    "ocspResponderURL": "",
+    "externalAccountBindingRequired": true
+  }
+}
+JSON
+
     stop
     docker pull -q "$REDIS_IMAGE" >/dev/null
     docker pull -q "$CHALLTESTSRV_IMAGE" >/dev/null
@@ -137,9 +154,15 @@ JSON
         -v "$dir/pebble-config.json:/auto-ssl/pebble-config.json:ro" "$PEBBLE_IMAGE" \
         -config /auto-ssl/pebble-config.json -dnsserver 127.0.0.1:8053 >/dev/null
 
+    docker run -d --name "$PREFIX-pebble-eab" --network "$NETWORK" \
+        -e PEBBLE_VA_NOSLEEP=1 -e PEBBLE_WFE_NONCEREJECT=0 \
+        -v "$dir/pebble-eab-config.json:/auto-ssl/pebble-config.json:ro" "$PEBBLE_IMAGE" \
+        -config /auto-ssl/pebble-config.json -dnsserver 127.0.0.1:8053 >/dev/null
+
     wait_for_log redis 'Ready to accept connections'
     wait_for_log challtestsrv '127.0.0.1:8053'
     wait_for_log pebble 'Listening on: 127.0.0.1:14000'
+    wait_for_log pebble-eab 'Listening on: 127.0.0.1:14001'
     echo "NGX_MRUBY_TEST_AUTO_SSL=$dir"
 }
 
