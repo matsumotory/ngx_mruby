@@ -29,12 +29,24 @@ end
   end
 end
 
-t.assert('redirect', '/redirect_to_raising_filter: nginx closes the connection') do
+# As without the redirect (test/t/cases/sync_exception.rb), an exception in
+# an output header filter answers 500 with the body of the content handler.
+t.assert('redirect', '/redirect_to_raising_filter: 500 with the body of the content handler, and nginx closes the connection') do
   before = redirect_raise_active
   status, raw = tcp_client(18134, "GET /redirect_to_raising_filter HTTP/1.0\r\nHost: localhost\r\n\r\n")
+  line, body = redirect_raise_split(raw)
   t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 500 Internal Server Error', line
+  t.assert_equal 'body', body
   after = redirect_raise_active
   t.assert_true after <= before, "active connections grew from #{before} to #{after}"
+end
+
+t.assert('redirect', 'the code after Nginx.redirect runs when the redirect target raises') do
+  status, raw = tcp_client(18134, "GET /redirect_to_raising_content_then_log HTTP/1.0\r\nHost: localhost\r\n\r\n")
+  t.assert_equal 'EOF', status
+  log = File.read(File.join(ENV['NGINX_INSTALL_DIR'], 'logs', 'error.log'))
+  t.assert_include log, 'redirect_to_raising_content_then_log: the code after Nginx.redirect ran'
 end
 
 t.report
