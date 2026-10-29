@@ -1,0 +1,747 @@
+ngx_mrubyのテストは、mrubyのテストを使います。ngx_mrubyのテストは、まだごく初期の実験的なバージョンです。
+
+プルリクエストを歓迎します。
+## テストを追加する
+##### ``test/conf/nginx.conf``にlocationの設定を追加する
+```nginx
+# Nginx.hello test
+location /mruby {
+    mruby_content_handler build/nginx/html/unified_hello.rb cache;
+}
+```
+##### locationの設定にスクリプトが要るなら、``test/html/``にフックのスクリプトを追加する
+```ruby
+# test/htdocs/unified_hello.rb
+if server_name == "NGINX"
+  Server = Nginx
+elsif server_name == "Apache"
+  Server = Apache
+end
+
+Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
+```
+##### ``test/t/ngx_mruby.rb``にテストのコードを追加する
+```ruby
+assert('ngx_mruby', 'location /mruby') do
+  res = HttpRequest.new.get base + '/mruby'
+  assert_equal 'Hello ngx_mruby/0.0.1 world!', res["body"]
+end
+```
+
+テストのクライアントは、`build_config.rb`の`test`のビルドです。このクライアントは`NO_SSL`でビルドするので、`HttpRequest`と`SimpleHttp`は`https`のリクエストを送れません。HTTPSのリクエストを送るには、既存のテストと同じように、`base_ssl(port)`が返すURLで`curl -k`を実行するか、`openssl s_client -connect localhost:<port>`を実行してください。例は、`test/t/ngx_mruby.rb`にある`` `curl -s -k #{base_ssl(18082) + '/'}` ``です。
+
+## フラグメントと<wbr>ケースの<wbr>ファイルで<wbr>テストを<wbr>追加する
+
+`test/conf/nginx.conf`と`test/t/ngx_mruby.rb`を編集する代わりに、テストを専用のファイルに置くこともできます。
+
+- `test/conf/conf.d/<name>.conf`：`http {}`ブロックの最後でインクルードするフラグメントです。フラグメントは、専用のポートの`server {}`を持ちます。ポートは18110以上です。ただし18116は、`test/t/cases/_second_instance.rb`が起動する2つ目のnginxが使います。`stream {}`のフラグメントは`test/conf/conf.d/stream/`に置きます。そのポートは12353以上で、12357は2つ目のnginxが使います。
+- `test/t/cases/<name>.rb`：`test/t/ngx_mruby.rb`の後に実行するテストのファイルです。`test.sh`は、このファイルの先頭に`test/t/cases/_prelude.rb`を付けて実行します。`_prelude.rb`は、`base`、`base_ssl`、`http_host`、`html_path`、`nginx_t`、`tcp_client`、`second_instance`を定義します。`nginx_t`は、生成した設定で`nginx -t`を実行します。ケースのファイルは`SimpleTest.new`で始まり、`t.report`で終わります。名前が`_`で始まるファイルはヘルパーで、ケースとしては実行しません。`_tcp_client.rb`、`_filter_connection_client.rb`、`_request_body_client.rb`、`_second_instance.rb`は、`_prelude.rb`のヘルパーとケースが`ruby`で実行するCRubyのスクリプトです。`_wait_for_listen.rb`は、test.shがnginxを待つために実行するCRubyのスクリプトです。説明は下の「nginxがlistenするまで待つ」にあります。`_agent_proxy_client.rb`は、`agent_proxy.rb`が自分で実行するCRubyのスクリプトで、CRuby 3.0以降が要ります。このスクリプトは`test/soak/mock_llm.rb`と`test/soak/http_client.rb`を読み込み、リクエストを送る間、LLMのモックのupstreamを12372と12373で動かします。説明は下の「LLMのモックのupstream」にあります。このスクリプトは、`key=value`の行を出力します。
+- フックのスクリプトは、これまでどおり`test/html/`に置きます。フラグメントは、そのスクリプトを`build/nginx/html/<name>.rb`として参照します。
+
+`test.sh`は、フラグメントに`nginx.conf`と同じ置き換えをして、ビルドしたnginxの`conf/conf.d/`にコピーします。そして、ケースのファイルを1つずつ順に実行します。ケースが失敗すると、`test/t/ngx_mruby.rb`のアサーションが失敗したときと同じく、`test.sh`は0以外のステータスで終了します。
+
+nginxを自分で起動するケースは、CIのsanitizerのセルでも動きます。そうしたケースは`nginx_t`か`second_instance`を使います。sanitizerのセルでは、リークしたプロセスがあると、LeakSanitizerがそのプロセスの出力にレポートを書き足し、終了ステータスを変えます。そのため、そうしたケースは、プルリクエストを開く前に、sanitizerのビルドで1回実行してください。手順は下の「AddressSanitizerとUndefinedBehaviorSanitizerでテストを実行する」にあります。`nginx_t`は、`nginx -t`の実行ではリークの検出を切ります。`nginx -t`は読んだ設定を解放せずに戻るので、検出を切らないと、nginx自身のメモリの確保がすべて報告されるからです。`test/t/ngx_mruby.rb`の最後にあるstreamだけのテストも、自分が起動したnginxを止める`nginx -s quit`で、同じように検出を切ります。そのプロセスは、`main()`が最初に作るプールを解放せずに、nginxの`main()`から戻ります。検出を切らないと、そのレポートはテストのランナーの`stderr.log`に入ります。`second_instance`は、2つ目のnginxの`error.log`か`stderr.log`にある、sanitizerの最初の行を、`sanitizer`として返します。ケースは、その行があるときに、2つ目のnginxの`error.log`を出力します。
+
+## 必須の<wbr>ステータスチェック
+
+`.github/workflows/test.yml`が動くのは、`master`、`next`、`v*.x`へのプルリクエスト、これらのブランチと`v*`のタグへのpush、「Run workflow」です。このワークフローの`ci-ok`ジョブは、ルールセットが必須とするステータスチェックです。`ci-ok`は、`needs`に挙げたジョブがすべて成功したときだけ成功し、それ以外では失敗します。`needs`にあるのは、`build`のマトリクスのすべてのジョブと`files`ジョブで、`next`では`soak`ジョブもあります。`perf`ジョブは、まだ`needs`にありません。`perf`ジョブの説明は、「callgrindで性能を比べる」の「CIで実行する」にあります。
+
+### リポジトリに<wbr>置かない<wbr>ファイル
+
+`files`ジョブは、`test/check_added_files.sh BASE HEAD TIP`を実行します。このスクリプトは、ファイルの2つの一覧を調べます。
+
+- 変更が加えるファイル：`HEAD`にあって`BASE`に無いパスです。スクリプトは`git diff --no-renames --diff-filter=A`でこの一覧を作るので、名前を変えたファイルや移動したファイルは、新しいパスに加わったものとして数えます。
+- 変更のコミットが加えるファイル：`TIP`からfirst parentをたどって`BASE`まで戻る各コミットを、そのコミットのfirst parentと比べます。コミットの範囲は`git log --first-parent BASE..TIP`です。あるコミットが加え、後のコミットが消したファイルは、マージの後も履歴に残るので、これも調べます。
+
+どちらの一覧のファイルも、`test/forbidden_paths.txt`のパターンに一致すると、終了ステータス1で失敗します。パターンに一致するのは、次のファイルです。
+
+- `.claude/`の下にある、AIのコーディングエージェントが作るセッションのディレクトリと、そのエージェントのローカルの設定。`.claude/`の下で通るのは、`.claude/settings.json`、`.claude/commands/`、`.claude/skills/`だけです。この3つも、別の`.claude/`の下にあると失敗します。
+- 最上位に作るビルドのディレクトリの`build/`、`build_dynamic/`、`build_soak/`、`build_perf/`と、`mruby/build/`
+- サイトのビルドの`site/dist/`、`site/build-screenshots/`、`site/generated/`、`site/.astro/`
+- `./configure`かMakefileが最上位に書くファイル。`Makefile`、`config`、`config.status`、`autom4te.cache/`、`mrbgems_config`、`.mruby_version`と、`.openssl_*_done`のファイルです。
+- `.vagrant/`
+- GNU Globalかctagsのタグのファイル
+- `.log`のファイル
+- `.env`と`.env.*`
+- 秘密鍵の素材
+- エディタやOSが残したファイル
+- `node_modules/`、`__pycache__/`、`.pyc`のファイル
+- コアダンプ
+
+1つ目の一覧のファイルは、空のとき、つまり0バイトのときにも失敗します。ただし、名前が`.gitkeep`か`.keep`のファイルは除きます。どちらの一覧にも、サブモジュールのエントリー、つまりgitlinkが入ります。gitの設定や`.gitmodules`がサブモジュールを無視すると書いていても、同じです。
+
+スクリプトは、失敗した各パスを出力します。パスには、一致したパターンと、パターンのファイルでのその行か、「empty file」が付きます。また、そのファイルを加えたコミットも付きます。すべてのファイルが通ると、スクリプトは調べたファイルの数を出力し、0で終了します。次のときは、2で終了します。
+
+- パターンのファイルが無いとき
+- パターンが正しくないとき
+- リビジョンがリポジトリに無いとき
+- リポジトリがshallowクローンのとき
+- gitのコマンドが失敗したとき
+
+スクリプトが読むのは、パターンのファイルとgitのリポジトリだけです。
+
+スクリプトは、コミットをfirst parentだけでたどります。その中のマージコミットは、そのコミットのfirst parentと比べます。そのため、2つ目の親が持ち込むファイルは、リポジトリでのパスで調べ、2つ目の親のコミットは1つずつは調べません。こうすると、`./update-mruby-subtree`によるサブツリーのマージの、squashしたコミットを調べずに済みます。そのコミットのパスには、`mruby/`のプレフィックスがありません。一方で、マージしたサイドブランチのあるコミットが加え、同じサイドブランチの後のコミットが消したファイルは、このチェックからは見えません。
+
+プルリクエストでは、ジョブは、プルリクエストのマージコミットを、`fetch-depth: 0`で履歴ごとチェックアウトします。そして、マージコミットを、そのfirst parentと比べます。first parentは、プルリクエストをマージした先のベースブランチです。また、プルリクエストのheadのコミットから、そのベースまでのコミットを調べます。headのコミットは、マージコミットの2つ目の親です。そのため、ブランチがベースより遅れているプルリクエストでも、その間にベースが消したファイルでは失敗しません。ブランチへのpushでは、ジョブは、ブランチの前の先頭の`github.event.before`を、pushしたコミットと比べます。そして、その間のコミットを調べます。タグのpush、ブランチを作るpush、手動の実行には比べるものが無いので、ジョブは成功します。スクリプトかパターンのファイルを変えるプルリクエストは、そのプルリクエストにあるバージョンのスクリプトとパターンで調べます。そのため、その変更はプルリクエストのレビューの対象になります。
+
+`test/forbidden_paths.txt`は、1行に1つずつ、POSIXの拡張正規表現を持ちます。形式は`grep -E`が読むものと同じです。スクリプトは、各パターンが、リポジトリの最上位からのパスに一致するかを見ます。`!`で始まる行は例外です。`.gitignore`と同じく、パスが一致した最後の行が結果を決めます。たとえば`.claude/skills/a/SKILL.md`は、`(^|/)\.claude/`に一致し、その後で例外の`!(^|/)\.claude/skills/`に一致するので、通ります。一方、`.claude/skills/a/.DS_Store`は、さらに下の`(^|/)\.DS_Store$`にも一致するので、失敗します。空の行と、`#`で始まる行はコメントです。パターンは一般的なものにしてください。ほかのプロジェクト、人、ホストの名前を入れないでください。
+
+プルリクエストを開く前にこのチェックを実行するには、変更をコミットし、ベースブランチと比べてください。`next`への変更なら、ベースは`origin/next`です。引数が2つでも、スクリプトは`HEAD`からベースまでのコミットも調べます。スクリプトには履歴のすべてが要るので、shallowでないクローンで実行してください。
+
+```console
+$ git fetch origin master
+$ sh test/check_added_files.sh origin/master HEAD
+check_added_files.sh: 2 added file(s) checked between origin/master and HEAD and in the 2 commit(s) of origin/master..HEAD, none forbidden or empty
+```
+
+ファイルが失敗したら、そのファイルを変更から外してください。`git rm --cached <path>`で外すと、ファイルはディスクに残ります。そのファイルがリポジトリに要るものなら、同じプルリクエストで`test/forbidden_paths.txt`を変え、プルリクエストの説明に理由を書いてください。空のファイルなら、変えるのはスクリプトです。あるコミットが加え、後のコミットが消したファイルは、履歴に残ります。そのファイルは、加えたコミットから取り除くか、コミットをsquashしてください。取り除くには、たとえば`git rebase -i`を使います。
+
+## サプライチェーンの<wbr>チェック
+
+ほかに3つのワークフローが、ビルドのサプライチェーンを調べます。どのワークフローも`ci-ok`の`needs`に入っていないので、ルールセットによってマージを止めるものはありません。ただし、`AGENTS.md`の「Review and merge」は、headのコミットで、CIのすべてのチェックが通ることを求めます。このチェックには、プルリクエストで動いた`zizmor`ジョブも入ります。
+
+### ワークフローの<wbr>静的解析
+
+`.github/workflows/zizmor.yml`は、[zizmor](https://docs.zizmor.sh/)を実行します。動くのは、`.github/workflows/`、`.github/dependabot.yml`、`.github/zizmor.yml`を変えるプルリクエストとpushと、「Run workflow」です。zizmorは、`.github/`の下のファイルを、デフォルトのpersonaで監査します。この監査には、GitHubに問い合わせる監査も入ります。たとえば、既知の脆弱性があるアクションや、アクションのリポジトリに無いコミットを調べる監査です。指摘が1つでもあると、ジョブは失敗します。同梱した`mruby/`のツリーには、mruby自身のワークフローがあり、ngx_mrubyはそれらを実行しません。それらのワークフローは監査しません。zizmorのバージョンは、ワークフローの`version:`で固定しています。Dependabotは、アクションの固定は更新しますが、この入力は更新しません。
+
+指摘は、ワークフローを直すか、理由を添えて受け入れます。受け入れるには、指摘のある行に`# zizmor: ignore[<audit>]`のコメントを付け、その上のコメントに理由を書きます。または、`.github/zizmor.yml`に`ignore`のルールを書き、その隣に理由を書きます。プルリクエストを開く前に同じチェックを実行するには、次のようにします。オンラインの監査には、GitHubのトークンが要ります。
+
+```console
+$ python3 -m venv .claude/tmp/zizmor && .claude/tmp/zizmor/bin/pip install zizmor==1.31.1
+$ GH_TOKEN=$(gh auth token) .claude/tmp/zizmor/bin/zizmor --config .github/zizmor.yml .github
+```
+
+### OpenSSF Scorecard
+
+`.github/workflows/scorecard.yml`は、[OpenSSF Scorecard](https://github.com/ossf/scorecard-action)を実行します。動くのは、`master`へのpush、毎週の定期の実行、「Run workflow」です。Scorecardはデフォルトブランチにしか対応しないので、プルリクエストでは動きません。このワークフローは、結果を、Scorecard APIの<https://api.scorecard.dev/projects/github.com/matsumotory/ngx_mruby>に公開し、code scanningにアップロードします。code scanningの結果は、リポジトリのSecurityのタブにあります。また、このワークフローは、SARIFのファイルを、実行のアーティファクトとして5日間保存します。結果を公開すると、Scorecard APIがワークフロー自身を調べます。そのため、このワークフローにはrunのステップも`defaults`もありません。制限の一覧は、ワークフローの先頭のコメントにあります。
+
+GitHubは、公開リポジトリで60日間活動が無いと、そのリポジトリで定期に動くワークフローを無効にします。そうなると、このワークフローも次の節のワークフローも定期には動かず、何も失敗しません。「Run workflow」で実行するか、ワークフローを有効に戻すと、再び動きます。有効に戻すコマンドは、`gh workflow enable scorecard.yml`と`gh workflow enable gem-heads.yml`です。
+
+### GitHubの<wbr>gemの<wbr>先頭の<wbr>コミット
+
+`.github/workflows/gem-heads.yml`は、`test/gem_heads.sh`を実行します。動くのは、毎週月曜日、「Run workflow」、`build_config.rb`かスクリプトかワークフローを変えるプルリクエストです。スクリプトは、`build_config.rb`の`conf.gem github:`の各行について、次のことを報告します。
+
+- ビルドがクローンするブランチの先頭のコミット。ブランチは、その行の`branch:`です。行に`branch:`が無ければ、mrubyのデフォルトの`master`です。
+- gemのデフォルトブランチが、別のブランチかどうか
+- リポジトリの名前が変わったか、リポジトリがアーカイブされたか
+- 前のレポートから、先頭が動いたかどうか
+
+`conf.gem mgem:`の行の`mruby-secure-random`は調べません。mrubyは、このgemをmgem-listのリポジトリを通して解決します。
+
+前のレポートは、このワークフローを`master`で実行して成功した、定期の実行か手動の実行のうち、いちばん新しい実行が残したアーティファクト`gem-heads`です。アーティファクトは90日間残ります。`master`は`build_config.rb.lock`をコミットしないので、以前のビルドがどの先頭のコミットを取ったかを記録するのは、このレポートだけです。前のレポートが無い実行は、すべてのgemを`new`と報告します。先頭が動いたgemは、警告のアノテーションと、ジョブのサマリーにあるテーブルのエントリーになり、2つのコミットを比べるリンクが付きます。それでも、ジョブは成功します。リポジトリかブランチを読めないgemがあると、ジョブは失敗します。以前の実行を一覧にできないときも、ジョブは失敗します。前のレポートをダウンロードできないときは警告になり、すべてのgemを`new`と報告します。
+
+チェックアウトでスクリプトを実行するには、次のようにします。スクリプトには、トークンを持つ`gh`が要ります。
+
+```console
+$ bash test/gem_heads.sh build_config.rb "" .claude/tmp/gem-heads.tsv
+```
+
+実行が先頭の移動を報告したら、セッションは次のようにします。これはセッションの手順で、オーナーの決定ではありません。
+
+- 比較のリンクの先にあるコミットを読みます。CIを含む`master`のすべてのビルドと、リリースした2.xのタグからのすべてのソースのビルドは、既に新しい先頭を取ります。移動だけではCIは動かないので、`master`で`test`ワークフローを実行し、その結果を読みます。コマンドは`gh workflow run test.yml --ref master`です。
+- 新しい先頭でビルドかテストスイートが壊れるときや、2.xの設定、スクリプト、ビルドから見える挙動が変わるときは、その実行を添えてオーナーに報告します。そして、`master`へのプルリクエストを提案します。プルリクエストの中身は、修正か、gemを最後の正常なコミットに固定する`checksum_hash:`で、リリースノートのエントリーも入れます。エントリーの書き方は`docs/releases/README.md`にあります。オーナーのgemの`matsumotory/mruby-*`には、`AGENTS.md`の「Other repositories」が当てはまります。
+- `next`では`build_config.rb.lock`が各gemを固定するので、移動が`next`に届くのは、固定を動かすプルリクエストを通したときだけです。`perf`ジョブは、ロックのほかの変更と同じく、そのプルリクエストを測ります。
+
+## テストを<wbr>実行する
+##### ``./build/nginx``にnginxをビルドし、``./build/nginx``でテストする
+```
+sh test.sh
+```
+
+`test.sh`は、`--with-debug`、`--with-http_stub_status_module`、`--with-http_ssl_module`、`--with-http_auth_request_module`、`--with-stream`を付けて、nginxをconfigureします。これらのオプションは、`test.sh`の`NGINX_DEFAULT_OPT`と`NGINX_CONFIG_OPT`にあります。そのため、テストの設定は、これらのモジュールのディレクティブを使えます。CIは、新しいチェックアウトで同じ`test.sh`を実行します。手元のビルドのディレクトリは、nginxを最初にconfigureしたときのオプションを保ちます。Makefileがnginxを再びconfigureするのは、`build/nginx-X.Y.Z/objs/Makefile`が無いときだけだからです。`BUILD_DYNAMIC_MODULE`のビルドでは、このファイルは`build_dynamic/...`にあります。これらのオプションを変えたら、そのファイルを消し、`ONLY_BUILD_NGX_MRUBY`を付けずに`test.sh`を1回実行してください。そうしないと、nginxは、テストの設定で「unknown directive」のエラーを出して止まります。`nginx_version`か`BUILD_DYNAMIC_MODULE`を変えた後も、`ONLY_BUILD_NGX_MRUBY`を付けずに`test.sh`を1回実行してください。そのとき`test.sh`は、新しいバージョンの`build/nginx-X.Y.Z`か`build_dynamic/`という、別のビルドのディレクトリを使います。そのディレクトリにそのファイルが無ければ、そこでnginxをconfigureします。
+
+valgrindの下でnginxを動かすには、環境変数`NGINX_RUNNER`を設定します。
+
+```console
+$ NGINX_RUNNER=valgrind sh test.sh
+```
+
+auto-sslのmrbgemは、デフォルトのビルドに入りません。`NGX_MRUBY_AUTO_SSL=1 sh test.sh`は、このgemと、それが依存するgemを入れてビルドします。説明は`docs/install/README.md`の「auto-sslのmrbgemを入れる」にあり、`mruby/build`を消すべきときも、そこに書いてあります。これらのgemを使うテストは無いので、どちらのビルドでもテストスイートは同じです。
+
+### nginxが<wbr>listenするまで<wbr>待つ
+
+`test.sh`は、テストのnginxを`$NGINX_RUNNER build/nginx/sbin/nginx &`でバックグラウンドで起動します。そして、nginxがTCPの接続を受け付けるようになってから、最初のリクエストを送ります。そのために、`test.sh`は`test/t/cases/_wait_for_listen.rb`をCRubyで2回実行します。
+
+- nginxを起動する前に、このスクリプトは、下に挙げるポートで接続を受け付けるプロセスが無くなるまで待ちます。別のプロセスがlistenするポートがあると、起動の後の待ちが、nginxがいなくても成功してしまいます。そのため、`NGINX_HEATTIME`秒の後もまだ接続を受け付けるポートがあると、実行は、そのポートを挙げて失敗します。
+
+  ```text
+  wait_for_listen: before nginx starts, 1 of 33 ports still accept connections after 60.05 seconds (limit 60.00): 18080; another process listens on them
+  ```
+
+- nginxを起動した後に、このスクリプトは、すべてのポートが1回ずつ接続を受け付けるまで、0.1秒ごとに各ポートへ接続します。そして、かかった時間を出力します。時間は、nginxを起動した直後のスクリプトの開始から数えます。
+
+  ```text
+  wait_for_listen: nginx (pid 1234) accepted connections on all 33 ports after 0.21 seconds (limit 60.00)
+  ```
+
+  nginxのプロセスが先に終わったときと、`NGINX_HEATTIME`秒が過ぎたときは、スクリプトは失敗し、まだ接続を拒んだポートを挙げます。
+
+  ```text
+  wait_for_listen: nginx (pid 1234) ended after 0.47 seconds, before it accepted connections on 33 of 33 ports: 18080, 18081, ...; see its output above and logs/error.log
+  wait_for_listen: nginx (pid 1234) did not accept connections within 60.00 seconds (NGINX_HEATTIME) on 33 of 33 ports: 18080, 18081, ...
+  ```
+
+対象のポートは、`test/conf/nginx.conf`と`test/conf/conf.d/*.conf`にあるすべての`listen`ディレクティブのポートで、`http {}`のサーバーのポートです。2026年10月29日の時点で、`next`には54個あります。nginxは、設定をすべて読んだ後に、listenするソケットをすべて1つのループで開きます。このループは`ngx_open_listening_sockets()`です。そのため、1つのポートが開いていれば、ほとんどの場合、ほかのポートも開いています。それでも、1つのポートにかかるのは1回の接続で、1ミリ秒を大きく下回ります。すべてのポートを調べると、最初のソケットと最後のソケットの間に隙間が残りません。また、インストールした設定に届かなかった`conf.d`のフラグメントも見つけられます。`test/conf/nginx.stream.conf`と`test/conf/conf.d/stream/`にある、`stream {}`のポートは対象から外します。streamのサーバーに接続すると、そのサーバーのセッションのコードが動くからです。たとえば、12352のサーバーの`Nginx::Stream::Async.sleep 3000`が動きます。そして、ケースは、そのコードが`error.log`に書くものを読みます。nginxは、streamのソケットを同じループで、`http {}`のソケットの直後に開きます。また、streamのポートに接続する最初のテストは、`test/t/ngx_mruby.rb`の多くのHTTPのテストが通った後に動きます。`Nginx::Server#add_listener`と`Nginx::Stream.add_listener`が加えるポートも、同じループで開きます。これらのポートは調べません。
+
+`NGINX_HEATTIME`は、2つの待ちのそれぞれの上限で、単位は秒です。デフォルトは60で、CIはこの変数を設定しません。`NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh`のように設定したコマンドは、最大でその秒数まで待ちます。nginxがlistenすると、実行はすぐに先へ進みます。10秒で失敗するのは、そのときまでにnginxがlistenしていない場合だけです。その場合、その時点で最初のリクエストを送っていたら、そのリクエストは拒否され、`Errno::ECONNREFUSED`になっていたはずです。
+
+デフォルトの値は、次の測定に基づきます。2026年10月19日に、`master`の03aad7031からビルドしたテストのnginxを、`test.sh`と同じ方法で起動しました。nginxは1.31.6で、静的なモジュールです。環境は、Ubuntu 22.04のコンテナです。コンテナを動かしたaarch64のホストにはCPUが11個あり、ほかのビルドのためにロードアベレージが約15でした。そして、上のスクリプトで、すべてのポートが接続を受け付けるまでの時間を測りました。
+
+- `NGINX_RUNNER=exec`で10回起動すると、各回0.10から0.11秒でした。つまり、すべてのポートが、2巡目の試行で接続を受け付けました。スクリプトは0.1秒ごとに試します。
+- `NGINX_RUNNER=valgrind`で5回起動すると、2.27から2.61秒でした。valgrindは3.18.1です。
+
+CIでは、valgrindの下のセルが、起動から10秒たってもまだ設定を読んでいました。そのセルは、x86_64のランナーでnginx 1.28.3を動かしていました。`test.sh`がSIGTERMを送ったときのvalgrindのレポートでは、nginxは`ngx_conf_parse()`の中にいました。[その実行](https://github.com/matsumotory/ngx_mruby/actions/runs/37181065564)の報告は、[#564](https://github.com/matsumotory/ngx_mruby/pull/564#issuecomment-5977252444)にあります。この時間は、次のときに長くなります。CIのランナーの負荷が高いとき、valgrindの下で動かすとき、sanitizerのビルドを使うとき、読む設定が多いときです。valgrindの下では、ここではvalgrindなしの20倍を超える時間がかかりました。sanitizerのビルドの時間は、ここでは測っていません。60秒は、そのCIの実行で見た10秒の6倍で、上のvalgrindの下でいちばん遅かった起動の約23倍です。
+
+上限があると、次の競合が起きることがあります。
+
+- 起動が上限より遅いと、nginxがいずれ起動するはずでも、実行は失敗します。遅い環境では、`NGINX_HEATTIME`を上げてください。待ちはnginxがlistenした時点で終わるので、上限を上げて時間が余計にかかるのは、nginxが終了せずにハングしたときだけです。nginxが終了したときは、スクリプトがすぐに報告します。
+- listenしているソケットは、まだ動いているハンドラではありません。nginxがlistenすると、カーネルはすぐに接続を受け付けます。テストのnginxは`master_process off`の1つのプロセスで、どの接続を読むよりも前に、`init_worker`のフックを実行します。その間、最初のリクエストは、nginxが読むまでソケットのbacklogで待ちます。テストのクライアントのmruby-simplehttpはタイムアウトなしで読むので、クライアントも待ちます。
+- nginxは後で、スクリプトが待つ間に試した接続を1つずつ読みます。そして、接続がリクエストの無いまま閉じられていると分かると、その接続を閉じます。これらの接続ではハンドラは動きません。nginxは、これらの接続について、`error.log`に`debug`の行だけを書きます。
+
+## AddressSanitizerと<wbr>UndefinedBehaviorSanitizerで<wbr>テストを<wbr>実行する
+
+CIは、マトリクスのセルの1つを`-fsanitize=address,undefined`でビルドします。同じビルドを手元で実行するには、Linuxでgccかclangを使い、次のようにします。
+
+```console
+$ sudo sysctl -w vm.mmap_rnd_bits=28     # ASan and the kernel's high-entropy ASLR do not mix
+$ export NGINX_EXTRA_CC_OPT="-fsanitize=address,undefined -fno-omit-frame-pointer"
+$ export NGINX_EXTRA_LD_OPT="-fsanitize=address,undefined"
+$ export NGX_MRUBY_CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+$ export NGX_MRUBY_LDFLAGS="-fsanitize=address,undefined"
+$ export ASAN_OPTIONS="detect_leaks=1"
+$ export LSAN_OPTIONS="suppressions=$PWD/test/lsan.supp"
+$ export UBSAN_OPTIONS="print_stacktrace=1:suppressions=$PWD/test/ubsan.supp"
+$ NGINX_RUNNER=exec sh test.sh
+$ grep -HnE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name '*.log')
+```
+
+最後の行は、CIのそのセルにあるステップ「Check for sanitizer reports」が読むファイルを、同じパターンで読みます。このステップは、パターンに一致する行があると失敗します。レポートは、それを書いたプロセスのstderrに出ます。そのstderrは、次のファイルのどれかです。
+
+| ファイル | 誰のstderrか |
+|---|---|
+| `build/nginx/logs/error.log` | テストのnginxが、ログを開いた後に出すstderr。終了時のリークのレポートも含む |
+| `build/nginx/logs/stderr.log` | テストのクライアントのstderr。クライアントは`test/t/ngx_mruby.rb`とケースのファイルで、`test.sh`がそのstderrをこのファイルへリダイレクトする。そのため、テストがstderrをリダイレクトせずに起動するプロセスのstderrも、ここに入る。そのプロセスは、`nginx -t`、streamだけのテストの`nginx -s quit`、ログを開く前のnginxである |
+| ほかの`build/nginx/logs/*.log` | テストが専用のログを持たせて起動するnginxのプロセスが、そのログを開いた後に出すstderr。streamだけのテストの`stream_only.error.log`がこれにあたる。このテストは、nginxを`daemon on`で実行する |
+| `build/nginx/second_instance/<mode>/*.log` | `test/t/cases/_second_instance.rb`が起動する2つ目のnginx。ファイルは`error.log`、`stderr.log`、`stdout.log` |
+
+`test.sh`がケースのファイルより前で止まったときは、`build/nginx/second_instance/`がありません。そのときステップは、ほかのファイルを読み、このディレクトリが無いことを出力します。このステップは、`*.log.bak`のファイルを読みません。`test.sh`は、前の実行のログを、同じディレクトリのこれらのファイルに残します。テストのnginxが`error.log`を開く前に出したレポートは、次の段落にあるように、端末に出ます。CIでは、`script`のステップの出力に出ます。
+
+`NGINX_EXTRA_CC_OPT`と`NGINX_EXTRA_LD_OPT`は、nginxの`--with-cc-opt`と`--with-ld-opt`の後ろに足されます。`NGX_MRUBY_CFLAGS`と`NGX_MRUBY_LDFLAGS`は、mrubyのビルドに渡ります。sanitizerとvalgrindを一緒に使わないでください。nginxは、設定を読み込んだ後に、stderrを`error.log`へ送ります。そのため、nginxが設定をパースする間に動くコードのレポートは、`error.log`でなく端末に出ます。そのようなコードは、ディレクティブのハンドラ、スクリプトのコンパイル、`mruby_init_code`です。両方を読んでください。`test/ubsan.supp`には、nginx自身から出るレポートが、それぞれの理由とともに挙げてあります。`test/lsan.supp`には、LeakSanitizerについて同じものが挙げてあります。nginxは、`cycle->connections`と、`ngx_event_process_init`で確保する2つのイベントの配列を解放しません。終了時にLeakSanitizerがこれらをレポートするかどうかは、これらの外にまだこれらを指すものがあるかどうかで決まります。そのため、抑制が無いと、nginx自身が確保したメモリのために実行が失敗することがあります。CIが使うgcc 11のランタイムでは、抑制したブロックはほかのものを隠しません。LLVMのランタイムとgcc 12以降は、抑制したブロックをルートとしても扱います。そのため、これらのランタイムでは、この2つの配列からしかたどれないブロックもレポートされません。
+
+## nginx自身の<wbr>テストスイート<wbr>nginx-tests
+
+`sh test/nginx-tests/run.sh`は、nginx自身のテストスイートである[nginx-tests](https://github.com/nginx/nginx-tests)を`prove`で実行し、結果を比べます。実行の対象は、`nginx_version`が指定するバージョンのnginxを、次の2とおりにビルドしたものです。
+
+- ngx_mrubyを入れたnginx：`test.sh`が`TEST_SH_SKIP_TESTS=1`でビルドします。静的なモジュールで、`test.sh`のconfigureのオプションと`-DMRB_GC_STRESS`を使い、`build/nginx`にインストールします。`test.sh`のオプションは[テストを実行する](#テストを実行する)にあります。`TEST_SH_SKIP_TESTS=1`を付けると、`test.sh`はインストールの後で止まります。テストの設定を書かず、nginxをkillせず、nginxを起動もしません。`run.sh`は`BUILD_DYNAMIC_MODULE`をunsetします。この変数があると、`test.sh`は代わりに`build_dynamic/`へビルドするからです。
+- ngx_mrubyを入れないnginx：同じnginxのソースを`build_nginxtests/plain/src`にコピーし、`test.sh`がnginxに渡したオプションでconfigureします。そのオプションは、生成した`Makefile`の`NGX_CONFIG_OPT`です。ただし、`Makefile`が足す2つの`--add-module`のオプションは除きます。2つは、ngx_mrubyのオプションとngx_devel_kitのオプションです。サマリーにある`nginx -V`の`configure arguments`の行が、両方のビルドのオプションを示します。
+
+テストファイルは、それぞれ自分のnginxの設定を書きます。mrubyのディレクティブを持つ設定はありません。ngx_mrubyを入れたビルドでは、nginxを起動するたびとリロードするたびに、ngx_mrubyの`mrb_state`ができます。nginxは、設定を読む間に、`http {}`ブロックと`stream {}`ブロックのそれぞれにこの`mrb_state`を作ります。`mrb_state`を作るのは`mrb_open`で、`MRB_GC_STRESS`の下で動きます。`mrb_open`は、mrubyのコアと同梱のgemに含まれるRubyのコードを実行します。ngx_mrubyは、post-read、server rewrite、rewrite、access、logのフェーズにハンドラを加えます。各HTTPリクエストは、そのうちリクエストが到達したフェーズのハンドラを通ります。`return`や`rewrite`は、後のフェーズより前にリクエストを終えることがあります。リクエストは、contentのフェーズのngx_mrubyのハンドラも通ります。ただし、locationが自分のcontentハンドラを持つときは通りません。`proxy_pass`などがそのようなハンドラで、nginxは、そのフェーズのハンドラの代わりにそれを実行します。コードを設定していないとき、これらのハンドラはdeclineします。各streamのセッションは、ngx_mrubyのaccessのフェーズのハンドラを通ります。ngx_mrubyのヘッダフィルタとボディフィルタは、ディレクティブが求めたときにだけ加わります。また、設定に書くハンドラ、フィルタ、initのコードは、1つも動きません。そのため、ngx_mrubyを入れると失敗し、入れないと通るテストファイルは、何も設定していなくてもこのモジュールがnginxの挙動を変えることを示します。
+
+### 固定した<wbr>nginx-testsの<wbr>コミット
+
+nginx-testsには、リリースもタグもありません。`run.sh`は、`NGINX_TESTS_COMMIT`のコミット`ec44bc80c4bf`をfetchします。これは2026年10月19日の`master`の先頭のコミットで、コミットした日は2026年10月16日です。こうすると、nginx-testsにテストが加わっても、結果が変わるのは、このリポジトリを変えたときだけになります。固定したコミットは、そのためだけのプルリクエストで動かします。そのプルリクエストは、動かす前と後のサマリーを引用します。`nginx_version`を変えたときは、固定したコミットを動かす理由になります。nginx-testsの新しいテストファイルは、新しいバージョンのnginxの機能をテストし、古いバージョンでは自分をスキップするからです。
+
+### nginx-testsを<wbr>実行する
+
+`run.sh`には、Linuxと、root以外のユーザーと、`test.sh`が必要とするものが要ります。root以外のユーザーが要る理由は2つあります。テストファイルは、そのユーザーだけが読めるディレクトリに設定を書きます。また、rootが起動したnginxは、ワーカーを`nobody`で動かします。テストファイルが必要とするperlのモジュールやプログラムが無いとき、そのテストファイルは失敗でなくスキップになります。Ubuntu 22.04では、ジョブは次のものをインストールします。
+
+```console
+$ sudo apt-get install rake bison git gperf zlib1g-dev libpcre3-dev libssl-dev ruby \
+    libio-socket-ssl-perl libnet-ssleay-perl libfcgi-perl libscgi-perl \
+    libcache-memcached-perl libcache-memcached-fast-perl libprotocol-websocket-perl memcached
+$ sh test/nginx-tests/self-test.sh
+$ sh test/nginx-tests/run.sh
+```
+
+macOSでは、ツリーのコピーを同じパスにマウントしたLinuxのコンテナで実行します。
+
+```sh
+D=$HOME/ngx_mruby-nginx-tests   # any directory outside the checkout
+rm -rf "$D" && mkdir -p "$D" && git archive HEAD | tar -x -C "$D"
+docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential perl rake ruby bison git gperf wget ca-certificates openssl zlib1g-dev libpcre3-dev libssl-dev libio-socket-ssl-perl libnet-ssleay-perl libfcgi-perl libscgi-perl libcache-memcached-perl libcache-memcached-fast-perl libprotocol-websocket-perl memcached >/dev/null && useradd -m nt && chown -R nt "$PWD" && su nt -c "NGX_MRUBY_COMMIT='"$(git rev-parse HEAD)"' sh test/nginx-tests/run.sh"'
+```
+
+テストファイルは、8000から8999のポートのうち自分がロックしたポートで、nginxを起動します。そのため、テストファイルは並列に動きます。並列の数は`NGINX_TESTS_JOBS`で決まり、デフォルトはCPUの数です。テストファイルは`test.sh`のポートを使いません。しかし、同じマシンで動く`test.sh`は、テストファイルのnginxも含めて、すべてのnginxをkillします。一度に2つのうち1つだけを実行するか、`run.sh`をコンテナで実行してください。
+
+環境変数は次のとおりです。`NGINX_TESTS_OUT`は出力のディレクトリで、デフォルトは`build_nginxtests`です。`NGINX_TESTS_SRC`は、固定したコミットのnginx-testsのチェックアウトです。指定すると、`run.sh`はfetchの代わりにそれを使います。たとえば、github.comに接続できないときに使います。`NGINX_TESTS_JOBS`は並列の数です。`NGINX_TESTS_FILES`は、すべてのテストファイルの代わりに実行するテストファイルで、たとえば`NGINX_TESTS_FILES='access.t proxy.t'`と指定します。`NGX_MRUBY_COMMIT`は、サマリーに書くngx_mrubyのコミットです。デフォルトは、GitHub Actionsでは`GITHUB_SHA`で、それ以外ではチェックアウトの`HEAD`です。`run.sh`に足した引数は`test.sh`に渡り、そこから`./configure`に渡ります。nginx-tests自身の変数も使えます。失敗したファイルのエラーログを読むには、そのファイルだけを、`TEST_NGINX_LEAVE=1`か`TEST_NGINX_CATLOG=1`を付けて実行し直してください。`TEST_NGINX_LEAVE=1`は一時ディレクトリを残し、`TEST_NGINX_CATLOG=1`はログを出力します。
+
+`run.sh`は、次のファイルを`build_nginxtests/`に出力します。
+
+| ファイル | 内容 |
+|---|---|
+| `summary.md` | 両方のビルドの件数、ビルドごとの失敗したファイル、スキップの理由、両方のビルドのconfigureの引数 |
+| `only-mruby.txt`, `both.txt`, `only-plain.txt` | 失敗したテストファイルの一覧。順に、ngx_mrubyを入れたビルドでだけ失敗したもの、両方のビルドで失敗したもの、ngx_mrubyを入れないビルドでだけ失敗したもの |
+| `mruby/`, `plain/` | ビルドごとの`prove.log`、`results.tsv`、`nginx-V.txt`。`prove.log`は`prove`の出力。`results.tsv`はテストファイルごとに1つのレコードを持ち、レコードはファイル、`passed`か`failed`か`skipped`、スキップの理由か失敗したサブテストから成る |
+
+`test/nginx-tests/results.pl`は`prove.log`を読みます。proveの「Test Summary Report」にあるファイルのエントリーに、失敗したサブテスト、0以外のwait status、パースのエラーのどれかがあると、そのファイルは失敗です。パースのエラーは、planが無いか、planが間違っている場合です。エントリーにあるのが、通ったTODOのサブテストだけなら、そのファイルは通ったことになります。ログがproveの完全な実行でないとき、`results.pl`は止まります。`test/nginx-tests/compare.pl`は、一覧とサマリーを書きます。`sh test/nginx-tests/self-test.sh`は、この2つのスクリプトを、`test/nginx-tests/self-test/`にある小さなテストファイルの`prove`の出力で確かめます。これらのテストファイルは、わざと通るか、失敗するか、スキップするか、planを壊します。その動きは2つのビルドで違い、組み合わせは`self-test.sh`の先頭のテーブルにあります。
+
+両方のビルドをテストし、その結果を読めたとき、`run.sh`は0で終わります。テストファイルが失敗したときも同じです。ビルド、fetch、`prove`自身のどれかが失敗したときと、ログが完全な実行でないときは、`run.sh`は0以外のステータスで終わります。
+
+### CIで<wbr>実行する<wbr>nginx-tests
+
+`.github/workflows/nginx-tests.yml`は、`ubuntu-22.04`でセルフテストと`run.sh`を実行します。実行するのは、次の3つの場合です。1つ目は、`next`へのプルリクエストのうち、nginxのバイナリの入力、`test.sh`、`test/nginx-tests/`、ワークフローのどれかを変えるものです。nginxのバイナリの入力は、性能の比較の「[CIで実行する](#ciで実行する)」が挙げる入力です。2つ目は、`next`へのすべてのpushです。pushごとに別の実行があり、前の実行が終わる前に次のpushが来ても同じです。3つ目は、「Run workflow」です。ジョブのサマリーは`summary.md`です。ngx_mrubyを入れたビルドでだけ失敗するファイルは、それぞれwarningのアノテーションになります。アーティファクトの`nginx-tests`には、上の出力のうち、nginxのソースのコピーを除いたものが入ります。
+
+このジョブは結果を記録します。ゲートにはなりません。ジョブが失敗するのは、セルフテスト、ビルド、fetch、`prove`自身のどれかが失敗したときと、`summary.md`が無いときだけです。テストファイルの結果では、ジョブは失敗しません。また、`ci-ok`はこのジョブを必要としません。詳しくは[必須のステータスチェック](#必須のステータスチェック)にあります。`docs/proposals/v3-plan.md`のPillar Eに従い、結果が安定したらこのジョブを必須にします。
+
+### nginx-testsの<wbr>結果
+
+2026年10月19日に、2つのマシンで測りました。どちらのマシンでも、nginx-testsは`ec44bc80c4bf`で、nginx 1.31.6、gcc 11.4.0、OpenSSL 3.0.2、perl 5.34を使いました。
+
+- CI：`ubuntu-22.04`で動いた[run 39241352263](https://github.com/matsumotory/ngx_mruby/actions/runs/39241352263)の`nginx-tests`ジョブです。x86_64で、テストファイルを4つずつ並列に実行しました。対象は、#602の`093e47d`を`7b5a0c4`の`next`へマージしたマージコミット`401cf56`です。
+- macOSの上の`ubuntu:22.04`のDockerのコンテナ：aarch64で、テストファイルを11ずつ並列に実行しました。コマンドは[nginx-testsを実行する](#nginx-testsを実行する)のもので、対象は`093e47d`です。
+
+| マシン | ビルド | テストファイル | 通った | 失敗した | スキップした | 実行したサブテスト |
+|---|---|---|---|---|---|---|
+| CI、x86_64 | ngx_mrubyを入れたnginx | 511 | 302 | 0 | 209 | 3994 |
+| CI、x86_64 | ngx_mrubyを入れないnginx | 511 | 302 | 0 | 209 | 3994 |
+| コンテナ、aarch64 | ngx_mrubyを入れたnginx | 511 | 301 | 0 | 210 | 3991 |
+| コンテナ、aarch64 | ngx_mrubyを入れないnginx | 511 | 301 | 0 | 210 | 3991 |
+
+- ngx_mrubyを入れると失敗し、入れないと通るテストファイルは、ngx_mrubyがnginxに入っているために失敗するファイルです。どちらのマシンでも、そのようなファイルはありませんでした。
+- ngx_mrubyを入れないnginxでも失敗するテストファイルも、どちらのマシンでもありませんでした。
+
+2つのマシンの結果は、`ssl_ktls.t`の1ファイルだけが違います。このファイルは、ランナーでは通り、コンテナではスキップになります。コンテナのカーネルにはkTLSが無く、スキップの理由は「no Linux KTLS」です。どちらのマシンでも、両方のビルドで同じファイルが、同じ理由でスキップになりました。ランナーでスキップになった209ファイルのうち189ファイルは、`test.sh`がビルドしないモジュールがnginxに無いために、スキップになりました。内訳は、`http_v2`が59ファイル、`stream_ssl`が25、`http_v3`が23、`mail`が16、`realip`が11、`sub`が9で、ほかの18のモジュールがそれぞれ1から6ファイルです。残りの20ファイルは、マシンかnginx-testsの条件で、スキップになりました。条件は次のとおりです。
+
+- インストールしていないプログラムかperlのモジュール。`uwsgi`が4ファイルで、ほかに`GD`、`Win32API::File`、新しいバージョンの`IO::Socket::SSL`があります
+- OpenSSL 3.5
+- root。3ファイルです
+- ワイルドカードのアドレス。2ファイルです
+- Windows。1ファイルです
+- nginx-testsが`TEST_NGINX_UNSAFE`のときだけ実行するか、まったく実行しない6ファイル。孤立したプロセスグループ、長いテスト、OpenSSLのエンジンかプロバイダの鍵を使うものです
+
+各実行のサマリーは、すべての理由をその件数とともに挙げます。ランナーでは、ジョブは約8分かかりました。2つのビルドに2分37秒、各ビルドの`prove`に2分37秒です。
+
+この結果が確かめるのは、ngx_mrubyが入っていて、ngx_mrubyに何も設定していないnginxです。次の2種類の実行を加えると、もっと広い範囲を確かめられます。どちらもまだ用意していません。1つは、スキップしたファイルが必要とするモジュールを入れたビルドです。モジュールは、`--with-http_v2_module`、`--with-http_v3_module`、`--with-stream_ssl_module`、`--with-mail`と、上に挙げたほかのモジュールです。もう1つは、ngx_mrubyのハンドラかフィルタが、スイートのリクエストに対してRubyのコードを動かすテストの実行です。`docs/proposals/v3-plan.md`のPillar Eには、その手段として`TEST_NGINX_GLOBALS_HTTP`が書いてあります。`docs/HANDOFF.md`のキューには、両方が載っています。
+
+## LLMの<wbr>モックの<wbr>upstream
+
+`test/soak/mock_llm.rb`は、HTTP/1.1のサーバです。`POST /v1/messages`にはAnthropic Messages APIと同じように答え、`POST /v1/responses`にはOpenAI Responses APIと同じように答えます。動かすにはCRuby 3.0以降が要ります。エージェントプロキシは、LLMのAPIの前に置いた、ngx_mrubyを入れたnginxです。このモックは、次の3つの場所で、エージェントプロキシのupstreamの代わりをします。
+
+- メモリのソークテストの`agent_*`のシナリオと、性能の比較の`proxy_*`、`responses_stream_plain_*`、`auth`、`route_json_*`のシナリオ：ソークテストと性能の比較は、シナリオごとに、モックを別のプロセスとして、ポートのベース+2で起動します。ポートは12362と12372です。オプションはシナリオのもので、`test/soak/scenarios.rb`の`mock`にあります。
+- ケースの`test/t/cases/agent_proxy.rb`：そのヘルパーの`test/t/cases/_agent_proxy_client.rb`は、リクエストを送る間、モックを自分のプロセスの中で12372と12373で動かします。ケースは、現在のビルドで動くエージェントプロキシのレシピを、`test/conf/conf.d/60-agent-proxy.conf`のサーバで確かめます。このサーバのポートは18132です。レシピは5つあります。1つ目はserver rewriteハンドラで、既知でないクライアントのキーを401で拒否し、serverのレベルの`error_page`がJSONのボディを付けます。そのリクエストはupstreamに届きません。2つ目はaccessハンドラで、JSONのボディの`model`で2つのupstreamブロックの1つを選び、クライアントの認証情報を差し替えます。3つ目は、クライアントのキーごとの`limit_conn`です。拒否は、`limit_conn_status 460`と`error_page`を通して、`retry-after`の付いたJSONの429になります。クライアントがストリームを閉じた後は、スロットがまた空きます。4つ目は、upstreamの529を変えずにクライアントへ渡すことです。5つ目は、`$upstream_status`を読むlogハンドラです。同じレシピは、`location = /v1/responses`でも、Responses APIのリクエストで動きます。そこでは、プロキシ自身が返す401と429のボディはResponses APIのエラーの形式を使い、upstreamのエラーは503と429です。ケースは、50個のデルタのストリームが1バイトも違わずに届くことも確かめます。確かめるストリームは、Messages APIのストリーム1つと、ストリームを終えるイベントごとのResponses APIのストリーム1つずつです。
+
+```console
+$ ruby test/soak/mock_llm.rb --port 12362 --events 50 --hold-after 10
+```
+
+| オプション | デフォルト | 意味 |
+|---|---|---|
+| `--port PORT` | 必須 | `127.0.0.1:PORT`で待ち受ける。ポートを増やすには、このオプションを繰り返す。どのポートも同じように答える |
+| `--events N` | 50 | ストリームが持つ、テキストのデルタのイベントの数。Messages APIでは`content_block_delta`、Responses APIでは`response.output_text.delta` |
+| `--delta-text TEXT` | `hello ` | テキストのデルタの各イベントが運ぶテキスト |
+| `--hold-after K` | 無効 | ストリームの最初のK個のイベントを書き、その後は相手が接続を閉じるまで何も書かない |
+| `--reset-after K` | 無効 | ストリームの最初のK個のイベントを書き、その後に接続をRSTでリセットする |
+| `--status CODE` | 無効 | すべてのリクエストに、イベントより前に、このステータスで答える。ボディには、そのAPIの形式のエラーを入れる。`/v1/messages`ではAnthropicのエラーで、529には`overloaded_error`、503には`api_error`。`/v1/responses`ではOpenAIのエラーで、429には`rate_limit_error`、503には`service_unavailable_error`、ほかの4xxには`invalid_request_error`、ほかの5xxには`server_error` |
+| `--delay-ms MS` | 0 | 2つのイベントの間にMSミリ秒待つ |
+| `--one-write` | 無効 | ステータス行とヘッダと、ストリームの全体を、1回のwriteで書く |
+| `--terminal NAME` | `completed` | Responses APIのストリームを終えるイベント。`completed`、`incomplete`、`failed`のどれか |
+
+リクエストは、ヘッダで、そのリクエストだけのオプションを上書きできます。ヘッダは、`x-mock-events`、`x-mock-hold-after`、`x-mock-reset-after`、`x-mock-status`、`x-mock-delay-ms`と、`x-mock-terminal`です。前の5つの値は0以上の数で、`x-mock-terminal`の値は`completed`、`incomplete`、`failed`のどれかです。`x-mock-hold-after`、`x-mock-reset-after`、`x-mock-status`は`off`も受け付けます。`off`は、それぞれ`--hold-after`、`--reset-after`、`--status`の動作を無効にします。`x-mock-events`と`x-mock-delay-ms`は`off`を受け付けません。それ以外の値には、そのヘッダの名前を書いた400で答えます。エラーは`invalid_request_error`です。nginxは、設定がヘッダを落とすとき以外は、これらのヘッダを転送します。`ruby test/soak/mock_llm_test.rb`は、これらの決まりと下に書く答えを、自分のプロセスの中のモックで確かめます。nginxは使わず、約1秒で終わります。`test/soak/run.sh`は、ソークの前にこれを実行します。
+
+`POST /v1/messages`への答えは次のとおりです。
+
+- `"stream": true`を持つJSONのボディ：200で、`text/event-stream`とchunkedで答えます。イベントは、`usage`を持つ`message_start`、`content_block_start`、テキストを持つN個の`content_block_delta`、`content_block_stop`、`usage`を持つ`message_delta`、`message_stop`で、合わせてN + 5個です。
+- それ以外のJSONのオブジェクト：メッセージをJSONにして、`Content-Length`を付けた200で答えます。
+
+`POST /v1/responses`には、[openai/openai-openapi](https://github.com/openai/openai-openapi)の`openapi.yaml`にあるイベントの型とフィールドで答えます。読んだのはコミット`33248a6`のファイルで、日付は2026年10月19日です。
+
+- `"stream": true`を持つJSONのボディ：200で、`text/event-stream`とchunkedで答えます。各イベントには、型を書いた`event:`の行と、`data:`の行があります。`data:`の行のJSONは、同じ`type`と、0から数える`sequence_number`を持ちます。イベントは、まず`response.created`と`response.in_progress`です。この2つは、ステータスが`in_progress`で`usage`がnullの`Response`オブジェクトを持ちます。続いて、`response.output_item.added`、`response.content_part.added`、テキストを持つN個の`response.output_text.delta`が来ます。ストリームを終えるイベントが`completed`か`incomplete`なら、その後に`response.output_text.done`、`response.content_part.done`、`response.output_item.done`と、`response.completed`か`response.incomplete`が続きます。この最後のイベントは、出力のテキストと`usage`を含む`Response`オブジェクトの全体を持ちます。`usage`のフィールドは、`input_tokens`、`input_tokens_details`、`output_tokens`、`output_tokens_details`、`total_tokens`です。イベントは合わせてN + 8個です。`failed`なら、デルタの後に`response.failed`が続きます。このイベントは、ステータスが`failed`で、`error`を持ち、`usage`がnullです。イベントは合わせてN + 5個です。
+- それ以外のJSONのオブジェクト：`Response`オブジェクトをJSONにして200で答えます。ステータスは`completed`で、`Content-Length`を付けます。
+
+どちらのパスでも、`--one-write`が無ければ、各イベントは1回のwriteで書く1つのチャンクです。ステータス行とヘッダは最初のイベントと一緒に書き、最後のチャンクは最後のイベントと一緒に書きます。JSONのオブジェクトでないボディには400で答え、レスポンスのボディには、そのAPIのエラーの形式で`invalid_request_error`を入れます。ほかのパスには、Anthropicの形式の404で答えます。`GET /_mock/stats`には、カウンタをJSONにして答えます。カウンタは下にあります。
+
+答えは、リクエストとオプションだけで決まります。モデルは、リクエストの`model`です。`input_tokens`は、リクエストのボディのバイト数を4で割り、切り上げた数です。`output_tokens`はNで、ストリームを使わない答えでは6です。`Response`のidと時刻は固定です。`--delay-ms`のほかにsleepはありません。ドライバとケースは、同じコードで期待するレスポンスを計算し、1バイトずつ比べます。そのコードは`MockLLM.stream_body`と`MockLLM.answer_body`です。レスポンスには、答えたポートを示す`x-mock-port`も付きます。リクエストに認証情報のヘッダがあったときは、届いた値を`x-mock-authorization`と`x-mock-x-api-key`に入れて返します。そのため、テストは、プロキシがどの認証情報を送ったかを確かめられます。
+
+モックは、アイドルのkeep-aliveの接続を自分から閉じません。モックが接続を閉じるのは、リクエストに`Connection: close`があるとき、相手が接続を閉じたとき、`--hold-after`と`--reset-after`のときだけです。`Connection: close`を持つリクエストには、答えにも`Connection: close`を付けます。`GET /_mock/stats`のカウンタは次のとおりです。
+
+| カウンタ | 意味 |
+|---|---|
+| `connections_open` | いま開いている接続の数。尋ねている接続は数えない |
+| `connections` | 受け付けた接続の数 |
+| `requests` | 読んだ`POST /v1/messages`と`POST /v1/responses`のリクエストの数 |
+| `completed` | 最後まで書いた答えの数。エラーのステータスの答えも含む |
+| `held` | いま`--hold-after`で待っているストリームの数 |
+| `held_closed` | `--hold-after`で待っている間に、相手が閉じたストリームの数 |
+| `reset` | `--reset-after`でリセットした接続の数 |
+| `write_failed` | 相手が接続を閉じていたために、途中で切れた答えの数 |
+
+## メモリの<wbr>ソークテスト
+
+nginxのワーカーは、何日もリクエストを処理し続けます。終わったリクエストがワーカーに何かを残すと、それはワーカーが動いている間ずっと積み上がります。残るものには、GCのルート、生きているmrubyのオブジェクト、タイマー、ファイルディスクリプタ、接続、ヒープのメモリがあります。ソークテストは、シナリオごとに1つのlocationへ多数のリクエストを送り、これらのどれも増えないことを確かめます。CIは、このテストを`soak`ジョブで実行します。
+
+### 何を<wbr>測るか
+
+`test/soak/soak.rb`は、シナリオごとにnginxを起動します。設定は`master_process on`で、ワーカーは1つです。`soak.rb`は、まず1つのレスポンスを確かめ、`SOAK_WARMUP`個のリクエストを送ります。続いて、`SOAK_N`個のリクエストを、`SOAK_N / 3`個ずつ3つのウィンドウに分けて送ります。サンプルは、ウォームアップの後と各ウィンドウの後に1回ずつ、合わせて4回取ります。各サンプルの前に、`soak.rb`は自分の接続をすべて閉じます。そして、`stub_status`が示す開いた接続が、サンプルを求める接続だけになるまで待ちます。待つのは最大5秒です。サンプルは次のカラムからなります。
+
+| カラム | 取得元 | 合格の条件 |
+|---|---|---|
+| `gc_live` | `Nginx::Debug.gc`の後に読んだ`Nginx::Debug.stats`。このメソッドの説明は下の「ソークのビルドと`Nginx::Debug`」にある | すべてのサンプルで同じ |
+| `gc_root` | `gc_live`と同じ | すべてのサンプルで同じ |
+| `fibers` | 同じHashの`gc_root_fibers` | すべてのサンプルで同じ |
+| `arena` | 同じHashの`gc_arena_idx` | すべてのサンプルで同じ |
+| `timers` | 同じHashの`timers` | すべてのサンプルで0 |
+| `fd` | `/proc/<worker>/fd`のエントリーの数 | `fd`から`up`を引いた値が、すべてのサンプルで同じ |
+| `up` | モックのLLMの`connections_open`。モックの無いシナリオでは0 | `SOAK_CONCURRENCY`以下。`abort`と`cut`のシナリオでは0 |
+| `active` | `stub_status`の`Active connections` | すべてのサンプルで1 |
+| `rss_kb` | `/proc/<worker>/status`の`VmRSS` | 最後のサンプルからその前のサンプルを引いた値が`SOAK_RSS_STEP_KB`以下。最後のサンプルから最初のサンプルを引いた値が`SOAK_RSS_TOTAL_KB`以下 |
+
+どのサンプルの時点でも、ワーカーは同じ状態にあります。それより前に送ったリクエストはすべて終わっていて、動いているリクエストは`/debug/stats`自身だけです。そのため、カウンタの値は、それまでに動いたリクエストの数に左右されません。
+
+- `gc_live`は、生きているmrubyのオブジェクトの数です。`Nginx::Debug.gc`は最初にフルGCを実行するので、終わったリクエストのオブジェクトは既に解放されています。
+- `gc_root`は、ngx_mrubyが`mrb_gc_register()`で登録し、まだ登録を解除していないオブジェクトの数です。`fibers`は、そのうちのファイバーの数です。ハンドラは、始まるときに自分のファイバーを登録し、終わるときに登録を解除します。そのため、残るのは`/debug/stats`のファイバーだけです。ngx_mrubyは自分の呼び出しを数えるので、このチェックは、mrubyがGCのルートをどう保持するかに左右されません。数え方は下の「ソークのビルドと`Nginx::Debug`」にあります。
+- `arena`は、`/debug/stats`が動いている間のmrubyのGCアリーナの深さです。アリーナを保存するコードパスは、どれもアリーナを元に戻します。
+- `timers`は、`Nginx::Async.sleep`のタイマーのうち、発火も削除もされていないものの数です。待っているリクエストが無いので、この数は0です。
+- `fd`は、`/debug/stats`の接続が閉じた後に読みます。そのため、`fd`が数えるのは、listenしているソケット、ログのファイル、nginx自身のディスクリプタです。`active`は`/status`のリクエストから読みます。その時点で開いている接続は、このリクエストの接続だけです。リクエストがソケットやファイルを開いたままにすると、1つにつき、これらの値が1増えます。
+- `up`は、モックのLLMで開いている接続の数です。nginxのupstreamは、これらの接続を次のリクエストのために保ちます。その数は、それまでで最も混んだ時点で同時に使われていたupstreamの接続の数です。そのため、後のウィンドウがたまたまそれより混むと、`up`は1増えることがあります。また、これらの接続は、それぞれ`fd`にも数えられます。そこでソークテストは、サンプルの間で`fd`から`up`を引いた値を比べ、`up`の上限をクライアントの接続の数で押さえます。`abort`と`cut`のシナリオでは、正常に終わるレスポンスが無いので、nginxはupstreamの接続を保ちません。ソークテストは`up`が0になるまで最大5秒待ち、0にならなければそのサンプルを失敗にします。
+
+`VmRSS`は正確な値ではないので、ソークテストは比べずに上限で押さえます。ソークのビルドは、各サンプルの前のフルGCで`malloc_trim(0)`を呼びます。この関数は、Cのヒープの空きページを返します。説明は下の節にあります。この呼び出しが無いと、正しいビルドでも、サンプルの間でVmRSSが増える向きにも減る向きにも最大で約1 MB動きました。どれだけ動くかは、アロケータがたまたまどこに空きメモリを残したかで決まりました。
+
+`test/soak/nginx.conf`のシナリオは、`Nginx::Debug`自身も1回確かめます。確かめるのは、最初のレスポンスの後、ウォームアップの前です。シナリオは`/debug/check`にリクエストを送ります。そのコードは、まず`Nginx::Debug.gc`を実行し、`Nginx::Debug.stats`を読みます。次に、1000回のループの各回で、どこからも参照されないStringを2つ作ります。最後に、2回目の`Nginx::Debug.gc`の前と後に、`gc_live`をもう一度読みます。シナリオは、次のすべてが成り立たないと失敗します。
+
+- `Nginx::Debug.stats`が、下の「ソークのビルドと`Nginx::Debug`」が挙げるキーを持ち、値がすべてIntegerであること。`gc_root_mruby`と`gc_root_fibers_mruby`は、両方あるか、両方無いかのどちらかであること
+- `Nginx::Debug.gc`が`nil`を返すこと
+- Stringを作ると、`gc_live`が1000以上増えること
+- 2回目のフルGCで`gc_live`が1000以上減り、最初に読んだ値に10を足した値以下になること
+
+コードは、`GC.disable`と`GC.enable`の間でStringを作ります。フルGCの後でも、生きているオブジェクトは約1000個あります。そのため、こうしないと、mrubyのインクリメンタルGCがループの途中で始まります。そうすると、2回目に読む前に、Stringの大部分が解放されます。このチェックが無いと、キーが欠けた`Nginx::Debug.stats`や、何も解放しない`Nginx::Debug.gc`でも、すべてのサンプルが同じ値になり、ソークテストは通ってしまいます。
+
+シナリオは、次のどれかのときにも失敗します。
+
+- レスポンスが期待どおりでないとき
+- `SIGQUIT`を受けてから30秒以内にnginxが終了しないとき
+- nginxの`error.log`かstderrに、`open socket`、`[error]`、`[alert]`、`[crit]`、`[emerg]`、`runtime error:`、`Sanitizer`のどれかが含まれるとき
+
+ngx_mrubyは、ハンドラで発生した例外を`error`のレベルでログに書きます。また、`disconnect`のクライアントは最初のレスポンスしか読みません。そのため、そのクライアントの後のリクエストで起きた例外は、ログにだけ現れます。シナリオは、nginxが意図して`error`のレベルで書く行を挙げられます。挙げる場所は`test/soak/scenarios.rb`の`allowed_log`で、挙げた行はチェックの前に除かれます。どれかのシナリオが失敗すると、終了ステータスは1です。
+
+デフォルトのシナリオは次のとおりです。それぞれ`test/soak/nginx.conf`の1つのlocationです。
+
+| シナリオ | ハンドラ | クライアント |
+|---|---|---|
+| `hello` | `Nginx.rputs` | keep-alive |
+| `headers` | リクエストヘッダを3つ読み、レスポンスヘッダを2つ設定する | keep-alive |
+| `var` | `Nginx::Var`で変数を2つ読み、1つ設定する | keep-alive |
+| `filter` | `mruby_output_body_filter_code`が、`return 200`のボディを書き換える | keep-alive |
+| `sleep` | `Nginx::Async.sleep 1`の後、ボディを出力する | keep-alive |
+| `sub_request` | `Nginx::Async::HTTP.sub_request`で、あるlocationにサブリクエストを送る。そのlocationは、2つ目のserverの静的なlocationへプロキシする。2つ目のserverのポートは、ベースのポートに1を足した番号 | keep-alive |
+| `file` | ファイルを指定し、`cache`を付けた`mruby_content_handler` | keep-alive |
+| `disconnect` | `Nginx::Async.sleep 50`の後、ボディを出力する | 接続ごとに1つのリクエストを送り、レスポンスを読まずに接続を閉じる |
+
+加えて、エージェントプロキシのシナリオが4つあります。どれも、モックのLLMの前に置いた`test/soak/nginx.agent.conf`の`/v1/route`か`/v1/responses/route`を使います。説明は下の「エージェントプロキシのシナリオ」にあります。
+
+| シナリオ | モック | クライアント |
+|---|---|---|
+| `agent_stream` | 50個の`content_block_delta`のイベントを持つストリーム。イベントは全部で55個 | keep-alive。すべてのストリームが1バイトも違わないことを比べる |
+| `agent_client_abort` | 10個のイベントを書き、nginxが接続を閉じるまでストリームを止めておく | 接続ごとに1つのリクエスト。レスポンスのヘッダと最初の3つのイベントを読み、それを確かめてから接続を閉じる |
+| `agent_upstream_reset` | 10個のイベントを書き、接続をリセットする | 接続ごとに1つのリクエスト。EOFまで読み、ボディがちょうど10個のイベントで、chunkedのボディの終わりが無いことを確かめる |
+| `agent_responses_stream` | 50個の`response.output_text.delta`のイベントと`response.completed`を持つ、Responsesのストリーム。イベントは全部で58個。`/v1/responses/route`を通す | keep-alive。すべてのストリームが1バイトも違わないことを比べる |
+
+keep-aliveのクライアントは、`SOAK_CONCURRENCY`個の接続です。各接続は、レスポンスを読んでから次のリクエストを送ります。`soak.rb`は、すべてのレスポンスを確かめます。`disconnect`のクライアントは、スレッドごとに、100 msごとに16個のリクエストをまとめて送ります。こうすると、同時に開いているリクエストの数が、どのウィンドウでも同じになります。`agent_client_abort`のクライアントのモードは`:abort`で、`agent_upstream_reset`のクライアントのモードは`:cut`です。どちらのクライアントも`SOAK_CONCURRENCY`個のスレッドで、各スレッドは接続ごとに1つのリクエストを送り、届いたものを確かめます。
+
+### エージェントプロキシの<wbr>シナリオ
+
+`test/soak/nginx.agent.conf`は、ソークテストと性能の比較のための、独立した設定です。この設定には、mrubyのフィルタのディレクティブがありません。`http {}`ブロックのどこかにボディフィルタのディレクティブが1つあるとします。すると、そのブロックのすべてのレスポンスに、ngx_mrubyのボディフィルタが入ります。`test/soak/nginx.conf`の`filter`のシナリオでは、そうなっています。その場合、ストリームのようなchunkedのレスポンスは、どれもそのフィルタを通り、そのたびにnoticeのログが出ます。この設定の`error_log`のレベルは`warn`です。プロキシの設定は、エージェントプロキシの設定と同じです。`proxy_buffering off`、`proxy_buffer_size 4k`、`proxy_http_version 1.1`を指定し、クライアントの`Authorization`を、ハンドラが選んだ認証情報に置き換えます。`upstream`ブロックには、`keepalive 32`、`keepalive_requests 1000000`、`keepalive_timeout 1h`を指定します。こうすると、シナリオの間、nginxもモックへのアイドルの接続を閉じません。ハンドラは`test/soak/handlers/`にあります。
+
+- `agent_init.rb`：`mruby_init_worker`のハンドラです。クライアントのキー、認証情報、モデルのテーブルを用意します。
+- `agent_auth.rb`：server `auth.agent.test`のserver rewriteハンドラです。`Authorization`か`x-api-key`からクライアントのキーを探し、3つの変数を設定します。キーを探すのに、Hashを2回引きます。
+- `agent_route.rb`：`/v1/route`と`/v1/responses/route`のaccessハンドラで、そのlocationには`mruby_enable_read_request_body on`を指定しています。`JSON.parse(r.body)["model"]`を実行し、Hashを1回引いて、`proxy_pass http://$agent_backend`のための`$agent_backend`を設定します。
+
+`/v1/plain`と`/v1/route`は、モックの`/v1/messages`へプロキシします。`/v1/responses/plain`と`/v1/responses/route`は、モックの`/v1/responses`へプロキシします。リクエストのボディは、ちょうど2 KBか64 KBのMessagesのリクエストです。`responses_*`と`agent_responses_*`のシナリオでは、ちょうど2 KBのResponsesのリクエストです。ボディは`MockLLM.request_body`が作り、Responsesのボディには`api: :responses`を渡します。どのボディでも`"model"`が最初のキーで、ストリームのボディには`"stream": true`があります。abortとresetのシナリオには、Responsesに対応するシナリオがありません。nginxは、どちらのAPIのバイトも同じように中継するからです。
+
+各`agent_*`のシナリオで、ソークテストはnginxより先にモックを起動します。モックのポートは、ベースのポートに2を足した番号です。最後のサンプルの後、ソークテストはモックのカウンタを確かめます。モックが読んだリクエストは、ソークテストが送ったリクエストとちょうど同じ数でなければなりません。その数は1 + `SOAK_WARMUP` + `SOAK_N`です。また、そのすべてのリクエストが、シナリオが決める終わり方で終わっていなければなりません。`agent_stream`では、レスポンスを最後まで書き終えることです。`agent_client_abort`では、nginxが接続を閉じるまでストリームを止めておくか、モックがまだ書いている間に接続が閉じていたことです。`agent_upstream_reset`では、接続をリセットすることです。モックの出力は`logs/mock.<scenario>.log`に入ります。
+
+`agent_upstream_reset`は、`error`のレベルの行を2つ許します。どちらも、モックの`/v1/messages`へのupstreamの接続についての行です。1つ目は`recv() failed (104: Connection reset by peer)`です。nginxは、upstreamの接続のエラーを`error`のレベルで、クライアントの接続のエラーを`info`のレベルでログに書きます。2つ目は`upstream prematurely closed connection`です。バッファリングしないモードで、upstreamがレスポンスの途中で接続を閉じると、nginxはこの行を書きます。これまでの実行で現れたのは1つ目だけです。その行の動作の部分は、「while reading upstream」か「while sending to client」でした。`agent_client_abort`は、`warn`以上のレベルでは何もログに書きません。
+
+### ソークの<wbr>ビルドと<wbr>`Nginx::Debug`
+
+`test/soak/run.sh`は、`test/build_release.sh`で`build_soak/`にビルドします。説明は下の「リリースのビルド」にあります。nginxとngx_mrubyは`-O2 -g`でビルドし、`MRB_GC_STRESS`も`--with-debug`も付けません。`build_config.rb`のgemは、`build_config.rb.lock`のコミットでビルドします。このビルドには、定義が2つ加わります。ngx_mrubyは`-DNGX_MRUBY_DEBUG_STATS`を付けてコンパイルし、mrubyは`-DMRB_USE_MALLOC_TRIM`を付けてコンパイルします。後者を付けると、`mrb_full_gc()`は`malloc_trim(0)`も呼びます。mrubyがフルGCを実行するのは、求められたときと、まれな場合だけです。求めるのは`GC.start`や`Nginx::Debug.gc`です。まれな場合とは、インクリメンタルGCが多すぎるオブジェクトを見つけたときや、メモリの確保に失敗したときです。そのため、サンプルの間のワーカーは、この定義が無いときと同じように動きます。
+
+`-DNGX_MRUBY_DEBUG_STATS`を付けると、クラスの`Nginx::Debug`が加わります。`build.sh`と`test.sh`のデフォルトのビルドには、このクラスがありません。
+
+- `Nginx::Debug.gc`は、フルGCの`mrb_full_gc`を実行し、`nil`を返します。
+- `Nginx::Debug.stats`は、次のSymbolをキーに持つHashを返します。
+  - `gc_live`：`mrb->gc.live`です。
+  - `gc_root`：ngx_mrubyが`mrb_gc_register()`で登録し、まだ`mrb_gc_unregister()`で登録を解除していないオブジェクトの数です。呼び出し1回につき1つと数え、nginxのプロセス全体で数えます。httpモジュールの登録とstreamモジュールの登録は、合わせて数えます。即値は数えません。mrubyが即値を登録しないためです。ngx_mrubyが登録した回数より多く登録を解除すると、値は負になります。
+  - `gc_root_fibers`：`gc_root`が数えるオブジェクトのうちの、ファイバーの数です。
+  - `gc_arena_idx`：`mrb->gc.arena_idx`です。
+  - `timers`：`Nginx::Async.sleep`のタイマーのうち、発火も削除もされていないものの数です。
+  - `gc_root_mruby`と`gc_root_fibers_mruby`：httpモジュールのmrb_stateにある、mruby自身の`_gc_root_`の配列の長さと、その中のファイバーの数です。mruby 3.xと4.0は、そのmrb_stateで最初に`mrb_gc_register()`が呼ばれたときに、この配列を作ります。mruby 4.1は、GCのルートを代わりに`mrb->gc.root`に持ちます。そのときは、この2つのキーがHashに入りません。`gc_root`と違って、この2つは、mrubyとgemが登録するオブジェクトを含み、streamモジュールの登録を含みません。ソークテストは、この2つを確かめません。この2つは、配列のあるmrubyのバージョンで`gc_root`と比べるためにあります。mruby 4.0では、2つの値が食い違うことがあります。mruby 4.0の`mrb_gc_unregister`は、そのオブジェクトのエントリーを配列からすべて消します。一方、mruby 3.xは1つだけ消し、オブジェクトが配列に無ければ何も消しません。ngx_mrubyのカウンタは、どのバージョンでも、呼び出し1回につき1を引きます。そのため、mruby 4.0では、2回以上登録したオブジェクトの登録を1回解除すると、`gc_root_mruby`は`gc_root`より小さくなります。
+
+`gc_root`と`gc_root_fibers`は、GCのルートをmrubyから読みません。mruby 4.1は、GCのルートを`_gc_root_`の配列に持たなくなったからです。配列から読むと、数はどのサンプルでも0になり、ソークテストは何も確かめずに通ってしまいます。`-DNGX_MRUBY_DEBUG_STATS`を付けると、`src/http/ngx_http_mruby_debug.h`は、`mrb_gc_register`と`mrb_gc_unregister`をマクロとして定義します。このマクロは、mrubyの関数を呼んでから、その呼び出しを数えます。そのため、このヘッダをインクルードするソースファイルの呼び出しは、後で加えた呼び出しも含めて、すべて数えられます。したがって、`src/http/`か`src/stream/`の`.c`ファイルのうち、どちらかの関数を呼ぶものは、`ngx_http_mruby_debug.h`をインクルードしなければなりません。`test/soak/run.sh`は、ビルドの前にこれを確かめ、インクルードしていないファイルがあれば止まります。定義が無いと、このヘッダはマクロを定義せず、呼び出しはmrubyの関数に直接届きます。
+
+### 実行する
+
+`soak.rb`は`/proc`を読むので、LinuxとCRuby 3.0以降が要ります。ほかのシステムでは、コンテナの中で実行してください。たとえば次のようにします。
+
+```console
+$ docker run --rm -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev >/dev/null && sh test/soak/run.sh'
+```
+
+Linuxでは、次のように実行します。
+
+```console
+$ sh test/soak/run.sh                                  # build, then run the default scenarios
+$ ONLY_RUN=1 sh test/soak/run.sh                       # run without building
+$ ONLY_RUN=1 SOAK_SCENARIOS=sleep,disconnect SOAK_N=100000 sh test/soak/run.sh
+```
+
+最初の実行には数分かかります。gemをクローンし、mrubyとnginxをビルドするからです。シナリオの実行には約1分かかり、aarch64のコンテナでは、そのうち`agent_*`のシナリオが約18秒です。結果のテーブルには、シナリオごとに1つのレコードがあります。ある値がサンプルの間で違うときは、4つの値をすべて`/`で区切って示し、その理由をテーブルの下に挙げます。ログは`build_soak/nginx/soak/logs/`にあり、`error.<scenario>.log`、`stderr.<scenario>.log`、`mock.<scenario>.log`、`soak.log`の4種類です。`mock.<scenario>.log`は、`agent_*`のシナリオでモックのLLMが出力したもので、`soak.log`は`soak.rb`の出力です。
+
+`test.sh`は、ソークテストのnginxを含め、マシンのすべてのnginxを止めます。そのため、1台のマシンで両方を同時に実行しないでください。
+
+| 変数 | デフォルト | 意味 |
+|---|---|---|
+| `ONLY_RUN` | 未設定 | 設定すると、ビルドを飛ばす |
+| `NUM_THREADS_ENV` | CPUの数の半分 | ビルドの並列数。`build.sh`に渡す |
+| `SOAK_SCENARIOS` | デフォルトのシナリオ | カンマで区切ったシナリオの名前 |
+| `SOAK_N` | 20000 | ウォームアップの後に、シナリオごとに送るリクエストの数 |
+| `SOAK_WARMUP` | 2000 | 最初のサンプルの前に送るリクエストの数 |
+| `SOAK_CONCURRENCY` | 8 | 接続の数。`disconnect`ではスレッドの数 |
+| `SOAK_PORT_BASE` | 12360 | シナリオのポート。`sub_request`のバックエンドは次の番号を使い、モックのLLMはその次の番号を使う |
+| `SOAK_RSS_STEP_KB` | 512 | 最後のウィンドウでのVmRSSの上限。単位はkB |
+| `SOAK_RSS_TOTAL_KB` | 1024 | 最初のサンプルから最後のサンプルまでのVmRSSの上限。単位はkB |
+
+### しきい値と<wbr>キャリブレーション
+
+VmRSSの2つの上限は、2026年10月3日にデフォルトのシナリオを実行した結果から決めました。環境は、nginx 1.31.6、Ubuntu 22.04、gcc 11、glibc 2.35です。実行した場所は、aarch64のコンテナと、x86_64のCIの`soak`ジョブです。テーブルの値は、そのレコードのすべてのシナリオと実行のうちで、最も大きい値です。
+
+| 実行 | 最後のウィンドウでの増分 | 最初のサンプルからの増分 |
+|---|---|---|
+| aarch64、3回、`SOAK_N=20000`、`MRB_USE_MALLOC_TRIM`を付けない | +144 kB | +212 kB。減る向きには-1076 kBまで |
+| aarch64、1回、`SOAK_N=100000`、`MRB_USE_MALLOC_TRIM`を付けない | +288 kB | +3396 kB (`disconnect`) |
+| aarch64、10回、`SOAK_N=20000` | +112 kB (`sub_request`) | +204 kB (`sleep`) |
+| aarch64、1回、`SOAK_N=100000` | +68 kB (`file`) | +160 kB (`file`) |
+| x86_64のCI、4回、`SOAK_N=20000` | +144 kB (`filter`) | +236 kB (`sleep`) |
+| aarch64、3回、`SOAK_N=20000`、`agent_*`のシナリオ、2026年10月4日 | +28 kB (`agent_stream`) | +32 kB (`agent_upstream_reset`) |
+| x86_64のCI、実行37152930938と37156005549、`SOAK_N=20000`、`agent_*`のシナリオ、2026年10月4日 | +16 kB (`agent_stream`, `agent_client_abort`) | +84 kB (`agent_stream`, `agent_client_abort`) |
+
+`malloc_trim(0)`が無いと、`SOAK_N=300000`の`disconnect`のシナリオでは、VmRSSがウィンドウごとに+2832 kB、-788 kB、+1088 kB動きました。最後のウィンドウの上限を512 kBにすると、この動きは上限を超えます。それでも、このシナリオのカウンタは同じままで、全体の増分は`SOAK_N=100000`のときより小さくなりました。`malloc_trim(0)`があると、最も大きい増分は、最後のウィンドウで144 kB、全体で236 kBです。デフォルトの上限は、最後のウィンドウで512 kB、全体で1024 kBで、それぞれこれらの約3.5倍と約4.3倍です。最後のウィンドウの上限を緩いほうにしたのは、共有のCIのランナーで、1つのウィンドウが144 kB増えたためです。小さなリークを見つけるのは、全体の上限のほうです。リクエストあたり約50バイト未満のリークは、`SOAK_N`がデフォルトの20000なら、1024 kBに届きません。それより小さなリークを探すには、`SOAK_N`を上げてください。比較のために挙げると、リクエストあたり4 kBリークするビルドは、ウィンドウごとに約26 MB増えます。
+
+### シナリオを<wbr>追加する
+
+1. `test/soak/nginx.conf`にlocationを加えます。ハンドラを使うなら、ハンドラのファイルを`test/soak/handlers/`に加えます。そのディレクトリのパスには`__SOAK_HANDLERS__`を使い、2つ目のserverには`__SOAK_BACKEND_PORT__`を使います。モックのLLMを後ろに置くシナリオは、代わりに`test/soak/nginx.agent.conf`に加え、モックには`__SOAK_MOCK_PORT__`を使います。
+2. `test/soak/scenarios.rb`の`SCENARIOS`に`Scenario`を加えます。パス、リクエストヘッダ、期待するボディとレスポンスヘッダ、モードを指定します。モードは`:keepalive`、`:disconnect`、`:abort`、`:cut`のどれかです。エージェントのテンプレートのシナリオでは、`conf: 'nginx.agent.conf'`、リクエストのメソッドとボディ、`mock:`も設定します。`mock:`にはモックのオプションを指定し、デフォルトのままなら`[]`にします。フィールドの一覧は、そのファイルの先頭のコメントにあります。
+3. `test/soak/soak.rb`の`DEFAULT_SCENARIOS`にシナリオの名前を加えます。ソークテストを3回実行し、すべてのカウンタが同じままで、VmRSSが上限に収まることを確かめます。あるカウンタが増え続けるなら、そのシナリオは問題を見つけました。シナリオを通すために、上限を上げたり、比較を外したりしないでください。脆弱性の可能性があるときは、`SECURITY.md`に書いてある方法で報告してください。
+4. `:keepalive`のシナリオは、下の性能の比較でも測れます。`test/perf/perf.rb`の`DEFAULT_SCENARIOS`に名前を加え、性能の比較の「しきい値とキャリブレーション」にある、変更の無い比較をそこで流してください。
+
+## リリースの<wbr>ビルド
+
+`sh test/build_release.sh SOURCE_DIR BUILD_DIR`は、リリースに近いオプションで、ngx_mrubyを静的モジュールとして組み込んだnginxをビルドします。nginxとngx_mrubyは`-O2 -g`でビルドし、mrubyは、mrubyのgccのツールチェインが決めるフラグでビルドします。そのフラグは`-O3 -g`です。`test.sh`が加える`MRB_GC_STRESS`と、`--with-debug`は付けません。`build_config.rb`のgemは、gemのロックのコミットでビルドします。ロックの説明はこの下にあります。ソークテストと性能の比較は、このスクリプトでビルドします。オプションが混ざらないように、それぞれ専用のディレクトリにビルドします。
+
+| ビルド | ディレクトリ | 加えるオプション |
+|---|---|---|
+| ソークの`test/soak/run.sh` | `build_soak/` | ngx_mrubyに`-DNGX_MRUBY_DEBUG_STATS`を`RELEASE_CC_OPT`で加え、mrubyに`-DMRB_USE_MALLOC_TRIM`を`NGX_MRUBY_CFLAGS`で加える |
+| 性能の比較の`test/perf/run.sh`と`test/perf/compare.sh` | `build_perf/head/`、`build_perf/base/` | 無し。どちらの定義を付けても、測るプロセスにコードが加わるため |
+
+`SOURCE_DIR`はビルドするチェックアウトで、スクリプトは、そのチェックアウト自身が持つビルドのファイルを使います。`build.sh`、`configure`、`build_config.rb`などです。そのため、プルリクエストのベースは、ベース自身のビルドの仕方でビルドされます。スクリプトはソースを`BUILD_DIR/tree`にコピーし、そこで`build.sh`を実行して、nginxを`BUILD_DIR/nginx`にインストールします。その結果、スクリプトは、`build/`ディレクトリ、`mruby/build`、`test.sh`が生成した`Makefile`、`config`、`mrbgems_config`には触れません。このビルドは、いつも、自分でダウンロードしたnginxのソースとシステムのOpenSSLでビルドする静的モジュールです。そのため、スクリプトは`BUILD_DYNAMIC_MODULE`、`NGINX_SRC_ENV`、`OPENSSL_SRC_VERSION`を無視します。nginxのソースは`BUILD_DIR/tree/build/`にダウンロードします。nginx.orgに届かないときは、`AGENTS.md`に書いてある方法で、ソースをそこに置いてください。
+
+サードパーティのgemは、`SOURCE_DIR`にコミットした`build_config.rb.lock`のコミットでビルドします。説明は`docs/install/README.md`の「Gem commits」にあります。`RELEASE_GEM_LOCK`が設定されていて空でないときは、その値が指すロックのコミットでビルドします。`test/soak/run.sh`と`test/perf/run.sh`は、環境の`RELEASE_GEM_LOCK`をそのまま渡します。そのため、`RELEASE_GEM_LOCK=/path/to/other.lock sh test/soak/run.sh`を実行すると、チェックアウトを変えずに別のコミットでビルドできます。ロックの無いチェックアウトでは、最初のビルドが各gemのブランチの先頭を取ります。ロックをコミットする前のチェックアウトが、これにあたります。rakeは、ビルドしたコミットを`BUILD_DIR/tree/build_config.rb.lock`に書きます。
+
+後の実行では、スクリプトはコピーを更新し、変わったものだけをビルドし直します。
+
+- スクリプトは、内容が違うときだけ、ファイルをコピーに書き込みます。書き込んだファイルの時刻は、`SOURCE_DIR`の時刻でなく、コピーした時刻になります。`git archive`で作ったチェックアウトのファイルは、コミットの時刻を持ちます。この時刻は前のビルドのオブジェクトより古いことがあり、そうするとmakeはそのファイルをビルドし直しません。
+- `SOURCE_DIR`に無くなったファイルは、コピーから消します。
+- makeは、`src/`と`dependence/`のヘッダを追いません。そのため、そのどれかが変わったときは、スクリプトがそこにある`.c`ファイルをtouchします。
+- スクリプトは、ファイルを消して作り直さず、その場で上書きします。ソースが大文字と小文字を区別しないファイルシステムにあり、それをコンテナと共有することがあります。macOSのDocker Desktopがその例です。この場合、rakeはmrubyの`Rakefile`を`rakefile`として読み込みます。ファイルを消して作り直した後、同じコンテナでの2回目の実行は、`LoadError: cannot load such file -- .../rakefile`で失敗しました。
+
+ただし、makeとrakeが気づかない変更もあります。消したソースや外したgemのオブジェクトは`libmruby.a`に残り、nginxのconfigureも再び実行されません。そこでスクリプトは、次の入力を`BUILD_DIR/build_stamp`に記録します。
+
+- mrubyのツリー。`SOURCE_DIR`がgitのワークツリーの最上位なら、gitがそのツリーに付けたidを記録します。そうでなければ、`mruby/build`と`mruby/bin`を除いたファイルのチェックサムを記録します。この2つのディレクトリは、`test.sh`のビルドの出力です。
+- `mrbgems/`の下のファイルの名前
+- `build_config.rb`、`config.in`、`configure`、`Makefile.in`、`build.sh`、`nginx_version`のチェックサム
+- `NGX_MRUBY_CFLAGS`。スクリプトは、`test.sh`と同じように、この値をmrubyに渡します。
+- `NGX_MRUBY_AUTO_SSL`。この変数を設定すると、mrubyのビルドにauto-sslのmrbgemが加わります。
+- nginxのconfigureのオプション
+- そのビルドのgemのロック
+
+スタンプが前のビルドのスタンプと違うと、スクリプトはmrubyとnginxを最初からビルドし、gemも新しくクローンします。ダウンロードしたnginxのソースは残します。新しいクローンが要るのは、ロックだけが変わったときです。rakeは、既にあるクローンを、fetchせずにロックのコミットでチェックアウトします。古いクローンには、そのコミットが無いことがあります。スタンプが扱わない変更の後は、`rm -rf build_soak`でビルドを手でリセットしてください。性能の比較では`build_perf`を消します。スタンプが扱わない変更には、たとえば`mruby/`の下のコミットしていない変更があります。gitがツリーに付けるidは、コミットしたときのままだからです。
+
+## callgrindで<wbr>性能を<wbr>比べる
+
+リクエストを処理する経路を変えると、どのテストも失敗しないまま、すべてのリクエストの仕事が増えることがあります。性能の比較では、プルリクエストのベースとヘッドのそれぞれで、nginxがリクエストあたりに実行する命令の数を数えます。そして、シナリオごとの変化をレポートに出します。命令の数はcallgrindの`Ir`で、ベースとヘッドはどちらもリリースのビルドです。命令の数はマシンの速さにも負荷にも左右されないので、この比較は共有のCIのランナーでも使えます。共有のランナーのスループットは30%を超えて変わり、そのことは`docs/proposals/v3-plan.md`の3.7節に書いてあります。命令の数には、キャッシュミス、分岐予測のミス、カーネルで使った時間は出ません。命令の数は、nginx、ngx_mruby、mruby、Cライブラリのユーザー空間のコードが、1つのリクエストのためにする仕事の量を表します。
+
+### 何を<wbr>測るか
+
+測るシナリオは2種類です。1つは、ソークテストのシナリオのうち、keep-aliveのクライアントを使うものです。`hello`、`headers`、`var`、`filter`、`sleep`、`sub_request`、`file`で、そのテーブルは「メモリのソークテスト」にあります。もう1つは、下の「比較に入れたエージェントプロキシのシナリオ」にあるエージェントプロキシのシナリオです。`disconnect`は測りません。`test/perf/perf.rb`は、各シナリオについて、ベースとヘッドの順に次のことをします。
+
+1. シナリオにLLMのモックがあれば、モックを起動します。nginxは、`test/soak/nginx.conf`かシナリオのテンプレートを`master_process off`に変えた設定で、`valgrind --tool=callgrind --instr-atstart=no`の下で起動します。こうすると、起動の間は計測しません。
+2. レスポンスを1つ確かめ、`PERF_WARMUP`の数のリクエストを送ります。
+3. ウォームアップの接続が1つも開いていないと`stub_status`に出るまで待ち、`callgrind_control --instr=on`で計測を有効にします。
+4. keep-aliveで`PERF_N`の数のリクエストを送り、すべてのレスポンスを確かめます。nginxは1000のリクエストの後に接続を閉じ、クライアントは次の接続を開きます。この1000は`keepalive_requests`の値です。
+5. `callgrind_control --dump`でプロファイルを書き出し、nginxを止めます。
+
+ステップ5のプロファイルには、ステップ4のリクエストのコストが入ります。起動、設定、ウォームアップ、終了のコストは入りません。**リクエストあたりのIr**は、このプロファイルのIrの合計を`PERF_N`で割った値です。別の方法として、Nと2Nのリクエストで2回実行し、その差をNで割ることもできます。この方法では3倍の数のリクエストが要り、2回の実行のばらつきも加わります。1回の実行で計測する区間であるウィンドウには、リクエストのほかに何も入りません。
+
+callgrind_controlは、valgrindのgdbserverである`vgdb`を通してプロセスに届きます。vgdbは、nginxのワーカーのような、valgrindがforkしたプロセスを扱いません。`master_process off`では、nginxの1つのプロセスが、ワーカーと同じようにイベントループとハンドラを実行します。`epoll_wait`で待っているプロセスに割り込むためのptraceをvgdbが使えないときは、コマンドは、そのプロセスが次にコードを実行したときに動きます。そのため`perf.rb`は、コマンドが動くまで、0.2秒ごとに`/status`へリクエストを送ります。`/status`は`stub_status`です。これらのリクエストの一部はウィンドウに入ります。これまでの実行では、ウィンドウごとに2つでした。
+
+**GCを除いたリクエストあたりのIr**は、mrubyのガベージコレクタのコストを除いた値です。除くのは、コレクタの外から`mrb_incremental_gc`と`mrb_full_gc`を呼んだ呼び出しのinclusiveのコストです。そうした呼び出しは、`mrb_obj_alloc`、mallocのラッパー、`GC.start`から来ます。このコストは、再帰のサフィックス`'2`の無い`mrb_incremental_gc`と`mrb_full_gc`について`callgrind_annotate --inclusive=yes`が出すinclusiveのコストです。ただし、`mrb_incremental_gc`が実行するフルGCは2回数えません。`perf.rb`は、この値をプロファイルの呼び出しの記録から読みます。詳しくは`parse_profile`のコメントにあります。GCは、まとまって動きます。生きているオブジェクトの数がしきい値を超えると、`mrb_obj_alloc`がコレクタを呼びます。1つのサイクルは、ルートのスキャンとマーク、その後のスイープで、数回の呼び出しになります。`hello`では、20000のリクエストで21回の呼び出しがあり、およそ2000のリクエストに1つのサイクルです。GCは合計の約6%です。リクエストあたりに確保するオブジェクトが数個増えたり減ったりする変更では、サイクルがウィンドウに対してずれます。そして合計は、1つのサイクルの一部の分だけ動きます。GCを除いた値はこのようには飛ばないので、しきい値はこの値に当てます。合計もレポートに出します。
+
+GCが動くと、残りの部分のコストも変わります。スイープが多くのブロックを解放した後は、リクエストのコードの次の`malloc`の呼び出しに時間がかかります。そのため、ウィンドウは多くのGCのサイクルにまたがる必要があります。`PERF_N=20000`では、`hello`のGCを除いたリクエストあたりのIrは11039でした。`PERF_WARMUP=7000`にしてウィンドウを5000のリクエストだけずらすと11049で、差は+0.1%でした。`PERF_N=1000`と`PERF_WARMUP=200`のウィンドウは1つのサイクルより短く、2回の実行で10726と10732になり、-2.8%でした。これが、`PERF_N`を20000にした理由です。
+
+### 比較に<wbr>入れた<wbr>エージェントプロキシの<wbr>シナリオ
+
+これらのシナリオでは、エージェントプロキシにリクエストあたりどれだけのコストがかかるかを測ります。測るのは、`test/soak/nginx.agent.conf`の設定でLLMのモックの前に置いたnginxです。LLMのモックは「LLMのモックのupstream」に、この設定はソークテストの節の「エージェントプロキシのシナリオ」にあります。Rubyを使わないシナリオは、同じ形のシナリオのベースラインです。そのため、2つの差がRubyの加えるコストになります。テーブルの最後には、`test/soak/nginx.conf`の7つのシナリオを、そのリクエストの関数を示すために載せています。
+
+| シナリオ | リクエストと応答 | リクエストあたりのRuby | リクエストの関数。括弧の中はリクエストあたりの呼び出しの数 |
+|---|---|---|---|
+| `proxy_plain_2k`, `proxy_plain_64k` | ちょうど2 KBか64 KBのMessagesのボディを`/v1/plain`へPOSTし、`proxy_pass`でモックへ送る。応答はJSONのメッセージ | 無し | `ngx_http_log_request` (1) |
+| `proxy_stream_plain_50`, `proxy_stream_plain_1000` | `"stream": true`を付けた2 KBのボディを`/v1/plain`へ送る。応答は50か1000のデルタのストリームで、イベントは55か1005 | 無し | `ngx_http_log_request` (1) |
+| `responses_stream_plain_50`, `responses_stream_plain_1000` | `"stream": true`を付けた2 KBのResponsesのボディを`/v1/responses/plain`へ送り、`proxy_pass`でモックの`/v1/responses`へ送る。応答は、50か1000のデルタと`response.completed`のResponsesのストリームで、イベントは58か1008 | 無し | `ngx_http_log_request` (1) |
+| `auth` | `proxy_plain_2k`のリクエストをサーバの`auth.agent.test`へ送る。このサーバのserver rewriteハンドラの`agent_auth.rb`が、クライアントのキーを探し、upstreamの認証情報を設定する | ハンドラ1つ | `ngx_http_log_request` (1) |
+| `route_json_2k`, `route_json_64k` | `proxy_plain_*`のリクエストを`/v1/route`へ送る。そのaccessハンドラの`agent_route.rb`が、`JSON.parse`でボディをパースし、`proxy_pass http://$agent_backend`のupstreamブロックを設定する | ハンドラ1つ | `ngx_http_log_request` (1) |
+| `ruby_call_1`, `ruby_call_10` | `mruby_set_code`の変数を1つか10個持ち、`return 200`で応答するlocationへのGET。upstreamは無し | 1回か10回の呼び出し | `ngx_http_mruby_set_inline_handler` (1か10) |
+| `hello`, `headers`, `var`, `filter`, `sleep`, `sub_request`, `file` | `test/soak/nginx.conf`のlocationへのGET。locationは「メモリのソークテスト」にある。モックは無し | ハンドラかフィルタ1つ | `ngx_mrb_start_fiber` (1) |
+
+`test/soak/nginx.conf`の7つのシナリオは、`ngx_mrb_start_fiber`の呼び出しを数えます。ハンドラやフィルタのRubyのコードを実行する`ngx_mrb_run`は、実行のたびにファイバーを1つ始めます。ほかに`ngx_mrb_start_fiber`を呼ぶものはありません。これらのシナリオが`ngx_mrb_run`を数えないのは、callgrindがその呼び出しをどのビルドでも同じようには記録しないからです。2026年10月4日に`next`の`45c9e52`をaarch64でビルドしたものでは、callgrindは、リクエストごとに`ngx_mrb_run`の2つ目の呼び出しを記録しました。`filter`では、`ngx_mrb_run`から`ngx_mrb_run'2`への呼び出しとして記録し、この呼び出しは1回と数えます。ほかの6つのシナリオでは、`ngx_mrb_http_get_module_ctx.part.0`から`ngx_mrb_run'2`への呼び出しとして記録しました。`ngx_mrb_http_get_module_ctx`は`ngx_mrb_run`を呼ばないにもかかわらず、そう記録しました。そのため、6つのシナリオのウィンドウにはリクエストごとに2回の呼び出しが入り、チェックに失敗しました。`ngx_mrb_start_fiber`の呼び出しは、7つのすべてで、リクエストごとに1回と記録しました。CIのランナーのx86_64のビルドと同じです。
+
+upstreamのあるシナリオは、`ngx_http_log_request`の呼び出しを数えます。nginxは、Rubyの有無にかかわらず、終えるリクエストごとにこの関数を1回呼びます。サブリクエストについては、`log_subrequest on`のときだけ呼びます。Rubyを使わないシナリオには、数える`ngx_mrb_start_fiber`の呼び出しがありません。そこで、upstreamのあるシナリオは、どれも同じこの関数を数えます。`callgrind_control`のためにnginxを起こす`/status`のリクエストも、計測を有効にした後に来たものはウィンドウの中で終わります。そのため、ウィンドウには、その数だけ多くの呼び出しが入ることがあります。これまでの実行では、ウィンドウごとに2つでした。`mruby_set_code`は、そのハンドラの末尾呼び出しを通して`ngx_mrb_run`に至ります。callgrindは、この末尾呼び出しを、いつも`ngx_mrb_run`の呼び出しとして記録するとは限りません。aarch64のビルドでは、`ruby_call_10`のリクエストあたり10回の呼び出しのうち1回が、ハンドラから`ngx_mrb_start_fiber`への呼び出しとして出て、`ruby_call_1`では1回も出ませんでした。そのため、`ruby_call_*`のシナリオは、nginxがポインタを通して呼ぶハンドラの呼び出しを数えます。
+
+リクエストあたりの数のうち2つは、テーブルの後に出力し、`report.json`に残しますが、チェックはしません。1つ目は`ruby_calls`で、`ngx_mrb_start_fiber`の呼び出しの数です。`ngx_mrb_run`はRubyのコードを実行するたびにファイバーを1つ始め、ほかにこの関数を呼ぶものはありません。`test/soak/nginx.conf`の7つのシナリオでは、ウィンドウのチェックも同じ呼び出しを数えます。2つ目は`non_buffered_calls`で、バッファしないレスポンスを中継する`ngx_http_upstream_process_non_buffered_request`の呼び出しの数です。nginxは、upstreamの接続が読めるようになったときと、クライアントの接続に書けるようになったときに、この関数を呼びます。1回の呼び出しで、nginxは`recv()`がブロックするところまでupstreamから読み、読んだものをクライアントへ書きます。一度に読むのは、最大で`proxy_buffer_size`の4kです。そのため、この数は4kずつ読んだ回数ではありません。1つのレスポンスに何回の呼び出しがかかるかは、各呼び出しのときにレスポンスのどれだけが届いていたかで決まります。この数は、ビルドとマシンでも違います。`proxy_plain_*`、`auth`、`route_json_*`では、aarch64のコンテナでリクエストあたり2.00、x86_64のCIのランナーで1.00でした。
+
+呼び出しのたびにIrがかかります。aarch64で`PERF_N=2000`の`proxy_stream_plain_50`を、モックの書き方を3通りに変えて測りました。ストリームを1回で書く場合、イベントごとに1回書く場合、イベントごとに1 msずつ空けて1回書く場合です。リクエストあたりの呼び出しは3.00、4.96、109.99回で、リクエストあたりのコストは52270、54255、142740 Irでした。1つ目と2つ目の差からは呼び出しあたり約1010 Ir、1つ目と3つ目の差からは約850 Irになります。2つのビルドを比べるとき、呼び出しの数が違うシナリオのレポートの行には、その差だけで生じるIrを出します。このIrは呼び出しあたり1000 Irとして計算し、ベースのGCを除いた値に対する割合で示します。1000は`NON_BUFFERED_CALL_IR`の値です。その割合が`PERF_WARN_PERCENT`の半分以上なら、その行には、シナリオの変化はレスポンスが届いたタイミングから来たのかもしれないと書きます。`proxy_stream_plain_50`では、呼び出しがリクエストあたり約2回増えると`WARN`に、約3回増えると`FAIL`に届きます。「しきい値とキャリブレーション」では、ビルドの入力を変えない変更を測りました。そこでは、1回の実行のベースとヘッドの間で、このシナリオの呼び出しはリクエストあたり0.01から0.25回違いました。
+
+最初の測定は2026年10月4日です。このチェックアウトのヘッドのビルドで、`test/perf/perf.rb`を1回実行しました。ヘッドは、`next`の`f62880c`にハーネスを加えたものです。環境は、aarch64のコンテナの中のUbuntu 22.04で、gcc 11、valgrind 3.18.1、nginx 1.31.6、`PERF_N=20000`です。Hは同じ実行の`hello`の値で、リクエストあたり11856 Ir、GCを除くと11158 Irです。
+
+| シナリオ | リクエストあたりのIr。括弧の中はGCを除いた値 | H | リクエストあたりの`non_buffered_calls` |
+|---|---|---|---|
+| `proxy_plain_2k` | 21952 (21952) | 1.85 | 2.00 |
+| `proxy_plain_64k` | 22264 (22264) | 1.88 | 2.00 |
+| `proxy_stream_plain_50` | 54294 (54294) | 4.58 | 4.97 |
+| `proxy_stream_plain_1000` | 432228 (432228) | 36.5 | 38.43 |
+| `auth` | 49132 (46977) | 4.14 | 2.00 |
+| `route_json_2k` | 109396 (106246) | 9.23 | 2.00 |
+| `route_json_64k` | 1603842 (1600216) | 135.3 | 2.00 |
+| `ruby_call_1` | 11404 (10737) | 0.96 | 0 |
+| `ruby_call_10` | 41541 (35237) | 3.50 | 0 |
+
+同じ実行での、同じ形のシナリオの間の差は次のとおりです。
+
+- `auth`から`proxy_plain_2k`を引くと、リクエストあたり27180 Irで、GCを除くと25025 Ir、2.3 Hです。これは、2回のHashの検索と3回の変数への代入をするserver rewriteハンドラ1つの分です。
+- `route_json_2k`から`proxy_plain_2k`を引くと、87444 Irで、GCを除くと84294 Ir、7.4 Hです。これは、2 KBのボディをパースするaccessハンドラ1つと、変数を使う`proxy_pass`の分です。この`proxy_pass`は、upstreamブロックを名前で探します。
+- `route_json_64k`から`proxy_plain_64k`を引くと、1581578 Irで、GCを除くと1577952 Ir、133 Hです。増えた62 KBのボディには、GCを除いて1 KBあたり約24100 Irかかりました。
+- Rubyの呼び出しを1回増やすと、`(ruby_call_10 - ruby_call_1) / 9`で3349 Ir、GCを除くと2722 Ir、0.28 Hです。
+- Rubyを使わずにストリームのイベントを1つ増やすと、`(proxy_stream_plain_1000 - proxy_stream_plain_50) / 950`で398 Irです。その実行の`non_buffered_calls`は、リクエストあたり4.97と38.43でした。
+
+Responsesのストリームは、2026年10月19日に測りました。`next`の`a466688`をベースにし、シナリオを加えたヘッドと比べて、`test/perf/compare.sh`を1回実行しました。ベースとヘッドはどちらもリリースのビルドで、同じバイナリです。環境は、aarch64のコンテナの中のUbuntu 22.04で、gcc 11、valgrind 3.18.1、nginx 1.31.6、`PERF_N=20000`です。ベースのビルドでは、`hello`はリクエストあたり11618 Irで、GCを除くと11260 Irでした。ほかの結果は次のとおりです。
+
+| シナリオ | リクエストあたりのIr。括弧の中はGCを除いた値 | H | リクエストあたりの`non_buffered_calls` |
+|---|---|---|---|
+| `proxy_stream_plain_50` | 53674 (53674) | 4.62 | 4.27 |
+| `responses_stream_plain_50` | 55710 (55710) | 4.80 | 5.65 |
+| `proxy_stream_plain_1000` | 433190 (433190) | 37.3 | 37.20 |
+| `responses_stream_plain_1000` | 478098 (478098) | 41.2 | 59.46 |
+
+中継するResponsesのイベントを1つ増やすと、`(responses_stream_plain_1000 - responses_stream_plain_50) / 950`で445 Irかかりました。同じ実行で、Messagesのイベントは399 Irでした。Responsesのストリームのデルタのイベントは186から189バイトで、長さが変わるのは`sequence_number`が大きくなるためです。Messagesのストリームのデルタのイベントは121バイトです。1000のデルタのストリームのボディは、Responsesでは215046バイト、Messagesでは121619バイトです。中継の呼び出しは、リクエストあたりResponsesで59.46回、Messagesで37.20回でした。
+
+その実行では、`proxy_stream_plain_1000`と`route_json_64k`に、ビルドごとに83秒と129秒かかりました。デフォルトのセットのシナリオは、すべて合わせて約140秒です。そのため、この2つは`DEFAULT_SCENARIOS`に入れていません。`responses_stream_plain_1000`も入れていません。これらは`PERF_SCENARIOS`で挙げてください。エージェントプロキシのほかのシナリオはデフォルトのセットに入り、測定の時間はビルドごとに約1分増えます。
+
+### しきい値と<wbr>キャリブレーション
+
+GCを除いたリクエストあたりのIrがベースより3%以上多いと、シナリオは`WARN`になり、5%以上多いと`FAIL`になります。3%は`PERF_WARN_PERCENT`の値で、5%は`PERF_FAIL_PERCENT`の値です。終了ステータスは、シナリオが`FAIL`のとき、測定が失敗して`ERROR`になったとき、比べたシナリオが1つも無いときに1になります。測定が失敗するのは、次のどれかがあったときです。期待しないレスポンス、`error.log`の`error`以上のレベルの行、タイムアウト、ダンプが無いこと、リクエストを含まないウィンドウです。詳しくは「CIで実行する」にあります。例外は1つだけです。ヘッドが通るのにベースが期待しないレスポンスを返す場合で、ヘッドの機能を必要とするシナリオはこうなります。このとき、レポートはシナリオを`n/a`と示し、実行は失敗になりません。ただし、これはベースの測定でほかに何も問題が起きなかったときだけです。ベースの`error.log`には、リクエストのRubyのコードが例外を起こしたときにngx_mrubyが出す行があってもかまいません。その行は`mrb_run failed: return 500 HTTP status code to client: error: ...`で、ヘッドのRubyのメソッドやクラスを持たないベースは、`NoMethodError`や`NameError`でこの行を出します。`error`以上のレベルのほかの行があると、シナリオは`ERROR`になります。たとえば、LLMのモックが失敗してnginxが502を返したときに、nginxがログに出す`connect()`や`recv()`のエラーです。モックの問題と、1つのログにそのレベルの行が5つより多くあることも、`ERROR`になります。レポートはログごとに5行を示し、残りは読まないからです。ヘッドにしか無いディレクティブがあると、ベースは起動のときに止まります。これも`ERROR`です。
+
+しきい値は、2026年10月3日に、ビルドの入力を変えない変更で確かめました。ビルドの入力が同じ2つのチェックアウトで、`compare.sh`を3回実行しました。チェックアウトは、`next`の`f713d4e`と、`test/`とドキュメントだけを変えるブランチです。環境は、aarch64のコンテナの中のUbuntu 22.04で、gcc 11、valgrind 3.18.1、nginx 1.31.6です。1回目の実行は両方のツリーをビルドし、残りの2回は`ONLY_RUN=1`で同じビルドをもう一度測りました。次のテーブルは、ベースに対するヘッドの変化を、合計とGCを除いた値の順に示します。
+
+| シナリオ | ベースのリクエストあたりのIr。括弧の中はGCを除いた値 | 1回目 | 2回目 | 3回目 |
+|---|---|---|---|---|
+| `hello` | 11736 (11039) | +0.002% / +0.003% | -0.000% / -0.000% | +0.008% / +0.008% |
+| `headers` | 36002 (34025) | +0.002% / +0.002% | -0.002% / -0.002% | +0.000% / +0.000% |
+| `var` | 21199 (19700) | -0.000% / -0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `filter` | 14010 (13089) | -0.002% / -0.002% | -0.002% / -0.002% | +0.002% / +0.002% |
+| `sleep` | 15427 (14654) | -0.006% / -0.007% | -0.002% / -0.002% | +0.000% / +0.000% |
+| `sub_request` | 48710 (47538) | -0.003% / -0.004% | -0.001% / -0.001% | -0.001% / -0.001% |
+| `file` | 14009 (13075) | +0.002% / +0.002% | +0.000% / +0.000% | -0.002% / -0.002% |
+
+最大の変化は0.008%で、リクエストあたり約1命令です。これは`WARN`の3%の300分の1より小さいので、`N`を上げる必要はありません。後の2026年10月4日の実行では、同じ2つのチェックアウトを新しくビルドし、`sub_request`が+0.076%でした。GCを除いたリクエストあたりのIrは47501と47537です。ほかのシナリオは、どれも0.011%以内でした。2つ目のサーバへプロキシする`sub_request`は、いちばん大きくばらつきます。下に書くとおり、CIのランナーでも同じです。`callgrind_control`を起こす`/status`へのリクエストは、接続を含めて約12500命令かかります。各ウィンドウには、そのうち2つのリクエストの一部が入ります。これは、いちばん小さいウィンドウである`hello`の2億3500万命令の、多くて約0.01%です。
+
+エージェントプロキシのシナリオは、2026年10月4日に、ビルドの入力を変えない変更で確かめました。1つは、同じ種類のaarch64のコンテナで2回測ったもので、9つのシナリオをすべて測りました。9つには、デフォルトのセットから外した2つも入ります。もう1つは、これらのシナリオを加えたプルリクエストの`perf`ジョブで、x86_64のCIのランナーで、デフォルトのセットの7つを測りました。このジョブの実行は37152930938で、ベースは`next`の`f62880c`、ヘッドはマージコミットで、ビルドの入力は変わっていません。次のテーブルは、ベースに対するヘッドの変化を、合計とGCを除いた値の順に示します。
+
+| シナリオ | aarch64で同じビルドを2回。`next`の`4f29b06` | aarch64の`compare.sh`。`next`の`f62880c`とプルリクエスト | x86_64のCIの実行37152930938 |
+|---|---|---|---|
+| `proxy_plain_2k` | +0.000% / +0.000% | +0.005% / +0.005% | +0.000% / +0.000% |
+| `proxy_plain_64k` | +0.005% / +0.005% | +0.009% / +0.009% | -0.110% / -0.110% |
+| `proxy_stream_plain_50` | +0.042% / +0.042% | +0.023% / +0.023% | -0.063% / -0.063% |
+| `proxy_stream_plain_1000` | +0.004% / +0.004% | +0.007% / +0.007% | 実行していない |
+| `auth` | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `route_json_2k` | +0.000% / +0.000% | +0.000% / +0.000% | -0.000% / -0.000% |
+| `route_json_64k` | +0.000% / +0.000% | +0.000% / +0.000% | 実行していない |
+| `ruby_call_1` | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `ruby_call_10` | +0.003% / +0.004% | +0.000% / +0.000% | +0.000% / +0.000% |
+
+upstreamのあるシナリオがいちばん大きくばらつき、`non_buffered_calls`では、そのばらつきの一部しか説明できません。aarch64では、`proxy_stream_plain_50`が最大で0.042%動きました。このときの呼び出しは、ベースとヘッドでリクエストあたり5.01と5.02でした。CIのランナーでは、`proxy_plain_64k`が-0.110%動きました。リクエストあたりのIrは22530と22506で、呼び出しは両方のビルドで1.00でした。`proxy_stream_plain_50`は-0.063%動き、その間に呼び出しは4.86から4.94に増えました。この増加だけで約0.14%増えるはずです。同じジョブの2回目の実行は37156005549で、そのプルリクエストのレビューを反映したコミットで動きました。このときもビルドの入力は変わっていません。この実行では、`proxy_plain_64k`が+0.30%でした。リクエストあたりのIrは22564と22630で、呼び出しは両方のビルドで1.00でした。`proxy_stream_plain_50`は+0.39%で、その間に呼び出しは4.92から5.17に増え、比較はその分を+0.43%と見積もりました。ほかのシナリオは、どれも0.02%以内でした。タイミングで量が変わるほかの仕事は数えていません。たとえば、64 KBのリクエストのボディを何回で読むかです。aarch64で同じビルドを繰り返し実行したときは、GCを除いたリクエストあたりのIrが、`auth`で46797と46977で、差は0.38%でした。`route_json_2k`では106066と106246で、差は0.17%でした。しきい値が比べるのは1回の実行のベースとヘッドの間の変化で、これらの実行での最大は0.39%でした。これは`WARN`の3%の約8分の1です。ランナーでの後の実行でも、upstreamのあるシナリオは0.数%動くことがあります。これらのシナリオの変化が`WARN`に近いときは、リグレッションとみなす前に、2回目の実行と、`non_buffered_calls`の注記が要ります。
+
+この`compare.sh`の実行では、aarch64の両方のビルドで、`test/soak/nginx.conf`の7つのシナリオがウィンドウのチェックに失敗しました。当時、これらのシナリオは`ngx_mrb_run`を数えていて、callgrindはその呼び出しをリクエストごとに2回記録しました。詳しくは「比較に入れたエージェントプロキシのシナリオ」にあります。今は`ngx_mrb_start_fiber`を数えます。2026年10月4日に、同じ種類のコンテナで、ビルドの入力を変えない変更をもう1つ測りました。`compare.sh`のベースは`next`の`45c9e52`で、ヘッドは`test/perf/`とドキュメントだけを変えるブランチです。この測定では、両方のビルドで、7つのシナリオの各ウィンドウに`ngx_mrb_start_fiber`の呼び出しがちょうど20000回ありました。デフォルトのセットのシナリオは、どれも0.017%以内で、最大は`proxy_stream_plain_50`でした。7つのシナリオは0.009%以内でした。
+
+しきい値が働くことを確かめるために、ベースのコピーの`ngx_mrb_run`の先頭に、100回まわる空のループを入れてヘッドにしました。ループのカウンタは`volatile`です。当時の7つのシナリオは、どれもリクエストごとに`ngx_mrb_run`を1回実行します。エージェントプロキシのシナリオは後から加わりました。そのうち`proxy_*`のシナリオはRubyを実行せず、`ruby_call_10`は10回実行します。`ngx_mrb_run`のselfのコストは、どのシナリオでもリクエストあたり604命令増えました。レポートでは、`hello`が+5.47%で`FAIL`になりました。`filter`と`file`が+4.62%、`sleep`が+4.10%、`var`が+3.07%で、これらは`WARN`でした。`headers`は+1.79%、`sub_request`は+1.26%で、これらは`ok`でした。これらの割合は、604命令を各シナリオのGCを除いたリクエストあたりのIrで割った値です。`compare.sh`は1で終了しました。命令の数で言うと、3%は、`hello`ではリクエストあたり約330、`sub_request`では約1430です。
+
+CIのランナーでは、`perf`ジョブを加えたプルリクエストのそのジョブが、同じく、ビルドの入力を変えない変更になります。ランナーはx86_64のubuntu-22.04で、バージョンは上と同じです。ベースは`next`の`f713d4e`で、ヘッドはマージコミットでした。このジョブを4回実行し、どの回も両方のツリーをビルドしました。1回目から3回目は、そのプルリクエストの最初のコミットでの、ジョブの実行と2回の再実行です。4回目は、ドキュメントだけを変えた2つ目のコミットで実行しました。
+
+| シナリオ | ベースのリクエストあたりのIr。括弧の中はGCを除いた値 | 1回目 | 2回目 | 3回目 | 4回目 |
+|---|---|---|---|---|---|
+| `hello` | 11669 (11006) | -0.003% / -0.004% | -0.003% / -0.003% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `headers` | 39424 (37267) | -0.002% / -0.002% | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `var` | 22383 (20706) | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% | +0.000% / +0.000% |
+| `filter` | 14569 (13636) | +0.000% / +0.001% | +0.003% / +0.004% | +0.000% / +0.000% | +0.003% / +0.002% |
+| `sleep` | 15833 (15068) | +0.006% / +0.006% | +0.000% / +0.000% | +0.001% / +0.001% | +0.002% / +0.002% |
+| `sub_request` | 49996 (48854) | +0.001% / +0.001% | +0.016% / +0.016% | -0.001% / -0.001% | +0.020% / +0.021% |
+| `file` | 14309 (13360) | +0.002% / +0.002% | +0.000% / +0.000% | -0.002% / -0.003% | +0.000% / +0.001% |
+
+そのプルリクエストのレビューを反映したコミットで、このジョブをさらに2回実行しました。このときも、ビルドの入力は変わっていません。`sub_request`を除くすべてのシナリオは0.007%以内で、`sub_request`は+0.005%と-0.047%でした。`sub_request`のGCを除いたリクエストあたりのIrは、48706と48683です。2026年10月4日までの6回の実行をまとめると、次のとおりです。
+
+- 1回の実行のベースとヘッドの間では、最大の変化は約0.05%で、`sub_request`の約23命令でした。ほかのシナリオは、どれも0.007%以内でした。
+- 実行の間では、`sub_request`のGCを除いたリクエストあたりのIrは48683から48857までで、差は0.36%でした。ほかのシナリオは、どれも0.015%以内でした。
+
+ばらつくのは、2つ目のサーバへプロキシする`sub_request`です。その1回の実行の中での最大の変化でも、`WARN`の3%の約60分の1です。ベースとヘッドは同じジョブで続けて測るので、しきい値が見るのは1回の実行の中の変化です。命令セットが違うので、数はaarch64のものと違います。x86_64では、callgrindはGCの入口の関数に再帰のサフィックスを付けません。GCを除いた値から除くコストは、ここでも、`callgrind_annotate`が出す`mrb_incremental_gc`のinclusiveのコストに等しくなります。このジョブは、コードを変えるプルリクエストでも実行されるまで、参考のためのジョブで、`ci-ok`はこのジョブを必要としません。下の「CIで実行する」を参照してください。
+
+### 実行する
+
+ドライバには、CRuby 3.0以降と、`callgrind_control`とその補助の`vgdb`を持つvalgrindが要ります。`callgrind_control`と`vgdb`はLinuxで動きます。これらが無いと、`perf.rb`はすぐに止まります。macOSでは、Linuxのコンテナの中で実行してください。このチェックアウトを`origin/next`とコンテナの中で比べるには、次の1つのコマンドを実行します。
+
+```console
+$ rm -rf build_perf/base-src && git archive --prefix=build_perf/base-src/ origin/next | tar -x && docker run --rm -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev valgrind >/dev/null && sh test/perf/compare.sh build_perf/base-src'
+```
+
+Linuxでは、次のように実行します。
+
+```console
+$ sh test/perf/compare.sh build_perf/base-src          # build both, then compare
+$ ONLY_RUN=1 sh test/perf/compare.sh build_perf/base-src
+$ ONLY_RUN=1 PERF_SCENARIOS=hello,var sh test/perf/compare.sh build_perf/base-src
+$ sh test/perf/run.sh                                  # measure this checkout only
+```
+
+`compare.sh BASE_DIR [HEAD_DIR]`は、`BASE_DIR`を`build_perf/base`に、`HEAD_DIR`を`build_perf/head`にビルドします。`HEAD_DIR`のデフォルトはこのチェックアウトです。どちらのビルドでも、サードパーティのgemは、そのツリーにコミットした`build_config.rb.lock`のコミットです。そのため、gemが違うのはヘッドがロックを変えたところだけです。gemを別のコミットへ動かすプルリクエストは、マージしたときと同じく、そのコミットで測ります。ロックの無いチェックアウトは、反対側のロックを使います。ロックをコミットする前のチェックアウトがこれに当たります。ベースはヘッドのロックを、ヘッドはベースのビルドが書いたロックを使います。レポートは、コミットの違うgemの数を示し、その一覧を出します。測定に使う`test/perf/`と`test/soak/`のシナリオは、両方のビルドとも、このチェックアウトのものです。最初の実行は2つのツリーをビルドし、それぞれ数分かかります。デフォルトのシナリオの測定は、ビルドごとに約140秒かかります。CIのランナーでは139秒で、そのうち28秒が`sleep`です。`PERF_SCENARIOS`で`proxy_stream_plain_1000`と`route_json_64k`を挙げると、それぞれ約80秒と130秒が加わります。レポートは`build_perf/report.txt`と`build_perf/report.json`に書きます。`test.sh`はマシンのすべてのnginxをkillするので、同時に実行しないでください。
+
+| 変数 | デフォルト | 意味 |
+|---|---|---|
+| `ONLY_RUN` | 未設定 | 設定するとビルドを飛ばす |
+| `NUM_THREADS_ENV` | CPUの数の半分 | ビルドの並列数。`build.sh`に渡す |
+| `PERF_SCENARIOS` | `test/perf/perf.rb`の`DEFAULT_SCENARIOS` | カンマで区切ったシナリオの名前 |
+| `PERF_N` | 20000 | 測るウィンドウのリクエストの数 |
+| `PERF_WARMUP` | 2000 | ウィンドウの前のリクエストの数 |
+| `PERF_WARN_PERCENT` | 3 | GCを除いたリクエストあたりのIrがこの割合以上変わるとWARN |
+| `PERF_FAIL_PERCENT` | 5 | この割合以上変わるとFAIL |
+| `PERF_PORT_BASE` | 12370 | シナリオのポート。`sub_request`のバックエンドは次のポートを、LLMのモックはその次のポートを使う |
+| `PERF_REPORT_DIR` | `build_perf` | `report.txt`と`report.json`を書くディレクトリ |
+| `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_start_fiber` | `test/soak/nginx.conf`の7つのシナリオで、リクエストごとに1回と数える関数の名前。「CIで実行する」を参照 |
+
+### CIで<wbr>実行する
+
+`.github/workflows/test.yml`の`perf`ジョブは、測るバイナリの入力か、測定か、ワークフローを変えるプルリクエストと、ラベルの`perf`が付いたプルリクエストで動きます。ラベルはジョブが動くときに読むので、ラベルを付けてジョブを再実行すれば足ります。バイナリの入力は、`test/build_release.sh`がコピーするものです。`src/`、`mrbgems/`、`mruby/`、`dependence/`、トップレベルのビルドのファイルの`build_config.rb`、`configure`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`と、gemのロックの`build_config.rb.lock`です。`dependence/`は、`Makefile.in`がnginxに加えるngx_devel_kitです。測定は、`test/perf/`、`test/build_release.sh`、`test/soak/`のシナリオのファイルです。シナリオのファイルは、`nginx.conf`、`nginx.agent.conf`、`scenarios.rb`、`http_client.rb`、`mock_llm.rb`、`handlers/`です。`master`のジョブも同じで、違いは2つです。`master`はgemのロックをコミットしないので、`master`ではロックは入力ではありません。また、`master`にはソークのジョブが無いので、`master`の`perf`ジョブは、`next`では`test/soak/run.sh`が実行するLLMのモックのチェックを最初に実行します。そのチェックは`ruby test/soak/mock_llm_test.rb`です。`master`では、`test/soak/`の全体が測定です。
+
+`nginx_version`を変えると、ヘッドは別のnginxでビルドされます。そのため、その`WARN`や`FAIL`には、ngx_mrubyのコストだけでなく、nginx自身のコストも入ります。ngx_mrubyのリグレッションとみなす前に、下に書くとおり、プロファイルの関数を読んでください。
+
+プルリクエストのチェックアウトは、マージコミットの`refs/pull/N/merge`です。ジョブは、その1つ目の親であるベースブランチとマージコミットを比べます。そのため、差は、マージしたときのプルリクエストの変更になります。テーブルはジョブのサマリーにあり、その下に失敗した測定の理由があります。`WARN`、`FAIL`、`ERROR`、`n/a`のシナリオと、シナリオを1つも比べなかった実行は、アノテーションになります。ジョブは`FAIL`と`ERROR`で失敗します。測定は、次のときに失敗して`ERROR`になります。nginxが起動しないか応答しないとき、`callgrind_control`が失敗するかタイムアウトしたとき、ダンプが無いとき、`error.log`に`error`以上のレベルの行があるとき、ウィンドウがリクエストを含まないときです。ウィンドウがリクエストを含まないとは、Irが0のときか、シナリオのリクエストの関数の呼び出しが期待した数でないときです。期待する数は、`test/soak/nginx.conf`の7つのシナリオでは、リクエストごとにちょうど1回の`ngx_mrb_start_fiber`の呼び出しです。エージェントプロキシのシナリオでは、「比較に入れたエージェントプロキシのシナリオ」のテーブルにある関数と回数です。vgdbがプロセスに届かなかったときも`callgrind_control`は「OK.」と出力するので、空のウィンドウはここで見つかります。`n/a`になるのは、ベースがシナリオに期待しないレスポンスを返し、ngx_mrubyの`mrb_run failed`の行のほかに問題が無いときだけです。これは、ヘッドの機能を必要とするシナリオで起きます。性能の比較の[しきい値とキャリブレーション](#しきい値とキャリブレーション-1)を参照してください。シナリオを1つも比べなかった実行は失敗します。
+
+リクエストの関数の呼び出しは、名前で数えます。GCCが`-O2`で作る関数のコピーは、元の関数として数えます。コピーとは、`ngx_mrb_start_fiber.part.0`、`.isra.0`、`.constprop.0`、`.cold`のようなものです。あるコピーから別のコピーへの呼び出しは1回と数えます。そのため、GCCが関数を分割したりクローンしたりするようになる変更でも、ウィンドウのチェックは失敗しません。次の2種類のプルリクエストは、`test/perf/perf.rb`の`REQUEST_FUNCTIONS`に新しい名前を加え、古い名前を残す必要があります。`ngx_mrb_start_fiber`の名前を変えるプルリクエストと、Rubyの実行のファイバーを始める処理を別の関数へ移すプルリクエストです。ヘッドの`perf.rb`はベースも測り、一覧にある2つの名前の間の呼び出しは1回と数えるからです。今は、GCCは`ngx_mrb_start_fiber`をインライン化できません。この関数は`ngx_http_mruby_async.c`で定義し、`ngx_http_mruby_module.c`から呼んでいるからです。コンパイラがこの関数をインライン化できるようにする変更では、プロファイルにこの関数の呼び出しが残りません。たとえば、ただ1つの呼び出し元のファイルの中でこの関数を`static`にする変更や、LTOでのビルドです。そうなると、7つのシナリオのウィンドウは、どれも呼び出しが0回になります。そのため、そうした変更では、実際の呼び出しが残る関数を一覧に挙げる必要があります。ローカルの実行では、カンマで区切った`PERF_REQUEST_FUNCTIONS`で一覧を上書きできます。`REQUEST_FUNCTION_CALLS`ではシナリオのリクエストあたりの呼び出しの数を、`SCENARIO_REQUEST_FUNCTIONS`ではシナリオの関数を、別のものに設定します。`ruby test/perf/perf.rb --self-test`は、名前の規則とプロファイルの読み方を、用意した架空のプロファイルで確かめます。ビルドもvalgrindも要りません。`compare.sh`と`run.sh`は、最初にこれを実行します。
+
+このジョブは、今は参考のためのジョブです。`ci-ok`はこのジョブを必要としないので、`FAIL`でもマージは止まりません。上のキャリブレーションのとおり、命令の数はランナーの速さで変わりません。そこで、`docs/proposals/v3-plan.md`のPillar Eの計画では、命令の数でマージを止めることにしています。`src/`か`mrbgems/`を変えるプルリクエストでもこのジョブが誤検知なしに動いたら、このジョブを`ci-ok`の`needs`に加える計画です。
+
+アーティファクトの`perf-callgrind`には、レポートがあります。また、`base`と`head`のそれぞれについて、ウィンドウのプロファイル、`callgrind_control`とvalgrindの出力、nginxのログがあります。プロファイルは`callgrind/callgrind.out.<scenario>`です。変化がどこから来たかを見るには、同じシナリオの関数を両方のビルドで出力して比べます。
+
+```console
+$ callgrind_annotate --inclusive=yes build_perf/head/callgrind/callgrind.out.var | head -40
+$ callgrind_annotate build_perf/base/callgrind/callgrind.out.var > base.txt
+$ callgrind_annotate build_perf/head/callgrind/callgrind.out.var > head.txt
+$ diff base.txt head.txt
+```
+
+数はウィンドウ全体の値です。1つのリクエストの値は、`PERF_N`で割って求めます。プロファイルは、KCachegrindやQCachegrindでも開けます。

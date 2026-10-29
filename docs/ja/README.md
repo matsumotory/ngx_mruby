@@ -15,7 +15,7 @@
 ## ブランチと<wbr>リリース
 
 - [ブランチの運用](../../README.md#branch-strategy)：`master`、`next`、`v2.x`が何を持つか、2.xに留まるには何に固定すればよいか
-- [v3をmasterへ昇格する](../DEVELOPMENT.md#promoting-v3-to-master)：メンテナーのための昇格の手順
+- [v3をmasterへ昇格する](../DEVELOPMENT.md#v3をmasterへ昇格する)：メンテナーのための昇格の手順
 
 ## ライセンス
 

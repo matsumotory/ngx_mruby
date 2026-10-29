@@ -72,10 +72,7 @@ export const GENERATED_REFERENCE = ['reference/directives', 'reference/ruby'];
 // that each pull request of step 5 removes the pages it translates.
 export const NOT_TRANSLATED_YET = [
   'contributing',
-  'contributing/development',
   'contributing/handoff',
-  'contributing/test',
-  'releases',
   'security',
   'security/trust-boundary',
 ];

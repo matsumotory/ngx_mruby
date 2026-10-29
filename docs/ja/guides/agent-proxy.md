@@ -103,4 +103,4 @@ perfのレーンの`test/perf/compare.sh`は、nginxがリクエストごとに�
 | server rewriteハンドラでの認証の確認。Rubyなしで2 KBのPOSTをプロキシしたときと比べた増分 | 25,276 (23,305) |
 | 2 KBのボディの`JSON.parse`と`model`での振り分け。Rubyを使わない同じプロキシと比べた増分 | 85,228 (82,097) |
 
-各シナリオは、[性能の比較に入れたエージェントプロキシのシナリオ](../../test/README.md#agent-proxy-scenarios-in-the-comparison)にあります。
+各シナリオは、[性能の比較に入れたエージェントプロキシのシナリオ](../../test/README.md#比較に入れたエージェントプロキシのシナリオ)にあります。
