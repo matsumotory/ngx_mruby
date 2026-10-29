@@ -360,6 +360,31 @@ How sessions do it (their procedure, not a decision of the owner):
   carries a security fix.
 - There is no copy on `master`. From a checkout of `master`, read it with
   `git fetch origin next` and `git show origin/next:docs/HANDOFF.md`.
+- These records are shared by human, Claude and Codex sessions. A tool's
+  memory may help locate evidence, but is not the source of the current
+  scope, decisions or validation. Use the repository and the PR, following
+  [Continuing shared work](docs/DEVELOPMENT.md#continuing-shared-work).
+- At the start or resumption of work, check the current branch heads, open
+  PRs and their latest comments before claiming a queue item. Before a
+  takeover, confirm that the previous writer has stopped and preserve its
+  worktree and uncommitted changes. One writer owns each task worktree;
+  independent reviewers read it without changing it. Record ownership on
+  the PR before pushing another session's branch.
+- Keep the PR body current when its head, scope or verification changes.
+  Before a planned stop or transfer, leave a dated checkpoint in the PR
+  with the head and base, completed work, commands and results tied to
+  commits, checks still running or not run, unresolved decisions or
+  blockers, and the next concrete step. Link to existing review/CI evidence
+  instead of copying raw logs. Update HANDOFF as above when the queue or
+  state changes; do not make another private handoff file the only record.
+- Public checkpoints use repository-relative paths and public commit/PR/run
+  links. Do not commit private conversation logs, absolute local paths,
+  personal reference images, credentials or scratch outputs. Keep local
+  work records outside the checkout or under narrowly ignored directories;
+  inspect ignored, untracked, tracked and staged files before committing.
+  An ignore rule does not remove a tracked file. An interruption does not
+  justify deleting another session's files, rewriting history or changing
+  tests to make a check green.
 
 ## Build and test
 

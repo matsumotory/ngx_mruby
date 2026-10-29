@@ -2,6 +2,9 @@
 
 ## Claude Code notes
 
+- Shared handoff and ownership follow `AGENTS.md` and "Continuing shared
+  work" in `docs/DEVELOPMENT.md`, also when Codex or a human takes over.
+  The paths below are local Claude conventions, not handoff evidence.
 - Parallel work: use one `git worktree` per task, under `.claude/worktrees/`
   (`git worktree add -b claude/<topic> .claude/worktrees/<topic> origin/<base>`).
   Each worktree has its own `build/`. To run `test.sh` in two worktrees at the

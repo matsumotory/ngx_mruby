@@ -35,6 +35,51 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## Continuation checkpoint, 2026-10-29 20:05 UTC
+
+This supplements the integration snapshot below. Verify branch and PR state
+again before acting; the PRs hold final-head CI and review evidence.
+
+- `master` and its `v2.x` mirror are `7d81d417a`. Site cutover PRs #655,
+  #657, #656 and #654 are merged. Production run 40928646131 was verified
+  against its artifact, including all 26 `/v2/` pages, version-specific
+  English/Japanese search and mobile rendering.
+- [#658](https://github.com/matsumotory/ngx_mruby/pull/658) merged into
+  `next` as `258c852fa` at 20:02 UTC after explicit owner authorization.
+  Its final head `ee0025f5d` passed CI on merge ref `7c0c9ee0a`, including
+  matrix, sanitizer, valgrind, soak, nginx tests, examples and site build.
+  The performance run 40934491055 has 15 `ok` rows, largest increase
+  +0.21%; the final numeric review is
+  [recorded on the PR](https://github.com/matsumotory/ngx_mruby/pull/658#issuecomment-6507034713).
+  Post-merge site publication still needs its own verification.
+- [#659](https://github.com/matsumotory/ngx_mruby/pull/659),
+  `codex/shared-handoff-process`, records the common Claude/Codex/human
+  continuation procedure. Head `cb3d35164` passed CI (the first OpenSSL
+  download failure was resolved by a rerun). This update includes the new
+  `next` base, so CI must pass again on the updated head. Its only conflict
+  was this dated state record; the integration snapshot is retained below.
+- `codex/site-technical-design` holds the rebrand and machine-readable
+  documentation preview, still uncommitted at this checkpoint. Preserve
+  its task worktree. The export has 51 development and 16 stable source
+  pages, complete-body/source/metadata checks and independent retrieval
+  review. The pre-logo revision passed 440 browser loads and 1,008 focus
+  stops; new global colors and the metallic C logo need final browser QA.
+  No reference photograph is a public asset. The owner authorized iterative
+  site publication on 2026-10-29: "ossのサイトはデプロイしまくっていいのでどんどんやろう".
+  This does not authorize a v3 software release or publication of private
+  materials. The latest design and source-state details are in the site
+  proposal and the forthcoming design PR.
+- [#660](https://github.com/matsumotory/ngx_mruby/pull/660), head
+  `4723905ef`, fixes the stable installation guide. A released v2.7.2
+  checkout with explicit nginx 1.31.8 passed the documented static build,
+  install and loopback HTTP lifecycle. Custom/dynamic alternatives are
+  explicitly not additional executed results. CI and final review remain
+  on that PR; this is separate from site styling and v3 runtime work.
+- Upstream setter D/E and the stable empty-filter follow-up remain queued.
+  The integration prerequisite is now merged. Existing v3 planning decisions
+  hold; the site's future-facing description must distinguish implemented,
+  planned and still-undecided behavior.
+
 ## State as of 2026-10-30 (03:49 JST)
 
 Before this integration, `next` is `e469b259c`, the merge of
@@ -357,36 +402,11 @@ Taken up and still open: none.
 
 ## How a session continues
 
-1. Fetch first (`git fetch origin`) and work from `origin/<base>`: local
-   checkouts fall behind as other sessions merge.
-2. One `git worktree` per task, on a branch `claude/<topic>` made from
-   `origin/<base>` (see [CLAUDE.md](../CLAUDE.md)).
-3. Follow [AGENTS.md](../AGENTS.md): the branch table, the two commits of a
-   bug fix, the review checklist and the merge conditions.
-4. Builds and tests are run on Linux. On macOS, build a Linux container that
-   matches CI: [.github/workflows/test.yml](../.github/workflows/test.yml)
-   runs on `ubuntu-22.04` and installs its packages in the `apt-get install`
-   lines (valgrind among them: the `build` job runs nginx under valgrind,
-   and the `perf` job uses it for callgrind). The root `Dockerfile` is a
-   runtime image, not this environment. Run one `test.sh` per machine at a
-   time.
-5. Before you act on a pull request, read its newest comments: reviews and
-   the author's answers are posted there.
-6. To take over an open pull request from another session (one that
-   stopped, or one on another machine), post a comment on it that takes it
-   over from its head commit, then push.
-7. Before you start a row of the queue, look for it with
-   `gh pr list --state open` and `git ls-remote origin 'refs/heads/claude/*'`:
-   another session may have started it. Then push a `claude/<topic>` branch
-   or open a draft pull request, so that a session on another machine sees
-   the work, and name it in the row: in your own pull request when its base
-   is `next`, otherwise in the next update of this file.
-8. Possible vulnerabilities go to the security process of
-   [SECURITY.md](../SECURITY.md), never into issues, pull requests, commit
-   messages or this file.
-9. When your work changes a list in this file, update it as "How to use
-   this file" says. For a pull request on `master`, the session that merged
-   it opens the update on `next`.
+Use [Continuing shared work](DEVELOPMENT.md#continuing-shared-work) for
+startup, ownership, checkpoints, temporary files and resumption. The rules
+are in [AGENTS.md](../AGENTS.md#session-handoff); this file records the
+queue and decisions, while each PR records its current head and evidence.
+The procedure applies to Claude, Codex and human contributors alike.
 
 ## Private material
 
