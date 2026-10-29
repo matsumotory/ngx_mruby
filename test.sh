@@ -16,23 +16,12 @@ if [ `uname -s` = "NetBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
     NGINX_LD_OPT='-L/usr/pkg/lib -Wl,-R/usr/pkg/lib'
     MAKE=gmake
-    KILLALL=pkill
-    PS_C="pgrep -l"
 elif [ `uname -s` = "FreeBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
     MAKE=gmake
-    KILLALL=pkill
-    PS_C="pgrep -l"
 else
     NPROCESSORS_ONLN="_NPROCESSORS_ONLN"
     MAKE=make
-    if [ -f /etc/centos-release ]; then
-        KILLALL=pkill
-        PS_C="pgrep -l"
-    else
-        KILLALL=killall
-        PS_C="ps -C"
-    fi
 fi
 
 # Extra compiler and linker flags for nginx, which also compiles ngx_mruby,
@@ -136,7 +125,89 @@ if [ -n "$TEST_SH_SKIP_TESTS" ]; then
     echo "test.sh ... built and installed to ${NGINX_INSTALL_DIR}; tests skipped (TEST_SH_SKIP_TESTS)"
     exit 0
 fi
-$PS_C nginx 2>/dev/null && $KILLALL nginx
+
+# test.sh stops only the nginx processes that it started, by their pid (see
+# "Stopping nginx" in docs/test/README.md). It never signals an nginx by its
+# name, so the nginx processes of other checkouts and of other users stay.
+
+# The upper bound, in seconds, of each stop of an nginx below.
+: ${NGINX_STOPTIME:=60}
+
+# True when process $1 is gone, or has ended and waits to be collected (a
+# zombie): kill -0 still succeeds for a zombie.
+nginx_ended() {
+    nginx_stat=`ps -o stat= -p "$1" 2>/dev/null | tr -d ' '` || nginx_stat=
+    case "$nginx_stat" in
+        ''|Z*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# True when process $1 runs the nginx of this build directory: its command
+# line contains the absolute path of sbin/nginx (also under valgrind). The
+# shell may have collected an nginx that ended, and its pid may then belong
+# to another process, so test.sh checks this before each signal. -ww keeps
+# ps from cutting the line at COLUMNS.
+nginx_is_ours() {
+    ps -ww -o args= -p "$1" 2>/dev/null | grep -F "${NGINX_INSTALL_DIR}/sbin/nginx" >/dev/null
+}
+
+# Sends SIGTERM to the nginx with pid $1 and waits until it has ended. A
+# single nginx process (master_process off) checks for the signal only after
+# it has handled its events, so a SIGTERM that arrives after that check and
+# before it waits for events again stays unseen until the next event, which
+# may never come (ngx_single_process_cycle). The signal is therefore sent
+# again 1, 3, 7, 15 and 31 seconds after the first one, as the master
+# process of nginx sends it again to its workers with a delay that doubles.
+# After NGINX_STOPTIME seconds the process gets SIGKILL and the stop fails.
+# The times are counted in rounds of "sleep 0.1" and a ps, so the real times
+# are somewhat longer. A pid that no longer runs this build's nginx counts as
+# ended and gets no signal.
+stop_nginx() {
+    stop_pid=$1
+    stop_signals=0
+    stop_ticks=0
+    stop_next=10
+    stop_step=10
+    if nginx_is_ours "$stop_pid"; then
+        kill -TERM "$stop_pid" 2>/dev/null || true
+        stop_signals=1
+    fi
+    while ! nginx_ended "$stop_pid" && nginx_is_ours "$stop_pid"; do
+        if [ "$stop_ticks" -ge $((NGINX_STOPTIME * 10)) ]; then
+            if nginx_is_ours "$stop_pid"; then kill -KILL "$stop_pid" 2>/dev/null || true; fi
+            echo "test.sh: nginx (pid $stop_pid) did not end within ${NGINX_STOPTIME} seconds (NGINX_STOPTIME) after $stop_signals SIGTERM; sent SIGKILL"
+            return 1
+        fi
+        sleep 0.1
+        stop_ticks=$((stop_ticks + 1))
+        if [ "$stop_ticks" -eq "$stop_next" ] && nginx_is_ours "$stop_pid"; then
+            kill -TERM "$stop_pid" 2>/dev/null || true
+            stop_signals=$((stop_signals + 1))
+            stop_step=$((stop_step * 2))
+            stop_next=$((stop_next + stop_step))
+        fi
+    done
+    if [ "$stop_signals" -eq 0 ]; then
+        echo "test.sh: nginx (pid $stop_pid) had ended before the stop; no signal sent"
+    else
+        echo "test.sh: nginx (pid $stop_pid) ended within about $((stop_ticks / 10)).$((stop_ticks % 10)) seconds of the first SIGTERM; SIGTERM sent $stop_signals times"
+    fi
+}
+
+# An earlier run of test.sh that was killed before it could stop its nginx
+# leaves that nginx running, with its pid in logs/nginx.pid. Stop it if the
+# process still runs the nginx of this build directory; the pid may belong to
+# another process by now.
+if [ -s ${NGINX_INSTALL_DIR}/logs/nginx.pid ]; then
+    old_pid=`cat ${NGINX_INSTALL_DIR}/logs/nginx.pid`
+    if nginx_is_ours "$old_pid"; then
+        echo "test.sh: stopping the nginx (pid $old_pid) that an earlier run left running"
+        stop_nginx "$old_pid"
+    elif ! nginx_ended "$old_pid"; then
+        echo "test.sh: logs/nginx.pid names pid $old_pid, which does not run ${NGINX_INSTALL_DIR}/sbin/nginx; left running"
+    fi
+fi
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 rm -rf ${NGINX_INSTALL_DIR}/conf/conf.d
 mkdir -p ${NGINX_INSTALL_DIR}/conf/conf.d/stream
@@ -193,7 +264,26 @@ echo ""
 echo ""
 ${NGINX_RUNNER} ${NGINX_INSTALL_DIR}/sbin/nginx &
 nginx_pid=$!
-trap "kill $nginx_pid; wait" EXIT
+# Stop nginx when test.sh exits, also after a failure or a signal, and keep
+# the exit status of test.sh unless the stop itself fails. The exit status of
+# nginx is printed and does not change it.
+on_exit() {
+    exit_status=$1
+    trap - EXIT
+    if stop_nginx "$nginx_pid"; then
+        nginx_status=0
+        wait "$nginx_pid" || nginx_status=$?
+        echo "test.sh: nginx (pid $nginx_pid) exit status $nginx_status"
+    else
+        wait "$nginx_pid" || true
+        exit_status=1
+    fi
+    exit "$exit_status"
+}
+trap 'on_exit $?' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 echo ""
 echo ""
 ruby test/t/cases/_wait_for_listen.rb listen ${NGINX_HEATTIME} $nginx_pid test/conf/nginx.conf test/conf/conf.d/*.conf
