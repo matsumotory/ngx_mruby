@@ -63,7 +63,9 @@ jobs:
       # with its whole history for their last-updated dates.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: master
+          # TEMPORARY: the branch of the pull request to master that fixes
+          # the links of master's docs/ (#655), until it merges.
+          ref: claude/v2-docs-links
           path: master
           fetch-depth: 0
           persist-credentials: false
