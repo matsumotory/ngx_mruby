@@ -1,0 +1,38 @@
+---
+// The notice above the English text of a page under /ja/ that has no
+// Japanese source (docs/proposals/site.md, 3.4 and Q2 of section 7).
+// Starlight shows it on its fallback pages. The pages of the generated
+// reference (GENERATED_REFERENCE of scripts/lib/site.mjs) say why they stay
+// in English; the pages still to be translated say that the translation is
+// not there yet. The notice is Japanese inside the English <main>, so it
+// carries lang="ja" (WCAG 3.1.2). site/scripts/check-japanese.mjs checks
+// which notice each fallback page shows, by its data-notice attribute.
+import { GENERATED_REFERENCE } from '../../scripts/lib/site.mjs';
+
+const route = Astro.url.pathname.replace(/^\/ja\/?/, '').replace(/\/$/, '');
+const generated = GENERATED_REFERENCE.includes(route);
+---
+
+{
+  generated ? (
+    <p class="site-notice" lang="ja" data-notice="generated-reference">
+      このリファレンスは英語で載せています。v3の計画では、このリファレンスを今後<code>src/</code>のコードから生成します。そのため、生成のたびに古くなる日本語訳は作りません。
+    </p>
+  ) : (
+    <p class="site-notice" lang="ja" data-notice="untranslated">
+      このページの日本語訳はまだありません。代わりに英語の本文を表示しています。
+    </p>
+  )
+}
+
+<style>
+  .site-notice {
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-frame);
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-nav);
+    line-height: var(--leading-nav);
+  }
+</style>

@@ -19,7 +19,7 @@ REQUEST_BODY_LATER_HANDLERS = [
 # returns the status of the connection, the status line and the body of the
 # response, and then its header fields (names in lower case).
 def request_body_later_parts(host, path, port = 18144, mode = 'parts')
-  out = `ruby test/t/cases/_request_body_client.rb #{mode} #{port} #{host} #{path}`
+  out = `ruby #{suite_path('test/t/cases/_request_body_client.rb')} #{mode} #{port} #{host} #{path}`
   status, hex = out.split(":", 2)
   head, body = [hex.to_s].pack("H*").split("\r\n\r\n", 2)
   lines = head.to_s.split("\r\n")
@@ -34,7 +34,7 @@ end
 # Opens three connections that send part of the body and close them; returns
 # the output of the helper ("before=N after=M" or "unsupported").
 def request_body_later_close(host, path)
-  `ruby test/t/cases/_request_body_client.rb close 18144 #{host} #{path} 3`
+  `ruby #{suite_path('test/t/cases/_request_body_client.rb')} close 18144 #{host} #{path} 3`
 end
 
 REQUEST_BODY_LATER_HANDLERS.each do |host, path, kind|
@@ -76,7 +76,7 @@ end
 # for a second request.
 [['/rewrite', 'a rewrite handler'], ['/content', 'a content handler']].each do |path, handler|
   t.assert('request body later', "the connection stays open for the next request after #{handler} answered a late body") do
-    out = `ruby test/t/cases/_request_body_client.rb keepalive 18144 localhost #{path}`
+    out = `ruby #{suite_path('test/t/cases/_request_body_client.rb')} keepalive 18144 localhost #{path}`
     status1, hex1, status2, hex2 = out.split(':', 4)
     head1, body1 = [hex1.to_s].pack('H*').split("\r\n\r\n", 2)
     head2, body2 = [hex2.to_s].pack('H*').split("\r\n\r\n", 2)
@@ -93,7 +93,7 @@ end
 # stops arriving: nginx closes the connection without a response.
 [['/rewrite_timeout', 'a rewrite handler'], ['/content_timeout', 'a content handler']].each do |path, handler|
   t.assert('request body later', "client_body_timeout ends the request when #{handler} waits for a body that stops arriving") do
-    out = `ruby test/t/cases/_request_body_client.rb timeout 18144 localhost #{path}`
+    out = `ruby #{suite_path('test/t/cases/_request_body_client.rb')} timeout 18144 localhost #{path}`
     status, seconds, hex = out.split(':', 3)
     t.assert_equal 'EOF', status
     t.assert_equal '', [hex.to_s].pack('H*')
@@ -128,7 +128,7 @@ end
 end
 
 t.assert('request body later', 'no connection of the auth_request server stays open after its client closed it') do
-  out = `ruby test/t/cases/_request_body_client.rb close_wait 18147`
+  out = `ruby #{suite_path('test/t/cases/_request_body_client.rb')} close_wait 18147`
   t.assert_equal 'close_wait=0', out unless out == 'unsupported'
 end
 
@@ -179,7 +179,7 @@ REQUEST_BODY_SET_CONTENT_RAN = 'request-body-set-content-code-ran'
 end
 
 t.assert('request body later', 'no connection of the mruby_set server stays open after its client closed it') do
-  out = `ruby test/t/cases/_request_body_client.rb close_wait 18148`
+  out = `ruby #{suite_path('test/t/cases/_request_body_client.rb')} close_wait 18148`
   t.assert_equal 'close_wait=0', out unless out == 'unsupported'
 end
 
@@ -225,7 +225,7 @@ end
 
 t.assert('request body later', 'a log handler runs without the body that a rewrite handler waits for when client_body_timeout ends the request') do
   offset = File.size(request_body_set_log_path)
-  out = `ruby test/t/cases/_request_body_client.rb timeout 18152 localhost /log_handler`
+  out = `ruby #{suite_path('test/t/cases/_request_body_client.rb')} timeout 18152 localhost /log_handler`
   status, seconds, hex = out.split(':', 3)
   t.assert_equal 'EOF', status
   t.assert_equal '', [hex.to_s].pack('H*')
@@ -262,7 +262,7 @@ end
 end
 
 t.assert('request body later', 'no connection of the server whose read ended without the body stays open after its client closed it') do
-  out = `ruby test/t/cases/_request_body_client.rb close_wait 18152`
+  out = `ruby #{suite_path('test/t/cases/_request_body_client.rb')} close_wait 18152`
   t.assert_equal 'close_wait=0', out unless out == 'unsupported'
 end
 

@@ -13,7 +13,7 @@ AGENT_PROXY_PORT = 18132
 
 def agent_proxy_client(mode, api = "messages")
   result = {}
-  `ruby test/t/cases/_agent_proxy_client.rb #{mode} #{api} #{AGENT_PROXY_PORT}`.split("\n").each do |line|
+  `ruby #{suite_path('test/t/cases/_agent_proxy_client.rb')} #{mode} #{api} #{AGENT_PROXY_PORT}`.split("\n").each do |line|
     key, value = line.split("=", 2)
     result[key] = value
   end

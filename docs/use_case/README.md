@@ -153,9 +153,9 @@ HSET /dropbox/aaabbbcccddd expire 1900000000
 
 - [Dynamic Image Provider (in Japanese)](https://techhey.hatenablog.com/entry/2014/04/19/162323)
 - [Research ngx_mruby and use output filter (in Russian)](https://habr.com/ru/articles/225313/)
-- [ACME auto ssl using Let's Encrypt](../../test/conf/auto-ssl/nginx.conf.client_example):
-  needs a build with `NGX_MRUBY_AUTO_SSL=1` (see
-  [Building with the auto-ssl mrbgem](../install/README.md#building-with-the-auto-ssl-mrbgem))
-  and a running Redis server, because the example keeps the certificates
-  and the challenge tokens in Redis. Its ACME client speaks ACMEv1, which
-  Let's Encrypt no longer serves.
+- [ACME auto ssl using Let's Encrypt](https://github.com/matsumotory/ngx_mruby/blob/v2.7.2/test/conf/auto-ssl/nginx.conf.client_example)
+  (ngx_mruby 2.x): needs the auto-ssl mrbgem, which ngx_mruby 3.0.0 does not
+  have (see
+  [The auto-ssl mrbgem and the classes that came with it](../install/README.md#the-auto-ssl-mrbgem-and-the-classes-that-came-with-it)),
+  and a running Redis server. Its ACME client speaks ACMEv1, which Let's
+  Encrypt no longer serves.

@@ -1,8 +1,8 @@
 name: site
 
-# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and steps 1 to 4 of
+# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and steps 1 to 5 of
 # section 6): build site/ and docs/ from a fresh clone, run the checks of
-# steps 1 to 4, and upload the built site and the screenshots of step 3 as
+# steps 1 to 5, and upload the built site and the screenshots of step 3 as
 # workflow artifacts. There is no deployment job: step 7 adds it, after the
 # Pages settings of 5.3.
 #
@@ -91,7 +91,12 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-pages.mjs
-      - name: Check the Japanese pages (lang="ja" under /ja/, <wbr> elements in h2)
+      # Steps 1 and 5: the translations and the notices of the pages under
+      # /ja/ that show an English page, lang and hreflang on every page,
+      # no space between Japanese and Latin text in the Japanese sources,
+      # the code blocks of the English pages, no "wbr" in titles, ids and
+      # navigation, and the labels of the diagrams under /ja/.
+      - name: Check the Japanese pages (translations, notices, lang and hreflang, spaces, code blocks, wbr, diagram labels)
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-japanese.mjs
@@ -158,6 +163,13 @@ jobs:
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-styles.mjs
+      # Step 5: the lines of the Japanese pages in Noto Sans JP, the face
+      # that CI has (body lines, line height, page titles, the right edge,
+      # last lines, diagram labels).
+      - name: Check the lines of the Japanese pages in Chromium and WebKit (40 characters, line height, h1, right edge, last lines, diagram labels)
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-japanese-lines.mjs
       - name: Check the focus ring and that the header covers no focused element, in Chromium and WebKit
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
