@@ -9,12 +9,13 @@ nginx's event loop.
 
 ```diagram
 async-sleep
-caption: What happens when a handler calls `Nginx::Async.sleep`, from the call until the handler's code goes on.
+caption: What happens when an access handler calls `Nginx::Async.sleep`, from the call until the handler's code goes on.
 source: mrbgems/ngx_mruby_mrblib/mrblib/mrb_nginx.rb 100-106
 source: src/http/ngx_http_mruby_async.c 187-239 241-314 316-348 363-410
 source: src/http/ngx_http_mruby_module.c 1061-1074
+source: src/http/ngx_http_mruby_core.h 30-35
 at: 0c72e3970 2026-10-19
-call: The handler's code calls `Nginx::Async.sleep(500)` in its fiber
+call: An access handler's code calls `Nginx::Async.sleep(500)` in its fiber
 timer: `__sleep` adds a timer of 500 ms to nginx's event loop, and `Fiber.yield` suspends the fiber
 done: The handler returns `NGX_DONE`: nginx keeps the request and leaves the handler
 serve: The worker serves its other connections while the timer runs
@@ -33,10 +34,17 @@ resume: The code goes on after `sleep`; when it ends, the request goes on with t
 - `Nginx::Async::HTTP.sub_request` works in the same way: it starts an
   nginx subrequest and yields, and nginx resumes the fiber when the
   subrequest has finished.
-- Only the handlers that nginx can resume wait: the post-read, server
-  rewrite, rewrite, access and content handlers, and `mruby_set`. In the
-  header and body filters and the log handler, both methods raise a
-  `RuntimeError`.
+- nginx resumes the handler only in `mruby_set` and the post-read,
+  server rewrite, rewrite and access handlers, which return `NGX_DONE` to
+  nginx's phase checkers while they wait. In a content handler,
+  `Nginx::Async.sleep` does not raise, but nginx does not wait for the
+  handler: the request ends at the sleep without a response. In
+  `mruby_set`, `Nginx::Async::HTTP.sub_request` does not hold the request:
+  nginx goes on with the content phase without waiting for the variable.
+  In the header and body filters and the log handler, both methods raise
+  a `RuntimeError` (the "Known limitations" of
+  [the 2.7.1 release notes](../releases/v2.7.1.md#known-limitations), and
+  [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec)).
 - Code that waits in `sleep` of mruby-sleep, a socket of mruby-socket, a
   file, a shell command or a Redis call blocks the worker for that time
   ([Trust boundary](../README.md#trust-boundary)).

@@ -25,6 +25,12 @@
 .diagram-worker-lifetime .diagram-drawing-wide {
   display: none;
 }
+/* A name of a label does not break inside: the longest, `mruby_exit_worker`
+   and `mruby_init_worker`, 17 characters at 14 px, fit the narrow
+   arrangement at 320 px */
+.diagram-worker-lifetime .diagram-label code {
+  white-space: nowrap;
+}
 @container diagram (min-width: 30rem) {
   .diagram-worker-lifetime .diagram-grid {
     grid-template-columns: minmax(0, 1fr);

@@ -9,9 +9,9 @@ what one request leaves in it, the next request of the worker sees.
 ```diagram
 worker-lifetime
 caption: The `mrb_state` of the `http {}` block, from the configuration to the end of a worker.
-source: src/http/ngx_http_mruby_module.c 575-598 600-632 727-730 1136-1142 1282-1300
+source: src/http/ngx_http_mruby_module.c 575-598 600-632 727-730 1136-1142 1282-1300 1421-1450
 at: 0c72e3970 2026-10-19
-open: nginx reads the configuration in the master process: `mrb_open` creates the `mrb_state`, nginx compiles the Ruby code of the directives, and runs `mruby_init` and `mruby_server_context_handler_code`
+open: In the master process, `mrb_open` creates the `mrb_state`; while nginx reads the directives, it compiles their code and runs the server context code; then `mruby_init` runs
 fork: nginx starts the workers: each worker has its own copy of the `mrb_state`
 init-worker: The worker runs `mruby_init_worker`
 requests: Every request of the worker runs its handlers and filters in that `mrb_state`; global variables, constants, methods and classes stay, and ngx_mruby clears only the exception (`mrb->exc`) after each run
