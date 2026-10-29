@@ -23,8 +23,15 @@ resume: コードは<wbr>`sleep`の<wbr>後から<wbr>続く。<wbr>コードが
 - `Nginx::Async::HTTP.sub_request`も同じように動きます。このメソッドはnginxのサブリクエストを始めてファイバーを中断し、サブリクエストが終わるとnginxがファイバーを再開します。
 - `mruby_set`とpost-read、server rewrite、rewrite、accessのハンドラは待機して再開できます。中断したハンドラは`NGX_DONE`を返し、サブリクエストの処理中は`NGX_AGAIN`を返します。
 - 2.7.3の修正以降、通常のcontentハンドラも`Nginx::Async.sleep`で待てます。この修正は3.xにも統合されています。nginxがリクエストを保持し、タイマーでファイバーを再開します。その応答や戻り値のステータスでリクエストが完了します。リリース済みの2.7.2までは、sleepの時点で応答せずに終了していました。
-- Rubyの`Nginx.redirect`から呼ばれたcontentハンドラには、sleep時点で終了する制限が残ります。呼び出し元の処理が続き、その処理が応答する場合があるためです。
-- contentハンドラで`Nginx::Async.sleep`の待機後に`Nginx::Async::HTTP.sub_request`を呼ぶと、`RuntimeError`になります。`mruby_set`のサブリクエストはリクエストを保持せず、nginxは変数を待たずにcontentフェーズへ進みます。ヘッダフィルタ、ボディフィルタ、logハンドラでは、両メソッドが`RuntimeError`になります。[2.7.3の挙動変更](../../releases/v2.7.3.ja.md)と[Nginx::Async#sleep](../../class_and_method/README.md#nginxasyncsleepmsec)も参照してください。
+- Rubyの`Nginx.redirect`から呼ばれたcontentハンドラには、sleep時点で終了する制限が残ります。呼び出し元も処理を続け、その場で応答する場合があります。
+- contentハンドラで`Nginx::Async.sleep`の待機後に`Nginx::Async::HTTP.sub_request`を呼ぶと、例外は`RuntimeError`。
+- `mruby_set`のサブリクエストはリクエストを保持しません。変数の完了を待たず、nginxはcontentフェーズへ進みます。
+- ヘッダフィルタ、ボディフィルタ、logハンドラでは、両メソッドが`RuntimeError`を起こします。
 - mruby-sleepの`sleep`、mruby-socketのソケット、ファイル、シェルのコマンド、Redisの呼び出しで待つコードは、その間ワーカーをブロックします。詳しくは[信頼境界](../../security/trust-boundary.md)にあります。
 
 リファレンスの[Nginx::Async](../../class_and_method/README.md#nginxasync-class)に、両方のメソッドの説明があります。
+
+関連する制約の資料：
+
+- [2.7.3の挙動変更](../../releases/v2.7.3.ja.md)
+- [Nginx::Async#sleep](../../class_and_method/README.md#nginxasyncsleepmsec)
