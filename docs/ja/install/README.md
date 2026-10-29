@@ -252,7 +252,7 @@ path = "#{tmpdir}/myapp-#{Process.pid}-#{SecureRandom.hex(8)}"
 Dir.mkdir(path, 0700)                                         # Dir.mktmpdir('myapp-')
 ```
 
-ほかの定数を使うには、それを定義するgemを、自分の`build_config.rb`に`conf.gem`の行で加えてください。pyama86/mruby-polarsslに依存するgemは、mruby 4ではビルドできません。
+ほかの定数が要るなら、それを定義するgemを、自分の`build_config.rb`に`conf.gem`の行で加えてください。pyama86/mruby-polarsslに依存するgemは、mruby 4ではビルドが通りません。
 
 ## 4. ngx_mrubyを<wbr>インストールする
 
