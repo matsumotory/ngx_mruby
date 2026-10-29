@@ -121,6 +121,12 @@ static ngx_int_t ngx_stream_mrb_post_fiber(ngx_stream_mrb_reentrant_t *re, ngx_s
 
     if (re->mrb->exc) {
       ngx_stream_mruby_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->s);
+      // all sessions of the stream {} block share this mrb_state: clear the
+      // exception and restore the arena as ngx_stream_mruby_handler does, or
+      // ngx_stream_mrb_start_fiber finds the exception in the next session
+      // and aborts that session with it
+      re->mrb->exc = NULL;
+      mrb_gc_arena_restore(re->mrb, ai);
       ictx->s = prev_s;
       return NGX_ABORT;
     }
@@ -146,11 +152,42 @@ static void ngx_stream_mrb_timer_handler(ngx_event_t *ev)
 {
   ngx_stream_mrb_reentrant_t *re;
   ngx_stream_mruby_ctx_t *ctx;
+  ngx_stream_session_t *s;
+  ngx_stream_core_main_conf_t *cmcf;
+  ngx_int_t rc;
 
   re = ev->data;
-  ctx = ngx_stream_mrb_get_module_ctx(NULL, re->s);
+  // re is allocated from the connection pool, which the finalization below
+  // destroys
+  s = re->s;
+  ctx = ngx_stream_mrb_get_module_ctx(NULL, s);
 
-  ngx_stream_mrb_post_fiber(re, ctx);
+  rc = ngx_stream_mrb_post_fiber(re, ctx);
+
+  /*
+   * The checker of the access phase (ngx_stream_core_generic_phase) got the
+   * NGX_DONE of ngx_stream_mruby_handler when the fiber first waited, so the
+   * result of the code after the sleep is handled here, as that checker
+   * handles the result of a handler that does not wait.
+   * ngx_stream_mrb_post_fiber has run the phases for NGX_DECLINED already, and
+   * NGX_DONE means that the fiber waits again.
+   */
+  if (rc == NGX_DECLINED || rc == NGX_DONE || rc == NGX_AGAIN) {
+    return;
+  }
+
+  if (rc == NGX_OK) {
+    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
+    s->phase_handler = cmcf->phase_engine.handlers[s->phase_handler].next;
+    ngx_stream_core_run_phases(s);
+    return;
+  }
+
+  if (rc == NGX_ERROR) {
+    rc = NGX_STREAM_INTERNAL_SERVER_ERROR;
+  }
+
+  ngx_stream_finalize_session(s, rc);
 }
 
 static void ngx_stream_mrb_cleanup_pending_operation(ngx_stream_mruby_ctx_t *ctx)
