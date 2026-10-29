@@ -424,8 +424,8 @@ The `build` matrix of `.github/workflows/test.yml` runs `test.sh` in each
 cell. Which cells run nginx under valgrind depends on the run:
 
 - On pull requests and pushes, one cell runs nginx under valgrind: nginx
-  1.31.6, static module, without `--with-openssl-src`, the job named
-  `build (1.31.6, valgrind)`. The other cells without a sanitizer run nginx
+  1.31.6, static module, without `--with-openssl-src`, the job
+  `build (1.31.6)` (the matrix gives it `VALGRIND_ON_EVERY_RUN`). The other cells without a sanitizer run nginx
   directly (`NGINX_RUNNER=exec`), and the sanitizer cell runs nginx built
   with AddressSanitizer and UndefinedBehaviorSanitizer (see the next
   section).
@@ -445,6 +445,16 @@ cell. Which cells run nginx under valgrind depends on the run:
   `test/valgrind.supp`: there it starts the run under valgrind on the head
   branch of the pull request. Neither run is a status check that `ci-ok`
   needs.
+
+valgrind adds little time to a cell. The part of `test.sh` from the start
+of nginx to `test.sh ... successful` took 67 to 94 seconds in the 16 cells
+under valgrind of the run with the input `valgrind`
+[40824932917](https://github.com/matsumotory/ngx_mruby/actions/runs/40824932917),
+and 57 to 75 seconds in the 15 cells that ran nginx directly in the run of
+the same commit for its pull request
+[40824899601](https://github.com/matsumotory/ngx_mruby/actions/runs/40824899601)
+(2026-10-29). A cell takes 4 to 13 minutes in all, most of it for the
+builds of OpenSSL, mruby and nginx.
 
 A cell under valgrind runs nginx with these options:
 

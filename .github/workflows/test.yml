@@ -133,7 +133,8 @@ jobs:
         SANITIZER:
           - ""
         # The cell that runs nginx under valgrind on every run, pull requests
-        # included (its job name ends in "valgrind"). The other cells without
+        # included: the job "build (1.31.6)" (GitHub leaves a key that include
+        # adds to a combination out of the job name). The other cells without
         # a sanitizer run nginx under valgrind only in a run with the input
         # "valgrind" (the nightly run).
         include:
