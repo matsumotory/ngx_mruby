@@ -362,6 +362,11 @@ See [error_page](http://nginx.org/en/docs/http/ngx_http_core_module.html#error_p
 [internal](http://nginx.org/en/docs/http/ngx_http_core_module.html#internal) directives, and
 [Creating NGINX Rewrite Rules](https://www.nginx.com/blog/creating-nginx-rewrite-rules/) for more about the internal redirect.
 
+The internal redirect runs the handlers of the other location before the call returns.
+When an mruby handler or filter of that location raises an exception, the exception ends that handler as it does without the redirect: the request gets 500 unless its response was already started.
+The exception does not reach the code that called `Nginx.redirect`, which goes on after the call.
+This holds since 2.7.3; up to 2.7.2 the exception reached the calling code, which could rescue it, and nginx did not finish the request.
+
 ```nginx
 location /secret-location {
   internal;

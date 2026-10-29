@@ -170,6 +170,11 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
   return ngx_mrb_run_fiber(mrb, fiber_proc, result);
 }
 
+static mrb_value ngx_mrb_fiber_resume_body(mrb_state *mrb, void *fiber_proc)
+{
+  return mrb_fiber_resume(mrb, *(mrb_value *)fiber_proc, 0, NULL);
+}
+
 mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *result)
 {
   ngx_http_request_t *r = ngx_mrb_get_request();
@@ -178,6 +183,7 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   ngx_http_mruby_ctx_t *ctx;
   ngx_mrb_fiber_t *f = (ngx_mrb_fiber_t *)fiber_proc;
   ngx_http_mruby_handler_kind_t outer_kind;
+  mrb_bool raised;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->fiber_proc = fiber_proc;
@@ -189,7 +195,17 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   // on the result of mruby_set.
   outer_kind = ctx->handler_kind;
   ctx->handler_kind = f->kind;
-  handler_result = mrb_fiber_resume(mrb, *fiber_proc, 0, NULL);
+  // mruby passes an exception that ends a fiber resumed from C by longjmp to
+  // the innermost mrb_vm_exec or mrb_protect_error. When this fiber runs
+  // inside another one, for example in the location that Nginx.redirect runs
+  // from Ruby code, that longjmp would leave through the nginx functions
+  // between the two (ngx_http_internal_redirect, the phase checkers), and
+  // nginx would not finish the request. mrb_protect_error stops the exception
+  // here; it clears mrb->exc, which the callers read, so set it again.
+  handler_result = mrb_protect_error(mrb, ngx_mrb_fiber_resume_body, fiber_proc, &raised);
+  if (raised) {
+    mrb->exc = mrb_obj_ptr(handler_result);
+  }
   ctx->handler_kind = outer_kind;
 
   if (mrb->exc) {
