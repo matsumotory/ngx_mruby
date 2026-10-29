@@ -477,13 +477,26 @@ npm run preview           # serves dist/ at http://localhost:4321/
   `docs/directives/README.md` `/reference/directives/`, and so on) and add
   `examples/start/README.md` as `/start/`, `SECURITY.md` as `/security/`
   and `CONTRIBUTING.md` as `/contributing/`; a Japanese page takes the route
-  of its English page under `/ja/`. The sidebar of `astro.config.mjs` has
+  of its English page under `/ja/`. The Japanese source of `docs/<path>.md`
+  is `docs/ja/<path>.md` (of a release file, `docs/releases/<version>.ja.md`),
+  and that of a page from outside `docs/` is `docs/ja/<route>/README.md`
+  (`docs/ja/start/README.md`, `docs/ja/security/README.md`,
+  `docs/ja/contributing/README.md`). Every page written by hand has one
+  (Q2 of the proposal), except the generated reference of
+  `GENERATED_REFERENCE` in `scripts/lib/site.mjs` (the directives and the
+  Ruby classes and methods), which `/ja/` shows in English with a notice
+  that says why (`src/components/FallbackContentNotice.astro`), and the pages
+  of `NOT_TRANSLATED_YET` there, which step 5 empties. A link from a
+  Japanese page to an English page goes to that page under `/ja/`. A
+  Japanese page keeps the code blocks of its English page, and its h2 have
+  `<wbr>` at their phrase boundaries (4.4 of the proposal). The sidebar of `astro.config.mjs` has
   the links Overview (`/docs/`) and Start, then the groups Guides,
   Reference, Concepts, Releases, Security and Contributing, each made from the
   folder of its routes and ordered by `SIDEBAR_ORDER` of
   `scripts/lib/site.mjs`. The header, the menu, the footer and the language link
   of 4.10 are component overrides in `src/components/` (`Header`,
-  `PageFrame`, `Footer`, `MobileMenuFooter`), with their links in
+  `PageFrame`, `Footer`, `MobileMenuFooter`, and `FallbackContentNotice`
+  for the notice above an English page under `/ja/`), with their links in
   `src/site-nav.mjs`.
 - Samples and diagrams (3.5 of the proposal). A fenced block with the
   language `sample` in `docs/` names a case of `test/t/cases/` and its
@@ -537,9 +550,17 @@ npm run preview           # serves dist/ at http://localhost:4321/
     HTML resolves, and no link attribute is empty or broken;
   - `node scripts/check-pages.mjs`: every page has a title and the
     last-updated date of its source;
-  - `node scripts/check-japanese.mjs`: the pages from `docs/ja/` are under
+  - `node scripts/check-japanese.mjs`: every English page written by hand
+    has a Japanese page, outside `GENERATED_REFERENCE` and
+    `NOT_TRANSLATED_YET`, whose pages under `/ja/` show their notice; every
+    page has `lang` and the `hreflang` links en, ja and x-default to the
+    absolute URLs of both languages; the pages from `docs/ja/` are under
     `/ja/` with `lang="ja"`, and the `<wbr>` of their h2 are elements of
-    the built h2;
+    the built h2; no space between Japanese and Latin text in the Japanese
+    sources outside code and URLs; a Japanese page has the code blocks of
+    its English page; no `<title>`, h1, sidebar or table-of-contents entry
+    or heading `id` under `/ja/` contains `wbr`; and every diagram under
+    `/ja/` shows the labels of the Japanese source;
   - `node scripts/check-no-js.mjs`: the text of each source is in the HTML
     without running scripts;
   - `node scripts/check-css.mjs`: the built CSS has no hex color outside
@@ -577,11 +598,12 @@ npm run preview           # serves dist/ at http://localhost:4321/
   (`DIR/host/bin/mrbc`); a block that shows a syntax error on purpose is
   marked ```` ```ruby syntax-error ```` and must not compile. `site.yml`
   runs both.
-  `npm run check:browser` runs four on `site/dist/` (`--dist`; the first
-  two also `--engine chromium|webkit`; on macOS, Japanese is set in
+  `npm run check:browser` runs five on `site/dist/` (`--dist`; the first
+  three also `--engine chromium|webkit`; on macOS, Japanese is set in
   Hiragino Sans and breaks at other places than in CI, where it is the
   served Noto Sans JP: `node scripts/check-styles.mjs --ja-face noto`
-  sees what CI sees):
+  and `node scripts/check-japanese-lines.mjs --ja-face noto` see what CI
+  sees):
   - `node scripts/check-styles.mjs` (`npm run check:styles`): computed
     styles in Chromium and WebKit at 320 by 664, 390 by 664 and 1440 by
     900 px: font sizes of the scale of each language, token colors (code
@@ -599,6 +621,18 @@ npm run preview           # serves dist/ at http://localhost:4321/
     hidden from screen readers, labels of 14 px or more inside their
     place, the drawing and its labels within one screen), and the theme
     without JavaScript;
+  - `node scripts/check-japanese-lines.mjs` (`npm run
+    check:japanese-lines`; `--pages /ja/a/,/ja/b/` for some pages only):
+    every page under `/ja/` from a Japanese source but the home page, in
+    Chromium and WebKit at 320 by 664, 390 by 664, 1000 by 900 and 1440 by
+    900 px: at most 40 Japanese characters on a line of body text and a
+    line height of 1.75 to 2.0 at 1440 px, the page title on one line at
+    390 px and on at most two at 320 px, the right edge of Japanese blocks
+    at 390 px (2 em; an h2 at most two lines and 6 em), no last line of one
+    or two characters at any size, and diagram labels of 14 px or more
+    inside their place at 390 and 1440 px; on the release notes of
+    `NOTES_ONLY` in the script, failures are notes until step 5 rewrites
+    them;
   - `node scripts/check-focus.mjs`: tabbing through each page in Chromium
     and WebKit (Option-Tab there), every focused element has a focus ring
     and the fixed header does not cover it;
