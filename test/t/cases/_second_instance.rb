@@ -237,13 +237,21 @@ class SecondInstance
   end
 
   # Sends SIGQUIT, which makes the single nginx process run the exit_worker
-  # hooks and exit, and waits for it. A process that does not exit in time
-  # gets SIGKILL, so no nginx stays behind.
+  # hooks and exit, and waits for it. A single nginx process checks for the
+  # signal only after it has handled its events, so a signal that arrives
+  # between that check and the next wait for events stays unseen until the
+  # next event (ngx_single_process_cycle). The signal is therefore sent again
+  # 1, 3, 7, 15 seconds and so on after the first one, as test.sh does for
+  # the test nginx ("Stopping nginx" in docs/test/README.md). A process that
+  # does not exit in time gets SIGKILL, so no nginx stays behind.
   def stop
     return describe(@status) if @status
 
     Process.kill(:QUIT, @pid)
-    deadline = now + LIMIT
+    start = now
+    deadline = start + LIMIT
+    step = 1
+    resend = start + step
     loop do
       return describe($?) if Process.waitpid(@pid, Process::WNOHANG)
 
@@ -251,6 +259,11 @@ class SecondInstance
         Process.kill(:KILL, @pid)
         Process.waitpid(@pid)
         return "killed after #{LIMIT} seconds"
+      end
+      if now > resend
+        Process.kill(:QUIT, @pid)
+        step *= 2
+        resend += step
       end
       sleep 0.1
     end
