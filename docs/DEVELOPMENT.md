@@ -250,13 +250,14 @@ requires them to be decided before step 1.
   a judgment, the tag of step 6 is the owner's, and the settings need admin
   rights; a mistake there lets `v2.x` move to 3.x. AGENTS.md does not cover
   the go or the repository settings yet.
-- **Which version the site shows after the promotion.** Decided with the
-  site proposal on 2026-10-15 (Q1 and Q4 of
-  [`docs/proposals/site.md`](https://github.com/matsumotory/ngx_mruby/blob/next/docs/proposals/site.md#7-decisions-2026-10-15)
-  on `next`). The site, ngx.mruby.org, is built from `docs/` by
-  `.github/workflows/site.yml` on `next` and deployed by GitHub Actions:
-  3.x from `next` at the unprefixed paths, with the development banner, and
-  2.x from `master` under `/v2/`. From the promotion on, the unprefixed
-  paths show the released 3.x from `master` and `/v2/` shows 2.x from
-  `v2.x`: steps 4, 5 and 7 move the workflows and the deployment branch
-  rule.
+
+The site proposal decides which version the site shows after the
+promotion (Q1 and Q4, decided by the owner on 2026-10-15, in section 7 of
+[`docs/proposals/site.md`](https://github.com/matsumotory/ngx_mruby/blob/next/docs/proposals/site.md#7-decisions-2026-10-15)
+on `next`). The site, ngx.mruby.org, is built from `docs/` by
+`.github/workflows/site.yml` on `next` and deployed by GitHub Actions:
+3.x from `next` at the unprefixed paths, with the development banner, and
+2.x from `master` under `/v2/`. From the promotion on, the unprefixed
+paths show the released 3.x from `master` and `/v2/` shows 2.x from
+`v2.x`: steps 4, 5 and 7 move the workflows and the deployment branch
+rule.
