@@ -13,8 +13,9 @@
     "check": "node scripts/check-built-links.mjs && node scripts/check-pages.mjs && node scripts/check-japanese.mjs && node scripts/check-no-js.mjs && node scripts/check-css.mjs && node scripts/check-home.mjs && node scripts/check-diagrams.mjs && node scripts/check-samples.mjs && node scripts/check-reference.mjs",
     "check:contrast": "python3 scripts/contrast.py",
     "check:styles": "node scripts/check-styles.mjs",
+    "check:japanese-lines": "node scripts/check-japanese-lines.mjs",
     "check:offline": "sh scripts/check-offline-build.sh",
-    "check:browser": "node scripts/check-styles.mjs && node scripts/check-focus.mjs && node scripts/check-language-links.mjs && node scripts/check-lighthouse.mjs",
+    "check:browser": "node scripts/check-styles.mjs && node scripts/check-japanese-lines.mjs && node scripts/check-focus.mjs && node scripts/check-language-links.mjs && node scripts/check-lighthouse.mjs",
     "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
