@@ -50,7 +50,8 @@ that are not written down elsewhere yet, the work in progress and the queue.
   remains on next, and master links that source. Branch-specific test
   process/port handling is preserved; a common workflow does not imply
   identical harness capabilities.
-- Branch `codex/integrate-stable-install` merges the installation correction
+- [#663](https://github.com/matsumotory/ngx_mruby/pull/663), branch
+  `codex/integrate-stable-install`, merges the installation correction
   of [#660](https://github.com/matsumotory/ngx_mruby/pull/660) from master
   `967b61cc6` into next `6d65a12ec`. The conflict resolution selects next
   development source and preserves the v3 core-gem, lock and removed
