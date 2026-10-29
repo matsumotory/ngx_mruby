@@ -65,9 +65,20 @@ this guide do not cover yet.
 - The default build no longer has the auto-ssl mrbgem and the classes that
   came with it
   ([The default build leaves out the auto-ssl mrbgem and the classes that came with it](../releases/v3.0.0.md#the-default-build-leaves-out-the-auto-ssl-mrbgem-and-the-classes-that-came-with-it-556)).
-  [Scripts](#scripts) says how to find the scripts that use them. With
-  `NGX_MRUBY_AUTO_SSL=1`, see
-  [A build with the auto-ssl mrbgem stops](../releases/v3.0.0.md#a-build-with-the-auto-ssl-mrbgem-stops-561).
+  [Scripts](#scripts) says how to find the scripts that use them.
+- No build of this release has the auto-ssl mrbgem, and the mruby build no
+  longer reads `NGX_MRUBY_AUTO_SSL`
+  ([The auto-ssl mrbgem and `NGX_MRUBY_AUTO_SSL` are removed](../releases/v3.0.0.md#the-auto-ssl-mrbgem-and-ngx_mruby_auto_ssl-are-removed-640)).
+  Remove the variable from the environment of your builds; it has no
+  effect. A server that gets its certificates with `Nginx::SSL::ACME`
+  moves to nginx's
+  [ngx_http_acme_module](https://nginx.org/en/docs/http/ngx_http_acme_module.html)
+  (nginx-acme) before the upgrade, or stays on 2.x. This finds the
+  builds and the configurations that use them:
+
+  ```sh
+  grep -rnE 'NGX_MRUBY_AUTO_SSL|auto-ssl|Nginx::SSL::ACME' /path/to/build/scripts /path/to/nginx/conf
+  ```
 - With `./configure --with-mruby-incdir`, add
   `<mruby_root>/build/host/include` to the list of directories
   ([Sources that include `mruby.h` need the generated headers](../releases/v3.0.0.md#c-extensions-sources-that-include-mrubyh-need-the-generated-headers-561)).
@@ -131,7 +142,7 @@ not enough, and show the change.
   `sprintf` and `puts`, and of methods below `private` or `protected`. In
   handler code, a method defined with `def` at the top level stays public,
   and calls of it with a receiver need no change
-  ([the proposal for #502](../proposals/handler-code-frame.md#14-what-handler-code-shares-today),
+  ([the proposal for #502](../proposals/archive/handler-code-frame.md#14-what-handler-code-shares-today),
   section 1.4). The search above finds the calls on `Kernel`
   (`Kernel\.`): only `Kernel.format`, `.sprintf`, `.raise`, `.sleep` and
   `.usleep` still work, and the others, such as `Kernel.Integer(x)`, become
@@ -342,7 +353,7 @@ not enough, and show the change.
   ```
 
   For `Dir.mktmpdir`, see
-  [Building with the auto-ssl mrbgem](../install/README.md#building-with-the-auto-ssl-mrbgem).
+  [The auto-ssl mrbgem and the classes that came with it](../install/README.md#the-auto-ssl-mrbgem-and-the-classes-that-came-with-it).
   The other constants need a `conf.gem` line of your own.
 
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of

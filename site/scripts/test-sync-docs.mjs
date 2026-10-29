@@ -173,6 +173,19 @@ fixtures.push({
 });
 
 fixtures.push({
+  name: 'from a Japanese page, links to English pages go to their routes under /ja/',
+  source: '# Docs\n\n[Install](install/README.md#anchor).\n',
+  files: {
+    'docs/ja/README.md': '# ドキュメント\n\n[インストール](install/README.md#アンカー)、[英語のインストール](../install/README.md#anchor)、[ディレクティブ](../directives/README.md#anchor)。\n',
+    'docs/ja/install/README.md': '# インストール\n\n## アンカー\n',
+  },
+  contains: ['[Install](/guides/install/#anchor)'],
+  others: {
+    'ja/docs.md': ['[インストール](/ja/guides/install/#アンカー)', '[英語のインストール](/ja/guides/install/#anchor)', '[ディレクティブ](/ja/reference/directives/#anchor)'],
+  },
+});
+
+fixtures.push({
   name: 'long names get <wbr> in text, not in code, links written as URLs, or URLs of the text',
   source: '# Names\n\n## mruby_upstream_keepalive\n\nCall Nginx::Stream::Connection#remote_port and Nginx::Headers_in#delete(string) with `mruby_ssl_handshake_handler_code`.\n\nThe script is at http://127.0.0.1/YOUR_MRUBY_SCRIPT.rb and <https://example.com/a_b_c_d>.\n',
   contains: [

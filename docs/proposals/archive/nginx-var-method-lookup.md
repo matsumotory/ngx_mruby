@@ -1,6 +1,8 @@
 # Proposal: the method lookup of `Nginx::Var` accessors on mruby 4
 
-Status: decided. The owner answered the question of section 4 on
+Status: done except step 4 of section 5 (#610 was merged on 2026-10-28 as
+a0f4b97a2; against mruby 3.3.0, `var` is -4.49% and `auth` +1.15% Ir per
+request without GC). The owner answered the question of section 4 on
 2026-10-15, in a session's question: the change of (a) to introspection is
 accepted as a behavior change of 3.0.0. On 2026-10-19 the owner confirmed
 the content in a session's question, with the option
@@ -528,18 +530,20 @@ of the implementing pull request can change them.
 
 ## 5. Status and steps
 
-Status: decided, as the Status line at the top says (the owner's answer
-of 2026-10-15 and the confirmation of 2026-10-19). #610 implements (a)
-with the rule (a2) and (d), with the steps below.
+Status: done except step 4, as the Status line at the top says (the
+owner's answer of 2026-10-15 and the confirmation of 2026-10-19). #610
+implements (a) with the rule (a2) and (d), with the steps below.
 
 1. After the owner's answer: a pull request to `next` with (a) and (d), or
    with the fallback of section 4, its tests, the docs and the release notes
    entries (section 3).
 2. In that pull request: the three comparisons of section 3.
-3. When `var` or `auth` stays at WARN or above against 3.3.0: the owner
-   decides on that pull request, with the attribution of section 3.
-4. The pull request that updates mruby to 4.1.0 measures `var` and `auth`
-   again, as every change of `mruby/` is measured. #610 could not measure
+3. Not needed: `var` and `auth` are below WARN against 3.3.0 in #610 (the
+   owner decides only when one of them stays at WARN or above, with the
+   attribution of section 3).
+4. The `perf` job of the pull request that updates mruby to 4.1.0 measures
+   `var` and `auth` again, as every change of `mruby/` is measured. #610
+   could not measure
    the row of 4.1.0-rc2: with the head's `build_config.rb` the tree of the
    tag stops on the core gems `hal-posix-dir`, `hal-posix-io` and
    `hal-posix-socket`, which it does not have, and with
@@ -548,8 +552,11 @@ with the rule (a2) and (d), with the steps below.
 
 Relation with the plan: the Pillar B row of `docs/proposals/v3-plan.md`
 on `Nginx::Var` asks for one setter shared by `set` and assignment through
-`method_missing`. The setter that (a) defines can be that shared setter;
-the pull request says whether it is.
+`method_missing`. #610 says that the setter that (a) defines is not that
+shared setter: it goes through `ngx_mrb_var_access` and
+`ngx_mrb_var_set_vector`, as assignment through `method_missing` did, and
+`Nginx::Var#set` keeps its own `ngx_mrb_var_set_func`. Sharing them stays
+with that row.
 
 ## Sources
 

@@ -1,6 +1,6 @@
 # Proposal: the frame in which handler code runs (#502)
 
-Status: done (decided on 2026-10-15). The owner chose option (a) of section 4:
+Status: done and archived (decided on 2026-10-15). The owner chose option (a) of section 4:
 keep the top-level frame, with the regression test and the docs. The steps of
 section 5 for (a) are done: the test and the release notes entry in #584
 on `next`, the note in the docs of `master` in #586, and #502 is closed
@@ -179,10 +179,13 @@ What this means for the question of #502:
 - Each worker has its own copy of the state after the fork, so this is
   shared by the requests of one worker, not between workers. The scenario
   ran one worker.
-- `README.md` (line 153) and `docs/README.md` (line 76) say that the server
+- `README.md` (line 153) and `docs/README.md` (line 76) said that the server
   process frees the global variables table between scripts. The
-  measurement and `ngx_mrb_state_clean` show that `next` does not. This
-  proposal does not change those texts (section 5).
+  measurement and `ngx_mrb_state_clean` show that `next` does not. #592 on
+  `master` (merged on 2026-10-19) added, next to the abstract, a section on
+  what a worker keeps between requests, and #623 on `next` (merged on
+  2026-10-29) reduced `README.md` and `docs/README.md`, which no longer
+  contain the abstract.
 
 ## 2. Options
 
@@ -563,8 +566,8 @@ lambda frame (c1 or c2)?
   or 2 (c2) lists (with the owner's approval, AGENTS.md "Writing tests"),
   the docs, a release notes entry and the perf comparison.
 - Not in this proposal: the texts of `README.md` and `docs/README.md` that
-  say the global variables table is freed between scripts (1.4). A row of
-  the queue of `docs/HANDOFF.md` holds that docs change.
+  said the global variables table is freed between scripts (1.4). #592
+  (`master`) added a section next to them, and #623 (`next`) removed them.
 
 ## Sources
 

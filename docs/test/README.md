@@ -42,14 +42,18 @@ can live in files of its own:
 
 - `test/conf/conf.d/<name>.conf`: a fragment included at the end of the
   `http {}` block. It holds its own `server {}` on a port of its own (18110
-  and up; 18116 is taken by the second nginx that
+  to 18199; 18116 is taken by the second nginx that
   `test/t/cases/_second_instance.rb` starts). Fragments for `stream {}` go
-  to `test/conf/conf.d/stream/` (ports 12353 and up; 12357 is taken by the
-  second nginx).
+  to `test/conf/conf.d/stream/` (ports 12353 to 12399; 12357 is taken by the
+  second nginx). Write each port as five digits in these ranges, so that
+  `TEST_SH_PORT_OFFSET` moves it ("Ports" below).
 - `test/t/cases/<name>.rb`: a test file run after `test/t/ngx_mruby.rb`,
   with `test/t/cases/_prelude.rb` prepended. The prelude defines `base`,
   `base_ssl`, `http_host`, `html_path`, `nginx_t` (runs `nginx -t` on a
-  generated configuration), `tcp_client` and `second_instance`. It starts
+  generated configuration), `tcp_client`, `second_instance` and
+  `suite_path` (the path of a file of the suite in the copy that `test.sh`
+  runs: run a CRuby helper as `` `ruby #{suite_path('test/t/cases/_x.rb')}` ``,
+  see "Ports" below). It starts
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
   with `_` are helpers and are not run as cases; `_tcp_client.rb`,
   `_filter_connection_client.rb`, `_request_body_client.rb` and
@@ -64,8 +68,9 @@ can live in files of its own:
 - Hook scripts go to `test/html/` as before; the fragment refers to them as
   `build/nginx/html/<name>.rb`.
 
-`test.sh` copies the fragments into the built nginx's `conf/conf.d/` with the
-same substitutions as `nginx.conf`, and runs every case file in turn. A
+`test.sh` copies the fragments, from its copy of the suite ("Ports" below),
+into the built nginx's `conf/conf.d/` with the same substitutions as
+`nginx.conf`, and runs every case file in turn. A
 failing case makes `test.sh` exit non-zero, like a failing assertion in
 `test/t/ngx_mruby.rb`.
 
@@ -317,12 +322,6 @@ $ NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds
 $ grep 'ERROR SUMMARY' build/valgrind/valgrind.*.log
 ```
 
-The auto-ssl mrbgem is not in the default build.
-`NGX_MRUBY_AUTO_SSL=1 sh test.sh` builds it and the gems it depends on (see
-"Building with the auto-ssl mrbgem" in `docs/install/README.md`, which also
-says when to remove `mruby/build`). No test uses them, so the suite is the
-same in both builds.
-
 ### Waiting for nginx to listen
 
 `test.sh` starts the test nginx in the background (`$NGINX_RUNNER
@@ -358,7 +357,8 @@ CRuby twice:
   ```
 
 The ports are those of every `listen` directive in `test/conf/nginx.conf`
-and `test/conf/conf.d/*.conf`, the `http {}` servers (54 ports on `next` as of
+and `test/conf/conf.d/*.conf`, in the copy that "Ports" below describes,
+with `TEST_SH_PORT_OFFSET` applied: the `http {}` servers (54 ports on `next` as of
 2026-10-29). nginx opens all its listening sockets in one loop
 (`ngx_open_listening_sockets()`) after it has read the whole configuration,
 so one port would almost always show that the others are open. Each port
@@ -425,9 +425,9 @@ The upper bound can create these races:
 `test.sh` stops only the nginx processes that it started, by their pid. It
 never signals a process by its name (`killall`, `pkill`), so the nginx
 processes of other checkouts, of the soak test, of nginx-tests and of other
-users keep running. Two runs of `test.sh` on one machine still use the
-same ports, so run one at a time: the second run fails in the wait before
-the start, as "Waiting for nginx to listen" above shows.
+users keep running. Two runs of `test.sh` on one machine need different
+ports ("Ports" below); with the same ports, the second run fails in the
+wait before the start, as "Waiting for nginx to listen" above shows.
 
 - When `test.sh` exits, after the last case, after a failure, or on SIGHUP,
   SIGINT or SIGTERM, it stops the test nginx with SIGTERM and waits until the
@@ -519,14 +519,89 @@ with 11 CPUs:
   ([#600](https://github.com/matsumotory/ngx_mruby/pull/600)), where nginx
   logged the SIGTERM and stayed in `epoll_wait()` for 20 minutes.
 
+### Ports
+
+The ports of the suite are the numbers from 12345 to 12399 and from 18080
+to 18199: the `listen` directives of `test/conf/`, the addresses of
+`add_listener`, the second nginx of `test/t/cases/_second_instance.rb`
+(18116 and 12357), the nginx of `test/t/cases/config_hooks.rb` (18158), the
+mock LLM upstream of `test/t/cases/_agent_proxy_client.rb` (12372 and
+12373), the stream-only test of `test/t/ngx_mruby.rb` (12399), and the
+ports that the tests, the hook scripts and the expected outputs of
+`test/html/` name. `TEST_SH_PORT_OFFSET` (an integer, default 0) moves all
+of them by the same amount, so that two checkouts can run `test.sh` at the
+same time on one machine, each with its own offset:
+
+```console
+$ TEST_SH_PORT_OFFSET=1000 sh test.sh    # 13345 to 13399 and 19080 to 19199
+```
+
+Before it installs the configuration, `test.sh` runs
+`test/t/cases/_stage.rb`, which copies `test/t`, `test/conf`, `test/html`,
+`test/soak/mock_llm.rb` and `test/soak/http_client.rb` to
+`build/nginx/harness/test/` (`build_dynamic/...` for
+`BUILD_DYNAMIC_MODULE`). In every text file of the copy, each number of
+those two ranges, written as five digits with no digit, letter or `_` next
+to it, becomes the number plus the offset:
+
+```text
+stage: copied 164 files to /path/to/build/nginx/harness/test; 593 port numbers moved by 1000
+```
+
+`test.sh` then installs the configuration and the hook scripts from the copy,
+waits for the ports of the copy, and runs `test/t/ngx_mruby.rb` and the case
+files of the copy. The tests run the CRuby helpers of the copy through
+`suite_path` (`test/t/cases/_prelude.rb`, and `test/t/ngx_mruby.rb` for its
+own use), which joins a path of the suite to `TEST_SH_STAGE_DIR`, the
+directory that `test.sh` sets. Without that variable, as when a case runs
+outside `test.sh`, `suite_path` gives the path in the checkout. The tests
+still run from the root of the checkout, because the configuration names
+the hook scripts with paths relative to it (`build/nginx/html/<name>.rb`).
+With an offset of 0, the copy is the same as the source.
+
+The rule is textual, so a new test keeps to it:
+
+- Write a port as five digits in one of the two ranges, and write a number
+  in those ranges only where it is a port or a value that the test compares
+  with a number of the same file set. `_stage.rb` fails, naming the file
+  and the line, for such a number written with an underscore (`18_132`),
+  which the rule would not see. A port built by arithmetic is moved only
+  when its five-digit part is in the ranges: `18110 + 1` becomes
+  `19110 + 1` with an offset of 1000, but `18000 + 110` and a port built
+  from strings stay as they are, so write the number out.
+- One number in the ranges is not a port: `test/conf/conf.d/20-filter-connection.conf`
+  outputs `f.output 12345`, and `test/t/cases/filter_connection.rb` compares
+  the body with `'12345'` and its length with `'5'`. Both files are moved
+  alike, so the case still checks that `Filter#output` converts an Integer
+  with `to_s` into five bytes.
+- The offset must keep every port between 10000 and 65535, so that every
+  number stays five digits long (an offset from -2345 to 47336); `_stage.rb`
+  fails otherwise. It must also keep the ports apart from those of other
+  runs: the soak test (12360 to 12362, `SOAK_PORT_BASE`), the performance
+  comparison (12370 to 12372, `PERF_PORT_BASE`) and nginx-tests (8000 to
+  8999). With offset 0, `test.sh` and the performance comparison both use
+  12372.
+
+Two runs need two checkouts as well as two offsets: one build directory
+holds one test nginx, its logs and its copy of the suite. The two offsets
+must keep the ranges of the two runs apart. The range from 18080 to 18199
+has 120 numbers, so the offsets differ by 120 or more. The range from 12345
+to 12399 of one run lands on the range from 18080 to 18199 of the other
+when the difference of the offsets is from 5681 (18080 - 12399) to 5854
+(18199 - 12345), with either sign, so the difference is not in that
+interval. With an offset above 14568 (32767 - 18199), the ports of 18080 to
+18199 reach the default ephemeral range of Linux (32768 to 60999), where a
+client socket can take a port before nginx binds it. The offsets 0 and 1000
+of the example meet all three conditions.
+
 ### valgrind in CI
 
 The `build` matrix of `.github/workflows/test.yml` runs `test.sh` in each
 cell. Which cells run nginx under valgrind depends on the run:
 
 - On pull requests and pushes, one cell runs nginx under valgrind: nginx
-  1.31.6, static module, without `--with-openssl-src`, the job
-  `build (1.31.6)` (the matrix gives it `VALGRIND_ON_EVERY_RUN`). The other cells without a sanitizer run nginx
+  1.31.8, static module, without `--with-openssl-src`, the job
+  `build (1.31.8)` (the matrix gives it `VALGRIND_ON_EVERY_RUN`). The other cells without a sanitizer run nginx
   directly (`NGINX_RUNNER=exec`), and the sanitizer cell runs nginx built
   with AddressSanitizer and UndefinedBehaviorSanitizer (see the next
   section).
@@ -1358,8 +1433,7 @@ the top of a git work tree, else a checksum of its files without
 `mruby/build` and `mruby/bin`, the output of the `test.sh` build), the file
 names under `mrbgems/`, checksums of `build_config.rb`, `config.in`,
 `configure`, `Makefile.in`, `build.sh` and `nginx_version`,
-`NGX_MRUBY_CFLAGS` (passed to mruby, as with `test.sh`),
-`NGX_MRUBY_AUTO_SSL` (which adds the auto-ssl mrbgem to the mruby build), the
+`NGX_MRUBY_CFLAGS` (passed to mruby, as with `test.sh`), the
 nginx configure options and the gem lock of the build. When the stamp
 differs from that of the last build, mruby and nginx are built from scratch,
 with new clones of the gems; the downloaded nginx source is kept. The new
