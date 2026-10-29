@@ -193,7 +193,7 @@ commit removes stays in the history: remove it from the commit that added it
 
 The site ngx.mruby.org is built on `next` (`site/` there, and
 `docs/proposals/site.md` there for the plan). Its 2.x pages under `/v2/`
-are built from `docs/` of this branch, so two workflows here serve them:
+are built from `docs/` on `master`. Two workflows serve them:
 
 - `.github/workflows/site-v2.yml` runs on every pull request to `master`,
   without a path filter, since the 2.x pages link to files anywhere in the
