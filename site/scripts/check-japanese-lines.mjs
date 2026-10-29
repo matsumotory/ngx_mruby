@@ -39,12 +39,10 @@ import { serve } from './lib/serve.mjs';
 import { GENERATED_REFERENCE, loadManifest, manifestFile, NOT_TRANSLATED_YET, REWRITTEN_OFTEN } from './lib/site.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-// The release notes in Japanese, written before step 5 and longer than any
-// other page, still have last lines of one or two characters and table
-// cells with long names that end far from the right edge. Their failures
-// are printed as notes until the pull request of step 5 that rewrites
-// them removes them from this list; every other Japanese page fails.
-const NOTES_ONLY = ['/ja/releases/v2.7.1/', '/ja/releases/v2.7.2/', '/ja/releases/v2.7.3/', '/ja/releases/v3.0.0/'];
+// The pages whose failures are printed as notes and do not fail the check.
+// The release notes in Japanese were here until step 5 rewrote their
+// lines; no page is here now, and every Japanese page fails.
+const NOTES_ONLY = [];
 const SIZES = [
   { width: 320, height: 664 },
   { width: 390, height: 664 },
