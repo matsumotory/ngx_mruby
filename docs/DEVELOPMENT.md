@@ -11,7 +11,7 @@ including which changes are measured and how.
 ## Continuing shared work
 
 [AGENTS.md](../AGENTS.md#session-handoff) defines the shared handoff rules.
-The current queue is [HANDOFF.md](HANDOFF.md) on `next`; the active PR holds
+The current queue is [HANDOFF.md](https://github.com/matsumotory/ngx_mruby/blob/next/docs/HANDOFF.md) on `next`; the active PR holds
 the detailed evidence. Claude's and Codex's private memories are optional
 context, not prerequisites for continuing work.
 
@@ -57,6 +57,8 @@ context, not prerequisites for continuing work.
 6. On resumption, check running CI and any operation with an uncertain
    outcome before retrying. Follow AGENTS for builds, test-port isolation,
    independent review and merge gates; a checkpoint does not waive them.
+   Use the harness of the checked-out branch: do not assume the port-offset
+   support on `next` exists on 2.x.
    On macOS, use a Linux container matching the packages in
    [.github/workflows/test.yml](../.github/workflows/test.yml) for the Linux
    suite, sanitizer and callgrind evidence. The root Dockerfile is a runtime

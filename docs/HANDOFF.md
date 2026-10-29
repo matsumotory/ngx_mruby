@@ -44,14 +44,15 @@ that are not written down elsewhere yet, the work in progress and the queue.
   English/Japanese searches, mobile/desktop views, code interaction and
   HTTPS checks pass. Final evidence is in the
   [completion record](https://github.com/matsumotory/ngx_mruby/pull/661#issuecomment-6509229800).
-- The common continuation procedure from #659 is being aligned to master
-  in [#662](https://github.com/matsumotory/ngx_mruby/pull/662). HANDOFF
+- The common continuation procedure from #659 reached master as `967b61cc6`
+  in [#662](https://github.com/matsumotory/ngx_mruby/pull/662), after all CI
+  and independent review passed. The v2.x mirror succeeded. HANDOFF
   remains on next, and master links that source. Branch-specific test
   process/port handling is preserved; a common workflow does not imply
   identical harness capabilities.
 - Branch `codex/integrate-stable-install` merges the installation correction
   of [#660](https://github.com/matsumotory/ngx_mruby/pull/660) from master
-  `da0d1172d` into next `6d65a12ec`. The conflict resolution selects next
+  `967b61cc6` into next `6d65a12ec`. The conflict resolution selects next
   development source and preserves the v3 core-gem, lock and removed
   auto-ssl contracts. English/Japanese commands are identical. A fresh
   clone of `6d65a12ec` built and installed nginx 1.31.8 on Ubuntu 22.04
