@@ -326,8 +326,9 @@ pull request. A release that ships a security fix follows the order in
 When the owner publishes a release, its body carries both texts, English
 first: the "Behavior changes: read before upgrading" section copied from the
 English file ("None." when there are none), then the same section copied from
-the Japanese file, then links to the two files, then the list of pull requests
-that GitHub generates. A pre-release on `next` copies, from both files, the
+the Japanese file, then links to the two files. The body does not copy the
+list of pull requests that GitHub generates; the release notes name the pull
+requests. A pre-release on `next` copies, from both files, the
 entries added or changed since the previous pre-release;
 `git diff <previous pre-release tag> <new tag> -- docs/releases/v3.0.0.md docs/releases/v3.0.0.ja.md`
 shows them. The first pre-release copies the whole section. Agents prepare
@@ -349,6 +350,10 @@ tagged files and the release body have them:
   "Why it changed" names the defect only as the difference that "Before"
   describes; the advisory id, added when the advisory is published (below),
   points to the details.
+- The advisory draft is written in English, and after the English sections
+  it has the same content in Japanese. The owner said on 2026-10-29:
+  「日本語でも後半でいいのでしっかりかいておいてほしい、今後は」
+  ("write it carefully in Japanese too, in the second half; from now on").
 - When the owner publishes the advisory, a pull request adds the advisory id
   (`GHSA-xxxx-xxxx-xxxx`) to the entries in both files, and the owner adds it
   to both texts of the release body. That pull request may also list the

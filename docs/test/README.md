@@ -600,8 +600,8 @@ The `build` matrix of `.github/workflows/test.yml` runs `test.sh` in each
 cell. Which cells run nginx under valgrind depends on the run:
 
 - On pull requests and pushes, one cell runs nginx under valgrind: nginx
-  1.31.6, static module, without `--with-openssl-src`, the job
-  `build (1.31.6)` (the matrix gives it `VALGRIND_ON_EVERY_RUN`). The other cells without a sanitizer run nginx
+  1.31.8, static module, without `--with-openssl-src`, the job
+  `build (1.31.8)` (the matrix gives it `VALGRIND_ON_EVERY_RUN`). The other cells without a sanitizer run nginx
   directly (`NGINX_RUNNER=exec`), and the sanitizer cell runs nginx built
   with AddressSanitizer and UndefinedBehaviorSanitizer (see the next
   section).

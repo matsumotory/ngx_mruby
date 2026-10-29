@@ -232,7 +232,8 @@ The session that owns the PR merges it, with a merge commit, when all of
 these hold:
 
 1. The base branch follows the branch table above.
-2. Every CI check on the head commit passed (`ci-ok` once it is required),
+2. Every CI check on the head commit passed (`ci-ok`, the check that the
+   branch rules of `master` and `next` require),
    on a run whose merge ref includes the current base. When the base moved
    after the last run, update the branch and let CI run again. A run made
    green by skipping or disabling tests does not count.
@@ -369,7 +370,7 @@ headers, and `test.sh` uses `wget` and the `openssl` command. mruby is built wit
 sh test.sh                          # full run: fetch nginx (version in ./nginx_version), configure, build, test
 ONLY_BUILD_NGX_MRUBY=1 sh test.sh   # fast loop: skip fetch/configure, rebuild changed sources, re-run tests
 BUILD_DYNAMIC_MODULE=1 sh test.sh   # build as a dynamic module (uses build_dynamic/ instead of build/)
-NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
+NGINX_RUNNER=valgrind sh test.sh   # run nginx under valgrind (NGINX_HEATTIME, 60 s by default, bounds each wait of test.sh for ports and for nginx)
 sh test/soak/run.sh                 # memory soak test (Linux; own build in build_soak/, ports 12360-12362)
 sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12372)
 ```
@@ -412,7 +413,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18132,
   18136-18140, 18143-18144, 18147-18168, 12345-12359, 12363-12366,
-  12372-12373; 18116 and 12357 belong to the second nginx that
+  12368-12369, 12372-12373; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
   `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test

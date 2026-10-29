@@ -120,8 +120,8 @@ jobs:
       fail-fast: false
       matrix:
         NGINX_VERSION:
-          - 1.31.6
-          - 1.30.5
+          - 1.31.8
+          - 1.30.6
           - 1.28.3
           - 1.26.3
         BUILD_DYNAMIC_MODULE:
@@ -133,12 +133,12 @@ jobs:
         SANITIZER:
           - ""
         # The cell that runs nginx under valgrind on every run, pull requests
-        # included: the job "build (1.31.6)" (GitHub leaves a key that include
+        # included: the job "build (1.31.8)" (GitHub leaves a key that include
         # adds to a combination out of the job name). The other cells without
         # a sanitizer run nginx under valgrind only in a run with the input
         # "valgrind" (the nightly run).
         include:
-          - NGINX_VERSION: 1.31.6
+          - NGINX_VERSION: 1.31.8
             BUILD_DYNAMIC_MODULE: ""
             BUILD_WITH_OPENSSL_SRC: ""
             SANITIZER: ""
@@ -146,7 +146,7 @@ jobs:
         # One more job: nginx, ngx_mruby and mruby built with AddressSanitizer
         # (LeakSanitizer included) and UndefinedBehaviorSanitizer. It runs nginx
         # directly, because valgrind does not work with ASan.
-          - NGINX_VERSION: 1.31.6
+          - NGINX_VERSION: 1.31.8
             BUILD_DYNAMIC_MODULE: ""
             BUILD_WITH_OPENSSL_SRC: ""
             SANITIZER: "address,undefined"
