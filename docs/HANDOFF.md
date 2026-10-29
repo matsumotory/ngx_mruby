@@ -35,10 +35,13 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-29 (20:40 JST)
+## State as of 2026-10-29 (21:45 JST)
 
-Heads: `next` is `be559a017`, the merge of #641 (`TEST_SH_PORT_OFFSET`);
-before it, on its first parent, `c0df45534` (#637, the v3 plan, the archive
+Heads: `next` is the merge of the pull request "Merge `master` (c6d3b3b9b)
+into `next`" (`master` at `c6d3b3b9b` into `next`, with #636, #639, #638
+and #645) once it is merged; before it, on its first parent, `67ad9b919`
+(#640, `auto-ssl` removed from `next`) and `be559a017`, the merge of #641
+(`TEST_SH_PORT_OFFSET`); before that, on its first parent, `c0df45534` (#637, the v3 plan, the archive
 of two proposals and this file), `5e9d50663` (#632), `a3b1c9276` (#631), `66ab330a9` (#630), `12202b8c4` (#629),
 `a9792b82f` (#626), `8bff5fbd7` (#634), `c4e6ac6cc` (#635), `2c96302b7`
 (#633, this file and the 3.0.0 release notes) and `c9c49023e`, the merge of #628 (`master` at `93432cf69`
@@ -49,9 +52,10 @@ into `next`, with #616, #624 and #627); before that, on its first parent,
 (#617), `0d1b3d756` (#600), `571212d58` (#614), `5ca7c955b` (#606) and
 `216df0ceb` (#615, `master` at `6b27f08da` into `next`). `master` is
 `c6d3b3b9b`, the merge of #645; before it, `9acb75949` (#638),
-`eb9055584` (#639), `22f13686f` (#636) and `93432cf69` (#627). `next` has
-the commits of `master` up to `93432cf69` (#628); #636, #639, #638 and
-#645 are not merged into `next` yet (the row "Merge `master` into `next`" of "Queue"). `v2.x` is
+`eb9055584` (#639), `22f13686f` (#636) and `93432cf69` (#627). With that
+merge, `next` has the commits of `master` up to `c6d3b3b9b`; its description
+lists the conflicts and how they were resolved (the auto-ssl tests and the
+gem fix of #636 are left out, as `next` removed the gem with #640). `v2.x` is
 `c6d3b3b9b` (`git ls-remote origin refs/heads/v2.x`), so it mirrors
 `master`.
 
@@ -60,11 +64,10 @@ merge of #624 into `master`, and the release was published at 13:26 JST.
 Its release notes are `docs/releases/v2.7.2.md` and
 `docs/releases/v2.7.2.ja.md`, on `next` with the same content since #628. 2.7.1 was released on 2026-10-19: the tag `v2.7.1` is on
 `ce5eb11`, the merge of the 2.7.1 changes into `master`. Its release notes
-are `docs/releases/v2.7.1.md` and `docs/releases/v2.7.1.ja.md`. The next
-2.x release has no file of release notes on `next` yet; the pull requests to
-`master` that need an entry create `docs/releases/v2.7.3.md` and its Japanese
-version (#636 and #638, both merged into `master`; "File
-names" in `docs/releases/README.md`).
+are `docs/releases/v2.7.1.md` and `docs/releases/v2.7.1.ja.md`. The release
+notes of the next 2.x release are `docs/releases/v2.7.3.md` and
+`docs/releases/v2.7.3.ja.md`, created on `master` by #636 and on `next`
+with the same content by the merge of `master` at `c6d3b3b9b`.
 
 Merged on 2026-10-29 (JST) after 14:40, into `next`: #633 (this file and
 the comparison of the 3.0.0 release notes with 2.7.2; merged at 14:51,
@@ -76,11 +79,14 @@ proxy endpoints diagram without a line in its narrow arrangement; 18:11,
 `a9792b82f`), site step 5, #629 to #632 (18:39 to 19:31, `12202b8c4` to
 `5e9d50663`; the site row of "Queue" lists them) and #637 (the v3 plan,
 the archive of two proposals and this file; 19:50, `c0df45534`) and #641
-(`TEST_SH_PORT_OFFSET`; 20:31, `be559a017`). Into `master`: #636
+(`TEST_SH_PORT_OFFSET`; 20:31, `be559a017`) and #640 (the auto-ssl mrbgem
+and `NGX_MRUBY_AUTO_SSL` removed from `next`; 21:33, `67ad9b919`). Into `master`: #636
 (the auto-ssl gem tested with Redis, Pebble and dehydrated; 16:40,
 `22f13686f`), #639 (`CONTRIBUTING.md` and other documentation fixes;
 17:59, `eb9055584`), #638 (nginx 1.31.8 and 1.30.6; 18:31,
-`9acb75949`) and #645 (20:06, `c6d3b3b9b`).
+`9acb75949`) and #645 (the stream `Async.sleep` timer cancelled when the
+session's pool is freed, and the fiber registered with the GC once per
+fiber; 20:06, `c6d3b3b9b`).
 
 Merged on 2026-10-29 (JST) after 13:20, into `master`: #624 (the 2.7.2
 release: #594 and the other changes of the release; merged at 13:25,
@@ -190,7 +196,14 @@ lines and the Japanese file of the release notes, `b017496`) and #578 (the
 --state merged --base next --search 'merged:>=2026-10-03' --limit 200`, and
 the same with `--base master`. Each pull request says what it changed.
 
-Open pull requests of the sessions, all drafts (`gh pr list --state open` at 20:40 JST; the table leaves out #640, which writes it, and the Dependabot pull requests #642 to #644): none.
+Open pull requests (`gh pr list --state open` at 21:42 JST; the table leaves out the merge of `master` into `next` that writes it):
+
+| Pull request | Base | Stage |
+|---|---|---|
+| [#646](https://github.com/matsumotory/ngx_mruby/pull/646): a content handler answers after `Nginx::Async.sleep`, and an exception of the location that `Nginx.redirect` runs stops at that location's handler (branch `claude/async-content-sleep-nested-raise`) | `master` | Draft |
+| [#642](https://github.com/matsumotory/ngx_mruby/pull/642): Dependabot, github/codeql-action/upload-sarif 4.39.1 | `master` | Open |
+| [#643](https://github.com/matsumotory/ngx_mruby/pull/643): Dependabot, github/codeql-action/upload-sarif 4.39.1 | `next` | Open |
+| [#644](https://github.com/matsumotory/ngx_mruby/pull/644): Dependabot, actions/upload-artifact 7.0.2 | `next` | Open |
 
 
 ## Decisions
@@ -286,9 +299,9 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Due now: `master` at `c6d3b3b9b` has #636, #639, #638 and #645, which `next` lacks; `next` has the commits of `master` up to `93432cf69` (#628, `c9c49023e`) |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The next merge into `master`: the merge of `master` at `c6d3b3b9b` (#636, #639, #638 and #645) is done by the pull request that writes this state |
 | The output body filter that ends with an empty body sends a zero size buffer marked as memory, and the client gets no byte (`Nginx::Filter#output ""`, pinned by `test/t/cases/filter_connection.rb` on `master`). Decided on 2026-10-29 (option "入れる (推奨)"): 2.7.3 gets the same change to `ngx_mrb_finalize_body_filter` as #574 on `next`, so that the response is sent with its status and `Content-Length: 0`, and the owner approved changing the expectation "an empty String closes the connection without a response" of that file. To do: a pull request to `master` with the test commit, then the fix commit, and the entry in `docs/releases/v2.7.3.md` and `.ja.md` | `master` (reaches `next` by the merge) | Ready to start |
-| `Nginx::Async.sleep` in a content handler ends the request without any response, with or without output after the sleep (found while testing #574). 2.7.1 documents it under "Known limitations" of `docs/releases/v2.7.1.md`, which plans a later release that lets a content handler wait. To do: let nginx wait for the timer (decision of 2026-10-04), as the minimal fix on `master` (decision of 2026-10-29); the larger rewrite of how resumed handlers end is the row "The async resume rewrite" | `master`, which has it too (it reaches `next` by the merge) | Ready to start: a test commit, then a fix commit |
+| `Nginx::Async.sleep` in a content handler ends the request without any response, with or without output after the sleep (found while testing #574). 2.7.1 documents it under "Known limitations" of `docs/releases/v2.7.1.md`, which plans a later release that lets a content handler wait. To do: let nginx wait for the timer (decision of 2026-10-04), as the minimal fix on `master` (decision of 2026-10-29); the larger rewrite of how resumed handlers end is the row "The async resume rewrite" | `master`, which has it too (it reaches `next` by the merge) | [#646](https://github.com/matsumotory/ngx_mruby/pull/646) (draft), with the redirect exception fix |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. Decided on 2026-10-29 (option "500 のまま (推奨)"): 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |
 | A rewrite handler that ends without `Nginx.return` (for example `mruby_rewrite_handler_code 'x = 1'` before a content handler, or before nginx's `return 200`) sends no response, and `error.log` has no line at the `error` level: with keep-alive the connection stays open until `keepalive_timeout`, with `Connection: close` it is closed with nothing sent. `ngx_mrb_finalize_rputs` (`src/http/ngx_http_mruby_core.c`; the `rc = NGX_OK` after the log line "rputs_chain is null and return NGX_OK") returns `NGX_OK` when nothing was sent and no status was set, and the rewrite phase of nginx 1.31.6 finalizes the request on `NGX_OK` (`ngx_http_core_rewrite_phase`), where the access phase goes on to the next handler. Found and measured on `next` and `master` while #583 was written and reviewed; no issue tracks it. To do: for v3, a test commit and a fix under the Pillar B row "Redesign response finalization per phase" of the plan, so that the request goes on to the next phase as with `NGX_DECLINED`; for 2.x, the behavior stays (both are the decisions of 2026-10-04), and a line under "Known limitations" in the release notes of the next 2.x release can document it | `next` | v3: waits for the row on step 4 below (the fix belongs to the Pillar B work that step 4 holds until the safety net is done); 2.x: nothing |
@@ -313,6 +326,9 @@ Taken up and still open: none.
 | A test build with `ngx_otel_module` (nginx/nginx-otel, built with CMake against the nginx source of `test.sh`) and an OTLP receiver for the case of the observability sample of 3.2 of the site proposal | `next` | The harness rewrite (the row above) |
 | Step 7 of section 6 of the plan, the agent proxy, parts (a) to (e); none exists on `next` | `next` | Parts (a) and (c) wait, as step 4 does, for what is left of the safety net of step 2: the row above for the test harness rewrite ([#641](https://github.com/matsumotory/ngx_mruby/pull/641) is merged; valgrind in CI, #634, and the auto-ssl tests, #636 on `master`, are done); then they start beside step 4 (decision of 2026-10-29). (b) and (d) also wait for step 4. The order inside the step is a proposal of the 2026-10-04 amendment until the owner decides it |
 | Remove `example/` (`README.md`, `nginx.conf`, `proxy.rb`, `set.rb`, `set2.rb`, `unified_hello.rb`): no CI job starts it, no page links it, and its `/proxy` location picks among `test1.example.com` to `test3.example.com`, which are unreachable; `examples/start/` is checked by `examples.yml` | `next` | Ready to start |
+| A stream handler that raises after `Nginx::Stream::Async.sleep` leaves its exception in the worker's `mrb_state`, and the next session of that worker is aborted by it. Reproduced on `master`. Decided on 2026-10-29 at 21:00 JST (option "2.7.3の通常の修正 (推奨)"): an ordinary 2.x fix in 2.7.3, a test commit and then a fix commit, with an entry under "Fixes" of `docs/releases/v2.7.3.md` and `.ja.md` | `master` (reaches `next` by the merge) | The pull request comes after #646 |
+| After that exception, or after `stream_status` is set to ABORT, the stream session is not closed. Reproduced on `master`. Decided on 2026-10-29 at 21:00 JST with the row above (option "2.7.3の通常の修正 (推奨)"): an ordinary 2.x fix in 2.7.3, in the same way | `master` (reaches `next` by the merge) | The pull request comes after #646 |
+| When the handler of the location that `Nginx.redirect` runs sleeps and the handler that called `Nginx.redirect` then raises, the 500 page is followed by the output of the sleeping handler when its timer fires. The request ends and the connection is closed, and nothing leaks. Not a 2.x fix: it needs the rewrite of the row "The async resume rewrite" (#646 leaves it out) | `next`, in the core stabilization of 3.0.0 | The row "The async resume rewrite" |
 | The async resume rewrite (decision (c) of 2026-10-04, amended on 2026-10-29: the rewrite of how resumed handlers end in `src/http/ngx_http_mruby_async.c`, which includes the resume of a handler after `Nginx::Async::HTTP.sub_request` from its own request). No pull request exists | `next`, in the core stabilization of 3.0.0 | Step 4, held as in the row on step 4 above |
 | The generated reference of the site (Pillar F of the plan): the directives from the `ngx_command_t` tables, the Ruby API with YARD and yard-mruby, the C API with Doxygen. `site/scripts/check-reference.mjs` checks, among other things, that each directive name has a heading in `docs/directives/README.md`; the pages are written by hand | `next` | Ready to start; no step of section 6 of the site proposal produces it yet |
 
