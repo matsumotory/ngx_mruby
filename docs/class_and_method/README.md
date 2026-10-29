@@ -477,7 +477,7 @@ A handshake whose code sets no certificate, also one whose code does not call `N
 ### Nginx::SSL#servername -> string
 
 Returns the SNI server name from the client.
-The client chooses this name, Treat it as untrusted input (see [Trust boundary](../README.md#trust-boundary)): look it up in a table of known names, and do not build a path from it.
+The client chooses this name, Treat it as untrusted input (see [Trust boundary](../security/trust-boundary.md)): look it up in a table of known names, and do not build a path from it.
 
 ```nginx
 http {

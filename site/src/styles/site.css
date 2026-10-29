@@ -36,8 +36,11 @@ body {
 }
 /* Inline code inside text may break anywhere when a path or a name is
    wider than the line: WebKit does not break Starlight's break-word there
-   and the text crosses the 20 px gutter at 320 px (4.5, 4.9) */
-.sl-markdown-content :is(p, li, figcaption, dd, td) code {
+   and the text crosses the 20 px gutter at 320 px (4.5, 4.9). In a table
+   cell a name does not break: the table scrolls in its own box (4.9), and a
+   name broken inside a narrow cell left one or two characters on its last
+   line */
+.sl-markdown-content :is(p, li, figcaption, dd) code {
   overflow-wrap: anywhere;
 }
 /* Inline code inside Japanese text breaks between any two characters: a

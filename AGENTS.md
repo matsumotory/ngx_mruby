@@ -475,10 +475,11 @@ npm run preview           # serves dist/ at http://localhost:4321/
   existing files into the four kinds of page of 3.1 of the proposal
   (`docs/install/README.md` is `/guides/install/`,
   `docs/directives/README.md` `/reference/directives/`, and so on) and add
-  `examples/start/README.md` as `/start/`; a Japanese page takes the route
+  `examples/start/README.md` as `/start/`, `SECURITY.md` as `/security/`
+  and `CONTRIBUTING.md` as `/contributing/`; a Japanese page takes the route
   of its English page under `/ja/`. The sidebar of `astro.config.mjs` has
   the links Overview (`/docs/`) and Start, then the groups Guides,
-  Reference, Concepts, Releases and Contributing, each made from the
+  Reference, Concepts, Releases, Security and Contributing, each made from the
   folder of its routes and ordered by `SIDEBAR_ORDER` of
   `scripts/lib/site.mjs`. The header, the menu, the footer and the language link
   of 4.10 are component overrides in `src/components/` (`Header`,

@@ -13,5 +13,5 @@ requests.
   `Nginx::Async::HTTP.sub_request` give the worker back to nginx.
 - [Lifetimes](lifetimes.md): one `mrb_state` per worker, and what a worker
   keeps between requests.
-- [Trust boundary](../README.md#trust-boundary): what ngx_mruby trusts,
+- [Trust boundary](../security/trust-boundary.md): what ngx_mruby trusts,
   what it treats as client input, and what a script is responsible for.

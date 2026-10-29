@@ -57,11 +57,10 @@ const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 // a page with a diagram, and reference pages rendered from docs/; in
 // English and Japanese. /ja/docs/ has the h2 with <wbr> of step 1. Step 4
 // adds the pages it writes.
-export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/reference/directives/', '/guides/install/', '/ja/docs/', '/start/', '/guides/routing/', '/guides/use-cases/', '/reference/build/', '/reference/ruby/', '/concepts/', '/concepts/filters/', '/concepts/async/', '/concepts/lifetimes/', '/guides/agent-proxy/'];
-// The pages that steps 3 and 4 write, where a last line of one or two
-// characters fails; on the others, which steps 4 and 5 rewrite later, it
-// is a note.
-const LAST_LINE_STRICT = new Set(['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/start/', '/guides/routing/', '/guides/use-cases/', '/reference/build/', '/reference/directives/', '/reference/ruby/', '/concepts/', '/concepts/filters/', '/concepts/async/', '/concepts/lifetimes/', '/guides/agent-proxy/']);
+export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/reference/directives/', '/guides/install/', '/ja/docs/', '/start/', '/guides/routing/', '/guides/use-cases/', '/reference/build/', '/reference/ruby/', '/concepts/', '/concepts/filters/', '/concepts/async/', '/concepts/lifetimes/', '/guides/agent-proxy/', '/security/', '/contributing/'];
+// A last line of one or two characters fails on every page of PAGES
+// (step 4 fixed the last ones that were notes).
+const LAST_LINE_STRICT = new Set(PAGES);
 const SIZES = [
   { width: 320, height: 664 },
   { width: 390, height: 664 },
