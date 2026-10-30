@@ -35,7 +35,7 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## Sharing image continuation, 2026-10-29
+## Sharing image continuation, 2026-10-30
 
 - The initial site/rebrand in [#661](https://github.com/matsumotory/ngx_mruby/pull/661)
   is published at next `6d65a12ec`; its completion record links the deployed
@@ -43,17 +43,53 @@ that are not written down elsewhere yet, the work in progress and the queue.
   aligned maintenance process docs at master `967b61cc6` (mirrored to v2.x).
 - [#663](https://github.com/matsumotory/ngx_mruby/pull/663) integrates the
   maintenance docs and verifies the development installation walkthrough.
-  Check that PR for its current head, CI and review-recording stage.
-- Branch `codex/brand-sharing` uses the selected metallic mark in one
+  It merged as `490ea459c` after final-head CI and independent review;
+  production run 41005252954 is in progress.
+- This sharing-image change uses the selected metallic mark in one
   product sharing image for the README and both site versions. The public
   source, render command, metadata checks and limits are in the
   [site plan](proposals/site.md#sharing-and-readme-identity-2026-10-29).
   Existing header/favicon derivatives remain; old image URLs are preserved.
   Local static checks and full-size/300/390-pixel visual checks pass. Final
-  PR review, CI and deployment are pending; this is not a release change.
+  independent source/visual review has no must-fix or should-fix findings.
+  Current-head PR CI and deployment remain pending; this is not a release change.
 - The later site work remains distinct: restrained surface/CTA refinements,
   deeper verified HTTP/stream examples and contextual performance records.
   The v3 setter work follows those site units under its existing plan.
+
+## Installation and process continuation, 2026-10-29
+
+- The first rebrand and versioned-documentation iteration is published.
+  [#661](https://github.com/matsumotory/ngx_mruby/pull/661) merged as
+  `6d65a12ec`. Production run 40959681713 and deployment 7425112363
+  succeeded. All 614 shipped files match the live site; four versioned
+  English/Japanese searches, mobile/desktop views, code interaction and
+  HTTPS checks pass. Final evidence is in the
+  [completion record](https://github.com/matsumotory/ngx_mruby/pull/661#issuecomment-6509229800).
+- The common continuation procedure from #659 reached master as `967b61cc6`
+  in [#662](https://github.com/matsumotory/ngx_mruby/pull/662), after all CI
+  and independent review passed. The v2.x mirror succeeded. HANDOFF
+  remains on next, and master links that source. Branch-specific test
+  process/port handling is preserved; a common workflow does not imply
+  identical harness capabilities.
+- [#663](https://github.com/matsumotory/ngx_mruby/pull/663), branch
+  `codex/integrate-stable-install`, merges the installation correction
+  of [#660](https://github.com/matsumotory/ngx_mruby/pull/660) from master
+  `967b61cc6` into next `6d65a12ec`. The conflict resolution selects next
+  development source and preserves the v3 core-gem, lock and removed
+  auto-ssl contracts. English/Japanese commands are identical. A fresh
+  clone of `6d65a12ec` built and installed nginx 1.31.8 on Ubuntu 22.04
+  aarch64; the exact documented HTTP trial passed both response assertions,
+  configuration validation, reload and quit. These are documentation
+  changes, with no measured binary input changed. Current head, final CI
+  and independent review belong in the integration PR.
+- Next site work: shared README/social branding and controlled metallic
+  surface/CTA refinements, then deeper executable HTTP/stream examples
+  and reproducible performance records. Keep human and agent output on
+  the same sources; retain implementation/planned/under-design distinctions.
+  The upstream setter D/E work and stable empty-filter follow-up remain
+  separate runtime items. No new runtime contract or software release was
+  decided by this documentation integration.
 
 ## Site continuation checkpoint, 2026-10-29 20:25 UTC
 
