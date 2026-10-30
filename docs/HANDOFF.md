@@ -35,6 +35,21 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## Landing-page hierarchy, 2026-10-30
+
+- #670 merged as `0982d877f`; production run [41056532525](https://github.com/matsumotory/ngx_mruby/actions/runs/41056532525)
+  succeeded. All 628 shipped files matched HTTPS. [Publication evidence](https://github.com/matsumotory/ngx_mruby/pull/670#issuecomment-6523552378)
+  records live code, interaction, search and sharing checks.
+- [#671](https://github.com/matsumotory/ngx_mruby/pull/671)
+  (`codex/site-layout-hierarchy`), based on that merge, removes generic link arrows,
+  repeated figure numbering and standalone narrow-screen arrows. Related items
+  use proximity and shared text roles. The existing routing behavior, source
+  copies, development status and MCP limitations remain intact.
+- Shared layout/typography rules and independent visual-review criteria are in
+  [the site plan](proposals/site.md#layout-and-type-hierarchy), referenced by
+  AGENTS.md. Scope is presentation and its checks; runtime and CI policy do not
+  change. Current-head validation, review and publication are recorded on the PR.
+
 ## Landing-page narrative rebuild, 2026-10-30
 
 - #669 merged as `10297d1e2`; production run

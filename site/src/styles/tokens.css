@@ -98,6 +98,7 @@
   --text-body: 1rem;
   --text-nav: 0.9375rem;
   --text-caption: 0.875rem;
+  --text-code: var(--text-nav); /* code uses the existing 15px step */
   --leading-home: 1.2;
   --leading-h1: 1.25;
   --leading-h2: 1.3;
@@ -136,6 +137,17 @@
   /* Motion (4.8): only color, background color, border color, opacity and
      transform, for 200 ms or less */
   --duration-short: 150ms;
+}
+
+/* Landing-page display role. Component styles consume these tokens; they
+   do not introduce additional sizes for individual labels or diagrams. */
+html:has(.home) {
+  --text-home: clamp(2.375rem, 1rem + 4.5vw, 4.5rem);
+  --leading-home: 1.05;
+}
+html[lang="ja"]:has(.home) {
+  --text-home: clamp(2rem, 1rem + 3.5vw, 3.5rem);
+  --leading-home: 1.3;
 }
 
 /* 20 px is not a step of --space-*: it is the profile site's narrow
@@ -279,8 +291,8 @@
   --sl-text-6xl: var(--text-h1);
   --sl-text-body: var(--text-body);
   --sl-text-body-sm: var(--text-caption);
-  --sl-text-code: var(--text-nav);
-  --sl-text-code-sm: var(--text-nav);
+  --sl-text-code: var(--text-code);
+  --sl-text-code-sm: var(--text-code);
   --sl-text-h1: var(--text-h1);
   --sl-text-h2: var(--text-h2);
   --sl-text-h3: var(--text-h3);

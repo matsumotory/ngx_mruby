@@ -2064,6 +2064,45 @@ a passing mechanical check; this design is an iteration, not an owner acceptance
 Photos remain private references and are not committed. No benchmark result,
 MCP conformance, formal v3 release or completed planned API is claimed.
 
+### Layout and type hierarchy
+
+The shared design procedure applies to human, Claude and Codex contributions.
+Relationships and reading order come first from alignment, proximity, whitespace
+and the existing heading hierarchy. Do not add a repeated caption, number or
+arrow to compensate for a layout that does not communicate them. A link does
+not need a trailing arrow. Retain arrows only where their direction adds
+necessary meaning; disclosure chevrons, state indicators and technical mappings
+are functional content. On narrow screens, stack related content closely
+instead of reserving a separate row for a downward arrow.
+
+Typography uses roles from `site/src/styles/tokens.css`, applied by shared styles:
+
+| Role | Token / shared selector |
+|---|---|
+| Homepage title | `--text-home` / `h1#_top` |
+| Section heading | `--text-h2` / `h2` |
+| Item or peer diagram heading | `--text-h3` / `h3` |
+| Body and primary control | `--text-body` |
+| Supporting note, provenance or availability | `--text-caption` |
+| Code | `--text-code` (the existing `--text-nav` size) |
+| Navigation | `--text-nav` |
+
+The same role has the same size within each language and breakpoint. Keep
+responsive title values in the token file, not in component styles. Establish
+importance through placement, spacing and restrained font weight before adding
+a size. A new role or size needs an explicit reason, a shared token and visual
+review; no one-off component size. Removing redundant labels must not remove
+version status, unimplemented limitations, code provenance or useful instructions.
+
+An independent reviewer checks the actual desktop and mobile pages, including
+an overview with surrounding sections, and reports whether a first-time reader
+can explain the product, audience, benefit and next step. For every arrow or
+secondary label, ask what information is lost without it; remove it or fix the
+layout when the answer is none. Compare peer heading/control roles and their
+computed sizes. Check reading order, semantic headings, focus, disclosures,
+canonical code copy and reduced motion. Passing automated checks does not prove
+that the page communicates clearly or that its composition is accepted.
+
 ### Sharing and README identity, 2026-10-29
 
 The product-level sharing card uses the selected metallic C/gold mark and

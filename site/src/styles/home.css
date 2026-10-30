@@ -1,13 +1,5 @@
 /* Homepage workbench, requested 2026-10-29. All rules are scoped to .home
    or a document containing it. Reference pages keep their existing scale. */
-html:has(.home) {
-  --text-home: clamp(2.375rem, 1rem + 4.5vw, 4.5rem);
-  --leading-home: 1.05;
-}
-html[lang="ja"]:has(.home) {
-  --text-home: clamp(2rem, 1rem + 3.5vw, 3.5rem);
-  --leading-home: 1.3;
-}
 html:has(.home) .content-panel:first-of-type { padding-top: var(--space-9); }
 html:has(.home) h1#_top { max-width: 13ch; letter-spacing: -0.04em; }
 html[lang="ja"]:has(.home) h1#_top { max-width: 16em; letter-spacing: -0.03em; }
