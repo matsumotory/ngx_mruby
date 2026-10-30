@@ -10,7 +10,8 @@ import { loadSample } from './lib/samples.mjs';
 const site = path.resolve(new URL('..', import.meta.url).pathname);
 const dist = path.resolve(process.argv[2] || path.join(site, 'dist'));
 const pages = fs.readdirSync(dist, { recursive: true }).filter(p => /(^|\/)index\.html$/.test(p)).map(p => '/' + p.replace(/index\.html$/, ''));
-const representative = ['/', '/ja/', '/start/', '/ja/start/', '/guides/agent-proxy/', '/ja/guides/agent-proxy/', '/v2/', '/v2/ja/', '/v2/class-and-method/', '/v2/ja/class-and-method/'].filter(p => pages.includes(p));
+const representative = ['/', '/ja/', '/start/', '/ja/start/', '/guides/agent-proxy/', '/ja/guides/agent-proxy/', '/v2/', '/v2/ja/', '/v2/reference/ruby/', '/v2/ja/reference/ruby/'];
+for (const route of representative) assert.ok(pages.includes(route), `missing representative route ${route}`);
 const failures = [];
 let count = 0;
 const server = await serve(dist);
@@ -47,8 +48,10 @@ try {
         await page.goto(server.url + route);
         await page.evaluate(enlarged => {
           document.querySelectorAll('details').forEach(el => { el.open = true; });
-          if (enlarged) for (const el of document.querySelectorAll('pre, .home-v3 code')) {
-            el.style.fontSize = `${parseFloat(getComputedStyle(el).fontSize) * 2}px`;
+          if (enlarged) {
+            const sizes = [...document.querySelectorAll('pre, pre > code, .home-v3 code')].map(el => [el, parseFloat(getComputedStyle(el).fontSize)]);
+            for (const [el, size] of sizes) el.style.fontSize = `${size * 2}px`;
+            for (const [el, size] of sizes) if (Math.abs(parseFloat(getComputedStyle(el).fontSize) - size * 2) > 0.01) throw new Error('code text was not enlarged to 200%');
           }
         }, enlarged);
         await inspect(page, `${engine.name()} ${route} ${width} enlarged=${enlarged}`);

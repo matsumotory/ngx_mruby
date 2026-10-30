@@ -52,6 +52,11 @@ html[lang="ja"]:has(.home) h1#_top { max-width: 16em; letter-spacing: -0.03em; }
 .home .sample-file { min-width: 0; margin: 0; border-bottom: 1px solid var(--color-border-strong); border-right: 1px solid var(--color-border-strong); background: var(--color-bg-tertiary); }
 .home .sample-file-label { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); font-size: var(--text-caption); color: var(--color-text-muted); }
 .home .sample-file-label > span:last-child { color: var(--color-accent-text); }
+.home .sample-file-label > span:first-child { min-width: 0; }
+.home .sample-file-label strong { font-weight: 500; color: var(--color-text-primary); }
+.home .sample-filename { display: block; margin-top: var(--space-2); padding: 0; background: transparent; font-family: var(--font-mono); overflow-wrap: anywhere; }
+.home .sample-file .expressive-code mark { margin: 0; padding: 0; border-radius: 0; background: var(--color-border); }
+.home .sample-file .expressive-code mark::before { display: none; }
 .home .sample-file .expressive-code { margin: 0; }
 .home .sample-file .expressive-code .frame { border: 0; border-radius: 0; }
 .home .sample-file .expressive-code pre { border-radius: 0; background: var(--color-bg-tertiary); }

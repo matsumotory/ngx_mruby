@@ -52,7 +52,7 @@ html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-7); }
 .home-v3 .sample-focused .sample-file { border: 1px solid var(--color-border); }
 .home-v3 .sample-focused .sample-file-label { background-image: linear-gradient(165deg, var(--color-border), var(--color-bg-tertiary) 25%, var(--color-bg-primary)); }
 .home-v3 .sample-config { margin-top: var(--space-5); max-width: none; }
-.home-v3 .sample-caption { max-width: 68ch; }
+.home-v3 .sample-caption { max-width: 60ch; }
 .home-v3 .v3-future { display: grid; grid-template-columns: 128px 1fr; gap: var(--space-7); align-items: center; padding: var(--space-7); background-color: var(--color-bg-tertiary); background-image: linear-gradient(120deg, var(--color-border), var(--color-bg-tertiary) 20%, var(--color-bg-primary) 85%); }
 .home-v3 .v3-future h2 { margin: var(--space-2) 0 var(--space-4); padding: 0; }
 .home-v3 .v3-future p { color: var(--color-text-muted); margin: 0 0 var(--space-4); }
@@ -123,7 +123,7 @@ html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-7); }
 .try-path > div { min-width: 0; }
 .try-path strong { color: var(--color-code-number); font-size: var(--text-h2); }
 .home-v3 .try-path h3 { margin: var(--space-3) 0; }
-.try-path code { display: block; overflow-x: auto; white-space: nowrap; font-size: var(--text-caption); }
+.try-path code { display: block; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-caption); }
 .try-path div > span { display: block; color: var(--color-text-muted); font-size: var(--text-caption); margin-top: var(--space-4); }
 .try-path > span { color: var(--color-text-muted); }
 .try-options { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-5); margin-top: var(--space-6); }
@@ -141,7 +141,7 @@ html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-7); }
  .mcp-endpoint span { margin: 0; }
  .mcp-arrow { transform: rotate(90deg); }
  .mcp-rules { padding: var(--space-4); }
- .mcp-rules code { white-space: nowrap; font-size: var(--text-caption); }
+ .mcp-rules code { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-caption); }
  .mcp-targets { gap: var(--space-4); }
  .mcp-targets > div { column-gap: var(--space-2); }
  .mcp-targets code { font-size: var(--text-caption); overflow-wrap: anywhere; }

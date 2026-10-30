@@ -1225,9 +1225,11 @@ Palette B:
   of the content as a plain list: a table of contents collapsed and pinned
   to the top went unnoticed by many participants of Nielsen Norman Group's
   tests (2023).
-- No horizontal page scroll at 320 px (WCAG 1.4.10). Code blocks and tables
-  scroll in their own box and show content cut at the right edge, which
-  tells readers there is more (Nielsen Norman Group, 2017). Diagrams do not
+- No horizontal page scroll at 320 px (WCAG 1.4.10). On 2026-10-30 the owner
+  required code to be readable without horizontal scrolling (「横スクロールを
+  強制」は「絶対やめて」). Code blocks soft-wrap, including long paths and
+  tokens; copying keeps the original source. This supersedes the earlier
+  cut-off-code treatment. Tables may scroll in their own box. Diagrams do not
   scroll sideways; they take a vertical arrangement instead (3.5).
 - **Right edge.** At 390 px, in Chromium and in WebKit, the longest line of
   every Japanese text block (`lang="ja"`) of two or more lines ends less

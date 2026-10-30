@@ -51,6 +51,19 @@ that are not written down elsewhere yet, the work in progress and the queue.
   checks and all five Lighthouse categories (100) passed.
 - Work continues in the existing repository checkout. Previous worktrees and
   branches remain preserved; local folder inventories are not public artifacts.
+- The owner's 2026-10-30 correction requires code to be readable without
+  horizontal scrolling and a modern code presentation. #668 now applies
+  soft wrapping to both versions and all documentation, names sample files,
+  and highlights the model-routing assignment. Full configuration remains
+  expandable; syntax and original clipboard bytes are preserved.
+  Regression commit `d88c1e573` fails on the old homepage at 320px.
+  `check-code-layout.mjs` checks every generated page at 320px and required
+  English/Japanese reference and entry pages at 320/390/768/1440, with 200%
+  code text, unbroken URLs, keyboard activation and canonical sample copies.
+  Local code-layout checks pass in 500 page conditions in Chromium/WebKit,
+  including canonical clipboard and keyboard checks; homepage computed-style
+  checks pass in 40 light/dark page loads. Publication remains pending
+  final-head CI, independent review and live QA.
 
 ## v3 homepage redesign checkpoint, 2026-10-30 06:04 UTC
 
