@@ -16,7 +16,7 @@ const startCommands = startBlock[1].split('\n').filter(line => line.startsWith('
 <div class="home home-v3">
   <div class="v3-intro">
     <p class="lede">{ja ? 'ngx_mrubyは、nginxの処理をRubyで拡張するモジュールです。LLMを使うアプリの前段で利用者キーを確認し、modelに応じてAPIを選択。上流の認証情報をアプリに配らず、転送の規則を変更できます。' : 'ngx_mruby extends nginx with Ruby. Check client keys and route LLM requests by model before they reach an API. Keep upstream credentials out of your apps and change routing rules at the proxy.'}</p>
-    <div class="v3-entry"><p class="actions"><a class="button-primary" href={prefix + '/start/#model-routing'}>{ja ? 'モデル振り分けを試す' : 'Try model routing'}</a><a class="intro-link" href={prefix + '/guides/agent-proxy/'}>{ja ? 'LLMプロキシの構成を読む' : 'Read the proxy guide'}</a></p><p class="v3-status">{ja ? 'v3 開発中' : 'v3 · In development'}<span aria-hidden="true"> · </span><a href={ja ? '/v2/ja/' : '/v2/'}>{ja ? '安定版2.7の導入と仕様' : 'Stable 2.7 installation and reference'}</a></p></div>
+    <div class="v3-entry"><p class="actions"><a class="button-primary" href={prefix + '/start/'}>{ja ? 'モデル振り分けを試す' : 'Try model routing'}</a><a class="intro-link" href={prefix + '/guides/agent-proxy/'}>{ja ? 'LLMプロキシの構成を読む' : 'Read the proxy guide'}</a></p><p class="v3-status">{ja ? 'v3 開発中' : 'v3 · In development'}<span aria-hidden="true"> · </span><a href={ja ? '/v2/ja/' : '/v2/'}>{ja ? '安定版2.7の導入と仕様' : 'Stable 2.7 installation and reference'}</a></p></div>
   </div>
 
   <section class="v3-routing" aria-labelledby="routing">
