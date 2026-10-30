@@ -2004,3 +2004,30 @@ roadmap note has no accent rail or compensating left padding. Documentation
 quotes/asides already use uniform frames; code-pane edges and diagram
 connectors convey boundaries/relationships and are retained. This changes
 presentation only, not the execution model or machine-readable source.
+
+### v3 use-case homepage, 2026-10-30
+
+The owner asked for v3 as the main subject, concrete first-user use cases,
+large diagrams and less introductory text; stable 2.7 keeps a clear secondary
+entry. The same request explicitly permits bold metal reflections, depth and
+motion. This overrides the earlier flat/no-gradient/no-shadow direction for
+this homepage, not for reference reading surfaces. Decorative start-edge
+vertical rails remain prohibited.
+
+`HomeV3.astro` composes the English/Japanese overview. `AgentFlow.astro` shows
+actual tested model routing to configured LLM upstreams; selecting a fixture
+model highlights that route without sending a request. Its 800ms finite
+movement is user-triggered and absent under reduced motion. It never implies
+API format conversion. `McpUseCase.astro` labels the document-service routing
+as an unverified use-case design and links to the canonical bilingual guide.
+`TryPath.astro` leads to source-built trial/edit/check steps and Linux integration.
+The representative sample is read from the existing agent-proxy test files;
+its complete configuration remains available in an expandable code block.
+
+Directional gradients and inset/outer shadows are restricted to the homepage's
+named metal planes, CTA, file labels and planned-feature band. Text shadows and
+backdrop filters stay prohibited. The checks preserve token, contrast, focus,
+font, layout, no-overflow and reduced-motion constraints. The one bounded
+route animation is the only duration exception; reference-page motion is unchanged.
+Photos remain private references and are not committed. No benchmark result,
+MCP conformance, formal v3 release or completed planned API is claimed.

@@ -12,8 +12,8 @@ nginx with ngx_mruby from the source in your checkout with the
 - You need Docker with the Compose plugin (`docker compose`), git, curl
   and a network connection: the build downloads nginx from nginx.org and the
   mrbgems of `build_config.rb` from GitHub.
-- No image of ngx_mruby is published yet, so the first run compiles mruby
-  and nginx. On 2026-10-29, on GitHub's `ubuntu-24.04` runner with Docker
+- No verified prebuilt image of this v3 development version is provided,
+  so the first run compiles mruby and nginx. On 2026-10-29, on GitHub's `ubuntu-24.04` runner with Docker
   Engine 28.0.4 and Docker Compose 2.38.2, step 3 took 170 seconds. Later
   runs reuse the built image.
 - These steps run in CI on every pull request that changes `examples/`
@@ -125,7 +125,17 @@ request, without a reload.
    $ mv hello.rb.orig hello.rb
    ```
 
-4. Stop and remove the container. Compose reports the container
+4. Validate the mounted configuration and reload it. Use the binary and
+   configuration paths of this image, rather than relying on `PATH`.
+
+   ```console
+   $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -t -c /example/nginx.conf
+   $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -s reload -c /example/nginx.conf
+   $ curl -s 'http://localhost:8080/hello?name=Ruby'
+   Hello, Ruby! hello.rb answered GET /hello.
+   ```
+
+5. Stop and remove the container. Compose reports the container
    `start-nginx-1` as removed.
 
    ```console
@@ -139,6 +149,38 @@ script, and it reads the disk on the request path. In production, add
 shows, so that nginx compiles the script once when it reads its
 configuration.
 
+## Choose how to customize it
+
+| Change | Apply it | Why |
+|---|---|---|
+| Ruby without `cache` | Send the next request | The handler reads the mounted script each time |
+| `nginx.conf`, or Ruby compiled with `cache` | Validate with `nginx -t`, then reload as above | nginx compiles configuration-time code when it reads the configuration |
+| mrbgems or build options | Rebuild the image | These change the compiled module |
+
+The mount is read-only inside the container; edit files on the host. The example
+publishes port 8080 on host interfaces; for a local-only trial, change the Compose
+mapping to `127.0.0.1:8080:8080` before starting it. Use `docker compose logs nginx`
+to inspect a failed health check or configuration error. An image-metadata error
+before compilation is a registry/network failure, not an nginx response.
+
+Containers are one trial path. For Linux installation into an existing deployment,
+follow [Install](../../docs/install/README.md), matching the nginx version and
+module build options. Official nginx packages and images do not include ngx_mruby;
+`--with-compat` is not compatibility with arbitrary nginx versions. Running this
+Linux image on a Mac is not evidence of a native macOS build.
+
+The recorded 170-second run above is historical CI evidence, not a current timing
+guarantee or an arm64 result. A fresh linux/arm64 trial on 2026-10-30 stopped while
+fetching the Ubuntu base-image metadata, before compilation. That attempt did not
+validate startup, editing or reload. The examples workflow validates the commands
+on its Linux runner; consult its run for the commit you use.
+
+Primary references: [NGINX containers](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-docker/),
+[Linux packages](https://nginx.org/en/linux_packages.html),
+[dynamic modules](https://blog.nginx.org/blog/nginx-dynamic-modules-how-they-work),
+[reload](https://nginx.org/en/docs/control.html), and
+[bind mounts](https://docs.docker.com/engine/storage/bind-mounts/).
+
 ## Next steps
 
 - [Install](../../docs/install/README.md): build ngx_mruby into your own
@@ -147,3 +189,5 @@ configuration.
   runs Ruby, and the directive for each.
 - [Request phases](../../docs/concepts/request-phases.md): the order in
   which nginx runs the handlers of one request.
+
+- [Agent proxy](../../docs/guides/agent-proxy.md): extend the handler into tested model routing and streamed relay recipes.
