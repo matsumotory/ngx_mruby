@@ -2026,11 +2026,23 @@ as an unverified use-case design and links to the canonical bilingual guide.
 The representative sample is read from the existing agent-proxy test files;
 its complete configuration remains available in an expandable code block.
 
-Directional gradients and inset/outer shadows are restricted to the homepage's
-named metal planes, CTA, file labels and planned-feature band. Text shadows and
-backdrop filters stay prohibited. The checks preserve token, contrast, focus,
-font, layout, no-overflow and reduced-motion constraints. The one bounded
-route animation is the only duration exception; reference-page motion is unchanged.
+The owner's subsequent feedback requires a unified composition: the page
+background, large planes, light direction, spacing, color and motion must work
+together; isolated metallic buttons and diagrams are insufficient. The current
+iteration uses a shared upper-left key light on navy enamel, deep recesses,
+small silver edges and warm/violet reflected light. Page-level planes continue
+behind the title, illustrations and lower reading sections. MCP explanation and
+its diagram share an asymmetric desktop composition, stacked on mobile.
+
+Directional gradients and shadows are allowed on those named homepage planes
+(main frame, final content panel, route stage and trial band) as well as the
+existing metal surfaces, CTA, file labels and planned-feature band. They remain
+prohibited on reference pages. Text shadows, backdrop filters, decorative left
+rails and permanent animation remain prohibited. The checks preserve tokens,
+contrast on every reading-plane stop, focus, font, wrapping and reduced motion.
+The finite 800ms route indication is user-triggered and does not imply a live
+network request. Visual review must assess whole-page cohesion separately from
+a passing mechanical check; this design is an iteration, not an owner acceptance.
 Photos remain private references and are not committed. No benchmark result,
 MCP conformance, formal v3 release or completed planned API is claimed.
 

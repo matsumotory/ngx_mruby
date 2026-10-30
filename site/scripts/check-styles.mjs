@@ -156,12 +156,13 @@ function inspect(cfg) {
       }
       if (style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0) checkColor(el, 'outline-color', style.outlineColor, where);
       if (!isSvg && style.textDecorationLine !== 'none') checkColor(el, 'text-decoration-color', style.textDecorationColor, where);
-      // 4.3 item 5
-      if (style.boxShadow !== 'none' && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future')) fail(el, `box-shadow${where} ${style.boxShadow}`);
+      // 4.3 item 5; whole-page material planes requested on 2026-10-30.
+      // Keep this explicit: other pages, text shadows and backdrop filters stay gated.
+      if (style.boxShadow !== 'none' && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future, html:has(.home-v3) .main-frame, html:has(.home-v3) .content-panel:last-of-type, .home-v3 .v3-flow, .home-v3 .v3-try')) fail(el, `box-shadow${where} ${style.boxShadow}`);
       if (style.textShadow !== 'none') fail(el, `text-shadow${where} ${style.textShadow}`);
       const bf = style.backdropFilter ?? style.webkitBackdropFilter;
       if (bf && bf !== 'none') fail(el, `backdrop-filter${where} ${bf}`);
-      if (/gradient/.test(style.backgroundImage) && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future')) fail(el, `background-image${where} ${style.backgroundImage.slice(0, 80)}`);
+      if (/gradient/.test(style.backgroundImage) && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future, html:has(.home-v3) .main-frame, html:has(.home-v3) .content-panel:last-of-type, .home-v3 .v3-flow, .home-v3 .v3-try')) fail(el, `background-image${where} ${style.backgroundImage.slice(0, 80)}`);
     }
     if (isSvg) {
       for (const p of ['fill', 'stroke']) {
@@ -415,10 +416,10 @@ function shadowsOnly() {
       const s = getComputedStyle(el, where || null);
       const bf = s.backdropFilter ?? s.webkitBackdropFilter;
       const tag = `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.classList[0] ? '.' + el.classList[0] : ''}${where}`;
-      if (s.boxShadow !== 'none' && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future')) fails.push(`${tag}: box-shadow ${s.boxShadow}`);
+      if (s.boxShadow !== 'none' && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future, html:has(.home-v3) .main-frame, html:has(.home-v3) .content-panel:last-of-type, .home-v3 .v3-flow, .home-v3 .v3-try')) fails.push(`${tag}: box-shadow ${s.boxShadow}`);
       if (s.textShadow !== 'none') fails.push(`${tag}: text-shadow ${s.textShadow}`);
       if (bf && bf !== 'none') fails.push(`${tag}: backdrop-filter ${bf}`);
-      if (/gradient/.test(s.backgroundImage) && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future')) fails.push(`${tag}: background-image holds a gradient`);
+      if (/gradient/.test(s.backgroundImage) && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future, html:has(.home-v3) .main-frame, html:has(.home-v3) .content-panel:last-of-type, .home-v3 .v3-flow, .home-v3 .v3-try')) fails.push(`${tag}: background-image holds a gradient`);
     }
   }
   return fails;

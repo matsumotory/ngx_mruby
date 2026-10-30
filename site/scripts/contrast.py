@@ -269,6 +269,19 @@ def main():
         print('  button text on red metal fill: %s:1 (needs 4.5)' % trunc(button_ratio))
         if button_ratio < 4.5:
             failures.append('%s button text on fill: %.6f:1' % (label, button_ratio))
+        # Every reading plane uses these opaque gradient stops. Check all
+        # text/accent roles against every stop, not just the base canvas.
+        surfaces = ('scene-deep', 'scene-face', 'scene-light', 'scene-warm', 'scene-violet')
+        foregrounds = ('text-primary', 'text-muted', 'accent-text', 'code-number', 'signal-violet')
+        for surface in surfaces:
+            bg = block['--color-' + surface][0]
+            for foreground in foregrounds:
+                token = '--color-' + foreground
+                fg = block.get(token, blocks['a-' + theme].get(token))[0]
+                value = ratio(fg, bg)
+                if value < 4.5:
+                    failures.append('%s %s on %s: %.6f:1' % (label, foreground, surface, value))
+        print('  all material reading planes: checked text, muted, links and route colors')
         home = by_token(block)
         check_pairs(label, home, failures)
         for prop in codes + ['--color-text-primary', '--color-text-muted']:

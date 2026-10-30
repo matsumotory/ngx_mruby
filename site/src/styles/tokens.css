@@ -306,6 +306,15 @@
 /* Homepage proposal, 2026-10-29: graphite/navy and small copper accents.
    Explicit homepage roles match the global rebrand preview above. */
 :root:has(.home) {
+  /* Shared upper-left key light and warm/violet reflected light. */
+  --color-scene-deep: #dde1ea; /* oklch(0.91 0.012 265) */
+  --color-scene-face: #e8f1fb; /* oklch(0.955 0.016 250) */
+  --color-scene-light: #f7fafe; /* oklch(0.985 0.006 250) */
+  --color-scene-edge: #a1acb9; /* oklch(0.74 0.022 250) */
+  --color-scene-warm: #f8e5dc; /* oklch(0.935 0.024 50) */
+  --color-scene-violet: #ede4f5; /* oklch(0.93 0.025 310) */
+  --color-signal-violet: #754a93; /* oklch(0.49 0.12 310) */
+
   --color-button-fill: #6e2826; /* oklch(0.38 0.10 25) */
   --color-button-edge: #cc8e6b; /* oklch(0.70 0.09 50) */
   --color-button-low: #462220; /* oklch(0.30 0.055 25) */
@@ -321,6 +330,15 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):has(.home) {
+  /* Shared upper-left key light and warm/violet reflected light. */
+  --color-scene-deep: #070a11; /* oklch(0.145 0.017 265) */
+  --color-scene-face: #122334; /* oklch(0.25 0.04 250) */
+  --color-scene-light: #223448; /* oklch(0.32 0.042 250) */
+  --color-scene-edge: #516274; /* oklch(0.49 0.036 250) */
+  --color-scene-warm: #311911; /* oklch(0.245 0.04 40) */
+  --color-scene-violet: #24162e; /* oklch(0.23 0.05 310) */
+  --color-signal-violet: #cfa8ed; /* oklch(0.79 0.105 310) */
+
     --color-button-fill: #6e2826; /* oklch(0.38 0.10 25) */
     --color-button-edge: #cc8e6b; /* oklch(0.70 0.09 50) */
     --color-button-low: #462220; /* oklch(0.30 0.055 25) */
@@ -336,6 +354,15 @@
   }
 }
 :root[data-theme="dark"][data-theme-script]:has(.home) {
+  /* Shared upper-left key light and warm/violet reflected light. */
+  --color-scene-deep: #070a11; /* oklch(0.145 0.017 265) */
+  --color-scene-face: #122334; /* oklch(0.25 0.04 250) */
+  --color-scene-light: #223448; /* oklch(0.32 0.042 250) */
+  --color-scene-edge: #516274; /* oklch(0.49 0.036 250) */
+  --color-scene-warm: #311911; /* oklch(0.245 0.04 40) */
+  --color-scene-violet: #24162e; /* oklch(0.23 0.05 310) */
+  --color-signal-violet: #cfa8ed; /* oklch(0.79 0.105 310) */
+
   --color-button-fill: #6e2826; /* oklch(0.38 0.10 25) */
   --color-button-edge: #cc8e6b; /* oklch(0.70 0.09 50) */
   --color-button-low: #462220; /* oklch(0.30 0.055 25) */
