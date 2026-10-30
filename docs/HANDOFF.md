@@ -61,6 +61,22 @@ that are not written down elsewhere yet, the work in progress and the queue.
   normal PR/CI/publication process on 2026-10-30; final-head CI and
   deployment verification are pending.
 
+## Surface continuation, 2026-10-30
+
+- This homepage-only change adjusts the copper-red CTA and mobile spacing.
+  The [site plan](proposals/site.md#local-surface-and-mobile-spacing-iteration-2026-10-29)
+  records color roles, contrast and measured viewport differences. Existing
+  style expectations are preserved; the new contrast assertion is additive.
+- Independent source review has no must-fix or should-fix findings.
+  Local checks cover 80 native/Noto style loads, 1032 focus stops and no
+  contrast failures. Those preview builds were dirty; final-head CI and
+  production verification remain required.
+- [#665](https://github.com/matsumotory/ngx_mruby/pull/665) contains the
+  separate README/OG change. [#663](https://github.com/matsumotory/ngx_mruby/pull/663)
+  merged as `490ea459c`; this branch includes that integration. Publication
+  resumed with the owner's authorization on 2026-10-30; software releases
+  and personal reference photo publication remain excluded.
+
 ## Sharing image continuation, 2026-10-30
 
 - The initial site/rebrand in [#661](https://github.com/matsumotory/ngx_mruby/pull/661)

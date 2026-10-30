@@ -14,14 +14,27 @@ html[lang="ja"]:has(.home) h1#_top { max-width: 16em; letter-spacing: -0.03em; }
 .home .home-intro { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: var(--space-8); align-items: start; }
 .home .lede { margin-top: var(--space-5); max-width: 36rem; color: var(--color-text-muted); }
 .home .actions { gap: var(--space-3); margin-top: var(--space-6); }
-.sl-markdown-content .home .button-primary { gap: var(--space-5); border-radius: 0; }
+/* Dark red metal with a narrow copper edge; no animated shine or glow. */
+.sl-markdown-content .home .button-primary {
+  gap: var(--space-5);
+  border-radius: 0;
+  background-color: var(--color-button-fill);
+  color: var(--color-button-text);
+  border-color: var(--color-button-edge);
+  border-bottom-color: var(--color-button-low);
+}
+.sl-markdown-content .home .button-primary:active {
+  border-top-color: var(--color-button-low);
+  border-bottom-color: var(--color-button-edge);
+}
 .sl-markdown-content .home .button-secondary { border-radius: 0; border-color: var(--color-border-strong); color: var(--color-text-primary); }
 .home .home-version { color: var(--color-text-muted); font-size: var(--text-caption); margin-top: var(--space-5); }
 .home .home-version a { color: var(--color-text-muted); }
 .version-mark { display: inline-block; font-weight: var(--weight-current); color: var(--color-accent-text); margin-right: var(--space-2); }
 .home .runtime-map { padding-top: var(--space-5); }
 .runtime-label { display: block; font-size: var(--text-caption); color: var(--color-text-muted); letter-spacing: 0.06em; margin-bottom: var(--space-3); }
-.runtime-host { padding: var(--space-5); border: 1px solid var(--color-border-strong); border-left: 2px solid var(--color-accent); }
+.runtime-host { padding: var(--space-5); border: 1px solid var(--color-border-strong); }
+.home .runtime-host { border-top-color: var(--color-text-muted); border-bottom-color: var(--color-border); }
 .runtime-name { display: block; font-size: var(--text-h3); font-weight: var(--weight-heading); }
 .runtime-sub { display: block; color: var(--color-text-muted); font-size: var(--text-caption); margin-top: var(--space-1); }
 .runtime-vm { display: flex; flex-direction: column; gap: var(--space-2); background: var(--color-bg-tertiary); border: 1px solid var(--color-border); padding: var(--space-4); margin-top: var(--space-5); }
@@ -55,9 +68,16 @@ html[lang="ja"]:has(.home) h1#_top { max-width: 16em; letter-spacing: -0.03em; }
 .home .ways li:last-child { border: 0; }
 .home .ways a { display: flex; justify-content: space-between; gap: var(--space-3); color: var(--color-text-primary); padding-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-strong); }
 .home .ways p { margin-top: var(--space-4); color: var(--color-text-muted); }
-.home .home-roadmap { max-width: var(--measure); margin-top: var(--space-7); padding-left: var(--space-4); border-left: 2px solid var(--color-accent); color: var(--color-text-muted); font-size: var(--text-caption); }
+.home .home-roadmap { max-width: var(--measure); margin-top: var(--space-7); color: var(--color-text-muted); font-size: var(--text-caption); }
 @media (max-width: 800px) {
-  html:has(.home) .content-panel:first-of-type { padding-top: var(--space-7); }
+  html:has(.home) .content-panel:first-of-type { padding-top: var(--space-6); }
+  .home .lede { margin-top: var(--space-4); }
+  .home .actions { margin-top: var(--space-5); }
+  .home .home-version { margin-top: var(--space-4); }
+  .home .runtime-map { padding-top: var(--space-2); }
+  .home .runtime-host { padding: var(--space-4); }
+  .home .runtime-vm { margin-top: var(--space-4); }
+  .home > section { margin-top: var(--space-7); }
   .home .home-intro { grid-template-columns: 1fr; gap: var(--space-5); }
   .home .runtime-map { max-width: 30rem; }
   .home .sample-files { grid-template-columns: minmax(0, 1fr); }
