@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { distDir } from './lib/site.mjs';
 import { serve } from './lib/serve.mjs';
-const server = await serve(distDir);
+const server = await serve(process.argv[2] ?? distDir);
 const browser = await chromium.launch();
 const failures = [];
 let checks = 0;
@@ -15,7 +15,7 @@ try {
     for (const [term, target] of [
       ['mruby_content_handler', '/reference/directives/'],
       ['Nginx::Request', '/reference/ruby/'],
-      ['zzqv_zzqw_74931', null],
+      ['"zzqv_zzqw_74931"', null],
     ]) {
       try {
         const urls = await page.evaluate(async ({ bundle, term }) => {
