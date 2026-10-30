@@ -29,8 +29,16 @@ try {
         checks++;
       } catch (error) { failures.push(error.message); }
     }
+    try {
+      await page.locator('button[data-open-modal]').click();
+      await page.locator('#starlight__search input').fill('mruby_content_handler');
+      const metadata = page.locator('[data-pagefind-ui-meta="identifiers"]').first();
+      await metadata.waitFor({ state: 'attached', timeout: 15000 });
+      assert.equal(await metadata.isVisible(), false, `${prefix || '/'}: indexing metadata must not become a visible result tag`);
+      checks++;
+    } catch (error) { failures.push(error.message); }
     await page.close();
   }
 } finally { await browser.close(); await server.close(); }
 if (failures.length) { console.error(failures.join('\n')); process.exitCode = 1; }
-console.log(`check-search-identifiers: ${checks}/12 exact-reference and negative searches passed`);
+console.log(`check-search-identifiers: ${checks}/16 exact-reference, negative and search-presentation checks passed`);
