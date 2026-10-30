@@ -202,6 +202,10 @@ jobs:
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-styles.mjs
+      - name: Check homepage route controls, code copy and reduced motion
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-home-interaction.mjs
       # Step 5: the lines of the Japanese pages in Noto Sans JP, the face
       # that CI has (body lines, line height, page titles, the right edge,
       # last lines, diagram labels).

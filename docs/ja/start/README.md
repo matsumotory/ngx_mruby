@@ -103,12 +103,12 @@ Composeは、`compose.yaml`に従ってこのフォルダをコンテナにマ�
 
 4. マウントした設定を検証してリロードします。`PATH`に依存せず、このイメージのバイナリと設定のパスを指定します。
 
-   ```console
-   $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -t -c /example/nginx.conf
-   $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -s reload -c /example/nginx.conf
-   $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Hello, Ruby! hello.rb answered GET /hello.
-   ```
+```console
+$ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -t -c /example/nginx.conf
+$ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -s reload -c /example/nginx.conf
+$ curl -s 'http://localhost:8080/hello?name=Ruby'
+Hello, Ruby! hello.rb answered GET /hello.
+```
 
 5. コンテナを止めて削除します。Composeは、コンテナ`start-nginx-1`をremovedと表示します。
 
@@ -122,9 +122,9 @@ Composeは、`compose.yaml`に従ってこのフォルダをコンテナにマ�
 
 | 変更 | 反映方法 | 理由 |
 |---|---|---|
-| `cache`なしのRuby | 次のリクエストを送る | マウントしたスクリプトを毎回読みます |
+| `cache`なしのRuby | 再送 | マウントしたスクリプトを毎回読みます |
 | `nginx.conf`、または`cache`付きRuby | `nginx -t`で検証してから上記コマンドでreload | 設定読込時にコードをコンパイルします |
-| mrbgemやビルドオプション | イメージを再ビルド | コンパイルするモジュールが変わります |
+| mrbgemやビルドオプション | 再ビルド | ビルド条件が変わる |
 
 コンテナ内のマウントは読み取り専用です。ホスト側のファイルを編集します。この例はホストのインターフェースに8080番を公開するため、ローカルだけで試す場合は起動前にComposeの対応を`127.0.0.1:8080:8080`へ変更してください。healthcheckや設定エラーは`docker compose logs nginx`で調べます。コンパイル前のイメージmetadata取得エラーはレジストリやネットワークの問題で、nginxの応答ではありません。
 

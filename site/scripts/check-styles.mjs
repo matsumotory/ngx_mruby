@@ -56,7 +56,7 @@ const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 // a page with a diagram, and reference pages rendered from docs/; in
 // English and Japanese. /ja/docs/ has the h2 with <wbr> of step 1. Step 4
 // adds the pages it writes.
-export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/reference/directives/', '/guides/install/', '/ja/docs/', '/start/', '/guides/routing/', '/guides/use-cases/', '/reference/build/', '/reference/ruby/', '/concepts/', '/concepts/filters/', '/concepts/async/', '/concepts/lifetimes/', '/guides/agent-proxy/', '/security/', '/security/trust-boundary/', '/contributing/', '/releases/', '/docs/'];
+export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/reference/directives/', '/guides/install/', '/ja/docs/', '/start/', '/ja/start/', '/guides/mcp-gateway/', '/ja/guides/mcp-gateway/', '/guides/routing/', '/guides/use-cases/', '/reference/build/', '/reference/ruby/', '/concepts/', '/concepts/filters/', '/concepts/async/', '/concepts/lifetimes/', '/guides/agent-proxy/', '/security/', '/security/trust-boundary/', '/contributing/', '/releases/', '/docs/'];
 // A last line of one or two characters fails on every page of PAGES
 // (step 4 fixed the last ones that were notes).
 const LAST_LINE_STRICT = new Set(PAGES);

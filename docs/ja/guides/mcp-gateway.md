@@ -16,7 +16,7 @@ LLM向けのMessages／Responsesと、MCP向けのJSON-RPCは別の経路です�
 
 `Mcp-Method`、`Mcp-Name`、`MCP-Protocol-Version`は、規定の復号後にJSON-RPC本文と一致する必要があります。宛先のMCPサービスはツール実行前に一致を検査します。ヘッダーだけでは権限を判断できません。discoveryと完全なツール一覧に責任を持つサービスを置き、未知のツールや非対応版を任意のバックエンドに流さず拒否します。JSON／SSE応答と必要なエラーヘッダーも保ちます。
 
-Originを検証し、[MCPの認可契約](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)を満たします。RubyのHashでBearer文字列を照合するだけではOAuthになりません。リソースサーバー側で発行者、対象audience、許可scopeを検証し、別サービス用のトークンを転用しません。本文や秘密の識別子をログに残さず、`tools/call`の一律自動再試行も有効にしません。更新系ツールの再実行は副作用の重複につながります。
+Originを検証し、[MCPの認可契約](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)を満たします。RubyのHashでBearer文字列を照合するだけではOAuthになりません。リソースサーバー側で発行者、対象audience、許可scopeを検証し、別サービス用のトークンを転用しません。本文や秘密の識別子をログに残さず、`tools/call`の一律自動再試行も有効にしません。更新系ツールの再実行は副作用が重複します。
 
 ## 現在再利用できるもの
 
@@ -26,7 +26,7 @@ Originを検証し、[MCPの認可契約](https://modelcontextprotocol.io/specif
 
 これらのテストは個々の仕組みを検証したもので、MCP互換性の証明ではありません。接続制限は同時実行の制御であり、月間利用量やトークン課金ではありません。長時間の購読と短いツール呼び出しを、意図せず同じ枠で数えないようにします。共有利用量集計、イベント単位の処理、最初の応答の期限はv3の予定です。エージェントプロキシの実装状態表を参照してください。
 
-## 最初の実行可能な実例で確認する項目
+## 実例の検証項目
 
 後続の実例では、localhostのmock MCPバックエンドを二つと入口を一つ用意し、外部アカウントや実際の認証情報を不要にします。必要なテストは次のとおりです。
 

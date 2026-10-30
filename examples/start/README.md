@@ -128,12 +128,12 @@ request, without a reload.
 4. Validate the mounted configuration and reload it. Use the binary and
    configuration paths of this image, rather than relying on `PATH`.
 
-   ```console
-   $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -t -c /example/nginx.conf
-   $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -s reload -c /example/nginx.conf
-   $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Hello, Ruby! hello.rb answered GET /hello.
-   ```
+```console
+$ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -t -c /example/nginx.conf
+$ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -s reload -c /example/nginx.conf
+$ curl -s 'http://localhost:8080/hello?name=Ruby'
+Hello, Ruby! hello.rb answered GET /hello.
+```
 
 5. Stop and remove the container. Compose reports the container
    `start-nginx-1` as removed.
@@ -149,7 +149,7 @@ script, and it reads the disk on the request path. In production, add
 shows, so that nginx compiles the script once when it reads its
 configuration.
 
-## Choose how to customize it
+## Apply your changes
 
 | Change | Apply it | Why |
 |---|---|---|

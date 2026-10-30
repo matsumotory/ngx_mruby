@@ -7,7 +7,7 @@ const ja = Astro.props.lang === 'ja';
     <div class="mcp-entry"><span class="flow-caption">AI CLIENT</span><div class="mcp-endpoint material-metal"><code>POST /mcp</code><span>{ja ? '接続先は一つ' : 'One endpoint'}</span></div><span class="mcp-arrow" aria-hidden="true">→</span></div>
     <div class="mcp-rules material-metal"><img src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="80" height="80" /><strong>{ja ? 'サービスの規則' : 'Service rules'}</strong><code>nginx + Ruby</code></div>
     <div class="mcp-targets"><div><span aria-hidden="true">→</span><strong>{ja ? '検索' : 'Search'}</strong><code>search</code></div><div><span aria-hidden="true">→</span><strong>{ja ? '本文取得' : 'Retrieve text'}</strong><code>read_text</code></div><div><span aria-hidden="true">→</span><strong>{ja ? '原本処理' : 'Process source'}</strong><code>process_source</code></div></div>
-    <figcaption>{ja ? '用途案 · MCP専用の検証はこれから。認可・discovery・プロトコル検証はMCPサービス側の責任です。' : 'Use-case candidate · MCP-specific validation remains. Authorization, discovery and protocol validation belong to the MCP service.'}</figcaption>
+    <figcaption>{ja ? '用途案 · MCP連携は未検証。認可・discovery・プロトコルの検査はMCPサービス側で行います。' : 'Use-case candidate · MCP-specific validation remains. Authorization, discovery and protocol validation belong to the MCP service.'}</figcaption>
   </figure>
   <a class="section-link" href={ja ? '/ja/guides/mcp-gateway/' : '/guides/mcp-gateway/'}>{ja ? '設計条件と実装の境界 →' : 'Design requirements and implementation boundaries →'}</a>
 </section>
