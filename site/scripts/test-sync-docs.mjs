@@ -209,6 +209,15 @@ fixtures.push({
 });
 
 fixtures.push({
+  name: 'search metadata keeps complete identifiers without changing canonical Markdown',
+  source: '# API\n\n## mruby_content_handler\n\n`Nginx::Request`\n\n```nginx\nmruby_content_handler /example/hello.rb;\n```\n',
+  frontContains: ['data-pagefind-meta: "identifiers[content]"', 'content: "Nginx::Request mruby_content_handler"'],
+  contains: ['## mruby_<wbr>content_<wbr>handler'],
+  machineContains: ['## mruby_content_handler', '`Nginx::Request`', 'mruby_content_handler /example/hello.rb;'],
+  machineExcludes: ['data-pagefind-meta', 'identifiers[content]'],
+});
+
+fixtures.push({
   name: 'export refuses a source which is not present at HEAD',
   source: '# Committed source\n',
   afterCommit: { 'docs/uncommitted.md': '# Uncommitted source\n' },
@@ -267,6 +276,8 @@ function run(fixture) {
     const body = written.replace(/^---\n[\s\S]*?\n---\n\n/, '');
     const machine = fs.readFileSync(path.join(dir, 'site', 'generated', 'markdown', 'docs.md'), 'utf8');
     const machineProblems = [];
+    const front = written.slice(0, written.length - body.length);
+    for (const text of fixture.frontContains ?? []) if (!front.includes(text)) machineProblems.push(`front matter lacks: ${text}`);
     for (const text of fixture.machineContains ?? []) if (!machine.includes(text)) machineProblems.push(`machine Markdown lacks: ${text}`);
     for (const text of fixture.machineExcludes ?? []) if (machine.includes(text)) machineProblems.push(`machine Markdown contains decoration: ${text}`);
     if (machineProblems.length) return machineProblems;

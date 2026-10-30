@@ -226,7 +226,9 @@ jobs:
       - name: Check the 2.x pages (banner, version links, search results of their own version)
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' && steps.v2.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/check-v2.mjs
+        run: |
+          node scripts/check-v2.mjs
+          node scripts/check-search-identifiers.mjs
       - name: Check Lighthouse accessibility on three page types in both languages
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site

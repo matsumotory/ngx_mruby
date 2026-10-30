@@ -2068,3 +2068,22 @@ uses the documentation version, and deployment checks inspect both PNGs and
 require the appropriate absolute OG/X URL on every page. The next README
 uses the development image. Both images are product cards; page titles,
 English/Japanese descriptions and canonicals remain page-specific.
+
+
+### Complete API names in search, 2026-10-30
+
+Pagefind 1.5.2 segments Japanese body text and browser queries differently
+for names such as `mruby_content_handler`. A successful search for an
+unrelated prefix is not evidence that the reference is reachable. The
+canonical-page generator therefore derives a deduplicated identifier list
+from the title and complete Markdown body and emits one searchable
+`identifiers` metadata field in the page head. No manually maintained
+keyword list, visible duplicate text or query rewrite is used; code and
+machine-readable Markdown remain unchanged.
+
+This uses Pagefind's documented [searchable metadata](https://pagefind.app/docs/metadata/).
+`check-search-identifiers.mjs` checks that English/Japanese searches on both
+versions reach the appropriate directive and Ruby reference pages, and that
+an unknown exact-phrase query returns no result. The existing search UI and
+version-isolation checks remain in place. Generator fixtures check complete
+names in metadata and unchanged canonical code/Markdown. CI runs both checks.

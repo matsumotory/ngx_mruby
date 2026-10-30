@@ -52,7 +52,7 @@ html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-7); }
 .home-v3 .sample-focused .sample-file { border: 1px solid var(--color-border); }
 .home-v3 .sample-focused .sample-file-label { background-image: linear-gradient(165deg, var(--color-border), var(--color-bg-tertiary) 25%, var(--color-bg-primary)); }
 .home-v3 .sample-config { margin-top: var(--space-5); max-width: none; }
-.home-v3 .sample-caption { max-width: var(--measure); }
+.home-v3 .sample-caption { max-width: 68ch; }
 .home-v3 .v3-future { display: grid; grid-template-columns: 128px 1fr; gap: var(--space-7); align-items: center; padding: var(--space-7); background-color: var(--color-bg-tertiary); background-image: linear-gradient(120deg, var(--color-border), var(--color-bg-tertiary) 20%, var(--color-bg-primary) 85%); }
 .home-v3 .v3-future h2 { margin: var(--space-2) 0 var(--space-4); padding: 0; }
 .home-v3 .v3-future p { color: var(--color-text-muted); margin: 0 0 var(--space-4); }

@@ -35,6 +35,20 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## Final site validation follow-up, 2026-10-30
+
+- #668 head `77f3161ad` passed test/examples CI, but site CI found an overly
+  wide sample caption and a Japanese identifier-search failure. Publication
+  remains held until the follow-up head passes all checks.
+- The caption now uses a character-based width. Search metadata is generated
+  from canonical API names; visible prose/code and exported Markdown stay
+  unchanged. At regression-test commit `3ec909597`, the exact-reference
+  check fails only for Japanese `mruby_content_handler` (11/12 pass).
+  The new test also requires the target reference, not merely any result.
+  Final-head execution and independent review are recorded on #668.
+- Work continues in the existing repository checkout. Previous worktrees and
+  branches remain preserved; local folder inventories are not public artifacts.
+
 ## v3 homepage redesign checkpoint, 2026-10-30 06:04 UTC
 
 - The owner prioritized site expression over further internal C work: v3 as
