@@ -91,6 +91,7 @@ try {
           assert.ok(Math.max(...tops) - Math.min(...tops) <= 1, 'the rule and its output align');
         }
         await assertRoute(page, 'a'); // useful selected state before any click
+        assert.deepEqual(await page.locator('.route-controls button').allTextContents(), route === '/ja/' ? ['モデルA', 'モデルB'] : ['Model A', 'Model B'], 'reader-facing labels stay short; request/rule/result retain the exact identifiers');
         const choices = await page.locator('.route-controls button').evaluateAll(buttons => buttons.map(el => {
           const box = el.getBoundingClientRect();
           return { top: box.top, height: box.height, margin: getComputedStyle(el).margin };

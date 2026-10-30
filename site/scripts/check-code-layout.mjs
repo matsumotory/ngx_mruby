@@ -33,6 +33,12 @@ async function inspect(page, label) {
       const box = pre.getBoundingClientRect();
       if (box.left < frame.left - 1 || box.right > frame.right + 1) errors.push('code plane extends beyond its frame');
     }
+    for (const header of document.querySelectorAll('.expressive-code .frame .header')) {
+      if (!header.getClientRects().length) continue;
+      const frame = header.closest('.frame').getBoundingClientRect();
+      const box = header.getBoundingClientRect();
+      if (Math.abs(box.left - frame.left) > 1 || Math.abs(box.right - frame.right) > 1) errors.push('code header does not span its frame');
+    }
     if (document.documentElement.scrollWidth > innerWidth + 1) errors.push('page overflow');
     return errors;
   });

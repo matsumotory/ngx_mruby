@@ -25,7 +25,7 @@ for (const route of routes) {
     <div><h3 class="flow-title">{ja ? 'アプリから送るリクエスト' : 'Request from your app'}</h3><code>POST /v1/responses</code></div>
     <div class="request-payload"><code>Authorization: Bearer local-client</code><code class="request-model">{`{"model":"mock-model-a"}`}</code></div>
   </div>
-  <div class="route-controls" role="group" hidden aria-label={ja ? '送信するmodelを選ぶ' : 'Choose the requested model'}><button type="button" data-model="a" aria-pressed="true">mock-model-a</button><button type="button" data-model="b" aria-pressed="false">mock-model-b</button></div>
+  <div class="route-controls" role="group" hidden aria-label={ja ? '送信するmodelを選ぶ' : 'Choose the requested model'}><button type="button" data-model="a" aria-pressed="true">{ja ? 'モデルA' : 'Model A'}</button><button type="button" data-model="b" aria-pressed="false">{ja ? 'モデルB' : 'Model B'}</button></div>
   <div class="routing-workspace">
     <div class="route-source">
       <h3 class="flow-title">{ja ? 'Rubyの振り分け規則' : 'Ruby routing rule'}</h3>

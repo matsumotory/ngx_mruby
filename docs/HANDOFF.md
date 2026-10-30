@@ -39,10 +39,19 @@
   wraps JSON at token boundaries and edits those passages without shrinking
   text. Existing click/keyboard/state assertions remain; hover geometry is
   checked as well.
-- Pending: CI and independent pixels for that follow-up, plus actual pixels
-  of #673's maintenance entry. The local environment has no Docker and
-  browser startup is blocked; no local runtime/browser pass is claimed.
-  The successful older screenshots/checks are not proof of the final head.
+- At `f0e00f42`, [site CI](https://github.com/matsumotory/ngx_mruby/actions/runs/41115051039)
+  passed all 64 interaction states, 500 code-layout conditions (including
+  200% code text), 1,028 focus stops and six Lighthouse accessibility pages.
+  Hover geometry, native disclosure operation, canonical clipboard bytes and
+  JSON token wrapping passed. The only remaining CI failures were short
+  final lines in two Japanese passages. Runtime and examples CI passed.
+  Follow-up changes shorten those passages, use reader-facing Model A/B
+  labels while retaining exact identifiers in code, and remove the prose
+  caption width limit accidentally applied to code headers.
+- Pending: final-head CI and independent pixels, plus actual pixels of #673's
+  maintenance entry. The local environment has no Docker and browser startup
+  is blocked; no local runtime/browser pass is claimed. Earlier screenshots
+  and checks are not proof of the final head.
 - Keep #672 and #673 in draft. No merge, production deploy, software tag or
   release is performed by this continuation.
 

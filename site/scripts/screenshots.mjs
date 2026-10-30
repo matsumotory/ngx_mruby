@@ -167,6 +167,7 @@ async function main() {
         // Keep actual native disclosure evidence, not a forced open property.
         await tab.locator('.source-proof > summary').click();
         await tab.waitForFunction(() => document.querySelector('.source-proof').open);
+        await tab.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
         await tab.locator('.source-proof').evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - 80));
         await tab.screenshot({ path: path.join(journeyDir, `chromium-home-integration-open-${lang}-dark-${size.width}x${size.height}.png`) });
         count++;
