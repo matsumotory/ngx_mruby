@@ -1,41 +1,65 @@
 ---
+import { Code } from '@astrojs/starlight/components';
+import fs from 'node:fs';
+import path from 'node:path';
 const ja = Astro.props.lang === 'ja';
+const source = fs.readFileSync(path.resolve(process.cwd(), '../test/html/agent_proxy_route.rb'), 'utf8');
+const mapping = source.slice(source.indexOf('routes = {'), source.indexOf('\nif route'));
+if (!mapping.includes('route = routes[JSON.parse(r.body)["model"]]')) throw new Error('Update the routing excerpt from its tested source');
+const expected = fs.readFileSync(path.resolve(process.cwd(), '../test/html/agent_proxy_route.expected'), 'utf8');
+for (const [model, port] of [['a', '12372'], ['b', '12373']]) {
+  if (!expected.includes(`model_${model}=200 ${port} Bearer upstream-test-key-${model} none true`)) throw new Error('The illustrated route no longer matches the test output');
+}
 ---
-<figure class="v3-flow" data-route="all" aria-label={ja ? 'モデル振り分けの例。アプリは共通のURLへモデル名を送り、ngx_mrubyが利用者キーを確認して送信先と上流のキーを選ぶ。nginxが応答を中継する。' : 'Model-routing example. The app sends a model name to one URL. ngx_mruby checks the client key and selects the upstream and its credential. nginx relays the response.'}>
-  <div class="flow-stage">
-    <div class="flow-clients agent-node">
-      <h3 class="flow-title">{ja ? 'アプリ' : 'Your app'}</h3>
-      <code>POST /v1/responses</code>
-      <span class="api-contract">{ja ? '共通のURL・同じAPI形式' : 'One URL, the same API format'}</span>
-      <div class="route-controls" hidden><button type="button" data-model="a" aria-pressed="false">{ja ? 'モデルA' : 'Model A'}</button><button type="button" data-model="b" aria-pressed="false">{ja ? 'モデルB' : 'Model B'}</button><details class="route-proof"><summary>{ja ? '検証用の名前との対応' : 'Names used in the test'}</summary><span class="route-result" aria-live="polite"></span></details></div>
-    </div>
-    <div class="gateway">
-      <h3 class="flow-title">ngx_mruby</h3>
-      <div class="ruby-core"><ul role="list"><li>{ja ? '利用者キーを確認' : 'Check the client key'}</li><li>{ja ? 'モデルから転送先を選択' : 'Select the route by model'}</li><li>{ja ? '上流のAPIキーに置換' : 'Apply the provider key'}</li></ul></div>
-    </div>
-    <div class="flow-providers"><span class="flow-wire" aria-hidden="true">→</span><div><h3 class="flow-title">LLM API</h3><div class="provider-node" data-provider="a"><strong>{ja ? 'モデルA' : 'Model A'}</strong><span>{ja ? '上流キーA' : 'Provider key A'}</span></div><div class="provider-node" data-provider="b"><strong>{ja ? 'モデルB' : 'Model B'}</strong><span>{ja ? '上流キーB' : 'Provider key B'}</span></div></div></div>
+<figure class="v3-flow" data-route="a" aria-label={ja ? 'modelを使ったAPI振り分け。入力、Rubyの対応表、転送先を同じ例で示します。' : 'Model routing: the request, Ruby mapping and selected upstream in one example.'}>
+  <div class="request-strip">
+    <div><h3 class="flow-title">{ja ? 'アプリからのリクエスト' : 'Request from your app'}</h3><code>POST /v1/responses</code></div>
+    <div class="route-controls" hidden aria-label={ja ? '送信するmodelを選ぶ' : 'Choose the requested model'}><button type="button" data-model="a" aria-pressed="true">mock-model-a</button><button type="button" data-model="b" aria-pressed="false">mock-model-b</button></div>
+    <code class="request-model">{`{"model":"mock-model-a"}`}</code>
   </div>
-  <figcaption>{ja ? 'nextの検証用モデルA/Bを示す図です。選択は表示だけを変え、外部APIへは送信しません。' : 'A/B are test models from next. Selecting one changes this illustration without sending an API request.'}</figcaption>
+  <div class="routing-workspace">
+    <div class="route-source">
+      <h3 class="flow-title">{ja ? 'Rubyで転送先とキーを選択' : 'Select the upstream and key in Ruby'}</h3>
+      <Code code={mapping} lang="ruby" title="agent_proxy_route.rb" />
+      <p>{ja ? '利用者キーの確認後にこの規則を実行し、選んだ転送先と上流キーをnginxへ渡します。' : 'After checking the client key, this rule passes the chosen upstream and credential to nginx.'}</p>
+    </div>
+    <div class="flow-providers">
+      <h3 class="flow-title">{ja ? '選ばれた転送先' : 'Selected upstream'}</h3>
+      <div class="provider-node" data-provider="a"><div><strong>API A</strong><code>agent_proxy_llm_a</code><span class="provider-state">{ja ? 'このAPIへ送信' : 'Request sent here'}</span></div></div>
+      <div class="provider-node" data-provider="b"><div><strong>API B</strong><code>agent_proxy_llm_b</code><span class="provider-state">{ja ? '今回は送信しません' : 'No request on this route'}</span></div></div>
+      <p class="route-result" aria-live="polite">{ja ? 'API Aの上流キーに置換し、応答200を確認。' : 'API A’s credential applied; response 200 verified.'}</p>
+    </div>
+  </div>
+  <figcaption>{ja ? 'nextの統合テストを使った表示例です。A/Bはローカルのmockで、ここで選択してもAPIには送信しません。' : 'An illustration of the integration test on next. A/B are local mocks; selecting a model here sends no API request.'}</figcaption>
 </figure>
 <script>
   for (const figure of document.querySelectorAll<HTMLElement>('.v3-flow')) {
     const controls = figure.querySelector<HTMLElement>('.route-controls');
     if (!controls) continue;
+    const ja = document.documentElement.lang === 'ja';
     controls.hidden = false;
-    for (const button of controls.querySelectorAll<HTMLButtonElement>('button[data-model]')) {
-      button.addEventListener('click', () => {
-        const model = button.dataset.model;
-        figure.dataset.route = model;
-        for (const other of controls.querySelectorAll('button')) other.setAttribute('aria-pressed', String(other === button));
-        const result = controls.querySelector('.route-result');
-        if (result) result.textContent = `mock-model-${model} → agent_proxy_llm_${model}`;
-        for (const node of figure.querySelectorAll('.ruby-core, .provider-node')) {
-          node.classList.remove('route-pulse');
-          // Restart a finite user-triggered route indication; nothing moves on load.
-          void (node as HTMLElement).offsetWidth;
-          if (!node.hasAttribute('data-provider') || node.getAttribute('data-provider') === model) node.classList.add('route-pulse');
-        }
-      });
-    }
+    const select = (model: string, animate: boolean) => {
+      figure.dataset.route = model;
+      for (const button of controls.querySelectorAll<HTMLButtonElement>('button[data-model]')) button.setAttribute('aria-pressed', String(button.dataset.model === model));
+      const request = figure.querySelector('.request-model');
+      if (request) request.textContent = `{"model":"mock-model-${model}"}`;
+      for (const line of figure.querySelectorAll<HTMLElement>('.route-source .ec-line')) {
+        line.classList.toggle('selected-route', line.textContent?.includes(`"mock-model-${model}"`) ?? false);
+      }
+      for (const node of figure.querySelectorAll<HTMLElement>('.provider-node')) {
+        const selected = node.dataset.provider === model;
+        const label = node.querySelector('.provider-state');
+        if (label) label.textContent = ja ? (selected ? 'このAPIへ送信' : '今回は送信しません') : (selected ? 'Request sent here' : 'No request on this route');
+        node.classList.remove('route-pulse');
+        if (animate && selected) { void node.offsetWidth; node.classList.add('route-pulse'); }
+      }
+      const result = figure.querySelector('.route-result');
+      if (result) result.textContent = ja ? `API ${model.toUpperCase()}の上流キーに置換し、応答200を確認。` : `API ${model.toUpperCase()}’s credential applied; response 200 verified.`;
+    };
+    select('a', false);
+    controls.addEventListener('click', event => {
+      const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-model]');
+      if (target?.dataset.model) select(target.dataset.model, true);
+    });
   }
 </script>

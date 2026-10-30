@@ -5,8 +5,8 @@ services:
       context: ../..
       dockerfile: examples/start/Dockerfile
     ports:
-      - "8080:8080"
-    # This folder, so that nginx reads hello.rb as it is on your disk.
+      - "127.0.0.1:8080:8080"
+    # Read the example scripts from disk; edits apply to the next request.
     volumes:
       - .:/example:ro
     healthcheck:

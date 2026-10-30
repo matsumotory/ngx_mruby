@@ -2,6 +2,34 @@
 
 ## Site information architecture and persistent procedure, 2026-10-30
 
+- WIP transfer on `codex/site-purpose-rebuild`, based on next `9221ea4ed`.
+  Procedure commit `3c1e388fc` is complete; the following homepage/example
+  changes are a preservation checkpoint, not a merge or deployment candidate.
+  The previous writer has stopped editing and the current build has completed.
+- The work in progress joins a request, the tested Ruby mapping and the selected
+  upstream in one homepage example. `examples/start/` also has an untested local
+  routing handler and two mock endpoints; Compose binds its published port to
+  localhost. No provider credentials, private references or generated assets
+  are part of this transfer. No runtime C implementation is changed.
+- Validation: the homepage working tree after `3c1e388fc` completed
+  `cd site && npm run build` (65 pages, 53 Markdown exports). This was a dirty
+  tree build, not validation of the new container recipe. `git diff --check`
+  passed. The shared procedure received an independent entry-path review;
+  the new homepage has not received visual or interaction review.
+- Known unfinished work: `/start/#model-routing` does not exist yet; the English
+  and Japanese start documentation still describes the previous configuration.
+  Align it with the example, execute the recipe and editing steps, and update
+  the old homepage interaction assertions without weakening their guarantees.
+  Then verify contextual PC/mobile rendering, accessibility, wrapping/copy,
+  reduced motion, links and exports. Docs navigation, the status ledger, the
+  maintenance docs entry and sharing artwork still need their scoped updates.
+  No new tests or CI are claimed successful by this WIP checkpoint.
+- Resume by reading [Site design acceptance](proposals/site.md#site-design-acceptance),
+  checking this branch and its draft PR, then rendering the current prototype
+  and completing the matching local example. Do not merge or deploy this
+  checkpoint; run the normal independent review and current-head gates after
+  completing the work. Public preservation is not software-release approval.
+
 - #671 merged as `9221ea4ed`; production run
   [41069372640](https://github.com/matsumotory/ngx_mruby/actions/runs/41069372640)
   passed. Its mechanical checks and publication are complete, but the owner
