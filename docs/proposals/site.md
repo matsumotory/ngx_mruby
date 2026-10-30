@@ -2030,12 +2030,14 @@ The owner's subsequent feedback requires a unified composition: the page
 background, large planes, light direction, spacing, color and motion must work
 together; isolated metallic buttons and diagrams are insufficient. The current
 iteration uses a shared upper-left key light on navy enamel, deep recesses,
-small silver edges and warm/violet reflected light. Page-level planes continue
-behind the title, illustrations and lower reading sections. MCP explanation and
+small silver edges, with warm/violet accents on controls and route state. The
+page light fades into the reading background. There are no diagonal wallpaper
+stripes behind text, nor outer illustration or inner Ruby cards: a single
+nginx enclosure carries the routing hierarchy. MCP explanation and
 its diagram share an asymmetric desktop composition, stacked on mobile.
 
 Directional gradients and shadows are allowed on those named homepage planes
-(main frame, final content panel, route stage and trial band) as well as the
+(main frame, route stage and trial band) as well as the
 existing metal surfaces, CTA, file labels and planned-feature band. They remain
 prohibited on reference pages. Text shadows, backdrop filters, decorative left
 rails and permanent animation remain prohibited. The checks preserve tokens,

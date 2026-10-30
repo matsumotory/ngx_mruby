@@ -61,7 +61,10 @@ that are not written down elsewhere yet, the work in progress and the queue.
   the correction keeps text opaque, and the interaction check now covers both
   themes and four points of the animation. The narrow MCP diagram retains the
   Ruby-to-backend branch layout. Final-head CI and re-review are recorded on
-  the draft PR. Publication
+  the draft PR. A further visual review removed diagonals that crossed content
+  and the nested outer/Ruby cards, retaining a single nginx enclosure and a
+  section-aligned light field. The new visual diff needs final-head verification.
+  Publication
   remains separate; #668's individual merge approval is not reused here.
 
 ## Final site validation follow-up, 2026-10-30
