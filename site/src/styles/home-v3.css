@@ -242,7 +242,6 @@ html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-7); }
 @media(max-width: 360px) {
  .flow-providers > div { grid-template-columns: 1fr; }
  .ruby-decisions { flex-wrap: wrap; }
- .mcp-map { grid-template-columns: 1fr; }
  .mcp-targets { margin-top: var(--space-3); }
 }
 .route-controls:not([hidden]) { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-6); }
@@ -254,7 +253,7 @@ html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-7); }
 .v3-flow[data-route="a"] [data-provider="a"], .v3-flow[data-route="b"] [data-provider="b"] { border-color: var(--color-code-number); }
 @media(prefers-reduced-motion: no-preference) {
  .home-v3 .route-pulse { animation: route-indication 800ms ease-out 1; }
- @keyframes route-indication { 0% { opacity: .6; transform: translateX(-4px); } 50% { opacity: 1; transform: translateX(0); } 100% { opacity: 1; transform: translateX(0); } }
+ @keyframes route-indication { 0% { transform: translateX(-4px); } 50% { transform: translateX(0); } 100% { transform: translateX(0); } }
 }
 .home-v3 .lede { max-width: 36rem; }
 html[lang="ja"] .home-v3 .lede { max-width: none; }
@@ -280,5 +279,7 @@ html[lang="ja"] .home-v3 .lede { max-width: none; }
 }
 @media(max-width: 360px) {
   .home-v3 .v3-flow, .home-v3 .v3-try { padding: var(--space-4); }
-  .home-v3 .v3-mcp .mcp-map, .home-v3 .v3-mcp .mcp-entry { grid-template-columns: 1fr; }
+  .home-v3 .v3-mcp .mcp-map, .home-v3 .v3-mcp .mcp-entry { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); column-gap: var(--space-4); }
+  .home-v3 .v3-mcp .mcp-rules { padding: var(--space-2); }
+  .home-v3 .v3-mcp .mcp-rules img { width: 64px; height: 64px; }
 }

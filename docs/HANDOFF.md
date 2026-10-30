@@ -44,7 +44,8 @@ that are not written down elsewhere yet, the work in progress and the queue.
   The earlier pending-publication entries below are historical checkpoints.
 - The owner found that metallic components looked detached from the remaining
   page: background, composition, light, material, color and motion need one
-  system. `codex/home-material-system` addresses that feedback on the v3
+  system. [#669](https://github.com/matsumotory/ngx_mruby/pull/669)
+  (`codex/home-material-system`) addresses that feedback on the v3
   overview, preserving tested routing, version states and canonical code copies.
   The [site plan](proposals/site.md#v3-use-case-homepage-2026-10-30) records the
   scope. Visual approval is separate from passing automated checks.
@@ -55,7 +56,12 @@ that are not written down elsewhere yet, the work in progress and the queue.
   32 interaction conditions, 69 complete exports and English/Japanese
   accessibility 100. An independent visual review found no must-fix and one
   arrow-placement improvement; the MCP entry arrow now points at Ruby's column.
-  The branch's draft PR holds final-head CI and re-review results. Publication
+  A technical review also found transient text fading during route motion.
+  Test-only commit `52cb29ce7` reproduces it (opacity 0.6 at animation start);
+  the correction keeps text opaque, and the interaction check now covers both
+  themes and four points of the animation. The narrow MCP diagram retains the
+  Ruby-to-backend branch layout. Final-head CI and re-review are recorded on
+  the draft PR. Publication
   remains separate; #668's individual merge approval is not reused here.
 
 ## Final site validation follow-up, 2026-10-30
