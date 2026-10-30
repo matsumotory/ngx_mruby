@@ -11,7 +11,7 @@ try {
   for (const engine of [chromium, webkit]) {
     const browser = await engine.launch();
     try {
-      for (const route of ['/', '/ja/']) for (const width of [320, 390, 1440]) for (const reducedMotion of ['reduce', 'no-preference']) {
+      for (const route of ['/', '/ja/']) for (const width of [320, 390, 768, 1440]) for (const reducedMotion of ['reduce', 'no-preference']) {
         const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: 'dark', reducedMotion,
           ...(engine === chromium ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
         const page = await context.newPage();
@@ -34,8 +34,7 @@ try {
         await page.locator('.sample-config summary').click();
         assert.equal(await page.locator('.sample-config').getAttribute('open'), '');
         for (const pre of await page.locator('.sample pre').all()) {
-          await pre.evaluate(el => { el.scrollLeft = el.scrollWidth; });
-          assert.ok(await pre.evaluate(el => el.scrollWidth <= el.clientWidth || el.scrollLeft > 0));
+          assert.ok(await pre.evaluate(el => el.scrollWidth <= el.clientWidth + 1), `${route} ${width}: code requires horizontal scrolling`);
         }
         if (engine === chromium) {
           for (const button of await page.locator('.sample .copy button').all()) {
@@ -50,4 +49,4 @@ try {
     } finally { await browser.close(); }
   }
 } finally { await server.close(); }
-console.log(`check-home-interaction: ${count} Chromium/WebKit viewports; route/no-network/disclosure/scroll/reduced-motion pass; actual clipboard bytes checked in Chromium`);
+console.log(`check-home-interaction: ${count} Chromium/WebKit viewports; route/no-network/disclosure/wrapping/reduced-motion pass; actual clipboard bytes checked in Chromium`);
