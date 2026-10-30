@@ -26,7 +26,7 @@ export default defineEcConfig({
     borderRadius: 'var(--radius-code)',
     codeBackground: 'var(--color-bg-tertiary)',
     codeFontFamily: 'var(--font-mono)',
-    codeFontSize: 'var(--text-nav)',
+    codeFontSize: 'var(--text-code)',
     codeLineHeight: 'var(--leading-nav)',
     codePaddingBlock: 'var(--space-3)',
     codePaddingInline: 'var(--space-4)',

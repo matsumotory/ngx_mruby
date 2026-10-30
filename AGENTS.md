@@ -620,6 +620,11 @@ npm run preview           # serves dist/ at http://localhost:4321/
   and frames, and `scripts/lib/postcss-theme-colors.mjs` removes
   Starlight's and Pagefind's own color variables from their stylesheets at
   build time, so that the built CSS holds only the tokens' colors.
+- Human, Claude and Codex site changes follow [Layout and type hierarchy](docs/proposals/site.md#layout-and-type-hierarchy):
+  use proximity, alignment and whitespace before arrows or repeated labels;
+  use shared typography roles, never component-specific font sizes to
+  manufacture importance. Independent review checks the actual desktop/mobile
+  reading order and peer text roles, as well as the existing functional checks.
 - The checks of the proposal (section 6) are scripts under `site/scripts/`
   that exit 1 on a failure. `npm run check` runs the ten that need no
   browser; the first four take `--dist`, `--repo` and `--manifest` to run

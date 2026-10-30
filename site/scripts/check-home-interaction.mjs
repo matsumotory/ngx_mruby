@@ -22,6 +22,17 @@ try {
         // requests; do not count that unrelated lazy module as route traffic.
         await page.locator('#starlight__search .pagefind-ui__search-input').waitFor({ state: 'attached' });
         const wire = page.locator('.flow-wire').first();
+        assert.equal(await wire.isVisible(), width > 800, 'only the desktop request direction needs an arrow');
+        assert.deepEqual(await page.locator('.home-v3 a').evaluateAll(links => links.filter(a => /[→↓]\s*$/.test(a.textContent)).map(a => a.textContent)), [], 'links use layout, not trailing arrows');
+        const peerSizes = await page.locator('.flow-title').evaluateAll(headings => headings.map(el => getComputedStyle(el).fontSize));
+        assert.equal(peerSizes.length, 3);
+        assert.equal(new Set(peerSizes).size, 1, 'peer diagram headings share one type role');
+        if (width > 800) {
+          const tops = await page.locator('.flow-title').evaluateAll(headings => headings.map(el => el.getBoundingClientRect().top));
+          assert.ok(Math.max(...tops) - Math.min(...tops) <= 1, 'peer diagram headings align');
+        }
+        assert.equal(await page.locator('.try-path[role=list] > [role=listitem]').count(), 3);
+        assert.equal(await page.locator('.ruby-core ul').getAttribute('role'), 'list');
         const transform = await wire.evaluate(el => { const m = new DOMMatrix(getComputedStyle(el).transform); return [m.a, m.b, m.c, m.d]; });
         const requests = [];
         page.on('request', r => requests.push(r.url()));
@@ -30,7 +41,7 @@ try {
           assert.equal(await page.locator('.v3-flow').getAttribute('data-route'), model);
           assert.equal(await page.locator(`[data-model="${model}"]`).getAttribute('aria-pressed'), 'true');
           assert.equal(await page.locator('.route-result').textContent(), `mock-model-${model} → agent_proxy_llm_${model}`);
-          assert.deepEqual(await wire.evaluate(el => { const m = new DOMMatrix(getComputedStyle(el).transform); return [m.a, m.b, m.c, m.d]; }), transform, 'routing must preserve mobile arrow direction');
+          assert.deepEqual(await wire.evaluate(el => { const m = new DOMMatrix(getComputedStyle(el).transform); return [m.a, m.b, m.c, m.d]; }), transform, 'routing must preserve the request direction');
           if (reducedMotion === 'reduce') assert.equal(await page.evaluate(() => document.getAnimations().filter(a => a.playState === 'running').length), 0);
           else {
             // Freeze several points of the actual CSS animation. Text-bearing
