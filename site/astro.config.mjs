@@ -16,6 +16,7 @@ import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
 import { SITE_URL, SITE_VERSION } from './scripts/lib/site.mjs';
 import themeColors from './scripts/lib/postcss-theme-colors.mjs';
+import { SHARE_IMAGE } from './scripts/lib/brand.mjs';
 
 const diagramCss = fs
   .readdirSync(new URL('./src/diagrams/', import.meta.url))
@@ -59,8 +60,20 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'ngx_mruby',
-      // Local rebrand preview: flat white geometry on an opaque dark tile.
+      // Flat small-size derivative on an opaque dark tile.
       favicon: '/favicon.svg',
+      // Product identity only; each page keeps its own title and canonical URL.
+      head: [
+        ...Object.entries({
+          'og:image': `${SITE_URL}/${SHARE_IMAGE.file}`,
+          'og:image:type': SHARE_IMAGE.type,
+          'og:image:width': String(SHARE_IMAGE.width),
+          'og:image:height': String(SHARE_IMAGE.height),
+          'og:image:alt': SHARE_IMAGE.alt,
+        }).map(([property, content]) => ({ tag: 'meta', attrs: { property, content } })),
+        { tag: 'meta', attrs: { name: 'twitter:image', content: `${SITE_URL}/${SHARE_IMAGE.file}` } },
+        { tag: 'meta', attrs: { name: 'twitter:image:alt', content: SHARE_IMAGE.alt } },
+      ],
       // English at unprefixed paths, Japanese under /ja/ (3.4).
       defaultLocale: 'root',
       locales: {
