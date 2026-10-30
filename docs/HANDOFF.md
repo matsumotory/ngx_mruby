@@ -1,5 +1,38 @@
 # Handoff: the state of the work
 
+## Local routing walkthrough and cloud continuation, 2026-10-30
+
+- Draft #672 continues `codex/site-purpose-rebuild` from the preserved
+  `d7127bc3d` checkpoint. The local trial now documents both model routes,
+  key replacement, 401/403/400 responses, an edit-and-restore exercise,
+  configuration reload and shutdown. English and Japanese use the same
+  commands and canonical files. The example remains a local mock, not a
+  real-provider, API-conversion or MCP interoperability claim.
+- The homepage selection, Ruby entry, upstream credential and displayed JSON
+  come from that same local example. The complete mapping is available in a
+  disclosure with its canonical copy; the separate integration-test recipe
+  retains its own provenance. The selected entry keeps the mobile result
+  close to its input instead of interposing the full configuration.
+- The docs entry groups one destination per reader task. The agent-proxy
+  implementation/planning ledger uses sections, and the start/status links
+  have matching anchors in both languages. The maintenance-source entry is
+  a separate docs-only Draft #673 against `master`, not an override in the
+  site generator and not merged by this work.
+- Local evidence on the continuation's working tree: pinned Node 22.23.3,
+  `npm ci --ignore-scripts`, both version builds, generator/release fixtures,
+  `npm run check`, source links and example files-only checks pass. The
+  combined validation also built #673's `a6ac31dc9` maintenance source; this
+  is integration-preview evidence, not publication of that source.
+- Pending: execute the new example through current-head examples CI and the
+  locked Chromium/WebKit checks, inspect the resulting screenshots and
+  complete independent visual/functional review. The local environment has
+  no Docker, and local browser startup is blocked; no local runtime or
+  browser pass is claimed. The earlier checkpoint's runtime test CI passed,
+  while its site CI failed on missing anchors, style roles and stale
+  interaction assertions; its screenshots are baseline evidence only.
+- Keep #672 and #673 in draft. No merge, production deploy, software tag or
+  release is performed by this continuation.
+
 ## Site information architecture and persistent procedure, 2026-10-30
 
 - WIP transfer on `codex/site-purpose-rebuild`, based on next `9221ea4ed`.

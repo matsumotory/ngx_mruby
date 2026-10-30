@@ -26,12 +26,30 @@ names the work, not that an API or executable example is available.
 `under-design` is reserved for unresolved details; no proposal becomes an
 implemented contract merely because it appears in documentation.
 
-| Status | Capability | Evidence or next step |
-|---|---|---|
-| implemented | Client-key checks, per-key concurrent-request limit, model routing and credential replacement | The recipes and `test/t/cases/agent_proxy.rb` below |
-| implemented | Byte-for-byte streamed Messages/Responses relay and upstream-error passthrough | The same integration case and mock upstream |
-| planned | Shared usage accounting, event framing/filtering and first-byte deadline | Plan steps 7a, 7b and 7c; diagram labels below |
-| planned | Provider-specific Host/SNI, fallback policy and reference-proxy transport boundaries | Plan step 7e; request and endpoints diagrams below |
+### Implemented on next: request policy
+
+Client-key checks, a per-key concurrent-request limit, model routing and
+credential replacement are implemented. The [local trial](../../examples/start/README.md#model-routing)
+lets you exercise routing and key replacement; the complete recipes below
+are checked by [`agent_proxy.rb`](../../test/t/cases/agent_proxy.rb).
+
+### Implemented on next: streamed relay
+
+The integration case checks byte-for-byte Messages/Responses relay and
+upstream-error passthrough against mock upstreams. This is not a claim of
+real-provider interoperability or conversion between API formats.
+
+### Planned: usage accounting and stream controls
+
+Shared usage accounting, event framing/filtering and the first-byte deadline
+belong to plan steps 7a, 7b and 7c. The diagrams below show their intended
+positions, not APIs that can already be copied into an application.
+
+### Planned: provider transport policy
+
+Provider-specific Host/SNI, fallback policy and reference-proxy transport
+boundaries belong to step 7e. See the request and endpoint diagrams below
+and the [v3 plan](../proposals/v3-plan.md#agent-proxy-the-v30-use-case).
 
 The stable 2.7 documentation describes current behavior. Planned v3 APIs
 must not be copied into a 2.7 configuration. A future API example is not

@@ -2074,6 +2074,27 @@ a passing mechanical check; this design is an iteration, not an owner acceptance
 Photos remain private references and are not committed. No benchmark result,
 MCP conformance, formal v3 release or completed planned API is claimed.
 
+### One local routing example across the homepage and trial, 2026-10-30
+
+The homepage uses the mapping of `examples/start/route.rb`, not an integration
+fixture with different upstream names. It starts with model A selected and
+connects the request model, selected Ruby entry, upstream credential and mock
+JSON response. Selecting a model in the browser is a simulation with no network
+request. The nearby trial runs the same mapping and lets the reader change the
+destination and key, repeat the request, restore the source and shut it down.
+The complete mapping retains its canonical copy, while the selected entry is
+shown next to the result so mobile readers do not traverse a full code wall.
+The advanced integration recipe remains available separately with its original
+case/date/commit evidence; mock routing does not demonstrate real providers,
+LLM inference, API normalization or MCP interoperability.
+
+The reference relationship is code beside an observable result (Astro and
+Tailwind), with a substantial evidence area after the product definition
+(Linear, Resend, Next.js and Vite), rather than a fictitious management UI.
+Keep one coherent navy/metal surface for that example, fewer nested boxes and
+shared heading/radius tokens. Source, machine checks and independent first
+reading are separate gates. A source rewrite is not visual acceptance.
+
 ### Site design acceptance
 
 Read this section when starting or resuming site work, before changing content

@@ -123,12 +123,49 @@ async function main() {
     }
     await browser.close();
   }
+  // Reader-journey evidence for the landing-page rebuild. Keep the original
+  // cross-engine matrix above; these full-context dark Chromium views cover
+  // the destinations of the primary action, docs entry and status link.
+  const journeyDir = path.join(opt.out, 'journey');
+  fs.mkdirSync(journeyDir, { recursive: true });
+  const journeyBrowser = await chromium.launch();
+  try {
+    for (const [id, routes] of [
+      ['start', { en: '/start/', ja: '/ja/start/' }],
+      ['docs', { en: '/docs/', ja: '/ja/docs/' }],
+      ['agent-proxy', { en: '/guides/agent-proxy/', ja: '/ja/guides/agent-proxy/' }],
+    ]) for (const lang of ['en', 'ja']) for (const size of [SIZES[1], SIZES[2]]) {
+      const { context, tab } = await open(journeyBrowser, server.url + routes[lang], size, 'dark');
+      const base = `chromium-${id}-${lang}-dark-${size.width}x${size.height}`;
+      try {
+        await tab.screenshot({ path: path.join(journeyDir, `${base}-first.png`) });
+        const height = await tab.evaluate(() => document.documentElement.scrollHeight);
+        const clip = height > 32000 ? { x: 0, y: 0, width: size.width, height: 32000 } : undefined;
+        await tab.screenshot({ path: path.join(journeyDir, `${base}-full.png`), fullPage: true, scale: 'css', clip });
+        if (clip) console.log(`screenshots: ${base} capped at 32000 CSS pixels (page height ${height})`);
+        count += 2;
+      } catch (e) { failures.push(`${base}: ${e.message.split('\n')[0]}`); }
+      finally { await context.close(); }
+    }
+    for (const lang of ['en', 'ja']) for (const size of [SIZES[1], SIZES[2]]) {
+      const { context, tab } = await open(journeyBrowser, server.url + PAGES[0].path[lang], size, 'dark');
+      try {
+        await tab.locator('[data-model="b"]').click();
+        await tab.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
+        await tab.screenshot({ path: path.join(journeyDir, `chromium-home-model-b-${lang}-dark-${size.width}x${size.height}-full.png`), fullPage: true, scale: 'css' });
+        count++;
+      } catch (e) { failures.push(`home model b ${lang} ${size.width}: ${e.message.split('\n')[0]}`); }
+      finally { await context.close(); }
+    }
+  } finally { await journeyBrowser.close(); }
   await server.close();
   const lines = ['# Screenshots of step 3 (docs/proposals/site.md, section 6)', ''];
   lines.push('## For the owner: the definition and the request phases diagram (Chromium)', '');
   for (const f of review) lines.push(`- review/${path.basename(f)}`);
   lines.push('', '## Pages: Chromium and WebKit, light and dark, 320x664, 390x664, 1440x900', '');
   for (const f of fs.readdirSync(pagesDir).sort()) lines.push(`- pages/${f}`);
+  lines.push('', '## Reader journey: Chromium dark, 390x664 and 1440x900', '');
+  for (const f of fs.readdirSync(journeyDir).sort()) lines.push(`- journey/${f}`);
   fs.writeFileSync(path.join(opt.out, 'index.md'), `${lines.join('\n')}\n`);
   for (const f of failures) console.log(`screenshots: failed: ${f}`);
   console.log(`screenshots: ${count} screenshots in ${opt.out} (${review.length} for the owner's review in review/)`);

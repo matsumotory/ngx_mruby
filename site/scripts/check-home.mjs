@@ -65,6 +65,17 @@ function main() {
     if (!tags.length) problems.push(`${where}: site/src/content/docs/${rel} has no <Sample>: the home page shows an example that CI runs (3.3 item 8)`);
     const blocks = codeBlockTexts(tree);
     const text = visibleText(tree);
+    // The prominent interactive table is a verbatim excerpt from the local
+    // walkthrough, not a different fixture presented as the same exercise.
+    const localHandler = fs.readFileSync(path.join(opt.repo, 'examples/start/route.rb'), 'utf8');
+    const localMapping = localHandler.slice(localHandler.indexOf('  routes = {'), localHandler.indexOf('\n  begin')).trimEnd();
+    if (!localMapping || !blocks.includes(localMapping)) problems.push(`${where}: missing canonical local route table`);
+    const walkthrough = fs.readFileSync(path.join(opt.repo, 'examples/start/README.md'), 'utf8');
+    for (const model of ['a', 'b']) {
+      const output = { upstream: model, model: `mock-model-${model}`, credential_replaced: true };
+      if (!blocks.includes(JSON.stringify(output, null, 2))) problems.push(`${where}: missing mock response ${model}`);
+      if (!walkthrough.includes(JSON.stringify(output))) problems.push(`${where}: mock response ${model} is not checked by the walkthrough`);
+    }
     for (const tag of tags) {
       const spec = Object.fromEntries([...tag[1].matchAll(/(\w+)="([^"]*)"/g)].map((m) => [m[1], m[2]]));
       let sample;
