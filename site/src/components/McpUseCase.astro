@@ -2,7 +2,7 @@
 const ja = Astro.props.lang === 'ja';
 ---
 <section class="v3-mcp" aria-labelledby="mcp-title">
-  <div class="v3-section-heading"><h2 id="mcp-title">{ja ? 'MCPの入口を保ち、処理先を分ける。' : 'One MCP URL. Separate processing backends.'}</h2><p>{ja ? '検索と重い原本処理を持つサービス向け。利用者の接続設定を増やさず、処理ごとの規則をRubyに置く構成案です。' : 'For search and document services: keep one client endpoint while Ruby applies service-specific routing rules.'}</p></div>
+  <div class="v3-section-heading"><h2 id="mcp-title" set:html={ja ? 'MCPの<wbr>入口を<wbr>保ち、<wbr>処理先を<wbr>分ける。' : 'One MCP URL. Separate processing backends.'} /><p>{ja ? '検索と重い原本処理を持つサービス向け。利用者の接続設定を増やさず、処理ごとの規則をRubyに置く構成案です。' : 'For search and document services: keep one client endpoint while Ruby applies service-specific routing rules.'}</p></div>
   <figure class="mcp-map" aria-label={ja ? '構成案: AIクライアントから一つのMCP URLへ。Rubyの規則で検索、本文取得、原本処理へ振り分ける。MCP専用の動作検証は未実施。' : 'Architecture candidate: AI clients reach one MCP URL; Ruby rules route to search, text retrieval or source processing. MCP-specific execution is not yet verified.'}>
     <div class="mcp-entry"><span class="flow-caption">AI CLIENT</span><div class="mcp-endpoint material-metal"><code>POST /mcp</code><span>{ja ? '接続先は一つ' : 'One endpoint'}</span></div><span class="mcp-arrow" aria-hidden="true">→</span></div>
     <div class="mcp-rules material-metal"><img src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="80" height="80" /><strong>{ja ? 'サービスの規則' : 'Service rules'}</strong><code>nginx + Ruby</code></div>

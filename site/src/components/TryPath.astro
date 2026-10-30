@@ -2,7 +2,7 @@
 const ja = Astro.props.lang === 'ja';
 ---
 <section class="v3-try" aria-labelledby="try-title">
-  <div class="v3-section-heading"><h2 id="try-title">{ja ? 'Rubyを書き換え、応答の変化を見る。' : 'Edit Ruby. Check the next response.'}</h2><p>{ja ? 'まず小さなハンドラを動かし、その設定を自分のプロキシへ。v3開発版はソースからビルドします。' : 'Start with a small handler, then build your proxy from its configuration. The v3 development version builds from source.'}</p></div>
+  <div class="v3-section-heading"><h2 id="try-title" set:html={ja ? 'Rubyを<wbr>書き換え、<wbr>応答の<wbr>変化を<wbr>見る。' : 'Edit Ruby. Check the next response.'} /><p>{ja ? 'まず小さなハンドラを動かし、その設定を自分のプロキシへ。v3開発版はソースからビルドします。' : 'Start with a small handler, then build your proxy from its configuration. The v3 development version builds from source.'}</p></div>
   <div class="try-path"><div><strong>01</strong><h3>{ja ? '起動' : 'Start'}</h3><code>docker compose up --build --wait</code><span>{ja ? '初回はコンパイルが必要' : 'The first run compiles nginx + mruby'}</span></div><span aria-hidden="true">→</span><div><strong>02</strong><h3>{ja ? '編集' : 'Edit'}</h3><code>hello.rb</code><span>{ja ? 'cacheなし: 次のリクエストに反映' : 'Without cache: next request sees the edit'}</span></div><span aria-hidden="true">→</span><div><strong>03</strong><h3>{ja ? '確認' : 'Check'}</h3><code>curl localhost:8080/hello</code><span>{ja ? '実際の応答を確かめる' : 'Inspect the real response'}</span></div></div>
   <div class="try-options"><a class="button-primary" href={ja ? '/ja/start/' : '/start/'}>{ja ? 'コンテナで試す ↗' : 'Try in a container ↗'}</a><a href={ja ? '/ja/guides/install/' : '/guides/install/'}>{ja ? 'Linuxのnginxに組み込む →' : 'Build into nginx on Linux →'}</a></div>
 </section>

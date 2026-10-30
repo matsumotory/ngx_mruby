@@ -15,27 +15,23 @@
 1. リポジトリから、ブランチ`next`をクローンします。
 
    ```console
-   $ git clone --branch next https://github.com/matsumotory/ngx_mruby.git
-   ```
+   $ git clone --branch next https://github.com/matsumotory/ngx_mruby.git```
 
 2. 例のフォルダへ移動します。
 
    ```console
-   $ cd ngx_mruby/examples/start
-   ```
+   $ cd ngx_mruby/examples/start```
 
 3. イメージをビルドし、nginxを起動します。`--wait`を付けると、nginxが`compose.yaml`のヘルスチェックに答えたときにコマンドが戻り、Composeはコンテナ`start-nginx-1`をhealthyとして表示します。
 
    ```console
-   $ docker compose up --build --wait
-   ```
+   $ docker compose up --build --wait```
 
 4. 引数`name`を付けて、`/hello`へリクエストを送ります。レスポンスはRubyのスクリプトが書きます。
 
    ```console
    $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Hello, Ruby! hello.rb answered GET /hello.
-   ```
+   Hello, Ruby! hello.rb answered GET /hello.```
 
 ## リクエストに<wbr>答えたもの
 
@@ -85,21 +81,18 @@ Composeは、`compose.yaml`に従ってこのフォルダをコンテナにマ�
 1. `hello.rb`の`Hello`を`Good morning`に置き換えます。このコマンドは、元のファイルを`hello.rb.orig`として残します。
 
    ```console
-   $ sed -i.orig 's/Hello/Good morning/' hello.rb
-   ```
+   $ sed -i.orig 's/Hello/Good morning/' hello.rb```
 
 2. もう一度リクエストを送ります。レスポンスには新しいあいさつが入っています。
 
    ```console
    $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Good morning, Ruby! hello.rb answered GET /hello.
-   ```
+   Good morning, Ruby! hello.rb answered GET /hello.```
 
 3. 元のスクリプトを戻します。
 
    ```console
-   $ mv hello.rb.orig hello.rb
-   ```
+   $ mv hello.rb.orig hello.rb```
 
 4. マウントした設定を検証してリロードします。`PATH`に依存せず、このイメージのバイナリと設定のパスを指定します。
 
@@ -107,14 +100,12 @@ Composeは、`compose.yaml`に従ってこのフォルダをコンテナにマ�
    $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -t -c /example/nginx.conf
    $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -s reload -c /example/nginx.conf
    $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Hello, Ruby! hello.rb answered GET /hello.
-   ```
+   Hello, Ruby! hello.rb answered GET /hello.```
 
 5. コンテナを止めて削除します。Composeは、コンテナ`start-nginx-1`をremovedと表示します。
 
    ```console
-   $ docker compose down
-   ```
+   $ docker compose down```
 
 リクエストのたびにファイルを読むと、スクリプトを書いている間は便利です。その代わり、nginxはリクエストの処理の途中でディスクを読みます。本番では、[コンパイルしたコードのキャッシュ](../../directives/README.md#caching-compile-code)にあるように、ディレクティブに`cache`を付けてください。`cache`を付けると、nginxは設定を読むときにスクリプトを1回だけコンパイルします。
 
@@ -126,30 +117,13 @@ Composeは、`compose.yaml`に従ってこのフォルダをコンテナにマ�
 | `nginx.conf`、または`cache`付きRuby | `nginx -t`で検証してから上記コマンドでreload | 設定読込時にコードをコンパイルします |
 | mrbgemやビルドオプション | イメージを再ビルド | コンパイルするモジュールが変わります |
 
-コンテナ内のマウントは読み取り専用です。ホスト側のファイルを編集します。
-この例はホストのインターフェースに8080番を公開するため、ローカルだけで試す場合は
-起動前にComposeの対応を`127.0.0.1:8080:8080`へ変更してください。
-healthcheckや設定エラーは`docker compose logs nginx`で調べます。
-コンパイル前のイメージmetadata取得エラーはレジストリやネットワークの問題で、
-nginxの応答ではありません。
+コンテナ内のマウントは読み取り専用です。ホスト側のファイルを編集します。この例はホストのインターフェースに8080番を公開するため、ローカルだけで試す場合は起動前にComposeの対応を`127.0.0.1:8080:8080`へ変更してください。healthcheckや設定エラーは`docker compose logs nginx`で調べます。コンパイル前のイメージmetadata取得エラーはレジストリやネットワークの問題で、nginxの応答ではありません。
 
-コンテナは試用の入口の一つです。既存のLinux環境へ組み込む場合は
-[インストール](../install/README.md)に従い、nginxの版とビルド条件を合わせます。
-公式nginxパッケージやイメージにはngx_mrubyは含まれず、`--with-compat`も
-任意のnginx版との互換性を意味しません。Mac上でLinuxコンテナを動かした結果は、
-macOSネイティブビルドの証明ではありません。
+コンテナは試用の入口の一つです。既存のLinux環境へ組み込む場合は[インストール](../install/README.md)に従い、nginxの版とビルド条件を合わせます。公式nginxパッケージやイメージにはngx_mrubyは含まれず、`--with-compat`も任意のnginx版との互換性を意味しません。Mac上でLinuxコンテナを動かした結果は、macOSネイティブビルドの証明ではありません。
 
-上記170秒は過去のCI環境での記録であり、現在の所要時間やarm64での結果を
-保証しません。2026-10-30のfresh linux/arm64試行はUbuntu基盤イメージの
-metadata取得で止まり、コンパイル前に終了しました。その試行では起動・編集反映・
-reloadは未検証です。examplesワークフローがLinuxランナーでコマンドを検査するため、
-使用するcommitの実行結果を確認してください。
+上記170秒は過去のCI環境での記録であり、現在の所要時間やarm64での結果を保証しません。2026-10-30のfresh linux/arm64試行はUbuntu基盤イメージのmetadata取得で止まり、コンパイル前に終了しました。その試行では起動・編集反映・reloadは未検証です。examplesワークフローがLinuxランナーでコマンドを検査するため、使用するcommitの実行結果を確認してください。
 
-一次資料: [NGINXコンテナ](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-docker/)、
-[Linuxパッケージ](https://nginx.org/en/linux_packages.html)、
-[動的モジュール](https://blog.nginx.org/blog/nginx-dynamic-modules-how-they-work)、
-[reload](https://nginx.org/en/docs/control.html)、
-[bind mount](https://docs.docker.com/engine/storage/bind-mounts/)。
+一次資料: [NGINXコンテナ](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-docker/)、[Linuxパッケージ](https://nginx.org/en/linux_packages.html)、[動的モジュール](https://blog.nginx.org/blog/nginx-dynamic-modules-how-they-work)、[reload](https://nginx.org/en/docs/control.html)、[bind mount](https://docs.docker.com/engine/storage/bind-mounts/)。
 
 ## 次に<wbr>読む<wbr>ページ
 

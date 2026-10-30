@@ -2059,3 +2059,12 @@ URL, type, dimensions and alt properties. Local review covers full size and
 300/390-pixel card widths on light and dark surrounds. Actual SNS rendering
 and cache refresh remain unverified; local and HTTPS asset checks do not
 claim that an external service has fetched its preview.
+
+The development sharing image now uses the gold/purple LLM mark with
+“3.x · IN DEVELOPMENT” and “LLM agent gateways / nginx + Ruby”. Generate it
+with `node scripts/render-brand.mjs --v3`; the original no-flag render and
+`ngx-mruby-share-v1.png` remain the stable 2.x card. The metadata selector
+uses the documentation version, and deployment checks inspect both PNGs and
+require the appropriate absolute OG/X URL on every page. The next README
+uses the development image. Both images are product cards; page titles,
+English/Japanese descriptions and canonicals remain page-specific.

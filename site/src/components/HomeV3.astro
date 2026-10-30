@@ -9,7 +9,7 @@ const ja = Astro.props.lang === 'ja';
 {ja ? <Fragment>
 <div class="home home-v3">
 <div class="v3-intro">
-<p class="lede">プロバイダーの認証情報とモデルの振り分けを、ゲートウェイに集約。Rubyで判断し、nginxで中継します。</p>
+<p class="lede">認証情報とモデルごとの転送先を、ゲートウェイで管理。Rubyが判断し、nginxがストリームを中継します。</p>
 <div class="v3-entry">
 <p class="actions">
 <a class="button-primary" href="/ja/guides/agent-proxy/">動くプロキシの例を見る <span aria-hidden="true">↗</span>
@@ -46,7 +46,7 @@ const ja = Astro.props.lang === 'ja';
 </section>
 
 <section class="v3-protocols" aria-labelledby="protocol-title">
-<h2 id="protocol-title">HTTP・TCPにも、同じ組み込み方。</h2>
+<h2 id="protocol-title">HTTP・TCPにも<wbr>同じ組み込み方。</h2>
 <div class="protocol-http">
 <img src="/brand/ngx-mruby-http.svg" alt="" width="96" height="96" />
 <div>

@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="ngx_mruby — Ruby inside nginx. HTTP and stream." src="site/public/brand/ngx-mruby-share-v1.png" width="600">
+  <img alt="ngx_mruby — Ruby inside nginx. HTTP and stream." src="site/public/brand/ngx-mruby-share-v3-1.png" width="600">
 </p>
 
 <p align="center">

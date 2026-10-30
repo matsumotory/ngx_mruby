@@ -171,3 +171,16 @@ html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-7); }
  .home-v3 .route-pulse { animation: route-indication 800ms ease-out 1; }
  @keyframes route-indication { 0% { transform: translateY(0); } 40% { transform: translateY(-4px); } 100% { transform: translateY(0); } }
 }
+.home-v3 .lede { max-width: 36rem; }
+html[lang="ja"] .home-v3 .lede { max-width: none; }
+.home-v3 .v3-bottom h2 { font-size: var(--text-h2); }
+.protocol-http > div, .protocol-stream > div { min-width: 0; }
+@media(max-width: 800px) {
+ .protocol-http, .protocol-stream { display: grid; grid-template-columns: 64px minmax(0,1fr); gap: var(--space-4); }
+ .protocol-http img, .protocol-stream img { width: 64px; height: 64px; }
+ .protocol-path { flex-wrap: wrap; }
+ .home-v3 .v3-protocols { grid-template-columns: minmax(0,1fr); }
+}
+@media(max-width: 360px) {
+ .protocol-http, .protocol-stream { grid-template-columns: 1fr; }
+}
