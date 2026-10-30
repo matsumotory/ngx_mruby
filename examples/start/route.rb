@@ -19,7 +19,7 @@ else
     else
       Nginx.return Nginx::HTTP_FORBIDDEN
     end
-  rescue ArgumentError
+  rescue JSON::ParserError, ArgumentError
     Nginx.return Nginx::HTTP_BAD_REQUEST
   end
 end

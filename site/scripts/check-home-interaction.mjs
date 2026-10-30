@@ -22,6 +22,19 @@ async function copyExact(page, button, expected) {
   await button.click();
   await page.waitForFunction(async expected => (await navigator.clipboard.readText()) === expected, expected);
 }
+async function openDisclosure(page, selector) {
+  const summary = page.locator(`${selector} > summary`);
+  assert.equal(await page.locator(selector).evaluate(el => el.open), false, `${selector} starts closed`);
+  await summary.click();
+  // Wait for the native details state, not an immediate string attribute read.
+  // Do not set the property or retry a click to manufacture an open state.
+  await page.waitForFunction(selector => document.querySelector(selector).open, selector);
+  await summary.focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(selector => !document.querySelector(selector).open, selector);
+  await summary.click();
+  await page.waitForFunction(selector => document.querySelector(selector).open, selector);
+}
 const codeText = locator => locator.locator('.ec-line').allTextContents().then(lines => lines.join('\n'));
 async function assertRoute(page, model) {
   assert.equal(await page.locator('.v3-flow').getAttribute('data-route'), model);
@@ -46,11 +59,13 @@ async function assertRoute(page, model) {
 try {
   for (const engine of [chromium, webkit]) {
     const browser = await engine.launch();
+    let lastPage, lastState;
     try {
       for (const route of ['/', '/ja/']) for (const width of [320, 390, 768, 1440]) for (const reducedMotion of ['reduce', 'no-preference']) for (const colorScheme of ['light', 'dark']) {
         const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme, reducedMotion,
           ...(engine === chromium ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
         const page = await context.newPage();
+        lastPage = page; lastState = `${engine.name()} ${route} ${width} ${reducedMotion} ${colorScheme}`;
         await page.goto(server.url + route);
         await page.evaluate(() => document.fonts.ready);
         // Exclude Pagefind's unrelated lazy initialization from route traffic.
@@ -105,15 +120,22 @@ try {
         assert.equal(await page.locator('[data-model="b"]').evaluate(el => document.activeElement === el), true);
         await page.keyboard.press('Enter');
         await assertRoute(page, 'b');
+        if (width <= 800) {
+          await page.locator('.route-response').scrollIntoViewIfNeeded();
+          const relation = await page.evaluate(() => {
+            const controls = document.querySelector('.route-controls').getBoundingClientRect();
+            const result = document.querySelector('.route-response').getBoundingClientRect();
+            const header = document.querySelector('header.header').getBoundingClientRect();
+            return { controlsTop: controls.top, controlsBottom: controls.bottom, resultTop: result.top, resultBottom: result.bottom, headerBottom: header.bottom, viewport: innerHeight };
+          });
+          assert.ok(relation.controlsTop >= relation.headerBottom - 1, 'model controls must not hide under the header');
+          assert.ok(relation.controlsBottom <= relation.resultTop + 1 && relation.resultBottom <= relation.viewport + 1, 'selection and response remain visible together');
+        }
         assert.deepEqual(requests, [], 'illustration sent a network request');
-        await page.locator('.route-source-all > summary').click();
-        assert.equal(await page.locator('.route-source-all').getAttribute('open'), '');
-        await page.locator('.source-proof > summary').click();
-        assert.equal(await page.locator('.source-proof').getAttribute('open'), '');
-        await page.locator('.sample-output summary').click();
-        assert.equal(await page.locator('.sample-output').getAttribute('open'), '');
-        await page.locator('.sample-config summary').click();
-        assert.equal(await page.locator('.sample-config').getAttribute('open'), '');
+        await openDisclosure(page, '.route-source-all');
+        await openDisclosure(page, '.source-proof');
+        await openDisclosure(page, '.sample-output');
+        await openDisclosure(page, '.sample-config');
         for (const pre of await page.locator('.home-v3 pre:visible').all()) {
           assert.ok(await pre.evaluate(el => el.scrollWidth <= el.clientWidth + 1), `${route} ${width}: code requires horizontal scrolling`);
         }
@@ -122,7 +144,7 @@ try {
           await copyExact(page, page.locator('.v3-try .copy button'), canonicalStart);
           for (const model of ['a', 'b']) {
             await page.locator(`[data-model="${model}"]`).click();
-            await copyExact(page, page.locator(`[data-response="${model}"] .copy button`), JSON.stringify({ upstream: model, model: `mock-model-${model}`, credential_replaced: true }, null, 2));
+            await copyExact(page, page.locator(`[data-response="${model}"] .copy button`), JSON.stringify({ upstream: model, model: `mock-model-${model}`, credential_replaced: true }, null, 2).replaceAll('": ', '":'));
           }
           for (const button of await page.locator('.sample .copy button').all()) {
             const expected = (await button.getAttribute('data-code')).replaceAll('\x7f', '\n');
@@ -143,6 +165,15 @@ try {
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         await context.close();
       }
+    } catch (error) {
+      console.error(`check-home-interaction state: ${lastState}`);
+      if (lastPage && !lastPage.isClosed()) {
+        const dir = path.join(site, 'build-screenshots/interaction');
+        fs.mkdirSync(dir, { recursive: true });
+        await lastPage.screenshot({ path: path.join(dir, 'failure.png'), fullPage: true, scale: 'css' }).catch(() => {});
+        console.error(await lastPage.locator('details').evaluateAll(elements => elements.map(el => ({ class: el.className, open: el.open }))));
+      }
+      throw error;
     } finally { await browser.close(); }
   }
 } finally { await server.close(); }

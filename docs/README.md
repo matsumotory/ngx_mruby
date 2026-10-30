@@ -1,4 +1,6 @@
-# Documentation
+# Documents
+
+<a id="documents"></a>
 
 Build request policies in Ruby inside nginx. These pages describe the
 **v3 development branch `next`**: implemented behavior and planned work are

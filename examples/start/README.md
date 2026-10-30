@@ -40,16 +40,28 @@ model in `route.rb`, replaces the client credential and forwards the body.
 The mock response identifies the destination and confirms that it received
 its own upstream credential, not the client key.
 
+`client.conf` supplies the same local URL and demonstration headers for each
+request, so the commands below focus on the model. Its complete contents are
+shown with the other files below.
+
 ```console
-$ curl -sS http://localhost:8080/v1/responses -H 'Content-Type: application/json' -H 'Authorization: Bearer local-client' -d '{"model":"mock-model-a"}'
-{"upstream":"a","model":"mock-model-a","credential_replaced":true}
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"a",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
 ```
 
 Change only `model` to choose API B. The URL and the client key stay the same.
 
 ```console
-$ curl -sS http://localhost:8080/v1/responses -H 'Content-Type: application/json' -H 'Authorization: Bearer local-client' -d '{"model":"mock-model-b"}'
-{"upstream":"b","model":"mock-model-b","credential_replaced":true}
+$ curl -K client.conf -d '{"model": "mock-model-b"}'
+{
+  "upstream":"b",
+  "model":"mock-model-b",
+  "credential_replaced":true
+}
 ```
 
 This demonstrates model routing and credential replacement. It does not
@@ -64,9 +76,13 @@ command saves the original as `route.rb.orig`. The mounted Ruby handler has
 no `cache` parameter, so the next request reads the edited file without a reload.
 
 ```console
-$ sed -i.orig 's/\["local_api_a", "Bearer local-upstream-a"\]/["local_api_b", "Bearer local-upstream-b"]/' route.rb
-$ curl -sS http://localhost:8080/v1/responses -H 'Content-Type: application/json' -H 'Authorization: Bearer local-client' -d '{"model":"mock-model-a"}'
-{"upstream":"b","model":"mock-model-a","credential_replaced":true}
+$ sed -i.orig 's/local_api_a/local_api_b/;s/upstream-a/upstream-b/' route.rb
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"b",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
 ```
 
 The request still says `mock-model-a`; the response now says `upstream: b`.
@@ -74,8 +90,12 @@ Restore the original mapping and confirm that the same request returns to A.
 
 ```console
 $ mv route.rb.orig route.rb
-$ curl -sS http://localhost:8080/v1/responses -H 'Content-Type: application/json' -H 'Authorization: Bearer local-client' -d '{"model":"mock-model-a"}'
-{"upstream":"a","model":"mock-model-a","credential_replaced":true}
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"a",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
 ```
 
 ## Check rejected requests
@@ -85,11 +105,11 @@ Malformed JSON gets 400. These requests stop at the proxy instead of reaching
 a mock API.
 
 ```console
-$ curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8080/v1/responses -H 'Content-Type: application/json' -d '{"model":"mock-model-a"}'
+$ curl -sS localhost:8080/v1/responses -d '{}' -o /dev/null -w '%{http_code}\n'
 401
-$ curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8080/v1/responses -H 'Content-Type: application/json' -H 'Authorization: Bearer local-client' -d '{"model":"unknown"}'
+$ curl -K client.conf -o /dev/null -w '%{http_code}\n' -d '{"model": "unknown"}'
 403
-$ curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8080/v1/responses -H 'Content-Type: application/json' -H 'Authorization: Bearer local-client' -d '{'
+$ curl -K client.conf -o /dev/null -w '%{http_code}\n' -d '{'
 400
 ```
 
@@ -98,6 +118,15 @@ $ curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8080/v1/responses -
 `nginx.conf` connects the access handler, named upstreams and mock endpoints.
 It also keeps the basic `/hello` handler. The folder is mounted read-only
 inside the container; edit its files on the host.
+
+```text title="client.conf"
+# Local demonstration credentials, not for a public service.
+url = "http://localhost:8080/v1/responses"
+header = "Content-Type: application/json"
+header = "Authorization: Bearer local-client"
+silent
+show-error
+```
 
 ```nginx title="nginx.conf"
 # Local examples: one proxy and two mock APIs inside the container.
@@ -179,7 +208,7 @@ else
     else
       Nginx.return Nginx::HTTP_FORBIDDEN
     end
-  rescue ArgumentError
+  rescue JSON::ParserError, ArgumentError
     Nginx.return Nginx::HTTP_BAD_REQUEST
   end
 end
@@ -195,7 +224,7 @@ v = Nginx::Var.new
 name = v.server_port == "8081" ? "a" : "b"
 body = JSON.parse(r.body)
 r.headers_out["Content-Type"] = "application/json"
-Nginx.rputs JSON.generate({
+Nginx.rputs JSON.pretty_generate({
   "upstream" => name,
   "model" => body["model"],
   "credential_replaced" => r.headers_in["Authorization"] == "Bearer local-upstream-#{name}"
@@ -236,8 +265,12 @@ $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -t -c /example/nginx.
 $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -s reload -c /example/nginx.conf
 $ curl -sS 'http://localhost:8080/hello?name=Ruby'
 Hello, Ruby! hello.rb answered GET /hello.
-$ curl -sS http://localhost:8080/v1/responses -H 'Content-Type: application/json' -H 'Authorization: Bearer local-client' -d '{"model":"mock-model-a"}'
-{"upstream":"a","model":"mock-model-a","credential_replaced":true}
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"a",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
 ```
 
 For a production configuration, use [compiled-code caching](../../docs/directives/README.md#caching-compile-code)

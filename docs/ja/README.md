@@ -1,11 +1,11 @@
 # ドキュメント
 
-nginx内のRubyでリクエストの処理を組み立てます。ここは**v3の開発ブランチ`next`**の文書です。実装済みの挙動と今後の計画を区別しています。リリース済みの2.7系は[安定版のドキュメント](https://ngx.mruby.org/v2/ja/)を参照してください。
+nginx内のRubyでリクエストの処理を組み立てます。ここは<strong>v3の開発ブランチ<code>next</code></strong>の文書です。実装済みの挙動と今後の計画を区別しています。リリース済みの2.7系は[安定版のドキュメント](https://ngx.mruby.org/v2/ja/)を参照してください。
 
 ## 動く例を<wbr>試す
 
-- [ローカルmockでモデルを振り分ける](start/README.md#modelで転送先を選ぶ)：転送先と認証情報の差し替えを確認し、Rubyの対応表を編集して同じリクエストを再送します。プロバイダのキーは不要です。
-- [インストール](install/README.md)：自分のnginxに合わせたビルド、必要な環境、オプション、更新時の確認。
+- [ローカルmockでモデルを振り分ける](start/README.md#modelで転送先を選ぶ)：Rubyの対応表で転送先と認証情報を変え、同じリクエストを再送します。プロバイダのキーは不要です。
+- [インストール](install/README.md)：nginxに合わせたビルドと必要な環境、オプション、更新時の確認。
 
 ## アプリに<wbr>規則を加える
 
@@ -14,7 +14,7 @@ nginx内のRubyでリクエストの処理を組み立てます。ここは**v3�
 - [アクセス制御](guides/access-control.md)：ローカルの拒否リストにある接続元を拒否。
 - [レート制限](guides/rate-limit.md)：APIキーごとの制限。
 - [レスポンスのフィルタ](guides/body-filter.md)：レスポンスボディの変更。
-- [TCPの接続制御](guides/tcp.md)：接続元を確認してから中継。
+- [TCPの接続制御](guides/tcp.md)：接続元の確認と中継。
 - [MCPゲートウェイの設計案](guides/mcp-gateway.md)：未検証の構成と、未確認の範囲や境界。
 
 ## APIや<wbr>ビルド設定を調べる
@@ -25,14 +25,14 @@ nginx内のRubyでリクエストの処理を組み立てます。ここは**v3�
 
 ## リクエストの流れを<wbr>理解する
 
-- [リクエストのフェーズ](concepts/request-phases.md)：ハンドラが動く順序。
-- [フィルタ](concepts/filters.md)：ヘッダ、ボディの断片、その制約。
+- [リクエストのフェーズ](concepts/request-phases.md)：ハンドラの実行順。
+- [フィルタ](concepts/filters.md)：ヘッダ・ボディ断片と制約。
 - [ブロックせずに待つ](concepts/async.md)：nginxへ処理を委ねる方法。
-- [ライフタイム](concepts/lifetimes.md)：リクエスト単位の状態とworker内の共有状態。
+- [ライフタイム](concepts/lifetimes.md)：worker内の共有状態とリクエスト単位の状態。
 
 ## 運用と<wbr>アップグレード
 
-- [リリースノート](../releases/README.md)：更新前に確認する挙動の変更。
+- [リリースノート](../releases/README.md)：更新で変わる挙動。
 - [2.xからの移行](migration/README.md)：v3へ移る際に必要な変更。
 - [信頼境界](../security/trust-boundary.md)：モジュールと各スクリプトが検証する範囲。
 - [セキュリティポリシー](../../SECURITY.md)：サポート対象と非公開での脆弱性報告。
@@ -42,8 +42,8 @@ nginx内のRubyでリクエストの処理を組み立てます。ここは**v3�
 - [開発に参加する](../../CONTRIBUTING.md)：変更の範囲、レビュー、貢献の手順。
 - [テスト](../test/README.md)：テストの種類と実行方法。
 - [開発の手順](../DEVELOPMENT.md)：ブランチの運用と共同作業の引継ぎ。
-- [現在の作業](../HANDOFF.md)：日付付きの作業一覧と公開の記録。
-- [ブランチの運用](../../README.md#branch-strategy)：保守系列と開発系列。
+- [現在の作業](../HANDOFF.md)：日付付きの作業・公開記録。
+- [ブランチの運用](../../README.md#branch-strategy)：保守・開発系列。
 - [その他のユースケース](use_case/README.md)：追加の例と、それぞれの前提。
 
 ## ライセンス

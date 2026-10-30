@@ -12,7 +12,7 @@ const routes = ['a', 'b'].map(model => ({
   backend: `local_api_${model}`,
   credential: `Bearer local-upstream-${model}`,
   entry: mapping.split("\n").find(line => line.includes(`"mock-model-${model}"`)),
-  output: JSON.stringify({ upstream: model, model: `mock-model-${model}`, credential_replaced: true }, null, 2),
+  output: JSON.stringify({ upstream: model, model: `mock-model-${model}`, credential_replaced: true }, null, 2).replaceAll('": ', '":'),
 }));
 for (const route of routes) {
   if (!mapping.includes(`"mock-model-${route.model}" => ["${route.backend}", "${route.credential}"]`)) {
@@ -23,9 +23,9 @@ for (const route of routes) {
 <figure class="v3-flow" data-route="a" aria-label={ja ? 'modelを使ったAPI振り分け。リクエスト、Rubyの規則、転送先と応答を示します。' : 'Model routing: a request, its Ruby rule, the selected upstream and response.'}>
   <div class="request-strip">
     <div><h3 class="flow-title">{ja ? 'アプリから送るリクエスト' : 'Request from your app'}</h3><code>POST /v1/responses</code></div>
-    <div class="route-controls" role="group" hidden aria-label={ja ? '送信するmodelを選ぶ' : 'Choose the requested model'}><button type="button" data-model="a" aria-pressed="true">mock-model-a</button><button type="button" data-model="b" aria-pressed="false">mock-model-b</button></div>
     <div class="request-payload"><code>Authorization: Bearer local-client</code><code class="request-model">{`{"model":"mock-model-a"}`}</code></div>
   </div>
+  <div class="route-controls" role="group" hidden aria-label={ja ? '送信するmodelを選ぶ' : 'Choose the requested model'}><button type="button" data-model="a" aria-pressed="true">mock-model-a</button><button type="button" data-model="b" aria-pressed="false">mock-model-b</button></div>
   <div class="routing-workspace">
     <div class="route-source">
       <h3 class="flow-title">{ja ? 'Rubyの振り分け規則' : 'Ruby routing rule'}</h3>

@@ -73,8 +73,8 @@ function main() {
     const walkthrough = fs.readFileSync(path.join(opt.repo, 'examples/start/README.md'), 'utf8');
     for (const model of ['a', 'b']) {
       const output = { upstream: model, model: `mock-model-${model}`, credential_replaced: true };
-      if (!blocks.includes(JSON.stringify(output, null, 2))) problems.push(`${where}: missing mock response ${model}`);
-      if (!walkthrough.includes(JSON.stringify(output))) problems.push(`${where}: mock response ${model} is not checked by the walkthrough`);
+      if (!blocks.includes(JSON.stringify(output, null, 2).replaceAll('": ', '":'))) problems.push(`${where}: missing mock response ${model}`);
+      if (!walkthrough.includes(JSON.stringify(output, null, 2).replaceAll('": ', '":'))) problems.push(`${where}: mock response ${model} is not checked by the walkthrough`);
     }
     for (const tag of tags) {
       const spec = Object.fromEntries([...tag[1].matchAll(/(\w+)="([^"]*)"/g)].map((m) => [m[1], m[2]]));

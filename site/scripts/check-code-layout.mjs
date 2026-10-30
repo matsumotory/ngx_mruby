@@ -27,6 +27,12 @@ async function inspect(page, label) {
       if (el.scrollWidth > el.clientWidth + 1) errors.push(`${el.tagName}.${el.className}: ${el.scrollWidth} > ${el.clientWidth}`);
       if (el.scrollHeight > el.clientHeight + 1) errors.push(`${el.tagName}: vertical clipping`);
     }
+    for (const pre of document.querySelectorAll('.home-v3 .expressive-code pre')) {
+      if (!pre.getClientRects().length) continue;
+      const frame = pre.closest('.frame').getBoundingClientRect();
+      const box = pre.getBoundingClientRect();
+      if (box.left < frame.left - 1 || box.right > frame.right + 1) errors.push('code plane extends beyond its frame');
+    }
     if (document.documentElement.scrollWidth > innerWidth + 1) errors.push('page overflow');
     return errors;
   });

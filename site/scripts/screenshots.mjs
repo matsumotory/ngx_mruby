@@ -147,13 +147,23 @@ async function main() {
       } catch (e) { failures.push(`${base}: ${e.message.split('\n')[0]}`); }
       finally { await context.close(); }
     }
-    for (const lang of ['en', 'ja']) for (const size of [SIZES[1], SIZES[2]]) {
+    for (const lang of ['en', 'ja']) for (const size of SIZES) {
       const { context, tab } = await open(journeyBrowser, server.url + PAGES[0].path[lang], size, 'dark');
       try {
         await tab.locator('[data-model="b"]').click();
         await tab.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
         await tab.screenshot({ path: path.join(journeyDir, `chromium-home-model-b-${lang}-dark-${size.width}x${size.height}-full.png`), fullPage: true, scale: 'css' });
         count++;
+        if (size.width < 800) {
+          const base = `chromium-home-selection-${lang}-dark-${size.width}x${size.height}`;
+          await tab.locator('.v3-flow').evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - 64));
+          await tab.screenshot({ path: path.join(journeyDir, `${base}-start.png`) });
+          await tab.locator('.route-response').scrollIntoViewIfNeeded();
+          await tab.screenshot({ path: path.join(journeyDir, `${base}-result.png`) });
+          await tab.locator('.v3-flow').evaluate(el => scrollTo(0, el.getBoundingClientRect().bottom + scrollY - 64));
+          await tab.screenshot({ path: path.join(journeyDir, `${base}-end.png`) });
+          count += 3;
+        }
       } catch (e) { failures.push(`home model b ${lang} ${size.width}: ${e.message.split('\n')[0]}`); }
       finally { await context.close(); }
     }
