@@ -46,6 +46,9 @@ that are not written down elsewhere yet, the work in progress and the queue.
   check fails only for Japanese `mruby_content_handler` (11/12 pass).
   The new test also requires the target reference, not merely any result.
   Final-head execution and independent review are recorded on #668.
+- #667 production run 41011744554 and deployment 7432116276 succeeded;
+  80 changed/new shipped files matched HTTPS, and the live policy/redirect
+  checks and all five Lighthouse categories (100) passed.
 - Work continues in the existing repository checkout. Previous worktrees and
   branches remain preserved; local folder inventories are not public artifacts.
 

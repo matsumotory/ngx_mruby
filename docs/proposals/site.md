@@ -2078,7 +2078,8 @@ unrelated prefix is not evidence that the reference is reachable. The
 canonical-page generator therefore derives a deduplicated identifier list
 from the title and complete Markdown body and emits one searchable
 `identifiers` metadata field in the page head. No manually maintained
-keyword list, visible duplicate text or query rewrite is used; code and
+keyword list, visible duplicate text or query rewrite is used. The search UI
+hides only this indexing field, preserving other result metadata. Code and
 machine-readable Markdown remain unchanged.
 
 This uses Pagefind's documented [searchable metadata](https://pagefind.app/docs/metadata/).

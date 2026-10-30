@@ -782,6 +782,13 @@ dialog {
 #starlight__search .pagefind-ui__result-inner {
   gap: 0;
 }
+/* Generated API names help indexing, but are not user-facing result tags.
+   Preserve any other metadata tags and hide the wrapper only when empty. */
+#starlight__search [data-pagefind-ui-meta="identifiers"],
+#starlight__search .pagefind-ui__result-tags:has(> [data-pagefind-ui-meta="identifiers"]:only-child) {
+  display: none;
+}
+
 #starlight__search .pagefind-ui__result-inner > * + * {
   border-top: 1px solid var(--color-border);
 }
