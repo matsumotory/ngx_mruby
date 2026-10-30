@@ -164,6 +164,12 @@ async function main() {
           await tab.screenshot({ path: path.join(journeyDir, `${base}-end.png`) });
           count += 3;
         }
+        // Keep actual native disclosure evidence, not a forced open property.
+        await tab.locator('.source-proof > summary').click();
+        await tab.waitForFunction(() => document.querySelector('.source-proof').open);
+        await tab.locator('.source-proof').evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - 80));
+        await tab.screenshot({ path: path.join(journeyDir, `chromium-home-integration-open-${lang}-dark-${size.width}x${size.height}.png`) });
+        count++;
       } catch (e) { failures.push(`home model b ${lang} ${size.width}: ${e.message.split('\n')[0]}`); }
       finally { await context.close(); }
     }

@@ -245,12 +245,16 @@ figcaption,
   border-radius: var(--radius-frame);
   padding: var(--space-3) var(--space-4);
 }
-.sl-markdown-content details:not(:where(.not-content *)),
-.sl-markdown-content details:not([open]):hover:not(:where(.not-content *)),
-.sl-markdown-content details:has(> summary:hover):not(:where(.not-content *)) {
+.sl-markdown-content details:not(:where(.not-content *)) {
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-frame);
   padding: var(--space-3) var(--space-4);
+}
+/* A hover rule must not restore geometry overridden by a component. Moving
+   the summary after pointer entry can turn a native click into a missed hit. */
+.sl-markdown-content details:not([open]):hover:not(:where(.not-content *)),
+.sl-markdown-content details:has(> summary:hover):not(:where(.not-content *)) {
+  border-color: var(--color-border-strong);
 }
 .sl-markdown-content summary:not(:where(.not-content *)) {
   margin-inline-start: 0;
@@ -870,4 +874,13 @@ html[data-theme="dark"][data-theme-script] .site-title .brand-dark { display: bl
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) .site-title .brand-light { display: none; }
   html:not([data-theme="light"]) .site-title .brand-dark { display: block; }
+}
+
+/* Prefer JSON token boundaries on narrow screens (for example, keep true
+   together). Oversized tokens can still wrap, including at 200% text size.
+   This changes neither the text nor Expressive Code's canonical copy. */
+.expressive-code pre[data-language="json"].wrap .code > span:not(.indent) {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
 }

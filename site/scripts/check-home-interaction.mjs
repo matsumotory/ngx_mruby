@@ -25,6 +25,18 @@ async function copyExact(page, button, expected) {
 async function openDisclosure(page, selector) {
   const summary = page.locator(`${selector} > summary`);
   assert.equal(await page.locator(selector).evaluate(el => el.open), false, `${selector} starts closed`);
+  await page.mouse.move(0, 0);
+  await summary.scrollIntoViewIfNeeded();
+  const geometry = () => summary.evaluate(el => {
+    const box = el.getBoundingClientRect();
+    const style = getComputedStyle(el.parentElement);
+    return { x: box.x, y: box.y, width: box.width, height: box.height,
+      padding: style.padding, borderWidth: style.borderWidth };
+  });
+  const before = await geometry();
+  await summary.hover();
+  assert.deepEqual(await geometry(), before, `${selector}: hover moves the native disclosure hit target`);
+  await page.mouse.move(0, 0);
   await summary.click();
   // Wait for the native details state, not an immediate string attribute read.
   // Do not set the property or retry a click to manufacture an open state.
@@ -79,6 +91,17 @@ try {
           assert.ok(Math.max(...tops) - Math.min(...tops) <= 1, 'the rule and its output align');
         }
         await assertRoute(page, 'a'); // useful selected state before any click
+        const choices = await page.locator('.route-controls button').evaluateAll(buttons => buttons.map(el => {
+          const box = el.getBoundingClientRect();
+          return { top: box.top, height: box.height, margin: getComputedStyle(el).margin };
+        }));
+        assert.ok(Math.abs(choices[0].top - choices[1].top) <= 1 && Math.abs(choices[0].height - choices[1].height) <= 1, 'model choices are peers with equal alignment and height');
+        assert.ok(choices.every(choice => choice.margin === '0px'), 'Markdown sibling margins do not shift model buttons');
+        const literal = await page.locator('.route-result:visible .code > span').evaluateAll(spans => {
+          const value = spans.find(el => el.textContent === 'true');
+          return value ? { height: value.getBoundingClientRect().height, line: parseFloat(getComputedStyle(value).lineHeight) } : null;
+        });
+        assert.ok(literal && literal.height <= literal.line + 1, 'the short JSON true literal stays readable on one line');
         const requests = [];
         page.on('request', r => requests.push(r.url()));
         for (const model of ['b', 'a', 'b']) {

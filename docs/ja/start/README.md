@@ -6,7 +6,7 @@
 
 ## 始める前に<wbr>用意するもの
 
-Composeプラグイン付きのDocker（`docker compose`）、git、curl、ネットワーク接続が必要です。初回はソースからnginxとmrubyをビルドします。nginxはnginx.orgから、`build_config.rb.lock`で固定したgemはGitHubから取得します。以降は作成済みイメージを再利用します。検証済みのv3イメージは未提供です。
+Composeプラグイン付きのDocker（`docker compose`）、git、curl、ネットワーク接続が必要です。初回はソースからnginxとmrubyをビルドします。nginxはnginx.orgから、`build_config.rb.lock`で固定したgemはGitHubから取得します。以降はイメージを再利用します。検証済みのv3イメージは未提供です。
 
 [`compose.yaml`](../../../examples/start/compose.yaml)のポート8080は`127.0.0.1`だけで公開します。2つのmock APIはコンテナ内のループバックで待ち受け、ホストには公開しません。キーはすべて公開のデモ用文字列です。公開サービスでは使用しないでください。
 
@@ -18,7 +18,7 @@ $ cd ngx_mruby/examples/start
 $ docker compose up --build --wait
 ```
 
-`--wait`はヘルスチェック用の`/hello`が応答すると終了します。振り分けは次のリクエストで確認します。以降も例のディレクトリで実行します。
+`--wait`はヘルスチェック用の`/hello`の応答を待ちます。振り分けは次のリクエストで確認します。以降も例のディレクトリで実行します。
 
 <a id="model-routing"></a>
 
@@ -26,7 +26,7 @@ $ docker compose up --build --wait
 
 ローカルの利用者キーを付けてモデルAを送ります。nginxはキーを確認し、`route.rb`の対応表からモデルを探し、利用者の認証情報を置き換えてボディを転送します。mockの応答は転送先を示し、利用者キーではなく、その転送先専用の認証情報を受け取ったことを確認します。
 
-`client.conf`にローカルURLとデモ用ヘッダをまとめています。以下のコマンドではmodelを変えます。設定の全文は後半に掲載しています。
+`client.conf`にローカルURLとデモ用ヘッダをまとめています。以下のコマンドではmodelを変えます。設定全文は後半にあります。
 
 ```console
 $ curl -K client.conf -d '{"model": "mock-model-a"}'

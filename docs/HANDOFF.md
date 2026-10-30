@@ -23,13 +23,26 @@
   `npm run check`, source links and example files-only checks pass. The
   combined validation also built #673's `a6ac31dc9` maintenance source; this
   is integration-preview evidence, not publication of that source.
-- Pending: execute the new example through current-head examples CI and the
-  locked Chromium/WebKit checks, inspect the resulting screenshots and
-  complete independent visual/functional review. The local environment has
-  no Docker, and local browser startup is blocked; no local runtime or
-  browser pass is claimed. The earlier checkpoint's runtime test CI passed,
-  while its site CI failed on missing anchors, style roles and stale
-  interaction assertions; its screenshots are baseline evidence only.
+- At `ad83b93e`, [examples CI](https://github.com/matsumotory/ngx_mruby/actions/runs/41110500513)
+  executed all 19 runnable README commands and matched their stated output,
+  including both routes, credential replacement, edit/restore and 401/403/400.
+  [Runtime CI](https://github.com/matsumotory/ngx_mruby/actions/runs/41110500662)
+  passed. The JSON parser exception and canonical command/output mismatches
+  found during continuation are fixed; the mock is not a provider test.
+- [Site CI at that checkpoint](https://github.com/matsumotory/ngx_mruby/actions/runs/41110500506)
+  produced screenshots. Independent desktop/mobile review confirmed the
+  purpose, trial/docs journey, restored Japanese emphasis and visible mobile
+  model selection beside its result. It found unequal model-button margins
+  and token splitting at 320 px. The run also found eight Japanese passages
+  with short final lines and a WebKit disclosure click failure. The follow-up
+  fixes the hover rule that changed disclosure geometry, aligns peer buttons,
+  wraps JSON at token boundaries and edits those passages without shrinking
+  text. Existing click/keyboard/state assertions remain; hover geometry is
+  checked as well.
+- Pending: CI and independent pixels for that follow-up, plus actual pixels
+  of #673's maintenance entry. The local environment has no Docker and
+  browser startup is blocked; no local runtime/browser pass is claimed.
+  The successful older screenshots/checks are not proof of the final head.
 - Keep #672 and #673 in draft. No merge, production deploy, software tag or
   release is performed by this continuation.
 
