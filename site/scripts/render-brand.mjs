@@ -19,10 +19,10 @@ main{display:flex;align-items:center;gap:56px;width:960px}img{width:280px;height
 </style><main><img src="${logo}" alt=""><div><h1>ngx_mruby</h1><p>Ruby inside nginx.</p><p class="protocols">HTTP / STREAM</p></div></main></html>`;
 const v3Html = `<!doctype html><html lang="en"><meta charset="utf-8"><style>
 @font-face{font-family:Inter;src:url('${font}');font-weight:100 900}
-*{box-sizing:border-box}body{margin:0;width:1200px;height:630px;color:#e8ebf1;background:#0c0f16;font-family:Inter,sans-serif;display:grid;place-items:center}
-main{width:1080px;height:510px;padding:52px;display:grid;grid-template-columns:1fr 310px;align-items:center;gap:24px;border:1px solid #767a84;background:linear-gradient(145deg,#adb1ba 0%,#35383f 1%,#151922 12%,#0c0f16 48%,#151922 76%,#35383f 96%,#767a84 100%);box-shadow:inset 0 1px 0 #e8ebf1,inset 0 -2px 0 #0c0f16}
-h1{font-size:76px;letter-spacing:-4px;font-weight:650;line-height:1.1;margin:0 0 24px}p{font-size:38px;line-height:1.3;margin:0;color:#e8ebf1}.state{font-size:28px;letter-spacing:1px;color:#ecba74;margin-bottom:28px}.runtime{font-size:30px;color:#adb1ba;margin-top:24px}img{width:310px;height:330px}
-</style><main><div><p class="state">3.x · IN DEVELOPMENT</p><h1>ngx_mruby</h1><p>LLM agent gateways</p><p class="runtime">nginx + Ruby</p></div><img src="${logo}" alt=""></main></html>`;
+*{box-sizing:border-box}body{margin:0;width:1200px;height:630px;color:#e8ebf1;background:#070a11;font-family:Inter,sans-serif;background-image:linear-gradient(115deg,#223448,#122334 34%,#070a11 82%)}
+main{height:630px;padding:72px;display:grid;grid-template-columns:1fr 290px;align-items:center;gap:40px}
+h1{font-size:80px;letter-spacing:-4px;font-weight:650;line-height:1.1;margin:0 0 30px}p{font-size:42px;line-height:1.25;margin:0;color:#e8ebf1}.state{font-size:25px;letter-spacing:1px;color:#ecba74;margin-bottom:30px}.runtime{font-size:28px;color:#b7c3d2;margin-top:28px;line-height:1.5}img{width:290px;height:310px}
+</style><main><div><p class="state">v3 · IN DEVELOPMENT</p><h1>ngx_mruby</h1><p>LLM routing in nginx.</p><p class="runtime">Rules in Ruby.<br>Keys at your proxy.</p></div><img src="${logo}" alt=""></main></html>`;
 const html = v3 ? v3Html : stableHtml;
 const browser = await chromium.launch();
 try {

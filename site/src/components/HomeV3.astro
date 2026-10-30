@@ -5,175 +5,48 @@ import TryPath from './TryPath.astro';
 import '../styles/home.css';
 import '../styles/home-v3.css';
 const ja = Astro.props.lang === 'ja';
+const lang = ja ? 'ja' : 'en';
+const prefix = ja ? '/ja' : '';
 ---
-{ja ? <Fragment>
 <div class="home home-v3">
-<div class="v3-intro">
-<p class="lede">認証情報と転送ルールを、ゲートウェイで管理。Rubyが判定し、nginxがストリームを中継します。</p>
-<div class="v3-entry">
-<p class="actions">
-<a class="button-primary" href="/ja/guides/agent-proxy/">動くプロキシの例を見る <span aria-hidden="true">↗</span>
-</a>
-<a class="button-secondary" href="/ja/reference/directives/">APIリファレンス</a>
-</p>
-<span class="v3-status">3.x・開発中</span>
-</div>
-</div>
-<p class="v3-purpose">複数のエージェントを運用する開発者へ。クライアントごとの認証と転送ルールを、プロキシ側にまとめます。</p>
-<AgentFlow lang="ja" />
-<McpUseCase lang="ja" />
+  <div class="v3-intro">
+    <p class="lede">{ja ? <Fragment><strong>ngx_mrubyは、nginxの中でRubyを動かすモジュールです。</strong>v3では、LLMへの転送先とAPIキーをプロキシで管理できます。上流の設定を変えても、アプリの接続先は<span class="nowrap">そのままです。</span></Fragment> : <Fragment><strong>ngx_mruby is a module that runs Ruby inside nginx.</strong> In v3, manage LLM routes and provider keys at your proxy. Change the upstream settings while your apps keep the same endpoint.</Fragment>}</p>
+    <div class="v3-entry">
+      <p class="actions"><a class="button-primary" href={prefix + '/start/'}>{ja ? 'ローカルで動かす' : 'Run it locally'} <span aria-hidden="true">→</span></a><a class="intro-link" href="#routing">{ja ? 'モデル振り分けのしくみ' : 'See how model routing works'} <span aria-hidden="true">↓</span></a></p>
+      <p class="v3-status">{ja ? 'v3 開発版' : 'v3 · In development'}<span aria-hidden="true"> / </span><a href={ja ? '/v2/ja/' : '/v2/'}>{ja ? '安定版2.7のドキュメント' : 'Stable 2.7 documentation'}</a></p>
+    </div>
+  </div>
 
-<TryPath lang="ja" />
-<section class="v3-code" aria-labelledby="code-title">
-<div class="v3-section-heading">
-<h2 id="code-title">モデル名から、転送先を選ぶ。</h2>
-<p>テストで使うRubyと、その検証結果。キーと転送先はmock用です。</p>
-</div>
-<slot />
-<a class="section-link" href="/ja/guides/agent-proxy/">完全な設定・実行条件を見る <span aria-hidden="true">→</span>
-</a>
-</section>
+  <section class="v3-routing" aria-labelledby="routing">
+    <div class="v3-section-heading"><h2 id="routing" set:html={ja ? 'モデル名に応じてAPIを<wbr>選ぶ。' : 'One proxy URL. The right API for each model.'} /><p>{ja ? 'アプリが送ったモデル名から、Rubyが転送先と上流のキーを選び、nginxがリクエストと応答を中継します。' : 'Your app sends a model name. Ruby selects the upstream and its credential; nginx forwards the request and returns the response.'}</p></div>
+    <AgentFlow lang={lang} />
+    <div class="routing-benefits">
+      <div><h3>{ja ? '送信先の変更は、対応表へ' : 'Change routes at the proxy'}</h3><p>{ja ? 'モデルとAPIの対応をRubyで記述。アプリは共通のプロキシURLを使い続けられます。' : 'Define the model-to-API mapping in Ruby. Your apps can keep the same proxy URL when that mapping changes.'}</p></div>
+      <div><h3>{ja ? '上流のキーを、アプリに配らない' : 'Keep provider keys out of clients'}</h3><p>{ja ? 'アプリから来た利用者キーを確認し、上流にはプロバイダー用のキーを渡します。' : 'Check the client’s key, then replace it with the provider credential before forwarding upstream.'}</p></div>
+    </div>
+    <p class="routing-boundary">{ja ? 'Messages / Responsesの中継をnextの統合テストで検証しています。API形式の相互変換はしません。利用者キーごとの同時実行制限も、nginxのlimit_connと組み合わせられます。' : 'Messages / Responses relay is covered by integration tests on next. API formats are not translated. Ruby can also supply the client key for nginx’s limit_conn to bound concurrent requests.'} <a href={prefix + '/guides/agent-proxy/'}>{ja ? '実装状況と適用条件 →' : 'Status and requirements →'}</a></p>
+  </section>
 
-<section class="v3-future" aria-labelledby="future-title">
-<img src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" />
-<div>
-<span class="v3-status">planned</span>
-<h2 id="future-title">v3で追加する制御</h2>
-<p>共有の使用量集計・イベント単位の処理・最初の応答までの期限。現在のAPIとしては使えません。</p>
-<a href="/ja/guides/agent-proxy/">実装状況と計画 <span aria-hidden="true">→</span>
-</a>
-</div>
-</section>
+  <TryPath lang={lang} />
 
-<section class="v3-protocols" aria-labelledby="protocol-title">
-<h2 id="protocol-title">HTTP・TCPにも<wbr>同じ組み込み方。</h2>
-<div class="protocol-http">
-<img src="/brand/ngx-mruby-http.svg" alt="" width="96" height="96" />
-<div>
-<h3>APIの振り分け・アクセス判定</h3>
-<p>リクエストのヘッダを読み、既存のupstreamへ転送。</p>
-<div class="protocol-path">
-<span>HTTP</span>
-<span aria-hidden="true">→</span>
-<span>Ruby</span>
-<span aria-hidden="true">→</span>
-<span>upstream</span>
-</div>
-<a href="/ja/guides/routing/">HTTPの実行例 →</a>
-</div>
-</div>
-<div class="protocol-stream">
-<img src="/brand/ngx-mruby-stream.svg" alt="" width="80" height="80" />
-<div>
-<h3>TCP接続の許可・拒否</h3>
-<p>接続元を確認してから、バックエンドへつなぐ。</p>
-<div class="protocol-path">
-<span>TCP</span>
-<span aria-hidden="true">→</span>
-<span>allow / deny</span>
-</div>
-<a href="/ja/guides/tcp/">TCPの実行例 →</a>
-</div>
-</div>
-</section>
+  <section class="v3-code" aria-labelledby="code-title">
+    <div class="v3-section-heading"><h2 id="code-title" set:html={ja ? '次に、<wbr>モデル振り分けを<wbr>Rubyで書く。' : 'Then put your routing rules in Ruby.'} /><p>{ja ? 'Helloが動いたら、リクエストのmodelを読んで転送先を選ぶ構成へ。下のコードは実際の統合テストから読み込んでいます。' : 'After the first handler, read the request’s model and choose an upstream. This code is loaded directly from the integration test.'}</p></div>
+    <slot />
+    <a class="section-link" href={prefix + '/guides/agent-proxy/'}>{ja ? '認証・設定・ストリーム中継を含む実装例へ' : 'Continue with authentication, configuration and streaming'} <span aria-hidden="true">→</span></a>
+  </section>
 
-<div class="v3-bottom">
-<div>
-<h2>実装に使う資料</h2>
-<p>版・ソース・検証条件を含む本文を、HTMLとMarkdownで。</p>
-<a href="/ja/docs/">HTML →</a>
-<a href="/docs-index.json">Markdown index →</a>
-</div>
-<div class="stable-entry">
-<h2>既存の2.7を使う場合</h2>
-<a href="/v2/ja/">安定版の導入・ドキュメント →</a>
-</div>
-</div>
-</div>
+  <McpUseCase lang={lang} />
 
-</Fragment> : <Fragment>
-<div class="home home-v3">
-<div class="v3-intro">
-<p class="lede">Keep provider credentials and model-routing rules at your gateway. nginx relays the stream; Ruby decides where it goes.</p>
-<div class="v3-entry">
-<p class="actions">
-<a class="button-primary" href="/guides/agent-proxy/">Explore the proxy recipes <span aria-hidden="true">↗</span>
-</a>
-<a class="button-secondary" href="/reference/directives/">API reference</a>
-</p>
-<span class="v3-status">3.x · IN DEVELOPMENT</span>
-</div>
-</div>
-<p class="v3-purpose">For developers running multiple agents: keep client access and routing rules at the proxy.</p>
-<AgentFlow lang="en" />
-<McpUseCase lang="en" />
+  <section class="v3-future" aria-labelledby="future-title">
+    <div><span class="v3-status">{ja ? '計画中 · まだ使えません' : 'Planned · not available yet'}</span><h2 id="future-title">{ja ? 'v3で広げる範囲' : 'What v3 will add'}</h2></div>
+    <div><p>{ja ? '共有の使用量集計、ストリームのイベント単位の処理、最初の応答までの期限を開発計画に置いています。現在の中継機能とは分けて、実装状況を公開しています。' : 'Shared usage accounting, processing individual stream events and first-byte deadlines are on the development plan. Their status is tracked separately from the relay features that work today.'}</p><a href={prefix + '/guides/agent-proxy/'}>{ja ? '機能ごとの実装状況を見る →' : 'See the status of each capability →'}</a></div>
+  </section>
 
-<TryPath lang="en" />
-<section class="v3-code" aria-labelledby="code-title">
-<div class="v3-section-heading">
-<h2 id="code-title">Route by the requested model.</h2>
-<p>The Ruby handler and checked output from the integration test. Keys and upstreams are test fixtures.</p>
-</div>
-<slot />
-<a class="section-link" href="/guides/agent-proxy/#recipes-that-run-today">Read the full configuration and prerequisites <span aria-hidden="true">→</span>
-</a>
-</section>
+  <section class="v3-protocols" aria-labelledby="protocol-title">
+    <h2 id="protocol-title">{ja ? 'LLM以外のHTTP・TCPにも' : 'Use the same module for HTTP and TCP'}</h2>
+    <div class="protocol-http"><img src="/brand/ngx-mruby-http.svg" alt="" width="64" height="64" /><div><h3>{ja ? 'HTTPの振り分け' : 'Route HTTP requests'}</h3><p>{ja ? 'ヘッダで転送先を選ぶ。' : 'Select a configured upstream from request headers and your own rules.'}</p><a href={prefix + '/guides/routing/'}>{ja ? '実行例を見る →' : 'Follow the example →'}</a></div></div>
+    <div class="protocol-stream"><img src="/brand/ngx-mruby-stream.svg" alt="" width="64" height="64" /><div><h3>{ja ? 'TCP接続の許可・拒否' : 'Allow or refuse TCP connections'}</h3><p>{ja ? '接続元を確認してから、バックエンドへつなぐ。' : 'Check the client address before connecting to a backend.'}</p><a href={prefix + '/guides/tcp/'}>{ja ? '実行例を見る →' : 'Follow the example →'}</a></div></div>
+  </section>
 
-<section class="v3-future" aria-labelledby="future-title">
-<img src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" />
-<div>
-<span class="v3-status">planned</span>
-<h2 id="future-title">Planned for v3</h2>
-<p>Shared usage accounting, event-level processing and first-byte deadlines. These are not available APIs yet.</p>
-<a href="/guides/agent-proxy/">Implementation status and plan <span aria-hidden="true">→</span>
-</a>
+  <div class="v3-bottom"><div><h2>{ja ? '実装に進むための資料' : 'Documentation for your implementation'}</h2><p>{ja ? 'API・前提・制約・検証条件を、同じ正本からHTMLとMarkdownで提供します。' : 'API contracts, prerequisites, limits and verification context, generated as HTML and Markdown from one source.'}</p><a href={prefix + '/docs/'}>{ja ? 'ドキュメント →' : 'Documentation →'}</a><a href="/docs-index.json">Markdown index →</a></div><div class="stable-entry"><h2>{ja ? '安定版を使うなら2.7' : 'Need the stable version?'}</h2><p>{ja ? 'v2.7の導入と互換性を確認。' : 'Use the maintenance documentation for v2.7 installation and behavior.'}</p><a href={ja ? '/v2/ja/' : '/v2/'}>{ja ? '2.7のドキュメント →' : '2.7 documentation →'}</a></div></div>
 </div>
-</section>
-
-<section class="v3-protocols" aria-labelledby="protocol-title">
-<h2 id="protocol-title">The same embedding model for HTTP and TCP.</h2>
-<div class="protocol-http">
-<img src="/brand/ngx-mruby-http.svg" alt="" width="96" height="96" />
-<div>
-<h3>API routing and access checks</h3>
-<p>Read request headers and choose a configured upstream.</p>
-<div class="protocol-path">
-<span>HTTP</span>
-<span aria-hidden="true">→</span>
-<span>Ruby</span>
-<span aria-hidden="true">→</span>
-<span>upstream</span>
-</div>
-<a href="/guides/routing/">HTTP walkthrough →</a>
-</div>
-</div>
-<div class="protocol-stream">
-<img src="/brand/ngx-mruby-stream.svg" alt="" width="80" height="80" />
-<div>
-<h3>Allow or refuse TCP connections</h3>
-<p>Check the client address before connecting to the backend.</p>
-<div class="protocol-path">
-<span>TCP</span>
-<span aria-hidden="true">→</span>
-<span>allow / deny</span>
-</div>
-<a href="/guides/tcp/">TCP walkthrough →</a>
-</div>
-</div>
-</section>
-
-<div class="v3-bottom">
-<div>
-<h2>Documentation for implementation</h2>
-<p>HTML and Markdown from one source, with versions and validation context.</p>
-<a href="/docs/">HTML →</a>
-<a href="/docs-index.json">Markdown index →</a>
-</div>
-<div class="stable-entry">
-<h2>Using the stable 2.7 release?</h2>
-<a href="/v2/">Stable installation and documentation →</a>
-</div>
-</div>
-</div>
-
-</Fragment>}

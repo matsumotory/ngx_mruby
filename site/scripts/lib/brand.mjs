@@ -8,10 +8,10 @@ export const SHARE_IMAGE = {
 };
 
 export const V3_SHARE_IMAGE = {
-  file: 'brand/ngx-mruby-share-v3-1.png',
+  file: 'brand/ngx-mruby-share-v3-2.png',
   width: 1200,
   height: 630,
   type: 'image/png',
-  alt: 'ngx_mruby 3.x, in development. LLM agent gateways with nginx and Ruby. Metallic mark with gold and purple insets.',
+  alt: 'ngx_mruby 3.x, in development. LLM routing in nginx. Rules in Ruby; keys at your proxy. Metallic mark with gold and purple insets.',
 };
 export const shareImageForVersion = version => version === 2 ? SHARE_IMAGE : V3_SHARE_IMAGE;

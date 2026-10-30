@@ -55,6 +55,8 @@ try {
           }
         }
         assert.deepEqual(requests, [], 'illustration sent a network request');
+        await page.locator('.sample-output summary').click();
+        assert.equal(await page.locator('.sample-output').getAttribute('open'), '');
         await page.locator('.sample-config summary').click();
         assert.equal(await page.locator('.sample-config').getAttribute('open'), '');
         for (const pre of await page.locator('.sample pre').all()) {
