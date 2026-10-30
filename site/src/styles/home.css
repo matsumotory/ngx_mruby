@@ -33,7 +33,7 @@ html[lang="ja"]:has(.home) h1#_top { max-width: 16em; letter-spacing: -0.03em; }
 .version-mark { display: inline-block; font-weight: var(--weight-current); color: var(--color-accent-text); margin-right: var(--space-2); }
 .home .runtime-map { padding-top: var(--space-5); }
 .runtime-label { display: block; font-size: var(--text-caption); color: var(--color-text-muted); letter-spacing: 0.06em; margin-bottom: var(--space-3); }
-.runtime-host { padding: var(--space-5); border: 1px solid var(--color-border-strong); border-left: 2px solid var(--color-accent); }
+.runtime-host { padding: var(--space-5); border: 1px solid var(--color-border-strong); }
 .home .runtime-host { border-top-color: var(--color-text-muted); border-bottom-color: var(--color-border); }
 .runtime-name { display: block; font-size: var(--text-h3); font-weight: var(--weight-heading); }
 .runtime-sub { display: block; color: var(--color-text-muted); font-size: var(--text-caption); margin-top: var(--space-1); }
@@ -68,7 +68,7 @@ html[lang="ja"]:has(.home) h1#_top { max-width: 16em; letter-spacing: -0.03em; }
 .home .ways li:last-child { border: 0; }
 .home .ways a { display: flex; justify-content: space-between; gap: var(--space-3); color: var(--color-text-primary); padding-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-strong); }
 .home .ways p { margin-top: var(--space-4); color: var(--color-text-muted); }
-.home .home-roadmap { max-width: var(--measure); margin-top: var(--space-7); padding-left: var(--space-4); border-left: 2px solid var(--color-accent); color: var(--color-text-muted); font-size: var(--text-caption); }
+.home .home-roadmap { max-width: var(--measure); margin-top: var(--space-7); color: var(--color-text-muted); font-size: var(--text-caption); }
 @media (max-width: 800px) {
   html:has(.home) .content-panel:first-of-type { padding-top: var(--space-6); }
   .home .lede { margin-top: var(--space-4); }

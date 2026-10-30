@@ -1994,3 +1994,13 @@ not loading-performance results. Native and Noto checks cover 80 page loads
 of the English/Japanese homepages in Chromium/WebKit, both themes and
 320/390/1440px widths, including search/menu states. This local iteration
 is separate from the shared-image work and has not been published.
+
+### Remove decorative start-edge stripes, 2026-10-30
+
+The owner requested removal of the decorative vertical line beside diagrams.
+The homepage runtime container now uses an even thin neutral frame, with
+nesting and surface contrast identifying nginx and the embedded VM. The
+roadmap note has no accent rail or compensating left padding. Documentation
+quotes/asides already use uniform frames; code-pane edges and diagram
+connectors convey boundaries/relationships and are retained. This changes
+presentation only, not the execution model or machine-readable source.
