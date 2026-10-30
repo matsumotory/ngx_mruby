@@ -62,6 +62,32 @@ that are not written down elsewhere yet, the work in progress and the queue.
   settle other open proposal questions, or authorize a software release.
   Internal implementation is deferred while the site work is completed.
 
+## Standalone routing recipe, 2026-10-30
+
+- This independent documentation unit includes next `490ea459c` after
+  the installation integration #663; runtime inputs are unchanged from the
+  originally tested `6d65a12ec`. The English and Japanese
+  [routing guide](guides/routing.md#run-it-independently) now contain a
+  complete loopback configuration, Ruby table, executable checks and
+  failure diagnostics. No module or existing integration fixture changed.
+- The exact shell block was extracted from the guides and executed on
+  Ubuntu 22.04 aarch64 as an unprivileged user, using nginx 1.31.8 built
+  from `6d65a12ec` and its default gem lock. Five requests passed: known
+  tenants a/b, absent header, unknown key and an address-shaped key.
+  Each checks HTTP status, content type and every body byte, including the
+  path/query and trailing newline. The instance stops using its own prefix.
+- An external negative-check copy with a deliberately wrong expected
+  backend returned 1 and removed the instance's PID file. That altered
+  expectation is not in the guide. The source/code review found no open
+  must-fix or should-fix item. Browser and export validation are recorded
+  with the completed local commit; no remote CI or publication is claimed.
+- The tested executable is a development build, not a v3 release. This
+  recipe was not run on v2.7.2, with dynamic module loading or on non-Linux
+  systems. No performance measurement or full module-suite rerun was
+  performed for this documentation-only unit. The owner authorized the
+  normal PR/CI/publication process on 2026-10-30; final-head CI and
+  deployment verification are pending.
+
 ## Surface continuation, 2026-10-30
 
 - This homepage-only change adjusts the copper-red CTA and mobile spacing.
