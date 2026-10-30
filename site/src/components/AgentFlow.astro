@@ -25,7 +25,7 @@ const ja = Astro.props.lang === 'ja';
         for (const other of controls.querySelectorAll('button')) other.setAttribute('aria-pressed', String(other === button));
         const result = controls.querySelector('.route-result');
         if (result) result.textContent = `mock-model-${model} → agent_proxy_llm_${model}`;
-        for (const node of figure.querySelectorAll('.flow-wire, .ruby-core, .provider-node')) {
+        for (const node of figure.querySelectorAll('.ruby-core, .provider-node')) {
           node.classList.remove('route-pulse');
           // Restart a finite user-triggered route indication; nothing moves on load.
           void (node as HTMLElement).offsetWidth;

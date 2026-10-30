@@ -15,23 +15,27 @@
 1. リポジトリから、ブランチ`next`をクローンします。
 
    ```console
-   $ git clone --branch next https://github.com/matsumotory/ngx_mruby.git```
+   $ git clone --branch next https://github.com/matsumotory/ngx_mruby.git
+   ```
 
 2. 例のフォルダへ移動します。
 
    ```console
-   $ cd ngx_mruby/examples/start```
+   $ cd ngx_mruby/examples/start
+   ```
 
 3. イメージをビルドし、nginxを起動します。`--wait`を付けると、nginxが`compose.yaml`のヘルスチェックに答えたときにコマンドが戻り、Composeはコンテナ`start-nginx-1`をhealthyとして表示します。
 
    ```console
-   $ docker compose up --build --wait```
+   $ docker compose up --build --wait
+   ```
 
 4. 引数`name`を付けて、`/hello`へリクエストを送ります。レスポンスはRubyのスクリプトが書きます。
 
    ```console
    $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Hello, Ruby! hello.rb answered GET /hello.```
+   Hello, Ruby! hello.rb answered GET /hello.
+   ```
 
 ## リクエストに<wbr>答えたもの
 
@@ -81,18 +85,21 @@ Composeは、`compose.yaml`に従ってこのフォルダをコンテナにマ�
 1. `hello.rb`の`Hello`を`Good morning`に置き換えます。このコマンドは、元のファイルを`hello.rb.orig`として残します。
 
    ```console
-   $ sed -i.orig 's/Hello/Good morning/' hello.rb```
+   $ sed -i.orig 's/Hello/Good morning/' hello.rb
+   ```
 
 2. もう一度リクエストを送ります。レスポンスには新しいあいさつが入っています。
 
    ```console
    $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Good morning, Ruby! hello.rb answered GET /hello.```
+   Good morning, Ruby! hello.rb answered GET /hello.
+   ```
 
 3. 元のスクリプトを戻します。
 
    ```console
-   $ mv hello.rb.orig hello.rb```
+   $ mv hello.rb.orig hello.rb
+   ```
 
 4. マウントした設定を検証してリロードします。`PATH`に依存せず、このイメージのバイナリと設定のパスを指定します。
 
@@ -100,12 +107,14 @@ Composeは、`compose.yaml`に従ってこのフォルダをコンテナにマ�
    $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -t -c /example/nginx.conf
    $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -s reload -c /example/nginx.conf
    $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Hello, Ruby! hello.rb answered GET /hello.```
+   Hello, Ruby! hello.rb answered GET /hello.
+   ```
 
 5. コンテナを止めて削除します。Composeは、コンテナ`start-nginx-1`をremovedと表示します。
 
    ```console
-   $ docker compose down```
+   $ docker compose down
+   ```
 
 リクエストのたびにファイルを読むと、スクリプトを書いている間は便利です。その代わり、nginxはリクエストの処理の途中でディスクを読みます。本番では、[コンパイルしたコードのキャッシュ](../../directives/README.md#caching-compile-code)にあるように、ディレクティブに`cache`を付けてください。`cache`を付けると、nginxは設定を読むときにスクリプトを1回だけコンパイルします。
 

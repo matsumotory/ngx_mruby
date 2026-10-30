@@ -35,6 +35,33 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## v3 homepage redesign checkpoint, 2026-10-30
+
+- The owner prioritized site expression over further internal C work: v3 as
+  the main entry, concrete users and purposes, large diagrams, metallic
+  surfaces and deliberate motion. The [site plan](proposals/site.md#v3-use-case-homepage-2026-10-30)
+  records the revised visual scope and bounded exceptions. Stable 2.7 keeps
+  its own entry and sharing card. Personal photos remain references only.
+- The new homepage shows tested model routing, an explicitly unverified MCP
+  document-service design, and trial/edit/check entry points. English and
+  Japanese canonical guides feed HTML and machine-readable Markdown.
+- #663 production run 41005252954 completed: 117 changed/new shipped files
+  matched over HTTPS; deployment 7431188963, redirects and site policy checks
+  passed, with all five live Lighthouse categories at 100.
+- #665 merged as `2677db219` after current-head CI and independent review;
+  production run 41008268601 is pending. #666 and #667 refreshed onto that
+  base, with final-head CI pending and additive-record merge review clear.
+- A fresh linux/arm64 trial of examples/start stopped at Ubuntu image-metadata
+  retrieval before compilation. No startup/edit/reload success is claimed for
+  that attempt. The updated example adds executable configuration validation
+  and reload checks; its examples CI must pass before publication.
+- Internal fixes remain separate in #664 and the existing local checkpoints.
+  The owner accepted the v3 setter choices D/E on 2026-10-30: invalid Strings
+  raise ArgumentError and the HTTP setter refuses hostnames without resolving
+  them; non-String TypeError remains. This decision does not apply to 2.7,
+  settle other open proposal questions, or authorize a software release.
+  Internal implementation is deferred while the site work is completed.
+
 ## Surface continuation, 2026-10-30
 
 - This homepage-only change adjusts the copper-red CTA and mobile spacing.
