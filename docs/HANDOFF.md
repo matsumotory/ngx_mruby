@@ -51,6 +51,28 @@ that are not written down elsewhere yet, the work in progress and the queue.
   resumed with the owner's authorization on 2026-10-30; software releases
   and personal reference photo publication remain excluded.
 
+## Sharing image continuation, 2026-10-30
+
+- The initial site/rebrand in [#661](https://github.com/matsumotory/ngx_mruby/pull/661)
+  is published at next `6d65a12ec`; its completion record links the deployed
+  artifact and live checks. [#662](https://github.com/matsumotory/ngx_mruby/pull/662)
+  aligned maintenance process docs at master `967b61cc6` (mirrored to v2.x).
+- [#663](https://github.com/matsumotory/ngx_mruby/pull/663) integrates the
+  maintenance docs and verifies the development installation walkthrough.
+  It merged as `490ea459c` after final-head CI and independent review;
+  production run 41005252954 is in progress.
+- This sharing-image change uses the selected metallic mark in one
+  product sharing image for the README and both site versions. The public
+  source, render command, metadata checks and limits are in the
+  [site plan](proposals/site.md#sharing-and-readme-identity-2026-10-29).
+  Existing header/favicon derivatives remain; old image URLs are preserved.
+  Local static checks and full-size/300/390-pixel visual checks pass. Final
+  independent source/visual review has no must-fix or should-fix findings.
+  Current-head PR CI and deployment remain pending; this is not a release change.
+- The later site work remains distinct: restrained surface/CTA refinements,
+  deeper verified HTTP/stream examples and contextual performance records.
+  The v3 setter work follows those site units under its existing plan.
+
 ## Installation and process continuation, 2026-10-29
 
 - The first rebrand and versioned-documentation iteration is published.

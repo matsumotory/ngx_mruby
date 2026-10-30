@@ -2004,3 +2004,31 @@ roadmap note has no accent rail or compensating left padding. Documentation
 quotes/asides already use uniform frames; code-pane edges and diagram
 connectors convey boundaries/relationships and are retained. This changes
 presentation only, not the execution model or machine-readable source.
+
+### Sharing and README identity, 2026-10-29
+
+The product-level sharing card uses the selected metallic C/gold mark and
+“Ruby inside nginx. HTTP / STREAM.” It makes no release or planned-feature
+claim; page-specific titles and canonical URLs remain separate. The README
+uses the same image. Feature-specific HTTP/stream/LLM marks retain their
+names and availability labels on the site. Header and favicon keep their
+small-size monochrome derivatives; the favicon has an opaque dark tile.
+Historical `misc/logo.png` and `site/public/favicon.png` remain in place so
+existing external links are not broken, but new metadata does not use them.
+
+`site/public/brand/ngx-mruby-http.svg` remains the mark source.
+`site/scripts/render-brand.mjs` renders the sharing PNG using that SVG and
+Inter from the existing Fontsource dependency (SIL Open Font License 1.1).
+Run `node scripts/render-brand.mjs` from `site/` after installing the pinned
+dependencies and Playwright Chromium. The renderer uses only embedded local
+assets; the PNG is committed for offline builds. The 1200 by 630 canvas is
+this card's design choice, not an Open Graph protocol requirement.
+`site/scripts/lib/brand.mjs` defines its URL path, dimensions and alternative
+text for both version builds. The built-site deployment check verifies the
+PNG dimensions and the unique OG/X image metadata on every generated page.
+
+The [Open Graph protocol](https://ogp.me/) was checked on 2026-10-29 for image
+URL, type, dimensions and alt properties. Local review covers full size and
+300/390-pixel card widths on light and dark surrounds. Actual SNS rendering
+and cache refresh remain unverified; local and HTTPS asset checks do not
+claim that an external service has fetched its preview.

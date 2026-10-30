@@ -16,6 +16,7 @@
 //
 // Exit status: 0 when every check passes, 1 otherwise (each problem is
 // printed with its file), 2 on a usage error.
+import { SHARE_IMAGE } from './lib/brand.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -75,14 +76,40 @@ const walk = (dir) => {
 walk(dist);
 
 const origin = new URL(SITE_URL).origin;
-let scripts = 0;
+const shareFile = path.join(dist, SHARE_IMAGE.file);
+if (!fs.existsSync(shareFile)) problems.push('sharing image: missing');
+else {
+  const png = fs.readFileSync(shareFile);
+  if (png.length < 24 || png.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' ||
+      png.readUInt32BE(16) !== SHARE_IMAGE.width || png.readUInt32BE(20) !== SHARE_IMAGE.height) {
+    problems.push('sharing image: PNG signature or dimensions differ from metadata');
+  }
+}
+let scripts = 0, sharedPages = 0;
 for (const full of files) {
   const rel = path.relative(dist, full).split(path.sep).join('/');
   const text = fs.readFileSync(full, 'utf8');
   const match = text.match(ANALYTICS);
   if (match) problems.push(`${rel}: names an analytics script ("${match[0]}")`);
   if (!rel.endsWith('.html')) continue;
-  for (const element of elements(readHtml(full))) {
+  const nodes = [...elements(readHtml(full))];
+  if (!VERBATIM_FILES.some(v => v.file === rel)) {
+    const required = {
+      'og:image': `${SITE_URL}/${SHARE_IMAGE.file}`,
+      'og:image:width': String(SHARE_IMAGE.width),
+      'og:image:height': String(SHARE_IMAGE.height),
+      'og:image:type': SHARE_IMAGE.type,
+      'og:image:alt': SHARE_IMAGE.alt,
+      'twitter:image': `${SITE_URL}/${SHARE_IMAGE.file}`,
+      'twitter:image:alt': SHARE_IMAGE.alt,
+    };
+    for (const [key, value] of Object.entries(required)) {
+      const metas = nodes.filter(n => n.tagName === 'meta' && (n.properties?.property === key || n.properties?.name === key));
+      if (metas.length !== 1 || metas[0].properties.content !== value) problems.push(`${rel}: wrong or duplicate ${key}`);
+    }
+    sharedPages++;
+  }
+  for (const element of nodes) {
     if (element.tagName !== 'script') continue;
     scripts++;
     const src = element.properties?.src;
@@ -95,5 +122,5 @@ for (const full of files) {
 finish(
   'check-deploy',
   problems,
-  `${VERBATIM_FILES.map((v) => `${v.file} (${v.bytes} bytes)`).join(', ')} as on gh-pages; ${files.length} HTML and JavaScript files and ${scripts} <script> elements read for analytics and scripts from another host`,
+  `${VERBATIM_FILES.map((v) => `${v.file} (${v.bytes} bytes)`).join(', ')} as on gh-pages; ${sharedPages} pages with sharing metadata; ${files.length} HTML and JavaScript files and ${scripts} <script> elements read for analytics and scripts from another host`,
 );
