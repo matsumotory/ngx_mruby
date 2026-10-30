@@ -15,7 +15,7 @@ try {
     for (const [term, target] of [
       ['mruby_content_handler', '/reference/directives/'],
       ['Nginx::Request', '/reference/ruby/'],
-      ['ngx_mruby_nonexistent_identifier_74931', null],
+      ['zzqv_zzqw_74931', null],
     ]) {
       try {
         const urls = await page.evaluate(async ({ bundle, term }) => {
