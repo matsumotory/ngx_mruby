@@ -43,7 +43,8 @@ that are not written down elsewhere yet, the work in progress and the queue.
   live code checks covered 340 conditions, interaction checks 64, and English /
   Japanese search in both versions passed. Its visual design was subsequently
   rejected as insufficient; successful checks do not imply design acceptance.
-- `codex/home-use-case-lp` rebuilds the v3 overview around developers managing
+- [#670](https://github.com/matsumotory/ngx_mruby/pull/670)
+  (`codex/home-use-case-lp`) rebuilds the v3 overview around developers managing
   several LLM APIs: purpose, module definition, model routing, first local
   handler, then the real proxy example. Nested illustration boxes and repeated
   introductory claims are removed. MCP remains an unverified architecture
