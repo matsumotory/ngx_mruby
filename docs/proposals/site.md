@@ -2028,13 +2028,29 @@ its complete configuration remains available in an expandable code block.
 
 The owner's subsequent feedback requires a unified composition: the page
 background, large planes, light direction, spacing, color and motion must work
-together; isolated metallic buttons and diagrams are insufficient. The current
-iteration uses a shared upper-left key light on navy enamel, deep recesses,
-small silver edges, with warm/violet accents on controls and route state. The
-page light fades into the reading background. There are no diagonal wallpaper
-stripes behind text, nor outer illustration or inner Ruby cards: a single
-nginx enclosure carries the routing hierarchy. MCP explanation and
-its diagram share an asymmetric desktop composition, stacked on mobile.
+together; isolated metallic buttons and diagrams are insufficient. After #669,
+the owner also rejected the opening as a landing page: the audience, problem,
+use and benefit were fragmented, and implementation labels dominated the figure.
+
+The landing page therefore starts with developers using several LLM APIs and
+the purpose of managing their routes and provider keys at one proxy. It defines
+ngx_mruby as a module running Ruby inside nginx, rather than a ready-made hosted
+product. The reading order is purpose and development status, a request-to-rule-
+to-API diagram, the source-built Hello trial, then the real routing code. The
+trial explicitly bridges Hello to the model-routing guide. MCP remains a
+secondary, unverified architecture candidate, followed by planned capabilities,
+HTTP/TCP examples and stable-version/reference entries. Technical fixture names
+are available in a disclosure, not the main diagram labels. The real Ruby
+handler is visible; checked mock output and the full configuration are
+expandable with their original code and copy controls intact.
+
+A broad navy plane carries the routing steps without a nested nginx enclosure
+or Ruby card. The page and figure share the light direction; copper controls
+and gold/violet route states use the existing palette. There are no diagonal
+wallpaper stripes behind text. The v3 sharing image uses the same background,
+mark and concrete routing purpose. Visual review must include a first-time
+reader explaining the product, audience, benefit and next step; color checks
+alone cannot establish that the landing page works.
 
 Directional gradients and shadows are allowed on those named homepage planes
 (main frame, route stage and trial band) as well as the

@@ -35,6 +35,31 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## Landing-page narrative rebuild, 2026-10-30
+
+- #669 merged as `10297d1e2`; production run
+  [41042885039](https://github.com/matsumotory/ngx_mruby/actions/runs/41042885039)
+  and deployment `7436631611` succeeded. All 626 shipped files matched HTTPS;
+  live code checks covered 340 conditions, interaction checks 64, and English /
+  Japanese search in both versions passed. Its visual design was subsequently
+  rejected as insufficient; successful checks do not imply design acceptance.
+- [#670](https://github.com/matsumotory/ngx_mruby/pull/670)
+  (`codex/home-use-case-lp`) rebuilds the v3 overview around developers managing
+  several LLM APIs: purpose, module definition, model routing, first local
+  handler, then the real proxy example. Nested illustration boxes and repeated
+  introductory claims are removed. MCP remains an unverified architecture
+  candidate; v3 remains in development, with a stable 2.7 entry. The v3 sharing
+  image follows the same concrete purpose and composition.
+- Scope is the bilingual landing page, its sharing asset and these records.
+  Runtime fixes, v3 setter decisions, stable README work, and software releases
+  remain separate. Personal references and local QA files are not public assets.
+- The owner asked on 2026-10-30: “ngx_mrubyは本番二デプロイしてから見せて。
+  こっちは個人のサイトなんやから” (deploy the personal site before presenting it).
+  Follow the existing review/CI/merge gates, then verify the production artifact,
+  code copies, OG delivery and desktop/mobile pages. This does not authorize a
+  software release or a GitHub approval review. Current-head checks, independent
+  first-reader/technical reviews and publication evidence belong on the PR.
+
 ## Whole-page material integration, 2026-10-30
 
 - #668 merged as `252018d86`; production run

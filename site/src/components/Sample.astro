@@ -32,11 +32,12 @@ const sample = loadSample(spec, repo, `the sample of ${Astro.url.pathname}`);
 
 <div class:list={["sample", { "sample-workbench": props.presentation === 'workbench', "sample-focused": props.presentation === 'focused' }]}>
   <div class="sample-files">
-  {sample.shown.filter(item => props.presentation !== 'focused' || item.key !== 'conf').map((item, index) => <div class:list={["sample-file", `sample-${item.key}`]}>
+  {sample.shown.filter(item => props.presentation !== 'focused' || !['conf', 'compared'].includes(item.key)).map((item, index) => <div class:list={["sample-file", `sample-${item.key}`]}>
     {props.presentation && <div class="sample-file-label"><span><strong>{labels[item.key]}</strong><code class="sample-filename" title={item.file}>{path.posix.basename(item.file)}</code></span><span aria-hidden="true">{item.lang === 'ruby' ? 'RUBY' : item.lang === 'nginx' ? 'NGINX' : item.lang === 'text' ? 'TEST' : 'HTTP'}</span></div>}
     <Code code={item.text.replace(/\n$/, '')} lang={item.lang} title={props.presentation ? undefined : sampleTitle(item, props.lang)} mark={props.presentation === 'focused' && item.key === 'script' ? 'v.agent_proxy_backend = route[0]' : undefined} />
   </div>)}
   </div>
+  {props.presentation === 'focused' && sample.shown.filter(item => item.key === 'compared').map(item => <details class="sample-output"><summary>{props.lang === 'ja' ? '検証結果を開く（mock）' : 'Show checked output (mock)'}</summary><Code code={item.text.replace(/\n$/, '')} lang={item.lang} title={sampleTitle(item, props.lang)} /></details>)}
   {props.presentation === 'focused' && <details class="sample-config"><summary>{props.lang === 'ja' ? 'nginx.confを開く' : 'Show nginx.conf'}</summary>{sample.shown.filter(item => item.key === 'conf').map(item => <Code code={item.text.replace(/\n$/, '')} lang={item.lang} title={sampleTitle(item, props.lang)} />)}</details>}
   <p class="caption sample-caption" set:html={sampleCaptionHtml(sample, props.lang)} />
 </div>
