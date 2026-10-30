@@ -40,7 +40,8 @@ that are not written down elsewhere yet, the work in progress and the queue.
 - #670 merged as `0982d877f`; production run [41056532525](https://github.com/matsumotory/ngx_mruby/actions/runs/41056532525)
   succeeded. All 628 shipped files matched HTTPS. [Publication evidence](https://github.com/matsumotory/ngx_mruby/pull/670#issuecomment-6523552378)
   records live code, interaction, search and sharing checks.
-- `codex/site-layout-hierarchy`, based on that merge, removes generic link arrows,
+- [#671](https://github.com/matsumotory/ngx_mruby/pull/671)
+  (`codex/site-layout-hierarchy`), based on that merge, removes generic link arrows,
   repeated figure numbering and standalone narrow-screen arrows. Related items
   use proximity and shared text roles. The existing routing behavior, source
   copies, development status and MCP limitations remain intact.
