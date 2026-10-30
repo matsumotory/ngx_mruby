@@ -63,11 +63,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      # Step 6: the 2.x pages under /v2/ are built from docs/ of master,
-      # with its whole history for their last-updated dates.
+      # Step 6: production always reads master, with its whole history.
+      # Only the trusted site-rebuild PR previews the exact docs-only #673
+      # candidate so both entry journeys can be inspected before either merge.
+      # The fixed SHA is never selected by push or workflow_dispatch deploys.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: master
+          ref: ${{ github.event_name == 'pull_request' && github.repository == 'matsumotory/ngx_mruby' && github.event.pull_request.number == 672 && github.event.pull_request.head.repo.full_name == 'matsumotory/ngx_mruby' && github.head_ref == 'codex/site-purpose-rebuild' && 'a6ac31dc9b91498644e0174d22ed5c8b033f9f0b' || 'master' }}
           path: master
           fetch-depth: 0
           persist-credentials: false
@@ -198,6 +200,10 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: npx playwright install --with-deps chromium webkit
+      - name: Check the read-only browser boundary on a local fixture
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/test-read-only-browser.mjs
       - name: Check that copy controls are still when the page loads
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
@@ -243,7 +249,9 @@ jobs:
         id: shots
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/screenshots.mjs --out build-screenshots
+        run: |
+          node scripts/screenshots.mjs --out build-screenshots
+          node scripts/screenshots-live.mjs --local --out build-screenshots/predeploy-smoke
       # The screenshots stay in the artifact: no image is committed or
       # attached to the pull request (4.12, the owner's decision of
       # 2026-10-19).
@@ -316,3 +324,52 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+
+  # Read-only acceptance of the artifact just published above. No token or
+  # new permission is needed: the GitHub metadata is public, and artifact
+  # download is limited to this workflow run. Fail closed on unavailable
+  # evidence, a concurrent different deployment, or mismatched public bytes.
+  verify-live:
+    name: Verify the published site
+    needs: [build, deploy]
+    if: ${{ github.repository == 'matsumotory/ngx_mruby' && github.ref == 'refs/heads/next' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: site/.node-version
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: site
+          path: site/dist
+          digest-mismatch: error
+      - name: Install the locked verification tools
+        working-directory: site
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Match artifact SHA, deployment SHA and the public deployment policy
+        working-directory: site
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/check-public-deployment.mjs --sha "$EXPECTED_SHA"
+      - name: Check published bytes, HTTPS redirect, retained file and live Lighthouse
+        working-directory: site
+        # GitHub evidence was checked above through the unauthenticated public API.
+        # The existing live HTTP and Lighthouse checks remain unchanged.
+        run: node scripts/check-live.mjs --no-gh
+      - name: Capture the actual desktop and mobile reader journeys
+        working-directory: site
+        run: node scripts/screenshots-live.mjs --out live-screenshots
+      - name: Keep live evidence, including partial screenshots on failure
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: live-screenshots
+          path: site/live-screenshots
+          if-no-files-found: warn

@@ -705,9 +705,17 @@ footer .meta {
 .expressive-code .frame.has-title:not(.is-terminal) .title::after {
   display: none;
 }
+/* Copy controls are still at load and during theme/style application.
+   Hover/focus opacity changes and the focus ring remain; the separate
+   success feedback retains its short transition. No idle color blend can
+   expose an intermediate/native button color before the reader acts. */
+.expressive-code .copy button,
+.expressive-code .copy button div {
+  transition: none;
+}
 .expressive-code .copy button {
-  transition-property: opacity, background-color, border-color;
-  transition-duration: var(--duration-short);
+  appearance: none;
+  background-color: var(--color-bg-tertiary);
 }
 
 /*

@@ -17,7 +17,7 @@
   implementation/planning ledger uses sections, and the start/status links
   have matching anchors in both languages. The maintenance-source entry is
   a separate docs-only Draft #673 against `master`, not an override in the
-  site generator and not merged by this work.
+  site generator. It remains unmerged pending its own acceptance gates.
 - Local evidence on the continuation's working tree: pinned Node 22.23.3,
   `npm ci --ignore-scripts`, both version builds, generator/release fixtures,
   `npm run check`, source links and example files-only checks pass. The
@@ -48,12 +48,40 @@
   Follow-up changes shorten those passages, use reader-facing Model A/B
   labels while retaining exact identifiers in code, and remove the prose
   caption width limit accidentally applied to code headers.
-- Pending: final-head CI and independent pixels, plus actual pixels of #673's
-  maintenance entry. The local environment has no Docker and browser startup
-  is blocked; no local runtime/browser pass is claimed. Earlier screenshots
-  and checks are not proof of the final head.
-- Keep #672 and #673 in draft. No merge, production deploy, software tag or
-  release is performed by this continuation.
+- At `896d2884`, [site CI](https://github.com/matsumotory/ngx_mruby/actions/runs/41121614498)
+  passed Japanese lines, interaction, code layout, focus and accessibility.
+  Independent desktop/mobile pixels of screenshot artifact `13010586352`
+  confirmed short model labels, aligned code headers and the open disclosure
+  indicator, with no remaining visual finding in the reviewed journey. The
+  computed-style check still failed on initial WebKit animations and a Copy
+  background outside the palette. This failure is not waived by pixel review.
+- The separate regression-only commit `3f585cd7` adds `check-copy-idle.mjs`
+  and its CI invocation, with no CSS fix. Its [run](https://github.com/matsumotory/ngx_mruby/actions/runs/41125656305)
+  failed only that regression: all 24 load states had idle Copy surfaces with
+  0.15-second transitions. The existing style/interaction checks passed; the
+  earlier intermittent running-animation observation was not reproduced in
+  this run. An [independent repeat](https://github.com/matsumotory/ngx_mruby/actions/runs/41125656305/job/124323812752)
+  reproduced all 24 regression failures and three Copy-related style failures
+  (running animations and intermediate colors); all other checks passed.
+  The animation targets were not individually identified by that style log.
+  The separate CSS correction makes the Copy surfaces static and gives the button an explicit token
+  background, while retaining hover/focus opacity, focus rings and success
+  feedback. Its current-head browser result remains required.
+  The five earlier continuation commits did not consistently separate tests
+  from fixes; the PR records their evidence and limitations. Owner acceptance
+  of that earlier history remains pending and blocks merge.
+- The trusted #672 preview may build #673's exact source for v2 entry pixels;
+  production push/dispatch builds always use `master`. Read-only post-deploy
+  verification is being added to the existing workflow: artifact/deployment
+  SHA, public branch policy, live bytes, HTTPS, Lighthouse and a small set of
+  desktop/mobile journey screenshots. It adds no authentication or permission.
+- Pending: regression red/fix green and independent repeat, final-head pixels,
+  #673 maintenance-entry pixels, recorded independent PR reviews, then all
+  normal merge gates. The local environment has no Docker and browser startup
+  is blocked; no local runtime/browser pass is claimed.
+- Site production acceptance is now in scope, but both PRs remain Draft until
+  their gates pass. Neither has been merged or deployed. Software tags/releases
+  and authentication or permission changes remain outside this site work.
 
 ## Site information architecture and persistent procedure, 2026-10-30
 

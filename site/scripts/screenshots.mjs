@@ -134,7 +134,8 @@ async function main() {
       ['start', { en: '/start/', ja: '/ja/start/' }],
       ['docs', { en: '/docs/', ja: '/ja/docs/' }],
       ['agent-proxy', { en: '/guides/agent-proxy/', ja: '/ja/guides/agent-proxy/' }],
-    ]) for (const lang of ['en', 'ja']) for (const size of [SIZES[1], SIZES[2]]) {
+      ['v2-entry', { en: '/v2/', ja: '/v2/ja/' }],
+    ]) for (const lang of ['en', 'ja']) for (const size of (id === 'v2-entry' ? SIZES : [SIZES[1], SIZES[2]])) {
       const { context, tab } = await open(journeyBrowser, server.url + routes[lang], size, 'dark');
       const base = `chromium-${id}-${lang}-dark-${size.width}x${size.height}`;
       try {
@@ -181,7 +182,7 @@ async function main() {
   for (const f of review) lines.push(`- review/${path.basename(f)}`);
   lines.push('', '## Pages: Chromium and WebKit, light and dark, 320x664, 390x664, 1440x900', '');
   for (const f of fs.readdirSync(pagesDir).sort()) lines.push(`- pages/${f}`);
-  lines.push('', '## Reader journey: Chromium dark, 390x664 and 1440x900', '');
+  lines.push('', '## Reader journey: Chromium dark, 390x664 and 1440x900; homepage and v2 entry also at 320x664', '');
   for (const f of fs.readdirSync(journeyDir).sort()) lines.push(`- journey/${f}`);
   fs.writeFileSync(path.join(opt.out, 'index.md'), `${lines.join('\n')}\n`);
   for (const f of failures) console.log(`screenshots: failed: ${f}`);
