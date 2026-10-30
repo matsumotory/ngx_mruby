@@ -1197,6 +1197,13 @@ Palette B:
 
 ### 4.8 Motion
 
+These are the default documentation-page rules. The later homepage rebrand
+allows finite, user-triggered route indications that explain a selection;
+its existing 800 ms indication is recorded below. It must keep all text
+readable, finish without further interaction and be static under reduced
+motion. The documentation checks below do not establish homepage motion
+acceptance; the interaction check covers that separately.
+
 - Only interactive elements animate, only color, background color, border
   color, opacity and transform, for 200 ms or less (Material Design 3's
   short durations, 50 to 200 ms). The landing page changes background,
@@ -1229,7 +1236,10 @@ Palette B:
   required code to be readable without horizontal scrolling (「横スクロールを
   強制」は「絶対やめて」). Code blocks soft-wrap, including long paths and
   tokens; copying keeps the original source. This supersedes the earlier
-  cut-off-code treatment. Tables may scroll in their own box. Diagrams do not
+  cut-off-code treatment. Tables and inline-code cells must also be readable
+  without forced sideways scrolling: wrap identifiers and restructure status
+  ledgers into sections. A genuinely wide comparison needs a readable narrow
+  representation rather than a scrollbar as its only access. Diagrams do not
   scroll sideways; they take a vertical arrangement instead (3.5).
 - **Right edge.** At 390 px, in Chromium and in WebKit, the longest line of
   every Japanese text block (`lang="ja"`) of two or more lines ends less
@@ -2064,6 +2074,95 @@ a passing mechanical check; this design is an iteration, not an owner acceptance
 Photos remain private references and are not committed. No benchmark result,
 MCP conformance, formal v3 release or completed planned API is claimed.
 
+### Site design acceptance
+
+Read this section when starting or resuming site work, before changing content
+or layout, and before presenting or publishing the result. It applies to the
+homepage, trial path, documentation navigation, examples and version entry
+pages. These are the sessions' working procedures; they do not change the
+repository's authorization, security, review or merge rules.
+
+**Choose the references for the job.** Current Resend, Linear, Next.js,
+Supabase, Astro, Tailwind CSS and Vite are the visual references for this
+rebuild. Inspect their real desktop and mobile pages, recording the URL, date,
+reading order and what the code, illustration or motion helps the reader
+understand. Use the relevant observations, not a collage of their components.
+Technical sources such as nginx, njs and OpenResty establish capabilities;
+their documentation indexes are not the visual template for this landing page.
+Do not infer a current design from memory or call an unviewed page inspected.
+Reference observations belong in the scoped PR, so they can evolve without
+duplicating this procedure.
+
+**Establish the reader's task before styling.** Read the actual implementation,
+tests and release state. Write a short content outline identifying the user,
+their problem, the concrete input, the Ruby decision, observable output, useful
+consequence and how to try it. Attach source/test evidence and distinguish
+implemented, planned and unverified configurations. A heading must describe
+the supported purpose or operation; reject slogans and claims whose meaning
+only becomes clear in a later explanation. A test fixture is evidence, not
+automatically a complete user recipe or a verified external integration.
+
+**Make one use case intelligible.** The overview should connect purpose,
+example, code/result and a matching trial action in one reading sequence.
+Keep detailed contracts and evidence in canonical docs. A trial of a basic
+handler must not imply that it exercises the LLM proxy. v3 is the main product
+direction and remains in development; the released 2.7 entry must be easy to
+find. MCP construction ideas must remain distinct from verified LLM recipes.
+Do not invent API normalization, provider compatibility, OAuth, billing or
+performance benefits. An interactive route example must expose its input,
+decision and selected destination together, including an unambiguous selected
+state. Arrows alone and disconnected nouns are not a diagram.
+
+Use the shared metallic identity across the whole composition: dark navy and
+black surfaces, coherent light and reflection, silver edges and purposeful
+gold, purple, copper or metallic red accents. Judge the background, typography,
+controls and diagrams together. Personal reference photographs are not public
+assets. Motion must help explain a real state or flow and retain its meaning
+when reduced motion is enabled. Do not add decorative left-edge lines.
+Read [Layout and type hierarchy](#layout-and-type-hierarchy) for shared roles.
+
+**Inspect the complete journey.** Follow the overview's main action into the
+trial and docs, and check the stable-version entry when affected. Current entry
+pages must describe current use; do not lead with an old wiki introduction or
+historical benchmark. Preserve useful historical references and contracts when
+moving old material. Group navigation by reader task, with a clear destination
+per entry, instead of packing many links into a paragraph. A capability/status
+ledger should normally use sections with nearby evidence; reserve tables for
+comparisons that benefit from aligned columns. Do not force horizontal scrolling
+to read examples, status explanations, paths or navigation. Verify each code
+area, inline-code cell and affected table, not only the page's overall width;
+wrap or restructure without clipping or tiny text. Code copies retain the full
+canonical source, independent of visual wrapping.
+
+**Require an independent first reading.** Give the reviewer actual rendered
+pages or full-context screenshots, the routes and supported viewports, but not
+the author's intended answers or an approving summary. Before reading the
+implementation rationale, the reviewer writes what the page visibly tells them:
+what the software does, who would use it and why, what changes in the example,
+what is available now, and the next action. They identify where each answer
+comes from and any point where the reading order or diagram leaves them
+guessing. An answer supplied by the author or inferred only from source code
+does not count. Missing or wrong answers block design acceptance; restructure
+the relevant content rather than adding another label to explain the layout.
+
+The reviewer then checks the source claims, shared type roles and every
+secondary label/arrow for necessary meaning. Inspect desktop and mobile
+overviews with adjacent sections, plus affected intermediate/narrow widths,
+zoom, keyboard focus, code copies and reduced motion. For code width, use the
+existing 320/390/768/1440 px checks in both languages and require each code
+region's `scrollWidth <= clientWidth + 1`. A screenshot cannot establish copy
+correctness or motion behavior. Automated checks and first-reader findings are
+separate evidence, and neither replaces the other.
+
+**Leave a reproducible checkpoint.** In the PR, record the rule sections read,
+content outline and evidence, reference observations, tested head, actual URLs
+and viewport sizes, contextual images, the reviewer's answers, issues resolved
+and checks not run. A follow-up review can focus on changed or unresolved
+areas; do not repeat unchanged successful tests just to increase a count.
+Before handoff, confirm AGENTS/CLAUDE/DEVELOPMENT links still reach these rules
+and update HANDOFF's state. Do not mark the whole design complete while known
+reader-comprehension problems remain.
+
 ### Layout and type hierarchy
 
 The shared design procedure applies to human, Claude and Codex contributions.
@@ -2094,14 +2193,11 @@ a size. A new role or size needs an explicit reason, a shared token and visual
 review; no one-off component size. Removing redundant labels must not remove
 version status, unimplemented limitations, code provenance or useful instructions.
 
-An independent reviewer checks the actual desktop and mobile pages, including
-an overview with surrounding sections, and reports whether a first-time reader
-can explain the product, audience, benefit and next step. For every arrow or
-secondary label, ask what information is lost without it; remove it or fix the
-layout when the answer is none. Compare peer heading/control roles and their
-computed sizes. Check reading order, semantic headings, focus, disclosures,
-canonical code copy and reduced motion. Passing automated checks does not prove
-that the page communicates clearly or that its composition is accepted.
+Apply the independent first-reading and actual-page review in
+[Site design acceptance](#site-design-acceptance). During the subsequent type
+review, compare peer heading/control roles and their computed sizes. For every
+arrow or secondary label, identify the information lost without it; remove it
+or fix the layout when the answer is none.
 
 ### Sharing and README identity, 2026-10-29
 

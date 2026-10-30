@@ -1,5 +1,28 @@
 # Handoff: the state of the work
 
+## Site information architecture and persistent procedure, 2026-10-30
+
+- #671 merged as `9221ea4ed`; production run
+  [41069372640](https://github.com/matsumotory/ngx_mruby/actions/runs/41069372640)
+  passed. Its mechanical checks and publication are complete, but the owner
+  subsequently found the product purpose, example flow, documentation entries
+  and status table unclear. This is not design acceptance.
+- The current local work strengthens the shared entry path in AGENTS, CLAUDE
+  and DEVELOPMENT to [Site design acceptance](proposals/site.md#site-design-acceptance).
+  It separates current visual references from technical evidence and requires
+  an independent first reading of the complete homepage/trial/docs journey.
+- Content audit: the tested LLM policy recipe is in
+  `test/conf/conf.d/60-agent-proxy.conf` and `test/t/cases/agent_proxy.rb`;
+  the standalone trial currently exercises only `examples/start/`'s basic
+  handler. MCP remains an unverified design. The generated 2.x docs entry takes
+  `docs/README.md` from the maintenance branch, so updating only next's docs
+  cannot modernize that entry. Preserve useful old contracts when reorganizing.
+- Next: integrate the current visual-reference survey, rebuild the information
+  architecture around a supported use case and its matching trial, then review
+  actual desktop/mobile comprehension before normal CI/publication. Existing
+  runtime fixes and software releases are separate. No new design is implemented
+  or published by this procedure update.
+
 ## How to use this file
 
 This file records where the work on ngx_mruby stands, so that any session,
