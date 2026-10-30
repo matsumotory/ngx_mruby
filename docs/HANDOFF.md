@@ -35,19 +35,55 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## Local surface continuation, 2026-10-29
+## Surface continuation, 2026-10-30
 
-- Branch `codex/site-metal-surfaces`, based on published next `6d65a12ec`,
-  adjusts the homepage CTA and mobile spacing only. The
-  [site plan](proposals/site.md#local-surface-and-mobile-spacing-iteration-2026-10-29)
-  records the roles, contrast and measured viewport differences. Existing
+- This homepage-only change adjusts the copper-red CTA and mobile spacing.
+  The [site plan](proposals/site.md#local-surface-and-mobile-spacing-iteration-2026-10-29)
+  records color roles, contrast and measured viewport differences. Existing
   style expectations are preserved; the new contrast assertion is additive.
-- Local visual/viewport checks passed; final independent review is pending.
-  No push, PR creation, merge or deployment has been performed for this unit.
-- `codex/brand-sharing` separately preserves the completed README/OG work.
-  [#663](https://github.com/matsumotory/ngx_mruby/pull/663) preserves the
-  installation integration. Public operations remain pending; consult the
-  current PR and owner authorization before resuming them.
+- Independent source review has no must-fix or should-fix findings.
+  Local checks cover 80 native/Noto style loads, 1032 focus stops and no
+  contrast failures. Those preview builds were dirty; final-head CI and
+  production verification remain required.
+- [#665](https://github.com/matsumotory/ngx_mruby/pull/665) contains the
+  separate README/OG change. [#663](https://github.com/matsumotory/ngx_mruby/pull/663)
+  merged as `490ea459c`; this branch includes that integration. Publication
+  resumed with the owner's authorization on 2026-10-30; software releases
+  and personal reference photo publication remain excluded.
+
+## Installation and process continuation, 2026-10-29
+
+- The first rebrand and versioned-documentation iteration is published.
+  [#661](https://github.com/matsumotory/ngx_mruby/pull/661) merged as
+  `6d65a12ec`. Production run 40959681713 and deployment 7425112363
+  succeeded. All 614 shipped files match the live site; four versioned
+  English/Japanese searches, mobile/desktop views, code interaction and
+  HTTPS checks pass. Final evidence is in the
+  [completion record](https://github.com/matsumotory/ngx_mruby/pull/661#issuecomment-6509229800).
+- The common continuation procedure from #659 reached master as `967b61cc6`
+  in [#662](https://github.com/matsumotory/ngx_mruby/pull/662), after all CI
+  and independent review passed. The v2.x mirror succeeded. HANDOFF
+  remains on next, and master links that source. Branch-specific test
+  process/port handling is preserved; a common workflow does not imply
+  identical harness capabilities.
+- [#663](https://github.com/matsumotory/ngx_mruby/pull/663), branch
+  `codex/integrate-stable-install`, merges the installation correction
+  of [#660](https://github.com/matsumotory/ngx_mruby/pull/660) from master
+  `967b61cc6` into next `6d65a12ec`. The conflict resolution selects next
+  development source and preserves the v3 core-gem, lock and removed
+  auto-ssl contracts. English/Japanese commands are identical. A fresh
+  clone of `6d65a12ec` built and installed nginx 1.31.8 on Ubuntu 22.04
+  aarch64; the exact documented HTTP trial passed both response assertions,
+  configuration validation, reload and quit. These are documentation
+  changes, with no measured binary input changed. Current head, final CI
+  and independent review belong in the integration PR.
+- Next site work: shared README/social branding and controlled metallic
+  surface/CTA refinements, then deeper executable HTTP/stream examples
+  and reproducible performance records. Keep human and agent output on
+  the same sources; retain implementation/planned/under-design distinctions.
+  The upstream setter D/E work and stable empty-filter follow-up remain
+  separate runtime items. No new runtime contract or software release was
+  decided by this documentation integration.
 
 ## Site continuation checkpoint, 2026-10-29 20:25 UTC
 
