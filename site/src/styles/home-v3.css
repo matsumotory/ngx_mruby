@@ -166,7 +166,6 @@ html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-7); }
 .route-controls button[aria-pressed="true"] { border-color: var(--color-code-number); color: var(--color-code-number); }
 .route-result { flex-basis: 100%; overflow-wrap: anywhere; }
 .v3-flow[data-route="a"] [data-provider="a"], .v3-flow[data-route="b"] [data-provider="b"] { border-color: var(--color-code-number); }
-.v3-flow[data-route="a"] [data-provider="b"], .v3-flow[data-route="b"] [data-provider="a"] { opacity: 0.6; }
 @media(prefers-reduced-motion: no-preference) {
  .home-v3 .route-pulse { animation: route-indication 800ms ease-out 1; }
  @keyframes route-indication { 0% { transform: translateY(0); } 40% { transform: translateY(-4px); } 100% { transform: translateY(0); } }
