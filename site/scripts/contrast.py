@@ -265,6 +265,10 @@ def main():
             L, C, H = block[TOKENS[name][0]][1]
             if C > NEUTRAL_MAX_CHROMA or H != bg_hue:
                 failures.append(label + ' ' + name + ': inconsistent neutral hue/chroma')
+        button_ratio = ratio(block['--color-button-text'][0], block['--color-button-fill'][0])
+        print('  button text on red metal fill: %s:1 (needs 4.5)' % trunc(button_ratio))
+        if button_ratio < 4.5:
+            failures.append('%s button text on fill: %.6f:1' % (label, button_ratio))
         home = by_token(block)
         check_pairs(label, home, failures)
         for prop in codes + ['--color-text-primary', '--color-text-muted']:
