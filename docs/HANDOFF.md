@@ -64,6 +64,13 @@ that are not written down elsewhere yet, the work in progress and the queue.
   including canonical clipboard and keyboard checks; homepage computed-style
   checks pass in 40 light/dark page loads. Publication remains pending
   final-head CI, independent review and live QA.
+- Site CI at `d005d45f3` passed the complete computed-style, Japanese,
+  focus, search and accessibility gates. Its interaction check counted
+  Starlight's idle-loaded Pagefind UI module as illustration traffic.
+  The check now waits for the search input to be attached before measuring
+  route controls, retaining the zero-request assertion. A delayed-idle
+  diagnostic reproduces the old failure; normal and delayed initialization
+  each pass all 32 interaction conditions with the wait. Final CI is required.
 
 ## v3 homepage redesign checkpoint, 2026-10-30 06:04 UTC
 

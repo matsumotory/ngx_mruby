@@ -17,6 +17,10 @@ try {
         const page = await context.newPage();
         await page.goto(server.url + route);
         await page.evaluate(() => document.fonts.ready);
+        // Starlight initializes Pagefind in requestIdleCallback after load.
+        // Wait for its input to exist before measuring the illustration's
+        // requests; do not count that unrelated lazy module as route traffic.
+        await page.locator('#starlight__search .pagefind-ui__search-input').waitFor({ state: 'attached' });
         const wire = page.locator('.flow-wire').first();
         const transform = await wire.evaluate(el => { const m = new DOMMatrix(getComputedStyle(el).transform); return [m.a, m.b, m.c, m.d]; });
         const requests = [];
