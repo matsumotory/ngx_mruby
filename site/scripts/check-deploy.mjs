@@ -16,7 +16,7 @@
 //
 // Exit status: 0 when every check passes, 1 otherwise (each problem is
 // printed with its file), 2 on a usage error.
-import { SHARE_IMAGE } from './lib/brand.mjs';
+import { SHARE_IMAGE, V3_SHARE_IMAGE, shareImageForVersion } from './lib/brand.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -76,6 +76,7 @@ const walk = (dir) => {
 walk(dist);
 
 const origin = new URL(SITE_URL).origin;
+for (const SHARE_IMAGE of [shareImageForVersion(2), V3_SHARE_IMAGE]) {
 const shareFile = path.join(dist, SHARE_IMAGE.file);
 if (!fs.existsSync(shareFile)) problems.push('sharing image: missing');
 else {
@@ -84,6 +85,7 @@ else {
       png.readUInt32BE(16) !== SHARE_IMAGE.width || png.readUInt32BE(20) !== SHARE_IMAGE.height) {
     problems.push('sharing image: PNG signature or dimensions differ from metadata');
   }
+}
 }
 let scripts = 0, sharedPages = 0;
 for (const full of files) {
@@ -94,6 +96,7 @@ for (const full of files) {
   if (!rel.endsWith('.html')) continue;
   const nodes = [...elements(readHtml(full))];
   if (!VERBATIM_FILES.some(v => v.file === rel)) {
+    const SHARE_IMAGE = shareImageForVersion(rel.startsWith('v2/') ? 2 : 3);
     const required = {
       'og:image': `${SITE_URL}/${SHARE_IMAGE.file}`,
       'og:image:width': String(SHARE_IMAGE.width),

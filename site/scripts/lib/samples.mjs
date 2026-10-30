@@ -83,7 +83,7 @@ function withoutLeadingComments(text) {
 // The spec of a sample from the attributes of <Sample> on the home pages
 // (one script, a request and a response).
 export function specFromProps(props) {
-  return { case: props.case, conf: props.conf, script: [props.script], request: props.request, response: props.response, compared: [] };
+  return { case: props.case, conf: props.conf, script: [props.script], request: props.request, response: props.response, compared: props.compared ? [props.compared] : [], ...(props.label ? { label: props.label } : {}) };
 }
 
 // The files of a sample, in the order of the page: [key, path].

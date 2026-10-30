@@ -56,7 +56,7 @@ const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 // a page with a diagram, and reference pages rendered from docs/; in
 // English and Japanese. /ja/docs/ has the h2 with <wbr> of step 1. Step 4
 // adds the pages it writes.
-export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/reference/directives/', '/guides/install/', '/ja/docs/', '/start/', '/guides/routing/', '/guides/use-cases/', '/reference/build/', '/reference/ruby/', '/concepts/', '/concepts/filters/', '/concepts/async/', '/concepts/lifetimes/', '/guides/agent-proxy/', '/security/', '/security/trust-boundary/', '/contributing/', '/releases/', '/docs/'];
+export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/reference/directives/', '/guides/install/', '/ja/docs/', '/start/', '/ja/start/', '/guides/mcp-gateway/', '/ja/guides/mcp-gateway/', '/guides/routing/', '/guides/use-cases/', '/reference/build/', '/reference/ruby/', '/concepts/', '/concepts/filters/', '/concepts/async/', '/concepts/lifetimes/', '/guides/agent-proxy/', '/security/', '/security/trust-boundary/', '/contributing/', '/releases/', '/docs/'];
 // A last line of one or two characters fails on every page of PAGES
 // (step 4 fixed the last ones that were notes).
 const LAST_LINE_STRICT = new Set(PAGES);
@@ -157,11 +157,11 @@ function inspect(cfg) {
       if (style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0) checkColor(el, 'outline-color', style.outlineColor, where);
       if (!isSvg && style.textDecorationLine !== 'none') checkColor(el, 'text-decoration-color', style.textDecorationColor, where);
       // 4.3 item 5
-      if (style.boxShadow !== 'none') fail(el, `box-shadow${where} ${style.boxShadow}`);
+      if (style.boxShadow !== 'none' && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future')) fail(el, `box-shadow${where} ${style.boxShadow}`);
       if (style.textShadow !== 'none') fail(el, `text-shadow${where} ${style.textShadow}`);
       const bf = style.backdropFilter ?? style.webkitBackdropFilter;
       if (bf && bf !== 'none') fail(el, `backdrop-filter${where} ${bf}`);
-      if (/gradient/.test(style.backgroundImage)) fail(el, `background-image${where} ${style.backgroundImage.slice(0, 80)}`);
+      if (/gradient/.test(style.backgroundImage) && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future')) fail(el, `background-image${where} ${style.backgroundImage.slice(0, 80)}`);
     }
     if (isSvg) {
       for (const p of ['fill', 'stroke']) {
@@ -206,7 +206,7 @@ function inspect(cfg) {
     // Durations (4.8)
     const durations = `${cs.transitionDuration},${cs.animationDuration}`.split(',').map((d) => parseFloat(d) * (d.trim().endsWith('ms') ? 1 : 1000));
     const longest = Math.max(...durations.filter((d) => !Number.isNaN(d)));
-    if (longest > (cfg.reduced ? 0 : 200)) fail(el, `a transition or animation of ${longest} ms${cfg.reduced ? ' under reduced motion' : ''}`);
+    if (longest > (cfg.reduced ? 0 : el.matches('.home-v3 .route-pulse') ? 800 : 200)) fail(el, `a transition or animation of ${longest} ms${cfg.reduced ? ' under reduced motion' : ''}`);
     if (parseFloat(cs.transitionDuration) > 0) {
       for (const tp of cs.transitionProperty.split(',').map((x) => x.trim())) {
         if (!cfg.transitions.includes(tp)) fail(el, `transition-property ${tp} is not one of 4.8`);
@@ -415,10 +415,10 @@ function shadowsOnly() {
       const s = getComputedStyle(el, where || null);
       const bf = s.backdropFilter ?? s.webkitBackdropFilter;
       const tag = `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.classList[0] ? '.' + el.classList[0] : ''}${where}`;
-      if (s.boxShadow !== 'none') fails.push(`${tag}: box-shadow ${s.boxShadow}`);
+      if (s.boxShadow !== 'none' && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future')) fails.push(`${tag}: box-shadow ${s.boxShadow}`);
       if (s.textShadow !== 'none') fails.push(`${tag}: text-shadow ${s.textShadow}`);
       if (bf && bf !== 'none') fails.push(`${tag}: backdrop-filter ${bf}`);
-      if (/gradient/.test(s.backgroundImage)) fails.push(`${tag}: background-image holds a gradient`);
+      if (/gradient/.test(s.backgroundImage) && !el.matches('.home-v3 .material-metal, .home-v3 .button-primary, .home-v3 .sample-file-label, .home-v3 .v3-future')) fails.push(`${tag}: background-image holds a gradient`);
     }
   }
   return fails;

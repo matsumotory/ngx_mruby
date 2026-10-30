@@ -16,7 +16,8 @@ import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
 import { SITE_URL, SITE_VERSION } from './scripts/lib/site.mjs';
 import themeColors from './scripts/lib/postcss-theme-colors.mjs';
-import { SHARE_IMAGE } from './scripts/lib/brand.mjs';
+import { shareImageForVersion } from './scripts/lib/brand.mjs';
+const SHARE_IMAGE = shareImageForVersion(SITE_VERSION);
 
 const diagramCss = fs
   .readdirSync(new URL('./src/diagrams/', import.meta.url))

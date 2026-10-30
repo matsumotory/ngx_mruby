@@ -436,6 +436,15 @@ function render(page) {
   if (!lastUpdated) console.warn(`sync-docs: warning: ${page.source} has no commit yet, so its page has no last-updated date`);
   const front = ['---', `title: ${JSON.stringify(title)}`, `slug: ${JSON.stringify(page.route)}`];
   if (lastUpdated) front.push(`lastUpdated: ${lastUpdated}`);
+  // Pagefind's Japanese body segmentation and browser Intl.Segmenter can
+  // split API names differently. Its searchable metadata keeps these names
+  // whole. Derive them from the same canonical body; never add query-specific
+  // keywords or alter visible code/Markdown to make search work.
+  const identifiers = [...new Set(`${title}\n${machineBody}`.match(SNAKE_ALL) ?? [])].sort();
+  if (identifiers.length) front.push('head:', '  - tag: meta', '    attrs:',
+    '      data-pagefind-meta: "identifiers[content]"',
+    `      content: ${JSON.stringify(identifiers.join(' '))}`);
+
   const order = SIDEBAR_ORDER[page.route.replace(/^ja\//, '')];
   if (order !== undefined) front.push('sidebar:', `  order: ${order}`);
   front.push('---', '');

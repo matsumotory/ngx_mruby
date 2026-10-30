@@ -1,0 +1,37 @@
+---
+const ja = Astro.props.lang === 'ja';
+---
+<figure class="v3-flow" data-route="all" aria-label={ja ? '実装済みのLLMプロキシ: エージェントからnginxへ。Rubyがキーとモデルを判定し、nginxが選んだAPIへ転送してストリームを返す。' : 'Implemented LLM proxy: agents call nginx; Ruby checks the key and model; nginx forwards to the selected API and relays its stream.'}>
+  <div class="flow-topline"><span>ngx_mruby 3.x</span><span>{ja ? '実装済み · nextのテストで検証' : 'Implemented · tested on next'}</span></div>
+  <div class="flow-stage">
+    <div class="flow-clients"><span class="flow-caption">{ja ? '使う側' : 'CLIENTS'}</span><div class="agent-node material-metal"><code class="node-symbol" aria-hidden="true">&gt;_</code><strong>{ja ? 'コーディングエージェント' : 'Coding agents'}</strong><span>{ja ? 'CLI・自作ツール' : 'CLIs · your tools'}</span></div><span class="flow-wire" aria-hidden="true">→</span></div>
+    <div class="gateway material-metal"><div class="gateway-title"><div><span class="flow-caption">{ja ? '運用する側' : 'YOUR GATEWAY'}</span><strong>nginx</strong></div><img src="/brand/ngx-mruby-llm-proxy.svg" width="96" height="96" alt="" /></div><div class="ruby-core material-metal"><code class="ruby-label">mruby / Ruby</code><div class="ruby-decisions"><span>{ja ? 'キーを確認' : 'Check the key'}</span><span aria-hidden="true">→</span><span>{ja ? 'モデルで振り分け' : 'Route by model'}</span></div></div><div class="nginx-work"><span>{ja ? '同時接続数の制限' : 'Concurrent-request limits'}</span><span>{ja ? '認証情報を差し替え' : 'Credential replacement'}</span></div></div>
+    <div class="flow-providers"><span class="flow-wire" aria-hidden="true">→</span><div><span class="flow-caption">LLM UPSTREAMS</span><div class="provider-node material-metal" data-provider="a"><strong>Provider A</strong><code>mock-model-a</code></div><div class="provider-node material-metal" data-provider="b"><strong>Provider B</strong><code>mock-model-b</code></div></div></div>
+  </div>
+  <div class="route-controls" hidden><span>{ja ? 'テストの経路を図で見る' : 'Inspect the tested routes'}</span><button type="button" data-model="a" aria-pressed="false"><code>mock-model-a</code></button><button type="button" data-model="b" aria-pressed="false"><code>mock-model-b</code></button><span class="route-result" aria-live="polite"></span></div>
+  <div class="flow-return"><span aria-hidden="true">←</span><span>{ja ? 'ストリームをそのまま中継' : 'Stream relayed byte for byte'}</span><span class="return-track" aria-hidden="true"></span></div>
+  <figcaption>{ja ? 'Messages / Responsesを中継。図はテストの規則を示し、外部APIへは送信しません。形式の相互変換は行いません。' : 'Relays Messages / Responses. This diagram illustrates test rules; it sends no API request and translates no formats.'}</figcaption>
+</figure>
+
+<script>
+  for (const figure of document.querySelectorAll<HTMLElement>('.v3-flow')) {
+    const controls = figure.querySelector<HTMLElement>('.route-controls');
+    if (!controls) continue;
+    controls.hidden = false;
+    for (const button of controls.querySelectorAll<HTMLButtonElement>('button[data-model]')) {
+      button.addEventListener('click', () => {
+        const model = button.dataset.model;
+        figure.dataset.route = model;
+        for (const other of controls.querySelectorAll('button')) other.setAttribute('aria-pressed', String(other === button));
+        const result = controls.querySelector('.route-result');
+        if (result) result.textContent = `mock-model-${model} → agent_proxy_llm_${model}`;
+        for (const node of figure.querySelectorAll('.ruby-core, .provider-node')) {
+          node.classList.remove('route-pulse');
+          // Restart a finite user-triggered route indication; nothing moves on load.
+          void (node as HTMLElement).offsetWidth;
+          if (!node.hasAttribute('data-provider') || node.getAttribute('data-provider') === model) node.classList.add('route-pulse');
+        }
+      });
+    }
+  }
+</script>

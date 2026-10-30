@@ -136,7 +136,9 @@ function main() {
         }
       }
       if (/^(transition|transition-duration|animation|animation-duration|transition-delay|animation-delay)$/.test(d.prop)) {
-        const long = times(d.value).filter((t) => t > 200);
+        // Owner-approved homepage route indication: finite and user-triggered.
+        const limit = sel === '.home-v3 .route-pulse' && d.prop === 'animation' ? 800 : 200;
+        const long = times(d.value).filter((t) => t > limit);
         if (long.length) report(`${long[0]} ms, over 200 ms (4.8)`);
       }
     });

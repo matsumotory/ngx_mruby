@@ -1225,9 +1225,11 @@ Palette B:
   of the content as a plain list: a table of contents collapsed and pinned
   to the top went unnoticed by many participants of Nielsen Norman Group's
   tests (2023).
-- No horizontal page scroll at 320 px (WCAG 1.4.10). Code blocks and tables
-  scroll in their own box and show content cut at the right edge, which
-  tells readers there is more (Nielsen Norman Group, 2017). Diagrams do not
+- No horizontal page scroll at 320 px (WCAG 1.4.10). On 2026-10-30 the owner
+  required code to be readable without horizontal scrolling (「横スクロールを
+  強制」は「絶対やめて」). Code blocks soft-wrap, including long paths and
+  tokens; copying keeps the original source. This supersedes the earlier
+  cut-off-code treatment. Tables may scroll in their own box. Diagrams do not
   scroll sideways; they take a vertical arrangement instead (3.5).
 - **Right edge.** At 390 px, in Chromium and in WebKit, the longest line of
   every Japanese text block (`lang="ja"`) of two or more lines ends less
@@ -2005,6 +2007,33 @@ quotes/asides already use uniform frames; code-pane edges and diagram
 connectors convey boundaries/relationships and are retained. This changes
 presentation only, not the execution model or machine-readable source.
 
+### v3 use-case homepage, 2026-10-30
+
+The owner asked for v3 as the main subject, concrete first-user use cases,
+large diagrams and less introductory text; stable 2.7 keeps a clear secondary
+entry. The same request explicitly permits bold metal reflections, depth and
+motion. This overrides the earlier flat/no-gradient/no-shadow direction for
+this homepage, not for reference reading surfaces. Decorative start-edge
+vertical rails remain prohibited.
+
+`HomeV3.astro` composes the English/Japanese overview. `AgentFlow.astro` shows
+actual tested model routing to configured LLM upstreams; selecting a fixture
+model highlights that route without sending a request. Its 800ms finite
+movement is user-triggered and absent under reduced motion. It never implies
+API format conversion. `McpUseCase.astro` labels the document-service routing
+as an unverified use-case design and links to the canonical bilingual guide.
+`TryPath.astro` leads to source-built trial/edit/check steps and Linux integration.
+The representative sample is read from the existing agent-proxy test files;
+its complete configuration remains available in an expandable code block.
+
+Directional gradients and inset/outer shadows are restricted to the homepage's
+named metal planes, CTA, file labels and planned-feature band. Text shadows and
+backdrop filters stay prohibited. The checks preserve token, contrast, focus,
+font, layout, no-overflow and reduced-motion constraints. The one bounded
+route animation is the only duration exception; reference-page motion is unchanged.
+Photos remain private references and are not committed. No benchmark result,
+MCP conformance, formal v3 release or completed planned API is claimed.
+
 ### Sharing and README identity, 2026-10-29
 
 The product-level sharing card uses the selected metallic C/gold mark and
@@ -2032,3 +2061,32 @@ URL, type, dimensions and alt properties. Local review covers full size and
 300/390-pixel card widths on light and dark surrounds. Actual SNS rendering
 and cache refresh remain unverified; local and HTTPS asset checks do not
 claim that an external service has fetched its preview.
+
+The development sharing image now uses the gold/purple LLM mark with
+“3.x · IN DEVELOPMENT” and “LLM agent gateways / nginx + Ruby”. Generate it
+with `node scripts/render-brand.mjs --v3`; the original no-flag render and
+`ngx-mruby-share-v1.png` remain the stable 2.x card. The metadata selector
+uses the documentation version, and deployment checks inspect both PNGs and
+require the appropriate absolute OG/X URL on every page. The next README
+uses the development image. Both images are product cards; page titles,
+English/Japanese descriptions and canonicals remain page-specific.
+
+
+### Complete API names in search, 2026-10-30
+
+Pagefind 1.5.2 segments Japanese body text and browser queries differently
+for names such as `mruby_content_handler`. A successful search for an
+unrelated prefix is not evidence that the reference is reachable. The
+canonical-page generator therefore derives a deduplicated identifier list
+from the title and complete Markdown body and emits one searchable
+`identifiers` metadata field in the page head. No manually maintained
+keyword list, visible duplicate text or query rewrite is used. The search UI
+hides only this indexing field, preserving other result metadata. Code and
+machine-readable Markdown remain unchanged.
+
+This uses Pagefind's documented [searchable metadata](https://pagefind.app/docs/metadata/).
+`check-search-identifiers.mjs` checks that English/Japanese searches on both
+versions reach the appropriate directive and Ruby reference pages, and that
+an unknown exact-phrase query returns no result. The existing search UI and
+version-isolation checks remain in place. Generator fixtures check complete
+names in metadata and unchanged canonical code/Markdown. CI runs both checks.

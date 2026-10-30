@@ -18,7 +18,7 @@
     "check:styles": "node scripts/check-styles.mjs",
     "check:japanese-lines": "node scripts/check-japanese-lines.mjs",
     "check:offline": "sh scripts/check-offline-build.sh",
-    "check:browser": "node scripts/check-styles.mjs && node scripts/check-japanese-lines.mjs && node scripts/check-focus.mjs && node scripts/check-language-links.mjs && node scripts/check-lighthouse.mjs",
+    "check:browser": "node scripts/check-search-identifiers.mjs && node scripts/check-home-interaction.mjs && node scripts/check-code-layout.mjs && node scripts/check-styles.mjs && node scripts/check-japanese-lines.mjs && node scripts/check-focus.mjs && node scripts/check-language-links.mjs && node scripts/check-lighthouse.mjs",
     "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
