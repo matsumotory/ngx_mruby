@@ -35,11 +35,11 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## Standalone routing recipe, 2026-10-29
+## Standalone routing recipe, 2026-10-30
 
-- Local branch `codex/routing-recipe` starts from published next
-  `6d65a12ec`, independently of the pending installation integration and
-  other unpublished design/content branches. The English and Japanese
+- This independent documentation unit includes next `490ea459c` after
+  the installation integration #663; runtime inputs are unchanged from the
+  originally tested `6d65a12ec`. The English and Japanese
   [routing guide](guides/routing.md#run-it-independently) now contain a
   complete loopback configuration, Ruby table, executable checks and
   failure diagnostics. No module or existing integration fixture changed.
@@ -57,9 +57,43 @@ that are not written down elsewhere yet, the work in progress and the queue.
 - The tested executable is a development build, not a v3 release. This
   recipe was not run on v2.7.2, with dynamic module loading or on non-Linux
   systems. No performance measurement or full module-suite rerun was
-  performed for this documentation-only unit. Public operations remain on
-  hold; the next step is review of the final local unit before its normal
-  PR/CI process when publication is authorized.
+  performed for this documentation-only unit. The owner authorized the
+  normal PR/CI/publication process on 2026-10-30; final-head CI and
+  deployment verification are pending.
+
+## Installation and process continuation, 2026-10-29
+
+- The first rebrand and versioned-documentation iteration is published.
+  [#661](https://github.com/matsumotory/ngx_mruby/pull/661) merged as
+  `6d65a12ec`. Production run 40959681713 and deployment 7425112363
+  succeeded. All 614 shipped files match the live site; four versioned
+  English/Japanese searches, mobile/desktop views, code interaction and
+  HTTPS checks pass. Final evidence is in the
+  [completion record](https://github.com/matsumotory/ngx_mruby/pull/661#issuecomment-6509229800).
+- The common continuation procedure from #659 reached master as `967b61cc6`
+  in [#662](https://github.com/matsumotory/ngx_mruby/pull/662), after all CI
+  and independent review passed. The v2.x mirror succeeded. HANDOFF
+  remains on next, and master links that source. Branch-specific test
+  process/port handling is preserved; a common workflow does not imply
+  identical harness capabilities.
+- [#663](https://github.com/matsumotory/ngx_mruby/pull/663), branch
+  `codex/integrate-stable-install`, merges the installation correction
+  of [#660](https://github.com/matsumotory/ngx_mruby/pull/660) from master
+  `967b61cc6` into next `6d65a12ec`. The conflict resolution selects next
+  development source and preserves the v3 core-gem, lock and removed
+  auto-ssl contracts. English/Japanese commands are identical. A fresh
+  clone of `6d65a12ec` built and installed nginx 1.31.8 on Ubuntu 22.04
+  aarch64; the exact documented HTTP trial passed both response assertions,
+  configuration validation, reload and quit. These are documentation
+  changes, with no measured binary input changed. Current head, final CI
+  and independent review belong in the integration PR.
+- Next site work: shared README/social branding and controlled metallic
+  surface/CTA refinements, then deeper executable HTTP/stream examples
+  and reproducible performance records. Keep human and agent output on
+  the same sources; retain implementation/planned/under-design distinctions.
+  The upstream setter D/E work and stable empty-filter follow-up remain
+  separate runtime items. No new runtime contract or software release was
+  decided by this documentation integration.
 
 ## Site continuation checkpoint, 2026-10-29 20:25 UTC
 

@@ -1,36 +1,50 @@
-# Install
+# Installing ngx_mruby 3.x development
 
-This page builds nginx with ngx_mruby from source and installs it. To try
-ngx_mruby before you install it, run
-[the example of the start page](../../examples/start/README.md): it builds
-the same source in Docker and starts nginx with a Ruby script.
+This guide builds a standalone nginx with ngx_mruby, then serves an inline
+Ruby handler and a cached script on loopback without root privileges.
+It uses the `next` development branch with nginx 1.31.8. This is not a
+stable release. For a released 2.x build, use the
+[maintenance installation guide](https://ngx.mruby.org/v2/guides/install/).
+Record the source revision and build configuration before comparing results.
+To try the development source in Docker first, see
+[the start example](../../examples/start/README.md).
+Read the [release notes](../releases/README.md) before upgrading an existing installation.
 
-## Prerequisites
+## Installing from source
 
-* git
-* GNU make
-* ruby
-* rake
-* bison
-* openssl
-* C compiler (GCC or Clang)
-* curl
+### Prerequisites
+
+A C/C++ compiler, GNU make, Ruby with rake, bison, git, wget, curl,
+OpenSSL development headers/libraries, PCRE development headers/libraries,
+and zlib development headers/libraries are required. The build downloads
+third-party mrbgems from GitHub. A Docker Hub account is not required.
+
+For example, on Ubuntu 22.04, install the packages with administrator
+privileges, then build as an ordinary user:
+
+```sh
+sudo apt-get update
+sudo apt-get install build-essential ruby rake bison git wget curl ca-certificates libssl-dev libpcre3-dev zlib1g-dev
+```
+
+The walkthrough is tested on Linux; package names differ on other systems.
+For a version-managed Ruby, ensure its `ruby` and `rake` are on `PATH`.
+Do not copy a dynamic module into an unrelated distribution nginx binary:
+its nginx version, configuration and ABI need to match.
 
 ## 1. Downloading source from github.com
 
 ```sh
-$ git clone https://github.com/matsumotory/ngx_mruby.git
+git clone --branch next https://github.com/matsumotory/ngx_mruby.git
+cd ngx_mruby
+git rev-parse HEAD
 ```
 
-If you want to build a specific version of ngx_mruby, please check out the version.
-
-```sh
-$ cd /path/to/ngx_mruby
-$ git checkout v2.1.2
-```
-
-Also you can download tarballs from https://github.com/matsumotory/ngx_mruby/archive/master.zip 
-or https://github.com/matsumotory/ngx_mruby/releases .
+`next` moves as development PRs merge; `git rev-parse HEAD` records the
+checkout used. To reproduce a recorded build, check out that exact commit
+before building. The repository includes its mruby source and the
+third-party gem lock described below; the lock does not pin every external
+fetch and does not promise byte-for-byte reproducibility.
 
 ## 2. Configuring mrbgems
 
@@ -50,6 +64,10 @@ the `mrbgems` directory of the mruby it builds, for example an mruby of
 another version given with `./configure --with-mruby-root`. Edit the list, or
 set `NGX_MRUBY_ALLOW_MISSING_CORE_GEMS=1` in the environment of the mruby
 build to skip those gems with a notice.
+
+The default build already includes mruby-io. File, socket, sleep and Redis
+operations in a handler can block its worker; inclusion does not make them
+nginx event-driven operations. See the [API reference](../class_and_method/README.md).
 
 ngx_mruby 3.0.0 has no auto-ssl mrbgem; see
 [The auto-ssl mrbgem and the classes that came with it](#the-auto-ssl-mrbgem-and-the-classes-that-came-with-it).
@@ -190,159 +208,127 @@ most of the about 178 MiB that the clones of the default build took then.
 
 ## 3. Building a binary
 
-There are 3 options to build a ngx_mruby binary
-
-* Using build.sh
-* Using Makefile
-* Using nginx build system
-
 ### 3-A. Using build.sh
 
-Using build.sh is the easiest way to build the binary.
-It automatically downloads nginx source to /path/to/ngx_mruby/build directory and builds ngx_mruby, 
-then installs it into /path/to/ngx_mruby/build/nginx.
-
-```
-$ cd /path/to/ngx_mruby
-$ sh ./build.sh
-```
-
-You can install it into a different directory as below. It builds and installs ngx_mruby into
-/usr/local/nginx-1.15.6 instead of /path/to/ngx_mruby/build/nginx.
+From the repository root, fetch the nginx version used for this walkthrough
+and build it explicitly:
 
 ```sh
-$ env NGINX_CONFIG_OPT_ENV='--prefix=/usr/local/nginx-1.15.6' sh ./build.sh
+NGINX_SOURCE_DIR="$(mktemp -d)/nginx"
+git clone --depth 1 --branch release-1.31.8 https://github.com/nginx/nginx "$NGINX_SOURCE_DIR"
+NGINX_SRC_ENV="$NGINX_SOURCE_DIR" sh ./build.sh
+make install
+./build/nginx/sbin/nginx -V
 ```
 
-If you already have nginx source, you can specify the source directory. It doesn't download nginx source.
+`build.sh` configures and compiles nginx and mruby. It **does not install
+the binary**; `make install` installs into the configured prefix. The
+default prefix is `$PWD/build/nginx`, writable by the build user, so no
+`sudo` is needed. The upstream git checkout avoids depending on the
+nginx.org tarball download used when `NGINX_SRC_ENV` is absent.
 
-```
-$ env NGINX_SRC_ENV='/usr/local/src/nginx-1.15.6' sh ./build.sh
+Without that variable, the script selects `nginx_version` from the checkout.
+This development snapshot selects 1.31.8. Use the explicit source above for
+this walkthrough; inspect `nginx -V` and upstream changes when choosing
+another version.
+
+`NGINX_SRC_ENV` selects an existing nginx source tree. Keep that tree until
+the build and installation are finished. `NUM_THREADS_ENV=4` can bound
+parallel compilation. For a different installation prefix, use an absolute
+path; setting `NGINX_CONFIG_OPT_ENV` replaces the default nginx options,
+so list every option you need:
+
+```sh
+NGINX_SRC_ENV="$NGINX_SOURCE_DIR" NGINX_CONFIG_OPT_ENV="--prefix=$PWD/build/custom-nginx --with-stream --with-http_stub_status_module --with-cc-opt=-fno-common" sh ./build.sh
+make install
 ```
 
 ### 3-B. Using Makefile
 
-If you want to use more complex build configuration, you will use configure script and Makefile.
-You need to download [nginx](http://nginx.org/en/download.html), then unpack it before running the script.
+With an existing nginx source tree, `configure` and `make` provide the same
+control. `NGINX_SOURCE_DIR` below is an absolute directory containing nginx
+source, not the installed nginx prefix:
 
 ```sh
-$ cd /path/to/ngx_mruby
-$ ./configure --with-ngx-src-root=/local/src/nginx-1.15.6 --with-ngx-config-opt=--prefix=/usr/local/nginx-1.15.6
-$ make
+./configure --with-ngx-src-root="$NGINX_SOURCE_DIR" --with-ngx-config-opt="--prefix=$PWD/build/nginx --with-stream --with-cc-opt=-fno-common"
+make
+make install
 ```
 
-'configre --help' gives you all configuration options.
-
-```sh
-$ ./configure --help
-`configure' configures this package to adapt to many kinds of systems.
-
-Usage: ./configure [OPTION]... [VAR=VALUE]...
-
-[snip]
-
-  --with-ngx-src-root=DIR pathname to ngx_src_root [[ngx_src_root]]
-  --with-openssl-src=DIR  set path to OpenSSL library sources
-  --with-build-dir=DIR    set build directory path
-  --with-openssl-opt=OPTIONS
-                          set additional build options for OpenSSL
-  --with-ngx-config-opt=OPT
-                          nginx configure option [[ngx_config_opt]]
-  --with-mruby-root=DIR   pathname to mruby_root [[mruby_root]]
-  --with-mruby-incdir=DIR include directory for mruby [[mruby_incdir]]
-  --with-mruby-libdir=DIR library directory to libmruby [[mruby_libdir]]
-  --with-ndk-root=DIR     pathname to ndk_root [[ndk_root]]
-
-[snip]
-```
+Run `./configure --help` for the current options, including
+`--with-build-dir`, `--with-mruby-root`, `--with-ndk-root`,
+`--with-openssl-src` and `--with-openssl-opt`.
 
 If you pass `--with-mruby-incdir`, its list of directories must include the `build/host/include` directory of the mruby build (the default list is `<mruby_root>/src <mruby_root>/include <mruby_root>/build/host/include`), because ngx_mruby includes `<mruby/presym.h>`, which includes the headers that the mruby build generates there.
 
 ### 3-C. Using nginx build system
 
-ngx_mruby is a nginx module, so you can simply use nginx build system with --add-module option.
+For an existing nginx build, first build mruby and generate its linker
+configuration. Then add both ngx_mruby and its bundled NDK to nginx's
+configure command, preserving your other nginx options:
 
 ```sh
-$ cd /path/to/ngx_mruby
-$ ./configure --with-ngx-src-root=/local/src/nginx-1.15.6 --with-ngx-config-opt=--prefix=/usr/local/nginx-1.15.6
-$ make build_mruby
-$ make generate_gems_config
-$ cd /local/src/nginx-1.15.6 
-$ ./configure --prefix=/usr/local/nginx-1.15.6 --add-module=/path/to/ngx_mruby --add-module=/path/to/ngx_mruby/dependence/ngx_devel_kit --add-module=/path/to/nginx-module-you-want-to-build
-$ make
+NGX_MRUBY_SOURCE_DIR="$PWD"
+./configure --with-ngx-src-root="$NGINX_SOURCE_DIR"
+make build_mruby
+make generate_gems_config
+cd "$NGINX_SOURCE_DIR"
+# A git checkout uses auto/configure; a release tarball uses ./configure.
+if [ -f auto/configure ]; then NGX_CONFIGURE=./auto/configure; else NGX_CONFIGURE=./configure; fi
+"$NGX_CONFIGURE" --prefix="$NGX_MRUBY_SOURCE_DIR/build/nginx" --add-module="$NGX_MRUBY_SOURCE_DIR" --add-module="$NGX_MRUBY_SOURCE_DIR/dependence/ngx_devel_kit" --with-stream
+make
+make install
 ```
 
 ### Build options
 
-This section explains some build options.
-
 #### Building with ngx_mruby stream module
 
-If you want to use ngx_mruby stream module, you need to pass option(s) to nginx's confgiure script.
-
-| nginx version    | option(s) |
-|------------------|-----------|
-| 1.11.5 or later  | --with-stream |
-| 1.9.6 - 1.11.4   | --with-stream --without-stream_access_module |
-| 1.9.5 or earlier | Not supported |
-
-Here is an example for build.sh.
-
-```sh
-$ env NGINX_CONFIG_OPT_ENV='--prefix=/usr/local/nginx-1.15.6 --with-stream' sh ./build.sh
-```
+The default `build.sh` options enable stream. When supplying your own nginx
+options, include `--with-stream`. See the [stream directives](../directives/README.md)
+and the [test instructions](../test/README.md) for TCP/UDP verification.
 
 #### Building with non-system openssl
 
-If you want to build ngx_mruby with non-system openssl, you can use --with-openssl-src option.
+The ordinary build uses the system OpenSSL development package. If you
+need a particular OpenSSL source tree, unpack that version yourself, record
+its source/version, and pass its absolute directory:
 
 ```sh
-$ curl ftp://ftp.openssl.org/source/openssl-1.0.2g.tar.gz | tar -zx
-$ cd /path/to/ngx_mruby
-$ sh ./build.sh --with-openssl-src=/path/to/openssl-1.0.2g
+NGINX_SRC_ENV="$NGINX_SOURCE_DIR" sh ./build.sh --with-openssl-src=/absolute/path/to/openssl-source
+make install
 ```
 
-Of course, configure script supports the option.
-
-```sh
-$ curl ftp://ftp.openssl.org/source/openssl-1.0.2g.tar.gz | tar -zx
-$ cd /path/to/ngx_mruby
-$ ./configure --with-ngx-src-root=/local/src/nginx-1.15.6 --with-ngx-config-opt=--prefix=/usr/local/nginx-1.15.6 --with-openssl-src=/path/to/openssl-1.0.2g
-$ make
-```
+Do not reuse the historical OpenSSL 1.0.2g download example as a current
+installation recommendation. A custom OpenSSL build needs its own validation.
 
 #### Building ngx_mruby as a dynamic module
 
-nginx 1.9.11 or later supports dynamic module. You can build ngx_mruby as a dynamic module with build.sh.
-It uses 'build_dynamic' directory instead of 'build'. You will find in /path/to/ngx_mruby/build_dynamic.
+Use a fresh checkout for a different build mode. This avoids reusing an
+nginx configuration from a static build. In that shell, set
+`NGINX_SOURCE_DIR` to a fresh checkout of `release-1.31.8` as in 3-A; do not
+reuse the configured nginx source tree of a static build:
 
 ```sh
-$ env BUILD_DYNAMIC_MODULE=TRUE sh ./build.sh
+NGINX_SRC_ENV="$NGINX_SOURCE_DIR" BUILD_DYNAMIC_MODULE=TRUE sh ./build.sh
+make install
+./build_dynamic/nginx/sbin/nginx -V
 ```
 
-You need to add [load_module](http://nginx.org/en/docs/ngx_core_module.html#load_module) directive to nginx.conf as below.
+The default dynamic prefix is `$PWD/build_dynamic/nginx`. In the **main**
+context, before `events` and `http`, load the module from that installation:
 
+```nginx
+load_module /absolute/path/to/ngx_mruby/build_dynamic/nginx/modules/ngx_http_mruby_module.so;
 ```
-load_module /path/to/modules/ngx_http_mruby_module.so;
-```
 
-A dynamic build without build.sh needs these three steps of its own:
-
-* Pass --enable-dynamic-module to ngx_mruby's configure script
-* Generate mrbgems_config_dynamic instead of mrbgems_config
-* Use --add-dynamic-module=PATH instead of --add-module=PATH for nginx's configure option.
-
-Here is an example.
-
-```sh
-$ cd /path/to/ngx_mruby
-$ ./configure --enable-dynamic-module --with-ngx-src-root=/local/src/nginx-1.15.6 --with-ngx-config-opt=--prefix=/usr/local/nginx-1.15.6
-$ make build_mruby
-$ make generate_gems_config_dynamic
-$ cd /local/src/nginx-1.15.6 
-$ ./configure --prefix=/usr/local/nginx-1.15.6 --add-dynamic-module=/path/to/ngx_mruby --add-module=/path/to/ngx_mruby/dependence/ngx_devel_kit --add-module=/path/to/nginx-module-you-want-to-build
-$ make
-```
+Use the nginx binary built with this module, and check with `nginx -t`
+before starting it. To adapt the trial below, set `NGX_BIN` to that binary
+and add the absolute `load_module` line to its configuration. With a custom
+nginx build, the corresponding steps are `--enable-dynamic-module` for
+ngx_mruby's configure, `make generate_gems_config_dynamic`, and
+`--add-dynamic-module` for nginx instead of `--add-module` for ngx_mruby;
+the bundled NDK still uses `--add-module`.
 
 #### The auto-ssl mrbgem and the classes that came with it
 
@@ -397,17 +383,129 @@ pyama86/mruby-polarssl do not build with mruby 4.
 
 ## 4. Installing ngx_mruby
 
-```sh
-$ cd /path/to/ngx_mruby
-$ sudo make install
-```
+Run `make install` after compilation. It installs into the prefix selected
+when nginx was configured, not necessarily `/usr/local/nginx`. The quick
+start uses `build/nginx`. An existing production prefix may need elevated
+permissions and a planned upgrade; the loopback trial below uses neither.
 
 ## 5. Running a Ruby script
 
-nginx runs Ruby where a directive of ngx_mruby names a script file or holds
-the code itself. [The start page](../../examples/start/README.md) shows a
-configuration and a script, and the change of a script without a reload.
-The [directives](../directives/README.md) list the forms: a script file,
-inline code ([Inline code](../directives/README.md#inline-code)), and a
-script file as a handler
-([Script file as a handler](../directives/README.md#script-file-as-a-handler)).
+This complete trial uses a separate temporary runtime directory. It binds
+only `127.0.0.1:18088`, logs only there and stops only its own nginx.
+Choose another unused port consistently if 18088 is already in use.
+Run the commands in one shell from the repository root, after `make install`.
+
+```sh
+(
+set -eu
+NGX_BIN="$PWD/build/nginx/sbin/nginx"
+RUN_DIR="$(mktemp -d)"
+mkdir -p "$RUN_DIR/logs"
+printf 'Trial runtime: %s\n' "$RUN_DIR"
+started=0
+cleanup() {
+    if [ "$started" = 1 ]; then "$NGX_BIN" -p "$RUN_DIR/" -c nginx.conf -s quit; fi
+}
+trap cleanup EXIT
+cat > "$RUN_DIR/hello.rb" <<'RUBY'
+Nginx::Headers_out.new["Content-Type"] = "text/plain"
+Nginx.rputs "hello ngx_mruby\n"
+RUBY
+cat > "$RUN_DIR/nginx.conf" <<CONF
+worker_processes 1;
+pid logs/nginx.pid;
+error_log logs/error.log notice;
+events { worker_connections 64; }
+http {
+    access_log off;
+    default_type text/plain;
+    server {
+        listen 127.0.0.1:18088;
+        location = /inline {
+            mruby_content_handler_code 'Nginx::Headers_out.new["Content-Type"] = "text/plain"; Nginx.rputs "hello ngx_mruby\\n"';
+        }
+        location = /script {
+            mruby_content_handler "$RUN_DIR/hello.rb" cache;
+        }
+    }
+}
+CONF
+"$NGX_BIN" -p "$RUN_DIR/" -c nginx.conf -t
+"$NGX_BIN" -p "$RUN_DIR/" -c nginx.conf
+started=1
+curl --fail --show-error --silent --include http://127.0.0.1:18088/inline
+curl --fail --show-error --silent --include http://127.0.0.1:18088/script
+"$NGX_BIN" -p "$RUN_DIR/" -c nginx.conf -t && "$NGX_BIN" -p "$RUN_DIR/" -c nginx.conf -s reload
+"$NGX_BIN" -p "$RUN_DIR/" -c nginx.conf -s quit
+started=0
+)
+```
+
+Both URLs must return status `200`, `Content-Type: text/plain`, and the
+body `hello ngx_mruby` followed by a newline. `Date` and `Server` headers
+vary with the environment. The example uses the content phase and no
+request-persistent Ruby state. Reload keeps the master process and
+replaces its workers; graceful quit uses this runtime's PID file.
+
+### 5-A. Script file
+
+`mruby_content_handler` takes a script path. The trial supplies an absolute
+path so its meaning does not depend on nginx's working directory.
+
+### 5-B. inline code
+
+`mruby_content_handler_code` takes Ruby in the nginx configuration. Quote
+for both nginx and the shell when using a shell heredoc, as in the trial.
+
+### 5-C. Script file as a handler
+
+`mruby_add_handler on` is another interface, described in the
+[directive reference](../directives/README.md). The trial uses explicit
+locations so it does not enable execution of every matching `.rb` file.
+For script handlers, `cache` caches compiled code; without it the script
+is read/compiled per request unless `mruby_cache on` applies. See that
+reference before choosing caching behavior for deployment.
+
+## 6. Running nginx
+
+Use the installed binary and the same `-p` and `-c` for validation, start,
+reload and quit, as above. Do not substitute a different system `nginx`
+command, which may not contain ngx_mruby.
+
+## 7. Trying it out
+
+If the trial fails, check these before changing configuration:
+
+| Symptom | Check |
+|---|---|
+| Binary missing | `build.sh` compiles; run `make install`, then inspect the configured prefix. |
+| `unknown directive` | Use the built nginx; for a dynamic build, check the main-context `load_module` path and matching binary. |
+| Build cannot find a header or library | Install the development packages, not only the runtime command; read the first compiler/configure error. |
+| nginx source download fails | Use the exact matching nginx git tag with `NGINX_SRC_ENV` as above. |
+| `bind()` fails | Another process owns the port; choose a free loopback port. Do not stop a process you do not own. |
+| Script cannot be opened or a Ruby exception occurs | Read `$RUN_DIR/logs/error.log`; check the absolute file path, permissions and Ruby code. |
+| curl does not return the expected body | Check `nginx -t`, the exact URL/port and the error log; a connection success alone is not verification. |
+
+Validated on 2026-10-29 with ngx_mruby development commit
+`6d65a12ecf166e11a6ece40d56f0f2efb05ea112` and nginx 1.31.8
+(`release-1.31.8`, selected with `NGINX_SRC_ENV`), in Ubuntu 22.04 aarch64,
+GCC 11.4.0 and Ruby 3.0.2/rake 13.0.6. The static build with four compiler
+jobs and `make install` passed. Section 5 was extracted and executed
+unchanged: both responses returned 200, text/plain and the 16-byte body;
+configuration validation, reload and quit passed. The gem lock stayed
+unchanged. These are results for that source revision, not every future
+`next` commit. Custom-prefix, direct-nginx, dynamic and custom OpenSSL
+alternatives above are configuration guidance, not additional executed
+results from this run.
+
+For the full module integration suite, sanitizers and supported test nginx
+versions, see [Testing](../test/README.md). This walkthrough verifies a
+small HTTP example; it does not certify custom modules, TLS, stream,
+performance or a production rollout.
+
+## Playing with an example Docker image
+
+The separate [docker-ngx_mruby repository](https://github.com/matsumotory/docker-ngx_mruby)
+is a historical example, not the version-pinned installation verified here.
+Its image, configuration and dependencies need independent review before
+use. The source walkthrough above requires no registry account.
