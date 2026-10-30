@@ -198,6 +198,10 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: npx playwright install --with-deps chromium webkit
+      - name: Check that copy controls are still when the page loads
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-copy-idle.mjs
       - name: Check computed styles in Chromium and WebKit (sizes, colors, monospace, shadows, spacing, durations, lines, gutters, diagrams)
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
