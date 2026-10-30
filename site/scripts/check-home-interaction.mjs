@@ -11,8 +11,8 @@ try {
   for (const engine of [chromium, webkit]) {
     const browser = await engine.launch();
     try {
-      for (const route of ['/', '/ja/']) for (const width of [320, 390, 768, 1440]) for (const reducedMotion of ['reduce', 'no-preference']) {
-        const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: 'dark', reducedMotion,
+      for (const route of ['/', '/ja/']) for (const width of [320, 390, 768, 1440]) for (const reducedMotion of ['reduce', 'no-preference']) for (const colorScheme of ['light', 'dark']) {
+        const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme, reducedMotion,
           ...(engine === chromium ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
         const page = await context.newPage();
         await page.goto(server.url + route);
@@ -32,7 +32,27 @@ try {
           assert.equal(await page.locator('.route-result').textContent(), `mock-model-${model} → agent_proxy_llm_${model}`);
           assert.deepEqual(await wire.evaluate(el => { const m = new DOMMatrix(getComputedStyle(el).transform); return [m.a, m.b, m.c, m.d]; }), transform, 'routing must preserve mobile arrow direction');
           if (reducedMotion === 'reduce') assert.equal(await page.evaluate(() => document.getAnimations().filter(a => a.playState === 'running').length), 0);
-          else await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
+          else {
+            // Freeze several points of the actual CSS animation. Text-bearing
+            // route nodes must remain opaque, including in the light theme.
+            const fadedText = await page.evaluate(() => {
+              const animations = document.getAnimations().filter(a => a.effect?.target?.matches('.route-pulse'));
+              const failures = [];
+              for (const animation of animations) {
+                animation.pause();
+                for (const fraction of [0, .1, .5, .99]) {
+                  animation.currentTime = Number(animation.effect.getTiming().duration) * fraction;
+                  let opacity = 1;
+                  for (let el = animation.effect.target; el; el = el.parentElement) opacity *= Number(getComputedStyle(el).opacity);
+                  if (opacity < 1) failures.push({ fraction, opacity });
+                }
+                animation.finish();
+              }
+              return failures;
+            });
+            assert.deepEqual(fadedText, [], `${route} ${width} ${colorScheme}: route motion fades text`);
+            await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
+          }
         }
         assert.deepEqual(requests, [], 'illustration sent a network request');
         await page.locator('.sample-config summary').click();

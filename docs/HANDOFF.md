@@ -35,6 +35,38 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## Whole-page material integration, 2026-10-30
+
+- #668 merged as `252018d86`; production run
+  [41023287679](https://github.com/matsumotory/ngx_mruby/actions/runs/41023287679)
+  succeeded. Its 626 shipped files matched production; live code-layout
+  verification covered 340 conditions and interaction verification 32.
+  The earlier pending-publication entries below are historical checkpoints.
+- The owner found that metallic components looked detached from the remaining
+  page: background, composition, light, material, color and motion need one
+  system. [#669](https://github.com/matsumotory/ngx_mruby/pull/669)
+  (`codex/home-material-system`) addresses that feedback on the v3
+  overview, preserving tested routing, version states and canonical code copies.
+  The [site plan](proposals/site.md#v3-use-case-homepage-2026-10-30) records the
+  scope. Visual approval is separate from passing automated checks.
+- This iteration changes homepage styling and its material checks only. No
+  runtime change, MCP interoperability claim, stable README migration, new OG
+  artwork or software release is included. Personal photos remain unpublished.
+- Local preview checks passed: 40 homepage style loads, 500 code conditions,
+  32 interaction conditions, 69 complete exports and English/Japanese
+  accessibility 100. An independent visual review found no must-fix and one
+  arrow-placement improvement; the MCP entry arrow now points at Ruby's column.
+  A technical review also found transient text fading during route motion.
+  Test-only commit `52cb29ce7` reproduces it (opacity 0.6 at animation start);
+  the correction keeps text opaque, and the interaction check now covers both
+  themes and four points of the animation. The narrow MCP diagram retains the
+  Ruby-to-backend branch layout. Final-head CI and re-review are recorded on
+  the draft PR. A further visual review removed diagonals that crossed content
+  and the nested outer/Ruby cards, retaining a single nginx enclosure and a
+  section-aligned light field. The new visual diff needs final-head verification.
+  Publication
+  remains separate; #668's individual merge approval is not reused here.
+
 ## Final site validation follow-up, 2026-10-30
 
 - #668 head `77f3161ad` passed test/examples CI, but site CI found an overly
