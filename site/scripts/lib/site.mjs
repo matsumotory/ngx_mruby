@@ -95,6 +95,14 @@ export const NOT_TRANSLATED_YET = [
   'security/trust-boundary',
 ];
 
+// The pages of a list that are English fallback pages under /ja/ (those of
+// GENERATED_REFERENCE and NOT_TRANSLATED_YET): check-japanese-lines checks
+// only their notice, as for the notice pages of a full run.
+export function japaneseNoticePages(pages) {
+  const fallback = new Set([...GENERATED_REFERENCE, ...NOT_TRANSLATED_YET].map((route) => `/ja/${route}/`));
+  return pages.filter((page) => fallback.has(page));
+}
+
 // The place of a page in its group of the sidebar (astro.config.mjs), by
 // route without the /ja/ prefix. The other pages of a group follow, in the
 // order of their routes.
