@@ -10,6 +10,7 @@
   <a href="#backers" title="Backers on Open Collective"><img src="https://opencollective.com/ngx_mruby/backers/badge.svg"></a>
   <a href="#sponsors" title="Sponsors on Open Collective"><img src="https://opencollective.com/ngx_mruby/sponsors/badge.svg"></a>
   <a href="https://github.com/matsumotory/ngx_mruby/actions" title="Build Status"><img src="https://github.com/matsumotory/ngx_mruby/actions/workflows/test.yml/badge.svg?branch=master"></a>
+  <a href="https://www.bestpractices.dev/projects/16057" title="OpenSSF Best Practices"><img alt="OpenSSF Best Practices" src="https://www.bestpractices.dev/projects/16057/badge"></a>
 </p>
 
 ## Documents
@@ -83,6 +84,8 @@ Releases are tagged `vX.Y.Z`. If you contribute a fix, send 2.x fixes to `master
 Before upgrading, read the "Behavior changes: read before upgrading" section of every newer release in [docs/releases/](docs/releases/).
 
 Please report security vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+
+The project has earned the passing level of the [OpenSSF Best Practices badge](https://www.bestpractices.dev/projects/16057).
 
 ## What's ngx_mruby
 __ngx_mruby is A Fast and Memory-Efficient TCP/UDP Load Balancing and Web Server Extension Mechanism Using Scripting Language mruby for nginx.__

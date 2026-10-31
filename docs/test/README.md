@@ -226,6 +226,8 @@ $ GH_TOKEN=$(gh auth token) .claude/tmp/zizmor/bin/zizmor --config .github/zizmo
 
 ### OpenSSF Scorecard
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16057/badge)](https://www.bestpractices.dev/projects/16057)
+
 `.github/workflows/scorecard.yml` runs
 [OpenSSF Scorecard](https://github.com/ossf/scorecard-action) on pushes to
 `master`, weekly, and on "Run workflow". Scorecard supports only the default
