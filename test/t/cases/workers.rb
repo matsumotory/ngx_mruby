@@ -86,15 +86,21 @@ t.assert('workers - a reload brings the new configuration and script, while the 
   t.assert_equal '200', status
   t.assert_equal 'generation 1', body.to_s.split(' pid=')[0]
   t.assert_true old.include?(body.to_s.split(' pid=')[1])
-  t.assert_equal '200|script generation 1', workers_first(rel, 'script_before')
+  status, body = workers_first(rel, 'script_before').to_s.split('|', 2)
+  t.assert_equal '200', status
+  t.assert_equal 'script generation 1', body.to_s.split(' pid=')[0]
+  t.assert_true old.include?(body.to_s.split(' pid=')[1])
 
-  # After the SIGHUP: the new configuration and the new script answer from
-  # a new worker.
+  # After the SIGHUP: the new configuration answers from a new worker, and
+  # once the old workers shut down, the new script as well.
   status, body = workers_first(rel, 'after').to_s.split('|', 2)
   t.assert_equal '200', status
   t.assert_equal 'generation 2', body.to_s.split(' pid=')[0]
   t.assert_false old.include?(body.to_s.split(' pid=')[1])
-  t.assert_equal '200|script generation 2', workers_first(rel, 'script_after')
+  status, body = workers_first(rel, 'script_after').to_s.split('|', 2)
+  t.assert_equal '200', status
+  t.assert_equal 'script generation 2', body.to_s.split(' pid=')[0]
+  t.assert_false old.include?(body.to_s.split(' pid=')[1])
 
   # Every old worker was shutting down, and both sleeps were still in
   # flight in them.

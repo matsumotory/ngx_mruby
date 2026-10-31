@@ -39,8 +39,10 @@
 #                   before the reload
 #   http_sleep_worker, stream_sleep_worker  reload: the pid of the worker
 #                   that logged the start of each sleep
-#   after, script_after  reload: "STATUS|BODY" of /generation and /script
-#                   once generation 2 answers
+#   after           reload: "STATUS|BODY" of /generation once generation 2
+#                   answers
+#   script_after    reload: "STATUS|BODY" of /script once every old worker
+#                   has logged "gracefully shutting down"
 #   in_flight       reload: the sleeps that had not answered when every old
 #                   worker had logged "gracefully shutting down", joined by ","
 #   old_alive       reload: the old workers that still ran at that moment,
@@ -245,9 +247,24 @@ class WorkersNginx
     File.read(prefix_path('nginx.pid')).strip.to_i
   end
 
+  # The master named by the pid file, when that is the process that this
+  # script started; otherwise the pid that it started. Only that process
+  # gets a signal.
+  def master
+    pid_file == @pid ? pid_file : @pid
+  rescue StandardError
+    @pid
+  end
+
   def reload(generation)
     write_conf(generation)
-    Process.kill(:HUP, pid_file)
+    Process.kill(:HUP, master)
+  end
+
+  def kill(signal, pid)
+    Process.kill(signal, pid)
+  rescue Errno::ESRCH
+    nil
   end
 
   def log
@@ -278,14 +295,7 @@ class WorkersNginx
     return "nginx had ended: #{describe(@status)}" if @status
 
     workers
-    target = begin
-      pid_file
-    rescue StandardError
-      @pid
-    end
-    # Signal only the process that this script started.
-    target = @pid unless target == @pid
-    Process.kill(:TERM, target)
+    kill(:TERM, master)
     deadline = now + LIMIT
     loop do
       if Process.waitpid(@pid, Process::WNOHANG)
@@ -293,14 +303,13 @@ class WorkersNginx
         return "master #{describe(@status)}; #{workers_ended(deadline)} of #{@seen.size} workers ended"
       end
       if now > deadline
-        ([@pid] + @seen).each { |p| Process.kill(:KILL, p) if alive?(p) }
+        ([@pid] + @seen).each { |p| kill(:KILL, p) if alive?(p) }
         Process.waitpid(@pid)
+        @status = $?
         return "killed after #{LIMIT} seconds"
       end
       sleep 0.05
     end
-  rescue Errno::ESRCH, Errno::ECHILD
-    'gone before SIGTERM'
   end
 
   def workers_ended(deadline)
@@ -309,7 +318,7 @@ class WorkersNginx
       return @seen.size if left.empty?
 
       if now > deadline
-        left.each { |p| Process.kill(:KILL, p) }
+        left.each { |p| kill(:KILL, p) }
         return @seen.size - left.size
       end
       sleep 0.05
@@ -377,7 +386,8 @@ def order(nginx, pid, resumed)
 end
 
 def write_script(nginx, generation)
-  File.write(nginx.prefix_path('script.rb'), "Nginx.rputs \"script generation #{generation}\"\n")
+  File.write(nginx.prefix_path('script.rb'),
+             "Nginx.rputs \"script generation #{generation} pid=\#{Nginx::Var.new.pid}\"\n")
 end
 
 def run_reload(nginx)
@@ -409,11 +419,15 @@ def run_reload(nginx)
     response = get(http, '/generation')
     response if response.include?('generation 2')
   }
-  out 'script_after', get(http, '/script')
+  # An old worker serves the cached script of generation 1 until it shuts
+  # down: the master signals the old workers only after it has started the
+  # new ones (and waited 100 ms). /script is read after every old worker
+  # has logged that it shuts down, when the old workers no longer accept.
   wait_until('every old worker to shut down') do
     lines = nginx.log
     old.all? { |p| log_index(lines, p, 'gracefully shutting down') }
   end
+  out 'script_after', get(http, '/script')
   out 'in_flight', [http_thread.alive? ? 'http' : nil, stream_thread.alive? ? 'stream' : nil].compact.join(',')
   out 'old_alive', old.select { |p| nginx.alive?(p) }.join(',')
 

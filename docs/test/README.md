@@ -886,7 +886,7 @@ not change. `test/t/cases/workers.rb` has the two modes of today:
 | Mode | Configuration | Workers | Ports | What the case asserts |
 |---|---|---|---|---|
 | `isolation` | `test/conf/workers/isolation.conf` | 4 | 18180 | Requests to `/worker`, one per connection, until every worker has answered at least twice (at most 200). Each answer is `200` with the pid of its worker (`Nginx::Var#pid`), a pid of one of the four workers, and the count of each handler of the location (`mruby_set_code`, the rewrite, access and content handlers) in a global variable of the state: in the answers of one worker the counts go 1, 2, 3, ..., the same for the four handlers, so each worker has an mrb_state of its own that its requests share. Every worker answered. |
-| `reload` | `test/conf/workers/reload.conf` | 2 | 18181, stream 12379 | A request to `/sleep` and a stream session start, whose handlers sleep (`Nginx::Async.sleep`, `Nginx::Stream::Async.sleep`) until the file `release` exists. The helper writes the configuration of generation 2 and a new `script.rb` (read with `mruby_content_handler ... cache`), and sends SIGHUP to the pid of the pid file. `/generation` and `/script` then answer for generation 2 from a new worker, while both sleeps are still in flight, every old worker has logged `gracefully shutting down`, and the workers that hold the sleeps still run (an old worker without a sleep in flight may have ended). After `release`, the old workers answer with generation 1 (`200` with the pid of the worker that started the sleep, and `stream generation 1`), each after its `gracefully shutting down` in the error log, and then end. Generation 2 answers on both protocols from two new workers. |
+| `reload` | `test/conf/workers/reload.conf` | 2 | 18181, stream 12379 | A request to `/sleep` and a stream session start, whose handlers sleep (`Nginx::Async.sleep`, `Nginx::Stream::Async.sleep`) until the file `release` exists. The helper writes the configuration of generation 2 and a new `script.rb` (read with `mruby_content_handler ... cache`), and sends SIGHUP to the pid of the pid file. `/generation` then answers for generation 2 from a new worker, while both sleeps are still in flight, every old worker has logged `gracefully shutting down`, and the workers that hold the sleeps still run (an old worker without a sleep in flight may have ended). `/script` then answers with the new script from a new worker: it is read after the old workers have logged that they shut down, because until then an old worker may still accept a connection and answer with the script that it cached. After `release`, the old workers answer with generation 1 (`200` with the pid of the worker that started the sleep, and `stream generation 1`), each after its `gracefully shutting down` in the error log, and then end. Generation 2 answers on both protocols from two new workers. |
 
 Both modes also assert on the end of the run: the stop gives `master
 exited 0` with every worker of every generation ended, the error log has
@@ -916,8 +916,8 @@ What the helper does:
   `reuseport`, so each worker has a listening socket of its own and the
   kernel spreads the connections over them by the client's address and
   port (Linux); without it one worker may take most connections.
-- A reload rewrites the configuration and sends SIGHUP to the pid in the
-  pid file. The helper waits for what it then asserts, never for a fixed
+- A reload rewrites the configuration and sends SIGHUP to the master,
+  the pid in the pid file when that is the process the helper started. The helper waits for what it then asserts, never for a fixed
   time: the new answer, and the line `gracefully shutting down` of each old
   worker. A handler that should still be in flight across the reload waits
   for a file that the helper writes afterwards, so it is in flight however
@@ -1054,7 +1054,16 @@ memory](#soak-test-for-memory)), is the check for such leaks.
 its stack and the reason in a comment: today the environment array of
 `ngx_set_environment()` (8 bytes, definitely lost in every cell), which
 nginx leaves allocated at exit on purpose (`ngx_cleanup_environment()` in
-`nginx.c`). An entry is added only with the stack of the report and the
+`nginx.c`), and the connection and event arrays that
+`ngx_event_process_init()` allocates in a worker process (the nginx of
+`test/t/cases/_workers.rb`, "Several workers and reloads" above). nginx
+never frees these arrays; a worker that ends on SIGTERM destroys the cycle
+pool that points at them and exits, and on the x86-64 runner valgrind
+reports them as definitely and indirectly lost (14,848 and 2 x 6,144
+bytes in each such worker, in the first CI run of #706), where the arm64
+container reports them as possibly lost. That entry needs the frame
+`ngx_worker_process_init`, so it does not cover the single process of the
+test nginx. An entry is added only with the stack of the report and the
 reason why the block is not ngx_mruby's; a leak with a frame of ngx_mruby,
 mruby or a gem is not suppressed.
 
