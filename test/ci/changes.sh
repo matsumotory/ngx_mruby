@@ -30,7 +30,8 @@
 #
 # The output is one key=value line per key, each value true or false except
 # that of build. A run that reads no files gives false for every category.
-# The script is the same on master and next; the workflows that read it
+# The script is meant to be the same on master and next (a pull request to
+# master follows each change of it on next); the workflows that read it
 # are not. What each category runs in a ready pull request:
 #
 #   code       src/, mrbgems/, mruby/, dependence/, build_config.rb,

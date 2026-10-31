@@ -205,13 +205,16 @@ upgrading". New behavior, API cleanups and features go to `next`.
   commands and their results under "How was this tested"; a check that
   can run locally is not left to CI ("Build and test" lists the local
   commands). The run of a ready PR runs the smallest set of jobs that the
-  change needs ("Which jobs a run starts" in `docs/test/README.md`): a
-  change of the code or the tests runs four cells of the build matrix
-  (nginx 1.31.8 with the static module, 1.30.6 with the dynamic module,
-  the sanitizer cell and the cell under valgrind; the owner's decision of
-  2026-11-01), and every cell runs only in the nightly run, on the push of
-  a tag, in the check PR before a tag (the label `full-matrix`) and on
-  "Run workflow" without the input `base`. The run finishes in about
+  change needs ("Which jobs a run starts" in `docs/test/README.md`). The
+  owner decided on 2026-11-01 that a change of the code runs four cells
+  of the build matrix, and every cell the scheduled run and the check
+  before a release ("Decisions" in `docs/HANDOFF.md` on `next`). The
+  sessions apply it this way (their procedure): a change of the code or
+  the tests runs nginx 1.31.8 with the static module, 1.30.6 with the
+  dynamic module, the sanitizer cell and the cell under valgrind; every
+  cell runs in the nightly run, on the push of a tag, in the check PR
+  before a tag (the label `full-matrix`) and on "Run workflow" without the
+  input `base`. The run finishes in about
   fifteen minutes, not in tens of minutes: on
   2026-10-31, a cell of the build matrix took 6 to 14 minutes, the run of
   `test.yml` with the whole matrix 15 minutes, and a browser lane of the

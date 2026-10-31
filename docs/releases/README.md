@@ -317,7 +317,8 @@ follow it, and entries that a review missed. The same pull request renames
 both files if the owner will tag a different version.
 
 The check pull request has the label `full-matrix`, given when it is opened
-(`gh pr create --draft --label full-matrix`), so that its run of `test.yml`
+(`gh pr create --draft --label full-matrix`; `gh label create full-matrix`
+adds the label once, if the repository has none), so that its run of `test.yml`
 builds every cell of the build matrix and runs `soak`, where other pull
 requests run four cells ("Which jobs a run starts" in
 [docs/test/README.md](../test/README.md)).
