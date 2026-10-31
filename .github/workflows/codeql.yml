@@ -4,9 +4,9 @@ name: codeql
 # module, the Ruby code and the workflows, with the results uploaded to code
 # scanning (the repository's Security tab). It replaces GitHub's default
 # setup of code scanning, which ran on every pull request and push. It runs:
-# - on ready pull requests to master and next that change src/, mrbgems/ or
-#   .github/workflows/; a draft runs nothing, and marking it ready for
-#   review starts the run;
+# - on ready pull requests to master and next that change src/, mrbgems/,
+#   .github/workflows/ or .github/codeql/; a draft runs nothing, and marking
+#   it ready for review starts the run;
 # - on pushes to master and next that change the same paths, so that the
 #   alerts of each branch follow its code;
 # - weekly. GitHub runs a schedule only from the workflow file on the
@@ -16,6 +16,9 @@ name: codeql
 # nginx and mruby, so the run needs no build and takes minutes; the
 # documentation of CodeQL says that such a database can give less accurate
 # results than one made from a build.
+#
+# .github/codeql/codeql-config.yml leaves out the vendored trees, mruby/
+# and dependence/ (docs/test/README.md, "CodeQL").
 on:
   push:
     branches:
@@ -25,6 +28,7 @@ on:
       - 'src/**'
       - 'mrbgems/**'
       - '.github/workflows/**'
+      - '.github/codeql/**'
   pull_request:
     # GitHub's defaults (opened, synchronize, reopened) and the move of a
     # draft to ready for review: a draft runs nothing (the job's if).
@@ -36,6 +40,7 @@ on:
       - 'src/**'
       - 'mrbgems/**'
       - '.github/workflows/**'
+      - '.github/codeql/**'
   schedule:
     # Wednesdays at 04:37 UTC.
     - cron: '37 4 * * 3'
@@ -79,6 +84,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yml
       - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           category: /language:${{ matrix.language }}
