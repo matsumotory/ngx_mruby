@@ -196,6 +196,10 @@ Neither is in the `needs` of `ci-ok`.
 
 ## Supply chain checks
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16057/badge)](https://www.bestpractices.dev/projects/16057)
+
+The badge above is the project's OpenSSF Best Practices badge (passing level), which is separate from the Scorecard results below.
+
 Three more workflows check the supply chain of the build. None of them is in
 the `needs` of `ci-ok`, so none of them blocks a merge through the ruleset;
 "Review and merge" in `AGENTS.md` asks for every CI check on the head commit
@@ -225,8 +229,6 @@ $ GH_TOKEN=$(gh auth token) .claude/tmp/zizmor/bin/zizmor --config .github/zizmo
 ```
 
 ### OpenSSF Scorecard
-
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16057/badge)](https://www.bestpractices.dev/projects/16057)
 
 `.github/workflows/scorecard.yml` runs
 [OpenSSF Scorecard](https://github.com/ossf/scorecard-action) on pushes to
