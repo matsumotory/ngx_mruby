@@ -37,7 +37,7 @@ that are not written down elsewhere yet, the work in progress and the queue.
 
 ## Change-scoped runtime CI, 2026-10-31
 
-- `codex/ci-change-scope` prepares a separate PR against `next`; it does not
+- [#677](https://github.com/matsumotory/ngx_mruby/pull/677) (`codex/ci-change-scope`) is a draft against `next`; it does not
   modify the active site-publication branches or cancel their runs.
 - The owner requested that changes run only relevant CI, not only for the site:
   “サイトだけに関わらずci不要な変更や内容次第でやなくていいテストは省かないと時間かかりすぎる”.
@@ -48,8 +48,12 @@ that are not written down elsewhere yet, the work in progress and the queue.
   site/examples/performance checks and publication gates remain unchanged.
 - Local classifier/gate tests are implemented. Current-head remote CI,
   independent review and merge are not complete; the PR will record evidence.
-  Narrower site-route checks and build-result reuse are separate, unimplemented
-  work, not claimed performance improvements of this change.
+  The second stage implements parser-backed local-document selection, parallel
+  browser lanes and exact same-run artifact reuse. Static and v2 coverage are
+  retained. Native unit/generator/static checks passed; browser timing and
+  exact-head remote acceptance remain pending. Preserve #672's added required
+  suites when integrating its publication changes. Do not merge this draft;
+  the owner will have Claude review the completed implementation and evidence.
 
 ## Landing-page hierarchy, 2026-10-30
 

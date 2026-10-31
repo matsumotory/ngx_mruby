@@ -1987,8 +1987,8 @@ check and the required `ci-ok` check run on every event of `test.yml`.
 | Changed inputs | Runtime matrix and soak | Other checks |
 | --- | --- | --- |
 | `AGENTS.md`, `CLAUDE.md`, `docs/HANDOFF.md` | Not applicable | Existing site/link checks still apply |
-| Root README, CONTRIBUTING, SECURITY; Markdown under `docs/` | Not applicable | Existing complete site checks, including samples and links |
-| Local Markdown/MDX under `site/src/content/` | Not applicable | Existing complete site checks |
+| Root README, CONTRIBUTING, SECURITY; Markdown under `docs/` | Not applicable | Complete static checks; conservative browser scope below |
+| Local Markdown/MDX under `site/src/content/` | Not applicable | Full site browser coverage (MDX can include code) |
 | Other `site/` inputs, including CSS, layouts, generators and dependencies | Not applicable | Existing complete site checks |
 | `examples/`, including executable README samples | Not applicable | Existing examples workflow; site checks where triggered |
 | Runtime, gems, vendored trees, build, dependencies, tests, workflows, or anything else | Full, unchanged | Existing examples/site/performance selection |
@@ -2031,9 +2031,62 @@ lines 2m13s, screenshots 2m06s and browser installation 2m02s. Its fresh,
 offline and v2 builds together took 34s. Runtime selection avoids unrelated
 nginx work; it does **not** claim to solve this separate site critical path.
 
-A later change can map local-content edits to affected routes and their
-navigation/search/layout contracts, retaining full site coverage for shared
-styles, layouts, generators and unknown inputs. That mapping needs its own
-regression evidence and independent review before narrowing browser checks.
-This change does not reuse results from another head, remove site checks,
-change publication requirements, or claim a measured post-change CI speedup.
+### Browser scope and parallel lanes
+
+The site builds and runs every static check once. Browser checks consume that
+same run's `site-validation` artifact (built HTML and generated manifests), not
+a result cached from another commit. The artifact is bound to the exact site
+and v2 source revisions, clean-source metadata, lockfile hash and workflow run.
+A mismatched revision, dirty build, lock, run or artifact digest fails.
+
+`ci-plan.mjs` uses the actual PR merge-parent or branch-push range and the fresh
+manifest. Existing regular Markdown under `docs/` can use targeted coverage
+when the generator's own satteri parser proves that the title, title removal,
+heading hierarchy/text, code, inline code, HTML and frontmatter contracts did
+not change. Both language routes, including fallback pages, are checked. This
+allows prose and link changes in real documents without approximating Markdown
+with a regular expression. Changes to those contracts, new/deleted/renamed
+files, MDX, shared CSS/layouts/generators/dependencies/workflows, unknown inputs
+or unavailable evidence use full coverage. Root AGENTS/CLAUDE/README changes
+alone need no 3.x page browser checks, while all static checks still run.
+
+The independent browser lanes are:
+
+- Chromium styles and WebKit styles, with their original viewport/theme/motion
+  coverage, in separate jobs;
+- 3.x homepage interaction and code layout (only the affected page code checks
+  for targeted document edits; the homepage itself is unchanged in that case);
+- Japanese page lines;
+- focus, language links and Lighthouse accessibility;
+- full representative screenshots, or every targeted page in both engines,
+  both themes and 320/390/1440px widths, with viewport and full-page evidence.
+
+The v2 input is fetched independently from `master`, so it is **never assumed
+unchanged from the next-branch diff**. Maintenance Japanese lines, every v2 code
+surface and both version search indexes remain in a separate always-running
+lane. The union of full 3.x and full v2 code checks is tested against the former
+single suite. No assertions, viewports or engines are removed. Direct script
+invocations without CI scope still run their complete original coverage.
+
+`site-ok` runs with `always()` and requires success from build, the complete
+browser matrix and maintenance checks. A skipped, cancelled, missing or failed
+job cannot publish. `deploy` needs both build and this gate. Scope-none browser
+jobs return an explicit successful no-work result after artifact verification;
+they do not silently bypass a failed dependency. Independent review repeats
+the relevant regression suite, rather than rebuilding every unrelated artifact.
+
+```sh
+cd site
+node scripts/test-ci-scope.mjs
+node scripts/test-ci-browser.mjs
+node scripts/test-ci-integration.mjs
+```
+
+The contract tests include real Git ranges, rename/mode cases, Markdown parsing
+counterexamples, exact version coverage, workflow wiring and stale/dirty/run/
+lock/v2 artifact rejection. A manual `site` dispatch with `measure_scope=true`
+adds a two-page Chromium style comparison **after** the full style lane passes,
+using the same build. It cannot replace required full coverage. Each lane writes
+measured script seconds and selected pages to its job summary. Compare actual
+workflow critical paths, not the sum of parallel jobs. No measured post-change
+remote speedup is claimed until that run completes.

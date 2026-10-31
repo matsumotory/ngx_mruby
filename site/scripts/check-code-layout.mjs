@@ -3,15 +3,16 @@
 // at phone/tablet/desktop widths and 200% text enlargement in both engines.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { scopedPages, codePageScope } from './lib/ci-pages.mjs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
 import { loadSample } from './lib/samples.mjs';
 const site = path.resolve(new URL('..', import.meta.url).pathname);
 const dist = path.resolve(process.argv[2] || path.join(site, 'dist'));
-const pages = fs.readdirSync(dist, { recursive: true }).filter(p => /(^|\/)index\.html$/.test(p)).map(p => '/' + p.replace(/index\.html$/, ''));
-const representative = ['/', '/ja/', '/start/', '/ja/start/', '/guides/agent-proxy/', '/ja/guides/agent-proxy/', '/v2/', '/v2/ja/', '/v2/reference/ruby/', '/v2/ja/reference/ruby/'];
-for (const route of representative) assert.ok(pages.includes(route), `missing representative route ${route}`);
+const allPages = fs.readdirSync(dist, { recursive: true }).filter(p => /(^|\/)index\.html$/.test(p)).map(p => '/' + p.replace(/index\.html$/, ''));
+const representatives = ['/', '/ja/', '/start/', '/ja/start/', '/guides/agent-proxy/', '/ja/guides/agent-proxy/', '/v2/', '/v2/ja/', '/v2/reference/ruby/', '/v2/ja/reference/ruby/'];
+const {pages,stressPages} = codePageScope(allPages, representatives, scopedPages(dist), process.env.SITE_CI_VERSION);
 const failures = [];
 let count = 0;
 const server = await serve(dist);
@@ -43,7 +44,7 @@ try {
         await page.evaluate(() => { document.querySelectorAll('details').forEach(el => { el.open = true; }); });
         await inspect(page, `${engine.name()} ${route} 320`);
       }
-      for (const route of representative) for (const width of [320, 390, 768, 1440]) for (const enlarged of [false, true]) {
+      for (const route of stressPages) for (const width of [320, 390, 768, 1440]) for (const enlarged of [false, true]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(server.url + route);
         await page.evaluate(enlarged => {
@@ -79,4 +80,4 @@ try {
   }
 } finally { await server.close(); }
 assert.deepEqual(failures, [], `code layout failures (${failures.length}):\n${failures.slice(0, 30).join('\n')}`);
-console.log(`check-code-layout: ${count} page conditions; all generated pages, EN/JA, both versions, 320/390/768/1440, 200% code text, long tokens; canonical clipboard and keyboard activation passed`);
+console.log(`check-code-layout: ${count} page conditions; ${pages.length} selected pages, EN/JA where selected, 320/390/768/1440, 200% code text, long tokens; canonical clipboard and keyboard activation passed`);
