@@ -5,7 +5,7 @@ the balancer API yet, because the API does not exist; the row "Ruby balancer
 API" of `docs/proposals/v3-plan.md` on `next` carries that. Question 1 of
 section 4 was decided on 2026-10-29, questions 2 and 3 on 2026-10-30. #652
 made the changes of step 1 on `master` (`8593d0d65`), which reached `next`
-with #658; #648 documented the per-worker meaning of step 2; #PR made the
+with #658; #648 documented the per-worker meaning of step 2; #680 made the
 changes of step 3. Written on 2026-10-29 from `master` at `c6d3b3b9b` (2.7.2
 and #645), `next` at `67ad9b919`, and the source of nginx 1.31.8 (the version
 in `nginx_version`). It follows the review of #624, which left three points
@@ -155,4 +155,4 @@ option "2.7.3で完全一致にする (推奨)"). Step 1 makes the three changes
 |---|---|---|---|
 | 1 | Option A in both setters, `TypeError` for an argument that is not a String, and the lookup of the upstream by its whole name: a test commit, then the fix commit, with the entries in `docs/releases/v2.7.3.md` and `.ja.md` | `master` (reaches `next` by the merge) | Done: #652, in `next` by #658 |
 | 2 | The per-worker meaning of the setters in `docs/class_and_method/`, and a pointer to the balancer API | `next` | The meaning is done: #648. The pointer waits for the balancer API, in the row "Ruby balancer API" of `docs/proposals/v3-plan.md` |
-| 3 | Options D and E, with their entries in `docs/releases/v3.0.0.md` | `next` | Done: #PR |
+| 3 | Options D and E, with their entries in `docs/releases/v3.0.0.md` | `next` | Done: #680 |

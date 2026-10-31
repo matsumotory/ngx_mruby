@@ -332,7 +332,7 @@ not enough, and show the change.
   end
   ```
 
-- [`Nginx::Upstream#server=` and `Nginx::Stream::Connection#upstream_server=` raise `ArgumentError` for a string that cannot be a server](../releases/v3.0.0.md#nginxupstreamserver-and-nginxstreamconnectionupstream_server-raise-argumenterror-for-a-string-that-cannot-be-a-server-PR):
+- [`Nginx::Upstream#server=` and `Nginx::Stream::Connection#upstream_server=` raise `ArgumentError` for a string that cannot be a server](../releases/v3.0.0.md#nginxupstreamserver-and-nginxstreamconnectionupstream_server-raise-argumenterror-for-a-string-that-cannot-be-a-server-680):
   the search above finds both setters and `RuntimeError`; look at the ones
   that rescue an exception of a setter.
 
@@ -348,7 +348,7 @@ not enough, and show the change.
   end
   ```
 
-- [`Nginx::Upstream#server=` raises `ArgumentError` for a host name instead of resolving it](../releases/v3.0.0.md#nginxupstreamserver-raises-argumenterror-for-a-host-name-instead-of-resolving-it-PR):
+- [`Nginx::Upstream#server=` raises `ArgumentError` for a host name instead of resolving it](../releases/v3.0.0.md#nginxupstreamserver-raises-argumenterror-for-a-host-name-instead-of-resolving-it-680):
   the search above finds the setter; look at what the script gives it, also
   when the script reads the value from a request or a file.
 
