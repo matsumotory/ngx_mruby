@@ -1,0 +1,23 @@
+# Accepted differences of the performance comparison (test/perf/perf.rb).
+# See "Known differences" in docs/test/README.md.
+#
+# One line per difference, fields separated by spaces:
+#
+#   CONDITION BASE HEAD SCENARIO ALLOWANCE
+#
+# CONDITION   what differs between the two builds. The only one is
+#             mruby-version: MAJOR.MINOR of the bundled mruby
+#             (MRUBY_RELEASE_MAJOR and MRUBY_RELEASE_MINOR of
+#             mruby/include/mruby/version.h in the tree of each build)
+# BASE, HEAD  the value of the condition in the base and in the head
+# SCENARIO    a scenario of test/soak/scenarios.rb
+# ALLOWANCE   the change of Ir per request without GC, in percent, up to
+#             which a WARN or FAIL row is shown as ok (accepted); above it,
+#             the row is judged as if the line were not there
+#
+# A line applies only when both builds match its condition. The GC share
+# is printed but not judged, so it has no allowance.
+
+# mruby 4.1.0-rc2 against 4.0.0 (#678): auth measured +7.09%.
+# The owner accepted it on 2026-10-31.
+mruby-version 4.0 4.1 auth 8
