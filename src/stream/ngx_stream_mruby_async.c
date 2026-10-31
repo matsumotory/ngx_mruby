@@ -1,7 +1,7 @@
 #include "ngx_stream_mruby_core.h"
 #include "ngx_stream_mruby_module.h"
 #include "ngx_stream_mruby_async.h"
-#include "../http/ngx_http_mruby_debug.h" // with NGX_MRUBY_DEBUG_STATS, counts the mrb_gc_register() calls
+#include "../http/ngx_http_mruby_gc_roots.h"
 
 #include <mruby/array.h>
 #include <mruby/error.h>
@@ -112,9 +112,9 @@ static ngx_int_t ngx_stream_mrb_post_fiber(ngx_stream_mrb_reentrant_t *re, ngx_s
       ictx->s = prev_s;
       return NGX_DONE;
     } else {
-      if (ctx->fiber_registered) {
-        ctx->fiber_registered = 0;
-        mrb_gc_unregister(re->mrb, *re->fiber);
+      if (ctx->fiber_slot != NGX_MRB_GC_ROOTS_NONE) {
+        ngx_mrb_gc_roots_remove(re->mrb, ctx->fiber_slot);
+        ctx->fiber_slot = NGX_MRB_GC_ROOTS_NONE;
       }
       re->fiber = NULL;
     }
@@ -221,9 +221,9 @@ static void ngx_stream_mrb_connection_cleanup(void *data)
 
   ngx_stream_mrb_cleanup_pending_operation(ctx);
 
-  if (ctx->fiber_registered) {
-    ctx->fiber_registered = 0;
-    mrb_gc_unregister(ctx->mrb, *ctx->fiber_proc);
+  if (ctx->fiber_slot != NGX_MRB_GC_ROOTS_NONE) {
+    ngx_mrb_gc_roots_remove(ctx->mrb, ctx->fiber_slot);
+    ctx->fiber_slot = NGX_MRB_GC_ROOTS_NONE;
   }
 }
 
@@ -254,13 +254,12 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
   re->fiber = ctx->fiber_proc;
 
-  // Keep the fiber from GC while it can be resumed. Register it once: a fiber
-  // that sleeps more than once reuses this registration, and
-  // ngx_stream_mrb_connection_cleanup or ngx_stream_mrb_post_fiber removes it
-  // exactly once (when the session ends, or when the fiber finishes).
-  if (!ctx->fiber_registered) {
-    mrb_gc_register(mrb, *re->fiber);
-    ctx->fiber_registered = 1;
+  // Keep the fiber from GC while it can be resumed. Store it in the GC root
+  // holder once: a fiber that sleeps more than once keeps its slot, and
+  // ngx_stream_mrb_connection_cleanup or ngx_stream_mrb_post_fiber frees the
+  // slot exactly once (when the session ends, or when the fiber finishes).
+  if (ctx->fiber_slot == NGX_MRB_GC_ROOTS_NONE) {
+    ctx->fiber_slot = ngx_mrb_gc_roots_add(mrb, *re->fiber);
   }
 
   ctx->sleep.handler = ngx_stream_mrb_timer_handler;

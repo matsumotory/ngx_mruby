@@ -8,6 +8,7 @@
 
 #include "ngx_http_mruby_async.h"
 #include "ngx_http_mruby_core.h"
+#include "ngx_http_mruby_gc_roots.h"
 #include "ngx_http_mruby_init.h"
 #include "ngx_http_mruby_request.h"
 
@@ -1328,6 +1329,11 @@ static ngx_int_t ngx_http_mruby_shared_state_init(ngx_conf_t *cf, ngx_mrb_state_
   }
   ngx_http_mruby_syms_init(mrb);
   ngx_mrb_class_init(mrb);
+  if (ngx_mrb_gc_roots_init(mrb) != NGX_OK) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s: failed to make the GC root holder of the mrb_state", MODULE_NAME);
+    mrb_close(mrb);
+    return NGX_ERROR;
+  }
 
   state->mrb = mrb;
 
