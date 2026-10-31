@@ -35,29 +35,419 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## State as of 2026-10-29 (14:40 JST)
+## Landing-page hierarchy, 2026-10-30
 
-Heads: `next` is `c9c49023e`, the merge of #628 (`master` at `93432cf69`
-into `next`, with #616, #624 and #627); before it, on its first parent,
-`2969426f6` (#625, this file and the state of site step 4 in
-`docs/proposals/site.md`), `69b245bdb` (#623), `807865280` (#622), `ca7b473b0` (#621),
-`28faff6c2` (#620), `ac7d569c3` (#619), `d5548db41` (#618), `dbe4acf5b`
-(#617), `0d1b3d756` (#600), `571212d58` (#614), `5ca7c955b` (#606) and
-`216df0ceb` (#615, `master` at `6b27f08da` into `next`). `master` is
-`93432cf69`, the merge of #627; before it, `d5ae75547`, the merge of #624.
-`next` has every commit of `master` since #628. `v2.x` is
-`93432cf69` (`git ls-remote origin refs/heads/v2.x`), so it mirrors
-`master`.
+- #670 merged as `0982d877f`; production run [41056532525](https://github.com/matsumotory/ngx_mruby/actions/runs/41056532525)
+  succeeded. All 628 shipped files matched HTTPS. [Publication evidence](https://github.com/matsumotory/ngx_mruby/pull/670#issuecomment-6523552378)
+  records live code, interaction, search and sharing checks.
+- [#671](https://github.com/matsumotory/ngx_mruby/pull/671)
+  (`codex/site-layout-hierarchy`), based on that merge, removes generic link arrows,
+  repeated figure numbering and standalone narrow-screen arrows. Related items
+  use proximity and shared text roles. The existing routing behavior, source
+  copies, development status and MCP limitations remain intact.
+- Shared layout/typography rules and independent visual-review criteria are in
+  [the site plan](proposals/site.md#layout-and-type-hierarchy), referenced by
+  AGENTS.md. Scope is presentation and its checks; runtime and CI policy do not
+  change. Current-head validation, review and publication are recorded on the PR.
+
+## Landing-page narrative rebuild, 2026-10-30
+
+- #669 merged as `10297d1e2`; production run
+  [41042885039](https://github.com/matsumotory/ngx_mruby/actions/runs/41042885039)
+  and deployment `7436631611` succeeded. All 626 shipped files matched HTTPS;
+  live code checks covered 340 conditions, interaction checks 64, and English /
+  Japanese search in both versions passed. Its visual design was subsequently
+  rejected as insufficient; successful checks do not imply design acceptance.
+- [#670](https://github.com/matsumotory/ngx_mruby/pull/670)
+  (`codex/home-use-case-lp`) rebuilds the v3 overview around developers managing
+  several LLM APIs: purpose, module definition, model routing, first local
+  handler, then the real proxy example. Nested illustration boxes and repeated
+  introductory claims are removed. MCP remains an unverified architecture
+  candidate; v3 remains in development, with a stable 2.7 entry. The v3 sharing
+  image follows the same concrete purpose and composition.
+- Scope is the bilingual landing page, its sharing asset and these records.
+  Runtime fixes, v3 setter decisions, stable README work, and software releases
+  remain separate. Personal references and local QA files are not public assets.
+- The owner asked on 2026-10-30: “ngx_mrubyは本番二デプロイしてから見せて。
+  こっちは個人のサイトなんやから” (deploy the personal site before presenting it).
+  Follow the existing review/CI/merge gates, then verify the production artifact,
+  code copies, OG delivery and desktop/mobile pages. This does not authorize a
+  software release or a GitHub approval review. Current-head checks, independent
+  first-reader/technical reviews and publication evidence belong on the PR.
+
+## Whole-page material integration, 2026-10-30
+
+- #668 merged as `252018d86`; production run
+  [41023287679](https://github.com/matsumotory/ngx_mruby/actions/runs/41023287679)
+  succeeded. Its 626 shipped files matched production; live code-layout
+  verification covered 340 conditions and interaction verification 32.
+  The earlier pending-publication entries below are historical checkpoints.
+- The owner found that metallic components looked detached from the remaining
+  page: background, composition, light, material, color and motion need one
+  system. [#669](https://github.com/matsumotory/ngx_mruby/pull/669)
+  (`codex/home-material-system`) addresses that feedback on the v3
+  overview, preserving tested routing, version states and canonical code copies.
+  The [site plan](proposals/site.md#v3-use-case-homepage-2026-10-30) records the
+  scope. Visual approval is separate from passing automated checks.
+- This iteration changes homepage styling and its material checks only. No
+  runtime change, MCP interoperability claim, stable README migration, new OG
+  artwork or software release is included. Personal photos remain unpublished.
+- Local preview checks passed: 40 homepage style loads, 500 code conditions,
+  32 interaction conditions, 69 complete exports and English/Japanese
+  accessibility 100. An independent visual review found no must-fix and one
+  arrow-placement improvement; the MCP entry arrow now points at Ruby's column.
+  A technical review also found transient text fading during route motion.
+  Test-only commit `52cb29ce7` reproduces it (opacity 0.6 at animation start);
+  the correction keeps text opaque, and the interaction check now covers both
+  themes and four points of the animation. The narrow MCP diagram retains the
+  Ruby-to-backend branch layout. Final-head CI and re-review are recorded on
+  the draft PR. A further visual review removed diagonals that crossed content
+  and the nested outer/Ruby cards, retaining a single nginx enclosure and a
+  section-aligned light field. The new visual diff needs final-head verification.
+  Publication
+  remains separate; #668's individual merge approval is not reused here.
+
+## Final site validation follow-up, 2026-10-30
+
+- #668 head `77f3161ad` passed test/examples CI, but site CI found an overly
+  wide sample caption and a Japanese identifier-search failure. Publication
+  remains held until the follow-up head passes all checks.
+- The caption now uses a character-based width. Search metadata is generated
+  from canonical API names; visible prose/code and exported Markdown stay
+  unchanged. At regression-test commit `3ec909597`, the exact-reference
+  check fails only for Japanese `mruby_content_handler` (11/12 pass).
+  The new test also requires the target reference, not merely any result.
+  Final-head execution and independent review are recorded on #668.
+- #667 production run 41011744554 and deployment 7432116276 succeeded;
+  80 changed/new shipped files matched HTTPS, and the live policy/redirect
+  checks and all five Lighthouse categories (100) passed.
+- Work continues in the existing repository checkout. Previous worktrees and
+  branches remain preserved; local folder inventories are not public artifacts.
+- The owner's 2026-10-30 correction requires code to be readable without
+  horizontal scrolling and a modern code presentation. #668 now applies
+  soft wrapping to both versions and all documentation, names sample files,
+  and highlights the model-routing assignment. Full configuration remains
+  expandable; syntax and original clipboard bytes are preserved.
+  Regression commit `d88c1e573` fails on the old homepage at 320px.
+  `check-code-layout.mjs` checks every generated page at 320px and required
+  English/Japanese reference and entry pages at 320/390/768/1440, with 200%
+  code text, unbroken URLs, keyboard activation and canonical sample copies.
+  Local code-layout checks pass in 500 page conditions in Chromium/WebKit,
+  including canonical clipboard and keyboard checks; homepage computed-style
+  checks pass in 40 light/dark page loads. Publication remains pending
+  final-head CI, independent review and live QA.
+- Site CI at `d005d45f3` passed the complete computed-style, Japanese,
+  focus, search and accessibility gates. Its interaction check counted
+  Starlight's idle-loaded Pagefind UI module as illustration traffic.
+  The check now waits for the search input to be attached before measuring
+  route controls, retaining the zero-request assertion. A delayed-idle
+  diagnostic reproduces the old failure; normal and delayed initialization
+  each pass all 32 interaction conditions with the wait. Final CI is required.
+
+## v3 homepage redesign checkpoint, 2026-10-30 06:04 UTC
+
+- The owner prioritized site expression over further internal C work: v3 as
+  the main entry, concrete users and purposes, large diagrams, metallic
+  surfaces and deliberate motion. The [site plan](proposals/site.md#v3-use-case-homepage-2026-10-30)
+  records the revised visual scope and bounded exceptions. Stable 2.7 keeps
+  its own entry and sharing card. Personal photos remain references only.
+- [#668](https://github.com/matsumotory/ngx_mruby/pull/668) owns this work.
+  The new homepage shows tested model routing, an explicitly unverified MCP
+  document-service design, and trial/edit/check entry points. English and
+  Japanese canonical guides feed HTML and machine-readable Markdown.
+- #663 production run 41005252954 completed: 117 changed/new shipped files
+  matched over HTTPS; deployment 7431188963, redirects and site policy checks
+  passed, with all five live Lighthouse categories at 100.
+- #665 merged as `2677db219` after current-head CI and independent review;
+  production run 41008268601 passed, with 165 changed/new shipped files
+  matching HTTPS. #666 merged as `d2827d72c` and production run 41009919981
+  passed. #667 merged as `79d7e3933` after final-head CI and independent
+  review; production verification is pending. This branch includes both.
+- A fresh linux/arm64 trial of examples/start stopped at Ubuntu image-metadata
+  retrieval before compilation. No startup/edit/reload success is claimed for
+  that attempt. The updated example adds executable configuration validation
+  and reload checks. Examples CI 41009377947 executed the nine commands
+  successfully on the Linux runner, including build, response changes, validation,
+  reload and cleanup. Final-head CI remains required before publication.
+- Internal fixes remain separate in #664 and the existing local checkpoints.
+  The owner accepted the v3 setter choices D/E on 2026-10-30 with
+  「すごい！両方進めて！」 in response to the explicit proposal: invalid Strings
+  raise ArgumentError and the HTTP setter refuses hostnames without resolving
+  them; non-String TypeError remains. This decision does not apply to 2.7,
+  settle other open proposal questions, or authorize a software release.
+  Internal implementation is deferred while the site work is completed.
+- Local validation includes 24 Chromium/WebKit route-control and reduced-motion
+  loads, Chromium clipboard checks, 120 Noto style loads, 1044 focus stops,
+  six Lighthouse pages (all categories 100), and native/Noto Japanese trial
+  and MCP typography checks. Final-head CI and live artifact/OG checks are
+  recorded on #668; these local results do not claim production verification.
+  MCP execution, actual social-network card fetches and the failed arm64
+  container trial remain unverified.
+
+## Standalone routing recipe, 2026-10-30
+
+- This independent documentation unit includes next `490ea459c` after
+  the installation integration #663; runtime inputs are unchanged from the
+  originally tested `6d65a12ec`. The English and Japanese
+  [routing guide](guides/routing.md#run-it-independently) now contain a
+  complete loopback configuration, Ruby table, executable checks and
+  failure diagnostics. No module or existing integration fixture changed.
+- The exact shell block was extracted from the guides and executed on
+  Ubuntu 22.04 aarch64 as an unprivileged user, using nginx 1.31.8 built
+  from `6d65a12ec` and its default gem lock. Five requests passed: known
+  tenants a/b, absent header, unknown key and an address-shaped key.
+  Each checks HTTP status, content type and every body byte, including the
+  path/query and trailing newline. The instance stops using its own prefix.
+- An external negative-check copy with a deliberately wrong expected
+  backend returned 1 and removed the instance's PID file. That altered
+  expectation is not in the guide. The source/code review found no open
+  must-fix or should-fix item. Browser and export validation are recorded
+  with the completed local commit; no remote CI or publication is claimed.
+- The tested executable is a development build, not a v3 release. This
+  recipe was not run on v2.7.2, with dynamic module loading or on non-Linux
+  systems. No performance measurement or full module-suite rerun was
+  performed for this documentation-only unit. The owner authorized the
+  normal PR/CI/publication process on 2026-10-30; final-head CI and
+  deployment verification are pending.
+
+## Surface continuation, 2026-10-30
+
+- This homepage-only change adjusts the copper-red CTA and mobile spacing.
+  The [site plan](proposals/site.md#local-surface-and-mobile-spacing-iteration-2026-10-29)
+  records color roles, contrast and measured viewport differences. Existing
+  style expectations are preserved; the new contrast assertion is additive.
+- Independent source review has no must-fix or should-fix findings.
+  Local checks cover 80 native/Noto style loads, 1032 focus stops and no
+  contrast failures. Those preview builds were dirty; final-head CI and
+  production verification remain required.
+- [#665](https://github.com/matsumotory/ngx_mruby/pull/665) contains the
+  separate README/OG change. [#663](https://github.com/matsumotory/ngx_mruby/pull/663)
+  merged as `490ea459c`; this branch includes that integration. Publication
+  resumed with the owner's authorization on 2026-10-30; software releases
+  and personal reference photo publication remain excluded.
+
+## Sharing image continuation, 2026-10-30
+
+- The initial site/rebrand in [#661](https://github.com/matsumotory/ngx_mruby/pull/661)
+  is published at next `6d65a12ec`; its completion record links the deployed
+  artifact and live checks. [#662](https://github.com/matsumotory/ngx_mruby/pull/662)
+  aligned maintenance process docs at master `967b61cc6` (mirrored to v2.x).
+- [#663](https://github.com/matsumotory/ngx_mruby/pull/663) integrates the
+  maintenance docs and verifies the development installation walkthrough.
+  It merged as `490ea459c` after final-head CI and independent review;
+  production run 41005252954 is in progress.
+- This sharing-image change uses the selected metallic mark in one
+  product sharing image for the README and both site versions. The public
+  source, render command, metadata checks and limits are in the
+  [site plan](proposals/site.md#sharing-and-readme-identity-2026-10-29).
+  Existing header/favicon derivatives remain; old image URLs are preserved.
+  Local static checks and full-size/300/390-pixel visual checks pass. Final
+  independent source/visual review has no must-fix or should-fix findings.
+  Current-head PR CI and deployment remain pending; this is not a release change.
+- The later site work remains distinct: restrained surface/CTA refinements,
+  deeper verified HTTP/stream examples and contextual performance records.
+  The v3 setter work follows those site units under its existing plan.
+
+## Installation and process continuation, 2026-10-29
+
+- The first rebrand and versioned-documentation iteration is published.
+  [#661](https://github.com/matsumotory/ngx_mruby/pull/661) merged as
+  `6d65a12ec`. Production run 40959681713 and deployment 7425112363
+  succeeded. All 614 shipped files match the live site; four versioned
+  English/Japanese searches, mobile/desktop views, code interaction and
+  HTTPS checks pass. Final evidence is in the
+  [completion record](https://github.com/matsumotory/ngx_mruby/pull/661#issuecomment-6509229800).
+- The common continuation procedure from #659 reached master as `967b61cc6`
+  in [#662](https://github.com/matsumotory/ngx_mruby/pull/662), after all CI
+  and independent review passed. The v2.x mirror succeeded. HANDOFF
+  remains on next, and master links that source. Branch-specific test
+  process/port handling is preserved; a common workflow does not imply
+  identical harness capabilities.
+- [#663](https://github.com/matsumotory/ngx_mruby/pull/663), branch
+  `codex/integrate-stable-install`, merges the installation correction
+  of [#660](https://github.com/matsumotory/ngx_mruby/pull/660) from master
+  `967b61cc6` into next `6d65a12ec`. The conflict resolution selects next
+  development source and preserves the v3 core-gem, lock and removed
+  auto-ssl contracts. English/Japanese commands are identical. A fresh
+  clone of `6d65a12ec` built and installed nginx 1.31.8 on Ubuntu 22.04
+  aarch64; the exact documented HTTP trial passed both response assertions,
+  configuration validation, reload and quit. These are documentation
+  changes, with no measured binary input changed. Current head, final CI
+  and independent review belong in the integration PR.
+- Next site work: shared README/social branding and controlled metallic
+  surface/CTA refinements, then deeper executable HTTP/stream examples
+  and reproducible performance records. Keep human and agent output on
+  the same sources; retain implementation/planned/under-design distinctions.
+  The upstream setter D/E work and stable empty-filter follow-up remain
+  separate runtime items. No new runtime contract or software release was
+  decided by this documentation integration.
+
+## Site continuation checkpoint, 2026-10-29 20:25 UTC
+
+- `next` is `2588cfd26`, the merge of shared-process PR
+  [#659](https://github.com/matsumotory/ngx_mruby/pull/659). Its final head
+  `71d136799` passed test run 40946099772 and site run 40946099800 against
+  the current base. The independent review has no unresolved findings.
+- Integration [#658](https://github.com/matsumotory/ngx_mruby/pull/658)
+  is merged. Production run 40945526052 deployed `258c852fa`; the live
+  home matches its artifact, HTTPS and the verification file pass, the
+  environment permits only next, and Lighthouse categories score 100.
+- `master` is `da0d1172d`, the merge of installation-guide
+  [#660](https://github.com/matsumotory/ngx_mruby/pull/660). All final-head
+  CI passed against master `7d81d417a`. Its released v2.7.2 / explicit
+  nginx 1.31.8 static build and HTTP lifecycle passed. Its documentation
+  still needs the normal master-to-next integration; do not reimplement
+  stable changes on next. The v2 site build reads the merged master source.
+- This PR, branch `codex/site-technical-design`, introduces the technical
+  home pages, shared navy/graphite palette, metallic C logo family and
+  versioned Markdown/JSON exports. Its design and source rules are in
+  [the site proposal](proposals/site.md#working-design-reading-implementation-and-agent-use-2026-10-29).
+  The owner authorized iterative publication on 2026-10-29; this does not
+  authorize a software release or publication of the reference photos.
+  HTTP gold / stream purple is the current design assignment, with labels;
+  LLM proxy is explicitly development with implemented/planned features.
+- Generator fixtures, 67 complete Markdown bodies and source metadata,
+  contrast, 26 v2 HTML pages and four version-specific searches pass.
+  Independent retrieval reconstructed the upstream contract and the stable
+  installation steps without confusing versions. Independent source and
+  representative desktop/mobile/favicon image review has no open findings.
+  The first logo-family browser run found a body-font mismatch and a short
+  Japanese line; implementation fixes are committed. The corrected full
+  browser run and final PR CI are in progress; consult the PR for final
+  results, current head and the deployment record.
+- Next site steps: complete that validation, merge under the normal gates,
+  verify the live artifact and search, then iterate on deeper examples,
+  README brand adoption and a dedicated social-sharing image. Runtime
+  upstream setter D/E and the stable empty-filter follow-up remain separate
+  queue items. No runtime implementation changed in this site PR.
+
+## Continuation checkpoint, 2026-10-29 20:05 UTC
+
+This supplements the integration snapshot below. Verify branch and PR state
+again before acting; the PRs hold final-head CI and review evidence.
+
+- `master` and its `v2.x` mirror are `7d81d417a`. Site cutover PRs #655,
+  #657, #656 and #654 are merged. Production run 40928646131 was verified
+  against its artifact, including all 26 `/v2/` pages, version-specific
+  English/Japanese search and mobile rendering.
+- [#658](https://github.com/matsumotory/ngx_mruby/pull/658) merged into
+  `next` as `258c852fa` at 20:02 UTC after explicit owner authorization.
+  Its final head `ee0025f5d` passed CI on merge ref `7c0c9ee0a`, including
+  matrix, sanitizer, valgrind, soak, nginx tests, examples and site build.
+  The performance run 40934491055 has 15 `ok` rows, largest increase
+  +0.21%; the final numeric review is
+  [recorded on the PR](https://github.com/matsumotory/ngx_mruby/pull/658#issuecomment-6507034713).
+  Post-merge site publication still needs its own verification.
+- [#659](https://github.com/matsumotory/ngx_mruby/pull/659),
+  `codex/shared-handoff-process`, records the common Claude/Codex/human
+  continuation procedure. Head `cb3d35164` passed CI (the first OpenSSL
+  download failure was resolved by a rerun). This update includes the new
+  `next` base, so CI must pass again on the updated head. Its only conflict
+  was this dated state record; the integration snapshot is retained below.
+- `codex/site-technical-design` holds the rebrand and machine-readable
+  documentation preview, still uncommitted at this checkpoint. Preserve
+  its task worktree. The export has 51 development and 16 stable source
+  pages, complete-body/source/metadata checks and independent retrieval
+  review. The pre-logo revision passed 440 browser loads and 1,008 focus
+  stops; new global colors and the metallic C logo need final browser QA.
+  No reference photograph is a public asset. The owner authorized iterative
+  site publication on 2026-10-29: "ossのサイトはデプロイしまくっていいのでどんどんやろう".
+  This does not authorize a v3 software release or publication of private
+  materials. The latest design and source-state details are in the site
+  proposal and the forthcoming design PR.
+- [#660](https://github.com/matsumotory/ngx_mruby/pull/660), head
+  `4723905ef`, fixes the stable installation guide. A released v2.7.2
+  checkout with explicit nginx 1.31.8 passed the documented static build,
+  install and loopback HTTP lifecycle. Custom/dynamic alternatives are
+  explicitly not additional executed results. CI and final review remain
+  on that PR; this is separate from site styling and v3 runtime work.
+- Upstream setter D/E and the stable empty-filter follow-up remain queued.
+  The integration prerequisite is now merged. Existing v3 planning decisions
+  hold; the site's future-facing description must distinguish implemented,
+  planned and still-undecided behavior.
+
+## State as of 2026-10-30 (03:49 JST)
+
+Before this integration, `next` is `e469b259c`, the merge of
+[#657](https://github.com/matsumotory/ngx_mruby/pull/657), and `master` is
+`7d81d417a`, the merge of
+[#654](https://github.com/matsumotory/ngx_mruby/pull/654); `v2.x` mirrors
+that commit. This integration brings that `master` into `next`. It carries
+#646 (HTTP content sleep and
+redirect exception handling), #648 (setter documentation), #650 (release
+note guidance), #651 (stream sleep outcomes), #652 (setter type, zone and
+whole-name checks), #642, #655, #656 and #654. The 2.7.3 behavior entries come
+with their English and Japanese files; these fixes are not reimplemented.
+
+The conflicts were documentation only: retain the removal of auto-ssl and
+of the old API-reference sorting TODO, keep the `next` valgrind and test
+lifecycle rules, add the new test ports and the still-blocking HTTP setter
+DNS lookup. The mruby 4 initializer arity stays `MRB_ARGS_REQ(1)`. The new
+HTTP ports 18133–18135 and stream ports 12374–12378 do not collide with
+`next` and work with its offset staging. The readiness check now probes 57
+HTTP ports. The Linux static suite on nginx 1.31.8 passed at `6bc885fd4`,
+both with the ordinary ports and with `TEST_SH_PORT_OFFSET=240`: 40 suite
+reports and 467 assertions each, no failure or crash. The later commits
+change documentation only. The integration PR records its final-head
+review, matrix, sanitizer, valgrind, soak, nginx-tests, site and performance
+results; the merge conditions of AGENTS.md apply to it.
+
+The site cutover is live. #653 added deployment from `next`; #655 fixed
+`master`'s documentation links; #657 added `/v2/`; #656 added the `master`
+validation and dispatch workflows. The first deployment with `/v2/` is
+[run 40923881194](https://github.com/matsumotory/ngx_mruby/actions/runs/40923881194),
+from `next` at `e469b259c` (deployment 7420103202). Its full site checks
+passed. The live home page matches its artifact, HTTP redirects to HTTPS,
+the verification file is unchanged, the deployment environment permits
+only `next`, and live Lighthouse categories score 100. Every `/v2/` HTML
+page answers 200 with the artifact's bytes. Four live Chromium searches
+(2.x and 3.x, English and Japanese) use only their own version's index and
+results; the English and Japanese `/v2/` pages have their banner and fit
+at 390 px. #656's dispatch started
+[run 40924294520](https://github.com/matsumotory/ngx_mruby/actions/runs/40924294520),
+which passed and was checked against the live artifact as well. #654
+merged at `7d81d417a` after all final-head checks and independent review.
+Its dispatch started
+[run 40928646131](https://github.com/matsumotory/ngx_mruby/actions/runs/40928646131),
+which passed and published deployment 7420858976 from `next`, with the
+2.x pages from `master` at `7d81d417a`. All 26 live `/v2/` HTML files again
+matched that artifact; all four live searches, the two mobile checks and
+`check-live.mjs` passed. The master push checks and the `v2.x` mirror also
+passed.
+The 3.x development banner and the owner's go for Q9 remain outstanding;
+no Discussions/wiki setting was changed by this continuation.
+
+Earlier completed work is listed below for context. For current branch
+heads and pending work use this snapshot and the queue, then fetch again.
 
 2.7.2 was released on 2026-10-29: the tag `v2.7.2` is on `d5ae75547`, the
 merge of #624 into `master`, and the release was published at 13:26 JST.
 Its release notes are `docs/releases/v2.7.2.md` and
 `docs/releases/v2.7.2.ja.md`, on `next` with the same content since #628. 2.7.1 was released on 2026-10-19: the tag `v2.7.1` is on
 `ce5eb11`, the merge of the 2.7.1 changes into `master`. Its release notes
-are `docs/releases/v2.7.1.md` and `docs/releases/v2.7.1.ja.md`. The next
-2.x release has no file of release notes yet; the first pull request to
-`master` that needs an entry creates `docs/releases/v2.7.3.md` and its
-Japanese version ("File names" in `docs/releases/README.md`).
+are `docs/releases/v2.7.1.md` and `docs/releases/v2.7.1.ja.md`. The release
+notes of the next 2.x release are `docs/releases/v2.7.3.md` and
+`docs/releases/v2.7.3.ja.md`, created on `master` by #636 and on `next`
+with the same content by the merge of `master` at `c6d3b3b9b`.
+
+Merged on 2026-10-29 (JST) after 14:40, into `next`: #633 (this file and
+the comparison of the 3.0.0 release notes with 2.7.2; merged at 14:51,
+`2c96302b7`), #635 (`test.sh` stops
+only the nginx that it started, by its pid; merged at 16:09, `c4e6ac6cc`),
+#634 (valgrind fails the cell; one cell runs under valgrind on pull
+requests and every cell except the sanitizer cell nightly; 16:51, `8bff5fbd7`), #626 (the agent
+proxy endpoints diagram without a line in its narrow arrangement; 18:11,
+`a9792b82f`), site step 5, #629 to #632 (18:39 to 19:31, `12202b8c4` to
+`5e9d50663`; the site row of "Queue" lists them) and #637 (the v3 plan,
+the archive of two proposals and this file; 19:50, `c0df45534`) and #641
+(`TEST_SH_PORT_OFFSET`; 20:31, `be559a017`) and #640 (the auto-ssl mrbgem
+and `NGX_MRUBY_AUTO_SSL` removed from `next`; 21:33, `67ad9b919`). Into `master`: #636
+(the auto-ssl gem tested with Redis, Pebble and dehydrated; 16:40,
+`22f13686f`), #639 (`CONTRIBUTING.md` and other documentation fixes;
+17:59, `eb9055584`), #638 (nginx 1.31.8 and 1.30.6; 18:31,
+`9acb75949`) and #645 (the stream `Async.sleep` timer cancelled when the
+session's pool is freed, and the fiber registered with the GC once per
+fiber; 20:06, `c6d3b3b9b`).
 
 Merged on 2026-10-29 (JST) after 13:20, into `master`: #624 (the 2.7.2
 release: #594 and the other changes of the release; merged at 13:25,
@@ -167,16 +557,16 @@ lines and the Japanese file of the release notes, `b017496`) and #578 (the
 --state merged --base next --search 'merged:>=2026-10-03' --limit 200`, and
 the same with `--base master`. Each pull request says what it changed.
 
-Open pull requests, all drafts (`gh pr list --state open` at 14:40 JST; the table leaves out #633, which writes it, and #629 to #632 of site step 5, which add their own rows):
+Open pull requests checked at 03:49 JST: none. This integration is on
+`codex/merge-master-site-continuation`; its PR targets `next` and is kept
+draft until the final checks and independent review pass. #654, #656 and
+#657 are merged. Check again before starting another row.
 
-| PR | Base | Change | Stage |
-|---|---|---|---|
-| [#626](https://github.com/matsumotory/ngx_mruby/pull/626) | `next` | The narrow drawing of the agent proxy endpoints diagram without a line between the kinds of request (the site row of "Queue"; [the review of #622](https://github.com/matsumotory/ngx_mruby/pull/622#issuecomment-6485583255), should fix 1) | A draft, owned by the session that opened it. |
 
 ## Decisions
 
 Decisions of the owner that are not yet written in the place their row
-names: none. The owner's choice of 2026-10-29 at 05:34 JST, in a session's
+names: (a) and (b) of 2026-10-04 in the next paragraph. The owner's choice of 2026-10-29 at 05:34 JST, in a session's
 question on who merges the pull request of the 2.7.2 release, tags
 `v2.7.2` and publishes the release ("セッションが進める (推奨)", "the session
 goes ahead"), covered 2.7.2 only, and it is carried out: the session that
@@ -190,13 +580,42 @@ on the perf lane of `master` (port the tests and the CI only, without
 `docs/test/README.md`, which `next` has since the merge of `master` at
 `6b27f08da`). The decision on the method lookup of `Nginx::Var` accessors
 (the owner's answer of 2026-10-15 to the question of section 4 of
-[the proposal](proposals/nginx-var-method-lookup.md), in a session's
+[the proposal](proposals/archive/nginx-var-method-lookup.md), in a session's
 question: the change to introspection is accepted as a behavior change of
 3.0.0; and the confirmation of 2026-10-19, in a session's question, with
 the option "その内容で合っている (推奨)" ("that content is right"): (a) with the
 rule (a2), (d), and accessors in introspection) is written in the Status
 line of the proposal and in the entries of `docs/releases/v3.0.0.md` and
 `.ja.md` (#610).
+
+On 2026-10-04 the owner answered the recommendations of the analysis of the
+control flow of `Nginx::Async` with 「全部推奨通りでいこう、安全網から始めて」
+("go with all the recommendations, starting from the safety net"). Two of
+its decisions, (a) and (b), are not written in the plan or in the release notes yet,
+and a third, (c), is amended below:
+(a) `Nginx::Async.sleep` in a content handler is supported, so it does not
+raise and nginx waits for the timer; (b) a rewrite handler that ends with no
+output and no `Nginx.return` keeps the 2.x behavior on `master`, and on
+`next` the request goes on to the next phase as with `NGX_DECLINED`; (c)
+the rewrite of how resumed handlers end goes into `master` after 2.7.1. On
+2026-10-29 the owner amended (c), in a session's question, with the option
+"master は最小の直し、書き直しは next (推奨)": the rewrite lands on `next`,
+in the core stabilization of 3.0.0, and `master` gets only the minimal fix
+for the content handler sleep. The amendment of (c) is written in item 15 of
+section 7 and in the Pillar B row "One fiber lifecycle for HTTP and
+stream"; (a) and (b) are written in the plan when their work lands, under
+that row and under the row "Redesign response finalization per phase".
+
+The other owner decisions of 2026-10-29, all in session's questions, are
+written in the plan: items 1 and 6 and 15 of section 7 (mruby 4.1.0-rc2 now,
+`auto-ssl` out of `next`, the agent proxy rows in `v3.0.0-alpha.1`, the
+parallel start of parts (a) and (c) of step 7, the subrequest 500, the fix of
+the empty output body filter in 2.7.3). Two are not written in the plan: the
+rule on the gems that the owner maintains is in AGENTS.md, "Other
+repositories", with the owner's words (#637 on `next`, #639 on `master`);
+and the body of the GitHub release v2.7.2 gets the section "Behavior
+changes: read before upgrading" in English and then in Japanese, option
+"足す (推奨)" (the session that prepared the release edits it with `gh release edit`).
 
 The two decisions of 2026-10-04 that were recorded here before are written
 where their rows said: the mruby steps in item 1 of section 7 of
@@ -216,8 +635,9 @@ the Japanese release notes in [docs/releases/README.md](releases/README.md)
   [the record on #561](https://github.com/matsumotory/ngx_mruby/pull/561#issuecomment-6165028832).
   #577 (merged) is the proposal for the `var` and `auth` rows; #610
   (merged) implements it.
-- 4.1.0 waits for its tag: the newest mruby tag on 2026-10-29 is
-  `4.1.0-rc2` (`gh api repos/mruby/mruby/tags`). The choices for that step
+- `next` bundles mruby 4.0.0 and moves to `4.1.0-rc2` (the newest mruby tag
+  on 2026-10-29, `gh api repos/mruby/mruby/tags`), then to 4.1.0 when it is
+  tagged (the owner's decision of 2026-10-29). The choices for that step
   are in item 1 of section 7 of the plan, and the row "mruby 4.1.0" of
   "Queue" lists what the step changes.
 
@@ -236,60 +656,43 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The next merge into `master`: `next` has every commit of `master` since #628 (`c9c49023e`) |
-| The output body filter that ends with an empty body sends a zero size buffer marked as memory, and the client gets no byte (`Nginx::Filter#output ""`, pinned by `test/t/cases/filter_connection.rb` on `master`): the same change to `ngx_mrb_finalize_body_filter` as in #574, as a 2.x stability fix | `master` (reaches `next` by the merge) | The owner's answer to the question on #574 |
-| `Nginx::Async.sleep` in a content handler ends the request without any response, with or without output after the sleep (found while testing #574). 2.7.1 documents it under "Known limitations" of `docs/releases/v2.7.1.md`, which plans a later release that lets a content handler wait. To do: raise there as the output filters do, or let nginx wait for the timer | `master`, which has it too (it reaches `next` by the merge) | Ready to start: a test commit, then a fix commit |
-| Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output still sets status 500, where nginx's `return 200;` gives 200. Answering 200 there would make `auth_request` allow such a request (#574 keeps the 500) | `next` | The owner's decision (the question on #574) |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | This integration brings `master` at `7d81d417a`, including #654, as listed in the snapshot. Its PR records the final validation. The integration adds no behavior changes beyond the imported 2.7.3 fixes. |
+| The output body filter that ends with an empty body sends a zero size buffer marked as memory, and the client gets no byte (`Nginx::Filter#output ""`, pinned by `test/t/cases/filter_connection.rb` on `master`). Decided on 2026-10-29 (option "入れる (推奨)"): 2.7.3 gets the same change to `ngx_mrb_finalize_body_filter` as #574 on `next`, so that the response is sent with its status and `Content-Length: 0`, and the owner approved changing the expectation "an empty String closes the connection without a response" of that file. To do: a pull request to `master` with the test commit, then the fix commit, and the entry in `docs/releases/v2.7.3.md` and `.ja.md` | `master` (reaches `next` by the merge) | Ready to start |
+| Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. Decided on 2026-10-29 (option "500 のまま (推奨)"): 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |
-| A rewrite handler that ends without `Nginx.return` (for example `mruby_rewrite_handler_code 'x = 1'` before a content handler, or before nginx's `return 200`) sends no response, and `error.log` has no line at the `error` level: with keep-alive the connection stays open until `keepalive_timeout`, with `Connection: close` it is closed with nothing sent. `ngx_mrb_finalize_rputs` (`src/http/ngx_http_mruby_core.c`; the `rc = NGX_OK` after the log line "rputs_chain is null and return NGX_OK") returns `NGX_OK` when nothing was sent and no status was set, and the rewrite phase of nginx 1.31.6 finalizes the request on `NGX_OK` (`ngx_http_core_rewrite_phase`), where the access phase goes on to the next handler. Found and measured on `next` and `master` while #583 was written and reviewed; no issue tracks it. To do: for v3, a test commit and a fix under the Pillar B row "Redesign response finalization per phase" of the plan; for 2.x, the owner decides between documenting it and a fix | `next`; `master` after the owner's decision | v3: waits for the row on step 4 below (the fix belongs to the Pillar B work that step 4 holds until the safety net is done); 2.x: the owner |
+| A rewrite handler that ends without `Nginx.return` (for example `mruby_rewrite_handler_code 'x = 1'` before a content handler, or before nginx's `return 200`) sends no response, and `error.log` has no line at the `error` level: with keep-alive the connection stays open until `keepalive_timeout`, with `Connection: close` it is closed with nothing sent. `ngx_mrb_finalize_rputs` (`src/http/ngx_http_mruby_core.c`; the `rc = NGX_OK` after the log line "rputs_chain is null and return NGX_OK") returns `NGX_OK` when nothing was sent and no status was set, and the rewrite phase of nginx 1.31.6 finalizes the request on `NGX_OK` (`ngx_http_core_rewrite_phase`), where the access phase goes on to the next handler. Found and measured on `next` and `master` while #583 was written and reviewed; no issue tracks it. To do: for v3, a test commit and a fix under the Pillar B row "Redesign response finalization per phase" of the plan, so that the request goes on to the next phase as with `NGX_DECLINED`; for 2.x, the behavior stays (both are the decisions of 2026-10-04), and a line under "Known limitations" in the release notes of the next 2.x release can document it | `next` | v3: waits for the row on step 4 below (the fix belongs to the Pillar B work that step 4 holds until the safety net is done); 2.x: nothing |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
-| Site: the implementation, in the steps of [section 6 of the proposal](proposals/site.md#6-implementation-plan). Step 1 is merged: [#591](https://github.com/matsumotory/ngx_mruby/pull/591) (`a466688`), `site/` with Starlight 0.42.6 and Astro 7.3.8 pinned and Node.js 22.23.3, the generator `site/scripts/sync-docs.mjs`, its test and the checks of step 1 under `site/scripts/` (AGENTS.md, "The site"), and `.github/workflows/site.yml`, without deploying. Step 2 is merged: [#607](https://github.com/matsumotory/ngx_mruby/pull/607) (`0e7fba441`), `site/src/styles/tokens.css` with the owner's four choices of 4.12 of 2026-10-19 (palette A, Geist Mono, code blocks at 12 px, the means of 4.3) and the checks of step 2; [#614](https://github.com/matsumotory/ngx_mruby/pull/614) fixes its search check. Step 3 is merged: [#617](https://github.com/matsumotory/ngx_mruby/pull/617) (`dbe4acf5b`), approved by the owner on 2026-10-29 with two small fixes (section 7 of the proposal): the home pages `site/src/content/docs/index.mdx` and `ja/index.mdx` with the example of `test/t/cases/home_example.rb`, the header, menu and footer of 4.10, the sample and diagram mechanisms of 3.5, the request phases diagram in `docs/concepts/request-phases.md` and its translation, the checks of step 3, and the screenshots as the workflow artifact `screenshots`; the specimen pages of step 2 are gone. Step 4 also took what step 3 left for it: the sidebar of the four kinds of page and the routes of 3.2 (#618), the class `num` of numeric table cells and the line breaks of long names (#620), and the last lines of one or two characters on `/guides/install/` and `/ja/docs/` (#623), which `check-styles.mjs` now fails on every page it checks; the fourth-level headings left in `docs/install/` and `docs/class_and_method/` are subsection headings, not code-block labels. Left from step 4: the guides of observability with `ngx_otel_module` and of certificate lookup of 3.2, which need a test build with `ngx_otel_module` and a TLS client in the sample's case (item 1 of the description of #619); and the narrow drawing of the agent proxy endpoints diagram, which still joins the kinds of request with a line ([the review of #622](https://github.com/matsumotory/ngx_mruby/pull/622#issuecomment-6485583255), should fix 1). Left for step 6: the version link of the header goes to the 2.x documentation on GitHub until `/v2/` exists | `next` (`site/`, as decided with Q1); steps 6 and 7 also change `master` | Steps 3 and 4 are merged: #617 (`dbe4acf5b`), and #618 (routes, sidebar, start page; `d5548db41`), #619 (guides and use cases with samples; `ac7d569c3`), #620 (Reference with the build diagram; `28faff6c2`), #621 (Concepts with its diagrams; `ca7b473b0`), #622 (the agent proxy page; `807865280`) and #623 (Releases, Security, Contributing, README and the fixes of 2.2; `69b245bdb`). Next: step 5, the Japanese pages, by 2026-11-05. The owner decided the questions on 2026-10-15 and the choices of 4.12 on 2026-10-19 ([section 7 of the proposal](proposals/site.md#7-decisions-2026-10-15)); the last column of section 6 lists what the owner reviews in each step |
-| Before the switch of ngx.mruby.org (step 7 of the site proposal), the owner has an item to do in the Pages settings for the custom domain | Repository settings | The owner |
+| Site: steps 1–5 and the `/v2/` implementation and workflows of step 6 are merged (#591, #607, #614, #617–#623, #626, #629–#632, #655, #657, #656). Step 7 deployment (#653) is live; see the verified deployment in the snapshot. #654 corrected the remaining `master` text after the switch, and its dispatched site build was verified live. | `next` for `site/`; `master` for 2.x sources | Cutover and master dispatch verified. Still open: the 3.x development banner of 3.4; the observability and certificate-lookup sample prerequisites of #619; the Japanese release-note line rewrites currently reported as NOTES_ONLY; and the owner's go for Q9 (Discussions on, wiki off). New visual design is a separate follow-up, not part of this cutover. |
 | nginx-tests with the modules that its skipped files need: a build with the options of `test.sh` and `--with-http_v2_module`, `--with-http_v3_module`, `--with-stream_ssl_module`, `--with-mail` and the other modules that "Results of nginx-tests" in `docs/test/README.md` lists (in the CI run of #602, 189 of the 209 skipped files need a module that `test.sh` does not build), with and without ngx_mruby, in the `nginx-tests` workflow | `next` | Ready to start: #602 is merged |
 | nginx-tests with ngx_mruby code configured: runs that add handlers or filters with code for every request through `TEST_NGINX_GLOBALS_HTTP` (the Pillar E row of the plan), compared with the run without code. The pull request decides which code: a rewrite handler that ends without `Nginx.return` sends no response (the row on it above), so that handler would fail most files for a known reason | `next` | Ready to start: #602 is merged |
-| Test harness rewrite (step 2 of section 6 of the plan; Pillar E): [#635](https://github.com/matsumotory/ngx_mruby/pull/635) makes `test.sh` stop only the nginx that it started, by its pid, with no `killall` or `pkill`, and send SIGTERM again while the single nginx process still runs, because that process can miss a SIGTERM that arrives right before it waits for events (the run at `7926f72`, where nginx stayed in `epoll_wait()` for 20 minutes after it logged the SIGTERM: "Stopping nginx" in `docs/test/README.md` has the cause and the measurements). Still to do, in pull requests of their own: configurable ports, `master_process on` with several workers and reload cases, requests from CRuby instead of the client built into the test mruby, and HTTP/2 and HTTP/3 clients. The readiness wait of #593 is the first part, on `next` since the merge of `master` at `6b27f08da` | `next` | #635 for the stop by pid; the configurable ports come next, on top of it |
-| valgrind fails the job: add `--error-exitcode` to the valgrind runs of `.github/workflows/test.yml` (`git grep error-exitcode` finds nothing today, and AGENTS.md "Build and test" says valgrind errors do not change the exit status), and move the valgrind cells to a nightly workflow (`test.yml` has no `schedule:` trigger) | `next` | Ready to start: #601's change to `.github/workflows/test.yml` is on `next` since the merge of `master` at `6b27f08da` |
+| Test harness rewrite (step 2 of section 6 of the plan; Pillar E): [#635](https://github.com/matsumotory/ngx_mruby/pull/635) (merged, `c4e6ac6cc`) made `test.sh` stop only the nginx that it started, by its pid, with no `killall` or `pkill`, and send SIGTERM again while the single nginx process still runs, because that process can miss a SIGTERM that arrives right before it waits for events (the run at `7926f72`, where nginx stayed in `epoll_wait()` for 20 minutes after it logged the SIGTERM: "Stopping nginx" in `docs/test/README.md` has the cause and the measurements). [#641](https://github.com/matsumotory/ngx_mruby/pull/641) (merged, `be559a017`) added `TEST_SH_PORT_OFFSET`, which moves every port of the suite, so that two checkouts can run `test.sh` at the same time ("Ports" in `docs/test/README.md`). Still to do, in pull requests of their own: `master_process on` with several workers and reload cases, requests from CRuby instead of the client built into the test mruby, and HTTP/2 and HTTP/3 clients. A should fix of the review of #635 waits for the pull request that next changes `test/build_release.sh`, an input of the `perf` job: its comment still says that `test.sh` kills every running nginx. The readiness wait of #593 is the first part, on `next` since the merge of `master` at `6b27f08da` | `next` | Ready to start: `master_process on` with several workers, on top of #641; no pull request yet |
+| valgrind in CI: done on `next` by [#634](https://github.com/matsumotory/ngx_mruby/pull/634) (`8bff5fbd7`): valgrind errors fail the cell, one cell runs under valgrind on pull requests and pushes, and `.github/workflows/valgrind-nightly.yml` runs every cell except the sanitizer cell under valgrind nightly. GitHub runs a schedule only from the workflow file on the default branch, so the nightly run starts once a copy of the file is on `master` ("valgrind in CI" in `docs/test/README.md`). To do: a follow-up PR to `master` that adds `valgrind-nightly.yml` as it is on `next`; to run the cells of `master` under valgrind as well, the same PR gives the `test.yml` of `master` the input `valgrind`, the valgrind options, `test/valgrind.supp` and the step "Check the valgrind reports" of #634, and adds `master` to the matrix of the file | `master` | A decision that `master`, the 2.x line, takes this change of CI |
 | nginx floor for v3 (item 2 of section 7 of the plan): drop the cells for nginx 1.26.3 and 1.28.3 from the `build` matrix of `.github/workflows/test.yml` and document the floor of 1.30 stable and 1.31 mainline | `next` | Ready to start: #601's change to `.github/workflows/test.yml` is on `next` since the merge of `master` at `6b27f08da` |
 | OpenSSL 3.5 and 4.0 (item 3 of section 7 of the plan): cells for OpenSSL 3.5 as the baseline and 4.0 in `.github/workflows/test.yml`, which builds `1.1.1w` today; drop 1.1.1 and 3.0, and check ENGINE and the removed APIs in ngx_mruby and the gems | `next` | Ready to start: #601's change to `.github/workflows/test.yml` is on `next` since the merge of `master` at `6b27f08da` |
-| `build_config.rb` rewrite with explicit gems (step 3 of section 6; Pillar A): `iij/mruby-env` and `iij/mruby-process` replaced by core gems, the choice between core `mruby-regexp` and `mruby-onig-regexp` (item 1 of section 7 keeps onig-regexp for 3.0), `monochromegane/mruby-secure-random` and `iij/mruby-digest` replaced, and `mruby-vedis` and `mruby-localmemcache` out of the default build | `next` | Ready to start: #606, which edits the same file, is merged |
-| mruby 4.1.0 (step 3 of section 6; item 1 of section 7). The step changes: the mruby subtree updated to the tag with Prism vendored (the tag's tarball has an empty `mrbgems/mruby-compiler/lib/prism`, a submodule upstream), the three HAL gem names (`hal-posix-dir`, `hal-posix-io`, `hal-posix-socket`) removed from `NGX_MRUBY_CORE_GEMS` and its comment, the core `env`, `process` and `regexp` gems of 4.1 decided on (see the row above), `build_config.rb.lock` regenerated, the build with `NGX_MRUBY_DEBUG_STATS` run with its tests (4.1 keeps the roots in `mrb->gc.root`), the stream path of the counted GC registrations audited, a release notes entry, and the callgrind comparison against `next` | `next` | The 4.1.0 tag (the newest mruby tag on 2026-10-19 is `4.1.0-rc2`) |
-| Build each bundled gem on mruby 4 (step 3 of section 6): #561 builds the default gem set on mruby 4.0.0; the rest is the build of all of them on 4.1.0 (the row "mruby 4.1.0") | `next` | The 4.1.0 tag |
-| Tests for the 17 methods of the auto-ssl gem (`Nginx::SSL::ACME::Client` and `Nginx::SSL::ACME::Dehydrated`) that [#603](https://github.com/matsumotory/ngx_mruby/pull/603) leaves out: they need Redis, the dehydrated client and an ACME server, which the harness does not have. To do: the stubs or containers the tests need, or a decision in `docs/test/README.md` to leave them untested | `master` (`next` has no auto-ssl gem since #640) | Ready to start: #603 is merged |
+| `build_config.rb` rewrite with explicit gems (step 3 of section 6; Pillar A): `iij/mruby-env` and `iij/mruby-process` replaced by core gems, the choice between core `mruby-regexp` and `mruby-onig-regexp` (item 1 of section 7 keeps onig-regexp for 3.0), `monochromegane/mruby-secure-random` and `iij/mruby-digest` replaced, and `mruby-vedis` and `mruby-localmemcache` out of the default build | `next` | Ready to start: #606, which edits the same file, is merged. The part that replaces `env` and `process` with the core gems needs the subtree at 4.1.0-rc2 (the row "mruby 4.1.0"); the other parts do not |
+| mruby 4.1.0 (step 3 of section 6; item 1 of section 7). The step changes: the mruby subtree updated to the tag with Prism vendored (the tag's tarball has an empty `mrbgems/mruby-compiler/lib/prism`, a submodule upstream), the three HAL gem names (`hal-posix-dir`, `hal-posix-io`, `hal-posix-socket`) removed from `NGX_MRUBY_CORE_GEMS` and its comment, the core `env`, `process` and `regexp` gems of 4.1 decided on (see the row above), `build_config.rb.lock` regenerated, the build with `NGX_MRUBY_DEBUG_STATS` run with its tests (4.1 keeps the roots in `mrb->gc.root`), the stream path of the counted GC registrations audited, a release notes entry, and the callgrind comparison against `next`, which includes the measurement of `var` and `auth` on mruby 4.1 (step 4 of the archived proposal for the method lookup of `Nginx::Var`). The owner decided on 2026-10-29 that `next` bundles `4.1.0-rc2` now and moves to 4.1.0 in a small subtree pull request when it is tagged | `next` | Nothing: the pull request for 4.1.0-rc2 is not opened yet |
+| Build each bundled gem on mruby 4 (step 3 of section 6): #561 builds the default gem set on mruby 4.0.0; the rest is the build of all of them on 4.1.0-rc2 (the row "mruby 4.1.0"). `auto-ssl` is not built: the owner decided on 2026-10-29 to remove it from `next` | `next` | The pull request of the row "mruby 4.1.0" (not opened yet) |
 | OpenSSF Best Practices badge (Pillar G of the plan) | `master` (README) | The owner registers the project on bestpractices.dev and gives the project id; then a session adds the badge |
-| Step 4 of section 6 of the plan, the core stability work of Pillar B (execution context, response finalization, fiber lifecycle, common layer, headers and variables, and the two agent proxy rows), then `v3.0.0-alpha.1` | `next` | Held until the safety net of step 2 is done: the rows above for the test harness, valgrind and the auto-ssl tests. #600, #603 and #605 are merged (#603 on `next` since the merge of `master` at `6b27f08da`, with the sanitizer log check of #601). The plan: nothing in the core is refactored before it exists |
+| Step 4 of section 6 of the plan, the core stability work of Pillar B (execution context, response finalization, fiber lifecycle, common layer, headers and variables, and the two agent proxy rows), then `v3.0.0-alpha.1` | `next` | Held until the safety net of step 2 is done; what is left of it is the row above for the test harness rewrite (#641 is merged; `master_process on` with several workers comes next): valgrind in CI (#634) and the auto-ssl tests (#636 on `master`) are done. #600, #603 and #605 are merged (#603 on `next` since the merge of `master` at `6b27f08da`, with the sanitizer log check of #601). The plan: nothing in the core is refactored before it exists |
+| nginx-tests required: the `nginx-tests` workflow records its results and fails only when a build, the fetch of the suite or `prove` fails. In the runs of 2026-10-28 and 2026-10-29 the build with ngx_mruby and the build without it have the same counts (511 files, 302 passed, 0 failed, 209 skipped). To do: the job fails when the build with ngx_mruby fails a file that the build without it passes, and the job joins the `needs` of `ci-ok` | `next` | Ready to start: the counts are the same in every run since #602 |
+| The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` (the sentences that call the job advisory and say that a `FAIL` does not block a merge, under "Performance comparison with callgrind") aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR` | `next`, then `master` | Ready to start |
+| Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |
+| The ASan cell with `-DNGX_DEBUG_PALLOC -DNGX_DEBUG_MALLOC` (3.7 of the plan; the cell of `test.yml` sets only `-fsanitize` and `-fno-omit-frame-pointer`), so that ASan sees an access that runs from one pool allocation into the next. To do: a run of the suite with these flags, whose findings follow [SECURITY.md](../SECURITY.md), then the cell | `next`, `master` | Ready to start |
+| A test build with `ngx_otel_module` (nginx/nginx-otel, built with CMake against the nginx source of `test.sh`) and an OTLP receiver for the case of the observability sample of 3.2 of the site proposal | `next` | The harness rewrite (the row above) |
+| Step 7 of section 6 of the plan, the agent proxy, parts (a) to (e); none exists on `next` | `next` | Parts (a) and (c) wait, as step 4 does, for what is left of the safety net of step 2: the row above for the test harness rewrite ([#641](https://github.com/matsumotory/ngx_mruby/pull/641) is merged; valgrind in CI, #634, and the auto-ssl tests, #636 on `master`, are done); then they start beside step 4 (decision of 2026-10-29). (b) and (d) also wait for step 4. The order inside the step is a proposal of the 2026-10-04 amendment until the owner decides it |
+| Remove `example/` (`README.md`, `nginx.conf`, `proxy.rb`, `set.rb`, `set2.rb`, `unified_hello.rb`): no CI job starts it, no page links it, and its `/proxy` location picks among `test1.example.com` to `test3.example.com`, which are unreachable; `examples/start/` is checked by `examples.yml` | `next` | Ready to start |
+| When the handler of the location that `Nginx.redirect` runs sleeps and the handler that called `Nginx.redirect` then raises, the 500 page is followed by the output of the sleeping handler when its timer fires. The request ends and the connection is closed, and nothing leaks. Not a 2.x fix: it needs the rewrite of the row "The async resume rewrite" (#646 leaves it out) | `next`, in the core stabilization of 3.0.0 | The row "The async resume rewrite" |
+| The async resume rewrite (decision (c) of 2026-10-04, amended on 2026-10-29: the rewrite of how resumed handlers end in `src/http/ngx_http_mruby_async.c`, which includes the resume of a handler after `Nginx::Async::HTTP.sub_request` from its own request). No pull request exists | `next`, in the core stabilization of 3.0.0 | Step 4, held as in the row on step 4 above |
+| The upstream server setters: [proposal](proposals/upstream-server-setters.md). Step 1 is merged on `master` by [#652](https://github.com/matsumotory/ngx_mruby/pull/652) (`8593d0d65`): non-String TypeError, zone refusal, whole-name lookup, with English/Japanese 2.7.3 behavior entries. This integration carries it to `next`. The continuation request assigns options D/E to a separate v3 PR: ArgumentError for unusable String values and no synchronous hostname resolution in the HTTP setter, with API docs and English/Japanese 3.0.0 behavior entries. | `next` | Finish and validate this integration first. Reconcile the dated owner decision records before the v3 PR: the proposal still labels questions 2/3 open, and the v3 plan retains proposed agent-proxy ordering, release conditions and targets. Do not mark those unrelated proposals decided from the setter assignment. Keep TypeError, zone refusal, per-worker meaning and the existing IP/port/IPv6/unix distinctions. |
+| The generated reference of the site (Pillar F of the plan): the directives from the `ngx_command_t` tables, the Ruby API with YARD and yard-mruby, the C API with Doxygen. `site/scripts/check-reference.mjs` checks, among other things, that each directive name has a heading in `docs/directives/README.md`; the pages are written by hand | `next` | Ready to start; no step of section 6 of the site proposal produces it yet |
 
 ## How a session continues
 
-1. Fetch first (`git fetch origin`) and work from `origin/<base>`: local
-   checkouts fall behind as other sessions merge.
-2. One `git worktree` per task, on a branch `claude/<topic>` made from
-   `origin/<base>` (see [CLAUDE.md](../CLAUDE.md)).
-3. Follow [AGENTS.md](../AGENTS.md): the branch table, the two commits of a
-   bug fix, the review checklist and the merge conditions.
-4. Builds and tests are run on Linux. On macOS, build a Linux container that
-   matches CI: [.github/workflows/test.yml](../.github/workflows/test.yml)
-   runs on `ubuntu-22.04` and installs its packages in the `apt-get install`
-   lines (valgrind among them: the `build` job runs nginx under valgrind,
-   and the `perf` job uses it for callgrind). The root `Dockerfile` is a
-   runtime image, not this environment. Run one `test.sh` per machine at a
-   time.
-5. Before you act on a pull request, read its newest comments: reviews and
-   the author's answers are posted there.
-6. To take over an open pull request from another session (one that
-   stopped, or one on another machine), post a comment on it that takes it
-   over from its head commit, then push.
-7. Before you start a row of the queue, look for it with
-   `gh pr list --state open` and `git ls-remote origin 'refs/heads/claude/*'`:
-   another session may have started it. Then push a `claude/<topic>` branch
-   or open a draft pull request, so that a session on another machine sees
-   the work, and name it in the row: in your own pull request when its base
-   is `next`, otherwise in the next update of this file.
-8. Possible vulnerabilities go to the security process of
-   [SECURITY.md](../SECURITY.md), never into issues, pull requests, commit
-   messages or this file.
-9. When your work changes a list in this file, update it as "How to use
-   this file" says. For a pull request on `master`, the session that merged
-   it opens the update on `next`.
+Use [Continuing shared work](DEVELOPMENT.md#continuing-shared-work) for
+startup, ownership, checkpoints, temporary files and resumption. The rules
+are in [AGENTS.md](../AGENTS.md#session-handoff); this file records the
+queue and decisions, while each PR records its current head and evidence.
+The procedure applies to Claude, Codex and human contributors alike.
 
 ## Private material
 

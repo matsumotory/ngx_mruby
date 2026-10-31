@@ -22,6 +22,8 @@ typedef struct {
   ngx_int_t stream_status;
 } ngx_stream_mrb_reentrant_t;
 
+static void ngx_stream_mrb_connection_cleanup(void *data);
+
 static mrb_value ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *result)
 {
   mrb_value aliving = mrb_false_value();
@@ -54,9 +56,30 @@ mrb_value ngx_stream_mrb_start_fiber(ngx_stream_session_t *s, mrb_state *mrb, st
   struct RProc *handler_proc;
   mrb_value *fiber_proc;
   ngx_stream_mruby_ctx_t *ctx;
+  ngx_pool_cleanup_t *cln;
 
   ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
   ctx->async_handler_result = result;
+  ctx->mrb = mrb;
+
+  // When the connection pool is destroyed, cancel a still-armed
+  // Nginx::Stream::Async.sleep timer and drop the fiber from the GC root, so
+  // that a session whose pool is freed while the sleep is still pending (a
+  // worker shutting down or a configuration reload, or a connection timeout)
+  // does not leave the timer to fire on the freed pool and read freed memory.
+  // (A client that closes during the sleep does not reach this: nginx defers
+  // the close until the handler resumes.) The HTTP path has the same guard
+  // (ngx_mrb_fiber_cleanup and the ngx_http_cleanup_add in ngx_mrb_async_sleep).
+  // Registering it again for a second handler of the same session is harmless:
+  // ngx_stream_mrb_connection_cleanup is idempotent.
+  cln = ngx_pool_cleanup_add(s->connection->pool, 0);
+  if (cln == NULL) {
+    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "%s ERROR %s:%d: failed to allocate the fiber cleanup",
+                  MODULE_NAME, __func__, __LINE__);
+    return mrb_false_value();
+  }
+  cln->handler = ngx_stream_mrb_connection_cleanup;
+  cln->data = ctx;
 
   handler_proc = rproc;
   handler_proc->upper = NULL;
@@ -89,12 +112,21 @@ static ngx_int_t ngx_stream_mrb_post_fiber(ngx_stream_mrb_reentrant_t *re, ngx_s
       ictx->s = prev_s;
       return NGX_DONE;
     } else {
-      mrb_gc_unregister(re->mrb, *re->fiber);
+      if (ctx->fiber_registered) {
+        ctx->fiber_registered = 0;
+        mrb_gc_unregister(re->mrb, *re->fiber);
+      }
       re->fiber = NULL;
     }
 
     if (re->mrb->exc) {
       ngx_stream_mruby_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->s);
+      // all sessions of the stream {} block share this mrb_state: clear the
+      // exception and restore the arena as ngx_stream_mruby_handler does, or
+      // ngx_stream_mrb_start_fiber finds the exception in the next session
+      // and aborts that session with it
+      re->mrb->exc = NULL;
+      mrb_gc_arena_restore(re->mrb, ai);
       ictx->s = prev_s;
       return NGX_ABORT;
     }
@@ -120,11 +152,42 @@ static void ngx_stream_mrb_timer_handler(ngx_event_t *ev)
 {
   ngx_stream_mrb_reentrant_t *re;
   ngx_stream_mruby_ctx_t *ctx;
+  ngx_stream_session_t *s;
+  ngx_stream_core_main_conf_t *cmcf;
+  ngx_int_t rc;
 
   re = ev->data;
-  ctx = ngx_stream_mrb_get_module_ctx(NULL, re->s);
+  // re is allocated from the connection pool, which the finalization below
+  // destroys
+  s = re->s;
+  ctx = ngx_stream_mrb_get_module_ctx(NULL, s);
 
-  ngx_stream_mrb_post_fiber(re, ctx);
+  rc = ngx_stream_mrb_post_fiber(re, ctx);
+
+  /*
+   * The checker of the access phase (ngx_stream_core_generic_phase) got the
+   * NGX_DONE of ngx_stream_mruby_handler when the fiber first waited, so the
+   * result of the code after the sleep is handled here, as that checker
+   * handles the result of a handler that does not wait.
+   * ngx_stream_mrb_post_fiber has run the phases for NGX_DECLINED already, and
+   * NGX_DONE means that the fiber waits again.
+   */
+  if (rc == NGX_DECLINED || rc == NGX_DONE || rc == NGX_AGAIN) {
+    return;
+  }
+
+  if (rc == NGX_OK) {
+    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
+    s->phase_handler = cmcf->phase_engine.handlers[s->phase_handler].next;
+    ngx_stream_core_run_phases(s);
+    return;
+  }
+
+  if (rc == NGX_ERROR) {
+    rc = NGX_STREAM_INTERNAL_SERVER_ERROR;
+  }
+
+  ngx_stream_finalize_session(s, rc);
 }
 
 static void ngx_stream_mrb_cleanup_pending_operation(ngx_stream_mruby_ctx_t *ctx)
@@ -141,6 +204,26 @@ static void ngx_stream_mrb_async_sleep_cleanup(void *data)
 
   if (ctx->sleep.timer_set) {
     ngx_del_timer(&ctx->sleep);
+  }
+}
+
+// Runs from the connection pool cleanup registered in
+// ngx_stream_mrb_start_fiber, when the session ends. It cancels a pending
+// Async.sleep timer (through the sleep cleanup) so the timer does not fire on
+// the freed pool, and it drops the fiber from the GC root so the fiber does
+// not stay protected for the worker's life after the session is gone. It is
+// idempotent: the pool runs it before it frees ctx, *ctx->fiber_proc and the
+// sleep event, and a second registration for the same session finds nothing
+// left to do.
+static void ngx_stream_mrb_connection_cleanup(void *data)
+{
+  ngx_stream_mruby_ctx_t *ctx = (ngx_stream_mruby_ctx_t *)data;
+
+  ngx_stream_mrb_cleanup_pending_operation(ctx);
+
+  if (ctx->fiber_registered) {
+    ctx->fiber_registered = 0;
+    mrb_gc_unregister(ctx->mrb, *ctx->fiber_proc);
   }
 }
 
@@ -171,10 +254,14 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
   re->fiber = ctx->fiber_proc;
 
-  // keeps the object from GC when can resume the fiber
-  // Don't forget to remove the object using
-  // mrb_gc_unregister, otherwise your object will leak
-  mrb_gc_register(mrb, *re->fiber);
+  // Keep the fiber from GC while it can be resumed. Register it once: a fiber
+  // that sleeps more than once reuses this registration, and
+  // ngx_stream_mrb_connection_cleanup or ngx_stream_mrb_post_fiber removes it
+  // exactly once (when the session ends, or when the fiber finishes).
+  if (!ctx->fiber_registered) {
+    mrb_gc_register(mrb, *re->fiber);
+    ctx->fiber_registered = 1;
+  }
 
   ctx->sleep.handler = ngx_stream_mrb_timer_handler;
   ctx->sleep.data = re;

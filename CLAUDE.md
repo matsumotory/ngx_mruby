@@ -2,10 +2,13 @@
 
 ## Claude Code notes
 
+- Shared handoff and ownership follow `AGENTS.md` and "Continuing shared
+  work" in `docs/DEVELOPMENT.md`, also when Codex or a human takes over.
+  The paths below are local Claude conventions, not handoff evidence.
 - Parallel work: use one `git worktree` per task, under `.claude/worktrees/`
   (`git worktree add -b claude/<topic> .claude/worktrees/<topic> origin/<base>`).
-  Each worktree has its own `build/`, but `test.sh` still uses fixed ports, so run
-  `test.sh` in only one worktree at a time.
+  Each worktree has its own `build/`. To run `test.sh` in two worktrees at the
+  same time, give each a different `TEST_SH_PORT_OFFSET` (for example 0 and 1000).
 - Temporary files (PR bodies, commit message drafts, scratch scripts, raw outputs of
   checks) go under `.claude/tmp/<session>/`, not under `/tmp`. Both `.claude/worktrees/`
   and `.claude/tmp/` are in `.gitignore`.

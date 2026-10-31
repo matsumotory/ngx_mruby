@@ -47,6 +47,9 @@ BLOCKS = {
     'a-light': (':root', False),
     'a-dark': (':root[data-theme="dark"][data-theme-script]', False),
     'a-dark-media': (':root:not([data-theme="light"])', True),
+    'home-light': (':root:has(.home)', False),
+    'home-dark': (':root[data-theme="dark"][data-theme-script]:has(.home)', False),
+    'home-dark-media': (':root:not([data-theme="light"]):has(.home)', True),
 }
 
 # token name: (custom property, role)
@@ -245,6 +248,48 @@ def main():
                   % ('ok' if ok else 'FAIL', prop, theme, h, trunc(r)))
             if not ok:
                 failures.append('code %s %s on surface: %.6f:1' % (prop, theme, r))
+
+    # Homepage overrides have their own role palette. Syntax spans continue
+    # using the shared Shiki colors, including its plain text and comments.
+    if blocks['home-dark'] != blocks['home-dark-media']:
+        failures.append('the homepage dark and dark-media blocks differ')
+    for theme in ('light', 'dark'):
+        block = blocks['home-' + theme]
+        label = 'homepage ' + theme
+        print('== ' + label)
+        for prop, (h, src) in block.items():
+            if src is None or oklch_to_hex(*src) != h:
+                failures.append(label + ' ' + prop + ': missing or incorrect OKLCH source')
+        bg_hue = block['--color-bg-primary'][1][2]
+        for name in NEUTRALS:
+            L, C, H = block[TOKENS[name][0]][1]
+            if C > NEUTRAL_MAX_CHROMA or H != bg_hue:
+                failures.append(label + ' ' + name + ': inconsistent neutral hue/chroma')
+        button_ratio = ratio(block['--color-button-text'][0], block['--color-button-fill'][0])
+        print('  button text on red metal fill: %s:1 (needs 4.5)' % trunc(button_ratio))
+        if button_ratio < 4.5:
+            failures.append('%s button text on fill: %.6f:1' % (label, button_ratio))
+        # Every reading plane uses these opaque gradient stops. Check all
+        # text/accent roles against every stop, not just the base canvas.
+        surfaces = ('scene-deep', 'scene-face', 'scene-light', 'scene-warm', 'scene-violet')
+        foregrounds = ('text-primary', 'text-muted', 'accent-text', 'code-number', 'signal-violet')
+        for surface in surfaces:
+            bg = block['--color-' + surface][0]
+            for foreground in foregrounds:
+                token = '--color-' + foreground
+                fg = block.get(token, blocks['a-' + theme].get(token))[0]
+                value = ratio(fg, bg)
+                if value < 4.5:
+                    failures.append('%s %s on %s: %.6f:1' % (label, foreground, surface, value))
+        print('  all material reading planes: checked text, muted, links and route colors')
+        home = by_token(block)
+        check_pairs(label, home, failures)
+        for prop in codes + ['--color-text-primary', '--color-text-muted']:
+            h = blocks['a-' + theme][prop][0]
+            r = ratio(h, home['surface'])
+            print('  shared syntax %s on home surface: %s:1' % (prop, trunc(r)))
+            if r < 4.5:
+                failures.append('%s %s on surface: %.6f:1' % (label, prop, r))
 
     print('== information (not gated)')
     light = palette[('a', 'light')]

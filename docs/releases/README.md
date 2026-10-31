@@ -61,11 +61,21 @@ new Ruby class or method, or a new value that a directive accepts. It goes
 under "New features" (additive build changes go under "Build and test
 changes").
 
-A bug fix is a behavior change when a working configuration or script could
-see the old behavior: for example, a response whose status or headers differ
-after the fix, or a method that returned a value and now raises. A fix of a
-crash or a leak alone is not one, because no configuration relies on a worker
-crashing. When in doubt, record it as a behavior change.
+The owner said on 2026-10-29:
+「修正対象をしようとして使ってた場合に変更で変わる場合はノート必須」 ("when
+someone used the behavior being fixed as if it were specified, and the fix
+changes it, the note is required"; 「しようとして」 reads as 「仕様として」, "as
+the specification"). The sessions read it as follows. A bug fix is a
+behavior change when a configuration or script that used the code being
+fixed sees a difference after the fix: for example, a response whose status
+or headers differ, or a method that returned a value or accepted an argument
+and now raises. This holds also when the old behavior was the defect itself,
+because someone may have built on it. A fix is not a behavior change in one
+case only: it removes a crash, a hang or a leak, and nothing else that a
+configuration or script sees changes, so no one could have built on the old
+behavior. A fix that turns some uses into an exception or a new result while
+it removes a crash for others changes those uses, and is one. When in doubt,
+record it as a behavior change.
 
 "Previous release" means the last release tag `vX.Y.Z`, not the previous
 commit. Pre-release tags (`-alpha.N`, `-beta.N`, `-rc.N`) are not releases in
@@ -326,8 +336,9 @@ pull request. A release that ships a security fix follows the order in
 When the owner publishes a release, its body carries both texts, English
 first: the "Behavior changes: read before upgrading" section copied from the
 English file ("None." when there are none), then the same section copied from
-the Japanese file, then links to the two files, then the list of pull requests
-that GitHub generates. A pre-release on `next` copies, from both files, the
+the Japanese file, then links to the two files. The body does not copy the
+list of pull requests that GitHub generates; the release notes name the pull
+requests. A pre-release on `next` copies, from both files, the
 entries added or changed since the previous pre-release;
 `git diff <previous pre-release tag> <new tag> -- docs/releases/v3.0.0.md docs/releases/v3.0.0.ja.md`
 shows them. The first pre-release copies the whole section. Agents prepare
@@ -349,6 +360,10 @@ tagged files and the release body have them:
   "Why it changed" names the defect only as the difference that "Before"
   describes; the advisory id, added when the advisory is published (below),
   points to the details.
+- The advisory draft is written in English, and after the English sections
+  it has the same content in Japanese. The owner said on 2026-10-29:
+  「日本語でも後半でいいのでしっかりかいておいてほしい、今後は」
+  ("write it carefully in Japanese too, in the second half; from now on").
 - When the owner publishes the advisory, a pull request adds the advisory id
   (`GHSA-xxxx-xxxx-xxxx`) to the entries in both files, and the owner adds it
   to both texts of the release body. That pull request may also list the

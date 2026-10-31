@@ -140,6 +140,8 @@ const fixtures = [
   },
   {
     name: 'a diagram block becomes a figure with its drawing and HTML labels',
+    machineContains: ['A demo diagram.', '- a: First `label`', '- b: Second', 'Source: ngx_mruby', '`docs/install/README.md`: 1'],
+    machineExcludes: ['<svg', '<figure'],
     source: `# A diagram\n\n${DIAGRAM('a: First `label`\nb: Second\n')}`,
     contains: ['<figure class="diagram diagram-demo not-content"><div class="diagram-grid" role="img" aria-label="A demo diagram.">', 'aria-hidden="true"', '<div class="diagram-label" data-key="a">First <code>label</code></div>'],
   },
@@ -173,6 +175,19 @@ fixtures.push({
 });
 
 fixtures.push({
+  name: 'from a Japanese page, links to English pages go to their routes under /ja/',
+  source: '# Docs\n\n[Install](install/README.md#anchor).\n',
+  files: {
+    'docs/ja/README.md': '# ドキュメント\n\n[インストール](install/README.md#アンカー)、[英語のインストール](../install/README.md#anchor)、[ディレクティブ](../directives/README.md#anchor)。\n',
+    'docs/ja/install/README.md': '# インストール\n\n## アンカー\n',
+  },
+  contains: ['[Install](/guides/install/#anchor)'],
+  others: {
+    'ja/docs.md': ['[インストール](/ja/guides/install/#アンカー)', '[英語のインストール](/ja/guides/install/#anchor)', '[ディレクティブ](/ja/reference/directives/#anchor)'],
+  },
+});
+
+fixtures.push({
   name: 'long names get <wbr> in text, not in code, links written as URLs, or URLs of the text',
   source: '# Names\n\n## mruby_upstream_keepalive\n\nCall Nginx::Stream::Connection#remote_port and Nginx::Headers_in#delete(string) with `mruby_ssl_handshake_handler_code`.\n\nThe script is at http://127.0.0.1/YOUR_MRUBY_SCRIPT.rb and <https://example.com/a_b_c_d>.\n',
   contains: [
@@ -183,6 +198,37 @@ fixtures.push({
     'http://127.0.0.1/YOUR_MRUBY_SCRIPT.rb and',
     '<https://example.com/a_b_c_d>',
   ],
+});
+
+fixtures.push({
+  name: 'machine Markdown keeps identifiers and literal code while removing display breaks',
+  source: '# Names\n\nNginx::Stream::Connection#remote_port\n\n## mruby_<wbr>ssl_handshake_handler_code\n\n`<wbr>`\n\n```ruby\nputs "<wbr>"\n```\n',
+  contains: ['Nginx::<wbr>Stream::<wbr>Connection<wbr>#remote_<wbr>port'],
+  machineContains: ['# Names\n', 'Nginx::Stream::Connection#remote_port', '## mruby_ssl_handshake_handler_code', '`<wbr>`', 'puts "<wbr>"'],
+  machineExcludes: ['Nginx::<wbr>', 'mruby_<wbr>'],
+});
+
+fixtures.push({
+  name: 'search metadata keeps complete identifiers without changing canonical Markdown',
+  source: '# API\n\n## mruby_content_handler\n\n`Nginx::Request`\n\n```nginx\nmruby_content_handler /example/hello.rb;\n```\n',
+  frontContains: ['data-pagefind-meta: "identifiers[content]"', 'content: "Nginx::Request mruby_content_handler"'],
+  contains: ['## mruby_<wbr>content_<wbr>handler'],
+  machineContains: ['## mruby_content_handler', '`Nginx::Request`', 'mruby_content_handler /example/hello.rb;'],
+  machineExcludes: ['data-pagefind-meta', 'identifiers[content]'],
+});
+
+fixtures.push({
+  name: 'export refuses a source which is not present at HEAD',
+  source: '# Committed source\n',
+  afterCommit: { 'docs/uncommitted.md': '# Uncommitted source\n' },
+  exportError: 'source must exist at HEAD before export: docs/uncommitted.md',
+});
+fixtures.push({
+  name: 'export distinguishes edited source and untracked working data from HEAD',
+  source: '# Original source\n',
+  afterCommit: { 'docs/README.md': '# Edited source\n', 'temporary.txt': 'untracked\n' },
+  contains: [],
+  editedSource: true,
 });
 
 function run(fixture) {
@@ -208,15 +254,33 @@ function run(fixture) {
     write(Object.fromEntries(Object.entries({ ...fixture.files, 'docs/README.md': fixture.source }).map(([f, t]) => [f, withAt(t)])));
     git('add', 'docs', 'misc', 'test', 'site/src', ...(fs.existsSync(path.join(dir, 'examples')) ? ['examples'] : []));
     git('commit', '--quiet', '-m', 'fixture page');
+    if (fixture.afterCommit) write(fixture.afterCommit);
     const result = spawnSync(process.execPath, [path.join(dir, 'site', 'scripts', 'sync-docs.mjs')], { cwd: dir, encoding: 'utf8' });
     if (fixture.error) {
       if (result.status === 1 && result.stderr.includes(fixture.error)) return [];
       return [`expected exit 1 with "${fixture.error}", got exit ${result.status}: ${result.stderr.trim() || result.stdout.trim()}`];
     }
     if (result.status !== 0) return [`sync-docs.mjs exited ${result.status}: ${result.stderr.trim()}`];
+    fs.mkdirSync(path.join(dir, 'site', 'dist'), { recursive: true });
+    const exported = spawnSync(process.execPath, [path.join(dir, 'site', 'scripts', 'export-docs.mjs')], { cwd: dir, encoding: 'utf8' });
+    if (fixture.exportError) {
+      return exported.status !== 0 && exported.stderr.includes(fixture.exportError) ? [] : [`expected export rejection: ${exported.stderr}`];
+    }
+    if (exported.status !== 0) return [`export failed: ${exported.stderr}`];
+    const index = JSON.parse(fs.readFileSync(path.join(dir, 'site', 'dist', 'docs-index.json'), 'utf8'));
+    const entry = index.pages.find((page) => page.source_path === 'docs/README.md');
+    if (index.working_tree_clean !== false) return ['untracked fixture files must mark the working tree dirty'];
+    if (entry.source_at_revision !== !fixture.editedSource || (fixture.editedSource && entry.source_url !== null)) return ['edited-source metadata does not distinguish HEAD'];
     // docs/README.md is the page /docs/ (5.2: / is the home page)
     const written = fs.readFileSync(path.join(dir, 'site', 'src', 'content', 'docs', 'docs', 'index.md'), 'utf8');
     const body = written.replace(/^---\n[\s\S]*?\n---\n\n/, '');
+    const machine = fs.readFileSync(path.join(dir, 'site', 'generated', 'markdown', 'docs.md'), 'utf8');
+    const machineProblems = [];
+    const front = written.slice(0, written.length - body.length);
+    for (const text of fixture.frontContains ?? []) if (!front.includes(text)) machineProblems.push(`front matter lacks: ${text}`);
+    for (const text of fixture.machineContains ?? []) if (!machine.includes(text)) machineProblems.push(`machine Markdown lacks: ${text}`);
+    for (const text of fixture.machineExcludes ?? []) if (machine.includes(text)) machineProblems.push(`machine Markdown contains decoration: ${text}`);
+    if (machineProblems.length) return machineProblems;
     if (fixture.contains) {
       const missing = fixture.contains.filter((c) => !body.includes(c));
       // Other pages that the fixture writes, with the text each must hold

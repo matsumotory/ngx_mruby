@@ -1,0 +1,99 @@
+name: site-v2
+
+# The 2.x pages of ngx.mruby.org before a change to them merges
+# (docs/proposals/site.md on next, 5.3 and step 6 of section 6). The site
+# is built from site/ of next, with its 3.x pages from next and its 2.x
+# pages under /v2/ from this pull request's docs/, and the checks of step 6
+# run on it: the relative links and anchors of the sources of the 2.x
+# pages, no broken link in the built site (under /v2/ too), the banner of
+# 3.4 on every 2.x page, the version links, and 2.x and 3.x search results
+# that do not mix. The built site is uploaded as the workflow artifact
+# site-v2. site.yml of next builds the same site from master on every push
+# to next and on every push to master (site-dispatch.yml).
+#
+# It runs on every pull request to master, without a path filter: the 2.x
+# pages link to files anywhere in the repository (.travis.yml,
+# nginx_version, the workflows, ...), and the generator stops on a link to
+# a file that git does not track, so a pull request that removes or
+# renames such a file fails here.
+on:
+  pull_request:
+    branches:
+      - master
+
+# A new push to a pull request cancels the run for its previous commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # The branch whose site/ builds the site and whose docs/ gives the 3.x
+  # pages.
+  SITE_REF: next
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      # The pull request (its merge commit) with the whole history: the
+      # last-updated date of each 2.x page is the date of the last commit
+      # that changed its source (git log).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.SITE_REF }}
+          path: next
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: next/site/.node-version
+      # The relative links and the heading anchors of the sources of the
+      # 2.x pages, as GitHub shows them.
+      - name: Check the relative links and anchors of the sources of the 2.x pages
+        run: git ls-files -z -- 'docs/*.md' SECURITY.md CONTRIBUTING.md | xargs -0 python3 next/site/scripts/check_links.py .
+      - name: Build the 3.x pages from next
+        id: build
+        if: ${{ !cancelled() }}
+        working-directory: next/site
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run build
+      # The generator stops on a link of docs/ to a file that git does not
+      # track.
+      - name: Build the 2.x pages under /v2/ from the pull request's docs/
+        id: v2
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: next/site
+        run: node scripts/build-v2.mjs --tree "$GITHUB_WORKSPACE"
+      - name: Check that every internal link of the built HTML resolves, under /v2/ too
+        if: ${{ !cancelled() && steps.v2.outcome == 'success' }}
+        working-directory: next/site
+        run: node scripts/check-built-links.mjs
+      - name: Install Chromium for Playwright
+        id: browsers
+        if: ${{ !cancelled() && steps.v2.outcome == 'success' }}
+        working-directory: next/site
+        run: npx playwright install --with-deps chromium
+      - name: Check the 2.x pages (banner, version links, search results of their own version)
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        working-directory: next/site
+        run: node scripts/check-v2.mjs
+      - name: Upload the built site
+        if: ${{ !cancelled() && steps.v2.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-v2
+          path: next/site/dist
+          if-no-files-found: error

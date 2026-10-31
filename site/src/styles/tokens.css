@@ -17,21 +17,22 @@
  * decides, with it the theme toggle does. scripts/contrast.py checks that
  * the two dark blocks hold the same values.
  *
- * Palette A is the palette that the owner chose on 2026-10-19 (4.12,
- * item 1).
+ * The 2026-10-29 rebrand preview applies the owner-painted reference
+ * direction across the site: deep navy/graphite, silver text and copper accents.
+ * The earlier palette A remains documented for comparison, not as this preview.
  */
 
-/* Palette A, light (4.6, table "Palette A"; 4.3 items 3 and 4) */
+/* Rebrand preview, light reading surface. */
 :root {
   color-scheme: light;
-  --color-bg-primary: #f7fbfa; /* oklch(0.985 0.004 182) */
-  --color-bg-tertiary: #ecf3f1; /* oklch(0.958 0.008 182) */
-  --color-text-primary: #172522; /* oklch(0.250 0.020 182) */
-  --color-text-muted: #4c5c59; /* oklch(0.460 0.020 182) */
-  --color-accent-text: #0f695e; /* oklch(0.470 0.080 182) */
-  --color-accent: #167b6f; /* oklch(0.527 0.089 182) */
-  --color-border-strong: #748481; /* oklch(0.600 0.019 182) */
-  --color-border: #d4dddb; /* oklch(0.890 0.010 182) */
+  --color-bg-primary: #f9fafd; /* oklch(0.985 0.004 265) */
+  --color-bg-tertiary: #eef1f7; /* oklch(0.958 0.008 265) */
+  --color-text-primary: #1d222b; /* oklch(0.25 0.02 265) */
+  --color-text-muted: #535864; /* oklch(0.46 0.02 265) */
+  --color-accent-text: #9a3130; /* oklch(0.47 0.14 25) */
+  --color-accent: #a83634; /* oklch(0.5 0.15 25) */
+  --color-border-strong: #7b808c; /* oklch(0.6 0.019 265) */
+  --color-border: #d7dbe2; /* oklch(0.89 0.01 265) */
   /* Code colors (4.6: at most four besides text and text-muted) */
   --color-code-keyword: #1b6684; /* oklch(0.480 0.085 230) */
   --color-code-string: #386f3b; /* oklch(0.490 0.100 145) */
@@ -39,18 +40,18 @@
   --color-code-name: #a03e43; /* oklch(0.500 0.130 20) */
 }
 
-/* Palette A, dark */
+/* Rebrand preview, dark painted surface. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --color-bg-primary: #0e1413; /* oklch(0.185 0.010 182) */
-    --color-bg-tertiary: #161e1c; /* oklch(0.225 0.012 182) */
-    --color-text-primary: #e2eae8; /* oklch(0.930 0.009 182) */
-    --color-text-muted: #a6b1ae; /* oklch(0.750 0.013 182) */
-    --color-accent-text: #81cfc1; /* oklch(0.800 0.080 182) */
-    --color-accent: #56b1a3; /* oklch(0.700 0.090 182) */
-    --color-border-strong: #6b7775; /* oklch(0.560 0.015 182) */
-    --color-border: #2c3533; /* oklch(0.320 0.013 182) */
+    --color-bg-primary: #0c0f16; /* oklch(0.17 0.014 265) */
+    --color-bg-tertiary: #151922; /* oklch(0.215 0.018 265) */
+    --color-text-primary: #e8ebf1; /* oklch(0.94 0.009 265) */
+    --color-text-muted: #adb1ba; /* oklch(0.76 0.013 265) */
+    --color-accent-text: #ffac8e; /* oklch(0.82 0.11 40) */
+    --color-accent: #fa9075; /* oklch(0.76 0.135 35) */
+    --color-border-strong: #767a84; /* oklch(0.58 0.015 265) */
+    --color-border: #35383f; /* oklch(0.34 0.013 265) */
     --color-code-keyword: #82c8ea; /* oklch(0.800 0.085 230) */
     --color-code-string: #90d192; /* oklch(0.800 0.110 145) */
     --color-code-number: #ecba74; /* oklch(0.820 0.105 75) */
@@ -59,14 +60,14 @@
 }
 :root[data-theme="dark"][data-theme-script] {
   color-scheme: dark;
-  --color-bg-primary: #0e1413; /* oklch(0.185 0.010 182) */
-  --color-bg-tertiary: #161e1c; /* oklch(0.225 0.012 182) */
-  --color-text-primary: #e2eae8; /* oklch(0.930 0.009 182) */
-  --color-text-muted: #a6b1ae; /* oklch(0.750 0.013 182) */
-  --color-accent-text: #81cfc1; /* oklch(0.800 0.080 182) */
-  --color-accent: #56b1a3; /* oklch(0.700 0.090 182) */
-  --color-border-strong: #6b7775; /* oklch(0.560 0.015 182) */
-  --color-border: #2c3533; /* oklch(0.320 0.013 182) */
+  --color-bg-primary: #0c0f16; /* oklch(0.17 0.014 265) */
+  --color-bg-tertiary: #151922; /* oklch(0.215 0.018 265) */
+  --color-text-primary: #e8ebf1; /* oklch(0.94 0.009 265) */
+  --color-text-muted: #adb1ba; /* oklch(0.76 0.013 265) */
+  --color-accent-text: #ffac8e; /* oklch(0.82 0.11 40) */
+  --color-accent: #fa9075; /* oklch(0.76 0.135 35) */
+  --color-border-strong: #767a84; /* oklch(0.58 0.015 265) */
+  --color-border: #35383f; /* oklch(0.34 0.013 265) */
   --color-code-keyword: #82c8ea; /* oklch(0.800 0.085 230) */
   --color-code-string: #90d192; /* oklch(0.800 0.110 145) */
   --color-code-number: #ecba74; /* oklch(0.820 0.105 75) */
@@ -97,6 +98,7 @@
   --text-body: 1rem;
   --text-nav: 0.9375rem;
   --text-caption: 0.875rem;
+  --text-code: var(--text-nav); /* code uses the existing 15px step */
   --leading-home: 1.2;
   --leading-h1: 1.25;
   --leading-h2: 1.3;
@@ -135,6 +137,17 @@
   /* Motion (4.8): only color, background color, border color, opacity and
      transform, for 200 ms or less */
   --duration-short: 150ms;
+}
+
+/* Landing-page display role. Component styles consume these tokens; they
+   do not introduce additional sizes for individual labels or diagrams. */
+html:has(.home) {
+  --text-home: clamp(2.375rem, 1rem + 4.5vw, 4.5rem);
+  --leading-home: 1.05;
+}
+html[lang="ja"]:has(.home) {
+  --text-home: clamp(2rem, 1rem + 3.5vw, 3.5rem);
+  --leading-home: 1.3;
 }
 
 /* 20 px is not a step of --space-*: it is the profile site's narrow
@@ -278,8 +291,8 @@
   --sl-text-6xl: var(--text-h1);
   --sl-text-body: var(--text-body);
   --sl-text-body-sm: var(--text-caption);
-  --sl-text-code: var(--text-nav);
-  --sl-text-code-sm: var(--text-nav);
+  --sl-text-code: var(--text-code);
+  --sl-text-code-sm: var(--text-code);
   --sl-text-h1: var(--text-h1);
   --sl-text-h2: var(--text-h2);
   --sl-text-h3: var(--text-h3);
@@ -300,4 +313,78 @@
   --sl-sidebar-pad-x: var(--gutter);
   --sl-menu-button-size: 44px;
   --sl-nav-gap: var(--space-4);
+}
+
+/* Homepage proposal, 2026-10-29: graphite/navy and small copper accents.
+   Explicit homepage roles match the global rebrand preview above. */
+:root:has(.home) {
+  /* Shared upper-left key light and warm/violet reflected light. */
+  --color-scene-deep: #dde1ea; /* oklch(0.91 0.012 265) */
+  --color-scene-face: #e8f1fb; /* oklch(0.955 0.016 250) */
+  --color-scene-light: #f7fafe; /* oklch(0.985 0.006 250) */
+  --color-scene-edge: #a1acb9; /* oklch(0.74 0.022 250) */
+  --color-scene-warm: #f8e5dc; /* oklch(0.935 0.024 50) */
+  --color-scene-violet: #ede4f5; /* oklch(0.93 0.025 310) */
+  --color-signal-violet: #754a93; /* oklch(0.49 0.12 310) */
+
+  --color-button-fill: #6e2826; /* oklch(0.38 0.10 25) */
+  --color-button-edge: #cc8e6b; /* oklch(0.70 0.09 50) */
+  --color-button-low: #462220; /* oklch(0.30 0.055 25) */
+  --color-button-text: #e8ebf1; /* oklch(0.94 0.009 265) */
+  --color-bg-primary: #f9fafd; /* oklch(0.985 0.004 265) */
+  --color-bg-tertiary: #eef1f7; /* oklch(0.958 0.008 265) */
+  --color-text-primary: #1d222b; /* oklch(0.25 0.02 265) */
+  --color-text-muted: #535864; /* oklch(0.46 0.02 265) */
+  --color-accent-text: #9a3130; /* oklch(0.47 0.14 25) */
+  --color-accent: #a83634; /* oklch(0.5 0.15 25) */
+  --color-border-strong: #7b808c; /* oklch(0.6 0.019 265) */
+  --color-border: #d7dbe2; /* oklch(0.89 0.01 265) */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):has(.home) {
+  /* Shared upper-left key light and warm/violet reflected light. */
+  --color-scene-deep: #070a11; /* oklch(0.145 0.017 265) */
+  --color-scene-face: #122334; /* oklch(0.25 0.04 250) */
+  --color-scene-light: #223448; /* oklch(0.32 0.042 250) */
+  --color-scene-edge: #516274; /* oklch(0.49 0.036 250) */
+  --color-scene-warm: #311911; /* oklch(0.245 0.04 40) */
+  --color-scene-violet: #24162e; /* oklch(0.23 0.05 310) */
+  --color-signal-violet: #cfa8ed; /* oklch(0.79 0.105 310) */
+
+    --color-button-fill: #6e2826; /* oklch(0.38 0.10 25) */
+    --color-button-edge: #cc8e6b; /* oklch(0.70 0.09 50) */
+    --color-button-low: #462220; /* oklch(0.30 0.055 25) */
+    --color-button-text: #e8ebf1; /* oklch(0.94 0.009 265) */
+    --color-bg-primary: #0c0f16; /* oklch(0.17 0.014 265) */
+    --color-bg-tertiary: #151922; /* oklch(0.215 0.018 265) */
+    --color-text-primary: #e8ebf1; /* oklch(0.94 0.009 265) */
+    --color-text-muted: #adb1ba; /* oklch(0.76 0.013 265) */
+    --color-accent-text: #ffac8e; /* oklch(0.82 0.11 40) */
+    --color-accent: #fa9075; /* oklch(0.76 0.135 35) */
+    --color-border-strong: #767a84; /* oklch(0.58 0.015 265) */
+    --color-border: #35383f; /* oklch(0.34 0.013 265) */
+  }
+}
+:root[data-theme="dark"][data-theme-script]:has(.home) {
+  /* Shared upper-left key light and warm/violet reflected light. */
+  --color-scene-deep: #070a11; /* oklch(0.145 0.017 265) */
+  --color-scene-face: #122334; /* oklch(0.25 0.04 250) */
+  --color-scene-light: #223448; /* oklch(0.32 0.042 250) */
+  --color-scene-edge: #516274; /* oklch(0.49 0.036 250) */
+  --color-scene-warm: #311911; /* oklch(0.245 0.04 40) */
+  --color-scene-violet: #24162e; /* oklch(0.23 0.05 310) */
+  --color-signal-violet: #cfa8ed; /* oklch(0.79 0.105 310) */
+
+  --color-button-fill: #6e2826; /* oklch(0.38 0.10 25) */
+  --color-button-edge: #cc8e6b; /* oklch(0.70 0.09 50) */
+  --color-button-low: #462220; /* oklch(0.30 0.055 25) */
+  --color-button-text: #e8ebf1; /* oklch(0.94 0.009 265) */
+  --color-bg-primary: #0c0f16; /* oklch(0.17 0.014 265) */
+  --color-bg-tertiary: #151922; /* oklch(0.215 0.018 265) */
+  --color-text-primary: #e8ebf1; /* oklch(0.94 0.009 265) */
+  --color-text-muted: #adb1ba; /* oklch(0.76 0.013 265) */
+  --color-accent-text: #ffac8e; /* oklch(0.82 0.11 40) */
+  --color-accent: #fa9075; /* oklch(0.76 0.135 35) */
+  --color-border-strong: #767a84; /* oklch(0.58 0.015 265) */
+  --color-border: #35383f; /* oklch(0.34 0.013 265) */
 }

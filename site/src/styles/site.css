@@ -782,6 +782,13 @@ dialog {
 #starlight__search .pagefind-ui__result-inner {
   gap: 0;
 }
+/* Generated API names help indexing, but are not user-facing result tags.
+   Preserve any other metadata tags and hide the wrapper only when empty. */
+#starlight__search [data-pagefind-ui-meta="identifiers"],
+#starlight__search .pagefind-ui__result-tags:has(> [data-pagefind-ui-meta="identifiers"]:only-child) {
+  display: none;
+}
+
 #starlight__search .pagefind-ui__result-inner > * + * {
   border-top: 1px solid var(--color-border);
 }
@@ -827,8 +834,40 @@ dialog {
 .expressive-code .ec-line .code {
   padding-inline-start: var(--space-4);
 }
+/* A long URL, path or credential example must remain readable at any width.
+   Expressive Code owns soft wrapping and preserves raw clipboard bytes. */
+.expressive-code .frame .header, .expressive-code .frame .title {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.expressive-code pre.wrap .ec-line .code {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.expressive-code pre.wrap > code {
+  min-width: 0;
+}
+.expressive-code pre.wrap .ec-line .code span.indent {
+  white-space: break-spaces;
+  overflow-wrap: anywhere;
+}
+.expressive-code pre.wrap :is(mark, ins, del) {
+  display: inline;
+  white-space: inherit;
+  overflow-wrap: anywhere;
+}
 .expressive-code .copy button,
 .expressive-code .copy button div {
   color: var(--color-text-primary);
   border-radius: var(--radius-control);
+}
+
+/* Rebrand preview: the same two paths in flat monochrome variants. */
+.site-title .brand-dark { display: none; }
+html[data-theme="dark"][data-theme-script] .site-title .brand-light { display: none; }
+html[data-theme="dark"][data-theme-script] .site-title .brand-dark { display: block; }
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .site-title .brand-light { display: none; }
+  html:not([data-theme="light"]) .site-title .brand-dark { display: block; }
 }

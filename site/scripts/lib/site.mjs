@@ -9,22 +9,37 @@ import { fileURLToPath } from 'node:url';
 // link check treats URLs on this origin as links into the built site.
 export const SITE_URL = 'https://ngx.mruby.org';
 
+// The version of the documentation that a build makes (docs/proposals/
+// site.md, 3.4 and step 6 of section 6). By default, 3.x at unprefixed
+// paths from docs/ of the repository that holds site/ (next). With
+// NGX_MRUBY_SITE_VERSION=2, which scripts/build-v2.mjs sets, 2.x under /v2/
+// from docs/ of the git work tree that NGX_MRUBY_SITE_REPO names (master,
+// v2.x after the promotion of 5.2).
+export const SITE_VERSION = process.env.NGX_MRUBY_SITE_VERSION === '2' ? 2 : 3;
+// The path prefix of the pages of this build: '' for 3.x, '/v2' for 2.x.
+export const BASE = SITE_VERSION === 2 ? '/v2' : '';
+
 // Links to files of the repository that the site does not render go to
-// GitHub, on the branch that the site is built from.
+// GitHub, on the branch that the pages are built from.
 export const GITHUB_URL = 'https://github.com/matsumotory/ngx_mruby';
-export const GITHUB_REF = 'next';
+export const GITHUB_REF = SITE_VERSION === 2 ? 'master' : 'next';
 
 export const siteDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-export const repoDir = path.resolve(siteDir, '..');
+export const repoDir = SITE_VERSION === 2 && process.env.NGX_MRUBY_SITE_REPO ? path.resolve(process.env.NGX_MRUBY_SITE_REPO) : path.resolve(siteDir, '..');
 // Where scripts/sync-docs.mjs writes the pages and the list of them. The
 // pages go into Starlight's content folder beside the committed home pages
 // index.mdx and ja/index.mdx (docs/proposals/site.md, 5.2), each at the
 // folder of its route; .gitignore ignores everything else there.
 export const contentRoot = path.join(siteDir, 'src', 'content', 'docs');
 export const contentDir = contentRoot;
-export const HOME_PAGES = ['index.mdx', 'ja/index.mdx'];
+// The 2.x build has no home pages: docs/README.md is its index, /v2/.
+export const HOME_PAGES = SITE_VERSION === 2 ? [] : ['index.mdx', 'ja/index.mdx'];
 export const manifestFile = path.join(siteDir, 'generated', 'pages.json');
 export const distDir = path.join(siteDir, 'dist');
+// What scripts/build-v2.mjs leaves beside the 3.x build: the 2.x pages in
+// dist/v2/ and the list of them, which scripts/check-v2.mjs reads.
+export const V2_DIR = 'v2';
+export const v2ManifestFile = path.join(siteDir, 'generated', 'pages-v2.json');
 
 // The pages whose route is not the path of their source (the site map of
 // docs/proposals/site.md, 3.2, and the four kinds of page of 3.1). The
@@ -47,6 +62,38 @@ export const SOURCE_ROUTES = {
   'docs/DEVELOPMENT.md': 'contributing/development',
   'docs/HANDOFF.md': 'contributing/handoff',
 };
+
+// The Japanese pages (docs/proposals/site.md, 3.4, Q2 of section 7, step 5
+// of section 6). Every page written by hand has a Japanese source:
+// docs/ja/<path>.md for docs/<path>.md, docs/<path>.ja.md for the release
+// notes, and docs/ja/<route>/README.md for the pages from outside docs/
+// (docs/ja/start/README.md for examples/start/README.md,
+// docs/ja/security/README.md for SECURITY.md, docs/ja/contributing/README.md
+// for CONTRIBUTING.md). The Japanese page takes the route of its English page
+// under /ja/.
+//
+// GENERATED_REFERENCE: the reference that Pillar F of the v3 plan generates
+// from src/ (the directives from the ngx_command_t tables, the Ruby classes
+// and methods with YARD). A translation would be out of date after each
+// generation, so these pages have no Japanese source: /ja/ shows the English
+// page with the notice of src/components/FallbackContentNotice.astro.
+export const GENERATED_REFERENCE = ['reference/directives', 'reference/ruby'];
+// NOT_TRANSLATED_YET: the pages written by hand whose translation is still
+// to come in step 5. /ja/ shows the English page with the notice of
+// src/components/FallbackContentNotice.astro that the translation is not
+// there yet.
+// check-japanese.mjs fails on a page written by hand that is in neither list
+// and has no Japanese source, and on a page of this list that has one, so
+// that each pull request of step 5 removes the pages it translates.
+export const NOT_TRANSLATED_YET = [
+  'contributing',
+  'contributing/development',
+  'contributing/handoff',
+  'contributing/test',
+  'releases',
+  'security',
+  'security/trust-boundary',
+];
 
 // The place of a page in its group of the sidebar (astro.config.mjs), by
 // route without the /ja/ prefix. The other pages of a group follow, in the
@@ -104,18 +151,38 @@ export function loadManifest(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-// The HTML files of the built site, as paths relative to it.
-export function htmlFiles(dist) {
+// Files of public/ that the site serves unchanged at the URL they had on
+// the old site, and that are not pages: the Google site verification file
+// that Q5 of docs/proposals/site.md keeps, with its size in bytes and its
+// SHA-256, those of the copy on the gh-pages branch. check-deploy.mjs
+// checks them; htmlFiles leaves them out, so that the checks of pages do
+// not take them for pages.
+export const VERBATIM_FILES = [
+  {
+    file: 'googleba3435e4002729b6.html',
+    bytes: 54,
+    sha256: '1e10ca6b5856c96f4a15c00ee5a7b50a530f19231dca2e0aa307063276140f6d',
+  },
+];
+
+// The HTML files of the built site, as paths relative to it, without the
+// files of VERBATIM_FILES. The 2.x pages of dist/v2/ are left out unless
+// `v2` is true: the checks of steps 1 to 5 read the 3.x pages of the
+// manifest, and scripts/check-v2.mjs and check-built-links.mjs read the
+// 2.x pages.
+export function htmlFiles(dist, { v2 = false } = {}) {
   const files = [];
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
+      if (entry.isDirectory() && !v2 && dir === dist && entry.name === V2_DIR) continue;
       if (entry.isDirectory()) walk(full);
       else if (entry.name.endsWith('.html')) files.push(path.relative(dist, full).split(path.sep).join('/'));
     }
   };
   walk(dist);
-  return files.sort();
+  const verbatim = new Set(VERBATIM_FILES.map((v) => v.file));
+  return files.filter((f) => !verbatim.has(f)).sort();
 }
 
 // The route of a built page ('install/index.html' -> 'install'), or null for

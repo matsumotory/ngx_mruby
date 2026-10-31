@@ -1,12 +1,68 @@
 # Developing ngx_mruby
 
-This is a collection of random tips to help ngx_mruby developers.
+Development procedures for human contributors and coding agents.
 
 Before you change the C module (`src/`), the gems in `mrbgems/` or the
 build, read [Design principles](../AGENTS.md#design-principles) in
 AGENTS.md: the owner's decisions (one `mrb_state` per worker, no blocking,
 keep the existing performance and measure it) and how sessions apply them,
 including which changes are measured and how.
+
+## Continuing shared work
+
+[AGENTS.md](../AGENTS.md#session-handoff) defines the shared handoff rules.
+The current queue is [HANDOFF.md](https://github.com/matsumotory/ngx_mruby/blob/next/docs/HANDOFF.md) on `next`; the active PR holds
+the detailed evidence. Claude's and Codex's private memories are optional
+context, not prerequisites for continuing work.
+
+1. Read AGENTS, the relevant plan, code and tests, then HANDOFF and the PR's
+   latest body, review comments and CI results. Fetch `origin` and verify
+   the recorded base and head; a dated snapshot is not a live branch tip.
+   Search open PRs and all topic branches, including `claude/*` and
+   `codex/*`, before starting a queue item.
+2. Inspect `git worktree list`, the intended worktree's branch and
+   `git status --short`. Reuse the existing task worktree when possible.
+   Confirm that its previous writer and local build/preview processes have
+   stopped before taking over; external CI may continue and should be
+   inspected rather than restarted. Preserve uncommitted work. If another
+   task needs a worktree, create its own `<tool>/<topic>` branch from the
+   appropriate base under the branch rules in AGENTS. Do not reset a shared
+   checkout to make its files match a handoff.
+3. Claim an existing PR with a comment naming the head being taken over.
+   For new work, open a draft PR once the scoped changes are reviewable.
+   Keep its template sections current as the head or evidence changes;
+   update the queue through HANDOFF as AGENTS requires. Use commit messages
+   to preserve the problem, reasoning, relevant tradeoffs and validation,
+   with explicit limits when something was not tested.
+4. Before stopping or transferring work, put a dated checkpoint in that PR:
+   **scope and decisions** (link the accepted decision, distinguish open
+   questions); **state** (branch, head/base, stage and remaining diff);
+   **evidence** (commands, environment/nginx version, tested commits,
+   results and run/review links); **unfinished work** (not run, in progress,
+   failed, denied or uncertain outcomes); **next step** (the concrete action
+   and its prerequisite). Confirm which writer has stopped. If there is no
+   PR yet, record the public scope and next step in HANDOFF via the normal
+   documentation PR; preserve unfinished files locally without publishing
+   raw scratch data. A successor must not assume unpushed work is available
+   on another machine.
+5. Keep temporary logs, screenshots, PR drafts and personal references
+   outside the repository or in narrowly ignored directories. Before each
+   commit inspect `git status --short --untracked-files=all`,
+   `git check-ignore -v <generated-path>`, `git ls-files <generated-path>`,
+   and `git diff --cached --name-status` / `git diff --cached`. Source,
+   tests and public documentation must remain visible; never hide a broad
+   directory merely to make status clean. Run the added-file check in
+   [Files that do not belong in the repository](test/README.md#files-that-do-not-belong-in-the-repository)
+   and review the public text for private material.
+6. On resumption, check running CI and any operation with an uncertain
+   outcome before retrying. Follow AGENTS for builds, test-port isolation,
+   independent review and merge gates; a checkpoint does not waive them.
+   Use the harness of the checked-out branch: do not assume the port-offset
+   support on `next` exists on 2.x.
+   On macOS, use a Linux container matching the packages in
+   [.github/workflows/test.yml](../.github/workflows/test.yml) for the Linux
+   suite, sanitizer and callgrind evidence. The root Dockerfile is a runtime
+   image, not that test environment.
 
 ## Recommended development environment
 
@@ -251,6 +307,12 @@ The owner checks that all of these hold and gives the go before step 1:
      the default branch, and an entry without `target-branch` updates only the
      default branch, so without the new entry nothing would update the
      SHA-pinned actions in the workflows of `v2.x` while 2.x is supported.
+     It also moves the site with the lines, so that pages of an unreleased
+     3.1 never become the current version (5.2 of
+     [the site proposal](https://github.com/matsumotory/ngx_mruby/blob/next/docs/proposals/site.md#52-repository-layout)):
+     `.github/workflows/site.yml` runs on and deploys from `master` and
+     builds `/v2/` from `docs/` of `v2.x`, and `site-v2.yml` and
+     `site-dispatch.yml` are removed.
    - The check pull request of
      ["Before the tag"](releases/README.md#before-the-tag) for
      `docs/releases/v3.0.0.md`. As that section says for `next`, its range
@@ -268,7 +330,10 @@ The owner checks that all of these hold and gives the go before step 1:
    that they tag it in step 6 right away, so that `master` is not an untagged
    3.x line in between. It has no conflicts, because step 1 merged `master`
    into `next`. `master` stays the default branch; nothing about the default
-   branch changes.
+   branch changes. Right before the merge, the owner changes the deployment
+   branch rule of the `github-pages` environment from `next` to `master`
+   (Settings, Environments, `github-pages`, "Deployment branches"), so that
+   the push of the merge deploys the site from `master`.
 6. **Tag and release (owner), right after step 5.** Tag `v3.0.0` on the merge
    commit of step 5 and publish its GitHub release, not marked as a
    pre-release, with the release notes. Tagging that commit instead of the
@@ -296,12 +361,14 @@ The owner checks that all of these hold and gives the go before step 1:
      (`git clone https://github.com/matsumotory/ngx_mruby.git` without `-b`)
      in `docs/install/README.md`, `Dockerfile` and `misc/provision.sh`.
      Without it, a 2.x user who follows the install guide on `v2.x`, or builds
-     the Dockerfile from a `v2.x` checkout, gets 3.x.
+     the Dockerfile from a `v2.x` checkout, gets 3.x;
+   - points its copies of `site-v2.yml` and `site-dispatch.yml`, which run
+     only for `master`, at `v2.x`, and makes the dispatch start `site.yml`
+     with `--ref master`, so that a change to the 2.x documentation still
+     reaches `/v2/`.
 
    This command lists the links, the badge and the clones:
    `git grep -n -E 'ngx_mruby/(tree|blob|archive)/master|branch=master|clone https://github\.com/matsumotory/ngx_mruby'`.
-   If the site is switched to v3 (see "Open questions"), that change is
-   merged in this step too.
 8. **Afterwards.** 2.x fixes target `v2.x`, and v3 fixes target `master`. The
    owner publishes each 2.x release so that it does not become the
    repository's latest release, which stays with 3.x:
@@ -330,16 +397,15 @@ requires them to be decided before step 1.
   in steps 2 and 3.** Recommendation: the owner. Whether condition 1 holds is
   a judgment, the tag of step 6 is the owner's, and the settings need admin
   rights; a mistake there lets `v2.x` move to 3.x. AGENTS.md does not cover
-  the go, the repository settings or pull requests to `gh-pages` (the site,
-  see the next question) yet. Its branch table lists only `master`, `next` and
-  `v2.x`, so today an agent cannot merge a pull request to `gh-pages`:
-  condition 1 of "Review and merge" does not hold.
-- **Which version the site shows after the promotion.** The site,
-  ngx.mruby.org, is served by GitHub Pages from the `gh-pages` branch, a
-  single page last changed in 2020, and the v3 plan tags `v3.0.0-rc.1` when
-  the site is complete (section 6, step 8). Recommendation: from v3.0.0 on,
-  the site shows v3 and links the 2.x documentation on the `v2.x` branch
-  (`https://github.com/matsumotory/ngx_mruby/tree/v2.x/docs`), so that 2.x
-  users still find it. An agent prepares the switch as a pull request to
-  `gh-pages` before step 5 and merges it in step 7, after the owner's tag,
-  once AGENTS.md covers `gh-pages` (see the previous question).
+  the go or the repository settings yet.
+
+The site proposal decides which version the site shows after the
+promotion (Q1 and Q4, decided by the owner on 2026-10-15, in section 7 of
+[`docs/proposals/site.md`](https://github.com/matsumotory/ngx_mruby/blob/next/docs/proposals/site.md#7-decisions-2026-10-15)
+on `next`). The site, ngx.mruby.org, is built from `docs/` by
+`.github/workflows/site.yml` on `next` and deployed by GitHub Actions:
+3.x from `next` at the unprefixed paths, and
+2.x from `master` under `/v2/`. From the promotion on, the unprefixed
+paths show the released 3.x from `master` and `/v2/` shows 2.x from
+`v2.x`: steps 4, 5 and 7 move the workflows and the deployment branch
+rule.

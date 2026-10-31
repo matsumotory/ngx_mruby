@@ -220,8 +220,10 @@ Docs, Agent proxy, Releases, Security, Contributing, GitHub.
   "no live version switcher". The header links each page's version to the
   other version's index.
 - Until v3.0.0, every 3.x page carries a banner: 3.x is in development, the
-  current release is 2.7.0, its documentation is under `/v2/`. Then the
-  banner moves to 2.x pages and gives the end of 2.x support.
+  current release is 2.x, its documentation is under `/v2/`; and every 2.x
+  page carries one that names 2.x the current release and links to the
+  3.x documentation (step 6). Then the 2.x banner gives the end of 2.x
+  support instead, and the 3.x pages carry none.
 - Items added or changed in 3.x say "New in 3.0" or "Changed in 3.0", as
   nginx.org and njs mark the version that introduced each directive.
 - Japanese pages live under `/ja/`, from `docs/ja/<path>.md`. An
@@ -272,7 +274,8 @@ their figures.** Each diagram has two parts:
 
 - The drawing, `site/src/diagrams/<name>.svg`: lines, boxes, arrows and
   symbols only, with classes that refer to the tokens and no `<text>`
-  element. A diagram with a narrow arrangement has a second drawing for it.
+  element. A diagram with a narrow arrangement may have a second drawing
+  for it; without one, the narrow arrangement shows the labels alone.
 - The labels: a fenced block with the language `diagram` in the Markdown of
   the page, which names the drawing on its first line and gives one label
   per line as `key: text`. The keys are fixed by the drawing.
@@ -322,6 +325,10 @@ practice). Step 5 checks that every diagram on `/ja/` takes its labels from
   width when the drawing scales; labels in `text` or `text-muted`, never in
   a diagram color; the accent on at most two marks; no shadow, gradient or
   hover. Directive, function and file names are in the monospace face.
+- A line joins two elements only where the diagram states a relation
+  between them, such as an order or a flow. A diagram of kinds, such as
+  the agent proxy endpoints, draws no line between its items, in either
+  arrangement (chosen here, after the review of #622).
 - Labels are short HTML text at 14 or 15 px (the caption and navigation
   sizes of 4.4), where the owner's figures go down to 13 px; details go
   into the text around the diagram.
@@ -401,6 +408,18 @@ label "Development version" beside "New in 3.0".
 
 ## 4. Visual direction
 
+The 2026-10-29 local rebrand preview now applies the painted-reference
+navy/graphite surfaces, silver text/edges and small copper interaction accents
+to documentation pages as well as the home pages. The owner's later direction
+supersedes retaining palette A for the new preview. The dark references show
+near-black blue armor and concentrated reflections; the lighter references
+show gunmetal/silver panels with copper joints and small metallic-red parts.
+These establish roles, not a requirement to scatter all colors equally. Gold
+is concentrated in the primary logo inset; purple is its comparison variant.
+Code keeps distinguishable, contrast-checked syntax colors; large reading
+surfaces stay quiet. The photos themselves are not published.
+
+
 The owner answered Q7 on 2026-10-15 (section 7): the design starts from the
 design of the owner's corporate site and the owner's product landing page,
 which the owner likes, and tunes its colors and atmosphere towards cyber;
@@ -415,6 +434,179 @@ from research, and 4.12 records what the owner settled on the specimens of
 step 2. Each rule names its
 source and its check; section 6 runs the checks. Appendix C gives the
 evidence rule by rule.
+
+### Working design: reading, implementation and agent use (2026-10-29)
+
+The owner's later instruction removes the constraint of retaining the old
+layout: "今の既存のさいとにとらわれなくていい。あなたが良いと思うものに作り直して欲しい。"
+The requested uses are reading and understanding on a phone, implementation
+on a PC, and reliable documentation retrieval and task assistance for agents.
+The owner also requested a logo refresh; the name remains ngx_mruby. The
+homepage preview below is an intermediate comparison, not a finished brand.
+
+Implementation direction, subject to verification rather than a new runtime
+API decision:
+
+1. Keep one documentation source. Generate page-level Markdown and a compact
+   machine-readable index from the same source/route/sample pipeline as HTML.
+   Include the documentation version, source revision, source path, language,
+   canonical HTML URL and sample provenance. Keep stable 2.x and development
+   3.x in separate indexes. A missing translation must name its English
+   source instead of pretending to be Japanese documentation.
+2. Present the version and prerequisites before commands. On PC, bring the
+   configuration, Ruby, request and expected result together with copyable
+   code and links to API constraints. On phones, prioritize reading order,
+   short sections and legible text rather than fitting a desktop workbench
+   into a narrow viewport. Preserve stable routes and heading anchors.
+3. Provide a visible Markdown/source route on documentation pages and a
+   concise starting point for agent-assisted tasks. It must link to build
+   requirements, execution phase/lifetime limits, reproducible examples,
+   failure checks and verification. Do not fabricate a known-good result or
+   silently present planned agent-proxy behavior as an available feature.
+4. Validate the machine path with representative tasks: starting the correct
+   version, choosing a handler for a phase, and finding the constraints of an
+   upstream setter. A reader using only the exported material must find the
+   version, prerequisites, source and verification evidence without guessing.
+   Check version isolation, link targets and example fidelity automatically;
+   use an independent reader for the task exercise. A standalone llms.txt is
+   not sufficient evidence of agent usability.
+5. Expand implementation guidance from reviewed code and tests, not just
+   page summaries: normal and error cases; argument types, return values and
+   exceptions; valid execution phases, lifetime and worker constraints; and
+   versioned configuration/Ruby/request/expected-result examples. Each
+   example names the case that checks it. Internal stress fixtures and
+   deliberately invalid configurations are not recommendations. Preserve
+   enough detail for an agent to implement a task without guessing.
+6. Publish performance evidence with its method: tested source/base commits,
+   nginx/mruby versions, build options, OS/CPU when actually recorded,
+   request/workload counts, warm-up, repetitions or known variability,
+   reproduction steps and limits. Distinguish historical measurements from
+   current guarantees. Do not invent missing environment details or compare
+   numbers from different conditions as a product superiority claim. The
+   existing callgrind lane is an initial evidence source, not a throughput
+   benchmark. Link back to the public CI artifact and comparison report.
+7. Keep the visual language technical, with dark navy/graphite, metallic
+   contrast and restrained accents. Use the selected metallic C mark, with small-size derivatives and the
+   existing wordmark. Review their visual consistency together with the site. Publish coherent iterations after the normal PR, independent-review and
+   deployment checks; the owner authorized iterative site deployment on
+   2026-10-29. This is not authorization for a v3 software release. No new external service, account, payment or
+   authentication change is needed for these static site capabilities.
+
+#### First retrieval experiment and remaining content work
+
+The preview exports 51 development and 16 stable source pages, each from
+its HTML source pipeline, at `/markdown/<route>.md` and
+`/v2/markdown/<route>.md`, indexed by `/docs-index.json` and
+`/v2/docs-index.json`. These are source-language pages: Japanese HTML
+fallbacks link to English Markdown. Metadata records the release line,
+channel, language, source revision/hash and dirty state; an edited source
+has no misleading link to its old bytes at HEAD. Sources not yet present
+in HEAD stop export. The generator retains full Markdown bodies for the
+build checker, and preserves code while omitting display word breaks and
+SVG. Diagram labels and source provenance remain; label order is not a
+claim about connections. The page footer exposes the outputs. The 2.x channel is
+`maintenance`, not a release guarantee. Its shared banner and machine metadata
+read the latest reachable stable release tag and newer release-note filenames
+from the documented source tree. They name the released tag and unreleased
+versions without duplicating version constants in components. A full-history,
+full-tag checkout is required; no tag fails the build instead of guessing.
+Examples keep their explicitly tested target (such as the released tag in the
+installation guide), which can differ from maintenance-branch API changes.
+
+An independent reader using only those outputs could identify version and
+sample provenance, and distinguish callgrind instruction counts from
+throughput. It also found substantive gaps, which export alone does not fix:
+
+- The stable install page had historical version/output/path examples.
+  [PR #660](https://github.com/matsumotory/ngx_mruby/pull/660) replaces them
+  with a versioned source-build and HTTP walkthrough, executed on released
+  ngx_mruby 2.7.2 with nginx 1.31.8. Its local preview is verified; the
+  stable PR and its current CI remain the authoritative publication record.
+- The development upstream API lacked constraints documented by the stable
+  fixes. [PR #658](https://github.com/matsumotory/ngx_mruby/pull/658), merged
+  into next at `258c852fa`, supplies that text and is included in this branch.
+  Planned rejection of HTTP setter hostnames and exception normalization
+  are not implemented by this site change. Check the actual source contract
+  when reading examples; future runtime changes need their own tests.
+- Historical performance tables must stay beside their recorded conditions.
+  Add current, reproducible comparisons only from actual runs and preserve
+  missing-environment and upstream timing limitations.
+
+The export and first two source corrections are implemented; this is not
+a claim that agent-assisted implementation coverage is complete. The next content pass will connect prerequisites,
+complete examples, errors and verification before broadening the landing page.
+
+The owner selected logo direction C on 2026-10-29: "白黒にした時のバランスがCがいいのでCが好き。ロゴ自体はメタリックなやつかっこいいね".
+The owner clarified later the same day: "最初のcの1番下が好き" and
+"隙間が金のやつ、あれ系で紫とか金の差し色使えると良い". The preferred
+primary treatment is the initial metallic C with gold in the gap; the
+monochrome balance was a selection criterion, not a request to make a flat
+mark the primary identity. The earlier silver-only conversion is not
+adopted. The revised metallic gold-inset SVG is used in the local desktop hero;
+the purple-inset SVG is retained as the comparison variant. Both were
+visually checked against the supplied reference before use.
+Flat black/white are small-size and single-color derivatives only. The
+header can preview those derivatives while the primary metallic asset remains the larger display treatment.
+The favicon uses white on an opaque dark tile for visibility in either
+browser tab theme. The existing Geist Mono wordmark keeps `ngx_mruby`.
+
+Asset adoption checklist: header uses a monochrome candidate in this
+preview; the homepage previews the gold-inset metallic treatment; favicon points to the background-backed SVG; README still uses
+`misc/logo.png`; its replacement is a separate adoption task; there is no dedicated OG image configured.
+The old `site/public/favicon.png` and `misc/logo.png` remain for comparison
+and existing links. Source geometry, surface treatment and favicon background
+are distinct. The reference photographs, kit builder, kit README, QA sheet
+and temporary metadata are not repository assets. Each deployment reviews the changed favicon, header and home together.
+README and a dedicated social-sharing image remain explicit follow-up work.
+
+### Homepage revision requested on 2026-10-29
+
+The owner asked for a more technical, engineer-facing site and for richer
+code and terminal examples: "ソフトウェアのサイトなのでサンプルとかターミナル画面とかそういうのを色々リッチにみせたい".
+The direction uses how Linear and Resend present software as a reference,
+without copying their layout, wording or assets. The owner also supplied
+painted-model photographs as references for color and material: dark navy,
+graphite, silver edges and small warm or violet accents. The photographs
+are not site assets.
+
+The owner authorized iterative site publication on 2026-10-29. This
+revision applies the dark navy/graphite palette to the home and documentation
+pages, preserving the documentation type scale and layout. Normal PR,
+independent-review and deployment checks still precede publication.
+For the home pages, this revision supersedes the earlier small heading,
+teal palette and plain sample layout. The request for real software and
+terminal examples also supersedes the earlier blanket rejection of terminal
+motifs; this implementation shows the actual HTTP exchange with labelled
+code panels and adds no fictional shell prompt or operating-system chrome.
+
+- `home.css` uses a two-column introduction and nginx/mruby execution
+  structure, followed by a configuration, Ruby handler, request and response
+  workbench. The four panels stack on narrow screens. Selected HTTP phases
+  and links into the existing guides complete the page.
+- The home title uses `clamp(2.375rem, 1rem + 4.5vw, 4.5rem)` in English
+  and `clamp(2rem, 1rem + 3.5vw, 3.5rem)` in Japanese. Other text retains
+  the existing type scale, gutters and spacing tokens. Controls retain a
+  minimum height of 44 px and visible focus rings.
+- Shared and homepage token blocks in `tokens.css` define graphite/navy
+  surfaces, silver text and a restrained copper accent. Light and dark themes
+  follow the theme control and the OS setting without JavaScript. The
+  metallic SVG family uses gradients and subtle surface filters; six SVG
+  assets cover the family, small monochrome derivatives and favicon. There
+  are no new page animations.
+- `Sample.astro` reads the same case and fixtures as before. Its caption
+  identifies the compared response fields, date and commit; no measured
+  performance or terminal output is invented. 3.x is labelled development
+  and the stable 2.x documentation has its own link. The agent proxy guide
+  retains the distinction between current implementation and planned work.
+- `check-styles.mjs` checks the home scale and palette separately while
+  retaining the documentation checks. `contrast.py` checks both palettes,
+  matching dark-media tokens, and the shared syntax colors on the new home
+  surfaces. `check-home.mjs` continues checking the actual code and fixture
+  text, provenance and absence of unsupported performance claims. The
+  existing language, keyboard, no-JavaScript and mobile checks still apply.
+- Python bytecode from the site checks is ignored only under
+  `site/scripts/__pycache__/`; source, tests and documentation remain
+  visible to Git. Screenshots and local work records are not committed.
 
 ### 4.1 The three sites and their sources
 
@@ -1033,9 +1225,11 @@ Palette B:
   of the content as a plain list: a table of contents collapsed and pinned
   to the top went unnoticed by many participants of Nielsen Norman Group's
   tests (2023).
-- No horizontal page scroll at 320 px (WCAG 1.4.10). Code blocks and tables
-  scroll in their own box and show content cut at the right edge, which
-  tells readers there is more (Nielsen Norman Group, 2017). Diagrams do not
+- No horizontal page scroll at 320 px (WCAG 1.4.10). On 2026-10-30 the owner
+  required code to be readable without horizontal scrolling (「横スクロールを
+  強制」は「絶対やめて」). Code blocks soft-wrap, including long paths and
+  tokens; copying keeps the original source. This supersedes the earlier
+  cut-off-code treatment. Tables may scroll in their own box. Diagrams do not
   scroll sideways; they take a vertical arrangement instead (3.5).
 - **Right edge.** At 390 px, in Chromium and in WebKit, the longest line of
   every Japanese text block (`lang="ja"`) of two or more lines ends less
@@ -1246,8 +1440,10 @@ detection, or that pinned versions do not keep Starlight stable.
   rendering are reviewed in one pull request, and CI builds the site on
   every pull request. `gh-pages` shows what a separate branch does over
   time: no content change since 2016.
-- **2.x**: the deploy workflow checks out `docs/` of `master` and builds it
-  with the base `/v2/`.
+- **2.x**: the site workflow checks out `master` and builds its `docs/`
+  with the base `/v2/` (`site/scripts/build-v2.mjs`: the build of `site/`
+  in a copy of it, with `docs/` of `master` and its own search index),
+  into `dist/v2/` beside the 3.x build.
 - **At the promotion** (the procedure is "Promoting v3 to master" in
   `docs/DEVELOPMENT.md` on `master`), the unprefixed 3.x build moves from
   `next` to `master` and the `/v2/` build from `master` to `v2.x`, whatever
@@ -1285,22 +1481,29 @@ detection, or that pinned versions do not keep Starlight stable.
   adds the deploy job, since a deployment from `next` is refused before
   the settings below and would fail every push to `next`.
 - **A change to `docs/` on `master`.** `.github/workflows/site-dispatch.yml`
-  on `master`, on pushes that touch `docs/`, calls
+  on `master`, on every push (not filtered by path, for the reason above:
+  the 2.x pages link to files outside `docs/`), calls
   `gh workflow run site.yml --ref next` with the job's token and
-  `permissions: actions: write`. A `repository_dispatch` would run on the
-  default branch, where setting 2 refuses the deployment; a
-  `workflow_dispatch` runs on the ref it names. GitHub's documentation
-  allows that once the workflow has run, as `site.yml` has on `next` since
-  step 1, but also says that the workflow must be on the default branch
-  (appendix B). The check of step 6 settles it; if the dispatch is
-  refused, a `site.yml` with only the `workflow_dispatch` trigger goes on
-  `master`, and the dispatch still runs the file of `next`. The `master`
-  workflows trigger only for `master`, so their copies merged into `next`
-  do not run there.
+  `permissions: actions: write`, and fails when it cannot name the run
+  that the dispatch started. A
+  `repository_dispatch` would run on the default branch, where setting 2
+  refuses the deployment; a `workflow_dispatch` runs on the ref it names.
+  GitHub's documentation allows that once the workflow has run, as
+  `site.yml` has on `next` since step 1, but also says that the workflow
+  must be on the default branch (appendix B). The check of step 6 settled
+  it on 2026-10-30 (#656): with `actions: write` the job's token started
+  `site.yml` on `next`, which was not on `master`; with `actions: read`
+  GitHub refused the dispatch with HTTP 403. No token or `site.yml` on
+  `master` is needed. The `master` workflows trigger only for `master`, so
+  their copies merged into `next` do not run there.
 - **The 2.x documentation before it merges.** `.github/workflows/site-v2.yml`
-  on `master` runs on pull requests to `master` that touch `docs/`: it
-  checks out `site/` from `next`, builds `/v2/` alone and runs the checks of
+  on `master` runs on every pull request to `master`, without a path
+  filter for the same reason: it checks out `next`, builds the site with `site/` and the 3.x pages of
+  `next` and the 2.x pages of the pull request, and runs the checks of
   step 6, so a change to the 2.x documentation sees them before it merges.
+  It builds the 3.x pages too, because the 2.x pages link to 3.x pages
+  (the banner and the version link) and the search check needs both
+  indexes.
   Pull requests to `next` build both parts, with `docs/` of `master`, so a
   change to `site/` that breaks `/v2/` fails there. The deploy job then
   meets a `/v2/` failure only if `master` and `next` changed in ways that
@@ -1753,3 +1956,206 @@ Pages settings, the environments and the default branch
 | [docs/test](../test/README.md) | 1,066 | the test harness, sanitizers, mock LLM upstream, soak test, callgrind comparison; starts without a heading |
 | [docs/DEVELOPMENT.md](../DEVELOPMENT.md) | 88 | Vagrant on Ubuntu 18.04, subtree updates |
 | [SECURITY.md](../../SECURITY.md) | 56 | supported versions, private reporting |
+
+### Rebrand family iteration, 2026-10-29
+
+The owner requested different inset colors for HTTP and stream, with a
+stronger v3 LLM proxy variant. The current design iteration maps HTTP to
+gold, stream to purple, and LLM proxy to a gold/purple inset and stronger
+metallic body. The color assignment is an implementation proposal, not an
+additional owner decision. Names and availability text accompany every
+feature mark; color never carries the distinction alone. The metallic
+SVGs are external images with no external dependencies, keeping filter IDs
+isolated. Flat marks remain small-size derivatives, not the primary style.
+
+The owner also clarified the documentation scope: "v2.7系は現状をしっかり描きつつ、v3は完成予定の実装や機能をベースに書いていけばよさそう".
+The agent-proxy guide therefore states the completed v3 target while labeling
+current recipes and planned capabilities. The same status table is exported
+as Markdown, and the JSON index defines implemented/planned/under-design.
+Undecided details remain undecided; new art makes no performance claim.
+
+
+### Local surface and mobile-spacing iteration, 2026-10-29
+
+The homepage CTA now uses a deep red face with a narrow copper upper edge
+and a darker lower edge. The runtime panel has a restrained silver upper
+edge. These are solid color roles; the existing no-gradient, no-shadow,
+no-animation checks remain intact. Links, code colors and reference-page
+styles are unchanged. The four new homepage button tokens have explicit
+OKLCH sources; contrast.py additionally checks button text against its face
+(8.81:1 in both themes, above the existing 4.5:1 requirement).
+
+Below 800px the title's top padding, lead/action/version gaps, runtime
+padding and section gaps are smaller. In Chromium at 390 by 844 pixels,
+the Japanese sample-section entry moved from y=950.70 to y=838.70;
+the `.runtime-map` layout box moved from y=540.75 to y=500.75.
+This box includes padding; these coordinates do not identify the visible
+inner panel border. The runtime diagram is fully visible in the first viewport.
+The desktop layout positions are unchanged. These are layout measurements,
+not loading-performance results. Native and Noto checks cover 80 page loads
+of the English/Japanese homepages in Chromium/WebKit, both themes and
+320/390/1440px widths, including search/menu states. This local iteration
+is separate from the shared-image work and has not been published.
+
+### Remove decorative start-edge stripes, 2026-10-30
+
+The owner requested removal of the decorative vertical line beside diagrams.
+The homepage runtime container now uses an even thin neutral frame, with
+nesting and surface contrast identifying nginx and the embedded VM. The
+roadmap note has no accent rail or compensating left padding. Documentation
+quotes/asides already use uniform frames; code-pane edges and diagram
+connectors convey boundaries/relationships and are retained. This changes
+presentation only, not the execution model or machine-readable source.
+
+### v3 use-case homepage, 2026-10-30
+
+The owner asked for v3 as the main subject, concrete first-user use cases,
+large diagrams and less introductory text; stable 2.7 keeps a clear secondary
+entry. The same request explicitly permits bold metal reflections, depth and
+motion. This overrides the earlier flat/no-gradient/no-shadow direction for
+this homepage, not for reference reading surfaces. Decorative start-edge
+vertical rails remain prohibited.
+
+`HomeV3.astro` composes the English/Japanese overview. `AgentFlow.astro` shows
+actual tested model routing to configured LLM upstreams; selecting a fixture
+model highlights that route without sending a request. Its 800ms finite
+movement is user-triggered and absent under reduced motion. It never implies
+API format conversion. `McpUseCase.astro` labels the document-service routing
+as an unverified use-case design and links to the canonical bilingual guide.
+`TryPath.astro` leads to source-built trial/edit/check steps and Linux integration.
+The representative sample is read from the existing agent-proxy test files;
+its complete configuration remains available in an expandable code block.
+
+The owner's subsequent feedback requires a unified composition: the page
+background, large planes, light direction, spacing, color and motion must work
+together; isolated metallic buttons and diagrams are insufficient. After #669,
+the owner also rejected the opening as a landing page: the audience, problem,
+use and benefit were fragmented, and implementation labels dominated the figure.
+
+The landing page therefore starts with developers using several LLM APIs and
+the purpose of managing their routes and provider keys at one proxy. It defines
+ngx_mruby as a module running Ruby inside nginx, rather than a ready-made hosted
+product. The reading order is purpose and development status, a request-to-rule-
+to-API diagram, the source-built Hello trial, then the real routing code. The
+trial explicitly bridges Hello to the model-routing guide. MCP remains a
+secondary, unverified architecture candidate, followed by planned capabilities,
+HTTP/TCP examples and stable-version/reference entries. Technical fixture names
+are available in a disclosure, not the main diagram labels. The real Ruby
+handler is visible; checked mock output and the full configuration are
+expandable with their original code and copy controls intact.
+
+A broad navy plane carries the routing steps without a nested nginx enclosure
+or Ruby card. The page and figure share the light direction; copper controls
+and gold/violet route states use the existing palette. There are no diagonal
+wallpaper stripes behind text. The v3 sharing image uses the same background,
+mark and concrete routing purpose. Visual review must include a first-time
+reader explaining the product, audience, benefit and next step; color checks
+alone cannot establish that the landing page works.
+
+Directional gradients and shadows are allowed on those named homepage planes
+(main frame, route stage and trial band) as well as the
+existing metal surfaces, CTA, file labels and planned-feature band. They remain
+prohibited on reference pages. Text shadows, backdrop filters, decorative left
+rails and permanent animation remain prohibited. The checks preserve tokens,
+contrast on every reading-plane stop, focus, font, wrapping and reduced motion.
+The finite 800ms route indication is user-triggered and does not imply a live
+network request. Visual review must assess whole-page cohesion separately from
+a passing mechanical check; this design is an iteration, not an owner acceptance.
+Photos remain private references and are not committed. No benchmark result,
+MCP conformance, formal v3 release or completed planned API is claimed.
+
+### Layout and type hierarchy
+
+The shared design procedure applies to human, Claude and Codex contributions.
+Relationships and reading order come first from alignment, proximity, whitespace
+and the existing heading hierarchy. Do not add a repeated caption, number or
+arrow to compensate for a layout that does not communicate them. A link does
+not need a trailing arrow. Retain arrows only where their direction adds
+necessary meaning; disclosure chevrons, state indicators and technical mappings
+are functional content. On narrow screens, stack related content closely
+instead of reserving a separate row for a downward arrow.
+
+Typography uses roles from `site/src/styles/tokens.css`, applied by shared styles:
+
+| Role | Token / shared selector |
+|---|---|
+| Homepage title | `--text-home` / `h1#_top` |
+| Section heading | `--text-h2` / `h2` |
+| Item or peer diagram heading | `--text-h3` / `h3` |
+| Body and primary control | `--text-body` |
+| Supporting note, provenance or availability | `--text-caption` |
+| Code | `--text-code` (the existing `--text-nav` size) |
+| Navigation | `--text-nav` |
+
+The same role has the same size within each language and breakpoint. Keep
+responsive title values in the token file, not in component styles. Establish
+importance through placement, spacing and restrained font weight before adding
+a size. A new role or size needs an explicit reason, a shared token and visual
+review; no one-off component size. Removing redundant labels must not remove
+version status, unimplemented limitations, code provenance or useful instructions.
+
+An independent reviewer checks the actual desktop and mobile pages, including
+an overview with surrounding sections, and reports whether a first-time reader
+can explain the product, audience, benefit and next step. For every arrow or
+secondary label, ask what information is lost without it; remove it or fix the
+layout when the answer is none. Compare peer heading/control roles and their
+computed sizes. Check reading order, semantic headings, focus, disclosures,
+canonical code copy and reduced motion. Passing automated checks does not prove
+that the page communicates clearly or that its composition is accepted.
+
+### Sharing and README identity, 2026-10-29
+
+The product-level sharing card uses the selected metallic C/gold mark and
+“Ruby inside nginx. HTTP / STREAM.” It makes no release or planned-feature
+claim; page-specific titles and canonical URLs remain separate. The README
+uses the same image. Feature-specific HTTP/stream/LLM marks retain their
+names and availability labels on the site. Header and favicon keep their
+small-size monochrome derivatives; the favicon has an opaque dark tile.
+Historical `misc/logo.png` and `site/public/favicon.png` remain in place so
+existing external links are not broken, but new metadata does not use them.
+
+`site/public/brand/ngx-mruby-http.svg` remains the mark source.
+`site/scripts/render-brand.mjs` renders the sharing PNG using that SVG and
+Inter from the existing Fontsource dependency (SIL Open Font License 1.1).
+Run `node scripts/render-brand.mjs` from `site/` after installing the pinned
+dependencies and Playwright Chromium. The renderer uses only embedded local
+assets; the PNG is committed for offline builds. The 1200 by 630 canvas is
+this card's design choice, not an Open Graph protocol requirement.
+`site/scripts/lib/brand.mjs` defines its URL path, dimensions and alternative
+text for both version builds. The built-site deployment check verifies the
+PNG dimensions and the unique OG/X image metadata on every generated page.
+
+The [Open Graph protocol](https://ogp.me/) was checked on 2026-10-29 for image
+URL, type, dimensions and alt properties. Local review covers full size and
+300/390-pixel card widths on light and dark surrounds. Actual SNS rendering
+and cache refresh remain unverified; local and HTTPS asset checks do not
+claim that an external service has fetched its preview.
+
+The development sharing image now uses the gold/purple LLM mark with
+“3.x · IN DEVELOPMENT” and “LLM agent gateways / nginx + Ruby”. Generate it
+with `node scripts/render-brand.mjs --v3`; the original no-flag render and
+`ngx-mruby-share-v1.png` remain the stable 2.x card. The metadata selector
+uses the documentation version, and deployment checks inspect both PNGs and
+require the appropriate absolute OG/X URL on every page. The next README
+uses the development image. Both images are product cards; page titles,
+English/Japanese descriptions and canonicals remain page-specific.
+
+
+### Complete API names in search, 2026-10-30
+
+Pagefind 1.5.2 segments Japanese body text and browser queries differently
+for names such as `mruby_content_handler`. A successful search for an
+unrelated prefix is not evidence that the reference is reachable. The
+canonical-page generator therefore derives a deduplicated identifier list
+from the title and complete Markdown body and emits one searchable
+`identifiers` metadata field in the page head. No manually maintained
+keyword list, visible duplicate text or query rewrite is used. The search UI
+hides only this indexing field, preserving other result metadata. Code and
+machine-readable Markdown remain unchanged.
+
+This uses Pagefind's documented [searchable metadata](https://pagefind.app/docs/metadata/).
+`check-search-identifiers.mjs` checks that English/Japanese searches on both
+versions reach the appropriate directive and Ruby reference pages, and that
+an unknown exact-phrase query returns no result. The existing search UI and
+version-isolation checks remain in place. Generator fixtures check complete
+names in metadata and unchanged canonical code/Markdown. CI runs both checks.

@@ -11,7 +11,10 @@
 //   docs/releases/README.md), are Japanese pages at /ja/<path>/. README.md
 //   is the index of its folder, except docs/README.md, which is /docs/
 //   (and docs/ja/README.md /ja/docs/), since / and /ja/ are the committed
-//   home pages (5.2). Routes are lowercase. The pages of SOURCE_ROUTES
+//   home pages (5.2); in the 2.x build (NGX_MRUBY_SITE_VERSION=2, step 6),
+//   which has no home pages, docs/README.md is the index /v2/. Routes are
+//   lowercase, and the pages of the 2.x build are under /v2/ (BASE of
+//   scripts/lib/site.mjs). The pages of SOURCE_ROUTES
 //   (scripts/lib/site.mjs) take the route given there instead, so that
 //   the site shows the four kinds of page of 3.1 while the files stay
 //   where they are; the README of examples/start/ is the one page from
@@ -28,7 +31,8 @@
 //   changed yet gets no date, with a warning.
 // - Links. A relative link, or one from the top of the repository
 //   (/path), to a file that the site renders becomes the route of its page,
-//   with the anchor kept. A link to any other file or folder of the
+//   with the anchor kept; from a Japanese page, a link to an English page
+//   becomes the route of that page under /ja/. A link to any other file or folder of the
 //   repository becomes its URL on GitHub at the branch next, and an image
 //   its raw URL there. A link to a path that the repository does not track
 //   stops the build. Absolute URLs and anchors within the page stay as they
@@ -56,8 +60,8 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { containsHtml, isFirstBlock, parseMarkdown, plainText, titleHeading } from './lib/markdown.mjs';
-import { contentDir, contentRoot, GITHUB_REF, GITHUB_URL, HOME_PAGES, isShallow, lastCommitDate, manifestFile, repoDir, SIDEBAR_ORDER, siteDir, SOURCE_ROUTES } from './lib/site.mjs';
-import { checkKeys, diagramHtml, loadDrawings, parseDiagramBlock } from './lib/diagrams.mjs';
+import { BASE, contentDir, contentRoot, GITHUB_REF, GITHUB_URL, HOME_PAGES, isShallow, lastCommitDate, manifestFile, repoDir, SIDEBAR_ORDER, siteDir, SITE_VERSION, SOURCE_ROUTES } from './lib/site.mjs';
+import { checkKeys, diagramHtml, diagramMarkdown, loadDrawings, parseDiagramBlock } from './lib/diagrams.mjs';
 import { loadSample, parseSampleBlock, sampleMarkdown } from './lib/samples.mjs';
 
 const posix = path.posix;
@@ -106,8 +110,10 @@ function pageOf(source) {
   const parts = rel.slice(0, -'.md'.length).split('/');
   if (parts.at(-1) === 'README') parts.pop();
   // docs/README.md, the index of the documentation, is /docs/: the home
-  // pages of the site are / and /ja/ (5.2).
-  let route = SOURCE_ROUTES[`docs/${rel}`] ?? (parts.length ? parts.join('/').toLowerCase() : 'docs');
+  // pages of the site are / and /ja/ (5.2). The 2.x build has no home
+  // pages, and docs/README.md is its index, /v2/.
+  const index = SITE_VERSION === 2 ? '' : 'docs';
+  let route = SOURCE_ROUTES[`docs/${rel}`] ?? (parts.length ? parts.join('/').toLowerCase() : index);
   if (lang === 'ja') route = route ? `ja/${route}` : 'ja';
   if (!/^[a-z0-9._-]+(\/[a-z0-9._-]+)*$|^$/.test(route)) {
     fail(`${source}: the route ${route} would need characters other than a-z, 0-9, ".", "_" and "-"`);
@@ -131,7 +137,7 @@ for (const page of pages) {
   if (other) fail(`${page.source} and ${other.source} would both be the page /${page.route}/`);
 }
 
-const routeUrl = (route) => (route === '' ? '/' : `/${route}/`);
+const routeUrl = (route) => (route === '' ? `${BASE}/` : `${BASE}/${route}/`);
 
 // The new destination of a link or image of `source`, or null to keep it.
 function resolve(url, source, image, where) {
@@ -148,7 +154,12 @@ function resolve(url, source, image, where) {
   if (target === '..' || target.startsWith('../')) fail(`${where}: the link ${url} points outside the repository`);
   if (!image) {
     const page = bySource.get(target) ?? bySource.get(`${target}/README.md`);
-    if (page) return routeUrl(page.route) + query + fragment;
+    // From a Japanese page, a link to an English page goes to that page
+    // under /ja/: its translation, or the English page with the notice of
+    // 3.4 (a generated reference page, or one not translated yet), so that
+    // the reader stays on the Japanese pages.
+    const fromJapanese = bySource.get(source)?.lang === 'ja';
+    if (page) return routeUrl(fromJapanese && page.lang === 'en' ? (page.route ? `ja/${page.route}` : 'ja') : page.route) + query + fragment;
   }
   const isDir = target === '.' || tracked.has(`${target}/`);
   if (!isDir && !tracked.has(target)) {
@@ -297,7 +308,7 @@ function render(page) {
     let end = heading.position.end.offset;
     while (src[end] === '\n' || src[end] === '\r') end++;
     removed = [0, end];
-    edits.push([0, end, '']);
+    edits.push([0, end, '', src.slice(0, end)]);
   }
   // A node inside the removed heading needs no edit.
   const inRemoved = (node) =>
@@ -315,6 +326,7 @@ function render(page) {
     if (!generated(node)) continue;
     const where = `${page.source}:${lineOf(node)}`;
     let text;
+    let machineText;
     try {
       if (node.lang === 'sample') {
         text = sampleMarkdown(loadSample(parseSampleBlock(node.value, where), repoDir, where), page.lang);
@@ -331,11 +343,12 @@ function render(page) {
         }
         diagrams.push({ name: block.name, sources: block.sources, nginx: block.nginx, at: block.at });
         text = diagramHtml(block, drawings, page.lang);
+        machineText = diagramMarkdown(block, page.lang);
       }
     } catch (e) {
       fail(e.message);
     }
-    edits.push([node.position.start.offset, node.position.end.offset, text]);
+    edits.push([node.position.start.offset, node.position.end.offset, text, machineText]);
   }
   // A definition that an image refers to (![alt][id]) gets the raw URL.
   const imageIds = new Set();
@@ -375,7 +388,7 @@ function render(page) {
       const end = node.position.end.offset;
       if (src.slice(start, end) === node.value) {
         // Not inside a URL of the text (http://host/YOUR_MRUBY_SCRIPT.rb)
-        edits.push([start, end, node.value.replace(SNAKE_ALL, (w, at, all) => (/\S*:\/\/\S*$/.test(all.slice(0, at)) ? w : breakName(w)))]);
+        edits.push([start, end, node.value.replace(SNAKE_ALL, (w, at, all) => (/\S*:\/\/\S*$/.test(all.slice(0, at)) ? w : breakName(w))), node.value]);
       }
     } else if (node.type === 'html') {
       // The attributes are found in the source text of the node, not in
@@ -386,6 +399,7 @@ function render(page) {
       // same ones in the same order, or the build stops.
       const base = node.position.start.offset;
       const text = src.slice(base, node.position.end.offset);
+      if (/^<wbr\s*\/?\s*>$/i.test(text)) edits.push([base, node.position.end.offset, text, '']);
       const inSource = [...text.matchAll(HTML_URL_ATTRIBUTE)];
       const inValue = [...node.value.matchAll(HTML_URL_ATTRIBUTE)].map(attributeValue);
       if (inSource.length !== inValue.length || inSource.some((m, i) => attributeValue(m) !== inValue[i])) {
@@ -409,10 +423,12 @@ function render(page) {
 
   edits.sort((a, b) => b[0] - a[0]);
   let body = src;
+  let machineBody = src;
   let previousStart = Infinity;
-  for (const [start, end, text] of edits) {
+  for (const [start, end, text, machineText = text] of edits) {
     if (end > previousStart) fail(`${page.source}: overlapping edits at offset ${start}`);
     body = body.slice(0, start) + text + body.slice(end);
+    machineBody = machineBody.slice(0, start) + machineText + machineBody.slice(end);
     previousStart = start;
   }
 
@@ -420,6 +436,15 @@ function render(page) {
   if (!lastUpdated) console.warn(`sync-docs: warning: ${page.source} has no commit yet, so its page has no last-updated date`);
   const front = ['---', `title: ${JSON.stringify(title)}`, `slug: ${JSON.stringify(page.route)}`];
   if (lastUpdated) front.push(`lastUpdated: ${lastUpdated}`);
+  // Pagefind's Japanese body segmentation and browser Intl.Segmenter can
+  // split API names differently. Its searchable metadata keeps these names
+  // whole. Derive them from the same canonical body; never add query-specific
+  // keywords or alter visible code/Markdown to make search work.
+  const identifiers = [...new Set(`${title}\n${machineBody}`.match(SNAKE_ALL) ?? [])].sort();
+  if (identifiers.length) front.push('head:', '  - tag: meta', '    attrs:',
+    '      data-pagefind-meta: "identifiers[content]"',
+    `      content: ${JSON.stringify(identifiers.join(' '))}`);
+
   const order = SIDEBAR_ORDER[page.route.replace(/^ja\//, '')];
   if (order !== undefined) front.push('sidebar:', `  order: ${order}`);
   front.push('---', '');
@@ -431,6 +456,9 @@ function render(page) {
   const out = path.join(contentDir, page.route.includes('/') ? `${page.route}.md` : `${page.route}/index.md`);
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, `${front.join('\n')}\n${body}`);
+  const machine = path.join(path.dirname(manifestFile), 'markdown', `${page.route || 'index'}.md`);
+  fs.mkdirSync(path.dirname(machine), { recursive: true });
+  fs.writeFileSync(machine, machineBody);
   return { ...page, title, lastUpdated, titleRemoved: removed !== null, diagrams };
 }
 
@@ -449,7 +477,7 @@ fs.rmSync(path.dirname(manifestFile), { recursive: true, force: true });
 const manifest = pages.map(render);
 // The home pages are committed MDX files (5.2): the checks read them from
 // the list too.
-for (const [lang, rel, route] of [['en', HOME_PAGES[0], ''], ['ja', HOME_PAGES[1], 'ja']]) {
+for (const [lang, rel, route] of [['en', HOME_PAGES[0], ''], ['ja', HOME_PAGES[1], 'ja']].filter(([, rel]) => rel)) {
   const file = path.join(contentRoot, rel);
   if (!fs.existsSync(file)) fail(`site/src/content/docs/${rel}, the home page of 5.2, is missing`);
   const title = /^title:\s*(.+)$/m.exec(fs.readFileSync(file, 'utf8'))?.[1]?.replace(/^["']|["']$/g, '');

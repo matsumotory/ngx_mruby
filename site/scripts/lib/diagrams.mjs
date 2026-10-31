@@ -140,7 +140,9 @@ const joinList = (items, lang) => {
 const rangeText = ([a, b], lang) => (lang === 'ja' ? (a === b ? `${a}行` : `${a}行から${b}行`) : a === b ? `${a}` : `${a} to ${b}`);
 const linesText = (ranges, lang) => {
   const list = joinList(ranges.map((r) => rangeText(r, lang)), lang);
-  if (lang === 'ja') return list;
+  // Japanese: the last number and its 行 stay together, so that no line of
+  // the note holds 行 alone (the owner's rule for last lines)
+  if (lang === 'ja') return list.replace(/(\d+行)$/, '<span class="nowrap">$1</span>');
   return `${ranges.length === 1 && ranges[0][0] === ranges[0][1] ? 'line' : 'lines'} ${list}`;
 };
 
@@ -154,9 +156,11 @@ export function captionHtml(block, lang) {
   const at = block.at;
   const ja = lang === 'ja';
   const items = block.sources.map((s) => (ja ? `${code(s.file)}の${linesText(s.ranges, lang)}` : `${code(s.file)} ${linesText(s.ranges, lang)}`));
-  for (const n of block.nginx) items.push(ja ? `nginx ${nowrap(n.version)}では、${code(n.file)}の${linesText(n.ranges, lang)}` : `${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}`);
+  for (const n of block.nginx) items.push(ja ? `nginx ${nowrap(n.version)}のソースツリーにある${code(n.file)}の${linesText(n.ranges, lang)}` : `${code(n.file)} ${linesText(n.ranges, lang)} of nginx ${nowrap(n.version)}`);
   const lead = ja
-    ? `ngx_mrubyの${nowrap(at.date)}のコミット${nowrap(code(at.commit))}${block.nginx.length ? 'と、nginxのソースの、' : 'の、'}次の行を元に描きました。`
+    ? block.nginx.length
+      ? `ngx_mrubyとnginxのソースの次の行から描きました。ngx_mrubyの行は、${nowrap(at.date)}のコミット${nowrap(code(at.commit))}の行です。`
+      : `ngx_mrubyのソースの次の行から描きました。${nowrap(at.date)}のコミット${nowrap(code(at.commit))}の行です。`
     : `Drawn from these lines of ngx_mruby at ${nowrap(code(at.commit))} (${nowrap(at.date)})${block.nginx.length ? ' and of nginx' : ''}:`;
   return `<span class="diagram-caption">${labelHtml(block.caption)}</span><span class="diagram-source">${lead}</span><ul class="diagram-source">${items.map((x) => `<li>${x}</li>`).join('')}</ul>`;
 }
@@ -184,4 +188,19 @@ export function diagramHtml(block, drawings, lang) {
   const svgs = drawings.map((d) => inlineSvg(d.svg, d.arrangement)).join('');
   const development = block.label === 'development' ? `<p class="caption development-label">${DEVELOPMENT_LABEL[lang === 'ja' ? 'ja' : 'en']}</p>` : '';
   return `<figure class="diagram diagram-${block.name} not-content">${development}<div class="diagram-grid" role="img" aria-label="${escapeHtml(plainLabel(block.caption))}">${svgs}${labels}</div><figcaption>${captionHtml(block, lang)}</figcaption></figure>`;
+}
+
+// The same labels and provenance as the visual figure, without decorative SVG.
+// This is a label inventory; it does not infer edges from their visual order.
+export function diagramMarkdown(block, lang) {
+  const clean = (text) => text.replace(/<wbr>/g, '');
+  const ranges = (source) => source.ranges.map(([a, b]) => a === b ? `${a}` : `${a}-${b}`).join(', ');
+  const lines = [clean(block.caption), ''];
+  if (block.label === 'development') lines.push(DEVELOPMENT_LABEL[lang === 'ja' ? 'ja' : 'en'], '');
+  lines.push(lang === 'ja' ? '図のラベル（順序は接続を表しません）:' : 'Diagram labels (order does not imply connections):', '');
+  for (const [key, text] of block.labels) lines.push(`- ${key}: ${clean(text)}`);
+  lines.push('', `Source: ngx_mruby ${block.at.commit} (${block.at.date})`, '');
+  for (const source of block.sources) lines.push(`- \`${source.file}\`: ${ranges(source)}`);
+  for (const source of block.nginx) lines.push(`- nginx ${source.version}, \`${source.file}\`: ${ranges(source)}`);
+  return lines.join('\n');
 }

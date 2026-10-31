@@ -14,6 +14,12 @@ def base_ssl(port)
   "https://localhost:#{port}"
 end
 
+# Path of a file of the suite in the copy that test.sh runs, in which every
+# port is moved by TEST_SH_PORT_OFFSET, as in test/t/cases/_prelude.rb.
+def suite_path(path)
+  File.join(ENV['TEST_SH_STAGE_DIR'] || '.', path)
+end
+
 class NginxFeatures
   attr_reader :version_string
   def initialize(nginx_version)
@@ -663,7 +669,7 @@ end
 t.assert('ngx_mruby - BUG: request_body issue 268', 'location /issue-268') do
   #res = HttpRequest.new.post base + '/issue-268', '{"hello": "ngx_mruby"}'
   #t.assert_equal '{"hello": "ngx_mruby"}', res
-  res = `./test/t/issue-268-test.rb`.split("\r\n\r\n")[1]
+  res = `#{suite_path('test/t/issue-268-test.rb')}`.split("\r\n\r\n")[1]
   t.assert_equal %({\"hello\": \"ngx_mruby\"}\n), res
 end
 

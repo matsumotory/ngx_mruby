@@ -1,6 +1,6 @@
 ---
-title: Write the decisions of nginx in Ruby
-description: ngx_mruby runs Ruby scripts inside nginx, at the request phase you choose, with an embedded mruby VM.
+title: Manage LLM routing outside your apps.
+description: ngx_mruby embeds Ruby in nginx. Put model routing and upstream API keys at your proxy, then try the v3 development version locally.
 template: splash
 sidebar:
   hidden: true
@@ -8,31 +8,9 @@ prev: false
 next: false
 ---
 
-{/* The home page (docs/proposals/site.md, 3.2, 3.3 items 1 and 8). The
-heading and the first paragraph are the definition of 3.3 item 1, a draft
-for the owner to edit. The example comes from the test files that
-test/t/cases/home_example.rb compares on every CI run. */}
-
+import HomeV3 from '../../components/HomeV3.astro';
 import Sample from '../../components/Sample.astro';
 
-<div class="home">
-
-<p class="lede">You reference a Ruby script from nginx.conf, and nginx runs it with an embedded mruby VM at the point you choose: when a request arrives, to compute a variable, before access is granted, to produce the response, to change headers and body, during the TLS handshake, or for a TCP or UDP session. nginx keeps doing the network I/O, and no application server runs beside it. ngx_mruby builds as a static or dynamic module of unmodified nginx.</p>
-
-<p class="actions"><a class="button-primary" href="/start/">Get started</a> <a class="button-secondary" href="/concepts/request-phases/">See where Ruby runs</a></p>
-
-## An example that CI runs on every change
-
-The four files below are files of a test in this repository. nginx runs the script for every request to `/hello`, and the script writes the response.
-
-<Sample lang="en" case="test/t/cases/home_example.rb" conf="test/conf/conf.d/70-home-example.conf" script="test/html/home_example.rb" request="test/html/home_example.request" response="test/html/home_example.response" />
-
-## Where to start
-
-<ul class="ways">
-<li><a href="/start/">Get started</a><p>Runs nginx with a Ruby handler in Docker, then changes the script.</p></li>
-<li><a href="/guides/install/">Install</a><p>Builds ngx_mruby into nginx from source, as a static or a dynamic module.</p></li>
-<li><a href="/reference/directives/">Reference</a><p>Lists the directives, and the Ruby classes and methods that scripts call.</p></li>
-</ul>
-
-</div>
+<HomeV3 lang="en">
+<Sample lang="en" presentation="focused" label="development" case="test/t/cases/agent_proxy.rb" conf="test/conf/conf.d/60-agent-proxy.conf" script="test/html/agent_proxy_route.rb" compared="test/html/agent_proxy_route.expected" />
+</HomeV3>

@@ -62,6 +62,9 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     on every request (`fopen`), and when a script gives `Nginx::SSL` the
     paths of a certificate and a key, they are read during the handshake
     (`BIO_new_file`, `SSL_use_PrivateKey_file`);
+  - `Nginx::Upstream#server=` resolves a host name with the system resolver
+    when it is called (`ngx_parse_url` without `no_resolve`) and waits for
+    the answer; an IP address does not wait;
   - an operator's script blocks its worker when it uses mruby-sleep,
     mruby-socket or mruby-io, which the default build includes on both
     branches, or matsumotory/mruby-redis (a hiredis client), which the
@@ -232,7 +235,8 @@ The session that owns the PR merges it, with a merge commit, when all of
 these hold:
 
 1. The base branch follows the branch table above.
-2. Every CI check on the head commit passed (`ci-ok` once it is required),
+2. Every CI check on the head commit passed (`ci-ok`, the check that the
+   branch rules of `master` and `next` require),
    on a run whose merge ref includes the current base. When the base moved
    after the last run, update the branch and let CI run again. A run made
    green by skipping or disabling tests does not count.
@@ -256,6 +260,13 @@ the owner instead of merging.
 The owner decided on 2026-10-04 that sessions may change the mrbgem
 repositories that the owner maintains (`matsumotory/mruby-*`), mruby-uname
 included.
+
+The owner decided on 2026-10-29, in the words 「僕管理のmrbgemは更新して対応できるなら更新すべき、なんでも外すとかではなく。只中で使ってるライブラリとかの更新が止まってたらもういいかな」
+("a gem I maintain should be updated, if updating copes with the change, not
+removed; if a library it uses inside has stopped being updated, it is fine to
+drop it"): a gem that the owner maintains is updated to cope with a change and not
+removed from a build. Removing one is
+acceptable when a library that the gem uses inside has stopped being updated.
 
 The rest of this subsection is the sessions' procedure, not a decision of
 the owner. It names the branches as they are until v3 is promoted, as the
@@ -349,6 +360,31 @@ How sessions do it (their procedure, not a decision of the owner):
   carries a security fix.
 - There is no copy on `master`. From a checkout of `master`, read it with
   `git fetch origin next` and `git show origin/next:docs/HANDOFF.md`.
+- These records are shared by human, Claude and Codex sessions. A tool's
+  memory may help locate evidence, but is not the source of the current
+  scope, decisions or validation. Use the repository and the PR, following
+  [Continuing shared work](docs/DEVELOPMENT.md#continuing-shared-work).
+- At the start or resumption of work, check the current branch heads, open
+  PRs and their latest comments before claiming a queue item. Before a
+  takeover, confirm that the previous writer has stopped and preserve its
+  worktree and uncommitted changes. One writer owns each task worktree;
+  independent reviewers read it without changing it. Record ownership on
+  the PR before pushing another session's branch.
+- Keep the PR body current when its head, scope or verification changes.
+  Before a planned stop or transfer, leave a dated checkpoint in the PR
+  with the head and base, completed work, commands and results tied to
+  commits, checks still running or not run, unresolved decisions or
+  blockers, and the next concrete step. Link to existing review/CI evidence
+  instead of copying raw logs. Update HANDOFF as above when the queue or
+  state changes; do not make another private handoff file the only record.
+- Public checkpoints use repository-relative paths and public commit/PR/run
+  links. Do not commit private conversation logs, absolute local paths,
+  personal reference images, credentials or scratch outputs. Keep local
+  work records outside the checkout or under narrowly ignored directories;
+  inspect ignored, untracked, tracked and staged files before committing.
+  An ignore rule does not remove a tracked file. An interruption does not
+  justify deleting another session's files, rewriting history or changing
+  tests to make a check green.
 
 ## Build and test
 
@@ -362,7 +398,7 @@ headers, and `test.sh` uses `wget` and the `openssl` command. mruby is built wit
 sh test.sh                          # full run: fetch nginx (version in ./nginx_version), configure, build, test
 ONLY_BUILD_NGX_MRUBY=1 sh test.sh   # fast loop: skip fetch/configure, rebuild changed sources, re-run tests
 BUILD_DYNAMIC_MODULE=1 sh test.sh   # build as a dynamic module (uses build_dynamic/ instead of build/)
-NGINX_RUNNER=valgrind NGINX_HEATTIME=10 sh test.sh   # run nginx under valgrind
+NGINX_RUNNER=valgrind sh test.sh   # run nginx under valgrind (NGINX_HEATTIME, 60 s by default, bounds each wait of test.sh for ports and for nginx)
 sh test/soak/run.sh                 # memory soak test (Linux; own build in build_soak/, ports 12360-12362)
 sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12372)
 ```
@@ -398,15 +434,24 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
 - Results: the test runner exits non-zero on a failed assertion. nginx logs are in
   `build/nginx/logs/` (`build_dynamic/nginx/logs/` for dynamic builds);
   `error.log` is at debug level. valgrind errors do **not** change the exit status
-  of `test.sh`: read the valgrind output (ERROR SUMMARY, leak summary) yourself.
-- `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18132,
-  18136-18140, 18143-18144, 18147-18168, 12345-12359, 12363-12366,
-  12372-12373; 18116 and 12357 belong to the second nginx that
+  of `test.sh`: run valgrind with the options of CI and read the `ERROR SUMMARY`
+  line of its log yourself. In CI, the step "Check the valgrind reports" fails a
+  cell on that line: one cell runs under valgrind on pull requests, and every
+  cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
+  what counts as an error and the suppressions).
+- `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18140,
+  18143-18144, 18147-18168, 12345-12359, 12363-12366,
+  12368-12369, 12372-12378; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
   `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
-  in `test/t/ngx_mruby.rb`). Run only one `test.sh` per machine at a time: a
-  second run fails when it finds the ports taken. `test.sh` stops only the
+  in `test/t/ngx_mruby.rb`). `TEST_SH_PORT_OFFSET=N` moves every port of the
+  suite by N (from -2345 to 47336): two checkouts can run `test.sh` at the
+  same time on one machine with offsets 120 or more apart (the other limits
+  are under "Ports" in `docs/test/README.md`); with the same ports, the
+  second run fails when it finds them taken. A new test writes each port as
+  five digits within 12345-12399 or 18080-18199, and runs a CRuby helper
+  through `suite_path` (see "Ports" in `docs/test/README.md`). `test.sh` stops only the
   nginx that it started, by its pid, and at the start the nginx that an
   earlier run in the same build directory left running (the pid in
   `logs/nginx.pid`); it never stops a process by its name. See "Stopping
@@ -454,13 +499,32 @@ user (nvm, fnm, volta, or the archive from nodejs.org), not system-wide.
 cd site
 npm ci --ignore-scripts   # the exact versions of package-lock.json, without install scripts
 npm run build             # scripts/sync-docs.mjs writes docs/ into src/content/docs/, then astro build writes dist/
+npm run build:v2 -- --tree DIR   # the 2.x pages under dist/v2/ from docs/ of DIR, a work tree of master (below)
 npm run test              # the generator on its fixtures
-npm run check             # the checks of the built site that need no browser (below)
+npm run check             # the checks of the built site that need no browser (below; after build:v2)
+npm run check:v2          # the checks of step 6 on the 2.x pages, with the search in Chromium (below)
 npm run check:browser     # the checks in Chromium and WebKit (below)
 npm run screenshots       # the screenshots of step 3 (below)
 npm run preview           # serves dist/ at http://localhost:4321/
 ```
 
+- Machine-readable documentation: the same generator also writes complete
+  Markdown bodies to ignored `generated/markdown/`. `scripts/export-docs.mjs`
+  adds version, channel, language, revision, source hash and canonical URLs
+  after the HTML build, under `dist/markdown/` and `dist/docs-index.json`.
+  `build:v2` makes independent `/v2/` outputs and retains its canonical bodies
+  in ignored `generated/markdown-v2/` for verification. Missing Japanese
+  translations link to English Markdown. A release line is not a release tag.
+  A source must exist at HEAD before export; a modified source is marked
+  `source_at_revision: false` with no source URL, and untracked files count
+  towards the working tree's dirty state. Review previews accordingly.
+  Display-only word breaks and diagram SVG are omitted from Markdown;
+  diagram labels, development status, source ranges, commit and date remain.
+  Literal code and tested samples stay intact. `npm run check` compares every
+  complete exported body with the generator's canonical body, metadata and
+  source hashes, and checks per-version/fallback links. The generator tests
+  verify identifier search, literal code and diagram provenance. Do not
+  maintain separate agent prose or infer missing API contracts from 2.x.
 - Pages: `scripts/sync-docs.mjs` writes the pages of `docs/` into
   `src/content/docs/` (gitignored), `docs/README.md` as `/docs/`; the home
   pages `/` and `/ja/` are the committed `src/content/docs/index.mdx` and
@@ -471,14 +535,51 @@ npm run preview           # serves dist/ at http://localhost:4321/
   `docs/directives/README.md` `/reference/directives/`, and so on) and add
   `examples/start/README.md` as `/start/`, `SECURITY.md` as `/security/`
   and `CONTRIBUTING.md` as `/contributing/`; a Japanese page takes the route
-  of its English page under `/ja/`. The sidebar of `astro.config.mjs` has
+  of its English page under `/ja/`. The Japanese source of `docs/<path>.md`
+  is `docs/ja/<path>.md` (of a release file, `docs/releases/<version>.ja.md`),
+  and that of a page from outside `docs/` is `docs/ja/<route>/README.md`
+  (`docs/ja/start/README.md`, `docs/ja/security/README.md`,
+  `docs/ja/contributing/README.md`). Every page written by hand has one
+  (Q2 of the proposal), except the generated reference of
+  `GENERATED_REFERENCE` in `scripts/lib/site.mjs` (the directives and the
+  Ruby classes and methods), which `/ja/` shows in English with a notice
+  that says why (`src/components/FallbackContentNotice.astro`), and the pages
+  of `NOT_TRANSLATED_YET` there, which step 5 empties. A link from a
+  Japanese page to an English page goes to that page under `/ja/`; to link
+  to the English page itself, write its absolute URL
+  (`https://ngx.mruby.org/<route>/`), which `check-built-links.mjs` checks
+  as an internal link. A
+  Japanese page keeps the code blocks of its English page, and its h2 have
+  `<wbr>` at their phrase boundaries (4.4 of the proposal). The sidebar of `astro.config.mjs` has
   the links Overview (`/docs/`) and Start, then the groups Guides,
   Reference, Concepts, Releases, Security and Contributing, each made from the
   folder of its routes and ordered by `SIDEBAR_ORDER` of
   `scripts/lib/site.mjs`. The header, the menu, the footer and the language link
   of 4.10 are component overrides in `src/components/` (`Header`,
-  `PageFrame`, `Footer`, `MobileMenuFooter`), with their links in
+  `PageFrame`, `Footer`, `MobileMenuFooter`, and `FallbackContentNotice`
+  for the notice above an English page under `/ja/`), with their links in
   `src/site-nav.mjs`.
+- The 2.x pages (3.4 and step 6 of the proposal). `/v2/` holds the
+  documentation of 2.x, built from `docs/` of `master` (`v2.x` after the
+  promotion). `node scripts/build-v2.mjs --tree DIR`, after `npm run
+  build`, runs the same build in a copy of `site/` (`generated/v2-site/`)
+  with `NGX_MRUBY_SITE_VERSION=2` and `NGX_MRUBY_SITE_REPO=DIR`, which
+  `scripts/lib/site.mjs` reads: the pages of `DIR/docs/` (and `SECURITY.md`
+  and `CONTRIBUTING.md`) at the routes of `SOURCE_ROUTES` under `/v2/`,
+  `docs/README.md` as `/v2/`, links to other files going to GitHub at
+  `master`, the sidebar of the 2.x pages in `astro.config.mjs`, and the
+  2.x banner of 3.4 on every page (`src/components/Banner.astro`). It
+  writes them into `dist/v2/`, with their own search index in
+  `dist/v2/pagefind/` (the 3.x index of `dist/pagefind/` stays without
+  them), and their list into `generated/pages-v2.json`. DIR needs the whole
+  history, like the 3.x build; locally, a worktree of `origin/master` does.
+  The version link of the header leads from 3.x pages to `/v2/` and from
+  2.x pages to `/docs/`. The checks of steps 1 to 5 read the 3.x pages
+  (`htmlFiles()` leaves `dist/v2/` out), except `check-built-links.mjs`,
+  which reads the 2.x pages too, so `npm run check` needs the 2.x build
+  first, and `check-css.mjs`, which walks the HTML of `dist/v2/` as well
+  but reads the stylesheets of `dist/_astro/` only (those of
+  `dist/v2/_astro/` come from the same sources).
 - Samples and diagrams (3.5 of the proposal). A fenced block with the
   language `sample` in `docs/` names a case of `test/t/cases/` and its
   configuration, script, request and response files; the generator writes
@@ -519,8 +620,13 @@ npm run preview           # serves dist/ at http://localhost:4321/
   and frames, and `scripts/lib/postcss-theme-colors.mjs` removes
   Starlight's and Pagefind's own color variables from their stylesheets at
   build time, so that the built CSS holds only the tokens' colors.
+- Human, Claude and Codex site changes follow [Layout and type hierarchy](docs/proposals/site.md#layout-and-type-hierarchy):
+  use proximity, alignment and whitespace before arrows or repeated labels;
+  use shared typography roles, never component-specific font sizes to
+  manufacture importance. Independent review checks the actual desktop/mobile
+  reading order and peer text roles, as well as the existing functional checks.
 - The checks of the proposal (section 6) are scripts under `site/scripts/`
-  that exit 1 on a failure. `npm run check` runs the nine that need no
+  that exit 1 on a failure. `npm run check` runs the ten that need no
   browser; the first four take `--dist`, `--repo` and `--manifest` to run
   on a copy, `check-css.mjs` takes `--dist`, `check-home.mjs` `--dist` and
   `--repo`, and `check-diagrams.mjs` `--repo`:
@@ -531,9 +637,17 @@ npm run preview           # serves dist/ at http://localhost:4321/
     HTML resolves, and no link attribute is empty or broken;
   - `node scripts/check-pages.mjs`: every page has a title and the
     last-updated date of its source;
-  - `node scripts/check-japanese.mjs`: the pages from `docs/ja/` are under
+  - `node scripts/check-japanese.mjs`: every English page written by hand
+    has a Japanese page, outside `GENERATED_REFERENCE` and
+    `NOT_TRANSLATED_YET`, whose pages under `/ja/` show their notice; every
+    page has `lang` and the `hreflang` links en, ja and x-default to the
+    absolute URLs of both languages; the pages from `docs/ja/` are under
     `/ja/` with `lang="ja"`, and the `<wbr>` of their h2 are elements of
-    the built h2;
+    the built h2; no space between Japanese and Latin text in the Japanese
+    sources outside code and URLs; a Japanese page has the code blocks of
+    its English page; no `<title>`, h1, sidebar or table-of-contents entry
+    or heading `id` under `/ja/` contains `wbr`; and every diagram under
+    `/ja/` shows the labels of the Japanese source;
   - `node scripts/check-no-js.mjs`: the text of each source is in the HTML
     without running scripts;
   - `node scripts/check-css.mjs`: the built CSS has no hex color outside
@@ -559,10 +673,30 @@ npm run preview           # serves dist/ at http://localhost:4321/
     `docs/reference/build.md` equals the `conf.gem` lines of the host
     build of `build_config.rb` that are not comments and have no
     condition;
+  - `node scripts/check-v2.mjs [--dist DIR] [--manifest FILE]
+    [--no-browser]` (`npm run check:v2`, not in `npm run check`, because
+    it opens Chromium): every page of `generated/pages-v2.json` is built
+    under `/v2/`; every 2.x page carries the 2.x banner (`data-banner="v2"`)
+    in its language with its link to the 3.x documentation, and no 3.x page
+    does; the version links lead from 3.x to `/v2/` and from 2.x to
+    `/docs/`, and the language links of the 2.x pages stay under `/v2/`;
+    and the search of a 3.x and of a 2.x page, in both languages, shows
+    results of its own version only and loads only its own index;
   - `node scripts/check-diagrams.mjs`: the drawings hold lines and boxes
     only (no `<text>`, no color outside the tokens' classes), the source
     files and lines of each diagram exist at its commit, and the diagrams
-    whose lines changed since then are listed (also in the run summary).
+    whose lines changed since then are listed (also in the run summary);
+  - `node scripts/check-deploy.mjs [--dist DIR]`: the files of
+    `VERBATIM_FILES` in `scripts/lib/site.mjs`, the Google verification
+    file `googleba3435e4002729b6.html` that Q5 of the proposal keeps from
+    the old site, are in the built site with the 54 bytes and the SHA-256
+    of the `gh-pages` copy and equal to their copy in `public/`, no HTML
+    or JavaScript file names Google Analytics, Google Tag Manager or
+    `gtag` (Q6), and no `<script src>` of an HTML file points at another
+    host. It reads names and `src` attributes only: a loader that builds a
+    host name at run time, or an `import` from another host inside a
+    script, passes it. The checks of pages leave those files out
+    (`htmlFiles`).
   `node scripts/check-ruby-blocks.mjs --mrbc PATH` (not in `npm run
   check`, because it needs mrbc) compiles every Ruby block of the pages
   and every script of their samples with the mrbc of the bundled mruby,
@@ -571,12 +705,16 @@ npm run preview           # serves dist/ at http://localhost:4321/
   (`DIR/host/bin/mrbc`); a block that shows a syntax error on purpose is
   marked ```` ```ruby syntax-error ```` and must not compile. `site.yml`
   runs both.
-  `npm run check:browser` runs four on `site/dist/` (`--dist`; the first
-  two also `--engine chromium|webkit`; on macOS, Japanese is set in
+  `npm run check:browser` runs five on `site/dist/` (`--dist`; the first
+  three also `--engine chromium|webkit`; on macOS, Japanese is set in
   Hiragino Sans and breaks at other places than in CI, where it is the
   served Noto Sans JP: `node scripts/check-styles.mjs --ja-face noto`
-  sees what CI sees):
-  - `node scripts/check-styles.mjs` (`npm run check:styles`): computed
+  and `node scripts/check-japanese-lines.mjs --ja-face noto` come close to
+  what CI sees, but the Linux runner can still break a line a few pixels
+  elsewhere, so the run of `site.yml` decides):
+  - `node scripts/check-styles.mjs` (`npm run check:styles`;
+    `--pages /,/ja/` limits a local run to known pages, while CI keeps the
+    default complete page set): computed
     styles in Chromium and WebKit at 320 by 664, 390 by 664 and 1440 by
     900 px: font sizes of the scale of each language, token colors (code
     blocks and the colors of highlighted spans included), monospace only
@@ -593,6 +731,19 @@ npm run preview           # serves dist/ at http://localhost:4321/
     hidden from screen readers, labels of 14 px or more inside their
     place, the drawing and its labels within one screen), and the theme
     without JavaScript;
+  - `node scripts/check-japanese-lines.mjs` (`npm run
+    check:japanese-lines`; `--pages /ja/a/,/ja/b/` for some pages only):
+    every page under `/ja/` from a Japanese source but the home page, in
+    Chromium and WebKit at 320 by 664, 390 by 664, 1000 by 900 and 1440 by
+    900 px: at most 40 Japanese characters on a line of body text and a
+    line height of 1.75 to 2.0 at 1440 px, the page title on one line at
+    390 px and on at most two at 320 px, the right edge of Japanese blocks
+    at 390 px (2 em; an h2 at most two lines and 6 em), no last line of one
+    or two characters at any size, and diagram labels of 14 px or more
+    inside their place at 390 and 1440 px, and the notice above an English
+    page under `/ja/` on one page of each kind; on the release notes of
+    `NOTES_ONLY` in the script, failures are notes until step 5 rewrites
+    them;
   - `node scripts/check-focus.mjs`: tabbing through each page in Chromium
     and WebKit (Option-Tab there), every focused element has a focus ring
     and the fixed header does not cover it;
@@ -625,11 +776,61 @@ npm run preview           # serves dist/ at http://localhost:4321/
   on fixtures in temporary repositories: links in raw HTML inside
   blockquotes and list items, an attribute value that stops the build, a
   sample and a diagram, and the samples and diagram blocks that stop it.
-- `.github/workflows/site.yml` runs the checks and the generator's test on
-  pull requests to `next` that touch `site/` or `docs/` and on every push
+- `.github/workflows/site.yml` runs the checks and `npm test` (generator
+  fixtures and release-state classification), plus complete Markdown export
+  and metadata checks after both version builds, on
+  pull requests to `next` that touch `site/` or `docs/`, on every push
   to `next` (a push that removes a file that `docs/` links to fails
-  there), and uploads `site/dist/` as the artifact `site` and the
-  screenshots as the artifact `screenshots`. It does not deploy.
+  there) and on `workflow_dispatch`, and uploads `site/dist/` (with
+  `dist/v2/`) as the artifact `site`, the
+  screenshots as the artifact `screenshots`, and `site/dist/` again with
+  `actions/upload-pages-artifact` as the artifact `github-pages`, a step
+  that runs only when every step before it passed.
+  It checks out `master` with its whole history and builds `/v2/` from
+  it.
+- Deployment (5.3 of the proposal). The job `deploy` of `site.yml` runs
+  after the job `build` passed, on a push to `next` and on a
+  `workflow_dispatch` on `next`, in this repository only (not in forks),
+  never for a pull request: it reads the
+  Pages settings with `actions/configure-pages`, stops unless they give
+  the origin `https://ngx.mruby.org`, and publishes the artifact
+  `github-pages` with `actions/deploy-pages` into the environment
+  `github-pages`, with only `pages: write` and `id-token: write`, one
+  deployment at a time. The repository settings are the owner's, made
+  once, in this order:
+  1. Settings, Pages, "Build and deployment": "Source" changed from
+     "Deploy from a branch" to "GitHub Actions", with the custom domain
+     `ngx.mruby.org` kept and "Enforce HTTPS" checked. `gh-pages` stays as
+     history.
+  2. Settings, Environments, `github-pages`: "Deployment branches" set to
+     "Selected branches and tags", with one rule added by "Add deployment
+     branch or tag rule", "Ref type" "Branch" and the name `next`
+     (`master` after the promotion), in place of any rule that setting 1
+     added.
+
+  Without setting 2, a workflow pushed on any branch could publish the
+  site. After the first deployment, and after a deployment that should
+  change what the site serves, a session builds the deployed commit and
+  runs `node scripts/check-live.mjs` (`npm run check:live`; not in CI):
+  `https://ngx.mruby.org/` answers 200 with the built `index.html`,
+  `http://` redirects to `https://`, the verification file answers 200
+  with its 54 bytes, `gh api` reads back the environment's branch policies
+  (only `next`) and that the latest deployment came from `next`, and
+  Lighthouse runs on the live home page with no failed accessibility
+  audit (`--no-gh` and `--no-lighthouse` leave those out).
+- Two workflows on `master` serve the 2.x pages (5.3 of the proposal).
+  `site-v2.yml` runs on every pull request to `master` (no path filter:
+  the 2.x pages link to files anywhere in the repository): it builds the
+  site from `site/` of `next`, with the 3.x pages of `next` and
+  the 2.x pages from the pull request, and runs `check_links.py` on the
+  sources of the 2.x pages, `check-built-links.mjs` and `check-v2.mjs`, so
+  a pull request that breaks a `/v2/` link fails there. `site-dispatch.yml`
+  runs on every push to `master` and starts `site.yml` on `next` with
+  `gh workflow run site.yml --ref next` and the job's `GITHUB_TOKEN`
+  (`actions: write`); it fails when it cannot name the run that the
+  dispatch started. A change to `site/` that breaks `/v2/` fails
+  `site.yml` on its pull request to `next`, which builds `/v2/` from
+  `master`.
 - `site/package.json` and `site/package-lock.json` pin exact versions:
   change them with `npm install --save-exact <package>@<version>` and
   commit both. Nothing that the build generates is committed:
@@ -655,7 +856,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
 
 - Prefer a fragment and a case file of their own: a `server {}` in
   `test/conf/conf.d/<name>.conf` (stream: `test/conf/conf.d/stream/`) on a
-  port of its own (HTTP 18110 and up, stream 12353 and up), scripts in
+  port of its own (HTTP 18110 to 18199, stream 12353 to 12399), scripts in
   `test/html/`, and assertions in `test/t/cases/<name>.rb` (see
   `docs/test/README.md`). Edit `test/conf/nginx.conf` and
   `test/t/ngx_mruby.rb` only for tests that need the main server.

@@ -13,7 +13,8 @@ export default defineEcConfig({
   useStarlightUiThemeColors: true,
   // No terminal window (4.3 item 1): every block is a code frame,
   // and a title such as nginx.conf is one flat row of text.
-  defaultProps: { frame: 'code' },
+  // Wrapping is display-only: copy retains the exact unwrapped source.
+  defaultProps: { frame: 'code', wrap: true, preserveIndent: false },
   // Light is the base theme; dark applies under the OS setting
   // without JavaScript, and with data-theme="dark" only once the
   // theme script ran (4.7, tokens.css).
@@ -25,7 +26,7 @@ export default defineEcConfig({
     borderRadius: 'var(--radius-code)',
     codeBackground: 'var(--color-bg-tertiary)',
     codeFontFamily: 'var(--font-mono)',
-    codeFontSize: 'var(--text-nav)',
+    codeFontSize: 'var(--text-code)',
     codeLineHeight: 'var(--leading-nav)',
     codePaddingBlock: 'var(--space-3)',
     codePaddingInline: 'var(--space-4)',

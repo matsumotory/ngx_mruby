@@ -1,16 +1,27 @@
 name: site
 
-# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and steps 1 to 4 of
-# section 6): build site/ and docs/ from a fresh clone, run the checks of
-# steps 1 to 4, and upload the built site and the screenshots of step 3 as
-# workflow artifacts. There is no deployment job: step 7 adds it, after the
-# Pages settings of 5.3.
+# The ngx.mruby.org site (docs/proposals/site.md, 5.3 and steps 1 to 7 of
+# section 6): build site/ and docs/ from a fresh clone, and the 2.x pages
+# under /v2/ from docs/ of master, run the checks of steps 1 to 6, and
+# upload the built site and the screenshots of step 3 as workflow
+# artifacts. On next (a push, or a workflow_dispatch such as the one
+# that site-dispatch.yml on master starts after every push there),
+# the deploy job publishes the built site to GitHub Pages at
+# https://ngx.mruby.org/ once every check has passed (step 7). Pull requests
+# never deploy. The Pages settings of 5.3 (the source "GitHub Actions", and
+# the github-pages environment limited to next) are the owner's; "The site"
+# in AGENTS.md lists them.
 #
 # Pull requests run it when they touch site/, docs/ or this file. Every push
 # to next runs it: docs/ links to files outside docs/ and site/, and a link
 # to a file that git no longer tracks stops the build, so a merge that
 # removes or renames such a file fails here, on that merge, and not on the
 # next pull request that touches docs/.
+#
+# Every push to master starts it on next through site-dispatch.yml of
+# master (workflow_dispatch), so that /v2/ is built again from the new
+# docs/ of master. Every pull request to master runs site-v2.yml of
+# master, which builds the same site with the pull request's docs/.
 on:
   pull_request:
     branches:
@@ -52,6 +63,14 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # Step 6: the 2.x pages under /v2/ are built from docs/ of master,
+      # with its whole history for their last-updated dates.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: master
+          path: master
+          fetch-depth: 0
+          persist-credentials: false
       # The Node.js version of site/.node-version. No npm cache: npm ci
       # takes about 20 seconds without one.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -72,10 +91,22 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: sh scripts/check-offline-build.sh
-      - name: Test the generator on its fixtures
+      # Step 6: the 2.x pages, built from docs/ of master into dist/v2/
+      # with their own search index, after the 3.x build above, whose
+      # index stays without them (scripts/build-v2.mjs).
+      - name: Build the 2.x pages under /v2/ from docs/ of master
+        id: v2
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/test-sync-docs.mjs
+        run: node scripts/build-v2.mjs --tree "$GITHUB_WORKSPACE/master"
+      - name: Test the generator fixtures and release-state classification
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: npm test
+      - name: Check complete Markdown exports, source metadata and release context
+        if: ${{ !cancelled() && steps.v2.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-docs-export.mjs
       # Step 4: the relative links and the heading anchors of the Markdown
       # files that git tracks, outside the vendored trees, as GitHub shows
       # them.
@@ -83,7 +114,8 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh
         run: git ls-files -z -- '*.md' ':!:mruby/' ':!:dependence/' | xargs -0 python3 site/scripts/check_links.py .
-      - name: Check that every internal link of the built HTML resolves
+      # With the 2.x pages: no broken link under /v2/ (step 6).
+      - name: Check that every internal link of the built HTML resolves, under /v2/ too
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-built-links.mjs
@@ -91,7 +123,12 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-pages.mjs
-      - name: Check the Japanese pages (lang="ja" under /ja/, <wbr> elements in h2)
+      # Steps 1 and 5: the translations and the notices of the pages under
+      # /ja/ that show an English page, lang and hreflang on every page,
+      # no space between Japanese and Latin text in the Japanese sources,
+      # the code blocks of the English pages, no "wbr" in titles, ids and
+      # navigation, and the labels of the diagrams under /ja/.
+      - name: Check the Japanese pages (translations, notices, lang and hreflang, spaces, code blocks, wbr, diagram labels)
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-japanese.mjs
@@ -134,6 +171,13 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-reference.mjs
+      # Step 7: the Google verification file of the old site at its URL,
+      # with the 54 bytes of the gh-pages copy (Q5), and no analytics
+      # script and no script from another host in the built site (Q6).
+      - name: Check the files kept from the old site and that no analytics script is built
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-deploy.mjs
       # Step 4: every Ruby block of the pages compiles with the mrbc of the
       # bundled mruby, built alone (about ten seconds).
       - name: Build mrbc from the bundled mruby
@@ -158,6 +202,19 @@ jobs:
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-styles.mjs
+      - name: Check homepage route controls, code copy and reduced motion
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: |
+          node scripts/check-home-interaction.mjs
+          node scripts/check-code-layout.mjs
+      # Step 5: the lines of the Japanese pages in Noto Sans JP, the face
+      # that CI has (body lines, line height, page titles, the right edge,
+      # last lines, diagram labels).
+      - name: Check the lines of the Japanese pages in Chromium and WebKit (40 characters, line height, h1, right edge, last lines, diagram labels)
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-japanese-lines.mjs
       - name: Check the focus ring and that the header covers no focused element, in Chromium and WebKit
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
@@ -166,6 +223,14 @@ jobs:
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-language-links.mjs
+      # Step 6: the banner of 3.4 on every 2.x page, the version links, and
+      # 2.x and 3.x search results that do not mix.
+      - name: Check the 2.x pages (banner, version links, search results of their own version)
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' && steps.v2.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: |
+          node scripts/check-v2.mjs
+          node scripts/check-search-identifiers.mjs
       - name: Check Lighthouse accessibility on three page types in both languages
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
@@ -182,15 +247,68 @@ jobs:
       # the failure, those for the owner's review among them, are there.
       - name: Upload the screenshots
         if: ${{ !cancelled() && (steps.shots.outcome == 'success' || steps.shots.outcome == 'failure') }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: screenshots
           path: ${{ runner.temp }}/fresh/site/build-screenshots
           if-no-files-found: error
       - name: Upload the built site
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: site
           path: ${{ runner.temp }}/fresh/site/dist
           if-no-files-found: error
+      # The artifact that the deploy job publishes, uploaded on every run so
+      # that pull requests exercise the step. Without an if, it runs only
+      # when every step above passed, so a failed check never reaches the
+      # deploy job.
+      - name: Upload the built site for GitHub Pages
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ runner.temp }}/fresh/site/dist
+
+  # Step 7: publish the artifact of the build job to GitHub Pages. It runs
+  # only in this repository (not in forks), only on next, never for a pull request (github.ref is then
+  # refs/pull/...), and only after the build job and all its checks passed.
+  # The github-pages environment allows deployments from next only
+  # (setting 2 of 5.3), so a workflow pushed on another branch cannot
+  # publish the site even if it names the environment.
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: ${{ github.repository == 'matsumotory/ngx_mruby' && github.ref == 'refs/heads/next' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # One deployment at a time; a newer run waits instead of cancelling one
+    # that is publishing.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    # The permissions that actions/deploy-pages names (its README,
+    # "Security considerations"): pages to create the deployment, id-token
+    # for the OIDC token that proves the run to Pages.
+    permissions:
+      pages: write # create the Pages deployment
+      id-token: write # request the OIDC token for the deployment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # Reads the Pages settings; the origin must be the custom domain over
+      # https (setting 1 of 5.3), or the deployment would publish the site
+      # at another address.
+      - name: Read the Pages settings
+        id: pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - name: Check that Pages serves https://ngx.mruby.org
+        env:
+          ORIGIN: ${{ steps.pages.outputs.origin }}
+        run: |
+          if [ "$ORIGIN" != 'https://ngx.mruby.org' ]; then
+            echo "::error::GitHub Pages reports the origin '$ORIGIN', not https://ngx.mruby.org: check the custom domain and Enforce HTTPS in the Pages settings"
+            exit 1
+          fi
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
