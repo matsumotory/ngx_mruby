@@ -2197,7 +2197,20 @@ The independent browser lanes are:
 - Japanese page lines;
 - focus, language links and Lighthouse accessibility;
 - full representative screenshots, or every targeted page in both engines,
-  both themes and 320/390/1440px widths, with viewport and full-page evidence.
+  both themes and 320/390/1440px widths, with viewport and full-page evidence;
+  in full coverage the same lane first runs `check-project-badges.mjs --browser`,
+  the footer's OpenSSF Best Practices badge at 375px (`/` and `/v2/ja/` in
+  Chromium, light and dark, and `/ja/` in WebKit).
+
+The footer badge is the one image of the site from another origin. The
+read-only browser context (`scripts/lib/read-only-browser.mjs`) still allows
+only same-origin GET requests; a caller may name exact image URLs whose GET it
+answers from a local fixture instead of the network. The checks before the
+deploy (`check-project-badges.mjs`, `check-home-interaction.mjs`,
+`screenshots-live.mjs`) serve the badge's URL from the stand-in of
+`scripts/lib/project-badges.mjs`, so a slow or failing bestpractices.dev cannot
+hold the publication. Only `check-live.mjs`, after the deploy, fetches the real
+image, and retries it three times before it reports a problem.
 
 The v2 input is fetched independently from `master`, so it is **never assumed
 unchanged from the next-branch diff**. Maintenance Japanese lines, every v2 code

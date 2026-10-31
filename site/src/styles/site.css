@@ -522,6 +522,15 @@ button.sl-menu-button svg {
   text-underline-offset: 0.2em;
 }
 
+/* The service's badge keeps its own image colors, not a recolored certification.
+   Keep the image/link together when the shared footer wraps. */
+.site-footer .project-badge img {
+  display: block;
+  margin: 0;
+  max-width: 100%;
+  height: auto;
+}
+
 /* Numbers with units, dates and commits do not break inside (owner's
    practice); the captions of samples and diagrams use it */
 .nowrap {

@@ -24,7 +24,10 @@ export function commandsFor(plan, lane) {
     ['check-focus.mjs'], ['check-language-links.mjs'],
     ['check-lighthouse.mjs', ...(pages ? pages.flatMap(p => ['--page', p]) : [])],
   ];
-  return [[pages ? 'ci-screenshots.mjs' : 'screenshots.mjs', '--out', 'build-screenshots']];
+  return [
+    ...(!pages ? [['check-project-badges.mjs', '--browser']] : []),
+    [pages ? 'ci-screenshots.mjs' : 'screenshots.mjs', '--out', 'build-screenshots'],
+  ];
 }
 // The browser and maintenance lanes pass only by success, or by a skip that
 // the build job decided (browserNeeded 'false', from test/ci/changes.sh and

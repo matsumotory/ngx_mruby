@@ -149,7 +149,9 @@ jobs:
       - name: Check that every internal link of the built HTML resolves, under /v2/ too
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/check-built-links.mjs
+        run: |
+          node scripts/check-built-links.mjs
+          node scripts/check-project-badges.mjs
       - name: Check that every page has a title and the last-updated date of its source
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
