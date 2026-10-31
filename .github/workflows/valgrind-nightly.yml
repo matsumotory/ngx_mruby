@@ -45,8 +45,11 @@ jobs:
       github.repository == 'matsumotory/ngx_mruby' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
-    # The run of test.yml takes about as long as its slowest cell (about 15
-    # minutes in October 2026); the bound leaves room for a queue of runners.
+    # The run of test.yml takes about as long as its slowest cell (about 13
+    # minutes in October 2026) plus the wait for runners: 30 minutes from
+    # the dispatch to the end for the run on master on 2026-10-31. Two runs
+    # start at once, one per branch; the bound leaves room for a longer
+    # queue.
     timeout-minutes: 120
     permissions:
       actions: write # start test.yml on the branch and read the run

@@ -237,9 +237,9 @@ jobs:
             # not errors: their number changes from run to run with the
             # connections that are still open when nginx exits.
             # --error-exitcode makes valgrind exit with 99 when it counted
-            # an error; test.sh prints the exit status of nginx but does not
-            # keep it in its own, so the next step reads the ERROR SUMMARY of
-            # the log, which is the same count. One log per process (%p).
+            # an error; test.sh does not keep the exit status of nginx in
+            # its own, so the next step reads the ERROR SUMMARY of the log,
+            # which is the same count. One log per process (%p).
             mkdir -p "${RUNNER_TEMP}/valgrind"
             export NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=${PWD}/test/valgrind.supp --log-file=${RUNNER_TEMP}/valgrind/valgrind.%p.log"
           else
