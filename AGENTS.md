@@ -556,9 +556,10 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
   what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18140,
-  18143-18144, 18147-18168, 12345-12359, 12363-12366,
-  12368-12369, 12372-12378, 12390-12391; 18116 and 12357 belong to the second nginx that
-  `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
+  18143-18144, 18147-18170, 18180-18181, 18199, 12345-12359, 12363-12366,
+  12368-12369, 12372-12379, 12390-12391; 18116 and 12357 belong to the second nginx that
+  `test/t/cases/_second_instance.rb` starts, 18180, 18181 and 12379 to the
+  nginx with several workers that `test/t/cases/_workers.rb` starts, 18158 to the nginx that
   `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
   in `test/t/ngx_mruby.rb`). `TEST_SH_PORT_OFFSET=N` moves every port of the
@@ -991,6 +992,12 @@ npm run preview           # serves dist/ at http://localhost:4321/
   `test/html/`, and assertions in `test/t/cases/<name>.rb` (see
   `docs/test/README.md`). Edit `test/conf/nginx.conf` and
   `test/t/ngx_mruby.rb` only for tests that need the main server.
+- The test nginx of `test.sh` is a single process. A test that needs a
+  master process with several workers, or a reload, adds a mode to
+  `test/t/cases/_workers.rb` with its configuration in
+  `test/conf/workers/<mode>.conf`, and asserts in a case file on what the
+  helper prints ("Several workers and reloads" in `docs/test/README.md`);
+  the other tests keep the single process.
 - A bug fix comes as two commits: the first adds the regression test and
   nothing else, the second adds the fix.
   - The author runs the suite at each commit (it fails at the first because

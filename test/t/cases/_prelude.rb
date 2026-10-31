@@ -74,3 +74,17 @@ def second_instance(mode)
   end
   result
 end
+
+# Runs nginx with a master process and several worker processes through
+# test/t/cases/_workers.rb, which runs with CRuby, in one of its modes
+# (isolation, reload), and returns its "key=value" lines as a Hash of each
+# key to the Array of its values, in order. That file lists the keys.
+def workers_nginx(mode)
+  out = `ruby #{suite_path('test/t/cases/_workers.rb')} #{mode}`
+  result = {}
+  out.split("\n").each do |line|
+    key, value = line.split("=", 2)
+    (result[key] ||= []) << value.to_s
+  end
+  result
+end

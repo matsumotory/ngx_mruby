@@ -24,3 +24,30 @@
    fun:ngx_set_environment
    ...
 }
+
+# ngx_event_process_init() in a worker process (master_process on, the
+# nginx of test/t/cases/_workers.rb): cycle->connections, cycle->read_events
+# and cycle->write_events, which nginx allocates with ngx_alloc and never
+# frees. A worker that ends on SIGTERM (ngx_worker_process_exit()) destroys
+# the cycle pool, which holds the pointers to the three arrays, and calls
+# exit(); the arrays point only at each other (c->read, c->write,
+# ev->data). Whether a stale pointer to the connections array is left
+# depends on the platform: on the x86-64 runner valgrind reports, for each
+# such worker, 14,848 bytes in 1 block definitely lost (the connections,
+# ngx_event.c:751 in 1.31.8) and 6,144 bytes in each of 2 blocks indirectly
+# lost (the events, ngx_event.c:758 and 770; run 41226606511 of #706); in
+# the arm64 container the same blocks are possibly lost. test/lsan.supp
+# suppresses the same arrays for LeakSanitizer. The entry needs the frame
+# ngx_worker_process_init, so the single process of the test nginx, whose
+# arrays are possibly lost at exit ("valgrind in CI" in
+# docs/test/README.md), is not covered.
+{
+   nginx-worker-event-arrays-at-exit
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect
+   fun:malloc
+   fun:ngx_alloc
+   fun:ngx_event_process_init
+   fun:ngx_worker_process_init
+   ...
+}
