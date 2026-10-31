@@ -245,12 +245,16 @@ figcaption,
   border-radius: var(--radius-frame);
   padding: var(--space-3) var(--space-4);
 }
-.sl-markdown-content details:not(:where(.not-content *)),
-.sl-markdown-content details:not([open]):hover:not(:where(.not-content *)),
-.sl-markdown-content details:has(> summary:hover):not(:where(.not-content *)) {
+.sl-markdown-content details:not(:where(.not-content *)) {
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-frame);
   padding: var(--space-3) var(--space-4);
+}
+/* A hover rule must not restore geometry overridden by a component. Moving
+   the summary after pointer entry can turn a native click into a missed hit. */
+.sl-markdown-content details:not([open]):hover:not(:where(.not-content *)),
+.sl-markdown-content details:has(> summary:hover):not(:where(.not-content *)) {
+  border-color: var(--color-border-strong);
 }
 .sl-markdown-content summary:not(:where(.not-content *)) {
   margin-inline-start: 0;
@@ -701,9 +705,17 @@ footer .meta {
 .expressive-code .frame.has-title:not(.is-terminal) .title::after {
   display: none;
 }
+/* Copy controls are still at load and during theme/style application.
+   Hover/focus opacity changes and the focus ring remain; the separate
+   success feedback retains its short transition. No idle color blend can
+   expose an intermediate/native button color before the reader acts. */
+.expressive-code .copy button,
+.expressive-code .copy button div {
+  transition: none;
+}
 .expressive-code .copy button {
-  transition-property: opacity, background-color, border-color;
-  transition-duration: var(--duration-short);
+  appearance: none;
+  background-color: var(--color-bg-tertiary);
 }
 
 /*
@@ -836,6 +848,8 @@ dialog {
 }
 /* A long URL, path or credential example must remain readable at any width.
    Expressive Code owns soft wrapping and preserves raw clipboard bytes. */
+/* Code headers are frame furniture, not prose captions with a 34rem measure. */
+.expressive-code .frame .header { max-width: none; }
 .expressive-code .frame .header, .expressive-code .frame .title {
   min-width: 0;
   white-space: normal;
@@ -870,4 +884,13 @@ html[data-theme="dark"][data-theme-script] .site-title .brand-dark { display: bl
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) .site-title .brand-light { display: none; }
   html:not([data-theme="light"]) .site-title .brand-dark { display: block; }
+}
+
+/* Prefer JSON token boundaries on narrow screens (for example, keep true
+   together). Oversized tokens can still wrap, including at 200% text size.
+   This changes neither the text nor Expressive Code's canonical copy. */
+.expressive-code pre[data-language="json"].wrap .code > span:not(.indent) {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
 }

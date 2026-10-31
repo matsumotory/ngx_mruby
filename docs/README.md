@@ -1,24 +1,60 @@
-# Documentation
+# Documents
 
-This is the documentation of ngx_mruby 3.x, developed on the branch
-`next`. It has four kinds of page: a start page that runs ngx_mruby,
-guides for tasks, the reference, and the concepts behind them.
+<a id="documents"></a>
 
-## Documents
+Build request policies in Ruby inside nginx. These pages describe the
+**v3 development branch `next`**: implemented behavior and planned work are
+kept separate. For the released 2.7 line, use the [stable documentation](https://ngx.mruby.org/v2/).
 
-- Start: [Get started](../examples/start/README.md): run nginx with a Ruby handler in Docker, then change the script
-- Guides: [Install](./install/README.md), [Route requests to a backend](./guides/routing.md), [Deny clients listed in a file](./guides/access-control.md), [Limit the rate per API key](./guides/rate-limit.md), [Change a response body](./guides/body-filter.md), [Allow TCP connections in Ruby](./guides/tcp.md), [Agent proxy](./guides/agent-proxy.md) (development version), and the [use cases](./use_case/README.md)
-- Reference: [Directives](./directives/README.md), [Ruby classes and methods](./class_and_method/README.md), [Build](./reference/build.md)
-- Concepts: [Request phases](./concepts/request-phases.md), [Filters](./concepts/filters.md), [Waiting without blocking](./concepts/async.md), [Lifetimes](./concepts/lifetimes.md)
-- Releases: [Release notes](./releases/README.md), which start with the behavior changes to read before upgrading, and [Migrating from ngx_mruby 2.x to 3.0.0](./migration/README.md)
-- Security: [Security policy](../SECURITY.md) and [Trust boundary](./security/trust-boundary.md): what ngx_mruby trusts, what it treats as client input, and what a script is responsible for
-- Contributing: [Contributing](../CONTRIBUTING.md), [Testing](./test/README.md), [Developing ngx_mruby](./DEVELOPMENT.md) and the [state of the work](./HANDOFF.md)
+## Try a working example
 
-## Branches and releases
+- [Model routing with local mocks](../examples/start/README.md#model-routing):
+  choose an upstream by model, verify credential replacement, then edit the
+  Ruby mapping and send the same request again. No provider key is needed.
+- [Install](install/README.md): build the module for your own nginx, with the
+  requirements, build options and upgrade checks.
 
-- [Branch strategy](../README.md#branch-strategy): what `master`, `next` and `v2.x` hold, and what to pin to stay on 2.x
-- [Promoting v3 to master](./DEVELOPMENT.md#promoting-v3-to-master): the procedure, for maintainers
+## Add a policy to your application
+
+- [LLM proxy](guides/agent-proxy.md): client-key checks, model routing,
+  concurrency limits and streamed relay. Each planned extension is marked.
+- [HTTP routing](guides/routing.md): select a backend from request data.
+- [Access control](guides/access-control.md): refuse clients on a local denylist.
+- [Rate limits](guides/rate-limit.md): apply a limit per API key.
+- [Response filters](guides/body-filter.md): modify a response body.
+- [TCP connections](guides/tcp.md): check the client before relaying a connection.
+- [MCP gateway design](guides/mcp-gateway.md): an unverified architecture,
+  with its missing evidence and boundaries stated explicitly.
+
+## Look up an API or build option
+
+- [Directives](directives/README.md): where nginx calls Ruby and how to configure it.
+- [Ruby classes and methods](class_and_method/README.md): the API available to handlers.
+- [Build reference](reference/build.md): compile options and bundled gems.
+
+## Understand the request lifecycle
+
+- [Request phases](concepts/request-phases.md): the order of handlers.
+- [Filters](concepts/filters.md): headers, body chunks and their constraints.
+- [Waiting without blocking](concepts/async.md): yielding work to nginx.
+- [Lifetimes](concepts/lifetimes.md): request-owned and shared worker state.
+
+## Operate and upgrade
+
+- [Release notes](releases/README.md): read behavior changes before upgrading.
+- [Migration from 2.x](migration/README.md): changes required for v3.
+- [Trust boundary](security/trust-boundary.md): what the module and each script must validate.
+- [Security policy](../SECURITY.md): supported releases and private vulnerability reporting.
+
+## Contribute or follow development
+
+- [Contributing](../CONTRIBUTING.md): scope, review and contribution steps.
+- [Testing](test/README.md): the test suites and how to run them.
+- [Development procedure](DEVELOPMENT.md): branch workflow and shared handoffs.
+- [Current work](HANDOFF.md): the dated queue and public checkpoints.
+- [Branch strategy](../README.md#branch-strategy): maintenance and development lines.
+- [Other use cases](use_case/README.md): additional examples, with their context.
 
 ## License
 
-ngx_mruby is under the [MIT License](../MITL).
+ngx_mruby is distributed under the [MIT License](../MITL).
