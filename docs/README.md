@@ -1,85 +1,59 @@
-# Welcome to ngx_mruby Wiki  [![Build Status](https://travis-ci.org/matsumotory/ngx_mruby.png?branch=master)](https://travis-ci.org/matsumotory/ngx_mruby)
+# ngx_mruby 2.7 documentation
 
-[![ngx_mruby mod_mruby performance](https://github.com/matsumotory/mod_mruby/raw/master/images/performance_20140301.png)](http://blog.matsumoto-r.jp/?p=3974)
+ngx_mruby embeds mruby in nginx so that operators can write request handling,
+access rules, upstream selection, response filters and TCP/UDP handlers in Ruby.
+Use it when a routing or processing rule belongs at nginx rather than in each
+application. nginx still handles the connections; Ruby supplies the policy.
 
-※ [hello world simple benchmark, see details of blog entry.](http://blog.matsumoto-r.jp/?p=3974)
+These are the **2.x maintenance-branch docs**, not a snapshot of a release tag.
+The branch can contain changes that have not been released. For a released
+version, select the latest `v2.*` tag from [GitHub releases](https://github.com/matsumotory/ngx_mruby/releases)
+and read the documentation at that tag. To follow maintenance fixes without
+switching to v3 when `master` changes, use `v2.x`; see
+[Branch strategy](../README.md#branch-strategy).
 
-## Documents
-- [Install](./install)
-- [Test](./test)
-- [Directives](./directives)
-- [Class and Method](./class_and_method)
-- [Use Case](./use_case)
-- [Release notes](./releases): read "Behavior changes" before upgrading
-- [Trust boundary](#trust-boundary): what ngx_mruby trusts, what it treats as client input, and what a script is responsible for
+## Install and run
 
-## Branches and releases
-- [Branch strategy](../README.md#branch-strategy): what `master`, `next` and `v2.x` hold, and what to pin to stay on 2.x
-- [Promoting v3 to master](./DEVELOPMENT.md#promoting-v3-to-master): the procedure, for maintainers
+- [Install ngx_mruby](install/README.md): choose a source build or dynamic module,
+  match the nginx build, then run the Ruby hello-world example.
+- [Use cases](use_case/README.md): configurations for routing, access control,
+  filters and other nginx extensions. Check each example's prerequisites.
+- [Example configuration](../example/nginx.conf): inspect the directives alongside
+  the scripts they run; this is not a production-ready configuration.
 
-## What's ngx_mruby
-__ngx_mruby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
+## Configure nginx and write Ruby
 
-- ngx_mruby is to provide an alternative to lua-nginx-module or [mod_mruby of Apache httpd](http://mod.mruby.org/). 
-- Unified Ruby Code between Apache(mod_mruby), nginx(ngx_mruby) and other Web server software(plan) for Web server extensions.
-- You can implement nginx modules by Ruby scripts on nginx!
-- You can implement some Web server software extensions by same Ruby code (as possible) 
-- Supported nginx __main-line and stable-line__
-- [Benchmark between ngx_mruby(19423.42 req/sec) and lua-nginx-module(13894.30 req/sec)](https://gist.github.com/matsumotory/6930672)
+- [Directives](directives/README.md): choose the phase where nginx runs a handler
+  and configure script caching.
+- [Ruby classes and methods](class_and_method/README.md): request data, variables,
+  response output, upstreams, filters, SSL and stream APIs.
+- [What a worker keeps between requests](#what-a-worker-keeps-between-requests):
+  understand shared VM state before storing data in Ruby objects.
 
-```ruby
-# location /proxy {
-#   mruby_set $backend "/path/to/proxy.rb";
-#   proxy_pass   http://$backend;
-# }
+## Operate and upgrade
 
-backends = [
-  "test1",
-  "test2",
-  "test3",
-]
+- [Release notes](releases/README.md): read the behavior changes for every release
+  newer than yours. A note in this branch does not by itself mean a release was
+  published; confirm its tag on GitHub releases.
+- [Trust boundary](#trust-boundary): the configuration and Ruby scripts are trusted
+  code; client input is not. ngx_mruby is not a sandbox for untrusted scripts.
+- [Security policy](../SECURITY.md): supported versions and private reporting.
+- [Testing](test/README.md): build and test your configuration changes using the
+  project's integration harness.
 
-r = Redis.new "192.168.12.251", 6379
-r.get backends[rand(backends.length)]
-```
+## Development and other versions
 
-This example needs the `Redis` class of mruby-redis, and a running Redis server. The default `build_config.rb` builds mruby-redis again since 2.7.2; 2.7.1 left it out.
+- [Developing ngx_mruby](DEVELOPMENT.md): contribution and maintenance procedures.
+- [3.x documentation](https://ngx.mruby.org/docs/): the separate v3 development
+  line on `next`. Its new APIs, proxy recipes and planned features are not 2.7
+  contracts; do not copy them into a 2.x deployment without checking support.
+- [Historical introduction and benchmarks](#historical-introduction-and-benchmarks):
+  older examples and the original design paper, retained for context rather than
+  as current installation or performance guidance.
 
-- see [examples](https://github.com/matsumotory/ngx_mruby/blob/master/example/nginx.conf)
-- __Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions__
-- You can implement some Web server software extensions by same Ruby code (as possible) 
+## What a worker keeps between requests
 
-```ruby
-# Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby)
-# for Web server extensions.
-#
-# Apache httpd.conf by mod_mruby
-# 
-# <Location /mruby>
-#     mrubyHandlerMiddle "/path/to/unified_hello.rb"
-# </Location>
-#
-# nginx nginx.conf by ngx_mruby
-#
-# location /mruby {
-#     mruby_content_handler "/path/to/unified_hello.rb";
-# }
-#
-
-Server = get_server_class
-
-Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
-# mod_mruby => "Hello mod_mruby/0.9.3 world!"
-# ngx_mruby => "Hello ngx_mruby/0.0.1 world!"
-```
-
-## Abstract
-
-As the increase of large-scale and complex Web services, not only a development of Web applications but also an implementation of Web server extensions is required in many cases. The Web server extensions were mainly implemented in C language because of fast and memory-efficient behavior, but extension methods using scripting language are proposed with consideration of maintainability and productivity. However, if the existing methods primarily intended to enhance not the implementation of Web applications but the implementation of internal processing of the Web server, the problem remains in terms of speed, memory-efficiency and safety. Therefore, we propose a fast and memory-efficient Web server extension mechanism using scripting language. We design the architecture that a server process creates the region to save the state of the interpreter at the server process startup, and multiple scripts share the region in order to process fast when the script is called as internal processing from a Web server process. The server process frees the global variables table, the exception flag and the byte-code which cause the increase of memory usage mainly, in order to reduce the memory usage and extend safety by preventing interference between each scripts because of sharing the region. We implement the mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".
-
-### What a worker keeps between requests
-
-The abstract above describes the design of the paper. ngx_mruby today does not free the global variables table between scripts. nginx creates one `mrb_state` for the `http {}` block (and one for the `stream {}` block) while it reads the configuration, and runs the init code (`mruby_init`, `mruby_stream_init`) and the server configuration code (`mruby_server_context_handler_code`) in it before it starts the workers, in the master process. Each worker process gets its own copy when nginx forks it, and runs all the other mruby code of the block in that copy: the init_worker and exit_worker code and every handler and filter, in every server and location, for every client. A reload or a restart starts new workers with a new state.
+The [historical abstract](#abstract) describes the design of the paper. ngx_mruby today does not free the global variables table between scripts. nginx creates one `mrb_state` for the `http {}` block (and one for the `stream {}` block) while it reads the configuration, and runs the init code (`mruby_init`, `mruby_stream_init`) and the server configuration code (`mruby_server_context_handler_code`) in it before it starts the workers, in the master process. Each worker process gets its own copy when nginx forks it, and runs all the other mruby code of the block in that copy: the init_worker and exit_worker code and every handler and filter, in every server and location, for every client. A reload or a restart starts new workers with a new state.
 
 Global variables, constants, instance variables of `main` (the `self` of handler code), methods defined with `def`, classes and modules with their constants, and what `Userdata` holds (it keeps its values in a global variable) stay in the worker from one request to the next. What one request leaves behind is seen by every later request that the same worker handles, also when the code raised an exception after it made the change. Each worker has its own copy, so one worker does not see the values of another. After each run, ngx_mruby clears the exception (`mrb->exc`); a script file without `cache` is read and compiled again for the next run, and inline code and cached scripts keep the byte-code compiled at startup. The garbage collector frees the objects that nothing refers to any more. Local variables do not stay: each run of handler code starts without them.
 
@@ -151,8 +125,79 @@ Report privately, as [SECURITY.md](../SECURITY.md) describes, a defect of ngx_mr
 
 Outside the scope of SECURITY.md is what follows from the trusted side doing what it was written to do: a script that passes client input to `eval`, a shell command, a file path or another of the uses above; data of one request that a script keeps in a global and a later request sees; a blocking call in a script that stalls its worker; anyone who can change the configuration, a script or `build_config.rb` running code; and a setup that takes nginx configuration or Ruby code from parties that the operator does not trust.
 
-# License
-under the MIT License:
+## Historical introduction and benchmarks
 
-* http://www.opensource.org/licenses/mit-license.php
+The following material comes from the original project introduction. Its old
+version strings, cross-server examples and design goals are historical, not a
+statement of current compatibility. Examples can need additional services and
+gems. The current request-lifetime and trust contracts above take precedence.
 
+The [2014-03-01 hello-world benchmark image](https://github.com/matsumotory/mod_mruby/raw/master/images/performance_20140301.png)
+and its [original setup and discussion](http://blog.matsumoto-r.jp/?p=3974)
+record an old workload and environment. They do not establish current throughput,
+latency, memory use or an advantage over another server. The 2013 comparison below
+has the same limitation; use measurements of your own version and workload.
+
+### What's ngx_mruby
+__ngx_mruby is A Fast and Memory-Efficient Web Server Extension Mechanism Using Scripting Language mruby for nginx.__
+
+- ngx_mruby is to provide an alternative to lua-nginx-module or [mod_mruby of Apache httpd](http://mod.mruby.org/).
+- Unified Ruby Code between Apache(mod_mruby), nginx(ngx_mruby) and other Web server software(plan) for Web server extensions.
+- You can implement nginx modules by Ruby scripts on nginx!
+- You can implement some Web server software extensions by same Ruby code (as possible)
+- Supported nginx __main-line and stable-line__
+- [Historical hello-world benchmark (2013)](https://gist.github.com/matsumotory/6930672). The original result reports 19423.42 req/sec for ngx_mruby and 13894.30 req/sec for lua-nginx-module; these figures describe that setup, not current performance.
+
+```ruby
+# location /proxy {
+#   mruby_set $backend "/path/to/proxy.rb";
+#   proxy_pass   http://$backend;
+# }
+
+backends = [
+  "test1",
+  "test2",
+  "test3",
+]
+
+r = Redis.new "192.168.12.251", 6379
+r.get backends[rand(backends.length)]
+```
+
+This example needs the `Redis` class of mruby-redis, and a running Redis server. The default `build_config.rb` builds mruby-redis again since 2.7.2; 2.7.1 left it out.
+
+- see [examples](https://github.com/matsumotory/ngx_mruby/blob/master/example/nginx.conf)
+- __Sample of Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby) for Web server extensions__
+- You can implement some Web server software extensions by same Ruby code (as possible)
+
+```ruby
+# Unified Ruby Code between Apache(mod_mruby) and nginx(ngx_mruby)
+# for Web server extensions.
+#
+# Apache httpd.conf by mod_mruby
+#
+# <Location /mruby>
+#     mrubyHandlerMiddle "/path/to/unified_hello.rb"
+# </Location>
+#
+# nginx nginx.conf by ngx_mruby
+#
+# location /mruby {
+#     mruby_content_handler "/path/to/unified_hello.rb";
+# }
+#
+
+Server = get_server_class
+
+Server::rputs "Hello #{Server::module_name}/#{Server::module_version} world!"
+# mod_mruby => "Hello mod_mruby/0.9.3 world!"
+# ngx_mruby => "Hello ngx_mruby/0.0.1 world!"
+```
+
+### Abstract
+
+As the increase of large-scale and complex Web services, not only a development of Web applications but also an implementation of Web server extensions is required in many cases. The Web server extensions were mainly implemented in C language because of fast and memory-efficient behavior, but extension methods using scripting language are proposed with consideration of maintainability and productivity. However, if the existing methods primarily intended to enhance not the implementation of Web applications but the implementation of internal processing of the Web server, the problem remains in terms of speed, memory-efficiency and safety. Therefore, we propose a fast and memory-efficient Web server extension mechanism using scripting language. We design the architecture that a server process creates the region to save the state of the interpreter at the server process startup, and multiple scripts share the region in order to process fast when the script is called as internal processing from a Web server process. The server process frees the global variables table, the exception flag and the byte-code which cause the increase of memory usage mainly, in order to reduce the memory usage and extend safety by preventing interference between each scripts because of sharing the region. We implement the mechanism that can extend the internal processing of nginx easily by Ruby scripts using nginx and the embeddable scripting language mruby. It's called "ngx_mruby".
+
+## License
+
+ngx_mruby is distributed under the [MIT License](../MITL).

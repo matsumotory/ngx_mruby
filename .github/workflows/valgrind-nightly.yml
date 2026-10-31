@@ -1,0 +1,129 @@
+name: valgrind-nightly
+
+# The nightly run of the test suite under valgrind (docs/test/README.md,
+# "valgrind in CI"). For each branch below, the job starts test.yml on the
+# branch with the input "valgrind", which runs every cell of the build matrix
+# except the sanitizer cell under valgrind, and waits for that run: the job
+# fails when the run fails, so that a failure shows on this workflow, whose
+# schedule GitHub runs only from the default branch.
+#
+# GitHub runs a schedule only from the workflow file on the default branch
+# (master): the schedule of this file on master starts the runs on master
+# and on next. The copy of this file on another branch runs only from pull
+# requests that change this file, test.yml or test/valgrind.supp, where it
+# starts the run on the head branch of the pull request.
+on:
+  schedule:
+    # Every day at 18:23 UTC (03:23 JST).
+    - cron: '23 18 * * *'
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+      - next
+      - 'v*.x'
+    paths:
+      - '.github/workflows/valgrind-nightly.yml'
+      - '.github/workflows/test.yml'
+      - 'test/valgrind.supp'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  valgrind:
+    # Forks have their own schedule to keep, if any. A pull request from a
+    # fork gets a read-only token, which cannot start a run.
+    if: >-
+      github.repository == 'matsumotory/ngx_mruby' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    # The run of test.yml takes about as long as its slowest cell (about 13
+    # minutes in October 2026) plus the wait for runners: 30 minutes from
+    # the dispatch to the end for the run on master on 2026-10-31. Two runs
+    # start at once, one per branch; the bound leaves room for a longer
+    # queue.
+    timeout-minutes: 120
+    permissions:
+      actions: write # start test.yml on the branch and read the run
+    strategy:
+      fail-fast: false
+      matrix:
+        # The branches whose test.yml has the input "valgrind". The
+        # schedule on master starts a run on each of them.
+        branch:
+          - master
+          - next
+    steps:
+      - name: Run test.yml under valgrind and wait for it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          MATRIX_BRANCH: ${{ matrix.branch }}
+        run: |
+          if [ "${EVENT_NAME}" = pull_request ]; then
+            # One run per pull request, on its head branch, from the entry
+            # of the matrix that is its base.
+            if [ "${BASE_REF}" != "${MATRIX_BRANCH}" ]; then
+              echo "the pull request is for ${BASE_REF}, not ${MATRIX_BRANCH}: nothing to run"
+              exit 0
+            fi
+            branch=${HEAD_REF}
+          else
+            branch=${MATRIX_BRANCH}
+          fi
+          since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          out=$(gh workflow run test.yml --repo "${REPO}" --ref "${branch}" -f valgrind=true)
+          echo "${out}"
+          # gh workflow run prints the URL of the run it started. When it
+          # does not (an older gh), the run is the newest manual run of
+          # test.yml on the branch that was created since the dispatch.
+          id=
+          if [[ "${out}" =~ /actions/runs/([0-9]+) ]]; then
+            id=${BASH_REMATCH[1]}
+          fi
+          for _ in $(seq 1 30); do
+            if [ -n "${id}" ]; then
+              break
+            fi
+            sleep 10
+            id=$(gh run list --repo "${REPO}" --workflow test.yml --branch "${branch}" --event workflow_dispatch \
+              --created ">=${since}" --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          done
+          if [ -z "${id}" ]; then
+            echo "::error title=valgrind-nightly::no run of test.yml on ${branch} appeared within 300 seconds of the dispatch"
+            exit 1
+          fi
+          # The next step cancels the run when this job is cancelled, for
+          # example by a newer push to the pull request. A file, because the
+          # step may be cancelled before its environment file is read.
+          echo "${id}" > "${RUNNER_TEMP}/dispatched-run"
+          url=$(gh run view "${id}" --repo "${REPO}" --json url --jq .url)
+          echo "run of test.yml on ${branch}: ${url}"
+          echo "test.yml under valgrind on \`${branch}\`: ${url}" >> "${GITHUB_STEP_SUMMARY}"
+          if ! gh run watch "${id}" --repo "${REPO}" --exit-status --interval 60 > /dev/null; then
+            echo "::error title=valgrind-nightly::the run of test.yml under valgrind on ${branch} failed: ${url}"
+            exit 1
+          fi
+          echo "the run of test.yml under valgrind on ${branch} passed: ${url}"
+      - name: Cancel the run of test.yml when this job is cancelled
+        if: ${{ cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -s "${RUNNER_TEMP}/dispatched-run" ]; then
+            id=$(cat "${RUNNER_TEMP}/dispatched-run")
+            echo "cancelling https://github.com/${REPO}/actions/runs/${id}"
+            gh run cancel "${id}" --repo "${REPO}" || true
+          fi
