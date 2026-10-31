@@ -143,7 +143,11 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
   (`test/perf/`, the scenarios in `test/soak/`) comes from the head, so a
   tag from before the lane was added is measured as well. The check PR
   quotes the table as above, and a `WARN` or `FAIL` there goes to the
-  owner.
+  owner. The accepted differences of `test/perf/accepted.txt` ("Known
+  differences" in `docs/test/README.md` on `next`) apply to this comparison
+  too: a row within the allowance of a line whose condition both builds
+  match is `ok (accepted: ...)`, and a change above it keeps its `WARN` or
+  `FAIL`.
 - Planned, not in place yet: a benchmark of the test nginx for throughput
   and latency (Pillar E and section 8 of `docs/proposals/v3-plan.md` on
   `next`). Where its results are recorded is decided when it is added.

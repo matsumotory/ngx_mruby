@@ -2077,6 +2077,28 @@ measures against them; the base of a pull request is `next` with mruby
 - The owner accepted these differences on 2026-10-31 (the record on #678
   and in `docs/HANDOFF.md`).
 
+A comparison whose base still bundles an older mruby, such as the
+comparison with the previous tag before a tag (see "Design principles" in
+`AGENTS.md`), measures such a difference again. `test/perf/accepted.txt`
+lists the accepted differences, one line each: a condition, the scenario,
+and an allowance on the change of Ir per request without GC, in percent.
+The only condition is `mruby-version`, the `MAJOR.MINOR` of
+`MRUBY_RELEASE_MAJOR` and `MRUBY_RELEASE_MINOR` in
+`mruby/include/mruby/version.h` of each build's tree; the comment at the
+top of the file has the format. `mruby-version 4.0 4.1 auth 8` applies
+when the base bundles mruby 4.0.x and the head 4.1.x. A line applies only
+when both builds match it. Then a `WARN` or `FAIL` row of its scenario
+within the allowance shows as `ok (accepted: mruby 4.0.0→4.1.0, +8%)`,
+does not fail the run, and is a notice in the annotations of the job; a
+change above the allowance keeps its `WARN` or `FAIL`. A header line of
+`report.txt` and of the job summary prints the mruby version of both
+builds and the differences that applied, for example `perf: mruby: base
+4.0.0, head 4.1.0; accepted differences (accepted.txt): auth up to +8%
+(mruby 4.0.0→4.1.0)`, or `none apply`. `perf.rb` reads the file before it
+measures and stops at a line that is not in the format, with the file and
+the line number; `--self-test` checks the file too. The GC share is
+printed and not judged, so the file has no allowance on it.
+
 ### Running it
 
 The driver needs CRuby 3.0 or later and valgrind with `callgrind_control`
@@ -2125,6 +2147,7 @@ too, so do not run it at the same time.
 | `PERF_FAIL_PERCENT` | 5 | FAIL from this change |
 | `PERF_PORT_BASE` | 12370 | port of the scenarios; the backend of `sub_request` uses the next one, the mock LLM the one after |
 | `PERF_REPORT_DIR` | `build_perf` | where `report.txt` and `report.json` go |
+| `PERF_ACCEPTED_FILE` | `test/perf/accepted.txt` | the accepted differences (see "Known differences"); an empty file shows the verdicts without them |
 | `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_start_fiber` | names of the function counted once per request in the seven scenarios of `test/soak/nginx.conf` (see "In CI") |
 
 ### In CI

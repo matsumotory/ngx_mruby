@@ -758,7 +758,17 @@ the GC, so ngx_mruby keeps mruby's defaults; the accepted differences
 (`auth` +7.10% without GC, the GC share of the scenarios with Ruby) are
 written under "Known differences" in `docs/test/README.md` and in the entry
 of the bundled mruby in `docs/releases/v3.0.0.md` and `.ja.md` (#678), and
-the acceptance is recorded on #678.
+the acceptance is recorded on #678. The owner then asked, on the same
+day: 「callgrindのテストはエラーにならんように調整しとかなね」 (adjust the
+callgrind comparison so that it does not report an error for this). A
+pull request to `next` compares against `next`, which has mruby 4.1, but
+the comparison with the previous tag before a tag can measure a base with
+mruby 4.0.0. [#696](https://github.com/matsumotory/ngx_mruby/pull/696)
+adds `test/perf/accepted.txt`, which
+`test/perf/perf.rb` reads: `mruby-version 4.0 4.1 auth 8` shows `auth`
+within +8% without GC as `ok (accepted: ...)` when the base bundles mruby
+4.0.x and the head 4.1.x ("Known differences" in `docs/test/README.md`,
+and "Before a tag" in AGENTS.md).
 
 On 2026-10-31 the owner set a rule for reports to mruby, in a session's
 question: 「mruby側への報告は確定と明らかにどの観点でも修正すべきと判断でき、パッチをかけるものだけにしたい。ngx_mrubyの都合だけでの報告はしたくない」
