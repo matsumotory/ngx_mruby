@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {commandsFor,LANES,siteGate} from './ci-browser.mjs';
+import {scopedPages,codePageScope} from './lib/ci-pages.mjs';
+const full={mode:'full',pages:[]}, target={mode:'targeted',pages:['/guides/install/','/ja/guides/install/']};
+assert.equal(LANES.length,6);
+assert.deepEqual(commandsFor(full,'styles-chromium'),[['check-styles.mjs','--engine','chromium']]);
+assert.deepEqual(commandsFor(full,'styles-webkit'),[['check-styles.mjs','--engine','webkit']]);
+assert.equal(commandsFor(full,'interaction').length,2);
+assert.deepEqual(commandsFor(target,'interaction'),[['check-code-layout.mjs']]);
+assert.deepEqual(commandsFor(target,'japanese'),[['check-japanese-lines.mjs','--pages','/ja/guides/install/']]);
+assert.deepEqual(commandsFor(full,'screenshots'),[['screenshots.mjs','--out','build-screenshots']]);
+for(const lane of LANES) assert.deepEqual(commandsFor({mode:'none',pages:[]},lane),[]);
+assert.throws(()=>commandsFor({mode:'targeted',pages:[]},'interaction'));
+assert.throws(()=>commandsFor(full,'bad'));
+assert.throws(()=>commandsFor({mode:'typo'},'interaction'));
+const success={build:'success',browser:'success',maintenance:'success'};
+assert.ok(siteGate(success));
+for(const key of Object.keys(success)) for(const value of ['skipped','failure','cancelled','',undefined]) assert.equal(siteGate({...success,[key]:value}),false);
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ci-pages-'));
+try {
+ fs.mkdirSync(path.join(dir,'docs'));fs.writeFileSync(path.join(dir,'docs/index.html'),'ok');
+ assert.deepEqual(scopedPages(dir,'["/docs/"]'),['/docs/']);
+ for(const value of ['[]','null','{}','["/docs/","/docs/"]','["/missing/"]','["/../docs/"]','["//docs/"]']) assert.throws(()=>scopedPages(dir,value));
+} finally {fs.rmSync(dir,{recursive:true});}
+console.log('CI lane coverage, malformed scopes, route existence, failure/cancel/skip gate contracts: PASS');
+
+const all=['/','/ja/','/start/','/v2/','/v2/ja/','/v2/reference/ruby/'];
+const reps=['/','/v2/'];
+const v3=codePageScope(all,reps,null,'3'),v2=codePageScope(all,reps,null,'2');
+assert.deepEqual([...v3.pages,...v2.pages].sort(),[...all].sort());
+assert.deepEqual([...v3.stressPages,...v2.stressPages].sort(),[...reps].sort());
+assert.deepEqual(codePageScope(all,reps,['/start/'],'3'),{pages:['/start/'],stressPages:['/start/']});
+assert.throws(()=>codePageScope(all,reps,null,'invalid'));
+console.log('Version sharding preserves the exact full code-layout union: PASS');
+const workflow=fs.readFileSync(new URL('../../.github/workflows/site.yml',import.meta.url),'utf8');
+assert.ok(workflow.includes('lane: ['+LANES.join(', ')+']'));
+assert.ok(workflow.includes('needs: [build, browser, maintenance-lines]'));
+assert.ok(workflow.includes('needs: [build, site-ok]'));
+assert.ok(workflow.includes('digest-mismatch: error'));
+assert.ok(workflow.includes('node scripts/check-v2.mjs --no-browser'));
+assert.ok(workflow.includes('SITE_CI_VERSION=2 node scripts/check-code-layout.mjs'));
+assert.ok(workflow.includes('node scripts/check-search-identifiers.mjs'));
+assert.ok(workflow.includes('node scripts/ci-artifact.mjs --write'));
+assert.ok(workflow.includes('node scripts/ci-artifact.mjs\n'));
+console.log('Workflow suite wiring and exact-artifact/deployment gate contracts: PASS');
+
+const maintenance=workflow.split('  maintenance-lines:')[1].split('  site-ok:')[0];
+assert.ok(maintenance.includes('name: site-validation'));
+assert.ok(maintenance.includes('tar -xzf'));
+assert.ok(maintenance.includes('node scripts/ci-artifact.mjs'));
+console.log('Maintenance suite receives bound generated manifests as well as HTML: PASS');
