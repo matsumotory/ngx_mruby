@@ -138,8 +138,9 @@ neither is the `ci-ok` of the run that counts.
 
 In every other run `ci-ok` keeps `always()`: when the run is cancelled (by
 a newer push, which leaves the failure on the head that the push
-replaced, or by "Cancel workflow"), `ci-ok` runs and fails, because the run
-did not test the commit to the end. GitHub's documentation defines
+replaced, or by "Cancel workflow") before a needed job has finished,
+`ci-ok` runs and fails, because the run did not test the commit to the
+end. GitHub's documentation defines
 `cancelled()` only as "the workflow was canceled" and does not say
 whether a needed job that reaches its `timeout-minutes` makes it true; if
 it did, `ci-ok` on `!cancelled()` would be skipped, and the skip would

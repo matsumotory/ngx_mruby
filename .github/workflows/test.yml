@@ -647,8 +647,9 @@ jobs:
   # move of the draft to ready for review cancels: such a run tests nothing
   # and its job is never the required ci-ok, so this job does not run there,
   # and GitHub marks it cancelled instead of failed (on #678 on 2026-10-31,
-  # "always()" alone left a failed "ci-ok (draft)" on the head). Other
-  # cancelled runs still fail this job. GitHub's documentation defines
+  # "always()" alone left a failed "ci-ok (draft)" on the head). In other
+  # cancelled runs this job still runs, and fails when a needed job did not
+  # finish. GitHub's documentation defines
   # cancelled() only as "the workflow was canceled" and does not say whether
   # a needed job that reaches its timeout-minutes makes it true; if it did,
   # "!cancelled()" alone would skip this job, and the skip would pass the
