@@ -35,7 +35,7 @@ html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
 .route-controls button[aria-pressed="true"] { background: var(--color-scene-warm); border-color: var(--color-code-number); color: var(--color-code-number); }
 .v3-flow[data-route="b"] button[aria-pressed="true"] { background: var(--color-scene-violet); border-color: var(--color-signal-violet); color: var(--color-signal-violet); }
 .home-v3 .routing-workspace { margin: 0; padding: 0; list-style: none; counter-reset: route-step; }
-.home-v3 .flow-step { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.5fr); gap: var(--space-6); align-items: start; margin: 0; padding: var(--space-6); border-bottom: 1px solid var(--color-border); counter-increment: route-step; }
+.home-v3 .flow-step { max-width: none; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.5fr); gap: var(--space-6); align-items: start; margin: 0; padding: var(--space-6); border-bottom: 1px solid var(--color-border); counter-increment: route-step; }
 .flow-step > div { min-width: 0; margin: 0; }
 .flow-description .flow-title::before { content: counter(route-step) ". "; color: var(--color-text-muted); }
 .home-v3 .flow-description p { color: var(--color-text-muted); margin: var(--space-3) 0 0; }
@@ -54,7 +54,7 @@ html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
 .v3-flow[data-route="a"] [data-upstream-title] { color: var(--color-code-number); }
 .v3-flow[data-route="b"] [data-upstream-title] { color: var(--color-signal-violet); }
 .home-v3 .route-result { margin: 0; }
-.v3-flow figcaption { display: block; font-size: var(--text-caption); line-height: var(--leading-caption); margin: 0; max-width: none; padding: var(--space-4) var(--space-6); color: var(--color-text-muted); }
+.home-v3 .v3-flow figcaption { display: block; font-size: var(--text-caption); line-height: var(--leading-caption); margin: 0; max-width: none; padding: var(--space-4) var(--space-6); color: var(--color-text-muted); }
 .home-v3 .routing-explanation { max-width: 46rem; margin-top: var(--space-5); }
 .home-v3 .routing-explanation p { color: var(--color-text-muted); }
 .home-v3 .routing-explanation a { display: inline-block; margin-top: var(--space-3); }
@@ -94,7 +94,7 @@ html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
   .home-v3 .flow-step { grid-template-columns: minmax(0,1fr); gap: var(--space-4); padding: var(--space-5); }
   .route-controls:not([hidden]) { padding: var(--space-3) var(--space-5); }
   .v3-flow :is(summary, .copy button) { scroll-margin-top: calc(var(--header-height) + var(--space-9)); }
-  .v3-flow figcaption { padding: var(--space-4) var(--space-5); }
+  .home-v3 .v3-flow figcaption { padding: var(--space-4) var(--space-5); }
   .try-workspace, .protocol-list, .documentation-links { grid-template-columns: minmax(0,1fr); gap: var(--space-5); }
   .protocol-list > div { grid-template-columns: 64px minmax(0,1fr); gap: var(--space-4); }
   .protocol-list img { width: 64px; height: 64px; }
