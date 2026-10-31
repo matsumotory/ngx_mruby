@@ -240,12 +240,6 @@ these hold:
    on a run whose merge ref includes the current base. When the base moved
    after the last run, update the branch and let CI run again. A run made
    green by skipping or disabling tests does not count.
-   On `next`, the reviewed change-scope policy in
-   [Runtime CI change scope](docs/test/README.md#runtime-ci-change-scope)
-   defines non-applicable runtime jobs for known documentation, site and
-   examples-only changes. Its always-present `ci-ok` validates the classifier
-   and the exact expected job results; this does not excuse a skipped required
-   check, a failing test or reuse of a different head's evidence.
 3. The change is inside the agreed scope, or is a bug fix with the two-commit
    evidence described under "Writing tests", or changes documentation only.
    In every case, a change of behavior that a configuration, script or build

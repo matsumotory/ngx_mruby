@@ -35,25 +35,27 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
-## Change-scoped runtime CI, 2026-10-31
+## Site CI scope and parallel lanes, 2026-10-31
 
-- [#677](https://github.com/matsumotory/ngx_mruby/pull/677) (`codex/ci-change-scope`) is a draft against `next`; it does not
-  modify the active site-publication branches or cancel their runs.
-- The owner requested that changes run only relevant CI, not only for the site:
-  “サイトだけに関わらずci不要な変更や内容次第でやなくていいテストは省かないと時間かかりすぎる”.
-- This first step selects nginx matrix/soak coverage conservatively, retains
-  the always-present required status and all applicable runtime tests, and
-  records [scope, timing evidence and limits](test/README.md#runtime-ci-change-scope).
-  Unknown, mixed runtime and workflow inputs retain full coverage. Existing
-  site/examples/performance checks and publication gates remain unchanged.
-- Local classifier/gate tests are implemented. Current-head remote CI,
-  independent review and merge are not complete; the PR will record evidence.
-  The second stage implements parser-backed local-document selection, parallel
-  browser lanes and exact same-run artifact reuse. Static and v2 coverage are
-  retained. Native unit/generator/static checks passed; browser timing and
-  exact-head remote acceptance remain pending. Preserve #672's added required
-  suites when integrating its publication changes. Do not merge this draft;
-  the owner will have Claude review the completed implementation and evidence.
+- [#677](https://github.com/matsumotory/ngx_mruby/pull/677) is a site-only draft
+  against `next`. Its initial runtime implementation was removed additively,
+  without rewriting history, because Claude's [#676](https://github.com/matsumotory/ngx_mruby/pull/676)
+  owns `next` runtime CI and [#679](https://github.com/matsumotory/ngx_mruby/pull/679)
+  owns the corresponding `master` change. Do not merge both runtime policies.
+- The site implementation selects local-document pages with the generator
+  parser, runs browser suites in independent lanes and reuses an exact same-run
+  artifact. Static and independently changing v2 coverage remain complete.
+  See [scope and timing evidence](test/README.md#site-ci-change-scope).
+- Native scope, lane/gate, actual-Git/artifact tests, generator/static checks
+  and clean builds passed. Independent review reproduced test-first missing
+  modules and implementation success. Run 41170282002 passed build/static in
+  68 seconds; browser lanes were still queued at 04:56 UTC. This is not a
+  completed browser verification or a measured total speedup.
+- Preserve #672's added copy-idle, read-only-browser, live screenshots and
+  post-deployment verification when integrating that publication change.
+  This integration and measured browser comparison are not complete.
+- No active publication run was cancelled. No merge or deployment is
+  authorized for this draft; the owner will have Claude review the changes.
 
 ## Landing-page hierarchy, 2026-10-30
 
