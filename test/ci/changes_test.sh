@@ -50,6 +50,9 @@ expect "soak scenarios" \
 expect "soak driver only" \
     "code=false tests=true docs=false site=false examples=false workflows=false soak=true perf=false build=tests" \
     test/soak/soak.rb
+expect "the check of the mock LLM alone runs soak" \
+    "code=false tests=true docs=false site=false examples=false workflows=false soak=true perf=false build=tests" \
+    test/soak/mock_llm_test.rb
 expect "perf only" \
     "code=false tests=true docs=false site=false examples=false workflows=false soak=false perf=true build=tests" \
     test/perf/perf.rb
