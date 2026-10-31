@@ -1388,6 +1388,7 @@ response = f.body.upcase
 
 Sets the string to the response body.
 The response is sent with exactly this body, and `Content-Length` is its length; since 2.7.1 this also holds when the body was written with `Nginx.rputs` or `Nginx.echo`.
+Since 2.7.3, an empty replacement string sends the response status with `Content-Length: 0` and no body. Earlier versions closed the connection without a response and logged `zero size buf in writer`. This also applies to the `#output` alias.
 It can only be used in an output body filter; anywhere else it raises a `RuntimeError` (since 2.7.1).
 
 ```ruby
