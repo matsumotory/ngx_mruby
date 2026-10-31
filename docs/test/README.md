@@ -79,10 +79,80 @@ print the second nginx's `error.log` when the line is set.
 `.github/workflows/test.yml` runs on pull requests to `master`, `next` and
 `v*.x`, on pushes to those branches and to `v*` tags, and on "Run workflow".
 Its `ci-ok` job is the status check that rulesets require: it fails unless
-every job that it lists in `needs` succeeded. These are every job of the
-`build` matrix and the `files` job, and on `next` also the `soak` job. The
-`perf` job (see "In CI" under "Performance comparison with callgrind") is
-not among them yet.
+every job that it lists in `needs` passed. These are the `changes` job,
+every job of the `build` matrix and the `files` job, and on `next` also the
+`soak` job. The `perf` job (see "In CI" under "Performance comparison with
+callgrind") is not among them yet.
+
+### Which jobs a run starts
+
+The `changes` job decides whether a run needs the jobs that build and test
+the module: the `build` matrix (16 cells and the sanitizer cell) and the
+`perf` job, and on `next` also the `soak` job. The paths are filtered in
+that job, not with `on.paths` of the workflow, so that the run, and with it
+`ci-ok`, exists for every pull request. The `files` job and `ci-ok` run in
+every run.
+
+| Run | The build and perf jobs |
+|---|---|
+| Pull request that changes an input of the binary or the tests | Run (`perf` only when it changes what "In CI" of the performance comparison lists, or has the label `perf`) |
+| Pull request whose files are all outside these inputs | Skipped |
+| Push to `master` or `next` | Skipped |
+| Push to a `v*.x` branch or a `v*` tag | Run (`perf` runs on pull requests only) |
+| "Run workflow" without the input `base` | Run (`perf` runs on pull requests only) |
+| "Run workflow" with the input `base` | As for a pull request against `base` (`perf` runs on pull requests only) |
+
+For a pull request, the job lists the files that the merge commit
+(`refs/pull/N/merge`) changes against its first parent, the base, a
+renamed file under its old and its new path (`git diff --no-renames`), so
+that moving an input to `docs/` still runs the build. The run skips the
+build jobs when every one of them is one of these, which no job of the run
+builds or tests with:
+
+- `docs/`, and on `next` also `site/` and `examples/`: the `site-v2`
+  workflow, and on `next` the `site` and `examples` workflows, check them;
+- `.github/workflows/` except `test.yml`, `.github/dependabot.yml`,
+  `.github/zizmor.yml` and `.github/PULL_REQUEST_TEMPLATE.md`: the `zizmor`
+  workflow checks the workflows;
+- the Markdown files at the top (`README.md`, `AGENTS.md`, ...) and
+  `AUTHORS`, `LEGAL`, `LICENSE` and `MITL`.
+
+Every other file counts as an input, `test.yml`, `test/` and `test.sh`
+included, so a file of a new kind runs the build until the list in the
+`changes` job names it. The list is the variable `not_inputs` of that job;
+a pull request that adds to it says why the files are not inputs.
+
+For "Run workflow" with the input `base` (a branch or a commit id), the
+list is the files that the branch changes since its merge base with
+`base`, so that a branch can show what its pull request would run:
+
+```console
+$ gh workflow run test.yml --ref claude/topic -f base=master
+```
+
+The result of such a run is the job `ci-ok (dry run)`, not `ci-ok`: the
+person who starts the run chooses `base`, so its result is not the check
+that the rulesets require of the commit.
+
+A push to `master` or `next` runs only `changes`, `files` and `ci-ok`. Both
+branches take changes only through pull requests. Condition 2 of "Review
+and merge" in [AGENTS.md](../../AGENTS.md) has the session merge a pull
+request only after a run of `ci-ok` on a merge ref that includes the
+current base, so the push brings the tree that the run of the pull request
+tested. The rulesets require `ci-ok`, but not that the branch is up to
+date with its base: a pull request merged against that condition brings a
+tree that no run tested, and only a later pull request or "Run workflow"
+tests it. To build and test the tip of a branch by itself, use "Run
+workflow" (`gh workflow run test.yml --ref master`), as after a move of the
+head of a GitHub gem ([Heads of the GitHub gems](#heads-of-the-github-gems)).
+The other workflows decide on their own when they run (`site-v2`,
+`site-dispatch`, `zizmor` and the others in `.github/workflows/`).
+
+`ci-ok` passes a skipped `build` job only when `changes` passed and decided
+that the run does not need it. A `build` job that was skipped for another
+reason (a failed `changes` job) fails `ci-ok`, as does a needed job that did
+not pass. A pull request whose run skipped the build jobs meets condition 2
+of "Review and merge" with that run.
 
 ### Files that do not belong in the repository
 
@@ -996,7 +1066,10 @@ time.
 The `perf` job of `.github/workflows/test.yml` runs on pull requests that
 change an input of the measured binary, the measurement or the workflow, or
 that have the label `perf` (read when the job runs, so adding the label and
-re-running the job is enough). The inputs of the binary are what
+re-running the job is enough), and only when the `changes` job starts the
+build jobs ([Which jobs a run starts](#which-jobs-a-run-starts)): a pull
+request whose files are all outside the inputs of the binary and the tests
+skips it, with the label too. The inputs of the binary are what
 `test/build_release.sh` copies: `src/`, `mrbgems/`, `mruby/`, `dependence/`
 (ngx_devel_kit, which `Makefile.in` adds to nginx), and the top-level build
 files `build_config.rb`, `configure`, `config.in`, `Makefile.in`,
