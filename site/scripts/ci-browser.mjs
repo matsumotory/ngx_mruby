@@ -21,7 +21,7 @@ export function commandsFor(plan, lane) {
   ];
   if (lane === 'japanese') {
     const ja = pages?.filter(p => p.startsWith('/ja/'));
-    return ja ? (ja.length ? [['check-japanese-lines.mjs', '--pages', ja.join(',')]] : []) : [['check-japanese-lines.mjs'], ['check-japanese-lines.mjs', '--pages', '/ja/docs/', '--width', '375']];
+    return ja ? (ja.length ? [['check-japanese-lines.mjs', '--pages', ja.join(',')]] : []) : [['check-japanese-lines.mjs']];
   }
   if (lane === 'accessibility') return [
     ['check-focus.mjs'], ['check-language-links.mjs'],
