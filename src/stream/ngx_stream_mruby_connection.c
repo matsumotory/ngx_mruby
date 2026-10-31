@@ -159,7 +159,7 @@ static mrb_value ngx_stream_mrb_upstream_set_server(mrb_state *mrb, mrb_value se
   mrb_get_args(mrb, "S", &server);
 
   if (RSTRING_LEN(server) <= 0 || (size_t)RSTRING_LEN(server) >= NGX_STREAM_MRB_UPSTREAM_SERVER_MAX) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "invalid upstream server (empty or too long)");
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid upstream server (empty or too long)");
   }
 
 #if (NGX_STREAM_UPSTREAM_ZONE)
@@ -182,11 +182,15 @@ static mrb_value ngx_stream_mrb_upstream_set_server(mrb_state *mrb, mrb_value se
   u.url.len = RSTRING_LEN(server);
   u.no_resolve = 1;
 
-  if (ngx_parse_url(s->connection->pool, &u) != NGX_OK || u.naddrs == 0) {
+  if (ngx_parse_url(s->connection->pool, &u) != NGX_OK) {
     if (u.err) {
-      mrb_raisef(mrb, E_RUNTIME_ERROR, "%S in upstream %S", mrb_str_new_cstr(mrb, u.err), server);
+      mrb_raisef(mrb, E_ARGUMENT_ERROR, "%S in upstream %S", mrb_str_new_cstr(mrb, u.err), server);
     }
     mrb_raisef(mrb, E_RUNTIME_ERROR, "could not parse upstream server %S", server);
+  }
+  // With no_resolve, nginx accepts a host name and gives it no address.
+  if (u.naddrs == 0) {
+    mrb_raisef(mrb, E_ARGUMENT_ERROR, "upstream server %S is not an IP address or a unix: path", server);
   }
 
   /* Copy the name and the resolved sockaddr into worker-lifetime storage so the
