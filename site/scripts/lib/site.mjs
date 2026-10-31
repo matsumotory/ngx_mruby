@@ -85,15 +85,8 @@ export const GENERATED_REFERENCE = ['reference/directives', 'reference/ruby'];
 // check-japanese.mjs fails on a page written by hand that is in neither list
 // and has no Japanese source, and on a page of this list that has one, so
 // that each pull request of step 5 removes the pages it translates.
-export const NOT_TRANSLATED_YET = [
-  'contributing',
-  'contributing/development',
-  'contributing/handoff',
-  'contributing/test',
-  'releases',
-  'security',
-  'security/trust-boundary',
-];
+// The handoff page intentionally stays in English (owner decision, 2026-10-29).
+export const NOT_TRANSLATED_YET = ['contributing/handoff'];
 
 // The pages of a list that are English fallback pages under /ja/ (those of
 // GENERATED_REFERENCE and NOT_TRANSLATED_YET): check-japanese-lines checks

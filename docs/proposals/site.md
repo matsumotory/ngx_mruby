@@ -1881,6 +1881,12 @@ of Q1; its place, `site/` on `next`, stands. 5.4 says what replaces each
 piece that Starlight provides, the order (a Codex session, after step 5)
 and the acceptance.
 
+On 2026-11-01, step 5 added Japanese sources for Contributing, Development,
+the test guide, the release-note guide, Security and the trust boundary.
+The handoff page stays in English with a Japanese notice, as the owner
+decided on 2026-10-29. Browser acceptance remains pending; this records the
+translation work, not completion of the visual checks.
+
 ## Appendix A. Where comparable projects put things
 
 Read on 2026-10-04. These are facts about what each site contains, not
