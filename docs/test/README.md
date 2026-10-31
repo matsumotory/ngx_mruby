@@ -43,21 +43,24 @@ can live in files of its own:
 - `test/conf/conf.d/<name>.conf`: a fragment included at the end of the
   `http {}` block. It holds its own `server {}` on a port of its own (18110
   to 18199; 18116 is taken by the second nginx that
-  `test/t/cases/_second_instance.rb` starts). Fragments for `stream {}` go
+  `test/t/cases/_second_instance.rb` starts, and 18180 and 18181 by the
+  nginx of `test/t/cases/_workers.rb`). Fragments for `stream {}` go
   to `test/conf/conf.d/stream/` (ports 12353 to 12399; 12357 is taken by the
-  second nginx). Write each port as five digits in these ranges, so that
+  second nginx, and 12379 by the nginx of `_workers.rb`). Write each port as five digits in these ranges, so that
   `TEST_SH_PORT_OFFSET` moves it ("Ports" below).
 - `test/t/cases/<name>.rb`: a test file run after `test/t/ngx_mruby.rb`,
   with `test/t/cases/_prelude.rb` prepended. The prelude defines `base`,
   `base_ssl`, `http_host`, `html_path`, `nginx_t` (runs `nginx -t` on a
-  generated configuration), `tcp_client`, `second_instance` and
+  generated configuration), `tcp_client`, `second_instance`,
+  `workers_nginx` (runs nginx with a master process and several workers,
+  see "Several workers and reloads" below) and
   `suite_path` (the path of a file of the suite in the copy that `test.sh`
   runs: run a CRuby helper as `` `ruby #{suite_path('test/t/cases/_x.rb')}` ``,
   see "Ports" below). It starts
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
   with `_` are helpers and are not run as cases; `_tcp_client.rb`,
-  `_filter_connection_client.rb`, `_request_body_client.rb` and
-  `_second_instance.rb` are CRuby scripts that the prelude helpers and the
+  `_filter_connection_client.rb`, `_request_body_client.rb`,
+  `_second_instance.rb` and `_workers.rb` are CRuby scripts that the prelude helpers and the
   cases run with `ruby`, and `_wait_for_listen.rb` is the CRuby script that
   test.sh runs to wait for nginx (see "Waiting for nginx to listen" below).
   `_agent_proxy_client.rb` is a CRuby script (3.0 or
@@ -74,7 +77,8 @@ into the built nginx's `conf/conf.d/` with the same substitutions as
 failing case makes `test.sh` exit non-zero, like a failing assertion in
 `test/t/ngx_mruby.rb`.
 
-A case that starts nginx itself (`nginx_t`, `second_instance`) also runs in
+A case that starts nginx itself (`nginx_t`, `second_instance`,
+`workers_nginx`) also runs in
 the sanitizer cell of CI, where LeakSanitizer appends its report to the
 output of a process that leaked and changes that process's exit status. Run
 such a case once with the sanitizer build (see "Running the tests under
@@ -795,6 +799,8 @@ The ports of the suite are the numbers from 12345 to 12399 and from 18080
 to 18199: the `listen` directives of `test/conf/`, the addresses of
 `add_listener`, the second nginx of `test/t/cases/_second_instance.rb`
 (18116 and 12357), the nginx of `test/t/cases/config_hooks.rb` (18158), the
+nginx with several workers of `test/t/cases/_workers.rb` (18180, 18181 and
+12379, in `test/conf/workers/`), the
 mock LLM upstream of `test/t/cases/_agent_proxy_client.rb` (12372 and
 12373), the stream-only test of `test/t/ngx_mruby.rb` (12399), and the
 ports that the tests, the hook scripts and the expected outputs of
@@ -863,6 +869,96 @@ interval. With an offset above 14568 (32767 - 18199), the ports of 18080 to
 18199 reach the default ephemeral range of Linux (32768 to 60999), where a
 client socket can take a port before nginx binds it. The offsets 0 and 1000
 of the example meet all three conditions.
+
+### Several workers and reloads
+
+The test nginx of `test.sh` is a single process (`master_process off`), so
+it cannot show what happens with several workers or across a reload. A case
+that needs that runs `test/t/cases/_workers.rb` with CRuby through the
+prelude helper `workers_nginx(mode)`, as other cases run
+`_second_instance.rb`. The helper starts an nginx of its own with
+`daemon off`, `master_process on` and several workers, drives it, stops
+it, and prints `key=value` lines, which `workers_nginx` returns as a Hash
+of each key to the Array of its values; the case asserts on them. The
+other cases keep the single process, and the test nginx of `test.sh` does
+not change. `test/t/cases/workers.rb` has the two modes of today:
+
+| Mode | Configuration | Workers | Ports | What the case asserts |
+|---|---|---|---|---|
+| `isolation` | `test/conf/workers/isolation.conf` | 4 | 18180 | Requests to `/worker`, one per connection, until every worker has answered at least twice (at most 200). Each answer is `200` with the pid of its worker (`Nginx::Var#pid`), a pid of one of the four workers, and the count of each handler of the location (`mruby_set_code`, the rewrite, access and content handlers) in a global variable of the state: in the answers of one worker the counts go 1, 2, 3, ..., the same for the four handlers, so each worker has an mrb_state of its own that its requests share. Every worker answered. |
+| `reload` | `test/conf/workers/reload.conf` | 2 | 18181, stream 12379 | A request to `/sleep` and a stream session start, whose handlers sleep (`Nginx::Async.sleep`, `Nginx::Stream::Async.sleep`) until the file `release` exists. The helper writes the configuration of generation 2 and a new `script.rb` (read with `mruby_content_handler ... cache`), and sends SIGHUP to the pid of the pid file. `/generation` and `/script` then answer for generation 2 from a new worker, while both sleeps are still in flight, every old worker has logged `gracefully shutting down`, and the workers that hold the sleeps still run (an old worker without a sleep in flight may have ended). After `release`, the old workers answer with generation 1 (`200` with the pid of the worker that started the sleep, and `stream generation 1`), each after its `gracefully shutting down` in the error log, and then end. Generation 2 answers on both protocols from two new workers. |
+
+Both modes also assert on the end of the run: the stop gives `master
+exited 0` with every worker of every generation ended, the error log has
+no line at the level `error` or above (`error`, `crit`, `alert`, `emerg`),
+no sanitizer line is in its logs, and under valgrind the `ERROR SUMMARY` of
+the master and of every worker counts 0 errors.
+
+What the helper does:
+
+- It writes `build/nginx/workers/MODE/nginx.conf` (`build_dynamic/...`
+  for `BUILD_DYNAMIC_MODULE`) from `test/conf/workers/MODE.conf` of the
+  copy of the suite that `test.sh` runs, so `TEST_SH_PORT_OFFSET` has moved
+  its ports ("Ports" above), with `daemon off`, `master_process on`,
+  `worker_processes N`, `pid build/nginx/workers/MODE/nginx.pid`, `user
+  root` when it runs as root (as in a container, where the workers would
+  run as `nobody` otherwise), and, for a dynamic module build,
+  `load_module` with an absolute path. `__PREFIX__` and `__GENERATION__`
+  in the file become the prefix and the generation. The files are not in
+  `conf.d/`, so the test nginx does not include them.
+- It fails when a port of the mode already accepts connections, starts
+  nginx under `NGINX_RUNNER` (when that is set and not `exec`), waits until
+  the http ports accept connections and the master runs all its workers
+  (`ps`: the processes whose parent is the master), each wait bounded by
+  `NGINX_HEATTIME` (default 60 seconds). The stream ports are not probed:
+  a connection to them runs their session code.
+- The workers are told apart by their pid. `isolation.conf` listens with
+  `reuseport`, so each worker has a listening socket of its own and the
+  kernel spreads the connections over them by the client's address and
+  port (Linux); without it one worker may take most connections.
+- A reload rewrites the configuration and sends SIGHUP to the pid in the
+  pid file. The helper waits for what it then asserts, never for a fixed
+  time: the new answer, and the line `gracefully shutting down` of each old
+  worker. A handler that should still be in flight across the reload waits
+  for a file that the helper writes afterwards, so it is in flight however
+  long the reload takes.
+- It stops nginx with SIGTERM to the master, the pid of the pid file when
+  that is the process it started (otherwise the pid it started), and waits
+  until the master has exited and every worker it saw, of every
+  generation, has ended. The master sends its
+  workers the command to terminate, waits for them and exits; it waits for
+  signals with `sigsuspend()`, so it has none of the gap of the single
+  process that "Stopping nginx" above describes, and one SIGTERM is
+  enough. After `NGINX_HEATTIME` seconds, the master and the workers that
+  still run get SIGKILL. The stop of the test nginx by `test.sh` does not
+  change.
+- The error log of the master and its workers is
+  `build/nginx/logs/workers_MODE.error.log`, at the level `notice`, and the
+  standard output and error of the master go to
+  `build/nginx/logs/workers_MODE.stderr.log`. CI's step "Check for
+  sanitizer reports" reads both, as the other `*.log` files of
+  `build/nginx/logs/`. Under valgrind, each worker is a fork of the master
+  that valgrind follows, so with `%p` in `--log-file` each process writes a
+  log of its own; the helper reads the `ERROR SUMMARY` of the master and
+  of each worker, and CI's step "Check the valgrind reports" reads the same
+  logs.
+
+To add a case: add a mode to `MODES` in `_workers.rb` (the number of
+workers and the ports), its configuration as `test/conf/workers/MODE.conf`
+on free ports of the two ranges ("Ports" above), a function that drives it
+and prints what it sees, and the assertions on those values to a case
+file. Print the responses and the order of the log lines, not a verdict of
+the helper, so that the case asserts on the real answers.
+
+The case runs in every cell that runs the suite, so it is kept short. On
+2026-11-01, with the build of `next` at `bf1b742b7` and this case (nginx
+1.31.8, static module) in a container of Ubuntu 22.04 on an aarch64 host
+with 11 CPUs, `test/t/cases/workers.rb` took 0.87 to 0.91 seconds in 5 runs
+without valgrind (the mode `isolation` about 0.15 seconds with 10 to 15
+requests, the mode `reload` 0.37 to 0.42 seconds), and 5.1 seconds of the
+141 seconds of `test.sh` (from the build to the end) under valgrind with
+the options of CI, where each of the 10 processes of the two nginx writes
+its leak report when it exits.
 
 ### valgrind in CI
 
@@ -989,7 +1085,7 @@ is one of these files:
 |---|---|
 | `build/nginx/logs/error.log` | the test nginx, once it has opened its log (its leak report at exit included) |
 | `build/nginx/logs/stderr.log` | the test client (`test/t/ngx_mruby.rb` and the case files; `test.sh` redirects it), and so the processes that the tests start without redirecting it: `nginx -t`, the `nginx -s quit` of the stream-only test, an nginx before it has opened its log |
-| the other `build/nginx/logs/*.log` | the nginx processes that the tests start with a log of their own, after they have opened it (`stream_only.error.log` of the stream-only test, which runs nginx with `daemon on`) |
+| the other `build/nginx/logs/*.log` | the nginx processes that the tests start with a log of their own, after they have opened it (`stream_only.error.log` of the stream-only test, which runs nginx with `daemon on`; `workers_MODE.error.log` and `workers_MODE.stderr.log` of the master and the workers of `test/t/cases/_workers.rb`, the second from its start) |
 | `build/nginx/second_instance/<mode>/*.log` | the second nginx of `test/t/cases/_second_instance.rb` (`error.log`, `stderr.log`, `stdout.log`) |
 
 `build/nginx/second_instance/` is missing when `test.sh` stopped before the
