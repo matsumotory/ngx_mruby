@@ -175,29 +175,31 @@ upgrading". New behavior, API cleanups and features go to `next`.
   create `next/*` or `v2.x/*` branches (they clash with the existing branch refs).
 - Agents open PRs and fill in every section of the PR template. A PR is a
   draft while its author's work is not finished: the implementation, or a
-  verification that the template asks for, is still to do. A draft is not
-  a way to control CI here: `pull_request` in the workflows has no `types`
-  filter, so a draft and a ready PR start the same runs (when the PR is
-  opened or reopened, and when a commit is pushed to its head), a move of
-  the base alone starts none (hence the update of the branch in condition
-  2 of "Review and merge"), and marking a PR ready for review starts none.
-  When the author's work and verification are done, the author marks the
-  PR ready for review (`gh pr ready`) and asks for the review below; a PR
-  is not kept as a draft because it waits for that review. Ready means
-  handed to review, not approved and not allowed to merge: the conditions
-  of "Review and merge" decide that. A PR that stays a draft says at the
-  top of its body why (what is unfinished or not verified), who continues
-  it, and what ends the draft.
+  verification that the template asks for, is still to do. A draft runs no
+  CI: the workflows skip their jobs for a draft, and `test.yml` reports
+  `ci-ok (draft)`, not `ci-ok`. Before marking the PR ready, the author
+  runs the local checks that the change needs (the suite, `sh
+  test/ci/changes_test.sh`, the site's checks, and what the template asks
+  for) and quotes them under "How was this tested". Then the author marks
+  the PR ready for review (`gh pr ready`), which starts the CI run and asks
+  for the review below; every later push to the head runs CI again, and
+  cancels the run of the previous head. A PR is not kept as a draft
+  because it waits for that review, and is not marked ready to see what CI
+  says. Ready means handed to review, not approved and not allowed to
+  merge: the conditions of "Review and merge" decide that. A PR that stays
+  a draft says at the top of its body why (what is unfinished or not
+  verified), who continues it, and what ends the draft.
 - The PR body says which commits each result stands for: for the runs
   under "How was this tested", the commit they ran on; for the CI run that
   condition 2 of "Review and merge" counts, the head commit and the base
   commit of its merge ref. A job that a run skipped passed nothing, except
   where "Which jobs a run starts" in `docs/test/README.md` says that
-  `ci-ok` passes the skip. When the base moves, or the PR is marked ready,
-  the session that holds the PR says which checks have to run again and
-  which have not run yet. A check that the change cannot affect is not run
-  for the sake of it: which jobs a run builds is decided by the `changes`
-  job of `test.yml`, not by running everything.
+  `ci-ok` passes the skip. Which jobs a run starts depends on the kind of
+  files that the PR changes, as `test/ci/changes.sh` classifies them (the
+  table in "Which jobs a run starts"): a check that the change cannot
+  affect is not run for the sake of it. When the base moves, the session
+  that holds the PR says, by condition 2 of "Review and merge", whether
+  the run still counts.
 - A PR that changes behavior a configuration, script or build can observe (a
   bug fix, a raised build requirement and a change of the bundled mruby or
   default mrbgems included; see `docs/releases/README.md` for what counts)
@@ -256,13 +258,24 @@ these hold:
 
 1. The base branch follows the branch table above.
 2. Every CI check on the head commit passed (`ci-ok`, the check that the
-   branch rules of `master` and `next` require),
-   on a run whose merge ref includes the current base. When the base moved
-   after the last run, update the branch and let CI run again. A run made
-   green by skipping or disabling tests does not count. A run in which the
-   `changes` job of `test.yml` skipped the build jobs, because the PR
-   changes no input of the binary or the tests, counts ("Which jobs a run
-   starts" in `docs/test/README.md`).
+   branch rules of `master` and `next` require) on the PR's latest run
+   for that commit. The run counts as long as the base has gained no file
+   of a category that the PR also changes since the base of that run. With
+   `BASE_AT_RUN` the base commit of the run's merge ref (the first parent
+   of `refs/pull/N/merge` at that time, which the `changes` job prints),
+   compare the output of `sh test/ci/changes.sh BASE_AT_RUN origin/<base>`
+   with that of `sh test/ci/changes.sh "$(git merge-base origin/<base>
+   HEAD)" HEAD` (the PR's own files). Three groups
+   count as one category each, because their checks read each other's
+   files: `code` and `tests` (the build runs the tests on the code), `docs`,
+   `site` and `examples` (the site builds and checks all three), and
+   `workflows`. When a group is `true` in both outputs, the branch is
+   updated and CI runs again; otherwise it is not. The rulesets do
+   not require an up-to-date branch, so this condition is the check. A run
+   made green by skipping or disabling tests does not count. A run in
+   which the `changes` job of `test.yml` skipped jobs that the PR's files
+   do not need counts ("Which jobs a run starts" in `docs/test/README.md`
+   has the table of what runs for which category).
 3. The change is inside the agreed scope, or is a bug fix with the two-commit
    evidence described under "Writing tests", or changes documentation only.
    In every case, a change of behavior that a configuration, script or build

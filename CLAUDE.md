@@ -23,8 +23,8 @@
   `test.sh` runs on the same machine. The performance comparison
   (`sh test/perf/compare.sh BASE_DIR`) builds two trees: the same applies.
 - Pull requests: `gh pr create --draft --base <master|next>`, with a body that follows
-  every section of `.github/PULL_REQUEST_TEMPLATE.md`. A draft does not change what
-  CI runs. When the work and the verification that the template asks for are done,
+  every section of `.github/PULL_REQUEST_TEMPLATE.md`. A draft runs no CI; ready
+  starts it. When the work and the local checks that the template asks for are done,
   `gh pr ready <number>`, then have a separate agent review the PR with the checklist
   in AGENTS.md, post its findings as a PR comment, and merge with a merge commit when
   the conditions in AGENTS.md hold ("Branches and pull requests" in AGENTS.md says

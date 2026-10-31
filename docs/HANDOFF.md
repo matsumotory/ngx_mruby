@@ -31,13 +31,9 @@
   [English](https://ngx.mruby.org/) and [Japanese](https://ngx.mruby.org/ja/).
   The run retains the `live-screenshots` artifact (`13031774147`) and its
   completed source-revision evidence.
-- The site CI scope and parallel browser lanes are
-  [#677](https://github.com/matsumotory/ngx_mruby/pull/677) (the section
-  "Site CI scope and parallel lanes" below). The runtime
-  CI policy merged into `next` with
-  [#676](https://github.com/matsumotory/ngx_mruby/pull/676) (`48c04d43e`); its
-  `master` side, [#679](https://github.com/matsumotory/ngx_mruby/pull/679), is
-  open. Neither was needed for this publication.
+- The site CI scope and parallel browser lanes
+  ([#677](https://github.com/matsumotory/ngx_mruby/pull/677)) and the CI
+  policy (the CI row of the queue) were not needed for this publication.
 - The merged topic branches of #672 and #673 are deleted on GitHub. The public
   record of this work is the two PRs, their review comments above and the runs
   and artifacts they link.
@@ -76,19 +72,6 @@ that are not written down elsewhere yet, the work in progress and the queue.
 - The statements about branches, pull requests and issues were checked with
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
-
-## Site CI scope and parallel lanes, 2026-10-31
-
-- [#677](https://github.com/matsumotory/ngx_mruby/pull/677) splits the browser
-  checks of `site.yml` into six lanes and a maintenance lane that read one
-  artifact of the same run; the deploy job needs `site-ok`, which needs all of
-  them. A pull request that only edits the prose or links of pages under
-  `docs/` checks those pages, in both languages; every other change, and every
-  push or dispatch, which deploys, checks all pages. `test.yml` is unchanged
-  (the runtime CI policy is #676 on `next` and #679 on `master`). See
-  [Site CI change scope](test/README.md#site-ci-change-scope) for the lanes
-  and the timing of run 41173244320.
-- The review and the re-review of its must fix items are comments on #677.
 
 ## Landing-page hierarchy, 2026-10-30
 
@@ -617,12 +600,11 @@ the same with `--base master`. Each pull request says what it changed.
 Open pull requests checked at 03:49 JST: none. This integration is on
 `codex/merge-master-site-continuation`; its PR targets `next` and is kept
 draft until the final checks and independent review pass. #654, #656 and
-#657 are merged. Check again before starting another row. Added on
-2026-10-31: [#679](https://github.com/matsumotory/ngx_mruby/pull/679)
-(`claude/ci-skip-docs-master`, the CI row of the queue) and
-[#685](https://github.com/matsumotory/ngx_mruby/pull/685)
-(`claude/valgrind-nightly-robust-next`) are open as drafts; #676 is
-merged.
+#657 are merged. Check again before starting another row. On
+2026-10-31, the pull requests of the CI row of the queue: #676, #685 and
+[#686](https://github.com/matsumotory/ngx_mruby/pull/686) on `next`, and
+[#679](https://github.com/matsumotory/ngx_mruby/pull/679) on `master`; the
+row says which are merged.
 
 
 ## Decisions
@@ -728,7 +710,7 @@ Taken up and still open: none.
 | nginx-tests with the modules that its skipped files need: a build with the options of `test.sh` and `--with-http_v2_module`, `--with-http_v3_module`, `--with-stream_ssl_module`, `--with-mail` and the other modules that "Results of nginx-tests" in `docs/test/README.md` lists (in the CI run of #602, 189 of the 209 skipped files need a module that `test.sh` does not build), with and without ngx_mruby, in the `nginx-tests` workflow | `next` | Ready to start: #602 is merged |
 | nginx-tests with ngx_mruby code configured: runs that add handlers or filters with code for every request through `TEST_NGINX_GLOBALS_HTTP` (the Pillar E row of the plan), compared with the run without code. The pull request decides which code: a rewrite handler that ends without `Nginx.return` sends no response (the row on it above), so that handler would fail most files for a known reason | `next` | Ready to start: #602 is merged |
 | Test harness rewrite (step 2 of section 6 of the plan; Pillar E): [#635](https://github.com/matsumotory/ngx_mruby/pull/635) (merged, `c4e6ac6cc`) made `test.sh` stop only the nginx that it started, by its pid, with no `killall` or `pkill`, and send SIGTERM again while the single nginx process still runs, because that process can miss a SIGTERM that arrives right before it waits for events (the run at `7926f72`, where nginx stayed in `epoll_wait()` for 20 minutes after it logged the SIGTERM: "Stopping nginx" in `docs/test/README.md` has the cause and the measurements). [#641](https://github.com/matsumotory/ngx_mruby/pull/641) (merged, `be559a017`) added `TEST_SH_PORT_OFFSET`, which moves every port of the suite, so that two checkouts can run `test.sh` at the same time ("Ports" in `docs/test/README.md`). Still to do, in pull requests of their own: `master_process on` with several workers and reload cases, requests from CRuby instead of the client built into the test mruby, and HTTP/2 and HTTP/3 clients. A should fix of the review of #635 waits for the pull request that next changes `test/build_release.sh`, an input of the `perf` job: its comment still says that `test.sh` kills every running nginx. The readiness wait of #593 is the first part, on `next` since the merge of `master` at `6b27f08da` | `next` | Ready to start: `master_process on` with several workers, on top of #641; no pull request yet |
-| CI runs only the jobs that a change needs: the owner's decision of 2026-10-29 at 23:25 JST, in a session's question, with the option "1と2をリセット後に (推奨)": (1) a pull request whose files are not inputs of the binary or the tests skips the `build` matrix, the sanitizer and valgrind cells, `soak` and `perf`, and `ci-ok` still passes; (2) a push to `master` or `next` does not run the matrix again. On 2026-10-29, the 20 jobs that the account runs at a time and the about 20 jobs of a run of `test.yml` made runs wait 30 to 45 minutes, where a run alone takes 5 to 6 minutes. [#676](https://github.com/matsumotory/ngx_mruby/pull/676) does it on `next` with the job `changes` of `test.yml` ("Which jobs a run starts" in `docs/test/README.md`). The same change on `master`: [#679](https://github.com/matsumotory/ngx_mruby/pull/679). Both rulesets require `ci-ok` but not an up-to-date branch, so the push skip relies on condition 2 of "Review and merge"; whether to require it is the owner's call. On the head branch of a pull request, a run under valgrind that `valgrind-nightly.yml` started and a newer push cancelled left a failed `ci-ok` on the head, and an HTTP 500 of one call of the API failed the nightly job (seen on #679 on 2026-10-31): #679 names the job `ci-ok (valgrind)` in such a run and reads the run's result with retries, and [#685](https://github.com/matsumotory/ngx_mruby/pull/685) does the same on `next` | `next`, then `master` | #676 is merged (`next`). #679, which also takes in #674, and #685 are drafts |
+| CI runs only the jobs that a change needs. (1) The owner's decision of 2026-10-29 at 23:25 JST, in a session's question, with the option "1と2をリセット後に (推奨)": a pull request whose files are not inputs of the binary or the tests skips the `build` matrix, the sanitizer and valgrind cells, `soak` and `perf`, and `ci-ok` still passes; a push to `master` or `next` does not run the matrix again. [#676](https://github.com/matsumotory/ngx_mruby/pull/676) (merged, `next`) does it with the job `changes` of `test.yml`, and [#685](https://github.com/matsumotory/ngx_mruby/pull/685) (merged, `next`) names the job `ci-ok (valgrind)` in the nightly run and reads its result with retries. (2) On 2026-10-31 (UTC), `test.yml` ran 94 times (14 on one pull request, 11 on another), the dispatch of the valgrind run of every cell for pull requests 11 times, `site` 50 times and CodeQL 25 times, all 10 open pull requests waited for CI, and every merge into a base was followed by an update of the branch and a run of everything. The owner: 「必要なciとそうじゃないやつはしっかり分けようぜ、変更内容次第でやるテストやciも分離すべき。なんでも過剰にやればいいんじゃない、変化しやすい開発プロセスにするのが大事。現状10並列でci待ちで終わったと思ったらmainが更新されたのでまたciとか永遠に終わらない」 ("separate the CI that is needed from the CI that is not, and split the tests and CI by the content of the change; doing everything excessively is not the point, a development process that is easy to change is"). The owner's decisions of 2026-10-31, in a session's question, with the recommended options: the rulesets no longer require an up-to-date branch (`strict_required_status_checks_policy` is `false`); a draft pull request runs no CI, marking it ready for review starts the run and later pushes run it again, and the author runs the local checks before ready; CodeQL runs only for changes of `src/`, `mrbgems/` and `.github/workflows/`, pushes to `master` and `next`, and weekly, in a workflow of the repository (GitHub's default setup is off); the checks are split by the kind of change, the valgrind run of every cell is nightly only, and a push to `master` or `next` runs nothing but deploys. #686 (`next`) writes them in AGENTS.md ("Branches and pull requests", condition 2 of "Review and merge") and `docs/test/README.md`, with `test/ci/changes.sh`, the draft skip in the workflows and `codeql.yml`; the same change on `master` comes after #679 | `next`, then `master` | #679 (`master`, which also takes in #674) is merging; then the pull request of the same change on `master`, whose state this row takes when `master` is merged into `next` |
 | nginx floor for v3 (item 2 of section 7 of the plan): drop the cells for nginx 1.26.3 and 1.28.3 from the `build` matrix of `.github/workflows/test.yml` and document the floor of 1.30 stable and 1.31 mainline | `next` | Ready to start: #601's change to `.github/workflows/test.yml` is on `next` since the merge of `master` at `6b27f08da` |
 | OpenSSL 3.5 and 4.0 (item 3 of section 7 of the plan): cells for OpenSSL 3.5 as the baseline and 4.0 in `.github/workflows/test.yml`, which builds `1.1.1w` today; drop 1.1.1 and 3.0, and check ENGINE and the removed APIs in ngx_mruby and the gems | `next` | Ready to start: #601's change to `.github/workflows/test.yml` is on `next` since the merge of `master` at `6b27f08da` |
 | `build_config.rb` rewrite with explicit gems (step 3 of section 6; Pillar A): `iij/mruby-env` and `iij/mruby-process` replaced by core gems, the choice between core `mruby-regexp` and `mruby-onig-regexp` (item 1 of section 7 keeps onig-regexp for 3.0), `monochromegane/mruby-secure-random` and `iij/mruby-digest` replaced, and `mruby-vedis` and `mruby-localmemcache` out of the default build | `next` | Ready to start: #606, which edits the same file, is merged. The part that replaces `env` and `process` with the core gems needs the subtree at 4.1.0-rc2 (the row "mruby 4.1.0"); the other parts do not |
