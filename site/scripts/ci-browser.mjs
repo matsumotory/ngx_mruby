@@ -11,10 +11,7 @@ export function commandsFor(plan, lane) {
   if (plan.mode === 'none') return [];
   const pages = plan.mode === 'targeted' ? plan.pages : null;
   if (pages && !pages.length) throw new Error('empty targeted scope');
-  if (lane.startsWith('styles-')) return [
-    ['check-styles.mjs', '--engine', lane.slice(7)],
-    ...(!pages ? [['check-styles.mjs', '--engine', lane.slice(7), '--pages', '/,/ja/', '--width', '375']] : []),
-  ];
+  if (lane.startsWith('styles-')) return [['check-styles.mjs', '--engine', lane.slice(7)]];
   if (lane === 'interaction') return [
     ...(!pages || pages.some(p => p === '/' || p === '/ja/') ? [['check-copy-idle.mjs'], ['check-home-interaction.mjs']] : []),
     ['check-code-layout.mjs'],

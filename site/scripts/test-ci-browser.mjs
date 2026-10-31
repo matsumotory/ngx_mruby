@@ -7,14 +7,14 @@ import {scopedPages,codePageScope} from './lib/ci-pages.mjs';
 import {japaneseNoticePages} from './lib/site.mjs';
 const full={mode:'full',pages:[]}, target={mode:'targeted',pages:['/guides/install/','/ja/guides/install/']};
 assert.equal(LANES.length,6);
-assert.deepEqual(commandsFor(full,'styles-chromium'),[['check-styles.mjs','--engine','chromium'],['check-styles.mjs','--engine','chromium','--pages','/,/ja/','--width','375']]);
-assert.deepEqual(commandsFor(full,'styles-webkit'),[['check-styles.mjs','--engine','webkit'],['check-styles.mjs','--engine','webkit','--pages','/,/ja/','--width','375']]);
+assert.deepEqual(commandsFor(full,'styles-chromium'),[['check-styles.mjs','--engine','chromium']]);
+assert.deepEqual(commandsFor(full,'styles-webkit'),[['check-styles.mjs','--engine','webkit']]);
 assert.deepEqual(commandsFor(full,'interaction'),[['check-copy-idle.mjs'],['check-home-interaction.mjs'],['check-code-layout.mjs']]);
 assert.deepEqual(commandsFor(target,'interaction'),[['check-code-layout.mjs']]);
 assert.deepEqual(commandsFor(target,'japanese'),[['check-japanese-lines.mjs','--pages','/ja/guides/install/']]);
 assert.deepEqual(commandsFor(full,'screenshots'),[['check-project-badges.mjs','--browser'],['screenshots.mjs','--out','build-screenshots']]);
-// The badge's 375px acceptance is covered by its own real-image/footer checks
-// and the style lanes, not a new width requirement for existing docs prose.
+// The badge's 375px acceptance is covered by check-project-badges --browser,
+// not a new width requirement for the style lanes or existing docs prose.
 assert.deepEqual(commandsFor(full,'japanese'),[['check-japanese-lines.mjs']]);
 assert.deepEqual(commandsFor(target,'styles-chromium'),[['check-styles.mjs','--engine','chromium']]);
 assert.deepEqual(commandsFor(target,'screenshots'),[['ci-screenshots.mjs','--out','build-screenshots']]);
@@ -72,4 +72,4 @@ assert.ok(workflow.includes('measure_scope: ${{ steps.scope.outputs.measure_scop
 console.log('Publication regression checks and policy-only measurement wiring: PASS');
 
 assert.ok(workflow.includes('node scripts/check-project-badges.mjs'));
-console.log('Quality badge markup, full 32-state pixels and extra 375px style checks remain wired after lane integration: PASS');
+console.log('Quality badge markup and 375px footer checks remain wired after lane integration: PASS');
