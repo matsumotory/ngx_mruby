@@ -657,9 +657,13 @@ jobs:
   # - with the input "valgrind" (the nightly run): "ci-ok (valgrind)". The
   #   run builds the tip of the branch at the time of the dispatch, and a
   #   cancelled one would otherwise leave a failed ci-ok on that commit.
-  #   valgrind-nightly.yml reads the result of the run, not this name.
+  #   valgrind-nightly.yml reads the result of the run, not this name;
+  # - any other "Run workflow": "ci-ok (manual)". It tests the head of a
+  #   branch, not the merge commit of a pull request, and as ci-ok on that
+  #   head it would pass the required check of the branch's pull request
+  #   before the pull request's own run had passed.
   ci-ok:
-    name: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'ci-ok (draft)' || github.event_name != 'workflow_dispatch' && 'ci-ok' || inputs.base != '' && 'ci-ok (dry run)' || inputs.valgrind && 'ci-ok (valgrind)' || 'ci-ok' }}
+    name: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'ci-ok (draft)' || github.event_name != 'workflow_dispatch' && 'ci-ok' || inputs.base != '' && 'ci-ok (dry run)' || inputs.valgrind && 'ci-ok (valgrind)' || 'ci-ok (manual)' }}
     needs: [changes, build, soak, files]
     if: always()
     runs-on: ubuntu-latest

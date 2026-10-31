@@ -163,7 +163,10 @@ A change of `test.yml` alone is `tests`, so its run does not start the
 whole matrix, the sanitizer cell, `soak` or the comparison of `perf`. A
 pull request that changes those jobs in `test.yml` runs them with "Run
 workflow" on its branch (`gh workflow run test.yml --ref <branch>`), whose
-result is `ci-ok`, or the comparison with the label `perf`.
+job is named `ci-ok (manual)`, or the comparison with the label `perf`.
+The pull request quotes that run as evidence; it is not the run that
+condition 2 of "Review and merge" counts, which is the run of the pull
+request.
 
 For "Run workflow" with the input `base` (a branch or a commit id), the
 files are those that the branch changes since its merge base with `base`,
@@ -178,7 +181,10 @@ person who starts the run chooses `base`, so its result is not the check
 that the rulesets require of the commit. In the same way, a run with the
 input `valgrind` names it `ci-ok (valgrind)`: such a run builds the tip of
 the branch when it starts, so a run that is cancelled would otherwise
-leave a failed `ci-ok` on that commit. `valgrind-nightly.yml` reads the
+leave a failed `ci-ok` on that commit. Every other "Run workflow" names it
+`ci-ok (manual)`: it tests the head of the branch, not the merge commit of
+a pull request, and as `ci-ok` on the head it would pass the required
+check of a pull request before the pull request's own run has passed. `valgrind-nightly.yml` reads the
 result of the run, not the name of the job.
 
 A push to `master` or `next` runs only `changes`, `files` and `ci-ok`. Both
@@ -379,7 +385,10 @@ Wednesday at 04:37 UTC (GitHub runs a schedule only from the file on
 `master`, so the weekly run scans `master`), and on "Run workflow". It
 replaces GitHub's default setup of code scanning, which ran on every pull
 request and every push; the default setup is turned off in the repository
-settings, which the owner manages.
+settings, which the owner manages. Until `master` has the same file (its
+pull request follows this change), pull requests to `master`, pushes to it
+and the weekly run, which runs from the file on `master`, are not scanned;
+the same holds for the draft skip of the workflows of `master`.
 
 All three languages use `build-mode: none`: for C and C++ CodeQL reads the
 sources without a build of nginx and mruby, so the job needs no build.
@@ -2183,8 +2192,8 @@ The independent browser lanes are:
 
 The v2 input is fetched independently from `master`, so it is **never assumed
 unchanged from the next-branch diff**. Maintenance Japanese lines, every v2 code
-surface and both version search indexes remain in a separate always-running
-lane. The same lane also retains the read-only browser fixture and local
+surface and both version search indexes remain in a separate lane, which runs
+on every push and dispatch, and on a pull request when the browser lanes run. The same lane also retains the read-only browser fixture and local
 predeploy smoke screenshots from the publication workflow. Homepage copy-idle
 checks remain in full interaction coverage; postdeploy verification is retained.
 The union of full 3.x and full v2 code checks is tested against the former

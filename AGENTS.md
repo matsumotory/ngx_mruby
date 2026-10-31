@@ -270,7 +270,12 @@ these hold:
    files: `code` and `tests` (the build runs the tests on the code), `docs`,
    `site` and `examples` (the site builds and checks all three), and
    `workflows`. When a group is `true` in both outputs, the branch is
-   updated and CI runs again; otherwise it is not. The rulesets do
+   updated and CI runs again; otherwise it is not. The checks of the site
+   and the examples also read `src/`, `test/` and `build_config.rb` (the
+   directive tables, the cases, the gems), so a change of `code` or
+   `tests` in the base can break a PR of the second group that this rule
+   lets merge; the run of `site.yml` on the push to `next`, which must pass
+   before it deploys, catches it, and the fix is a PR of its own. The rulesets do
    not require an up-to-date branch, so this condition is the check. A run
    made green by skipping or disabling tests does not count. A run in
    which the `changes` job of `test.yml` skipped jobs that the PR's files
