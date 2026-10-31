@@ -24,34 +24,22 @@
   No GitHub approval review is represented.
 - Production [run 41173076141](https://github.com/matsumotory/ngx_mruby/actions/runs/41173076141)
   passed build, maintenance-entry, deployment and live verification. Deployment
-  `7454954421` serves `next@f9baa5ef`; its 2.x documentation source is
-  `master@263bd10e`. The live verifier matched the deployment SHA, same-run
+  `7454954421` published `next@f9baa5ef`, with the 2.x documentation of
+  `master@263bd10e`; every later push to `next` deploys again. The live verifier matched the deployment SHA, same-run
   artifact evidence and exact HTML on twelve read-only page visits. Desktop
   and mobile pixels were checked separately. Public entries:
   [English](https://ngx.mruby.org/) and [Japanese](https://ngx.mruby.org/ja/).
   The run retains the `live-screenshots` artifact (`13031774147`) and its
   completed source-revision evidence.
-- Site CI scope/parallelism is [Draft #677](https://github.com/matsumotory/ngx_mruby/pull/677),
-  a separate task for Claude. Runtime CI policy is separate
-  [#676](https://github.com/matsumotory/ngx_mruby/pull/676) (`next`) and
-  [#679](https://github.com/matsumotory/ngx_mruby/pull/679) (`master`). These are
-  not prerequisites for this site publication and are not merged by the site task.
-- Cleanup checked on 2026-10-31 at 06:14 UTC: removed both merged
-  task branches locally and on GitHub, the clean v2 baseline/entry worktrees,
-  four byte-verified duplicate screenshot archives and the site worker's unused
-  npm cache.
-  No other worker's files, uncommitted work or preview processes were removed.
-  The site worker retains the following until their stated conditions hold:
-  - An unmerged local checkpoint of the initial v2 draft is retained as a
-    recovery reference. Remove only after its unique history is
-    confirmed obsolete; do not force-delete it as part of routine cleanup.
-  - Raw before/after and live evidence under `.claude/tmp/cloud-site/`: retained
-    for the handoff review. Remove after the receiving reviewer no longer needs
-    those local copies; public CI artifacts and review links remain the record.
-  - Node tools under `.claude/tmp/cloud-site/tools/`: retained for a later
-    cloud continuation; the CI tuning worker has finished using them. The site
-    worker owns this environment record. Remove when the cloud workspace is
-    retired or its toolchain is replaced, after checking for active users.
+- The site CI scope and parallel browser lanes are
+  [#677](https://github.com/matsumotory/ngx_mruby/pull/677), open. The runtime
+  CI policy merged into `next` with
+  [#676](https://github.com/matsumotory/ngx_mruby/pull/676) (`48c04d43e`); its
+  `master` side, [#679](https://github.com/matsumotory/ngx_mruby/pull/679), is
+  open. Neither was needed for this publication.
+- The merged topic branches of #672 and #673 are deleted on GitHub. The public
+  record of this work is the two PRs, their review comments above and the runs
+  and artifacts they link.
 
 ## How to use this file
 
