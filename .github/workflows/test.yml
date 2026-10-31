@@ -3,6 +3,14 @@ name: test
 # Pushes to topic branches (claude/*, backport/*, ...) do not run here:
 # they are tested through their pull request, so the matrix runs once.
 # Use "Run workflow" (workflow_dispatch) to test a branch without a PR.
+#
+# valgrind (docs/test/README.md, "valgrind in CI"): on pull requests and
+# pushes, one cell of the build matrix runs nginx under valgrind and the
+# others run it directly. A manual run with the input "valgrind" runs every
+# cell under valgrind except the sanitizer cell; the nightly run that
+# .github/workflows/valgrind-nightly.yml starts is such a run. A cell under
+# valgrind fails when valgrind reports an error, or a leak that
+# test/valgrind.supp does not suppress.
 on:
   push:
     branches:
@@ -17,12 +25,19 @@ on:
       - next
       - 'v*.x'
   workflow_dispatch:
+    inputs:
+      valgrind:
+        description: 'Run every cell of the build matrix under valgrind (the nightly run)'
+        type: boolean
+        default: false
 
 # A new push to a pull request cancels the run for its previous commit.
 # Runs for branch and tag pushes are not cancelled once started; a newer
 # push to the same ref waits for them (only the newest waiting run is kept).
+# A run with every cell under valgrind has a group of its own, so that it
+# and a push to the same branch do not replace each other while waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}${{ inputs.valgrind && '-valgrind' || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -117,11 +132,20 @@ jobs:
           - "TRUE"
         SANITIZER:
           - ""
+        # The cell that runs nginx under valgrind on every run, pull requests
+        # included: the job "build (1.31.8)" (GitHub leaves a key that include
+        # adds to a combination out of the job name). The other cells without
+        # a sanitizer run nginx under valgrind only in a run with the input
+        # "valgrind" (the nightly run).
+        include:
+          - NGINX_VERSION: 1.31.8
+            BUILD_DYNAMIC_MODULE: ""
+            BUILD_WITH_OPENSSL_SRC: ""
+            SANITIZER: ""
+            VALGRIND_ON_EVERY_RUN: valgrind
         # One more job: nginx, ngx_mruby and mruby built with AddressSanitizer
         # (LeakSanitizer included) and UndefinedBehaviorSanitizer. It runs nginx
-        # directly, because valgrind does not work with ASan; the other jobs
-        # keep running nginx under valgrind.
-        include:
+        # directly, because valgrind does not work with ASan.
           - NGINX_VERSION: 1.31.8
             BUILD_DYNAMIC_MODULE: ""
             BUILD_WITH_OPENSSL_SRC: ""
@@ -200,10 +224,28 @@ jobs:
           BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
           SANITIZER: ${{ matrix.SANITIZER }}
           NUM_THREADS_ENV: 1
-          NGINX_RUNNER: ${{ matrix.SANITIZER == '' && 'valgrind' || 'exec' }}
+          VALGRIND: ${{ matrix.SANITIZER == '' && (matrix.VALGRIND_ON_EVERY_RUN != '' || inputs.valgrind) && 'TRUE' || '' }}
           # NGINX_HEATTIME is left to the default of test.sh: the upper bound of
           # the wait for nginx to listen, which ends as soon as nginx does.
         run: |
+          if [ -n "${VALGRIND}" ]; then
+            # docs/test/README.md, "valgrind in CI". A memory error (an
+            # invalid read or write, a jump on an uninitialised value, an
+            # invalid free) and a leak of the kinds definite and indirect
+            # are errors, unless test/valgrind.supp suppresses them.
+            # Possibly lost blocks are printed with their stacks, but are
+            # not errors: their number changes from run to run with the
+            # connections that are still open when nginx exits.
+            # --error-exitcode makes valgrind exit with 99 when it counted
+            # an error; test.sh prints the exit status of nginx but does not
+            # keep it in its own, so the next step reads the ERROR SUMMARY of
+            # the log, which is the same count. One log per process (%p).
+            mkdir -p "${RUNNER_TEMP}/valgrind"
+            export NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=${PWD}/test/valgrind.supp --log-file=${RUNNER_TEMP}/valgrind/valgrind.%p.log"
+          else
+            export NGINX_RUNNER=exec
+          fi
+          echo "NGINX_RUNNER=${NGINX_RUNNER}"
           echo "NGINX_SRC_MAJOR=$(echo $NGINX_VERSION | cut -d '.' -f 1)" > nginx_version
           echo "NGINX_SRC_MINOR=$(echo $NGINX_VERSION | cut -d '.' -f 2)" >> nginx_version
           echo "NGINX_SRC_PATCH=$(echo $NGINX_VERSION | cut -d '.' -f 3)" >> nginx_version
@@ -272,6 +314,51 @@ jobs:
             exit 1
           fi
           echo "no sanitizer reports in" $logs
+
+      # The valgrind logs of the step above, one per process: the test nginx,
+      # and a process that it forked, if any (a fork that runs another
+      # program leaves a log without a summary, because valgrind does not
+      # follow the new program). Each log is printed, and the step fails
+      # unless one log has an ERROR SUMMARY and every ERROR SUMMARY counts 0
+      # errors. A missing summary of the test nginx (valgrind ended before
+      # it wrote one) leaves no summary at all, and fails.
+      - name: Check the valgrind reports
+        if: ${{ !cancelled() && matrix.SANITIZER == '' && (matrix.VALGRIND_ON_EVERY_RUN != '' || inputs.valgrind) }}
+        run: |
+          dir="${RUNNER_TEMP}/valgrind"
+          shopt -s nullglob
+          logs=("${dir}"/valgrind.*.log)
+          if [ "${#logs[@]}" -eq 0 ]; then
+            echo "::error title=valgrind::no valgrind log in ${dir}: nginx did not start under valgrind"
+            exit 1
+          fi
+          summaries=0
+          failed=0
+          for log in "${logs[@]}"; do
+            echo "=== ${log}"
+            cat "${log}"
+            # The step runs with bash -e -o pipefail: without "|| true", a
+            # log without a summary (grep exits 1) would end the step here.
+            line=$(grep -E '^==[0-9]+== ERROR SUMMARY: ' "${log}" | tail -n 1) || true
+            if [ -z "${line}" ]; then
+              echo "(no ERROR SUMMARY in ${log})"
+              continue
+            fi
+            summaries=$((summaries + 1))
+            if ! [[ "${line}" =~ ERROR\ SUMMARY:\ 0\ errors ]]; then
+              echo "::error title=valgrind::${log##*/}: ${line#*== }"
+              failed=1
+            fi
+          done
+          if [ "${summaries}" -eq 0 ]; then
+            echo "::error title=valgrind::no valgrind log has an ERROR SUMMARY: valgrind did not finish"
+            exit 1
+          fi
+          if [ "${failed}" -ne 0 ]; then
+            echo "::error title=valgrind::valgrind reported errors or leaks (see the logs above and docs/test/README.md, \"valgrind in CI\")"
+            exit 1
+          fi
+          echo "valgrind: ${summaries} of ${#logs[@]} logs have an ERROR SUMMARY, all with 0 errors"
 
       - name: after_failure
         if: failure()
