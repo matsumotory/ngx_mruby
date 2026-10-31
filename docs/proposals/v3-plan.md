@@ -686,7 +686,7 @@ the record of what was decided and why.
    question, with the option "rc2 へ上げる (推奨)" ("move up to rc2"): `next`
    bundles mruby 4.1.0-rc2 now, in one pull request, and moves to 4.1.0 in
    a small subtree pull request when 4.1.0 is tagged; it no longer waits for
-   the tag. Carried out for 4.1.0-rc2 in #PRB, which keeps
+   the tag. Carried out for 4.1.0-rc2 in #678, which keeps
    mruby-onig-regexp, iij/mruby-env and iij/mruby-process (their
    replacement is the Pillar A row). The build of mruby 4.1.0-rc2 needs Ruby
    3.0 or later.

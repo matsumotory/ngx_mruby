@@ -14,9 +14,9 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
 
 ## ビルド
 
-- Ruby 3.0以降でビルドしてください。同梱のmrubyのビルドは、Ruby 2.xでは止まります。詳しくは[同梱のmrubyのビルドにRuby 3.0以降が要る](../../releases/v3.0.0.ja.md#同梱のmrubyのビルドにruby-30以降が要るprb)にあります。`ruby --version`は、`PATH`にあるRubyのバージョンを出力します。
-- このリリースの`build_config.rb`を使うなら、モジュールをビルドし直してください。同梱のmrubyも一緒にビルドします。詳しくは[同梱のmrubyが3.3.0から4.1.0-rc2になる](../../releases/v3.0.0.ja.md#同梱のmrubyが330から410-rc2になる561-prb)にあります。
-- 自前の`build_config.rb`を使うなら、コアのgemを選ぶ行を見つけてください。詳しくは[自前の`build_config.rb`は、mruby 4.1のコアgemの変更に合わせる必要がある](../../releases/v3.0.0.ja.md#自前のbuild_configrbはmruby-41のコアgemの変更に合わせる必要がある561-prb)にあります。
+- Ruby 3.0以降でビルドしてください。同梱のmrubyのビルドは、Ruby 2.xでは止まります。詳しくは[同梱のmrubyのビルドにRuby 3.0以降が要る](../../releases/v3.0.0.ja.md#同梱のmrubyのビルドにruby-30以降が要る678)にあります。`ruby --version`は、`PATH`にあるRubyのバージョンを出力します。
+- このリリースの`build_config.rb`を使うなら、モジュールをビルドし直してください。同梱のmrubyも一緒にビルドします。詳しくは[同梱のmrubyが3.3.0から4.1.0-rc2になる](../../releases/v3.0.0.ja.md#同梱のmrubyが330から410-rc2になる561-678)にあります。
+- 自前の`build_config.rb`を使うなら、コアのgemを選ぶ行を見つけてください。詳しくは[自前の`build_config.rb`は、mruby 4.1のコアgemの変更に合わせる必要がある](../../releases/v3.0.0.ja.md#自前のbuild_configrbはmruby-41のコアgemの変更に合わせる必要がある561-678)にあります。
 
   ```sh
   grep -nE 'gembox|mruby-print|hal-posix|mruby-task|mruby-encoding|mruby-sleep|mruby-env|mruby-process|regexp|ngx_mruby_core_gems' build_config.rb
@@ -125,7 +125,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   end
   ```
 
-- [文字列の中の`"#@ivar"`、`"#@@cvar"`、`"#$global"`が変数を展開する](../../releases/v3.0.0.ja.md#文字列の中のivarcvarglobalが変数を展開するprb)：ダブルクォートの文字列、ヒアドキュメント、バッククォートのコマンドの中の`#@`と`#$`を探してください。次の検索はコメントも見つけるので、見つかった行を1行ずつ読んでください。
+- [文字列の中の`"#@ivar"`、`"#@@cvar"`、`"#$global"`が変数を展開する](../../releases/v3.0.0.ja.md#文字列の中のivarcvarglobalが変数を展開する678)：ダブルクォートの文字列、ヒアドキュメント、バッククォートのコマンドの中の`#@`と`#$`を探してください。次の検索はコメントも見つけるので、見つかった行を1行ずつ読んでください。
 
   ```sh
   grep -rnE '#[@$]' /path/to/scripts
@@ -138,7 +138,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   Nginx.rputs 'Ticket #@id'     # Ticket #@id on both
   ```
 
-- [自分自身を持つ`Array`、`Hash`、`Struct`を比べられる](../../releases/v3.0.0.ja.md#自分自身を持つarrayhashstructを比べられるprb)：上の検索は`SystemStackError`を見つけます。書き換える必要があるのは、そうした比較の周りでこの例外を`rescue`するスクリプトだけです。
+- [自分自身を持つ`Array`、`Hash`、`Struct`を比べられる](../../releases/v3.0.0.ja.md#自分自身を持つarrayhashstructを比べられる678)：上の検索は`SystemStackError`を見つけます。書き換える必要があるのは、そうした比較の周りでこの例外を`rescue`するスクリプトだけです。
 - [Floatの値にビット演算が無くなる](../../releases/v3.0.0.ja.md#floatの値にビット演算が無くなる561)：Floatになりうる値に使った`<<`、`>>`、`&`、`|`、`^`、`~`を探してください。Floatになりうる値は`to_f`や`Float()`の結果とFloatとの演算の結果です。2.xと同じ数を得る方法は、エントリーにあります。
 
   ```ruby
@@ -256,7 +256,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   nginx -t -e stderr 2>&1 | grep 'mechanism enabled'
   ```
 
-- [構文エラーのメッセージがPrismのものになる](../../releases/v3.0.0.ja.md#構文エラーのメッセージがprismのものになるprb)：`unexpected end of file`のような、`syntax error`の後の文面に対するパターンは、もう一致しません。代わりに、`SyntaxError`と、ファイルと行に一致させてください。
+- [構文エラーのメッセージがPrismのものになる](../../releases/v3.0.0.ja.md#構文エラーのメッセージがprismのものになる678)：`unexpected end of file`のような、`syntax error`の後の文面に対するパターンは、もう一致しません。代わりに、`SyntaxError`と、ファイルと行に一致させてください。
 
   ```
   2.x:    file (eval) line 1: syntax error, unexpected end of file

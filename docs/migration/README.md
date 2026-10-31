@@ -33,13 +33,13 @@ and, for 4.1, `NEWS.md` in `mruby/`.
 
 - Build with Ruby 3.0 or later: the build of the bundled mruby stops on
   Ruby 2.x
-  ([Building the bundled mruby needs Ruby 3.0 or later](../releases/v3.0.0.md#building-the-bundled-mruby-needs-ruby-30-or-later-prb)).
+  ([Building the bundled mruby needs Ruby 3.0 or later](../releases/v3.0.0.md#building-the-bundled-mruby-needs-ruby-30-or-later-678)).
   `ruby --version` prints the version of the Ruby on `PATH`.
 - With the `build_config.rb` of this release, rebuild the module; the
   bundled mruby is built with it
-  ([The bundled mruby is 4.1.0-rc2 instead of 3.3.0](../releases/v3.0.0.md#the-bundled-mruby-is-410-rc2-instead-of-330-561-prb)).
+  ([The bundled mruby is 4.1.0-rc2 instead of 3.3.0](../releases/v3.0.0.md#the-bundled-mruby-is-410-rc2-instead-of-330-561-678)).
 - With a `build_config.rb` of your own
-  ([A `build_config.rb` of your own needs the core gem changes of mruby 4.1](../releases/v3.0.0.md#a-build_configrb-of-your-own-needs-the-core-gem-changes-of-mruby-41-561-prb)),
+  ([A `build_config.rb` of your own needs the core gem changes of mruby 4.1](../releases/v3.0.0.md#a-build_configrb-of-your-own-needs-the-core-gem-changes-of-mruby-41-561-678)),
   find the lines that select core gems:
 
   ```sh
@@ -214,7 +214,7 @@ not enough, and show the change.
   end
   ```
 
-- [`"#@ivar"`, `"#@@cvar"` and `"#$global"` in a string interpolate the variable](../releases/v3.0.0.md#ivar-cvar-and-global-in-a-string-interpolate-the-variable-prb):
+- [`"#@ivar"`, `"#@@cvar"` and `"#$global"` in a string interpolate the variable](../releases/v3.0.0.md#ivar-cvar-and-global-in-a-string-interpolate-the-variable-678):
   look for `#@` and `#$` in double-quoted strings, heredocs and backquoted
   commands. The search also finds comments; read each line that it finds:
 
@@ -229,7 +229,7 @@ not enough, and show the change.
   Nginx.rputs 'Ticket #@id'     # Ticket #@id on both
   ```
 
-- [An `Array`, a `Hash` or a `Struct` that holds itself can be compared](../releases/v3.0.0.md#an-array-a-hash-or-a-struct-that-holds-itself-can-be-compared-prb):
+- [An `Array`, a `Hash` or a `Struct` that holds itself can be compared](../releases/v3.0.0.md#an-array-a-hash-or-a-struct-that-holds-itself-can-be-compared-678):
   the search above finds `SystemStackError`. Only a script that rescues it
   around such a comparison needs a change.
 - [Float values have no bit operations](../releases/v3.0.0.md#float-values-have-no-bit-operations-561):
@@ -423,7 +423,7 @@ not enough, and show the change.
   nginx -t -e stderr 2>&1 | grep 'mechanism enabled'
   ```
 
-- [Syntax errors have the messages of Prism](../releases/v3.0.0.md#syntax-errors-have-the-messages-of-prism-prb):
+- [Syntax errors have the messages of Prism](../releases/v3.0.0.md#syntax-errors-have-the-messages-of-prism-678):
   a pattern on the text after `syntax error`, such as
   `unexpected end of file`, no longer matches. Match on `SyntaxError` and on
   the file and line instead.
