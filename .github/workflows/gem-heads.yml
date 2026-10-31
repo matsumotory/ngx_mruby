@@ -12,14 +12,19 @@ name: gem-heads
 # A moved head is a warning annotation and a row in the job summary; it does
 # not fail the job. A gem whose repository or branch cannot be read fails it.
 #
-# Pull requests that change the check or build_config.rb run it too, against
-# the same previous report; their reports are not used as previous reports.
+# Ready pull requests that change the check or build_config.rb run it too,
+# against the same previous report; their reports are not used as previous
+# reports. A draft runs nothing, and marking it ready for review starts the
+# run.
 on:
   schedule:
     # Mondays at 02:41 UTC.
     - cron: '41 2 * * 1'
   workflow_dispatch:
   pull_request:
+    # GitHub's defaults (opened, synchronize, reopened) and the move of a
+    # draft to ready for review: a draft runs nothing (the job's if).
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - master
       - next
@@ -41,8 +46,9 @@ defaults:
 
 jobs:
   heads:
-    # Forks have their own schedule to keep, if any; pull requests run anywhere.
-    if: github.event_name == 'pull_request' || github.repository == 'matsumotory/ngx_mruby'
+    # Forks have their own schedule to keep, if any; ready pull requests run
+    # anywhere, drafts nowhere.
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || (github.event_name != 'pull_request' && github.repository == 'matsumotory/ngx_mruby')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
