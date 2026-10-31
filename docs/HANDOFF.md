@@ -35,6 +35,22 @@ that are not written down elsewhere yet, the work in progress and the queue.
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
 
+## Change-scoped runtime CI, 2026-10-31
+
+- `codex/ci-change-scope` prepares a separate PR against `next`; it does not
+  modify the active site-publication branches or cancel their runs.
+- The owner requested that changes run only relevant CI, not only for the site:
+  “サイトだけに関わらずci不要な変更や内容次第でやなくていいテストは省かないと時間かかりすぎる”.
+- This first step selects nginx matrix/soak coverage conservatively, retains
+  the always-present required status and all applicable runtime tests, and
+  records [scope, timing evidence and limits](test/README.md#runtime-ci-change-scope).
+  Unknown, mixed runtime and workflow inputs retain full coverage. Existing
+  site/examples/performance checks and publication gates remain unchanged.
+- Local classifier/gate tests are implemented. Current-head remote CI,
+  independent review and merge are not complete; the PR will record evidence.
+  Narrower site-route checks and build-result reuse are separate, unimplemented
+  work, not claimed performance improvements of this change.
+
 ## Landing-page hierarchy, 2026-10-30
 
 - #670 merged as `0982d877f`; production run [41056532525](https://github.com/matsumotory/ngx_mruby/actions/runs/41056532525)

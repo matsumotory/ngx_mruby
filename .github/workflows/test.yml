@@ -51,6 +51,29 @@ env:
   OPENSSL_SRC_VERSION: 1.1.1w
 
 jobs:
+  # Always run classification and its contract tests, including docs-only PRs.
+  # Unknown history falls back to full coverage. A failed scope job blocks ci-ok.
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      runtime: ${{ steps.scope.outputs.runtime }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Test CI scope and required-check contracts
+        run: python3 -m unittest discover -s test/ci -v
+      - name: Select runtime coverage
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_SHA: ${{ github.sha }}
+        run: python3 test/ci/change_scope.py
+
   # Files that do not belong in the repository (docs/test/README.md, "Files
   # that do not belong in the repository"): test/check_added_files.sh fails
   # when the change, or one of its commits, adds a path that
@@ -114,6 +137,8 @@ jobs:
           fi
 
   build:
+    needs: scope
+    if: ${{ needs.scope.outputs.runtime == 'true' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -363,6 +388,8 @@ jobs:
   # and the worker's GC roots, live objects, timers, file descriptors,
   # connections and RSS compared between samples.
   soak:
+    needs: scope
+    if: ${{ needs.scope.outputs.runtime == 'true' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
@@ -483,37 +510,24 @@ jobs:
             build_perf/head/nginx/perf/logs
           if-no-files-found: ignore
 
-  # The only status check that rulesets should require. Matrix job names
-  # change whenever the matrix changes, so they cannot be required directly.
-  # "always()" makes this job run, and fail, when build, soak or files failed
-  # or was cancelled; a skipped job would count as passing.
+  # Keep this required status present even when runtime is not an input of
+  # the change. Only a successful, tested classification permits intentional
+  # skips; unexpected skips, failures and cancellations still fail the gate.
   ci-ok:
     name: ci-ok
-    needs: [build, soak, files]
+    needs: [scope, build, soak, files]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check that every build job, the soak job and the files job succeeded
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check required results for the classified scope
         env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          RUNTIME: ${{ needs.scope.outputs.runtime }}
           BUILD_RESULT: ${{ needs.build.result }}
           SOAK_RESULT: ${{ needs.soak.result }}
           FILES_RESULT: ${{ needs.files.result }}
-        run: |
-          echo "build: ${BUILD_RESULT}"
-          echo "soak: ${SOAK_RESULT}"
-          echo "files: ${FILES_RESULT}"
-          failed=0
-          if [ "${BUILD_RESULT}" != "success" ]; then
-            echo "::error title=ci-ok::build finished with result '${BUILD_RESULT}', expected 'success'"
-            failed=1
-          fi
-          if [ "${SOAK_RESULT}" != "success" ]; then
-            echo "::error title=ci-ok::soak finished with result '${SOAK_RESULT}', expected 'success'"
-            failed=1
-          fi
-          if [ "${FILES_RESULT}" != "success" ]; then
-            echo "::error title=ci-ok::files finished with result '${FILES_RESULT}', expected 'success'"
-            failed=1
-          fi
-          exit "${failed}"
+        run: python3 test/ci/change_scope.py --gate

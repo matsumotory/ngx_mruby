@@ -93,12 +93,14 @@ print the second nginx's `error.log` when the line is set.
 
 `.github/workflows/test.yml` runs on pull requests to `master`, `next` and
 `v*.x`, on pushes to those branches and to `v*` tags, and on "Run workflow".
-Its `ci-ok` job is the status check that rulesets require: it fails unless
-every job that it lists in `needs` succeeded. These are every job of the
-`build` matrix and the `files` job, and on `next` also the `soak` job. On
-`next`, the job of the cell that runs nginx under valgrind on every run is
-one of them, so a valgrind error in that cell fails `ci-ok` ([valgrind in
-CI](#valgrind-in-ci)). The
+Its `ci-ok` job is the status check that rulesets require. On `next`, it
+always requires the `scope` and `files` jobs to succeed. When the conservative
+[change classifier](#runtime-ci-change-scope) selects runtime coverage, every
+`build` matrix job and `soak` must succeed too. Otherwise both jobs must be
+intentionally skipped. Failure, cancellation or missing scope never passes.
+The matrix cell under valgrind is included whenever runtime coverage runs, so
+a valgrind error still fails `ci-ok` ([valgrind in CI](#valgrind-in-ci)). This
+classification is introduced on `next`; the 2.x workflow is unchanged. The
 `perf` job (see "In CI" under "Performance comparison with callgrind") is
 not among them yet.
 
@@ -1974,3 +1976,64 @@ $ diff base.txt head.txt
 
 The counts are for the whole window; divide by `PERF_N` for one request.
 KCachegrind and QCachegrind open the profiles as well.
+
+## Runtime CI change scope
+
+`test/ci/change_scope.py` selects whether the change can affect the nginx
+binary or its runtime tests. This is a narrow allowlist, not an assumption
+that an unfamiliar file is harmless. `scope`, its contract tests, the added-file
+check and the required `ci-ok` check run on every event of `test.yml`.
+
+| Changed inputs | Runtime matrix and soak | Other checks |
+| --- | --- | --- |
+| `AGENTS.md`, `CLAUDE.md`, `docs/HANDOFF.md` | Not applicable | Existing site/link checks still apply |
+| Root README, CONTRIBUTING, SECURITY; Markdown under `docs/` | Not applicable | Existing complete site checks, including samples and links |
+| Local Markdown/MDX under `site/src/content/` | Not applicable | Existing complete site checks |
+| Other `site/` inputs, including CSS, layouts, generators and dependencies | Not applicable | Existing complete site checks |
+| `examples/`, including executable README samples | Not applicable | Existing examples workflow; site checks where triggered |
+| Runtime, gems, vendored trees, build, dependencies, tests, workflows, or anything else | Full, unchanged | Existing examples/site/performance selection |
+| Mixed changes | Union; any runtime or unknown input requires full | Existing affected workflows |
+| Manual/nightly dispatch, tags, new branches, missing history or invalid classification | Full, unchanged | Existing event rules |
+
+Only regular, non-executable files in the allowlist qualify. Symlink, submodule
+or executable-mode changes are conservative full runs. Renames are inspected as
+a deletion plus an addition, including the old path. A pull request compares
+its synthetic merge against the first parent (the current base), not merely
+its latest individual commit. A branch push compares the previous tip with the
+pushed commit. An empty range is conservative full coverage.
+
+`ci-ok` requires successful classification and added-file checks. If runtime
+coverage is required, both the matrix and soak must succeed. Otherwise both
+must have the explicit `skipped` result. A failed or cancelled required job, an
+unexpected skip or missing classification output never passes. Do not replace
+this with workflow-level `paths-ignore`: the branch's required status must
+remain present. The matrix versions, sanitizer/valgrind coverage and existing
+performance-input rules are unchanged. This workflow change itself takes the
+full lane. No branch rules or permissions are changed.
+
+Run the small selection/gate contract suite with:
+
+```sh
+python3 -m unittest discover -s test/ci -v
+```
+
+### Timing baseline and limits
+
+On 2026-10-30, [runtime run 41135116783](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116783)
+had 17 parallel build jobs (slowest 12m40s), a 2m59s soak, a 4s file check and a
+3s gate. The [examples run](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116747)
+took 3m02s. These are observations of those runs, not future guarantees, and
+parallel job durations must not be added to estimate wall time.
+
+The [site build](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116891/job/124345060406)
+took 26m04s: computed styles 10m56s, homepage/code interaction 4m45s, Japanese
+lines 2m13s, screenshots 2m06s and browser installation 2m02s. Its fresh,
+offline and v2 builds together took 34s. Runtime selection avoids unrelated
+nginx work; it does **not** claim to solve this separate site critical path.
+
+A later change can map local-content edits to affected routes and their
+navigation/search/layout contracts, retaining full site coverage for shared
+styles, layouts, generators and unknown inputs. That mapping needs its own
+regression evidence and independent review before narrowing browser checks.
+This change does not reuse results from another head, remove site checks,
+change publication requirements, or claim a measured post-change CI speedup.
