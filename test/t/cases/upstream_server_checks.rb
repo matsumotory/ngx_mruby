@@ -40,7 +40,9 @@ end
   'unix' => 'no path in the unix domain socket in upstream unix:',
   'host' => 'upstream server nonexistent.invalid:80 is not an IP address or a unix: path',
   'localhost' => 'upstream server localhost:80 is not an IP address or a unix: path',
-  'short' => 'upstream server 127.1:80 is not an IP address or a unix: path'
+  'short' => 'upstream server 127.1:80 is not an IP address or a unix: path',
+  'nul_unix' => 'invalid upstream server (contains a NUL byte)',
+  'nul_ipv4' => 'invalid upstream server (contains a NUL byte)'
 }.each do |name, message|
   t.assert('upstream', "Nginx::Upstream#server= raises ArgumentError for the string #{name} and leaves the server") do
     res = upstream_checks_get("/server_invalid?#{name}")

@@ -436,9 +436,11 @@ How sessions do it (their procedure, not a decision of the owner):
   holds over an older text here until a PR writes it here, but only when
   its row links the owner's comment or quotes the owner's words; a row
   without either is a proposal of the sessions and changes no rule.
-- It never holds unpublished vulnerabilities, advisory ids, names of private
-  branches, files from outside the repository, or which release or work
-  carries a security fix.
+- It never holds unpublished vulnerabilities, the ids of advisories that
+  are not published, names of private branches, files from outside the
+  repository, or which release or work carries the fix of a vulnerability
+  that is not published. A published advisory, its id and the release
+  that fixed it may be named, as the release notes name them.
 - There is no copy on `master`. From a checkout of `master`, read it with
   `git fetch origin next` and `git show origin/next:docs/HANDOFF.md`.
 - Before a session hands a PR over, to another session, another tool or a
@@ -552,7 +554,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18140,
   18143-18144, 18147-18168, 12345-12359, 12363-12366,
-  12368-12369, 12372-12378; 18116 and 12357 belong to the second nginx that
+  12368-12369, 12372-12378, 12390-12391; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
   `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test

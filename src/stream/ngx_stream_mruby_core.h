@@ -19,9 +19,6 @@ typedef struct ngx_stream_mruby_ctx_t {
   mrb_state *mrb;
   mrb_value *fiber_proc;
   mrb_value *async_handler_result;
-  // the slot of *fiber_proc in the GC root holder of mrb, NGX_MRB_GC_ROOTS_NONE
-  // when the fiber is not held (ngx_http_mruby_gc_roots.h)
-  mrb_int fiber_slot;
   ngx_stream_mrb_cleanup_pt cleanup;
   ngx_event_t sleep;
 } ngx_stream_mruby_ctx_t;
