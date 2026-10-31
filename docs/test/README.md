@@ -135,6 +135,25 @@ review cancelled left a failed `ci-ok (draft)` on its head, beside the
 passing `ci-ok` of the run that counted. A needed job that is cancelled
 while the run goes on, at its `timeout-minutes`, still fails `ci-ok`.
 
+CI is the final check in a clean environment, not the place where a change
+is first tested: the owner's rule of 2026-10-31, in "Branches and pull
+requests" of [AGENTS.md](../../AGENTS.md). Before marking a pull request
+ready, its author runs the suite and the local commands of the checks that
+the change touches (this file describes them; "Build and test" in
+AGENTS.md lists them) and quotes them under "How was this tested", and the
+reviewer checks that they are there. A check that can run locally is not
+left to CI. The run of a ready pull request runs only the jobs that the
+change needs (the tables below) and finishes in about fifteen minutes. On
+2026-10-31, a cell of the build matrix took 6 to 14 minutes, and the run of
+`test.yml` with the whole matrix for #678 took 15 minutes from its start to
+its end
+([run 41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773));
+a browser lane of `site.yml` took 3 to 8 minutes, the lanes in parallel,
+and that run 10 minutes
+([run 41191594863](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594863)).
+A proposal to add a check to CI says whether it can run locally, why CI
+needs it, and how many minutes it adds to the run.
+
 ### Which jobs a run starts
 
 `test/ci/changes.sh BASE HEAD` classifies the files that a change touches,
