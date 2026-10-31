@@ -1,0 +1,84 @@
+name: codeql
+
+# CodeQL code scanning (docs/test/README.md, "CodeQL"): the C code of the
+# module, the Ruby code and the workflows, with the results uploaded to code
+# scanning (the repository's Security tab). It replaces GitHub's default
+# setup of code scanning, which ran on every pull request and push. It runs:
+# - on ready pull requests to master and next that change src/, mrbgems/ or
+#   .github/workflows/; a draft runs nothing, and marking it ready for
+#   review starts the run;
+# - on pushes to master and next that change the same paths, so that the
+#   alerts of each branch follow its code;
+# - weekly. GitHub runs a schedule only from the workflow file on the
+#   default branch, so the weekly run scans master.
+#
+# C/C++ uses build-mode none: CodeQL reads the sources without building
+# nginx and mruby, so the run needs no build and takes minutes; the
+# documentation of CodeQL says that such a database can give less accurate
+# results than one made from a build.
+on:
+  push:
+    branches:
+      - master
+      - next
+    paths:
+      - 'src/**'
+      - 'mrbgems/**'
+      - '.github/workflows/**'
+  pull_request:
+    # GitHub's defaults (opened, synchronize, reopened) and the move of a
+    # draft to ready for review: a draft runs nothing (the job's if).
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - master
+      - next
+    paths:
+      - 'src/**'
+      - 'mrbgems/**'
+      - '.github/workflows/**'
+  schedule:
+    # Wednesdays at 04:37 UTC.
+    - cron: '37 4 * * 3'
+  workflow_dispatch:
+
+# A new push to a pull request cancels the run for its previous commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  analyze:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      security-events: write # upload the results to code scanning
+      contents: read # check out the code
+      actions: read # read the run for the upload
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: c-cpp
+            build-mode: none
+          - language: ruby
+            build-mode: none
+          - language: actions
+            build-mode: none
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          category: /language:${{ matrix.language }}

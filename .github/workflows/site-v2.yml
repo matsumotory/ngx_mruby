@@ -11,13 +11,17 @@ name: site-v2
 # site-v2. site.yml of next builds the same site from master on every push
 # to next and on every push to master (site-dispatch.yml).
 #
-# It runs on every pull request to master, without a path filter: the 2.x
-# pages link to files anywhere in the repository (.travis.yml,
+# It runs on every ready pull request to master, without a path filter:
+# the 2.x pages link to files anywhere in the repository (.travis.yml,
 # nginx_version, the workflows, ...), and the generator stops on a link to
 # a file that git does not track, so a pull request that removes or
-# renames such a file fails here.
+# renames such a file fails here. A draft runs nothing, and marking it
+# ready for review starts the run.
 on:
   pull_request:
+    # GitHub's defaults (opened, synchronize, reopened) and the move of a
+    # draft to ready for review: a draft runs nothing (the job's if).
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - master
 
@@ -40,6 +44,7 @@ env:
 
 jobs:
   build:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
