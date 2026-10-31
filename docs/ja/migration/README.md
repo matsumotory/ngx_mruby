@@ -44,7 +44,7 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
 ほとんどのエントリーは、検索できるメソッドの名前を挙げています。次のコマンドは、設定のスクリプトのファイルからそれらを探します。`/path/to/scripts`は、`*_handler`のディレクティブが指定するファイルのディレクトリに置き換えてください。
 
 ```sh
-grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|respond_to\?|method_defined\?|method_missing|instance_methods|\.methods|iv_var|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[|flatten_merge|RuntimeError|SystemStackError' /path/to/scripts
+grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|respond_to\?|method_defined\?|method_missing|instance_methods|\.methods|iv_var|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[|flatten_merge|RuntimeError|\.server *=|upstream_server *=|SystemStackError' /path/to/scripts
 ```
 
 `nginx.conf`のファイルにある`*_code`のディレクティブのインラインのコードも、同じように検索してください。次の項目では、名前だけでは足りないところで何を探すかを書き、変更の例を示します。
@@ -208,6 +208,29 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   rescue IOError, RuntimeError   # rescued on both
   end
   ```
+
+- [`Nginx::Upstream#server=`と`Nginx::Stream::Connection#upstream_server=`が、serverにできない文字列に`ArgumentError`を出す](../../releases/v3.0.0.ja.md#nginxupstreamserverとnginxstreamconnectionupstream_serverがserverにできない文字列にargumenterrorを出す680)：上の検索は、2つのsetterと`RuntimeError`を見つけます。そのうち、setterの例外をrescueする箇所を見てください。
+
+  ```ruby
+  u = Nginx::Upstream.new "backend"
+  begin
+    u.server = "192.0.2.1:notaport"
+  rescue RuntimeError                # 2.x: rescued   3.0.0: not rescued (ArgumentError)
+  end
+  begin
+    u.server = "192.0.2.1:notaport"
+  rescue ArgumentError, RuntimeError # rescued on both
+  end
+  ```
+
+- [`Nginx::Upstream#server=`が、ホスト名を名前解決せずに`ArgumentError`を出す](../../releases/v3.0.0.ja.md#nginxupstreamserverがホスト名を名前解決せずにargumenterrorを出す680)：上の検索は、このsetterを見つけます。スクリプトがsetterに渡す値を見てください。リクエストやファイルから読む値も確かめてください。
+
+  ```ruby
+  u.server = "localhost:8080"        # 2.x: resolved while the worker waits   3.0.0: ArgumentError
+  u.server = "127.0.0.1:8080"        # works on both
+  ```
+
+  IPv4アドレスは4つの10進数で書いてください。`127.1`も例外になります。nginxの動作中に変わらない名前は、`upstream {}`ブロックの`server`の行に書き、setterを呼ばないでください。nginxは、この名前のすべてのアドレスを使います。アドレスが2つ以上あると、`Nginx::Upstream.new`はそのupstreamに`RuntimeError`を出すので、その呼び出しも削除するか、`server`の行にIPアドレスを書いてください。解決できない名前があると、nginxは起動しません。
 
 - [既定のビルドからauto-sslのmrbgemと、それに伴うクラスが無くなる](../../releases/v3.0.0.ja.md#既定のビルドからauto-sslのmrbgemとそれに伴うクラスが無くなる556)：次のコマンドでデフォルトのビルドに無くなった定数と`Dir`の2つのメソッドを探します。
 
