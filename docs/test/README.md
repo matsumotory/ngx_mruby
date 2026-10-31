@@ -2462,17 +2462,26 @@ workflow; marking it ready for review starts the run.
 
 The independent browser lanes are:
 
-- Chromium styles and WebKit styles, with their original viewport/theme/motion
-  coverage, in separate jobs;
+- Chromium styles and WebKit styles, in separate jobs, each in its pattern
+  (below), with both themes; reduced motion is measured in the Chromium
+  pattern;
 - 3.x homepage interaction and code layout (only the affected page code checks
   for targeted document edits; the homepage itself is unchanged in that case);
-- Japanese page lines;
+- Japanese page lines, in both patterns (below);
 - focus, language links and Lighthouse accessibility;
 - full representative screenshots, or every targeted page in both engines,
   both themes and 320/390/1440px widths, with viewport and full-page evidence;
   in full coverage the same lane first runs `check-project-badges.mjs --browser`,
   the footer's OpenSSF Best Practices badge at 375px (`/` and `/v2/ja/` in
   Chromium, light and dark, and `/ja/` in WebKit).
+
+The layout and wrapping checks of the site (`check-styles.mjs`,
+`check-japanese-lines.mjs`) measure two patterns only, PC at full screen
+(1440px, Chromium) and iPhone 17 Safari (393px, WebKit); no other widths,
+browsers or font combinations are added to the checks. The owner's words
+(2026-11-01):
+「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
+`site/scripts/lib/patterns.mjs` holds them.
 
 The footer badge is the one image of the site from another origin. The
 read-only browser context (`scripts/lib/read-only-browser.mjs`) still allows
@@ -2491,7 +2500,7 @@ on every push and dispatch, and on a pull request when the browser lanes run. Th
 predeploy smoke screenshots from the publication workflow. Homepage copy-idle
 checks remain in full interaction coverage; postdeploy verification is retained.
 The union of full 3.x and full v2 code checks is tested against the former
-single suite. No assertions, viewports or engines are removed. Direct script
+single suite. The split into lanes removed no assertion, viewport or engine. Direct script
 invocations without CI scope still run their complete original coverage.
 
 `site-ok` runs with `!cancelled()` (except for a draft) and requires success from
