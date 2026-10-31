@@ -29,14 +29,18 @@ context, not prerequisites for continuing work.
    appropriate base under the branch rules in AGENTS. Do not reset a shared
    checkout to make its files match a handoff.
 3. Claim an existing PR with a comment naming the head being taken over.
-   For new work, open a draft PR once the scoped changes are reviewable.
+   For new work, open a PR as a draft once the scoped changes are
+   reviewable, and mark it ready for review when the work and its local
+   checks are done ("Branches and pull requests" in AGENTS: a draft runs no
+   CI, ready starts it, and ready is not approval).
    Keep its template sections current as the head or evidence changes;
    update the queue through HANDOFF as AGENTS requires. Use commit messages
    to preserve the problem, reasoning, relevant tradeoffs and validation,
    with explicit limits when something was not tested.
 4. Before stopping or transferring work, put a dated checkpoint in that PR:
    **scope and decisions** (link the accepted decision, distinguish open
-   questions); **state** (branch, head/base, stage and remaining diff);
+   questions); **state** (branch, head/base, draft or ready and why, whether a
+   CI run of the head exists, stage and remaining diff);
    **evidence** (commands, environment/nginx version, tested commits,
    results and run/review links); **unfinished work** (not run, in progress,
    failed, denied or uncertain outcomes); **next step** (the concrete action
