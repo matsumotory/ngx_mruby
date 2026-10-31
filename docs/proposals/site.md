@@ -1676,6 +1676,17 @@ checks of `site/scripts/`, `tokens.css` and the design of section 4, the
 fonts, `mark-num-cells.mjs` and `export-docs.mjs`, the workflows and the
 deployment of 5.3, and the route of every page.
 
+**Final mobile pattern (owner decision, 2026-11-01).** The first layer
+compares against the existing 390px WebKit pattern. At the end of the
+rebuild, change only `PHONE.width` in `site/scripts/lib/patterns.mjs` to
+402px, the owner's iPhone 17 Pro Safari width. Keep 1440px Chromium.
+The owner's words: 「組み直しの最後に、iPhone のパターンの幅を 390px から 402px (本人の iPhone 17 Pro の Safari の幅) に合わせる。」
+If many one- or two-character last lines appear at 402px, adjust the font
+size and characters per line first, then only the remaining fine cases by
+a few characters of wording. Do not mechanically rewrite prose for the
+checker or add more width/browser combinations. This last-stage change is
+not part of the layer-1 parity baseline.
+
 **Order.** After step 5. One pull request, or three in this order if the
 Codex session splits it:
 
@@ -1818,6 +1829,17 @@ and components of the repository's own, as 5.4 describes (the owner's
 decision of 2026-11-01, section 7); 5.4 has its order and its acceptance.
 
 ## 7. Decisions (2026-10-15)
+
+2026-11-01 implementation record: layer 1 of 5.4 adds an opt-in own Astro
+shell alongside the default Starlight shell; static and HTML parity checks
+are implemented, while browser geometry and interaction acceptance remain
+pending. This is not the completion of layer 1 or permission to switch the
+default. The shared components retain the existing class names and cascade
+layers until the removal layer; copied base rules carry Starlight's MIT
+notice, with the literal color declarations already removed in favor of
+the site's tokens. `check-shells.mjs` restores the Starlight build after its
+comparison, so the deployed shell does not change.
+
 
 The owner decided each question of the first version of this proposal on
 2026-10-15. The tool of Q1 was replaced on 2026-11-01 (the last entry of

@@ -1,12 +1,13 @@
 ---
+import { getSiteRoute } from '../route.mjs';
 // The theme toggle of 4.10: a 44 px round button with an icon and its name
 // as text for assistive technology. It switches between the light and the
 // dark theme and keeps the choice where Starlight's theme script reads it
 // (localStorage starlight-theme). Without JavaScript the button is hidden
 // and the OS setting chooses the theme (4.7).
-import { Icon } from '@astrojs/starlight/components';
+import Icon from './Icon.astro';
 
-const ja = Astro.locals.starlightRoute.locale === 'ja';
+const ja = getSiteRoute(Astro.locals).locale === 'ja';
 ---
 
 <ngx-theme-toggle>

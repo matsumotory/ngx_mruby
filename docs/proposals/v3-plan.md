@@ -395,7 +395,7 @@ use case in "Agent proxy: the v3.0 use case" at the end of this section.
 
 | Candidate | Impact | Evidence |
 |---|---|---|
-| Site built with Starlight (version pinned), structured by Diátaxis: Getting Started (runs in Docker in minutes), how-to for the five standard uses (auth, routing, rate limit, observability with `ngx_otel_module`, certificate lookup) and for the agent proxy (below), reference, explanation (lifetimes, phases, what nginx can do without Ruby). English primary, Japanese under `src/content/docs/ja/`. GitHub Pages. | none | 3.6 |
+| Site built with Starlight by default, with the opt-in first layer of the Astro-only migration in site proposal 5.4; structured by Diátaxis: Getting Started (runs in Docker in minutes), how-to for the five standard uses (auth, routing, rate limit, observability with `ngx_otel_module`, certificate lookup) and for the agent proxy (below), reference, explanation (lifetimes, phases, what nginx can do without Ruby). English primary, Japanese under `src/content/docs/ja/`. GitHub Pages. | none | 3.6 |
 | Generated reference: directives extracted from `ngx_command_t` tables and checked against prose in CI; Ruby API from YARD + yard-mruby; C API from Doxygen. | none | 3.6, 2.4 |
 | `examples/<use>/` with `compose.yaml` and README with expected output, each started in CI. Drop the external `hsbt/nginx-tech-talk` reference and the fixtures that reference removed directives or unreachable hosts. | none | 3.6, 2.4 |
 | Introduction video with Remotion (license depends on who produces it) or HyperFrames; form (length, sound, aspect) decided with the owner before production. | none | 3.6 |

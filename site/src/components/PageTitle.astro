@@ -1,10 +1,11 @@
 ---
-import DefaultPageTitle from '@astrojs/starlight/components/PageTitle.astro';
-const home = Astro.locals.starlightRoute.entry.data.template === 'splash';
-const ja = Astro.locals.starlightRoute.locale === 'ja';
+import { getSiteRoute } from '../route.mjs';
+import DefaultPageTitle from './DocTitle.astro';
+const home = getSiteRoute(Astro.locals).entry.data.template === 'splash';
+const ja = getSiteRoute(Astro.locals).locale === 'ja';
 // The Japanese home page heading takes one line per phrase, as the
 // frontmatter field headline lists them (4.4); the title is their join.
-const { title, headline } = Astro.locals.starlightRoute.entry.data;
+const { title, headline } = getSiteRoute(Astro.locals).entry.data;
 const lines = headline ?? [title];
 if (home && ja && lines.join('') !== title) throw new Error(`PageTitle: the headline lines join to "${lines.join('')}", not the title "${title}"`);
 ---

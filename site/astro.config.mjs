@@ -12,6 +12,15 @@
 // with NGX_MRUBY_SITE_VERSION=2, which sets the base /v2/ and the sidebar
 // of the 2.x pages, and has its own search index in /v2/pagefind/.
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import mdx from '@astrojs/mdx';
+import sitemap from '@astrojs/sitemap';
+import expressiveCode from 'astro-expressive-code';
+import { satteri, satteriHeadingIdsPlugin } from '@astrojs/markdown-satteri';
+import ownShell from './src/own/integration.mjs';
+import { satteriRtlCodeSupportPlugin, satteriAutolinkHeadingsPlugin } from './src/own/markdown.mjs';
+const own = process.env.NGX_MRUBY_SITE_SHELL === 'own';
+
 import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
 import { SITE_URL, SITE_VERSION } from './scripts/lib/site.mjs';
@@ -54,11 +63,16 @@ const sidebar =
 
 export default defineConfig({
   site: SITE_URL,
+  scopedStyleStrategy: 'where',
+  prefetch: { prefetchAll: true },
   base: SITE_VERSION === 2 ? '/v2' : undefined,
+  ...(own ? { i18n: { defaultLocale: 'en', locales: ['en','ja'], routing: { prefixDefaultLocale: false } },
+    markdown: { processor: satteri({ hastPlugins: [satteriRtlCodeSupportPlugin(),satteriHeadingIdsPlugin(),satteriAutolinkHeadingsPlugin((_key,{title})=>`Section titled “${title}”`)] }) } } : {}),
   vite: {
+    resolve: { alias: { 'virtual:site/Search': own ? fileURLToPath(new URL('./src/own/Search.astro',import.meta.url)) : 'virtual:starlight/components/Search' } },
     css: { postcss: { plugins: [themeColors()] } },
   },
-  integrations: [
+  integrations: own ? [expressiveCode(),mdx(),sitemap({i18n:{defaultLocale:"en",locales:{en:"en",ja:"ja"}},filter:page=>!page.endsWith("/404/")}),ownShell()] : [
     starlight({
       title: 'ngx_mruby',
       // Flat small-size derivative on an opaque dark tile.

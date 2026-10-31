@@ -1,0 +1,16 @@
+---
+// Adapted from Starlight 0.42.6; see STARLIGHT-LICENSE.
+import { getSiteRoute, routeLabel } from '../route.mjs';
+const { lang, lastUpdated } = getSiteRoute(Astro.locals);
+---
+
+{
+	lastUpdated && (
+		<p>
+			{routeLabel(Astro.locals, 'page.lastUpdated')}{' '}
+			<time datetime={lastUpdated.toISOString()}>
+				{lastUpdated.toLocaleDateString(lang, { dateStyle: 'medium', timeZone: 'UTC' })}
+			</time>
+		</p>
+	)
+}
