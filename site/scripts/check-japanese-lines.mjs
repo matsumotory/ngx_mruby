@@ -1,23 +1,23 @@
 // The browser checks of the Japanese pages of step 5 (docs/proposals/site.md,
 // section 6; 4.4 and 4.9), in Chromium and WebKit (Playwright), on every
 // page under /ja/ that comes from a Japanese source (generated/pages.json),
-// except the home page, whose heading check-styles.mjs checks, at 320 by
-// 664, 390 by 664, 1000 by 900 and 1440 by 900 px, in the light theme:
+// except the home page, whose heading check-styles.mjs checks, in the light
+// theme, in the two patterns of lib/patterns.mjs: PC at full screen (1440 by
+// 900 px in Chromium) and iPhone Safari (390 by 664 px in WebKit):
 //
 // - at 1440 px, at most 40 Japanese characters (kana, kanji and full-width
 //   punctuation) on a line of body text (4.4, "Measure");
 // - at 1440 px, the line height of body text 1.75 to 2.0 times its font
 //   size (4.4, "Line height");
-// - the page title (h1) on one line at 390 px and on at most two at 320 px
-//   (4.4, "Page titles");
+// - the page title (h1) on one line at 390 px (4.4, "Page titles");
 // - at 390 px, the right edge of Japanese text blocks of two or more lines:
 //   the longest line ends less than 2 em from the block's right edge; an h2
 //   takes at most two lines and its longest line ends less than 6 em from
 //   the edge (4.9);
-// - at every size, no paragraph, list item, caption, table cell, definition
+// - in both patterns, no paragraph, list item, caption, table cell, definition
 //   or heading whose last line holds one or two characters (the owner's
 //   rule for text);
-// - at 390 and 1440 px, every diagram label is 14 px or more and its text
+// - in both patterns, every diagram label is 14 px or more and its text
 //   stays inside its place (3.5);
 // - the notice above an English page under /ja/ (FallbackContentNotice.astro):
 //   on one page of each kind of notice, its last line and, at 390 px, its
@@ -31,11 +31,13 @@
 // that a run on macOS sees what CI sees. --pages limits the run to the
 // pages named.
 //
-// It exits 1 and lists every failure by page, engine, size and element.
+// --engine runs one engine, and so its pattern only. It exits 1 and lists
+// every failure by page, engine, size and element.
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
+import { PC, PHONE, patternsFor } from './lib/patterns.mjs';
 import { GENERATED_REFERENCE, japaneseNoticePages, loadManifest, manifestFile, NOT_TRANSLATED_YET } from './lib/site.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -45,12 +47,6 @@ const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 // are printed as notes until the pull request of step 5 that rewrites
 // them removes them from this list; every other Japanese page fails.
 const NOTES_ONLY = ['/ja/releases/v2.7.1/', '/ja/releases/v2.7.2/', '/ja/releases/v2.7.3/', '/ja/releases/v3.0.0/'];
-const SIZES = [
-  { width: 320, height: 664 },
-  { width: 390, height: 664 },
-  { width: 1000, height: 900 },
-  { width: 1440, height: 900 },
-];
 
 function args() {
   const a = process.argv.slice(2);
@@ -121,7 +117,7 @@ function inspect(cfg) {
     const ls = lines(notice);
     counts.lines += ls.length;
     if (ls.length >= 2 && ls.at(-1).text.trim().length <= 2) fail(notice, `the last line holds "${ls.at(-1).text.trim()}", ${ls.at(-1).text.trim().length} character(s)`);
-    if (cfg.width === 390 && ls.length >= 2) {
+    if (cfg.phone && ls.length >= 2) {
       const box = notice.getBoundingClientRect();
       const fsz = parseFloat(getComputedStyle(notice).fontSize);
       const gap = box.right - parseFloat(getComputedStyle(notice).paddingRight) - Math.max(...ls.map((l) => l.right));
@@ -134,7 +130,7 @@ function inspect(cfg) {
   // Body text: paragraphs and list items outside code, diagrams, tables
   // and samples; captions (p.caption) have the caption size and line height
   const body = [...content.querySelectorAll('p:not(.caption), li')].filter((el) => visible(el) && !el.closest('.expressive-code, figure, table, .not-content') && !el.querySelector('p, ul, ol'));
-  if (cfg.width === 1440) {
+  if (cfg.pc) {
     for (const el of body) {
       for (const l of lines(el)) {
         const n = [...l.text].filter((c) => JA.test(c)).length;
@@ -149,13 +145,12 @@ function inspect(cfg) {
   // The page title
   const h1 = document.querySelector('h1#_top');
   if (!h1) fails.push('the page has no h1#_top');
-  else if (cfg.width === 390 || cfg.width === 320) {
+  else if (cfg.phone) {
     const n = lines(h1).length;
-    const max = cfg.width === 390 ? 1 : 2;
-    if (n > max) fail(h1, `the page title takes ${n} lines at ${cfg.width} px, over ${max}`);
+    if (n > 1) fail(h1, `the page title takes ${n} lines at ${cfg.width} px, over 1`);
   }
-  // The right edge at 390 px (4.9)
-  if (cfg.width === 390) {
+  // The right edge at the phone width (4.9)
+  if (cfg.phone) {
     for (const el of content.querySelectorAll('p, li, figcaption, figcaption > span, td, th, dd, h2')) {
       if (!visible(el) || el.closest('.expressive-code, .diagram-grid') || el.querySelector('p, ul, ol')) continue;
       if (getComputedStyle(el).display === 'flex') continue;
@@ -168,7 +163,7 @@ function inspect(cfg) {
       const fsz = parseFloat(getComputedStyle(el).fontSize);
       const gap = box.right - pad - Math.max(...ls.map((l) => l.right));
       if (el.tagName === 'H2') {
-        if (ls.length > 2) fail(el, `a Japanese h2 of ${ls.length} lines at 390 px, over 2`);
+        if (ls.length > 2) fail(el, `a Japanese h2 of ${ls.length} lines at ${cfg.width} px, over 2`);
         if (gap >= 6 * fsz) fail(el, `the longest line of a Japanese h2 ends ${gap.toFixed(1)} px from the right edge, 6 em or more`);
       } else if (gap >= 2 * fsz) fail(el, `the longest line ends ${gap.toFixed(1)} px from the right edge, 2 em (${2 * fsz} px) or more`);
     }
@@ -182,8 +177,8 @@ function inspect(cfg) {
     const last = ls.at(-1).text.trim();
     if (last.length <= 2) fail(el, `the last line holds "${last}", ${last.length} character(s)`);
   }
-  // Diagram labels at 390 and 1440 px
-  if (cfg.width === 390 || cfg.width === 1440) {
+  // Diagram labels in both patterns
+  {
     for (const label of document.querySelectorAll('figure.diagram .diagram-label')) {
       if (!visible(label)) continue;
       counts.labels++;
@@ -230,7 +225,7 @@ async function main() {
   let maxChars = 0;
   for (const engineName of opt.engines) {
     const browser = await { chromium, webkit }[engineName].launch();
-    for (const size of SIZES) {
+    for (const size of patternsFor(engineName)) {
       const context = await browser.newContext({ viewport: size, colorScheme: 'light' });
       for (const page of pages) {
         const tab = await context.newPage();
@@ -242,7 +237,7 @@ async function main() {
         }
         if (opt.noto) await tab.addStyleTag({ content: ':root { --font-ja-faces: "Noto Sans JP Variable", "Noto Sans JP" !important; }' });
         await tab.evaluate(() => document.fonts.ready);
-        const result = await tab.evaluate(inspect, { width: size.width, noticeOnly: noticePages.includes(page) });
+        const result = await tab.evaluate(inspect, { width: size.width, phone: size.width === PHONE.width, pc: size.width === PC.width, noticeOnly: noticePages.includes(page) });
         // A note leaves out the lines of its block, which only failures need
         for (const f of result.fails) (NOTES_ONLY.includes(page) ? notes : failures).push(`${page} ${engineName} ${size.width}x${size.height}: ${NOTES_ONLY.includes(page) ? f.replace(/ lines: .*$/, '') : f}`);
         blocks += result.counts.blocks;
@@ -261,7 +256,7 @@ async function main() {
   for (const n of distinctNotes) console.log(`note: ${n}`);
   if (distinctNotes.length) console.log(`check-japanese-lines: ${distinctNotes.length} note(s) on the pages of NOTES_ONLY`);
   for (const f of failures) console.log(f);
-  const summary = `${loads} page loads of ${pages.length} Japanese pages in ${opt.engines.join(' and ')}${opt.noto ? ' (Noto Sans JP)' : ''} at ${SIZES.map((s) => s.width).join(', ')} px; ${blocks} blocks of two or more lines measured at 390 px, ${labels} diagram labels, at most ${maxChars} Japanese characters on a line of body text at 1440 px`;
+  const summary = `${loads} page loads of ${pages.length} Japanese pages in ${opt.engines.join(' and ')}${opt.noto ? ' (Noto Sans JP)' : ''} at ${opt.engines.flatMap(patternsFor).map((s) => s.width).join(' and ')} px; ${blocks} blocks of two or more lines measured at ${PHONE.width} px, ${labels} diagram labels, at most ${maxChars} Japanese characters on a line of body text at 1440 px`;
   if (failures.length) {
     console.log(`check-japanese-lines: ${failures.length} failure(s); ${summary}`);
     // exitCode, not process.exit(): stdout to a pipe (CI) is written

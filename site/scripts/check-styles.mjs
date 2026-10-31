@@ -1,6 +1,8 @@
 // The browser checks of steps 2 and 3 (docs/proposals/site.md, section 6),
 // on computed styles in Chromium and WebKit (Playwright), for every page of
-// PAGES in light and dark, at 320 by 664, 390 by 664 and 1440 by 900 px:
+// PAGES in light and dark, in the two patterns of lib/patterns.mjs: PC at
+// full screen (1440 by 900 px in Chromium) and iPhone Safari (390 by
+// 664 px in WebKit):
 //
 // - font sizes: every visible text has a size of the scale of its page's
 //   language (4.4), the roles take their size, and nothing is below 14 px;
@@ -18,20 +20,19 @@
 // - durations of 4.8: 200 ms or less, 0 under prefers-reduced-motion, no
 //   animation running after the load;
 // - at most 90 characters per line of English body text at 1440 px (4.4);
-// - no horizontal scroll of the page (4.9), at 320 px too, and at 320 and
-//   390 px every text block and the ring before h2 at least 20 px from both
-//   edges (4.5);
+// - no horizontal scroll of the page (4.9), and at 390 px every text block
+//   and the ring before h2 at least 20 px from both edges (4.5);
 // - the home page heading takes at most two lines at 1440 px, and at 390
-//   and 320 px two in Japanese and three in English (4.4);
+//   px two in Japanese and three in English (4.4);
 // - at 390 px the right edge of Japanese text blocks (4.9), and on English
 //   blocks no computed text-wrap pretty or balance (4.9);
-// - at every size, no paragraph, list item, caption, table cell or heading
+// - in both patterns, no paragraph, list item, caption, table cell or heading
 //   whose last line holds only one or two characters (the owner's rule);
 // - diagrams (3.5): the drawing and its labels have role="img" and an
 //   aria-label, the caption is outside them, the
 //   drawings are hidden from screen readers and hold no text, every label
 //   is HTML text of 14 px or more that stays inside its place, and the
-//   figure fits the screen below the header at 390 by 664 and 1440 by 900;
+//   figure fits the screen below the header in both patterns;
 // - with JavaScript off, the OS setting chooses the theme (4.7).
 //
 //   node scripts/check-styles.mjs [--dist DIR] [--engine chromium|webkit] [--ja-face noto] [--pages /,/ja/]
@@ -39,7 +40,8 @@
 // Japanese text takes Hiragino Sans where the system has it (macOS) and the
 // served Noto Sans JP elsewhere (Linux, CI), so its lines break at other
 // places. --ja-face noto sets Japanese in Noto Sans JP on any system, so
-// that a run on macOS sees what CI sees.
+// that a run on macOS sees what CI sees. --engine runs one engine, and so
+// its pattern only.
 //
 // DIR defaults to dist/ (npm run build). It exits 1 and lists every
 // failure by page, engine, theme, size and element.
@@ -48,6 +50,7 @@ import { scopedPages } from './lib/ci-pages.mjs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
+import { PC, PHONE, patternsFor } from './lib/patterns.mjs';
 import { themeColors, homeColors } from './lib/tokens.mjs';
 import { allowedSpanColors } from './lib/code-themes.mjs';
 
@@ -61,11 +64,6 @@ export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/re
 // A last line of one or two characters fails on every page of PAGES
 // (step 4 fixed the last ones that were notes).
 const LAST_LINE_STRICT = new Set(PAGES);
-const SIZES = [
-  { width: 320, height: 664 },
-  { width: 390, height: 664 },
-  { width: 1440, height: 900 },
-];
 
 // 4.4, table "Scale": the sizes other than the home page heading.
 const SCALE = {
@@ -283,7 +281,7 @@ function inspect(cfg) {
     }
     return [...out.values()].map((l) => ({ ...l, chars: l.text.trimEnd().length }));
   };
-  if (lang === 'en' && cfg.width === 1440) {
+  if (lang === 'en' && cfg.pc) {
     for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li)')) {
       // The three homepage flow rows contain separately checked paragraphs beside code.
       // Do not join these grid columns into one prose line; ordinary list items stay checked.
@@ -291,7 +289,7 @@ function inspect(cfg) {
       for (const l of lines(el)) if (l.chars > 90) fail(el, `a line of ${l.chars} characters, over 90: "${l.text.slice(0, 40)}..."`);
     }
   }
-  if (lang === 'ja' && cfg.width === 390) {
+  if (lang === 'ja' && cfg.phone) {
     for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li, figcaption, figcaption > span, td, th), .sl-markdown-content h2')) {
       if (!visible(el) || el.closest('.expressive-code, .diagram-grid') || el.querySelector('p, ul, ol')) continue;
       // A row of buttons is not running text
@@ -306,7 +304,7 @@ function inspect(cfg) {
       const fsz = parseFloat(getComputedStyle(el).fontSize);
       const gap = box.right - pad - Math.max(...ls.map((l) => l.right));
       if (el.tagName === 'H2') {
-        if (ls.length > 2) fail(el, `a Japanese h2 of ${ls.length} lines at 390 px, over 2`);
+        if (ls.length > 2) fail(el, `a Japanese h2 of ${ls.length} lines at ${cfg.width} px, over 2`);
         if (gap >= 6 * fsz) fail(el, `the longest line of a Japanese h2 ends ${gap.toFixed(1)} px from the right edge, 6 em or more`);
       } else if (gap >= 2 * fsz) fail(el, `the longest line ends ${gap.toFixed(1)} px from the right edge, 2 em (${2 * fsz} px) or more: "${el.textContent.trim().slice(0, 30)}..."`);
     }
@@ -334,20 +332,20 @@ function inspect(cfg) {
       if (/pretty|balance/.test(tw)) fail(el, `text-wrap ${tw.trim()} (4.4, 4.9)`);
     }
   }
-  // The home page heading: at most two lines at 1440 px; at 390 and 320 px
-  // two in Japanese and three in English (4.4)
+  // The home page heading: at most two lines at 1440 px; at 390 px two in
+  // Japanese and three in English (4.4)
   if (isHome && cfg.width > 0) {
     const h1 = document.querySelector('h1#_top');
     const n = h1 ? lines(h1).length : 0;
-    const max = cfg.width >= 1440 || lang === 'ja' ? 2 : 3;
+    const max = cfg.pc || lang === 'ja' ? 2 : 3;
     if (!h1) fails.push('the home page has no h1#_top');
     else if (n > max) fail(h1, `the home page heading takes ${n} lines at ${cfg.width} px, over ${max}`);
     cfg.counts.homeHeading = n;
   }
-  // Gutters of 20 px or more at 320 and 390 px (4.5): every text block,
-  // outside the boxes that scroll on their own (code blocks, tables), and
-  // the ring before h2
-  if (cfg.width > 0 && cfg.width <= 390) {
+  // Gutters of 20 px or more at 390 px (4.5): every text block, outside
+  // the boxes that scroll on their own (code blocks, tables), and the ring
+  // before h2
+  if (cfg.phone) {
     const W = document.documentElement.clientWidth;
     const scrolls = (el) => el.closest('.expressive-code, pre, table, .sidebar-pane, dialog, header.header, [popover]');
     for (const el of document.querySelectorAll('main :is(p, li, h1, h2, h3, h4, figcaption, dt, dd, .diagram-label, .site-footer a)')) {
@@ -405,7 +403,7 @@ function inspect(cfg) {
         }
       }
     }
-    if (cfg.width === 390 || cfg.width === 1440) {
+    if (cfg.phone || cfg.pc) {
       const header = document.querySelector('header.header')?.getBoundingClientRect().height ?? 0;
       // The drawing with its labels, without the caption below it
       const cap = fig.querySelector('figcaption');
@@ -460,9 +458,9 @@ async function main() {
         const tokens = Object.values(colors);
         // Only current-theme shared syntax text may use the documentation palette.
         const syntax = Object.entries(themeColors(theme)).filter(([k]) => k.startsWith('--color-code-') || k === '--color-text-primary' || k === '--color-text-muted').map(([, v]) => v);
-        for (const size of SIZES) {
+        for (const size of patternsFor(engineName)) {
           for (const reduced of [false, true]) {
-            if (reduced && size.width !== 1440) continue;
+            if (reduced && size.width !== PC.width) continue;
             const context = await browser.newContext({ viewport: size, colorScheme: theme, reducedMotion: reduced ? 'reduce' : 'no-preference' });
             const tab = await context.newPage();
             await tab.goto(server.url + page, { waitUntil: 'load' });
@@ -484,6 +482,8 @@ async function main() {
               gutterNarrow: GUTTER_NARROW,
               radii: RADII,
               width: size.width,
+              phone: size.width === PHONE.width,
+              pc: size.width === PC.width,
               reduced,
               transitions,
               mono: monoFace,
@@ -535,7 +535,7 @@ async function main() {
                 try {
                   await placeholders.first().waitFor({ timeout: 10000 });
                   for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open, loading: ${f}`);
-                  for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0 })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open, loading: ${f}`);
+                  for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0, phone: false, pc: false })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open, loading: ${f}`);
                   // The loading state was checked only if the fragments were
                   // held and the placeholders were still there afterwards.
                   const left = await placeholders.count();
@@ -551,7 +551,7 @@ async function main() {
                   await tab.waitForFunction(() => !document.querySelector('#starlight__search .pagefind-ui__loading') && document.querySelector('#starlight__search .pagefind-ui__result-link'), null, { timeout: 10000 });
                   states.push('settled');
                   for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open: ${f}`);
-                  for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0 })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open: ${f}`);
+                  for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0, phone: false, pc: false })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open: ${f}`);
                 } catch (e) {
                   timedOut(e);
                   failures.push(`${tag}: the results of the search for "filter" did not finish loading within 10 s`);
@@ -571,14 +571,14 @@ async function main() {
                 if (!(await tab.locator('#starlight__sidebar:popover-open').count())) failures.push(`${tag}: the menu did not open`);
                 menus++;
                 for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} menu open: ${f}`);
-                for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0 })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} menu open: ${f}`);
+                for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0, phone: false, pc: false })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} menu open: ${f}`);
               }
             }
             await context.close();
           }
         }
         // 4.7: without JavaScript the OS setting chooses the theme
-        const context = await browser.newContext({ viewport: SIZES[2], colorScheme: theme, javaScriptEnabled: false });
+        const context = await browser.newContext({ viewport: patternsFor(engineName)[0], colorScheme: theme, javaScriptEnabled: false });
         const tab = await context.newPage();
         await tab.goto(server.url + page, { waitUntil: 'load' });
         const bg = await tab.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -610,7 +610,7 @@ async function main() {
     process.exit(1);
   }
   console.log(`check-styles: home page heading lines: ${headings.join(', ')}`);
-  console.log(`check-styles: ok; ${diagramLoads} page loads with a diagram; ${loads} page loads of ${opt.pages.length} pages in ${opt.engines.join(' and ')}, light and dark, ${SIZES.map((s) => `${s.width}x${s.height}`).join(' and ')}; ${searches} with the search dialog open (results loading and loaded), ${menus} with the menu open`);
+  console.log(`check-styles: ok; ${diagramLoads} page loads with a diagram; ${loads} page loads of ${opt.pages.length} pages in ${opt.engines.join(' and ')}, light and dark, ${opt.engines.flatMap(patternsFor).map((s) => `${s.width}x${s.height}`).join(' and ')}; ${searches} with the search dialog open (results loading and loaded), ${menus} with the menu open`);
 }
 
 main().catch((e) => {

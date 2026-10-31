@@ -318,7 +318,8 @@ does not have. Until a page is translated, Starlight's fallback shows the
 English page, labels included. Japanese labels wrap by phrase with `<wbr>`
 and `keep-all`, as the corporate site's figure text does (owner's
 practice). Step 5 checks that every diagram on `/ja/` takes its labels from
-`docs/ja/` and that no label overflows its place at 390 and 1440 px.
+`docs/ja/` and that no label overflows its place in the two patterns of
+"Site design acceptance" (390 and 1440 px).
 
 **Drawing rules**, after the owner's practice (4.2) and 4.11:
 
@@ -983,7 +984,7 @@ windows, a fixed bar of actions at the bottom of narrow screens.
     heading, so a `<wbr>` there would show as text or be stripped; the same
     `title` fills `<title>`, the sidebar and search (appendix B). A
     Japanese title fits on one line at 390 px, about 13 characters at
-    26 px, and on at most two at 320 px; the longer statement of what the
+    26 px; the longer statement of what the
     page covers is its first paragraph. `overflow-wrap: anywhere` on `h1`
     breaks a long identifier, and the generator stops on a first heading
     that contains HTML.
@@ -996,7 +997,7 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   allows and inline otherwise. It is decorative: the heading level is in
   the markup.
 - The home page heading takes at most two lines at 1440 px and at most
-  three at 390 and 320 px (owner's practice). The Japanese heading takes
+  three at 390 px (owner's practice). The Japanese heading takes
   its two lines, 「LLMリクエストの認証と転送を」 and 「Rubyで制御する。」, at
   every width: its size is at most the width of its column divided by
   13.7 em, because its first line is 13.3 em wide. That cap is below the
@@ -1016,8 +1017,8 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   below 14 px; the built CSS has no `text-wrap: pretty` or `balance`;
   `keep-all` and `auto-phrase` appear only on the `h2` selector of Japanese
   pages and on the labels of diagrams; the line count of the home page
-  heading at 1440, 390 and 320 px in both languages; every Japanese h1 takes
-  one line at 390 px and at most two at 320 px; no h1, `<title>`, sidebar
+  heading at 1440 and 390 px in both languages; every Japanese h1 takes
+  one line at 390 px; no h1, `<title>`, sidebar
   entry, table-of-contents entry or heading `id` on `/ja/` contains the text
   `wbr`, and the h2 of the test page of step 1 keep their `<wbr>` elements;
   no external font URL in the built site, and the build succeeds with
@@ -1039,7 +1040,7 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   standards of appendix C: at least 16 px at narrow widths (the U.S. Web
   Design System's `grid-container` padding of 2 units of 8 px) and a step
   at 640 px (GOV.UK's responsive spacing, which grows at 640 px). Check:
-  at 320 and 390 px, every text block and any marker in the margin is at
+  at 390 px, every text block and any marker in the margin is at
   least 20 px from both edges.
 - The sections of the home page use the inherited content width of
   1032 px. Documentation pages keep Starlight's columns, with the text
@@ -1247,7 +1248,9 @@ acceptance; the interaction check covers that separately.
   of the content as a plain list: a table of contents collapsed and pinned
   to the top went unnoticed by many participants of Nielsen Norman Group's
   tests (2023).
-- No horizontal page scroll at 320 px (WCAG 1.4.10). On 2026-10-30 the owner
+- No horizontal page scroll. WCAG 1.4.10 asks for reflow at 320 CSS px,
+  and writers keep that in mind; the check measures the iPhone pattern of
+  "Site design acceptance" (390 px in WebKit). On 2026-10-30 the owner
   required code to be readable without horizontal scrolling (「横スクロールを
   強制」は「絶対やめて」). Code blocks soft-wrap, including long paths and
   tokens; copying keeps the original source. This supersedes the earlier
@@ -1256,15 +1259,16 @@ acceptance; the interaction check covers that separately.
   ledgers into sections. A genuinely wide comparison needs a readable narrow
   representation rather than a scrollbar as its only access. Diagrams do not
   scroll sideways; they take a vertical arrangement instead (3.5).
-- **Right edge.** At 390 px, in Chromium and in WebKit, the longest line of
+- **Right edge.** At 390 px in WebKit (the iPhone pattern of "Site design
+  acceptance"), the longest line of
   every Japanese text block (`lang="ja"`) of two or more lines ends less
   than 2 em of the block's font size from the block's right edge; failing
   blocks are listed by selector. The rule comes from the owner's practice
   for Japanese text, which can wrap between any two characters. English wraps
   only between words, so a line can end a long identifier's width from the
   edge; for English blocks the check is only that no `text-wrap: pretty`
-  or `balance` applies. Chromium alone does not count, because the engines
-  wrap differently.
+  or `balance` applies. WebKit is measured because it is the engine of
+  Safari on iPhone.
 - Japanese h2 wrap by phrase (4.4), so they are left out of the 2 em
   check: at 390 px a 22 px h2 holds about 14 characters per line beside the
   inline mark of 4.4, and a break before a phrase leaves that phrase's
@@ -1731,17 +1735,20 @@ languages, on every page unless it says otherwise.
    attributes. Allowed: the Starlight generator tag, class names and
    custom element names, hashed asset names, the `#theme-icons`
    template, and the sidebar's scroll script.
-3. The layout is the same. For every page at 320 by 664, 390 by 664,
-   768 by 1024, 1024 by 768 and 1440 by 900 px in Chromium (Starlight's
-   layout switches at 50em, the sidebar, and 72em, the table of contents;
-   768 px is a width of the code check of "Site design acceptance"), light, and for the three pages of
-   `screenshots.mjs` also in WebKit and dark, with the menu closed and
-   open at 320 and 390 px and the search dialog open at 1440 px: the
+3. The layout is the same. For every page in the two patterns of "Site
+   design acceptance" (1440 by 900 px in Chromium, 390 by 664 px in
+   WebKit), light, and for the three pages of `screenshots.mjs` also dark,
+   with the menu closed and open at 390 px and the search dialog open at
+   1440 px: the
    boxes of the header items, the sidebar entries, the table of contents
    entries, the headings, paragraphs, list items, code blocks, tables,
    figures and footer links differ by at most 1 CSS px, and their computed
    `font-family`, `font-size`, `font-weight`, `line-height`, `color` and
-   `background-color` are equal. The plan had no tolerance for screenshots
+   `background-color` are equal. The rebuild also folds the widths of
+   `check-code-layout.mjs`, `check-home-interaction.mjs`,
+   `check-copy-idle.mjs`, `screenshots.mjs` (and `ci-screenshots.mjs`) and
+   `check-focus.mjs`, which still measure 320, 390, 768 or 1440 px, into
+   the two patterns of "Site design acceptance". The plan had no tolerance for screenshots
    before; this one is chosen here. The screenshots of both builds go
    side by side into the workflow artifact for the review.
 4. Search returns the same. `check-search-identifiers.mjs` passes, and a
@@ -1764,7 +1771,7 @@ list a difference.
 |---|---|
 | Japanese search gets worse: Pagefind segments by `<html lang>`, so a page that loses `lang="ja"` or its `data-pagefind-*` attributes is indexed differently, and a changed UI option changes the results | items 2 and 4; Pagefind indexes as many HTML files per build as today (66 for 3.x at 6bb35b241) |
 | The fallback notice or its language goes missing: the generated reference under `/ja/` and every page under `/v2/ja/` still depend on it after step 5 | `check-japanese.mjs` (the `data-notice` of each fallback page, `hreflang`), `check-v2.mjs`, and item 2 (the `lang="en"` element and its notice) |
-| The mobile menu breaks: today it reuses Starlight's popover pane and script | `check-focus.mjs`, `check-home-interaction.mjs`, `check-styles.mjs` with the menu open in both engines, `check-no-js.mjs` (the menu opens through the `popover` attribute), and item 3 at 320 and 390 px |
+| The mobile menu breaks: today it reuses Starlight's popover pane and script | `check-focus.mjs`, `check-home-interaction.mjs`, `check-styles.mjs` with the menu open in both engines, `check-no-js.mjs` (the menu opens through the `popover` attribute), and item 3 at 390 px |
 | The 2.x pages break: they build from another tree with another base and sidebar | `build-v2.mjs` and `check-v2.mjs` (banner, version links, search isolation) in the site workflow, `site-v2.yml` on `master`, and items 2 to 4 on `/v2/` |
 | A rule of Starlight's base stylesheets that a page relies on is lost | item 3, and `check-styles.mjs` and `check-css.mjs` on the built CSS |
 | A front matter field is dropped without notice | the strict schema of the collection, and item 2 |
@@ -1791,9 +1798,9 @@ reviews besides that.
 |---|---|---|---|---|
 | 1 | Starlight pinned in `site/`, the generator, today's `docs/` rendered without design; `check_links.py` moved into `site/scripts/`; AGENTS.md updated: `site/` in the repository layout, and in "Build and test" the Node 22.12 toolchain, `npm ci`, `npm run build` and the checks | `site/`, `site.yml` with the build and the checks (no deployment), the built site as a workflow artifact | a fresh clone builds with `npm ci` and `npm run build`; every internal link of the built HTML resolves; every page has a title and the last-updated date of its source; a test page from `docs/ja/` is served under `/ja/` with `lang="ja"`, and the `<wbr>` in its h2 is an element of the built h2 (4.4); pages read with JavaScript off | nothing |
 | 2 | `tokens.css` from the inherited tokens of 4.2 and the changes of 4.3, both palettes of 4.6, the type of 4.4, the spacing and radii of 4.5, Starlight's colors and Expressive Code's themes and frames set from the tokens; `contrast.py` moved into `site/scripts/`, reading `tokens.css`; the specimens of 4.12 | `tokens.css`, and the specimens: the home page and a reference page with one diagram and one sample, light and dark, at 390 by 664 and 1440 by 900 px, in Chromium and WebKit, one set per choice of 4.12, as screenshots and one contact sheet per set in the workflow artifact `specimens` of the `site` run; after the owner's choice, the site builds only the chosen configuration | the contrast script passes for palette A (for both palettes while they were compared) and the code colors in both themes; computed font sizes equal the scale of each language; no `text-wrap: pretty` or `balance` in the built CSS, and no hex outside `tokens.css` and Expressive Code's stylesheet; every computed color a token value, code blocks included, the span colors of Expressive Code code colors, and no `is-terminal` frame (4.6); monospace only where item 2 of 4.3 puts it; no shadow, gradient or backdrop filter (item 5 of 4.3); margins, paddings, gaps and radii from the sets of 4.5; durations of 4.8; at most 90 characters per English body line at 1440 px; no external font URL in the built site, and the build succeeds with network access blocked after `npm ci` | the specimens of the workflow artifact, in a session: the four choices of 4.12 (decided on 2026-10-19) |
-| 3 | home page with the example's test (3.3, item 8), header, footer, language and version links (4.10); the sample mechanism and the diagram mechanism of 3.5, with the request phases diagram | the home page; the first diagram, as the model for the others | the example's case passes in CI and the home page shows the files it compares, with their date; no benchmark image and no performance figure without its date and method (Q8); Chromium and WebKit screenshots at 320, 390 by 664 and 1440 by 900, light and dark; no horizontal scroll at 320; gutters of 20 px or more; the home page heading's line count (4.4); the right-edge measurement of 4.9 on Japanese blocks and the `text-wrap` check on English ones; Lighthouse accessibility with no failed audit on three page types in both languages; visible, uncovered focus; the shadow, gradient and backdrop check of item 5 of 4.3 with the search dialog and the menu open, in both engines; language links answer 200; no redirect for `Accept-Language: ja`; the generator stops on a sample whose file or case is missing; the diagram check fails on a missing file or line range and lists changed lines; the drawings hold no `<text>` element and no color outside the tokens; diagram labels are HTML text of 14 px or more at 390 and 1440 px; the generator stops on a diagram block whose keys differ from those of its drawing; the figure has `role="img"` and an `aria-label`, and the drawing is hidden from screen readers (3.5) | the definition (3.3, item 1) and the first diagram |
+| 3 | home page with the example's test (3.3, item 8), header, footer, language and version links (4.10); the sample mechanism and the diagram mechanism of 3.5, with the request phases diagram | the home page; the first diagram, as the model for the others | the example's case passes in CI and the home page shows the files it compares, with their date; no benchmark image and no performance figure without its date and method (Q8); Chromium and WebKit screenshots at 320, 390 by 664 and 1440 by 900, light and dark; no horizontal scroll at 390 px; gutters of 20 px or more; the home page heading's line count (4.4); the right-edge measurement of 4.9 on Japanese blocks and the `text-wrap` check on English ones; Lighthouse accessibility with no failed audit on three page types in both languages; visible, uncovered focus; the shadow, gradient and backdrop check of item 5 of 4.3 with the search dialog and the menu open, in both engines; language links answer 200; no redirect for `Accept-Language: ja`; the generator stops on a sample whose file or case is missing; the diagram check fails on a missing file or line range and lists changed lines; the drawings hold no `<text>` element and no color outside the tokens; diagram labels are HTML text of 14 px or more at 390 and 1440 px; the generator stops on a diagram block whose keys differ from those of its drawing; the figure has `role="img"` and an `aria-label`, and the drawing is hidden from screen readers (3.5) | the definition (3.3, item 1) and the first diagram |
 | 4 | Start; Guides with the samples of 3.5; Reference with the build diagram; Concepts with the phases, filter, async and lifetime diagrams; the agent proxy page with its three v3 diagrams and today's recipes, labeled as development content; Releases, Security, Contributing; the fixes of 2.2; `README.md` reduced to the definition, links and the branch table | the pages of 3.2 except the Japanese ones and `/v2/` | no broken relative link or anchor in `docs/` or the built site; every directive in the `ngx_command_t` tables of `src/` has a section in the directive reference; `mruby_output_filter` appears in `docs/` only in a removal note; the default gems listed in the docs equal the uncommented `conf.gem` lines of `build_config.rb`; every Ruby block in the docs compiles with the bundled mruby's `mrbc`; each `examples/<use>/` starts in CI and returns the output its README states; every sample on a page names a case that exists, and every use case of `docs/use_case/` is either a sample or marked untested with the reason of 3.5; every diagram names lines that exist; every v3 diagram and sample carries the development label | nothing |
-| 5 | Japanese pages: every page written by hand translated, the generated reference in English under `/ja/` with a notice (Q2) | `docs/ja/` and the `/ja/` pages | every page written by hand except the handoff page has a file in `docs/ja/`, and every generated reference page and the handoff page under `/ja/` show the notice (Q2); `lang` and reciprocal absolute `hreflang` on every page; no space between Japanese and Latin characters in `docs/ja/` outside code and URLs; at most 40 characters per Japanese body line at 1440 px; line height 1.75 to 2.0; `keep-all` and `auto-phrase` only on `h2` and diagram labels; every h1 on one line at 390 px and on at most two at 320 px; no h1, `<title>`, sidebar entry, table-of-contents entry or heading `id` on `/ja/` contains the text `wbr` (4.4); the right-edge measurement on `/ja/` in both engines, with the h2 limit of 4.9; every diagram on `/ja/` takes its labels from `docs/ja/`, with the keys of the English block, and no label overflows its place at 390 and 1440 px | nothing |
+| 5 | Japanese pages: every page written by hand translated, the generated reference in English under `/ja/` with a notice (Q2) | `docs/ja/` and the `/ja/` pages | every page written by hand except the handoff page has a file in `docs/ja/`, and every generated reference page and the handoff page under `/ja/` show the notice (Q2); `lang` and reciprocal absolute `hreflang` on every page; no space between Japanese and Latin characters in `docs/ja/` outside code and URLs; at most 40 characters per Japanese body line at 1440 px; line height 1.75 to 2.0; `keep-all` and `auto-phrase` only on `h2` and diagram labels; every h1 on one line at 390 px; no h1, `<title>`, sidebar entry, table-of-contents entry or heading `id` on `/ja/` contains the text `wbr` (4.4); the right-edge measurement on `/ja/` at 390 px in WebKit, with the h2 limit of 4.9; every diagram on `/ja/` takes its labels from `docs/ja/`, with the keys of the English block, and no label overflows its place at 390 and 1440 px | nothing |
 | 6 | 2.x under `/v2/` (Q4); `site-v2.yml` and `site-dispatch.yml` on `master` (5.3) | `/v2/` and its banner; the two workflows on `master` | no broken link under `/v2/`; the banner on every 2.x page; 2.x and 3.x search results do not mix; a pull request to `master` that breaks a `/v2/` link fails `site-v2.yml`; a merge into `master` that changes `docs/` starts a `site.yml` run on `next` (`gh run list --workflow site.yml --branch next --event workflow_dispatch`) | nothing |
 | 7 | switch ngx.mruby.org: settings 1 and 2 of 5.3 in that order, then the pull request that adds the deploy job; on `master`, the text that says `gh-pages` holds the site or that the switch is a pull request to it, all from #568: the branch paragraph of `README.md`, and in `docs/DEVELOPMENT.md` the last sentence of promotion step 7 and the open questions "Who gives the go for the promotion and changes the repository settings in steps 2 and 3" and "Which version the site shows after the promotion"; the move of 5.2 added to "Promoting v3 to master"; Google Analytics removed (Q6), the verification file kept (Q5); Discussions turned on and linked from Contributing, the wiki turned off after the launch (Q9) | the live site at https://ngx.mruby.org/ | `https://ngx.mruby.org/` answers 200 with the deployed `index.html`; `http://` redirects to `https://`; `/googleba3435e4002729b6.html` answers 200 with its 54 bytes unchanged; no analytics script in the built site; the `github-pages` environment read back with `gh api` has custom branch policies, and its deployment branch policies list only `next`; the first deployment, and the one after a `docs/` change merged into `master`, come from `next` (`gh api repos/matsumotory/ngx_mruby/deployments?environment=github-pages`); Lighthouse on the live home page | the date of the switch; the owner changes settings 1 and 2 of 5.3 and the custom domain, and gives the go for the session to turn on Discussions and turn off the wiki with `gh api` |
 | 8 | agent proxy how-to with `examples/agent-proxy/` (v3-plan step 7, part (e)); the samples of each planned feature of 3.5 as it merges | the how-to page and its samples | the example starts in CI and answers the requests of its README; each new sample names its case; Claude Code and Codex named only after both have run against the reference proxy | nothing |
@@ -2444,12 +2451,28 @@ the relevant content rather than adding another label to explain the layout.
 
 The reviewer then checks the source claims, shared type roles and every
 secondary label/arrow for necessary meaning. Inspect desktop and mobile
-overviews with adjacent sections, plus affected intermediate/narrow widths,
-zoom, keyboard focus, code copies and reduced motion. For code width, use the
+overviews with adjacent sections in the two patterns below, plus zoom,
+keyboard focus, code copies and reduced motion. For code width, use the
 existing 320/390/768/1440 px checks in both languages and require each code
 region's `scrollWidth <= clientWidth + 1`. A screenshot cannot establish copy
 correctness or motion behavior. Automated checks and first-reader findings are
 separate evidence, and neither replaces the other.
+
+**Measure two patterns.** The layout and wrapping checks of the site
+measure two patterns only: PC at full screen (1440 px, Chromium) and
+iPhone Safari (390 px, WebKit). No other widths, browsers or font
+combinations are added to the checks. The owner's words (2026-11-01):
+「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
+The words name iPhone 17 as an example; the phone pattern takes 390 px,
+the standard iPhone width, at which the pages already pass.
+The content area has a fixed width, so a correct rendering at full
+screen is what the PC pattern establishes. Japanese text keeps the faces
+the site serves: Hiragino Sans where the system has it and the served Noto
+Sans JP elsewhere (`--ja-face noto` lets a run on macOS see what CI sees).
+`site/scripts/lib/patterns.mjs` holds the two patterns; `check-styles.mjs`
+and `check-japanese-lines.mjs` measure each engine in its own pattern.
+4.9 stays the design guidance for writers at narrow widths; its
+measurement is the iPhone pattern.
 
 **Leave a reproducible checkpoint.** In the PR, record the rule sections read,
 content outline and evidence, reference observations, tested head, actual URLs
