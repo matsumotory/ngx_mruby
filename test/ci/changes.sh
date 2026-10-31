@@ -9,7 +9,8 @@
 #   sh test/ci/changes.sh --files     # the paths on stdin, one per line (tests)
 #
 # The output is one key=value line per key, each value true or false except
-# that of build. What each category runs in a pull request:
+# that of build. The script is the same on master and next; the workflows
+# that read it are not. What each category runs in a ready pull request:
 #
 #   code       src/, mrbgems/, mruby/, dependence/, build_config.rb,
 #              build_config.rb.lock, configure, configure.in, config.in,
@@ -17,25 +18,30 @@
 #              other category names (fail closed: a file of a new kind runs
 #              everything until a category names it). test.yml runs the
 #              whole build matrix with the sanitizer cell and the cell under
-#              valgrind, soak and perf; nginx-tests.yml and examples.yml run
+#              valgrind, and perf, and on next soak; codeql.yml scans src/
+#              and mrbgems/. On next, nginx-tests.yml and examples.yml run
 #              by their own path filters.
 #   tests      test/, test.sh and .github/workflows/test.yml. test.yml runs
 #              three cells of the build matrix: nginx 1.30.6 with the static
 #              module, 1.31.8 with the dynamic module, and the cell that runs
 #              nginx under valgrind.
 #   docs       docs/, the Markdown files at the top, AUTHORS, LEGAL,
-#              LICENSE and MITL. site.yml builds the site and runs its static
-#              checks, and its browser lanes when site/scripts/ci-plan.mjs
-#              selects pages.
-#   site       site/ and .github/workflows/site.yml. site.yml runs its
-#              build, its static checks and its browser lanes.
-#   examples   examples/. examples.yml runs the examples; site.yml builds
-#              the site and runs its static checks.
+#              LICENSE and MITL. On next, site.yml builds the site and runs
+#              its static checks, and its browser lanes when
+#              site/scripts/ci-plan.mjs selects pages. On master, site-v2.yml
+#              checks the 2.x pages; it runs on every ready pull request,
+#              whatever it changes.
+#   site       site/ and .github/workflows/site.yml, which only next has.
+#              site.yml runs its build, its static checks and its browser
+#              lanes.
+#   examples   examples/, which only next has. examples.yml runs the
+#              examples; site.yml builds the site and runs its static checks.
 #   workflows  .github/ except test.yml and site.yml. zizmor.yml checks
 #              all the workflows (these two included), and
 #              codeql.yml the workflow files.
-#   soak       code, test/soak/ or test/build_release.sh: test.yml runs the
-#              soak job.
+#   soak       code, test/soak/ or test/build_release.sh: on next, test.yml
+#              runs the soak job. master has no soak job, so soak starts
+#              nothing there.
 #   perf       code, or the measurement of the performance comparison
 #              (test/perf/, test/build_release.sh and the scenario files of
 #              test/soak/): the perf job of test.yml compares.

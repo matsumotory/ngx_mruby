@@ -323,6 +323,10 @@ Neither is in the `needs` of `ci-ok`.
 
 ## Supply chain checks
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16057/badge)](https://www.bestpractices.dev/projects/16057)
+
+The badge above is the project's OpenSSF Best Practices badge (passing level), which is separate from the Scorecard results below.
+
 Four more workflows check the supply chain of the build and the code. None
 of them is in the `needs` of `ci-ok`, so none of them blocks a merge through
 the ruleset; "Review and merge" in `AGENTS.md` asks for every CI check on
@@ -381,14 +385,12 @@ code scanning for three languages, `c-cpp`, `ruby` and `actions`, and
 uploads the results to code scanning (the repository's Security tab). It
 runs on ready pull requests to `master` and `next` and on pushes to these
 branches that change `src/`, `mrbgems/` or `.github/workflows/`, every
-Wednesday at 04:37 UTC (GitHub runs a schedule only from the file on
+Wednesday at 04:37 UTC (GitHub runs a schedule only from this file on
 `master`, so the weekly run scans `master`), and on "Run workflow". It
 replaces GitHub's default setup of code scanning, which ran on every pull
 request and every push; the default setup is turned off in the repository
-settings, which the owner manages. Until `master` has the same file (its
-pull request follows this change), pull requests to `master`, pushes to it
-and the weekly run, which runs from the file on `master`, are not scanned;
-the same holds for the draft skip of the workflows of `master`.
+settings, which the owner manages. The file is the same on `master` and
+`next`.
 
 All three languages use `build-mode: none`: for C and C++ CodeQL reads the
 sources without a build of nginx and mruby, so the job needs no build.
@@ -2052,9 +2054,12 @@ measurement is `test/perf/`,
 (`nginx.conf`, `nginx.agent.conf`, `scenarios.rb`, `http_client.rb`,
 `mock_llm.rb`, `handlers/`). The job of `master` is the same, with two
 differences: `master` commits no gem lock, so the lock is not an input
-there, and `master` has no soak job, so its `perf` job first runs the check
-of the mock LLM (`ruby test/soak/mock_llm_test.rb`) that `test/soak/run.sh`
-runs on `next`; on `master` the whole of `test/soak/` is the measurement.
+there, and `master` has no soak job, so its `perf` job runs the check of
+the mock LLM (`ruby test/soak/mock_llm_test.rb`), which `test/soak/run.sh`
+runs on `next`, before it compares. On `next`, a change of
+`test/soak/mock_llm_test.rb` gives `soak` `true` and so runs that check in
+the `soak` job; on `master`, where `soak` starts no job, such a change
+alone runs it only when the pull request has the label `perf`.
 
 A change of `nginx_version` builds the head with another nginx, so its
 `WARN` or `FAIL` measures nginx's own cost as well as ngx_mruby's; read the
@@ -2192,7 +2197,20 @@ The independent browser lanes are:
 - Japanese page lines;
 - focus, language links and Lighthouse accessibility;
 - full representative screenshots, or every targeted page in both engines,
-  both themes and 320/390/1440px widths, with viewport and full-page evidence.
+  both themes and 320/390/1440px widths, with viewport and full-page evidence;
+  in full coverage the same lane first runs `check-project-badges.mjs --browser`,
+  the footer's OpenSSF Best Practices badge at 375px (`/` and `/v2/ja/` in
+  Chromium, light and dark, and `/ja/` in WebKit).
+
+The footer badge is the one image of the site from another origin. The
+read-only browser context (`scripts/lib/read-only-browser.mjs`) still allows
+only same-origin GET requests; a caller may name exact image URLs whose GET it
+answers from a local fixture instead of the network. The checks before the
+deploy (`check-project-badges.mjs`, `check-home-interaction.mjs`,
+`screenshots-live.mjs`) serve the badge's URL from the stand-in of
+`scripts/lib/project-badges.mjs`, so a slow or failing bestpractices.dev cannot
+hold the publication. Only `check-live.mjs`, after the deploy, fetches the real
+image, and retries it three times before it reports a problem.
 
 The v2 input is fetched independently from `master`, so it is **never assumed
 unchanged from the next-branch diff**. Maintenance Japanese lines, every v2 code

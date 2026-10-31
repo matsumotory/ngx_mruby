@@ -17,10 +17,18 @@ const server = http.createServer((request, response) => {
 server.on('upgrade', (_request, socket) => { requests.push('UPGRADE'); socket.destroy(); });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
+const badgeRequests = [];
+const badgeServer = http.createServer((request, response) => {
+  badgeRequests.push(`${request.method} ${request.url}`);
+  response.writeHead(200, { 'content-type': 'image/svg+xml' });
+  response.end('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>');
+});
+await new Promise(resolve => badgeServer.listen(0, '127.0.0.1', resolve));
+const external = `http://127.0.0.1:${badgeServer.address().port}`;
 let browser;
 try {
   browser = await chromium.launch();
-  const { context, blocked } = await readOnlyContext(browser, origin);
+  const { context, blocked, close } = await readOnlyContext(browser, origin);
   try {
     const page = await context.newPage();
     await page.goto(origin);
@@ -43,10 +51,44 @@ try {
     assert.ok(!requests.some(item => /write|off-origin|worker|UPGRADE/.test(item)), 'no rejected traffic reaches the server');
     assert.equal(context.serviceWorkers().length, 0);
   } finally {
-    await context.close();
+    await close();
   }
+  const badge = external + '/badge.svg';
+  const fixture = { contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>' };
+  const allowed = await readOnlyContext(browser, origin, {}, { [badge]: fixture });
+  try {
+    const page = await allowed.context.newPage();
+    await page.goto(origin);
+    const loaded = await page.evaluate(async ({ badge }) => {
+      const image = src => new Promise(resolve => {
+        const img = document.createElement('img');
+        img.onload = () => { const ok = img.naturalWidth > 0; img.remove(); resolve(ok); };
+        img.onerror = () => { img.remove(); resolve(false); };
+        img.src = src;
+        document.body.append(img);
+      });
+      const ok = await image(badge);
+      await fetch(badge).catch(() => {});
+      for (const method of ['POST', 'HEAD']) await fetch(badge, { method }).catch(() => {});
+      await new Promise(resolve => {
+        const script = document.createElement('script');
+        script.onload = script.onerror = () => { script.remove(); resolve(); };
+        script.src = badge;
+        document.body.append(script);
+      });
+      const nearMiss = await image(badge + '?other=1');
+      return { ok, nearMiss };
+    }, { badge });
+    assert.deepEqual(loaded, { ok: true, nearMiss: false });
+    const otherPage = await allowed.context.newPage();
+    await assert.rejects(() => otherPage.goto(badge), 'a document at the image URL stays blocked');
+    await otherPage.close();
+    assert.equal(allowed.blocked.length, 6, 'fetch, POST, HEAD, script, near-miss image and document blocked');
+    assert.deepEqual(badgeRequests, [], 'the fixture answers the exact image GET; nothing reaches the external server');
+  } finally { await allowed.close(); }
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));
+  await new Promise(resolve => badgeServer.close(resolve));
 }
-console.log('test-read-only-browser: same-origin GET accepted; POST, off-origin GET, redirect follow-up, service worker and WebSocket rejected without server traffic');
+console.log('test-read-only-browser: opted-in exact external image GET answered from its fixture without network, non-image/method/URL negatives passed; same-origin GET accepted; POST, off-origin GET, redirect follow-up, service worker and WebSocket rejected without server traffic');

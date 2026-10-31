@@ -33,14 +33,14 @@ t.assert('ngx_mruby - Filter#output', 'a non-String argument is converted with t
   t.assert_equal '5', res["content-length"]
 end
 
-# Filter#output with an empty String sends the status with an empty body.
-# On the 2.x line the body filter passes a zero size last buffer marked as
-# memory, nginx rejects it ("zero size buf in writer"), and the connection is
-# closed before the status line is written; v3 changed that so that a body
-# filter also works on the empty 200 of a content handler without output
-# (#200).
+# Filter#output with an empty String sends a complete response: the status,
+# Content-Length: 0 and no body bytes. Before the fixes (#574 on v3, #664 on
+# 2.7.3), the body filter passed a zero size last buffer marked as memory,
+# nginx rejected it ("zero size buf in writer"), and the connection was closed
+# before the status line was written. The raw client reads the bytes on the
+# socket; the HttpRequest checks the same response through the usual client.
 t.assert('ngx_mruby - Filter#output', 'an empty String sends the status with Content-Length: 0') do
-  t.assert_equal 'HTTP/1.1 200 OK', connection_client('filter_empty')
+  t.assert_equal '200|0|""', connection_client('filter_empty')
   res = HttpRequest.new.get base(18112) + '/filter/output_empty'
   t.assert_equal 200, res.code
   t.assert_equal '0', res["content-length"]
