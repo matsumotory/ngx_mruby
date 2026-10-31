@@ -2077,9 +2077,14 @@ measures against them; the base of a pull request is `next` with mruby
 - The owner accepted these differences on 2026-10-31 (the record on #678
   and in `docs/HANDOFF.md`).
 
-A comparison whose base still bundles an older mruby, such as the
-comparison with the previous tag before a tag (see "Design principles" in
-`AGENTS.md`), measures such a difference again. `test/perf/accepted.txt`
+A comparison whose base bundles an older mruby than the head measures such
+a difference again: one with a commit of `next` from before #678 as the
+base meets the differences of mruby 4.0.0 above. The comparison with the
+previous tag before a tag (see "Design principles" in `AGENTS.md`) has an
+older base as well: before the first pre-release of v3 the base is
+`v2.7.2`, which bundles mruby 3.3.0. No line of the file covers mruby 3.3
+against 4.1, so the `WARN` and `FAIL` rows of that comparison go to the
+owner as the rule says. `test/perf/accepted.txt`
 lists the accepted differences, one line each: a condition, the scenario,
 and an allowance on the change of Ir per request without GC, in percent.
 The only condition is `mruby-version`, the `MAJOR.MINOR` of
@@ -2091,8 +2096,9 @@ when both builds match it. Then a `WARN` or `FAIL` row of its scenario
 within the allowance shows as `ok (accepted: mruby 4.0.0→4.1.0, +8%)`,
 does not fail the run, and is a notice in the annotations of the job; a
 change above the allowance keeps its `WARN` or `FAIL`. A header line of
-`report.txt` and of the job summary prints the mruby version of both
-builds and the differences that applied, for example `perf: mruby: base
+`report.txt`, and a line below the table of the job summary, print the
+mruby version of both builds and the differences that applied, for
+example `perf: mruby: base
 4.0.0, head 4.1.0; accepted differences (accepted.txt): auth up to +8%
 (mruby 4.0.0→4.1.0)`, or `none apply`. `perf.rb` reads the file before it
 measures and stops at a line that is not in the format, with the file and

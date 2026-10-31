@@ -761,14 +761,17 @@ of the bundled mruby in `docs/releases/v3.0.0.md` and `.ja.md` (#678), and
 the acceptance is recorded on #678. The owner then asked, on the same
 day: 「callgrindのテストはエラーにならんように調整しとかなね」 (adjust the
 callgrind comparison so that it does not report an error for this). A
-pull request to `next` compares against `next`, which has mruby 4.1, but
-the comparison with the previous tag before a tag can measure a base with
-mruby 4.0.0. [#696](https://github.com/matsumotory/ngx_mruby/pull/696)
+pull request to `next` compares against `next`, which has mruby 4.1; a
+comparison with a commit of `next` from before #678 still has mruby 4.0.0
+in its base. [#696](https://github.com/matsumotory/ngx_mruby/pull/696)
 adds `test/perf/accepted.txt`, which
 `test/perf/perf.rb` reads: `mruby-version 4.0 4.1 auth 8` shows `auth`
 within +8% without GC as `ok (accepted: ...)` when the base bundles mruby
 4.0.x and the head 4.1.x ("Known differences" in `docs/test/README.md`,
-and "Before a tag" in AGENTS.md).
+and "Before a tag" in AGENTS.md). The comparison before the first
+pre-release of v3 has `v2.7.2`, with mruby 3.3.0, as its base; the file has
+no line for mruby 3.3 against 4.1, so its `WARN` and `FAIL` rows go to the
+owner.
 
 On 2026-10-31 the owner set a rule for reports to mruby, in a session's
 question: 「mruby側への報告は確定と明らかにどの観点でも修正すべきと判断でき、パッチをかけるものだけにしたい。ngx_mrubyの都合だけでの報告はしたくない」

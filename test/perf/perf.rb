@@ -797,6 +797,10 @@ def self_test_accepted(builds, ok)
     'mruby-version 4.0 4.1 auth 8%' => 'allowance "8%" is not a number',
     'mruby-version 4.0 4.1 auth 0' => 'allowance "0" is not a number',
     'mruby-version 4.0 4.1 auth -1' => 'allowance "-1" is not a number',
+    'mruby-version 4.0 4.1 auth 0x8' => 'allowance "0x8" is not a number',
+    'mruby-version 4.0 4.1 auth 1e1' => 'allowance "1e1" is not a number',
+    'mruby-version 4.0 4.1 auth 8_0' => 'allowance "8_0" is not a number',
+    'mruby-version 4.0 4.1 auth .5' => 'allowance ".5" is not a number',
     "mruby-version 4.0 4.1 auth 8\nmruby-version 4.0 4.1 auth 9" => 'made_up.txt:2: a second line for mruby-version 4.0 4.1 auth'
   }.each do |bad, message|
     parse_accepted(bad, 'made_up.txt', names)
@@ -829,6 +833,17 @@ def self_test_accepted(builds, ok)
 
     failures << "auth at #{head_nogc} w/o GC with mruby #{versions.inspect} gave #{got.inspect} (failed #{failed}), " \
                 "expected #{expected.inspect} (failed #{expected_failed})"
+  end
+  # The boundary: a change equal to the allowance is accepted, one above it is not.
+  allowance = { allowance: 8.0, label: 'mruby 4.0.0→4.1.0' }
+  { 8.0 => 'ok (accepted: mruby 4.0.0→4.1.0, +8%)', 8.0001 => 'FAIL' }.each do |change, expected_verdict|
+    got = accepted_verdict(change, allowance)
+    failures << "accepted_verdict(#{change}) gave #{got.inspect}, expected #{expected_verdict.inspect}" unless got == expected_verdict
+  end
+  { 'ok (accepted: mruby 4.0.0→4.1.0, +8%)' => 'notice', 'n/a (base: unexpected response)' => 'notice',
+    'WARN' => 'warning', 'FAIL' => 'error', 'ERROR' => 'error' }.each do |result, expected_level|
+    got = annotation_level(result)
+    failures << "annotation_level(#{result.inspect}) gave #{got.inspect}, expected #{expected_level.inspect}" unless got == expected_level
   end
   line = accepted_line({ 'mruby-version' => %w[4.0.0 4.1.0] }, accepted_for(entries, { 'mruby-version' => %w[4.0.0 4.1.0] }))
   file = File.basename(ACCEPTED_FILE)
@@ -926,8 +941,9 @@ def parse_accepted(text, path, scenario_names)
     end
     raise PerfError, "#{where}: unknown scenario #{scenario.inspect}" unless scenario_names.include?(scenario)
 
-    percent = Float(allowance, exception: false)
-    unless percent&.finite? && percent.positive?
+    # Decimal digits only: Float() would also take 0x8, 1e1 and 8_0.
+    percent = allowance.match?(/\A\d+(?:\.\d+)?\z/) ? Float(allowance) : nil
+    unless percent&.positive?
       raise PerfError, "#{where}: allowance #{allowance.inspect} is not a number of percent above 0 (no % sign)"
     end
     if entries.any? { |e| [e[:condition], e[:base], e[:head], e[:scenario]] == [condition, base, head, scenario] }
@@ -1168,6 +1184,16 @@ def gem_lock_lines(builds)
   lines
 end
 
+# The level of the annotation of a row that is not plain ok: a warning for
+# WARN, a notice for n/a and for an accepted difference, an error for FAIL
+# and ERROR.
+def annotation_level(result)
+  if result == 'WARN' then 'warning'
+  elsif result.start_with?('n/a', 'ok (accepted') then 'notice'
+  else 'error'
+  end
+end
+
 # The message of a workflow command, escaped as GitHub Actions requires.
 def workflow_message(text)
   text.to_s.gsub('%', '%25').gsub("\r", '%0D').gsub("\n", '%0A')
@@ -1185,10 +1211,7 @@ def annotate(header, rows, notes, reasons)
     result = row.last
     next if result == 'ok'
 
-    level = if result == 'WARN' then 'warning'
-            elsif result.start_with?('n/a', 'ok (accepted') then 'notice'
-            else 'error'
-            end
+    level = annotation_level(result)
     detail = header.zip(row).map { |h, v| "#{h}: #{v}" }.join(', ')
     detail = ([detail] + reasons[row.first]).join("\n") if reasons.key?(row.first)
     puts "::#{level} title=perf #{row.first}::#{workflow_message(detail)}"
