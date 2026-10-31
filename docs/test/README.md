@@ -154,7 +154,7 @@ and its new path (`git diff --no-renames`), so that moving a source file to
 | `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | `site`: the build and the static checks, and the browser lanes when `site/scripts/ci-plan.mjs` selects pages ([Site CI change scope](#site-ci-change-scope)) |
 | `site` | `site/`, `.github/workflows/site.yml` | `site`: the build, the static checks and every browser lane |
 | `examples` | `examples/` | `examples`; `site`: the build and the static checks |
-| `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, these two included); `codeql` for `.github/workflows/` |
+| `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, these two included); `codeql` for `.github/workflows/` and `.github/codeql/` |
 
 `soak` is `true` when `code` is, or when `test/soak/` or
 `test/build_release.sh` changed; `perf` when `code` is, or when the
@@ -213,9 +213,9 @@ nightly run under valgrind, which the schedule of `valgrind-nightly.yml` on
 `master` starts on `master` and on `next`, is such a run ([valgrind in
 CI](#valgrind-in-ci)). The other workflows decide on their own when they
 run: `site` deploys on every push to `next`, and `codeql` scans pushes to
-`master` and `next` that change `src/`, `mrbgems/` or the workflows
-([CodeQL](#codeql)); `nginx-tests`, `examples` and `zizmor` run on pull
-requests only.
+`master` and `next` that change `src/`, `mrbgems/`, the workflows or its
+configuration ([CodeQL](#codeql)); `nginx-tests`, `examples` and `zizmor`
+run on pull requests only.
 
 `ci-ok` passes a skipped `build`, `soak` or `files` job only when `changes`
 passed and decided that the run does not need it. A job that was skipped
@@ -398,9 +398,10 @@ gem-heads.yml`), starts them again.
 code scanning for three languages, `c-cpp`, `ruby` and `actions`, and
 uploads the results to code scanning (the repository's Security tab). It
 runs on ready pull requests to `master` and `next` and on pushes to these
-branches that change `src/`, `mrbgems/` or `.github/workflows/`, every
-Wednesday at 04:37 UTC (GitHub runs a schedule only from this file on
-`master`, so the weekly run scans `master`), and on "Run workflow". It
+branches that change `src/`, `mrbgems/`, `.github/workflows/` or
+`.github/codeql/`, every Wednesday at 04:37 UTC (GitHub runs a schedule
+only from this file on `master`, so the weekly run scans `master`), and on
+"Run workflow". It
 replaces GitHub's default setup of code scanning, which ran on every pull
 request and every push; the default setup is turned off in the repository
 settings, which the owner manages. The file is the same on `master` and
@@ -413,6 +414,20 @@ less accurate results than one made from a build
 (["Build options for compiled languages"](https://docs.github.com/en/code-security/reference/code-scanning/codeql/build-options-for-compiled-languages)).
 The actions are pinned by commit id like those of the other workflows, and
 `zizmor` checks the file.
+
+CodeQL does not analyze the vendored trees, `mruby/` (mruby, with the code
+that mruby itself vendors) and `dependence/` (ngx_devel_kit):
+`.github/codeql/codeql-config.yml`, which the `init` step of the workflow
+reads (`config-file`), lists them under `paths-ignore`. They are upstream
+code that the repository takes with git subtree and does not edit by hand
+("Do not" in [AGENTS.md](../../AGENTS.md)), so an alert in them would not
+be fixed here; a change of them comes with the next update of the subtree.
+The owner decided on 2026-10-31 that CodeQL leaves them out, that the
+alerts that code scanning had on them are dismissed as vendored upstream
+code, and that nothing is reported upstream for them. GitHub's
+documentation says that `paths-ignore` applies to the interpreted
+languages, Ruby among them, and to C and C++ analyzed without a build
+(["Workflow configuration options for code scanning"](https://docs.github.com/en/code-security/reference/code-scanning/workflow-configuration-options)).
 
 ### Heads of the GitHub gems
 
