@@ -314,6 +314,17 @@ To run nginx under valgrind, set the environment variable `NGINX_RUNNER`:
 $ NGINX_RUNNER=valgrind sh test.sh
 ```
 
+valgrind writes its report when nginx exits at the end of `test.sh`, and
+`test.sh` does not take valgrind's errors into its exit status. To check a
+run as CI does, give valgrind the options of CI and read the `ERROR SUMMARY`
+line of the log (see [valgrind in CI](#valgrind-in-ci)):
+
+```console
+$ rm -rf build/valgrind && mkdir -p build/valgrind
+$ NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=$PWD/test/valgrind.supp --log-file=$PWD/build/valgrind/valgrind.%p.log" sh test.sh
+$ grep 'ERROR SUMMARY' build/valgrind/valgrind.*.log
+```
+
 ### Waiting for nginx to listen
 
 `test.sh` starts the test nginx in the background (`$NGINX_RUNNER
@@ -410,6 +421,77 @@ The upper bound can create these races:
 - nginx later reads each probe connection of the wait, finds it closed
   without a request, and closes it. No handler runs for it, and nginx writes
   only `debug` lines about it to `error.log`.
+
+### valgrind in CI
+
+The `build` matrix of `.github/workflows/test.yml` runs `test.sh` in each
+cell. Which cells run nginx under valgrind depends on the run:
+
+- On pull requests and pushes, one cell runs nginx under valgrind: nginx
+  1.31.8, static module, without `--with-openssl-src`, the job
+  `build (1.31.8)` (the matrix gives it `VALGRIND_ON_EVERY_RUN`). The other
+  cells without a sanitizer run nginx directly (`NGINX_RUNNER=exec`), and
+  the sanitizer cell runs nginx built with AddressSanitizer and
+  UndefinedBehaviorSanitizer (see
+  [Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer](#running-the-tests-under-addresssanitizer-and-undefinedbehaviorsanitizer)).
+- A manual run of `test.yml` with the input `valgrind` runs every cell
+  except the sanitizer cell under valgrind:
+
+  ```console
+  $ gh workflow run test.yml --ref master -f valgrind=true
+  ```
+
+- The nightly run: `.github/workflows/valgrind-nightly.yml` starts such a
+  run of `test.yml` every day at 18:23 UTC (03:23 JST) for each branch of
+  its matrix (`master` and `next`), waits for each, and fails when one
+  fails. GitHub runs a schedule only from the workflow file on the default
+  branch, `master`, so the file on `master` starts the runs of both
+  branches. The file also runs on pull requests that change it, `test.yml`
+  or `test/valgrind.supp`: there it starts the run under valgrind on the
+  head branch of the pull request. Neither run is a status check that
+  `ci-ok` needs.
+
+A cell under valgrind runs nginx with these options:
+
+```text
+valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=test/valgrind.supp --log-file=$RUNNER_TEMP/valgrind/valgrind.%p.log
+```
+
+valgrind counts an error for each memory error that occurs (an invalid
+read or write, a conditional jump or a system call on an uninitialised
+value, an invalid or mismatched free) and for each loss record of the
+kinds `definite` and `indirect` that `test/valgrind.supp` does not
+suppress, and prints the count, with the number of distinct stacks
+(contexts), in its `ERROR SUMMARY` line when nginx exits. With
+`--error-exitcode=99`, valgrind also exits with 99 when the count is not 0,
+but `test.sh` does not keep the exit status of nginx in its own, so the
+step "Check the valgrind reports" reads the logs instead: it prints each
+log, and fails unless at least one log has an `ERROR SUMMARY` and every
+`ERROR SUMMARY` counts 0 errors. A cell without any `ERROR SUMMARY` fails
+as well: valgrind did not finish its report.
+
+Possibly lost blocks are printed with their stacks, but are not errors. At
+the exit of the test nginx (`master_process off`), nginx has destroyed the
+pool of the cycle, and the arrays of connections and events that
+`ngx_event_process_init()` allocated, the table of `ngx_crc32_table_init()`
+and the pools of the connections that are still open are left. valgrind
+finds only interior pointers to them and reports them as possibly lost.
+Their number depends on the connections that are open when nginx exits,
+so counting them would make a cell fail by timing. A leak of ngx_mruby,
+mruby or a gem that drops the last pointer to a block is definitely lost,
+and fails the cell. A request or connection that ngx_mruby never finalizes
+keeps its pools until nginx exits, and valgrind reports them as possibly
+lost, so this check does not fail on it; `master` has no check for such
+leaks yet (on `next`, the `soak` job compares the connections, timers and
+file descriptors of the worker between samples).
+
+`test/valgrind.supp` suppresses only allocations of nginx itself, each with
+its stack and the reason in a comment: today the environment array of
+`ngx_set_environment()` (8 bytes, definitely lost in every cell), which
+nginx leaves allocated at exit on purpose (`ngx_cleanup_environment()` in
+`nginx.c`). An entry is added only with the stack of the report and the
+reason why the block is not ngx_mruby's; a leak with a frame of ngx_mruby,
+mruby or a gem is not suppressed.
 
 ## Testing the auto-ssl mrbgem
 
