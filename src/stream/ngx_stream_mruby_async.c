@@ -254,10 +254,10 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
   re->fiber = ctx->fiber_proc;
 
-  // Keep the fiber from GC while it can be resumed. Register it once: a fiber
-  // that sleeps more than once reuses this registration, and
-  // ngx_stream_mrb_connection_cleanup or ngx_stream_mrb_post_fiber removes it
-  // exactly once (when the session ends, or when the fiber finishes).
+  // Keep the fiber from GC while it can be resumed. Store it in the GC root
+  // holder once: a fiber that sleeps more than once keeps its slot, and
+  // ngx_stream_mrb_connection_cleanup or ngx_stream_mrb_post_fiber frees the
+  // slot exactly once (when the session ends, or when the fiber finishes).
   if (ctx->fiber_slot == NGX_MRB_GC_ROOTS_NONE) {
     ctx->fiber_slot = ngx_mrb_gc_roots_add(mrb, *re->fiber);
   }

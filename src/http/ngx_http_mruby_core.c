@@ -706,7 +706,10 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
 // that has one entry for the state of the http module and one for the state
 // of the stream module, and for a while two more when nginx reads a new
 // configuration. The entry of a state leaves the list when mrb_close() runs
-// the atexit functions, before mruby frees the Array.
+// the atexit functions, before mruby frees the Array. With at most four
+// entries, walking the list costs a few comparisons per fiber, less than a
+// field of each mrb_state would cost to reach from the http and the stream
+// code.
 */
 typedef struct ngx_mrb_gc_roots_s {
   mrb_state *mrb;
@@ -746,6 +749,9 @@ static mrb_value ngx_mrb_gc_roots_new(mrb_state *mrb, void *data)
 {
   mrb_value ary = mrb_ary_new(mrb);
 
+  /* hidden from ObjectSpace.each_object, as mruby hides its own _gc_root_,
+     so that no script can reach the holder */
+  mrb_obj_ptr(ary)->c = NULL;
   mrb_gc_register(mrb, ary);
   return ary;
 }
@@ -791,22 +797,28 @@ mrb_int ngx_mrb_gc_roots_add(mrb_state *mrb, mrb_value obj)
   }
   h = ngx_mrb_gc_roots_find(mrb);
   if (h == NULL) {
+    /* every state gets its holder when it is opened, so this is a bug */
+    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "ngx_mruby: no GC root holder for the mrb_state");
     return NGX_MRB_GC_ROOTS_NONE;
   }
   /* The holder lives as long as the state, so it is old (black) after the
-     first GC. mrb_ary_set() and mrb_ary_push() would then put obj on the gray
-     list, and the next GC would mark the fiber and, in a minor GC, promote it
-     and what it references to the old generation, also when the fiber has
-     ended before that GC: such objects are freed only by a major GC. Painting
-     the holder gray instead, as mrb_ary_modify() does, has the GC scan the
-     holder again in its final mark, which marks only the objects that are
+     first GC. mrb_ary_set() and mrb_ary_push() would then add obj to the gray
+     objects (mrb_field_write_barrier), and the next GC would mark the fiber
+     and, in a minor GC, promote it and what it references to the old
+     generation, also when the fiber has ended before that GC: such objects
+     are freed only by a major GC. Painting the holder gray instead
+     (mrb_write_barrier), as mrb_ary_modify() does, has the GC scan the
+     holder again before the mark ends, which marks only the objects that are
      still in it. */
   mrb_write_barrier(mrb, mrb_basic_ptr(h->ary));
-  if (h->free != NGX_MRB_GC_ROOTS_NONE) {
+  if (h->free >= 0 && h->free < RARRAY_LEN(h->ary) && mrb_integer_p(RARRAY_PTR(h->ary)[h->free])) {
     slot = h->free;
     h->free = mrb_integer(RARRAY_PTR(h->ary)[slot]);
     mrb_ary_set(mrb, h->ary, slot, obj);
   } else {
+    /* no free slot (a free list that does not lead to a free slot would be a
+       bug: it is dropped, and the Array grows) */
+    h->free = NGX_MRB_GC_ROOTS_NONE;
     slot = RARRAY_LEN(h->ary);
     mrb_ary_push(mrb, h->ary, obj);
   }
@@ -826,6 +838,11 @@ void ngx_mrb_gc_roots_remove(mrb_state *mrb, mrb_int slot)
   }
   h = ngx_mrb_gc_roots_find(mrb);
   if (h == NULL || slot < 0 || slot >= RARRAY_LEN(h->ary)) {
+    return;
+  }
+  /* a free slot holds an Integer: a second release of the same slot would
+     put it on the free list twice */
+  if (mrb_integer_p(RARRAY_PTR(h->ary)[slot])) {
     return;
   }
 #ifdef NGX_MRUBY_DEBUG_STATS
