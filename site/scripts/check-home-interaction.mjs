@@ -66,11 +66,15 @@ async function assertRoute(page, model) {
   const mapping = page.locator('.route-source-all pre');
   assert.ok(await mapping.isVisible(), 'the complete mapping is visible without a disclosure');
   assert.equal(await codeText(mapping), canonicalMapping);
-  const selectedLine = mapping.locator('.ec-line').nth(model === 'a' ? 1 : 2);
-  assert.ok((await selectedLine.textContent()).includes(`"mock-model-${model}" => ["local_api_${model}", "Bearer local-upstream-${model}"]`));
-  const backgrounds = await mapping.locator('.ec-line').evaluateAll(lines => lines.map(line => getComputedStyle(line).backgroundColor));
-  assert.notEqual(backgrounds[model === 'a' ? 1 : 2], backgrounds[0], 'selected mapping is visibly distinguished');
-
+  // Exactly one mapping line is highlighted, and it is the selected model's
+  // entry: the line of the other model keeps the background of the others.
+  const lines = await mapping.locator('.ec-line').evaluateAll(elements => elements.map(line => ({
+    text: line.textContent, background: getComputedStyle(line).backgroundColor,
+  })));
+  const plain = lines[0].background;
+  const highlighted = lines.filter(line => line.background !== plain).map(line => line.text);
+  assert.equal(highlighted.length, 1, `one mapping line is highlighted for model ${model}: ${JSON.stringify(highlighted)}`);
+  assert.ok(highlighted[0].includes(`"mock-model-${model}" => ["local_api_${model}", "Bearer local-upstream-${model}"]`), `the highlighted mapping line is the entry of model ${model}: ${highlighted[0]}`);
 
 }
 try {
