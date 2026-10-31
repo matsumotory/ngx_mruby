@@ -24,7 +24,7 @@ for (const route of routes) {
   <div class="route-controls" role="group" hidden aria-label={ja ? '送信するmodelを選ぶ' : 'Choose the requested model'}><button type="button" data-model="a" aria-pressed="true">{ja ? 'モデルA' : 'Model A'}</button><button type="button" data-model="b" aria-pressed="false">{ja ? 'モデルB' : 'Model B'}</button></div>
   <ol class="routing-workspace">
     <li class="flow-step request-strip" data-step="request">
-      <div class="flow-description"><h3 class="flow-title">{ja ? 'アプリから送る' : 'Send from your app'}</h3><p>{ja ? 'チャットや文書要約のアプリは、共通のプロキシURLへ送信します。modelを変えても、URLと利用者キーは変わりません。' : 'Your chat or summarization app calls the proxy URL. Choose a different model without changing that URL or the client key.'}</p></div>
+      <div class="flow-description"><h3 class="flow-title">{ja ? 'アプリから送る' : 'Send from your app'}</h3><p>{ja ? 'チャットや文書要約のアプリは、共通のプロキシURLへ送信します。modelを変えても、URLと利用者キーは共通です。' : 'Your chat or summarization app calls the proxy URL. Choose a different model without changing that URL or the client key.'}</p></div>
       <div class="request-payload"><code>POST http://localhost:8080<wbr />/v1/responses</code><code>Authorization: Bearer local-client</code><code class="request-model">{`{"model":"mock-model-a"}`}</code></div>
     </li>
     <li class="flow-step route-source" data-step="rule">
