@@ -34,7 +34,7 @@
 //   figure fits the screen below the header at 390 by 664 and 1440 by 900;
 // - with JavaScript off, the OS setting chooses the theme (4.7).
 //
-//   node scripts/check-styles.mjs [--dist DIR] [--engine chromium|webkit] [--ja-face noto] [--pages /,/ja/]
+//   node scripts/check-styles.mjs [--dist DIR] [--engine chromium|webkit] [--width PX] [--ja-face noto] [--pages /,/ja/]
 //
 // Japanese text takes Hiragino Sans where the system has it (macOS) and the
 // served Noto Sans JP elsewhere (Linux, CI), so its lines break at other
@@ -83,12 +83,17 @@ const RADII = [0, 8, 12, 999];
 
 function args() {
   const a = process.argv.slice(2);
-  const out = { dist: path.join(SITE, 'dist'), engines: ['chromium', 'webkit'], pages: PAGES };
+  const out = { dist: path.join(SITE, 'dist'), engines: ['chromium', 'webkit'], sizes: SIZES, pages: PAGES };
   for (let i = 0; i < a.length; i++) {
     if (a[i] === '--dist') out.dist = path.resolve(a[++i]);
     else if (a[i] === '--pages') {
       out.pages = (a[++i] ?? '').split(',').filter(Boolean);
       if (!out.pages.length || out.pages.some(p => !PAGES.includes(p))) throw new Error('--pages must name one or more pages from PAGES');
+    }
+    else if (a[i] === '--width') {
+      const width = Number(a[++i]);
+      if (!Number.isInteger(width) || width < 320 || width > 1920) throw new Error('--width must be an integer from 320 to 1920');
+      out.sizes = [{ width, height: width < 640 ? 664 : 900 }];
     }
     else if (a[i] === '--engine') out.engines = [a[++i]];
     else if (a[i] === '--ja-face' && a[i + 1] === 'noto') {
@@ -451,7 +456,7 @@ async function main() {
         const tokens = Object.values(colors);
         // Only current-theme shared syntax text may use the documentation palette.
         const syntax = Object.entries(themeColors(theme)).filter(([k]) => k.startsWith('--color-code-') || k === '--color-text-primary' || k === '--color-text-muted').map(([, v]) => v);
-        for (const size of SIZES) {
+        for (const size of opt.sizes) {
           for (const reduced of [false, true]) {
             if (reduced && size.width !== 1440) continue;
             const context = await browser.newContext({ viewport: size, colorScheme: theme, reducedMotion: reduced ? 'reduce' : 'no-preference' });
@@ -601,7 +606,7 @@ async function main() {
     process.exit(1);
   }
   console.log(`check-styles: home page heading lines: ${headings.join(', ')}`);
-  console.log(`check-styles: ok; ${diagramLoads} page loads with a diagram; ${loads} page loads of ${opt.pages.length} pages in ${opt.engines.join(' and ')}, light and dark, ${SIZES.map((s) => `${s.width}x${s.height}`).join(' and ')}; ${searches} with the search dialog open (results loading and loaded), ${menus} with the menu open`);
+  console.log(`check-styles: ok; ${diagramLoads} page loads with a diagram; ${loads} page loads of ${opt.pages.length} pages in ${opt.engines.join(' and ')}, light and dark, ${opt.sizes.map((s) => `${s.width}x${s.height}`).join(' and ')}; ${searches} with the search dialog open (results loading and loaded), ${menus} with the menu open`);
 }
 
 main().catch((e) => {

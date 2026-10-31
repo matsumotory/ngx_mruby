@@ -253,11 +253,19 @@ jobs:
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-lighthouse.mjs
+      - name: Check the shared footer at the requested 375px width
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: |
+          node scripts/check-project-badges.mjs
+          node scripts/check-styles.mjs --pages /,/ja/ --width 375
+          node scripts/check-japanese-lines.mjs --pages /ja/docs/ --width 375
       - name: Take the screenshots of step 3
         id: shots
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: |
+          node scripts/check-project-badges.mjs --browser
           node scripts/screenshots.mjs --out build-screenshots
           node scripts/screenshots-live.mjs --local --out build-screenshots/predeploy-smoke
       # The screenshots stay in the artifact: no image is committed or

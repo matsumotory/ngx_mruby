@@ -29,6 +29,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { distDir, finish, VERBATIM_FILES } from './lib/site.mjs';
+import { OPENSSF_BADGE } from './lib/project-badges.mjs';
 
 const REPO = 'matsumotory/ngx_mruby';
 const BRANCH = 'next';
@@ -91,6 +92,16 @@ for (const { file, bytes, sha256: want } of VERBATIM_FILES) {
   }
   notes.push(`/${file} ${response.status}, ${body.length} bytes`);
 }
+
+// External badge bytes are not part of dist. Check only this requested URL,
+// without following a redirect or treating a service outage as success.
+try {
+  const response = await fetch(OPENSSF_BADGE.src, { redirect: 'manual', signal: AbortSignal.timeout(15000) });
+  const body = await response.text();
+  if (response.status !== 200 || !response.headers.get('content-type')?.startsWith('image/svg+xml') || !body.includes('<svg')) {
+    problems.push(`OpenSSF badge: expected a direct SVG 200, got ${response.status}`);
+  } else notes.push(`OpenSSF badge: direct SVG 200 (${body.length} characters); browser decoding is checked by the live smoke`);
+} catch (error) { problems.push(`OpenSSF badge: ${error.message}`); }
 
 // The environment and the deployments, read back with gh api.
 if (opt.gh) {

@@ -1,5 +1,19 @@
 # Handoff: the state of the work
 
+## Quality badge site change, 2026-10-31
+
+- `codex/site-quality-badges`, based on `next@51351ea2`, adds the requested
+  OpenSSF Best Practices badge to the common EN/JA footer and names the
+  existing license link MIT. It does not alter the hero, runtime or APIs.
+- The external image uses the exact project-16057 URL. Builds remain offline;
+  browser/live verification admits only this explicit image GET, rejects
+  redirects and other off-origin requests, and checks actual decoding.
+  The PR records why the optional CI badge is omitted.
+- Author verification and current head/base results belong in that PR's
+  checkpoint. The owner requested Ready for review after implementation and
+  verification, then a stop for Claude's review; no merge/deployment is part
+  of this task. The existing site publication is separate from this change.
+
 ## Maintenance-entry line regression, 2026-10-31
 
 - The stable entry should let a 2.7 reader choose installation, API and

@@ -1,11 +1,19 @@
 // A verification context, not a runtime site policy. Never give this
 // context a service worker, write request or WebSocket connection.
-export async function readOnlyContext(browser, origin, options = {}) {
+export function allowsReadOnlyRequest(request, origin, imageUrls = []) {
+  if (request.method() !== 'GET') return false;
+  if (new URL(request.url()).origin === new URL(origin).origin) return true;
+  // Exact URL, not a host/prefix permission. A fetch, document or script at
+  // the same URL remains forbidden. Callers opt in to the footer badge only.
+  return request.resourceType() === 'image' && imageUrls.includes(request.url());
+}
+
+export async function readOnlyContext(browser, origin, options = {}, imageUrls = []) {
   const context = await browser.newContext({ ...options, serviceWorkers: 'block' });
   const blocked = [];
   await context.route('**/*', async route => {
     const request = route.request();
-    if (request.method() !== 'GET' || new URL(request.url()).origin !== new URL(origin).origin) {
+    if (!allowsReadOnlyRequest(request, origin, imageUrls)) {
       blocked.push(`${request.method()} ${request.url()}`);
       return route.abort();
     }

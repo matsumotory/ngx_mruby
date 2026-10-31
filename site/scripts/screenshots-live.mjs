@@ -7,6 +7,7 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 import { serve } from './lib/serve.mjs';
 import { readOnlyContext } from './lib/read-only-browser.mjs';
+import { OPENSSF_BADGE } from './lib/project-badges.mjs';
 
 const site = path.resolve(new URL('..', import.meta.url).pathname);
 let dist = path.join(site, 'dist'), out = path.join(site, 'live-screenshots'), local = false;
@@ -33,7 +34,7 @@ try {
       ['v2-entry', lang === 'ja' ? '/v2/ja/' : '/v2/'],
       ...(width === 390 ? [['start', lang === 'ja' ? '/ja/start/' : '/start/'], ['docs', lang === 'ja' ? '/ja/docs/' : '/docs/']] : []),
     ];
-    const { context, blocked } = await readOnlyContext(browser, origin, { viewport: { width, height: width < 640 ? 664 : 900 }, colorScheme: 'dark', deviceScaleFactor: 1 });
+    const { context, blocked } = await readOnlyContext(browser, origin, { viewport: { width, height: width < 640 ? 664 : 900 }, colorScheme: 'dark', deviceScaleFactor: 1 }, [OPENSSF_BADGE.src]);
     const errors = [];
     let closing = false;
     try {
@@ -48,6 +49,12 @@ try {
         await page.evaluate(() => document.fonts.ready);
         const base = `${id}-${lang}-${width}`;
         await page.screenshot({ path: path.join(out, `${base}-first.png`) });
+        await page.locator('.project-badge').scrollIntoViewIfNeeded();
+        await page.locator('.project-badge img').evaluate(async image => {
+          await image.decode();
+          if (!image.complete || image.naturalWidth === 0) throw new Error('footer badge did not load');
+        });
+        await page.screenshot({ path: path.join(out, `${base}-footer.png`) });
         await page.screenshot({ path: path.join(out, `${base}-full.png`), fullPage: true });
         if (id === 'home') {
           await page.locator('.route-controls button[data-model="b"]').click();
@@ -56,7 +63,7 @@ try {
           await page.locator('.route-result:visible').scrollIntoViewIfNeeded();
           await page.screenshot({ path: path.join(out, `${base}-model-b-result.png`) });
         }
-        assert.deepEqual(blocked, [], 'unexpected non-GET or off-origin request was blocked');
+        assert.deepEqual(blocked, [], 'unexpected request outside the read-only page/badge boundary was blocked');
         assert.deepEqual(errors, [], 'page exception or failed resource request');
         records.push({ route, width, height: width < 640 ? 664 : 900, html_matches_artifact: true, files: base });
       }

@@ -23,7 +23,7 @@
 //   on one page of each kind of notice, its last line and, at 390 px, its
 //   right edge.
 //
-//   node scripts/check-japanese-lines.mjs [--dist DIR] [--manifest FILE] [--engine chromium|webkit] [--ja-face noto] [--pages /ja/a/,/ja/b/]
+//   node scripts/check-japanese-lines.mjs [--dist DIR] [--manifest FILE] [--engine chromium|webkit] [--width PX] [--ja-face noto] [--pages /ja/a/,/ja/b/]
 //
 // Japanese text takes Hiragino Sans where the system has it (macOS) and the
 // served Noto Sans JP elsewhere (Linux, CI), so its lines break at other
@@ -54,10 +54,15 @@ const SIZES = [
 
 function args() {
   const a = process.argv.slice(2);
-  const out = { dist: path.join(SITE, 'dist'), manifest: manifestFile, engines: ['chromium', 'webkit'], pages: null };
+  const out = { dist: path.join(SITE, 'dist'), manifest: manifestFile, engines: ['chromium', 'webkit'], sizes: SIZES, pages: null };
   for (let i = 0; i < a.length; i++) {
     if (a[i] === '--dist') out.dist = path.resolve(a[++i]);
     else if (a[i] === '--manifest') out.manifest = path.resolve(a[++i]);
+    else if (a[i] === '--width') {
+      const width = Number(a[++i]);
+      if (!Number.isInteger(width) || width < 320 || width > 1920) throw new Error('--width must be an integer from 320 to 1920');
+      out.sizes = [{ width, height: width < 640 ? 664 : 900 }];
+    }
     else if (a[i] === '--engine') out.engines = [a[++i]];
     else if (a[i] === '--pages') out.pages = a[++i].split(',').filter(Boolean);
     else if (a[i] === '--ja-face' && a[i + 1] === 'noto') {
@@ -229,7 +234,7 @@ async function main() {
   let maxChars = 0;
   for (const engineName of opt.engines) {
     const browser = await { chromium, webkit }[engineName].launch();
-    for (const size of SIZES) {
+    for (const size of opt.sizes) {
       const context = await browser.newContext({ viewport: size, colorScheme: 'light' });
       for (const page of pages) {
         const tab = await context.newPage();
@@ -260,7 +265,7 @@ async function main() {
   for (const n of distinctNotes) console.log(`note: ${n}`);
   if (distinctNotes.length) console.log(`check-japanese-lines: ${distinctNotes.length} note(s) on the pages of NOTES_ONLY`);
   for (const f of failures) console.log(f);
-  const summary = `${loads} page loads of ${pages.length} Japanese pages in ${opt.engines.join(' and ')}${opt.noto ? ' (Noto Sans JP)' : ''} at ${SIZES.map((s) => s.width).join(', ')} px; ${blocks} blocks of two or more lines measured at 390 px, ${labels} diagram labels, at most ${maxChars} Japanese characters on a line of body text at 1440 px`;
+  const summary = `${loads} page loads of ${pages.length} Japanese pages in ${opt.engines.join(' and ')}${opt.noto ? ' (Noto Sans JP)' : ''} at ${opt.sizes.map((s) => s.width).join(', ')} px; ${blocks} blocks of two or more lines measured at 390 px, ${labels} diagram labels, at most ${maxChars} Japanese characters on a line of body text at 1440 px`;
   if (failures.length) {
     console.log(`check-japanese-lines: ${failures.length} failure(s); ${summary}`);
     // exitCode, not process.exit(): stdout to a pipe (CI) is written
