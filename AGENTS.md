@@ -201,12 +201,18 @@ upgrading". New behavior, API cleanups and features go to `next`.
   of minutes. The sessions apply it this way (their procedure, not a
   decision of the owner): the author runs the checks that the change
   touches locally before marking the PR ready (the suite among them when
-  `test/ci/changes.sh` gives `build` `full` or `tests`), and quotes the
+  `test/ci/changes.sh` gives `build` `standard` or `full`), and quotes the
   commands and their results under "How was this tested"; a check that
   can run locally is not left to CI ("Build and test" lists the local
   commands). The run of a ready PR runs the smallest set of jobs that the
-  change needs ("Which jobs a run starts" in `docs/test/README.md`) and
-  finishes in about fifteen minutes, not in tens of minutes: on
+  change needs ("Which jobs a run starts" in `docs/test/README.md`): a
+  change of the code or the tests runs four cells of the build matrix
+  (nginx 1.31.8 with the static module, 1.30.6 with the dynamic module,
+  the sanitizer cell and the cell under valgrind; the owner's decision of
+  2026-11-01), and every cell runs only in the nightly run, on the push of
+  a tag, in the check PR before a tag (the label `full-matrix`) and on
+  "Run workflow" without the input `base`. The run finishes in about
+  fifteen minutes, not in tens of minutes: on
   2026-10-31, a cell of the build matrix took 6 to 14 minutes, the run of
   `test.yml` with the whole matrix 15 minutes, and a browser lane of the
   site 3 to 8 minutes, the lanes in parallel ("Required status check" in
@@ -251,8 +257,8 @@ reviewer has run the suite at both commits (failing, then passing, with
 results matching what the author quoted); expectations assert
 on real responses, not only on "not 500"; "How was this tested" in the PR
 body quotes the local runs of the checks that the change touches (the
-suite among them when `test/ci/changes.sh` gives `build` `full` or
-`tests`), with their commands and results (see "Branches and pull
+suite among them when `test/ci/changes.sh` gives `build` `standard` or
+`full`), with their commands and results (see "Branches and pull
 requests"); the CI result on the head commit;
 when an input of the measured binary changed, the performance comparison
 quoted in the PR body and the numbers that "Design principles" asks the
@@ -500,8 +506,8 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
 - Run these before a PR is marked ready: CI is the final check in a clean
   environment, not the place where a change is first tested (see "Branches
   and pull requests"). Run the local commands of the checks that the
-  change touches: the suite when `test/ci/changes.sh` gives `build` `full`
-  or `tests`, `sh test/ci/changes_test.sh` for
+  change touches: the suite when `test/ci/changes.sh` gives `build`
+  `standard` or `full`, `sh test/ci/changes_test.sh` for
   `test/ci/`, the site's checks for `site/` and `docs/` ("The site"
   below), zizmor for `.github/` ("Static analysis of the workflows" in
   `docs/test/README.md`), and `sh test/soak/run.sh` or `sh
