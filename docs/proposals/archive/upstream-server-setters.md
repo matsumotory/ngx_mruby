@@ -1,10 +1,12 @@
 # Proposal: the upstream server setters with a `zone`, and their form in v3
 
-Status: question 1 of section 4 decided on 2026-10-29 (option A for
-2.7.3), with two more 2.7.3 changes of the setters (the end of section 4);
-questions 2 and 3 are open. Next step: step 1 of section 5, a pull request
-to `master` with the three changes, by 2026-11-05; the owner answers questions 2 and 3 by
-the same date. Written on 2026-10-29 from `master` at `c6d3b3b9b` (2.7.2
+Status: done, except that the documentation of the setters does not point at
+the balancer API yet, because the API does not exist; the row "Ruby balancer
+API" of `docs/proposals/v3-plan.md` on `next` carries that. Question 1 of
+section 4 was decided on 2026-10-29, questions 2 and 3 on 2026-10-30. #652
+made the changes of step 1 on `master` (`8593d0d65`), which reached `next`
+with #658; #648 documented the per-worker meaning of step 2; #PR made the
+changes of step 3. Written on 2026-10-29 from `master` at `c6d3b3b9b` (2.7.2
 and #645), `next` at `67ad9b919`, and the source of nginx 1.31.8 (the version
 in `nginx_version`). It follows the review of #624, which left three points
 for later: the stream setter takes no lock on the peer, the two setters raise
@@ -129,9 +131,16 @@ For the details of the setters in v3:
    balancer API of the plan once it exists (option C)? Recommended: yes; the
    hook and the API are already planned for the agent proxy, so no new design
    is needed.
+   **Decided on 2026-10-30: yes** (the option "そうする (推奨)" of a
+   session's question).
 3. v3: options D and E? Recommended: yes for both, as entries of
    `docs/releases/v3.0.0.md`. E follows the design principle "No blocking"
    of `AGENTS.md`.
+   **Decided on 2026-10-30: yes for both** (the options "そろえる (推奨)" for
+   D and "例外にする (推奨)" for E of a session's question, and
+   "すごい！両方進めて！" to the explicit proposal of both). D covers the
+   value of the argument: a setter called on an upstream with a `zone` keeps
+   the `RuntimeError` of option A, which is about the upstream.
 
 The owner decided two more changes of the setters for 2.7.3 on 2026-10-29,
 in the same question: both raise `TypeError` for an argument that is not a
@@ -144,6 +153,6 @@ option "2.7.3で完全一致にする (推奨)"). Step 1 makes the three changes
 
 | Step | Change | Branch | State |
 |---|---|---|---|
-| 1 | Option A in both setters, `TypeError` for an argument that is not a String, and the lookup of the upstream by its whole name: a test commit, then the fix commit, with the entries in `docs/releases/v2.7.3.md` and `.ja.md` | `master` (reaches `next` by the merge) | Decided; to do by 2026-11-05, after #648 |
-| 2 | The per-worker meaning of the setters in `docs/class_and_method/`, and a pointer to the balancer API | `next` | Waits for question 2 and for the balancer API |
-| 3 | Options D and E, with their entries in `docs/releases/v3.0.0.md` | `next` | Waits for question 3; can start before the hook |
+| 1 | Option A in both setters, `TypeError` for an argument that is not a String, and the lookup of the upstream by its whole name: a test commit, then the fix commit, with the entries in `docs/releases/v2.7.3.md` and `.ja.md` | `master` (reaches `next` by the merge) | Done: #652, in `next` by #658 |
+| 2 | The per-worker meaning of the setters in `docs/class_and_method/`, and a pointer to the balancer API | `next` | The meaning is done: #648. The pointer waits for the balancer API, in the row "Ruby balancer API" of `docs/proposals/v3-plan.md` |
+| 3 | Options D and E, with their entries in `docs/releases/v3.0.0.md` | `next` | Done: #PR |

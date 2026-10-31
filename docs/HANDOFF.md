@@ -173,9 +173,11 @@ that are not written down elsewhere yet, the work in progress and the queue.
   The owner accepted the v3 setter choices D/E on 2026-10-30 with
   「すごい！両方進めて！」 in response to the explicit proposal: invalid Strings
   raise ArgumentError and the HTTP setter refuses hostnames without resolving
-  them; non-String TypeError remains. This decision does not apply to 2.7,
-  settle other open proposal questions, or authorize a software release.
-  Internal implementation is deferred while the site work is completed.
+  them; non-String TypeError remains. The owner also answered the two open
+  questions of the [setter proposal](proposals/archive/upstream-server-setters.md)
+  that day in a session's question. [#PR](https://github.com/matsumotory/ngx_mruby/pull/PR)
+  implements D/E. These decisions do not apply to 2.7 or authorize a software
+  release.
 - Local validation includes 24 Chromium/WebKit route-control and reduced-motion
   loads, Chromium clipboard checks, 120 Noto style loads, 1044 focus stops,
   six Lighthouse pages (all categories 100), and native/Noto Japanese trial
@@ -683,7 +685,6 @@ Taken up and still open: none.
 | Remove `example/` (`README.md`, `nginx.conf`, `proxy.rb`, `set.rb`, `set2.rb`, `unified_hello.rb`): no CI job starts it, no page links it, and its `/proxy` location picks among `test1.example.com` to `test3.example.com`, which are unreachable; `examples/start/` is checked by `examples.yml` | `next` | Ready to start |
 | When the handler of the location that `Nginx.redirect` runs sleeps and the handler that called `Nginx.redirect` then raises, the 500 page is followed by the output of the sleeping handler when its timer fires. The request ends and the connection is closed, and nothing leaks. Not a 2.x fix: it needs the rewrite of the row "The async resume rewrite" (#646 leaves it out) | `next`, in the core stabilization of 3.0.0 | The row "The async resume rewrite" |
 | The async resume rewrite (decision (c) of 2026-10-04, amended on 2026-10-29: the rewrite of how resumed handlers end in `src/http/ngx_http_mruby_async.c`, which includes the resume of a handler after `Nginx::Async::HTTP.sub_request` from its own request). No pull request exists | `next`, in the core stabilization of 3.0.0 | Step 4, held as in the row on step 4 above |
-| The upstream server setters: [proposal](proposals/upstream-server-setters.md). Step 1 is merged on `master` by [#652](https://github.com/matsumotory/ngx_mruby/pull/652) (`8593d0d65`): non-String TypeError, zone refusal, whole-name lookup, with English/Japanese 2.7.3 behavior entries. This integration carries it to `next`. The continuation request assigns options D/E to a separate v3 PR: ArgumentError for unusable String values and no synchronous hostname resolution in the HTTP setter, with API docs and English/Japanese 3.0.0 behavior entries. | `next` | Finish and validate this integration first. Reconcile the dated owner decision records before the v3 PR: the proposal still labels questions 2/3 open, and the v3 plan retains proposed agent-proxy ordering, release conditions and targets. Do not mark those unrelated proposals decided from the setter assignment. Keep TypeError, zone refusal, per-worker meaning and the existing IP/port/IPv6/unix distinctions. |
 | The generated reference of the site (Pillar F of the plan): the directives from the `ngx_command_t` tables, the Ruby API with YARD and yard-mruby, the C API with Doxygen. `site/scripts/check-reference.mjs` checks, among other things, that each directive name has a heading in `docs/directives/README.md`; the pages are written by hand | `next` | Ready to start; no step of section 6 of the site proposal produces it yet |
 
 ## How a session continues
