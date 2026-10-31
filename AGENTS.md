@@ -193,10 +193,11 @@ upgrading". New behavior, API cleanups and features go to `next`.
   locally. The owner set this rule on 2026-10-31 (the owner's words are
   quoted in "Decisions" of `docs/HANDOFF.md` on `next`): CI is only the
   final check in a clean environment, the tests are done thoroughly
-  locally, and CI is not packed with so many checks that a run takes tens
+  locally, and CI is not packed with so many tests that a run takes tens
   of minutes. The sessions apply it this way (their procedure, not a
-  decision of the owner): the author runs the suite and the checks that
-  the change touches locally before marking the PR ready, and quotes the
+  decision of the owner): the author runs the checks that the change
+  touches locally before marking the PR ready (the suite among them when
+  `test/ci/changes.sh` gives `build` `full` or `tests`), and quotes the
   commands and their results under "How was this tested"; a check that
   can run locally is not left to CI ("Build and test" lists the local
   commands). The run of a ready PR runs the smallest set of jobs that the
@@ -245,8 +246,9 @@ regression test in a commit of its own before the fix commit, and the
 reviewer has run the suite at both commits (failing, then passing, with
 results matching what the author quoted); expectations assert
 on real responses, not only on "not 500"; "How was this tested" in the PR
-body quotes the local runs of the suite and of the checks that the change
-touches, with their commands and results (see "Branches and pull
+body quotes the local runs of the checks that the change touches (the
+suite among them when `test/ci/changes.sh` gives `build` `full` or
+`tests`), with their commands and results (see "Branches and pull
 requests"); the CI result on the head commit;
 when an input of the measured binary changed, the performance comparison
 quoted in the PR body and the numbers that "Design principles" asks the
@@ -493,12 +495,14 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
 
 - Run these before a PR is marked ready: CI is the final check in a clean
   environment, not the place where a change is first tested (see "Branches
-  and pull requests"). Run the suite, and the local commands of the other
-  checks that the change touches: `sh test/ci/changes_test.sh` for
+  and pull requests"). Run the local commands of the checks that the
+  change touches: the suite when `test/ci/changes.sh` gives `build` `full`
+  or `tests`, `sh test/ci/changes_test.sh` for
   `test/ci/`, the site's checks for `site/` and `docs/` ("The site"
   below), zizmor for `.github/` ("Static analysis of the workflows" in
   `docs/test/README.md`), and `sh test/soak/run.sh` or `sh
-  test/perf/compare.sh` where the change affects what they measure. `docs/test/README.md` describes each of them.
+  test/perf/compare.sh` where the change affects what they measure.
+  `docs/test/README.md` describes each of them.
 - The first full run takes a few minutes (it clones the third-party mrbgems from
   GitHub at the commits in `build_config.rb.lock`, and builds mruby and nginx).
   After that, use `ONLY_BUILD_NGX_MRUBY=1`.

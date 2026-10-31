@@ -121,26 +121,39 @@ head commit and the base commit of the merge ref at that time, which is
 what condition 2 of "Review and merge" asks the pull request to record;
 that condition also says when a move of the base makes a new run needed.
 
-A run that is cancelled reports no result. A newer push to the head of a
-pull request, a second event for the same head (the move of a draft to
-ready for review), and "Cancel workflow" cancel a run. `ci-ok` and the
-`site-ok` job of `site.yml` run on `!cancelled()`, not on `always()`, so
-they do not run in a cancelled run: GitHub marks them cancelled, as it
-marks every job of the run that had not finished, and a cancelled check
-is not a pass, so the head still needs the passing `ci-ok` of a run that
-was not cancelled. With `always()` they ran and failed in such a run: on
-2026-10-31 the run that the move of
-[#678](https://github.com/matsumotory/ngx_mruby/pull/678) to ready for
-review cancelled left a failed `ci-ok (draft)` on its head, beside the
-passing `ci-ok` of the run that counted. A needed job that is cancelled
-while the run goes on, at its `timeout-minutes`, still fails `ci-ok`.
+A cancelled run of a draft reports no result. Marking a draft ready for
+review starts the run that counts, and cancels the run of the draft when
+that is still going (`cancel-in-progress`). In that cancelled run `ci-ok`
+does not run: GitHub marks it cancelled, as it marks every job of the run
+that had not finished, and a cancelled check is not a pass. The draft run
+of [#692](https://github.com/matsumotory/ngx_mruby/pull/692) shows this
+([run 41193944190](https://github.com/matsumotory/ngx_mruby/actions/runs/41193944190));
+before, `ci-ok` ran there on `always()` and failed, and the draft run of
+[#678](https://github.com/matsumotory/ngx_mruby/pull/678) left a failed
+`ci-ok (draft)` beside the passing `ci-ok` of the run that counted
+([run 41191594780](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594780)).
+A job that GitHub cancels before it starts keeps the expression of its
+`name` as its name, and `gh pr checks` lists a cancelled check as `fail`;
+neither is the `ci-ok` of the run that counts.
+
+In every other run `ci-ok` keeps `always()`: when the run is cancelled (by
+a newer push, which leaves the failure on the head that the push
+replaced, or by "Cancel workflow"), `ci-ok` runs and fails, because the run
+did not test the commit to the end. GitHub's documentation defines
+`cancelled()` only as "the workflow was canceled" and does not say
+whether a needed job that reaches its `timeout-minutes` makes it true; if
+it did, `ci-ok` on `!cancelled()` would be skipped, and the skip would
+pass the required check. The `site-ok` job of `site.yml`, which no ruleset
+requires, runs on `!cancelled()`: a cancelled run leaves it cancelled, not
+failed, and `deploy`, which needs it, does not run without its pass.
 
 CI is the final check in a clean environment, not the place where a change
 is first tested: the owner's rule of 2026-10-31, in "Branches and pull
 requests" of [AGENTS.md](../../AGENTS.md). Before marking a pull request
-ready, its author runs the suite and the local commands of the checks that
-the change touches (this file describes them; "Build and test" in
-AGENTS.md lists them) and quotes them under "How was this tested", and the
+ready, its author runs the local commands of the checks that the change
+touches, the suite among them when `test/ci/changes.sh` gives `build`
+`full` or `tests` (this file describes them; "Build and test" in AGENTS.md
+lists them) and quotes them under "How was this tested", and the
 reviewer checks that they are there. A check that can run locally is not
 left to CI. The run of a ready pull request runs only the jobs that the
 change needs (the tables below) and finishes in about fifteen minutes. On
