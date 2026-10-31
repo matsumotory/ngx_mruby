@@ -9,7 +9,7 @@
 #   are not on master, the job fails and tells the owner how to repair it.
 # - Pushes made with GITHUB_TOKEN do not trigger other workflows, so CI
 #   does not run on v2.x for mirrored commits. That is intended: they are
-#   the same commits that were already tested on master.
+#   the same commits as master, which CI tested in their pull requests.
 # - The ruleset on v2.x may only restrict deletions and block force
 #   pushes while this workflow exists; a pull-request rule would reject
 #   the push.

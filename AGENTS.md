@@ -239,7 +239,10 @@ these hold:
    branch rules of `master` and `next` require),
    on a run whose merge ref includes the current base. When the base moved
    after the last run, update the branch and let CI run again. A run made
-   green by skipping or disabling tests does not count.
+   green by skipping or disabling tests does not count. A run in which the
+   `changes` job of `test.yml` skipped the build jobs, because the PR
+   changes no input of the binary or the tests, counts ("Which jobs a run
+   starts" in `docs/test/README.md`).
 3. The change is inside the agreed scope, or is a bug fix with the two-commit
    evidence described under "Writing tests", or changes documentation only.
    In every case, a change of behavior that a configuration, script or build
@@ -436,7 +439,8 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `error.log` is at debug level. valgrind errors do **not** change the exit status
   of `test.sh`: run valgrind with the options of CI and read the `ERROR SUMMARY`
   line of its log yourself. In CI, the step "Check the valgrind reports" fails a
-  cell on that line: one cell runs under valgrind on pull requests, and every
+  cell on that line: one cell runs under valgrind on the pull requests whose
+  run starts the build matrix, and every
   cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
   what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18140,
