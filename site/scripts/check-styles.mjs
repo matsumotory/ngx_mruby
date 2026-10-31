@@ -44,6 +44,7 @@
 // DIR defaults to dist/ (npm run build). It exits 1 and lists every
 // failure by page, engine, theme, size and element.
 import fs from 'node:fs';
+import { scopedPages } from './lib/ci-pages.mjs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
@@ -97,6 +98,7 @@ function args() {
     }
     else throw new Error(`unknown argument ${a[i]}`);
   }
+  out.pages = scopedPages(out.dist) ?? out.pages;
   return out;
 }
 

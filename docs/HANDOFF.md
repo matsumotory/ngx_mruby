@@ -32,7 +32,8 @@
   The run retains the `live-screenshots` artifact (`13031774147`) and its
   completed source-revision evidence.
 - The site CI scope and parallel browser lanes are
-  [#677](https://github.com/matsumotory/ngx_mruby/pull/677), open. The runtime
+  [#677](https://github.com/matsumotory/ngx_mruby/pull/677) (the section
+  "Site CI scope and parallel lanes" below). The runtime
   CI policy merged into `next` with
   [#676](https://github.com/matsumotory/ngx_mruby/pull/676) (`48c04d43e`); its
   `master` side, [#679](https://github.com/matsumotory/ngx_mruby/pull/679), is
@@ -75,6 +76,19 @@ that are not written down elsewhere yet, the work in progress and the queue.
 - The statements about branches, pull requests and issues were checked with
   `gh` and `git` at the time in the next heading. Check them again before
   you act on them: other sessions merge pull requests all the time.
+
+## Site CI scope and parallel lanes, 2026-10-31
+
+- [#677](https://github.com/matsumotory/ngx_mruby/pull/677) splits the browser
+  checks of `site.yml` into six lanes and a maintenance lane that read one
+  artifact of the same run; the deploy job needs `site-ok`, which needs all of
+  them. A pull request that only edits the prose or links of pages under
+  `docs/` checks those pages, in both languages; every other change, and every
+  push or dispatch, which deploys, checks all pages. `test.yml` is unchanged
+  (the runtime CI policy is #676 on `next` and #679 on `master`). See
+  [Site CI change scope](test/README.md#site-ci-change-scope) for the lanes
+  and the timing of run 41173244320.
+- The review and the re-review of its must fix items are comments on #677.
 
 ## Landing-page hierarchy, 2026-10-30
 
