@@ -85,7 +85,7 @@ jobs:
   #   commit, so that a branch can show what its pull request would run;
   # - a push to master or next: "false" (see the top of this file);
   # - a push to a v*.x branch or a v* tag, and "Run workflow" without
-  #   "base": "true".
+  #   "base" (the nightly run under valgrind included): "true".
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
