@@ -121,6 +121,52 @@ head commit and the base commit of the merge ref at that time, which is
 what condition 2 of "Review and merge" asks the pull request to record;
 that condition also says when a move of the base makes a new run needed.
 
+A cancelled run of a draft reports no result. Marking a draft ready for
+review starts the run that counts, and cancels the run of the draft when
+that is still going (`cancel-in-progress`). In that cancelled run `ci-ok`
+does not run: GitHub marks it cancelled, as it marks every job of the run
+that had not finished, and a cancelled check is not a pass. The draft run
+of [#692](https://github.com/matsumotory/ngx_mruby/pull/692) shows this
+([run 41193944190](https://github.com/matsumotory/ngx_mruby/actions/runs/41193944190));
+before, `ci-ok` ran there on `always()` and failed, and the draft run of
+[#678](https://github.com/matsumotory/ngx_mruby/pull/678) left a failed
+`ci-ok (draft)` beside the passing `ci-ok` of the run that counted
+([run 41191594780](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594780)).
+A job that GitHub cancels before it starts keeps the expression of its
+`name` as its name, and `gh pr checks` lists a cancelled check as `fail`;
+neither is the `ci-ok` of the run that counts.
+
+In every other run `ci-ok` keeps `always()`: when the run is cancelled (by
+a newer push, which leaves the failure on the head that the push
+replaced, or by "Cancel workflow"), `ci-ok` runs and fails, because the run
+did not test the commit to the end. GitHub's documentation defines
+`cancelled()` only as "the workflow was canceled" and does not say
+whether a needed job that reaches its `timeout-minutes` makes it true; if
+it did, `ci-ok` on `!cancelled()` would be skipped, and the skip would
+pass the required check. The `site-ok` job of `site.yml`, which no ruleset
+requires, runs on `!cancelled()`: a cancelled run leaves it cancelled, not
+failed, and `deploy`, which needs it, does not run without its pass.
+
+CI is the final check in a clean environment, not the place where a change
+is first tested: the owner's rule of 2026-10-31, in "Branches and pull
+requests" of [AGENTS.md](../../AGENTS.md). Before marking a pull request
+ready, its author runs the local commands of the checks that the change
+touches, the suite among them when `test/ci/changes.sh` gives `build`
+`full` or `tests` (this file describes them; "Build and test" in AGENTS.md
+lists them) and quotes them under "How was this tested", and the
+reviewer checks that they are there. A check that can run locally is not
+left to CI. The run of a ready pull request runs only the jobs that the
+change needs (the tables below) and finishes in about fifteen minutes. On
+2026-10-31, a cell of the build matrix took 6 to 14 minutes, and the run of
+`test.yml` with the whole matrix for #678 took 15 minutes from its start to
+its end
+([run 41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773));
+a browser lane of `site.yml` took 3 to 8 minutes, the lanes in parallel,
+and that run 10 minutes
+([run 41191594863](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594863)).
+A proposal to add a check to CI says whether it can run locally, why CI
+needs it, and how many minutes it adds to the run.
+
 ### Which jobs a run starts
 
 `test/ci/changes.sh BASE HEAD` classifies the files that a change touches,
@@ -140,7 +186,7 @@ and its new path (`git diff --no-renames`), so that moving a source file to
 | `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | `site`: the build and the static checks, and the browser lanes when `site/scripts/ci-plan.mjs` selects pages ([Site CI change scope](#site-ci-change-scope)) |
 | `site` | `site/`, `.github/workflows/site.yml` | `site`: the build, the static checks and every browser lane |
 | `examples` | `examples/` | `examples`; `site`: the build and the static checks |
-| `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, these two included); `codeql` for `.github/workflows/` |
+| `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, these two included); `codeql` for `.github/workflows/` and `.github/codeql/` |
 
 `soak` is `true` when `code` is, or when `test/soak/` or
 `test/build_release.sh` changed; `perf` when `code` is, or when the
@@ -199,9 +245,9 @@ nightly run under valgrind, which the schedule of `valgrind-nightly.yml` on
 `master` starts on `master` and on `next`, is such a run ([valgrind in
 CI](#valgrind-in-ci)). The other workflows decide on their own when they
 run: `site` deploys on every push to `next`, and `codeql` scans pushes to
-`master` and `next` that change `src/`, `mrbgems/` or the workflows
-([CodeQL](#codeql)); `nginx-tests`, `examples` and `zizmor` run on pull
-requests only.
+`master` and `next` that change `src/`, `mrbgems/`, the workflows or its
+configuration ([CodeQL](#codeql)); `nginx-tests`, `examples` and `zizmor`
+run on pull requests only.
 
 `ci-ok` passes a skipped `build`, `soak` or `files` job only when `changes`
 passed and decided that the run does not need it. A job that was skipped
@@ -384,9 +430,10 @@ gem-heads.yml`), starts them again.
 code scanning for three languages, `c-cpp`, `ruby` and `actions`, and
 uploads the results to code scanning (the repository's Security tab). It
 runs on ready pull requests to `master` and `next` and on pushes to these
-branches that change `src/`, `mrbgems/` or `.github/workflows/`, every
-Wednesday at 04:37 UTC (GitHub runs a schedule only from this file on
-`master`, so the weekly run scans `master`), and on "Run workflow". It
+branches that change `src/`, `mrbgems/`, `.github/workflows/` or
+`.github/codeql/`, every Wednesday at 04:37 UTC (GitHub runs a schedule
+only from this file on `master`, so the weekly run scans `master`), and on
+"Run workflow". It
 replaces GitHub's default setup of code scanning, which ran on every pull
 request and every push; the default setup is turned off in the repository
 settings, which the owner manages. The file is the same on `master` and
@@ -399,6 +446,20 @@ less accurate results than one made from a build
 (["Build options for compiled languages"](https://docs.github.com/en/code-security/reference/code-scanning/codeql/build-options-for-compiled-languages)).
 The actions are pinned by commit id like those of the other workflows, and
 `zizmor` checks the file.
+
+CodeQL does not analyze the vendored trees, `mruby/` (mruby, with the code
+that mruby itself vendors) and `dependence/` (ngx_devel_kit):
+`.github/codeql/codeql-config.yml`, which the `init` step of the workflow
+reads (`config-file`), lists them under `paths-ignore`. They are upstream
+code that the repository takes with git subtree and does not edit by hand
+("Do not" in [AGENTS.md](../../AGENTS.md)), so an alert in them would not
+be fixed here; a change of them comes with the next update of the subtree.
+The owner decided on 2026-10-31 that CodeQL leaves them out, that the
+alerts that code scanning had on them are dismissed as vendored upstream
+code, and that nothing is reported upstream for them. GitHub's
+documentation says that `paths-ignore` applies to the interpreted
+languages, Ruby among them, and to C and C++ analyzed without a build
+(["Workflow configuration options for code scanning"](https://docs.github.com/en/code-security/reference/code-scanning/workflow-configuration-options)).
 
 ### Heads of the GitHub gems
 
@@ -2222,11 +2283,13 @@ The union of full 3.x and full v2 code checks is tested against the former
 single suite. No assertions, viewports or engines are removed. Direct script
 invocations without CI scope still run their complete original coverage.
 
-`site-ok` runs with `always()` (except for a draft) and requires success from
+`site-ok` runs with `!cancelled()` (except for a draft) and requires success from
 build, and from the complete browser matrix and the maintenance checks, or
 their skip when the build job decided that the pull request needs no browser
 (`browser` `false`). Any other skip, and a cancelled, missing or failed job,
-fails it and cannot publish. `deploy` needs both build and this gate. Scope-none browser
+fails it and cannot publish. When the run itself is cancelled, `site-ok`
+does not run and GitHub marks it cancelled
+([Required status check](#required-status-check)). `deploy` needs both build and this gate. Scope-none browser
 jobs return an explicit successful no-work result after artifact verification;
 they do not silently bypass a failed dependency. Independent review repeats
 the relevant regression suite, rather than rebuilding every unrelated artifact.

@@ -643,6 +643,18 @@ jobs:
   # only then, so a build, soak or files job that was skipped for another
   # reason (a failed "changes" job) fails it.
   #
+  # The one exception is a cancelled run of a draft pull request, which the
+  # move of the draft to ready for review cancels: such a run tests nothing
+  # and its job is never the required ci-ok, so this job does not run there,
+  # and GitHub marks it cancelled instead of failed (on #678 on 2026-10-31,
+  # "always()" alone left a failed "ci-ok (draft)" on the head). Other
+  # cancelled runs still fail this job. GitHub's documentation defines
+  # cancelled() only as "the workflow was canceled" and does not say whether
+  # a needed job that reaches its timeout-minutes makes it true; if it did,
+  # "!cancelled()" alone would skip this job, and the skip would pass the
+  # required check of a commit whose build did not finish
+  # (docs/test/README.md, "Required status check").
+  #
   # Its name is "ci-ok" only in the runs whose result the rulesets may take
   # as the check of the commit:
   # - a draft pull request: "ci-ok (draft)". The run tests nothing (see the
@@ -665,7 +677,7 @@ jobs:
   ci-ok:
     name: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'ci-ok (draft)' || github.event_name != 'workflow_dispatch' && 'ci-ok' || inputs.base != '' && 'ci-ok (dry run)' || inputs.valgrind && 'ci-ok (valgrind)' || 'ci-ok (manual)' }}
     needs: [changes, build, soak, files]
-    if: always()
+    if: ${{ always() && !(cancelled() && github.event_name == 'pull_request' && github.event.pull_request.draft) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
