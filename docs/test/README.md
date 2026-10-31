@@ -116,7 +116,8 @@ request. The `files` job and `ci-ok` run in every run.
 | Pull request whose files are all outside these inputs | Skipped |
 | Push to `master` or `next` | Skipped |
 | Push to a `v*.x` branch or a `v*` tag | Run (`perf` runs on pull requests only) |
-| "Run workflow", the nightly run under valgrind included | Run (`perf` runs on pull requests only) |
+| "Run workflow" without the input `base`, the nightly run under valgrind included | Run (`perf` runs on pull requests only) |
+| "Run workflow" with the input `base` | As for a pull request against `base` (`perf` runs on pull requests only) |
 
 For a pull request, the job lists the files that the merge commit
 (`refs/pull/N/merge`) changes against its first parent, the base. The run
@@ -129,20 +130,28 @@ of the run builds or tests with:
   `.github/zizmor.yml` and `.github/PULL_REQUEST_TEMPLATE.md`: the `zizmor`
   workflow checks the workflows;
 - the Markdown files at the top (`README.md`, `AGENTS.md`, ...) and
-  `AUTHORS`, `LEGAL` and `MITL`.
+  `AUTHORS`, `LEGAL`, `LICENSE` and `MITL`.
 
 Every other file counts as an input, `test.yml`, `test/` and `test.sh`
 included, so a file of a new kind runs the build until the list in the
 `changes` job names it. The list is the variable `not_inputs` of that job;
 a pull request that adds to it says why the files are not inputs.
 
+For "Run workflow" with the input `base` (a branch or a commit id), the
+list is the files that the branch changes since its merge base with
+`base`, so that a branch can show what its pull request would run:
+
+```console
+$ gh workflow run test.yml --ref claude/topic -f base=next
+```
+
 A push to `master` or `next` runs only `changes`, `files` and `ci-ok`. Both
 branches take changes only through pull requests, which merge only after a
 run of `ci-ok` on a merge ref that includes the current base (condition 2
 of "Review and merge" in [AGENTS.md](../../AGENTS.md)), so the push brings
-the tree that the run of the pull request tested. The build of a branch tip
-on its own comes from "Run workflow" (`gh workflow run test.yml --ref
-next`), which also runs the nightly run under valgrind on `next`
+the tree that the run of the pull request tested. To build and test the
+tip of a branch by itself, use "Run workflow" (`gh workflow run test.yml
+--ref next`); the nightly run under valgrind is such a run on `next`
 ([valgrind in CI](#valgrind-in-ci)). The other workflows decide on their
 own when they run (`nginx-tests`, `examples`, `site`, `zizmor` and the
 others in `.github/workflows/`).

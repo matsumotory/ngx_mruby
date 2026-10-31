@@ -5,19 +5,20 @@ name: test
 # Use "Run workflow" (workflow_dispatch) to test a branch without a PR.
 #
 # The build, soak and perf jobs run only when the run needs them
-# (docs/test/README.md, "Required status check"; the job "changes" below
+# (docs/test/README.md, "Which jobs a run starts"; the job "changes" below
 # decides): on a pull request that changes a file other than the ones that
 # are not inputs of the binary or the tests (docs/, site/, examples/, the
 # workflows other than this file, ...), on a push to a v*.x branch or a v*
-# tag, and on "Run workflow". A push to master or next runs only the jobs
-# changes, files and ci-ok: these branches take changes only through pull
-# requests, and the run of the pull request tested its merge commit with
-# the current base (condition 2 of "Review and merge" in AGENTS.md). ci-ok
+# tag, and on "Run workflow" (with the input "base", only when a pull
+# request against that base would run them). A push to master or next
+# runs only the jobs changes, files and ci-ok: these branches take changes
+# only through pull requests, and the run of the pull request tested its
+# merge commit with the current base (condition 2 of "Review and merge" in AGENTS.md). ci-ok
 # counts a job that the run did not need as passed when it was skipped.
 #
-# valgrind (docs/test/README.md, "valgrind in CI"): on the runs that run
-# the build jobs, one cell of the build matrix runs nginx under valgrind and the
-# others run it directly. A manual run with the input "valgrind" runs every
+# valgrind (docs/test/README.md, "valgrind in CI"): in a run that starts
+# the build jobs, one cell of the build matrix runs nginx under valgrind and
+# the others run it directly. A manual run with the input "valgrind" runs every
 # cell under valgrind except the sanitizer cell; the nightly run that
 # .github/workflows/valgrind-nightly.yml starts is such a run. A cell under
 # valgrind fails when valgrind reports an error, or a leak that
@@ -41,6 +42,10 @@ on:
         description: 'Run every cell of the build matrix under valgrind (the nightly run)'
         type: boolean
         default: false
+      base:
+        description: 'Run the build jobs only if a pull request against this branch or commit would (empty: run them)'
+        type: string
+        default: ''
 
 # A new push to a pull request cancels the run for its previous commit.
 # Runs for branch and tag pushes are not cancelled once started; a newer
@@ -63,7 +68,7 @@ env:
 
 jobs:
   # Whether this run needs the build, soak and perf jobs
-  # (docs/test/README.md, "Required status check"). The paths are filtered
+  # (docs/test/README.md, "Which jobs a run starts"). The paths are filtered
   # here and not with on.paths, so that the run, and with it the required
   # check ci-ok, exists for every pull request. The output "build" is
   # "true" or "false":
@@ -72,21 +77,25 @@ jobs:
   #   with (the list "not_inputs"), "true" otherwise. A file that the list
   #   does not name counts as an input, so a new kind of file runs the
   #   build until the list names it;
+  # - "Run workflow" with the input "base": the same decision for the files
+  #   that the branch changes since its merge base with that branch or
+  #   commit, so that a branch can show what its pull request would run;
   # - a push to master or next: "false" (see the top of this file);
-  # - a push to a v*.x branch or a v* tag, and "Run workflow" (the nightly
-  #   run under valgrind included): "true".
+  # - a push to a v*.x branch or a v* tag, and "Run workflow" without
+  #   "base" (the nightly run under valgrind included): "true".
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       build: ${{ steps.decide.outputs.build }}
     steps:
-      # The merge commit of the pull request and its first parent. No later
-      # step runs git with credentials.
+      # A pull request: its merge commit and the first parent. "Run
+      # workflow" with "base": the whole history, for the merge base. No
+      # later step runs git with credentials.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.base != '')
         with:
-          fetch-depth: 2
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
           persist-credentials: false
       - name: Decide whether the build and test jobs run
         id: decide
@@ -94,35 +103,60 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
+          BASE_INPUT: ${{ inputs.base }}
         run: |
-          if [ "${EVENT_NAME}" = pull_request ]; then
-            if ! git rev-parse --verify --quiet 'HEAD^2' > /dev/null; then
-              echo "::error title=changes::the checkout is not the merge commit of a pull request"
-              exit 1
-            fi
-            git diff --name-only HEAD^1 HEAD > "${RUNNER_TEMP}/changed"
+          changed="${RUNNER_TEMP}/changed"
+          inputs="${RUNNER_TEMP}/inputs"
+          # Decides from the list of files in ${changed}.
+          decide_from_files() {
             # The files that are not inputs of the binary or the tests: the
             # documentation, the site and the examples (site.yml and
             # examples.yml check them), the other workflows and the GitHub
             # settings (zizmor.yml checks the workflows), the Markdown files
             # at the top and the license and author files. test.yml itself
             # is an input.
-            not_inputs='^(docs/|site/|examples/|\.github/workflows/|\.github/(dependabot\.yml|zizmor\.yml|PULL_REQUEST_TEMPLATE\.md)$|[^/]+\.md$|(AUTHORS|LEGAL|MITL)$)'
-            { grep -vE "${not_inputs}" "${RUNNER_TEMP}/changed" || true; grep -xF .github/workflows/test.yml "${RUNNER_TEMP}/changed" || true; } > "${RUNNER_TEMP}/inputs"
-            echo "files changed against the base: $(wc -l < "${RUNNER_TEMP}/changed")"
-            if [ -s "${RUNNER_TEMP}/inputs" ]; then
-              echo "inputs of the binary or the tests among them ($(wc -l < "${RUNNER_TEMP}/inputs"); the first 20):"
-              head -n 20 "${RUNNER_TEMP}/inputs"
+            not_inputs='^(docs/|site/|examples/|\.github/workflows/|\.github/(dependabot\.yml|zizmor\.yml|PULL_REQUEST_TEMPLATE\.md)$|[^/]+\.md$|(AUTHORS|LEGAL|LICENSE|MITL)$)'
+            { grep -vE "${not_inputs}" "${changed}" || true; grep -xF .github/workflows/test.yml "${changed}" || true; } > "${inputs}"
+            echo "files changed: $(wc -l < "${changed}")"
+            if [ -s "${inputs}" ]; then
+              echo "inputs of the binary or the tests among them ($(wc -l < "${inputs}"); the first 20):"
+              head -n 20 "${inputs}"
               echo "build=true" >> "${GITHUB_OUTPUT}"
             else
               echo "no input of the binary or the tests changed: the build, soak and perf jobs are skipped"
               echo "build=false" >> "${GITHUB_OUTPUT}"
             fi
+          }
+          if [ "${EVENT_NAME}" = pull_request ]; then
+            if ! git rev-parse --verify --quiet 'HEAD^2' > /dev/null; then
+              echo "::error title=changes::the checkout is not the merge commit of a pull request"
+              exit 1
+            fi
+            git diff --name-only HEAD^1 HEAD > "${changed}"
+            echo "pull request: the merge commit $(git rev-parse HEAD) against the base $(git rev-parse HEAD^1)"
+            decide_from_files
+          elif [ "${EVENT_NAME}" = workflow_dispatch ] && [ -n "${BASE_INPUT}" ]; then
+            if ! [[ "${BASE_INPUT}" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]; then
+              echo "::error title=changes::the input base is not a branch name or a commit id"
+              exit 1
+            fi
+            if ! base=$(git rev-parse --verify --quiet --end-of-options "refs/remotes/origin/${BASE_INPUT}^{commit}") &&
+               ! base=$(git rev-parse --verify --quiet --end-of-options "${BASE_INPUT}^{commit}"); then
+              echo "::error title=changes::no branch or commit ${BASE_INPUT}"
+              exit 1
+            fi
+            if ! mb=$(git merge-base "${base}" HEAD); then
+              echo "::error title=changes::${BASE_INPUT} and this branch have no merge base"
+              exit 1
+            fi
+            git diff --name-only "${mb}" HEAD > "${changed}"
+            echo "Run workflow with base ${BASE_INPUT}: $(git rev-parse HEAD) against the merge base ${mb}"
+            decide_from_files
           elif [ "${EVENT_NAME}" = push ] && [ "${REF_TYPE}" = branch ] && { [ "${REF_NAME}" = master ] || [ "${REF_NAME}" = next ]; }; then
             echo "a push to ${REF_NAME}: its pull request's run tested this tree, so the build, soak and perf jobs are skipped"
             echo "build=false" >> "${GITHUB_OUTPUT}"
           else
-            echo "event ${EVENT_NAME}, ref ${REF_TYPE} ${REF_NAME}: the build and soak jobs run"
+            echo "event ${EVENT_NAME}, ${REF_TYPE} ${REF_NAME}: the build and soak jobs run"
             echo "build=true" >> "${GITHUB_OUTPUT}"
           fi
 
