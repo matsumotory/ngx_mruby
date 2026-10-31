@@ -165,6 +165,39 @@ from that commit instead of the older squash. Commit the merge alone, with
 nothing outside `mruby/`, and make the build changes in the commits that
 follow.
 
+### Prism
+
+Since mruby 4.1, the mruby compiler is built on
+[Prism](https://github.com/ruby/prism), and the tree of mruby has
+`mrbgems/mruby-compiler/lib/prism` as a git submodule. The subtree merge
+brings only the gitlink of that submodule, so after the merge `mruby/` has
+no Prism sources, and the mruby build stops at
+`git submodule update --init lib/prism`. Right after the merge commit, run
+[vendor-mruby-prism](../vendor-mruby-prism) and commit its result alone:
+
+```
+sh vendor-mruby-prism
+git commit
+```
+
+The script reads the commit of ruby/prism from the gitlink in `HEAD`,
+fetches that commit, replaces the gitlink with the files of that commit
+that the build of mruby-compiler reads (`src/`, `include/`, `config.yml`,
+`templates/template.rb` with the templates of the files that it renders,
+and `LICENSE.md`), stages them, and stops unless each staged file is the
+same blob as in that commit. Put the commit of ruby/prism in the commit
+message. To vendor another commit of ruby/prism, give it as the argument
+(`sh vendor-mruby-prism COMMIT`).
+
+At the next `update-mruby-subtree`, this repository has files where the
+tree of mruby has the gitlink. When the new ref names the same commit of
+ruby/prism, the merge keeps the vendored files. When it names another
+commit, the merge changes the gitlink on one side and the vendored files on
+the other, and can stop with a conflict at that path. In both cases, finish
+the merge with the `git read-tree` steps above, which give `mruby/` the
+exact tree of the ref with its gitlink, and then run `vendor-mruby-prism`
+again.
+
 `NGX_MRUBY_CORE_GEMS` in [build_config.rb](../build_config.rb) names the mruby
 core gems that ngx_mruby builds, so an update does not change them by itself.
 The mruby build stops when a listed gem is not in the new `mruby/mrbgems`:

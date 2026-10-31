@@ -2,25 +2,21 @@
 # selected by name. `conf.gembox 'full-core'` takes every core gem that the
 # vendored mruby has, so an mruby update would change the classes and methods
 # available to ngx_mruby scripts without a change here. For example, the
-# full-core of mruby 4.0.0 and of 4.1.0-rc2 takes mruby-task, which redefines
-# Kernel#sleep and whose POSIX implementation arms a process-wide SIGALRM
-# interval timer, and leaves mruby-sleep out.
+# full-core of mruby 4.1.0-rc2 takes mruby-task, which redefines Kernel#sleep
+# and whose POSIX implementation arms a process-wide SIGALRM interval timer,
+# and leaves mruby-sleep out.
 #
 # This list is the set that full-core selected in mruby 3.3.0, updated for
-# mruby 4.0.0 as follows. Adding or removing a name changes what scripts can
-# use; decide each one on its own.
+# mruby 4.0.0 and 4.1.0-rc2 as follows. Adding or removing a name changes what
+# scripts can use; decide each one on its own.
 # - mruby-print is gone: mruby 3.4 removed it, and Kernel#print, #puts and #p
 #   come from mruby-io (from the core without mruby-io).
-# - hal-posix-io, hal-posix-dir and hal-posix-socket are the POSIX back ends
-#   that mruby-io, mruby-dir and mruby-socket of mruby 4.0.0 need. They add no
-#   class or method of their own. Without them in the list, those gems load
-#   them by themselves with a warning that asks for an explicit selection.
-#   Only 4.0.0 needs them: mruby 4.1.0-rc2 has no hal-* gems, because the
-#   POSIX back ends moved into mruby-io, mruby-dir and mruby-socket
-#   (ports/posix/), so the update to 4.1 removes these three names, which
-#   ngx_mruby_core_gems would otherwise stop the build on.
-# - Left out, although full-core of 4.0.0 takes them:
-#   - mruby-task (and its back end hal-posix-task): it redefines Kernel#sleep,
+# - mruby 4.1 has no hal-* gems: the POSIX back ends that mruby-io, mruby-dir
+#   and mruby-socket of mruby 4.0.0 took from hal-posix-io, hal-posix-dir and
+#   hal-posix-socket are part of those gems (ports/posix/), so the list has no
+#   back end names.
+# - Left out, although full-core of 4.1.0-rc2 takes them:
+#   - mruby-task: it redefines Kernel#sleep,
 #     arms a SIGALRM interval timer in every process that opens an mrb_state,
 #     and limits the number of mrb_states (MRB_TASK_MAX_VMS).
 #   - mruby-encoding: it defines MRB_UTF8_STRING for the whole build, so
@@ -37,13 +33,21 @@
 #   - mruby-strftime (Time#strftime) and mruby-benchmark (Benchmark): new in
 #     mruby 4.0; each would add an API that ngx_mruby has not had, which is
 #     a decision of its own.
+#   - mruby-env (ENV), mruby-process (Process), mruby-regexp (Regexp),
+#     mruby-signal (Signal), mruby-string-bitops (bit operations on String)
+#     and mruby-bin-mrb (the mrb command): new in mruby 4.1. The first three
+#     define the classes that iij/mruby-env, iij/mruby-process and
+#     mattn/mruby-onig-regexp below define, and the gems of iij have the same
+#     names as the core gems; replacing them is the build_config.rb rewrite of
+#     docs/HANDOFF.md, and 3.0 keeps mruby-onig-regexp (item 1 of section 7 of
+#     docs/proposals/v3-plan.md). The other three would add APIs that
+#     ngx_mruby has not had, which is a decision of its own.
 # - Left out, as full-core leaves them out: mruby-bin-debugger, mruby-test;
-#   and the Windows back ends hal-win-*.
-# - mruby-sleep stays: full-core of 4.0.0 leaves it out in favour of
+#   and the hardware gems hw-* of mruby 4.1.
+# - mruby-sleep stays: full-core of 4.1.0-rc2 leaves it out in favour of
 #   mruby-task, but Kernel#sleep and #usleep of ngx_mruby scripts come from it.
 # mruby-test-inline-struct has only tests and adds nothing to libmruby.
 NGX_MRUBY_CORE_GEMS = %w[
-  hal-posix-dir hal-posix-io hal-posix-socket
   mruby-array-ext mruby-bigint mruby-bin-config mruby-bin-mirb mruby-bin-mrbc
   mruby-bin-mruby mruby-bin-strip mruby-binding mruby-catch mruby-class-ext
   mruby-cmath mruby-compar-ext mruby-compiler mruby-complex mruby-data

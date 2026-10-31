@@ -1,7 +1,7 @@
 ---
 mruby:
-  version: 4.0.0
-  release_no: 40000
+  version: 4.1.0
+  release_no: 40100
 builds:
   host:
     https://github.com/iij/mruby-env.git:

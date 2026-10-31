@@ -1,0 +1,88 @@
+#!/bin/sh
+#
+# Vendor the Prism sources that the mruby compiler needs.
+#
+# The tree of mruby has mrbgems/mruby-compiler/lib/prism as a git submodule
+# of ruby/prism, so the subtree merge of update-mruby-subtree brings only a
+# gitlink there, and a checkout or a source archive of ngx_mruby would have
+# no Prism sources. This script replaces that path with the files of
+# ruby/prism at one commit that the build of mruby-compiler reads (see
+# mruby/mrbgems/mruby-compiler/mrbgem.rake), and stages them. Run it from the
+# top of the checkout, after the merge commit of update-mruby-subtree, and
+# commit the result alone (docs/DEVELOPMENT.md).
+#
+# Usage: sh vendor-mruby-prism [COMMIT]
+#   COMMIT  the commit of ruby/prism. The default is the commit that the
+#           gitlink at that path in HEAD records, which is the one that the
+#           merged mruby ref names.
+
+set -e
+
+PRISM_URL=https://github.com/ruby/prism.git
+PRISM_DIR=mruby/mrbgems/mruby-compiler/lib/prism
+# The files that mrbgem.rake of mruby-compiler compiles (src, include), the
+# templates that it renders with templates/template.rb, which reads
+# config.yml, and the license.
+PRISM_FILES="LICENSE.md config.yml include src templates/template.rb templates/ext/prism/api_node.c.erb templates/include templates/src"
+
+if [ $# -gt 1 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  echo "Usage: `basename $0` [commit of ruby/prism]"
+  exit 1
+fi
+
+# The paths below are relative to the top of the checkout.
+TOP=$(git rev-parse --show-toplevel)
+if [ "$(cd "$TOP" && pwd -P)" != "$(pwd -P)" ]; then
+  echo "run this script from the top of the checkout ($TOP)" >&2
+  exit 1
+fi
+
+if [ $# -eq 1 ]; then
+  COMMIT=$1
+else
+  COMMIT=$(git ls-tree HEAD "$PRISM_DIR" | awk '$1 == "160000" { print $3 }')
+  if [ -z "$COMMIT" ]; then
+    echo "HEAD has no gitlink at $PRISM_DIR; give the commit of ruby/prism" >&2
+    exit 1
+  fi
+fi
+
+if [ -n "$(git status --porcelain -- "$PRISM_DIR")" ]; then
+  echo "$PRISM_DIR has uncommitted changes" >&2
+  exit 1
+fi
+
+# Fetch into a repository of its own, not into this one: a shallow fetch
+# into this repository would make it a shallow repository.
+PRISM_GIT=$(mktemp -d)
+trap 'rm -rf "$PRISM_GIT"' EXIT
+git init -q --bare "$PRISM_GIT"
+git --git-dir="$PRISM_GIT" fetch -q --depth 1 "$PRISM_URL" "$COMMIT"
+FETCHED=$(git --git-dir="$PRISM_GIT" rev-parse FETCH_HEAD)
+case "$FETCHED" in
+  "$COMMIT"*) ;;
+  *) echo "fetched $FETCHED, not $COMMIT" >&2; exit 1 ;;
+esac
+
+git rm -r -q --cached --ignore-unmatch "$PRISM_DIR"
+rm -rf "$PRISM_DIR"
+mkdir -p "$PRISM_DIR"
+# PRISM_FILES is a list of paths and is split on purpose.
+git --git-dir="$PRISM_GIT" archive "$FETCHED" $PRISM_FILES | tar -x -C "$PRISM_DIR"
+# -f: .gitignore of this repository would keep some of the names out.
+git add -f "$PRISM_DIR"
+
+# The staged files must be the files of the commit, byte for byte.
+GIT_DIR=$(git rev-parse --git-dir)
+git --git-dir="$PRISM_GIT" ls-tree -r "$FETCHED" -- $PRISM_FILES | awk '{ print $1, $3, $4 }' > "$GIT_DIR/prism-expected"
+git ls-files -s -- "$PRISM_DIR" | sed "s#	$PRISM_DIR/#	#" | awk '{ print $1, $2, $4 }' > "$GIT_DIR/prism-staged"
+if ! cmp -s "$GIT_DIR/prism-expected" "$GIT_DIR/prism-staged"; then
+  diff "$GIT_DIR/prism-expected" "$GIT_DIR/prism-staged" >&2 || true
+  rm -f "$GIT_DIR/prism-expected" "$GIT_DIR/prism-staged"
+  echo "the staged files differ from ruby/prism $FETCHED" >&2
+  exit 1
+fi
+rm -f "$GIT_DIR/prism-expected" "$GIT_DIR/prism-staged"
+
+echo "Staged $(git ls-files -- "$PRISM_DIR" | wc -l | tr -d ' ') files of ruby/prism $FETCHED in $PRISM_DIR."
+exit 0

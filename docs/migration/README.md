@@ -11,14 +11,14 @@ result. Read the release notes of the 2.x releases newer than the version
 you run first ([docs/releases](../releases/)).
 
 ngx_mruby 2.x bundles mruby 3.3.0. The development line of ngx_mruby 3
-bundles mruby 4.0.0, the current stable release of mruby. The v3 plan
-(`docs/proposals/v3-plan.md`, section 7, decision 1) sets mruby 4.1.0 as
-the target of v3, with 4.0.0 as an approved step before it; 4.1.0 has only
-release candidates so far. The entries of mruby 4.0.0 are the changes that
-were found and measured for ngx_mruby, not a complete list. mruby's own
-lists of user-visible changes are `doc/mruby3.4.md` and `doc/mruby4.0.md`
-in `mruby/`. mruby 4.1.0 brings further changes that the release notes and
-this guide do not cover yet.
+bundles mruby 4.1.0-rc2, the second release candidate of mruby 4.1.0. The
+v3 plan (`docs/proposals/v3-plan.md`, section 7, decision 1) sets mruby
+4.1.0 as the mruby of v3; the owner chose on 2026-10-29 to bundle
+4.1.0-rc2 instead of waiting for the tag, and the development line moves to
+4.1.0 when it is tagged. The entries of the bundled mruby are the changes
+that were found and measured for ngx_mruby, not a complete list. mruby's
+own lists of user-visible changes are `doc/mruby3.4.md`, `doc/mruby4.0.md`
+and, for 4.1, `NEWS.md` in `mruby/`.
 
 ## Steps
 
@@ -31,15 +31,19 @@ this guide do not cover yet.
 
 ## Builds
 
+- Build with Ruby 3.0 or later: the build of the bundled mruby stops on
+  Ruby 2.x
+  ([Building the bundled mruby needs Ruby 3.0 or later](../releases/v3.0.0.md#building-the-bundled-mruby-needs-ruby-30-or-later-678)).
+  `ruby --version` prints the version of the Ruby on `PATH`.
 - With the `build_config.rb` of this release, rebuild the module; the
   bundled mruby is built with it
-  ([The bundled mruby is 4.0.0 instead of 3.3.0](../releases/v3.0.0.md#the-bundled-mruby-is-400-instead-of-330-561)).
+  ([The bundled mruby is 4.1.0-rc2 instead of 3.3.0](../releases/v3.0.0.md#the-bundled-mruby-is-410-rc2-instead-of-330-561-678)).
 - With a `build_config.rb` of your own
-  ([A `build_config.rb` of your own needs the core gem changes of mruby 4.0.0](../releases/v3.0.0.md#a-build_configrb-of-your-own-needs-the-core-gem-changes-of-mruby-400-561)),
+  ([A `build_config.rb` of your own needs the core gem changes of mruby 4.1](../releases/v3.0.0.md#a-build_configrb-of-your-own-needs-the-core-gem-changes-of-mruby-41-561-678)),
   find the lines that select core gems:
 
   ```sh
-  grep -nE 'gembox|mruby-print|hal-posix|mruby-task|mruby-encoding|mruby-sleep|ngx_mruby_core_gems' build_config.rb
+  grep -nE 'gembox|mruby-print|hal-posix|mruby-task|mruby-encoding|mruby-sleep|mruby-env|mruby-process|regexp|ngx_mruby_core_gems' build_config.rb
   ```
 
   To keep the core gems that the default build of ngx_mruby takes, copy
@@ -92,7 +96,7 @@ script files of a configuration (replace `/path/to/scripts` with the
 directories of the files that the `*_handler` directives name):
 
 ```sh
-grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|respond_to\?|method_defined\?|method_missing|instance_methods|\.methods|iv_var|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[|flatten_merge|RuntimeError|\.server *=|upstream_server *=' /path/to/scripts
+grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|respond_to\?|method_defined\?|method_missing|instance_methods|\.methods|iv_var|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[|flatten_merge|RuntimeError|\.server *=|upstream_server *=|SystemStackError' /path/to/scripts
 ```
 
 Search the inline code of the `*_code` directives in the `nginx.conf`
@@ -135,7 +139,7 @@ not enough, and show the change.
   ```
 
   Rescue `NoMethodError` itself instead of comparing the message.
-- [`private` and `protected` are enforced](../releases/v3.0.0.md#private-and-protected-are-enforced-561):
+- [`private` and `protected` are enforced](../releases/v3.0.0.md#private-and-protected-are-enforced-561-678):
   look for calls, with a receiver other than `self`, of `initialize`,
   `initialize_copy`, `respond_to_missing?` and `method_missing`, of methods
   defined with `def` at the top level, of `Kernel` methods such as `raise`,
@@ -143,10 +147,11 @@ not enough, and show the change.
   handler code, a method defined with `def` at the top level stays public,
   and calls of it with a receiver need no change
   ([the proposal for #502](../proposals/archive/handler-code-frame.md#14-what-handler-code-shares-today),
-  section 1.4). The search above finds the calls on `Kernel`
-  (`Kernel\.`): only `Kernel.format`, `.sprintf`, `.raise`, `.sleep` and
-  `.usleep` still work, and the others, such as `Kernel.Integer(x)`, become
-  calls without a receiver. It also finds `instance_methods` and `methods`,
+  section 1.4). Calls on `Kernel` itself, such as `Kernel.Integer(x)`,
+  work on both versions; a `Kernel` method called on another object, such
+  as `1.Integer("3")`, raises. A `protected` method can be called with a
+  receiver of the same class from a method of that class, as in CRuby. The
+  search above finds `instance_methods` and `methods`,
   which leave private methods out. Checking `respond_to?` before such a call
   does not help: it returns `true` for a private method.
 
@@ -166,8 +171,9 @@ not enough, and show the change.
   Router.new.pick(r)           # 2.x: works   3.0.0: NoMethodError
   Router.new.send(:pick, r)    # works on both
 
-  Kernel.Integer("12")         # 2.x: 12   3.0.0: NoMethodError (private method 'Integer' called for Module)
-  Integer("12")                # 12 on both
+  1.Integer("3")               # 2.x: 3   3.0.0: NoMethodError (private method 'Integer' called for Integer)
+  Kernel.Integer("3")          # 3 on both
+  Integer("3")                 # 3 on both
   ```
 
 - [`Module#remove_const`, `#private`, `#public`, `#protected`, `#module_function` and the hooks are private](../releases/v3.0.0.md#moduleremove_const-private-public-protected-module_function-and-the-hooks-are-private-561):
@@ -208,6 +214,24 @@ not enough, and show the change.
   end
   ```
 
+- [`"#@ivar"`, `"#@@cvar"` and `"#$global"` in a string interpolate the variable](../releases/v3.0.0.md#ivar-cvar-and-global-in-a-string-interpolate-the-variable-678):
+  look for `#@` and `#$` in double-quoted strings, heredocs and backquoted
+  commands. The search also finds comments; read each line that it finds:
+
+  ```sh
+  grep -rnE '#[@$]' /path/to/scripts
+  ```
+
+  ```ruby
+  @id = 7
+  Nginx.rputs "Ticket #@id"     # 2.x: Ticket #@id   3.0.0: Ticket 7
+  Nginx.rputs "Ticket \#@id"    # Ticket #@id on both
+  Nginx.rputs 'Ticket #@id'     # Ticket #@id on both
+  ```
+
+- [An `Array`, a `Hash` or a `Struct` that holds itself can be compared](../releases/v3.0.0.md#an-array-a-hash-or-a-struct-that-holds-itself-can-be-compared-678):
+  the search above finds `SystemStackError`. Only a script that rescues it
+  around such a comparison needs a change.
 - [Float values have no bit operations](../releases/v3.0.0.md#float-values-have-no-bit-operations-561):
   look for `<<`, `>>`, `&`, `|`, `^` and `~` applied to a value that can be
   a Float: the result of `to_f`, of `Float()` or of arithmetic with a
@@ -421,8 +445,8 @@ not enough, and show the change.
   ```
   2.x, start:                 [notice] ... ngx_mruby/<version> (mruby/3.3.0) mechanism enabled in ...
   3.0.0, start:               no such line
-  3.0.0, nginx -t:            [info] ... ngx_mruby/<version> (mruby/4.0.0) mechanism enabled in ...   (startup log only)
-  3.0.0, nginx -t -e stderr:  [info] ... ngx_mruby/<version> (mruby/4.0.0) mechanism enabled in ...   (terminal)
+  3.0.0, nginx -t:            [info] ... ngx_mruby/<version> (mruby/4.1.0) mechanism enabled in ...   (startup log only)
+  3.0.0, nginx -t -e stderr:  [info] ... ngx_mruby/<version> (mruby/4.1.0) mechanism enabled in ...   (terminal)
   ```
 
   A check that looks for one of these lines to see that the module is
@@ -431,6 +455,16 @@ not enough, and show the change.
 
   ```sh
   nginx -t -e stderr 2>&1 | grep 'mechanism enabled'
+  ```
+
+- [Syntax errors have the messages of Prism](../releases/v3.0.0.md#syntax-errors-have-the-messages-of-prism-678):
+  a pattern on the text after `syntax error`, such as
+  `unexpected end of file`, no longer matches. Match on `SyntaxError` and on
+  the file and line instead.
+
+  ```
+  2.x:    file (eval) line 1: syntax error, unexpected end of file
+  3.0.0:  file (eval) line 1: syntax error, unexpected end-of-input; expected an expression after the operator
   ```
 
 - [A content handler that ends without output answers 200 with an empty body instead of 500](../releases/v3.0.0.md#a-content-handler-that-ends-without-output-answers-200-with-an-empty-body-instead-of-500-574):
@@ -487,11 +521,11 @@ grep -rnE 'Data_Wrap_Struct|mrb_data_object_alloc|MRB_SET_INSTANCE_TT|MRB_ARGS_|
 
 ## Checking the result
 
-1. Compile every script with the `mrbc` of mruby 4.0.0. After a build of
+1. Compile every script with the `mrbc` of mruby 4.1.0-rc2. After a build of
    this release (`sh build.sh` or `sh test.sh`), `mruby/bin/mrbc -c` checks
    the syntax of a script: it prints `Syntax OK`, or the line of the error
    (for a constant assigned in a method body,
-   `<file>:2:3: dynamic constant assignment`) and exits with 1.
+   `<file>:2:3: syntax error, dynamic constant assignment`) and exits with 1.
 
    ```sh
    for f in /path/to/scripts/*.rb; do mruby/bin/mrbc -c "$f" || echo "check: $f"; done
@@ -504,11 +538,15 @@ grep -rnE 'Data_Wrap_Struct|mrb_data_object_alloc|MRB_SET_INSTANCE_TT|MRB_ARGS_|
    3.3.0) and one from mruby 4.0.0, in Docker (Ubuntu 22.04, gcc 11), with
    mruby's `default` gembox or with the core gems of each version's
    ngx_mruby build (`full-core` and iij/mruby-dir for 3.3.0,
-   `NGX_MRUBY_CORE_GEMS` for 4.0.0). The entries that say "the test
-   suite of ngx_mruby saw the change" also changed a response or a log line
-   of ngx_mruby itself. To do the same, copy the `mruby/` directory of each
-   version to a directory of its own, run `rake MRUBY_CONFIG=default` in
-   each copy, and run your script with the `bin/mruby` of both copies. Do
+   `NGX_MRUBY_CORE_GEMS` for 4.0.0). The entries of mruby 4.1.0-rc2 were
+   measured on 2026-10-29 and 2026-10-31 with the `mruby` command of the
+   host build of ngx_mruby, for 4.0.0 and for 4.1.0-rc2, and with the
+   `mruby` command of mruby 3.3.0 built with its `default` gembox. The
+   entries that say "the test suite of ngx_mruby saw the change" also
+   changed a response or a log line of ngx_mruby itself. To do the same,
+   copy the `mruby/` directory of each version to a directory of its own,
+   run `rake MRUBY_CONFIG=default` in each copy, and run your script with
+   the `bin/mruby` of both copies. Do
    not run that rake in the `mruby/` of an ngx_mruby checkout: it builds
    into `mruby/build`, where the build of the module keeps its mruby.
 3. Run the configuration with the module of this release on a test server,

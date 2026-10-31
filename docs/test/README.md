@@ -2045,6 +2045,37 @@ equals the inclusive cost of `mrb_incremental_gc` that `callgrind_annotate`
 prints. The job is advisory (not needed by `ci-ok`) until it has also run on
 pull requests that change the code; see "In CI" below.
 
+### Known differences
+
+These differences of the bundled mruby are accepted, so a later comparison
+measures against them; the base of a pull request is `next` with mruby
+4.1.0-rc2 since #678.
+
+- mruby 4.1.0-rc2 against 4.0.0, both with the GC root holder of #682
+  ([the comparison on #678](https://github.com/matsumotory/ngx_mruby/pull/678)):
+  `auth` 42599 → 45621 Ir per request without GC (+7.10%), and the GC share
+  of the scenarios with Ruby grows, for example `auth` 3.7% → 13.5% and
+  `headers` 6.6% → 20.9%; the other scenarios stay below `WARN` without GC.
+  - The number without GC: the VM and the core of mruby 4.1 run the same
+    bytecode with more instructions in `auth` (about +2260 Ir per request
+    in mruby's own functions): a two-way method cache that finds 22 methods
+    per request by a search where 4.0.0 found 17, `Hash` lookups of String
+    keys through `obj_eql`, and another split of the argument parsing of C
+    methods. These are how mruby 4.1 is built; none is known as a defect.
+  - The GC share: when the heap has no free slot, mruby 4.1 runs a full GC
+    instead of adding a heap page if its last mark left room (mruby commit
+    c009f1633, "gc: try to reclaim before growing the object heap", made to
+    bound the heap of small fixed-arena targets). A worker of ngx_mruby
+    keeps about 1100 live objects in two pages of 1024, so the heap runs out
+    before an incremental GC starts, and each time a full GC runs.
+    `GC.interval_ratio` does not change it, and a larger heap
+    (`MRB_HEAP_PAGE_SIZE` 4096, or pages that `mrb_gc_add_region()` adds at
+    the start) takes the GC share to 0-3% but raises the number without GC
+    in most scenarios, by up to 17%; the measurements are on #678. ngx_mruby keeps mruby's
+    defaults.
+- The owner accepted these differences on 2026-10-31 (the record on #678
+  and in `docs/HANDOFF.md`).
+
 ### Running it
 
 The driver needs CRuby 3.0 or later and valgrind with `callgrind_control`

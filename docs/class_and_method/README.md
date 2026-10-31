@@ -69,7 +69,7 @@ stays. The differences:
 - `Dir.open` with a block no longer raises when the block closed the `Dir`.
 - `Dir.foreach` with a block closes the `Dir` that it opened.
 - `Dir` includes `Enumerable`, and has `Dir.children`, `Dir.empty?` and
-  `Dir#each_child`. With the bundled mruby 4.0.0, `Dir.children` and
+  `Dir#each_child`. With the bundled mruby 4.1.0-rc2, `Dir.children` and
   `Dir#each_child` leave out `.` and `..`, as in CRuby. (With mruby 3.3.0
   they were aliases of `Dir.entries` and `Dir#each` and included them.)
 
@@ -78,8 +78,8 @@ The `Redis` class was left out of the default build in 2.7.1 and is in it again 
 You can also use the classes of the mruby core gems that `NGX_MRUBY_CORE_GEMS` in
 [build_config.rb](../../build_config.rb) lists (the gems in [mruby/mrbgems](../../mruby/mrbgems)
 of that name). [Core gems](../install/README.md#core-gems) in the install
-guide says which core gems of mruby 4.0.0 are in the list, which are left
-out and why. The changes that mruby 4.0.0 brings to scripts are listed
+guide says which core gems of mruby 4.1.0-rc2 are in the list, which are
+left out and why. The changes that the bundled mruby brings to scripts are listed
 under [Behavior changes: read before upgrading](../releases/v3.0.0.md#behavior-changes-read-before-upgrading)
 in the release notes of v3.0.0, and
 [Migrating from ngx_mruby 2.x to 3.0.0](../migration/README.md) has the

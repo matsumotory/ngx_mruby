@@ -32,9 +32,9 @@ for (const file of pages) {
   for (const key of ['src', 'alt', 'width', 'height']) assert.equal(String(images[0].properties[key]), String(OPENSSF_BADGE[key]), `${file}: ${key}`);
   assert.equal(images[0].properties.referrerPolicy, 'no-referrer', `${file}: badge referrer policy`);
   const ref = file.startsWith('v2/') ? 'master' : 'next';
-  assert.ok(links.some(el => el.properties.href === `https://github.com/matsumotory/ngx_mruby/blob/${ref}/MITL` && textContent(el) === 'MIT'), `${file}: real MIT license link`);
+  assert.ok(links.some(el => el.properties.href === `https://github.com/matsumotory/ngx_mruby/blob/${ref}/LICENSE` && textContent(el) === 'MIT'), `${file}: real MIT license link`);
 }
-console.log(`check-project-badges: ${pages.length} footers have the exact OpenSSF image/link/alt and version-appropriate MITL link; no external fetch in this static check`);
+console.log(`check-project-badges: ${pages.length} footers have the exact OpenSSF image/link/alt and version-appropriate LICENSE link; no external fetch in this static check`);
 if (browserCheck) {
   const { chromium, webkit } = await import('playwright');
   const { serve } = await import('./lib/serve.mjs');

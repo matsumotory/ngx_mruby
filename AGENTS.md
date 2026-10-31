@@ -479,7 +479,7 @@ How sessions do it (their procedure, not a decision of the owner):
 ## Build and test
 
 Requirements are listed in `docs/install/` (C compiler, `make`, `bison`, `git`,
-Ruby with `rake`, OpenSSL). nginx also needs the PCRE and zlib development
+Ruby 3.0 or later with `rake`, OpenSSL). nginx also needs the PCRE and zlib development
 headers, and `test.sh` uses `wget` and the `openssl` command. mruby is built with
 `rake`: if it is not on `PATH` because Ruby is managed by a version manager
 (rbenv, asdf, ...), put that Ruby's `bin` directory on `PATH` first.
@@ -818,7 +818,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
   and every script of their samples with the mrbc of the bundled mruby,
   built alone in about ten seconds with `cd mruby &&
   MRUBY_CONFIG=build_config/mrbc.rb MRUBY_BUILD_DIR=DIR rake`
-  (`DIR/host/bin/mrbc`); a block that shows a syntax error on purpose is
+  (`DIR/mrbc/bin/mrbc`); a block that shows a syntax error on purpose is
   marked ```` ```ruby syntax-error ```` and must not compile. `site.yml`
   runs both.
   `npm run check:browser` runs five on `site/dist/` (`--dist`; the first
@@ -1012,6 +1012,9 @@ npm run preview           # serves dist/ at http://localhost:4321/
 - Edit `mruby/` or `dependence/ngx_devel_kit/` by hand. They are vendored with
   git subtree and updated only with `./update-mruby-subtree [ref]` and
   `./update-devkit-subtree [ref]` (see `docs/DEVELOPMENT.md`), in a PR of their own.
+  The Prism sources under `mruby/mrbgems/mruby-compiler/lib/prism`, which
+  mruby's tree has as a submodule, are vendored only with
+  `./vendor-mruby-prism`, right after the merge commit of an mruby update.
 - Edit generated files: `config`, `Makefile`, `config.status`, `config.log`
   (outputs of `./configure`; edit `config.in` / `Makefile.in` instead).
   `configure` is autoconf output: edit `configure.in`, regenerate with `autoconf`

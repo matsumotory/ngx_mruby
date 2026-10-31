@@ -223,7 +223,7 @@ jobs:
       - name: Check that every Ruby block of the pages compiles with mrbc
         if: ${{ !cancelled() && steps.mrbc.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/check-ruby-blocks.mjs --mrbc "$RUNNER_TEMP/mrbc/host/bin/mrbc"
+        run: node scripts/check-ruby-blocks.mjs --mrbc "$RUNNER_TEMP/mrbc/mrbc/bin/mrbc"
       - name: Check all version metadata, banners and links without a browser
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-v2.mjs --no-browser
