@@ -1,8 +1,8 @@
 // The browser checks of steps 2 and 3 (docs/proposals/site.md, section 6),
 // on computed styles in Chromium and WebKit (Playwright), for every page of
 // PAGES in light and dark, in the two patterns of lib/patterns.mjs: PC at
-// full screen (1440 by 900 px in Chromium) and the Safari width of iPhone
-// 17 (393 by 664 px in WebKit):
+// full screen (1440 by 900 px in Chromium) and iPhone Safari (390 by
+// 664 px in WebKit):
 //
 // - font sizes: every visible text has a size of the scale of its page's
 //   language (4.4), the roles take their size, and nothing is below 14 px;
@@ -14,17 +14,17 @@
 // - monospace only where 4.3, item 2 puts it;
 // - no box-shadow, text-shadow, backdrop-filter or gradient (4.3 item 5),
 //   also with the search dialog open (while its results load and after
-//   they have loaded), and at 393 px with the menu open;
+//   they have loaded), and at 390 px with the menu open;
 // - margins, paddings, gaps and radii from the sets of 4.5 (computed values
 //   through the CSS Typed OM, so that auto and percentages stay keywords);
 // - durations of 4.8: 200 ms or less, 0 under prefers-reduced-motion, no
 //   animation running after the load;
 // - at most 90 characters per line of English body text at 1440 px (4.4);
-// - no horizontal scroll of the page (4.9), and at 393 px every text block
+// - no horizontal scroll of the page (4.9), and at 390 px every text block
 //   and the ring before h2 at least 20 px from both edges (4.5);
-// - the home page heading takes at most two lines at 1440 px, and at 393
+// - the home page heading takes at most two lines at 1440 px, and at 390
 //   px two in Japanese and three in English (4.4);
-// - at 393 px the right edge of Japanese text blocks (4.9), and on English
+// - at 390 px the right edge of Japanese text blocks (4.9), and on English
 //   blocks no computed text-wrap pretty or balance (4.9);
 // - in both patterns, no paragraph, list item, caption, table cell or heading
 //   whose last line holds only one or two characters (the owner's rule);
@@ -332,7 +332,7 @@ function inspect(cfg) {
       if (/pretty|balance/.test(tw)) fail(el, `text-wrap ${tw.trim()} (4.4, 4.9)`);
     }
   }
-  // The home page heading: at most two lines at 1440 px; at 393 px two in
+  // The home page heading: at most two lines at 1440 px; at 390 px two in
   // Japanese and three in English (4.4)
   if (isHome && cfg.width > 0) {
     const h1 = document.querySelector('h1#_top');
@@ -342,7 +342,7 @@ function inspect(cfg) {
     else if (n > max) fail(h1, `the home page heading takes ${n} lines at ${cfg.width} px, over ${max}`);
     cfg.counts.homeHeading = n;
   }
-  // Gutters of 20 px or more at 393 px (4.5): every text block, outside
+  // Gutters of 20 px or more at 390 px (4.5): every text block, outside
   // the boxes that scroll on their own (code blocks, tables), and the ring
   // before h2
   if (cfg.phone) {

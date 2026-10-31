@@ -2477,7 +2477,7 @@ The independent browser lanes are:
 
 The layout and wrapping checks of the site (`check-styles.mjs`,
 `check-japanese-lines.mjs`) measure two patterns only, PC at full screen
-(1440px, Chromium) and iPhone 17 Safari (393px, WebKit); no other widths,
+(1440px, Chromium) and iPhone Safari (390px, WebKit); no other widths,
 browsers or font combinations are added to the checks. The owner's words
 (2026-11-01):
 「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.

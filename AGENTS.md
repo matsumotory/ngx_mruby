@@ -616,7 +616,7 @@ use targeted evidence for a shared layout change or replace missing evidence
 with a successful skip.
 
 - The layout and wrapping checks of the site measure two patterns only, PC
-  at full screen (1440px, Chromium) and iPhone 17 Safari (393px, WebKit);
+  at full screen (1440px, Chromium) and iPhone Safari (390px, WebKit);
   no other widths, browsers or font combinations are added to the checks.
   The owner's words (2026-11-01):
   「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
@@ -854,16 +854,16 @@ npm run preview           # serves dist/ at http://localhost:4321/
   - `node scripts/check-styles.mjs` (`npm run check:styles`;
     `--pages /,/ja/` limits a local run to known pages, while CI keeps the
     default complete page set): computed
-    styles in the two patterns, 1440 by 900 px in Chromium and 393 by
+    styles in the two patterns, 1440 by 900 px in Chromium and 390 by
     664 px in WebKit: font sizes of the scale of each language, token colors (code
     blocks and the colors of highlighted spans included), monospace only
     for code and numbers, no shadow, gradient or backdrop filter (also
     with the search dialog open, while its results load and after, and
     with the menu open), margins, paddings, gaps and radii from the sets
     of 4.5, durations of 4.8, at most 90 characters per English line at
-    1440 px, no horizontal scroll, gutters of 20 px or more at 393 px, the
+    1440 px, no horizontal scroll, gutters of 20 px or more at 390 px, the
     line count of the home page heading, the right edge of Japanese text
-    at 393 px and no `text-wrap` pretty or balance on
+    at 390 px and no `text-wrap` pretty or balance on
     English text, no paragraph, list item, caption, table cell or heading
     whose last line holds one or two characters, in both patterns, the
     diagrams (`role="img"` and an `aria-label`, drawings
@@ -873,10 +873,10 @@ npm run preview           # serves dist/ at http://localhost:4321/
   - `node scripts/check-japanese-lines.mjs` (`npm run
     check:japanese-lines`; `--pages /ja/a/,/ja/b/` for some pages only):
     every page under `/ja/` from a Japanese source but the home page, in
-    the two patterns, 1440 by 900 px in Chromium and 393 by 664 px in
+    the two patterns, 1440 by 900 px in Chromium and 390 by 664 px in
     WebKit: at most 40 Japanese characters on a line of body text and a
     line height of 1.75 to 2.0 at 1440 px, the page title on one line at
-    393 px, the right edge of Japanese blocks at 393 px (2 em; an h2 at
+    390 px, the right edge of Japanese blocks at 390 px (2 em; an h2 at
     most two lines and 6 em), no last line of one or two characters in
     either pattern, and diagram labels of 14 px or more inside their place
     in both, and the notice above an English

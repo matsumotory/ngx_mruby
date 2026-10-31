@@ -3,15 +3,14 @@
 // page under /ja/ that comes from a Japanese source (generated/pages.json),
 // except the home page, whose heading check-styles.mjs checks, in the light
 // theme, in the two patterns of lib/patterns.mjs: PC at full screen (1440 by
-// 900 px in Chromium) and the Safari width of iPhone 17 (393 by 664 px in
-// WebKit):
+// 900 px in Chromium) and iPhone Safari (390 by 664 px in WebKit):
 //
 // - at 1440 px, at most 40 Japanese characters (kana, kanji and full-width
 //   punctuation) on a line of body text (4.4, "Measure");
 // - at 1440 px, the line height of body text 1.75 to 2.0 times its font
 //   size (4.4, "Line height");
-// - the page title (h1) on one line at 393 px (4.4, "Page titles");
-// - at 393 px, the right edge of Japanese text blocks of two or more lines:
+// - the page title (h1) on one line at 390 px (4.4, "Page titles");
+// - at 390 px, the right edge of Japanese text blocks of two or more lines:
 //   the longest line ends less than 2 em from the block's right edge; an h2
 //   takes at most two lines and its longest line ends less than 6 em from
 //   the edge (4.9);
@@ -21,7 +20,7 @@
 // - in both patterns, every diagram label is 14 px or more and its text
 //   stays inside its place (3.5);
 // - the notice above an English page under /ja/ (FallbackContentNotice.astro):
-//   on one page of each kind of notice, its last line and, at 393 px, its
+//   on one page of each kind of notice, its last line and, at 390 px, its
 //   right edge.
 //
 //   node scripts/check-japanese-lines.mjs [--dist DIR] [--manifest FILE] [--engine chromium|webkit] [--ja-face noto] [--pages /ja/a/,/ja/b/]
