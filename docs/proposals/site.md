@@ -963,10 +963,13 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   `line-break: strict`). The owner's practice allows phrase wrapping only
   in titles and section headings; this proposal uses it only in section
   headings (h2) of Japanese pages and in diagram labels, which the owner's
-  sites also wrap by phrase (3.5). The home page heading is a sentence,
-  what ngx_mruby does, so it wraps by character; so do h3, captions, other
-  labels and table cells (chosen here, to keep the owner's exception as
-  narrow as the owner stated it).
+  sites also wrap by phrase (3.5). The Japanese home page heading is a
+  title, and takes one line per phrase: the frontmatter field `headline` of
+  `site/src/content/docs/ja/index.mdx` lists the phrases, `PageTitle.astro`
+  sets each on a line of its own, and the build stops when they do not join
+  to the `title`. h3, captions, other labels and table cells wrap by
+  character (chosen here, to keep the owner's exception as narrow as the
+  owner stated it).
   - **Section headings (h2).** The Japanese Markdown source puts `<wbr>` at
     the phrase boundaries, and `h2` of Japanese pages has
     `word-break: keep-all` and `overflow-wrap: anywhere`, as the three
@@ -992,10 +995,13 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   the markup.
 - The home page heading takes at most two lines at 1440 px and at most
   three at 390 and 320 px (owner's practice). The Japanese heading takes
-  two lines at 320 to 430 px too, one per phrase at the unchanged size, so
-  its first phrase is the 8-em 「LLMリクエストを、」 and the lede names the
-  authentication and the forwarding (the owner on 2026-10-31:
-  「ヒーローの見出し、モバイルだとこういう改行で微妙なので2行にしておきたい。シュッと直しといてこれ」).
+  its two lines, 「LLMリクエストの認証と転送を」 and 「Rubyで制御する。」, at
+  every width: below about 520 px its size is at most the column width
+  divided by 13.7 em, 20.4 px at 320 px and 28.5 px at 430 px, because its
+  first line is 13.3 em wide (the owner on 2026-10-31:
+  「ヒーローの見出し、モバイルだとこういう改行で微妙なので2行にしておきたい。シュッと直しといてこれ」,
+  then the choices 「文はそのまま、モバイルだけ字を小さく」 and, for the
+  読点 after 転送を, 「取る (推奨)」).
 - No `text-wrap: pretty` or `balance` anywhere: Safari applies `pretty` to
   every line and Chromium to the last four, so the same CSS wraps
   differently per engine (WebKit blog; MDN). Starlight's Banner sets

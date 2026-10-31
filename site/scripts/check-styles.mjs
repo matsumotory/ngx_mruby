@@ -75,7 +75,10 @@ const SCALE = {
 // The homepage scale of home.css; reference pages retain the scale above.
 function homeSize(lang, vw) {
   const clamp = (lo, v, hi) => Math.min(Math.max(lo, v), hi);
-  return lang === 'ja' ? clamp(32, 16 + 0.035 * vw, 56) : clamp(38, 16 + 0.045 * vw, 72);
+  // Japanese: no more than the column (the width less two gutters, 20 px at
+  // 640 px and below, 24 px above) divided by 13.7 em (tokens.css)
+  const gutter = vw <= 640 ? 20 : 24;
+  return lang === 'ja' ? Math.min(clamp(32, 16 + 0.035 * vw, 56), (vw - 2 * gutter) / 13.7) : clamp(38, 16 + 0.045 * vw, 72);
 }
 // 4.5: --space-1 to --space-9, and 20 px, the narrow gutter of 4.5.
 const SPACES = [0, 4, 8, 12, 16, 24, 32, 48, 64, 80];
