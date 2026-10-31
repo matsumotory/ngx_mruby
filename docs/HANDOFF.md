@@ -214,7 +214,9 @@ the Japanese release notes in [docs/releases/README.md](releases/README.md)
   the seven pages of `NOT_TRANSLATED_YET` in `site/scripts/lib/site.mjs`:
   the contributing page, development, the test guide, the releases page,
   security and the trust boundary. The handoff page stays in English with
-  a Japanese notice (the owner's decision of 2026-10-29), so
+  a Japanese notice: on 2026-10-29 the owner chose
+  「英語のまま注記つき (推奨)」 in a session's question (Q2 in section 7 of
+  `docs/proposals/site.md`), so
   `NOT_TRANSLATED_YET` keeps only `contributing/handoff`.
   [#703](https://github.com/matsumotory/ngx_mruby/pull/703) (base
   `master`) rewrites the Japanese 2.x release notes; after it reaches

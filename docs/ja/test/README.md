@@ -60,7 +60,7 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 
 ### 実行するジョブの選択
 
-`test/ci/changes.sh BASE HEAD`が変更ファイルを分類します。変更の種類で実行を決めるワークフローはすべてこのファイルを読み、方針を一か所に集約します。`sh test/ci/changes_test.sh`で検査できます。出力はキーごとに1行で、分類は`code`、`tests`、`docs`、`site`、`examples`、`workflows`、続いて`soak`と`perf`がそれぞれ`true`か`false`になります。最後の`build`は、`build`マトリクスのどのセルを実行するかを表します。`code`か`tests`が真なら`standard`、それ以外は`none`です。renameは`git diff --no-renames`で旧パスと新パスの両方を分類するため、ソースを`docs/`へ移してもビルドします。`test.yml`の`changes`ジョブは、実行の種類もスクリプトに渡します。渡すのは、Draftかどうか、readyのPRのラベル、push、タグ、「Run workflow」とその`valgrind`入力です。下の2つ目の表の実行では、スクリプトは`build`を、全セルを表す`full`か、`none`にします。
+`test/ci/changes.sh BASE HEAD`が変更ファイルを分類します。変更の種類で実行を決めるワークフローはすべてこのファイルを読み、方針を一か所に集約します。`sh test/ci/changes_test.sh`で検査できます。出力はキーごとに1行で、分類は`code`、`tests`、`docs`、`site`、`examples`、`workflows`、続いて`soak`と`perf`がそれぞれ`true`か`false`になります。最後の`build`は、`build`マトリクスのどのセルを実行するかを表します。`code`か`tests`が真なら`standard`、それ以外は`none`です。renameは`git diff --no-renames`で旧パスと新パスの両方を分類するため、ソースを`docs/`へ移してもビルドします。`test.yml`の`changes`ジョブは、実行の種類もスクリプトに渡します。渡すのは、Draftかどうか、readyのPRのラベル、push、タグ、「Run workflow」とその`valgrind`入力です。下の2つ目のテーブルの実行では、スクリプトは`build`を、全セルを表す`full`か、`none`に決めます。
 
 | 分類 | パス | readyのPRが実行するワークフロー |
 |---|---|---|
@@ -76,21 +76,21 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 | セル | nginx | モジュール | OpenSSL | nginxの動かし方 |
 |---|---|---|---|---|
 | nginx 1.31.8、静的モジュール | 1.31.8 | 静的 | `--with-openssl-src` | 直接動かす |
-| nginx 1.30.6、動的モジュール | 1.30.6 | 動的 | システムのOpenSSL | 直接動かす |
-| sanitizerのセル | 1.31.8 | 静的 | システムのOpenSSL | AddressSanitizerとUndefinedBehaviorSanitizerを付けてビルドする。[2つのsanitizerの下でテストを実行する](#2つのsanitizerの下でテストを実行する)を参照 |
-| valgrindのセル | 1.31.8 | 静的 | システムのOpenSSL | valgrindの下で実行する。[CIのvalgrind](#ciのvalgrind)を参照 |
+| nginx 1.30.6、動的モジュール | 1.30.6 | 動的 | ビルドしてインストールしたOpenSSL | 直接動かす |
+| sanitizerのセル | 1.31.8 | 静的 | ビルドしてインストールしたOpenSSL | AddressSanitizerとUndefinedBehaviorSanitizerを付けてビルドする。[2つのsanitizerの下でテストを実行する](#2つのsanitizerの下でテストを実行する)を参照 |
+| valgrindのセル | 1.31.8 | 静的 | ビルドしてインストールしたOpenSSL | valgrindの下で実行する。[CIのvalgrind](#ciのvalgrind)を参照 |
 
-PRで全セルでなくこの4セルを実行することは、2026年11月1日にオーナーが決めました。セッションの問いに対して、オーナーは、セッションが推奨とした4セルに減らす選択肢を選びました。オーナーの言葉は[docs/HANDOFF.md](../../HANDOFF.md)の「Decisions」にあります。どのセルも、nginxをビルドする前にOpenSSL 1.1.1wをビルドしてインストールします。1つ目のセルは、`--with-openssl-src`でOpenSSLをnginxにも組み込み、`configure.in`と`Makefile.in`のこの経路を通ります。valgrindのセルは同じnginxとモジュールをシステムのOpenSSLでビルドするので、この経路を通りません。
+PRで全セルでなくこの4セルを実行することは、2026年11月1日にオーナーが決めました。セッションの問いに対して、オーナーは「`4 cell に減らす (推奨)`」の選択肢を選びました。オーナーの言葉は[docs/HANDOFF.md](../../HANDOFF.md)の「Decisions」にあります。どのセルも、nginxをビルドする前にOpenSSL 1.1.1wをビルドしてインストールします。1つ目のセルは、`--with-openssl-src`でOpenSSLをnginxにも組み込み、`configure.in`と`Makefile.in`のこの経路を通ります。valgrindのセルは、同じnginxとモジュールを、インストールしたOpenSSLでビルドするので、この経路を通りません。
 
 全セルは、nginx 1.31.8、1.30.6、1.28.3、1.26.3と、静的モジュールか動的モジュールか、`--with-openssl-src`を付けるかどうかを組み合わせた16セルに、sanitizerのセルを加えたものです。valgrindのセルは16セルの1つです。全セルは引き続き、夜間のvalgrindの実行、タグのpush、`base`入力のない「Run workflow」で実行します。タグの前のチェックのPRでも実行し、このPRにはラベル`full-matrix`を付けます。[docs/releases/README.md](../releases/README.md)の「タグの前に」を参照してください。ほかのセルでしか確かめられない変更、たとえばnginx 1.26.3向けの変更は、そのバージョンでローカルで確かめます。バージョンは`nginx_version`かセルの`NGINX_VERSION`で選び、モジュールは`BUILD_DYNAMIC_MODULE`で選びます。そのPRにラベル`full-matrix`を付けて、全セルを実行することもできます。
 
-`soak`は`code`が真か、`test/soak/`または`test/build_release.sh`の変更時に真になります。`perf`は`code`が真か、性能測定に使う`test/perf/`、`test/build_release.sh`、`test/soak/`のシナリオファイルの変更時に真になります。未分類のファイルは`code`として全検査を実行し、理由を記載したPRで分類を追加するまでそのままです。複数の分類を変えるPRは、それぞれの分類に必要なジョブを実行します。
+`soak`は`code`が真か、`test/soak/`または`test/build_release.sh`の変更時に真になります。`perf`は`code`が真か、性能測定に使う`test/perf/`、`test/build_release.sh`、`test/soak/`のシナリオファイルの変更時に真になります。未分類のファイルは`code`として全検査を実行し、理由を記載したPRで分類を追加するまでそのままです。複数の分類のファイルを変えるPRは、それぞれの分類に必要なジョブを、すべて実行します。
 
 | 実行の種類 | 3つのジョブ`build`、`soak`、`perf` |
 |---|---|
 | DraftのPR | `files`とともにスキップ。ジョブ名は`ci-ok (draft)` |
 | readyのPR | merge refの第1親であるbaseとの差を上の表で分類。`perf`は`build`が`standard`か`full`なら起動し、`perf`が真かラベル`perf`で比較 |
-| `full-matrix`のラベルを付けたreadyのPR | ファイルにかかわらず、全セルと`soak`を実行。`perf`はラベルのないPRと同じ |
+| ラベル`full-matrix`を付けた、readyのPR | ファイルにかかわらず、全セルと`soak`を実行。`perf`はラベルのないPRと同じ |
 | `master`、`next`、`v*.x`ブランチへのpush | スキップ |
 | `v*`タグのpush | 全セルと`soak`。`perf`はPRのみ |
 | `base`入力が無いか`valgrind`入力がある手動実行。夜間の実行はこれにあたる | 全セルと`soak`。`perf`はPRのみ |
@@ -119,7 +119,7 @@ $ gh workflow run test.yml --ref claude/topic -f base=next
 `files`ジョブは、`test/check_added_files.sh BASE HEAD TIP`を実行します。このスクリプトは、ファイルの2つの一覧を調べます。
 
 - 変更が加えるファイル：`HEAD`にあって`BASE`に無いパスです。スクリプトは`git diff --no-renames --diff-filter=A`でこの一覧を作るので、名前を変えたファイルや移動したファイルは、新しいパスに加わったものとして数えます。
-- 変更のコミットが加えるファイル：`TIP`からfirst parentをたどって`BASE`まで戻る各コミットを、そのコミットのfirst parentと比べます。コミットの範囲は`git log --first-parent BASE..TIP`です。あるコミットが加え、後のコミットが消したファイルは、マージの後も履歴に残るので、これも調べます。
+- 変更のコミットが加えるファイル：`TIP`からfirst parentをたどって`BASE`まで戻る各コミットを、そのコミットのfirst parentと比べます。コミットの範囲は`git log --first-parent BASE..TIP`です。あるコミットが加え、後のコミットが消したファイルは、マージの後も履歴に残るので、これも調べる必要があります。
 
 どちらの一覧のファイルも、`test/forbidden_paths.txt`のパターンに一致すると、終了ステータス1で失敗します。パターンに一致するのは、次のファイルです。
 
@@ -162,7 +162,7 @@ $ sh test/check_added_files.sh origin/master HEAD
 check_added_files.sh: 2 added file(s) checked between origin/master and HEAD and in the 2 commit(s) of origin/master..HEAD, none forbidden or empty
 ```
 
-ファイルが失敗したら、そのファイルを変更から外してください。`git rm --cached <path>`で外すと、ファイルはディスクに残ります。そのファイルがリポジトリに要るものなら、同じプルリクエストで`test/forbidden_paths.txt`を変え、プルリクエストの説明に理由を書いてください。空のファイルなら、変えるのはスクリプトです。あるコミットが加え、後のコミットが消したファイルは、履歴に残ります。そのファイルは、加えたコミットから取り除くか、コミットをsquashしてください。取り除くには、たとえば`git rebase -i`のコマンドを使います。
+ファイルが失敗したら、そのファイルを変更から外してください。`git rm --cached <path>`で外すと、ファイルはディスクに残ります。そのファイルがリポジトリに要るものなら、同じプルリクエストで`test/forbidden_paths.txt`を変え、プルリクエストの説明に理由を書いてください。空のファイルなら、変えるのはスクリプトです。あるコミットが加え、後のコミットが消したファイルは、履歴に残ります。そのファイルは、加えたコミットから取り除くか、コミットをsquashしてください。取り除くには、たとえば`git rebase -i`のコマンドを使ってください。
 
 ## サイトの2.xページ
 
@@ -362,7 +362,7 @@ stage: copied 164 files to /path/to/build/nginx/harness/test; 593 port numbers m
 
 その後、`test.sh`は、コピーから設定とフックのスクリプトをインストールし、コピーのポートを待ちます。そして、コピーの`test/t/ngx_mruby.rb`とケースのファイルを実行します。テストは、`suite_path`を使って、コピーのCRubyのヘルパーを実行します。`suite_path`は`test/t/cases/_prelude.rb`にあり、`test/t/ngx_mruby.rb`にも自分で使う`suite_path`があります。`suite_path`は、スイートのパスを`TEST_SH_STAGE_DIR`につなげます。`TEST_SH_STAGE_DIR`は、`test.sh`が設定するディレクトリです。ケースを`test.sh`の外で実行するときのように、この変数が無いと、`suite_path`はチェックアウトのパスを返します。テストは今も、チェックアウトの最上位から実行します。設定が、フックのスクリプトを、最上位からの相対パスの`build/nginx/html/<name>.rb`で指すからです。オフセットが0なら、コピーは元のファイルと同じです。
 
-ポートをずらす規則はテキストの置き換えなので、新しいテストでは、次のことを守ってください。
+ポートをずらす規則はテキストの置き換えなので、新しいテストでは、次のことを必ず守ってください。
 
 - ポートは、2つの範囲のどちらかの5桁の数で書いてください。また、これらの範囲の数は、ポートか、テストが同じファイルの集まりにある数と比べる値にだけ使ってください。このような数を`18_132`のように`_`を入れて書くと、置き換えの規則では見つからないので、`_stage.rb`はファイルと行を挙げて失敗します。計算で作るポートは、その5桁の部分が範囲にあるときだけずれます。オフセットが1000なら、`18110 + 1`は`19110 + 1`になります。一方、`18000 + 110`と、文字列から作るポートはそのままです。ポートの数をそのまま書いてください。
 - 範囲の中の数で、ポートでないものが1つあります。`test/conf/conf.d/20-filter-connection.conf`は`f.output 12345`を出力し、`test/t/cases/filter_connection.rb`は、ボディを`'12345'`と、その長さを`'5'`と比べます。両方のファイルが同じようにずれるので、このケースは今も、`Filter#output`がIntegerを`to_s`で5バイトに変換することを確かめます。
@@ -381,7 +381,7 @@ stage: copied 164 files to /path/to/build/nginx/harness/test; 593 port numbers m
   $ gh workflow run test.yml --ref next -f valgrind=true
   ```
 
-- 夜間の実行：`.github/workflows/valgrind-nightly.yml`が毎日18:23 UTC、日本時間03:23に`test.yml`を起動し、終了を待って、その実行が失敗したら失敗します。GitHubの定期実行はデフォルトブランチのファイルから動くため、#674で入った`master`のファイルが`master`と`next`の実行を起動します。PRでは起動しません。`test.yml`か`test/valgrind.supp`を変えるPRは、PR自身の実行で、valgrindのセルを1つ動かします。すべてのセルをvalgrindの下で動かすには、次の夜間の実行を待つか、そのブランチで`valgrind-nightly.yml`か、`valgrind`入力を付けた`test.yml`を「Run workflow」で実行します。この実行は必須チェックの`ci-ok`を出さず、ジョブの名前は`ci-ok (valgrind)`です。[実行するジョブの選択](#実行するジョブの選択)を参照してください。
+- 夜間の実行：`.github/workflows/valgrind-nightly.yml`が毎日18:23 UTC、日本時間03:23に、上の項目の`valgrind`入力を付けた`test.yml`の実行を起動し、終了を待って、その実行が失敗したら失敗します。GitHubの定期実行はデフォルトブランチのファイルから動くため、#674で入った`master`のファイルが`master`と`next`の実行を起動します。PRでは起動しません。`test.yml`か`test/valgrind.supp`を変えるPRは、PR自身の実行で、valgrindのセルを1つ動かします。すべてのセルをvalgrindの下で動かすには、次の夜間の実行を待つか、そのブランチで`valgrind-nightly.yml`か、`valgrind`入力を付けた`test.yml`を「Run workflow」で実行します。この実行は必須チェックの`ci-ok`を出さず、ジョブの名前は`ci-ok (valgrind)`です。[実行するジョブの選択](#実行するジョブの選択)を参照してください。
 
 valgrindを使っても、セルの時間はあまり増えません。入力`valgrind`を付けた実行[40824932917](https://github.com/matsumotory/ngx_mruby/actions/runs/40824932917)では、valgrindの下の16のセルで、`test.sh`のうちnginxの起動から`test.sh ... successful`までの部分に、67から94秒かかりました。同じコミットのプルリクエストの実行[40824899601](https://github.com/matsumotory/ngx_mruby/actions/runs/40824899601)では、nginxを直接動かした15のセルで57から75秒でした。どちらも2026年10月29日の実行です。1つのセルは全体で4から13分かかり、その大部分はOpenSSL、mruby、nginxのビルドの時間です。
 
@@ -420,12 +420,12 @@ $ grep -HnE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (Ad
 |---|---|
 | `build/nginx/logs/error.log` | テストのnginxが、ログを開いた後に出すstderr。終了時のリークのレポートも含む |
 | `build/nginx/logs/stderr.log` | テストのクライアントのstderr。クライアントは`test/t/ngx_mruby.rb`とケースのファイルで、`test.sh`がそのstderrをこのファイルへリダイレクトする。そのため、テストがstderrをリダイレクトせずに起動するプロセスのstderrも、ここに入る。そのプロセスは、`nginx -t`、streamだけのテストの`nginx -s quit`、ログを開く前のnginxである |
-| ほかの`build/nginx/logs/*.log` | テストが専用のログを持たせて起動するnginxのプロセスが、そのログを開いた後に出すstderr。streamだけのテストの`stream_only.error.log`がこれにあたる。このテストは、nginxを`daemon on`で実行するため |
+| ほかの`build/nginx/logs/*.log` | テストが専用のログを持たせて起動するnginxのプロセスが、そのログを開いた後に出すstderr。streamだけのテストの`stream_only.error.log`がこれにあたる。このテストは、nginxを`daemon on`で実行します。 |
 | `build/nginx/second_instance/<mode>/*.log` | `test/t/cases/_second_instance.rb`が起動する2つ目のnginx。ファイルは`error.log`、`stderr.log`、`stdout.log` |
 
 `test.sh`がケースのファイルより前で止まったときは、`build/nginx/second_instance/`がありません。そのときステップは、ほかのファイルを読み、このディレクトリが無いことを出力します。このステップは、`*.log.bak`のファイルを読みません。`test.sh`は、前の実行のログを、同じディレクトリのこれらのファイルに残します。テストのnginxが`error.log`を開く前に出したレポートは、次の段落にあるように、端末に出ます。CIでは、`script`のステップの出力に出ます。
 
-`NGINX_EXTRA_CC_OPT`と`NGINX_EXTRA_LD_OPT`は、nginxの`--with-cc-opt`と`--with-ld-opt`の後ろに足されます。`NGX_MRUBY_CFLAGS`と`NGX_MRUBY_LDFLAGS`は、mrubyのビルドに渡ります。sanitizerとvalgrindを一緒に使わないでください。nginxは、設定を読み込んだ後に、stderrを`error.log`へ送ります。そのため、nginxが設定をパースする間に動くコードのレポートは、`error.log`でなく端末に出ます。そのようなコードは、ディレクティブのハンドラ、スクリプトのコンパイル、`mruby_init_code`です。両方を読んでください。`test/ubsan.supp`には、nginx自身から出るレポートが、それぞれの理由とともに挙げてあります。`test/lsan.supp`には、LeakSanitizerについて同じものが挙げてあります。nginxは、`cycle->connections`と、`ngx_event_process_init`で確保する2つのイベントの配列を解放しません。終了時にLeakSanitizerがこれらをレポートするかどうかは、これらの外にまだこれらを指すものがあるかどうかで決まります。そのため、抑制が無いと、nginx自身が確保したメモリのために実行が失敗することがあります。CIが使うgcc 11のランタイムでは、抑制したブロックはほかのものを隠しません。LLVMのランタイムとgcc 12以降は、抑制したブロックをルートとしても扱います。そのため、これらのランタイムでは、この2つの配列からしかたどれないブロックもレポートされなくなります。
+`NGINX_EXTRA_CC_OPT`と`NGINX_EXTRA_LD_OPT`は、nginxの`--with-cc-opt`と`--with-ld-opt`の後ろに足されます。`NGX_MRUBY_CFLAGS`と`NGX_MRUBY_LDFLAGS`は、mrubyのビルドに渡ります。sanitizerとvalgrindを一緒に使わないでください。nginxは、設定を読み込んだ後に、stderrを`error.log`へ送ります。そのため、nginxが設定をパースする間に動くコードのレポートは、`error.log`でなく端末に出ます。そのようなコードは、ディレクティブのハンドラ、スクリプトのコンパイル、`mruby_init_code`です。両方を読んでください。`test/ubsan.supp`には、nginx自身から出るレポートが、それぞれの理由とともに挙げてあります。`test/lsan.supp`には、LeakSanitizerについて同じものが挙げてあります。nginxは、`cycle->connections`と、`ngx_event_process_init`で確保する2つのイベントの配列を解放しません。終了時にLeakSanitizerがこれらをレポートするかどうかは、これらの外にまだこれらを指すものがあるかどうかで決まります。そのため、抑制が無いと、nginx自身が確保したメモリのために実行が失敗することがあります。CIが使うgcc 11のランタイムでは、抑制したブロックはほかのものを隠しません。LLVMのランタイムとgcc 12以降は、抑制したブロックをルートとしても扱います。そのため、これらのランタイムでは、これらの配列からしかたどれないブロックまで、レポートされなくなります。
 
 ## nginx自身のテストスイートnginx-tests
 
@@ -460,7 +460,7 @@ rm -rf "$D" && mkdir -p "$D" && git archive HEAD | tar -x -C "$D"
 docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential perl rake ruby bison git gperf wget ca-certificates openssl zlib1g-dev libpcre3-dev libssl-dev libio-socket-ssl-perl libnet-ssleay-perl libfcgi-perl libscgi-perl libcache-memcached-perl libcache-memcached-fast-perl libprotocol-websocket-perl memcached >/dev/null && useradd -m nt && chown -R nt "$PWD" && su nt -c "NGX_MRUBY_COMMIT='"$(git rev-parse HEAD)"' sh test/nginx-tests/run.sh"'
 ```
 
-テストファイルは、8000から8999のポートのうち自分がロックしたポートで、nginxを起動します。そのため、テストファイルは並列に動きます。並列の数は`NGINX_TESTS_JOBS`で決まり、デフォルトはCPUの数です。テストファイルは`test.sh`のポートを使いません。また、`test.sh`が止めるのは、自分が起動したnginxだけです。説明は上の「nginxを止める」にあります。
+テストファイルは、8000から8999のポートのうち自分がロックしたポートで、nginxを起動します。そのため、テストファイルは並列に動きます。並列の数は`NGINX_TESTS_JOBS`で決まり、デフォルトはCPUの数です。テストファイルは`test.sh`のポートを使いません。また、`test.sh`が止めるのは、自分が起動したnginxだけです。詳しい説明は上の「nginxを止める」にあります。
 
 環境変数は次のとおりです。`NGINX_TESTS_OUT`は出力のディレクトリで、デフォルトは`build_nginxtests`です。`NGINX_TESTS_SRC`は、固定したコミットのnginx-testsのチェックアウトです。指定すると、`run.sh`はfetchの代わりにそれを使います。たとえば、github.comに接続できないときに使います。`NGINX_TESTS_JOBS`は並列の数です。`NGINX_TESTS_FILES`は、すべてのテストファイルの代わりに実行するテストファイルで、たとえば`NGINX_TESTS_FILES='access.t proxy.t'`と指定します。`NGX_MRUBY_COMMIT`は、サマリーに書くngx_mrubyのコミットです。デフォルトは、GitHub Actionsでは`GITHUB_SHA`で、それ以外ではチェックアウトの`HEAD`です。`run.sh`に足した引数は`test.sh`に渡り、そこから`./configure`に渡ります。nginx-tests自身の変数も使えます。失敗したファイルのエラーログを読むには、そのファイルだけを、`TEST_NGINX_LEAVE=1`か`TEST_NGINX_CATLOG=1`を付けて実行し直してください。`TEST_NGINX_LEAVE=1`は一時ディレクトリを残し、`TEST_NGINX_CATLOG=1`はログの内容を出力します。
 
@@ -472,7 +472,7 @@ docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEB
 | `only-mruby.txt`, `both.txt`, `only-plain.txt` | 失敗したテストファイルの一覧。順に、ngx_mrubyを入れたビルドでだけ失敗したもの、両方のビルドで失敗したもの、ngx_mrubyを入れないビルドでだけ失敗したもの |
 | `mruby/`, `plain/` | ビルドごとの`prove.log`、`results.tsv`、`nginx-V.txt`。`prove.log`は`prove`の出力。`results.tsv`はテストファイルごとに1つのレコードを持ち、レコードはファイル、`passed`か`failed`か`skipped`、スキップの理由か失敗したサブテストの3つから成る |
 
-`test/nginx-tests/results.pl`は`prove.log`を読みます。proveの「Test Summary Report」にあるファイルのエントリーに、失敗したサブテスト、0以外のwait status、パースのエラーのどれかがあると、そのファイルは失敗です。パースのエラーは、planが無いか、planが間違っている場合です。エントリーにあるのが、通ったTODOのサブテストだけなら、そのファイルは通ったことになります。ログがproveの完全な実行でないとき、`results.pl`は止まります。`test/nginx-tests/compare.pl`は、一覧とサマリーを書きます。`sh test/nginx-tests/self-test.sh`は、この2つのスクリプトを、`test/nginx-tests/self-test/`にある小さなテストファイルの`prove`の出力で確かめます。これらのテストファイルは、わざと通るか、失敗するか、スキップするか、planを壊します。その動きは2つのビルドで違い、組み合わせは、`self-test.sh`の先頭のテーブルにあります。
+`test/nginx-tests/results.pl`は`prove.log`を読みます。proveの「Test Summary Report」にあるファイルのエントリーに、失敗したサブテスト、0以外のwait status、パースのエラーのどれかがあると、そのファイルは失敗です。パースのエラーは、planが無いか、planが間違っている場合です。エントリーにあるのが、通ったTODOのサブテストだけなら、そのファイルは通ったことになります。ログがproveの完全な実行でないとき、`results.pl`は止まります。`test/nginx-tests/compare.pl`は、一覧とサマリーを書きます。`sh test/nginx-tests/self-test.sh`は、この2つのスクリプトを、`test/nginx-tests/self-test/`にある小さなテストファイルの`prove`の出力で確かめます。これらのテストファイルは、わざと通るか、失敗するか、スキップするか、planを壊します。その動きは2つのビルドで違い、組み合わせは、`self-test.sh`の先頭のテーブルに書いてあります。
 
 両方のビルドをテストし、その結果を読めたとき、`run.sh`は0で終わります。テストファイルが失敗したときも同じです。ビルド、fetch、`prove`自身のどれかが失敗したときと、ログが完全な実行でないときは、`run.sh`は0以外のステータスで終わります。
 
@@ -499,7 +499,7 @@ docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEB
 - ngx_mrubyを入れると失敗し、入れないと通るテストファイルは、ngx_mrubyがnginxに入っているために失敗するファイルです。どちらのマシンでも、そのようなファイルはありませんでした。
 - ngx_mrubyを入れないnginxでも失敗するテストファイルも、どちらのマシンでもありませんでした。
 
-2つのマシンの結果は、`ssl_ktls.t`の1ファイルだけが違います。このファイルは、ランナーでは通り、コンテナではスキップになります。コンテナのカーネルにはkTLSが無く、スキップの理由は「no Linux KTLS」です。どちらのマシンでも、両方のビルドで同じファイルが、同じ理由でスキップになりました。ランナーでスキップになった209ファイルのうち189ファイルは、`test.sh`がビルドしないモジュールがnginxに無いために、スキップになりました。内訳は、`http_v2`が59ファイル、`stream_ssl`が25、`http_v3`が23、`mail`が16、`realip`が11、`sub`が9で、ほかの18のモジュールがそれぞれ1から6ファイルです。残りの20ファイルは、マシンかnginx-testsの条件で、スキップになりました。条件は次のとおりです。
+2つのマシンの結果は、`ssl_ktls.t`の1ファイルだけが違います。このファイルは、ランナーでは通り、コンテナではスキップになります。コンテナのカーネルにはkTLSが無く、スキップの理由は「no Linux KTLS」です。どちらのマシンでも、両方のビルドで同じファイルが、同じ理由でスキップになりました。ランナーでスキップになった209ファイルのうち189ファイルは、`test.sh`がビルドしないモジュールがnginxに無いために、スキップになりました。内訳は、`http_v2`が59ファイル、`stream_ssl`が25、`http_v3`が23、`mail`が16、`realip`が11、`sub`が9で、ほかの18のモジュールがそれぞれ1から6ファイルです。残りの20ファイルは、マシンかnginx-testsの条件で、スキップになりました。スキップになった条件は次のとおりです。
 
 - インストールしていないプログラムかperlのモジュール。`uwsgi`が4ファイルで、ほかに`GD`、`Win32API::File`、新しいバージョンの`IO::Socket::SSL`を要するファイルがあります
 - OpenSSL 3.5
@@ -549,7 +549,7 @@ $ ruby test/soak/mock_llm.rb --port 12362 --events 50 --hold-after 10
 
 どちらのパスでも、`--one-write`が無ければ、各イベントは1回のwriteで書く1つのチャンクです。ステータス行とヘッダは最初のイベントと一緒に書き、最後のチャンクは最後のイベントと一緒に書きます。JSONのオブジェクトでないボディには400で答え、レスポンスのボディには、そのAPIのエラーの形式で`invalid_request_error`を入れます。ほかのパスには、Anthropicの形式の404で答えます。`GET /_mock/stats`には、カウンタをJSONにして答えます。カウンタは下にあります。
 
-答えは、リクエストとオプションだけで決まります。モデルは、リクエストの`model`です。`input_tokens`は、リクエストのボディのバイト数を4で割り、切り上げた数です。`output_tokens`はNで、ストリームを使わない答えでは6です。`Response`のidと時刻は固定です。`--delay-ms`のほかにsleepはありません。ドライバとケースは、同じコードで期待するレスポンスを計算し、1バイトずつ比べます。そのコードは`MockLLM.stream_body`と`MockLLM.answer_body`です。レスポンスには、答えたポートを示す`x-mock-port`も付きます。リクエストに認証情報のヘッダがあったときは、届いた値を`x-mock-authorization`と`x-mock-x-api-key`に入れて返します。そのため、テストは、プロキシがモックへどの認証情報を送ったのかを確かめられます。
+答えは、リクエストとオプションだけで決まります。モデルは、リクエストの`model`です。`input_tokens`は、リクエストのボディのバイト数を4で割り、切り上げた数です。`output_tokens`はNで、ストリームを使わない答えでは6です。`Response`のidと時刻は固定です。`--delay-ms`のほかにsleepはありません。ドライバとケースは、同じコードで期待するレスポンスを計算し、1バイトずつ比べます。そのコードは`MockLLM.stream_body`と`MockLLM.answer_body`です。レスポンスには、答えたポートを示す`x-mock-port`も付きます。リクエストに認証情報のヘッダがあったときは、届いた値を`x-mock-authorization`と`x-mock-x-api-key`に入れて返します。そのため、テストは、プロキシがモックへどの認証情報を送ったのかを、確かめられます。
 
 モックは、アイドルのkeep-aliveの接続を自分から閉じません。モックが接続を閉じるのは、リクエストに`Connection: close`があるとき、相手が接続を閉じたとき、`--hold-after`と`--reset-after`のときだけです。`Connection: close`を持つリクエストには、答えにも`Connection: close`を付けます。`GET /_mock/stats`のカウンタは次のとおりです。
 
@@ -610,9 +610,9 @@ nginxのワーカーは、何日もリクエストを処理し続けます。終
 - `SIGQUIT`を受けてから30秒以内にnginxが終了しないとき
 - nginxの`error.log`かstderrに、`open socket`、`[error]`、`[alert]`、`[crit]`、`[emerg]`、`runtime error:`、`Sanitizer`のどれかが含まれるとき
 
-ngx_mrubyは、ハンドラで発生した例外を`error`のレベルでログに書きます。また、`disconnect`のクライアントは最初のレスポンスしか読みません。そのため、そのクライアントの後のリクエストで起きた例外は、ログにだけ現れます。シナリオは、nginxが意図して`error`のレベルで書く行を挙げられます。挙げる場所は`test/soak/scenarios.rb`の`allowed_log`で、挙げた行はチェックの前に除かれます。どれかのシナリオが失敗すると、終了ステータスは1になります。
+ngx_mrubyは、ハンドラで発生した例外を`error`のレベルでログに書きます。また、`disconnect`のクライアントは最初のレスポンスしか読みません。そのため、そのクライアントの後のリクエストで起きた例外は、ログにだけ現れます。シナリオは、nginxが意図して`error`のレベルで書く行を挙げられます。挙げる場所は`test/soak/scenarios.rb`の`allowed_log`で、挙げた行はチェックの前に除かれます。どれかのシナリオが1つでも失敗すると、終了ステータスは1になります。
 
-デフォルトのシナリオは次のとおりです。それぞれ`test/soak/nginx.conf`の1つのlocationです。
+デフォルトのシナリオは次のとおりです。それぞれが`test/soak/nginx.conf`の1つのlocationです。
 
 | シナリオ | ハンドラ | クライアント |
 |---|---|---|
@@ -623,7 +623,7 @@ ngx_mrubyは、ハンドラで発生した例外を`error`のレベルでログ�
 | `sleep` | `Nginx::Async.sleep 1`の後、レスポンスのボディを出力する | keep-alive |
 | `sub_request` | `Nginx::Async::HTTP.sub_request`で、あるlocationにサブリクエストを送る。そのlocationは、2つ目のserverの静的なlocationへプロキシする。2つ目のserverのポートは、ベースのポートに1を足した番号を使う | keep-alive |
 | `file` | スクリプトのファイルを指定し、`cache`を付けた`mruby_content_handler` | keep-alive |
-| `disconnect` | `Nginx::Async.sleep 50`の後、レスポンスのボディを出力する | 接続ごとに1つのリクエストを送り、レスポンスを読まずに、その接続をすぐに閉じる |
+| `disconnect` | `Nginx::Async.sleep 50`の後、レスポンスのボディを出力する | 接続ごとに1つのリクエストを送り、レスポンスを読まずに、その接続をすぐ閉じる |
 
 加えて、エージェントプロキシのシナリオが4つあります。どれも、モックのLLMの前に置いた`test/soak/nginx.agent.conf`の`/v1/route`か`/v1/responses/route`を使います。説明は下の「エージェントプロキシのシナリオ」にあります。
 
@@ -701,7 +701,7 @@ $ ONLY_RUN=1 SOAK_SCENARIOS=sleep,disconnect SOAK_N=100000 sh test/soak/run.sh
 
 ### しきい値とキャリブレーション
 
-VmRSSの2つの上限は、2026年10月3日にデフォルトのシナリオを実行した結果から決めました。環境は、nginx 1.31.6、Ubuntu 22.04、gcc 11、glibc 2.35です。実行した場所は、aarch64のコンテナと、x86_64のCIの`soak`ジョブです。テーブルの値は、そのレコードのすべてのシナリオと実行のうちで、最も大きい値です。
+VmRSSの2つの上限は、2026年10月3日にデフォルトのシナリオを実行した結果から決めました。環境は、nginx 1.31.6、Ubuntu 22.04、gcc 11、glibc 2.35です。実行した場所は、aarch64のコンテナと、x86_64のCIの`soak`ジョブです。テーブルの値は、そのレコードのすべてのシナリオと実行のうちで、最も大きい値を選んで示します。
 
 | 実行 | 最後のウィンドウの増分 | 最初のサンプルからの増分 |
 |---|---|---|
@@ -731,7 +731,7 @@ VmRSSの2つの上限は、2026年10月3日にデフォルトのシナリオを�
 | `test/soak/run.sh`のソークテスト | `build_soak/` | ngx_mrubyに`-DNGX_MRUBY_DEBUG_STATS`を`RELEASE_CC_OPT`で加え、mrubyに`-DMRB_USE_MALLOC_TRIM`を`NGX_MRUBY_CFLAGS`で足す |
 | 性能の比較の`test/perf/run.sh`と`test/perf/compare.sh` | `build_perf/head/`、`build_perf/base/` | 無し。どちらの定義を付けても、測るプロセスに余分なコードが加わるため |
 
-`SOURCE_DIR`はビルドするチェックアウトで、スクリプトは、そのチェックアウト自身が持つビルドのファイルを使います。`build.sh`、`configure`、`build_config.rb`などです。そのため、プルリクエストのベースは、ベース自身のビルドの仕方でビルドされます。スクリプトはソースを`BUILD_DIR/tree`にコピーし、そこで`build.sh`を実行して、nginxを`BUILD_DIR/nginx`にインストールします。その結果、スクリプトは、`build/`ディレクトリ、`mruby/build`、`test.sh`が生成した`Makefile`、`config`、`mrbgems_config`には触れません。このビルドは、いつも、自分でダウンロードしたnginxのソースとシステムのOpenSSLでビルドする静的モジュールです。そのため、スクリプトは`BUILD_DYNAMIC_MODULE`、`NGINX_SRC_ENV`、`OPENSSL_SRC_VERSION`を無視します。nginxのソースは`BUILD_DIR/tree/build/`にダウンロードします。nginx.orgに届かないときは、`AGENTS.md`に書いてある方法で、ソースをそこに置いてください。
+`SOURCE_DIR`はビルドするチェックアウトで、スクリプトは、そのチェックアウト自身が持つビルドのファイルを使います。`build.sh`、`configure`、`build_config.rb`などです。そのため、プルリクエストのベースは、ベース自身のビルドの仕方でビルドされます。スクリプトはソースを`BUILD_DIR/tree`にコピーし、そこで`build.sh`を実行して、nginxを`BUILD_DIR/nginx`にインストールします。その結果、スクリプトは、`build/`ディレクトリ、`mruby/build`、`test.sh`が生成した`Makefile`、`config`、`mrbgems_config`には触れません。このビルドは、いつも、自分でダウンロードしたnginxのソースとシステムのOpenSSLでビルドする静的モジュールです。そのため、スクリプトは`BUILD_DYNAMIC_MODULE`、`NGINX_SRC_ENV`、`OPENSSL_SRC_VERSION`を無視します。nginxのソースは`BUILD_DIR/tree/build/`にダウンロードします。nginx.orgに届かないときは、`AGENTS.md`に書いてある方法で、ソースをそのディレクトリに置いてください。
 
 サードパーティのgemは、`SOURCE_DIR`にコミットした`build_config.rb.lock`のコミットでビルドします。説明は`docs/install/README.md`の「Gem commits」にあります。`RELEASE_GEM_LOCK`が設定されていて空でないときは、その値が指すロックのコミットでビルドします。`test/soak/run.sh`と`test/perf/run.sh`は、環境の`RELEASE_GEM_LOCK`をそのまま渡します。そのため、`RELEASE_GEM_LOCK=/path/to/other.lock sh test/soak/run.sh`を実行すると、チェックアウトを変えずに別のコミットでビルドできます。ロックの無いチェックアウトでは、最初のビルドが各gemのブランチの先頭を取ります。ロックをコミットする前のチェックアウトが、これにあたります。rakeは、ビルドしたコミットを`BUILD_DIR/tree/build_config.rb.lock`に書き込みます。
 
@@ -830,7 +830,7 @@ Responsesのストリームは、2026年10月19日に測りました。`next`の
 | `proxy_stream_plain_1000` | 433190 (433190) | 37.3 | 37.20 |
 | `responses_stream_plain_1000` | 478098 (478098) | 41.2 | 59.46 |
 
-中継するResponsesのイベントを1つ増やすと、`(responses_stream_plain_1000 - responses_stream_plain_50) / 950`で445 Irかかりました。同じ実行で、Messagesのイベントは399 Irでした。Responsesのストリームのデルタのイベントは186から189バイトで、長さが変わるのは`sequence_number`が大きくなるためです。Messagesのストリームのデルタのイベントは121バイトです。1000のデルタのストリームのボディは、Responsesでは215046バイト、Messagesでは121619バイトです。中継の呼び出しは、リクエストあたりResponsesで59.46回、Messagesで37.20回でした。
+中継するResponsesのイベントを1つ増やすと、`(responses_stream_plain_1000 - responses_stream_plain_50) / 950`で445 Irかかりました。同じ実行で、Messagesのイベントは399 Irでした。Responsesのストリームのデルタのイベントは186から189バイトで、長さが変わるのは`sequence_number`が大きくなるためです。Messagesのストリームのデルタのイベントは121バイトです。1000のデルタのストリームのボディは、Responsesでは215046バイト、Messagesでは121619バイトです。中継の関数の呼び出しは、リクエストあたりResponsesでは59.46回、Messagesでは37.20回でした。
 
 その実行では、`proxy_stream_plain_1000`と`route_json_64k`に、ビルドごとに83秒と129秒かかりました。デフォルトのセットのシナリオは、すべて合わせて約140秒です。そのため、この2つは`DEFAULT_SCENARIOS`に入れていません。`responses_stream_plain_1000`も入れていません。これらは`PERF_SCENARIOS`で挙げてください。エージェントプロキシのほかのシナリオはデフォルトのセットに入り、測定の時間はビルドごとに約1分増えます。
 
@@ -850,9 +850,9 @@ GCを除いたリクエストあたりのIrがベースより3%以上多いと�
 | `sub_request` | 48710 (47538) | -0.003% / -0.004% | -0.001% / -0.001% | -0.001% / -0.001% |
 | `file` | 14009 (13075) | +0.002% / +0.002% | +0.000% / +0.000% | -0.002% / -0.002% |
 
-最大の変化は0.008%で、リクエストあたり約1命令です。これは`WARN`の3%の300分の1より小さいので、`N`を上げる必要はありません。後の2026年10月4日の実行では、同じ2つのチェックアウトを新しくビルドし、`sub_request`が+0.076%でした。GCを除いたリクエストあたりのIrは47501と47537です。ほかのシナリオは、どれも0.011%以内でした。2つ目のサーバへプロキシする`sub_request`は、いちばん大きくばらつきます。下に書くとおり、CIのランナーでも同じです。`callgrind_control`を起こす`/status`へのリクエストは、接続を含めて約12500命令かかります。各ウィンドウには、そのうち2つのリクエストの一部が入ります。これは、いちばん小さいウィンドウである`hello`の2億3500万命令の、多くて約0.01%にあたります。
+最大の変化は0.008%で、リクエストあたり約1命令です。これは`WARN`の3%の300分の1より小さいので、`N`を上げる必要はありません。後の2026年10月4日の実行では、同じ2つのチェックアウトを新しくビルドし、`sub_request`が+0.076%でした。GCを除いたリクエストあたりのIrは47501と47537です。ほかのシナリオは、どれも0.011%以内でした。2つ目のサーバへプロキシする`sub_request`は、いちばん大きくばらつきます。下に書くとおり、CIのランナーでも同じです。`callgrind_control`を起こす`/status`へのリクエストは、接続を含めて約12500命令かかります。各ウィンドウには、そのうち2つのリクエストの一部が入ります。これは、いちばん小さいウィンドウである`hello`の2億3500万命令の、多くても約0.01%にあたります。
 
-エージェントプロキシのシナリオは、2026年10月4日に、ビルドの入力を変えない変更で確かめました。1つは、同じ種類のaarch64のコンテナで2回測ったもので、9つのシナリオをすべて測りました。9つには、デフォルトのセットから外した2つも入ります。もう1つは、これらのシナリオを加えたプルリクエストの`perf`ジョブで、x86_64のCIのランナーで、デフォルトのセットの7つを測りました。このジョブの実行は37152930938で、ベースは`next`の`f62880c`、ヘッドはマージコミットで、ビルドの入力は変わっていません。次のテーブルは、ベースに対するヘッドの変化を、合計とGCを除いた値の順に示します。
+エージェントプロキシのシナリオは、2026年10月4日に、ビルドの入力を変えない変更で確かめました。2つは、同じ種類のaarch64のコンテナで測ったもので、9つのシナリオをすべて測りました。9つには、デフォルトのセットから外した2つも入ります。残りの1つは、これらのシナリオを加えたプルリクエストの`perf`ジョブで、x86_64のCIのランナーで、デフォルトのセットの7つを測りました。このジョブの実行は37152930938で、ベースは`next`の`f62880c`、ヘッドはマージコミットで、ビルドの入力は変わっていません。次のテーブルは、ベースに対するヘッドの変化を、合計とGCを除いた値の順に示します。
 
 | シナリオ | aarch64で同じビルドを2回。`next`の`4f29b06` | aarch64の`compare.sh`。`next`の`f62880c`とプルリクエスト | x86_64のCIの実行37152930938 |
 |---|---|---|---|
@@ -905,7 +905,7 @@ baseが同梱するmrubyがheadより古い比較では、このような差が�
 
 `test/perf/accepted.txt`には、受け入れ済みの差を1つずつ1行に書きます。行には、条件、シナリオ、GCを除いたリクエストあたりのIrの変化の許容幅を、パーセントで書きます。条件は`mruby-version`だけです。この条件は、各ビルドのツリーの`mruby/include/mruby/version.h`にある`MRUBY_RELEASE_MAJOR`と`MRUBY_RELEASE_MINOR`から作る`MAJOR.MINOR`を比べます。書式は、ファイルの先頭のコメントにあります。`mruby-version 4.0 4.1 auth 8`は、baseがmruby 4.0.xを、headが4.1.xを同梱するときに当てはまります。
 
-行が当てはまるのは、両方のビルドが条件に合うときだけです。そのとき、許容幅に収まる`WARN`か`FAIL`のシナリオの行は、`ok (accepted: mruby 4.0.0→4.1.0, +8%)`と表示されます。この行は実行を失敗させず、ジョブのアノテーションのnoticeになります。許容幅を超える変化は、`WARN`か`FAIL`のままです。`report.txt`のヘッダの1行と、ジョブのサマリーのテーブルの下の1行には、両方のビルドのmrubyのバージョンと、当てはまった差を出力します。たとえば`perf: mruby: base 4.0.0, head 4.1.0; accepted differences (accepted.txt): auth up to +8% (mruby 4.0.0→4.1.0)`で、当てはまる差が無ければ`none apply`です。`perf.rb`は、測る前にこのファイルを読み、書式に合わない行があると、ファイルと行の番号を示して止まります。`--self-test`もこのファイルを確かめます。GCの割合は出力するだけで判定しないので、ファイルにはGCの割合の許容幅の行がありません。
+行が当てはまるのは、両方のビルドが条件に合うときだけです。そのとき、その行が挙げるシナリオの`WARN`か`FAIL`の行のうち、許容幅に収まるものは、`ok (accepted: mruby 4.0.0→4.1.0, +8%)`と表示されます。この行は実行を失敗させず、ジョブのアノテーションのnoticeになります。許容幅を超える変化は、`WARN`か`FAIL`のままです。`report.txt`のヘッダの1行と、ジョブのサマリーのテーブルの下の1行には、両方のビルドのmrubyのバージョンと、当てはまった差を出力します。たとえば`perf: mruby: base 4.0.0, head 4.1.0; accepted differences (accepted.txt): auth up to +8% (mruby 4.0.0→4.1.0)`で、当てはまる差が無ければ`none apply`です。`perf.rb`は、測る前にこのファイルを読み、書式に合わない行があると、ファイルと行の番号を示して止まります。`--self-test`もこのファイルを確かめます。GCの割合は出力するだけで判定しないので、ファイルにはGCの割合の許容幅の行がありません。
 
 ### 実行する
 
@@ -946,7 +946,7 @@ $ sh test/perf/run.sh                                  # measure this checkout o
 
 `nginx_version`を変えると、ヘッドは別のnginxでビルドされます。そのため、その`WARN`や`FAIL`には、ngx_mrubyのコストだけでなく、nginx自身のコストも入ります。ngx_mrubyのリグレッションとみなす前に、下に書くとおり、プロファイルの関数を読んでください。
 
-プルリクエストのチェックアウトは、マージコミットの`refs/pull/N/merge`です。ジョブは、その1つ目の親であるベースブランチとマージコミットを比べます。そのため、差は、マージしたときのプルリクエストの変更になります。テーブルはジョブのサマリーにあり、その下に失敗した測定の理由があります。`WARN`、`FAIL`、`ERROR`、`n/a`のシナリオと、シナリオを1つも比べなかった実行は、アノテーションになります。ジョブは`FAIL`と`ERROR`で失敗します。測定は、次のときに失敗して`ERROR`になります。nginxが起動しないか応答しないとき、`callgrind_control`が失敗するかタイムアウトしたとき、ダンプが無いとき、`error.log`に`error`以上のレベルの行があるとき、ウィンドウがリクエストを含まないときです。ウィンドウがリクエストを含まないとは、Irが0のときか、シナリオのリクエストの関数の呼び出しが期待した数でないときです。期待する数は、`test/soak/nginx.conf`の7つのシナリオでは、リクエストごとにちょうど1回の`ngx_mrb_start_fiber`の呼び出しです。エージェントプロキシのシナリオでは、「性能の比較に入れたエージェントプロキシのシナリオ」のテーブルにある関数と回数です。vgdbがプロセスに届かなかったときも`callgrind_control`は「OK.」と出力するので、空のウィンドウはここで見つかります。`n/a`になるのは、ベースがシナリオに期待しないレスポンスを返し、ngx_mrubyの`mrb_run failed`の行のほかに問題が無いときだけです。これは、ヘッドの機能を必要とするシナリオで起きます。性能の比較の[しきい値とキャリブレーション](#しきい値とキャリブレーション-1)を参照してください。比べるシナリオが1つも無かった実行は失敗になります。
+プルリクエストのチェックアウトは、マージコミットの`refs/pull/N/merge`です。ジョブは、その1つ目の親であるベースブランチとマージコミットを比べます。そのため、差は、マージしたときのプルリクエストの変更になります。テーブルはジョブのサマリーにあり、その下に失敗した測定の理由があります。`WARN`、`FAIL`、`ERROR`、`n/a`のシナリオと、シナリオを1つも比べなかった実行は、アノテーションになります。ジョブは`FAIL`と`ERROR`で失敗します。測定は、次のときに失敗して`ERROR`になります。nginxが起動しないか応答しないとき、`callgrind_control`が失敗するかタイムアウトしたとき、ダンプが無いとき、`error.log`に`error`以上のレベルの行があるとき、ウィンドウがリクエストを含まないときです。ウィンドウがリクエストを含まないとは、Irが0のときか、シナリオのリクエストの関数の呼び出しが期待した数でないときです。期待する数は、`test/soak/nginx.conf`の7つのシナリオでは、リクエストごとにちょうど1回の`ngx_mrb_start_fiber`の呼び出しです。エージェントプロキシのシナリオでは、「性能の比較に入れたエージェントプロキシのシナリオ」のテーブルにある関数と回数です。vgdbがプロセスに届かなかったときも`callgrind_control`は「OK.」と出力するので、空のウィンドウはここで見つかります。`n/a`になるのは、ベースがシナリオに期待しないレスポンスを返し、ngx_mrubyの`mrb_run failed`の行のほかに問題が無いときだけです。これは、ヘッドの機能を必要とするシナリオで起きます。性能の比較の[しきい値とキャリブレーション](#しきい値とキャリブレーション-1)を参照してください。比べるシナリオが1つも無かった実行は、失敗になります。
 
 リクエストの関数の呼び出しは、名前で数えます。GCCが`-O2`で作る関数のコピーは、元の関数として数えます。コピーとは、`ngx_mrb_start_fiber.part.0`、`.isra.0`、`.constprop.0`、`.cold`のようなものです。あるコピーから別のコピーへの呼び出しは1回と数えます。そのため、GCCが関数を分割したりクローンしたりするようになる変更でも、ウィンドウのチェックは失敗しません。次の2種類のプルリクエストは、`test/perf/perf.rb`の`REQUEST_FUNCTIONS`に新しい名前を加え、古い名前を残す必要があります。`ngx_mrb_start_fiber`の名前を変えるプルリクエストと、Rubyの実行のfiberを始める処理を別の関数へ移すプルリクエストです。ヘッドの`perf.rb`はベースも測り、一覧にある2つの名前の間の呼び出しは1回と数えるからです。今は、GCCは`ngx_mrb_start_fiber`をインライン化できません。この関数は`ngx_http_mruby_async.c`で定義し、`ngx_http_mruby_module.c`から呼んでいるからです。コンパイラがこの関数をインライン化できるようにする変更では、プロファイルにこの関数の呼び出しが残りません。たとえば、ただ1つの呼び出し元のファイルの中でこの関数を`static`にする変更や、LTOでのビルドです。そうなると、7つのシナリオのウィンドウは、どれも呼び出しが0回になります。そのため、そうした変更では、実際の呼び出しが残る関数を一覧に挙げる必要があります。ローカルの実行では、カンマで区切った`PERF_REQUEST_FUNCTIONS`で一覧を上書きできます。`REQUEST_FUNCTION_CALLS`ではシナリオのリクエストあたりの呼び出しの数を、`SCENARIO_REQUEST_FUNCTIONS`ではシナリオの関数を、別のものに設定します。`ruby test/perf/perf.rb --self-test`は、名前の規則とプロファイルの読み方を、用意した架空のプロファイルで確かめます。ビルドもvalgrindも要りません。`compare.sh`と`run.sh`は、最初にこれを実行します。
 
