@@ -139,7 +139,7 @@ not enough, and show the change.
   ```
 
   Rescue `NoMethodError` itself instead of comparing the message.
-- [`private` and `protected` are enforced](../releases/v3.0.0.md#private-and-protected-are-enforced-561):
+- [`private` and `protected` are enforced](../releases/v3.0.0.md#private-and-protected-are-enforced-561-678):
   look for calls, with a receiver other than `self`, of `initialize`,
   `initialize_copy`, `respond_to_missing?` and `method_missing`, of methods
   defined with `def` at the top level, of `Kernel` methods such as `raise`,

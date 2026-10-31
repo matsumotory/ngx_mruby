@@ -73,7 +73,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   ```
 
   メッセージを比べる代わりに、`NoMethodError`そのものをrescueしてください。
-- [`private`と`protected`の制限が効く](../../releases/v3.0.0.ja.md#privateとprotectedの制限が効く561)：`self`以外のレシーバで呼んでいるものを探してください。対象は、`initialize`、`initialize_copy`、`respond_to_missing?`、`method_missing`、トップレベルで`def`で定義したメソッド、`raise`、`sprintf`、`puts`のような`Kernel`のメソッド、`private`か`protected`の下のメソッドです。ただし、ハンドラのコードでは、トップレベルで`def`で定義したメソッドはpublicのままなので、レシーバを付けた呼び出しを変える必要はありません。詳しくは[#502の構想](../../proposals/archive/handler-code-frame.md#14-what-handler-code-shares-today)の1.4節にあります。`Kernel.Integer(x)`のような`Kernel`自身に対する呼び出しは、どちらのバージョンでも動きます。`1.Integer("3")`のように、`Kernel`のメソッドを別のオブジェクトに対して呼ぶと、例外が出ます。`protected`のメソッドは、CRubyと同じく、同じクラスのメソッドの中からなら、そのクラスのオブジェクトをレシーバにして呼べます。上の検索は`instance_methods`と`methods`を見つけます。この2つはprivateのメソッドを含みません。そのような呼び出しの前に`respond_to?`で確かめても役に立ちません。`respond_to?`は、privateのメソッドにも`true`を返します。
+- [`private`と`protected`の制限が効く](../../releases/v3.0.0.ja.md#privateとprotectedの制限が効く561-678)：`self`以外のレシーバで呼んでいるものを探してください。対象は、`initialize`、`initialize_copy`、`respond_to_missing?`、`method_missing`、トップレベルで`def`で定義したメソッド、`raise`、`sprintf`、`puts`のような`Kernel`のメソッド、`private`か`protected`の下のメソッドです。ただし、ハンドラのコードでは、トップレベルで`def`で定義したメソッドはpublicのままなので、レシーバを付けた呼び出しを変える必要はありません。詳しくは[#502の構想](../../proposals/archive/handler-code-frame.md#14-what-handler-code-shares-today)の1.4節にあります。`Kernel.Integer(x)`のような`Kernel`自身に対する呼び出しは、どちらのバージョンでも動きます。`1.Integer("3")`のように、`Kernel`のメソッドを別のオブジェクトに対して呼ぶと、例外が出ます。`protected`のメソッドは、CRubyと同じく、同じクラスのメソッドの中からなら、そのクラスのオブジェクトをレシーバにして呼べます。上の検索は`instance_methods`と`methods`を見つけます。この2つはprivateのメソッドを含みません。そのような呼び出しの前に`respond_to?`で確かめても役に立ちません。`respond_to?`は、privateのメソッドにも`true`を返します。
 
   ```ruby
   class Router
