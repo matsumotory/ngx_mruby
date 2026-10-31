@@ -13,17 +13,22 @@ name: test
 #   push to its head runs it again;
 # - a ready pull request: by the kind of the files that its merge commit
 #   changes against the base. A change of the code (or of a file of no
-#   category) runs the whole build matrix, the sanitizer cell, the cell
-#   under valgrind and perf; a change of the tests alone runs three cells
-#   of the matrix (and perf when its own files changed);
-#   any other change runs none of them;
-# - a push to master or next: only changes, files and ci-ok. These branches
-#   take changes only through pull requests, and condition 2 of "Review and
-#   merge" in AGENTS.md says when the run of a pull request still stands for
-#   its merge; the rulesets do not require an up-to-date branch;
-# - a push to a v*.x branch or a v* tag, and "Run workflow" without the
-#   input "base": the whole build matrix; with "base", as for a
-#   pull request against that base.
+#   category) runs the four standard cells of the build matrix (nginx
+#   1.31.8 with the static module, 1.30.6 with the dynamic module, the
+#   sanitizer cell and the cell under valgrind) and perf; a change of the
+#   tests alone runs the same four cells (and perf when its own files
+#   changed); any other change runs none of them. The label full-matrix
+#   (the check pull request before a tag) runs every cell, whatever the
+#   files;
+# - a push to a branch (master, next, v*.x): only changes, files and ci-ok.
+#   These branches take changes only through pull requests, and condition 2
+#   of "Review and merge" in AGENTS.md says when the run of a pull request
+#   still stands for its merge; the rulesets do not require an up-to-date
+#   branch;
+# - a push of a v* tag, and "Run workflow" without the input "base" or with
+#   the input "valgrind" (the nightly run): every cell of the build matrix;
+#   "Run workflow" with "base" alone, as for a pull request against that
+#   base.
 # ci-ok counts a job that the run did not need as passed when it was skipped.
 #
 # valgrind (docs/test/README.md, "valgrind in CI"): in a run that starts
@@ -89,17 +94,18 @@ jobs:
   # the required check ci-ok, exists for every pull request. The outputs:
   # - draft: "true" for a draft pull request, "false" otherwise. A draft
   #   runs no other job (see the top of this file);
-  # - build: "full", "tests" or "none", the output of test/ci/changes.sh,
-  #   and matrix: the cells of the build job for it;
+  # - build: "full", "standard" or "none", the output of
+  #   test/ci/changes.sh, and matrix: the cells of the build job for it;
   # - soak and perf: "true" or "false", the outputs of test/ci/changes.sh.
   #   master has no soak job (it is on next), so soak is not read here.
-  # For a pull request, the files are those that its merge commit changes
-  # against the base (HEAD^1). For "Run workflow" with the input "base",
-  # those that the branch changes since its merge base with that branch or
-  # commit, so that a branch can show what its pull request would run. A
-  # push to master or next gives "none" (see the top of this file); a push
-  # to a v*.x branch or a v* tag, and "Run workflow" without "base" (the
-  # nightly run under valgrind included), give "full".
+  # The step passes test/ci/changes.sh the run (a draft, the labels of a
+  # ready pull request, a push to a branch, a tag, "Run workflow" and its
+  # input "valgrind"), and the script decides, so that the policy is in
+  # that one file (see the top of this file). For a ready pull request, the
+  # files are those that its merge commit changes against the base
+  # (HEAD^1). For "Run workflow" with the input "base", those that the
+  # branch changes since its merge base with that branch or commit, so
+  # that a branch can show what its pull request would run.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -110,14 +116,14 @@ jobs:
       soak: ${{ steps.decide.outputs.soak }}
       perf: ${{ steps.decide.outputs.perf }}
     steps:
-      # A ready pull request: its merge commit and the first parent. "Run
-      # workflow" with "base": the whole history, for the merge base. A push
-      # and a draft need no files: the script is not read. No later step
-      # runs git with credentials.
+      # Every run reads test/ci/changes.sh. A pull request: its merge commit
+      # and the first parent. "Run workflow" with "base": the whole history,
+      # for the merge base. Any other run reads no files: the commit alone.
+      # The depths are strings, because the number 0 would end the
+      # expression's "&&". No later step runs git with credentials.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || (github.event_name == 'workflow_dispatch' && inputs.base != '')
         with:
-          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+          fetch-depth: ${{ (github.event_name == 'workflow_dispatch' && inputs.base != '') && '0' || github.event_name == 'pull_request' && '2' || '1' }}
           persist-credentials: false
       - name: Decide which build and test jobs run
         id: decide
@@ -127,6 +133,13 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
           BASE_INPUT: ${{ inputs.base }}
+          VALGRIND_INPUT: ${{ inputs.valgrind }}
+          # The names of the labels of the pull request when the event
+          # happened, as a JSON array ("[]" for other events). A label added
+          # to a ready pull request counts from its next run (a push, or
+          # marking it a draft and ready again), not in a re-run, which
+          # keeps the event.
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
         run: |
           # The cells of the build job. full: every combination of the
           # versions and options below, the cell that runs nginx under
@@ -135,9 +148,13 @@ jobs:
           # the job "build (1.31.8)") and the sanitizer cell: nginx, ngx_mruby
           # and mruby built with AddressSanitizer (LeakSanitizer included) and
           # UndefinedBehaviorSanitizer, which runs nginx directly, because
-          # valgrind does not work with ASan. tests: three cells, nginx
-          # 1.30.6 with the static module, 1.31.8 with the dynamic module,
-          # and the cell under valgrind.
+          # valgrind does not work with ASan. standard: four cells that
+          # build both link modes and both nginx lines once, with both
+          # memory checks: nginx 1.31.8 with the static module and
+          # --with-openssl-src (the cell under valgrind builds 1.31.8 static
+          # against the installed OpenSSL, so this cell takes the other
+          # OpenSSL path of configure.in and Makefile.in), 1.30.6 with the
+          # dynamic module, the sanitizer cell and the cell under valgrind.
           full_matrix=$(jq -c . <<'JSON'
           {
             "NGINX_VERSION": ["1.31.8", "1.30.6", "1.28.3", "1.26.3"],
@@ -151,11 +168,12 @@ jobs:
           }
           JSON
           )
-          tests_matrix=$(jq -c . <<'JSON'
+          standard_matrix=$(jq -c . <<'JSON'
           {
             "include": [
-              {"NGINX_VERSION": "1.30.6", "BUILD_DYNAMIC_MODULE": "", "BUILD_WITH_OPENSSL_SRC": "", "SANITIZER": ""},
-              {"NGINX_VERSION": "1.31.8", "BUILD_DYNAMIC_MODULE": "TRUE", "BUILD_WITH_OPENSSL_SRC": "", "SANITIZER": ""},
+              {"NGINX_VERSION": "1.31.8", "BUILD_DYNAMIC_MODULE": "", "BUILD_WITH_OPENSSL_SRC": "TRUE", "SANITIZER": ""},
+              {"NGINX_VERSION": "1.30.6", "BUILD_DYNAMIC_MODULE": "TRUE", "BUILD_WITH_OPENSSL_SRC": "", "SANITIZER": ""},
+              {"NGINX_VERSION": "1.31.8", "BUILD_DYNAMIC_MODULE": "", "BUILD_WITH_OPENSSL_SRC": "", "SANITIZER": "address,undefined"},
               {"NGINX_VERSION": "1.31.8", "BUILD_DYNAMIC_MODULE": "", "BUILD_WITH_OPENSSL_SRC": "", "SANITIZER": "", "VALGRIND_ON_EVERY_RUN": "valgrind"}
             ]
           }
@@ -163,40 +181,55 @@ jobs:
           )
           out="${RUNNER_TEMP}/changes"
           draft=false
+          run=()
+          files=()
           if [ "${EVENT_NAME}" = pull_request ] && [ "${DRAFT}" = true ]; then
             echo "a draft pull request: no build or test job runs; marking it ready for review starts the run that counts"
             draft=true
-            printf 'build=none\nsoak=false\nperf=false\n' > "${out}"
+            run=(--draft)
           elif [ "${EVENT_NAME}" = pull_request ]; then
             if ! git rev-parse --verify --quiet 'HEAD^2' > /dev/null; then
               echo "::error title=changes::the checkout is not the merge commit of a pull request"
               exit 1
             fi
-            echo "pull request: the merge commit $(git rev-parse HEAD) against the base $(git rev-parse HEAD^1)"
-            sh test/ci/changes.sh HEAD^1 HEAD > "${out}"
-          elif [ "${EVENT_NAME}" = workflow_dispatch ] && [ -n "${BASE_INPUT}" ]; then
-            if ! [[ "${BASE_INPUT}" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]; then
-              echo "::error title=changes::the input base is not a branch name or a commit id"
-              exit 1
+            echo "pull request: the merge commit $(git rev-parse HEAD) against the base $(git rev-parse HEAD^1), labels ${LABELS}"
+            # One --label per name; a name is one line of jq's output.
+            while IFS= read -r label; do
+              run+=(--label "${label}")
+            done < <(jq -r '.[]' <<< "${LABELS}")
+            files=(HEAD^1 HEAD)
+          elif [ "${EVENT_NAME}" = workflow_dispatch ]; then
+            run=(--dispatch)
+            if [ "${VALGRIND_INPUT}" = true ]; then
+              run+=(--valgrind)
             fi
-            if ! base=$(git rev-parse --verify --quiet --end-of-options "refs/remotes/origin/${BASE_INPUT}^{commit}") &&
-               ! base=$(git rev-parse --verify --quiet --end-of-options "${BASE_INPUT}^{commit}"); then
-              echo "::error title=changes::no branch or commit ${BASE_INPUT}"
-              exit 1
+            if [ -n "${BASE_INPUT}" ]; then
+              if ! [[ "${BASE_INPUT}" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]; then
+                echo "::error title=changes::the input base is not a branch name or a commit id"
+                exit 1
+              fi
+              if ! base=$(git rev-parse --verify --quiet --end-of-options "refs/remotes/origin/${BASE_INPUT}^{commit}") &&
+                 ! base=$(git rev-parse --verify --quiet --end-of-options "${BASE_INPUT}^{commit}"); then
+                echo "::error title=changes::no branch or commit ${BASE_INPUT}"
+                exit 1
+              fi
+              if ! mb=$(git merge-base "${base}" HEAD); then
+                echo "::error title=changes::${BASE_INPUT} and this branch have no merge base"
+                exit 1
+              fi
+              echo "Run workflow with base ${BASE_INPUT}: $(git rev-parse HEAD) against the merge base ${mb}"
+              files=("${mb}" HEAD)
             fi
-            if ! mb=$(git merge-base "${base}" HEAD); then
-              echo "::error title=changes::${BASE_INPUT} and this branch have no merge base"
-              exit 1
-            fi
-            echo "Run workflow with base ${BASE_INPUT}: $(git rev-parse HEAD) against the merge base ${mb}"
-            sh test/ci/changes.sh "${mb}" HEAD > "${out}"
-          elif [ "${EVENT_NAME}" = push ] && [ "${REF_TYPE}" = branch ] && { [ "${REF_NAME}" = master ] || [ "${REF_NAME}" = next ]; }; then
-            echo "a push to ${REF_NAME}: its pull request's run tested this tree, so the build and perf jobs are skipped"
-            printf 'build=none\nsoak=false\nperf=false\n' > "${out}"
+          elif [ "${EVENT_NAME}" = push ] && [ "${REF_TYPE}" = tag ]; then
+            run=(--tag)
+          elif [ "${EVENT_NAME}" = push ] && [ "${REF_TYPE}" = branch ]; then
+            run=(--push)
           else
-            echo "event ${EVENT_NAME}, ${REF_TYPE} ${REF_NAME}: the whole build matrix runs"
-            printf 'build=full\nsoak=true\nperf=true\n' > "${out}"
+            echo "::error title=changes::no decision for event ${EVENT_NAME}, ${REF_TYPE} ${REF_NAME}"
+            exit 1
           fi
+          echo "event ${EVENT_NAME}, ${REF_TYPE} ${REF_NAME}: sh test/ci/changes.sh ${run[*]} ${files[*]}"
+          sh test/ci/changes.sh "${run[@]}" "${files[@]}" > "${out}"
           cat "${out}"
           # Only the three keys that the jobs below read, each with one of
           # its values; anything else ends the step, so that a broken
@@ -206,7 +239,7 @@ jobs:
           perf=$(sed -n 's/^perf=//p' "${out}")
           case "${build}" in
             full) matrix=${full_matrix} ;;
-            tests) matrix=${tests_matrix} ;;
+            standard) matrix=${standard_matrix} ;;
             none) matrix='{}' ;;
             *) echo "::error title=changes::no decision for build ('${build}')"; exit 1 ;;
           esac
@@ -289,12 +322,13 @@ jobs:
             exit 1
           fi
 
-  # The cells come from the job "changes": the whole matrix when the code
-  # changed, three cells when only the tests did (the comment of the step
-  # "Decide which build and test jobs run" lists them).
+  # The cells come from the job "changes": four standard cells when the
+  # code or the tests changed, every cell for the label full-matrix, a tag
+  # and "Run workflow" without "base" or with "valgrind" (the comment of the
+  # step "Decide which build and test jobs run" lists them).
   build:
     needs: changes
-    if: needs.changes.outputs.build == 'full' || needs.changes.outputs.build == 'tests'
+    if: needs.changes.outputs.build == 'full' || needs.changes.outputs.build == 'standard'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -528,7 +562,7 @@ jobs:
   # callgrind"): instructions per request of the PR's base and of the PR
   # merged into it, both release builds, measured with callgrind. The job
   # starts on a ready pull request whose run builds (the job "changes" gives
-  # build "full" or "tests"), and compares when test/ci/changes.sh gives perf
+  # build "full" or "standard"), and compares when test/ci/changes.sh gives perf
   # "true" (the code, or the measurement: test/perf/, test/build_release.sh
   # and the scenario files of test/soak/) or the PR has the label "perf". A
   # change of test.yml alone measures the same binary twice, so it compares
@@ -540,7 +574,7 @@ jobs:
   # that test/soak/run.sh runs on next.
   perf:
     needs: changes
-    if: github.event_name == 'pull_request' && (needs.changes.outputs.build == 'full' || needs.changes.outputs.build == 'tests')
+    if: github.event_name == 'pull_request' && (needs.changes.outputs.build == 'full' || needs.changes.outputs.build == 'standard')
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     permissions:
@@ -691,7 +725,7 @@ jobs:
               ;;
           esac
           case "${BUILD_NEEDED}" in
-            full | tests)
+            full | standard)
               expect build "${BUILD_RESULT}" success
               ;;
             none)
