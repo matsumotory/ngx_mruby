@@ -94,13 +94,64 @@ print the second nginx's `error.log` when the line is set.
 `.github/workflows/test.yml` runs on pull requests to `master`, `next` and
 `v*.x`, on pushes to those branches and to `v*` tags, and on "Run workflow".
 Its `ci-ok` job is the status check that rulesets require: it fails unless
-every job that it lists in `needs` succeeded. These are every job of the
-`build` matrix and the `files` job, and on `next` also the `soak` job. On
-`next`, the job of the cell that runs nginx under valgrind on every run is
-one of them, so a valgrind error in that cell fails `ci-ok` ([valgrind in
-CI](#valgrind-in-ci)). The
-`perf` job (see "In CI" under "Performance comparison with callgrind") is
-not among them yet.
+every job that it lists in `needs` passed. These are the `changes` job,
+every job of the `build` matrix and the `files` job, and on `next` also the
+`soak` job. On `next`, the job of the cell that runs nginx under valgrind
+on every run of the matrix is one of them, so a valgrind error in that cell
+fails `ci-ok` ([valgrind in CI](#valgrind-in-ci)). The `perf` job (see "In
+CI" under "Performance comparison with callgrind") is not among them yet.
+
+### Which jobs a run starts
+
+The `changes` job decides whether a run needs the jobs that build and test
+the module: the `build` matrix (16 cells, the cell under valgrind among them
+on `next`, and the sanitizer cell), the `soak` job on `next` and the `perf`
+job. The paths are filtered in that job, not with `on.paths` of the
+workflow, so that the run, and with it `ci-ok`, exists for every pull
+request. The `files` job and `ci-ok` run in every run.
+
+| Run | The build, soak and perf jobs |
+|---|---|
+| Pull request that changes an input of the binary or the tests | Run (`perf` only when it changes what "In CI" of the performance comparison lists, or has the label `perf`) |
+| Pull request whose files are all outside these inputs | Skipped |
+| Push to `master` or `next` | Skipped |
+| Push to a `v*.x` branch or a `v*` tag | Run (`perf` runs on pull requests only) |
+| "Run workflow", the nightly run under valgrind included | Run (`perf` runs on pull requests only) |
+
+For a pull request, the job lists the files that the merge commit
+(`refs/pull/N/merge`) changes against its first parent, the base. The run
+skips the build jobs when every one of them is one of these, which no job
+of the run builds or tests with:
+
+- `docs/`, `site/` and `examples/`: the `site` and `examples` workflows
+  check them;
+- `.github/workflows/` except `test.yml`, `.github/dependabot.yml`,
+  `.github/zizmor.yml` and `.github/PULL_REQUEST_TEMPLATE.md`: the `zizmor`
+  workflow checks the workflows;
+- the Markdown files at the top (`README.md`, `AGENTS.md`, ...) and
+  `AUTHORS`, `LEGAL` and `MITL`.
+
+Every other file counts as an input, `test.yml`, `test/` and `test.sh`
+included, so a file of a new kind runs the build until the list in the
+`changes` job names it. The list is the variable `not_inputs` of that job;
+a pull request that adds to it says why the files are not inputs.
+
+A push to `master` or `next` runs only `changes`, `files` and `ci-ok`. Both
+branches take changes only through pull requests, which merge only after a
+run of `ci-ok` on a merge ref that includes the current base (condition 2
+of "Review and merge" in [AGENTS.md](../../AGENTS.md)), so the push brings
+the tree that the run of the pull request tested. The build of a branch tip
+on its own comes from "Run workflow" (`gh workflow run test.yml --ref
+next`), which also runs the nightly run under valgrind on `next`
+([valgrind in CI](#valgrind-in-ci)). The other workflows decide on their
+own when they run (`nginx-tests`, `examples`, `site`, `zizmor` and the
+others in `.github/workflows/`).
+
+`ci-ok` passes a skipped `build` or `soak` job only when `changes` passed
+and decided that the run does not need it. A `build` or `soak` job that was
+skipped for another reason (a failed `changes` job) fails `ci-ok`, as does a
+needed job that did not pass. A pull request whose run skipped the build
+jobs meets condition 2 of "Review and merge" with that run.
 
 ### Files that do not belong in the repository
 
@@ -624,7 +675,8 @@ of the example meet all three conditions.
 The `build` matrix of `.github/workflows/test.yml` runs `test.sh` in each
 cell. Which cells run nginx under valgrind depends on the run:
 
-- On pull requests and pushes, one cell runs nginx under valgrind: nginx
+- On pull requests and pushes whose run starts the `build` matrix ([Which
+  jobs a run starts](#which-jobs-a-run-starts)), one cell runs nginx under valgrind: nginx
   1.31.8, static module, without `--with-openssl-src`, the job
   `build (1.31.8)` (the matrix gives it `VALGRIND_ON_EVERY_RUN`). The other cells without a sanitizer run nginx
   directly (`NGINX_RUNNER=exec`), and the sanitizer cell runs nginx built
@@ -1891,7 +1943,10 @@ too, so do not run it at the same time.
 The `perf` job of `.github/workflows/test.yml` runs on pull requests that
 change an input of the measured binary, the measurement or the workflow, or
 that have the label `perf` (read when the job runs, so adding the label and
-re-running the job is enough). The inputs of the binary are what
+re-running the job is enough), and only when the `changes` job starts the
+build jobs ([Which jobs a run starts](#which-jobs-a-run-starts)): a pull
+request whose files are all outside the inputs of the binary and the tests
+skips it, with the label too. The inputs of the binary are what
 `test/build_release.sh` copies: `src/`, `mrbgems/`, `mruby/`, `dependence/`
 (ngx_devel_kit, which `Makefile.in` adds to nginx), the top-level build
 files `build_config.rb`, `configure`, `config.in`, `Makefile.in`,

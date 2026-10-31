@@ -4,8 +4,19 @@ name: test
 # they are tested through their pull request, so the matrix runs once.
 # Use "Run workflow" (workflow_dispatch) to test a branch without a PR.
 #
-# valgrind (docs/test/README.md, "valgrind in CI"): on pull requests and
-# pushes, one cell of the build matrix runs nginx under valgrind and the
+# The build, soak and perf jobs run only when the run needs them
+# (docs/test/README.md, "Required status check"; the job "changes" below
+# decides): on a pull request that changes a file other than the ones that
+# are not inputs of the binary or the tests (docs/, site/, examples/, the
+# workflows other than this file, ...), on a push to a v*.x branch or a v*
+# tag, and on "Run workflow". A push to master or next runs only the jobs
+# changes, files and ci-ok: these branches take changes only through pull
+# requests, and the run of the pull request tested its merge commit with
+# the current base (condition 2 of "Review and merge" in AGENTS.md). ci-ok
+# counts a job that the run did not need as passed when it was skipped.
+#
+# valgrind (docs/test/README.md, "valgrind in CI"): on the runs that run
+# the build jobs, one cell of the build matrix runs nginx under valgrind and the
 # others run it directly. A manual run with the input "valgrind" runs every
 # cell under valgrind except the sanitizer cell; the nightly run that
 # .github/workflows/valgrind-nightly.yml starts is such a run. A cell under
@@ -51,6 +62,70 @@ env:
   OPENSSL_SRC_VERSION: 1.1.1w
 
 jobs:
+  # Whether this run needs the build, soak and perf jobs
+  # (docs/test/README.md, "Required status check"). The paths are filtered
+  # here and not with on.paths, so that the run, and with it the required
+  # check ci-ok, exists for every pull request. The output "build" is
+  # "true" or "false":
+  # - a pull request: "false" when every file that its merge commit changes
+  #   against the base (HEAD^1) is one that no job below builds or tests
+  #   with (the list "not_inputs"), "true" otherwise. A file that the list
+  #   does not name counts as an input, so a new kind of file runs the
+  #   build until the list names it;
+  # - a push to master or next: "false" (see the top of this file);
+  # - a push to a v*.x branch or a v* tag, and "Run workflow" (the nightly
+  #   run under valgrind included): "true".
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+    steps:
+      # The merge commit of the pull request and its first parent. No later
+      # step runs git with credentials.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Decide whether the build and test jobs run
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "${EVENT_NAME}" = pull_request ]; then
+            if ! git rev-parse --verify --quiet 'HEAD^2' > /dev/null; then
+              echo "::error title=changes::the checkout is not the merge commit of a pull request"
+              exit 1
+            fi
+            git diff --name-only HEAD^1 HEAD > "${RUNNER_TEMP}/changed"
+            # The files that are not inputs of the binary or the tests: the
+            # documentation, the site and the examples (site.yml and
+            # examples.yml check them), the other workflows and the GitHub
+            # settings (zizmor.yml checks the workflows), the Markdown files
+            # at the top and the license and author files. test.yml itself
+            # is an input.
+            not_inputs='^(docs/|site/|examples/|\.github/workflows/|\.github/(dependabot\.yml|zizmor\.yml|PULL_REQUEST_TEMPLATE\.md)$|[^/]+\.md$|(AUTHORS|LEGAL|MITL)$)'
+            { grep -vE "${not_inputs}" "${RUNNER_TEMP}/changed" || true; grep -xF .github/workflows/test.yml "${RUNNER_TEMP}/changed" || true; } > "${RUNNER_TEMP}/inputs"
+            echo "files changed against the base: $(wc -l < "${RUNNER_TEMP}/changed")"
+            if [ -s "${RUNNER_TEMP}/inputs" ]; then
+              echo "inputs of the binary or the tests among them ($(wc -l < "${RUNNER_TEMP}/inputs"); the first 20):"
+              head -n 20 "${RUNNER_TEMP}/inputs"
+              echo "build=true" >> "${GITHUB_OUTPUT}"
+            else
+              echo "no input of the binary or the tests changed: the build, soak and perf jobs are skipped"
+              echo "build=false" >> "${GITHUB_OUTPUT}"
+            fi
+          elif [ "${EVENT_NAME}" = push ] && [ "${REF_TYPE}" = branch ] && { [ "${REF_NAME}" = master ] || [ "${REF_NAME}" = next ]; }; then
+            echo "a push to ${REF_NAME}: its pull request's run tested this tree, so the build, soak and perf jobs are skipped"
+            echo "build=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "event ${EVENT_NAME}, ref ${REF_TYPE} ${REF_NAME}: the build and soak jobs run"
+            echo "build=true" >> "${GITHUB_OUTPUT}"
+          fi
+
   # Files that do not belong in the repository (docs/test/README.md, "Files
   # that do not belong in the repository"): test/check_added_files.sh fails
   # when the change, or one of its commits, adds a path that
@@ -114,6 +189,8 @@ jobs:
           fi
 
   build:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -363,6 +440,8 @@ jobs:
   # and the worker's GC roots, live objects, timers, file descriptors,
   # connections and RSS compared between samples.
   soak:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
@@ -406,11 +485,14 @@ jobs:
   # merged into it, both release builds, measured with callgrind. It runs
   # when the PR changes an input of the measured binary (the code, the
   # vendored trees, the top-level build files, nginx_version), the
-  # measurement or this workflow, or has the label "perf". Advisory for now:
+  # measurement or this workflow, or has the label "perf", and only when the
+  # job "changes" lets the build run (a pull request with only files that
+  # are not inputs would measure the same binary twice). Advisory for now:
   # ci-ok does not need it until it has also run on pull requests that change
   # the code (calibration in the docs).
   perf:
-    if: github.event_name == 'pull_request'
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.build == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     permissions:
@@ -485,35 +567,54 @@ jobs:
 
   # The only status check that rulesets should require. Matrix job names
   # change whenever the matrix changes, so they cannot be required directly.
-  # "always()" makes this job run, and fail, when build, soak or files failed
-  # or was cancelled; a skipped job would count as passing.
+  # "always()" makes this job run, and fail, when a job that it needs
+  # failed or was cancelled: without it, a failed job would skip this job,
+  # and a skipped required check counts as passing. A job that the job
+  # "changes" decided not to run is skipped; this job counts it as passed
+  # only then, so a build or soak job that was skipped for another reason
+  # (a failed "changes" job) fails it.
   ci-ok:
     name: ci-ok
-    needs: [build, soak, files]
+    needs: [changes, build, soak, files]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check that every build job, the soak job and the files job succeeded
+      - name: Check that the needed build and soak jobs and the files job succeeded
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          BUILD_NEEDED: ${{ needs.changes.outputs.build }}
           BUILD_RESULT: ${{ needs.build.result }}
           SOAK_RESULT: ${{ needs.soak.result }}
           FILES_RESULT: ${{ needs.files.result }}
         run: |
+          echo "changes: ${CHANGES_RESULT} (build: '${BUILD_NEEDED}')"
           echo "build: ${BUILD_RESULT}"
           echo "soak: ${SOAK_RESULT}"
           echo "files: ${FILES_RESULT}"
           failed=0
-          if [ "${BUILD_RESULT}" != "success" ]; then
-            echo "::error title=ci-ok::build finished with result '${BUILD_RESULT}', expected 'success'"
-            failed=1
-          fi
-          if [ "${SOAK_RESULT}" != "success" ]; then
-            echo "::error title=ci-ok::soak finished with result '${SOAK_RESULT}', expected 'success'"
-            failed=1
-          fi
-          if [ "${FILES_RESULT}" != "success" ]; then
-            echo "::error title=ci-ok::files finished with result '${FILES_RESULT}', expected 'success'"
-            failed=1
-          fi
+          # expect JOB RESULT EXPECTED
+          expect() {
+            if [ "$2" != "$3" ]; then
+              echo "::error title=ci-ok::$1 finished with result '$2', expected '$3'"
+              failed=1
+            fi
+          }
+          expect changes "${CHANGES_RESULT}" success
+          case "${BUILD_NEEDED}" in
+            true)
+              expect build "${BUILD_RESULT}" success
+              expect soak "${SOAK_RESULT}" success
+              ;;
+            false)
+              echo "the job changes found no input of the binary or the tests to test: build and soak are expected to be skipped"
+              expect build "${BUILD_RESULT}" skipped
+              expect soak "${SOAK_RESULT}" skipped
+              ;;
+            *)
+              echo "::error title=ci-ok::the job changes gave no decision (build: '${BUILD_NEEDED}')"
+              failed=1
+              ;;
+          esac
+          expect files "${FILES_RESULT}" success
           exit "${failed}"
