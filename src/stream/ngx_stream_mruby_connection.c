@@ -161,6 +161,9 @@ static mrb_value ngx_stream_mrb_upstream_set_server(mrb_state *mrb, mrb_value se
   if (RSTRING_LEN(server) <= 0 || (size_t)RSTRING_LEN(server) >= NGX_STREAM_MRB_UPSTREAM_SERVER_MAX) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid upstream server (empty or too long)");
   }
+  if (ngx_strlchr((u_char *)RSTRING_PTR(server), (u_char *)RSTRING_END(server), '\0') != NULL) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid upstream server (contains a NUL byte)");
+  }
 
 #if (NGX_STREAM_UPSTREAM_ZONE)
   // The peers of an upstream with a zone are in shared memory that every
