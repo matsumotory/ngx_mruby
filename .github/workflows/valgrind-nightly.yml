@@ -8,8 +8,9 @@ name: valgrind-nightly
 # schedule GitHub runs only from the default branch.
 #
 # GitHub runs a schedule only from the workflow file on the default branch
-# (master). The copy of this file on another branch therefore runs only
-# from pull requests that change this file or test.yml, where it starts the
+# (master): the schedule of the copy of this file on master starts the runs
+# on master and on next. This copy, on next, runs only from pull requests
+# that change this file, test.yml or test/valgrind.supp, where it starts the
 # run on the head branch of the pull request.
 on:
   schedule:
@@ -44,8 +45,11 @@ jobs:
       github.repository == 'matsumotory/ngx_mruby' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
-    # The run of test.yml takes about as long as its slowest cell (about 15
-    # minutes in October 2026); the bound leaves room for a queue of runners.
+    # The run of test.yml takes about as long as its slowest cell (about 13
+    # minutes in October 2026) plus the wait for runners: 30 minutes from
+    # the dispatch to the end for the run on master on 2026-10-31. The bound
+    # leaves room for a longer queue, and also bounds the wait of the step
+    # below.
     timeout-minutes: 120
     permissions:
       actions: write # start test.yml on the branch and read the run
