@@ -2,7 +2,7 @@
 
 このガイドは、スクリプト、設定、ビルドを、ngx_mruby 2.xからngx_mruby 3.0.0へ移すためのものです。このガイドが扱う変更は、どれもv3.0.0のリリースノートの[アップグレードの前に読む挙動の変更](../../releases/v3.0.0.ja.md#アップグレードの前に読む挙動の変更)に1回ずつ書いてあります。2.xが何をしたか、3.0.0が何をするか、何に影響するか、何をすればよいかです。このガイドは、そのエントリーのそれぞれにリンクし、手順と例を加えます。エントリーが影響するスクリプトとビルドの見つけ方、スクリプトの変更の形、結果の確かめ方です。先に、動かしているバージョンより新しい2.xのリリースのリリースノートを読んでください。リリースノートは[docs/releases](../../releases/README.md)にあります。
 
-ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発のラインは、mrubyの現在の安定版の4.0.0を同梱しています。v3の計画の`docs/proposals/v3-plan.md`は、7節の決定1で、mruby 4.1.0をv3の目標とし、その前のステップとして4.0.0を承認しています。4.1.0には、まだリリース候補しかありません。mruby 4.0.0のエントリーは、ngx_mrubyについて見つけて測った変更で、すべての変更の一覧ではありません。mruby自身が利用者に見える変更をまとめた一覧は、`mruby/`の`doc/mruby3.4.md`と`doc/mruby4.0.md`です。mruby 4.1.0にはさらに変更があり、リリースノートとこのガイドは、まだそれを扱っていません。
+ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発のラインは、mruby 4.1.0-rc2を同梱しています。これは、mruby 4.1.0の2つ目のリリース候補です。v3の計画の`docs/proposals/v3-plan.md`は、7節の決定1で、mruby 4.1.0をv3のmrubyとしています。オーナーは2026年10月29日に、タグを待たずに4.1.0-rc2を同梱すると決めました。4.1.0のタグが付いたら、開発のラインは4.1.0に移ります。同梱のmrubyのエントリーは、ngx_mrubyについて見つけて測った変更で、すべての変更の一覧ではありません。mruby自身が利用者に見える変更をまとめた一覧は、`mruby/`の`doc/mruby3.4.md`、`doc/mruby4.0.md`と、4.1の`NEWS.md`です。
 
 ## 手順
 
@@ -14,11 +14,12 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
 
 ## ビルド
 
-- このリリースの`build_config.rb`を使うなら、モジュールをビルドし直してください。同梱のmrubyも一緒にビルドします。詳しくは[同梱のmrubyが3.3.0から4.0.0になる](../../releases/v3.0.0.ja.md#同梱のmrubyが330から400になる561)にあります。
-- 自前の`build_config.rb`を使うなら、コアのgemを選ぶ行を見つけてください。詳しくは[自前の`build_config.rb`は、mruby 4.0.0のコアgemの変更に合わせる必要がある](../../releases/v3.0.0.ja.md#自前のbuild_configrbはmruby-400のコアgemの変更に合わせる必要がある561)にあります。
+- Ruby 3.0以降でビルドしてください。同梱のmrubyのビルドは、Ruby 2.xでは止まります。詳しくは[同梱のmrubyのビルドにRuby 3.0以降が要る](../../releases/v3.0.0.ja.md#同梱のmrubyのビルドにruby-30以降が要るprb)にあります。`ruby --version`は、`PATH`にあるRubyのバージョンを出力します。
+- このリリースの`build_config.rb`を使うなら、モジュールをビルドし直してください。同梱のmrubyも一緒にビルドします。詳しくは[同梱のmrubyが3.3.0から4.1.0-rc2になる](../../releases/v3.0.0.ja.md#同梱のmrubyが330から410-rc2になる561-prb)にあります。
+- 自前の`build_config.rb`を使うなら、コアのgemを選ぶ行を見つけてください。詳しくは[自前の`build_config.rb`は、mruby 4.1のコアgemの変更に合わせる必要がある](../../releases/v3.0.0.ja.md#自前のbuild_configrbはmruby-41のコアgemの変更に合わせる必要がある561-prb)にあります。
 
   ```sh
-  grep -nE 'gembox|mruby-print|hal-posix|mruby-task|mruby-encoding|mruby-sleep|ngx_mruby_core_gems' build_config.rb
+  grep -nE 'gembox|mruby-print|hal-posix|mruby-task|mruby-encoding|mruby-sleep|mruby-env|mruby-process|regexp|ngx_mruby_core_gems' build_config.rb
   ```
 
   ngx_mrubyのデフォルトのビルドが入れるコアのgemを残すには、このリリースの`build_config.rb`から`NGX_MRUBY_CORE_GEMS`と`ngx_mruby_core_gems`をコピーし、そのファイルと同じように、`conf.gembox 'full-core'`の代わりに`ngx_mruby_core_gems(conf)`を呼んでください。gemを減らすビルドでは、`NGX_MRUBY_CORE_GEMS - %w[...]`を渡します。一覧に無いgemを加えるには、[コアのgem](../install/README.md#コアのgem)に従ってください。
@@ -43,7 +44,7 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
 ほとんどのエントリーは、検索できるメソッドの名前を挙げています。次のコマンドは、設定のスクリプトのファイルからそれらを探します。`/path/to/scripts`は、`*_handler`のディレクティブが指定するファイルのディレクトリに置き換えてください。
 
 ```sh
-grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|respond_to\?|method_defined\?|method_missing|instance_methods|\.methods|iv_var|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[|flatten_merge|RuntimeError' /path/to/scripts
+grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|respond_to\?|method_defined\?|method_missing|instance_methods|\.methods|iv_var|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[|flatten_merge|RuntimeError|SystemStackError' /path/to/scripts
 ```
 
 `nginx.conf`のファイルにある`*_code`のディレクティブのインラインのコードも、同じように検索してください。次の項目では、名前だけでは足りないところで何を探すかを書き、変更の例を示します。
@@ -72,7 +73,7 @@ grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|m
   ```
 
   メッセージを比べる代わりに、`NoMethodError`そのものをrescueしてください。
-- [`private`と`protected`の制限が効く](../../releases/v3.0.0.ja.md#privateとprotectedの制限が効く561)：`self`以外のレシーバで呼んでいるものを探してください。対象は、`initialize`、`initialize_copy`、`respond_to_missing?`、`method_missing`、トップレベルで`def`で定義したメソッド、`raise`、`sprintf`、`puts`のような`Kernel`のメソッド、`private`か`protected`の下のメソッドです。ただし、ハンドラのコードでは、トップレベルで`def`で定義したメソッドはpublicのままなので、レシーバを付けた呼び出しを変える必要はありません。詳しくは[#502の構想](../../proposals/archive/handler-code-frame.md#14-what-handler-code-shares-today)の1.4節にあります。上の検索は、`Kernel`に対する呼び出しの`Kernel\.`を見つけます。今も動くのは、`Kernel.format`、`.sprintf`、`.raise`、`.sleep`、`.usleep`だけで、`Kernel.Integer(x)`のようなほかのものは、レシーバの無い呼び出しにします。検索は`instance_methods`と`methods`も見つけます。この2つはprivateのメソッドを含みません。そのような呼び出しの前に`respond_to?`で確かめても役に立ちません。`respond_to?`は、privateのメソッドにも`true`を返します。
+- [`private`と`protected`の制限が効く](../../releases/v3.0.0.ja.md#privateとprotectedの制限が効く561)：`self`以外のレシーバで呼んでいるものを探してください。対象は、`initialize`、`initialize_copy`、`respond_to_missing?`、`method_missing`、トップレベルで`def`で定義したメソッド、`raise`、`sprintf`、`puts`のような`Kernel`のメソッド、`private`か`protected`の下のメソッドです。ただし、ハンドラのコードでは、トップレベルで`def`で定義したメソッドはpublicのままなので、レシーバを付けた呼び出しを変える必要はありません。詳しくは[#502の構想](../../proposals/archive/handler-code-frame.md#14-what-handler-code-shares-today)の1.4節にあります。`Kernel.Integer(x)`のような`Kernel`自身に対する呼び出しは、どちらのバージョンでも動きます。`1.Integer("3")`のように、`Kernel`のメソッドを別のオブジェクトに対して呼ぶと、例外が出ます。`protected`のメソッドは、CRubyと同じく、同じクラスのメソッドの中からなら、そのクラスのオブジェクトをレシーバにして呼べます。上の検索は`instance_methods`と`methods`を見つけます。この2つはprivateのメソッドを含みません。そのような呼び出しの前に`respond_to?`で確かめても役に立ちません。`respond_to?`は、privateのメソッドにも`true`を返します。
 
   ```ruby
   class Router
@@ -90,8 +91,9 @@ grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|m
   Router.new.pick(r)           # 2.x: works   3.0.0: NoMethodError
   Router.new.send(:pick, r)    # works on both
 
-  Kernel.Integer("12")         # 2.x: 12   3.0.0: NoMethodError (private method 'Integer' called for Module)
-  Integer("12")                # 12 on both
+  1.Integer("3")               # 2.x: 3   3.0.0: NoMethodError (private method 'Integer' called for Integer)
+  Kernel.Integer("3")          # 3 on both
+  Integer("3")                 # 3 on both
   ```
 
 - [`Module#remove_const`、`#private`、`#public`、`#protected`、`#module_function`とフックがprivateになる](../../releases/v3.0.0.ja.md#moduleremove_constprivatepublicprotectedmodule_functionとフックがprivateになる561)：上の検索でほとんど見つかります。クラスやモジュールに対して呼んだ`.private(`、`.public(`、`.protected(`も探してください。たとえば、`Foo.remove_const(:X)`は`Foo.send(:remove_const, :X)`に書き換えます。
@@ -123,6 +125,20 @@ grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|m
   end
   ```
 
+- [文字列の中の`"#@ivar"`、`"#@@cvar"`、`"#$global"`が変数を展開する](../../releases/v3.0.0.ja.md#文字列の中のivarcvarglobalが変数を展開するprb)：ダブルクォートの文字列、ヒアドキュメント、バッククォートのコマンドの中の`#@`と`#$`を探してください。次の検索はコメントも見つけるので、見つかった行を1行ずつ読んでください。
+
+  ```sh
+  grep -rnE '#[@$]' /path/to/scripts
+  ```
+
+  ```ruby
+  @id = 7
+  Nginx.rputs "Ticket #@id"     # 2.x: Ticket #@id   3.0.0: Ticket 7
+  Nginx.rputs "Ticket \#@id"    # Ticket #@id on both
+  Nginx.rputs 'Ticket #@id'     # Ticket #@id on both
+  ```
+
+- [自分自身を持つ`Array`、`Hash`、`Struct`を比べられる](../../releases/v3.0.0.ja.md#自分自身を持つarrayhashstructを比べられるprb)：上の検索は`SystemStackError`を見つけます。書き換える必要があるのは、そうした比較の周りでこの例外を`rescue`するスクリプトだけです。
 - [Floatの値にビット演算が無くなる](../../releases/v3.0.0.ja.md#floatの値にビット演算が無くなる561)：Floatになりうる値に使った`<<`、`>>`、`&`、`|`、`^`、`~`を探してください。Floatになりうる値は`to_f`や`Float()`の結果とFloatとの演算の結果です。2.xと同じ数を得る方法は、エントリーにあります。
 
   ```ruby
@@ -230,14 +246,21 @@ grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|m
   ```
   2.x, start:                 [notice] ... ngx_mruby/<version> (mruby/3.3.0) mechanism enabled in ...
   3.0.0, start:               no such line
-  3.0.0, nginx -t:            [info] ... ngx_mruby/<version> (mruby/4.0.0) mechanism enabled in ...   (startup log only)
-  3.0.0, nginx -t -e stderr:  [info] ... ngx_mruby/<version> (mruby/4.0.0) mechanism enabled in ...   (terminal)
+  3.0.0, nginx -t:            [info] ... ngx_mruby/<version> (mruby/4.1.0) mechanism enabled in ...   (startup log only)
+  3.0.0, nginx -t -e stderr:  [info] ... ngx_mruby/<version> (mruby/4.1.0) mechanism enabled in ...   (terminal)
   ```
 
   モジュールが読み込まれたことをこれらの行で確かめるには、`nginx -t -e stderr`を実行してその出力を読むか、`nginx -t`の後に起動時のログを読んでください。
 
   ```sh
   nginx -t -e stderr 2>&1 | grep 'mechanism enabled'
+  ```
+
+- [構文エラーのメッセージがPrismのものになる](../../releases/v3.0.0.ja.md#構文エラーのメッセージがprismのものになるprb)：`unexpected end of file`のような、`syntax error`の後の文面に対するパターンは、もう一致しません。代わりに、`SyntaxError`と、ファイルと行に一致させてください。
+
+  ```
+  2.x:    file (eval) line 1: syntax error, unexpected end of file
+  3.0.0:  file (eval) line 1: syntax error, unexpected end-of-input; expected an expression after the operator
   ```
 
 - [出力なしで終わるcontentハンドラが、500でなく、空のボディの200で応答する](../../releases/v3.0.0.ja.md#出力なしで終わるcontentハンドラが500でなく空のボディの200で応答する574)：`response body is empty. return NGX_HTTP_INTERNAL_SERVER_ERROR`に対するパターンは、メインのリクエストのcontentハンドラが出力なしで終わり、ステータスを設定していないか、nginxが自分では答えない200から299のステータスを設定しているときには、もう一致しません。200未満のステータスと、ほかのハンドラとサブリクエストで出力なしの`Nginx::HTTP_OK`には、今も一致しています。
@@ -275,13 +298,13 @@ grep -rnE 'Data_Wrap_Struct|mrb_data_object_alloc|MRB_SET_INSTANCE_TT|MRB_ARGS_|
 
 ## 結果を<wbr>確かめる
 
-1. すべてのスクリプトを、mruby 4.0.0の`mrbc`でコンパイルします。このリリースを`sh build.sh`か`sh test.sh`でビルドした後なら、`mruby/bin/mrbc -c`でスクリプトの構文を確かめられます。`mrbc -c`は`Syntax OK`を出力するか、エラーの行を出力して終了ステータス1で終わります。メソッドの本体で定数に代入したときのエラーの行は、`<file>:2:3: dynamic constant assignment`です。
+1. すべてのスクリプトを、mruby 4.1.0-rc2の`mrbc`でコンパイルします。このリリースを`sh build.sh`か`sh test.sh`でビルドした後なら、`mruby/bin/mrbc -c`でスクリプトの構文を確かめられます。`mrbc -c`は`Syntax OK`を出力するか、エラーの行を出力して終了ステータス1で終わります。メソッドの本体で定数に代入したときのエラーの行は、`<file>:2:3: syntax error, dynamic constant assignment`です。
 
    ```sh
    for f in /path/to/scripts/*.rb; do mruby/bin/mrbc -c "$f" || echo "check: $f"; done
    ```
 
-2. スクリプトのうち`Nginx`のクラスを呼ばない部分を、両方のバージョンのmrubyで実行します。mruby 4.0.0のエントリーは、2026年10月4日から10月14日の間に、この方法で測りました。同じRubyのスクリプトを2つの`mruby`のバイナリで実行しました。1つはngx_mruby 2.xに同梱のmruby 3.3.0から、もう1つは、mruby 4.0.0からビルドしたものです。どちらもUbuntu 22.04とgcc 11を使うDockerのコンテナの中でビルドし、mrubyの`default`のgemboxか、各バージョンのngx_mrubyのビルドのコアのgemを使いました。コアのgemは、3.3.0では`full-core`とiij/mruby-dir、4.0.0では`NGX_MRUBY_CORE_GEMS`です。「ngx_mrubyのテストスイートでもこの変化が出ました」と書いたエントリーは、ngx_mruby自身のレスポンスかログの行も変わったものです。同じことをするには、各バージョンの`mruby/`ディレクトリを別々のディレクトリにコピーし、それぞれで`rake MRUBY_CONFIG=default`を実行して、両方の`bin/mruby`でスクリプトを実行します。rakeは`mruby/build`にビルドし、そこにはモジュールのビルドが使うmrubyがあります。そのため、このrakeをngx_mrubyのチェックアウトの`mruby/`で実行しないでください。
+2. スクリプトのうち`Nginx`のクラスを呼ばない部分を、両方のバージョンのmrubyで実行します。mruby 4.0.0のエントリーは、2026年10月4日から10月14日の間に、この方法で測りました。同じRubyのスクリプトを2つの`mruby`のバイナリで実行しました。1つはngx_mruby 2.xに同梱のmruby 3.3.0から、もう1つは、mruby 4.0.0からビルドしたものです。どちらもUbuntu 22.04とgcc 11を使うDockerのコンテナの中でビルドし、mrubyの`default`のgemboxか、各バージョンのngx_mrubyのビルドのコアのgemを使いました。コアのgemは、3.3.0では`full-core`とiij/mruby-dir、4.0.0では`NGX_MRUBY_CORE_GEMS`です。mruby 4.1.0-rc2のエントリーは、2026年10月29日と10月31日に測りました。使ったのは、ngx_mrubyのhostのビルドが4.0.0と4.1.0-rc2で作った`mruby`コマンドと、mruby 3.3.0を`default`のgemboxでビルドした`mruby`コマンドです。「ngx_mrubyのテストスイートでもこの変化が出ました」と書いたエントリーは、ngx_mruby自身のレスポンスかログの行も変わったものです。同じことをするには、各バージョンの`mruby/`ディレクトリを別々のディレクトリにコピーし、それぞれで`rake MRUBY_CONFIG=default`を実行して、両方の`bin/mruby`でスクリプトを実行します。rakeは`mruby/build`にビルドし、そこにはモジュールのビルドが使うmrubyがあります。そのため、このrakeをngx_mrubyのチェックアウトの`mruby/`で実行しないでください。
 3. テスト用のサーバに、このリリースのモジュールと設定を入れて動かし、各ハンドラに届くリクエストを送ります。そして、`error.log`で、`NoMethodError`、`TypeError`、`ArgumentError`、`SyntaxError`を含む`mrb_run failed`の行を探します。
 
 次のものは同じ方法で確かめて変わっていなかったので、確かめる必要はありません。`String#size`と`#length`はバイトを数えます。mruby-encodingのgemはデフォルトのビルドに入っていません。詳しくは[コアのgem](../install/README.md#コアのgem)にあります。ほかに、引数の数が違うときの`ArgumentError`、`Exception#message`、`Struct#inspect`、`Float#to_s`、Integerの除算と剰余、mruby-sleepの`Kernel#sleep`と`#usleep`も変わっていません。

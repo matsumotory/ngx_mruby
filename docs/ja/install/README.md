@@ -8,7 +8,7 @@ ngx_mrubyを組み込んだnginxで、インラインとファイルのRubyを�
 
 ### 前提
 
-C/C++コンパイラ、GNU make、Rubyとrake、bison、git、wget、curlが必要です。OpenSSL・PCRE・zlibは開発用ヘッダとライブラリも用意します。ビルドはGitHubからサードパーティのmrbgemsを取得します。Docker Hubのアカウントは不要です。
+C/C++コンパイラ、GNU make、Ruby 3.0以降とrake、bison、git、wget、curlが必要です。同梱のmrubyのビルドは、Ruby 2.xでは止まります。OpenSSL・PCRE・zlibは開発用ヘッダとライブラリも用意します。ビルドはGitHubからサードパーティのmrbgemsを取得します。Docker Hubのアカウントは不要です。
 
 Ubuntu 22.04では、まず管理者権限でパッケージを入れます。以降のビルドは一般ユーザーで行ってください。
 
@@ -47,21 +47,28 @@ mruby-ioはデフォルトに含まれます。ファイル・ソケット・sle
 
 ### コアのgem
 
-同梱のmrubyは4.0.0です。ngx_mrubyは、mrubyの`full-core.gembox`ではなく、`NGX_MRUBY_CORE_GEMS`が挙げるコアのgemをビルドします。こうすると、ngx_mrubyのスクリプトのクラスとメソッドは、この一覧を変えたときにだけ変わります。一覧は、mruby 3.3.0の`full-core.gembox`が選んでいたgemの集合で、違いは次のとおりです。
+同梱のmrubyは4.1.0-rc2で、mruby 4.1.0の2つ目のリリース候補です。ngx_mrubyは、mrubyの`full-core.gembox`ではなく、`NGX_MRUBY_CORE_GEMS`が挙げるコアのgemをビルドします。こうすると、ngx_mrubyのスクリプトのクラスとメソッドは、この一覧を変えたときにだけ変わります。一覧は、mruby 3.3.0の`full-core.gembox`が選んでいたgemの集合で、違いは次のとおりです。
 
 - mruby-printはありません。mruby 3.4で削除されました。`Kernel#print`、`#puts`、`#p`はmruby-ioが定義します。
-- 一覧には、hal-posix-io、hal-posix-dir、hal-posix-socketがあります。mruby 4.0.0では、mruby-io、mruby-dir、mruby-socketは、このどれかのバックエンドを通してOSを使います。これらのgemは、クラスもメソッドも加えません。これらがあるのは4.0.0だけです。mruby 4.1.0-rc2では、POSIXのバックエンドはmruby-io、mruby-dir、mruby-socketの一部になり、hal-*のgemはありません。そのため、mruby 4.1への更新で、この3つの名前を一覧から消します。
 
-mruby 4.0.0のコアのgemのうち、4.0.0の`full-core.gembox`は入れるのに、この一覧が入れないものは次のとおりです。
+mruby 4.1には、hal-*のgemがありません。mruby-io、mruby-dir、mruby-socketが、POSIXのバックエンドをそれぞれ`ports/posix/`に持つので、一覧にはバックエンドの名前がありません。mruby 4.0.0向けに書いた一覧がhal-posix-io、hal-posix-dir、hal-posix-socketを挙げると、ビルドは止まります。`build_config.rb`の`ngx_mruby_core_gems`は、同梱のmrubyに無い名前があるとビルドを止めるためです。
+
+mruby 4.1.0-rc2のコアのgemのうち、4.1.0-rc2の`full-core.gembox`は入れるのに、この一覧が入れないものは次のとおりです。
 
 | gem | 入れると変わること | 入れない理由 |
 |---|---|---|
-| mruby-taskと、hal-posix-task | `Task`を加え、`Kernel#sleep`を定義し直す。`mrb_state`を開くすべてのプロセスに、SIGALRMのインターバルタイマーの`setitimer`がかかる。`mrb_state`は8つまでになる。上限は`MRB_TASK_MAX_VMS` | ワーカーのタイマーと`sleep`に関わる。ngx_mrubyには、`Nginx::Async`がある |
+| mruby-task | `Task`を加え、`Kernel#sleep`を定義し直す。`mrb_state`を開くすべてのプロセスに、SIGALRMのインターバルタイマーの`setitimer`がかかる。`mrb_state`は8つまでになる。上限は`MRB_TASK_MAX_VMS` | ワーカーのタイマーと`sleep`に関わる。ngx_mrubyには、`Nginx::Async`がある |
 | mruby-encoding | ビルド全体に`MRB_UTF8_STRING`を定義する。`String#size`、`#[]`、`#index`などが、バイトではなく文字を数える。`String#valid_encoding?`、`#encoding`、`#force_encoding`を加える | リクエストとレスポンスのデータはバイト列で、`String#size`から`Content-Length`を計算するスクリプトは、違う数を得る。オーナーは2026年10月4日に、このgemをデフォルトのビルドから外し、オプトインのままにすると決めた。外したため、mruby 3.3ではmruby-string-extが定義していた`String#valid_encoding?`を呼ぶと、`NoMethodError`が起きる。mruby 3.4からは、mruby-encodingだけがこのメソッドを定義する |
+| mruby-env、mruby-process、mruby-regexp | `ENV`、`Process`、`Regexp`を定義する。mruby 4.1で加わった | デフォルトのビルドは、2.xと同じく、これらのクラスをiij/mruby-env、iij/mruby-process、mattn/mruby-onig-regexpから取る。両方を入れると、同じクラスを2回定義する。iijの2つのgemは、これらのコアのgemと同じ名前を持つ。`ENV`と`Process`をコアのgemに移すのは後の変更で、3.0はmruby-onig-regexpを残す。根拠は`docs/proposals/v3-plan.md`の7節の1項 |
+| mruby-signal | `Signal`を加える。mruby 4.1で加わった | 新しいAPIで、別に決める |
+| mruby-string-bitops | `String`のビット演算を加える。mruby 4.1で加わった | 新しいAPIで、別に決める |
 | mruby-strftime | `Time#strftime`を加える | 新しいAPIで、別に決める |
 | mruby-benchmark | `Benchmark`を加える | 新しいAPIで、開発のツール |
+| mruby-bin-mrb | コンパイラを持たずにバイトコードを実行する`mrb`コマンド。mruby 4.1で加わった | 新しいコマンドで、デフォルトのビルドは、mruby 3.3.0のときと同じコマンドを持つ。`mrbc`、`mruby`、`mirb`、`mruby-strip`、`mruby-config`の5つ |
 
-4.0.0の`full-core.gembox`は、mruby-sleep、mruby-bin-debugger、mruby-testを入れません。ngx_mrubyは、`Kernel#sleep`と`#usleep`を定義するmruby-sleepを残しています。
+4.1.0-rc2の`full-core.gembox`は、mruby-sleep、mruby-bin-debugger、mruby-testを入れません。ngx_mrubyは、`Kernel#sleep`と`#usleep`を定義するmruby-sleepを残しています。hw-*は、mruby 4.1のハードウェア用のgemです。`full-core.gembox`にも、この一覧にもありません。
+
+mruby 4.1は、Rubyのコードを[Prism](https://github.com/ruby/prism)でコンパイルします。Prismのソースは`mruby/mrbgems/mruby-compiler/lib/prism`にあります。そのため、ngx_mrubyのチェックアウトやソースのアーカイブは、gitのサブモジュールを取ってこなくてもビルドできます。mrubyのビルドは、これまでと同じくRubyを実行し、Prismのテンプレートからソースを生成します。
 
 一覧に載っていないgemを入れてビルドするには、`build_config.rb`の`NGX_MRUBY_CORE_GEMS`にその名前を足し、`mruby/build`を消してビルドし直してください。mruby-encodingを入れるときはリクエストやレスポンスのデータに`String#size`、`#length`、`#[]`、`#slice`、`#index`、`#reverse`を使うスクリプトをすべて確かめ、バイトを扱うところでは`#bytesize`と`#byteslice`を使ってください。`Nginx::Utils.escape`はもともとバイトを扱います。ngx_mruby自身のテストスイートは、mruby-encodingやmruby-taskを入れたビルドでは実行しません。
 

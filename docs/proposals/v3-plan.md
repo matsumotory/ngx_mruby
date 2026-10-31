@@ -686,7 +686,10 @@ the record of what was decided and why.
    question, with the option "rc2 へ上げる (推奨)" ("move up to rc2"): `next`
    bundles mruby 4.1.0-rc2 now, in one pull request, and moves to 4.1.0 in
    a small subtree pull request when 4.1.0 is tagged; it no longer waits for
-   the tag.
+   the tag. Carried out for 4.1.0-rc2 in #PRB, which keeps
+   mruby-onig-regexp, iij/mruby-env and iij/mruby-process (their
+   replacement is the Pillar A row). The build of mruby 4.1.0-rc2 needs Ruby
+   3.0 or later.
 2. nginx floor for v3: **1.30 stable and 1.31 mainline**, raised every
    April. Distro users on 1.26/1.24 stay on v2.
 3. OpenSSL: **3.5 LTS baseline, 4.0 tested**, 1.1.1 and 3.0 dropped.

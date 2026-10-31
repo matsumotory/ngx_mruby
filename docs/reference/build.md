@@ -111,7 +111,7 @@ The workflow `.github/workflows/test.yml` builds ngx_mruby and runs
 | 1.31.8, 1.30.6, 1.28.3, 1.26.3 | static and dynamic | 1.1.1w, installed, or built into nginx with `--with-openssl-src` | valgrind |
 | 1.31.8 | static | 1.1.1w, installed | AddressSanitizer and UndefinedBehaviorSanitizer |
 
-- The runner is Ubuntu 22.04 with GCC 11. The bundled mruby is 4.0.0
-  (`build_config.rb.lock`).
+- The runner is Ubuntu 22.04 with GCC 11 and Ruby 3.0. The bundled mruby is
+  4.1.0-rc2 (`build_config.rb.lock` records its version as 4.1.0).
 - `nginx_version` names the version that `build.sh` and `test.sh`
   download, 1.31.8.

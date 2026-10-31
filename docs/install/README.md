@@ -14,9 +14,10 @@ Read the [release notes](../releases/README.md) before upgrading an existing ins
 
 ### Prerequisites
 
-A C/C++ compiler, GNU make, Ruby with rake, bison, git, wget, curl,
-OpenSSL development headers/libraries, PCRE development headers/libraries,
-and zlib development headers/libraries are required. The build downloads
+A C/C++ compiler, GNU make, Ruby 3.0 or later with rake, bison, git, wget,
+curl, OpenSSL development headers/libraries, PCRE development
+headers/libraries, and zlib development headers/libraries are required. The
+build of the bundled mruby stops on Ruby 2.x. The build downloads
 third-party mrbgems from GitHub. A Docker Hub account is not required.
 
 For example, on Ubuntu 22.04, install the packages with administrator
@@ -74,34 +75,45 @@ ngx_mruby 3.0.0 has no auto-ssl mrbgem; see
 
 ### Core gems
 
-The bundled mruby is 4.0.0. ngx_mruby builds the core gems that
+The bundled mruby is 4.1.0-rc2, the second release candidate of mruby
+4.1.0. ngx_mruby builds the core gems that
 `NGX_MRUBY_CORE_GEMS` names, not mruby's `full-core.gembox`, so that the
 classes and methods of ngx_mruby scripts change only when that list
 changes. The list is the set that `full-core.gembox` of mruby 3.3.0
-selected, with these differences:
+selected, with this difference:
 
 - mruby-print is gone (mruby 3.4 removed it). `Kernel#print`, `#puts` and
   `#p` come from mruby-io.
-- hal-posix-io, hal-posix-dir and hal-posix-socket are in the list. In
-  mruby 4.0.0, mruby-io, mruby-dir and mruby-socket reach the operating
-  system through one of these back ends; they add no class or method. Only
-  4.0.0 has them: in mruby 4.1.0-rc2 the POSIX back ends are part of
-  mruby-io, mruby-dir and mruby-socket, and there are no hal-* gems, so an
-  update to mruby 4.1 removes the three names from the list.
 
-Core gems of mruby 4.0.0 that the list leaves out, although
-`full-core.gembox` of 4.0.0 takes them:
+mruby 4.1 has no hal-* gems: mruby-io, mruby-dir and mruby-socket carry
+their POSIX back ends (`ports/posix/`), so the list names no back end. A
+list written for mruby 4.0.0 that names hal-posix-io, hal-posix-dir and
+hal-posix-socket stops the build, because `ngx_mruby_core_gems` in
+`build_config.rb` stops on a name that the bundled mruby does not have.
+
+Core gems of mruby 4.1.0-rc2 that the list leaves out, although
+`full-core.gembox` of 4.1.0-rc2 takes them:
 
 | Gem | What it would change | Why it is left out |
 |---|---|---|
-| mruby-task (with hal-posix-task) | `Task`; redefines `Kernel#sleep`; every process that opens an mrb_state gets a SIGALRM interval timer (`setitimer`); at most 8 mrb_states (`MRB_TASK_MAX_VMS`) | the timer and the `sleep` of nginx workers; ngx_mruby has its own `Nginx::Async` |
+| mruby-task | `Task`; redefines `Kernel#sleep`; every process that opens an mrb_state gets a SIGALRM interval timer (`setitimer`); at most 8 mrb_states (`MRB_TASK_MAX_VMS`) | the timer and the `sleep` of nginx workers; ngx_mruby has its own `Nginx::Async` |
 | mruby-encoding | defines `MRB_UTF8_STRING` for the whole build: `String#size`, `#[]`, `#index` and others count characters instead of bytes; adds `String#valid_encoding?`, `#encoding` and `#force_encoding` | request and response data are bytes, and a script that computes a `Content-Length` from `String#size` would get another number; the owner decided on 2026-10-04 to leave it out of the default build and keep it opt-in. Cost of leaving it out: `String#valid_encoding?`, which mruby 3.3 defined in mruby-string-ext, raises `NoMethodError` (since mruby 3.4 only mruby-encoding defines it) |
+| mruby-env, mruby-process, mruby-regexp | define `ENV`, `Process` and `Regexp` (new in mruby 4.1) | the default build takes these classes from iij/mruby-env, iij/mruby-process and mattn/mruby-onig-regexp, as 2.x does; a build with both would define each class twice. The gems of iij have the same names as these core gems. Moving `ENV` and `Process` to the core gems is a later change, and 3.0 keeps mruby-onig-regexp (`docs/proposals/v3-plan.md`, section 7, item 1) |
+| mruby-signal | adds `Signal` (new in mruby 4.1) | new API; a decision of its own |
+| mruby-string-bitops | adds bit operations on `String` (new in mruby 4.1) | new API; a decision of its own |
 | mruby-strftime | adds `Time#strftime` | new API; a decision of its own |
 | mruby-benchmark | adds `Benchmark` | new API, a development tool |
+| mruby-bin-mrb | the `mrb` command, which runs compiled bytecode without a compiler (new in mruby 4.1) | a new command; the default build has the commands that it had with mruby 3.3.0 (`mrbc`, `mruby`, `mirb`, `mruby-strip`, `mruby-config`) |
 
-`full-core.gembox` of 4.0.0 leaves out mruby-sleep, mruby-bin-debugger and
-mruby-test. ngx_mruby keeps mruby-sleep, which defines `Kernel#sleep` and
-`#usleep`.
+`full-core.gembox` of 4.1.0-rc2 leaves out mruby-sleep, mruby-bin-debugger
+and mruby-test. ngx_mruby keeps mruby-sleep, which defines `Kernel#sleep`
+and `#usleep`. The hardware gems hw-* of mruby 4.1 are not in
+`full-core.gembox` and not in the list.
+
+mruby 4.1 compiles Ruby code with [Prism](https://github.com/ruby/prism).
+Its sources are in `mruby/mrbgems/mruby-compiler/lib/prism`, so a checkout
+or a source archive of ngx_mruby builds without fetching a git submodule;
+the build of mruby runs Ruby, as before, to render Prism's templates.
 
 To build with one of the gems that the list leaves out, add its name to
 `NGX_MRUBY_CORE_GEMS` in `build_config.rb`, remove `mruby/build` and build
