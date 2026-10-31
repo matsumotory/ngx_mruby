@@ -793,6 +793,15 @@ mrb_int ngx_mrb_gc_roots_add(mrb_state *mrb, mrb_value obj)
   if (h == NULL) {
     return NGX_MRB_GC_ROOTS_NONE;
   }
+  /* The holder lives as long as the state, so it is old (black) after the
+     first GC. mrb_ary_set() and mrb_ary_push() would then put obj on the gray
+     list, and the next GC would mark the fiber and, in a minor GC, promote it
+     and what it references to the old generation, also when the fiber has
+     ended before that GC: such objects are freed only by a major GC. Painting
+     the holder gray instead, as mrb_ary_modify() does, has the GC scan the
+     holder again in its final mark, which marks only the objects that are
+     still in it. */
+  mrb_write_barrier(mrb, mrb_basic_ptr(h->ary));
   if (h->free != NGX_MRB_GC_ROOTS_NONE) {
     slot = h->free;
     h->free = mrb_integer(RARRAY_PTR(h->ary)[slot]);
