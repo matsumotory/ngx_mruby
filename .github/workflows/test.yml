@@ -122,7 +122,10 @@ jobs:
             # at the top and the license and author files. test.yml itself
             # is an input.
             not_inputs='^(docs/|site/|examples/|\.github/workflows/|\.github/(dependabot\.yml|zizmor\.yml|PULL_REQUEST_TEMPLATE\.md)$|[^/]+\.md$|(AUTHORS|LEGAL|LICENSE|MITL)$)'
-            { grep -vE "${not_inputs}" "${changed}" || true; grep -xF .github/workflows/test.yml "${changed}" || true; } > "${inputs}"
+            # grep exits 1 when it selects no line, which is a result here;
+            # any other status (2: a broken pattern or a missing file) ends
+            # the step, so that a broken list cannot skip every build.
+            { grep -vE "${not_inputs}" "${changed}" || [ "$?" -eq 1 ]; grep -xF .github/workflows/test.yml "${changed}" || [ "$?" -eq 1 ]; } > "${inputs}"
             echo "files changed: $(wc -l < "${changed}")"
             if [ -s "${inputs}" ]; then
               echo "inputs of the binary or the tests among them ($(wc -l < "${inputs}"); the first 20):"
