@@ -1,6 +1,29 @@
 # Handoff: the state of the work
 
-## master into next, 2026-10-31 (21:50 JST)
+## Homepage proxy explanation, 2026-10-31
+
+- [#689](https://github.com/matsumotory/ngx_mruby/pull/689) rewrites the
+  LLM proxy explanation of the v3 homepage, in English and Japanese. Three
+  ordered rows follow one request: the application's request (proxy URL,
+  client key, model), the Ruby mapping of `route.rb` with the selected line
+  highlighted, and the upstream, the replaced credential and the JSON the
+  application receives. Model selection emphasizes the three rows in order
+  (180 ms each at 0, 180 and 360 ms), sends no request, and keeps the
+  selected state without motion under reduced motion. The trial section adds
+  the matching `curl -K client.conf -d '{"model": "mock-model-a"}'`, and a
+  new section says what the application and the proxy configure and what a
+  real provider still needs (endpoint, authentication, TLS). It claims no
+  inference, format conversion or provider compatibility.
+- `docs/proposals/site.md` records the layout rule ("Follow the request
+  before expanding the reference, 2026-10-31"). `check-home-interaction.mjs`,
+  `check-css.mjs` and `check-styles.mjs` follow the new shape and keep the
+  canonical-copy, selected-state, keyboard, no-network, no-JS, wrapping and
+  reduced-motion checks; #687's footer badge and its checks are kept.
+- Codex wrote the change; Claude reviewed it, took it over at `64d2f097d`
+  and merged `next` into it. The review and its should fix items are on the
+  PR. Design acceptance by the owner is separate from this record.
+
+## master into next, 2026-10-31 (18:40 JST)
 
 - Heads before this merge: `next` is `3c99b9deb`, the merge of
   [#687](https://github.com/matsumotory/ngx_mruby/pull/687) (the OpenSSF
@@ -21,7 +44,7 @@
 - The queue row of the OpenSSF Best Practices badge is done: #683 added the
   badge to `README.md` and `docs/test/README.md` of `master`, this merge
   brings both to `next`, and #687 shows it in the site's footer.
-- Open pull requests at 21:50 JST, besides that one:
+- Open pull requests at 18:40 JST, besides that one:
   [#678](https://github.com/matsumotory/ngx_mruby/pull/678) (mruby
   4.1.0-rc2, draft, waiting) and
   [#689](https://github.com/matsumotory/ngx_mruby/pull/689) (the LLM proxy
@@ -764,7 +787,7 @@ Taken up and still open: none.
 | `build_config.rb` rewrite with explicit gems (step 3 of section 6; Pillar A): `iij/mruby-env` and `iij/mruby-process` replaced by core gems, the choice between core `mruby-regexp` and `mruby-onig-regexp` (item 1 of section 7 keeps onig-regexp for 3.0), `monochromegane/mruby-secure-random` and `iij/mruby-digest` replaced, and `mruby-vedis` and `mruby-localmemcache` out of the default build | `next` | Ready to start: #606, which edits the same file, is merged. The part that replaces `env` and `process` with the core gems needs the subtree at 4.1.0-rc2 (the row "mruby 4.1.0"); the other parts do not |
 | mruby 4.1.0 (step 3 of section 6; item 1 of section 7). The step changes: the mruby subtree updated to the tag with Prism vendored (the tag's tarball has an empty `mrbgems/mruby-compiler/lib/prism`, a submodule upstream), the three HAL gem names (`hal-posix-dir`, `hal-posix-io`, `hal-posix-socket`) removed from `NGX_MRUBY_CORE_GEMS` and its comment, the core `env`, `process` and `regexp` gems of 4.1 decided on (see the row above), `build_config.rb.lock` regenerated, the build with `NGX_MRUBY_DEBUG_STATS` run with its tests (4.1 keeps the roots in `mrb->gc.root`), the stream path of the counted GC registrations audited, a release notes entry, and the callgrind comparison against `next`, which includes the measurement of `var` and `auth` on mruby 4.1 (step 4 of the archived proposal for the method lookup of `Nginx::Var`). The owner decided on 2026-10-29 that `next` bundles `4.1.0-rc2` now and moves to 4.1.0 in a small subtree pull request when it is tagged | `next` | Nothing: the pull request for 4.1.0-rc2 is not opened yet |
 | Build each bundled gem on mruby 4 (step 3 of section 6): #561 builds the default gem set on mruby 4.0.0; the rest is the build of all of them on 4.1.0-rc2 (the row "mruby 4.1.0"). `auto-ssl` is not built: the owner decided on 2026-10-29 to remove it from `next` | `next` | The pull request of the row "mruby 4.1.0" (not opened yet) |
-| Fiber lifecycle, the GC roots (the Pillar B row "One fiber lifecycle for HTTP and stream"): [#682](https://github.com/matsumotory/ngx_mruby/pull/682) keeps the fibers of handlers, HTTP and stream, in one holder per mrb_state, an Array registered with `mrb_gc_register()` once when the state is opened, instead of one `mrb_gc_register()` and `mrb_gc_unregister()` per fiber. The owner decided on 2026-10-31, in a session's question, with the option "先に登録のまとめを入れて測り直す (推奨)": this comes first, measured on mruby 4.0.0 with the `perf` job and checked with the soak test, and then #678 (mruby 4.1.0-rc2) is rebased onto `next` with it and measured again. The reason: mruby 4.1 keeps the GC roots in a khash, and with one key put and deleted per fiber each put walks every bucket, about 845 instructions per pair against about 374 on 4.0.0 (#678, "Leak / performance impact"). ngx_mruby avoids that cost of mruby 4.1 on its side. Nothing is reported to mruby: the owner's rule of 2026-10-31 is 「mruby側への報告は確定と明らかにどの観点でも修正すべきと判断でき、パッチをかけるものだけにしたい。ngx_mrubyの都合だけでの報告はしたくない」; a patch to mruby is only a later option if the walk is shown to be a general defect and a patch is written, and the owner reviews both first. What is left of #678 after this (auth about +6% from the VM of 4.1) is a separate decision of the owner | `next` | [#682](https://github.com/matsumotory/ngx_mruby/pull/682): CI and review; then the rebase of #678 |
+| Fiber lifecycle, the GC roots (the Pillar B row "One fiber lifecycle for HTTP and stream"): [#682](https://github.com/matsumotory/ngx_mruby/pull/682) keeps the fibers of handlers, HTTP and stream, in one holder per mrb_state, an Array registered with `mrb_gc_register()` once when the state is opened, instead of one `mrb_gc_register()` and `mrb_gc_unregister()` per fiber. The owner decided on 2026-10-31, in a session's question, with the option "先に登録のまとめを入れて測り直す (推奨)": this comes first, measured on mruby 4.0.0 with the `perf` job and checked with the soak test, and then #678 (mruby 4.1.0-rc2) is rebased onto `next` with it and measured again. The reason: mruby 4.1 keeps the GC roots in a khash, and with one key put and deleted per fiber each put walks every bucket, about 845 instructions per pair against about 374 on 4.0.0 (#678, "Leak / performance impact"). ngx_mruby avoids that cost of mruby 4.1 on its side. Nothing is reported to mruby: the owner's rule of 2026-10-31 is 「mruby側への報告は確定と明らかにどの観点でも修正すべきと判断でき、パッチをかけるものだけにしたい。ngx_mrubyの都合だけでの報告はしたくない」; a patch to mruby is only a later option if the walk is shown to be a general defect and a patch is written, and the owner reviews both first. What is left of #678 after this (auth about +6% from the VM of 4.1) is a separate decision of the owner | `next` | [#682](https://github.com/matsumotory/ngx_mruby/pull/682) is merged (`e6e1f054e`); next, the rebase of #678 onto `next` and its measurement |
 | Step 4 of section 6 of the plan, the core stability work of Pillar B (execution context, response finalization, fiber lifecycle, common layer, headers and variables, and the two agent proxy rows), then `v3.0.0-alpha.1` | `next` | Held until the safety net of step 2 is done; what is left of it is the row above for the test harness rewrite (#641 is merged; `master_process on` with several workers comes next): valgrind in CI (#634) and the auto-ssl tests (#636 on `master`) are done. #600, #603 and #605 are merged (#603 on `next` since the merge of `master` at `6b27f08da`, with the sanitizer log check of #601). The plan: nothing in the core is refactored before it exists |
 | nginx-tests required: the `nginx-tests` workflow records its results and fails only when a build, the fetch of the suite or `prove` fails. In the runs of 2026-10-28 and 2026-10-29 the build with ngx_mruby and the build without it have the same counts (511 files, 302 passed, 0 failed, 209 skipped). To do: the job fails when the build with ngx_mruby fails a file that the build without it passes, and the job joins the `needs` of `ci-ok` | `next` | Ready to start: the counts are the same in every run since #602 |
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` (the sentences that call the job advisory and say that a `FAIL` does not block a merge, under "Performance comparison with callgrind") aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR` | `next`, then `master` | Ready to start |

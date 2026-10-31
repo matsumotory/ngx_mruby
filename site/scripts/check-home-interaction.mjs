@@ -63,10 +63,18 @@ async function assertRoute(page, model) {
   assert.deepEqual(JSON.parse(await codeText(page.locator(`[data-response="${model}"] pre`))), {
     upstream: model, model: `mock-model-${model}`, credential_replaced: true,
   });
-  const selectedLine = page.locator(`.route-selection[data-rule="${model}"]`);
-  assert.equal(await page.locator('.route-selection:visible').count(), 1);
-  assert.ok(await selectedLine.isVisible(), 'the selected rule stays next to its result');
-  assert.ok((await selectedLine.textContent()).includes(`"mock-model-${model}" => ["local_api_${model}", "Bearer local-upstream-${model}"]`));
+  const mapping = page.locator('.route-source-all pre');
+  assert.ok(await mapping.isVisible(), 'the complete mapping is visible without a disclosure');
+  assert.equal(await codeText(mapping), canonicalMapping);
+  // Exactly one mapping line is highlighted, and it is the selected model's
+  // entry: the line of the other model keeps the background of the others.
+  const lines = await mapping.locator('.ec-line').evaluateAll(elements => elements.map(line => ({
+    text: line.textContent, background: getComputedStyle(line).backgroundColor,
+  })));
+  const plain = lines[0].background;
+  const highlighted = lines.filter(line => line.background !== plain).map(line => line.text);
+  assert.equal(highlighted.length, 1, `one mapping line is highlighted for model ${model}: ${JSON.stringify(highlighted)}`);
+  assert.ok(highlighted[0].includes(`"mock-model-${model}" => ["local_api_${model}", "Bearer local-upstream-${model}"]`), `the highlighted mapping line is the entry of model ${model}: ${highlighted[0]}`);
 
 }
 try {
@@ -99,10 +107,21 @@ try {
         const peerSizes = await page.locator('.flow-title').evaluateAll(headings => headings.map(el => getComputedStyle(el).fontSize));
         assert.equal(peerSizes.length, 3);
         assert.equal(new Set(peerSizes).size, 1, 'peer diagram headings share the h3 role');
-        if (width > 800) {
-          const tops = await page.locator('.routing-workspace .flow-title').evaluateAll(headings => headings.map(el => el.getBoundingClientRect().top));
-          assert.ok(Math.max(...tops) - Math.min(...tops) <= 1, 'the rule and its output align');
-        }
+        const steps = await page.locator('.flow-step').evaluateAll(elements => elements.map(el => {
+          const box = el.getBoundingClientRect();
+          return { top: box.top, bottom: box.bottom, step: el.dataset.step };
+        }));
+        assert.deepEqual(steps.map(step => step.step), ['request', 'rule', 'response']);
+        const widths = await page.locator('.v3-flow').evaluate(figure => {
+          const available = figure.clientWidth;
+          return [...figure.querySelectorAll(':scope > figcaption, :scope > .routing-workspace > .flow-step')].map(el => ({
+            available, width: el.getBoundingClientRect().width, element: el.className || el.tagName,
+          }));
+        });
+        assert.equal(widths.length, 4, 'the outer caption and three flow steps are measured');
+        assert.ok(widths.every(({ available, width }) => Math.abs(available - width) <= 1), `prose measure must not leave unused diagram width: ${JSON.stringify(widths)}`);
+        assert.ok(steps.every((step, i) => i === 0 || step.top >= steps[i - 1].bottom - 1), 'request, rule and response have an unambiguous reading order');
+        assert.equal(await page.locator('.route-source-all details, details.route-source-all').count(), 0, 'do not hide the short mapping while retaining its column space');
         await assertRoute(page, 'a'); // useful selected state before any click
         assert.deepEqual(await page.locator('.route-controls button').allTextContents(), route === '/ja/' ? ['モデルA', 'モデルB'] : ['Model A', 'Model B'], 'reader-facing labels stay short; request/rule/result retain the exact identifiers');
         const choices = await page.locator('.route-controls button').evaluateAll(buttons => buttons.map(el => {
@@ -128,22 +147,24 @@ try {
               for (const animation of animations) {
                 const timing = animation.effect.getTiming();
                 const duration = Number(timing.duration);
-                if (duration > 800 || timing.iterations !== 1) failures.push('motion is not finite');
+                if (duration + timing.delay > 800 || timing.iterations !== 1) failures.push('motion is not finite');
                 animation.pause();
                 for (const fraction of [0, .1, .5, .99]) {
-                  animation.currentTime = duration * fraction;
+                  animation.currentTime = timing.delay + duration * fraction;
                   let opacity = 1;
                   for (let el = animation.effect.target; el; el = el.parentElement) opacity *= Number(getComputedStyle(el).opacity);
                   if (opacity < 1) failures.push({ fraction, opacity });
                 }
                 animation.finish();
               }
-              window.__ngxRouteMotion = { count: animations.length, failures };
+              const delays = animations.map(animation => animation.effect.getTiming().delay);
+              window.__ngxRouteMotion = { count: animations.length, failures, delays };
             }, { once: true });
           });
           await page.locator(`[data-model="${model}"]`).click();
           const motion = await page.evaluate(() => window.__ngxRouteMotion);
-          assert.equal(motion.count, reducedMotion === 'reduce' ? 0 : 1, 'capture the actual route animation, not an empty late sample');
+          assert.equal(motion.count, reducedMotion === 'reduce' ? 0 : 3, 'capture the actual route animation, not an empty late sample');
+          assert.deepEqual(motion.delays, reducedMotion === 'reduce' ? [] : [0, 180, 360], 'request, rule and response are emphasized in order');
           assert.deepEqual(motion.failures, [], `${route} ${width} ${colorScheme}: route motion fades text or does not finish`);
           await assertRoute(page, model);
           await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
@@ -157,7 +178,7 @@ try {
         assert.equal(await page.locator('[data-model="b"]').evaluate(el => document.activeElement === el), true);
         await page.keyboard.press('Enter');
         await assertRoute(page, 'b');
-        if (width <= 800) {
+        {
           await page.locator('.route-response').scrollIntoViewIfNeeded();
           const relation = await page.evaluate(() => {
             const controls = document.querySelector('.route-controls').getBoundingClientRect();
@@ -169,7 +190,7 @@ try {
           assert.ok(relation.controlsBottom <= relation.resultTop + 1 && relation.resultBottom <= relation.viewport + 1, 'selection and response remain visible together');
         }
         assert.deepEqual(requests, [], 'illustration sent a network request');
-        await openDisclosure(page, '.route-source-all');
+        assert.ok(await page.locator('.route-source-all pre').isVisible());
         await openDisclosure(page, '.source-proof');
         await openDisclosure(page, '.sample-output');
         await openDisclosure(page, '.sample-config');
@@ -178,7 +199,8 @@ try {
         }
         if (engine === chromium) {
           await copyExact(page, page.locator('.route-source-all .copy button'), canonicalMapping);
-          await copyExact(page, page.locator('.v3-try .copy button'), canonicalStart);
+          await copyExact(page, page.locator('.v3-try .copy button').first(), canonicalStart);
+          await copyExact(page, page.locator('.try-next .copy button'), `curl -K client.conf -d '{\"model\": \"mock-model-a\"}'`);
           for (const model of ['a', 'b']) {
             await page.locator(`[data-model="${model}"]`).click();
             await copyExact(page, page.locator(`[data-response="${model}"] .copy button`), JSON.stringify({ upstream: model, model: `mock-model-${model}`, credential_replaced: true }, null, 2).replaceAll('": ', '":'));
