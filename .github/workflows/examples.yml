@@ -8,29 +8,17 @@ name: examples
 # checkout and starts it), and compares what each command prints with what
 # the README states.
 #
-# It runs on pull requests to next and on pushes to next that change an
-# example, this file, or an input of the build that the examples' images
-# make: the module and its gems, the vendored trees, build.sh and the files
-# it reads. test.yml tests the module itself.
+# It runs on ready pull requests to next that change an example, this
+# file, or an input of the build that the examples' images make: the module
+# and its gems, the vendored trees, build.sh and the files it reads. A
+# draft runs nothing, and marking it ready for review starts the run.
+# Pushes to next do not run it: the run of the pull request on its merge
+# commit tested the merge. test.yml tests the module itself.
 on:
   pull_request:
-    branches:
-      - next
-    paths:
-      - 'examples/**'
-      - '.github/workflows/examples.yml'
-      - 'src/**'
-      - 'mrbgems/**'
-      - 'mruby/**'
-      - 'dependence/**'
-      - 'build.sh'
-      - 'build_config.rb'
-      - 'build_config.rb.lock'
-      - 'nginx_version'
-      - 'configure'
-      - 'config.in'
-      - 'Makefile.in'
-  push:
+    # GitHub's defaults (opened, synchronize, reopened) and the move of a
+    # draft to ready for review: a draft runs nothing (the job's if).
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - next
     paths:
@@ -63,6 +51,7 @@ defaults:
 
 jobs:
   start:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
