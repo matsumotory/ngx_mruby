@@ -184,3 +184,6 @@ Support this project by becoming a sponsor. Your logo will show up here with a l
 This project is under the MIT License:
 
 * http://www.opensource.org/licenses/mit-license.php
+
+The license text and the copyright notice are in [LICENSE](LICENSE) (the
+same text as [MITL](MITL), which [LEGAL](LEGAL) and the sources refer to).
