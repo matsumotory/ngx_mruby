@@ -186,6 +186,26 @@ upgrading". New behavior, API cleanups and features go to `next`.
   merge: the conditions of "Review and merge" decide that. A PR that stays
   a draft says at the top of its body why (what is unfinished or not
   verified), who continues it, and what ends the draft.
+- CI is the final check in a clean environment, and the tests are run
+  locally. The owner set this rule on 2026-10-31 (the owner's words are
+  quoted in "Decisions" of `docs/HANDOFF.md` on `next`): CI is only the
+  final check in a clean environment, the tests are done thoroughly
+  locally, and CI is not packed with so many tests that a run takes tens
+  of minutes. The sessions apply it this way (their procedure, not a
+  decision of the owner): the author runs the checks that the change
+  touches locally before marking the PR ready (the suite among them when
+  `test/ci/changes.sh` gives `build` `full` or `tests`), and quotes the
+  commands and their results under "How was this tested"; a check that
+  can run locally is not left to CI ("Build and test" lists the local
+  commands). The run of a ready PR runs the smallest set of jobs that the
+  change needs ("Which jobs a run starts" in `docs/test/README.md`) and
+  finishes in about fifteen minutes, not in tens of minutes: on
+  2026-10-31, on `next`, a cell of the build matrix took 6 to 14 minutes, the run of
+  `test.yml` with the whole matrix 15 minutes, and a browser lane of the
+  site on `next` 3 to 8 minutes, the lanes in parallel ("Required status check" in
+  `docs/test/README.md`). A proposal to add a check to CI says whether it
+  can run locally, why CI needs it, and how many minutes it adds to the
+  run.
 - The PR body says which commits each result stands for: for the runs
   under "How was this tested", the commit they ran on; for the CI run that
   condition 2 of "Review and merge" counts, the head commit and the base
@@ -222,7 +242,11 @@ against `src/` and, where it matters, the nginx source; a bug fix has its
 regression test in a commit of its own before the fix commit, and the
 reviewer has run the suite at both commits (failing, then passing, with
 results matching what the author quoted); expectations assert
-on real responses, not only on "not 500"; the CI result on the head commit;
+on real responses, not only on "not 500"; "How was this tested" in the PR
+body quotes the local runs of the checks that the change touches (the
+suite among them when `test/ci/changes.sh` gives `build` `full` or
+`tests`), with their commands and results (see "Branches and pull
+requests"); the CI result on the head commit;
 when an input of the measured binary changed, the performance comparison
 quoted in the PR body and the numbers that "Design principles" asks the
 reviewer to write;
@@ -461,6 +485,15 @@ NGINX_RUNNER=valgrind sh test.sh   # run nginx under valgrind (NGINX_HEATTIME, 6
 sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12372)
 ```
 
+- Run these before a PR is marked ready: CI is the final check in a clean
+  environment, not the place where a change is first tested (see "Branches
+  and pull requests"). Run the local commands of the checks that the
+  change touches: the suite when `test/ci/changes.sh` gives `build` `full`
+  or `tests`, `sh test/ci/changes_test.sh` for `test/ci/`, the build of
+  the 2.x pages for `docs/` ("The 2.x pages of the site" in
+  `docs/test/README.md`), zizmor for `.github/` ("Static analysis of the
+  workflows" there), and `sh test/perf/compare.sh` where the change
+  affects what it measures. `docs/test/README.md` describes each of them.
 - The first full run takes a few minutes (it clones mrbgems from GitHub and builds
   mruby and nginx). After that, use `ONLY_BUILD_NGX_MRUBY=1`.
 - `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. After changing
