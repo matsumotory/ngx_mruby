@@ -5,6 +5,9 @@
 - Shared handoff and ownership follow `AGENTS.md` and "Continuing shared
   work" in `docs/DEVELOPMENT.md`, also when Codex or a human takes over.
   The paths below are local Claude conventions, not handoff evidence.
+- Site work starts with `docs/proposals/site.md#site-design-acceptance` as
+  required by AGENTS. The repository procedure is complete without personal
+  skills; do not treat a missing local skill as having read it.
 - Parallel work: use one `git worktree` per task, under `.claude/worktrees/`
   (`git worktree add -b claude/<topic> .claude/worktrees/<topic> origin/<base>`).
   Each worktree has its own `build/`. To run `test.sh` in two worktrees at the
