@@ -41,6 +41,28 @@ t.assert('stream upstream', '#upstream_server= raises TypeError for nil and leav
   t.assert_equal 'TypeError, 192.0.2.12:80', results['server_nil']
 end
 
+{
+  'empty' => 'invalid upstream server (empty or too long)',
+  'long' => 'invalid upstream server (empty or too long)',
+  'port' => 'invalid port in upstream 192.0.2.16:notaport',
+  'nohost' => 'no host in upstream :80',
+  'ipv6' => 'invalid IPv6 address in upstream [2001:db8::zz]:80',
+  'unix' => 'no path in the unix domain socket in upstream unix:',
+  'host' => 'upstream server nonexistent.invalid:80 is not an IP address or a unix: path',
+  'localhost' => 'upstream server localhost:80 is not an IP address or a unix: path'
+}.each do |name, message|
+  t.assert('stream upstream', "#upstream_server= raises ArgumentError for the string #{name} and leaves the server") do
+    t.assert_equal "ArgumentError, 192.0.2.12:80, #{message}", results["server_#{name}"]
+  end
+end
+
+t.assert('stream upstream', '#upstream_server= accepts an IPv4 address with or without a port, an IPv6 address and a unix: path') do
+  t.assert_equal '192.0.2.17:8080', results['server_form0']
+  t.assert_equal '192.0.2.18', results['server_form1']
+  t.assert_equal '[2001:db8::2]:8080', results['server_form2']
+  t.assert_equal 'unix:/tmp/mrb_stream_check.sock', results['server_form3']
+end
+
 t.assert('stream upstream', 'Nginx::Stream::Connection.new raises TypeError for nil') do
   t.assert_equal 'TypeError', results['new_nil']
 end
