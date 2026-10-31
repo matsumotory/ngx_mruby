@@ -221,14 +221,19 @@ static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
   u.url.data = serverp;
   u.url.len = RSTRING_LEN(server);
   u.default_port = 80;
-  if (ngx_parse_url(r->pool, &u) != NGX_OK || u.naddrs == 0) {
+  u.no_resolve = 1;
+  if (ngx_parse_url(r->pool, &u) != NGX_OK) {
     if (u.err) {
-      mrb_raisef(mrb, E_RUNTIME_ERROR, "%S in upstream %S", mrb_str_new_cstr(mrb, u.err), server);
+      mrb_raisef(mrb, E_ARGUMENT_ERROR, "%S in upstream %S", mrb_str_new_cstr(mrb, u.err), server);
     }
     mrb_raisef(mrb, E_RUNTIME_ERROR, "could not parse upstream server %S", server);
   }
+  // With no_resolve, nginx accepts a host name and gives it no address.
+  if (u.naddrs == 0) {
+    mrb_raisef(mrb, E_ARGUMENT_ERROR, "upstream server %S is not an IP address or a unix: path", server);
+  }
 
-  /* Copy the name and the resolved sockaddr into worker-lifetime storage so the
+  /* Copy the name and the sockaddr into worker-lifetime storage so the
    * shared peer never points into the freed request pool (use-after-free). */
   store = ngx_mrb_upstream_server_store(ctx->target);
   if (store == NULL) {
