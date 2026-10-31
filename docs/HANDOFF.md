@@ -1,5 +1,27 @@
 # Handoff: the state of the work
 
+## Maintenance-entry line regression, 2026-10-31
+
+- The stable entry should let a 2.7 reader choose installation, API and
+  operations guidance without mistaking development or historical material
+  for released behavior. Independent EN/JA desktop and 320/390 px review of
+  #673 source `a6ac31dc` found that purpose clear, but found five Japanese
+  heading/body items with one- or two-character final lines.
+- Test-only #672 commit `ce1c2825` invokes the existing Japanese line checker
+  on `/v2/ja/`, with no prose, CSS or assertion change. Its
+  [author run](https://github.com/matsumotory/ngx_mruby/actions/runs/41163076031/job/124424683089)
+  failed only that step: the same five items in Chromium and WebKit, twelve
+  failures because the heading also exceeded one line at 390 px. The other
+  site checks and runtime/example workflows passed. The
+  [independent repeat](https://github.com/matsumotory/ngx_mruby/actions/runs/41163076031/job/124429013370)
+  reproduced the same twelve failures with all other checks passing.
+  The separate #673 prose fix is `84a6f289`; #672 previews that exact source.
+- The correction keeps the shared type scale, links, maintenance/release
+  distinctions and historical contracts. A shorter title and natural sentences
+  replace the orphan lines; Japanese paragraph continuations no longer add
+  rendered spaces. The unchanged line checker and new dark screenshots must
+  pass on the exact corrected source before visual acceptance.
+
 ## Local routing walkthrough and cloud continuation, 2026-10-30
 
 - Draft #672 continues `codex/site-purpose-rebuild` from the preserved
@@ -66,17 +88,22 @@
   The animation targets were not individually identified by that style log.
   The separate CSS correction makes the Copy surfaces static and gives the button an explicit token
   background, while retaining hover/focus opacity, focus rings and success
-  feedback. Its current-head browser result remains required.
+  feedback. At `261371fd`, the full site, runtime and example checks passed;
+  the [independent green repeat](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116891/job/124345060406)
+  passed the same 24-state regression and all remaining site checks.
   The five earlier continuation commits did not consistently separate tests
-  from fixes; the PR records their evidence and limitations. Owner acceptance
-  of that earlier history remains pending and blocks merge.
+  from fixes; the PR records their evidence and limitations. The owner accepted
+  that alternative evidence on 2026-10-31 for those five commits only. New
+  corrections retain the normal separate-test/independent-repeat procedure.
 - The trusted #672 preview may build #673's exact source for v2 entry pixels;
   production push/dispatch builds always use `master`. Read-only post-deploy
-  verification is being added to the existing workflow: artifact/deployment
+  verification was added to the existing workflow: artifact/deployment
   SHA, public branch policy, live bytes, HTTPS, Lighthouse and a small set of
-  desktop/mobile journey screenshots. It adds no authentication or permission.
-- Pending: regression red/fix green and independent repeat, final-head pixels,
-  #673 maintenance-entry pixels, recorded independent PR reviews, then all
+  desktop/mobile journey screenshots. Its negative browser fixture and twelve
+  pre-deploy visits passed CI; actual production verification has not run.
+  It adds no authentication or permission.
+- Pending: maintenance-entry fix green and independent green repeat, final-head
+  #673 pixels, recorded independent PR reviews, then all
   normal merge gates. The local environment has no Docker and browser startup
   is blocked; no local runtime/browser pass is claimed.
 - Site production acceptance is now in scope, but both PRs remain Draft until

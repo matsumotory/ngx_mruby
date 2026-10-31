@@ -69,7 +69,7 @@ jobs:
       # The fixed SHA is never selected by push or workflow_dispatch deploys.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.repository == 'matsumotory/ngx_mruby' && github.event.pull_request.number == 672 && github.event.pull_request.head.repo.full_name == 'matsumotory/ngx_mruby' && github.head_ref == 'codex/site-purpose-rebuild' && 'a6ac31dc9b91498644e0174d22ed5c8b033f9f0b' || 'master' }}
+          ref: ${{ github.event_name == 'pull_request' && github.repository == 'matsumotory/ngx_mruby' && github.event.pull_request.number == 672 && github.event.pull_request.head.repo.full_name == 'matsumotory/ngx_mruby' && github.head_ref == 'codex/site-purpose-rebuild' && '84a6f289445414ace360c9a70f1748dce47e207f' || 'master' }}
           path: master
           fetch-depth: 0
           persist-credentials: false
