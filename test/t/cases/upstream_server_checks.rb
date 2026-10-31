@@ -31,6 +31,14 @@ t.assert('upstream', 'Nginx::Upstream#server= raises TypeError for nil and leave
   t.assert_equal 'TypeError, 192.0.2.2:80', res['body']
 end
 
+['unix', 'ipv4'].each do |name|
+  t.assert('upstream', "Nginx::Upstream#server= raises ArgumentError for the #{name} string with a NUL byte and leaves the server") do
+    res = upstream_checks_get("/server_nul?#{name}")
+    t.assert_equal 200, res.code
+    t.assert_equal 'ArgumentError, 192.0.2.2:80, invalid upstream server (contains a NUL byte)', res['body']
+  end
+end
+
 t.assert('upstream', 'Nginx::Upstream.new raises TypeError for nil') do
   res = upstream_checks_get('/new_nil')
   t.assert_equal 200, res.code

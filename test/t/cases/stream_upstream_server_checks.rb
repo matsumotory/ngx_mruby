@@ -41,6 +41,12 @@ t.assert('stream upstream', '#upstream_server= raises TypeError for nil and leav
   t.assert_equal 'TypeError, 192.0.2.12:80', results['server_nil']
 end
 
+['unix', 'ipv4'].each do |name|
+  t.assert('stream upstream', "#upstream_server= raises for the #{name} string with a NUL byte and leaves the server") do
+    t.assert_equal 'RuntimeError, 192.0.2.12:80, invalid upstream server (contains a NUL byte)', results["server_nul_#{name}"]
+  end
+end
+
 t.assert('stream upstream', 'Nginx::Stream::Connection.new raises TypeError for nil') do
   t.assert_equal 'TypeError', results['new_nil']
 end
