@@ -62,9 +62,6 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     on every request (`fopen`), and when a script gives `Nginx::SSL` the
     paths of a certificate and a key, they are read during the handshake
     (`BIO_new_file`, `SSL_use_PrivateKey_file`);
-  - `Nginx::Upstream#server=` resolves a host name with the system resolver
-    when it is called (`ngx_parse_url` without `no_resolve`) and waits for
-    the answer; an IP address does not wait;
   - an operator's script blocks its worker when it uses mruby-sleep,
     mruby-socket or mruby-io, which the default build includes on both
     branches, or matsumotory/mruby-redis (a hiredis client), which the
