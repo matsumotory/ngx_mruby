@@ -8,7 +8,11 @@ export function allowsReadOnlyRequest(request, origin, imageUrls = []) {
   return request.resourceType() === 'image' && imageUrls.includes(request.url());
 }
 
-export async function readOnlyContext(browser, origin, options = {}, imageUrls = []) {
+// fixtures maps an exact off-origin image URL to { contentType, body }. Such
+// a request is answered from the fixture and never reaches the network, so a
+// check does not depend on a third-party service.
+export async function readOnlyContext(browser, origin, options = {}, fixtures = {}) {
+  const imageUrls = Object.keys(fixtures);
   const context = await browser.newContext({ ...options, serviceWorkers: 'block' });
   const blocked = [], errors = [];
   const pending = new Set();
@@ -19,6 +23,10 @@ export async function readOnlyContext(browser, origin, options = {}, imageUrls =
     if (!allowsReadOnlyRequest(request, origin, imageUrls)) {
       blocked.push(`${request.method()} ${request.url()}`);
       return route.abort();
+    }
+    if (new URL(request.url()).origin !== new URL(origin).origin) {
+      const { contentType, body } = fixtures[request.url()];
+      return route.fulfill({ status: 200, contentType, body });
     }
     // Route handlers do not intercept every hop of a browser redirect.
     // Fetch one response only; canonical verification URLs must not redirect.

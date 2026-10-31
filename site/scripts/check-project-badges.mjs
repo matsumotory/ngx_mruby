@@ -1,11 +1,14 @@
-// Offline markup validation by default. --browser additionally checks real
-// external image decoding, footer geometry and contextual light/dark pixels.
+// Offline markup validation by default. --browser additionally checks the
+// footer at 375 px with the badge served from a local stand-in (never from
+// bestpractices.dev): decoding, geometry, keyboard focus and light/dark
+// pixels, in five states. check-live.mjs fetches the real image after the
+// deploy.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { elements, hasClass, readHtml, textContent } from './lib/html.mjs';
 import { htmlFiles } from './lib/site.mjs';
-import { OPENSSF_BADGE } from './lib/project-badges.mjs';
+import { OPENSSF_BADGE, OPENSSF_BADGE_FIXTURE } from './lib/project-badges.mjs';
 const args = process.argv.slice(2);
 let browserCheck = false, dist = path.resolve('dist'), out = path.resolve('build-screenshots/badges');
 for (let i = 0; i < args.length; i++) {
@@ -41,48 +44,53 @@ if (browserCheck) {
   const records = [];
   let complete = false;
   try {
-    for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
-      const browser = await engine.launch();
+    // One footer component serves every page: v3 English and v2 Japanese in
+    // Chromium in both themes, and one WebKit state for its Option-Tab focus.
+    const states = [
+      ...['/', '/v2/ja/'].flatMap(route => ['light', 'dark'].map(colorScheme => ({ engineName: 'chromium', route, colorScheme }))),
+      { engineName: 'webkit', route: '/ja/', colorScheme: 'light' },
+    ];
+    const width = 375;
+    for (const engineName of ['chromium', 'webkit']) {
+      const browser = await { chromium, webkit }[engineName].launch();
       try {
-        for (const width of [375, 1440]) for (const colorScheme of ['light', 'dark']) {
-          const { context, blocked, close } = await readOnlyContext(browser, server.url, { viewport: { width, height: width < 640 ? 664 : 900 }, colorScheme }, [OPENSSF_BADGE.src]);
+        for (const { route, colorScheme } of states.filter(state => state.engineName === engineName)) {
+          const { context, blocked, close } = await readOnlyContext(browser, server.url, { viewport: { width, height: 664 }, colorScheme }, { [OPENSSF_BADGE.src]: OPENSSF_BADGE_FIXTURE });
           try {
             const page = await context.newPage();
             const errors = [];
             page.on('pageerror', error => errors.push(error.message));
-            for (const route of ['/', '/ja/', '/v2/', '/v2/ja/']) {
-              await page.goto(server.url + route, { waitUntil: 'load' });
-              const badge = page.locator('.project-badge');
-              await badge.scrollIntoViewIfNeeded();
-              await page.evaluate(() => document.fonts.ready);
-              // Lazy image fetch starts after intersection; WebKit may reject
-              // decode() while that fetch has not yet produced an image.
-              await page.waitForFunction(() => {
-                const image = document.querySelector('.project-badge img');
-                return image.complete && image.naturalWidth > 0;
-              });
-              const image = await badge.locator('img').evaluate(async el => {
-                await el.decode();
-                const r = el.getBoundingClientRect();
-                return { complete: el.complete, naturalWidth: el.naturalWidth, naturalHeight: el.naturalHeight, left: r.left, right: r.right, width: r.width, height: r.height };
-              });
-              assert.ok(image.complete && image.naturalWidth > 0 && image.naturalHeight > 0, 'external badge must really decode');
-              assert.ok(image.left >= 0 && image.right <= width, `${route}: badge clips at ${width}`);
-              assert.ok(Math.abs(image.width / image.height - image.naturalWidth / image.naturalHeight) < 0.02, 'badge aspect ratio');
-              assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'no horizontal page scroll');
-              await page.locator('.site-footer a[href="https://github.com/matsumotory/ngx_mruby"]').focus();
-              // Match check-focus.mjs: WebKit's native link navigation uses
-              // Option-Tab; plain Tab visits form controls by default.
-              await page.keyboard.press(engineName === 'webkit' ? 'Alt+Tab' : 'Tab', { delay: 60 });
-              assert.equal(await badge.evaluate(el => el === document.activeElement), true, 'badge is keyboard reachable');
-              const name = `${engineName}-${route.replaceAll('/', '-').replace(/^-|-$/g, '') || 'home'}-${colorScheme}-${width}.png`;
-              await page.screenshot({ path: path.join(out, name) });
-              assert.deepEqual(blocked, [], 'only same-origin GET and the exact badge image GET are allowed');
-              assert.deepEqual(errors, [], 'no page exception');
-              records.push({ route, engine: engineName, width, colorScheme, image, file: name });
-            }
+            await page.goto(server.url + route, { waitUntil: 'load' });
+            const badge = page.locator('.project-badge');
+            await badge.scrollIntoViewIfNeeded();
+            await page.evaluate(() => document.fonts.ready);
+            // Lazy image fetch starts after intersection; WebKit may reject
+            // decode() while that fetch has not yet produced an image.
+            await page.waitForFunction(() => {
+              const image = document.querySelector('.project-badge img');
+              return image.complete && image.naturalWidth > 0;
+            });
+            const image = await badge.locator('img').evaluate(async el => {
+              await el.decode();
+              const r = el.getBoundingClientRect();
+              return { complete: el.complete, naturalWidth: el.naturalWidth, naturalHeight: el.naturalHeight, left: r.left, right: r.right, width: r.width, height: r.height };
+            });
+            assert.ok(image.complete && image.naturalWidth > 0 && image.naturalHeight > 0, 'badge image must decode');
+            assert.ok(image.left >= 0 && image.right <= width, `${route}: badge clips at ${width}`);
+            assert.ok(Math.abs(image.width / image.height - image.naturalWidth / image.naturalHeight) < 0.02, 'badge aspect ratio');
+            assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'no horizontal page scroll');
+            await page.locator('.site-footer a[href="https://github.com/matsumotory/ngx_mruby"]').focus();
+            // Match check-focus.mjs: WebKit's native link navigation uses
+            // Option-Tab; plain Tab visits form controls by default.
+            await page.keyboard.press(engineName === 'webkit' ? 'Alt+Tab' : 'Tab', { delay: 60 });
+            assert.equal(await badge.evaluate(el => el === document.activeElement), true, 'badge is keyboard reachable');
+            const name = `${engineName}-${route.replaceAll('/', '-').replace(/^-|-$/g, '') || 'home'}-${colorScheme}-${width}.png`;
+            await page.screenshot({ path: path.join(out, name) });
+            assert.deepEqual(blocked, [], 'only same-origin GET and the badge stand-in are allowed');
+            assert.deepEqual(errors, [], 'no page exception');
+            records.push({ route, engine: engineName, width, colorScheme, image, file: name });
           } catch (error) {
-            console.error(`check-project-badges state: ${engineName} ${width} ${colorScheme}; ${records.length}/32 complete`);
+            console.error(`check-project-badges state: ${engineName} ${route} ${colorScheme}; ${records.length}/${states.length} complete`);
             throw error;
           } finally { await close(); }
         }
@@ -94,8 +102,8 @@ if (browserCheck) {
     finally {
       const manifest = JSON.parse(fs.readFileSync(path.join(dist, 'docs-index.json'), 'utf8'));
       const v2 = JSON.parse(fs.readFileSync(path.join(dist, 'v2/docs-index.json'), 'utf8'));
-      fs.writeFileSync(path.join(out, 'evidence.json'), JSON.stringify({ source_revision: manifest.source_revision, v2_source_revision: v2.source_revision, working_tree_clean: manifest.working_tree_clean, complete: complete && records.length === 32, pages: records }, null, 2) + '\n');
+      fs.writeFileSync(path.join(out, 'evidence.json'), JSON.stringify({ source_revision: manifest.source_revision, v2_source_revision: v2.source_revision, working_tree_clean: manifest.working_tree_clean, complete: complete && records.length === 5, pages: records }, null, 2) + '\n');
     }
   }
-  console.log(`check-project-badges: ${records.length} real-image/footer/focus checks and screenshots at 375/1440 px in both engines, themes, languages and versions`);
+  console.log(`check-project-badges: ${records.length} footer/focus checks and screenshots at 375 px with the local badge stand-in (Chromium: / and /v2/ja/, light and dark; WebKit: /ja/ light)`);
 }

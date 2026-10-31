@@ -20,10 +20,6 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const badgeRequests = [];
 const badgeServer = http.createServer((request, response) => {
   badgeRequests.push(`${request.method} ${request.url}`);
-  if (request.url === '/badge-redirect.svg') {
-    response.writeHead(302, { location: '/redirect-target.svg' }).end();
-    return;
-  }
   response.writeHead(200, { 'content-type': 'image/svg+xml' });
   response.end('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>');
 });
@@ -58,12 +54,12 @@ try {
     await close();
   }
   const badge = external + '/badge.svg';
-  const redirected = external + '/badge-redirect.svg';
-  const allowed = await readOnlyContext(browser, origin, {}, [badge, redirected]);
+  const fixture = { contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>' };
+  const allowed = await readOnlyContext(browser, origin, {}, { [badge]: fixture });
   try {
     const page = await allowed.context.newPage();
     await page.goto(origin);
-    const loaded = await page.evaluate(async ({ badge, redirected }) => {
+    const loaded = await page.evaluate(async ({ badge }) => {
       const image = src => new Promise(resolve => {
         const img = document.createElement('img');
         img.onload = () => { const ok = img.naturalWidth > 0; img.remove(); resolve(ok); };
@@ -81,19 +77,18 @@ try {
         document.body.append(script);
       });
       const nearMiss = await image(badge + '?other=1');
-      const redirect = await image(redirected);
-      return { ok, nearMiss, redirect };
-    }, { badge, redirected });
-    assert.deepEqual(loaded, { ok: true, nearMiss: false, redirect: false });
+      return { ok, nearMiss };
+    }, { badge });
+    assert.deepEqual(loaded, { ok: true, nearMiss: false });
     const otherPage = await allowed.context.newPage();
     await assert.rejects(() => otherPage.goto(badge), 'a document at the image URL stays blocked');
     await otherPage.close();
-    assert.equal(allowed.blocked.length, 7, 'fetch, POST, HEAD, script, near-miss image, redirect and document blocked');
-    assert.deepEqual(badgeRequests, ['GET /badge.svg', 'GET /badge-redirect.svg'], 'only the exact image GET reaches the external server; no redirect follow-up');
+    assert.equal(allowed.blocked.length, 6, 'fetch, POST, HEAD, script, near-miss image and document blocked');
+    assert.deepEqual(badgeRequests, [], 'the fixture answers the exact image GET; nothing reaches the external server');
   } finally { await allowed.close(); }
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));
   await new Promise(resolve => badgeServer.close(resolve));
 }
-console.log('test-read-only-browser: opted-in exact external image GET accepted, non-image/method/URL/redirect negatives passed; same-origin GET accepted; POST, off-origin GET, redirect follow-up, service worker and WebSocket rejected without server traffic');
+console.log('test-read-only-browser: opted-in exact external image GET answered from its fixture without network, non-image/method/URL negatives passed; same-origin GET accepted; POST, off-origin GET, redirect follow-up, service worker and WebSocket rejected without server traffic');

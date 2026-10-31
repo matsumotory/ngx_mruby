@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
 import { loadSample } from './lib/samples.mjs';
+import { serveBadgeFixture } from './lib/project-badges.mjs';
 const site = path.resolve(new URL('..', import.meta.url).pathname);
 const server = await serve(path.join(site, 'dist'));
 let count = 0;
@@ -76,14 +77,17 @@ try {
       for (const route of ['/', '/ja/']) for (const width of [320, 390, 768, 1440]) for (const reducedMotion of ['reduce', 'no-preference']) for (const colorScheme of ['light', 'dark']) {
         const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme, reducedMotion,
           ...(engine === chromium ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
+        // The footer badge comes from a local stand-in, never bestpractices.dev.
+        await serveBadgeFixture(context);
         const page = await context.newPage();
         lastPage = page; lastState = `${engine.name()} ${route} ${width} ${reducedMotion} ${colorScheme}`;
         await page.goto(server.url + route);
         await page.evaluate(() => document.fonts.ready);
         // Exclude Pagefind's unrelated lazy initialization from route traffic.
         await page.locator('#starlight__search .pagefind-ui__search-input').waitFor({ state: 'attached' });
-        // Finish the static footer image before observing the demonstration's
-        // traffic. Do not filter any request from the model/copy assertions.
+        // Finish the static footer image (the local stand-in) before observing
+        // the demonstration's traffic. Do not filter any request from the
+        // model/copy assertions.
         await page.locator('.project-badge').scrollIntoViewIfNeeded();
         await page.waitForFunction(() => {
           const image = document.querySelector('.project-badge img');
