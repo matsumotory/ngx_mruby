@@ -14,7 +14,8 @@
 // when its path is a file of the built site, with "/" read as
 // "/index.html", and its fragment, if any, is the id of an element of that
 // page (or the name of an a element). Other URLs (other origins, mailto:,
-// data:) are counted and not fetched.
+// data:) are counted and not fetched. check-project-badges.mjs separately
+// validates the one external footer image and its real browser loading.
 //
 // A URL attribute without a value (<a href>, href="") is a problem too, and
 // so is an attribute name with a quote, "<" or "=" in it on any element:
