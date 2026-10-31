@@ -97,10 +97,11 @@ try {
         assert.deepEqual(steps.map(step => step.step), ['request', 'rule', 'response']);
         const widths = await page.locator('.v3-flow').evaluate(figure => {
           const available = figure.clientWidth;
-          return [...figure.querySelectorAll('.flow-step, figcaption')].map(el => ({
+          return [...figure.querySelectorAll(':scope > figcaption, :scope > .routing-workspace > .flow-step')].map(el => ({
             available, width: el.getBoundingClientRect().width, element: el.className || el.tagName,
           }));
         });
+        assert.equal(widths.length, 4, 'the outer caption and three flow steps are measured');
         assert.ok(widths.every(({ available, width }) => Math.abs(available - width) <= 1), `prose measure must not leave unused diagram width: ${JSON.stringify(widths)}`);
         assert.ok(steps.every((step, i) => i === 0 || step.top >= steps[i - 1].bottom - 1), 'request, rule and response have an unambiguous reading order');
         assert.equal(await page.locator('.route-source-all details, details.route-source-all').count(), 0, 'do not hide the short mapping while retaining its column space');
