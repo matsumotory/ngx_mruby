@@ -32,7 +32,7 @@ const external = `http://127.0.0.1:${badgeServer.address().port}`;
 let browser;
 try {
   browser = await chromium.launch();
-  const { context, blocked } = await readOnlyContext(browser, origin);
+  const { context, blocked, close } = await readOnlyContext(browser, origin);
   try {
     const page = await context.newPage();
     await page.goto(origin);
@@ -55,7 +55,7 @@ try {
     assert.ok(!requests.some(item => /write|off-origin|worker|UPGRADE/.test(item)), 'no rejected traffic reaches the server');
     assert.equal(context.serviceWorkers().length, 0);
   } finally {
-    await context.close();
+    await close();
   }
   const badge = external + '/badge.svg';
   const redirected = external + '/badge-redirect.svg';
@@ -90,7 +90,7 @@ try {
     await otherPage.close();
     assert.equal(allowed.blocked.length, 7, 'fetch, POST, HEAD, script, near-miss image, redirect and document blocked');
     assert.deepEqual(badgeRequests, ['GET /badge.svg', 'GET /badge-redirect.svg'], 'only the exact image GET reaches the external server; no redirect follow-up');
-  } finally { await allowed.context.close(); }
+  } finally { await allowed.close(); }
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));

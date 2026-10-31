@@ -10,8 +10,11 @@ export function allowsReadOnlyRequest(request, origin, imageUrls = []) {
 
 export async function readOnlyContext(browser, origin, options = {}, imageUrls = []) {
   const context = await browser.newContext({ ...options, serviceWorkers: 'block' });
-  const blocked = [];
-  await context.route('**/*', async route => {
+  const blocked = [], errors = [];
+  const pending = new Set();
+  let closing = false, closePromise;
+  async function handle(route) {
+    if (closing) return route.abort();
     const request = route.request();
     if (!allowsReadOnlyRequest(request, origin, imageUrls)) {
       blocked.push(`${request.method()} ${request.url()}`);
@@ -30,10 +33,32 @@ export async function readOnlyContext(browser, origin, options = {}, imageUrls =
     } finally {
       await response.dispose();
     }
+  }
+  await context.route('**/*', route => {
+    // Event callbacks must not become unhandled rejections during cleanup.
+    // Record failures and reject close(), so verification cannot call them green.
+    const task = handle(route).catch(async error => {
+      errors.push(error);
+      try { await route.abort(); } catch (abortError) { errors.push(abortError); }
+    });
+    pending.add(task);
+    void task.then(() => pending.delete(task));
+    return task;
   });
   await context.routeWebSocket('**/*', socket => {
     blocked.push(`WebSocket ${socket.url()}`);
     return socket.close({ code: 1008, reason: 'Read-only site verification' });
   });
-  return { context, blocked };
+  function close() {
+    if (closePromise) return closePromise;
+    closing = true; // New requests are still intercepted, but no new fetch starts.
+    closePromise = (async () => {
+      while (pending.size) await Promise.all([...pending]);
+      await context.close();
+      while (pending.size) await Promise.all([...pending]);
+      if (errors.length) throw new AggregateError(errors, 'Read-only verification request failed');
+    })();
+    return closePromise;
+  }
+  return { context, blocked, close };
 }

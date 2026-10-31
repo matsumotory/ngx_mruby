@@ -82,6 +82,15 @@ try {
         await page.evaluate(() => document.fonts.ready);
         // Exclude Pagefind's unrelated lazy initialization from route traffic.
         await page.locator('#starlight__search .pagefind-ui__search-input').waitFor({ state: 'attached' });
+        // Finish the static footer image before observing the demonstration's
+        // traffic. Do not filter any request from the model/copy assertions.
+        await page.locator('.project-badge').scrollIntoViewIfNeeded();
+        await page.waitForFunction(() => {
+          const image = document.querySelector('.project-badge img');
+          return image.complete && image.naturalWidth > 0;
+        });
+        await page.locator('.project-badge img').evaluate(image => image.decode());
+        await page.evaluate(() => scrollTo(0, 0));
         assert.deepEqual(await page.locator('.home-v3 a').evaluateAll(links => links.filter(a => /[→↓]\s*$/.test(a.textContent)).map(a => a.textContent)), [], 'links use layout, not trailing arrows');
         const peerSizes = await page.locator('.flow-title').evaluateAll(headings => headings.map(el => getComputedStyle(el).fontSize));
         assert.equal(peerSizes.length, 3);

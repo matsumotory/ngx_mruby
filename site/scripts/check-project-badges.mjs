@@ -45,7 +45,7 @@ if (browserCheck) {
       const browser = await engine.launch();
       try {
         for (const width of [375, 1440]) for (const colorScheme of ['light', 'dark']) {
-          const { context, blocked } = await readOnlyContext(browser, server.url, { viewport: { width, height: width < 640 ? 664 : 900 }, colorScheme }, [OPENSSF_BADGE.src]);
+          const { context, blocked, close } = await readOnlyContext(browser, server.url, { viewport: { width, height: width < 640 ? 664 : 900 }, colorScheme }, [OPENSSF_BADGE.src]);
           try {
             const page = await context.newPage();
             const errors = [];
@@ -55,6 +55,12 @@ if (browserCheck) {
               const badge = page.locator('.project-badge');
               await badge.scrollIntoViewIfNeeded();
               await page.evaluate(() => document.fonts.ready);
+              // Lazy image fetch starts after intersection; WebKit may reject
+              // decode() while that fetch has not yet produced an image.
+              await page.waitForFunction(() => {
+                const image = document.querySelector('.project-badge img');
+                return image.complete && image.naturalWidth > 0;
+              });
               const image = await badge.locator('img').evaluate(async el => {
                 await el.decode();
                 const r = el.getBoundingClientRect();
@@ -65,7 +71,9 @@ if (browserCheck) {
               assert.ok(Math.abs(image.width / image.height - image.naturalWidth / image.naturalHeight) < 0.02, 'badge aspect ratio');
               assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'no horizontal page scroll');
               await page.locator('.site-footer a[href="https://github.com/matsumotory/ngx_mruby"]').focus();
-              await page.keyboard.press('Tab');
+              // Match check-focus.mjs: WebKit's native link navigation uses
+              // Option-Tab; plain Tab visits form controls by default.
+              await page.keyboard.press(engineName === 'webkit' ? 'Alt+Tab' : 'Tab', { delay: 60 });
               assert.equal(await badge.evaluate(el => el === document.activeElement), true, 'badge is keyboard reachable');
               const name = `${engineName}-${route.replaceAll('/', '-').replace(/^-|-$/g, '') || 'home'}-${colorScheme}-${width}.png`;
               await page.screenshot({ path: path.join(out, name) });
@@ -73,7 +81,10 @@ if (browserCheck) {
               assert.deepEqual(errors, [], 'no page exception');
               records.push({ route, engine: engineName, width, colorScheme, image, file: name });
             }
-          } finally { await context.close(); }
+          } catch (error) {
+            console.error(`check-project-badges state: ${engineName} ${width} ${colorScheme}; ${records.length}/32 complete`);
+            throw error;
+          } finally { await close(); }
         }
       } finally { await browser.close(); }
     }
