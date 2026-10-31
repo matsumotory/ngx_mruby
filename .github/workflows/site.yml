@@ -225,6 +225,10 @@ jobs:
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-japanese-lines.mjs
+      - name: Check the Japanese maintenance entry lines in Chromium and WebKit
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' && steps.v2.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-japanese-lines.mjs --pages /v2/ja/
       - name: Check the focus ring and that the header covers no focused element, in Chromium and WebKit
         if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
