@@ -5,14 +5,14 @@
 - [#687](https://github.com/matsumotory/ngx_mruby/pull/687), based on `next@3c320348`, adds the requested
   OpenSSF Best Practices badge to the common EN/JA footer and names the
   existing license link MIT. It does not alter the hero, runtime or APIs.
-- The external image uses the exact project-16057 URL. Builds remain offline;
-  browser/live verification admits only this explicit image GET, rejects
-  redirects and other off-origin requests, and checks actual decoding.
-  The PR records why the optional CI badge is omitted.
-- Author verification and current head/base results belong in that PR's
-  checkpoint. The owner requested Ready for review after implementation and
-  verification, then a stop for Claude's review; no merge/deployment is part
-  of this task. The existing site publication is separate from this change.
+- The external image uses the exact project-16057 URL. Builds remain offline.
+  The browser checks before the deploy answer that URL from a local stand-in
+  and reject every other off-origin request; only `check-live.mjs`, after the
+  deploy, fetches the real image, with retries. The PR records why the
+  optional CI badge is omitted.
+- Codex wrote the change; Claude took the PR over on 2026-10-31 after its
+  review and owns the merge. Pointing the license link to `LICENSE` instead
+  of `MITL` waits for the merge of `master` into `next`.
 
 ## Site publication and handoff, 2026-10-31
 

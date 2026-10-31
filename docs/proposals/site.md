@@ -1307,9 +1307,11 @@ acceptance; the interaction check covers that separately.
   added: the footer already links to GitHub, and a next-only status beside
   the stable documentation would blur version scope. The footer wraps as a
   unit at narrow widths; keep the badge's aspect ratio and visible focus.
-  `check-project-badges.mjs` checks the exact link/image/alt and actual loading,
-  with contextual 375/1440 px light/dark screenshots. External-service or
-  image-decoding failures are failures, not an offline-build dependency.
+  `check-project-badges.mjs` checks the exact link/image/alt on every page and,
+  in a browser, the footer at 375 px in light and dark. The checks before the
+  deploy serve the badge's URL from a local stand-in, so bestpractices.dev
+  cannot hold the publication; `check-live.mjs` fetches the real image after
+  the deploy, with retries.
 - Check: each page's language link answers 200 with the same path under the
   other prefix; `/` with `Accept-Language: ja` returns English without a
   redirect; at 320 and 390 px the header's items fit on one row without
