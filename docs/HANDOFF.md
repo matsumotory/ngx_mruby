@@ -25,7 +25,7 @@
 - Production [run 41173076141](https://github.com/matsumotory/ngx_mruby/actions/runs/41173076141)
   passed build, maintenance-entry, deployment and live verification. Deployment
   `7454954421` published `next@f9baa5ef`, with the 2.x documentation of
-  `master@263bd10e`; every later push to `next` deploys again. The live verifier matched the deployment SHA, same-run
+  `master@263bd10e`; later runs of `site.yml` on `next` deploy again. The live verifier matched the deployment SHA, same-run
   artifact evidence and exact HTML on twelve read-only page visits. Desktop
   and mobile pixels were checked separately. Public entries:
   [English](https://ngx.mruby.org/) and [Japanese](https://ngx.mruby.org/ja/).
