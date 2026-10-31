@@ -1646,22 +1646,23 @@ implementation may choose others and says so in its pull request.
 
 | Piece | Today, Starlight 0.42.6 | Replacement |
 |---|---|---|
-| Page route and layout | Starlight injects the route of every page and renders it with its `Page.astro`, into which the overrides plug | `src/pages/[...slug].astro` renders every entry of the collection through `src/layouts/DocPage.astro`: skip link, the header of 4.10, the frame of `PageFrame.astro` (its own element name and id, no `sl-` names), the content, the table of contents and the footer. The home pages use the same layout without the sidebar and the table of contents, as `template: splash` does today. |
-| Content collection | `docsLoader()` and `docsSchema()`, with the field `headline` added | `glob()` of `astro/loaders` over `src/content/docs/`, and a schema of the fields that the generator of 5.2 and the home pages write: `title`, `slug`, `description`, `lastUpdated`, `head` (the searchable `identifiers` metadata of "Complete API names in search"), `sidebar.order`, `sidebar.hidden`, `template`, `prev`, `next`, `banner` and `headline`. The schema is strict, so a field that no component reads stops the build. MDX for the home pages through `@astrojs/mdx` directly. The generator keeps its output and its front matter. |
-| en/ja routing and the fallback | Starlight's locales `root` (English, unprefixed) and `ja`; under `/ja/`, a page without a Japanese source shows the English entry with `<html lang="ja">`, the English text in an element with `lang="en"`, and `FallbackContentNotice.astro` | Astro's `i18n` configuration (`en` default and unprefixed, `ja`) for the locale of each page and its URLs. The fallback pages are made by `getStaticPaths` of the page route, as Starlight makes them: for each English entry with no Japanese one, a `/ja/` path with the English entry, `<html lang="ja">`, the English text under `lang="en"`, the notice component and the Japanese UI. Not `i18n.fallback`: in Astro 7.3.8, its default `fallbackType: "redirect"` writes redirect pages, and `"rewrite"` renders the English page as it is, without the notice or the Japanese UI (Astro's configuration reference in `astro/dist/types/public/config.d.ts`, read on 2026-11-01). The generated reference (Q2) and the 2.x pages under `/v2/ja/` keep their notices. |
-| Sidebar | `sidebar` of `astro.config.mjs`: two links and six groups (one link and five groups for `/v2/`), each group `autogenerate`d from a folder, ordered by `sidebar.order`, labels translated in the configuration | `src/sidebar.mjs` holds the same groups and labels for each version, and builds the entries of each group from the collection by folder and `sidebar.order`, which the generator takes from `SIDEBAR_ORDER`. `Sidebar.astro` renders each group as `<details open>`, with the current page marked `aria-current="page"`. Starlight's `SidebarPersister`, which keeps the sidebar's state in `sessionStorage` across pages, becomes a script that scrolls the current entry into view; this is one of the allowed differences of the acceptance below. |
-| Table of contents | Starlight's `starlight-toc` from the h2 and h3 of the page (its defaults, levels 2 to 3), with the current section marked by a script, and `mobile-starlight-toc` above the content on narrow screens | `TableOfContents.astro` from the `headings` that `render()` returns, levels 2 and 3, under the same heading as today ("On this page", 「目次」), linking the heading ids; a script that marks the current section, and the narrow-screen variant as a `<details>` that opens without JavaScript. |
-| Search | Starlight's `Search.astro` (a `<dialog>` with the id `starlight__search`), which loads `@pagefind/default-ui` 1.5.2 with `showSubResults: true`, `showImages: false` and its translations; the index is written after the build by Pagefind's Node API over `dist/` | `Search.astro` of the site: the same dialog and keyboard shortcut, and `@pagefind/default-ui` with the same options and the Japanese strings. The index is written by the same Node API calls (`createIndex`, `addDirectory` over `dist/`, `writeFiles` into `dist/pagefind/`) in a script after `astro build`, and by `build-v2.mjs` into `dist/v2/pagefind/`. Pagefind's own segmentation of Japanese follows `<html lang="ja">`, which stays; the `data-pagefind-body`, `data-pagefind-ignore` and `data-pagefind-meta` attributes stay where they are. |
-| Code highlighting | Expressive Code through Starlight (`defineEcConfig` from `@astrojs/starlight/expressive-code`, `useStarlightUiThemeColors: true`); `<Code>` from `@astrojs/starlight/components` on the home pages and in `Sample.astro` | Expressive Code standalone: `astro-expressive-code` 0.44.2, a direct dependency already, with `ec.config.mjs` importing from it, the themes of `lib/code-themes.mjs`, and the frame colors that `useStarlightUiThemeColors` took from `--sl-color-*` given in `styleOverrides` from the tokens; `<Code>` from `astro-expressive-code/components`. Not Astro's built-in Shiki: it has no frames, titles, copy button or display-only wrap that keeps the copied source unwrapped, which the pages and `check-code-layout.mjs` rely on (Site design acceptance). |
-| Heading anchors | Starlight wraps each heading of the content in `div.sl-heading-wrapper` with an `a.sl-anchor-link` | A rehype plugin of the site writes the same wrapper and link with the site's class names; the heading ids stay Astro's. |
+| Page route and layout | Starlight injects the route of every page and renders it with its `Page.astro`, into which the overrides plug | `src/pages/[...slug].astro` renders every entry of the collection through `src/layouts/DocPage.astro`: skip link, the header of 4.10, the frame of `PageFrame.astro` (its own element name and id, no `sl-` names), the content, the table of contents and the footer. The page title is an `h1` with the id `_top`, which the skip link and the first entry of the table of contents link, and which `home.css`, `home-v3.css`, `check-styles.mjs`, `check-japanese-lines.mjs` and `screenshots.mjs` select. The home pages use the same layout without the sidebar and the table of contents, as `template: splash` does today. |
+| Content collection | `docsLoader()` and `docsSchema()`, with the field `headline` added | `glob()` of `astro/loaders` over `src/content/docs/`, and a schema of the fields that the generator of 5.2 and the home pages write today (in the 55 entries at 6bb35b241: `title` 55, `slug` 53, `lastUpdated` 53, `head` 49, the searchable `identifiers` metadata of "Complete API names in search", `sidebar` 25, `description` 2, `template` 2, `prev` 2, `next` 2, `headline` 1), and `banner`, which `Banner.astro` reads for the 3.x banner of 3.4. The schema is strict, so a field outside it stops the build. MDX for the home pages through `@astrojs/mdx` directly. The generator keeps its output and its front matter. |
+| en/ja routing and the fallback | Starlight's locales `root` (English, unprefixed) and `ja`; under `/ja/`, a page without a Japanese source shows the English entry with `<html lang="ja">`, the English text in an element with `lang="en"`, and `FallbackContentNotice.astro` | Astro's `i18n` configuration (`en` default and unprefixed, `ja`) for the locale of each page and its URLs. The fallback pages are made by `getStaticPaths` of the page route, as Starlight makes them: for each English entry with no Japanese one, a `/ja/` path with the English entry, `<html lang="ja">`, the English text under `lang="en"`, the notice component and the Japanese UI. Not `i18n.fallback`: in Astro 7.3.8, its default `i18n.routing.fallbackType: "redirect"` writes redirect pages, and `"rewrite"` renders the English page as it is, without the notice or the Japanese UI (Astro's configuration reference in `astro/dist/types/public/config.d.ts`, read on 2026-11-01). The generated reference (Q2) and the 2.x pages under `/v2/ja/` keep their notices. |
+| Sidebar | `sidebar` of `astro.config.mjs`: two links and six groups (one link and five groups for `/v2/`), each group `autogenerate`d from a folder, ordered by `sidebar.order`, labels translated in the configuration | `src/sidebar.mjs` holds the same groups and labels for each version, and builds the entries of each group from the collection by folder and `sidebar.order`, which the generator takes from `SIDEBAR_ORDER`; entries with the same order or none follow by id, compared as Starlight compares them (`sortDirEntries` in `utils/navigation.js`). `Sidebar.astro` renders each group as `<details open>`, with the current page marked `aria-current="page"`. Starlight's `SidebarPersister`, which keeps the sidebar's state in `sessionStorage` across pages, becomes a script that scrolls the current entry into view; this is one of the allowed differences of the acceptance below. |
+| Table of contents | Starlight's `starlight-toc` from the h2 and h3 of the page (its defaults, levels 2 to 3), after a first entry "Overview" (「概要」) that links `#_top`, with the current section marked by a script, and `mobile-starlight-toc` above the content on narrow screens | `TableOfContents.astro` from the `headings` that `render()` returns, levels 2 and 3, after the same first entry "Overview" (「概要」) linking `#_top`, under the same heading as today ("On this page", 「目次」), linking the heading ids; a script that marks the current section, and the narrow-screen variant as a `<details>` that opens without JavaScript. |
+| Search | Starlight's `Search.astro`: a button with the `magnifier` icon and a `<dialog>` whose `<div id="starlight__search">` holds Pagefind's UI, which loads `@pagefind/default-ui` 1.5.2 with `showSubResults: true`, `showImages: false` and its translations, and imports its `css/ui.css` into the layer `starlight.core`; the index is written in Starlight's `astro:build:done` hook by Pagefind's Node API over `dist/` | `Search.astro` of the site: the same button, dialog, mount element (its own id) and keyboard shortcut, and `@pagefind/default-ui` with the same options, its stylesheet, the Japanese strings, and `baseUrl` and `bundlePath` from `import.meta.env.BASE_URL`, so that `/v2/` keeps `/v2/pagefind/`. `pagefind` and `@pagefind/default-ui` 1.5.2 become direct dependencies. The index is written by the same Node API calls (`createIndex`, `addDirectory` over `dist/`, `writeFiles` into `dist/pagefind/`) in a script that `npm run build` runs right after `astro build` and before `mark-num-cells.mjs`; `build-v2.mjs` runs `npm run build` in its copy, so it needs no change of its own. Pagefind's own segmentation of Japanese follows `<html lang="ja">`, which stays; the `data-pagefind-body`, `data-pagefind-ignore` and `data-pagefind-meta` attributes stay where they are. |
+| Code highlighting | Expressive Code through Starlight (`defineEcConfig` from `@astrojs/starlight/expressive-code`, `useStarlightUiThemeColors: true`), with what Starlight's preprocessor adds: the Japanese texts of the copy button, the locale of each block from the page's path, `defaultLocale: 'en'`, the class `not-content` on every block, `cascadeLayer: 'starlight.components'`, and default `styleOverrides` (`borderWidth: '1px'`, and in `textMarkers` `lineDiffIndicatorMarginLeft: '0.25rem'`, `defaultChroma: '45'`, `backgroundOpacity: '60%'`); `<Code>` from `@astrojs/starlight/components` in `Sample.astro`, `HomeV3.astro` and `AgentFlow.astro` | Expressive Code standalone: `astro-expressive-code` 0.44.2, a direct dependency already, with `ec.config.mjs` importing from it, the themes of `lib/code-themes.mjs`, and the frame colors that `useStarlightUiThemeColors` took from `--sl-color-*` given in `styleOverrides` from the tokens. `ec.config.mjs` also carries what the preprocessor added: `pluginFramesTexts.addLocale('ja', { copyButtonTooltip: 'クリップボードにコピー', copyButtonCopied: 'コピーしました！' })`, a `getBlockLocale` that returns `ja` for files under `src/content/docs/ja/` and for the fallback pages, `defaultLocale: 'en'`, a plugin that adds `not-content` to every block, a `cascadeLayer` below the site's rules, and the four style values above. `expressiveCode()` comes before `mdx()` in `integrations`. `<Code>` from `astro-expressive-code/components`. Not Astro's built-in Shiki: it has no frames, titles, copy button or display-only wrap that keeps the copied source unwrapped, which the pages and `check-code-layout.mjs` rely on (Site design acceptance). |
+| Heading anchors and the direction of code | Astro 7.3.8's default Markdown processor is Sätteri (`satteri()`), not unified, and Starlight registers its transforms as Sätteri `hastPlugins`: `satteriHeadingIdsPlugin()` of `@astrojs/markdown-satteri`, then a plugin that wraps each heading in `div.sl-heading-wrapper` with an `a.sl-anchor-link` and a `<span class="sr-only" data-pagefind-ignore>` with the label `Section titled “…”` (`heading.anchorLabel`, which Starlight's Japanese strings leave in English), and one that sets `dir="ltr"` on every `<pre>` and `dir="auto"` on inline `<code>` | A Sätteri hast plugin of the site, registered on the default `satteri()` processor after `satteriHeadingIdsPlugin()`, as Starlight registers its own, writes the same wrapper, link and screen-reader label with the site's class names, and the same `dir` attributes; the heading ids stay those of `satteriHeadingIdsPlugin()`. |
 | `<head>` | Starlight's `Head.astro`: `title`, description, canonical, the three `hreflang` links, Open Graph and Twitter tags, `og:locale`, favicon, the sitemap link, the `head` entries of the configuration and of each page, and `<meta name="generator">` for Astro and for Starlight | `Head.astro` of the site writes the same elements with the same values; the Starlight generator tag goes. |
-| Sitemap | Starlight adds `@astrojs/sitemap` 3.7.4 when `site` is set | `@astrojs/sitemap` 3.7.4 as a direct dependency, with the same URL list. |
-| 404 | Starlight's not-found page | `src/pages/404.astro`, with the language link of `LanguageLink.astro`, which already treats this page apart. |
-| Last updated, previous and next | `LastUpdated` and `Pagination` of Starlight, which `Footer.astro` imports | Two components of the site, from `lastUpdated` and the order of the sidebar, honoring `prev: false` and `next: false`. |
+| Sitemap | Starlight adds `@astrojs/sitemap` 3.7.4 when `site` is set, with the option `i18n` (`defaultLocale: 'root'`, `locales: { root: 'en', ja: 'ja' }`), so each of the 64 URLs of `sitemap-0.xml` carries `xhtml:link` alternates with `hreflang="en"` and `hreflang="ja"` | `@astrojs/sitemap` 3.7.4 as a direct dependency, with the same `i18n` option, so that the URL list and the alternates of each URL stay the same. |
+| 404 | Starlight's not-found page, in English only (`dist/404.html`): its hero with the h1 "404" (`#_top`) and the tagline "Page not found. Check the URL or try using the search bar.", without `data-pagefind-body` and left out of the sitemap | `src/pages/404.astro` with the same h1, text and exclusions, and the language link of `LanguageLink.astro`, which already treats this page apart. |
+| Last updated, previous and next | `LastUpdated` and `Pagination` of Starlight, which `Footer.astro` imports: `<time datetime="{ISO date}">` with `toLocaleDateString(lang, { dateStyle: 'medium', timeZone: 'UTC' })` ("Oct 31, 2026", 「2026/10/31」), and links titled with the sidebar labels | Two components of the site that write the same, from `lastUpdated` and the order of the sidebar, honoring `prev: false` and `next: false`. |
 | Japanese UI strings | Starlight's `translations/ja` (31 strings: skip link, search, menu, table of contents, last updated, previous and next, 404 and others) and Pagefind's own | The strings that the pages show today, moved into `strings()` of `src/site-nav.mjs` with the same Japanese text; Pagefind keeps its own translations. |
 | `text-autospace` | Starlight's `reset.css`: `normal` on elements under `:lang(ja)`, `initial` under other languages, `no-autospace` on `pre`, `code`, `samp` and `kbd` | The same three rules in the site's stylesheet (3.4). |
-| Base styles | Starlight's global stylesheets and the styles of its components | The rules that the pages rely on, copied into `site/src/styles/` with Starlight's MIT notice, renamed to the site's classes, then reduced to those a page uses. The `--sl-*` mappings of `tokens.css`, the `@layer starlight.*` blocks and the Starlight part of `postcss-theme-colors.mjs` go; the Pagefind part of the plugin stays. |
-| Icons | Starlight's `Icon` (bars, close, GitHub and the theme icons) | Inline SVG in the components that use them. |
+| Base styles | Starlight's global stylesheets, the styles of its components and the page-level rules of its `Page.astro` (`--sl-content-width: 67.5rem` without a sidebar, `scroll-padding-top` from the header and the narrow table of contents); the site also selects Starlight's class names without `sl-` (`.content-panel`, `.right-sidebar`, `.sidebar-content`, `header.header`, `h1#_top`) in `home.css`, `home-v3.css`, `site.css`, `check-styles.mjs`, `check-japanese.mjs` and `check-focus.mjs`; the fonts, `tokens.css`, `site.css` and the diagram stylesheets load through `customCss` in that order | The rules that the pages rely on, copied into `site/src/styles/` with Starlight's MIT notice, renamed to the site's classes, then reduced to those a page uses; the print rules stay a separate `<link media="print">`; the class `not-content` keeps its name, because `scripts/lib/diagrams.mjs` writes it into every diagram figure; the layout imports the fonts and the stylesheets in the same order. The `--sl-*` mappings of `tokens.css`, the `@layer starlight.*` blocks and the Starlight part of `postcss-theme-colors.mjs` go; the Pagefind part of the plugin stays. |
+| Icons | Starlight's `Icon` (bars, close, magnifier, GitHub and the theme icons) | Inline SVG in the components that use them. |
+| Theme and the attributes of `<html>` | Starlight's `ThemeProvider.astro` (wrapped by the site's): an inline script before paint that sets `data-theme` from the `localStorage` key `starlight-theme`, else from `prefers-color-scheme`; `Page.astro` writes `dir="ltr"`, `data-theme="dark"`, `data-has-sidebar` and `data-has-toc` on `<html>`. `tokens.css`, `site.css`, the `themeCssSelector` of `ec.config.mjs` (`[data-theme='dark'][data-theme-script]`, 4.7), `ThemeToggle.astro` and `PageFrame.astro` key on them | The layout writes the same attributes on `<html>`, and `ThemeProvider.astro` of the site writes the same inline script followed by the `data-theme-script` marker. The storage key stays `starlight-theme`, so that a reader's saved choice survives the change; the `#theme-icons` template, which only Starlight's theme picker reads, goes (an allowed difference of item 2 of the acceptance). |
 | Accessibility defaults | Starlight's skip link, landmark labels, `aria-current` in the sidebar, the focus trap and `inert` of the open menu (the latter already in `PageFrame.astro`) | The same, in the site's components, measured by the checks below. |
 | The `/v2/` build | `build-v2.mjs` with `NGX_MRUBY_SITE_VERSION=2`: base `/v2/`, the 2.x sidebar, the 2.x banner, its own search index | Unchanged; `astro.config.mjs` keeps `base`, and `src/sidebar.mjs` the 2.x groups. |
 
@@ -1677,9 +1678,13 @@ Codex session splits it:
 1. The plumbing beside Starlight: the layout, the page route, the
    collection, the sidebar, the table of contents, the search, the head,
    the sitemap, the 404 page and the base styles, built when
-   `NGX_MRUBY_SITE_SHELL=own` is set (the name is chosen here), through a
-   small integration of the site that injects the route only then, as
-   Starlight injects its own. CI builds both shells from the same commit
+   `NGX_MRUBY_SITE_SHELL=own` is set (the name is chosen here). With the
+   flag, `astro.config.mjs` leaves out `starlight()` and adds a small
+   integration of the site that injects the page route, as Starlight
+   injects its own, and `content.config.mjs` uses `glob()` and the site's
+   schema. The components that both shells use read the route (locale,
+   entry, whether the page has a sidebar) through one helper instead of
+   `Astro.locals.starlightRoute`. CI builds both shells from the same commit
    and runs the parity check of the acceptance; the deployed site stays
    Starlight's.
 2. The pages: the home pages, the generated pages and `/v2/` move to the
@@ -1689,12 +1694,14 @@ Codex session splits it:
    flag, the `--sl-*` mappings, the Starlight part of the PostCSS plugin
    and the Starlight selectors of the checks go; the parity check then
    compares with the build of the base commit. The pull request states the
-   number of entries of `package-lock.json` before and after (466 today).
+   number of packages of `package-lock.json` before and after (the keys of
+   `packages` without the root: 466 today).
 
 Each pull request updates the text that it makes untrue: in AGENTS.md
 the repository layout ("Astro with Starlight") and "The site"; in this
-proposal 3.4, 4.6 ("Starlight's own colors", "Code blocks"), 4.7, 4.10
-and 5.2; Pillar F of `v3-plan.md`; and the comments of `site/` that name
+proposal 3.4, 3.5 (the fallback), item 5 of 4.3, 4.4 (`PageTitle.astro`,
+the Banner), 4.5 (Starlight's columns and CSS), 4.6 ("Starlight's own
+colors", "Code blocks"), 4.7, 4.10 and 5.2; Pillar F of `v3-plan.md`; and the comments of `site/` that name
 Starlight. `docs/HANDOFF.md` records the stage, as AGENTS.md says.
 
 **Acceptance.** Each item is measured on both versions and both
@@ -1705,25 +1712,29 @@ languages, on every page unless it says otherwise.
    `npm run check:offline` and `npm run check:japanese-lines`, and
    `screenshots.mjs` runs. A check may change only the selectors by which
    it finds an element whose role is unchanged (`.sl-markdown-content` to
-   the class of the content, `starlight__search` to the id of the dialog,
-   for example), never its thresholds, pages, widths, engines or themes;
+   the class of the content, `#starlight__search` to the id of the
+   element where Pagefind's UI mounts, for example), never its thresholds, pages, widths, engines or themes;
    each check whose selectors changed is shown failing on a planted fault
    again, as section 6 asks of every check.
 2. The HTML says the same. A new script, `check-parity.mjs` (chosen here),
    reads the two builds of item 1 of the order (later the base and the
    head) and fails on any difference that is not on its list of allowed
-   ones. It compares the set of built files and the URLs of the sitemaps;
-   and for each page `<html lang>`, `<title>`, the description, the
+   ones. It compares the set of built files, the URLs of the sitemaps and
+   the `hreflang` alternates of each; and for each page the attributes of
+   `<html>` (`lang`, `dir`, `data-theme`, `data-has-sidebar`,
+   `data-has-toc`), `<title>`, the description, the
    canonical URL, the three `hreflang` links, the Open Graph and Twitter
    tags, the h1, the level, id and text of each heading, the text of the
    content, the `href` of each of its links, the sequence of its elements
    without the heading-anchor wrappers, the element with `lang="en"` on
    the fallback pages and its notice, and the `data-pagefind-*`
    attributes. Allowed: the Starlight generator tag, class names and
-   custom element names, hashed asset names, and the sidebar's scroll
-   script.
-3. The layout is the same. For every page at 320 by 664, 390 by 664 and
-   1440 by 900 px in Chromium, light, and for the three pages of
+   custom element names, hashed asset names, the `#theme-icons`
+   template, and the sidebar's scroll script.
+3. The layout is the same. For every page at 320 by 664, 390 by 664,
+   768 by 1024, 1024 by 768 and 1440 by 900 px in Chromium (Starlight's
+   layout switches at 50em, the sidebar, and 72em, the table of contents;
+   768 px is a width of the code check of "Site design acceptance"), light, and for the three pages of
    `screenshots.mjs` also in WebKit and dark, with the menu closed and
    open at 320 and 390 px and the search dialog open at 1440 px: the
    boxes of the header items, the sidebar entries, the table of contents
@@ -1734,9 +1745,12 @@ languages, on every page unless it says otherwise.
    before; this one is chosen here. The screenshots of both builds go
    side by side into the workflow artifact for the review.
 4. Search returns the same. `check-search-identifiers.mjs` passes, and a
-   fixed list of queries (the identifiers it uses, and Japanese words from
-   the headings of five Japanese pages) returns the same URLs in the same
-   order from both builds, on both versions and both languages.
+   fixed list of queries returns the same URLs in the same
+   order from both builds, on both versions and both languages. The list
+   is the identifiers that check uses, and in Japanese the first h2 of
+   each of `/ja/start/`, `/ja/guides/install/`, `/ja/reference/build/`,
+   `/ja/concepts/request-phases/` and `/ja/guides/agent-proxy/` (one page
+   of each kind of 3.1, and the v3 guide; chosen here).
 5. Reading needs no JavaScript (`check-no-js.mjs`), and Lighthouse
    accessibility has no failed audit (`check-lighthouse.mjs`).
 
@@ -1791,6 +1805,10 @@ because the tokens and the four choices of 4.12 change every page. That plan
 tags `v3.0.0-beta.1` when the migration guide and the examples exist, and
 `v3.0.0-rc.1` when the site and the examples are complete. The switch of
 step 7 can come before rc.1, with 3.x pages under the banner of 3.4.
+
+After step 5, a Codex session moves the site from Starlight to Astro alone
+and components of the repository's own, as 5.4 describes (the owner's
+decision of 2026-11-01, section 7); 5.4 has its order and its acceptance.
 
 ## 7. Decisions (2026-10-15)
 
