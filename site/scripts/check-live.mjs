@@ -1,8 +1,8 @@
 // The checks of step 7 (docs/proposals/site.md, section 6) on the live
-// site, after the switch of ngx.mruby.org to the deployment from next. CI
-// does not run it: a session runs it by hand after the first deployment and
-// after a deployment that should change what the site serves ("The site"
-// in AGENTS.md).
+// site, after the switch of ngx.mruby.org to the deployment from next.
+// The post-deploy CI job runs it against that run's artifact, after the
+// equivalent public GitHub policy/SHA check; a session can also run it by
+// hand ("The site" in AGENTS.md).
 //
 //   node scripts/check-live.mjs [--dist DIR] [--url URL] [--no-gh] [--no-lighthouse]
 //
