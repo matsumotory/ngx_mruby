@@ -125,7 +125,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   end
   ```
 
-- [文字列の中の`"#@ivar"`、`"#@@cvar"`、`"#$global"`が変数を展開する](../../releases/v3.0.0.ja.md#文字列の中のivarcvarglobalが変数を展開する678)：ダブルクォートの文字列、ヒアドキュメント、バッククォートのコマンドの中の`#@`と`#$`を探してください。次の検索はコメントも見つけるので、見つかった行を1行ずつ読んでください。
+- [文字列の中の`"#@ivar"`、`"#@@cvar"`、`"#$global"`が変数を展開する](../../releases/v3.0.0.ja.md#文字列の中のivarcvarglobalが変数を展開する678)：ダブルクォートの文字列、ヒアドキュメント、バッククォートのコマンドの中の`#@`と`#$`を探してください。次の検索はコメントも見つけます。見つけた行を1行ずつ読んでください。
 
   ```sh
   grep -rnE '#[@$]' /path/to/scripts
@@ -256,7 +256,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   nginx -t -e stderr 2>&1 | grep 'mechanism enabled'
   ```
 
-- [構文エラーのメッセージがPrismのものになる](../../releases/v3.0.0.ja.md#構文エラーのメッセージがprismのものになる678)：`unexpected end of file`のような、`syntax error`の後の文面に対するパターンは、もう一致しません。代わりに、`SyntaxError`と、ファイルと行に一致させてください。
+- [構文エラーのメッセージがPrismのものになる](../../releases/v3.0.0.ja.md#構文エラーのメッセージがprismのものになる678)：`unexpected end of file`のような、`syntax error`の後の文面に対するパターンは、もう一致しません。`SyntaxError`と、ファイルの名前と行に一致させてください。
 
   ```
   2.x:    file (eval) line 1: syntax error, unexpected end of file

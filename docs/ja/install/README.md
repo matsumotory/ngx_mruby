@@ -8,7 +8,7 @@ ngx_mrubyを組み込んだnginxで、インラインとファイルのRubyを�
 
 ### 前提
 
-C/C++コンパイラ、GNU make、Ruby 3.0以降とrake、bison、git、wget、curlが必要です。同梱のmrubyのビルドは、Ruby 2.xでは止まります。OpenSSL・PCRE・zlibは開発用ヘッダとライブラリも用意します。ビルドはGitHubからサードパーティのmrbgemsを取得します。Docker Hubのアカウントは不要です。
+C/C++コンパイラ、GNU make、Ruby 3.0以降とrake、bison、git、wget、curlが必要です。同梱のmrubyのビルドは、Ruby 2.xでは`mrbc`をリンクするところで止まります。OpenSSL・PCRE・zlibは開発用ヘッダとライブラリも用意します。ビルドはGitHubからサードパーティのmrbgemsを取得します。Docker Hubのアカウントは不要です。
 
 Ubuntu 22.04では、まず管理者権限でパッケージを入れます。以降のビルドは一般ユーザーで行ってください。
 
@@ -59,12 +59,12 @@ mruby 4.1.0-rc2のコアのgemのうち、4.1.0-rc2の`full-core.gembox`は入�
 |---|---|---|
 | mruby-task | `Task`を加え、`Kernel#sleep`を定義し直す。`mrb_state`を開くすべてのプロセスに、SIGALRMのインターバルタイマーの`setitimer`がかかる。`mrb_state`は8つまでになる。上限は`MRB_TASK_MAX_VMS` | ワーカーのタイマーと`sleep`に関わる。ngx_mrubyには、`Nginx::Async`がある |
 | mruby-encoding | ビルド全体に`MRB_UTF8_STRING`を定義する。`String#size`、`#[]`、`#index`などが、バイトではなく文字を数える。`String#valid_encoding?`、`#encoding`、`#force_encoding`を加える | リクエストとレスポンスのデータはバイト列で、`String#size`から`Content-Length`を計算するスクリプトは、違う数を得る。オーナーは2026年10月4日に、このgemをデフォルトのビルドから外し、オプトインのままにすると決めた。外したため、mruby 3.3ではmruby-string-extが定義していた`String#valid_encoding?`を呼ぶと、`NoMethodError`が起きる。mruby 3.4からは、mruby-encodingだけがこのメソッドを定義する |
-| mruby-env、mruby-process、mruby-regexp | `ENV`、`Process`、`Regexp`を定義する。mruby 4.1で加わった | デフォルトのビルドは、2.xと同じく、これらのクラスをiij/mruby-env、iij/mruby-process、mattn/mruby-onig-regexpから取る。両方を入れると、同じクラスを2回定義する。iijの2つのgemは、これらのコアのgemと同じ名前を持つ。`ENV`と`Process`をコアのgemに移すのは後の変更で、3.0はmruby-onig-regexpを残す。根拠は`docs/proposals/v3-plan.md`の7節の1項 |
+| mruby-env、mruby-process、mruby-regexp | mruby 4.1で加わったgemで、`ENV`、`Process`、`Regexp`を定義する | デフォルトのビルドは、2.xと同じく、これらのクラスをiij/mruby-env、iij/mruby-process、mattn/mruby-onig-regexpから取る。mruby-regexpとmattn/mruby-onig-regexpを両方入れると、どちらも`Regexp`を定義する。iijの2つのgemはこれらのコアのgemと同じ名前を持つ。両方を入れたビルドは試していない。`ENV`と`Process`をコアのgemに移すのは後の変更で、3.0はmruby-onig-regexpを残す。根拠は`docs/proposals/v3-plan.md`の7節の1項 |
 | mruby-signal | `Signal`を加える。mruby 4.1で加わった | 新しいAPIで、別に決める |
 | mruby-string-bitops | `String`のビット演算を加える。mruby 4.1で加わった | 新しいAPIで、別に決める |
 | mruby-strftime | `Time#strftime`を加える | 新しいAPIで、別に決める |
 | mruby-benchmark | `Benchmark`を加える | 新しいAPIで、開発のツール |
-| mruby-bin-mrb | コンパイラを持たずにバイトコードを実行する`mrb`コマンド。mruby 4.1で加わった | 新しいコマンドで、デフォルトのビルドは、mruby 3.3.0のときと同じコマンドを持つ。`mrbc`、`mruby`、`mirb`、`mruby-strip`、`mruby-config`の5つ |
+| mruby-bin-mrb | コンパイラを持たずにバイトコードを実行する`mrb`コマンド。mruby 4.1で加わった | 新しいコマンドは入れない。デフォルトのビルドが持つコマンドは、mruby 3.3.0のときと同じ`mrbc`、`mruby`、`mirb`、`mruby-strip`、`mruby-config`の5つ |
 
 4.1.0-rc2の`full-core.gembox`は、mruby-sleep、mruby-bin-debugger、mruby-testを入れません。ngx_mrubyは、`Kernel#sleep`と`#usleep`を定義するmruby-sleepを残しています。hw-*は、mruby 4.1のハードウェア用のgemです。`full-core.gembox`にも、この一覧にもありません。
 

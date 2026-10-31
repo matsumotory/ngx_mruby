@@ -16,7 +16,8 @@
 //
 //   cd mruby && MRUBY_CONFIG=build_config/mrbc.rb MRUBY_BUILD_DIR=DIR rake
 //
-// and is then DIR/host/bin/mrbc. It exits 1 and lists every block that does
+// and is then DIR/mrbc/bin/mrbc (the build named mrbc of
+// build_config/mrbc.rb in mruby 4.1). It exits 1 and lists every block that does
 // not compile, by file and line, with mrbc's message.
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';

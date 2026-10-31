@@ -30,6 +30,13 @@ if [ $# -gt 1 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   exit 1
 fi
 
+# The paths below are relative to the top of the checkout.
+TOP=$(git rev-parse --show-toplevel)
+if [ "$(cd "$TOP" && pwd -P)" != "$(pwd -P)" ]; then
+  echo "run this script from the top of the checkout ($TOP)" >&2
+  exit 1
+fi
+
 if [ $# -eq 1 ]; then
   COMMIT=$1
 else

@@ -706,7 +706,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
   and every script of their samples with the mrbc of the bundled mruby,
   built alone in about ten seconds with `cd mruby &&
   MRUBY_CONFIG=build_config/mrbc.rb MRUBY_BUILD_DIR=DIR rake`
-  (`DIR/host/bin/mrbc`); a block that shows a syntax error on purpose is
+  (`DIR/mrbc/bin/mrbc`); a block that shows a syntax error on purpose is
   marked ```` ```ruby syntax-error ```` and must not compile. `site.yml`
   runs both.
   `npm run check:browser` runs five on `site/dist/` (`--dist`; the first
