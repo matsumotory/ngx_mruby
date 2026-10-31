@@ -101,6 +101,18 @@ on every run of the matrix is one of them, so a valgrind error in that cell
 fails `ci-ok` ([valgrind in CI](#valgrind-in-ci)). The `perf` job (see "In
 CI" under "Performance comparison with callgrind") is not among them yet.
 
+A run of `test.yml` for a pull request starts when the pull request is
+opened or reopened and when a commit is pushed to its head (`pull_request`
+has no `types` filter, so these are GitHub's defaults, `opened`,
+`synchronize` and `reopened`), for a draft and a ready pull request alike:
+a draft skips nothing, and marking a pull request ready for review starts
+no run. A move of the base alone starts none either; updating the branch
+(`gh api -X PUT repos/<owner>/<repo>/pulls/<number>/update-branch`) pushes
+a merge commit to the head and so starts one. The result stands for the
+head commit and the base commit of the merge ref at that time, which is
+what condition 2 of "Review and merge" in [AGENTS.md](../../AGENTS.md)
+asks the pull request to record.
+
 ### Which jobs a run starts
 
 The `changes` job decides whether a run needs the jobs that build and test

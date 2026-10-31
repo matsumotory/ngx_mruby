@@ -173,8 +173,31 @@ upgrading". New behavior, API cleanups and features go to `next`.
   Backports to 2.x: `backport/v2.x/<topic>`.
 - Never create branches named like tags (`v2.7.1`, `v3.0.0-rc.1`), and never
   create `next/*` or `v2.x/*` branches (they clash with the existing branch refs).
-- Agents open PRs and fill in every section of the PR template. Open them as
-  drafts while CI and the review below are running.
+- Agents open PRs and fill in every section of the PR template. A PR is a
+  draft while its author's work is not finished: the implementation, or a
+  verification that the template asks for, is still to do. A draft is not
+  a way to control CI here: `pull_request` in the workflows has no `types`
+  filter, so a draft and a ready PR start the same runs (when the PR is
+  opened or reopened, and when a commit is pushed to its head), a move of
+  the base alone starts none (hence the update of the branch in condition
+  2 of "Review and merge"), and marking a PR ready for review starts none.
+  When the author's work and verification are done, the author marks the
+  PR ready for review (`gh pr ready`) and asks for the review below; a PR
+  is not kept as a draft because it waits for that review. Ready means
+  handed to review, not approved and not allowed to merge: the conditions
+  of "Review and merge" decide that. A PR that stays a draft says at the
+  top of its body why (what is unfinished or not verified), who continues
+  it, and what ends the draft.
+- The PR body says which commits each result stands for: for the runs
+  under "How was this tested", the commit they ran on; for the CI run that
+  condition 2 of "Review and merge" counts, the head commit and the base
+  commit of its merge ref. A job that a run skipped passed nothing, except
+  where "Which jobs a run starts" in `docs/test/README.md` says that
+  `ci-ok` passes the skip. When the base moves, or the PR is marked ready,
+  the session that holds the PR says which checks have to run again and
+  which have not run yet. A check that the change cannot affect is not run
+  for the sake of it: which jobs a run builds is decided by the `changes`
+  job of `test.yml`, not by running everything.
 - A PR that changes behavior a configuration, script or build can observe (a
   bug fix, a raised build requirement and a change of the bundled mruby or
   default mrbgems included; see `docs/releases/README.md` for what counts)
@@ -360,6 +383,25 @@ How sessions do it (their procedure, not a decision of the owner):
   carries a security fix.
 - There is no copy on `master`. From a checkout of `master`, read it with
   `git fetch origin next` and `git show origin/next:docs/HANDOFF.md`.
+- Before a session hands a PR over, to another session, another tool or a
+  person, or stops while the PR is open, it checks and writes down:
+  whether the PR is a draft or ready, and why; the head commit; the CI
+  result with the head and base commits it stands for; the review items
+  still open; and who continues it. The top of the PR body (its "State"
+  paragraph or the dated checkpoint comment that "Continuing shared work"
+  in `docs/DEVELOPMENT.md` asks for) and the row in `docs/HANDOFF.md` say
+  the same state, and text that the state has left behind (a "WIP"
+  paragraph, "the comparison is not finished", "keep as a draft for X") is
+  rewritten in the same change. The next session reads the state from the
+  final diff and the recorded results, not from the names of earlier WIP
+  commits; rewriting the branch's history is not how the record is fixed,
+  an ordinary commit is.
+- A tool's own instructions for this repository (`CLAUDE.md` for Claude
+  Code, and the like) add conventions of that tool, such as where it keeps
+  worktrees and temporary files. What a draft and ready mean, what a CI
+  result stands for, and what a handover records are decided here and in
+  "Required status check" of `docs/test/README.md`; a tool's file that
+  says otherwise is corrected.
 - These records are shared by human, Claude and Codex sessions. A tool's
   memory may help locate evidence, but is not the source of the current
   scope, decisions or validation. Use the repository and the PR, following
