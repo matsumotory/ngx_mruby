@@ -602,8 +602,14 @@ jobs:
   # "ci-ok (dry run)": such a run decides from the files since the merge
   # base with a branch that the person who started it chose, so its result
   # must not be the check named ci-ok that the rulesets require of a commit.
+  # With the input "valgrind" (the nightly run, which valgrind-nightly.yml
+  # also starts on the head branch of a pull request that changes test.yml)
+  # it is named "ci-ok (valgrind)": the run builds the tip of the branch at
+  # the time of the dispatch, and a cancelled one (a newer push cancels it)
+  # would otherwise leave a failed ci-ok on the head of the pull request.
+  # valgrind-nightly.yml reads the result of the run, not this name.
   ci-ok:
-    name: ${{ (github.event_name == 'workflow_dispatch' && inputs.base != '') && 'ci-ok (dry run)' || 'ci-ok' }}
+    name: ${{ github.event_name != 'workflow_dispatch' && 'ci-ok' || inputs.base != '' && 'ci-ok (dry run)' || inputs.valgrind && 'ci-ok (valgrind)' || 'ci-ok' }}
     needs: [changes, build, files]
     if: always()
     runs-on: ubuntu-latest

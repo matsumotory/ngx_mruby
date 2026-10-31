@@ -134,7 +134,13 @@ $ gh workflow run test.yml --ref claude/topic -f base=master
 
 The result of such a run is the job `ci-ok (dry run)`, not `ci-ok`: the
 person who starts the run chooses `base`, so its result is not the check
-that the rulesets require of the commit.
+that the rulesets require of the commit. In the same way, a run with the
+input `valgrind` names it `ci-ok (valgrind)`: `valgrind-nightly.yml` starts
+such a run on the head branch of a pull request that changes `test.yml`,
+and the run builds the tip of the branch when it starts, so a run that a
+newer push cancels would otherwise leave a failed `ci-ok` on the head of
+the pull request. `valgrind-nightly.yml` reads the result of the run, not
+the name of the job.
 
 A push to `master` or `next` runs only `changes`, `files` and `ci-ok`. Both
 branches take changes only through pull requests. Condition 2 of "Review
