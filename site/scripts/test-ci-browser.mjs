@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {commandsFor,LANES,siteGate} from './ci-browser.mjs';
 import {scopedPages,codePageScope} from './lib/ci-pages.mjs';
+import {japaneseNoticePages} from './lib/site.mjs';
 const full={mode:'full',pages:[]}, target={mode:'targeted',pages:['/guides/install/','/ja/guides/install/']};
 assert.equal(LANES.length,6);
 assert.deepEqual(commandsFor(full,'styles-chromium'),[['check-styles.mjs','--engine','chromium']]);
@@ -25,6 +26,9 @@ try {
  assert.deepEqual(scopedPages(dir,'["/docs/"]'),['/docs/']);
  for(const value of ['[]','null','{}','["/docs/","/docs/"]','["/missing/"]','["/../docs/"]','["//docs/"]']) assert.throws(()=>scopedPages(dir,value));
 } finally {fs.rmSync(dir,{recursive:true});}
+// A targeted Japanese line check measures the fallback pages under /ja/
+// (English text with a notice) as a full run does: their notice only.
+assert.deepEqual(japaneseNoticePages(['/ja/contributing/handoff/','/ja/guides/install/','/ja/reference/directives/','/v2/ja/','/contributing/handoff/']),['/ja/contributing/handoff/','/ja/reference/directives/']);
 console.log('CI lane coverage, malformed scopes, route existence, failure/cancel/skip gate contracts: PASS');
 
 const all=['/','/ja/','/start/','/v2/','/v2/ja/','/v2/reference/ruby/'];

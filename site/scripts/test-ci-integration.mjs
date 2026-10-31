@@ -24,7 +24,14 @@ try {
  const env={EVENT_NAME:'push',REF_TYPE:'branch',PUSH_BEFORE:base};
  assert.equal(run('ci-plan.mjs',[],env).status,0);
  let plan=JSON.parse(fs.readFileSync(path.join(site,'generated/ci-scope.json')));
+ assert.equal(plan.mode,'full');assert.equal(plan.reason,'deploying-event');
+ // The same prose change as a pull request (a merge commit whose first parent is the base) is targeted.
+ const branch=git('rev-parse','--abbrev-ref','HEAD');
+ git('checkout','-qb','prose-pr',base);git('merge','-q','--no-ff',head,'-m','synthetic prose PR merge');
+ assert.equal(run('ci-plan.mjs',[],{EVENT_NAME:'pull_request'}).status,0);
+ plan=JSON.parse(fs.readFileSync(path.join(site,'generated/ci-scope.json')));
  assert.equal(plan.mode,'targeted');assert.deepEqual(plan.pages,['/guide/','/ja/guide/']);
+ git('checkout','-q',branch);
  assert.equal(run('ci-plan.mjs',[],{...env,PUSH_BEFORE:'0'.repeat(40)}).status,0);
  assert.equal(JSON.parse(fs.readFileSync(path.join(site,'generated/ci-scope.json'))).mode,'full');
  assert.equal(run('ci-plan.mjs',[],{EVENT_NAME:'pull_request'}).status,0); // linear checkout is not a PR merge

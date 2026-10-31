@@ -60,7 +60,8 @@ test('unknown and partial manifest fail closed', () => {
 test('only confirmed branch/PR ranges may narrow browser checks', () => {
   for (const event of ['workflow_dispatch', 'schedule', 'tag', '', undefined]) assert.equal(plan(undefined, { event }).mode, 'full');
   assert.equal(plan(undefined, { baselineKnown: false }).mode, 'full');
-  assert.equal(plan(undefined, { event: 'push' }).mode, 'targeted');
+  // A push to next deploys: it runs every browser check on every page.
+  assert.deepEqual(plan(undefined, { event: 'push' }), { mode: 'full', pages: [], reason: 'deploying-event' });
   assert.equal(plan([]).mode, 'full');
   assert.equal(planBrowserScope().mode, 'full');
 });
