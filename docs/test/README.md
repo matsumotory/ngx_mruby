@@ -149,7 +149,13 @@ $ gh workflow run test.yml --ref claude/topic -f base=next
 
 The result of such a run is the job `ci-ok (dry run)`, not `ci-ok`: the
 person who starts the run chooses `base`, so its result is not the check
-that the rulesets require of the commit.
+that the rulesets require of the commit. In the same way, a run with the
+input `valgrind` names it `ci-ok (valgrind)`: `valgrind-nightly.yml` starts
+such a run on the head branch of a pull request that changes `test.yml`,
+and the run builds the tip of the branch when it starts, so a run that a
+newer push cancels would otherwise leave a failed `ci-ok` on the head of
+the pull request. `valgrind-nightly.yml` reads the result of the run, not
+the name of the job.
 
 A push to `master` or `next` runs only `changes`, `files` and `ci-ok`. Both
 branches take changes only through pull requests. Condition 2 of "Review
@@ -161,9 +167,9 @@ date with its base: a pull request merged against that condition brings a
 tree that no run tested, and only a later pull request or "Run workflow"
 tests it. To build and test the tip of a branch by itself, use "Run
 workflow" (`gh workflow run test.yml --ref next`). The nightly run under
-valgrind is such a run on `next` once `valgrind-nightly.yml` is on
-`master` ([valgrind in CI](#valgrind-in-ci)); until then it runs only on
-pull requests that change it, `test.yml` or `test/valgrind.supp`. The other workflows decide on their
+valgrind, which the schedule of `valgrind-nightly.yml` on `master` starts
+on `master` and on `next` (#674), is such a run ([valgrind in
+CI](#valgrind-in-ci)). The other workflows decide on their
 own when they run (`nginx-tests`, `examples`, `site`, `zizmor` and the
 others in `.github/workflows/`).
 

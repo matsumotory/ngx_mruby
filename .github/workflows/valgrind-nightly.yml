@@ -102,11 +102,27 @@ jobs:
           # example by a newer push to the pull request. A file, because the
           # step may be cancelled before its environment file is read.
           echo "${id}" > "${RUNNER_TEMP}/dispatched-run"
-          url=$(gh run view "${id}" --repo "${REPO}" --json url --jq .url)
+          # The URL is built from the id, without another call of the API,
+          # which can fail for a moment right after the dispatch (an HTTP
+          # 500 of "gh run view" failed this step once on 2026-10-31).
+          url="https://github.com/${REPO}/actions/runs/${id}"
           echo "run of test.yml on ${branch}: ${url}"
           echo "test.yml under valgrind on \`${branch}\`: ${url}" >> "${GITHUB_STEP_SUMMARY}"
-          if ! gh run watch "${id}" --repo "${REPO}" --exit-status --interval 60 > /dev/null; then
-            echo "::error title=valgrind-nightly::the run of test.yml under valgrind on ${branch} failed: ${url}"
+          # "gh run watch" ends when the run ends, or earlier when a call of
+          # the API fails. The result is read afterwards, with retries, so
+          # that a failed call does not fail this job and the run decides.
+          # The job's timeout-minutes bounds the whole wait.
+          gh run watch "${id}" --repo "${REPO}" --interval 60 > /dev/null || echo "gh run watch exited with $?; reading the result of the run"
+          result=
+          while :; do
+            state=$(gh run view "${id}" --repo "${REPO}" --json status,conclusion --jq '"\(.status) \(.conclusion)"' 2>/dev/null) || state=
+            case "${state}" in
+              "completed "*) result=${state#completed }; break ;;
+            esac
+            sleep 60
+          done
+          if [ "${result}" != success ]; then
+            echo "::error title=valgrind-nightly::the run of test.yml under valgrind on ${branch} did not pass (result: '${result}'): ${url}"
             exit 1
           fi
           echo "the run of test.yml under valgrind on ${branch} passed: ${url}"
