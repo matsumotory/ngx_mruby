@@ -991,7 +991,11 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   allows and inline otherwise. It is decorative: the heading level is in
   the markup.
 - The home page heading takes at most two lines at 1440 px and at most
-  three at 390 and 320 px (owner's practice).
+  three at 390 and 320 px (owner's practice). The Japanese heading takes
+  two lines at 320 to 430 px too, one per phrase at the unchanged size, so
+  its first phrase is the 8-em 「LLMリクエストを、」 and the lede names the
+  authentication and the forwarding (the owner on 2026-10-31:
+  「ヒーローの見出し、モバイルだとこういう改行で微妙なので2行にしておきたい。シュッと直しといてこれ」).
 - No `text-wrap: pretty` or `balance` anywhere: Safari applies `pretty` to
   every line and Chromium to the last four, so the same CSS wraps
   differently per engine (WebKit blog; MDN). Starlight's Banner sets

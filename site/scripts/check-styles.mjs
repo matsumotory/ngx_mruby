@@ -21,8 +21,8 @@
 // - no horizontal scroll of the page (4.9), at 320 px too, and at 320 and
 //   390 px every text block and the ring before h2 at least 20 px from both
 //   edges (4.5);
-// - the home page heading takes at most two lines at 1440 px and three at
-//   390 and 320 px (4.4);
+// - the home page heading takes at most two lines at 1440 px, and at 390
+//   and 320 px two in Japanese and three in English (4.4);
 // - at 390 px the right edge of Japanese text blocks (4.9), and on English
 //   blocks no computed text-wrap pretty or balance (4.9);
 // - at every size, no paragraph, list item, caption, table cell or heading
@@ -329,12 +329,12 @@ function inspect(cfg) {
       if (/pretty|balance/.test(tw)) fail(el, `text-wrap ${tw.trim()} (4.4, 4.9)`);
     }
   }
-  // The home page heading: at most two lines at 1440 px, three at 390 and
-  // 320 px (4.4)
+  // The home page heading: at most two lines at 1440 px; at 390 and 320 px
+  // two in Japanese and three in English (4.4)
   if (isHome && cfg.width > 0) {
     const h1 = document.querySelector('h1#_top');
     const n = h1 ? lines(h1).length : 0;
-    const max = cfg.width >= 1440 ? 2 : 3;
+    const max = cfg.width >= 1440 || lang === 'ja' ? 2 : 3;
     if (!h1) fails.push('the home page has no h1#_top');
     else if (n > max) fail(h1, `the home page heading takes ${n} lines at ${cfg.width} px, over ${max}`);
     cfg.counts.homeHeading = n;
