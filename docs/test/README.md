@@ -134,7 +134,7 @@ is first tested: the owner's rule of 2026-10-31, in "Branches and pull
 requests" of [AGENTS.md](../../AGENTS.md). Before marking a pull request
 ready, its author runs the local commands of the checks that the change
 touches, the suite among them when `test/ci/changes.sh` gives `build`
-`full` or `tests` (this file describes them; "Build and test" in AGENTS.md
+`standard` or `full` (this file describes them; "Build and test" in AGENTS.md
 lists them) and quotes them under "How was this tested", and the
 reviewer checks that they are there. A check that can run locally is not
 left to CI. The run of a ready pull request runs only the jobs that the
@@ -156,19 +156,53 @@ and the workflows that decide by the kind of change read it, so that the
 policy is in that one file (`sh test/ci/changes_test.sh` checks it). The
 script is the same on `master` and `next`. It prints one line per key: the
 categories `code`, `tests`, `docs`, `site`, `examples` and `workflows`,
-then `soak` and `perf`, each `true` or `false`, and `build`, which is
-`full` when `code` is `true`, `tests` when only `tests` is, and `none`
-otherwise. A renamed file counts under its old and its new path (`git diff
---no-renames`), so that moving a source file to `docs/` still builds.
+then `soak` and `perf`, each `true` or `false`, and `build`, the cells of
+the `build` matrix: `standard` when `code` or `tests` is `true`, and
+`none` otherwise. A renamed file counts under its old and its new path
+(`git diff --no-renames`), so that moving a source file to `docs/` still
+builds. The job `changes` of `test.yml` also passes the script the run (a
+draft, the labels of a ready pull request, a push, a tag, "Run workflow"
+and its input `valgrind`), and the script gives `build` `full`, every
+cell, or `none` for the runs of the second table below.
 `master` has no `soak` job, `site/` or `examples/`, so `soak`, `site` and
 `examples` decide nothing here.
 
 | Category | Paths | What a ready pull request to `master` runs |
 |---|---|---|
-| `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the whole `build` matrix (16 cells, among them the cell under valgrind), the sanitizer cell and `perf`. `codeql` for `src/` and `mrbgems/` |
-| `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: three cells, nginx 1.30.6 with the static module, nginx 1.31.8 with the dynamic module, and the cell under valgrind (nginx 1.31.8, static module); `perf` compares when `perf` is `true` |
+| `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below) and `perf`. `codeql` for `src/` and `mrbgems/` |
+| `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `perf` compares when `perf` is `true` |
 | `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | `site-v2`, which runs on every ready pull request to `master` |
 | `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, `test.yml` included); `codeql` for `.github/workflows/` and `.github/codeql/` |
+
+The four standard cells build each link mode and each line of nginx
+(mainline 1.31 and stable 1.30) at least once, and run both memory checks:
+
+| Cell | nginx | Module | OpenSSL | nginx runs |
+|---|---|---|---|---|
+| nginx 1.31.8, static module | 1.31.8 | static | `--with-openssl-src` | directly |
+| nginx 1.30.6, dynamic module | 1.30.6 | dynamic | the installed OpenSSL | directly |
+| the sanitizer cell | 1.31.8 | static | the installed OpenSSL | built with AddressSanitizer and UndefinedBehaviorSanitizer ([Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer](#running-the-tests-under-addresssanitizer-and-undefinedbehaviorsanitizer)) |
+| the cell under valgrind | 1.31.8 | static | the installed OpenSSL | under valgrind ([valgrind in CI](#valgrind-in-ci)) |
+
+The owner decided on 2026-11-01, in a session's question with the option
+「4 cell に減らす (推奨)」 ("reduce to 4 cells (recommended)"), that a pull
+request runs these four cells instead of every cell ("Decisions" in
+`docs/HANDOFF.md` on `next` has the owner's words). Every cell builds
+OpenSSL 1.1.1w and installs it before it builds nginx; the first cell
+builds it into nginx as well (`--with-openssl-src`), the path of
+`configure.in` and `Makefile.in` that the cell under valgrind, the same
+nginx and module against the installed OpenSSL, does not take. Every cell
+(the 16 combinations of nginx 1.31.8, 1.30.6, 1.28.3 and 1.26.3, the
+static and the dynamic module, and `--with-openssl-src` or not, among them
+the cell under valgrind, and the sanitizer cell) still runs in the nightly
+run under valgrind, on the push of a tag, in the check pull request before
+a tag, which has the label `full-matrix` ("Before the tag" in
+[docs/releases/README.md](../releases/README.md)), and on "Run workflow"
+without the input `base` (the second table). A change that only one of the
+other cells can show (for example a change for nginx 1.26.3) is checked
+locally with that version (`nginx_version`, or the `NGINX_VERSION` of the
+cell, with `BUILD_DYNAMIC_MODULE`), and the pull request can have the
+label `full-matrix` to run every cell.
 
 `perf` is `true` when `code` is, or when the measurement of the performance
 comparison changed (`test/perf/`, `test/build_release.sh` and the scenario
@@ -180,17 +214,28 @@ each of them runs.
 | Run | `build` and `perf` |
 |---|---|
 | Draft pull request | Skipped, and `files` too; the job is named `ci-ok (draft)` |
-| Ready pull request | By the categories of the files that its merge commit (`refs/pull/N/merge`) changes against its first parent, the base: the table above. `perf` starts when `build` is `full` or `tests`, and compares when `perf` is `true` or the pull request has the label `perf` |
-| Push to `master` or `next` | Skipped |
-| Push to a `v*.x` branch or a `v*` tag | The whole matrix (`perf` runs on pull requests only) |
-| "Run workflow" without the input `base`, the nightly run under valgrind included | The whole matrix (`perf` runs on pull requests only) |
-| "Run workflow" with the input `base` | As for a pull request against `base` (`perf` runs on pull requests only) |
+| Ready pull request | By the categories of the files that its merge commit (`refs/pull/N/merge`) changes against its first parent, the base: the table above. `perf` starts when `build` is `standard` or `full`, and compares when `perf` is `true` or the pull request has the label `perf` |
+| Ready pull request with the label `full-matrix` | Every cell, whatever the files; `perf` as without the label |
+| Push to `master`, `next` or a `v*.x` branch | Skipped |
+| Push of a `v*` tag | Every cell (`perf` runs on pull requests only) |
+| "Run workflow" without the input `base`, or with the input `valgrind` (the nightly run) | Every cell (`perf` runs on pull requests only) |
+| "Run workflow" with the input `base` alone | As for a pull request against `base`, without labels (`perf` runs on pull requests only) |
 
-A change of `test.yml` alone is `tests`, so its run does not start the
-whole matrix, the sanitizer cell or the comparison of `perf`. A pull
-request that changes those jobs in `test.yml` runs them with "Run
-workflow" on its branch (`gh workflow run test.yml --ref <branch>`), whose
-job is named `ci-ok (manual)`, or the comparison with the label `perf`.
+The job `changes` reads the labels from the event of the run. A label
+added to a ready pull request counts from its next run, which a push to
+its head starts, or marking it a draft and ready again (`gh pr ready
+--undo`, then `gh pr ready`); a re-run of the jobs keeps the event, and so
+the labels it had. The label `full-matrix` goes on the pull request when it
+is opened (`gh pr create --draft --label full-matrix`), so that marking it
+ready starts the run with every cell; `gh label create full-matrix` adds
+the label to a repository that has none.
+
+A change of `test.yml` alone is `tests`, so its run starts the four
+standard cells, but not every cell or the comparison of `perf`. A pull
+request that changes those jobs in `test.yml` runs them with the label
+`full-matrix`, with "Run workflow" on its branch (`gh workflow run
+test.yml --ref <branch>`), whose job is named `ci-ok (manual)`, or the
+comparison with the label `perf`.
 The pull request quotes that run as evidence; it is not the run that
 condition 2 of "Review and merge" counts, which is the run of the pull
 request.
@@ -627,9 +672,9 @@ The upper bound can create these races:
 The `build` matrix of `.github/workflows/test.yml` runs `test.sh` in each
 cell. Which cells run nginx under valgrind depends on the run:
 
-- In a run that starts the `build` matrix, the whole one or the three
-  cells of a change of the tests ([Which jobs a run
-  starts](#which-jobs-a-run-starts)), one cell runs nginx under valgrind:
+- In a run that starts the `build` matrix, every cell or the four
+  standard cells ([Which jobs a run starts](#which-jobs-a-run-starts)),
+  one cell runs nginx under valgrind:
   nginx 1.31.8, static module, without `--with-openssl-src` (the matrix
   gives it `VALGRIND_ON_EVERY_RUN`; in the whole matrix it is the job
   `build (1.31.8)`). The other
@@ -1282,7 +1327,7 @@ time.
 ### In CI
 
 The `perf` job of `.github/workflows/test.yml` starts on ready pull
-requests whose run builds (`build` is `full` or `tests` in [Which jobs a run
+requests whose run builds (`build` is `standard` or `full` in [Which jobs a run
 starts](#which-jobs-a-run-starts)), and compares when `test/ci/changes.sh`
 gives `perf` `true`, that is when the pull request changes an input of the
 measured binary or the measurement, or when it has the label `perf` (read
