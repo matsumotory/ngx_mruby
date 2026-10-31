@@ -54,35 +54,51 @@ Draftの実行をキャンセルしても、検証結果は残りません。rea
 
 それ以外の実行では`ci-ok`に`always()`を使います。必要なジョブが終わる前に新しいpushや「Cancel workflow」でキャンセルされた場合、コミットを最後までテストしていないため失敗します。新しいpushによる失敗は、置き換えられた古いheadに残ります。GitHubの説明では`cancelled()`はワークフローがキャンセルされたことを示しますが、必要なジョブの`timeout-minutes`超過でも真になるかは明記されていません。真になるなら`!cancelled()`の`ci-ok`はスキップされ、そのスキップが必須チェックを満たしてしまいます。ルールセットが要求しない`site.yml`の`site-ok`には`!cancelled()`を使います。キャンセル時にはfailedでなくcancelledとなり、成功を必要とする`deploy`は動きません。
 
-CIはクリーンな環境での最終確認であり、変更を初めて試す場所ではありません。これは2026年10月31日のオーナーの規則で、AGENTS.mdの「Branches and pull requests」にあります。readyにする前に作者が対象のチェックをローカルで実行し、PRの「How was this tested」にコマンドと結果を記載します。`test/ci/changes.sh`が`build`を`full`か`tests`と判定したら、テストスイートも対象です。レビュアーは記録を確認します。ローカルで動く検査をCI任せにしません。
+CIはクリーンな環境での最終確認であり、変更を初めて試す場所ではありません。これは2026年10月31日のオーナーの規則で、AGENTS.mdの「Branches and pull requests」にあります。readyにする前に作者が対象のチェックをローカルで実行し、PRの「How was this tested」にコマンドと結果を記載します。`test/ci/changes.sh`が`build`を`standard`か`full`と判定したら、テストスイートも対象です。レビュアーは記録を確認します。ローカルで動く検査をCI任せにしません。
 
 readyのPRは必要なジョブだけを実行し、全体を約15分で終えます。2026年10月31日の#678では、buildのセルに6〜14分、マトリクス全体に15分かかりました。[実行41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773)がその記録です。siteのブラウザ検査は並列で各3〜8分、全体は10分でした。[実行41191594863](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594863)を参照してください。CIへの検査追加を提案するときは、ローカル実行の可否、CIでも必要な理由、増える所要時間を示します。
 
 ### 実行するジョブの選択
 
-`test/ci/changes.sh BASE HEAD`が変更ファイルを分類します。変更の種類で実行を決めるワークフローはすべてこのファイルを読み、方針を一か所に集約します。`sh test/ci/changes_test.sh`で検査できます。出力はキーごとに1行で、分類は`code`、`tests`、`docs`、`site`、`examples`、`workflows`、続いて`soak`と`perf`がそれぞれ`true`か`false`になります。`build`は`code`が真なら`full`、`tests`だけが真なら`tests`、それ以外は`none`です。renameは`git diff --no-renames`で旧パスと新パスの両方を分類するため、ソースを`docs/`へ移してもビルドします。
+`test/ci/changes.sh BASE HEAD`が変更ファイルを分類します。変更の種類で実行を決めるワークフローはすべてこのファイルを読み、方針を一か所に集約します。`sh test/ci/changes_test.sh`で検査できます。出力はキーごとに1行で、分類は`code`、`tests`、`docs`、`site`、`examples`、`workflows`、続いて`soak`と`perf`がそれぞれ`true`か`false`になります。`build`は実行するセルを表し、`code`か`tests`が真なら`standard`、それ以外は`none`です。renameは`git diff --no-renames`で旧パスと新パスの両方を分類するため、ソースを`docs/`へ移してもビルドします。`test.yml`の`changes`ジョブは、Draft、ReadyのPRのラベル、push、タグ、手動実行とその`valgrind`入力もスクリプトに渡します。下の2つ目の表にある実行では、全セルを表す`full`か、実行しない`none`を返します。
 
 | 分類 | パス | readyのPRで実行するもの |
 |---|---|---|
-| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の16セル、valgrind、sanitizer、`soak`、`perf`。`nginx-tests`、`examples`、`site`、`codeql`は各パスフィルタに従う |
-| `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | nginx 1.30.6の静的モジュール、1.31.8の動的モジュール、1.31.8の静的モジュールをvalgrindで動かす3セル。`soak`が真ならソーク、`perf`が真なら性能比較 |
+| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の標準4セル、`soak`、`perf`。`nginx-tests`、`examples`、`site`、`codeql`は各パスフィルタに従う |
+| `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | 標準4セル。`soak`が真ならソーク、`perf`が真なら性能比較 |
 | `docs` | `docs/`、トップレベルのMarkdown、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | siteのビルドと静的検査。`ci-plan.mjs`がページを選んだ場合はブラウザ検査 |
 | `site` | `site/`、`.github/workflows/site.yml` | siteのビルド、静的検査、全ブラウザ検査 |
 | `examples` | `examples/` | examplesとsiteのビルド・静的検査 |
 | `workflows` | `test.yml`と`site.yml`以外の`.github/` | zizmorは全ワークフローを検査。`.github/workflows/`と`.github/codeql/`はCodeQLも対象 |
+
+標準4セルでは、nginxのmainline 1.31とstable 1.30、静的・動的モジュールをそれぞれ少なくとも一度ビルドし、2種類のメモリ検査も実行します。
+
+| セル | nginx | モジュール | OpenSSL | nginxの実行方法 |
+|---|---|---|---|---|
+| nginx 1.31.8、静的モジュール | 1.31.8 | 静的 | `--with-openssl-src` | 直接実行 |
+| nginx 1.30.6、動的モジュール | 1.30.6 | 動的 | インストール済み | 直接実行 |
+| sanitizer | 1.31.8 | 静的 | インストール済み | AddressSanitizerとUndefinedBehaviorSanitizer付きでビルド。[手順](#addresssanitizerとundefinedbehaviorsanitizerでテストを実行する)を参照 |
+| valgrind | 1.31.8 | 静的 | インストール済み | valgrindで実行。[CIでのvalgrind](#ciのvalgrind)を参照 |
+
+オーナーは2026-11-01に、セッションが示した「`4 cell に減らす (推奨)`」を選び、PRでは全セルの代わりにこの4セルを実行すると決定しました。本人の発言は[docs/HANDOFF.md](../../HANDOFF.md)の「Decisions」にあります。全セルがnginxのビルド前にOpenSSL 1.1.1wをビルド・インストールします。最初のセルは`--with-openssl-src`でnginxにも組み込むため、同じnginxとモジュールをインストール済みOpenSSLにリンクするvalgrindセルとは異なる、`configure.in`と`Makefile.in`の経路を検査します。
+
+全セルを実行する機会も残します。nginx 1.31.8、1.30.6、1.28.3、1.26.3、静的・動的モジュール、`--with-openssl-src`の有無を組み合わせた16セルにはvalgrindセルを含み、これにsanitizerセルが加わります。夜間valgrind、タグのpush、`full-matrix`ラベルを付けたタグ前のチェックPR、`base`を指定しない手動実行で実行します。タグ前のPRは[リリースノート](../releases/README.md#タグの前に)、実行条件は次の表を参照してください。ほかのセルでしか分からない変更、たとえばnginx 1.26.3向けの変更は、そのバージョンでローカル検査します。`nginx_version`、またはセルの`NGINX_VERSION`と`BUILD_DYNAMIC_MODULE`を使います。PRに`full-matrix`ラベルを付けて全セルを実行することもできます。
 
 `soak`は`code`が真か、`test/soak/`または`test/build_release.sh`の変更時に真になります。`perf`は`code`が真か、性能測定に使う`test/perf/`、`test/build_release.sh`、`test/soak/`のシナリオファイルの変更時に真になります。未分類のファイルは`code`として全検査を実行し、理由を記載したPRで分類を追加するまでそのままです。複数の分類を変えるPRは、それぞれに必要なジョブを実行します。
 
 | 実行の種類 | `build`、`soak`、`perf` |
 |---|---|
 | DraftのPR | `files`とともにスキップ。ジョブ名は`ci-ok (draft)` |
-| readyのPR | merge refの第1親であるbaseとの差を上の表で分類。`perf`は`build`が`full`か`tests`なら起動し、`perf`が真かラベル`perf`があれば比較 |
-| `master`、`next`へのpush | スキップ |
-| `v*.x`ブランチ、`v*`タグへのpush | 全マトリクスと`soak`。`perf`はPRのみ |
-| `base`なしの手動実行、夜間valgrind | 全マトリクスと`soak`。`perf`はPRのみ |
-| `base`ありの手動実行 | `base`との差をPRと同様に分類。`perf`はPRのみ |
+| readyのPR | merge refの第1親であるbaseとの差を上の表で分類。`perf`は`build`が`standard`か`full`なら起動し、`perf`が真かラベル`perf`があれば比較 |
+| `full-matrix`ラベルのあるreadyのPR | ファイルにかかわらず全セルと`soak`。`perf`はラベルなしの場合と同じ |
+| `master`、`next`、`v*.x`ブランチへのpush | スキップ |
+| `v*`タグのpush | 全セルと`soak`。`perf`はPRのみ |
+| `base`なし、または`valgrind`入力付きの手動実行 | 全セルと`soak`。夜間実行もこれに含む。`perf`はPRのみ |
+| `base`だけを指定した手動実行 | `base`との差をラベルのないPRと同様に分類。`perf`はPRのみ |
 
-`test.yml`だけの変更は`tests`です。全マトリクス、sanitizer、`soak`、性能比較は実行しません。それらのジョブを変えるPRは、ブランチで`gh workflow run test.yml --ref <branch>`を実行するか、性能比較ならラベル`perf`を使います。手動実行のジョブ名は`ci-ok (manual)`で、PRに補足の検証結果として記録します。「Review and merge」の条件2が求めるPR自身の実行とは別です。
+`changes`ジョブは実行イベントからラベルを読みます。ReadyのPRに後から付けたラベルは、次にheadへpushするか、`gh pr ready --undo`でDraftへ戻してから`gh pr ready`で再びReadyにしたときの実行から有効です。ジョブの再実行ではイベントもラベルも元のままです。`full-matrix`はPR作成時に`gh pr create --draft --label full-matrix`で付け、Readyにした最初の実行から全セルを動かします。リポジトリにラベルがなければ、`gh label create full-matrix`で一度作成します。
+
+`test.yml`だけの変更は`tests`で、標準4セルを実行しますが、全セル、`soak`、性能比較は実行しません。それらのジョブを変えるPRは、`full-matrix`ラベルか、ブランチでの`gh workflow run test.yml --ref <branch>`を使います。性能比較には`perf`ラベルを使います。手動実行のジョブ名は`ci-ok (manual)`で、PRに補足の検証結果として記録します。「Review and merge」の条件2が求めるPR自身の実行とは別です。
 
 手動実行で`base`にブランチかコミットIDを指定すると、そのmerge baseからの変更を分類し、PRで動くジョブを確認できます。
 
@@ -358,7 +374,7 @@ stage: copied 164 files to /path/to/build/nginx/harness/test; 593 port numbers m
 
 `.github/workflows/test.yml`の`build`のマトリクスは、各セルで`test.sh`を実行します。どのセルがvalgrindの下でnginxを動かすかは、実行によって違います。
 
-- `build`マトリクスを実行する場合、全セルを動かす場合もテスト変更の3セルだけの場合も、1つのセルがvalgrindの下でnginxを動かします。[実行するジョブの選択](#実行するジョブの選択)を参照してください。そのセルは、ngx_mrubyを静的なモジュールとして組み込んだnginx 1.31.8を、`--with-openssl-src`なしでビルドします。ジョブの名前は`build (1.31.8)`です。マトリクスは、このセルに`VALGRIND_ON_EVERY_RUN`を与えます。sanitizerを使わないほかのセルは、`NGINX_RUNNER=exec`でnginxを直接動かします。sanitizerのセルは、AddressSanitizerとUndefinedBehaviorSanitizerを付けてビルドしたnginxを動かします。説明は次の節にあります。
+- `build`マトリクスを実行する場合、全セルを動かす場合も標準4セルだけの場合も、1つのセルがvalgrindの下でnginxを動かします。[実行するジョブの選択](#実行するジョブの選択)を参照してください。そのセルは、ngx_mrubyを静的なモジュールとして組み込んだnginx 1.31.8を、`--with-openssl-src`なしでビルドします。ジョブの名前は`build (1.31.8)`です。マトリクスは、このセルに`VALGRIND_ON_EVERY_RUN`を与えます。sanitizerを使わないほかのセルは、`NGINX_RUNNER=exec`でnginxを直接動かします。sanitizerのセルは、AddressSanitizerとUndefinedBehaviorSanitizerを付けてビルドしたnginxを動かします。説明は次の節にあります。
 - `test.yml`を入力`valgrind`を付けて手動で実行すると、sanitizerのセルを除くすべてのセルが、valgrindの下でnginxを動かします。
 
   ```console
@@ -926,7 +942,7 @@ $ sh test/perf/run.sh                                  # measure this checkout o
 
 ### CIで実行する
 
-`.github/workflows/test.yml`の`perf`ジョブは、`build`が`full`か`tests`となるreadyのPRで起動します。[実行するジョブの選択](#実行するジョブの選択)を参照してください。`test/ci/changes.sh`が`perf`を真にする変更、つまりバイナリ入力や測定の変更、またはラベル`perf`がある場合に比較します。ラベルはジョブ開始時に読むので、付与後の再実行で反映されます。対象ファイルのうち`test.yml`だけを変えるPRはラベルがある場合だけ比較します。コードとテストを一切変えないPRは、ラベルがあってもジョブをスキップします。バイナリの入力は、`test/build_release.sh`がコピーするものです。`src/`、`mrbgems/`、`mruby/`、`dependence/`、トップレベルのビルドのファイルの`build_config.rb`、`configure`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`と、gemのロックの`build_config.rb.lock`です。`dependence/`は、`Makefile.in`がnginxに加えるngx_devel_kitです。測定は、`test/perf/`、`test/build_release.sh`、`test/soak/`のシナリオのファイルです。シナリオのファイルは、`nginx.conf`、`nginx.agent.conf`、`scenarios.rb`、`http_client.rb`、`mock_llm.rb`、`handlers/`です。`master`のジョブも同じで、違いは2つです。`master`はgemのロックをコミットしないので、`master`ではロックは入力ではありません。また、`master`にはソークのジョブが無いので、`master`の`perf`ジョブは、`next`では`test/soak/run.sh`が実行するLLMのモックのチェックを最初に実行します。そのチェックは`ruby test/soak/mock_llm_test.rb`です。`next`で`test/soak/mock_llm_test.rb`を変えると`soak`が真になり、`soak`ジョブがその検査を実行します。`master`には`soak`ジョブがないため、このファイルだけの変更ではラベル`perf`がある場合だけ実行します。
+`.github/workflows/test.yml`の`perf`ジョブは、`build`が`standard`か`full`となるreadyのPRで起動します。[実行するジョブの選択](#実行するジョブの選択)を参照してください。`test/ci/changes.sh`が`perf`を真にする変更、つまりバイナリ入力や測定の変更、またはラベル`perf`がある場合に比較します。ラベルはジョブ開始時に読むので、付与後の再実行で反映されます。対象ファイルのうち`test.yml`だけを変えるPRはラベルがある場合だけ比較します。コードとテストを一切変えないPRは、ラベルがあってもジョブをスキップします。バイナリの入力は、`test/build_release.sh`がコピーするものです。`src/`、`mrbgems/`、`mruby/`、`dependence/`、トップレベルのビルドのファイルの`build_config.rb`、`configure`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`と、gemのロックの`build_config.rb.lock`です。`dependence/`は、`Makefile.in`がnginxに加えるngx_devel_kitです。測定は、`test/perf/`、`test/build_release.sh`、`test/soak/`のシナリオのファイルです。シナリオのファイルは、`nginx.conf`、`nginx.agent.conf`、`scenarios.rb`、`http_client.rb`、`mock_llm.rb`、`handlers/`です。`master`のジョブも同じで、違いは2つです。`master`はgemのロックをコミットしないので、`master`ではロックは入力ではありません。また、`master`にはソークのジョブが無いので、`master`の`perf`ジョブは、`next`では`test/soak/run.sh`が実行するLLMのモックのチェックを最初に実行します。そのチェックは`ruby test/soak/mock_llm_test.rb`です。`next`で`test/soak/mock_llm_test.rb`を変えると`soak`が真になり、`soak`ジョブがその検査を実行します。`master`には`soak`ジョブがないため、このファイルだけの変更ではラベル`perf`がある場合だけ実行します。
 
 `nginx_version`を変えると、ヘッドは別のnginxでビルドされます。そのため、その`WARN`や`FAIL`には、ngx_mrubyのコストだけでなく、nginx自身のコストも入ります。ngx_mrubyのリグレッションとみなす前に、下に書くとおり、プロファイルの関数を読んでください。
 
