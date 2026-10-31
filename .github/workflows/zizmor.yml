@@ -1,9 +1,11 @@
 name: zizmor
 
 # Static analysis of the GitHub Actions workflows and the Dependabot
-# configuration with zizmor (https://docs.zizmor.sh/), on every pull request
-# and push that changes them (docs/test/README.md, "Static analysis of the
-# workflows"). The job fails on any finding of the default persona that is
+# configuration with zizmor (https://docs.zizmor.sh/), on every ready pull
+# request that changes them (docs/test/README.md, "Static analysis of the
+# workflows"). A draft runs nothing, and marking it ready for review starts
+# the run; pushes to master, next and v*.x do not run it, because the run of
+# the pull request checked the same files. The job fails on any finding of the default persona that is
 # not ignored in .github/zizmor.yml or by a "# zizmor: ignore[...]" comment
 # with its reason.
 #
@@ -13,15 +15,9 @@ name: zizmor
 # the same pull request as the action, or on its own.
 on:
   pull_request:
-    branches:
-      - master
-      - next
-      - 'v*.x'
-    paths:
-      - '.github/workflows/**'
-      - '.github/dependabot.yml'
-      - '.github/zizmor.yml'
-  push:
+    # GitHub's defaults (opened, synchronize, reopened) and the move of a
+    # draft to ready for review: a draft runs nothing (the job's if).
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - master
       - next
@@ -44,6 +40,7 @@ defaults:
 
 jobs:
   zizmor:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     # No permissions: the repository is public, so the checkout and the

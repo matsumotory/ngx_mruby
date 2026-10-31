@@ -12,7 +12,17 @@ name: site
 # the github-pages environment limited to next) are the owner's; "The site"
 # in AGENTS.md lists them.
 #
-# Pull requests run it when they touch site/, docs/ or this file. Every push
+# Pull requests run it when they touch the files of on.paths below, which
+# the build and the static checks read: the reference checks read the
+# directive tables of src/ and the gems of build_config.rb, the sample
+# checks the cases of test/, the home page checks examples/. A draft pull
+# request runs no job: marking it ready for review (the type
+# ready_for_review) starts the run, and every later push runs it again.
+# The browser lanes and the maintenance lane run on a pull request only
+# when test/ci/changes.sh gives site "true" (site/ or this file), or docs
+# "true" and site/scripts/ci-plan.mjs selects pages; a change of src/,
+# test/ or examples/ alone runs the build and the static checks, not the
+# browsers (docs/test/README.md, "Site CI change scope"). Every push
 # to next runs it: docs/ links to files outside docs/ and site/, and a link
 # to a file that git no longer tracks stops the build, so a merge that
 # removes or renames such a file fails here, on that merge, and not on the
@@ -24,6 +34,9 @@ name: site
 # master, which builds the same site with the pull request's docs/.
 on:
   pull_request:
+    # GitHub's defaults (opened, synchronize, reopened) and the move of a
+    # draft to ready for review, which starts the run.
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - next
     paths:
@@ -59,6 +72,8 @@ defaults:
 
 jobs:
   build:
+    # A draft pull request runs nothing (see the top of this file).
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     outputs:
@@ -66,6 +81,7 @@ jobs:
       v2_revision: ${{ steps.versions.outputs.v2_revision }}
       browser_mode: ${{ steps.scope.outputs.mode }}
       measure_scope: ${{ steps.scope.outputs.measure_scope }}
+      browser: ${{ steps.browser.outputs.browser }}
     steps:
       # The whole history: the last-updated date of each page is the date of
       # the last commit that changed its source (git log).
@@ -226,6 +242,35 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
         run: node scripts/ci-plan.mjs
+      # Whether the browser lanes and the maintenance lane run: always on a
+      # push or a dispatch, which deploy; on a pull request, when
+      # test/ci/changes.sh (on the merge commit against the base) gives site
+      # "true", or docs "true" and the plan above selects pages (mode
+      # "full" or "targeted"). site-ok passes the skipped lanes only when
+      # this step said "false".
+      - name: Decide whether the browser lanes run
+        id: browser
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MODE: ${{ steps.scope.outputs.mode }}
+        run: |
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo "event $EVENT_NAME: the browser lanes run"
+            echo "browser=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          sh test/ci/changes.sh HEAD^1 HEAD > "$RUNNER_TEMP/changes"
+          cat "$RUNNER_TEMP/changes"
+          site=$(sed -n 's/^site=//p' "$RUNNER_TEMP/changes")
+          docs=$(sed -n 's/^docs=//p' "$RUNNER_TEMP/changes")
+          case "$site,$docs" in
+            true,true | true,false) browser=true ;;
+            false,true) if [ "$MODE" = full ] || [ "$MODE" = targeted ]; then browser=true; else browser=false; fi ;;
+            false,false) browser=false ;;
+            *) echo "::error title=site::test/ci/changes.sh gave no decision (site: '$site', docs: '$docs')"; exit 1 ;;
+          esac
+          echo "site: $site, docs: $docs, browser scope: $MODE: the browser lanes run: $browser"
+          echo "browser=$browser" >> "$GITHUB_OUTPUT"
       - name: Bind generated manifests and output to this exact run
         working-directory: ${{ runner.temp }}/fresh/site
         env:
@@ -259,6 +304,7 @@ jobs:
   # so all relevant evidence survives a failure in another lane.
   browser:
     needs: build
+    if: needs.build.outputs.browser == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -314,6 +360,7 @@ jobs:
   maintenance-lines:
     name: Check maintenance and read-only publication evidence
     needs: build
+    if: needs.build.outputs.browser == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -379,9 +426,12 @@ jobs:
           path: site/build-screenshots/predeploy-smoke
           if-no-files-found: warn
 
+  # Skipped with the build job for a draft pull request. Otherwise it fails
+  # unless the build passed, and the browser and maintenance lanes passed,
+  # or were skipped because the build job said they are not needed.
   site-ok:
     needs: [build, browser, maintenance-lines]
-    if: always()
+    if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -390,6 +440,7 @@ jobs:
           persist-credentials: false
       - name: Require every selected suite and its exact build
         env:
+          BROWSER_NEEDED: ${{ needs.build.outputs.browser }}
           BUILD_RESULT: ${{ needs.build.result }}
           BROWSER_RESULT: ${{ needs.browser.result }}
           MAINTENANCE_RESULT: ${{ needs.maintenance-lines.result }}

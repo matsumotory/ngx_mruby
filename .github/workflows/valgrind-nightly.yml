@@ -9,27 +9,23 @@ name: valgrind-nightly
 #
 # GitHub runs a schedule only from the workflow file on the default branch
 # (master): the schedule of the copy of this file on master starts the runs
-# on master and on next. This copy, on next, runs only from pull requests
-# that change this file, test.yml or test/valgrind.supp, where it starts the
-# run on the head branch of the pull request.
+# on master and on next. This copy, on next, runs only by "Run workflow"
+# (gh workflow run valgrind-nightly.yml --ref next), which starts the runs
+# of its matrix as the schedule does. Pull requests do not run it: a pull
+# request runs one cell under valgrind in its own run of test.yml, and the
+# whole matrix under valgrind waits for the next night (docs/test/README.md,
+# "valgrind in CI").
 on:
   schedule:
     # Every day at 18:23 UTC (03:23 JST).
     - cron: '23 18 * * *'
   workflow_dispatch:
-  pull_request:
-    branches:
-      - master
-      - next
-      - 'v*.x'
-    paths:
-      - '.github/workflows/valgrind-nightly.yml'
-      - '.github/workflows/test.yml'
-      - 'test/valgrind.supp'
 
+# One run at a time; a second one waits, so that two runs do not start test.yml
+# on the same branch at once.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 permissions: {}
 
@@ -39,11 +35,8 @@ defaults:
 
 jobs:
   valgrind:
-    # Forks have their own schedule to keep, if any. A pull request from a
-    # fork gets a read-only token, which cannot start a run.
-    if: >-
-      github.repository == 'matsumotory/ngx_mruby' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    # Forks have their own schedule to keep, if any.
+    if: github.repository == 'matsumotory/ngx_mruby'
     runs-on: ubuntu-24.04
     # The run of test.yml takes about as long as its slowest cell (about 13
     # minutes in October 2026) plus the wait for runners: 30 minutes from
@@ -64,22 +57,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          EVENT_NAME: ${{ github.event_name }}
-          HEAD_REF: ${{ github.head_ref }}
-          BASE_REF: ${{ github.base_ref }}
           MATRIX_BRANCH: ${{ matrix.branch }}
         run: |
-          if [ "${EVENT_NAME}" = pull_request ]; then
-            # One run per pull request, on its head branch, from the entry
-            # of the matrix that is its base.
-            if [ "${BASE_REF}" != "${MATRIX_BRANCH}" ]; then
-              echo "the pull request is for ${BASE_REF}, not ${MATRIX_BRANCH}: nothing to run"
-              exit 0
-            fi
-            branch=${HEAD_REF}
-          else
-            branch=${MATRIX_BRANCH}
-          fi
+          branch=${MATRIX_BRANCH}
           since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           out=$(gh workflow run test.yml --repo "${REPO}" --ref "${branch}" -f valgrind=true)
           echo "${out}"
@@ -102,8 +82,8 @@ jobs:
             echo "::error title=valgrind-nightly::no run of test.yml on ${branch} appeared within 300 seconds of the dispatch"
             exit 1
           fi
-          # The next step cancels the run when this job is cancelled, for
-          # example by a newer push to the pull request. A file, because the
+          # The next step cancels the run when this job is cancelled (by
+          # hand, or at its timeout). A file, because the
           # step may be cancelled before its environment file is read.
           echo "${id}" > "${RUNNER_TEMP}/dispatched-run"
           # The URL is built from the id, without another call of the API,

@@ -29,12 +29,18 @@ export function commandsFor(plan, lane) {
     [pages ? 'ci-screenshots.mjs' : 'screenshots.mjs', '--out', 'build-screenshots'],
   ];
 }
+// The browser and maintenance lanes pass only by success, or by a skip that
+// the build job decided (browserNeeded 'false', from test/ci/changes.sh and
+// the scope of ci-plan.mjs on a pull request); anything else fails closed.
 export function siteGate(results) {
-  return results.build === 'success' && results.browser === 'success' && results.maintenance === 'success';
+  if (results.build !== 'success') return false;
+  if (results.browserNeeded === 'true') return results.browser === 'success' && results.maintenance === 'success';
+  if (results.browserNeeded === 'false') return results.browser === 'skipped' && results.maintenance === 'skipped';
+  return false;
 }
 async function main() {
   if (process.argv[2] === '--gate') {
-    const results = {build:process.env.BUILD_RESULT, browser:process.env.BROWSER_RESULT, maintenance:process.env.MAINTENANCE_RESULT};
+    const results = {build:process.env.BUILD_RESULT, browserNeeded:process.env.BROWSER_NEEDED, browser:process.env.BROWSER_RESULT, maintenance:process.env.MAINTENANCE_RESULT};
     console.log(JSON.stringify(results));
     if (!siteGate(results)) process.exitCode = 1;
     return;

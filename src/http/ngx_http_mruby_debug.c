@@ -31,16 +31,19 @@
 #define NGX_MRB_DEBUG_GC_ROOT_NAME "_gc_root_"
 
 /*
-// The objects that ngx_mruby has registered with mrb_gc_register() and not
-// yet unregistered, and the fibers among them. They count the calls that go
-// through the macros of ngx_http_mruby_debug.h, in every mrb_state of the
-// process: the one of the http module and the one of the stream module.
+// The objects that ngx_mruby keeps from the GC, and the fibers among them:
+// the objects registered with mrb_gc_register() and not yet unregistered,
+// counted by the macros of ngx_http_mruby_debug.h, and the objects that
+// ngx_mrb_gc_roots_add() stored in the holder of a state and
+// ngx_mrb_gc_roots_remove() has not released (ngx_http_mruby_gc_roots.h), in
+// every mrb_state of the process: the one of the http module and the one of
+// the stream module.
 // Signed, so that more unregistrations than registrations show as negative.
 */
 static ngx_int_t ngx_mrb_debug_gc_root_count = 0;
 static ngx_int_t ngx_mrb_debug_gc_root_fibers_count = 0;
 
-static void ngx_mrb_debug_gc_root_add(mrb_value obj, ngx_int_t n)
+void ngx_mrb_debug_gc_root_track(mrb_value obj, ngx_int_t n)
 {
   /* mrb_gc_register() and mrb_gc_unregister() ignore immediate values */
   if (mrb_immediate_p(obj)) {
@@ -56,13 +59,13 @@ static void ngx_mrb_debug_gc_root_add(mrb_value obj, ngx_int_t n)
 void ngx_mrb_debug_gc_register(mrb_state *mrb, mrb_value obj)
 {
   (mrb_gc_register)(mrb, obj);
-  ngx_mrb_debug_gc_root_add(obj, 1);
+  ngx_mrb_debug_gc_root_track(obj, 1);
 }
 
 void ngx_mrb_debug_gc_unregister(mrb_state *mrb, mrb_value obj)
 {
   (mrb_gc_unregister)(mrb, obj);
-  ngx_mrb_debug_gc_root_add(obj, -1);
+  ngx_mrb_debug_gc_root_track(obj, -1);
 }
 
 static void ngx_mrb_debug_stats_set(mrb_state *mrb, mrb_value stats, const char *key, mrb_int value)

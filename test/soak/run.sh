@@ -30,7 +30,8 @@ set -e
 cd "$(dirname "$0")/../.."
 ROOT=$(pwd)
 
-# gc_root and gc_root_fibers of Nginx::Debug.stats count the calls to
+# gc_root and gc_root_fibers of Nginx::Debug.stats count the objects in the GC
+# root holders (src/http/ngx_http_mruby_gc_roots.h) and the calls to
 # mrb_gc_register() and mrb_gc_unregister() in the source files that include
 # src/http/ngx_http_mruby_debug.h (see docs/test/README.md). A call in a file
 # without that header would not be counted, so this fails first.

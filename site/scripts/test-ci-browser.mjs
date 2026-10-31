@@ -22,9 +22,14 @@ for(const lane of LANES) assert.deepEqual(commandsFor({mode:'none',pages:[]},lan
 assert.throws(()=>commandsFor({mode:'targeted',pages:[]},'interaction'));
 assert.throws(()=>commandsFor(full,'bad'));
 assert.throws(()=>commandsFor({mode:'typo'},'interaction'));
-const success={build:'success',browser:'success',maintenance:'success'};
+const success={build:'success',browserNeeded:'true',browser:'success',maintenance:'success'};
 assert.ok(siteGate(success));
-for(const key of Object.keys(success)) for(const value of ['skipped','failure','cancelled','',undefined]) assert.equal(siteGate({...success,[key]:value}),false);
+for(const key of ['build','browser','maintenance']) for(const value of ['skipped','failure','cancelled','',undefined]) assert.equal(siteGate({...success,[key]:value}),false);
+// A skip of the lanes passes only when the build job decided it.
+const notNeeded={build:'success',browserNeeded:'false',browser:'skipped',maintenance:'skipped'};
+assert.ok(siteGate(notNeeded));
+for(const key of ['build','browser','maintenance']) for(const value of ['success','failure','cancelled','',undefined]) if(!(key==='build'&&value==='success')) assert.equal(siteGate({...notNeeded,[key]:value}),false);
+for(const value of ['','yes',undefined]) {assert.equal(siteGate({...success,browserNeeded:value}),false);assert.equal(siteGate({...notNeeded,browserNeeded:value}),false);}
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ci-pages-'));
 try {
  fs.mkdirSync(path.join(dir,'docs'));fs.writeFileSync(path.join(dir,'docs/index.html'),'ok');
@@ -47,6 +52,8 @@ console.log('Version sharding preserves the exact full code-layout union: PASS')
 const workflow=fs.readFileSync(new URL('../../.github/workflows/site.yml',import.meta.url),'utf8');
 assert.ok(workflow.includes('lane: ['+LANES.join(', ')+']'));
 assert.ok(workflow.includes('needs: [build, browser, maintenance-lines]'));
+assert.ok(workflow.includes('BROWSER_NEEDED: ${{ needs.build.outputs.browser }}'));
+assert.equal(workflow.split("if: needs.build.outputs.browser == 'true'").length,3);
 assert.ok(workflow.includes('needs: [build, site-ok]'));
 assert.ok(workflow.includes('digest-mismatch: error'));
 assert.ok(workflow.includes('node scripts/check-v2.mjs --no-browser'));
