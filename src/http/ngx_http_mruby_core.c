@@ -6,10 +6,13 @@
 
 #include "ngx_http_mruby_core.h"
 
+#include "ngx_http_mruby_debug.h" // with NGX_MRUBY_DEBUG_STATS, counts the mrb_gc_register() calls
+#include "ngx_http_mruby_gc_roots.h"
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 
 #include "mruby/array.h"
+#include "mruby/error.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
 #include "mruby/internal.h"
@@ -696,4 +699,129 @@ void ngx_mrb_core_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_class_method(mrb, class, "configure", ngx_http_mruby_get_nginx_configure, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, class, "redirect", ngx_mrb_redirect, MRB_ARGS_ANY());
   mrb_define_class_method(mrb, class, "remove_global_variable", ngx_mrb_f_global_remove, MRB_ARGS_REQ(1));
+}
+
+/*
+// The holders of ngx_http_mruby_gc_roots.h, one per mrb_state, in a list
+// that has one entry for the state of the http module and one for the state
+// of the stream module, and for a while two more when nginx reads a new
+// configuration. The entry of a state leaves the list when mrb_close() runs
+// the atexit functions, before mruby frees the Array.
+*/
+typedef struct ngx_mrb_gc_roots_s {
+  mrb_state *mrb;
+  mrb_value ary;
+  mrb_int free;
+  struct ngx_mrb_gc_roots_s *next;
+} ngx_mrb_gc_roots_t;
+
+static ngx_mrb_gc_roots_t *ngx_mrb_gc_roots_list = NULL;
+
+static ngx_mrb_gc_roots_t *ngx_mrb_gc_roots_find(mrb_state *mrb)
+{
+  ngx_mrb_gc_roots_t *h;
+
+  for (h = ngx_mrb_gc_roots_list; h != NULL; h = h->next) {
+    if (h->mrb == mrb) {
+      return h;
+    }
+  }
+  return NULL;
+}
+
+static void ngx_mrb_gc_roots_forget(mrb_state *mrb)
+{
+  ngx_mrb_gc_roots_t **p, *h;
+
+  for (p = &ngx_mrb_gc_roots_list; (h = *p) != NULL; p = &h->next) {
+    if (h->mrb == mrb) {
+      *p = h->next;
+      mrb_free(mrb, h);
+      return;
+    }
+  }
+}
+
+static mrb_value ngx_mrb_gc_roots_new(mrb_state *mrb, void *data)
+{
+  mrb_value ary = mrb_ary_new(mrb);
+
+  mrb_gc_register(mrb, ary);
+  return ary;
+}
+
+ngx_int_t ngx_mrb_gc_roots_init(mrb_state *mrb)
+{
+  ngx_mrb_gc_roots_t *h;
+  mrb_value ary;
+  mrb_bool raised;
+  int ai;
+
+  if (ngx_mrb_gc_roots_find(mrb) != NULL) {
+    return NGX_OK;
+  }
+  h = mrb_malloc_simple(mrb, sizeof(ngx_mrb_gc_roots_t));
+  if (h == NULL) {
+    return NGX_ERROR;
+  }
+  ai = mrb_gc_arena_save(mrb);
+  ary = mrb_protect_error(mrb, ngx_mrb_gc_roots_new, NULL, &raised);
+  mrb_gc_arena_restore(mrb, ai);
+  if (raised) {
+    mrb_free(mrb, h);
+    return NGX_ERROR;
+  }
+  h->mrb = mrb;
+  h->ary = ary;
+  h->free = NGX_MRB_GC_ROOTS_NONE;
+  h->next = ngx_mrb_gc_roots_list;
+  ngx_mrb_gc_roots_list = h;
+  mrb_state_atexit(mrb, ngx_mrb_gc_roots_forget);
+
+  return NGX_OK;
+}
+
+mrb_int ngx_mrb_gc_roots_add(mrb_state *mrb, mrb_value obj)
+{
+  ngx_mrb_gc_roots_t *h;
+  mrb_int slot;
+
+  if (mrb_immediate_p(obj)) {
+    return NGX_MRB_GC_ROOTS_NONE;
+  }
+  h = ngx_mrb_gc_roots_find(mrb);
+  if (h == NULL) {
+    return NGX_MRB_GC_ROOTS_NONE;
+  }
+  if (h->free != NGX_MRB_GC_ROOTS_NONE) {
+    slot = h->free;
+    h->free = mrb_integer(RARRAY_PTR(h->ary)[slot]);
+    mrb_ary_set(mrb, h->ary, slot, obj);
+  } else {
+    slot = RARRAY_LEN(h->ary);
+    mrb_ary_push(mrb, h->ary, obj);
+  }
+#ifdef NGX_MRUBY_DEBUG_STATS
+  ngx_mrb_debug_gc_root_track(obj, 1);
+#endif
+
+  return slot;
+}
+
+void ngx_mrb_gc_roots_remove(mrb_state *mrb, mrb_int slot)
+{
+  ngx_mrb_gc_roots_t *h;
+
+  if (slot == NGX_MRB_GC_ROOTS_NONE) {
+    return;
+  }
+  h = ngx_mrb_gc_roots_find(mrb);
+  if (h == NULL || slot < 0 || slot >= RARRAY_LEN(h->ary)) {
+    return;
+  }
+#ifdef NGX_MRUBY_DEBUG_STATS
+  ngx_mrb_debug_gc_root_track(RARRAY_PTR(h->ary)[slot], -1);
+#endif
+  mrb_ary_set(mrb, h->ary, slot, mrb_fixnum_value(h->free));
+  h->free = slot;
 }

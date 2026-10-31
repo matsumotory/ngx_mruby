@@ -7,6 +7,7 @@
 #include "ngx_stream_mruby_module.h"
 #include "ngx_stream_mruby_core.h"
 #include "ngx_stream_mruby_async.h"
+#include "../http/ngx_http_mruby_gc_roots.h"
 
 #include "ngx_stream_mruby_init.h"
 
@@ -190,6 +191,12 @@ static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
     return NULL;
   }
   ngx_stream_mrb_class_init(mmcf->ctx->mrb);
+  if (ngx_mrb_gc_roots_init(mmcf->ctx->mrb) != NGX_OK) {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s: failed to make the GC root holder of the mrb_state", MODULE_NAME);
+    mrb_close(mmcf->ctx->mrb);
+    mmcf->ctx->mrb = NULL;
+    return NULL;
+  }
 
   cln->handler = ngx_stream_mruby_cleanup;
   cln->data = mmcf;
