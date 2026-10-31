@@ -92,7 +92,7 @@ script files of a configuration (replace `/path/to/scripts` with the
 directories of the files that the `*_handler` directives name):
 
 ```sh
-grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|respond_to\?|method_defined\?|method_missing|instance_methods|\.methods|iv_var|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[|flatten_merge|RuntimeError' /path/to/scripts
+grep -rnE 'Kernel\.|valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_function|append_features|prepend_features|extend_object|singleton_method_added|\.(included|extended|prepended|inherited|method_added)\(|initialize_copy|respond_to_missing|respond_to\?|method_defined\?|method_missing|instance_methods|\.methods|iv_var|default_proc *=|FileTest|srand|Random\.new|Set\.new|Set\[|flatten_merge|RuntimeError|\.server *=|upstream_server *=' /path/to/scripts
 ```
 
 Search the inline code of the `*_code` directives in the `nginx.conf`
@@ -331,6 +331,34 @@ not enough, and show the change.
   rescue IOError, RuntimeError   # rescued on both
   end
   ```
+
+- [`Nginx::Upstream#server=` and `Nginx::Stream::Connection#upstream_server=` raise `ArgumentError` for a string that cannot be a server](../releases/v3.0.0.md#nginxupstreamserver-and-nginxstreamconnectionupstream_server-raise-argumenterror-for-a-string-that-cannot-be-a-server-PR):
+  the search above finds both setters and `RuntimeError`; look at the ones
+  that rescue an exception of a setter.
+
+  ```ruby
+  u = Nginx::Upstream.new "backend"
+  begin
+    u.server = "192.0.2.1:notaport"
+  rescue RuntimeError                # 2.x: rescued   3.0.0: not rescued (ArgumentError)
+  end
+  begin
+    u.server = "192.0.2.1:notaport"
+  rescue ArgumentError, RuntimeError # rescued on both
+  end
+  ```
+
+- [`Nginx::Upstream#server=` raises `ArgumentError` for a host name instead of resolving it](../releases/v3.0.0.md#nginxupstreamserver-raises-argumenterror-for-a-host-name-instead-of-resolving-it-PR):
+  the search above finds the setter; look at what the script gives it, also
+  when the script reads the value from a request or a file.
+
+  ```ruby
+  u.server = "localhost:8080"        # 2.x: resolved while the worker waits   3.0.0: ArgumentError
+  u.server = "127.0.0.1:8080"        # works on both
+  ```
+
+  For a name that does not change while nginx runs, write it in the `server`
+  line of the `upstream {}` block and do not call the setter.
 
 - [The default build leaves out the auto-ssl mrbgem and the classes that came with it](../releases/v3.0.0.md#the-default-build-leaves-out-the-auto-ssl-mrbgem-and-the-classes-that-came-with-it-556):
   this finds the constants and the two `Dir` methods that the default
