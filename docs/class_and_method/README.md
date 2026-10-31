@@ -1431,8 +1431,10 @@ f.body = "The original body is removed"
 
 An empty String sends the response with `Content-Length: 0` and no body, and
 so does a body filter that leaves the body of a response without a body
-empty. The 2.x line closes the connection without a response there (see
-[docs/releases/v3.0.0.md](../releases/v3.0.0.md)).
+empty. 2.7.2 and earlier releases closed the connection there without a
+response and logged `zero size buf in writer`; 2.7.3 sends the response as
+well (see [docs/releases/v3.0.0.md](../releases/v3.0.0.md) and
+[entry 8 of docs/releases/v2.7.3.md](../releases/v2.7.3.md#8-an-output-body-filter-can-send-an-empty-body-664)).
 
 ### Nginx::Filter#output
 

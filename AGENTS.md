@@ -275,7 +275,13 @@ these hold:
    directive tables, the cases, the gems), so a change of `code` or
    `tests` in the base can break a PR of the second group that this rule
    lets merge; the run of `site.yml` on the push to `next`, which must pass
-   before it deploys, catches it, and the fix is a PR of its own. The rulesets do
+   before it deploys, catches it, and the fix is a PR of its own (a push to
+   `master` starts that run on `next` through `site-dispatch.yml`). On
+   `master`, `site-v2.yml` checks the 2.x pages of every ready PR to
+   `master`, and those pages link to any file that git tracks (the
+   workflows, `nginx_version`, `.travis.yml`), so a base change of
+   `workflows` that renames or removes such a file can break a `docs` PR in
+   the same way; the same push run catches it. The rulesets do
    not require an up-to-date branch, so this condition is the check. A run
    made green by skipping or disabling tests does not count. A run in
    which the `changes` job of `test.yml` skipped jobs that the PR's files
