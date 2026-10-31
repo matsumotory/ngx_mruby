@@ -149,7 +149,14 @@ $ gh workflow run test.yml --ref claude/topic -f base=next
 
 The result of such a run is the job `ci-ok (dry run)`, not `ci-ok`: the
 person who starts the run chooses `base`, so its result is not the check
-that the rulesets require of the commit.
+that the rulesets require of the commit. In the same way, a run with the
+input `valgrind` names it `ci-ok (valgrind)`: `valgrind-nightly.yml` starts
+such a run on the head branch of a pull request that changes `test.yml`,
+`valgrind-nightly.yml` or `test/valgrind.supp`,
+and the run builds the tip of the branch when it starts, so a run that a
+newer push cancels would otherwise leave a failed `ci-ok` on the head of
+the pull request. `valgrind-nightly.yml` reads the result of the run, not
+the name of the job.
 
 A push to `master` or `next` runs only `changes`, `files` and `ci-ok`. Both
 branches take changes only through pull requests. Condition 2 of "Review
@@ -161,9 +168,9 @@ date with its base: a pull request merged against that condition brings a
 tree that no run tested, and only a later pull request or "Run workflow"
 tests it. To build and test the tip of a branch by itself, use "Run
 workflow" (`gh workflow run test.yml --ref next`). The nightly run under
-valgrind is such a run on `next` once `valgrind-nightly.yml` is on
-`master` ([valgrind in CI](#valgrind-in-ci)); until then it runs only on
-pull requests that change it, `test.yml` or `test/valgrind.supp`. The other workflows decide on their
+valgrind, which the schedule of `valgrind-nightly.yml` on `master` starts
+on `master` and on `next` (#674), is such a run ([valgrind in
+CI](#valgrind-in-ci)). The other workflows decide on their
 own when they run (`nginx-tests`, `examples`, `site`, `zizmor` and the
 others in `.github/workflows/`).
 
@@ -710,14 +717,14 @@ cell. Which cells run nginx under valgrind depends on the run:
   ```
 
 - The nightly run: `.github/workflows/valgrind-nightly.yml` starts such a
-  run of `test.yml` every day at 18:23 UTC for each branch of its matrix
-  (`next`), waits for it, and fails when it fails. GitHub runs a schedule
-  only from the workflow file on the default branch, `master`, so the
-  schedule takes effect once the file is on `master`. Until then, the file
-  on `next` runs on pull requests that change it, `test.yml` or
-  `test/valgrind.supp`: there it starts the run under valgrind on the head
-  branch of the pull request. Neither run is a status check that `ci-ok`
-  needs.
+  run of `test.yml` every day at 18:23 UTC (03:23 JST), waits for it, and
+  fails when it fails. GitHub runs a schedule only from the workflow file
+  on the default branch, `master`, so the copy of the file on `master`
+  (#674) starts the runs on `master` and on `next`. The copy on `next` runs
+  on pull requests that change it, `test.yml` or `test/valgrind.supp`:
+  there it starts the run under valgrind on the head branch of the pull
+  request. Neither run gives the status check `ci-ok`: their job is named
+  `ci-ok (valgrind)` ([Which jobs a run starts](#which-jobs-a-run-starts)).
 
 valgrind adds little time to a cell. The part of `test.sh` from the start
 of nginx to `test.sh ... successful` took 67 to 94 seconds in the 16 cells
