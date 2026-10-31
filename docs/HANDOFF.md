@@ -1,5 +1,19 @@
 # Handoff: the state of the work
 
+## Homepage proxy explanation, 2026-10-31
+
+- `codex/site-proxy-story` starts from `next@e6e1f054`. It keeps the current
+  visual identity while replacing the ambiguous input/rule/output panel with
+  an ordered request journey, a visible canonical mapping and finite motion.
+  It also connects the developer use case to local startup, curl and the
+  requirements that need separate verification for a real API integration.
+- Author implementation and verification are in progress. Browser/pixel and
+  independent first-reader review are pending; this is not design acceptance.
+  The badge changes in [#687](https://github.com/matsumotory/ngx_mruby/pull/687)
+  remain separate. Retain its external-image readiness and browser cleanup
+  checks when bringing the branches together. No merge or deployment belongs
+  to this handoff.
+
 ## Site publication and handoff, 2026-10-31
 
 - [Site rebuild #672](https://github.com/matsumotory/ngx_mruby/pull/672)

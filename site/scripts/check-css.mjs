@@ -137,7 +137,7 @@ function main() {
       }
       if (/^(transition|transition-duration|animation|animation-duration|transition-delay|animation-delay)$/.test(d.prop)) {
         // Owner-approved homepage route indication: finite and user-triggered.
-        const limit = sel === '.home-v3 .route-pulse' && d.prop === 'animation' ? 800 : 200;
+        const limit = (sel === '.home-v3 .route-pulse' && d.prop === 'animation') || (/^\.home-v3 \.route-pulse\[data-step="?(rule|response)"?\]$/.test(sel) && d.prop === 'animation-delay') ? 800 : 200;
         const long = times(d.value).filter((t) => t > limit);
         if (long.length) report(`${long[0]} ms, over 200 ms (4.8)`);
       }
