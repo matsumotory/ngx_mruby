@@ -1884,8 +1884,11 @@ and the acceptance.
 On 2026-11-01, step 5 added Japanese sources for Contributing, Development,
 the test guide, the release-note guide, Security and the trust boundary.
 The handoff page stays in English with a Japanese notice, as the owner
-decided on 2026-10-29. Browser acceptance remains pending; this records the
-translation work, not completion of the visual checks.
+decided on 2026-10-29. On these pages, `check-japanese-lines.mjs`
+(Noto Sans JP, Chromium and WebKit, 320, 390, 1000 and 1440 px) and
+`check-styles.mjs` (both engines, light and dark) pass. `NOTES_ONLY` still
+holds the four release-note pages until the 2.x wording of #703 reaches
+`next` through a merge of `master`.
 
 ## Appendix A. Where comparable projects put things
 
