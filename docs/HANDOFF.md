@@ -32,7 +32,8 @@
   The run retains the `live-screenshots` artifact (`13031774147`) and its
   completed source-revision evidence.
 - The site CI scope and parallel browser lanes are
-  [#677](https://github.com/matsumotory/ngx_mruby/pull/677), open. The runtime
+  [#677](https://github.com/matsumotory/ngx_mruby/pull/677) (the section
+  "Site CI scope and parallel lanes" below). The runtime
   CI policy merged into `next` with
   [#676](https://github.com/matsumotory/ngx_mruby/pull/676) (`48c04d43e`); its
   `master` side, [#679](https://github.com/matsumotory/ngx_mruby/pull/679), is
