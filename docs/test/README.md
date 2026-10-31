@@ -120,7 +120,9 @@ request. The `files` job and `ci-ok` run in every run.
 | "Run workflow" with the input `base` | As for a pull request against `base` (`perf` runs on pull requests only) |
 
 For a pull request, the job lists the files that the merge commit
-(`refs/pull/N/merge`) changes against its first parent, the base. The run
+(`refs/pull/N/merge`) changes against its first parent, the base, a
+renamed file under its old and its new path (`git diff --no-renames`), so
+that moving an input to `docs/` still runs the build. The run
 skips the build jobs when every one of them is one of these, which no job
 of the run builds or tests with:
 
@@ -145,14 +147,23 @@ list is the files that the branch changes since its merge base with
 $ gh workflow run test.yml --ref claude/topic -f base=next
 ```
 
+The result of such a run is the job `ci-ok (dry run)`, not `ci-ok`: the
+person who starts the run chooses `base`, so its result is not the check
+that the rulesets require of the commit.
+
 A push to `master` or `next` runs only `changes`, `files` and `ci-ok`. Both
-branches take changes only through pull requests, which merge only after a
-run of `ci-ok` on a merge ref that includes the current base (condition 2
-of "Review and merge" in [AGENTS.md](../../AGENTS.md)), so the push brings
-the tree that the run of the pull request tested. To build and test the
-tip of a branch by itself, use "Run workflow" (`gh workflow run test.yml
---ref next`); the nightly run under valgrind is such a run on `next`
-([valgrind in CI](#valgrind-in-ci)). The other workflows decide on their
+branches take changes only through pull requests. Condition 2 of "Review
+and merge" in [AGENTS.md](../../AGENTS.md) has the session merge a pull
+request only after a run of `ci-ok` on a merge ref that includes the
+current base, so the push brings the tree that the run of the pull request
+tested. The rulesets require `ci-ok`, but not that the branch is up to
+date with its base: a pull request merged against that condition brings a
+tree that no run tested, and only a later pull request or "Run workflow"
+tests it. To build and test the tip of a branch by itself, use "Run
+workflow" (`gh workflow run test.yml --ref next`). The nightly run under
+valgrind is such a run on `next` once `valgrind-nightly.yml` is on
+`master` ([valgrind in CI](#valgrind-in-ci)); until then it runs only on
+pull requests that change it, `test.yml` or `test/valgrind.supp`. The other workflows decide on their
 own when they run (`nginx-tests`, `examples`, `site`, `zizmor` and the
 others in `.github/workflows/`).
 
