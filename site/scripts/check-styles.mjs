@@ -75,10 +75,7 @@ const SCALE = {
 // The homepage scale of home.css; reference pages retain the scale above.
 function homeSize(lang, vw) {
   const clamp = (lo, v, hi) => Math.min(Math.max(lo, v), hi);
-  // Japanese: no more than the column (the width less two gutters, 20 px at
-  // 640 px and below, 24 px above) divided by 13.7 em (tokens.css)
-  const gutter = vw <= 640 ? 20 : 24;
-  return lang === 'ja' ? Math.min(clamp(32, 16 + 0.035 * vw, 56), (vw - 2 * gutter) / 13.7) : clamp(38, 16 + 0.045 * vw, 72);
+  return lang === 'ja' ? clamp(32, 16 + 0.035 * vw, 56) : clamp(38, 16 + 0.045 * vw, 72);
 }
 // 4.5: --space-1 to --space-9, and 20 px, the narrow gutter of 4.5.
 const SPACES = [0, 4, 8, 12, 16, 24, 32, 48, 64, 80];
@@ -113,6 +110,11 @@ function inspect(cfg) {
   const scale = cfg.scale[lang];
   const sizes = new Set(Object.values(scale));
   const isHome = !!document.querySelector('.home');
+  // The Japanese home heading: no more than its column (.headline-box)
+  // divided by 13.7 em (tokens.css)
+  const headlineBox = document.querySelector('.headline-box');
+  const home = lang === 'ja' && headlineBox ? Math.min(cfg.home, headlineBox.getBoundingClientRect().width / 13.7) : cfg.home;
+  if (isHome && lang === 'ja' && !headlineBox) fails.push('the Japanese home page has no .headline-box');
   const tokens = new Set(cfg.tokens);
   const spans = new Set(cfg.spans);
   const name = (el) => {
@@ -181,7 +183,7 @@ function inspect(cfg) {
     if (ownText) {
       const fs = parseFloat(cs.fontSize);
       const allowed = new Set(sizes);
-      if (isHome) allowed.add(cfg.home);
+      if (isHome) allowed.add(home);
       if (![...allowed].some((s) => Math.abs(s - fs) < 0.05)) fail(el, `font-size ${fs}px is not a size of the ${lang} scale (${[...allowed].join(', ')})`);
       if (fs < 13.95) fail(el, `font-size ${fs}px is below 14 px`);
     }
@@ -239,7 +241,7 @@ function inspect(cfg) {
   const role = (sel, px, what) => {
     for (const el of document.querySelectorAll(sel)) if (visible(el) && Math.abs(parseFloat(getComputedStyle(el).fontSize) - px) > 0.05) fail(el, `${what} at ${getComputedStyle(el).fontSize}, expected ${px}px`);
   };
-  role('h1#_top', isHome ? cfg.home : scale.h1, isHome ? 'the home page heading' : 'the page title');
+  role('h1#_top', isHome ? home : scale.h1, isHome ? 'the home page heading' : 'the page title');
   role('.sl-markdown-content h2:not(.not-content *)', scale.h2, 'h2');
   role('.sl-markdown-content h3:not(.not-content *)', scale.h3, 'h3');
   role('.sl-markdown-content > p:not(.caption), .sl-markdown-content li > p, .home-v3 .flow-description > p', scale.body, 'body text');

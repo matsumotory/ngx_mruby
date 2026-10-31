@@ -13,6 +13,8 @@ html:has(.home-v3) .brand-showcase { width: 160px; height: 160px; }
 html:has(.home-v3) h1#_top { margin: 0; max-width: 20ch; }
 html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
 .headline-line { display: block; }
+/* The column of the Japanese heading, whose width its size follows (tokens.css) */
+.headline-box { min-width: 0; container-type: inline-size; }
 .home-v3 .lede { max-width: 40rem; margin: var(--space-5) 0 0; color: var(--color-text-muted); }
 .home-v3 .v3-entry { margin-top: var(--space-6); }
 .home-v3 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-5); margin: 0; }

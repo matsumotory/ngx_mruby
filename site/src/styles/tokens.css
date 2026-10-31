@@ -145,14 +145,21 @@ html:has(.home) {
   --text-home: clamp(2.375rem, 1rem + 4.5vw, 4.5rem);
   --leading-home: 1.05;
 }
+html[lang="ja"]:has(.home) {
+  --text-home: clamp(2rem, 1rem + 3.5vw, 3.5rem);
+  --leading-home: 1.3;
+}
 /* The Japanese heading sets each phrase of its headline on a line of its own
    (PageTitle.astro). The first phrase, 「LLMリクエストの認証と転送を」, is
-   13.3 em wide in Hiragino Sans (13.0 em in Noto Sans JP), so below about
-   520 px the size also stays under the column width divided by 13.7 em: one
-   line per phrase at 320 to 430 px (4.4; the owner's choice of 2026-10-31). */
-html[lang="ja"]:has(.home) {
-  --text-home: min(clamp(2rem, 1rem + 3.5vw, 3.5rem), (100vw - 2 * var(--gutter)) / 13.7);
-  --leading-home: 1.3;
+   13.3 em wide in Hiragino Sans (13.0 em in Noto Sans JP), so the size also
+   stays under the width of the heading's column (.headline-box, 100cqi)
+   divided by 13.7 em: one line per phrase at every width (4.4; the owner's
+   choice of 2026-10-31). It binds below about 498 px and from 801 px, where
+   the showcase image comes back beside the heading, to about 910 px. */
+@supports (container-type: inline-size) {
+  html[lang="ja"]:has(.home) {
+    --text-home: min(clamp(2rem, 1rem + 3.5vw, 3.5rem), 100cqi / 13.7);
+  }
 }
 
 /* 20 px is not a step of --space-*: it is the profile site's narrow
