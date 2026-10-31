@@ -8,8 +8,9 @@ name: valgrind-nightly
 # schedule GitHub runs only from the default branch.
 #
 # GitHub runs a schedule only from the workflow file on the default branch
-# (master). The copy of this file on another branch therefore runs only
-# from pull requests that change this file or test.yml, where it starts the
+# (master): the schedule of the copy of this file on master starts the runs
+# on master and on next. This copy, on next, runs only from pull requests
+# that change this file, test.yml or test/valgrind.supp, where it starts the
 # run on the head branch of the pull request.
 on:
   schedule:
@@ -44,8 +45,11 @@ jobs:
       github.repository == 'matsumotory/ngx_mruby' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
-    # The run of test.yml takes about as long as its slowest cell (about 15
-    # minutes in October 2026); the bound leaves room for a queue of runners.
+    # The run of test.yml takes about as long as its slowest cell (about 13
+    # minutes in October 2026) plus the wait for runners: 30 minutes from
+    # the dispatch to the end for the run on master on 2026-10-31. The bound
+    # leaves room for a longer queue, and also bounds the wait of the step
+    # below.
     timeout-minutes: 120
     permissions:
       actions: write # start test.yml on the branch and read the run
@@ -102,11 +106,27 @@ jobs:
           # example by a newer push to the pull request. A file, because the
           # step may be cancelled before its environment file is read.
           echo "${id}" > "${RUNNER_TEMP}/dispatched-run"
-          url=$(gh run view "${id}" --repo "${REPO}" --json url --jq .url)
+          # The URL is built from the id, without another call of the API,
+          # which can fail for a moment right after the dispatch (an HTTP
+          # 500 of "gh run view" failed this step once on 2026-10-31).
+          url="https://github.com/${REPO}/actions/runs/${id}"
           echo "run of test.yml on ${branch}: ${url}"
           echo "test.yml under valgrind on \`${branch}\`: ${url}" >> "${GITHUB_STEP_SUMMARY}"
-          if ! gh run watch "${id}" --repo "${REPO}" --exit-status --interval 60 > /dev/null; then
-            echo "::error title=valgrind-nightly::the run of test.yml under valgrind on ${branch} failed: ${url}"
+          # "gh run watch" ends when the run ends, or earlier when a call of
+          # the API fails. The result is read afterwards, with retries, so
+          # that a failed call does not fail this job and the run decides.
+          # The job's timeout-minutes bounds the whole wait.
+          gh run watch "${id}" --repo "${REPO}" --interval 60 > /dev/null || echo "gh run watch exited with $?; reading the result of the run"
+          result=
+          while :; do
+            state=$(gh run view "${id}" --repo "${REPO}" --json status,conclusion --jq '"\(.status) \(.conclusion)"' 2>/dev/null) || state=
+            case "${state}" in
+              "completed "*) result=${state#completed }; break ;;
+            esac
+            sleep 60
+          done
+          if [ "${result}" != success ]; then
+            echo "::error title=valgrind-nightly::the run of test.yml under valgrind on ${branch} did not pass (result: '${result}'): ${url}"
             exit 1
           fi
           echo "the run of test.yml under valgrind on ${branch} passed: ${url}"

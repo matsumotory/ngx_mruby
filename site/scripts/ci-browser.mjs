@@ -11,20 +11,26 @@ export function commandsFor(plan, lane) {
   if (plan.mode === 'none') return [];
   const pages = plan.mode === 'targeted' ? plan.pages : null;
   if (pages && !pages.length) throw new Error('empty targeted scope');
-  if (lane.startsWith('styles-')) return [['check-styles.mjs', '--engine', lane.slice(7)]];
+  if (lane.startsWith('styles-')) return [
+    ['check-styles.mjs', '--engine', lane.slice(7)],
+    ...(!pages ? [['check-styles.mjs', '--engine', lane.slice(7), '--pages', '/,/ja/', '--width', '375']] : []),
+  ];
   if (lane === 'interaction') return [
     ...(!pages || pages.some(p => p === '/' || p === '/ja/') ? [['check-copy-idle.mjs'], ['check-home-interaction.mjs']] : []),
     ['check-code-layout.mjs'],
   ];
   if (lane === 'japanese') {
     const ja = pages?.filter(p => p.startsWith('/ja/'));
-    return ja ? (ja.length ? [['check-japanese-lines.mjs', '--pages', ja.join(',')]] : []) : [['check-japanese-lines.mjs']];
+    return ja ? (ja.length ? [['check-japanese-lines.mjs', '--pages', ja.join(',')]] : []) : [['check-japanese-lines.mjs'], ['check-japanese-lines.mjs', '--pages', '/ja/docs/', '--width', '375']];
   }
   if (lane === 'accessibility') return [
     ['check-focus.mjs'], ['check-language-links.mjs'],
     ['check-lighthouse.mjs', ...(pages ? pages.flatMap(p => ['--page', p]) : [])],
   ];
-  return [[pages ? 'ci-screenshots.mjs' : 'screenshots.mjs', '--out', 'build-screenshots']];
+  return [
+    ...(!pages ? [['check-project-badges.mjs', '--browser']] : []),
+    [pages ? 'ci-screenshots.mjs' : 'screenshots.mjs', '--out', 'build-screenshots'],
+  ];
 }
 export function siteGate(results) {
   return results.build === 'success' && results.browser === 'success' && results.maintenance === 'success';
