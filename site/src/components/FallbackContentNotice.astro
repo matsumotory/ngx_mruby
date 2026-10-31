@@ -26,7 +26,9 @@ const generated = GENERATED_REFERENCE.includes(route);
     </p>
   ) : (
     <p class="site-notice" lang="ja" data-notice="untranslated">
-      このページの日本語訳はまだありません。代わりに英語の本文を表示しています。
+      {route === 'contributing/handoff'
+        ? '引き継ぎ情報は頻繁に更新されるため、日本語訳を作らず英語の本文を表示しています。'
+        : 'このページの日本語訳はまだありません。代わりに英語の本文を表示しています。'}
     </p>
   )
 }
