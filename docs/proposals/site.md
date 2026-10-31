@@ -1891,8 +1891,7 @@ The handoff page stays in English with a Japanese notice (Q2). On these pages, `
 (Noto Sans JP, Chromium and WebKit, 320, 390, 1000 and 1440 px) and
 `check-styles.mjs` (both engines, light and dark) pass. `NOTES_ONLY` holds the four
 release-note pages until the 2.x wording of #703 reaches `next` through a
-merge of `master`, and these six pages until the rebuild of 5.4 re-measures
-every page.
+merge of `master`.
 
 ## Appendix A. Where comparable projects put things
 

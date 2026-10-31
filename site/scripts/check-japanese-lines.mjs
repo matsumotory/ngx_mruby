@@ -45,12 +45,6 @@ const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 // are printed as notes until the pull request of step 5 that rewrites
 // them removes them from this list; every other Japanese page fails.
 const NOTES_ONLY = ['/ja/releases/v2.7.1/', '/ja/releases/v2.7.2/', '/ja/releases/v2.7.3/', '/ja/releases/v3.0.0/'];
-// The six pages that #705 translated print their failures as notes too,
-// until the rebuild of the site on Astro without Starlight (5.4 of
-// docs/proposals/site.md) lands: it re-wraps and re-measures every page,
-// and its acceptance removes these pages from the list. They passed this
-// check with Noto Sans JP on Linux and macOS when they were added.
-NOTES_ONLY.push('/ja/contributing/', '/ja/contributing/development/', '/ja/contributing/test/', '/ja/releases/', '/ja/security/', '/ja/security/trust-boundary/');
 const SIZES = [
   { width: 320, height: 664 },
   { width: 390, height: 664 },
