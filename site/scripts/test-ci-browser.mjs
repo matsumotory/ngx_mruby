@@ -8,7 +8,7 @@ const full={mode:'full',pages:[]}, target={mode:'targeted',pages:['/guides/insta
 assert.equal(LANES.length,6);
 assert.deepEqual(commandsFor(full,'styles-chromium'),[['check-styles.mjs','--engine','chromium']]);
 assert.deepEqual(commandsFor(full,'styles-webkit'),[['check-styles.mjs','--engine','webkit']]);
-assert.equal(commandsFor(full,'interaction').length,2);
+assert.deepEqual(commandsFor(full,'interaction'),[['check-copy-idle.mjs'],['check-home-interaction.mjs'],['check-code-layout.mjs']]);
 assert.deepEqual(commandsFor(target,'interaction'),[['check-code-layout.mjs']]);
 assert.deepEqual(commandsFor(target,'japanese'),[['check-japanese-lines.mjs','--pages','/ja/guides/install/']]);
 assert.deepEqual(commandsFor(full,'screenshots'),[['screenshots.mjs','--out','build-screenshots']]);
@@ -52,3 +52,12 @@ assert.ok(maintenance.includes('name: site-validation'));
 assert.ok(maintenance.includes('tar -xzf'));
 assert.ok(maintenance.includes('node scripts/ci-artifact.mjs'));
 console.log('Maintenance suite receives bound generated manifests as well as HTML: PASS');
+
+// The latest publication safety checks must survive workflow decomposition.
+assert.ok(maintenance.includes('node scripts/test-read-only-browser.mjs'));
+assert.ok(maintenance.includes('node scripts/screenshots-live.mjs --local --out build-screenshots/predeploy-smoke'));
+assert.ok(workflow.includes('  verify-live:'));
+assert.ok(workflow.includes('node scripts/check-public-deployment.mjs --sha'));
+assert.ok(workflow.includes('node scripts/check-live.mjs --no-gh'));
+assert.ok(workflow.includes('measure_scope: ${{ steps.scope.outputs.measure_scope }}'));
+console.log('Publication regression checks and policy-only measurement wiring: PASS');

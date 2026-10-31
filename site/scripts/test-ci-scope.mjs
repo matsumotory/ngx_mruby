@@ -121,3 +121,13 @@ test('invalid text inputs fail closed', () => {
   assert.equal(isLocalProseChange('# A', undefined), false);
   assert.equal(isLocalProseChange('# A', '# A\0'), false);
 });
+
+const { shouldMeasureScope } = await import('./lib/ci-scope.mjs');
+assert.equal(shouldMeasureScope([{path:'.github/workflows/site.yml'}],'pull_request'),true);
+assert.equal(shouldMeasureScope([{path:'site/scripts/ci-browser.mjs'}],'pull_request'),true);
+assert.equal(shouldMeasureScope([{path:'site/scripts/lib/ci-scope.mjs'}],'pull_request'),true);
+assert.equal(shouldMeasureScope([{path:'docs/install.md'}],'pull_request'),false);
+assert.equal(shouldMeasureScope([{path:'site/src/styles/site.css'}],'pull_request'),false);
+assert.equal(shouldMeasureScope([{path:'.github/workflows/site.yml'}],'push'),false);
+assert.equal(shouldMeasureScope([],'pull_request'),false);
+console.log('Only PR CI-policy changes request the extra same-artifact comparison: PASS');
