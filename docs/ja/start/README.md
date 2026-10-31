@@ -1,49 +1,109 @@
 # はじめに
 
-このページでは、ngx_mrubyを組み込んだnginxをDockerで動かし、Rubyのスクリプトが答えるリクエストを送ってから、そのスクリプトを書き換えます。例は、リポジトリのフォルダ`examples/start`にあります。Composeは、[`compose.yaml`](../../../examples/start/compose.yaml)に従い、[`Dockerfile`](../../../examples/start/Dockerfile)を使って、チェックアウトしたソースからngx_mrubyを組み込んだnginxをビルドします。次に、フォルダの`nginx.conf`と`hello.rb`でそのnginxを起動します。
+手元のプロキシから2つのmock APIへリクエストを送ります。Rubyを編集して、同じリクエストの転送先を変えます。プロバイダのアカウントやAPIキーは不要です。mockは転送先と認証情報の確認用で、文章生成やLLMへの接続は行いません。
 
-## 始める<wbr>前に
+これは<strong>v3の開発ブランチ<code>next</code></strong>を試す構成です。リリース済みv3のイメージや本番用の設定ではありません。基本的なRubyのレスポンスハンドラを試す`/hello`も残しています。
 
-- Dockerと、`docker compose`のコマンドを使うためのComposeのプラグイン、git、curl、ネットワークへの接続が要ります。ビルドは、nginxをnginx.orgから、`build_config.rb`のmrbgemsをGitHubからダウンロードします。
-- このv3開発版の検証済みビルド済みイメージは提供していないため、最初の実行では、mrubyとnginxをコンパイルします。2026年10月29日に、GitHubの`ubuntu-24.04`のランナーで、Docker Engine 28.0.4とDocker Compose 2.38.2を使ったとき、手順3は170秒かかりました。2回目からは、ビルド済みのイメージを使い回します。
-- これらの手順は、`examples/`を変えるすべてのプルリクエストでCIが実行します。そのワークフローの`.github/workflows/examples.yml`は、このページの出力をすべて、コマンドが表示したものと比べます。
+## 始める前に<wbr>用意するもの
 
-## Rubyの<wbr>ハンドラを<wbr>持つ<wbr>nginxを<wbr>動かす
+Composeプラグイン付きのDocker（`docker compose`）、git、curl、ネットワーク接続が必要です。初回はソースからnginxとmrubyをビルドします。nginxはnginx.orgから、`build_config.rb.lock`で固定したgemはGitHubから取得します。以降はイメージを再利用します。検証済みのv3イメージは未提供です。
 
-このサイトで扱うのは、ブランチ`next`で開発中のngx_mruby 3.xです。
+[`compose.yaml`](../../../examples/start/compose.yaml)のポート8080は`127.0.0.1`だけで公開します。2つのmock APIはコンテナ内のループバックで待ち受け、ホストには公開しません。キーはすべて公開のデモ用文字列です。公開サービスでは使用しないでください。
 
-1. リポジトリから、ブランチ`next`をクローンします。
+## ローカルプロキシを<wbr>起動する
 
-   ```console
-   $ git clone --branch next https://github.com/matsumotory/ngx_mruby.git
-   ```
+```console
+$ git clone --branch next https://github.com/matsumotory/ngx_mruby.git
+$ cd ngx_mruby/examples/start
+$ docker compose up --build --wait
+```
 
-2. 例のフォルダへ移動します。
+`--wait`はヘルスチェック用の`/hello`の応答を待ちます。振り分けは次のリクエストで確認します。以降も例のディレクトリで実行します。
 
-   ```console
-   $ cd ngx_mruby/examples/start
-   ```
+<a id="model-routing"></a>
 
-3. イメージをビルドし、nginxを起動します。`--wait`を付けると、nginxが`compose.yaml`のヘルスチェックに答えたときにコマンドが戻り、Composeはコンテナ`start-nginx-1`をhealthyとして表示します。
+## modelで<wbr>転送先を選ぶ
 
-   ```console
-   $ docker compose up --build --wait
-   ```
+ローカルの利用者キーを付けてモデルAを送ります。nginxはキーを確認し、`route.rb`の対応表からモデルを探し、利用者の認証情報を置き換えてボディを転送します。mockの応答は転送先を示し、利用者キーではなく、その転送先専用の認証情報を受け取ったことを確認します。
 
-4. 引数`name`を付けて、`/hello`へリクエストを送ります。レスポンスはRubyのスクリプトが書きます。
+`client.conf`にローカルURLとデモ用ヘッダをまとめています。以下のコマンドではmodelを変えます。設定全文は後半にあります。
 
-   ```console
-   $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Hello, Ruby! hello.rb answered GET /hello.
-   ```
+```console
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"a",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
+```
 
-## リクエストに<wbr>答えたもの
+`model`だけを変更してAPI Bを選びます。URLと利用者キーは同じです。
 
-nginxは、`nginx.conf`の[`mruby_content_handler`](../../directives/README.md#mruby_content_handler-and-mruby_content_handler_code)に従って、`/hello`へのリクエストをRubyのスクリプトに渡します。
+```console
+$ curl -K client.conf -d '{"model": "mock-model-b"}'
+{
+  "upstream":"b",
+  "model":"mock-model-b",
+  "credential_replaced":true
+}
+```
+
+この例で確認するのはモデル振り分けと認証情報の差し替えです。API形式の変換、実プロバイダとの接続試験、LLMによる生成は行いません。ストリーム中継や同時実行制限と、それらを確かめる別の結合テストは、[エージェントプロキシのガイド](../guides/agent-proxy.md)を参照してください。
+
+## リクエストを変えずに<wbr>転送先を変える
+
+対応表でモデルAの転送先と上流用の認証情報を**両方**変更します。コマンドは元のファイルを`route.rb.orig`に保存します。マウントされたRubyハンドラには`cache`を指定していないため、次のリクエストで変更を読み取り、リロードは不要です。
+
+```console
+$ sed -i.orig 's/local_api_a/local_api_b/;s/upstream-a/upstream-b/' route.rb
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"b",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
+```
+
+リクエストは`mock-model-a`のままですが、応答は`upstream: b`になります。元の対応表を戻し、同じリクエストが再びAへ届くことを確認します。
+
+```console
+$ mv route.rb.orig route.rb
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"a",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
+```
+
+## 拒否するリクエストを<wbr>確認する
+
+利用者キーがない、または未知のキーなら401、対応表にないモデルなら403、不正なJSONなら400です。これらのリクエストはプロキシで終了し、mock APIへ届きません。
+
+```console
+$ curl -sS localhost:8080/v1/responses -d '{}' -o /dev/null -w '%{http_code}\n'
+401
+$ curl -K client.conf -o /dev/null -w '%{http_code}\n' -d '{"model": "unknown"}'
+403
+$ curl -K client.conf -o /dev/null -w '%{http_code}\n' -d '{'
+400
+```
+
+## 実行する<wbr>ファイル
+
+`nginx.conf`はaccessハンドラ、名前付きupstream、mockのエンドポイントを接続します。基本の`/hello`ハンドラも残しています。このフォルダはコンテナ内へ読み取り専用でマウントされるため、ファイルはホスト側で編集します。
+
+```text title="client.conf"
+# Local demonstration credentials, not for a public service.
+url = "http://localhost:8080/v1/responses"
+header = "Content-Type: application/json"
+header = "Authorization: Bearer local-client"
+silent
+show-error
+```
 
 ```nginx title="nginx.conf"
-# The nginx configuration of the start page. compose.yaml mounts this
-# folder at /example, and the image starts nginx with this file.
+# Local examples: one proxy and two mock APIs inside the container.
 user nobody nogroup;
 worker_processes 1;
 error_log /dev/stderr;
@@ -55,17 +115,97 @@ events {
 http {
     access_log /dev/stdout;
 
+    upstream local_api_a { server 127.0.0.1:8081; }
+    upstream local_api_b { server 127.0.0.1:8082; }
+
     server {
         listen 8080;
 
         location /hello {
             mruby_content_handler /example/hello.rb;
         }
+
+        location = /v1/responses {
+            set $selected_backend "";
+            set $upstream_credential "";
+            mruby_enable_read_request_body on;
+            mruby_access_handler /example/route.rb;
+            proxy_http_version 1.1;
+            proxy_set_header Connection close;
+            proxy_set_header Authorization $upstream_credential;
+            proxy_set_header x-api-key "";
+            proxy_buffering off;
+            proxy_pass http://$selected_backend;
+        }
+    }
+
+    server {
+        listen 127.0.0.1:8081;
+        location = /v1/responses {
+            mruby_enable_read_request_body on;
+            mruby_content_handler /example/mock.rb;
+        }
+    }
+
+    server {
+        listen 127.0.0.1:8082;
+        location = /v1/responses {
+            mruby_enable_read_request_body on;
+            mruby_content_handler /example/mock.rb;
+        }
     }
 }
 ```
 
-`hello.rb`は、`Nginx::Request`で引数を読み、`Nginx.rputs`でボディを書き出します。
+`route.rb`はローカルのキーを確認し、転送先と認証情報を選びます。nginxの変数を通して、その値を`proxy_pass`と`proxy_set_header`に渡します。
+
+```ruby title="route.rb"
+# Local demonstration credentials. Never use these values for a public service.
+r = Nginx::Request.new
+v = Nginx::Var.new
+
+if r.headers_in["Authorization"] != "Bearer local-client"
+  Nginx.return Nginx::HTTP_UNAUTHORIZED
+else
+  routes = {
+    "mock-model-a" => ["local_api_a", "Bearer local-upstream-a"],
+    "mock-model-b" => ["local_api_b", "Bearer local-upstream-b"]
+  }
+  begin
+    body = JSON.parse(r.body)
+    route = body.kind_of?(Hash) ? routes[body["model"]] : nil
+    if route
+      v.selected_backend = route[0]
+      v.upstream_credential = route[1]
+      Nginx.return Nginx::DECLINED
+    else
+      Nginx.return Nginx::HTTP_FORBIDDEN
+    end
+  rescue JSON::ParserError, ArgumentError
+    Nginx.return Nginx::HTTP_BAD_REQUEST
+  end
+end
+```
+
+`mock.rb`はAPI AまたはBが受け取ったリクエストを報告します。認証情報そのものは返さず、一致したかどうかを真偽値で返します。
+
+```ruby title="mock.rb"
+# These local mocks report the selected route; they do not call an LLM.
+r = Nginx::Request.new
+v = Nginx::Var.new
+name = v.server_port == "8081" ? "a" : "b"
+body = JSON.parse(r.body)
+r.headers_out["Content-Type"] = "application/json"
+Nginx.rputs JSON.pretty_generate({
+  "upstream" => name,
+  "model" => body["model"],
+  "credential_replaced" => r.headers_in["Authorization"] == "Bearer local-upstream-#{name}"
+})
+```
+
+## 基本のレスポンス<wbr>ハンドラを試す
+
+`hello.rb`はnginxのworker内でRubyを動かし、upstreamを使わずにレスポンスを書きます。挨拶を変更してもう一度リクエストを送り、その後で元へ戻します。
 
 ```ruby title="hello.rb"
 # The content handler of the start page (examples/start/nginx.conf).
@@ -76,70 +216,49 @@ r.content_type = "text/plain"
 Nginx.rputs "Hello, #{name}! hello.rb answered #{r.method} #{r.uri}.\n"
 ```
 
-nginxは、ワーカープロセスの中でngx_mrubyがnginxに組み込んだmrubyのVMを使ってスクリプトを実行します。ほかのプロセスは関わりません。スクリプトが使えるクラスとメソッドは、[Rubyのリファレンス](../../class_and_method/README.md)にあります。
+```console
+$ curl -sS 'http://localhost:8080/hello?name=Ruby'
+Hello, Ruby! hello.rb answered GET /hello.
+$ sed -i.orig 's/Hello/Good morning/' hello.rb
+$ curl -sS 'http://localhost:8080/hello?name=Ruby'
+Good morning, Ruby! hello.rb answered GET /hello.
+$ mv hello.rb.orig hello.rb
+```
 
-## スクリプトを<wbr>書き換える
+## 設定の変更を<wbr>反映する
 
-Composeは、`compose.yaml`に従ってこのフォルダをコンテナにマウントします。ディレクティブは、パラメータ`cache`を付けずにスクリプトを指定しています。そのため、nginxはリクエストのたびにファイルを読み直します。`hello.rb`を変えると、リロードしなくても次のリクエストから変更が効きます。
-
-1. `hello.rb`の`Hello`を`Good morning`に置き換えます。このコマンドは、元のファイルを`hello.rb.orig`として残します。
-
-   ```console
-   $ sed -i.orig 's/Hello/Good morning/' hello.rb
-   ```
-
-2. もう一度リクエストを送ります。レスポンスには新しいあいさつが入っています。
-
-   ```console
-   $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Good morning, Ruby! hello.rb answered GET /hello.
-   ```
-
-3. 元のスクリプトを戻します。
-
-   ```console
-   $ mv hello.rb.orig hello.rb
-   ```
-
-4. マウントした設定を検証してリロードします。`PATH`に依存せず、このイメージのバイナリと設定のパスを指定します。
+キャッシュしないRubyハンドラは、次のリクエストでファイルを読みます。`nginx.conf`や`cache`付きのRubyハンドラを変更した場合は、設定を検証してリロードします。以下はこのイメージ内のパスです。
 
 ```console
 $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -t -c /example/nginx.conf
 $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -s reload -c /example/nginx.conf
-$ curl -s 'http://localhost:8080/hello?name=Ruby'
+$ curl -sS 'http://localhost:8080/hello?name=Ruby'
 Hello, Ruby! hello.rb answered GET /hello.
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"a",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
 ```
 
-5. コンテナを止めて削除します。Composeは、コンテナ`start-nginx-1`をremovedと表示します。
+本番の設定では[コンパイル済みコードのキャッシュ](../../directives/README.md#caching-compile-code)を使い、リクエストごとのファイル読み取りを避けてください。mrbgemやビルドオプションの変更には、リロードだけでなくイメージの再ビルドが必要です。
 
-   ```console
-   $ docker compose down
-   ```
+## 試用を<wbr>終了する
 
-リクエストのたびにファイルを読むと、スクリプトを書いている間は便利です。その代わり、nginxはリクエストの処理の途中でディスクを読みます。本番では、[コンパイルしたコードのキャッシュ](../../directives/README.md#caching-compile-code)にあるように、ディレクティブに`cache`を付けてください。`cache`を付けると、nginxは設定を読むときにスクリプトを1回だけコンパイルします。
+```console
+$ docker compose down
+```
 
-## 変更を反映する方法
+起動やヘルスチェックに失敗した場合は`docker compose logs nginx`を確認します。ベースイメージのメタデータ取得やダウンロードの失敗は、nginx起動前のレジストリやネットワークの問題で、この例が返した応答ではありません。
 
-| 変更 | 反映方法 | 理由 |
-|---|---|---|
-| `cache`なしのRuby | 再送 | マウントしたスクリプトを毎回読みます |
-| `nginx.conf`、または`cache`付きRuby | `nginx -t`で検証してから上記コマンドでreload | 設定読込時にコードをコンパイルします |
-| gem・ビルド設定 | 再ビルド | ビルド条件が変わる |
+## 自分のアプリに<wbr>組み込む
 
-コンテナ内のマウントは読み取り専用です。ホスト側のファイルを編集します。この例はホストのインターフェースに8080番を公開するため、ローカルだけで試す場合は起動前にComposeの対応を`127.0.0.1:8080:8080`へ変更してください。
+- [エージェントプロキシ](../guides/agent-proxy.md)：認証、モデル振り分け、同時実行制限、ストリーム中継のテストと計画。
+- [インストール](../install/README.md)：既存環境のnginxバージョンとビルドオプションに合わせて、静的または動的モジュールを作成。
+- [ディレクティブ](../../directives/README.md)：nginxがRubyを実行するフェーズを選択。
+- [リクエストのフェーズ](../concepts/request-phases.md)：1つのリクエストが通るハンドラの順序。
 
-healthcheckや設定エラーは`docker compose logs nginx`で調べます。イメージmetadataの取得失敗は、コンパイル前のレジストリ・ネットワークの問題です。
+公式nginxのパッケージやイメージにngx_mrubyは含まれません。`--with-compat`も任意のnginxバージョンとの互換性は保証しません。Mac上でのLinuxコンテナの動作と、ネイティブmacOSビルドの検証は別です。
 
-コンテナは試用の入口の一つです。既存のLinux環境へ組み込む場合は[インストール](../install/README.md)に従い、nginxの版とビルド条件を合わせます。公式nginxパッケージやイメージにはngx_mrubyは含まれず、`--with-compat`も任意のnginx版との互換性を意味しません。Mac上でLinuxコンテナを動かした結果は、macOSネイティブビルドの証明ではありません。
-
-上記170秒は過去のCI環境での記録であり、現在の所要時間やarm64での結果を保証しません。2026-10-30のfresh linux/arm64試行はUbuntu基盤イメージのmetadata取得で止まり、コンパイル前に終了しました。その試行では起動・編集反映・reloadは未検証です。examplesワークフローがLinuxランナーでコマンドを検査するため、使用するcommitの実行結果を確認してください。
-
-一次資料: [NGINXコンテナ](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-docker/)、[Linuxパッケージ](https://nginx.org/en/linux_packages.html)、[動的モジュール](https://blog.nginx.org/blog/nginx-dynamic-modules-how-they-work)、[reload](https://nginx.org/en/docs/control.html)、[bind mount](https://docs.docker.com/engine/storage/bind-mounts/)。
-
-## 次に<wbr>読む<wbr>ページ
-
-- [インストール](../install/README.md)：ngx_mrubyを、静的なモジュールか動的なモジュールとして、自分のnginxに組み込んでビルドします。
-- [ディレクティブ](../../directives/README.md)：nginxがRubyを実行するフェーズと、各フェーズのディレクティブを載せています。
-- [リクエストのフェーズ](../concepts/request-phases.md)：nginxが1つのリクエストのハンドラを実行する順序を説明しています。
-
-- [エージェントプロキシ](../guides/agent-proxy.md): 検証済みのモデル振り分けとストリーム中継へ進みます。
+`examples`ワークフローは対象コミットごとに、このページのコマンドを実行して出力を比較します。利用するリビジョンのrunを確認してください。以前のrunだけでは変更後の手順が動く証拠になりません。従来のHelloだけの例は、2026-10-29のGitHub `ubuntu-24.04` runner（Docker Engine 28.0.4、Compose 2.38.2）で170秒でした。これは過去のビルド記録で、現在の所要時間、振り分けの実行、arm64の動作を保証するものではありません。
