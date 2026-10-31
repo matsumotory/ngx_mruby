@@ -59,7 +59,7 @@ describes that code, and section 4 proposes one model for all three.
 
 - Each run of a handler runs its code in a new fiber: `ngx_mrb_run` and
   `ngx_mrb_run_request` (`src/http/ngx_http_mruby_module.c:784-796`,
-  `903-1190`) call `ngx_mrb_start_fiber` (`src/http/ngx_http_mruby_async.c:138-185`);
+  `903-1240`) call `ngx_mrb_start_fiber` (`src/http/ngx_http_mruby_async.c:138-185`);
   in stream, `ngx_stream_mruby_handler` (`src/stream/ngx_stream_mruby_module.c:729-784`)
   calls `ngx_stream_mrb_start_fiber` (`src/stream/ngx_stream_mruby_async.c:86-135`).
 - `ngx_mrb_run_fiber` sets `ctx->handler_kind` for the time the fiber runs,
@@ -75,7 +75,8 @@ describes that code, and section 4 proposes one model for all three.
   pool cleanup when the fiber is created, for every handler, also one that
   never waits (`src/http/ngx_http_mruby_async.c:154-182`). Stream takes the
   slot when the fiber first sleeps (`src/stream/ngx_stream_mruby_async.c:291-299`,
-  #645 and #698). Both free the slot when the fiber ends
+  #645 and #698), but allocates its record and adds a pool cleanup for every
+  run, also one that never sleeps (`:110-121`). Both free the slot when the fiber ends
   (`src/http/ngx_http_mruby_async.c:231-258`,
   `src/stream/ngx_stream_mruby_async.c:67-81`) or in the pool cleanup.
 - The compiled `RProc` of the handler is changed on every run (`upper` and
@@ -130,13 +131,19 @@ describes that code, and section 4 proposes one model for all three.
   Then: `NGX_DECLINED` moves to the next phase handler and runs the phases;
   `NGX_DONE` means that the fiber waits again; any other value goes to
   `ngx_http_finalize_request(r, rc)`, followed by
-  `ngx_http_run_posted_requests`.
+  `ngx_http_run_posted_requests`. Before that, it sets `headers_out.status`
+  to 500 for every result but `NGX_OK`, `NGX_DECLINED` included (`:327-329`),
+  one more stored status for the later handlers of the request (2.1); the
+  upstream of `/sleep_with_proxy` overwrites it.
 - This replaces nginx's phase checker for the result after the wait, and it
   handles the result as the content checker would, not as the checker of the
   handler's phase would. Without a stored status (2.1):
-  - an access handler that sets no result goes on with the next access
-    handler when it does not wait (the access checker on `NGX_OK`), and ends
-    the request without a response after a sleep (unverified). With
+  - an access handler that sets no result returns `NGX_OK` when it does not
+    wait (`src/http/ngx_http_mruby_core.c:277`), on which the access checker
+    goes on with the next access handler under `satisfy all`, and allows the
+    request and skips the other access handlers under `satisfy any` (nginx
+    `src/http/ngx_http_core_module.c:1146-1165`); after a sleep it ends the
+    request without a response (unverified). With
     `satisfy any`, a 401 or 403 after a sleep ends the request instead of
     trying the next access handler (unverified);
   - a post_read handler that sets no result goes on with the next phase when
@@ -214,7 +221,9 @@ so far:
   starts its code again in a second fiber while the first is suspended
   (`test/t/cases/stream_async_sleep_udp_reuse.rb`; #698 keeps that second
   fiber from the GC). A TCP session gets no read event during the access
-  phase, because nginx does not watch its read side then.
+  phase, because nginx does not watch its read side then, except with
+  `listen ... proxy_protocol`, whose read handler can still be armed
+  (nginx `src/stream/ngx_stream_handler.c:188-197`; unverified).
 - When `worker_shutdown_timeout` expires, nginx sets `c->close` and calls the
   read handler of every connection (nginx `src/core/ngx_cycle.c:1455-1484`).
   `ngx_stream_mruby_handler` does not look at `c->close`. No test covers a
@@ -264,8 +273,9 @@ above:
    in another fiber (2.5).
 10. A stream session that waits when `worker_shutdown_timeout` expires is
     not tested (2.5).
-11. The `RProc` is changed on every run, and an HTTP handler that never waits
-    still takes a slot and a pool cleanup (2.1).
+11. The `RProc` is changed on every run, an HTTP handler that never waits
+    still takes a slot, and a handler of either protocol that never waits
+    still allocates a record and adds a pool cleanup (2.1).
 12. `mrb->exc` is cleared in several places on the resume paths
     (`src/http/ngx_http_mruby_async.c:293-299`,
     `src/stream/ngx_stream_mruby_async.c:158-167`), not on every exit path
@@ -302,9 +312,14 @@ The decisions that bind it, all on `next`:
 - Item 15 of section 7 of the plan: the content handler of a subrequest that
   returns `Nginx::HTTP_OK` without output keeps answering 500, so that
   `auth_request` fails closed.
-- Item 8 of section 7: the behavior changes of v3 are accepted, each listed
-  in the migration guide; and #574: a content handler of the main request
-  that ends without output answers 200 with an empty body.
+- Item 8 of section 7 accepts five behavior changes of v3, each listed in
+  the migration guide: exceptions outside the phase, 500 after an exception
+  that follows `rputs`, the exact match of `Headers#delete`, the empty 200,
+  and a body with any status. #574 made the empty 200: a content handler of
+  the main request that ends without output answers 200 with an empty body.
+  The other behavior changes of section 5 are not covered by item 8: each is
+  a defect fix, follows from a decision above, or is a question of section
+  9.
 
 ## 4. The proposed model
 
@@ -334,12 +349,19 @@ are the owner hook, the wake (4.4), the mapping of the result to the
 phase's return value, and the current request or session that the Ruby API
 reads.
 
-With the recommendations of section 9, a request has at most one record that
-waits at a time (the phases run one handler at a time, and `Nginx.redirect`
-no longer runs a target inside its caller, Q2), and a stream session has one
-(Q4). The record can then live in the module context, allocated with it and
-reused by the later handlers of the request. If Q2 or Q4 is answered the
-other way, there is one record per run, as today.
+With the recommendations of section 9, each request (each
+`ngx_http_request_t`: a subrequest and its parent can wait at the same time,
+`test/t/cases/async_exception_state.rb:77`) has at most one record that waits
+at a time (the phases run one handler at a time, and `Nginx.redirect` no
+longer runs a target inside its caller, Q2), and a stream session has one
+(Q4). The record is then allocated once per request from its pool and
+reused by the later handlers of the request. The module context points at
+it, but the owner hook and the timer reach it through their own pointers,
+because `ngx_mrb_finalize_rputs` drops the module context after it sent
+output (`src/http/ngx_http_mruby_core.c:303`) and an internal redirect clears
+every module context. If Q2 or Q4 is answered the other way, there is one
+record per run, as today, and with Q2 answered no, a content handler that
+waits inside `Nginx.redirect` still does not keep the request (2.4).
 
 ### 4.2 States
 
@@ -349,7 +371,7 @@ other way, there is one record per run, as today.
 | `WAITING` | `Nginx::Async.sleep` or `sub_request` armed the wait, and the fiber yielded | the timer fires or the subrequest ends (`READY`), or the owner ends (`CANCELLED`) |
 | `READY` | the wake (4.4) | the checker calls the handler, which resumes the fiber (`RUNNING`), or the owner ends (`CANCELLED`) |
 | `DONE`, `FAILED` | the fiber ended; the slot is freed then | the record is reused by the next handler of the request, or freed with the pool |
-| `CANCELLED` | the owner hook ran while the fiber was `WAITING` or `READY`; the timer is deleted and the slot freed | never; the fiber is not resumed |
+| `CANCELLED` | the owner hook ran while the fiber was `WAITING` or `READY`; the timer is deleted and the slot freed | never; the fiber is not resumed. nginx no longer calls the handler of a terminated or freed request; a handler that finds its record `CANCELLED` returns `NGX_ERROR` |
 
 A cancelled fiber is dropped without running the rest of its code, so an
 `ensure` clause after the wait does not run. This is so today as well; Q3
@@ -371,7 +393,7 @@ asks whether 3.0.0 keeps it.
 - The slot is taken at the first wait, as the stream path does since #645,
   instead of when the fiber is created; until then the fiber is the running
   fiber or in the GC arena of the call. A handler that never waits then
-  takes no slot and adds no cleanup (gap 11). The GC stress build of
+  takes no slot and adds no cleanup, in HTTP and in stream (gap 11). The GC stress build of
   `test.sh` (`-DMRB_GC_STRESS`) runs every case with this; the perf lane
   shows what it saves (section 7). If the GC stress runs or a sanitizer show
   a fiber collected before its first wait, the slot stays at creation.
@@ -400,16 +422,29 @@ A wait starts:
 A wait ends with a wake, and the wake only marks the record and gives the
 owner back to nginx:
 
-- The timer: the record becomes `READY`. HTTP: the timer handler posts the
-  request (`ngx_http_post_request`) and runs the posted requests of its
-  connection, so that nginx calls the request's write event handler, as for
+- The timer: the record becomes `READY`. HTTP, for a phase handler
+  (`mruby_set` is the exception below): the timer handler posts the request
+  with a posted-request entry kept in the record (`ngx_http_post_request`
+  allocates one from the pool for each call without it, nginx
+  `src/http/ngx_http_request.c:2726-2731`) and runs the posted requests of
+  its connection, so that nginx calls the request's write event handler, as for
   any request that is not the active one of its connection. Stream: it runs
   the phases of the session (`ngx_stream_core_run_phases`), as today.
 - The subrequest: its post handler copies the status, the headers and the
-  body into the record, sets `READY`, and returns nginx's `rc` unchanged, as
-  `ngx_http_auth_request_done` does (nginx
-  `src/http/modules/ngx_http_auth_request_module.c:223-234`). nginx then
-  wakes the parent itself (`src/http/ngx_http_request.c:2876-2885`, "http
+  body into the record at its first call, sets `READY`, and returns nginx's
+  `rc` unchanged, as `ngx_http_auth_request_done` does (nginx
+  `src/http/modules/ngx_http_auth_request_module.c:223-234`). nginx calls
+  the post handler on each `ngx_http_finalize_request` of the subrequest
+  that is not `NGX_DONE` or `NGX_DECLINED` (`src/http/ngx_http_request.c:2771-2773`):
+  again with the result of `ngx_http_special_response_handler` after an
+  `rc` of 300 or more (`:2788-2812`), and again when a buffered or postponed
+  subrequest is finalized later (`:2817-2824`). The record keeps what the
+  first call saw, the status and headers of the subrequest's response and
+  the body that it had in memory then, as the code does today, whose first
+  call resumes the parent (`test/t/ngx_mruby.rb:787-793`,
+  `/async_http_sub_request_notfound`, pins it); the later calls change
+  nothing and return `rc`. A call for a record that is `CANCELLED` does
+  nothing either. nginx then wakes the parent itself (`src/http/ngx_http_request.c:2876-2885`, "http
   wake parent request").
 - The wait handler sees `READY`, sets `ngx_http_core_run_phases` as the write
   event handler again and runs the phases.
@@ -422,7 +457,8 @@ subrequest: its post handler marks the context done, and the phase handler
 returns the stored result when nginx calls it again (nginx
 `src/http/modules/ngx_http_auth_request_module.c:102-128`).
 
-What this gives:
+What this gives, for the phase handlers (`mruby_set` is the exception
+below):
 
 - ngx_mruby calls neither `ngx_http_finalize_request` nor
   `ngx_stream_finalize_session` after a wait, and the copies of the
@@ -450,12 +486,29 @@ never gets there, because nginx terminates it (2.6).
 rewrite module, whose handler starts the script from its first directive
 each time nginx calls it (nginx `src/http/modules/ngx_http_rewrite_module.c:137-183`),
 so a second call would run the directives before the `mruby_set` again, and
-a `rewrite` without a flag would rewrite the URI twice. After a sleep in an
-`mruby_set` handler, the resume assigns the variable and goes on with the
-next handler of the rewrite phase (`r->phase_handler + 1`), as on the main
-test server today; the directives of the same script after the `mruby_set`
-ran before the sleep, without the value (NDK, 2.2). The documentation says
-so. `sub_request` there: Q5.
+a `rewrite` without a flag would rewrite the URI twice. The wake of an
+`mruby_set` record therefore does not run the phases at the same index: the
+record is marked as one of `mruby_set`, and the wait handler of the request
+resumes the fiber itself.
+
+- When the code returns, the wait handler assigns the value to the
+  variable, moves `r->phase_handler` to the next handler of the rewrite
+  phase and runs the phases, as on the main test server today. The
+  directives of the same script after the `mruby_set` ran before the sleep,
+  without the value (NDK, 2.2).
+- A status that the code sets with `Nginx.return` does not end the handler:
+  without a wait, an `mruby_set` handler ends with its value alone
+  (`src/http/ngx_http_mruby_module.c:1139-1166`), and the model makes the
+  end after the sleep the same. Today a status after the sleep ends the
+  request with that status (2.3; item 9 of section 5).
+- An exception after the sleep answers 500, as today and as
+  [docs/class_and_method/README.md](../class_and_method/README.md#nginxrputsstring)
+  documents: the wait handler calls `ngx_http_finalize_request(r,
+  NGX_HTTP_INTERNAL_SERVER_ERROR)`. This is the one place where ngx_mruby
+  ends a request after a wait, because no phase checker is left to do it:
+  the rewrite module's handler returned already.
+
+The documentation says all of this. `sub_request` there: Q5.
 
 ### 4.5 The resume
 
@@ -476,13 +529,19 @@ for the handler kind; stream through `stream_status`.
   `r->headers_out.status` and in the record, and a return code below 0
   (`Nginx::DECLINED`, `Nginx::DONE` and the like) only in the record. A
   handler that stores nothing has no result, whatever an earlier handler
-  stored (gap 3).
+  stored (gap 3). The Pillar B row lists this as a candidate, not a
+  decision: Q6.
 - A run without a result ends as follows, with or without a wait:
-  server rewrite and rewrite handlers go on with the next phase handler, as
-  with `NGX_DECLINED` (decision (b), gap 1); access and post_read handlers
-  return `NGX_OK`, so the access checker goes on with the next access
-  handler and the generic checker with the next phase, as they do today
-  without a wait; a content handler of the main request answers 200 with an
+  rewrite handlers go on with the next phase handler, as with
+  `NGX_DECLINED` (decision (b), gap 1), and server rewrite handlers the same
+  way if the owner extends (b) to them (Q6); access and post_read handlers
+  return `NGX_OK`, as they do today without a wait
+  (`src/http/ngx_http_mruby_core.c:277`): the access checker then goes on
+  with the next access handler under `satisfy all` and allows the request
+  under `satisfy any`, and the generic checker goes on with the next phase.
+  The model keeps `NGX_OK` because it only makes the end after a wait the
+  same as without it; changing what an access handler without a result
+  means is not proposed; a content handler of the main request answers 200 with an
   empty body (#574); a content handler of a subrequest ends the subrequest,
   whose parent answers (and `Nginx::HTTP_OK` without output there stays 500,
   item 15).
@@ -505,7 +564,9 @@ handler goes on to its end; output and a status that it sets after the call
 are not sent, and a line at the `warn` level says so. When the handler ends,
 ngx_mruby calls `ngx_http_internal_redirect`, drops the reference that it
 took with `ngx_http_finalize_request(r, NGX_DONE)` where the checker does not
-do it (every phase but content), and returns `NGX_DONE`. The target
+do it (every phase but content), and returns `NGX_DONE`. That call is the
+handler's last use of the request, its context and the record, since the
+request can be freed in it. The target
 location's handlers then run outside the caller's fiber, as for nginx's own
 internal redirects, and can wait like any handler; one handler answers the
 request (gap 6). `Nginx.redirect` with a URL (`http://`, `https://`,
@@ -515,7 +576,7 @@ request (gap 6). `Nginx.redirect` with a URL (`http://`, `https://`,
 
 | Event | HTTP | Stream |
 |---|---|---|
-| The client closes the connection during a wait | nginx does not read the client during the phases (`ngx_http_block_reading`), so the wait goes on; the response then fails to be written, and nginx ends the request. The model keeps this (Q3) | TCP: nginx does not watch the read side during the access phase; as HTTP. UDP: no close |
+| The client closes the connection during a wait | HTTP/1.x: nginx does not read the client during the phases (`ngx_http_block_reading`), so the wait goes on; the response then fails to be written, and nginx ends the request. The model keeps this (Q3). HTTP/2: a `RST_STREAM` closes the stream and terminates its request, and the owner hook runs (unverified) | TCP: nginx does not watch the read side during the access phase (except with `proxy_protocol`, 2.5); as HTTP/1.x. UDP: no close |
 | A timeout | No timer of nginx runs during a sleep, and the model adds none; a subrequest ends by its own timeouts (for example `proxy_read_timeout`), and the parent resumes with its status | As HTTP for the sleep |
 | A reload or SIGQUIT | The old worker finishes the waits (their timers are not cancelable), as `test/t/cases/workers.rb` checks | The same |
 | `worker_shutdown_timeout` expires | nginx terminates the request; the owner hook deletes the timer and drops the fiber | The handler cancels the wait and ends the session (4.4) |
@@ -532,15 +593,21 @@ with every line of the template. "Before" is 2.7.3 and `next` at
 
 1. An access or post_read handler that waits and then ends without a result.
    Before: the request ends without a response (unverified, 2.3). Now: nginx
-   goes on as when the handler does not wait. With `satisfy any`, a 401 or
-   403 after a wait lets nginx try the next access handler. A defect fix
-   (gap 2).
-2. A server rewrite or rewrite handler that ends without a result, with or
-   without a wait. Before: no response. Now: the next phase handler runs.
-   Decision (b); the queue row on it.
-3. A handler that sets no result after an earlier handler of the request
-   called `Nginx.return Nginx::DECLINED` (or another value). Before: the
-   later handler returns that value. Now: it has no result (4.6).
+   goes on as when the handler does not wait. Under `satisfy any` that
+   means that the request is allowed and the other access handlers are
+   skipped: a script that sleeps and then ends without a result to deny
+   must return `Nginx::HTTP_FORBIDDEN` (the entry says so under "Affected"
+   and "What to do"). With `satisfy any`, a 401 or 403 after a wait lets
+   nginx try the next access handler. A defect fix (gap 2).
+2. A rewrite handler that ends without a result, with or without a wait
+   (and, with Q6, a server rewrite handler). Before: no response. Now: the
+   next phase handler runs. Decision (b); the queue row on it.
+3. With Q6: a handler that sets no result after an earlier handler of the
+   request called `Nginx.return Nginx::DECLINED` (or another value). Before:
+   the later handler returns that value; on a server whose server rewrite
+   handler returns `Nginx::DECLINED`, a content handler without output goes
+   on to the next content handler or the static module. Now: it has no
+   result (4.6), and that content handler answers the empty 200 of #574.
 4. `Nginx::Async::HTTP.sub_request` returns the response (additive; "New
    features").
 5. If Q1 is answered yes: `sub_request` works in a content handler, also
@@ -560,9 +627,12 @@ with every line of the template. "Before" is 2.7.3 and `next` at
    stream code waits does not run the code again.
 8. If Q5 is answered as recommended: `sub_request` in an `mruby_set` handler
    raises a `RuntimeError`.
-9. A stream session that waits when `worker_shutdown_timeout` expires ends
-   then, with `shutdown timeout` at the `info` level.
-10. Not a behavior change, for "Fixes": a request that sleeps N times no
+9. An `mruby_set` handler that sets a status with `Nginx.return` after a
+   sleep. Before: the request ends with that status (unverified, 2.3). Now:
+   the status does not end the handler, as without a sleep (4.4).
+10. A stream session that waits when `worker_shutdown_timeout` expires ends
+    then, with `shutdown timeout` at the `info` level.
+11. Not a behavior change, for "Fixes": a request that sleeps N times no
     longer keeps N timers and N cleanups; the `RProc` is no longer changed
     on every run.
 
@@ -576,8 +646,9 @@ stream session goes on or ends after a sleep by its result), their Fixes on
 
 ## 6. The tests that pin the model
 
-The cases that exist and must pass unchanged (except those that item 6 of
-section 5 names, which change only with the owner's answer to Q2):
+The cases that exist and must pass unchanged (except those that items 5
+and 6 of section 5 name, which change only with the owner's answers to Q1
+and Q2):
 
 - `test/t/cases/async_sleep_in_content.rb`: a content handler that sleeps
   answers with its body, with the status it returns, with 500 without its
@@ -622,15 +693,17 @@ without server-level handlers, so that no stored status hides a result (2.1):
   after `Nginx::Async.sleep 1`: without a result, with `Nginx::DECLINED`,
   with `Nginx::OK`, with 403, with output, with an exception. Each pair
   asserts the same status, body and next request on the connection. The same
-  for a subrequest wait in rewrite and access handlers. This is the case that
+  for a subrequest wait in rewrite handlers. This is the case that
   shows "the same end with or without a wait".
 - `async_result_isolation.rb`: a server rewrite handler that calls
   `Nginx.return Nginx::DECLINED` and a later handler that sets nothing; the
-  later handler's own result decides (item 3 of section 5).
+  later handler's own result decides (item 3 of section 5, with Q6).
 - `async_sleep_many.rb`: a handler that sleeps 1,000 times for 1 ms answers,
   and `Nginx::Debug.stats` shows the same `timers` and `gc_root_fibers`
-  before and after (item 10 of section 5; the pool size is not visible to a
-  test, so the soak lane measures memory, section 7).
+  before and after. It guards against a regression and holds today as well,
+  since `timers` counts the timers still pending; the pool size is not
+  visible to a test, so the fix of gap 8 (item 11 of section 5) is measured
+  by the soak lane (section 7).
 - `async_subrequest_return.rb`: `sub_request` returns the response, equal to
   `last_response`; with Q1, a content handler waits for a subrequest before
   and after a sleep, answers with its body, and the next request on the
@@ -690,8 +763,9 @@ each bug fix comes as a test commit and a fix commit.
    lane shows its cost.
 3. HTTP: the wake and the second call of the handler for the timer, with
    the result handled by nginx's checkers (gap 2, two commits), and the
-   result kept in the record (gap 3).
-4. Decision (b): a rewrite handler without a result goes on (gap 1).
+   result kept in the record (gap 3, with Q6).
+4. Decision (b): a rewrite handler without a result goes on (gap 1), and
+   with Q6 a server rewrite handler.
 5. HTTP subrequests through the wake (gap 5), `sub_request` returns the
    response, and with Q1 the content handler waits for a subrequest (gap 4).
 6. Stream: the wake and the second call of the handler, with Q4 (gap 9)
@@ -728,10 +802,16 @@ needs this answer.
 Q3. Does a handler that waits keep running when its client closes the
 connection, and is a fiber whose request ends during a wait dropped without
 running its `ensure` clauses, as today? Recommendation: yes for 3.0.0, and
-document both. nginx does not read the client during the phases; noticing
-the close would need a read event handler for each waiting request, like
-`proxy_ignore_client_abort off`, and resuming a fiber with an exception from
-a cleanup would run Ruby code while nginx frees the request.
+document both. nginx does not read the client of an HTTP/1.x request during
+the phases. Noticing the close costs no allocation: `ngx_http_test_reading`
+as the read event handler while the request waits, as
+`ngx_http_limit_req_module` sets it while it delays (nginx
+`src/http/modules/ngx_http_limit_req_module.c:322`), and the close would then
+terminate the request and run the owner hook. But it would end a script
+halfway when its client goes away, for example before the script records
+what the request cost, which no handler of 2.x sees. Resuming a fiber with
+an exception from a cleanup, so that `ensure` runs, would run Ruby code
+while nginx frees the request.
 
 Q4. Does a UDP stream session run its code once, so that a datagram that
 arrives while the code waits does not start it again? Recommendation: yes.
@@ -747,9 +827,25 @@ subrequest, the request goes on without the variable, and an exception after
 it leaves the client without a response (2.3); a raise tells the script at
 once, as in log handlers since 2.7.1.
 
+Q6. Is the result of a handler its own, so that a handler that sets nothing
+does not return the value that an earlier handler of the request stored
+with `Nginx.return` (4.6), and does a server rewrite handler that ends
+without a result go on to the next phase handler like a rewrite handler
+(decision (b) names rewrite handlers)? Recommendation: yes to both. The
+Pillar B row on finalization lists "make `Nginx.return` type-independent of
+`headers_out.status`" as a candidate, and item 8 of the plan does not cover
+it. Today a server rewrite handler that returns `Nginx::DECLINED`, as the
+main test server's does, makes every later handler without a result return
+`NGX_DECLINED`, so what a script's handler does depends on handlers that it
+does not contain, and the same script behaves differently on two servers.
+For server rewrite handlers, the reason of (b) holds: an end without a
+response helps no script. The cost: a configuration with such a server
+rewrite handler and content handlers without output changes (item 3 of
+section 5), with its entry.
+
 Not a question: how a handler ends without `Nginx.return` after a wait. The
 model ends it as without the wait (4.6), which decision (b), #574 and item 15
-already decide.
+already decide, with Q6 for server rewrite handlers.
 
 ## 10. Risks
 
