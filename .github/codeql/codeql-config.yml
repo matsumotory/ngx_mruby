@@ -1,0 +1,11 @@
+# The configuration of CodeQL (.github/workflows/codeql.yml; docs/test/README.md,
+# "CodeQL"). The vendored trees are not analyzed: mruby/ (mruby, with the
+# code that mruby itself vendors) and dependence/ (ngx_devel_kit) are upstream
+# code that this repository takes with git subtree and does not edit by
+# hand (AGENTS.md, "Do not"), so an alert there is not fixed here. The
+# owner decided this on 2026-10-31. paths-ignore applies to Ruby and to
+# C/C++ with build-mode none, which the workflow uses.
+name: ngx_mruby
+paths-ignore:
+  - mruby
+  - dependence
