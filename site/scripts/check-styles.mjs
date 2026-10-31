@@ -21,8 +21,8 @@
 // - no horizontal scroll of the page (4.9), at 320 px too, and at 320 and
 //   390 px every text block and the ring before h2 at least 20 px from both
 //   edges (4.5);
-// - the home page heading takes at most two lines at 1440 px and three at
-//   390 and 320 px (4.4);
+// - the home page heading takes at most two lines at 1440 px, and at 390
+//   and 320 px two in Japanese and three in English (4.4);
 // - at 390 px the right edge of Japanese text blocks (4.9), and on English
 //   blocks no computed text-wrap pretty or balance (4.9);
 // - at every size, no paragraph, list item, caption, table cell or heading
@@ -110,6 +110,11 @@ function inspect(cfg) {
   const scale = cfg.scale[lang];
   const sizes = new Set(Object.values(scale));
   const isHome = !!document.querySelector('.home');
+  // The Japanese home heading: no more than its column (.headline-box)
+  // divided by 13.7 em (tokens.css)
+  const headlineBox = document.querySelector('.headline-box');
+  const home = lang === 'ja' && headlineBox ? Math.min(cfg.home, headlineBox.getBoundingClientRect().width / 13.7) : cfg.home;
+  if (isHome && lang === 'ja' && !headlineBox) fails.push('the Japanese home page has no .headline-box');
   const tokens = new Set(cfg.tokens);
   const spans = new Set(cfg.spans);
   const name = (el) => {
@@ -178,7 +183,7 @@ function inspect(cfg) {
     if (ownText) {
       const fs = parseFloat(cs.fontSize);
       const allowed = new Set(sizes);
-      if (isHome) allowed.add(cfg.home);
+      if (isHome) allowed.add(home);
       if (![...allowed].some((s) => Math.abs(s - fs) < 0.05)) fail(el, `font-size ${fs}px is not a size of the ${lang} scale (${[...allowed].join(', ')})`);
       if (fs < 13.95) fail(el, `font-size ${fs}px is below 14 px`);
     }
@@ -236,7 +241,7 @@ function inspect(cfg) {
   const role = (sel, px, what) => {
     for (const el of document.querySelectorAll(sel)) if (visible(el) && Math.abs(parseFloat(getComputedStyle(el).fontSize) - px) > 0.05) fail(el, `${what} at ${getComputedStyle(el).fontSize}, expected ${px}px`);
   };
-  role('h1#_top', isHome ? cfg.home : scale.h1, isHome ? 'the home page heading' : 'the page title');
+  role('h1#_top', isHome ? home : scale.h1, isHome ? 'the home page heading' : 'the page title');
   role('.sl-markdown-content h2:not(.not-content *)', scale.h2, 'h2');
   role('.sl-markdown-content h3:not(.not-content *)', scale.h3, 'h3');
   role('.sl-markdown-content > p:not(.caption), .sl-markdown-content li > p, .home-v3 .flow-description > p', scale.body, 'body text');
@@ -329,12 +334,12 @@ function inspect(cfg) {
       if (/pretty|balance/.test(tw)) fail(el, `text-wrap ${tw.trim()} (4.4, 4.9)`);
     }
   }
-  // The home page heading: at most two lines at 1440 px, three at 390 and
-  // 320 px (4.4)
+  // The home page heading: at most two lines at 1440 px; at 390 and 320 px
+  // two in Japanese and three in English (4.4)
   if (isHome && cfg.width > 0) {
     const h1 = document.querySelector('h1#_top');
     const n = h1 ? lines(h1).length : 0;
-    const max = cfg.width >= 1440 ? 2 : 3;
+    const max = cfg.width >= 1440 || lang === 'ja' ? 2 : 3;
     if (!h1) fails.push('the home page has no h1#_top');
     else if (n > max) fail(h1, `the home page heading takes ${n} lines at ${cfg.width} px, over ${max}`);
     cfg.counts.homeHeading = n;
