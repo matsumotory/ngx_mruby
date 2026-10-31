@@ -357,8 +357,13 @@ not enough, and show the change.
   u.server = "127.0.0.1:8080"        # works on both
   ```
 
-  For a name that does not change while nginx runs, write it in the `server`
-  line of the `upstream {}` block and do not call the setter.
+  Write an IPv4 address as four decimal numbers: `127.1` raises as well. For
+  a name that does not change while nginx runs, write it in the `server` line
+  of the `upstream {}` block and do not call the setter. nginx uses all the
+  addresses of such a name: when it has more than one, `Nginx::Upstream.new`
+  raises `RuntimeError` for that upstream, so remove that call too, or write an
+  IP address in the `server` line. A name that does not resolve stops nginx at
+  start.
 
 - [The default build leaves out the auto-ssl mrbgem and the classes that came with it](../releases/v3.0.0.md#the-default-build-leaves-out-the-auto-ssl-mrbgem-and-the-classes-that-came-with-it-556):
   this finds the constants and the two `Dir` methods that the default

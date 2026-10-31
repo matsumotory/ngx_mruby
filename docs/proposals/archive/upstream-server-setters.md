@@ -138,9 +138,11 @@ For the details of the setters in v3:
    of `AGENTS.md`.
    **Decided on 2026-10-30: yes for both** (the options "そろえる (推奨)" for
    D and "例外にする (推奨)" for E of a session's question, and
-   "すごい！両方進めて！" to the explicit proposal of both). D covers the
-   value of the argument: a setter called on an upstream with a `zone` keeps
-   the `RuntimeError` of option A, which is about the upstream.
+   "すごい！両方進めて！" to the explicit proposal of both). The sessions read
+   D as covering the value of the argument, because its text speaks of
+   arguments and question 2 keeps option A; neither answer names the zone. So
+   a setter called on an upstream with a `zone` keeps the `RuntimeError` of
+   option A (#652), which is about the upstream.
 
 The owner decided two more changes of the setters for 2.7.3 on 2026-10-29,
 in the same question: both raise `TypeError` for an argument that is not a

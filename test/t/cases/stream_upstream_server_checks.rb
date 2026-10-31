@@ -49,7 +49,8 @@ end
   'ipv6' => 'invalid IPv6 address in upstream [2001:db8::zz]:80',
   'unix' => 'no path in the unix domain socket in upstream unix:',
   'host' => 'upstream server nonexistent.invalid:80 is not an IP address or a unix: path',
-  'localhost' => 'upstream server localhost:80 is not an IP address or a unix: path'
+  'localhost' => 'upstream server localhost:80 is not an IP address or a unix: path',
+  'short' => 'upstream server 127.1:80 is not an IP address or a unix: path'
 }.each do |name, message|
   t.assert('stream upstream', "#upstream_server= raises ArgumentError for the string #{name} and leaves the server") do
     t.assert_equal "ArgumentError, 192.0.2.12:80, #{message}", results["server_#{name}"]
