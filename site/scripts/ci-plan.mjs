@@ -13,11 +13,10 @@ try {
   const event = process.env.EVENT_NAME;
   let base;
   const head = git('rev-parse','HEAD');
+  // Only a pull request (its merge commit and the base as first parent) may
+  // narrow the browser checks; a push deploys and is always full.
   if (event === 'pull_request') { git('rev-parse','--verify','HEAD^2'); base=git('rev-parse','HEAD^1'); }
-  else if (event === 'push' && process.env.REF_TYPE === 'branch' && /^[0-9a-f]{40}$/.test(process.env.PUSH_BEFORE || '') && !/^0+$/.test(process.env.PUSH_BEFORE)) {
-    base=process.env.PUSH_BEFORE;
-    try {git('cat-file','-e',base+'^{commit}');} catch {git('fetch','--no-tags','origin',base);}
-  }
+  else if (event === 'push') plan={mode:'full',pages:[],reason:'deploying-event'};
   if (base) {
     const raw=g('diff','--raw','-z','--no-renames',base,head,'--').split('\0');
     if(raw.pop() !== '' || raw.length%2) throw new Error('bad raw diff');

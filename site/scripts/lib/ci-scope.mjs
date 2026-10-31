@@ -24,10 +24,14 @@ export function isLocalProseChange(oldText, newText) {
  * changes: [{path,status,oldMode,newMode,oldText,newText}]; status must be M.
  * manifest: complete generated/pages.json [{source,route,lang,...}]. Fallback
  * pages need not have rows: the paired language route is always included.
- * event: pull_request or push (branch only); callers reject tags/manual events.
+ * event: only pull_request may narrow. A push to next deploys the site
+ * (docs/proposals/site.md, 5.3), and a range from the previous push would
+ * leave unchecked the pages of a push whose run failed or was cancelled, so
+ * a push is always full. Other events (tags, manual runs) are full as well.
  */
 export function planBrowserScope({ changes, manifest, event, baselineKnown = false, manifestComplete = false } = {}) {
-  if (!['pull_request', 'push'].includes(event) || baselineKnown !== true) return full('unknown-event-or-baseline');
+  if (event === 'push') return full('deploying-event');
+  if (event !== 'pull_request' || baselineKnown !== true) return full('unknown-event-or-baseline');
   if (!Array.isArray(changes) || changes.length === 0) return full('empty-or-invalid-change-range');
   if (manifestComplete !== true || !Array.isArray(manifest) || manifest.length === 0) return full('incomplete-manifest');
   const bySource = new Map();

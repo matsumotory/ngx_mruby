@@ -198,26 +198,16 @@ that are not written down elsewhere yet, the work in progress and the queue.
 
 ## Site CI scope and parallel lanes, 2026-10-31
 
-- [#677](https://github.com/matsumotory/ngx_mruby/pull/677) is a site-only draft
-  against `next`. Its initial runtime implementation was removed additively,
-  without rewriting history, because Claude's [#676](https://github.com/matsumotory/ngx_mruby/pull/676)
-  owns `next` runtime CI and [#679](https://github.com/matsumotory/ngx_mruby/pull/679)
-  owns the corresponding `master` change. Do not merge both runtime policies.
-- The site implementation selects local-document pages with the generator
-  parser, runs browser suites in independent lanes and reuses an exact same-run
-  artifact. Static and independently changing v2 coverage remain complete.
-  See [scope and timing evidence](test/README.md#site-ci-change-scope).
-- Native scope, lane/gate, actual-Git/artifact tests, generator/static checks
-  and clean builds passed. Independent review reproduced test-first missing
-  modules and implementation success. Run 41170282002 passed build/static in
-  68 seconds; browser lanes were still queued at 04:56 UTC. This is not a
-  completed browser verification or a measured total speedup.
-- Preserve #672's added copy-idle, read-only-browser, live screenshots and
-  post-deployment verification when integrating that publication change.
-  The local integration retains these checks and passes native suites;
-  current-head remote browser comparison is not complete.
-- No active publication run was cancelled. No merge or deployment is
-  authorized for this draft; the owner will have Claude review the changes.
+- [#677](https://github.com/matsumotory/ngx_mruby/pull/677) splits the browser
+  checks of `site.yml` into six lanes and a maintenance lane that read one
+  artifact of the same run; the deploy job needs `site-ok`, which needs all of
+  them. A pull request that only edits the prose or links of pages under
+  `docs/` checks those pages, in both languages; every other change, and every
+  push or dispatch, which deploys, checks all pages. `test.yml` is unchanged
+  (the runtime CI policy is #676 on `next` and #679 on `master`). See
+  [Site CI change scope](test/README.md#site-ci-change-scope) for the lanes
+  and the timing of run 41173244320.
+- The review and the re-review of its must fix items are comments on #677.
 
 ## Landing-page hierarchy, 2026-10-30
 

@@ -491,9 +491,10 @@ sh test.sh
 
 CI scope and independent lanes are defined in
 [Browser scope and parallel lanes](docs/test/README.md#browser-scope-and-parallel-lanes).
-Static checks remain complete. Only a verified local-document edit narrows the
-3.x browser pages; shared or unknown changes remain full, and the independently
-changing v2 input retains its checks. Same-run artifact identity and `site-ok`
+Static checks remain complete. Only a verified local-document edit in a pull
+request narrows the 3.x browser pages; a push or dispatch, which deploys, and
+shared or unknown changes remain full, and the independently changing v2 input
+retains its checks. Same-run artifact identity and `site-ok`
 are required before publication. Standalone script defaults remain full. Do not
 use targeted evidence for a shared layout change or replace missing evidence
 with a successful skip.

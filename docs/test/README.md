@@ -2052,23 +2052,23 @@ KCachegrind and QCachegrind open the profiles as well.
 
 ## Site CI change scope
 
-Runtime CI policy is maintained separately in [#676](https://github.com/matsumotory/ngx_mruby/pull/676)
-for `next` and [#679](https://github.com/matsumotory/ngx_mruby/pull/679) for `master`.
-This site change does not modify `test.yml` or its required runtime status.
+This section covers the browser checks of `.github/workflows/site.yml`;
+`test.yml` is described above.
 
-### Timing baseline and limits
+### Timing
 
-On 2026-10-30, [runtime run 41135116783](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116783)
-had 17 parallel build jobs (slowest 12m40s), a 2m59s soak, a 4s file check and a
-3s gate. The [examples run](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116747)
-took 3m02s. These are observations of those runs, not future guarantees, and
-parallel job durations must not be added to estimate wall time.
-
-The [site build](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116891/job/124345060406)
-took 26m04s: computed styles 10m56s, homepage/code interaction 4m45s, Japanese
-lines 2m13s, screenshots 2m06s and browser installation 2m02s. Its fresh,
-offline and v2 builds together took 34s. The site changes below address this
-separate critical path; no measured post-change speedup is claimed yet.
+Before the split, the site build ran every check in one job:
+[run 41135116891](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116891/job/124345060406)
+took 26m04s, with computed styles 10m56s, homepage/code interaction 4m45s,
+Japanese lines 2m13s, screenshots 2m06s and browser installation 2m02s.
+With the lanes below, [run 41173244320](https://github.com/matsumotory/ngx_mruby/actions/runs/41173244320)
+of `29cf75611` took 17m58s from the start of the build job to the end of
+`site-ok`, including the waits for runners; its longest browser job took 459 s.
+The two runs had other sources and runners, so the difference is not a
+controlled measurement, and the durations of parallel jobs do not add up to
+the wall time. In the same run, `check-styles.mjs` in Chromium took 209.651 s on
+its 25 pages (250 page loads) and 20.101 s on the two installation pages that a
+targeted run would select (20 page loads).
 
 ### Browser scope and parallel lanes
 
@@ -2078,16 +2078,23 @@ a result cached from another commit. The artifact is bound to the exact site
 and v2 source revisions, clean-source metadata, lockfile hash and workflow run.
 A mismatched revision, dirty build, lock, run or artifact digest fails.
 
-`ci-plan.mjs` uses the actual PR merge-parent or branch-push range and the fresh
-manifest. Existing regular Markdown under `docs/` can use targeted coverage
+`ci-plan.mjs` uses the range of a pull request (its merge commit against its
+first parent) and the fresh manifest. A push or a `workflow_dispatch`, which
+deploys on `next`, always uses full coverage: a range from the previous push
+would leave unchecked the pages of a push whose run failed or was cancelled.
+In a pull request, existing regular Markdown under `docs/` can use targeted coverage
 when the generator's own satteri parser proves that the title, title removal,
 heading hierarchy/text, code, inline code, HTML and frontmatter contracts did
-not change. Both language routes, including fallback pages, are checked. This
+not change. Both language routes are checked; on an English fallback page
+under `/ja/` (`GENERATED_REFERENCE` and `NOT_TRANSLATED_YET` of
+`site/scripts/lib/site.mjs`), the Japanese line check measures only the notice,
+as a full run does. This
 allows prose and link changes in real documents without approximating Markdown
 with a regular expression. Changes to those contracts, new/deleted/renamed
 files, MDX, shared CSS/layouts/generators/dependencies/workflows, unknown inputs
-or unavailable evidence use full coverage. Root AGENTS/CLAUDE/README changes
-alone need no 3.x page browser checks, while all static checks still run.
+or unavailable evidence use full coverage. A pull request that changes only
+the root AGENTS.md, CLAUDE.md or README.md needs no 3.x page browser checks,
+while all static checks and the maintenance lane still run.
 
 The independent browser lanes are:
 
@@ -2131,5 +2138,4 @@ or a PR changing the CI policy/scripts adds a two-page Chromium style comparison
 **after** the full style lane passes,
 using the same build. It cannot replace required full coverage. Each lane writes
 measured script seconds and selected pages to its job summary. Compare actual
-workflow critical paths, not the sum of parallel jobs. No measured post-change
-remote speedup is claimed until that run completes.
+workflow critical paths, not the sum of parallel jobs.

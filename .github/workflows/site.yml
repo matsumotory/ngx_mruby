@@ -215,13 +215,14 @@ jobs:
           node scripts/test-ci-scope.mjs
           node scripts/test-ci-browser.mjs
           node scripts/test-ci-integration.mjs
+      # A pull request whose diff only edits the prose or links of pages
+      # under docs/ checks those pages in the browser lanes; every other
+      # change, and every push or dispatch (they deploy), checks all pages.
       - name: Plan browser coverage from the verified diff
         id: scope
         working-directory: ${{ runner.temp }}/fresh/site
         env:
           EVENT_NAME: ${{ github.event_name }}
-          REF_TYPE: ${{ github.ref_type }}
-          PUSH_BEFORE: ${{ github.event.before }}
         run: node scripts/ci-plan.mjs
       - name: Bind generated manifests and output to this exact run
         working-directory: ${{ runner.temp }}/fresh/site
