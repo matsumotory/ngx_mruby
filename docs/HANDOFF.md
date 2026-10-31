@@ -1,165 +1,57 @@
 # Handoff: the state of the work
 
-## Maintenance-entry line regression, 2026-10-31
+## Site publication and handoff, 2026-10-31
 
-- The stable entry should let a 2.7 reader choose installation, API and
-  operations guidance without mistaking development or historical material
-  for released behavior. Independent EN/JA desktop and 320/390 px review of
-  #673 source `a6ac31dc` found that purpose clear, but found five Japanese
-  heading/body items with one- or two-character final lines.
-- Test-only #672 commit `ce1c2825` invokes the existing Japanese line checker
-  on `/v2/ja/`, with no prose, CSS or assertion change. Its
-  [author run](https://github.com/matsumotory/ngx_mruby/actions/runs/41163076031/job/124424683089)
-  failed only that step: the same five items in Chromium and WebKit, twelve
-  failures because the heading also exceeded one line at 390 px. The other
-  site checks and runtime/example workflows passed. The
-  [independent repeat](https://github.com/matsumotory/ngx_mruby/actions/runs/41163076031/job/124429013370)
-  reproduced the same twelve failures with all other checks passing.
-  The separate #673 prose fix is `84a6f289`; #672 previews that exact source.
-- The correction keeps the shared type scale, links, maintenance/release
-  distinctions and historical contracts. A shorter title and natural sentences
-  replace the orphan lines; Japanese paragraph continuations no longer add
-  rendered spaces. The unchanged line checker and new dark screenshots must
-  pass on the exact corrected source before visual acceptance.
-
-## Local routing walkthrough and cloud continuation, 2026-10-30
-
-- Draft #672 continues `codex/site-purpose-rebuild` from the preserved
-  `d7127bc3d` checkpoint. The local trial now documents both model routes,
-  key replacement, 401/403/400 responses, an edit-and-restore exercise,
-  configuration reload and shutdown. English and Japanese use the same
-  commands and canonical files. The example remains a local mock, not a
-  real-provider, API-conversion or MCP interoperability claim.
-- The homepage selection, Ruby entry, upstream credential and displayed JSON
-  come from that same local example. The complete mapping is available in a
-  disclosure with its canonical copy; the separate integration-test recipe
-  retains its own provenance. The selected entry keeps the mobile result
-  close to its input instead of interposing the full configuration.
-- The docs entry groups one destination per reader task. The agent-proxy
-  implementation/planning ledger uses sections, and the start/status links
-  have matching anchors in both languages. The maintenance-source entry is
-  a separate docs-only Draft #673 against `master`, not an override in the
-  site generator. It remains unmerged pending its own acceptance gates.
-- Local evidence on the continuation's working tree: pinned Node 22.23.3,
-  `npm ci --ignore-scripts`, both version builds, generator/release fixtures,
-  `npm run check`, source links and example files-only checks pass. The
-  combined validation also built #673's `a6ac31dc9` maintenance source; this
-  is integration-preview evidence, not publication of that source.
-- At `ad83b93e`, [examples CI](https://github.com/matsumotory/ngx_mruby/actions/runs/41110500513)
-  executed all 19 runnable README commands and matched their stated output,
-  including both routes, credential replacement, edit/restore and 401/403/400.
-  [Runtime CI](https://github.com/matsumotory/ngx_mruby/actions/runs/41110500662)
-  passed. The JSON parser exception and canonical command/output mismatches
-  found during continuation are fixed; the mock is not a provider test.
-- [Site CI at that checkpoint](https://github.com/matsumotory/ngx_mruby/actions/runs/41110500506)
-  produced screenshots. Independent desktop/mobile review confirmed the
-  purpose, trial/docs journey, restored Japanese emphasis and visible mobile
-  model selection beside its result. It found unequal model-button margins
-  and token splitting at 320 px. The run also found eight Japanese passages
-  with short final lines and a WebKit disclosure click failure. The follow-up
-  fixes the hover rule that changed disclosure geometry, aligns peer buttons,
-  wraps JSON at token boundaries and edits those passages without shrinking
-  text. Existing click/keyboard/state assertions remain; hover geometry is
-  checked as well.
-- At `f0e00f42`, [site CI](https://github.com/matsumotory/ngx_mruby/actions/runs/41115051039)
-  passed all 64 interaction states, 500 code-layout conditions (including
-  200% code text), 1,028 focus stops and six Lighthouse accessibility pages.
-  Hover geometry, native disclosure operation, canonical clipboard bytes and
-  JSON token wrapping passed. The only remaining CI failures were short
-  final lines in two Japanese passages. Runtime and examples CI passed.
-  Follow-up changes shorten those passages, use reader-facing Model A/B
-  labels while retaining exact identifiers in code, and remove the prose
-  caption width limit accidentally applied to code headers.
-- At `896d2884`, [site CI](https://github.com/matsumotory/ngx_mruby/actions/runs/41121614498)
-  passed Japanese lines, interaction, code layout, focus and accessibility.
-  Independent desktop/mobile pixels of screenshot artifact `13010586352`
-  confirmed short model labels, aligned code headers and the open disclosure
-  indicator, with no remaining visual finding in the reviewed journey. The
-  computed-style check still failed on initial WebKit animations and a Copy
-  background outside the palette. This failure is not waived by pixel review.
-- The separate regression-only commit `3f585cd7` adds `check-copy-idle.mjs`
-  and its CI invocation, with no CSS fix. Its [run](https://github.com/matsumotory/ngx_mruby/actions/runs/41125656305)
-  failed only that regression: all 24 load states had idle Copy surfaces with
-  0.15-second transitions. The existing style/interaction checks passed; the
-  earlier intermittent running-animation observation was not reproduced in
-  this run. An [independent repeat](https://github.com/matsumotory/ngx_mruby/actions/runs/41125656305/job/124323812752)
-  reproduced all 24 regression failures and three Copy-related style failures
-  (running animations and intermediate colors); all other checks passed.
-  The animation targets were not individually identified by that style log.
-  The separate CSS correction makes the Copy surfaces static and gives the button an explicit token
-  background, while retaining hover/focus opacity, focus rings and success
-  feedback. At `261371fd`, the full site, runtime and example checks passed;
-  the [independent green repeat](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116891/job/124345060406)
-  passed the same 24-state regression and all remaining site checks.
-  The five earlier continuation commits did not consistently separate tests
-  from fixes; the PR records their evidence and limitations. The owner accepted
-  that alternative evidence on 2026-10-31 for those five commits only. New
-  corrections retain the normal separate-test/independent-repeat procedure.
-- The trusted #672 preview may build #673's exact source for v2 entry pixels;
-  production push/dispatch builds always use `master`. Read-only post-deploy
-  verification was added to the existing workflow: artifact/deployment
-  SHA, public branch policy, live bytes, HTTPS, Lighthouse and a small set of
-  desktop/mobile journey screenshots. Its negative browser fixture and twelve
-  pre-deploy visits passed CI; actual production verification has not run.
-  It adds no authentication or permission.
-- Pending: maintenance-entry fix green and independent green repeat, final-head
-  #673 pixels, recorded independent PR reviews, then all
-  normal merge gates. The local environment has no Docker and browser startup
-  is blocked; no local runtime/browser pass is claimed.
-- Site production acceptance is now in scope, but both PRs remain Draft until
-  their gates pass. Neither has been merged or deployed. Software tags/releases
-  and authentication or permission changes remain outside this site work.
-
-## Site information architecture and persistent procedure, 2026-10-30
-
-- WIP transfer on `codex/site-purpose-rebuild`, based on next `9221ea4ed`.
-  Procedure commit `3c1e388fc` is complete; the following homepage/example
-  changes are a preservation checkpoint, not a merge or deployment candidate.
-  The previous writer has stopped editing and the current build has completed.
-- The work in progress joins a request, the tested Ruby mapping and the selected
-  upstream in one homepage example. `examples/start/` also has an untested local
-  routing handler and two mock endpoints; Compose binds its published port to
-  localhost. No provider credentials, private references or generated assets
-  are part of this transfer. No runtime C implementation is changed.
-- Validation: the homepage working tree after `3c1e388fc` completed
-  `cd site && npm run build` (65 pages, 53 Markdown exports). This was a dirty
-  tree build, not validation of the new container recipe. `git diff --check`
-  passed. The shared procedure received an independent entry-path review;
-  the new homepage has not received visual or interaction review.
-- Known unfinished work: `/start/#model-routing` does not exist yet; the English
-  and Japanese start documentation still describes the previous configuration.
-  Align it with the example, execute the recipe and editing steps, and update
-  the old homepage interaction assertions without weakening their guarantees.
-  Then verify contextual PC/mobile rendering, accessibility, wrapping/copy,
-  reduced motion, links and exports. Docs navigation, the status ledger, the
-  maintenance docs entry and sharing artwork still need their scoped updates.
-  No new tests or CI are claimed successful by this WIP checkpoint.
-- Resume by reading [Site design acceptance](proposals/site.md#site-design-acceptance),
-  checking this branch and its draft PR, then rendering the current prototype
-  and completing the matching local example. Do not merge or deploy this
-  checkpoint; run the normal independent review and current-head gates after
-  completing the work. Public preservation is not software-release approval.
-
-- #671 merged as `9221ea4ed`; production run
-  [41069372640](https://github.com/matsumotory/ngx_mruby/actions/runs/41069372640)
-  passed. Its mechanical checks and publication are complete, but the owner
-  subsequently found the product purpose, example flow, documentation entries
-  and status table unclear. This is not design acceptance.
-- The current local work strengthens the shared entry path in AGENTS, CLAUDE
-  and DEVELOPMENT to [Site design acceptance](proposals/site.md#site-design-acceptance).
-  It separates current visual references from technical evidence and requires
-  an independent first reading of the complete homepage/trial/docs journey.
-- Content audit: the tested LLM policy recipe is in
-  `test/conf/conf.d/60-agent-proxy.conf` and `test/t/cases/agent_proxy.rb`;
-  the standalone trial currently exercises only `examples/start/`'s basic
-  handler. MCP remains an unverified design. The generated 2.x docs entry takes
-  `docs/README.md` from the maintenance branch, so updating only next's docs
-  cannot modernize that entry. Preserve useful old contracts when reorganizing.
-- Next: integrate the current visual-reference survey, rebuild the information
-  architecture around a supported use case and its matching trial, then review
-  actual desktop/mobile comprehension before normal CI/publication. Existing
-  runtime fixes and software releases are separate. No new design is implemented
-  or published by this procedure update.
+- [Site rebuild #672](https://github.com/matsumotory/ngx_mruby/pull/672)
+  merged into `next` as `f9baa5ef70cca7cc556209ed01cd7e19a572da0d`.
+  [Maintenance entry #673](https://github.com/matsumotory/ngx_mruby/pull/673)
+  merged into `master` as `263bd10e47da1273e2f6e6c88029ab0f9d988169`.
+  The actual master tree equals the tested `452ad7ef` candidate; the next
+  merge tree equals the tested `e8ab1175` head. No runtime release was made.
+- The homepage, local routing trial and documentation now share the selected
+  request, Ruby mapping, upstream credential and observed mock JSON. English
+  and Japanese guides cover both routes, key replacement, editing/restoring,
+  reload, shutdown and rejected requests. v3 development, current 2.7,
+  historical material and unverified provider/MCP work remain distinct.
+- Both PRs passed current-base CI and normal independent source/pixel review.
+  The separate Copy and maintenance-entry regression pairs have independent
+  red/green evidence; the earlier five-commit exception and its limits remain
+  in #672. Final review records:
+  [#672 source](https://github.com/matsumotory/ngx_mruby/pull/672#issuecomment-6539490814),
+  [focused green](https://github.com/matsumotory/ngx_mruby/pull/672#issuecomment-6539535109),
+  [#673 source/pixels](https://github.com/matsumotory/ngx_mruby/pull/673#issuecomment-6539365290)
+  and [closed review gates](https://github.com/matsumotory/ngx_mruby/pull/673#issuecomment-6539579257).
+  No GitHub approval review is represented.
+- Production [run 41173076141](https://github.com/matsumotory/ngx_mruby/actions/runs/41173076141)
+  passed build, maintenance-entry, deployment and live verification. Deployment
+  `7454954421` serves `next@f9baa5ef`; its 2.x documentation source is
+  `master@263bd10e`. The live verifier matched the deployment SHA, same-run
+  artifact evidence and exact HTML on twelve read-only page visits. Desktop
+  and mobile pixels were checked separately. Public entries:
+  [English](https://ngx.mruby.org/) and [Japanese](https://ngx.mruby.org/ja/).
+  The run retains the `live-screenshots` artifact (`13031774147`) and its
+  completed source-revision evidence.
+- Site CI scope/parallelism is [Draft #677](https://github.com/matsumotory/ngx_mruby/pull/677),
+  a separate task for Claude. Runtime CI policy is separate
+  [#676](https://github.com/matsumotory/ngx_mruby/pull/676) (`next`) and
+  [#679](https://github.com/matsumotory/ngx_mruby/pull/679) (`master`). These are
+  not prerequisites for this site publication and are not merged by the site task.
+- Cleanup checked on 2026-10-31 at 06:14 UTC: removed both merged
+  task branches locally and on GitHub, the clean v2 baseline/entry worktrees,
+  four byte-verified duplicate screenshot archives and the site worker's unused
+  npm cache.
+  No other worker's files, uncommitted work or preview processes were removed.
+  The site worker retains the following until their stated conditions hold:
+  - An unmerged local checkpoint of the initial v2 draft is retained as a
+    recovery reference. Remove only after its unique history is
+    confirmed obsolete; do not force-delete it as part of routine cleanup.
+  - Raw before/after and live evidence under `.claude/tmp/cloud-site/`: retained
+    for the handoff review. Remove after the receiving reviewer no longer needs
+    those local copies; public CI artifacts and review links remain the record.
+  - Node tools under `.claude/tmp/cloud-site/tools/`: retained for a later
+    cloud continuation; the CI tuning worker has finished using them. The site
+    worker owns this environment record. Remove when the cloud workspace is
+    retired or its toolchain is replaced, after checking for active users.
 
 ## How to use this file
 
