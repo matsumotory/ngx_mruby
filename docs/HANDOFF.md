@@ -2,7 +2,7 @@
 
 ## Quality badge site change, 2026-10-31
 
-- [#687](https://github.com/matsumotory/ngx_mruby/pull/687), based on `next@3c320348`, adds the requested
+- [#687](https://github.com/matsumotory/ngx_mruby/pull/687), based on `next@62c2ca0e`, adds the requested
   OpenSSF Best Practices badge to the common EN/JA footer and names the
   existing license link MIT. It does not alter the hero, runtime or APIs.
 - The external image uses the exact project-16057 URL. Builds remain offline.
