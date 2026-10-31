@@ -2108,6 +2108,31 @@ Keep one coherent navy/metal surface for that example, fewer nested boxes and
 shared heading/radius tokens. Source, machine checks and independent first
 reading are separate gates. A source rewrite is not visual acceptance.
 
+### Follow the request before expanding the reference, 2026-10-31
+
+Keep the accepted homepage identity while making the LLM-proxy use case
+legible to a first-time reader. Explain the application developer's task,
+common proxy endpoint and client key, Ruby's model-to-upstream mapping,
+nginx's credential replacement and relay, then the response received by the
+application. The same local mock example connects the diagram to startup and
+curl. Real-provider endpoint, authentication and TLS configuration still need
+separate verification; the mock must not imply inference or API conversion.
+
+The request journey uses three ordered, naturally sized rows on desktop and
+mobile. Each row pairs its operation with the actual request, mapping or
+response. The short canonical mapping is visible, not collapsed beside a tall
+response whose grid height leaves empty space. Full integration-test details
+remain a separate disclosure. This replaces the earlier two-column selected-
+entry/disclosed-mapping arrangement, not its canonical-copy requirement.
+
+Model selection triggers one finite sequence through request, rule and
+response, with 180 ms emphasis at delays 0, 180 and 360 ms. No text fades or
+moves out of reach, no request is sent, and reduced motion removes the effect
+without removing the selected state or ordered meaning. Restrict this timing
+exception to these three homepage steps; unrelated transitions retain their
+existing limit. Review the real desktop/mobile layout and first-reader
+comprehension before treating the iteration as accepted.
+
 ### Site design acceptance
 
 Read this section when starting or resuming site work, before changing content

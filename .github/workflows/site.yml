@@ -428,10 +428,13 @@ jobs:
 
   # Skipped with the build job for a draft pull request. Otherwise it fails
   # unless the build passed, and the browser and maintenance lanes passed,
-  # or were skipped because the build job said they are not needed.
+  # or were skipped because the build job said they are not needed. It does
+  # not run when the run itself is cancelled (a newer push, or "Cancel
+  # workflow"): GitHub then marks it cancelled, not failed
+  # (docs/test/README.md, "Required status check").
   site-ok:
     needs: [build, browser, maintenance-lines]
-    if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

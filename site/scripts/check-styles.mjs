@@ -239,7 +239,7 @@ function inspect(cfg) {
   role('h1#_top', isHome ? cfg.home : scale.h1, isHome ? 'the home page heading' : 'the page title');
   role('.sl-markdown-content h2:not(.not-content *)', scale.h2, 'h2');
   role('.sl-markdown-content h3:not(.not-content *)', scale.h3, 'h3');
-  role('.sl-markdown-content > p:not(.caption), .sl-markdown-content li > p', scale.body, 'body text');
+  role('.sl-markdown-content > p:not(.caption), .sl-markdown-content li > p, .home-v3 .flow-description > p', scale.body, 'body text');
   role('.expressive-code pre, .sl-markdown-content :is(td, th)', scale.nav, 'code blocks and tables');
   role('figcaption, .sl-markdown-content p.caption', scale.caption, 'captions');
   // Dark: surface lighter than bg (4.7)
@@ -280,7 +280,9 @@ function inspect(cfg) {
   };
   if (lang === 'en' && cfg.width === 1440) {
     for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li)')) {
-      if (!visible(el) || el.closest('.expressive-code, .diagram, table')) continue;
+      // The three homepage flow rows contain separately checked paragraphs beside code.
+      // Do not join these grid columns into one prose line; ordinary list items stay checked.
+      if (!visible(el) || el.closest('.expressive-code, .diagram, table') || el.matches('.home-v3 .routing-workspace > .flow-step')) continue;
       for (const l of lines(el)) if (l.chars > 90) fail(el, `a line of ${l.chars} characters, over 90: "${l.text.slice(0, 40)}..."`);
     }
   }
