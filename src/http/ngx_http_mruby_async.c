@@ -7,7 +7,7 @@
 #include "ngx_http_mruby_async.h"
 
 #include "ngx_http_mruby_core.h"
-#include "ngx_http_mruby_debug.h" // with NGX_MRUBY_DEBUG_STATS, counts the mrb_gc_register() calls
+#include "ngx_http_mruby_gc_roots.h"
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 #include "ngx_http_mruby_var.h"
@@ -51,17 +51,18 @@ ngx_int_t ngx_mrb_async_debug_timers(void)
 #endif
 
 /*
- * The fiber of a handler, allocated from the request pool. It is registered
- * with mrb_gc_register once, when it is created, and unregistered once: when
- * it ends, normally or with an exception, or when the request pool is
- * destroyed while the fiber is still suspended. ctx->fiber_proc and re->fiber
+ * The fiber of a handler, allocated from the request pool. It is stored in
+ * the GC root holder of its mrb_state (ngx_http_mruby_gc_roots.h) once, when
+ * it is created, and its slot is freed once: when it ends, normally or with
+ * an exception, or when the request pool is destroyed while the fiber is
+ * still suspended. slot is NGX_MRB_GC_ROOTS_NONE when the fiber is not held. ctx->fiber_proc and re->fiber
  * point to the first member. kind is the handler that runs the fiber, also
  * when a timer or a subrequest resumes it.
  */
 typedef struct {
   mrb_value fiber;
   mrb_state *mrb;
-  ngx_flag_t registered;
+  mrb_int slot;
   ngx_http_mruby_handler_kind_t kind;
 } ngx_mrb_fiber_t;
 
@@ -123,9 +124,9 @@ static void ngx_mrb_fiber_unregister(mrb_value *fiber_proc)
 {
   ngx_mrb_fiber_t *f = (ngx_mrb_fiber_t *)fiber_proc;
 
-  if (f->registered) {
-    f->registered = 0;
-    mrb_gc_unregister(f->mrb, f->fiber);
+  if (f->slot != NGX_MRB_GC_ROOTS_NONE) {
+    ngx_mrb_gc_roots_remove(f->mrb, f->slot);
+    f->slot = NGX_MRB_GC_ROOTS_NONE;
   }
 }
 
@@ -162,6 +163,7 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
     return mrb_false_value();
   }
   f->mrb = mrb;
+  f->slot = NGX_MRB_GC_ROOTS_NONE;
   f->kind = kind;
   fiber_proc = &f->fiber;
 
@@ -173,10 +175,9 @@ mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RPro
   }
 
   // keeps the fiber from GC while it can be resumed; ngx_mrb_fiber_unregister
-  // removes it when the fiber ends, and the pool cleanup when the request
+  // frees its slot when the fiber ends, and the pool cleanup when the request
   // ends first
-  mrb_gc_register(mrb, *fiber_proc);
-  f->registered = 1;
+  f->slot = ngx_mrb_gc_roots_add(mrb, *fiber_proc);
   cln->handler = ngx_mrb_fiber_cleanup;
   cln->data = f;
 
@@ -285,7 +286,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
       return NGX_DONE;
     } else {
       // can not resume the fiber, the fiber was finished (ngx_mrb_run_fiber
-      // has unregistered it)
+      // has freed its slot in the GC root holder)
       re->fiber = NULL;
     }
 

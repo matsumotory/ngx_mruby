@@ -10,6 +10,7 @@
   <a href="#backers" title="Backers on Open Collective"><img src="https://opencollective.com/ngx_mruby/backers/badge.svg"></a>
   <a href="#sponsors" title="Sponsors on Open Collective"><img src="https://opencollective.com/ngx_mruby/sponsors/badge.svg"></a>
   <a href="https://github.com/matsumotory/ngx_mruby/actions" title="Build Status"><img src="https://github.com/matsumotory/ngx_mruby/actions/workflows/test.yml/badge.svg?branch=master"></a>
+  <a href="https://www.bestpractices.dev/projects/16057" title="OpenSSF Best Practices"><img alt="OpenSSF Best Practices" src="https://www.bestpractices.dev/projects/16057/badge"></a>
 </p>
 
 ## What it is
@@ -90,6 +91,8 @@ Before upgrading, read the "Behavior changes: read before upgrading" section of 
 
 Please report security vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
+The project has earned the passing level of the [OpenSSF Best Practices badge](https://www.bestpractices.dev/projects/16057).
+
 # Contributions
 
 This project exists thanks to all the people who contribute. We also welcome financial contributions in full transparency on our [open collective](https://opencollective.com/ngx_mruby).
@@ -110,3 +113,6 @@ Support this project by becoming a sponsor. Your logo will show up here with a l
 This project is under the MIT License:
 
 * http://www.opensource.org/licenses/mit-license.php
+
+The license text and the copyright notice are in [LICENSE](LICENSE) (the
+same text as [MITL](MITL), which [LEGAL](LEGAL) and the sources refer to).

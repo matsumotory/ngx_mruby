@@ -29,6 +29,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { distDir, finish, VERBATIM_FILES } from './lib/site.mjs';
+import { OPENSSF_BADGE } from './lib/project-badges.mjs';
 
 const REPO = 'matsumotory/ngx_mruby';
 const BRANCH = 'next';
@@ -90,6 +91,28 @@ for (const { file, bytes, sha256: want } of VERBATIM_FILES) {
     problems.push(`/${file}: ${body.length} bytes with SHA-256 ${sha256(body)}, not the ${bytes} bytes of the gh-pages copy (${want})`);
   }
   notes.push(`/${file} ${response.status}, ${body.length} bytes`);
+}
+
+// External badge bytes are not part of dist, and the checks before the
+// deploy serve a local stand-in. This is the one check of the real image:
+// only this URL, without following a redirect. A service outage is retried
+// three times with a growing pause before it counts as a problem.
+{
+  let last = '';
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      const response = await fetch(OPENSSF_BADGE.src, { redirect: 'manual', signal: AbortSignal.timeout(15000) });
+      const body = await response.text();
+      if (response.status === 200 && response.headers.get('content-type')?.startsWith('image/svg+xml') && body.includes('<svg')) {
+        notes.push(`OpenSSF badge: direct SVG 200 (${body.length} characters) at attempt ${attempt}`);
+        last = '';
+        break;
+      }
+      last = `expected a direct SVG 200, got ${response.status} ${response.headers.get('content-type') ?? ''}`.trim();
+    } catch (error) { last = error.message; }
+    if (attempt < 4) await new Promise(resolve => setTimeout(resolve, 5000 * attempt));
+  }
+  if (last) problems.push(`OpenSSF badge: ${last} after 4 attempts`);
 }
 
 // The environment and the deployments, read back with gh api.

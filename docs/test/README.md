@@ -94,54 +94,83 @@ print the second nginx's `error.log` when the line is set.
 `.github/workflows/test.yml` runs on pull requests to `master`, `next` and
 `v*.x`, on pushes to those branches and to `v*` tags, and on "Run workflow".
 Its `ci-ok` job is the status check that rulesets require: it fails unless
-every job that it lists in `needs` passed. These are the `changes` job,
-every job of the `build` matrix and the `files` job, and on `next` also the
-`soak` job. On `next`, the job of the cell that runs nginx under valgrind
-on every run of the matrix is one of them, so a valgrind error in that cell
-fails `ci-ok` ([valgrind in CI](#valgrind-in-ci)). The `perf` job (see "In
-CI" under "Performance comparison with callgrind") is not among them yet.
+every job that it lists in `needs` passed or was skipped because the
+`changes` job decided so. These are the `changes` job, every job of the
+`build` matrix and the `files` job, and on `next` also the `soak` job. On
+`next`, the job of the cell that runs nginx under valgrind on every run of
+the matrix is one of them, so a valgrind error in that cell fails `ci-ok`
+([valgrind in CI](#valgrind-in-ci)). The `perf` job (see "In CI" under
+"Performance comparison with callgrind") is not among them yet.
+
+A run of `test.yml` for a pull request starts when the pull request is
+opened or reopened, when a commit is pushed to its head, and when it is
+marked ready for review (`pull_request` with the types `opened`,
+`synchronize`, `reopened` and `ready_for_review`). A draft runs no job but
+`changes` and `ci-ok`, and the job `ci-ok` is then named `ci-ok (draft)`:
+the run tests nothing, GitHub does not merge a draft (condition 7 of
+"Review and merge" in [AGENTS.md](../../AGENTS.md)), and under its own name
+the pass of that job leaves no `ci-ok` on the head commit, so the head has
+no passing `ci-ok` until the run that marking the pull request ready
+starts has passed. The other workflows that run on pull requests skip
+their jobs for a draft in the same way. A new push to the head of a ready
+pull request cancels the run of the previous head and starts a new one. A
+move of the base alone starts no run; updating the branch
+(`gh api -X PUT repos/<owner>/<repo>/pulls/<number>/update-branch`) pushes
+a merge commit to the head and so starts one. The result stands for the
+head commit and the base commit of the merge ref at that time, which is
+what condition 2 of "Review and merge" asks the pull request to record;
+that condition also says when a move of the base makes a new run needed.
 
 ### Which jobs a run starts
 
-The `changes` job decides whether a run needs the jobs that build and test
-the module: the `build` matrix (16 cells, the cell under valgrind among them
-on `next`, and the sanitizer cell), the `soak` job on `next` and the `perf`
-job. The paths are filtered in that job, not with `on.paths` of the
-workflow, so that the run, and with it `ci-ok`, exists for every pull
-request. The `files` job and `ci-ok` run in every run.
+`test/ci/changes.sh BASE HEAD` classifies the files that a change touches,
+and every workflow that decides by the kind of change reads it, so that
+the policy is in that one file (`sh test/ci/changes_test.sh` checks it).
+It prints one line per key: the categories `code`, `tests`, `docs`,
+`site`, `examples` and `workflows`, then `soak` and `perf`, each `true` or
+`false`, and `build`, which is `full` when `code` is `true`, `tests` when
+only `tests` is, and `none` otherwise. A renamed file counts under its old
+and its new path (`git diff --no-renames`), so that moving a source file to
+`docs/` still builds.
 
-| Run | The build, soak and perf jobs |
+| Category | Paths | What a ready pull request runs |
+|---|---|---|
+| `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the whole `build` matrix (16 cells, among them the cell under valgrind), the sanitizer cell, `soak` and `perf`. `nginx-tests`, `examples`, `site` and `codeql` by their own path filters |
+| `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: three cells, nginx 1.30.6 with the static module, nginx 1.31.8 with the dynamic module, and the cell under valgrind (nginx 1.31.8, static module); `soak` when `soak` is `true`; `perf` compares when `perf` is `true` |
+| `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | `site`: the build and the static checks, and the browser lanes when `site/scripts/ci-plan.mjs` selects pages ([Site CI change scope](#site-ci-change-scope)) |
+| `site` | `site/`, `.github/workflows/site.yml` | `site`: the build, the static checks and every browser lane |
+| `examples` | `examples/` | `examples`; `site`: the build and the static checks |
+| `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, these two included); `codeql` for `.github/workflows/` |
+
+`soak` is `true` when `code` is, or when `test/soak/` or
+`test/build_release.sh` changed; `perf` when `code` is, or when the
+measurement of the performance comparison changed (`test/perf/`,
+`test/build_release.sh` and the scenario files of `test/soak/`). A file of
+no category counts as `code`, so a file of a new kind runs everything until
+a pull request names it in the script, with the reason. A pull request
+that changes several categories runs what each of them runs.
+
+| Run | `build`, `soak` and `perf` |
 |---|---|
-| Pull request that changes an input of the binary or the tests | Run (`perf` only when it changes what "In CI" of the performance comparison lists, or has the label `perf`) |
-| Pull request whose files are all outside these inputs | Skipped |
+| Draft pull request | Skipped, and `files` too; the job is named `ci-ok (draft)` |
+| Ready pull request | By the categories of the files that its merge commit (`refs/pull/N/merge`) changes against its first parent, the base: the table above. `perf` starts when `build` is `full` or `tests`, and compares when `perf` is `true` or the pull request has the label `perf` |
 | Push to `master` or `next` | Skipped |
-| Push to a `v*.x` branch or a `v*` tag | Run (`perf` runs on pull requests only) |
-| "Run workflow" without the input `base`, the nightly run under valgrind included | Run (`perf` runs on pull requests only) |
+| Push to a `v*.x` branch or a `v*` tag | The whole matrix and `soak` (`perf` runs on pull requests only) |
+| "Run workflow" without the input `base`, the nightly run under valgrind included | The whole matrix and `soak` (`perf` runs on pull requests only) |
 | "Run workflow" with the input `base` | As for a pull request against `base` (`perf` runs on pull requests only) |
 
-For a pull request, the job lists the files that the merge commit
-(`refs/pull/N/merge`) changes against its first parent, the base, a
-renamed file under its old and its new path (`git diff --no-renames`), so
-that moving an input to `docs/` still runs the build. The run
-skips the build jobs when every one of them is one of these, which no job
-of the run builds or tests with:
-
-- `docs/`, `site/` and `examples/`: the `site` and `examples` workflows
-  check them;
-- `.github/workflows/` except `test.yml`, `.github/dependabot.yml`,
-  `.github/zizmor.yml` and `.github/PULL_REQUEST_TEMPLATE.md`: the `zizmor`
-  workflow checks the workflows;
-- the Markdown files at the top (`README.md`, `AGENTS.md`, ...) and
-  `AUTHORS`, `LEGAL`, `LICENSE` and `MITL`.
-
-Every other file counts as an input, `test.yml`, `test/` and `test.sh`
-included, so a file of a new kind runs the build until the list in the
-`changes` job names it. The list is the variable `not_inputs` of that job;
-a pull request that adds to it says why the files are not inputs.
+A change of `test.yml` alone is `tests`, so its run does not start the
+whole matrix, the sanitizer cell, `soak` or the comparison of `perf`. A
+pull request that changes those jobs in `test.yml` runs them with "Run
+workflow" on its branch (`gh workflow run test.yml --ref <branch>`), whose
+job is named `ci-ok (manual)`, or the comparison with the label `perf`.
+The pull request quotes that run as evidence; it is not the run that
+condition 2 of "Review and merge" counts, which is the run of the pull
+request.
 
 For "Run workflow" with the input `base` (a branch or a commit id), the
-list is the files that the branch changes since its merge base with
-`base`, so that a branch can show what its pull request would run:
+files are those that the branch changes since its merge base with `base`,
+so that a branch can show what its pull request would run:
 
 ```console
 $ gh workflow run test.yml --ref claude/topic -f base=next
@@ -149,29 +178,36 @@ $ gh workflow run test.yml --ref claude/topic -f base=next
 
 The result of such a run is the job `ci-ok (dry run)`, not `ci-ok`: the
 person who starts the run chooses `base`, so its result is not the check
-that the rulesets require of the commit.
+that the rulesets require of the commit. In the same way, a run with the
+input `valgrind` names it `ci-ok (valgrind)`: such a run builds the tip of
+the branch when it starts, so a run that is cancelled would otherwise
+leave a failed `ci-ok` on that commit. Every other "Run workflow" names it
+`ci-ok (manual)`: it tests the head of the branch, not the merge commit of
+a pull request, and as `ci-ok` on the head it would pass the required
+check of a pull request before the pull request's own run has passed. `valgrind-nightly.yml` reads the
+result of the run, not the name of the job.
 
 A push to `master` or `next` runs only `changes`, `files` and `ci-ok`. Both
-branches take changes only through pull requests. Condition 2 of "Review
-and merge" in [AGENTS.md](../../AGENTS.md) has the session merge a pull
-request only after a run of `ci-ok` on a merge ref that includes the
-current base, so the push brings the tree that the run of the pull request
-tested. The rulesets require `ci-ok`, but not that the branch is up to
-date with its base: a pull request merged against that condition brings a
-tree that no run tested, and only a later pull request or "Run workflow"
-tests it. To build and test the tip of a branch by itself, use "Run
-workflow" (`gh workflow run test.yml --ref next`). The nightly run under
-valgrind is such a run on `next` once `valgrind-nightly.yml` is on
-`master` ([valgrind in CI](#valgrind-in-ci)); until then it runs only on
-pull requests that change it, `test.yml` or `test/valgrind.supp`. The other workflows decide on their
-own when they run (`nginx-tests`, `examples`, `site`, `zizmor` and the
-others in `.github/workflows/`).
+branches take changes only through pull requests, and condition 2 of
+"Review and merge" in [AGENTS.md](../../AGENTS.md) has the session merge a
+pull request only while the run of the pull request still stands for the
+merge: the base has gained no file of a category that the pull request
+also changes since that run. The rulesets require `ci-ok`, but not that the
+branch is up to date with its base. To build and test the tip of a branch
+by itself, use "Run workflow" (`gh workflow run test.yml --ref next`). The
+nightly run under valgrind, which the schedule of `valgrind-nightly.yml` on
+`master` starts on `master` and on `next`, is such a run ([valgrind in
+CI](#valgrind-in-ci)). The other workflows decide on their own when they
+run: `site` deploys on every push to `next`, and `codeql` scans pushes to
+`master` and `next` that change `src/`, `mrbgems/` or the workflows
+([CodeQL](#codeql)); `nginx-tests`, `examples` and `zizmor` run on pull
+requests only.
 
-`ci-ok` passes a skipped `build` or `soak` job only when `changes` passed
-and decided that the run does not need it. A `build` or `soak` job that was
-skipped for another reason (a failed `changes` job) fails `ci-ok`, as does a
-needed job that did not pass. A pull request whose run skipped the build
-jobs meets condition 2 of "Review and merge" with that run.
+`ci-ok` passes a skipped `build`, `soak` or `files` job only when `changes`
+passed and decided that the run does not need it. A job that was skipped
+for another reason (a failed `changes` job) fails `ci-ok`, as does a needed
+job that did not pass. A pull request whose run skipped jobs that its
+files do not need meets condition 2 of "Review and merge" with that run.
 
 ### Files that do not belong in the repository
 
@@ -287,16 +323,25 @@ Neither is in the `needs` of `ci-ok`.
 
 ## Supply chain checks
 
-Three more workflows check the supply chain of the build. None of them is in
-the `needs` of `ci-ok`, so none of them blocks a merge through the ruleset;
-"Review and merge" in `AGENTS.md` asks for every CI check on the head commit
-to pass, which includes the `zizmor` job of a pull request that runs it.
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16057/badge)](https://www.bestpractices.dev/projects/16057)
+
+The badge above is the project's OpenSSF Best Practices badge (passing level), which is separate from the Scorecard results below.
+
+Four more workflows check the supply chain of the build and the code. None
+of them is in the `needs` of `ci-ok`, so none of them blocks a merge through
+the ruleset; "Review and merge" in `AGENTS.md` asks for every CI check on
+the head commit to pass, which includes the `zizmor` and `codeql` jobs of a
+pull request that runs them. Like `test.yml`, the ones that run on pull
+requests skip their jobs for a draft, and marking it ready for review
+starts them.
 
 ### Static analysis of the workflows
 
 `.github/workflows/zizmor.yml` runs [zizmor](https://docs.zizmor.sh/) on
-pull requests and pushes that change `.github/workflows/`,
-`.github/dependabot.yml` or `.github/zizmor.yml`, and on "Run workflow". It
+ready pull requests that change `.github/workflows/`,
+`.github/dependabot.yml` or `.github/zizmor.yml`, and on "Run workflow";
+pushes do not run it, because the run of the pull request checked the same
+files. It
 audits the files under `.github/` with the default persona, including the
 audits that query GitHub (for example known vulnerable actions and commits
 that are not on the action's repository), and fails on any finding. The
@@ -333,11 +378,33 @@ one runs on its schedule, and nothing fails. "Run workflow", or enabling the
 workflow again (`gh workflow enable scorecard.yml`, `gh workflow enable
 gem-heads.yml`), starts them again.
 
+### CodeQL
+
+`.github/workflows/codeql.yml` runs [CodeQL](https://codeql.github.com/)
+code scanning for three languages, `c-cpp`, `ruby` and `actions`, and
+uploads the results to code scanning (the repository's Security tab). It
+runs on ready pull requests to `master` and `next` and on pushes to these
+branches that change `src/`, `mrbgems/` or `.github/workflows/`, every
+Wednesday at 04:37 UTC (GitHub runs a schedule only from this file on
+`master`, so the weekly run scans `master`), and on "Run workflow". It
+replaces GitHub's default setup of code scanning, which ran on every pull
+request and every push; the default setup is turned off in the repository
+settings, which the owner manages. The file is the same on `master` and
+`next`.
+
+All three languages use `build-mode: none`: for C and C++ CodeQL reads the
+sources without a build of nginx and mruby, so the job needs no build.
+CodeQL's documentation says that a database made without a build can give
+less accurate results than one made from a build
+(["Build options for compiled languages"](https://docs.github.com/en/code-security/reference/code-scanning/codeql/build-options-for-compiled-languages)).
+The actions are pinned by commit id like those of the other workflows, and
+`zizmor` checks the file.
+
 ### Heads of the GitHub gems
 
 `.github/workflows/gem-heads.yml` runs `test/gem_heads.sh` every Monday, on
-"Run workflow", and on pull requests that change `build_config.rb`, the
-script or the workflow. For each `conf.gem github:` line of
+"Run workflow", and on ready pull requests that change `build_config.rb`,
+the script or the workflow. For each `conf.gem github:` line of
 `build_config.rb`, it reports the head of the branch that a build clones
 (the line's `branch:`, or `master`, mruby's default when the line has
 none), whether the gem's default branch is another branch, whether the
@@ -695,10 +762,12 @@ of the example meet all three conditions.
 The `build` matrix of `.github/workflows/test.yml` runs `test.sh` in each
 cell. Which cells run nginx under valgrind depends on the run:
 
-- On pull requests and pushes whose run starts the `build` matrix ([Which
-  jobs a run starts](#which-jobs-a-run-starts)), one cell runs nginx under valgrind: nginx
-  1.31.8, static module, without `--with-openssl-src`, the job
-  `build (1.31.8)` (the matrix gives it `VALGRIND_ON_EVERY_RUN`). The other cells without a sanitizer run nginx
+- In a run that starts the `build` matrix, the whole one or the three
+  cells of a change of the tests ([Which jobs a run
+  starts](#which-jobs-a-run-starts)), one cell runs nginx under valgrind:
+  nginx 1.31.8, static module, without `--with-openssl-src` (the matrix
+  gives it `VALGRIND_ON_EVERY_RUN`; in the whole matrix it is the job
+  `build (1.31.8)`). The other cells without a sanitizer run nginx
   directly (`NGINX_RUNNER=exec`), and the sanitizer cell runs nginx built
   with AddressSanitizer and UndefinedBehaviorSanitizer (see the next
   section).
@@ -710,14 +779,16 @@ cell. Which cells run nginx under valgrind depends on the run:
   ```
 
 - The nightly run: `.github/workflows/valgrind-nightly.yml` starts such a
-  run of `test.yml` every day at 18:23 UTC for each branch of its matrix
-  (`next`), waits for it, and fails when it fails. GitHub runs a schedule
-  only from the workflow file on the default branch, `master`, so the
-  schedule takes effect once the file is on `master`. Until then, the file
-  on `next` runs on pull requests that change it, `test.yml` or
-  `test/valgrind.supp`: there it starts the run under valgrind on the head
-  branch of the pull request. Neither run is a status check that `ci-ok`
-  needs.
+  run of `test.yml` every day at 18:23 UTC (03:23 JST), waits for it, and
+  fails when it fails. GitHub runs a schedule only from the workflow file
+  on the default branch, `master`, so the copy of the file on `master`
+  (#674) starts the runs on `master` and on `next`. Pull requests do not
+  start it: a change of `test.yml` or `test/valgrind.supp` runs the cell
+  under valgrind in its own run, and every cell under valgrind waits for
+  the next night, or for "Run workflow" of `valgrind-nightly.yml` or of
+  `test.yml` with `valgrind` on the branch. The run does not give the
+  status check `ci-ok`: its job is named `ci-ok (valgrind)` ([Which jobs a
+  run starts](#which-jobs-a-run-starts)).
 
 valgrind adds little time to a cell. The part of `test.sh` from the start
 of nginx to `test.sh ... successful` took 67 to 94 seconds in the 16 cells
@@ -955,9 +1026,10 @@ the fetch or `prove` itself failed, or when a log is not a complete run.
 `.github/workflows/nginx-tests.yml` runs the self-test and `run.sh` on
 `ubuntu-22.04`, on pull requests to `next` that change an input of the
 nginx binary (the inputs that "[In CI](#in-ci)" of the performance
-comparison lists), `test.sh`, `test/nginx-tests/` or the workflow, on every
-push to `next` (each push gets a run of its own, also when the next push
-comes before it finished) and on "Run workflow". The job summary is `summary.md`, each
+comparison lists), `test.sh`, `test/nginx-tests/` or the workflow, and on
+"Run workflow". A draft runs nothing, and marking it ready for review
+starts the run. Pushes to `next` do not run it: the run of the pull request
+on its merge commit is the record of the merge. The job summary is `summary.md`, each
 file that fails with ngx_mruby only is a warning annotation, and the
 artifact `nginx-tests` has the output above without the copy of the nginx
 source.
@@ -1177,10 +1249,12 @@ counters therefore do not depend on how many requests ran before:
 
 - `gc_live` is the number of live mruby objects. `Nginx::Debug.gc` runs a
   full GC first, so the objects of finished requests are already freed.
-- `gc_root` is the number of objects that ngx_mruby has registered with
-  `mrb_gc_register()` and not yet unregistered, and `fibers` counts the
-  fibers among them. A handler registers its fiber when it starts and
-  unregisters it when it ends, so only the fiber of `/debug/stats` is left.
+- `gc_root` is the number of objects that ngx_mruby keeps from the GC, and
+  `fibers` counts the fibers among them: the holder of each mrb_state
+  (`src/http/ngx_http_mruby_gc_roots.h`), registered once when the state is
+  opened, and the objects stored in it. A handler stores its fiber in the
+  holder when it starts and frees the slot when it ends, so the holders and
+  the fiber of `/debug/stats` are left.
   ngx_mruby counts its own calls (see "The soak build and `Nginx::Debug`"
   below), so the check does not depend on how mruby stores the GC roots.
 - `arena` is the depth of the mruby GC arena while `/debug/stats` runs. Each
@@ -1336,12 +1410,15 @@ of `build.sh` and `test.sh` do not have it.
 - `Nginx::Debug.gc` runs a full GC (`mrb_full_gc`) and returns `nil`.
 - `Nginx::Debug.stats` returns a Hash with these Symbol keys:
   - `gc_live`: `mrb->gc.live`.
-  - `gc_root`: the objects that ngx_mruby has registered with
-    `mrb_gc_register()` and not yet unregistered with `mrb_gc_unregister()`,
-    one per call, in the whole nginx process: the registrations of the http
-    module and those of the stream module are counted together. Immediate
+  - `gc_root`: the objects that ngx_mruby keeps from the GC, one per call,
+    in the whole nginx process: the objects registered with
+    `mrb_gc_register()` and not yet unregistered (the holder of each
+    mrb_state, see `src/http/ngx_http_mruby_gc_roots.h`), and the objects
+    that `ngx_mrb_gc_roots_add()` stored in a holder and
+    `ngx_mrb_gc_roots_remove()` has not released. Those of the http module
+    and those of the stream module are counted together. Immediate
     values are not counted, because mruby does not register them. The value
-    is negative when ngx_mruby unregistered more than it registered.
+    is negative when ngx_mruby released more than it kept.
   - `gc_root_fibers`: the fibers among the objects counted in `gc_root`.
   - `gc_arena_idx`: `mrb->gc.arena_idx`.
   - `timers`: the `Nginx::Async.sleep` timers that have neither fired nor
@@ -1352,20 +1429,19 @@ of `build.sh` and `test.sh` do not have it.
     of the mrb_state; mruby 4.1 keeps the GC roots in `mrb->gc.root`
     instead, and the two keys are then left out. Unlike `gc_root`, they
     include the objects that mruby and the gems register, and they do not
-    include the registrations of the stream module. The soak test does not
-    check them: they are there to compare with `gc_root` on the mruby
-    versions that have the array. The two can differ on mruby 4.0: its
-    `mrb_gc_unregister` removes every entry of the object from the array,
-    while mruby 3.x removes one entry, and none when the object is not in
-    the array. The counter subtracts one per call on every version, so on
-    mruby 4.0 `gc_root_mruby` is lower than `gc_root` once an object that
-    was registered more than once has been unregistered once.
+    include the objects in the holders: the array has the holder of the
+    http module, not the fibers in it. The soak test does not check them:
+    they are there to compare with `gc_root` on the mruby versions that
+    have the array.
 
 `gc_root` and `gc_root_fibers` do not read the GC roots from mruby, because
 mruby 4.1 no longer keeps them in the `_gc_root_` array: a count read from
 the array would be 0 in every sample, and the soak would pass without
-checking anything. With `-DNGX_MRUBY_DEBUG_STATS`,
-`src/http/ngx_http_mruby_debug.h` defines `mrb_gc_register` and
+checking anything. ngx_mruby stores its fibers in the holder of the
+mrb_state, which `src/http/ngx_http_mruby_core.c` counts in
+`ngx_mrb_gc_roots_add()` and `ngx_mrb_gc_roots_remove()`. With
+`-DNGX_MRUBY_DEBUG_STATS`, `src/http/ngx_http_mruby_debug.h` defines
+`mrb_gc_register` and
 `mrb_gc_unregister` as macros that call the mruby function and then count
 the call, so every call in a source file that includes the header is
 counted, including a call added later. A `.c` file in `src/http/` or
@@ -1960,13 +2036,15 @@ too, so do not run it at the same time.
 
 ### In CI
 
-The `perf` job of `.github/workflows/test.yml` runs on pull requests that
-change an input of the measured binary, the measurement or the workflow, or
-that have the label `perf` (read when the job runs, so adding the label and
-re-running the job is enough), and only when the `changes` job starts the
-build jobs ([Which jobs a run starts](#which-jobs-a-run-starts)): a pull
-request whose files are all outside the inputs of the binary and the tests
-skips it, with the label too. The inputs of the binary are what
+The `perf` job of `.github/workflows/test.yml` starts on ready pull
+requests whose run builds (`build` is `full` or `tests` in [Which jobs a run
+starts](#which-jobs-a-run-starts)), and compares when `test/ci/changes.sh`
+gives `perf` `true`, that is when the pull request changes an input of the
+measured binary or the measurement, or when it has the label `perf` (read
+when the job runs, so adding the label and re-running the job is enough). A
+pull request that changes only `test.yml` among these files compares only
+with the label, and a pull request whose files are all outside the code and
+the tests skips the job, with the label too. The inputs of the binary are what
 `test/build_release.sh` copies: `src/`, `mrbgems/`, `mruby/`, `dependence/`
 (ngx_devel_kit, which `Makefile.in` adds to nginx), the top-level build
 files `build_config.rb`, `configure`, `config.in`, `Makefile.in`,
@@ -1976,9 +2054,12 @@ measurement is `test/perf/`,
 (`nginx.conf`, `nginx.agent.conf`, `scenarios.rb`, `http_client.rb`,
 `mock_llm.rb`, `handlers/`). The job of `master` is the same, with two
 differences: `master` commits no gem lock, so the lock is not an input
-there, and `master` has no soak job, so its `perf` job first runs the check
-of the mock LLM (`ruby test/soak/mock_llm_test.rb`) that `test/soak/run.sh`
-runs on `next`; on `master` the whole of `test/soak/` is the measurement.
+there, and `master` has no soak job, so its `perf` job runs the check of
+the mock LLM (`ruby test/soak/mock_llm_test.rb`), which `test/soak/run.sh`
+runs on `next`, before it compares. On `next`, a change of
+`test/soak/mock_llm_test.rb` gives `soak` `true` and so runs that check in
+the `soak` job; on `master`, where `soak` starts no job, such a change
+alone runs it only when the pull request has the label `perf`.
 
 A change of `nginx_version` builds the head with another nginx, so its
 `WARN` or `FAIL` measures nginx's own cost as well as ngx_mruby's; read the
@@ -2049,3 +2130,119 @@ $ diff base.txt head.txt
 
 The counts are for the whole window; divide by `PERF_N` for one request.
 KCachegrind and QCachegrind open the profiles as well.
+
+## Site CI change scope
+
+This section covers the browser checks of `.github/workflows/site.yml`;
+`test.yml` is described above.
+
+### Timing
+
+Before the split, the site build ran every check in one job:
+[run 41135116891](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116891/job/124345060406)
+took 26m04s, with computed styles 10m56s, homepage/code interaction 4m45s,
+Japanese lines 2m13s, screenshots 2m06s and browser installation 2m02s.
+With the lanes below, [run 41173244320](https://github.com/matsumotory/ngx_mruby/actions/runs/41173244320)
+of `29cf75611` took 17m58s from the start of the build job to the end of
+`site-ok`, including the waits for runners; its longest browser job took 459 s.
+The two runs had other sources and runners, so the difference is not a
+controlled measurement, and the durations of parallel jobs do not add up to
+the wall time. In the same run, `check-styles.mjs` in Chromium took 209.651 s on
+its 25 pages (250 page loads) and 20.101 s on the two installation pages that a
+targeted run would select (20 page loads).
+
+### Browser scope and parallel lanes
+
+The site builds and runs every static check once. Browser checks consume that
+same run's `site-validation` artifact (built HTML and generated manifests), not
+a result cached from another commit. The artifact is bound to the exact site
+and v2 source revisions, clean-source metadata, lockfile hash and workflow run.
+A mismatched revision, dirty build, lock, run or artifact digest fails.
+
+`ci-plan.mjs` uses the range of a pull request (its merge commit against its
+first parent) and the fresh manifest. A push or a `workflow_dispatch`, which
+deploys on `next`, always uses full coverage: a range from the previous push
+would leave unchecked the pages of a push whose run failed or was cancelled.
+In a pull request, existing regular Markdown under `docs/` can use targeted coverage
+when the generator's own satteri parser proves that the title, title removal,
+heading hierarchy/text, code, inline code, HTML and frontmatter contracts did
+not change. Both language routes are checked; on an English fallback page
+under `/ja/` (`GENERATED_REFERENCE` and `NOT_TRANSLATED_YET` of
+`site/scripts/lib/site.mjs`), the Japanese line check measures only the notice,
+as a full run does. This
+allows prose and link changes in real documents without approximating Markdown
+with a regular expression. Changes to those contracts, new/deleted/renamed
+files, MDX, shared CSS/layouts/generators/dependencies/workflows, unknown inputs
+or unavailable evidence use full coverage. A pull request that changes only
+the root AGENTS.md, CLAUDE.md or README.md needs no 3.x page browser checks,
+while all static checks still run.
+
+On a pull request, the build job also reads `test/ci/changes.sh` ([Which
+jobs a run starts](#which-jobs-a-run-starts)) on the merge commit against
+the base, and the six browser lanes and the maintenance lane start only
+when it gives `site` `true` (`site/` or `site.yml` changed), or `docs`
+`true` and the plan above is `full` or `targeted`. A pull request that
+changes `src/`, `test/`, `build_config.rb` or `examples/`, and no file of
+`site/` or `docs/`, runs the build and every static check (the reference,
+sample and home page checks read those files), but no browser. A push or a
+dispatch runs every lane. A draft pull request runs no job of the
+workflow; marking it ready for review starts the run.
+
+The independent browser lanes are:
+
+- Chromium styles and WebKit styles, with their original viewport/theme/motion
+  coverage, in separate jobs;
+- 3.x homepage interaction and code layout (only the affected page code checks
+  for targeted document edits; the homepage itself is unchanged in that case);
+- Japanese page lines;
+- focus, language links and Lighthouse accessibility;
+- full representative screenshots, or every targeted page in both engines,
+  both themes and 320/390/1440px widths, with viewport and full-page evidence;
+  in full coverage the same lane first runs `check-project-badges.mjs --browser`,
+  the footer's OpenSSF Best Practices badge at 375px (`/` and `/v2/ja/` in
+  Chromium, light and dark, and `/ja/` in WebKit).
+
+The footer badge is the one image of the site from another origin. The
+read-only browser context (`scripts/lib/read-only-browser.mjs`) still allows
+only same-origin GET requests; a caller may name exact image URLs whose GET it
+answers from a local fixture instead of the network. The checks before the
+deploy (`check-project-badges.mjs`, `check-home-interaction.mjs`,
+`screenshots-live.mjs`) serve the badge's URL from the stand-in of
+`scripts/lib/project-badges.mjs`, so a slow or failing bestpractices.dev cannot
+hold the publication. Only `check-live.mjs`, after the deploy, fetches the real
+image, and retries it three times before it reports a problem.
+
+The v2 input is fetched independently from `master`, so it is **never assumed
+unchanged from the next-branch diff**. Maintenance Japanese lines, every v2 code
+surface and both version search indexes remain in a separate lane, which runs
+on every push and dispatch, and on a pull request when the browser lanes run. The same lane also retains the read-only browser fixture and local
+predeploy smoke screenshots from the publication workflow. Homepage copy-idle
+checks remain in full interaction coverage; postdeploy verification is retained.
+The union of full 3.x and full v2 code checks is tested against the former
+single suite. No assertions, viewports or engines are removed. Direct script
+invocations without CI scope still run their complete original coverage.
+
+`site-ok` runs with `always()` (except for a draft) and requires success from
+build, and from the complete browser matrix and the maintenance checks, or
+their skip when the build job decided that the pull request needs no browser
+(`browser` `false`). Any other skip, and a cancelled, missing or failed job,
+fails it and cannot publish. `deploy` needs both build and this gate. Scope-none browser
+jobs return an explicit successful no-work result after artifact verification;
+they do not silently bypass a failed dependency. Independent review repeats
+the relevant regression suite, rather than rebuilding every unrelated artifact.
+
+```sh
+cd site
+node scripts/test-ci-scope.mjs
+node scripts/test-ci-browser.mjs
+node scripts/test-ci-integration.mjs
+```
+
+The contract tests include real Git ranges, rename/mode cases, Markdown parsing
+counterexamples, exact version coverage, workflow wiring and stale/dirty/run/
+lock/v2 artifact rejection. A manual `site` dispatch with `measure_scope=true`
+or a PR changing the CI policy/scripts adds a two-page Chromium style comparison
+**after** the full style lane passes,
+using the same build. It cannot replace required full coverage. Each lane writes
+measured script seconds and selected pages to its job summary. Compare actual
+workflow critical paths, not the sum of parallel jobs.

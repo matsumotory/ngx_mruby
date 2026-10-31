@@ -6,6 +6,7 @@
 
 #include "ngx_stream_mruby_core.h"
 
+#include "../http/ngx_http_mruby_gc_roots.h"
 #include "ngx_stream_mruby_module.h"
 
 #include <mruby/hash.h>
@@ -165,6 +166,7 @@ ngx_stream_mruby_ctx_t *ngx_stream_mrb_get_module_ctx(mrb_state *mrb, ngx_stream
       }
       ctx->cleanup = NULL;
     }
+    ctx->fiber_slot = NGX_MRB_GC_ROOTS_NONE;
     ngx_stream_set_ctx(s, ctx, ngx_stream_mruby_module);
   }
   return ctx;

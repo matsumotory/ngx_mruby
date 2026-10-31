@@ -294,7 +294,8 @@ not enough, and show the change.
   nothing to change. A body filter that sets `""` with
   `Nginx::Filter#body=` or `#output`, or leaves the body of a response
   without a body empty, sends the status with `Content-Length: 0`, where
-  2.x closed the connection without a byte.
+  2.7.2 and earlier closed the connection without a byte; 2.7.3 sends it
+  as well.
 - [The accessors of `Nginx::Var` become methods of `Nginx::Var` at their first use in a worker](../releases/v3.0.0.md#the-accessors-of-nginxvar-become-methods-of-nginxvar-at-their-first-use-in-a-worker-610):
   the search above finds `respond_to?`, `method_defined?`, `instance_methods`
   and `methods`; look at the ones on an `Nginx::Var` or on `Nginx::Var`

@@ -10,13 +10,17 @@ name: nginx-tests
 # docs/proposals/v3-plan.md records it first and makes it required once its
 # results are stable.
 #
-# Pull requests to next run it when they change an input of the nginx
-# binary (the inputs that the perf job of test.yml lists), test.sh, the
-# runner in test/nginx-tests/ or this file. Every push to next runs it, so
-# that each merge has a record: pushes get a concurrency group per commit,
-# so a later push neither cancels nor replaces the run of an earlier one.
+# Ready pull requests to next run it when they change an input of the nginx
+# binary (the paths below), test.sh,
+# the runner in test/nginx-tests/ or this file; a draft runs nothing, and
+# marking it ready for review starts the run. Pushes to next do not run it:
+# the run of the pull request on its merge commit is the record of the
+# merge, and "Run workflow" runs it on the tip of a branch.
 on:
   pull_request:
+    # GitHub's defaults (opened, synchronize, reopened) and the move of a
+    # draft to ready for review: a draft runs nothing (the job's if).
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - next
     paths:
@@ -34,17 +38,11 @@ on:
       - 'test.sh'
       - 'test/nginx-tests/**'
       - '.github/workflows/nginx-tests.yml'
-  push:
-    branches:
-      - next
   workflow_dispatch:
 
 # A new push to a pull request cancels the run for its previous commit.
-# A push to next has a group of its own commit: GitHub keeps only the newest
-# waiting run of a group, and a group per branch would drop the record of
-# a merge that was followed by another before its run started.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -56,6 +54,7 @@ defaults:
 
 jobs:
   nginx-tests:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     steps:

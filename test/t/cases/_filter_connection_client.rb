@@ -7,8 +7,8 @@
 # Modes:
 #   remote_port   GET /connection/remote_port on 18112 and print
 #                 "<client local port>|<response body>"
-#   filter_empty  GET /filter/output_empty on 18112 and print the status
-#                 line, or "<closed>" when no byte comes back
+#   filter_empty  GET /filter/output_empty on 18112 and print status code,
+#                 Content-Length and inspected body, or "<closed>" for no bytes
 #   pp_v1_tcp4    PROXY protocol v1 line with TCP4 addresses to 18113
 #   pp_v1_tcp6    PROXY protocol v1 line with TCP6 addresses to 18113
 #   pp_v1_unknown PROXY protocol v1 line "PROXY UNKNOWN" to 18113
@@ -79,7 +79,14 @@ when 'remote_port'
   puts "#{port}|#{body_of(raw)}"
 when 'filter_empty'
   _, raw = send_raw(18112, '', '/filter/output_empty')
-  puts(raw.nil? || raw.empty? ? '<closed>' : raw.split("\r\n").first)
+  if raw.nil? || raw.empty?
+    puts '<closed>'
+  else
+    header, body = raw.split("\r\n\r\n", 2)
+    status = header.lines.first.split[1]
+    length = header[/^Content-Length: ([^\r\n]+)/i, 1]
+    puts "#{status}|#{length}|#{body.inspect}"
+  end
 when 'pp_v1_tcp4'
   _, raw = send_raw(18113, "PROXY TCP4 192.0.2.10 192.0.2.20 40000 8443\r\n", '/proxy_protocol')
   puts body_of(raw)

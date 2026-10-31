@@ -36,7 +36,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
-import { GENERATED_REFERENCE, loadManifest, manifestFile, NOT_TRANSLATED_YET } from './lib/site.mjs';
+import { GENERATED_REFERENCE, japaneseNoticePages, loadManifest, manifestFile, NOT_TRANSLATED_YET } from './lib/site.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 // The release notes in Japanese, written before step 5 and longer than any
@@ -213,9 +213,10 @@ async function main() {
     process.exit(2);
   }
   const pages = opt.pages ?? loadManifest(opt.manifest).filter((p) => p.lang === 'ja' && !p.home).map((p) => `/${p.route}/`);
-  // One page of each kind of notice (its English text is not measured)
-  const noticePages = opt.pages ? [] : [GENERATED_REFERENCE[0], NOT_TRANSLATED_YET[0]].filter(Boolean).map((r) => `/ja/${r}/`);
-  pages.push(...noticePages);
+  // One page of each kind of notice (its English text is not measured); with
+  // --pages, the English fallback pages among the pages named
+  const noticePages = opt.pages ? japaneseNoticePages(opt.pages) : [GENERATED_REFERENCE[0], NOT_TRANSLATED_YET[0]].filter(Boolean).map((r) => `/ja/${r}/`);
+  if (!opt.pages) pages.push(...noticePages);
   if (!pages.length) {
     console.error('check-japanese-lines: no Japanese page to check');
     process.exit(1);

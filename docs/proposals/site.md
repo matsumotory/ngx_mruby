@@ -1298,7 +1298,20 @@ acceptance; the interaction check covers that separately.
 - **Footer**: 1 px top border, 14 px `text-muted`, 48 px above and 32 px
   below, as on the profile site. As on the corporate site, one footer
   component serves every page, so that every page reaches the same links:
-  the language link, Releases, Security, the license and GitHub.
+  the language link, Releases, Security, the license and GitHub. The license
+  is labeled MIT and links to the existing `MITL` file of the page's version.
+  The requested OpenSSF Best Practices badge follows these links in this
+  shared footer, in both languages and versions, not in the product hero.
+  Its original external image links to project 16057; do not recolor it or
+  turn its current status into a fixed certification claim. No CI badge is
+  added: the footer already links to GitHub, and a next-only status beside
+  the stable documentation would blur version scope. The footer wraps as a
+  unit at narrow widths; keep the badge's aspect ratio and visible focus.
+  `check-project-badges.mjs` checks the exact link/image/alt on every page and,
+  in a browser, the footer at 375 px in light and dark. The checks before the
+  deploy serve the badge's URL from a local stand-in, so bestpractices.dev
+  cannot hold the publication; `check-live.mjs` fetches the real image after
+  the deploy, with retries.
 - Check: each page's language link answers 200 with the same path under the
   other prefix; `/` with `Accept-Language: ja` returns English without a
   redirect; at 320 and 390 px the header's items fit on one row without

@@ -12,7 +12,17 @@ name: site
 # the github-pages environment limited to next) are the owner's; "The site"
 # in AGENTS.md lists them.
 #
-# Pull requests run it when they touch site/, docs/ or this file. Every push
+# Pull requests run it when they touch the files of on.paths below, which
+# the build and the static checks read: the reference checks read the
+# directive tables of src/ and the gems of build_config.rb, the sample
+# checks the cases of test/, the home page checks examples/. A draft pull
+# request runs no job: marking it ready for review (the type
+# ready_for_review) starts the run, and every later push runs it again.
+# The browser lanes and the maintenance lane run on a pull request only
+# when test/ci/changes.sh gives site "true" (site/ or this file), or docs
+# "true" and site/scripts/ci-plan.mjs selects pages; a change of src/,
+# test/ or examples/ alone runs the build and the static checks, not the
+# browsers (docs/test/README.md, "Site CI change scope"). Every push
 # to next runs it: docs/ links to files outside docs/ and site/, and a link
 # to a file that git no longer tracks stops the build, so a merge that
 # removes or renames such a file fails here, on that merge, and not on the
@@ -24,6 +34,9 @@ name: site
 # master, which builds the same site with the pull request's docs/.
 on:
   pull_request:
+    # GitHub's defaults (opened, synchronize, reopened) and the move of a
+    # draft to ready for review, which starts the run.
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - next
     paths:
@@ -39,6 +52,11 @@ on:
     branches:
       - next
   workflow_dispatch:
+    inputs:
+      measure_scope:
+        description: 'Measure full vs two-page style checks on the same artifact (no deploy off next)'
+        type: boolean
+        default: false
 
 # A new push to a pull request cancels the run for its previous commit.
 concurrency:
@@ -54,11 +72,16 @@ defaults:
 
 jobs:
   build:
+    # A draft pull request runs nothing (see the top of this file).
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     outputs:
       site_revision: ${{ steps.versions.outputs.site_revision }}
       v2_revision: ${{ steps.versions.outputs.v2_revision }}
+      browser_mode: ${{ steps.scope.outputs.mode }}
+      measure_scope: ${{ steps.scope.outputs.measure_scope }}
+      browser: ${{ steps.browser.outputs.browser }}
     steps:
       # The whole history: the last-updated date of each page is the date of
       # the last commit that changed its source (git log).
@@ -66,17 +89,15 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      # Step 6: production always reads master, with its whole history.
-      # Only the trusted site-rebuild PR previews the exact docs-only #673
-      # candidate so both entry journeys can be inspected before either merge.
-      # The fixed SHA is never selected by push or workflow_dispatch deploys.
+      # Step 6: the 2.x pages under /v2/ are built from docs/ of master,
+      # with its whole history for their last-updated dates.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.repository == 'matsumotory/ngx_mruby' && github.event.pull_request.number == 672 && github.event.pull_request.head.repo.full_name == 'matsumotory/ngx_mruby' && github.head_ref == 'codex/site-purpose-rebuild' && '452ad7ef9672a9e710cf12e5b7df743f4587727e' || 'master' }}
+          ref: master
           path: master
           fetch-depth: 0
           persist-credentials: false
-      - name: Record the exact sources of this build
+      - name: Record exact source revisions
         id: versions
         run: |
           echo "site_revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -128,7 +149,9 @@ jobs:
       - name: Check that every internal link of the built HTML resolves, under /v2/ too
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/check-built-links.mjs
+        run: |
+          node scripts/check-built-links.mjs
+          node scripts/check-project-badges.mjs
       - name: Check that every page has a title and the last-updated date of its source
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
@@ -201,76 +224,65 @@ jobs:
         if: ${{ !cancelled() && steps.mrbc.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/check-ruby-blocks.mjs --mrbc "$RUNNER_TEMP/mrbc/mrbc/bin/mrbc"
-      # The browsers of the version of playwright in package-lock.json,
-      # with the system libraries they need.
-      - name: Install Chromium and WebKit for Playwright
-        id: browsers
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+      - name: Check all version metadata, banners and links without a browser
         working-directory: ${{ runner.temp }}/fresh/site
-        run: npx playwright install --with-deps chromium webkit
-      - name: Check the read-only browser boundary on a local fixture
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
-        working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/test-read-only-browser.mjs
-      - name: Check that copy controls are still when the page loads
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
-        working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/check-copy-idle.mjs
-      - name: Check computed styles in Chromium and WebKit (sizes, colors, monospace, shadows, spacing, durations, lines, gutters, diagrams)
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
-        working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/check-styles.mjs
-      - name: Check homepage route controls, code copy and reduced motion
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        run: node scripts/check-v2.mjs --no-browser
+      - name: Test the browser scope and lane contracts
         working-directory: ${{ runner.temp }}/fresh/site
         run: |
-          node scripts/check-home-interaction.mjs
-          node scripts/check-code-layout.mjs
-      # Step 5: the lines of the Japanese pages in Noto Sans JP, the face
-      # that CI has (body lines, line height, page titles, the right edge,
-      # last lines, diagram labels).
-      - name: Check the lines of the Japanese pages in Chromium and WebKit (40 characters, line height, h1, right edge, last lines, diagram labels)
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+          node scripts/test-ci-scope.mjs
+          node scripts/test-ci-browser.mjs
+          node scripts/test-ci-integration.mjs
+      # A pull request whose diff only edits the prose or links of pages
+      # under docs/ checks those pages in the browser lanes; every other
+      # change, and every push or dispatch (they deploy), checks all pages.
+      - name: Plan browser coverage from the verified diff
+        id: scope
         working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/check-japanese-lines.mjs
-      - name: Check the focus ring and that the header covers no focused element, in Chromium and WebKit
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
-        working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/check-focus.mjs
-      - name: Check the language links (200, same path) and no redirect for Accept-Language ja
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
-        working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/check-language-links.mjs
-      # Step 6: the banner of 3.4 on every 2.x page, the version links, and
-      # 2.x and 3.x search results that do not mix.
-      - name: Check the 2.x pages (banner, version links, search results of their own version)
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' && steps.v2.outcome == 'success' }}
-        working-directory: ${{ runner.temp }}/fresh/site
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: node scripts/ci-plan.mjs
+      # Whether the browser lanes and the maintenance lane run: always on a
+      # push or a dispatch, which deploy; on a pull request, when
+      # test/ci/changes.sh (on the merge commit against the base) gives site
+      # "true", or docs "true" and the plan above selects pages (mode
+      # "full" or "targeted"). site-ok passes the skipped lanes only when
+      # this step said "false".
+      - name: Decide whether the browser lanes run
+        id: browser
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MODE: ${{ steps.scope.outputs.mode }}
         run: |
-          node scripts/check-v2.mjs
-          node scripts/check-search-identifiers.mjs
-      - name: Check Lighthouse accessibility on three page types in both languages
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo "event $EVENT_NAME: the browser lanes run"
+            echo "browser=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          sh test/ci/changes.sh HEAD^1 HEAD > "$RUNNER_TEMP/changes"
+          cat "$RUNNER_TEMP/changes"
+          site=$(sed -n 's/^site=//p' "$RUNNER_TEMP/changes")
+          docs=$(sed -n 's/^docs=//p' "$RUNNER_TEMP/changes")
+          case "$site,$docs" in
+            true,true | true,false) browser=true ;;
+            false,true) if [ "$MODE" = full ] || [ "$MODE" = targeted ]; then browser=true; else browser=false; fi ;;
+            false,false) browser=false ;;
+            *) echo "::error title=site::test/ci/changes.sh gave no decision (site: '$site', docs: '$docs')"; exit 1 ;;
+          esac
+          echo "site: $site, docs: $docs, browser scope: $MODE: the browser lanes run: $browser"
+          echo "browser=$browser" >> "$GITHUB_OUTPUT"
+      - name: Bind generated manifests and output to this exact run
         working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/check-lighthouse.mjs
-      - name: Take the screenshots of step 3
-        id: shots
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
-        working-directory: ${{ runner.temp }}/fresh/site
+        env:
+          V2_REVISION: ${{ steps.versions.outputs.v2_revision }}
         run: |
-          node scripts/screenshots.mjs --out build-screenshots
-          node scripts/screenshots-live.mjs --local --out build-screenshots/predeploy-smoke
-      # The screenshots stay in the artifact: no image is committed or
-      # attached to the pull request (4.12, the owner's decision of
-      # 2026-10-19).
-      # Uploaded also when a shot failed, so that the images written before
-      # the failure, those for the owner's review among them, are there.
-      - name: Upload the screenshots
-        if: ${{ !cancelled() && (steps.shots.outcome == 'success' || steps.shots.outcome == 'failure') }}
+          node scripts/ci-artifact.mjs --write
+          tar -czf "$RUNNER_TEMP/site-validation.tar.gz" dist generated/pages.json generated/pages-v2.json generated/ci-scope.json generated/ci-identity.json
+      - name: Upload the same-run browser input
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: screenshots
-          path: ${{ runner.temp }}/fresh/site/build-screenshots
+          name: site-validation
+          path: ${{ runner.temp }}/site-validation.tar.gz
           if-no-files-found: error
       - name: Upload the built site
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -288,15 +300,17 @@ jobs:
         with:
           path: ${{ runner.temp }}/fresh/site/dist
 
-  # A reviewer can repeat this regression alone, without rebuilding nginx
-  # or repeating every site page and screenshot. Use the exact same-run
-  # artifact, not a new build from a moving branch; both source SHAs and
-  # clean states must match before the unchanged browser suite runs.
-  maintenance-lines:
-    name: Check Japanese maintenance-entry lines
+  # Independent suites consume one exact build; matrix fail-fast is disabled
+  # so all relevant evidence survives a failure in another lane.
+  browser:
     needs: build
+    if: needs.build.outputs.browser == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [styles-chromium, styles-webkit, interaction, japanese, accessibility, screenshots]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -307,8 +321,60 @@ jobs:
           node-version-file: site/.node-version
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: site
-          path: site/dist
+          name: site-validation
+          path: ${{ runner.temp }}/site-validation
+          digest-mismatch: error
+      - name: Read the same-run build and verify exact source identity
+        working-directory: site
+        env:
+          V2_REVISION: ${{ needs.build.outputs.v2_revision }}
+        run: |
+          tar -xzf "$RUNNER_TEMP/site-validation/site-validation.tar.gz"
+          node scripts/ci-artifact.mjs
+      - name: Install locked browser tools for selected checks
+        if: ${{ needs.build.outputs.browser_mode != 'none' }}
+        working-directory: site
+        env:
+          LANE: ${{ matrix.lane }}
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          case "$LANE" in
+            styles-chromium) npx playwright install --with-deps chromium ;;
+            styles-webkit) npx playwright install --with-deps webkit ;;
+            *) npx playwright install --with-deps chromium webkit ;;
+          esac
+      - name: Run selected browser suite
+        working-directory: site
+        env:
+          LANE: ${{ matrix.lane }}
+          MEASURE_SCOPE: ${{ (inputs.measure_scope || needs.build.outputs.measure_scope == 'true') && matrix.lane == 'styles-chromium' }}
+        run: node scripts/ci-browser.mjs "$LANE"
+      - name: Keep screenshots, including partial evidence on failure
+        if: ${{ !cancelled() && matrix.lane == 'screenshots' && needs.build.outputs.browser_mode != 'none' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: screenshots
+          path: site/build-screenshots
+          if-no-files-found: error
+
+  maintenance-lines:
+    name: Check maintenance and read-only publication evidence
+    needs: build
+    if: needs.build.outputs.browser == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: site/.node-version
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: site-validation
+          path: ${{ runner.temp }}/maintenance-validation
           digest-mismatch: error
       - name: Match both artifact revisions to the build checkouts
         working-directory: site
@@ -317,6 +383,8 @@ jobs:
           V2_REVISION: ${{ needs.build.outputs.v2_revision }}
           CHECKOUT_REVISION: ${{ github.sha }}
         run: |
+          tar -xzf "$RUNNER_TEMP/maintenance-validation/site-validation.tar.gz"
+          node scripts/ci-artifact.mjs
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import fs from 'node:fs';
@@ -339,7 +407,44 @@ jobs:
           npx playwright install --with-deps chromium webkit
       - name: Check the Japanese maintenance entry lines in Chromium and WebKit
         working-directory: site
-        run: node scripts/check-japanese-lines.mjs --pages /v2/ja/
+        run: |
+          node scripts/test-read-only-browser.mjs
+          node scripts/screenshots-live.mjs --local --out build-screenshots/predeploy-smoke
+          node scripts/check-japanese-lines.mjs --pages /v2/ja/
+      - name: Check all maintenance code surfaces and both search indexes
+        working-directory: site
+        run: |
+          SITE_CI_VERSION=2 node scripts/check-code-layout.mjs
+          node scripts/check-v2.mjs
+          node scripts/check-search-identifiers.mjs
+
+      - name: Upload predeploy read-only smoke evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: predeploy-smoke
+          path: site/build-screenshots/predeploy-smoke
+          if-no-files-found: warn
+
+  # Skipped with the build job for a draft pull request. Otherwise it fails
+  # unless the build passed, and the browser and maintenance lanes passed,
+  # or were skipped because the build job said they are not needed.
+  site-ok:
+    needs: [build, browser, maintenance-lines]
+    if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require every selected suite and its exact build
+        env:
+          BROWSER_NEEDED: ${{ needs.build.outputs.browser }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+          MAINTENANCE_RESULT: ${{ needs.maintenance-lines.result }}
+        run: node site/scripts/ci-browser.mjs --gate
 
   # Step 7: publish the artifact of the build job to GitHub Pages. It runs
   # only in this repository (not in forks), only on next, never for a pull request (github.ref is then
@@ -349,7 +454,7 @@ jobs:
   # publish the site even if it names the environment.
   deploy:
     name: Deploy to GitHub Pages
-    needs: [build, maintenance-lines]
+    needs: [build, site-ok]
     if: ${{ github.repository == 'matsumotory/ngx_mruby' && github.ref == 'refs/heads/next' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -385,7 +490,6 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
-
 
   # Read-only acceptance of the artifact just published above. No token or
   # new permission is needed: the GitHub metadata is public, and artifact
