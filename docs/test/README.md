@@ -121,6 +121,20 @@ head commit and the base commit of the merge ref at that time, which is
 what condition 2 of "Review and merge" asks the pull request to record;
 that condition also says when a move of the base makes a new run needed.
 
+A run that is cancelled reports no result. A newer push to the head of a
+pull request, a second event for the same head (the move of a draft to
+ready for review), and "Cancel workflow" cancel a run. `ci-ok` and the
+`site-ok` job of `site.yml` run on `!cancelled()`, not on `always()`, so
+they do not run in a cancelled run: GitHub marks them cancelled, as it
+marks every job of the run that had not finished, and a cancelled check
+is not a pass, so the head still needs the passing `ci-ok` of a run that
+was not cancelled. With `always()` they ran and failed in such a run: on
+2026-10-31 the run that the move of
+[#678](https://github.com/matsumotory/ngx_mruby/pull/678) to ready for
+review cancelled left a failed `ci-ok (draft)` on its head, beside the
+passing `ci-ok` of the run that counted. A needed job that is cancelled
+while the run goes on, at its `timeout-minutes`, still fails `ci-ok`.
+
 ### Which jobs a run starts
 
 `test/ci/changes.sh BASE HEAD` classifies the files that a change touches,
@@ -2222,11 +2236,13 @@ The union of full 3.x and full v2 code checks is tested against the former
 single suite. No assertions, viewports or engines are removed. Direct script
 invocations without CI scope still run their complete original coverage.
 
-`site-ok` runs with `always()` (except for a draft) and requires success from
+`site-ok` runs with `!cancelled()` (except for a draft) and requires success from
 build, and from the complete browser matrix and the maintenance checks, or
 their skip when the build job decided that the pull request needs no browser
 (`browser` `false`). Any other skip, and a cancelled, missing or failed job,
-fails it and cannot publish. `deploy` needs both build and this gate. Scope-none browser
+fails it and cannot publish. When the run itself is cancelled, `site-ok`
+does not run and GitHub marks it cancelled
+([Required status check](#required-status-check)). `deploy` needs both build and this gate. Scope-none browser
 jobs return an explicit successful no-work result after artifact verification;
 they do not silently bypass a failed dependency. Independent review repeats
 the relevant regression suite, rather than rebuilding every unrelated artifact.
