@@ -33,7 +33,9 @@
 #
 # With two builds, the change of head against base is judged per scenario on
 # the GC-excluded number: WARN from PERF_WARN_PERCENT, FAIL from
-# PERF_FAIL_PERCENT. The exit status is 1 when a scenario is FAIL, when a
+# PERF_FAIL_PERCENT. A line of test/perf/accepted.txt whose condition both
+# builds match (see accepted_for) shows a WARN or FAIL within its allowance
+# as "ok (accepted: ...)". The exit status is 1 when a scenario is FAIL, when a
 # measurement fails (in the base, an unexpected response is not an error when
 # its only other problems are ngx_mruby's "mrb_run failed" lines: the
 # scenario is shown as n/a; see summarize), or when no scenario was compared.
@@ -761,6 +763,96 @@ def self_test_summary
       failures << "the window message of #{name} does not name #{list}: #{e.message}" unless e.message.include?(list)
     end
   end
+  failures + self_test_accepted(builds, ok)
+end
+
+# The checks of self_test on the accepted differences: the reading of
+# test/perf/accepted.txt and of made-up lines, the mruby version, and the
+# verdicts of made-up results of auth (the base without GC as on #678).
+def self_test_accepted(builds, ok)
+  failures = []
+  begin
+    load_accepted
+  rescue PerfError => e
+    failures << "load_accepted: #{e.message}"
+  end
+  names = %w[auth hello]
+  text = "# comment\n\nmruby-version 4.0 4.1 auth 8   # trailing comment\nmruby-version 4.0 4.1 hello 3.5\n"
+  begin
+    entries = parse_accepted(text, 'made_up.txt', names)
+    got = entries.map { |e| e.values_at(:condition, :base, :head, :scenario, :allowance, :where) }
+    expected = [['mruby-version', '4.0', '4.1', 'auth', 8.0, 'made_up.txt:3'],
+                ['mruby-version', '4.0', '4.1', 'hello', 3.5, 'made_up.txt:4']]
+    failures << "parse_accepted returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
+  rescue PerfError => e
+    failures << "parse_accepted rejected a well-formed text: #{e.message}"
+    entries = []
+  end
+  {
+    'mruby-version 4.0 4.1 auth' => '4 fields, expected 5',
+    'mruby-version 4.0 4.1 auth 8 9' => '6 fields, expected 5',
+    'mruby 4.0 4.1 auth 8' => 'unknown condition "mruby"',
+    'mruby-version 4.0.0 4.1 auth 8' => '"4.0.0" is not a MAJOR.MINOR version',
+    'mruby-version 4.0 4.1 made_up 8' => 'unknown scenario "made_up"',
+    'mruby-version 4.0 4.1 auth 8%' => 'allowance "8%" is not a number',
+    'mruby-version 4.0 4.1 auth 0' => 'allowance "0" is not a number',
+    'mruby-version 4.0 4.1 auth -1' => 'allowance "-1" is not a number',
+    'mruby-version 4.0 4.1 auth 0x8' => 'allowance "0x8" is not a number',
+    'mruby-version 4.0 4.1 auth 1e1' => 'allowance "1e1" is not a number',
+    'mruby-version 4.0 4.1 auth 8_0' => 'allowance "8_0" is not a number',
+    'mruby-version 4.0 4.1 auth .5' => 'allowance ".5" is not a number',
+    "mruby-version 4.0 4.1 auth 8\nmruby-version 4.0 4.1 auth 9" => 'made_up.txt:2: a second line for mruby-version 4.0 4.1 auth'
+  }.each do |bad, message|
+    parse_accepted(bad, 'made_up.txt', names)
+    failures << "parse_accepted accepted #{bad.inspect}"
+  rescue PerfError => e
+    failures << "parse_accepted on #{bad.inspect} said #{e.message.inspect}, expected #{message.inspect}" unless e.message.include?(message)
+  end
+  header = "#define MRUBY_RELEASE_MAJOR 4\n#define MRUBY_RELEASE_MINOR 1\n#define MRUBY_RELEASE_TEENY 0\n"
+  { header => '4.1.0', header.sub(/^#define MRUBY_RELEASE_TEENY.*\n/, '') => nil }.each do |text_h, expected|
+    got = mruby_version_from(text_h)
+    failures << "mruby_version_from gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
+  end
+  scenario = Scenario.new(name: 'auth', mock: [])
+  base = ok.merge(nogc_per_request: 42_599.0)
+  [
+    # head w/o GC, base and head mruby, expected verdict, expected failed
+    [45_622.0, %w[4.0.0 4.1.0], 'ok (accepted: mruby 4.0.0→4.1.0, +8%)', false],
+    [43_878.0, %w[4.0.0 4.1.0], 'ok (accepted: mruby 4.0.0→4.1.0, +8%)', false],
+    [42_600.0, %w[4.0.0 4.1.0], 'ok', false],
+    [46_008.0, %w[4.0.0 4.1.0], 'FAIL', true],
+    [45_622.0, %w[4.1.0 4.1.0], 'FAIL', true],
+    [45_622.0, %w[4.0.0 4.0.0], 'FAIL', true],
+    [45_622.0, [nil, '4.1.0'], 'FAIL', true]
+  ].each do |head_nogc, versions, expected, expected_failed|
+    head = ok.merge(nogc_per_request: head_nogc)
+    applied = accepted_for(entries, { 'mruby-version' => versions })
+    _header, rows, _notes, failed = summarize(builds, [scenario], { %w[base auth] => base, %w[head auth] => head }, applied)
+    got = rows.first.last
+    next if got == expected && failed == expected_failed
+
+    failures << "auth at #{head_nogc} w/o GC with mruby #{versions.inspect} gave #{got.inspect} (failed #{failed}), " \
+                "expected #{expected.inspect} (failed #{expected_failed})"
+  end
+  # The boundary: a change equal to the allowance is accepted, one above it is not.
+  allowance = { allowance: 8.0, label: 'mruby 4.0.0→4.1.0' }
+  { 8.0 => 'ok (accepted: mruby 4.0.0→4.1.0, +8%)', 8.0001 => 'FAIL' }.each do |change, expected_verdict|
+    got = accepted_verdict(change, allowance)
+    failures << "accepted_verdict(#{change}) gave #{got.inspect}, expected #{expected_verdict.inspect}" unless got == expected_verdict
+  end
+  { 'ok (accepted: mruby 4.0.0→4.1.0, +8%)' => 'notice', 'n/a (base: unexpected response)' => 'notice',
+    'WARN' => 'warning', 'FAIL' => 'error', 'ERROR' => 'error' }.each do |result, expected_level|
+    got = annotation_level(result)
+    failures << "annotation_level(#{result.inspect}) gave #{got.inspect}, expected #{expected_level.inspect}" unless got == expected_level
+  end
+  line = accepted_line({ 'mruby-version' => %w[4.0.0 4.1.0] }, accepted_for(entries, { 'mruby-version' => %w[4.0.0 4.1.0] }))
+  file = File.basename(ACCEPTED_FILE)
+  expected = "perf: mruby: base 4.0.0, head 4.1.0; accepted differences (#{file}): " \
+             'auth up to +8% (mruby 4.0.0→4.1.0), hello up to +3.5% (mruby 4.0.0→4.1.0)'
+  failures << "accepted_line gave #{line.inspect}, expected #{expected.inspect}" unless line == expected
+  line = accepted_line({ 'mruby-version' => %w[4.1.0 4.1.0] }, {})
+  expected = "perf: mruby: base 4.1.0, head 4.1.0; accepted differences (#{file}): none apply"
+  failures << "accepted_line without differences gave #{line.inspect}, expected #{expected.inspect}" unless line == expected
   failures
 end
 
@@ -819,6 +911,108 @@ def verdict(change)
   end
 end
 
+# The accepted differences: test/perf/accepted.txt (its comment has the
+# format). PERF_ACCEPTED_FILE names another file, for example an empty one
+# to see the verdicts without them.
+ACCEPTED_FILE = ENV.fetch('PERF_ACCEPTED_FILE', File.join(ROOT, 'test/perf/accepted.txt'))
+ACCEPTED_CONDITIONS = %w[mruby-version].freeze
+
+# The lines of an accepted file as hashes (condition, base, head, scenario,
+# allowance, where). A line that is not in the format raises PerfError with
+# the file and the line number.
+def parse_accepted(text, path, scenario_names)
+  entries = []
+  text.each_line.with_index(1) do |raw, number|
+    line = raw.sub(/#.*/, '').strip
+    next if line.empty?
+
+    where = "#{path}:#{number}"
+    fields = line.split
+    unless fields.size == 5
+      raise PerfError, "#{where}: #{fields.size} fields, expected 5 (CONDITION BASE HEAD SCENARIO ALLOWANCE): #{line}"
+    end
+
+    condition, base, head, scenario, allowance = fields
+    unless ACCEPTED_CONDITIONS.include?(condition)
+      raise PerfError, "#{where}: unknown condition #{condition.inspect} (known: #{ACCEPTED_CONDITIONS.join(', ')})"
+    end
+    [base, head].each do |value|
+      raise PerfError, "#{where}: #{value.inspect} is not a MAJOR.MINOR version such as 4.1" unless value.match?(/\A\d+\.\d+\z/)
+    end
+    raise PerfError, "#{where}: unknown scenario #{scenario.inspect}" unless scenario_names.include?(scenario)
+
+    # Decimal digits only: Float() would also take 0x8, 1e1 and 8_0.
+    percent = allowance.match?(/\A\d+(?:\.\d+)?\z/) ? Float(allowance) : nil
+    unless percent&.positive?
+      raise PerfError, "#{where}: allowance #{allowance.inspect} is not a number of percent above 0 (no % sign)"
+    end
+    if entries.any? { |e| [e[:condition], e[:base], e[:head], e[:scenario]] == [condition, base, head, scenario] }
+      raise PerfError, "#{where}: a second line for #{condition} #{base} #{head} #{scenario}"
+    end
+
+    entries << { condition: condition, base: base, head: head, scenario: scenario, allowance: percent, where: where }
+  end
+  entries
+end
+
+def load_accepted(path = ACCEPTED_FILE)
+  parse_accepted(File.read(path), path, SCENARIOS.map(&:name))
+rescue SystemCallError => e
+  raise PerfError, "#{path}: #{e.message}"
+end
+
+# The version of the bundled mruby (MAJOR.MINOR.TEENY) in the text of
+# mruby/include/mruby/version.h, or nil.
+def mruby_version_from(text)
+  parts = %w[MAJOR MINOR TEENY].map { |part| text[/^#define MRUBY_RELEASE_#{part}\s+(\d+)\s*$/, 1] }
+  parts.all? ? parts.join('.') : nil
+end
+
+# The mruby version of a build, from the copy of the sources in its tree
+# (test/build_release.sh), or nil.
+def mruby_version(build)
+  path = File.join(build.dir, 'tree/mruby/include/mruby/version.h')
+  File.exist?(path) ? mruby_version_from(File.read(path)) : nil
+end
+
+# The accepted differences that apply to two builds, by scenario:
+# { name => { allowance:, label: } }. versions has the [base, head] values
+# of each condition ({ 'mruby-version' => ['4.0.0', '4.1.0'] }); a value
+# that is nil (not read) matches no line.
+def accepted_for(entries, versions)
+  entries.each_with_object({}) do |e, applied|
+    base, head = versions[e[:condition]]
+    next unless base && head && base.split('.')[0, 2].join('.') == e[:base] && head.split('.')[0, 2].join('.') == e[:head]
+    # Two conditions for one scenario would need a rule for how their
+    # allowances combine; there is one condition now.
+    raise PerfError, "#{e[:where]}: a second accepted difference applies to #{e[:scenario]}" if applied.key?(e[:scenario])
+
+    applied[e[:scenario]] = { allowance: e[:allowance], label: "mruby #{base}→#{head}" }
+  end
+end
+
+# The header line of the report on the accepted differences.
+def accepted_line(versions, applied)
+  base, head = versions['mruby-version']
+  list = if applied.empty?
+           'none apply'
+         else
+           applied.map { |name, a| "#{name} up to #{format('%+g%%', a[:allowance])} (#{a[:label]})" }.join(', ')
+         end
+  "perf: mruby: base #{base || 'unknown'}, head #{head || 'unknown'}; " \
+    "accepted differences (#{File.basename(ACCEPTED_FILE)}): #{list}"
+end
+
+# The verdict of a change with the accepted difference of its scenario (or
+# nil): a WARN or FAIL within the allowance is ok (accepted); above it, the
+# verdict of the change.
+def accepted_verdict(change, accepted)
+  v = verdict(change)
+  return v if v == 'ok' || accepted.nil? || change > accepted[:allowance]
+
+  "ok (accepted: #{accepted[:label]}, #{format('%+g%%', accepted[:allowance])})"
+end
+
 def format_table(header, rows)
   widths = header.each_index.map { |i| ([header] + rows).map { |row| row[i].to_s.size }.max }
   [header, *rows].map do |row|
@@ -846,8 +1040,9 @@ end
 # the run, also an unexpected response of the base that came with other
 # error.log lines (connect() or recv() errors of the upstream, the line
 # saying that a log has more than LOG_LINES_KEPT lines) or with a problem of
-# the mock, and so does a run in which no scenario was compared.
-def summarize(builds, scenarios, results)
+# the mock, and so does a run in which no scenario was compared. accepted
+# has the accepted differences that apply (accepted_for), by scenario.
+def summarize(builds, scenarios, results, accepted = {})
   rows = []
   notes = []
   failed = false
@@ -872,7 +1067,7 @@ def summarize(builds, scenarios, results)
       compared += 1
       total = percent(base[:ir_per_request], head[:ir_per_request])
       nogc = percent(base[:nogc_per_request], head[:nogc_per_request])
-      v = verdict(nogc)
+      v = accepted_verdict(nogc, accepted[scenario.name])
       failed ||= v == 'FAIL'
       rows << [scenario.name, fmt_ir(base[:ir_per_request]), fmt_ir(head[:ir_per_request]), fmt_change(total),
                fmt_ir(base[:nogc_per_request]), fmt_ir(head[:nogc_per_request]), fmt_change(nogc),
@@ -941,7 +1136,7 @@ def reasons_by_scenario(results)
   reasons
 end
 
-def write_step_summary(header, rows, notes, reasons)
+def write_step_summary(header, rows, notes, reasons, accepted_lines = [])
   path = ENV['GITHUB_STEP_SUMMARY']
   return if path.nil? || path.empty?
 
@@ -953,6 +1148,7 @@ def write_step_summary(header, rows, notes, reasons)
     rows.each { |row| f.puts "| #{row.join(' | ')} |" }
     f.puts
     f.puts "WARN from #{WARN_PERCENT}% and FAIL from #{FAIL_PERCENT}% more Ir per request without the GC."
+    accepted_lines.each { |line| f.puts "\n#{line}" }
     notes.each { |note| f.puts "\n**#{note}**" }
     next if reasons.empty?
 
@@ -988,6 +1184,16 @@ def gem_lock_lines(builds)
   lines
 end
 
+# The level of the annotation of a row that is not plain ok: a warning for
+# WARN, a notice for n/a and for an accepted difference, an error for FAIL
+# and ERROR.
+def annotation_level(result)
+  if result == 'WARN' then 'warning'
+  elsif result.start_with?('n/a', 'ok (accepted') then 'notice'
+  else 'error'
+  end
+end
+
 # The message of a workflow command, escaped as GitHub Actions requires.
 def workflow_message(text)
   text.to_s.gsub('%', '%25').gsub("\r", '%0D').gsub("\n", '%0A')
@@ -995,7 +1201,8 @@ end
 
 # Workflow commands that GitHub Actions shows as annotations of the run: an
 # error for each FAIL and ERROR row and each note (a run in which no scenario
-# was compared), a warning for each WARN row, a notice for each n/a row, with
+# was compared), a warning for each WARN row, a notice for each n/a row and
+# each row of an accepted difference, with
 # the reasons of the failed measurements.
 def annotate(header, rows, notes, reasons)
   return unless ENV['GITHUB_ACTIONS'] == 'true'
@@ -1004,10 +1211,7 @@ def annotate(header, rows, notes, reasons)
     result = row.last
     next if result == 'ok'
 
-    level = if result == 'WARN' then 'warning'
-            elsif result.start_with?('n/a') then 'notice'
-            else 'error'
-            end
+    level = annotation_level(result)
     detail = header.zip(row).map { |h, v| "#{h}: #{v}" }.join(', ')
     detail = ([detail] + reasons[row.first]).join("\n") if reasons.key?(row.first)
     puts "::#{level} title=perf #{row.first}::#{workflow_message(detail)}"
@@ -1046,11 +1250,30 @@ unless RUBY_PLATFORM.include?('linux') && %w[valgrind callgrind_control vgdb].al
 end
 
 scenarios = selected_scenarios
+# Read before the measurement, so that a line that is not in the format
+# stops the run at once.
+begin
+  accepted_entries = load_accepted
+rescue PerfError => e
+  abort "perf: #{e.message}"
+end
 builds.each { |b| b.write_confs(scenarios) }
 log("perf: N=#{N} WARMUP=#{WARMUP} PORTS=#{PORT},#{BACKEND_PORT},#{MOCK_PORT} WARN=#{WARN_PERCENT}% FAIL=#{FAIL_PERCENT}%")
 builds.each { |b| log("perf: #{b.label}: #{b.dir}") }
 gem_lines = builds.size == 2 ? gem_lock_lines(builds) : []
 gem_lines.each { |line| log(line) }
+versions = { 'mruby-version' => builds.map { |b| mruby_version(b) } }
+accepted = {}
+accepted_lines = []
+if builds.size == 2
+  begin
+    accepted = accepted_for(accepted_entries, versions)
+  rescue PerfError => e
+    abort "perf: #{e.message}"
+  end
+  accepted_lines = [accepted_line(versions, accepted)]
+  accepted_lines.each { |line| log(line) }
+end
 results = {}
 scenarios.each do |scenario|
   builds.each do |b|
@@ -1066,13 +1289,14 @@ scenarios.each do |scenario|
   end
 end
 
-header, rows, notes, failed = summarize(builds, scenarios, results)
+header, rows, notes, failed = summarize(builds, scenarios, results, accepted)
 lines = format_table(header, rows)
 problems = results.reject { |_k, r| r[:problems].empty? }.flat_map do |(label, name), r|
   ["#{name} (#{label}):", *r[:problems].map { |p| "  #{p}" }]
 end
 report = ["perf: N=#{N} WARMUP=#{WARMUP}; Ir per request of nginx; " \
-          "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number without GC", *gem_lines, '', *lines]
+          "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number without GC", *gem_lines,
+          *accepted_lines, '', *lines]
 report += ['', *notes] unless notes.empty?
 report += ['', *recorded_lines(builds, scenarios, results)]
 report += ['', *problems] unless problems.empty?
@@ -1083,11 +1307,12 @@ FileUtils.mkdir_p(REPORT_DIR)
 File.write(File.join(REPORT_DIR, 'report.txt'), "#{report.join("\n")}\n")
 json = {
   n: N, warmup: WARMUP, warn_percent: WARN_PERCENT, fail_percent: FAIL_PERCENT,
-  builds: builds.map { |b| { label: b.label, dir: b.dir } },
+  builds: builds.map { |b| { label: b.label, dir: b.dir, mruby_version: mruby_version(b) } },
+  accepted: accepted.map { |name, a| { scenario: name }.merge(a) },
   results: results.map { |(label, name), r| { build: label, scenario: name }.merge(r) }
 }
 File.write(File.join(REPORT_DIR, 'report.json'), "#{JSON.pretty_generate(json)}\n")
 reasons = reasons_by_scenario(results)
-write_step_summary(header, rows, notes, reasons)
+write_step_summary(header, rows, notes, reasons, accepted_lines)
 annotate(header, rows, notes, reasons)
 exit(failed ? 1 : 0)
