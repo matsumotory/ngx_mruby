@@ -2049,3 +2049,93 @@ $ diff base.txt head.txt
 
 The counts are for the whole window; divide by `PERF_N` for one request.
 KCachegrind and QCachegrind open the profiles as well.
+
+## Site CI change scope
+
+This section covers the browser checks of `.github/workflows/site.yml`;
+`test.yml` is described above.
+
+### Timing
+
+Before the split, the site build ran every check in one job:
+[run 41135116891](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116891/job/124345060406)
+took 26m04s, with computed styles 10m56s, homepage/code interaction 4m45s,
+Japanese lines 2m13s, screenshots 2m06s and browser installation 2m02s.
+With the lanes below, [run 41173244320](https://github.com/matsumotory/ngx_mruby/actions/runs/41173244320)
+of `29cf75611` took 17m58s from the start of the build job to the end of
+`site-ok`, including the waits for runners; its longest browser job took 459 s.
+The two runs had other sources and runners, so the difference is not a
+controlled measurement, and the durations of parallel jobs do not add up to
+the wall time. In the same run, `check-styles.mjs` in Chromium took 209.651 s on
+its 25 pages (250 page loads) and 20.101 s on the two installation pages that a
+targeted run would select (20 page loads).
+
+### Browser scope and parallel lanes
+
+The site builds and runs every static check once. Browser checks consume that
+same run's `site-validation` artifact (built HTML and generated manifests), not
+a result cached from another commit. The artifact is bound to the exact site
+and v2 source revisions, clean-source metadata, lockfile hash and workflow run.
+A mismatched revision, dirty build, lock, run or artifact digest fails.
+
+`ci-plan.mjs` uses the range of a pull request (its merge commit against its
+first parent) and the fresh manifest. A push or a `workflow_dispatch`, which
+deploys on `next`, always uses full coverage: a range from the previous push
+would leave unchecked the pages of a push whose run failed or was cancelled.
+In a pull request, existing regular Markdown under `docs/` can use targeted coverage
+when the generator's own satteri parser proves that the title, title removal,
+heading hierarchy/text, code, inline code, HTML and frontmatter contracts did
+not change. Both language routes are checked; on an English fallback page
+under `/ja/` (`GENERATED_REFERENCE` and `NOT_TRANSLATED_YET` of
+`site/scripts/lib/site.mjs`), the Japanese line check measures only the notice,
+as a full run does. This
+allows prose and link changes in real documents without approximating Markdown
+with a regular expression. Changes to those contracts, new/deleted/renamed
+files, MDX, shared CSS/layouts/generators/dependencies/workflows, unknown inputs
+or unavailable evidence use full coverage. A pull request that changes only
+the root AGENTS.md, CLAUDE.md or README.md needs no 3.x page browser checks,
+while all static checks and the maintenance lane still run.
+
+The independent browser lanes are:
+
+- Chromium styles and WebKit styles, with their original viewport/theme/motion
+  coverage, in separate jobs;
+- 3.x homepage interaction and code layout (only the affected page code checks
+  for targeted document edits; the homepage itself is unchanged in that case);
+- Japanese page lines;
+- focus, language links and Lighthouse accessibility;
+- full representative screenshots, or every targeted page in both engines,
+  both themes and 320/390/1440px widths, with viewport and full-page evidence.
+
+The v2 input is fetched independently from `master`, so it is **never assumed
+unchanged from the next-branch diff**. Maintenance Japanese lines, every v2 code
+surface and both version search indexes remain in a separate always-running
+lane. The same lane also retains the read-only browser fixture and local
+predeploy smoke screenshots from the publication workflow. Homepage copy-idle
+checks remain in full interaction coverage; postdeploy verification is retained.
+The union of full 3.x and full v2 code checks is tested against the former
+single suite. No assertions, viewports or engines are removed. Direct script
+invocations without CI scope still run their complete original coverage.
+
+`site-ok` runs with `always()` and requires success from build, the complete
+browser matrix and maintenance checks. A skipped, cancelled, missing or failed
+job cannot publish. `deploy` needs both build and this gate. Scope-none browser
+jobs return an explicit successful no-work result after artifact verification;
+they do not silently bypass a failed dependency. Independent review repeats
+the relevant regression suite, rather than rebuilding every unrelated artifact.
+
+```sh
+cd site
+node scripts/test-ci-scope.mjs
+node scripts/test-ci-browser.mjs
+node scripts/test-ci-integration.mjs
+```
+
+The contract tests include real Git ranges, rename/mode cases, Markdown parsing
+counterexamples, exact version coverage, workflow wiring and stale/dirty/run/
+lock/v2 artifact rejection. A manual `site` dispatch with `measure_scope=true`
+or a PR changing the CI policy/scripts adds a two-page Chromium style comparison
+**after** the full style lane passes,
+using the same build. It cannot replace required full coverage. Each lane writes
+measured script seconds and selected pages to its job summary. Compare actual
+workflow critical paths, not the sum of parallel jobs.

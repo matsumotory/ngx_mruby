@@ -14,6 +14,7 @@
 //
 //   node scripts/check-focus.mjs [--dist DIR] [--engine chromium|webkit]
 import path from 'node:path';
+import { scopedPages } from './lib/ci-pages.mjs';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
 
@@ -33,6 +34,7 @@ function args() {
     else if (a[i] === '--engine') out.engines = [a[++i]];
     else throw new Error(`unknown argument ${a[i]}`);
   }
+  out.pages = scopedPages(out.dist) ?? PAGES;
   return out;
 }
 
@@ -76,7 +78,7 @@ async function main() {
   for (const engineName of opt.engines) {
     const browser = await { chromium, webkit }[engineName].launch();
     const key = engineName === 'webkit' ? 'Alt+Tab' : 'Tab';
-    for (const page of PAGES) {
+    for (const page of opt.pages) {
       for (const size of SIZES) {
         const context = await browser.newContext({ viewport: size });
         const tab = await context.newPage();
@@ -108,7 +110,7 @@ async function main() {
   }
   await server.close();
   for (const f of failures) console.log(f);
-  const summary = `${stops} focus stops on ${PAGES.length} pages in ${opt.engines.join(' and ')} at ${SIZES.map((s) => `${s.width}x${s.height}`).join(' and ')}`;
+  const summary = `${stops} focus stops on ${opt.pages.length} pages in ${opt.engines.join(' and ')} at ${SIZES.map((s) => `${s.width}x${s.height}`).join(' and ')}`;
   if (failures.length) {
     console.log(`check-focus: ${failures.length} failure(s); ${summary}`);
     process.exit(1);
