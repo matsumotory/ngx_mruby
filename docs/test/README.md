@@ -109,8 +109,9 @@ that moving an input to `docs/` still runs the build. The run skips the
 build jobs when every one of them is one of these, which no job of the run
 builds or tests with:
 
-- `docs/`, and on `next` also `site/` and `examples/`: the `site-v2`
-  workflow, and on `next` the `site` and `examples` workflows, check them;
+- `docs/`, `site/` and `examples/`: the `site-v2` workflow checks
+  `docs/`; `master` has no `site/` or `examples/` (on `next`, the `site`
+  and `examples` workflows check them);
 - `.github/workflows/` except `test.yml`, `.github/dependabot.yml`,
   `.github/zizmor.yml` and `.github/PULL_REQUEST_TEMPLATE.md`: the `zizmor`
   workflow checks the workflows;
