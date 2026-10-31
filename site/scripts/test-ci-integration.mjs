@@ -37,5 +37,13 @@ try {
  write('site/package-lock.json','{"different":true}\n');assert.notEqual(run('ci-artifact.mjs',[],identity).status,0);
  write('site/package-lock.json','{}\n');write('site/dist/docs-index.json',JSON.stringify({source_revision:head,working_tree_clean:false}));
  assert.notEqual(run('ci-artifact.mjs',[],identity).status,0);
- console.log('Actual Git push range, absent merge parent, zero base and stale/dirty/lock/run/v2 artifact rejection: PASS');
+ git('checkout','-qb','policy');
+ write('.github/workflows/site.yml','name: fixture\n');git('add','.github/workflows/site.yml');git('commit','-qm','policy');
+ git('checkout','-qb','pr-base',base);git('merge','--no-ff','policy','-m','synthetic PR merge');
+ const output=path.join(root,'step-output');
+ assert.equal(run('ci-plan.mjs',[],{EVENT_NAME:'pull_request',GITHUB_OUTPUT:output}).status,0);
+ plan=JSON.parse(fs.readFileSync(path.join(site,'generated/ci-scope.json')));
+ assert.equal(plan.mode,'full');assert.equal(plan.measureScope,true);
+ assert.match(fs.readFileSync(output,'utf8'),/measure_scope=true/);
+ console.log('Actual Git push/PR merge ranges, policy comparison output and stale/dirty artifact rejection: PASS');
 } finally {fs.rmSync(root,{recursive:true});}

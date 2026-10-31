@@ -20,6 +20,10 @@ context, not prerequisites for continuing work.
    the recorded base and head; a dated snapshot is not a live branch tip.
    Search open PRs and all topic branches, including `claude/*` and
    `codex/*`, before starting a queue item.
+   For site, navigation or user-facing documentation work, read
+   [Site design acceptance](proposals/site.md#site-design-acceptance) before
+   editing. Follow its complete reader journey, including generated 2.x entry
+   pages when affected; a homepage-only screenshot is not sufficient.
 2. Inspect `git worktree list`, the intended worktree's branch and
    `git status --short`. Reuse the existing task worktree when possible.
    Confirm that its previous writer and local build/preview processes have

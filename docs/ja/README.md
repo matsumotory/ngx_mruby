@@ -1,28 +1,51 @@
 # ドキュメント
 
-これは、ブランチ`next`で開発しているngx_mruby 3.xのドキュメントです。ページは4種類あります。ngx_mrubyを動かしてみるページ、作業ごとのガイド、リファレンス、それらの背景にあるコンセプトです。
+nginx内のRubyでリクエストの処理を組み立てます。ここは<strong>v3の開発ブランチ<code>next</code></strong>の文書です。実装済みの挙動と今後の計画を区別しています。リリース済みの2.7系は[安定版のドキュメント](https://ngx.mruby.org/v2/ja/)を参照してください。
 
-## ページの<wbr>一覧
+## 動く例を<wbr>試す
 
-- [はじめに](start/README.md)：DockerでRubyのハンドラを持つnginxを動かしてから、スクリプトを書き換えます
-- ガイド：[インストール](install/README.md)、[バックエンドへリクエストを振り分ける](guides/routing.md)、[ファイルに載せたクライアントを拒否する](guides/access-control.md)、[APIキーごとにレートを制限する](guides/rate-limit.md)、[レスポンスのボディを変える](guides/body-filter.md)、[RubyでTCPの接続を許可する](guides/tcp.md)、[ユースケースの一覧](use_case/README.md)、開発版の[エージェントプロキシ](guides/agent-proxy.md)
-- リファレンス：[ディレクティブ](../directives/README.md)、[Rubyのクラスとメソッド](../class_and_method/README.md)、[ビルド](reference/build.md)
-- コンセプト：[リクエストのフェーズ](concepts/request-phases.md)、[フィルタ](concepts/filters.md)、[ブロックせずに待つ](concepts/async.md)、[ライフタイム](concepts/lifetimes.md)の4つのページ
-- リリース：[リリースノート](../releases/README.md)、[ngx_mruby 2.xから3.0.0への移行](migration/README.md)。リリースノートは、アップグレードする前に読む挙動の変更から始まります
-- セキュリティ：[セキュリティポリシー](../../SECURITY.md)、[信頼境界](../security/trust-boundary.md)。信頼境界のページには、ngx_mrubyが何を信頼し、何をクライアントの入力として扱い、スクリプトが何に責任を持つかを書いています
-- 開発に参加する：[開発に参加する](../../CONTRIBUTING.md)、[テスト](../test/README.md)、[ngx_mrubyの開発](../DEVELOPMENT.md)、[作業の状態](../HANDOFF.md)
+- [モデル振り分けを試す](start/README.md#modelで転送先を選ぶ)：Rubyの対応表で転送先と認証情報を変え、同じ内容を再送します。プロバイダのキーは不要です。
+- [インストール](install/README.md)：nginxに合わせたビルドと必要な環境、オプション、更新時の確認。
 
-## ブランチと<wbr>リリース
+## アプリに<wbr>規則を加える
 
-- [ブランチの運用](../../README.md#branch-strategy)：`master`、`next`、`v2.x`が何を持つか、2.xに留まるには何に固定すればよいか
-- [v3をmasterへ昇格する](../DEVELOPMENT.md#promoting-v3-to-master)：メンテナーのための昇格の手順
+- [LLMプロキシ](guides/agent-proxy.md)：利用者キーの検査、モデル振り分け、同時実行制限、ストリーム中継。計画中の拡張は明示しています。
+- [HTTPの振り分け](guides/routing.md)：リクエストの情報からバックエンドを選択。
+- [アクセス制御](guides/access-control.md)：ローカルの拒否リストにある接続元を拒否。
+- [レート制限](guides/rate-limit.md)：APIキーごとの制限。
+- [レスポンスのフィルタ](guides/body-filter.md)：レスポンスボディの変更。
+- [TCPの中継](guides/tcp.md)：接続元を確認。
+- [MCPゲートウェイの設計案](guides/mcp-gateway.md)：未検証の構成と、未確認の範囲や境界。
+
+## APIや<wbr>ビルド設定を調べる
+
+- [ディレクティブ](../directives/README.md)：nginxがRubyを呼ぶ場所と設定。
+- [Rubyのクラスとメソッド](../class_and_method/README.md)：ハンドラで使えるAPI。
+- [ビルドのリファレンス](reference/build.md)：コンパイルオプションと同梱gem。
+
+## リクエストの流れを<wbr>理解する
+
+- [リクエストのフェーズ](concepts/request-phases.md)：ハンドラの実行順。
+- [ヘッダ・ボディ断片の制約](concepts/filters.md)。
+- [ブロックせずに待つ](concepts/async.md)：nginxへ処理を委ねる方法。
+- [ライフタイム](concepts/lifetimes.md)：worker内の共有状態とリクエスト単位の状態。
+
+## 運用と<wbr>アップグレード
+
+- [リリースノート](../releases/README.md)：挙動の変更。
+- [2.xからの移行](migration/README.md)：v3へ移る際に必要な変更。
+- [信頼境界](../security/trust-boundary.md)：モジュールと各スクリプトが検証する範囲。
+- [セキュリティポリシー](../../SECURITY.md)：サポート対象と非公開での脆弱性報告。
+
+## 開発に参加し<wbr>進捗を追う
+
+- [開発に参加する](../../CONTRIBUTING.md)：変更の範囲、レビュー、貢献の手順。
+- [テスト](../test/README.md)：テストの種類と実行方法。
+- [開発の手順](../DEVELOPMENT.md)：ブランチの運用と共同作業の引継ぎ。
+- [現在の作業](../HANDOFF.md)：日付付きの作業・公開記録。
+- [ブランチの運用](../../README.md#branch-strategy)：保守・開発系列。
+- [その他のユースケース](use_case/README.md)：追加の例と、それぞれの前提。
 
 ## ライセンス
 
-ngx_mrubyのソフトウェアライセンスは[MITライセンス](../../MITL)です。
-
-<!--
-The h2 headings of this page have <wbr> at their phrase boundaries
-(docs/proposals/site.md, 4.4). site/scripts/check-japanese.mjs checks that
-the built h2 keep them as elements, and fails when no h2 of docs/ja/ has one.
--->
+ngx_mrubyは[MITライセンス](../../MITL)で提供します。

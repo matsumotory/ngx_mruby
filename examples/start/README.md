@@ -1,65 +1,135 @@
 # Get started
 
-This page runs nginx with ngx_mruby in Docker, sends a request that a Ruby
-script answers, and then changes the script. The example is the folder
-`examples/start` of the repository: [`compose.yaml`](compose.yaml) builds
-nginx with ngx_mruby from the source in your checkout with the
-[`Dockerfile`](Dockerfile), and starts it with the `nginx.conf` and
-`hello.rb` of the folder.
+Run a local model-routing proxy, send the same request to two mock APIs, then
+change the destination by editing Ruby. No provider account or API key is
+needed. The mocks report which route and credential nginx selected; they do
+not generate text or contact an LLM.
+
+This is a trial of the **v3 development branch `next`**, not a released v3
+image or a production configuration. The example also retains `/hello` for
+trying a basic Ruby content handler.
 
 ## Before you start
 
-- You need Docker with the Compose plugin (`docker compose`), git, curl
-  and a network connection: the build downloads nginx from nginx.org and the
-  mrbgems of `build_config.rb` from GitHub.
-- No verified prebuilt image of this v3 development version is provided,
-  so the first run compiles mruby and nginx. On 2026-10-29, on GitHub's `ubuntu-24.04` runner with Docker
-  Engine 28.0.4 and Docker Compose 2.38.2, step 3 took 170 seconds. Later
-  runs reuse the built image.
-- These steps run in CI on every pull request that changes `examples/`
-  (the workflow `.github/workflows/examples.yml`), which compares every
-  output on this page with what the commands print.
+You need Docker with the Compose plugin (`docker compose`), git, curl and a
+network connection. The first run builds nginx and mruby from this checkout;
+it downloads nginx from nginx.org and the gems pinned by `build_config.rb.lock`
+from GitHub. Later runs reuse the image. No verified prebuilt v3 image is supplied.
 
-## Run nginx with a Ruby handler
+[`compose.yaml`](compose.yaml) publishes port 8080 only on `127.0.0.1`. The two
+mock APIs listen on loopback inside the same container; they are not published
+to the host. All keys in this example are public demonstration values. Do not
+expose this configuration as a public service.
 
-The site documents ngx_mruby 3.x, which is developed on the branch `next`.
+## Start the local proxy
 
-1. Clone the branch `next` of the repository.
+```console
+$ git clone --branch next https://github.com/matsumotory/ngx_mruby.git
+$ cd ngx_mruby/examples/start
+$ docker compose up --build --wait
+```
 
-   ```console
-   $ git clone --branch next https://github.com/matsumotory/ngx_mruby.git
-   ```
+`--wait` returns when `/hello`, the container health check, answers. The requests
+below then verify routing separately. Keep the example directory as your
+working directory for every command on this page.
 
-2. Go to the folder of the example.
+## Model routing
 
-   ```console
-   $ cd ngx_mruby/examples/start
-   ```
+Send model A with the local client key. nginx checks the key, looks up the
+model in `route.rb`, replaces the client credential and forwards the body.
+The mock response identifies the destination and confirms that it received
+its own upstream credential, not the client key.
 
-3. Build the image and start nginx. With `--wait`, the command returns
-   when nginx answers the health check of `compose.yaml`, and Compose
-   reports the container `start-nginx-1` as healthy.
+`client.conf` supplies the same local URL and demonstration headers for each
+request, so the commands below focus on the model. Its complete contents are
+shown with the other files below.
 
-   ```console
-   $ docker compose up --build --wait
-   ```
+```console
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"a",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
+```
 
-4. Send a request to `/hello` with the argument `name`. The Ruby script
-   writes the response.
+Change only `model` to choose API B. The URL and the client key stay the same.
 
-   ```console
-   $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Hello, Ruby! hello.rb answered GET /hello.
-   ```
+```console
+$ curl -K client.conf -d '{"model": "mock-model-b"}'
+{
+  "upstream":"b",
+  "model":"mock-model-b",
+  "credential_replaced":true
+}
+```
 
-## What answered the request
+This demonstrates model routing and credential replacement. It does not
+convert API formats, test real providers or implement LLM inference. For
+streamed relay, concurrency limits and the separate integration-test recipe,
+read the [agent proxy guide](../../docs/guides/agent-proxy.md).
 
-`nginx.conf` sends the requests for `/hello` to the script with
-[`mruby_content_handler`](../../docs/directives/README.md#mruby_content_handler-and-mruby_content_handler_code):
+## Change the route without changing the request
+
+Replace model A's destination **and** upstream credential in the mapping. The
+command saves the original as `route.rb.orig`. The mounted Ruby handler has
+no `cache` parameter, so the next request reads the edited file without a reload.
+
+```console
+$ sed -i.orig 's/local_api_a/local_api_b/;s/upstream-a/upstream-b/' route.rb
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"b",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
+```
+
+The request still says `mock-model-a`; the response now says `upstream: b`.
+Restore the original mapping and confirm that the same request returns to A.
+
+```console
+$ mv route.rb.orig route.rb
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"a",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
+```
+
+## Check rejected requests
+
+A missing or unknown client key gets 401. An unmapped model gets 403.
+Malformed JSON gets 400. These requests stop at the proxy instead of reaching
+a mock API.
+
+```console
+$ curl -sS localhost:8080/v1/responses -d '{}' -o /dev/null -w '%{http_code}\n'
+401
+$ curl -K client.conf -o /dev/null -w '%{http_code}\n' -d '{"model": "unknown"}'
+403
+$ curl -K client.conf -o /dev/null -w '%{http_code}\n' -d '{'
+400
+```
+
+## The files that run
+
+`nginx.conf` connects the access handler, named upstreams and mock endpoints.
+It also keeps the basic `/hello` handler. The folder is mounted read-only
+inside the container; edit its files on the host.
+
+```text title="client.conf"
+# Local demonstration credentials, not for a public service.
+url = "http://localhost:8080/v1/responses"
+header = "Content-Type: application/json"
+header = "Authorization: Bearer local-client"
+silent
+show-error
+```
 
 ```nginx title="nginx.conf"
-# The nginx configuration of the start page. compose.yaml mounts this
-# folder at /example, and the image starts nginx with this file.
+# Local examples: one proxy and two mock APIs inside the container.
 user nobody nogroup;
 worker_processes 1;
 error_log /dev/stderr;
@@ -71,18 +141,100 @@ events {
 http {
     access_log /dev/stdout;
 
+    upstream local_api_a { server 127.0.0.1:8081; }
+    upstream local_api_b { server 127.0.0.1:8082; }
+
     server {
         listen 8080;
 
         location /hello {
             mruby_content_handler /example/hello.rb;
         }
+
+        location = /v1/responses {
+            set $selected_backend "";
+            set $upstream_credential "";
+            mruby_enable_read_request_body on;
+            mruby_access_handler /example/route.rb;
+            proxy_http_version 1.1;
+            proxy_set_header Connection close;
+            proxy_set_header Authorization $upstream_credential;
+            proxy_set_header x-api-key "";
+            proxy_buffering off;
+            proxy_pass http://$selected_backend;
+        }
+    }
+
+    server {
+        listen 127.0.0.1:8081;
+        location = /v1/responses {
+            mruby_enable_read_request_body on;
+            mruby_content_handler /example/mock.rb;
+        }
+    }
+
+    server {
+        listen 127.0.0.1:8082;
+        location = /v1/responses {
+            mruby_enable_read_request_body on;
+            mruby_content_handler /example/mock.rb;
+        }
     }
 }
 ```
 
-`hello.rb` reads the argument through `Nginx::Request` and writes the body
-with `Nginx.rputs`:
+`route.rb` checks the local key and selects both parts of the route. The
+nginx variables pass those values to `proxy_pass` and `proxy_set_header`.
+
+```ruby title="route.rb"
+# Local demonstration credentials. Never use these values for a public service.
+r = Nginx::Request.new
+v = Nginx::Var.new
+
+if r.headers_in["Authorization"] != "Bearer local-client"
+  Nginx.return Nginx::HTTP_UNAUTHORIZED
+else
+  routes = {
+    "mock-model-a" => ["local_api_a", "Bearer local-upstream-a"],
+    "mock-model-b" => ["local_api_b", "Bearer local-upstream-b"]
+  }
+  begin
+    body = JSON.parse(r.body)
+    route = body.kind_of?(Hash) ? routes[body["model"]] : nil
+    if route
+      v.selected_backend = route[0]
+      v.upstream_credential = route[1]
+      Nginx.return Nginx::DECLINED
+    else
+      Nginx.return Nginx::HTTP_FORBIDDEN
+    end
+  rescue JSON::ParserError, ArgumentError
+    Nginx.return Nginx::HTTP_BAD_REQUEST
+  end
+end
+```
+
+`mock.rb` reports the request received by API A or B. It returns a boolean
+for the credential check, not the credential itself.
+
+```ruby title="mock.rb"
+# These local mocks report the selected route; they do not call an LLM.
+r = Nginx::Request.new
+v = Nginx::Var.new
+name = v.server_port == "8081" ? "a" : "b"
+body = JSON.parse(r.body)
+r.headers_out["Content-Type"] = "application/json"
+Nginx.rputs JSON.pretty_generate({
+  "upstream" => name,
+  "model" => body["model"],
+  "credential_replaced" => r.headers_in["Authorization"] == "Bearer local-upstream-#{name}"
+})
+```
+
+## Try a basic response handler
+
+`hello.rb` runs Ruby inside the nginx worker and writes the response directly,
+without an upstream. Change the greeting, send the request again, then restore it.
 
 ```ruby title="hello.rb"
 # The content handler of the start page (examples/start/nginx.conf).
@@ -93,101 +245,64 @@ r.content_type = "text/plain"
 Nginx.rputs "Hello, #{name}! hello.rb answered #{r.method} #{r.uri}.\n"
 ```
 
-nginx runs the script inside the worker process, with an mruby VM that
-ngx_mruby embeds in nginx. No other process takes part. The
-[Ruby reference](../../docs/class_and_method/README.md) lists the classes
-and methods that a script can use.
+```console
+$ curl -sS 'http://localhost:8080/hello?name=Ruby'
+Hello, Ruby! hello.rb answered GET /hello.
+$ sed -i.orig 's/Hello/Good morning/' hello.rb
+$ curl -sS 'http://localhost:8080/hello?name=Ruby'
+Good morning, Ruby! hello.rb answered GET /hello.
+$ mv hello.rb.orig hello.rb
+```
 
-## Change the script
+## Reload a configuration change
 
-`compose.yaml` mounts this folder into the container, and the directive
-names the script without the parameter `cache`, so nginx reads the file
-again for every request. A change to `hello.rb` takes effect with the next
-request, without a reload.
-
-1. Replace `Hello` with `Good morning` in `hello.rb`. The command keeps
-   the original file as `hello.rb.orig`.
-
-   ```console
-   $ sed -i.orig 's/Hello/Good morning/' hello.rb
-   ```
-
-2. Send the request again. The response has the new greeting.
-
-   ```console
-   $ curl -s 'http://localhost:8080/hello?name=Ruby'
-   Good morning, Ruby! hello.rb answered GET /hello.
-   ```
-
-3. Put the original script back.
-
-   ```console
-   $ mv hello.rb.orig hello.rb
-   ```
-
-4. Validate the mounted configuration and reload it. Use the binary and
-   configuration paths of this image, rather than relying on `PATH`.
+An uncached Ruby handler reads its file on the next request. Changes to
+`nginx.conf` or a Ruby handler compiled with `cache` instead need a configuration
+check and reload. Use the paths of this image:
 
 ```console
 $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -t -c /example/nginx.conf
 $ docker compose exec -T nginx /usr/local/nginx/sbin/nginx -s reload -c /example/nginx.conf
-$ curl -s 'http://localhost:8080/hello?name=Ruby'
+$ curl -sS 'http://localhost:8080/hello?name=Ruby'
 Hello, Ruby! hello.rb answered GET /hello.
+$ curl -K client.conf -d '{"model": "mock-model-a"}'
+{
+  "upstream":"a",
+  "model":"mock-model-a",
+  "credential_replaced":true
+}
 ```
 
-5. Stop and remove the container. Compose reports the container
-   `start-nginx-1` as removed.
+For a production configuration, use [compiled-code caching](../../docs/directives/README.md#caching-compile-code)
+to avoid reading a Ruby file on every request. Changes to mrbgems or build
+options need an image rebuild, not only a reload.
 
-   ```console
-   $ docker compose down
-   ```
+## Stop the trial
 
-Reading the file for every request is convenient while you write a
-script, and it reads the disk on the request path. In production, add
-`cache` to the directive, as
-[Caching compile code](../../docs/directives/README.md#caching-compile-code)
-shows, so that nginx compiles the script once when it reads its
-configuration.
+```console
+$ docker compose down
+```
 
-## Apply your changes
+Use `docker compose logs nginx` if startup or the health check fails. A
+base-image metadata/download failure is a registry or network failure before
+nginx starts; it is not a response from this example.
 
-| Change | Apply it | Why |
-|---|---|---|
-| Ruby without `cache` | Send the next request | The handler reads the mounted script each time |
-| `nginx.conf`, or Ruby compiled with `cache` | Validate with `nginx -t`, then reload as above | nginx compiles configuration-time code when it reads the configuration |
-| mrbgems or build options | Rebuild the image | These change the compiled module |
+## Continue with your own application
 
-The mount is read-only inside the container; edit files on the host. The example
-publishes port 8080 on host interfaces; for a local-only trial, change the Compose
-mapping to `127.0.0.1:8080:8080` before starting it. Use `docker compose logs nginx`
-to inspect a failed health check or configuration error. An image-metadata error
-before compilation is a registry/network failure, not an nginx response.
+- [Agent proxy](../../docs/guides/agent-proxy.md): authentication, model routing,
+  concurrency limits and streamed relay, with their integration tests and planned work.
+- [Install](../../docs/install/README.md): build a static or dynamic module for
+  an existing deployment, matching its nginx version and build options.
+- [Directives](../../docs/directives/README.md): choose the phase where nginx runs Ruby.
+- [Request phases](../../docs/concepts/request-phases.md): follow one request through its handlers.
 
-Containers are one trial path. For Linux installation into an existing deployment,
-follow [Install](../../docs/install/README.md), matching the nginx version and
-module build options. Official nginx packages and images do not include ngx_mruby;
-`--with-compat` is not compatibility with arbitrary nginx versions. Running this
-Linux image on a Mac is not evidence of a native macOS build.
+Official nginx packages and images do not contain ngx_mruby. `--with-compat`
+does not make a module compatible with arbitrary nginx versions. Running this
+Linux container on a Mac is not a native macOS build test.
 
-The recorded 170-second run above is historical CI evidence, not a current timing
-guarantee or an arm64 result. A fresh linux/arm64 trial on 2026-10-30 stopped while
-fetching the Ubuntu base-image metadata, before compilation. That attempt did not
-validate startup, editing or reload. The examples workflow validates the commands
-on its Linux runner; consult its run for the commit you use.
-
-Primary references: [NGINX containers](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-docker/),
-[Linux packages](https://nginx.org/en/linux_packages.html),
-[dynamic modules](https://blog.nginx.org/blog/nginx-dynamic-modules-how-they-work),
-[reload](https://nginx.org/en/docs/control.html), and
-[bind mounts](https://docs.docker.com/engine/storage/bind-mounts/).
-
-## Next steps
-
-- [Install](../../docs/install/README.md): build ngx_mruby into your own
-  nginx, as a static or a dynamic module.
-- [Directives](../../docs/directives/README.md): the phases where nginx
-  runs Ruby, and the directive for each.
-- [Request phases](../../docs/concepts/request-phases.md): the order in
-  which nginx runs the handlers of one request.
-
-- [Agent proxy](../../docs/guides/agent-proxy.md): extend the handler into tested model routing and streamed relay recipes.
+The `examples` workflow executes these commands and compares their outputs
+for each relevant commit. Consult the run for the revision you use: a previous
+run is not proof that a changed recipe works. The documented older Hello-only
+trial took 170 seconds on GitHub's `ubuntu-24.04` runner on 2026-10-29
+(Docker Engine 28.0.4, Compose 2.38.2); this is historical build evidence,
+not a current duration guarantee, a routing test or an arm64 result.

@@ -13,7 +13,7 @@ export function commandsFor(plan, lane) {
   if (pages && !pages.length) throw new Error('empty targeted scope');
   if (lane.startsWith('styles-')) return [['check-styles.mjs', '--engine', lane.slice(7)]];
   if (lane === 'interaction') return [
-    ...(!pages || pages.some(p => p === '/' || p === '/ja/') ? [['check-home-interaction.mjs']] : []),
+    ...(!pages || pages.some(p => p === '/' || p === '/ja/') ? [['check-copy-idle.mjs'], ['check-home-interaction.mjs']] : []),
     ['check-code-layout.mjs'],
   ];
   if (lane === 'japanese') {
@@ -57,7 +57,7 @@ async function main() {
     }
   }
   if (process.env.MEASURE_SCOPE === 'true') {
-    // A manual diagnostic only. The required full lane above already passed;
+    // An explicit manual or CI-policy-change diagnostic. The full lane already passed;
     // this cannot replace it or turn its failure into a success.
     if (plan.mode !== 'full' || lane !== 'styles-chromium') throw new Error('measurement requires the full Chromium style lane');
     const pages = ['/guides/install/', '/ja/guides/install/'];

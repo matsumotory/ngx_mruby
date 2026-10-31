@@ -2028,7 +2028,10 @@ The independent browser lanes are:
 The v2 input is fetched independently from `master`, so it is **never assumed
 unchanged from the next-branch diff**. Maintenance Japanese lines, every v2 code
 surface and both version search indexes remain in a separate always-running
-lane. The union of full 3.x and full v2 code checks is tested against the former
+lane. The same lane also retains the read-only browser fixture and local
+predeploy smoke screenshots from the publication workflow. Homepage copy-idle
+checks remain in full interaction coverage; postdeploy verification is retained.
+The union of full 3.x and full v2 code checks is tested against the former
 single suite. No assertions, viewports or engines are removed. Direct script
 invocations without CI scope still run their complete original coverage.
 
@@ -2049,7 +2052,8 @@ node scripts/test-ci-integration.mjs
 The contract tests include real Git ranges, rename/mode cases, Markdown parsing
 counterexamples, exact version coverage, workflow wiring and stale/dirty/run/
 lock/v2 artifact rejection. A manual `site` dispatch with `measure_scope=true`
-adds a two-page Chromium style comparison **after** the full style lane passes,
+or a PR changing the CI policy/scripts adds a two-page Chromium style comparison
+**after** the full style lane passes,
 using the same build. It cannot replace required full coverage. Each lane writes
 measured script seconds and selected pages to its job summary. Compare actual
 workflow critical paths, not the sum of parallel jobs. No measured post-change

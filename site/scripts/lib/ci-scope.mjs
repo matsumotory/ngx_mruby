@@ -64,3 +64,9 @@ export function planBrowserScope({ changes, manifest, event, baselineKnown = fal
   return selected.size ? { mode: 'targeted', pages: [...selected].sort(), reason: 'local-prose-or-links' } :
     { mode: 'none', pages: [], reason: 'non-rendered-records-only' };
 }
+
+// Extra comparison is limited to a PR changing this policy, not ordinary site edits.
+export function shouldMeasureScope(changes, event) {
+  return event === 'pull_request' && changes.some(({path}) =>
+    path === '.github/workflows/site.yml' || /^site\/scripts\/(?:lib\/)?(?:test-)?ci-[^/]+\.mjs$/.test(path));
+}

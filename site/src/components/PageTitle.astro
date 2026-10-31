@@ -3,4 +3,4 @@ import DefaultPageTitle from '@astrojs/starlight/components/PageTitle.astro';
 const home = Astro.locals.starlightRoute.entry.data.template === 'splash';
 const ja = Astro.locals.starlightRoute.locale === 'ja';
 ---
-{home ? <div class="brand-title"><p class="home-audience">{ja ? '複数のLLM APIを使うアプリの開発者へ' : 'For developers building apps with multiple LLM APIs'}</p>{ja ? <h1 id="_top">{Astro.locals.starlightRoute.entry.data.title.split(/(?<=、)/).map(line => <span class="headline-line">{line}</span>)}</h1> : <DefaultPageTitle />}<img class="brand-showcase" src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" /></div> : <DefaultPageTitle />}
+{home ? <div class="brand-title">{ja ? <h1 id="_top">{Astro.locals.starlightRoute.entry.data.title.split(/(?<=、)/).map(line => <span class="headline-line">{line}</span>)}</h1> : <DefaultPageTitle />}<img class="brand-showcase" src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" /></div> : <DefaultPageTitle />}

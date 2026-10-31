@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { planBrowserScope } from './lib/ci-scope.mjs';
+import { planBrowserScope, shouldMeasureScope } from './lib/ci-scope.mjs';
 import { scopedPages } from './lib/ci-pages.mjs';
 import { sameDocumentContract } from './lib/ci-markdown.mjs';
 const git = (...args) => execFileSync('git',args,{encoding:'utf8'}).trim();
@@ -35,6 +35,7 @@ try {
       if(changes.some(change => change.path.startsWith('docs/') && !sameDocumentContract(change.oldText,change.newText))) plan={mode:'full',pages:[],reason:'generator-document-contract-changed'};
       else scopedPages('dist',JSON.stringify(plan.pages));
     }
+    plan.measureScope=plan.mode === 'full' && shouldMeasureScope(changes,event);
     plan.base=base;
   }
 } catch(error) {plan={mode:'full',pages:[],reason:`unavailable or invalid comparison: ${error.message.split('\n')[0]}`};}
@@ -42,4 +43,4 @@ fs.writeFileSync('generated/ci-scope.json',JSON.stringify(plan,null,2)+'\n');
 console.log(JSON.stringify(plan));
 if(process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'## Browser scope\n\n```json\n'+JSON.stringify(plan,null,2)+'\n```\n');
 
-if(process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT,'mode='+plan.mode+'\n');
+if(process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT,'mode='+plan.mode+'\nmeasure_scope='+String(plan.measureScope === true)+'\n');

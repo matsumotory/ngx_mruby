@@ -99,6 +99,16 @@ for (const page of english) {
   else pendingNotices++;
 }
 
+// The development-state emphasis must render, not leak Markdown delimiters
+// at Japanese/inline-code boundaries (the start/docs reader journey).
+for (const route of ['ja/start', 'ja/docs']) {
+  const file = fileOfRoute(route);
+  const tree = load(file);
+  if (!tree) continue; // Missing pages are reported by the translation checks.
+  if (textContent(tree).includes('**v3')) problems.push(`${file}: literal Markdown delimiters in the development notice`);
+  if (!elements(tree).some(el => el.tagName === 'strong' && textContent(el) === 'v3の開発ブランチnext')) problems.push(`${file}: development-state notice is not rendered as strong text`);
+}
+
 // Languages: lang and reciprocal absolute hreflang on every page
 let hreflangPages = 0;
 for (const file of htmlFiles(dist)) {
