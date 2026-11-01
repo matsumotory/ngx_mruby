@@ -1,6 +1,6 @@
 # 用語集
 
-このページは、ngx_mrubyのドキュメント、サイト、PRで、モデル、agent、そのプロトコル、通信、前段の部品を呼ぶ語を決めます。1つの語は1つの対象だけを指します。そのため、読み手は2つのページで同じ語を読めば、同じ範囲を読み取れます。日本語のページでも、語は英語のまま書きます。英語版は[Glossary](../glossary.md)です。
+このページは、ngx_mrubyのドキュメント、サイト、PRで、モデル、agent、そのプロトコル、通信、前段の部品を呼ぶ語を決めます。1つの語は1つの対象だけを指します。そのため、読み手は2つのページで同じ語を読めば、同じ範囲を読み取れます。日本語のページでも、英語の語は訳さずに書きます。通信の種類は、「model APIの通信」のように英語の語に「の通信」を付けて書きます。英語版のページは[Glossary](../glossary.md)にあります。
 
 ## 語の使い方
 
@@ -148,8 +148,8 @@
 
 ### signed agent
 
-- 意味：1つの会社でなくエンドユーザーの指示で動き、Web Bot AuthでHTTPのrequestに署名するagentです。
-- ngx_mrubyでの使い方：サイトが、agentの送るrequestの署名を確かめる箇所で、この語を使います。
+- 意味：Cloudflareの語で、1つの会社でなくエンドユーザーの指示で動くagentを指します。agentが使う基盤がWeb Bot AuthでHTTPのrequestに署名し、Cloudflareがその署名を検証します。agentがCloudflareのsigned agentのpolicyを守ることも、条件の1つです。
+- ngx_mrubyでの使い方：サイトがagentのrequestの署名を確かめる箇所で、社名を添えて書きます。
 - 出典：
   - [Cloudflare, Signed agents](https://blog.cloudflare.com/signed-agents/)
 
@@ -216,7 +216,7 @@
 ### log handlerのテレメトリ
 
 - 意味：logのフェーズのhandlerが記録するrequestのメタデータです。ステータス、レイテンシ、振り分けの結果がその例です。
-- ngx_mrubyでの使い方：集計の基盤へ送る処理を書く箇所で使います。この処理は、案内のページが計画として説明しています。
+- ngx_mrubyでの使い方：収集先へ送る処理を書く箇所で使います。この処理は、案内のページが計画として説明しています。
 - 出典：
   - [ngx_mruby, AIの入口を制御する](guides/edge-control.md#キャッシュと観測)
 
@@ -277,10 +277,11 @@
 
 ### LLM proxy、LLM gateway
 
-- 意味：一部の製品が、AI gatewayのうちmodel APIの呼び出しを中継する部分に付ける名前です。WSO2の製品のLLM Proxyがその例です。
+- 意味：一部の製品が、AI gatewayのうちmodel APIの呼び出しを中継する部分に付ける名前です。WSO2の製品のLLM Proxyと、agentgatewayのLLM Gatewayが、その例に当たります。
 - ngx_mrubyでの使い方：部品の名前にはしません。MCPとA2Aはモデルの呼び出しでなく、製品ごとに範囲もそろわないためです。AI gateway、またはそのmodel APIの部分と書きます。
 - 出典：
   - [WSO2, AI Gateway](https://wso2.com/api-platform/docs/ai-gateway/1.2.0.md)
+  - [agentgateway README](https://raw.githubusercontent.com/agentgateway/agentgateway/main/README.md)
   - [MCP architecture (2026-07-28)](https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture.md)
 
 ## ngx_mrubyのページの例
@@ -288,5 +289,5 @@
 - ホームページは、アプリがLLMを使い、プロキシがアプリとLLM APIの間に立つと書いています。この例は、チャットと文書要約のrequestを、`model`のフィールドの値でテキストの言語モデルへ振り分けます。そのため、LLMの語が合います。
 - 計画の用途「LLM APIのエラー時に転送先を選び直す」は、テキストの言語モデルを扱う間は語が合います。画像や音声のモデルのAPIも扱う場合は、model APIと書きます。
 - [AIの入口を制御する](guides/edge-control.md)の「クローラーの制御」の節は、サイトへ来るAIのcrawlerとagentのrequestを扱うので、語が合います。
-- [edge-controlの構想](../proposals/edge-control.md)の題は「AI traffic」と書いています。この構想は、MCPの通信、model APIの通信、サイトへ来るAIのcrawlerとbotのrequest、log handlerのテレメトリを扱います。そのため、この語には、初出でこの4つを含むという定義が要ります。
+- [edge-controlの構想](../proposals/edge-control.md)の題は「AI traffic」と書いています。この構想は、MCPの通信、model APIの通信、サイトへ来るAIのcrawlerとagentのrequest、log handlerのテレメトリを扱います。そのため、この語には、初出でこの4つを含むという定義が要ります。
 - 部品そのものを名指す文は、AI gatewayと書きます。[ドキュメントの一覧](README.md)から[エージェントプロキシ](guides/agent-proxy.md)の案内へ張ったリンクの「LLMプロキシ」がその例です。ページがmodel APIの部分だけを扱うなら、そのことも書き添えます。

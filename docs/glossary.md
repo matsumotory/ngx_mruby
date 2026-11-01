@@ -4,7 +4,8 @@ This page fixes the terms that the documentation, the site and the pull
 requests of ngx_mruby use for models, agents, their protocols, their
 traffic and the components in front of them. Each term names one thing, so
 a reader who meets the term on two pages reads the same scope. The Japanese
-pages use the same terms, in English ([用語集](ja/glossary.md)).
+pages keep these terms in English, untranslated, and write the kinds of
+traffic as 「model APIの通信」 and the like ([用語集](ja/glossary.md)).
 
 ## How to use these terms
 
@@ -163,8 +164,8 @@ standard or paper defines a term, its entry says so.
 
 ### signed agent
 
-- Meaning: An agent that acts for an end user, not for one company, and signs its HTTP requests with Web Bot Auth.
-- In ngx_mruby's documents: Where a site checks the signature of an agent's requests.
+- Meaning: In Cloudflare's terms, an agent directed by an end user rather than by one company, whose platform signs its HTTP requests with Web Bot Auth, which Cloudflare validates, and which complies with Cloudflare's signed agent policy.
+- In ngx_mruby's documents: Cloudflare's term; name Cloudflare with it, where a site checks the signature of an agent's requests.
 - Sources:
   - [Cloudflare, Signed agents](https://blog.cloudflare.com/signed-agents/)
 
@@ -293,10 +294,11 @@ Their sources describe the same kind of traffic.
 
 ### LLM proxy, LLM gateway
 
-- Meaning: The name that some products give to the part of an AI gateway that relays model API calls, such as WSO2's LLM Proxy.
+- Meaning: The name that some products give to the part of an AI gateway that relays model API calls, such as WSO2's LLM Proxy and agentgateway's LLM Gateway.
 - In ngx_mruby's documents: Not used as the name of the component: MCP and A2A are not model calls, and the products do not agree on the scope. Write AI gateway, or its model API part.
 - Sources:
   - [WSO2, AI Gateway](https://wso2.com/api-platform/docs/ai-gateway/1.2.0.md)
+  - [agentgateway README](https://raw.githubusercontent.com/agentgateway/agentgateway/main/README.md)
   - [MCP architecture (2026-07-28)](https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture.md)
 
 ## Examples in ngx_mruby's pages
@@ -311,7 +313,7 @@ Their sources describe the same kind of traffic.
   covers requests from AI crawlers and agents to a site, and fits.
 - The title of [the edge-control proposal](proposals/edge-control.md) says
   "AI traffic". The proposal covers MCP traffic, model API traffic,
-  requests from AI crawlers and bots to a site, and the telemetry of the log
+  requests from AI crawlers and agents to a site, and the telemetry of the log
   handler, so the term needs a definition with these four kinds at its
   first use.
 - A text that names the component itself, such as the link "LLM proxy" to

@@ -1,6 +1,7 @@
 # AI edge control
 
-The terms of this page follow [the glossary](../glossary.md).
+[The glossary](../glossary.md) defines the terms for models, agents, their
+traffic and the AI gateway.
 
 **Planned v3 uses, not ready-made integrations.** ngx_mruby can put Ruby
 policy inside nginx without moving the byte relay into an application. The
