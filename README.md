@@ -7,10 +7,19 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/matsumotory/ngx_mruby/actions/workflows/test.yml?query=branch%3Anext"><img alt="test workflow status on next" src="https://github.com/matsumotory/ngx_mruby/actions/workflows/test.yml/badge.svg?branch=next"></a>
+  <a href="https://github.com/matsumotory/ngx_mruby/actions/workflows/nginx-tests.yml?query=branch%3Anext"><img alt="nginx-tests workflow status on next" src="https://github.com/matsumotory/ngx_mruby/actions/workflows/nginx-tests.yml/badge.svg?branch=next"></a>
+  <a href="https://github.com/matsumotory/ngx_mruby/actions/workflows/valgrind-nightly.yml?query=branch%3Amaster"><img alt="valgrind-nightly workflow status: the nightly valgrind runs of master and next" src="https://github.com/matsumotory/ngx_mruby/actions/workflows/valgrind-nightly.yml/badge.svg?branch=master"></a>
+  <a href="https://github.com/matsumotory/ngx_mruby/actions/workflows/codeql.yml?query=branch%3Anext"><img alt="CodeQL workflow status on next" src="https://github.com/matsumotory/ngx_mruby/actions/workflows/codeql.yml/badge.svg?branch=next"></a>
+  <a href="https://github.com/matsumotory/ngx_mruby/actions/workflows/zizmor.yml?query=branch%3Anext"><img alt="zizmor workflow status on next" src="https://github.com/matsumotory/ngx_mruby/actions/workflows/zizmor.yml/badge.svg?branch=next"></a>
+  <a href="https://www.bestpractices.dev/projects/16057"><img alt="OpenSSF Best Practices" src="https://www.bestpractices.dev/projects/16057/badge"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/matsumotory/ngx_mruby"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/matsumotory/ngx_mruby/badge"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="site/public/brand/license-mit.svg"></a>
+</p>
+
+<p align="center">
   <a href="#backers" title="Backers on Open Collective"><img src="https://opencollective.com/ngx_mruby/backers/badge.svg"></a>
   <a href="#sponsors" title="Sponsors on Open Collective"><img src="https://opencollective.com/ngx_mruby/sponsors/badge.svg"></a>
-  <a href="https://github.com/matsumotory/ngx_mruby/actions" title="Build Status"><img src="https://github.com/matsumotory/ngx_mruby/actions/workflows/test.yml/badge.svg?branch=master"></a>
-  <a href="https://www.bestpractices.dev/projects/16057" title="OpenSSF Best Practices"><img alt="OpenSSF Best Practices" src="https://www.bestpractices.dev/projects/16057/badge"></a>
 </p>
 
 ## What it is

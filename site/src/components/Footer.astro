@@ -3,18 +3,22 @@ import { getSiteRoute } from '../route.mjs';
 // The footer of every page (4.10): the last-updated date and the
 // previous and next links of documentation pages, then the site's footer
 // with a 1 px top border, 14 px muted text, 48 px above and 32 px below:
-// the language link, Releases, Security, the license and GitHub.
+// the language link, the other version's documentation, Releases,
+// Security, the license and GitHub.
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import LastUpdated from './LastUpdated.astro';
 import Pagination from './Pagination.astro';
 import LanguageLink from './LanguageLink.astro';
-import { GITHUB_URL, strings } from '../site-nav.mjs';
+import { GITHUB_URL, strings, versionLink } from '../site-nav.mjs';
 import { BASE, GITHUB_REF, pageOfRoute } from '../../scripts/lib/site.mjs';
 
 const lang = getSiteRoute(Astro.locals).locale === 'ja' ? 'ja' : 'en';
 const t = strings(lang);
+// The documentation of the other version (3.4): from 3.x to /v2/, from 2.x
+// to /docs/, beside the language link.
+const version = versionLink(lang);
 // The 2.x build (step 6) links to its own Releases and Security pages,
 // and to the license on master.
 const p = `${BASE}${lang === 'ja' ? '/ja' : ''}`;
@@ -43,6 +47,7 @@ if (route.entry.filePath && route.entry.filePath.endsWith('index.mdx')) {
   <div class="site-footer">
     <ul>
       <li><LanguageLink /></li>
+      <li><a class="version-link" href={version.href}>{version.label}</a></li>
       <li><a href={`${p}/releases/`}>{t.releases}</a></li>
       <li><a href={`${p}/security/`}>{t.security}</a></li>
       <li><a href={`${GITHUB_URL}/blob/${GITHUB_REF}/LICENSE`}>MIT</a></li>

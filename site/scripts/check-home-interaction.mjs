@@ -86,7 +86,7 @@ try {
       for (const route of ['/', '/ja/']) for (const { width, height } of patternsFor(engine.name())) for (const reducedMotion of ['reduce', 'no-preference']) for (const colorScheme of ['light', 'dark']) {
         const context = await browser.newContext({ viewport: { width, height }, colorScheme, reducedMotion,
           ...(engine === chromium ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
-        // The project badges above the heading come from local stand-ins,
+        // The badges of the strip below the hero come from local stand-ins,
         // never from GitHub or bestpractices.dev.
         await serveBadgeFixture(context);
         const page = await context.newPage();
@@ -95,7 +95,7 @@ try {
         await page.evaluate(() => document.fonts.ready);
         // Exclude Pagefind's unrelated lazy initialization from route traffic.
         await page.locator('#site__search .pagefind-ui__search-input').waitFor({ state: 'attached' });
-        // Finish the static badge images above the heading (the local
+        // Finish the badge images of the strip below the hero (the local
         // stand-ins) before observing the demonstration's traffic. Do not
         // filter any request from the model/copy assertions.
         await page.waitForFunction(() => [...document.querySelectorAll('.project-badges img')].every(image => image.complete && image.naturalWidth > 0));

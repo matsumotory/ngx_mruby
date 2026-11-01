@@ -1,5 +1,9 @@
 ---
 import AgentFlow from './AgentFlow.astro';
+import ProjectBadges from './ProjectBadges.astro';
+import { latestReleaseTag } from '../../scripts/lib/release-state.mjs';
+import { releaseBadge } from '../../scripts/lib/project-badges.mjs';
+import { repoDir } from '../../scripts/lib/site.mjs';
 import { Code } from 'astro-expressive-code/components';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,13 +15,19 @@ const prefix = ja ? '/ja' : '';
 const walkthrough = fs.readFileSync(path.resolve(process.cwd(), '../examples/start/README.md'), 'utf8');
 const startBlock = walkthrough.match(/```console\n([\s\S]*?)\n```/);
 if (!startBlock) throw new Error('The local walkthrough has no start commands');
+// The status line names the newest stable release with a badge drawn at
+// build time from the git tags (4.10): no other origin, and the next build
+// after a tag shows it.
+const release = releaseBadge(latestReleaseTag(repoDir), lang);
 const startCommands = startBlock[1].split('\n').filter(line => line.startsWith('$ ')).map(line => line.slice(2)).join('\n');
 ---
 <div class="home home-v3">
   <div class="v3-intro">
     <p class="lede">{ja ? 'チャットや文書要約など、LLMを使うアプリを開発する人へ。ngx_mrubyはnginxの処理をRubyで拡張するモジュールです。アプリとLLM APIの間にプロキシを置き、利用者の認証、モデルごとの転送先、API用のキーを一か所で管理できます。' : 'Building a chat, summarization app or LLM agent? ngx_mruby extends nginx with Ruby. Put a proxy between your apps and LLM APIs to manage client authentication, model routes and upstream API keys in one place.'}</p>
-    <div class="v3-entry"><p class="actions"><a class="button-primary" href={prefix + '/start/'}>{ja ? 'モデル振り分けを試す' : 'Try model routing'}</a><a class="intro-link" href={prefix + '/guides/agent-proxy/'}>{ja ? 'LLMプロキシの構成を読む' : 'Read the proxy guide'}</a></p><p class="v3-status">{ja ? 'v3 開発中' : 'v3 · In development'}<span aria-hidden="true"> · </span><a href={ja ? '/v2/ja/' : '/v2/'}>{ja ? '安定版2.7の導入と仕様' : 'Stable 2.7 installation and reference'}</a></p></div>
+    <div class="v3-entry"><p class="actions"><a class="button-primary" href={prefix + '/start/'}>{ja ? 'モデル振り分けを試す' : 'Try model routing'}</a><a class="intro-link" href={prefix + '/guides/agent-proxy/'}>{ja ? 'LLMプロキシの構成を読む' : 'Read the proxy guide'}</a></p><p class="v3-status">{ja ? 'v3 開発中' : 'v3 · In development'}<span aria-hidden="true"> · </span><a href={ja ? '/v2/ja/' : '/v2/'}>{ja ? '安定版2.7の導入と仕様' : 'Stable 2.7 installation and reference'}</a>{' '}<a class="release-badge" data-badge="release" data-release={release.tag} href={release.href}><img src={release.src} alt={release.alt} width={release.width} height={release.height} decoding="async" /></a></p></div>
   </div>
+
+  <ProjectBadges />
 
   <section class="v3-directions" aria-labelledby="directions-title">
     <div class="v3-section-heading"><h2 id="directions-title">{ja ? 'v3で計画中の、AIの入口の制御' : 'Planned for v3: AI traffic control'}</h2><p>{ja ? 'MCPのツール認可から、混雑したLLMの切替まで。アプリごとに持ちたくない規則を、nginxとRubyの薄い制御層へ。これから実現したい用途です。' : 'From MCP tool permissions to overloaded LLM endpoints: put policies you do not want in every app into a thin nginx and Ruby layer. These are directions we want to build in v3.'}</p></div>

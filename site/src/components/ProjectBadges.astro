@@ -1,16 +1,18 @@
 ---
-// The row of project badges above the heading of the index pages (4.4,
-// 4.10): CI and CodeQL of the branch that the page describes, OpenSSF Best
-// Practices and the license. The images keep their services' colors; each
-// box has the badge's size, so the heading does not move while the images
-// load or when they fail. They are in the first view: no lazy loading.
+// The strip of development-practice badges of the index pages (4.10):
+// directly below the hero on / and /ja/ (HomeV3.astro), and directly below
+// the page title on /v2/ and /v2/ja/ (PageTitle.astro). The workflows that
+// test and check the branch that the page describes, OpenSSF Best Practices
+// and the license. The images keep their services' colors; each box has the
+// badge's size, so nothing below moves while the images load or when they
+// fail. They are in the first view: no lazy loading.
 import { getSiteRoute } from '../route.mjs';
 import { GITHUB_REF } from '../../scripts/lib/site.mjs';
 import { projectBadges } from '../../scripts/lib/project-badges.mjs';
 const lang = getSiteRoute(Astro.locals).locale === 'ja' ? 'ja' : 'en';
 const badges = projectBadges(GITHUB_REF, lang);
 ---
-<ul class="project-badges" aria-label={lang === 'ja' ? 'プロジェクトの状態' : 'Project status'}>
+<ul class="project-badges" aria-label={lang === 'ja' ? '開発の取り組み' : 'Development practices'}>
   {badges.map(badge => (
     <li><a class="project-badge" data-badge={badge.id} href={badge.href}><img src={badge.src} alt={badge.alt}
       width={badge.width} height={badge.height} decoding="async" referrerpolicy="no-referrer" /></a></li>

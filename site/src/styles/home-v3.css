@@ -32,6 +32,9 @@ html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
 .home-v3 .v3-status { color: var(--color-text-muted); margin: var(--space-4) 0 0; }
 .home-v3 .v3-status a { color: inherit; }
 .home-v3 > section { margin-top: var(--space-9); }
+/* 4.10: the strip of development practices belongs to the hero: 32 px
+   below the status line, 80 px above the next section */
+.home-v3 > .project-badges { max-width: none; margin-top: var(--space-6); }
 .home-v3 h2::before { display: none !important; }
 .home-v3 h2 { padding: 0; margin: 0; }
 .home-v3 .v3-section-heading { max-width: 46rem; }
@@ -98,6 +101,7 @@ html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
   html:has(.home-v3) .brand-title { grid-template-columns: minmax(0,1fr); gap: 0; }
   html:has(.home-v3) .brand-showcase { display: none; }
   .home-v3 > section { margin-top: var(--space-7); }
+  .home-v3 > .project-badges { margin-top: var(--space-5); }
   .home-v3 .v3-entry { margin-top: var(--space-5); }
   .home-v3 .actions { gap: var(--space-4); }
   .home-v3 .v3-flow { display: block; margin-top: var(--space-5); }

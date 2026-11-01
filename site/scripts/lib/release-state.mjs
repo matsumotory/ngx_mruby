@@ -20,3 +20,17 @@ export function releaseState(repo, major) {
   const state = summarizeReleases(git('tag', '--merged', 'HEAD', '--list', `v${major}.*`).split('\n'), fs.readdirSync(path.join(repo, 'docs/releases')), major);
   return { ...state, latest_release_revision: git('rev-parse', `${state.latest_release_tag}^{commit}`) };
 }
+
+// The newest stable release of the project (vX.Y.Z of any major), for the
+// release badge of the home pages (docs/proposals/site.md, 4.10). It reads
+// every tag of the repository, not only those merged into HEAD, because a
+// 2.x release is tagged on master before master is merged into next.
+export function newestStableTag(tags) {
+  const stable = tags.filter(t => /^v\d+\.\d+\.\d+$/.test(t));
+  if (!stable.length) throw new Error('No stable release tag; fetch the tags before building');
+  const numbers = v => v.replace(/^v/, '').split('.').map(Number);
+  return stable.reduce((best, t) => { const x = numbers(t), y = numbers(best); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i] ? t : best; return best; });
+}
+export function latestReleaseTag(repo) {
+  return newestStableTag(execFileSync('git', ['-C', repo, 'tag', '--list', 'v*'], { encoding: 'utf8' }).trim().split('\n'));
+}

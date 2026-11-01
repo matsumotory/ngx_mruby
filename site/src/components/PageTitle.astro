@@ -10,9 +10,10 @@ const ja = getSiteRoute(Astro.locals).locale === 'ja';
 const { title, headline } = getSiteRoute(Astro.locals).entry.data;
 const lines = headline ?? [title];
 if (home && ja && lines.join('') !== title) throw new Error(`PageTitle: the headline lines join to "${lines.join('')}", not the title "${title}"`);
-// The index pages of each version (/, /ja/, /v2/, /v2/ja/) carry the row of
-// project badges directly above the heading (4.4, 4.10).
+// The 2.x index pages (/v2/, /v2/ja/) carry the strip of development
+// practices directly below the page title (4.10); the home pages carry it
+// below the hero (HomeV3.astro).
 const routePath = Astro.url.pathname.slice(BASE.length).replace(/^\/|\/$/g, '');
-const index = routePath === '' || routePath === 'ja';
+const index = !home && (routePath === '' || routePath === 'ja');
 ---
-{home ? <div class="brand-title"><div class="hero-heading">{index && <ProjectBadges />}{ja ? <div class="headline-box"><h1 id="_top">{lines.map(line => <span class="headline-line">{line}</span>)}</h1></div> : <DefaultPageTitle />}</div><img class="brand-showcase" src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" /></div> : index ? <div class="hero-heading doc-index-heading"><ProjectBadges /><DefaultPageTitle /></div> : <DefaultPageTitle />}
+{home ? <div class="brand-title"><div class="hero-heading">{ja ? <div class="headline-box"><h1 id="_top">{lines.map(line => <span class="headline-line">{line}</span>)}</h1></div> : <DefaultPageTitle />}</div><img class="brand-showcase" src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" /></div> : index ? <><DefaultPageTitle /><ProjectBadges /></> : <DefaultPageTitle />}

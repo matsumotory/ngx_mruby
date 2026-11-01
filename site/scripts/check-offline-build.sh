@@ -21,7 +21,10 @@ site=$(cd "${1:-$here}" && pwd)
 offline() {
   case "$(uname -s)" in
     Linux)
-      sudo -n unshare --net -- sudo -n -u "$(id -un)" env "PATH=$PATH" "HOME=$HOME" ASTRO_TELEMETRY_DISABLED=1 sh -c "cd '$site' && $1"
+      # sudo starts with an empty environment: pass on the star count of
+      # the header that site.yml read (4.10), empty when it has none.
+      sudo -n unshare --net -- sudo -n -u "$(id -un)" env "PATH=$PATH" "HOME=$HOME" ASTRO_TELEMETRY_DISABLED=1 \
+        "NGX_MRUBY_SITE_STARS=${NGX_MRUBY_SITE_STARS-}" "NGX_MRUBY_SITE_STARS_DATE=${NGX_MRUBY_SITE_STARS_DATE-}" sh -c "cd '$site' && $1"
       ;;
     Darwin)
       sandbox-exec -p '(version 1)(allow default)(deny network*)' sh -c "cd '$site' && $1"

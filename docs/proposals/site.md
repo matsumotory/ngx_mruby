@@ -220,8 +220,8 @@ Docs, Agent proxy, Releases, Security, Contributing, GitHub.
 ### 3.4 Versions and languages
 
 - 3.x at unprefixed paths, 2.x under `/v2/`: Pillar F's "stable URL" with
-  "no live version switcher". The header links each page's version to the
-  other version's index.
+  "no live version switcher". The footer links each page's version to the
+  other version's index (4.10).
 - Until v3.0.0, every 3.x page carries a banner: 3.x is in development, the
   current release is 2.x, its documentation is under `/v2/`; and every 2.x
   page carries one that names 2.x the current release and links to the
@@ -1029,9 +1029,6 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   「ヒーローの見出し、モバイルだとこういう改行で微妙なので2行にしておきたい。シュッと直しといてこれ」,
   then the choices 「文はそのまま、モバイルだけ字を小さく」 and, for the
   読点 after 転送を, 「取る (推奨)」).
-- The row of project badges of 4.10 stands directly above the home page
-  heading, at its left edge and 4 px above it, in both languages; it
-  changes neither the heading's size nor its number of lines.
 - No `text-wrap: pretty` or `balance` anywhere: Safari applies `pretty` to
   every line and Chromium to the last four, so the same CSS wraps
   differently per engine (WebKit blog; MDN). The site’s banner also uses
@@ -1297,9 +1294,10 @@ acceptance; the interaction check covers that separately.
 ### 4.10 Header, footer and the language link
 
 - **Wide screens**: logo and wordmark (home; the wordmark in the monospace
-  face), the five section links, search, the version link, the language
-  link, the theme toggle, and GitHub with a text label and its mark in
-  black or white only (GitHub's logo guidelines). 64 px high, as the
+  face), the five section links, search, the language link, the theme
+  toggle, and GitHub with a text label and its mark in
+  black or white only (GitHub's logo guidelines), followed by the star
+  count of the repository (below). 64 px high, as the
   corporate and profile headers and the landing page's header at 900 px
   and below; opaque `surface`, as the landing page's header; 1 px bottom
   border. The landing page's 88 px suits a page with one call to action,
@@ -1325,9 +1323,11 @@ acceptance; the interaction check covers that separately.
   on pages without a sidebar, at the top of the sidebar on pages with one.
   The Japanese labels (ドキュメント, エージェントプロキシ, 開発に参加する)
   are longer than the English ones. In Chromium, with or without the
-  sidebar, the header holds every item on one line inside its padding
-  from 1168 px in English, and in Japanese from 1384 px in Hiragino Sans
-  and 1376 px in Noto Sans JP; 88rem stays above both. The labels of the header do not
+  sidebar, and with the star count (997 stars), the header holds every
+  item on one line inside its padding from 1131 px in English, and in
+  Japanese from 1279 px in Hiragino Sans and 1268 px in Noto Sans JP; a
+  count of four characters such as 1.2K takes 4 to 5 px more. 76rem and
+  88rem stay above them. The labels of the header do not
   break inside a word (`white-space: nowrap`). The owner on 2026-11-01:
   「英語はいいんやけど、日本語のとき、英語のヘッダーがバーガーメニューに切り替わるタイミングだとヘッダーの文字列が折れ曲がる。もっとはやくハンバーガーメニューにしないといけないっぽい」.
 - **Narrow screens** (640 px and below): logo, wordmark, search, the theme
@@ -1339,40 +1339,106 @@ acceptance; the interaction check covers that separately.
 - **Footer**: 1 px top border, 14 px `text-muted`, 48 px above and 32 px
   below, as on the profile site. As on the corporate site, one footer
   component serves every page, so that every page reaches the same links:
-  the language link, Releases, Security, the license and GitHub. The license
+  the language link, the version link, Releases, Security, the license and
+  GitHub. The version link leads to the index of the other version (3.4):
+  「2.x docs」 or 「2.xのドキュメント」 to `/v2/` on the 3.x pages, 「3.x
+  docs」 or 「3.xのドキュメント」 to `/docs/` on the 2.x pages. The owner
+  decided on 2026-11-01 that it leaves the header for the footer, asking
+  「版リンクってそもそもいる？」 and then choosing
+  「ヘッダーから外し、footer に置く (推奨)」: the banner of every page (3.4)
+  already leads from 3.x to the 2.x documentation and from 2.x to 3.x, and
+  the footer keeps the link after v3.0.0, when the 3.x banner goes. The license
   is labeled MIT and links to the `LICENSE` file of the page's version.
   The footer holds text links only, and wraps as a unit at narrow widths.
-- **Project badges.** The four index pages (`/`, `/ja/`, `/v2/` and
-  `/v2/ja/`) show one row of badges directly above the heading, at its left
-  edge: CI (`test.yml`) and CodeQL (`codeql.yml`) of the branch that the
-  page describes, `next` on the 3.x pages and `master` on the 2.x pages,
-  each linking to its workflow's runs on that branch; OpenSSF Best
-  Practices, linking to project 16057; and the license, an SVG of the site
-  in the flat style of the OpenSSF badge without its gradient (4.3, item
-  5), linking to the `LICENSE` file of that branch, as the footer does.
-  The owner decided on 2026-11-01 that the badges stand above
-  the hero heading and not in the footer:
-  「footerにおいても誰もみないからなぁ、開発プロセスちゃんとやって理という意味では見せるべきな気がするので」.
-  A CI badge shows only the branch that its page describes, so the status
-  of `next` never stands beside the 2.x documentation, nor that of
-  `master` beside the 3.x pages. The row shows the project's state and is
-  not decoration (4.3): the images keep their services' colors, nothing
-  recolors them, no label, frame or icon is added, and no text turns a
-  current status into a fixed certification claim. The badges are 20 px
-  high, with 8 px between them and 4 px, the smallest step of 4.5, between
-  the row and the heading; their links are 24 px high (4.9). Each image has
-  the width and height of its badge and is not lazy-loaded, since it is in
-  the first view, so the heading does not move while the images load or
-  when they fail. The row takes one line at 1440 px and wraps to at most
-  two at 402 px. `check-project-badges.mjs` checks the exact links, images,
-  sizes and alt text of the row on the four pages, the absence of a row on
-  every other page, and a footer of text links; in a browser, in the two
-  configured patterns in light and dark, it checks the size of each badge,
-  the left edge, the 4 px, the number of lines and the keyboard order, and,
-  with the external images refused, that the heading stays where it is.
-  The checks before the deploy serve the external badge URLs from local
-  stand-ins, so GitHub or bestpractices.dev cannot hold the publication;
-  `check-live.mjs` fetches the real images after the deploy, with retries.
+- **Development practices.** The four index pages (`/`, `/ja/`, `/v2/`
+  and `/v2/ja/`) show one strip of badges: on `/` and `/ja/` directly
+  below the hero, between its status line and the first section, across
+  the 1032 px of the home page; on `/v2/` and `/v2/ja/` directly below the
+  page title. From the left: `test` (`test.yml`), `nginx-tests`
+  (`nginx-tests.yml`), `valgrind-nightly` (`valgrind-nightly.yml`), CodeQL
+  (`codeql.yml`), zizmor (`zizmor.yml`), OpenSSF Best Practices, linking to
+  project 16057, and the license, an SVG of the site in the flat style of
+  the OpenSSF badge without its gradient (4.3, item 5), linking to the
+  `LICENSE` file of the branch, as the footer does. Each workflow badge
+  shows the runs of the branch that the page describes, `next` on the 3.x
+  pages and `master` on the 2.x pages, and links to them, with two
+  exceptions: `valgrind-nightly` runs from `master` only, because GitHub
+  runs a schedule only from the default branch, and each of its runs tests
+  `master` and `next`, so both versions show its runs on `master`; and
+  `nginx-tests` exists on `next` only, so the 2.x pages leave it out. A
+  workflow badge shows the latest run on its branch itself; runs of pull
+  requests belong to their own branches. `nginx-tests` and `zizmor` run on
+  ready pull requests and on "Run workflow", not on pushes, so their
+  badges show the push runs of 2026-10-31 until a session runs them on
+  `next` or `master` ("Run workflow"). The
+  owner decided on 2026-11-01 that this strip holds what others can judge
+  the project by, and that a score does not belong there:
+  「スコアボードって結局妥当性がむずいやん？となりとちゃんと静的解析してるとか最低限のプラクティス守ってるとかライセンスはこれとか、テストやセキュリティを色々な観点で検査してるのは良い気がする」,
+  「他にも静的解析とかvalgrindとかもいいじゃんngix-testもさ」,
+  「一般的に見て評価したり得られる開発の工夫が見れるのはいい気がする」.
+  The strip shows the project's state and is not decoration (4.3): the
+  images keep their services' colors, nothing recolors them, no frame,
+  shadow, start-edge line or visible label is added, and no text turns a
+  current status into a fixed certification claim. Its name,
+  「開発の取り組み」 or "Development practices", is the list's accessible
+  name only:
+  each badge names its check, a label above the strip would be the kind of
+  label above content that 4.3 does not use, and it would add a text
+  element between the hero and the next section. The badges are 20 px
+  high, 8 px apart, with 4 px between lines where the strip wraps; their
+  links are 24 px high (4.9). The strip stands 32 px below the status line
+  (24 px up to 800 px) and 80 px above the next section (48 px up to
+  800 px), so it groups with the hero (4.5), and 16 px below the title of
+  the 2.x pages. Each image has the width of its badge and a height of
+  20 px and is not lazy-loaded, since it is in the first view, so nothing
+  below moves while the images load or when they fail. The strip takes one
+  line at 1440 px on `/` and `/ja/`; in the 720 px column of the
+  documentation of `/v2/` and `/v2/ja/` it takes two, and at 402 px at
+  most four.
+- **The release badge.** The status line of the hero of `/` and `/ja/`
+  ends with a badge of the newest stable release (`vX.Y.Z`, of any major),
+  linking to that release on GitHub. The build reads the tag from the git
+  tags of the repository and draws the badge in the flat style of the
+  license badge, as an image in a `data:` URL, so the badge adds no other
+  origin and needs no file to update; the site shows a new release with
+  its next build, which "The GitHub release" in `docs/releases/README.md`
+  starts. shields.io's release badge would add a third-party origin to the
+  home pages and depend on its cache. The site's own badges, the release
+  and the license, draw their value on `#0077bb`, where white text reaches
+  4.82:1 (4.6); shields.io's `#007ec6` gives 4.38:1.
+- **The star count.** The GitHub link of the header and of the menu ends
+  with a 16 px star and the count of the repository's stars, in the weight
+  and color of secondary text, shortened to at most four characters (997,
+  1.2K, 12K). Assistive technology reads the exact count and the day it was
+  read, which the count's title also gives. `site.yml` reads the count
+  from the GitHub API once before the builds, which fetch nothing (4.4),
+  and passes it with the day in `NGX_MRUBY_SITE_STARS` and
+  `NGX_MRUBY_SITE_STARS_DATE`; each deploy updates it. When the API does
+  not answer, or in a local build without the two variables, the link
+  shows GitHub without a count. A shields.io badge in the header would put
+  a third-party image on every page. The header shows the count from
+  42.5rem (680 px), and the menu row at 640 px and below; from 641 px to
+  679 px the Japanese header has no room for it (14 px short at 641 px with
+  a count of four characters), and the link keeps GitHub without it.
+- The owner decided on 2026-11-01 that the release and the star count
+  stand apart from the strip: 「リリースとスターは置く場所は別に考えてもいい気はしたけど」,
+  then the choice 「帯に7つ、release は状態の行、stars はヘッダー」.
+  README.md on `next` shows the badges of the strip and the OpenSSF
+  Scorecard, whose score the site does not show.
+- **Checks.** `check-project-badges.mjs` checks the exact links, images,
+  sizes and alt text of the strip on the four pages and its place after
+  the heading, the absence of a strip on every other page, the release
+  badge of the home pages and its tag (the newest stable tag, where the
+  checkout has the tags), the same star count on the GitHub links of every
+  page (the given one, when the variables are set), and a footer of text
+  links. In a browser, in the two configured patterns in light and dark,
+  it checks the size of each badge, the left edge, the space above the
+  strip, its number of lines, the release badge in the status line and the
+  keyboard order, and, with the external images refused, that the strip
+  keeps its box. The checks before the deploy serve the external badge
+  URLs from local stand-ins, so GitHub or bestpractices.dev cannot hold
+  the publication; `check-live.mjs` fetches the real images after the
+  deploy, with retries.
 - Check: each page's language link answers 200 with the same path under the
   other prefix; `/` with `Accept-Language: ja` returns English without a
   redirect; in Chromium at 1440 px, in both languages, with and without
@@ -1983,11 +2049,23 @@ The same day the owner decided that the phone width of the layout checks
 becomes 402px (Safari on an iPhone 17 Pro), in the replacement's pull request:
 「じゃあ402にしよう」, 「キリがないからpcの幅を超えた画面で綺麗に見えたらよくて、あとは402に調整するぐらいの基準で良さそうね」.
 
-On 2026-11-01 the owner decided that the project badges stand in a row
-above the heading of the index pages, not in the footer:
+On 2026-11-01 the owner decided that the project's badges are shown on
+the index pages, not in the footer:
 「footerにおいても誰もみないからなぁ、開発プロセスちゃんとやって理という意味では見せるべきな気がするので」.
-The row holds CI and CodeQL of the branch that the page describes,
-OpenSSF Best Practices and the license (4.10).
+The same day the owner chose where they stand:
+「帯に7つ、release は状態の行、stars はヘッダー」. A strip below the hero
+holds test, nginx-tests, valgrind-nightly, CodeQL, zizmor, OpenSSF Best
+Practices and the license; the status line of the hero names the newest
+release, and the GitHub link of the header the star count (4.10). The
+owner's reason:
+「一般的に見て評価したり得られる開発の工夫が見れるのはいい気がする」.
+
+On 2026-11-01 the owner asked 「版リンクってそもそもいる？」 about the
+version link of the header and chose
+「ヘッダーから外し、footer に置く (推奨)」: the link to the other version's
+documentation stands in the footer beside the language link, and the
+header holds the section links, search, the language link, the theme
+toggle and GitHub with its star count (4.10).
 
 On 2026-11-01 the owner decided that the home page heading takes one line
 at the PC width, in both languages:

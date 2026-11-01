@@ -300,16 +300,19 @@ figcaption,
 /*
  * 4.10 and 4.3 item 5: the header, 64 px on an opaque surface with a 1 px
  * bottom border. Wide: logo and wordmark, the five section links, search,
- * the version link, the language link, the theme toggle and GitHub. The
+ * the language link, the theme toggle and GitHub with its star count. The
  * section links move into the menu below 76rem (1216 px) on English pages
  * and below 88rem (1408 px) on Japanese pages, where they no longer fit
  * beside the rest: the Japanese labels (ドキュメント, エージェントプロキシ,
- * 開発に参加する) are longer, and the Japanese header holds every item on
- * one line from 1384 px in Hiragino Sans and 1376 px in Noto Sans JP
- * (Chromium, with and without the sidebar; the profile site moves its
- * links at 900 px, 4.2). The labels never break inside a word. At 640 px
- * and below the
- * version link, the language link and GitHub move into the menu too.
+ * 開発に参加する) are longer. The version link is in the footer (4.10).
+ * With the star count of GitHub (997 stars; a count of four characters
+ * such as 1.2K takes 4 to 5 px more), the header has, beyond its 16 px
+ * gaps, 85 px of room at 1216 px in English and 129 px at 1408 px in
+ * Japanese in Hiragino Sans (140 px in Noto Sans JP), Chromium, with and
+ * without the sidebar: the Japanese row holds every item from about
+ * 1279 px, and 88rem stays above it. The profile site moves its links at
+ * 900 px (4.2). The labels never break inside a word. At 640 px and below
+ * the language link and GitHub move into the menu too.
  * Links are at least 44 px high, 15 px at weight 600; the current section
  * is text with a 2 px accent bottom border (4.6).
  */
@@ -393,6 +396,21 @@ header.header {
 .github-mark {
   width: 20px;
   height: 20px;
+  flex: none;
+}
+/* 4.10: the star count after "GitHub", in the weight and color of
+   secondary text, with a 16 px star (GithubStars.astro) */
+.github-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 400;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.github-stars svg {
+  width: 16px;
+  height: 16px;
   flex: none;
 }
 /* The theme toggle and the menu button: 44 px round buttons with a 1 px
@@ -505,6 +523,18 @@ button.site-menu-button svg {
     padding-inline-end: calc(var(--header-pad-x) + 44px + var(--space-4));
   }
 }
+/* The header shows the star count from 42.5rem (680 px); from 641 px to
+   679 px the Japanese row has no room for it (14 px short at 641 px with a
+   count of four characters), and at 640 px and below the GitHub row of the
+   menu shows it */
+.site-header .github-stars {
+  display: none;
+}
+@media (min-width: 42.5rem) {
+  .site-header .github-stars {
+    display: inline-flex;
+  }
+}
 @media (max-width: 640px) {
   .site-header {
     gap: var(--space-2);
@@ -545,45 +575,59 @@ button.site-menu-button svg {
   text-underline-offset: 0.2em;
 }
 
-/* 4.4 and 4.10: the row of project badges directly above the heading of
-   the four index pages, at the heading's left edge. The images keep their
-   services' colors, not a recolored certification. Each image keeps the
-   box of its width and height attributes (20 px high), so the heading does
-   not move while the images load or when one fails; object-fit keeps a
+/* 4.10: the strip of development practices of the four index pages, one
+   line of badges below the hero (/, /ja/) or the page title (/v2/,
+   /v2/ja/). The images keep their services' colors, not a recolored
+   certification, and the strip adds no frame, shadow or label. Each image
+   keeps the box of its width attribute and 20 px of height, so nothing
+   below moves while the images load or when one fails, and a failed
+   image's alt text stays inside that box; object-fit keeps a
    badge's aspect ratio if the service draws it wider. The links are 24 px
-   high (4.9); 8 px between badges, and 4 px, the smallest step of 4.5,
-   between the row and the heading. Narrow screens wrap the row. */
+   high (4.9), 8 px apart, and 4 px apart between lines where a narrow
+   screen wraps the strip. */
 .hero-heading {
   min-width: 0;
 }
-.project-badges {
+/* The strip of the home pages is inside the Markdown content, whose lists
+   are indented: the selector keeps the strip at the heading's left edge */
+.project-badges,
+.site-markdown-content .project-badges {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-2);
-  margin: 0 0 var(--space-1);
+  margin: var(--space-4) 0 0;
   padding: 0;
   list-style: none;
 }
 .project-badges li {
+  display: flex;
   margin: 0;
   padding: 0;
 }
-.project-badges a {
-  display: flex;
+.project-badges a,
+.release-badge {
+  display: inline-flex;
   align-items: center;
   min-height: 24px;
   color: var(--color-text-muted);
 }
 .project-badges img {
   display: block;
+  height: 20px;
   margin: 0;
   max-width: none;
+  overflow: hidden;
   object-fit: contain;
 }
-/* The 2.x index pages (/v2/, /v2/ja/): the row takes the space above the
-   page title (DocTitle.astro), and the title follows it */
-.doc-index-heading {
-  margin-top: var(--space-4);
+/* 4.10: the release badge of the status line of the home pages, drawn at
+   build time, in the line of the text */
+.release-badge {
+  vertical-align: middle;
+}
+.release-badge img {
+  display: block;
+  height: 20px;
+  margin: 0;
 }
 .hero-heading h1#_top {
   margin-top: 0;
