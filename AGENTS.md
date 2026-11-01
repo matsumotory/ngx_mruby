@@ -712,7 +712,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
   `scripts/lib/site.mjs` reads: the pages of `DIR/docs/` (and `SECURITY.md`
   and `CONTRIBUTING.md`) at the routes of `SOURCE_ROUTES` under `/v2/`,
   `docs/README.md` as `/v2/`, links to other files going to GitHub at
-  `master`, the sidebar of the 2.x pages in `astro.config.mjs`, and the
+  `master`, the sidebar of the 2.x pages (`src/own/sidebar.mjs`), and the
   2.x banner of 3.4 on every page (`src/components/Banner.astro`). It
   writes them into `dist/v2/`, with their own search index in
   `dist/v2/pagefind/` (the 3.x index of `dist/pagefind/` stays without
