@@ -66,9 +66,9 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 |---|---|---|
 | `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`nginx-tests`、`examples`、`site`、`codeql`は各パスフィルタに従って動く |
 | `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較 |
-| `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | `next`では、どのジョブも流さない。作者が`site/`で`npm run check:ci`を流し([サイトのCI](#サイトのci))、マージのpushで`site.yml`が確かめる。`master`では`site-v2`(readyのPRすべて) |
-| `site` | `.github/workflows/site.yml`と`site/` | どのジョブも流さない。`docs`と同じ |
-| `examples` | `examples/` | examples。サイトは`docs`と同じ |
+| `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | `next`ではジョブなし。作者が`npm run check:ci`を流す([サイトのCI](#サイトのci))。`master`では`site-v2` |
+| `site` | `.github/workflows/site.yml`と`site/` | ジョブなし。`docs`と同じ |
+| `examples` | `examples/` | examples。サイトは`docs`と同じ扱い |
 | `workflows` | `.github/`のうち`test.yml`と`site.yml`を除いたもの | zizmorは全ワークフローを検査。`.github/workflows/`と`.github/codeql/`はCodeQLも対象 |
 
 標準の4セルは、静的モジュールと動的モジュール、nginxのmainline 1.31とstable 1.30を、それぞれ少なくとも1回ビルドします。メモリの検査も、2種類とも実行します。
@@ -979,7 +979,7 @@ $ diff base.txt head.txt
 デプロイの前に、ビルドしたサイトをブラウザで検査するジョブはありません。ブラウザの検査は全部、手元の`site/`の`npm run check:ci`(`site/scripts/check-ci.sh`)で流します。`docs/`、`site/`、`examples/`を変えるプルリクエストの作者は、readyにする前にこれを流し、結果を「How was this tested」に書きます。`npm run check:ci`は次を流します。
 
 1. `build`のジョブの検査を、同じ順で流します。`npm run build`、2.xのページのビルド、`npm test`、gitが追跡するMarkdownのファイルへの`check_links.py`、`npm run check`、`contrast.py`、`mrbc`でのRubyのブロックの検査、`check-v2.mjs --no-browser`です。2.xのページは、`NGX_MRUBY_V2_TREE`のwork treeか、`site/generated/v2-tree`に作る`origin/master`のcloneからビルドします。`mrbc`は、`MRBC`か`mruby/build/host/bin/mrbc`を使い、どちらも無ければ、この検査を飛ばしたと最後に表示します。
-2. 全部のブラウザの検査を、全ページで流します。この部分だけは、前のビルドに対して`npm run check:browser`で流せます。`check-styles.mjs`と`check-japanese-lines.mjs`を`--ja-face noto`でChromiumとWebKitで流し、`/v2/ja/`の`check-japanese-lines.mjs`、`check-copy-idle.mjs`、`check-home-interaction.mjs`、3.xと2.xのページの`check-code-layout.mjs`、`check-focus.mjs`、`check-language-links.mjs`、`check-lighthouse.mjs`、`check-project-badges.mjs --browser`、`check-search-identifiers.mjs`、Chromiumで検索も確かめる`check-v2.mjs`、`test-read-only-browser.mjs`、`screenshots.mjs`、`screenshots-live.mjs --local`を流します。
+2. 全部のブラウザの検査を、全ページで流します。この部分だけは、前のビルドに対して`npm run check:browser`で流せます。`check-styles.mjs`と`check-japanese-lines.mjs`を`--ja-face noto`でChromiumとWebKitで流し、`/v2/ja/`の`check-japanese-lines.mjs`、`check-copy-idle.mjs`、`check-home-interaction.mjs`、3.xと2.xのページの`check-code-layout.mjs`、`check-focus.mjs`、`check-language-links.mjs`、`check-lighthouse.mjs`、`check-project-badges.mjs --browser`、`check-search-identifiers.mjs`、検索も確かめる`check-v2.mjs`、`test-read-only-browser.mjs`、`screenshots.mjs`、`screenshots-live.mjs --local`を流します。
 
 新しいcloneでのビルドとネットワークを止めたビルドは、`build`のジョブに残します。`site/package.json`、`site/package-lock.json`、ビルドのスクリプトを変えるプルリクエストは、この2つも手元で流します(`sh scripts/check-fresh-clone.sh`、`npm run check:offline`)。`npm test`が流す`node scripts/test-site-workflow.mjs`は、`site.yml`にプルリクエストのトリガか3つ以外のジョブが入ったときと、`build`のジョブの検査かブラウザの検査が`check-ci.sh`から抜けたときに失敗します。手元で早く回すために、`SITE_CI_PAGES`(ルートのJSONの配列)で`check-styles.mjs`、`check-focus.mjs`、`check-code-layout.mjs`を一部のページに絞れ、`SITE_CI_VERSION`(`2`か`3`)で`check-code-layout.mjs`を1つのバージョンに絞れます。絞った実行は、プルリクエストの証拠になりません。
 
