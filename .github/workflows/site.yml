@@ -130,6 +130,13 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/build-v2.mjs --tree "$GITHUB_WORKSPACE/master"
+      # Layer 1 keeps deployment on Starlight. Build the opt-in shell from
+      # this same tree and 2.x revision, compare semantics, then restore
+      # the default output before the deployment artifact is assembled.
+      - name: Compare the opt-in Astro shell with Starlight
+        if: ${{ !cancelled() && steps.v2.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}/fresh/site
+        run: node scripts/check-shells.mjs --v2-tree "$GITHUB_WORKSPACE/master"
       - name: Test the generator fixtures and release-state classification
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site

@@ -1,0 +1,108 @@
+---
+import '@fontsource-variable/inter';
+import '@fontsource-variable/noto-sans-jp';
+import '@fontsource-variable/geist-mono';
+import '../styles/tokens.css';
+import '../styles/site.css';
+import '../diagrams/diagrams.css';
+import '../diagrams/agent-proxy-endpoints.css';
+import '../diagrams/agent-proxy-request.css';
+import '../diagrams/agent-proxy-stream.css';
+import '../diagrams/async-sleep.css';
+import '../diagrams/build-layout.css';
+import '../diagrams/filter-chain.css';
+import '../diagrams/request-phases.css';
+import '../diagrams/worker-lifetime.css';
+import './styles/layers.css';
+import './styles/props.css';
+import './styles/reset.css';
+import './styles/asides.css';
+import './styles/util.css';
+import './styles/anchor-links.css';
+import Banner from '../components/Banner.astro';
+import ContentPanel from './ContentPanel.astro';
+import FallbackContentNotice from '../components/FallbackContentNotice.astro';
+import Footer from '../components/Footer.astro';
+import Head from './Head.astro';
+import Header from '../components/Header.astro';
+import MarkdownContent from './MarkdownContent.astro';
+import PageFrame from '../components/PageFrame.astro';
+import PageSidebar from './PageSidebar.astro';
+import PageTitle from '../components/PageTitle.astro';
+import Sidebar from './Sidebar.astro';
+import SkipLink from './SkipLink.astro';
+import ThemeProvider from '../components/ThemeProvider.astro';
+import TwoColumnContent from './TwoColumnContent.astro';
+import NotFoundHero from './NotFoundHero.astro';
+import printHref from './styles/print.css?url&no-inline';
+const starlightRoute = Astro.locals.siteRoute;
+
+const pagefindEnabled =
+	starlightRoute.entry.id !== '404' &&
+	!starlightRoute.entry.id.endsWith('/404') &&
+	starlightRoute.entry.data.pagefind !== false;
+
+const htmlDataAttributes: DOMStringMap = { 'data-theme': 'dark' };
+if (Boolean(starlightRoute.toc)) htmlDataAttributes['data-has-toc'] = '';
+if (starlightRoute.hasSidebar) htmlDataAttributes['data-has-sidebar'] = '';
+if (Boolean(starlightRoute.entry.data.hero)) htmlDataAttributes['data-has-hero'] = '';
+
+const mainDataAttributes: DOMStringMap = {};
+if (pagefindEnabled) mainDataAttributes['data-pagefind-body'] = '';
+---
+
+<html lang={starlightRoute.lang} dir={starlightRoute.dir} {...htmlDataAttributes}>
+	<head>
+		<Head />
+		<style>
+			html:not([data-has-toc]) {
+				--sl-mobile-toc-height: 0rem;
+			}
+			html:not([data-has-sidebar]) {
+				--sl-content-width: 67.5rem;
+			}
+			/* Add scroll padding to ensure anchor headings aren't obscured by nav */
+			html {
+				/* Additional padding is needed to account for the mobile TOC */
+				scroll-padding-top: calc(1.5rem + var(--sl-nav-height) + var(--sl-mobile-toc-height));
+			}
+			main {
+				padding: var(--sl-main-pad);
+			}
+			@media (min-width: 50em) {
+				[data-has-sidebar] {
+					--sl-content-inline-start: var(--sl-sidebar-width);
+				}
+			}
+			@media (min-width: 72em) {
+				html {
+					scroll-padding-top: calc(1.5rem + var(--sl-nav-height));
+				}
+			}
+		</style>
+		<ThemeProvider />
+		<link rel="stylesheet" href={printHref} media="print" />
+	</head>
+	<body>
+		<SkipLink />
+		<PageFrame>
+			<Header slot="header" />
+			{starlightRoute.hasSidebar && <Sidebar slot="sidebar" />}
+
+			<TwoColumnContent>
+				<PageSidebar slot="right-sidebar" />
+				<main
+					{...mainDataAttributes}
+					lang={starlightRoute.entryMeta.lang}
+					dir={starlightRoute.entryMeta.dir}
+				>
+					{/* TODO: Revisit how this logic flows. */}
+					<Banner />
+                    {starlightRoute.entry.id === '404' ? <ContentPanel><NotFoundHero/><MarkdownContent><slot/></MarkdownContent><Footer/></ContentPanel> : <>
+                    <ContentPanel><PageTitle />{starlightRoute.isFallback && <FallbackContentNotice />}</ContentPanel>
+                    <ContentPanel><MarkdownContent><slot /></MarkdownContent><Footer /></ContentPanel></>}
+				</main>
+			</TwoColumnContent>
+		</PageFrame>
+	</body>
+</html>

@@ -1,0 +1,21 @@
+---
+import TableOfContentsList from './TocList.astro';
+import { t } from './strings.mjs';
+// Adapted from Starlight 0.42.6. Copyright Astro contributors. MIT: ./STARLIGHT-LICENSE.
+
+
+const { toc } = Astro.locals.siteRoute;
+---
+
+{
+	toc && (
+		<starlight-toc data-min-h={toc.minHeadingLevel} data-max-h={toc.maxHeadingLevel}>
+			<nav aria-labelledby="starlight__on-this-page">
+				<h2 id="starlight__on-this-page">{t(Astro.locals.siteRoute.locale, 'tableOfContents.onThisPage')}</h2>
+				<TableOfContentsList toc={toc.items} />
+			</nav>
+		</starlight-toc>
+	)
+}
+
+<script src="./toc.js"></script>

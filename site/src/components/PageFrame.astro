@@ -1,4 +1,5 @@
 ---
+import { getSiteRoute, routeLabel } from '../route.mjs';
 // Starlight's page frame, with a menu on every page (docs/proposals/site.md,
 // 4.10). Starlight renders its menu button and its menu (the sidebar pane)
 // only on pages with a sidebar, so the home page had no way to reach the
@@ -11,13 +12,13 @@
 // The menu opens and closes without JavaScript (the popover attribute);
 // the script only keeps the sidebar from being a popover on wide screens
 // and traps the focus in the open menu, as Starlight's does.
-import { Icon } from '@astrojs/starlight/components';
+import Icon from './Icon.astro';
 import SiteMenu from './SiteMenu.astro';
 import { strings } from '../site-nav.mjs';
 
-const { hasSidebar } = Astro.locals.starlightRoute;
-const t = strings(Astro.locals.starlightRoute.locale);
-const sidebarLabel = Astro.locals.t('sidebarNav.accessibleLabel');
+const { hasSidebar } = getSiteRoute(Astro.locals);
+const t = strings(getSiteRoute(Astro.locals).locale);
+const sidebarLabel = routeLabel(Astro.locals, 'sidebarNav.accessibleLabel');
 ---
 
 <div class="page sl-flex">
@@ -26,7 +27,7 @@ const sidebarLabel = Astro.locals.t('sidebarNav.accessibleLabel');
     <button popovertarget="starlight__sidebar" class="sl-menu-button round-button sl-flex">
       <Icon name="bars" class="open-menu" />
       <Icon name="close" class="close-menu" />
-      <span class="sr-only">{Astro.locals.t('menuButton.accessibleLabel')}</span>
+      <span class="sr-only">{routeLabel(Astro.locals, 'menuButton.accessibleLabel')}</span>
     </button>
     <sl-sidebar-pane popover="" id="starlight__sidebar" class="sidebar-pane">
       <div class="sidebar-content sl-flex">

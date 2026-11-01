@@ -1,0 +1,6 @@
+---
+import { getHead } from './head.mjs';
+const route = Astro.locals.siteRoute;
+const head = route.head ?? getHead(route, Astro);
+---
+{head.map(({ tag: Tag, attrs, content }) => <Tag {...attrs} set:html={content} />)}
