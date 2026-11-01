@@ -320,9 +320,10 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     } else {
       rc = NGX_OK;
     }
-  } else if (has_result && result < 0) {
-    // a return code such as Nginx::DECLINED after the output: the output is
-    // not sent, and the phase gets the code, as before
+  } else if (has_result && result < 0 && (*chain->last)->buf->last_buf) {
+    // a return code such as Nginx::DECLINED after the output (it marked the
+    // last buffer): the output is not sent, and the phase gets the code, as
+    // before. A code before the output does not apply to it.
     rc = result;
   } else if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf ||
              ngx_mrb_content_ends_without_response(r, ctx, kind, (ngx_int_t)r->headers_out.status)) {
@@ -434,7 +435,8 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   // 200 without output with an empty body when the handler ends, so the
   // status stays 200 there. The other handlers and subrequests answer 500, as
   // the 2.x line does.
-  if (r->headers_out.status == NGX_HTTP_OK && !(ctx->handler_kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && r == r->main)) {
+  if (status >= 0 && r->headers_out.status == NGX_HTTP_OK &&
+      !(ctx->handler_kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && r == r->main)) {
     if (chain == NULL) {
       r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
       ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
