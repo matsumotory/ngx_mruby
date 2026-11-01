@@ -621,6 +621,8 @@ with a successful skip.
   The owner's words (2026-11-01):
   「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
   The patterns are in `site/scripts/lib/patterns.mjs`.
+  The Starlight replacement changed the iPhone pattern from 390px to 402px
+  (Safari on an iPhone 17 Pro); the value is defined in that file.
 
 
 The site uses Astro with the repository's route, schema, layout and components.
