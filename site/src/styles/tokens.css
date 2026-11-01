@@ -155,7 +155,7 @@ html[lang="ja"]:has(.home) {
    (14.8 em in Noto Sans JP), so the size also stays under the width of the
    heading's column (.headline-box, 100cqi) divided by 15.6 em: one line per
    phrase at every width up to 800 px (4.4; the owner's choice of
-   2026-10-31). It binds below about 680 px. From 801 px the rule below replaces it. */
+   2026-10-31). It binds below about 655 px. From 801 px the rule below replaces it. */
 @supports (container-type: inline-size) {
   html[lang="ja"]:has(.home) {
     --text-home: min(clamp(2rem, 1rem + 3.5vw, 3.5rem), 100cqi / 15.6);
@@ -166,7 +166,7 @@ html[lang="ja"]:has(.home) {
    size stays under the width of the heading's column (.hero-heading,
    100cqi) divided by 11.8 em, and "applications with Ruby." (10.5 em)
    takes the second line (4.4; at most two lines at 402 px, the owner's
-   decision of 2026-11-01). It binds below about 520 px. From 801 px the rule below replaces it. */
+   decision of 2026-11-01). It binds below about 515 px. From 801 px the rule below replaces it. */
 @supports (container-type: inline-size) {
   html:has(.home) {
     --text-home: min(clamp(2.375rem, 1rem + 4.5vw, 4.5rem), 100cqi / 11.8);

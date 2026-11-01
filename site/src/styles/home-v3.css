@@ -13,12 +13,11 @@ html:has(.home-v3) .brand-showcase { width: 160px; height: 160px; }
 html:has(.home-v3) h1#_top { margin: 0; max-width: 20ch; }
 html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
 .headline-line { display: block; }
-/* From 801 px the heading takes one line in both languages (tokens.css):
-   the Japanese phrases run inline, and the heading's column is the
-   container whose width sets the English size. */
 /* The heading's column is the container whose width sets the English size
    at every width (tokens.css). */
 html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
+/* From 801 px the heading takes one line in both languages (tokens.css):
+   the Japanese phrases run inline. */
 @media (min-width: 801px) {
   html:has(.home-v3) h1#_top, html[lang="ja"]:has(.home-v3) h1#_top { max-width: none; }
   .headline-line { display: inline; }

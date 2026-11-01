@@ -1025,11 +1025,11 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   takes two lines, "Authenticate and route AI" (11.5 em) and
   "applications with Ruby.": its size is at most the width of its column
   divided by 11.8 em, which is below the size of the scale under about
-  520 px (30.7 px at 402 px). Up to 800 px the Japanese heading takes
+  515 px (30.7 px at 402 px). Up to 800 px the Japanese heading takes
   its two lines, 「AIアプリケーションの認証と転送を」 and 「Rubyで制御する。」,
   at every width: its size is at most the width of its column divided by
   15.6 em, because its first line is 15.1 em wide. That cap is below the
-  size of the scale under about 680 px (17.9 px at 320 px, 23.2 px at
+  size of the scale under about 655 px (17.9 px at 320 px, 23.2 px at
   402 px, 25.0 px at 430 px), and below h2 (22 px) under about 385 px.
   The headings are the owner's choice of 2026-11-02 (section 7). (The
   owner on

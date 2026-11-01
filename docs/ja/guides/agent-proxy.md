@@ -70,7 +70,7 @@ compared: test/html/agent_proxy_log.expected
 ```diagram
 agent-proxy-request
 label: development
-caption: v3.0に向けて設計するmodel APIの中継を通るリクエストのステップを、それぞれが現在動くか、v3の計画のどのステップで加わるかとともに示します。
+caption: v3.0に向けて設計するモデルAPIの中継を通るリクエストのステップを、それぞれが現在動くか、v3の計画のどのステップで加わるかとともに示します。
 source: docs/proposals/v3-plan.md 407-447 558-576
 source: test/conf/conf.d/60-agent-proxy.conf 14-111
 at: 8d1500bf0 2026-10-29
@@ -92,7 +92,7 @@ fallback: ステップ7e：<wbr>参照実装の<wbr>プロキシが<wbr>プロ�
 ```diagram
 agent-proxy-stream
 label: development
-caption: v3.0に向けて設計するmodel APIの中継がストリームのレスポンスをどう中継し、使用量をどう計上するかを、各ステップが現在動くか、v3の計画のどのステップで加わるかとともに示します。
+caption: v3.0に向けて設計するモデルAPIの中継がストリームのレスポンスをどう中継し、使用量をどう計上するかを、各ステップが現在動くか、v3の計画のどのステップで加わるかとともに示します。
 source: docs/proposals/v3-plan.md 407-447 558-576
 source: test/conf/conf.d/60-agent-proxy.conf 44-55
 at: 8d1500bf0 2026-10-29
@@ -113,7 +113,7 @@ log: ステップ4：<wbr>log handlerが<wbr>`access_log`の<wbr>前に<wbr>動�
 ```diagram
 agent-proxy-endpoints
 label: development
-caption: v3.0に向けて設計するmodel APIの中継が自分で答えるもの、そのまま通すもの、拒否するものを、リクエストの種類ごとに示します。現在動くか、v3の計画のどのステップで加わるかも示します。
+caption: v3.0に向けて設計するモデルAPIの中継が自分で答えるもの、そのまま通すもの、拒否するものを、リクエストの種類ごとに示します。現在動くか、v3の計画のどのステップで加わるかも示します。
 source: docs/proposals/v3-plan.md 424-447
 source: test/conf/conf.d/60-agent-proxy.conf 93-110
 at: 8d1500bf0 2026-10-29
