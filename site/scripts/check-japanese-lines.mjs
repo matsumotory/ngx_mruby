@@ -41,12 +41,14 @@ import { PC, PHONE, patternsFor } from './lib/patterns.mjs';
 import { GENERATED_REFERENCE, japaneseNoticePages, loadManifest, manifestFile, NOT_TRANSLATED_YET } from './lib/site.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-// The release notes in Japanese, written before step 5 and longer than any
-// other page, still have last lines of one or two characters and table
-// cells with long names that end far from the right edge. Their failures
-// are printed as notes until the pull request of step 5 that rewrites
-// them removes them from this list; every other Japanese page fails.
-const NOTES_ONLY = ['/ja/releases/v2.7.1/', '/ja/releases/v2.7.2/', '/ja/releases/v2.7.3/', '/ja/releases/v3.0.0/'];
+// The release notes in Japanese, longer than any other page, still have
+// last lines of one or two characters and table cells with long names that
+// end far from the right edge. The 2.x notes come from master as released
+// (2.7.4 included), and their heading 「アップグレードの前に読む挙動の変更」
+// takes two lines at 402 px. Their failures are printed as notes until the
+// pull request of step 5 that rewrites them removes them from this list;
+// every other Japanese page fails.
+const NOTES_ONLY = ['/ja/releases/v2.7.1/', '/ja/releases/v2.7.2/', '/ja/releases/v2.7.3/', '/ja/releases/v2.7.4/', '/ja/releases/v3.0.0/'];
 
 function args() {
   const a = process.argv.slice(2);
