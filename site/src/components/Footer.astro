@@ -12,7 +12,6 @@ import Pagination from './Pagination.astro';
 import LanguageLink from './LanguageLink.astro';
 import { GITHUB_URL, strings } from '../site-nav.mjs';
 import { BASE, GITHUB_REF, pageOfRoute } from '../../scripts/lib/site.mjs';
-import { OPENSSF_BADGE } from '../../scripts/lib/project-badges.mjs';
 
 const lang = getSiteRoute(Astro.locals).locale === 'ja' ? 'ja' : 'en';
 const t = strings(lang);
@@ -48,11 +47,6 @@ if (route.entry.filePath && route.entry.filePath.endsWith('index.mdx')) {
       <li><a href={`${p}/security/`}>{t.security}</a></li>
       <li><a href={`${GITHUB_URL}/blob/${GITHUB_REF}/LICENSE`}>MIT</a></li>
       <li><a href={GITHUB_URL}>GitHub</a></li>
-      <li><a class="project-badge" href={OPENSSF_BADGE.href}>
-        <img src={OPENSSF_BADGE.src} alt={OPENSSF_BADGE.alt}
-          width={OPENSSF_BADGE.width} height={OPENSSF_BADGE.height}
-          loading="lazy" decoding="async" referrerpolicy="no-referrer" />
-      </a></li>
     </ul>
   </div>
 </footer>

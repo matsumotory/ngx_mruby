@@ -86,7 +86,8 @@ try {
       for (const route of ['/', '/ja/']) for (const { width, height } of patternsFor(engine.name())) for (const reducedMotion of ['reduce', 'no-preference']) for (const colorScheme of ['light', 'dark']) {
         const context = await browser.newContext({ viewport: { width, height }, colorScheme, reducedMotion,
           ...(engine === chromium ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
-        // The footer badge comes from a local stand-in, never bestpractices.dev.
+        // The project badges above the heading come from local stand-ins,
+        // never from GitHub or bestpractices.dev.
         await serveBadgeFixture(context);
         const page = await context.newPage();
         lastPage = page; lastState = `${engine.name()} ${route} ${width} ${reducedMotion} ${colorScheme}`;
@@ -94,15 +95,11 @@ try {
         await page.evaluate(() => document.fonts.ready);
         // Exclude Pagefind's unrelated lazy initialization from route traffic.
         await page.locator('#site__search .pagefind-ui__search-input').waitFor({ state: 'attached' });
-        // Finish the static footer image (the local stand-in) before observing
-        // the demonstration's traffic. Do not filter any request from the
-        // model/copy assertions.
-        await page.locator('.project-badge').scrollIntoViewIfNeeded();
-        await page.waitForFunction(() => {
-          const image = document.querySelector('.project-badge img');
-          return image.complete && image.naturalWidth > 0;
-        });
-        await page.locator('.project-badge img').evaluate(image => image.decode());
+        // Finish the static badge images above the heading (the local
+        // stand-ins) before observing the demonstration's traffic. Do not
+        // filter any request from the model/copy assertions.
+        await page.waitForFunction(() => [...document.querySelectorAll('.project-badges img')].every(image => image.complete && image.naturalWidth > 0));
+        await page.locator('.project-badges img').evaluateAll(images => Promise.all(images.map(image => image.decode())));
         await page.evaluate(() => scrollTo(0, 0));
         assert.deepEqual(await page.locator('.home-v3 a').evaluateAll(links => links.filter(a => /[→↓]\s*$/.test(a.textContent)).map(a => a.textContent)), [], 'links use layout, not trailing arrows');
         const peerSizes = await page.locator('.flow-title').evaluateAll(headings => headings.map(el => getComputedStyle(el).fontSize));

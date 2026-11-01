@@ -1008,6 +1008,9 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   「ヒーローの見出し、モバイルだとこういう改行で微妙なので2行にしておきたい。シュッと直しといてこれ」,
   then the choices 「文はそのまま、モバイルだけ字を小さく」 and, for the
   読点 after 転送を, 「取る (推奨)」).
+- The row of project badges of 4.10 stands directly above the home page
+  heading, at its left edge and 4 px above it, in both languages; it
+  changes neither the heading's size nor its number of lines.
 - No `text-wrap: pretty` or `balance` anywhere: Safari applies `pretty` to
   every line and Chromium to the last four, so the same CSS wraps
   differently per engine (WebKit blog; MDN). The site’s banner also uses
@@ -1306,18 +1309,37 @@ acceptance; the interaction check covers that separately.
   component serves every page, so that every page reaches the same links:
   the language link, Releases, Security, the license and GitHub. The license
   is labeled MIT and links to the existing `MITL` file of the page's version.
-  The requested OpenSSF Best Practices badge follows these links in this
-  shared footer, in both languages and versions, not in the product hero.
-  Its original external image links to project 16057; do not recolor it or
-  turn its current status into a fixed certification claim. No CI badge is
-  added: the footer already links to GitHub, and a next-only status beside
-  the stable documentation would blur version scope. The footer wraps as a
-  unit at narrow widths; keep the badge's aspect ratio and visible focus.
-  `check-project-badges.mjs` checks the exact link/image/alt on every page and,
-  in a browser, the footer in the two configured patterns in light and dark. The checks before the
-  deploy serve the badge's URL from a local stand-in, so bestpractices.dev
-  cannot hold the publication; `check-live.mjs` fetches the real image after
-  the deploy, with retries.
+  The footer holds text links only, and wraps as a unit at narrow widths.
+- **Project badges.** The four index pages (`/`, `/ja/`, `/v2/` and
+  `/v2/ja/`) show one row of badges directly above the heading, at its left
+  edge: CI (`test.yml`) and CodeQL (`codeql.yml`) of the branch that the
+  page describes, `next` on the 3.x pages and `master` on the 2.x pages,
+  each linking to its workflow's runs on that branch; OpenSSF Best
+  Practices, linking to project 16057; and the license, an SVG of the site
+  in the flat style of the OpenSSF badge, linking to the `MITL` file of
+  that branch. The owner decided on 2026-11-01 that the badges stand above
+  the hero heading and not in the footer:
+  「footerにおいても誰もみないからなぁ、開発プロセスちゃんとやって理という意味では見せるべきな気がするので」.
+  A CI badge shows only the branch that its page describes, so the status
+  of `next` never stands beside the 2.x documentation, nor that of
+  `master` beside the 3.x pages. The row shows the project's state and is
+  not decoration (4.3): the images keep their services' colors, nothing
+  recolors them, no label, frame or icon is added, and no text turns a
+  current status into a fixed certification claim. The badges are 20 px
+  high, with 8 px between them and 4 px, the smallest step of 4.5, between
+  the row and the heading; their links are 24 px high (4.9). Each image has
+  the width and height of its badge and is not lazy-loaded, since it is in
+  the first view, so the heading does not move while the images load or
+  when they fail. The row takes one line at 1440 px and wraps to at most
+  two at 402 px. `check-project-badges.mjs` checks the exact links, images,
+  sizes and alt text of the row on the four pages, the absence of a row on
+  every other page, and a footer of text links; in a browser, in the two
+  configured patterns in light and dark, it checks the size of each badge,
+  the left edge, the 4 px, the number of lines and the keyboard order, and,
+  with the external images refused, that the heading stays where it is.
+  The checks before the deploy serve the external badge URLs from local
+  stand-ins, so GitHub or bestpractices.dev cannot hold the publication;
+  `check-live.mjs` fetches the real images after the deploy, with retries.
 - Check: each page's language link answers 200 with the same path under the
   other prefix; `/` with `Accept-Language: ja` returns English without a
   redirect; in the two configured patterns the header’s items fit on one row without
@@ -1917,6 +1939,12 @@ pull request that a Codex session writes, not several stages: 「今後も分け
 The same day the owner decided that the phone width of the layout checks
 becomes 402px (Safari on an iPhone 17 Pro), in the replacement's pull request:
 「じゃあ402にしよう」, 「キリがないからpcの幅を超えた画面で綺麗に見えたらよくて、あとは402に調整するぐらいの基準で良さそうね」.
+
+On 2026-11-01 the owner decided that the project badges stand in a row
+above the heading of the index pages, not in the footer:
+「footerにおいても誰もみないからなぁ、開発プロセスちゃんとやって理という意味では見せるべきな気がするので」.
+The row holds CI and CodeQL of the branch that the page describes,
+OpenSSF Best Practices and the license (4.10).
 
 On 2026-11-01, step 5 added Japanese sources for Contributing, Development,
 the test guide, the release-note guide, Security and the trust boundary.
