@@ -338,8 +338,8 @@ session asks for it with the release notes ready;
 creates the release and its tag). Pull requests
 merged after it ship in the following release, and the check for that release
 moves their entries to that release's file. If the release is published at a
-later commit instead, the check is repeated for the pull requests merged after the check
-pull request. A release that ships a security fix follows the order in
+later commit instead, the check is repeated for the pull requests merged
+after the check pull request. A release that ships a security fix follows the order in
 "Security fixes" below.
 
 ## The GitHub release
