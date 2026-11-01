@@ -249,10 +249,10 @@ upgrading". New behavior, API cleanups and features go to `next`.
   release, and with it the tag, after the owner, asked by the session,
   has given the go-ahead for that release, once the check of "Before the
   tag" is merged and, for a security fix, the owner has merged the fix
-  from the advisory's private fork (the owner's decision of 2026-11-02). Before a tag, a PR checks
-  the release notes against every PR merged since the previous release (see
-  "Before the tag" in `docs/releases/README.md`), and compares the
-  performance with that release (see "Design principles").
+  from the advisory's private fork (the owner's decision of 2026-11-02).
+  Before a tag, a PR checks the release notes against every PR merged since
+  the previous release (see "Before the tag" in `docs/releases/README.md`),
+  and compares the performance with that release (see "Design principles").
 
 ### Review and merge
 

@@ -1,9 +1,10 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (01:07 JST)
+## State as of 2026-11-02 (01:40 JST)
 
-- Heads: `next` is `04dcd1f1d`, the merge of the `next` form of the fix of
-  GHSA-xjh6-6vgm-56wj from the advisory's private fork; `master` is
+- Heads: `next` is `e6db38ca7`, the merge of
+  [#729](https://github.com/matsumotory/ngx_mruby/pull/729) (the terms of
+  the AI gateway on the site); `master` is
   `e2aeb5ddd`, the merge of the 2.x form of that fix, where the tag `v2.7.4`
   is; `v2.x` mirrors `master`. `next` contains `master` as of the merge
   [#701](https://github.com/matsumotory/ngx_mruby/pull/701).
@@ -46,10 +47,11 @@
   the fix instead, and is recorded in
   [#731](https://github.com/matsumotory/ngx_mruby/pull/731), which adds the
   advisory id to `master`.
+- [#729](https://github.com/matsumotory/ngx_mruby/pull/729) (the terms of
+  the AI gateway on the site) was merged at 01:33 JST; a follow-up pull
+  request finishes the should-fix items of its review.
 - Open: [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (base
   `next`, step 7 of the core stabilization),
-  [#729](https://github.com/matsumotory/ngx_mruby/pull/729) (base `next`, the
-  terms of the AI gateway on the site),
   [#731](https://github.com/matsumotory/ngx_mruby/pull/731) (base `master`)
   and [#732](https://github.com/matsumotory/ngx_mruby/pull/732) (base
   `next`): the advisory id of 2.7.4, and the owner's decision of
