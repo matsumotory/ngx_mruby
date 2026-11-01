@@ -1538,7 +1538,7 @@ On 2.x the timer ended the handler with the rules of the content phase: an acces
 An `mruby_set*` handler that sleeps sets its variable when the code returns, and the request goes on, as described under [mruby_set](../directives/README.md#mruby_set-and-mruby_set_code).
 In a content handler (`mruby_content_handler*`) nginx waits for the handler since 2.7.3: the code after the sleep runs, and the request gets the response that the handler writes or the status that it returns. Up to 2.7.2 the request ended at the sleep without a response (see "Known limitations" in [the 2.7.1 release notes](../releases/v2.7.1.md#known-limitations)).
 A content handler that runs in the location that `Nginx.redirect` runs from Ruby code still ends the request at the sleep, because the handler that called `Nginx.redirect` goes on after the call and may answer the request itself.
-After the sleep, `Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in a content handler.
+After the sleep, a content handler can wait for `Nginx::Async::HTTP.sub_request` as well (since 3.0.0; 2.7.3 raises a `RuntimeError` there).
 In a log handler (`mruby_log_handler`, `mruby_log_handler_code`) and in the
 output filters (`mruby_output_header_filter*`, `mruby_output_body_filter*`),
 nginx cannot resume a handler that waits, so it raises a `RuntimeError` (since 2.7.1; in 2.7.0 a sleep in a log handler could crash the worker, and a sleep in a filter stopped the filter there and sent the response unfiltered).
@@ -1556,9 +1556,10 @@ Nginx::Async.sleep 3000    # Sleep 3000 millisec
 
 ### Nginx::Async::HTTP#sub_request(location, string_or_hash=nil)
 
-Sends a sub request in non-blocking way.
-It's currently supported in the `set`, `rewrite` and `access` handlers.
-In a content handler that has waited in `Nginx::Async.sleep`, it raises a `RuntimeError` (since 2.7.3), because nginx would not finish the request after the subrequest.
+Sends a sub request in non-blocking way, waits for its end, and returns its response, an `Nginx::Async::HTTP::Response` with the same status, headers and body as `Nginx::Async::HTTP.last_response` (since 3.0.0; 2.x returns `nil`).
+It's supported in the set, post_read, server rewrite, rewrite, access and content handlers.
+When the subrequest ends, nginx calls the handler again, which goes on with the code after the call, and the phase of the handler handles its result as for a handler that did not wait, as after [Nginx::Async#sleep](#nginxasyncsleepmsec); the code of the handler runs once.
+A content handler can wait for it also after `Nginx::Async.sleep` (since 3.0.0; 2.7.3 raises a `RuntimeError` there, because nginx would not finish the request after the subrequest).
 Like `Nginx::Async.sleep`, it raises a `RuntimeError` in a log handler and in
 the output filters (since 2.7.1; 2.7.0 started the subrequest there).
 If the handler raises an exception after the call returns, the request gets 500 and the output of `Nginx.rputs` is not sent, unless the response was already started, for example by the location that `Nginx.redirect` ran.
@@ -1566,9 +1567,9 @@ Then the 500 is not sent either.
 This holds since 2.7.1, as for `Nginx::Async.sleep`.
 
 ```ruby
-Nginx::Async::HTTP.sub_request "/example", "q1=foo&q2=bar" # Send a sub request with the parameters
+res = Nginx::Async::HTTP.sub_request "/example", "q1=foo&q2=bar" # Send a sub request with the parameters, and get its response
 
-res = Nginx::Async::HTTP.last_response                     # Get the response of the sub request
+res = Nginx::Async::HTTP.last_response                     # The same response, also on 2.x
 
 Nginx.rputs res.body                                       #=> "hello world"
 Nginx.rputs res.headers                                    #=> {"Date" => "Thu, 29 Nov 2018 07:55:22 GMT", ...}

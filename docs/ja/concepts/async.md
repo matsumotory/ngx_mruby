@@ -21,12 +21,12 @@ resume: nginxが<wbr>ハンドラを<wbr>もう一度<wbr>呼び、<wbr>ハン�
 - ngx_mrubyは、`ngx_mrb_start_fiber`で、各ハンドラのコードをmrubyのファイバーの中で実行します。`Nginx::Async.sleep`は、nginxのタイマーをセットしてファイバーを中断します。ファイバーが中断している間、ハンドラは既に`NGX_DONE`を返していて、ワーカーはほかの接続を処理します。
 - タイマーが切れると、`ngx_mrb_timer_handler`はファイバーを再開できる状態にして、`ngx_http_post_request`でリクエストをnginxに戻します。nginxはハンドラをもう一度呼び、ハンドラはコードを始めずにファイバーを再開します。コードが終わると、ハンドラは待たなかったハンドラと同じように結果をフェーズに返します。結果の無いaccessハンドラの後、nginxは次のaccessハンドラへ進みます。`satisfy any`で403を返すと、nginxは次のaccessハンドラを試します。ファイバーが待っている間、nginxはコードをもう一度実行しません。
 - `mruby_set`のハンドラはrewriteモジュールのスクリプトの中で動くので、nginxはこのハンドラをもう一度呼びません。ngx_mrubyがファイバーを再開し、コードが終わると変数に値を入れ、次のハンドラからフェーズを進めます。
-- `Nginx::Async::HTTP.sub_request`は、nginxのサブリクエストを始めてファイバーを中断します。サブリクエストが終わると、ファイバーが再開します。
-- `mruby_set`とpost-read、server rewrite、rewrite、access、contentのハンドラは待機して再開できます。中断したハンドラは`NGX_DONE`を返し、サブリクエストの処理中は`NGX_AGAIN`を返します。
+- `Nginx::Async::HTTP.sub_request`は、nginxのサブリクエストを始めてファイバーを中断します。サブリクエストが終わると、nginxがリクエストを起こしてハンドラをもう一度呼び、ハンドラがファイバーを再開します。`sub_request`は、そのファイバーにレスポンスを返します。
+- `mruby_set`とpost-read、server rewrite、rewrite、access、contentのハンドラは待機して再開できます。中断したハンドラは`NGX_DONE`を返します。
 - 2.7.3の修正以降、nginxは`Nginx::Async.sleep`で待つcontentハンドラのリクエストを保持します。3.xもこの修正を含みます。コードの応答や戻り値のステータスでリクエストが完了します。2.7.2までは、sleepの時点で応答せずにリクエストが終わりました。
 - Rubyの`Nginx.redirect`から呼ばれたcontentハンドラには、sleep時点で終了する制限が残ります。呼び出し元も処理を続け、その場で応答する場合があります。
-- contentハンドラで`Nginx::Async.sleep`の待機後に`Nginx::Async::HTTP.sub_request`を呼ぶと、例外は`RuntimeError`。
-- `mruby_set`のサブリクエストはリクエストを保持しません。変数の完了を待たず、nginxはcontentフェーズへ進みます。
+- 3.0.0から、contentハンドラは`Nginx::Async.sleep`の後でも`Nginx::Async::HTTP.sub_request`を待てます。2.7.3は、ここで`RuntimeError`を出します。
+- `mruby_set`では、リクエストはサブリクエストを待ってから変数に値を入れます。
 - ヘッダフィルタ、ボディフィルタ、logハンドラでは、両メソッドが`RuntimeError`を起こします。
 - mruby-sleepの`sleep`、mruby-socketのソケット、ファイル、シェルのコマンド、Redisの呼び出しで待つコードは、その間ワーカーをブロックします。詳しくは[信頼境界](../../security/trust-boundary.md)にあります。
 

@@ -774,6 +774,7 @@ each bug fix comes as a test commit and a fix commit.
    [#720](https://github.com/matsumotory/ngx_mruby/pull/720).
 5. HTTP subrequests through the wake (gap 5), `sub_request` returns the
    response, and the content handler waits for a subrequest (gap 4, Q1).
+   Merged in [#722](https://github.com/matsumotory/ngx_mruby/pull/722).
 6. Stream: the wake and the second call of the handler (gap 9, Q4),
    and the end on `c->close` (gap 10).
 7. `Nginx.redirect` as Q2 decided (gap 6).

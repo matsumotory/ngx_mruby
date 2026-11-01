@@ -37,22 +37,24 @@ resume: nginx calls the handler again, which resumes the fiber; when the code en
 - An `mruby_set` handler runs inside the script of the rewrite module, so
   nginx does not call it again: ngx_mruby resumes its fiber, sets the
   variable when the code ends, and runs the phases from the next handler.
-- `Nginx::Async::HTTP.sub_request` starts an nginx subrequest and yields,
-  and the end of the subrequest resumes the fiber.
+- `Nginx::Async::HTTP.sub_request` starts an nginx subrequest and yields.
+  When the subrequest ends, nginx wakes the request, calls the handler
+  again, and the handler resumes the fiber, to which `sub_request` returns
+  the response.
 - `mruby_set` and the post-read, server rewrite, rewrite, access and
   content handlers can wait and resume. A suspended handler returns
-  `NGX_DONE`, or `NGX_AGAIN` while a subrequest continues.
+  `NGX_DONE`.
 - nginx keeps the request of a content handler while `Nginx::Async.sleep`
   waits, since the 2.7.3 changes, which 3.x includes. The response or the
   returned status of the code completes the request. Up to 2.7.2, the
   request ended at the sleep without a response. A content handler reached
   by `Nginx.redirect` from Ruby still ends the request at the sleep: the
   caller continues and can answer the request itself.
-- A content handler cannot call `Nginx::Async::HTTP.sub_request` after
-  it has waited in `Nginx::Async.sleep`; this raises `RuntimeError`.
-  In `mruby_set`, a subrequest does not hold the request: nginx continues
-  to the content phase without waiting for the variable. In header/body
-  filters and the log handler, both async methods raise `RuntimeError`.
+- A content handler can wait for `Nginx::Async::HTTP.sub_request`, also
+  after `Nginx::Async.sleep`, since 3.0.0; 2.7.3 raises `RuntimeError`
+  there. In `mruby_set`, the request waits for the subrequest before the
+  variable is set. In header/body filters and the log handler, both async
+  methods raise `RuntimeError`.
   See [the 2.7.3 behavior changes](../releases/v2.7.3.md) and
   [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec).
 - Code that waits in `sleep` of mruby-sleep, a socket of mruby-socket, a
