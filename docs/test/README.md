@@ -45,8 +45,8 @@ can live in files of its own:
   to 18199; 18116 is taken by the second nginx that
   `test/t/cases/_second_instance.rb` starts, and 18180, 18181 and 18185 by
   the nginx of `test/t/cases/_workers.rb`). Fragments for `stream {}` go
-  to `test/conf/conf.d/stream/` (ports 12353 to 12399; 12357 is taken by the
-  second nginx, and 12379 by the nginx of `_workers.rb`). Write each port as five digits in these ranges, so that
+  to `test/conf/conf.d/stream/` (ports 12353 to 12399; 12357 and 12385 to
+  12388 are taken by the second nginx, and 12379 by the nginx of `_workers.rb`). Write each port as five digits in these ranges, so that
   `TEST_SH_PORT_OFFSET` moves it ("Ports" below).
 - `test/t/cases/<name>.rb`: a test file run after `test/t/ngx_mruby.rb`,
   with `test/t/cases/_prelude.rb` prepended. The prelude defines `base`,
@@ -804,7 +804,7 @@ with 11 CPUs:
 The ports of the suite are the numbers from 12345 to 12399 and from 18080
 to 18199: the `listen` directives of `test/conf/`, the addresses of
 `add_listener`, the second nginx of `test/t/cases/_second_instance.rb`
-(18116 and 12357), the nginx of `test/t/cases/config_hooks.rb` (18158), the
+(18116, 12357, and 12385 to 12388), the nginx of `test/t/cases/config_hooks.rb` (18158), the
 nginx with several workers of `test/t/cases/_workers.rb` (18180, 18181,
 18185, 12379 and 12393, in `test/conf/workers/`), the
 mock LLM upstream of `test/t/cases/_agent_proxy_client.rb` (12372 and

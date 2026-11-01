@@ -790,6 +790,20 @@ resumed:
     ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
                   __func__, __LINE__);
 
+    // While the code waits, a read event of the connection runs the phases,
+    // so that this handler finds the waiting record: the code does not start
+    // again, the bytes from the client stay unread, and the close that
+    // worker_shutdown_timeout asks for ends the wait. On a listen with
+    // proxy_protocol, nginx leaves the reader of the PROXY header as the read
+    // handler, which does not run the phases; ngx_stream_session_handler
+    // takes its place until the code resumes (ngx_stream_mrb_fiber_call_again
+    // puts it back).
+    ctx = ngx_stream_get_module_ctx(s, ngx_stream_mruby_module);
+    if (ctx != NULL && s->connection->read->handler != ngx_stream_session_handler) {
+      ctx->read_handler = s->connection->read->handler;
+      s->connection->read->handler = ngx_stream_session_handler;
+    }
+
     mrb_gc_arena_restore(mrb, ai);
     ictx->s = prev_s;
     return NGX_DONE;
