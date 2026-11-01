@@ -102,6 +102,24 @@ jobs:
         run: |
           echo "site_revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "v2_revision=$(git -C master rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      # The star count of the GitHub link of the header (docs/proposals/
+      # site.md, 4.10), read once before the builds, which fetch nothing:
+      # the builds below read NGX_MRUBY_SITE_STARS and the day of the reading
+      # in NGX_MRUBY_SITE_STARS_DATE. When the API does not answer, the
+      # variables stay unset and the pages show GitHub without a count, so
+      # the API cannot hold the publication.
+      - name: Read the star count of the repository for the header
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if stars=$(gh api "repos/$REPO" --jq .stargazers_count) && [[ "$stars" =~ ^[0-9]+$ ]]; then
+            echo "NGX_MRUBY_SITE_STARS=$stars" >> "$GITHUB_ENV"
+            echo "NGX_MRUBY_SITE_STARS_DATE=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
+            echo "site: $stars stars of $REPO for the header"
+          else
+            echo "::notice::site: no star count of $REPO; the header shows GitHub without a count"
+          fi
       # The Node.js version of site/.node-version. No npm cache: npm ci
       # takes about 20 seconds without one.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

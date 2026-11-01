@@ -1,0 +1,12 @@
+---
+// The star count after "GitHub" in the GitHub link of the header and of the
+// menu (4.10). The count comes from site.yml at build time (githubStars in
+// scripts/lib/project-badges.mjs); without it the link shows "GitHub" only.
+// The star and the short count are hidden from assistive technology, which
+// reads the exact count and the day of the reading instead.
+import { getSiteRoute } from '../route.mjs';
+import { githubStars } from '../../scripts/lib/project-badges.mjs';
+const lang = getSiteRoute(Astro.locals).locale === 'ja' ? 'ja' : 'en';
+const stars = githubStars(lang);
+---
+{stars && <span class="github-stars" data-stars={stars.count} data-stars-date={stars.date} title={stars.title}><svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.5l3.09 6.88 7.41.75-5.56 4.98 1.58 7.39L12 17.77l-6.52 3.73 1.58-7.39L1.5 9.13l7.41-.75z" /></svg><span aria-hidden="true">{stars.short}</span><span class="sr-only">{stars.label}</span></span>}

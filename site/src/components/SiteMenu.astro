@@ -7,6 +7,7 @@ import { getSiteRoute } from '../route.mjs';
 // pages with a sidebar the menu is the sidebar pane, and these
 // items come before the sidebar.
 import Icon from './Icon.astro';
+import GithubStars from './GithubStars.astro';
 import LanguageLink from './LanguageLink.astro';
 import { GITHUB_URL, sectionLinks, strings, versionLink, currentSection } from '../site-nav.mjs';
 
@@ -39,7 +40,7 @@ const version = versionLink(lang);
     <ul>
       <li><a class="site-menu-row" href={version.href}>{version.label}</a></li>
       <li>
-        <a class="site-menu-row github-link" href={GITHUB_URL}><Icon name="github" class="github-mark" />GitHub</a>
+        <a class="site-menu-row github-link" href={GITHUB_URL}><Icon name="github" class="github-mark" />GitHub<GithubStars /></a>
       </li>
     </ul>
   </section>

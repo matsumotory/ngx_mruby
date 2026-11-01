@@ -27,7 +27,7 @@ const T = {
     releases: 'リリース',
     security: 'セキュリティ',
     contributing: '開発に参加する',
-    version: SITE_VERSION === 2 ? '3.xのドキュメント' : '2.xのドキュメント',
+    version: SITE_VERSION === 2 ? '3.x版' : '2.x版',
     language: '言語',
     sections: 'セクション',
     menu: 'メニュー',

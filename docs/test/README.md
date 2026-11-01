@@ -2481,9 +2481,9 @@ The independent browser lanes are:
   both themes, in the two patterns (Chromium 1440px and WebKit 402px), with
   viewport and full-page evidence;
   in full coverage the same lane first runs `check-project-badges.mjs --browser`,
-  the row of project badges above the heading of `/`, `/ja/`, `/v2/` and
-  `/v2/ja/` in the two patterns below, light and dark, and in light with the
-  external images failing.
+  the strip of development practices of `/`, `/ja/`, `/v2/` and `/v2/ja/`
+  and the release badge of the home pages in the two patterns below, light
+  and dark, and in light with the external images failing.
 
 The layout and wrapping checks of the site (`check-styles.mjs`,
 `check-japanese-lines.mjs`) measure two patterns only, PC at full screen
@@ -2493,10 +2493,14 @@ browsers or font combinations are added to the checks. The owner's words
 「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
 `site/scripts/lib/patterns.mjs` holds them.
 
-The badges above the heading of the four index pages (CI and CodeQL of the
-branch that the page describes, from GitHub, and OpenSSF Best Practices, from
-bestpractices.dev) are the only images of the site from other origins; the
-license badge is a file of the site. The read-only browser context
+The badges of the strip of the four index pages (the workflows `test`,
+`nginx-tests`, `valgrind-nightly`, CodeQL and zizmor, from GitHub, and
+OpenSSF Best Practices, from bestpractices.dev) are the only images of the
+site from other origins; the license badge is a file of the site, and the
+release badge of the home pages and the star count of the header are made at
+build time (`site.yml` reads the star count from the GitHub API before the
+builds and passes it in `NGX_MRUBY_SITE_STARS` and
+`NGX_MRUBY_SITE_STARS_DATE`; a build without them shows no count). The read-only browser context
 (`scripts/lib/read-only-browser.mjs`) still allows only same-origin GET
 requests; a caller may name exact image URLs whose GET it answers from a local
 fixture instead of the network. The checks before the deploy
@@ -2504,8 +2508,8 @@ fixture instead of the network. The checks before the deploy
 `screenshots-live.mjs`) and `check-layout-parity.mjs`, when a session runs
 it locally, serve those URLs from the stand-ins of `scripts/lib/project-badges.mjs`, so a slow or failing service
 cannot hold the publication. `check-project-badges.mjs` also loads each index
-page with the external images refused and checks that the heading stays where
-it is. Only `check-live.mjs`, after the deploy, fetches the real images, and
+page with the external images refused and checks that the strip keeps its
+box. Only `check-live.mjs`, after the deploy, fetches the real images, and
 retries each three times before it reports a problem.
 
 The v2 input is fetched independently from `master`, so it is **never assumed
