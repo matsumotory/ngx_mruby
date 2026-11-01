@@ -5,7 +5,10 @@
 # - <end>: value (the code returns "set"), forbidden (Nginx.return 403, and
 #   then the code returns "set"), raise (an exception), sub_request
 #   (Nginx::Async::HTTP.sub_request, which raises in an mruby_set handler)
-#   or to_s_raises (the code returns an object whose to_s raises).
+#   to_s_raises (the code returns an object whose to_s raises), no_to_s (a
+#   BasicObject, which has no to_s), to_s_not_string (an object whose to_s
+#   returns an Integer) or var_set_not_string (Nginx::Var#set with that
+#   object, which raises a TypeError).
 parts = Nginx::Request.new.uri.split("/")
 case parts[-2]
 when "sleep"
@@ -30,6 +33,21 @@ when "to_s_raises"
     raise "raised in to_s"
   end
   o
+when "no_to_s"
+  BasicObject.new
+when "to_s_not_string"
+  o = Object.new
+  def o.to_s
+    1
+  end
+  o
+when "var_set_not_string"
+  o = Object.new
+  def o.to_s
+    1
+  end
+  Nginx::Request.new.var.set "async_set_value", o
+  "set"
 else
   "set"
 end
