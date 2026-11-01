@@ -2082,10 +2082,12 @@ The handoff page stays in English with a Japanese notice (Q2). On these pages, `
 (Noto Sans JP, Chromium and WebKit, 320, 390, 1000 and 1440 px) and
 `check-styles.mjs` (both engines, light and dark) pass. `NOTES_ONLY` holds the
 release-note pages of 2.7.1 to 2.7.4 and 3.0.0. The 2.x pages are `master`'s
-files with the wording of #703 and #716, on `next` since the merge of
-`master` at `0f865ed4a`; in Noto Sans JP at 402 px they still have last lines
-of one or two characters, among them the heading 「アップグレードの前に読む挙動の変更」
-that every release note has.
+files with the wording of #703, on `next` since the merge of `master` at
+`0f865ed4a`; in Noto Sans JP at 402 px they still have last lines of one or
+two characters, among them the heading 「アップグレードの前に読む挙動の変更」
+that every release note has. The 2.x pages leave the list when a pull request
+to `master` rewrites them and a merge of `master` brings them to `next`; the
+3.0.0 page leaves it with the pull request of step 5 that rewrites it.
 
 On 2026-11-01 the owner asked a Codex session to show the uses planned for
 v3 on the home page, apart from what works today, and to describe them in the

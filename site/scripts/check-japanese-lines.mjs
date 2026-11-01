@@ -45,9 +45,10 @@ const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 // last lines of one or two characters and table cells with long names that
 // end far from the right edge. The 2.x notes come from master as released
 // (2.7.4 included), and their heading 「アップグレードの前に読む挙動の変更」
-// takes two lines at 402 px. Their failures are printed as notes until the
-// pull request of step 5 that rewrites them removes them from this list;
-// every other Japanese page fails.
+// takes two lines at 402 px. Their failures are printed as notes until a
+// rewrite takes a page out of this list: for a 2.x page, a pull request to
+// master and the merge of master into next; for 3.0.0, the pull request of
+// step 5. Every other Japanese page fails.
 const NOTES_ONLY = ['/ja/releases/v2.7.1/', '/ja/releases/v2.7.2/', '/ja/releases/v2.7.3/', '/ja/releases/v2.7.4/', '/ja/releases/v3.0.0/'];
 
 function args() {
