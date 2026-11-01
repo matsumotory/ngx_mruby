@@ -10,7 +10,7 @@
     "build": "node scripts/sync-docs.mjs && ASTRO_TELEMETRY_DISABLED=1 astro build --force && node scripts/mark-num-cells.mjs && node scripts/export-docs.mjs",
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "build:v2": "node scripts/build-v2.mjs",
-    "test": "node scripts/test-sync-docs.mjs && node scripts/test-release-state.mjs && node scripts/test-deployment-evidence.mjs && node scripts/test-read-only-policy.mjs && node scripts/test-read-only-lifecycle.mjs",
+    "test": "node scripts/test-sync-docs.mjs && node scripts/test-release-state.mjs && node scripts/test-deployment-evidence.mjs && node scripts/test-read-only-policy.mjs && node scripts/test-read-only-lifecycle.mjs && node scripts/test-parity.mjs && node scripts/test-own-shell.mjs",
     "check": "node scripts/check-built-links.mjs && node scripts/check-project-badges.mjs && node scripts/check-pages.mjs && node scripts/check-japanese.mjs && node scripts/check-no-js.mjs && node scripts/check-css.mjs && node scripts/check-home.mjs && node scripts/check-diagrams.mjs && node scripts/check-samples.mjs && node scripts/check-reference.mjs && node scripts/check-deploy.mjs && node scripts/check-docs-export.mjs",
     "check:live": "node scripts/check-live.mjs",
     "check:v2": "node scripts/check-v2.mjs",
@@ -19,7 +19,8 @@
     "check:japanese-lines": "node scripts/check-japanese-lines.mjs",
     "check:offline": "sh scripts/check-offline-build.sh",
     "check:browser": "node scripts/check-search-identifiers.mjs && node scripts/check-home-interaction.mjs && node scripts/check-code-layout.mjs && node scripts/check-styles.mjs && node scripts/check-japanese-lines.mjs && node scripts/check-focus.mjs && node scripts/check-language-links.mjs && node scripts/check-lighthouse.mjs",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "check:shells": "node scripts/check-shells.mjs"
   },
   "dependencies": {
     "@astrojs/starlight": "0.42.6",
@@ -29,7 +30,13 @@
     "astro": "7.3.8",
     "astro-expressive-code": "0.44.2",
     "postcss": "8.5.31",
-    "satteri": "0.10.5"
+    "satteri": "0.10.5",
+    "@astrojs/mdx": "8.1.0",
+    "@astrojs/sitemap": "3.7.4",
+    "@astrojs/markdown-satteri": "0.4.4",
+    "@pagefind/default-ui": "1.5.2",
+    "pagefind": "1.5.2",
+    "@expressive-code/plugin-frames": "0.44.2"
   },
   "devDependencies": {
     "lighthouse": "13.5.0",

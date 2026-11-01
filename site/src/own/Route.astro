@@ -1,0 +1,21 @@
+---
+import { getCollection, render } from 'astro:content';
+import DocPage from './DocPage.astro';
+import { makeRoute } from './routes.mjs';
+export const prerender = true;
+export async function getStaticPaths() {
+  const entries=(await getCollection('docs')).filter(e=>!e.data.draft).map(e=>({...e,id:e.id==='index'?'':e.id}));
+  const paths=entries.map(entry=>({params:{slug:entry.id||undefined},props:{entry,entries,fallback:false}}));
+  const ids=new Set(entries.map(e=>e.id));
+  for(const entry of entries.filter(e=>!e.id.startsWith('ja/')&&e.id!=='ja')){
+    const id=entry.id?'ja/'+entry.id:'ja';
+    if(!ids.has(id))paths.push({params:{slug:id},props:{entry,entries,fallback:true}});
+  }
+  return paths;
+}
+const {entry,entries,fallback}=Astro.props;
+const rendered=await render(entry);
+const {Content}=rendered;
+Astro.locals.siteRoute=makeRoute(Astro,entry,entries,rendered.headings,fallback);
+---
+<DocPage><Content frontmatter={entry.data}/></DocPage>

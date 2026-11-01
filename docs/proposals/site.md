@@ -1676,8 +1676,19 @@ checks of `site/scripts/`, `tokens.css` and the design of section 4, the
 fonts, `mark-num-cells.mjs` and `export-docs.mjs`, the workflows and the
 deployment of 5.3, and the route of every page.
 
+**Final mobile pattern (owner decision, 2026-11-01).** The first layer
+compares against the existing 390px WebKit pattern. At the end of the
+rebuild, change only `PHONE.width` in `site/scripts/lib/patterns.mjs` to
+402px, the owner's iPhone 17 Pro Safari width. Keep 1440px Chromium.
+The owner's words: 「組み直しの最後に、iPhone のパターンの幅を 390px から 402px (本人の iPhone 17 Pro の Safari の幅) に合わせる。」
+If many one- or two-character last lines appear at 402px, adjust the font
+size and characters per line first, then only the remaining fine cases by
+a few characters of wording. Do not mechanically rewrite prose for the
+checker or add more width/browser combinations. This last-stage change is
+not part of the layer-1 parity baseline.
+
 **Order.** After step 5. [#708](https://github.com/matsumotory/ngx_mruby/pull/708)
-(Codex, the first layer of the site's own components) reaches `next` first.
+(Codex, the first layer of the site's own components) is merged into `next`.
 The rest is one pull request from a Codex session, not split into stages
 (the owner's decision of 2026-11-01, section 7). It contains:
 
@@ -1822,6 +1833,19 @@ step 7 can come before rc.1, with 3.x pages under the banner of 3.4.
 After step 5, a Codex session moves the site from Starlight to Astro alone
 and components of the repository's own, as 5.4 describes (the owner's
 decision of 2026-11-01, section 7); 5.4 has its order and its acceptance.
+
+Layer 1 of 5.4
+([#708](https://github.com/matsumotory/ngx_mruby/pull/708)) adds the own
+shell beside Starlight, built when `NGX_MRUBY_SITE_SHELL=own` is set;
+Starlight stays the default and the deployed shell. The shared components
+keep the existing class names and cascade layers until the removal layer.
+The copied base rules carry Starlight's MIT notice, with the literal color
+declarations removed in favor of the site's tokens. `check-shells.mjs`
+builds both shells, compares them with `check-parity.mjs`, and restores
+the Starlight build. The pull request records the acceptance of 5.4 for
+this layer: the static parity, the browser checks, the layout boxes and
+computed styles in the two patterns, the search results, and the offline
+build.
 
 ## 7. Decisions (2026-10-15)
 

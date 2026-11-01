@@ -1,4 +1,5 @@
 ---
+import { getSiteRoute } from '../route.mjs';
 // The footer of every page (4.10): Starlight's last-updated date and the
 // previous and next links of documentation pages, then the site's footer
 // with a 1 px top border, 14 px muted text, 48 px above and 32 px below:
@@ -6,14 +7,14 @@
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import LastUpdated from 'virtual:starlight/components/LastUpdated';
-import Pagination from 'virtual:starlight/components/Pagination';
+import LastUpdated from './LastUpdated.astro';
+import Pagination from './Pagination.astro';
 import LanguageLink from './LanguageLink.astro';
 import { GITHUB_URL, strings } from '../site-nav.mjs';
 import { BASE, GITHUB_REF, pageOfRoute } from '../../scripts/lib/site.mjs';
 import { OPENSSF_BADGE } from '../../scripts/lib/project-badges.mjs';
 
-const lang = Astro.locals.starlightRoute.locale === 'ja' ? 'ja' : 'en';
+const lang = getSiteRoute(Astro.locals).locale === 'ja' ? 'ja' : 'en';
 const t = strings(lang);
 // The 2.x build (step 6) links to its own Releases and Security pages,
 // and to the license on master.
@@ -22,7 +23,7 @@ const p = `${BASE}${lang === 'ja' ? '/ja' : ''}`;
 // date of the last commit to them, as git log --format=%cs gives it, which
 // is how the generator dates the pages of docs/ (Starlight's own git date
 // is the UTC day, which differs from it in the hours after midnight JST).
-const route = Astro.locals.starlightRoute;
+const route = getSiteRoute(Astro.locals);
 const routePath = Astro.url.pathname.slice(BASE.length).replace(/^\/|\/$/g, '');
 const { page: sourcePage, fallback } = pageOfRoute(JSON.parse(fs.readFileSync(path.join(process.cwd(), 'generated/pages.json'), 'utf8')), routePath);
 const markdown = sourcePage && !sourcePage.home ? `${BASE}/markdown/${sourcePage.route || 'index'}.md` : null;

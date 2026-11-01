@@ -1,0 +1,176 @@
+/* Adapted from Starlight 0.42.6, MIT; see ../STARLIGHT-LICENSE. */
+@media print {
+	:root {
+		/* Colours — force light mode when printing */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		--sl-color-text-accent: var(--sl-color-accent);
+		--sl-color-text-invert: var(--sl-color-black);
+		--sl-color-bg-nav: var(--sl-color-gray-7);
+		--sl-color-bg-sidebar: var(--sl-color-bg);
+		--sl-color-bg-inline-code: var(--sl-color-gray-6);
+		--sl-color-bg-accent: var(--sl-color-accent);
+		--sl-color-hairline-light: var(--sl-color-gray-6);
+		--sl-color-hairline-shade: var(--sl-color-gray-6);
+
+
+
+		/* Disable shadows when printing. */
+		--sl-shadow-sm: none;
+		--sl-shadow-md: none;
+		--sl-shadow-lg: none;
+	}
+
+	/* Utility classes for controlling element visibility when printing. */
+	.print\:hidden {
+		display: none;
+	}
+	.print\:flex {
+		display: flex;
+	}
+	.print\:block {
+		display: block;
+	}
+
+	/* Page layout tweaks. */
+	main {
+		padding-bottom: 0;
+	}
+	main > .content-panel {
+		padding-block-start: 0;
+	}
+	.content-panel + .content-panel {
+		border: 0;
+	}
+	/* components/PageFrame.astro */
+	.page > header {
+		position: relative;
+	}
+	.page > .main-frame {
+		padding-top: 0;
+		padding-inline-start: 0;
+	}
+	/* components/TwoColumnContent.astro */
+	.main-pane {
+		--sl-sidebar-width: 0px;
+		--sl-content-width: 100%;
+	}
+	/* components/Banner.astro */
+	.sl-banner {
+		--sl-color-banner-text: var(--sl-color-white);
+		background-color: transparent;
+	}
+
+	/* components/MarkdownContent.astro */
+	.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) {
+		break-after: avoid;
+	}
+	.sl-markdown-content :is(p, li) {
+		orphans: 2;
+		widows: 2;
+	}
+	.sl-markdown-content pre {
+		overflow-x: hidden;
+		white-space: pre-wrap;
+	}
+	.sl-markdown-content .expressive-code,
+	.sl-markdown-content figure,
+	.sl-markdown-content pre {
+		break-inside: avoid;
+	}
+	.expressive-code .frame.is-terminal .header::before {
+		/* Ensure terminal frame dots are visible even if backgrounds are disabled. */
+		box-shadow: inset 99rem 99rem var(--sl-color-gray-5);
+	}
+	.expressive-code .frame.has-title:not(.is-terminal) .header {
+		/* Divide title bar and code without relying on background colors. */
+		background: transparent;
+		border-bottom: 1px solid var(--sl-color-gray-6);
+	}
+	.expressive-code .frame.has-title:not(.is-terminal) .title {
+		/* Hide title tab background color. */
+		background: transparent;
+	}
+	.expressive-code .frame.has-title:not(.is-terminal) .title::after {
+		/* Remove title tab highlight. */
+		border-top: 0;
+	}
+	.expressive-code .copy {
+		/* Ensure Expressive Code copy button is hidden when printing from touch devices. */
+		display: none;
+	}
+	/* Inline code */
+	.sl-markdown-content code:not(:where(.not-content *)) {
+		background-color: transparent;
+		padding: 0;
+		margin-block: unset;
+		font-size: 0.9375em;
+	}
+
+	/* user-components/Badge.astro */
+	.sl-badge {
+		background: transparent;
+		color: var(--sl-color-white);
+	}
+
+	/* user-components/FileTree.astro */
+	starlight-file-tree {
+		break-inside: avoid;
+	}
+	starlight-file-tree .highlight {
+		outline: 3px solid var(--sl-color-accent-low);
+		color: var(--sl-color-text);
+		background-color: transparent;
+	}
+
+	/* user-components/Aside.astro */
+	.starlight-aside {
+		break-inside: avoid;
+	}
+
+	/* user-components/LinkButton.astro */
+	.sl-link-button.primary {
+		background: transparent;
+		border-color: var(--sl-color-white);
+		color: var(--sl-color-white);
+	}
+
+	/* user-components/Tabs.astro */
+	starlight-tabs {
+		break-inside: avoid;
+	}
+
+	/* user-components/Steps.astro */
+	.sl-steps > li::after {
+		/* Ensure steps guidelines are visible when background colors are disabled. */
+		box-shadow: inset 99rem 99rem var(--sl-color-hairline-light);
+	}
+}

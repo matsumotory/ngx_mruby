@@ -1,0 +1,41 @@
+---
+// Adapted from Starlight 0.42.6. Copyright Astro contributors. MIT: ./STARLIGHT-LICENSE.
+const Icons = {
+  "right-caret": "<path d=\"m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z\"/>",
+  "magnifier": "<path d=\"M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z\"/>",
+};
+
+interface Props {
+	name: keyof typeof Icons;
+	label?: string;
+	color?: string;
+	size?: string;
+	class?: string;
+}
+
+const { name, label, size = '1em', color } = Astro.props;
+const a11yAttrs = label ? ({ 'aria-label': label } as const) : ({ 'aria-hidden': 'true' } as const);
+---
+
+<svg
+	{...a11yAttrs}
+	class={Astro.props.class}
+	width="16"
+	height="16"
+	viewBox="0 0 24 24"
+	fill="currentColor"
+	set:html={Icons[name]}
+/>
+
+<style define:vars={{ 'sl-icon-color': color, 'sl-icon-size': size }}>
+	@layer starlight.components {
+		svg {
+			color: var(--sl-icon-color);
+			font-size: var(--sl-icon-size, 1em);
+			width: 1em;
+			height: 1em;
+			/* Prevent Firefox from cutting off edges of icons when pinch-zooming. */
+			overflow: visible;
+		}
+	}
+</style>

@@ -1,4 +1,5 @@
 ---
+import { getSiteRoute } from '../route.mjs';
 // The header of 4.10: logo and wordmark, the five section links of 3.2,
 // search, the version link, the language link, the theme toggle and GitHub
 // with a text label. 64 px high on an opaque surface with a 1 px bottom
@@ -6,13 +7,13 @@
 // they fit, and at 640 px and below everything but the logo, the wordmark,
 // search, the theme toggle and the menu button moves into the menu
 // (SiteMenu.astro, PageFrame.astro).
-import { Icon } from '@astrojs/starlight/components';
-import Search from 'virtual:starlight/components/Search';
+import Icon from './Icon.astro';
+import Search from 'virtual:site/Search';
 import LanguageLink from './LanguageLink.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import { GITHUB_URL, sectionLinks, strings, versionLink, currentSection } from '../site-nav.mjs';
 
-const lang = Astro.locals.starlightRoute.locale === 'ja' ? 'ja' : 'en';
+const lang = getSiteRoute(Astro.locals).locale === 'ja' ? 'ja' : 'en';
 const t = strings(lang);
 const current = currentSection(lang, Astro.url.pathname);
 const version = versionLink(lang);

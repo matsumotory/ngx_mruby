@@ -1,7 +1,11 @@
 // Expressive Code's options for Starlight's code blocks
 // (docs/proposals/site.md, 4.6 "Code blocks"). The themes are written from
 // src/styles/tokens.css by scripts/lib/code-themes.mjs.
-import { defineEcConfig } from '@astrojs/starlight/expressive-code';
+import { defineEcConfig } from 'astro-expressive-code';
+import { pluginFramesTexts } from '@expressive-code/plugin-frames';
+import { addClassName } from 'astro-expressive-code/hast';
+const own = process.env.NGX_MRUBY_SITE_SHELL === 'own';
+if (own) pluginFramesTexts.addLocale('ja', { copyButtonTooltip: 'クリップボードにコピー', copyButtonCopied: 'コピーしました！' });
 import { codeThemes } from './scripts/lib/code-themes.mjs';
 
 export default defineEcConfig({
@@ -10,7 +14,11 @@ export default defineEcConfig({
   // the gate for their contrast.
   minSyntaxHighlightingColorContrast: 0,
   // Draw the frame with the --sl-color-* variables of tokens.css.
-  useStarlightUiThemeColors: true,
+  ...(!own ? {useStarlightUiThemeColors:true} : {
+    defaultLocale:'en',cascadeLayer:'starlight.components',
+    getBlockLocale:({file}) => (file.path || file.url?.pathname || '').includes('/ja/') ? 'ja' : 'en',
+    plugins:[{name:'Site block classes',hooks:{postprocessRenderedBlock:({renderData})=>addClassName(renderData.blockAst,'not-content')}}],
+  }),
   // No terminal window (4.3 item 1): every block is a code frame,
   // and a title such as nginx.conf is one flat row of text.
   // Wrapping is display-only: copy retains the exact unwrapped source.
@@ -22,6 +30,7 @@ export default defineEcConfig({
     theme.type === 'dark' ? "[data-theme='dark'][data-theme-script]" : "[data-theme='light']",
   useDarkModeMediaQuery: true,
   styleOverrides: {
+    borderWidth: '1px',
     borderColor: 'var(--color-border)',
     borderRadius: 'var(--radius-code)',
     codeBackground: 'var(--color-bg-tertiary)',
@@ -60,6 +69,7 @@ export default defineEcConfig({
       tooltipSuccessForeground: 'var(--color-bg-primary)',
     },
     textMarkers: {
+      lineDiffIndicatorMarginLeft:'0.25rem',defaultChroma:'45',backgroundOpacity:'60%',
       markBackground: 'var(--color-border)',
       markBorderColor: 'var(--color-border-strong)',
     },

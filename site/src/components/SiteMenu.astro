@@ -1,15 +1,16 @@
 ---
+import { getSiteRoute } from '../route.mjs';
 // The site's items in the menu (4.10, "Narrow screens"): at 640 px and
 // below, the language link first under the heading "Language", then the
 // section links, the version link and GitHub; between 641 px and the width
 // where the header holds the section links, the section links alone. On
 // pages with a sidebar the menu is Starlight's sidebar pane, and these
 // items come before the sidebar.
-import { Icon } from '@astrojs/starlight/components';
+import Icon from './Icon.astro';
 import LanguageLink from './LanguageLink.astro';
 import { GITHUB_URL, sectionLinks, strings, versionLink, currentSection } from '../site-nav.mjs';
 
-const lang = Astro.locals.starlightRoute.locale === 'ja' ? 'ja' : 'en';
+const lang = getSiteRoute(Astro.locals).locale === 'ja' ? 'ja' : 'en';
 const t = strings(lang);
 const current = currentSection(lang, Astro.url.pathname);
 const version = versionLink(lang);

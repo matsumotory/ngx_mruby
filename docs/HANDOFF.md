@@ -1,10 +1,10 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-01 (15:02 JST)
+## State as of 2026-11-01 (15:18 JST)
 
-- Heads: `next` is `78f11b0d3`, the merge of
-  [#710](https://github.com/matsumotory/ngx_mruby/pull/710) (the owner's
-  decisions on the core stabilization proposal); `master` is `6eae5a2df`; `v2.x` mirrors
+- Heads: `next` is `023fe8343`, the merge of
+  [#708](https://github.com/matsumotory/ngx_mruby/pull/708) (the first
+  layer of the site's own shell); `master` is `6eae5a2df`; `v2.x` mirrors
   `master`. `next` contains `master` as of the merge
   [#701](https://github.com/matsumotory/ngx_mruby/pull/701).
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
@@ -17,10 +17,10 @@
   `Nginx::Stream::Connection#upstream_server=`, fixed by `591147b01`,
   entry 9 of [the 2.7.3 release notes](releases/v2.7.3.md)).
   #699 added the two advisory ids to the 2.7.3 release notes.
-- Open: [#708](https://github.com/matsumotory/ngx_mruby/pull/708) (base
-  `next`, Codex's own shell for the site on Astro), taken over by a session
-  on 2026-11-01. The rest of the replacement of Starlight is one pull
-  request from a Codex session (the site row of "Queue").
+- Open: [#711](https://github.com/matsumotory/ngx_mruby/pull/711) (base
+  `next`, this record of the owner's decisions of 2026-11-01). The rest of
+  the replacement of Starlight is one pull request from a Codex session
+  (the site row of "Queue").
 
 ## How to use this file
 
@@ -97,13 +97,15 @@ repository's own components instead of Starlight:
 now Codex and the like can write documentation that fits the design
 themselves). The plan is section 5.4 of
 [docs/proposals/site.md](proposals/site.md)
-([#700](https://github.com/matsumotory/ngx_mruby/pull/700)). Later the same
+([#700](https://github.com/matsumotory/ngx_mruby/pull/700)). Its first
+layer, the site's own shell beside Starlight, is merged in
+[#708](https://github.com/matsumotory/ngx_mruby/pull/708). Later the same
 day the owner decided that work that can be done without splitting is not
 split into stages and is asked of Codex in one request:
 「今後も分けなくてもできるなら無駄に分けず依頼は一回で終わるようにせよ」.
-So after #708 (the first layer of the site's own components), Codex does the rest of the replacement in one
-pull request, and that pull request changes the iPhone width of the layout
-checks to 402px (「じゃあ402にしよう」).
+So Codex does the rest of the replacement in one pull request, and that
+pull request changes the iPhone width of the layout checks to 402px
+(「じゃあ402にしよう」).
 
 On 2026-11-01 the owner decided four things in a session's questions.
 (1) On the CI of a pull request that changes code, the owner asked
@@ -256,7 +258,7 @@ Taken up and still open: none.
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |
 | A rewrite handler that ends without `Nginx.return` (for example `mruby_rewrite_handler_code 'x = 1'` before a content handler, or before nginx's `return 200`) sends no response, and `error.log` has no line at the `error` level: with keep-alive the connection stays open until `keepalive_timeout`, with `Connection: close` it is closed with nothing sent. `ngx_mrb_finalize_rputs` (`src/http/ngx_http_mruby_core.c`; the `rc = NGX_OK` after the log line "rputs_chain is null and return NGX_OK") returns `NGX_OK` when nothing was sent and no status was set, and the rewrite phase of nginx 1.31.6 finalizes the request on `NGX_OK` (`ngx_http_core_rewrite_phase`), where the access phase goes on to the next handler. Found and measured on `next` and `master` while #583 was written and reviewed; no issue tracks it. To do: for v3, a test commit and a fix under the Pillar B row "Redesign response finalization per phase" of the plan, so that the request goes on to the next phase as with `NGX_DECLINED`; for 2.x, the behavior stays (both are the decisions of 2026-10-04), and a line under "Known limitations" in the release notes of the next 2.x release can document it | `next` | v3: waits for the row on step 4 below (the fix belongs to the Pillar B work that step 4 holds until the safety net is done); 2.x: nothing |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
-| Site: steps 1 to 4, 6 and 7 are merged (#591, #607, #614, #617–#623, #626, #629–#632, #653–#657), and the site is deployed from `next`. Step 5, the Japanese pages, is merged (#705 for six pages, #703 for the 2.x release notes on `master`); the handoff page stays English with a notice (the subsection "Japanese pages of the site" of "Work in progress") | `next` for `site/`; `master` for 2.x sources | Still open: the emptying of `NOTES_ONLY` once `master` is merged into `next`; the rest of the replacement of Starlight (5.4 of the site proposal, #700, the owner's decision of 2026-11-01) is one pull request from a Codex session after #708 (the owner passes the request to Codex), and it changes the iPhone width to 402px; the 3.x development banner of 3.4; and the observability and certificate-lookup sample prerequisites of #619. Q9 is done (Discussions on, wiki off, 2026-11-01) |
+| Site: steps 1 to 4, 6 and 7 are merged (#591, #607, #614, #617–#623, #626, #629–#632, #653–#657), and the site is deployed from `next`. Step 5, the Japanese pages, is merged (#705 for six pages, #703 for the 2.x release notes on `master`); the handoff page stays English with a notice, and `NOTES_ONLY` of `check-japanese-lines.mjs` still lists four release notes (the subsection "Japanese pages of the site" of "Work in progress") | `next` for `site/`; `master` for 2.x sources | Still open: the emptying of `NOTES_ONLY` once `master` is merged into `next`; the site on Astro without Starlight (5.4 of the site proposal, #700, the owner's decision of 2026-11-01), whose first layer, the own shell beside Starlight behind `NGX_MRUBY_SITE_SHELL=own`, is merged in #708, and whose rest is one pull request from a Codex session (the owner passes the request to Codex) that also changes the iPhone width to 402px; the 3.x development banner of 3.4; and the observability and certificate-lookup sample prerequisites of #619. Q9 is done (Discussions on, wiki off, 2026-11-01) |
 | nginx-tests with the modules that its skipped files need: a build with the options of `test.sh` and `--with-http_v2_module`, `--with-http_v3_module`, `--with-stream_ssl_module`, `--with-mail` and the other modules that "Results of nginx-tests" in `docs/test/README.md` lists (in the CI run of #602, 189 of the 209 skipped files need a module that `test.sh` does not build), with and without ngx_mruby, in the `nginx-tests` workflow | `next` | Ready to start: #602 is merged |
 | nginx-tests with ngx_mruby code configured: runs that add handlers or filters with code for every request through `TEST_NGINX_GLOBALS_HTTP` (the Pillar E row of the plan), compared with the run without code. The pull request decides which code: a rewrite handler that ends without `Nginx.return` sends no response (the row on it above), so that handler would fail most files for a known reason | `next` | Ready to start: #602 is merged |
 | Test harness rewrite (step 2 of section 6 of the plan; Pillar E): [#635](https://github.com/matsumotory/ngx_mruby/pull/635) (merged, `c4e6ac6cc`) made `test.sh` stop only the nginx that it started, by its pid, with no `killall` or `pkill`, and send SIGTERM again while the single nginx process still runs, because that process can miss a SIGTERM that arrives right before it waits for events (the run at `7926f72`, where nginx stayed in `epoll_wait()` for 20 minutes after it logged the SIGTERM: "Stopping nginx" in `docs/test/README.md` has the cause and the measurements). [#641](https://github.com/matsumotory/ngx_mruby/pull/641) (merged, `be559a017`) added `TEST_SH_PORT_OFFSET`, which moves every port of the suite, so that two checkouts can run `test.sh` at the same time ("Ports" in `docs/test/README.md`). [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added nginx with `master_process on` and several workers, and a reload in the middle of a case: `test/t/cases/_workers.rb` starts such an nginx from `test/conf/workers/`, and `test/t/cases/workers.rb` checks that each of four workers answers from an mrb_state of its own, and that across a SIGHUP the old workers finish an `Nginx::Async.sleep` and an `Nginx::Stream::Async.sleep` in flight while the new configuration answers ("Several workers and reloads" in `docs/test/README.md`). Still to do, in pull requests of their own: requests from CRuby instead of the client built into the test mruby for the other cases, and HTTP/2 and HTTP/3 clients. A should fix of the review of #635 waits for the pull request that next changes `test/build_release.sh`, an input of the `perf` job: its comment still says that `test.sh` kills every running nginx. The readiness wait of #593 is the first part, on `next` since the merge of `master` at `6b27f08da` | `next` | Several workers and reloads: done by [#706](https://github.com/matsumotory/ngx_mruby/pull/706) (decision (3) of 2026-11-01). Requests from CRuby and the HTTP/2 and HTTP/3 clients: ready to start |

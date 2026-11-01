@@ -1,4 +1,5 @@
 ---
+import { getSiteRoute } from '../route.mjs';
 // Starlight's Banner without text-wrap: balance (docs/proposals/site.md,
 // 4.4: no text-wrap: pretty or balance anywhere, because the engines wrap
 // such text differently) and without a shadow (4.3 item 5). The 3.x
@@ -13,8 +14,8 @@ import { releaseState } from '../../scripts/lib/release-state.mjs';
 import { SITE_VERSION, repoDir } from '../../scripts/lib/site.mjs';
 
 const release = SITE_VERSION === 2 ? releaseState(repoDir, 2) : null;
-const { banner } = Astro.locals.starlightRoute.entry.data;
-const ja = Astro.locals.starlightRoute.locale === 'ja';
+const { banner } = getSiteRoute(Astro.locals).entry.data;
+const ja = getSiteRoute(Astro.locals).locale === 'ja';
 ---
 
 {

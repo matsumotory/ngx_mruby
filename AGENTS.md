@@ -625,6 +625,16 @@ with a successful skip.
   (Safari on an iPhone 17 Pro); it changes the value in that file.
 
 
+The first layer of the Astro-only migration is opt-in:
+`NGX_MRUBY_SITE_SHELL=own npm run build` uses the site's route, schema and
+components in `src/own/`; the default build still uses Starlight. Shared
+components read `getSiteRoute()` rather than a shell-specific local.
+`node scripts/check-shells.mjs --v2-tree DIR` builds and statically checks
+both shells with the same 2.x input, compares their HTML semantics, and
+restores the default output even on failure. This is not browser or pixel
+parity evidence. Keep the opt-in flag until the layer's browser acceptance
+in section 5.4 is verified; do not publish the opt-in output.
+
 `site/` (on `next`) builds the ngx.mruby.org site from `docs/` with Astro
 and Starlight (`docs/proposals/site.md`). It needs git with the whole
 history and Node.js at the version in `site/.node-version` (22.23.3), with
