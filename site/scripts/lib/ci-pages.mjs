@@ -1,5 +1,7 @@
-// Optional scope is supplied only by the CI planner. Missing means full coverage;
-// malformed, empty or unavailable routes are errors, never an empty pass.
+// An optional page set for a local run of a browser check: SITE_CI_PAGES
+// holds a JSON array of routes. Missing means full coverage; malformed,
+// empty or unavailable routes are errors, never an empty pass.
+// SITE_CI_VERSION ('2' or '3') limits check-code-layout.mjs to one version.
 import fs from 'node:fs';
 import path from 'node:path';
 export function scopedPages(dist, raw = process.env.SITE_CI_PAGES) {

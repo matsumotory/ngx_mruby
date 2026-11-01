@@ -148,13 +148,16 @@ end. GitHub's documentation defines
 `cancelled()` only as "the workflow was canceled" and does not say
 whether a needed job that reaches its `timeout-minutes` makes it true; if
 it did, `ci-ok` on `!cancelled()` would be skipped, and the skip would
-pass the required check. The `site-ok` job of `site.yml`, which no ruleset
-requires, runs on `!cancelled()`: a cancelled run leaves it cancelled, not
-failed, and `deploy`, which needs it, does not run without its pass.
+pass the required check. `site.yml` runs on pushes to `next` and on
+dispatches only, no ruleset requires its jobs, and its `deploy` job runs
+only when its `build` job passed ([Site CI](#site-ci)).
 
-CI is the final check in a clean environment, not the place where a change
-is first tested: the owner's rule of 2026-10-31, in "Branches and pull
-requests" of [AGENTS.md](../../AGENTS.md). Before marking a pull request
+CI is limited to what cannot run locally, the environments that one
+machine does not have (the cells of the build matrix, the sanitizers,
+valgrind, the callgrind comparison), and to the deploy of the site; it is
+not the place where a change is first tested. These are the owner's rules
+of 2026-10-31 and 2026-11-02, in "Branches and pull requests" of
+[AGENTS.md](../../AGENTS.md). Before marking a pull request
 ready, its author runs the local commands of the checks that the change
 touches, the suite among them when `test/ci/changes.sh` gives `build`
 `standard` or `full` (this file describes them; "Build and test" in AGENTS.md
@@ -165,10 +168,7 @@ change needs (the tables below) and finishes in about fifteen minutes. On
 2026-10-31, a cell of the build matrix took 6 to 14 minutes, and the run of
 `test.yml` with the whole matrix for #678 took 15 minutes from its start to
 its end
-([run 41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773));
-a browser lane of `site.yml` took 3 to 8 minutes, the lanes in parallel,
-and that run 10 minutes
-([run 41191594863](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594863)).
+([run 41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773)).
 A proposal to add a check to CI says whether it can run locally, why CI
 needs it, and how many minutes it adds to the run.
 
@@ -192,9 +192,9 @@ table below.
 |---|---|---|
 | `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below), `soak` and `perf`. `nginx-tests`, `examples`, `site` and `codeql` by their own path filters |
 | `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `soak` when `soak` is `true`; `perf` compares when `perf` is `true` |
-| `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | `site`: the build and the static checks, and the browser lanes when `site/scripts/ci-plan.mjs` selects pages ([Site CI change scope](#site-ci-change-scope)) |
-| `site` | `site/`, `.github/workflows/site.yml` | `site`: the build, the static checks and every browser lane |
-| `examples` | `examples/` | `examples`; `site`: the build and the static checks |
+| `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | No job on `next`: the author runs `npm run check:ci` in `site/` ([Site CI](#site-ci)), and `site.yml` checks the merge on the push to `next`. On `master`, `site-v2` (every ready pull request) |
+| `site` | `site/`, `.github/workflows/site.yml` | No job: as for `docs` |
+| `examples` | `examples/` | `examples`; the site as for `docs` |
 | `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, these two included); `codeql` for `.github/workflows/` and `.github/codeql/` |
 
 The four standard cells build each link mode and each line of nginx
@@ -2418,79 +2418,64 @@ $ diff base.txt head.txt
 The counts are for the whole window; divide by `PERF_N` for one request.
 KCachegrind and QCachegrind open the profiles as well.
 
-## Site CI change scope
+## Site CI
 
-This section covers the browser checks of `.github/workflows/site.yml`;
-`test.yml` is described above.
+`.github/workflows/site.yml` runs on every push to `next` and on
+`workflow_dispatch` (`site-dispatch.yml` of `master` starts it after every
+push to `master`), not on pull requests. The owner decided on 2026-11-02
+that CI is not relied on for what runs locally, with the option
+「PR では流さず、next への push の時だけ (推奨)」 ("not on pull requests,
+only on the push to `next` (recommended)"); "Decisions" of
+[docs/HANDOFF.md](../HANDOFF.md) quotes the owner's words.
 
-### Timing
+| Job | What it does |
+|---|---|
+| `build` | Builds a fresh clone (`check-fresh-clone.sh`), builds it again with network access blocked (`check-offline-build.sh`), builds the 2.x pages from `master` (`build-v2.mjs`), and runs `npm test`, `check_links.py`, the checks of `npm run check`, `contrast.py`, the Ruby blocks with the `mrbc` of the bundled mruby and `check-v2.mjs --no-browser`. It uploads the built site as the artifact `site`, and as `github-pages` only when every step passed |
+| `deploy` | Publishes the artifact `github-pages` to GitHub Pages, on `next` only, after `build` passed |
+| `verify-live` | Reads the deployment back: the artifact's commit and the deployed commit, the branch policy of the environment, the published bytes, the redirect to HTTPS, the kept verification file, Lighthouse on the live home page, and screenshots of the published pages in the two patterns (below) |
 
-Before the split, the site build ran every check in one job:
-[run 41135116891](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116891/job/124345060406)
-took 26m04s, with computed styles 10m56s, homepage/code interaction 4m45s,
-Japanese lines 2m13s, screenshots 2m06s and browser installation 2m02s.
-With the lanes below, [run 41173244320](https://github.com/matsumotory/ngx_mruby/actions/runs/41173244320)
-of `29cf75611` took 17m58s from the start of the build job to the end of
-`site-ok`, including the waits for runners; its longest browser job took 459 s.
-The two runs had other sources and runners, so the difference is not a
-controlled measurement, and the durations of parallel jobs do not add up to
-the wall time. In the same run, `check-styles.mjs` in Chromium took 209.651 s on
-its 25 pages (250 page loads) and 20.101 s on the two installation pages that a
-targeted run would select (20 page loads).
+No job runs a browser on the built site before the deploy. Every browser
+check runs locally instead, in `npm run check:ci` in `site/`
+(`site/scripts/check-ci.sh`), which the author of a pull request that
+changes `docs/`, `site/` or `examples/` runs before marking it ready, and
+quotes under "How was this tested". It runs:
 
-### Browser scope and parallel lanes
+1. the checks of the `build` job, in its order: `npm run build`, the 2.x
+   pages (from `NGX_MRUBY_V2_TREE`, or from a clone of `origin/master` in
+   `site/generated/v2-tree`), `npm test`, `check_links.py` on the
+   Markdown files that git tracks, `npm run check`, `contrast.py`, the
+   Ruby blocks with `mrbc` (from `MRBC` or `mruby/build/host/bin/mrbc`;
+   without one it says that it skipped the check) and `check-v2.mjs
+   --no-browser`;
+2. every browser check on every page, which `npm run check:browser` runs
+   alone on an earlier build: `check-styles.mjs` and
+   `check-japanese-lines.mjs` with `--ja-face noto` in Chromium and
+   WebKit, `check-japanese-lines.mjs` on `/v2/ja/`, `check-copy-idle.mjs`,
+   `check-home-interaction.mjs`, `check-code-layout.mjs` on the 3.x and
+   2.x pages, `check-focus.mjs`, `check-language-links.mjs`,
+   `check-lighthouse.mjs`, `check-project-badges.mjs --browser`,
+   `check-search-identifiers.mjs`, `check-v2.mjs` with the search in
+   Chromium, `test-read-only-browser.mjs`, `screenshots.mjs` and
+   `screenshots-live.mjs --local`.
 
-The site builds and runs every static check once. Browser checks consume that
-same run's `site-validation` artifact (built HTML and generated manifests), not
-a result cached from another commit. The artifact is bound to the exact site
-and v2 source revisions, clean-source metadata, lockfile hash and workflow run.
-A mismatched revision, dirty build, lock, run or artifact digest fails.
+The fresh-clone and offline builds stay in the `build` job; a pull request
+that changes `site/package.json`, `site/package-lock.json` or the build
+scripts runs them locally as well (`sh scripts/check-fresh-clone.sh`,
+`npm run check:offline`). `node scripts/test-site-workflow.mjs`, which
+`npm test` runs, fails when `site.yml` gains a pull request trigger or a
+job other than these three, or when a check of the `build` job or a
+browser check is missing from `check-ci.sh`. `SITE_CI_PAGES` (a JSON array
+of routes) limits `check-styles.mjs`, `check-focus.mjs` and
+`check-code-layout.mjs` to some pages, and `SITE_CI_VERSION` (`2` or `3`)
+`check-code-layout.mjs` to one version, for a quicker local loop; such a
+run is not the evidence of a pull request.
 
-`ci-plan.mjs` uses the range of a pull request (its merge commit against its
-first parent) and the fresh manifest. A push or a `workflow_dispatch`, which
-deploys on `next`, always uses full coverage: a range from the previous push
-would leave unchecked the pages of a push whose run failed or was cancelled.
-In a pull request, existing regular Markdown under `docs/` can use targeted coverage
-when the generator's own satteri parser proves that the title, title removal,
-heading hierarchy/text, code, inline code, HTML and frontmatter contracts did
-not change. Both language routes are checked; on an English fallback page
-under `/ja/` (`GENERATED_REFERENCE` and `NOT_TRANSLATED_YET` of
-`site/scripts/lib/site.mjs`), the Japanese line check measures only the notice,
-as a full run does. This
-allows prose and link changes in real documents without approximating Markdown
-with a regular expression. Changes to those contracts, new/deleted/renamed
-files, MDX, shared CSS/layouts/generators/dependencies/workflows, unknown inputs
-or unavailable evidence use full coverage. A pull request that changes only
-the root AGENTS.md, CLAUDE.md or README.md needs no 3.x page browser checks,
-while all static checks still run.
-
-On a pull request, the build job also reads `test/ci/changes.sh` ([Which
-jobs a run starts](#which-jobs-a-run-starts)) on the merge commit against
-the base, and the six browser lanes and the maintenance lane start only
-when it gives `site` `true` (`site/` or `site.yml` changed), or `docs`
-`true` and the plan above is `full` or `targeted`. A pull request that
-changes `src/`, `test/`, `build_config.rb` or `examples/`, and no file of
-`site/` or `docs/`, runs the build and every static check (the reference,
-sample and home page checks read those files), but no browser. A push or a
-dispatch runs every lane. A draft pull request runs no job of the
-workflow; marking it ready for review starts the run.
-
-The independent browser lanes are:
-
-- Chromium styles and WebKit styles, in separate jobs, each in its pattern
-  (below), with both themes; reduced motion is measured in the Chromium
-  pattern;
-- 3.x homepage interaction and code layout (only the affected page code checks
-  for targeted document edits; the homepage itself is unchanged in that case);
-- Japanese page lines, in both patterns (below);
-- focus, language links and Lighthouse accessibility;
-- full representative screenshots, or every targeted page in both engines,
-  both themes, in the two patterns (Chromium 1440px and WebKit 402px), with
-  viewport and full-page evidence;
-  in full coverage the same lane first runs `check-project-badges.mjs --browser`,
-  the strip of development practices of `/`, `/ja/`, `/v2/` and `/v2/ja/`
-  and the release badge of the home pages in the two patterns below, light
-  and dark, and in light with the external images failing.
+A change of `code` or `tests` in the base can break a check of the site
+that reads `src/`, `test/` or `build_config.rb` (the directive tables, the
+cases, the gems) after the pull request's local run. The run of `site.yml`
+on the push of the merge catches it before it deploys, and the fix is a
+pull request of its own (condition 2 of "Review and merge" in
+[AGENTS.md](../../AGENTS.md)).
 
 The layout and wrapping checks of the site (`check-styles.mjs`,
 `check-japanese-lines.mjs`) measure two patterns only, PC at full screen
@@ -2510,48 +2495,11 @@ builds and passes it in `NGX_MRUBY_SITE_STARS` and
 `NGX_MRUBY_SITE_STARS_DATE`; a build without them shows no count). The read-only browser context
 (`scripts/lib/read-only-browser.mjs`) still allows only same-origin GET
 requests; a caller may name exact image URLs whose GET it answers from a local
-fixture instead of the network. The checks before the deploy
-(`check-project-badges.mjs`, `check-home-interaction.mjs`,
-`screenshots-live.mjs`) and `check-layout-parity.mjs`, when a session runs
-it locally, serve those URLs from the stand-ins of `scripts/lib/project-badges.mjs`, so a slow or failing service
-cannot hold the publication. `check-project-badges.mjs` also loads each index
+fixture instead of the network. The local browser checks of `npm run
+check:ci` (`check-project-badges.mjs`, `check-home-interaction.mjs`,
+`screenshots-live.mjs --local`) and `check-layout-parity.mjs` serve those
+URLs from the stand-ins of `scripts/lib/project-badges.mjs`, so a slow or
+failing service cannot hold them. `check-project-badges.mjs` also loads each index
 page with the external images refused and checks that the strip keeps its
 box. Only `check-live.mjs`, after the deploy, fetches the real images, and
 retries each three times before it reports a problem.
-
-The v2 input is fetched independently from `master`, so it is **never assumed
-unchanged from the next-branch diff**. Maintenance Japanese lines, every v2 code
-surface and both version search indexes remain in a separate lane, which runs
-on every push and dispatch, and on a pull request when the browser lanes run. The same lane also retains the read-only browser fixture and local
-predeploy smoke screenshots from the publication workflow. Homepage copy-idle
-checks remain in full interaction coverage; postdeploy verification is retained.
-The union of full 3.x and full v2 code checks is tested against the former
-single suite. The split into lanes removed no assertion, viewport or engine. Direct script
-invocations without CI scope still run their complete original coverage.
-
-`site-ok` runs with `!cancelled()` (except for a draft) and requires success from
-build, and from the complete browser matrix and the maintenance checks, or
-their skip when the build job decided that the pull request needs no browser
-(`browser` `false`). Any other skip, and a cancelled, missing or failed job,
-fails it and cannot publish. When the run itself is cancelled, `site-ok`
-does not run and GitHub marks it cancelled
-([Required status check](#required-status-check)). `deploy` needs both build and this gate. Scope-none browser
-jobs return an explicit successful no-work result after artifact verification;
-they do not silently bypass a failed dependency. Independent review repeats
-the relevant regression suite, rather than rebuilding every unrelated artifact.
-
-```sh
-cd site
-node scripts/test-ci-scope.mjs
-node scripts/test-ci-browser.mjs
-node scripts/test-ci-integration.mjs
-```
-
-The contract tests include real Git ranges, rename/mode cases, Markdown parsing
-counterexamples, exact version coverage, workflow wiring and stale/dirty/run/
-lock/v2 artifact rejection. A manual `site` dispatch with `measure_scope=true`
-or a PR changing the CI policy/scripts adds a two-page Chromium style comparison
-**after** the full style lane passes,
-using the same build. It cannot replace required full coverage. Each lane writes
-measured script seconds and selected pages to its job summary. Compare actual
-workflow critical paths, not the sum of parallel jobs.

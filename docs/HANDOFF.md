@@ -179,6 +179,25 @@ session that was not kept from the GC, is fixed before the tag
 carried out: 2.7.3 has #698, and the advisory is published. Nothing is
 written elsewhere for them.
 
+On 2026-11-02 (02:50 to 02:58 JST) the owner added to that rule:
+「ciにたよるのはやめてくれ、それが今ボトルネックになってるしコストも時間もかかる、ローカルでテストをしっかり作れてるならciは最低限で良い。環境がたくさんいるような環境網羅的なciはいいけも、ローカルでやってることをciでも過剰でやって時間とコストかけるのはグローバルルールとしても辞めたい」
+(stop relying on CI, which is now the bottleneck and costs money and time;
+when the local tests are thorough, CI is the minimum; CI that covers many
+environments is fine, but repeating in CI what runs locally is to stop),
+and chose, in a session's question, the option
+「PR では流さず、next への push の時だけ (推奨)」: pull requests do not run
+`site.yml`; the push to `next` runs its build, deploy and check of the
+published site, without the browser lanes, which the local
+`npm run check:ci` replaces; when the base moves, CI runs again only when
+`code` or `tests` changed in both the pull request and the base; the
+build matrix, the sanitizers, valgrind and `perf` of `test.yml` stay,
+since they cover environments. #PRNUM writes it into AGENTS.md
+("Branches and pull requests", condition 2 of "Review and merge", "Build
+and test"), `docs/test/README.md` ("Site CI") and the site proposal on
+`next`; a pull request to `master`, not opened yet, is to take `site-v2.yml` off pull requests
+and updates the comment of `test/ci/changes.sh`, which is the same on both
+branches.
+
 On 2026-10-31 the owner set a rule for CI:
 「ciはあくまで綺麗な環境での最終チェックであってテストはローカルできっちりやること、ciに過剰なテストを詰め込み過ぎて何十分もかかるようにしないこと」
 (CI is only the final check in a clean environment, and the tests are done
