@@ -8,13 +8,11 @@
 # Config: test/conf/conf.d/82-async-resume-result.conf (ports 18176, 18177
 # and 18178) and test/html/async_resume_result.rb.
 #
-# Access, post_read and content handlers have every end. Under satisfy any,
-# a 403 lets nginx try the next access handler (allow all in
-# /access_any_allow/), and an access handler that goes on is followed by
-# auth_request in /access_auth/. Rewrite and server rewrite handlers list only
-# the ends that are already the same with and without a wait; the proposal
-# docs/proposals/core-stabilization.md (section 8) adds the others with the
-# changes that make them the same.
+# Every handler has every end. Under satisfy any, a 403 lets nginx try the
+# next access handler (allow all in /access_any_allow/), and an access
+# handler that goes on is followed by auth_request in /access_auth/. A
+# rewrite or server rewrite handler without a result, or with Nginx::OK, goes
+# on to the next phase handler.
 
 t = SimpleTest.new "ngx_mruby test: a handler ends in the same way with or without a wait"
 
@@ -61,13 +59,13 @@ ASYNC_RESUME_WAITS = {
 
 # [port, location, handler, the ends, the waits, the path of the next request]
 [
-  [18176, 'rewrite', 'a rewrite handler', %w[declined forbidden output raise], %w[nowait sleep sub_request], '/plain/x'],
+  [18176, 'rewrite', 'a rewrite handler', %w[none declined ok forbidden output raise], %w[nowait sleep sub_request], '/plain/x'],
   [18176, 'access_all', 'an access handler under satisfy all', %w[none declined ok forbidden output raise], %w[nowait sleep], '/plain/x'],
   [18176, 'access_any', 'an access handler under satisfy any', %w[none declined ok forbidden output raise], %w[nowait sleep], '/plain/x'],
   [18176, 'access_any_allow', 'an access handler under satisfy any before allow all', %w[none declined ok forbidden output raise], %w[nowait sleep], '/plain/x'],
   [18176, 'access_auth', 'an access handler before auth_request', %w[none declined ok forbidden output raise], %w[nowait sleep], '/plain/x'],
   [18176, 'content', 'a content handler', %w[none declined ok forbidden output raise], %w[nowait sleep], '/plain/x'],
-  [18177, 'server_rewrite', 'a server rewrite handler', %w[declined forbidden output raise], %w[nowait sleep sub_request], '/x/nowait/declined'],
+  [18177, 'server_rewrite', 'a server rewrite handler', %w[none declined ok forbidden output raise], %w[nowait sleep sub_request], '/x/nowait/declined'],
   [18178, 'post_read', 'a post_read handler', %w[none declined ok forbidden output raise], %w[nowait sleep], '/x/nowait/declined'],
 ].each do |port, location, handler, ends, waits, next_path|
   ends.each do |ending|
