@@ -1120,10 +1120,12 @@ resumed:
      * there does not keep the request, so the request ends at the sleep, as
      * before. The same holds when the module context is no longer the one the
      * handler started with (an internal redirect cleared it). Such a handler
-     * returns NGX_AGAIN while its subrequest runs, as before.
+     * returns NGX_AGAIN while its subrequest runs, as before, and so does an
+     * mruby_set handler, whose subrequest step 8 of section 8 makes raise
+     * (Q5): nginx does not wait for it there.
      */
-    if ((ctx->async_sleep_pending || ctx->sub_response_more) && state->mrb->jmp == NULL &&
-        ngx_http_get_module_ctx(r, ngx_http_mruby_module) == ctx && record != NULL) {
+    if ((ctx->async_sleep_pending || (ctx->sub_response_more && kind != NGX_HTTP_MRUBY_HANDLER_SET)) &&
+        state->mrb->jmp == NULL && ngx_http_get_module_ctx(r, ngx_http_mruby_module) == ctx && record != NULL) {
       ngx_http_mrb_fiber_wait_on_nginx(r, ctx, record);
       return NGX_DONE;
     }

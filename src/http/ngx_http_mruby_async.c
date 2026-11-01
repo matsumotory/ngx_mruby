@@ -80,7 +80,19 @@ struct ngx_http_mrb_fiber_s {
   ngx_mrb_reentrant_t sleep;
   ngx_http_posted_request_t *posted;
   ngx_int_t result;
+  // the Nginx::Async::HTTP::Response that sub_request returned, kept in
+  // response_slot of the GC root holder until the fiber ends, so that
+  // Nginx::Async::HTTP.last_response returns the same object (4.7 of the
+  // proposal)
+  mrb_value response;
+  mrb_int response_slot;
 };
+
+// The data of ngx_mrb_async_http_response_body
+typedef struct {
+  ngx_http_mruby_ctx_t *ctx;
+  ngx_http_mrb_fiber_t *record;
+} ngx_mrb_async_http_response_t;
 
 /*
  * The record whose fiber runs now, set by ngx_mrb_run_fiber for the time the
@@ -152,8 +164,19 @@ static ngx_http_request_t *ngx_mrb_async_request(mrb_state *mrb, const char *met
 // nginx runs when it terminates the request and before it frees the request
 // pool. It deletes a pending timer, so that the timer never fires on a freed
 // pool, and frees the slot of a fiber that still waits.
+// Frees the slot of the response that sub_request returned, once
+static void ngx_http_mrb_fiber_drop_response(ngx_http_mrb_fiber_t *f)
+{
+  if (f->response_slot != NGX_MRB_GC_ROOTS_NONE) {
+    ngx_mrb_gc_roots_remove(f->base.mrb, f->response_slot);
+    f->response_slot = NGX_MRB_GC_ROOTS_NONE;
+    f->response = mrb_nil_value();
+  }
+}
+
 static void ngx_http_mrb_fiber_owner_cleanup(void *data)
 {
+  ngx_http_mrb_fiber_drop_response(data);
   ngx_mrb_fiber_cancel(data);
 }
 
@@ -242,6 +265,8 @@ ngx_mrb_fiber_outcome_t ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mr
   ngx_mrb_fiber_init(&f->base, mrb, NGX_MRB_FIBER_HTTP);
   f->kind = kind;
   f->sleep.r = r;
+  f->response = mrb_nil_value();
+  f->response_slot = NGX_MRB_GC_ROOTS_NONE;
   *record = f;
 
   // The RProc of the code is prepared once, when the code is compiled
@@ -273,6 +298,7 @@ static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fibe
   mrb_value arg;
   const mrb_value *argp;
   mrb_bool raised = FALSE;
+  ngx_mrb_async_http_response_t response;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->fiber_proc = fiber_proc;
@@ -291,7 +317,10 @@ static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fibe
   argp = NULL;
   if (f->has_response) {
     f->has_response = 0;
-    arg = mrb_protect_error(mrb, ngx_mrb_async_http_response_body, ctx, &raised);
+    ngx_http_mrb_fiber_drop_response(f);
+    response.ctx = ctx;
+    response.record = f;
+    arg = mrb_protect_error(mrb, ngx_mrb_async_http_response_body, &response, &raised);
     if (raised) {
       ngx_mrb_raise_error(mrb, arg, r);
       mrb->exc = NULL;
@@ -307,6 +336,10 @@ static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fibe
   outcome = ngx_mrb_fiber_resume(&f->base, argp, &handler_result, ngx_http_mrb_fiber_log_raise, &log);
   ngx_http_mrb_running = prev;
   ctx->handler_kind = log.outer_kind;
+
+  if (outcome != NGX_MRB_FIBER_WAITS) {
+    ngx_http_mrb_fiber_drop_response(f);
+  }
 
   if (outcome == NGX_MRB_FIBER_REFUSED) {
     // the record has ended: the handler ends as after an exception, with 500
@@ -503,7 +536,9 @@ static void ngx_http_mrb_resume_set(ngx_http_request_t *r, ngx_http_mruby_ctx_t 
   outcome = ngx_mrb_run_fiber(mrb, &f->base.fiber, &value);
 
   if (outcome == NGX_MRB_FIBER_WAITS) {
-    if (ctx->async_sleep_pending || ctx->sub_response_more) {
+    // a subrequest of an mruby_set handler stays on the old path until
+    // step 8 (see ngx_mrb_run_request)
+    if (ctx->async_sleep_pending) {
       ngx_http_mrb_fiber_wait_on_nginx(r, ctx, f);
     }
     rc = NGX_DONE;
@@ -556,10 +591,11 @@ static void ngx_http_mrb_wait_handler(ngx_http_request_t *r)
 
   if (f == NULL || f->base.state != NGX_MRB_FIBER_READY) {
     // An mruby_set handler that called Nginx::Async::HTTP.sub_request after
-    // its sleep waits for the subrequest without a record here (its end is
-    // the old path of ngx_mrb_post_fiber), and nginx runs this handler when
-    // the subrequest ends: the request ends with 500 instead of running the
-    // code of the mruby_set again. Step 8 of section 8 of
+    // its sleep waits for the subrequest without a record here (an
+    // mruby_set waits for a subrequest on the old path of
+    // ngx_mrb_post_fiber), and nginx runs this handler when the subrequest
+    // ends: the request ends with 500 instead of running the code of the
+    // mruby_set again. Step 8 of section 8 of
     // docs/proposals/core-stabilization.md makes sub_request raise there.
     // Otherwise nothing but the handler's call clears the record while this
     // handler is set, and nginx does not call the write event handler of a
@@ -971,10 +1007,22 @@ static mrb_value ngx_mrb_async_http_response_new(mrb_state *mrb, ngx_http_mruby_
 }
 
 // For mrb_protect_error: ngx_mrb_run_fiber builds the response outside Ruby
-// code
+// code, and keeps it in a slot of the GC root holder for last_response.
+// ngx_mrb_gc_roots_add() raises when the holder cannot grow.
 static mrb_value ngx_mrb_async_http_response_body(mrb_state *mrb, void *data)
 {
-  return ngx_mrb_async_http_response_new(mrb, data);
+  ngx_mrb_async_http_response_t *response = data;
+  mrb_value obj;
+  mrb_int slot;
+
+  obj = ngx_mrb_async_http_response_new(mrb, response->ctx);
+  slot = ngx_mrb_gc_roots_add(mrb, obj);
+  if (slot != NGX_MRB_GC_ROOTS_NONE) {
+    response->record->response = obj;
+    response->record->response_slot = slot;
+  }
+
+  return obj;
 }
 
 static mrb_value ngx_mrb_async_http_last_response(mrb_state *mrb, mrb_value self)
@@ -984,6 +1032,12 @@ static mrb_value ngx_mrb_async_http_last_response(mrb_state *mrb, mrb_value self
 
   r = ngx_mrb_get_request_or_raise(mrb);
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+
+  // the response that sub_request returned to the fiber that runs now
+  if (ngx_http_mrb_running != NULL && ngx_http_mrb_running->sleep.r == r &&
+      ngx_http_mrb_running->response_slot != NGX_MRB_GC_ROOTS_NONE) {
+    return ngx_http_mrb_running->response;
+  }
 
   return ngx_mrb_async_http_response_new(mrb, ctx);
 }
