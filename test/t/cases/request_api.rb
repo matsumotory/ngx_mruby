@@ -16,6 +16,12 @@ t.assert('request API', 'rewrite handler without output or DECLINED goes on to t
   t.assert_equal 'content ran', body
 end
 
+t.assert('request API', 'a content handler that returns Nginx::DECLINED and then writes output answers with the output') do
+  res = HttpRequest.new.get base(REQUEST_API_PORT) + '/request_api/declined_then_output'
+  t.assert_equal 200, res.code
+  t.assert_equal 'written after the code', res["body"]
+end
+
 t.assert('request API', 'getters on /request_api/getters/') do
   res = HttpRequest.new.get base(REQUEST_API_PORT) + '/request_api/getters/a%20b?q=1'
   t.assert_equal 200, res.code
