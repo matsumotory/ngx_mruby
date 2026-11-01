@@ -6,6 +6,7 @@
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
+import { patternsFor } from './lib/patterns.mjs';
 import { homeColors } from './lib/tokens.mjs';
 
 const site = path.resolve(new URL('..', import.meta.url).pathname);
@@ -16,8 +17,8 @@ try {
   for (const engine of [chromium, webkit]) {
     const browser = await engine.launch();
     try {
-      for (const route of ['/', '/ja/']) for (const theme of ['light', 'dark']) for (const width of [320, 390, 1440]) {
-        const context = await browser.newContext({ viewport: { width, height: width < 640 ? 664 : 900 }, colorScheme: theme, reducedMotion: 'no-preference' });
+      for (const route of ['/', '/ja/']) for (const theme of ['light', 'dark']) for (const { width, height } of patternsFor(engine.name())) {
+        const context = await browser.newContext({ viewport: { width, height }, colorScheme: theme, reducedMotion: 'no-preference' });
         try {
           const page = await context.newPage();
           await page.goto(server.url + route, { waitUntil: 'load' });

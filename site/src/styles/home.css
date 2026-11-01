@@ -7,7 +7,7 @@ html[lang="ja"]:has(.home) h1#_top { max-width: 16em; letter-spacing: -0.03em; }
 .home .lede { margin-top: var(--space-5); max-width: 36rem; color: var(--color-text-muted); }
 .home .actions { gap: var(--space-3); margin-top: var(--space-6); }
 /* Dark red metal with a narrow copper edge; no animated shine or glow. */
-.sl-markdown-content .home .button-primary {
+.site-markdown-content .home .button-primary {
   gap: var(--space-5);
   border-radius: 0;
   background-color: var(--color-button-fill);
@@ -15,11 +15,11 @@ html[lang="ja"]:has(.home) h1#_top { max-width: 16em; letter-spacing: -0.03em; }
   border-color: var(--color-button-edge);
   border-bottom-color: var(--color-button-low);
 }
-.sl-markdown-content .home .button-primary:active {
+.site-markdown-content .home .button-primary:active {
   border-top-color: var(--color-button-low);
   border-bottom-color: var(--color-button-edge);
 }
-.sl-markdown-content .home .button-secondary { border-radius: 0; border-color: var(--color-border-strong); color: var(--color-text-primary); }
+.site-markdown-content .home .button-secondary { border-radius: 0; border-color: var(--color-border-strong); color: var(--color-text-primary); }
 .home .home-version { color: var(--color-text-muted); font-size: var(--text-caption); margin-top: var(--space-5); }
 .home .home-version a { color: var(--color-text-muted); }
 .version-mark { display: inline-block; font-weight: var(--weight-current); color: var(--color-accent-text); margin-right: var(--space-2); }

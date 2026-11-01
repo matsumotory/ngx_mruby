@@ -1,24 +1,25 @@
-// Expressive Code's options for Starlight's code blocks
+// Expressive Code's options for the site's code blocks
 // (docs/proposals/site.md, 4.6 "Code blocks"). The themes are written from
 // src/styles/tokens.css by scripts/lib/code-themes.mjs.
 import { defineEcConfig } from 'astro-expressive-code';
 import { pluginFramesTexts } from '@expressive-code/plugin-frames';
 import { addClassName } from 'astro-expressive-code/hast';
-const own = process.env.NGX_MRUBY_SITE_SHELL === 'own';
-if (own) pluginFramesTexts.addLocale('ja', { copyButtonTooltip: 'クリップボードにコピー', copyButtonCopied: 'コピーしました！' });
+pluginFramesTexts.addLocale('ja', { copyButtonTooltip: 'クリップボードにコピー', copyButtonCopied: 'コピーしました！' });
 import { codeThemes } from './scripts/lib/code-themes.mjs';
+import { applySiteUiThemeColors, createBlockLocale } from './scripts/lib/expressive-code-compat.mjs';
 
 export default defineEcConfig({
   themes: codeThemes(),
   // Keep the colors of the themes as written; scripts/contrast.py is
   // the gate for their contrast.
   minSyntaxHighlightingColorContrast: 0,
-  // Draw the frame with the --sl-color-* variables of tokens.css.
-  ...(!own ? {useStarlightUiThemeColors:true} : {
-    defaultLocale:'en',cascadeLayer:'starlight.components',
-    getBlockLocale:({file}) => (file.path || file.url?.pathname || '').includes('/ja/') ? 'ja' : 'en',
+  // Draw the frame directly from the site tokens.
+  ...{
+    defaultLocale:'en',cascadeLayer:'site.components',
+    customizeTheme: applySiteUiThemeColors,
+    getBlockLocale: createBlockLocale(new URL('./src/content/docs/', import.meta.url)),
     plugins:[{name:'Site block classes',hooks:{postprocessRenderedBlock:({renderData})=>addClassName(renderData.blockAst,'not-content')}}],
-  }),
+  },
   // No terminal window (4.3 item 1): every block is a code frame,
   // and a title such as nginx.conf is one flat row of text.
   // Wrapping is display-only: copy retains the exact unwrapped source.

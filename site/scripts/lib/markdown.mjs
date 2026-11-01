@@ -1,6 +1,6 @@
 // Markdown helpers shared by the generator and the checks of site/scripts.
 // They parse with satteri, the parser that Astro 7 renders Markdown with,
-// and turn on the features that Starlight turns on (GFM, front matter and
+// and turn on the features enabled by the site's Markdown pipeline (GFM, front matter and
 // ::: directives), so that they see the same headings, links and text as
 // the build.
 import { markdownToMdast } from 'satteri';
@@ -20,7 +20,7 @@ export function titleHeading(tree) {
 }
 
 // True when only HTML comments come before the heading. The generator then
-// removes the heading from the body, since Starlight shows the title as the
+// removes the heading from the body, since the page layout shows the title as the
 // h1 of the page. A heading further down stays where it is.
 export function isFirstBlock(tree, heading) {
   for (const node of tree.children) {
@@ -40,8 +40,8 @@ const raw = (node, source) => source.slice(node.position.start.offset, node.posi
 // The text that a reader sees of inline content. An inline HTML tag that
 // HTML renders inline (<wbr>, <code>, <a>) joins the text on both sides, as
 // in the built page; any other tag (<br>) and an image separate it. Text
-// and leaf directives that Starlight does not claim stay as their source
-// text (Starlight's directive restoration): "(14:50 JST)" is text, though
+// and leaf directives that the site's directive plugin does not claim stay as their source
+// text (the site's directive restoration): "(14:50 JST)" is text, though
 // the parser reads ":50" as a directive.
 function inlineText(node, source) {
   switch (node.type) {

@@ -13,7 +13,7 @@ assert.deepEqual(commandsFor(full,'interaction'),[['check-copy-idle.mjs'],['chec
 assert.deepEqual(commandsFor(target,'interaction'),[['check-code-layout.mjs']]);
 assert.deepEqual(commandsFor(target,'japanese'),[['check-japanese-lines.mjs','--pages','/ja/guides/install/']]);
 assert.deepEqual(commandsFor(full,'screenshots'),[['check-project-badges.mjs','--browser'],['screenshots.mjs','--out','build-screenshots']]);
-// The badge's 375px acceptance is covered by check-project-badges --browser,
+// The badge's two-pattern acceptance is covered by check-project-badges --browser,
 // not a new width requirement for the style lanes or existing docs prose.
 assert.deepEqual(commandsFor(full,'japanese'),[['check-japanese-lines.mjs']]);
 assert.deepEqual(commandsFor(target,'styles-chromium'),[['check-styles.mjs','--engine','chromium']]);
@@ -73,10 +73,19 @@ console.log('Maintenance suite receives bound generated manifests as well as HTM
 assert.ok(maintenance.includes('node scripts/test-read-only-browser.mjs'));
 assert.ok(maintenance.includes('node scripts/screenshots-live.mjs --local --out build-screenshots/predeploy-smoke'));
 assert.ok(workflow.includes('  verify-live:'));
+// The live screenshots take both patterns, so the job installs both engines.
+assert.ok(workflow.split('  verify-live:')[1].includes('npx playwright install --with-deps chromium webkit'), 'verify-live installs Chromium and WebKit');
 assert.ok(workflow.includes('node scripts/check-public-deployment.mjs --sha'));
 assert.ok(workflow.includes('node scripts/check-live.mjs --no-gh'));
 assert.ok(workflow.includes('measure_scope: ${{ steps.scope.outputs.measure_scope }}'));
 console.log('Publication regression checks and policy-only measurement wiring: PASS');
 
 assert.ok(workflow.includes('node scripts/check-project-badges.mjs'));
-console.log('Quality badge markup and 375px footer checks remain wired after lane integration: PASS');
+console.log('Quality badge markup and 1440px/402px footer checks remain wired after lane integration: PASS');
+
+// The base/head comparison of the Starlight replacement ran only on that
+// pull request (#713); later content changes are not compared with their base.
+for (const word of ['site-parity', 'astro-final-migration', 'check-shells.mjs', 'check-layout-parity.mjs']) {
+  assert.ok(!workflow.includes(word), `no base/head comparison step is left in site.yml (${word})`);
+}
+console.log('Migration comparison does not block future content PRs: PASS');

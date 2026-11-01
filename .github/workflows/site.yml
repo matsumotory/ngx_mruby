@@ -130,13 +130,6 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/build-v2.mjs --tree "$GITHUB_WORKSPACE/master"
-      # Layer 1 keeps deployment on Starlight. Build the opt-in shell from
-      # this same tree and 2.x revision, compare semantics, then restore
-      # the default output before the deployment artifact is assembled.
-      - name: Compare the opt-in Astro shell with Starlight
-        if: ${{ !cancelled() && steps.v2.outcome == 'success' }}
-        working-directory: ${{ runner.temp }}/fresh/site
-        run: node scripts/check-shells.mjs --v2-tree "$GITHUB_WORKSPACE/master"
       - name: Test the generator fixtures and release-state classification
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
@@ -527,7 +520,9 @@ jobs:
         working-directory: site
         run: |
           npm ci --ignore-scripts
-          npx playwright install --with-deps chromium
+          # screenshots-live.mjs captures both patterns of lib/patterns.mjs:
+          # Chromium at 1440 px and WebKit at 402 px.
+          npx playwright install --with-deps chromium webkit
       - name: Match artifact SHA, deployment SHA and the public deployment policy
         working-directory: site
         env:

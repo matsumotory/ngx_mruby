@@ -19,7 +19,7 @@
 // CONTRIBUTING.md of SOURCE_ROUTES), with docs/README.md as the index /v2/,
 // links to files that the site does not render going to GitHub at master,
 // the base /v2/, the sidebar of the 2.x pages (astro.config.mjs) and the
-// banner of 3.4 on every page (src/components/Banner.astro). Starlight
+// banner of 3.4 on every page (src/components/Banner.astro). Pagefind
 // writes the search index of the 2.x pages into their own build, so 2.x
 // pages search /v2/pagefind/ and 3.x pages /pagefind/, which was written
 // before the 2.x pages were added (3.4: one index per version).

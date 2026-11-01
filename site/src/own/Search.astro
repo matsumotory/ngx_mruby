@@ -1,5 +1,5 @@
 ---
-import Icon from './Icon.astro';
+import Icon from '../components/Icon.astro';
 import { t, strings } from './strings.mjs';
 // Adapted from Starlight 0.42.6. Copyright Astro contributors. MIT: ./STARLIGHT-LICENSE.
 const locale = Astro.locals.siteRoute.locale;
@@ -26,18 +26,18 @@ const dataAttributes: DOMStringMap = { 'data-translations': JSON.stringify(pagef
 		aria-keyshortcuts="Control+K"
 	>
 		<Icon name="magnifier" />
-		<span class="sl-hidden md:sl-block" aria-hidden="true">{t(locale, 'search.label')}</span>
-		<kbd class="sl-hidden md:sl-flex" style="display: none;">
+		<span class="site-hidden md:site-block" aria-hidden="true">{t(locale, 'search.label')}</span>
+		<kbd class="site-hidden md:site-flex" style="display: none;">
 			<kbd>{t(locale, 'search.ctrlKey')}</kbd><kbd>K</kbd>
 		</kbd>
 	</button>
 
 	<dialog style="padding:0" aria-label={t(locale, 'search.label')}>
-		<div class="dialog-frame sl-flex">
+		<div class="dialog-frame site-flex">
 			{
 				/* TODO: Make the layout of this button flexible to accommodate different word lengths. Currently hard-coded for English: “Cancel” */
 			}
-			<button data-close-modal class="sl-flex md:sl-hidden">
+			<button data-close-modal class="site-flex md:site-hidden">
 				{t(locale, 'search.cancelLabel')}
 			</button>
 			{
@@ -47,7 +47,7 @@ const dataAttributes: DOMStringMap = { 'data-translations': JSON.stringify(pagef
 					</div>
 				) : (
 					<div class="search-container">
-						<div id="starlight__search" />
+						<div id="site__search" />
 					</div>
 				)
 			}
@@ -77,6 +77,7 @@ const dataAttributes: DOMStringMap = { 'data-translations': JSON.stringify(pagef
 </script>
 
 <script>
+  import { pagefindOptions } from '../search-config.mjs';
 
 
 	class SiteSearch extends HTMLElement {
@@ -142,11 +143,8 @@ const dataAttributes: DOMStringMap = { 'data-translations': JSON.stringify(pagef
 					// @ts-expect-error — Missing types for @pagefind/default-ui package.
 					const { PagefindUI } = await import('@pagefind/default-ui');
 					new PagefindUI({
-						// Starlight 0.42.6 passes its pagefind defaults to the UI
-						// (PagefindConfigDefaults() in schemas/pagefind.js), and they
-						// order the results; Pagefind's own defaults order them otherwise.
-						ranking: { pageLength: 0.1, termFrequency: 0.1, termSaturation: 2, termSimilarity: 9, diacriticSimilarity: 0.8 },
-						element: '#starlight__search',
+            ...pagefindOptions,
+						element: '#site__search',
 						baseUrl: import.meta.env.BASE_URL,
 						bundlePath: import.meta.env.BASE_URL.replace(/\/$/, '') + '/pagefind/',
 						showImages: false,
@@ -168,7 +166,7 @@ const dataAttributes: DOMStringMap = { 'data-translations': JSON.stringify(pagef
 </script>
 
 <style>
-	@layer starlight.core {
+	@layer site.core {
 		site-search {
 			display: contents;
 		}
@@ -178,27 +176,27 @@ const dataAttributes: DOMStringMap = { 'data-translations': JSON.stringify(pagef
 			gap: 0.5rem;
 			border: 0;
 			background-color: transparent;
-			color: var(--sl-color-gray-1);
+			color: var(--color-text-primary);
 			cursor: pointer;
 			height: 2.5rem;
-			font-size: var(--sl-text-xl);
+			font-size: var(--text-h3);
 		}
 
 		@media (min-width: 50rem) {
 			button[data-open-modal] {
-				border: 1px solid var(--sl-color-gray-5);
+				border: 1px solid var(--color-border);
 				border-radius: 0.5rem;
 				padding-inline-start: 0.75rem;
 				padding-inline-end: 0.5rem;
-				background-color: var(--sl-color-black);
-				color: var(--sl-color-gray-2);
-				font-size: var(--sl-text-sm);
+				background-color: var(--color-bg-primary);
+				color: var(--color-text-primary);
+				font-size: var(--text-caption);
 				width: 100%;
 				max-width: 22rem;
 			}
 			button[data-open-modal]:hover {
-				border-color: var(--sl-color-gray-2);
-				color: var(--sl-color-white);
+				border-color: var(--color-text-primary);
+				color: var(--color-text-primary);
 			}
 
 			button[data-open-modal] > :last-child {
@@ -208,32 +206,32 @@ const dataAttributes: DOMStringMap = { 'data-translations': JSON.stringify(pagef
 
 		button > kbd {
 			border-radius: 0.25rem;
-			font-size: var(--sl-text-2xs);
+			font-size: var(--text-caption);
 			gap: 0.25em;
 			padding-inline: 0.375rem;
-			background-color: var(--sl-color-gray-6);
+			background-color: var(--color-bg-tertiary);
 		}
 
 		kbd {
-			font-family: var(--__sl-font);
+			font-family: var(--site-font-stack);
 		}
 
 		dialog {
 			margin: 0;
-			background-color: var(--sl-color-gray-6);
-			border: 1px solid var(--sl-color-gray-5);
+			background-color: var(--color-bg-tertiary);
+			border: 1px solid var(--color-border);
 			width: 100%;
 			max-width: 100%;
 			height: 100%;
 			max-height: 100%;
-			box-shadow: var(--sl-shadow-lg);
+			box-shadow: none;
 		}
 		dialog[open] {
 			display: flex;
 		}
 
 		dialog::backdrop {
-			background-color: var(--sl-color-backdrop-overlay);
+			background-color: transparent;
 			-webkit-backdrop-filter: blur(0.25rem);
 			backdrop-filter: blur(0.25rem);
 		}
@@ -257,27 +255,27 @@ const dataAttributes: DOMStringMap = { 'data-translations': JSON.stringify(pagef
 			border: 0;
 			background: transparent;
 			cursor: pointer;
-			color: var(--sl-color-text-accent);
+			color: var(--color-accent-text);
 		}
 
-		#starlight__search {
-			--pagefind-ui-primary: var(--sl-color-text);
-			--pagefind-ui-text: var(--sl-color-gray-2);
-			--pagefind-ui-font: var(--__sl-font);
-			--pagefind-ui-background: var(--sl-color-black);
-			--pagefind-ui-border: var(--sl-color-gray-5);
+		#site__search {
+			--pagefind-ui-primary: var(--color-text-primary);
+			--pagefind-ui-text: var(--color-text-primary);
+			--pagefind-ui-font: var(--site-font-stack);
+			--pagefind-ui-background: var(--color-bg-primary);
+			--pagefind-ui-border: var(--color-border);
 			--pagefind-ui-border-width: 1px;
-			--pagefind-ui-tag: var(--sl-color-gray-5);
-			--sl-search-cancel-space: 5rem;
+			--pagefind-ui-tag: var(--color-border);
+			--site-search-cancel-space: 5rem;
 		}
 
-		:root[data-theme='light'] #starlight__search {
-			--pagefind-ui-tag: var(--sl-color-gray-6);
+		:root[data-theme='light'] #site__search {
+			--pagefind-ui-tag: var(--color-bg-tertiary);
 		}
 
 		@media (min-width: 50rem) {
-			#starlight__search {
-				--sl-search-cancel-space: 0px;
+			#site__search {
+				--site-search-cancel-space: 0px;
 			}
 
 			dialog {
@@ -298,162 +296,162 @@ const dataAttributes: DOMStringMap = { 'data-translations': JSON.stringify(pagef
 </style>
 
 <style is:global>
-	@import url('@pagefind/default-ui/css/ui.css') layer(starlight.core);
+	@import url('@pagefind/default-ui/css/ui.css') layer(site.core);
 
-	@layer starlight.core {
+	@layer site.core {
 		[data-search-modal-open] {
 			overflow: hidden;
 		}
 
-		#starlight__search {
-			--sl-search-result-spacing: calc(1.25rem * var(--pagefind-ui-scale));
-			--sl-search-result-pad-inline-start: calc(3.75rem * var(--pagefind-ui-scale));
-			--sl-search-result-pad-inline-end: calc(1.25rem * var(--pagefind-ui-scale));
-			--sl-search-result-pad-block: calc(0.9375rem * var(--pagefind-ui-scale));
-			--sl-search-result-nested-pad-block: calc(0.625rem * var(--pagefind-ui-scale));
-			--sl-search-corners: calc(0.3125rem * var(--pagefind-ui-scale));
-			--sl-search-page-icon-size: calc(1.875rem * var(--pagefind-ui-scale));
-			--sl-search-page-icon-inline-start: calc(
-				(var(--sl-search-result-pad-inline-start) - var(--sl-search-page-icon-size)) / 2
+		#site__search {
+			--site-search-result-spacing: calc(1.25rem * var(--pagefind-ui-scale));
+			--site-search-result-pad-inline-start: calc(3.75rem * var(--pagefind-ui-scale));
+			--site-search-result-pad-inline-end: calc(1.25rem * var(--pagefind-ui-scale));
+			--site-search-result-pad-block: calc(0.9375rem * var(--pagefind-ui-scale));
+			--site-search-result-nested-pad-block: calc(0.625rem * var(--pagefind-ui-scale));
+			--site-search-corners: calc(0.3125rem * var(--pagefind-ui-scale));
+			--site-search-page-icon-size: calc(1.875rem * var(--pagefind-ui-scale));
+			--site-search-page-icon-inline-start: calc(
+				(var(--site-search-result-pad-inline-start) - var(--site-search-page-icon-size)) / 2
 			);
-			--sl-search-tree-diagram-size: calc(2.5rem * var(--pagefind-ui-scale));
-			--sl-search-tree-diagram-inline-start: calc(
-				(var(--sl-search-result-pad-inline-start) - var(--sl-search-tree-diagram-size)) / 2
+			--site-search-tree-diagram-size: calc(2.5rem * var(--pagefind-ui-scale));
+			--site-search-tree-diagram-inline-start: calc(
+				(var(--site-search-result-pad-inline-start) - var(--site-search-tree-diagram-size)) / 2
 			);
 		}
 
-		#starlight__search .pagefind-ui__form::before {
-			--pagefind-ui-text: var(--sl-color-gray-1);
+		#site__search .pagefind-ui__form::before {
+			--pagefind-ui-text: var(--color-text-primary);
 			opacity: 1;
 		}
 
-		#starlight__search .pagefind-ui__search-input {
-			color: var(--sl-color-white);
+		#site__search .pagefind-ui__search-input {
+			color: var(--color-text-primary);
 			font-weight: 400;
-			width: calc(100% - var(--sl-search-cancel-space));
+			width: calc(100% - var(--site-search-cancel-space));
 		}
 
-		#starlight__search input:focus {
-			--pagefind-ui-border: var(--sl-color-accent);
+		#site__search input:focus {
+			--pagefind-ui-border: var(--color-accent);
 		}
 
-		#starlight__search .pagefind-ui__search-clear {
-			inset-inline-end: var(--sl-search-cancel-space);
+		#site__search .pagefind-ui__search-clear {
+			inset-inline-end: var(--site-search-cancel-space);
 			width: calc(60px * var(--pagefind-ui-scale));
 			padding: 0;
 			background-color: transparent;
 			overflow: hidden;
 		}
-		#starlight__search .pagefind-ui__search-clear:focus {
-			outline: 1px solid var(--sl-color-accent);
+		#site__search .pagefind-ui__search-clear:focus {
+			outline: 1px solid var(--color-accent);
 		}
-		#starlight__search .pagefind-ui__search-clear::before {
+		#site__search .pagefind-ui__search-clear::before {
 			content: '';
 			-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m13.41 12 6.3-6.29a1 1 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1 1 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 .33 1.64 1 1 0 0 0 1.09-.22l6.29-6.3 6.29 6.3a1 1 0 0 0 1.64-.33 1 1 0 0 0-.22-1.09L13.41 12Z'/%3E%3C/svg%3E")
 				center / 50% no-repeat;
 			mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m13.41 12 6.3-6.29a1 1 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1 1 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 .33 1.64 1 1 0 0 0 1.09-.22l6.29-6.3 6.29 6.3a1 1 0 0 0 1.64-.33 1 1 0 0 0-.22-1.09L13.41 12Z'/%3E%3C/svg%3E")
 				center / 50% no-repeat;
-			background-color: var(--sl-color-text-accent);
+			background-color: var(--color-accent-text);
 			display: block;
 			width: 100%;
 			height: 100%;
 		}
 
-		#starlight__search .pagefind-ui__results > * + * {
-			margin-top: var(--sl-search-result-spacing);
+		#site__search .pagefind-ui__results > * + * {
+			margin-top: var(--site-search-result-spacing);
 		}
-		#starlight__search .pagefind-ui__result {
+		#site__search .pagefind-ui__result {
 			border: 0;
 			padding: 0;
 		}
 
-		#starlight__search .pagefind-ui__result-nested {
+		#site__search .pagefind-ui__result-nested {
 			position: relative;
-			padding: var(--sl-search-result-nested-pad-block) var(--sl-search-result-pad-inline-end);
-			padding-inline-start: var(--sl-search-result-pad-inline-start);
+			padding: var(--site-search-result-nested-pad-block) var(--site-search-result-pad-inline-end);
+			padding-inline-start: var(--site-search-result-pad-inline-start);
 		}
 
-		#starlight__search .pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)),
-		#starlight__search .pagefind-ui__result-nested {
+		#site__search .pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)),
+		#site__search .pagefind-ui__result-nested {
 			position: relative;
-			background-color: var(--sl-color-black);
+			background-color: var(--color-bg-primary);
 		}
 
-		#starlight__search .pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)):hover,
-		#starlight__search
+		#site__search .pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)):hover,
+		#site__search
 			.pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)):focus-within,
-		#starlight__search .pagefind-ui__result-nested:hover,
-		#starlight__search .pagefind-ui__result-nested:focus-within {
-			outline: 1px solid var(--sl-color-accent-high);
+		#site__search .pagefind-ui__result-nested:hover,
+		#site__search .pagefind-ui__result-nested:focus-within {
+			outline: 1px solid var(--color-accent-text);
 		}
 
-		#starlight__search
+		#site__search
 			.pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)):focus-within,
-		#starlight__search .pagefind-ui__result-nested:focus-within {
-			background-color: var(--sl-color-accent-low);
+		#site__search .pagefind-ui__result-nested:focus-within {
+			background-color: var(--color-bg-primary);
 		}
 
-		#starlight__search .pagefind-ui__result-thumb,
-		#starlight__search .pagefind-ui__result-inner {
+		#site__search .pagefind-ui__result-thumb,
+		#site__search .pagefind-ui__result-inner {
 			margin-top: 0;
 		}
 
-		#starlight__search .pagefind-ui__result-inner > :first-child {
-			border-radius: var(--sl-search-corners) var(--sl-search-corners) 0 0;
+		#site__search .pagefind-ui__result-inner > :first-child {
+			border-radius: var(--site-search-corners) var(--site-search-corners) 0 0;
 		}
-		#starlight__search .pagefind-ui__result-inner > :last-child {
-			border-radius: 0 0 var(--sl-search-corners) var(--sl-search-corners);
+		#site__search .pagefind-ui__result-inner > :last-child {
+			border-radius: 0 0 var(--site-search-corners) var(--site-search-corners);
 		}
 
-		#starlight__search .pagefind-ui__result-inner > .pagefind-ui__result-title {
-			padding: var(--sl-search-result-pad-block) var(--sl-search-result-pad-inline-end);
-			padding-inline-start: var(--sl-search-result-pad-inline-start);
+		#site__search .pagefind-ui__result-inner > .pagefind-ui__result-title {
+			padding: var(--site-search-result-pad-block) var(--site-search-result-pad-inline-end);
+			padding-inline-start: var(--site-search-result-pad-inline-start);
 		}
-		#starlight__search .pagefind-ui__result-inner > .pagefind-ui__result-title::before {
+		#site__search .pagefind-ui__result-inner > .pagefind-ui__result-title::before {
 			content: '';
 			position: absolute;
 			inset-block: 0;
-			inset-inline-start: var(--sl-search-page-icon-inline-start);
-			width: var(--sl-search-page-icon-size);
-			background: var(--sl-color-gray-3);
+			inset-inline-start: var(--site-search-page-icon-inline-start);
+			width: var(--site-search-page-icon-size);
+			background: var(--color-text-muted);
 			-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M9 10h1a1 1 0 1 0 0-2H9a1 1 0 0 0 0 2Zm0 2a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2H9Zm11-3V8l-6-6a1 1 0 0 0-1 0H7a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V9Zm-6-4 3 3h-2a1 1 0 0 1-1-1V5Zm4 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5v3a3 3 0 0 0 3 3h3v9Zm-3-3H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2Z'/%3E%3C/svg%3E")
 				center no-repeat;
 			mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M9 10h1a1 1 0 1 0 0-2H9a1 1 0 0 0 0 2Zm0 2a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2H9Zm11-3V8l-6-6a1 1 0 0 0-1 0H7a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V9Zm-6-4 3 3h-2a1 1 0 0 1-1-1V5Zm4 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5v3a3 3 0 0 0 3 3h3v9Zm-3-3H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2Z'/%3E%3C/svg%3E")
 				center no-repeat;
 		}
 
-		#starlight__search .pagefind-ui__result-inner {
+		#site__search .pagefind-ui__result-inner {
 			align-items: stretch;
 			gap: 1px;
 		}
 
-		#starlight__search .pagefind-ui__result-link {
+		#site__search .pagefind-ui__result-link {
 			position: unset;
-			--pagefind-ui-text: var(--sl-color-white);
+			--pagefind-ui-text: var(--color-text-primary);
 			font-weight: 600;
 		}
 
-		#starlight__search .pagefind-ui__result-link:hover {
+		#site__search .pagefind-ui__result-link:hover {
 			text-decoration: none;
 		}
 
-		#starlight__search .pagefind-ui__result-nested .pagefind-ui__result-link::before {
+		#site__search .pagefind-ui__result-nested .pagefind-ui__result-link::before {
 			content: unset;
 		}
 
-		#starlight__search .pagefind-ui__result-nested::before {
+		#site__search .pagefind-ui__result-nested::before {
 			content: '';
 			position: absolute;
 			inset-block: 0;
-			inset-inline-start: var(--sl-search-tree-diagram-inline-start);
-			width: var(--sl-search-tree-diagram-size);
-			background: var(--sl-color-gray-4);
+			inset-inline-start: var(--site-search-tree-diagram-inline-start);
+			width: var(--site-search-tree-diagram-size);
+			background: var(--color-border-strong);
 			-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' viewBox='0 0 16 1000' preserveAspectRatio='xMinYMin slice'%3E%3Cpath d='M8 0v1000m6-988H8'/%3E%3C/svg%3E")
 				0% 0% / 100% no-repeat;
 			mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' viewBox='0 0 16 1000' preserveAspectRatio='xMinYMin slice'%3E%3Cpath d='M8 0v1000m6-988H8'/%3E%3C/svg%3E")
 				0% 0% / 100% no-repeat;
 		}
-		#starlight__search .pagefind-ui__result-nested:last-of-type::before {
+		#site__search .pagefind-ui__result-nested:last-of-type::before {
 			-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 16 16'%3E%3Cpath d='M8 0v12m6 0H8'/%3E%3C/svg%3E");
 			mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 16 16'%3E%3Cpath d='M8 0v12m6 0H8'/%3E%3C/svg%3E");
 		}
@@ -464,31 +462,31 @@ const dataAttributes: DOMStringMap = { 'data-translations': JSON.stringify(pagef
 			transform: matrix(-1, 0, 0, 1, 0, 0);
 		}
 
-		#starlight__search .pagefind-ui__result-link::after {
+		#site__search .pagefind-ui__result-link::after {
 			content: '';
 			position: absolute;
 			inset: 0;
 		}
 
-		#starlight__search .pagefind-ui__result-excerpt {
+		#site__search .pagefind-ui__result-excerpt {
 			font-size: calc(1rem * var(--pagefind-ui-scale));
 			overflow-wrap: anywhere;
 		}
 
-		#starlight__search mark {
-			color: var(--sl-color-gray-2);
+		#site__search mark {
+			color: var(--color-text-primary);
 			background-color: transparent;
 			font-weight: 600;
 		}
 
-		#starlight__search .pagefind-ui__filter-value::before {
-			border-color: var(--sl-color-text-invert);
+		#site__search .pagefind-ui__filter-value::before {
+			border-color: var(--color-bg-primary);
 		}
 
-		#starlight__search .pagefind-ui__result-tags {
-			background-color: var(--sl-color-black);
+		#site__search .pagefind-ui__result-tags {
+			background-color: var(--color-bg-primary);
 			margin-top: 0;
-			padding: var(--sl-search-result-nested-pad-block) var(--sl-search-result-pad-inline-end);
+			padding: var(--site-search-result-nested-pad-block) var(--site-search-result-pad-inline-end);
 		}
 	}
 </style>

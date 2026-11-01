@@ -2,7 +2,7 @@
 // Adapted from Starlight 0.42.6. Copyright Astro contributors. MIT: ./STARLIGHT-LICENSE.
 
 type SidebarEntry = any;
-import Icon from './Icon.astro';
+import Icon from '../components/Icon.astro';
 
 
 
@@ -47,9 +47,9 @@ const { sublist = Astro.locals.siteRoute.sidebar, nested } = Astro.props;
 </ul>
 
 <style>
-	@layer starlight.core {
+	@layer site.core {
 		ul {
-			--sl-sidebar-item-padding-inline: 0.5rem;
+			--site-sidebar-item-padding-inline: 0.5rem;
 			list-style: none;
 			padding: 0;
 		}
@@ -59,15 +59,15 @@ const { sublist = Astro.locals.siteRoute.sidebar, nested } = Astro.props;
 		}
 
 		ul ul li {
-			margin-inline-start: var(--sl-sidebar-item-padding-inline);
-			border-inline-start: 1px solid var(--sl-color-hairline-light);
-			padding-inline-start: var(--sl-sidebar-item-padding-inline);
+			margin-inline-start: var(--site-sidebar-item-padding-inline);
+			border-inline-start: 1px solid var(--color-border);
+			padding-inline-start: var(--site-sidebar-item-padding-inline);
 		}
 
 		.large {
-			font-size: var(--sl-text-lg);
+			font-size: var(--text-body);
 			font-weight: 600;
-			color: var(--sl-color-white);
+			color: var(--color-text-primary);
 		}
 
 		.top-level > li + li {
@@ -78,7 +78,7 @@ const { sublist = Astro.locals.siteRoute.sidebar, nested } = Astro.props;
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
-			padding: 0.2em var(--sl-sidebar-item-padding-inline);
+			padding: 0.2em var(--site-sidebar-item-padding-inline);
 			line-height: 1.4;
 			cursor: pointer;
 			user-select: none;
@@ -103,22 +103,22 @@ const { sublist = Astro.locals.siteRoute.sidebar, nested } = Astro.props;
 			display: block;
 			border-radius: 0.25rem;
 			text-decoration: none;
-			color: var(--sl-color-gray-2);
-			padding: 0.3em var(--sl-sidebar-item-padding-inline);
+			color: var(--color-text-primary);
+			padding: 0.3em var(--site-sidebar-item-padding-inline);
 			line-height: 1.4;
 		}
 
 		a:hover,
 		a:focus {
-			color: var(--sl-color-white);
+			color: var(--color-text-primary);
 		}
 
 		[aria-current='page'],
 		[aria-current='page']:hover,
 		[aria-current='page']:focus {
 			font-weight: 600;
-			color: var(--sl-color-text-invert);
-			background-color: var(--sl-color-text-accent);
+			color: var(--color-bg-primary);
+			background-color: var(--color-accent-text);
 		}
 
 		a > *:not(:last-child),
@@ -131,10 +131,10 @@ const { sublist = Astro.locals.siteRoute.sidebar, nested } = Astro.props;
 				margin-top: 0.5rem;
 			}
 			.large {
-				font-size: var(--sl-text-base);
+				font-size: var(--text-body);
 			}
 			a {
-				font-size: var(--sl-text-sm);
+				font-size: var(--text-caption);
 			}
 		}
 	}

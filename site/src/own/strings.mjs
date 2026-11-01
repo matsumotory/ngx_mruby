@@ -26,7 +26,6 @@ const en = {
 	"aside.caution": "Caution",
 	"aside.danger": "Danger",
 	"fileTree.directory": "Directory",
-	"builtWithStarlight.label": "Built with Starlight",
 	"heading.anchorLabel": "Section titled “{{title}}”"
 };
 
@@ -60,7 +59,6 @@ const ja = {
 	"expressiveCode.copyButtonTooltip": "クリップボードにコピー",
 	"expressiveCode.copyButtonCopied": "コピーしました！",
 	"fileTree.directory": "ディレクトリ",
-	"builtWithStarlight.label": "Starlightで作成",
 	"heading.anchorLabel": "Section titled “{{title}}”"
 };
 

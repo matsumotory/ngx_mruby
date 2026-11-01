@@ -10,7 +10,7 @@
  * lines, so that the longest name, 28 characters at 14 px, keeps one line
  * at 320 px. The narrow arrangement is taken when the content of the
  * figure is narrower than 37rem, where the widest label of the phase
- * column, post-rewrite, preaccess, no longer fits its column; Starlight's
+ * column, post-rewrite, preaccess, no longer fits its column; the
  * sidebar makes the column narrower from 50em than it is at 640 px, so the
  * switch is a container query on the figure, not a media query.
  */

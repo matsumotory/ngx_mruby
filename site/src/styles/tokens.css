@@ -10,8 +10,8 @@
  *
  * Theme order (4.2 "Theme order", 4.7): light tokens on :root, dark ones in
  * @media (prefers-color-scheme: dark) for :root:not([data-theme="light"])
- * and on :root[data-theme="dark"]. Starlight writes data-theme="dark" into
- * the served HTML (Page.astro), so the forced-dark selector also needs
+ * and on :root[data-theme="dark"]. DocPage writes data-theme="dark" into
+ * the served HTML (own/DocPage.astro), so the forced-dark selector also needs
  * [data-theme-script], which only the theme script sets
  * (src/components/ThemeProvider.astro): without JavaScript the OS setting
  * decides, with it the theme toggle does. scripts/contrast.py checks that
@@ -171,6 +171,19 @@ html[lang="ja"]:has(.home) {
   }
 }
 
+/* The phone pattern is 402 px (5.4). The text column between the 20 px
+   gutters holds 21.875 em of text at 16 px on a 390 px screen, the width at
+   which the pages' lines were set. Between 390 and 412 px, the root size
+   grows with the screen so that the column keeps those 21.875 em, and
+   every line breaks where it breaks at 390 px; it stays at 100% below and
+   at 106.25% (17 px by default) above. Every rem size of the type scale
+   (4.4) follows the root, so the roles keep their ratios. */
+@media (max-width: 640px) {
+  :root {
+    font-size: clamp(100%, (100vw - 2 * var(--gutter)) / 21.875, 106.25%);
+  }
+}
+
 /* Type scale, Japanese (4.4): one step smaller headings, line height 1.4,
    body 1.8, navigation and captions 1.7 */
 :root[lang="ja"] {
@@ -194,79 +207,10 @@ html[lang="ja"]:has(.home) {
   }
 }
 
-/*
- * Starlight's variables, from the tokens (4.6 "Starlight's own colors").
- * Starlight's own definitions of these variables, which hold a gray scale
- * at hue 224 and five hue palettes, are removed from its stylesheets at
- * build time (scripts/lib/postcss-theme-colors.mjs), so these are the only
- * ones in the built CSS.
- */
+/* Pagefind colors are mapped directly to the site tokens (4.6). */
 :root {
-  --sl-color-white: var(--color-text-primary);
-  --sl-color-gray-1: var(--color-text-primary);
-  --sl-color-gray-2: var(--color-text-primary);
-  --sl-color-gray-3: var(--color-text-muted);
-  --sl-color-gray-4: var(--color-border-strong);
-  --sl-color-gray-5: var(--color-border);
-  --sl-color-gray-6: var(--color-bg-tertiary);
-  --sl-color-gray-7: var(--color-bg-tertiary);
-  --sl-color-black: var(--color-bg-primary);
 
-  --sl-color-accent-low: var(--color-bg-primary);
-  --sl-color-accent: var(--color-accent);
-  --sl-color-accent-high: var(--color-accent-text);
-
-  --sl-color-text: var(--color-text-primary);
-  --sl-color-text-accent: var(--color-accent-text);
-  --sl-color-text-invert: var(--color-bg-primary);
-  --sl-color-bg: var(--color-bg-primary);
-  --sl-color-bg-nav: var(--color-bg-tertiary);
-  --sl-color-bg-sidebar: var(--color-bg-tertiary);
-  --sl-color-bg-inline-code: var(--color-bg-tertiary);
-  --sl-color-bg-accent: var(--color-accent);
-  --sl-color-hairline-light: var(--color-border);
-  --sl-color-hairline: var(--color-border);
-  --sl-color-hairline-shade: var(--color-border);
-  --sl-color-backdrop-overlay: transparent;
-
-  /* The five hue palettes: asides and badges carry a text label instead of
-     a color (4.6), so every hue is a neutral */
-  --sl-color-orange-low: var(--color-bg-primary);
-  --sl-color-orange: var(--color-border-strong);
-  --sl-color-orange-high: var(--color-text-primary);
-  --sl-color-green-low: var(--color-bg-primary);
-  --sl-color-green: var(--color-border-strong);
-  --sl-color-green-high: var(--color-text-primary);
-  --sl-color-blue-low: var(--color-bg-primary);
-  --sl-color-blue: var(--color-border-strong);
-  --sl-color-blue-high: var(--color-text-primary);
-  --sl-color-purple-low: var(--color-bg-primary);
-  --sl-color-purple: var(--color-border-strong);
-  --sl-color-purple-high: var(--color-text-primary);
-  --sl-color-red-low: var(--color-bg-primary);
-  --sl-color-red: var(--color-border-strong);
-  --sl-color-red-high: var(--color-text-primary);
-
-  --sl-badge-default-bg: var(--color-bg-primary);
-  --sl-badge-default-border: var(--color-border-strong);
-  --sl-badge-default-text: var(--color-text-primary);
-  --sl-badge-note-bg: var(--color-bg-primary);
-  --sl-badge-note-border: var(--color-border-strong);
-  --sl-badge-note-text: var(--color-text-primary);
-  --sl-badge-danger-bg: var(--color-bg-primary);
-  --sl-badge-danger-border: var(--color-border-strong);
-  --sl-badge-danger-text: var(--color-text-primary);
-  --sl-badge-success-bg: var(--color-bg-primary);
-  --sl-badge-success-border: var(--color-border-strong);
-  --sl-badge-success-text: var(--color-text-primary);
-  --sl-badge-caution-bg: var(--color-bg-primary);
-  --sl-badge-caution-border: var(--color-border-strong);
-  --sl-badge-caution-text: var(--color-text-primary);
-  --sl-badge-tip-bg: var(--color-bg-primary);
-  --sl-badge-tip-border: var(--color-border-strong);
-  --sl-badge-tip-text: var(--color-text-primary);
-
-  /* Pagefind's search UI inside Starlight's search dialog */
+  /* Pagefind's search UI inside the site search dialog */
   --pagefind-ui-primary: var(--color-text-primary);
   --pagefind-ui-text: var(--color-text-primary);
   --pagefind-ui-background: var(--color-bg-primary);
@@ -274,57 +218,18 @@ html[lang="ja"]:has(.home) {
   --pagefind-ui-tag: var(--color-bg-tertiary);
 }
 
-/* Starlight's and Pagefind's other variables, which do not depend on the
-   theme: shadows, families, sizes and layout */
+/* Theme-independent Pagefind controls and content layout. */
 :root {
-  /* 4.3 item 5: no shadows */
-  --sl-shadow-sm: none;
-  --sl-shadow-md: none;
-  --sl-shadow-lg: none;
   --pagefind-ui-border-radius: var(--radius-control);
   --pagefind-ui-image-border-radius: var(--radius-control);
   --pagefind-ui-scale: 1;
 
-  /* Families */
-  --sl-font: var(--font-body);
-  --sl-font-mono: var(--font-mono);
-
-  /* Sizes: every size Starlight reads is a size of the scale (4.4) */
-  --sl-text-2xs: var(--text-caption);
-  --sl-text-xs: var(--text-caption);
-  --sl-text-sm: var(--text-caption);
-  --sl-text-base: var(--text-body);
-  --sl-text-lg: var(--text-body);
-  --sl-text-xl: var(--text-h3);
-  --sl-text-2xl: var(--text-h2);
-  --sl-text-3xl: var(--text-h1);
-  --sl-text-4xl: var(--text-h1);
-  --sl-text-5xl: var(--text-h1);
-  --sl-text-6xl: var(--text-h1);
-  --sl-text-body: var(--text-body);
-  --sl-text-body-sm: var(--text-caption);
-  --sl-text-code: var(--text-code);
-  --sl-text-code-sm: var(--text-code);
-  --sl-text-h1: var(--text-h1);
-  --sl-text-h2: var(--text-h2);
-  --sl-text-h3: var(--text-h3);
-  --sl-text-h4: var(--text-body);
-  --sl-text-h5: var(--text-body);
-  --sl-text-h6: var(--text-body);
-  --sl-line-height: var(--leading-body);
-  --sl-line-height-headings: var(--leading-h2);
-
-  /* Layout: 64 px header at every width (4.10), Starlight's content column
+  /* Layout: 64 px header at every width (4.10), the content column
      of 45rem for code blocks, tables and diagrams, with text blocks held to
      the text column of 4.4 by site.css, and the gutters of 4.5 */
-  --sl-nav-height: var(--header-height);
-  --sl-nav-pad-x: var(--header-pad-x);
-  --sl-nav-pad-y: var(--space-3);
-  --sl-content-width: 45rem;
-  --sl-content-pad-x: var(--gutter);
-  --sl-sidebar-pad-x: var(--gutter);
-  --sl-menu-button-size: 44px;
-  --sl-nav-gap: var(--space-4);
+
+  --site-content-width: 45rem;
+
 }
 
 /* Homepage proposal, 2026-10-29: graphite/navy and small copper accents.

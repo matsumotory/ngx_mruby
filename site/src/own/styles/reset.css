@@ -1,5 +1,5 @@
 /* Adapted from Starlight 0.42.6, MIT; see ../STARLIGHT-LICENSE. */
-@layer starlight.reset {
+@layer site.reset {
 	*,
 	*::before,
 	*::after {
@@ -12,7 +12,7 @@
 
 	html {
 		color-scheme: dark;
-		accent-color: var(--sl-color-accent);
+		accent-color: var(--color-accent);
 		-webkit-text-size-adjust: 100%;
 		text-size-adjust: 100%;
 	}
@@ -22,11 +22,11 @@
 	}
 
 	body {
-		font-family: var(--__sl-font);
-		line-height: var(--sl-line-height);
+		font-family: var(--site-font-stack);
+		line-height: var(--leading-body);
 		-webkit-font-smoothing: antialiased;
-		color: var(--sl-color-text);
-		background-color: var(--sl-color-bg);
+		color: var(--color-text-primary);
+		background-color: var(--color-bg-primary);
 	}
 
 	/* :lang(zh, ja) has not been supported by Chromium-based browsers at the time of writing (2026-05) */
@@ -64,6 +64,6 @@
 	}
 
 	code {
-		font-family: var(--__sl-font-mono);
+		font-family: var(--site-mono-stack);
 	}
 }

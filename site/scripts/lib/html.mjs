@@ -39,7 +39,7 @@ export function textContent(node) {
 
 // Elements whose content a reader of the page does not see as text, with
 // or without JavaScript: scripts, styles, templates, the drawings of
-// inline SVG, elements with the hidden attribute, and Starlight's sr-only
+// inline SVG, elements with the hidden attribute, and the site's sr-only
 // text (heading anchor labels for screen readers).
 function isUnseen(element) {
   if (['script', 'style', 'template', 'svg'].includes(element.tagName)) return true;

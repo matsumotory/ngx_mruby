@@ -16,7 +16,7 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
 - `test/`: integration tests that start a real nginx (`test/conf/`, `test/html/`, `test/t/`)
 - `docs/`: user documentation (install, directives, classes and methods) and
   release notes (`docs/releases/`); `docs/ja/` holds the Japanese pages
-- `site/` (on `next`): the ngx.mruby.org site, Astro with Starlight, built
+- `site/` (on `next`): the ngx.mruby.org site, Astro and repository-owned components, built
   from `docs/` (see "The site" under "Build and test", and
   `docs/proposals/site.md`)
 - `examples/` (on `next`): examples that run with `docker compose`, each
@@ -616,27 +616,35 @@ use targeted evidence for a shared layout change or replace missing evidence
 with a successful skip.
 
 - The layout and wrapping checks of the site measure two patterns only, PC
-  at full screen (1440px, Chromium) and iPhone Safari (390px, WebKit);
+  at full screen (1440px, Chromium) and iPhone Safari (402px, WebKit);
   no other widths, browsers or font combinations are added to the checks.
   The owner's words (2026-11-01):
   「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
   The patterns are in `site/scripts/lib/patterns.mjs`.
-  The pull request that replaces Starlight changes the iPhone width to 402px
-  (Safari on an iPhone 17 Pro); it changes the value in that file.
+  The iPhone width is 402px (Safari on an iPhone 17 Pro). At 640px and
+  below, the root font size grows with the screen so that the text column
+  keeps the 21.875em it has at 390px (4.4 of `docs/proposals/site.md`).
 
 
-The first layer of the Astro-only migration is opt-in:
-`NGX_MRUBY_SITE_SHELL=own npm run build` uses the site's route, schema and
-components in `src/own/`; the default build still uses Starlight. Shared
-components read `getSiteRoute()` rather than a shell-specific local.
-`node scripts/check-shells.mjs --v2-tree DIR` builds and statically checks
-both shells with the same 2.x input, compares their HTML semantics, and
-restores the default output even on failure. This is not browser or pixel
-parity evidence. Keep the opt-in flag until the layer's browser acceptance
-in section 5.4 is verified; do not publish the opt-in output.
+The site uses Astro with the repository's route, schema, layout and components.
+There is no shell-selection environment flag or Starlight runtime dependency.
+`site/scripts/check-shells.mjs` (HTML and search) and
+`check-layout-parity.mjs` (boxes and computed styles) compare a build of a
+base commit with the head, using the same 2.x input. CI ran them only on the
+pull request that replaced Starlight (#713); a later change of the site's
+shell runs them locally, from `site/` of the head, with a checkout of the
+base commit (after `npm ci` in its `site/`) and one of `master`:
+
+```sh
+node scripts/check-shells.mjs --base-tree BASE --v2-tree MASTER --evidence OUT
+node scripts/check-layout-parity.mjs --base OUT/base --head OUT/head --out OUT/layout --ja-face noto
+```
+
+Record both commits and the input in the PR; static HTML parity does not
+replace browser, layout or interaction evidence.
 
 `site/` (on `next`) builds the ngx.mruby.org site from `docs/` with Astro
-and Starlight (`docs/proposals/site.md`). It needs git with the whole
+and its own components (`docs/proposals/site.md`). It needs git with the whole
 history and Node.js at the version in `site/.node-version` (22.23.3), with
 its npm. The proposal says "Node 22.12 or later"; the packages of
 `site/package-lock.json` need 22.22.0 or later. Install Node.js for your
@@ -697,15 +705,16 @@ npm run preview           # serves dist/ at http://localhost:4321/
   (`https://ngx.mruby.org/<route>/`), which `check-built-links.mjs` checks
   as an internal link. A
   Japanese page keeps the code blocks of its English page, and its h2 have
-  `<wbr>` at their phrase boundaries (4.4 of the proposal). The sidebar of `astro.config.mjs` has
-  the links Overview (`/docs/`) and Start, then the groups Guides,
-  Reference, Concepts, Releases, Security and Contributing, each made from the
-  folder of its routes and ordered by `SIDEBAR_ORDER` of
-  `scripts/lib/site.mjs`. The header, the menu, the footer and the language link
-  of 4.10 are component overrides in `src/components/` (`Header`,
-  `PageFrame`, `Footer`, `MobileMenuFooter`, and `FallbackContentNotice`
-  for the notice above an English page under `/ja/`), with their links in
-  `src/site-nav.mjs`.
+  `<wbr>` at their phrase boundaries (4.4 of the proposal). The sidebar, built by
+  `src/own/sidebar.mjs`, has the links Overview (`/docs/`) and Start, then
+  the groups Guides, Reference, Concepts, Releases, Security and
+  Contributing, each made from the folder of its routes and ordered by
+  `SIDEBAR_ORDER` of `scripts/lib/site.mjs` (which `sync-docs.mjs` writes
+  into each page's `sidebar.order`). The header, the menu, the footer and
+  the language link of 4.10 are components in `src/components/` (`Header`,
+  `PageFrame`, `SiteMenu`, `Footer`, `LanguageLink`, and
+  `FallbackContentNotice` for the notice above an English page under
+  `/ja/`), with their links in `src/site-nav.mjs`.
 - The 2.x pages (3.4 and step 6 of the proposal). `/v2/` holds the
   documentation of 2.x, built from `docs/` of `master` (`v2.x` after the
   promotion). `node scripts/build-v2.mjs --tree DIR`, after `npm run
@@ -714,7 +723,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
   `scripts/lib/site.mjs` reads: the pages of `DIR/docs/` (and `SECURITY.md`
   and `CONTRIBUTING.md`) at the routes of `SOURCE_ROUTES` under `/v2/`,
   `docs/README.md` as `/v2/`, links to other files going to GitHub at
-  `master`, the sidebar of the 2.x pages in `astro.config.mjs`, and the
+  `master`, the sidebar of the 2.x pages (`src/own/sidebar.mjs`), and the
   2.x banner of 3.4 on every page (`src/components/Banner.astro`). It
   writes them into `dist/v2/`, with their own search index in
   `dist/v2/pagefind/` (the 3.x index of `dist/pagefind/` stays without
@@ -762,10 +771,10 @@ npm run preview           # serves dist/ at http://localhost:4321/
 - The design comes from `site/src/styles/tokens.css` (step 2 of the
   proposal, section 4): every color of the site is a token there, and no
   other file under `site/src/` writes a hex color. `src/styles/site.css`
-  applies the tokens to Starlight's pages, `ec.config.mjs` sets Expressive
+  applies the tokens to the site's pages, `ec.config.mjs` sets Expressive
   Code's themes (written from `tokens.css` by `scripts/lib/code-themes.mjs`)
   and frames, and `scripts/lib/postcss-theme-colors.mjs` removes
-  Starlight's and Pagefind's own color variables from their stylesheets at
+  Pagefind's own color variables from its stylesheet at
   build time, so that the built CSS holds only the tokens' colors.
 - Before starting or resuming site work, human, Claude and Codex contributors
   read [Site design acceptance](docs/proposals/site.md#site-design-acceptance),
@@ -857,25 +866,25 @@ npm run preview           # serves dist/ at http://localhost:4321/
   marked ```` ```ruby syntax-error ```` and must not compile. `site.yml`
   runs both.
   `npm run check:browser` runs five on `site/dist/` (`--dist`; the first
-  three also `--engine chromium|webkit`; on macOS, Japanese is set in
-  Hiragino Sans and breaks at other places than in CI, where it is the
-  served Noto Sans JP: `node scripts/check-styles.mjs --ja-face noto`
-  and `node scripts/check-japanese-lines.mjs --ja-face noto` come close to
-  what CI sees, but the Linux runner can still break a line a few pixels
-  elsewhere, so the run of `site.yml` decides):
+  three also `--engine chromium|webkit`). Validate every Japanese page with
+  the served Noto Sans JP; supplement this only with a Hiragino Sans check
+  of the Japanese home page where that face is available. This is a validation
+  scope, not a runtime font change: the existing stack still prefers Hiragino
+  Sans where installed and otherwise uses Noto Sans JP. Do not add further
+  browser/font combinations:
   - `node scripts/check-styles.mjs` (`npm run check:styles`;
     `--pages /,/ja/` limits a local run to known pages, while CI keeps the
     default complete page set): computed
-    styles in the two patterns, 1440 by 900 px in Chromium and 390 by
+    styles in the two patterns, 1440 by 900 px in Chromium and 402 by
     664 px in WebKit: font sizes of the scale of each language, token colors (code
     blocks and the colors of highlighted spans included), monospace only
     for code and numbers, no shadow, gradient or backdrop filter (also
     with the search dialog open, while its results load and after, and
     with the menu open), margins, paddings, gaps and radii from the sets
     of 4.5, durations of 4.8, at most 90 characters per English line at
-    1440 px, no horizontal scroll, gutters of 20 px or more at 390 px, the
+    1440 px, no horizontal scroll, gutters of 20 px or more at 402 px, the
     line count of the home page heading, the right edge of Japanese text
-    at 390 px and no `text-wrap` pretty or balance on
+    at 402 px and no `text-wrap` pretty or balance on
     English text, no paragraph, list item, caption, table cell or heading
     whose last line holds one or two characters, in both patterns, the
     diagrams (`role="img"` and an `aria-label`, drawings
@@ -885,10 +894,10 @@ npm run preview           # serves dist/ at http://localhost:4321/
   - `node scripts/check-japanese-lines.mjs` (`npm run
     check:japanese-lines`; `--pages /ja/a/,/ja/b/` for some pages only):
     every page under `/ja/` from a Japanese source but the home page, in
-    the two patterns, 1440 by 900 px in Chromium and 390 by 664 px in
+    the two patterns, 1440 by 900 px in Chromium and 402 by 664 px in
     WebKit: at most 40 Japanese characters on a line of body text and a
     line height of 1.75 to 2.0 at 1440 px, the page title on one line at
-    390 px, the right edge of Japanese blocks at 390 px (2 em; an h2 at
+    402 px, the right edge of Japanese blocks at 402 px (2 em; an h2 at
     most two lines and 6 em), no last line of one or two characters in
     either pattern, and diagram labels of 14 px or more inside their place
     in both, and the notice above an English
@@ -915,8 +924,8 @@ npm run preview           # serves dist/ at http://localhost:4321/
 - `npm run screenshots` (`node scripts/screenshots.mjs [--dist DIR] [--out
   DIR]`) writes the screenshots of step 3 to `build-screenshots/`: the
   home page, the page of the request phases diagram and a reference page,
-  in both languages, light and dark, at 320 by 664, 390 by 664 and 1440 by
-  900 px, in Chromium and WebKit, and in `review/` the definition and the
+  in both languages, light and dark, in the two configured patterns, 1440 by 900 px in Chromium and
+  402 by 664 px in WebKit, and in `review/` the definition and the
   diagram that the owner reviews, with an `index.md`. No image is
   committed or attached to a pull request (4.12). The browser checks and
   the screenshots need Chromium and WebKit for the `playwright` of

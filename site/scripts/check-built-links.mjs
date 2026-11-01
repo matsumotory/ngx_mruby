@@ -24,7 +24,7 @@
 // wrong characters, and a browser would show such a link with no
 // destination.
 //
-// One exception: Starlight's not-found page, 404.html, names its own
+// One exception: the site's not-found page, 404.html, names its own
 // address as /404/ (and /ja/404/) in its canonical and alternate links and
 // in og:url. GitHub Pages serves 404.html for that address, as for every
 // path that has no file, so these tags of 404.html are not checked. Its

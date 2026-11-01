@@ -1,7 +1,7 @@
 // Adapted from Starlight 0.42.6. Copyright Astro contributors. MIT: ./STARLIGHT-LICENSE.
 const PAGE_TITLE_ID = "_top";
-//#region src/components-internals/TableOfContents/starlight-toc.ts
-var StarlightTOC = class extends HTMLElement {
+//#region src/components-internals/TableOfContents/site-toc.ts
+var SiteTOC = class extends HTMLElement {
 	_current = this.querySelector("a[aria-current=\"true\"]");
 	minH = parseInt(this.dataset.minH || "2", 10);
 	maxH = parseInt(this.dataset.maxH || "3", 10);
@@ -29,7 +29,7 @@ var StarlightTOC = class extends HTMLElement {
 		/** Walk up the DOM to find the nearest heading. */
 		const getElementHeading = (el) => {
 			while (el) {
-				if (el.matches(".sl-markdown-content, main > *")) return document.getElementById(PAGE_TITLE_ID);
+				if (el.matches(".site-markdown-content, main > *")) return document.getElementById(PAGE_TITLE_ID);
 				if (isHeading(el)) return el;
 				const childHeading = el.querySelector(this.tocHeadingSelector);
 				if (childHeading) return childHeading;
@@ -54,8 +54,8 @@ var StarlightTOC = class extends HTMLElement {
 		};
 		const toObserve = document.querySelectorAll([
 			`main :where(${this.tocHeadingSelector})`,
-			`main :where(${this.tocHeadingSelector}, .sl-heading-wrapper) ~ *:not(:has(${this.tocHeadingSelector}))`,
-			`main .sl-markdown-content > *:not(:has(${this.tocHeadingSelector}))`,
+			`main :where(${this.tocHeadingSelector}, .site-heading-wrapper) ~ *:not(:has(${this.tocHeadingSelector}))`,
+			`main .site-markdown-content > *:not(:has(${this.tocHeadingSelector}))`,
 			`main > *:not(:has(${this.tocHeadingSelector}))`
 		].join());
 		let observer;
@@ -81,6 +81,6 @@ var StarlightTOC = class extends HTMLElement {
 		return `-${top}px 0% ${top + 53 - document.documentElement.clientHeight}px`;
 	}
 };
-customElements.define("starlight-toc", StarlightTOC);
+customElements.define("site-toc", SiteTOC);
 //#endregion
-export { StarlightTOC };
+export { SiteTOC };

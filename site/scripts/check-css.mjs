@@ -42,7 +42,7 @@ const transparent = (h) => {
 };
 // 4.8: the properties that may move, as computed names
 const MOVING = new Set(['color', 'background-color', 'border-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'outline-color', 'text-decoration-color', 'opacity', 'transform']);
-// Declarations of Starlight's and Pagefind's stylesheets that this check
+// Declarations of third-party generated stylesheets that this check
 // lets pass, each with the reason. Nothing that a checked page renders.
 const EXEMPT = [
   {

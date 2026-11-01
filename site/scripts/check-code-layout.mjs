@@ -1,12 +1,13 @@
 // Owner's code-reading requirement: every line fits without horizontal scrolling.
-// Scan all generated pages at 320px, then stress representative code surfaces
-// at phone/tablet/desktop widths and 200% text enlargement in both engines.
+// Scan all generated pages in the two approved patterns, then stress
+// representative code surfaces with 200% text enlargement in those patterns.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { scopedPages, codePageScope } from './lib/ci-pages.mjs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
+import { patternsFor } from './lib/patterns.mjs';
 import { loadSample } from './lib/samples.mjs';
 const site = path.resolve(new URL('..', import.meta.url).pathname);
 const dist = path.resolve(process.argv[2] || path.join(site, 'dist'));
@@ -48,16 +49,16 @@ async function inspect(page, label) {
 try {
   for (const engine of [chromium, webkit]) {
     const browser = await engine.launch();
-    const context = await browser.newContext({ viewport: { width: 320, height: 900 }, colorScheme: 'dark', ...(engine === chromium ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
+    const context = await browser.newContext({ viewport: patternsFor(engine.name())[0], colorScheme: 'dark', ...(engine === chromium ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
     const page = await context.newPage();
     try {
       for (const route of pages) {
         await page.goto(server.url + route);
         await page.evaluate(() => { document.querySelectorAll('details').forEach(el => { el.open = true; }); });
-        await inspect(page, `${engine.name()} ${route} 320`);
+        await inspect(page, `${engine.name()} ${route} ${patternsFor(engine.name())[0].width}`);
       }
-      for (const route of stressPages) for (const width of [320, 390, 768, 1440]) for (const enlarged of [false, true]) {
-        await page.setViewportSize({ width, height: 900 });
+      for (const route of stressPages) for (const { width, height } of patternsFor(engine.name())) for (const enlarged of [false, true]) {
+        await page.setViewportSize({ width, height });
         await page.goto(server.url + route);
         await page.evaluate(enlarged => {
           document.querySelectorAll('details').forEach(el => { el.open = true; });
@@ -92,4 +93,4 @@ try {
   }
 } finally { await server.close(); }
 assert.deepEqual(failures, [], `code layout failures (${failures.length}):\n${failures.slice(0, 30).join('\n')}`);
-console.log(`check-code-layout: ${count} page conditions; ${pages.length} selected pages, EN/JA where selected, 320/390/768/1440, 200% code text, long tokens; canonical clipboard and keyboard activation passed`);
+console.log(`check-code-layout: ${count} page conditions; ${pages.length} selected pages, EN/JA where selected, 1440px Chromium / 402px WebKit, 200% code text, long tokens; canonical clipboard and keyboard activation passed`);

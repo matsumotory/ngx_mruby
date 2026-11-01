@@ -1,9 +1,9 @@
 ---
 // The 404 subset of Starlight 0.42.6 Hero; see ../components/STARLIGHT-LICENSE.
 ---
-<div class="hero"><div class="sl-flex stack"><div class="sl-flex copy"><h1 id="_top" data-page-title>404</h1><div class="tagline">Page not found. Check the URL or try using the search bar.</div></div></div></div>
+<div class="hero"><div class="site-flex stack"><div class="site-flex copy"><h1 id="_top" data-page-title>404</h1><div class="tagline">Page not found. Check the URL or try using the search bar.</div></div></div></div>
 <style>
-	@layer starlight.core {
+	@layer site.core {
 		.hero {
 			display: grid;
 			grid-template-columns: 100%;
@@ -37,15 +37,15 @@
 		}
 
 		h1 {
-			font-size: clamp(var(--sl-text-3xl), calc(0.25rem + 5vw), var(--sl-text-6xl));
-			line-height: var(--sl-line-height-headings);
+			font-size: clamp(var(--text-h1), calc(0.25rem + 5vw), var(--text-h1));
+			line-height: var(--leading-h2);
 			font-weight: 600;
-			color: var(--sl-color-white);
+			color: var(--color-text-primary);
 		}
 
 		.tagline {
-			font-size: clamp(var(--sl-text-base), calc(0.0625rem + 2vw), var(--sl-text-xl));
-			color: var(--sl-color-gray-2);
+			font-size: clamp(var(--text-body), calc(0.0625rem + 2vw), var(--text-h3));
+			color: var(--color-text-primary);
 		}
 
 		.actions {

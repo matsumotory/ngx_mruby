@@ -1,5 +1,5 @@
 // Offline markup validation by default. --browser additionally checks the
-// footer at 375 px with the badge served from a local stand-in (never from
+// footer in the two accepted viewport/engine patterns with the badge served from a local stand-in (never from
 // bestpractices.dev): decoding, geometry, keyboard focus and light/dark
 // pixels, in five states. check-live.mjs fetches the real image after the
 // deploy.
@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { elements, hasClass, readHtml, textContent } from './lib/html.mjs';
+import { patternsFor } from './lib/patterns.mjs';
 import { htmlFiles } from './lib/site.mjs';
 import { OPENSSF_BADGE, OPENSSF_BADGE_FIXTURE } from './lib/project-badges.mjs';
 const args = process.argv.slice(2);
@@ -50,12 +51,12 @@ if (browserCheck) {
       ...['/', '/v2/ja/'].flatMap(route => ['light', 'dark'].map(colorScheme => ({ engineName: 'chromium', route, colorScheme }))),
       { engineName: 'webkit', route: '/ja/', colorScheme: 'light' },
     ];
-    const width = 375;
     for (const engineName of ['chromium', 'webkit']) {
+      const { width, height } = patternsFor(engineName)[0];
       const browser = await { chromium, webkit }[engineName].launch();
       try {
         for (const { route, colorScheme } of states.filter(state => state.engineName === engineName)) {
-          const { context, blocked, close } = await readOnlyContext(browser, server.url, { viewport: { width, height: 664 }, colorScheme }, { [OPENSSF_BADGE.src]: OPENSSF_BADGE_FIXTURE });
+          const { context, blocked, close } = await readOnlyContext(browser, server.url, { viewport: { width, height }, colorScheme }, { [OPENSSF_BADGE.src]: OPENSSF_BADGE_FIXTURE });
           try {
             const page = await context.newPage();
             const errors = [];
@@ -105,5 +106,5 @@ if (browserCheck) {
       fs.writeFileSync(path.join(out, 'evidence.json'), JSON.stringify({ source_revision: manifest.source_revision, v2_source_revision: v2.source_revision, working_tree_clean: manifest.working_tree_clean, complete: complete && records.length === 5, pages: records }, null, 2) + '\n');
     }
   }
-  console.log(`check-project-badges: ${records.length} footer/focus checks and screenshots at 375 px with the local badge stand-in (Chromium: / and /v2/ja/, light and dark; WebKit: /ja/ light)`);
+  console.log(`check-project-badges: ${records.length} footer/focus checks and screenshots at Chromium1440px/WebKit402px with the local badge stand-in (Chromium: / and /v2/ja/, light and dark; WebKit: /ja/ light)`);
 }
