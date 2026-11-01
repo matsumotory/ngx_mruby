@@ -261,12 +261,14 @@ static ngx_int_t ngx_mrb_send_empty_body(ngx_http_request_t *r)
  * r->headers_out.status is not the result of a later handler that sets none
  * (Q6 of section 9 of docs/proposals/core-stabilization.md). Without a
  * result, a content handler of the main request answers 200 with an empty
- * body, and the other handlers return NGX_OK. A rewrite or server rewrite
- * handler without a result still returns the value in
- * r->headers_out.status; the next step of section 8 of the proposal makes
- * them go on to the next phase handler instead (decision (b)). So does a
- * handler whose request an internal redirect of Nginx.redirect sent
- * elsewhere, until step 7.
+ * body, a rewrite or server rewrite handler goes on to the next phase
+ * handler, as with NGX_DECLINED (decision (b) of 2026-10-04, and Q6 for
+ * server rewrite handlers), and the other handlers return NGX_OK. A rewrite
+ * or server rewrite handler that returns Nginx::OK goes on as well: the
+ * rewrite phase would finalize the request with NGX_OK without a response.
+ * A handler whose request an internal redirect of Nginx.redirect sent
+ * elsewhere returns the status that the target stored in
+ * r->headers_out.status, until step 7 of section 8 of the proposal.
  *
  * A post_read or access handler that sends its output returns NGX_HTTP_OK,
  * so that its phase checker finalizes the request, as the rewrite and
@@ -279,19 +281,17 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
 {
   ngx_int_t rc = NGX_OK;
   ngx_mrb_rputs_chain_list_t *chain;
+  ngx_flag_t redirected;
 
   chain = ctx->rputs_chain;
 
-  // Without a result of its own, a rewrite or server rewrite handler, and a
-  // handler that sent the request elsewhere with Nginx.redirect (an internal
-  // redirect replaced the module context it ran with, and the target has
-  // answered), return the status in r->headers_out.status, as before. Steps
-  // 4 and 7 of section 8 of docs/proposals/core-stabilization.md replace
-  // both.
-  if (!has_result &&
-      (kind == NGX_HTTP_MRUBY_HANDLER_REWRITE || kind == NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE ||
-       ngx_http_get_module_ctx(r, ngx_http_mruby_module) != ctx) &&
-      r->headers_out.status >= 100) {
+  // Without a result of its own, a handler that sent the request elsewhere
+  // with Nginx.redirect (an internal redirect replaced the module context it
+  // ran with, and the target has answered) returns the status in
+  // r->headers_out.status, as before. Step 7 of section 8 of
+  // docs/proposals/core-stabilization.md replaces this.
+  redirected = ngx_http_get_module_ctx(r, ngx_http_mruby_module) != ctx;
+  if (!has_result && redirected && r->headers_out.status >= 100) {
     has_result = 1;
     result = (ngx_int_t)r->headers_out.status;
   }
@@ -308,6 +308,10 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
       }
       return ngx_mrb_answer_missing_body(r);
     }
+    if (!redirected && (kind == NGX_HTTP_MRUBY_HANDLER_REWRITE || kind == NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE) &&
+        (!has_result || result == NGX_OK)) {
+      return NGX_DECLINED;
+    }
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "%s INFO %s:%d: mrb_run info: rputs_chain is null and return NGX_OK", MODULE_NAME, __func__,
                   __LINE__);
@@ -316,6 +320,10 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     } else {
       rc = NGX_OK;
     }
+  } else if (has_result && result < 0) {
+    // a return code such as Nginx::DECLINED after the output: the output is
+    // not sent, and the phase gets the code, as before
+    rc = result;
   } else if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf ||
              ngx_mrb_content_ends_without_response(r, ctx, kind, (ngx_int_t)r->headers_out.status)) {
     // A status set after the output marks the last buffer. nginx answers 201,
@@ -409,7 +417,11 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
   mrb_int status = NGX_HTTP_OK;
   mrb_get_args(mrb, "i", &status);
-  r->headers_out.status = status;
+  // A return code below 0, such as Nginx::DECLINED, is the result of the
+  // handler only (below), not the status of the response
+  if (status >= 0) {
+    r->headers_out.status = status;
+  }
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
