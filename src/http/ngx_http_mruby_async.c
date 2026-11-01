@@ -31,9 +31,14 @@ typedef struct {
   ngx_http_request_t *sr;
 } ngx_mrb_reentrant_t;
 
+// The data of the post handler of a subrequest: the record that waits for it
+// (record), and done once the first call of the post handler copied the
+// response. re is the data of the resume of the old path (ngx_mrb_post_fiber)
 typedef struct {
   ngx_mrb_reentrant_t *re;
   ngx_str_t *uri;
+  ngx_http_mrb_fiber_t *record;
+  unsigned done : 1;
 } ngx_mrb_async_http_ctx_t;
 
 /*
@@ -48,8 +53,8 @@ typedef struct {
  *   subrequest at a time. sleep.r is the request that the record runs for,
  *   from the start of the run.
  * - posted is the entry of the posted request of the wake, allocated at the
- *   first wait that uses it, so that a run that never waits does not carry
- *   it.
+ *   first wait (ngx_http_mrb_fiber_prepare_wait), so that a run that never
+ *   waits does not carry it.
  * - result is the result that the code set (Nginx.return,
  *   Nginx.send_header, Nginx.status_code=, Nginx.redirect with a URL), when
  *   has_result is set: the result of a handler is its own, not one that an
@@ -57,16 +62,21 @@ typedef struct {
  *   docs/proposals/core-stabilization.md).
  * - wake is set when the fiber waits for nginx to call its handler again
  *   (ngx_http_mrb_fiber_wait_on_nginx): the timer then only marks the record
- *   READY and posts the request with posted. Without it, the timer resumes
- *   the fiber itself (ngx_mrb_post_fiber), as for a fiber that waits in a
- *   location that Nginx.redirect runs from Ruby code.
+ *   READY and posts the request with posted, and the end of a subrequest
+ *   only marks it READY (nginx wakes the parent itself). Without it, the
+ *   timer or the end of the subrequest resumes the fiber itself
+ *   (ngx_mrb_post_fiber), as for a fiber that waits in a location that
+ *   Nginx.redirect runs from Ruby code.
  */
 struct ngx_http_mrb_fiber_s {
   ngx_mrb_fiber_t base;
   ngx_http_mruby_handler_kind_t kind;
-  // next to kind, in the space that the alignment of sleep leaves
+  // next to kind, in the space that the alignment of sleep leaves;
+  // has_response: the post handler of a subrequest copied the response, and
+  // the next resume passes it to the fiber
   unsigned has_result : 1;
   unsigned wake : 1;
+  unsigned has_response : 1;
   ngx_mrb_reentrant_t sleep;
   ngx_http_posted_request_t *posted;
   ngx_int_t result;
@@ -82,6 +92,7 @@ static ngx_http_mrb_fiber_t *ngx_http_mrb_running;
 
 static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *result);
 static void ngx_http_mrb_wait_handler(ngx_http_request_t *r);
+static mrb_value ngx_mrb_async_http_response_body(mrb_state *mrb, void *data);
 
 // Whether Nginx::Async may suspend the fiber of this kind of handler. nginx
 // resumes it for mruby_set and the post_read, server_rewrite, rewrite,
@@ -174,6 +185,15 @@ static ngx_http_mrb_fiber_t *ngx_http_mrb_fiber_prepare_wait(mrb_state *mrb, ngx
     f->base.hooked = 1;
   }
 
+  // the entry of the posted request of the wake (ngx_http_mrb_fiber_wake),
+  // once per record
+  if (f->posted == NULL) {
+    f->posted = ngx_palloc(r->pool, sizeof(ngx_http_posted_request_t));
+    if (f->posted == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate the posted request of the wait");
+    }
+  }
+
   if (ngx_mrb_fiber_hold(&f->base) != NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "failed to keep the fiber of the handler from the GC");
   }
@@ -250,6 +270,9 @@ static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fibe
   ngx_mrb_fiber_outcome_t outcome;
   ngx_http_mrb_fiber_log_t log;
   ngx_http_mrb_fiber_t *prev;
+  mrb_value arg;
+  const mrb_value *argp;
+  mrb_bool raised = FALSE;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->fiber_proc = fiber_proc;
@@ -263,11 +286,25 @@ static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fibe
   log.ctx = ctx;
   log.outer_kind = ctx->handler_kind;
   ctx->handler_kind = f->kind;
+  // The response of the subrequest that the fiber waited for is what its
+  // Fiber.yield returns, so Nginx::Async::HTTP.sub_request returns it
+  argp = NULL;
+  if (f->has_response) {
+    f->has_response = 0;
+    arg = mrb_protect_error(mrb, ngx_mrb_async_http_response_body, ctx, &raised);
+    if (raised) {
+      ngx_mrb_raise_error(mrb, arg, r);
+      mrb->exc = NULL;
+      arg = mrb_nil_value();
+    }
+    argp = &arg;
+  }
+
   // A wait of this run decides again how it ends (see wake)
   f->wake = 0;
   prev = ngx_http_mrb_running;
   ngx_http_mrb_running = f;
-  outcome = ngx_mrb_fiber_resume(&f->base, &handler_result, ngx_http_mrb_fiber_log_raise, &log);
+  outcome = ngx_mrb_fiber_resume(&f->base, argp, &handler_result, ngx_http_mrb_fiber_log_raise, &log);
   ngx_http_mrb_running = prev;
   ctx->handler_kind = log.outer_kind;
 
@@ -466,7 +503,7 @@ static void ngx_http_mrb_resume_set(ngx_http_request_t *r, ngx_http_mruby_ctx_t 
   outcome = ngx_mrb_run_fiber(mrb, &f->base.fiber, &value);
 
   if (outcome == NGX_MRB_FIBER_WAITS) {
-    if (ctx->async_sleep_pending) {
+    if (ctx->async_sleep_pending || ctx->sub_response_more) {
       ngx_http_mrb_fiber_wait_on_nginx(r, ctx, f);
     }
     rc = NGX_DONE;
@@ -548,24 +585,6 @@ static void ngx_http_mrb_wait_handler(ngx_http_request_t *r)
 
 void ngx_http_mrb_fiber_wait_on_nginx(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx, ngx_http_mrb_fiber_t *f)
 {
-  if (f->posted == NULL) {
-    f->posted = ngx_palloc(r->pool, sizeof(ngx_http_posted_request_t));
-    if (f->posted == NULL) {
-      // the timer resumes the fiber itself, as before the wake
-      // (ngx_mrb_post_fiber); a content handler keeps its request for it as
-      // it did then
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                    "%s ERROR %s:%d: failed to allocate the posted request of the wake", MODULE_NAME, __func__,
-                    __LINE__);
-      if (f->kind == NGX_HTTP_MRUBY_HANDLER_CONTENT) {
-        r->main->count++;
-        r->write_event_handler = ngx_http_request_empty_handler;
-        ctx->async_content_waiting = 1;
-      }
-      return;
-    }
-  }
-
   f->wake = 1;
   ctx->wait = f;
   r->write_event_handler = ngx_http_mrb_wait_handler;
@@ -575,11 +594,9 @@ void ngx_http_mrb_fiber_wait_on_nginx(ngx_http_request_t *r, ngx_http_mruby_ctx_
     // NGX_DONE that the handler returns, which drops one reference to the
     // request (ngx_http_finalize_connection). Take that reference first, as
     // nginx's own handlers do before they return NGX_DONE, so that the
-    // request stays until nginx calls the handler again. Nginx::Async::HTTP
-    // .sub_request raises after the sleep (async_content_waiting), because
-    // nothing would finalize the request after the subrequest.
+    // request stays until nginx calls the handler again, after the timer or
+    // after the subrequest.
     r->main->count++;
-    ctx->async_content_waiting = 1;
   }
 }
 
@@ -754,13 +771,41 @@ static mrb_value build_response_headers_to_hash(mrb_state *mrb, ngx_http_headers
 }
 
 // response for sub_request
+/*
+ * The post handler of a subrequest. nginx calls it on each finalization of
+ * the subrequest that is not NGX_DONE or NGX_DECLINED; the first call copies
+ * the status, the headers and the body that the subrequest has in memory
+ * then into the module context of the parent, and the later calls change
+ * nothing and return rc.
+ *
+ * For a record that waits for nginx to call its handler again (wake), the
+ * record becomes READY and rc is returned unchanged, as
+ * ngx_http_auth_request_done does: nginx then wakes the parent, whose write
+ * event handler runs its phases (ngx_http_mrb_wait_handler), and the
+ * handler resumes the fiber in the parent's own run of the phases, after
+ * the subrequest has ended. A record whose owner ended (CANCELLED) is left
+ * alone. A fiber that waits inside another mruby call (a location that
+ * Nginx.redirect runs from Ruby code) is resumed here, as before
+ * (ngx_mrb_post_fiber), until step 7 of section 8 of
+ * docs/proposals/core-stabilization.md.
+ */
 static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, void *data, ngx_int_t rc)
 {
   ngx_mrb_async_http_ctx_t *actx = data;
   ngx_mrb_reentrant_t *re = actx->re;
+  ngx_http_mrb_fiber_t *f = actx->record;
   ngx_http_mruby_ctx_t *ctx;
   ngx_buf_t *buffer = NULL;
   ngx_int_t body_len = 0;
+
+  if (actx->done) {
+    return rc;
+  }
+  actx->done = 1;
+
+  if (f->base.state != NGX_MRB_FIBER_WAITING) {
+    return rc;
+  }
 
   re->sr = sr;
   re->r = sr->parent;
@@ -800,6 +845,12 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
       ctx->sub_response_status = sr->headers_out.status;
       ctx->sub_response_headers = sr->headers_out;
   }
+  f->has_response = 1;
+
+  if (f->wake) {
+    f->base.state = NGX_MRB_FIBER_READY;
+    return rc;
+  }
 
   rc = ngx_mrb_post_fiber(re, ctx);
   if (rc != NGX_DECLINED && rc != NGX_OK) {
@@ -818,6 +869,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ngx_str_t *uri;
   ngx_mrb_async_http_ctx_t *actx;
   ngx_http_mruby_ctx_t *ctx;
+  ngx_http_mrb_fiber_t *f;
   mrb_value path, query_params;
   ngx_str_t *args = NULL;
   int argc;
@@ -826,16 +878,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   r = ngx_mrb_async_request(mrb, "Nginx::Async::HTTP.sub_request");
 
-  // A content handler that waited in Nginx::Async.sleep: the subrequest
-  // would resume it inside the subrequest's finalization, where nothing
-  // finalizes the request after the handler (step 5 of section 8 of
-  // docs/proposals/core-stabilization.md lets a content handler wait for a
-  // subrequest).
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
-  if (ctx->handler_kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && ctx->async_content_waiting) {
-    mrb_raise(mrb, E_RUNTIME_ERROR,
-              "Nginx::Async::HTTP.sub_request is not available after Nginx::Async.sleep in a content handler");
-  }
 
   if (RSTRING_LEN(path) == 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "http_sub_request path len is 0");
@@ -874,7 +917,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
     }
   }
 
-  ngx_http_mrb_fiber_prepare_wait(mrb, r, ctx);
+  f = ngx_http_mrb_fiber_prepare_wait(mrb, r, ctx);
 
   re->mrb = mrb;
   re->fiber_prev_status = r->headers_out.status;
@@ -883,6 +926,9 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
 
   actx->uri = uri;
   actx->re = re;
+  actx->record = f;
+  actx->done = 0;
+  f->has_response = 0;
 
   ps->handler = ngx_mrb_async_http_sub_request_done;
   ps->data = actx;
@@ -898,15 +944,12 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   return self;
 }
 
-static mrb_value ngx_mrb_async_http_last_response(mrb_state *mrb, mrb_value self)
+// A new Nginx::Async::HTTP::Response of the response that the module
+// context ctx holds
+static mrb_value ngx_mrb_async_http_response_new(mrb_state *mrb, ngx_http_mruby_ctx_t *ctx)
 {
   struct RClass *response_class, *http_class, *async_class, *ngx_class;
-  ngx_http_request_t *r;
-  ngx_http_mruby_ctx_t *ctx;
   mrb_value sub_response_instance;
-
-  r = ngx_mrb_get_request_or_raise(mrb);
-  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
   mrb_value headers = build_response_headers_to_hash(mrb, ctx->sub_response_headers);
   mrb_value status = mrb_fixnum_value(ctx->sub_response_status);
@@ -925,6 +968,24 @@ static mrb_value ngx_mrb_async_http_last_response(mrb_state *mrb, mrb_value self
   mrb_iv_set(mrb, sub_response_instance, NGX_HTTP_MRUBY_SYM(mrb, IV_STATUS), status);
   mrb_iv_set(mrb, sub_response_instance, NGX_HTTP_MRUBY_SYM(mrb, IV_BODY), body);
   return sub_response_instance;
+}
+
+// For mrb_protect_error: ngx_mrb_run_fiber builds the response outside Ruby
+// code
+static mrb_value ngx_mrb_async_http_response_body(mrb_state *mrb, void *data)
+{
+  return ngx_mrb_async_http_response_new(mrb, data);
+}
+
+static mrb_value ngx_mrb_async_http_last_response(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_request_t *r;
+  ngx_http_mruby_ctx_t *ctx;
+
+  r = ngx_mrb_get_request_or_raise(mrb);
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+
+  return ngx_mrb_async_http_response_new(mrb, ctx);
 }
 
 void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class)

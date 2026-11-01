@@ -140,15 +140,23 @@ void ngx_mrb_fiber_cancel(ngx_mrb_fiber_t *f)
   }
 }
 
+typedef struct {
+  mrb_value fiber;
+  const mrb_value *arg;
+} ngx_mrb_fiber_resume_t;
+
 static mrb_value ngx_mrb_fiber_resume_body(mrb_state *mrb, void *data)
 {
-  return mrb_fiber_resume(mrb, *(mrb_value *)data, 0, NULL);
+  ngx_mrb_fiber_resume_t *resume = data;
+
+  return mrb_fiber_resume(mrb, resume->fiber, resume->arg != NULL ? 1 : 0, resume->arg);
 }
 
 /*
 // Starts or resumes the fiber, and returns whether it waits, returned or
 // raised. The caller sets the current request or session for the time it
-// runs.
+// runs. arg, when it is not NULL, is the value that the Fiber.yield of the
+// waiting code returns (the response of Nginx::Async::HTTP.sub_request).
 //
 // mruby passes an exception that ends a fiber resumed from C by longjmp to
 // the innermost mrb_vm_exec or mrb_protect_error, if one runs (mrb->jmp is
@@ -170,12 +178,13 @@ static mrb_value ngx_mrb_fiber_resume_body(mrb_state *mrb, void *data)
 // fiber may have been collected: the function returns NGX_MRB_FIBER_REFUSED
 // without touching the fiber.
 */
-ngx_mrb_fiber_outcome_t ngx_mrb_fiber_resume(ngx_mrb_fiber_t *f, mrb_value *value, ngx_mrb_fiber_log_raise_pt log_raise,
-                                             void *log_data)
+ngx_mrb_fiber_outcome_t ngx_mrb_fiber_resume(ngx_mrb_fiber_t *f, const mrb_value *arg, mrb_value *value,
+                                             ngx_mrb_fiber_log_raise_pt log_raise, void *log_data)
 {
   mrb_state *mrb = f->mrb;
   mrb_value v;
   mrb_bool raised = FALSE;
+  ngx_mrb_fiber_resume_t resume;
 
   if (f->state == NGX_MRB_FIBER_DONE || f->state == NGX_MRB_FIBER_FAILED || f->state == NGX_MRB_FIBER_CANCELLED) {
     return NGX_MRB_FIBER_REFUSED;
@@ -183,9 +192,11 @@ ngx_mrb_fiber_outcome_t ngx_mrb_fiber_resume(ngx_mrb_fiber_t *f, mrb_value *valu
 
   f->state = NGX_MRB_FIBER_RUNNING;
   if (mrb->jmp == NULL) {
-    v = mrb_fiber_resume(mrb, f->fiber, 0, NULL);
+    v = mrb_fiber_resume(mrb, f->fiber, arg != NULL ? 1 : 0, arg);
   } else {
-    v = mrb_protect_error(mrb, ngx_mrb_fiber_resume_body, &f->fiber, &raised);
+    resume.fiber = f->fiber;
+    resume.arg = arg;
+    v = mrb_protect_error(mrb, ngx_mrb_fiber_resume_body, &resume, &raised);
     if (raised) {
       mrb->exc = mrb_obj_ptr(v);
     }

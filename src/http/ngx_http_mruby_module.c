@@ -1090,7 +1090,6 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
 
   ctx->sub_response_more = 0;
   ctx->async_sleep_pending = 0;
-  ctx->async_content_waiting = 0;
 
   // The chain of Nginx.rputs and the length of the response before the code
   // runs, for an exception in a header filter (see below).
@@ -1107,17 +1106,12 @@ resumed:
 
     mrb_gc_arena_restore(state->mrb, ai);
 
-    // waiting sub request response
-    if (ctx->sub_response_more) {
-      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: more sub request processing", MODULE_NAME,
-                    __func__, __LINE__);
-      return NGX_AGAIN;
-    }
-
     /*
-     * The fiber yielded to the timer of Nginx::Async.sleep: the handler
-     * returns NGX_DONE, and the wake makes nginx call it again, so that the
-     * checker of its phase handles its result (ngx_http_mrb_fiber_call_again).
+     * The fiber yielded to the timer of Nginx::Async.sleep or to the end of a
+     * subrequest: the handler returns NGX_DONE, and the wake makes nginx call
+     * it again, so that the checker of its phase handles its result
+     * (ngx_http_mrb_fiber_call_again). For a subrequest, nginx wakes the
+     * parent itself when the subrequest ends.
      *
      * A handler that runs inside another mruby call (mrb->jmp is set), in the
      * location that Nginx.redirect runs from Ruby code, is resumed by its
@@ -1125,11 +1119,19 @@ resumed:
      * the call and may answer the request itself, and a content handler
      * there does not keep the request, so the request ends at the sleep, as
      * before. The same holds when the module context is no longer the one the
-     * handler started with (an internal redirect cleared it).
+     * handler started with (an internal redirect cleared it). Such a handler
+     * returns NGX_AGAIN while its subrequest runs, as before.
      */
-    if (ctx->async_sleep_pending && state->mrb->jmp == NULL &&
+    if ((ctx->async_sleep_pending || ctx->sub_response_more) && state->mrb->jmp == NULL &&
         ngx_http_get_module_ctx(r, ngx_http_mruby_module) == ctx && record != NULL) {
       ngx_http_mrb_fiber_wait_on_nginx(r, ctx, record);
+      return NGX_DONE;
+    }
+
+    if (ctx->sub_response_more) {
+      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: more sub request processing", MODULE_NAME,
+                    __func__, __LINE__);
+      return NGX_AGAIN;
     }
 
     return NGX_DONE;

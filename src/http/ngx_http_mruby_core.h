@@ -31,10 +31,8 @@ typedef struct ngx_mrb_rputs_chain_list_t {
  * The kind of mruby handler whose fiber runs. Nginx::Async.sleep and
  * Nginx::Async::HTTP.sub_request suspend that fiber, and nginx resumes it
  * later from a timer or from the end of a subrequest. That works for mruby_set
- * and the post_read, server_rewrite, rewrite and access handlers, and for the
- * timer of Nginx::Async.sleep in the content handler (see ngx_mrb_run_request
- * and ngx_mrb_async_http_sub_request for what the content handler does not
- * support). A log
+ * and the post_read, server_rewrite, rewrite, access and content handlers.
+ * A log
  * handler runs in ngx_http_free_request after the request cleanups and right
  * before the request pool is destroyed, and a filter runs inside
  * ngx_http_send_header or ngx_http_output_filter, which return to their
@@ -70,11 +68,6 @@ typedef struct ngx_http_mruby_ctx_t {
   // set by Nginx::Async.sleep when it arms its timer; ngx_mrb_run_request
   // clears it before the handler runs and reads it when the fiber yields
   unsigned async_sleep_pending : 1;
-  // set by ngx_http_mrb_fiber_wait_on_nginx when a content handler waits
-  // for the timer of Nginx::Async.sleep, and cleared before the next handler
-  // runs; Nginx::Async::HTTP.sub_request raises while it is set, because
-  // nothing would finalize the request after the subrequest
-  unsigned async_content_waiting : 1;
   u_char *sub_response_body;
   ngx_uint_t sub_response_status;
   size_t sub_response_body_length;

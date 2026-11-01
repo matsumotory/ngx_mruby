@@ -55,7 +55,7 @@ static ngx_mrb_fiber_outcome_t ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_valu
   ctx = ngx_stream_mrb_get_module_ctx(mrb, ictx->s);
   ctx->fiber_proc = fiber_proc;
 
-  outcome = ngx_mrb_fiber_resume(&f->base, result, ngx_stream_mrb_fiber_log_raise, ictx->s);
+  outcome = ngx_mrb_fiber_resume(&f->base, NULL, result, ngx_stream_mrb_fiber_log_raise, ictx->s);
   if (outcome == NGX_MRB_FIBER_REFUSED) {
     // the record has ended: the session ends as after an exception
     ngx_log_error(NGX_LOG_ERR, ictx->s->connection->log, 0,

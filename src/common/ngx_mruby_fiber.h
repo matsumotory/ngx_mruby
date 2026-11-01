@@ -81,8 +81,8 @@ void ngx_mrb_fiber_arm_timer(ngx_mrb_fiber_t *f, ngx_msec_t msec, ngx_event_hand
 void ngx_mrb_fiber_timer_fired(ngx_mrb_fiber_t *f);
 void ngx_mrb_fiber_delete_timer(ngx_mrb_fiber_t *f);
 void ngx_mrb_fiber_cancel(ngx_mrb_fiber_t *f);
-ngx_mrb_fiber_outcome_t ngx_mrb_fiber_resume(ngx_mrb_fiber_t *f, mrb_value *value, ngx_mrb_fiber_log_raise_pt log_raise,
-                                             void *log_data);
+ngx_mrb_fiber_outcome_t ngx_mrb_fiber_resume(ngx_mrb_fiber_t *f, const mrb_value *arg, mrb_value *value,
+                                             ngx_mrb_fiber_log_raise_pt log_raise, void *log_data);
 
 #ifdef NGX_MRUBY_DEBUG_STATS
 /*
