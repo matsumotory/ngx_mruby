@@ -556,7 +556,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
   what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18140,
-  18143-18144, 18147-18170, 18180-18181, 18199, 12345-12359, 12363-12366,
+  18143-18144, 18147-18170, 18176-18181, 18199, 12345-12359, 12363-12366,
   12368-12369, 12372-12379, 12390-12391; 18116 and 12357 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18180, 18181 and 12379 to the
   nginx with several workers that `test/t/cases/_workers.rb` starts, 18158 to the nginx that
@@ -621,8 +621,9 @@ with a successful skip.
   The owner's words (2026-11-01):
   「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
   The patterns are in `site/scripts/lib/patterns.mjs`.
-  The Starlight replacement changed the iPhone pattern from 390px to 402px
-  (Safari on an iPhone 17 Pro); the value is defined in that file.
+  The iPhone width is 402px (Safari on an iPhone 17 Pro). At 640px and
+  below, the root font size grows with the screen so that the text column
+  keeps the 21.875em it has at 390px (4.4 of `docs/proposals/site.md`).
 
 
 The site uses Astro with the repository's route, schema, layout and components.

@@ -172,7 +172,10 @@ try {
         await page.locator('[data-model="a"]').focus();
         await page.keyboard.press('Space');
         await assertRoute(page, 'a');
-        await page.keyboard.press('Tab');
+        // WebKit's default setting moves Tab only between form controls and
+        // elements with tabindex; Option-Tab (Alt) also reaches buttons, as in
+        // check-focus.mjs. The key is held 60 ms.
+        await page.keyboard.press(engine === webkit ? 'Alt+Tab' : 'Tab', { delay: 60 });
         assert.equal(await page.locator('[data-model="b"]').evaluate(el => document.activeElement === el), true);
         await page.keyboard.press('Enter');
         await assertRoute(page, 'b');

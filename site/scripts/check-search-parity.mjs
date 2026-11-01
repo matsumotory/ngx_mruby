@@ -53,7 +53,10 @@ async function checkBuiltRanking(dist, prefix) {
 }
 
 async function query(dist, prefix, language) {
-  const directory = path.join(dist, prefix, 'pagefind');
+  // Real path: Pagefind loads its files by the resolved path, and a temporary
+  // directory behind a symbolic link (/var -> /private/var on macOS) would
+  // otherwise fail the check below.
+  const directory = path.join(await fs.realpath(dist), prefix, 'pagefind');
   const originalDocument = globalThis.document;
   const originalFetch = globalThis.fetch;
   // Pagefind detects the HTML language. No DOM layout is emulated here.

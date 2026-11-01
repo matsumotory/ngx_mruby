@@ -171,6 +171,19 @@ html[lang="ja"]:has(.home) {
   }
 }
 
+/* The phone pattern is 402 px (5.4). The text column between the 20 px
+   gutters holds 21.875 em of text at 16 px on a 390 px screen, the width at
+   which the pages' lines were set. Between 390 and 412 px, the root size
+   grows with the screen so that the column keeps those 21.875 em, and
+   every line breaks where it breaks at 390 px; it stays at 100% below and
+   at 106.25% (17 px by default) above. Every rem size of the type scale
+   (4.4) follows the root, so the roles keep their ratios. */
+@media (max-width: 640px) {
+  :root {
+    font-size: clamp(100%, (100vw - 2 * var(--gutter)) / 21.875, 106.25%);
+  }
+}
+
 /* Type scale, Japanese (4.4): one step smaller headings, line height 1.4,
    body 1.8, navigation and captions 1.7 */
 :root[lang="ja"] {

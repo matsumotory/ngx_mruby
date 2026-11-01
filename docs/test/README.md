@@ -1635,6 +1635,14 @@ of `build.sh` and `test.sh` do not have it.
   - `gc_arena_idx`: `mrb->gc.arena_idx`.
   - `timers`: the `Nginx::Async.sleep` timers that have neither fired nor
     been deleted.
+  - `stream_timers`: the same for `Nginx::Stream::Async.sleep`, in the
+    stream module.
+  - `stream_fibers`: the fibers of stream handlers that are kept in the GC
+    root holder of the stream module's mrb_state: those that slept and have
+    neither ended nor had their session end. They are also counted in
+    `gc_root_fibers`. The soak configurations have no `stream {}`, so the
+    soak test reads 0 for both stream keys and checks only that the keys
+    are there.
   - `gc_root_mruby` and `gc_root_fibers_mruby`: the length of mruby's own
     `_gc_root_` array in the mrb_state of the http module, and the fibers in
     it. mruby 3.x and 4.0 create that array at the first `mrb_gc_register()`
@@ -1656,8 +1664,8 @@ mrb_state, which `src/http/ngx_http_mruby_core.c` counts in
 `mrb_gc_register` and
 `mrb_gc_unregister` as macros that call the mruby function and then count
 the call, so every call in a source file that includes the header is
-counted, including a call added later. A `.c` file in `src/http/` or
-`src/stream/` that calls either function must therefore include
+counted, including a call added later. A `.c` file in `src/http/`,
+`src/stream/` or `src/common/` that calls either function must therefore include
 `ngx_http_mruby_debug.h`; `test/soak/run.sh` checks this before it builds
 and stops otherwise. Without the define, the header defines no macro and the
 calls go to mruby directly.

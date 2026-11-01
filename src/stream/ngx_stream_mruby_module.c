@@ -407,6 +407,7 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
   }
 
   code->proc = mrb_proc_ptr(proc);
+  ngx_mrb_fiber_prepare_proc(mrb, code->proc);
 
   /* A debugging aid for each directive, logged while nginx reads the
      configuration through its startup log, which error_log cannot filter. */
@@ -733,6 +734,7 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   mrb_int ai;
   ngx_stream_mruby_internal_ctx_t *ictx;
   ngx_stream_session_t *prev_s;
+  ngx_mrb_fiber_outcome_t outcome;
 
   mscf = ngx_stream_get_module_srv_conf(s, ngx_stream_mruby_module);
   if (mscf->code == NGX_CONF_UNSET_PTR) {
@@ -753,9 +755,17 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   ictx->stream_status = NGX_DECLINED;
 
   mrb_value *mrb_result = (mrb_value *)ngx_palloc(s->connection->pool, sizeof(mrb_value));
+  if (mrb_result == NULL) {
+    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "%s ERROR %s:%d: failed to allocate the result", MODULE_NAME,
+                  __func__, __LINE__);
+    mrb_gc_arena_restore(mrb, ai);
+    ictx->s = prev_s;
+    return NGX_ERROR;
+  }
   *mrb_result = mrb_nil_value();
 
-  if (mrb_test(ngx_stream_mrb_start_fiber(s, mrb, mscf->code->proc, mrb_result))) {
+  outcome = ngx_stream_mrb_start_fiber(s, mrb, mscf->code->proc, mrb_result);
+  if (outcome == NGX_MRB_FIBER_WAITS) {
     ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
                   __func__, __LINE__);
 
@@ -767,9 +777,8 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
                   MODULE_NAME, __func__, __LINE__);
   }
 
-  if (mrb->exc) {
-    ngx_stream_mruby_raise_error(mrb, mrb_obj_value(mrb->exc), s);
-    ngx_stream_mrb_state_clean(mrb);
+  if (outcome == NGX_MRB_FIBER_RAISED) {
+    // ngx_stream_mrb_start_fiber has logged the exception and cleared mrb->exc
     mrb_gc_arena_restore(mrb, ai);
     ictx->s = prev_s;
     return NGX_ABORT;

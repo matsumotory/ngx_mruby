@@ -14,13 +14,13 @@
 #include <mruby.h>
 
 void ngx_stream_mrb_core_class_init(mrb_state *mrb, struct RClass *class);
-typedef void (*ngx_stream_mrb_cleanup_pt)(void *data);
 typedef struct ngx_stream_mruby_ctx_t {
   mrb_state *mrb;
   mrb_value *fiber_proc;
   mrb_value *async_handler_result;
-  ngx_stream_mrb_cleanup_pt cleanup;
-  ngx_event_t sleep;
+  // the record (ngx_stream_mruby_async.c) whose Nginx::Stream::Async.sleep
+  // timer is armed, or NULL: a session has one pending sleep at a time
+  void *sleeping;
 } ngx_stream_mruby_ctx_t;
 
 ngx_stream_mruby_ctx_t *ngx_stream_mrb_get_module_ctx(mrb_state *mrb, ngx_stream_session_t *s);

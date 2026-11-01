@@ -17,7 +17,7 @@
 
 #ifdef NGX_MRUBY_DEBUG_STATS
 
-#include "ngx_http_mruby_async.h"
+#include "../common/ngx_mruby_fiber.h"
 
 #include <mruby/array.h>
 #include <mruby/hash.h>
@@ -91,12 +91,15 @@ static mrb_value ngx_mrb_debug_stats(mrb_state *mrb, mrb_value self)
     }
   }
 
-  stats = mrb_hash_new_capa(mrb, 7);
+  stats = mrb_hash_new_capa(mrb, 9);
   ngx_mrb_debug_stats_set(mrb, stats, "gc_live", live);
   ngx_mrb_debug_stats_set(mrb, stats, "gc_root", (mrb_int)ngx_mrb_debug_gc_root_count);
   ngx_mrb_debug_stats_set(mrb, stats, "gc_root_fibers", (mrb_int)ngx_mrb_debug_gc_root_fibers_count);
   ngx_mrb_debug_stats_set(mrb, stats, "gc_arena_idx", arena_idx);
-  ngx_mrb_debug_stats_set(mrb, stats, "timers", (mrb_int)ngx_mrb_async_debug_timers());
+  ngx_mrb_debug_stats_set(mrb, stats, "timers", (mrb_int)ngx_mrb_fiber_debug_timers(NGX_MRB_FIBER_HTTP));
+  /* the stream module's Nginx::Stream::Async.sleep timers, and its fibers in the GC root holder */
+  ngx_mrb_debug_stats_set(mrb, stats, "stream_timers", (mrb_int)ngx_mrb_fiber_debug_timers(NGX_MRB_FIBER_STREAM));
+  ngx_mrb_debug_stats_set(mrb, stats, "stream_fibers", (mrb_int)ngx_mrb_fiber_debug_held(NGX_MRB_FIBER_STREAM));
   /* mruby's own root set of this mrb_state, for as long as mruby keeps the array */
   if (mrb_array_p(root)) {
     ngx_mrb_debug_stats_set(mrb, stats, "gc_root_mruby", root_len);

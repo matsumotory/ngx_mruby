@@ -86,13 +86,22 @@ async function prepare(page, url, state, noto) {
   await page.goto(url, { waitUntil: 'load' });
   if (noto) await page.addStyleTag({ content: ':root { --font-ja-faces: "Noto Sans JP Variable", "Noto Sans JP" !important; }' });
   await page.evaluate(() => document.fonts.ready);
+  // Both shells start Pagefind's UI and the table of contents when the
+  // browser is idle. Wait for both on each side, so that a side measured
+  // before its idle callback ran does not show as a difference.
+  await page.locator('dialog .pagefind-ui__search-input').waitFor({ state: 'attached' });
+  // An idle callback queued now runs after the one that the table of
+  // contents queued while the page was parsed; two frames later its
+  // IntersectionObserver has delivered the first entries.
+  await page.evaluate(() => new Promise(resolve => (window.requestIdleCallback || (f => setTimeout(f, 1)))(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
   if (state === 'menu') {
     const button = page.locator('button.site-menu-button,button.sl-menu-button');
     assert.equal(await button.count(), 1, 'expected a single mobile menu button');
     await button.click();
   } else if (state === 'search') {
     await page.locator('button[data-open-modal]').click();
-    const input = page.locator('dialog input[type="search"]');
+    // Pagefind's UI renders its field as input type="text".
+    const input = page.locator('dialog .pagefind-ui__search-input');
     await input.fill('mruby_content_handler');
     await page.locator('dialog .pagefind-ui__result-link').first().waitFor({ state: 'visible' });
   }
@@ -150,7 +159,7 @@ export async function compareLayouts(base, head, out, options = {}) {
     await fs.writeFile(path.join(out, 'results.json'), JSON.stringify({ completed, fatalError, font: options.noto ? 'Noto Sans JP override' : 'platform default', motion: 'reduced; finite transitions awaited; infinite animations paused at time 0 on both sides', records, failures }, null, 2));
   }
   assert.deepEqual(failures, [], `layout parity failures (${failures.length}):\n${failures.slice(0, 40).join('\n')}`);
-  console.log(`check-layout-parity: ${records.length} states, ${files.length} HTML, Chromium 1440 / WebKit 402; boxes within 1 CSSpx and computed styles equal`);
+  console.log(`check-layout-parity: ${records.length} states, ${files.length} HTML, ${PATTERNS.map(p => `${p.engine} ${p.width}`).join(' / ')}; boxes within 1 CSSpx and computed styles equal`);
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2), get = name => args[args.indexOf(name) + 1];
