@@ -1710,8 +1710,8 @@ The pull request updates the text that it makes untrue: in AGENTS.md
 the repository layout ("Astro with Starlight") and "The site"; in this
 proposal 3.4, 3.5 (the fallback), item 5 of 4.3, 4.4 (`PageTitle.astro`,
 the Banner), 4.5 (Starlight's columns and CSS), 4.6 ("Starlight's own
-colors", "Code blocks"), 4.7, 4.10 and 5.2; Pillar F of `v3-plan.md`; and the comments of `site/` that name
-Starlight. `docs/HANDOFF.md` records the stage, as AGENTS.md says.
+colors", "Code blocks"), 4.7, 4.10 and 5.2, and "Measure two patterns" of "Site design acceptance" (the phone width); Pillar F of `v3-plan.md`; and the comments of `site/` that name
+Starlight. `docs/HANDOFF.md` records the state of the pull request, as AGENTS.md says.
 
 **Acceptance.** Each item is measured on both versions and both
 languages, on every page unless it says otherwise. The phone pattern is
@@ -2476,7 +2476,11 @@ iPhone Safari (390 px, WebKit). No other widths, browsers or font
 combinations are added to the checks. The owner's words (2026-11-01):
 「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
 The words name iPhone 17 as an example; the phone pattern takes 390 px,
-the standard iPhone width, at which the pages already pass.
+the standard iPhone width, at which the pages already pass. The
+replacement of Starlight (5.4) changes it to 402 px; the Japanese lines that
+wrap differently at 402 px are fixed in the same pull request, by the size of
+the type first and then by a few characters of text, and the comparison with
+the build of the base commit lists them as allowed differences.
 The content area has a fixed width, so a correct rendering at full
 screen is what the PC pattern establishes. Japanese text keeps the faces
 the site serves: Hiragino Sans where the system has it and the served Noto
