@@ -303,20 +303,20 @@ Their sources describe the same kind of traffic.
 
 ## Examples in ngx_mruby's pages
 
-- The home page says that apps use an LLM and that the proxy stands between
-  apps and LLM APIs. Its example routes chat and summarization requests by
-  their `model` field to text language models, so LLM fits there.
-- The planned use "Select another LLM endpoint after an API error" fits
-  while it covers text language models. If it covers image or audio model
-  APIs as well, write model API.
-- "AI crawler traffic policy" in the [AI edge control guide](guides/edge-control.md)
-  covers requests from AI crawlers and agents to a site, and fits.
+- The title of the home page, "Route LLM requests with Ruby.", fits: its
+  example routes chat and summarization requests by their `model` field to
+  text language models. The text under the title names the component an AI
+  gateway between an AI application and a model API.
+- The planned use "Select another model API endpoint after an error" writes
+  model API, since it is not limited to text language models.
+- "AI crawler traffic policy" in the [AI gateway and site access control
+  guide](guides/edge-control.md) covers requests from AI crawlers and agents
+  to a site, and fits.
 - The title of [the edge-control proposal](proposals/edge-control.md) says
   "AI traffic". The proposal covers MCP traffic, model API traffic,
   requests from AI crawlers and agents to a site, and the telemetry of the log
   handler, so the term needs a definition with these four kinds at its
   first use.
-- A text that names the component itself, such as the link "LLM proxy" to
-  the [agent proxy guide](guides/agent-proxy.md) in the
-  [documents index](README.md), writes AI gateway, and says where the page
-  covers only its model API part.
+- The [documents index](README.md) links the
+  [guide of the model API part](guides/agent-proxy.md) as "Model API relay":
+  the page covers only the model API part of the AI gateway.
