@@ -143,9 +143,9 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
  * Only the main request: a subrequest, with or without output, does not leave the
  * client without a response, because its parent answers. Nothing changes
  * either when the header was already sent, or when the module context is no
- * longer the one the handler ran with: Nginx.redirect makes an internal
- * redirect, which clears the module contexts, and the location it ran answers
- * the request.
+ * longer the one the handler ran with: an internal redirect inside the Ruby
+ * call (from an mruby_set handler, a log handler or a filter) clears the
+ * module contexts, and the location it ran answers the request.
  */
 static ngx_flag_t ngx_mrb_content_ends_without_response(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx,
                                                         ngx_http_mruby_handler_kind_t kind, ngx_int_t status)
@@ -267,8 +267,10 @@ static ngx_int_t ngx_mrb_send_empty_body(ngx_http_request_t *r)
  * or server rewrite handler that returns Nginx::OK goes on as well: the
  * rewrite phase would finalize the request with NGX_OK without a response.
  * A handler whose request an internal redirect of Nginx.redirect sent
- * elsewhere returns the status that the target stored in
- * r->headers_out.status, until step 7 of section 8 of the proposal.
+ * elsewhere inside the call returns the status that the target stored in
+ * r->headers_out.status. Since Q2 of section 9, only the handlers whose
+ * redirect still takes effect inside the call (those that ngx_mrb_post_fiber
+ * resumes) get here; the others make the redirect when they end.
  *
  * A post_read or access handler that sends its output returns NGX_HTTP_OK,
  * so that its phase checker finalizes the request, as the rewrite and
@@ -288,8 +290,10 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
   // Without a result of its own, a handler that sent the request elsewhere
   // with Nginx.redirect (an internal redirect replaced the module context it
   // ran with, and the target has answered) returns the status in
-  // r->headers_out.status, as before. Step 7 of section 8 of
-  // docs/proposals/core-stabilization.md replaces this.
+  // r->headers_out.status, as before. A handler that makes the redirect when
+  // it ends (Q2 of section 9 of docs/proposals/core-stabilization.md) has the
+  // module context it ran with here, so this applies only to a redirect that
+  // took effect inside the call.
   redirected = ngx_http_get_module_ctx(r, ngx_http_mruby_module) != ctx;
   if (!has_result && redirected && r->headers_out.status >= 100) {
     has_result = 1;
@@ -418,6 +422,7 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
   mrb_int status = NGX_HTTP_OK;
   mrb_get_args(mrb, "i", &status);
+  ngx_http_mrb_fiber_after_redirect(r);
   // A return code below 0, such as Nginx::DECLINED, is the result of the
   // handler only (below), not the status of the response
   if (status >= 0) {
@@ -481,6 +486,7 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
   if (ns.len == 0) {
     return self;
   }
+  ngx_http_mrb_fiber_after_redirect(r);
 
   if (ctx->rputs_chain == NULL) {
     chain = ngx_pcalloc(r->pool, sizeof(ngx_mrb_rputs_chain_list_t));
@@ -616,6 +622,9 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     return mrb_nil_value();
   }
   ns.data = ngx_palloc(r->pool, ns.len);
+  if (ns.data == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+  }
   ngx_memcpy(ns.data, RSTRING_PTR(uri), ns.len);
 
   // if uri start with scheme prefix
@@ -644,8 +653,22 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     r->headers_out.location = location;
     r->headers_out.status = rc;
     ngx_http_mrb_fiber_set_result(r, rc);
+    // after a local redirect that waits for the end of the handler, this
+    // status is not sent either
+    ngx_http_mrb_fiber_after_redirect(r);
   } else {
-    ngx_http_internal_redirect(r, &ns, &r->args);
+    // A phase handler redirects when it ends, after its code: the target's
+    // handlers then run outside the fiber of this one, and one handler
+    // answers the request (Q2 of docs/proposals/core-stabilization.md)
+    switch (ngx_http_mrb_fiber_defer_redirect(r, &ns)) {
+    case NGX_OK:
+      break;
+    case NGX_ERROR:
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+      break;
+    default:
+      ngx_http_internal_redirect(r, &ns, &r->args);
+    }
   }
 
   return self;

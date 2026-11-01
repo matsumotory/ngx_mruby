@@ -52,12 +52,16 @@ t.assert('async', 'an exception after Nginx.rputs in a resumed handler answers 5
   t.assert_equal 'plain', body
 end
 
-t.assert('async', 'an exception after Nginx.redirect in a resumed handler ends the request after the redirect target answered') do
+t.assert('async', 'an exception after Nginx.redirect in a resumed handler answers 500, without the redirect') do
+  # On 2.x the redirect target answered inside the call, before the
+  # exception; in 3.0.0 Nginx.redirect takes effect when the handler ends,
+  # and the exception answers 500 instead (Q2 of
+  # docs/proposals/core-stabilization.md)
   status, raw = tcp_client(18130, "GET /redirect_then_raise_after_sleep HTTP/1.0\r\nHost: localhost\r\n\r\n")
   line, body = async_exception_split(raw)
   t.assert_equal 'EOF', status
-  t.assert_equal 'HTTP/1.1 200 OK', line
-  t.assert_equal 'plain', body
+  t.assert_equal 'HTTP/1.1 500 Internal Server Error', line
+  t.assert_not_include body, 'plain'
 
   status, raw = tcp_client(18130, "GET /plain HTTP/1.0\r\nHost: localhost\r\n\r\n")
   line, body = async_exception_split(raw)
@@ -66,7 +70,7 @@ t.assert('async', 'an exception after Nginx.redirect in a resumed handler ends t
   t.assert_equal 'plain', body
 end
 
-t.assert('async', 'Nginx.return with a status after Nginx.redirect in a resumed handler ends the request after the redirect target answered') do
+t.assert('async', 'Nginx.return with a status after Nginx.redirect in a resumed handler: the redirect target answers, without the status') do
   status, raw = tcp_client(18130, "GET /redirect_then_return_after_sleep HTTP/1.0\r\nHost: localhost\r\n\r\n")
   line, body = async_exception_split(raw)
   t.assert_equal 'EOF', status

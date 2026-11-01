@@ -53,6 +53,22 @@ ngx_flag_t ngx_http_mrb_fiber_result(ngx_http_mrb_fiber_t *record, ngx_int_t *re
 // Stores the result of the handler whose fiber runs now for request r.
 void ngx_http_mrb_fiber_set_result(ngx_http_request_t *r, ngx_int_t result);
 
+/*
+// Nginx.redirect with a local URI in a post_read, server rewrite, rewrite,
+// access or content handler: the URI is kept in the record of the handler
+// whose fiber runs now, and the internal redirect is made when the handler
+// ends (Q2 of section 9 of docs/proposals/core-stabilization.md). Returns
+// NGX_OK when it is kept, NGX_DECLINED when the handler that runs is of
+// another kind (the redirect is made at once, as before), and NGX_ERROR
+// when the allocation failed.
+*/
+ngx_int_t ngx_http_mrb_fiber_defer_redirect(ngx_http_request_t *r, ngx_str_t *uri);
+// Output or a status after Nginx.redirect, which are not sent
+void ngx_http_mrb_fiber_after_redirect(ngx_http_request_t *r);
+// The URI of the redirect that the run of record keeps, or NULL; *after tells
+// whether the code wrote output or set a status after the call
+ngx_str_t *ngx_http_mrb_fiber_redirect(ngx_http_mrb_fiber_t *record, ngx_flag_t *after);
+
 void ngx_mrb_async_class_init(mrb_state *mrb, struct RClass *class);
 
 #endif // NGX_HTTP_MRUBY_ASYNC_H
