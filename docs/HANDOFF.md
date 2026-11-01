@@ -228,6 +228,11 @@ where their rows said: the mruby steps in item 1 of section 7 of
 the Japanese release notes in [docs/releases/README.md](releases/README.md)
 (#575).
 
+The owner's choice of 2026-11-02 on the terms for models, agents, their
+traffic and the AI gateway is written in section 7 of
+[the site proposal](proposals/site.md#7-decisions-2026-10-15) and in
+[the glossary](glossary.md).
+
 ## Work in progress
 
 ### Japanese pages of the site
@@ -291,6 +296,7 @@ Taken up and still open: none.
 | A proposal of the sessions for the rewrite, not a decision: let `Nginx::Async::HTTP.sub_request` work in a content handler after `Nginx::Async.sleep`, where it raises `RuntimeError` since 2.7.3 because nginx would not finish the request after the subrequest | `next`, in the core stabilization of 3.0.0 | Done in [#722](https://github.com/matsumotory/ngx_mruby/pull/722): the owner decided Q1 of the core stabilization proposal on 2026-11-01 |
 | The async resume rewrite (decision (c) of 2026-10-04, amended on 2026-10-29: the rewrite of how resumed handlers end in `src/http/ngx_http_mruby_async.c`, which includes the resume of a handler after `Nginx::Async::HTTP.sub_request` from its own request). No pull request exists | `next`, in the core stabilization of 3.0.0 | Done for the timer in [#715](https://github.com/matsumotory/ngx_mruby/pull/715) and for subrequests in [#722](https://github.com/matsumotory/ngx_mruby/pull/722); the resume of a handler that waits in a location that `Nginx.redirect` runs from Ruby code follows with step 7 of section 8 of the core stabilization proposal |
 | The generated reference of the site (Pillar F of the plan): the directives from the `ngx_command_t` tables, the Ruby API with YARD and yard-mruby, the C API with Doxygen. `site/scripts/check-reference.mjs` checks, among other things, that each directive name has a heading in `docs/directives/README.md`; the pages are written by hand | `next` | Ready to start; no step of section 6 of the site proposal produces it yet |
+| The words of the site and of the docs that do not follow [the glossary](glossary.md) yet: "LLM proxy" as the name of the component (the documents index, the home page), and "AI traffic" without a definition at its first use (the title of [the edge-control proposal](proposals/edge-control.md)). The glossary's section "Examples in ngx_mruby's pages" lists them | `next` | In progress: [#729](https://github.com/matsumotory/ngx_mruby/pull/729) (draft), from a Codex session; the glossary's section "Examples in ngx_mruby's pages" and this row change with it |
 
 ## How a session continues
 
