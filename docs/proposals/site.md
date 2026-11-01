@@ -1852,7 +1852,7 @@ configuration: all routes use Astro and repository-owned components, with no
 Starlight dependency or shell flag. Copied code retains its MIT attribution.
 Acceptance compares a base-commit build with the head using identical 2.x
 input, then checks browser behavior and layout in the two configured patterns.
-Implementation is complete; final acceptance verification remains pending.
+The acceptance passes; #713 quotes the commits and the results.
 The lockfile now has 417 package entries excluding the root, down from 466
 in the migration base (49 fewer); this count is not a runtime performance claim.
 

@@ -191,9 +191,10 @@ function inspect(cfg) {
     const ownText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     if (ownText) {
       const fs = parseFloat(cs.fontSize);
-      // A size of the scale written in rem, or the same size written in px
-      // (Pagefind's UI); the two differ only at 640 px and below.
-      const allowed = new Set([...sizes, ...Object.values(cfg.scale[lang])]);
+      // A size of the scale in rem of the root. Pagefind's UI writes its
+      // sizes in px, so inside it the same sizes in px are allowed too; the
+      // two differ only at 640 px and below.
+      const allowed = new Set([...sizes, ...(el.closest('.pagefind-ui') ? Object.values(cfg.scale[lang]) : [])]);
       if (isHome) allowed.add(home);
       if (![...allowed].some((s) => Math.abs(s - fs) < 0.05)) fail(el, `font-size ${fs}px is not a size of the ${lang} scale (${[...allowed].join(', ')})`);
       if (fs < 13.95) fail(el, `font-size ${fs}px is below 14 px`);

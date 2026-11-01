@@ -137,7 +137,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ !cancelled() && steps.v2.outcome == 'success' && github.head_ref == 'codex/astro-final-migration' }}
         with:
-          ref: ${{ github.event.pull_request.base.sha || 'next' }}
+          # The base of the accepted commit below (its merge-base with next),
+          # so that both sides have the same documents.
+          ref: 782e1893547d7ceeae0f306212d838970d199e1d
           path: site-parity-base
           fetch-depth: 0
           persist-credentials: false
