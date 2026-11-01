@@ -186,12 +186,26 @@ upgrading". New behavior, API cleanups and features go to `next`.
   merge: the conditions of "Review and merge" decide that. A PR that stays
   a draft says at the top of its body why (what is unfinished or not
   verified), who continues it, and what ends the draft.
-- CI is the final check in a clean environment, and the tests are run
-  locally. The owner set this rule on 2026-10-31 (the owner's words are
-  quoted in "Decisions" of `docs/HANDOFF.md` on `next`): CI is only the
-  final check in a clean environment, the tests are done thoroughly
+- CI is limited to what cannot run locally, the environments that a
+  machine does not have (the cells of the build matrix, the sanitizers,
+  valgrind, the callgrind comparison), and to the deploy of the site; the
+  tests are run locally. The owner set the rule on 2026-10-31: CI is only
+  the final check in a clean environment, the tests are done thoroughly
   locally, and CI is not packed with so many tests that a run takes tens
-  of minutes. The sessions apply it this way (their procedure, not a
+  of minutes. On 2026-11-02 the owner added that CI is not relied on: when
+  the local tests are thorough, CI is the minimum, and CI that covers many
+  environments stays, but what runs locally is not repeated in CI at the
+  cost of time and money (the owner's words of both days are quoted in
+  "Decisions" of `docs/HANDOFF.md` on `next`). So a PR to `next` runs no
+  job of `site.yml`: the author runs `npm run check:ci` in `site/`, and
+  `site.yml` runs on the push to `next`, where it builds, checks without a
+  browser, deploys and checks the published site ("Site CI" in
+  `docs/test/README.md` on `next`). In the same way, a PR to `master`
+  runs no job of `site-v2.yml`: its author checks the 2.x pages locally
+  ("The 2.x pages of the site" in `docs/test/README.md`), and the push to
+  `master` starts `site.yml` on `next` through `site-dispatch.yml`, which
+  builds `/v2/` from the new `master` before it deploys. The sessions
+  apply the rule this way (their procedure, not a
   decision of the owner): the author runs the checks that the change
   touches locally before marking the PR ready (the suite among them when
   `test/ci/changes.sh` gives `build` `standard` or `full`), and quotes the
@@ -207,12 +221,11 @@ upgrading". New behavior, API cleanups and features go to `next`.
   dynamic module, the sanitizer cell and the cell under valgrind; every
   cell runs in the nightly run, on the push of a tag, in the check PR
   before a tag (the label `full-matrix`) and on "Run workflow" without the
-  input `base`. The run finishes in about fifteen minutes, not in tens of
-  minutes: on
-  2026-10-31, on `next`, a cell of the build matrix took 6 to 14 minutes, the run of
-  `test.yml` with the whole matrix 15 minutes, and a browser lane of the
-  site on `next` 3 to 8 minutes, the lanes in parallel ("Required status check" in
-  `docs/test/README.md`). A proposal to add a check to CI says whether it
+  input `base`. The run finishes in about
+  fifteen minutes, not in tens of minutes: on
+  2026-10-31, a cell of the build matrix took 6 to 14 minutes and the run
+  of `test.yml` with the whole matrix 15 minutes ("Required status check"
+  in `docs/test/README.md`). A proposal to add a check to CI says whether it
   can run locally, why CI needs it, and how many minutes it adds to the
   run.
 - The PR body says which commits each result stands for: for the runs
@@ -294,30 +307,35 @@ these hold:
 1. The base branch follows the branch table above.
 2. Every CI check on the head commit passed (`ci-ok`, the check that the
    branch rules of `master` and `next` require) on the PR's latest run
-   for that commit. The run counts as long as the base has gained no file
-   of a category that the PR also changes since the base of that run. With
-   `BASE_AT_RUN` the base commit of the run's merge ref (the first parent
-   of `refs/pull/N/merge` at that time, which the `changes` job prints),
-   compare the output of `sh test/ci/changes.sh BASE_AT_RUN origin/<base>`
-   with that of `sh test/ci/changes.sh "$(git merge-base origin/<base>
-   HEAD)" HEAD` (the PR's own files). Three groups
-   count as one category each, because their checks read each other's
-   files: `code` and `tests` (the build runs the tests on the code), `docs`,
-   `site` and `examples` (the site builds and checks all three), and
-   `workflows`. When a group is `true` in both outputs, the branch is
-   updated and CI runs again; otherwise it is not. The checks of the site
-   and the examples also read `src/`, `test/` and `build_config.rb` (the
-   directive tables, the cases, the gems), so a change of `code` or
-   `tests` in the base can break a PR of the second group that this rule
-   lets merge; the run of `site.yml` on the push to `next`, which must pass
-   before it deploys, catches it, and the fix is a PR of its own (a push to
-   `master` starts that run on `next` through `site-dispatch.yml`, and
-   `site-v2.yml` checks the 2.x pages of every ready PR to `master`). The rulesets do
-   not require an up-to-date branch, so this condition is the check. A run
-   made green by skipping or disabling tests does not count. A run in
-   which the `changes` job of `test.yml` skipped jobs that the PR's files
-   do not need counts ("Which jobs a run starts" in `docs/test/README.md`
-   has the table of what runs for which category).
+   for that commit. When the base has moved since that run, the branch is
+   updated and CI runs again only when both the PR and the base's new
+   commits change `code` or `tests`: with `BASE_AT_RUN` the base commit
+   of the run's merge ref (the first parent of `refs/pull/N/merge` at
+   that time, which the `changes` job prints), the output of `sh
+   test/ci/changes.sh BASE_AT_RUN origin/<base>` (the base's new files)
+   and that of `sh test/ci/changes.sh "$(git merge-base origin/<base>
+   HEAD)" HEAD` (the PR's own files) both give `code` or `tests` `true`
+   (one of them in each output is enough, since the build runs the tests
+   on the code). An overlap of `docs`, `site`, `examples` or `workflows`
+   alone runs nothing again. The owner decided on 2026-11-02 that CI is
+   not relied on for what runs locally (the owner's words are quoted in
+   "Decisions" of `docs/HANDOFF.md` on `next`). The sessions apply it
+   this way (their procedure, not a decision of the owner): the checks of
+   those categories are the author's local runs under "How was this
+   tested" (`npm run check:ci` in `site/` of `next` for `docs`, `site`
+   and `examples`, on `master` the checks of "The 2.x pages of the site"
+   in `docs/test/README.md`, zizmor for `workflows`; "Build and test"),
+   which a run
+   on a moved base would only repeat, and on `next` the run of `site.yml`
+   on the push of the merge builds and checks the merged tree before it
+   deploys, and fails there instead of publishing (a push to `master`
+   starts that run on `next` through `site-dispatch.yml`). A failure
+   there is fixed by a PR of its own. The rulesets do not require an
+   up-to-date branch, so this condition is the check. A run made green by
+   skipping or disabling tests does not count. A run in which the
+   `changes` job of `test.yml` skipped jobs that the PR's files do not
+   need counts ("Which jobs a run starts" in `docs/test/README.md` has
+   the table of what runs for which category).
 3. The change is inside the agreed scope, or is a bug fix with the two-commit
    evidence described under "Writing tests", or changes documentation only.
    In every case, a change of behavior that a configuration, script or build
@@ -501,9 +519,9 @@ NGINX_RUNNER=valgrind sh test.sh   # run nginx under valgrind (NGINX_HEATTIME, 6
 sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12372)
 ```
 
-- Run these before a PR is marked ready: CI is the final check in a clean
-  environment, not the place where a change is first tested (see "Branches
-  and pull requests"). Run the local commands of the checks that the
+- Run these before a PR is marked ready: CI runs only what cannot run
+  locally, and is not the place where a change is first tested (see
+  "Branches and pull requests"). Run the local commands of the checks that the
   change touches: the suite when `test/ci/changes.sh` gives `build`
   `standard` or `full`, `sh test/ci/changes_test.sh` for `test/ci/`, the build of
   the 2.x pages for `docs/` ("The 2.x pages of the site" in
