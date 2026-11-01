@@ -4,10 +4,10 @@
 
 ## 語の使い方
 
-- 和文では、AIゲートウェイ、MCPゲートウェイ、AIアプリケーション、エージェント、モデル、モデルAPI、マルチモーダルのモデル、リクエスト、AIクローラー、ボットのようにカタカナで書きます。MCP、A2A、API、log handler、JSONのフィールド名（`model`など）のような識別子は、英語のまま書きます。オーナーは2026-11-02にこの書き方を決めました。
+- 和文では、AIゲートウェイ、MCPゲートウェイ、AIアプリケーション、エージェント、モデル、モデルAPI、マルチモーダルのモデル、リクエスト、AIクローラー、ボットのようにカタカナで書きます。MCP、A2A、API、log handler、JSONのフィールド名（`model`など）、MCPやA2Aの仕様の役割の名前として書くhost、client、serverのような識別子は、英語のまま書きます。オーナーは2026-11-02にこの書き方を決めました。
 - 和文では、一般の意味のメッセージとレスポンスも、カタカナで書きます。APIの名前を指すときは、Messages API、Responses APIのように名前と分かる形で書き、MessagesやResponsesだけを書く形は使いません。
 - 通信は種類ごとに名前を書きます。モデルAPIの通信、MCPの通信、A2Aの通信、サイトへ来るAIのクローラーとエージェントのリクエスト、log handlerのテレメトリの5つです。この5つの通信は、プロトコルも向きも違います。
-- モデルAPI、MCPのserver、エージェントの前段に置く部品はAIゲートウェイと書きます。そのうちMCPの部分は、MCPゲートウェイと書きます。
+- モデルAPI、MCPサーバー、エージェントの前段に置く部品はAIゲートウェイと書きます。そのうちMCPの部分は、MCPゲートウェイと書きます。
 - LLMは、テキストの言語モデルを指すときだけ書きます。モデル、通信、部品の総称にはしません。
 - AI trafficは、ページが複数の種類の通信を1語で指す必要があるときに限って書きます。そのページの初出で、どの種類の通信を含むかを定義します。ゲートウェイの製品とボット対策の報告書は、この語を別の通信に使っています。詳しくは[通信](#通信)の節にあります。
 - 製品や仕様を引用するときは、引用の中ではその製品や仕様の語を残します。たとえば、LiteLLMの「LLM traffic」です。自分の文では、このページの語を使います。
@@ -91,7 +91,7 @@
 ### AI application
 
 - 意味：モデルを使うソフトウェアです。MCPではhostの役を担います。Claude、ChatGPT、Claude Code、VS Codeが例です。エージェントとは限りません。
-- ngx_mrubyでの使い方：モデルAPIやMCPのserverを呼び出す側のソフトウェア全般を指します。
+- ngx_mrubyでの使い方：モデルAPIやMCPサーバーを呼び出す側のソフトウェア全般を指します。
 - 出典：
   - [MCP, What is MCP](https://modelcontextprotocol.io/docs/getting-started/intro)
   - [MCP architecture (2026-07-28)](https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture.md)
@@ -221,11 +221,11 @@
 - 意味：logのフェーズのhandlerが記録するリクエストのメタデータです。ステータス、レイテンシ、振り分けの結果がその例です。
 - ngx_mrubyでの使い方：収集先へ送る処理を書く箇所で使います。この処理は、案内のページが計画として説明しています。
 - 出典：
-  - [AIゲートウェイとサイト制御](guides/edge-control.md#キャッシュと観測)
+  - [v3で広げる用途](guides/edge-control.md#キャッシュと観測)
 
 ### AI traffic
 
-- 意味：用法が2つある語です。ゲートウェイの製品は、モデルAPI、MCPのserver、エージェントへの通信に使います。ボット対策の報告書は、AIのクローラー、スクレイパー、エージェントがWebサイトへ送るリクエストに使います。ゲートウェイの製品のページの中にも、モデルの呼び出しだけを指す箇所がいくつかあります。
+- 意味：用法が2つある語です。ゲートウェイの製品は、モデルAPI、MCPサーバー、エージェントへの通信に使います。ボット対策の報告書は、AIのクローラー、スクレイパー、エージェントがWebサイトへ送るリクエストに使います。ゲートウェイの製品のページの中にも、モデルの呼び出しだけを指す箇所があります。
 - ngx_mrubyでの使い方：ページが複数の種類の通信を1語で指す必要があるときだけ使い、初出で含む種類を定義します。この語を定義した標準と論文はありません。
 - 出典：
   - [Kong, agent-to-agent traffic](https://konghq.com/company/press-room/press-release/kong-ai-gateway-now-supports-agent-to-agent-traffic-becoming-the-most-comprehensive-ai-gateway-for-the-agentic-era)
@@ -255,7 +255,7 @@
 ### AI gateway
 
 - 意味：モデル、エージェント、ツールの前段に置き、その通信の認証、振り分け、制限、観測をするゲートウェイです。APIゲートウェイの機能を広げて作る製品が多くあります。このページのために調べたAIゲートウェイの製品は、Webサイトへ来るリクエストの制御を、範囲に入れていません。
-- ngx_mrubyでの使い方：ngx_mrubyがモデルAPI、MCPのserver、エージェントの前段に置く部品の名前です。
+- ngx_mrubyでの使い方：ngx_mrubyがモデルAPI、MCPサーバー、エージェントの前段に置く部品の名前です。
 - 出典：
   - [Microsoft, AI gateway](https://learn.microsoft.com/en-us/azure/api-management/genai-gateway-capabilities)
   - [LiteLLM, AI Gateway](https://docs.litellm.ai/docs/simple_proxy)
@@ -265,7 +265,7 @@
 
 ### MCP gateway
 
-- 意味：MCPのserverの前に置くreverse proxyと管理の層です。MCPの通信に限って、認可、レート制限、ツールの振り分けをします。
+- 意味：MCPサーバーの前に置くreverse proxyと管理の層です。MCPの通信に限って、認可、レート制限、MCPツールの振り分けをします。
 - ngx_mrubyでの使い方：AIゲートウェイのうち、MCPの部分を指します。
 - 出典：
   - [microsoft/mcp-gateway](https://github.com/microsoft/mcp-gateway)
@@ -291,6 +291,6 @@
 
 - ホームページの題「AIアプリケーションの認証と転送をRubyで制御する。」は、モデルAPIを呼び出す側のソフトウェアを、AIアプリケーションと書いています。題の下の例は、チャットと文書要約のリクエストを、`model`のフィールドの値で振り分けます。題の下の本文は、部品を、AIアプリケーションとモデルAPIの間に置くAIゲートウェイと呼んでいます。
 - 計画の用途「モデルAPIのエラーで転送先を変える」は、テキストの言語モデルに限らないので、モデルAPIと書いています。
-- [AIゲートウェイとサイト制御](guides/edge-control.md)の「AIクローラーの制御」の節は、サイトへ来るAIのクローラーとエージェントのリクエストを扱うので、語が合います。
+- [v3で広げる用途](guides/edge-control.md)の「AIクローラーの制御」の節は、サイトへ来るAIのクローラーとエージェントのリクエストを扱うので、用語集の語が合います。
 - [edge-controlの構想](../proposals/edge-control.md)の題は「AI traffic」と書いています。この構想は、MCPの通信、モデルAPIの通信、サイトへ来るAIのクローラーとエージェントのリクエスト、log handlerのテレメトリを扱います。そのため、この語には、初出でこの4つの通信を含むという定義が要ります。
 - [ドキュメントの一覧](README.md)は、[モデルAPIの部分の案内](guides/agent-proxy.md)へのリンクを「モデルAPIの中継」と書いています。このページは、AIゲートウェイのうちモデルAPIの部分だけを扱い、ほかの部分の案内は別のページにあります。

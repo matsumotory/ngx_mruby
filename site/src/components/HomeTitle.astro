@@ -1,0 +1,13 @@
+---
+import { getSiteRoute } from '../route.mjs';
+import DefaultPageTitle from './DocTitle.astro';
+// The heading of the home pages, in the first column of the hero
+// (HomeV3.astro) with the text under it; the logo stands in the second
+// column. The Japanese heading takes one line per phrase up to 800 px, as
+// the frontmatter field headline lists them (4.4); the title is their join.
+const ja = getSiteRoute(Astro.locals).locale === 'ja';
+const { title, headline } = getSiteRoute(Astro.locals).entry.data;
+const lines = headline ?? [title];
+if (ja && lines.join('') !== title) throw new Error(`HomeTitle: the headline lines join to "${lines.join('')}", not the title "${title}"`);
+---
+<div class="brand-title not-content"><div class="hero-heading">{ja ? <div class="headline-box"><h1 id="_top">{lines.map(line => <span class="headline-line">{line}</span>)}</h1></div> : <DefaultPageTitle />}</div></div>

@@ -7,7 +7,7 @@ const { lang, lastUpdated } = getSiteRoute(Astro.locals);
 {
 	lastUpdated && (
 		<p>
-			{routeLabel(Astro.locals, 'page.lastUpdated')}{' '}
+			{routeLabel(Astro.locals, 'page.lastUpdated')}{lang.startsWith('ja') ? '' : ' '}
 			<time datetime={lastUpdated.toISOString()}>
 				{lastUpdated.toLocaleDateString(lang, { dateStyle: 'medium', timeZone: 'UTC' })}
 			</time>

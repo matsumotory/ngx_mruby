@@ -99,7 +99,7 @@ if (pagefindEnabled) mainDataAttributes['data-pagefind-body'] = '';
 					{/* TODO: Revisit how this logic flows. */}
 					<Banner />
                     {siteRoute.entry.id === '404' ? <ContentPanel><NotFoundHero/><MarkdownContent><slot/></MarkdownContent><Footer/></ContentPanel> : <>
-                    <ContentPanel><PageTitle />{siteRoute.isFallback && <FallbackContentNotice />}</ContentPanel>
+                    {siteRoute.entry.data.template !== 'splash' && <ContentPanel><PageTitle />{siteRoute.isFallback && <FallbackContentNotice />}</ContentPanel>}
                     <ContentPanel><MarkdownContent><slot /></MarkdownContent><Footer /></ContentPanel></>}
 				</main>
 			</TwoColumnContent>

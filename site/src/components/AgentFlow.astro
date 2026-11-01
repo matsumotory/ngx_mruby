@@ -32,7 +32,7 @@ for (const route of routes) {
       <div class="route-source-all"><Code code={mapping} lang="ruby" title="route.rb" /></div>
     </li>
     <li class="flow-step flow-providers" data-step="response">
-      <div class="flow-description"><h3 class="flow-title" data-upstream-title>{ja ? 'API Aの応答を返す' : "Relay API A's response"}</h3><p>{ja ? 'nginxがAPI用のキーで転送し、応答をアプリへ中継します。下のmockは転送先とキーの置換結果を返します。LLMの生成結果ではありません。' : 'nginx forwards with the API key and relays the response to your app. This mock reports the destination and credential replacement, not generated text.'}</p>
+      <div class="flow-description"><h3 class="flow-title" data-upstream-title>{ja ? 'API Aの応答を返す' : "Relay API A's response"}</h3><p>{ja ? 'nginxがAPI用のキーで転送し、応答をアプリへ中継します。下のmockは転送先とキーの置換結果を返します。モデルの生成結果ではありません。' : 'nginx forwards with the API key and relays the response to your app. This mock reports the destination and credential replacement, not generated text.'}</p>
         {routes.map(route => <div class="provider-node" data-provider={route.model} hidden={route.model !== 'a'}><code>{route.backend}</code><code class="provider-credential">Authorization: {route.credential}</code></div>)}
       </div>
       <div class="route-response" aria-live="polite" aria-atomic="true">{routes.map(route => <div class="route-result" data-response={route.model} hidden={route.model !== 'a'}><Code code={route.output} lang="json" title={ja ? '200 · アプリに届く応答' : '200 · Response received by your app'} /></div>)}</div>

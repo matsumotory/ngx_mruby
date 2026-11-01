@@ -46,7 +46,7 @@ const ja = {
 	"tableOfContents.overview": "概要",
 	"i18n.untranslatedContent": "このコンテンツはまだ日本語訳がありません。",
 	"page.editLink": "ページを編集",
-	"page.lastUpdated": "最終更新日:",
+	"page.lastUpdated": "最終更新日：",
 	"page.previousLink": "前へ",
 	"page.nextLink": "次へ",
 	"page.draft": "このコンテンツは下書きです。プロダクションビルドには含まれません。",
