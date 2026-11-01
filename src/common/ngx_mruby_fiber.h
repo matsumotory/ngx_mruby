@@ -49,7 +49,12 @@ typedef enum {
   /* the fiber returned; its value is in *value */
   NGX_MRB_FIBER_RETURNED,
   /* the fiber raised; the exception is logged, and mrb->exc is cleared */
-  NGX_MRB_FIBER_RAISED
+  NGX_MRB_FIBER_RAISED,
+  /*
+  // the record is DONE, FAILED or CANCELLED, so its fiber was not resumed;
+  // nothing ran and nothing is logged
+  */
+  NGX_MRB_FIBER_REFUSED
 } ngx_mrb_fiber_outcome_t;
 
 /* The counters of Nginx::Debug.stats that a record counts in. */

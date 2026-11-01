@@ -4,12 +4,10 @@
 # Config: test/conf/conf.d/82-async-result-isolation.conf (port 18179) and
 # test/html/async_resume_result.rb.
 #
-# The cases list the ends that already end as the later handler's own result
-# says, and one that ends so today only through the stored value (an access
-# handler under satisfy all without a result, after a sleep: it pins the end,
-# not whose result decided it). The proposal
-# docs/proposals/core-stabilization.md (section 8) adds the others with the
-# change that keeps the result of a handler for that handler.
+# Access and content handlers have every end. Rewrite handlers list only the
+# ends that the stored value does not decide; the proposal
+# docs/proposals/core-stabilization.md (section 8) adds the end without a
+# result with the change that lets them go on.
 
 t = SimpleTest.new "ngx_mruby test: the result of a handler is its own"
 
@@ -53,15 +51,20 @@ ASYNC_ISOLATION_PASSED = ['HTTP/1.1 200 OK', "passed\n", true]
 # title of nginx's error page), whether the next request on the connection
 # is answered]]. After a 500, nginx closes the connection.
 [
-  ['/access_all/WAIT/none', 'an access handler under satisfy all that sets no result goes on (after a sleep, through the stored value today)',
-   %w[nowait sleep], ASYNC_ISOLATION_PASSED],
-  ['/access_all/WAIT/ok', 'an access handler under satisfy all that returns Nginx::OK goes on', %w[nowait], ASYNC_ISOLATION_PASSED],
+  ['/access_all/WAIT/none', 'an access handler under satisfy all that sets no result goes on', %w[nowait sleep],
+   ASYNC_ISOLATION_PASSED],
+  ['/access_all/WAIT/ok', 'an access handler under satisfy all that returns Nginx::OK goes on', %w[nowait sleep],
+   ASYNC_ISOLATION_PASSED],
   ['/access_all/WAIT/declined', 'an access handler under satisfy all that returns Nginx::DECLINED goes on', %w[nowait sleep],
    ASYNC_ISOLATION_PASSED],
   ['/access_all/WAIT/forbidden', 'an access handler under satisfy all that returns 403 answers 403', %w[nowait sleep],
    ASYNC_ISOLATION_FORBIDDEN],
+  ['/access_all/WAIT/output', 'an access handler under satisfy all with output answers with it', %w[nowait sleep],
+   ['HTTP/1.1 200 OK', 'output', true]],
   ['/access_all/WAIT/raise', 'an access handler under satisfy all that raises answers 500', %w[nowait sleep], ASYNC_ISOLATION_ERROR],
-  ['/access_any/WAIT/ok', 'an access handler under satisfy any that returns Nginx::OK allows the request', %w[nowait],
+  ['/access_any/WAIT/none', 'an access handler under satisfy any that sets no result allows the request', %w[nowait sleep],
+   ASYNC_ISOLATION_PASSED],
+  ['/access_any/WAIT/ok', 'an access handler under satisfy any that returns Nginx::OK allows the request', %w[nowait sleep],
    ASYNC_ISOLATION_PASSED],
   ['/access_any/WAIT/forbidden', 'an access handler under satisfy any that returns 403 answers 403', %w[nowait sleep],
    ASYNC_ISOLATION_FORBIDDEN],
@@ -73,6 +76,8 @@ ASYNC_ISOLATION_PASSED = ['HTTP/1.1 200 OK', "passed\n", true]
   ['/rewrite/WAIT/output', 'a rewrite handler with output answers with it', %w[nowait sleep sub_request],
    ['HTTP/1.1 200 OK', 'output', true]],
   ['/rewrite/WAIT/raise', 'a rewrite handler that raises answers 500', %w[nowait sleep sub_request], ASYNC_ISOLATION_ERROR],
+  ['/content/WAIT/none', 'a content handler that sets no result and writes no output answers 200 with an empty body',
+   %w[nowait sleep], ['HTTP/1.1 200 OK', '', true]],
   ['/content/WAIT/ok', 'a content handler that returns Nginx::OK without output answers 200 with an empty body',
    %w[nowait sleep], ['HTTP/1.1 200 OK', '', true]],
   ['/content/WAIT/declined', 'a content handler that returns Nginx::DECLINED goes on to the static module, which answers 404',
