@@ -1,13 +1,12 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-01 (21:44 JST)
+## State as of 2026-11-02 (01:40 JST)
 
-- Heads: `next` is `2fd422614`, the merge of
-  [#721](https://github.com/matsumotory/ngx_mruby/pull/721) (the planned AI
-  uses of v3: `docs/proposals/edge-control.md` and its guides); `master` is
-  `01a2cc7fd`, the merge of
-  [#716](https://github.com/matsumotory/ngx_mruby/pull/716); `v2.x` mirrors
-  `master`. `next` contains `master` as of the merge
+- Heads: `next` is `e6db38ca7`, the merge of
+  [#729](https://github.com/matsumotory/ngx_mruby/pull/729) (the terms of
+  the AI gateway on the site); `master` is
+  `e2aeb5ddd`, the merge of the 2.x form of the fix of GHSA-xjh6-6vgm-56wj,
+  where the tag `v2.7.4` is; `v2.x` mirrors `master`. `next` contains `master` as of the merge
   [#701](https://github.com/matsumotory/ngx_mruby/pull/701).
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
@@ -19,10 +18,46 @@
   `Nginx::Stream::Connection#upstream_server=`, fixed by `591147b01`,
   entry 9 of [the 2.7.3 release notes](releases/v2.7.3.md)).
   #699 added the two advisory ids to the 2.7.3 release notes.
-- Open: [#722](https://github.com/matsumotory/ngx_mruby/pull/722) (base
-  `next`, step 5 of the core stabilization) and the pull request that adds
-  the ledger of the AI uses to `docs/proposals/edge-control.md` (base
-  `next`).
+- The release 2.7.4: the tag `v2.7.4` is on `e2aeb5ddd` (2026-11-02 01:04
+  JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.4)
+  is published. One advisory was published with it:
+  [GHSA-xjh6-6vgm-56wj](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-xjh6-6vgm-56wj)
+  (Moderate; the stream module: the reads of a session whose code waits in
+  `Nginx::Stream::Async.sleep` on a `listen ... proxy_protocol`, and
+  `proxy_protocol_addr` for a connection without a PROXY source address).
+  `master` has it as entries 1 and 2 of
+  [the 2.7.4 release notes](https://github.com/matsumotory/ngx_mruby/blob/master/docs/releases/v2.7.4.md)
+  ([Japanese](https://github.com/matsumotory/ngx_mruby/blob/master/docs/releases/v2.7.4.ja.md)),
+  which reach `next` with the next merge of `master`; `next` got the same
+  fix in its own form, with the two entries in
+  [the 3.0.0 release notes](releases/v3.0.0.md). The check before the tag:
+  the pull requests merged into `master` from `v2.7.3` to the fix are
+  [#699](https://github.com/matsumotory/ngx_mruby/pull/699) (the advisory
+  ids of 2.7.3, docs only), [#704](https://github.com/matsumotory/ngx_mruby/pull/704)
+  (CI, its entry under "Build and test changes"),
+  [#703](https://github.com/matsumotory/ngx_mruby/pull/703) and
+  [#716](https://github.com/matsumotory/ngx_mruby/pull/716) (docs only);
+  none changes an input of the measured binary, and the fix changes
+  `src/stream/` only, which the callgrind lane does not build
+  (`--with-stream` is not given), so 2.7.4 and 2.7.3 measure as the same
+  binary. "Security fixes" in `docs/releases/README.md` asks for a public
+  check pull request before the fix; none was opened, although
+  `v2.7.4.md` had existed since #704 and the check could have been made
+  before the fix. The check was made with the private pull request of
+  the fix instead, and is recorded in
+  [#731](https://github.com/matsumotory/ngx_mruby/pull/731), which adds the
+  advisory id to `master`.
+- [#729](https://github.com/matsumotory/ngx_mruby/pull/729) (the terms of
+  the AI gateway on the site) was merged at 01:33 JST; a follow-up pull
+  request finishes the should-fix items of its review.
+- Open: [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (base
+  `next`, step 7 of the core stabilization),
+  [#731](https://github.com/matsumotory/ngx_mruby/pull/731) (base `master`)
+  and [#732](https://github.com/matsumotory/ngx_mruby/pull/732) (base
+  `next`): the advisory id of 2.7.4, and the owner's decision of
+  2026-11-02 that a session publishes the release after the owner's
+  go-ahead, written into AGENTS.md, CLAUDE.md, `docs/releases/README.md`
+  and `docs/DEVELOPMENT.md`.
 
 ## How to use this file
 
@@ -67,10 +102,12 @@ question on who merges the pull request of the 2.7.2 release, tags
 `v2.7.2` and publishes the release ("セッションが進める (推奨)", "the session
 goes ahead"), covered 2.7.2 only, and it is carried out: the session that
 prepared the release merged #624 at 13:25 JST, tagged `v2.7.2` on
-`d5ae75547` and published the release at 13:26 JST. AGENTS.md keeps the
-rule that agents never create tags and never publish releases; nothing is
-written there unless the owner keeps the choice for later releases. The choices among the options of 4.12 of the site proposal
-are written in `docs/proposals/site.md` (#607). The decision of 2026-10-19
+`d5ae75547` and published the release at 13:26 JST. On 2026-11-02 the owner kept
+the choice for later releases ("release と tag はセッション、advisory の公開は
+本人": the session publishes the release and its tag, the owner publishes
+the advisory); #731 and #732 write it into AGENTS.md, CLAUDE.md,
+`docs/releases/README.md` and `docs/DEVELOPMENT.md`. The choices among the
+options of 4.12 of the site proposal are written in `docs/proposals/site.md` (#607). The decision of 2026-10-19
 on the perf lane of `master` (port the tests and the CI only, without
 `Nginx::Debug`) is written in #601 (its description and
 `docs/test/README.md`, which `next` has since the merge of `master` at
@@ -297,6 +334,7 @@ Taken up and still open: none.
 | The async resume rewrite (decision (c) of 2026-10-04, amended on 2026-10-29: the rewrite of how resumed handlers end in `src/http/ngx_http_mruby_async.c`, which includes the resume of a handler after `Nginx::Async::HTTP.sub_request` from its own request). No pull request exists | `next`, in the core stabilization of 3.0.0 | Done for the timer in [#715](https://github.com/matsumotory/ngx_mruby/pull/715) and for subrequests in [#722](https://github.com/matsumotory/ngx_mruby/pull/722); the resume of a handler that waits in a location that `Nginx.redirect` runs from Ruby code follows with step 7 of section 8 of the core stabilization proposal |
 | The generated reference of the site (Pillar F of the plan): the directives from the `ngx_command_t` tables, the Ruby API with YARD and yard-mruby, the C API with Doxygen. `site/scripts/check-reference.mjs` checks, among other things, that each directive name has a heading in `docs/directives/README.md`; the pages are written by hand | `next` | Ready to start; no step of section 6 of the site proposal produces it yet |
 | The words of the docs that do not follow [the glossary](glossary.md) yet, all in [the edge-control proposal](proposals/edge-control.md): "AI traffic" without a definition at its first use (the title), "AI clients" (Purpose and two rows of the ledger, where the glossary writes AI application or agent), and "LLM API fallback" (a row and a heading, where it writes model API). [#729](https://github.com/matsumotory/ngx_mruby/pull/729) replaced "LLM proxy" as the name of the component (the documents index, the home page, the navigation) and updated the glossary's section "Examples in ngx_mruby's pages" to the words of the pages | `next` | Ready to start: a pull request to the proposal that defines "AI traffic" at its first use with the four kinds of traffic it covers, and writes AI application or agent and model API. The anchor `#llm-api-fallback` stays, since the site links it |
+| The should-fix items of the review of [#729](https://github.com/matsumotory/ngx_mruby/pull/729) (the terms of the AI gateway on the site): a bare 「gateway」 in the Japanese next-step guidance card, a clause in the intro of the planned uses that tells an agent from an AI application, 設計 instead of 構想 for the model API fallback paragraph of the Japanese edge-control guide, one line in the Japanese glossary on model (English in compound terms such as model API, モデル in prose), and the three items left from the first review (the word "proxy" in the integration section, small differences between the English and Japanese cards, the features each use needs on the home page) | `next` | A session is opening the pull request from `claude/gateway-terms-followup` |
 
 ## How a session continues
 
