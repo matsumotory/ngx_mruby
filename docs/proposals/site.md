@@ -1665,48 +1665,51 @@ deployment of 5.3, and the route of every page.
 compares against the existing 390px WebKit pattern. At the end of the
 rebuild, change only `PHONE.width` in `site/scripts/lib/patterns.mjs` to
 402px, the owner's iPhone 17 Pro Safari width. Keep 1440px Chromium.
-The owner's words: 「組み直しの最後に、iPhone のパターンの幅を 390px から 402px (本人の iPhone 17 Pro の Safari の幅) に合わせる。」
+The owner's words: 「じゃあ402にしよう」, 「キリがないからpcの幅を超えた画面で綺麗に見えたらよくて、あとは402に調整するぐらいの基準で良さそうね」.
 If many one- or two-character last lines appear at 402px, adjust the font
 size and characters per line first, then only the remaining fine cases by
 a few characters of wording. Do not mechanically rewrite prose for the
-checker or add more width/browser combinations. This last-stage change is
-not part of the layer-1 parity baseline.
+checker or add more width/browser combinations. The parity baseline of
+#708 was measured at 390px; 390px, decided in
+[#707](https://github.com/matsumotory/ngx_mruby/pull/707), holds until the
+rebuild's pull request changes it.
 
-**Order originally planned.** After step 5, one pull request or three
-in the order below. The owner subsequently requested that all remaining
-migration layers be completed in one PR. The final implementation removes
-the selector flag and Starlight dependency together; parity compares a build
-of the recorded base commit with the head, not two modes in the same checkout.
-The numbered steps below record the original staged plan:
+**Order.** After step 5. [#708](https://github.com/matsumotory/ngx_mruby/pull/708)
+(Codex, the first layer of the site's own components) is merged into `next`.
+The rest is one pull request from a Codex session, not split into stages
+(the owner's decision of 2026-11-01, section 7). That pull request removes
+the selector flag and the Starlight dependency together, so parity compares
+a build of the recorded base commit with the head, not two modes in the same
+checkout. Of the three parts below, the first is merged in #708; the pull
+request holds the second and the third:
 
-1. The plumbing beside Starlight: the layout, the page route, the
-   collection, the sidebar, the table of contents, the search, the head,
-   the sitemap, the 404 page and the base styles, built when
-   `NGX_MRUBY_SITE_SHELL=own` is set (the name is chosen here). With the
-   flag, `astro.config.mjs` leaves out `starlight()` and adds a small
-   integration of the site that injects the page route, as Starlight
-   injects its own, and `content.config.mjs` uses `glob()` and the site's
-   schema. The components that both shells use read the route (locale,
-   entry, whether the page has a sidebar) through one helper instead of
-   `Astro.locals.starlightRoute`. CI builds both shells from the same commit
-   and runs the parity check of the acceptance; the deployed site stays
-   Starlight's.
-2. The pages: the home pages, the generated pages and `/v2/` move to the
-   site's shell, which becomes the default; `NGX_MRUBY_SITE_SHELL=starlight`
-   still builds the Starlight shell for the parity check.
-3. The removal: `@astrojs/starlight`, the overrides as overrides, the
-   flag, the `--sl-*` mappings, the Starlight part of the PostCSS plugin
-   and the Starlight selectors of the checks go; the parity check then
-   compares with the build of the base commit. The pull request states the
-   number of packages of `package-lock.json` before and after (the keys of
-   `packages` without the root: 466 today).
+- The plumbing beside Starlight (merged in #708): the layout, the page route, the
+  collection, the sidebar, the table of contents, the search, the head,
+  the sitemap, the 404 page and the base styles, built when
+  `NGX_MRUBY_SITE_SHELL=own` is set (the name is chosen here). With the
+  flag, `astro.config.mjs` leaves out `starlight()` and adds a small
+  integration of the site that injects the page route, as Starlight
+  injects its own, and `content.config.mjs` uses `glob()` and the site's
+  schema. The components that both shells use read the route (locale,
+  entry, whether the page has a sidebar) through one helper instead of
+  `Astro.locals.starlightRoute`. CI builds both shells from the same commit
+  and runs the parity check of the acceptance.
+- The pages: the home pages, the generated pages and `/v2/` move to the
+  site's shell, which becomes the default; `NGX_MRUBY_SITE_SHELL=starlight`
+  still builds the Starlight shell for the parity check.
+- The removal: `@astrojs/starlight`, the overrides as overrides, the
+  flag, the `--sl-*` mappings, the Starlight part of the PostCSS plugin
+  and the Starlight selectors of the checks go; the parity check then
+  compares with the build of the base commit. The pull request states the
+  number of packages of `package-lock.json` before and after (the keys of
+  `packages` without the root: 466 today).
 
-Each pull request updates the text that it makes untrue: in AGENTS.md
+The pull request updates the text that it makes untrue: in AGENTS.md
 the repository layout ("Astro with Starlight") and "The site"; in this
 proposal 3.4, 3.5 (the fallback), item 5 of 4.3, 4.4 (`PageTitle.astro`,
 the Banner), 4.5 (Starlight's columns and CSS), 4.6 ("Starlight's own
-colors", "Code blocks"), 4.7, 4.10 and 5.2; Pillar F of `v3-plan.md`; and the comments of `site/` that name
-Starlight. `docs/HANDOFF.md` records the stage, as AGENTS.md says.
+colors", "Code blocks"), 4.7, 4.10 and 5.2, and "Measure two patterns" of "Site design acceptance" (the phone width); Pillar F of `v3-plan.md`; and the comments of `site/` that name
+Starlight. `docs/HANDOFF.md` records the state of the pull request, as AGENTS.md says.
 
 **2026-11-01 migration status:** the final Astro-only implementation removes
 the remaining Starlight layers in one PR; acceptance verification is not yet
@@ -1714,7 +1717,8 @@ complete. The PR must replace this pending status with actual tested commits
 and results before handoff.
 
 **Acceptance.** Each item is measured on both versions and both
-languages, on every page unless it says otherwise.
+languages, on every page unless it says otherwise. The phone pattern is
+402px wide in WebKit once the rebuild changes it from 390px.
 
 1. Every existing check passes: `npm test`, `npm run check`,
    `npm run check:v2`, `npm run check:browser`, `npm run check:contrast`,
@@ -1905,8 +1909,14 @@ with Astro alone and components of the repository's own, asking
 「サイトのドキュメントに既存のドキュメントライブラリ使うの微妙じゃない？あれは人が作る場合の便利ツールであっていまはcodexとかがデザインにあったドキュメントを自前で書いたほうが良さそう、starlightだっけ」
 and choosing 「やめる。構想を書いて Codex に (推奨)」. This replaces the tool
 of Q1; its place, `site/` on `next`, stands. 5.4 says what replaces each
-piece that Starlight provides, the order (a Codex session, after step 5)
+piece that Starlight provides, the order (one pull request from a Codex session, after step 5)
 and the acceptance.
+
+On 2026-11-01 the owner decided that the replacement of Starlight is one
+pull request that a Codex session writes, not several stages: 「今後も分けなくてもできるなら無駄に分けず依頼は一回で終わるようにせよ」.
+The same day the owner decided that the phone width of the layout checks
+becomes 402px (Safari on an iPhone 17 Pro), in the replacement's pull request:
+「じゃあ402にしよう」, 「キリがないからpcの幅を超えた画面で綺麗に見えたらよくて、あとは402に調整するぐらいの基準で良さそうね」.
 
 On 2026-11-01, step 5 added Japanese sources for Contributing, Development,
 the test guide, the release-note guide, Security and the trust boundary.
@@ -2479,15 +2489,21 @@ at 1440 by 900 px in Chromium and iPhone Safari at 402 by 664 px in WebKit.
 No other widths, browsers or font combinations are added. The owner's words
 (2026-11-01):
 「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
-The current phone width is 402 px; earlier 390 px measurements below are
-historical evidence, not the current acceptance pattern. Validate all Japanese
-pages with served Noto Sans JP, and supplement this only with a Hiragino Sans
-check of the Japanese home page where available. This does not change the
-runtime stack, which still prefers Hiragino Sans where installed and falls
-back to Noto Sans JP. The Japanese home heading’s two-line wording and
-responsive size from #697 remain unchanged.
-`site/scripts/lib/patterns.mjs` is the source of the two patterns; scripts use
-each engine's own pattern. Section 4.9 remains narrow-screen writing guidance.
+The words name iPhone 17 as an example. The replacement of Starlight
+(5.4) sets the phone pattern to 402 px, the width of the owner's iPhone 17
+Pro in Safari; the Japanese lines that wrap differently at 402 px are fixed
+in the same pull request, by the size of the type first and then by a few
+characters of text. The content area has a fixed width, so a correct
+rendering at full screen is what the PC pattern establishes. All Japanese
+pages are validated with the served Noto Sans JP (`--ja-face noto` lets a
+run on macOS see what CI sees), and the Japanese home page also with
+Hiragino Sans where available. This does not change the runtime stack,
+which prefers Hiragino Sans where installed and falls back to Noto Sans JP.
+The Japanese home heading's two-line wording and responsive size from #697
+remain unchanged. `site/scripts/lib/patterns.mjs` holds the two patterns;
+the scripts measure each engine in its own pattern. 4.9 stays the design
+guidance for writers at narrow widths; its measurement is the iPhone
+pattern.
 
 **Leave a reproducible checkpoint.** In the PR, record the rule sections read,
 content outline and evidence, reference observations, tested head, actual URLs
