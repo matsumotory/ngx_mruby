@@ -238,9 +238,9 @@ The owner checks that all of these hold and gives the go before step 1:
 5. **Promote (agent, on the owner's go that day).** A pull request with head
    `next` and base `master`, merged with a merge commit when the conditions of
    "Review and merge" in [AGENTS.md](../AGENTS.md#review-and-merge) hold, as
-   for every pull request, and only after the owner has confirmed that day
-   that they tag it in step 6 right away, so that `master` is not an untagged
-   3.x line in between. It has no conflicts, because step 1 merged `master`
+   for every pull request, and only after the owner has given the go-ahead
+   that day for the release of step 6 right after it, so that `master` is
+   not an untagged 3.x line in between. It has no conflicts, because step 1 merged `master`
    into `next`. `master` stays the default branch; nothing about the default
    branch changes. Right before the merge, the owner changes the deployment
    branch rule of the `github-pages` environment from `next` to `master`
@@ -309,8 +309,8 @@ requires them to be decided before step 1.
 - **Who gives the go for the promotion and changes the repository settings
   in steps 2 and 3.** Recommendation: the owner. Whether condition 1 holds is
   a judgment, the go-ahead for the release of step 6 is the owner's, and
-  the settings need admin rights; a mistake there lets `v2.x` move to 3.x. AGENTS.md does not cover
-  the go or the repository settings yet.
+  the settings need admin rights; a mistake there lets `v2.x` move to 3.x.
+  AGENTS.md does not cover the go or the repository settings yet.
 
 The site proposal decides which version the site shows after the
 promotion (Q1 and Q4, decided by the owner on 2026-10-15, in section 7 of
