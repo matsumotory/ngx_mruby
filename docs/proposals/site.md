@@ -1601,8 +1601,8 @@ detection, or that pinned versions do not keep Starlight stable.
   test files that pin it. The generated reference of Pillar
   F goes the same way. Nothing generated is committed.
 - **Why `next`, not a separate branch**: a documentation change and its
-  rendering are reviewed in one pull request, and CI builds the site on
-  every pull request. `gh-pages` shows what a separate branch does over
+  rendering are reviewed in one pull request, and its author builds and
+  checks the site with `npm run check:ci` before the review. `gh-pages` shows what a separate branch does over
   time: no content change since 2016.
 - **2.x**: the site workflow checks out `master` and builds its `docs/`
   with the base `/v2/` (`site/scripts/build-v2.mjs`: the build of `site/`
@@ -1628,17 +1628,20 @@ detection, or that pinned versions do not keep Starlight stable.
 
 ### 5.3 Deployment and previews
 
-- `.github/workflows/site.yml` on `next` runs on pull requests to `next`
-  that touch `site/`, `docs/` or the file itself, on every push to `next`,
-  and on `workflow_dispatch`. Pushes are not filtered by path because
+- `.github/workflows/site.yml` on `next` runs on every push to `next` and
+  on `workflow_dispatch`, not on pull requests: the owner decided on
+  2026-11-02 that CI is not relied on for what runs locally ("Decisions"
+  of `docs/HANDOFF.md`), and the author of a pull request that touches
+  `site/`, `docs/` or `examples/` runs `npm run check:ci` in `site/`,
+  which runs the checks of the build job and every browser check ("Site
+  CI" in `docs/test/README.md`). Pushes are not filtered by path because
   `docs/` links to files outside `docs/` and `site/` (`AGENTS.md`,
   `build_config.rb`, `.github/workflows/test.yml` and others), and the
-  generator stops on a link to a path that git does not track: a pull
-  request that removes or renames such a file without touching `docs/`
-  passes, and the push of its merge then fails, instead of the next pull
-  request that touches `docs/`. The build job checks out `next` with full history
+  generator stops on a link to a path that git does not track: a merge
+  that removes or renames such a file fails on its push, before it
+  deploys. The build job checks out `next` with full history
   and `master`, runs `npm ci`, the generator, both builds, Pagefind and the
-  checks of section 6, and uploads the result. The deploy job runs
+  checks of section 6 that need no browser, and uploads the result. The deploy job runs
   `actions/deploy-pages` (v5.0.1) with `pages: write` and
   `id-token: write`, one deployment at a time, and only when `github.ref`
   is `refs/heads/next`; actions are pinned by commit SHA (Pillar G). Step 7
@@ -1668,8 +1671,9 @@ detection, or that pinned versions do not keep Starlight stable.
   It builds the 3.x pages too, because the 2.x pages link to 3.x pages
   (the banner and the version link) and the search check needs both
   indexes.
-  Pull requests to `next` build both parts, with `docs/` of `master`, so a
-  change to `site/` that breaks `/v2/` fails there. The deploy job then
+  `npm run check:ci` builds both parts, with `docs/` of `origin/master`, so
+  a change to `site/` that breaks `/v2/` fails there, and so does the run
+  of `site.yml` on its push. The deploy job then
   meets a `/v2/` failure only if `master` and `next` changed in ways that
   each passed alone.
 - Settings, for the owner, both in step 7 and in this order, which follows
@@ -1701,11 +1705,12 @@ detection, or that pinned versions do not keep Starlight stable.
   between is not documented.
 - **Previews.** GitHub Pages has no public per-pull-request preview:
   `actions/deploy-pages` calls its `preview` input "only in alpha currently
-  and is not available to the public". Each pull request that touches
-  `site/` or `docs/` builds the site, runs the checks and uploads the built
-  site and the step 3 screenshots as a workflow artifact, with the measured
-  values in the run summary. A preview on another host needs a token that
-  pull requests from forks cannot use, so it is not proposed now.
+  and is not available to the public". The author of a pull request that
+  touches `site/` or `docs/` builds the site and takes the step 3
+  screenshots locally (`npm run check:ci`, then `npm run preview`), and the
+  run of `site.yml` on the push to `next` uploads the built site as a
+  workflow artifact. A preview on another host needs a token that pull
+  requests from forks cannot use, so it is not proposed now.
 
 ### 5.4 Astro without Starlight (decided 2026-11-01)
 
@@ -1894,7 +1899,7 @@ languages, on every page unless it says otherwise. The phone pattern is
    `font-family`, `font-size`, `font-weight`, `line-height`, `color` and
    `background-color` are equal. The rebuild also folds the widths of
    `check-code-layout.mjs`, `check-home-interaction.mjs`,
-   `check-copy-idle.mjs`, `screenshots.mjs` (and `ci-screenshots.mjs`) and
+   `check-copy-idle.mjs`, `screenshots.mjs` and
    `check-focus.mjs` into
    the two patterns of "Site design acceptance", replacing the earlier
    320/390/768/1440 px combinations. The plan had no tolerance for screenshots
@@ -1937,8 +1942,10 @@ reason, inside the acceptance above.
 ## 6. Implementation plan
 
 Each step ends with checks that pass or fail on measured values. Each check
-script is first shown to fail on a planted fault; once it exists, CI runs it
-on every pull request that touches `site/` or `docs/`. Each step is one or
+script is first shown to fail on a planted fault; once it exists,
+`npm run check:ci` runs it, which the author of every pull request that
+touches `site/` or `docs/` runs, and `site.yml` runs the checks that need
+no browser on every push to `next`. Each step is one or
 more pull requests to `next` (steps 6 and 7 also change `master`), reviewed
 and merged as AGENTS.md describes; the last column says what the owner
 reviews besides that.
@@ -2716,7 +2723,9 @@ pattern.
 **Leave a reproducible checkpoint.** In the PR, record the rule sections read,
 content outline and evidence, reference observations, tested head, actual URLs
 and viewport sizes, contextual images, the reviewer's answers, issues resolved
-and checks not run. A follow-up review can focus on changed or unresolved
+and checks not run. No CI job runs the browser checks: the run of `npm run
+check:ci` on the tested head, with its last lines, is the evidence of the
+automated checks, and the reviewer checks that it is quoted for that head. A follow-up review can focus on changed or unresolved
 areas; do not repeat unchanged successful tests just to increase a count.
 Before handoff, confirm AGENTS/CLAUDE/DEVELOPMENT links still reach these rules
 and update HANDOFF's state. Do not mark the whole design complete while known
@@ -2813,4 +2822,6 @@ This uses Pagefind's documented [searchable metadata](https://pagefind.app/docs/
 versions reach the appropriate directive and Ruby reference pages, and that
 an unknown exact-phrase query returns no result. The existing search UI and
 version-isolation checks remain in place. Generator fixtures check complete
-names in metadata and unchanged canonical code/Markdown. CI runs both checks.
+names in metadata and unchanged canonical code/Markdown. `npm run check:ci`
+runs both checks, and `site.yml` the generator fixtures (`npm test`) on the
+push to `next`.

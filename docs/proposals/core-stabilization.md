@@ -713,7 +713,8 @@ without server-level handlers, so that no stored status hides a result (2.1):
   asserting the one response and the status of the access log line.
 - `async_set_var.rb`: on a server without server-level handlers, an
   `mruby_set` handler that sleeps sets the variable that `proxy_pass` uses;
-  `sub_request` there raises (Q5) and the request gets 500.
+  `sub_request` there raises (Q5): without a wait the variable is empty,
+  as after any exception there, and after a sleep the request gets 500.
 - `stream_async_sleep_udp_reuse.rb`, extended (Q4): the code runs once for
   the session (one log line of the code for two datagrams), and the reply
   arrives after the first datagram's sleep.
@@ -780,7 +781,8 @@ each bug fix comes as a test commit and a fix commit.
    [#727](https://github.com/matsumotory/ngx_mruby/pull/727).
 7. `Nginx.redirect` as Q2 decided (gap 6). Merged in
    [#728](https://github.com/matsumotory/ngx_mruby/pull/728).
-8. `mruby_set` as Q5 decided (gap 7).
+8. `mruby_set` as Q5 decided (gap 7). Merged in
+   [#735](https://github.com/matsumotory/ngx_mruby/pull/735).
 
 Steps 3 to 8 depend on 2; 4 to 8 do not depend on each other, except that 5
 and 7 touch the same code of the content handler and go one after the

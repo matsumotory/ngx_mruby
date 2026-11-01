@@ -124,7 +124,7 @@ Puts response text.
 If a post-read, server rewrite, rewrite, access or content handler raises an exception afterwards, the request gets 500 and the text is not sent, unless the response was already started, for example by the location that `Nginx.redirect` ran.
 Since 2.7.1 this also holds for a handler that raises before it waits in `Nginx::Async`; in 2.7.0 such a handler sent the text with status 200.
 In an `mruby_set*` handler, a log handler or an output filter, the text is not sent after an exception either, and the request goes on as after an exception without output: `Content-Length` does not count the text (since 2.7.1).
-For an `mruby_set*` handler this holds when the code raises before it waits in `Nginx::Async`. When it raises after `Nginx::Async.sleep`, the request gets 500; when it raises after `Nginx::Async::HTTP.sub_request`, nginx has already gone on with the content phase without waiting for the variable, so the 500 is not sent and the client gets no response, as described under [Nginx::Async#sleep](#nginxasyncsleepmsec).
+For an `mruby_set*` handler this holds when the code raises before it waits in `Nginx::Async.sleep`. When it raises after the sleep, the request gets 500, as described under [Nginx::Async#sleep](#nginxasyncsleepmsec). `Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in an `mruby_set*` handler (since 3.0.0; on 2.x nginx went on without waiting for the variable, and an exception after the call left the client without a response; see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxasynchttpsub_request-raises-a-runtimeerror-in-an-mruby_set-handler-735)).
 To end a content handler early after writing the text, leave it with `return` instead of `raise`.
 
 In a post_read or access handler, the text ends the request: nginx sends the response and does not go on with the phases, with or without `Nginx::Async.sleep` before. Since 3.0.0; on 2.x, such a handler that did not wait sent the response and nginx then went on with the next handlers, and closed the connection when the content phase tried to answer once more (see [the release notes of 3.0.0](../releases/v3.0.0.md#an-access-or-post_read-handler-that-writes-output-ends-the-request-after-the-response-715)).
@@ -1231,6 +1231,8 @@ v = Nginx::Request.new.var
 v.set "backend", "http://192.168.0.9/"  # Set "http://192.168.0.9/" to $backend
 ```
 
+A `name` or a `value` that is not a String is converted with `to_s`. When `to_s` is missing, raises, or returns an object that is not a String, `set` raises that exception (a `TypeError` for the object that is not a String), and so does `Nginx::Var#<name>=`.
+
 ## Nginx::Var#.exist? -> true or false
 
 Returns true if the variable is defined.
@@ -1560,7 +1562,7 @@ Nginx::Async.sleep 3000    # Sleep 3000 millisec
 ### Nginx::Async::HTTP#sub_request(location, string_or_hash=nil)
 
 Sends a sub request in non-blocking way, waits for its end, and returns its response, an `Nginx::Async::HTTP::Response` with the same status, headers and body as `Nginx::Async::HTTP.last_response` (since 3.0.0; 2.x returns `nil`).
-It's supported in the post_read, server rewrite, rewrite, access and content handlers; in an `mruby_set*` handler nginx does not wait for the subrequest, as described under [Nginx.rputs](#nginxrputsstring).
+It's supported in the post_read, server rewrite, rewrite, access and content handlers. In an `mruby_set*` handler it raises a `RuntimeError`, because nginx does not wait for a subrequest there: call it in a rewrite or access handler and set the variable with [Nginx::Var#set](#nginxvarsetname-value) (since 3.0.0; on 2.x the request went on without waiting for the variable).
 When the subrequest ends, nginx calls the handler again, which goes on with the code after the call, and the phase of the handler handles its result as for a handler that did not wait, as after [Nginx::Async#sleep](#nginxasyncsleepmsec); the code of the handler runs once.
 A content handler can wait for it also after `Nginx::Async.sleep` (since 3.0.0; 2.7.3 raises a `RuntimeError` there, because nginx would not finish the request after the subrequest).
 Like `Nginx::Async.sleep`, it raises a `RuntimeError` in a log handler and in

@@ -268,9 +268,11 @@ static ngx_int_t ngx_mrb_send_empty_body(ngx_http_request_t *r)
  * rewrite phase would finalize the request with NGX_OK without a response.
  * A handler whose request an internal redirect of Nginx.redirect sent
  * elsewhere inside the call returns the status that the target stored in
- * r->headers_out.status. Since Q2 of section 9, only the handlers whose
- * redirect still takes effect inside the call (those that ngx_mrb_post_fiber
- * resumes) get here; the others make the redirect when they end.
+ * r->headers_out.status. Since Q2 of section 9, this applies only to a
+ * redirect that still takes effect inside the call (from an mruby_set*
+ * handler, a log handler or a filter, and from a handler that
+ * ngx_mrb_post_fiber resumes); the other handlers make the redirect when
+ * they end.
  *
  * A post_read or access handler that sends its output returns NGX_HTTP_OK,
  * so that its phase checker finalizes the request, as the rewrite and

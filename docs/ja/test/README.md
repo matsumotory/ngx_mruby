@@ -52,11 +52,11 @@ readyのheadへpushすると、前のheadの実行をキャンセルして新し
 
 キャンセルしたDraftの実行は、結果を報告しません。readyにすると、数える対象の実行が始まり、まだ動いているDraftの実行は`cancel-in-progress`でキャンセルされます。キャンセルされた実行の`ci-ok`は動かず、未完了の他のジョブと同様にcancelledになります。cancelledは成功ではありません。[#692](https://github.com/matsumotory/ngx_mruby/pull/692)の[実行41193944190](https://github.com/matsumotory/ngx_mruby/actions/runs/41193944190)がその例です。以前は`always()`で`ci-ok`が動いて失敗し、[#678](https://github.com/matsumotory/ngx_mruby/pull/678)では有効な実行の成功した`ci-ok`の横に、Draftの失敗した`ci-ok (draft)`が残りました。[実行41191594780](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594780)を参照してください。開始前にキャンセルされたジョブの名前には`name`の式がそのまま残り、`gh pr checks`はcancelledを`fail`と表示します。どちらも有効な実行の`ci-ok`ではありません。
 
-それ以外の実行では`ci-ok`に`always()`を使います。必要なジョブが終わる前に、新しいpushか「Cancel workflow」で実行がキャンセルされると、`ci-ok`は動いて失敗します。その実行はコミットを最後までテストしていないからです。新しいpushによる失敗は、置き換えられた古いheadに残ります。GitHubの説明では`cancelled()`はワークフローがキャンセルされたことを示しますが、必要なジョブの`timeout-minutes`超過でも真になるかは明記されていません。真になるなら`!cancelled()`の`ci-ok`はスキップされ、そのスキップが必須チェックを満たしてしまいます。ルールセットが要求しない`site.yml`の`site-ok`には`!cancelled()`を使います。実行がキャンセルされると`site-ok`はfailedでなくcancelledになり、`site-ok`の成功を必要とする`deploy`は実行されません。
+それ以外の実行では`ci-ok`に`always()`を使います。必要なジョブが終わる前に、新しいpushか「Cancel workflow」で実行がキャンセルされると、`ci-ok`は動いて失敗します。その実行はコミットを最後までテストしていないからです。新しいpushによる失敗は、置き換えられた古いheadに残ります。GitHubの説明では`cancelled()`はワークフローがキャンセルされたことを示しますが、必要なジョブの`timeout-minutes`超過でも真になるかは明記されていません。真になるなら`!cancelled()`の`ci-ok`はスキップされ、そのスキップが必須チェックを満たしてしまいます。`site.yml`は`next`へのpushとdispatchでだけ動き、ルールセットはそのジョブを要求しません。`site.yml`の`deploy`は、`build`が成功したときだけ動きます。[サイトのCI](#サイトのci)を参照してください。
 
-CIはクリーンな環境での最終確認であり、変更を初めて試す場所ではありません。これは2026年10月31日のオーナーの規則で、AGENTS.mdの「Branches and pull requests」にあります。readyにする前に作者が対象のチェックをローカルで実行し、PRの「How was this tested」にコマンドと結果を記載します。`test/ci/changes.sh`が`build`を`standard`か`full`と判定したら、テストスイートも対象です。レビュアーは記録を確認します。ローカルで動く検査をCI任せにしません。
+CIで流すのは、手元で流せないものに限ります。1台のマシンには無い環境の網羅(`build`マトリクスのセル、サニタイザ、valgrind、callgrindの比較)と、サイトのデプロイです。CIは、変更を初めて試す場所ではありません。これは2026年10月31日と2026年11月2日のオーナーの規則で、AGENTS.mdの「Branches and pull requests」にあります。readyにする前に作者が対象のチェックをローカルで実行し、PRの「How was this tested」にコマンドと結果を記載します。`test/ci/changes.sh`が`build`を`standard`か`full`と判定したら、テストスイートも対象です。レビュアーは記録を確認します。ローカルで動く検査をCI任せにしません。
 
-readyのPRは必要なジョブだけを実行し、全体を約15分で終えます。2026年10月31日の#678では、buildのセルに6〜14分、マトリクス全体に15分かかりました。[実行41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773)がその記録です。`site.yml`のブラウザの系統は並列に動き、1つの系統に3〜8分、実行の全体に10分かかりました。[実行41191594863](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594863)を参照してください。CIに検査を加える提案では、その検査をローカルで実行できるか、なぜCIでも要るか、実行が何分延びるかを書きます。
+readyのPRは必要なジョブだけを実行し、全体を約15分で終えます。2026年10月31日の#678では、buildのセルに6〜14分、マトリクス全体に15分かかりました。[実行41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773)がその記録です。CIに検査を加える提案では、その検査をローカルで実行できるか、なぜCIでも要るか、実行が何分延びるかを書きます。
 
 ### 実行するジョブの選択
 
@@ -64,11 +64,11 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 
 | 分類 | パス | readyのPRが実行するワークフロー |
 |---|---|---|
-| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`nginx-tests`、`examples`、`site`、`codeql`は各パスフィルタに従って動く |
+| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`nginx-tests`、`examples`、`codeql`は、それぞれのパスフィルタに従って動く |
 | `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較 |
-| `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | siteのビルドと静的検査。`ci-plan.mjs`がページを選んだらブラウザ検査 |
-| `site` | `.github/workflows/site.yml`と`site/` | siteのビルド、静的検査、全部のブラウザ検査 |
-| `examples` | `examples/` | examplesとsiteのビルド・静的検査 |
+| `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | `next`ではジョブなし。作者が`npm run check:ci`を流す([サイトのCI](#サイトのci))。`master`では`site-v2` |
+| `site` | `.github/workflows/site.yml`と`site/` | ジョブなし。`docs`と同じ |
+| `examples` | `examples/` | examples。サイトは`docs`と同じ扱い |
 | `workflows` | `.github/`のうち`test.yml`と`site.yml`を除いたもの | zizmorは全ワークフローを検査。`.github/workflows/`と`.github/codeql/`はCodeQLも対象 |
 
 標準の4セルは、静的モジュールと動的モジュール、nginxのmainline 1.31とstable 1.30を、それぞれ少なくとも1回ビルドします。メモリの検査も、2種類とも実行します。
@@ -108,7 +108,7 @@ $ gh workflow run test.yml --ref claude/topic -f base=next
 
 この実行のジョブ名は`ci-ok (dry run)`で、`ci-ok`ではありません。`base`は実行する人が選ぶので、その結果は、ルールセットがコミットに求めるチェックにならないからです。同じように、`valgrind`入力のある実行のジョブ名は`ci-ok (valgrind)`です。この実行は始まった時点のブランチの先頭をビルドするので、キャンセルされると、そのコミットに失敗した`ci-ok`が残るからです。そのほかの「Run workflow」のジョブ名は`ci-ok (manual)`です。この実行はPRのマージコミットでなくブランチのheadを検査します。そのため、headに`ci-ok`として付くと、PR自身の実行が成功する前に、PRの必須チェックを満たしてしまいます。`valgrind-nightly.yml`は、ジョブの名前でなく、実行の結果を読みます。
 
-`master`と`next`へのpushでは、`changes`、`files`、`ci-ok`だけが動きます。どちらのブランチも、PRを通してだけ変更を受け付けます。[AGENTS.md](../../../AGENTS.md)の「Review and merge」の条件2により、セッションがPRをマージできるのは、PRの実行がまだそのマージに当てはまる間だけです。つまり、その実行の後に、PRが変える分類のファイルをbaseが受け取っていない間です。ルールセットは`ci-ok`を求めますが、ブランチがbaseに追いついていることは求めません。ブランチの先頭を単独でビルドしてテストするには、`gh workflow run test.yml --ref next`のように「Run workflow」を使います。夜間のvalgrindの実行もこの形の実行で、`master`の`valgrind-nightly.yml`のスケジュールが、`master`と`next`で起動します。説明は[CIのvalgrind](#ciのvalgrind)にあります。ほかのワークフローは、それぞれの条件で動きます。`site`は`next`へのすべてのpushでデプロイします。`codeql`は、`src/`、`mrbgems/`、ワークフロー、CodeQLの設定を変える`master`と`next`へのpushを検査します。説明は[CodeQL](#codeql)にあります。`nginx-tests`、`examples`、`zizmor`はPRでだけ動きます。
+`master`と`next`へのpushでは、`changes`、`files`、`ci-ok`だけが動きます。どちらのブランチも、PRを通してだけ変更を受け付けます。[AGENTS.md](../../../AGENTS.md)の「Review and merge」の条件2により、セッションがPRをマージできるのは、PRの実行がまだそのマージに当てはまる間だけです。baseがその後に進んだときは、PRとbaseの新しいコミットの両方が`code`か`tests`を変えたときだけ、CIを流し直します。ルールセットは`ci-ok`を求めますが、ブランチがbaseに追いついていることは求めません。ブランチの先頭を単独でビルドしてテストするには、`gh workflow run test.yml --ref next`のように「Run workflow」を使います。夜間のvalgrindの実行もこの形の実行で、`master`の`valgrind-nightly.yml`のスケジュールが、`master`と`next`で起動します。説明は[CIのvalgrind](#ciのvalgrind)にあります。ほかのワークフローは、それぞれの条件で動きます。`site`は`next`へのすべてのpushでデプロイします。`codeql`は、`src/`、`mrbgems/`、ワークフロー、CodeQLの設定を変える`master`と`next`へのpushを検査します。説明は[CodeQL](#codeql)にあります。`nginx-tests`、`examples`、`zizmor`は、PRのときにだけ動きます。
 
 `build`、`soak`、`files`がスキップされたとき、`ci-ok`がそれを成功と数えるのは、`changes`が成功し、その実行にそのジョブは要らないと判定した場合だけです。`changes`の失敗のような別の理由でスキップされたジョブがあると、`ci-ok`は失敗します。必要なジョブが成功しなかったときも失敗します。ファイルに要らないジョブをスキップしたPRは、その実行によって「Review and merge」の条件2を満たします。
 
@@ -966,47 +966,25 @@ $ diff base.txt head.txt
 数はウィンドウ全体の値です。1つのリクエストの値は、`PERF_N`で割って求めます。プロファイルは、KCachegrindやQCachegrindでも開いて読めます。
 
 
-## サイトCIの検査範囲
+## サイトのCI
 
-この節では、`.github/workflows/site.yml`のブラウザの検査を説明します。`test.yml`は上で説明しました。
+`.github/workflows/site.yml`は、`next`へのpushごとと、`workflow_dispatch`で動き、プルリクエストでは動きません。`master`の`site-dispatch.yml`は、`master`へのpushごとに、この`workflow_dispatch`を起こします。オーナーは2026年11月2日に、手元で流せる検査をCIに頼らないと決め、選択肢「`PR では流さず、next への push の時だけ (推奨)`」を選びました。オーナーの発言は、[docs/HANDOFF.md](../../HANDOFF.md)の「Decisions」にあります。
 
-### 所要時間
+| ジョブ | 内容 |
+|---|---|
+| `build` | 新しいcloneでビルドし(`check-fresh-clone.sh`)、ネットワークを止めてもう一度ビルドし(`check-offline-build.sh`)、`master`から2.xのページをビルドします(`build-v2.mjs`)。続けて、`npm test`、`check_links.py`、`npm run check`の検査、`contrast.py`、同梱のmrubyの`mrbc`でのRubyのブロックの検査、`check-v2.mjs --no-browser`を流します。ビルドしたサイトを成果物の`site`としてアップロードし、全部のステップが通ったときだけ`github-pages`としてもアップロードします |
+| `deploy` | 成果物の`github-pages`をGitHub Pagesに公開します。`next`でだけ、`build`が通った後に動きます |
+| `verify-live` | 公開したサイトを読み直します。成果物のコミットと公開されたコミット、environmentのブランチの制限、公開されたバイト列、HTTPSへのリダイレクト、残したGoogleの検証ファイル、公開したトップページのLighthouse、2つの組み合わせでの公開ページのスクリーンショットです |
 
-ブラウザの系統に分ける前は、サイトのビルドのジョブ1つが、すべての検査を実行していました。[実行41135116891](https://github.com/matsumotory/ngx_mruby/actions/runs/41135116891/job/124345060406)は26分04秒かかりました。内訳は、computed styleの検査が10分56秒、トップページとコードの操作の検査が4分45秒、日本語の行の検査が2分13秒、スクリーンショットが2分06秒、ブラウザのインストールが2分02秒です。
+デプロイの前に、ビルドしたサイトをブラウザで検査するジョブはありません。ブラウザの検査は全部、手元の`site/`の`npm run check:ci`(`site/scripts/check-ci.sh`)で流します。`docs/`、`site/`、`examples/`を変えるプルリクエストの作者は、readyにする前にこれを流し、結果を「How was this tested」に書きます。`npm run check:ci`は次を流します。
 
-下の系統に分けた後、`29cf75611`の[実行41173244320](https://github.com/matsumotory/ngx_mruby/actions/runs/41173244320)は、buildのジョブの開始から`site-ok`の終了まで17分58秒かかりました。この時間には、ランナーを待つ時間も入ります。いちばん長いブラウザのジョブは459秒でした。2つの実行はソースもランナーも違うので、この差は条件をそろえた測定ではありません。また、並列のジョブの時間を足しても、全体の経過時間にはなりません。同じ実行のChromiumでは、`check-styles.mjs`が25ページに209.651秒かかり、ページの読み込みは250回でした。対象を絞った実行が選ぶインストールの2ページでは20.101秒で、読み込みは20回だけでした。
+1. `build`のジョブの検査を流します。`npm run build`、2.xのページのビルド、`npm test`、gitが追跡するMarkdownのファイルへの`check_links.py`、`npm run check`、`contrast.py`、`mrbc`でのRubyのブロックの検査、`check-v2.mjs --no-browser`です。2.xのページは、`NGX_MRUBY_V2_TREE`のwork treeか、`site/generated/v2-tree`に作る`origin/master`のcloneからビルドします。`mrbc`は、`MRBC`か`mruby/build/host/bin/mrbc`を使い、どちらも無ければ、この検査を飛ばしたと最後に表示します。
+2. 全部のブラウザの検査を、全ページで流します。この部分だけは、前のビルドに対して`npm run check:browser`で流せます。`check-styles.mjs`と`check-japanese-lines.mjs`を`--ja-face noto`でChromiumとWebKitで流し、`/v2/ja/`の`check-japanese-lines.mjs`、`check-copy-idle.mjs`、`check-home-interaction.mjs`、3.xと2.xのページの`check-code-layout.mjs`、`check-focus.mjs`、`check-language-links.mjs`、`check-lighthouse.mjs`、`check-project-badges.mjs --browser`、`check-search-identifiers.mjs`、検索も確かめる`check-v2.mjs`、`test-read-only-browser.mjs`、`screenshots.mjs`、`screenshots-live.mjs --local`を流します。
 
-### ブラウザ検査の範囲と並列化
+新しいcloneでのビルドとネットワークを止めたビルドは、`build`のジョブに残します。`site/package.json`、`site/package-lock.json`、ビルドのスクリプトを変えるプルリクエストは、この2つも手元で流します(`sh scripts/check-fresh-clone.sh`、`npm run check:offline`)。`npm test`が流す`node scripts/test-site-workflow.mjs`は、`site.yml`にプルリクエストのトリガか3つ以外のジョブが入ったときと、`build`のジョブの検査かブラウザの検査が`check-ci.sh`から抜けたときに失敗します。手元で早く回すために、`SITE_CI_PAGES`(ルートのJSONの配列)で`check-styles.mjs`、`check-focus.mjs`、`check-code-layout.mjs`を一部のページに絞れ、`SITE_CI_VERSION`(`2`か`3`)で`check-code-layout.mjs`を1つのバージョンに絞れます。絞った実行は、プルリクエストの証拠になりません。
 
-サイトは、ビルドとすべての静的な検査を1回だけ実行します。ブラウザの検査は、同じ実行の`site-validation`アーティファクトを使います。このアーティファクトには、ビルドしたHTMLと生成したmanifestが入ります。別のコミットの結果をキャッシュとして使うことはありません。アーティファクトには、サイトとv2のソースのリビジョン、ソースがcleanかどうか、lockfileのハッシュ、ワークフローの実行が結び付いています。リビジョン、dirtyなビルド、lockfile、実行、アーティファクトのdigestのどれかが合わないと、検査は失敗します。
+baseで`code`か`tests`が変わると、プルリクエストの手元の実行の後に、`src/`、`test/`、`build_config.rb`(ディレクティブのテーブル、テストのケース、gem)を読むサイトの検査が落ちることがあります。マージのpushで動く`site.yml`が、デプロイの前にこれを見つけます。直しは別のプルリクエストにします。AGENTS.mdの「Review and merge」の条件2を参照してください。
 
-`ci-plan.mjs`は、PRの範囲と、新しく生成したmanifestを使います。PRの範囲は、マージコミットとその1つ目の親の差です。`next`でデプロイするpushと`workflow_dispatch`は、いつも全範囲を検査します。前のpushからの範囲だけを見ると、実行が失敗したかキャンセルされたpushのページが、一度も検査されないまま残るからです。
+サイトのレイアウトと折り返しの検査(`check-styles.mjs`、`check-japanese-lines.mjs`)は、2つの組み合わせだけを測ります。PCの全画面にあたるChromiumの1440pxと、iPhoneのSafariにあたるWebKitの402pxです。`site/scripts/lib/patterns.mjs`がこの2つを持ちます。
 
-PRでは、`docs/`の下の既存の通常のMarkdownの変更なら、検査するページを絞れます。絞れるのは、ジェネレーター自身のsatteriのパーサーで、次の契約が変わっていないと確かめられたときです。契約は、タイトル、タイトルの削除、見出しの階層と文言、コード、インラインのコード、HTML、frontmatterです。絞ったときも、英語と日本語の両方のルートを検査します。`/ja/`の下で英語の本文を表示するページ、つまり`site/scripts/lib/site.mjs`の`GENERATED_REFERENCE`と`NOT_TRANSLATED_YET`のページでは、全範囲の実行と同じく、日本語の行の検査は注記だけを測ります。こうすると、Markdownを正規表現で近似せずに、実際の文書の本文とリンクの変更を絞って検査できます。
-
-次の変更では、全範囲を検査します。これらの契約の変更、ファイルの追加、削除、rename、MDX、共有のCSS、レイアウト、ジェネレーター、依存関係、ワークフローの変更、未知の入力、証拠が得られない場合です。リポジトリの最上位のAGENTS.md、CLAUDE.md、README.mdだけを変えるPRでは、3.xのページのブラウザの検査は要りません。静的な検査は、それでもすべて実行します。
-
-PRでは、buildのジョブは、`test/ci/changes.sh`でもマージコミットとbaseの差を分類します。分類は[実行するジョブの選択](#実行するジョブの選択)にあります。6つのブラウザの系統とmaintenanceの系統が動くのは、`site`が`true`のときか、`docs`が`true`で上の計画が`full`か`targeted`のときです。`site`が`true`になるのは、`site/`か`site.yml`を変えたときです。`src/`、`test/`、`build_config.rb`、`examples/`を変え、`site/`と`docs/`のファイルを変えないPRは、ビルドとすべての静的な検査を実行し、ブラウザの検査は実行しません。reference、sample、トップページの静的な検査は、これらのファイルを読むからです。pushとdispatchは、すべての系統を実行します。DraftのPRでは、このワークフローのジョブは動きません。readyにすると実行が始まります。
-
-ブラウザの系統は、互いに独立して動く次のジョブです。
-
-- Chromiumのスタイルの検査とWebKitのスタイルの検査。前と同じviewport、テーマ、motionの範囲を、別々のジョブで、それぞれ検査します。
-- 3.xのトップページの操作とコードのレイアウトの検査。文書の変更で対象を絞ったときは、影響を受けるページのコードだけを検査します。その場合、トップページは変わっていないので、トップページの操作は検査しません。
-- 日本語のページの行の検査。
-- focus、言語のリンク、Lighthouseのアクセシビリティの検査。
-- スクリーンショット。全範囲では代表のページを撮り、対象を絞ったときは選んだすべてのページを撮ります。どちらも、両方のテーマで、ChromiumのPCの1440 pxとWebKitの402 pxの2つの組み合わせで、viewportとページ全体を撮ります。全範囲では、この系統は最初に`check-project-badges.mjs --browser`で、`/`、`/ja/`、`/v2/`、`/v2/ja/`にある開発の取り組みのバッジの帯と、トップページのリリースのバッジを確かめます。PCの全画面にあたるChromiumの1440 pxと、iPhoneのSafariにあたるWebKitの402 pxで、ライトとダークに加え、外部の画像を読めないライトの画面も確かめます。
-
-4つのトップページの帯にあるバッジのうち、`test`、`nginx-tests`、`valgrind-nightly`、CodeQL、zizmorのworkflowのバッジはGitHubから、OpenSSF Best Practicesのバッジはbestpractices.devから読みます。これらが、サイトで唯一の、別のoriginの画像です。ライセンスのバッジはサイトのファイルです。トップページのリリースのバッジとヘッダーのスターの数は、ビルドのときに作ります。スターの数は、`site.yml`がビルドの前にGitHubのAPIから読み、`NGX_MRUBY_SITE_STARS`と`NGX_MRUBY_SITE_STARS_DATE`で渡します。この2つが無いビルドは、数を表示しません。読み取り専用のbrowser contextは`scripts/lib/read-only-browser.mjs`にあり、同じoriginへのGETだけを許します。呼び出す側は画像のURLを正確に指定でき、そのURLへのGETには、ネットワークの代わりにローカルのfixtureで答えます。デプロイの前の検査の`check-project-badges.mjs`、`check-home-interaction.mjs`、`screenshots-live.mjs`と、セッションが手元で流す`check-layout-parity.mjs`は、これらのURLに`scripts/lib/project-badges.mjs`の代わりの画像で答えます。そのため、外部のサービスが遅いか止まっていても、公開は止まりません。`check-project-badges.mjs`は、外部の画像を断った状態でも各トップページを開き、帯の位置と大きさが変わらないことを確かめます。本物の画像を取るのは、デプロイの後の`check-live.mjs`だけです。`check-live.mjs`は、問題を報告する前に画像ごとに3回再試行します。
-
-v2の入力は`master`から別に取得するので、**`next`の差分から、v2が変わっていないとは判断しません**。maintenanceの系統は、2.xの日本語の行、v2のすべてのコードの表示、両方のバージョンの検索のindexを検査します。この系統は、すべてのpushとdispatchで動き、PRではブラウザの系統が動くときに動きます。この系統には、公開のワークフローにあった、読み取り専用のbrowserのfixtureの検査と、デプロイの前のローカルのsmokeのスクリーンショットも残っています。トップページのcopy-idleの検査は、全範囲の操作の検査に残っています。デプロイの後の確認も残っています。3.xとv2のコードの検査を全範囲で合わせると、以前の1つのスイートと同じになることを、テストで確かめます。アサーション、viewport、エンジンは、どれも減らしていません。CIの範囲の指定なしにスクリプトを直接起動すると、元の全範囲で動きます。
-
-`site-ok`は、Draftを除いて、`!cancelled()`で動きます。`site-ok`が成功するのは、buildが成功し、さらに、すべてのブラウザの系統とmaintenanceの検査が成功したときか、それらがスキップされたときです。スキップしてよいのは、buildのジョブが、PRにブラウザは要らないと判定し、`browser`を`false`にしたときです。そのほかの理由のスキップと、キャンセル、欠落、失敗したジョブがあると、`site-ok`は失敗し、公開できません。実行そのものがキャンセルされると、`site-ok`は動かず、GitHubはcancelledにします。[必須のステータスチェック](#必須のステータスチェック)を参照してください。`deploy`は、buildとこのゲートの両方を必要とします。範囲がnoneのブラウザのジョブも、アーティファクトを確かめた後に、仕事が無いことを示す成功を明示して返します。失敗した依存のジョブを、黙って迂回することはありません。独立したレビューでは、関係する回帰のスイートを実行し直し、関係の無い成果物まですべてをビルドし直すことはしません。
-
-```sh
-cd site
-node scripts/test-ci-scope.mjs
-node scripts/test-ci-browser.mjs
-node scripts/test-ci-integration.mjs
-```
-
-契約のテストは、次の場合を含みます。実際のGitの範囲、renameとmodeの変更、Markdownのパースの反例、正確なバージョンの範囲、ワークフローの接続、古い、dirtyな、別の実行の、lockfileの違う、v2の違うアーティファクトの拒否です。`measure_scope=true`を付けた手動の`site`のdispatchと、CIの方針かスクリプトを変えるPRでは、全範囲のスタイルの系統が通った**後**に、同じビルドで2ページのChromiumのスタイルの比較を加えます。この比較は、必須の全範囲の検査の代わりにはなりません。各系統は、スクリプトを測った秒数と、選んだページを、ジョブのサマリーに書きます。比べるのは、並列のジョブの時間の合計ではなく、ワークフロー全体の実際のcritical pathです。
+4つのトップページの帯にあるバッジのうち、`test`、`nginx-tests`、`valgrind-nightly`、CodeQL、zizmorのworkflowのバッジはGitHubから、OpenSSF Best Practicesのバッジはbestpractices.devから読みます。これらが、サイトで唯一の、別のoriginの画像です。ライセンスのバッジはサイトのファイルです。トップページのリリースのバッジとヘッダーのスターの数は、ビルドのときに作ります。スターの数は、`site.yml`がビルドの前にGitHubのAPIから読み、`NGX_MRUBY_SITE_STARS`と`NGX_MRUBY_SITE_STARS_DATE`で渡します。この2つが無いビルドは、数を表示しません。読み取り専用のbrowser contextは`scripts/lib/read-only-browser.mjs`にあり、同じoriginへのGETだけを許します。呼び出す側は画像のURLを正確に指定でき、そのURLへのGETには、ネットワークの代わりにローカルのfixtureで答えます。`npm run check:ci`が手元で流すブラウザの検査の`check-project-badges.mjs`、`check-home-interaction.mjs`、`screenshots-live.mjs --local`と、`check-layout-parity.mjs`は、これらのURLに`scripts/lib/project-badges.mjs`の代わりの画像で答えます。そのため、外部のサービスが遅いか止まっていても、これらの検査は止まりません。`check-project-badges.mjs`は、外部の画像を断った状態でも各トップページを開き、帯の位置と大きさが変わらないことを確かめます。本物の画像を取るのは、デプロイの後の`check-live.mjs`だけです。`check-live.mjs`は、問題を報告する前に画像ごとに3回再試行します。

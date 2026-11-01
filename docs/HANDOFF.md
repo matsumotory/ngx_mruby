@@ -1,10 +1,12 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (02:45 JST)
+## State as of 2026-11-02 (03:41 JST)
 
-- Heads: `next` is `0f7ad0b96`, the merge of
+- Heads: `next` is `3dfe8d05f`, the merge of
+  [#734](https://github.com/matsumotory/ngx_mruby/pull/734) (`master` at
+  `0f865ed4a`), after `0f7ad0b96`, the merge of
   [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (step 7 of the
-  core stabilization, 02:33 JST), after `7a0076e58`, the merge of
+  core stabilization, 02:33 JST), `7a0076e58`, the merge of
   [#733](https://github.com/matsumotory/ngx_mruby/pull/733) (the
   should-fix items of the review of #729), and `d70481db6`, the merge of
   [#732](https://github.com/matsumotory/ngx_mruby/pull/732) (the advisory
@@ -65,8 +67,13 @@
   owner's decision of 2026-11-02 that a session publishes the release
   after the owner's go-ahead, written into AGENTS.md, CLAUDE.md,
   `docs/releases/README.md` and `docs/DEVELOPMENT.md`.
-- Open: [#734](https://github.com/matsumotory/ngx_mruby/pull/734), the merge
-  of `master` at `0f865ed4a` into `next` (base `next`).
+- [#734](https://github.com/matsumotory/ngx_mruby/pull/734), the merge of
+  `master` at `0f865ed4a` into `next`, is merged (`3dfe8d05f`).
+- Open: [#737](https://github.com/matsumotory/ngx_mruby/pull/737) (base
+  `next`): `site.yml` runs on the push to `next` only, without the
+  browser lanes, and `npm run check:ci` in `site/` runs its checks and
+  every browser check locally (the owner's decision of 2026-11-02 under
+  "Decisions").
 
 ## How to use this file
 
@@ -187,6 +194,25 @@ session that was not kept from the GC, is fixed before the tag
 ([#698](https://github.com/matsumotory/ngx_mruby/pull/698)). Both are
 carried out: 2.7.3 has #698, and the advisory is published. Nothing is
 written elsewhere for them.
+
+On 2026-11-02 (02:50 to 02:58 JST) the owner added to that rule:
+「ciにたよるのはやめてくれ、それが今ボトルネックになってるしコストも時間もかかる、ローカルでテストをしっかり作れてるならciは最低限で良い。環境がたくさんいるような環境網羅的なciはいいけも、ローカルでやってることをciでも過剰でやって時間とコストかけるのはグローバルルールとしても辞めたい」
+(stop relying on CI, which is now the bottleneck and costs money and time;
+when the local tests are thorough, CI is the minimum; CI that covers many
+environments is fine, but repeating in CI what runs locally is to stop),
+and chose, in a session's question, the option
+「PR では流さず、next への push の時だけ (推奨)」: pull requests do not run
+`site.yml`; the push to `next` runs its build, deploy and check of the
+published site, without the browser lanes, which the local
+`npm run check:ci` replaces; when the base moves, CI runs again only when
+`code` or `tests` changed in both the pull request and the base; the
+build matrix, the sanitizers, valgrind and `perf` of `test.yml` stay,
+since they cover environments. #737 writes it into AGENTS.md
+("Branches and pull requests", condition 2 of "Review and merge", "Build
+and test"), `docs/test/README.md` ("Site CI") and the site proposal on
+`next`; a pull request to `master`, not opened yet, is to take `site-v2.yml` off pull requests
+and updates the comment of `test/ci/changes.sh`, which is the same on both
+branches.
 
 On 2026-10-31 the owner set a rule for CI:
 「ciはあくまで綺麗な環境での最終チェックであってテストはローカルできっちりやること、ciに過剰なテストを詰め込み過ぎて何十分もかかるようにしないこと」
@@ -315,6 +341,7 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
+| CI of `master` after the decision of 2026-11-02 on CI ("Decisions"; #737 on `next`): a pull request to `master` that takes `site-v2.yml` off pull requests (a `docs/` pull request to `master` runs `npm run check:ci` of `next` with `NGX_MRUBY_V2_TREE` set to its tree, and `site-dispatch.yml` rebuilds `/v2/` on the push), and updates the comment of `test/ci/changes.sh` (the categories `docs`, `site` and `examples`), which is the same on both branches | `master` | The merge of #737 |
 | Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge of `master` at `0f865ed4a` (#704, #703, #716, the 2.x form of the fix of GHSA-xjh6-6vgm-56wj, #731) is [#734](https://github.com/matsumotory/ngx_mruby/pull/734); the next merge brings what `master` gains after it |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. Decided on 2026-10-29 (option "500 のまま (推奨)"): 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |
@@ -329,7 +356,7 @@ Taken up and still open: none.
 | OpenSSL 3.5 and 4.0 (item 3 of section 7 of the plan): cells for OpenSSL 3.5 as the baseline and 4.0 in `.github/workflows/test.yml`, which builds `1.1.1w` today; drop 1.1.1 and 3.0, and check ENGINE and the removed APIs in ngx_mruby and the gems | `next` | Ready to start: #601's change to `.github/workflows/test.yml` is on `next` since the merge of `master` at `6b27f08da` |
 | `build_config.rb` rewrite with explicit gems (step 3 of section 6; Pillar A): `iij/mruby-env` and `iij/mruby-process` replaced by core gems, the choice between core `mruby-regexp` and `mruby-onig-regexp` (item 1 of section 7 keeps onig-regexp for 3.0), `monochromegane/mruby-secure-random` and `iij/mruby-digest` replaced, and `mruby-vedis` and `mruby-localmemcache` out of the default build | `next` | Ready to start: #606, which edits the same file, and #678 (mruby 4.1.0-rc2, whose core gems replace `env` and `process`) are merged |
 | mruby 4.1.0 (step 3 of section 6; item 1 of section 7). The owner decided on 2026-10-29 that `next` bundles `4.1.0-rc2` now and moves to 4.1.0 in a small subtree pull request when it is tagged. `next` bundles `4.1.0-rc2` since [#678](https://github.com/matsumotory/ngx_mruby/pull/678). The step to 4.1.0: `./update-mruby-subtree 4.1.0`, `vendor-mruby-prism` if the gitlink of Prism moves, the lock, and the release notes | `next` | The tag `4.1.0` of mruby |
-| Step 4 of section 6 of the plan, the core stability work of Pillar B (execution context, response finalization, fiber lifecycle, common layer, headers and variables, and the two agent proxy rows), then `v3.0.0-alpha.1` | `next` | Design accepted. Step 1 of section 8 of the proposal (tests only) merged in [#712](https://github.com/matsumotory/ngx_mruby/pull/712), 2026-11-01; step 2 (the common layer) in [#714](https://github.com/matsumotory/ngx_mruby/pull/714); step 3 (the wake and the second call of an HTTP handler after its sleep, and the result of a handler kept for that handler) in [#715](https://github.com/matsumotory/ngx_mruby/pull/715). step 4 (decision (b): a rewrite or server rewrite handler without a result goes on) in [#720](https://github.com/matsumotory/ngx_mruby/pull/720). step 5 (subrequests through the wake, `sub_request` returns the response, a content handler waits for a subrequest) in [#722](https://github.com/matsumotory/ngx_mruby/pull/722). step 6 (the stream wake, a UDP session runs its code once, and the end of a waiting session on `worker_shutdown_timeout`) in [#727](https://github.com/matsumotory/ngx_mruby/pull/727). step 7 (`Nginx.redirect` takes effect when the handler ends) in [#728](https://github.com/matsumotory/ngx_mruby/pull/728). Step 8 follows. [#709](https://github.com/matsumotory/ngx_mruby/pull/709) merged 2026-11-01, `next` 2ba80f4e9: [docs/proposals/core-stabilization.md](proposals/core-stabilization.md), whose six questions the owner decided in section 9; the security session reviews it before the first implementation pull request. Started by: 本人の選択 2026-11-01、問い「v3 の次の作業を何から始めますか」に対して「ハーネスの試験の拡張 (推奨)」、その選択肢の文「master_process on、複数の worker、reload を test.sh で試験できるようにする。その後にコアの安定化 (fiber の寿命と応答の終了の作り直し) へ」 (the owner chose to extend the harness so that `test.sh` tests `master_process on`, several workers and reloads, and then to go on to the core stabilization, the rework of the fiber lifetime and of the end of the response). [#706](https://github.com/matsumotory/ngx_mruby/pull/706) adds that extension. The requests from CRuby and the HTTP/2 and HTTP/3 clients of the row above for the test harness rewrite stay there. valgrind in CI (#634) and the auto-ssl tests (#636 on `master`) were done before. #600, #603 and #605 are merged (#603 on `next` since the merge of `master` at `6b27f08da`, with the sanitizer log check of #601). The plan: nothing in the core is refactored before it exists |
+| Step 4 of section 6 of the plan, the core stability work of Pillar B (execution context, response finalization, fiber lifecycle, common layer, headers and variables, and the two agent proxy rows), then `v3.0.0-alpha.1` | `next` | Design accepted. Step 1 of section 8 of the proposal (tests only) merged in [#712](https://github.com/matsumotory/ngx_mruby/pull/712), 2026-11-01; step 2 (the common layer) in [#714](https://github.com/matsumotory/ngx_mruby/pull/714); step 3 (the wake and the second call of an HTTP handler after its sleep, and the result of a handler kept for that handler) in [#715](https://github.com/matsumotory/ngx_mruby/pull/715). step 4 (decision (b): a rewrite or server rewrite handler without a result goes on) in [#720](https://github.com/matsumotory/ngx_mruby/pull/720). step 5 (subrequests through the wake, `sub_request` returns the response, a content handler waits for a subrequest) in [#722](https://github.com/matsumotory/ngx_mruby/pull/722). step 6 (the stream wake, a UDP session runs its code once, and the end of a waiting session on `worker_shutdown_timeout`) in [#727](https://github.com/matsumotory/ngx_mruby/pull/727). step 7 (`Nginx.redirect` takes effect when the handler ends) in [#728](https://github.com/matsumotory/ngx_mruby/pull/728). step 8 (`Nginx::Async::HTTP.sub_request` raises in an `mruby_set` handler) in [#735](https://github.com/matsumotory/ngx_mruby/pull/735), the last step of section 8. [#709](https://github.com/matsumotory/ngx_mruby/pull/709) merged 2026-11-01, `next` 2ba80f4e9: [docs/proposals/core-stabilization.md](proposals/core-stabilization.md), whose six questions the owner decided in section 9; the security session reviews it before the first implementation pull request. Started by: 本人の選択 2026-11-01、問い「v3 の次の作業を何から始めますか」に対して「ハーネスの試験の拡張 (推奨)」、その選択肢の文「master_process on、複数の worker、reload を test.sh で試験できるようにする。その後にコアの安定化 (fiber の寿命と応答の終了の作り直し) へ」 (the owner chose to extend the harness so that `test.sh` tests `master_process on`, several workers and reloads, and then to go on to the core stabilization, the rework of the fiber lifetime and of the end of the response). [#706](https://github.com/matsumotory/ngx_mruby/pull/706) adds that extension. The requests from CRuby and the HTTP/2 and HTTP/3 clients of the row above for the test harness rewrite stay there. valgrind in CI (#634) and the auto-ssl tests (#636 on `master`) were done before. #600, #603 and #605 are merged (#603 on `next` since the merge of `master` at `6b27f08da`, with the sanitizer log check of #601). The plan: nothing in the core is refactored before it exists |
 | nginx-tests required: the `nginx-tests` workflow records its results and fails only when a build, the fetch of the suite or `prove` fails. In the runs of 2026-10-28 and 2026-10-29 the build with ngx_mruby and the build without it have the same counts (511 files, 302 passed, 0 failed, 209 skipped). To do: the job fails when the build with ngx_mruby fails a file that the build without it passes, and the job joins the `needs` of `ci-ok` | `next` | Ready to start: the counts are the same in every run since #602 |
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` (the sentences that call the job advisory and say that a `FAIL` does not block a merge, under "Performance comparison with callgrind") aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR` | `next`, then `master` | Ready to start |
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |

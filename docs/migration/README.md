@@ -501,6 +501,13 @@ not enough, and show the change.
   Nginx.rputs "fallback"       # 2.x: sent with the answer of /backend   3.0.0: not sent, warn line
   return                        # leave the handler when the code after the call should not run
   ```
+- [`Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in an `mruby_set` handler](../releases/v3.0.0.md#nginxasynchttpsub_request-raises-a-runtimeerror-in-an-mruby_set-handler-735):
+  look for `Nginx::Async::HTTP.sub_request` in `mruby_set` and
+  `mruby_set_code`. Call it in a rewrite or access handler, which waits for
+  the subrequest, and set the variable there with `Nginx::Var#set`.
+- [An `mruby_set` value that cannot be converted to a String answers 500](../releases/v3.0.0.md#an-mruby_set-value-that-cannot-be-converted-to-a-string-answers-500-735):
+  look for `mruby_set` and `mruby_set_code` whose code can return a value
+  that is not a String, and return a String instead.
 
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out

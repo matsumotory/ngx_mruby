@@ -265,7 +265,12 @@ ngx_mrb_fiber_outcome_t ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mr
   ngx_http_mruby_ctx_t *ctx;
 
   *record = NULL;
-  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+  // a failed allocation is logged, not raised: the caller may run outside
+  // Ruby code (mrb->jmp is NULL), where a raise would abort the process
+  ctx = ngx_mrb_http_get_module_ctx(NULL, r);
+  if (ctx == NULL) {
+    return NGX_MRB_FIBER_RAISED;
+  }
   ctx->async_handler_result = result;
 
   f = ngx_pcalloc(r->pool, sizeof(ngx_http_mrb_fiber_t));
@@ -313,7 +318,12 @@ static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fibe
   mrb_bool raised = FALSE;
   ngx_mrb_async_http_response_t response;
 
-  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+  // a failed allocation is logged, not raised: the caller may run outside
+  // Ruby code (mrb->jmp is NULL), where a raise would abort the process
+  ctx = ngx_mrb_http_get_module_ctx(NULL, r);
+  if (ctx == NULL) {
+    return NGX_MRB_FIBER_RAISED;
+  }
   ctx->fiber_proc = fiber_proc;
 
   // Nginx::Async reads the kind of the handler whose fiber runs now. The kind
@@ -397,8 +407,8 @@ static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fibe
  * instead (ngx_http_mrb_fiber_call_again); this function resumes the waits
  * that started elsewhere: in a handler that nginx runs inside another mruby
  * call (an internal redirect that an mruby_set handler, a log handler or a
- * filter makes inside the Ruby call), and after
- * Nginx::Async::HTTP.sub_request in an mruby_set handler.
+ * filter makes inside the Ruby call), and after the subrequest of such a
+ * handler.
  */
 static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_t *ctx)
 {
@@ -456,6 +466,12 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
         // Delete the leading dollar(ctx->set_var_target.data+1)
         ngx_mrb_var_set_vector(re->mrb, mrb_top_self(re->mrb), (char *)ctx->set_var_target.data + 1,
                                ctx->set_var_target.len - 1, *ctx->async_handler_result, re->r);
+        // the conversion of the value to a String raised
+        if (re->mrb->exc != NULL) {
+          ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
+          re->mrb->exc = NULL;
+          rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
       }
     }
 
@@ -551,8 +567,8 @@ static void ngx_http_mrb_resume_set(ngx_http_request_t *r, ngx_http_mruby_ctx_t 
   outcome = ngx_mrb_run_fiber(mrb, &f->base.fiber, &value);
 
   if (outcome == NGX_MRB_FIBER_WAITS) {
-    // a subrequest of an mruby_set handler stays on the old path until
-    // step 8 (see ngx_mrb_run_request)
+    // Nginx::Async::HTTP.sub_request raises in an mruby_set handler, so the
+    // fiber waits for its timer
     if (ctx->async_sleep_pending) {
       ngx_http_mrb_fiber_wait_on_nginx(r, ctx, f);
     }
@@ -566,6 +582,12 @@ static void ngx_http_mrb_resume_set(ngx_http_request_t *r, ngx_http_mruby_ctx_t 
     // Delete the leading dollar(ctx->set_var_target.data+1)
     ngx_mrb_var_set_vector(mrb, mrb_top_self(mrb), (char *)ctx->set_var_target.data + 1, ctx->set_var_target.len - 1,
                            value, r);
+    // the conversion of the value to a String raised
+    if (mrb->exc != NULL) {
+      ngx_mrb_raise_error(mrb, mrb_obj_value(mrb->exc), r);
+      mrb->exc = NULL;
+      rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
   } else {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: invalid variable name error name: %V",
                   MODULE_NAME, __func__, __LINE__, &ctx->set_var_target);
@@ -605,16 +627,9 @@ static void ngx_http_mrb_wait_handler(ngx_http_request_t *r)
   }
 
   if (f == NULL || f->base.state != NGX_MRB_FIBER_READY) {
-    // An mruby_set handler that called Nginx::Async::HTTP.sub_request after
-    // its sleep waits for the subrequest without a record here (an
-    // mruby_set waits for a subrequest on the old path of
-    // ngx_mrb_post_fiber), and nginx runs this handler when the subrequest
-    // ends: the request ends with 500 instead of running the code of the
-    // mruby_set again. Step 8 of section 8 of
-    // docs/proposals/core-stabilization.md makes sub_request raise there.
-    // Otherwise nothing but the handler's call clears the record while this
-    // handler is set, and nginx does not call the write event handler of a
-    // request that it terminated.
+    // nginx does not call the write event handler of a request that it
+    // terminated, and nothing but the handler's call clears the record while
+    // this handler is set
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                   "%s ERROR %s:%d: the request waits, but no handler of it is ready to resume", MODULE_NAME, __func__,
                   __LINE__);
@@ -985,6 +1000,13 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   r = ngx_mrb_async_request(mrb, "Nginx::Async::HTTP.sub_request");
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+
+  // nginx does not wait for a subrequest of an mruby_set handler: the
+  // rewrite module goes on with its script and the phases without the
+  // variable (Q5 of section 9 of docs/proposals/core-stabilization.md)
+  if (ctx->handler_kind == NGX_HTTP_MRUBY_HANDLER_SET) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::Async::HTTP.sub_request is not available in an mruby_set handler");
+  }
 
   if (RSTRING_LEN(path) == 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "http_sub_request path len is 0");
