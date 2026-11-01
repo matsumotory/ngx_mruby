@@ -419,9 +419,13 @@ Phase:   NGX_HTTP_SERVER_REWRITE_PHASE, NGX_HTTP_REWRITE_PHASE
 
 'mruby_set' and 'mruby_set_code' are called at one of the rewrite phases to set a nginx variable.
 
-If the code raises an exception before it waits in `Nginx::Async.sleep` or `Nginx::Async::HTTP.sub_request`, ngx_mruby logs it, the variable is set to an empty string (as when the code returns `nil`), also when an earlier directive of the location gave it a value, and the request goes on.
+If the code raises an exception before it waits in `Nginx::Async.sleep`, ngx_mruby logs it, the variable is set to an empty string (as when the code returns `nil`), also when an earlier directive of the location gave it a value, and the request goes on.
 Text that the code wrote with `Nginx.rputs` or `Nginx.echo` before the exception is not sent and does not count in the `Content-Length` of the response.
-If the code raises after such a call returned, the request gets 500 and the output of `Nginx.rputs` is not sent, as described under [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec).
+If the code raises after the sleep, the request gets 500 and the output of `Nginx.rputs` is not sent, as described under [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec).
+
+The value of the code is converted to a String with `to_s`. When `to_s` raises, ngx_mruby logs the exception and the request gets 500, with or without a sleep. When `to_s` returns an object that is not a String, the variable gets the String of `Kernel#to_s`, for example `#<Object:0x...>`.
+
+`Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in `mruby_set` and `mruby_set_code`, because nginx does not wait for a subrequest of the rewrite script: call it in a rewrite or access handler, and set the variable there with `Nginx::Var#set`. Since 3.0.0; on 2.x nginx went on without waiting for the variable (see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxasynchttpsub_request-raises-a-runtimeerror-in-an-mruby_set-handler-NNN)).
 
 When the code waits in `Nginx::Async.sleep`, the directives of the same rewrite script after the `mruby_set` run before the sleep ends, without the value. When the code returns, the variable is set and the request goes on with the next handler of its phase, as without the sleep, so the later phases (`proxy_pass`, a content handler) read the value. A status that the code sets with `Nginx.return` does not end the request, with or without the sleep. Since 3.0.0; on 2.x, a request whose code slept ended without a response, unless an earlier handler of the request had returned `Nginx::DECLINED`, and a status set after the sleep ended the request with that status (see [the release notes of 3.0.0](../releases/v3.0.0.md#an-mruby_set-handler-that-waits-in-nginxasyncsleep-sets-its-variable-and-the-request-goes-on-715)).
 

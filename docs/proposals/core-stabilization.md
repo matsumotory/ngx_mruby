@@ -780,7 +780,8 @@ each bug fix comes as a test commit and a fix commit.
    [#727](https://github.com/matsumotory/ngx_mruby/pull/727).
 7. `Nginx.redirect` as Q2 decided (gap 6). Merged in
    [#728](https://github.com/matsumotory/ngx_mruby/pull/728).
-8. `mruby_set` as Q5 decided (gap 7).
+8. `mruby_set` as Q5 decided (gap 7). Merged in
+   [#NNN](https://github.com/matsumotory/ngx_mruby/pull/NNN).
 
 Steps 3 to 8 depend on 2; 4 to 8 do not depend on each other, except that 5
 and 7 touch the same code of the content handler and go one after the

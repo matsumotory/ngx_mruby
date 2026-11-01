@@ -26,7 +26,7 @@ resume: nginxが<wbr>ハンドラを<wbr>もう一度<wbr>呼び、<wbr>ハン�
 - 2.7.3の修正以降、nginxは`Nginx::Async.sleep`で待つcontentハンドラのリクエストを保持します。3.xもこの修正を含みます。コードの応答や戻り値のステータスでリクエストが完了します。2.7.2までは、sleepの時点で応答せずにリクエストが終わりました。
 - 3.0.0から、`Nginx.redirect`は呼び出したハンドラが終わったときに効くので、リダイレクト先のハンドラも待てます。
 - 3.0.0から、contentハンドラは`Nginx::Async.sleep`の後でも`Nginx::Async::HTTP.sub_request`を待てます。2.7.3は、ここで`RuntimeError`を出します。
-- `mruby_set`のサブリクエストはリクエストを保持しません。変数の完了を待たず、nginxはcontentフェーズへ進みます。
+- 3.0.0から、`mruby_set`では`Nginx::Async::HTTP.sub_request`が`RuntimeError`を出します。nginxは、rewriteモジュールのスクリプトのサブリクエストを待たないためです。2.xでは、nginxは変数を待たずにcontentフェーズへ進みました。
 - ヘッダフィルタ、ボディフィルタ、logハンドラでは、両メソッドが`RuntimeError`を起こします。
 - mruby-sleepの`sleep`、mruby-socketのソケット、ファイル、シェルのコマンド、Redisの呼び出しで待つコードは、その間ワーカーをブロックします。詳しくは[信頼境界](../../security/trust-boundary.md)にあります。
 
