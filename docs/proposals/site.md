@@ -1595,8 +1595,8 @@ detection, or that pinned versions do not keep Starlight stable.
   test files that pin it. The generated reference of Pillar
   F goes the same way. Nothing generated is committed.
 - **Why `next`, not a separate branch**: a documentation change and its
-  rendering are reviewed in one pull request, and CI builds the site on
-  every pull request. `gh-pages` shows what a separate branch does over
+  rendering are reviewed in one pull request, and its author builds and
+  checks the site with `npm run check:ci` before the review. `gh-pages` shows what a separate branch does over
   time: no content change since 2016.
 - **2.x**: the site workflow checks out `master` and builds its `docs/`
   with the base `/v2/` (`site/scripts/build-v2.mjs`: the build of `site/`

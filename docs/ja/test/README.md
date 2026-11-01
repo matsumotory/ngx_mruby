@@ -64,7 +64,7 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 
 | 分類 | パス | readyのPRが実行するワークフロー |
 |---|---|---|
-| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`nginx-tests`、`examples`、`site`、`codeql`は各パスフィルタに従って動く |
+| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`nginx-tests`、`examples`、`codeql`は各パスフィルタに従って動く |
 | `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較 |
 | `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | `next`ではジョブなし。作者が`npm run check:ci`を流す([サイトのCI](#サイトのci))。`master`では`site-v2` |
 | `site` | `.github/workflows/site.yml`と`site/` | ジョブなし。`docs`と同じ |
@@ -108,7 +108,7 @@ $ gh workflow run test.yml --ref claude/topic -f base=next
 
 この実行のジョブ名は`ci-ok (dry run)`で、`ci-ok`ではありません。`base`は実行する人が選ぶので、その結果は、ルールセットがコミットに求めるチェックにならないからです。同じように、`valgrind`入力のある実行のジョブ名は`ci-ok (valgrind)`です。この実行は始まった時点のブランチの先頭をビルドするので、キャンセルされると、そのコミットに失敗した`ci-ok`が残るからです。そのほかの「Run workflow」のジョブ名は`ci-ok (manual)`です。この実行はPRのマージコミットでなくブランチのheadを検査します。そのため、headに`ci-ok`として付くと、PR自身の実行が成功する前に、PRの必須チェックを満たしてしまいます。`valgrind-nightly.yml`は、ジョブの名前でなく、実行の結果を読みます。
 
-`master`と`next`へのpushでは、`changes`、`files`、`ci-ok`だけが動きます。どちらのブランチも、PRを通してだけ変更を受け付けます。[AGENTS.md](../../../AGENTS.md)の「Review and merge」の条件2により、セッションがPRをマージできるのは、PRの実行がまだそのマージに当てはまる間だけです。つまり、その実行の後に、PRが変える分類のファイルをbaseが受け取っていない間です。ルールセットは`ci-ok`を求めますが、ブランチがbaseに追いついていることは求めません。ブランチの先頭を単独でビルドしてテストするには、`gh workflow run test.yml --ref next`のように「Run workflow」を使います。夜間のvalgrindの実行もこの形の実行で、`master`の`valgrind-nightly.yml`のスケジュールが、`master`と`next`で起動します。説明は[CIのvalgrind](#ciのvalgrind)にあります。ほかのワークフローは、それぞれの条件で動きます。`site`は`next`へのすべてのpushでデプロイします。`codeql`は、`src/`、`mrbgems/`、ワークフロー、CodeQLの設定を変える`master`と`next`へのpushを検査します。説明は[CodeQL](#codeql)にあります。`nginx-tests`、`examples`、`zizmor`はPRでだけ動きます。
+`master`と`next`へのpushでは、`changes`、`files`、`ci-ok`だけが動きます。どちらのブランチも、PRを通してだけ変更を受け付けます。[AGENTS.md](../../../AGENTS.md)の「Review and merge」の条件2により、セッションがPRをマージできるのは、PRの実行がまだそのマージに当てはまる間だけです。baseがその実行の後に進んだときは、PRとbaseの新しいコミットの両方が`code`か`tests`を変えたときだけ、CIを流し直します。ルールセットは`ci-ok`を求めますが、ブランチがbaseに追いついていることは求めません。ブランチの先頭を単独でビルドしてテストするには、`gh workflow run test.yml --ref next`のように「Run workflow」を使います。夜間のvalgrindの実行もこの形の実行で、`master`の`valgrind-nightly.yml`のスケジュールが、`master`と`next`で起動します。説明は[CIのvalgrind](#ciのvalgrind)にあります。ほかのワークフローは、それぞれの条件で動きます。`site`は`next`へのすべてのpushでデプロイします。`codeql`は、`src/`、`mrbgems/`、ワークフロー、CodeQLの設定を変える`master`と`next`へのpushを検査します。説明は[CodeQL](#codeql)にあります。`nginx-tests`、`examples`、`zizmor`はPRでだけ動きます。
 
 `build`、`soak`、`files`がスキップされたとき、`ci-ok`がそれを成功と数えるのは、`changes`が成功し、その実行にそのジョブは要らないと判定した場合だけです。`changes`の失敗のような別の理由でスキップされたジョブがあると、`ci-ok`は失敗します。必要なジョブが成功しなかったときも失敗します。ファイルに要らないジョブをスキップしたPRは、その実行によって「Review and merge」の条件2を満たします。
 
@@ -978,7 +978,7 @@ $ diff base.txt head.txt
 
 デプロイの前に、ビルドしたサイトをブラウザで検査するジョブはありません。ブラウザの検査は全部、手元の`site/`の`npm run check:ci`(`site/scripts/check-ci.sh`)で流します。`docs/`、`site/`、`examples/`を変えるプルリクエストの作者は、readyにする前にこれを流し、結果を「How was this tested」に書きます。`npm run check:ci`は次を流します。
 
-1. `build`のジョブの検査を、同じ順で流します。`npm run build`、2.xのページのビルド、`npm test`、gitが追跡するMarkdownのファイルへの`check_links.py`、`npm run check`、`contrast.py`、`mrbc`でのRubyのブロックの検査、`check-v2.mjs --no-browser`です。2.xのページは、`NGX_MRUBY_V2_TREE`のwork treeか、`site/generated/v2-tree`に作る`origin/master`のcloneからビルドします。`mrbc`は、`MRBC`か`mruby/build/host/bin/mrbc`を使い、どちらも無ければ、この検査を飛ばしたと最後に表示します。
+1. `build`のジョブの検査を流します。`npm run build`、2.xのページのビルド、`npm test`、gitが追跡するMarkdownのファイルへの`check_links.py`、`npm run check`、`contrast.py`、`mrbc`でのRubyのブロックの検査、`check-v2.mjs --no-browser`です。2.xのページは、`NGX_MRUBY_V2_TREE`のwork treeか、`site/generated/v2-tree`に作る`origin/master`のcloneからビルドします。`mrbc`は、`MRBC`か`mruby/build/host/bin/mrbc`を使い、どちらも無ければ、この検査を飛ばしたと最後に表示します。
 2. 全部のブラウザの検査を、全ページで流します。この部分だけは、前のビルドに対して`npm run check:browser`で流せます。`check-styles.mjs`と`check-japanese-lines.mjs`を`--ja-face noto`でChromiumとWebKitで流し、`/v2/ja/`の`check-japanese-lines.mjs`、`check-copy-idle.mjs`、`check-home-interaction.mjs`、3.xと2.xのページの`check-code-layout.mjs`、`check-focus.mjs`、`check-language-links.mjs`、`check-lighthouse.mjs`、`check-project-badges.mjs --browser`、`check-search-identifiers.mjs`、検索も確かめる`check-v2.mjs`、`test-read-only-browser.mjs`、`screenshots.mjs`、`screenshots-live.mjs --local`を流します。
 
 新しいcloneでのビルドとネットワークを止めたビルドは、`build`のジョブに残します。`site/package.json`、`site/package-lock.json`、ビルドのスクリプトを変えるプルリクエストは、この2つも手元で流します(`sh scripts/check-fresh-clone.sh`、`npm run check:offline`)。`npm test`が流す`node scripts/test-site-workflow.mjs`は、`site.yml`にプルリクエストのトリガか3つ以外のジョブが入ったときと、`build`のジョブの検査かブラウザの検査が`check-ci.sh`から抜けたときに失敗します。手元で早く回すために、`SITE_CI_PAGES`(ルートのJSONの配列)で`check-styles.mjs`、`check-focus.mjs`、`check-code-layout.mjs`を一部のページに絞れ、`SITE_CI_VERSION`(`2`か`3`)で`check-code-layout.mjs`を1つのバージョンに絞れます。絞った実行は、プルリクエストの証拠になりません。

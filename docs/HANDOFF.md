@@ -1,10 +1,12 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (02:45 JST)
+## State as of 2026-11-02 (03:41 JST)
 
-- Heads: `next` is `0f7ad0b96`, the merge of
+- Heads: `next` is `3dfe8d05f`, the merge of
+  [#734](https://github.com/matsumotory/ngx_mruby/pull/734) (`master` at
+  `0f865ed4a`), after `0f7ad0b96`, the merge of
   [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (step 7 of the
-  core stabilization, 02:33 JST), after `7a0076e58`, the merge of
+  core stabilization, 02:33 JST), `7a0076e58`, the merge of
   [#733](https://github.com/matsumotory/ngx_mruby/pull/733) (the
   should-fix items of the review of #729), and `d70481db6`, the merge of
   [#732](https://github.com/matsumotory/ngx_mruby/pull/732) (the advisory
@@ -337,6 +339,7 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
+| CI of `master` after the decision of 2026-11-02 on CI ("Decisions"; #737 on `next`): a pull request to `master` that takes `site-v2.yml` off pull requests (a `docs/` pull request to `master` runs `npm run check:ci` of `next` with `NGX_MRUBY_V2_TREE` set to its tree, and `site-dispatch.yml` rebuilds `/v2/` on the push), and updates the comment of `test/ci/changes.sh` (the categories `docs`, `site` and `examples`), which is the same on both branches | `master` | The merge of #737 |
 | Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge of `master` at `0f865ed4a` (#704, #703, #716, the 2.x form of the fix of GHSA-xjh6-6vgm-56wj, #731) is [#734](https://github.com/matsumotory/ngx_mruby/pull/734); the next merge brings what `master` gains after it |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. Decided on 2026-10-29 (option "500 のまま (推奨)"): 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |

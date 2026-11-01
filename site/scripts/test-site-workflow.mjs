@@ -9,7 +9,10 @@ import fs from 'node:fs';
 
 const read = (file) => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
 const workflow = read('../../.github/workflows/site.yml');
-const local = read('./check-ci.sh');
+// The lines of check-ci.sh without its comments, so that a check that is
+// commented out counts as missing.
+const local = read('./check-ci.sh').split('\n').filter((line) => !/^\s*#/.test(line)).join('\n') + '\n';
+const localText = read('./check-ci.sh');
 const pkg = JSON.parse(read('../package.json'));
 
 // Triggers: a push to next and workflow_dispatch, no pull request.
@@ -45,7 +48,7 @@ const inBuild = new Set([...job('build').matchAll(/(?:node|python3|sh) (?:site\/
 // The fresh-clone and offline builds stay in CI (the head of check-ci.sh).
 for (const script of ['scripts/check-fresh-clone.sh', 'scripts/check-offline-build.sh']) {
   assert.ok(inBuild.delete(script), `site.yml runs ${script}`);
-  assert.ok(local.includes(script.replace('scripts/check-offline-build.sh', 'npm run check:offline')), `check-ci.sh names ${script}`);
+  assert.ok(localText.includes(script.replace('scripts/check-offline-build.sh', 'npm run check:offline')), `check-ci.sh names ${script}`);
 }
 assert.ok(inBuild.size >= 15, `the build job runs its checks (${[...inBuild].join(', ')})`);
 for (const script of inBuild) {

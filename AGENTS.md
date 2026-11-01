@@ -531,7 +531,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   test/perf/compare.sh` where the change affects what they measure.
   `docs/test/README.md` describes each of them.
 - `npm run check:ci` (`site/scripts/check-ci.sh`) runs, in one command,
-  the checks of the build job of `site.yml` in its order (`npm run
+  the checks of the build job of `site.yml` (`npm run
   build`, the 2.x pages of `origin/master` or of `NGX_MRUBY_V2_TREE`,
   `npm test`, `check_links.py` on the Markdown files that git tracks,
   `npm run check`, `contrast.py`, the Ruby blocks with `mrbc`, which it
@@ -685,7 +685,7 @@ npm run test              # the generator on its fixtures
 npm run check             # the checks of the built site that need no browser (below; after build:v2)
 npm run check:v2          # the checks of step 6 on the 2.x pages, with the search in Chromium (below)
 npm run check:browser     # the checks in Chromium and WebKit (below)
-npm run check:ci          # all of the above in the order of site.yml, before a PR is marked ready
+npm run check:ci          # all of the above, the checks of site.yml among them, before a PR is marked ready
 npm run screenshots       # the screenshots of step 3 (below)
 npm run preview           # serves dist/ at http://localhost:4321/
 ```

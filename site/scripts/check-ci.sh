@@ -4,7 +4,7 @@
 # marked ready ("Site CI" in docs/test/README.md). Pull requests do not run
 # site.yml: the owner decided on 2026-11-02 that CI does not repeat the
 # checks that run locally. This script runs the checks of the build job of
-# site.yml, in its order, and every browser check, which no CI job runs.
+# site.yml, and every browser check, which no CI job runs, on every page.
 #
 #   npm run check:ci        # in site/: everything below
 #   npm run check:browser   # in site/: the browser checks only, on the
@@ -27,9 +27,15 @@
 # (sh scripts/check-fresh-clone.sh, npm run check:offline) when a change
 # touches package.json, package-lock.json or the build scripts.
 #
-# It stops at the first failed check, with its exit status.
+# It stops at the first failed check, with its exit status. It prints the
+# commit that it checks and whether the work tree is clean: the evidence of
+# a pull request is a run on its committed head.
 
 set -eu
+
+# A page set of a quicker local loop (lib/ci-pages.mjs) would make the run
+# partial.
+unset SITE_CI_PAGES SITE_CI_VERSION
 
 site=$(cd "$(dirname "$0")/.." && pwd)
 repo=$(cd "$site/.." && pwd)
@@ -43,6 +49,13 @@ case "${1-}" in
 esac
 
 started=$(date +%s)
+head=$(git -C "$repo" rev-parse HEAD)
+if [ -z "$(git -C "$repo" status --porcelain --untracked-files=normal)" ]; then
+    tree_state=clean
+else
+    tree_state='not clean (uncommitted or untracked files)'
+fi
+echo "check:ci: $head, work tree $tree_state"
 skipped=''
 run() {
     echo
@@ -125,7 +138,7 @@ fi
 browser_checks
 
 echo
-echo "check:ci: passed in $(( $(date +%s) - started )) s ($mode)"
+echo "check:ci: passed in $(( $(date +%s) - started )) s ($mode) on $head, work tree $tree_state"
 if [ -n "$skipped" ]; then
     echo "check:ci: skipped:$skipped"
 fi

@@ -190,7 +190,7 @@ table below.
 
 | Category | Paths | What a ready pull request runs |
 |---|---|---|
-| `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below), `soak` and `perf`. `nginx-tests`, `examples`, `site` and `codeql` by their own path filters |
+| `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below), `soak` and `perf`. `nginx-tests`, `examples` and `codeql` by their own path filters |
 | `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `soak` when `soak` is `true`; `perf` compares when `perf` is `true` |
 | `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | No job on `next`: the author runs `npm run check:ci` in `site/` ([Site CI](#site-ci)), and `site.yml` checks the merge on the push to `next`. On `master`, `site-v2` (every ready pull request) |
 | `site` | `site/`, `.github/workflows/site.yml` | No job: as for `docs` |
@@ -287,8 +287,8 @@ A push to `master` or `next` runs only `changes`, `files` and `ci-ok`. Both
 branches take changes only through pull requests, and condition 2 of
 "Review and merge" in [AGENTS.md](../../AGENTS.md) has the session merge a
 pull request only while the run of the pull request still stands for the
-merge: the base has gained no file of a category that the pull request
-also changes since that run. The rulesets require `ci-ok`, but not that the
+merge: when the base has moved since that run, CI runs again only when both
+the pull request and the base's new commits change `code` or `tests`. The rulesets require `ci-ok`, but not that the
 branch is up to date with its base. To build and test the tip of a branch
 by itself, use "Run workflow" (`gh workflow run test.yml --ref next`). The
 nightly run under valgrind, which the schedule of `valgrind-nightly.yml` on
@@ -2440,7 +2440,7 @@ check runs locally instead, in `npm run check:ci` in `site/`
 changes `docs/`, `site/` or `examples/` runs before marking it ready, and
 quotes under "How was this tested". It runs:
 
-1. the checks of the `build` job, in its order: `npm run build`, the 2.x
+1. the checks of the `build` job: `npm run build`, the 2.x
    pages (from `NGX_MRUBY_V2_TREE`, or from a clone of `origin/master` in
    `site/generated/v2-tree`), `npm test`, `check_links.py` on the
    Markdown files that git tracks, `npm run check`, `contrast.py`, the
