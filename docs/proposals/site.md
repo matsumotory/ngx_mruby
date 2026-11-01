@@ -1333,8 +1333,7 @@ acceptance; the interaction check covers that separately.
   are longer than the English ones. In Chromium, with or without the
   sidebar, and with the star count (997 stars), the header holds every
   item on one line inside its padding from 1131 px in English, and in
-  Japanese from 1312 px on the home page and 1252 px on the other pages
-  in Hiragino Sans, and from 1297 px and 1237 px in Noto Sans JP; a
+  Japanese from 1252 px in Hiragino Sans and 1237 px in Noto Sans JP; a
   count of four characters such as 1.2K takes 4 to 5 px more. 76rem and
   88rem stay above them. The labels of the header do not
   break inside a word (`white-space: nowrap`). The owner on 2026-11-01:
