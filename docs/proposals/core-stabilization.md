@@ -351,7 +351,7 @@ are the owner hook, the wake (4.4), the mapping of the result to the
 phase's return value, and the current request or session that the Ruby API
 reads.
 
-With the recommendations of section 9, each request (each
+Each request (each
 `ngx_http_request_t`: a subrequest and its parent can wait at the same time,
 `test/t/cases/async_exception_state.rb:77`) has at most one record that waits
 at a time (the phases run one handler at a time, and `Nginx.redirect` no
@@ -361,9 +361,7 @@ reused by the later handlers of the request. The module context points at
 it, but the owner hook and the timer reach it through their own pointers,
 because `ngx_mrb_finalize_rputs` drops the module context after it sent
 output (`src/http/ngx_http_mruby_core.c:303`) and an internal redirect clears
-every module context. If Q2 or Q4 is answered the other way, there is one
-record per run, as today, and with Q2 answered no, a content handler that
-waits inside `Nginx.redirect` still does not keep the request (2.4).
+every module context.
 
 ### 4.2 States
 
@@ -531,12 +529,11 @@ for the handler kind; stream through `stream_status`.
   `r->headers_out.status` and in the record, and a return code below 0
   (`Nginx::DECLINED`, `Nginx::DONE` and the like) only in the record. A
   handler that stores nothing has no result, whatever an earlier handler
-  stored (gap 3). The Pillar B row lists this as a candidate, not a
-  decision: Q6.
+  stored (gap 3). The owner decided this in Q6.
 - A run without a result ends as follows, with or without a wait:
   rewrite handlers go on with the next phase handler, as with
   `NGX_DECLINED` (decision (b), gap 1), and server rewrite handlers the same
-  way if the owner extends (b) to them (Q6); access and post_read handlers
+  way (Q6); access and post_read handlers
   return `NGX_OK`, as they do today without a wait
   (`src/http/ngx_http_mruby_core.c:277`): the access checker then goes on
   with the next access handler under `satisfy all` and allows the request
@@ -612,11 +609,11 @@ with every line of the template. "Before" is 2.7.3 and `next` at
    result (4.6), and that content handler answers the empty 200 of #574.
 4. `Nginx::Async::HTTP.sub_request` returns the response (additive; "New
    features").
-5. If Q1 is answered yes: `sub_request` works in a content handler, also
+5. `sub_request` works in a content handler, also
    after `Nginx::Async.sleep`. Before: it raises a `RuntimeError` after a
    sleep (2.7.3), and is not documented for content handlers. A new feature,
    with an entry for the removed `RuntimeError`.
-6. If Q2 is answered as recommended: output and a status that a handler sets
+6. Output and a status that a handler sets
    after `Nginx.redirect` with a local URI are not sent, the target's
    handlers run after the calling handler ends instead of inside the call,
    and a content handler of the target that sleeps answers after its sleep.
@@ -624,10 +621,10 @@ with every line of the template. "Before" is 2.7.3 and `next` at
    `test/t/cases/async_sleep_in_content.rb`,
    `test/t/cases/async_exception_state.rb` and
    `test/t/cases/redirect_to_raising_handler.rb` that pin the order (section
-   6); their expectations change only with the owner's answer.
-7. If Q4 is answered as recommended: a UDP datagram that arrives while the
+   6); their expectations change as Q2 decided.
+7. A UDP datagram that arrives while the
    stream code waits does not run the code again.
-8. If Q5 is answered as recommended: `sub_request` in an `mruby_set` handler
+8. `sub_request` in an `mruby_set` handler
    raises a `RuntimeError`.
 9. An `mruby_set` handler that sets a status with `Nginx.return` after a
    sleep. Before: the request ends with that status (unverified, 2.3). Now:
@@ -649,8 +646,7 @@ stream session goes on or ends after a sleep by its result), their Fixes on
 ## 6. The tests that pin the model
 
 The cases that exist and must pass unchanged (except those that items 5
-and 6 of section 5 name, which change only with the owner's answers to Q1
-and Q2):
+and 6 of section 5 name, which change as Q1 and Q2 decided):
 
 - `test/t/cases/async_sleep_in_content.rb`: a content handler that sleeps
   answers with its body, with the status it returns, with 500 without its
@@ -882,5 +878,7 @@ already decide, with Q6 for server rewrite handlers.
 The security session reviews this proposal before the first implementation
 pull request, and each implementation pull request before it is merged:
 the owner wants the same eyes on this code that found the advisories of
-section 1. A finding goes to the process of [SECURITY.md](../../SECURITY.md),
+section 1. The security session reviewed this proposal on 2026-11-01, before
+the first implementation pull request, and reviews each implementation pull
+request before it is merged. A finding goes to the process of [SECURITY.md](../../SECURITY.md),
 not into a pull request or this file.
