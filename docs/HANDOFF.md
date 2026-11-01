@@ -1,8 +1,10 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (02:10 JST)
+## State as of 2026-11-02 (02:20 JST)
 
-- Heads: `next` is `d70481db6`, the merge of
+- Heads: `next` is `7a0076e58`, the merge of
+  [#733](https://github.com/matsumotory/ngx_mruby/pull/733) (the
+  should-fix items of the review of #729), after `d70481db6`, the merge of
   [#732](https://github.com/matsumotory/ngx_mruby/pull/732) (the advisory
   id of 2.7.4 and the release rule of 2026-11-02 on `next`); `master` is
   `0f865ed4a`, the merge of
@@ -52,9 +54,9 @@
   [#731](https://github.com/matsumotory/ngx_mruby/pull/731), which adds the
   advisory id to `master`.
 - [#729](https://github.com/matsumotory/ngx_mruby/pull/729) (the terms of
-  the AI gateway on the site) was merged at 01:33 JST;
-  [#733](https://github.com/matsumotory/ngx_mruby/pull/733) finishes the
-  should-fix items of its review.
+  the AI gateway on the site) was merged at 01:33 JST, and
+  [#733](https://github.com/matsumotory/ngx_mruby/pull/733), the
+  should-fix items of its review, at 02:14 JST.
 - [#731](https://github.com/matsumotory/ngx_mruby/pull/731) (base
   `master`, 01:51 JST) and [#732](https://github.com/matsumotory/ngx_mruby/pull/732)
   (base `next`, 01:56 JST) are merged: the advisory id of 2.7.4, and the
@@ -62,8 +64,7 @@
   after the owner's go-ahead, written into AGENTS.md, CLAUDE.md,
   `docs/releases/README.md` and `docs/DEVELOPMENT.md`.
 - Open: [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (base
-  `next`, step 7 of the core stabilization),
-  [#733](https://github.com/matsumotory/ngx_mruby/pull/733) (base `next`)
+  `next`, step 7 of the core stabilization)
   and [#734](https://github.com/matsumotory/ngx_mruby/pull/734), the merge
   of `master` at `0f865ed4a` into `next` (base `next`).
 
