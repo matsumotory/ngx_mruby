@@ -8,16 +8,19 @@ they are not four completed products or a promise that every part ships in v3.0.
 
 ## MCP access policy
 
-A team with several MCP services wants one place to decide which agent may call
-which tool in which tenant. The proposed gateway authenticates the caller,
-checks a tool allowlist and routes only to configured services. A search-only
-agent must not acquire a write tool merely by changing a header or tool name.
-The result is a shared policy boundary instead of checks copied into every client.
+When an end user calls MCP tools from an AI application, this configuration
+would restrict the operations and data that user can access.
+
+The MCP server operator would place ngx_mruby between the AI application and
+MCP server. The proxy would check the authenticated user against the MCP tool
+name and arguments in `tools/call` before forwarding to a configured service.
+It would reject updates from a search-only user or requests for documents
+outside that user's access scope. The MCP server would still enforce data access.
 
 Identity validation and tool authorization are separate. Validate token issuer,
 audience and scope with the resource server's authorization machinery; Ruby uses
-the validated identity, not a self-declared agent ID. Include the tenant in every
-policy and accounting key. Check routing metadata against the JSON-RPC body,
+the validated identity, not a self-declared agent ID. Include the verified user identity and permitted
+data scope in policy and accounting keys. Check routing metadata against the JSON-RPC body,
 and preserve the service's discovery contract, errors and cancellation behavior.
 A gateway is not automatically an OAuth server or a tool-discovery aggregator.
 
