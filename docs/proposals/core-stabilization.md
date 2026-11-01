@@ -745,7 +745,8 @@ results (section 8 of the plan).
   from sample to sample, and bounds `VmRSS`, for the `sleep`, `sub_request`
   and `disconnect` scenarios (the client closes during the sleep). The pull
   request of the common layer counts the stream timers and fibers in
-  `Nginx::Debug.stats` as well, for a stream scenario added with it.
+  `Nginx::Debug.stats` as well (#714); the stream scenario that reads them
+  comes with step 6 of section 8, the stream wake.
 
 ## 8. The order of the implementation pull requests
 

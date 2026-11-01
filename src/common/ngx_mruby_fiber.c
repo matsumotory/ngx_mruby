@@ -132,6 +132,9 @@ void ngx_mrb_fiber_cancel(ngx_mrb_fiber_t *f)
 {
   ngx_mrb_fiber_delete_timer(f);
   ngx_mrb_fiber_release(f);
+  // nginx has taken the hook off its list to run it, so a later wait of the
+  // same record adds a new one
+  f->hooked = 0;
   if (f->state == NGX_MRB_FIBER_WAITING || f->state == NGX_MRB_FIBER_READY) {
     f->state = NGX_MRB_FIBER_CANCELLED;
   }

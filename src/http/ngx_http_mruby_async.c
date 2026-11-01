@@ -125,8 +125,11 @@ static ngx_http_mrb_fiber_t *ngx_http_mrb_fiber_prepare_wait(mrb_state *mrb, ngx
   ngx_http_mrb_fiber_t *f = (ngx_http_mrb_fiber_t *)ctx->fiber_proc;
   ngx_http_cleanup_t *cln;
 
-  if (f == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::Async is not available without a handler fiber");
+  // Only the fiber that runs now can wait. Ruby code that runs for the
+  // record after its fiber ended (the inspect of its exception, for example)
+  // finds it in another state.
+  if (f == NULL || f->base.state != NGX_MRB_FIBER_RUNNING) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::Async is not available without a running handler fiber");
   }
 
   if (!f->base.hooked) {
@@ -146,9 +149,24 @@ static ngx_http_mrb_fiber_t *ngx_http_mrb_fiber_prepare_wait(mrb_state *mrb, ngx
   return f;
 }
 
+// What ngx_http_mrb_fiber_log_raise needs: the request, and the handler kind
+// to restore before the exception is logged.
+typedef struct {
+  ngx_http_request_t *r;
+  ngx_http_mruby_ctx_t *ctx;
+  ngx_http_mruby_handler_kind_t outer_kind;
+} ngx_http_mrb_fiber_log_t;
+
+// Logs the exception of a fiber that raised. The kind of the handler that
+// was set before the fiber ran comes back first, as when the exception was
+// logged after the fiber returned: the inspect of the exception is Ruby code
+// that runs outside the handler fiber.
 static void ngx_http_mrb_fiber_log_raise(mrb_state *mrb, mrb_value exc, void *data)
 {
-  ngx_mrb_raise_error(mrb, exc, data);
+  ngx_http_mrb_fiber_log_t *log = data;
+
+  log->ctx->handler_kind = log->outer_kind;
+  ngx_mrb_raise_error(mrb, exc, log->r);
 }
 
 ngx_mrb_fiber_outcome_t ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc,
@@ -196,8 +214,8 @@ ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc,
   mrb_value handler_result = mrb_nil_value();
   ngx_http_mruby_ctx_t *ctx;
   ngx_http_mrb_fiber_t *f = (ngx_http_mrb_fiber_t *)fiber_proc;
-  ngx_http_mruby_handler_kind_t outer_kind;
   ngx_mrb_fiber_outcome_t outcome;
+  ngx_http_mrb_fiber_log_t log;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->fiber_proc = fiber_proc;
@@ -207,10 +225,12 @@ ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc,
   // code that runs for the request outside a handler fiber sees
   // NGX_HTTP_MRUBY_HANDLER_NONE, for example the to_s that ngx_mrb_run calls
   // on the result of mruby_set.
-  outer_kind = ctx->handler_kind;
+  log.r = r;
+  log.ctx = ctx;
+  log.outer_kind = ctx->handler_kind;
   ctx->handler_kind = f->kind;
-  outcome = ngx_mrb_fiber_resume(&f->base, &handler_result, ngx_http_mrb_fiber_log_raise, r);
-  ctx->handler_kind = outer_kind;
+  outcome = ngx_mrb_fiber_resume(&f->base, &handler_result, ngx_http_mrb_fiber_log_raise, &log);
+  ctx->handler_kind = log.outer_kind;
 
   if (outcome == NGX_MRB_FIBER_RAISED) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
@@ -297,6 +317,11 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
     if (rc == NGX_OK) {
       rc = ngx_mrb_finalize_rputs(re->r, ctx, kind);
     }
+  } else if (re->fiber != NULL) {
+    ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
+                  "%s NOTICE %s:%d: the fiber is not resumed: its request cleanup has run", MODULE_NAME, __func__,
+                  __LINE__);
+    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
   } else {
     ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing",
                   MODULE_NAME, __func__, __LINE__);

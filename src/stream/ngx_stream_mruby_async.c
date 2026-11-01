@@ -235,8 +235,10 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ictx = mrb->ud;
   ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
   f = (ngx_stream_mrb_fiber_t *)ctx->fiber_proc;
-  if (f == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::Stream::Async.sleep is not available without a handler fiber");
+  // Only the fiber that runs now can wait, not one that has ended (Ruby code
+  // that runs for it after its end, such as the inspect of its exception).
+  if (f == NULL || f->base.state != NGX_MRB_FIBER_RUNNING) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::Stream::Async.sleep is not available without a running handler fiber");
   }
 
   // The owner hook and the slot come first, so that a failure there raises
