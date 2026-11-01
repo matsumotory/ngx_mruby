@@ -1680,7 +1680,7 @@ deployment of 5.3, and the route of every page.
 compares against the existing 390px WebKit pattern. At the end of the
 rebuild, change only `PHONE.width` in `site/scripts/lib/patterns.mjs` to
 402px, the owner's iPhone 17 Pro Safari width. Keep 1440px Chromium.
-The owner's words: 「じゃあ402にしよう」, 「キリがないからpcの幅を超えた画面で綺麗に見えたらよくて、あとは402に調整するぐらいの基準で良さそう」.
+The owner's words: 「じゃあ402にしよう」, 「キリがないからpcの幅を超えた画面で綺麗に見えたらよくて、あとは402に調整するぐらいの基準で良さそうね」.
 If many one- or two-character last lines appear at 402px, adjust the font
 size and characters per line first, then only the remaining fine cases by
 a few characters of wording. Do not mechanically rewrite prose for the
@@ -1925,7 +1925,7 @@ On 2026-11-01 the owner decided that the replacement of Starlight is one
 pull request that a Codex session writes, not several stages: 「今後も分けなくてもできるなら無駄に分けず依頼は一回で終わるようにせよ」.
 The same day the owner decided that the phone width of the layout checks
 becomes 402px (Safari on an iPhone 17 Pro), in the replacement's pull request:
-「じゃあ402にしよう」, 「キリがないからpcの幅を超えた画面で綺麗に見えたらよくて、あとは402に調整するぐらいの基準で良さそう」.
+「じゃあ402にしよう」, 「キリがないからpcの幅を超えた画面で綺麗に見えたらよくて、あとは402に調整するぐらいの基準で良さそうね」.
 
 On 2026-11-01, step 5 added Japanese sources for Contributing, Development,
 the test guide, the release-note guide, Security and the trust boundary.
