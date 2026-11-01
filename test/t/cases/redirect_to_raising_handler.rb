@@ -45,7 +45,14 @@ end
 t.assert('redirect', 'the code after Nginx.redirect runs when the redirect target raises') do
   status, raw = tcp_client(18134, "GET /redirect_to_raising_content_then_log HTTP/1.0\r\nHost: localhost\r\n\r\n")
   t.assert_equal 'EOF', status
-  log = File.read(File.join(ENV['NGINX_INSTALL_DIR'], 'logs', 'error.log'))
+  # Only the end of the log, where the line of this request is: File.read of
+  # the whole debug log of the suite can need a String longer than mruby
+  # allows (10 MiB)
+  path = File.join(ENV['NGINX_INSTALL_DIR'], 'logs', 'error.log')
+  log = File.open(path) do |f|
+    f.seek([File.size(path) - 1_000_000, 0].max)
+    f.read
+  end
   t.assert_include log, 'redirect_to_raising_content_then_log: the code after Nginx.redirect ran'
 end
 

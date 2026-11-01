@@ -465,6 +465,23 @@ not enough, and show the change.
   Nginx.return Nginx::HTTP_FORBIDDEN if deny # 403 on both
   ```
 
+- [`Nginx::Async::HTTP.sub_request` works in a content handler, also after `Nginx::Async.sleep`](../releases/v3.0.0.md#nginxasynchttpsub_request-works-in-a-content-handler-also-after-nginxasyncsleep-722):
+  look for a `rescue` of `RuntimeError` around `sub_request` in
+  `mruby_content_handler*` code, and remove it; the call returns the
+  response:
+
+  ```ruby
+  Nginx::Async.sleep 100
+  res = Nginx::Async::HTTP.sub_request "/backend"   # 2.7.3: RuntimeError, 500   3.0.0: the response
+  Nginx.rputs res.body
+  ```
+
+- [A handler that waits for `Nginx::Async::HTTP.sub_request` runs its code once and ends as without the wait](../releases/v3.0.0.md#a-handler-that-waits-for-nginxasynchttpsub_request-runs-its-code-once-and-ends-as-without-the-wait-722):
+  nothing to change for most scripts. An access or post_read handler that
+  calls `sub_request` runs once for the request on 3.0.0; work that
+  counted on the code running again after the subrequest goes after the
+  call, where its response is available.
+
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out
 `.` and `..` (see [New features](../releases/v3.0.0.md#new-features)).
