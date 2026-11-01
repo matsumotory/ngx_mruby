@@ -18,7 +18,7 @@ if (states.size !== ledger.split('\n').filter(line => /^\| \[.*\]\(#/.test(line)
 const cases = [
   { id: 'mcp-tool-authorization',
     title: ['MCPツールの呼び出し権限を確認する', 'Check permissions for MCP tool calls'],
-    text: ['ユーザーがAIアプリからMCPツールを呼び出すとき、ngx_mrubyをMCPサーバーの前に置き、認証済みユーザーとtools/callのMCPツール名・引数を照合する設計です。検索だけを許可されたユーザーによる更新などを拒否し、許可された呼び出しだけを転送します。データ自体のアクセス権限はMCPサーバーでも検証します。', 'When a user calls an MCP tool from an AI application, ngx_mruby would sit before the MCP server and check the authenticated user against the tool name and arguments in tools/call. It would reject operations such as an update by a search-only user and forward only allowed calls. The MCP server would still enforce access to the underlying data.'] },
+    text: ['ユーザーがAIアプリからMCPツールを呼び出すとき、ngx_mrubyをMCPサーバーの前に置き、認証済みユーザーとtools/callのMCPツール名・引数を照合する設計です。検索だけを許可されたユーザーによる更新などを拒否し、許可された呼び出しだけを転送します。データのアクセス権限はMCPサーバーも検証します。', 'When a user calls an MCP tool from an AI application, ngx_mruby would sit before the MCP server and check the authenticated user against the tool name and arguments in tools/call. It would reject operations such as an update by a search-only user and forward only allowed calls. The MCP server would still enforce access to the underlying data.'] },
   { id: 'mcp-burst-control',
     title: ['MCP呼び出しの集中を制限する', 'Limit bursts of MCP calls'],
     text: ['AIアプリがMCPツールを短時間に繰り返し呼び出したり、多数のストリームを開いたりする場合に、MCPサービスの負荷を制限する構想です。Rubyで認証済みユーザーと呼び出しの種類を識別し、nginxのlimit_reqとlimit_connで設定済みの上限を適用します。必要な読み直しまでループと判定せず、制限時には再試行できる条件を返します。', 'To bound load when AI applications repeatedly call MCP tools or open many streams, Ruby would identify the authenticated user and call class, and nginx limit_req and limit_conn would apply configured limits. Legitimate rereads would not automatically count as reasoning loops; rejection responses would describe the conditions for retry.'] },
@@ -30,7 +30,7 @@ const cases = [
     text: ['AIアプリが長い文書を一度に取得せず、必要な箇所を読み、足りなければ続きを取得する設計です。ngx_mrubyは取得方式と処理量の上限を選び、文書の位置やバージョン、続きの取得に必要な情報はバックエンドが管理します。JSONやストリームを途中で切るのではなく、対応するMCPツールで範囲を指定して取得します。', 'An AI application could read the relevant passage of a long document and request more when needed instead of fetching everything at once. ngx_mruby would select a retrieval profile and processing budget; the backend would own document positions, versions and continuation information. Retrieval uses a range-aware MCP tool, not arbitrary truncation of JSON or a stream.'] },
   { id: 'mcp-next-step-guidance',
     title: ['検索結果がない場合の次の手順を伝える', 'Return next steps when retrieval cannot produce a result'],
-    text: ['MCP検索の結果がない場合や取得に失敗した場合に、AIアプリへ理由と次に実行できる手順を返す構想です。ngx_mrubyは該当なし、権限不足、取得先の障害を区別して中継し、検索対象に固有の案内はMCPサービスが提供します。プロキシが検索の意味を書き換えたり、取得文書中の指示を新しい実行指示にしたりはしません。', 'When an MCP search returns no result or retrieval fails, the AI application should receive the reason and available next steps. ngx_mruby would preserve the distinction between no match, denied access and an unavailable source; the MCP service would supply domain-specific guidance. The proxy would not change query meaning or promote instructions in retrieved documents into execution instructions.'] },
+    text: ['MCP検索の結果がない場合や取得に失敗した場合に、AIアプリへ理由と次に実行できる手順を返す構想です。ngx_mrubyは該当なし、権限不足、取得先の障害を区別して中継し、検索対象に固有の案内はMCPサービスが提供します。プロキシは検索の意味を書き換えず、取得した文書中の指示を実行の指示に変えません。', 'When an MCP search returns no result or retrieval fails, the AI application should receive the reason and available next steps. ngx_mruby would preserve the distinction between no match, denied access and an unavailable source; the MCP service would supply domain-specific guidance. The proxy would not change query meaning or promote instructions in retrieved documents into execution instructions.'] },
   { id: 'mcp-trajectory-logging',
     title: ['MCPツールの呼び出し順序を観測する', 'Observe sequences of MCP tool calls'],
     text: ['MCPサービスの運用者が、AIアプリによる検索、文書取得、再検索の流れと各処理の結果を調べる用途です。呼び出しを相関IDで関連付け、MCPツール名、成否、所要時間を記録する構想です。検索語や文書本文は標準では収集せず、保存期間と収集量に上限を設けます。調査を続けるかどうかの判断はAIアプリに残します。', 'An MCP service operator could examine the sequence and outcomes of search, document retrieval and repeated search performed by an AI application. A correlation ID would connect MCP tool names, outcomes and durations. Queries and document bodies would not be collected by default, and retention and collection volume would be bounded. The AI application would still decide whether to continue its investigation.'] },
@@ -38,14 +38,14 @@ const cases = [
     title: ['LLM APIのエラー時に転送先を選び直す', 'Select another LLM endpoint after an API error'],
     text: ['各アプリにLLM APIの切替処理を実装せず、プロキシで管理する設計です。上流が429や再送対象のエラーを返した場合、Rubyで互換性のある転送先と認証情報を選び、nginxが再送します。処理や課金の重複を避けるため、安全に再実行できるリクエストに限って回数と時間を制限し、応答を送り始めた後は別の生成結果につなぎ替えません。', 'Instead of implementing LLM fallback separately in each application, an operator could manage it at the proxy. After an upstream 429 or another configured retryable error, Ruby would select a compatible endpoint and credentials, and nginx would retry. Attempts and time would be bounded and limited to requests safe to replay, addressing duplicate processing or charges. Once response delivery starts, another generated stream would not be spliced in.'] },
   { id: 'ai-crawler-and-bot-control',
-    title: ['AIクローラーやBotのアクセス量を制限する', 'Control request volume from AI crawlers and bots'],
+    title: ['AIクローラーやBotのアクセスを制限する', 'Control request volume from AI crawlers and bots'],
     text: ['WebサイトやAPIの運用者が、自動アクセスによる高負荷な処理の集中を防ぐ構想です。Rubyで認証状態やアクセス先に応じた規則を選び、nginxが頻度や同時接続数を制限するか、公開用の軽いテキストページへ転送します。User-Agentだけで相手を信用せず、通常のユーザーを誤って制限しない条件を検証します。', 'A website or API operator could prevent automated access from repeatedly invoking expensive processing. Ruby would select policy from authentication state and the requested resource; nginx would limit frequency or concurrency, or route to a lightweight public text page. User-Agent alone would not establish a trusted identity, and policies must be tested for unintended restrictions on ordinary users.'] },
   { id: 'semantic-cache',
     title: ['外部のセマンティックキャッシュを参照する', 'Consult an external semantic cache'],
     text: ['意味の近いLLMリクエストに保存済みの回答を再利用し、アプリ側の処理を変えずにLLMへの問い合わせを減らす構想です。プロキシがユーザーのアクセス範囲やモデルなどの条件を渡し、外部サービスが類似性と再利用の可否を判断します。適切な回答がない場合、判断が曖昧な場合、タイムアウト時は元のLLMへ転送します。回答をキャッシュへ保存する方式は未設計です。', 'An external semantic cache could reuse a stored answer for a similar LLM request without changing the application. The proxy would supply constraints such as the user’s access scope and model; the external service would assess similarity and reuse validity. A miss, uncertain match or timeout would fall through to the original LLM endpoint. The mechanism for storing responses in the cache is not yet designed.'] },
   { id: 'log-handler-telemetry',
-    title: ['logハンドラで記録したメタデータを外部へ送る', 'Export metadata recorded by the log handler'],
-    text: ['サービスの運用者が、ステータス、応答時間、転送先などを外部の集計基盤で確認するための構想です。現在のlogハンドラはネットワーク応答を待てないため、上限付きのworkerキュー、タイマー、ノンブロッキングな通信を使う送信処理を計画しています。収集先の遅延で応答を止めず、キューの満杯時や送信失敗時の扱いを定めます。', 'A service operator could inspect status, response time and routing decisions in an external collector. The current log handler cannot wait for a network response, so export is planned through a bounded worker queue, timers and nonblocking transport. Collector delays must not stall responses; overflow and delivery-failure behavior need explicit contracts.'] },
+    title: ['logハンドラのメタデータを外部へ送る', 'Export metadata recorded by the log handler'],
+    text: ['サービスの運用者が、ステータス、応答時間、転送先などを外部の集計基盤で確認するための構想です。現在のlogハンドラはネットワーク応答を待てないため、上限付きのworkerキュー、タイマー、ノンブロッキングな通信を使う送信処理を計画しています。収集先の遅延で応答を止めず、キューの満杯時や送信の失敗時の扱いを定めます。', 'A service operator could inspect status, response time and routing decisions in an external collector. The current log handler cannot wait for a network response, so export is planned through a bounded worker queue, timers and nonblocking transport. Collector delays must not stall responses; overflow and delivery-failure behavior need explicit contracts.'] },
 ];
 for (const item of cases) {
   if (!['designing', 'direction'].includes(states.get(item.id))) throw new Error(`Review homepage use-case state: ${item.id}`);
@@ -59,7 +59,7 @@ const label = status => ja ? (status === 'designing' ? '設計中' : '構想') :
   </div>
   <div class="direction-list">
     {cases.map(item => <article class="direction-usecase" data-use-case={item.id}>
-      <h3>{item.title[ja ? 0 : 1]}{' '}<span class="site-badge">{label(states.get(item.id))}</span></h3>
+      <div class="direction-scan"><h3>{item.title[ja ? 0 : 1]}</h3><p class="direction-status"><span class="site-badge">{label(states.get(item.id))}</span></p></div>
       <div class="direction-body"><p>{item.text[ja ? 0 : 1]}</p><a href={`${proposal}#${item.id}`}>{ja ? '設計と必要な機能を読む' : 'Read the design and required features'}</a></div>
     </article>)}
   </div>

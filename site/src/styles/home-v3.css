@@ -119,11 +119,14 @@ html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
 /* Each technical case has a scan column for its operation and a reading column
    for the actor, request path and limits. Mobile keeps the same document order. */
 .direction-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-8); margin-top: var(--space-7); }
-.home-v3 .direction-usecase { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--space-6); margin: 0; padding-top: var(--space-6); border-top: 1px solid var(--color-border); }
+/* The scan column is 24rem: at a third of the 1032 px list (333 px), the
+   Japanese headings of 18 px broke before their last one or two characters. */
+.home-v3 .direction-usecase { display: grid; grid-template-columns: minmax(0, 24rem) minmax(0, 1fr); gap: var(--space-6); margin: 0; padding-top: var(--space-6); border-top: 1px solid var(--color-border); }
 .direction-usecase > * { min-width: 0; margin: 0; }
 .direction-list h3 { margin: 0; }
-/* Keep the accessible space before the existing planned-status badge. */
-.direction-list h3 .site-badge { margin-inline-start: var(--space-1); font-weight: 400; vertical-align: middle; white-space: nowrap; }
+/* The status badge has a line of its own under the heading: inside the
+   heading's line, a narrow column moved the badge alone onto a last line. */
+.direction-list .direction-status { margin: var(--space-2) 0 0; color: var(--color-text); }
 .direction-list .direction-body { max-width: 46rem; }
 .direction-list p { color: var(--color-text-muted); margin: 0 0 var(--space-4); }
 .home-v3 .direction-plan { margin-top: var(--space-6); }
