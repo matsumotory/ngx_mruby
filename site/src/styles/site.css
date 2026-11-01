@@ -307,10 +307,11 @@ figcaption,
  * 開発に参加する) are longer. The version link is in the footer (4.10).
  * With the star count of GitHub (997 stars; a count of four characters
  * such as 1.2K takes 4 to 5 px more), the header has, beyond its 16 px
- * gaps, 85 px of room at 1216 px in English and 137 px at 1408 px in
- * Japanese in Hiragino Sans (143 px in Noto Sans JP), Chromium, with and
+ * gaps, 85 px of room at 1216 px in English and 157 px at 1408 px in
+ * Japanese in Hiragino Sans (172 px in Noto Sans JP), Chromium, with and
  * without the sidebar: the Japanese row holds every item from about
- * 1271 px, and 88rem stays above it. The profile site moves its links at
+ * 1312 px on the home page and 1252 px on the other pages (1297 and
+ * 1237 px in Noto Sans JP), and 88rem stays above them. The profile site moves its links at
  * 900 px (4.2). The labels never break inside a word. At 640 px and below
  * the language link and GitHub move into the menu too.
  * Links are at least 44 px high, 15 px at weight 600; the current section
@@ -508,7 +509,7 @@ button.site-menu-button svg {
   }
 }
 /* Japanese pages keep the section links in the menu up to 88rem: the
-   longer labels fit beside the rest of the header from 1384 px (above) */
+   longer labels fit beside the rest of the header from about 1312 px (above) */
 @media (min-width: 76rem) and (max-width: 87.99rem) {
   :root[lang="ja"] .site-nav {
     display: none;
