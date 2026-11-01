@@ -534,7 +534,9 @@ for the handler kind; stream through `stream_status`.
 - A run without a result ends as follows, with or without a wait:
   rewrite handlers go on with the next phase handler, as with
   `NGX_DECLINED` (decision (b), gap 1), and server rewrite handlers the same
-  way (Q6); access and post_read handlers
+  way (Q6), also when they return `Nginx::OK`, with which the rewrite phase
+  would finalize the request without a response (the table of #712 puts
+  that end in step 4 of section 8); access and post_read handlers
   return `NGX_OK`, as they do today without a wait
   (`src/http/ngx_http_mruby_core.c:277`): the access checker then goes on
   with the next access handler under `satisfy all` and allows the request
