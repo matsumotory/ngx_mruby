@@ -1,13 +1,21 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (01:40 JST)
+## State as of 2026-11-02 (02:45 JST)
 
-- Heads: `next` is `e6db38ca7`, the merge of
-  [#729](https://github.com/matsumotory/ngx_mruby/pull/729) (the terms of
-  the AI gateway on the site); `master` is
-  `e2aeb5ddd`, the merge of the 2.x form of the fix of GHSA-xjh6-6vgm-56wj,
-  where the tag `v2.7.4` is; `v2.x` mirrors `master`. `next` contains `master` as of the merge
-  [#701](https://github.com/matsumotory/ngx_mruby/pull/701).
+- Heads: `next` is `0f7ad0b96`, the merge of
+  [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (step 7 of the
+  core stabilization, 02:33 JST), after `7a0076e58`, the merge of
+  [#733](https://github.com/matsumotory/ngx_mruby/pull/733) (the
+  should-fix items of the review of #729), and `d70481db6`, the merge of
+  [#732](https://github.com/matsumotory/ngx_mruby/pull/732) (the advisory
+  id of 2.7.4 and the release rule of 2026-11-02 on `next`); `master` is
+  `0f865ed4a`, the merge of
+  [#731](https://github.com/matsumotory/ngx_mruby/pull/731) (the same on
+  `master`), after `e2aeb5ddd`, the merge of the 2.x form of the fix of
+  GHSA-xjh6-6vgm-56wj, where the tag `v2.7.4` is; `v2.x` mirrors `master`.
+  `next` contains `master` as of `0f865ed4a`, with the merge
+  [#734](https://github.com/matsumotory/ngx_mruby/pull/734) (before it, as of
+  [#701](https://github.com/matsumotory/ngx_mruby/pull/701)).
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
   is published. Two advisories were published with it:
@@ -28,7 +36,7 @@
   `master` has it as entries 1 and 2 of
   [the 2.7.4 release notes](https://github.com/matsumotory/ngx_mruby/blob/master/docs/releases/v2.7.4.md)
   ([Japanese](https://github.com/matsumotory/ngx_mruby/blob/master/docs/releases/v2.7.4.ja.md)),
-  which reach `next` with the next merge of `master`; `next` got the same
+  which reach `next` with the merge of `master` at `0f865ed4a`; `next` got the same
   fix in its own form, with the two entries in
   [the 3.0.0 release notes](releases/v3.0.0.md). The check before the tag:
   the pull requests merged into `master` from `v2.7.3` to the fix are
@@ -48,16 +56,17 @@
   [#731](https://github.com/matsumotory/ngx_mruby/pull/731), which adds the
   advisory id to `master`.
 - [#729](https://github.com/matsumotory/ngx_mruby/pull/729) (the terms of
-  the AI gateway on the site) was merged at 01:33 JST; a follow-up pull
-  request finishes the should-fix items of its review.
-- Open: [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (base
-  `next`, step 7 of the core stabilization),
-  [#731](https://github.com/matsumotory/ngx_mruby/pull/731) (base `master`)
-  and [#732](https://github.com/matsumotory/ngx_mruby/pull/732) (base
-  `next`): the advisory id of 2.7.4, and the owner's decision of
-  2026-11-02 that a session publishes the release after the owner's
-  go-ahead, written into AGENTS.md, CLAUDE.md, `docs/releases/README.md`
-  and `docs/DEVELOPMENT.md`.
+  the AI gateway on the site) was merged at 01:33 JST, and
+  [#733](https://github.com/matsumotory/ngx_mruby/pull/733), the
+  should-fix items of its review, at 02:14 JST.
+- [#731](https://github.com/matsumotory/ngx_mruby/pull/731) (base
+  `master`, 01:51 JST) and [#732](https://github.com/matsumotory/ngx_mruby/pull/732)
+  (base `next`, 01:56 JST) are merged: the advisory id of 2.7.4, and the
+  owner's decision of 2026-11-02 that a session publishes the release
+  after the owner's go-ahead, written into AGENTS.md, CLAUDE.md,
+  `docs/releases/README.md` and `docs/DEVELOPMENT.md`.
+- Open: [#734](https://github.com/matsumotory/ngx_mruby/pull/734), the merge
+  of `master` at `0f865ed4a` into `next` (base `next`).
 
 ## How to use this file
 
@@ -304,7 +313,7 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge of `master` at `ca0f96198` is on `next` ([#701](https://github.com/matsumotory/ngx_mruby/pull/701)); the next merge brings what `master` gains after it |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge of `master` at `0f865ed4a` (#704, #703, #716, the 2.x form of the fix of GHSA-xjh6-6vgm-56wj, #731) is [#734](https://github.com/matsumotory/ngx_mruby/pull/734); the next merge brings what `master` gains after it |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. Decided on 2026-10-29 (option "500 のまま (推奨)"): 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |
 | A rewrite handler that ends without `Nginx.return` (for example `mruby_rewrite_handler_code 'x = 1'` before a content handler, or before nginx's `return 200`) sends no response, and `error.log` has no line at the `error` level: with keep-alive the connection stays open until `keepalive_timeout`, with `Connection: close` it is closed with nothing sent. `ngx_mrb_finalize_rputs` (`src/http/ngx_http_mruby_core.c`; the `rc = NGX_OK` after the log line "rputs_chain is null and return NGX_OK") returns `NGX_OK` when nothing was sent and no status was set, and the rewrite phase of nginx 1.31.6 finalizes the request on `NGX_OK` (`ngx_http_core_rewrite_phase`), where the access phase goes on to the next handler. Found and measured on `next` and `master` while #583 was written and reviewed; no issue tracks it. To do: for v3, a test commit and a fix under the Pillar B row "Redesign response finalization per phase" of the plan, so that the request goes on to the next phase as with `NGX_DECLINED`; for 2.x, the behavior stays (both are the decisions of 2026-10-04), and a line under "Known limitations" in the release notes of the next 2.x release can document it | `next` | v3: done in [#720](https://github.com/matsumotory/ngx_mruby/pull/720) (decision (b), step 4 of section 8 of the core stabilization proposal); 2.x: nothing |
