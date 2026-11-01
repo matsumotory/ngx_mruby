@@ -55,9 +55,12 @@ end
 
 # Raw TCP exchange through test/t/cases/_tcp_client.rb, which runs with CRuby.
 # It returns the status of the connection (EOF, RESET, REFUSED or TIMEOUT)
-# and the exact bytes received.
-def tcp_client(port, payload = "")
-  out = `ruby #{suite_path('test/t/cases/_tcp_client.rb')} #{port} #{payload.unpack("H*")[0]}`
+# and the exact bytes received. A later payload is written 0.3 seconds after
+# the first one.
+def tcp_client(port, payload = "", later = nil)
+  args = "#{port} #{payload.unpack("H*")[0]}"
+  args += " #{later.unpack("H*")[0]}" if later
+  out = `ruby #{suite_path('test/t/cases/_tcp_client.rb')} #{args}`
   status, hex = out.split(":", 2)
   [status, [hex.to_s].pack("H*")]
 end

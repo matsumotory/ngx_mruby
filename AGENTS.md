@@ -557,7 +557,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18140,
   18143-18144, 18147-18170, 18176-18185, 18199, 12345-12359, 12363-12366,
-  12368-12369, 12372-12379, 12390-12393; 18116 and 12357 belong to the second nginx that
+  12368-12369, 12372-12379, 12384-12388, 12390-12393; 18116, 12357 and 12385-12388 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18180, 18181, 18185, 12379 and
   12393 to the nginx with several workers that `test/t/cases/_workers.rb` starts, 18158 to the nginx that
   `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
