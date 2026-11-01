@@ -920,7 +920,7 @@ windows, a fixed bar of actions at the bottom of narrow screens.
 
 | Role | English | Japanese | Weight | Line height, English / Japanese |
 |---|---|---|---|---|
-| Home page heading | `clamp(2.375rem, 1rem + 4.5vw, 4.5rem)`, from 801 px at most the column's width divided by 14.2 em: 39.3 px at 402 px, 58.0 px at 1440 px | `clamp(2rem, 1rem + 3.5vw, 3.5rem)`, at most the column's width divided by 13.7 em up to 800 px and by 21.9 em from 801 px: 26.4 px at 402 px, 37.6 px at 1440 px | 700 | 1.05 / 1.3 |
+| Home page heading | `clamp(2.375rem, 1rem + 4.5vw, 4.5rem)`, at most the column's width divided by 11.8 em up to 800 px and by 22.6 em from 801 px: 30.7 px at 402 px, 36.5 px at 1440 px | `clamp(2rem, 1rem + 3.5vw, 3.5rem)`, at most the column's width divided by 15.6 em up to 800 px and by 23.6 em from 801 px: 23.2 px at 402 px, 34.9 px at 1440 px | 700 | 1.05 / 1.3 |
 | Page title (h1) | 2rem, 32 px | 1.625rem, 26 px | 700 | 1.25 / 1.4 |
 | Section heading (h2) | 1.625rem, 26 px | 1.375rem, 22 px | 700 | 1.3 / 1.4 |
 | Subsection heading (h3) | 1.375rem, 22 px | 1.125rem, 18 px | 600 | 1.35 / 1.4 |
@@ -1017,17 +1017,22 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   「pcビューのヒーロータイトルは1行に収まるフォントサイズがいいかな、日英ともに」).
   From 801 px, where the showcase image stands beside the heading, its
   size is at most the width of its column divided by the width of the
-  heading on one line plus about 2%: 14.2 em in English, whose heading is
-  13.9 em wide in Inter Variable, and 21.9 em in Japanese, whose heading
-  is 21.5 em wide in Hiragino Sans and 20.7 em in Noto Sans JP, measured
-  with the wider face. At 1440 px the column is 824 px: 58.0 px in
-  English (806 px of text) and 37.6 px in Japanese (808 px in Hiragino
-  Sans, 777 px in Noto Sans JP). Up to 800 px the Japanese heading takes
-  its two lines, 「LLMリクエストの認証と転送を」 and 「Rubyで制御する。」,
+  heading on one line plus about 2%: 22.6 em in English, whose heading is
+  22.1 em wide in Inter Variable, and 23.6 em in Japanese, whose heading
+  is 23.2 em wide in Hiragino Sans and 22.3 em in Noto Sans JP, measured
+  with the wider face. At 1440 px the column is 824 px: 36.5 px in
+  English and 34.9 px in Japanese. Up to 800 px the English heading
+  takes two lines, "Authenticate and route AI" (11.5 em) and
+  "applications with Ruby.": its size is at most the width of its column
+  divided by 11.8 em, which is below the size of the scale under about
+  515 px (30.7 px at 402 px). Up to 800 px the Japanese heading takes
+  its two lines, 「AIアプリケーションの認証と転送を」 and 「Rubyで制御する。」,
   at every width: its size is at most the width of its column divided by
-  13.7 em, because its first line is 13.3 em wide. That cap is below the
-  size of the scale under about 498 px (20.4 px at 320 px, 28.5 px at
-  430 px), and below h2 (22 px) under about 341 px (the owner on
+  15.6 em, because its first line is 15.1 em wide. That cap is below the
+  size of the scale under about 655 px (17.9 px at 320 px, 23.2 px at
+  402 px, 25.0 px at 430 px), and below h2 (22 px) under about 385 px.
+  The headings are the owner's choice of 2026-11-02 (section 7). (The
+  owner on
   2026-10-31:
   「ヒーローの見出し、モバイルだとこういう改行で微妙なので2行にしておきたい。シュッと直しといてこれ」,
   then the choices 「文はそのまま、モバイルだけ字を小さく」 and, for the
@@ -2113,9 +2118,20 @@ API traffic, MCP traffic, A2A traffic, requests from AI crawlers and agents
 to a site, and the telemetry of the log handler. AI traffic is written only
 where a page needs one term for several kinds, with its scope defined at
 its first use, and LLM only for text language models. [The
-glossary](../glossary.md) holds the terms with their sources. The words of
-the site and of the docs that do not follow it yet change in a later pull
-request.
+glossary](../glossary.md) holds the terms with their sources.
+
+Later on 2026-11-02 the owner decided how the Japanese pages write these
+terms: 「ヒーロータイトルがLLMリクエストなのおかしくないか？あとアプリケーションとかモデル、エージェントやリクエスト、クローラー、ゲートウェイあたりはカタカナで統一すべきでは？ここはclaudeでなおしちゃって」,
+and for API names 「Messages・Responses これは一般的なメッセージとレスポンスならカタカナがよい」.
+Japanese text writes AIゲートウェイ, MCPゲートウェイ, AIアプリケーション,
+エージェント, モデル, モデルAPI, リクエスト, AIクローラー and ボット in
+katakana, keeps identifiers (MCP, A2A, API, log handler, JSON field names
+such as `model`) in English, and names Messages API and Responses API in
+full; [用語集](../ja/glossary.md) holds the rule. For the home page heading
+the owner chose 「ヒーローは、様々なAIアプリケーションの認証と転送、とかがいいのかな？」
+and then 「様々はなくてもいいかもね」: 「AIアプリケーションの認証と転送をRubyで制御する。」,
+in English "Authenticate and route AI applications with Ruby.", with a
+definition of AI applications in the paragraph below it (「ヒーローセクションの本文にAIアプリケーションの広い定義は書いておいたほうが良さそう」).
 
 ## Appendix A. Where comparable projects put things
 
