@@ -4,7 +4,7 @@ export function allowsReadOnlyRequest(request, origin, imageUrls = []) {
   if (request.method() !== 'GET') return false;
   if (new URL(request.url()).origin === new URL(origin).origin) return true;
   // Exact URL, not a host/prefix permission. A fetch, document or script at
-  // the same URL remains forbidden. Callers opt in to the footer badge only.
+  // the same URL remains forbidden. Callers opt in to the project badges only.
   return request.resourceType() === 'image' && imageUrls.includes(request.url());
 }
 

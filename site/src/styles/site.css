@@ -521,13 +521,48 @@ button.site-menu-button svg {
   text-underline-offset: 0.2em;
 }
 
-/* The service's badge keeps its own image colors, not a recolored certification.
-   Keep the image/link together when the shared footer wraps. */
-.site-footer .project-badge img {
+/* 4.4 and 4.10: the row of project badges directly above the heading of
+   the four index pages, at the heading's left edge. The images keep their
+   services' colors, not a recolored certification. Each image keeps the
+   box of its width and height attributes (20 px high), so the heading does
+   not move while the images load or when one fails; object-fit keeps a
+   badge's aspect ratio if the service draws it wider. The links are 24 px
+   high (4.9); 8 px between badges, and 4 px, the smallest step of 4.5,
+   between the row and the heading. Narrow screens wrap the row. */
+.hero-heading {
+  min-width: 0;
+}
+.project-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0 0 var(--space-1);
+  padding: 0;
+  list-style: none;
+}
+.project-badges li {
+  margin: 0;
+  padding: 0;
+}
+.project-badges a {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  color: var(--color-text-muted);
+}
+.project-badges img {
   display: block;
   margin: 0;
-  max-width: 100%;
-  height: auto;
+  max-width: none;
+  object-fit: contain;
+}
+/* The 2.x index pages (/v2/, /v2/ja/): the row takes the space above the
+   page title (DocTitle.astro), and the title follows it */
+.doc-index-heading {
+  margin-top: var(--space-4);
+}
+.hero-heading h1#_top {
+  margin-top: 0;
 }
 
 /* Numbers with units, dates and commits do not break inside (owner's

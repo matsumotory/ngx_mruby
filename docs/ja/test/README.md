@@ -994,9 +994,9 @@ PRでは、buildのジョブは、`test/ci/changes.sh`でもマージコミッ�
 - 3.xのトップページの操作とコードのレイアウトの検査。文書の変更で対象を絞ったときは、影響を受けるページのコードだけを検査します。その場合、トップページは変わっていないので、トップページの操作は検査しません。
 - 日本語のページの行の検査。
 - focus、言語のリンク、Lighthouseのアクセシビリティの検査。
-- スクリーンショット。全範囲では代表のページを撮り、対象を絞ったときは選んだすべてのページを撮ります。どちらも、両方のエンジン、両方のテーマ、320、390、1440 pxの幅で、viewportとページ全体を撮ります。全範囲では、この系統は最初に`check-project-badges.mjs --browser`で、フッターのOpenSSF Best Practicesのバッジを375 pxで確かめます。対象は、Chromiumでは`/`と`/v2/ja/`のライトとダーク、WebKitでは`/ja/`です。
+- スクリーンショット。全範囲では代表のページを撮り、対象を絞ったときは選んだすべてのページを撮ります。どちらも、両方のエンジン、両方のテーマ、320、390、1440 pxの幅で、viewportとページ全体を撮ります。全範囲では、この系統は最初に`check-project-badges.mjs --browser`で、`/`、`/ja/`、`/v2/`、`/v2/ja/`の見出しの上にあるプロジェクトのバッジの列を確かめます。PCの全画面にあたるChromiumの1440 pxと、iPhoneのSafariにあたるWebKitの402 pxで、ライトとダークに加え、外部の画像を読めないライトの画面も確かめます。
 
-フッターのバッジは、サイトで唯一の、別のoriginの画像です。読み取り専用のbrowser contextは`scripts/lib/read-only-browser.mjs`にあり、同じoriginへのGETだけを許します。呼び出す側は画像のURLを正確に指定でき、そのURLへのGETには、ネットワークの代わりにローカルのfixtureで答えます。デプロイの前の検査の`check-project-badges.mjs`、`check-home-interaction.mjs`、`screenshots-live.mjs`は、バッジのURLに`scripts/lib/project-badges.mjs`の代わりの画像で答えます。そのため、bestpractices.devが遅いか止まっていても、公開は止まりません。本物の画像を取得するのは、デプロイの後の`check-live.mjs`だけです。`check-live.mjs`は、問題を報告する前に3回再試行します。
+4つのトップページの見出しの上にあるバッジのうち、そのページが説明するブランチのCIとCodeQLのバッジはGitHubから、OpenSSF Best Practicesのバッジはbestpractices.devから読みます。この3つが、サイトで唯一の、別のoriginの画像です。ライセンスのバッジはサイトのファイルです。読み取り専用のbrowser contextは`scripts/lib/read-only-browser.mjs`にあり、同じoriginへのGETだけを許します。呼び出す側は画像のURLを正確に指定でき、そのURLへのGETには、ネットワークの代わりにローカルのfixtureで答えます。デプロイの前の検査の`check-project-badges.mjs`、`check-home-interaction.mjs`、`screenshots-live.mjs`と、セッションが手元で流す`check-layout-parity.mjs`は、これらのURLに`scripts/lib/project-badges.mjs`の代わりの画像で答えます。そのため、外部のサービスが遅いか止まっていても、公開は止まりません。`check-project-badges.mjs`は、外部の画像を断った状態でも各トップページを開き、見出しの位置が変わらないことを確かめます。本物の画像を取るのは、デプロイの後の`check-live.mjs`だけです。`check-live.mjs`は、問題を報告する前に画像ごとに3回再試行します。
 
 v2の入力は`master`から別に取得するので、**`next`の差分から、v2が変わっていないとは判断しません**。maintenanceの系統は、2.xの日本語の行、v2のすべてのコードの表示、両方のバージョンの検索のindexを検査します。この系統は、すべてのpushとdispatchで動き、PRではブラウザの系統が動くときに動きます。この系統には、公開のワークフローにあった、読み取り専用のbrowserのfixtureの検査と、デプロイの前のローカルのsmokeのスクリーンショットも残っています。トップページのcopy-idleの検査は、全範囲の操作の検査に残っています。デプロイの後の確認も残っています。3.xとv2のコードの検査を全範囲で合わせると、以前の1つのスイートと同じになることを、テストで確かめます。アサーション、viewport、エンジンは、どれも減らしていません。CIの範囲の指定なしにスクリプトを直接起動すると、元の全範囲で動きます。
 

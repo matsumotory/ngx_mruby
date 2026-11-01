@@ -1,6 +1,8 @@
 ---
 import { getSiteRoute } from '../route.mjs';
 import DefaultPageTitle from './DocTitle.astro';
+import ProjectBadges from './ProjectBadges.astro';
+import { BASE } from '../../scripts/lib/site.mjs';
 const home = getSiteRoute(Astro.locals).entry.data.template === 'splash';
 const ja = getSiteRoute(Astro.locals).locale === 'ja';
 // The Japanese home page heading takes one line per phrase, as the
@@ -8,5 +10,9 @@ const ja = getSiteRoute(Astro.locals).locale === 'ja';
 const { title, headline } = getSiteRoute(Astro.locals).entry.data;
 const lines = headline ?? [title];
 if (home && ja && lines.join('') !== title) throw new Error(`PageTitle: the headline lines join to "${lines.join('')}", not the title "${title}"`);
+// The index pages of each version (/, /ja/, /v2/, /v2/ja/) carry the row of
+// project badges directly above the heading (4.4, 4.10).
+const routePath = Astro.url.pathname.slice(BASE.length).replace(/^\/|\/$/g, '');
+const index = routePath === '' || routePath === 'ja';
 ---
-{home ? <div class="brand-title">{ja ? <div class="headline-box"><h1 id="_top">{lines.map(line => <span class="headline-line">{line}</span>)}</h1></div> : <DefaultPageTitle />}<img class="brand-showcase" src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" /></div> : <DefaultPageTitle />}
+{home ? <div class="brand-title"><div class="hero-heading">{index && <ProjectBadges />}{ja ? <div class="headline-box"><h1 id="_top">{lines.map(line => <span class="headline-line">{line}</span>)}</h1></div> : <DefaultPageTitle />}</div><img class="brand-showcase" src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" /></div> : index ? <div class="hero-heading doc-index-heading"><ProjectBadges /><DefaultPageTitle /></div> : <DefaultPageTitle />}
