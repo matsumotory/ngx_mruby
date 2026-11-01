@@ -58,6 +58,11 @@
   2026-11-02 that a session publishes the release after the owner's
   go-ahead, written into AGENTS.md, CLAUDE.md, `docs/releases/README.md`
   and `docs/DEVELOPMENT.md`.
+- Open: [#737](https://github.com/matsumotory/ngx_mruby/pull/737) (base
+  `next`): `site.yml` runs on the push to `next` only, without the
+  browser lanes, and `npm run check:ci` in `site/` runs its checks and
+  every browser check locally (the owner's decision of 2026-11-02 under
+  "Decisions").
 
 ## How to use this file
 
@@ -191,7 +196,7 @@ published site, without the browser lanes, which the local
 `npm run check:ci` replaces; when the base moves, CI runs again only when
 `code` or `tests` changed in both the pull request and the base; the
 build matrix, the sanitizers, valgrind and `perf` of `test.yml` stay,
-since they cover environments. #PRNUM writes it into AGENTS.md
+since they cover environments. #737 writes it into AGENTS.md
 ("Branches and pull requests", condition 2 of "Review and merge", "Build
 and test"), `docs/test/README.md` ("Site CI") and the site proposal on
 `next`; a pull request to `master`, not opened yet, is to take `site-v2.yml` off pull requests
