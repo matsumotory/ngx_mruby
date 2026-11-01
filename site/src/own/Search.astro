@@ -142,6 +142,10 @@ const dataAttributes: DOMStringMap = { 'data-translations': JSON.stringify(pagef
 					// @ts-expect-error — Missing types for @pagefind/default-ui package.
 					const { PagefindUI } = await import('@pagefind/default-ui');
 					new PagefindUI({
+						// Starlight 0.42.6 passes its pagefind defaults to the UI
+						// (PagefindConfigDefaults() in schemas/pagefind.js), and they
+						// order the results; Pagefind's own defaults order them otherwise.
+						ranking: { pageLength: 0.1, termFrequency: 0.1, termSaturation: 2, termSimilarity: 9, diacriticSimilarity: 0.8 },
 						element: '#starlight__search',
 						baseUrl: import.meta.env.BASE_URL,
 						bundlePath: import.meta.env.BASE_URL.replace(/\/$/, '') + '/pagefind/',

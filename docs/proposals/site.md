@@ -1828,18 +1828,20 @@ After step 5, a Codex session moves the site from Starlight to Astro alone
 and components of the repository's own, as 5.4 describes (the owner's
 decision of 2026-11-01, section 7); 5.4 has its order and its acceptance.
 
+Layer 1 of 5.4
+([#708](https://github.com/matsumotory/ngx_mruby/pull/708)) adds the own
+shell beside Starlight, built when `NGX_MRUBY_SITE_SHELL=own` is set;
+Starlight stays the default and the deployed shell. The shared components
+keep the existing class names and cascade layers until the removal layer.
+The copied base rules carry Starlight's MIT notice, with the literal color
+declarations removed in favor of the site's tokens. `check-shells.mjs`
+builds both shells, compares them with `check-parity.mjs`, and restores
+the Starlight build. The pull request records the acceptance of 5.4 for
+this layer: the static parity, the browser checks, the layout boxes and
+computed styles in the two patterns, the search results, and the offline
+build.
+
 ## 7. Decisions (2026-10-15)
-
-2026-11-01 implementation record: layer 1 of 5.4 adds an opt-in own Astro
-shell alongside the default Starlight shell; static and HTML parity checks
-are implemented, while browser geometry and interaction acceptance remain
-pending. This is not the completion of layer 1 or permission to switch the
-default. The shared components retain the existing class names and cascade
-layers until the removal layer; copied base rules carry Starlight's MIT
-notice, with the literal color declarations already removed in favor of
-the site's tokens. `check-shells.mjs` restores the Starlight build after its
-comparison, so the deployed shell does not change.
-
 
 The owner decided each question of the first version of this proposal on
 2026-10-15. The tool of Q1 was replaced on 2026-11-01 (the last entry of
