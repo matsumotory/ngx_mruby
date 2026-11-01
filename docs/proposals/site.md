@@ -807,6 +807,9 @@ site inherits:
   heading, the date and environment in which the steps were checked, a last
   step that checks the result, explanations outside the numbered steps, and
   no "simply" or "just" (landing page's rules for procedure pages).
+- **Terms.** The docs, the site and the text of pull requests use the terms
+  of [the glossary](../glossary.md) (in Japanese, [用語集](../ja/glossary.md)),
+  which the owner chose on 2026-11-02 (section 7).
 - **Before shipping.** A list of signs of generated design checked one by
   one (purple-to-blue gradients, glows, framework grays, glass cards on
   every surface, uppercase labels, a Latin face first on Japanese pages,
@@ -2092,6 +2095,22 @@ and [the proposal](edge-control.md) hold the boundaries and the acceptance.
 The MCP uses are grouped as protecting, adapting, and guiding/observing; the
 user's AI and the domain backend keep orchestration and the meaning of the
 data. The examples name no product or deployment.
+
+On 2026-11-02 the owner questioned the words that the site and the docs use
+for the traffic and the component of these uses:
+「aiトラフィックでいいの？もっとちゃんと研究サーベイして適切な用語にしたほうがいい気がする」,
+「LLMはかなり範囲狭いよね」. After a survey of standards, papers and the
+documents of model providers, protocols and gateway products, the owner
+chose, in a session's question, 「AI gateway を部品の名、通信は種類ごと (推奨)」.
+The component in front of model APIs, MCP servers and agents is the AI
+gateway, and its MCP part the MCP gateway. Traffic is named by kind: model
+API traffic, MCP traffic, A2A traffic, requests from AI crawlers and agents
+to a site, and the telemetry of the log handler. AI traffic is written only
+where a page needs one term for several kinds, with its scope defined at
+its first use, and LLM only for text language models. [The
+glossary](../glossary.md) holds the terms with their sources. The words of
+the site and of the docs that do not follow it yet change in a later pull
+request.
 
 ## Appendix A. Where comparable projects put things
 

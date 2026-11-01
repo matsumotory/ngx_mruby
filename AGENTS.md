@@ -624,6 +624,8 @@ with a successful skip.
   The iPhone width is 402px (Safari on an iPhone 17 Pro). At 640px and
   below, the root font size grows with the screen so that the text column
   keeps the 21.875em it has at 390px (4.4 of `docs/proposals/site.md`).
+- The docs, the site and the text of pull requests use the terms of
+  `docs/glossary.md` (in Japanese, `docs/ja/glossary.md`).
 
 
 The site uses Astro with the repository's route, schema, layout and components.
