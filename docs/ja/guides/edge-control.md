@@ -1,4 +1,4 @@
-# AI gatewayとサイトへのアクセス制御
+# AI gatewayとアクセス制御
 
 **v3で広げる用途の構想です。完成した連携機能ではありません。**nginxにRubyの規則を置き、データの中継はnginxに任せます。[model API中継の実行例](agent-proxy.md)では、利用者キーの検査、model振り分け、ストリーム中継をnextで確認しています。以下では、model APIやMCPサーバーの前段に置くAI gatewayの拡張と、Webサイトへ来るAI crawlerやagentのrequest制御を分けて説明します。log handlerのテレメトリも扱います。いずれも用途を広げる設計であり、すべてをv3.0に含める約束ではありません。
 
@@ -14,7 +14,7 @@ MCPツール一覧、エラー、キャンセルの契約は接続先と揃え�
 
 呼び出しの集中、同時ストリーム数、本文量にもnginxで上限を設けます。契約に合う再試行の案内を返しても、調査が十分かどうかはAI application内のagentが判断します。頻度だけで意味的なループと決めつけず、必要な読み直しを妨げないか検証します。
 
-必要な機能と実装の状態は、用途の台帳の[MCPツールの認可とデータのアクセス範囲の検査](../../proposals/edge-control.md#mcp-tool-authorization)の行と[MCP呼び出しの集中の制御](../../proposals/edge-control.md#mcp-burst-control)の行にあります。
+必要な機能と状態は、台帳の[MCPツールの認可とデータのアクセス範囲の検査](../../proposals/edge-control.md#mcp-tool-authorization)の行と[MCP呼び出しの集中の制御](../../proposals/edge-control.md#mcp-burst-control)の行にあります。
 
 ### 使うAIに合わせる
 
@@ -22,17 +22,17 @@ MCPツール一覧、エラー、キャンセルの契約は接続先と揃え�
 
 文書は必要な範囲から読み、続きを取得できる形にします。原本のID、バージョン、位置、継続トークンはバックエンドが管理します。MCP gatewayは取得方式や処理量を制御しても、JSONやSSEを途中で切ったり、継続トークンを作ったりしません。本文が未完であることをAI applicationへ伝えます。
 
-必要な機能と実装の状態は、用途の台帳の[AI application別のMCPツールの出し分け](../../proposals/edge-control.md#mcp-tool-profiles)の行と[段階的な文書の取得](../../proposals/edge-control.md#mcp-progressive-retrieval)の行にあります。
+必要な機能と状態は、台帳の[AI application別のMCPツールの出し分け](../../proposals/edge-control.md#mcp-tool-profiles)の行と[段階的な文書の取得](../../proposals/edge-control.md#mcp-progressive-retrieval)の行にあります。
 
 ### 次の探索を導き、観測する
 
-該当なし、一部取得、取得失敗を区別し、事実に基づく次の手順を返す構想です。権限不足を該当なしに変えたり、検索の意味を変えたりしません。分野固有の提案はサービスが担当し、取得した文書中の指示をMCP gatewayの指示へ昇格させません。
+該当なし、一部取得、取得失敗を区別し、事実に基づく次の手順を返す構想です。権限不足を該当なしに変えたり、検索の意味を変えたりしません。分野固有の提案はサービスが担当し、取得した文書中の指示をMCP gatewayの指示にしません。
 
 MCPツール呼び出しの流れは、結果や所要時間など必要なメタデータで観測します。生の検索語や文書を標準で集めず、保存期間を制限します。観測用の相関IDとMCPのセッションは別物です。応答を止めない外部送信には、後述するキューの設計が必要です。
 
 検索や読み取りのMCPツールが、資料とともに次の探索の手掛かりを返す構想です。利用者が普段使うAI application内のagentがその応答を読み、再検索、追加の読解、調査の終了を選びます。この相互作用でAgentic RAGを支え、modelやAI applicationの進化に対応することを目指します。MCP gatewayに別のagent実行基盤を持たせる構想ではありません。
 
-必要な機能と実装の状態は、用途の台帳の[0件やエラーのときの次の手掛かり](../../proposals/edge-control.md#mcp-next-step-guidance)の行と[調査の軌跡の非同期のロギング](../../proposals/edge-control.md#mcp-trajectory-logging)の行にあります。
+必要な機能と状態は、台帳の[0件やエラーのときの次の手掛かり](../../proposals/edge-control.md#mcp-next-step-guidance)の行と[調査の軌跡の非同期のロギング](../../proposals/edge-control.md#mcp-trajectory-logging)の行にあります。
 
 <a id="llmの切替"></a>
 
@@ -46,7 +46,7 @@ nginxのproxy_next_upstreamや名前付きerror_pageを使えますが、それ�
 
 同じlocationの再試行ごとにヘッダを組み直すには、計画中のbalancer APIが必要です。[接続制御の計画](agent-proxy.md#計画プロバイダ通信)と、現在のmock中継の検証を区別してください。
 
-必要な機能と実装の状態は、用途の台帳の[model APIの切替](../../proposals/edge-control.md#llm-api-fallback)の行にあります。
+必要な機能と状態は、台帳の[model APIの切替](../../proposals/edge-control.md#llm-api-fallback)の行にあります。
 
 <a id="クローラーの制御"></a>
 
@@ -58,7 +58,7 @@ User-Agent、IP、本文の特徴は手掛かりであって、本人や意図�
 
 拒否は明示し、軽い応答には公開を意図した内容だけを使います。Honeypotは任意の隔離先であり、標準の罰則やBot判定ではありません。秘密を見せず、外部処理を起動せず、資源消費を制限します。worker間の動的な集計とreload時の扱いは共有辞書の計画に属し、分散した利用上限の管理の完成を意味しません。
 
-必要な機能と実装の状態は、用途の台帳の[AI crawlerやagentのrequestの制御](../../proposals/edge-control.md#ai-crawler-and-bot-control)の行にあります。
+必要な機能と状態は、台帳の[AI crawlerやagentのrequestの制御](../../proposals/edge-control.md#ai-crawler-and-bot-control)の行にあります。
 
 ## キャッシュと観測
 
@@ -70,7 +70,7 @@ User-Agent、IP、本文の特徴は手掛かりであって、本人や意図�
 
 問い合わせのタイムアウトや一致の判断が曖昧な場合は、元の上流へ送ります。MCPツールの副作用をキャッシュせず、似たプロンプトなら同じ回答を使えるとも決めつけません。用途に合った評価が必要です。
 
-必要な機能と実装の状態は、用途の台帳の[log handlerのテレメトリ](../../proposals/edge-control.md#log-handler-telemetry)の行と[セマンティックキャッシュ](../../proposals/edge-control.md#semantic-cache)の行にあります。
+必要な機能と状態は、台帳の[log handlerのテレメトリ](../../proposals/edge-control.md#log-handler-telemetry)の行と[セマンティックキャッシュ](../../proposals/edge-control.md#semantic-cache)の行にあります。
 
 ## 設計と検証
 

@@ -113,7 +113,7 @@ log: ステップ4：<wbr>log handlerが<wbr>`access_log`の<wbr>前に<wbr>動�
 ```diagram
 agent-proxy-endpoints
 label: development
-caption: v3.0に向けて設計するmodel APIの中継が自分で答えるもの、そのまま通すもの、拒否するものを、リクエストの種類ごとに示します。それぞれ現在動くか、v3の計画のどのステップで加わるかも示します。
+caption: v3.0に向けて設計するmodel APIの中継が自分で答えるもの、そのまま通すもの、拒否するものを、リクエストの種類ごとに示します。現在動くか、v3の計画のどのステップで加わるかも示します。
 source: docs/proposals/v3-plan.md 424-447
 source: test/conf/conf.d/60-agent-proxy.conf 93-110
 at: 8d1500bf0 2026-10-29

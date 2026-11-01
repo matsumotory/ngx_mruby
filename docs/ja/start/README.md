@@ -254,7 +254,7 @@ $ docker compose down
 
 ## 自分のアプリに<wbr>組み込む
 
-- [model APIの中継](../guides/agent-proxy.md)：認証、model振り分け、同時実行制限、ストリーム中継のテストと計画。
+- [model APIの中継](../guides/agent-proxy.md)：認証、model振り分け、同時実行制限、ストリーム中継のテストと今後の計画。
 - [インストール](../install/README.md)：既存環境のnginxバージョンとビルドオプションに合わせて、静的または動的モジュールを作成。
 - [ディレクティブ](../../directives/README.md)：nginxがRubyを実行するフェーズを選択。
 - [リクエストのフェーズ](../concepts/request-phases.md)：1つのリクエストが通るハンドラの順序。
