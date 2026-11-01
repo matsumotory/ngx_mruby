@@ -54,6 +54,9 @@ typedef enum {
   NGX_HTTP_MRUBY_HANDLER_BODY_FILTER
 } ngx_http_mruby_handler_kind_t;
 
+// the record of a handler's fiber (src/http/ngx_http_mruby_async.c)
+struct ngx_http_mrb_fiber_s;
+
 typedef struct ngx_http_mruby_ctx_t {
   ngx_mrb_rputs_chain_list_t *rputs_chain;
   u_char *body;
@@ -67,8 +70,8 @@ typedef struct ngx_http_mruby_ctx_t {
   // set by Nginx::Async.sleep when it arms its timer; ngx_mrb_run_request
   // clears it before the handler runs and reads it when the fiber yields
   unsigned async_sleep_pending : 1;
-  // set by ngx_mrb_run_request when a content handler keeps the request for
-  // the timer of Nginx::Async.sleep, and cleared before the next handler
+  // set by ngx_http_mrb_fiber_wait_on_nginx when a content handler waits
+  // for the timer of Nginx::Async.sleep, and cleared before the next handler
   // runs; Nginx::Async::HTTP.sub_request raises while it is set, because
   // nothing would finalize the request after the subrequest
   unsigned async_content_waiting : 1;
@@ -82,6 +85,9 @@ typedef struct ngx_http_mruby_ctx_t {
   // the kind of the handler whose fiber runs now; ngx_mrb_run_fiber sets it
   // for the time a fiber runs
   ngx_http_mruby_handler_kind_t handler_kind;
+  // the record of the handler of this request that waits for nginx to call
+  // it again (ngx_http_mrb_fiber_wait_on_nginx), until that call resumes it
+  struct ngx_http_mrb_fiber_s *wait;
 } ngx_http_mruby_ctx_t;
 
 /*
@@ -173,8 +179,10 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
 // kind is the handler that ran: a content handler of the main request that
 // ends without output answers there, with an empty body for no status and the
 // statuses from 200 up, and 500 below 200 (see
-// ngx_mrb_content_ends_without_response)
-ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx, ngx_http_mruby_handler_kind_t kind);
+// ngx_mrb_content_ends_without_response). has_result and result are the
+// result that the handler itself set (ngx_http_mrb_fiber_result).
+ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx, ngx_http_mruby_handler_kind_t kind,
+                                 ngx_flag_t has_result, ngx_int_t result);
 ngx_int_t ngx_mrb_finalize_body_filter(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx);
 ngx_http_mruby_ctx_t *ngx_mrb_http_get_module_ctx(mrb_state *mrb, ngx_http_request_t *r);
 

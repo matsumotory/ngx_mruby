@@ -911,6 +911,10 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   off_t content_length_n;
   mrb_value *mrb_result;
   ngx_mrb_fiber_outcome_t outcome;
+  ngx_http_mrb_fiber_t *record = NULL;
+  ngx_flag_t has_result;
+  ngx_int_t handler_result = NGX_OK;
+  ngx_int_t rc_again;
   ngx_http_mruby_ctx_t *ctx;
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
@@ -933,6 +937,25 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory context %s:%d", __FUNCTION__,
                   __LINE__);
     return NGX_ERROR;
+  }
+
+  // nginx calls a handler that waits again: after the wake, its checker
+  // resumes the fiber here and handles its result as for a handler that did
+  // not wait (section 4.4 of docs/proposals/core-stabilization.md). The code
+  // is not compiled again and its flags stay, so the code goes on where it
+  // waited.
+  ai = mrb_gc_arena_save(state->mrb);
+  rputs_chain = ctx->rputs_chain;
+  rputs_last = rputs_chain != NULL ? rputs_chain->last : NULL;
+  content_length_n = r->headers_out.content_length_n;
+  ctx->sub_response_more = 0;
+  ctx->async_sleep_pending = 0;
+  rc_again = ngx_http_mrb_fiber_call_again(r, ctx, kind, mrb_result, &record, &outcome);
+  if (rc_again == NGX_OK) {
+    goto resumed;
+  }
+  if (rc_again != NGX_DECLINED) {
+    return rc_again;
   }
 
   // ngx_mrb_post_fiber assigns the result of a resumed fiber to
@@ -1071,7 +1094,9 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   rputs_last = rputs_chain != NULL ? rputs_chain->last : NULL;
   content_length_n = r->headers_out.content_length_n;
 
-  outcome = ngx_mrb_start_fiber(r, state->mrb, code->proc, mrb_result, kind);
+  outcome = ngx_mrb_start_fiber(r, state->mrb, code->proc, mrb_result, kind, &record);
+
+resumed:
   if (outcome == NGX_MRB_FIBER_WAITS) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
                   __func__, __LINE__);
@@ -1085,31 +1110,22 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
       return NGX_AGAIN;
     }
 
-    if (kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && ctx->async_sleep_pending && state->mrb->jmp == NULL) {
-      /*
-       * The checker of the content phase finalizes the request with the
-       * NGX_DONE below, which drops one reference to the request
-       * (ngx_http_finalize_connection). Take that reference first, as nginx's
-       * own handlers do before they return NGX_DONE, so that the request
-       * stays until the timer of Nginx::Async.sleep resumes the fiber and
-       * ngx_mrb_timer_handler finalizes the request. A later sleep of the
-       * same fiber returns to that timer, not here, so it takes no second
-       * reference.
-       *
-       * The checker installs ngx_http_request_empty_handler as the write
-       * event handler only for r->content_handler, not for a phase handler
-       * like this one. Install it here, so that a write event while the
-       * fiber waits does not run the phases, and this handler, again.
-       *
-       * A content handler that runs inside another mruby call (mrb->jmp is
-       * set), in the location that Nginx.redirect runs from Ruby code, does
-       * not keep the request: the calling handler goes on after the call and
-       * may answer the request itself, and the output of this handler would
-       * follow that response. The request ends at the sleep there, as before.
-       */
-      r->main->count++;
-      r->write_event_handler = ngx_http_request_empty_handler;
-      ctx->async_content_waiting = 1;
+    /*
+     * The fiber yielded to the timer of Nginx::Async.sleep: the handler
+     * returns NGX_DONE, and the wake makes nginx call it again, so that the
+     * checker of its phase handles its result (ngx_http_mrb_fiber_call_again).
+     *
+     * A handler that runs inside another mruby call (mrb->jmp is set), in the
+     * location that Nginx.redirect runs from Ruby code, is resumed by its
+     * timer instead (ngx_mrb_post_fiber): the calling handler goes on after
+     * the call and may answer the request itself, and a content handler
+     * there does not keep the request, so the request ends at the sleep, as
+     * before. The same holds when the module context is no longer the one the
+     * handler started with (an internal redirect cleared it).
+     */
+    if (ctx->async_sleep_pending && state->mrb->jmp == NULL &&
+        ngx_http_get_module_ctx(r, ngx_http_mruby_module) == ctx && record != NULL) {
+      ngx_http_mrb_fiber_wait_on_nginx(r, ctx, record);
     }
 
     return NGX_DONE;
@@ -1244,7 +1260,13 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   }
 
   if (ngx_http_get_module_ctx(r, ngx_http_mruby_module) != NULL) {
-    return ngx_mrb_finalize_rputs(r, ctx, kind);
+    if (raised) {
+      has_result = 1;
+      handler_result = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    } else {
+      has_result = ngx_http_mrb_fiber_result(record, &handler_result);
+    }
+    return ngx_mrb_finalize_rputs(r, ctx, kind, has_result, handler_result);
   }
 
   return NGX_OK;
