@@ -8,7 +8,7 @@ import { chromium, webkit } from 'playwright';
 import { PATTERNS, PHONE } from './lib/patterns.mjs';
 import { serve } from './lib/serve.mjs';
 import { readOnlyContext } from './lib/read-only-browser.mjs';
-import { BADGE_FIXTURES } from './lib/project-badges.mjs';
+import { BADGE_FIXTURES, projectBadges } from './lib/project-badges.mjs';
 
 const site = path.resolve(new URL('..', import.meta.url).pathname);
 let dist = path.join(site, 'dist'), out = path.join(site, 'live-screenshots'), local = false;
@@ -50,14 +50,15 @@ try {
           assert.ok((await response.body()).equals(fs.readFileSync(path.join(dist, route.slice(1), 'index.html'))), `${route}: live HTML differs from the verified artifact`);
           await page.evaluate(() => document.fonts.ready);
           const base = `${engine}-${id}-${lang}-${width}`;
-          // The badges above the heading of the index pages are the local
-          // stand-ins here; check-live.mjs fetches the real images with
+          // The strip of development practices of the index pages shows the
+          // local stand-ins here; check-live.mjs fetches the real images with
           // retries, so this smoke never waits on the services.
           if (id === 'home' || id === 'v2-entry') {
-            await page.waitForFunction(() => {
+            const count = projectBadges(id === 'home' ? 'next' : 'master', 'en').length;
+            await page.waitForFunction((count) => {
               const images = [...document.querySelectorAll('.project-badges img')];
-              return images.length === 4 && images.every(image => image.complete && image.naturalWidth > 0);
-            });
+              return images.length === count && images.every(image => image.complete && image.naturalWidth > 0);
+            }, count);
             await page.locator('.project-badges img').evaluateAll(images => Promise.all(images.map(image => image.decode())));
           }
           await page.screenshot({ path: path.join(out, `${base}-first.png`) });

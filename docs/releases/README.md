@@ -352,6 +352,12 @@ shows them. The first pre-release copies the whole section. Agents prepare
 the files; they do not publish releases (see
 [AGENTS.md](../../AGENTS.md#branches-and-pull-requests)).
 
+The home page of the site names the newest stable release, which the site
+reads from the git tags when it is built. After the owner publishes a
+release, a session starts the site's workflow on `next`
+(`gh workflow run site.yml --ref next`), so that the home page names the
+new release before the next push to `next` or `master` builds the site.
+
 ## Security fixes
 
 A security fix is prepared in the advisory's private fork and released as a
