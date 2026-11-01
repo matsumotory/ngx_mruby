@@ -77,6 +77,7 @@ assert.ok(workflow.includes('  verify-live:'));
 assert.ok(workflow.split('  verify-live:')[1].includes('npx playwright install --with-deps chromium webkit'), 'verify-live installs Chromium and WebKit');
 assert.ok(workflow.includes('node scripts/check-public-deployment.mjs --sha'));
 assert.ok(workflow.includes('node scripts/check-live.mjs --no-gh'));
+assert.ok(workflow.split('  verify-live:')[1].includes('GITHUB_TOKEN: ${{ github.token }}'), 'verify-live passes the job token to the public API calls');
 assert.ok(workflow.includes('measure_scope: ${{ steps.scope.outputs.measure_scope }}'));
 console.log('Publication regression checks and policy-only measurement wiring: PASS');
 

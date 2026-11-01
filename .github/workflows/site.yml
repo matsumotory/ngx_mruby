@@ -494,9 +494,11 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
-  # Read-only acceptance of the artifact just published above. No token or
-  # new permission is needed: the GitHub metadata is public, and artifact
-  # download is limited to this workflow run. Fail closed on unavailable
+  # Read-only acceptance of the artifact just published above. No new
+  # permission is needed: the GitHub metadata is public, and artifact
+  # download is limited to this workflow run. The job's own token (contents:
+  # read) is passed to the API calls of the first check only so that they do
+  # not share the anonymous rate limit of the runner's IP address. Fail closed on unavailable
   # evidence, a concurrent different deployment, or mismatched public bytes.
   verify-live:
     name: Verify the published site
@@ -527,10 +529,11 @@ jobs:
         working-directory: site
         env:
           EXPECTED_SHA: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/check-public-deployment.mjs --sha "$EXPECTED_SHA"
       - name: Check published bytes, HTTPS redirect, retained file and live Lighthouse
         working-directory: site
-        # GitHub evidence was checked above through the unauthenticated public API.
+        # GitHub evidence was checked above through the public API.
         # The existing live HTTP and Lighthouse checks remain unchanged.
         run: node scripts/check-live.mjs --no-gh
       - name: Capture the actual desktop and mobile reader journeys
