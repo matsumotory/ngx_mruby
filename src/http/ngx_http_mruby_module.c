@@ -1181,8 +1181,18 @@ resumed:
       result->data = NULL;
       result->len = 0;
     } else {
-      if (mrb_type(*mrb_result) != MRB_TT_STRING) {
-        *mrb_result = mrb_funcall_id(state->mrb, *mrb_result, MRB_SYM_2(state->mrb, to_s), 0);
+      // The value as a String, outside Ruby code: an exception of to_s comes
+      // back in mrb->exc, and mrb_obj_as_string() gives a String also when to_s
+      // returns another object. A value that cannot be converted answers 500.
+      *mrb_result = mrb_obj_as_string(state->mrb, *mrb_result);
+      if (state->mrb->exc != NULL) {
+        ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
+        state->mrb->exc = NULL;
+        mrb_gc_arena_restore(state->mrb, ai);
+        if (!cached && !code->cache) {
+          ngx_mrb_code_clean(r, state, code);
+        }
+        return NGX_ERROR;
       }
       result_len = RSTRING_LEN(*mrb_result);
       result->data = ngx_palloc(r->pool, result_len);

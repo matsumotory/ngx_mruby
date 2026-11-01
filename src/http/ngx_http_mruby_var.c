@@ -80,8 +80,13 @@ mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int le
   ngx_str_t val;
   u_char *valp;
 
-  if (mrb_type(o) != MRB_TT_STRING) {
-    o = mrb_funcall_id(mrb, o, MRB_SYM(to_s), 0);
+  // The value as a String: mrb_obj_as_string() keeps a to_s that does not
+  // return a String from reaching RSTRING_PTR. Called from C code (when the
+  // fiber of an mruby_set handler has returned), an exception of to_s comes
+  // back in mrb->exc; the caller logs it and answers 500.
+  o = mrb_obj_as_string(mrb, o);
+  if (mrb->exc != NULL) {
+    return mrb_nil_value();
   }
 
   val.data = (u_char *)RSTRING_PTR(o);
@@ -395,12 +400,9 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
   u_char *keyp, *lowkey, *valp;
 
   mrb_get_args(mrb, "oo", &k, &o);
-  if (mrb_type(k) != MRB_TT_STRING) {
-    k = mrb_funcall_id(mrb, k, MRB_SYM(to_s), 0);
-  }
-  if (mrb_type(o) != MRB_TT_STRING) {
-    o = mrb_funcall_id(mrb, o, MRB_SYM(to_s), 0);
-  }
+  // mrb_obj_as_string() gives a String also when to_s returns another object
+  k = mrb_obj_as_string(mrb, k);
+  o = mrb_obj_as_string(mrb, o);
 
   r = ngx_mrb_get_request_or_raise(mrb);
 

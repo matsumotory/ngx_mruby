@@ -53,7 +53,11 @@ static ngx_mrb_fiber_outcome_t ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_valu
   ngx_mrb_fiber_outcome_t outcome;
 
   ictx = mrb->ud;
-  ctx = ngx_stream_mrb_get_module_ctx(mrb, ictx->s);
+  // outside Ruby code: a failed allocation is logged, not raised
+  ctx = ngx_stream_mrb_get_module_ctx(NULL, ictx->s);
+  if (ctx == NULL) {
+    return NGX_MRB_FIBER_RAISED;
+  }
   ctx->fiber_proc = fiber_proc;
 
   outcome = ngx_mrb_fiber_resume(&f->base, NULL, result, ngx_stream_mrb_fiber_log_raise, ictx->s);
@@ -77,7 +81,11 @@ ngx_mrb_fiber_outcome_t ngx_stream_mrb_start_fiber(ngx_stream_session_t *s, mrb_
   ngx_stream_mrb_fiber_t *f;
   ngx_stream_mruby_ctx_t *ctx;
 
-  ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
+  // outside Ruby code: a failed allocation is logged, not raised
+  ctx = ngx_stream_mrb_get_module_ctx(NULL, s);
+  if (ctx == NULL) {
+    return NGX_MRB_FIBER_RAISED;
+  }
   ctx->async_handler_result = result;
   ctx->mrb = mrb;
 
@@ -88,7 +96,7 @@ ngx_mrb_fiber_outcome_t ngx_stream_mrb_start_fiber(ngx_stream_session_t *s, mrb_
   if (f == NULL) {
     ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "%s ERROR %s:%d: failed to allocate the fiber", MODULE_NAME,
                   __func__, __LINE__);
-    return NGX_MRB_FIBER_RETURNED;
+    return NGX_MRB_FIBER_RAISED;
   }
   ngx_mrb_fiber_init(&f->base, mrb, NGX_MRB_FIBER_STREAM);
   f->ctx = ctx;
