@@ -713,7 +713,8 @@ without server-level handlers, so that no stored status hides a result (2.1):
   asserting the one response and the status of the access log line.
 - `async_set_var.rb`: on a server without server-level handlers, an
   `mruby_set` handler that sleeps sets the variable that `proxy_pass` uses;
-  `sub_request` there raises (Q5) and the request gets 500.
+  `sub_request` there raises (Q5): without a wait the variable is empty,
+  as after any exception there, and after a sleep the request gets 500.
 - `stream_async_sleep_udp_reuse.rb`, extended (Q4): the code runs once for
   the session (one log line of the code for two datagrams), and the reply
   arrives after the first datagram's sleep.

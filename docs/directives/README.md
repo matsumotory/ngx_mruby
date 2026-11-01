@@ -423,7 +423,7 @@ If the code raises an exception before it waits in `Nginx::Async.sleep`, ngx_mru
 Text that the code wrote with `Nginx.rputs` or `Nginx.echo` before the exception is not sent and does not count in the `Content-Length` of the response.
 If the code raises after the sleep, the request gets 500 and the output of `Nginx.rputs` is not sent, as described under [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec).
 
-The value of the code is converted to a String with `to_s`. When `to_s` raises, ngx_mruby logs the exception and the request gets 500, with or without a sleep. When `to_s` returns an object that is not a String, the variable gets the String of `Kernel#to_s`, for example `#<Object:0x...>`.
+The value of the code is converted to a String with `to_s`. When the value has no `to_s`, when `to_s` raises, or when it returns an object that is not a String, ngx_mruby logs the exception (a `TypeError` for the object that is not a String) and the request gets 500, with or without a sleep. Unlike an exception of the code, which leaves the variable empty, such a value ends the request: the code returned a value that the variable cannot hold.
 
 `Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in `mruby_set` and `mruby_set_code`, because nginx does not wait for a subrequest of the rewrite script: call it in a rewrite or access handler, and set the variable there with `Nginx::Var#set`. Since 3.0.0; on 2.x nginx went on without waiting for the variable (see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxasynchttpsub_request-raises-a-runtimeerror-in-an-mruby_set-handler-735)).
 

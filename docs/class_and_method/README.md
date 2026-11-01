@@ -1231,7 +1231,7 @@ v = Nginx::Request.new.var
 v.set "backend", "http://192.168.0.9/"  # Set "http://192.168.0.9/" to $backend
 ```
 
-A `name` or a `value` that is not a String is converted with `to_s`; when `to_s` returns an object that is not a String, the String of `Kernel#to_s` is used, for example `#<Object:0x...>`.
+A `name` or a `value` that is not a String is converted with `to_s`. When `to_s` is missing, raises, or returns an object that is not a String, `set` raises that exception (a `TypeError` for the object that is not a String), and so does `Nginx::Var#<name>=`.
 
 ## Nginx::Var#.exist? -> true or false
 
