@@ -108,4 +108,14 @@ ASYNC_RESUME_WAITS = {
   end
 end
 
+t.assert('async', 'an access handler that calls Nginx.redirect ends with the answer of the target, and the next request is answered') do
+  status, raw = tcp_client(18176, "GET /access_redirect HTTP/1.1\r\nHost: localhost\r\n\r\n" \
+                                  "GET /plain/x HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+  responses = async_resume_responses(raw)
+  t.assert_equal 'EOF', status
+  t.assert_equal 2, responses.size
+  t.assert_equal ['HTTP/1.1 200 OK', ''], responses[0]
+  t.assert_equal ['HTTP/1.1 200 OK', "passed\n"], responses[1]
+end
+
 t.report
