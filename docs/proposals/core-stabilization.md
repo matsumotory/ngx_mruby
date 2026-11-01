@@ -534,7 +534,9 @@ for the handler kind; stream through `stream_status`.
 - A run without a result ends as follows, with or without a wait:
   rewrite handlers go on with the next phase handler, as with
   `NGX_DECLINED` (decision (b), gap 1), and server rewrite handlers the same
-  way (Q6); access and post_read handlers
+  way (Q6), also when they return `Nginx::OK`, with which the rewrite phase
+  would finalize the request without a response (the table of #712 puts
+  that end in step 4 of section 8); access and post_read handlers
   return `NGX_OK`, as they do today without a wait
   (`src/http/ngx_http_mruby_core.c:277`): the access checker then goes on
   with the next access handler under `satisfy all` and allows the request
@@ -768,7 +770,8 @@ each bug fix comes as a test commit and a fix commit.
    result kept in the record (gap 3, Q6). Merged in
    [#715](https://github.com/matsumotory/ngx_mruby/pull/715).
 4. Decision (b): a rewrite handler without a result goes on (gap 1), and
-   so does a server rewrite handler (Q6).
+   so does a server rewrite handler (Q6). Merged in
+   [#720](https://github.com/matsumotory/ngx_mruby/pull/720).
 5. HTTP subrequests through the wake (gap 5), `sub_request` returns the
    response, and the content handler waits for a subrequest (gap 4, Q1).
 6. Stream: the wake and the second call of the handler (gap 9, Q4),

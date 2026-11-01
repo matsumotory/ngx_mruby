@@ -165,7 +165,8 @@ Nginx.return Nginx::HTTP_SERVICE_UNAVAILABLE  # returns HTTP status 503
 The value is the result of the handler that calls it, not of the later handlers of the request (since 3.0.0).
 A handler that calls none of `Nginx.return`, `Nginx.send_header` and `Nginx.status_code=` has no result, whatever an earlier handler of the request returned: a content handler of the main request without output answers 200 with an empty body (below), and a post_read or access handler goes on as with `Nginx::OK`.
 On 2.x, a handler without a result returned the value that an earlier handler of the request had set, for example the `Nginx::DECLINED` of a server rewrite handler that runs for every request, so that a content handler without output went on to the next content handler (see [the release notes of 3.0.0](../releases/v3.0.0.md#a-handler-that-sets-no-result-does-not-take-the-result-of-an-earlier-handler-715)).
-Rewrite and server rewrite handlers without a result still return such a value.
+A rewrite or server rewrite handler without a result, or with `Nginx::OK`, goes on to the next phase handler, as with `Nginx::DECLINED` (since 3.0.0; on 2.x nginx ended the request without a response, see [the release notes of 3.0.0](../releases/v3.0.0.md#a-rewrite-or-server-rewrite-handler-that-ends-without-a-result-goes-on-to-the-next-phase-handler-720)).
+A return code below 0, such as `Nginx::DECLINED`, is the result of the handler only: it does not change the status of the response.
 
 A content handler that ends without output answers as nginx's `return 200;`
 does: with the status it set, 200 when it set none, `Content-Length: 0` and an

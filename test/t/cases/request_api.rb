@@ -2,14 +2,24 @@ t = SimpleTest.new "ngx_mruby test: request API (test/conf/conf.d/10-request-api
 
 REQUEST_API_PORT = 18111
 
-t.assert('request API', 'rewrite handler without output or DECLINED sends no response') do
-  # characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
-  # The handler returns NGX_OK to the rewrite phase, so nginx finalizes the
-  # request with rc 0 and closes the connection without writing a byte.
-  # tcp_client in test/t/cases/_prelude.rb reads until nginx closes the
-  # connection and stops waiting after a time limit.
-  res = tcp_client(REQUEST_API_PORT, "GET /request_api/rewrite_no_return HTTP/1.0\r\n\r\n")
-  t.assert_equal ["EOF", ""], res
+t.assert('request API', 'rewrite handler without output or DECLINED goes on to the content handler') do
+  # On 2.x the handler returned NGX_OK to the rewrite phase, so nginx
+  # finalized the request with rc 0 and closed the connection without writing
+  # a byte. In 3.0.0 a rewrite handler without a result goes on as with
+  # Nginx::DECLINED (decision (b) of 2026-10-04 in docs/HANDOFF.md, step 4 of
+  # section 8 of docs/proposals/core-stabilization.md). Setting the URI does
+  # not move the request to another location.
+  status, raw = tcp_client(REQUEST_API_PORT, "GET /request_api/rewrite_no_return HTTP/1.0\r\n\r\n")
+  head, body = raw.split("\r\n\r\n", 2)
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 200 OK', head.to_s.split("\r\n")[0]
+  t.assert_equal 'content ran', body
+end
+
+t.assert('request API', 'a content handler that returns Nginx::DECLINED and then writes output answers with the output') do
+  res = HttpRequest.new.get base(REQUEST_API_PORT) + '/request_api/declined_then_output'
+  t.assert_equal 200, res.code
+  t.assert_equal 'written after the code', res["body"]
 end
 
 t.assert('request API', 'getters on /request_api/getters/') do
