@@ -174,10 +174,14 @@ returns whether the fiber waits, returned, or raised. It refuses a record
 that is `DONE`, `FAILED` or `CANCELLED` without touching its fiber. When
 the fiber raised, it logs the exception once, for its request or session,
 and clears `mrb->exc` before it returns, because all requests of the worker
-share the `mrb_state`. The protocol parts, `ngx_mrb_run_fiber` and
-`ngx_stream_mrb_run_fiber`, set the current request or session and, in
-HTTP, the handler kind for the time the fiber runs, and pass the response
-of a subrequest as the value of its `Fiber.yield`.
+share the `mrb_state`. The callers set the current request or session
+for the time the fiber runs: in HTTP `ngx_mrb_run`, `ngx_mrb_post_fiber`
+and `ngx_http_mrb_resume_set` with `ngx_mrb_push_request`, in stream
+`ngx_stream_mruby_handler` through `ictx->s`. The protocol parts,
+`ngx_mrb_run_fiber` and `ngx_stream_mrb_run_fiber`, set `ctx->fiber_proc`
+and, in HTTP, the handler kind and the running record
+(`ngx_http_mrb_running`), and pass the response of a subrequest as the
+value of its `Fiber.yield`.
 
 ### HTTP: a wait and its end
 
@@ -212,8 +216,10 @@ of a subrequest as the value of its `Fiber.yield`.
   starts the script from its first directive on each call, so nginx does not
   call it again. `ngx_http_mrb_resume_set`, from the wait handler, resumes
   the fiber, assigns the value to the variable, moves `r->phase_handler` to
-  the next handler and runs the phases. After an exception it finalizes the
-  request with 500, the one end after a wait that ngx_mruby makes itself.
+  the next handler and runs the phases. After an exception, or when the
+  variable cannot get the value, it finalizes the request with 500, since
+  no phase checker is left to end it: the rewrite module's handler
+  returned already.
 - A wait that starts in a handler that nginx runs inside another mruby call
   (the location of an internal redirect that an `mruby_set` handler, a log
   handler or a filter makes inside the Ruby call), or after an internal
@@ -289,17 +295,19 @@ No test covers HTTP/2 or HTTP/3 yet: the harness has no client for them.
 
 ### Tests and counters
 
-The cases that pin this model, each with a fragment of its own in
-`test/conf/conf.d/`: `async_resume_result.rb` (the same end with and
-without a wait, per phase), `async_result_isolation.rb` (the result of a
-handler is its own), `async_subrequest_return.rb`, `async_set_var.rb`,
-`redirect_async.rb`, `stream_async_sleep_udp_once.rb`,
-`stream_proxy_protocol_wait.rb` and `workers.rb` (reloads and
-`worker_shutdown_timeout`), all in `test/t/cases/`. The soak build
+The cases that pin this model are in `test/t/cases/`:
+`async_resume_result.rb` (the same end with and without a wait, per
+phase), `async_result_isolation.rb` (the result of a handler is its own),
+`async_subrequest_return.rb`, `async_set_var.rb`, `redirect_async.rb`,
+`stream_async_sleep_udp_once.rb`, `stream_proxy_protocol_wait.rb` and
+`workers.rb` (reloads and `worker_shutdown_timeout`). Their configuration
+is in `test/conf/conf.d/`, and that of `workers.rb` in `test/conf/workers/`. The soak build
 (`-DNGX_MRUBY_DEBUG_STATS`) reports in `Nginx::Debug.stats` the pending
 timers of HTTP (`timers`) and of stream (`stream_timers`), the stream
 fibers that hold a slot (`stream_fibers`), and the fibers in the GC root
-holders (`gc_root_fibers`); `test/soak/soak.rb` checks them.
+holders (`gc_root_fibers`). `test/soak/soak.rb` keeps `timers` and
+`gc_root_fibers` the same from sample to sample, and checks only that
+`stream_timers` and `stream_fibers` are reported.
 
 ## Adding newer version nginx support
 

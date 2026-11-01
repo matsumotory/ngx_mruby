@@ -74,7 +74,7 @@ sh apply-clang-format
 
 ### 再開
 
-`ngx_mrb_fiber_resume`は、ファイバーを始めるか再開し、ファイバーが待つか、返ったか、例外を出したかを返します。ほかのmrubyの呼び出しが動いているとき（`mrb->jmp`がセットされているとき）は、`mrb_protect_error`を通して再開します。レコードが`DONE`、`FAILED`、`CANCELLED`のときは、ファイバーに触れずに断ります。ファイバーが例外を出したときは、そのリクエストかセッションのために例外を1回だけログに書き、返る前に`mrb->exc`を消します。ワーカーのすべてのリクエストが`mrb_state`を共有するためです。プロトコルの部分である`ngx_mrb_run_fiber`と`ngx_stream_mrb_run_fiber`は、ファイバーが動く間だけ、いまのリクエストかセッションを設定します。HTTPではハンドラの種類も設定します。サブリクエストのレスポンスは、ファイバーの`Fiber.yield`の値として渡します。
+`ngx_mrb_fiber_resume`は、ファイバーを始めるか再開し、ファイバーが待つか、返ったか、例外を出したかを返します。ほかのmrubyの呼び出しが動いているとき（`mrb->jmp`がセットされているとき）は、`mrb_protect_error`を通して再開します。レコードが`DONE`、`FAILED`、`CANCELLED`のときは、ファイバーに触れずに断ります。ファイバーが例外を出したときは、そのリクエストかセッションのために例外を1回だけログに書き、返る前に`mrb->exc`を消します。ワーカーのすべてのリクエストが`mrb_state`を共有するためです。ファイバーが動く間のいまのリクエストかセッションは、呼び出し側が設定します。HTTPでは`ngx_mrb_run`、`ngx_mrb_post_fiber`、`ngx_http_mrb_resume_set`が`ngx_mrb_push_request`で設定し、streamでは`ngx_stream_mruby_handler`が`ictx->s`で設定します。プロトコルの部分である`ngx_mrb_run_fiber`と`ngx_stream_mrb_run_fiber`は、`ctx->fiber_proc`を設定し、HTTPではハンドラの種類と動いているレコード（`ngx_http_mrb_running`）も設定します。サブリクエストのレスポンスは、ファイバーの`Fiber.yield`の値として渡します。
 
 ### HTTP：待ちとその終わり
 
@@ -83,7 +83,7 @@ sh apply-clang-format
 - wakeはレコードを`READY`にします。タイマーのときは、`ngx_http_mrb_fiber_wake`がレコードに持つエントリでリクエストをpostし、接続のpostされたリクエストを処理します。サブリクエストのときは、postハンドラが最初の呼び出しでレスポンスをコピーします。どの呼び出しでも、`ngx_http_auth_request_done`と同じように、nginxの`rc`を変えずに返します。その後、nginxが親のリクエストを自分で起こします。
 - `ngx_http_mrb_wait_handler`は`READY`を見ると、writeイベントのハンドラを`ngx_http_core_run_phases`に戻し、フェーズを進めます。`r->phase_handler`は動いていないので、チェッカーは同じmrubyのハンドラを呼びます。`ngx_http_mrb_fiber_call_again`は、コードを始めずにファイバーを再開します。ハンドラは、待たなかったハンドラと同じように、コードの結果を`ngx_mrb_finalize_rputs`を通してチェッカーへそのまま返します。
 - レコードが`WAITING`の間にnginxがハンドラを呼ぶと、ハンドラはもう一度`NGX_DONE`を返し、コードは始まりません。contentハンドラは、このときも参照を1つ取ります。レコードが`CANCELLED`なら、ハンドラは`NGX_ERROR`を返します。
-- `mruby_set`のハンドラは、rewriteモジュールのスクリプトの中で動きます。このスクリプトは呼ばれるたびに最初のディレクティブから始まるので、nginxはこのハンドラをもう一度呼びません。代わりにwaitハンドラから`ngx_http_mrb_resume_set`がファイバーを再開し、値を変数に入れ、`r->phase_handler`を次のハンドラへ進めてフェーズを進めます。例外のときは、リクエストを500で終えます。待った後にngx_mrubyがリクエストを自分で終えるのは、この場合だけです。ほかはチェッカーが終えます。
+- `mruby_set`のハンドラは、rewriteモジュールのスクリプトの中で動きます。このスクリプトは呼ばれるたびに最初のディレクティブから始まるので、nginxはこのハンドラをもう一度呼びません。代わりにwaitハンドラから`ngx_http_mrb_resume_set`がファイバーを再開し、値を変数に入れ、`r->phase_handler`を次のハンドラへ進めてフェーズを進めます。例外が出たときと、変数に値を入れられないときは、リクエストを500で終えます。rewriteモジュールのハンドラは既に返っていて、リクエストを終えるフェーズのチェッカーが残っていないためです。
 - nginxがほかのmrubyの呼び出しの中で動かすハンドラで始まった待ちは、wakeを使いません。これは、`mruby_set`のハンドラ、logハンドラ、フィルタがRubyの呼び出しの中で内部リダイレクトしたときの、リダイレクト先のロケーションのハンドラです。内部リダイレクトがハンドラのモジュールのコンテキストを置き換えた後の待ちも同じです。この場合はタイマーかpostハンドラがファイバーを自分で再開し、`ngx_mrb_post_fiber`がハンドラを終えます。そこのcontentハンドラはリクエストを保ちません。サブリクエストが動いている間、ハンドラは`NGX_AGAIN`を返し続けます。
 
 ### HTTP：ハンドラの結果と`Nginx.redirect`
@@ -109,7 +109,7 @@ HTTP/2とHTTP/3は、まだどのテストでも確かめていません。ハ�
 
 ### テストとカウンタ
 
-このモデルを確かめるケースは、`test/t/cases/`の`async_resume_result.rb`、`async_result_isolation.rb`、`async_subrequest_return.rb`、`async_set_var.rb`、`redirect_async.rb`、`stream_async_sleep_udp_once.rb`、`stream_proxy_protocol_wait.rb`、`workers.rb`です。それぞれ`test/conf/conf.d/`に専用の設定の断片があります。`async_resume_result.rb`は、フェーズごとに待つ場合と待たない場合の終わりを比べます。`async_result_isolation.rb`は、ハンドラの結果がそのハンドラのものであることを確かめます。`workers.rb`は、リロードと`worker_shutdown_timeout`を確かめます。soakのビルド（`-DNGX_MRUBY_DEBUG_STATS`）では、`Nginx::Debug.stats`が4つの値を返し、`test/soak/soak.rb`がそれを確かめます。4つの値は、HTTP（`timers`）とstream（`stream_timers`）の残っているタイマー、スロットを持つstreamのファイバー（`stream_fibers`）、GCのルートの保持の中のファイバー（`gc_root_fibers`）です。
+このモデルを確かめるケースは、`test/t/cases/`の`async_resume_result.rb`、`async_result_isolation.rb`、`async_subrequest_return.rb`、`async_set_var.rb`、`redirect_async.rb`、`stream_async_sleep_udp_once.rb`、`stream_proxy_protocol_wait.rb`、`workers.rb`です。設定は`test/conf/conf.d/`にあり、`workers.rb`の設定は`test/conf/workers/`にあります。`async_resume_result.rb`は、フェーズごとに待つ場合と待たない場合の終わりを比べます。`async_result_isolation.rb`は、ハンドラの結果がそのハンドラのものであることを確かめます。`workers.rb`は、リロードと`worker_shutdown_timeout`を確かめます。soakのビルド（`-DNGX_MRUBY_DEBUG_STATS`）では、`Nginx::Debug.stats`が4つの値を返します。HTTP（`timers`）とstream（`stream_timers`）の残っているタイマー、スロットを持つstreamのファイバー（`stream_fibers`）、GCのルートの保持の中のファイバー（`gc_root_fibers`）です。`test/soak/soak.rb`は、`timers`と`gc_root_fibers`がサンプルの間で変わらないことを確かめ、`stream_timers`と`stream_fibers`については、値があることだけを確かめます。
 
 ## 新しいバージョンのnginxをサポートする
 

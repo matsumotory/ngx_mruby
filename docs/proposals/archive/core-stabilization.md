@@ -936,10 +936,13 @@ Status line describe the implementation.
   `sub_request` returned, in a slot of the GC root holder until the fiber
   ends.
 - The function of the common layer (4.5), `ngx_mrb_fiber_resume`, resumes
-  the fiber, logs an exception once and clears `mrb->exc`. The protocol
-  parts (`ngx_mrb_run_fiber`, `ngx_stream_mrb_run_fiber`) set the current
-  request or session and the handler kind, and pass the response of a
-  subrequest to `Fiber.yield`.
+  the fiber, logs an exception once and clears `mrb->exc`; it does not set
+  the current request or session or the handler kind. The callers set the
+  current request or session (`ngx_mrb_run`, `ngx_mrb_post_fiber` and
+  `ngx_http_mrb_resume_set` with `ngx_mrb_push_request`;
+  `ngx_stream_mruby_handler` through `ictx->s`), and the protocol parts
+  (`ngx_mrb_run_fiber`, `ngx_stream_mrb_run_fiber`) set the handler kind
+  and pass the response of a subrequest to `Fiber.yield`.
 - `ngx_mrb_post_fiber`, which ends a handler after a wait in place of the
   phase checker, stays for one case (4.4): a wait that starts in a handler
   that nginx runs inside another mruby call (`mrb->jmp` is set: the

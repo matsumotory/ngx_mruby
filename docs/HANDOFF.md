@@ -1,6 +1,6 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (04:22 JST)
+## State as of 2026-11-02 (04:52 JST)
 
 - Heads: `next` is `f5362fffa`, the merge of
   [#735](https://github.com/matsumotory/ngx_mruby/pull/735) (step 8, the
@@ -17,9 +17,11 @@
   should-fix items of the review of #729), and `d70481db6`, the merge of
   [#732](https://github.com/matsumotory/ngx_mruby/pull/732) (the advisory
   id of 2.7.4 and the release rule of 2026-11-02 on `next`); `master` is
-  `0f865ed4a`, the merge of
-  [#731](https://github.com/matsumotory/ngx_mruby/pull/731) (the same on
-  `master`), after `e2aeb5ddd`, the merge of the 2.x form of the fix of
+  `5440e7a0e`, the merge of
+  [#739](https://github.com/matsumotory/ngx_mruby/pull/739) (04:45 JST:
+  `site-v2.yml` runs only on `workflow_dispatch`), after `0f865ed4a`, the
+  merge of [#731](https://github.com/matsumotory/ngx_mruby/pull/731) (the
+  same on `master`), and `e2aeb5ddd`, the merge of the 2.x form of the fix of
   GHSA-xjh6-6vgm-56wj, where the tag `v2.7.4` is; `v2.x` mirrors `master`.
   `next` contains `master` as of `0f865ed4a`, with the merge
   [#734](https://github.com/matsumotory/ngx_mruby/pull/734) (before it, as of
@@ -82,10 +84,15 @@
   "Decisions").
 - The core stabilization is done with #735, and its proposal is archived
   (the row of step 4 under "Queue").
+- [#739](https://github.com/matsumotory/ngx_mruby/pull/739) (base
+  `master`) is merged (`5440e7a0e`): `site-v2.yml` runs only on
+  `workflow_dispatch`, and a pull request to `master` checks the 2.x pages
+  locally. It reaches `next` with the next merge of `master`.
 - Open: [#738](https://github.com/matsumotory/ngx_mruby/pull/738) (base
   `next`, the should-fix items of #736) and
-  [#739](https://github.com/matsumotory/ngx_mruby/pull/739) (base
-  `master`, draft, the row on the CI of `master` under "Queue").
+  [#740](https://github.com/matsumotory/ngx_mruby/pull/740) (base
+  `master`: a rewrite handler that returns `Nginx::DECLINED` after
+  `Nginx::Async.sleep` keeps the status of the request).
 
 ## How to use this file
 
@@ -358,8 +365,8 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
-| CI of `master` after the decision of 2026-11-02 on CI ("Decisions"; #737 on `next`): a pull request to `master` that takes `site-v2.yml` off pull requests (a `docs/` pull request to `master` runs `npm run check:ci` of `next` with `NGX_MRUBY_V2_TREE` set to its tree, and `site-dispatch.yml` rebuilds `/v2/` on the push), and updates the comment of `test/ci/changes.sh` (the categories `docs`, `site` and `examples`), which is the same on both branches | `master` | [#739](https://github.com/matsumotory/ngx_mruby/pull/739) (draft) |
 | Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge of `master` at `0f865ed4a` (#704, #703, #716, the 2.x form of the fix of GHSA-xjh6-6vgm-56wj, #731) is [#734](https://github.com/matsumotory/ngx_mruby/pull/734); the next merge brings what `master` gains after it |
+| The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. To do: a pull request to `master` that changes the wording of the heading by a few characters, in the release notes and in the template of `docs/releases/README.md` | `master` (reaches `next` by the merge) | Ready to start |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. Decided on 2026-10-29 (option "500 のまま (推奨)"): 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
@@ -378,6 +385,7 @@ Taken up and still open: none.
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |
 | Soak and perf for stream: a soak scenario of a stream session whose code sleeps, which reads `stream_timers` and `stream_fibers` of `Nginx::Debug.stats` ([#714](https://github.com/matsumotory/ngx_mruby/pull/714) added the counters, and `test/soak/soak.rb` expects the keys), and a stream scenario of the perf lane, which builds nginx without `--with-stream` today (section 7 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Ready to start |
 | The case `async_sleep_many.rb` of section 6 of [the core stabilization proposal](proposals/archive/core-stabilization.md), which was not added: a handler that sleeps 1,000 times for 1 ms answers, and `Nginx::Debug.stats` shows the same `timers` and `gc_root_fibers` before and after | `next` | Ready to start |
+| The comments in `src/` and `test/` that name `docs/proposals/core-stabilization.md` (20 places, `git grep -n core-stabilization -- src test`): the proposal is now `docs/proposals/archive/core-stabilization.md`. To do: the next pull request that changes those files points them at the new path, or at the section "How a handler waits" of `docs/DEVELOPMENT.md` | `next` | The next code pull request that touches those files (a comment-only change of `src/` would run the whole build matrix) |
 | The ASan cell with `-DNGX_DEBUG_PALLOC -DNGX_DEBUG_MALLOC` (3.7 of the plan; the cell of `test.yml` sets only `-fsanitize` and `-fno-omit-frame-pointer`), so that ASan sees an access that runs from one pool allocation into the next. To do: a run of the suite with these flags, whose findings follow [SECURITY.md](../SECURITY.md), then the cell | `next`, `master` | Ready to start |
 | A test build with `ngx_otel_module` (nginx/nginx-otel, built with CMake against the nginx source of `test.sh`) and an OTLP receiver for the case of the observability sample of 3.2 of the site proposal | `next` | The harness rewrite (the row above), of which this waits for what is left: the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads |
 | Step 7 of section 6 of the plan, the agent proxy, parts (a) to (e); none exists on `next` | `next` | Parts (a) and (c) start "after the safety net of step 2, beside step 4" (step 7 of section 6 of the plan, decided on 2026-10-29 in item 15 of section 7), so they wait for what is left of that safety net: in the row above for the test harness rewrite, the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads, and its `test/t/cases/_workers.rb` runs the several workers that the test of N concurrent `incr` calls of the shared dictionary needs (section 8 of the plan). (b) and (d) also wait for step 4. The order inside the step is a proposal of the 2026-10-04 amendment until the owner decides it. The `serves:` notes on the rows of the plan name the uses of [the ledger](proposals/edge-control.md#use-cases-and-the-features-they-need) that each part serves |
