@@ -18,6 +18,7 @@
 
 - 意味：提供元が名前を付け、APIか重みの配布で出す学習済みのモデルです。扱うのがテキスト、画像、音声、動画のどれかは問いません。ユーザーインターフェースやツールを足したソフトウェア全体はAI systemで、モデルとは分けます。
 - ngx_mrubyでの使い方：総称です。個々のモデルは、提供元が付けたモデルの名前で書きます。
+- 和文での書き方：model API、multimodal modelのような複合語は英語のまま書き、地の文の名詞はモデルと書きます。
 - 出典：
   - [EU AI Act, Recital 97](https://artificialintelligenceact.eu/recital/97/)
   - [OpenAI, Models](https://developers.openai.com/api/docs/models)
