@@ -265,7 +265,8 @@ ngx_mrb_fiber_outcome_t ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mr
   ngx_http_mruby_ctx_t *ctx;
 
   *record = NULL;
-  // outside Ruby code: a failed allocation is logged, not raised
+  // a failed allocation is logged, not raised: the caller may run outside
+  // Ruby code (mrb->jmp is NULL), where a raise would abort the process
   ctx = ngx_mrb_http_get_module_ctx(NULL, r);
   if (ctx == NULL) {
     return NGX_MRB_FIBER_RAISED;
@@ -317,7 +318,8 @@ static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fibe
   mrb_bool raised = FALSE;
   ngx_mrb_async_http_response_t response;
 
-  // outside Ruby code: a failed allocation is logged, not raised
+  // a failed allocation is logged, not raised: the caller may run outside
+  // Ruby code (mrb->jmp is NULL), where a raise would abort the process
   ctx = ngx_mrb_http_get_module_ctx(NULL, r);
   if (ctx == NULL) {
     return NGX_MRB_FIBER_RAISED;
@@ -405,8 +407,8 @@ static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fibe
  * instead (ngx_http_mrb_fiber_call_again); this function resumes the waits
  * that started elsewhere: in a handler that nginx runs inside another mruby
  * call (an internal redirect that an mruby_set handler, a log handler or a
- * filter makes inside the Ruby call), and after
- * Nginx::Async::HTTP.sub_request in an mruby_set handler.
+ * filter makes inside the Ruby call), and after the subrequest of such a
+ * handler.
  */
 static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_t *ctx)
 {

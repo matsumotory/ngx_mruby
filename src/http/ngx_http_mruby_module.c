@@ -11,6 +11,7 @@
 #include "ngx_http_mruby_gc_roots.h"
 #include "ngx_http_mruby_init.h"
 #include "ngx_http_mruby_request.h"
+#include "ngx_http_mruby_var.h"
 
 #include <mruby/presym.h>
 #include <mruby/proc.h>
@@ -1123,12 +1124,12 @@ resumed:
      * not keep the request, so the request ends at the sleep, as before.
      * The same holds when the module context is no longer the one the
      * handler started with (an internal redirect cleared it). Such a handler
-     * returns NGX_AGAIN while its subrequest runs, as before, and so does an
-     * mruby_set handler, whose subrequest step 8 of section 8 makes raise
-     * (Q5): nginx does not wait for it there.
+     * returns NGX_AGAIN while its subrequest runs, as before. An mruby_set
+     * handler waits only for a timer: Nginx::Async::HTTP.sub_request raises
+     * there (Q5 of section 9), because nginx does not wait for it.
      */
-    if ((ctx->async_sleep_pending || (ctx->sub_response_more && kind != NGX_HTTP_MRUBY_HANDLER_SET)) &&
-        state->mrb->jmp == NULL && ngx_http_get_module_ctx(r, ngx_http_mruby_module) == ctx && record != NULL) {
+    if ((ctx->async_sleep_pending || ctx->sub_response_more) && state->mrb->jmp == NULL &&
+        ngx_http_get_module_ctx(r, ngx_http_mruby_module) == ctx && record != NULL) {
       ngx_http_mrb_fiber_wait_on_nginx(r, ctx, record);
       return NGX_DONE;
     }
@@ -1181,13 +1182,12 @@ resumed:
       result->data = NULL;
       result->len = 0;
     } else {
-      // The value as a String, outside Ruby code: an exception of to_s comes
-      // back in mrb->exc, and mrb_obj_as_string() gives a String also when to_s
-      // returns another object. A value that cannot be converted answers 500.
-      *mrb_result = mrb_obj_as_string(state->mrb, *mrb_result);
-      if (state->mrb->exc != NULL) {
-        ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
-        state->mrb->exc = NULL;
+      // The value as a String. A value that cannot be converted (its to_s is
+      // missing, raises or does not return a String) ends the handler with
+      // its exception logged, and the request gets 500: the variable cannot
+      // get the value that the code returned.
+      if (!ngx_mrb_var_to_string(state->mrb, *mrb_result, mrb_result)) {
+        ngx_mrb_raise_error(state->mrb, *mrb_result, r);
         mrb_gc_arena_restore(state->mrb, ai);
         if (!cached && !code->cache) {
           ngx_mrb_code_clean(r, state, code);

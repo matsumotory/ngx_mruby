@@ -53,7 +53,8 @@ static ngx_mrb_fiber_outcome_t ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_valu
   ngx_mrb_fiber_outcome_t outcome;
 
   ictx = mrb->ud;
-  // outside Ruby code: a failed allocation is logged, not raised
+  // a failed allocation is logged, not raised: the caller may run outside
+  // Ruby code (mrb->jmp is NULL), where a raise would abort the process
   ctx = ngx_stream_mrb_get_module_ctx(NULL, ictx->s);
   if (ctx == NULL) {
     return NGX_MRB_FIBER_RAISED;
@@ -81,7 +82,8 @@ ngx_mrb_fiber_outcome_t ngx_stream_mrb_start_fiber(ngx_stream_session_t *s, mrb_
   ngx_stream_mrb_fiber_t *f;
   ngx_stream_mruby_ctx_t *ctx;
 
-  // outside Ruby code: a failed allocation is logged, not raised
+  // a failed allocation is logged, not raised: the caller may run outside
+  // Ruby code (mrb->jmp is NULL), where a raise would abort the process
   ctx = ngx_stream_mrb_get_module_ctx(NULL, s);
   if (ctx == NULL) {
     return NGX_MRB_FIBER_RAISED;

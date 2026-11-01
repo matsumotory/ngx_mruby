@@ -65,9 +65,38 @@ mrb_value ngx_mrb_var_get_fixed(mrb_state *mrb, ngx_mrb_var_id_t id)
   return ngx_mrb_var_get(mrb, r, &ngx_mrb_var_fixed[id].name, ngx_mrb_var_fixed[id].key);
 }
 
+static mrb_value ngx_mrb_var_to_s(mrb_state *mrb, void *userdata)
+{
+  mrb_value v = mrb_funcall_id(mrb, *(mrb_value *)userdata, MRB_SYM(to_s), 0);
+
+  return mrb_ensure_string_type(mrb, v);
+}
+
+mrb_bool ngx_mrb_var_to_string(mrb_state *mrb, mrb_value o, mrb_value *out)
+{
+  mrb_bool failed;
+
+  if (mrb_string_p(o)) {
+    *out = o;
+    return TRUE;
+  }
+  *out = mrb_protect_error(mrb, ngx_mrb_var_to_s, &o, &failed);
+  return !failed;
+}
+
 mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_value o, ngx_http_request_t *r)
 {
-  return ngx_mrb_var_set_vector(mrb, self, k, strlen(k), o, r);
+  mrb_value v = ngx_mrb_var_set_vector(mrb, self, k, strlen(k), o, r);
+  mrb_value exc;
+
+  // called from Ruby code (Nginx::Var#<name>=): the exception of the
+  // conversion goes to the script
+  if (mrb->exc != NULL) {
+    exc = mrb_obj_value(mrb->exc);
+    mrb->exc = NULL;
+    mrb_exc_raise(mrb, exc);
+  }
+  return v;
 }
 
 mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int len, mrb_value o, ngx_http_request_t *r)
@@ -80,12 +109,12 @@ mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int le
   ngx_str_t val;
   u_char *valp;
 
-  // The value as a String: mrb_obj_as_string() keeps a to_s that does not
-  // return a String from reaching RSTRING_PTR. Called from C code (when the
-  // fiber of an mruby_set handler has returned), an exception of to_s comes
-  // back in mrb->exc; the caller logs it and answers 500.
-  o = mrb_obj_as_string(mrb, o);
-  if (mrb->exc != NULL) {
+  // The value as a String (ngx_mrb_var_to_string). When it cannot be
+  // converted, the exception is left in mrb->exc for the caller: the end of
+  // an mruby_set handler logs it and answers 500, and Nginx::Var#<name>=
+  // raises it.
+  if (!ngx_mrb_var_to_string(mrb, o, &o)) {
+    mrb->exc = mrb_obj_ptr(o);
     return mrb_nil_value();
   }
 
@@ -400,9 +429,10 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
   u_char *keyp, *lowkey, *valp;
 
   mrb_get_args(mrb, "oo", &k, &o);
-  // mrb_obj_as_string() gives a String also when to_s returns another object
-  k = mrb_obj_as_string(mrb, k);
-  o = mrb_obj_as_string(mrb, o);
+  // a name or a value that cannot be converted to a String raises
+  if (!ngx_mrb_var_to_string(mrb, k, &k) || !ngx_mrb_var_to_string(mrb, o, &o)) {
+    mrb_exc_raise(mrb, mrb_string_p(k) ? o : k);
+  }
 
   r = ngx_mrb_get_request_or_raise(mrb);
 
