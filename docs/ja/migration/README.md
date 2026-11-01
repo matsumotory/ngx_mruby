@@ -257,11 +257,11 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   Nginx::Async.sleep 100
   # 2.x: without a result, the request reached its content and the connection closed
   # 3.0.0: without a result, nginx allows the request under satisfy any
-  Nginx.return Nginx::HTTP_FORBIDDEN unless allowed?   # denies on both
+  Nginx.return Nginx::HTTP_FORBIDDEN unless allowed?   # on both: denies under satisfy all; under satisfy any nginx tries the other access handlers
   ```
 
 - [出力を書くaccessハンドラとpost_readハンドラが、レスポンスの後にリクエストを終える](../../releases/v3.0.0.ja.md#出力を書くaccessハンドラとpost_readハンドラがレスポンスの後にリクエストを終える715)：変えるものはありません。このハンドラは1回だけ応答し、nginxは接続を保ちます。2.xはフェーズを続けて接続を閉じていました。このハンドラが出していた`header already sent`の行に対するログのアラートは、もう発生しません。
-- [結果を設定しないハンドラが、前のハンドラの結果を引き継がない](../../releases/v3.0.0.ja.md#結果を設定しないハンドラが前のハンドラの結果を引き継がない715)：すべてのリクエストで`Nginx.return`を呼ぶserver rewrite、rewrite、post_readのハンドラを探してください。例えば`mruby_server_rewrite_handler_code 'Nginx.return Nginx::DECLINED'`です。出力もステータスも無く終わることのある後のcontentハンドラと、`satisfy any`で結果なしで終わることのあるaccessハンドラは、この値を引き継がなくなります。先へ進むべきハンドラは、自分でその値を返してください。
+- [結果を設定しないハンドラが、前のハンドラの結果を引き継がない](../../releases/v3.0.0.ja.md#結果を設定しないハンドラが前のハンドラの結果を引き継がない715)：すべてのリクエストで`Nginx.return`を呼ぶserver rewrite、rewrite、post_read、accessのハンドラを探してください。例えば`mruby_server_rewrite_handler_code 'Nginx.return Nginx::DECLINED'`です。出力もステータスも無く終わることのある後のcontentハンドラと、`satisfy any`で結果なしで終わることのあるaccessハンドラは、この値を引き継がなくなります。先へ進むべきハンドラは、自分でその値を返してください。
 
   ```ruby
   # mruby_content_handler_code, on a server whose server rewrite handler returns Nginx::DECLINED

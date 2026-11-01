@@ -424,7 +424,7 @@ not enough, and show the change.
   Nginx::Async.sleep 100
   # 2.x: without a result, the request reached its content and the connection closed
   # 3.0.0: without a result, nginx allows the request under satisfy any
-  Nginx.return Nginx::HTTP_FORBIDDEN unless allowed?   # denies on both
+  Nginx.return Nginx::HTTP_FORBIDDEN unless allowed?   # on both: denies under satisfy all; under satisfy any nginx tries the other access handlers
   ```
 
 - [An access or post_read handler that writes output ends the request after the response](../releases/v3.0.0.md#an-access-or-post_read-handler-that-writes-output-ends-the-request-after-the-response-715):
@@ -432,7 +432,7 @@ not enough, and show the change.
   connection, where 2.x went on with the phases and closed it; log alerts
   on its `header already sent` lines no longer fire.
 - [A handler that sets no result does not take the result of an earlier handler](../releases/v3.0.0.md#a-handler-that-sets-no-result-does-not-take-the-result-of-an-earlier-handler-715):
-  look for a server rewrite, rewrite or post_read handler that calls
+  look for a server rewrite, rewrite, post_read or access handler that calls
   `Nginx.return` for every request, for example
   `mruby_server_rewrite_handler_code 'Nginx.return Nginx::DECLINED'`. The
   later content handlers that can end without output and without a status,
