@@ -1,14 +1,15 @@
-# Agent proxy
+# Relaying model API requests
 
 **Development version.** This page describes ngx_mruby 3.x on the branch
 `next`, which is not released: the current release is 2.7. The recipes
-below run on `next` today, and CI checks them. The diagrams show the agent
-proxy that the v3 plan builds for v3.0.0, and say for each step whether it
+below run on `next` today, and CI checks them. The diagrams show the model API relay
+that the v3 plan builds for v3.0.0, and say for each step whether it
 runs today or which step of
 [the plan](../proposals/v3-plan.md#agent-proxy-the-v30-use-case) adds it.
 
-An agent proxy is nginx in front of the API of an LLM provider, between
-coding agents and the provider. Ruby decides per request: whether the
+This AI gateway configuration places nginx between an AI application and
+the model API it calls. It covers model API traffic, not MCP tool calls or
+A2A communication between agents. Ruby decides per request: whether the
 client key is known, which upstream and which provider credential the
 request gets, and the key that `limit_conn` counts. nginx moves
 the bytes: it reads the request, relays the response of the provider as it
@@ -102,7 +103,7 @@ stream of 50 deltas of each API arrives byte for byte.
 ```diagram
 agent-proxy-request
 label: development
-caption: The steps of a request through the agent proxy of v3.0, each with whether it runs today or which step of the v3 plan adds it.
+caption: The steps of a request through the model API relay planned for v3.0, each with whether it runs today or which step of the v3 plan adds it.
 source: docs/proposals/v3-plan.md 407-447 558-576
 source: test/conf/conf.d/60-agent-proxy.conf 14-111
 at: 8d1500bf0 2026-10-29
@@ -123,7 +124,7 @@ fallback: Step 7e: the reference proxy sets Host and SNI per provider, and sends
 ```diagram
 agent-proxy-stream
 label: development
-caption: How the agent proxy of v3.0 relays a streamed response and charges its usage, each step with whether it runs today or which step of the v3 plan adds it.
+caption: How the model API relay planned for v3.0 relays a streamed response and charges its usage, each step with whether it runs today or which step of the v3 plan adds it.
 source: docs/proposals/v3-plan.md 407-447 558-576
 source: test/conf/conf.d/60-agent-proxy.conf 44-55
 at: 8d1500bf0 2026-10-29
@@ -143,7 +144,7 @@ log: Step 4: the log handlers run before `access_log`, which then logs the cost 
 ```diagram
 agent-proxy-endpoints
 label: development
-caption: What the agent proxy of v3.0 answers itself, what it passes through and what it refuses, as a list of the kinds of request, each with whether it runs today or which step of the v3 plan adds it.
+caption: What the model API relay planned for v3.0 answers itself, what it passes through and what it refuses, as a list of the kinds of request, each with whether it runs today or which step of the v3 plan adds it.
 source: docs/proposals/v3-plan.md 424-447
 source: test/conf/conf.d/60-agent-proxy.conf 93-110
 at: 8d1500bf0 2026-10-29
@@ -157,7 +158,7 @@ upstream-errors: Today: an error of the upstream reaches the client with its bod
 upgrade: Step 7e: the reference proxy refuses `Upgrade`, the WebSocket transport of the Responses API
 ```
 
-The plan of the agent proxy, its protocol scope and the order of its steps
+The plan of this model API relay, its protocol scope and the order of its steps
 are in
 [Agent proxy: the v3.0 use case](../proposals/v3-plan.md#agent-proxy-the-v30-use-case)
 of the v3 plan. A sample of a planned feature appears on this page when

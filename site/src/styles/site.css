@@ -303,7 +303,7 @@ figcaption,
  * the language link, the theme toggle and GitHub with its star count. The
  * section links move into the menu below 76rem (1216 px) on English pages
  * and below 88rem (1408 px) on Japanese pages, where they no longer fit
- * beside the rest: the Japanese labels (ドキュメント, エージェントプロキシ,
+ * beside the rest: the Japanese labels (ドキュメント, model APIの中継,
  * 開発に参加する) are longer. The version link is in the footer (4.10).
  * With the star count of GitHub (997 stars; a count of four characters
  * such as 1.2K takes 4 to 5 px more), the header has, beyond its 16 px
