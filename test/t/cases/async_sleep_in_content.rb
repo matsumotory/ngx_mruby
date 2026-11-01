@@ -61,12 +61,14 @@ t.assert('async', 'Nginx.redirect to a content handler that sleeps, then a statu
   t.assert_not_include body, 'slept'
 end
 
-t.assert('async', 'Nginx::Async::HTTP.sub_request after a sleep in a content handler raises, and the request gets 500') do
+t.assert('async', 'Nginx::Async::HTTP.sub_request after a sleep in a content handler waits for the subrequest, and the handler answers') do
+  # 2.7.3 raises a RuntimeError there and answers 500; 3.0.0 lets a content
+  # handler wait for a subrequest (Q1 of docs/proposals/core-stabilization.md)
   status, raw = tcp_client(18133, "GET /sleep_then_sub_request HTTP/1.0\r\nHost: localhost\r\n\r\n")
   line, body = sleep_in_content_split(raw)
   t.assert_equal 'EOF', status
-  t.assert_equal 'HTTP/1.1 500 Internal Server Error', line
-  t.assert_not_include body, 'not sent'
+  t.assert_equal 'HTTP/1.1 200 OK', line
+  t.assert_equal 'after the sub_request:leaf', body
 end
 
 t.assert('async', 'a subrequest to a content handler that sleeps gets its output') do

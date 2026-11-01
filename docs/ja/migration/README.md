@@ -279,6 +279,16 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   Nginx.return Nginx::HTTP_FORBIDDEN if deny # 403 on both
   ```
 
+- [`Nginx::Async::HTTP.sub_request`がcontentハンドラで、`Nginx::Async.sleep`の後でも動く](../../releases/v3.0.0.ja.md#nginxasynchttpsub_requestがcontentハンドラでnginxasyncsleepの後でも動く722)：`mruby_content_handler*`のコードで、`sub_request`の周りの`RuntimeError`の`rescue`を探して削除してください。呼び出しはレスポンスを返します。
+
+  ```ruby
+  Nginx::Async.sleep 100
+  res = Nginx::Async::HTTP.sub_request "/backend"   # 2.7.3: RuntimeError, 500   3.0.0: the response
+  Nginx.rputs res.body
+  ```
+
+- [`Nginx::Async::HTTP.sub_request`で待つハンドラが、コードを1回だけ実行し、待たないときと同じように終わる](../../releases/v3.0.0.ja.md#nginxasynchttpsub_requestで待つハンドラがコードを1回だけ実行し待たないときと同じように終わる722)：ほとんどのスクリプトでは、変えるものはありません。3.0.0では、`sub_request`を呼ぶaccessハンドラとpost_readハンドラは、リクエストにつき1回だけ動きます。サブリクエストの後にコードがもう一度動くことに頼っていた処理は、サブリクエストのレスポンスを使える呼び出しの後に書いてください。
+
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
 ## ログの<wbr>監視
