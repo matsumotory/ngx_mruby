@@ -39,9 +39,11 @@
   none changes an input of the measured binary, and the fix changes
   `src/stream/` only, which the callgrind lane does not build
   (`--with-stream` is not given), so 2.7.4 and 2.7.3 measure as the same
-  binary. No public check pull request was merged before the fix, as
-  "Security fixes" in `docs/releases/README.md` asks; the check was made
-  with the private pull request of the fix and is recorded in
+  binary. "Security fixes" in `docs/releases/README.md` asks for a public
+  check pull request before the fix; none was opened, although
+  `v2.7.4.md` had existed since #704 and the check could have been made
+  before the fix. The check was made with the private pull request of
+  the fix instead, and is recorded in
   [#731](https://github.com/matsumotory/ngx_mruby/pull/731), which adds the
   advisory id to `master`.
 - Open: [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (base
@@ -50,7 +52,10 @@
   terms of the AI gateway on the site),
   [#731](https://github.com/matsumotory/ngx_mruby/pull/731) (base `master`)
   and [#732](https://github.com/matsumotory/ngx_mruby/pull/732) (base
-  `next`): the advisory id of 2.7.4.
+  `next`): the advisory id of 2.7.4, and the owner's decision of
+  2026-11-02 that a session publishes the release after the owner's
+  go-ahead, written into AGENTS.md, CLAUDE.md, `docs/releases/README.md`
+  and `docs/DEVELOPMENT.md`.
 
 ## How to use this file
 
@@ -95,9 +100,11 @@ question on who merges the pull request of the 2.7.2 release, tags
 `v2.7.2` and publishes the release ("セッションが進める (推奨)", "the session
 goes ahead"), covered 2.7.2 only, and it is carried out: the session that
 prepared the release merged #624 at 13:25 JST, tagged `v2.7.2` on
-`d5ae75547` and published the release at 13:26 JST. AGENTS.md keeps the
-rule that agents never create tags and never publish releases; nothing is
-written there unless the owner keeps the choice for later releases. The choices among the options of 4.12 of the site proposal
+`d5ae75547` and published the release at 13:26 JST. On 2026-11-02 the owner kept
+the choice for later releases ("release と tag はセッション、advisory の公開は
+本人": the session publishes the release and its tag, the owner publishes
+the advisory); #731 and #732 write it into AGENTS.md, CLAUDE.md,
+`docs/releases/README.md` and `docs/DEVELOPMENT.md`. The choices among the options of 4.12 of the site proposal
 are written in `docs/proposals/site.md` (#607). The decision of 2026-10-19
 on the perf lane of `master` (port the tests and the CI only, without
 `Nginx::Debug`) is written in #601 (its description and
