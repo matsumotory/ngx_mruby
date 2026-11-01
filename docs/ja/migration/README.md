@@ -289,6 +289,9 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 
 - [`Nginx::Async::HTTP.sub_request`で待つハンドラが、コードを1回だけ実行し、待たないときと同じように終わる](../../releases/v3.0.0.ja.md#nginxasynchttpsub_requestで待つハンドラがコードを1回だけ実行し待たないときと同じように終わる722)：ほとんどのスクリプトでは、変えるものはありません。3.0.0では、`sub_request`を呼ぶaccessハンドラとpost_readハンドラは、リクエストにつき1回だけ動きます。サブリクエストの後にコードがもう一度動くことに頼っていた処理は、サブリクエストのレスポンスを使える呼び出しの後に書いてください。
 
+- [UDPのstreamのセッションがコードを1回だけ実行し、コードが待っている間に届いたデータグラムでは始め直さない](../../releases/v3.0.0.ja.md#udpのstreamのセッションがコードを1回だけ実行しコードが待っている間に届いたデータグラムでは始め直さない727)：`listen ... udp`のサーバーのコードで`Nginx::Stream::Async.sleep`を探してください。3.0.0では、コードはセッションにつき1回だけ動き、sleepの間に届いたデータグラムでは始め直しません。
+- [`worker_shutdown_timeout`が切れたときに待っているstreamのセッションが、そこで終わる](../../releases/v3.0.0.ja.md#worker_shutdown_timeoutが切れたときに待っているstreamのセッションがそこで終わる727)：変えるものはありません。`worker_shutdown_timeout`がある設定で、タイムアウトが切れたときにまだsleepしているstreamのセッションは、sleepの後のコードを実行せずに終わります。
+
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
 ## ログの<wbr>監視
