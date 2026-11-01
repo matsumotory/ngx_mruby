@@ -1,13 +1,11 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-01 (21:44 JST)
+## State as of 2026-11-02 (01:07 JST)
 
-- Heads: `next` is `2fd422614`, the merge of
-  [#721](https://github.com/matsumotory/ngx_mruby/pull/721) (the planned AI
-  uses of v3: `docs/proposals/edge-control.md` and its guides); `master` is
-  `01a2cc7fd`, the merge of
-  [#716](https://github.com/matsumotory/ngx_mruby/pull/716); `v2.x` mirrors
-  `master`. `next` contains `master` as of the merge
+- Heads: `next` is `04dcd1f1d`, the merge of the `next` form of the fix of
+  GHSA-xjh6-6vgm-56wj from the advisory's private fork; `master` is
+  `e2aeb5ddd`, the merge of the 2.x form of that fix, where the tag `v2.7.4`
+  is; `v2.x` mirrors `master`. `next` contains `master` as of the merge
   [#701](https://github.com/matsumotory/ngx_mruby/pull/701).
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
@@ -19,6 +17,29 @@
   `Nginx::Stream::Connection#upstream_server=`, fixed by `591147b01`,
   entry 9 of [the 2.7.3 release notes](releases/v2.7.3.md)).
   #699 added the two advisory ids to the 2.7.3 release notes.
+- The release 2.7.4: the tag `v2.7.4` is on `e2aeb5ddd` (2026-11-02 01:04
+  JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.4)
+  is published. One advisory was published with it:
+  [GHSA-xjh6-6vgm-56wj](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-xjh6-6vgm-56wj) (Moderate; the stream module with
+  `listen ... proxy_protocol`: the reads of a session whose code waits in
+  `Nginx::Stream::Async.sleep`, and `proxy_protocol_addr` for a connection
+  without a PROXY source address; entries 1 and 2 of
+  [the 2.7.4 release notes](releases/v2.7.4.md) once `master` is merged into
+  `next`). `next` got the same fix in its own form, with the two entries in
+  [the 3.0.0 release notes](releases/v3.0.0.md). The check before the tag:
+  the pull requests merged into `master` from `v2.7.3` to the fix are
+  [#699](https://github.com/matsumotory/ngx_mruby/pull/699) (the advisory
+  ids of 2.7.3, docs only), [#704](https://github.com/matsumotory/ngx_mruby/pull/704)
+  (CI, its entry under "Build and test changes"),
+  [#703](https://github.com/matsumotory/ngx_mruby/pull/703) and
+  [#716](https://github.com/matsumotory/ngx_mruby/pull/716) (docs only);
+  none changes an input of the measured binary, and the fix changes
+  `src/stream/` only, which the callgrind lane does not build
+  (`--with-stream` is not given), so 2.7.4 and 2.7.3 measure as the same
+  binary. The check was made in the private pull request of the fix, not in
+  a public check pull request merged before it, because the fix created
+  `docs/releases/v2.7.4.md`; the pull request that added the advisory id to
+  `master` records it.
 - Open: [#722](https://github.com/matsumotory/ngx_mruby/pull/722) (base
   `next`, step 5 of the core stabilization) and the pull request that adds
   the ledger of the AI uses to `docs/proposals/edge-control.md` (base
