@@ -43,8 +43,8 @@ can live in files of its own:
 - `test/conf/conf.d/<name>.conf`: a fragment included at the end of the
   `http {}` block. It holds its own `server {}` on a port of its own (18110
   to 18199; 18116 is taken by the second nginx that
-  `test/t/cases/_second_instance.rb` starts, and 18180 and 18181 by the
-  nginx of `test/t/cases/_workers.rb`). Fragments for `stream {}` go
+  `test/t/cases/_second_instance.rb` starts, and 18180, 18181 and 18185 by
+  the nginx of `test/t/cases/_workers.rb`). Fragments for `stream {}` go
   to `test/conf/conf.d/stream/` (ports 12353 to 12399; 12357 is taken by the
   second nginx, and 12379 by the nginx of `_workers.rb`). Write each port as five digits in these ranges, so that
   `TEST_SH_PORT_OFFSET` moves it ("Ports" below).
@@ -805,8 +805,8 @@ The ports of the suite are the numbers from 12345 to 12399 and from 18080
 to 18199: the `listen` directives of `test/conf/`, the addresses of
 `add_listener`, the second nginx of `test/t/cases/_second_instance.rb`
 (18116 and 12357), the nginx of `test/t/cases/config_hooks.rb` (18158), the
-nginx with several workers of `test/t/cases/_workers.rb` (18180, 18181 and
-12379, in `test/conf/workers/`), the
+nginx with several workers of `test/t/cases/_workers.rb` (18180, 18181,
+18185, 12379 and 12393, in `test/conf/workers/`), the
 mock LLM upstream of `test/t/cases/_agent_proxy_client.rb` (12372 and
 12373), the stream-only test of `test/t/ngx_mruby.rb` (12399), and the
 ports that the tests, the hook scripts and the expected outputs of
@@ -887,14 +887,15 @@ prelude helper `workers_nginx(mode)`, as other cases run
 it, and prints `key=value` lines, which `workers_nginx` returns as a Hash
 of each key to the Array of its values; the case asserts on them. The
 other cases keep the single process, and the test nginx of `test.sh` does
-not change. `test/t/cases/workers.rb` has the two modes of today:
+not change. `test/t/cases/workers.rb` has the three modes of today:
 
 | Mode | Configuration | Workers | Ports | What the case asserts |
 |---|---|---|---|---|
 | `isolation` | `test/conf/workers/isolation.conf` | 4 | 18180 | Requests to `/worker`, one per connection, until every worker has answered at least twice (at most 200). Each answer is `200` with the pid of its worker (`Nginx::Var#pid`), a pid of one of the four workers, and the count of each handler of the location (`mruby_set_code`, the rewrite, access and content handlers) in a global variable of the state: in the answers of one worker the counts go 1, 2, 3, ..., the same for the four handlers, so each worker has an mrb_state of its own that its requests share. Every worker answered. |
 | `reload` | `test/conf/workers/reload.conf` | 2 | 18181, stream 12379 | A request to `/sleep` and a stream session start, whose handlers sleep (`Nginx::Async.sleep`, `Nginx::Stream::Async.sleep`) until the file `release` exists. The helper writes the configuration of generation 2 and a new `script.rb` (read with `mruby_content_handler ... cache`), and sends SIGHUP to the pid of the pid file. `/generation` then answers for generation 2 from a new worker, while both sleeps are still in flight, every old worker has logged `gracefully shutting down`, and the workers that hold the sleeps still run (an old worker without a sleep in flight may have ended). `/script` then answers with the new script from a new worker: it is read after the old workers have logged that they shut down, because until then an old worker may still accept a connection and answer with the script that it cached. After `release`, the old workers answer with generation 1 (`200` with the pid of the worker that started the sleep, and `stream generation 1`), each after its `gracefully shutting down` in the error log, and then end. Generation 2 answers on both protocols from two new workers. |
+| `shutdown` | `test/conf/workers/shutdown.conf` | 1 | 18185, stream 12393 | `worker_shutdown_timeout 1s`. A request to `/sleep` and a stream session start, whose handlers sleep for up to 10 seconds (`Nginx::Async.sleep`, `Nginx::Stream::Async.sleep`). The helper sends SIGHUP and waits until the old worker has ended: it ends less than 5 seconds after the reload, when the timeout has made nginx set `c->close` on the session and call its read handler, which ends the wait and the session. The session gets no bytes (the `return` of the server does not run), and the code logged that it started once and never that it resumed. nginx terminated the request: it gets no bytes, and its handler never logged that it resumed. |
 
-Both modes also assert on the end of the run: the stop gives `master
+The modes also assert on the end of the run: the stop gives `master
 exited 0` with every worker of every generation ended, the error log has
 no line at the level `error` or above (`error`, `crit`, `alert`, `emerg`),
 no sanitizer line is in its logs, and under valgrind the `ERROR SUMMARY` of

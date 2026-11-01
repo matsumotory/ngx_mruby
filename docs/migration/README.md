@@ -482,6 +482,16 @@ not enough, and show the change.
   counted on the code running again after the subrequest goes after the
   call, where its response is available.
 
+- [A UDP stream session runs its code once: datagrams that arrive while the code waits do not start it again](../releases/v3.0.0.md#a-udp-stream-session-runs-its-code-once-datagrams-that-arrive-while-the-code-waits-do-not-start-it-again-727):
+  look for `Nginx::Stream::Async.sleep` in the code of `listen ... udp`
+  servers. On 3.0.0 the code runs once for the session; datagrams that
+  arrive during the sleep do not start it again.
+- [A stream session that waits when `worker_shutdown_timeout` expires ends then](../releases/v3.0.0.md#a-stream-session-that-waits-when-worker_shutdown_timeout-expires-ends-then-727):
+  nothing to change; with `worker_shutdown_timeout`, a stream session whose
+  code still sleeps when the timeout expires ends without the code after
+  the sleep. A waiting session of a server with `listen ... proxy_protocol`
+  is not covered; another change handles it.
+
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out
 `.` and `..` (see [New features](../releases/v3.0.0.md#new-features)).

@@ -6,7 +6,7 @@
 # CRuby, as other cases run test/t/cases/_second_instance.rb (see "Several
 # workers and reloads" in docs/test/README.md).
 #
-# Usage: ruby test/t/cases/_workers.rb isolation|reload
+# Usage: ruby test/t/cases/_workers.rb isolation|reload|shutdown
 #
 # NGINX_INSTALL_DIR names the nginx that test.sh installed. The nginx of a
 # mode uses the prefix NGINX_INSTALL_DIR/workers/MODE/ and the configuration
@@ -27,6 +27,9 @@
 #   the master, waits until generation 2 answers and every old worker has
 #   logged "gracefully shutting down", then writes "release" and reads the
 #   answers of the two sleeps.
+# shutdown: one worker and worker_shutdown_timeout 1s. The script starts a
+#   request to /sleep and a stream session, whose handlers sleep for up to
+#   10 seconds, sends SIGHUP, and waits until the old worker has ended.
 #
 # The script prints one "key=value" line for each observation; the key
 # response comes once for each request. The keys:
@@ -69,6 +72,15 @@
 #   valgrind        under valgrind with "%p" in --log-file, once for the
 #                   master and once for each worker: "PID:N", N the errors
 #                   that its ERROR SUMMARY counts, or "PID:no summary"
+#   shutdown_session  shutdown: the bytes of the stream session that slept
+#                   across the reload
+#   shutdown_seconds  shutdown: the seconds from the SIGHUP until the old
+#                   worker ended
+#   shutdown_started, shutdown_resumed  shutdown: how many times the stream
+#                   code logged that it started and that it resumed
+#   shutdown_request  shutdown: the bytes of the request to /sleep
+#   shutdown_http_resumed  shutdown: how many times the handler of /sleep
+#                   logged that it resumed
 #   seconds         the time of the whole run
 #   error           only when a step failed; the keys of the later steps are
 #                   then missing
@@ -85,6 +97,7 @@ LIMIT = Float(ENV['NGINX_HEATTIME'] || 60)
 MODES = {
   'isolation' => { workers: 4, http: [18180], stream: [] },
   'reload' => { workers: 2, http: [18181], stream: [12379] },
+  'shutdown' => { workers: 1, http: [18185], stream: [12393] },
 }.freeze
 
 ERROR_LEVEL = /\[(error|crit|alert|emerg)\]/.freeze
@@ -447,6 +460,35 @@ def run_reload(nginx)
   out 'stream_after', exchange(stream)
 end
 
+def run_shutdown(nginx)
+  stream = MODES['shutdown'][:stream][0]
+  old = nginx.start(1)
+  out 'workers', old.join(',')
+  out 'master', nginx.pid
+  out 'pid_file', nginx.pid_file
+  http = MODES['shutdown'][:http][0]
+  request = Thread.new { exchange(http, "GET /sleep HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n") }
+  session = Thread.new { exchange(stream) }
+  wait_until('the http and stream sleeps to start') do
+    lines = nginx.log
+    %w[http stream].all? { |w| lines.any? { |l| l.include?("workers shutdown: #{w} sleep started") } }
+  end
+  reloaded_at = now
+  nginx.reload(2)
+  wait_until('the old worker to end') { old.none? { |p| nginx.alive?(p) } }
+  out 'shutdown_seconds', format('%.2f', now - reloaded_at)
+  raise "shutdown_session: no close within #{LIMIT} seconds" unless session.join(LIMIT)
+
+  out 'shutdown_session', session.value
+  raise "shutdown_request: no close within #{LIMIT} seconds" unless request.join(LIMIT)
+
+  out 'shutdown_request', request.value
+  lines = nginx.log
+  out 'shutdown_http_resumed', lines.count { |l| l.include?('workers shutdown: http sleep resumed') }
+  out 'shutdown_started', lines.count { |l| l.include?('workers shutdown: stream sleep started') }
+  out 'shutdown_resumed', lines.count { |l| l.include?('workers shutdown: stream sleep resumed') }
+end
+
 mode = ARGV[0]
 unless MODES.key?(mode)
   out 'error', "unknown mode #{mode.inspect}"
@@ -456,7 +498,11 @@ end
 started_at = now
 nginx = WorkersNginx.new(mode)
 begin
-  mode == 'isolation' ? run_isolation(nginx) : run_reload(nginx)
+  case mode
+  when 'isolation' then run_isolation(nginx)
+  when 'reload' then run_reload(nginx)
+  else run_shutdown(nginx)
+  end
 rescue StandardError => e
   out 'error', "#{e.class}: #{e.message}"
 ensure
