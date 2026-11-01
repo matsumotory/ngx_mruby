@@ -1319,6 +1319,17 @@ acceptance; the interaction check covers that separately.
   to the same page in the other language. No language is picked from
   `Accept-Language` or location; no flags. The site component renders a
   plain link, which works without JavaScript.
+- **Section links and the menu.** The section links stand in the header
+  from 76rem (1216 px) on English pages and from 88rem (1408 px) on
+  Japanese pages. Below that they are in the menu: behind the menu button
+  on pages without a sidebar, at the top of the sidebar on pages with one.
+  The Japanese labels (ドキュメント, エージェントプロキシ, 開発に参加する)
+  are longer than the English ones. In Chromium, with or without the
+  sidebar, the header holds every item on one line inside its padding
+  from 1168 px in English, and in Japanese from 1384 px in Hiragino Sans
+  and 1376 px in Noto Sans JP; 88rem stays above both. The labels of the header do not
+  break inside a word (`white-space: nowrap`). The owner on 2026-11-01:
+  「英語はいいんやけど、日本語のとき、英語のヘッダーがバーガーメニューに切り替わるタイミングだとヘッダーの文字列が折れ曲がる。もっとはやくハンバーガーメニューにしないといけないっぽい」.
 - **Narrow screens** (640 px and below): logo, wordmark, search, the theme
   toggle and the menu button stay. The language link becomes the first item
   of the menu, under the heading "Language", as on the profile site; the
@@ -1338,7 +1349,8 @@ acceptance; the interaction check covers that separately.
   each linking to its workflow's runs on that branch; OpenSSF Best
   Practices, linking to project 16057; and the license, an SVG of the site
   in the flat style of the OpenSSF badge without its gradient (4.3, item
-  5), linking to the `MITL` file of that branch. The owner decided on 2026-11-01 that the badges stand above
+  5), linking to the `LICENSE` file of that branch, as the footer does.
+  The owner decided on 2026-11-01 that the badges stand above
   the hero heading and not in the footer:
   「footerにおいても誰もみないからなぁ、開発プロセスちゃんとやって理という意味では見せるべきな気がするので」.
   A CI badge shows only the branch that its page describes, so the status
@@ -1363,8 +1375,11 @@ acceptance; the interaction check covers that separately.
   `check-live.mjs` fetches the real images after the deploy, with retries.
 - Check: each page's language link answers 200 with the same path under the
   other prefix; `/` with `Accept-Language: ja` returns English without a
-  redirect; in the two configured patterns the header’s items fit on one row without
-  overlap, in both languages.
+  redirect; in Chromium at 1440 px, in both languages, with and without
+  the sidebar, the header holds the section links and every item of the
+  header is on one line, inside its content box and without overlap
+  (`check-styles.mjs`); the built CSS shows the section links from 76rem
+  on English pages and from 88rem on Japanese pages (`check-css.mjs`).
 
 ### 4.11 What the owner's practice forbids and what research supports
 
