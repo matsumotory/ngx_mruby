@@ -1557,7 +1557,7 @@ Nginx::Async.sleep 3000    # Sleep 3000 millisec
 ### Nginx::Async::HTTP#sub_request(location, string_or_hash=nil)
 
 Sends a sub request in non-blocking way, waits for its end, and returns its response, an `Nginx::Async::HTTP::Response` with the same status, headers and body as `Nginx::Async::HTTP.last_response` (since 3.0.0; 2.x returns `nil`).
-It's supported in the set, post_read, server rewrite, rewrite, access and content handlers.
+It's supported in the post_read, server rewrite, rewrite, access and content handlers; in an `mruby_set*` handler nginx does not wait for the subrequest, as described under [Nginx.rputs](#nginxrputsstring).
 When the subrequest ends, nginx calls the handler again, which goes on with the code after the call, and the phase of the handler handles its result as for a handler that did not wait, as after [Nginx::Async#sleep](#nginxasyncsleepmsec); the code of the handler runs once.
 A content handler can wait for it also after `Nginx::Async.sleep` (since 3.0.0; 2.7.3 raises a `RuntimeError` there, because nginx would not finish the request after the subrequest).
 Like `Nginx::Async.sleep`, it raises a `RuntimeError` in a log handler and in

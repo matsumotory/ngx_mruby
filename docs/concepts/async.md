@@ -52,9 +52,10 @@ resume: nginx calls the handler again, which resumes the fiber; when the code en
   caller continues and can answer the request itself.
 - A content handler can wait for `Nginx::Async::HTTP.sub_request`, also
   after `Nginx::Async.sleep`, since 3.0.0; 2.7.3 raises `RuntimeError`
-  there. In `mruby_set`, the request waits for the subrequest before the
-  variable is set. In header/body filters and the log handler, both async
-  methods raise `RuntimeError`.
+  there. In `mruby_set`, a subrequest does not hold the request: nginx
+  continues to the content phase without waiting for the variable. In
+  header/body filters and the log handler, both async methods raise
+  `RuntimeError`.
   See [the 2.7.3 behavior changes](../releases/v2.7.3.md) and
   [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec).
 - Code that waits in `sleep` of mruby-sleep, a socket of mruby-socket, a
