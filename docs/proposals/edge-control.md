@@ -4,6 +4,10 @@ Status: design direction requested on 2026-11-01. This proposal records what v3
 should enable, not completed features or a commitment to ship every recipe in
 v3.0. The public [use-case guide](../guides/edge-control.md) and homepage distinguish
 this direction from the tested agent-proxy mechanisms on `next`.
+Next step: the first mock recipe, MCP tool authorization with two tenants and
+read/write mock tools ("Tool authorization and tenant validation" below). It
+starts after the core stabilization of Pillar B, beside step 7 of the plan, and
+is tracked in the queue of [docs/HANDOFF.md](../HANDOFF.md).
 
 ## Purpose
 

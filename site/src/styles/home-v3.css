@@ -118,7 +118,9 @@ html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
 
 /* Future use cases reuse the existing type and spacing, without nested cards. */
 .direction-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-7); margin-top: var(--space-6); }
-.direction-list > div { min-width: 0; }
+/* The grid's gap spaces the items; the content flow's margin between siblings
+   would push the second item of the first row 16px below the first. */
+.direction-list > div { min-width: 0; margin: 0; }
 .direction-list h3 { margin: 0; }
 .direction-list p { color: var(--color-text-muted); margin: var(--space-3) 0 var(--space-4); }
 .home-v3 .direction-plan { margin-top: var(--space-6); }
