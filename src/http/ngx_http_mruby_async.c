@@ -321,7 +321,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
   ngx_mrb_fiber_outcome_t outcome;
   ngx_http_mrb_fiber_t *f;
   ngx_flag_t has_result;
-  ngx_int_t result;
+  ngx_int_t result = NGX_OK;
   int ai;
 
   ai = mrb_gc_arena_save(re->mrb);
@@ -513,9 +513,15 @@ static void ngx_http_mrb_wait_handler(ngx_http_request_t *r)
   }
 
   if (f == NULL || f->base.state != NGX_MRB_FIBER_READY) {
-    // not reached: nothing but the handler's call clears the record while
-    // this handler is set, and nginx does not call the write event handler
-    // of a request that it terminated
+    // An mruby_set handler that called Nginx::Async::HTTP.sub_request after
+    // its sleep waits for the subrequest without a record here (its end is
+    // the old path of ngx_mrb_post_fiber), and nginx runs this handler when
+    // the subrequest ends: the request ends with 500 instead of running the
+    // code of the mruby_set again. Step 8 of section 8 of
+    // docs/proposals/core-stabilization.md makes sub_request raise there.
+    // Otherwise nothing but the handler's call clears the record while this
+    // handler is set, and nginx does not call the write event handler of a
+    // request that it terminated.
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                   "%s ERROR %s:%d: the request waits, but no handler of it is ready to resume", MODULE_NAME, __func__,
                   __LINE__);

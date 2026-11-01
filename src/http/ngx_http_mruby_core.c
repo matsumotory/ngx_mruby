@@ -264,7 +264,9 @@ static ngx_int_t ngx_mrb_send_empty_body(ngx_http_request_t *r)
  * body, and the other handlers return NGX_OK. A rewrite or server rewrite
  * handler without a result still returns the value in
  * r->headers_out.status; the next step of section 8 of the proposal makes
- * them go on to the next phase handler instead (decision (b)).
+ * them go on to the next phase handler instead (decision (b)). So does a
+ * handler whose request an internal redirect of Nginx.redirect sent
+ * elsewhere, until step 7.
  *
  * A post_read or access handler that sends its output returns NGX_HTTP_OK,
  * so that its phase checker finalizes the request, as the rewrite and
@@ -280,7 +282,15 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
 
   chain = ctx->rputs_chain;
 
-  if (!has_result && (kind == NGX_HTTP_MRUBY_HANDLER_REWRITE || kind == NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE) &&
+  // Without a result of its own, a rewrite or server rewrite handler, and a
+  // handler that sent the request elsewhere with Nginx.redirect (an internal
+  // redirect replaced the module context it ran with, and the target has
+  // answered), return the status in r->headers_out.status, as before. Steps
+  // 4 and 7 of section 8 of docs/proposals/core-stabilization.md replace
+  // both.
+  if (!has_result &&
+      (kind == NGX_HTTP_MRUBY_HANDLER_REWRITE || kind == NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE ||
+       ngx_http_get_module_ctx(r, ngx_http_mruby_module) != ctx) &&
       r->headers_out.status >= 100) {
     has_result = 1;
     result = (ngx_int_t)r->headers_out.status;
