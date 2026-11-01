@@ -529,7 +529,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   what counts as an error and the suppressions).
 - `test.sh` listens on fixed ports (18080-18090, 18101-18103, 18110-18131,
   18133-18139, 18143-18144, 18147-18158, 18171-18174, 12345-12359,
-  12363-12365, 12368-12369, 12374-12378, 12390-12391; 18116 and 12357 belong to the second nginx that
+  12363-12365, 12368-12369, 12374-12378, 12384-12388, 12390-12391; 18116, 12357 and 12385-12388 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18158 to the nginx that
   `test/t/cases/config_hooks.rb` starts, 18173 and 18174 to the nginx that
   `test/t/cases/auto_ssl.rb` starts, 12399 to a test in

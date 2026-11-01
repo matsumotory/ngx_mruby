@@ -1834,6 +1834,22 @@ server {
 }
 ```
 
+### Nginx::Stream::Connection.{proxy_protocol_addr,proxy_protocol_ip}
+
+On a `listen ... proxy_protocol`, returns the source address of the PROXY protocol header that nginx read when the connection was accepted, as a String. `proxy_protocol_ip` is another name of the same method, and both are also instance methods. The method returns `nil` when the connection has no such address: on a listen without `proxy_protocol`, and for the headers `PROXY UNKNOWN` (version 1) and `LOCAL` (version 2). This holds since 2.7.4.
+
+```nginx
+server {
+    listen 127.0.0.1:12350 proxy_protocol;
+    mruby_stream_code '
+      if Nginx::Stream::Connection.proxy_protocol_addr != "192.0.2.10"
+        Nginx::Stream::Connection.stream_status = Nginx::Stream::ABORT
+      end
+    ';
+    proxy_pass static_server0;
+}
+```
+
 ## Nginx::Stream::Async Class
 ### Method
 #### Nginx::Stream::Async#sleep
@@ -1841,6 +1857,8 @@ Do non-blocking sleep. It works in the code of `mruby_stream` and `mruby_stream_
 
 After the sleep, the session goes on as it does when the code does not sleep, by the result of the code: the next handler for `Nginx::Stream::DECLINED` (the default of `Nginx::Stream::Connection.stream_status`), the next phase for `Nginx::Stream::OK`, the wait of the session for `Nginx::Stream::DONE` and `Nginx::Stream::AGAIN`, and the end of the session for `Nginx::Stream::ABORT` or another status, and for an exception, which `error.log` records.
 This holds since 2.7.3; up to 2.7.2 a session whose code raised or set a status other than `Nginx::Stream::DECLINED` after the sleep was neither ended nor continued, and an exception after the sleep also aborted the next session.
+
+While the code of a TCP session sleeps, nginx reads nothing from the client, also on a `listen ... proxy_protocol`: the bytes that the client sends then stay for the phase after the code, such as `proxy_pass`, which sends them to the upstream. When `worker_shutdown_timeout` expires during the sleep, the session ends. This holds since 2.7.4. A UDP session is not changed: each datagram of its client during the sleep runs the code again.
 
 ```ruby
 # sleep 3000 millisec

@@ -38,8 +38,8 @@ can live in files of its own:
   `http {}` block. It holds its own `server {}` on a port of its own (18110
   and up; 18116 is taken by the second nginx that
   `test/t/cases/_second_instance.rb` starts). Fragments for `stream {}` go
-  to `test/conf/conf.d/stream/` (ports 12353 and up; 12357 is taken by the
-  second nginx).
+  to `test/conf/conf.d/stream/` (ports 12353 and up; 12357 and 12385 to
+  12388 are taken by the second nginx).
 - `test/t/cases/<name>.rb`: a test file run after `test/t/ngx_mruby.rb`,
   with `test/t/cases/_prelude.rb` prepended. The prelude defines `base`,
   `base_ssl`, `http_host`, `html_path`, `nginx_t` (runs `nginx -t` on a
