@@ -1,31 +1,28 @@
 name: site-v2
 
-# The 2.x pages of ngx.mruby.org before a change to them merges
-# (docs/proposals/site.md on next, 5.3 and step 6 of section 6). The site
-# is built from site/ of next, with its 3.x pages from next and its 2.x
-# pages under /v2/ from this pull request's docs/, and the checks of step 6
-# run on it: the relative links and anchors of the sources of the 2.x
+# The 2.x pages of ngx.mruby.org built from the docs/ of a branch of
+# master (docs/proposals/site.md on next, 5.3 and step 6 of section 6),
+# on "Run workflow" only (gh workflow run site-v2.yml --ref <branch>).
+# The site is built from site/ of next, with its 3.x pages from next and
+# its 2.x pages under /v2/ from the branch's docs/, and the checks of step
+# 6 run on it: the relative links and anchors of the sources of the 2.x
 # pages, no broken link in the built site (under /v2/ too), the banner of
 # 3.4 on every 2.x page, the version links, and 2.x and 3.x search results
 # that do not mix. The built site is uploaded as the workflow artifact
-# site-v2. site.yml of next builds the same site from master on every push
-# to next and on every push to master (site-dispatch.yml).
+# site-v2.
 #
-# It runs on every ready pull request to master, without a path filter:
-# the 2.x pages link to files anywhere in the repository (.travis.yml,
-# nginx_version, the workflows, ...), and the generator stops on a link to
-# a file that git does not track, so a pull request that removes or
-# renames such a file fails here. A draft runs nothing, and marking it
-# ready for review starts the run.
+# Pull requests and pushes do not run it. The owner decided on 2026-11-02
+# that CI is not relied on for what runs locally ("Decisions" of
+# docs/HANDOFF.md on next): the author of a pull request to master that
+# changes docs/ runs these checks locally ("The 2.x pages of the site" in
+# docs/test/README.md), and every push to master starts site.yml on next
+# through site-dispatch.yml, which builds /v2/ from the new master, checks
+# it and fails before it deploys. A run on a push here would repeat that
+# run.
 on:
-  pull_request:
-    # GitHub's defaults (opened, synchronize, reopened) and the move of a
-    # draft to ready for review: a draft runs nothing (the job's if).
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - master
+  workflow_dispatch:
 
-# A new push to a pull request cancels the run for its previous commit.
+# One run per branch; a newer run cancels the older one.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -44,13 +41,12 @@ env:
 
 jobs:
   build:
-    if: github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      # The pull request (its merge commit) with the whole history: the
-      # last-updated date of each 2.x page is the date of the last commit
-      # that changed its source (git log).
+      # The branch with the whole history: the last-updated date of each
+      # 2.x page is the date of the last commit that changed its source
+      # (git log).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -77,7 +73,7 @@ jobs:
           npm run build
       # The generator stops on a link of docs/ to a file that git does not
       # track.
-      - name: Build the 2.x pages under /v2/ from the pull request's docs/
+      - name: Build the 2.x pages under /v2/ from the branch's docs/
         id: v2
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: next/site
