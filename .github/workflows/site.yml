@@ -130,44 +130,6 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
         run: node scripts/build-v2.mjs --tree "$GITHUB_WORKSPACE/master"
-      # Migration-only gate: ordinary later content changes must not equal
-      # their base. This branch-scoped comparison ends when this PR merges.
-      # Compare the prior default site with the current site. The head
-      # output remains the artifact; the same master input builds both v2s.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: ${{ !cancelled() && steps.v2.outcome == 'success' && github.head_ref == 'codex/astro-final-migration' }}
-        with:
-          # The base of the accepted commit below (its merge-base with next),
-          # so that both sides have the same documents.
-          ref: 782e1893547d7ceeae0f306212d838970d199e1d
-          path: site-parity-base
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Install the base site's locked dependencies
-        if: ${{ !cancelled() && steps.v2.outcome == 'success' && github.head_ref == 'codex/astro-final-migration' }}
-        working-directory: site-parity-base/site
-        run: npm ci --ignore-scripts
-      # The replacement is compared at the commit where it is complete and
-      # the pages are still set for 390 px (5.4, acceptance 1). The commits
-      # after it move the phone pattern to 402 px, grow the root size at
-      # narrow widths and fix the text of two pages, so the head differs
-      # from the base by design; the checks of this job and the browser
-      # lanes cover the head.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: ${{ !cancelled() && steps.v2.outcome == 'success' && github.head_ref == 'codex/astro-final-migration' }}
-        with:
-          ref: 127f82208f59e0a988439efa1d127df8d7909317
-          path: site-parity-accept
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Install the accepted site's locked dependencies
-        if: ${{ !cancelled() && steps.v2.outcome == 'success' && github.head_ref == 'codex/astro-final-migration' }}
-        working-directory: site-parity-accept/site
-        run: npm ci --ignore-scripts
-      - name: Compare the base commit site with the current Astro site
-        if: ${{ !cancelled() && steps.v2.outcome == 'success' && github.head_ref == 'codex/astro-final-migration' }}
-        working-directory: site-parity-accept/site
-        run: node scripts/check-shells.mjs --base-tree "$GITHUB_WORKSPACE/site-parity-base" --v2-tree "$GITHUB_WORKSPACE/master" --evidence "$RUNNER_TEMP/site-parity"
       - name: Test the generator fixtures and release-state classification
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: ${{ runner.temp }}/fresh/site
@@ -316,13 +278,6 @@ jobs:
         run: |
           node scripts/ci-artifact.mjs --write
           tar -czf "$RUNNER_TEMP/site-validation.tar.gz" dist generated/pages.json generated/pages-v2.json generated/ci-scope.json generated/ci-identity.json
-      - name: Upload base/head comparison inputs
-        if: ${{ github.head_ref == 'codex/astro-final-migration' }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: site-parity-input
-          path: ${{ runner.temp }}/site-parity
-          if-no-files-found: error
       - name: Upload the same-run browser input
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -394,17 +349,6 @@ jobs:
           LANE: ${{ matrix.lane }}
           MEASURE_SCOPE: ${{ (inputs.measure_scope || needs.build.outputs.measure_scope == 'true') && matrix.lane == 'styles-chromium' }}
         run: node scripts/ci-browser.mjs "$LANE"
-      - name: Download base/head comparison input
-        if: ${{ github.head_ref == 'codex/astro-final-migration' && matrix.lane == 'screenshots' && needs.build.outputs.browser_mode != 'none' }}
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: site-parity-input
-          path: ${{ runner.temp }}/site-parity
-          digest-mismatch: error
-      - name: Compare base/head layout and save side-by-side evidence
-        if: ${{ github.head_ref == 'codex/astro-final-migration' && matrix.lane == 'screenshots' && needs.build.outputs.browser_mode != 'none' }}
-        working-directory: site
-        run: node scripts/check-layout-parity.mjs --base "$RUNNER_TEMP/site-parity/base" --head "$RUNNER_TEMP/site-parity/head" --out build-screenshots/parity --ja-face noto
       - name: Keep screenshots, including partial evidence on failure
         if: ${{ !cancelled() && matrix.lane == 'screenshots' && needs.build.outputs.browser_mode != 'none' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -576,7 +520,9 @@ jobs:
         working-directory: site
         run: |
           npm ci --ignore-scripts
-          npx playwright install --with-deps chromium
+          # screenshots-live.mjs captures both patterns of lib/patterns.mjs:
+          # Chromium at 1440 px and WebKit at 402 px.
+          npx playwright install --with-deps chromium webkit
       - name: Match artifact SHA, deployment SHA and the public deployment policy
         working-directory: site
         env:

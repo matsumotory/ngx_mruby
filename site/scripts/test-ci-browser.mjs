@@ -73,6 +73,8 @@ console.log('Maintenance suite receives bound generated manifests as well as HTM
 assert.ok(maintenance.includes('node scripts/test-read-only-browser.mjs'));
 assert.ok(maintenance.includes('node scripts/screenshots-live.mjs --local --out build-screenshots/predeploy-smoke'));
 assert.ok(workflow.includes('  verify-live:'));
+// The live screenshots take both patterns, so the job installs both engines.
+assert.ok(workflow.split('  verify-live:')[1].includes('npx playwright install --with-deps chromium webkit'), 'verify-live installs Chromium and WebKit');
 assert.ok(workflow.includes('node scripts/check-public-deployment.mjs --sha'));
 assert.ok(workflow.includes('node scripts/check-live.mjs --no-gh'));
 assert.ok(workflow.includes('measure_scope: ${{ steps.scope.outputs.measure_scope }}'));
@@ -81,9 +83,9 @@ console.log('Publication regression checks and policy-only measurement wiring: P
 assert.ok(workflow.includes('node scripts/check-project-badges.mjs'));
 console.log('Project badge markup and 1440px/402px checks of the row above the index headings remain wired after lane integration: PASS');
 
-// Base/head identity is a migration acceptance gate, not a ban on future edits.
-for (const name of ['Compare the base commit site with the current Astro site', 'Upload base/head comparison inputs', 'Download base/head comparison input', 'Compare base/head layout and save side-by-side evidence']) {
-  const step = workflow.split(`- name: ${name}\n`)[1].split('      - ')[0];
-  assert.ok(step.includes("github.head_ref == 'codex/astro-final-migration'"), `${name}: migration-only gate`);
+// The base/head comparison of the Starlight replacement ran only on that
+// pull request (#713); later content changes are not compared with their base.
+for (const word of ['site-parity', 'astro-final-migration', 'check-shells.mjs', 'check-layout-parity.mjs']) {
+  assert.ok(!workflow.includes(word), `no base/head comparison step is left in site.yml (${word})`);
 }
 console.log('Migration comparison does not block future content PRs: PASS');
