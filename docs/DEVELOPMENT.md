@@ -134,13 +134,20 @@ state, and one timer event, which each sleep arms again.
 - The `RProc` of the code is prepared once, when the code is compiled or
   loaded (`ngx_mrb_fiber_prepare_proc`), not on every run.
 
-| State | Entered when | Left when |
-|---|---|---|
-| `RUNNING` | the fiber is created, or resumed | the fiber yields (`WAITING`), returns (`DONE`) or raises (`FAILED`) |
-| `WAITING` | the code armed a timer or posted a subrequest and yielded | the timer fires or the subrequest ends (`READY`), or the owner ends (`CANCELLED`) |
-| `READY` | the wake | the handler resumes the fiber (`RUNNING`), or the owner ends (`CANCELLED`) |
-| `DONE`, `FAILED` | the fiber ended; its slot is freed | never: the record is freed with its pool |
-| `CANCELLED` | the owner hook ran while the fiber was `WAITING` or `READY` | never: the fiber is not resumed, so the rest of its code, an `ensure` clause included, does not run |
+The states of a record:
+
+- `RUNNING`: the fiber was created or resumed. It becomes `WAITING` when the
+  fiber yields, `DONE` when it returns and `FAILED` when it raises.
+- `WAITING`: the code armed a timer or posted a subrequest and yielded. It
+  becomes `READY` when the timer fires or the subrequest ends, and
+  `CANCELLED` when the owner ends.
+- `READY`: the wake marked the record. It becomes `RUNNING` when the handler
+  resumes the fiber, and `CANCELLED` when the owner ends.
+- `DONE` and `FAILED`: the fiber ended, and its slot is freed. The record
+  stays in this state until its pool is freed.
+- `CANCELLED`: the owner hook ran while the record was `WAITING` or
+  `READY`. The fiber is not resumed, so the rest of its code, an `ensure`
+  clause included, does not run.
 
 ### Who owns what
 
@@ -263,12 +270,20 @@ of a subrequest as the value of its `Fiber.yield`.
 
 ### What ends a wait from outside
 
-| Event | HTTP | Stream |
-|---|---|---|
-| The client closes the connection | HTTP/1.x: nginx does not read from the client while the phases run (`ngx_http_block_reading`), so the wait goes on and the code resumes; nginx ends the request when it cannot write the response | TCP: the read event runs the handler, which returns `NGX_DONE` without reading, so the wait goes on, and the close is seen after the code resumes. UDP: no close |
-| A reload or SIGQUIT | the old worker finishes the waits: their timers are not cancelable, so the worker waits for them | the same |
-| `worker_shutdown_timeout` expires | nginx terminates the request; its cleanup runs the owner hook, which deletes the timer and cancels the record | the handler cancels the wait and ends the session (above) |
-| SIGTERM | no hook runs; `mrb_close` in the cleanup of the cycle pool frees the fibers | the same |
+- The client closes the connection. HTTP/1.x: nginx does not read from the
+  client while the phases run (`ngx_http_block_reading`), so the wait goes
+  on and the code resumes; nginx ends the request when it cannot write the
+  response. A TCP stream session: the read event runs the handler, which
+  returns `NGX_DONE` without reading, so the wait goes on, and the close is
+  seen after the code resumes. A UDP session has no close.
+- A reload or SIGQUIT. The old worker finishes the waits of HTTP and of
+  stream: their timers are not cancelable, so the worker waits for them.
+- `worker_shutdown_timeout` expires. HTTP: nginx terminates the request,
+  and its cleanup runs the owner hook, which deletes the timer and cancels
+  the record. Stream: the handler cancels the wait and ends the session, as
+  above.
+- SIGTERM. No hook runs, in HTTP or in stream; `mrb_close` in the cleanup
+  of the cycle pool frees the fibers.
 
 No test covers HTTP/2 or HTTP/3 yet: the harness has no client for them.
 
