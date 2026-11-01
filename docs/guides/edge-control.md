@@ -32,6 +32,8 @@ A configured profile can return protocol-correct retry guidance without deciding
 whether the AI has completed its investigation. Rate signals alone do not identify
 a semantic loop; test legitimate repeated reads before enforcing a heuristic.
 
+The ledger rows [MCP tool authorization and tenant validation](../proposals/edge-control.md#uc-mcp-tool-auth) and [loop and burst protection](../proposals/edge-control.md#uc-mcp-burst) list the features these uses need and their status.
+
 ### Adapt the interface, not the domain
 
 A configured client profile can offer granular tools or a `search`/`fetch` entry
@@ -43,6 +45,8 @@ Progressive document retrieval lets the AI read a bounded passage and ask for
 more. The backend owns source IDs, versions, offsets and continuation tokens.
 The proxy may select that profile or enforce budgets, but must not cut JSON/SSE
 or invent a continuation. The client must know when the source is incomplete.
+
+The ledger rows [client-specific tool profiles](../proposals/edge-control.md#uc-mcp-profiles) and [progressive document retrieval](../proposals/edge-control.md#uc-mcp-progressive) list the features these uses need and their status.
 
 ### Guide and observe the next step
 
@@ -58,6 +62,8 @@ not an MCP session. Non-blocking export needs the planned queue described below.
 Search and reading tools can interact with the user's usual AI to produce
 Agentic RAG, while that AI keeps planning and stopping. Let clients evolve
 without making the gateway another agent orchestration engine.
+
+The ledger rows [next-step guidance](../proposals/edge-control.md#uc-mcp-recovery) and [interaction trajectories](../proposals/edge-control.md#uc-mcp-trajectory) list the features these uses need and their status.
 
 ## LLM fallback policy
 
@@ -83,6 +89,8 @@ inside one location needs the planned balancer API. The
 [provider transport plan](agent-proxy.md#implementation-status-and-the-v3-target)
 keeps this distinct from today's mock relay.
 
+The ledger row [LLM API fallback](../proposals/edge-control.md#uc-llm-fallback) lists the features this use needs and its status.
+
 ## AI crawler traffic policy
 
 A site or API operator wants to protect an expensive endpoint while keeping a
@@ -101,6 +109,8 @@ A honeypot is an optional isolated route, not a default punishment or a claim of
 bot detection. It must not expose private data, trigger outbound work or consume
 unbounded resources. Shared adaptive counters and their reload behavior remain
 part of the planned shared-dictionary work, not a distributed quota service.
+
+The ledger row [AI crawlers and bots](../proposals/edge-control.md#uc-bot-policy) lists the features this use needs and its status.
 
 ## Cache and telemetry hooks
 
@@ -123,6 +133,8 @@ and invalidation. On a timeout or an
 uncertain match, use the original upstream. Do not cache tool side effects or
 claim that similar prompts have equivalent answers without domain-specific tests.
 
+The ledger rows [telemetry from the log handler](../proposals/edge-control.md#uc-log-telemetry) and [semantic cache](../proposals/edge-control.md#uc-semantic-cache) list the features these uses need and their status.
+
 ## Design and verification
 
 The [v3 edge-control proposal](../proposals/edge-control.md) records dependencies,
@@ -131,3 +143,6 @@ without adding a second relay engine, embedding runtime or generic API converter
 Mock recipes, interoperability tests and measurements must land before these
 uses are described as verified. Start today with the
 [local model-routing trial](../../examples/start/README.md#model-routing).
+
+[The use-case ledger](../proposals/edge-control.md#use-cases-and-the-features-they-need) lists every use
+with the features it needs and its status.
