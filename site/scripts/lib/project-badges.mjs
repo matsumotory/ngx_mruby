@@ -20,8 +20,8 @@ export const OPENSSF_BADGE = Object.freeze({
 // page reserves this box, so the heading below does not move while the
 // images load or when they fail.
 const WORKFLOWS = Object.freeze({
-  ci: { file: 'test.yml', width: 98, en: (ref) => `CI test workflow status on ${ref}`, ja: (ref) => `${ref}のCIのtestワークフローの状態` },
-  codeql: { file: 'codeql.yml', width: 111, en: (ref) => `CodeQL workflow status on ${ref}`, ja: (ref) => `${ref}のCodeQLワークフローの状態` },
+  ci: { file: 'test.yml', width: 98, en: (ref) => `CI test workflow status on ${ref}`, ja: (ref) => `${ref}でのCIの結果` },
+  codeql: { file: 'codeql.yml', width: 111, en: (ref) => `CodeQL workflow status on ${ref}`, ja: (ref) => `${ref}でのCodeQLの結果` },
 });
 
 export const LICENSE_BADGE_SRC = '/brand/license-mit.svg';
@@ -70,7 +70,6 @@ export const BADGE_FIXTURES = Object.freeze(Object.fromEntries(EXTERNAL_BADGE_UR
   contentType: 'image/svg+xml',
   body: fixtureSvg(sizeOf[src].width, { ci: 'test', codeql: 'codeql', openssf: 'openssf best practices' }[sizeOf[src].id]),
 })])));
-export const OPENSSF_BADGE_FIXTURE = BADGE_FIXTURES[OPENSSF_BADGE.src];
 
 // Serve the stand-ins at the exact badge URLs in a Playwright context. The
 // URLs hold a query, so they are matched by a predicate, not a glob. A route

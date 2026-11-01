@@ -917,7 +917,7 @@ windows, a fixed bar of actions at the bottom of narrow screens.
 
 | Role | English | Japanese | Weight | Line height, English / Japanese |
 |---|---|---|---|---|
-| Home page heading | `clamp(2rem, 1.4rem + 2vw, 2.375rem)`, 32 to 38 px | `clamp(1.625rem, 1.2rem + 1.5vw, 2rem)`, 26 to 32 px | 700 | 1.2 / 1.4 |
+| Home page heading | `clamp(2.375rem, 1rem + 4.5vw, 4.5rem)`, from 801 px at most the column's width divided by 14.2 em: 39.3 px at 402 px, 58.0 px at 1440 px | `clamp(2rem, 1rem + 3.5vw, 3.5rem)`, at most the column's width divided by 13.7 em up to 800 px and by 21.9 em from 801 px: 26.4 px at 402 px, 37.6 px at 1440 px | 700 | 1.05 / 1.3 |
 | Page title (h1) | 2rem, 32 px | 1.625rem, 26 px | 700 | 1.25 / 1.4 |
 | Section heading (h2) | 1.625rem, 26 px | 1.375rem, 22 px | 700 | 1.3 / 1.4 |
 | Subsection heading (h3) | 1.375rem, 22 px | 1.125rem, 18 px | 600 | 1.35 / 1.4 |
@@ -979,10 +979,11 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   in titles and section headings; this proposal uses it only in section
   headings (h2) of Japanese pages, in diagram labels, which the owner's
   sites also wrap by phrase (3.5), and in the Japanese home page heading,
-  a title, which takes one line per phrase: the frontmatter field
-  `headline` of `site/src/content/docs/ja/index.mdx` lists the phrases,
-  `PageTitle.astro` sets each on a line of its own, and the build stops
-  when they do not join to the `title`. h3, captions, other labels and
+  a title, which takes one line per phrase up to 800 px: the frontmatter
+  field `headline` of `site/src/content/docs/ja/index.mdx` lists the
+  phrases, `PageTitle.astro` sets each in a span of its own, which is a
+  block up to 800 px and inline from 801 px, and the build stops when they
+  do not join to the `title`. h3, captions, other labels and
   table cells wrap by character (chosen here, to keep the owner's
   exception as narrow as the owner stated it).
   - **Section headings (h2).** The Japanese Markdown source puts `<wbr>` at
@@ -1008,15 +1009,23 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   ring of 4.2 in `accent`, hung into the left margin where the margin
   allows and inline otherwise. It is decorative: the heading level is in
   the markup.
-- The home page heading takes at most two lines at 1440 px and at most
-  three at 402 px (owner's practice). The Japanese heading takes
-  its two lines, 「LLMリクエストの認証と転送を」 and 「Rubyで制御する。」, at
-  every width: its size is at most the width of its column divided by
+- The home page heading takes one line at 1440 px, in both languages,
+  and at most two lines at 402 px (the owner on 2026-11-01:
+  「pcビューのヒーロータイトルは1行に収まるフォントサイズがいいかな、日英ともに」).
+  From 801 px, where the showcase image stands beside the heading, its
+  size is at most the width of its column divided by the width of the
+  heading on one line plus about 2%: 14.2 em in English, whose heading is
+  13.9 em wide in Inter Variable, and 21.9 em in Japanese, whose heading
+  is 21.5 em wide in Hiragino Sans and 20.7 em in Noto Sans JP, measured
+  with the wider face. At 1440 px the column is 824 px: 58.0 px in
+  English (806 px of text) and 37.6 px in Japanese (808 px in Hiragino
+  Sans, 777 px in Noto Sans JP). Up to 800 px the Japanese heading takes
+  its two lines, 「LLMリクエストの認証と転送を」 and 「Rubyで制御する。」,
+  at every width: its size is at most the width of its column divided by
   13.7 em, because its first line is 13.3 em wide. That cap is below the
   size of the scale under about 498 px (20.4 px at 320 px, 28.5 px at
-  430 px) and from 801 px, where the showcase image comes back beside the
-  heading, to about 910 px (39.8 px at 801 px). It goes below h2 (22 px)
-  under about 341 px (the owner on 2026-10-31:
+  430 px), and below h2 (22 px) under about 341 px (the owner on
+  2026-10-31:
   「ヒーローの見出し、モバイルだとこういう改行で微妙なので2行にしておきたい。シュッと直しといてこれ」,
   then the choices 「文はそのまま、モバイルだけ字を小さく」 and, for the
   読点 after 転送を, 「取る (推奨)」).
@@ -1328,8 +1337,8 @@ acceptance; the interaction check covers that separately.
   page describes, `next` on the 3.x pages and `master` on the 2.x pages,
   each linking to its workflow's runs on that branch; OpenSSF Best
   Practices, linking to project 16057; and the license, an SVG of the site
-  in the flat style of the OpenSSF badge, linking to the `MITL` file of
-  that branch. The owner decided on 2026-11-01 that the badges stand above
+  in the flat style of the OpenSSF badge without its gradient (4.3, item
+  5), linking to the `MITL` file of that branch. The owner decided on 2026-11-01 that the badges stand above
   the hero heading and not in the footer:
   「footerにおいても誰もみないからなぁ、開発プロセスちゃんとやって理という意味では見せるべきな気がするので」.
   A CI badge shows only the branch that its page describes, so the status
@@ -1964,6 +1973,12 @@ above the heading of the index pages, not in the footer:
 「footerにおいても誰もみないからなぁ、開発プロセスちゃんとやって理という意味では見せるべきな気がするので」.
 The row holds CI and CodeQL of the branch that the page describes,
 OpenSSF Best Practices and the license (4.10).
+
+On 2026-11-01 the owner decided that the home page heading takes one line
+at the PC width, in both languages:
+「pcビューのヒーロータイトルは1行に収まるフォントサイズがいいかな、日英ともに」.
+4.4 gives the size from 801 px; up to 800 px, and at 402 px, the heading
+keeps its two lines.
 
 On 2026-11-01, step 5 added Japanese sources for Contributing, Development,
 the test guide, the release-note guide, Security and the trust boundary.

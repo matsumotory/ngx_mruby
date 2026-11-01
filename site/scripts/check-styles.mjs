@@ -22,7 +22,8 @@
 // - at most 90 characters per line of English body text at 1440 px (4.4);
 // - no horizontal scroll of the page (4.9), and at 402 px every text block
 //   and the ring before h2 at least 20 px from both edges (4.5);
-// - the home page heading takes at most two lines in both patterns;
+// - the home page heading takes one line at 1440 px and at most two at
+//   402 px (4.4);
 // - at 402 px the right edge of Japanese text blocks (4.9), and on English
 //   blocks no computed text-wrap pretty or balance (4.9);
 // - in both patterns, no paragraph, list item, caption, table cell or heading
@@ -122,7 +123,14 @@ function inspect(cfg) {
   const headlineBox = document.querySelector('.headline-box');
   const clampTo = (lo, v, hi) => Math.min(Math.max(lo, v), hi);
   const homeBase = lang === 'ja' ? clampTo(32 * rem, 16 * rem + 0.035 * cfg.homeVw, 56 * rem) : clampTo(38 * rem, 16 * rem + 0.045 * cfg.homeVw, 72 * rem);
-  const home = lang === 'ja' && headlineBox ? Math.min(homeBase, headlineBox.getBoundingClientRect().width / 13.7) : homeBase;
+  // From 801 px the heading takes one line: its size is at most the width
+  // of its column divided by 14.2 em (English) or 21.9 em (Japanese)
+  // (tokens.css)
+  const heroHeading = document.querySelector('.brand-title .hero-heading');
+  const wide = cfg.homeVw > 800;
+  const home = wide && lang === 'en' && heroHeading ? Math.min(homeBase, heroHeading.getBoundingClientRect().width / 14.2)
+    : wide && lang === 'ja' && headlineBox ? Math.min(homeBase, headlineBox.getBoundingClientRect().width / 21.9)
+    : lang === 'ja' && headlineBox ? Math.min(homeBase, headlineBox.getBoundingClientRect().width / 13.7) : homeBase;
   if (isHome && lang === 'ja' && !headlineBox) fails.push('the Japanese home page has no .headline-box');
   const tokens = new Set(cfg.tokens);
   const spans = new Set(cfg.spans);
@@ -352,11 +360,11 @@ function inspect(cfg) {
       if (/pretty|balance/.test(tw)) fail(el, `text-wrap ${tw.trim()} (4.4, 4.9)`);
     }
   }
-  // The home page heading: at most two lines in both approved patterns.
+  // The home page heading: one line at 1440 px, at most two at 402 px (4.4).
   if (isHome && cfg.width > 0) {
     const h1 = document.querySelector('h1#_top');
     const n = h1 ? lines(h1).length : 0;
-    const max = 2;
+    const max = cfg.width > 800 ? 1 : 2;
     if (!h1) fails.push('the home page has no h1#_top');
     else if (n > max) fail(h1, `the home page heading takes ${n} lines at ${cfg.width} px, over ${max}`);
     cfg.counts.homeHeading = n;

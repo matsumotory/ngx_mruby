@@ -161,6 +161,24 @@ html[lang="ja"]:has(.home) {
     --text-home: min(clamp(2rem, 1rem + 3.5vw, 3.5rem), 100cqi / 13.7);
   }
 }
+/* From 801 px, where the showcase image stands beside the heading, the home
+   page heading takes one line in both languages (4.4; the owner's decision
+   of 2026-11-01), and home-v3.css sets the Japanese phrases inline. The size
+   stays under the width of the heading's column (.hero-heading in English,
+   .headline-box in Japanese, 100cqi) divided by the heading's width on one
+   line plus about 2%: English 13.9 em in Inter Variable, so 14.2; Japanese
+   21.5 em in Hiragino Sans (20.7 em in Noto Sans JP), so 21.9. At 1440 px
+   the column is 824 px: 58.0 px in English, 37.6 px in Japanese. */
+@media (min-width: 801px) {
+  @supports (container-type: inline-size) {
+    html:has(.home) {
+      --text-home: min(clamp(2.375rem, 1rem + 4.5vw, 4.5rem), 100cqi / 14.2);
+    }
+    html[lang="ja"]:has(.home) {
+      --text-home: min(clamp(2rem, 1rem + 3.5vw, 3.5rem), 100cqi / 21.9);
+    }
+  }
+}
 
 /* 20 px is not a step of --space-*: it is the profile site's narrow
    gutter, which 4.5 takes ("Gutters: 20 px at 640 px and below"). */

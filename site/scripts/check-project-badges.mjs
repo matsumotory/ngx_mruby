@@ -13,6 +13,7 @@
 // images served from local stand-ins (never from GitHub or
 // bestpractices.dev): decoding, the size of each badge, the left edge and
 // the 4 px above the heading, at most one row at 1440 px and two at 402 px,
+// the heading on one line at 1440 px and on at most two at 402 px,
 // keyboard order, and that the heading stays where it is when the external
 // images fail. check-live.mjs fetches the real images after the deploy.
 import assert from 'node:assert/strict';
@@ -93,6 +94,18 @@ if (browserCheck) {
       h1: box(document.querySelector('h1#_top')),
       links: [...row.querySelectorAll('a')].map(box),
       images: [...row.querySelectorAll('img')].map(el => ({ ...box(el), attrWidth: Number(el.getAttribute('width')), attrHeight: Number(el.getAttribute('height')), complete: el.complete, naturalWidth: el.naturalWidth })),
+      // Lines of the heading: the distinct tops of its text's line boxes.
+      h1Lines: (() => {
+        const tops = [];
+        const walker = document.createTreeWalker(document.querySelector('h1#_top'), NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          if (!n.data.trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(n);
+          for (const r of range.getClientRects()) if (r.width > 0 && !tops.some(t => Math.abs(t - r.top) < r.height / 2)) tops.push(r.top);
+        }
+        return tops.length;
+      })(),
       scrollWidth: document.documentElement.scrollWidth,
       innerWidth,
     };
@@ -141,6 +154,9 @@ if (browserCheck) {
                 if (next && Math.round(next.top) === Math.round(link.top)) assert.ok(Math.abs(next.left - link.right - 8) < 1, `${label}: ${next.left - link.right} px between badges ${i} and ${i + 1}, not 8`);
               });
               assert.ok(m.scrollWidth <= m.innerWidth + 1, `${label}: no horizontal page scroll`);
+              // 4.4: the heading of an index page takes one line at 1440 px
+              // and at most two at 402 px.
+              assert.ok(m.h1Lines >= 1 && m.h1Lines <= (phone ? 2 : 1), `${label}: the heading takes ${m.h1Lines} lines at ${width} px`);
               if (failing) {
                 const base = loaded.light;
                 assert.ok(Math.abs(m.h1.top - base.h1.top) < 0.5 && Math.abs(m.h1.left - base.h1.left) < 0.5, `${label}: the heading moved from ${base.h1.top} to ${m.h1.top} when the images failed`);
@@ -160,7 +176,7 @@ if (browserCheck) {
               const name = `${engineName}-${width}-${route.replaceAll('/', '-').replace(/^-|-$/g, '') || 'home'}-${colorScheme}${failing ? '-failing' : ''}.png`;
               await page.screenshot({ path: path.join(out, name), clip: { x: 0, y: 0, width, height: Math.min(height, Math.ceil(m.h1.bottom + 32)) } });
               assert.deepEqual(errors, [], `${label}: no page exception`);
-              records.push({ route, engine: engineName, width, colorScheme, failing, rowLines: tops.length, gapAboveHeading: m.h1.top - m.row.bottom, h1Top: m.h1.top, file: name });
+              records.push({ route, engine: engineName, width, colorScheme, failing, rowLines: tops.length, headingLines: m.h1Lines, gapAboveHeading: m.h1.top - m.row.bottom, h1Top: m.h1.top, file: name });
             } catch (error) {
               console.error(`check-project-badges state: ${label}; ${records.length}/${total} complete`);
               throw error;
@@ -178,5 +194,5 @@ if (browserCheck) {
       fs.writeFileSync(path.join(out, 'evidence.json'), JSON.stringify({ source_revision: manifest.source_revision, v2_source_revision: v2.source_revision, working_tree_clean: manifest.working_tree_clean, complete: complete && records.length === total, pages: records }, null, 2) + '\n');
     }
   }
-  console.log(`check-project-badges: ${records.length} states of the row at Chromium ${patternsFor('chromium')[0].width} px and WebKit ${patternsFor('webkit')[0].width} px with the local stand-ins (/, /ja/, /v2/, /v2/ja/; light, dark, and light with the external images failing): sizes, left edge, 4 px above the heading, line count, keyboard order, and the heading unmoved when the images fail`);
+  console.log(`check-project-badges: ${records.length} states of the row at Chromium ${patternsFor('chromium')[0].width} px and WebKit ${patternsFor('webkit')[0].width} px with the local stand-ins (/, /ja/, /v2/, /v2/ja/; light, dark, and light with the external images failing): sizes, left edge, 4 px above the heading, line counts of the row and the heading, keyboard order, and the heading unmoved when the images fail`);
 }
