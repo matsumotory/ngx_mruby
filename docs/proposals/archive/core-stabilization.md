@@ -941,8 +941,9 @@ Status line describe the implementation.
   current request or session (`ngx_mrb_run`, `ngx_mrb_post_fiber` and
   `ngx_http_mrb_resume_set` with `ngx_mrb_push_request`;
   `ngx_stream_mruby_handler` through `ictx->s`), and the protocol parts
-  (`ngx_mrb_run_fiber`, `ngx_stream_mrb_run_fiber`) set the handler kind
-  and pass the response of a subrequest to `Fiber.yield`.
+  (`ngx_mrb_run_fiber`, `ngx_stream_mrb_run_fiber`) set `ctx->fiber_proc`,
+  and in HTTP the handler kind and `ngx_http_mrb_running`, and pass the
+  response of a subrequest to `Fiber.yield`.
 - `ngx_mrb_post_fiber`, which ends a handler after a wait in place of the
   phase checker, stays for one case (4.4): a wait that starts in a handler
   that nginx runs inside another mruby call (`mrb->jmp` is set: the

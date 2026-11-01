@@ -1,8 +1,10 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (04:52 JST)
+## State as of 2026-11-02 (05:05 JST)
 
-- Heads: `next` is `f5362fffa`, the merge of
+- Heads: `next` is `f75b2733c`, the merge of
+  [#738](https://github.com/matsumotory/ngx_mruby/pull/738) (the
+  should-fix items of #736, 04:53 JST), after `f5362fffa`, the merge of
   [#735](https://github.com/matsumotory/ngx_mruby/pull/735) (step 8, the
   last step of the core stabilization, 04:09 JST), after `e4a55c060`, the
   merge of [#737](https://github.com/matsumotory/ngx_mruby/pull/737)
@@ -88,9 +90,7 @@
   `master`) is merged (`5440e7a0e`): `site-v2.yml` runs only on
   `workflow_dispatch`, and a pull request to `master` checks the 2.x pages
   locally. It reaches `next` with the next merge of `master`.
-- Open: [#738](https://github.com/matsumotory/ngx_mruby/pull/738) (base
-  `next`, the should-fix items of #736) and
-  [#740](https://github.com/matsumotory/ngx_mruby/pull/740) (base
+- Open: [#740](https://github.com/matsumotory/ngx_mruby/pull/740) (base
   `master`: a rewrite handler that returns `Nginx::DECLINED` after
   `Nginx::Async.sleep` keeps the status of the request).
 
@@ -365,6 +365,7 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
+| The comment of `test/ci/changes.sh` on the categories `docs`, `site` and `examples`, which is the same on both branches, still describes the CI before the decisions of 2026-11-02 on CI (#737 on `next`, #739 on `master`, which left the file as it was) | `master` and `next` | The next pull request that touches `test/ci/` |
 | Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge of `master` at `0f865ed4a` (#704, #703, #716, the 2.x form of the fix of GHSA-xjh6-6vgm-56wj, #731) is [#734](https://github.com/matsumotory/ngx_mruby/pull/734); the next merge brings what `master` gains after it |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. To do: a pull request to `master` that changes the wording of the heading by a few characters, in the release notes and in the template of `docs/releases/README.md` | `master` (reaches `next` by the merge) | Ready to start |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. Decided on 2026-10-29 (option "500 のまま (推奨)"): 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
