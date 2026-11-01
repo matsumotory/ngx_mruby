@@ -520,7 +520,9 @@ jobs:
         working-directory: site
         run: |
           npm ci --ignore-scripts
-          npx playwright install --with-deps chromium
+          # screenshots-live.mjs captures both patterns of lib/patterns.mjs:
+          # Chromium at 1440 px and WebKit at 402 px.
+          npx playwright install --with-deps chromium webkit
       - name: Match artifact SHA, deployment SHA and the public deployment policy
         working-directory: site
         env:

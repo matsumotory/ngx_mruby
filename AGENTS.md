@@ -632,9 +632,16 @@ There is no shell-selection environment flag or Starlight runtime dependency.
 `check-layout-parity.mjs` (boxes and computed styles) compare a build of a
 base commit with the head, using the same 2.x input. CI ran them only on the
 pull request that replaced Starlight (#713); a later change of the site's
-shell runs them locally the same way. Record both commits and the input in
-the PR; static HTML parity does not replace browser, layout or interaction
-evidence.
+shell runs them locally, from `site/` of the head, with a checkout of the
+base commit (after `npm ci` in its `site/`) and one of `master`:
+
+```sh
+node scripts/check-shells.mjs --base-tree BASE --v2-tree MASTER --evidence OUT
+node scripts/check-layout-parity.mjs --base OUT/base --head OUT/head --out OUT/layout --ja-face noto
+```
+
+Record both commits and the input in the PR; static HTML parity does not
+replace browser, layout or interaction evidence.
 
 `site/` (on `next`) builds the ngx.mruby.org site from `docs/` with Astro
 and its own components (`docs/proposals/site.md`). It needs git with the whole
