@@ -1486,6 +1486,7 @@ It's currently supported in the set, rewrite, access and content handlers.
 In a content handler (`mruby_content_handler*`) nginx waits for the handler since 2.7.3: the code after the sleep runs, and the request gets the response that the handler writes or the status that it returns. Up to 2.7.2 the request ended at the sleep without a response (see "Known limitations" in [the 2.7.1 release notes](../releases/v2.7.1.md#known-limitations)).
 A content handler that runs in the location that `Nginx.redirect` runs from Ruby code still ends the request at the sleep, because the handler that called `Nginx.redirect` goes on after the call and may answer the request itself.
 After the sleep, `Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in a content handler.
+A rewrite handler that returns `Nginx::DECLINED` after the sleep lets the request go on to the next phase as without the sleep, and a later handler that sets no status does not answer 500 (since 2.7.5; up to 2.7.4 the request went on with the status 500, see [the 2.7.5 release notes](../releases/v2.7.5.md)).
 In a log handler (`mruby_log_handler`, `mruby_log_handler_code`) and in the
 output filters (`mruby_output_header_filter*`, `mruby_output_body_filter*`),
 nginx cannot resume a handler that waits, so it raises a `RuntimeError` (since 2.7.1; in 2.7.0 a sleep in a log handler could crash the worker, and a sleep in a filter stopped the filter there and sent the response unfiltered).
