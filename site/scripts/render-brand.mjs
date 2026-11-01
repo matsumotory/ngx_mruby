@@ -22,7 +22,7 @@ const v3Html = `<!doctype html><html lang="en"><meta charset="utf-8"><style>
 *{box-sizing:border-box}body{margin:0;width:1200px;height:630px;color:#e8ebf1;background:#070a11;font-family:Inter,sans-serif;background-image:linear-gradient(115deg,#223448,#122334 34%,#070a11 82%)}
 main{height:630px;padding:72px;display:grid;grid-template-columns:1fr 290px;align-items:center;gap:40px}
 h1{font-size:80px;letter-spacing:-4px;font-weight:650;line-height:1.1;margin:0 0 30px}p{font-size:42px;line-height:1.25;margin:0;color:#e8ebf1}.state{font-size:25px;letter-spacing:1px;color:#ecba74;margin-bottom:30px}.runtime{font-size:28px;color:#b7c3d2;margin-top:28px;line-height:1.5}img{width:290px;height:310px}
-</style><main><div><p class="state">v3 · IN DEVELOPMENT</p><h1>ngx_mruby</h1><p>LLM routing in nginx.</p><p class="runtime">Rules in Ruby.<br>Keys at your proxy.</p></div><img src="${logo}" alt=""></main></html>`;
+</style><main><div><p class="state">v3 · IN DEVELOPMENT</p><h1>ngx_mruby</h1><p>Model API routing in nginx.</p><p class="runtime">Rules in Ruby.<br>Keys at your proxy.</p></div><img src="${logo}" alt=""></main></html>`;
 const html = v3 ? v3Html : stableHtml;
 const browser = await chromium.launch();
 try {

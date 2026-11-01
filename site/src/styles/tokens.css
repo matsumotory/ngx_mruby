@@ -151,14 +151,25 @@ html[lang="ja"]:has(.home) {
 }
 /* Up to 800 px the Japanese heading sets each phrase of its headline on a
    line of its own (PageTitle.astro, home-v3.css). The first phrase,
-   「LLMリクエストの認証と転送を」, is 13.3 em wide in Hiragino Sans (13.0 em
-   in Noto Sans JP), so the size also stays under the width of the heading's
-   column (.headline-box, 100cqi) divided by 13.7 em: one line per phrase at
-   every width up to 800 px (4.4; the owner's choice of 2026-10-31). It
-   binds below about 498 px. From 801 px the rule below replaces it. */
+   「AIアプリケーションの認証と転送を」, is 15.1 em wide in Hiragino Sans
+   (14.8 em in Noto Sans JP), so the size also stays under the width of the
+   heading's column (.headline-box, 100cqi) divided by 15.6 em: one line per
+   phrase at every width up to 800 px (4.4; the owner's choice of
+   2026-10-31). It binds below about 655 px. From 801 px the rule below replaces it. */
 @supports (container-type: inline-size) {
   html[lang="ja"]:has(.home) {
-    --text-home: min(clamp(2rem, 1rem + 3.5vw, 3.5rem), 100cqi / 13.7);
+    --text-home: min(clamp(2rem, 1rem + 3.5vw, 3.5rem), 100cqi / 15.6);
+  }
+}
+/* Up to 800 px the English heading takes two lines. Its first line,
+   "Authenticate and route AI", is 11.5 em wide in Inter Variable, so the
+   size stays under the width of the heading's column (.hero-heading,
+   100cqi) divided by 11.8 em, and "applications with Ruby." (10.5 em)
+   takes the second line (4.4; at most two lines at 402 px, the owner's
+   decision of 2026-11-01). It binds below about 515 px. From 801 px the rule below replaces it. */
+@supports (container-type: inline-size) {
+  html:has(.home) {
+    --text-home: min(clamp(2.375rem, 1rem + 4.5vw, 4.5rem), 100cqi / 11.8);
   }
 }
 /* From 801 px, where the showcase image stands beside the heading, the home
@@ -166,16 +177,16 @@ html[lang="ja"]:has(.home) {
    of 2026-11-01), and home-v3.css sets the Japanese phrases inline. The size
    stays under the width of the heading's column (.hero-heading in English,
    .headline-box in Japanese, 100cqi) divided by the heading's width on one
-   line plus about 2%: English 13.9 em in Inter Variable, so 14.2; Japanese
-   21.5 em in Hiragino Sans (20.7 em in Noto Sans JP), so 21.9. At 1440 px
-   the column is 824 px: 58.0 px in English, 37.6 px in Japanese. */
+   line plus about 2%: English 22.1 em in Inter Variable, so 22.6; Japanese
+   23.2 em in Hiragino Sans (22.3 em in Noto Sans JP), so 23.6. At 1440 px
+   the column is 824 px: 36.5 px in English, 34.9 px in Japanese. */
 @media (min-width: 801px) {
   @supports (container-type: inline-size) {
     html:has(.home) {
-      --text-home: min(clamp(2.375rem, 1rem + 4.5vw, 4.5rem), 100cqi / 14.2);
+      --text-home: min(clamp(2.375rem, 1rem + 4.5vw, 4.5rem), 100cqi / 22.6);
     }
     html[lang="ja"]:has(.home) {
-      --text-home: min(clamp(2rem, 1rem + 3.5vw, 3.5rem), 100cqi / 21.9);
+      --text-home: min(clamp(2rem, 1rem + 3.5vw, 3.5rem), 100cqi / 23.6);
     }
   }
 }

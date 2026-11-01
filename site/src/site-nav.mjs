@@ -24,7 +24,7 @@ const T = {
   },
   ja: {
     docs: 'ドキュメント',
-    agentProxy: 'model APIの中継',
+    agentProxy: 'モデルAPIの中継',
     releases: 'リリース',
     security: 'セキュリティ',
     contributing: '開発に参加する',
