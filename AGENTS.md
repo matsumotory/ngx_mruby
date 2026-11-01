@@ -694,15 +694,16 @@ npm run preview           # serves dist/ at http://localhost:4321/
   (`https://ngx.mruby.org/<route>/`), which `check-built-links.mjs` checks
   as an internal link. A
   Japanese page keeps the code blocks of its English page, and its h2 have
-  `<wbr>` at their phrase boundaries (4.4 of the proposal). The sidebar of `astro.config.mjs` has
-  the links Overview (`/docs/`) and Start, then the groups Guides,
-  Reference, Concepts, Releases, Security and Contributing, each made from the
-  folder of its routes and ordered by `SIDEBAR_ORDER` of
-  `scripts/lib/site.mjs`. The header, the menu, the footer and the language link
-  of 4.10 are component overrides in `src/components/` (`Header`,
-  `PageFrame`, `Footer`, `MobileMenuFooter`, and `FallbackContentNotice`
-  for the notice above an English page under `/ja/`), with their links in
-  `src/site-nav.mjs`.
+  `<wbr>` at their phrase boundaries (4.4 of the proposal). The sidebar, built by
+  `src/own/sidebar.mjs`, has the links Overview (`/docs/`) and Start, then
+  the groups Guides, Reference, Concepts, Releases, Security and
+  Contributing, each made from the folder of its routes and ordered by
+  `SIDEBAR_ORDER` of `scripts/lib/site.mjs` (which `sync-docs.mjs` writes
+  into each page's `sidebar.order`). The header, the menu, the footer and
+  the language link of 4.10 are components in `src/components/` (`Header`,
+  `PageFrame`, `SiteMenu`, `Footer`, `LanguageLink`, and
+  `FallbackContentNotice` for the notice above an English page under
+  `/ja/`), with their links in `src/site-nav.mjs`.
 - The 2.x pages (3.4 and step 6 of the proposal). `/v2/` holds the
   documentation of 2.x, built from `docs/` of `master` (`v2.x` after the
   promotion). `node scripts/build-v2.mjs --tree DIR`, after `npm run
