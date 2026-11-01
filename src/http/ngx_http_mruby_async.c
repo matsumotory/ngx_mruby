@@ -309,7 +309,9 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
   mrb_gc_arena_restore(re->mrb, ai);
   ngx_mrb_push_request(prev_r);
 
-  if (rc != NGX_OK) {
+  // a rewrite handler that declines after its sleep goes on to the next
+  // phase, so the status stays as it was for the handlers after it
+  if (rc != NGX_OK && rc != NGX_DECLINED) {
     re->r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
 
