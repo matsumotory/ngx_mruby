@@ -70,7 +70,7 @@ compared: test/html/agent_proxy_log.expected
 ```diagram
 agent-proxy-request
 label: development
-caption: v3.0に向けて設計するモデルAPIの中継を通るリクエストのステップを、それぞれが現在動くか、v3の計画のどのステップで加わるかとともに示します。
+caption: v3.0に向けて設計するモデルAPIの中継を通るリクエストのステップと、それぞれが現在動くか、v3の計画のどのステップで加わるかを示します。
 source: docs/proposals/v3-plan.md 407-447 558-576
 source: test/conf/conf.d/60-agent-proxy.conf 14-111
 at: 8d1500bf0 2026-10-29
