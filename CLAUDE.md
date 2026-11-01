@@ -21,4 +21,6 @@
   `gh pr ready <number>`, then have a separate agent review the PR with the checklist
   in AGENTS.md, post its findings as a PR comment, and merge with a merge commit when
   the conditions in AGENTS.md hold ("Branches and pull requests" in AGENTS.md says
-  what a draft, ready and the recorded CI result mean). Do not tag or release.
+  what a draft, ready and the recorded CI result mean). Publish a release (and
+  its tag) only after the owner's go-ahead for that release, as "Branches and
+  pull requests" in AGENTS.md says; never publish an advisory.
