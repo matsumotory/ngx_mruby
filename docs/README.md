@@ -27,6 +27,8 @@ kept separate. For the released 2.7 line, use the [stable documentation](https:/
   with its missing evidence and boundaries stated explicitly.
 - [Planned gateway and site access uses](guides/edge-control.md): MCP policy and client profiles,
   model API fallback, AI crawler requests, and cache/telemetry boundaries for v3.
+- [Glossary](glossary.md): the terms these pages use for models, model APIs,
+  agents, MCP, A2A, their traffic and the AI gateway.
 
 ## Look up an API or build option
 

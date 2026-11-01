@@ -1,5 +1,7 @@
 # AI gatewayとアクセス制御
 
+モデル、agent、通信、AI gatewayを指す語は、[用語集](../glossary.md)が定義しています。
+
 **v3で広げる用途の構想です。完成した連携機能ではありません。**nginxにRubyの規則を置き、データの中継はnginxに任せます。[model API中継の実行例](agent-proxy.md)では、利用者キーの検査、model振り分け、ストリーム中継をnextで確認しています。以下では、model APIやMCPサーバーの前段に置くAI gatewayの拡張と、Webサイトへ来るAI crawlerやagentのrequest制御を分けて説明します。log handlerのテレメトリも扱います。いずれも用途を広げる設計であり、すべてをv3.0に含める約束ではありません。
 
 ## MCPの認可

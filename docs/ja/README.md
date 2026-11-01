@@ -17,6 +17,7 @@ nginx内のRubyでリクエストの処理を組み立てます。ここは<stro
 - [TCPの中継](guides/tcp.md)：接続元を確認。
 - [MCP gatewayの設計案](guides/mcp-gateway.md)：未検証の構成と、未確認の範囲や境界。
 - [v3で広げる用途](guides/edge-control.md)：MCPツールの認可、AI application別の連携、model APIの切替、AI crawlerのrequest制御、キャッシュとテレメトリの構想。
+- [用語集](glossary.md)：モデル、model API、agent、MCP、A2A、それらの通信、AI gatewayを指す語。
 
 ## APIや<wbr>ビルド設定を調べる
 
