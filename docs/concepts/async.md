@@ -47,9 +47,9 @@ resume: nginx calls the handler again, which resumes the fiber; when the code en
 - nginx keeps the request of a content handler while `Nginx::Async.sleep`
   waits, since the 2.7.3 changes, which 3.x includes. The response or the
   returned status of the code completes the request. Up to 2.7.2, the
-  request ended at the sleep without a response. A content handler reached
-  by `Nginx.redirect` from Ruby still ends the request at the sleep: the
-  caller continues and can answer the request itself.
+  request ended at the sleep without a response. Since 3.0.0,
+  `Nginx.redirect` takes effect when the calling handler ends, so the
+  handlers of its target can wait as well.
 - A content handler can wait for `Nginx::Async::HTTP.sub_request`, also
   after `Nginx::Async.sleep`, since 3.0.0; 2.7.3 raises `RuntimeError`
   there. In `mruby_set`, a subrequest does not hold the request: nginx

@@ -53,12 +53,16 @@ t.assert('async', 'a content handler that sleeps answers on a kept-alive connect
   t.assert_equal 2, raw.split('slept', -1).size - 1
 end
 
-t.assert('async', 'Nginx.redirect to a content handler that sleeps, then a status: no output of the sleeping handler follows the response') do
+t.assert('async', 'Nginx.redirect to a content handler that sleeps, then a status: the content handler answers after its sleep, without the status') do
+  # On 2.x the target ran inside the call and the 503 of the calling handler
+  # answered; in 3.0.0 Nginx.redirect takes effect when the calling handler
+  # ends, its 503 is not sent, and the target answers (Q2 of
+  # docs/proposals/core-stabilization.md)
   status, raw = tcp_client(18133, "GET /redirect_to_sleeping_content_then_status HTTP/1.0\r\nHost: localhost\r\n\r\n")
   line, body = sleep_in_content_split(raw)
   t.assert_equal 'EOF', status
-  t.assert_equal 'HTTP/1.1 503 Service Temporarily Unavailable', line
-  t.assert_not_include body, 'slept'
+  t.assert_equal 'HTTP/1.1 200 OK', line
+  t.assert_equal 'slept', body
 end
 
 t.assert('async', 'Nginx::Async::HTTP.sub_request after a sleep in a content handler waits for the subrequest, and the handler answers') do

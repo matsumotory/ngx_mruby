@@ -291,6 +291,13 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 
 - [UDPのstreamのセッションがコードを1回だけ実行し、コードが待っている間に届いたデータグラムでは始め直さない](../../releases/v3.0.0.ja.md#udpのstreamのセッションがコードを1回だけ実行しコードが待っている間に届いたデータグラムでは始め直さない727)：`listen ... udp`のサーバーのコードで`Nginx::Stream::Async.sleep`を探してください。3.0.0では、コードはセッションにつき1回だけ動き、sleepの間に届いたデータグラムでは始め直しません。
 - [`worker_shutdown_timeout`が切れたときに待っているstreamのセッションが、そこで終わる](../../releases/v3.0.0.ja.md#worker_shutdown_timeoutが切れたときに待っているstreamのセッションがそこで終わる727)：変えるものはありません。`worker_shutdown_timeout`がある設定で、タイムアウトが切れたときにまだsleepしているstreamのセッションは、sleepの後のコードを実行せずに終わります。
+- [ローカルのURIへの`Nginx.redirect`が、ハンドラが終わったときに効く](../../releases/v3.0.0.ja.md#ローカルのuriへのnginxredirectがハンドラが終わったときに効く728)：ハンドラで、パスを渡す`Nginx.redirect`を探してください。3.0.0では、呼び出しの後のコードがリダイレクト先より先に動き、書いた出力と設定したステータスはクライアントへ送られません。そのコードが設定したレスポンスのヘッダと、変えたリクエストの引数は、リダイレクト先に届きます。
+
+  ```ruby
+  Nginx.redirect "/backend"
+  Nginx.rputs "fallback"       # 2.x: sent with the answer of /backend   3.0.0: not sent, warn line
+  return                        # leave the handler when the code after the call should not run
+  ```
 
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
