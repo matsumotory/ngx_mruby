@@ -42,10 +42,14 @@ typedef struct {
  * ctx->fiber_proc and re->fiber point to its first member, the fiber.
  *
  * - kind is the handler that runs the fiber, also when a timer or a
- *   subrequest resumes it, and request the request that it runs for.
+ *   subrequest resumes it.
  * - sleep is the data of the resume of Nginx::Async.sleep, for the one timer
  *   of the record; the record keeps it because it waits for one timer or one
- *   subrequest at a time.
+ *   subrequest at a time. sleep.r is the request that the record runs for,
+ *   from the start of the run.
+ * - posted is the entry of the posted request of the wake, allocated at the
+ *   first wait that uses it, so that a run that never waits does not carry
+ *   it.
  * - result is the result that the code set (Nginx.return,
  *   Nginx.send_header, Nginx.status_code=, Nginx.redirect with a URL), when
  *   has_result is set: the result of a handler is its own, not one that an
@@ -60,12 +64,12 @@ typedef struct {
 struct ngx_http_mrb_fiber_s {
   ngx_mrb_fiber_t base;
   ngx_http_mruby_handler_kind_t kind;
-  ngx_http_request_t *request;
-  ngx_mrb_reentrant_t sleep;
-  ngx_http_posted_request_t posted;
-  ngx_int_t result;
+  // next to kind, in the space that the alignment of sleep leaves
   unsigned has_result : 1;
   unsigned wake : 1;
+  ngx_mrb_reentrant_t sleep;
+  ngx_http_posted_request_t *posted;
+  ngx_int_t result;
 };
 
 /*
@@ -217,7 +221,7 @@ ngx_mrb_fiber_outcome_t ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mr
   }
   ngx_mrb_fiber_init(&f->base, mrb, NGX_MRB_FIBER_HTTP);
   f->kind = kind;
-  f->request = r;
+  f->sleep.r = r;
   *record = f;
 
   // The RProc of the code is prepared once, when the code is compiled
@@ -414,7 +418,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
  */
 static void ngx_http_mrb_fiber_wake(ngx_http_mrb_fiber_t *f)
 {
-  ngx_http_request_t *r = f->request;
+  ngx_http_request_t *r = f->sleep.r;
 
   if (f->base.state != NGX_MRB_FIBER_WAITING) {
     // not reached: the owner hook deletes the timer of a cancelled record,
@@ -425,7 +429,7 @@ static void ngx_http_mrb_fiber_wake(ngx_http_mrb_fiber_t *f)
   }
 
   f->base.state = NGX_MRB_FIBER_READY;
-  ngx_http_post_request(r, &f->posted);
+  ngx_http_post_request(r, f->posted);
   ngx_http_run_posted_requests(r->connection);
 }
 
@@ -543,6 +547,18 @@ static void ngx_http_mrb_wait_handler(ngx_http_request_t *r)
 
 void ngx_http_mrb_fiber_wait_on_nginx(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx, ngx_http_mrb_fiber_t *f)
 {
+  if (f->posted == NULL) {
+    f->posted = ngx_palloc(r->pool, sizeof(ngx_http_posted_request_t));
+    if (f->posted == NULL) {
+      // the timer resumes the fiber itself, as before the wake
+      // (ngx_mrb_post_fiber)
+      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                    "%s ERROR %s:%d: failed to allocate the posted request of the wake", MODULE_NAME, __func__,
+                    __LINE__);
+      return;
+    }
+  }
+
   f->wake = 1;
   ctx->wait = f;
   r->write_event_handler = ngx_http_mrb_wait_handler;
@@ -566,7 +582,7 @@ ngx_int_t ngx_http_mrb_fiber_call_again(ngx_http_request_t *r, ngx_http_mruby_ct
 {
   ngx_http_mrb_fiber_t *f = ctx->wait;
 
-  if (f == NULL || f->kind != kind || f->request != r) {
+  if (f == NULL || f->kind != kind || f->sleep.r != r) {
     return NGX_DECLINED;
   }
 
@@ -610,7 +626,7 @@ void ngx_http_mrb_fiber_set_result(ngx_http_request_t *r, ngx_int_t result)
 {
   ngx_http_mrb_fiber_t *f = ngx_http_mrb_running;
 
-  if (f == NULL || f->request != r) {
+  if (f == NULL || f->sleep.r != r) {
     return;
   }
 

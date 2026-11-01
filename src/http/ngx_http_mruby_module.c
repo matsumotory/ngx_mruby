@@ -922,16 +922,6 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
     return NGX_DECLINED;
   }
 
-  // the value of the code; a resumed fiber writes it through
-  // ctx->async_handler_result, so it lives in the request pool
-  mrb_result = ngx_palloc(r->pool, sizeof(mrb_value));
-  if (mrb_result == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory for the result %s:%d", __FUNCTION__,
-                  __LINE__);
-    return NGX_ERROR;
-  }
-  *mrb_result = mrb_nil_value();
-
   ctx = ngx_mrb_http_get_module_ctx(NULL, r);
   if (ctx == NULL) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory context %s:%d", __FUNCTION__,
@@ -943,20 +933,34 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   // resumes the fiber here and handles its result as for a handler that did
   // not wait (section 4.4 of docs/proposals/core-stabilization.md). The code
   // is not compiled again and its flags stay, so the code goes on where it
-  // waited.
-  ai = mrb_gc_arena_save(state->mrb);
-  rputs_chain = ctx->rputs_chain;
-  rputs_last = rputs_chain != NULL ? rputs_chain->last : NULL;
-  content_length_n = r->headers_out.content_length_n;
-  ctx->sub_response_more = 0;
-  ctx->async_sleep_pending = 0;
-  rc_again = ngx_http_mrb_fiber_call_again(r, ctx, kind, mrb_result, &record, &outcome);
-  if (rc_again == NGX_OK) {
-    goto resumed;
+  // waited. A request without a waiting handler skips this.
+  if (ctx->wait != NULL) {
+    ai = mrb_gc_arena_save(state->mrb);
+    rputs_chain = ctx->rputs_chain;
+    rputs_last = rputs_chain != NULL ? rputs_chain->last : NULL;
+    content_length_n = r->headers_out.content_length_n;
+    ctx->sub_response_more = 0;
+    ctx->async_sleep_pending = 0;
+    // the value goes where the first call of the handler put it
+    mrb_result = ctx->async_handler_result;
+    rc_again = ngx_http_mrb_fiber_call_again(r, ctx, kind, mrb_result, &record, &outcome);
+    if (rc_again == NGX_OK) {
+      goto resumed;
+    }
+    if (rc_again != NGX_DECLINED) {
+      return rc_again;
+    }
   }
-  if (rc_again != NGX_DECLINED) {
-    return rc_again;
+
+  // the value of the code; a resumed fiber writes it through
+  // ctx->async_handler_result, so it lives in the request pool
+  mrb_result = ngx_palloc(r->pool, sizeof(mrb_value));
+  if (mrb_result == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory for the result %s:%d", __FUNCTION__,
+                  __LINE__);
+    return NGX_ERROR;
   }
+  *mrb_result = mrb_nil_value();
 
   // ngx_mrb_post_fiber assigns the result of a resumed fiber to
   // ctx->set_var_target. Only the mruby_set handlers pass a result and set
