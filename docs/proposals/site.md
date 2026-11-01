@@ -1680,19 +1680,22 @@ deployment of 5.3, and the route of every page.
 compares against the existing 390px WebKit pattern. At the end of the
 rebuild, change only `PHONE.width` in `site/scripts/lib/patterns.mjs` to
 402px, the owner's iPhone 17 Pro Safari width. Keep 1440px Chromium.
-The owner's words: 「組み直しの最後に、iPhone のパターンの幅を 390px から 402px (本人の iPhone 17 Pro の Safari の幅) に合わせる。」
+The owner's words: 「じゃあ402にしよう」, 「キリがないからpcの幅を超えた画面で綺麗に見えたらよくて、あとは402に調整するぐらいの基準で良さそう」.
 If many one- or two-character last lines appear at 402px, adjust the font
 size and characters per line first, then only the remaining fine cases by
 a few characters of wording. Do not mechanically rewrite prose for the
-checker or add more width/browser combinations. This last-stage change is
-not part of the layer-1 parity baseline.
+checker or add more width/browser combinations. The parity baseline of
+#708 was measured at 390px; 390px, decided in
+[#707](https://github.com/matsumotory/ngx_mruby/pull/707), holds until the
+rebuild's pull request changes it.
 
 **Order.** After step 5. [#708](https://github.com/matsumotory/ngx_mruby/pull/708)
 (Codex, the first layer of the site's own components) is merged into `next`.
 The rest is one pull request from a Codex session, not split into stages
-(the owner's decision of 2026-11-01, section 7). It contains:
+(the owner's decision of 2026-11-01, section 7). Of the three parts below,
+the first is merged in #708; the pull request holds the second and the third:
 
-- The plumbing beside Starlight: the layout, the page route, the
+- The plumbing beside Starlight (merged in #708): the layout, the page route, the
   collection, the sidebar, the table of contents, the search, the head,
   the sitemap, the 404 page and the base styles, built when
   `NGX_MRUBY_SITE_SHELL=own` is set (the name is chosen here). With the
@@ -1712,10 +1715,6 @@ The rest is one pull request from a Codex session, not split into stages
   compares with the build of the base commit. The pull request states the
   number of packages of `package-lock.json` before and after (the keys of
   `packages` without the root: 466 today).
-
-The pull request changes the phone pattern of "Site design acceptance" from
-390px to 402px (the width of Safari on an iPhone 17 Pro); 390px, decided in
-[#707](https://github.com/matsumotory/ngx_mruby/pull/707), holds until then.
 
 The pull request updates the text that it makes untrue: in AGENTS.md
 the repository layout ("Astro with Starlight") and "The site"; in this
