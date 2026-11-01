@@ -70,9 +70,12 @@ end
   end
 end
 
-t.assert('redirect', 'the output and the status set after Nginx.redirect are not sent, and error.log says so') do
+t.assert('redirect', 'the output and the status set after Nginx.redirect are not sent, and error.log says so for each request') do
   lines = redirect_async_log_lines('error.log', 'set after Nginx.redirect are not sent')
-  t.assert_true lines.size >= 2, "error.log has #{lines.size} warn lines"
+  %w[/redirect_then_output /redirect_then_status].each do |path|
+    t.assert_true lines.any? { |l| l.include?("request: \"GET #{path} HTTP/1.1\"") }, "no warn line for #{path}"
+  end
+  t.assert_false lines.any? { |l| l.include?('request: "GET /redirect_to_sleeping_content HTTP/1.1"') }
 end
 
 t.report

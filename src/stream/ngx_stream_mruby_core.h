@@ -18,8 +18,9 @@ typedef struct ngx_stream_mruby_ctx_t {
   mrb_state *mrb;
   mrb_value *fiber_proc;
   mrb_value *async_handler_result;
-  // the record (ngx_stream_mruby_async.c) whose Nginx::Stream::Async.sleep
-  // timer is armed, or NULL: a session has one pending sleep at a time
+  // the record (ngx_stream_mruby_async.c) that waits in
+  // Nginx::Stream::Async.sleep or is READY to resume, or NULL: a session has
+  // one record that waits, and its code runs once
   void *sleeping;
 } ngx_stream_mruby_ctx_t;
 

@@ -143,9 +143,9 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
  * Only the main request: a subrequest, with or without output, does not leave the
  * client without a response, because its parent answers. Nothing changes
  * either when the header was already sent, or when the module context is no
- * longer the one the handler ran with: Nginx.redirect makes an internal
- * redirect, which clears the module contexts, and the location it ran answers
- * the request.
+ * longer the one the handler ran with: an internal redirect inside the Ruby
+ * call (from an mruby_set handler, a log handler or a filter) clears the
+ * module contexts, and the location it ran answers the request.
  */
 static ngx_flag_t ngx_mrb_content_ends_without_response(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx,
                                                         ngx_http_mruby_handler_kind_t kind, ngx_int_t status)
@@ -649,6 +649,9 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     r->headers_out.location = location;
     r->headers_out.status = rc;
     ngx_http_mrb_fiber_set_result(r, rc);
+    // after a local redirect that waits for the end of the handler, this
+    // status is not sent either
+    ngx_http_mrb_fiber_after_redirect(r);
   } else {
     // A phase handler redirects when it ends, after its code: the target's
     // handlers then run outside the fiber of this one, and one handler

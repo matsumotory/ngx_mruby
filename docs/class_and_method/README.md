@@ -395,6 +395,7 @@ See [error_page](http://nginx.org/en/docs/http/ngx_http_core_module.html#error_p
 
 In a post_read, server rewrite, rewrite, access or content handler, the internal redirect takes effect when the handler ends (since 3.0.0): the code after the call runs first, and then nginx runs the phases of the other location, whose handlers answer the request and can wait like any handler.
 The output and the status that the handler writes or sets are not sent; when the code writes output or sets a status after the call, error.log gets a line at the warn level that ends with `set after Nginx.redirect are not sent`.
+Response headers that the handler sets, and changes that it makes to the request such as its arguments (`Nginx::Request#args=`), stay, also after the call: the answer of the other location carries those headers, and that location sees those arguments.
 When the handler raises an exception, the request gets 500, and the redirect does not take effect.
 When an mruby handler or filter of the other location raises an exception, the exception ends that handler as it does without the redirect: the request gets 500 unless its response was already started.
 On 2.x the internal redirect ran the handlers of the other location before the call returned, and the calling handler went on after the call and could answer the request as well (see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxredirect-with-a-local-uri-takes-effect-when-the-handler-ends-728)).
@@ -1897,6 +1898,9 @@ Do non-blocking sleep. It works in the code of `mruby_stream` and `mruby_stream_
 
 After the sleep, the session goes on as it does when the code does not sleep, by the result of the code: the next handler for `Nginx::Stream::DECLINED` (the default of `Nginx::Stream::Connection.stream_status`), the next phase for `Nginx::Stream::OK`, the wait of the session for `Nginx::Stream::DONE` and `Nginx::Stream::AGAIN`, and the end of the session for `Nginx::Stream::ABORT` or another status, and for an exception, which `error.log` records.
 This holds since 2.7.3; up to 2.7.2 a session whose code raised or set a status other than `Nginx::Stream::DECLINED` after the sleep was neither ended nor continued, and an exception after the sleep also aborted the next session.
+
+A session runs its code once (since 3.0.0): while the code waits, datagrams that the client of a UDP session (`listen ... udp`) sends do not start it again, and nginx does not give them to the code. On 2.x each such datagram started the code again in another fiber of the session, and only the last run went on after its sleep.
+When `worker_shutdown_timeout` expires in a worker that shuts down, a session whose code waits ends: the code after the sleep does not run, and `error.log` gets `shutdown timeout` at the `info` level (since 3.0.0; on 2.x the session went on). A waiting session of a server with `listen ... proxy_protocol` is not covered; another change handles it. See the entries ["A UDP stream session runs its code once"](../releases/v3.0.0.md#a-udp-stream-session-runs-its-code-once-datagrams-that-arrive-while-the-code-waits-do-not-start-it-again-727) and ["A stream session that waits when `worker_shutdown_timeout` expires ends then"](../releases/v3.0.0.md#a-stream-session-that-waits-when-worker_shutdown_timeout-expires-ends-then-727) of the release notes of 3.0.0.
 
 ```ruby
 # sleep 3000 millisec

@@ -735,6 +735,9 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   ngx_stream_mruby_internal_ctx_t *ictx;
   ngx_stream_session_t *prev_s;
   ngx_mrb_fiber_outcome_t outcome;
+  ngx_stream_mruby_ctx_t *ctx;
+  ngx_int_t rc;
+  mrb_value *mrb_result;
 
   mscf = ngx_stream_get_module_srv_conf(s, ngx_stream_mruby_module);
   if (mscf->code == NGX_CONF_UNSET_PTR) {
@@ -754,7 +757,23 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   ictx->s = s;
   ictx->stream_status = NGX_DECLINED;
 
-  mrb_value *mrb_result = (mrb_value *)ngx_palloc(s->connection->pool, sizeof(mrb_value));
+  // nginx calls the handler again while a record of the session waits: after
+  // the wake of its timer, the handler resumes the fiber and returns the
+  // result of the code to the checker (section 4.4 of
+  // docs/proposals/core-stabilization.md); otherwise the code does not run
+  // again (Q4)
+  ctx = ngx_stream_get_module_ctx(s, ngx_stream_mruby_module);
+  if (ctx != NULL && ctx->sleeping != NULL) {
+    rc = ngx_stream_mrb_fiber_call_again(s, ctx, ctx->async_handler_result, &outcome);
+    if (rc == NGX_OK) {
+      goto resumed;
+    }
+    mrb_gc_arena_restore(mrb, ai);
+    ictx->s = prev_s;
+    return rc;
+  }
+
+  mrb_result = (mrb_value *)ngx_palloc(s->connection->pool, sizeof(mrb_value));
   if (mrb_result == NULL) {
     ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "%s ERROR %s:%d: failed to allocate the result", MODULE_NAME,
                   __func__, __LINE__);
@@ -765,6 +784,8 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   *mrb_result = mrb_nil_value();
 
   outcome = ngx_stream_mrb_start_fiber(s, mrb, mscf->code->proc, mrb_result);
+
+resumed:
   if (outcome == NGX_MRB_FIBER_WAITS) {
     ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
                   __func__, __LINE__);

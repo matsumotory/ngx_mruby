@@ -289,7 +289,9 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 
 - [`Nginx::Async::HTTP.sub_request`で待つハンドラが、コードを1回だけ実行し、待たないときと同じように終わる](../../releases/v3.0.0.ja.md#nginxasynchttpsub_requestで待つハンドラがコードを1回だけ実行し待たないときと同じように終わる722)：ほとんどのスクリプトでは、変えるものはありません。3.0.0では、`sub_request`を呼ぶaccessハンドラとpost_readハンドラは、リクエストにつき1回だけ動きます。サブリクエストの後にコードがもう一度動くことに頼っていた処理は、サブリクエストのレスポンスを使える呼び出しの後に書いてください。
 
-- [ローカルのURIへの`Nginx.redirect`が、ハンドラが終わったときに効く](../../releases/v3.0.0.ja.md#ローカルのuriへのnginxredirectがハンドラが終わったときに効く728)：ハンドラで、パスを渡す`Nginx.redirect`を探してください。3.0.0では、呼び出しの後のコードがリダイレクト先より先に動き、書いた出力と設定したステータスはクライアントへ送られません。
+- [UDPのstreamのセッションがコードを1回だけ実行し、コードが待っている間に届いたデータグラムでは始め直さない](../../releases/v3.0.0.ja.md#udpのstreamのセッションがコードを1回だけ実行しコードが待っている間に届いたデータグラムでは始め直さない727)：`listen ... udp`のサーバーのコードで`Nginx::Stream::Async.sleep`を探してください。3.0.0では、コードはセッションにつき1回だけ動き、sleepの間に届いたデータグラムでは始め直しません。
+- [`worker_shutdown_timeout`が切れたときに待っているstreamのセッションが、そこで終わる](../../releases/v3.0.0.ja.md#worker_shutdown_timeoutが切れたときに待っているstreamのセッションがそこで終わる727)：変えるものはありません。`worker_shutdown_timeout`がある設定で、タイムアウトが切れたときにまだsleepしているstreamのセッションは、sleepの後のコードを実行せずに終わります。`listen ... proxy_protocol`のサーバーの待つセッションは対象外で、別の変更で扱います。
+- [ローカルのURIへの`Nginx.redirect`が、ハンドラが終わったときに効く](../../releases/v3.0.0.ja.md#ローカルのuriへのnginxredirectがハンドラが終わったときに効く728)：ハンドラで、パスを渡す`Nginx.redirect`を探してください。3.0.0では、呼び出しの後のコードがリダイレクト先より先に動き、書いた出力と設定したステータスはクライアントへ送られません。そのコードが設定したレスポンスのヘッダと、変えたリクエストの引数は、リダイレクト先に届きます。
 
   ```ruby
   Nginx.redirect "/backend"

@@ -1116,11 +1116,12 @@ resumed:
      * parent itself when the subrequest ends.
      *
      * A handler that runs inside another mruby call (mrb->jmp is set), in the
-     * location that Nginx.redirect runs from Ruby code, is resumed by its
-     * timer instead (ngx_mrb_post_fiber): the calling handler goes on after
-     * the call and may answer the request itself, and a content handler
-     * there does not keep the request, so the request ends at the sleep, as
-     * before. The same holds when the module context is no longer the one the
+     * location of an internal redirect that an mruby_set handler, a log
+     * handler or a filter makes inside the Ruby call, is resumed by its timer
+     * instead (ngx_mrb_post_fiber): the calling code goes on after the call
+     * and may answer the request itself, and a content handler there does
+     * not keep the request, so the request ends at the sleep, as before.
+     * The same holds when the module context is no longer the one the
      * handler started with (an internal redirect cleared it). Such a handler
      * returns NGX_AGAIN while its subrequest runs, as before, and so does an
      * mruby_set handler, whose subrequest step 8 of section 8 makes raise
