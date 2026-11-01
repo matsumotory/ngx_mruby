@@ -452,6 +452,19 @@ not enough, and show the change.
   that status from a later handler, for example a rewrite handler that
   reads the variable.
 
+- [A rewrite or server rewrite handler that ends without a result goes on to the next phase handler](../releases/v3.0.0.md#a-rewrite-or-server-rewrite-handler-that-ends-without-a-result-goes-on-to-the-next-phase-handler-720):
+  look at the `mruby_rewrite_handler*` and `mruby_server_rewrite_handler*`
+  handlers that can end without `Nginx.return` or with
+  `Nginx.return Nginx::OK`. On 2.x nginx ended such a request without a
+  response; on 3.0.0 it goes on to the content of the location. A handler
+  that should end the request returns the status it means:
+
+  ```ruby
+  # mruby_rewrite_handler_code
+  Nginx::Var.new.set "backend", "a"          # no result: 2.x sends no response   3.0.0 goes on
+  Nginx.return Nginx::HTTP_FORBIDDEN if deny # 403 on both
+  ```
+
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out
 `.` and `..` (see [New features](../releases/v3.0.0.md#new-features)).

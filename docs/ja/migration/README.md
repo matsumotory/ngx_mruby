@@ -271,6 +271,14 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 
 - [`Nginx::Async.sleep`で待つ`mruby_set`のハンドラが変数を設定し、リクエストが先へ進む](../../releases/v3.0.0.ja.md#nginxasyncsleepで待つmruby_setのハンドラが変数を設定しリクエストが先へ進む715)：`mruby_set`と`mruby_set_code`で`Nginx::Async.sleep`を探してください。sleepの後に`Nginx.return`でリクエストを終えていたコードは、そのステータスを後のハンドラから返してください。例えば、変数を読むrewriteハンドラから返します。
 
+- [結果なしで終わるrewriteハンドラとserver rewriteハンドラが、次のフェーズのハンドラへ進む](../../releases/v3.0.0.ja.md#結果なしで終わるrewriteハンドラとserver-rewriteハンドラが次のフェーズのハンドラへ進む720)：`Nginx.return`無しか`Nginx.return Nginx::OK`で終わることのある`mruby_rewrite_handler*`と`mruby_server_rewrite_handler*`のハンドラを見てください。2.xでは、nginxはこのリクエストに応答せずに終えていました。3.0.0では、リクエストはlocationのcontentへ進みます。リクエストを終えるハンドラは、意図するステータスを返してください。
+
+  ```ruby
+  # mruby_rewrite_handler_code
+  Nginx::Var.new.set "backend", "a"          # no result: 2.x sends no response   3.0.0 goes on
+  Nginx.return Nginx::HTTP_FORBIDDEN if deny # 403 on both
+  ```
+
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
 ## ログの<wbr>監視

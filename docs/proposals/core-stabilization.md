@@ -768,7 +768,8 @@ each bug fix comes as a test commit and a fix commit.
    result kept in the record (gap 3, Q6). Merged in
    [#715](https://github.com/matsumotory/ngx_mruby/pull/715).
 4. Decision (b): a rewrite handler without a result goes on (gap 1), and
-   so does a server rewrite handler (Q6).
+   so does a server rewrite handler (Q6). Merged in
+   [#720](https://github.com/matsumotory/ngx_mruby/pull/720).
 5. HTTP subrequests through the wake (gap 5), `sub_request` returns the
    response, and the content handler waits for a subrequest (gap 4, Q1).
 6. Stream: the wake and the second call of the handler (gap 9, Q4),
