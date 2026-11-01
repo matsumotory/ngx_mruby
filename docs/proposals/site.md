@@ -1904,14 +1904,6 @@ in the migration base (49 fewer); this count is not a runtime performance claim.
 
 ## 7. Decisions (2026-10-15)
 
-- **2026-11-01: wider v3 uses.** Keep the current visual design and working
-  routing trial; show planned MCP, fallback, bot and cache/telemetry uses on the
-  homepage before they are implemented. The bilingual edge-control guide and
-  [proposal](edge-control.md) carry boundaries and acceptance criteria. MCP uses
-  are grouped as protecting, adapting, and guiding/observing; the user's AI and
-  domain backend keep orchestration and semantic responsibility. These are
-  domain-independent scenarios, not product-specific deployment claims.
-
 The owner decided each question of the first version of this proposal on
 2026-10-15. The tool of Q1 was replaced on 2026-11-01 (the last entry of
 this section).
@@ -2010,6 +2002,18 @@ The handoff page stays in English with a Japanese notice (Q2). On these pages, `
 `check-styles.mjs` (both engines, light and dark) pass. `NOTES_ONLY` holds the four
 release-note pages until the 2.x wording of #703 reaches `next` through a
 merge of `master`.
+
+On 2026-11-01 the owner asked a Codex session to show the uses planned for
+v3 on the home page, apart from what works today, and to describe them in the
+docs and a proposal. This paragraph is the sessions' record of that request,
+not a quotation. The home page keeps its design and the working routing trial;
+a section after the hero lists four planned uses (MCP policy and client
+profiles, LLM fallback, AI crawler traffic, cache and telemetry hooks), with
+"planned" in its heading and on each item. The bilingual edge-control guide
+and [the proposal](edge-control.md) hold the boundaries and the acceptance.
+The MCP uses are grouped as protecting, adapting, and guiding/observing; the
+user's AI and the domain backend keep orchestration and the meaning of the
+data. The examples name no product or deployment.
 
 ## Appendix A. Where comparable projects put things
 

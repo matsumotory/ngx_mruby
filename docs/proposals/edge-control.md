@@ -128,7 +128,9 @@ Observe the sequence of method/tool, profile, outcome, duration and correlation 
 without collecting raw queries, documents, arguments, tokens or provider keys by
 default. A deployment-specific opt-in policy must define any richer collection.
 A correlation ID for observation is not an MCP protocol session: revision
-2026-07-28 has no protocol sessions. Cross-request linkage needs a documented,
+2026-07-28 has no protocol sessions, while clients of the revisions 2025-03-26
+to 2025-11-25 still send `Mcp-Session-Id`, and the gateway decides what it
+does with that header. Cross-request linkage needs a documented,
 validated mechanism with bounded retention, not a fabricated session identifier.
 
 The current log handler cannot wait for network I/O. Reuse planned worker timers
@@ -139,7 +141,8 @@ need a separate service and admission policy. Do not claim exactly-once export.
 ## LLM fallback, bot policy and semantic cache
 
 - **Fallback:** select compatible endpoints before response bytes reach the
-  client. `proxy_next_upstream` supports 429 and selected 5xx, not all 5xx;
+  client. `proxy_next_upstream` supports 429 and selected 5xx, not all 5xx, and
+  passes a POST on only with `non_idempotent`, which is the replay decision;
   529 uses a named `error_page` location. Bound retries and elapsed time, require
   replay-safe work and a replayable body, and separate local admission rejection
   from upstream failure. Preserve provider cooldown signals. Each destination owns
@@ -171,8 +174,9 @@ proposal to a shipped contract.
 Every recipe must pass the following before it is advertised as verified:
 
 - Explicit protocol/API versions and local mocks, plus a separate real-client
-  compatibility result where claimed. For MCP, current Streamable HTTP and legacy
-  HTTP+SSE are distinct cases, including Origin, token audience, cancellation,
+  compatibility result where claimed. For MCP, Streamable HTTP of 2026-07-28, the
+  Streamable HTTP revisions 2025-03-26 to 2025-11-25 (with `Mcp-Session-Id`, the
+  GET stream and `Last-Event-ID`) and legacy HTTP+SSE are distinct cases, including Origin, token audience, cancellation,
   discovery and required error headers. No unconditional retry of `tools/call`.
 - Allow/deny, cross-tenant access, malformed and oversized input, timeout,
   disconnect, unavailable dependencies, reload and shutdown. Side effects happen

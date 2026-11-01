@@ -22,7 +22,9 @@ and preserve the service's discovery contract, errors and cancellation behavior.
 A gateway is not automatically an OAuth server or a tool-discovery aggregator.
 
 [The MCP design](mcp-gateway.md) specifies the first mock recipe and protocol
-revision. Streamable HTTP and older HTTP+SSE need distinct compatibility tests.
+revision. Three transports need distinct compatibility tests: Streamable HTTP
+of 2026-07-28, the Streamable HTTP revisions 2025-03-26 to 2025-11-25 (with
+`Mcp-Session-Id`, a GET stream and `Last-Event-ID`), and the older HTTP+SSE.
 Do not retry a modifying tool call or forward a token to a different audience.
 
 Also bound call bursts, concurrent streams and payload size with nginx limits.
@@ -66,7 +68,9 @@ also decide when to stop and return the original error. A local concurrency
 limit is not a provider failure and must not trigger another upstream attempt.
 
 nginx supplies `proxy_next_upstream` and named `error_page` locations. Their
-retry rules are not a complete cross-provider policy. POST replay can duplicate
+retry rules are not a complete cross-provider policy. nginx passes a POST to the
+next server only when `proxy_next_upstream` also lists `non_idempotent`, and
+listing it is the replay decision of this section. POST replay can duplicate
 work and charges; bound attempts and total time, respect provider cooldowns,
 and require a replay-safe operation and a replayable body. Never restart a
 stream after bytes have reached the client. A reset after streaming begins is
