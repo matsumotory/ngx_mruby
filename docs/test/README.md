@@ -395,11 +395,15 @@ them under "How was this tested":
   ```
 
 - The 2.x pages built from the pull request: in a checkout of `next`,
-  after `npm ci --ignore-scripts` in its `site/`, `NGX_MRUBY_V2_TREE=DIR
-  npm run check:ci` with `DIR` the top of the checkout of the pull
-  request ("Site CI" in `docs/test/README.md` on `next`). It builds the
-  3.x pages of `next` and the 2.x pages from `DIR`, and runs every check
-  of the site on both, the browser checks among them. The generator stops
+  after `npm ci --ignore-scripts` and `npx playwright install chromium
+  webkit` in its `site/`, `NGX_MRUBY_V2_TREE=DIR npm run check:ci` with
+  `DIR` the top of the checkout of the pull request ("Site CI" in
+  `docs/test/README.md` on `next`). It builds the 3.x pages of `next` and
+  the 2.x pages from `DIR`, and runs the checks of the site on both, the
+  browser checks among them; it compiles the Ruby blocks of the pages
+  only when `MRBC` names an `mrbc` of the bundled mruby, and otherwise
+  says that it skipped them. It prints the commit of `next`; quote it
+  with the head of the pull request. The generator stops
   on a link of `docs/` to a file that git does not track, and the checks
   fail on a broken link of the built site, on a 2.x page without its
   banner, and when the search of a version shows pages of the other.
@@ -418,8 +422,12 @@ Two workflows here serve the 2.x pages:
   site/scripts/build-v2.mjs --tree DIR` of `next`), and runs the link,
   banner and search checks above. The built site is the workflow
   artifact `site-v2`. It does not run on pull requests or pushes: on a
-  push it would repeat the run of `site.yml` that `site-dispatch.yml`
-  starts.
+  push, the run of `site.yml` that `site-dispatch.yml` starts builds and
+  checks the same 2.x pages. That run checks the links of the Markdown
+  files of `next`, not of `master`: the links of the Markdown files of
+  `master` that the site does not render (`AGENTS.md`, for example, whose
+  links the generator turns into GitHub URLs) are checked only by the
+  author's run of `check_links.py` above.
 
 Neither is in the `needs` of `ci-ok`.
 

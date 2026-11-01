@@ -17,8 +17,10 @@ name: site-v2
 # changes docs/ runs these checks locally ("The 2.x pages of the site" in
 # docs/test/README.md), and every push to master starts site.yml on next
 # through site-dispatch.yml, which builds /v2/ from the new master, checks
-# it and fails before it deploys. A run on a push here would repeat that
-# run.
+# it and fails before it deploys. A run on a push here would build and
+# check the same 2.x pages again. That run does not check the links of the
+# Markdown files of master that the site does not render; the author's
+# local check_links.py does ("The 2.x pages of the site").
 on:
   workflow_dispatch:
 
