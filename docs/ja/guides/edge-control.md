@@ -12,7 +12,7 @@
 
 呼び出しの集中、同時ストリーム数、本文量にもnginxで上限を設けます。契約に合う再試行の案内を返しても、調査が十分かどうかは利用者のAIが判断します。頻度だけで意味的なループと決めつけず、必要な読み直しを妨げないか検証します。
 
-必要な機能と実装の状態は、用途の台帳の[ツールの認可とテナントの検査](../../proposals/edge-control.md#uc-mcp-tool-auth)の行と[エージェントの暴走とバーストの制御](../../proposals/edge-control.md#uc-mcp-burst)の行にあります。
+必要な機能と実装の状態は、用途の台帳の[ツールの認可とテナントの検査](../../proposals/edge-control.md#mcp-tool-authorization)の行と[エージェントの暴走とバーストの制御](../../proposals/edge-control.md#mcp-burst-control)の行にあります。
 
 ### 使うAIに合わせる
 
@@ -20,7 +20,7 @@
 
 文書は必要な範囲から読み、続きを取得できる形にします。原本のID、バージョン、位置、継続トークンはバックエンドが管理します。プロキシは取得方式や処理量を制御しても、JSONやSSEを途中で切ったり、継続トークンを作ったりしません。本文が未完であることを利用者のAIへ伝えます。
 
-必要な機能と実装の状態は、用途の台帳の[クライアント別のツールの出し分け](../../proposals/edge-control.md#uc-mcp-profiles)の行と[段階的な読解](../../proposals/edge-control.md#uc-mcp-progressive)の行にあります。
+必要な機能と実装の状態は、用途の台帳の[クライアント別のツールの出し分け](../../proposals/edge-control.md#mcp-tool-profiles)の行と[段階的な文書の取得](../../proposals/edge-control.md#mcp-progressive-retrieval)の行にあります。
 
 ### 次の探索を導き、観測する
 
@@ -30,7 +30,7 @@
 
 検索と読み取りのツールと、利用者が普段使うAIの相互作用でAgentic RAGを実現する設計です。調査の計画や終了の判断は利用者のAIに残します。AIの進化と共存し、ゲートウェイに別のエージェント実行基盤を持たせません。
 
-必要な機能と実装の状態は、用途の台帳の[0件やエラーのときの次の手掛かり](../../proposals/edge-control.md#uc-mcp-recovery)の行と[調査の軌跡の非同期のロギング](../../proposals/edge-control.md#uc-mcp-trajectory)の行にあります。
+必要な機能と実装の状態は、用途の台帳の[0件やエラーのときの次の手掛かり](../../proposals/edge-control.md#mcp-next-step-guidance)の行と[調査の軌跡の非同期のロギング](../../proposals/edge-control.md#mcp-trajectory-logging)の行にあります。
 
 ## LLMの切替
 
@@ -42,7 +42,7 @@ nginxのproxy_next_upstreamや名前付きerror_pageを使えますが、それ�
 
 同じlocationの再試行ごとにヘッダを組み直すには、計画中のbalancer APIが必要です。[接続制御の計画](agent-proxy.md#計画プロバイダ通信)と、現在のmock中継の検証を区別してください。
 
-必要な機能と実装の状態は、用途の台帳の[LLM APIの切替](../../proposals/edge-control.md#uc-llm-fallback)の行にあります。
+必要な機能と実装の状態は、用途の台帳の[LLM APIの切替](../../proposals/edge-control.md#llm-api-fallback)の行にあります。
 
 ## クローラーの制御
 
@@ -52,7 +52,7 @@ User-Agent、IP、本文の特徴は手掛かりであって、本人や意図�
 
 拒否は明示し、軽い応答には公開を意図した内容だけを使います。Honeypotは任意の隔離先であり、標準の罰則やBot判定ではありません。秘密を見せず、外部処理を起動せず、資源消費を制限します。worker間の動的な集計とreload時の扱いは共有辞書の計画に属し、分散した利用上限の管理の完成を意味しません。
 
-必要な機能と実装の状態は、用途の台帳の[AIクローラーとBotの動的な制御](../../proposals/edge-control.md#uc-bot-policy)の行にあります。
+必要な機能と実装の状態は、用途の台帳の[AIクローラーとBotの動的な制御](../../proposals/edge-control.md#ai-crawler-and-bot-control)の行にあります。
 
 ## キャッシュと観測
 
@@ -64,7 +64,7 @@ User-Agent、IP、本文の特徴は手掛かりであって、本人や意図�
 
 問い合わせのタイムアウトや一致の判断が曖昧な場合は、元の上流へ送ります。ツールの副作用をキャッシュせず、似たプロンプトなら同じ回答を使えるとも決めつけません。用途に合った評価が必要です。
 
-必要な機能と実装の状態は、用途の台帳の[log handlerのテレメトリ](../../proposals/edge-control.md#uc-log-telemetry)の行と[セマンティックキャッシュ](../../proposals/edge-control.md#uc-semantic-cache)の行にあります。
+必要な機能と実装の状態は、用途の台帳の[logハンドラのテレメトリ](../../proposals/edge-control.md#log-handler-telemetry)の行と[セマンティックキャッシュ](../../proposals/edge-control.md#semantic-cache)の行にあります。
 
 ## 設計と検証
 
