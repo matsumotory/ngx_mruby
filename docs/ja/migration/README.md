@@ -289,6 +289,14 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 
 - [`Nginx::Async::HTTP.sub_request`で待つハンドラが、コードを1回だけ実行し、待たないときと同じように終わる](../../releases/v3.0.0.ja.md#nginxasynchttpsub_requestで待つハンドラがコードを1回だけ実行し待たないときと同じように終わる722)：ほとんどのスクリプトでは、変えるものはありません。3.0.0では、`sub_request`を呼ぶaccessハンドラとpost_readハンドラは、リクエストにつき1回だけ動きます。サブリクエストの後にコードがもう一度動くことに頼っていた処理は、サブリクエストのレスポンスを使える呼び出しの後に書いてください。
 
+- [ローカルのURIへの`Nginx.redirect`が、ハンドラが終わったときに効く](../../releases/v3.0.0.ja.md#ローカルのuriへのnginxredirectがハンドラが終わったときに効く728)：ハンドラで、パスを渡す`Nginx.redirect`を探してください。3.0.0では、呼び出しの後のコードがリダイレクト先より先に動き、書いた出力と設定したステータスはクライアントへ送られません。
+
+  ```ruby
+  Nginx.redirect "/backend"
+  Nginx.rputs "fallback"       # 2.x: sent with the answer of /backend   3.0.0: not sent, warn line
+  return                        # leave the handler when the code after the call should not run
+  ```
+
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
 ## ログの<wbr>監視

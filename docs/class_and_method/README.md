@@ -393,10 +393,12 @@ See [error_page](http://nginx.org/en/docs/http/ngx_http_core_module.html#error_p
 [internal](http://nginx.org/en/docs/http/ngx_http_core_module.html#internal) directives, and
 [Creating NGINX Rewrite Rules](https://www.nginx.com/blog/creating-nginx-rewrite-rules/) for more about the internal redirect.
 
-The internal redirect runs the handlers of the other location before the call returns.
-When an mruby handler or filter of that location raises an exception, the exception ends that handler as it does without the redirect: the request gets 500 unless its response was already started.
-The exception does not reach the code that called `Nginx.redirect`, which goes on after the call.
-This holds since 2.7.3; up to 2.7.2 the exception reached the calling code, which could rescue it, and nginx did not finish the request.
+In a post_read, server rewrite, rewrite, access or content handler, the internal redirect takes effect when the handler ends (since 3.0.0): the code after the call runs first, and then nginx runs the phases of the other location, whose handlers answer the request and can wait like any handler.
+The output and the status that the handler writes or sets are not sent; when the code writes output or sets a status after the call, error.log gets a line at the warn level that ends with `set after Nginx.redirect are not sent`.
+When the handler raises an exception, the request gets 500, and the redirect does not take effect.
+When an mruby handler or filter of the other location raises an exception, the exception ends that handler as it does without the redirect: the request gets 500 unless its response was already started.
+On 2.x the internal redirect ran the handlers of the other location before the call returned, and the calling handler went on after the call and could answer the request as well (see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxredirect-with-a-local-uri-takes-effect-when-the-handler-ends-728)).
+In an `mruby_set*` handler, a log handler or a filter, the internal redirect still runs before the call returns.
 
 ```nginx
 location /secret-location {
@@ -1537,7 +1539,7 @@ While the handler waits, nginx does not run its code again.
 On 2.x the timer ended the handler with the rules of the content phase: an access or post_read handler without a result answered and then closed the connection, and a 401 or 403 under `satisfy any` ended the request (see [the release notes of 3.0.0](../releases/v3.0.0.md#an-access-or-post_read-handler-that-waits-in-nginxasyncsleep-ends-as-without-the-wait-715)).
 An `mruby_set*` handler that sleeps sets its variable when the code returns, and the request goes on, as described under [mruby_set](../directives/README.md#mruby_set-and-mruby_set_code).
 In a content handler (`mruby_content_handler*`) nginx waits for the handler since 2.7.3: the code after the sleep runs, and the request gets the response that the handler writes or the status that it returns. Up to 2.7.2 the request ended at the sleep without a response (see "Known limitations" in [the 2.7.1 release notes](../releases/v2.7.1.md#known-limitations)).
-A content handler that runs in the location that `Nginx.redirect` runs from Ruby code still ends the request at the sleep, because the handler that called `Nginx.redirect` goes on after the call and may answer the request itself.
+A handler of the location that `Nginx.redirect` sends the request to can sleep like any handler, since 3.0.0: the redirect takes effect when the calling handler ends (see [Nginx.redirect](#nginxredirecturl_or_internal_location-http_statusnginxhttp_moved_temporarily)). On 2.x a content handler there ended the request at the sleep.
 After the sleep, a content handler can wait for `Nginx::Async::HTTP.sub_request` as well (since 3.0.0; 2.7.3 raises a `RuntimeError` there).
 In a log handler (`mruby_log_handler`, `mruby_log_handler_code`) and in the
 output filters (`mruby_output_header_filter*`, `mruby_output_body_filter*`),

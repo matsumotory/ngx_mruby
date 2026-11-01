@@ -482,6 +482,17 @@ not enough, and show the change.
   counted on the code running again after the subrequest goes after the
   call, where its response is available.
 
+- [`Nginx.redirect` with a local URI takes effect when the handler ends](../releases/v3.0.0.md#nginxredirect-with-a-local-uri-takes-effect-when-the-handler-ends-728):
+  look for `Nginx.redirect` with a path in the handlers. On 3.0.0 the code
+  after the call runs before the target, and nothing that it writes or
+  sets is sent:
+
+  ```ruby
+  Nginx.redirect "/backend"
+  Nginx.rputs "fallback"       # 2.x: sent with the answer of /backend   3.0.0: not sent, warn line
+  return                        # leave the handler when the code after the call should not run
+  ```
+
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out
 `.` and `..` (see [New features](../releases/v3.0.0.md#new-features)).
