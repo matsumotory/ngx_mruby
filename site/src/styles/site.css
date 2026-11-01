@@ -301,9 +301,14 @@ figcaption,
  * 4.10 and 4.3 item 5: the header, 64 px on an opaque surface with a 1 px
  * bottom border. Wide: logo and wordmark, the five section links, search,
  * the version link, the language link, the theme toggle and GitHub. The
- * section links move into the menu below 76rem, where they no longer fit
- * beside the rest (measured at 1216 px with the English labels; the
- * profile site moves its links at 900 px, 4.2). At 640 px and below the
+ * section links move into the menu below 76rem (1216 px) on English pages
+ * and below 88rem (1408 px) on Japanese pages, where they no longer fit
+ * beside the rest: the Japanese labels (ドキュメント, エージェントプロキシ,
+ * 開発に参加する) are longer, and the Japanese header holds every item on
+ * one line from 1384 px in Hiragino Sans and 1376 px in Noto Sans JP
+ * (Chromium, with and without the sidebar; the profile site moves its
+ * links at 900 px, 4.2). The labels never break inside a word. At 640 px
+ * and below the
  * version link, the language link and GitHub move into the menu too.
  * Links are at least 44 px high, 15 px at weight 600; the current section
  * is text with a 2 px accent bottom border (4.6).
@@ -351,6 +356,7 @@ header.header {
 }
 .site-nav a,
 .header-link {
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   flex: none;
@@ -376,6 +382,7 @@ header.header {
 .site-search {
   display: flex;
   margin-inline-start: auto;
+  white-space: nowrap;
 }
 /* The language link: a pill with a 1 px border outline (4.10) */
 .header-link.pill {
@@ -452,7 +459,8 @@ button.site-menu-button svg {
 }
 
 /* The menu button shows on pages without a sidebar until the header holds
-   the section links, and on pages with a sidebar below 50em (PageFrame);
+   the section links (76rem in English, 88rem in Japanese), and on pages
+   with a sidebar below 50em (PageFrame);
    the header keeps its room free: the gutter, the 44 px button and a
    16 px gap */
 @media (max-width: 75.99rem) {
@@ -479,6 +487,22 @@ button.site-menu-button svg {
   }
   .site-menu {
     display: none;
+  }
+}
+/* Japanese pages keep the section links in the menu up to 88rem: the
+   longer labels fit beside the rest of the header from 1384 px (above) */
+@media (min-width: 76rem) and (max-width: 87.99rem) {
+  :root[lang="ja"] .site-nav {
+    display: none;
+  }
+  :root[lang="ja"]:not([data-has-sidebar]) button.site-menu-button {
+    display: inline-flex;
+  }
+  :root[lang="ja"] .site-menu {
+    display: flex;
+  }
+  :root[lang="ja"]:not([data-has-sidebar]) header.header {
+    padding-inline-end: calc(var(--header-pad-x) + 44px + var(--space-4));
   }
 }
 @media (max-width: 640px) {
