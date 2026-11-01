@@ -754,7 +754,8 @@ each bug fix comes as a test commit and a fix commit.
 
 1. Tests only: `async_resume_result.rb` and `async_result_isolation.rb` with
    the cases that pass today, so that the later pull requests show what
-   they change.
+   they change. Merged in
+   [#712](https://github.com/matsumotory/ngx_mruby/pull/712).
 2. The common layer with no change of behavior: the record shared by HTTP
    and stream, one timer per record, the resume function that clears
    `mrb->exc` on every path, the `RProc` prepared once, the slot at the

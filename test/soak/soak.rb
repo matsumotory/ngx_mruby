@@ -361,7 +361,7 @@ end
 # The keys of Nginx::Debug.stats: always these, and the two keys of mruby's
 # own _gc_root_ array together when the mruby of the build keeps the array
 # ("The soak build and Nginx::Debug" in docs/test/README.md).
-DEBUG_STATS_KEYS = %w[:gc_arena_idx :gc_live :gc_root :gc_root_fibers :timers].freeze
+DEBUG_STATS_KEYS = %w[:gc_arena_idx :gc_live :gc_root :gc_root_fibers :stream_fibers :stream_timers :timers].freeze
 DEBUG_STATS_MRUBY_KEYS = %w[:gc_root_fibers_mruby :gc_root_mruby].freeze
 # The Strings that /debug/check makes: two or more objects in each of 1000
 # rounds, so a full GC frees at least this many objects.
