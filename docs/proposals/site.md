@@ -1889,6 +1889,14 @@ in the migration base (49 fewer); this count is not a runtime performance claim.
 
 ## 7. Decisions (2026-10-15)
 
+- **2026-11-01: wider v3 uses.** Keep the current visual design and working
+  routing trial; show planned MCP, fallback, bot and cache/telemetry uses on the
+  homepage before they are implemented. The bilingual edge-control guide and
+  [proposal](edge-control.md) carry boundaries and acceptance criteria. MCP uses
+  are grouped as protecting, adapting, and guiding/observing; the user's AI and
+  domain backend keep orchestration and semantic responsibility. These are
+  domain-independent scenarios, not product-specific deployment claims.
+
 The owner decided each question of the first version of this proposal on
 2026-10-15. The tool of Q1 was replaced on 2026-11-01 (the last entry of
 this section).

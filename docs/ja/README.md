@@ -17,6 +17,8 @@ nginx内のRubyでリクエストの処理を組み立てます。ここは<stro
 - [TCPの中継](guides/tcp.md)：接続元を確認。
 - [MCPゲートウェイの設計案](guides/mcp-gateway.md)：未検証の構成と、未確認の範囲や境界。
 
+- [v3で広げる用途](guides/edge-control.md)：MCPの認可とクライアント別の連携、LLMの切替、Bot制御、キャッシュと観測の構想。
+
 ## APIや<wbr>ビルド設定を調べる
 
 - [ディレクティブ](../directives/README.md)：nginxがRubyを呼ぶ場所と設定。
