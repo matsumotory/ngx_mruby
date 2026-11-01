@@ -298,7 +298,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   Nginx.rputs "fallback"       # 2.x: sent with the answer of /backend   3.0.0: not sent, warn line
   return                        # leave the handler when the code after the call should not run
   ```
-- [`mruby_set`のハンドラでは`Nginx::Async::HTTP.sub_request`が`RuntimeError`を出す](../../releases/v3.0.0.ja.md#mruby_setのハンドラではnginxasynchttpsub_requestがruntimeerrorを出すNNN)：`mruby_set`と`mruby_set_code`で、`Nginx::Async::HTTP.sub_request`を探してください。サブリクエストを待てるrewriteかaccessのハンドラで呼び、`Nginx::Var#set`で変数を設定してください。
+- [`mruby_set`のハンドラでは`Nginx::Async::HTTP.sub_request`が`RuntimeError`を出す](../../releases/v3.0.0.ja.md#mruby_setのハンドラではnginxasynchttpsub_requestがruntimeerrorを出す735)：`mruby_set`と`mruby_set_code`で、`Nginx::Async::HTTP.sub_request`を探してください。サブリクエストを待てるrewriteかaccessのハンドラで呼び、`Nginx::Var#set`で変数を設定してください。
 
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
