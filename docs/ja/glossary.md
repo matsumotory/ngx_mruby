@@ -286,8 +286,8 @@
 
 ## ngx_mrubyのページの例
 
-- ホームページは、アプリがLLMを使い、プロキシがアプリとLLM APIの間に立つと書いています。この例は、チャットと文書要約のrequestを、`model`のフィールドの値でテキストの言語モデルへ振り分けます。そのため、LLMの語が合います。
-- 計画の用途「LLM APIのエラー時に転送先を選び直す」は、テキストの言語モデルを扱う間は語が合います。画像や音声のモデルのAPIも扱う場合は、model APIと書きます。
-- [AIの入口を制御する](guides/edge-control.md)の「クローラーの制御」の節は、サイトへ来るAIのcrawlerとagentのrequestを扱うので、語が合います。
+- ホームページの題「LLMリクエストの認証と転送をRubyで制御する。」は語が合います。その例は、チャットと文書要約のrequestを、`model`のフィールドの値でテキストの言語モデルへ振り分けるためです。題の下の文は、部品を、AI applicationとmodel APIの間に置くAI gatewayと呼んでいます。
+- 計画の用途「model APIのエラーで転送先を変える」は、テキストの言語モデルに限らないので、model APIと書いています。
+- [AI gatewayとアクセス制御](guides/edge-control.md)の「AI crawlerの制御」の節は、サイトへ来るAIのcrawlerとagentのrequestを扱うので、語が合います。
 - [edge-controlの構想](../proposals/edge-control.md)の題は「AI traffic」と書いています。この構想は、MCPの通信、model APIの通信、サイトへ来るAIのcrawlerとagentのrequest、log handlerのテレメトリを扱います。そのため、この語には、初出でこの4つを含むという定義が要ります。
-- 部品そのものを名指す文は、AI gatewayと書きます。[ドキュメントの一覧](README.md)から[エージェントプロキシ](guides/agent-proxy.md)の案内へ張ったリンクの「LLMプロキシ」がその例です。ページがmodel APIの部分だけを扱うなら、そのことも書き添えます。
+- [ドキュメントの一覧](README.md)は、[model APIの部分の案内](guides/agent-proxy.md)へのリンクを「model APIの中継」と書いています。このページは、AI gatewayのうちmodel APIの部分だけを扱い、ほかの部分の案内は別のページにあります。
