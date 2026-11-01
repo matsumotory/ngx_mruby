@@ -41,4 +41,4 @@ Originを検証し、[MCPの認可契約](https://modelcontextprotocol.io/specif
 
 ## v3で広げる用途
 
-[AI gatewayの用途](edge-control.md#mcpの認可)では、この振り分け案をMCPツールの認可とユーザーのデータアクセスの検査、AI application別の連携、段階的な本文取得、回復の案内、プライバシーに配慮した観測へ広げる設計を示します。いずれも今後の用途であり、専門サービスやAI application内のagentの責務はそれぞれに残します。
+[MCPの認可](edge-control.md#mcpの認可)では、この振り分け案をMCPツールの認可とユーザーのデータアクセスの検査、AI application別の連携、段階的な本文取得、回復の案内、プライバシーに配慮した観測へ広げる設計を示します。いずれも今後の用途であり、専門サービスやAI application内のagentの責務はそれぞれに残します。

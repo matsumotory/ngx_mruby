@@ -1,11 +1,12 @@
-# AI gateway use cases
+# AI gateway and site access control
 
 **Planned v3 uses, not ready-made integrations.** ngx_mruby can put Ruby
 policy inside nginx without moving the byte relay into an application. The
 [working model API relay](agent-proxy.md) already checks client keys, selects models
-and relays streams on `next`. The uses below extend that boundary to an AI
-gateway. They are not completed integrations or a promise that every part
-ships in v3.0.
+and relays streams on `next`. The uses below extend the AI gateway in front
+of model APIs and MCP servers, and separately control requests arriving at a
+website from AI crawlers and agents. They also cover log-handler telemetry.
+They are not completed integrations or a promise that every part ships in v3.0.
 
 ## MCP access policy
 
@@ -113,9 +114,10 @@ copying it into every application would be harder to maintain.
 
 User-Agent, IP and payload shape are signals, not proof of identity or intent.
 Only trust forwarded addresses from configured proxies. Bound body inspection
-and avoid a full parse of an arbitrary upload. Keep verified bots and signed
-agents separate from AI crawlers, training crawlers and AI scrapers classified
-only by heuristics. Verification of identity does not itself authorize access.
+and avoid a full parse of an arbitrary upload. Distinguish independently checked
+identities and verified request signatures from heuristic classifications as AI
+crawlers, training crawlers or AI scrapers. Verification of identity does not
+itself authorize access.
 Return an explicit rejection or an intentionally published lightweight
 representation. Test false positives with ordinary clients.
 

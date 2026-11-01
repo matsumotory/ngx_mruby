@@ -79,7 +79,7 @@ to learn routing. Do not advertise an MCP-conformance result from the model API 
 
 ## Wider v3 direction
 
-[AI gateway use cases](edge-control.md#mcp-access-policy) expands this routing design
+[MCP access policy](edge-control.md#mcp-access-policy) expands this routing design
 into MCP tool authorization and user data-access checks, AI application-specific
 profiles, progressive retrieval, recovery guidance and privacy-conscious observation. These remain planned uses;
 the domain backend and the agent in the user’s AI application retain their own

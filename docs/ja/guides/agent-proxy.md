@@ -48,7 +48,7 @@
 - クライアントのキーごとに数える`limit_conn`は、同時に1つのリクエストだけを許します。1つ目のレスポンスがストリームで届いている間に同じキーで送った2つ目のリクエストには、JSONのボディと`retry-after`の付いた429が返ります。この429は、どのupstreamも送らないステータス460を経由して返すので、upstream自身の429はそのまま通ります。
 - accessハンドラの`agent_proxy_route.rb`は、JSONのボディの`model`を読んでupstreamブロックを選び、クライアントの認証情報の代わりにupstreamが受け取る認証情報を設定します。upstreamの無いmodelには403を返します。
 - `proxy_buffering off`にした`proxy_pass`は、レスポンスを届くたびに中継します。529のようなupstreamのエラーは、ボディとともにクライアントに届きます。
-- logハンドラの`agent_proxy_log.rb`は、リクエストごとに、キーのidと`$upstream_status`を1行に書きます。
+- log handlerの`agent_proxy_log.rb`は、リクエストごとに、キーのidと`$upstream_status`を1行に書きます。
 
 ```sample
 label: development
@@ -105,7 +105,7 @@ relay: 現在：<wbr>nginxが<wbr>プロバイダの<wbr>イベントを、<wbr>
 frame: ステップ7b：<wbr>イベントフィルタが<wbr>Cで<wbr>イベントを<wbr>区切り、<wbr>一覧に<wbr>ある<wbr>イベントごとに<wbr>Rubyを<wbr>1回<wbr>呼ぶ
 usage: ステップ7b：<wbr>Rubyが<wbr>`message_start`と<wbr>`message_delta`、<wbr>または<wbr>最後の<wbr>`response.*`イベントから<wbr>使用量を<wbr>読む
 charge: ステップ7a：<wbr>レスポンスが<wbr>終わるか<wbr>切れたときに、<wbr>共有ディクショナリの<wbr>カウンタに<wbr>計上する
-log: ステップ4：<wbr>logハンドラが<wbr>`access_log`の<wbr>前に<wbr>動き、<wbr>その後で<wbr>`access_log`が<wbr>費用と<wbr>トークンを<wbr>ログに<wbr>書く
+log: ステップ4：<wbr>log handlerが<wbr>`access_log`の<wbr>前に<wbr>動き、<wbr>その後で<wbr>`access_log`が<wbr>費用と<wbr>トークンを<wbr>ログに<wbr>書く
 ```
 
 ## v3.0の<wbr>エンドポイント
