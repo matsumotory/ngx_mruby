@@ -1,7 +1,7 @@
 // The browser checks of steps 2 and 3 (docs/proposals/site.md, section 6),
 // on computed styles in Chromium and WebKit (Playwright), for every page of
 // PAGES in light and dark, in the two patterns of lib/patterns.mjs: PC at
-// full screen (1440 by 900 px in Chromium) and iPhone Safari (390 by
+// full screen (1440 by 900 px in Chromium) and iPhone Safari (402 by
 // 664 px in WebKit):
 //
 // - font sizes: every visible text has a size of the scale of its page's
@@ -14,17 +14,16 @@
 // - monospace only where 4.3, item 2 puts it;
 // - no box-shadow, text-shadow, backdrop-filter or gradient (4.3 item 5),
 //   also with the search dialog open (while its results load and after
-//   they have loaded), and at 390 px with the menu open;
+//   they have loaded), and at 402 px with the menu open;
 // - margins, paddings, gaps and radii from the sets of 4.5 (computed values
 //   through the CSS Typed OM, so that auto and percentages stay keywords);
 // - durations of 4.8: 200 ms or less, 0 under prefers-reduced-motion, no
 //   animation running after the load;
 // - at most 90 characters per line of English body text at 1440 px (4.4);
-// - no horizontal scroll of the page (4.9), and at 390 px every text block
+// - no horizontal scroll of the page (4.9), and at 402 px every text block
 //   and the ring before h2 at least 20 px from both edges (4.5);
-// - the home page heading takes at most two lines at 1440 px, and at 390
-//   px two in Japanese and three in English (4.4);
-// - at 390 px the right edge of Japanese text blocks (4.9), and on English
+// - the home page heading takes at most two lines in both patterns;
+// - at 402 px the right edge of Japanese text blocks (4.9), and on English
 //   blocks no computed text-wrap pretty or balance (4.9);
 // - in both patterns, no paragraph, list item, caption, table cell or heading
 //   whose last line holds only one or two characters (the owner's rule);
@@ -65,16 +64,20 @@ export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/re
 // (step 4 fixed the last ones that were notes).
 const LAST_LINE_STRICT = new Set(PAGES);
 
-// 4.4, table "Scale": the sizes other than the home page heading.
+// 4.4, table "Scale": the sizes other than the home page heading, at a
+// root size of 16 px. At 640 px and below the root grows with the screen
+// (tokens.css, ROOT below), and every size of the scale is compared in rem,
+// that is, these values times the root size divided by 16.
 const SCALE = {
   en: { h1: 32, h2: 26, h3: 22, body: 16, nav: 15, caption: 14 },
   ja: { h1: 26, h2: 22, h3: 18, body: 16, nav: 15, caption: 14 },
 };
-// The homepage scale of home.css; reference pages retain the scale above.
-function homeSize(lang, vw) {
-  const clamp = (lo, v, hi) => Math.min(Math.max(lo, v), hi);
-  return lang === 'ja' ? clamp(32, 16 + 0.035 * vw, 56) : clamp(38, 16 + 0.045 * vw, 72);
-}
+// The homepage scale of home.css (computed in the page, in rem); reference
+// pages retain the scale above.
+// tokens.css: at 640 px and below, the root size keeps the text column
+// between the narrow gutters at 21.875 em, from 100% to 106.25% (16 to
+// 17 px); above 640 px it is 16 px.
+const ROOT = { maxWidth: 640, columnEm: 21.875, min: 16, max: 17 };
 // 4.5: --space-1 to --space-9, and 20 px, the narrow gutter of 4.5.
 const SPACES = [0, 4, 8, 12, 16, 24, 32, 48, 64, 80];
 const GUTTER_NARROW = 20;
@@ -105,13 +108,21 @@ function inspect(cfg) {
   const fails = [];
   const root = document.documentElement;
   const lang = root.lang === 'ja' ? 'ja' : 'en';
-  const scale = cfg.scale[lang];
+  // The root size that tokens.css gives this screen, and the scale in rem.
+  const rootPx = parseFloat(getComputedStyle(root).fontSize);
+  const expectedRoot = innerWidth > cfg.root.maxWidth ? cfg.root.min
+    : Math.min(Math.max(cfg.root.min, (innerWidth - 2 * cfg.gutterNarrow) / cfg.root.columnEm), cfg.root.max);
+  if (Math.abs(rootPx - expectedRoot) > 0.05) fails.push(`:root: font-size ${rootPx}px at ${innerWidth} px, expected ${expectedRoot}px (4.4)`);
+  const rem = rootPx / 16;
+  const scale = Object.fromEntries(Object.entries(cfg.scale[lang]).map(([k, v]) => [k, v * rem]));
   const sizes = new Set(Object.values(scale));
   const isHome = !!document.querySelector('.home');
   // The Japanese home heading: no more than its column (.headline-box)
   // divided by 13.7 em (tokens.css)
   const headlineBox = document.querySelector('.headline-box');
-  const home = lang === 'ja' && headlineBox ? Math.min(cfg.home, headlineBox.getBoundingClientRect().width / 13.7) : cfg.home;
+  const clampTo = (lo, v, hi) => Math.min(Math.max(lo, v), hi);
+  const homeBase = lang === 'ja' ? clampTo(32 * rem, 16 * rem + 0.035 * cfg.homeVw, 56 * rem) : clampTo(38 * rem, 16 * rem + 0.045 * cfg.homeVw, 72 * rem);
+  const home = lang === 'ja' && headlineBox ? Math.min(homeBase, headlineBox.getBoundingClientRect().width / 13.7) : homeBase;
   if (isHome && lang === 'ja' && !headlineBox) fails.push('the Japanese home page has no .headline-box');
   const tokens = new Set(cfg.tokens);
   const spans = new Set(cfg.spans);
@@ -180,7 +191,10 @@ function inspect(cfg) {
     const ownText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     if (ownText) {
       const fs = parseFloat(cs.fontSize);
-      const allowed = new Set(sizes);
+      // A size of the scale in rem of the root. Pagefind's UI writes its
+      // sizes in px, so inside it the same sizes in px are allowed too; the
+      // two differ only at 640 px and below.
+      const allowed = new Set([...sizes, ...(el.closest('.pagefind-ui') ? Object.values(cfg.scale[lang]) : [])]);
       if (isHome) allowed.add(home);
       if (![...allowed].some((s) => Math.abs(s - fs) < 0.05)) fail(el, `font-size ${fs}px is not a size of the ${lang} scale (${[...allowed].join(', ')})`);
       if (fs < 13.95) fail(el, `font-size ${fs}px is below 14 px`);
@@ -188,7 +202,7 @@ function inspect(cfg) {
     // Spacing and radii (4.5), computed values through the Typed OM
     const map = el.computedStyleMap();
     for (const p of ['margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'row-gap', 'column-gap']) {
-      // Starlight's layout reserves the size of its fixed header, its
+      // The site's layout reserves the size of its fixed header, its
       // mobile table of contents and its sidebar with padding: sizes of
       // those elements, not spacing between content.
       if (cfg.layoutOffsets.some(([sel, prop]) => prop === p && el.matches(sel))) continue;
@@ -200,14 +214,20 @@ function inspect(cfg) {
         continue;
       }
       const n = Math.abs(parseFloat(m[1]));
-      const ok = cfg.spaces.some((s) => Math.abs(s - n) < 0.01) || (/(left|right)$/.test(p) && Math.abs(n - cfg.gutterNarrow) < 0.01 && cfg.width <= 640);
+      // A step of 4.5 written in px, or in rem (that step times the root size
+      // divided by 16, which differs from px only at 640 px and below).
+      // Expressive Code keeps room for the copy button at the end of each
+      // line of a wrapped block: its code padding (--space-4) plus 2rem,
+      // 48 px at a root of 16 px.
+      const copyRoom = el.matches('.expressive-code .ec-line > .code') && /right$/.test(p) && Math.abs(n - (16 + 2 * rootPx)) < 0.01;
+      const ok = copyRoom || cfg.spaces.some((s) => Math.abs(s - n) < 0.01 || Math.abs(s * rem - n) < 0.01) || (/(left|right)$/.test(p) && Math.abs(n - cfg.gutterNarrow) < 0.01 && cfg.width <= 640);
       if (!ok) fail(el, `${p} ${v} is not a value of 4.5`);
     }
     for (const p of ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius']) {
       const v = map.get(p)?.toString() ?? '';
       if (v === '50%') continue;
       const m = v.match(/^([0-9.]+)px$/);
-      if (!m || !cfg.radii.some((r) => Math.abs(r - parseFloat(m[1])) < 0.01)) fail(el, `${p} ${v} is not 0, 8, 12, 999 px or 50%`);
+      if (!m || !cfg.radii.some((r) => Math.abs(r - parseFloat(m[1])) < 0.01 || Math.abs(r * rem - parseFloat(m[1])) < 0.01)) fail(el, `${p} ${v} is not 0, 8, 12, 999 px or 50%`);
     }
     // Durations (4.8)
     const durations = `${cs.transitionDuration},${cs.animationDuration}`.split(',').map((d) => parseFloat(d) * (d.trim().endsWith('ms') ? 1 : 1000));
@@ -232,7 +252,7 @@ function inspect(cfg) {
   for (const el of document.querySelectorAll('code, pre, kbd, samp, .site-title, td.num, th.num')) {
     if (visible(el) && first(el) !== mono) fail(el, `font-family starts with ${first(el)}, not ${mono}`);
   }
-  for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li, h1, h2, h3, h4, td:not(.num), th:not(.num), figcaption), h1#_top, .sidebar-content a, starlight-toc a, .starlight-aside__title')) {
+  for (const el of document.querySelectorAll('.site-markdown-content :is(p, li, h1, h2, h3, h4, td:not(.num), th:not(.num), figcaption), h1#_top, .sidebar-content a, site-toc a, .site-aside__title')) {
     if (visible(el) && !el.closest('pre, code, .expressive-code') && first(el) === mono) fail(el, `font-family starts with the monospace face ${mono}`);
   }
   // Roles of the scale
@@ -240,11 +260,11 @@ function inspect(cfg) {
     for (const el of document.querySelectorAll(sel)) if (visible(el) && Math.abs(parseFloat(getComputedStyle(el).fontSize) - px) > 0.05) fail(el, `${what} at ${getComputedStyle(el).fontSize}, expected ${px}px`);
   };
   role('h1#_top', isHome ? home : scale.h1, isHome ? 'the home page heading' : 'the page title');
-  role('.sl-markdown-content h2:not(.not-content *)', scale.h2, 'h2');
-  role('.sl-markdown-content h3:not(.not-content *)', scale.h3, 'h3');
-  role('.sl-markdown-content > p:not(.caption), .sl-markdown-content li > p, .home-v3 .flow-description > p', scale.body, 'body text');
-  role('.expressive-code pre, .sl-markdown-content :is(td, th)', scale.nav, 'code blocks and tables');
-  role('figcaption, .sl-markdown-content p.caption', scale.caption, 'captions');
+  role('.site-markdown-content h2:not(.not-content *)', scale.h2, 'h2');
+  role('.site-markdown-content h3:not(.not-content *)', scale.h3, 'h3');
+  role('.site-markdown-content > p:not(.caption), .site-markdown-content li > p, .home-v3 .flow-description > p', scale.body, 'body text');
+  role('.expressive-code pre, .site-markdown-content :is(td, th)', scale.nav, 'code blocks and tables');
+  role('figcaption, .site-markdown-content p.caption', scale.caption, 'captions');
   // Dark: surface lighter than bg (4.7)
   if (cfg.theme === 'dark') {
     const lum = (h) => {
@@ -282,7 +302,7 @@ function inspect(cfg) {
     return [...out.values()].map((l) => ({ ...l, chars: l.text.trimEnd().length }));
   };
   if (lang === 'en' && cfg.pc) {
-    for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li)')) {
+    for (const el of document.querySelectorAll('.site-markdown-content :is(p, li)')) {
       // The three homepage flow rows contain separately checked paragraphs beside code.
       // Do not join these grid columns into one prose line; ordinary list items stay checked.
       if (!visible(el) || el.closest('.expressive-code, .diagram, table') || el.matches('.home-v3 .routing-workspace > .flow-step')) continue;
@@ -290,7 +310,7 @@ function inspect(cfg) {
     }
   }
   if (lang === 'ja' && cfg.phone) {
-    for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li, figcaption, figcaption > span, td, th), .sl-markdown-content h2')) {
+    for (const el of document.querySelectorAll('.site-markdown-content :is(p, li, figcaption, figcaption > span, td, th), .site-markdown-content h2')) {
       if (!visible(el) || el.closest('.expressive-code, .diagram-grid') || el.querySelector('p, ul, ol')) continue;
       // A row of buttons is not running text
       if (getComputedStyle(el).display === 'flex') continue;
@@ -332,17 +352,16 @@ function inspect(cfg) {
       if (/pretty|balance/.test(tw)) fail(el, `text-wrap ${tw.trim()} (4.4, 4.9)`);
     }
   }
-  // The home page heading: at most two lines at 1440 px; at 390 px two in
-  // Japanese and three in English (4.4)
+  // The home page heading: at most two lines in both approved patterns.
   if (isHome && cfg.width > 0) {
     const h1 = document.querySelector('h1#_top');
     const n = h1 ? lines(h1).length : 0;
-    const max = cfg.pc || lang === 'ja' ? 2 : 3;
+    const max = 2;
     if (!h1) fails.push('the home page has no h1#_top');
     else if (n > max) fail(h1, `the home page heading takes ${n} lines at ${cfg.width} px, over ${max}`);
     cfg.counts.homeHeading = n;
   }
-  // Gutters of 20 px or more at 390 px (4.5): every text block, outside
+  // Gutters of 20 px or more at 402 px (4.5): every text block, outside
   // the boxes that scroll on their own (code blocks, tables), and the ring
   // before h2
   if (cfg.phone) {
@@ -364,7 +383,7 @@ function inspect(cfg) {
       }
       if (bad) fail(el, `text ${bad.left < 19.5 ? `starts ${bad.left.toFixed(1)} px from the left edge` : `ends ${(W - bad.right).toFixed(1)} px from the right edge`}, under the 20 px gutter (4.5)`);
     }
-    for (const h2 of document.querySelectorAll('.sl-markdown-content h2:not(.not-content *)')) {
+    for (const h2 of document.querySelectorAll('.site-markdown-content h2:not(.not-content *)')) {
       if (!visible(h2)) continue;
       const b = getComputedStyle(h2, '::before');
       if (b.content === 'none') continue;
@@ -473,7 +492,8 @@ async function main() {
             const lang = await tab.evaluate(() => document.documentElement.lang);
             const cfg = {
               scale: SCALE,
-              home: homeSize(lang === 'ja' ? 'ja' : 'en', size.width),
+              homeVw: size.width,
+              root: ROOT,
               tokens,
               syntax,
               spans: [...allowedSpanColors()],
@@ -526,7 +546,7 @@ async function main() {
                 });
                 await tab.locator('dialog[open] input').fill('filter');
                 const states = [];
-                const placeholders = tab.locator('#starlight__search .pagefind-ui__loading');
+                const placeholders = tab.locator('#site__search .pagefind-ui__loading');
                 // Only a timeout means that a state did not come; any other
                 // error is a fault of this check and stops it.
                 const timedOut = (e) => {
@@ -548,7 +568,7 @@ async function main() {
                 }
                 release();
                 try {
-                  await tab.waitForFunction(() => !document.querySelector('#starlight__search .pagefind-ui__loading') && document.querySelector('#starlight__search .pagefind-ui__result-link'), null, { timeout: 10000 });
+                  await tab.waitForFunction(() => !document.querySelector('#site__search .pagefind-ui__loading') && document.querySelector('#site__search .pagefind-ui__result-link'), null, { timeout: 10000 });
                   states.push('settled');
                   for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open: ${f}`);
                   for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0, phone: false, pc: false })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open: ${f}`);
@@ -560,7 +580,7 @@ async function main() {
                 if (states.length === 2) searches++;
                 await tab.keyboard.press('Escape');
               }
-              const menu = tab.locator('button.sl-menu-button');
+              const menu = tab.locator('button.site-menu-button');
               if (await menu.isVisible()) {
                 try {
                   await menu.click({ timeout: 5000 });
@@ -568,7 +588,7 @@ async function main() {
                   failures.push(`${tag}: the menu button cannot be clicked`);
                 }
                 await tab.waitForTimeout(100);
-                if (!(await tab.locator('#starlight__sidebar:popover-open').count())) failures.push(`${tag}: the menu did not open`);
+                if (!(await tab.locator('#site__sidebar:popover-open').count())) failures.push(`${tag}: the menu did not open`);
                 menus++;
                 for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} menu open: ${f}`);
                 for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0, phone: false, pc: false })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} menu open: ${f}`);

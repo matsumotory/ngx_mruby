@@ -1,5 +1,5 @@
 ---
-import Icon from './Icon.astro';
+import Icon from '../components/Icon.astro';
 import { t } from './strings.mjs';
 // Adapted from Starlight 0.42.6. Copyright Astro contributors. MIT: ./STARLIGHT-LICENSE.
 
@@ -10,11 +10,11 @@ const { toc } = Astro.locals.siteRoute;
 
 {
 	toc && (
-		<mobile-starlight-toc data-min-h={toc.minHeadingLevel} data-max-h={toc.maxHeadingLevel}>
-			<nav aria-labelledby="starlight__on-this-page--mobile">
-				<details id="starlight__mobile-toc">
-					<summary id="starlight__on-this-page--mobile" class="sl-flex">
-						<span class="toggle sl-flex">
+		<mobile-site-toc data-min-h={toc.minHeadingLevel} data-max-h={toc.maxHeadingLevel}>
+			<nav aria-labelledby="site__on-this-page--mobile">
+				<details id="site__mobile-toc">
+					<summary id="site__on-this-page--mobile" class="site-flex">
+						<span class="toggle site-flex">
 							{t(Astro.locals.siteRoute.locale, 'tableOfContents.onThisPage')}
 							<Icon name={'right-caret'} class="caret" size="1rem" />
 						</span>
@@ -25,34 +25,34 @@ const { toc } = Astro.locals.siteRoute;
 					</div>
 				</details>
 			</nav>
-		</mobile-starlight-toc>
+		</mobile-site-toc>
 	)
 }
 
 <style>
-	@layer starlight.core {
+	@layer site.core {
 		nav {
 			position: fixed;
-			z-index: var(--sl-z-index-toc);
-			top: calc(var(--sl-nav-height) - 1px);
+			z-index: var(--site-z-index-toc);
+			top: calc(var(--header-height) - 1px);
 			inset-inline: 0;
-			border-top: 1px solid var(--sl-color-gray-5);
-			background-color: var(--sl-color-bg-nav);
+			border-top: 1px solid var(--color-border);
+			background-color: var(--color-bg-tertiary);
 		}
 		@media (min-width: 50rem) {
 			nav {
-				inset-inline-start: var(--sl-content-inline-start, 0);
+				inset-inline-start: var(--site-content-inline-start, 0);
 			}
 		}
 
 		summary {
 			gap: 0.5rem;
 			align-items: center;
-			height: var(--sl-mobile-toc-height);
-			border-bottom: 1px solid var(--sl-color-hairline-shade);
+			height: var(--site-mobile-toc-height);
+			border-bottom: 1px solid var(--color-border);
 			padding: 0.5rem 1rem;
-			font-size: var(--sl-text-xs);
-			outline-offset: var(--sl-outline-offset-inside);
+			font-size: var(--text-caption);
+			outline-offset: var(--site-outline-offset-inside);
 		}
 		summary::marker,
 		summary::-webkit-details-marker {
@@ -64,23 +64,23 @@ const { toc } = Astro.locals.siteRoute;
 			gap: 1rem;
 			align-items: center;
 			justify-content: space-between;
-			border: 1px solid var(--sl-color-gray-5);
+			border: 1px solid var(--color-border);
 			border-radius: 0.5rem;
 			padding-block: 0.5rem;
 			padding-inline-start: 0.75rem;
 			padding-inline-end: 0.5rem;
 			line-height: 1;
-			background-color: var(--sl-color-black);
+			background-color: var(--color-bg-primary);
 			user-select: none;
 			cursor: pointer;
 		}
 		details[open] .toggle {
-			color: var(--sl-color-white);
-			border-color: var(--sl-color-accent);
+			color: var(--color-text-primary);
+			border-color: var(--color-accent);
 		}
 		details .toggle:hover {
-			color: var(--sl-color-white);
-			border-color: var(--sl-color-gray-2);
+			color: var(--color-text-primary);
+			border-color: var(--color-text-primary);
 		}
 
 		:global([dir='rtl']) .caret {
@@ -94,27 +94,27 @@ const { toc } = Astro.locals.siteRoute;
 			white-space: nowrap;
 			text-overflow: ellipsis;
 			overflow: hidden;
-			color: var(--sl-color-white);
+			color: var(--color-text-primary);
 		}
 
 		.dropdown {
 			--border-top: 1px;
 			margin-top: calc(-1 * var(--border-top));
-			border: var(--border-top) solid var(--sl-color-gray-6);
-			border-top-color: var(--sl-color-hairline-shade);
-			max-height: calc(85vh - var(--sl-nav-height) - var(--sl-mobile-toc-height));
+			border: var(--border-top) solid var(--color-bg-tertiary);
+			border-top-color: var(--color-border);
+			max-height: calc(85vh - var(--header-height) - var(--site-mobile-toc-height));
 			overflow-y: auto;
-			background-color: var(--sl-color-black);
-			box-shadow: var(--sl-shadow-md);
+			background-color: var(--color-bg-primary);
+			box-shadow: none;
 			overscroll-behavior: contain;
 		}
 	}
 </style>
 
 <script>
-	import { StarlightTOC } from './toc.js';
+	import { SiteTOC } from './toc.js';
 
-	class MobileStarlightTOC extends StarlightTOC {
+	class MobileSiteTOC extends SiteTOC {
 		override set current(link: HTMLAnchorElement) {
 			super.current = link;
 			const display = this.querySelector('.display-current') as HTMLSpanElement;
@@ -150,5 +150,5 @@ const { toc } = Astro.locals.siteRoute;
 		}
 	}
 
-	customElements.define('mobile-starlight-toc', MobileStarlightTOC);
+	customElements.define('mobile-site-toc', MobileSiteTOC);
 </script>

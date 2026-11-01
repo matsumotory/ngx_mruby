@@ -1,4 +1,4 @@
-// Writes the Markdown files of docs/ as Starlight pages: the generator of
+// Writes the Markdown files of docs/ as site collection pages: the generator of
 // docs/proposals/site.md, 5.2. `npm run build` runs it before `astro
 // build`; `npm run sync-docs` runs it alone.
 //
@@ -23,7 +23,7 @@
 // - title: the text of the first heading of the file. The build stops when
 //   the file has no heading at the top level, or when that heading contains
 //   HTML (4.4). The heading is removed from the body when it is the first
-//   block of the file, since Starlight shows the title as the h1; a first
+//   block of the file, since the page layout shows the title as the h1; a first
 //   heading further down (docs/test/README.md starts with paragraphs) stays
 //   where it is.
 // - lastUpdated: `git log -1 --format=%cs -- <file>`. The build stops in a

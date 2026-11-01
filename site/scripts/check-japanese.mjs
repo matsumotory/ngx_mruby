@@ -15,7 +15,7 @@
 //   lists name only English routes, and NOT_TRANSLATED_YET no page that has
 //   a Japanese page.
 // - Languages. Every page of the built site (404.html left out: it has no
-//   route, and Starlight gives it no language links) has <html lang="en"> or, under
+//   route, and the site gives it no language links) has <html lang="en"> or, under
 //   /ja/, lang="ja", and links with hreflang en, ja and x-default (English)
 //   to absolute URLs of the site: the page itself and the same page in the
 //   other language, which exists and links back.
@@ -153,7 +153,7 @@ for (const page of pages) {
   }
   if (main.properties?.lang !== 'ja') problems.push(`${file}: <main lang="${main.properties?.lang ?? ''}">, expected "ja"`);
   if (page.home) continue;
-  const content = findElement(main, (e) => hasClass(e, 'sl-markdown-content')) ?? main;
+  const content = findElement(main, (e) => hasClass(e, 'site-markdown-content')) ?? main;
   const built = elements(content).filter((e) => e.tagName === 'h2');
   const text = fs.readFileSync(path.join(repo, page.source), 'utf8');
   const source = parseMarkdown(text);
@@ -266,7 +266,7 @@ for (const file of htmlFiles(dist).filter((f) => f.startsWith('ja/'))) {
   }
   const sidebar = findElement(tree, (e) => hasClass(e, 'sidebar-content'));
   for (const a of sidebar ? elements(sidebar).filter((e) => e.tagName === 'a') : []) places.push(['a sidebar entry', textContent(a)]);
-  for (const toc of elements(tree).filter((e) => e.tagName === 'starlight-toc' || e.tagName === 'mobile-starlight-toc')) {
+  for (const toc of elements(tree).filter((e) => e.tagName === 'site-toc' || e.tagName === 'mobile-site-toc')) {
     for (const a of elements(toc).filter((e) => e.tagName === 'a')) places.push(['a table-of-contents entry', textContent(a)]);
   }
   for (const [where, text] of places) if (/wbr/i.test(text)) problems.push(`${file}: ${where} contains "wbr": ${text.trim().slice(0, 60)}`);

@@ -8,7 +8,7 @@
 // of the page's source in <main>. The check parses each built page (it
 // runs no script and applies no CSS) and takes the text of <main> that a
 // reader sees: it leaves out script, style, template and svg elements,
-// elements with the hidden attribute, and Starlight's sr-only text. It
+// elements with the hidden attribute, and the site's sr-only text. It
 // splits that text and the source's text into words (runs of letters,
 // marks and digits), and checks, for every page with a source in
 // generated/pages.json (a route under /ja/ without a Japanese source is
@@ -105,7 +105,7 @@ for (const file of htmlFiles(dist)) {
   }
   wordsChecked += expected.sequence.length;
 
-  const content = findElement(main, (e) => hasClass(e, 'sl-markdown-content'));
+  const content = findElement(main, (e) => hasClass(e, 'site-markdown-content'));
   const built = content
     ? elements(content)
         .filter((e) => /^h[1-6]$/.test(e.tagName))

@@ -36,11 +36,11 @@ const a11yAttrs = label ? ({ 'aria-label': label } as const) : ({ 'aria-hidden':
 	set:html={Icons[name]}
 />
 
-<style define:vars={{ 'sl-icon-color': color, 'sl-icon-size': size }}>
-	@layer starlight.components {
+<style define:vars={{ 'site-icon-color': color, 'site-icon-size': size }}>
+	@layer site.components {
 		svg {
-			color: var(--sl-icon-color);
-			font-size: var(--sl-icon-size, 1em);
+			color: var(--site-icon-color);
+			font-size: var(--site-icon-size, 1em);
 			width: 1em;
 			height: 1em;
 			/* Prevent Firefox from cutting off edges of icons when pinch-zooming. */

@@ -1,5 +1,5 @@
 /* Adapted from Starlight 0.42.6, MIT; see ../STARLIGHT-LICENSE. */
-@layer starlight.utils {
+@layer site.utils {
 	.sr-only {
 		position: absolute;
 		width: 1px;
@@ -12,41 +12,41 @@
 		border-width: 0;
 	}
 
-	.sl-hidden {
+	.site-hidden {
 		display: none;
 	}
-	.sl-flex {
+	.site-flex {
 		display: flex;
 	}
-	.sl-block {
+	.site-block {
 		display: block;
 	}
 	@media (min-width: 50rem) {
-		.md\:sl-hidden {
+		.md\:site-hidden {
 			display: none;
 		}
-		.md\:sl-flex {
+		.md\:site-flex {
 			display: flex;
 		}
-		.md\:sl-block {
+		.md\:site-block {
 			display: block;
 		}
 	}
 	@media (min-width: 72rem) {
-		.lg\:sl-hidden {
+		.lg\:site-hidden {
 			display: none;
 		}
-		.lg\:sl-flex {
+		.lg\:site-flex {
 			display: flex;
 		}
-		.lg\:sl-block {
+		.lg\:site-block {
 			display: block;
 		}
 	}
-	[data-theme='light'] .light\:sl-hidden {
+	[data-theme='light'] .light\:site-hidden {
 		display: none;
 	}
-	[data-theme='dark'] .dark\:sl-hidden {
+	[data-theme='dark'] .dark\:site-hidden {
 		display: none;
 	}
 

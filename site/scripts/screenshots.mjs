@@ -1,9 +1,8 @@
 // The screenshots of step 3 (docs/proposals/site.md, section 6): the home
 // page, the page of the request phases diagram and a reference page, in
-// English and Japanese, light and dark, at 320 by 664, 390 by 664 and 1440
-// by 900 px, in Chromium and WebKit; and the two images that the owner
-// reviews in step 3, the definition of the home page (3.3 item 1) and the
-// first diagram, in Chromium, light and dark, at 390 and 1440 px.
+// English and Japanese, light and dark, in the two approved patterns:
+// Chromium at 1440 by 900 and WebKit at 402 by 664 px. The owner reviews
+// the home definition and first diagram in the same two patterns.
 //
 //   node scripts/screenshots.mjs [--dist DIR] [--out DIR]
 //
@@ -18,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
+import { patternsFor } from './lib/patterns.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
@@ -25,11 +25,6 @@ export const PAGES = [
   { id: 'home', path: { en: '/', ja: '/ja/' } },
   { id: 'request-phases', path: { en: '/concepts/request-phases/', ja: '/ja/concepts/request-phases/' } },
   { id: 'directives', path: { en: '/reference/directives/', ja: '/ja/reference/directives/' } },
-];
-export const SIZES = [
-  { width: 320, height: 664 },
-  { width: 390, height: 664 },
-  { width: 1440, height: 900 },
 ];
 const THEMES = ['light', 'dark'];
 const ENGINES = { chromium, webkit };
@@ -70,7 +65,7 @@ async function main() {
     for (const page of PAGES) {
       for (const lang of ['en', 'ja']) {
         for (const theme of THEMES) {
-          for (const size of SIZES) {
+          for (const size of patternsFor(engineName)) {
             const { context, tab } = await open(browser, server.url + page.path[lang], size, theme);
             const base = `${engineName}-${page.id}-${lang}-${theme}-${size.width}x${size.height}`;
             try {
@@ -97,11 +92,11 @@ async function main() {
   // What the owner reviews in step 3: the definition (the heading and the
   // first paragraph of the home page) and the request phases diagram.
   const review = [];
-  {
-    const browser = await chromium.launch();
+  for (const [engineName, engine] of Object.entries(ENGINES)) {
+    const browser = await engine.launch();
     for (const lang of ['en', 'ja']) {
       for (const theme of THEMES) {
-        for (const size of [SIZES[1], SIZES[2]]) {
+        for (const size of patternsFor(engineName)) {
           const home = await open(browser, server.url + PAGES[0].path[lang], size, theme);
           const box = await home.tab.evaluate(() => {
             const h1 = document.querySelector('h1#_top').getBoundingClientRect();
@@ -124,65 +119,67 @@ async function main() {
     await browser.close();
   }
   // Reader-journey evidence for the landing-page rebuild. Keep the original
-  // cross-engine matrix above; these full-context dark Chromium views cover
+  // two patterns above; these full-context dark views cover
   // the destinations of the primary action, docs entry and status link.
   const journeyDir = path.join(opt.out, 'journey');
   fs.mkdirSync(journeyDir, { recursive: true });
-  const journeyBrowser = await chromium.launch();
-  try {
-    for (const [id, routes] of [
-      ['start', { en: '/start/', ja: '/ja/start/' }],
-      ['docs', { en: '/docs/', ja: '/ja/docs/' }],
-      ['agent-proxy', { en: '/guides/agent-proxy/', ja: '/ja/guides/agent-proxy/' }],
-      ['v2-entry', { en: '/v2/', ja: '/v2/ja/' }],
-    ]) for (const lang of ['en', 'ja']) for (const size of (id === 'v2-entry' ? SIZES : [SIZES[1], SIZES[2]])) {
-      const { context, tab } = await open(journeyBrowser, server.url + routes[lang], size, 'dark');
-      const base = `chromium-${id}-${lang}-dark-${size.width}x${size.height}`;
-      try {
-        await tab.screenshot({ path: path.join(journeyDir, `${base}-first.png`) });
-        const height = await tab.evaluate(() => document.documentElement.scrollHeight);
-        const clip = height > 32000 ? { x: 0, y: 0, width: size.width, height: 32000 } : undefined;
-        await tab.screenshot({ path: path.join(journeyDir, `${base}-full.png`), fullPage: true, scale: 'css', clip });
-        if (clip) console.log(`screenshots: ${base} capped at 32000 CSS pixels (page height ${height})`);
-        count += 2;
-      } catch (e) { failures.push(`${base}: ${e.message.split('\n')[0]}`); }
-      finally { await context.close(); }
-    }
-    for (const lang of ['en', 'ja']) for (const size of SIZES) {
-      const { context, tab } = await open(journeyBrowser, server.url + PAGES[0].path[lang], size, 'dark');
-      try {
-        await tab.locator('[data-model="b"]').click();
-        await tab.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
-        await tab.screenshot({ path: path.join(journeyDir, `chromium-home-model-b-${lang}-dark-${size.width}x${size.height}-full.png`), fullPage: true, scale: 'css' });
-        count++;
-        if (size.width < 800) {
-          const base = `chromium-home-selection-${lang}-dark-${size.width}x${size.height}`;
-          await tab.locator('.v3-flow').evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - 64));
-          await tab.screenshot({ path: path.join(journeyDir, `${base}-start.png`) });
-          await tab.locator('.route-response').scrollIntoViewIfNeeded();
-          await tab.screenshot({ path: path.join(journeyDir, `${base}-result.png`) });
-          await tab.locator('.v3-flow').evaluate(el => scrollTo(0, el.getBoundingClientRect().bottom + scrollY - 64));
-          await tab.screenshot({ path: path.join(journeyDir, `${base}-end.png`) });
-          count += 3;
-        }
-        // Keep actual native disclosure evidence, not a forced open property.
-        await tab.locator('.source-proof > summary').click();
-        await tab.waitForFunction(() => document.querySelector('.source-proof').open);
-        await tab.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
-        await tab.locator('.source-proof').evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - 80));
-        await tab.screenshot({ path: path.join(journeyDir, `chromium-home-integration-open-${lang}-dark-${size.width}x${size.height}.png`) });
-        count++;
-      } catch (e) { failures.push(`home model b ${lang} ${size.width}: ${e.message.split('\n')[0]}`); }
-      finally { await context.close(); }
-    }
-  } finally { await journeyBrowser.close(); }
+  for (const [engineName, engine] of Object.entries(ENGINES)) {
+    const journeyBrowser = await engine.launch();
+    try {
+      for (const [id, routes] of [
+        ['start', { en: '/start/', ja: '/ja/start/' }],
+        ['docs', { en: '/docs/', ja: '/ja/docs/' }],
+        ['agent-proxy', { en: '/guides/agent-proxy/', ja: '/ja/guides/agent-proxy/' }],
+        ['v2-entry', { en: '/v2/', ja: '/v2/ja/' }],
+      ]) for (const lang of ['en', 'ja']) for (const size of patternsFor(engineName)) {
+        const { context, tab } = await open(journeyBrowser, server.url + routes[lang], size, 'dark');
+        const base = `${engineName}-${id}-${lang}-dark-${size.width}x${size.height}`;
+        try {
+          await tab.screenshot({ path: path.join(journeyDir, `${base}-first.png`) });
+          const height = await tab.evaluate(() => document.documentElement.scrollHeight);
+          const clip = height > 32000 ? { x: 0, y: 0, width: size.width, height: 32000 } : undefined;
+          await tab.screenshot({ path: path.join(journeyDir, `${base}-full.png`), fullPage: true, scale: 'css', clip });
+          if (clip) console.log(`screenshots: ${base} capped at 32000 CSS pixels (page height ${height})`);
+          count += 2;
+        } catch (e) { failures.push(`${base}: ${e.message.split('\n')[0]}`); }
+        finally { await context.close(); }
+      }
+      for (const lang of ['en', 'ja']) for (const size of patternsFor(engineName)) {
+        const { context, tab } = await open(journeyBrowser, server.url + PAGES[0].path[lang], size, 'dark');
+        try {
+          await tab.locator('[data-model="b"]').click();
+          await tab.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
+          await tab.screenshot({ path: path.join(journeyDir, `${engineName}-home-model-b-${lang}-dark-${size.width}x${size.height}-full.png`), fullPage: true, scale: 'css' });
+          count++;
+          if (size.width < 800) {
+            const base = `${engineName}-home-selection-${lang}-dark-${size.width}x${size.height}`;
+            await tab.locator('.v3-flow').evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - 64));
+            await tab.screenshot({ path: path.join(journeyDir, `${base}-start.png`) });
+            await tab.locator('.route-response').scrollIntoViewIfNeeded();
+            await tab.screenshot({ path: path.join(journeyDir, `${base}-result.png`) });
+            await tab.locator('.v3-flow').evaluate(el => scrollTo(0, el.getBoundingClientRect().bottom + scrollY - 64));
+            await tab.screenshot({ path: path.join(journeyDir, `${base}-end.png`) });
+            count += 3;
+          }
+          // Keep actual native disclosure evidence, not a forced open property.
+          await tab.locator('.source-proof > summary').click();
+          await tab.waitForFunction(() => document.querySelector('.source-proof').open);
+          await tab.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
+          await tab.locator('.source-proof').evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - 80));
+          await tab.screenshot({ path: path.join(journeyDir, `${engineName}-home-integration-open-${lang}-dark-${size.width}x${size.height}.png`) });
+          count++;
+        } catch (e) { failures.push(`home model b ${lang} ${size.width}: ${e.message.split('\n')[0]}`); }
+        finally { await context.close(); }
+      }
+    } finally { await journeyBrowser.close(); }
+  }
   await server.close();
   const lines = ['# Screenshots of step 3 (docs/proposals/site.md, section 6)', ''];
-  lines.push('## For the owner: the definition and the request phases diagram (Chromium)', '');
+  lines.push('## For the owner: the definition and the request phases diagram (Chromium 1440px / WebKit 402px)', '');
   for (const f of review) lines.push(`- review/${path.basename(f)}`);
-  lines.push('', '## Pages: Chromium and WebKit, light and dark, 320x664, 390x664, 1440x900', '');
+  lines.push('', '## Pages: Chromium 1440x900 / WebKit 402x664, light and dark', '');
   for (const f of fs.readdirSync(pagesDir).sort()) lines.push(`- pages/${f}`);
-  lines.push('', '## Reader journey: Chromium dark, 390x664 and 1440x900; homepage and v2 entry also at 320x664', '');
+  lines.push('', '## Reader journey: Chromium 1440x900 / WebKit 402x664, dark', '');
   for (const f of fs.readdirSync(journeyDir).sort()) lines.push(`- journey/${f}`);
   fs.writeFileSync(path.join(opt.out, 'index.md'), `${lines.join('\n')}\n`);
   for (const f of failures) console.log(`screenshots: failed: ${f}`);

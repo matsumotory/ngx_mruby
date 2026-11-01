@@ -1,83 +1,77 @@
-// Build both shells from this checkout, including the same 2.x source,
-// and compare their static output. Restore the verified default output
-// even when the own-shell build/check fails: deployment stays Starlight.
-// node scripts/check-shells.mjs --v2-tree DIR [--evidence NEW_DIR]
+// Compare the base commit's default build with the current Astro site.
+// Caller installs each checkout's locked dependencies. Both use one v2 tree.
+// node scripts/check-shells.mjs --base-tree DIR --v2-tree DIR [--evidence NEW_DIR]
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-
 const site = fileURLToPath(new URL('../', import.meta.url));
 const args = process.argv.slice(2);
-if (![2, 4].includes(args.length) || (args.length === 4 && args[2] !== '--evidence') || args[0] !== '--v2-tree' || !fs.statSync(path.resolve(args[1]), { throwIfNoEntry: false })?.isDirectory()) {
-  console.error('Usage: node scripts/check-shells.mjs --v2-tree DIR [--evidence NEW_DIR]');
-  process.exit(2);
+const options = {};
+for (let i = 0; i < args.length; i += 2) {
+  if (!['--base-tree', '--v2-tree', '--evidence'].includes(args[i]) || !args[i + 1] || options[args[i]]) throw new Error('usage: --base-tree DIR --v2-tree DIR [--evidence NEW_DIR]');
+  options[args[i]] = path.resolve(args[i + 1]);
 }
-const v2Tree = path.resolve(args[1]);
-const evidence = args[3] ? path.resolve(args[3]) : null;
-if (evidence && fs.existsSync(evidence)) {
-  console.error('check-shells: evidence destination must not exist');
-  process.exit(2);
-}
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ngx-shells-'));
+const baseSite = options['--base-tree'] && path.join(options['--base-tree'], 'site');
+const v2Tree = options['--v2-tree'];
+for (const dir of [baseSite, v2Tree]) if (!dir || !fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory()) throw new Error('base-tree and v2-tree must exist');
+if (fs.realpathSync(baseSite) === fs.realpathSync(site)) throw new Error('base checkout must be separate from head');
+const evidence = options['--evidence'];
+if (evidence && fs.existsSync(evidence)) throw new Error('evidence destination must not exist');
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ngx-base-head-'));
 const outputs = ['dist', 'generated'];
-let snapshotReady = false;
-let restoreFrom = path.join(temp, 'original');
+let backupsReady = false, headBuilt = false;
 const started = performance.now();
-
-function save(to) {
+const env = { ...process.env };
+// Old base commits support a shell flag. Their default is the comparison.
+delete env.NGX_MRUBY_SITE_SHELL;
+function save(from, to) {
   fs.mkdirSync(to, { recursive: true });
+  for (const name of outputs) if (fs.existsSync(path.join(from, name))) fs.cpSync(path.join(from, name), path.join(to, name), { recursive: true });
+}
+function restore(from, to) {
   for (const name of outputs) {
-    const from = path.join(site, name);
-    if (fs.existsSync(from)) fs.cpSync(from, path.join(to, name), { recursive: true });
+    fs.rmSync(path.join(to, name), { recursive: true, force: true });
+    if (fs.existsSync(path.join(from, name))) fs.cpSync(path.join(from, name), path.join(to, name), { recursive: true });
   }
 }
-function run(command, commandArgs, env) {
-  console.log(`check-shells: ${command} ${commandArgs.join(' ')}`);
-  const result = spawnSync(command, commandArgs, { cwd: site, env, stdio: 'inherit' });
+function run(cwd, command, commandArgs) {
+  console.log(`check-shells: ${cwd}: ${command} ${commandArgs.join(' ')}`);
+  const result = spawnSync(command, commandArgs, { cwd, env, stdio: 'inherit' });
   if (result.error) throw result.error;
   if (result.signal || result.status !== 0) throw new Error(`${command} ${commandArgs.join(' ')} failed (${result.signal ?? result.status})`);
 }
-function build(shell, destination) {
-  const env = { ...process.env };
-  delete env.NGX_MRUBY_SITE_SHELL;
-  if (shell === 'own') env.NGX_MRUBY_SITE_SHELL = 'own';
-  run('npm', ['run', 'build'], env);
-  run('npm', ['run', 'build:v2', '--', '--tree', v2Tree], env);
-  run('npm', ['run', 'check'], env);
-  save(destination);
+function build(cwd, to) {
+  run(cwd, 'npm', ['run', 'build']);
+  run(cwd, 'npm', ['run', 'build:v2', '--', '--tree', v2Tree]);
+  run(cwd, 'npm', ['run', 'check']);
+  save(cwd, to);
 }
-
 try {
-  save(restoreFrom);
-  snapshotReady = true;
-  const base = path.join(temp, 'starlight');
-  build('starlight', base);
-  restoreFrom = base;
-  const head = path.join(temp, 'own');
-  build('own', head);
-  run(process.execPath, ['scripts/check-parity.mjs', '--base', path.join(base, 'dist'), '--head', path.join(head, 'dist')], process.env);
+  save(baseSite, path.join(temp, 'original-base'));
+  save(site, path.join(temp, 'original-head'));
+  backupsReady = true;
+  const base = path.join(temp, 'base'), head = path.join(temp, 'head');
+  build(baseSite, base);
+  build(site, head);
+  headBuilt = true;
+  for (const script of ['check-parity.mjs', 'check-search-parity.mjs']) run(site, process.execPath, [`scripts/${script}`, '--base', path.join(base, 'dist'), '--head', path.join(head, 'dist')]);
   if (evidence) {
-    // Retain only static, public build output, not the generated working data.
     fs.mkdirSync(evidence);
-    fs.cpSync(path.join(base, 'dist'), path.join(evidence, 'starlight'), { recursive: true });
-    fs.cpSync(path.join(head, 'dist'), path.join(evidence, 'own'), { recursive: true });
+    fs.cpSync(path.join(base, 'dist'), path.join(evidence, 'base'), { recursive: true });
+    fs.cpSync(path.join(head, 'dist'), path.join(evidence, 'head'), { recursive: true });
     console.log(`check-shells: passing pair saved in ${evidence}`);
   }
-  console.log(`check-shells: ok; both shells and versions; ${((performance.now() - started) / 1000).toFixed(1)} s`);
+  console.log(`check-shells: ok; base/head and both versions; ${((performance.now() - started) / 1000).toFixed(1)} s`);
 } catch (error) {
   console.error(`check-shells: ${error.message}`);
   process.exitCode = 1;
 } finally {
-  // Only these two generated outputs are replaced; never a checkout,
-  // source tree, credentials or another session's preview directory.
-  for (const name of snapshotReady ? outputs : []) {
-    const target = path.join(site, name);
-    fs.rmSync(target, { recursive: true, force: true });
-    const saved = path.join(restoreFrom, name);
-    if (fs.existsSync(saved)) fs.cpSync(saved, target, { recursive: true });
+  if (backupsReady) {
+    restore(path.join(temp, 'original-base'), baseSite);
+    if (!headBuilt) restore(path.join(temp, 'original-head'), site);
   }
   fs.rmSync(temp, { recursive: true, force: true });
-  console.log('check-shells: restored default output (or original output if its build failed)');
+  console.log(`check-shells: base output restored; head ${headBuilt ? 'build retained' : 'original output restored'}`);
 }

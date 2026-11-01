@@ -4,12 +4,12 @@
 //   node scripts/check-pages.mjs [--dist DIR] [--repo DIR] [--manifest FILE]
 //
 // For every HTML file of the built site that is the page of a route
-// (every file but Starlight's not-found page, 404.html, which has no
+// (every file but the site's not-found page, 404.html, which has no
 // source):
 //
 // - the page has a source: a file of docs/ that generated/pages.json lists
 //   for the route, or, for a route under /ja/ without a Japanese source,
-//   the English page that Starlight shows there as its fallback (3.4);
+//   the English page that the site shows there as its fallback (3.4);
 // - <title> is "<h1> | ngx_mruby", and the h1 in <main> has text;
 // - the <time datetime> in the footer of <main> has the date of the last
 //   commit that changed the source, which the check reads from git itself

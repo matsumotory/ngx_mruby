@@ -6,11 +6,11 @@ import TableOfContents from './TableOfContents.astro';
 {
 	Astro.locals.siteRoute.toc && (
 		<>
-			<div class="lg:sl-hidden">
+			<div class="lg:site-hidden">
 				<MobileTableOfContents />
 			</div>
-			<div class="right-sidebar-panel sl-hidden lg:sl-block">
-				<div class="sl-container">
+			<div class="right-sidebar-panel site-hidden lg:site-block">
+				<div class="site-container">
 					<TableOfContents />
 				</div>
 			</div>
@@ -19,37 +19,37 @@ import TableOfContents from './TableOfContents.astro';
 }
 
 <style>
-	@layer starlight.core {
+	@layer site.core {
 		.right-sidebar-panel {
-			padding: 1rem var(--sl-sidebar-pad-x);
+			padding: 1rem var(--gutter);
 		}
-		.sl-container {
-			width: calc(var(--sl-sidebar-width) - 2 * var(--sl-sidebar-pad-x));
+		.site-container {
+			width: calc(var(--site-sidebar-width) - 2 * var(--gutter));
 		}
 		.right-sidebar-panel :global(h2) {
-			color: var(--sl-color-white);
-			font-size: var(--sl-text-h5);
+			color: var(--color-text-primary);
+			font-size: var(--text-body);
 			font-weight: 600;
-			line-height: var(--sl-line-height-headings);
+			line-height: var(--leading-h2);
 			margin-bottom: 0.5rem;
 		}
 		.right-sidebar-panel :global(:where(a)) {
 			display: block;
-			font-size: var(--sl-text-xs);
+			font-size: var(--text-caption);
 			text-decoration: none;
-			color: var(--sl-color-gray-3);
+			color: var(--color-text-muted);
 			overflow-wrap: anywhere;
 		}
 		.right-sidebar-panel :global(:where(a):hover) {
-			color: var(--sl-color-white);
+			color: var(--color-text-primary);
 		}
 		@media (min-width: 72rem) {
-			.sl-container {
+			.site-container {
 				max-width: calc(
 					(
 						(
-								100vw - var(--sl-sidebar-width) - 2 * var(--sl-content-pad-x) - 2 *
-									var(--sl-sidebar-pad-x)
+								100vw - var(--site-sidebar-width) - 2 * var(--gutter) - 2 *
+									var(--gutter)
 							) * 0.25 /* MAGIC NUMBER 🥲 */
 					)
 				);

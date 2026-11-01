@@ -2,7 +2,7 @@
 import { headingLinkIconChildren } from './markdown-icon.mjs';
 function satteriRtlCodeSupportPlugin() {
 	return {
-		name: "starlight-rtl-code-support",
+		name: "site-rtl-code-support",
 		element: [{
 			filter: ["pre"],
 			visit(node, ctx) {
@@ -30,7 +30,7 @@ function hasPreParent(child, ctx) {
 }
 function satteriAutolinkHeadingsPlugin(t) {
 	return {
-		name: "starlight-autolink-headings",
+		name: "site-autolink-headings",
 		element: {
 			filter: [
 				"h1",
@@ -50,12 +50,12 @@ function satteriAutolinkHeadingsPlugin(t) {
 				return {
 					type: "element",
 					tagName: "div",
-					properties: { class: `sl-heading-wrapper level-${node.tagName}` },
+					properties: { class: `site-heading-wrapper level-${node.tagName}` },
 					children: [node, {
 						type: "element",
 						tagName: "a",
 						properties: {
-							class: "sl-anchor-link",
+							class: "site-anchor-link",
 							href: "#" + id
 						},
 						children: [{
@@ -63,7 +63,7 @@ function satteriAutolinkHeadingsPlugin(t) {
 							tagName: "span",
 							properties: {
 								"aria-hidden": "true",
-								class: "sl-anchor-icon"
+								class: "site-anchor-icon"
 							},
 							children: [{
 								type: "element",

@@ -31,7 +31,7 @@ try {
     }
     try {
       await page.locator('button[data-open-modal]').click();
-      await page.locator('#starlight__search input').fill('mruby_content_handler');
+      await page.locator('#site__search input').fill('mruby_content_handler');
       const metadata = page.locator('[data-pagefind-ui-meta="identifiers"]').first();
       await metadata.waitFor({ state: 'attached', timeout: 15000 });
       assert.equal(await metadata.isVisible(), false, `${prefix || '/'}: indexing metadata must not become a visible result tag`);

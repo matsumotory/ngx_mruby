@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { compareBuilds, snapshotHtml } from './check-parity.mjs';
+import { compareBuilds, snapshotHtml, normalizeAssetName, normalizeShellIdentifiers } from './check-parity.mjs';
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ngx-parity-'));
 const base = path.join(tmp, 'base'), head = path.join(tmp, 'head');
 fs.mkdirSync(base); fs.mkdirSync(head);
@@ -71,6 +71,57 @@ try {
   write(head, 'googleabc123.html', 'changed');
   assert(compareBuilds(base, head).failures.some((s) => s.includes('ownership verification differs'))); count++;
   write(head, 'googleabc123.html', 'google-site-verification: googleabc123.html');
+  fs.unlinkSync(path.join(base, '_astro/index.ABCDEFGH.js'));
+  fs.unlinkSync(path.join(head, '_astro/index.IJKLMNOP.js'));
+  const enriched = page.replace('</head>', '<meta name="generator" content="Astro v7.3.8"><link rel="icon" href="/favicon.svg"><link rel="sitemap" href="/sitemap-index.xml"><base href="/"><script type="module" src="/_astro/theme.ABCDEFGH.js"></script></head>').replace('</body>', '<script type="application/json">{"key":1}</script><style media="screen">p { color: red; }</style></body>');
+  write(base, 'index.html', enriched);
+  for (const [from, to, expected] of [
+    ['/_astro/theme.ABCDEFGH.js', '/_astro/other.ABCDEFGH.js', 'scripts'],
+    ['/_astro/theme.ABCDEFGH.js', 'https://other.example/_astro/theme.ABCDEFGH.js', 'scripts'],
+    ['/_astro/theme.ABCDEFGH.js', '/_astro/theme.ABCDEFGH.js?changed=1', 'scripts'],
+    ['type="module"', 'type="text/plain"', 'scripts'],
+    ['{"key":1}', '{"key":2}', 'scripts'],
+    ['</body>', '<script>console.log("added")</script></body>', 'scripts'],
+    ['<script type="application/json">{"key":1}</script>', '', 'scripts'],
+    ['<link rel="icon" href="/favicon.svg">', '', 'head'],
+    ['href="/favicon.svg"', 'href="/wrong.svg"', 'head'],
+    ['href="/sitemap-index.xml"', 'href="/wrong.xml"', 'head'],
+    ['content="Astro v7.3.8"', 'content="Astro v0.0.0"', 'head'],
+    ['<base href="/">', '<base href="/wrong/">', 'head'],
+    ['</head>', '<meta name="robots" content="noindex"></head>', 'head'],
+    ['p { color: red; }', 'p { color: blue; }', 'styles'],
+    ['</body>', '<style>p { display:none }</style></body>', 'styles'],
+    ['media="screen"', 'media="print"', 'styles'],
+  ]) {
+    write(head, 'index.html', enriched.replace(from, to));
+    assert(compareBuilds(base, head).failures.includes(`index.html: ${expected} differs`), `missed ${expected}: ${from}`); count++;
+  }
+  write(head, 'index.html', enriched.replace('theme.ABCDEFGH.js', 'theme.IJKLMNOP.js').replace('</head>', '<meta name="generator" content="Starlight v0.42.6"></head>'));
+  assert.deepEqual(compareBuilds(base, head).failures, []); count++;
+  const sidebar = 'var e=document.querySelector(`.sidebar-pane`),t=e?.querySelector(`[aria-current="page"]`);if(e&&t){let n=t.getBoundingClientRect().top-e.getBoundingClientRect().top;n>e.clientHeight&&(e.scrollTop=n-e.clientHeight/2)}';
+  write(head, 'index.html', enriched.replace('</body>', `<script type="module">${sidebar}</script></body>`));
+  assert.deepEqual(compareBuilds(base, head).failures, []); count++;
+  write(head, 'index.html', enriched.replace('</body>', `<script type="module">${sidebar};console.log("extra")</script></body>`));
+  assert(compareBuilds(base, head).failures.includes('index.html: scripts differs')); count++;
+  write(head, 'index.html', enriched.replace('</body>', `<script type="module" src="/evil.js">${sidebar}</script></body>`));
+  assert(compareBuilds(base, head).failures.includes('index.html: scripts differs')); count++;
+  assert.equal(normalizeAssetName('/_astro/routes.ABCDEFGH.css'), '/_astro/common.<hash>.css');
+  assert.equal(normalizeAssetName('/v2/_astro/toc.ABCDEFGH.js'), '/v2/_astro/site-toc.<hash>.js');
+  assert.equal(normalizeAssetName('/unrelated.ABCDEFGH.js'), '/unrelated.ABCDEFGH.js'); count++;
+  const scriptOld = `document.querySelector('sl-menu-button');document.getElementById('starlight__search');localStorage.getItem('starlight-theme');`;
+  const scriptNew = `document.querySelector('site-menu-button');document.getElementById('site__search');localStorage.getItem('starlight-theme');`;
+  assert.equal(normalizeShellIdentifiers(scriptOld), scriptNew); count++;
+  write(base, 'index.html', page.replace('</body>', `<script>${scriptOld}</script></body>`));
+  write(head, 'index.html', page.replace('</body>', `<script>${scriptNew}</script></body>`));
+  assert.deepEqual(compareBuilds(base, head).failures, []); count++;
+  write(head, 'index.html', page.replace('</body>', `<script>${scriptNew.replace('starlight-theme', 'site-theme')}</script></body>`));
+  assert(compareBuilds(base, head).failures.includes('index.html: scripts differs')); count++;
+  write(head, 'index.html', page.replace('</body>', `<script>${scriptNew}alert('changed')</script></body>`));
+  assert(compareBuilds(base, head).failures.includes('index.html: scripts differs')); count++;
+  write(base, 'index.html', page.replace('<main>', '<main><h2 id="starlight__on-this-page">Contents</h2>'));
+  write(head, 'index.html', page.replace('<main>', '<main><h2 id="site__on-this-page">Contents</h2>'));
+  assert.deepEqual(compareBuilds(base, head).failures, []); count++;
+  write(base, 'index.html', page); write(head, 'index.html', page);
   write(head, 'extra.svg', '<svg/>');
   assert(compareBuilds(base, head).failures.some((s) => s.startsWith('built file set'))); count++;
   console.log(`test-parity: ${count} positive/negative fixtures passed`);

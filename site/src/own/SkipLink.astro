@@ -2,10 +2,10 @@
 const PAGE_TITLE_ID = '_top';
 ---
 
-<a class="sl-skip-link" href={`#${PAGE_TITLE_ID}`}>{Astro.locals.t('skipLink.label')}</a>
+<a class="site-skip-link" href={`#${PAGE_TITLE_ID}`}>{Astro.locals.t('skipLink.label')}</a>
 
 <style>
-	@layer starlight.core {
+	@layer site.core {
 		a {
 			clip: rect(0, 0, 0, 0);
 			position: fixed;
@@ -14,13 +14,13 @@ const PAGE_TITLE_ID = '_top';
 		}
 		a:focus {
 			clip: unset;
-			z-index: var(--sl-z-index-skiplink);
+			z-index: var(--site-z-index-skiplink);
 			display: block;
 			padding: 0.5rem 1rem;
 			text-decoration: none;
-			color: var(--sl-color-text-invert);
-			background-color: var(--sl-color-text-accent);
-			box-shadow: var(--sl-shadow-lg);
+			color: var(--color-bg-primary);
+			background-color: var(--color-accent-text);
+			box-shadow: none;
 		}
 	}
 </style>

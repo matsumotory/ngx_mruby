@@ -1,3 +1,5 @@
+import { t } from './strings.mjs';
+
 // Sidebar data for the independent shell. Ordering follows Starlight 0.42.6
 // (Astro contributors, MIT; see STARLIGHT-LICENSE).
 const groups = [
@@ -40,7 +42,7 @@ export function buildSidebar(entries, { locale, pathname, version = 3, base = ''
   return sidebar;
 }
 export function makeToc(headings, locale) {
-  const items = [{ depth: 2, slug: '_top', text: locale === 'ja' ? '概要' : 'Overview', children: [] }];
+  const items = [{ depth: 2, slug: '_top', text: t(locale, 'tableOfContents.overview'), children: [] }];
   let parent = items[0];
   for (const heading of headings) {
     if (heading.depth < 2 || heading.depth > 3) continue;

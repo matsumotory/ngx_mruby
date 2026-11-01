@@ -11,7 +11,8 @@ the narrow drawing of the agent proxy endpoints diagram, which still joins
 the kinds of request with a line (should fix 1 of the review of #622).
 Next: step 5, the Japanese pages, by 2026-11-05. On 2026-11-01 the
 owner decided to build the site with Astro alone, without Starlight
-(5.4, section 7); a Codex session does it after step 5.
+(5.4, section 7); the implementation now uses the repository-owned Astro shell; acceptance
+evidence is recorded separately from implementation status.
 
 Evidence: the site map and writing plan of 3.2 and 3.3, and 3.5, section
 4, section 6 and section 7 rest on `next` at 73fc9098f and on the source of
@@ -229,15 +230,13 @@ Docs, Agent proxy, Releases, Security, Contributing, GitHub.
 - Items added or changed in 3.x say "New in 3.0" or "Changed in 3.0", as
   nginx.org and njs mark the version that introduced each directive.
 - Japanese pages live under `/ja/`, from `docs/ja/<path>.md`. An
-  untranslated page shows the English text with a notice (Starlight's
-  fallback).
+  untranslated page shows the English text with the site’s fallback notice.
 - `<html lang>` on every page, `lang="en"` on English passages in Japanese
   pages (WCAG 3.1.1, 3.1.2), and `hreflang` links to the page itself and
   the other language with absolute URLs, English as `x-default` (Google
   Search Central). Search keeps one index per version and language.
 - Japanese copy has no space typed between Japanese and Latin characters;
-  `text-autospace`, which Starlight enables on Japanese pages since 0.39.0,
-  adds the gap. No em dashes or emoji; parentheses only for identifiers and
+  `text-autospace` in the site stylesheet adds the gap. No em dashes or emoji; parentheses only for identifiers and
   first uses of abbreviations (owner's practice).
 
 ### 3.5 Diagrams and samples
@@ -314,12 +313,12 @@ hand-drawn diagrams fall behind the code (the check below lists them).
 Japanese text for the same keys, so the Japanese page takes its labels from
 its own translation (Q2). The generator stops the build when the Japanese
 block lacks a key of the English block or has one that the English block
-does not have. Until a page is translated, Starlight's fallback shows the
+does not have. Until a page is translated, the site's fallback route shows the
 English page, labels included. Japanese labels wrap by phrase with `<wbr>`
 and `keep-all`, as the corporate site's figure text does (owner's
 practice). Step 5 checks that every diagram on `/ja/` takes its labels from
 `docs/ja/` and that no label overflows its place in the two patterns of
-"Site design acceptance" (390 and 1440 px).
+"Site design acceptance" (402 and 1440 px).
 
 **Drawing rules**, after the owner's practice (4.2) and 4.11:
 
@@ -335,7 +334,7 @@ practice). Step 5 checks that every diagram on `/ja/` takes its labels from
 - Labels are short HTML text at 14 or 15 px (the caption and navigation
   sizes of 4.4), where the owner's figures go down to 13 px; details go
   into the text around the diagram.
-- A diagram fits one screen at 390 by 664 and at 1440 by 900 px, so that the
+- A diagram fits one screen at 402 by 664 and at 1440 by 900 px, so that the
   reader sees it whole, and takes a vertical arrangement below 640 px
   instead of scrolling sideways (4.9).
 - Each diagram has a caption that says what it shows, and the facts it
@@ -789,7 +788,7 @@ site inherits:
   labels, the details in the text; a vertical arrangement on narrow screens
   (corporate diagram stylesheet, landing page's figure stylesheet). A figure
   is seen whole on one screen; a figure read against an axis fits half of a
-  390 by 664 px screen; figures scale with the width and never scroll
+  402 by 664 px screen; figures scale with the width and never scroll
   sideways; values are readable without hover, as a table or as numbers
   (profile site's design notes). A filled circle means established or
   current, a ring means next, a dashed ring means later, always with a
@@ -867,9 +866,8 @@ owner chose them on the specimens of step 2 on 2026-10-19 (4.12, item 4).
    gradient with radial spots; the profile header marks the current page
    with an inset `box-shadow`. The site takes the landing page's opaque
    header in `surface`, marks the current page with a 2 px bottom border in
-   `accent`, and drops the gradient and the spots. `tokens.css` sets
-   Starlight's shadows to `none` (4.6), and the site removes the blurred
-   backdrop of its search dialog (appendix B). Check: on three page types
+   `accent`, and drops the gradient and the spots. The site's components have no
+   shadows (4.6), and the search dialog has no blurred backdrop. Check: on three page types
    in both themes, with the search dialog and the narrow-screen menu open,
    every computed `box-shadow`, `text-shadow` and `backdrop-filter` is
    `none`, and no computed `background-image` holds a gradient.
@@ -899,8 +897,10 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   "Noto Sans JP Variable", "Noto Sans JP", sans-serif`.
 - Japanese pages: `--font-sans` first, so that digits, quotation marks and
   symbols inside Japanese text take the Japanese design (owner's practice).
-  Hiragino Sans is used where the system has it; the site serves Noto Sans
-  JP for the other systems.
+  The runtime stack still prefers Hiragino Sans where installed, with
+  served Noto Sans JP as its fallback. The migration does not change that
+  stack. Validation uses Noto Sans JP on all Japanese pages, supplemented
+  only by a Hiragino Sans check of the Japanese home page where available.
 - Code and the numbers of 4.3, item 2: the monospace face of 4.12, then
   the corporate site's stack `"SFMono-Regular", Menlo, Consolas,
   "Liberation Mono", monospace`, then `--font-sans` for Japanese characters
@@ -943,6 +943,18 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   (Digital Agency design system). Chosen here: the English line heights,
   with body text at 1.6 (above the 1.5 that the Digital Agency asks for
   body text and that WCAG 1.4.12 tests), and weight 600 for h3.
+- **The root size at 640 px and below.** The sizes are written in rem,
+  and the px values of the table are for a root of 16 px. At 640 px and
+  below, `tokens.css` sets the root to
+  `clamp(100%, (100vw - 2 * var(--gutter)) / 21.875, 106.25%)`: the text
+  column between the 20 px gutters keeps the 21.875 em that it has at
+  390 px, where the pages' lines were set, so the lines break at the same
+  places. The root is 16 px up to 390 px, 16.55 px at 402 px (the phone
+  pattern of "Site design acceptance") and 17 px from 412 px; every role
+  of the scale follows it, so the roles keep their ratios. Above 640 px
+  the root is 16 px. `check-styles.mjs` checks the root size and compares
+  each role in rem (chosen here, following the owner's words of
+  2026-11-01: 「あまりに箇所が多ければ、文字数というかフォントサイズなどで調整してその上で細かいところは分量で調整したら良さそう」).
 - **Seven sizes.** A survey summary of Material Design 3 suggested three to
   six steps, but Material Design 3 itself names five roles in three sizes
   each (summary), so the number here follows the seven roles of the table,
@@ -979,11 +991,11 @@ windows, a fixed bar of actions at the bottom of narrow screens.
     sites' section headings do. GitHub drops the `<wbr>` without showing it
     (appendix B), so `docs/ja/` reads normally there.
   - **Page titles (h1)** wrap by character and are short instead (chosen
-    here). Starlight's `PageTitle.astro` renders `title` as an escaped
+    here). The site's `DocTitle.astro` renders `title` as an escaped
     expression, and the generator of 5.2 takes `title` from the first
     heading, so a `<wbr>` there would show as text or be stripped; the same
     `title` fills `<title>`, the sidebar and search (appendix B). A
-    Japanese title fits on one line at 390 px, about 13 characters at
+    Japanese title fits on one line at 402 px, about 13 characters at
     26 px; the longer statement of what the
     page covers is its first paragraph. `overflow-wrap: anywhere` on `h1`
     breaks a long identifier, and the generator stops on a first heading
@@ -997,7 +1009,7 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   allows and inline otherwise. It is decorative: the heading level is in
   the markup.
 - The home page heading takes at most two lines at 1440 px and at most
-  three at 390 px (owner's practice). The Japanese heading takes
+  three at 402 px (owner's practice). The Japanese heading takes
   its two lines, 「LLMリクエストの認証と転送を」 and 「Rubyで制御する。」, at
   every width: its size is at most the width of its column divided by
   13.7 em, because its first line is 13.3 em wide. That cap is below the
@@ -1010,15 +1022,15 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   読点 after 転送を, 「取る (推奨)」).
 - No `text-wrap: pretty` or `balance` anywhere: Safari applies `pretty` to
   every line and Chromium to the last four, so the same CSS wraps
-  differently per engine (WebKit blog; MDN). Starlight's Banner sets
-  `text-wrap: balance` (`Banner.astro` line 16); the site overrides it.
+  differently per engine (WebKit blog; MDN). The site’s banner also uses
+  normal wrapping, with no framework override.
 - Prose links are underlined (WCAG 1.4.1).
 - Checks: computed font sizes equal the scale of each language; no text
   below 14 px; the built CSS has no `text-wrap: pretty` or `balance`;
   `keep-all` and `auto-phrase` appear only on the `h2` selector of Japanese
   pages and on the labels of diagrams; the line count of the home page
-  heading at 1440 and 390 px in both languages; every Japanese h1 takes
-  one line at 390 px; no h1, `<title>`, sidebar
+  heading at 1440 and 402 px in both languages; every Japanese h1 takes
+  one line at 402 px; no h1, `<title>`, sidebar
   entry, table-of-contents entry or heading `id` on `/ja/` contains the text
   `wbr`, and the h2 of the test page of step 1 keep their `<wbr>` elements;
   no external font URL in the built site, and the build succeeds with
@@ -1040,10 +1052,10 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   standards of appendix C: at least 16 px at narrow widths (the U.S. Web
   Design System's `grid-container` padding of 2 units of 8 px) and a step
   at 640 px (GOV.UK's responsive spacing, which grows at 640 px). Check:
-  at 390 px, every text block and any marker in the margin is at
+  at 402 px, every text block and any marker in the margin is at
   least 20 px from both edges.
 - The sections of the home page use the inherited content width of
-  1032 px. Documentation pages keep Starlight's columns, with the text
+  1032 px. Documentation pages use the site's sidebar, content and table-of-contents columns, with the text
   column of 4.4.
 - Radii, from the inherited set: 8 px for buttons, inputs and the search
   field; 12 px for code blocks, as the corporate site's code blocks (4.12,
@@ -1057,8 +1069,7 @@ windows, a fixed bar of actions at the bottom of narrow screens.
 - Checks: every length that the built CSS gives to a margin, padding or
   gap is 0 or a value of the set (`auto` and percentages excepted), and
   every border radius is 0, 8, 12 or 999 px or 50% (the round buttons),
-  Starlight's own CSS included; other values are listed by selector and
-  overridden in step 2.
+  including the site-owned base CSS; exceptions must be listed by selector.
 
 ### 4.6 Color
 
@@ -1147,35 +1158,26 @@ Palette B:
   0.0201 for light `text`, 0.0203 for light `text-muted`. Palette B keeps
   the warm neutrals at hues of 85.8 to 94.1, so the teal accent has a hue
   of its own.
-- **Starlight's own colors.** Starlight's `props.css` defines a gray scale
-  at hue 224 (for example `hsl(224, 20%, 94%)`), its own accent, orange,
-  green, blue, purple and red palettes, and three shadows. `asides.css`
-  draws each aside with a 0.25rem colored border at the start edge on a
-  tinted blue, purple, orange or red background, and `Badge.astro` sets
-  badge text to `#fff` on the same hues. These would add a framework's
-  grays and four more accents, and the `hsl()` values would pass a check
-  that only looks for hex. So `tokens.css` sets every `--sl-color-*`
-  variable that Starlight reads (grays, white, black, the hairlines,
-  `accent-low`, `accent`, `accent-high` and the five hue palettes) and the
-  `--sl-badge-*` variables from the site's tokens, and the shadows to
-  `none`. Asides and badges have a 1 px `border-strong` border, `text` on
-  `bg`, and a text label (Note, Tip, Caution, Danger) instead of a color
-  (chosen here).
+- **Site-owned colors.** The site-owned base CSS, asides, badges and
+  components use the site's tokens directly, without Starlight palette or
+  shadow mappings. Asides and badges have a 1 px `border-strong` border,
+  `text` on `bg`, and a text label (Note, Tip, Caution, Danger) instead of
+  another accent color. Pagefind's stylesheet is normalized to the same
+  tokens by the PostCSS plugin.
 - Code highlighting uses at most four token colors besides `text` and
   `text-muted` (chosen here), each 4.5:1 on `surface` in both themes; the
   contrast script reads them from `tokens.css` (`--color-code-*`).
-- **Code blocks.** Starlight renders them with Expressive Code, whose
+- **Code blocks.** The Astro integration renders them with Expressive Code, whose
   default themes bring hex colors of their own, adjust syntax colors below
   5.5:1 and draw shell languages as a terminal window, which item 1 of 4.3
-  rules out (appendix B). Step 2 sets Starlight's `expressiveCode` option:
+  rules out (appendix B). `ec.config.mjs` sets:
   `themes`, a light and a dark theme that a script in `site/scripts/`
   writes from `tokens.css`, so that every syntax color is `text`,
   `text-muted` or a code color; `minSyntaxHighlightingColorContrast: 0`,
   so that those values stay as written, with the contrast script as the
-  gate; `useStarlightUiThemeColors: true`, which draws the frame with the
-  `--sl-color-*` variables of `tokens.css`, and `styleOverrides` with
-  `var()` references to the tokens for the border, scrollbars, text
-  markers and title row that Starlight leaves in other colors; and
+  gate; theme-specific frame and marker customization, plus `styleOverrides`
+  with `var()` references to site tokens for the border, scrollbars, text
+  markers and title row; and
   `defaultProps: { frame: 'code' }`, so that no block becomes a terminal
   window and a title such as `nginx.conf` stays one flat row of text.
   Expressive Code's stylesheet (`/_astro/ec.<hash>.css`) and the `style`
@@ -1183,8 +1185,7 @@ Palette B:
   are exempt from the hex check, and the checks below cover them.
 - Checks: the contrast script over palette A and the code colors; no
   hex color in component CSS, and none in the built CSS outside
-  `tokens.css` and Expressive Code's stylesheet (Starlight's `#fff` in
-  `Badge.astro` included); on three page types in both themes, every
+  `tokens.css` and Expressive Code's stylesheet; on three page types in both themes, every
   computed text, background and border color, code blocks and diagrams
   included, is a token value or transparent; the hex values in the `style`
   attributes of highlighted spans are code colors, `text` or `text-muted`;
@@ -1198,8 +1199,7 @@ Palette B:
   proofreading performance (Buchner and Baumgartner 2007), in younger and
   older adults (Piepenbrock et al. 2013); Nielsen Norman Group recommends
   offering dark mode for long reading (Budiu 2020).
-- Starlight puts dark values on `:root` and needs a script for light, so
-  without JavaScript every reader gets dark. The site uses the theme order
+- The site-owned base stylesheet uses the theme order
   of the corporate and profile sites (4.2): light tokens on `:root`, dark
   ones in `@media (prefers-color-scheme: dark)` for
   `:root:not([data-theme="light"])` and on `:root[data-theme="dark"]`, so
@@ -1250,7 +1250,7 @@ acceptance; the interaction check covers that separately.
   tests (2023).
 - No horizontal page scroll. WCAG 1.4.10 asks for reflow at 320 CSS px,
   and writers keep that in mind; the check measures the iPhone pattern of
-  "Site design acceptance" (390 px in WebKit). On 2026-10-30 the owner
+  "Site design acceptance" (402 px in WebKit). On 2026-10-30 the owner
   required code to be readable without horizontal scrolling (「横スクロールを
   強制」は「絶対やめて」). Code blocks soft-wrap, including long paths and
   tokens; copying keeps the original source. This supersedes the earlier
@@ -1259,7 +1259,7 @@ acceptance; the interaction check covers that separately.
   ledgers into sections. A genuinely wide comparison needs a readable narrow
   representation rather than a scrollbar as its only access. Diagrams do not
   scroll sideways; they take a vertical arrangement instead (3.5).
-- **Right edge.** At 390 px in WebKit (the iPhone pattern of "Site design
+- **Right edge.** At 402 px in WebKit (the iPhone pattern of "Site design
   acceptance"), the longest line of
   every Japanese text block (`lang="ja"`) of two or more lines ends less
   than 2 em of the block's font size from the block's right edge; failing
@@ -1270,12 +1270,12 @@ acceptance; the interaction check covers that separately.
   or `balance` applies. WebKit is measured because it is the engine of
   Safari on iPhone.
 - Japanese h2 wrap by phrase (4.4), so they are left out of the 2 em
-  check: at 390 px a 22 px h2 holds about 14 characters per line beside the
+  check: at 402 px a 22 px h2 holds about 14 characters per line beside the
   inline mark of 4.4, and a break before a phrase leaves that phrase's
-  length free. Instead (chosen here) they take at most two lines at 390 px,
+  length free. Instead (chosen here) they take at most two lines at 402 px,
   and the longest line ends less than 6 em from the right edge; a longer
   gap marks a phrase to split with another `<wbr>`. Japanese h1 take one
-  line at 390 px (4.4).
+  line at 402 px (4.4).
 - Targets at least 24 by 24 CSS px (WCAG 2.5.8), header buttons and menu
   rows 44 by 44 (owner's practice, as on the profile site; Apple's Human
   Interface Guidelines give 44 by 44 points). The fixed header never covers
@@ -1305,9 +1305,8 @@ acceptance; the interaction check covers that separately.
   that language: "日本語" on English pages, "English" on Japanese pages. It
   is a pill with a 1 px `border` outline, as on the profile site. It leads
   to the same page in the other language. No language is picked from
-  `Accept-Language` or location; no flags. Starlight's picker is a
-  `<select>` that navigates by script, so a component override replaces it
-  with a plain link.
+  `Accept-Language` or location; no flags. The site component renders a
+  plain link, which works without JavaScript.
 - **Narrow screens** (640 px and below): logo, wordmark, search, the theme
   toggle and the menu button stay. The language link becomes the first item
   of the menu, under the heading "Language", as on the profile site; the
@@ -1327,13 +1326,13 @@ acceptance; the interaction check covers that separately.
   the stable documentation would blur version scope. The footer wraps as a
   unit at narrow widths; keep the badge's aspect ratio and visible focus.
   `check-project-badges.mjs` checks the exact link/image/alt on every page and,
-  in a browser, the footer at 375 px in light and dark. The checks before the
+  in a browser, the footer in the two configured patterns in light and dark. The checks before the
   deploy serve the badge's URL from a local stand-in, so bestpractices.dev
   cannot hold the publication; `check-live.mjs` fetches the real image after
   the deploy, with retries.
 - Check: each page's language link answers 200 with the same path under the
   other prefix; `/` with `Accept-Language: ja` returns English without a
-  redirect; at 320 and 390 px the header's items fit on one row without
+  redirect; in the two configured patterns the header’s items fit on one row without
   overlap, in both languages.
 
 ### 4.11 What the owner's practice forbids and what research supports
@@ -1460,7 +1459,7 @@ detection, or that pinned versions do not keep Starlight stable.
 
 - `site/` on `next`: `package.json`, `package-lock.json`,
   `astro.config.mjs`, the home pages `src/content/docs/index.mdx` and
-  `ja/index.mdx`, component overrides, `src/styles/tokens.css`, `public/`
+  `ja/index.mdx`, site-owned layouts and components, `src/styles/tokens.css`, `public/`
   (logo, favicon, the verification file that Q5 keeps) and `scripts/`
   (generator and checks).
 - `docs/` stays the English source, `docs/ja/` the Japanese one, both
@@ -1471,12 +1470,10 @@ detection, or that pinned versions do not keep Starlight stable.
   `astro build`. For each Markdown file under `docs/` except `proposals/`, it
   writes a page into `site/src/content/docs/`, at the folder of its route,
   beside the committed home pages, which `.gitignore` keeps tracked while
-  it ignores the rest of the folder (in a subfolder, Starlight's sidebar
-  showed the subfolder as a group; step 3): the
+  it ignores the rest of the folder: the
   title from the first heading (a heading with HTML stops the build, 4.4),
   `lastUpdated` from
-  `git log -1 --format=%cs -- <file>` (Starlight's front matter accepts a
-  date that overrides Git's), `README.md` as the folder index, relative
+  `git log -1 --format=%cs -- <file>` in the schema’s explicit date field, `README.md` as the folder index, relative
   links rewritten to site routes, links into `src/` or `test/` turned into
   GitHub URLs. It turns each diagram block of 3.5 into a figure with HTML
   labels around the inlined drawing, and copies each sample of 3.5 from the
@@ -1596,8 +1593,8 @@ with Astro alone and components of the repository's own. The owner's
 words: 「サイトのドキュメントに既存のドキュメントライブラリ使うの微妙じゃない？あれは人が作る場合の便利ツールであっていまはcodexとかがデザインにあったドキュメントを自前で書いたほうが良さそう、starlightだっけ」.
 Asked whether to keep Starlight, the owner chose 「やめる。構想を書いて Codex に (推奨)」:
 drop it, write the plan here, and have a Codex session implement it. The
-Codex session starts after step 5, when the seven pages of
-`NOT_TRANSLATED_YET` in `site/scripts/lib/site.mjs` are translated. This
+Codex session starts after step 5, after the six remaining translations are merged; the handoff page
+remains English with a notice by the owner’s decision. This
 replaces the tool of Q1 (section 7) and the recommendation of 5.1. The
 place (`site/` on `next`), the generator, the `/v2/` build, the checks, the
 design of section 4 and the deployment of 5.3 stay.
@@ -1686,14 +1683,16 @@ size and characters per line first, then only the remaining fine cases by
 a few characters of wording. Do not mechanically rewrite prose for the
 checker or add more width/browser combinations. The parity baseline of
 #708 was measured at 390px; 390px, decided in
-[#707](https://github.com/matsumotory/ngx_mruby/pull/707), holds until the
-rebuild's pull request changes it.
+[#707](https://github.com/matsumotory/ngx_mruby/pull/707), was the earlier baseline; this rebuild changes the pattern to 402px.
 
 **Order.** After step 5. [#708](https://github.com/matsumotory/ngx_mruby/pull/708)
 (Codex, the first layer of the site's own components) is merged into `next`.
-The rest is one pull request from a Codex session, not split into stages
-(the owner's decision of 2026-11-01, section 7). Of the three parts below,
-the first is merged in #708; the pull request holds the second and the third:
+The owner decided on 2026-11-01 that the rest is one pull request, not split
+into stages (section 7). The final implementation removes the selector flag
+and Starlight dependency together; parity compares the recorded base-commit
+build with the head, not two modes in the same checkout. The parts below
+record the migration order: the first was merged in #708, and the remaining
+two are implemented together.
 
 - The plumbing beside Starlight (merged in #708): the layout, the page route, the
   collection, the sidebar, the table of contents, the search, the head,
@@ -1706,15 +1705,16 @@ the first is merged in #708; the pull request holds the second and the third:
   entry, whether the page has a sidebar) through one helper instead of
   `Astro.locals.starlightRoute`. CI builds both shells from the same commit
   and runs the parity check of the acceptance.
-- The pages: the home pages, the generated pages and `/v2/` move to the
-  site's shell, which becomes the default; `NGX_MRUBY_SITE_SHELL=starlight`
-  still builds the Starlight shell for the parity check.
+- The pages: the home pages, the generated pages and `/v2/` use the
+  site's shell. The originally planned temporary
+  `NGX_MRUBY_SITE_SHELL=starlight` mode is not retained in the final PR;
+  the comparison uses the base-commit build instead.
 - The removal: `@astrojs/starlight`, the overrides as overrides, the
   flag, the `--sl-*` mappings, the Starlight part of the PostCSS plugin
   and the Starlight selectors of the checks go; the parity check then
   compares with the build of the base commit. The pull request states the
   number of packages of `package-lock.json` before and after (the keys of
-  `packages` without the root: 466 today).
+  `packages` without the root: 466 in the migration base, 417 after removal).
 
 The pull request updates the text that it makes untrue: in AGENTS.md
 the repository layout ("Astro with Starlight") and "The site"; in this
@@ -1723,9 +1723,15 @@ the Banner), 4.5 (Starlight's columns and CSS), 4.6 ("Starlight's own
 colors", "Code blocks"), 4.7, 4.10 and 5.2, and "Measure two patterns" of "Site design acceptance" (the phone width); Pillar F of `v3-plan.md`; and the comments of `site/` that name
 Starlight. `docs/HANDOFF.md` records the state of the pull request, as AGENTS.md says.
 
+**Migration status (2026-11-01).** [#713](https://github.com/matsumotory/ngx_mruby/pull/713)
+removes the remaining Starlight layers. Its acceptance below passes at
+390 px against the build of the base commit, and the phone pattern then
+moves to 402 px with the root size of 4.4; the pull request quotes the
+commits and the results.
+
 **Acceptance.** Each item is measured on both versions and both
 languages, on every page unless it says otherwise. The phone pattern is
-402px wide in WebKit once the rebuild changes it from 390px.
+402px wide in WebKit, changed from the earlier 390px baseline by this rebuild.
 
 1. Every existing check passes: `npm test`, `npm run check`,
    `npm run check:v2`, `npm run check:browser`, `npm run check:contrast`,
@@ -1735,10 +1741,15 @@ languages, on every page unless it says otherwise. The phone pattern is
    the class of the content, `#starlight__search` to the id of the
    element where Pagefind's UI mounts, for example), never its thresholds, pages, widths, engines or themes;
    each check whose selectors changed is shown failing on a planted fault
-   again, as section 6 asks of every check.
+   again, as section 6 asks of every check. The replacement passes this
+   acceptance at 390 px, in a commit of its own. The commit after it moves
+   the phone pattern to 402 px; it sets the root size of 4.4 for narrow
+   screens, and `check-styles.mjs` then compares the type scale, the
+   spacing steps and the radii in rem of that root as well as in px. That
+   change moves what the sizes are measured against to the root; it does
+   not widen a threshold.
 2. The HTML says the same. A new script, `check-parity.mjs` (chosen here),
-   reads the two builds of the shells (later the base and the
-   head) and fails on any difference that is not on its list of allowed
+   reads the recorded base-commit build and the head build and fails on any difference that is not on its list of allowed
    ones. It compares the set of built files, the URLs of the sitemaps and
    the `hreflang` alternates of each; and for each page the attributes of
    `<html>` (`lang`, `dir`, `data-theme`, `data-has-sidebar`,
@@ -1752,9 +1763,9 @@ languages, on every page unless it says otherwise. The phone pattern is
    custom element names, hashed asset names, the `#theme-icons`
    template, and the sidebar's scroll script.
 3. The layout is the same. For every page in the two patterns of "Site
-   design acceptance" (1440 by 900 px in Chromium; the phone pattern,
-   402px wide in WebKit), light, and for the three pages of `screenshots.mjs` also dark,
-   with the menu closed and open at the phone width and the search dialog open at
+   design acceptance" (1440 by 900 px in Chromium, 402 by 664 px in
+   WebKit), light, and for the three pages of `screenshots.mjs` also dark,
+   with the menu closed and open at 402 px and the search dialog open at
    1440 px: the
    boxes of the header items, the sidebar entries, the table of contents
    entries, the headings, paragraphs, list items, code blocks, tables,
@@ -1763,8 +1774,9 @@ languages, on every page unless it says otherwise. The phone pattern is
    `background-color` are equal. The rebuild also folds the widths of
    `check-code-layout.mjs`, `check-home-interaction.mjs`,
    `check-copy-idle.mjs`, `screenshots.mjs` (and `ci-screenshots.mjs`) and
-   `check-focus.mjs`, which still measure 320, 390, 768 or 1440 px, into
-   the two patterns of "Site design acceptance". The plan had no tolerance for screenshots
+   `check-focus.mjs` into
+   the two patterns of "Site design acceptance", replacing the earlier
+   320/390/768/1440 px combinations. The plan had no tolerance for screenshots
    before; this one is chosen here. The screenshots of both builds go
    side by side into the workflow artifact for the review.
 4. Search returns the same. `check-search-identifiers.mjs` passes, and a
@@ -1787,7 +1799,7 @@ list a difference.
 |---|---|
 | Japanese search gets worse: Pagefind segments by `<html lang>`, so a page that loses `lang="ja"` or its `data-pagefind-*` attributes is indexed differently, and a changed UI option changes the results | items 2 and 4; Pagefind indexes as many HTML files per build as today (66 for 3.x at 6bb35b241) |
 | The fallback notice or its language goes missing: the generated reference under `/ja/` and every page under `/v2/ja/` still depend on it after step 5 | `check-japanese.mjs` (the `data-notice` of each fallback page, `hreflang`), `check-v2.mjs`, and item 2 (the `lang="en"` element and its notice) |
-| The mobile menu breaks: today it reuses Starlight's popover pane and script | `check-focus.mjs`, `check-home-interaction.mjs`, `check-styles.mjs` with the menu open in both engines, `check-no-js.mjs` (the menu opens through the `popover` attribute), and item 3 at the phone width |
+| The mobile menu breaks: the replacement must preserve the earlier popover behavior | `check-focus.mjs`, `check-home-interaction.mjs`, `check-styles.mjs` with the menu open in both engines, `check-no-js.mjs` (the menu opens through the `popover` attribute), and item 3 at 402 px |
 | The 2.x pages break: they build from another tree with another base and sidebar | `build-v2.mjs` and `check-v2.mjs` (banner, version links, search isolation) in the site workflow, `site-v2.yml` on `master`, and items 2 to 4 on `/v2/` |
 | A rule of Starlight's base stylesheets that a page relies on is lost | item 3, and `check-styles.mjs` and `check-css.mjs` on the built CSS |
 | A front matter field is dropped without notice | the strict schema of the collection, and item 2 |
@@ -1833,18 +1845,16 @@ After step 5, a Codex session moves the site from Starlight to Astro alone
 and components of the repository's own, as 5.4 describes (the owner's
 decision of 2026-11-01, section 7); 5.4 has its order and its acceptance.
 
-Layer 1 of 5.4
-([#708](https://github.com/matsumotory/ngx_mruby/pull/708)) adds the own
-shell beside Starlight, built when `NGX_MRUBY_SITE_SHELL=own` is set;
-Starlight stays the default and the deployed shell. The shared components
-keep the existing class names and cascade layers until the removal layer.
-The copied base rules carry Starlight's MIT notice, with the literal color
-declarations removed in favor of the site's tokens. `check-shells.mjs`
-builds both shells, compares them with `check-parity.mjs`, and restores
-the Starlight build. The pull request records the acceptance of 5.4 for
-this layer: the static parity, the browser checks, the layout boxes and
-computed styles in the two patterns, the search results, and the offline
-build.
+Layer 1 of 5.4 was introduced in
+[#708](https://github.com/matsumotory/ngx_mruby/pull/708) as an opt-in shell
+beside Starlight. The final migration removes that temporary dual-shell
+configuration: all routes use Astro and repository-owned components, with no
+Starlight dependency or shell flag. Copied code retains its MIT attribution.
+Acceptance compares a base-commit build with the head using identical 2.x
+input, then checks browser behavior and layout in the two configured patterns.
+The acceptance passes; #713 quotes the commits and the results.
+The lockfile now has 417 package entries excluding the root, down from 466
+in the migration base (49 fewer); this count is not a runtime performance claim.
 
 ## 7. Decisions (2026-10-15)
 
@@ -2493,25 +2503,26 @@ region's `scrollWidth <= clientWidth + 1`. A screenshot cannot establish copy
 correctness or motion behavior. Automated checks and first-reader findings are
 separate evidence, and neither replaces the other.
 
-**Measure two patterns.** The layout and wrapping checks of the site
-measure two patterns only: PC at full screen (1440 px, Chromium) and
-iPhone Safari (390 px, WebKit). No other widths, browsers or font
-combinations are added to the checks. The owner's words (2026-11-01):
+**Measure two patterns.** The layout and wrapping checks measure only PC
+at 1440 by 900 px in Chromium and iPhone Safari at 402 by 664 px in WebKit.
+No other widths, browsers or font combinations are added. The owner's words
+(2026-11-01):
 「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
-The words name iPhone 17 as an example; the phone pattern takes 390 px,
-the standard iPhone width, at which the pages already pass. The
-replacement of Starlight (5.4) changes it to 402 px; the Japanese lines that
-wrap differently at 402 px are fixed in the same pull request, by the size of
-the type first and then by a few characters of text, and the comparison with
-the build of the base commit lists them as allowed differences.
-The content area has a fixed width, so a correct rendering at full
-screen is what the PC pattern establishes. Japanese text keeps the faces
-the site serves: Hiragino Sans where the system has it and the served Noto
-Sans JP elsewhere (`--ja-face noto` lets a run on macOS see what CI sees).
-`site/scripts/lib/patterns.mjs` holds the two patterns; `check-styles.mjs`
-and `check-japanese-lines.mjs` measure each engine in its own pattern.
-4.9 stays the design guidance for writers at narrow widths; its
-measurement is the iPhone pattern.
+The words name iPhone 17 as an example. The replacement of Starlight
+(5.4) sets the phone pattern to 402 px, the width of the owner's iPhone 17
+Pro in Safari; the Japanese lines that wrap differently at 402 px are fixed
+in the same pull request, by the size of the type first and then by a few
+characters of text. The content area has a fixed width, so a correct
+rendering at full screen is what the PC pattern establishes. All Japanese
+pages are validated with the served Noto Sans JP (`--ja-face noto` lets a
+run on macOS see what CI sees), and the Japanese home page also with
+Hiragino Sans where available. This does not change the runtime stack,
+which prefers Hiragino Sans where installed and falls back to Noto Sans JP.
+The Japanese home heading's two-line wording and responsive size from #697
+remain unchanged. `site/scripts/lib/patterns.mjs` holds the two patterns;
+the scripts measure each engine in its own pattern. 4.9 stays the design
+guidance for writers at narrow widths; its measurement is the iPhone
+pattern.
 
 **Leave a reproducible checkpoint.** In the PR, record the rule sections read,
 content outline and evidence, reference observations, tested head, actual URLs
