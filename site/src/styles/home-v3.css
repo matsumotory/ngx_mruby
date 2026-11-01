@@ -115,3 +115,16 @@ html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
    Code, not to the outer pre; its canonical copy data is unchanged. */
 .home-v3 .expressive-code pre { box-sizing: border-box; width: 100%; max-width: 100%; padding-inline: 0; }
 .home-v3 .expressive-code pre.wrap > code { flex: 1 1 auto; width: 100%; min-width: 0; }
+
+/* Future use cases reuse the existing type and spacing, without nested cards. */
+.direction-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-7); margin-top: var(--space-6); }
+/* The grid's gap spaces the items; the content flow's margin between siblings
+   would push the second item of the first row 16px below the first. */
+.direction-list > div { min-width: 0; margin: 0; }
+.direction-list h3 { margin: 0; }
+/* Each planned item carries the badge of 4.6 after its heading text; the
+   space before it keeps the heading's accessible name two words apart. */
+.direction-list h3 .site-badge { margin-inline-start: var(--space-1); font-weight: 400; vertical-align: middle; white-space: nowrap; }
+.direction-list p { color: var(--color-text-muted); margin: var(--space-3) 0 var(--space-4); }
+.home-v3 .direction-plan { margin-top: var(--space-6); }
+@media (max-width: 800px) { .direction-list { grid-template-columns: minmax(0, 1fr); gap: var(--space-5); } }

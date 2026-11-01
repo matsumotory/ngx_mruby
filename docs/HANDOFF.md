@@ -1,10 +1,12 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-01 (15:18 JST)
+## State as of 2026-11-01 (21:44 JST)
 
-- Heads: `next` is `023fe8343`, the merge of
-  [#708](https://github.com/matsumotory/ngx_mruby/pull/708) (the first
-  layer of the site's own shell); `master` is `6eae5a2df`; `v2.x` mirrors
+- Heads: `next` is `2fd422614`, the merge of
+  [#721](https://github.com/matsumotory/ngx_mruby/pull/721) (the planned AI
+  uses of v3: `docs/proposals/edge-control.md` and its guides); `master` is
+  `01a2cc7fd`, the merge of
+  [#716](https://github.com/matsumotory/ngx_mruby/pull/716); `v2.x` mirrors
   `master`. `next` contains `master` as of the merge
   [#701](https://github.com/matsumotory/ngx_mruby/pull/701).
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
@@ -17,10 +19,10 @@
   `Nginx::Stream::Connection#upstream_server=`, fixed by `591147b01`,
   entry 9 of [the 2.7.3 release notes](releases/v2.7.3.md)).
   #699 added the two advisory ids to the 2.7.3 release notes.
-- Open: [#711](https://github.com/matsumotory/ngx_mruby/pull/711) (base
-  `next`, this record of the owner's decisions of 2026-11-01). The rest of
-  the replacement of Starlight is one pull request from a Codex session
-  (the site row of "Queue").
+- Open: [#722](https://github.com/matsumotory/ngx_mruby/pull/722) (base
+  `next`, step 5 of the core stabilization) and the pull request that adds
+  the ledger of the AI uses to `docs/proposals/edge-control.md` (base
+  `next`).
 
 ## How to use this file
 
@@ -280,7 +282,8 @@ Taken up and still open: none.
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |
 | The ASan cell with `-DNGX_DEBUG_PALLOC -DNGX_DEBUG_MALLOC` (3.7 of the plan; the cell of `test.yml` sets only `-fsanitize` and `-fno-omit-frame-pointer`), so that ASan sees an access that runs from one pool allocation into the next. To do: a run of the suite with these flags, whose findings follow [SECURITY.md](../SECURITY.md), then the cell | `next`, `master` | Ready to start |
 | A test build with `ngx_otel_module` (nginx/nginx-otel, built with CMake against the nginx source of `test.sh`) and an OTLP receiver for the case of the observability sample of 3.2 of the site proposal | `next` | The harness rewrite (the row above), of which this waits for what is left: the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads |
-| Step 7 of section 6 of the plan, the agent proxy, parts (a) to (e); none exists on `next` | `next` | Parts (a) and (c) start "after the safety net of step 2, beside step 4" (step 7 of section 6 of the plan, decided on 2026-10-29 in item 15 of section 7), so they wait for what is left of that safety net: in the row above for the test harness rewrite, the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads, and its `test/t/cases/_workers.rb` runs the several workers that the test of N concurrent `incr` calls of the shared dictionary needs (section 8 of the plan). (b) and (d) also wait for step 4. The order inside the step is a proposal of the 2026-10-04 amendment until the owner decides it |
+| Step 7 of section 6 of the plan, the agent proxy, parts (a) to (e); none exists on `next` | `next` | Parts (a) and (c) start "after the safety net of step 2, beside step 4" (step 7 of section 6 of the plan, decided on 2026-10-29 in item 15 of section 7), so they wait for what is left of that safety net: in the row above for the test harness rewrite, the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads, and its `test/t/cases/_workers.rb` runs the several workers that the test of N concurrent `incr` calls of the shared dictionary needs (section 8 of the plan). (b) and (d) also wait for step 4. The order inside the step is a proposal of the 2026-10-04 amendment until the owner decides it. The `serves:` notes on the rows of the plan name the uses of [the ledger](proposals/edge-control.md#use-cases-and-the-features-they-need) that each part serves |
+| The AI uses of v3 beyond the agent proxy: the next work comes from [the ledger of the uses](proposals/edge-control.md#use-cases-and-the-features-they-need), first its rows at `designing` ([MCP tool authorization](proposals/edge-control.md#mcp-tool-authorization), whose first recipe uses two tenants and read and write mock tools, [MCP tool profiles](proposals/edge-control.md#mcp-tool-profiles), [MCP progressive retrieval](proposals/edge-control.md#mcp-progressive-retrieval), and [LLM API fallback](proposals/edge-control.md#llm-api-fallback), whose test is in section 8 of the plan), then its rows at `direction`. This row copies the ledger; when they disagree, the ledger holds | `next` | The core stabilization (the row of step 4 above); the fallback also waits for step 7 of the plan (the row above). No API for these uses is designed yet |
 | Remove `example/` (`README.md`, `nginx.conf`, `proxy.rb`, `set.rb`, `set2.rb`, `unified_hello.rb`): no CI job starts it, no page links it, and its `/proxy` location picks among `test1.example.com` to `test3.example.com`, which are unreachable; `examples/start/` is checked by `examples.yml` | `next` | Ready to start |
 | When a rewrite handler of the location that `Nginx.redirect` runs sleeps and the handler that called `Nginx.redirect` then answers the request, with a status or an exception, the response is followed by the output of the sleeping handler when its timer fires. The request ends and nothing leaks. After an exception nginx closes the connection; for a status, see [the review of #646](https://github.com/matsumotory/ngx_mruby/pull/646#issuecomment-6497236767), item 1. Not a 2.x fix: it needs the rewrite of the row "The async resume rewrite" (#646 leaves it out) | `next`, in the core stabilization of 3.0.0 | The row "The async resume rewrite" |
 | A content handler of the location that `Nginx.redirect` runs from Ruby code ends the request at `Nginx::Async.sleep`, without its output ("Not changed by this release" in entry 2 of [the 2.7.3 release notes](releases/v2.7.3.md)). Not a 2.x fix: the handler that called `Nginx.redirect` goes on after the call and may answer the request itself | `next`, in the core stabilization of 3.0.0 | The row "The async resume rewrite" |
