@@ -144,9 +144,9 @@ if (opt.browser) {
       try {
         await tab.goto(`${server.url}${s.page}`, { waitUntil: 'load' });
         await tab.locator('button[data-open-modal]').click({ timeout: 5000 });
-        await tab.locator('#starlight__search input').fill(WORD);
-        await tab.waitForFunction(() => !document.querySelector('#starlight__search .pagefind-ui__loading') && document.querySelector('#starlight__search .pagefind-ui__result-link'), null, { timeout: 15000 });
-        const hrefs = await tab.$$eval('#starlight__search .pagefind-ui__result-link', (links) => links.map((a) => new URL(a.href).pathname));
+        await tab.locator('#site__search input').fill(WORD);
+        await tab.waitForFunction(() => !document.querySelector('#site__search .pagefind-ui__loading') && document.querySelector('#site__search .pagefind-ui__result-link'), null, { timeout: 15000 });
+        const hrefs = await tab.$$eval('#site__search .pagefind-ui__result-link', (links) => links.map((a) => new URL(a.href).pathname));
         const own = (p) => (s.version === 2 ? p.startsWith('/v2/') : !p.startsWith('/v2/'));
         const strays = hrefs.filter((p) => !own(p));
         if (strays.length) problems.push(`${where}: ${strays.length} of ${hrefs.length} results are pages of the other version: ${[...new Set(strays)].join(', ')}`);

@@ -27,7 +27,7 @@ const { toc, isMobile = false, depth = 0 } = Astro.props;
 </ul>
 
 <style define:vars={{ depth }}>
-	@layer starlight.core {
+	@layer site.core {
 		ul {
 			padding: 0;
 			list-style: none;
@@ -41,20 +41,20 @@ const { toc, isMobile = false, depth = 0 } = Astro.props;
 			line-height: 1.25;
 		}
 		a[aria-current='true'] {
-			color: var(--sl-color-text-accent);
+			color: var(--color-accent-text);
 		}
 		.isMobile a {
 			--pad-inline: 1rem;
 			display: flex;
 			justify-content: space-between;
 			gap: var(--pad-inline);
-			border-top: 1px solid var(--sl-color-gray-6);
+			border-top: 1px solid var(--color-bg-tertiary);
 			border-radius: 0;
 			padding-block: 0.5rem;
-			color: var(--sl-color-text);
-			font-size: var(--sl-text-sm);
+			color: var(--color-text-primary);
+			font-size: var(--text-caption);
 			text-decoration: none;
-			outline-offset: var(--sl-outline-offset-inside);
+			outline-offset: var(--site-outline-offset-inside);
 		}
 		.isMobile:first-child > li:first-child > a {
 			border-top: 0;
@@ -62,13 +62,13 @@ const { toc, isMobile = false, depth = 0 } = Astro.props;
 		.isMobile a[aria-current='true'],
 		.isMobile a[aria-current='true']:hover,
 		.isMobile a[aria-current='true']:focus {
-			color: var(--sl-color-white);
+			color: var(--color-text-primary);
 			background-color: unset;
 		}
 		.isMobile a[aria-current='true']::after {
 			content: '';
 			width: 1rem;
-			background-color: var(--sl-color-text-accent);
+			background-color: var(--color-accent-text);
 			/* Check mark SVG icon */
 			-webkit-mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxNCAxNCc+PHBhdGggZD0nTTEwLjkxNCA0LjIwNmEuNTgzLjU4MyAwIDAgMC0uODI4IDBMNS43NCA4LjU1NyAzLjkxNCA2LjcyNmEuNTk2LjU5NiAwIDAgMC0uODI4Ljg1N2wyLjI0IDIuMjRhLjU4My41ODMgMCAwIDAgLjgyOCAwbDQuNzYtNC43NmEuNTgzLjU4MyAwIDAgMCAwLS44NTdaJy8+PC9zdmc+Cg==');
 			mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxNCAxNCc+PHBhdGggZD0nTTEwLjkxNCA0LjIwNmEuNTgzLjU4MyAwIDAgMC0uODI4IDBMNS43NCA4LjU1NyAzLjkxNCA2LjcyNmEuNTk2LjU5NiAwIDAgMC0uODI4Ljg1N2wyLjI0IDIuMjRhLjU4My41ODMgMCAwIDAgLjgyOCAwbDQuNzYtNC43NmEuNTgzLjU4MyAwIDAgMCAwLS44NTdaJy8+PC9zdmc+Cg==');

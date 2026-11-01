@@ -36,7 +36,7 @@ const isRtl = dir === 'rtl';
 </div>
 
 <style>
-	@layer starlight.core {
+	@layer site.core {
 		.pagination-links {
 			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
@@ -51,12 +51,12 @@ const isRtl = dir === 'rtl';
 			width: 100%;
 			flex-basis: calc(50% - 0.5rem);
 			flex-grow: 1;
-			border: 1px solid var(--sl-color-gray-5);
+			border: 1px solid var(--color-border);
 			border-radius: 0.5rem;
 			padding: 1rem;
 			text-decoration: none;
-			color: var(--sl-color-gray-2);
-			box-shadow: var(--sl-shadow-md);
+			color: var(--color-text-primary);
+			box-shadow: none;
 			overflow-wrap: anywhere;
 		}
 		[rel='next'] {
@@ -65,13 +65,13 @@ const isRtl = dir === 'rtl';
 			flex-direction: row-reverse;
 		}
 		a:hover {
-			border-color: var(--sl-color-gray-2);
+			border-color: var(--color-text-primary);
 		}
 
 		.link-title {
-			color: var(--sl-color-white);
-			font-size: var(--sl-text-2xl);
-			line-height: var(--sl-line-height-headings);
+			color: var(--color-text-primary);
+			font-size: var(--text-h2);
+			line-height: var(--leading-h2);
 		}
 
 		svg {

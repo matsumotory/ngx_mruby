@@ -1,7 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
-import DocPage from './DocPage.astro';
-import { makeRoute } from './routes.mjs';
+import DocPage from '../own/DocPage.astro';
+import { makeRoute } from '../own/routes.mjs';
 export const prerender = true;
 export async function getStaticPaths() {
   const entries=(await getCollection('docs')).filter(e=>!e.data.draft).map(e=>({...e,id:e.id==='index'?'':e.id}));

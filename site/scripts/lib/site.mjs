@@ -27,7 +27,7 @@ export const GITHUB_REF = SITE_VERSION === 2 ? 'master' : 'next';
 export const siteDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const repoDir = SITE_VERSION === 2 && process.env.NGX_MRUBY_SITE_REPO ? path.resolve(process.env.NGX_MRUBY_SITE_REPO) : path.resolve(siteDir, '..');
 // Where scripts/sync-docs.mjs writes the pages and the list of them. The
-// pages go into Starlight's content folder beside the committed home pages
+// pages go into the site's content collection folder beside the committed home pages
 // index.mdx and ja/index.mdx (docs/proposals/site.md, 5.2), each at the
 // folder of its route; .gitignore ignores everything else there.
 export const contentRoot = path.join(siteDir, 'src', 'content', 'docs');
@@ -199,7 +199,7 @@ export function fileOfRoute(route) {
 }
 
 // The page of the manifest that a built route shows. A route under ja/ that
-// has no Japanese source is Starlight's fallback: the English page shown
+// has no Japanese source uses the site's fallback route: the English page shown
 // under /ja/ with a notice (docs/proposals/site.md, 3.4).
 export function pageOfRoute(pages, route) {
   const page = pages.find((p) => p.route === route);

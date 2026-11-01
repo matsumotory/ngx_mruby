@@ -1,8 +1,8 @@
 // The Expressive Code themes of the site, written from the tokens of
 // src/styles/tokens.css (docs/proposals/site.md, 4.6 "Code blocks"): every
 // syntax color is text, text-muted or one of the four code colors. The
-// frame (background, border, title row) comes from the --sl-color-*
-// variables and the styleOverrides in astro.config.mjs, not from here.
+// frame (background, border, title row) comes from the --site-color-*
+// variables and the styleOverrides in ec.config.mjs, not from here.
 import { ExpressiveCodeTheme } from 'astro-expressive-code';
 import { themeColors } from './tokens.mjs';
 

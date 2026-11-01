@@ -13,7 +13,7 @@ assert.deepEqual(commandsFor(full,'interaction'),[['check-copy-idle.mjs'],['chec
 assert.deepEqual(commandsFor(target,'interaction'),[['check-code-layout.mjs']]);
 assert.deepEqual(commandsFor(target,'japanese'),[['check-japanese-lines.mjs','--pages','/ja/guides/install/']]);
 assert.deepEqual(commandsFor(full,'screenshots'),[['check-project-badges.mjs','--browser'],['screenshots.mjs','--out','build-screenshots']]);
-// The badge's 375px acceptance is covered by check-project-badges --browser,
+// The badge's two-pattern acceptance is covered by check-project-badges --browser,
 // not a new width requirement for the style lanes or existing docs prose.
 assert.deepEqual(commandsFor(full,'japanese'),[['check-japanese-lines.mjs']]);
 assert.deepEqual(commandsFor(target,'styles-chromium'),[['check-styles.mjs','--engine','chromium']]);
@@ -79,4 +79,11 @@ assert.ok(workflow.includes('measure_scope: ${{ steps.scope.outputs.measure_scop
 console.log('Publication regression checks and policy-only measurement wiring: PASS');
 
 assert.ok(workflow.includes('node scripts/check-project-badges.mjs'));
-console.log('Quality badge markup and 375px footer checks remain wired after lane integration: PASS');
+console.log('Quality badge markup and 1440px/402px footer checks remain wired after lane integration: PASS');
+
+// Base/head identity is a migration acceptance gate, not a ban on future edits.
+for (const name of ['Compare the base commit site with the current Astro site', 'Upload base/head comparison inputs', 'Download base/head comparison input', 'Compare base/head layout and save side-by-side evidence']) {
+  const step = workflow.split(`- name: ${name}\n`)[1].split('      - ')[0];
+  assert.ok(step.includes("github.head_ref == 'codex/astro-final-migration'"), `${name}: migration-only gate`);
+}
+console.log('Migration comparison does not block future content PRs: PASS');

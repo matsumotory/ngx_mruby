@@ -1,7 +1,7 @@
 ---
-import DocPage from './DocPage.astro';
+import DocPage from '../own/DocPage.astro';
 import { getCollection } from 'astro:content';
-import { makeRoute } from './routes.mjs';
+import { makeRoute } from '../own/routes.mjs';
 const entry={id:'404',data:{title:'404',template:'splash',hero:{title:'404',tagline:'Page not found. Check the URL or try using the search bar.'},pagefind:false,head:[],sidebar:{hidden:true},prev:false,next:false}};
 Astro.locals.siteRoute=makeRoute(Astro,entry,await getCollection('docs'));
 ---

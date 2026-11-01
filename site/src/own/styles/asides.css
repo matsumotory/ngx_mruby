@@ -1,42 +1,42 @@
 /* Adapted from Starlight 0.42.6, MIT; see ../STARLIGHT-LICENSE. */
-@layer starlight.components {
-	.starlight-aside {
+@layer site.components {
+	.site-aside {
 		padding: 1rem;
-		border-inline-start: 0.25rem solid var(--sl-color-asides-border);
-		color: var(--sl-color-white);
+		border-inline-start: 0.25rem solid var(--site-color-asides-border);
+		color: var(--color-text-primary);
 	}
-	.starlight-aside--note {
-		--sl-color-asides-text-accent: var(--sl-color-blue-high);
-		--sl-color-asides-border: var(--sl-color-blue);
-		background-color: var(--sl-color-blue-low);
+	.site-aside--note {
+		--site-color-asides-text-accent: var(--color-text-primary);
+		--site-color-asides-border: var(--color-border-strong);
+		background-color: var(--color-bg-primary);
 	}
-	.starlight-aside--tip {
-		--sl-color-asides-text-accent: var(--sl-color-purple-high);
-		--sl-color-asides-border: var(--sl-color-purple);
-		background-color: var(--sl-color-purple-low);
+	.site-aside--tip {
+		--site-color-asides-text-accent: var(--color-text-primary);
+		--site-color-asides-border: var(--color-border-strong);
+		background-color: var(--color-bg-primary);
 	}
-	.starlight-aside--caution {
-		--sl-color-asides-text-accent: var(--sl-color-orange-high);
-		--sl-color-asides-border: var(--sl-color-orange);
-		background-color: var(--sl-color-orange-low);
+	.site-aside--caution {
+		--site-color-asides-text-accent: var(--color-text-primary);
+		--site-color-asides-border: var(--color-border-strong);
+		background-color: var(--color-bg-primary);
 	}
-	.starlight-aside--danger {
-		--sl-color-asides-text-accent: var(--sl-color-red-high);
-		--sl-color-asides-border: var(--sl-color-red);
-		background-color: var(--sl-color-red-low);
+	.site-aside--danger {
+		--site-color-asides-text-accent: var(--color-text-primary);
+		--site-color-asides-border: var(--color-border-strong);
+		background-color: var(--color-bg-primary);
 	}
 
-	.starlight-aside__title {
+	.site-aside__title {
 		display: flex;
 		gap: 0.5rem;
 		align-items: center;
-		font-size: var(--sl-text-h5);
+		font-size: var(--text-body);
 		font-weight: 600;
-		line-height: var(--sl-line-height-headings);
-		color: var(--sl-color-asides-text-accent);
+		line-height: var(--leading-h2);
+		color: var(--site-color-asides-text-accent);
 	}
 
-	.starlight-aside__icon {
+	.site-aside__icon {
 		font-size: 1.333em;
 		width: 1em;
 		height: 1em;
@@ -44,15 +44,15 @@
 		overflow: visible;
 	}
 
-	.starlight-aside__title + .starlight-aside__content {
+	.site-aside__title + .site-aside__content {
 		margin-top: 0.5rem;
 	}
 
-	.starlight-aside__content:empty {
+	.site-aside__content:empty {
 		display: none;
 	}
 
-	.starlight-aside__content a {
-		color: var(--sl-color-asides-text-accent);
+	.site-aside__content a {
+		color: var(--site-color-asides-text-accent);
 	}
 }

@@ -1,26 +1,26 @@
 <div class="content-panel">
-	<div class="sl-container"><slot /></div>
+	<div class="site-container"><slot /></div>
 </div>
 
 <style>
-	@layer starlight.core {
+	@layer site.core {
 		.content-panel {
-			padding: 1.5rem var(--sl-content-pad-x);
+			padding: 1.5rem var(--gutter);
 		}
 		.content-panel + .content-panel {
-			border-top: 1px solid var(--sl-color-hairline);
+			border-top: 1px solid var(--color-border);
 		}
-		.sl-container {
-			max-width: var(--sl-content-width);
+		.site-container {
+			max-width: var(--site-content-width);
 		}
 
-		.sl-container > :global(* + *) {
+		.site-container > :global(* + *) {
 			margin-top: 1.5rem;
 		}
 
 		@media (min-width: 72rem) {
-			.sl-container {
-				margin-inline: var(--sl-content-margin-inline, auto);
+			.site-container {
+				margin-inline: var(--site-content-margin-inline, auto);
 			}
 		}
 	}

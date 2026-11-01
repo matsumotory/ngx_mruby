@@ -6,6 +6,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
+import { patternsFor } from './lib/patterns.mjs';
 import { loadSample } from './lib/samples.mjs';
 import { serveBadgeFixture } from './lib/project-badges.mjs';
 const site = path.resolve(new URL('..', import.meta.url).pathname);
@@ -82,8 +83,8 @@ try {
     const browser = await engine.launch();
     let lastPage, lastState;
     try {
-      for (const route of ['/', '/ja/']) for (const width of [320, 390, 768, 1440]) for (const reducedMotion of ['reduce', 'no-preference']) for (const colorScheme of ['light', 'dark']) {
-        const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme, reducedMotion,
+      for (const route of ['/', '/ja/']) for (const { width, height } of patternsFor(engine.name())) for (const reducedMotion of ['reduce', 'no-preference']) for (const colorScheme of ['light', 'dark']) {
+        const context = await browser.newContext({ viewport: { width, height }, colorScheme, reducedMotion,
           ...(engine === chromium ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
         // The footer badge comes from a local stand-in, never bestpractices.dev.
         await serveBadgeFixture(context);
@@ -92,7 +93,7 @@ try {
         await page.goto(server.url + route);
         await page.evaluate(() => document.fonts.ready);
         // Exclude Pagefind's unrelated lazy initialization from route traffic.
-        await page.locator('#starlight__search .pagefind-ui__search-input').waitFor({ state: 'attached' });
+        await page.locator('#site__search .pagefind-ui__search-input').waitFor({ state: 'attached' });
         // Finish the static footer image (the local stand-in) before observing
         // the demonstration's traffic. Do not filter any request from the
         // model/copy assertions.
@@ -216,7 +217,7 @@ try {
         await context.close(); count++;
       }
       for (const route of ['/', '/ja/']) {
-        const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 900 } });
+        const context = await browser.newContext({ javaScriptEnabled: false, viewport: patternsFor(engine.name())[0] });
         const page = await context.newPage(); await page.goto(server.url + route);
         assert.equal(await page.locator('.route-controls').isVisible(), false);
         assert.equal(await page.locator('.provider-node:visible').getAttribute('data-provider'), 'a');

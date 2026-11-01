@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
+import { patternsFor } from './lib/patterns.mjs';
 import { scopedPages } from './lib/ci-pages.mjs';
 const pages = scopedPages('dist');
 if (!pages) throw new Error('targeted screenshots require explicit pages');
@@ -13,8 +14,8 @@ try {
   for (const engine of [chromium, webkit]) {
     const browser = await engine.launch();
     try {
-      for (const route of pages) for (const width of [320,390,1440]) for (const colorScheme of ['light','dark']) {
-        const context = await browser.newContext({viewport:{width,height:900},colorScheme});
+      for (const route of pages) for (const {width,height} of patternsFor(engine.name())) for (const colorScheme of ['light','dark']) {
+        const context = await browser.newContext({viewport:{width,height},colorScheme});
         try {
           const tab = await context.newPage();
           const response = await tab.goto(server.url+route);

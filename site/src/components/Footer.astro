@@ -1,6 +1,6 @@
 ---
 import { getSiteRoute } from '../route.mjs';
-// The footer of every page (4.10): Starlight's last-updated date and the
+// The footer of every page (4.10): the last-updated date and the
 // previous and next links of documentation pages, then the site's footer
 // with a 1 px top border, 14 px muted text, 48 px above and 32 px below:
 // the language link, Releases, Security, the license and GitHub.
@@ -21,8 +21,8 @@ const t = strings(lang);
 const p = `${BASE}${lang === 'ja' ? '/ja' : ''}`;
 // The home pages are committed MDX files: their last-updated date is the
 // date of the last commit to them, as git log --format=%cs gives it, which
-// is how the generator dates the pages of docs/ (Starlight's own git date
-// is the UTC day, which differs from it in the hours after midnight JST).
+// is how the generator dates the pages of docs/. Using the commit-local
+// date preserves the day during the hours after midnight JST.
 const route = getSiteRoute(Astro.locals);
 const routePath = Astro.url.pathname.slice(BASE.length).replace(/^\/|\/$/g, '');
 const { page: sourcePage, fallback } = pageOfRoute(JSON.parse(fs.readFileSync(path.join(process.cwd(), 'generated/pages.json'), 'utf8')), routePath);
@@ -34,8 +34,8 @@ if (route.entry.filePath && route.entry.filePath.endsWith('index.mdx')) {
 }
 ---
 
-<footer class="sl-flex">
-  <div class="meta sl-flex">
+<footer class="site-flex">
+  <div class="meta site-flex">
     {markdown && <a class="doc-markdown" href={markdown}>{fallback ? 'Markdown (English)' : 'Markdown'}</a>}
     <a class="doc-index" href={`${BASE}/docs-index.json`}>{lang === 'ja' ? '文書索引 JSON' : 'Docs index JSON'}</a>
     <LastUpdated />
@@ -58,7 +58,7 @@ if (route.entry.filePath && route.entry.filePath.endsWith('index.mdx')) {
 </footer>
 
 <style>
-  @layer starlight.core {
+  @layer site.core {
     footer {
       flex-direction: column;
       gap: var(--space-5);

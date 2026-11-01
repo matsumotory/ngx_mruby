@@ -1,9 +1,9 @@
 /*
- * The rules that apply the tokens of tokens.css to Starlight's pages
+ * The rules that apply the tokens of tokens.css to the site pages
  * (docs/proposals/site.md, 4.3 to 4.8). No color, length or duration here
  * is written as a literal: each is a token, except 0, 1 px and 2 px lines,
- * and the 9 px ring of 4.2. Starlight's own rules sit in cascade layers,
- * and these rules are not layered, so they win over Starlight's.
+ * and the 9 px ring of 4.2. The component defaults sit in cascade layers,
+ * and these rules are not layered, so they win over those defaults.
  */
 
 /* 4.4 Families and body text */
@@ -15,11 +15,11 @@ body {
   line-height: var(--leading-body);
 }
 
-/* 4.4 Measure: text blocks at most 38rem, inside Starlight's column */
-.sl-markdown-content :is(p, li, dd, dt, blockquote, h1, h2, h3, h4, h5, h6, .starlight-aside, details) {
+/* 4.4 Measure: text blocks at most 38rem, inside the content column */
+.site-markdown-content :is(p, li, dd, dt, blockquote, h1, h2, h3, h4, h5, h6, .site-aside, details) {
   max-width: var(--measure);
 }
-.sl-markdown-content li :is(p, li) {
+.site-markdown-content li :is(p, li) {
   max-width: none;
 }
 
@@ -31,28 +31,28 @@ body {
   word-break: normal;
   line-break: strict;
 }
-:root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, td, th, dd) {
+:root[lang="ja"] .site-markdown-content :is(p, li, figcaption, td, th, dd) {
   overflow-wrap: anywhere;
 }
 /* Inline code inside text may break anywhere when a path or a name is
-   wider than the line: WebKit does not break Starlight's break-word there
+   wider than the line: WebKit does not break overflow-wrap: break-word there
    and the text crosses the 20 px gutter at 320 px (4.5, 4.9). In a table
    cell a name does not break: the table scrolls in its own box (4.9), and a
    name broken inside a narrow cell left one or two characters on its last
    line */
-.sl-markdown-content :is(p, li, figcaption, dd) code {
+.site-markdown-content :is(p, li, figcaption, dd) code {
   overflow-wrap: anywhere;
 }
 /* Inline code inside Japanese text breaks between any two characters: a
    Japanese line always offers a break before the code, so overflow-wrap
    alone leaves the line before a long path short in Chromium */
-:root[lang="ja"] .sl-markdown-content :is(p, li, figcaption, dd) code,
+:root[lang="ja"] .site-markdown-content :is(p, li, figcaption, dd) code,
 :root[lang="ja"] .diagram figcaption code {
   word-break: break-all;
 }
 
 /* 4.4 Headings: one size per role and language, weight 700 (h3 600) */
-.sl-markdown-content :is(h1, h2, h3, h4, h5, h6):not(:where(.not-content *)),
+.site-markdown-content :is(h1, h2, h3, h4, h5, h6):not(:where(.not-content *)),
 h1#_top {
   color: var(--color-text-primary);
 }
@@ -63,17 +63,17 @@ h1#_top {
   overflow-wrap: anywhere;
   margin-top: var(--space-4);
 }
-.sl-markdown-content h2:not(:where(.not-content *)) {
+.site-markdown-content h2:not(:where(.not-content *)) {
   font-size: var(--text-h2);
   line-height: var(--leading-h2);
   font-weight: var(--weight-heading);
 }
-.sl-markdown-content h3:not(:where(.not-content *)) {
+.site-markdown-content h3:not(:where(.not-content *)) {
   font-size: var(--text-h3);
   line-height: var(--leading-h3);
   font-weight: var(--weight-h3);
 }
-.sl-markdown-content :is(h4, h5, h6):not(:where(.not-content *)) {
+.site-markdown-content :is(h4, h5, h6):not(:where(.not-content *)) {
   font-size: var(--text-body);
   line-height: var(--leading-body);
   font-weight: var(--weight-h3);
@@ -85,35 +85,35 @@ h1#_top {
 }
 /* 4.4: phrase wrapping only on the h2 of Japanese pages, through the <wbr>
    of the source */
-:root[lang="ja"] .sl-markdown-content h2 {
+:root[lang="ja"] .site-markdown-content h2 {
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
 
 /* 4.5: space above a heading at least twice the space below: h2 48 and 16,
-   h3 32 and 8. Starlight wraps each heading in .sl-heading-wrapper. */
-.sl-markdown-content .sl-heading-wrapper.level-h2,
-.sl-markdown-content h2:not(:where(.not-content *, .sl-heading-wrapper *)) {
+   h3 32 and 8. The Markdown plugin wraps each heading in .site-heading-wrapper. */
+.site-markdown-content .site-heading-wrapper.level-h2,
+.site-markdown-content h2:not(:where(.not-content *, .site-heading-wrapper *)) {
   margin-top: var(--space-7);
   margin-bottom: var(--space-4);
 }
-.sl-markdown-content .sl-heading-wrapper.level-h3,
-.sl-markdown-content h3:not(:where(.not-content *, .sl-heading-wrapper *)) {
+.site-markdown-content .site-heading-wrapper.level-h3,
+.site-markdown-content h3:not(:where(.not-content *, .site-heading-wrapper *)) {
   margin-top: var(--space-6);
   margin-bottom: var(--space-2);
 }
-.sl-markdown-content :is(.sl-heading-wrapper.level-h2, .sl-heading-wrapper.level-h3) + *,
-.sl-markdown-content :is(h2, h3):not(:where(.not-content *, .sl-heading-wrapper *)) + * {
+.site-markdown-content :is(.site-heading-wrapper.level-h2, .site-heading-wrapper.level-h3) + *,
+.site-markdown-content :is(h2, h3):not(:where(.not-content *, .site-heading-wrapper *)) + * {
   margin-top: 0;
 }
-.sl-markdown-content .sl-heading-wrapper:is(.level-h4, .level-h5, .level-h6) {
+.site-markdown-content .site-heading-wrapper:is(.level-h4, .level-h5, .level-h6) {
   margin-top: var(--space-5);
 }
 
 /* 4.2 and 4.4: a 9 px ring in the accent before each h2 of a content page,
    hung 21 px into the left margin where the margin holds it, inline
    otherwise. Decorative: the level is in the markup. */
-.sl-markdown-content h2:not(:where(.not-content *))::before {
+.site-markdown-content h2:not(:where(.not-content *))::before {
   content: "";
   display: inline-block;
   box-sizing: border-box;
@@ -125,10 +125,10 @@ h1#_top {
   vertical-align: 0.2em;
 }
 @media (min-width: 72rem) {
-  .sl-markdown-content h2:not(:where(.not-content *)) {
+  .site-markdown-content h2:not(:where(.not-content *)) {
     position: relative;
   }
-  .sl-markdown-content h2:not(:where(.not-content *))::before {
+  .site-markdown-content h2:not(:where(.not-content *))::before {
     position: absolute;
     inset-inline-start: -21px;
     top: 0.55em;
@@ -138,8 +138,8 @@ h1#_top {
 
 /* 4.4 and 4.6: prose links in accent-text, underlined 1 px at 0.2em in the
    link color */
-.sl-markdown-content a:not(:where(.not-content *)),
-.sl-markdown-content a:hover:not(:where(.not-content *)) {
+.site-markdown-content a:not(:where(.not-content *)),
+.site-markdown-content a:hover:not(:where(.not-content *)) {
   color: var(--color-accent-text);
   text-decoration-line: underline;
   text-decoration-thickness: 1px;
@@ -161,36 +161,36 @@ pre,
 samp {
   font-family: var(--font-mono);
 }
-.sl-markdown-content code:not(:where(.not-content *)) {
+.site-markdown-content code:not(:where(.not-content *)) {
   font-size: var(--text-nav);
   margin-block: 0;
   padding: 0 var(--space-1);
   border-radius: 0;
   background-color: var(--color-bg-tertiary);
 }
-.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) code {
+.site-markdown-content :is(h1, h2, h3, h4, h5, h6) code {
   font-size: inherit;
 }
-.sl-markdown-content .starlight-aside code:not(:where(.not-content *)) {
+.site-markdown-content .site-aside code:not(:where(.not-content *)) {
   background-color: var(--color-bg-tertiary);
 }
 /* 4.3 item 2: the numbers of tables and measurements in the monospace face */
 .num,
-.sl-markdown-content :is(td, th).num {
+.site-markdown-content :is(td, th).num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 /* 4.2: numbers in prose keep the text face with tabular figures */
-.sl-markdown-content :is(td, th) {
+.site-markdown-content :is(td, th) {
   font-variant-numeric: tabular-nums;
 }
 
 /* 4.4: navigation, tables and code blocks 15 px; captions and notes 14 px */
-.sl-markdown-content :is(table, th, td):not(:where(.not-content *)) {
+.site-markdown-content :is(table, th, td):not(:where(.not-content *)) {
   font-size: var(--text-nav);
   line-height: var(--leading-nav);
 }
-.sl-markdown-content :is(th, td):not(:where(.not-content *)) {
+.site-markdown-content :is(th, td):not(:where(.not-content *)) {
   padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--color-border);
   border-radius: 0;
@@ -201,19 +201,19 @@ samp {
    16 px paddings on both sides that leaves 128 px, room for 8 Japanese
    characters at 15 px, so that a short label such as 静的なモジュール stays
    on one line; identifiers stay on one line */
-.sl-markdown-content :is(th, td):not(:where(.not-content *)) {
+.site-markdown-content :is(th, td):not(:where(.not-content *)) {
   min-width: 10rem;
 }
-.sl-markdown-content td > code:only-child {
+.site-markdown-content td > code:only-child {
   white-space: nowrap;
 }
-.sl-markdown-content :is(th:first-child, td:first-child):not(:where(.not-content *)) {
+.site-markdown-content :is(th:first-child, td:first-child):not(:where(.not-content *)) {
   padding-inline-start: 0;
 }
-.sl-markdown-content :is(th:last-child, td:last-child):not(:where(.not-content *)) {
+.site-markdown-content :is(th:last-child, td:last-child):not(:where(.not-content *)) {
   padding-inline-end: 0;
 }
-.sl-markdown-content th:not(:where(.not-content *)) {
+.site-markdown-content th:not(:where(.not-content *)) {
   color: var(--color-text-primary);
   font-weight: var(--weight-current);
 }
@@ -225,12 +225,12 @@ figcaption,
 }
 /* At 14 px the 38rem column holds more than the 90 characters per English
    line of 4.4 (91 on Linux in CI): captions take 34rem */
-.sl-markdown-content :is(figcaption, .caption) {
+.site-markdown-content :is(figcaption, .caption) {
   max-width: 34rem;
 }
 
-/* Lists: Starlight's 1.25rem is not a step of 4.5 */
-.sl-markdown-content
+/* Lists use the spacing scale of 4.5. */
+.site-markdown-content
   :is(ol, ul):has(> li > :not(a, strong, em, del, span, input, code, br, script, ol, ul))
   > li
   > :last-child:not(a, strong, em, del, span, input, code, br, script, :where(.not-content *)) {
@@ -240,58 +240,57 @@ figcaption,
 /* Blockquotes and details: a 1 px frame with the frame radius, no line on
    the start edge alone (owner's practice: no accent stripe on quotes or
    notes) and no change on hover */
-.sl-markdown-content blockquote:not(:where(.not-content *)) {
+.site-markdown-content blockquote:not(:where(.not-content *)) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-frame);
   padding: var(--space-3) var(--space-4);
 }
-.sl-markdown-content details:not(:where(.not-content *)) {
+.site-markdown-content details:not(:where(.not-content *)) {
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-frame);
   padding: var(--space-3) var(--space-4);
 }
 /* A hover rule must not restore geometry overridden by a component. Moving
    the summary after pointer entry can turn a native click into a missed hit. */
-.sl-markdown-content details:not([open]):hover:not(:where(.not-content *)),
-.sl-markdown-content details:has(> summary:hover):not(:where(.not-content *)) {
+.site-markdown-content details:not([open]):hover:not(:where(.not-content *)),
+.site-markdown-content details:has(> summary:hover):not(:where(.not-content *)) {
   border-color: var(--color-border-strong);
 }
-.sl-markdown-content summary:not(:where(.not-content *)) {
+.site-markdown-content summary:not(:where(.not-content *)) {
   margin-inline-start: 0;
   padding-inline-start: 0;
 }
-.sl-markdown-content details[open] > summary:not(:where(.not-content *)) {
+.site-markdown-content details[open] > summary:not(:where(.not-content *)) {
   margin-bottom: var(--space-4);
 }
 
 /* 4.6: asides with a 1 px border-strong border, text on bg, and their text
    label instead of a color; no colored start edge */
-.starlight-aside {
+.site-aside {
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-frame);
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
   padding: var(--space-4);
 }
-.starlight-aside__title {
+.site-aside__title {
   color: var(--color-text-primary);
   font-weight: var(--weight-current);
 }
-.starlight-aside__icon {
+.site-aside__icon {
   font-size: var(--text-body);
 }
-.starlight-aside__title + .starlight-aside__content {
+.site-aside__title + .site-aside__content {
   margin-top: var(--space-2);
 }
 
-/* Inside asides Starlight mixes the lines of tables, rules and quotes and
-   the background of code with transparency: tokens instead (4.6) */
-.sl-markdown-content .starlight-aside :is(th, td, hr, blockquote):not(:where(.not-content *)) {
+/* Lines inside asides use the border token, not transparency (4.6). */
+.site-markdown-content .site-aside :is(th, td, hr, blockquote):not(:where(.not-content *)) {
   border-color: var(--color-border-strong);
 }
 
 /* 4.6: badges with a 1 px border-strong border and text on bg */
-.sl-badge {
+.site-badge {
   border: 1px solid var(--color-border-strong);
   border-radius: 0;
   font-size: var(--text-caption);
@@ -392,9 +391,9 @@ header.header {
 /* The theme toggle and the menu button: 44 px round buttons with a 1 px
    border outline that show an icon (4.10) */
 .round-button,
-button.sl-menu-button,
-button.sl-menu-button:has(~ :popover-open),
-[data-theme] button.sl-menu-button:has(~ :popover-open) {
+button.site-menu-button,
+button.site-menu-button:has(~ :popover-open),
+[data-theme] button.site-menu-button:has(~ :popover-open) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -409,7 +408,7 @@ button.sl-menu-button:has(~ :popover-open),
   cursor: pointer;
 }
 .round-button svg,
-button.sl-menu-button svg {
+button.site-menu-button svg {
   width: 20px;
   height: 20px;
 }
@@ -462,7 +461,7 @@ button.sl-menu-button svg {
   }
 }
 @media (min-width: 50em) {
-  :root[data-has-sidebar] button.sl-menu-button {
+  :root[data-has-sidebar] button.site-menu-button {
     display: none;
   }
 }
@@ -475,7 +474,7 @@ button.sl-menu-button svg {
   .site-nav {
     display: block;
   }
-  :root:not([data-has-sidebar]) button.sl-menu-button {
+  :root:not([data-has-sidebar]) button.site-menu-button {
     display: none;
   }
   .site-menu {
@@ -545,7 +544,7 @@ button.sl-menu-button svg {
  * page's content width of 1032 px (4.5).
  */
 :root:not([data-has-sidebar]) {
-  --sl-content-width: var(--content-width-home);
+  --site-content-width: var(--content-width-home);
 }
 /* The heading and the definition read as one block: no line between the
    title panel and the content */
@@ -575,7 +574,7 @@ html:has(.home) h1#_top {
   gap: var(--space-3);
   margin-top: var(--space-5);
 }
-.sl-markdown-content .home :is(.button-primary, .button-secondary) {
+.site-markdown-content .home :is(.button-primary, .button-secondary) {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -585,16 +584,16 @@ html:has(.home) h1#_top {
   font-weight: var(--weight-current);
   text-decoration: none;
 }
-.sl-markdown-content .home .button-primary {
+.site-markdown-content .home .button-primary {
   background-color: var(--color-accent);
   color: var(--color-bg-primary);
   border: 1px solid var(--color-accent);
 }
-.sl-markdown-content .home .button-secondary {
+.site-markdown-content .home .button-secondary {
   color: var(--color-accent-text);
   border: 1px solid var(--color-accent-text);
 }
-.sl-markdown-content .home :is(.button-primary, .button-secondary):hover {
+.site-markdown-content .home :is(.button-primary, .button-secondary):hover {
   text-decoration-line: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.2em;
@@ -654,13 +653,13 @@ html:has(.home) h1#_top {
   font-size: var(--text-nav);
   margin-bottom: var(--space-2);
 }
-starlight-toc a,
-mobile-starlight-toc a {
+site-toc a,
+mobile-site-toc a {
   font-size: var(--text-nav);
   line-height: var(--leading-nav);
 }
-starlight-toc a[aria-current="true"],
-mobile-starlight-toc a[aria-current="true"] {
+site-toc a[aria-current="true"],
+mobile-site-toc a[aria-current="true"] {
   color: var(--color-text-primary);
   font-weight: var(--weight-current);
 }
@@ -695,7 +694,7 @@ footer .meta {
 /* 4.8: only color, background color, border color, opacity and transform,
    for 200 ms or less, and 0 under reduced motion */
 .caret,
-.sl-markdown-content summary::before {
+.site-markdown-content summary::before {
   transition: transform var(--duration-short) ease-in-out;
 }
 
@@ -728,21 +727,21 @@ footer .meta {
 }
 
 /*
- * Starlight's, Expressive Code's and Pagefind's own spacing, radii, sizes
+ * The components, Expressive Code and Pagefind use spacing, radii, sizes
  * and colors that fall outside the sets of 4.4 to 4.6, as
  * scripts/check-styles.mjs lists them, set to values of the sets.
  */
 :root {
-  --sl-main-pad: 0 0 var(--space-8) 0;
+  --site-main-pad: 0 0 var(--space-8) 0;
 }
-.sl-markdown-content .sl-heading-wrapper {
-  --sl-anchor-icon-size: 16px;
-  --sl-anchor-icon-gap: 8px;
+.site-markdown-content .site-heading-wrapper {
+  --site-anchor-icon-size: 16px;
+  --site-anchor-icon-gap: 8px;
 }
-.sl-markdown-content :is(ul, ol):not(:where(.not-content *)) {
+.site-markdown-content :is(ul, ol):not(:where(.not-content *)) {
   padding-inline-start: var(--space-5);
 }
-.sl-skip-link {
+.site-skip-link {
   color: var(--color-accent-text);
   background-color: var(--color-bg-primary);
   padding: var(--space-2) var(--space-4);
@@ -758,16 +757,11 @@ site-search button[data-open-modal] kbd {
   gap: var(--space-1);
   border-radius: 0;
 }
-starlight-theme-select select,
-starlight-lang-select select {
-  padding: var(--space-2) var(--space-6);
+site-toc a,
+mobile-site-toc a {
   border-radius: 0;
 }
-starlight-toc a,
-mobile-starlight-toc a {
-  border-radius: 0;
-}
-mobile-starlight-toc .dropdown {
+mobile-site-toc .dropdown {
   margin-top: 0;
 }
 /* The search dialog (4.3 item 5: no shadow, no blurred backdrop) */
@@ -775,42 +769,42 @@ dialog {
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
 }
-#starlight__search {
-  --sl-search-result-pad-block: var(--space-4);
-  --sl-search-result-pad-inline-start: var(--space-8);
-  --sl-search-result-pad-inline-end: var(--space-5);
-  --sl-search-result-nested-pad-block: var(--space-3);
-  --sl-search-result-spacing: var(--space-5);
-  --sl-search-corners: var(--radius-control);
-  --sl-search-page-icon-size: 32px;
-  --sl-search-tree-diagram-size: 48px;
+#site__search {
+  --site-search-result-pad-block: var(--space-4);
+  --site-search-result-pad-inline-start: var(--space-8);
+  --site-search-result-pad-inline-end: var(--space-5);
+  --site-search-result-nested-pad-block: var(--space-3);
+  --site-search-result-spacing: var(--space-5);
+  --site-search-corners: var(--radius-control);
+  --site-search-page-icon-size: 32px;
+  --site-search-tree-diagram-size: 48px;
 }
 /* Pagefind writes the width of its clear button into the style attribute
    of the input (62 px for "Clear"); 64 px keeps the button clear of the
    text and is a value of 4.5 */
-#starlight__search .pagefind-ui__search-input {
+#site__search .pagefind-ui__search-input {
   padding: 0 var(--space-8) 0 var(--space-7) !important;
 }
-#starlight__search .pagefind-ui__drawer {
+#site__search .pagefind-ui__drawer {
   gap: var(--space-5);
 }
-#starlight__search .pagefind-ui__results-area {
+#site__search .pagefind-ui__results-area {
   margin-top: var(--space-4);
 }
-#starlight__search .pagefind-ui__message {
+#site__search .pagefind-ui__message {
   padding: var(--space-4) 0;
 }
-#starlight__search .pagefind-ui__result-inner {
+#site__search .pagefind-ui__result-inner {
   gap: 0;
 }
 /* Generated API names help indexing, but are not user-facing result tags.
    Preserve any other metadata tags and hide the wrapper only when empty. */
-#starlight__search [data-pagefind-ui-meta="identifiers"],
-#starlight__search .pagefind-ui__result-tags:has(> [data-pagefind-ui-meta="identifiers"]:only-child) {
+#site__search [data-pagefind-ui-meta="identifiers"],
+#site__search .pagefind-ui__result-tags:has(> [data-pagefind-ui-meta="identifiers"]:only-child) {
   display: none;
 }
 
-#starlight__search .pagefind-ui__result-inner > * + * {
+#site__search .pagefind-ui__result-inner > * + * {
   border-top: 1px solid var(--color-border);
 }
 /* A result's title, and a nested result's: Pagefind sets both to 21 px.
@@ -818,19 +812,19 @@ dialog {
    which then showed at 21 px; the titles take the size of the links they
    hold, sizes of 4.4. Loaded rows take the line height of that text, so
    they are 8 to 11 px lower than with Pagefind's size. */
-#starlight__search .pagefind-ui__result-title {
+#site__search .pagefind-ui__result-title {
   font-size: var(--text-body);
 }
-#starlight__search .pagefind-ui__result-nested .pagefind-ui__result-title {
+#site__search .pagefind-ui__result-nested .pagefind-ui__result-title {
   font-size: var(--text-nav);
 }
-#starlight__search .pagefind-ui__result-link {
+#site__search .pagefind-ui__result-link {
   font-size: var(--text-body);
 }
-#starlight__search .pagefind-ui__result-nested .pagefind-ui__result-link {
+#site__search .pagefind-ui__result-nested .pagefind-ui__result-link {
   font-size: var(--text-nav);
 }
-#starlight__search .pagefind-ui__button {
+#site__search .pagefind-ui__button {
   margin-top: var(--space-6);
   padding: 0 var(--space-3);
   border-radius: var(--radius-control);

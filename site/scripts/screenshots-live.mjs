@@ -4,7 +4,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
+import { PATTERNS, PHONE } from './lib/patterns.mjs';
 import { serve } from './lib/serve.mjs';
 import { readOnlyContext } from './lib/read-only-browser.mjs';
 import { OPENSSF_BADGE, OPENSSF_BADGE_FIXTURE } from './lib/project-badges.mjs';
@@ -27,58 +28,62 @@ const records = [];
 let browser;
 let complete = false;
 try {
-  browser = await chromium.launch();
-  for (const lang of ['en', 'ja']) for (const width of [390, 1440]) {
-    const pages = [
-      ['home', lang === 'ja' ? '/ja/' : '/'],
-      ['v2-entry', lang === 'ja' ? '/v2/ja/' : '/v2/'],
-      ...(width === 390 ? [['start', lang === 'ja' ? '/ja/start/' : '/start/'], ['docs', lang === 'ja' ? '/ja/docs/' : '/docs/']] : []),
-    ];
-    const { context, blocked, close } = await readOnlyContext(browser, origin, { viewport: { width, height: width < 640 ? 664 : 900 }, colorScheme: 'dark', deviceScaleFactor: 1 }, { [OPENSSF_BADGE.src]: OPENSSF_BADGE_FIXTURE });
-    const errors = [];
-    let closing = false;
-    try {
-      const page = await context.newPage();
-      page.on('pageerror', error => errors.push(error.message));
-      page.on('response', response => { if (response.status() >= 400) errors.push(`HTTP ${response.status()} ${response.url()}`); });
-      page.on('requestfailed', request => { if (!closing) errors.push(`${request.failure()?.errorText} ${request.url()}`); });
-      for (const [id, route] of pages) {
-        const response = await page.goto(origin + route, { waitUntil: 'load' });
-        assert.equal(response.status(), 200, route);
-        assert.ok((await response.body()).equals(fs.readFileSync(path.join(dist, route.slice(1), 'index.html'))), `${route}: live HTML differs from the verified artifact`);
-        await page.evaluate(() => document.fonts.ready);
-        const base = `${id}-${lang}-${width}`;
-        await page.screenshot({ path: path.join(out, `${base}-first.png`) });
-        // The footer badge is the local stand-in here; check-live.mjs fetches
-        // the real image with retries, so this smoke never waits on the service.
-        await page.locator('.project-badge').scrollIntoViewIfNeeded();
-        await page.waitForFunction(() => {
-          const image = document.querySelector('.project-badge img');
-          return image.complete && image.naturalWidth > 0;
-        });
-        await page.locator('.project-badge img').evaluate(async image => {
-          await image.decode();
-          if (!image.complete || image.naturalWidth === 0) throw new Error('footer badge did not load');
-        });
-        await page.screenshot({ path: path.join(out, `${base}-footer.png`) });
-        await page.screenshot({ path: path.join(out, `${base}-full.png`), fullPage: true });
-        if (id === 'home') {
-          await page.locator('.route-controls button[data-model="b"]').click();
-          assert.equal(await page.locator('.v3-flow').getAttribute('data-route'), 'b');
-          await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== 'running'));
-          await page.locator('.route-result:visible').scrollIntoViewIfNeeded();
-          await page.screenshot({ path: path.join(out, `${base}-model-b-result.png`) });
+  for (const { engine, width, height } of PATTERNS) {
+    browser = await { chromium, webkit }[engine].launch();
+    for (const lang of ['en', 'ja']) {
+      const pages = [
+        ['home', lang === 'ja' ? '/ja/' : '/'],
+        ['v2-entry', lang === 'ja' ? '/v2/ja/' : '/v2/'],
+        ...(width === PHONE.width ? [['start', lang === 'ja' ? '/ja/start/' : '/start/'], ['docs', lang === 'ja' ? '/ja/docs/' : '/docs/']] : []),
+      ];
+      const { context, blocked, close } = await readOnlyContext(browser, origin, { viewport: { width, height }, colorScheme: 'dark', deviceScaleFactor: 1 }, { [OPENSSF_BADGE.src]: OPENSSF_BADGE_FIXTURE });
+      const errors = [];
+      let closing = false;
+      try {
+        const page = await context.newPage();
+        page.on('pageerror', error => errors.push(error.message));
+        page.on('response', response => { if (response.status() >= 400) errors.push(`HTTP ${response.status()} ${response.url()}`); });
+        page.on('requestfailed', request => { if (!closing) errors.push(`${request.failure()?.errorText} ${request.url()}`); });
+        for (const [id, route] of pages) {
+          const response = await page.goto(origin + route, { waitUntil: 'load' });
+          assert.equal(response.status(), 200, route);
+          assert.ok((await response.body()).equals(fs.readFileSync(path.join(dist, route.slice(1), 'index.html'))), `${route}: live HTML differs from the verified artifact`);
+          await page.evaluate(() => document.fonts.ready);
+          const base = `${engine}-${id}-${lang}-${width}`;
+          await page.screenshot({ path: path.join(out, `${base}-first.png`) });
+          // The footer badge is the local stand-in here; check-live.mjs fetches
+          // the real image with retries, so this smoke never waits on the service.
+          await page.locator('.project-badge').scrollIntoViewIfNeeded();
+          await page.waitForFunction(() => {
+            const image = document.querySelector('.project-badge img');
+            return image.complete && image.naturalWidth > 0;
+          });
+          await page.locator('.project-badge img').evaluate(async image => {
+            await image.decode();
+            if (!image.complete || image.naturalWidth === 0) throw new Error('footer badge did not load');
+          });
+          await page.screenshot({ path: path.join(out, `${base}-footer.png`) });
+          await page.screenshot({ path: path.join(out, `${base}-full.png`), fullPage: true });
+          if (id === 'home') {
+            await page.locator('.route-controls button[data-model="b"]').click();
+            assert.equal(await page.locator('.v3-flow').getAttribute('data-route'), 'b');
+            await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== 'running'));
+            await page.locator('.route-result:visible').scrollIntoViewIfNeeded();
+            await page.screenshot({ path: path.join(out, `${base}-model-b-result.png`) });
+          }
+          assert.deepEqual(blocked, [], 'unexpected request outside the read-only page boundary was blocked');
+          assert.deepEqual(errors, [], 'page exception or failed resource request');
+          records.push({ route, engine, width, height, html_matches_artifact: true, files: base });
         }
-        assert.deepEqual(blocked, [], 'unexpected request outside the read-only page boundary was blocked');
-        assert.deepEqual(errors, [], 'page exception or failed resource request');
-        records.push({ route, width, height: width < 640 ? 664 : 900, html_matches_artifact: true, files: base });
+      } finally {
+        closing = true;
+        await close();
+        assert.deepEqual(blocked, [], 'unexpected network activity before the verification context closed');
+        assert.deepEqual(errors, [], 'page/resource errors before the verification context closed');
       }
-    } finally {
-      closing = true;
-      await close();
-      assert.deepEqual(blocked, [], 'unexpected network activity before the verification context closed');
-      assert.deepEqual(errors, [], 'page/resource errors before the verification context closed');
     }
+    await browser.close();
+    browser = null;
   }
   complete = true;
 } finally {

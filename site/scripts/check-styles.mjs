@@ -1,7 +1,7 @@
 // The browser checks of steps 2 and 3 (docs/proposals/site.md, section 6),
 // on computed styles in Chromium and WebKit (Playwright), for every page of
 // PAGES in light and dark, in the two patterns of lib/patterns.mjs: PC at
-// full screen (1440 by 900 px in Chromium) and iPhone Safari (390 by
+// full screen (1440 by 900 px in Chromium) and iPhone Safari (402 by
 // 664 px in WebKit):
 //
 // - font sizes: every visible text has a size of the scale of its page's
@@ -14,17 +14,16 @@
 // - monospace only where 4.3, item 2 puts it;
 // - no box-shadow, text-shadow, backdrop-filter or gradient (4.3 item 5),
 //   also with the search dialog open (while its results load and after
-//   they have loaded), and at 390 px with the menu open;
+//   they have loaded), and at 402 px with the menu open;
 // - margins, paddings, gaps and radii from the sets of 4.5 (computed values
 //   through the CSS Typed OM, so that auto and percentages stay keywords);
 // - durations of 4.8: 200 ms or less, 0 under prefers-reduced-motion, no
 //   animation running after the load;
 // - at most 90 characters per line of English body text at 1440 px (4.4);
-// - no horizontal scroll of the page (4.9), and at 390 px every text block
+// - no horizontal scroll of the page (4.9), and at 402 px every text block
 //   and the ring before h2 at least 20 px from both edges (4.5);
-// - the home page heading takes at most two lines at 1440 px, and at 390
-//   px two in Japanese and three in English (4.4);
-// - at 390 px the right edge of Japanese text blocks (4.9), and on English
+// - the home page heading takes at most two lines in both patterns;
+// - at 402 px the right edge of Japanese text blocks (4.9), and on English
 //   blocks no computed text-wrap pretty or balance (4.9);
 // - in both patterns, no paragraph, list item, caption, table cell or heading
 //   whose last line holds only one or two characters (the owner's rule);
@@ -188,7 +187,7 @@ function inspect(cfg) {
     // Spacing and radii (4.5), computed values through the Typed OM
     const map = el.computedStyleMap();
     for (const p of ['margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'row-gap', 'column-gap']) {
-      // Starlight's layout reserves the size of its fixed header, its
+      // The site's layout reserves the size of its fixed header, its
       // mobile table of contents and its sidebar with padding: sizes of
       // those elements, not spacing between content.
       if (cfg.layoutOffsets.some(([sel, prop]) => prop === p && el.matches(sel))) continue;
@@ -232,7 +231,7 @@ function inspect(cfg) {
   for (const el of document.querySelectorAll('code, pre, kbd, samp, .site-title, td.num, th.num')) {
     if (visible(el) && first(el) !== mono) fail(el, `font-family starts with ${first(el)}, not ${mono}`);
   }
-  for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li, h1, h2, h3, h4, td:not(.num), th:not(.num), figcaption), h1#_top, .sidebar-content a, starlight-toc a, .starlight-aside__title')) {
+  for (const el of document.querySelectorAll('.site-markdown-content :is(p, li, h1, h2, h3, h4, td:not(.num), th:not(.num), figcaption), h1#_top, .sidebar-content a, site-toc a, .site-aside__title')) {
     if (visible(el) && !el.closest('pre, code, .expressive-code') && first(el) === mono) fail(el, `font-family starts with the monospace face ${mono}`);
   }
   // Roles of the scale
@@ -240,11 +239,11 @@ function inspect(cfg) {
     for (const el of document.querySelectorAll(sel)) if (visible(el) && Math.abs(parseFloat(getComputedStyle(el).fontSize) - px) > 0.05) fail(el, `${what} at ${getComputedStyle(el).fontSize}, expected ${px}px`);
   };
   role('h1#_top', isHome ? home : scale.h1, isHome ? 'the home page heading' : 'the page title');
-  role('.sl-markdown-content h2:not(.not-content *)', scale.h2, 'h2');
-  role('.sl-markdown-content h3:not(.not-content *)', scale.h3, 'h3');
-  role('.sl-markdown-content > p:not(.caption), .sl-markdown-content li > p, .home-v3 .flow-description > p', scale.body, 'body text');
-  role('.expressive-code pre, .sl-markdown-content :is(td, th)', scale.nav, 'code blocks and tables');
-  role('figcaption, .sl-markdown-content p.caption', scale.caption, 'captions');
+  role('.site-markdown-content h2:not(.not-content *)', scale.h2, 'h2');
+  role('.site-markdown-content h3:not(.not-content *)', scale.h3, 'h3');
+  role('.site-markdown-content > p:not(.caption), .site-markdown-content li > p, .home-v3 .flow-description > p', scale.body, 'body text');
+  role('.expressive-code pre, .site-markdown-content :is(td, th)', scale.nav, 'code blocks and tables');
+  role('figcaption, .site-markdown-content p.caption', scale.caption, 'captions');
   // Dark: surface lighter than bg (4.7)
   if (cfg.theme === 'dark') {
     const lum = (h) => {
@@ -282,7 +281,7 @@ function inspect(cfg) {
     return [...out.values()].map((l) => ({ ...l, chars: l.text.trimEnd().length }));
   };
   if (lang === 'en' && cfg.pc) {
-    for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li)')) {
+    for (const el of document.querySelectorAll('.site-markdown-content :is(p, li)')) {
       // The three homepage flow rows contain separately checked paragraphs beside code.
       // Do not join these grid columns into one prose line; ordinary list items stay checked.
       if (!visible(el) || el.closest('.expressive-code, .diagram, table') || el.matches('.home-v3 .routing-workspace > .flow-step')) continue;
@@ -290,7 +289,7 @@ function inspect(cfg) {
     }
   }
   if (lang === 'ja' && cfg.phone) {
-    for (const el of document.querySelectorAll('.sl-markdown-content :is(p, li, figcaption, figcaption > span, td, th), .sl-markdown-content h2')) {
+    for (const el of document.querySelectorAll('.site-markdown-content :is(p, li, figcaption, figcaption > span, td, th), .site-markdown-content h2')) {
       if (!visible(el) || el.closest('.expressive-code, .diagram-grid') || el.querySelector('p, ul, ol')) continue;
       // A row of buttons is not running text
       if (getComputedStyle(el).display === 'flex') continue;
@@ -332,17 +331,16 @@ function inspect(cfg) {
       if (/pretty|balance/.test(tw)) fail(el, `text-wrap ${tw.trim()} (4.4, 4.9)`);
     }
   }
-  // The home page heading: at most two lines at 1440 px; at 390 px two in
-  // Japanese and three in English (4.4)
+  // The home page heading: at most two lines in both approved patterns.
   if (isHome && cfg.width > 0) {
     const h1 = document.querySelector('h1#_top');
     const n = h1 ? lines(h1).length : 0;
-    const max = cfg.pc || lang === 'ja' ? 2 : 3;
+    const max = 2;
     if (!h1) fails.push('the home page has no h1#_top');
     else if (n > max) fail(h1, `the home page heading takes ${n} lines at ${cfg.width} px, over ${max}`);
     cfg.counts.homeHeading = n;
   }
-  // Gutters of 20 px or more at 390 px (4.5): every text block, outside
+  // Gutters of 20 px or more at 402 px (4.5): every text block, outside
   // the boxes that scroll on their own (code blocks, tables), and the ring
   // before h2
   if (cfg.phone) {
@@ -364,7 +362,7 @@ function inspect(cfg) {
       }
       if (bad) fail(el, `text ${bad.left < 19.5 ? `starts ${bad.left.toFixed(1)} px from the left edge` : `ends ${(W - bad.right).toFixed(1)} px from the right edge`}, under the 20 px gutter (4.5)`);
     }
-    for (const h2 of document.querySelectorAll('.sl-markdown-content h2:not(.not-content *)')) {
+    for (const h2 of document.querySelectorAll('.site-markdown-content h2:not(.not-content *)')) {
       if (!visible(h2)) continue;
       const b = getComputedStyle(h2, '::before');
       if (b.content === 'none') continue;
@@ -526,7 +524,7 @@ async function main() {
                 });
                 await tab.locator('dialog[open] input').fill('filter');
                 const states = [];
-                const placeholders = tab.locator('#starlight__search .pagefind-ui__loading');
+                const placeholders = tab.locator('#site__search .pagefind-ui__loading');
                 // Only a timeout means that a state did not come; any other
                 // error is a fault of this check and stops it.
                 const timedOut = (e) => {
@@ -548,7 +546,7 @@ async function main() {
                 }
                 release();
                 try {
-                  await tab.waitForFunction(() => !document.querySelector('#starlight__search .pagefind-ui__loading') && document.querySelector('#starlight__search .pagefind-ui__result-link'), null, { timeout: 10000 });
+                  await tab.waitForFunction(() => !document.querySelector('#site__search .pagefind-ui__loading') && document.querySelector('#site__search .pagefind-ui__result-link'), null, { timeout: 10000 });
                   states.push('settled');
                   for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} search open: ${f}`);
                   for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0, phone: false, pc: false })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} search open: ${f}`);
@@ -560,7 +558,7 @@ async function main() {
                 if (states.length === 2) searches++;
                 await tab.keyboard.press('Escape');
               }
-              const menu = tab.locator('button.sl-menu-button');
+              const menu = tab.locator('button.site-menu-button');
               if (await menu.isVisible()) {
                 try {
                   await menu.click({ timeout: 5000 });
@@ -568,7 +566,7 @@ async function main() {
                   failures.push(`${tag}: the menu button cannot be clicked`);
                 }
                 await tab.waitForTimeout(100);
-                if (!(await tab.locator('#starlight__sidebar:popover-open').count())) failures.push(`${tag}: the menu did not open`);
+                if (!(await tab.locator('#site__sidebar:popover-open').count())) failures.push(`${tag}: the menu did not open`);
                 menus++;
                 for (const f of await tab.evaluate(shadowsOnly)) failures.push(`${tag} menu open: ${f}`);
                 for (const f of (await tab.evaluate(inspect, { ...cfg, width: 0, phone: false, pc: false })).fails.filter((x) => !x.startsWith('note: '))) if (!/scrolls sideways/.test(f)) failures.push(`${tag} menu open: ${f}`);

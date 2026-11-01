@@ -35,48 +35,48 @@ import ThemeProvider from '../components/ThemeProvider.astro';
 import TwoColumnContent from './TwoColumnContent.astro';
 import NotFoundHero from './NotFoundHero.astro';
 import printHref from './styles/print.css?url&no-inline';
-const starlightRoute = Astro.locals.siteRoute;
+const siteRoute = Astro.locals.siteRoute;
 
 const pagefindEnabled =
-	starlightRoute.entry.id !== '404' &&
-	!starlightRoute.entry.id.endsWith('/404') &&
-	starlightRoute.entry.data.pagefind !== false;
+	siteRoute.entry.id !== '404' &&
+	!siteRoute.entry.id.endsWith('/404') &&
+	siteRoute.entry.data.pagefind !== false;
 
 const htmlDataAttributes: DOMStringMap = { 'data-theme': 'dark' };
-if (Boolean(starlightRoute.toc)) htmlDataAttributes['data-has-toc'] = '';
-if (starlightRoute.hasSidebar) htmlDataAttributes['data-has-sidebar'] = '';
-if (Boolean(starlightRoute.entry.data.hero)) htmlDataAttributes['data-has-hero'] = '';
+if (Boolean(siteRoute.toc)) htmlDataAttributes['data-has-toc'] = '';
+if (siteRoute.hasSidebar) htmlDataAttributes['data-has-sidebar'] = '';
+if (Boolean(siteRoute.entry.data.hero)) htmlDataAttributes['data-has-hero'] = '';
 
 const mainDataAttributes: DOMStringMap = {};
 if (pagefindEnabled) mainDataAttributes['data-pagefind-body'] = '';
 ---
 
-<html lang={starlightRoute.lang} dir={starlightRoute.dir} {...htmlDataAttributes}>
+<html lang={siteRoute.lang} dir={siteRoute.dir} {...htmlDataAttributes}>
 	<head>
 		<Head />
 		<style>
 			html:not([data-has-toc]) {
-				--sl-mobile-toc-height: 0rem;
+				--site-mobile-toc-height: 0rem;
 			}
 			html:not([data-has-sidebar]) {
-				--sl-content-width: 67.5rem;
+				--site-content-width: 67.5rem;
 			}
 			/* Add scroll padding to ensure anchor headings aren't obscured by nav */
 			html {
 				/* Additional padding is needed to account for the mobile TOC */
-				scroll-padding-top: calc(1.5rem + var(--sl-nav-height) + var(--sl-mobile-toc-height));
+				scroll-padding-top: calc(1.5rem + var(--header-height) + var(--site-mobile-toc-height));
 			}
 			main {
-				padding: var(--sl-main-pad);
+				padding: var(--site-main-pad);
 			}
 			@media (min-width: 50em) {
 				[data-has-sidebar] {
-					--sl-content-inline-start: var(--sl-sidebar-width);
+					--site-content-inline-start: var(--site-sidebar-width);
 				}
 			}
 			@media (min-width: 72em) {
 				html {
-					scroll-padding-top: calc(1.5rem + var(--sl-nav-height));
+					scroll-padding-top: calc(1.5rem + var(--header-height));
 				}
 			}
 		</style>
@@ -87,19 +87,19 @@ if (pagefindEnabled) mainDataAttributes['data-pagefind-body'] = '';
 		<SkipLink />
 		<PageFrame>
 			<Header slot="header" />
-			{starlightRoute.hasSidebar && <Sidebar slot="sidebar" />}
+			{siteRoute.hasSidebar && <Sidebar slot="sidebar" />}
 
 			<TwoColumnContent>
 				<PageSidebar slot="right-sidebar" />
 				<main
 					{...mainDataAttributes}
-					lang={starlightRoute.entryMeta.lang}
-					dir={starlightRoute.entryMeta.dir}
+					lang={siteRoute.entryMeta.lang}
+					dir={siteRoute.entryMeta.dir}
 				>
 					{/* TODO: Revisit how this logic flows. */}
 					<Banner />
-                    {starlightRoute.entry.id === '404' ? <ContentPanel><NotFoundHero/><MarkdownContent><slot/></MarkdownContent><Footer/></ContentPanel> : <>
-                    <ContentPanel><PageTitle />{starlightRoute.isFallback && <FallbackContentNotice />}</ContentPanel>
+                    {siteRoute.entry.id === '404' ? <ContentPanel><NotFoundHero/><MarkdownContent><slot/></MarkdownContent><Footer/></ContentPanel> : <>
+                    <ContentPanel><PageTitle />{siteRoute.isFallback && <FallbackContentNotice />}</ContentPanel>
                     <ContentPanel><MarkdownContent><slot /></MarkdownContent><Footer /></ContentPanel></>}
 				</main>
 			</TwoColumnContent>

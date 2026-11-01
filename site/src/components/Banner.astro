@@ -1,6 +1,6 @@
 ---
 import { getSiteRoute } from '../route.mjs';
-// Starlight's Banner without text-wrap: balance (docs/proposals/site.md,
+// The banner avoids text-wrap: balance (docs/proposals/site.md,
 // 4.4: no text-wrap: pretty or balance anywhere, because the engines wrap
 // such text differently) and without a shadow (4.3 item 5). The 3.x
 // development banner of 3.4 uses it.
@@ -21,22 +21,22 @@ const ja = getSiteRoute(Astro.locals).locale === 'ja';
 {
   SITE_VERSION === 2 ? (
     ja ? (
-      <div class="sl-banner" data-pagefind-ignore data-banner="v2" lang="ja">
+      <div class="site-banner" data-pagefind-ignore data-banner="v2" lang="ja">
         2.x保守ブランチのドキュメントです。最新リリースタグは {release.latest_release_tag}。{release.unreleased_versions.length > 0 && `${release.unreleased_versions.join('、')} の変更は未リリースです。`}導入例の対象バージョンを確認してください。開発中の3.xは、<a href="/ja/docs/">3.xのドキュメント</a>を読んでください。
       </div>
     ) : (
-      <div class="sl-banner" data-pagefind-ignore data-banner="v2">
+      <div class="site-banner" data-pagefind-ignore data-banner="v2">
         These are 2.x maintenance-branch docs. Latest release tag: {release.latest_release_tag}. {release.unreleased_versions.length > 0 && `${release.unreleased_versions.join(', ')} changes are unreleased.`} Check the version targeted by each example. For development, read the <a href="/docs/">3.x documentation</a>.
       </div>
     )
   ) : (
-    banner && <div class="sl-banner" data-pagefind-ignore set:html={banner.content} />
+    banner && <div class="site-banner" data-pagefind-ignore set:html={banner.content} />
   )
 }
 
 <style>
-	@layer starlight.core {
-		.sl-banner {
+	@layer site.core {
+		.site-banner {
 			padding: var(--space-3) var(--header-pad-x);
 			background-color: var(--color-bg-tertiary);
 			border-bottom: 1px solid var(--color-border-strong);
@@ -45,7 +45,7 @@ const ja = getSiteRoute(Astro.locals).locale === 'ja';
 			line-height: var(--leading-nav);
 			text-align: start;
 		}
-		.sl-banner :global(a) {
+		.site-banner :global(a) {
 			color: var(--color-accent-text);
 		}
 	}

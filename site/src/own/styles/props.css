@@ -1,188 +1,51 @@
 /* Adapted from Starlight 0.42.6, MIT; see ../STARLIGHT-LICENSE. */
-@layer starlight.base {
+@layer site.base {
 	:root,
 	::backdrop {
 		/* Colors (dark mode) */
 		 /* “white” */
 
-
-
-
-
-
-
-
-		--sl-hue-orange: 41;
-
-
-
-		--sl-hue-green: 101;
-
-
-
-		--sl-hue-blue: 234;
-
-
-
-		--sl-hue-purple: 281;
-
-
-
-		--sl-hue-red: 339;
-
-
-
-
-
-
-
-
-		--sl-color-text: var(--sl-color-gray-2);
-		--sl-color-text-accent: var(--sl-color-accent-high);
-		--sl-color-text-invert: var(--sl-color-accent-low);
-		--sl-color-bg: var(--sl-color-black);
-		--sl-color-bg-nav: var(--sl-color-gray-6);
-		--sl-color-bg-sidebar: var(--sl-color-gray-6);
-		--sl-color-bg-inline-code: var(--sl-color-gray-5);
-		--sl-color-bg-accent: var(--sl-color-accent-high);
-		--sl-color-hairline-light: var(--sl-color-gray-5);
-		--sl-color-hairline: var(--sl-color-gray-6);
-		--sl-color-hairline-shade: var(--sl-color-black);
-
-
-
 		/* Shadows (dark mode) */
 
-
-
-
 		/* Text size and line height */
-		--sl-text-2xs: 0.75rem; /* 12px */
-		--sl-text-xs: 0.8125rem; /* 13px */
-		--sl-text-sm: 0.875rem; /* 14px */
-		--sl-text-base: 1rem; /* 16px */
-		--sl-text-lg: 1.125rem; /* 18px */
-		--sl-text-xl: 1.25rem; /* 20px */
-		--sl-text-2xl: 1.5rem; /* 24px */
-		--sl-text-3xl: 1.8125rem; /* 29px */
-		--sl-text-4xl: 2.1875rem; /* 35px */
-		--sl-text-5xl: 2.625rem; /* 42px */
-		--sl-text-6xl: 4rem; /* 64px */
-
-		--sl-text-body: var(--sl-text-base);
-		--sl-text-body-sm: var(--sl-text-xs);
-		--sl-text-code: var(--sl-text-sm);
-		--sl-text-code-sm: var(--sl-text-xs);
-		--sl-text-h1: var(--sl-text-4xl);
-		--sl-text-h2: var(--sl-text-3xl);
-		--sl-text-h3: var(--sl-text-2xl);
-		--sl-text-h4: var(--sl-text-xl);
-		--sl-text-h5: var(--sl-text-lg);
-
-		--sl-line-height: 1.75;
-		--sl-line-height-headings: 1.2;
 
 		/*
 			Although technically superseded by the `system-ui` font-family, we use `-apple-system` and
 			`BlinkMacSystemFont` because `system-ui` causes issues on Windows computers in some languages.
 			See: https://github.com/withastro/starlight/issues/3721
 		*/
-		--sl-font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+		--site-font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
 			'Noto Sans', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
 			'Noto Color Emoji';
-		--sl-font-system-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+		--site-font-system-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
 			'Courier New', monospace;
-		--__sl-font: var(--sl-font, var(--sl-font-system)), var(--sl-font-system);
-		--__sl-font-mono: var(--sl-font-mono, var(--sl-font-system-mono)), var(--sl-font-system-mono);
+		--site-font-stack: var(--font-body), var(--site-font-system);
+		--site-mono-stack: var(--font-mono), var(--site-font-system-mono);
 
 		/** Key layout values */
-		--sl-nav-height: 3.5rem;
-		--sl-nav-pad-x: 1rem;
-		--sl-nav-pad-y: 0.75rem;
-		--sl-mobile-toc-height: 3rem;
-		--sl-sidebar-width: 18.75rem;
-		--sl-sidebar-pad-x: 1rem;
-		--sl-content-width: 45rem;
-		--sl-content-pad-x: 1rem;
-		--sl-content-gap-y: 1rem;
-		--sl-main-pad: 0 0 3vh 0;
-		--sl-menu-button-size: 2rem;
-		--sl-nav-gap: var(--sl-content-pad-x);
+
+		--site-mobile-toc-height: 3rem;
+		--site-sidebar-width: 18.75rem;
+
+		--site-content-width: 45rem;
+
+		--site-content-gap-y: 1rem;
+		--site-main-pad: 0 0 3vh 0;
+
 		/* Offset required to show outline inside an element instead of round the outside */
-		--sl-outline-offset-inside: -0.1875rem;
+		--site-outline-offset-inside: -0.1875rem;
 
 		/* Global z-index values */
-		--sl-z-index-toc: 4;
-		--sl-z-index-menu: 5;
-		--sl-z-index-navbar: 10;
-		--sl-z-index-skiplink: 20;
-	}
-
-	:root[data-theme='light'],
-	[data-theme='light'] ::backdrop {
-		/* Colours (light mode) */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		--sl-color-text-accent: var(--sl-color-accent);
-		--sl-color-text-invert: var(--sl-color-black);
-		--sl-color-bg-nav: var(--sl-color-gray-7);
-		--sl-color-bg-sidebar: var(--sl-color-bg);
-		--sl-color-bg-inline-code: var(--sl-color-gray-6);
-		--sl-color-bg-accent: var(--sl-color-accent);
-		--sl-color-hairline-light: var(--sl-color-gray-6);
-		--sl-color-hairline-shade: var(--sl-color-gray-6);
-
-
-
-		/* Shadows (light mode) */
-
-
-
-	}
-
-	@media (min-width: 50em) {
-		:root {
-			--sl-nav-height: 4rem;
-			--sl-nav-pad-x: 1.5rem;
-			--sl-text-h1: var(--sl-text-5xl);
-			--sl-text-h2: var(--sl-text-4xl);
-			--sl-text-h3: var(--sl-text-3xl);
-			--sl-text-h4: var(--sl-text-2xl);
-		}
+		--site-z-index-toc: 4;
+		--site-z-index-menu: 5;
+		--site-z-index-navbar: 10;
+		--site-z-index-skiplink: 20;
 	}
 
 	@media (min-width: 72rem) {
 		:root {
-			--sl-content-pad-x: 1.5rem;
-			--sl-mobile-toc-height: 0rem;
+
+			--site-mobile-toc-height: 0rem;
 		}
 	}
 }

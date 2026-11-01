@@ -1,10 +1,10 @@
 // The focus check of step 3 (docs/proposals/site.md, 4.9 and section 6):
-// tabbing through each page in Chromium and WebKit, at 390 by 664 and 1440
-// by 900 px, every element that takes the focus shows a focus ring (an
+// tabbing through each page in Chromium at 1440 by 900 and WebKit at
+// 402 by 664 px, every element that takes the focus shows a focus ring (an
 // outline of 2 px or more, or one that is not none on a focused text
 // field) and is not covered by the fixed header (WCAG 2.4.11): its box
 // starts below the header, unless it is in the header or the open menu,
-// (and Starlight's fixed bar "On this page" below 72rem), and the
+// (and the site's fixed bar "On this page" below 72rem), and the
 // element at the center of its first line box is the element
 // itself or inside it.
 //
@@ -17,13 +17,10 @@ import path from 'node:path';
 import { scopedPages } from './lib/ci-pages.mjs';
 import { chromium, webkit } from 'playwright';
 import { serve } from './lib/serve.mjs';
+import { patternsFor } from './lib/patterns.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/request-phases/', '/reference/directives/'];
-const SIZES = [
-  { width: 390, height: 664 },
-  { width: 1440, height: 900 },
-];
 const MAX_TABS = 120;
 
 function args() {
@@ -47,11 +44,11 @@ function focused() {
   const ring = cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2;
   const r = el.getBoundingClientRect();
   const header = document.querySelector('header.header');
-  // The fixed header, and below 72rem Starlight's fixed "On this page" bar
-  const toc = document.querySelector('mobile-starlight-toc nav');
+  // The fixed header, and below 72rem the site's fixed "On this page" bar
+  const toc = document.querySelector('mobile-site-toc nav');
   const fixedBottom = (e) => (e && getComputedStyle(e).position === 'fixed' && e.getClientRects().length ? e.getBoundingClientRect().bottom : 0);
   const hb = Math.max(header ? header.getBoundingClientRect().bottom : 0, fixedBottom(toc));
-  const inChrome = !!el.closest('header.header, .sidebar-pane, dialog, .sl-skip-link, .sl-menu-button, mobile-starlight-toc');
+  const inChrome = !!el.closest('header.header, .sidebar-pane, dialog, .site-skip-link, .site-menu-button, mobile-site-toc');
   const visible = r.width > 0 && r.height > 0;
   let covered = '';
   if (visible && !inChrome) {
@@ -79,7 +76,7 @@ async function main() {
     const browser = await { chromium, webkit }[engineName].launch();
     const key = engineName === 'webkit' ? 'Alt+Tab' : 'Tab';
     for (const page of opt.pages) {
-      for (const size of SIZES) {
+      for (const size of patternsFor(engineName)) {
         const context = await browser.newContext({ viewport: size });
         const tab = await context.newPage();
         await tab.goto(server.url + page, { waitUntil: 'load' });
@@ -110,7 +107,7 @@ async function main() {
   }
   await server.close();
   for (const f of failures) console.log(f);
-  const summary = `${stops} focus stops on ${opt.pages.length} pages in ${opt.engines.join(' and ')} at ${SIZES.map((s) => `${s.width}x${s.height}`).join(' and ')}`;
+  const summary = `${stops} focus stops on ${opt.pages.length} pages in ${opt.engines.join(' and ')} at ${opt.engines.flatMap(patternsFor).map((s) => `${s.width}x${s.height}`).join(' and ')}`;
   if (failures.length) {
     console.log(`check-focus: ${failures.length} failure(s); ${summary}`);
     process.exit(1);
