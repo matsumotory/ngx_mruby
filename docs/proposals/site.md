@@ -1329,7 +1329,7 @@ acceptance; the interaction check covers that separately.
   below, as on the profile site. As on the corporate site, one footer
   component serves every page, so that every page reaches the same links:
   the language link, Releases, Security, the license and GitHub. The license
-  is labeled MIT and links to the existing `MITL` file of the page's version.
+  is labeled MIT and links to the `LICENSE` file of the page's version.
   The footer holds text links only, and wraps as a unit at narrow widths.
 - **Project badges.** The four index pages (`/`, `/ja/`, `/v2/` and
   `/v2/ja/`) show one row of badges directly above the heading, at its left

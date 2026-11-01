@@ -2500,8 +2500,8 @@ license badge is a file of the site. The read-only browser context
 requests; a caller may name exact image URLs whose GET it answers from a local
 fixture instead of the network. The checks before the deploy
 (`check-project-badges.mjs`, `check-home-interaction.mjs`,
-`check-layout-parity.mjs`, `screenshots-live.mjs`) serve those URLs from the
-stand-ins of `scripts/lib/project-badges.mjs`, so a slow or failing service
+`screenshots-live.mjs`) and `check-layout-parity.mjs`, when a session runs
+it locally, serve those URLs from the stand-ins of `scripts/lib/project-badges.mjs`, so a slow or failing service
 cannot hold the publication. `check-project-badges.mjs` also loads each index
 page with the external images refused and checks that the heading stays where
 it is. Only `check-live.mjs`, after the deploy, fetches the real images, and
