@@ -95,7 +95,7 @@ for (const { file, bytes, sha256: want } of VERBATIM_FILES) {
 
 // External badge bytes are not part of dist, and the checks before the
 // deploy serve local stand-ins. This is the one check of the real images of
-// the row above the index headings (CI and CodeQL of next and master, and
+// the strip of the index pages (the workflow badges of next and master, and
 // OpenSSF Best Practices): only these URLs, without following a redirect. A
 // service outage is retried three times with a growing pause before it
 // counts as a problem.

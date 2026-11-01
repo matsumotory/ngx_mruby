@@ -142,8 +142,9 @@ export function githubStars(lang, env = process.env) {
   if (!count && !date) return null;
   if (!/^\d+$/.test(count ?? '') || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? '')) throw new Error(`githubStars: NGX_MRUBY_SITE_STARS must be digits and NGX_MRUBY_SITE_STARS_DATE a date (YYYY-MM-DD), not "${count}" and "${date}"`);
   const n = Number(count);
-  // At most four characters: 997, 1K, 1.2K, 12K.
-  const short = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+  // At most four characters: 997, 1K, 1.2K, 12K, 123K; one decimal below
+  // 10,000 only.
+  const short = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: n < 10000 ? 1 : 0 }).format(n);
   const exact = n.toLocaleString('en-US');
   const [y, m, d] = date.split('-').map(Number);
   const ja = lang === 'ja';

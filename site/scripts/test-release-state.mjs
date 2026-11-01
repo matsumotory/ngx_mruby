@@ -18,7 +18,7 @@ assert.throws(() => releaseBadge('v3.0.0-rc.1', 'en'), /not a stable release tag
 // The star count of the header: none without the variables, a short count
 // of at most four characters, and a failed build on a malformed value.
 assert.equal(githubStars('en', {}), null);
-for (const [count, short] of [['997', '997'], ['1000', '1K'], ['1234', '1.2K'], ['12345', '12.3K']]) assert.equal(githubStars('en', { NGX_MRUBY_SITE_STARS: count, NGX_MRUBY_SITE_STARS_DATE: '2026-11-01' }).short, short);
+for (const [count, short] of [['997', '997'], ['1000', '1K'], ['1234', '1.2K'], ['12345', '12K'], ['123456', '123K']]) assert.equal(githubStars('en', { NGX_MRUBY_SITE_STARS: count, NGX_MRUBY_SITE_STARS_DATE: '2026-11-01' }).short, short);
 assert.equal(githubStars('ja', { NGX_MRUBY_SITE_STARS: '1234', NGX_MRUBY_SITE_STARS_DATE: '2026-11-01' }).label, '、2026年11月1日時点のスターは1,234件');
 for (const env of [{ NGX_MRUBY_SITE_STARS: '997' }, { NGX_MRUBY_SITE_STARS: 'many', NGX_MRUBY_SITE_STARS_DATE: '2026-11-01' }, { NGX_MRUBY_SITE_STARS: '997', NGX_MRUBY_SITE_STARS_DATE: '11/01' }]) assert.throws(() => githubStars('en', env), /must be digits/);
 console.log('test-release-state: numeric ordering, prerelease exclusion, localized-note exclusion, release advancement and missing-tag failure pass; the newest stable tag, the release badge and the star count pass');

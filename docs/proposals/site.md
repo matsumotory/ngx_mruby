@@ -1359,9 +1359,14 @@ acceptance; the interaction check covers that separately.
   exceptions: `valgrind-nightly` runs from `master` only, because GitHub
   runs a schedule only from the default branch, and each of its runs tests
   `master` and `next`, so both versions show its runs on `master`; and
-  `nginx-tests` exists on `next` only, so the 2.x pages leave it out. The
+  `nginx-tests` exists on `next` only, so the 2.x pages leave it out. A
+  workflow badge shows the latest run on its branch itself; runs of pull
+  requests belong to their own branches. `nginx-tests` and `zizmor` run on
+  ready pull requests and on "Run workflow", not on pushes, so their
+  badges show the push runs of 2026-10-31 until a session runs them on
+  `next` or `master` ("Run workflow"). The
   owner decided on 2026-11-01 that this strip holds what others can judge
-  the project by, and that a score and the CI status belong elsewhere:
+  the project by, and that a score does not belong there:
   「スコアボードって結局妥当性がむずいやん？となりとちゃんと静的解析してるとか最低限のプラクティス守ってるとかライセンスはこれとか、テストやセキュリティを色々な観点で検査してるのは良い気がする」,
   「他にも静的解析とかvalgrindとかもいいじゃんngix-testもさ」,
   「一般的に見て評価したり得られる開発の工夫が見れるのはいい気がする」.
@@ -1396,7 +1401,7 @@ acceptance; the interaction check covers that separately.
 - **The star count.** The GitHub link of the header and of the menu ends
   with a 16 px star and the count of the repository's stars, in the weight
   and color of secondary text, shortened to at most four characters (997,
-  1.2K). Assistive technology reads the exact count and the day it was
+  1.2K, 12K). Assistive technology reads the exact count and the day it was
   read, which the count's title also gives. `site.yml` reads the count
   from the GitHub API once before the builds, which fetch nothing (4.4),
   and passes it with the day in `NGX_MRUBY_SITE_STARS` and

@@ -309,8 +309,8 @@ The owner checks that all of these hold and gives the go before step 1:
      strategy in README.md, the branch table and rules in AGENTS.md, the
      supported versions in SECURITY.md, and "Target branch" in
      `.github/PULL_REQUEST_TEMPLATE.md` (2.x fixes target `v2.x`, v3 fixes
-     target `master`). It points the badges of README.md that name
-     `branch=next` at `branch=master`. It also adds to
+     target `master`). It points the badges of README.md at `master`:
+     their images (`branch=next`) and their links (`query=branch%3Anext`). It also adds to
      `.github/dependabot.yml` a second `github-actions` entry with
      `target-branch: "v2.x"`, so that the file has it on `master` from step
      5 on. Dependabot reads that file only from
