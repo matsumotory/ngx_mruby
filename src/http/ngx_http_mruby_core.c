@@ -418,6 +418,7 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
   mrb_int status = NGX_HTTP_OK;
   mrb_get_args(mrb, "i", &status);
+  ngx_http_mrb_fiber_after_redirect(r);
   // A return code below 0, such as Nginx::DECLINED, is the result of the
   // handler only (below), not the status of the response
   if (status >= 0) {
@@ -481,6 +482,7 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
   if (ns.len == 0) {
     return self;
   }
+  ngx_http_mrb_fiber_after_redirect(r);
 
   if (ctx->rputs_chain == NULL) {
     chain = ngx_pcalloc(r->pool, sizeof(ngx_mrb_rputs_chain_list_t));
@@ -616,6 +618,9 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     return mrb_nil_value();
   }
   ns.data = ngx_palloc(r->pool, ns.len);
+  if (ns.data == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+  }
   ngx_memcpy(ns.data, RSTRING_PTR(uri), ns.len);
 
   // if uri start with scheme prefix
@@ -645,7 +650,18 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     r->headers_out.status = rc;
     ngx_http_mrb_fiber_set_result(r, rc);
   } else {
-    ngx_http_internal_redirect(r, &ns, &r->args);
+    // A phase handler redirects when it ends, after its code: the target's
+    // handlers then run outside the fiber of this one, and one handler
+    // answers the request (Q2 of docs/proposals/core-stabilization.md)
+    switch (ngx_http_mrb_fiber_defer_redirect(r, &ns)) {
+    case NGX_OK:
+      break;
+    case NGX_ERROR:
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+      break;
+    default:
+      ngx_http_internal_redirect(r, &ns, &r->args);
+    }
   }
 
   return self;

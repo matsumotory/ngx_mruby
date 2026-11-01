@@ -74,11 +74,18 @@ struct ngx_http_mrb_fiber_s {
   // next to kind, in the space that the alignment of sleep leaves;
   // has_response: the post handler of a subrequest copied the response, and
   // the next resume passes it to the fiber
+  // after_redirect: the code wrote output or set a status after
+  // Nginx.redirect, which are not sent
   unsigned has_result : 1;
   unsigned wake : 1;
   unsigned has_response : 1;
+  unsigned after_redirect : 1;
   ngx_mrb_reentrant_t sleep;
   ngx_http_posted_request_t *posted;
+  // the local URI of Nginx.redirect, which takes effect when the handler
+  // ends (ngx_http_mrb_fiber_redirect), or NULL (Q2 of section 9 of the
+  // proposal)
+  ngx_str_t *redirect;
   ngx_int_t result;
   // the Nginx::Async::HTTP::Response that sub_request returned, kept in
   // response_slot of the GC root holder until the fiber ends, so that
@@ -681,6 +688,61 @@ ngx_flag_t ngx_http_mrb_fiber_result(ngx_http_mrb_fiber_t *f, ngx_int_t *result)
 
   *result = f->result;
   return 1;
+}
+
+// Whether a handler of this kind is called by a phase checker, which goes on
+// after an internal redirect that the handler makes at its end
+static ngx_flag_t ngx_http_mrb_redirect_at_end(ngx_http_mruby_handler_kind_t kind)
+{
+  switch (kind) {
+  case NGX_HTTP_MRUBY_HANDLER_POST_READ:
+  case NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE:
+  case NGX_HTTP_MRUBY_HANDLER_REWRITE:
+  case NGX_HTTP_MRUBY_HANDLER_ACCESS:
+  case NGX_HTTP_MRUBY_HANDLER_CONTENT:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+ngx_int_t ngx_http_mrb_fiber_defer_redirect(ngx_http_request_t *r, ngx_str_t *uri)
+{
+  ngx_http_mrb_fiber_t *f = ngx_http_mrb_running;
+
+  if (f == NULL || f->sleep.r != r || !ngx_http_mrb_redirect_at_end(f->kind)) {
+    return NGX_DECLINED;
+  }
+
+  if (f->redirect == NULL) {
+    f->redirect = ngx_palloc(r->pool, sizeof(ngx_str_t));
+    if (f->redirect == NULL) {
+      return NGX_ERROR;
+    }
+  }
+  *f->redirect = *uri;
+  f->after_redirect = 0;
+
+  return NGX_OK;
+}
+
+void ngx_http_mrb_fiber_after_redirect(ngx_http_request_t *r)
+{
+  ngx_http_mrb_fiber_t *f = ngx_http_mrb_running;
+
+  if (f != NULL && f->sleep.r == r && f->redirect != NULL) {
+    f->after_redirect = 1;
+  }
+}
+
+ngx_str_t *ngx_http_mrb_fiber_redirect(ngx_http_mrb_fiber_t *f, ngx_flag_t *after)
+{
+  if (f == NULL || f->redirect == NULL) {
+    return NULL;
+  }
+
+  *after = f->after_redirect;
+  return f->redirect;
 }
 
 void ngx_http_mrb_fiber_set_result(ngx_http_request_t *r, ngx_int_t result)

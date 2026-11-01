@@ -915,6 +915,8 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   ngx_flag_t has_result;
   ngx_int_t handler_result = NGX_OK;
   ngx_int_t rc_again;
+  ngx_str_t *redirect_uri;
+  ngx_flag_t after_redirect = 0;
   ngx_http_mruby_ctx_t *ctx;
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
@@ -1205,6 +1207,36 @@ resumed:
     ngx_mrb_code_clean(r, state, code);
   }
   ngx_mrb_state_clean(r, state);
+
+  /*
+   * Nginx.redirect with a local URI takes effect here, when the handler has
+   * ended (Q2 of section 9 of docs/proposals/core-stabilization.md): the
+   * output and the status of the handler are not sent, and a line at the
+   * warn level says so when the code set them after the call. The target's
+   * handlers run in ngx_http_internal_redirect, outside the fiber of this
+   * handler, and can wait like any handler. The checker of the content phase
+   * drops the reference that ngx_http_internal_redirect took with the
+   * NGX_DONE below; the other checkers return on NGX_DONE, so the handler
+   * drops it. The request can be freed in the call, so nothing of it, of
+   * its module context or of the record is used afterwards. An exception of
+   * the handler wins: it answers 500 without the redirect.
+   */
+  if (!raised && (redirect_uri = ngx_http_mrb_fiber_redirect(record, &after_redirect)) != NULL) {
+    if (after_redirect) {
+      ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                    "%s WARN %s:%d: the output and the status that the handler set after Nginx.redirect are not sent",
+                    MODULE_NAME, __func__, __LINE__);
+    }
+    if (ctx->rputs_chain != NULL) {
+      r->headers_out.content_length_n = ctx->rputs_chain->content_length_n;
+      ctx->rputs_chain = NULL;
+    }
+    ngx_http_internal_redirect(r, redirect_uri, &r->args);
+    if (kind != NGX_HTTP_MRUBY_HANDLER_CONTENT) {
+      ngx_http_finalize_request(r, NGX_DONE);
+    }
+    return NGX_DONE;
+  }
 
   // Only the mruby_set handlers pass a result. After an exception the
   // variable gets an empty string, as for a handler that returns nil. NDK has
