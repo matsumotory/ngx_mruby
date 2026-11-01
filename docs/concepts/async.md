@@ -59,9 +59,27 @@ resume: nginx calls the handler again, which resumes the fiber; when the code en
   methods raise `RuntimeError`.
   See [the 2.7.3 behavior changes](../releases/v2.7.3.md) and
   [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec).
+- `Nginx::Stream::Async.sleep` waits in the same way in the code of a
+  stream session (`mruby_stream`, `mruby_stream_code`): when the timer
+  fires, nginx calls the handler of the access phase again, the handler
+  resumes the fiber, and the session goes on by the result of the code. A
+  session runs its code once: a datagram of a UDP session or bytes from the
+  client of a TCP session that arrive during the wait do not start it again.
+- When the client closes the connection while the code waits, the code goes
+  on: nginx does not read from the client of an HTTP/1.x request while the
+  handlers run, or from the client of a stream session while its code
+  waits, and sees the close when it writes the response or after the code
+  resumes. When nginx ends the request or the session during the wait, for
+  example when `worker_shutdown_timeout` expires in a worker that shuts
+  down, the fiber is not resumed: the code after the wait, an `ensure`
+  clause included, does not run. On a reload, the old workers finish the
+  waits in flight before they exit.
 - Code that waits in `sleep` of mruby-sleep, a socket of mruby-socket, a
   file, a shell command or a Redis call blocks the worker for that time
   ([Trust boundary](../security/trust-boundary.md)).
 
 [Nginx::Async](../class_and_method/README.md#nginxasync-class) in the
-Ruby reference describes both methods.
+Ruby reference describes both methods. How ngx_mruby keeps, resumes and
+cancels the fiber of a handler is in
+[How a handler waits](../DEVELOPMENT.md#how-a-handler-waits-the-record-of-its-fiber)
+for contributors.
