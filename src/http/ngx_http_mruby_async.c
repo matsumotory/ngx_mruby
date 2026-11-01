@@ -160,10 +160,6 @@ static ngx_http_request_t *ngx_mrb_async_request(mrb_state *mrb, const char *met
   return r;
 }
 
-// The owner hook of a record: a request cleanup of the main request, which
-// nginx runs when it terminates the request and before it frees the request
-// pool. It deletes a pending timer, so that the timer never fires on a freed
-// pool, and frees the slot of a fiber that still waits.
 // Frees the slot of the response that sub_request returned, once
 static void ngx_http_mrb_fiber_drop_response(ngx_http_mrb_fiber_t *f)
 {
@@ -174,6 +170,11 @@ static void ngx_http_mrb_fiber_drop_response(ngx_http_mrb_fiber_t *f)
   }
 }
 
+// The owner hook of a record: a request cleanup of the main request, which
+// nginx runs when it terminates the request and before it frees the request
+// pool. It deletes a pending timer, so that the timer never fires on a freed
+// pool, and frees the slot of a fiber that still waits and the slot of the
+// response that sub_request returned.
 static void ngx_http_mrb_fiber_owner_cleanup(void *data)
 {
   ngx_http_mrb_fiber_drop_response(data);
