@@ -394,8 +394,9 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
   mrb_gc_arena_restore(re->mrb, ai);
   ngx_mrb_push_request(prev_r);
 
-  // NGX_HTTP_OK: a post_read or access handler sent its output
-  if (rc != NGX_OK && rc != NGX_HTTP_OK) {
+  // NGX_HTTP_OK: a post_read or access handler sent its output; with
+  // NGX_DECLINED the request goes on, and a later handler has its own result
+  if (rc != NGX_OK && rc != NGX_HTTP_OK && rc != NGX_DECLINED) {
     re->r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
 

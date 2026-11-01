@@ -4,10 +4,7 @@
 # Config: test/conf/conf.d/82-async-result-isolation.conf (port 18179) and
 # test/html/async_resume_result.rb.
 #
-# Access and content handlers have every end. Rewrite handlers list only the
-# ends that the stored value does not decide; the proposal
-# docs/proposals/core-stabilization.md (section 8) adds the end without a
-# result with the change that lets them go on.
+# Access, rewrite and content handlers have every end.
 
 t = SimpleTest.new "ngx_mruby test: the result of a handler is its own"
 
@@ -69,6 +66,10 @@ ASYNC_ISOLATION_PASSED = ['HTTP/1.1 200 OK', "passed\n", true]
   ['/access_any/WAIT/forbidden', 'an access handler under satisfy any that returns 403 answers 403', %w[nowait sleep],
    ASYNC_ISOLATION_FORBIDDEN],
   ['/access_any/WAIT/raise', 'an access handler under satisfy any that raises answers 500', %w[nowait sleep], ASYNC_ISOLATION_ERROR],
+  ['/rewrite/WAIT/none', 'a rewrite handler that sets no result goes on', %w[nowait sleep sub_request],
+   ASYNC_ISOLATION_PASSED],
+  ['/rewrite/WAIT/ok', 'a rewrite handler that returns Nginx::OK goes on', %w[nowait sleep sub_request],
+   ASYNC_ISOLATION_PASSED],
   ['/rewrite/WAIT/declined', 'a rewrite handler that returns Nginx::DECLINED goes on', %w[nowait sleep sub_request],
    ASYNC_ISOLATION_PASSED],
   ['/rewrite/WAIT/forbidden', 'a rewrite handler that returns 403 answers 403', %w[nowait sleep sub_request],
