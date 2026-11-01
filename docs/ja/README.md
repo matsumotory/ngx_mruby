@@ -4,12 +4,12 @@ nginx内のRubyでリクエストの処理を組み立てます。ここは<stro
 
 ## 動く例を<wbr>試す
 
-- [model振り分けを試す](start/README.md#modelで転送先を選ぶ)：Rubyの対応表で転送先と認証情報を変え、同じ内容を再送します。プロバイダのキーは不要です。
+- [モデルの振り分けを試す](start/README.md#modelで転送先を選ぶ)：Rubyの対応表で転送先と認証情報を変え、同じ内容を再送します。プロバイダのキーは不要です。
 - [インストール](install/README.md)：nginxに合わせたビルドと必要な環境、オプション、更新時の確認。
 
 ## アプリに<wbr>規則を加える
 
-- [model APIの中継](guides/agent-proxy.md)：利用者キーの検査、model振り分け、同時実行制限、ストリーム中継。計画中の拡張は明示しています。
+- [model APIの中継](guides/agent-proxy.md)：利用者キーの検査、モデルの振り分け、同時実行制限、ストリーム中継。計画中の拡張は明示しています。
 - [HTTPの振り分け](guides/routing.md)：リクエストの情報からバックエンドを選択。
 - [アクセス制御](guides/access-control.md)：ローカルの拒否リストにある接続元を拒否。
 - [レート制限](guides/rate-limit.md)：APIキーごとの制限。
