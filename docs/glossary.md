@@ -303,10 +303,11 @@ Their sources describe the same kind of traffic.
 
 ## Examples in ngx_mruby's pages
 
-- The title of the home page, "Route LLM requests with Ruby.", fits: its
-  example routes chat and summarization requests by their `model` field to
-  text language models. The text under the title names the component an AI
-  gateway between an AI application and a model API.
+- The title of the home page, "Authenticate and route AI applications with
+  Ruby.", names the software that calls a model API an AI application. The
+  example under it routes chat and summarization requests by their `model`
+  field. The text under the title names the component an AI gateway between
+  an AI application and a model API.
 - The planned use "Select another model API endpoint after an error" writes
   model API, since it is not limited to text language models.
 - "AI crawler traffic policy" in the [AI gateway and site access control

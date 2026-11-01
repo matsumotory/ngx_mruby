@@ -121,19 +121,21 @@ function inspect(cfg) {
   const scale = Object.fromEntries(Object.entries(cfg.scale[lang]).map(([k, v]) => [k, v * rem]));
   const sizes = new Set(Object.values(scale));
   const isHome = !!document.querySelector('.home');
-  // The Japanese home heading: no more than its column (.headline-box)
-  // divided by 13.7 em (tokens.css)
+  // Up to 800 px, the home heading: no more than its column divided by
+  // 15.6 em (Japanese, .headline-box) or 11.8 em (English, .hero-heading)
+  // (tokens.css)
   const headlineBox = document.querySelector('.headline-box');
   const clampTo = (lo, v, hi) => Math.min(Math.max(lo, v), hi);
   const homeBase = lang === 'ja' ? clampTo(32 * rem, 16 * rem + 0.035 * cfg.homeVw, 56 * rem) : clampTo(38 * rem, 16 * rem + 0.045 * cfg.homeVw, 72 * rem);
   // From 801 px the heading takes one line: its size is at most the width
-  // of its column divided by 14.2 em (English) or 21.9 em (Japanese)
+  // of its column divided by 22.6 em (English) or 23.6 em (Japanese)
   // (tokens.css)
   const heroHeading = document.querySelector('.brand-title .hero-heading');
   const wide = cfg.homeVw > 800;
-  const home = wide && lang === 'en' && heroHeading ? Math.min(homeBase, heroHeading.getBoundingClientRect().width / 14.2)
-    : wide && lang === 'ja' && headlineBox ? Math.min(homeBase, headlineBox.getBoundingClientRect().width / 21.9)
-    : lang === 'ja' && headlineBox ? Math.min(homeBase, headlineBox.getBoundingClientRect().width / 13.7) : homeBase;
+  const home = wide && lang === 'en' && heroHeading ? Math.min(homeBase, heroHeading.getBoundingClientRect().width / 22.6)
+    : wide && lang === 'ja' && headlineBox ? Math.min(homeBase, headlineBox.getBoundingClientRect().width / 23.6)
+    : lang === 'ja' && headlineBox ? Math.min(homeBase, headlineBox.getBoundingClientRect().width / 15.6)
+    : lang === 'en' && heroHeading ? Math.min(homeBase, heroHeading.getBoundingClientRect().width / 11.8) : homeBase;
   if (isHome && lang === 'ja' && !headlineBox) fails.push('the Japanese home page has no .headline-box');
   const tokens = new Set(cfg.tokens);
   const spans = new Set(cfg.spans);
