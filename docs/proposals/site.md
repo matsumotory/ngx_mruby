@@ -1387,8 +1387,9 @@ acceptance; the interaction check covers that separately.
     footers: every link stays visible); a full site map in the footer
     (the site has more pages than the about 25 for which Nielsen Norman
     Group finds one useful; the sidebar and the documents index hold
-    them); social icons and newsletter forms (USWDS: only where they are
-    a goal of the site; the site has neither, and icons would break the
+    them); social links and newsletter forms (USWDS: social links only to
+    accounts that are updated often, a sign-up form only where sign-ups are
+    a goal of the site; the site has neither goal, and icons would break the
     text-links rule); the crest and the government licence of GOV.UK.
 - **Development practices.** The four index pages (`/`, `/ja/`, `/v2/`
   and `/v2/ja/`) show one strip of badges: on `/` and `/ja/` directly

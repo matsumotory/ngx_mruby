@@ -102,7 +102,9 @@ html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
 .protocol-list h3 { margin: 0; }
 .protocol-list p { color: var(--color-text-muted); margin-top: var(--space-3); }
 .protocol-list a { display: inline-block; margin-top: var(--space-4); }
-.home-v3 .v3-docs { margin-bottom: var(--space-8); padding-block: var(--space-7); border-top: 1px solid var(--color-scene-edge); }
+/* The last section ends at its text: the footer's 48 px stand between
+   them (4.10) */
+.home-v3 .v3-docs { padding-top: var(--space-7); border-top: 1px solid var(--color-scene-edge); }
 .documentation-links { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5) var(--space-7); margin-top: var(--space-5); }
 .documentation-links a { display: block; padding-block: var(--space-3); border-bottom: 1px solid var(--color-border); }
 @keyframes route-confirm { 0%, 100% { background-color: transparent; } 45% { background-color: var(--color-scene-warm); } }
