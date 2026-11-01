@@ -20,6 +20,9 @@
 // - durations of 4.8: 200 ms or less, 0 under prefers-reduced-motion, no
 //   animation running after the load;
 // - at most 90 characters per line of English body text at 1440 px (4.4);
+// - the header (4.10), in Chromium at 1440 px, in English and Japanese:
+//   the section links in it, every item on one line, inside its content
+//   box, without overlap;
 // - no horizontal scroll of the page (4.9), and at 402 px every text block
 //   and the ring before h2 at least 20 px from both edges (4.5);
 // - the home page heading takes one line at 1440 px and at most two at
@@ -459,6 +462,46 @@ function shadowsOnly() {
   return fails;
 }
 
+// 4.10: the header at 1440 px in Chromium, on English and Japanese pages
+// with and without the sidebar: the section links are in the header, and
+// every item is on one line, inside the header's content box and apart from
+// its neighbours. check-css.mjs checks the widths of the switch (76rem in
+// English, 88rem in Japanese) in the built CSS.
+const HEADER_PAGES = ['/', '/guides/install/', '/ja/', '/ja/guides/install/'];
+function headerFit(cfg) {
+  const fails = [];
+  const header = document.querySelector('header.header');
+  const border = header.getBoundingClientRect();
+  const hs = getComputedStyle(header);
+  const hb = { left: border.left + parseFloat(hs.paddingLeft), right: border.right - parseFloat(hs.paddingRight) };
+  const shown = (el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
+  const nav = document.querySelector('.site-nav');
+  const navShown = shown(nav);
+  if (!navShown) fails.push(`the section links are not in the header at ${cfg.width} px`);
+  const items = [...document.querySelectorAll('.site-header > *, .site-nav a')].filter(shown);
+  for (const el of items) {
+    const b = el.getBoundingClientRect();
+    const label = (el.textContent || el.getAttribute('aria-label') || el.className).trim().replace(/\s+/g, ' ').slice(0, 24);
+    if (b.left < hb.left - 0.5 || b.right > hb.right + 0.5) fails.push(`"${label}" reaches outside the header's content box (${b.left.toFixed(1)} to ${b.right.toFixed(1)} of ${hb.left.toFixed(1)} to ${hb.right.toFixed(1)})`);
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.data.trim() || !shown(n.parentElement)) continue;
+      const range = document.createRange();
+      range.selectNodeContents(n);
+      const tops = [];
+      for (const r of range.getClientRects()) if (r.width > 0 && !tops.some((t) => Math.abs(t - r.top) < r.height / 2)) tops.push(r.top);
+      if (tops.length > 1) fails.push(`"${n.data.trim().slice(0, 24)}" takes ${tops.length} lines`);
+    }
+  }
+  const top = items.filter((el) => el.parentElement.classList.contains('site-header'));
+  for (let i = 1; i < top.length; i++) {
+    const a = top[i - 1].getBoundingClientRect(), b = top[i].getBoundingClientRect();
+    if (b.left < a.right - 0.5) fails.push(`items ${i - 1} and ${i} of the header overlap`);
+  }
+  if (document.documentElement.scrollWidth > innerWidth + 1) fails.push('the page scrolls sideways');
+  return fails;
+}
+
 async function main() {
   const opt = args();
   if (!fs.existsSync(path.join(opt.dist, 'index.html'))) throw new Error(`${opt.dist} has no index.html: run npm run build first`);
@@ -468,6 +511,7 @@ async function main() {
   let menus = 0;
   let searches = 0;
   let diagramLoads = 0;
+  let headerLoads = 0;
   const notes = [];
   const headings = [];
   const transitions = ['color', 'background-color', 'border-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'outline-color', 'text-decoration-color', 'opacity', 'transform'];
@@ -617,6 +661,21 @@ async function main() {
         loads++;
       }
     }
+    // 4.10: the header in Chromium at 1440 px, in light
+    if (engineName === 'chromium') {
+      for (const page of HEADER_PAGES) {
+        const width = PC.width;
+        const context = await browser.newContext({ viewport: { width, height: PC.height } });
+        const tab = await context.newPage();
+        await tab.goto(server.url + page, { waitUntil: 'load' });
+        if (opt.noto) await tab.addStyleTag({ content: ':root { --font-ja-faces: "Noto Sans JP Variable", "Noto Sans JP" !important; }' });
+        await tab.evaluate(() => document.fonts.ready);
+        loads++;
+        headerLoads++;
+        for (const f of await tab.evaluate(headerFit, { width })) failures.push(`${page} ${engineName} light ${width}x${PC.height} header: ${f}`);
+        await context.close();
+      }
+    }
     await browser.close();
   }
   await server.close();
@@ -638,6 +697,7 @@ async function main() {
     process.exit(1);
   }
   console.log(`check-styles: home page heading lines: ${headings.join(', ')}`);
+  if (headerLoads) console.log(`check-styles: the header with its section links on one line at ${PC.width} px: ${HEADER_PAGES.join(', ')}`);
   console.log(`check-styles: ok; ${diagramLoads} page loads with a diagram; ${loads} page loads of ${opt.pages.length} pages in ${opt.engines.join(' and ')}, light and dark, ${opt.engines.flatMap(patternsFor).map((s) => `${s.width}x${s.height}`).join(' and ')}; ${searches} with the search dialog open (results loading and loaded), ${menus} with the menu open`);
 }
 

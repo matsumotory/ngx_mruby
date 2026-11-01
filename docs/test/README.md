@@ -2478,7 +2478,8 @@ The independent browser lanes are:
 - Japanese page lines, in both patterns (below);
 - focus, language links and Lighthouse accessibility;
 - full representative screenshots, or every targeted page in both engines,
-  both themes and 320/390/1440px widths, with viewport and full-page evidence;
+  both themes, in the two patterns (Chromium 1440px and WebKit 402px), with
+  viewport and full-page evidence;
   in full coverage the same lane first runs `check-project-badges.mjs --browser`,
   the row of project badges above the heading of `/`, `/ja/`, `/v2/` and
   `/v2/ja/` in the two patterns below, light and dark, and in light with the

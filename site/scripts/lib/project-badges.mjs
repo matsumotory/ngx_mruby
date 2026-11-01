@@ -46,7 +46,7 @@ export function projectBadges(ref, lang) {
     workflow('ci'),
     workflow('codeql'),
     { ...OPENSSF_BADGE },
-    { id: 'license', href: `${REPO}/blob/${ref}/MITL`, src: LICENSE_BADGE_SRC, alt: ja ? 'MITライセンス' : 'License: MIT', width: 78, height: 20 },
+    { id: 'license', href: `${REPO}/blob/${ref}/LICENSE`, src: LICENSE_BADGE_SRC, alt: ja ? 'MITライセンス' : 'License: MIT', width: 78, height: 20 },
   ];
 }
 

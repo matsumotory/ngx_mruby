@@ -12,7 +12,9 @@
 //   and transform, for 200 ms or less, no transition-property: all, and no
 //   animation of top, left, width or height (4.8);
 // - no element with the class is-terminal on any page (4.6);
-// - no external font URL in the built CSS or HTML (4.4).
+// - no external font URL in the built CSS or HTML (4.4);
+// - the section links stand in the header from 76rem on English pages and
+//   from 88rem on Japanese pages, whose labels are longer (4.10).
 //
 //   node scripts/check-css.mjs [--dist DIR]
 import fs from 'node:fs';
@@ -142,6 +144,23 @@ function main() {
         if (long.length) report(`${long[0]} ms, over 200 ms (4.8)`);
       }
     });
+  }
+
+  // 4.10: the switch of the section links, 76rem in English and 88rem in
+  // Japanese (site.css). The layout checks measure only the two patterns of
+  // patterns.mjs, so the widths of the switch are checked here, in the CSS.
+  {
+    const found = { en: false, ja: false };
+    const minAt = (media, rem) => media.includes(`min-width:${rem}`) || media.includes(`width>=${rem}`);
+    const maxAt = (media, rem) => media.includes(`max-width:${rem}`) || media.includes(`width<=${rem}`);
+    for (const { css } of sheets) postcss.parse(css).walkRules((rule) => {
+      const media = rule.parent?.type === 'atrule' && rule.parent.name === 'media' ? rule.parent.params.replace(/\s+/g, '') : '';
+      const display = rule.nodes?.find((d) => d.prop === 'display')?.value;
+      if (rule.selector === '.site-nav' && display === 'block' && minAt(media, '76rem')) found.en = true;
+      if (/^:root\[lang="?ja"?\] \.site-nav$/.test(rule.selector) && display === 'none' && minAt(media, '76rem') && maxAt(media, '87.99rem')) found.ja = true;
+    });
+    if (!found.en) problems.push('the built CSS has no rule that shows .site-nav from 76rem (4.10)');
+    if (!found.ja) problems.push('the built CSS has no rule that keeps the section links of Japanese pages in the menu from 76rem to 87.99rem (4.10)');
   }
 
   // Component CSS: no hex outside tokens.css (4.6)
