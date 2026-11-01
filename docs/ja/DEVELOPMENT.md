@@ -45,6 +45,74 @@ cd ngx_mruby
 sh apply-clang-format
 ```
 
+## ハンドラが待つ仕組み
+
+この節は、`Nginx::Async.sleep`、`Nginx::Async::HTTP.sub_request`、`Nginx::Stream::Async.sleep`を支えるコードを説明します。`src/common/ngx_mruby_fiber.c`、`src/http/ngx_http_mruby_async.c`、`src/stream/ngx_stream_mruby_async.c`か、これらを呼ぶハンドラを変えるときに読んでください。スクリプトから見える動きは、[ブロックせずに待つ](concepts/async.md)と、リファレンスの[Nginx::Async](../class_and_method/README.md#nginxasync-class)にあります。
+
+### レコード
+
+ハンドラは、実行のたびにコードを新しいmrubyのファイバーで動かし、そのファイバーのレコードを確保します。HTTPではリクエストのプールから確保し（`ngx_http_mrb_fiber_t`）、サブリクエストはメインのリクエストのプールを使います。streamでは、セッションの接続のプールから確保します（`ngx_stream_mrb_fiber_t`）。どちらのレコードも、プロトコルに依らない部分である`src/common/ngx_mruby_fiber.h`の`ngx_mrb_fiber_t`で始まります。この部分には、ファイバー、`mrb_state`、GCのルートの保持の中のファイバーのスロット（`src/http/ngx_http_mruby_gc_roots.h`）、状態、1つのタイマーのイベントがあります。タイマーは、sleepのたびにセットし直します。
+
+- HTTPのレコードには、ほかにハンドラの種類、sleepの再開のデータ、wakeで使うpostされたリクエストのエントリ、コードが設定した結果、`Nginx.redirect`のローカルのURI、`sub_request`が返した`Nginx::Async::HTTP::Response`があります。サブリクエストのレスポンスのステータス、ヘッダ、ボディは、親のリクエストのモジュールのコンテキスト（`sub_response_*`）に置きます。
+- モジュールのコンテキストの`ctx->fiber_proc`は、いま動いている実行のレコードを指します。`ctx->wait`（HTTP）と`ctx->sleeping`（stream）は、nginxがハンドラをもう一度呼ぶのを待つレコードを指します。
+- コードの`RProc`は、コードをコンパイルするときか読み込むときに1回だけ用意します（`ngx_mrb_fiber_prepare_proc`）。実行のたびには変えません。
+
+| 状態 | 入るとき | 出るとき |
+|---|---|---|
+| `RUNNING` | ファイバーを作ったか、再開したとき | ファイバーがyieldしたとき（`WAITING`）、返ったとき（`DONE`）、例外を出したとき（`FAILED`） |
+| `WAITING` | コードがタイマーをセットするかサブリクエストをpostして、yieldしたとき | タイマーが切れるかサブリクエストが終わったとき（`READY`）、所有者が終わったとき（`CANCELLED`） |
+| `READY` | wakeのとき | ハンドラがファイバーを再開したとき（`RUNNING`）、所有者が終わったとき（`CANCELLED`） |
+| `DONE`、`FAILED` | ファイバーが終わったときで、スロットを解放する | 出ない。レコードはプールと一緒に解放する |
+| `CANCELLED` | ファイバーが`WAITING`か`READY`のときに、所有者のフックが動いたとき | 出ない。ファイバーを再開しないので、`ensure`節を含め、コードの残りは動かない |
+
+### 何が何を持つか
+
+- リクエストかセッションがレコードを持ち、レコードがスロットとタイマーを持ちます。
+- レコードが初めて待つとき、待ちをセットする前に、コードは所有者のフックを足します。HTTPではリクエストのクリーンアップで、nginxはこれをメインのリクエストに置きます。streamでは接続のプールのクリーンアップです。同じときに、postされたリクエストのエントリを確保し（HTTP）、スロットを取ります（`ngx_mrb_fiber_hold`）。失敗したときはRubyのコードで例外を出し、何もセットしません。待たない実行は、スロットを取らず、クリーンアップも足しません。
+- 所有者のフックは`ngx_mrb_fiber_cancel`を呼びます。この関数は、解放したプールの上でタイマーが切れないように、残っているタイマーを消します。次にスロットを解放し（HTTPでは`sub_request`のレスポンスのスロットも解放します）、`WAITING`か`READY`のレコードを`CANCELLED`にします。
+- スロットは1回だけ解放します。解放するのは、ファイバーが普通に終わるか例外で終わったときか、所有者のフックが動いたときです。
+
+### 再開
+
+`ngx_mrb_fiber_resume`は、ファイバーを始めるか再開し、ファイバーが待つか、返ったか、例外を出したかを返します。ほかのmrubyの呼び出しが動いているとき（`mrb->jmp`がセットされているとき）は、`mrb_protect_error`を通して再開します。レコードが`DONE`、`FAILED`、`CANCELLED`のときは、ファイバーに触れずに断ります。ファイバーが例外を出したときは、そのリクエストかセッションのために例外を1回だけログに書き、返る前に`mrb->exc`を消します。ワーカーのすべてのリクエストが`mrb_state`を共有するためです。プロトコルの部分である`ngx_mrb_run_fiber`と`ngx_stream_mrb_run_fiber`は、ファイバーが動く間だけ、いまのリクエストかセッションを設定します。HTTPではハンドラの種類も設定します。サブリクエストのレスポンスは、ファイバーの`Fiber.yield`の値として渡します。
+
+### HTTP：待ちとその終わり
+
+- `Nginx::Async.sleep`はレコードのタイマーをセットします。`Nginx::Async::HTTP.sub_request`は、メモリの中で動くサブリクエストをpostし、そのpostハンドラは`ngx_mrb_async_http_sub_request_done`です。その後、コードはyieldします。logハンドラとフィルタでは、両方とも`RuntimeError`を出します。`mruby_set`のハンドラでは、nginxがサブリクエストを待たないので、`sub_request`も`RuntimeError`を出します。
+- ハンドラは`NGX_DONE`を返し、リクエストのwriteイベントのハンドラを`ngx_http_mrb_wait_handler`にします（`ngx_http_mrb_fiber_wait_on_nginx`）。このハンドラは、レコードが`WAITING`の間はイベントを無視します。contentフェーズのチェッカーは`NGX_DONE`ごとに参照を1つ外すので、contentハンドラは先に参照を1つ取ります（`r->main->count++`）。
+- wakeはレコードを`READY`にします。タイマーのときは、`ngx_http_mrb_fiber_wake`がレコードに持つエントリでリクエストをpostし、接続のpostされたリクエストを処理します。サブリクエストのときは、postハンドラが最初の呼び出しでレスポンスをコピーします。どの呼び出しでも、`ngx_http_auth_request_done`と同じように、nginxの`rc`を変えずに返します。その後、nginxが親のリクエストを起こします。
+- `ngx_http_mrb_wait_handler`は`READY`を見ると、writeイベントのハンドラを`ngx_http_core_run_phases`に戻し、フェーズを進めます。`r->phase_handler`は動いていないので、チェッカーは同じmrubyのハンドラを呼びます。`ngx_http_mrb_fiber_call_again`は、コードを始めずにファイバーを再開します。ハンドラは、待たなかったハンドラと同じように、コードの結果を`ngx_mrb_finalize_rputs`でチェッカーへ返します。
+- レコードが`WAITING`の間にnginxがハンドラを呼ぶと、ハンドラはもう一度`NGX_DONE`を返し、コードは始まりません。contentハンドラは、このときも参照を1つ取ります。レコードが`CANCELLED`なら、ハンドラは`NGX_ERROR`を返します。
+- `mruby_set`のハンドラは、rewriteモジュールのスクリプトの中で動きます。このスクリプトは呼ばれるたびに最初のディレクティブから始まるので、nginxはこのハンドラをもう一度呼びません。代わりにwaitハンドラから`ngx_http_mrb_resume_set`がファイバーを再開し、値を変数に入れ、`r->phase_handler`を次のハンドラへ進めてフェーズを進めます。例外のときは、リクエストを500で終えます。待った後にngx_mrubyがリクエストを自分で終えるのは、この場合だけです。
+- nginxがほかのmrubyの呼び出しの中で動かすハンドラで始まった待ちは、wakeを使いません。これは、`mruby_set`のハンドラ、logハンドラ、フィルタがRubyの呼び出しの中で内部リダイレクトしたときの、リダイレクト先のロケーションのハンドラです。内部リダイレクトがハンドラのモジュールのコンテキストを置き換えた後の待ちも同じです。この場合はタイマーかpostハンドラがファイバーを自分で再開し、`ngx_mrb_post_fiber`がハンドラを終えます。そこのcontentハンドラはリクエストを保たず、サブリクエストが動いている間、ハンドラは`NGX_AGAIN`を返します。
+
+### HTTP：ハンドラの結果と`Nginx.redirect`
+
+- `Nginx.return`、`Nginx.send_header`、`Nginx.status_code=`、URLを渡した`Nginx.redirect`は、動いているファイバーのレコードに結果を保存し（`ngx_http_mrb_fiber_set_result`）、HTTPのステータスは`r->headers_out.status`にも保存します。`ngx_mrb_finalize_rputs`はレコードの結果を読みます。そのため、結果を設定しないハンドラには、前のハンドラが何を保存していても結果がありません。例外は、呼び出しの中の内部リダイレクトでリクエストを別の場所へ送ったハンドラです。このハンドラは、自分の結果が無ければ、リダイレクト先が保存したステータスを返します。
+- post_read、server rewrite、rewrite、access、contentのハンドラのうち、`ngx_mrb_post_fiber`が再開しないものでは、ローカルのURIを渡した`Nginx.redirect`がURIをレコードに保存します（`ngx_http_mrb_fiber_defer_redirect`）。ハンドラが終わると、`ngx_mrb_run_request`がハンドラの出力を捨て、呼び出しの後にコードが出力を書くかステータスを設定していれば`warn`のレベルで1行書きます。その後、`ngx_http_internal_redirect`を呼び、contentフェーズ以外では、取った参照を`ngx_http_finalize_request(r, NGX_DONE)`で外し、`NGX_DONE`を返します。この呼び出しの中でリクエストが解放されることがあるので、その後はリクエストのものを何も使いません。ほかのハンドラでは、リダイレクトは呼び出しの中で動きます。
+
+### stream：待ちとその終わり
+
+- セッションの1つのmrubyのハンドラは、accessフェーズで動きます。`Nginx::Stream::Async.sleep`はレコードのタイマーをセットして`ctx->sleeping`を設定し、ハンドラは`NGX_DONE`を返します。コードが待つ間、接続のreadのハンドラは`ngx_stream_session_handler`です。`listen ... proxy_protocol`では、このハンドラがPROXYのヘッダを読むハンドラにコードの再開まで代わり、readイベントでフェーズが進むようにします。
+- タイマーはレコードを`READY`にして、セッションのフェーズを進めます。accessフェーズのチェッカーがハンドラをもう一度呼び、`ngx_stream_mrb_fiber_call_again`がファイバーを再開します。ハンドラは、待たなかったハンドラと同じように`Nginx::Stream::Connection.stream_status`を返します。
+- レコードが`WAITING`の間にnginxがハンドラを呼ぶと、ハンドラは`NGX_DONE`を返し、コードは始まりません。UDPのセッションのデータグラムや、TCPのセッションのクライアントからのバイトがこれに当たり、バイトはコードの後のフェーズのために残ります。バイトを読むまでreadイベントを知らせ続けるイベントの方式（`select`、`poll`）では、ハンドラはコードの再開までreadイベントを消します。
+- `c->close`がセットされた接続では、`WAITING`のレコードを取り消します。nginxは、`worker_shutdown_timeout`が切れたときに`c->close`をセットします。ハンドラは`shutdown timeout`を`info`のレベルでログに書き、`NGX_STREAM_OK`を返すので、セッションが終わります。
+
+### 外から待ちを終えるもの
+
+| 出来事 | HTTP | stream |
+|---|---|---|
+| クライアントが接続を閉じる | HTTP/1.xでは、フェーズが進む間nginxはクライアントから読まないので（`ngx_http_block_reading`）、待ちは続き、コードは再開します。nginxは、レスポンスを書けないときにリクエストを終えます | TCPでは、readイベントでハンドラが動き、読まずに`NGX_DONE`を返すので、待ちは続きます。閉じたことは、コードの再開の後に分かります。UDPには閉じる操作がありません |
+| リロードかSIGQUIT | 古いワーカーは待ちを最後まで進めます。待ちのタイマーはキャンセルできないので、ワーカーはタイマーを待ちます | 同じです |
+| `worker_shutdown_timeout`が切れる | nginxがリクエストを打ち切ります。そのクリーンアップで所有者のフックが動き、タイマーを消してレコードを取り消します | ハンドラが待ちを取り消し、セッションを終えます（上記） |
+| SIGTERM | フックは動きません。サイクルのプールのクリーンアップの`mrb_close`がファイバーを解放します | 同じです |
+
+HTTP/2とHTTP/3は、まだどのテストでも確かめていません。ハーネスにそのクライアントがないためです。
+
+### テストとカウンタ
+
+このモデルを確かめるケースは、`test/t/cases/`の`async_resume_result.rb`、`async_result_isolation.rb`、`async_subrequest_return.rb`、`async_set_var.rb`、`redirect_async.rb`、`stream_async_sleep_udp_once.rb`、`stream_proxy_protocol_wait.rb`、`workers.rb`です。それぞれ`test/conf/conf.d/`に専用の設定の断片があります。`async_resume_result.rb`は、フェーズごとに待つ場合と待たない場合の終わりを比べます。`async_result_isolation.rb`は、ハンドラの結果がそのハンドラのものであることを確かめます。`workers.rb`は、リロードと`worker_shutdown_timeout`を確かめます。soakのビルド（`-DNGX_MRUBY_DEBUG_STATS`）では、`Nginx::Debug.stats`が4つの値を返し、`test/soak/soak.rb`がそれを確かめます。4つの値は、HTTP（`timers`）とstream（`stream_timers`）の残っているタイマー、スロットを持つstreamのファイバー（`stream_fibers`）、GCのルートの保持の中のファイバー（`gc_root_fibers`）です。
+
 ## 新しいバージョンのnginxをサポートする
 
 [nginx_version](../../nginx_version)と[.travis.yml](../../.travis.yml)を編集します。例は[コミット02ddb38](https://github.com/matsumotory/ngx_mruby/commit/02ddb38b68702d9abe8fb0a8c172ee1d80ad2b2d)です。

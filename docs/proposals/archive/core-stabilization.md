@@ -1,17 +1,30 @@
 # Proposal: core stabilization: one lifecycle for the fiber of a handler, and one end of the request
 
-Status: accepted, 2026-11-01. The owner decided Q1 to Q6 of section 9 on
-2026-11-01, in a session's question, each as recommended (the chosen options
-are quoted in section 9). Implementation follows the order of section 8; the
-first pull request is step 1 (tests only). Written on 2026-11-01 from
+Status: implemented, 2026-11-02: merged in
+[#712](https://github.com/matsumotory/ngx_mruby/pull/712),
+[#714](https://github.com/matsumotory/ngx_mruby/pull/714),
+[#715](https://github.com/matsumotory/ngx_mruby/pull/715),
+[#720](https://github.com/matsumotory/ngx_mruby/pull/720),
+[#722](https://github.com/matsumotory/ngx_mruby/pull/722),
+[#727](https://github.com/matsumotory/ngx_mruby/pull/727),
+[#728](https://github.com/matsumotory/ngx_mruby/pull/728) and
+[#735](https://github.com/matsumotory/ngx_mruby/pull/735); the model is
+documented in
+[docs/DEVELOPMENT.md](../../DEVELOPMENT.md#how-a-handler-waits-the-record-of-its-fiber),
+and what scripts see in [docs/concepts/async.md](../../concepts/async.md),
+in the reference ([Nginx::Async](../../class_and_method/README.md#nginxasync-class),
+[Nginx.return](../../class_and_method/README.md#nginxreturnnginx_status_code),
+[Nginx.redirect](../../class_and_method/README.md#nginxredirecturl_or_internal_location-http_statusnginxhttp_moved_temporarily),
+[mruby_set](../../directives/README.md#mruby_set-and-mruby_set_code)), in the
+[migration guide](../../migration/README.md) and in the entries of
+[the 3.0.0 release notes](../../releases/v3.0.0.md). Section 12 lists where
+the implementation differs from the design below, and the parts of sections
+6 and 7 that were not made. The owner decided Q1 to Q6 of section 9 on
+2026-11-01, in a session's question, each as recommended (the chosen
+options are quoted in section 9). The design was written on 2026-11-01 from
 `next` at `a654a37f6`, `master` at `6eae5a2df`, and the source of nginx 1.31.8 (the version in
-`nginx_version`). The owner chose on 2026-11-01, in a session's question, to
-extend the test harness first and then to go on to the core stabilization,
-the rework of the lifetime of fibers and of the end of the response (the row
-on step 4 under "Queue" in [docs/HANDOFF.md](../HANDOFF.md) quotes the
-option); [#706](https://github.com/matsumotory/ngx_mruby/pull/706) made the
-extension. This proposal is the design for the rows of step 4 of section 6 of
-[the v3 plan](v3-plan.md) on the fiber lifecycle, the response finalization,
+`nginx_version`). This proposal is the design for the rows of step 4 of section 6 of
+[the v3 plan](../v3-plan.md) on the fiber lifecycle, the response finalization,
 the common layer and the execution context, as far as they decide how a
 handler that waits ends. It changes no code. Line numbers are those of the
 commits above; statements marked "unverified" come from reading the code and
@@ -155,7 +168,7 @@ describes that code, and section 4 proposes one model for all three.
     the request ends without a response (unverified);
   - a rewrite handler that sets no result ends the request without a
     response with or without a sleep: the queue row on it in
-    [docs/HANDOFF.md](../HANDOFF.md) and decision (b) of 2026-10-04 (section
+    [docs/HANDOFF.md](../../HANDOFF.md) and decision (b) of 2026-10-04 (section
     3).
 - The subrequest: nginx calls the post handler
   `ngx_mrb_async_http_sub_request_done` (`src/http/ngx_http_mruby_async.c:469-516`)
@@ -168,13 +181,13 @@ describes that code, and section 4 proposes one model for all three.
   parent's handler run as one call.
 - In a content handler that has slept, `sub_request` raises a `RuntimeError`
   since 2.7.3 (`:534-542`), because nothing would finalize the request after
-  the subrequest (entry 2 of [the 2.7.3 release notes](../releases/v2.7.3.md)).
+  the subrequest (entry 2 of [the 2.7.3 release notes](../../releases/v2.7.3.md)).
   The content handler's write event handler ignores events while it waits,
   and nginx would run that handler when the subrequest ends.
 - `Nginx::Async::HTTP.sub_request` in an `mruby_set` handler does not make
   nginx wait: the request goes on while the subrequest runs, and an
   exception after it leaves the client without a response
-  ([docs/class_and_method/README.md](../class_and_method/README.md#nginxrputsstring),
+  ([docs/class_and_method/README.md](../../class_and_method/README.md#nginxrputsstring),
   under `Nginx.rputs`).
 
 ### 2.4 HTTP: `Nginx.redirect` with a local URI
@@ -191,7 +204,7 @@ takes a reference to the request and returns `NGX_DONE` (nginx
 `src/http/ngx_http_core_module.c:2666-2670`); `Nginx.redirect` drops the
 return value, and the calling handler goes on after the call and returns its
 own result. Two handlers can then answer one request. The three queue rows
-on `Nginx.redirect` in [docs/HANDOFF.md](../HANDOFF.md) are the cases found
+on `Nginx.redirect` in [docs/HANDOFF.md](../../HANDOFF.md) are the cases found
 so far:
 
 - a rewrite handler of the target sleeps while the calling handler answers:
@@ -254,7 +267,7 @@ so far:
 
 ### 2.7 The known gaps
 
-From the queue of [docs/HANDOFF.md](../HANDOFF.md) and from the reading
+From the queue of [docs/HANDOFF.md](../../HANDOFF.md) and from the reading
 above:
 
 1. A rewrite handler that ends without `Nginx.return` sends no response
@@ -286,7 +299,7 @@ above:
 ## 3. What binds the design
 
 The owner decided the design principles on 2026-10-04 ("Design principles"
-in [AGENTS.md](../../AGENTS.md)): one `mrb_state` per worker, shared by the
+in [AGENTS.md](../../../AGENTS.md)): one `mrb_state` per worker, shared by the
 requests of that worker; no blocking; keep the existing performance;
 measure performance regularly. For this proposal they mean:
 
@@ -309,7 +322,7 @@ The decisions that bind it, all on `next`:
   `Nginx.return` goes on to the next phase on `next`, as with
   `NGX_DECLINED`; (c) amended on 2026-10-29: the rewrite of how resumed
   handlers end lands on `next`, in the core stabilization of 3.0.0 (item 15
-  of section 7 of the plan). [docs/HANDOFF.md](../HANDOFF.md), "Decisions",
+  of section 7 of the plan). [docs/HANDOFF.md](../../HANDOFF.md), "Decisions",
   records (a) and (b) until their work writes them in the plan.
 - Item 15 of section 7 of the plan: the content handler of a subrequest that
   returns `Nginx::HTTP_OK` without output keeps answering 500, so that
@@ -503,7 +516,7 @@ resumes the fiber itself.
   end after the sleep the same. Today a status after the sleep ends the
   request with that status (2.3; item 9 of section 5).
 - An exception after the sleep answers 500, as today and as
-  [docs/class_and_method/README.md](../class_and_method/README.md#nginxrputsstring)
+  [docs/class_and_method/README.md](../../class_and_method/README.md#nginxrputsstring)
   documents: the wait handler calls `ngx_http_finalize_request(r,
   NGX_HTTP_INTERNAL_SERVER_ERROR)`. This is the one place where ngx_mruby
   ends a request after a wait, because no phase checker is left to do it:
@@ -639,7 +652,7 @@ with every line of the template. "Before" is 2.7.3 and `next` at
     on every run.
 
 The behavior that 2.x promised and that stays: the entries 2, 3 and 4 of
-[the 2.7.3 release notes](../releases/v2.7.3.md) (a content handler answers
+[the 2.7.3 release notes](../../releases/v2.7.3.md) (a content handler answers
 after its sleep, an exception in a redirect target stops at its handler, a
 stream session goes on or ends after a sleep by its result), their Fixes on
 #645 and #698 (no timer on a freed pool, each fiber kept from the GC), the
@@ -889,7 +902,75 @@ already decide, and Q6 extends this to server rewrite handlers.
 ## 11. Security review
 
 The owner wants the same eyes on this code that found the advisories of
-section 1. The security session reviewed this proposal on 2026-11-01, before
-the first implementation pull request, and reviews each implementation pull
-request before it is merged. A finding goes to the process of [SECURITY.md](../../SECURITY.md),
-not into a pull request or this file.
+section 1. A finding on this code goes to the process of
+[SECURITY.md](../../../SECURITY.md), not into a pull request or this file.
+The two advisories of 2.7.3 in section 1,
+[GHSA-86wx-fcwx-m3vh](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-86wx-fcwx-m3vh)
+and
+[GHSA-8r78-rxqq-5gp5](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-8r78-rxqq-5gp5),
+were published on 2026-11-01, before the first implementation pull request.
+The advisory published on this code while it was implemented is
+[GHSA-xjh6-6vgm-56wj](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-xjh6-6vgm-56wj)
+(2.7.4, 2026-11-02): the reads of a stream session whose code waits in
+`Nginx::Stream::Async.sleep` on a `listen ... proxy_protocol`, and
+`proxy_protocol_addr` for a connection without a PROXY source address. On
+`next`, its two entries are in [the 3.0.0 release notes](../../releases/v3.0.0.md),
+and `test/t/cases/stream_proxy_protocol_wait.rb` covers both.
+
+## 12. Where the implementation differs
+
+The pull requests of section 8 made the model of section 4 with these
+differences, read from `next` at `f5362fffa`. The documents named in the
+Status line describe the implementation.
+
+- The record (4.1) is allocated for each run of a handler, from the request
+  pool (a subrequest uses the pool of its main request) or from the
+  connection pool, not once per request and reused by the later handlers.
+  A run that never waits allocates its record, but takes no slot and adds
+  no cleanup.
+- The status, the headers and the body of a subrequest's response (4.1,
+  4.4) are kept in the module context of the parent request
+  (`sub_response_status`, `sub_response_headers`, `sub_response_body`), not
+  in the record. The record keeps whether the response came
+  (`has_response`) and the `Nginx::Async::HTTP::Response` that
+  `sub_request` returned, in a slot of the GC root holder until the fiber
+  ends.
+- The function of the common layer (4.5), `ngx_mrb_fiber_resume`, resumes
+  the fiber, logs an exception once and clears `mrb->exc`. The protocol
+  parts (`ngx_mrb_run_fiber`, `ngx_stream_mrb_run_fiber`) set the current
+  request or session and the handler kind, and pass the response of a
+  subrequest to `Fiber.yield`.
+- `ngx_mrb_post_fiber`, which ends a handler after a wait in place of the
+  phase checker, stays for one case (4.4): a wait that starts in a handler
+  that nginx runs inside another mruby call (`mrb->jmp` is set: the
+  location of an internal redirect that an `mruby_set` handler, a log
+  handler or a filter makes inside the Ruby call), or after an internal
+  redirect replaced the module context of the handler. The timer or the end
+  of the subrequest resumes such a fiber itself and ends its handler there,
+  a content handler there does not keep the request, and the handler
+  returns `NGX_AGAIN` while its subrequest runs. The stream copy of the
+  checker (`ngx_stream_mrb_post_fiber`) is gone.
+- `Nginx.redirect` with a local URI (4.8) takes effect when the handler ends
+  in post_read, server rewrite, rewrite, access and content handlers. In
+  `mruby_set` handlers, log handlers and filters, and in a handler that
+  `ngx_mrb_post_fiber` resumes, it still redirects inside the call. A
+  handler without a result whose request such a redirect sent elsewhere
+  returns the status that the target stored in `r->headers_out.status`
+  (4.6).
+- While a stream handler waits (4.4), the read handler of the connection is
+  `ngx_stream_session_handler`, also on a `listen ... proxy_protocol`, whose
+  reader of the PROXY header it replaces until the code resumes, so that a
+  read event finds the waiting record. With the event methods that report
+  a read event until the bytes are read (`select`, `poll`), the handler
+  deletes the read event until the code resumes.
+- Of the cases of section 6, `async_sleep_many.rb` (a handler that sleeps
+  1,000 times) was not added. Q4 is tested in a case file of its own,
+  `test/t/cases/stream_async_sleep_udp_once.rb` (ten datagrams during the
+  sleep, one run of the code), instead of an extension of
+  `stream_async_sleep_udp_reuse.rb`, and
+  `test/t/cases/stream_proxy_protocol_wait.rb` covers a stream wait on
+  `proxy_protocol` and at `worker_shutdown_timeout`.
+- Of section 7, the soak lane has no stream scenario yet that reads
+  `stream_timers` and `stream_fibers` of `Nginx::Debug.stats` (#714 added
+  the counters, and `test/soak/soak.rb` expects the keys), and the perf lane
+  has no stream scenario.

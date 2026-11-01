@@ -102,6 +102,190 @@ cd ngx_mruby
 sh apply-clang-format
 ```
 
+## How a handler waits: the record of its fiber
+
+This section describes the code behind `Nginx::Async.sleep`,
+`Nginx::Async::HTTP.sub_request` and `Nginx::Stream::Async.sleep`, for a
+change to `src/common/ngx_mruby_fiber.c`, `src/http/ngx_http_mruby_async.c`,
+`src/stream/ngx_stream_mruby_async.c` or the handlers that call them. What
+a script sees is in [Waiting without blocking](concepts/async.md) and in
+the reference of [Nginx::Async](class_and_method/README.md#nginxasync-class).
+
+### The record
+
+Each run of a handler runs its code in a new mruby fiber, and allocates a
+record for it: from the request pool in HTTP (`ngx_http_mrb_fiber_t`; a
+subrequest uses the pool of its main request), and from the connection
+pool of the session in stream (`ngx_stream_mrb_fiber_t`). Both begin with
+the part that does not depend on the protocol, `ngx_mrb_fiber_t` in
+`src/common/ngx_mruby_fiber.h`: the fiber, the `mrb_state`, the slot of the
+fiber in the GC root holder (`src/http/ngx_http_mruby_gc_roots.h`), the
+state, and one timer event, which each sleep arms again.
+
+- The HTTP record also holds the handler kind, the data of the resume of
+  a sleep, the entry of the posted request of the wake, the result that the
+  code set, the local URI of `Nginx.redirect`, and the
+  `Nginx::Async::HTTP::Response` that `sub_request` returned. The status,
+  the headers and the body of the subrequest's response are in the module
+  context of the parent request (`sub_response_*`).
+- `ctx->fiber_proc` of the module context points at the record of the
+  current run. `ctx->wait` (HTTP) and `ctx->sleeping` (stream) point at a
+  record that waits for nginx to call its handler again.
+- The `RProc` of the code is prepared once, when the code is compiled or
+  loaded (`ngx_mrb_fiber_prepare_proc`), not on every run.
+
+| State | Entered when | Left when |
+|---|---|---|
+| `RUNNING` | the fiber is created, or resumed | the fiber yields (`WAITING`), returns (`DONE`) or raises (`FAILED`) |
+| `WAITING` | the code armed a timer or posted a subrequest and yielded | the timer fires or the subrequest ends (`READY`), or the owner ends (`CANCELLED`) |
+| `READY` | the wake | the handler resumes the fiber (`RUNNING`), or the owner ends (`CANCELLED`) |
+| `DONE`, `FAILED` | the fiber ended; its slot is freed | never: the record is freed with its pool |
+| `CANCELLED` | the owner hook ran while the fiber was `WAITING` or `READY` | never: the fiber is not resumed, so the rest of its code, an `ensure` clause included, does not run |
+
+### Who owns what
+
+- The request or the session owns the record, and the record owns its slot
+  and its timer.
+- At the first wait of a record, before the wait is armed, the code adds
+  the owner hook (a request cleanup in HTTP, which nginx keeps on the main
+  request; a connection pool cleanup in stream), allocates the entry of the
+  posted request (HTTP), and takes the slot (`ngx_mrb_fiber_hold`). A
+  failure raises in the Ruby code with nothing armed. A run that never
+  waits takes no slot and adds no cleanup.
+- The owner hook calls `ngx_mrb_fiber_cancel`: it deletes a pending timer,
+  so that no timer fires on a freed pool, frees the slot (in HTTP also the
+  slot of the response of `sub_request`), and marks a `WAITING` or `READY`
+  record `CANCELLED`.
+- The slot is freed when the fiber ends, normally or with an exception, or
+  by the owner hook, once.
+
+### The resume
+
+`ngx_mrb_fiber_resume` starts or resumes the fiber, through
+`mrb_protect_error` when another mruby call runs (`mrb->jmp` is set), and
+returns whether the fiber waits, returned, or raised. It refuses a record
+that is `DONE`, `FAILED` or `CANCELLED` without touching its fiber. When
+the fiber raised, it logs the exception once, for its request or session,
+and clears `mrb->exc` before it returns, because all requests of the worker
+share the `mrb_state`. The protocol parts, `ngx_mrb_run_fiber` and
+`ngx_stream_mrb_run_fiber`, set the current request or session and, in
+HTTP, the handler kind for the time the fiber runs, and pass the response
+of a subrequest as the value of its `Fiber.yield`.
+
+### HTTP: a wait and its end
+
+- `Nginx::Async.sleep` arms the timer of the record, and
+  `Nginx::Async::HTTP.sub_request` posts an in-memory subrequest whose post
+  handler is `ngx_mrb_async_http_sub_request_done`; then the code yields.
+  Both raise a `RuntimeError` in a log handler or a filter, and
+  `sub_request` also in an `mruby_set` handler, because nginx does not wait
+  for that subrequest.
+- The handler returns `NGX_DONE` and sets the write event handler of the
+  request to `ngx_http_mrb_wait_handler`, which ignores events while the
+  record is `WAITING` (`ngx_http_mrb_fiber_wait_on_nginx`). A content
+  handler first takes a reference to the request (`r->main->count++`),
+  because the content checker drops one for each `NGX_DONE`.
+- The wake marks the record `READY`. For the timer,
+  `ngx_http_mrb_fiber_wake` also posts the request with the entry kept in
+  the record and runs the posted requests of the connection. For a
+  subrequest, the first call of the post handler copies the response, and
+  every call returns nginx's `rc` unchanged, as
+  `ngx_http_auth_request_done` does; nginx then wakes the parent.
+- `ngx_http_mrb_wait_handler` sees `READY`, sets the write event handler
+  back to `ngx_http_core_run_phases` and runs the phases. `r->phase_handler`
+  did not move, so the checker calls the same mruby handler, and
+  `ngx_http_mrb_fiber_call_again` resumes the fiber instead of starting the
+  code. The handler then returns the result of the code to the checker
+  through `ngx_mrb_finalize_rputs`, as a handler that did not wait does.
+- nginx calling the handler while its record is `WAITING` gets `NGX_DONE`
+  again (a content handler takes another reference), and the code does not
+  start again. A record that is `CANCELLED` makes the handler return
+  `NGX_ERROR`.
+- An `mruby_set` handler runs inside the script of the rewrite module, which
+  starts the script from its first directive on each call, so nginx does not
+  call it again. `ngx_http_mrb_resume_set`, from the wait handler, resumes
+  the fiber, assigns the value to the variable, moves `r->phase_handler` to
+  the next handler and runs the phases. After an exception it finalizes the
+  request with 500, the one end after a wait that ngx_mruby makes itself.
+- A wait that starts in a handler that nginx runs inside another mruby call
+  (the location of an internal redirect that an `mruby_set` handler, a log
+  handler or a filter makes inside the Ruby call), or after an internal
+  redirect replaced the module context of the handler, does not use the
+  wake. The timer or the post handler resumes the fiber itself, and
+  `ngx_mrb_post_fiber` ends the handler; a content handler there does not
+  keep the request, and the handler returns `NGX_AGAIN` while its
+  subrequest runs.
+
+### HTTP: the result of a handler and `Nginx.redirect`
+
+- `Nginx.return`, `Nginx.send_header`, `Nginx.status_code=` and
+  `Nginx.redirect` with a URL store the result in the record of the fiber
+  that runs (`ngx_http_mrb_fiber_set_result`), and an HTTP status also in
+  `r->headers_out.status`. `ngx_mrb_finalize_rputs` reads the result of the
+  record, so a handler that sets none has no result, whatever an earlier
+  handler of the request stored. The exception is a handler whose request
+  an internal redirect inside the call sent elsewhere: without a result of
+  its own, it returns the status that the target stored.
+- `Nginx.redirect` with a local URI, in a post_read, server rewrite,
+  rewrite, access or content handler that `ngx_mrb_post_fiber` does not
+  resume, keeps the URI in the record (`ngx_http_mrb_fiber_defer_redirect`).
+  When the handler has ended, `ngx_mrb_run_request` drops its output, logs
+  a line at the `warn` level when the code wrote output or set a status
+  after the call, calls `ngx_http_internal_redirect`, drops the reference
+  that it took with `ngx_http_finalize_request(r, NGX_DONE)` in every phase
+  but content, and returns `NGX_DONE`. The request can be freed in that
+  call, so nothing of it is used afterwards. In the other handlers the
+  redirect runs inside the call.
+
+### Stream: a wait and its end
+
+- The one mruby handler of a session runs in the access phase.
+  `Nginx::Stream::Async.sleep` arms the timer of the record and sets
+  `ctx->sleeping`, and the handler returns `NGX_DONE`. While the code
+  waits, the read handler of the connection is `ngx_stream_session_handler`:
+  on a `listen ... proxy_protocol` it replaces the reader of the PROXY
+  header until the code resumes, so that a read event runs the phases.
+- The timer marks the record `READY` and runs the phases of the session.
+  The access checker calls the handler again, and
+  `ngx_stream_mrb_fiber_call_again` resumes the fiber; the handler returns
+  `Nginx::Stream::Connection.stream_status`, as a handler that did not wait
+  does.
+- nginx calling the handler while its record is `WAITING` (a datagram of a
+  UDP session, bytes from the client of a TCP session) gets `NGX_DONE`, and
+  the code does not start again; the bytes stay for the phase after the
+  code. With the event methods that report a read event until the bytes are
+  read (`select`, `poll`), the handler deletes the read event until the
+  code resumes.
+- A `WAITING` record of a connection with `c->close` set (nginx sets it when
+  `worker_shutdown_timeout` expires) is cancelled: the handler logs
+  `shutdown timeout` at the `info` level and returns `NGX_STREAM_OK`, so the
+  session ends.
+
+### What ends a wait from outside
+
+| Event | HTTP | Stream |
+|---|---|---|
+| The client closes the connection | HTTP/1.x: nginx does not read from the client while the phases run (`ngx_http_block_reading`), so the wait goes on and the code resumes; nginx ends the request when it cannot write the response | TCP: the read event runs the handler, which returns `NGX_DONE` without reading, so the wait goes on, and the close is seen after the code resumes. UDP: no close |
+| A reload or SIGQUIT | the old worker finishes the waits: their timers are not cancelable, so the worker waits for them | the same |
+| `worker_shutdown_timeout` expires | nginx terminates the request; its cleanup runs the owner hook, which deletes the timer and cancels the record | the handler cancels the wait and ends the session (above) |
+| SIGTERM | no hook runs; `mrb_close` in the cleanup of the cycle pool frees the fibers | the same |
+
+No test covers HTTP/2 or HTTP/3 yet: the harness has no client for them.
+
+### Tests and counters
+
+The cases that pin this model, each with a fragment of its own in
+`test/conf/conf.d/`: `async_resume_result.rb` (the same end with and
+without a wait, per phase), `async_result_isolation.rb` (the result of a
+handler is its own), `async_subrequest_return.rb`, `async_set_var.rb`,
+`redirect_async.rb`, `stream_async_sleep_udp_once.rb`,
+`stream_proxy_protocol_wait.rb` and `workers.rb` (reloads and
+`worker_shutdown_timeout`), all in `test/t/cases/`. The soak build
+(`-DNGX_MRUBY_DEBUG_STATS`) reports in `Nginx::Debug.stats` the pending
+timers of HTTP (`timers`) and of stream (`stream_timers`), the stream
+fibers that hold a slot (`stream_fibers`), and the fibers in the GC root
+holders (`gc_root_fibers`); `test/soak/soak.rb` checks them.
+
 ## Adding newer version nginx support
 
 Edit [nginx_version](../nginx_version) and [.travis.yml](../.travis.yml).

@@ -28,9 +28,11 @@ resume: nginxが<wbr>ハンドラを<wbr>もう一度<wbr>呼び、<wbr>ハン�
 - 3.0.0から、contentハンドラは`Nginx::Async.sleep`の後でも`Nginx::Async::HTTP.sub_request`を待てます。2.7.3は、ここで`RuntimeError`を出します。
 - 3.0.0から、`mruby_set`では`Nginx::Async::HTTP.sub_request`が`RuntimeError`を出します。nginxは、rewriteモジュールのスクリプトのサブリクエストを待たないためです。2.xでは、nginxは変数を待たずにcontentフェーズへ進みました。
 - ヘッダフィルタ、ボディフィルタ、logハンドラでは、両メソッドが`RuntimeError`を起こします。
+- `Nginx::Stream::Async.sleep`も、streamのセッションのコード（`mruby_stream`、`mruby_stream_code`）で同じように待ちます。タイマーが切れると、nginxがaccessフェーズのハンドラをもう一度呼び、ハンドラがファイバーを再開します。セッションは、コードの結果に従って先へ進みます。セッションはコードを1回だけ実行します。待つ間に届いたUDPのセッションのデータグラムや、TCPのセッションのクライアントからのバイトで、コードがもう一度始まることはありません。
+- コードが待つ間にクライアントが接続を閉じても、コードは先へ進みます。nginxは、ハンドラが動く間はHTTP/1.xのリクエストのクライアントから読まず、コードが待つ間はstreamのセッションのクライアントからも読みません。閉じたことは、レスポンスを書くときか、コードの再開の後に分かります。待つ間にnginxがリクエストかセッションを終えると、ファイバーは再開しません。シャットダウン中のワーカーで`worker_shutdown_timeout`が切れたときがその例で、待ちの後のコードは`ensure`節も含めて動きません。リロードでは、古いワーカーが処理中の待ちを最後まで進めてから終わります。
 - mruby-sleepの`sleep`、mruby-socketのソケット、ファイル、シェルのコマンド、Redisの呼び出しで待つコードは、その間ワーカーをブロックします。詳しくは[信頼境界](../../security/trust-boundary.md)にあります。
 
-リファレンスの[Nginx::Async](../../class_and_method/README.md#nginxasync-class)に、両方のメソッドの説明があります。
+リファレンスの[Nginx::Async](../../class_and_method/README.md#nginxasync-class)に、両方のメソッドの説明があります。ngx_mrubyがハンドラのファイバーをどう保ち、再開し、取り消すかは、開発者向けの[ハンドラが待つ仕組み](../DEVELOPMENT.md#ハンドラが待つ仕組み)にあります。
 
 関連する制約の資料：
 

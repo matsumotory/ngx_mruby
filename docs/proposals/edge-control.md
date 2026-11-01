@@ -41,7 +41,7 @@ supports this interaction without copying domain policy into its routing layer.
    separate bounded worker facility, not network I/O from the log handler.
 
 Reuse the execution-context work and phase validity of
-[core stabilization](core-stabilization.md), plus the shared dictionary, JSON
+[core stabilization](archive/core-stabilization.md), plus the shared dictionary, JSON
 field reader, worker timers, sockets and provider-transport work of
 [the v3 plan](v3-plan.md#agent-proxy-the-v30-use-case). Prefer nginx `map`,
 `limit_req` and `limit_conn` where a fixed configuration is enough. New APIs need
