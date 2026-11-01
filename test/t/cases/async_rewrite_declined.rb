@@ -1,5 +1,5 @@
-# A rewrite handler that returns Nginx::DECLINED after Nginx::Async.sleep,
-# followed by an access handler that sets no status.
+# A rewrite or access handler that returns Nginx::DECLINED after Nginx::Async.sleep,
+# followed by a later mruby handler that sets no status.
 # Config: test/conf/conf.d/82-async-rewrite-declined.conf (port 18187).
 
 t = SimpleTest.new "ngx_mruby test: a rewrite handler that declines after Nginx::Async.sleep"
@@ -23,6 +23,16 @@ t.assert('async', 'a rewrite handler that declines after the sleep lets nginx se
   t.assert_equal 'EOF', status
   t.assert_equal 'HTTP/1.1 200 OK', line
   t.assert_equal "static after a rewrite handler that declined\n", body
+end
+
+t.assert('async', 'an access handler that declines after the sleep answers as without the sleep, not 500, when the content handler sets nothing') do
+  status, raw = tcp_client(18187, "GET /access_declined_then_nothing HTTP/1.0\r\nHost: localhost\r\n\r\n")
+  line, = async_rewrite_declined_split(raw)
+  _, raw_without = tcp_client(18187, "GET /access_declined_without_sleep_then_nothing HTTP/1.0\r\nHost: localhost\r\n\r\n")
+  line_without, = async_rewrite_declined_split(raw_without)
+  t.assert_equal 'EOF', status
+  t.assert_not_equal 'HTTP/1.1 500 Internal Server Error', line
+  t.assert_equal line_without, line
 end
 
 t.report
