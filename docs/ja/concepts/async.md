@@ -24,7 +24,7 @@ resume: nginxが<wbr>ハンドラを<wbr>もう一度<wbr>呼び、<wbr>ハン�
 - `Nginx::Async::HTTP.sub_request`は、nginxのサブリクエストを始めてファイバーを中断します。サブリクエストが終わると、nginxがリクエストを起こしてハンドラをもう一度呼び、ハンドラがファイバーを再開します。`sub_request`は、そのファイバーにレスポンスを返します。
 - `mruby_set`とpost-read、server rewrite、rewrite、access、contentのハンドラは待機して再開できます。中断したハンドラは`NGX_DONE`を返します。
 - 2.7.3の修正以降、nginxは`Nginx::Async.sleep`で待つcontentハンドラのリクエストを保持します。3.xもこの修正を含みます。コードの応答や戻り値のステータスでリクエストが完了します。2.7.2までは、sleepの時点で応答せずにリクエストが終わりました。
-- Rubyの`Nginx.redirect`から呼ばれたcontentハンドラには、sleep時点で終了する制限が残ります。呼び出し元も処理を続け、その場で応答する場合があります。
+- 3.0.0から、`Nginx.redirect`は呼び出したハンドラが終わったときに効くので、リダイレクト先のハンドラも待てます。
 - 3.0.0から、contentハンドラは`Nginx::Async.sleep`の後でも`Nginx::Async::HTTP.sub_request`を待てます。2.7.3は、ここで`RuntimeError`を出します。
 - `mruby_set`のサブリクエストはリクエストを保持しません。変数の完了を待たず、nginxはcontentフェーズへ進みます。
 - ヘッダフィルタ、ボディフィルタ、logハンドラでは、両メソッドが`RuntimeError`を起こします。

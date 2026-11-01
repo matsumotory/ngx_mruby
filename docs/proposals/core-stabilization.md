@@ -778,7 +778,8 @@ each bug fix comes as a test commit and a fix commit.
 6. Stream: the wake and the second call of the handler (gap 9, Q4),
    and the end on `c->close` (gap 10). Merged in
    [#727](https://github.com/matsumotory/ngx_mruby/pull/727).
-7. `Nginx.redirect` as Q2 decided (gap 6).
+7. `Nginx.redirect` as Q2 decided (gap 6). Merged in
+   [#728](https://github.com/matsumotory/ngx_mruby/pull/728).
 8. `mruby_set` as Q5 decided (gap 7).
 
 Steps 3 to 8 depend on 2; 4 to 8 do not depend on each other, except that 5
