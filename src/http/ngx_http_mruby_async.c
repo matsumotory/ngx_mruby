@@ -252,7 +252,11 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
   // re->r is the current request only until this function returns (see ngx_mrb_run())
   prev_r = ngx_mrb_get_request();
 
-  if (re->fiber != NULL) {
+  // A record whose owner hook has run (CANCELLED) holds no slot any more,
+  // so its fiber is not resumed. The timer of a cancelled record is deleted;
+  // this guards the end of a subrequest that nginx reports after the request
+  // cleanups of its main request ran.
+  if (re->fiber != NULL && ((ngx_mrb_fiber_t *)re->fiber)->state != NGX_MRB_FIBER_CANCELLED) {
     // the handler that runs the fiber, for ngx_mrb_finalize_rputs below; read
     // before re->fiber is cleared
     kind = ((ngx_http_mrb_fiber_t *)re->fiber)->kind;
