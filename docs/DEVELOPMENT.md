@@ -240,8 +240,8 @@ The owner checks that all of these hold and gives the go before step 1:
    "Review and merge" in [AGENTS.md](../AGENTS.md#review-and-merge) hold, as
    for every pull request, and only after the owner has given the go-ahead
    that day for the release of step 6 right after it, so that `master` is
-   not an untagged 3.x line in between. It has no conflicts, because step 1 merged `master`
-   into `next`. `master` stays the default branch; nothing about the default
+   not an untagged 3.x line in between. It has no conflicts, because step 1
+   merged `master` into `next`. `master` stays the default branch; nothing about the default
    branch changes. Right before the merge, the owner changes the deployment
    branch rule of the `github-pages` environment from `next` to `master`
    (Settings, Environments, `github-pages`, "Deployment branches"), so that
