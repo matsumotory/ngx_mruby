@@ -551,10 +551,16 @@ void ngx_http_mrb_fiber_wait_on_nginx(ngx_http_request_t *r, ngx_http_mruby_ctx_
     f->posted = ngx_palloc(r->pool, sizeof(ngx_http_posted_request_t));
     if (f->posted == NULL) {
       // the timer resumes the fiber itself, as before the wake
-      // (ngx_mrb_post_fiber)
+      // (ngx_mrb_post_fiber); a content handler keeps its request for it as
+      // it did then
       ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                     "%s ERROR %s:%d: failed to allocate the posted request of the wake", MODULE_NAME, __func__,
                     __LINE__);
+      if (f->kind == NGX_HTTP_MRUBY_HANDLER_CONTENT) {
+        r->main->count++;
+        r->write_event_handler = ngx_http_request_empty_handler;
+        ctx->async_content_waiting = 1;
+      }
       return;
     }
   }
