@@ -1664,8 +1664,8 @@ mrb_state, which `src/http/ngx_http_mruby_core.c` counts in
 `mrb_gc_register` and
 `mrb_gc_unregister` as macros that call the mruby function and then count
 the call, so every call in a source file that includes the header is
-counted, including a call added later. A `.c` file in `src/http/` or
-`src/stream/` that calls either function must therefore include
+counted, including a call added later. A `.c` file in `src/http/`,
+`src/stream/` or `src/common/` that calls either function must therefore include
 `ngx_http_mruby_debug.h`; `test/soak/run.sh` checks this before it builds
 and stops otherwise. Without the define, the header defines no macro and the
 calls go to mruby directly.
