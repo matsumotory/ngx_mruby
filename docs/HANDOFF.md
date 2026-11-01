@@ -1,10 +1,12 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (02:45 JST)
+## State as of 2026-11-02 (03:41 JST)
 
-- Heads: `next` is `0f7ad0b96`, the merge of
+- Heads: `next` is `3dfe8d05f`, the merge of
+  [#734](https://github.com/matsumotory/ngx_mruby/pull/734) (`master` at
+  `0f865ed4a`), after `0f7ad0b96`, the merge of
   [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (step 7 of the
-  core stabilization, 02:33 JST), after `7a0076e58`, the merge of
+  core stabilization, 02:33 JST), `7a0076e58`, the merge of
   [#733](https://github.com/matsumotory/ngx_mruby/pull/733) (the
   should-fix items of the review of #729), and `d70481db6`, the merge of
   [#732](https://github.com/matsumotory/ngx_mruby/pull/732) (the advisory
@@ -65,8 +67,13 @@
   owner's decision of 2026-11-02 that a session publishes the release
   after the owner's go-ahead, written into AGENTS.md, CLAUDE.md,
   `docs/releases/README.md` and `docs/DEVELOPMENT.md`.
-- Open: [#734](https://github.com/matsumotory/ngx_mruby/pull/734), the merge
-  of `master` at `0f865ed4a` into `next` (base `next`).
+- [#734](https://github.com/matsumotory/ngx_mruby/pull/734), the merge of
+  `master` at `0f865ed4a` into `next`, is merged (`3dfe8d05f`).
+- Open: [#737](https://github.com/matsumotory/ngx_mruby/pull/737) (base
+  `next`): `site.yml` runs on the push to `next` only, without the
+  browser lanes, and `npm run check:ci` in `site/` runs its checks and
+  every browser check locally (the owner's decision of 2026-11-02 under
+  "Decisions").
 
 ## How to use this file
 
@@ -187,6 +194,25 @@ session that was not kept from the GC, is fixed before the tag
 ([#698](https://github.com/matsumotory/ngx_mruby/pull/698)). Both are
 carried out: 2.7.3 has #698, and the advisory is published. Nothing is
 written elsewhere for them.
+
+On 2026-11-02 (02:50 to 02:58 JST) the owner added to that rule:
+「ciにたよるのはやめてくれ、それが今ボトルネックになってるしコストも時間もかかる、ローカルでテストをしっかり作れてるならciは最低限で良い。環境がたくさんいるような環境網羅的なciはいいけも、ローカルでやってることをciでも過剰でやって時間とコストかけるのはグローバルルールとしても辞めたい」
+(stop relying on CI, which is now the bottleneck and costs money and time;
+when the local tests are thorough, CI is the minimum; CI that covers many
+environments is fine, but repeating in CI what runs locally is to stop),
+and chose, in a session's question, the option
+「PR では流さず、next への push の時だけ (推奨)」: pull requests do not run
+`site.yml`; the push to `next` runs its build, deploy and check of the
+published site, without the browser lanes, which the local
+`npm run check:ci` replaces; when the base moves, CI runs again only when
+`code` or `tests` changed in both the pull request and the base; the
+build matrix, the sanitizers, valgrind and `perf` of `test.yml` stay,
+since they cover environments. #737 writes it into AGENTS.md
+("Branches and pull requests", condition 2 of "Review and merge", "Build
+and test"), `docs/test/README.md` ("Site CI") and the site proposal on
+`next`; a pull request to `master`, not opened yet, is to take `site-v2.yml` off pull requests
+and updates the comment of `test/ci/changes.sh`, which is the same on both
+branches.
 
 On 2026-10-31 the owner set a rule for CI:
 「ciはあくまで綺麗な環境での最終チェックであってテストはローカルできっちりやること、ciに過剰なテストを詰め込み過ぎて何十分もかかるようにしないこと」
@@ -315,6 +341,7 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
+| CI of `master` after the decision of 2026-11-02 on CI ("Decisions"; #737 on `next`): a pull request to `master` that takes `site-v2.yml` off pull requests (a `docs/` pull request to `master` runs `npm run check:ci` of `next` with `NGX_MRUBY_V2_TREE` set to its tree, and `site-dispatch.yml` rebuilds `/v2/` on the push), and updates the comment of `test/ci/changes.sh` (the categories `docs`, `site` and `examples`), which is the same on both branches | `master` | The merge of #737 |
 | Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge of `master` at `0f865ed4a` (#704, #703, #716, the 2.x form of the fix of GHSA-xjh6-6vgm-56wj, #731) is [#734](https://github.com/matsumotory/ngx_mruby/pull/734); the next merge brings what `master` gains after it |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. Decided on 2026-10-29 (option "500 のまま (推奨)"): 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |

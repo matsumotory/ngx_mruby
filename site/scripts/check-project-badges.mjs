@@ -58,8 +58,8 @@ for (const [name, svg] of [[LICENSE_BADGE_SRC, license], ['the release badge', r
   for (const fill of fills) assert.ok(1.05 / (luminance(fill) + 0.05) >= 4.5, `${name}: white on ${fill} is ${(1.05 / (luminance(fill) + 0.05)).toFixed(2)}:1, under 4.5:1`);
 }
 // The release that the home pages must name: the newest stable tag, when
-// this checkout has the tags (the build job has the whole history; the
-// browser lanes check out without tags).
+// this checkout has the tags (the build job of site.yml has the whole
+// history; a local clone may have none).
 let releaseTag = null;
 try { releaseTag = latestReleaseTag(repoDir); } catch { releaseTag = null; }
 // The star count that the build was given, when this process has it.
