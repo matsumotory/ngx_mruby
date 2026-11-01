@@ -18,7 +18,7 @@
 
 ### 実装済み：認証と振り分け
 
-利用者キーの検査、キーごとの同時リクエスト制限、model振り分け、認証情報の差し替えは実装済みです。[ローカルの試用](../start/README.md#modelで転送先を選ぶ)で振り分けとキーの差し替えを確認できます。以下の完全なレシピは[`agent_proxy.rb`](../../../test/t/cases/agent_proxy.rb)が検証します。
+利用者キーの検査、キーごとの同時リクエスト制限、モデルの振り分け、認証情報の差し替えは実装済みです。[ローカルの試用](../start/README.md#modelで転送先を選ぶ)で振り分けとキーの差し替えを試せます。以下の完全なレシピは[`agent_proxy.rb`](../../../test/t/cases/agent_proxy.rb)が検証します。
 
 <a id="nextに実装済みストリーム中継"></a>
 
@@ -46,7 +46,7 @@
 
 - server rewriteハンドラの`agent_proxy_auth.rb`は、`Authorization`の`Bearer`か`x-api-key`から、クライアントのキーを探します。既知でないキーには401を返します。nginxは、`error_page 401 @agent_proxy_401`に従って、そのレスポンスにAPIのエラーの形式のJSONのボディを付けます。このリクエストはupstreamに届かずに終わります。
 - クライアントのキーごとに数える`limit_conn`は、同時に1つのリクエストだけを許します。1つ目のレスポンスがストリームで届いている間に同じキーで送った2つ目のリクエストには、JSONのボディと`retry-after`の付いた429が返ります。この429は、どのupstreamも送らないステータス460を経由して返すので、upstream自身の429はそのまま通ります。
-- accessハンドラの`agent_proxy_route.rb`は、JSONのボディの`model`を読んでupstreamブロックを選び、クライアントの認証情報の代わりにupstreamが受け取る認証情報を設定します。upstreamの無いmodelには403を返します。
+- accessハンドラの`agent_proxy_route.rb`は、JSONのボディの`model`を読んでupstreamブロックを選び、クライアントの認証情報の代わりにupstreamが受け取る認証情報を設定します。upstreamの無いモデルには403を返します。
 - `proxy_buffering off`にした`proxy_pass`は、レスポンスを届くたびに中継します。529のようなupstreamのエラーは、ボディとともにクライアントに届きます。
 - log handlerの`agent_proxy_log.rb`は、リクエストごとに、キーのidと`$upstream_status`を1行に書きます。
 
