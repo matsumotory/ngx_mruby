@@ -12,7 +12,9 @@
 // strip on any other page. On / and /ja/: one release badge in the status
 // line, for the newest stable tag of the repository when its tags are there
 // (a checkout without tags checks the form only). On every page: the shared
-// footer holds text links only, with the version's LICENSE link, and the
+// footer holds text links only, with the version's LICENSE link, its three
+// groups (the version link first in the documentation group, the language
+// link in the language group) and the link to who leads the project, and the
 // GitHub links of the header and the menu carry the same star count or none;
 // with NGX_MRUBY_SITE_STARS set, that count. --browser additionally checks,
 // in the two accepted patterns (patterns.mjs) in light and dark, with the
@@ -74,14 +76,20 @@ for (const file of pages) {
   const ref = file.startsWith('v2/') ? 'master' : 'next';
   const lang = file.startsWith('ja/') || file.startsWith('v2/ja/') ? 'ja' : 'en';
   assert.ok(footerLinks.some(el => el.properties.href === `https://github.com/matsumotory/ngx_mruby/blob/${ref}/LICENSE` && textContent(el) === 'MIT'), `${file}: real MIT license link`);
-  // The version link stands in the footer, beside the language link, and
+  // The version link stands in the footer, and
   // not in the header or the menu (4.10; check-v2.mjs checks its target).
   const header = all.find(el => hasClass(el, 'site-header'));
   const menu = all.find(el => hasClass(el, 'site-menu'));
   assert.ok(header && menu, `${file}: header and menu`);
   for (const [name, part] of [['header', header], ['menu', menu]]) assert.equal(elements(part).filter(el => el.tagName === 'a' && (hasClass(el, 'version-link') || /\/v2\/(ja\/)?$|^\/(ja\/)?docs\/$/.test(String(el.properties.href)) && /x docs|xのドキュメント/.test(textContent(el)))).length, 0, `${file}: no version link in the ${name}`);
-  const footerItems = elements(footer).filter(el => el.tagName === 'li');
-  assert.ok(footerItems.length >= 2 && elements(footerItems[1]).some(el => el.tagName === 'a' && hasClass(el, 'version-link')), `${file}: the version link follows the language link in the footer`);
+  // The footer's groups (4.10): documentation, whose first link is the
+  // version link; the project; the language, which holds the language link.
+  const groups = elements(footer).filter(el => el.tagName === 'nav' && hasClass(el, 'footer-group'));
+  assert.equal(groups.length, 3, `${file}: three groups of links in the footer`);
+  const firstLinks = groups.map(group => elements(group).find(el => el.tagName === 'a'));
+  assert.ok(firstLinks[0] && hasClass(firstLinks[0], 'version-link'), `${file}: the version link opens the documentation group of the footer`);
+  assert.ok(firstLinks[2] && hasClass(firstLinks[2], 'language-link'), `${file}: the language group of the footer holds the language link`);
+  assert.ok(footerLinks.some(el => el.properties.href === 'https://github.com/matsumotory'), `${file}: the footer names who leads the project, with a link`);
   // The GitHub links of the header and the menu: the same count or none.
   const githubLinks = all.filter(el => el.tagName === 'a' && hasClass(el, 'github-link'));
   assert.ok(githubLinks.length >= 1, `${file}: GitHub link missing`);

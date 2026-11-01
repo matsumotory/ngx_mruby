@@ -550,20 +550,54 @@ button.site-menu-button svg {
   }
 }
 
-/* The site's footer (4.10): 1 px top border, 14 px muted text, 48 px
-   above and 32 px below */
+/* The site's footer (4.10): 1 px top border, 14 px text, 48 px above and
+   32 px below. The project and three groups of links side by side from
+   641 px, one under the other below; a 1 px rule above the line of the
+   page's metadata. */
 .site-footer {
   margin-top: var(--space-7);
-  padding: var(--space-5) 0 var(--space-6);
+  padding: var(--space-6) 0 var(--space-6);
   border-top: 1px solid var(--color-border);
   font-size: var(--text-caption);
   line-height: var(--leading-caption);
   color: var(--color-text-muted);
 }
+.site-footer p {
+  margin: 0;
+}
+.footer-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+@media (min-width: 641px) {
+  .footer-main {
+    grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+    gap: var(--space-6);
+  }
+}
+.footer-project {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.footer-wordmark {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-current);
+  color: var(--color-text-primary);
+}
+.footer-title {
+  font-weight: var(--weight-current);
+  color: var(--color-text-primary);
+}
 .site-footer ul {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-5);
+  flex-direction: column;
+  gap: 0;
+  margin-top: var(--space-2);
+}
+.site-footer li {
+  margin: 0;
 }
 .site-footer a {
   display: inline-flex;
@@ -573,6 +607,18 @@ button.site-menu-button svg {
   text-decoration-line: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.2em;
+}
+.site-footer .meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-5);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.site-footer .meta p {
+  margin: 0;
 }
 
 /* 4.10: the strip of development practices of the four index pages, one
@@ -777,13 +823,6 @@ dialog {
   border: 1px solid var(--color-border-strong);
 }
 
-/* Footer and the page's metadata: 14 px muted text (4.10) */
-footer .meta {
-  font-size: var(--text-caption);
-  color: var(--color-text-muted);
-  margin-top: var(--space-7);
-  gap: var(--space-3) var(--space-7);
-}
 .pagination-links a {
   border-radius: var(--radius-frame);
   padding: var(--space-4);

@@ -1,10 +1,9 @@
 ---
 import { getSiteRoute } from '../route.mjs';
-// The footer of every page (4.10): the last-updated date and the
-// previous and next links of documentation pages, then the site's footer
-// with a 1 px top border, 14 px muted text, 48 px above and 32 px below:
-// the language link, the other version's documentation, Releases,
-// Security, the license and GitHub.
+// The previous and next links of documentation pages, then the footer of
+// every page (4.10): the project and who leads it, three groups of links
+// (documentation, the project, the language) and a line of the page's
+// metadata (its Markdown, the documents index and the last-updated date).
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -12,7 +11,7 @@ import LastUpdated from './LastUpdated.astro';
 import Pagination from './Pagination.astro';
 import LanguageLink from './LanguageLink.astro';
 import { GITHUB_URL, strings, versionLink } from '../site-nav.mjs';
-import { BASE, GITHUB_REF, pageOfRoute } from '../../scripts/lib/site.mjs';
+import { BASE, GITHUB_REF, SITE_VERSION, pageOfRoute } from '../../scripts/lib/site.mjs';
 
 const lang = getSiteRoute(Astro.locals).locale === 'ja' ? 'ja' : 'en';
 const t = strings(lang);
@@ -37,43 +36,41 @@ if (route.entry.filePath && route.entry.filePath.endsWith('index.mdx')) {
 }
 ---
 
-<footer class="site-flex">
-  <div class="meta site-flex">
+<Pagination />
+<footer class="site-footer">
+  <div class="footer-main">
+    <div class="footer-project">
+      <p class="footer-wordmark">ngx_mruby</p>
+      <p>{lang === 'ja' ? 'nginxの処理をRubyで拡張するモジュールです。' : 'A module that extends nginx with Ruby.'}</p>
+      <p>{lang === 'ja' ? <>開発：松本亮介（<a href="https://github.com/matsumotory">matsumotory</a>）</> : <>Led by Ryosuke Matsumoto (<a href="https://github.com/matsumotory">matsumotory</a>)</>}</p>
+    </div>
+    <nav class="footer-group" aria-labelledby="footer-docs">
+      <p class="footer-title" id="footer-docs">{lang === 'ja' ? '文書' : 'Documentation'}</p>
+      <ul>
+        <li><a class="version-link" href={version.href}>{version.label}</a></li>
+        <li><a href={`${p}/releases/`}>{t.releases}</a></li>
+        <li><a href={`${p}/security/`}>{t.security}</a></li>
+        {SITE_VERSION === 3 && <li><a href={`${p}/glossary/`}>{lang === 'ja' ? '用語集' : 'Glossary'}</a></li>}
+      </ul>
+    </nav>
+    <nav class="footer-group" aria-labelledby="footer-project">
+      <p class="footer-title" id="footer-project">{lang === 'ja' ? 'プロジェクト' : 'Project'}</p>
+      <ul>
+        <li><a href={GITHUB_URL}>GitHub</a></li>
+        <li>{lang === 'ja' ? 'ライセンス：' : 'License: '}<a href={`${GITHUB_URL}/blob/${GITHUB_REF}/LICENSE`}>MIT</a></li>
+        <li><a href={`${p}/contributing/`}>{t.contributing}</a></li>
+      </ul>
+    </nav>
+    <nav class="footer-group" aria-labelledby="footer-language">
+      <p class="footer-title" id="footer-language">{lang === 'ja' ? '言語' : 'Language'}</p>
+      <ul>
+        <li><LanguageLink /></li>
+      </ul>
+    </nav>
+  </div>
+  <div class="meta">
     {markdown && <a class="doc-markdown" href={markdown}>{fallback ? 'Markdown (English)' : 'Markdown'}</a>}
-    <a class="doc-index" href={`${BASE}/docs-index.json`}>{lang === 'ja' ? '文書索引 JSON' : 'Docs index JSON'}</a>
+    <a class="doc-index" href={`${BASE}/docs-index.json`}>{lang === 'ja' ? '文書索引のJSON' : 'Docs index JSON'}</a>
     <LastUpdated />
   </div>
-  <Pagination />
-  <div class="site-footer">
-    <ul>
-      <li><LanguageLink /></li>
-      <li><a class="version-link" href={version.href}>{version.label}</a></li>
-      <li><a href={`${p}/releases/`}>{t.releases}</a></li>
-      <li><a href={`${p}/security/`}>{t.security}</a></li>
-      <li><a href={`${GITHUB_URL}/blob/${GITHUB_REF}/LICENSE`}>MIT</a></li>
-      <li><a href={GITHUB_URL}>GitHub</a></li>
-    </ul>
-  </div>
 </footer>
-
-<style>
-  @layer site.core {
-    footer {
-      flex-direction: column;
-      gap: var(--space-5);
-    }
-    .meta a {
-      color: var(--color-text-muted);
-      min-height: 24px;
-      display: inline-flex;
-      align-items: center;
-      text-decoration-thickness: 1px;
-      text-underline-offset: 0.2em;
-    }
-    .meta {
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      gap: var(--space-4);
-    }
-  }
-</style>

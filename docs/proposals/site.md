@@ -984,7 +984,7 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   sites also wrap by phrase (3.5), and in the Japanese home page heading,
   a title, which takes one line per phrase up to 800 px: the frontmatter
   field `headline` of `site/src/content/docs/ja/index.mdx` lists the
-  phrases, `PageTitle.astro` sets each in a span of its own, which is a
+  phrases, `HomeTitle.astro` sets each in a span of its own, which is a
   block up to 800 px and inline from 801 px, and the build stops when they
   do not join to the `title`. h3, captions, other labels and
   table cells wrap by character (chosen here, to keep the owner's
@@ -1344,20 +1344,52 @@ acceptance; the interaction check covers that separately.
   Digital Agency's language selector puts it into the menu when the page
   has a menu button (appendix C). The rest of the header moves into the
   menu as well.
-- **Footer**: 1 px top border, 14 px `text-muted`, 48 px above and 32 px
-  below, as on the profile site. As on the corporate site, one footer
-  component serves every page, so that every page reaches the same links:
-  the language link, the version link, Releases, Security, the license and
-  GitHub. The version link leads to the index of the other version (3.4):
-  「2.x docs」 or 「2.xのドキュメント」 to `/v2/` on the 3.x pages, 「3.x
-  docs」 or 「3.xのドキュメント」 to `/docs/` on the 2.x pages. The owner
-  decided on 2026-11-01 that it leaves the header for the footer, asking
-  「版リンクってそもそもいる？」 and then choosing
-  「ヘッダーから外し、footer に置く (推奨)」: the banner of every page (3.4)
-  already leads from 3.x to the 2.x documentation and from 2.x to 3.x, and
-  the footer keeps the link after v3.0.0, when the 3.x banner goes. The license
-  is labeled MIT and links to the `LICENSE` file of the page's version.
-  The footer holds text links only, and wraps as a unit at narrow widths.
+- **Footer.** One footer serves every page, as on the corporate site. It
+  has three parts, inside a 1 px top border, in 14 px text (the caption
+  role of 4.4), 48 px above and 32 px below, as on the profile site:
+  1. The project: the wordmark `ngx_mruby`, one sentence on what it is,
+     and who leads its development, Ryosuke Matsumoto, linked to the
+     GitHub account `matsumotory` (「開発：松本亮介（matsumotory）」, "Led
+     by Ryosuke Matsumoto (matsumotory)").
+  2. Three groups of links, each with a short title in 14 px at the
+     current weight (not capitals, 4.11): documentation (the other
+     version's documentation, Releases, Security and, on the 3.x pages,
+     the glossary), the project (GitHub, the license and Contributing) and
+     the language (the language link). The version link leads to the index
+     of the other version (3.4): 「2.x docs」 or 「2.xのドキュメント」 to
+     `/v2/` on the 3.x pages, 「3.x docs」 or 「3.xのドキュメント」 to
+     `/docs/` on the 2.x pages. The owner decided on 2026-11-01 that it
+     leaves the header for the footer, asking 「版リンクってそもそもいる？」
+     and then choosing 「ヘッダーから外し、footer に置く (推奨)」: the banner
+     of every page (3.4) already leads from 3.x to the 2.x documentation
+     and from 2.x to 3.x, and the footer keeps the link after v3.0.0,
+     when the 3.x banner goes. The license is labeled MIT and links to the
+     `LICENSE` file of the page's version.
+  3. A line of the page's metadata, below a 1 px rule, in muted text: the
+     Markdown of the page (on documentation pages), the documents index
+     JSON, and the last-updated date.
+  The groups stand side by side from 641 px and one under the other at
+  640 px and below; no group is collapsed. The footer holds text links
+  only. The owner asked for this order on 2026-11-02 (section 7).
+  The rules come from these sources, read on 2026-11-02:
+  - Taken: one footer at the bottom of every page, with the help and
+    meta links in the same place on every page
+    ([GOV.UK Design System, Footer](https://design-system.service.gov.uk/components/footer/),
+    which cites WCAG 2.2 success criterion 3.2.6); a statement of
+    ownership and of the licence (the same); a rule between the groups of
+    links and the meta line (the same); links grouped under a few clear
+    titles, at most two levels, with no orphaned links
+    ([Nielsen Norman Group, "Web Page Footers 101", 2019](https://www.nngroup.com/articles/footers/));
+    a curated set of links that need not repeat the header
+    ([USWDS, Footer](https://designsystem.digital.gov/components/footer/)).
+  - Not taken: the groups that the USWDS big footer collapses on small
+    screens (Nielsen Norman Group warns against collapsed and tiny
+    footers: every link stays visible); a full site map in the footer
+    (the site has more pages than the about 25 for which Nielsen Norman
+    Group finds one useful; the sidebar and the documents index hold
+    them); social icons and newsletter forms (USWDS: only where they are
+    a goal of the site; the site has neither, and icons would break the
+    text-links rule); the crest and the government licence of GOV.UK.
 - **Development practices.** The four index pages (`/`, `/ja/`, `/v2/`
   and `/v2/ja/`) show one strip of badges: on `/` and `/ja/` directly
   below the hero, between its status line and the first section, across
@@ -1403,8 +1435,9 @@ acceptance; the interaction check covers that separately.
   line at 1440 px on `/` and `/ja/`; in the 720 px column of the
   documentation of `/v2/` and `/v2/ja/` it takes two, and at 402 px at
   most four.
-- **The release badge.** The status line of the hero of `/` and `/ja/`
-  ends with a badge of the newest stable release (`vX.Y.Z`, of any major),
+- **The release badge.** The status of the hero of `/` and `/ja/` takes
+  two lines (the version in development; the stable version's
+  documentation), and the second ends with a badge of the newest stable release (`vX.Y.Z`, of any major),
   linking to that release on GitHub. The build reads the tag from the git
   tags of the repository and draws the badge in the flat style of the
   license badge, as an image in a `data:` URL, so the badge adds no other
@@ -2139,6 +2172,25 @@ the owner chose 「ヒーローは、様々なAIアプリケーションの認�
 and then 「様々はなくてもいいかもね」: 「AIアプリケーションの認証と転送をRubyで制御する。」,
 in English "Authenticate and route AI applications with Ruby.", with a
 definition of AI applications in the paragraph below it (「ヒーローセクションの本文にAIアプリケーションの広い定義は書いておいたほうが良さそう」).
+
+On 2026-11-02, looking at the published `/ja/` at 1440 px, the owner asked
+about the hero: 「ここみたときにヒーロータイトルの下のマージンが広いようにみえたけど意図的？」,
+「releaseバッジ、v3と2系で二行に分けたほうがいいかもね」,
+「ヒーローのボタンはどっちか減らして、ユースけーすのところにリンクしたいよね。そこをまず最初は見せたいし」
+and 「モデルのふりわけをためすより、さきにユースケースを見る、とかじゃないかな」.
+The heading stood in the middle of a row as high as the logo (160 px), so
+57 px of that row lay under it before the text began; the hero now holds
+the heading, the text under it, the action and the status in one column
+beside the logo, and the heading and the text are 16 px apart, as a
+section heading and its paragraph are. The status takes two lines (the
+version in development; the stable version's documentation with the
+release badge). The hero has one action, 「ユースケースを見る」 ("See the use
+cases"), to the use cases further down the page; the routing example and
+the guide keep their links in their own sections. The same evening the
+owner asked for the footer: 「あとフッター雑。さすがにもうちょっと整理しよう。JSONやら日付がフッターがいにあるし、フッターにまとめて書いとくこともっとありそう。僕がリーディングしてしね」.
+The footer of 4.10 groups its links, names who leads the project, and
+takes the documents index and the last-updated date into its line of
+metadata.
 
 ## Appendix A. Where comparable projects put things
 
