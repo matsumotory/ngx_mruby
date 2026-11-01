@@ -1891,6 +1891,22 @@ server {
 }
 ```
 
+### Nginx::Stream::Connection.{proxy_protocol_addr,proxy_protocol_ip}
+
+On a `listen ... proxy_protocol`, returns the source address of the PROXY protocol header that nginx read when the connection was accepted, as a String. `proxy_protocol_ip` is another name of the same method, and both are also instance methods. The method returns `nil` when the connection has no such address: on a listen without `proxy_protocol`, and for the headers `PROXY UNKNOWN` (version 1) and `LOCAL` (version 2). This holds since 3.0.0 and 2.7.4.
+
+```nginx
+server {
+    listen 127.0.0.1:12350 proxy_protocol;
+    mruby_stream_code '
+      if Nginx::Stream::Connection.proxy_protocol_addr != "192.0.2.10"
+        Nginx::Stream::Connection.stream_status = Nginx::Stream::ABORT
+      end
+    ';
+    proxy_pass static_server0;
+}
+```
+
 ## Nginx::Stream::Async Class
 ### Method
 #### Nginx::Stream::Async#sleep
@@ -1899,8 +1915,10 @@ Do non-blocking sleep. It works in the code of `mruby_stream` and `mruby_stream_
 After the sleep, the session goes on as it does when the code does not sleep, by the result of the code: the next handler for `Nginx::Stream::DECLINED` (the default of `Nginx::Stream::Connection.stream_status`), the next phase for `Nginx::Stream::OK`, the wait of the session for `Nginx::Stream::DONE` and `Nginx::Stream::AGAIN`, and the end of the session for `Nginx::Stream::ABORT` or another status, and for an exception, which `error.log` records.
 This holds since 2.7.3; up to 2.7.2 a session whose code raised or set a status other than `Nginx::Stream::DECLINED` after the sleep was neither ended nor continued, and an exception after the sleep also aborted the next session.
 
+While the code of a TCP session sleeps, nginx reads nothing from the client, also on a `listen ... proxy_protocol`: the bytes that the client sends then stay for the phase after the code, such as `proxy_pass`, which sends them to the upstream. This holds since 3.0.0 and 2.7.4.
+
 A session runs its code once (since 3.0.0): while the code waits, datagrams that the client of a UDP session (`listen ... udp`) sends do not start it again, and nginx does not give them to the code. On 2.x each such datagram started the code again in another fiber of the session, and only the last run went on after its sleep.
-When `worker_shutdown_timeout` expires in a worker that shuts down, a session whose code waits ends: the code after the sleep does not run, and `error.log` gets `shutdown timeout` at the `info` level (since 3.0.0; on 2.x the session went on). A waiting session of a server with `listen ... proxy_protocol` is not covered; another change handles it. See the entries ["A UDP stream session runs its code once"](../releases/v3.0.0.md#a-udp-stream-session-runs-its-code-once-datagrams-that-arrive-while-the-code-waits-do-not-start-it-again-727) and ["A stream session that waits when `worker_shutdown_timeout` expires ends then"](../releases/v3.0.0.md#a-stream-session-that-waits-when-worker_shutdown_timeout-expires-ends-then-727) of the release notes of 3.0.0.
+When `worker_shutdown_timeout` expires in a worker that shuts down, a session whose code waits ends: the code after the sleep does not run, and `error.log` gets `shutdown timeout` at the `info` level (since 3.0.0; on 2.x the session went on). See the entries ["A UDP stream session runs its code once"](../releases/v3.0.0.md#a-udp-stream-session-runs-its-code-once-datagrams-that-arrive-while-the-code-waits-do-not-start-it-again-727) and ["A stream session that waits when `worker_shutdown_timeout` expires ends then"](../releases/v3.0.0.md#a-stream-session-that-waits-when-worker_shutdown_timeout-expires-ends-then-727) of the release notes of 3.0.0.
 
 ```ruby
 # sleep 3000 millisec

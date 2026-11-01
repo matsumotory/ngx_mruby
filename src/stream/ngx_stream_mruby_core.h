@@ -22,6 +22,10 @@ typedef struct ngx_stream_mruby_ctx_t {
   // Nginx::Stream::Async.sleep or is READY to resume, or NULL: a session has
   // one record that waits, and its code runs once
   void *sleeping;
+  // the read handler of the connection before its code started to wait, when
+  // it was not ngx_stream_session_handler (the reader of the PROXY header of
+  // a listen with proxy_protocol), put back when the code resumes
+  ngx_event_handler_pt read_handler;
 } ngx_stream_mruby_ctx_t;
 
 ngx_stream_mruby_ctx_t *ngx_stream_mrb_get_module_ctx(mrb_state *mrb, ngx_stream_session_t *s);

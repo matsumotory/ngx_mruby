@@ -289,6 +289,14 @@ static mrb_value ngx_stream_mrb_proxy_protocol_addr(mrb_state *mrb, mrb_value se
   ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
 
 #if (nginx_version >= 1017006)
+  // nginx sets c->proxy_protocol only for a PROXY header that carries
+  // addresses. It stays NULL on a listen without proxy_protocol and for the
+  // headers "PROXY UNKNOWN" (version 1) and LOCAL, or one whose transport
+  // or address family nginx does not read (version 2). The method then
+  // returns nil, as Nginx::Var#proxy_protocol_addr does in HTTP code.
+  if (s->connection->proxy_protocol == NULL) {
+    return mrb_nil_value();
+  }
   return mrb_str_new(mrb, (const char *)s->connection->proxy_protocol->src_addr.data,
                      s->connection->proxy_protocol->src_addr.len);
 #else

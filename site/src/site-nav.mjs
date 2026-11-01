@@ -12,7 +12,7 @@ export { GITHUB_URL };
 const T = {
   en: {
     docs: 'Docs',
-    agentProxy: 'Agent proxy',
+    agentProxy: 'Model API relay',
     releases: 'Releases',
     security: 'Security',
     contributing: 'Contributing',
@@ -24,7 +24,7 @@ const T = {
   },
   ja: {
     docs: 'ドキュメント',
-    agentProxy: 'エージェントプロキシ',
+    agentProxy: 'model APIの中継',
     releases: 'リリース',
     security: 'セキュリティ',
     contributing: '開発に参加する',

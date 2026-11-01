@@ -170,13 +170,30 @@ ngx_int_t ngx_stream_mrb_fiber_call_again(ngx_stream_session_t *s, ngx_stream_mr
       return NGX_STREAM_OK;
     }
     // nginx ran the phases while the record waits, for example for another
-    // datagram of a UDP session: the code does not start again (Q4)
+    // datagram of a UDP session, or for bytes from the client of a TCP
+    // session: the code does not start again (Q4). The bytes stay unread for
+    // the phase after the code, as ngx_http_block_reading leaves the bytes
+    // of an HTTP request. With the event methods that report a read event
+    // until the bytes are read (select, poll), the read event is removed
+    // until the code resumes. A UDP session gets its datagram with the read
+    // event inactive, so this leaves it alone.
     ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: the handler waits; its code is not run again",
                   MODULE_NAME, __func__, __LINE__);
+    if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && s->connection->read->active) {
+      if (ngx_del_event(s->connection->read, NGX_READ_EVENT, 0) != NGX_OK) {
+        return NGX_ERROR;
+      }
+    }
     return NGX_DONE;
 
   case NGX_MRB_FIBER_READY:
     ctx->sleeping = NULL;
+    // the code resumes: the connection gets back the read handler that it
+    // had before the wait (the handler sets it again if the code waits again)
+    if (ctx->read_handler != NULL) {
+      s->connection->read->handler = ctx->read_handler;
+      ctx->read_handler = NULL;
+    }
     // the result that the code had set when it started to sleep
     ictx = f->base.mrb->ud;
     ictx->stream_status = f->sleep.stream_status;

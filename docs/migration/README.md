@@ -489,8 +489,7 @@ not enough, and show the change.
 - [A stream session that waits when `worker_shutdown_timeout` expires ends then](../releases/v3.0.0.md#a-stream-session-that-waits-when-worker_shutdown_timeout-expires-ends-then-727):
   nothing to change; with `worker_shutdown_timeout`, a stream session whose
   code still sleeps when the timeout expires ends without the code after
-  the sleep. A waiting session of a server with `listen ... proxy_protocol`
-  is not covered; another change handles it.
+  the sleep.
 - [`Nginx.redirect` with a local URI takes effect when the handler ends](../releases/v3.0.0.md#nginxredirect-with-a-local-uri-takes-effect-when-the-handler-ends-728):
   look for `Nginx.redirect` with a path in the handlers. On 3.0.0 the code
   after the call runs before the target; its output and its status are not
