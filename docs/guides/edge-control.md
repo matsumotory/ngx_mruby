@@ -50,7 +50,7 @@ The ledger rows [MCP tool authorization and data-access checks](../proposals/edg
 
 A configured AI application profile could offer specialized MCP tools or
 a `search`/`fetch` entry alongside them, backed by the same service. Keep `tools/list` and `tools/call`
-consistent; hiding an MCP tool is not access control. Route to a versioned adapter
+consistent; hiding an MCP tool is not access control. Route to a versioned backend MCP server
 rather than assuming a permanent MCP tool contract for every AI application.
 
 Progressive document retrieval would let an agent read a bounded passage and

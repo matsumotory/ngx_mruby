@@ -1,8 +1,8 @@
-# model APIの中継
+# モデルAPIの中継
 
-**開発版です。** このページは、まだリリースしていないブランチ`next`のngx_mruby 3.xを説明します。現在のリリースは2.7です。下のレシピは現在の`next`で動き、CIが確かめています。図は、v3の計画に沿ってv3.0.0に向けて作るmodel APIの中継を示します。図の各ステップには、現在動くか、[計画](../../proposals/v3-plan.md#agent-proxy-the-v30-use-case)のどのステップで加わるかを書いています。
+**開発版です。** このページは、まだリリースしていないブランチ`next`のngx_mruby 3.xを説明します。現在のリリースは2.7です。下のレシピは現在の`next`で動き、CIが確かめています。図は、v3の計画に沿ってv3.0.0に向けて作るモデルAPIの中継を示します。図の各ステップには、現在動くか、[計画](../../proposals/v3-plan.md#agent-proxy-the-v30-use-case)のどのステップで加わるかを書いています。
 
-このAI gateway構成では、AI applicationと、それが呼び出すmodel APIの間にnginxを置きます。扱うのはmodel APIの通信であり、MCPツールの呼び出しやagent間のA2A通信ではありません。Rubyは、リクエストごとに次の3つを決めます。クライアントのキーが既知か、リクエストがどのupstreamとどのプロバイダの認証情報を使うか、`limit_conn`が数えるキーは何かです。バイトを運ぶのはnginxです。nginxはリクエストを読み、プロバイダのレスポンスを届くたびに中継し、nginx自身のモジュールの制限をかけます。このプロキシは、Anthropic Messages APIの`/v1/messages`と、OpenAI Responses APIの`/v1/responses`を、server-sent eventsのストリームのレスポンスも含めてそのまま通します。2つのAPIの間で形式の変換はしません。
+このAIゲートウェイの構成では、AIアプリケーションと、それが呼び出すモデルAPIの間にnginxを置きます。扱うのはモデルAPIの通信であり、MCPツールの呼び出しやエージェント間のA2A通信ではありません。Rubyは、リクエストごとに次の3つを決めます。クライアントのキーが既知か、リクエストがどのupstreamとどのプロバイダの認証情報を使うか、`limit_conn`が数えるキーは何かです。バイトを運ぶのはnginxです。nginxはリクエストを読み、プロバイダのレスポンスを届くたびに中継し、nginx自身のモジュールの制限をかけます。このプロキシは、Anthropic Messages APIの`/v1/messages`と、OpenAI Responses APIの`/v1/responses`を、server-sent eventsのストリームのレスポンスも含めてそのまま通します。2つのAPIの間で形式の変換はしません。
 
 <a id="implementation-status-and-the-v3-target"></a>
 
@@ -18,13 +18,13 @@
 
 ### 実装済み：認証と振り分け
 
-利用者キーの検査、キーごとの同時リクエスト制限、モデルの振り分け、認証情報の差し替えは実装済みです。[ローカルの試用](../start/README.md#modelで転送先を選ぶ)で振り分けとキーの差し替えを試せます。以下の完全なレシピは[`agent_proxy.rb`](../../../test/t/cases/agent_proxy.rb)が検証します。
+利用者キーの検査、キーごとの同時リクエスト制限、モデルの振り分け、認証情報の差し替えは実装済みです。[ローカルの試用](../start/README.md#モデルで転送先を選ぶ)で振り分けとキーの差し替えを試せます。以下の完全なレシピは[`agent_proxy.rb`](../../../test/t/cases/agent_proxy.rb)が検証します。
 
 <a id="nextに実装済みストリーム中継"></a>
 
 ### 実装済み：ストリーム中継
 
-結合テストはmock upstreamを使い、Messages/Responsesのバイト列とupstreamエラーを保つ中継を確認します。実プロバイダとの相互運用や、API形式の変換を保証するものではありません。
+結合テストはmock upstreamを使い、Messages APIとResponses APIのバイト列とupstreamエラーを保つ中継を確認します。実プロバイダとの相互運用や、API形式の変換を保証するものではありません。
 
 <a id="計画中使用量の計上とストリーム制御"></a>
 
@@ -128,7 +128,7 @@ upstream-errors: 現在：<wbr>upstreamの<wbr>エラーは、<wbr>ボディと�
 upgrade: ステップ7e：<wbr>参照実装の<wbr>プロキシは、<wbr>Responses APIの<wbr>WebSocketの<wbr>トランスポートである<wbr>`Upgrade`を<wbr>拒否する
 ```
 
-model API中継の計画、プロトコルの範囲、ステップの順は、v3の計画の[Agent proxy: the v3.0 use case](../../proposals/v3-plan.md#agent-proxy-the-v30-use-case)にあります。計画した機能のサンプルは、その機能とテストがマージされたときにこのページに載ります。
+モデルAPIの中継の計画、プロトコルの範囲、ステップの順は、v3の計画の[Agent proxy: the v3.0 use case](../../proposals/v3-plan.md#agent-proxy-the-v30-use-case)にあります。計画した機能のサンプルは、その機能とテストがマージされたときにこのページに載ります。
 
 ## リクエスト<wbr>あたりの<wbr>コスト
 
