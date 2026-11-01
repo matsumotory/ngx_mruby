@@ -141,17 +141,21 @@ end
 
 down = workers_nginx('shutdown')
 
-t.assert('workers - a stream session that sleeps when worker_shutdown_timeout expires ends then, and its code runs once', '12393') do
+t.assert('workers - a stream session and an http request that sleep when worker_shutdown_timeout expires end then, and the stream code runs once', '18185, 12393') do
   t.assert_nil workers_first(down, 'error')
   # The old worker ended after the timeout of 1 second, not after the 10
   # seconds of the sleep.
   t.assert_true workers_first(down, 'shutdown_seconds').to_f < 5.0,
                 "the old worker ended #{workers_first(down, 'shutdown_seconds')} seconds after the reload"
-  # The session ended without the return of the location, and the code
+  # The session ended without the `return` of the server, and the code
   # neither started again nor resumed.
   t.assert_equal '', workers_first(down, 'shutdown_session')
   t.assert_equal '1', workers_first(down, 'shutdown_started')
   t.assert_equal '0', workers_first(down, 'shutdown_resumed')
+  # nginx terminated the request that slept: no response, and the handler
+  # did not resume.
+  t.assert_equal '', workers_first(down, 'shutdown_request')
+  t.assert_equal '0', workers_first(down, 'shutdown_http_resumed')
 end
 
 t.assert('workers - nginx stops after the shutdown timeout with the master and the workers of both generations, without an error or a leak') do

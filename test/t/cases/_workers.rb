@@ -28,8 +28,8 @@
 #   logged "gracefully shutting down", then writes "release" and reads the
 #   answers of the two sleeps.
 # shutdown: one worker and worker_shutdown_timeout 1s. The script starts a
-#   stream session whose handler sleeps for up to 10 seconds, sends SIGHUP,
-#   and waits until the old worker has ended.
+#   request to /sleep and a stream session, whose handlers sleep for up to
+#   10 seconds, sends SIGHUP, and waits until the old worker has ended.
 #
 # The script prints one "key=value" line for each observation; the key
 # response comes once for each request. The keys:
@@ -78,6 +78,9 @@
 #                   worker ended
 #   shutdown_started, shutdown_resumed  shutdown: how many times the stream
 #                   code logged that it started and that it resumed
+#   shutdown_request  shutdown: the bytes of the request to /sleep
+#   shutdown_http_resumed  shutdown: how many times the handler of /sleep
+#                   logged that it resumed
 #   seconds         the time of the whole run
 #   error           only when a step failed; the keys of the later steps are
 #                   then missing
@@ -463,9 +466,12 @@ def run_shutdown(nginx)
   out 'workers', old.join(',')
   out 'master', nginx.pid
   out 'pid_file', nginx.pid_file
+  http = MODES['shutdown'][:http][0]
+  request = Thread.new { exchange(http, "GET /sleep HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n") }
   session = Thread.new { exchange(stream) }
-  wait_until('the stream sleep to start') do
-    nginx.log.any? { |l| l.include?('workers shutdown: stream sleep started') }
+  wait_until('the http and stream sleeps to start') do
+    lines = nginx.log
+    %w[http stream].all? { |w| lines.any? { |l| l.include?("workers shutdown: #{w} sleep started") } }
   end
   reloaded_at = now
   nginx.reload(2)
@@ -474,7 +480,11 @@ def run_shutdown(nginx)
   raise "shutdown_session: no close within #{LIMIT} seconds" unless session.join(LIMIT)
 
   out 'shutdown_session', session.value
+  raise "shutdown_request: no close within #{LIMIT} seconds" unless request.join(LIMIT)
+
+  out 'shutdown_request', request.value
   lines = nginx.log
+  out 'shutdown_http_resumed', lines.count { |l| l.include?('workers shutdown: http sleep resumed') }
   out 'shutdown_started', lines.count { |l| l.include?('workers shutdown: stream sleep started') }
   out 'shutdown_resumed', lines.count { |l| l.include?('workers shutdown: stream sleep resumed') }
 end

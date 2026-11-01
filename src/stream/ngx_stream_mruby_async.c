@@ -124,8 +124,10 @@ static void ngx_stream_mrb_timer_handler(ngx_event_t *ev)
   ngx_mrb_fiber_timer_fired(&f->base);
 
   if (f->base.state != NGX_MRB_FIBER_WAITING || f->ctx->sleeping != f) {
-    // not reached: the owner hook deletes the timer of a cancelled record,
-    // and a session has one record that waits
+    // The code called Nginx::Stream::Async.__sleep without the Fiber.yield
+    // of Nginx::Stream::Async.sleep, so its record did not wait (or has
+    // ended since); the owner hook deletes the timer of a cancelled record.
+    // Nothing is resumed.
     ngx_log_error(NGX_LOG_ERR, re->s->connection->log, 0,
                   "%s ERROR %s:%d: the timer fired for a fiber that does not wait", MODULE_NAME, __func__, __LINE__);
     return;
@@ -153,6 +155,9 @@ ngx_int_t ngx_stream_mrb_fiber_call_again(ngx_stream_session_t *s, ngx_stream_mr
       // ngx_stream_proxy_module ends its sessions then.
       ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "shutdown timeout");
       ctx->sleeping = NULL;
+      // the owner hook stays on the list of the connection pool, and runs
+      // again when the pool is destroyed: by then the timer is deleted and
+      // the slot is freed, and it finds nothing to do
       ngx_mrb_fiber_cancel(&f->base);
       return NGX_STREAM_OK;
     }
