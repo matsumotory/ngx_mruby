@@ -1,5 +1,6 @@
 ---
 import AgentFlow from './AgentFlow.astro';
+import HomeTitle from './HomeTitle.astro';
 import ProjectBadges from './ProjectBadges.astro';
 import { latestReleaseTag } from '../../scripts/lib/release-state.mjs';
 import { releaseBadge } from '../../scripts/lib/project-badges.mjs';
@@ -24,8 +25,12 @@ const startCommands = startBlock[1].split('\n').filter(line => line.startsWith('
 ---
 <div class="home home-v3">
   <div class="v3-intro">
+    <div class="v3-hero-text">
+    <HomeTitle />
     <p class="lede">{ja ? 'ngx_mrubyはnginxの処理をRubyで拡張するモジュールです。これをAIアプリケーションとモデルAPIの間に置き、Rubyで利用者キーを確認し、モデルごとの転送先と上流の認証情報を選ぶAIゲートウェイを構成できます。ここでのAIアプリケーションは、チャットの画面からエージェントやMCPのホストまで、モデルAPIやMCPサーバーを呼び出すソフトウェア全般です。下のv3開発版の例では、リクエストされたモデルに応じた振り分けを手元ですぐに試せます。MCPゲートウェイなどへの拡張は、後半のユースケースで設計状況とともに説明します。' : 'ngx_mruby extends nginx with Ruby. Between an AI application (any software that calls a model API or an MCP server: chat front ends, agents, MCP hosts) and a model API, it can form an AI gateway whose Ruby rules check client keys and select model routes and upstream credentials. The v3 development example below lets you run model-based routing locally. Later use cases describe proposed extensions, including an MCP gateway, with their design status.'}</p>
-    <div class="v3-entry"><p class="actions"><a class="button-primary" href={prefix + '/start/'}>{ja ? 'モデルの振り分けを試す' : 'Try model routing'}</a><a class="intro-link" href={prefix + '/guides/agent-proxy/'}>{ja ? 'モデルAPIの中継構成を読む' : 'Read the model API relay guide'}</a></p><p class="v3-status">{ja ? 'v3 開発中' : 'v3 · In development'}<span aria-hidden="true"> · </span><a href={ja ? '/v2/ja/' : '/v2/'}>{ja ? '安定版2.7の導入と仕様' : 'Stable 2.7 installation and reference'}</a>{' '}<a class="release-badge" data-badge="release" data-release={release.tag} href={release.href}><img src={release.src} alt={release.alt} width={release.width} height={release.height} decoding="async" /></a></p></div>
+    <div class="v3-entry"><p class="actions"><a class="button-primary" href="#directions-title">{ja ? 'ユースケースを見る' : 'See the use cases'}</a></p><div class="v3-status"><p>{ja ? 'v3 開発中' : 'v3 · In development'}</p><p><a href={ja ? '/v2/ja/' : '/v2/'}>{ja ? '安定版2.7の導入と仕様' : 'Stable 2.7: install and reference'}</a>{' '}<a class="release-badge" data-badge="release" data-release={release.tag} href={release.href}><img src={release.src} alt={release.alt} width={release.width} height={release.height} decoding="async" /></a></p></div></div>
+    </div>
+    <img class="brand-showcase" src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" />
   </div>
 
   <ProjectBadges />

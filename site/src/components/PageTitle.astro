@@ -3,17 +3,13 @@ import { getSiteRoute } from '../route.mjs';
 import DefaultPageTitle from './DocTitle.astro';
 import ProjectBadges from './ProjectBadges.astro';
 import { BASE } from '../../scripts/lib/site.mjs';
+// The home pages (template splash) render their heading in the hero of
+// HomeV3.astro (HomeTitle.astro), and DocPage.astro gives them no title panel.
 const home = getSiteRoute(Astro.locals).entry.data.template === 'splash';
-const ja = getSiteRoute(Astro.locals).locale === 'ja';
-// The Japanese home page heading takes one line per phrase, as the
-// frontmatter field headline lists them (4.4); the title is their join.
-const { title, headline } = getSiteRoute(Astro.locals).entry.data;
-const lines = headline ?? [title];
-if (home && ja && lines.join('') !== title) throw new Error(`PageTitle: the headline lines join to "${lines.join('')}", not the title "${title}"`);
 // The 2.x index pages (/v2/, /v2/ja/) carry the strip of development
 // practices directly below the page title (4.10); the home pages carry it
 // below the hero (HomeV3.astro).
 const routePath = Astro.url.pathname.slice(BASE.length).replace(/^\/|\/$/g, '');
 const index = !home && (routePath === '' || routePath === 'ja');
 ---
-{home ? <div class="brand-title"><div class="hero-heading">{ja ? <div class="headline-box"><h1 id="_top">{lines.map(line => <span class="headline-line">{line}</span>)}</h1></div> : <DefaultPageTitle />}</div><img class="brand-showcase" src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" /></div> : index ? <><DefaultPageTitle /><ProjectBadges /></> : <DefaultPageTitle />}
+{home ? null : index ? <><DefaultPageTitle /><ProjectBadges /></> : <DefaultPageTitle />}

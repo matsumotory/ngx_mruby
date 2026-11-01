@@ -11,6 +11,10 @@
 //   performance figure (a number with a unit of throughput or latency, or
 //   a percentage of faster or slower), since performance appears only as
 //   the perf lane's measurements with their date and method (Q8).
+// - the hero (the owner on 2026-11-02, section 7): the heading, the text
+//   under it, one action and the status in the first column of .v3-intro;
+//   the one action leads to the heading of the use cases on the same page;
+//   the status has two lines, the second with the release badge.
 //
 //   node scripts/check-home.mjs [--dist DIR] [--repo DIR]
 import fs from 'node:fs';
@@ -63,6 +67,15 @@ function main() {
     const source = fs.readFileSync(path.join(SITE, 'src', 'content', 'docs', rel), 'utf8');
     const tags = [...source.matchAll(/<Sample\b([^>]*)\/>/g)];
     if (!tags.length) problems.push(`${where}: site/src/content/docs/${rel} has no <Sample>: the home page shows an example that CI runs (3.3 item 8)`);
+    const intro = elements(tree).find((e) => hasClass(e, 'v3-intro'));
+    const heroText = intro && elements(intro).find((e) => hasClass(e, 'v3-hero-text'));
+    if (!heroText || !elements(heroText).some((e) => e.tagName === 'h1' && e.properties?.id === '_top')) problems.push(`${where}: the heading is not in the first column of the hero (.v3-intro .v3-hero-text)`);
+    const actions = heroText ? elements(heroText).filter((e) => e.tagName === 'a' && (hasClass(e, 'button-primary') || hasClass(e, 'button-secondary') || hasClass(e, 'intro-link'))) : [];
+    if (actions.length !== 1 || actions[0].properties?.href !== '#directions-title') problems.push(`${where}: the hero has ${actions.length} action(s) (${actions.map((e) => e.properties?.href).join(', ')}), expected one to #directions-title`);
+    if (!elements(tree).some((e) => e.properties?.id === 'directions-title')) problems.push(`${where}: no element #directions-title for the hero's action`);
+    const status = heroText && elements(heroText).find((e) => hasClass(e, 'v3-status'));
+    const statusLines = status ? (status.children ?? []).filter((e) => e.tagName === 'p') : [];
+    if (statusLines.length !== 2 || !elements(statusLines[1]).some((e) => hasClass(e, 'release-badge'))) problems.push(`${where}: the status of the hero is not two lines with the release badge on the second`);
     const blocks = codeBlockTexts(tree);
     const text = visibleText(tree);
     // The prominent interactive table is a verbatim excerpt from the local

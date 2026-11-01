@@ -8,8 +8,14 @@ html:has(.home-v3) .main-frame {
 }
 html:has(.home-v3) header.header { background-color: var(--color-scene-deep); border-bottom-color: var(--color-scene-edge); }
 html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-9); }
-html:has(.home-v3) .brand-title { display: grid; grid-template-columns: minmax(0,1fr) 160px; align-items: center; gap: var(--space-7); }
+/* The hero: the heading, the text under it, the action and the status in
+   the first column; the logo in the second, both centred on each other
+   (the owner on 2026-11-02, section 7 of the site proposal). The
+   heading's column keeps the width that sets its size (tokens.css). */
+.home-v3 .v3-intro { display: grid; grid-template-columns: minmax(0,1fr) 160px; align-items: center; gap: var(--space-7); }
+html:has(.home-v3) .brand-title { display: block; }
 html:has(.home-v3) .brand-showcase { width: 160px; height: 160px; }
+.home-v3 .v3-intro > .brand-showcase { margin: 0; }
 html:has(.home-v3) h1#_top { margin: 0; max-width: 20ch; }
 html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
 .headline-line { display: block; }
@@ -24,13 +30,16 @@ html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
 }
 /* The column of the Japanese heading, whose width its size follows (tokens.css) */
 .headline-box { min-width: 0; container-type: inline-size; }
-.home-v3 .lede { max-width: 40rem; margin: var(--space-5) 0 0; color: var(--color-text-muted); }
+/* The heading and the text under it are as far apart as a section heading
+   and its paragraph (16 px) */
+.home-v3 .v3-intro .lede { max-width: 40rem; margin: var(--space-4) 0 0; color: var(--color-text-muted); }
 .home-v3 .v3-entry { margin-top: var(--space-6); }
 .home-v3 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-5); margin: 0; }
 .site-markdown-content .home-v3 .button-primary { padding: var(--space-3) var(--space-5); border: 1px solid var(--color-button-edge); border-radius: var(--radius-control); background: linear-gradient(155deg, var(--color-button-fill), var(--color-button-low)); box-shadow: inset 0 1px 0 var(--color-button-edge); }
-.home-v3 .intro-link { color: var(--color-text-primary); text-decoration: none; }
-.home-v3 .intro-link:hover { text-decoration: underline; }
+/* The status in two lines: the version in development, then the stable
+   version's documentation with its release badge */
 .home-v3 .v3-status { color: var(--color-text-muted); margin: var(--space-4) 0 0; }
+.home-v3 .v3-status p { margin: 0; }
 .home-v3 .v3-status a { color: inherit; }
 .home-v3 > section { margin-top: var(--space-9); }
 /* 4.10: the strip of development practices belongs to the hero: 32 px
@@ -99,7 +108,7 @@ html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
 @media (prefers-reduced-motion: reduce) { .home-v3 .route-pulse { animation: none; } }
 @media (max-width: 800px) {
   html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-6); }
-  html:has(.home-v3) .brand-title { grid-template-columns: minmax(0,1fr); gap: 0; }
+  .home-v3 .v3-intro { grid-template-columns: minmax(0,1fr); gap: 0; }
   html:has(.home-v3) .brand-showcase { display: none; }
   .home-v3 > section { margin-top: var(--space-7); }
   .home-v3 > .project-badges { margin-top: var(--space-5); }
