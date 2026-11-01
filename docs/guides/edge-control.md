@@ -12,16 +12,18 @@ When an end user calls MCP tools from an AI application, this configuration
 would restrict the operations and data that user can access.
 
 The MCP server operator would place ngx_mruby between the AI application and
-MCP server. The proxy would check the authenticated user against the MCP tool
+the MCP server. The proxy would check the authenticated user against the MCP tool
 name and arguments in `tools/call` before forwarding to a configured service.
 It would reject updates from a search-only user or requests for documents
 outside that user's access scope. The MCP server would still enforce data access.
 
 Identity validation and tool authorization are separate. Validate token issuer,
 audience and scope with the resource server's authorization machinery; Ruby uses
-the validated identity, not a self-declared agent ID. Include the verified user identity and permitted
-data scope in policy and accounting keys. Check routing metadata against the JSON-RPC body,
-and preserve the service's discovery contract, errors and cancellation behavior.
+the validated identity, not a self-declared agent ID. Include the verified user
+identity and the permitted data scope in policy and accounting keys; in a
+multi-tenant service, that scope includes the tenant. Check routing metadata
+against the JSON-RPC body, and preserve the service's discovery contract,
+errors and cancellation behavior.
 A gateway is not automatically an OAuth server or a tool-discovery aggregator.
 
 [The MCP design](mcp-gateway.md) specifies the first mock recipe and protocol

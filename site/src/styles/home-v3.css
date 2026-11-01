@@ -133,7 +133,6 @@ html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
 .direction-list .direction-status { margin: var(--space-2) 0 0; color: var(--color-text); }
 .direction-list .direction-body { max-width: 46rem; }
 .direction-list p { color: var(--color-text-muted); margin: 0 0 var(--space-4); }
-.home-v3 .direction-plan { margin-top: var(--space-6); }
 @media (max-width: 800px) {
   .direction-list { gap: var(--space-7); }
   .home-v3 .direction-usecase { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
