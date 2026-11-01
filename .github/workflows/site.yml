@@ -145,9 +145,26 @@ jobs:
         if: ${{ !cancelled() && steps.v2.outcome == 'success' && github.head_ref == 'codex/astro-final-migration' }}
         working-directory: site-parity-base/site
         run: npm ci --ignore-scripts
+      # The replacement is compared at the commit where it is complete and
+      # the pages are still set for 390 px (5.4, acceptance 1). The commits
+      # after it move the phone pattern to 402 px, grow the root size at
+      # narrow widths and fix the text of two pages, so the head differs
+      # from the base by design; the checks of this job and the browser
+      # lanes cover the head.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ !cancelled() && steps.v2.outcome == 'success' && github.head_ref == 'codex/astro-final-migration' }}
+        with:
+          ref: 127f82208f59e0a988439efa1d127df8d7909317
+          path: site-parity-accept
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install the accepted site's locked dependencies
+        if: ${{ !cancelled() && steps.v2.outcome == 'success' && github.head_ref == 'codex/astro-final-migration' }}
+        working-directory: site-parity-accept/site
+        run: npm ci --ignore-scripts
       - name: Compare the base commit site with the current Astro site
         if: ${{ !cancelled() && steps.v2.outcome == 'success' && github.head_ref == 'codex/astro-final-migration' }}
-        working-directory: ${{ runner.temp }}/fresh/site
+        working-directory: site-parity-accept/site
         run: node scripts/check-shells.mjs --base-tree "$GITHUB_WORKSPACE/site-parity-base" --v2-tree "$GITHUB_WORKSPACE/master" --evidence "$RUNNER_TEMP/site-parity"
       - name: Test the generator fixtures and release-state classification
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}

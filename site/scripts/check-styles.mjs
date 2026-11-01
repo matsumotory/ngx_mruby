@@ -64,16 +64,20 @@ export const PAGES = ['/', '/ja/', '/concepts/request-phases/', '/ja/concepts/re
 // (step 4 fixed the last ones that were notes).
 const LAST_LINE_STRICT = new Set(PAGES);
 
-// 4.4, table "Scale": the sizes other than the home page heading.
+// 4.4, table "Scale": the sizes other than the home page heading, at a
+// root size of 16 px. At 640 px and below the root grows with the screen
+// (tokens.css, ROOT below), and every size of the scale is compared in rem,
+// that is, these values times the root size divided by 16.
 const SCALE = {
   en: { h1: 32, h2: 26, h3: 22, body: 16, nav: 15, caption: 14 },
   ja: { h1: 26, h2: 22, h3: 18, body: 16, nav: 15, caption: 14 },
 };
-// The homepage scale of home.css; reference pages retain the scale above.
-function homeSize(lang, vw) {
-  const clamp = (lo, v, hi) => Math.min(Math.max(lo, v), hi);
-  return lang === 'ja' ? clamp(32, 16 + 0.035 * vw, 56) : clamp(38, 16 + 0.045 * vw, 72);
-}
+// The homepage scale of home.css (computed in the page, in rem); reference
+// pages retain the scale above.
+// tokens.css: at 640 px and below, the root size keeps the text column
+// between the narrow gutters at 21.875 em, from 100% to 106.25% (16 to
+// 17 px); above 640 px it is 16 px.
+const ROOT = { maxWidth: 640, columnEm: 21.875, min: 16, max: 17 };
 // 4.5: --space-1 to --space-9, and 20 px, the narrow gutter of 4.5.
 const SPACES = [0, 4, 8, 12, 16, 24, 32, 48, 64, 80];
 const GUTTER_NARROW = 20;
@@ -104,13 +108,21 @@ function inspect(cfg) {
   const fails = [];
   const root = document.documentElement;
   const lang = root.lang === 'ja' ? 'ja' : 'en';
-  const scale = cfg.scale[lang];
+  // The root size that tokens.css gives this screen, and the scale in rem.
+  const rootPx = parseFloat(getComputedStyle(root).fontSize);
+  const expectedRoot = innerWidth > cfg.root.maxWidth ? cfg.root.min
+    : Math.min(Math.max(cfg.root.min, (innerWidth - 2 * cfg.gutterNarrow) / cfg.root.columnEm), cfg.root.max);
+  if (Math.abs(rootPx - expectedRoot) > 0.05) fails.push(`:root: font-size ${rootPx}px at ${innerWidth} px, expected ${expectedRoot}px (4.4)`);
+  const rem = rootPx / 16;
+  const scale = Object.fromEntries(Object.entries(cfg.scale[lang]).map(([k, v]) => [k, v * rem]));
   const sizes = new Set(Object.values(scale));
   const isHome = !!document.querySelector('.home');
   // The Japanese home heading: no more than its column (.headline-box)
   // divided by 13.7 em (tokens.css)
   const headlineBox = document.querySelector('.headline-box');
-  const home = lang === 'ja' && headlineBox ? Math.min(cfg.home, headlineBox.getBoundingClientRect().width / 13.7) : cfg.home;
+  const clampTo = (lo, v, hi) => Math.min(Math.max(lo, v), hi);
+  const homeBase = lang === 'ja' ? clampTo(32 * rem, 16 * rem + 0.035 * cfg.homeVw, 56 * rem) : clampTo(38 * rem, 16 * rem + 0.045 * cfg.homeVw, 72 * rem);
+  const home = lang === 'ja' && headlineBox ? Math.min(homeBase, headlineBox.getBoundingClientRect().width / 13.7) : homeBase;
   if (isHome && lang === 'ja' && !headlineBox) fails.push('the Japanese home page has no .headline-box');
   const tokens = new Set(cfg.tokens);
   const spans = new Set(cfg.spans);
@@ -179,7 +191,9 @@ function inspect(cfg) {
     const ownText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     if (ownText) {
       const fs = parseFloat(cs.fontSize);
-      const allowed = new Set(sizes);
+      // A size of the scale written in rem, or the same size written in px
+      // (Pagefind's UI); the two differ only at 640 px and below.
+      const allowed = new Set([...sizes, ...Object.values(cfg.scale[lang])]);
       if (isHome) allowed.add(home);
       if (![...allowed].some((s) => Math.abs(s - fs) < 0.05)) fail(el, `font-size ${fs}px is not a size of the ${lang} scale (${[...allowed].join(', ')})`);
       if (fs < 13.95) fail(el, `font-size ${fs}px is below 14 px`);
@@ -199,14 +213,20 @@ function inspect(cfg) {
         continue;
       }
       const n = Math.abs(parseFloat(m[1]));
-      const ok = cfg.spaces.some((s) => Math.abs(s - n) < 0.01) || (/(left|right)$/.test(p) && Math.abs(n - cfg.gutterNarrow) < 0.01 && cfg.width <= 640);
+      // A step of 4.5 written in px, or in rem (that step times the root size
+      // divided by 16, which differs from px only at 640 px and below).
+      // Expressive Code keeps room for the copy button at the end of each
+      // line of a wrapped block: its code padding (--space-4) plus 2rem,
+      // 48 px at a root of 16 px.
+      const copyRoom = el.matches('.expressive-code .ec-line > .code') && /right$/.test(p) && Math.abs(n - (16 + 2 * rootPx)) < 0.01;
+      const ok = copyRoom || cfg.spaces.some((s) => Math.abs(s - n) < 0.01 || Math.abs(s * rem - n) < 0.01) || (/(left|right)$/.test(p) && Math.abs(n - cfg.gutterNarrow) < 0.01 && cfg.width <= 640);
       if (!ok) fail(el, `${p} ${v} is not a value of 4.5`);
     }
     for (const p of ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius']) {
       const v = map.get(p)?.toString() ?? '';
       if (v === '50%') continue;
       const m = v.match(/^([0-9.]+)px$/);
-      if (!m || !cfg.radii.some((r) => Math.abs(r - parseFloat(m[1])) < 0.01)) fail(el, `${p} ${v} is not 0, 8, 12, 999 px or 50%`);
+      if (!m || !cfg.radii.some((r) => Math.abs(r - parseFloat(m[1])) < 0.01 || Math.abs(r * rem - parseFloat(m[1])) < 0.01)) fail(el, `${p} ${v} is not 0, 8, 12, 999 px or 50%`);
     }
     // Durations (4.8)
     const durations = `${cs.transitionDuration},${cs.animationDuration}`.split(',').map((d) => parseFloat(d) * (d.trim().endsWith('ms') ? 1 : 1000));
@@ -471,7 +491,8 @@ async function main() {
             const lang = await tab.evaluate(() => document.documentElement.lang);
             const cfg = {
               scale: SCALE,
-              home: homeSize(lang === 'ja' ? 'ja' : 'en', size.width),
+              homeVw: size.width,
+              root: ROOT,
               tokens,
               syntax,
               spans: [...allowedSpanColors()],

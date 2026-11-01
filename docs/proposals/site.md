@@ -943,6 +943,18 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   (Digital Agency design system). Chosen here: the English line heights,
   with body text at 1.6 (above the 1.5 that the Digital Agency asks for
   body text and that WCAG 1.4.12 tests), and weight 600 for h3.
+- **The root size at 640 px and below.** The sizes are written in rem,
+  and the px values of the table are for a root of 16 px. At 640 px and
+  below, `tokens.css` sets the root to
+  `clamp(100%, (100vw - 2 * var(--gutter)) / 21.875, 106.25%)`: the text
+  column between the 20 px gutters keeps the 21.875 em that it has at
+  390 px, where the pages' lines were set, so the lines break at the same
+  places. The root is 16 px up to 390 px, 16.55 px at 402 px (the phone
+  pattern of "Site design acceptance") and 17 px from 412 px; every role
+  of the scale follows it, so the roles keep their ratios. Above 640 px
+  the root is 16 px. `check-styles.mjs` checks the root size and compares
+  each role in rem (chosen here, following the owner's words of
+  2026-11-01: 「あまりに箇所が多ければ、文字数というかフォントサイズなどで調整してその上で細かいところは分量で調整したら良さそう」).
 - **Seven sizes.** A survey summary of Material Design 3 suggested three to
   six steps, but Material Design 3 itself names five roles in three sizes
   each (summary), so the number here follows the seven roles of the table,
@@ -1711,10 +1723,11 @@ the Banner), 4.5 (Starlight's columns and CSS), 4.6 ("Starlight's own
 colors", "Code blocks"), 4.7, 4.10 and 5.2, and "Measure two patterns" of "Site design acceptance" (the phone width); Pillar F of `v3-plan.md`; and the comments of `site/` that name
 Starlight. `docs/HANDOFF.md` records the state of the pull request, as AGENTS.md says.
 
-**2026-11-01 migration status:** the final Astro-only implementation removes
-the remaining Starlight layers in one PR; acceptance verification is not yet
-complete. The PR must replace this pending status with actual tested commits
-and results before handoff.
+**Migration status (2026-11-01).** [#713](https://github.com/matsumotory/ngx_mruby/pull/713)
+removes the remaining Starlight layers. Its acceptance below passes at
+390 px against the build of the base commit, and the phone pattern then
+moves to 402 px with the root size of 4.4; the pull request quotes the
+commits and the results.
 
 **Acceptance.** Each item is measured on both versions and both
 languages, on every page unless it says otherwise. The phone pattern is
@@ -1728,7 +1741,13 @@ languages, on every page unless it says otherwise. The phone pattern is
    the class of the content, `#starlight__search` to the id of the
    element where Pagefind's UI mounts, for example), never its thresholds, pages, widths, engines or themes;
    each check whose selectors changed is shown failing on a planted fault
-   again, as section 6 asks of every check.
+   again, as section 6 asks of every check. The replacement passes this
+   acceptance at 390 px, in a commit of its own. The commit after it moves
+   the phone pattern to 402 px; it sets the root size of 4.4 for narrow
+   screens, and `check-styles.mjs` then compares the type scale, the
+   spacing steps and the radii in rem of that root as well as in px. That
+   change moves what the sizes are measured against to the root; it does
+   not widen a threshold.
 2. The HTML says the same. A new script, `check-parity.mjs` (chosen here),
    reads the recorded base-commit build and the head build and fails on any difference that is not on its list of allowed
    ones. It compares the set of built files, the URLs of the sitemaps and
