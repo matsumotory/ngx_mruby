@@ -81,9 +81,7 @@ console.log('Publication regression checks and policy-only measurement wiring: P
 assert.ok(workflow.includes('node scripts/check-project-badges.mjs'));
 console.log('Quality badge markup and 1440px/402px footer checks remain wired after lane integration: PASS');
 
-// Base/head identity is a migration acceptance gate, not a ban on future edits.
-for (const name of ['Compare the base commit site with the current Astro site', 'Upload base/head comparison inputs', 'Download base/head comparison input', 'Compare base/head layout and save side-by-side evidence']) {
-  const step = workflow.split(`- name: ${name}\n`)[1].split('      - ')[0];
-  assert.ok(step.includes("github.head_ref == 'codex/astro-final-migration'"), `${name}: migration-only gate`);
-}
+// The base/head comparison of the Starlight replacement ran only on that
+// pull request (#713); later content changes are not compared with their base.
+assert.ok(!workflow.includes('site-parity'), 'no base/head comparison step is left in site.yml');
 console.log('Migration comparison does not block future content PRs: PASS');

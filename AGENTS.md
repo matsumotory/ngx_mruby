@@ -628,9 +628,13 @@ with a successful skip.
 
 The site uses Astro with the repository's route, schema, layout and components.
 There is no shell-selection environment flag or Starlight runtime dependency.
-Migration parity compares a build of the recorded base commit with the head
-build, using the same 2.x input. Record both commits and the input in the PR;
-static HTML parity does not replace browser, layout or interaction evidence.
+`site/scripts/check-shells.mjs` (HTML and search) and
+`check-layout-parity.mjs` (boxes and computed styles) compare a build of a
+base commit with the head, using the same 2.x input. CI ran them only on the
+pull request that replaced Starlight (#713); a later change of the site's
+shell runs them locally the same way. Record both commits and the input in
+the PR; static HTML parity does not replace browser, layout or interaction
+evidence.
 
 `site/` (on `next`) builds the ngx.mruby.org site from `docs/` with Astro
 and its own components (`docs/proposals/site.md`). It needs git with the whole
