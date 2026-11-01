@@ -1,5 +1,8 @@
 # v3: a thin control layer for AI traffic
 
+[The glossary](../glossary.md) defines the terms for models, agents, their
+traffic and the AI gateway, and says how this proposal's words apply.
+
 Status: design direction requested on 2026-11-01. This proposal records what v3
 should enable, not completed features or a commitment to ship every recipe in
 v3.0. The public [use-case guide](../guides/edge-control.md) and homepage distinguish

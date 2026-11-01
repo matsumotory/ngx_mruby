@@ -1,5 +1,8 @@
 # AI edge control
 
+[The glossary](../glossary.md) defines the terms for models, agents, their
+traffic and the AI gateway.
+
 **Planned v3 uses, not ready-made integrations.** ngx_mruby can put Ruby
 policy inside nginx without moving the byte relay into an application. The
 [working LLM recipe](agent-proxy.md) already checks client keys, selects models
