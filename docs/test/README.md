@@ -129,9 +129,12 @@ whether a needed job that reaches its `timeout-minutes` makes it true; if
 it did, `ci-ok` on `!cancelled()` would be skipped, and the skip would
 pass the required check.
 
-CI is the final check in a clean environment, not the place where a change
-is first tested: the owner's rule of 2026-10-31, in "Branches and pull
-requests" of [AGENTS.md](../../AGENTS.md). Before marking a pull request
+CI is limited to what cannot run locally, the environments that one
+machine does not have (the cells of the build matrix, the sanitizers,
+valgrind, the callgrind comparison), and to the deploy of the site; it is
+not the place where a change is first tested. These are the owner's rules
+of 2026-10-31 and 2026-11-02, in "Branches and pull requests" of
+[AGENTS.md](../../AGENTS.md). Before marking a pull request
 ready, its author runs the local commands of the checks that the change
 touches, the suite among them when `test/ci/changes.sh` gives `build`
 `standard` or `full` (this file describes them; "Build and test" in AGENTS.md
@@ -142,10 +145,7 @@ change needs (the tables below) and finishes in about fifteen minutes. On
 2026-10-31, on `next`, a cell of the build matrix took 6 to 14 minutes, and
 the run of `test.yml` with the whole matrix for #678 took 15 minutes from
 its start to its end
-([run 41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773));
-a browser lane of the site's workflow on `next` took 3 to 8 minutes, the lanes in parallel,
-and that run 10 minutes
-([run 41191594863](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594863)).
+([run 41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773)).
 A proposal to add a check to CI says whether it can run locally, why CI
 needs it, and how many minutes it adds to the run.
 
@@ -171,7 +171,7 @@ cell, or `none` for the runs of the second table below.
 |---|---|---|
 | `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below) and `perf`. `codeql` for `src/` and `mrbgems/` |
 | `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `perf` compares when `perf` is `true` |
-| `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | `site-v2`, which runs on every ready pull request to `master` |
+| `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | No job: the author checks the 2.x pages locally ([The 2.x pages of the site](#the-2x-pages-of-the-site)) |
 | `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, `test.yml` included); `codeql` for `.github/workflows/` and `.github/codeql/` |
 
 The four standard cells build each link mode and each line of nginx
@@ -264,8 +264,8 @@ A push to `master` or `next` runs only `changes`, `files` and `ci-ok`. Both
 branches take changes only through pull requests, and condition 2 of
 "Review and merge" in [AGENTS.md](../../AGENTS.md) has the session merge a
 pull request only while the run of the pull request still stands for the
-merge: the base has gained no file of a category that the pull request
-also changes since that run. The rulesets require `ci-ok`, but not that the
+merge: when the base has moved since that run, CI runs again only when both
+the pull request and the base's new commits change `code` or `tests`. The rulesets require `ci-ok`, but not that the
 branch is up to date with its base. To build and test the tip of a branch
 by itself, use "Run workflow" (`gh workflow run test.yml --ref master`), as
 after a move of the head of a GitHub gem ([Heads of the GitHub
@@ -275,8 +275,8 @@ workflows decide on their own when they run: `site-dispatch` starts the
 build and deploy of the site on `next` after every push to `master`,
 `codeql` scans pushes to `master` and `next` that change `src/`,
 `mrbgems/`, the workflows or its configuration ([CodeQL](#codeql)), and
-`site-v2`, `zizmor` and `gem-heads` run on ready pull requests (and
-`gem-heads` weekly).
+`zizmor` and `gem-heads` run on ready pull requests (and `gem-heads`
+weekly), and `site-v2` only on "Run workflow".
 
 `ci-ok` passes a skipped `build` or `files` job only when `changes` passed
 and decided that the run does not need it. A job that was skipped for
@@ -373,24 +373,61 @@ commit removes stays in the history: remove it from the commit that added it
 
 The site ngx.mruby.org is built on `next` (`site/` there, and
 `docs/proposals/site.md` there for the plan). Its 2.x pages under `/v2/`
-are built from `docs/` of this branch, so two workflows here serve them:
+are built from `docs/` of this branch. A pull request to `master` runs no
+job for them: the owner decided on 2026-11-02 that CI is not relied on
+for what runs locally (the words are quoted in "Decisions" of
+`docs/HANDOFF.md` on `next`), with the option
+「PR では流さず、next への push の時だけ (推奨)」 ("not on pull requests,
+only on the push to `next` (recommended)"). The author of a pull request
+that changes `docs/`, the Markdown files at the top, or a file that they
+link to, runs these checks locally before marking it ready, and quotes
+them under "How was this tested":
 
-- `.github/workflows/site-v2.yml` runs on every ready pull request to `master`,
-  without a path filter, since the 2.x pages link to files anywhere in the
-  repository (`.travis.yml`, `nginx_version`, the workflows). It checks
-  out `next` beside the pull request, builds the site with `site/` and
-  the 3.x pages of `next` and the 2.x pages from the pull request's
-  `docs/` (`node site/scripts/build-v2.mjs --tree DIR` of `next`), and
-  fails on a relative link or anchor of the sources of the
-  2.x pages that does not resolve, on a link to a file that git does not
-  track, on a broken link of the built site, on a 2.x page without its
-  banner, and when the search of a version shows pages of the other. The
-  built site is the workflow artifact `site-v2`.
+- The relative links and anchors of the Markdown files that git tracks,
+  with `check_links.py` of `next`, which `master` does not have. From the
+  top of the checkout of the pull request, with `T` a directory of your
+  own outside the repository or under `.claude/tmp/`:
+
+  ```console
+  $ git fetch origin next
+  $ git show origin/next:site/scripts/check_links.py > "$T/check_links.py"
+  $ git ls-files -z -- '*.md' ':!:mruby/' ':!:dependence/' | xargs -0 python3 "$T/check_links.py" .
+  ```
+
+- The 2.x pages built from the pull request: in a checkout of `next`,
+  after `npm ci --ignore-scripts` and `npx playwright install chromium
+  webkit` in its `site/`, `NGX_MRUBY_V2_TREE=DIR npm run check:ci` with
+  `DIR` the top of the checkout of the pull request ("Site CI" in
+  `docs/test/README.md` on `next`). It builds the 3.x pages of `next` and
+  the 2.x pages from `DIR`, and runs the checks of the site on both, the
+  browser checks among them; it compiles the Ruby blocks of the pages
+  only when `MRBC` names an `mrbc` of the bundled mruby, and otherwise
+  says that it skipped them. It prints the commit of `next`; quote it
+  with the head of the pull request. The generator stops
+  on a link of `docs/` to a file that git does not track, and the checks
+  fail on a broken link of the built site, on a 2.x page without its
+  banner, and when the search of a version shows pages of the other.
+
+Two workflows here serve the 2.x pages:
+
 - `.github/workflows/site-dispatch.yml` runs on every push to `master`,
   and starts `site.yml` on `next` with `gh workflow run site.yml --ref
-  next`, so that the site is built again with the new 2.x pages. It fails
-  when GitHub refuses the dispatch or it cannot name the run that the
-  dispatch started.
+  next`, so that the site is built again with the new 2.x pages, checked,
+  and deployed only when the checks pass. It fails when GitHub refuses
+  the dispatch or it cannot name the run that the dispatch started.
+- `.github/workflows/site-v2.yml` runs only on "Run workflow" (`gh
+  workflow run site-v2.yml --ref <branch>`). It checks out `next` beside
+  the branch, builds the site with `site/` and the 3.x pages of `next`
+  and the 2.x pages from the branch's `docs/` (`node
+  site/scripts/build-v2.mjs --tree DIR` of `next`), and runs the link,
+  banner and search checks above. The built site is the workflow
+  artifact `site-v2`. It does not run on pull requests or pushes: on a
+  push, the run of `site.yml` that `site-dispatch.yml` starts builds and
+  checks the same 2.x pages. That run checks the links of the Markdown
+  files of `next`, not of `master`: the links of the Markdown files of
+  `master` that the site does not render (`AGENTS.md`, for example, whose
+  links the generator turns into GitHub URLs) are checked only by the
+  author's run of `check_links.py` above.
 
 Neither is in the `needs` of `ci-ok`.
 
