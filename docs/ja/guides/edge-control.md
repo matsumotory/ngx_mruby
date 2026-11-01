@@ -18,7 +18,7 @@ MCPツール一覧、エラー、キャンセルの契約は接続先と揃え�
 
 必要な機能と状態は、台帳の[MCPツールの認可とデータのアクセス範囲の検査](../../proposals/edge-control.md#mcp-tool-authorization)の行と[MCP呼び出しの集中の制御](../../proposals/edge-control.md#mcp-burst-control)の行にあります。
 
-### 使うAIに合わせる
+### AI applicationに合わせる
 
 同じサービスで、専用のMCPツールやsearch・fetchの入口をAI application別に用意する設計です。設定したプロファイルで接続先を選び、tools/listのスキーマとtools/callの挙動を揃えます。製品名だけで契約を決めつけず、バージョンを持つadapterに変換を任せます。MCPツールを一覧から隠すだけでは認可になりません。
 

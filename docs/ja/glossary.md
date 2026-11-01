@@ -290,4 +290,4 @@
 - 計画の用途「model APIのエラーで転送先を変える」は、テキストの言語モデルに限らないので、model APIと書いています。
 - [AI gatewayとアクセス制御](guides/edge-control.md)の「AI crawlerの制御」の節は、サイトへ来るAIのcrawlerとagentのrequestを扱うので、語が合います。
 - [edge-controlの構想](../proposals/edge-control.md)の題は「AI traffic」と書いています。この構想は、MCPの通信、model APIの通信、サイトへ来るAIのcrawlerとagentのrequest、log handlerのテレメトリを扱います。そのため、この語には、初出でこの4つを含むという定義が要ります。
-- [ドキュメントの一覧](README.md)は、[model APIの部分の案内](guides/agent-proxy.md)へのリンクを「model APIの中継」と書いています。このページはAI gatewayのうちmodel APIの部分だけを扱います。
+- [ドキュメントの一覧](README.md)は、[model APIの部分の案内](guides/agent-proxy.md)へのリンクを「model APIの中継」と書いています。このページは、AI gatewayのうちmodel APIの部分だけを扱い、ほかの部分の案内は別のページにあります。
