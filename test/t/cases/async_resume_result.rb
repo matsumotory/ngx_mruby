@@ -28,7 +28,12 @@ def async_resume_responses(raw)
       name, value = l.split(':', 2)
       length = value.strip.to_i if name.downcase == 'content-length'
     end
-    length = rest.size if length.nil?
+    # A response without Content-Length (a chunked one) would hide what
+    # follows it: count it as a response that the cases do not expect.
+    if length.nil?
+      responses << ['no Content-Length: ' + lines[0].to_s, rest]
+      break
+    end
     responses << [lines[0], rest[0, length]]
     rest = rest[length..-1].to_s
   end
@@ -40,8 +45,6 @@ ASYNC_RESUME_ENDS = {
   'forbidden' => ['HTTP/1.1 403 Forbidden', '<title>403 Forbidden</title>', true],
   'output' => ['HTTP/1.1 200 OK', 'output', true],
   'raise' => ['HTTP/1.1 500 Internal Server Error', '<title>500 Internal Server Error</title>', false],
-  'ok' => ['HTTP/1.1 200 OK', '', true],
-  'none' => ['HTTP/1.1 200 OK', '', true],
 }
 
 ASYNC_RESUME_WAITS = {
@@ -54,13 +57,16 @@ ASYNC_RESUME_WAITS = {
 [
   [18176, 'rewrite', 'a rewrite handler', %w[declined forbidden output raise], %w[nowait sleep sub_request], '/plain/x'],
   [18176, 'access_all', 'an access handler under satisfy all', %w[declined forbidden raise], %w[nowait sleep], '/plain/x'],
-  [18176, 'access_any', 'an access handler under satisfy any', %w[forbidden raise], %w[nowait sleep], '/plain/x'],
+  [18176, 'access_any', 'an access handler under satisfy any', %w[declined forbidden raise], %w[nowait sleep], '/plain/x'],
   [18176, 'content', 'a content handler', %w[none declined ok forbidden output raise], %w[nowait sleep], '/plain/x'],
   [18177, 'server_rewrite', 'a server rewrite handler', %w[declined forbidden output raise], %w[nowait sleep sub_request], '/x/nowait/declined'],
   [18178, 'post_read', 'a post_read handler', %w[declined forbidden raise], %w[nowait sleep], '/x/nowait/declined'],
 ].each do |port, location, handler, ends, waits, next_path|
   ends.each do |ending|
     line, body, keeps = ASYNC_RESUME_ENDS[ending]
+    # A content handler that ends without output and without a status answers
+    # 200 with an empty body (#574).
+    line, body, keeps = 'HTTP/1.1 200 OK', '', true if location == 'content' && %w[none ok].include?(ending)
     # Under satisfy any, deny all refuses the request that the mruby handler
     # passes on with Nginx::DECLINED.
     line, body = 'HTTP/1.1 403 Forbidden', '<title>403 Forbidden</title>' if location == 'access_any' && ending == 'declined'
