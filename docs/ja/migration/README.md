@@ -251,6 +251,26 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 
   `Dir.mktmpdir`の代替は、[auto-sslのmrbgemと、それと一緒に入っていたクラス](../install/README.md#auto-sslのmrbgemとそれと一緒に入っていたクラス)にあります。ほかの定数に必要なgemは`conf.gem`で追加します。
 
+- [`Nginx::Async.sleep`で待つaccessハンドラとpost_readハンドラが、待たないときと同じように終わる](../../releases/v3.0.0.ja.md#nginxasyncsleepで待つaccessハンドラとpost_readハンドラが待たないときと同じように終わる715)：`mruby_access_handler*`と`mruby_post_read_handler*`のコードで`Nginx::Async.sleep`を探してください。`satisfy any`では、sleepの後に結果なしで終わるaccessハンドラが、リクエストを許可するようになります。拒むべきハンドラは、sleepの後にステータスを返してください。
+
+  ```ruby
+  Nginx::Async.sleep 100
+  # 2.x: without a result, the request reached its content and the connection closed
+  # 3.0.0: without a result, nginx allows the request under satisfy any
+  Nginx.return Nginx::HTTP_FORBIDDEN unless allowed?   # denies on both
+  ```
+
+- [出力を書くaccessハンドラとpost_readハンドラが、レスポンスの後にリクエストを終える](../../releases/v3.0.0.ja.md#出力を書くaccessハンドラとpost_readハンドラがレスポンスの後にリクエストを終える715)：変えるものはありません。このハンドラは1回だけ応答し、nginxは接続を保ちます。2.xはフェーズを続けて接続を閉じていました。このハンドラが出していた`header already sent`の行に対するログのアラートは、もう発生しません。
+- [結果を設定しないハンドラが、前のハンドラの結果を引き継がない](../../releases/v3.0.0.ja.md#結果を設定しないハンドラが前のハンドラの結果を引き継がない715)：すべてのリクエストで`Nginx.return`を呼ぶserver rewrite、rewrite、post_readのハンドラを探してください。例えば`mruby_server_rewrite_handler_code 'Nginx.return Nginx::DECLINED'`です。出力もステータスも無く終わることのある後のcontentハンドラと、`satisfy any`で結果なしで終わることのあるaccessハンドラは、この値を引き継がなくなります。先へ進むべきハンドラは、自分でその値を返してください。
+
+  ```ruby
+  # mruby_content_handler_code, on a server whose server rewrite handler returns Nginx::DECLINED
+  Nginx.rputs body if body    # no body: 2.x went on to the static module   3.0.0 answers 200 with Content-Length: 0
+  Nginx.return Nginx::DECLINED unless body   # goes on to the static module on both
+  ```
+
+- [`Nginx::Async.sleep`で待つ`mruby_set`のハンドラが変数を設定し、リクエストが先へ進む](../../releases/v3.0.0.ja.md#nginxasyncsleepで待つmruby_setのハンドラが変数を設定しリクエストが先へ進む715)：`mruby_set`と`mruby_set_code`で`Nginx::Async.sleep`を探してください。sleepの後に`Nginx.return`でリクエストを終えていたコードは、そのステータスを後のハンドラから返してください。例えば、変数を読むrewriteハンドラから返します。
+
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
 ## ログの<wbr>監視

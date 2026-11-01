@@ -423,6 +423,8 @@ If the code raises an exception before it waits in `Nginx::Async.sleep` or `Ngin
 Text that the code wrote with `Nginx.rputs` or `Nginx.echo` before the exception is not sent and does not count in the `Content-Length` of the response.
 If the code raises after such a call returned, the request gets 500 and the output of `Nginx.rputs` is not sent, as described under [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec).
 
+When the code waits in `Nginx::Async.sleep`, the directives of the same rewrite script after the `mruby_set` run before the sleep ends, without the value. When the code returns, the variable is set and the request goes on with the next handler of its phase, as without the sleep, so the later phases (`proxy_pass`, a content handler) read the value. A status that the code sets with `Nginx.return` does not end the request, with or without the sleep. Since 3.0.0; on 2.x, a request whose code slept ended without a response, unless an earlier handler of the request had returned `Nginx::DECLINED`, and a status set after the sleep ended the request with that status (see [the release notes of 3.0.0](../releases/v3.0.0.md#an-mruby_set-handler-that-waits-in-nginxasyncsleep-sets-its-variable-and-the-request-goes-on-715)).
+
 ## mruby_output_body_filter, mruby_output_body_filter_code, mruby_output_header_filter and mruby_output_header_filter_code
 
 ```

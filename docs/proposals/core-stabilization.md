@@ -761,10 +761,12 @@ each bug fix comes as a test commit and a fix commit.
    and stream, one timer per record, the resume function that clears
    `mrb->exc` on every path, the `RProc` prepared once, the slot at the
    first wait, and the stream counters of `Nginx::Debug.stats`. The perf
-   lane shows its cost.
+   lane shows its cost. Merged in
+   [#714](https://github.com/matsumotory/ngx_mruby/pull/714).
 3. HTTP: the wake and the second call of the handler for the timer, with
    the result handled by nginx's checkers (gap 2, two commits), and the
-   result kept in the record (gap 3, Q6).
+   result kept in the record (gap 3, Q6). Merged in
+   [#715](https://github.com/matsumotory/ngx_mruby/pull/715).
 4. Decision (b): a rewrite handler without a result goes on (gap 1), and
    so does a server rewrite handler (Q6).
 5. HTTP subrequests through the wake (gap 5), `sub_request` returns the
