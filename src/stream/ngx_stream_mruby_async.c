@@ -186,6 +186,38 @@ static ngx_int_t ngx_stream_mrb_post_fiber(ngx_stream_mrb_reentrant_t *re, ngx_s
   return ictx->stream_status;
 }
 
+/*
+ * The read handler of a TCP connection while its code waits in
+ * Nginx::Stream::Async.sleep. nginx keeps the read side of the connection
+ * armed during the access phase on a listen with proxy_protocol, and calls its
+ * read handler when worker_shutdown_timeout expires. The bytes that the client
+ * sends during the wait stay unread, for the phase that comes after the code
+ * (proxy_pass reads them), as ngx_http_block_reading leaves the bytes of an
+ * HTTP request: they run neither the phases (which would start the code
+ * again) nor nginx's reader of the PROXY header. With the event methods that
+ * report a read event until the bytes are read (select, poll), the read event
+ * is removed until the code resumes. When nginx has set c->close, the session
+ * ends; the cleanup of the fiber cancels the timer of the sleep.
+ */
+static void ngx_stream_mrb_wait_read_handler(ngx_event_t *rev)
+{
+  ngx_connection_t *c = rev->data;
+  ngx_stream_session_t *s = c->data;
+
+  if (c->close) {
+    ngx_log_error(NGX_LOG_INFO, c->log, 0, "%s INFO %s:%d: the session ends during the wait of its code", MODULE_NAME,
+                  __func__, __LINE__);
+    ngx_stream_finalize_session(s, NGX_STREAM_OK);
+    return;
+  }
+
+  if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && rev->active) {
+    if (ngx_del_event(rev, NGX_READ_EVENT, 0) != NGX_OK) {
+      ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+    }
+  }
+}
+
 static void ngx_stream_mrb_timer_handler(ngx_event_t *ev)
 {
   ngx_stream_mrb_reentrant_t *re;
@@ -199,6 +231,17 @@ static void ngx_stream_mrb_timer_handler(ngx_event_t *ev)
   // destroys
   s = re->s;
   ctx = ngx_stream_mrb_get_module_ctx(NULL, s);
+
+  // the code resumes: the connection gets back the read handler that it had
+  // before the wait (ngx_stream_mrb_async_sleep sets it again if the code
+  // waits again). A later phase that set a read handler of its own, after
+  // code that armed the timer without waiting, keeps it.
+  if (ctx->read_handler != NULL) {
+    if (s->connection->read->handler == ngx_stream_mrb_wait_read_handler) {
+      s->connection->read->handler = ctx->read_handler;
+    }
+    ctx->read_handler = NULL;
+  }
 
   rc = ngx_stream_mrb_post_fiber(re, ctx);
 
@@ -300,6 +343,14 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
 
   ngx_stream_mrb_cleanup_pending_operation(ctx);
   ctx->cleanup = ngx_stream_mrb_async_sleep_cleanup;
+
+  // A TCP connection reads nothing while the code waits
+  // (ngx_stream_mrb_wait_read_handler). A UDP session keeps its read handler:
+  // nginx gives it the datagrams of its client through that handler.
+  if (s->connection->type == SOCK_STREAM && s->connection->read->handler != ngx_stream_mrb_wait_read_handler) {
+    ctx->read_handler = s->connection->read->handler;
+    s->connection->read->handler = ngx_stream_mrb_wait_read_handler;
+  }
 
   ngx_add_timer(&ctx->sleep, (ngx_msec_t)timer);
   return self;

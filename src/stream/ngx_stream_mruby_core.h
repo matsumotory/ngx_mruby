@@ -21,6 +21,9 @@ typedef struct ngx_stream_mruby_ctx_t {
   mrb_value *async_handler_result;
   ngx_stream_mrb_cleanup_pt cleanup;
   ngx_event_t sleep;
+  // the read handler of a TCP connection before its code started to wait in
+  // Nginx::Stream::Async.sleep, put back when the code resumes
+  ngx_event_handler_pt read_handler;
 } ngx_stream_mruby_ctx_t;
 
 ngx_stream_mruby_ctx_t *ngx_stream_mrb_get_module_ctx(mrb_state *mrb, ngx_stream_session_t *s);
