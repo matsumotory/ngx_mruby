@@ -300,9 +300,10 @@ configuration ([CodeQL](#codeql)); `nginx-tests`, `examples` and `zizmor`
 run on pull requests only. After a deploy, the `verify-live` job of `site`
 reads the GitHub Pages environment and deployment through the REST API with
 the job's own `GITHUB_TOKEN` (`contents: read`), so that the requests do not
-share the anonymous limit of the runner's IP address; on HTTP 403 or 429 it
-waits (`Retry-After`, `X-RateLimit-Reset`, else 10 s doubling) and repeats at
-most 5 times.
+share the anonymous limit of the runner's IP address; on a rate limit
+(HTTP 429, or 403 with `Retry-After` or no requests left) it waits
+(`Retry-After`, `X-RateLimit-Reset`, else 60 s doubling) and repeats at most
+5 times per call, 240 s of waiting in all; any other error fails at once.
 
 `ci-ok` passes a skipped `build`, `soak` or `files` job only when `changes`
 passed and decided that the run does not need it. A job that was skipped
