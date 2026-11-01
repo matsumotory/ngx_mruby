@@ -663,7 +663,7 @@ keep-aliveのクライアントは、`SOAK_CONCURRENCY`個の接続です。各�
   - `gc_root_fibers`：`gc_root`が数えるオブジェクトのうちの、fiberの数です。
   - `gc_arena_idx`：`mrb->gc.arena_idx`です。
   - `timers`：`Nginx::Async.sleep`のタイマーのうち、発火も削除もされていないタイマーの数です。
-  - `stream_timers`：streamモジュールの`Nginx::Stream::Async.sleep`のタイマーについての、同じ数です。
+  - `stream_timers`：`timers`と同じ数え方で、`Nginx::Stream::Async.sleep`のタイマーの数です。
   - `stream_fibers`：streamのハンドラのfiberのうち、streamモジュールのmrb_stateのholderに保持されているものの数です。sleepした後で、終わっておらず、セッションも終わっていないfiberが入ります。この数は`gc_root_fibers`にも入ります。ソークテストの設定には`stream {}`が無いので、2つのstreamのキーは0で、ソークテストはキーがあることだけを確かめます。
   - `gc_root_mruby`と`gc_root_fibers_mruby`：httpモジュールのmrb_stateにある、mruby自身の`_gc_root_`の配列の長さと、配列の中のfiberの数です。mruby 3.xと4.0は、そのmrb_stateで最初に`mrb_gc_register()`を呼んだときに、この配列を作ります。mruby 4.1は、代わりにGCのルートを`mrb->gc.root`に持つので、この2つのキーはありません。`gc_root`と違って、この2つの値には、mrubyとgemが登録したオブジェクトが入り、holderの中のオブジェクトは入りません。配列にあるのはhttpモジュールのholderで、holderの中のfiberではないからです。ソークテストはこの2つの値を確かめません。配列のあるバージョンのmrubyで、`gc_root`と比べるために出す値です。
 
