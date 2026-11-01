@@ -909,14 +909,24 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   ngx_mrb_rputs_chain_list_t *rputs_chain;
   ngx_chain_t **rputs_last;
   off_t content_length_n;
-  mrb_value *mrb_result = (mrb_value *)ngx_palloc(r->pool, sizeof(mrb_value));
-  *mrb_result = mrb_nil_value();
+  mrb_value *mrb_result;
+  ngx_mrb_fiber_outcome_t outcome;
   ngx_http_mruby_ctx_t *ctx;
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
   if (state == NGX_CONF_UNSET_PTR || code == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
   }
+
+  // the value of the code; a resumed fiber writes it through
+  // ctx->async_handler_result, so it lives in the request pool
+  mrb_result = ngx_palloc(r->pool, sizeof(mrb_value));
+  if (mrb_result == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory for the result %s:%d", __FUNCTION__,
+                  __LINE__);
+    return NGX_ERROR;
+  }
+  *mrb_result = mrb_nil_value();
 
   ctx = ngx_mrb_http_get_module_ctx(NULL, r);
   if (ctx == NULL) {
@@ -1061,7 +1071,8 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   rputs_last = rputs_chain != NULL ? rputs_chain->last : NULL;
   content_length_n = r->headers_out.content_length_n;
 
-  if (mrb_test(ngx_mrb_start_fiber(r, state->mrb, code->proc, mrb_result, kind))) {
+  outcome = ngx_mrb_start_fiber(r, state->mrb, code->proc, mrb_result, kind);
+  if (outcome == NGX_MRB_FIBER_WAITS) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: already can resume this fiber", MODULE_NAME,
                   __func__, __LINE__);
 
@@ -1107,9 +1118,9 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
                   MODULE_NAME, __func__, __LINE__);
   }
 
-  if (state->mrb->exc) {
+  if (outcome == NGX_MRB_FIBER_RAISED) {
+    // ngx_mrb_start_fiber has logged the exception and cleared mrb->exc
     raised = 1;
-    ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
     // drop the output of Nginx.rputs: with it, ngx_mrb_finalize_rputs would
     // send that output as a 200 response; without it, the function returns
@@ -1264,6 +1275,7 @@ static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, n
   }
 
   code->proc = mrb_proc_ptr(proc);
+  ngx_mrb_fiber_prepare_proc(state->mrb, code->proc);
 
   return NGX_OK;
 }
@@ -1369,6 +1381,7 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
   }
 
   code->proc = mrb_proc_ptr(proc);
+  ngx_mrb_fiber_prepare_proc(state->mrb, code->proc);
 #ifdef NGX_MRUBY_IREP_DEBUG
   /* mrb_codedump_all() is not declared in mruby headers. So just follows the mruby way. See mruby/src/load.c. */
   void mrb_codedump_all(mrb_state *, struct RProc *);

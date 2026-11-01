@@ -22,7 +22,6 @@
 #include <mruby/hash.h>
 #include <mruby/variable.h>
 #include <mruby/class.h>
-#include <mruby/internal.h>
 
 typedef struct {
   mrb_state *mrb;
@@ -37,34 +36,20 @@ typedef struct {
   ngx_str_t *uri;
 } ngx_mrb_async_http_ctx_t;
 
-#ifdef NGX_MRUBY_DEBUG_STATS
 /*
-// Timers added by Nginx::Async.sleep that have neither fired nor been
-// deleted. Signed, so that a timer counted down twice shows as negative.
-*/
-static ngx_int_t ngx_mrb_async_debug_timers_count = 0;
-
-ngx_int_t ngx_mrb_async_debug_timers(void)
-{
-  return ngx_mrb_async_debug_timers_count;
-}
-#endif
-
-/*
- * The fiber of a handler, allocated from the request pool. It is stored in
- * the GC root holder of its mrb_state (ngx_http_mruby_gc_roots.h) once, when
- * it is created, and its slot is freed once: when it ends, normally or with
- * an exception, or when the request pool is destroyed while the fiber is
- * still suspended. slot is NGX_MRB_GC_ROOTS_NONE when the fiber is not held. ctx->fiber_proc and re->fiber
- * point to the first member. kind is the handler that runs the fiber, also
- * when a timer or a subrequest resumes it.
+ * The record of a handler's fiber, allocated from the request pool for each
+ * run of a handler (the common part is in src/common/ngx_mruby_fiber.h).
+ * ctx->fiber_proc and re->fiber point to its first member, the fiber. kind
+ * is the handler that runs the fiber, also when a timer or a subrequest
+ * resumes it. sleep is the data of the resume of Nginx::Async.sleep, for the
+ * one timer of the record; the record keeps it because it waits for one
+ * timer or one subrequest at a time.
  */
 typedef struct {
-  mrb_value fiber;
-  mrb_state *mrb;
-  mrb_int slot;
+  ngx_mrb_fiber_t base;
   ngx_http_mruby_handler_kind_t kind;
-} ngx_mrb_fiber_t;
+  ngx_mrb_reentrant_t sleep;
+} ngx_http_mrb_fiber_t;
 
 // Whether Nginx::Async may suspend the fiber of this kind of handler. nginx
 // resumes it for mruby_set and the post_read, server_rewrite, rewrite,
@@ -120,84 +105,117 @@ static ngx_http_request_t *ngx_mrb_async_request(mrb_state *mrb, const char *met
   return r;
 }
 
-static void ngx_mrb_fiber_unregister(mrb_value *fiber_proc)
+// The owner hook of a record: a request cleanup of the main request, which
+// nginx runs when it terminates the request and before it frees the request
+// pool. It deletes a pending timer, so that the timer never fires on a freed
+// pool, and frees the slot of a fiber that still waits.
+static void ngx_http_mrb_fiber_owner_cleanup(void *data)
 {
-  ngx_mrb_fiber_t *f = (ngx_mrb_fiber_t *)fiber_proc;
+  ngx_mrb_fiber_cancel(data);
+}
 
-  if (f->slot != NGX_MRB_GC_ROOTS_NONE) {
-    ngx_mrb_gc_roots_remove(f->mrb, f->slot);
-    f->slot = NGX_MRB_GC_ROOTS_NONE;
+/*
+ * Prepares the first and every later wait of the fiber that runs now, before
+ * the wait is armed: the owner hook once, then the slot in the GC root
+ * holder. Returns the record, or raises without arming anything.
+ */
+static ngx_http_mrb_fiber_t *ngx_http_mrb_fiber_prepare_wait(mrb_state *mrb, ngx_http_request_t *r,
+                                                             ngx_http_mruby_ctx_t *ctx)
+{
+  ngx_http_mrb_fiber_t *f = (ngx_http_mrb_fiber_t *)ctx->fiber_proc;
+  ngx_http_cleanup_t *cln;
+
+  // Only the fiber that runs now can wait. Ruby code that runs for the
+  // record after its fiber ended (the inspect of its exception, for example)
+  // finds it in another state.
+  if (f == NULL || f->base.state != NGX_MRB_FIBER_RUNNING) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::Async is not available without a running handler fiber");
   }
+
+  if (!f->base.hooked) {
+    cln = ngx_http_cleanup_add(r, 0);
+    if (cln == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_cleanup_add failed");
+    }
+    cln->handler = ngx_http_mrb_fiber_owner_cleanup;
+    cln->data = &f->base;
+    f->base.hooked = 1;
+  }
+
+  if (ngx_mrb_fiber_hold(&f->base) != NGX_OK) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "failed to keep the fiber of the handler from the GC");
+  }
+
+  return f;
 }
 
-static void ngx_mrb_fiber_cleanup(void *data)
+// What ngx_http_mrb_fiber_log_raise needs: the request, and the handler kind
+// to restore before the exception is logged.
+typedef struct {
+  ngx_http_request_t *r;
+  ngx_http_mruby_ctx_t *ctx;
+  ngx_http_mruby_handler_kind_t outer_kind;
+} ngx_http_mrb_fiber_log_t;
+
+// Logs the exception of a fiber that raised. The kind of the handler that
+// was set before the fiber ran comes back first, as when the exception was
+// logged after the fiber returned: the inspect of the exception is Ruby code
+// that runs outside the handler fiber.
+static void ngx_http_mrb_fiber_log_raise(mrb_state *mrb, mrb_value exc, void *data)
 {
-  ngx_mrb_fiber_unregister(data);
+  ngx_http_mrb_fiber_log_t *log = data;
+
+  log->ctx->handler_kind = log->outer_kind;
+  ngx_mrb_raise_error(mrb, exc, log->r);
 }
 
-mrb_value ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc, mrb_value *result,
-                              ngx_http_mruby_handler_kind_t kind)
+ngx_mrb_fiber_outcome_t ngx_mrb_start_fiber(ngx_http_request_t *r, mrb_state *mrb, struct RProc *rproc,
+                                            mrb_value *result, ngx_http_mruby_handler_kind_t kind)
 {
-  struct RProc *handler_proc;
-  mrb_value *fiber_proc;
-  ngx_mrb_fiber_t *f;
-  ngx_pool_cleanup_t *cln;
+  ngx_http_mrb_fiber_t *f;
   ngx_http_mruby_ctx_t *ctx;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->async_handler_result = result;
 
-  handler_proc = rproc;
-  handler_proc->upper = NULL;
-  handler_proc->e.target_class = mrb->object_class;
-
-  f = ngx_pcalloc(r->pool, sizeof(ngx_mrb_fiber_t));
-  cln = ngx_pool_cleanup_add(r->pool, 0);
-  if (f == NULL || cln == NULL) {
+  f = ngx_pcalloc(r->pool, sizeof(ngx_http_mrb_fiber_t));
+  if (f == NULL) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: failed to allocate the fiber", MODULE_NAME,
                   __func__, __LINE__);
-    // ngx_mrb_run reads a fiber that is not alive and has no exception as a
-    // finished handler; with this status ngx_mrb_finalize_rputs returns 500,
-    // as it does after an exception
+    // ngx_mrb_run_request reads a fiber that returned nothing as a finished
+    // handler; with this status ngx_mrb_finalize_rputs returns 500, as it
+    // does after an exception
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    return mrb_false_value();
+    return NGX_MRB_FIBER_RETURNED;
   }
-  f->mrb = mrb;
-  f->slot = NGX_MRB_GC_ROOTS_NONE;
+  ngx_mrb_fiber_init(&f->base, mrb, NGX_MRB_FIBER_HTTP);
   f->kind = kind;
-  fiber_proc = &f->fiber;
 
-  *fiber_proc = mrb_fiber_new(mrb, rproc);
+  // The RProc of the code is prepared once, when the code is compiled
+  // (ngx_http_mruby_prepare_proc). The fiber takes its slot in the GC root
+  // holder at its first wait (ngx_http_mrb_fiber_prepare_wait); a handler
+  // that never waits takes none and adds no cleanup.
+  f->base.fiber = mrb_fiber_new(mrb, rproc);
   if (mrb->exc) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                   "%s NOTICE %s:%d: preparing fiber got the raise, leave the fiber", MODULE_NAME, __func__, __LINE__);
-    return mrb_false_value();
+    f->base.state = NGX_MRB_FIBER_FAILED;
+    ngx_mrb_raise_error(mrb, mrb_obj_value(mrb->exc), r);
+    mrb->exc = NULL;
+    return NGX_MRB_FIBER_RAISED;
   }
 
-  // keeps the fiber from GC while it can be resumed; ngx_mrb_fiber_unregister
-  // frees its slot when the fiber ends, and the pool cleanup when the request
-  // ends first
-  f->slot = ngx_mrb_gc_roots_add(mrb, *fiber_proc);
-  cln->handler = ngx_mrb_fiber_cleanup;
-  cln->data = f;
-
-  return ngx_mrb_run_fiber(mrb, fiber_proc, result);
+  return ngx_mrb_run_fiber(mrb, &f->base.fiber, result);
 }
 
-static mrb_value ngx_mrb_fiber_resume_body(mrb_state *mrb, void *fiber_proc)
-{
-  return mrb_fiber_resume(mrb, *(mrb_value *)fiber_proc, 0, NULL);
-}
-
-mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *result)
+ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *result)
 {
   ngx_http_request_t *r = ngx_mrb_get_request();
-  mrb_value aliving = mrb_false_value();
   mrb_value handler_result = mrb_nil_value();
   ngx_http_mruby_ctx_t *ctx;
-  ngx_mrb_fiber_t *f = (ngx_mrb_fiber_t *)fiber_proc;
-  ngx_http_mruby_handler_kind_t outer_kind;
-  mrb_bool raised;
+  ngx_http_mrb_fiber_t *f = (ngx_http_mrb_fiber_t *)fiber_proc;
+  ngx_mrb_fiber_outcome_t outcome;
+  ngx_http_mrb_fiber_log_t log;
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   ctx->fiber_proc = fiber_proc;
@@ -207,57 +225,38 @@ mrb_value ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fiber_proc, mrb_value *re
   // code that runs for the request outside a handler fiber sees
   // NGX_HTTP_MRUBY_HANDLER_NONE, for example the to_s that ngx_mrb_run calls
   // on the result of mruby_set.
-  outer_kind = ctx->handler_kind;
+  log.r = r;
+  log.ctx = ctx;
+  log.outer_kind = ctx->handler_kind;
   ctx->handler_kind = f->kind;
-  // mruby passes an exception that ends a fiber resumed from C by longjmp to
-  // the innermost mrb_vm_exec or mrb_protect_error, if one runs (mrb->jmp is
-  // set); otherwise it returns with mrb->exc set. When this fiber runs inside
-  // another one, for example in the location that Nginx.redirect runs from
-  // Ruby code, that longjmp would leave through the nginx functions between
-  // the two (ngx_http_internal_redirect, the phase checkers), and nginx would
-  // not finish the request. mrb_protect_error stops the exception here; it
-  // clears mrb->exc, which the callers read, so set it again. A handler that
-  // nginx runs directly needs no protection, and skips its cost.
-  if (mrb->jmp == NULL) {
-    handler_result = mrb_fiber_resume(mrb, *fiber_proc, 0, NULL);
-  } else {
-    handler_result = mrb_protect_error(mrb, ngx_mrb_fiber_resume_body, fiber_proc, &raised);
-    if (raised) {
-      mrb->exc = mrb_obj_ptr(handler_result);
-    }
-  }
-  ctx->handler_kind = outer_kind;
+  outcome = ngx_mrb_fiber_resume(&f->base, &handler_result, ngx_http_mrb_fiber_log_raise, &log);
+  ctx->handler_kind = log.outer_kind;
 
-  if (mrb->exc) {
+  if (outcome == NGX_MRB_FIBER_RAISED) {
     ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
-    ngx_mrb_fiber_unregister(fiber_proc);
-    return mrb_false_value();
+    return outcome;
   }
 
-  aliving = mrb_fiber_alive_p(mrb, *fiber_proc);
-
-  if (mrb_test(aliving) && !ngx_mrb_handler_can_wait(f->kind)) {
+  if (outcome == NGX_MRB_FIBER_WAITS && !ngx_mrb_handler_can_wait(f->kind)) {
     // Only a direct Fiber.yield gets here, since Nginx::Async raises in this
-    // handler. Nothing would resume the fiber, so it is dropped from the GC
+    // handler. Nothing would resume the fiber, so it holds no slot in the GC
     // root, and the handler ends as a finished one with status 500, which
     // ngx_mrb_finalize_rputs returns as it does after an exception.
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                   "%s ERROR %s:%d: %s yielded its fiber, but nginx cannot resume it there", MODULE_NAME, __func__,
                   __LINE__, ngx_mrb_handler_kind_name(f->kind));
-    ngx_mrb_fiber_unregister(fiber_proc);
+    ngx_mrb_fiber_release(&f->base);
+    f->base.state = NGX_MRB_FIBER_FAILED;
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    return mrb_false_value();
+    return NGX_MRB_FIBER_RETURNED;
   }
 
-  if (!mrb_test(aliving)) {
-    ngx_mrb_fiber_unregister(fiber_proc);
-    if (result != NULL) {
-      *result = handler_result;
-    }
+  if (outcome == NGX_MRB_FIBER_RETURNED && result != NULL) {
+    *result = handler_result;
   }
 
-  return aliving;
+  return outcome;
 }
 
 static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_t *ctx)
@@ -265,6 +264,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
   ngx_int_t rc = NGX_OK;
   ngx_http_request_t *prev_r;
   ngx_http_mruby_handler_kind_t kind;
+  ngx_mrb_fiber_outcome_t outcome;
   int ai;
 
   ai = mrb_gc_arena_save(re->mrb);
@@ -272,30 +272,32 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
   // re->r is the current request only until this function returns (see ngx_mrb_run())
   prev_r = ngx_mrb_get_request();
 
-  if (re->fiber != NULL) {
+  // A record whose owner hook has run (CANCELLED) holds no slot any more,
+  // so its fiber is not resumed. The timer of a cancelled record is deleted;
+  // this guards the end of a subrequest that nginx reports after the request
+  // cleanups of its main request ran.
+  if (re->fiber != NULL && ((ngx_mrb_fiber_t *)re->fiber)->state != NGX_MRB_FIBER_CANCELLED) {
     // the handler that runs the fiber, for ngx_mrb_finalize_rputs below; read
     // before re->fiber is cleared
-    kind = ((ngx_mrb_fiber_t *)re->fiber)->kind;
+    kind = ((ngx_http_mrb_fiber_t *)re->fiber)->kind;
     ngx_mrb_push_request(re->r);
     re->r->headers_out.status = re->fiber_prev_status;
 
-    if (mrb_test(ngx_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result))) {
+    outcome = ngx_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result);
+    if (outcome == NGX_MRB_FIBER_WAITS) {
       // can resume the fiber and wait the epoll timer
       mrb_gc_arena_restore(re->mrb, ai);
       ngx_mrb_push_request(prev_r);
       return NGX_DONE;
-    } else {
-      // can not resume the fiber, the fiber was finished (ngx_mrb_run_fiber
-      // has freed its slot in the GC root holder)
-      re->fiber = NULL;
     }
 
-    if (re->mrb->exc) {
-      ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
-      // all requests share this mrb_state: clear the exception as ngx_mrb_run
-      // does (ngx_mrb_state_clean), or the next ngx_mrb_start_fiber fails
-      // with it
-      re->mrb->exc = NULL;
+    // can not resume the fiber, the fiber was finished (it holds no slot in
+    // the GC root holder any more)
+    re->fiber = NULL;
+
+    if (outcome == NGX_MRB_FIBER_RAISED) {
+      // ngx_mrb_fiber_resume has logged the exception and cleared mrb->exc,
+      // which all requests share
       rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
     } else if (re->sr == NULL && ctx->set_var_target.len > 1) {
       if (ctx->set_var_target.data[0] != '$') {
@@ -315,6 +317,11 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
     if (rc == NGX_OK) {
       rc = ngx_mrb_finalize_rputs(re->r, ctx, kind);
     }
+  } else if (re->fiber != NULL) {
+    ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
+                  "%s NOTICE %s:%d: the fiber is not resumed: its request cleanup has run", MODULE_NAME, __func__,
+                  __LINE__);
+    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
   } else {
     ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing",
                   MODULE_NAME, __func__, __LINE__);
@@ -338,24 +345,29 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
 static void ngx_mrb_timer_handler(ngx_event_t *ev)
 {
   ngx_mrb_reentrant_t *re;
+  ngx_http_mrb_fiber_t *f;
   ngx_http_mruby_ctx_t *ctx;
   ngx_connection_t *c;
-  ngx_int_t rc = NGX_OK;
-
-#ifdef NGX_MRUBY_DEBUG_STATS
-  ngx_mrb_async_debug_timers_count--;
-#endif
+  ngx_int_t rc;
 
   re = ev->data;
+  f = (ngx_http_mrb_fiber_t *)re->fiber;
+  ngx_mrb_fiber_timer_fired(&f->base);
+
   // re is allocated from the request pool, which the finalization below can
   // destroy
   c = re->r->connection;
+  // The module context is created again when a handler dropped it after it
+  // sent output; NULL means that the allocation failed. The fiber is then not
+  // resumed: the owner hook frees its slot when the request ends.
   ctx = ngx_mrb_http_get_module_ctx(NULL, re->r);
-
   if (ctx == NULL) {
-    rc = NGX_ERROR;
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, "%s ERROR %s:%d: failed to allocate the module context to resume the fiber",
+                  MODULE_NAME, __func__, __LINE__);
+    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+  } else {
+    rc = ngx_mrb_post_fiber(re, ctx);
   }
-  rc = ngx_mrb_post_fiber(re, ctx);
 
   if (rc != NGX_DECLINED && rc != NGX_DONE) {
     ngx_http_finalize_request(re->r, rc);
@@ -369,26 +381,11 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
   }
 }
 
-static void ngx_mrb_async_sleep_cleanup(void *data)
-{
-  ngx_event_t *ev = (ngx_event_t *)data;
-
-  if (ev->timer_set) {
-#ifdef NGX_MRUBY_DEBUG_STATS
-    ngx_mrb_async_debug_timers_count--;
-#endif
-    ngx_del_timer(ev);
-    return;
-  }
-}
-
 static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
 {
   mrb_int timer;
-  u_char *p;
-  ngx_event_t *ev;
+  ngx_http_mrb_fiber_t *f;
   ngx_mrb_reentrant_t *re;
-  ngx_http_cleanup_t *cln;
   ngx_http_request_t *r;
   ngx_http_mruby_ctx_t *ctx;
 
@@ -399,34 +396,20 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   }
 
   r = ngx_mrb_async_request(mrb, "Nginx::Async.sleep");
-  p = ngx_palloc(r->pool, sizeof(ngx_event_t) + sizeof(ngx_mrb_reentrant_t));
-  re = (ngx_mrb_reentrant_t *)(p + sizeof(ngx_event_t));
+  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
+
+  // The owner hook and the slot come first, so that a failure there raises
+  // with no timer armed.
+  f = ngx_http_mrb_fiber_prepare_wait(mrb, r, ctx);
+
+  re = &f->sleep;
   re->mrb = mrb;
   re->fiber_prev_status = r->headers_out.status;
   re->r = r;
   re->sr = NULL;
+  re->fiber = &f->base.fiber;
 
-  ctx = ngx_mrb_http_get_module_ctx(mrb, r);
-  re->fiber = ctx->fiber_proc;
-
-  ev = (ngx_event_t *)p;
-  ngx_memzero(ev, sizeof(ngx_event_t));
-  ev->handler = ngx_mrb_timer_handler;
-  ev->data = re;
-  ev->log = ngx_cycle->log;
-
-  ngx_add_timer(ev, (ngx_msec_t)timer);
-#ifdef NGX_MRUBY_DEBUG_STATS
-  ngx_mrb_async_debug_timers_count++;
-#endif
-
-  cln = ngx_http_cleanup_add(r, 0);
-  if (cln == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_http_cleanup_add failed");
-  }
-
-  cln->handler = ngx_mrb_async_sleep_cleanup;
-  cln->data = ev;
+  ngx_mrb_fiber_arm_timer(&f->base, (ngx_msec_t)timer, ngx_mrb_timer_handler, re);
 
   // tells ngx_mrb_run_request that the fiber yields to this timer (see there)
   ctx->async_sleep_pending = 1;
@@ -500,7 +483,15 @@ static ngx_int_t ngx_mrb_async_http_sub_request_done(ngx_http_request_t *sr, voi
         body_len = buffer->last - buffer->pos;
       }
       ctx->sub_response_body = ngx_palloc(re->r->pool, body_len);
-      ngx_memcpy(ctx->sub_response_body, buffer->pos, body_len);
+      if (ctx->sub_response_body == NULL && body_len > 0) {
+        // the parent's handler is resumed with an empty body
+        ngx_log_error(NGX_LOG_ERR, sr->connection->log, 0,
+                      "%s ERROR %s:%d: failed to allocate the body of the subrequest", MODULE_NAME, __func__, __LINE__);
+        body_len = 0;
+      }
+      if (body_len > 0) {
+        ngx_memcpy(ctx->sub_response_body, buffer->pos, body_len);
+      }
       ctx->sub_response_body_length = body_len;
       ctx->sub_response_status = sr->headers_out.status;
       ctx->sub_response_headers = sr->headers_out;
@@ -541,40 +532,52 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
               "Nginx::Async::HTTP.sub_request is not available after Nginx::Async.sleep in a content handler");
   }
 
-  uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
-  if (uri == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_pcalloc failed on ngx_mrb_async_http_sub_request");
-  }
-
-  uri->len = RSTRING_LEN(path);
-  if (uri->len == 0) {
+  if (RSTRING_LEN(path) == 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "http_sub_request path len is 0");
   }
 
-  uri->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(path));
+  // Every allocation of the wait is made and checked, and the owner hook and
+  // the slot are in place, before the subrequest is posted, so that a failure
+  // raises with nothing posted.
+  uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
+  re = ngx_palloc(r->pool, sizeof(ngx_mrb_reentrant_t));
+  actx = ngx_palloc(r->pool, sizeof(ngx_mrb_async_http_ctx_t));
+  ps = ngx_palloc(r->pool, sizeof(ngx_http_post_subrequest_t));
+  if (uri == NULL || re == NULL || actx == NULL || ps == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed on ngx_mrb_async_http_sub_request");
+  }
+
+  uri->len = RSTRING_LEN(path);
+  uri->data = (u_char *)ngx_palloc(r->pool, uri->len);
+  if (uri->data == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed on ngx_mrb_async_http_sub_request");
+  }
   ngx_memcpy(uri->data, RSTRING_PTR(path), uri->len);
 
   if (argc == 2) {
     args = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
+    if (args == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_pcalloc failed on ngx_mrb_async_http_sub_request");
+    }
     args->len = RSTRING_LEN(query_params);
-    args->data = (u_char *)ngx_palloc(r->pool, RSTRING_LEN(query_params));
-    ngx_memcpy(args->data, RSTRING_PTR(query_params), args->len);
+    if (args->len > 0) {
+      args->data = (u_char *)ngx_palloc(r->pool, args->len);
+      if (args->data == NULL) {
+        mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed on ngx_mrb_async_http_sub_request");
+      }
+      ngx_memcpy(args->data, RSTRING_PTR(query_params), args->len);
+    }
   }
 
-  re = (ngx_mrb_reentrant_t *)ngx_palloc(r->pool, sizeof(ngx_mrb_reentrant_t));
+  ngx_http_mrb_fiber_prepare_wait(mrb, r, ctx);
+
   re->mrb = mrb;
   re->fiber_prev_status = r->headers_out.status;
   re->sr = NULL;
   re->fiber = ctx->fiber_proc;
 
-  actx = (ngx_mrb_async_http_ctx_t *)ngx_palloc(r->pool, sizeof(ngx_mrb_async_http_ctx_t));
   actx->uri = uri;
   actx->re = re;
-
-  ps = ngx_palloc(r->pool, sizeof(ngx_http_post_subrequest_t));
-  if (ps == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_palloc failed for http_sub_request post subrequest");
-  }
 
   ps->handler = ngx_mrb_async_http_sub_request_done;
   ps->data = actx;

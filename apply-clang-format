@@ -2,7 +2,7 @@
 
 set -e
 
-for f in `ls src/{http,stream}/*.{c,h}`
+for f in `ls src/{http,stream,common}/*.{c,h}`
 do
   clang-format -i $f
 done
