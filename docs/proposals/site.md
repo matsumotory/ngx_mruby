@@ -1683,17 +1683,16 @@ size and characters per line first, then only the remaining fine cases by
 a few characters of wording. Do not mechanically rewrite prose for the
 checker or add more width/browser combinations. The parity baseline of
 #708 was measured at 390px; 390px, decided in
-[#707](https://github.com/matsumotory/ngx_mruby/pull/707), holds until the
-rebuild's pull request changes it.
+[#707](https://github.com/matsumotory/ngx_mruby/pull/707), was the earlier baseline; this rebuild changes the pattern to 402px.
 
 **Order.** After step 5. [#708](https://github.com/matsumotory/ngx_mruby/pull/708)
 (Codex, the first layer of the site's own components) is merged into `next`.
-The rest is one pull request from a Codex session, not split into stages
-(the owner's decision of 2026-11-01, section 7). That pull request removes
-the selector flag and the Starlight dependency together, so parity compares
-a build of the recorded base commit with the head, not two modes in the same
-checkout. Of the three parts below, the first is merged in #708; the pull
-request holds the second and the third:
+The owner decided on 2026-11-01 that the rest is one pull request, not split
+into stages (section 7). The final implementation removes the selector flag
+and Starlight dependency together; parity compares the recorded base-commit
+build with the head, not two modes in the same checkout. The parts below
+record the migration order: the first was merged in #708, and the remaining
+two are implemented together.
 
 - The plumbing beside Starlight (merged in #708): the layout, the page route, the
   collection, the sidebar, the table of contents, the search, the head,
@@ -1706,15 +1705,16 @@ request holds the second and the third:
   entry, whether the page has a sidebar) through one helper instead of
   `Astro.locals.starlightRoute`. CI builds both shells from the same commit
   and runs the parity check of the acceptance.
-- The pages: the home pages, the generated pages and `/v2/` move to the
-  site's shell, which becomes the default; `NGX_MRUBY_SITE_SHELL=starlight`
-  still builds the Starlight shell for the parity check.
+- The pages: the home pages, the generated pages and `/v2/` use the
+  site's shell. The originally planned temporary
+  `NGX_MRUBY_SITE_SHELL=starlight` mode is not retained in the final PR;
+  the comparison uses the base-commit build instead.
 - The removal: `@astrojs/starlight`, the overrides as overrides, the
   flag, the `--sl-*` mappings, the Starlight part of the PostCSS plugin
   and the Starlight selectors of the checks go; the parity check then
   compares with the build of the base commit. The pull request states the
   number of packages of `package-lock.json` before and after (the keys of
-  `packages` without the root: 466 today).
+  `packages` without the root: 466 in the migration base, 417 after removal).
 
 The pull request updates the text that it makes untrue: in AGENTS.md
 the repository layout ("Astro with Starlight") and "The site"; in this
@@ -1731,7 +1731,7 @@ commits and the results.
 
 **Acceptance.** Each item is measured on both versions and both
 languages, on every page unless it says otherwise. The phone pattern is
-402px wide in WebKit once the rebuild changes it from 390px.
+402px wide in WebKit, changed from the earlier 390px baseline by this rebuild.
 
 1. Every existing check passes: `npm test`, `npm run check`,
    `npm run check:v2`, `npm run check:browser`, `npm run check:contrast`,
@@ -1799,7 +1799,7 @@ list a difference.
 |---|---|
 | Japanese search gets worse: Pagefind segments by `<html lang>`, so a page that loses `lang="ja"` or its `data-pagefind-*` attributes is indexed differently, and a changed UI option changes the results | items 2 and 4; Pagefind indexes as many HTML files per build as today (66 for 3.x at 6bb35b241) |
 | The fallback notice or its language goes missing: the generated reference under `/ja/` and every page under `/v2/ja/` still depend on it after step 5 | `check-japanese.mjs` (the `data-notice` of each fallback page, `hreflang`), `check-v2.mjs`, and item 2 (the `lang="en"` element and its notice) |
-| The mobile menu breaks: today it reuses Starlight's popover pane and script | `check-focus.mjs`, `check-home-interaction.mjs`, `check-styles.mjs` with the menu open in both engines, `check-no-js.mjs` (the menu opens through the `popover` attribute), and item 3 at 402 px |
+| The mobile menu breaks: the replacement must preserve the earlier popover behavior | `check-focus.mjs`, `check-home-interaction.mjs`, `check-styles.mjs` with the menu open in both engines, `check-no-js.mjs` (the menu opens through the `popover` attribute), and item 3 at 402 px |
 | The 2.x pages break: they build from another tree with another base and sidebar | `build-v2.mjs` and `check-v2.mjs` (banner, version links, search isolation) in the site workflow, `site-v2.yml` on `master`, and items 2 to 4 on `/v2/` |
 | A rule of Starlight's base stylesheets that a page relies on is lost | item 3, and `check-styles.mjs` and `check-css.mjs` on the built CSS |
 | A front matter field is dropped without notice | the strict schema of the collection, and item 2 |
