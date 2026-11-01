@@ -251,7 +251,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 
   `Dir.mktmpdir`の代替は、[auto-sslのmrbgemと、それと一緒に入っていたクラス](../install/README.md#auto-sslのmrbgemとそれと一緒に入っていたクラス)にあります。ほかの定数に必要なgemは`conf.gem`で追加します。
 
-- [`Nginx::Async.sleep`で待つaccessハンドラとpost_readハンドラが、待たないときと同じように終わる](../../releases/v3.0.0.ja.md#nginxasyncsleepで待つaccessハンドラとpost_readハンドラが待たないときと同じように終わる715)：`mruby_access_handler*`と`mruby_post_read_handler*`のコードで`Nginx::Async.sleep`を探してください。`satisfy any`では、sleepの後に結果なしで終わるaccessハンドラが、リクエストを許可するようになります。拒むべきハンドラは、sleepの後にステータスを返してください。
+- [`Nginx::Async.sleep`で待つaccessハンドラとpost_readハンドラが、待たないときと同じように終わる](../../releases/v3.0.0.ja.md#nginxasyncsleepで待つaccessハンドラとpost_readハンドラが待たないときと同じように終わる715)：`mruby_access_handler*`と`mruby_post_read_handler*`のコードで`Nginx::Async.sleep`を探してください。`satisfy any`では、sleepの後に結果なしで終わるaccessハンドラが、リクエストを許可します。拒むべきハンドラは、sleepの後にステータスを返してください。
 
   ```ruby
   Nginx::Async.sleep 100
