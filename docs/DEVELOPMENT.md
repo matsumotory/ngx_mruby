@@ -145,8 +145,8 @@ workflow [mirror-v2x.yml](../.github/workflows/mirror-v2x.yml) fast-forwards
 [Branch strategy](../README.md#branch-strategy)). This section is the
 procedure.
 
-Agents prepare the pull requests and run the checks. The owner creates the
-tags and publishes the releases, as
+Agents prepare the pull requests, run the checks and, after the owner's
+go-ahead, publish the releases with their tags, as
 [AGENTS.md](../AGENTS.md#branches-and-pull-requests) says. The steps below
 also give the owner the go for the promotion and the repository settings of
 steps 2 and 3; those parts are recommendations (see "Open questions" below).
@@ -246,10 +246,11 @@ The owner checks that all of these hold and gives the go before step 1:
    branch rule of the `github-pages` environment from `next` to `master`
    (Settings, Environments, `github-pages`, "Deployment branches"), so that
    the push of the merge deploys the site from `master`.
-6. **Tag and release (owner), right after step 5.** Tag `v3.0.0` on the merge
-   commit of step 5 and publish its GitHub release, not marked as a
-   pre-release, with the release notes. Tagging that commit instead of the
-   merge commit of the check pull request is the "later commit" case of
+6. **Tag and release (agent, after the owner's go-ahead), right after step
+   5.** Publish the GitHub release `v3.0.0` at the merge commit of step 5
+   (`gh release create`, which creates the tag), not marked as a
+   pre-release, with the release notes. Releasing at that commit instead
+   of the merge commit of the check pull request is the "later commit" case of
    ["Before the tag"](releases/README.md#before-the-tag): the check is
    repeated for the pull requests merged after the check pull request. The
    only one is the promotion of step 5, and it needs no entry: `master` is an
@@ -281,8 +282,8 @@ The owner checks that all of these hold and gives the go before step 1:
 
    This command lists the links, the badge and the clones:
    `git grep -n -E 'ngx_mruby/(tree|blob|archive)/master|branch=master|clone https://github\.com/matsumotory/ngx_mruby'`.
-8. **Afterwards.** 2.x fixes target `v2.x`, and v3 fixes target `master`. The
-   owner publishes each 2.x release so that it does not become the
+8. **Afterwards.** 2.x fixes target `v2.x`, and v3 fixes target `master`. Each
+   2.x release is published so that it does not become the
    repository's latest release, which stays with 3.x:
    `gh release create <tag> --latest=false`. Through the REST API,
    `make_latest` defaults to `true` for a published release; in the web form,
@@ -307,8 +308,8 @@ requires them to be decided before step 1.
   Merging `v2.x` into `master` would also bring changes made only for 2.x.
 - **Who gives the go for the promotion and changes the repository settings
   in steps 2 and 3.** Recommendation: the owner. Whether condition 1 holds is
-  a judgment, the tag of step 6 is the owner's, and the settings need admin
-  rights; a mistake there lets `v2.x` move to 3.x. AGENTS.md does not cover
+  a judgment, the go-ahead for the release of step 6 is the owner's, and
+  the settings need admin rights; a mistake there lets `v2.x` move to 3.x. AGENTS.md does not cover
   the go or the repository settings yet.
 
 The site proposal decides which version the site shows after the

@@ -136,9 +136,9 @@ documentation changes and refactoring need no entry at all.
 
 ## File names
 
-The file is named after the version that will be tagged. If the owner tags a
-different version, rename the file and its Japanese version with `git mv`
-before the tag.
+The file is named after the version that will be released. If the release
+is published under a different version, rename the file and its Japanese
+version with `git mv` before the release.
 
 - `master`, before v3 is promoted: the next 2.x patch release. After the tag
   `v2.<minor>.<patch>`, the file is `v2.<minor>.<patch+1>.md`.
@@ -289,7 +289,7 @@ entry. It follows these conventions:
 
 ## Before the tag
 
-Before the owner tags a release, a pull request checks the file and its
+Before a release is published, a pull request checks the file and its
 Japanese version against what was merged. It lists every pull request merged
 into the branch since the previous release (`git log --first-parent --merges <previous tag>..origin/<branch>`),
 confirms for each one that it has its entry or changes nothing that a
@@ -322,9 +322,10 @@ the 2.x file (see "File names"), and before the 3.0.0 tag it copies into
 `v3.0.0.md` the entries whose 2.x release is not tagged yet.
 
 The session publishes the release at the merge commit of the check pull
-request, after the owner's go-ahead for that release in a session's question
-(`gh release create <tag> --target <commit> --title <title> --notes-file <body>`,
-which creates the tag). Pull requests
+request, after the owner has given the go-ahead for that release (the
+session asks for it with the release notes ready;
+`gh release create <tag> --target <commit> --title <title> --notes-file <body>`
+creates the release and its tag). Pull requests
 merged after it ship in the following release, and the check for that release
 moves their entries to that release's file. If the release is published at a
 later commit instead, the check is repeated for the pull requests merged after the check
