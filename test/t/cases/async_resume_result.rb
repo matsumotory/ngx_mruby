@@ -8,9 +8,13 @@
 # Config: test/conf/conf.d/82-async-resume-result.conf (ports 18176, 18177
 # and 18178) and test/html/async_resume_result.rb.
 #
-# The cases list only the ends that are already the same with and without a
-# wait. The proposal docs/proposals/core-stabilization.md (section 8) adds the
-# others with the changes that make them the same.
+# Access, post_read and content handlers have every end. Under satisfy any,
+# a 403 lets nginx try the next access handler (allow all in
+# /access_any_allow/), and an access handler that goes on is followed by
+# auth_request in /access_auth/. Rewrite and server rewrite handlers list only
+# the ends that are already the same with and without a wait; the proposal
+# docs/proposals/core-stabilization.md (section 8) adds the others with the
+# changes that make them the same.
 
 t = SimpleTest.new "ngx_mruby test: a handler ends in the same way with or without a wait"
 
@@ -41,6 +45,8 @@ def async_resume_responses(raw)
 end
 
 ASYNC_RESUME_ENDS = {
+  'none' => ['HTTP/1.1 200 OK', "passed\n", true],
+  'ok' => ['HTTP/1.1 200 OK', "passed\n", true],
   'declined' => ['HTTP/1.1 200 OK', "passed\n", true],
   'forbidden' => ['HTTP/1.1 403 Forbidden', '<title>403 Forbidden</title>', true],
   'output' => ['HTTP/1.1 200 OK', 'output', true],
@@ -56,11 +62,13 @@ ASYNC_RESUME_WAITS = {
 # [port, location, handler, the ends, the waits, the path of the next request]
 [
   [18176, 'rewrite', 'a rewrite handler', %w[declined forbidden output raise], %w[nowait sleep sub_request], '/plain/x'],
-  [18176, 'access_all', 'an access handler under satisfy all', %w[declined forbidden raise], %w[nowait sleep], '/plain/x'],
-  [18176, 'access_any', 'an access handler under satisfy any', %w[declined forbidden raise], %w[nowait sleep], '/plain/x'],
+  [18176, 'access_all', 'an access handler under satisfy all', %w[none declined ok forbidden output raise], %w[nowait sleep], '/plain/x'],
+  [18176, 'access_any', 'an access handler under satisfy any', %w[none declined ok forbidden output raise], %w[nowait sleep], '/plain/x'],
+  [18176, 'access_any_allow', 'an access handler under satisfy any before allow all', %w[none declined ok forbidden output raise], %w[nowait sleep], '/plain/x'],
+  [18176, 'access_auth', 'an access handler before auth_request', %w[none declined ok forbidden output raise], %w[nowait sleep], '/plain/x'],
   [18176, 'content', 'a content handler', %w[none declined ok forbidden output raise], %w[nowait sleep], '/plain/x'],
   [18177, 'server_rewrite', 'a server rewrite handler', %w[declined forbidden output raise], %w[nowait sleep sub_request], '/x/nowait/declined'],
-  [18178, 'post_read', 'a post_read handler', %w[declined forbidden raise], %w[nowait sleep], '/x/nowait/declined'],
+  [18178, 'post_read', 'a post_read handler', %w[none declined ok forbidden output raise], %w[nowait sleep], '/x/nowait/declined'],
 ].each do |port, location, handler, ends, waits, next_path|
   ends.each do |ending|
     line, body, keeps = ASYNC_RESUME_ENDS[ending]
@@ -70,6 +78,9 @@ ASYNC_RESUME_WAITS = {
     # Under satisfy any, deny all refuses the request that the mruby handler
     # passes on with Nginx::DECLINED.
     line, body = 'HTTP/1.1 403 Forbidden', '<title>403 Forbidden</title>' if location == 'access_any' && ending == 'declined'
+    # Under satisfy any, a 403 of the mruby handler lets nginx try the next
+    # access handler, and allow all allows the request.
+    line, body = 'HTTP/1.1 200 OK', "passed\n" if location == 'access_any_allow' && ending == 'forbidden'
     # Nginx::DECLINED in a content handler goes on to the static module, which
     # finds no file for the URI.
     line, body = 'HTTP/1.1 404 Not Found', '<title>404 Not Found</title>' if location == 'content' && ending == 'declined'
@@ -95,6 +106,16 @@ ASYNC_RESUME_WAITS = {
       end
     end
   end
+end
+
+t.assert('async', 'an access handler that calls Nginx.redirect ends with the answer of the target, and the next request is answered') do
+  status, raw = tcp_client(18176, "GET /access_redirect HTTP/1.1\r\nHost: localhost\r\n\r\n" \
+                                  "GET /plain/x HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+  responses = async_resume_responses(raw)
+  t.assert_equal 'EOF', status
+  t.assert_equal 2, responses.size
+  t.assert_equal ['HTTP/1.1 200 OK', ''], responses[0]
+  t.assert_equal ['HTTP/1.1 200 OK', "passed\n"], responses[1]
 end
 
 t.report

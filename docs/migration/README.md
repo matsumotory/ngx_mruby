@@ -414,6 +414,44 @@ not enough, and show the change.
   [The auto-ssl mrbgem and the classes that came with it](../install/README.md#the-auto-ssl-mrbgem-and-the-classes-that-came-with-it).
   The other constants need a `conf.gem` line of your own.
 
+- [An access or post_read handler that waits in `Nginx::Async.sleep` ends as without the wait](../releases/v3.0.0.md#an-access-or-post_read-handler-that-waits-in-nginxasyncsleep-ends-as-without-the-wait-715):
+  look for `Nginx::Async.sleep` in `mruby_access_handler*` and
+  `mruby_post_read_handler*` code. Under `satisfy any`, an access handler
+  that sleeps and then ends without a result now allows the request; one
+  that should deny it returns the status after the sleep:
+
+  ```ruby
+  Nginx::Async.sleep 100
+  # 2.x: without a result, the request reached its content and the connection closed
+  # 3.0.0: without a result, nginx allows the request under satisfy any
+  Nginx.return Nginx::HTTP_FORBIDDEN unless allowed?   # on both: denies under satisfy all; under satisfy any nginx tries the other access handlers
+  ```
+
+- [An access or post_read handler that writes output ends the request after the response](../releases/v3.0.0.md#an-access-or-post_read-handler-that-writes-output-ends-the-request-after-the-response-715):
+  nothing to change. Such a handler answers once and nginx keeps the
+  connection, where 2.x went on with the phases and closed it; log alerts
+  on its `header already sent` lines no longer fire.
+- [A handler that sets no result does not take the result of an earlier handler](../releases/v3.0.0.md#a-handler-that-sets-no-result-does-not-take-the-result-of-an-earlier-handler-715):
+  look for a server rewrite, rewrite, post_read or access handler that calls
+  `Nginx.return` for every request, for example
+  `mruby_server_rewrite_handler_code 'Nginx.return Nginx::DECLINED'`. The
+  later content handlers that can end without output and without a status,
+  and the access handlers under `satisfy any` that can end without a
+  result, no longer take that value; one that should go on returns it
+  itself:
+
+  ```ruby
+  # mruby_content_handler_code, on a server whose server rewrite handler returns Nginx::DECLINED
+  Nginx.rputs body if body    # no body: 2.x went on to the static module   3.0.0 answers 200 with Content-Length: 0
+  Nginx.return Nginx::DECLINED unless body   # goes on to the static module on both
+  ```
+
+- [An `mruby_set` handler that waits in `Nginx::Async.sleep` sets its variable, and the request goes on](../releases/v3.0.0.md#an-mruby_set-handler-that-waits-in-nginxasyncsleep-sets-its-variable-and-the-request-goes-on-715):
+  look for `Nginx::Async.sleep` in `mruby_set` and `mruby_set_code`. Code
+  that called `Nginx.return` after the sleep to end the request returns
+  that status from a later handler, for example a rewrite handler that
+  reads the variable.
+
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out
 `.` and `..` (see [New features](../releases/v3.0.0.md#new-features)).

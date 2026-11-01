@@ -163,6 +163,12 @@ static mrb_value ngx_mrb_fiber_resume_body(mrb_state *mrb, void *data)
 // mrb->exc is cleared before this function returns: all requests or
 // sessions share the mrb_state, and a later mrb_fiber_new would fail with an
 // exception left in it. The slot is freed when the fiber ends.
+//
+// Only a fiber that has not started yet (RUNNING after ngx_mrb_fiber_init)
+// or that waits (WAITING, READY) is resumed. A record that ended (DONE,
+// FAILED) or whose owner ended (CANCELLED) holds no slot any more, and its
+// fiber may have been collected: the function returns NGX_MRB_FIBER_REFUSED
+// without touching the fiber.
 */
 ngx_mrb_fiber_outcome_t ngx_mrb_fiber_resume(ngx_mrb_fiber_t *f, mrb_value *value, ngx_mrb_fiber_log_raise_pt log_raise,
                                              void *log_data)
@@ -170,6 +176,10 @@ ngx_mrb_fiber_outcome_t ngx_mrb_fiber_resume(ngx_mrb_fiber_t *f, mrb_value *valu
   mrb_state *mrb = f->mrb;
   mrb_value v;
   mrb_bool raised = FALSE;
+
+  if (f->state == NGX_MRB_FIBER_DONE || f->state == NGX_MRB_FIBER_FAILED || f->state == NGX_MRB_FIBER_CANCELLED) {
+    return NGX_MRB_FIBER_REFUSED;
+  }
 
   f->state = NGX_MRB_FIBER_RUNNING;
   if (mrb->jmp == NULL) {

@@ -127,6 +127,8 @@ In an `mruby_set*` handler, a log handler or an output filter, the text is not s
 For an `mruby_set*` handler this holds when the code raises before it waits in `Nginx::Async`. When it raises after `Nginx::Async.sleep`, the request gets 500; when it raises after `Nginx::Async::HTTP.sub_request`, nginx has already gone on with the content phase without waiting for the variable, so the 500 is not sent and the client gets no response, as described under [Nginx::Async#sleep](#nginxasyncsleepmsec).
 To end a content handler early after writing the text, leave it with `return` instead of `raise`.
 
+In a post_read or access handler, the text ends the request: nginx sends the response and does not go on with the phases, with or without `Nginx::Async.sleep` before. Since 3.0.0; on 2.x, such a handler that did not wait sent the response and nginx then went on with the next handlers, and closed the connection when the content phase tried to answer once more (see [the release notes of 3.0.0](../releases/v3.0.0.md#an-access-or-post_read-handler-that-writes-output-ends-the-request-after-the-response-715)).
+
 ```ruby
 Nginx.rputs "hello ngx_mruby world!"
 ```
@@ -159,6 +161,11 @@ control nginx request processing flow. The status code consists of nginx interna
 ```ruby
 Nginx.return Nginx::HTTP_SERVICE_UNAVAILABLE  # returns HTTP status 503
 ```
+
+The value is the result of the handler that calls it, not of the later handlers of the request (since 3.0.0).
+A handler that calls none of `Nginx.return`, `Nginx.send_header` and `Nginx.status_code=` has no result, whatever an earlier handler of the request returned: a content handler of the main request without output answers 200 with an empty body (below), and a post_read or access handler goes on as with `Nginx::OK`.
+On 2.x, a handler without a result returned the value that an earlier handler of the request had set, for example the `Nginx::DECLINED` of a server rewrite handler that runs for every request, so that a content handler without output went on to the next content handler (see [the release notes of 3.0.0](../releases/v3.0.0.md#a-handler-that-sets-no-result-does-not-take-the-result-of-an-earlier-handler-715)).
+Rewrite and server rewrite handlers without a result still return such a value.
 
 A content handler that ends without output answers as nginx's `return 200;`
 does: with the status it set, 200 when it set none, `Content-Length: 0` and an
@@ -1522,7 +1529,12 @@ u.server = "127.0.0.1:8080"                   #=> 127.0.0.1:8080
 ### Nginx::Async#sleep(msec)
 
 Sleeps in non-blocking way.
-It's currently supported in the set, rewrite, access and content handlers.
+It's currently supported in the set, post_read, server rewrite, rewrite, access and content handlers.
+When the sleep ends, nginx calls the handler again, which goes on with the code after the sleep, and the phase of the handler handles its result as for a handler that did not wait (since 3.0.0).
+An access handler without a result then goes on with the next access handler under `satisfy all` and allows the request under `satisfy any`; a 401 or 403 under `satisfy any` lets nginx try the next access handler; a post_read handler without a result goes on with the next phase.
+While the handler waits, nginx does not run its code again.
+On 2.x the timer ended the handler with the rules of the content phase: an access or post_read handler without a result answered and then closed the connection, and a 401 or 403 under `satisfy any` ended the request (see [the release notes of 3.0.0](../releases/v3.0.0.md#an-access-or-post_read-handler-that-waits-in-nginxasyncsleep-ends-as-without-the-wait-715)).
+An `mruby_set*` handler that sleeps sets its variable when the code returns, and the request goes on, as described under [mruby_set](../directives/README.md#mruby_set-and-mruby_set_code).
 In a content handler (`mruby_content_handler*`) nginx waits for the handler since 2.7.3: the code after the sleep runs, and the request gets the response that the handler writes or the status that it returns. Up to 2.7.2 the request ended at the sleep without a response (see "Known limitations" in [the 2.7.1 release notes](../releases/v2.7.1.md#known-limitations)).
 A content handler that runs in the location that `Nginx.redirect` runs from Ruby code still ends the request at the sleep, because the handler that called `Nginx.redirect` goes on after the call and may answer the request itself.
 After the sleep, `Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in a content handler.

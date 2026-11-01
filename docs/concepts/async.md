@@ -11,38 +11,43 @@ nginx's event loop.
 async-sleep
 caption: What happens when an access handler calls `Nginx::Async.sleep`, from the call until the handler's code goes on.
 source: mrbgems/ngx_mruby_mrblib/mrblib/mrb_nginx.rb 100-106
-source: src/http/ngx_http_mruby_async.c 187-239 241-314 316-348 363-410
-source: src/http/ngx_http_mruby_module.c 1061-1074
+source: src/http/ngx_http_mruby_async.c 415-430 503-591 615-630 659-693
+source: src/http/ngx_http_mruby_module.c 942-959 1099-1132
 source: src/http/ngx_http_mruby_core.h 30-35
-at: 0c72e3970 2026-10-19
+at: 819212d88 2026-11-01
 call: An access handler's code calls `Nginx::Async.sleep(500)` in its fiber
 timer: `__sleep` adds a timer of 500 ms to nginx's event loop, and `Fiber.yield` suspends the fiber
 done: The handler returns `NGX_DONE`: nginx keeps the request and leaves the handler
 serve: The worker serves its other connections while the timer runs
-fire: The timer fires: `ngx_mrb_timer_handler` resumes the fiber
-resume: The code goes on after `sleep`; when it ends, the request goes on with the next handler, or nginx ends it with the handler's result
+fire: The timer fires: `ngx_mrb_timer_handler` marks the fiber ready to resume and posts the request
+resume: nginx calls the handler again, which resumes the fiber; when the code ends, the access phase handles its result as without the sleep
 ```
 
 - ngx_mruby runs the code of each handler in a fiber of mruby
   (`ngx_mrb_start_fiber`). `Nginx::Async.sleep` arms an nginx timer and
   yields the fiber; while it is suspended, the handler has returned
   `NGX_DONE`, and the worker serves other connections.
-- When the timer fires, `ngx_mrb_timer_handler` resumes the fiber with
-  the request that it belongs to. If the code ends, ngx_mruby gives nginx
-  the result of the handler: the next handler of the phase runs for
-  `Nginx::DECLINED`, and nginx ends the request with any other result.
-- `Nginx::Async::HTTP.sub_request` works in the same way: it starts an
-  nginx subrequest and yields, and nginx resumes the fiber when the
-  subrequest has finished.
-- `mruby_set` and the post-read, server rewrite, rewrite and access
-  handlers can wait and resume. A suspended handler returns `NGX_DONE`,
-  or `NGX_AGAIN` while a subrequest continues.
-- Since the 2.7.3 changes, also integrated into 3.x, nginx keeps a normal
-  content handler's request while `Nginx::Async.sleep` waits. The timer
-  resumes the fiber; its response or returned status completes the request.
-  Up to released 2.7.2, the request ended at the sleep without a response.
-  A content handler reached by `Nginx.redirect` from Ruby still has that
-  limitation: the caller continues and can answer the request itself.
+- When the timer fires, `ngx_mrb_timer_handler` marks the fiber ready to
+  resume and posts the request, and nginx calls the handler again. The
+  handler resumes the fiber instead of starting the code. When the code
+  ends, the handler returns its result to the phase as a handler that did
+  not wait does: an access handler without a result lets nginx go on with
+  the next access handler, and a 403 under `satisfy any` lets nginx try
+  the next one. While the fiber waits, nginx does not run the code again.
+- An `mruby_set` handler runs inside the script of the rewrite module, so
+  nginx does not call it again: ngx_mruby resumes its fiber, sets the
+  variable when the code ends, and runs the phases from the next handler.
+- `Nginx::Async::HTTP.sub_request` starts an nginx subrequest and yields,
+  and the end of the subrequest resumes the fiber.
+- `mruby_set` and the post-read, server rewrite, rewrite, access and
+  content handlers can wait and resume. A suspended handler returns
+  `NGX_DONE`, or `NGX_AGAIN` while a subrequest continues.
+- nginx keeps the request of a content handler while `Nginx::Async.sleep`
+  waits, since the 2.7.3 changes, which 3.x includes. The response or the
+  returned status of the code completes the request. Up to 2.7.2, the
+  request ended at the sleep without a response. A content handler reached
+  by `Nginx.redirect` from Ruby still ends the request at the sleep: the
+  caller continues and can answer the request itself.
 - A content handler cannot call `Nginx::Async::HTTP.sub_request` after
   it has waited in `Nginx::Async.sleep`; this raises `RuntimeError`.
   In `mruby_set`, a subrequest does not hold the request: nginx continues

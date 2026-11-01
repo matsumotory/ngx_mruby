@@ -56,6 +56,12 @@ static ngx_mrb_fiber_outcome_t ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_valu
   ctx->fiber_proc = fiber_proc;
 
   outcome = ngx_mrb_fiber_resume(&f->base, result, ngx_stream_mrb_fiber_log_raise, ictx->s);
+  if (outcome == NGX_MRB_FIBER_REFUSED) {
+    // the record has ended: the session ends as after an exception
+    ngx_log_error(NGX_LOG_ERR, ictx->s->connection->log, 0,
+                  "%s ERROR %s:%d: the fiber is not resumed: its handler has ended", MODULE_NAME, __func__, __LINE__);
+    return NGX_MRB_FIBER_RAISED;
+  }
   if (outcome == NGX_MRB_FIBER_RAISED) {
     ngx_log_error(NGX_LOG_NOTICE, ictx->s->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
