@@ -300,19 +300,19 @@ figcaption,
 /*
  * 4.10 and 4.3 item 5: the header, 64 px on an opaque surface with a 1 px
  * bottom border. Wide: logo and wordmark, the five section links, search,
- * the version link, the language link, the theme toggle and GitHub. The
+ * the language link, the theme toggle and GitHub with its star count. The
  * section links move into the menu below 76rem (1216 px) on English pages
  * and below 88rem (1408 px) on Japanese pages, where they no longer fit
  * beside the rest: the Japanese labels (ドキュメント, エージェントプロキシ,
- * 開発に参加する) are longer. With the star count of GitHub, which the
- * header shows from 78rem (1248 px, below), the English header holds every
- * item on one line from 1225 px, and the Japanese one from 1352 px in
- * Hiragino Sans and 1339 px in Noto Sans JP (Chromium, with and without the
- * sidebar, 997 stars; a count of four characters such as 1.2K adds 5 px);
- * without it, from 1168 px in English and 1294 px and 1286 px in Japanese.
- * The profile site moves its links at 900 px (4.2). The labels never break
- * inside a word. At 640 px and below the
- * version link, the language link and GitHub move into the menu too.
+ * 開発に参加する) are longer. The version link is in the footer (4.10).
+ * With the star count of GitHub (997 stars; a count of four characters
+ * such as 1.2K takes 4 to 5 px more), the header has, beyond its 16 px
+ * gaps, 85 px of room at 1216 px in English and 129 px at 1408 px in
+ * Japanese in Hiragino Sans (140 px in Noto Sans JP), Chromium, with and
+ * without the sidebar: the Japanese row holds every item from about
+ * 1279 px, and 88rem stays above it. The profile site moves its links at
+ * 900 px (4.2). The labels never break inside a word. At 640 px and below
+ * the language link and GitHub move into the menu too.
  * Links are at least 44 px high, 15 px at weight 600; the current section
  * is text with a 2 px accent bottom border (4.6).
  */
@@ -523,13 +523,14 @@ button.site-menu-button svg {
     padding-inline-end: calc(var(--header-pad-x) + 44px + var(--space-4));
   }
 }
-/* The header shows the star count from 78rem (1248 px), where the row has
-   room for it in both languages; narrower headers keep "GitHub" without
-   it, and at 640 px and below the GitHub row of the menu shows it */
+/* The header shows the star count from 42.5rem (680 px); from 641 px to
+   679 px the Japanese row has no room for it (14 px short at 641 px with a
+   count of four characters), and at 640 px and below the GitHub row of the
+   menu shows it */
 .site-header .github-stars {
   display: none;
 }
-@media (min-width: 78rem) {
+@media (min-width: 42.5rem) {
   .site-header .github-stars {
     display: inline-flex;
   }

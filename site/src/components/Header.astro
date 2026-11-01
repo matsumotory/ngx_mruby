@@ -1,7 +1,7 @@
 ---
 import { getSiteRoute } from '../route.mjs';
 // The header of 4.10: logo and wordmark, the five section links of 3.2,
-// search, the version link, the language link, the theme toggle and GitHub
+// search, the language link, the theme toggle and GitHub
 // with a text label and the star count (GithubStars.astro). 64 px high on
 // an opaque surface with a 1 px bottom border (site.css). The links move into the menu below the width where
 // they fit, and at 640 px and below everything but the logo, the wordmark,
@@ -12,12 +12,11 @@ import Search from 'virtual:site/Search';
 import LanguageLink from './LanguageLink.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import GithubStars from './GithubStars.astro';
-import { GITHUB_URL, sectionLinks, strings, versionLink, currentSection } from '../site-nav.mjs';
+import { GITHUB_URL, sectionLinks, strings, currentSection } from '../site-nav.mjs';
 
 const lang = getSiteRoute(Astro.locals).locale === 'ja' ? 'ja' : 'en';
 const t = strings(lang);
 const current = currentSection(lang, Astro.url.pathname);
-const version = versionLink(lang);
 ---
 
 <div class="site-header">
@@ -40,7 +39,6 @@ const version = versionLink(lang);
     </ul>
   </nav>
   <div class="site-search print:hidden"><Search /></div>
-  <a class="header-link version-link print:hidden" href={version.href}>{version.label}</a>
   <LanguageLink class="header-link pill print:hidden" />
   <ThemeToggle />
   <a class="header-link github-link print:hidden" href={GITHUB_URL}><Icon name="github" class="github-mark" />GitHub<GithubStars /></a>

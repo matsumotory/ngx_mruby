@@ -220,8 +220,8 @@ Docs, Agent proxy, Releases, Security, Contributing, GitHub.
 ### 3.4 Versions and languages
 
 - 3.x at unprefixed paths, 2.x under `/v2/`: Pillar F's "stable URL" with
-  "no live version switcher". The header links each page's version to the
-  other version's index.
+  "no live version switcher". The footer links each page's version to the
+  other version's index (4.10).
 - Until v3.0.0, every 3.x page carries a banner: 3.x is in development, the
   current release is 2.x, its documentation is under `/v2/`; and every 2.x
   page carries one that names 2.x the current release and links to the
@@ -1294,8 +1294,8 @@ acceptance; the interaction check covers that separately.
 ### 4.10 Header, footer and the language link
 
 - **Wide screens**: logo and wordmark (home; the wordmark in the monospace
-  face), the five section links, search, the version link, the language
-  link, the theme toggle, and GitHub with a text label and its mark in
+  face), the five section links, search, the language link, the theme
+  toggle, and GitHub with a text label and its mark in
   black or white only (GitHub's logo guidelines), followed by the star
   count of the repository (below). 64 px high, as the
   corporate and profile headers and the landing page's header at 900 px
@@ -1323,13 +1323,11 @@ acceptance; the interaction check covers that separately.
   on pages without a sidebar, at the top of the sidebar on pages with one.
   The Japanese labels (ドキュメント, エージェントプロキシ, 開発に参加する)
   are longer than the English ones. In Chromium, with or without the
-  sidebar, the header holds every item on one line inside its padding
-  from 1168 px in English, and in Japanese from 1294 px in Hiragino Sans
-  and 1286 px in Noto Sans JP; with the star count, from 1225 px in English
-  and from 1352 px and 1339 px in Japanese (997 stars; a count of four
-  characters adds 5 px). 88rem stays above both. The Japanese version link
-  reads 「2.x版」 (「3.x版」 on the 2.x pages), whose width makes the room
-  for the star count at 88rem. The labels of the header do not
+  sidebar, and with the star count (997 stars), the header holds every
+  item on one line inside its padding from 1131 px in English, and in
+  Japanese from 1279 px in Hiragino Sans and 1268 px in Noto Sans JP; a
+  count of four characters such as 1.2K takes 4 to 5 px more. 76rem and
+  88rem stay above them. The labels of the header do not
   break inside a word (`white-space: nowrap`). The owner on 2026-11-01:
   「英語はいいんやけど、日本語のとき、英語のヘッダーがバーガーメニューに切り替わるタイミングだとヘッダーの文字列が折れ曲がる。もっとはやくハンバーガーメニューにしないといけないっぽい」.
 - **Narrow screens** (640 px and below): logo, wordmark, search, the theme
@@ -1341,7 +1339,15 @@ acceptance; the interaction check covers that separately.
 - **Footer**: 1 px top border, 14 px `text-muted`, 48 px above and 32 px
   below, as on the profile site. As on the corporate site, one footer
   component serves every page, so that every page reaches the same links:
-  the language link, Releases, Security, the license and GitHub. The license
+  the language link, the version link, Releases, Security, the license and
+  GitHub. The version link leads to the index of the other version (3.4):
+  「2.x docs」 or 「2.xのドキュメント」 to `/v2/` on the 3.x pages, 「3.x
+  docs」 or 「3.xのドキュメント」 to `/docs/` on the 2.x pages. The owner
+  decided on 2026-11-01 that it leaves the header for the footer, asking
+  「版リンクってそもそもいる？」 and then choosing
+  「ヘッダーから外し、footer に置く (推奨)」: the banner of every page (3.4)
+  already leads from 3.x to the 2.x documentation and from 2.x to 3.x, and
+  the footer keeps the link after v3.0.0, when the 3.x banner goes. The license
   is labeled MIT and links to the `LICENSE` file of the page's version.
   The footer holds text links only, and wraps as a unit at narrow widths.
 - **Development practices.** The four index pages (`/`, `/ja/`, `/v2/`
@@ -1397,7 +1403,9 @@ acceptance; the interaction check covers that separately.
   origin and needs no file to update; the site shows a new release with
   its next build, which "The GitHub release" in `docs/releases/README.md`
   starts. shields.io's release badge would add a third-party origin to the
-  home pages and depend on its cache.
+  home pages and depend on its cache. The site's own badges, the release
+  and the license, draw their value on `#0077bb`, where white text reaches
+  4.82:1 (4.6); shields.io's `#007ec6` gives 4.38:1.
 - **The star count.** The GitHub link of the header and of the menu ends
   with a 16 px star and the count of the repository's stars, in the weight
   and color of secondary text, shortened to at most four characters (997,
@@ -1408,10 +1416,10 @@ acceptance; the interaction check covers that separately.
   `NGX_MRUBY_SITE_STARS_DATE`; each deploy updates it. When the API does
   not answer, or in a local build without the two variables, the link
   shows GitHub without a count. A shields.io badge in the header would put
-  a third-party image on every page. The header shows the count from 78rem
-  (1248 px), where the row has room for it in both languages, and the menu
-  row at 640 px and below; between 641 px and 78rem the header link keeps
-  GitHub without it.
+  a third-party image on every page. The header shows the count from
+  42.5rem (680 px), and the menu row at 640 px and below; from 641 px to
+  679 px the Japanese header has no room for it (14 px short at 641 px with
+  a count of four characters), and the link keeps GitHub without it.
 - The owner decided on 2026-11-01 that the release and the star count
   stand apart from the strip: 「リリースとスターは置く場所は別に考えてもいい気はしたけど」,
   then the choice 「帯に7つ、release は状態の行、stars はヘッダー」.
@@ -2051,6 +2059,13 @@ Practices and the license; the status line of the hero names the newest
 release, and the GitHub link of the header the star count (4.10). The
 owner's reason:
 「一般的に見て評価したり得られる開発の工夫が見れるのはいい気がする」.
+
+On 2026-11-01 the owner asked 「版リンクってそもそもいる？」 about the
+version link of the header and chose
+「ヘッダーから外し、footer に置く (推奨)」: the link to the other version's
+documentation stands in the footer beside the language link, and the
+header holds the section links, search, the language link, the theme
+toggle and GitHub with its star count (4.10).
 
 On 2026-11-01 the owner decided that the home page heading takes one line
 at the PC width, in both languages:

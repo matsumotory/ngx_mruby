@@ -1,6 +1,7 @@
 // The links of the header, the menu and the footer (docs/proposals/site.md,
 // 3.2 and 4.10), in one place. The header has the five section links of
-// 3.2. The version link leads to the index of the other version (3.4): from
+// 3.2. The version link of the footer leads to the index of the other
+// version (3.4): from
 // a 3.x page to /v2/, from a 2.x page to /docs/, in the same language. The
 // pages of the 2.x build (step 6) are under /v2/ (BASE); their section
 // links stay in 2.x, except Agent proxy, a page of 3.x only.
@@ -27,7 +28,7 @@ const T = {
     releases: 'リリース',
     security: 'セキュリティ',
     contributing: '開発に参加する',
-    version: SITE_VERSION === 2 ? '3.x版' : '2.x版',
+    version: SITE_VERSION === 2 ? '3.xのドキュメント' : '2.xのドキュメント',
     language: '言語',
     sections: 'セクション',
     menu: 'メニュー',

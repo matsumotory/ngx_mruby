@@ -7,7 +7,7 @@
 // - every 2.x page carries the 2.x banner of 3.4 (data-banner="v2"), in
 //   the language of the page, with its link to the 3.x documentation; no
 //   3.x page carries it;
-// - the version link of the header (4.10) leads from each 3.x page to /v2/
+// - the version link of the footer (4.10) leads from each 3.x page to /v2/
 //   (/v2/ja/ from Japanese pages), and from each 2.x page to /docs/
 //   (/ja/docs/); the language link of each 2.x page leads to the same
 //   path under the other language's prefix within /v2/;
@@ -97,7 +97,7 @@ for (const file of files2) {
   const version = all.filter((e) => e.tagName === 'a' && hasClass(e, 'version-link'));
   const want = ja ? '/ja/docs/' : '/docs/';
   if (version.length === 0 || version.some((e) => attr(e, 'href') !== want)) {
-    problems.push(`${where}: the version link of the header does not lead to ${want} (${version.map((e) => attr(e, 'href')).join(', ') || 'none'})`);
+    problems.push(`${where}: the version link of the footer does not lead to ${want} (${version.map((e) => attr(e, 'href')).join(', ') || 'none'})`);
   }
   const rest = where.slice(`/${V2_DIR}`.length);
   const other = `/${V2_DIR}${ja ? rest.replace(/^\/ja(\/|$)/, '/') : `/ja${rest}`}`;
@@ -115,7 +115,7 @@ for (const file of files3) {
   const want = ja ? '/v2/ja/' : '/v2/';
   const version = all.filter((e) => e.tagName === 'a' && hasClass(e, 'version-link'));
   if (version.length === 0 || version.some((e) => attr(e, 'href') !== want)) {
-    problems.push(`${where}: the version link of the header does not lead to ${want} (${version.map((e) => attr(e, 'href')).join(', ') || 'none'})`);
+    problems.push(`${where}: the version link of the footer does not lead to ${want} (${version.map((e) => attr(e, 'href')).join(', ') || 'none'})`);
   }
 }
 

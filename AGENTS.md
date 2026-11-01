@@ -729,7 +729,7 @@ npm run preview           # serves dist/ at http://localhost:4321/
   `dist/v2/pagefind/` (the 3.x index of `dist/pagefind/` stays without
   them), and their list into `generated/pages-v2.json`. DIR needs the whole
   history, like the 3.x build; locally, a worktree of `origin/master` does.
-  The version link of the header leads from 3.x pages to `/v2/` and from
+  The version link of the footer leads from 3.x pages to `/v2/` and from
   2.x pages to `/docs/`. The checks of steps 1 to 5 read the 3.x pages
   (`htmlFiles()` leaves `dist/v2/` out), except `check-built-links.mjs`,
   which reads the 2.x pages too, so `npm run check` needs the 2.x build
@@ -838,8 +838,8 @@ npm run preview           # serves dist/ at http://localhost:4321/
     it opens Chromium): every page of `generated/pages-v2.json` is built
     under `/v2/`; every 2.x page carries the 2.x banner (`data-banner="v2"`)
     in its language with its link to the 3.x documentation, and no 3.x page
-    does; the version links lead from 3.x to `/v2/` and from 2.x to
-    `/docs/`, and the language links of the 2.x pages stay under `/v2/`;
+    does; the version links of the footer lead from 3.x to `/v2/` and
+    from 2.x to `/docs/`, and the language links of the 2.x pages stay under `/v2/`;
     and the search of a 3.x and of a 2.x page, in both languages, shows
     results of its own version only and loads only its own index;
   - `node scripts/check-diagrams.mjs`: the drawings hold lines and boxes

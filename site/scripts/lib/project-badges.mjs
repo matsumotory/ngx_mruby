@@ -109,6 +109,10 @@ export async function serveBadgeFixture(context) {
 // release. The widths of the two
 // parts follow Verdana at 11 px, as shields.io measures them, and
 // textLength fits each text to its part whatever font draws it.
+// The value part of the site's own badges (release, license): white text on
+// #0077bb is 4.82:1, above the 4.5:1 of WCAG 1.4.3 (4.6), where shields.io's
+// #007ec6 gives 4.38:1.
+export const BADGE_BLUE = '#0077bb';
 const VERDANA_11 = { r: 4.3, e: 6.8, l: 3.0, a: 6.7, s: 5.7, v: 6.5, '.': 3.5 };
 const textWidth = (text) => [...text].reduce((sum, ch) => sum + (/\d/.test(ch) ? 7.0 : VERDANA_11[ch] ?? 7.0), 0);
 export function releaseBadge(tag, lang) {
@@ -116,7 +120,7 @@ export function releaseBadge(tag, lang) {
   const label = 'release';
   const lw = Math.round(textWidth(label) + 10), vw = Math.round(textWidth(tag) + 10), width = lw + vw;
   const text = (x, value, w) => `<text aria-hidden="true" x="${x * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${(w - 10) * 10}">${value}</text><text x="${x * 10}" y="140" transform="scale(.1)" fill="#fff" textLength="${(w - 10) * 10}">${value}</text>`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="20" viewBox="0 0 ${width} 20"><clipPath id="release-badge-clip"><rect width="${width}" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#release-badge-clip)"><rect width="${lw}" height="20" fill="#555"/><rect x="${lw}" width="${vw}" height="20" fill="#007ec6"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">${text(lw / 2, label, lw)}${text(lw + vw / 2, tag, vw)}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="20" viewBox="0 0 ${width} 20"><clipPath id="release-badge-clip"><rect width="${width}" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#release-badge-clip)"><rect width="${lw}" height="20" fill="#555"/><rect x="${lw}" width="${vw}" height="20" fill="${BADGE_BLUE}"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">${text(lw / 2, label, lw)}${text(lw + vw / 2, tag, vw)}</g></svg>`;
   return {
     id: 'release',
     tag,

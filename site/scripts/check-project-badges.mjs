@@ -47,6 +47,16 @@ assert.ok(pages.length, 'built HTML is required');
 for (const file of Object.keys(INDEX_PAGES)) assert.ok(pages.includes(file), `${file}: index page missing (run build-v2.mjs after npm run build)`);
 const license = fs.readFileSync(path.join(dist, LICENSE_BADGE_SRC), 'utf8');
 assert.match(license, /^<svg [^>]*width="78" height="20"/, `${LICENSE_BADGE_SRC}: a 78 by 20 SVG`);
+// The site's own badges draw white text on their fills: at least 4.5:1
+// (WCAG 1.4.3, 4.6).
+const luminance = hex => { const h = hex.length === 4 ? '#' + [...hex.slice(1)].map(x => x + x).join('') : hex; const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(x => x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+for (const [name, svg] of [[LICENSE_BADGE_SRC, license], ['the release badge', releaseBadge('v2.7.3', 'en').svg]]) {
+  // The filled parts are the rects of the clipped group, not the clip path.
+  const group = svg.match(/<g clip-path="[^"]*">(.*?)<\/g>/)?.[1] ?? '';
+  const fills = [...group.matchAll(/<rect [^>]*fill="(#[0-9a-fA-F]{3}|#[0-9a-fA-F]{6})"/g)].map(m => m[1]);
+  assert.ok(fills.length >= 2, `${name}: two filled parts`);
+  for (const fill of fills) assert.ok(1.05 / (luminance(fill) + 0.05) >= 4.5, `${name}: white on ${fill} is ${(1.05 / (luminance(fill) + 0.05)).toFixed(2)}:1, under 4.5:1`);
+}
 // The release that the home pages must name: the newest stable tag, when
 // this checkout has the tags (the build job has the whole history; the
 // browser lanes check out without tags).
@@ -64,6 +74,14 @@ for (const file of pages) {
   const ref = file.startsWith('v2/') ? 'master' : 'next';
   const lang = file.startsWith('ja/') || file.startsWith('v2/ja/') ? 'ja' : 'en';
   assert.ok(footerLinks.some(el => el.properties.href === `https://github.com/matsumotory/ngx_mruby/blob/${ref}/LICENSE` && textContent(el) === 'MIT'), `${file}: real MIT license link`);
+  // The version link stands in the footer, beside the language link, and
+  // not in the header or the menu (4.10; check-v2.mjs checks its target).
+  const header = all.find(el => hasClass(el, 'site-header'));
+  const menu = all.find(el => hasClass(el, 'site-menu'));
+  assert.ok(header && menu, `${file}: header and menu`);
+  for (const [name, part] of [['header', header], ['menu', menu]]) assert.equal(elements(part).filter(el => el.tagName === 'a' && (hasClass(el, 'version-link') || /\/v2\/(ja\/)?$|^\/(ja\/)?docs\/$/.test(String(el.properties.href)) && /x docs|xのドキュメント/.test(textContent(el)))).length, 0, `${file}: no version link in the ${name}`);
+  const footerItems = elements(footer).filter(el => el.tagName === 'li');
+  assert.ok(footerItems.length >= 2 && elements(footerItems[1]).some(el => el.tagName === 'a' && hasClass(el, 'version-link')), `${file}: the version link follows the language link in the footer`);
   // The GitHub links of the header and the menu: the same count or none.
   const githubLinks = all.filter(el => el.tagName === 'a' && hasClass(el, 'github-link'));
   assert.ok(githubLinks.length >= 1, `${file}: GitHub link missing`);
