@@ -489,8 +489,7 @@ not enough, and show the change.
 - [A stream session that waits when `worker_shutdown_timeout` expires ends then](../releases/v3.0.0.md#a-stream-session-that-waits-when-worker_shutdown_timeout-expires-ends-then-727):
   nothing to change; with `worker_shutdown_timeout`, a stream session whose
   code still sleeps when the timeout expires ends without the code after
-  the sleep. A waiting session of a server with `listen ... proxy_protocol`
-  is not covered; another change handles it.
+  the sleep.
 
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out
