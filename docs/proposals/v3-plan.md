@@ -583,6 +583,17 @@ a Ruby-built body with any status (the JSON error bodies of 401, 403 and
 handler pointers (event filter settings at server level reach the named
 location of a fallback).
 
+### Wider AI edge uses (direction, 2026-11-01)
+
+The [edge-control proposal](edge-control.md) extends the thin nginx/Ruby boundary
+into MCP authorization, client profiles, recovery guidance, bounded document
+retrieval and interaction observation, alongside LLM fallback, bot traffic policy
+and external semantic-cache hooks. These are planned uses, not completed APIs or
+a promise that every recipe ships in v3.0. The proposal maps them onto the existing
+Pillar B/C/F work, with privacy, replay, tenant and protocol acceptance tests.
+The gateway does not take over the user's AI orchestration or the backend's domain
+semantics. The public [guide](../guides/edge-control.md) is the entry for readers.
+
 ## 5. v2 policy
 
 - Scope: security fixes from the advisory, nginx version tracking in CI and

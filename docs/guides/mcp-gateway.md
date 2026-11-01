@@ -75,3 +75,10 @@ with no provider account or real credentials. Its test must cover:
 
 Until that recipe runs, use this page to design the boundary and the HTTP recipe
 to learn routing. Do not advertise an MCP-conformance result from the LLM tests.
+
+## Wider v3 direction
+
+[AI edge control](edge-control.md#mcp-access-policy) expands this routing design
+into tool/tenant protection, client-specific profiles, progressive retrieval,
+recovery guidance and privacy-conscious observation. These remain planned uses;
+the domain backend and the user’s AI retain their own responsibilities.

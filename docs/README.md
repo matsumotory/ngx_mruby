@@ -25,6 +25,8 @@ kept separate. For the released 2.7 line, use the [stable documentation](https:/
 - [TCP connections](guides/tcp.md): check the client before relaying a connection.
 - [MCP gateway design](guides/mcp-gateway.md): an unverified architecture,
   with its missing evidence and boundaries stated explicitly.
+- [Planned AI edge uses](guides/edge-control.md): MCP policy and client profiles,
+  LLM fallback, bot traffic, and cache/telemetry boundaries for v3.
 
 ## Look up an API or build option
 
