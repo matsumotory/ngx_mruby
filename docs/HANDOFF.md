@@ -2,12 +2,11 @@
 
 ## State as of 2026-11-01 (14:49 JST)
 
-- Heads before the merge of `master` into `next` that this file is part
-  of: `next` is `261ec543e`, the merge of
-  [#700](https://github.com/matsumotory/ngx_mruby/pull/700) (the plan of
-  the site on Astro without Starlight); `master` is `ca0f96198`, the merge
-  of [#699](https://github.com/matsumotory/ngx_mruby/pull/699) (the
-  advisory ids in the 2.7.3 notes); `v2.x` mirrors `master`.
+- Heads: `next` is `2ba80f4e9`, the merge of
+  [#709](https://github.com/matsumotory/ngx_mruby/pull/709) (the proposal
+  of the core stabilization); `master` is `6eae5a2df`; `v2.x` mirrors
+  `master`. `next` contains `master` as of the merge
+  [#701](https://github.com/matsumotory/ngx_mruby/pull/701).
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
   is published. Two advisories were published with it:
@@ -18,12 +17,11 @@
   `Nginx::Stream::Connection#upstream_server=`, fixed by `591147b01`,
   entry 9 of [the 2.7.3 release notes](releases/v2.7.3.md)).
   #699 added the two advisory ids to the 2.7.3 release notes.
-- The branch `claude/merge-master-2026-11-01` merges that `master` into
-  `next` (the first row of "Queue"). Its pull request lists the pull
-  requests that it brings, the conflicts and their resolution.
 - Open: [#708](https://github.com/matsumotory/ngx_mruby/pull/708) (base
-  `next`, Codex's own shell for the site on Astro, draft), taken over by a
-  session on 2026-11-01.
+  `next`, Codex's own shell for the site on Astro), taken over by a session
+  on 2026-11-01; [#710](https://github.com/matsumotory/ngx_mruby/pull/710)
+  (base `next`, this record of the owner's decisions on the core
+  stabilization proposal).
 
 ## How to use this file
 
@@ -91,7 +89,7 @@ session's question, each as recommended, with the options 「動くようにす�
 (Q1), 「handler の終わりで効く (推奨)」 (Q2), 「いまの動きを保つ (推奨)」 (Q3),
 「1回にする (推奨)」 (Q4), 「RuntimeError にする (推奨)」 (Q5) and
 「handler ごとにする (推奨)」 (Q6). They are recorded in section 9 of the
-proposal ([#709](https://github.com/matsumotory/ngx_mruby/pull/709)).
+proposal ([#710](https://github.com/matsumotory/ngx_mruby/pull/710)).
 
 On 2026-11-01 the owner decided to build the site with Astro and the
 repository's own components instead of Starlight:
@@ -251,7 +249,7 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge of `master` at `ca0f96198` (#695, #698, the NUL byte check of the upstream server setters of `591147b01`, and #699) is the pull request of the branch `claude/merge-master-2026-11-01`; the next merge brings what `master` gains after it |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge of `master` at `ca0f96198` is on `next` ([#701](https://github.com/matsumotory/ngx_mruby/pull/701)); the next merge brings what `master` gains after it |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. Decided on 2026-10-29 (option "500 のまま (推奨)"): 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |
 | A rewrite handler that ends without `Nginx.return` (for example `mruby_rewrite_handler_code 'x = 1'` before a content handler, or before nginx's `return 200`) sends no response, and `error.log` has no line at the `error` level: with keep-alive the connection stays open until `keepalive_timeout`, with `Connection: close` it is closed with nothing sent. `ngx_mrb_finalize_rputs` (`src/http/ngx_http_mruby_core.c`; the `rc = NGX_OK` after the log line "rputs_chain is null and return NGX_OK") returns `NGX_OK` when nothing was sent and no status was set, and the rewrite phase of nginx 1.31.6 finalizes the request on `NGX_OK` (`ngx_http_core_rewrite_phase`), where the access phase goes on to the next handler. Found and measured on `next` and `master` while #583 was written and reviewed; no issue tracks it. To do: for v3, a test commit and a fix under the Pillar B row "Redesign response finalization per phase" of the plan, so that the request goes on to the next phase as with `NGX_DECLINED`; for 2.x, the behavior stays (both are the decisions of 2026-10-04), and a line under "Known limitations" in the release notes of the next 2.x release can document it | `next` | v3: waits for the row on step 4 below (the fix belongs to the Pillar B work that step 4 holds until the safety net is done); 2.x: nothing |
