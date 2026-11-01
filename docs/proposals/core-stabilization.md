@@ -1,8 +1,10 @@
 # Proposal: core stabilization: one lifecycle for the fiber of a handler, and one end of the request
 
-Status: proposal, 2026-11-01. Nothing in it is decided; section 9 lists the
-questions for the owner. Written on 2026-11-01 from `next` at `a654a37f6`,
-`master` at `6eae5a2df`, and the source of nginx 1.31.8 (the version in
+Status: accepted, 2026-11-01. The owner decided Q1 to Q6 of section 9 on
+2026-11-01, in a session's question, each as recommended (the chosen options
+are quoted in section 9). Implementation follows the order of section 8; the
+first pull request is step 1 (tests only). Written on 2026-11-01 from
+`next` at `a654a37f6`, `master` at `6eae5a2df`, and the source of nginx 1.31.8 (the version in
 `nginx_version`). The owner chose on 2026-11-01, in a session's question, to
 extend the test harness first and then to go on to the core stabilization,
 the rework of the lifetime of fibers and of the end of the response (the row
@@ -789,6 +791,7 @@ subrequest then works like one in a rewrite handler, the plan's row on
 `sub_request` after v3.0.0 (calls from a handler to a key service or a
 ledger) builds on it, and the sessions' proposal in the queue asks for it. The
 cost is the cases of `async_subrequest_return.rb`.
+Decided 2026-11-01: yes (the owner chose 「動くようにする (推奨)」).
 
 Q2. Does `Nginx.redirect` with a local URI take effect when the handler ends
 (4.8), instead of running the target inside the call? Recommendation: yes.
@@ -798,6 +801,7 @@ target can wait like any other location. The cost: code that answers after
 `Nginx.redirect` is no longer sent (a `warn` line says so), and the existing
 cases of section 6 that pin the order change their expectations, which
 needs this answer.
+Decided 2026-11-01: yes (the owner chose 「handler の終わりで効く (推奨)」).
 
 Q3. Does a handler that waits keep running when its client closes the
 connection, and is a fiber whose request ends during a wait dropped without
@@ -812,6 +816,7 @@ halfway when its client goes away, for example before the script records
 what the request cost, which no handler of 2.x sees. Resuming a fiber with
 an exception from a cleanup, so that `ensure` runs, would run Ruby code
 while nginx frees the request.
+Decided 2026-11-01: yes for 3.0.0, both documented (the owner chose 「いまの動きを保つ (推奨)」).
 
 Q4. Does a UDP stream session run its code once, so that a datagram that
 arrives while the code waits does not start it again? Recommendation: yes.
@@ -819,6 +824,7 @@ nginx gives the datagram to the handler only during that call, so it is not
 proxied or answered; today it runs the code a second time in a second fiber
 of the same session while the first is suspended, which is the path of
 GHSA-86wx-fcwx-m3vh and of #698.
+Decided 2026-11-01: yes (the owner chose 「1回にする (推奨)」).
 
 Q5. Does `Nginx::Async::HTTP.sub_request` in an `mruby_set` handler raise a
 `RuntimeError` in 3.0.0, while `Nginx::Async.sleep` there keeps working as
@@ -826,6 +832,7 @@ described in 4.4? Recommendation: yes. nginx does not wait for that
 subrequest, the request goes on without the variable, and an exception after
 it leaves the client without a response (2.3); a raise tells the script at
 once, as in log handlers since 2.7.1.
+Decided 2026-11-01: yes (the owner chose 「RuntimeError にする (推奨)」).
 
 Q6. Is the result of a handler its own, so that a handler that sets nothing
 does not return the value that an earlier handler of the request stored
@@ -842,6 +849,7 @@ For server rewrite handlers, the reason of (b) holds: an end without a
 response helps no script. The cost: a configuration with such a server
 rewrite handler and content handlers without output changes (item 3 of
 section 5), with its entry.
+Decided 2026-11-01: yes to both (the owner chose 「handler ごとにする (推奨)」).
 
 Not a question: how a handler ends without `Nginx.return` after a wait. The
 model ends it as without the wait (4.6), which decision (b), #574 and item 15
