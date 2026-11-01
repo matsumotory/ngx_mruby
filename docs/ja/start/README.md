@@ -24,9 +24,9 @@ $ docker compose up --build --wait
 
 ## modelで<wbr>転送先を選ぶ
 
-ローカルの利用者キーを付けてmodel Aを送ります。nginxはキーを確認し、`route.rb`の対応表からmodelを探し、利用者の認証情報を置き換えてボディを転送します。mockの応答は転送先を示し、利用者キーではなく、その転送先専用の認証情報を受け取ったことを確認します。
+ローカルの利用者キーを付けてmodel Aを送ります。nginxはキーを確認し、`route.rb`の対応表からモデルを探し、利用者の認証情報を置き換えてボディを転送します。mockの応答は転送先を示し、利用者キーではなく、その転送先専用の認証情報を受け取ったことを確認します。
 
-`client.conf`にローカルURLとデモ用ヘッダをまとめています。以下のコマンドではmodelを変えます。設定全文は後半にあります。
+`client.conf`にローカルURLとデモ用ヘッダをまとめています。以下のコマンドではモデルを変えます。設定全文は後半にあります。
 
 ```console
 $ curl -K client.conf -d '{"model": "mock-model-a"}'
@@ -48,7 +48,7 @@ $ curl -K client.conf -d '{"model": "mock-model-b"}'
 }
 ```
 
-この例で確認するのはmodel振り分けと認証情報の差し替えです。API形式の変換、実プロバイダとの接続試験、LLMによる生成は行いません。ストリーム中継や同時実行制限と、それらを確かめる別の結合テストは、[model API中継のガイド](../guides/agent-proxy.md)を参照してください。
+この例で確認するのはモデルの振り分けと認証情報の差し替えです。API形式の変換、実プロバイダとの接続試験、LLMによる生成は行いません。ストリーム中継や同時実行制限と、それらを確かめる別の結合テストは、[model API中継のガイド](../guides/agent-proxy.md)を参照してください。
 
 ## リクエストを変えずに<wbr>転送先を変える
 
@@ -78,7 +78,7 @@ $ curl -K client.conf -d '{"model": "mock-model-a"}'
 
 ## 拒否するリクエストを<wbr>確認する
 
-利用者キーがない、または未知のキーなら401、対応表にないmodelなら403、不正なJSONなら400です。これらのリクエストはプロキシで終了し、mock APIへ届きません。
+利用者キーがない、または未知のキーなら401、対応表にないモデルなら403、不正なJSONなら400です。これらのリクエストはプロキシで終了し、mock APIへは届きません。
 
 ```console
 $ curl -sS localhost:8080/v1/responses -d '{}' -o /dev/null -w '%{http_code}\n'
@@ -254,7 +254,7 @@ $ docker compose down
 
 ## 自分のアプリに<wbr>組み込む
 
-- [model APIの中継](../guides/agent-proxy.md)：認証、model振り分け、同時実行制限、ストリーム中継のテストと今後の計画。
+- [model APIの中継](../guides/agent-proxy.md)：認証、モデルの振り分け、同時実行制限、ストリーム中継のテストと今後の計画。
 - [インストール](../install/README.md)：既存環境のnginxバージョンとビルドオプションに合わせて、静的または動的モジュールを作成。
 - [ディレクティブ](../../directives/README.md)：nginxがRubyを実行するフェーズを選択。
 - [リクエストのフェーズ](../concepts/request-phases.md)：1つのリクエストが通るハンドラの順序。

@@ -18,7 +18,7 @@
 
 ### 実装済み：認証と振り分け
 
-利用者キーの検査、キーごとの同時リクエスト制限、model振り分け、認証情報の差し替えは実装済みです。[ローカルの試用](../start/README.md#modelで転送先を選ぶ)で振り分けとキーの差し替えを確認できます。以下の完全なレシピは[`agent_proxy.rb`](../../../test/t/cases/agent_proxy.rb)が検証します。
+利用者キーの検査、キーごとの同時リクエスト制限、モデルの振り分け、認証情報の差し替えは実装済みです。[ローカルの試用](../start/README.md#modelで転送先を選ぶ)で振り分けとキーの差し替えを試せます。以下の完全なレシピは[`agent_proxy.rb`](../../../test/t/cases/agent_proxy.rb)が検証します。
 
 <a id="nextに実装済みストリーム中継"></a>
 
@@ -46,7 +46,7 @@
 
 - server rewriteハンドラの`agent_proxy_auth.rb`は、`Authorization`の`Bearer`か`x-api-key`から、クライアントのキーを探します。既知でないキーには401を返します。nginxは、`error_page 401 @agent_proxy_401`に従って、そのレスポンスにAPIのエラーの形式のJSONのボディを付けます。このリクエストはupstreamに届かずに終わります。
 - クライアントのキーごとに数える`limit_conn`は、同時に1つのリクエストだけを許します。1つ目のレスポンスがストリームで届いている間に同じキーで送った2つ目のリクエストには、JSONのボディと`retry-after`の付いた429が返ります。この429は、どのupstreamも送らないステータス460を経由して返すので、upstream自身の429はそのまま通ります。
-- accessハンドラの`agent_proxy_route.rb`は、JSONのボディの`model`を読んでupstreamブロックを選び、クライアントの認証情報の代わりにupstreamが受け取る認証情報を設定します。upstreamの無いmodelには403を返します。
+- accessハンドラの`agent_proxy_route.rb`は、JSONのボディの`model`を読んでupstreamブロックを選び、クライアントの認証情報の代わりにupstreamが受け取る認証情報を設定します。upstreamの無いモデルには403を返します。
 - `proxy_buffering off`にした`proxy_pass`は、レスポンスを届くたびに中継します。529のようなupstreamのエラーは、ボディとともにクライアントに届きます。
 - log handlerの`agent_proxy_log.rb`は、リクエストごとに、キーのidと`$upstream_status`を1行に書きます。
 
@@ -80,8 +80,8 @@ leg-later: ステップ7aから7e：<wbr>v3の<wbr>計画の<wbr>後の<wbr>ス�
 
 key: 現在：<wbr>server rewriteハンドラが<wbr>クライアントの<wbr>キーを<wbr>確かめる。<wbr>既知でない<wbr>キーには<wbr>JSONの<wbr>ボディの<wbr>401
 limit: 現在：<wbr>クライアントの<wbr>キーごとの<wbr>`limit_conn`。<wbr>同じ<wbr>キーの<wbr>2つ目の<wbr>ストリームには<wbr>429
-route: 現在：<wbr>accessハンドラが<wbr>ボディの<wbr>`model`で<wbr>振り分け、<wbr>認証情報を<wbr>差し替える。<wbr>既知でない<wbr>modelには<wbr>403
-budget: ステップ7aと7b：<wbr>キーの<wbr>トークンと<wbr>金額の<wbr>予算を<wbr>共有ディクショナリに<wbr>置く。<wbr>`body_json`が<wbr>Cで<wbr>`model`を<wbr>読む
+route: 現在：<wbr>accessハンドラが<wbr>ボディの<wbr>`model`で<wbr>振り分け、<wbr>認証情報を<wbr>差し替える。<wbr>既知でない<wbr>モデルには<wbr>403
+budget: ステップ7aと7b：<wbr>キーの<wbr>トークンと<wbr>金額の<wbr>予算を<wbr>共有辞書に<wbr>置く。<wbr>`body_json`が<wbr>Cで<wbr>`model`を<wbr>読む
 upstream: 現在：<wbr>`proxy_pass`が、<wbr>選んだ<wbr>upstreamへ、<wbr>プロバイダの<wbr>認証情報で<wbr>リクエストを<wbr>中継する
 overloaded: 現在：<wbr>upstreamの<wbr>529は、<wbr>ボディとともに<wbr>クライアントに<wbr>届く
 fallback: ステップ7e：<wbr>参照実装の<wbr>プロキシが<wbr>プロバイダごとに<wbr>Hostと<wbr>SNIを<wbr>設定し、<wbr>`error_page 529 = @name`で<wbr>529に<wbr>なった<wbr>リクエストを<wbr>別の<wbr>プロバイダへ<wbr>送る
@@ -104,7 +104,7 @@ deadline: ステップ7c：<wbr>最初の<wbr>バイトの<wbr>期限で、<wbr>
 relay: 現在：<wbr>nginxが<wbr>プロバイダの<wbr>イベントを、<wbr>届くたびに、<wbr>1バイトも<wbr>変えずに<wbr>中継する
 frame: ステップ7b：<wbr>イベントフィルタが<wbr>Cで<wbr>イベントを<wbr>区切り、<wbr>一覧に<wbr>ある<wbr>イベントごとに<wbr>Rubyを<wbr>1回<wbr>呼ぶ
 usage: ステップ7b：<wbr>Rubyが<wbr>`message_start`と<wbr>`message_delta`、<wbr>または<wbr>最後の<wbr>`response.*`イベントから<wbr>使用量を<wbr>読む
-charge: ステップ7a：<wbr>レスポンスが<wbr>終わるか<wbr>切れたときに、<wbr>共有ディクショナリの<wbr>カウンタに<wbr>計上する
+charge: ステップ7a：<wbr>レスポンスが<wbr>終わるか<wbr>切れたときに、<wbr>共有辞書の<wbr>カウンタに<wbr>計上する
 log: ステップ4：<wbr>log handlerが<wbr>`access_log`の<wbr>前に<wbr>動き、<wbr>その後で<wbr>`access_log`が<wbr>費用と<wbr>トークンを<wbr>ログに<wbr>書く
 ```
 
@@ -122,7 +122,7 @@ leg-next: ステップ4：<wbr>v3の<wbr>計画の<wbr>次の<wbr>ステップ
 leg-later: ステップ7aから7e：<wbr>v3の<wbr>計画の<wbr>後の<wbr>ステップ
 
 own-errors: 現在：<wbr>プロキシが<wbr>401と<wbr>429を<wbr>JSONの<wbr>ボディで<wbr>自分で<wbr>返し、<wbr>403を<wbr>nginxの<wbr>エラーページで<wbr>返す
-models: ステップ7cと7e：<wbr>クライアントの<wbr>modelの<wbr>許可リストから<wbr>答える<wbr>`GET /v1/models`と、<wbr>最初の<wbr>バイトの<wbr>期限の<wbr>後の<wbr>504
+models: ステップ7cと7e：<wbr>クライアントの<wbr>モデルの<wbr>許可リストから<wbr>答える<wbr>`GET /v1/models`と、<wbr>最初の<wbr>バイトの<wbr>期限の<wbr>後の<wbr>504
 pass: 現在：<wbr>`POST /v1/messages`と<wbr>`POST /v1/responses`は、<wbr>ストリームも<wbr>含めて<wbr>そのまま<wbr>通る
 upstream-errors: 現在：<wbr>upstreamの<wbr>エラーは、<wbr>ボディとともに<wbr>クライアントに<wbr>届く
 upgrade: ステップ7e：<wbr>参照実装の<wbr>プロキシは、<wbr>Responses APIの<wbr>WebSocketの<wbr>トランスポートである<wbr>`Upgrade`を<wbr>拒否する

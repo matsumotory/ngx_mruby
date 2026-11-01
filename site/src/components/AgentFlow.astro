@@ -21,14 +21,14 @@ for (const route of routes) {
 ---
 <figure class="v3-flow" data-route="a" aria-label={ja ? 'アプリのリクエストをnginxとRubyで振り分け、APIの応答をアプリへ返す流れ' : 'Your app sends a request; nginx and Ruby route it; the API response returns to your app.'}>
   <figcaption>{ja ? '通信しない表示例です。同じmockを下の手順で実行できます。キーはすべてデモ用です。' : 'An illustration, not a live request. Run the same mock below. All keys shown are demonstration values.'}</figcaption>
-  <div class="route-controls" role="group" hidden aria-label={ja ? '送信するmodelを選ぶ' : 'Choose the requested model'}><button type="button" data-model="a" aria-pressed="true">{ja ? 'モデルA' : 'Model A'}</button><button type="button" data-model="b" aria-pressed="false">{ja ? 'モデルB' : 'Model B'}</button></div>
+  <div class="route-controls" role="group" hidden aria-label={ja ? '送信するモデルを選ぶ' : 'Choose the requested model'}><button type="button" data-model="a" aria-pressed="true">{ja ? 'モデルA' : 'Model A'}</button><button type="button" data-model="b" aria-pressed="false">{ja ? 'モデルB' : 'Model B'}</button></div>
   <ol class="routing-workspace">
     <li class="flow-step request-strip" data-step="request">
-      <div class="flow-description"><h3 class="flow-title">{ja ? 'アプリから送る' : 'Send from your app'}</h3><p>{ja ? 'チャットや文書要約のアプリは、共通のプロキシURLへ送信します。modelを変えても、URLと利用者キーは共通です。' : 'Your chat or summarization app calls the proxy URL. Choose a different model without changing that URL or the client key.'}</p></div>
+      <div class="flow-description"><h3 class="flow-title">{ja ? 'アプリから送る' : 'Send from your app'}</h3><p>{ja ? 'チャットや要約のアプリは、モデルを変えても同じプロキシURLと利用者キーで送ります。' : 'Your chat or summarization app calls the proxy URL. Choose a different model without changing that URL or the client key.'}</p></div>
       <div class="request-payload"><code>POST http://localhost:8080<wbr />/v1/responses</code><code>Authorization: Bearer local-client</code><code class="request-model">{`{"model":"mock-model-a"}`}</code></div>
     </li>
     <li class="flow-step route-source" data-step="rule">
-      <div class="flow-description"><h3 class="flow-title">{ja ? 'nginx内のRubyで選ぶ' : 'Choose in nginx with Ruby'}</h3><p>{ja ? '利用者キーを確認し、modelから転送先とそのAPI用のキーを選びます。対応表は各アプリではなく、プロキシ側で一か所にまとめます。' : 'Check the client key, then look up the destination and its API key by model. Keep this mapping at the proxy, not in each app.'}</p></div>
+      <div class="flow-description"><h3 class="flow-title">{ja ? 'nginx内のRubyで選ぶ' : 'Choose in nginx with Ruby'}</h3><p>{ja ? '利用者キーを確認し、モデルから転送先とそのAPI用のキーを選びます。対応表は各アプリではなく、プロキシ側で一か所にまとめます。' : 'Check the client key, then look up the destination and its API key by model. Keep this mapping at the proxy, not in each app.'}</p></div>
       <div class="route-source-all"><Code code={mapping} lang="ruby" title="route.rb" /></div>
     </li>
     <li class="flow-step flow-providers" data-step="response">
