@@ -24,15 +24,16 @@ typedef struct {
 // The record of a stream handler's fiber, allocated from the connection pool
 // for each run of the handler (the common part is in
 // src/common/ngx_mruby_fiber.h). ctx->fiber_proc and re->fiber point to its
-// first member, the fiber. A stream session can start more than one fiber (a
-// second UDP datagram from the same client runs the handler again while a
-// fiber of the same session still sleeps), so the slot in the GC root holder,
-// the timer and the owner hook are kept per fiber. The fiber takes the slot
-// and adds the owner hook, a connection pool cleanup, when it first sleeps
+// first member, the fiber. A session runs its code once (Q4 of section 9 of
+// docs/proposals/core-stabilization.md): while the record waits
+// (ctx->sleeping), nginx calling the handler again, for another datagram of
+// a UDP session, does not start the code again. The fiber takes the slot and
+// adds the owner hook, a connection pool cleanup, when it first sleeps
 // (ngx_stream_mrb_async_sleep). The slot is freed once: when the fiber ends
 // (normally or with an exception) or when the connection pool is destroyed
 // while it is still suspended (ngx_stream_mrb_fiber_cleanup). sleep is the
-// data of the resume of its sleep.
+// data of the resume of its sleep, with the result that the code had set
+// when it started to sleep.
 typedef struct {
   ngx_mrb_fiber_t base;
   ngx_stream_mrb_reentrant_t sleep;
@@ -105,101 +106,76 @@ ngx_mrb_fiber_outcome_t ngx_stream_mrb_start_fiber(ngx_stream_session_t *s, mrb_
   return ngx_stream_mrb_run_fiber(mrb, &f->base.fiber, result);
 }
 
-static ngx_int_t ngx_stream_mrb_post_fiber(ngx_stream_mrb_reentrant_t *re, ngx_stream_mruby_ctx_t *ctx)
-{
-  int ai;
-  ngx_mrb_fiber_outcome_t outcome;
-  ai = mrb_gc_arena_save(re->mrb);
-
-  ngx_stream_mruby_internal_ctx_t *ictx = re->mrb->ud;
-  // re->s is the current session only until this function returns
-  ngx_stream_session_t *prev_s = ictx->s;
-  ictx->s = re->s;
-  ictx->stream_status = re->stream_status;
-
-  if (re->fiber != NULL) {
-    outcome = ngx_stream_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result);
-    if (outcome == NGX_MRB_FIBER_WAITS) {
-      mrb_gc_arena_restore(re->mrb, ai);
-      ictx->s = prev_s;
-      return NGX_DONE;
-    }
-
-    // the fiber has ended and holds no slot in the GC root holder any more
-    re->fiber = NULL;
-
-    if (outcome == NGX_MRB_FIBER_RAISED) {
-      // ngx_mrb_fiber_resume has logged the exception and cleared mrb->exc,
-      // which all sessions of the stream {} block share
-      mrb_gc_arena_restore(re->mrb, ai);
-      ictx->s = prev_s;
-      return NGX_ABORT;
-    }
-
-  } else {
-    ngx_log_error(NGX_LOG_NOTICE, re->s->connection->log, 0, "%s NOTICE %s:%d: unexpected error, fiber missing",
-                  MODULE_NAME, __func__, __LINE__);
-    ictx->s = prev_s;
-    return NGX_ABORT;
-  }
-
-  mrb_gc_arena_restore(re->mrb, ai);
-  ictx->s = prev_s;
-
-  if (ictx->stream_status == NGX_DECLINED) {
-    re->s->phase_handler++;
-    ngx_stream_core_run_phases(re->s);
-  }
-  return ictx->stream_status;
-}
-
+/*
+ * The wake (section 4.4 of docs/proposals/core-stabilization.md): the record
+ * becomes READY and the phases of the session run again, as nginx runs them
+ * for a read event. The checker of the access phase calls the mruby handler
+ * again (s->phase_handler did not move), which resumes the fiber
+ * (ngx_stream_mrb_fiber_call_again) and returns the result of the code to
+ * the checker, as a handler that did not wait does.
+ */
 static void ngx_stream_mrb_timer_handler(ngx_event_t *ev)
 {
   ngx_stream_mrb_reentrant_t *re;
   ngx_stream_mrb_fiber_t *f;
-  ngx_stream_mruby_ctx_t *ctx;
-  ngx_stream_session_t *s;
-  ngx_stream_core_main_conf_t *cmcf;
-  ngx_int_t rc;
 
   re = ev->data;
   f = (ngx_stream_mrb_fiber_t *)re->fiber;
   ngx_mrb_fiber_timer_fired(&f->base);
-  if (f->ctx->sleeping == f) {
-    f->ctx->sleeping = NULL;
-  }
 
-  // re is allocated from the connection pool, which the finalization below
-  // destroys
-  s = re->s;
-  ctx = f->ctx;
-
-  rc = ngx_stream_mrb_post_fiber(re, ctx);
-
-  /*
-   * The checker of the access phase (ngx_stream_core_generic_phase) got the
-   * NGX_DONE of ngx_stream_mruby_handler when the fiber first waited, so the
-   * result of the code after the sleep is handled here, as that checker
-   * handles the result of a handler that does not wait.
-   * ngx_stream_mrb_post_fiber has run the phases for NGX_DECLINED already, and
-   * NGX_DONE means that the fiber waits again.
-   */
-  if (rc == NGX_DECLINED || rc == NGX_DONE || rc == NGX_AGAIN) {
+  if (f->base.state != NGX_MRB_FIBER_WAITING || f->ctx->sleeping != f) {
+    // not reached: the owner hook deletes the timer of a cancelled record,
+    // and a session has one record that waits
+    ngx_log_error(NGX_LOG_ERR, re->s->connection->log, 0,
+                  "%s ERROR %s:%d: the timer fired for a fiber that does not wait", MODULE_NAME, __func__, __LINE__);
     return;
   }
 
-  if (rc == NGX_OK) {
-    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
-    s->phase_handler = cmcf->phase_engine.handlers[s->phase_handler].next;
-    ngx_stream_core_run_phases(s);
-    return;
+  f->base.state = NGX_MRB_FIBER_READY;
+  ngx_stream_core_run_phases(re->s);
+}
+
+ngx_int_t ngx_stream_mrb_fiber_call_again(ngx_stream_session_t *s, ngx_stream_mruby_ctx_t *ctx, mrb_value *result,
+                                          ngx_mrb_fiber_outcome_t *outcome)
+{
+  ngx_stream_mrb_fiber_t *f = ctx->sleeping;
+  ngx_stream_mruby_internal_ctx_t *ictx;
+
+  if (f == NULL) {
+    return NGX_DECLINED;
   }
 
-  if (rc == NGX_ERROR) {
-    rc = NGX_STREAM_INTERNAL_SERVER_ERROR;
-  }
+  switch (f->base.state) {
+  case NGX_MRB_FIBER_WAITING:
+    if (s->connection->close) {
+      // worker_shutdown_timeout expired: nginx set c->close and called the
+      // read handler. The wait ends, and so does the session, as
+      // ngx_stream_proxy_module ends its sessions then.
+      ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "shutdown timeout");
+      ctx->sleeping = NULL;
+      ngx_mrb_fiber_cancel(&f->base);
+      return NGX_STREAM_OK;
+    }
+    // nginx ran the phases while the record waits, for example for another
+    // datagram of a UDP session: the code does not start again (Q4)
+    ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: the handler waits; its code is not run again",
+                  MODULE_NAME, __func__, __LINE__);
+    return NGX_DONE;
 
-  ngx_stream_finalize_session(s, rc);
+  case NGX_MRB_FIBER_READY:
+    ctx->sleeping = NULL;
+    // the result that the code had set when it started to sleep
+    ictx = f->base.mrb->ud;
+    ictx->stream_status = f->sleep.stream_status;
+    *outcome = ngx_stream_mrb_run_fiber(f->base.mrb, &f->base.fiber, result);
+    return NGX_OK;
+
+  default:
+    ctx->sleeping = NULL;
+    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "%s ERROR %s:%d: the handler of the session has ended",
+                  MODULE_NAME, __func__, __LINE__);
+    return NGX_ERROR;
+  }
 }
 
 // The owner hook of a record, a connection pool cleanup that the fiber adds
@@ -228,7 +204,7 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ngx_stream_mruby_ctx_t *ctx;
   ngx_stream_mruby_internal_ctx_t *ictx;
   ngx_stream_session_t *s;
-  ngx_stream_mrb_fiber_t *f, *other;
+  ngx_stream_mrb_fiber_t *f;
   ngx_pool_cleanup_t *cln;
 
   mrb_get_args(mrb, "i", &timer);
@@ -269,13 +245,8 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   re->stream_status = ictx->stream_status;
   re->fiber = &f->base.fiber;
 
-  // A session has one pending sleep: a sleep of another fiber of the session
-  // (a second UDP datagram) replaces the pending one, whose fiber is then not
-  // resumed and keeps its slot until the session ends.
-  other = ctx->sleeping;
-  if (other != NULL && other != f) {
-    ngx_mrb_fiber_delete_timer(&other->base);
-  }
+  // the record that waits for the session, which the handler finds when
+  // nginx calls it again (ngx_stream_mrb_fiber_call_again)
   ctx->sleeping = f;
 
   ngx_mrb_fiber_arm_timer(&f->base, (ngx_msec_t)timer, ngx_stream_mrb_timer_handler, re);
