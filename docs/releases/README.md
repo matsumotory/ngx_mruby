@@ -305,7 +305,7 @@ Its body lists each pull request with the section of its entry, or "no entry"
 and the reason, and says that the two files were compared. This catches pull
 requests merged before this convention, pull requests whose author did not
 follow it, and entries that a review missed. The same pull request renames
-both files if the owner will tag a different version.
+both files if the release will be a different version.
 
 The check pull request has the label `full-matrix`, given when it is opened
 (`gh pr create --draft --label full-matrix`; `gh label create full-matrix`
@@ -321,16 +321,19 @@ merge, the check confirms that each of those pull requests has its entries in
 the 2.x file (see "File names"), and before the 3.0.0 tag it copies into
 `v3.0.0.md` the entries whose 2.x release is not tagged yet.
 
-The owner tags the merge commit of the check pull request. Pull requests
+The session publishes the release at the merge commit of the check pull
+request, after the owner's go-ahead for that release in a session's question
+(`gh release create <tag> --target <commit> --title <title> --notes-file <body>`,
+which creates the tag). Pull requests
 merged after it ship in the following release, and the check for that release
-moves their entries to that release's file. If the owner tags a later commit
-instead, the check is repeated for the pull requests merged after the check
+moves their entries to that release's file. If the release is published at a
+later commit instead, the check is repeated for the pull requests merged after the check
 pull request. A release that ships a security fix follows the order in
 "Security fixes" below.
 
 ## The GitHub release
 
-When the owner publishes a release, its body carries both texts, English
+When the session publishes a release, its body carries both texts, English
 first: the "Behavior changes: read before upgrading" section copied from the
 English file ("None." when there are none), then the same section copied from
 the Japanese file, then links to the two files. The body does not copy the
@@ -339,8 +342,9 @@ requests. A pre-release on `next` copies, from both files, the
 entries added or changed since the previous pre-release;
 `git diff <previous pre-release tag> <new tag> -- docs/releases/v3.0.0.md docs/releases/v3.0.0.ja.md`
 shows them. The first pre-release copies the whole section. Agents prepare
-the files; they do not publish releases (see
-[AGENTS.md](../../AGENTS.md#branches-and-pull-requests)).
+the files and, after the owner's go-ahead, publish the release (see
+[AGENTS.md](../../AGENTS.md#branches-and-pull-requests)); the owner publishes
+the advisory.
 
 ## Security fixes
 
@@ -362,7 +366,7 @@ tagged files and the release body have them:
   「日本語でも後半でいいのでしっかりかいておいてほしい、今後は」
   ("write it carefully in Japanese too, in the second half; from now on").
 - When the owner publishes the advisory, a pull request adds the advisory id
-  (`GHSA-xxxx-xxxx-xxxx`) to the entries in both files, and the owner adds it
+  (`GHSA-xxxx-xxxx-xxxx`) to the entries in both files, and the session adds it
   to both texts of the release body. That pull request may also list the
   fixes that the advisory covers apart from the other fixes in "Fixes", and
   may give the cause of the defect in "Why it changed", within what the
@@ -374,8 +378,10 @@ is public for as short a time as possible before the release:
 1. The check pull request ("Before the tag") is merged before the fix. It
    covers the pull requests merged until then; the fix's private pull request
    carries its own entries.
-2. The owner merges the fix and tags the fix's merge commit right after. This
-   is the exception to tagging the merge commit of the check pull request. If
+2. The owner merges the fix from the advisory's private fork ("Merge pull
+   request(s)" on the advisory), and the session publishes the release at the
+   fix's merge commit right after. This is the exception to publishing at the
+   merge commit of the check pull request. If
    another pull request is merged between the two, its entries are checked
    before the fix is merged.
 
