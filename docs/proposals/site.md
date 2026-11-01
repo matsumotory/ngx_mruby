@@ -1329,11 +1329,11 @@ acceptance; the interaction check covers that separately.
   from 76rem (1216 px) on English pages and from 88rem (1408 px) on
   Japanese pages. Below that they are in the menu: behind the menu button
   on pages without a sidebar, at the top of the sidebar on pages with one.
-  The Japanese labels (ドキュメント, エージェントプロキシ, 開発に参加する)
+  The Japanese labels (ドキュメント, モデルAPIの中継, 開発に参加する)
   are longer than the English ones. In Chromium, with or without the
   sidebar, and with the star count (997 stars), the header holds every
   item on one line inside its padding from 1131 px in English, and in
-  Japanese from 1279 px in Hiragino Sans and 1268 px in Noto Sans JP; a
+  Japanese from 1271 px in Hiragino Sans and 1265 px in Noto Sans JP; a
   count of four characters such as 1.2K takes 4 to 5 px more. 76rem and
   88rem stay above them. The labels of the header do not
   break inside a word (`white-space: nowrap`). The owner on 2026-11-01:
