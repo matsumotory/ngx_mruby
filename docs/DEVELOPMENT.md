@@ -310,10 +310,11 @@ The owner checks that all of these hold and gives the go before step 1:
      supported versions in SECURITY.md, and "Target branch" in
      `.github/PULL_REQUEST_TEMPLATE.md` (2.x fixes target `v2.x`, v3 fixes
      target `master`). It points the badges of README.md at `master`:
-     their images (`branch=next`) and their links (`query=branch%3Anext`). It also adds to
-     `.github/dependabot.yml` a second `github-actions` entry with
-     `target-branch: "v2.x"`, so that the file has it on `master` from step
-     5 on. Dependabot reads that file only from
+     their images (`branch=next`) and their links
+     (`query=branch%3Anext`). It also adds to `.github/dependabot.yml` a
+     second `github-actions` entry with `target-branch: "v2.x"`, so that
+     the file has it on `master` from step 5 on. Dependabot reads that file
+     only from
      the default branch, and an entry without `target-branch` updates only the
      default branch, so without the new entry nothing would update the
      SHA-pinned actions in the workflows of `v2.x` while 2.x is supported.
