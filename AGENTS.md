@@ -621,6 +621,8 @@ with a successful skip.
   The owner's words (2026-11-01):
   「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
   The patterns are in `site/scripts/lib/patterns.mjs`.
+  The pull request that replaces Starlight changes the iPhone width to 402px
+  (Safari on an iPhone 17 Pro); it changes the value in that file.
 
 
 The first layer of the Astro-only migration is opt-in:
