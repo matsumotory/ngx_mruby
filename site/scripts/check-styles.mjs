@@ -20,9 +20,9 @@
 // - durations of 4.8: 200 ms or less, 0 under prefers-reduced-motion, no
 //   animation running after the load;
 // - at most 90 characters per line of English body text at 1440 px (4.4);
-// - the header (4.10), in Chromium at 1440 px, at the first width where it
-//   holds the section links (76rem in English, 88rem in Japanese) and 1 px
-//   below: every item on one line, inside the header, without overlap;
+// - the header (4.10), in Chromium at 1440 px, in English and Japanese:
+//   the section links in it, every item on one line, inside its content
+//   box, without overlap;
 // - no horizontal scroll of the page (4.9), and at 402 px every text block
 //   and the ring before h2 at least 20 px from both edges (4.5);
 // - the home page heading takes one line at 1440 px and at most two at
@@ -462,29 +462,27 @@ function shadowsOnly() {
   return fails;
 }
 
-// 4.10: the header holds the section links from 76rem (1216 px) on English
-// pages and from 88rem (1408 px) on Japanese pages, whose labels are longer
-// (tokens: site.css). Runs in the page: every item of the header is on one
-// line, inside the header, and apart from its neighbours; the section links
-// are in the header at or above the width of the language and in the menu
-// below it.
-const HEADER_SWITCH = { en: 76 * 16, ja: 88 * 16 };
-const HEADER_PAGES = { en: ['/', '/guides/install/'], ja: ['/ja/', '/ja/guides/install/'] };
+// 4.10: the header at 1440 px in Chromium, on English and Japanese pages
+// with and without the sidebar: the section links are in the header, and
+// every item is on one line, inside the header's content box and apart from
+// its neighbours. check-css.mjs checks the widths of the switch (76rem in
+// English, 88rem in Japanese) in the built CSS.
+const HEADER_PAGES = ['/', '/guides/install/', '/ja/', '/ja/guides/install/'];
 function headerFit(cfg) {
   const fails = [];
   const header = document.querySelector('header.header');
-  const hb = header.getBoundingClientRect();
+  const border = header.getBoundingClientRect();
+  const hs = getComputedStyle(header);
+  const hb = { left: border.left + parseFloat(hs.paddingLeft), right: border.right - parseFloat(hs.paddingRight) };
   const shown = (el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
   const nav = document.querySelector('.site-nav');
   const navShown = shown(nav);
-  if (cfg.links && !navShown) fails.push(`the section links are not in the header at ${cfg.width} px`);
-  if (!cfg.links && navShown) fails.push(`the section links are still in the header at ${cfg.width} px`);
-  if (!cfg.links && !document.documentElement.hasAttribute('data-has-sidebar') && !shown(document.querySelector('button.site-menu-button'))) fails.push(`no menu button at ${cfg.width} px`);
+  if (!navShown) fails.push(`the section links are not in the header at ${cfg.width} px`);
   const items = [...document.querySelectorAll('.site-header > *, .site-nav a')].filter(shown);
   for (const el of items) {
     const b = el.getBoundingClientRect();
     const label = (el.textContent || el.getAttribute('aria-label') || el.className).trim().replace(/\s+/g, ' ').slice(0, 24);
-    if (b.left < hb.left - 0.5 || b.right > hb.right + 0.5) fails.push(`"${label}" reaches outside the header (${b.left.toFixed(1)} to ${b.right.toFixed(1)} of ${hb.left.toFixed(1)} to ${hb.right.toFixed(1)})`);
+    if (b.left < hb.left - 0.5 || b.right > hb.right + 0.5) fails.push(`"${label}" reaches outside the header's content box (${b.left.toFixed(1)} to ${b.right.toFixed(1)} of ${hb.left.toFixed(1)} to ${hb.right.toFixed(1)})`);
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
       if (!n.data.trim() || !shown(n.parentElement)) continue;
@@ -663,10 +661,10 @@ async function main() {
         loads++;
       }
     }
-    // 4.10: the header in Chromium at 1440 px, at the first width where it
-    // holds the section links and 1 px below, in light
+    // 4.10: the header in Chromium at 1440 px, in light
     if (engineName === 'chromium') {
-      for (const lang of ['en', 'ja']) for (const page of HEADER_PAGES[lang]) for (const width of [PC.width, HEADER_SWITCH[lang], HEADER_SWITCH[lang] - 1]) {
+      for (const page of HEADER_PAGES) {
+        const width = PC.width;
         const context = await browser.newContext({ viewport: { width, height: PC.height } });
         const tab = await context.newPage();
         await tab.goto(server.url + page, { waitUntil: 'load' });
@@ -674,7 +672,7 @@ async function main() {
         await tab.evaluate(() => document.fonts.ready);
         loads++;
         headerLoads++;
-        for (const f of await tab.evaluate(headerFit, { width, links: width >= HEADER_SWITCH[lang] })) failures.push(`${page} ${engineName} light ${width}x${PC.height} header: ${f}`);
+        for (const f of await tab.evaluate(headerFit, { width })) failures.push(`${page} ${engineName} light ${width}x${PC.height} header: ${f}`);
         await context.close();
       }
     }
@@ -699,7 +697,7 @@ async function main() {
     process.exit(1);
   }
   console.log(`check-styles: home page heading lines: ${headings.join(', ')}`);
-  if (headerLoads) console.log(`check-styles: the header on one line in ${headerLoads} page loads: ${Object.entries(HEADER_SWITCH).map(([lang, w]) => `${lang} at ${PC.width}, ${w} and ${w - 1} px (section links in the header from ${w} px)`).join('; ')}`);
+  if (headerLoads) console.log(`check-styles: the header with its section links on one line at ${PC.width} px: ${HEADER_PAGES.join(', ')}`);
   console.log(`check-styles: ok; ${diagramLoads} page loads with a diagram; ${loads} page loads of ${opt.pages.length} pages in ${opt.engines.join(' and ')}, light and dark, ${opt.engines.flatMap(patternsFor).map((s) => `${s.width}x${s.height}`).join(' and ')}; ${searches} with the search dialog open (results loading and loaded), ${menus} with the menu open`);
 }
 
