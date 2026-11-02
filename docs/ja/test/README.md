@@ -822,7 +822,7 @@ TCPでは`stream_sleep`を測ります。`disconnect`は測りません。
 3. TCPでは本文とEOFを確認します。HTTPでは、ウォームアップの接続が閉じたことを`stub_status`で確認します。
 
    その後、`callgrind_control --instr=on`で計測を有効にします。
-4. HTTPではkeep-aliveを使い、`PERF_N`回の応答を確認します。`keepalive_requests`の1000回ごとに、クライアントは接続し直します。
+4. HTTPではkeep-aliveを使い、`PERF_N`回の応答を確認します。`keepalive_requests`の1000回ごとに接続し直します。
 
    `stream_sleep`では、接続ごとに1セッションを完了し、合計`PERF_N`回の本文とEOFを確認します。
 5. `callgrind_control --dump`でプロファイルを書き出し、nginxを止めます。
