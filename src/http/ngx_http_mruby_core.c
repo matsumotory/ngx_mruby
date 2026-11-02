@@ -203,8 +203,8 @@ static void ngx_mrb_discard_unread_body(ngx_http_request_t *r)
  *
  * It sends the response the way ngx_mrb_finalize_rputs sends one with output,
  * so the header filters and the body filters of the location see it, and it
- * returns NGX_OK once the header went out: the mruby filters return
- * NGX_ERROR after they passed on the header of a response without a body (a
+ * returns NGX_OK once the header went out: an mruby filter may return
+ * NGX_ERROR after it passed on the header of a response without a body (a
  * HEAD request), which must not end the request. Only a header that did not
  * go out returns the result of ngx_http_send_header, for the content phase
  * to finalize the request with. The chain is not kept in the module context,
@@ -409,8 +409,14 @@ ngx_int_t ngx_mrb_finalize_body_filter(ngx_http_request_t *r, ngx_http_mruby_ctx
 
   rc = ngx_http_next_header_filter(r);
 
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+  if (rc == NGX_ERROR || rc > NGX_OK) {
     return NGX_ERROR;
+  }
+
+  // HEAD ends at the headers. Preserve their result without forwarding
+  // body bytes. Other header-only responses keep their previous handling.
+  if (r->header_only) {
+    return r->method == NGX_HTTP_HEAD ? rc : NGX_ERROR;
   }
 
   return ngx_http_next_body_filter(r, &out);
