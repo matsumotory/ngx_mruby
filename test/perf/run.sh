@@ -26,6 +26,9 @@ set -e
 
 cd "$(dirname "$0")/../.."
 ROOT=$(pwd)
+
+# The shared TCP response and counter checks, before any build.
+ruby "$ROOT/test/soak/tcp_client_test.rb"
 SRC=${1:-$ROOT}
 NAME=${2:-head}
 

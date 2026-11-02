@@ -746,21 +746,23 @@ results (section 8 of the plan).
   Every default scenario must stay `ok`: `hello`, `headers`, `var`,
   `filter`, `sleep`, `sub_request`, `file`, `proxy_plain_2k`,
   `proxy_plain_64k`, `proxy_stream_plain_50`, `responses_stream_plain_50`,
-  `auth`, `route_json_2k`, `ruby_call_1` and `ruby_call_10`
+  `auth`, `route_json_2k`, `ruby_call_1`, `ruby_call_10` and `stream_sleep`
   (`test/perf/perf.rb`, `DEFAULT_SCENARIOS`). `sleep` and `sub_request` (a
   rewrite handler that waits) are the rows that the wake and the second call
   of the handler change; the other rows change only through the slot at the
   first wait and the `RProc` prepared once, which should lower them. A
   `WARN` or `FAIL` goes to the owner as AGENTS.md says.
-- The lane has no stream scenario, so a change to `src/stream/` alone states
-  what it adds per session, as AGENTS.md asks.
+- The `stream_sleep` scenario measures a TCP session that waits for 1 ms
+  and returns a fixed response through EOF. Both measurement builds include
+  stream; its instruction count is per completed session.
 - The soak lane (`test/soak/soak.rb`) keeps `gc_live`, `gc_root`,
   `gc_root_fibers`, `gc_arena_idx`, `timers`, `fd_own` and `active` the same
   from sample to sample, and bounds `VmRSS`, for the `sleep`, `sub_request`
   and `disconnect` scenarios (the client closes during the sleep). The pull
   request of the common layer counts the stream timers and fibers in
-  `Nginx::Debug.stats` as well (#714); the stream scenario that reads them
-  comes with step 6 of section 8, the stream wake.
+  `Nginx::Debug.stats` as well (#714). The `stream_sleep` scenario checks
+  both counters while a session waits and after it finishes, and collects
+  the stream VM outside each sampling window.
 
 ## 8. The order of the implementation pull requests
 
@@ -889,8 +891,8 @@ already decide, and Q6 extends this to server rewrite handlers.
 - The behavior changes of section 5 reach code that relied on the old
   order or on a stored status. Each has its entry and its line in the
   migration guide.
-- The perf lane measures the HTTP paths only. A stream change is described
-  per session until the lane has a stream scenario.
+- The perf lane measures HTTP requests and the normal TCP `stream_sleep`
+  session. Other stream paths still need their own scenarios.
 
 ## 11. Security review
 
@@ -967,7 +969,7 @@ Status line describe the implementation.
   `stream_async_sleep_udp_reuse.rb`, and
   `test/t/cases/stream_proxy_protocol_wait.rb` covers a stream wait on
   `proxy_protocol` and at `worker_shutdown_timeout`.
-- Of section 7, the soak lane has no stream scenario yet that reads
-  `stream_timers` and `stream_fibers` of `Nginx::Debug.stats` (#714 added
-  the counters, and `test/soak/soak.rb` expects the keys), and the perf lane
-  has no stream scenario.
+- Section 7 includes the normal TCP `stream_sleep` scenario in the soak
+  and perf lanes. The soak checks that `stream_timers` and `stream_fibers`
+  return to zero and collects the stream VM before sampling; the perf lane
+  counts exactly one fiber start per measured session.

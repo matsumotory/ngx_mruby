@@ -674,6 +674,32 @@ keep-aliveのクライアントは、`SOAK_CONCURRENCY`個の接続です。各�
 
 `agent_upstream_reset`は、`error`のレベルの行を2つ許します。どちらも、モックの`/v1/messages`へのupstreamの接続についての行です。1つ目は`recv() failed (104: Connection reset by peer)`です。nginxは、upstreamの接続のエラーを`error`のレベルで、クライアントの接続のエラーを`info`のレベルでログに書きます。2つ目は`upstream prematurely closed connection`です。バッファリングしないモードで、upstreamがレスポンスの途中で接続を閉じると、nginxはこの行を書きます。これまでの実行で現れたのは1つ目だけです。その行の動作の部分は、「while reading upstream」か「while sending to client」でした。`agent_client_abort`は、`warn`以上のレベルでは何もログに書きません。
 
+### TCPのsleepを測る
+
+`stream_sleep`は、ソークと性能比較の既定のシナリオです。接続ごとに`Nginx::Stream::Async.sleep`で1ms待ち、`stream slept`とEOFを確認します。
+
+通信全体の期限は、ソークでは30秒、callgrindでは120秒です。短い応答、余分な応答、接続のリセットを検出すると失敗します。
+
+ポートの範囲は変わりません。先頭はHTTP制御、次はTCPの測定、その次はstreamのGC制御です。このシナリオはモデルAPIのモックを起動しません。
+
+ソークの`sessions`列は、最初の確認とウォームアップを含むTCPの完了数です。`requests`列はHTTP制御のリクエスト数を表します。ほかのシナリオの`sessions`列は`-`です。
+
+測定前に、GC制御のセッションが250ms待つ間のカウンターを確認します。`stream_timers`と`stream_fibers`が1になり、応答が終わると0に戻る必要があります。値の欠落、負数、整数以外の値も失敗です。
+
+各メモリサンプルの前に、同じstream VMで`GC.start`を実行します。`stream gc complete`とEOFを確認し、両カウンターが0に戻ってから記録します。HTTPのシナリオでも、両方の列を表示します。
+
+HTTPとstreamは別のmruby状態を持ちます。HTTP側の`Nginx::Debug.gc`はstream VMを回収しません。`gc_live`もHTTP側の値です。streamのGC制御を終えてからworkerのRSSを読み、既存のしきい値で判定します。
+
+性能比較はGC制御のセッションを呼びません。`stream_sleep`のIrは、TCPセッションあたりの命令数です。計測窓には`ngx_stream_mrb_start_fiber`が`PERF_N`回必要です。HTTP制御の呼び出しは数えません。
+
+レポートとJSONの既存のフィールド名は維持します。この行だけは`request`を含む名前もセッション単位です。ヘッダーにも単位を示し、JSONの各結果には`unit`を追加します。値は`session`または`request`です。
+
+`ruby_calls`はHTTPとstreamのファイバー開始を含みます。GCの除外と警告・失敗のしきい値は変わりません。
+
+測定用の両ビルドは`--with-stream`を付けます。更新後は`ONLY_RUN`を付けずにソークと性能比較を流してください。構成の変更を検出してビルドし直します。通常のビルドと統合テストの構成は変わりません。
+
+共有TCPクライアントの検査は、ビルド前に自動で流れます。応答、EOF、タイムアウト、リセット、カウンターの値を、nginxなしで確かめます。単独では`ruby test/soak/tcp_client_test.rb`で実行できます。
+
 ### ソークのビルドと`Nginx::Debug`
 
 `test/soak/run.sh`は、`test/build_release.sh`で`build_soak/`にビルドします。説明は下の「リリースのビルド」にあります。nginxとngx_mrubyは`-O2 -g`でビルドし、`MRB_GC_STRESS`も`--with-debug`も付けません。`build_config.rb`のgemは、`build_config.rb.lock`のコミットでビルドします。このビルドには、定義が2つ加わります。ngx_mrubyは`-DNGX_MRUBY_DEBUG_STATS`を付けてコンパイルし、mrubyは`-DMRB_USE_MALLOC_TRIM`を付けてコンパイルします。後者を付けると、`mrb_full_gc()`は`malloc_trim(0)`も呼びます。mrubyがフルGCを実行するのは、求められたときと、まれな場合だけです。求めるのは`GC.start`や`Nginx::Debug.gc`です。まれな場合とは、インクリメンタルGCが多すぎるオブジェクトを見つけたときや、メモリの確保に失敗したときです。そのため、サンプルの間のワーカーは、この定義が無いときと同じように動きます。
@@ -688,7 +714,7 @@ keep-aliveのクライアントは、`SOAK_CONCURRENCY`個の接続です。各�
   - `gc_arena_idx`：`mrb->gc.arena_idx`です。
   - `timers`：`Nginx::Async.sleep`のタイマーのうち、発火も削除もされていないタイマーの数です。
   - `stream_timers`：`timers`と同じ数え方で、`Nginx::Stream::Async.sleep`のタイマーの数です。
-  - `stream_fibers`：streamのハンドラのfiberのうち、streamモジュールのmrb_stateのholderに保持されているものの数です。sleepした後で、終わっておらず、セッションも終わっていないfiberが入ります。この数は`gc_root_fibers`にも入ります。ソークテストの設定には`stream {}`が無いので、2つのstreamのキーは0で、ソークテストはキーがあることだけを確かめます。
+  - `stream_fibers`：streamのハンドラのfiberのうち、streamモジュールのmrb_stateのholderに保持されているものの数です。sleepした後で、終わっておらず、セッションも終わっていないfiberが入ります。この数は`gc_root_fibers`にも入ります。`stream_sleep`はセッションの待機中に2つのカウンターが増えることを確認し、終了後に0へ戻ることを確かめます。すべてのソークのサンプルで両方の値を検査し、表に表示します。
   - `gc_root_mruby`と`gc_root_fibers_mruby`：httpモジュールのmrb_stateにある、mruby自身の`_gc_root_`の配列の長さと、配列の中のfiberの数です。mruby 3.xと4.0は、そのmrb_stateで最初に`mrb_gc_register()`を呼んだときに、この配列を作ります。mruby 4.1は、代わりにGCのルートを`mrb->gc.root`に持つので、この2つのキーはありません。`gc_root`と違って、この2つの値には、mrubyとgemが登録したオブジェクトが入り、holderの中のオブジェクトは入りません。配列にあるのはhttpモジュールのholderで、holderの中のfiberではないからです。ソークテストはこの2つの値を確かめません。配列のあるバージョンのmrubyで、`gc_root`と比べるために出す値です。
 
 `gc_root`と`gc_root_fibers`は、GCのルートをmrubyから読みません。mruby 4.1は、GCのルートを`_gc_root_`の配列に持たなくなったからです。配列から読むと、数はどのサンプルでも0になり、ソークテストは何も確かめずに通ってしまいます。ngx_mrubyはfiberをmrb_stateのholderに保持し、`src/http/ngx_http_mruby_core.c`の`ngx_mrb_gc_roots_add()`と`ngx_mrb_gc_roots_remove()`で数えます。`-DNGX_MRUBY_DEBUG_STATS`を付けると、`src/http/ngx_http_mruby_debug.h`は、`mrb_gc_register`と`mrb_gc_unregister`をマクロとして定義します。このマクロは、mrubyの関数を呼んでから、その呼び出しを数えます。そのため、このヘッダをインクルードするソースファイルの呼び出しは、後で加えた呼び出しも含めて、すべて数えられます。したがって、`src/http/`、`src/stream/`、`src/common/`の`.c`ファイルのうち、どちらかを呼ぶものは、`ngx_http_mruby_debug.h`をインクルードしなければなりません。`test/soak/run.sh`は、ビルドの前にこれを確かめ、インクルードしていないファイルがあれば止まります。定義が無いと、このヘッダはマクロを定義せず、呼び出しはmrubyの関数に直接届きます。
@@ -785,15 +811,25 @@ VmRSSの2つの上限は、2026年10月3日にデフォルトのシナリオを�
 
 ### 何を測るか
 
-測るシナリオは2種類です。1つは、ソークテストのシナリオのうち、keep-aliveのクライアントを使うものです。`hello`、`headers`、`var`、`filter`、`sleep`、`sub_request`、`file`で、そのテーブルは「メモリのソークテスト」にあります。もう1つは、下の「性能の比較に入れたエージェントプロキシのシナリオ」にあるエージェントプロキシのシナリオです。`disconnect`は測りません。`test/perf/perf.rb`は、各シナリオについて、ベースとヘッドの順番に次のことをします。
+HTTPでは、ソークのkeep-aliveのシナリオと、下のエージェントプロキシのシナリオを測ります。前者は`hello`、`headers`、`var`、`filter`、`sleep`、`sub_request`、`file`です。
+
+TCPでは`stream_sleep`を測ります。`disconnect`は測りません。
+
+各シナリオで、`test/perf/perf.rb`はベースとヘッドを次の手順で測ります。
 
 1. シナリオにLLMのモックがあれば、モックを起動します。nginxは、`test/soak/nginx.conf`かシナリオのテンプレートを`master_process off`に変えた設定で、`valgrind --tool=callgrind --instr-atstart=no`の下で起動します。こうすると、起動の間は計測しません。
-2. レスポンスを1つ確かめてから、`PERF_WARMUP`の数のリクエストを送ります。
-3. ウォームアップの接続が1つも開いていないと`stub_status`に出るまで待ち、`callgrind_control --instr=on`で計測を有効にします。
-4. keep-aliveで`PERF_N`の数のリクエストを送り、すべてのレスポンスを確かめます。nginxは1000のリクエストの後に接続を閉じ、クライアントは次の接続を開きます。この1000は`keepalive_requests`の値です。
+2. レスポンスを1つ確かめてから、`PERF_WARMUP`回のリクエストまたはTCPセッションを完了します。
+3. TCPでは本文とEOFを確認します。HTTPでは、ウォームアップの接続が閉じたことを`stub_status`で確認します。
+
+   その後、`callgrind_control --instr=on`で計測を有効にします。
+4. HTTPではkeep-aliveを使い、`PERF_N`回の応答を確認します。`keepalive_requests`の1000回ごとに、クライアントは接続し直します。
+
+   `stream_sleep`では、接続ごとに1セッションを完了し、合計`PERF_N`回の本文とEOFを確認します。
 5. `callgrind_control --dump`でプロファイルを書き出し、nginxを止めます。
 
-ステップ5のプロファイルには、ステップ4のリクエストのコストが入ります。起動、設定、ウォームアップ、終了のコストは入りません。**リクエストあたりのIr**は、このプロファイルのIrの合計を`PERF_N`で割った値です。別の方法として、Nと2Nのリクエストで2回実行し、その差をNで割ることもできます。この方法では3倍の数のリクエストが要り、2回の実行のばらつきも加わります。1回の実行で計測する区間であるウィンドウには、リクエストのほかに何も入りません。
+ステップ5のプロファイルは、ステップ4の処理量を記録します。起動、設定、ウォームアップ、終了は含みません。Irの合計を`PERF_N`で割ると、HTTPではリクエストあたり、TCPではセッションあたりの値になります。
+
+別の方法として、Nと2Nのリクエストで2回実行し、その差をNで割ることもできます。この方法では3倍の数のリクエストが要り、2回の実行のばらつきも加わります。この比較では、1回の実行の計測窓を使って処理量を求めます。
 
 callgrind_controlは、valgrindのgdbserverである`vgdb`を通してプロセスに届きます。vgdbは、nginxのワーカーのような、valgrindがforkしたプロセスを扱いません。`master_process off`では、nginxの1つのプロセスが、ワーカーと同じようにイベントループとハンドラを実行します。`epoll_wait`で待っているプロセスに割り込むためのptraceをvgdbが使えないときは、コマンドは、そのプロセスが次にコードを実行したときに動きます。そのため`perf.rb`は、コマンドが動くまで、0.2秒ごとに`/status`へリクエストを送ります。`/status`は`stub_status`です。これらのリクエストの一部はウィンドウに入ります。これまでの実行では、ウィンドウごとに2つでした。
 
@@ -957,18 +993,24 @@ $ sh test/perf/run.sh                                  # measure this checkout o
 | `ONLY_RUN` | 未設定 | 設定するとビルドを飛ばす |
 | `NUM_THREADS_ENV` | CPUの数の半分 | ビルドの並列数。`build.sh`へそのまま渡す |
 | `PERF_SCENARIOS` | `test/perf/perf.rb`にある`DEFAULT_SCENARIOS` | カンマで区切ったシナリオの名前 |
-| `PERF_N` | 20000 | 測るウィンドウのリクエストの数 |
-| `PERF_WARMUP` | 2000 | ウィンドウの前のリクエストの数 |
+| `PERF_N` | 20000 | 計測窓のリクエスト数またはTCPセッション数 |
+| `PERF_WARMUP` | 2000 | 計測窓の前のリクエスト数またはTCPセッション数 |
 | `PERF_WARN_PERCENT` | 3 | GCを除いたリクエストあたりのIrがこの割合以上変わるとWARN |
 | `PERF_FAIL_PERCENT` | 5 | この割合以上変わるとFAIL |
-| `PERF_PORT_BASE` | 12370 | シナリオのポート。`sub_request`のバックエンドは次のポートを、LLMのモックはさらにその次のポートを使う |
+| `PERF_PORT_BASE` | 12370 | HTTP制御のポート。次はHTTPバックエンドかTCP測定用。3つ目はモデルAPIのモック用で、streamのGC制御には接続しない |
 | `PERF_REPORT_DIR` | `build_perf` | `report.txt`と`report.json`を書くディレクトリ |
 | `PERF_ACCEPTED_FILE` | `test/perf/accepted.txt` | 受け入れ済みの差を記録するファイル。空のファイルなら適用前の判定を表示 |
 | `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_start_fiber` | `test/soak/nginx.conf`の7つのシナリオで、リクエストごとに1回と数える関数の名前。「CIで実行する」を参照 |
 
 ### CIで実行する
 
-`.github/workflows/test.yml`の`perf`ジョブは、ビルドするreadyのPRで始まります。ビルドするのは、[実行するジョブの選択](#実行するジョブの選択)で`build`が`standard`か`full`になるPRです。比べるのは、`test/ci/changes.sh`が`perf`を`true`にするときです。つまり、PRが測るバイナリの入力か測定を変えるときか、PRにラベル`perf`があるときです。ラベルはジョブが動くときに読むので、ラベルを付けてジョブを再実行すれば足ります。これらのファイルのうち`test.yml`だけを変えるPRは、ラベルがあるときだけ比べます。コードとテストのどれも変えないPRは、ラベルがあってもジョブをスキップします。バイナリの入力は、`test/build_release.sh`がコピーするものです。`src/`、`mrbgems/`、`mruby/`、`dependence/`、トップレベルのビルドのファイルの`build_config.rb`、`configure`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`と、gemのロックの`build_config.rb.lock`です。`dependence/`は、`Makefile.in`がnginxに加えるngx_devel_kitです。測定は、`test/perf/`、`test/build_release.sh`、`test/soak/`のシナリオのファイルです。シナリオのファイルは、`nginx.conf`、`nginx.agent.conf`、`scenarios.rb`、`http_client.rb`、`mock_llm.rb`、`handlers/`です。`master`のジョブも同じで、違いは2つです。`master`はgemのロックをコミットしないので、`master`ではロックは入力ではありません。また、`master`にはソークのジョブが無いので、`master`の`perf`ジョブは、`next`では`test/soak/run.sh`が実行するLLMのモックのチェックを最初に実行します。そのチェックは`ruby test/soak/mock_llm_test.rb`です。`next`で`test/soak/mock_llm_test.rb`を変えると`soak`が真になり、`soak`ジョブがその検査を実行します。`master`には`soak`ジョブがないため、このファイルだけの変更ではラベル`perf`がある場合だけ実行します。
+`.github/workflows/test.yml`の`perf`ジョブは、ビルドするreadyのPRで始まります。ビルドするのは、[実行するジョブの選択](#実行するジョブの選択)で`build`が`standard`か`full`になるPRです。比べるのは、`test/ci/changes.sh`が`perf`を`true`にするときです。つまり、PRが測るバイナリの入力か測定を変えるときか、PRにラベル`perf`があるときです。ラベルはジョブが動くときに読むので、ラベルを付けてジョブを再実行すれば足ります。これらのファイルのうち`test.yml`だけを変えるPRは、ラベルがあるときだけ比べます。コードとテストのどれも変えないPRは、ラベルがあってもジョブをスキップします。バイナリの入力は、`test/build_release.sh`がコピーするものです。`src/`、`mrbgems/`、`mruby/`、`dependence/`、トップレベルのビルドのファイルの`build_config.rb`、`configure`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`と、gemのロックの`build_config.rb.lock`です。`dependence/`は、`Makefile.in`がnginxに加えるngx_devel_kitです。
+
+測定は、`test/perf/`、`test/build_release.sh`、`test/soak/`のシナリオのファイルです。シナリオのファイルは、`nginx.conf`、`nginx.agent.conf`、`nginx.stream.conf`、`scenarios.rb`、`http_client.rb`、`tcp_client.rb`、`mock_llm.rb`、`handlers/`です。
+
+`master`のジョブも同じで、違いは2つです。`master`はgemのロックをコミットしないので、`master`ではロックは入力ではありません。また、`master`にはソークのジョブが無いので、`master`の`perf`ジョブは、`next`では`test/soak/run.sh`が実行するLLMのモックのチェックを最初に実行します。そのチェックは`ruby test/soak/mock_llm_test.rb`です。
+
+`next`で`test/soak/mock_llm_test.rb`を変えると`soak`が真になり、`soak`ジョブがその検査を実行します。`master`には`soak`ジョブがないため、このファイルだけの変更ではラベル`perf`がある場合だけ実行します。
 
 `nginx_version`を変えると、ヘッドは別のnginxでビルドされます。そのため、その`WARN`や`FAIL`には、ngx_mrubyのコストだけでなく、nginx自身のコストも入ります。ngx_mrubyのリグレッションとみなす前に、下に書くとおり、プロファイルの関数を読んでください。
 

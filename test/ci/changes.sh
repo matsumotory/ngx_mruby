@@ -181,7 +181,7 @@ classify() {
     esac
     case "$1" in
         test/perf/* | test/build_release.sh | test/soak/nginx.conf | test/soak/nginx.agent.conf | \
-            test/soak/scenarios.rb | test/soak/http_client.rb | test/soak/mock_llm.rb | test/soak/handlers/*)
+            test/soak/scenarios.rb | test/soak/http_client.rb | test/soak/tcp_client.rb | test/soak/nginx.stream.conf | test/soak/mock_llm.rb | test/soak/handlers/*)
             perf=true ;;
     esac
 }

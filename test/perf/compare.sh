@@ -36,6 +36,9 @@ set -e
 cd "$(dirname "$0")/../.."
 ROOT=$(pwd)
 
+# The shared TCP response and counter checks, before any build.
+ruby "$ROOT/test/soak/tcp_client_test.rb"
+
 if [ $# -lt 1 ] || [ $# -gt 2 ]; then
     echo "usage: sh test/perf/compare.sh BASE_DIR [HEAD_DIR]" >&2
     exit 2
