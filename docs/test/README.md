@@ -77,6 +77,20 @@ into the built nginx's `conf/conf.d/` with the same substitutions as
 failing case makes `test.sh` exit non-zero, like a failing assertion in
 `test/t/ngx_mruby.rb`.
 
+`async_sleep_many.rb` checks one content handler that sleeps 1,000 times
+for 1 ms on port 18188, in its own server without server-level handlers.
+It requires HTTP 200 with `slept:1000`, then the same `timers` and
+`gc_root_fibers` from `Nginx::Debug.stats` as before the request. Each
+exchange uses `tcp_client` with its 60-second limit and completes at EOF;
+missing counters or an unavailable stats endpoint fail the case. These
+counters observe pending timers and held fibers, not the request pool size.
+`test.sh` defines `NGX_MRUBY_DEBUG_STATS` for nginx and ngx_mruby so this
+check runs in every suite build. After updating an existing build, run a
+full `sh test.sh` after removing `build/nginx-X.Y.Z/objs/Makefile`
+(`build_dynamic/` for the dynamic module), so nginx configures the flag
+before using `ONLY_BUILD_NGX_MRUBY=1` again. For a dynamic module, run
+`BUILD_DYNAMIC_MODULE=1 sh test.sh`. See "Testing" below.
+
 A case that starts nginx itself (`nginx_t`, `second_instance`,
 `workers_nginx`) also runs in
 the sanitizer cell of CI, where LeakSanitizer appends its report to the
@@ -1654,8 +1668,9 @@ it is asked to (`GC.start`, `Nginx::Debug.gc`) or in rare cases (an
 incremental GC that finds too many objects, a failed allocation), so the
 worker behaves as without it between samples.
 
-`-DNGX_MRUBY_DEBUG_STATS` adds the class `Nginx::Debug`. The default builds
-of `build.sh` and `test.sh` do not have it.
+`-DNGX_MRUBY_DEBUG_STATS` adds the class `Nginx::Debug`. The default build
+of `build.sh` does not have it. `test.sh` defines it for the integration suite,
+including the repeated HTTP sleeps described above.
 
 - `Nginx::Debug.gc` runs a full GC (`mrb_full_gc`) and returns `nil`.
 - `Nginx::Debug.stats` returns a Hash with these Symbol keys:

@@ -10,7 +10,8 @@ set -e
 . ./nginx_version
 
 # OS specific configuration
-NGINX_CC_OPT='-g -O0 -fno-common'
+# The suite checks pending timers and held fibers through Nginx::Debug.stats.
+NGINX_CC_OPT='-g -O0 -fno-common -DNGX_MRUBY_DEBUG_STATS'
 NGINX_LD_OPT=''
 if [ `uname -s` = "NetBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
@@ -244,7 +245,7 @@ fi
 cp -pr ${STAGED}/html/* ${NGINX_INSTALL_DIR}/html/.
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" ${STAGED}/html/set_ssl_cert_and_key.rb > ${NGINX_INSTALL_DIR}/html/set_ssl_cert_and_key.rb
 
-for f in error.log access.log stderr.log
+for f in error.log access.log stderr.log async_sleep_many.error.log
 do
     if [ -e ${NGINX_INSTALL_DIR}/logs/${f} ]; then
         touch ${NGINX_INSTALL_DIR}/logs/${f}.bak 

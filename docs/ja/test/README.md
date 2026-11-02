@@ -40,6 +40,12 @@ end
 
 `test.sh`は、スイートのコピーにあるフラグメントに`nginx.conf`と同じ置き換えをして、ビルドしたnginxの`conf/conf.d/`にコピーします。スイートのコピーの説明は、下の「ポート」にあります。そして、ケースのファイルを1つずつ順に実行します。ケースが失敗すると、`test/t/ngx_mruby.rb`のアサーションが失敗したときと同じく、`test.sh`は0以外のステータスで終了します。
 
+`async_sleep_many.rb`は、1つのコンテンツハンドラが1msのsleepを1,000回行うことを検査します。ポート18188の専用サーバーを使い、サーバー単位のハンドラは設定しません。応答のステータスと本文が、HTTP 200と`slept:1000`に一致するかを検査します。
+
+処理後には、`Nginx::Debug.stats`の`timers`と`gc_root_fibers`が処理前の値に戻ることも確かめます。各HTTP交換は`tcp_client`の60秒上限を使い、EOFまで読みます。カウンタが無い場合や取得に失敗した場合も、ケースは失敗します。検査するのは待機中のタイマーと保持されたファイバーで、リクエストのプールの大きさではありません。
+
+`test.sh`は、全スイートのビルドでこの検査を流すため、nginxとngx_mrubyに`NGX_MRUBY_DEBUG_STATS`を定義します。既存のビルドを更新したら、`ONLY_BUILD_NGX_MRUBY=1`を使う前に、`build/nginx-X.Y.Z/objs/Makefile`を削除してから、一度`sh test.sh`を流してフラグを反映してください。動的モジュールでは`build_dynamic/`の同じファイルを削除し、`BUILD_DYNAMIC_MODULE=1 sh test.sh`を実行してください。
+
 nginxを自分で起動するケースは、CIのsanitizerのセルでも動きます。そうしたケースは`nginx_t`か`second_instance`を使います。sanitizerのセルでは、リークしたプロセスがあると、LeakSanitizerがそのプロセスの出力にレポートを書き足し、終了ステータスを変えます。そのため、そうしたケースは、プルリクエストを開く前に、sanitizerのビルドで1回実行してください。手順は下の「2つのsanitizerの下でテストを実行する」にあります。`nginx_t`は、`nginx -t`の実行ではリークの検出を切ります。`nginx -t`は読んだ設定を解放せずに戻るので、検出を切らないと、nginx自身のメモリの確保がすべて報告されるからです。`test/t/ngx_mruby.rb`の最後にあるstreamだけのテストも、自分が起動したnginxを止める`nginx -s quit`で、同じように検出を切ります。そのプロセスは、`main()`が最初に作るプールを解放せずに、nginxの`main()`から戻ります。検出を切らないと、そのレポートはテストのランナーの`stderr.log`に入ります。`second_instance`は、2つ目のnginxの`error.log`か`stderr.log`にある、sanitizerの最初の行を、`sanitizer`として返します。その行があると、ケースは2つ目のnginxの`error.log`を出します。
 
 ## 必須のステータスチェック
@@ -678,7 +684,7 @@ keep-aliveのクライアントは、`SOAK_CONCURRENCY`個の接続です。各�
 
 `test/soak/run.sh`は、`test/build_release.sh`で`build_soak/`にビルドします。説明は下の「リリースのビルド」にあります。nginxとngx_mrubyは`-O2 -g`でビルドし、`MRB_GC_STRESS`も`--with-debug`も付けません。`build_config.rb`のgemは、`build_config.rb.lock`のコミットでビルドします。このビルドには、定義が2つ加わります。ngx_mrubyは`-DNGX_MRUBY_DEBUG_STATS`を付けてコンパイルし、mrubyは`-DMRB_USE_MALLOC_TRIM`を付けてコンパイルします。後者を付けると、`mrb_full_gc()`は`malloc_trim(0)`も呼びます。mrubyがフルGCを実行するのは、求められたときと、まれな場合だけです。求めるのは`GC.start`や`Nginx::Debug.gc`です。まれな場合とは、インクリメンタルGCが多すぎるオブジェクトを見つけたときや、メモリの確保に失敗したときです。そのため、サンプルの間のワーカーは、この定義が無いときと同じように動きます。
 
-`-DNGX_MRUBY_DEBUG_STATS`を付けると、クラスの`Nginx::Debug`が加わります。`build.sh`と`test.sh`のデフォルトのビルドには、このクラスがありません。
+`-DNGX_MRUBY_DEBUG_STATS`を付けると、クラスの`Nginx::Debug`が加わります。`build.sh`のデフォルトのビルドには、このクラスがありません。`test.sh`は、このクラスをHTTPの反復sleepなどの統合テストで使います。
 
 - `Nginx::Debug.gc`は、フルGCの`mrb_full_gc`を実行し、`nil`を返します。
 - `Nginx::Debug.stats`は、次のSymbolをキーに持つHashを返します。

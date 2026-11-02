@@ -7,8 +7,8 @@
 /*
 // Nginx::Debug exposes the counters that the memory soak test (test/soak/)
 // compares between samples. It exists only in builds compiled with
-// -DNGX_MRUBY_DEBUG_STATS. The default builds of build.sh and test.sh do not
-// define it, and this file then compiles to nothing. The file is always
+// -DNGX_MRUBY_DEBUG_STATS (the suite and soak builds). The default build.sh
+// build does not define it, and this file then compiles to nothing. It is always
 // listed in config: guarding it here keeps config free of a check on the
 // compiler flags.
 */
