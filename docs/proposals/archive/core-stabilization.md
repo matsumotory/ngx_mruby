@@ -960,8 +960,9 @@ Status line describe the implementation.
   read event finds the waiting record. With the event methods that report
   a read event until the bytes are read (`select`, `poll`), the handler
   deletes the read event until the code resumes.
-- Of the cases of section 6, `async_sleep_many.rb` (a handler that sleeps
-  1,000 times) was not added. Q4 is tested in a case file of its own,
+- The case `async_sleep_many.rb` of section 6 covers a handler that sleeps
+  1,000 times and the return of its timer and fiber counters to their baseline.
+  Q4 is tested in a case file of its own,
   `test/t/cases/stream_async_sleep_udp_once.rb` (ten datagrams during the
   sleep, one run of the code), instead of an extension of
   `stream_async_sleep_udp_reuse.rb`, and

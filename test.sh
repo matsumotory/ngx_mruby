@@ -10,7 +10,8 @@ set -e
 . ./nginx_version
 
 # OS specific configuration
-NGINX_CC_OPT='-g -O0 -fno-common'
+# The suite checks pending timers and held fibers through Nginx::Debug.stats.
+NGINX_CC_OPT='-g -O0 -fno-common -DNGX_MRUBY_DEBUG_STATS'
 NGINX_LD_OPT=''
 if [ `uname -s` = "NetBSD" ]; then
     NPROCESSORS_ONLN="NPROCESSORS_ONLN"
