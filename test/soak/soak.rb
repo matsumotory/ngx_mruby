@@ -3,10 +3,11 @@
 # Memory soak test driver for ngx_mruby (CRuby 3.0 or later, Linux).
 #
 # For each scenario, soak.rb starts the nginx built by test/soak/run.sh, sends
-# SOAK_WARMUP requests and then SOAK_N requests in three windows to one
-# location, and takes a sample before the first window and after each window.
-# A sample is taken while no scenario request is open: Nginx::Debug.stats
-# after a full GC, and the worker's VmRSS, open file descriptors and the
+# SOAK_WARMUP requests or TCP sessions, then SOAK_N in three windows,
+# and takes a sample before the first window and after each window.
+# A sample is taken while no scenario request or session is open:
+# Nginx::Debug.stats after HTTP GC (and stream GC for stream_sleep),
+# and the worker's VmRSS, open file descriptors and the
 # stub_status connection counts. The counters must stay the same from sample
 # to sample, and VmRSS must stay within SOAK_RSS_STEP_KB and SOAK_RSS_TOTAL_KB.
 # A scenario with a mock LLM upstream (the agent_* scenarios) also starts
@@ -19,6 +20,7 @@ require 'fileutils'
 require 'json'
 require 'socket'
 require_relative 'http_client'
+require_relative 'tcp_client'
 require_relative 'scenarios'
 
 def env_int(name, default)
@@ -62,13 +64,13 @@ LOG_PATTERNS = ['open socket', '[error]', '[alert]', '[crit]', '[emerg]', 'runti
 # upstream connections open for the next requests, as many as were in use
 # at the same time at the busiest moment so far, so their number can grow by
 # one when a later window happens to be busier.
-EXACT_KEYS = %i[gc_live gc_root gc_root_fibers gc_arena_idx timers fd_own active].freeze
+EXACT_KEYS = %i[gc_live gc_root gc_root_fibers gc_arena_idx timers stream_timers stream_fibers fd_own active].freeze
 
 # Scenarios that run when SOAK_SCENARIOS is not set. A scenario that is
 # defined in SCENARIOS (test/soak/scenarios.rb) but left out here runs only
 # when SOAK_SCENARIOS names it.
 DEFAULT_SCENARIOS = %w[hello headers var filter sleep sub_request file disconnect
-                       agent_stream agent_client_abort agent_upstream_reset agent_responses_stream].freeze
+                       agent_stream agent_client_abort agent_upstream_reset agent_responses_stream stream_sleep].freeze
 
 class SoakError < StandardError; end
 
@@ -287,6 +289,8 @@ def send_requests(scenario, count)
     share = (count / CONCURRENCY) + (i < count % CONCURRENCY ? 1 : 0)
     threads << Thread.new do
       case scenario.mode
+      when :tcp
+        share.times { StreamClient.check(BACKEND_PORT, scenario.body, io_timeout: IO_TIMEOUT) }
       when :disconnect then disconnect_requests(scenario, share)
       when :abort, :cut then stream_requests(scenario, share)
       else keepalive_requests(scenario, share)
@@ -345,6 +349,7 @@ def take_sample(nginx, mock, scenario)
   raise SoakError, "/debug/stats returned #{code}: #{body}" unless code == 200
 
   stats = JSON.parse(body, symbolize_names: true)
+  StreamCounters.read(stats)
   upstream = 0
   if mock
     loop do
@@ -405,6 +410,9 @@ def judge(samples, scenario)
   samples.each_with_index do |s, i|
     problems << "sample #{i}: connections still open after #{QUIET_TIMEOUT} s (#{s.slice(:active, :reading, :writing, :waiting)})" unless s[:quiet]
     problems << "sample #{i}: #{s[:timers]} timers pending with no request open" unless s[:timers].zero?
+    StreamCounters::KEYS.each do |key|
+      problems << "sample #{i}: #{s[key]} #{key} with no session open" unless s[key].zero?
+    end
     limit = idle_upstream?(scenario) ? CONCURRENCY : 0
     problems << "sample #{i}: #{s[:upstream]} connections open at the mock (limit #{limit})" if s[:upstream] > limit
   end
@@ -423,6 +431,8 @@ end
 # One checked response before the warmup: for :disconnect, it is the only
 # response the client reads.
 def first_response(scenario)
+  return StreamClient.check(BACKEND_PORT, scenario.body, io_timeout: IO_TIMEOUT) if scenario.mode == :tcp
+
   client = Client.new(PORT, io_timeout: IO_TIMEOUT)
   case scenario.mode
   when :abort, :cut
@@ -435,6 +445,59 @@ def first_response(scenario)
   end
 ensure
   client&.close
+end
+
+# HTTP stats expose the worker's stream counters, but HTTP GC does not
+# collect the stream VM. Wait for all completed sessions to release their
+# records, collect the stream VM through its own control session, then sample.
+def stream_stats
+  code, _headers, body, = get_closed('/debug/stats')
+  raise SoakError, "/debug/stats returned #{code}: #{body}" unless code == 200
+
+  stats = JSON.parse(body, symbolize_names: true)
+  StreamCounters.read(stats)
+  stats
+end
+
+def wait_stream_quiet
+  deadline = monotonic + QUIET_TIMEOUT
+  loop do
+    stats = stream_stats
+    return if StreamCounters.zero?(stats)
+    raise SoakError, "stream counters did not return to zero: #{stats.slice(*StreamCounters::KEYS)}" if monotonic >= deadline
+
+    sleep 0.005
+  end
+end
+
+def collect_stream
+  wait_stream_quiet
+  StreamClient.check(MOCK_PORT, 'stream gc complete', io_timeout: IO_TIMEOUT)
+  wait_stream_quiet
+end
+
+# A permanently zero counter must not make the soak pass. Observe the GC
+# control session while it waits, then its exact response/EOF and zero counts.
+# This preflight is outside the warmup and measurement windows.
+def check_stream_counters
+  wait_stream_quiet
+  client = Thread.new { StreamClient.check(MOCK_PORT, 'stream gc complete', io_timeout: IO_TIMEOUT) }
+  deadline = monotonic + QUIET_TIMEOUT
+  observed = false
+  while client.alive? && monotonic < deadline
+    if StreamCounters.read(stream_stats) == [1, 1]
+      observed = true
+      break
+    end
+    sleep 0.005
+  end
+  client.value
+  raise SoakError, 'stream counter preflight did not observe one waiting timer and held fiber' unless observed
+
+  wait_stream_quiet
+ensure
+  client&.kill
+  client&.join
 end
 
 # The mock's counters after the last sample: every request reached it once,
@@ -463,17 +526,22 @@ def run_scenario(scenario)
     mock&.start(START_TIMEOUT)
     nginx.start
     first_response(scenario)
-    problems.concat(debug_problems) if scenario.conf == 'nginx.conf'
+    problems.concat(debug_problems) if %w[nginx.conf nginx.stream.conf].include?(scenario.conf)
+    check_stream_counters if scenario.mode == :tcp
 
     send_requests(scenario, WARMUP)
+    collect_stream if scenario.mode == :tcp
     samples << take_sample(nginx, mock, scenario)
+    samples.last[:sessions] = 1 + WARMUP if scenario.mode == :tcp
     WINDOWS.times do |w|
       send_requests(scenario, (N * (w + 1) / WINDOWS) - (N * w / WINDOWS))
+      collect_stream if scenario.mode == :tcp
       samples << take_sample(nginx, mock, scenario)
+      samples.last[:sessions] = 1 + WARMUP + N * (w + 1) / WINDOWS if scenario.mode == :tcp
     end
     problems.concat(judge(samples, scenario))
     problems.concat(mock_problems(scenario, mock.stats, 1 + WARMUP + N)) if mock
-  rescue SoakError, MockLLM::Child::Error, Client::Timeout, SystemCallError, IOError, JSON::ParserError => e
+  rescue SoakError, StreamClient::Error, MockLLM::Child::Error, Client::Timeout, SystemCallError, IOError, JSON::ParserError => e
     problems << "#{e.class}: #{e.message}"
   ensure
     problems.concat(nginx.stop)
@@ -487,7 +555,7 @@ def format_values(values)
 end
 
 def report(results)
-  header = %w[scenario result secs requests gc_live gc_root fibers arena timers fd up active rss_kb rss_step rss_total]
+  header = %w[scenario result secs requests sessions gc_live gc_root fibers arena timers stream_timers stream_fibers fd up active rss_kb rss_step rss_total]
   rows = results.map do |r|
     s = r[:samples]
     full = s.size == WINDOWS + 1
@@ -497,7 +565,8 @@ def report(results)
       r[:problems].empty? ? 'pass' : 'FAIL',
       format('%.1f', r[:seconds]),
       full ? s.last[:requests].to_s : '-',
-      *%i[gc_live gc_root gc_root_fibers gc_arena_idx timers fd upstream active].map { |k| full ? format_values(s.map { |x| x[k] }) : '-' },
+      full && s.last[:sessions] ? s.last[:sessions].to_s : '-',
+      *%i[gc_live gc_root gc_root_fibers gc_arena_idx timers stream_timers stream_fibers fd upstream active].map { |k| full ? format_values(s.map { |x| x[k] }) : '-' },
       full ? rss.join(' ') : '-',
       full ? format('%+d', rss[-1] - rss[-2]) : '-',
       full ? format('%+d', rss[-1] - rss[0]) : '-'

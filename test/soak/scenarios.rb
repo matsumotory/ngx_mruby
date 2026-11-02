@@ -5,6 +5,7 @@
 #
 # One scenario is one location in test/soak/nginx.conf (or in conf, another
 # template in test/soak/) and one client behavior.
+#   mode :tcp         one TCP connection per session, exact bytes through EOF
 #   mode :keepalive   HTTP/1.1 keep-alive; every response is checked
 #   mode :disconnect  one request per connection, closed without reading the
 #                     response; one response is checked before the warmup
@@ -72,6 +73,7 @@ UPSTREAM_RESET_LOG = [
 ].freeze
 
 SCENARIOS = [
+  Scenario.new(name: 'stream_sleep', conf: 'nginx.stream.conf', mode: :tcp, body: 'stream slept'),
   Scenario.new(name: 'hello', path: '/hello', body: 'hello'),
   Scenario.new(name: 'headers', path: '/headers',
                headers: { 'X-Soak-A' => 'alpha', 'X-Soak-B' => 'beta', 'User-Agent' => 'soak' },

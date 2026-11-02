@@ -1502,6 +1502,8 @@ shows that the only open connection is the one asking for it. A sample is:
 | `fibers` | `gc_root_fibers` of the same | same in all samples |
 | `arena` | `gc_arena_idx` of the same | same in all samples |
 | `timers` | `timers` of the same | 0 in all samples |
+| `stream_timers`, `stream_fibers` | stream counters of the same | 0 in all samples |
+| `sessions` | completed TCP data sessions in `stream_sleep` | first check + warmup + completed measurement sessions |
 | `fd` | entries in `/proc/<worker>/fd` | `fd` minus `up` the same in all samples |
 | `up` | `connections_open` of the mock LLM (0 in a scenario without one) | at most `SOAK_CONCURRENCY`; 0 in the `abort` and `cut` scenarios |
 | `active` | `Active connections` of `stub_status` | 1 in all samples |
@@ -1655,6 +1657,52 @@ in the middle of a response in unbuffered mode. In the runs so far only the
 first appeared, with "while reading upstream" or "while sending to client"
 as the action. `agent_client_abort` logs nothing at `warn` or above.
 
+### TCP stream sleep
+
+`stream_sleep` is part of the default soak and performance comparisons.
+It opens one TCP connection per session, waits 1 ms in
+`Nginx::Stream::Async.sleep`, receives exactly `stream slept`, and reads EOF.
+The shared client bounds the whole exchange at 30 seconds in the soak and
+120 seconds under callgrind. It rejects short,
+extra or reset responses. It does not use HTTP framing or a persistent session.
+
+`test/soak/nginx.stream.conf` uses the existing three-port range: the base
+port is HTTP control, base + 1 is the TCP scenario, and base + 2 is stream GC
+control. This scenario has no HTTP backend or model API mock. The soak's
+`sessions` column counts completed data sessions, including the first check
+and warmup; `requests` still counts HTTP control requests. Other scenarios
+show `-` in `sessions`.
+
+Before warmup, the soak observes one `stream_timers` and one `stream_fibers`
+while a control session waits for 250 ms. That session runs `GC.start` in the
+same stream VM and returns `stream gc complete` through EOF. Both counters
+must return to zero. Before each memory sample, the driver waits for zero,
+runs that GC control session and waits for zero again. Every sample requires
+both counters to be nonnegative Integers and zero; missing values fail.
+Their columns are also printed for the HTTP scenarios.
+
+HTTP and stream have separate mruby states. `Nginx::Debug.gc` and `gc_live`
+on the HTTP control endpoint describe the HTTP state; they do not collect or
+count the stream VM's live objects. The stream control session collects that
+VM before the worker RSS sample. The existing RSS thresholds remain unchanged.
+
+The performance driver never calls the stream GC control server. Its
+`stream_sleep` row divides instructions by completed TCP sessions, and the
+window must contain exactly `PERF_N` calls to `ngx_stream_mrb_start_fiber`.
+HTTP control wakes do not count as stream sessions. The existing report/JSON
+field names retain `request`, but their unit is a session for this row.
+The report header names both units; each JSON result adds `unit` (`session`
+or `request`).
+`ruby_calls` includes HTTP and stream fiber starts. GC exclusion and the
+3% warning / 5% failure thresholds are unchanged.
+
+`test/build_release.sh` builds both measured checkouts with `--with-stream`.
+After updating it, run the soak and comparison without `ONLY_RUN`: the build
+stamp detects the changed configure options and rebuilds. Production builds
+and the ordinary integration-suite configuration are unchanged. The scripts
+run `ruby test/soak/tcp_client_test.rb` before building; its local peers check
+response bytes, EOF, timeout, reset and required counter values without nginx.
+
 ### The soak build and `Nginx::Debug`
 
 `test/soak/run.sh` builds with `test/build_release.sh` in `build_soak/` (see
@@ -1693,9 +1741,9 @@ including the repeated HTTP sleeps described above.
   - `stream_fibers`: the fibers of stream handlers that are kept in the GC
     root holder of the stream module's mrb_state: those that slept and have
     neither ended nor had their session end. They are also counted in
-    `gc_root_fibers`. The soak configurations have no `stream {}`, so the
-    soak test reads 0 for both stream keys and checks only that the keys
-    are there.
+    `gc_root_fibers`. The `stream_sleep` scenario observes them while a
+    session waits and requires zero after it ends. Every soak sample checks
+    both stream counters and prints them in its table.
   - `gc_root_mruby` and `gc_root_fibers_mruby`: the length of mruby's own
     `_gc_root_` array in the mrb_state of the http module, and the fibers in
     it. mruby 3.x and 4.0 create that array at the first `mrb_gc_register()`
@@ -1904,27 +1952,31 @@ code of nginx, ngx_mruby, mruby and the C library does for a request.
 
 ### What it measures
 
-The scenarios are those of the soak test that use keep-alive clients:
+The HTTP scenarios are those of the soak test that use keep-alive clients:
 `hello`, `headers`, `var`, `filter`, `sleep`, `sub_request` and `file` (see
 the table in "Soak test for memory"), and the agent proxy scenarios of "Agent
-proxy scenarios" below; `disconnect` is not measured. For each scenario, and
+proxy scenarios" below, plus the TCP `stream_sleep` scenario.
+`disconnect` is not measured. For each scenario, and
 for the base and the head in turn, `test/perf/perf.rb`:
 
 1. starts the mock LLM when the scenario has one, and nginx with
    `test/soak/nginx.conf` (or the scenario's template), changed to
    `master_process off`, under `valgrind --tool=callgrind --instr-atstart=no`,
    so that the startup runs without instrumentation;
-2. checks one response and sends `PERF_WARMUP` requests;
-3. waits until `stub_status` shows no open connection of the warmup, and
+2. checks one response and sends `PERF_WARMUP` requests or TCP sessions;
+3. completes every TCP response through EOF, or waits until `stub_status`
+   shows no open HTTP connection of the warmup, and
    switches the instrumentation on with `callgrind_control --instr=on`;
 4. sends `PERF_N` requests over keep-alive and checks every response. nginx
    closes a connection after 1000 requests (`keepalive_requests`), and the
-   client then opens the next one;
+   client then opens the next one. For `stream_sleep`, it instead completes
+   `PERF_N` TCP sessions, one per connection, checking exact bytes and EOF;
 5. writes the profile with `callgrind_control --dump`, and stops nginx.
 
 The profile of step 5 holds the cost of the requests of step 4: not the
 startup, the configuration, the warmup or the exit. **Ir per request** is
-its total Ir divided by `PERF_N`. The alternative, the difference of two runs
+its total Ir divided by `PERF_N`; for `stream_sleep` this is per completed
+TCP session. The alternative, the difference of two runs
 with N and 2N requests divided by N, needs three times as many requests and
 adds the variation of two runs; the window of one run has nothing but the
 requests in it.
@@ -2346,10 +2398,12 @@ the lock was committed) takes the lock of the other side: the base the
 head's, the head the one that the base build wrote. The report says how many
 gems are at different commits and lists them. The measurement (`test/perf/`, the scenarios in `test/soak/`) comes
 from this checkout for both builds. The first run builds two trees (a few
-minutes each); the measurement of the default scenarios takes about 140
+minutes each); the measurement of the default HTTP scenarios takes about 140
 seconds per build (139 seconds on the CI runner, 28 of them in `sleep`), and
 `proxy_stream_plain_1000` and `route_json_64k` add about 80 and 130 seconds
-when `PERF_SCENARIOS` names them. The report goes to `build_perf/report.txt` and
+when `PERF_SCENARIOS` names them.
+
+The report goes to `build_perf/report.txt` and
 `build_perf/report.json`. `test.sh` starts its mock LLM upstream on 12372
 too, so do not run it at the same time.
 
@@ -2358,11 +2412,11 @@ too, so do not run it at the same time.
 | `ONLY_RUN` | unset | set to skip the builds |
 | `NUM_THREADS_ENV` | half of the CPUs | build parallelism (passed to `build.sh`) |
 | `PERF_SCENARIOS` | `DEFAULT_SCENARIOS` of `test/perf/perf.rb` | comma-separated scenario names |
-| `PERF_N` | 20000 | requests in the measured window |
-| `PERF_WARMUP` | 2000 | requests before the window |
+| `PERF_N` | 20000 | requests or TCP sessions in the measured window |
+| `PERF_WARMUP` | 2000 | requests or TCP sessions before the window |
 | `PERF_WARN_PERCENT` | 3 | WARN from this change of Ir per request without GC |
 | `PERF_FAIL_PERCENT` | 5 | FAIL from this change |
-| `PERF_PORT_BASE` | 12370 | port of the scenarios; the backend of `sub_request` uses the next one, the mock LLM the one after |
+| `PERF_PORT_BASE` | 12370 | HTTP port; the next is the HTTP backend or TCP data port, the third is the mock LLM or unused stream GC control port |
 | `PERF_REPORT_DIR` | `build_perf` | where `report.txt` and `report.json` go |
 | `PERF_ACCEPTED_FILE` | `test/perf/accepted.txt` | the accepted differences (see "Known differences"); an empty file shows the verdicts without them |
 | `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_start_fiber` | names of the function counted once per request in the seven scenarios of `test/soak/nginx.conf` (see "In CI") |
@@ -2384,7 +2438,7 @@ files `build_config.rb`, `configure`, `config.in`, `Makefile.in`,
 `build.sh` and `nginx_version`, and the gem lock `build_config.rb.lock`. The
 measurement is `test/perf/`,
 `test/build_release.sh` and the scenario files in `test/soak/`
-(`nginx.conf`, `nginx.agent.conf`, `scenarios.rb`, `http_client.rb`,
+(`nginx.conf`, `nginx.agent.conf`, `nginx.stream.conf`, `scenarios.rb`, `http_client.rb`, `tcp_client.rb`,
 `mock_llm.rb`, `handlers/`). The job of `master` is the same, with two
 differences: `master` commits no gem lock, so the lock is not an input
 there, and `master` has no soak job, so its `perf` job runs the check of

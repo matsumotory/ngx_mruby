@@ -1,16 +1,14 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-03 (04:21 JST)
+## State as of 2026-11-03 (04:40 JST)
 
-- Heads: `next` is `f1f102966`, the merge of
-  [#756](https://github.com/matsumotory/ngx_mruby/pull/756); `master` is
+- Heads: `next` is `96e96ec82`, the merge of
+  [#757](https://github.com/matsumotory/ngx_mruby/pull/757); `master` is
   `382639258`, the merge of
   [#754](https://github.com/matsumotory/ngx_mruby/pull/754).
-  `next` contains `master` through `9acbd8530` in #756.
-  The integration on `codex/merge-master-zizmor-action` brings only the
-  reviewed workflow-analysis Action pin into `next`; its CLI version,
-  configuration, permissions and triggers stay unchanged. `v2.x` mirrors
-  `master`.
+  `next` contains `master` through `382639258` in #757. The workflow-analysis
+  Action uses v0.8.0, with its CLI version, configuration, permissions and
+  triggers unchanged. `v2.x` mirrors `master`.
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
   is published. Two advisories were published with it:
@@ -78,13 +76,7 @@
   `Nginx::Async.sleep` keeps the status of the request.
 - [#751](https://github.com/matsumotory/ngx_mruby/pull/751), the repeated
   HTTP sleep regression, merged as `63c6b7152` at 03:41 JST. Its local
-  validation, independent review and CI passed.
-- Open: [#755](https://github.com/matsumotory/ngx_mruby/pull/755) proposes
-  the same workflow-analysis Action update for `next`. It is kept open until
-  the normal master integration is verified, then its owner can close it as
-  redundant. The integration on `codex/merge-master-zizmor-action` changes
-  the Action pin and this state record; local workflow and documentation
-  checks precede its PR review and CI.
+  validation, independent review, CI and publication checks passed.
 - [#756](https://github.com/matsumotory/ngx_mruby/pull/756) merged the HEAD
   connection fix into `next` as `f1f102966` at 04:09 JST. Its combined suite
   passed 759 cases, local soak/performance/nginx-tests/site/example checks
@@ -95,6 +87,16 @@
   `master` as `382639258` at 04:18 JST. It updates the pinned workflow-analysis
   Action from v0.7.1 to v0.8.0 while retaining zizmor 1.31.1 and the existing
   policy. The PR records the local audit, independent review and CI.
+- [#757](https://github.com/matsumotory/ngx_mruby/pull/757) merged the
+  workflow-analysis Action pin into `next` at 04:38 JST. Its automatic site
+  publication is being verified. The equivalent next proposal in
+  [#755](https://github.com/matsumotory/ngx_mruby/pull/755) was closed.
+- Open: none at this snapshot. Stream sleep measurement is implemented
+  locally on `codex/stream-sleep-measurement`. Its suite evidence, 13-scenario
+  soak, 16-scenario performance comparison, site checks and independent
+  review passed. The workflow-only base update changes no executed test
+  input; final integration metadata review is in progress. No PR has been
+  opened for the stream measurement.
 - [#750](https://github.com/matsumotory/ngx_mruby/pull/750) added current
   3.x documentation before the existing 2.x footer link in both languages.
   It merged as `c440a15dc`; local checks, independent review, CI and
@@ -320,8 +322,8 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
-| The comment of `test/ci/changes.sh` on the categories `docs`, `site` and `examples`, which is the same on both branches, still describes the CI before the decisions of 2026-11-02 on CI (#737 on `next`, #739 on `master`, which left the file as it was) | `master` and `next` | The next pull request that touches `test/ci/` |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `9e286bb38` in [#749](https://github.com/matsumotory/ngx_mruby/pull/749) |
+| The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement; the matching comment-only update on `master` remains |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `382639258` in [#757](https://github.com/matsumotory/ngx_mruby/pull/757) |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
@@ -341,8 +343,8 @@ Taken up and still open: none.
 | nginx-tests required: the `nginx-tests` workflow records its results and fails only when a build, the fetch of the suite or `prove` fails. In the runs of 2026-10-28 and 2026-10-29 the build with ngx_mruby and the build without it have the same counts (511 files, 302 passed, 0 failed, 209 skipped). To do: the job fails when the build with ngx_mruby fails a file that the build without it passes, and the job joins the `needs` of `ci-ok` | `next` | Ready to start: the counts are the same in every run since #602 |
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` (the sentences that call the job advisory and say that a `FAIL` does not block a merge, under "Performance comparison with callgrind") aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR` | `next`, then `master` | Ready to start |
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |
-| Soak and perf for stream: a soak scenario of a stream session whose code sleeps, which reads `stream_timers` and `stream_fibers` of `Nginx::Debug.stats` ([#714](https://github.com/matsumotory/ngx_mruby/pull/714) added the counters, and `test/soak/soak.rb` expects the keys), and a stream scenario of the perf lane, which builds nginx without `--with-stream` today (section 7 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Ready to start |
-| The case `async_sleep_many.rb` of section 6 of [the core stabilization proposal](proposals/archive/core-stabilization.md): a handler that sleeps 1,000 times for 1 ms answers, and `Nginx::Debug.stats` shows the same `timers` and `gc_root_fibers` before and after | `next` | Merged in [#751](https://github.com/matsumotory/ngx_mruby/pull/751); Linux suite 754/754, callgrind 15/15, independent review, CI and publication verification passed. The normal test build enables the counters, and each HTTP exchange has a 60-second limit |
+| Soak and perf for stream: the normal TCP `stream_sleep` scenario checks exact response bytes and EOF, observes `stream_timers` and `stream_fibers`, and collects the stream VM before memory samples. The performance build includes stream and counts completed sessions (section 7 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Implemented on `codex/stream-sleep-measurement`; local checks passed; final integration metadata review in progress |
+| The case `async_sleep_many.rb` of section 6 of [the core stabilization proposal](proposals/archive/core-stabilization.md): a handler that sleeps 1,000 times for 1 ms answers, and `Nginx::Debug.stats` shows the same `timers` and `gc_root_fibers` before and after | `next` | Merged in [#751](https://github.com/matsumotory/ngx_mruby/pull/751) as `63c6b7152`; local checks, independent review, CI and publication checks passed. The normal test build enables the counters, and each HTTP exchange has a 60-second limit |
 | The comments in `src/` and `test/` that name `docs/proposals/core-stabilization.md` (20 places, `git grep -n core-stabilization -- src test`): the proposal is now `docs/proposals/archive/core-stabilization.md`. To do: the next pull request that changes those files points them at the new path, or at the section "How a handler waits" of `docs/DEVELOPMENT.md` | `next` | The next code pull request that touches those files (a comment-only change of `src/` would run the whole build matrix) |
 | The ASan cell with `-DNGX_DEBUG_PALLOC -DNGX_DEBUG_MALLOC` (3.7 of the plan; the cell of `test.yml` sets only `-fsanitize` and `-fno-omit-frame-pointer`), so that ASan sees an access that runs from one pool allocation into the next. To do: a run of the suite with these flags, whose findings follow [SECURITY.md](../SECURITY.md), then the cell | `next`, `master` | Ready to start |
 | A test build with `ngx_otel_module` (nginx/nginx-otel, built with CMake against the nginx source of `test.sh`) and an OTLP receiver for the case of the observability sample of 3.2 of the site proposal | `next` | The harness rewrite (the row above), of which this waits for what is left: the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads |

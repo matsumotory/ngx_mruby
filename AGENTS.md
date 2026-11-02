@@ -84,10 +84,10 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     (`base: ..., head: ...`). When the base branch gains a change to a
     measured input before the merge, the comparison is made and quoted
     again by the CI run that condition 2 of "Review and merge" asks for.
-  - The lane builds nginx without `--with-stream` and has no stream
-    scenario, so for a change to `src/stream/` alone both builds are the same
-    binary. Such a PR says so and states instead what the change adds per
-    session, as read from the diff (calls, allocations, copies).
+  - The lane builds both checkouts with `--with-stream`. Its `stream_sleep`
+    scenario measures one completed TCP session per connection, including
+    a 1 ms wait; its Ir values are per session. Changes to `src/stream/`
+    therefore have a measured stream row as well as the HTTP rows.
   - The reviewer writes, for the scenario with the largest change and for
     each row that is not `ok`: its base and head Ir per request without GC,
     and the change in instructions per request and in percent.

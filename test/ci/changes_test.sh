@@ -44,6 +44,12 @@ expect "site.yml is site" \
 expect "the other files of .github are workflows" \
     "code=false tests=false docs=false site=false examples=false workflows=true soak=false perf=false build=none" \
     .github/workflows/zizmor.yml .github/dependabot.yml .github/PULL_REQUEST_TEMPLATE.md
+expect "stream TCP client is a shared measurement input" \
+    "code=false tests=true docs=false site=false examples=false workflows=false soak=true perf=true build=standard" \
+    test/soak/tcp_client.rb
+expect "stream template is a shared measurement input" \
+    "code=false tests=true docs=false site=false examples=false workflows=false soak=true perf=true build=standard" \
+    test/soak/nginx.stream.conf
 expect "soak scenarios" \
     "code=false tests=true docs=false site=false examples=false workflows=false soak=true perf=true build=standard" \
     test/soak/scenarios.rb

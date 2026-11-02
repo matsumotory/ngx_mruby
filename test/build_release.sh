@@ -36,7 +36,7 @@
 # its gcc toolchain (-g -O3) and NGX_MRUBY_CFLAGS, without MRB_GC_STRESS.
 #
 # Why build.sh and not test.sh: test.sh always adds -DMRB_GC_STRESS, -O0 and
-# --with-debug, and kills every running nginx. build.sh takes the nginx
+# --with-debug, and runs the integration suite. build.sh takes the nginx
 # configure options from NGINX_CONFIG_OPT_ENV and adds no flags of its own,
 # so this script sets its options without changing either script.
 #
@@ -85,7 +85,7 @@ NGINX_CC_OPT='-g\ -O2\ -fno-common'
 for opt in $RELEASE_CC_OPT; do
     NGINX_CC_OPT="$NGINX_CC_OPT\\ $opt"
 done
-NGINX_CONFIG_OPT_ENV="--prefix=$OUT/nginx --with-http_stub_status_module --with-cc-opt=$NGINX_CC_OPT"
+NGINX_CONFIG_OPT_ENV="--prefix=$OUT/nginx --with-http_stub_status_module --with-stream --with-cc-opt=$NGINX_CC_OPT"
 export NGINX_CONFIG_OPT_ENV
 # build_config.rb passes NGX_MRUBY_CFLAGS to the mruby build.
 export NGX_MRUBY_CFLAGS

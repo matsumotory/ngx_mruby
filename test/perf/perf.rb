@@ -9,17 +9,17 @@
 # A BUILD_DIR is a build of test/build_release.sh (test/perf/run.sh and
 # test/perf/compare.sh make them). For each scenario, and for each build in
 # turn, perf.rb starts nginx with the soak test's configuration
-# (test/soak/nginx.conf, with master_process off) under
+# (a template in test/soak/, with master_process off) under
 # `valgrind --tool=callgrind --instr-atstart=no`, checks one response, sends
-# PERF_WARMUP requests, switches the instrumentation on with
-# callgrind_control, sends PERF_N requests over keep-alive, dumps the profile
+# PERF_WARMUP requests or TCP sessions, switches instrumentation on with
+# callgrind_control, sends PERF_N requests or sessions, dumps the profile
 # with callgrind_control, and stops nginx. The dump holds the cost of the
-# PERF_N requests and nothing else; Ir per request is its Ir divided by
+# PERF_N measured units; Ir per request (per TCP session) is its Ir divided by
 # PERF_N. The GC-excluded number leaves out the calls into mrb_incremental_gc
 # and mrb_full_gc. A window with 0 Ir, or without the expected number of
 # calls of the scenario's request function (ngx_mrb_start_fiber for the
-# scenarios of test/soak/nginx.conf; see REQUEST_FUNCTIONS and
-# request_functions), fails the measurement.
+# HTTP scenarios; ngx_stream_mrb_start_fiber for stream_sleep; see
+# REQUEST_FUNCTIONS and request_functions), fails the measurement.
 #
 # The agent proxy scenarios (proxy_*, responses_stream_plain_*, auth,
 # route_json_*, ruby_call_*) use the template test/soak/nginx.agent.conf,
@@ -48,6 +48,7 @@ require 'socket'
 require 'tmpdir'
 require 'yaml'
 require_relative '../soak/http_client'
+require_relative '../soak/tcp_client'
 require_relative '../soak/scenarios'
 
 def env_int(name, default)
@@ -77,13 +78,13 @@ WARMUP = env_int('PERF_WARMUP', 2000)
 WARN_PERCENT = env_float('PERF_WARN_PERCENT', 3.0)
 FAIL_PERCENT = env_float('PERF_FAIL_PERCENT', 5.0)
 
-# The scenarios measured when PERF_SCENARIOS is not set: keep-alive
-# scenarios of test/soak/scenarios.rb. proxy_stream_plain_1000,
+# The scenarios measured when PERF_SCENARIOS is not set: HTTP keep-alive
+# and TCP scenarios of test/soak/scenarios.rb. proxy_stream_plain_1000,
 # responses_stream_plain_1000 and route_json_64k are left out for their time
 # (see docs/test/README.md); PERF_SCENARIOS names them.
 DEFAULT_SCENARIOS = %w[hello headers var filter sleep sub_request file
                        proxy_plain_2k proxy_plain_64k proxy_stream_plain_50 responses_stream_plain_50 auth
-                       route_json_2k ruby_call_1 ruby_call_10].freeze
+                       route_json_2k ruby_call_1 ruby_call_10 stream_sleep].freeze
 
 # The GC: the inclusive cost of the calls into the two entry points of
 # mruby's collector, made from outside the collector. See parse_profile.
@@ -147,14 +148,16 @@ LOG_REQUEST_FUNCTIONS = %w[ngx_http_log_request].freeze
 # ngx_mrb_start_fiber, and ruby_call_1 showed none. nginx calls the handler
 # through a pointer, once for each mruby_set_code.
 SET_CODE_FUNCTIONS = %w[ngx_http_mruby_set_inline_handler].freeze
-SCENARIO_REQUEST_FUNCTIONS = { 'ruby_call_1' => SET_CODE_FUNCTIONS, 'ruby_call_10' => SET_CODE_FUNCTIONS }.freeze
+SCENARIO_REQUEST_FUNCTIONS = { 'ruby_call_1' => SET_CODE_FUNCTIONS, 'ruby_call_10' => SET_CODE_FUNCTIONS,
+                               'stream_sleep' => %w[ngx_stream_mrb_start_fiber] }.freeze
 
 # Functions whose calls per request are reported but not checked:
 # - ruby_calls: the Ruby runs. ngx_mrb_run starts a fiber for each run of
 #   Ruby code, and nothing else calls ngx_mrb_start_fiber; callgrind records
 #   these calls also where it misses one of ngx_mrb_run (SET_CODE_FUNCTIONS).
 #   In the scenarios of test/soak/nginx.conf, the request function counts
-#   the same calls (REQUEST_FUNCTIONS).
+#   the same calls (REQUEST_FUNCTIONS). For stream_sleep, this includes
+#   ngx_stream_mrb_start_fiber, once per completed TCP session.
 # - non_buffered_calls: the calls of
 #   ngx_http_upstream_process_non_buffered_request, which relays an
 #   unbuffered response. nginx calls it when the upstream connection is
@@ -163,7 +166,7 @@ SCENARIO_REQUEST_FUNCTIONS = { 'ruby_call_1' => SET_CODE_FUNCTIONS, 'ruby_call_1
 #   time, and writes what it read to the client. How many calls a response
 #   takes depends on how much of it had arrived at each call, that is on
 #   timing, and each call costs Ir (NON_BUFFERED_CALL_IR).
-RECORDED_FUNCTIONS = { ruby_calls: %w[ngx_mrb_start_fiber],
+RECORDED_FUNCTIONS = { ruby_calls: %w[ngx_mrb_start_fiber ngx_stream_mrb_start_fiber],
                        non_buffered_calls: %w[ngx_http_upstream_process_non_buffered_request] }.freeze
 
 # About how many Ir per request one more non_buffered_calls costs. Measured
@@ -490,10 +493,16 @@ def wait_quiet
   end
 end
 
-# Sends count requests over keep-alive (a new connection when nginx closes
-# one, after keepalive_requests) and checks every response. Returns the open
-# client, so that closing it is not part of the measured window.
-def keepalive_requests(scenario, count)
+# Sends count HTTP requests over keep-alive (opening another connection
+# after nginx reaches keepalive_requests), or count completed TCP sessions,
+# one per connection. Every response is checked. HTTP returns its open
+# client so closing it stays outside the window; TCP includes closure/EOF.
+def scenario_requests(scenario, count)
+  if scenario.mode == :tcp
+    count.times { StreamClient.check(BACKEND_PORT, scenario.body, io_timeout: IO_TIMEOUT) }
+    return nil
+  end
+
   client = nil
   count.times do
     client ||= Client.new(PORT, io_timeout: IO_TIMEOUT)
@@ -702,6 +711,12 @@ def self_test
     expected = expected.merge(request_calls: 2, recorded_calls: { ruby_calls: 4, log: 0 })
     got = parse_profile(path, %w[ngx_mrb_run_fiber], { ruby_calls: %w[ngx_mrb_run], log: %w[ngx_http_log_request] })
     failures << "parse_profile with other functions returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
+    # A stream start has the same clone/recursion accounting, but does not
+    # count the HTTP control requests that wake callgrind.
+    File.write(path, SELF_TEST_PROFILE.gsub('ngx_mrb_run', 'ngx_stream_mrb_start_fiber'))
+    got = parse_profile(path, %w[ngx_stream_mrb_start_fiber], { ruby_calls: %w[ngx_stream_mrb_start_fiber], log: %w[ngx_http_log_request] })
+    expected = { ir: 86, gc_ir: 40, gc_calls: 2, request_calls: 4, recorded_calls: { ruby_calls: 4, log: 0 } }
+    failures << "stream profile returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
   ensure
     File.delete(path)
   end
@@ -762,6 +777,23 @@ def self_test_summary
     rescue PerfError => e
       failures << "the window message of #{name} does not name #{list}: #{e.message}" unless e.message.include?(list)
     end
+  end
+  stream = Scenario.new(name: 'stream_sleep', mode: :tcp)
+  unless request_functions(stream) == %w[ngx_stream_mrb_start_fiber]
+    failures << 'stream_sleep must count stream fiber starts, not HTTP requests or wakes'
+  end
+  [0, N - 1, N + 1].each do |calls|
+    begin
+      check_window(stream, 'stream dump', { ir: 1, request_calls: calls }, 2)
+      failures << "stream window accepted #{calls} calls instead of #{N}"
+    rescue PerfError
+      nil
+    end
+  end
+  begin
+    check_window(stream, 'stream dump', { ir: 1, request_calls: N }, 2)
+  rescue PerfError => e
+    failures << "stream window rejected exactly N sessions: #{e.message}"
   end
   failures + self_test_accepted(builds, ok)
 end
@@ -860,22 +892,26 @@ def measure(build, scenario)
   nginx = NginxUnderCallgrind.new(build, scenario)
   mock = scenario.mock && MockLLM::Child.new(MOCK_PORT, scenario.mock,
                                              File.join(build.log_dir, "mock.#{scenario.name}.log"))
-  result = { problems: [] }
+  result = { problems: [], unit: scenario.mode == :tcp ? 'session' : 'request' }
   dump = client = nil
   started = monotonic
   begin
     mock&.start(START_TIMEOUT)
     nginx.start
-    client = Client.new(PORT, io_timeout: IO_TIMEOUT)
-    status, headers, body, = scenario_request(client, scenario, close: true)
-    client.close
-    check_response(scenario, status, headers, body)
-    keepalive_requests(scenario, WARMUP)&.close
+    if scenario.mode == :tcp
+      StreamClient.check(BACKEND_PORT, scenario.body, io_timeout: IO_TIMEOUT)
+    else
+      client = Client.new(PORT, io_timeout: IO_TIMEOUT)
+      status, headers, body, = scenario_request(client, scenario, close: true)
+      client.close
+      check_response(scenario, status, headers, body)
+    end
+    scenario_requests(scenario, WARMUP)&.close
     wait_quiet
 
     # The window: from here to the dump, on connections of its own.
     wakes = nginx.control('--instr=on')
-    client = keepalive_requests(scenario, N)
+    client = scenario_requests(scenario, N)
     wakes += nginx.control('--dump')
     dump = nginx.dump_file
     profile = parse_profile(dump, request_functions(scenario), RECORDED_FUNCTIONS)
@@ -885,7 +921,7 @@ def measure(build, scenario)
                            nogc_per_request: (profile[:ir] - profile[:gc_ir]).to_f / N,
                            gc_calls_per_1000: profile[:gc_calls] * 1000.0 / N,
                            recorded_per_request: profile[:recorded_calls].transform_values { |n| n.to_f / N })
-  rescue PerfError, MockLLM::Child::Error, Client::Timeout, SystemCallError, IOError => e
+  rescue PerfError, StreamClient::Error, MockLLM::Child::Error, Client::Timeout, SystemCallError, IOError => e
     result[:problems] << "#{e.class}: #{e.message}"
     result[:unexpected_response] = e.is_a?(ResponseError)
   ensure
@@ -1141,7 +1177,8 @@ def write_step_summary(header, rows, notes, reasons, accepted_lines = [])
   return if path.nil? || path.empty?
 
   File.open(path, 'a') do |f|
-    f.puts "### Instructions per request (callgrind, N=#{N})"
+    f.puts "### Instructions per request or TCP session (callgrind, N=#{N})"
+    f.puts "`stream_sleep` uses one completed TCP session; other rows use an HTTP request."
     f.puts
     f.puts "| #{header.join(' | ')} |"
     f.puts "|#{header.map { '---' }.join('|')}|"
@@ -1224,8 +1261,8 @@ def selected_scenarios
   names = DEFAULT_SCENARIOS if names.empty?
   names.map do |name|
     scenario = SCENARIOS.find { |s| s.name == name } or
-      abort "perf: unknown scenario #{name} (known: #{SCENARIOS.select { |s| s.mode == :keepalive }.map(&:name).join(', ')})"
-    abort "perf: scenario #{name} is not a keep-alive scenario" unless scenario.mode == :keepalive
+      abort "perf: unknown scenario #{name} (known: #{SCENARIOS.select { |s| %i[keepalive tcp].include?(s.mode) }.map(&:name).join(', ')})"
+    abort "perf: scenario #{name} is not a keep-alive or TCP scenario" unless %i[keepalive tcp].include?(scenario.mode)
     scenario
   end
 end
@@ -1295,7 +1332,8 @@ problems = results.reject { |_k, r| r[:problems].empty? }.flat_map do |(label, n
   ["#{name} (#{label}):", *r[:problems].map { |p| "  #{p}" }]
 end
 report = ["perf: N=#{N} WARMUP=#{WARMUP}; Ir per request of nginx; " \
-          "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number without GC", *gem_lines,
+          "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number without GC",
+          "perf: units: stream_sleep = completed TCP session; other rows = HTTP request", *gem_lines,
           *accepted_lines, '', *lines]
 report += ['', *notes] unless notes.empty?
 report += ['', *recorded_lines(builds, scenarios, results)]
