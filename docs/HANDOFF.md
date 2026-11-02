@@ -1,14 +1,15 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-03 (01:22 JST)
+## State as of 2026-11-03 (03:49 JST)
 
-- Heads: `next` is `c440a15dc`, the merge of
-  [#750](https://github.com/matsumotory/ngx_mruby/pull/750); `master` is
-  `9e286bb38`, the merge of
-  [#748](https://github.com/matsumotory/ngx_mruby/pull/748).
-  `next` contains `master` through `9e286bb38` in #749. The integration
-  imported #748's documentation changes without changing measured binary
-  inputs, test inputs or the site implementation.
+- Heads: `next` is `63c6b7152`, the merge of
+  [#751](https://github.com/matsumotory/ngx_mruby/pull/751); `master` is
+  `9acbd8530`, the merge of
+  [#752](https://github.com/matsumotory/ngx_mruby/pull/752).
+  Published `next` contains `master` through `9e286bb38` in #749.
+  The integration on `codex/merge-master-head-filter` brings #752's
+  filtered-HEAD connection fix, regression coverage and validation guidance
+  into `next`, retaining its suite-path handling and current API description.
   `v2.x` mirrors `master`.
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
@@ -75,16 +76,42 @@
 - [#740](https://github.com/matsumotory/ngx_mruby/pull/740) is merged on
   `master`: a rewrite handler that returns `Nginx::DECLINED` after
   `Nginx::Async.sleep` keeps the status of the request.
-- Open: none at this snapshot. Codex is preparing repeated HTTP sleep
-  coverage on `codex/async-sleep-many`: 1,000 waits of 1 ms must return the
-  expected response and restore pending-timer and held-fiber counters.
-  The Linux suite passed all 754 cases and the callgrind comparison passed
-  all 15 scenarios. The PR records the final site checks, independent
-  review and CI evidence for its head.
-- [#750](https://github.com/matsumotory/ngx_mruby/pull/750) is merged as
-  `c440a15dc`: the 3.x footer links its own documentation before the 2.x
-  documentation in both languages. Its local site checks, independent
-  review and CI passed; the PR records publication verification.
+- [#751](https://github.com/matsumotory/ngx_mruby/pull/751), the repeated
+  HTTP sleep regression, merged as `63c6b7152` at 03:41 JST. Its local
+  validation, independent review and CI passed.
+- Open: [#756](https://github.com/matsumotory/ngx_mruby/pull/756) integrates
+  the master HEAD connection correction into next.
+  [#754](https://github.com/matsumotory/ngx_mruby/pull/754) (master) and
+  [#755](https://github.com/matsumotory/ngx_mruby/pull/755) (next) update the
+  workflow analysis action and remain open.
+  The master-to-next integration of #752 has passed its local suite
+  (759 tests with #751), all 12 standard soak scenarios, all 15 performance scenarios,
+  the full nginx-tests comparison and the complete site check. Its example
+  check passed all 19 commands using a shared Linux volume for immediate
+  file-edit visibility; the original fixtures were restored. This verifies
+  the Linux workflow, not the timing of host-file synchronization on macOS.
+  After including #751, a fresh nginx build with its debug-counter flags
+  passed all 759 tests. Both release entries and the updated documentation
+  passed the combined checks. The PR awaits review of the updated head and CI.
+- [#750](https://github.com/matsumotory/ngx_mruby/pull/750) added current
+  3.x documentation before the existing 2.x footer link in both languages.
+  It merged as `c440a15dc`; local checks, independent review, CI and
+  [publication verification](https://github.com/matsumotory/ngx_mruby/pull/750#issuecomment-6581730560)
+  passed.
+- [#752](https://github.com/matsumotory/ngx_mruby/pull/752) merged into
+  `master` as `9acbd8530` at 02:22:44 JST. A successful known-length HEAD
+  response finalized by the output body filter keeps an otherwise reusable
+  connection for the following GET. Author and independent suites matched:
+  the test-only commit failed the three new filtered-HEAD cases, and the fix
+  passed all 362 tests. All CI checks and both performance comparisons passed;
+  [the independent review](https://github.com/matsumotory/ngx_mruby/pull/752#issuecomment-6583615939)
+  has no outstanding findings. The automatic site publication and the
+  public 2.x revision were verified ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/752#issuecomment-6584119833)).
+- [#753](https://github.com/matsumotory/ngx_mruby/pull/753) groups the
+  Japanese homepage introduction into two paragraphs without changing its
+  CSS or English text. Its full site checks, independent review, CI and
+  [published-page checks](https://github.com/matsumotory/ngx_mruby/pull/753#issuecomment-6584456285)
+  passed. The integration retains that component unchanged.
 - [#747](https://github.com/matsumotory/ngx_mruby/pull/747), the homepage
   reading-order and local-trial correction, merged at 2026-11-02 23:59:24
   JST as `fad853820`. Its local checks, independent review and CI passed.
@@ -297,7 +324,7 @@ Taken up and still open: none.
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
-| After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |
+| A known-length HEAD response finalized by an mruby output body filter keeps its connection for the following GET ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1; #628 reproduced it) | `master`, then `next` | Fixed on master in [#752](https://github.com/matsumotory/ngx_mruby/pull/752), with separate failing-test and passing-fix commits. The next integration on `codex/merge-master-head-filter` retains both 2.7.5 notes, adds the 3.0.0 entries and adapts the helper to the suite path; its suite, soak, performance, nginx-tests and site validation passed, and independent code/text review has no findings. The example check passed all 19 commands with Linux file semantics and restored fixtures; [#756](https://github.com/matsumotory/ngx_mruby/pull/756) passed all 759 combined tests after including #751 and awaits updated-head review and CI |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
 | Site: steps 1 to 4, 6 and 7 are merged (#591, #607, #614, #617–#623, #626, #629–#632, #653–#657), and the site is deployed from `next`. Step 5, the Japanese pages, is merged (#705 for six pages, #703 for the 2.x release notes on `master`); the handoff page stays English with a notice, and `NOTES_ONLY` of `check-japanese-lines.mjs` still lists four release notes (the subsection "Japanese pages of the site" of "Work in progress") | `next` for `site/`; `master` for 2.x sources | Still open: the emptying of `NOTES_ONLY` once `master` is merged into `next`; the site on Astro without Starlight (5.4 of the site proposal, #700, the owner's decision of 2026-11-01), whose first layer, the own shell beside Starlight behind `NGX_MRUBY_SITE_SHELL=own`, is merged in #708, and whose rest is #713 (from a Codex session, taken over by Claude Code for the browser acceptance), which also changes the iPhone width to 402px with the root size of 4.4; the 3.x development banner of 3.4; and the observability and certificate-lookup sample prerequisites of #619. Q9 is done (Discussions on, wiki off, 2026-11-01) |
 | nginx-tests with the modules that its skipped files need: a build with the options of `test.sh` and `--with-http_v2_module`, `--with-http_v3_module`, `--with-stream_ssl_module`, `--with-mail` and the other modules that "Results of nginx-tests" in `docs/test/README.md` lists (in the CI run of #602, 189 of the 209 skipped files need a module that `test.sh` does not build), with and without ngx_mruby, in the `nginx-tests` workflow | `next` | Ready to start: #602 is merged |
@@ -323,7 +350,7 @@ Taken up and still open: none.
 | What is left of the async resume rewrite (decision (c) of 2026-10-04, amended on 2026-10-29: the rewrite of how resumed handlers end): a wait that starts in a handler that nginx runs inside another mruby call (the location of an internal redirect that an `mruby_set` handler, a log handler or a filter makes inside the Ruby call), or after an internal redirect replaced the module context of the handler, is still resumed by its timer or by the end of its subrequest and ended by `ngx_mrb_post_fiber` in `src/http/ngx_http_mruby_async.c`; a content handler there does not keep the request, so the request ends at the sleep. The rest is done in [#715](https://github.com/matsumotory/ngx_mruby/pull/715), [#722](https://github.com/matsumotory/ngx_mruby/pull/722) and [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (section 12 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Ready to start; no design exists yet |
 | The generated reference of the site (Pillar F of the plan): the directives from the `ngx_command_t` tables, the Ruby API with YARD and yard-mruby, the C API with Doxygen. `site/scripts/check-reference.mjs` checks, among other things, that each directive name has a heading in `docs/directives/README.md`; the pages are written by hand | `next` | Ready to start; no step of section 6 of the site proposal produces it yet |
 | The "Before" line of the entry on `mruby_set` values that are not Strings in [the 3.0.0 release notes](releases/v3.0.0.md) limits the end of the worker process to the handler that does not wait. The review of [#738](https://github.com/matsumotory/ngx_mruby/pull/738) inferred from the 2.x source (`ngx_mrb_var_set_vector`) that a `to_s` returning something other than a String can end the worker after `Nginx::Async.sleep` too; nobody has run it on 2.x | `next` | Ready to start: run the case on `master` (2.7.4), then write the "Before" line of `docs/releases/v3.0.0.md` and `.ja.md` from the result |
-| The documentation group of the site's footer (4.10 of [the site proposal](proposals/site.md)) links the other version's documentation (「2.xのドキュメント」) but not the documentation of the version that the page describes. A should-fix item of the review of [#738](https://github.com/matsumotory/ngx_mruby/pull/738) | `next` | Merged in [#750](https://github.com/matsumotory/ngx_mruby/pull/750) (`c440a15dc`); the PR records the publication checks |
+| The documentation group of the site footer links the current 3.x documentation before the other version in both languages, without duplicating the existing 3.x link on 2.x pages (4.10 of [the site proposal](proposals/site.md)) | `next` | Merged in [#750](https://github.com/matsumotory/ngx_mruby/pull/750) as `c440a15dc`; local checks, independent review, CI and publication verification passed |
 | The 2.x form of the protected conversion of an `mruby_set` value ([#735](https://github.com/matsumotory/ngx_mruby/pull/735) on `next`): convert the value under `mrb_protect_error`, and a `to_s` that is missing, raises or returns a non-String ends the request with 500 instead of reading the result unchecked; a regression test for the three cases, and the entry under "Behavior changes" of `docs/releases/v2.7.5.md` and `.ja.md`. The owner deferred this work on 2026-11-02 (05:25 JST). | `master` | The owner's go |
 | On 2.x, a rewrite handler that sleeps in `Nginx::Async.sleep` and returns `Nginx::DECLINED`, followed by an access handler of the same location that calls `Nginx::Async::HTTP.sub_request` and declines, leaves the request without a response (seen by the reviewer of [#740](https://github.com/matsumotory/ngx_mruby/pull/740) before and after its fix; without the sleep the answer is immediate). Assess on `next` first, where the fiber record of [#714](https://github.com/matsumotory/ngx_mruby/pull/714), [#715](https://github.com/matsumotory/ngx_mruby/pull/715) and [#722](https://github.com/matsumotory/ngx_mruby/pull/722) may already cover it; if 2.x still hangs, a fix with its regression test | `next`, then `master` if needed | Assessed on 2026-11-03: the normal composition completes with the `next` runtime of `c440a15dc`. A 100 ms sleep and its no-sleep control each returned 200, the expected static body and EOF in three requests bounded at 8 seconds (nginx 1.31.8, static suite build with GC stress and debug counters; runtime C statements unchanged). No next fix is indicated by these six requests. The 2.x follow-up remains; it was not rerun here |
 
