@@ -23,45 +23,125 @@ if (states.size !== ledger.split('\n').filter(line => /^\| \[.*\]\(#/.test(line)
 }
 const cases = [
   { id: 'mcp-tool-authorization', status: 'designing',
-    needs: ['body_jsonでのJSONの本文の読み取り、実行コンテキストの型、任意のステータスでRubyが返す本文', 'the JSON body read (body_json), the execution-context type, and a Ruby-built body with any status'],
     title: ['MCPツールの呼び出し権限を確認する', 'Check permissions for MCP tool calls'],
-    text: ['MCPサービスの運用者が、ユーザーごとに呼び出せるMCPツールと引数の範囲を制限するための設計です。AIアプリケーションとMCPサーバーの間にMCPゲートウェイを置き、認証済みユーザーの権限と、MCPのツール呼び出し（JSON-RPCのメソッドtools/call）の内容をRubyで照合する方法を検討しています。許可された呼び出しだけを転送し、個々のデータへのアクセス権限はMCPサーバーでも検証する構成を目指します。', 'An MCP service operator could restrict the MCP tools and argument ranges available to each user. The design places an MCP gateway between the AI application and the MCP server, where Ruby would compare tools/call with the authenticated user’s permissions. Only allowed calls would be forwarded; the MCP server would still enforce access to individual data objects.'] },
+    paragraphs: [
+      [
+        "ユーザーごとにMCPツールと引数を制限する設計です。Rubyで認証済みユーザーの権限とtools/callの内容を照合し、許可した呼び出しをMCPサーバーへ転送します。",
+        "個々のデータへのアクセス権限は、転送先のMCPサーバーでも検証する方針です。",
+      ],
+      [
+        "An MCP service operator could restrict the tools and arguments available to each user. Ruby would compare tools/call with the authenticated user’s permissions and forward only allowed calls.",
+        "The destination MCP server would still enforce access to individual data objects.",
+      ],
+    ] },
   { id: 'mcp-burst-control', status: 'direction',
-    needs: ['全workerで数える共有辞書、mruby_variable', 'the shared dictionary, which counts across workers, and mruby_variable'],
     title: ['MCP呼び出しの集中を制限する', 'Limit bursts of MCP calls'],
-    text: ['AIアプリケーションがMCPツールを短時間に繰り返し呼び出したり、多数のストリームを開いたりする場合に、MCPサービスの負荷を制限する構想です。Rubyで認証済みユーザーと呼び出しの種類を識別し、nginxのlimit_reqとlimit_connで設定済みの上限を適用する構成を検討します。必要な読み直しまでループと判定せず、制限時に再試行できる条件を返すことが設計の上での課題です。', 'To bound load when AI applications repeatedly call MCP tools or open many streams, Ruby would identify the authenticated user and call class, and nginx limit_req and limit_conn would apply configured limits. Legitimate rereads would not be treated as loops; rejection responses would describe the conditions for retry.'] },
+    paragraphs: [
+      [
+        "AIアプリケーションによる短時間の呼び出しや、多数のストリームで生じる負荷を制限する構想です。Rubyでユーザーと呼び出しの種類を識別し、nginxのlimit_reqとlimit_connで上限を適用します。",
+        "必要な読み直しは許可します。制限を受けたアプリには、再試行できる条件を返す方針です。",
+      ],
+      [
+        "To bound bursts of calls and open streams, Ruby would identify the user and call class. nginx limit_req and limit_conn would apply the configured limits.",
+        "Legitimate rereads would still pass, and rejection responses would describe when the application can retry.",
+      ],
+    ] },
   { id: 'mcp-tool-profiles', status: 'designing',
-    needs: ['ツール一覧のキャッシュに使う共有辞書', 'the shared dictionary for the cache of tool lists'],
     title: ['AIアプリケーション別にMCPツールを出す', 'Fit the MCP tools to each AI application'],
-    text: ['MCPサービスの同じ処理を、異なるMCPツールの構成を必要とするAIアプリケーションから利用する設計です。接続プロファイルに応じて、MCPゲートウェイが、プロファイルごとに用意した転送先のMCPサーバー（バージョンを付けたバックエンド）を選び、そのサーバーがツールの一覧（tools/list）とtools/callを一貫して提供する方法を検討しています。検索や取得の処理をAIアプリケーションごとに複製せず、MCPツールの表現と呼び出し方の違いをこの転送先で吸収します。', 'The same MCP service could support AI applications that require different MCP tool interfaces. The design would let an MCP gateway select a versioned backend MCP server by connection profile, with consistent tools/list and tools/call behavior. The aim is to adapt tool descriptions and calls without duplicating search and retrieval logic for each application.'] },
+    paragraphs: [
+      [
+        "異なるツール構成を必要とするAIアプリケーションから、同じMCPサービスを利用する設計です。接続プロファイルに応じて、MCPゲートウェイが転送先のMCPサーバーを選びます。",
+        "ツールの一覧と呼び出し方の違いは、バージョンを付けた転送先で扱います。検索や取得の処理は、アプリ間で共用する方針です。",
+      ],
+      [
+        "Different AI applications could use the same service through different MCP tool interfaces. The gateway would select a backend MCP server by connection profile.",
+        "That versioned backend would provide consistent tools/list and tools/call behavior, without duplicating search and retrieval logic for each application.",
+      ],
+    ] },
   { id: 'mcp-progressive-retrieval', status: 'designing',
-    needs: ['処理量の上限を全workerで数える共有辞書', 'the shared dictionary for budgets that all workers share'],
     title: ['文書を必要な範囲から取得する', 'Retrieve the needed part of a document'],
-    text: ['エージェントが長い文書を一度に読み込まず、必要な箇所をMCPツールで取得し、足りなければ読み足せるようにする設計です。MCPゲートウェイは取得方式と処理量の上限を選び、文書の位置・バージョン・続きを取得するための情報はバックエンドが管理する分担を検討しています。JSONやストリームを途中で切らず、範囲指定に対応した取得機能を使う構成です。', 'An agent could read the relevant passage of a long document and request more when needed instead of fetching everything at once. The MCP gateway would select a retrieval profile and processing budget; the backend would own document positions, versions and continuation information. Retrieval would use a range-aware MCP tool, not arbitrary truncation of JSON or a stream.'] },
+    paragraphs: [
+      [
+        "エージェントが長い文書の必要な箇所をMCPツールで取得し、足りなければ読み足せるようにする設計です。MCPゲートウェイは取得方式と処理量の上限を選びます。",
+        "文書の位置、バージョン、続きの取得はバックエンドが管理します。JSONやストリームを切り詰めず、範囲指定に対応する取得機能を使う構成を検討しています。",
+      ],
+      [
+        "An agent could request the relevant passage of a long document, then read more if needed. The MCP gateway would select the retrieval profile and processing budget.",
+        "The backend would manage positions, versions and continuation through a range-aware tool. The gateway would not truncate JSON or streams.",
+      ],
+    ] },
   { id: 'mcp-next-step-guidance', status: 'direction',
-    needs: ['任意のステータスでRubyが組み立てて返す本文', 'a Ruby-built body with any status'],
     title: ['検索結果がない場合の次の手順を伝える', 'Return next steps when a search finds nothing'],
-    text: ['MCPツールの検索結果がない場合や取得に失敗した場合に、エージェントが理由を読み、次の探索を選べる応答を返す構想です。MCPゲートウェイは該当なし・権限不足・取得先の障害を区別して中継し、検索対象に固有の手掛かりはMCPサービスが提供する分担を検討します。MCPゲートウェイは検索の意味を変えず、取得した文書の中に書かれた指示を、実行の指示として扱いません。検索を続けるか、条件を変えるかの判断はエージェントに残す方針です。', 'When an MCP search returns no result or retrieval fails, the agent should receive the reason and available next steps. The MCP gateway would preserve the distinction between no match, denied access and an unavailable source; the MCP service would supply domain-specific guidance. The MCP gateway would not change query meaning or promote instructions in retrieved documents into execution instructions. The agent would still decide whether to search again or change the query.'] },
+    paragraphs: [
+      [
+        "検索結果がない場合や取得に失敗した場合に、理由と次の手順をエージェントへ返す構想です。MCPゲートウェイは該当なし、権限不足、取得先の障害を区別して中継します。",
+        "検索対象に固有の手掛かりはMCPサービスが提供します。文書中の指示を実行の指示として扱わず、検索を続けるか条件を変えるかはエージェントが判断する方針です。",
+      ],
+      [
+        "When search or retrieval fails, an agent could receive the reason and available next steps. The gateway would preserve the distinction between no match, denied access and an unavailable source.",
+        "The MCP service would supply domain-specific guidance. Retrieved instructions would not become execution instructions; the agent would decide whether to search again or change the query.",
+      ],
+    ] },
   { id: 'mcp-trajectory-logging', status: 'direction',
-    needs: ['access_logより前に動くlog handler、mruby_variable、workerタイマー、ノンブロッキングな通信のAPI', 'log handlers that run before access_log, mruby_variable, worker timers and the non-blocking socket API'],
     title: ['MCPツールの呼び出し順序を観測する', 'Observe sequences of MCP tool calls'],
-    text: ['MCPサービスの運用者が、エージェントによる検索、文書取得、再検索の流れと各処理の結果を調べる用途です。呼び出しを相関IDで関連付け、MCPツール名、成否、所要時間を記録する構想です。検索語や文書本文は標準では収集せず、保存期間と収集量に上限を設けます。調査を続けるかはエージェントが判断する方針です。', 'An MCP service operator could examine the sequence and outcomes of search, document retrieval and repeated search performed by an agent. A correlation ID would connect MCP tool names, outcomes and durations. Queries and document bodies would not be collected by default, and retention and collection volume would be bounded. The agent would still decide whether to continue its investigation.'] },
+    paragraphs: [
+      [
+        "MCPサービスの運用者が、検索、文書取得、再検索の順序と結果を調べる構想です。相関IDで呼び出しを関連付け、ツール名、成否、所要時間を記録します。",
+        "検索語や文書本文は標準では収集せず、保存期間と収集量に上限を設けます。調査を続けるかはエージェントが判断します。",
+      ],
+      [
+        "An MCP service operator could trace searches, document retrieval and repeated searches. A correlation ID would connect tool names, outcomes and durations.",
+        "Queries and document bodies would not be collected by default. Retention and volume would be bounded, while the agent would decide whether to continue its investigation.",
+      ],
+    ] },
   { id: 'llm-api-fallback', status: 'designing',
-    needs: ['待機期間を数える共有辞書、上流のpeerのフック、最初のバイトの期限、Rubyのbalancer API', 'the shared dictionary for cooldowns, the upstream peer hook, the first-byte deadline and the Ruby balancer API'],
     title: ['モデルAPIのエラーで転送先を変える', 'Select another model API endpoint after an error'],
-    text: ['各アプリにモデルAPIの切替処理を実装せず、AIゲートウェイで管理する設計です。上流が429や再送対象のエラーを返した場合、Rubyで互換性のある転送先と認証情報を選び、nginxが再送する構成を検討しています。処理や課金の重複を避けるため、安全に再実行できるリクエストに限って回数と時間を制限し、応答を送り始めた後は別の生成結果につなぎ替えません。', 'Instead of implementing model API fallback separately in each application, an operator could manage it at the AI gateway. After an upstream 429 or another configured retryable error, Ruby would select a compatible endpoint and credentials, and nginx would retry. Attempts and time would be bounded, and only requests safe to replay would be retried, so that processing and charges are not duplicated. Once the response starts, it would not be switched to another generated stream.'] },
+    paragraphs: [
+      [
+        "モデルAPIの切替をAIゲートウェイで管理する設計です。上流の429などの再送対象エラーに応じ、Rubyが互換性のある転送先と認証情報を選び、nginxが再送します。",
+        "再送は安全に再実行できるリクエストに限り、回数と時間を制限します。応答を送り始めた後は、別の生成結果につなぎ替えない構成を検討しています。",
+      ],
+      [
+        "An operator could manage model API fallback at the AI gateway. After an upstream 429 or another configured retryable error, Ruby would select a compatible endpoint and credentials for nginx to retry.",
+        "Only requests safe to replay would be retried, with bounded attempts and time. A response already in progress would not be replaced by another generated stream.",
+      ],
+    ] },
   { id: 'ai-crawler-and-bot-control', status: 'direction',
-    needs: ['全workerで数える共有辞書、外部サービスへ身元を問い合わせるノンブロッキングな通信', 'the shared dictionary that all workers share, and the non-blocking socket API for an identity lookup in an external service'],
     title: ['AIクローラーとエージェントの頻度を絞る', 'Limit the request rate of AI crawlers and agents'],
-    text: ['WebサイトやAPIの運用者が、AIクローラーやエージェントのリクエストに適用する規則をRubyで選ぶ構想です。巡回による収集と、ユーザーの指示で行うアクセスを区別し、認証状態やアクセス先に応じて頻度と同時接続数を制限する設計を検討します。User-Agentの自己申告を身元の証明とせず、リクエストの署名などで確かめる方法と、識別できない相手をどう扱うかも定めます。', 'A website or API operator could select Ruby policies for requests from AI crawlers and agents, distinguishing collection by a crawler from access on a user’s behalf. Authentication state and the requested resource would inform rate and concurrency limits. A User-Agent claim alone would not prove identity; the design also needs independent checks, such as request-signature verification, and a policy for unidentified clients.'] },
+    paragraphs: [
+      [
+        "WebサイトやAPIへのアクセス規則をRubyで選ぶ構想です。AIクローラーの巡回とユーザーの指示によるアクセスを区別し、頻度と同時接続数を制限します。",
+        "User-Agentの自己申告だけを身元の証明とせず、署名などの検証方法と、識別できない相手の扱いを定める方針です。",
+      ],
+      [
+        "A website or API operator could select policies for AI crawlers and agents. Ruby would distinguish collection by a crawler from access on a user’s behalf and choose rate and concurrency limits.",
+        "A User-Agent claim would not prove identity. The design needs independent checks, such as request signatures, and a policy for unidentified clients.",
+      ],
+    ] },
   { id: 'semantic-cache', status: 'direction',
-    needs: ['JSONの本文の読み取り、メソッドと本文とヘッダを渡せるsub_request、ノンブロッキングな通信', 'the JSON body read, sub_request with a method, a body and headers, and the non-blocking socket API'],
     title: ['外部のセマンティックキャッシュを参照する', 'Consult an external semantic cache'],
-    text: ['モデルAPIに送る内容が似たリクエストに保存済みの回答を再利用し、アプリ側の処理を変えずにモデルAPIへの問い合わせを減らす構想です。AIゲートウェイがユーザーのアクセス範囲やモデルなどの条件を渡し、外部サービスが類似性と再利用の可否を判断する分担を検討します。適切な回答がない場合、判断が曖昧な場合、タイムアウト時は元のモデルAPIへ転送します。回答をキャッシュへ保存する方式は、まだ設計していません。', 'An external semantic cache could reuse a stored answer for a similar model API request without changing the application. The AI gateway would supply constraints such as the user’s access scope and model; the external service would assess similarity and reuse validity. A miss, uncertain match or timeout would fall through to the original model API endpoint. The mechanism for storing responses in the cache is not yet designed.'] },
+    paragraphs: [
+      [
+        "似たリクエストに保存済みの回答を再利用し、アプリの処理を変えずにモデルAPIへの問い合わせを減らす構想です。AIゲートウェイがアクセス範囲やモデルの条件を渡し、外部サービスが再利用の可否を判断します。",
+        "一致がない場合、判断が曖昧な場合、タイムアウト時は元のモデルAPIへ転送します。回答をキャッシュに保存する方式は未設計です。",
+      ],
+      [
+        "An external semantic cache could reuse an answer for a similar request without changing the application. The gateway would supply the access scope and model; the cache service would decide whether reuse is valid.",
+        "A miss, uncertain match or timeout would fall through to the original model API. Storage of responses in the cache is not yet designed.",
+      ],
+    ] },
   { id: 'log-handler-telemetry', status: 'direction',
-    needs: ['access_logより前に動くlog handler、mruby_variable、SSEのイベントのフィルタ、workerタイマー、ノンブロッキングな通信のAPI', 'log handlers that run before access_log, mruby_variable, the SSE event filter, worker timers and the non-blocking socket API'],
     title: ['log handlerで記録した値を外部へ送る', 'Export metadata recorded by the log handler'],
-    text: ['サービスの運用者が、ステータス、応答時間、転送先などを外部の集計基盤で確認するための構想です。現在のlog handlerはネットワーク応答を待てないため、上限付きのworkerキュー、タイマー、ノンブロッキングな通信を使う送信処理を計画しています。収集先の遅延で応答を止めず、キューの満杯時や送信の失敗時の扱いを事前に定めます。', 'A service operator could inspect status, response time and routing decisions in an external collector. The current log handler cannot wait for a network response, so export is planned through a bounded worker queue, timers and nonblocking transport. Collector delays would not stall responses, and the behavior on a full queue or a failed delivery would be defined.'] },
+    paragraphs: [
+      [
+        "サービスの運用者が、ステータス、応答時間、転送先を外部の集計基盤で確認する構想です。現在のlog handlerはネットワーク応答を待てないため、上限付きのワーカーキューとタイマーで送信する処理を計画しています。",
+        "収集先の遅延で応答を止めないよう、ノンブロッキングな通信を使います。キューの満杯時や送信失敗時の扱いも定めます。",
+      ],
+      [
+        "A service operator could send status, response times and routing decisions to an external collector. Since the current log handler cannot wait for a network response, export is planned through a bounded worker queue and timers.",
+        "Non-blocking transport would keep collector delays from stalling responses. Behavior on a full queue or failed delivery would be defined.",
+      ],
+    ] },
 ];
 // The copy of each case says 設計 or 構想 (design or direction), so a change
 // of its row in the ledger stops the build until the copy is reviewed.
@@ -72,13 +152,21 @@ if (states.size !== cases.length) throw new Error('Homepage cases and proposal l
 const label = status => ja ? (status === 'designing' ? '設計中' : '構想') : (status === 'designing' ? 'Designing' : 'Direction');
 ---
 <section class="v3-directions" aria-labelledby="directions-title">
-  <div class="v3-section-heading"><h2 id="directions-title">{ja ? '今後のユースケースと設計状況' : 'Future use cases and their design status'}</h2>
-    <p>{ja ? '上のモデルの振り分けは実行できる例です。以下では、AIアプリケーションからMCPサーバーへの呼び出し、モデルAPIの切替、サイトへ来るAIクローラーやエージェントのリクエストに、nginxとRubyをどう使うかを説明します。ここでのエージェントは、次の検索や読み取りをモデルが選ぶAIアプリケーションです。MCPやモデルAPIの前段ではAIゲートウェイとして認可と転送を、Webサイトの前段ではアクセス頻度と負荷を制御する設計です。呼び出し先の処理とエージェントの判断は、それぞれの実装に残します。「設計中」は最初の実行例と検証条件を記述した段階、「構想」は方向性だけを記述した段階です。どちらも、全体を動かすテストはまだありません。' : 'The model routing example above can be run today. The following designs describe uses of nginx and Ruby for MCP calls from AI applications, model API fallback, and requests arriving at a site from AI crawlers and agents. Here an agent is an AI application whose model chooses the next search or read. In front of MCP servers and model APIs, an AI gateway would authorize and route the calls; in front of a site, the same nginx and Ruby would limit the rate and load of incoming requests. Service processing and agent decisions remain with their respective implementations. “Designing” means a first recipe and acceptance criteria are documented; “Direction” means the direction is documented. No test runs a complete use case yet, in either status.'}</p>
+  <h2 id="directions-title">{ja ? '今後のユースケースと設計状況' : 'Future use cases and their design status'}</h2>
+  <div class="directions-context">
+    <div class="directions-overview">
+      <p>{ja ? 'モデル振り分けの例は手元で動かせます。以下は、MCPの認可、モデルAPIの切替、サイトへのアクセス制御に向けた設計です。' : 'The model routing example above runs locally today. The following designs apply nginx and Ruby to MCP authorization, model API fallback and access to websites.'}</p>
+      <p>{ja ? '次に何を検索し、どこを読み取るかをモデルが選ぶAIアプリケーションを、ここではエージェントと呼びます。' : 'An agent is an AI application whose model chooses the next search or read.'}</p>
+    </div>
+    <div class="directions-availability">
+      <p>{ja ? '「設計中」は実行例と検証条件を記述済みです。「構想」は方向性のみ示しています。' : '“Designing” means the first recipe and acceptance criteria are documented. “Direction” means only the direction is documented.'}</p>
+      <p>{ja ? 'どちらも、用途全体を動かすテストはまだありません。必要な機能と制約は、各項目の設計文書で確認できます。' : 'No test runs a complete use case in either status. Each design document lists the required features and constraints.'}</p>
+    </div>
   </div>
   <div class="direction-list">
     {cases.map(item => <article class="direction-usecase" data-use-case={item.id}>
       <div class="direction-scan"><h3>{item.title[ja ? 0 : 1]}</h3><p class="direction-status"><span class="site-badge">{label(states.get(item.id))}</span></p></div>
-      <div class="direction-body"><p>{item.text[ja ? 0 : 1]}</p><p class="direction-needs">{ja ? 'v3で要る機能：' : 'Needs in v3: '}{item.needs[ja ? 0 : 1]}{ja ? '。' : '.'}</p><a href={`${proposal}#${item.id}`}>{ja ? '設計と必要な機能を読む' : 'Read the design and required features'}</a></div>
+      <div class="direction-body">{item.paragraphs[ja ? 0 : 1].map(text => <p>{text}</p>)}<a href={`${proposal}#${item.id}`}>{ja ? '設計と必要な機能を読む' : 'Read the design and required features'}</a></div>
     </article>)}
   </div>
 </section>

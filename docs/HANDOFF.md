@@ -1,11 +1,10 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (21:01 JST)
+## State as of 2026-11-02 (21:44 JST)
 
-- Heads: `next` is `a312ec59e`, the merge of
-  [#742](https://github.com/matsumotory/ngx_mruby/pull/742), after
-  [#741](https://github.com/matsumotory/ngx_mruby/pull/741) archived the
-  core stabilization proposal; `master` is `3c4613267`, the merge of
+- Heads: `next` is `f18cae3d8`, the merge of
+  [#743](https://github.com/matsumotory/ngx_mruby/pull/743), which aligned
+  the edge-control proposal terminology; `master` is `3c4613267`, the merge of
   [#740](https://github.com/matsumotory/ngx_mruby/pull/740), after
   [#739](https://github.com/matsumotory/ngx_mruby/pull/739).
   `next` contains `master` as of `0f865ed4a` through
@@ -76,11 +75,10 @@
 - [#740](https://github.com/matsumotory/ngx_mruby/pull/740) is merged on
   `master`: a rewrite handler that returns `Nginx::DECLINED` after
   `Nginx::Async.sleep` keeps the status of the request.
-- Open: [#743](https://github.com/matsumotory/ngx_mruby/pull/743), the
-  edge-control terminology update by Codex, completes that queue item.
-  Verification and independent review are in progress; the PR records its
-  latest head, local results and CI. It merges only when the conditions in
-  AGENTS.md hold.
+- Open: the homepage reading-layout PR (`codex/home-reading-layout`),
+  owned by Codex, following the owner's feedback under "Decisions".
+  The PR records the final head, visual review and validation.
+  The edge-control terminology update (#743) is merged and deployed.
 
 ## How to use this file
 
@@ -118,6 +116,18 @@ that are not written down elsewhere yet, the work in progress and the queue.
   you act on them: other sessions merge pull requests all the time.
 
 ## Decisions
+
+On 2026-11-02 the owner asked to refine the homepage layout and copy:
+「セクションコンテンツは長文のわりに段落ないし、左により過ぎな気も？」
+「あと下はタイトルだけ左絡むにするほどレイアウト広く使う効果はどうなのって感じで違和感。」
+「フッター近くは罫線多すぎ」
+「あとちょいちょいmodelとかあって、モデルで統一されてない説明もある。」
+「技術記事なのでポエミーな表現は不要だしね。」
+The homepage keeps its existing identity while grouping each use case's
+heading with its explanation, dividing long explanations by meaning and
+reducing redundant rules near the footer. This implementation is described
+in [the site design](proposals/site.md#reading-the-planned-use-cases).
+The use-case statuses and scope remain those of the edge-control ledger.
 
 On 2026-11-02 the owner transferred development coordination to Codex:
 「以降は Codex が、PR の作成からレビュー、マージ、台帳の更新、リリースの準備、他の agent と外部の方の PR の引き取りまでを進めてください。」
