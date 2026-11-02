@@ -76,9 +76,10 @@
 - [#740](https://github.com/matsumotory/ngx_mruby/pull/740) is merged on
   `master`: a rewrite handler that returns `Nginx::DECLINED` after
   `Nginx::Async.sleep` keeps the status of the request.
-- Open at the start of this snapshot: none. Codex is preparing the
-  edge-control terminology update on `codex/edge-control-terminology`;
-  its local site checks and independent review precede the merge.
+- Open: [#743](https://github.com/matsumotory/ngx_mruby/pull/743), the
+  edge-control terminology update by Codex, completes that queue item.
+  It remains a draft until local site checks pass, then goes to independent
+  review and CI under the merge conditions in AGENTS.md.
 
 ## How to use this file
 
