@@ -184,12 +184,11 @@ The four standard cells build each link mode and each line of nginx
 | the sanitizer cell | 1.31.8 | static | the installed OpenSSL | built with AddressSanitizer and UndefinedBehaviorSanitizer ([Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer](#running-the-tests-under-addresssanitizer-and-undefinedbehaviorsanitizer)) |
 | the cell under valgrind | 1.31.8 | static | the installed OpenSSL | under valgrind ([valgrind in CI](#valgrind-in-ci)) |
 
-The owner decided on 2026-11-01, in a session's question with the option
-「4 cell に減らす (推奨)」 ("reduce to 4 cells (recommended)"), that a pull
-request runs these four cells instead of every cell ("Decisions" in
-`docs/HANDOFF.md` on `next` has the owner's words). Every cell builds
-OpenSSL 1.1.1w and installs it before it builds nginx; the first cell
-builds it into nginx as well (`--with-openssl-src`), the path of
+The CI policy adopted on 2026-11-01 runs these four cells on pull requests
+instead of every cell. This covers both module modes, mainline and stable
+nginx, and both memory checks while keeping pull request runs short.
+Every cell builds OpenSSL 1.1.1w and installs it before it builds nginx;
+the first cell builds it into nginx as well (`--with-openssl-src`), the path of
 `configure.in` and `Makefile.in` that the cell under valgrind, the same
 nginx and module against the installed OpenSSL, does not take. Every cell
 (the 16 combinations of nginx 1.31.8, 1.30.6, 1.28.3 and 1.26.3, the
@@ -374,11 +373,9 @@ commit removes stays in the history: remove it from the commit that added it
 The site ngx.mruby.org is built on `next` (`site/` there, and
 `docs/proposals/site.md` there for the plan). Its 2.x pages under `/v2/`
 are built from `docs/` of this branch. A pull request to `master` runs no
-job for them: the owner decided on 2026-11-02 that CI is not relied on
-for what runs locally (the words are quoted in "Decisions" of
-`docs/HANDOFF.md` on `next`), with the option
-「PR では流さず、next への push の時だけ (推奨)」 ("not on pull requests,
-only on the push to `next` (recommended)"). The author of a pull request
+job for them. The CI policy adopted on 2026-11-02 keeps checks that run
+locally out of pull request CI; the site's build and deployment run on
+`next` after pushes to `next` or `master`. The author of a pull request
 that changes `docs/`, the Markdown files at the top, or a file that they
 link to, runs these checks locally before marking it ready, and quotes
 them under "How was this tested":

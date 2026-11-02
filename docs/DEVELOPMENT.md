@@ -57,7 +57,11 @@ context, not prerequisites for continuing work.
    tests and public documentation must remain visible; never hide a broad
    directory merely to make status clean. Run the added-file check in
    [Files that do not belong in the repository](test/README.md#files-that-do-not-belong-in-the-repository)
-   and review the public text for private material.
+   and review public text for private material. Public and private work
+   records state intent, rationale, constraints and decisions without
+   conversation quotations or attribution as justification. Public records
+   omit private conversations, message identifiers and personal environment
+   details. Keep adopted decisions distinct from proposals.
 6. On resumption, check running CI and any operation with an uncertain
    outcome before retrying. Follow AGENTS for builds, test-port isolation,
    independent review and merge gates; a checkpoint does not waive them.
