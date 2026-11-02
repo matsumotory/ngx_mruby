@@ -1,15 +1,17 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (21:44 JST)
+## State as of 2026-11-02 (23:00 JST)
 
-- Heads: `next` is `f18cae3d8`, the merge of
-  [#743](https://github.com/matsumotory/ngx_mruby/pull/743), which aligned
-  the edge-control proposal terminology; `master` is `3c4613267`, the merge of
-  [#740](https://github.com/matsumotory/ngx_mruby/pull/740), after
+- Heads: `next` is `83b4cbce2`, the merge of
+  [#744](https://github.com/matsumotory/ngx_mruby/pull/744), whose homepage
+  layout is deployed; `master` is `287dda06f`, the merge of
+  [#745](https://github.com/matsumotory/ngx_mruby/pull/745), after the
+  changes of [#740](https://github.com/matsumotory/ngx_mruby/pull/740) and
   [#739](https://github.com/matsumotory/ngx_mruby/pull/739).
   `next` contains `master` as of `0f865ed4a` through
-  [#734](https://github.com/matsumotory/ngx_mruby/pull/734); the later
-  changes on `master` still await that merge. `v2.x` mirrors `master`.
+  [#734](https://github.com/matsumotory/ngx_mruby/pull/734). Codex is
+  preparing the later merge on `codex/merge-master-275`; its measured
+  binary inputs are identical to `next`. `v2.x` mirrors `master`.
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
   is published. Two advisories were published with it:
@@ -75,10 +77,22 @@
 - [#740](https://github.com/matsumotory/ngx_mruby/pull/740) is merged on
   `master`: a rewrite handler that returns `Nginx::DECLINED` after
   `Nginx::Async.sleep` keeps the status of the request.
-- Open: the homepage reading-layout PR (`codex/home-reading-layout`),
-  owned by Codex, following the owner's feedback under "Decisions".
-  The PR records the final head, visual review and validation.
-  The edge-control terminology update (#743) is merged and deployed.
+- Open: none at this snapshot. #745 is merged: the 2.x Japanese release
+  headings and the 2.7.5 status description pass the four rendering checks;
+  previous heading anchors remain valid. Its full local site check passed
+  in 438 seconds and its independent review and CI passed.
+- Codex is validating the master-to-next merge on `codex/merge-master-275`,
+  now including master through `287dda06f`. The candidate `62b608451`
+  passed `sh test.sh` in Linux with nginx 1.31.8 (Total 753, OK 753,
+  KO 0, Crash 0); later changes are documentation only. Measured binary
+  inputs still equal `next`, and the imported workflow passed zizmor.
+  Full site validation is next, after the documentation edits are final.
+- The homepage correction is being prepared independently on
+  `codex/home-shared-layout`. It covers shared layout rules, continuous
+  introductions, ordered local trial steps and compact documentation links.
+  Its owner completes scoped visual checks before the final site run;
+  there is no implementation dependency on the master-to-next merge.
+
 
 ## How to use this file
 
@@ -92,10 +106,11 @@ that are not written down elsewhere yet, the work in progress and the queue.
   disagrees with them, they win, with the one exception that AGENTS.md
   "Session handoff" sets: a dated row under "Decisions" holds over their
   older text until a pull request writes it there, but only when the row
-  links the owner's comment or quotes the owner's words. A row with neither
-  is a proposal of the sessions and changes no rule.
+  records an adopted decision, its date, scope, rationale and constraints,
+  and the older rule it replaces. Proposals are labeled separately and
+  change no rule.
 - A decision of the owner that is not written there yet is recorded under
-  "Decisions", in short, with its date, the link or the quotation, and the
+  "Decisions", in short, with its date, rationale, technical constraints and the
   place where it will be written. Where the sessions apply a decision with
   a procedure of their own, the row names that procedure separately.
 - A pull request on `next` updates this file in the same pull request when
@@ -117,225 +132,117 @@ that are not written down elsewhere yet, the work in progress and the queue.
 
 ## Decisions
 
-On 2026-11-02 the owner asked to refine the homepage layout and copy:
-「セクションコンテンツは長文のわりに段落ないし、左により過ぎな気も？」
-「あと下はタイトルだけ左絡むにするほどレイアウト広く使う効果はどうなのって感じで違和感。」
-「フッター近くは罫線多すぎ」
-「あとちょいちょいmodelとかあって、モデルで統一されてない説明もある。」
-「技術記事なのでポエミーな表現は不要だしね。」
-The homepage keeps its existing identity while grouping each use case's
-heading with its explanation, dividing long explanations by meaning and
-reducing redundant rules near the footer. This implementation is described
-in [the site design](proposals/site.md#reading-the-planned-use-cases).
-The use-case statuses and scope remain those of the edge-control ledger.
+These records state the agreed requirements, rationale and technical
+constraints, with dates. Proposals are identified separately from adopted
+decisions. Conversation quotations and attribution are not a substitute for
+checking whether a decision fits the evidence and requirements.
 
-On 2026-11-02 the owner transferred development coordination to Codex:
-「以降は Codex が、PR の作成からレビュー、マージ、台帳の更新、リリースの準備、他の agent と外部の方の PR の引き取りまでを進めてください。」
-Codex completes one PR before opening another, using the review and merge
-conditions of AGENTS.md. The owner's permission is still required to
-publish each release, and the owner alone publishes advisories. This row
-records ownership; the repository's review and merge rules remain in
-AGENTS.md.
-
-Decisions of the owner that are not yet written in the place their row
-names: (a) and (b) of 2026-10-04, and (1) of 2026-11-01. The owner's choice of 2026-10-29 at 05:34 JST, in a session's
-question on who merges the pull request of the 2.7.2 release, tags
-`v2.7.2` and publishes the release ("セッションが進める (推奨)", "the session
-goes ahead"), covered 2.7.2 only, and it is carried out: the session that
-prepared the release merged #624 at 13:25 JST, tagged `v2.7.2` on
-`d5ae75547` and published the release at 13:26 JST. On 2026-11-02 the owner kept
-the choice for later releases ("release と tag はセッション、advisory の公開は
-本人": the session publishes the release and its tag, the owner publishes
-the advisory); #731 and #732 write it into AGENTS.md, CLAUDE.md,
-`docs/releases/README.md` and `docs/DEVELOPMENT.md`. The choices among the
-options of 4.12 of the site proposal are written in `docs/proposals/site.md` (#607). The decision of 2026-10-19
-on the perf lane of `master` (port the tests and the CI only, without
-`Nginx::Debug`) is written in #601 (its description and
-`docs/test/README.md`, which `next` has since the merge of `master` at
-`6b27f08da`). The decision on the method lookup of `Nginx::Var` accessors
-(the owner's answer of 2026-10-15 to the question of section 4 of
-[the proposal](proposals/archive/nginx-var-method-lookup.md), in a session's
-question: the change to introspection is accepted as a behavior change of
-3.0.0; and the confirmation of 2026-10-19, in a session's question, with
-the option "その内容で合っている (推奨)" ("that content is right"): (a) with the
-rule (a2), (d), and accessors in introspection) is written in the Status
-line of the proposal and in the entries of `docs/releases/v3.0.0.md` and
-`.ja.md` (#610).
-
-On 2026-11-01 the owner decided Q1 to Q6 of section 9 of
-[docs/proposals/archive/core-stabilization.md](proposals/archive/core-stabilization.md), in a
-session's question, each as recommended, with the options 「動くようにする (推奨)」
-(Q1), 「handler の終わりで効く (推奨)」 (Q2), 「いまの動きを保つ (推奨)」 (Q3),
-「1回にする (推奨)」 (Q4), 「RuntimeError にする (推奨)」 (Q5) and
-「handler ごとにする (推奨)」 (Q6). They are recorded in section 9 of the
-proposal ([#710](https://github.com/matsumotory/ngx_mruby/pull/710)).
-
-On 2026-11-01 the owner decided to build the site with Astro and the
-repository's own components instead of Starlight:
-「サイトのドキュメントに既存のドキュメントライブラリ使うの微妙じゃない？あれは人が作る場合の便利ツールであっていまはcodexとかがデザインにあったドキュメントを自前で書いたほうが良さそう」
-(a documentation library is a tool for people who write a site by hand;
-now Codex and the like can write documentation that fits the design
-themselves). The plan is section 5.4 of
-[docs/proposals/site.md](proposals/site.md)
-([#700](https://github.com/matsumotory/ngx_mruby/pull/700)). Its first
-layer, the site's own shell beside Starlight, is merged in
-[#708](https://github.com/matsumotory/ngx_mruby/pull/708). Later the same
-day the owner decided that work that can be done without splitting is not
-split into stages and is asked of Codex in one request:
-「今後も分けなくてもできるなら無駄に分けず依頼は一回で終わるようにせよ」.
-So Codex does the rest of the replacement in one pull request,
-[#713](https://github.com/matsumotory/ngx_mruby/pull/713), and that
-pull request changes the iPhone width of the layout checks to 402px
-(「じゃあ402にしよう」). Claude Code took #713 over from Codex for the
-browser acceptance; at 402px the root font size grows with the screen
-(4.4 of the site proposal), so that the lines set at 390px keep their
-breaks.
-
-On 2026-11-01 the owner decided four things in a session's questions.
-(1) On the CI of a pull request that changes code, the owner asked
-「ciでバージョンとstatic dynamlc link全部網羅すべきなんかな？定期アクションとかリリース前チェックではいいけど、日々のciでそこまでやるべき？」
-(should CI cover every version and both static and dynamic links? for the
-nightly runs or the check before a release yes, but in the daily CI?) and
-chose the option 「4 cell に減らす (推奨)」: such a pull request runs four
-cells of the `build` matrix (nginx 1.31.8 static, nginx 1.30.6 dynamic, the
-ASan and UBSan cell and the valgrind cell) instead of the whole matrix, and
-the whole matrix runs nightly, before a tag (the label `full-matrix` on the
-check pull request of "Before the tag") and on the push of a tag. A pull
-request on `next`, then one on `master`, implements it and writes it in
-AGENTS.md and `docs/test/README.md`; until then this row holds it.
-(2) Discussions are on and the wiki is off (Q9 of the site proposal); this
-was done on 2026-11-01 (`has_discussions: true`, `has_wiki: false`).
-(3) The next v3 work is the extension of the test harness (`master_process
-on`, several workers, reload), after the change of the CI cells (the
-queue row "Test harness rewrite"). (4) The seven Japanese pages of the site
-that are left go to Codex, which the owner asks (the subsection "Japanese
-pages of the site" of "Work in progress").
-
-On 2026-10-31 the owner decided, in the sessions' questions on the
-release of 2.7.3, that the finding on the stream `Nginx::Stream::Async.sleep`
-of a UDP session is published as an advisory of its own, from a new
-draft ([GHSA-86wx-fcwx-m3vh](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-86wx-fcwx-m3vh)), and that the regression of #645, a second fiber of a UDP
-session that was not kept from the GC, is fixed before the tag
-([#698](https://github.com/matsumotory/ngx_mruby/pull/698)). Both are
-carried out: 2.7.3 has #698, and the advisory is published. Nothing is
-written elsewhere for them.
-
-On 2026-11-02 (02:50 to 02:58 JST) the owner added to that rule:
-「ciにたよるのはやめてくれ、それが今ボトルネックになってるしコストも時間もかかる、ローカルでテストをしっかり作れてるならciは最低限で良い。環境がたくさんいるような環境網羅的なciはいいけも、ローカルでやってることをciでも過剰でやって時間とコストかけるのはグローバルルールとしても辞めたい」
-(stop relying on CI, which is now the bottleneck and costs money and time;
-when the local tests are thorough, CI is the minimum; CI that covers many
-environments is fine, but repeating in CI what runs locally is to stop),
-and chose, in a session's question, the option
-「PR では流さず、next への push の時だけ (推奨)」: pull requests do not run
-`site.yml`; the push to `next` runs its build, deploy and check of the
-published site, without the browser lanes, which the local
-`npm run check:ci` replaces; when the base moves, CI runs again only when
-`code` or `tests` changed in both the pull request and the base; the
-build matrix, the sanitizers, valgrind and `perf` of `test.yml` stay,
-since they cover environments. #737 writes it into AGENTS.md
-("Branches and pull requests", condition 2 of "Review and merge", "Build
-and test"), `docs/test/README.md` ("Site CI") and the site proposal on
-`next`; a pull request to `master`, not opened yet, is to take `site-v2.yml` off pull requests
-and updates the comment of `test/ci/changes.sh`, which is the same on both
-branches.
-
-On 2026-10-31 the owner set a rule for CI:
-「ciはあくまで綺麗な環境での最終チェックであってテストはローカルできっちりやること、ciに過剰なテストを詰め込み過ぎて何十分もかかるようにしないこと」
-(CI is only the final check in a clean environment, and the tests are done
-thoroughly locally; CI is not packed with so many tests that it takes tens
-of minutes). It is written in AGENTS.md, "Branches and pull requests", with
-how the sessions apply it, by
-[#692](https://github.com/matsumotory/ngx_mruby/pull/692) on `next` and by
-[#693](https://github.com/matsumotory/ngx_mruby/pull/693) on `master`.
-On the same day the owner decided, in a session's question, with the option
-「vendor を対象から外して却下 (推奨)」, that CodeQL leaves out the vendored
-trees `mruby/` and `dependence/`, that the alerts of code scanning on them
-are dismissed as vendored upstream code, and that nothing is reported
-upstream for them; it is written in "CodeQL" in `docs/test/README.md` by
-the same pull requests.
-
-On 2026-10-31 the owner decided on the differences of mruby 4.1.0-rc2 in
-the `perf` comparison of #678, in two session's questions: first the option
-"GC の設定を先に試す (推奨)" (GC の増分が消えれば、残る auth の VM の分を受け入れてマージ),
-and after the measurements
-「一旦はmruby側の仕様という程度にしか言えないならそれをテストに反映しつつ注意点として記録しておくのが良さそうかな。使いやすさの時点でそういう実装になってるかもしれないし」.
-No GC setting removed the larger GC share without raising the work without
-the GC, so ngx_mruby keeps mruby's defaults; the accepted differences
-(`auth` +7.10% without GC, the GC share of the scenarios with Ruby) are
-written under "Known differences" in `docs/test/README.md` and in the entry
-of the bundled mruby in `docs/releases/v3.0.0.md` and `.ja.md` (#678), and
-the acceptance is recorded on #678. The owner then asked, on the same
-day: 「callgrindのテストはエラーにならんように調整しとかなね」 (adjust the
-callgrind comparison so that it does not report an error for this). A
-pull request to `next` compares against `next`, which has mruby 4.1; a
-comparison with a commit of `next` from before #678 still has mruby 4.0.0
-in its base. [#696](https://github.com/matsumotory/ngx_mruby/pull/696)
-adds `test/perf/accepted.txt`, which
-`test/perf/perf.rb` reads: `mruby-version 4.0 4.1 auth 8` shows `auth`
-within +8% without GC as `ok (accepted: ...)` when the base bundles mruby
-4.0.x and the head 4.1.x ("Known differences" in `docs/test/README.md`,
-and "Before a tag" in AGENTS.md). The comparison before the first
-pre-release of v3 has `v2.7.2`, with mruby 3.3.0, as its base; the file has
-no line for mruby 3.3 against 4.1, so its `WARN` and `FAIL` rows go to the
-owner.
-
-On 2026-10-31 the owner set a rule for reports to mruby, in a session's
-question: 「mruby側への報告は確定と明らかにどの観点でも修正すべきと判断でき、パッチをかけるものだけにしたい。ngx_mrubyの都合だけでの報告はしたくない」
-(report to mruby only a defect that is confirmed and that should clearly be
-fixed from every viewpoint, with a patch; nothing only for ngx_mruby's
-convenience). It is written in AGENTS.md, "Other repositories", on `next`
-and on `master` with the same text, by the next pull request that changes
-that section. Until then this row holds it.
-
-On 2026-10-04 the owner answered the recommendations of the analysis of the
-control flow of `Nginx::Async` with 「全部推奨通りでいこう、安全網から始めて」
-("go with all the recommendations, starting from the safety net"). Two of
-its decisions, (a) and (b), are not written in the plan or in the release notes yet,
-and a third, (c), is amended below:
-(a) `Nginx::Async.sleep` in a content handler is supported, so it does not
-raise and nginx waits for the timer; (b) a rewrite handler that ends with no
-output and no `Nginx.return` keeps the 2.x behavior on `master`, and on
-`next` the request goes on to the next phase as with `NGX_DECLINED`; (c)
-the rewrite of how resumed handlers end goes into `master` after 2.7.1. On
-2026-10-29 the owner amended (c), in a session's question, with the option
-"master は最小の直し、書き直しは next (推奨)": the rewrite lands on `next`,
-in the core stabilization of 3.0.0, and `master` gets only the minimal fix
-for the content handler sleep. The amendment of (c) is written in item 15 of
-section 7 and in the Pillar B row "One fiber lifecycle for HTTP and
-stream"; (a) and (b) are written in the plan when their work lands, under
-that row and under the row "Redesign response finalization per phase".
-(b) is in effect on `next` since
-[#720](https://github.com/matsumotory/ngx_mruby/pull/720), which writes it
-in that row. The rewrite of (c) is done on `next` by the core
-stabilization ([#715](https://github.com/matsumotory/ngx_mruby/pull/715),
-[#722](https://github.com/matsumotory/ngx_mruby/pull/722),
-[#728](https://github.com/matsumotory/ngx_mruby/pull/728)), except for the
-waits that start inside another mruby call (the row "What is left of the
-async resume rewrite" under "Queue").
-
-The other owner decisions of 2026-10-29, all in session's questions, are
-written in the plan: items 1 and 6 and 15 of section 7 (mruby 4.1.0-rc2 now,
-`auto-ssl` out of `next`, the agent proxy rows in `v3.0.0-alpha.1`, the
-parallel start of parts (a) and (c) of step 7, the subrequest 500, the fix of
-the empty output body filter in 2.7.3). Two are not written in the plan: the
-rule on the gems that the owner maintains is in AGENTS.md, "Other
-repositories", with the owner's words (#637 on `next`, #639 on `master`);
-and the body of the GitHub release v2.7.2 gets the section "Behavior
-changes: read before upgrading" in English and then in Japanese, option
-"足す (推奨)" (the session that prepared the release edits it with `gh release edit`).
-
-The two decisions of 2026-10-04 that were recorded here before are written
-where their rows said: the mruby steps in item 1 of section 7 of
-[the plan](proposals/v3-plan.md) (#561), and the "Why it changed" lines and
-the Japanese release notes in [docs/releases/README.md](releases/README.md)
-(#575).
-
-The owner's choice of 2026-11-02 on the terms for models, agents, their
-traffic and the AI gateway is written in section 7 of
-[the site proposal](proposals/site.md#7-decisions-2026-10-15) and in
-[the glossary](glossary.md). Its second choice of the same day, on how
-the Japanese pages write these terms (katakana, with identifiers in
-English) and on the home page heading, is written there too.
+- **2026-11-02, public records.** Public commits, PRs, issues and documents
+  contain only the relevant decision and technical requirements. Working
+  documents and handoffs, whether public or private, record intent, reasons,
+  constraints and decisions without quoting conversations or using attribution
+  to justify a conclusion. Do not copy
+  private conversation text, message identifiers or personal environment
+  details. Link an already-public decision when available. Existing public
+  git history is not rewritten without an explicit decision; any sensitive
+  historical content is reported privately.
+- **2026-11-02, homepage follow-up.** Review the entire page, including the
+  hero, section introductions, use cases, local trial steps, documentation
+  links and footer.
+  Shared styles give each content role a consistent readable width,
+  alignment and spacing. Continuous introductory prose stays in one column;
+  individual use-case articles may share a row. The four documentation
+  links form a compact ordinary list. Keep meaningful paragraphs, glossary
+  terms and technical explanations without promotional language. Inspect
+  the complete desktop and mobile pages independently; passing mechanical
+  checks alone does not establish visual quality. The local trial follows
+  prerequisites, startup, request, expected result and further instructions.
+  The homepage PR can progress independently of the master-to-next merge.
+- **2026-11-02, development coordination.** Codex continues PR preparation,
+  independent review, eligible merges, handoff maintenance, release
+  preparation and contributor work under AGENTS.md. Independent PRs may
+  progress in parallel with explicit ownership, remaining work, blockers and
+  next actions. Serialize dependencies, conflicting edits and competing
+  expensive checks; use agents where they shorten completion time without
+  duplicating work. Review and merge gates remain unchanged. Release
+  publication needs permission for that release;
+  advisory publication remains with the owner.
+- **2026-11-02, release publication.** After the release check and permission
+  for that release, the session publishes the release and its tag; the owner
+  publishes advisories. #731 and #732 record the procedure in AGENTS.md,
+  `docs/releases/README.md` and `docs/DEVELOPMENT.md`. The earlier permission
+  of 2026-10-29 applied to 2.7.2 only and was carried out by #624.
+- **2026-11-02, CI.** Local checks must be thorough; CI covers other build
+  environments and deployment without repeating local browser checks.
+  PRs run neither `site.yml` nor `site-v2.yml`. The push to `next` builds,
+  checks and deploys the site; a push to `master` dispatches that run.
+  `npm run check:ci` supplies the local site and browser checks. A changed
+  base requires another PR run only when both sides changed code or tests.
+  The build matrix, sanitizers, valgrind and performance lane remain. #737
+  and #739 implement this decision. The category comment remains in Queue.
+- **2026-11-02, terminology.** Models, agents, their requests and the AI
+  gateway use the terms in the glossary and section 7 of the site design.
+  Japanese uses katakana for the glossary terms and preserves identifiers
+  in English. The homepage heading follows the same terms.
+- **2026-11-01, site implementation.** Use Astro and repository-owned
+  components in place of Starlight, as section 5.4 of the site design
+  describes (#700, #708, #713). Work that can be completed together is not
+  split into unnecessary stages. The mobile layout pattern is 402px;
+  root sizing follows section 4.4 of that design.
+- **2026-11-01, build coverage and next work.** Code/test PRs run four
+  standard matrix cells: nginx mainline static, stable dynamic, the
+  sanitizer cell and the valgrind cell. Nightly runs, tag runs and the
+  pre-tag check with `full-matrix` retain full coverage (#702, #704).
+  The harness extension for multiple workers and reload precedes the
+  core stability work. Discussions are enabled and the wiki is disabled.
+- **2026-11-01, handler semantics.** Q1 to Q6 are recorded in section 9 of
+  [the core stabilization proposal](proposals/archive/core-stabilization.md)
+  (#710): support the specified waits, apply redirects at handler completion,
+  preserve HTTP/1.x continuation after client close and discard a waiting
+  fiber without running ensure when its request ends, execute the UDP
+  handler once while it waits, raise RuntimeError for sub_request inside
+  mruby_set while preserving sleep, and isolate handler results so a
+  server rewrite without a result advances to the next phase.
+- **2026-10-31, local verification.** Test locally before making a PR ready;
+  CI is not the place to discover avoidable implementation errors (#692,
+  #693). CodeQL excludes vendored upstream trees, whose existing alerts
+  were dismissed as upstream code rather than reported without a confirmed
+  defect and patch.
+- **2026-10-31, mruby performance.** Keep mruby's default GC settings after
+  the measurements failed to remove the extra GC work without increasing
+  other work. The accepted mruby 4.1 differences are recorded in #678 and
+  "Known differences" in the test guide. #696 implements the specific
+  4.0-to-4.1 auth allowance in `test/perf/accepted.txt`; it does not authorize
+  a 3.3-to-4.1 allowance before the first v3 tag. Other WARN/FAIL results
+  still require the owner's decision.
+- **2026-10-31, upstream reports.** Report a confirmed mruby defect only
+  when it warrants an upstream fix beyond ngx_mruby's convenience and a
+  patch can be provided. This belongs in AGENTS.md's other-repository rules
+  when that subsection is next updated.
+- **2026-10-31, completed 2.7.3 publication.** The separately published
+  stream advisory and the regression fix of #698 shipped with 2.7.3.
+  The published releases and advisories are linked in State.
+- **2026-10-29, maintained gems.** Update owner-maintained gems when that
+  resolves compatibility; removal is acceptable when an underlying library
+  is no longer maintained. AGENTS.md records this rule (#637, #639).
+- **2026-10-29, v3 scope.** The decisions on mruby 4.1.0-rc2, removal of
+  auto-ssl from next, agent-proxy work, subrequest empty responses and empty
+  output filters are in items 1, 6 and 15 of section 7 of the v3 plan.
+  GitHub releases include the behavior changes in English and Japanese.
+  HANDOFF remains English with a Japanese notice.
+- **2026-10-04, async behavior, amended 2026-10-29.** Support sleep in a
+  content handler. On next, a rewrite handler with neither output nor an
+  explicit result proceeds to the next phase (#720); master keeps the
+  compatible 2.x behavior. The broader resume rewrite belongs on next,
+  while master receives the minimum stability fixes. #715, #722 and #728
+  implement the main rewrite; waits inside another mruby call remain queued.
+  The plan is updated as the remaining decisions are implemented.
+- **Earlier recorded decisions.** The mruby steps and bilingual
+  "Why it changed" entries are recorded in the v3 plan and release-note
+  guide (#561, #575). The Nginx::Var method-lookup and introspection choice
+  is recorded in its archived proposal and v3 notes (#610). The master
+  performance lane brings measurement and CI without Nginx::Debug (#601).
+  The selected site specimens are recorded in the site design (#607).
 
 ## Work in progress
 
@@ -346,8 +253,8 @@ English) and on the home page heading, is written there too.
   `NOT_TRANSLATED_YET` in `site/scripts/lib/site.mjs`: the contributing
   page, development, the test guide, the releases page, security and the
   trust boundary. The handoff page stays in English with a Japanese
-  notice: on 2026-10-29 the owner chose 「英語のまま注記つき (推奨)」 in a
-  session's question (Q2 in section 7 of `docs/proposals/site.md`), so
+  notice, as the owner decided on 2026-10-29 (Q2 in section 7 of
+  `docs/proposals/site.md`), so
   `NOT_TRANSLATED_YET` keeps only `contributing/handoff`.
   [#703](https://github.com/matsumotory/ngx_mruby/pull/703) (base
   `master`, merged as `6eae5a2df`) rewrote the Japanese 2.x release notes.
@@ -372,21 +279,22 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The comment of `test/ci/changes.sh` on the categories `docs`, `site` and `examples`, which is the same on both branches, still describes the CI before the decisions of 2026-11-02 on CI (#737 on `next`, #739 on `master`, which left the file as it was) | `master` and `next` | The next pull request that touches `test/ci/` |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge of `master` at `0f865ed4a` (#704, #703, #716, the 2.x form of the fix of GHSA-xjh6-6vgm-56wj, #731) is [#734](https://github.com/matsumotory/ngx_mruby/pull/734); the next merge brings what `master` gains after it |
-| The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. To do: a pull request to `master` that changes the wording of the heading by a few characters, in the release notes and in the template of `docs/releases/README.md` | `master` (reaches `next` by the merge) | Ready to start |
-| Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. Decided on 2026-10-29 (option "500 のまま (推奨)"): 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge through `0f865ed4a` is [#734](https://github.com/matsumotory/ngx_mruby/pull/734). Codex is validating `287dda06f` (#739, #740 and #745) on `codex/merge-master-275`; the release-note wrapping correction is merged in #745 |
+| The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | In progress independently on `codex/home-shared-layout` |
+| The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745; included in the current master-to-next merge |
+| Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
 | Site: steps 1 to 4, 6 and 7 are merged (#591, #607, #614, #617–#623, #626, #629–#632, #653–#657), and the site is deployed from `next`. Step 5, the Japanese pages, is merged (#705 for six pages, #703 for the 2.x release notes on `master`); the handoff page stays English with a notice, and `NOTES_ONLY` of `check-japanese-lines.mjs` still lists four release notes (the subsection "Japanese pages of the site" of "Work in progress") | `next` for `site/`; `master` for 2.x sources | Still open: the emptying of `NOTES_ONLY` once `master` is merged into `next`; the site on Astro without Starlight (5.4 of the site proposal, #700, the owner's decision of 2026-11-01), whose first layer, the own shell beside Starlight behind `NGX_MRUBY_SITE_SHELL=own`, is merged in #708, and whose rest is #713 (from a Codex session, taken over by Claude Code for the browser acceptance), which also changes the iPhone width to 402px with the root size of 4.4; the 3.x development banner of 3.4; and the observability and certificate-lookup sample prerequisites of #619. Q9 is done (Discussions on, wiki off, 2026-11-01) |
 | nginx-tests with the modules that its skipped files need: a build with the options of `test.sh` and `--with-http_v2_module`, `--with-http_v3_module`, `--with-stream_ssl_module`, `--with-mail` and the other modules that "Results of nginx-tests" in `docs/test/README.md` lists (in the CI run of #602, 189 of the 209 skipped files need a module that `test.sh` does not build), with and without ngx_mruby, in the `nginx-tests` workflow | `next` | Ready to start: #602 is merged |
 | nginx-tests with ngx_mruby code configured: runs that add handlers or filters with code for every request through `TEST_NGINX_GLOBALS_HTTP` (the Pillar E row of the plan), compared with the run without code. The pull request decides which code; since [#720](https://github.com/matsumotory/ngx_mruby/pull/720), a rewrite handler that ends without `Nginx.return` goes on to the next phase on `next` | `next` | Ready to start: #602 is merged |
 | Test harness rewrite (step 2 of section 6 of the plan; Pillar E): [#635](https://github.com/matsumotory/ngx_mruby/pull/635) (merged, `c4e6ac6cc`) made `test.sh` stop only the nginx that it started, by its pid, with no `killall` or `pkill`, and send SIGTERM again while the single nginx process still runs, because that process can miss a SIGTERM that arrives right before it waits for events (the run at `7926f72`, where nginx stayed in `epoll_wait()` for 20 minutes after it logged the SIGTERM: "Stopping nginx" in `docs/test/README.md` has the cause and the measurements). [#641](https://github.com/matsumotory/ngx_mruby/pull/641) (merged, `be559a017`) added `TEST_SH_PORT_OFFSET`, which moves every port of the suite, so that two checkouts can run `test.sh` at the same time ("Ports" in `docs/test/README.md`). [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added nginx with `master_process on` and several workers, and a reload in the middle of a case: `test/t/cases/_workers.rb` starts such an nginx from `test/conf/workers/`, and `test/t/cases/workers.rb` checks that each of four workers answers from an mrb_state of its own, and that across a SIGHUP the old workers finish an `Nginx::Async.sleep` and an `Nginx::Stream::Async.sleep` in flight while the new configuration answers ("Several workers and reloads" in `docs/test/README.md`). Still to do, in pull requests of their own: requests from CRuby instead of the client built into the test mruby for the other cases, and HTTP/2 and HTTP/3 clients. A should fix of the review of #635 waits for the pull request that next changes `test/build_release.sh`, an input of the `perf` job: its comment still says that `test.sh` kills every running nginx. The readiness wait of #593 is the first part, on `next` since the merge of `master` at `6b27f08da` | `next` | Several workers and reloads: done by [#706](https://github.com/matsumotory/ngx_mruby/pull/706) (decision (3) of 2026-11-01). Requests from CRuby and the HTTP/2 and HTTP/3 clients: ready to start |
-| CI runs only the jobs that a change needs: done on both branches by [#676](https://github.com/matsumotory/ngx_mruby/pull/676), [#685](https://github.com/matsumotory/ngx_mruby/pull/685), [#686](https://github.com/matsumotory/ngx_mruby/pull/686) and [#692](https://github.com/matsumotory/ngx_mruby/pull/692) on `next`, and [#679](https://github.com/matsumotory/ngx_mruby/pull/679), [#690](https://github.com/matsumotory/ngx_mruby/pull/690) and [#693](https://github.com/matsumotory/ngx_mruby/pull/693) on `master`; the owner's decisions and rules are in AGENTS.md and `docs/test/README.md`. Left: a pull request to `master` that gives it the lines of `test/ci/changes.sh` and `test/ci/changes_test.sh` that `next` has (on `master`, a change of `test/soak/mock_llm_test.rb` alone runs that check only with the label `perf`); the first run of the whole build matrix through `fromJSON` (should fix 4 of [the review of #686](https://github.com/matsumotory/ngx_mruby/pull/686#issuecomment-6541409852)), which the nightly run under valgrind makes; and from [the review of #693](https://github.com/matsumotory/ngx_mruby/pull/693#issuecomment-6542620420): local commands for the build of the 2.x pages in "The 2.x pages of the site" of `docs/test/README.md` on `master` (should fix 1 and 2), and on both branches, a sentence in "Required status check" that a draft run queued after the ready run cancels it in `site-v2`, `codeql` and `zizmor`, or a concurrency group that includes the draft state (should fix 4). Four cells: the owner's decision of 2026-11-01 under "Decisions", in a session's question, with the option 「4 cell に減らす (推奨)」, that a pull request that changes the code runs four cells of the build matrix: done on both branches by [#702](https://github.com/matsumotory/ngx_mruby/pull/702) on `next` (`bf1b742b7`) and [#704](https://github.com/matsumotory/ngx_mruby/pull/704) on `master` (`166341b93`), with `build` `standard` of `test/ci/changes.sh`; every cell runs only nightly, on a tag, in the check pull request before a tag (the label `full-matrix`, which exists in the repository) and on "Run workflow" without `base` | `master`, `next` | Ready to start |
+| CI runs only the jobs that a change needs: done on both branches by [#676](https://github.com/matsumotory/ngx_mruby/pull/676), [#685](https://github.com/matsumotory/ngx_mruby/pull/685), [#686](https://github.com/matsumotory/ngx_mruby/pull/686) and [#692](https://github.com/matsumotory/ngx_mruby/pull/692) on `next`, and [#679](https://github.com/matsumotory/ngx_mruby/pull/679), [#690](https://github.com/matsumotory/ngx_mruby/pull/690) and [#693](https://github.com/matsumotory/ngx_mruby/pull/693) on `master`; the owner's decisions and rules are in AGENTS.md and `docs/test/README.md`. Left: a pull request to `master` that gives it the lines of `test/ci/changes.sh` and `test/ci/changes_test.sh` that `next` has (on `master`, a change of `test/soak/mock_llm_test.rb` alone runs that check only with the label `perf`); the first run of the whole build matrix through `fromJSON` (should fix 4 of [the review of #686](https://github.com/matsumotory/ngx_mruby/pull/686#issuecomment-6541409852)), which the nightly run under valgrind makes; and from [the review of #693](https://github.com/matsumotory/ngx_mruby/pull/693#issuecomment-6542620420): local commands for the build of the 2.x pages in "The 2.x pages of the site" of `docs/test/README.md` on `master` (should fix 1 and 2), and on both branches, a sentence in "Required status check" that a draft run queued after the ready run cancels it in `site-v2`, `codeql` and `zizmor`, or a concurrency group that includes the draft state (should fix 4). Four cells: code-changing pull requests run four cells of the build matrix: done on both branches by [#702](https://github.com/matsumotory/ngx_mruby/pull/702) on `next` (`bf1b742b7`) and [#704](https://github.com/matsumotory/ngx_mruby/pull/704) on `master` (`166341b93`), with `build` `standard` of `test/ci/changes.sh`; every cell runs only nightly, on a tag, in the check pull request before a tag (the label `full-matrix`, which exists in the repository) and on "Run workflow" without `base` | `master`, `next` | Ready to start |
 | nginx floor for v3 (item 2 of section 7 of the plan): drop the cells for nginx 1.26.3 and 1.28.3 from the `build` matrix of `.github/workflows/test.yml` and document the floor of 1.30 stable and 1.31 mainline | `next` | Ready to start: #601's change to `.github/workflows/test.yml` is on `next` since the merge of `master` at `6b27f08da` |
 | OpenSSL 3.5 and 4.0 (item 3 of section 7 of the plan): cells for OpenSSL 3.5 as the baseline and 4.0 in `.github/workflows/test.yml`, which builds `1.1.1w` today; drop 1.1.1 and 3.0, and check ENGINE and the removed APIs in ngx_mruby and the gems | `next` | Ready to start: #601's change to `.github/workflows/test.yml` is on `next` since the merge of `master` at `6b27f08da` |
 | `build_config.rb` rewrite with explicit gems (step 3 of section 6; Pillar A): `iij/mruby-env` and `iij/mruby-process` replaced by core gems, the choice between core `mruby-regexp` and `mruby-onig-regexp` (item 1 of section 7 keeps onig-regexp for 3.0), `monochromegane/mruby-secure-random` and `iij/mruby-digest` replaced, and `mruby-vedis` and `mruby-localmemcache` out of the default build | `next` | Ready to start: #606, which edits the same file, and #678 (mruby 4.1.0-rc2, whose core gems replace `env` and `process`) are merged |
 | mruby 4.1.0 (step 3 of section 6; item 1 of section 7). The owner decided on 2026-10-29 that `next` bundles `4.1.0-rc2` now and moves to 4.1.0 in a small subtree pull request when it is tagged. `next` bundles `4.1.0-rc2` since [#678](https://github.com/matsumotory/ngx_mruby/pull/678). The step to 4.1.0: `./update-mruby-subtree 4.1.0`, `vendor-mruby-prism` if the gitlink of Prism moves, the lock, and the release notes | `next` | The tag `4.1.0` of mruby |
-| Step 4 of section 6 of the plan, the core stability work of Pillar B (execution context, response finalization, fiber lifecycle, common layer, headers and variables, and the two agent proxy rows), then `v3.0.0-alpha.1` | `next` | The core stabilization is done: [the core stabilization proposal](proposals/archive/core-stabilization.md) was implemented in [#712](https://github.com/matsumotory/ngx_mruby/pull/712), [#714](https://github.com/matsumotory/ngx_mruby/pull/714), [#715](https://github.com/matsumotory/ngx_mruby/pull/715), [#720](https://github.com/matsumotory/ngx_mruby/pull/720), [#722](https://github.com/matsumotory/ngx_mruby/pull/722), [#727](https://github.com/matsumotory/ngx_mruby/pull/727), [#728](https://github.com/matsumotory/ngx_mruby/pull/728) and [#735](https://github.com/matsumotory/ngx_mruby/pull/735) (the last on 2026-11-02), is archived, and the model is in [How a handler waits](DEVELOPMENT.md#how-a-handler-waits-the-record-of-its-fiber) of `docs/DEVELOPMENT.md`. Left in this step: the Pillar B rows of the plan on the execution-context type, on headers, on `Nginx::Var`, on the filter handler pointers and on the table-driven directives, the common layer beyond the fiber (code loading, upstream switching, error logging, the duplicate directive check), the rest of the async resume rewrite (the row below), and the two agent proxy rows (log handlers before `access_log`, and `mruby_variable`). Started by: 本人の選択 2026-11-01、問い「v3 の次の作業を何から始めますか」に対して「ハーネスの試験の拡張 (推奨)」、その選択肢の文「master_process on、複数の worker、reload を test.sh で試験できるようにする。その後にコアの安定化 (fiber の寿命と応答の終了の作り直し) へ」 (the owner chose to extend the harness so that `test.sh` tests `master_process on`, several workers and reloads, and then to go on to the core stabilization, the rework of the fiber lifetime and of the end of the response). [#706](https://github.com/matsumotory/ngx_mruby/pull/706) made that extension; the requests from CRuby and the HTTP/2 and HTTP/3 clients of the row above for the test harness rewrite stay there |
+| Step 4 of section 6 of the plan, the core stability work of Pillar B (execution context, response finalization, fiber lifecycle, common layer, headers and variables, and the two agent proxy rows), then `v3.0.0-alpha.1` | `next` | The core stabilization is done: [the core stabilization proposal](proposals/archive/core-stabilization.md) was implemented in [#712](https://github.com/matsumotory/ngx_mruby/pull/712), [#714](https://github.com/matsumotory/ngx_mruby/pull/714), [#715](https://github.com/matsumotory/ngx_mruby/pull/715), [#720](https://github.com/matsumotory/ngx_mruby/pull/720), [#722](https://github.com/matsumotory/ngx_mruby/pull/722), [#727](https://github.com/matsumotory/ngx_mruby/pull/727), [#728](https://github.com/matsumotory/ngx_mruby/pull/728) and [#735](https://github.com/matsumotory/ngx_mruby/pull/735) (the last on 2026-11-02), is archived, and the model is in [How a handler waits](DEVELOPMENT.md#how-a-handler-waits-the-record-of-its-fiber) of `docs/DEVELOPMENT.md`. Left in this step: the Pillar B rows of the plan on the execution-context type, on headers, on `Nginx::Var`, on the filter handler pointers and on the table-driven directives, the common layer beyond the fiber (code loading, upstream switching, error logging, the duplicate directive check), the rest of the async resume rewrite (the row below), and the two agent proxy rows (log handlers before `access_log`, and `mruby_variable`). Started by the owner's decision of 2026-11-01 to extend the harness so that `test.sh` tests `master_process on`, several workers and reloads, and then to rework the core fiber lifetime and response completion. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) made that extension; the requests from CRuby and the HTTP/2 and HTTP/3 clients of the row above for the test harness rewrite stay there |
 | nginx-tests required: the `nginx-tests` workflow records its results and fails only when a build, the fetch of the suite or `prove` fails. In the runs of 2026-10-28 and 2026-10-29 the build with ngx_mruby and the build without it have the same counts (511 files, 302 passed, 0 failed, 209 skipped). To do: the job fails when the build with ngx_mruby fails a file that the build without it passes, and the job joins the `needs` of `ci-ok` | `next` | Ready to start: the counts are the same in every run since #602 |
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` (the sentences that call the job advisory and say that a `FAIL` does not block a merge, under "Performance comparison with callgrind") aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR` | `next`, then `master` | Ready to start |
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |
@@ -402,7 +310,7 @@ Taken up and still open: none.
 | The generated reference of the site (Pillar F of the plan): the directives from the `ngx_command_t` tables, the Ruby API with YARD and yard-mruby, the C API with Doxygen. `site/scripts/check-reference.mjs` checks, among other things, that each directive name has a heading in `docs/directives/README.md`; the pages are written by hand | `next` | Ready to start; no step of section 6 of the site proposal produces it yet |
 | The "Before" line of the entry on `mruby_set` values that are not Strings in [the 3.0.0 release notes](releases/v3.0.0.md) limits the end of the worker process to the handler that does not wait. The review of [#738](https://github.com/matsumotory/ngx_mruby/pull/738) inferred from the 2.x source (`ngx_mrb_var_set_vector`) that a `to_s` returning something other than a String can end the worker after `Nginx::Async.sleep` too; nobody has run it on 2.x | `next` | Ready to start: run the case on `master` (2.7.4), then write the "Before" line of `docs/releases/v3.0.0.md` and `.ja.md` from the result |
 | The documentation group of the site's footer (4.10 of [the site proposal](proposals/site.md)) links the other version's documentation (「2.xのドキュメント」) but not the documentation of the version that the page describes. A should-fix item of the review of [#738](https://github.com/matsumotory/ngx_mruby/pull/738) | `next` | Ready to start: add the link to `/docs/` (`/ja/docs/`) on the 3.x pages, or name the 2.x link as the stable version, and say so in 4.10 |
-| The 2.x form of the protected conversion of an `mruby_set` value ([#735](https://github.com/matsumotory/ngx_mruby/pull/735) on `next`): convert the value under `mrb_protect_error`, and a `to_s` that is missing, raises or returns a non-String ends the request with 500 instead of reading the result unchecked; a regression test for the three cases, and the entry under "Behavior changes" of `docs/releases/v2.7.5.md` and `.ja.md`. The owner chose on 2026-11-02 (05:25 JST) to start it later ("後にする (キューに書く)"). | `master` | The owner's go |
+| The 2.x form of the protected conversion of an `mruby_set` value ([#735](https://github.com/matsumotory/ngx_mruby/pull/735) on `next`): convert the value under `mrb_protect_error`, and a `to_s` that is missing, raises or returns a non-String ends the request with 500 instead of reading the result unchecked; a regression test for the three cases, and the entry under "Behavior changes" of `docs/releases/v2.7.5.md` and `.ja.md`. The owner deferred this work on 2026-11-02 (05:25 JST). | `master` | The owner's go |
 | On 2.x, a rewrite handler that sleeps in `Nginx::Async.sleep` and returns `Nginx::DECLINED`, followed by an access handler of the same location that calls `Nginx::Async::HTTP.sub_request` and declines, leaves the request without a response (seen by the reviewer of [#740](https://github.com/matsumotory/ngx_mruby/pull/740) before and after its fix; without the sleep the answer is immediate). Assess on `next` first, where the fiber record of [#714](https://github.com/matsumotory/ngx_mruby/pull/714), [#715](https://github.com/matsumotory/ngx_mruby/pull/715) and [#722](https://github.com/matsumotory/ngx_mruby/pull/722) may already cover it; if 2.x still hangs, a fix with its regression test | `next`, then `master` if needed | Ready to start |
 
 ## How a session continues

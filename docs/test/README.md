@@ -192,7 +192,7 @@ table below.
 |---|---|---|
 | `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below), `soak` and `perf`. `nginx-tests`, `examples` and `codeql` by their own path filters |
 | `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `soak` when `soak` is `true`; `perf` compares when `perf` is `true` |
-| `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | No job on `next`: the author runs `npm run check:ci` in `site/` ([Site CI](#site-ci)), and `site.yml` checks the merge on the push to `next`. On `master`, `site-v2` (every ready pull request) |
+| `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | No job on `next`: the author runs `npm run check:ci` in `site/` ([Site CI](#site-ci)), and `site.yml` checks the merge on the push to `next`. On `master`, the author checks the 2.x pages locally ([The 2.x pages of the site](#the-2x-pages-of-the-site)) |
 | `site` | `site/`, `.github/workflows/site.yml` | No job: as for `docs` |
 | `examples` | `examples/` | `examples`; the site as for `docs` |
 | `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, these two included); `codeql` for `.github/workflows/` and `.github/codeql/` |
@@ -207,10 +207,7 @@ The four standard cells build each link mode and each line of nginx
 | the sanitizer cell | 1.31.8 | static | the installed OpenSSL | built with AddressSanitizer and UndefinedBehaviorSanitizer ([Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer](#running-the-tests-under-addresssanitizer-and-undefinedbehaviorsanitizer)) |
 | the cell under valgrind | 1.31.8 | static | the installed OpenSSL | under valgrind ([valgrind in CI](#valgrind-in-ci)) |
 
-The owner decided on 2026-11-01, in a session's question with the option
-「4 cell に減らす (推奨)」 ("reduce to 4 cells (recommended)"), that a pull
-request runs these four cells instead of every cell ("Decisions" in
-[docs/HANDOFF.md](../HANDOFF.md) has the owner's words). Every cell
+Pull requests run these four cells. Every cell
 builds OpenSSL 1.1.1w and installs it before it builds nginx; the first cell builds it into nginx as well
 (`--with-openssl-src`), the path of `configure.in` and `Makefile.in` that
 the cell under valgrind, the same nginx and module against the installed
@@ -402,24 +399,58 @@ commit removes stays in the history: remove it from the commit that added it
 
 The site ngx.mruby.org is built on `next` (`site/` there, and
 `docs/proposals/site.md` there for the plan). Its 2.x pages under `/v2/`
-are built from `docs/` on `master`. Two workflows serve them:
+are built from `docs/` on `master`. A pull request to `master` runs no
+job for them: local verification covers the site before a PR is ready,
+while the push to `next` builds and deploys it. The author of a pull request
+that changes `docs/`, the Markdown files at the top, or a file that they
+link to, runs these checks locally before marking it ready, and quotes
+them under "How was this tested":
 
-- `.github/workflows/site-v2.yml` runs on every pull request to `master`,
-  without a path filter, since the 2.x pages link to files anywhere in the
-  repository (`.travis.yml`, `nginx_version`, the workflows). It checks
-  out `next` beside the pull request, builds the site with `site/` and
-  the 3.x pages of `next` and the 2.x pages from the pull request's
-  `docs/` (`node site/scripts/build-v2.mjs --tree DIR` of `next`), and
-  fails on a relative link or anchor of the sources of the
-  2.x pages that does not resolve, on a link to a file that git does not
-  track, on a broken link of the built site, on a 2.x page without its
-  banner, and when the search of a version shows pages of the other. The
-  built site is the workflow artifact `site-v2`.
+- The relative links and anchors of the Markdown files that git tracks,
+  with `check_links.py` of `next`, which `master` does not have. From the
+  top of the checkout of the pull request, with `T` a directory of your
+  own outside the repository or under `.claude/tmp/`:
+
+  ```console
+  $ git fetch origin next
+  $ git show origin/next:site/scripts/check_links.py > "$T/check_links.py"
+  $ git ls-files -z -- '*.md' ':!:mruby/' ':!:dependence/' | xargs -0 python3 "$T/check_links.py" .
+  ```
+
+- The 2.x pages built from the pull request: in a checkout of `next`,
+  after `npm ci --ignore-scripts` and `npx playwright install chromium
+  webkit` in its `site/`, `NGX_MRUBY_V2_TREE=DIR npm run check:ci` with
+  `DIR` the top of the checkout of the pull request ("Site CI" in
+  `docs/test/README.md` on `next`). It builds the 3.x pages of `next` and
+  the 2.x pages from `DIR`, and runs the checks of the site on both, the
+  browser checks among them; it compiles the Ruby blocks of the pages
+  with `MRBC` or `mruby/build/host/bin/mrbc` of the bundled mruby; when
+  neither exists, it says that it skipped them. It prints the commit of `next`; quote it
+  with the head of the pull request. The generator stops
+  on a link of `docs/` to a file that git does not track, and the checks
+  fail on a broken link of the built site, on a 2.x page without its
+  banner, and when the search of a version shows pages of the other.
+
+Two workflows here serve the 2.x pages:
+
 - `.github/workflows/site-dispatch.yml` runs on every push to `master`,
   and starts `site.yml` on `next` with `gh workflow run site.yml --ref
-  next`, so that the site is built again with the new 2.x pages. It fails
-  when GitHub refuses the dispatch or it cannot name the run that the
-  dispatch started.
+  next`, so that the site is built again with the new 2.x pages, checked,
+  and deployed only when the checks pass. It fails when GitHub refuses
+  the dispatch or it cannot name the run that the dispatch started.
+- `.github/workflows/site-v2.yml` runs only on "Run workflow" (`gh
+  workflow run site-v2.yml --ref <branch>`). It checks out `next` beside
+  the branch, builds the site with `site/` and the 3.x pages of `next`
+  and the 2.x pages from the branch's `docs/` (`node
+  site/scripts/build-v2.mjs --tree DIR` of `next`), and runs the link,
+  banner and search checks above. The built site is the workflow
+  artifact `site-v2`. It does not run on pull requests or pushes: on a
+  push, the run of `site.yml` that `site-dispatch.yml` starts builds and
+  checks the same 2.x pages. That run checks the links of the Markdown
+  files of `next`, not of `master`: the links of the Markdown files of
+  `master` that the site does not render (`AGENTS.md`, for example, whose
+  links the generator turns into GitHub URLs) are checked only by the
+  author's run of `check_links.py` above.
 
 Neither is in the `needs` of `ci-ok`.
 
@@ -2428,11 +2459,8 @@ check this compatibility behavior; `npm run check:ci` also runs it.
 
 `.github/workflows/site.yml` runs on every push to `next` and on
 `workflow_dispatch` (`site-dispatch.yml` of `master` starts it after every
-push to `master`), not on pull requests. The owner decided on 2026-11-02
-that CI is not relied on for what runs locally, with the option
-「PR では流さず、next への push の時だけ (推奨)」 ("not on pull requests,
-only on the push to `next` (recommended)"); "Decisions" of
-[docs/HANDOFF.md](../HANDOFF.md) quotes the owner's words.
+push to `master`), not on pull requests. Local site checks cover the PR
+head before it is ready; deployment validates the merged tree.
 
 | Job | What it does |
 |---|---|
@@ -2486,9 +2514,7 @@ pull request of its own (condition 2 of "Review and merge" in
 The layout and wrapping checks of the site (`check-styles.mjs`,
 `check-japanese-lines.mjs`) measure two patterns only, PC at full screen
 (1440px, Chromium) and iPhone Safari (402px, WebKit); no other widths,
-browsers or font combinations are added to the checks. The owner's words
-(2026-11-01):
-「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
+browsers or font combinations are added to the checks.
 `site/scripts/lib/patterns.mjs` holds them.
 
 The badges of the strip of the four index pages (the workflows `test`,
