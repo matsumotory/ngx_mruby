@@ -104,9 +104,9 @@ html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
 .protocol-list a { display: inline-block; margin-top: var(--space-4); }
 /* The last section ends at its text: the footer's 48 px stand between
    them (4.10) */
-.home-v3 .v3-docs { padding-top: var(--space-7); border-top: 1px solid var(--color-scene-edge); }
+.home-v3 .v3-docs { padding-top: 0; }
 .documentation-links { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5) var(--space-7); margin-top: var(--space-5); }
-.documentation-links a { display: block; padding-block: var(--space-3); border-bottom: 1px solid var(--color-border); }
+.documentation-links a { display: block; padding-block: var(--space-3); }
 @keyframes route-confirm { 0%, 100% { background-color: transparent; } 45% { background-color: var(--color-scene-warm); } }
 .home-v3 .route-pulse { animation: route-confirm 180ms ease-out; }
 .home-v3 .route-pulse[data-step="rule"] { animation-delay: 180ms; }
@@ -136,20 +136,19 @@ html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
 .home-v3 .expressive-code pre { box-sizing: border-box; width: 100%; max-width: 100%; padding-inline: 0; }
 .home-v3 .expressive-code pre.wrap > code { flex: 1 1 auto; width: 100%; min-width: 0; }
 
-/* Each technical case has a scan column for its operation and a reading column
-   for the actor, request path and limits. Mobile keeps the same document order. */
-.direction-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-8); margin-top: var(--space-7); }
-/* The scan column is 24rem: at a third of the 1032 px list (333 px), the
-   Japanese headings of 18 px broke before their last one or two characters. */
-.home-v3 .direction-usecase { display: grid; grid-template-columns: minmax(0, 24rem) minmax(0, 1fr); gap: var(--space-6); margin: 0; padding-top: var(--space-6); border-top: 1px solid var(--color-border); }
+/* Each use case keeps its heading, status and explanation together. Two
+   complete articles share a row on desktop; mobile follows document order. */
+.home-v3 .directions-context { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--space-7); margin-top: var(--space-5); }
+.directions-context > div { min-width: 0; margin: 0; }
+.home-v3 .directions-context p { color: var(--color-text-muted); margin: 0; }
+.home-v3 .directions-context p + p { margin-top: var(--space-4); }
+.direction-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8) var(--space-7); margin-top: var(--space-8); }
+.home-v3 .direction-usecase { min-width: 0; margin: 0; }
 .direction-usecase > * { min-width: 0; margin: 0; }
 .direction-list h3 { margin: 0; }
-/* The status badge has a line of its own under the heading: inside the
-   heading's line, a narrow column moved the badge alone onto a last line. */
-.direction-list .direction-status { margin: var(--space-2) 0 0; color: var(--color-text); }
-.direction-list .direction-body { max-width: 46rem; }
+.direction-list .direction-status { margin: var(--space-2) 0 var(--space-4); color: var(--color-text); }
 .direction-list p { color: var(--color-text-muted); margin: 0 0 var(--space-4); }
 @media (max-width: 800px) {
-  .direction-list { gap: var(--space-7); }
-  .home-v3 .direction-usecase { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+  .home-v3 .directions-context { grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
+  .direction-list { grid-template-columns: minmax(0, 1fr); gap: var(--space-7); margin-top: var(--space-7); }
 }

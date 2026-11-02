@@ -20,7 +20,7 @@ for (const route of routes) {
 }
 ---
 <figure class="v3-flow" data-route="a" aria-label={ja ? 'アプリのリクエストをnginxとRubyで振り分け、APIの応答をアプリへ返す流れ' : 'Your app sends a request; nginx and Ruby route it; the API response returns to your app.'}>
-  <figcaption>{ja ? '通信しない表示例です。同じmockを下の手順で実行できます。キーはすべてデモ用です。' : 'An illustration, not a live request. Run the same mock below. All keys shown are demonstration values.'}</figcaption>
+  <figcaption>{ja ? '通信しない表示例です。同じモックを下の手順で実行できます。キーはすべてデモ用です。' : 'An illustration, not a live request. Run the same mock below. All keys shown are demonstration values.'}</figcaption>
   <div class="route-controls" role="group" hidden aria-label={ja ? '送信するモデルを選ぶ' : 'Choose the requested model'}><button type="button" data-model="a" aria-pressed="true">{ja ? 'モデルA' : 'Model A'}</button><button type="button" data-model="b" aria-pressed="false">{ja ? 'モデルB' : 'Model B'}</button></div>
   <ol class="routing-workspace">
     <li class="flow-step request-strip" data-step="request">
@@ -32,7 +32,7 @@ for (const route of routes) {
       <div class="route-source-all"><Code code={mapping} lang="ruby" title="route.rb" /></div>
     </li>
     <li class="flow-step flow-providers" data-step="response">
-      <div class="flow-description"><h3 class="flow-title" data-upstream-title>{ja ? 'API Aの応答を返す' : "Relay API A's response"}</h3><p>{ja ? 'nginxがAPI用のキーで転送し、応答をアプリへ中継します。下のmockは転送先とキーの置換結果を返します。モデルの生成結果ではありません。' : 'nginx forwards with the API key and relays the response to your app. This mock reports the destination and credential replacement, not generated text.'}</p>
+      <div class="flow-description"><h3 class="flow-title" data-upstream-title>{ja ? 'API Aの応答を返す' : "Relay API A's response"}</h3><p>{ja ? 'nginxがAPI用のキーで転送し、応答をアプリへ中継します。下のモックは転送先とキーの置換結果を返します。モデルの生成結果ではありません。' : 'nginx forwards with the API key and relays the response to your app. This mock reports the destination and credential replacement, not generated text.'}</p>
         {routes.map(route => <div class="provider-node" data-provider={route.model} hidden={route.model !== 'a'}><code>{route.backend}</code><code class="provider-credential">Authorization: {route.credential}</code></div>)}
       </div>
       <div class="route-response" aria-live="polite" aria-atomic="true">{routes.map(route => <div class="route-result" data-response={route.model} hidden={route.model !== 'a'}><Code code={route.output} lang="json" title={ja ? '200 · アプリに届く応答' : '200 · Response received by your app'} /></div>)}</div>

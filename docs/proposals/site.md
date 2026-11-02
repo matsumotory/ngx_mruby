@@ -2625,6 +2625,29 @@ a passing mechanical check; this design is an iteration, not an owner acceptance
 Photos remain private references and are not committed. No benchmark result,
 MCP conformance, formal v3 release or completed planned API is claimed.
 
+### Reading the planned use cases
+
+The lower homepage keeps each use case's heading, status, explanation and
+source link together. Two complete articles share a desktop row; mobile
+uses one column in the same DOM order. A narrow heading-only column does
+not extend beside a long explanation. Each explanation has one paragraph
+for the proposed use and one for its responsibility or constraint. The
+linked design owns the full list of required features.
+
+The section introduction separates its scope from the meaning of its
+statuses. Both `designing` and `direction` remain untested as complete use
+cases; the proposal ledger remains the source of those states. The earlier
+model-routing example is explicitly executable. Japanese explanatory copy
+uses the glossary's terms, including モデル, while code identifiers remain
+unchanged.
+
+The documentation links retain their text underlines without individual
+row borders or another section rule. The shared footer boundary and its
+metadata separator retain the footer structure of 4.10. Spacing groups the
+use cases and links; there are no ornamental cards or blank placeholder
+columns. The established hero, routing illustration and typography tokens
+remain in use.
+
 ### One local routing example across the homepage and trial, 2026-10-30
 
 The homepage uses the mapping of `examples/start/route.rb`, not an integration
