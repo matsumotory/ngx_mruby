@@ -1,9 +1,9 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-03 (00:32 JST)
+## State as of 2026-11-03 (00:58 JST)
 
-- Heads: `next` is `7322f8160`, the merge of
-  [#749](https://github.com/matsumotory/ngx_mruby/pull/749); `master` is
+- Heads: `next` is `c440a15dc`, the merge of
+  [#750](https://github.com/matsumotory/ngx_mruby/pull/750); `master` is
   `9e286bb38`, the merge of
   [#748](https://github.com/matsumotory/ngx_mruby/pull/748).
   `next` contains `master` through `9e286bb38` in #749. The integration
@@ -75,10 +75,15 @@
 - [#740](https://github.com/matsumotory/ngx_mruby/pull/740) is merged on
   `master`: a rewrite handler that returns `Nginx::DECLINED` after
   `Nginx::Async.sleep` keeps the status of the request.
-- Open: none at this snapshot. Codex is preparing the footer documentation
-  link on `codex/footer-current-docs`: 3.x pages list their own documentation
-  before the existing 2.x link, in both languages. Local site validation
-  and independent review precede the merge; the PR records their results.
+- Open: none at this snapshot. Codex is preparing repeated HTTP sleep
+  coverage on `codex/async-sleep-many`: 1,000 waits of 1 ms must return the
+  expected response and restore pending-timer and held-fiber counters.
+  Local suite, performance and site checks and independent review are in
+  progress; the PR records the latest head and verification evidence.
+- [#750](https://github.com/matsumotory/ngx_mruby/pull/750) is merged as
+  `c440a15dc`: the 3.x footer links its own documentation before the 2.x
+  documentation in both languages. Its local site checks, independent
+  review and CI passed; the PR records publication verification.
 - [#747](https://github.com/matsumotory/ngx_mruby/pull/747), the homepage
   reading-order and local-trial correction, merged at 2026-11-02 23:59:24
   JST as `fad853820`. Its local checks, independent review and CI passed.
@@ -307,7 +312,7 @@ Taken up and still open: none.
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` (the sentences that call the job advisory and say that a `FAIL` does not block a merge, under "Performance comparison with callgrind") aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR` | `next`, then `master` | Ready to start |
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |
 | Soak and perf for stream: a soak scenario of a stream session whose code sleeps, which reads `stream_timers` and `stream_fibers` of `Nginx::Debug.stats` ([#714](https://github.com/matsumotory/ngx_mruby/pull/714) added the counters, and `test/soak/soak.rb` expects the keys), and a stream scenario of the perf lane, which builds nginx without `--with-stream` today (section 7 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Ready to start |
-| The case `async_sleep_many.rb` of section 6 of [the core stabilization proposal](proposals/archive/core-stabilization.md), which was not added: a handler that sleeps 1,000 times for 1 ms answers, and `Nginx::Debug.stats` shows the same `timers` and `gc_root_fibers` before and after | `next` | Ready to start |
+| The case `async_sleep_many.rb` of section 6 of [the core stabilization proposal](proposals/archive/core-stabilization.md): a handler that sleeps 1,000 times for 1 ms answers, and `Nginx::Debug.stats` shows the same `timers` and `gc_root_fibers` before and after | `next` | Implemented on `codex/async-sleep-many`; local verification and independent review in progress. The normal test build enables the counters, and each HTTP exchange has a 60-second limit |
 | The comments in `src/` and `test/` that name `docs/proposals/core-stabilization.md` (20 places, `git grep -n core-stabilization -- src test`): the proposal is now `docs/proposals/archive/core-stabilization.md`. To do: the next pull request that changes those files points them at the new path, or at the section "How a handler waits" of `docs/DEVELOPMENT.md` | `next` | The next code pull request that touches those files (a comment-only change of `src/` would run the whole build matrix) |
 | The ASan cell with `-DNGX_DEBUG_PALLOC -DNGX_DEBUG_MALLOC` (3.7 of the plan; the cell of `test.yml` sets only `-fsanitize` and `-fno-omit-frame-pointer`), so that ASan sees an access that runs from one pool allocation into the next. To do: a run of the suite with these flags, whose findings follow [SECURITY.md](../SECURITY.md), then the cell | `next`, `master` | Ready to start |
 | A test build with `ngx_otel_module` (nginx/nginx-otel, built with CMake against the nginx source of `test.sh`) and an OTLP receiver for the case of the observability sample of 3.2 of the site proposal | `next` | The harness rewrite (the row above), of which this waits for what is left: the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads |
@@ -317,7 +322,7 @@ Taken up and still open: none.
 | What is left of the async resume rewrite (decision (c) of 2026-10-04, amended on 2026-10-29: the rewrite of how resumed handlers end): a wait that starts in a handler that nginx runs inside another mruby call (the location of an internal redirect that an `mruby_set` handler, a log handler or a filter makes inside the Ruby call), or after an internal redirect replaced the module context of the handler, is still resumed by its timer or by the end of its subrequest and ended by `ngx_mrb_post_fiber` in `src/http/ngx_http_mruby_async.c`; a content handler there does not keep the request, so the request ends at the sleep. The rest is done in [#715](https://github.com/matsumotory/ngx_mruby/pull/715), [#722](https://github.com/matsumotory/ngx_mruby/pull/722) and [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (section 12 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Ready to start; no design exists yet |
 | The generated reference of the site (Pillar F of the plan): the directives from the `ngx_command_t` tables, the Ruby API with YARD and yard-mruby, the C API with Doxygen. `site/scripts/check-reference.mjs` checks, among other things, that each directive name has a heading in `docs/directives/README.md`; the pages are written by hand | `next` | Ready to start; no step of section 6 of the site proposal produces it yet |
 | The "Before" line of the entry on `mruby_set` values that are not Strings in [the 3.0.0 release notes](releases/v3.0.0.md) limits the end of the worker process to the handler that does not wait. The review of [#738](https://github.com/matsumotory/ngx_mruby/pull/738) inferred from the 2.x source (`ngx_mrb_var_set_vector`) that a `to_s` returning something other than a String can end the worker after `Nginx::Async.sleep` too; nobody has run it on 2.x | `next` | Ready to start: run the case on `master` (2.7.4), then write the "Before" line of `docs/releases/v3.0.0.md` and `.ja.md` from the result |
-| The documentation group of the site's footer (4.10 of [the site proposal](proposals/site.md)) links the other version's documentation (「2.xのドキュメント」) but not the documentation of the version that the page describes. A should-fix item of the review of [#738](https://github.com/matsumotory/ngx_mruby/pull/738) | `next` | Implemented on `codex/footer-current-docs`: the current 3.x documentation precedes the existing 2.x link; section 4.10 records the order. Validation and independent review are recorded in its PR |
+| The documentation group of the site's footer (4.10 of [the site proposal](proposals/site.md)) links the other version's documentation (「2.xのドキュメント」) but not the documentation of the version that the page describes. A should-fix item of the review of [#738](https://github.com/matsumotory/ngx_mruby/pull/738) | `next` | Merged in [#750](https://github.com/matsumotory/ngx_mruby/pull/750) (`c440a15dc`); the PR records the publication checks |
 | The 2.x form of the protected conversion of an `mruby_set` value ([#735](https://github.com/matsumotory/ngx_mruby/pull/735) on `next`): convert the value under `mrb_protect_error`, and a `to_s` that is missing, raises or returns a non-String ends the request with 500 instead of reading the result unchecked; a regression test for the three cases, and the entry under "Behavior changes" of `docs/releases/v2.7.5.md` and `.ja.md`. The owner deferred this work on 2026-11-02 (05:25 JST). | `master` | The owner's go |
 | On 2.x, a rewrite handler that sleeps in `Nginx::Async.sleep` and returns `Nginx::DECLINED`, followed by an access handler of the same location that calls `Nginx::Async::HTTP.sub_request` and declines, leaves the request without a response (seen by the reviewer of [#740](https://github.com/matsumotory/ngx_mruby/pull/740) before and after its fix; without the sleep the answer is immediate). Assess on `next` first, where the fiber record of [#714](https://github.com/matsumotory/ngx_mruby/pull/714), [#715](https://github.com/matsumotory/ngx_mruby/pull/715) and [#722](https://github.com/matsumotory/ngx_mruby/pull/722) may already cover it; if 2.x still hangs, a fix with its regression test | `next`, then `master` if needed | Ready to start |
 
