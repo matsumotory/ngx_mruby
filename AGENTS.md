@@ -543,6 +543,10 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   `docs/test/README.md`), zizmor for `.github/` ("Static analysis of the
   workflows" there), and `sh test/perf/compare.sh` where the change
   affects what it measures. `docs/test/README.md` describes each of them.
+  Before pushing, match the changed paths against the triggers and jobs of
+  every applicable workflow, including workflows other than `test.yml`.
+  Record the corresponding local commands and results in the PR, and explain
+  any checks that require the remote environment.
 - The first full run takes a few minutes (it clones mrbgems from GitHub and builds
   mruby and nginx). After that, use `ONLY_BUILD_NGX_MRUBY=1`.
 - `ONLY_BUILD_NGX_MRUBY=1` reuses the last configure. After changing
