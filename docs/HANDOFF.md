@@ -1,6 +1,6 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-03 (00:58 JST)
+## State as of 2026-11-03 (01:22 JST)
 
 - Heads: `next` is `c440a15dc`, the merge of
   [#750](https://github.com/matsumotory/ngx_mruby/pull/750); `master` is
@@ -78,8 +78,9 @@
 - Open: none at this snapshot. Codex is preparing repeated HTTP sleep
   coverage on `codex/async-sleep-many`: 1,000 waits of 1 ms must return the
   expected response and restore pending-timer and held-fiber counters.
-  Local suite, performance and site checks and independent review are in
-  progress; the PR records the latest head and verification evidence.
+  The Linux suite passed all 754 cases and the callgrind comparison passed
+  all 15 scenarios. The PR records the final site checks, independent
+  review and CI evidence for its head.
 - [#750](https://github.com/matsumotory/ngx_mruby/pull/750) is merged as
   `c440a15dc`: the 3.x footer links its own documentation before the 2.x
   documentation in both languages. Its local site checks, independent
@@ -312,7 +313,7 @@ Taken up and still open: none.
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` (the sentences that call the job advisory and say that a `FAIL` does not block a merge, under "Performance comparison with callgrind") aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR` | `next`, then `master` | Ready to start |
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |
 | Soak and perf for stream: a soak scenario of a stream session whose code sleeps, which reads `stream_timers` and `stream_fibers` of `Nginx::Debug.stats` ([#714](https://github.com/matsumotory/ngx_mruby/pull/714) added the counters, and `test/soak/soak.rb` expects the keys), and a stream scenario of the perf lane, which builds nginx without `--with-stream` today (section 7 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Ready to start |
-| The case `async_sleep_many.rb` of section 6 of [the core stabilization proposal](proposals/archive/core-stabilization.md): a handler that sleeps 1,000 times for 1 ms answers, and `Nginx::Debug.stats` shows the same `timers` and `gc_root_fibers` before and after | `next` | Implemented on `codex/async-sleep-many`; local verification and independent review in progress. The normal test build enables the counters, and each HTTP exchange has a 60-second limit |
+| The case `async_sleep_many.rb` of section 6 of [the core stabilization proposal](proposals/archive/core-stabilization.md): a handler that sleeps 1,000 times for 1 ms answers, and `Nginx::Debug.stats` shows the same `timers` and `gc_root_fibers` before and after | `next` | Implemented on `codex/async-sleep-many`; Linux suite 754/754 and callgrind 15/15 passed. The PR records site verification, review and merge status. The normal test build enables the counters, and each HTTP exchange has a 60-second limit |
 | The comments in `src/` and `test/` that name `docs/proposals/core-stabilization.md` (20 places, `git grep -n core-stabilization -- src test`): the proposal is now `docs/proposals/archive/core-stabilization.md`. To do: the next pull request that changes those files points them at the new path, or at the section "How a handler waits" of `docs/DEVELOPMENT.md` | `next` | The next code pull request that touches those files (a comment-only change of `src/` would run the whole build matrix) |
 | The ASan cell with `-DNGX_DEBUG_PALLOC -DNGX_DEBUG_MALLOC` (3.7 of the plan; the cell of `test.yml` sets only `-fsanitize` and `-fno-omit-frame-pointer`), so that ASan sees an access that runs from one pool allocation into the next. To do: a run of the suite with these flags, whose findings follow [SECURITY.md](../SECURITY.md), then the cell | `next`, `master` | Ready to start |
 | A test build with `ngx_otel_module` (nginx/nginx-otel, built with CMake against the nginx source of `test.sh`) and an OTLP receiver for the case of the observability sample of 3.2 of the site proposal | `next` | The harness rewrite (the row above), of which this waits for what is left: the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads |
