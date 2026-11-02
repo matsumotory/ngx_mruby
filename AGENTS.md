@@ -553,6 +553,10 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   workflows" in `docs/test/README.md`), and `sh test/soak/run.sh` or `sh
   test/perf/compare.sh` where the change affects what they measure.
   `docs/test/README.md` describes each of them.
+  Before pushing, match the changed paths against the triggers and jobs of
+  every applicable workflow, including workflows other than `test.yml`.
+  Record the corresponding local commands and results in the PR, and explain
+  any checks that require the remote environment.
 - `npm run check:ci` (`site/scripts/check-ci.sh`) runs, in one command,
   the checks of the build job of `site.yml` (`npm run
   build`, the 2.x pages of `origin/master` or of `NGX_MRUBY_V2_TREE`,

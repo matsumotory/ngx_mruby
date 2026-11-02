@@ -1435,6 +1435,7 @@ response = f.body.upcase
 
 Sets the string to the response body.
 The response is sent with exactly this body, and `Content-Length` is its length; since 2.7.1 this also holds when the body was written with `Nginx.rputs` or `Nginx.echo`.
+A HEAD response with a known content length that is finalized by the output body filter sends its headers without body bytes and keeps an otherwise reusable connection available for the next request. This applies to both empty and nonempty replacement bodies.
 It can only be used in an output body filter; anywhere else it raises a `RuntimeError` (since 2.7.1).
 
 ```ruby
