@@ -46,16 +46,15 @@
 #   tests      test/, test.sh and .github/workflows/test.yml. test.yml runs
 #              the four cells of build standard.
 #   docs       docs/, the Markdown files at the top, AUTHORS, LEGAL,
-#              LICENSE and MITL. On next, site.yml builds the site and runs
-#              its static checks, and its browser lanes when
-#              site/scripts/ci-plan.mjs selects pages. On master, site-v2.yml
-#              checks the 2.x pages; it runs on every ready pull request,
-#              whatever it changes.
+#              LICENSE and MITL. Authors run the site's complete checks
+#              locally before a ready pull request. site.yml runs on pushes
+#              to next and manual dispatch, not on pull requests. master
+#              changes check the 2.x pages locally; site-v2.yml is manual.
 #   site       site/ and .github/workflows/site.yml, which only next has.
-#              site.yml runs its build, its static checks and its browser
-#              lanes.
+#              Authors run the same local site checks. The next push builds,
+#              checks and deploys the site, then verifies its publication.
 #   examples   examples/, which only next has. examples.yml runs the
-#              examples; site.yml builds the site and runs its static checks.
+#              examples; authors also run the local example and site checks.
 #   workflows  .github/ except test.yml and site.yml. zizmor.yml checks
 #              all the workflows (these two included), and
 #              codeql.yml the workflow files.
