@@ -166,6 +166,13 @@ upgrading". New behavior, API cleanups and features go to `next`.
 - v3 work: PR with base `next`.
 - Never push to `master`, `next` or `v2.x` directly. Until v3 is promoted, `v2.x`
   is written only by the mirror automation: never commit to it or open PRs against it.
+- Independent tasks and pull requests may progress in parallel. Assign one
+  writer per worktree or disjoint file set, and track each PR's owner,
+  remaining checks, blocker and next action. Serialize dependent changes,
+  conflicting edits and expensive checks that compete for the same resources.
+  Split investigation, implementation and independent review when it reduces
+  completion time; avoid duplicate work and idle handoffs. Parallel work does
+  not relax the review or merge conditions below. Merge an eligible PR promptly.
 - Topic branches: `claude/<topic>` (other tools: `<tool>/<topic>`).
   Backports to 2.x: `backport/v2.x/<topic>`.
 - Never create branches named like tags (`v2.7.1`, `v3.0.0-rc.1`), and never
@@ -195,7 +202,7 @@ upgrading". New behavior, API cleanups and features go to `next`.
   of minutes. On 2026-11-02 the owner added that CI is not relied on: when
   the local tests are thorough, CI is the minimum, and CI that covers many
   environments stays, but what runs locally is not repeated in CI at the
-  cost of time and money (the owner's words of both days are quoted in
+  cost of time and money (the decisions of both days are summarized in
   "Decisions" of `docs/HANDOFF.md` on `next`). So a PR to `next` runs no
   job of `site.yml`: the author runs `npm run check:ci` in `site/`, and
   `site.yml` runs on the push to `next`, where it builds, checks without a
@@ -318,7 +325,7 @@ these hold:
    (one of them in each output is enough, since the build runs the tests
    on the code). An overlap of `docs`, `site`, `examples` or `workflows`
    alone runs nothing again. The owner decided on 2026-11-02 that CI is
-   not relied on for what runs locally (the owner's words are quoted in
+   not relied on for what runs locally (the decision is summarized in
    "Decisions" of `docs/HANDOFF.md` on `next`). The sessions apply it
    this way (their procedure, not a decision of the owner): the checks of
    those categories are the author's local runs under "How was this
@@ -357,12 +364,9 @@ The owner decided on 2026-10-04 that sessions may change the mrbgem
 repositories that the owner maintains (`matsumotory/mruby-*`), mruby-uname
 included.
 
-The owner decided on 2026-10-29, in the words 「僕管理のmrbgemは更新して対応できるなら更新すべき、なんでも外すとかではなく。只中で使ってるライブラリとかの更新が止まってたらもういいかな」
-("a gem I maintain should be updated, if updating copes with the change, not
-removed; if a library it uses inside has stopped being updated, it is fine to
-drop it"): a gem that the owner maintains is updated to cope with a change and not
-removed from a build. Removing one is
-acceptable when a library that the gem uses inside has stopped being updated.
+The owner decided on 2026-10-29 that an owner-maintained gem should be updated
+when that resolves compatibility rather than removed from a build. Removal
+is acceptable when an underlying library is no longer maintained.
 
 The rest of this subsection is the sessions' procedure, not a decision of
 the owner. It names the branches as they are until v3 is promoted, as the
@@ -449,8 +453,9 @@ How sessions do it (their procedure, not a decision of the owner):
   (`docs/proposals/v3-plan.md` on `next`). A decision of the owner that is
   not written there yet is recorded in `docs/HANDOFF.md` with its date. It
   holds over an older text here until a PR writes it here, but only when
-  its row links the owner's comment or quotes the owner's words; a row
-  without either is a proposal of the sessions and changes no rule.
+  its row records an adopted decision, its date, scope, rationale and
+  constraints, and the older rule it replaces. Link public evidence when
+  available. Label proposals separately; a proposal changes no rule.
 - It never holds unpublished vulnerabilities, the ids of advisories that
   are not published, names of private branches, files from outside the
   repository, or which release or work carries the fix of a vulnerability
@@ -494,6 +499,16 @@ How sessions do it (their procedure, not a decision of the owner):
   blockers, and the next concrete step. Link to existing review/CI evidence
   instead of copying raw logs. Update HANDOFF as above when the queue or
   state changes; do not make another private handoff file the only record.
+- Working documents and handoffs, public or private, state intent, rationale,
+  technical constraints and decisions. Do not quote conversations or use
+  attribution to justify a conclusion; assess its meaning against the evidence.
+- Public records summarize the decision and technical requirements; they
+  never copy private conversation text, message identifiers, personal
+  environment details or internal circumstances. This applies to commit
+  messages, PR and issue text, comments, HANDOFF and other documentation
+  (recording policy, 2026-11-02). Distinguish adopted decisions from
+  proposals. Do not rewrite existing public git history without
+  an explicit decision; report any sensitive historical content privately.
 - Public checkpoints use repository-relative paths and public commit/PR/run
   links. Do not commit private conversation logs, absolute local paths,
   personal reference images, credentials or scratch outputs. Keep local
