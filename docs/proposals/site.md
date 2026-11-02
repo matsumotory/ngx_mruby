@@ -963,14 +963,17 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   each (summary), so the number here follows the seven roles of the table,
   with one size per role and language and no size outside the table.
 - Capitals only for acronyms (Tinker 1963: running capitals read slower).
-- **Measure.** The text column is at most 38rem (608 px): 38 Japanese
+- **Measure.** Documentation prose and ordinary homepage explanations use
+  a text column of at most 38rem (608 px): 38 Japanese
   characters at 16 px, under the "about 40" of JLREQ 2.4.2; an estimated 75
   Latin characters, inside the U.S. Web Design System's 45 to 90 and at
   GOV.UK's 75. The three sites' measure of 720 px holds 45 Japanese
   characters at 16 px, so the column stays narrower (chosen here). Check at
   1440 px: Japanese body lines hold at most 40 characters (step 5) and
   English body lines at most 90, counted line by line from the client
-  rectangles of the text.
+  rectangles of the text. The short homepage hero paragraphs follow the
+  separate [homepage layout](#shared-homepage-layout): their width is judged
+  together with the heading and logo, rather than as a long body-text column.
 - **Line height.** JLREQ 2.4.2 puts the gap between Japanese lines between
   half and a full character, nearer a full one past 35 characters, and finds
   no gain beyond that: 1.8 for Japanese body text (inherited), 1.6 for
