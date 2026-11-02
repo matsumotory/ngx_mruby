@@ -76,7 +76,7 @@ const SCALE = {
   en: { h1: 32, h2: 26, h3: 22, body: 16, nav: 15, caption: 14 },
   ja: { h1: 26, h2: 22, h3: 18, body: 16, nav: 15, caption: 14 },
 };
-// The homepage scale of home.css (computed in the page, in rem); reference
+// The homepage scale of home-v3.css (computed in the page, in rem); reference
 // pages retain the scale above.
 // tokens.css: at 640 px and below, the root size keeps the text column
 // between the narrow gutters at 21.875 em, from 100% to 106.25% (16 to

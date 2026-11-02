@@ -8,7 +8,6 @@ import { repoDir } from '../../scripts/lib/site.mjs';
 import { Code } from 'astro-expressive-code/components';
 import fs from 'node:fs';
 import path from 'node:path';
-import '../styles/home.css';
 import '../styles/home-v3.css';
 import PlannedUseCases from './PlannedUseCases.astro';
 const ja = Astro.props.lang === 'ja';
@@ -17,6 +16,8 @@ const prefix = ja ? '/ja' : '';
 const walkthrough = fs.readFileSync(path.resolve(process.cwd(), '../examples/start/README.md'), 'utf8');
 const startBlock = walkthrough.match(/```console\n([\s\S]*?)\n```/);
 if (!startBlock) throw new Error('The local walkthrough has no start commands');
+const requestBlock = walkthrough.match(/```console\n\$ (curl -K client\.conf[^\n]+)\n(\{[\s\S]*?\})\n```/);
+if (!requestBlock) throw new Error('The local walkthrough has no request and response');
 // The status line names the newest stable release with a badge drawn at
 // build time from the git tags (4.10): no other origin, and the next build
 // after a tag shows it.
@@ -27,9 +28,11 @@ const startCommands = startBlock[1].split('\n').filter(line => line.startsWith('
   <div class="v3-intro">
     <div class="v3-hero-text">
     <HomeTitle />
-    <p class="lede">{ja ? 'ngx_mrubyはnginxの処理をRubyで拡張するモジュールです。これをAIアプリケーションとモデルAPIの間に置き、Rubyで利用者キーを確認し、モデルごとの転送先と上流の認証情報を選ぶAIゲートウェイを構成できます。' : 'ngx_mruby extends nginx with Ruby. Between an AI application and a model API, it can form an AI gateway whose Ruby rules check client keys and select model routes and upstream credentials.'}</p>
-    <p class="lede">{ja ? 'ここでのAIアプリケーションは、チャットの画面からエージェントやMCPのホストまで、モデルAPIやMCPサーバーを呼び出すソフトウェア全般です。' : 'Here an AI application is any software that calls a model API or an MCP server, from chat front ends to agents and MCP hosts.'}</p>
-    <p class="lede">{ja ? '下のv3開発版の例では、リクエストされたモデルに応じた振り分けを手元ですぐに試せます。MCPゲートウェイなどへの拡張は、後半のユースケースで設計状況とともに説明しています。' : 'The v3 development example below lets you run model-based routing locally. Later use cases describe proposed extensions, including an MCP gateway, with their design status.'}</p>
+    <div class="home-copy">
+    <p class="lede">{ja ? 'ngx_mrubyはnginxの処理をRubyで拡張するモジュールです。AIアプリケーションとモデルAPIの間に置き、利用者キーをRubyで確認し、モデル別の転送先と上流の認証情報を選ぶAIゲートウェイを構成できます。' : 'ngx_mruby extends nginx with Ruby. Between an AI application and a model API, it can form an AI gateway whose Ruby rules check client keys and select model routes and upstream credentials.'}</p>
+    <p>{ja ? 'ここでのAIアプリケーションは、チャットの画面からエージェントやMCPのホストまで、モデルAPIやMCPサーバーを呼び出すソフトウェア全般です。' : 'Here an AI application is any software that calls a model API or an MCP server, from chat front ends to agents and MCP hosts.'}</p>
+    <p>{ja ? '下のv3開発版の例では、リクエストされたモデルに応じた振り分けを手元ですぐに試せます。MCPゲートウェイなどへの拡張は、後半のユースケースで設計状況とともに説明しています。' : 'The v3 development example below lets you run model-based routing locally. Later use cases describe proposed extensions, including an MCP gateway, with their design status.'}</p>
+    </div>
     <div class="v3-entry"><p class="actions"><a class="button-primary" href="#directions-title">{ja ? 'ユースケースを見る' : 'See the use cases'}</a></p><div class="v3-status"><p>{ja ? 'v3開発中' : 'v3 · In development'}</p><p><a href={ja ? '/v2/ja/' : '/v2/'}>{ja ? '安定版2.7の導入と仕様' : 'Stable 2.7: install and reference'}</a>{' '}<a class="release-badge" data-badge="release" data-release={release.tag} href={release.href}><img src={release.src} alt={release.alt} width={release.width} height={release.height} decoding="async" /></a></p></div></div>
     </div>
     <img class="brand-showcase" src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" />
@@ -38,25 +41,39 @@ const startCommands = startBlock[1].split('\n').filter(line => line.startsWith('
   <ProjectBadges />
 
   <section class="v3-routing" aria-labelledby="routing">
-    <div class="v3-section-heading"><h2 id="routing">{ja ? 'リクエストされたモデルで、転送先を変える' : 'Route each model to its API'}</h2><p>{ja ? 'たとえば、チャットと文書要約で別のモデルを使う構成。アプリには共通のURLと利用者キーだけを設定し、リクエストで指定されたモデルから接続先を選びます。API用のキーを各アプリに配る必要はありません。下のボタンで、送信から応答までの違いを確かめられます。' : 'For example, use different models for chat and document summarization. Configure your apps with the same proxy URL and client key, then select a destination by model. You do not need to distribute upstream API keys to each app. Switch the model below to follow the request and response.'}</p></div>
+    <div class="home-copy"><h2 id="routing">{ja ? 'リクエストされたモデルで、転送先を変える' : 'Route each model to its API'}</h2><p>{ja ? 'たとえば、チャットと文書要約で別のモデルを使う構成。アプリには共通のURLと利用者キーだけを設定し、リクエストで指定されたモデルから接続先を選びます。API用のキーを各アプリに配る必要はありません。下のボタンで、送信から応答までの違いを確かめられます。' : 'For example, use different models for chat and document summarization. Configure your apps with the same proxy URL and client key, then select a destination by model. You do not need to distribute upstream API keys to each app. Switch the model below to follow the request and response.'}</p></div>
     <AgentFlow lang={lang} />
-    <div class="routing-explanation"><p>{ja ? '利用者キーが不明なら401、対応表にないモデルなら403として、APIへ送る前に拒否します。API形式の変換はしません。アプリは接続するAPIに合ったパスと本文を送ります。Messages APIとResponses APIの中継や同時実行制限は、別の結合テストが確かめます。' : 'An unknown client key gets 401; an unmapped model gets 403 before reaching an API. There is no API-format conversion: your app must send the path and body expected by its upstream. Messages, Responses and concurrency limits are covered by separate integration tests.'}</p><a href={prefix + '/guides/agent-proxy/'}>{ja ? '認証・同時実行制限・ストリーム中継の詳細' : 'Authentication, concurrency limits and streamed responses'}</a></div>
+    <div class="routing-explanation home-copy"><p>{ja ? '利用者キーが不明なら401、対応表にないモデルなら403として、APIへ送る前に拒否します。API形式の変換はしません。アプリは接続するAPIに合ったパスと本文を送ります。Messages APIとResponses APIの中継や同時実行制限は、別の結合テストが確かめます。' : 'An unknown client key gets 401; an unmapped model gets 403 before reaching an API. There is no API-format conversion: your app must send the path and body expected by its upstream. Messages, Responses and concurrency limits are covered by separate integration tests.'}</p><a href={prefix + '/guides/agent-proxy/'}>{ja ? '認証・同時実行制限・ストリーム中継の詳細' : 'Authentication, concurrency limits and streamed responses'}</a></div>
     <details class="source-proof"><summary>{ja ? '別の結合テスト：同時実行制限とストリーム中継' : 'Additional integration tests: concurrency and streamed relay'}</summary><slot /></details>
   </section>
 
   <section class="v3-try" aria-labelledby="try-title">
-    <div class="v3-section-heading"><h2 id="try-title">{ja ? 'APIキーなしで、手元で試す' : 'Try it locally without a provider key'}</h2><p>{ja ? 'Docker Compose、git、curlがあれば、図と同じnginxと2つのモックAPIを起動できます。プロバイダーのアカウントは不要です。初回はソースのダウンロードとビルドが必要で、テキスト生成は行いません。' : 'With Docker Compose, git and curl, run the same nginx proxy and two mock APIs shown above. No provider account is needed. The first run downloads and builds from source; the mocks do not generate text.'}</p></div>
-    <div class="try-workspace"><Code code={startCommands} lang="sh" title={ja ? 'ローカルで起動' : 'Start locally'} /><div class="try-next"><p>{ja ? '起動したディレクトリで次を実行すると、API Aを選んだ結果が返ります。次にroute.rbの対応表を変え、アプリ側のリクエストを変えずに転送先が変わることを試せます。' : 'Run this in the example directory to receive the result from API A. Then edit the mapping in route.rb and see the same application request reach a different destination.'}</p><Code code={'curl -K client.conf -d \'{"model": "mock-model-a"}\''} lang="sh" title={ja ? '起動後にリクエストを送る' : 'Send a request after startup'} /><a class="button-primary" href={prefix + '/start/#model-routing'}>{ja ? '実行と編集の手順へ' : 'Run and customize the example'}</a></div></div>
+    <div class="home-copy"><h2 id="try-title">{ja ? 'APIキーなしで、手元で試す' : 'Try it locally without a provider key'}</h2><p>{ja ? 'Docker Compose、git、curlがあれば、図と同じnginxと2つのモックAPIを起動できます。プロバイダーのアカウントは不要です。初回はソースのダウンロードとビルドが必要で、テキスト生成は行いません。' : 'With Docker Compose, git and curl, run the same nginx proxy and two mock APIs shown above. No provider account is needed. The first run downloads and builds from source; the mocks do not generate text.'}</p></div>
+    <div class="try-workspace">
+      <Code code={startCommands} lang="sh" title={ja ? 'ローカルで起動' : 'Start locally'} />
+      <div class="try-next">
+        <div class="home-copy"><p>{ja ? '起動が完了したら、同じディレクトリでリクエストを送ります。' : 'When startup completes, send a request from the same directory.'}</p></div>
+        <Code code={requestBlock[1]} lang="sh" title={ja ? '起動後にリクエストを送る' : 'Send a request after startup'} />
+      </div>
+      <div class="try-result">
+        <Code code={requestBlock[2]} lang="json" title={ja ? '期待する応答' : 'Expected response'} />
+        <div class="home-copy"><p>{ja ? '応答から、API Aへの転送と上流の認証情報への置換を確認できます。' : 'The response confirms that API A received the request with its own upstream key.'}</p></div>
+      </div>
+      <div class="home-copy">
+        <p>{ja ? 'route.rbの対応表を編集すれば、同じリクエストの転送先を変えられます。編集から再確認、終了までの手順は、実行例で説明します。' : 'Next, edit the mapping in route.rb to change where the same request goes. The complete example covers editing, checking the result and shutting down.'}</p>
+        <p><a class="button-primary" href={prefix + '/start/#model-routing'}>{ja ? '実行と編集の手順へ' : 'Run and customize the example'}</a></p>
+      </div>
+    </div>
   </section>
 
-  <section class="v3-integration" aria-labelledby="integration-title"><div class="v3-section-heading"><h2 id="integration-title">{ja ? 'アプリに組み込む' : 'Connect your own application'}</h2><p>{ja ? 'アプリは、AIゲートウェイのうちモデルAPIを中継するプロキシへ、HTTPリクエストを送ります。プロキシではnginx.confに転送先とHTTPの設定を、route.rbに利用者キーの確認とモデルの対応表を書きます。Rubyが選んだ転送先とキーをnginxの変数に渡し、proxy_passとproxy_set_headerで中継します。' : 'Your app sends HTTP requests to the proxy, the part of the AI gateway that relays model API calls. Configure upstreams and HTTP transport in nginx.conf, and client-key checks and model mappings in route.rb. Ruby passes the selected destination and credential through nginx variables; proxy_pass and proxy_set_header handle the relay.'}</p><p>{ja ? '実際のAPIへ接続する際は、そのAPIのパス、認証方式、TLSなどの接続設定を合わせて検証します。このローカル例だけで実プロバイダーとの互換性を確認したことにはなりません。公開サービスでは別途、認証情報と運用設定を用意してください。' : 'For a real API, configure and verify its endpoint, authentication and transport requirements, including TLS. The local example does not establish real-provider compatibility. A public deployment also needs its own credentials and operational configuration.'}</p><p><a href={prefix + '/guides/agent-proxy/'}>{ja ? '実装済みの構成と制約を読む' : 'Read the implemented recipe and its limits'}</a></p></div></section>
+  <section class="v3-integration" aria-labelledby="integration-title"><div class="home-copy"><h2 id="integration-title">{ja ? 'アプリに組み込む' : 'Connect your own application'}</h2><p>{ja ? 'アプリは、AIゲートウェイのうちモデルAPIを中継するプロキシへ、HTTPリクエストを送ります。プロキシではnginx.confに転送先とHTTPの設定を、route.rbに利用者キーの確認とモデルの対応表を書きます。Rubyが選んだ転送先とキーをnginxの変数に渡し、proxy_passとproxy_set_headerで中継します。' : 'Your app sends HTTP requests to the proxy, the part of the AI gateway that relays model API calls. Configure upstreams and HTTP transport in nginx.conf, and client-key checks and model mappings in route.rb. Ruby passes the selected destination and credential through nginx variables; proxy_pass and proxy_set_header handle the relay.'}</p><p>{ja ? '実際のAPIへ接続する際は、そのAPIのパス、認証方式、TLSなどの接続設定を合わせて検証します。このローカル例だけで実プロバイダーとの互換性を確認したことにはなりません。公開サービスでは別途、認証情報と運用設定を用意してください。' : 'For a real API, configure and verify its endpoint, authentication and transport requirements, including TLS. The local example does not establish real-provider compatibility. A public deployment also needs its own credentials and operational configuration.'}</p><p><a href={prefix + '/guides/agent-proxy/'}>{ja ? '実装済みの構成と制約を読む' : 'Read the implemented recipe and its limits'}</a></p></div></section>
 
-  <section class="v3-protocols" aria-labelledby="protocol-title"><div class="v3-section-heading"><h2 id="protocol-title">{ja ? 'HTTPとTCPの判断も、Rubyで書く' : 'Write HTTP and TCP policies in Ruby'}</h2></div><div class="protocol-list">
+  <section class="v3-protocols" aria-labelledby="protocol-title"><div class="home-copy"><h2 id="protocol-title">{ja ? 'HTTPとTCPの判断も、Rubyで書く' : 'Write HTTP and TCP policies in Ruby'}</h2></div><div class="protocol-list">
     <div class="protocol-http"><img src="/brand/ngx-mruby-http.svg" alt="" width="80" height="80" /><div><h3>{ja ? 'リクエストヘッダで転送先を選ぶ' : 'Choose a backend from a request header'}</h3><p>{ja ? 'リクエストヘッダと対応表から転送先を選び、サービスごとの振り分けを実装します。' : 'Select an upstream from a request header and your routing table.'}</p><a href={prefix + '/guides/routing/'}>{ja ? 'HTTPの設定と実行例' : 'HTTP configuration and example'}</a></div></div>
     <div class="protocol-stream"><img src="/brand/ngx-mruby-stream.svg" alt="" width="80" height="80" /><div><h3>{ja ? '接続元を確認しTCPを中継する' : 'Check the client before relaying TCP'}</h3><p>{ja ? '接続元のアドレスを許可表と照合し、バックエンドへ接続する前に許可・拒否を決めます。' : 'Check the client address against an allowlist before opening the upstream connection.'}</p><a href={prefix + '/guides/tcp/'}>{ja ? 'TCPの設定と実行例' : 'TCP configuration and example'}</a></div></div>
   </div></section>
 
   <PlannedUseCases lang={lang} />
 
-  <section class="v3-docs" aria-labelledby="docs-title"><h2 id="docs-title">{ja ? '実装と設計のドキュメント' : 'Documentation for your implementation'}</h2><div class="documentation-links"><a href={prefix + '/docs/'}>{ja ? 'ガイド・API・運用のドキュメント' : 'Guides, API reference and operation'}</a><a href={prefix + '/guides/mcp-gateway/'}>{ja ? 'MCPへの応用案と未検証の範囲' : 'MCP use-case design and unverified scope'}</a><a href={prefix + '/guides/agent-proxy/#implementation-status-and-the-v3-target'}>{ja ? 'v3の実装状況と今後の計画' : 'v3 implementation status and plan'}</a><a href="/docs-index.json">{ja ? 'エージェント向けMarkdown索引' : 'Markdown index for agents'}</a></div></section>
+  <section class="v3-docs" aria-labelledby="docs-title"><h2 id="docs-title">{ja ? '実装と設計のドキュメント' : 'Documentation for your implementation'}</h2><ul class="documentation-links"><li><a href={prefix + '/docs/'}>{ja ? 'ガイド・API・運用のドキュメント' : 'Guides, API reference and operation'}</a></li><li><a href={prefix + '/guides/mcp-gateway/'}>{ja ? 'MCPへの応用案と未検証の範囲' : 'MCP use-case design and unverified scope'}</a></li><li><a href={prefix + '/guides/agent-proxy/#implementation-status-and-the-v3-target'}>{ja ? 'v3の実装状況と今後の計画' : 'v3 implementation status and plan'}</a></li><li><a href="/docs-index.json">{ja ? 'エージェント向けMarkdown索引' : 'Markdown index for agents'}</a></li></ul></section>
 </div>
