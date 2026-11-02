@@ -2383,7 +2383,7 @@ the lock was committed) takes the lock of the other side: the base the
 head's, the head the one that the base build wrote. The report says how many
 gems are at different commits and lists them. The measurement (`test/perf/`, the scenarios in `test/soak/`) comes
 from this checkout for both builds. The first run builds two trees (a few
-minutes each); the measurement of the default scenarios takes about 140
+minutes each); the measurement of the default HTTP scenarios takes about 140
 seconds per build (139 seconds on the CI runner, 28 of them in `sleep`), and
 `proxy_stream_plain_1000` and `route_json_64k` add about 80 and 130 seconds
 when `PERF_SCENARIOS` names them. The report goes to `build_perf/report.txt` and
