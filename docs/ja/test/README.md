@@ -986,7 +986,9 @@ $ ONLY_RUN=1 PERF_SCENARIOS=hello,var sh test/perf/compare.sh build_perf/base-sr
 $ sh test/perf/run.sh                                  # measure this checkout only
 ```
 
-`compare.sh BASE_DIR [HEAD_DIR]`は、`BASE_DIR`を`build_perf/base`に、`HEAD_DIR`を`build_perf/head`にビルドします。`HEAD_DIR`のデフォルトはこのチェックアウトです。どちらのビルドでも、サードパーティのgemは、そのツリーにコミットした`build_config.rb.lock`のコミットです。そのため、gemが違うのはヘッドがロックを変えたところだけです。gemを別のコミットへ動かすプルリクエストは、マージしたときと同じく、そのコミットで測ります。ロックの無いチェックアウトは、反対側のロックを使います。ロックをコミットする前のチェックアウトがこれに当たります。ベースはヘッドのロックを、ヘッドはベースのビルドが書いたロックを使います。レポートは、コミットの違うgemの数を示し、その一覧を出します。測定に使う`test/perf/`と`test/soak/`のシナリオは、両方のビルドとも、このチェックアウトのものです。最初の実行は2つのツリーをビルドし、それぞれ数分かかります。デフォルトのHTTPシナリオの測定は、ビルドごとに約140秒かかります。CIのランナーでは139秒で、そのうち28秒が`sleep`です。`PERF_SCENARIOS`で`proxy_stream_plain_1000`と`route_json_64k`を挙げると、それぞれ約80秒と130秒が加わります。レポートは`build_perf/report.txt`と`build_perf/report.json`に書きます。`test.sh`も12372でLLMのモックのupstreamを起動するので、同時に実行しないでください。
+`compare.sh BASE_DIR [HEAD_DIR]`は、`BASE_DIR`を`build_perf/base`に、`HEAD_DIR`を`build_perf/head`にビルドします。`HEAD_DIR`のデフォルトはこのチェックアウトです。どちらのビルドでも、サードパーティのgemは、そのツリーにコミットした`build_config.rb.lock`のコミットです。そのため、gemが違うのはヘッドがロックを変えたところだけです。gemを別のコミットへ動かすプルリクエストは、マージしたときと同じく、そのコミットで測ります。ロックの無いチェックアウトは、反対側のロックを使います。ロックをコミットする前のチェックアウトがこれに当たります。ベースはヘッドのロックを、ヘッドはベースのビルドが書いたロックを使います。レポートは、コミットの違うgemの数を示し、その一覧を出します。測定に使う`test/perf/`と`test/soak/`のシナリオは、両方のビルドとも、このチェックアウトのものです。最初の実行は2つのツリーをビルドし、それぞれ数分かかります。デフォルトのHTTPシナリオの測定は、ビルドごとに約140秒かかります。CIのランナーでは139秒で、そのうち28秒が`sleep`です。`PERF_SCENARIOS`で`proxy_stream_plain_1000`と`route_json_64k`を挙げると、それぞれ約80秒と130秒が加わります。
+
+レポートは`build_perf/report.txt`と`build_perf/report.json`に書きます。`test.sh`も12372でLLMのモックのupstreamを起動するので、同時に実行しないでください。
 
 | 変数 | デフォルト | 意味 |
 |---|---|---|
