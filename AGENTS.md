@@ -207,7 +207,12 @@ upgrading". New behavior, API cleanups and features go to `next`.
   job of `site.yml`: the author runs `npm run check:ci` in `site/`, and
   `site.yml` runs on the push to `next`, where it builds, checks without a
   browser, deploys and checks the published site ("Site CI" in
-  `docs/test/README.md`). The sessions apply the rule this way (their procedure, not a
+  `docs/test/README.md` on `next`). In the same way, a PR to `master`
+  runs no job of `site-v2.yml`: its author checks the 2.x pages locally
+  ("The 2.x pages of the site" in `docs/test/README.md`), and the push to
+  `master` starts `site.yml` on `next` through `site-dispatch.yml`, which
+  builds `/v2/` from the new `master` before it deploys. The sessions
+  apply the rule this way (their procedure, not a
   decision of the owner): the author runs the checks that the change
   touches locally before marking the PR ready (the suite among them when
   `test/ci/changes.sh` gives `build` `standard` or `full`), and quotes the
@@ -324,8 +329,10 @@ these hold:
    "Decisions" of `docs/HANDOFF.md` on `next`). The sessions apply it
    this way (their procedure, not a decision of the owner): the checks of
    those categories are the author's local runs under "How was this
-   tested" (`npm run check:ci` in `site/` for `docs`, `site` and
-   `examples`, zizmor for `workflows`; "Build and test"), which a run
+   tested" (`npm run check:ci` in `site/` of `next` for `docs`, `site`
+   and `examples`, on `master` the checks of "The 2.x pages of the site"
+   in `docs/test/README.md`, zizmor for `workflows`; "Build and test"),
+   which a run
    on a moved base would only repeat, and on `next` the run of `site.yml`
    on the push of the merge builds and checks the merged tree before it
    deploys, and fails there instead of publishing (a push to `master`
@@ -526,7 +533,8 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   the change touches: the suite when `test/ci/changes.sh` gives `build`
   `standard` or `full`, `sh test/ci/changes_test.sh` for
   `test/ci/`, `npm run check:ci` in `site/` when it gives `docs`, `site`
-  or `examples` (below), zizmor for `.github/` ("Static analysis of the
+  or `examples` (below), the checks of "The 2.x pages of the site"
+  in `docs/test/README.md` for `docs/` on `master`, zizmor for `.github/` ("Static analysis of the
   workflows" in `docs/test/README.md`), and `sh test/soak/run.sh` or `sh
   test/perf/compare.sh` where the change affects what they measure.
   `docs/test/README.md` describes each of them.
@@ -581,7 +589,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
   what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18140,
-  18143-18144, 18147-18170, 18176-18186, 18199, 12345-12359, 12363-12366,
+  18143-18144, 18147-18170, 18176-18187, 18199, 12345-12359, 12363-12366,
   12368-12369, 12372-12379, 12384-12388, 12390-12393; 18116, 12357 and 12385-12388 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18180, 18181, 18185, 12379 and
   12393 to the nginx with several workers that `test/t/cases/_workers.rb` starts, 18158 to the nginx that

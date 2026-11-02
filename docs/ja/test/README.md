@@ -66,7 +66,7 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 |---|---|---|
 | `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`nginx-tests`、`examples`、`codeql`は、それぞれのパスフィルタに従って動く |
 | `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較 |
-| `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | `next`ではジョブなし。作者が`npm run check:ci`を流す([サイトのCI](#サイトのci))。`master`では`site-v2` |
+| `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | `next`ではジョブなし。作者が`npm run check:ci`を流す([サイトのCI](#サイトのci))。`master`では作者が[2.xページ](#サイトの2xページ)を手元で検査 |
 | `site` | `.github/workflows/site.yml`と`site/` | ジョブなし。`docs`と同じ |
 | `examples` | `examples/` | examples。サイトは`docs`と同じ扱い |
 | `workflows` | `.github/`のうち`test.yml`と`site.yml`を除いたもの | zizmorは全ワークフローを検査。`.github/workflows/`と`.github/codeql/`はCodeQLも対象 |
@@ -166,12 +166,30 @@ check_added_files.sh: 2 added file(s) checked between origin/master and HEAD and
 
 ## サイトの2.xページ
 
-ngx.mruby.orgは`next`の`site/`でビルドします。計画は同ブランチの`docs/proposals/site.md`にあります。`/v2/`の2.xページは`master`の`docs/`から作り、次の2つのワークフローで更新します。
+ngx.mruby.orgは`next`の`site/`でビルドします。`/v2/`の2.xページは`master`の`docs/`から作ります。`master`へのPRでは、2.xページの検査をCIで流しません。
 
-- `.github/workflows/site-v2.yml`は`master`への全PRで動きます。2.xページは`.travis.yml`、`nginx_version`、ワークフローなどリポジトリ全体にリンクするため、パスフィルタはありません。PRの隣に`next`をチェックアウトし、`next`のsiteと3.xページ、PRの`docs/`の2.xページを組み合わせてビルドします。`next`の`node site/scripts/build-v2.mjs --tree DIR`を使います。次のときに失敗します。2.xのページのソースに解決できない相対リンクかアンカーがあるとき、gitが追跡しないファイルへのリンクがあるとき、ビルドしたサイトのリンクが壊れているとき、2.xのバナーの無い2.xのページがあるとき、あるバージョンの検索がもう一方のバージョンのページを表示するときです。成果物は`site-v2`です。
-- `.github/workflows/site-dispatch.yml`は`master`への全pushで、`gh workflow run site.yml --ref next`を実行します。新しい2.xページを使ってsiteを再ビルドするためです。GitHubがdispatchを拒否した場合や、起動した実行を特定できない場合は失敗します。
+ドキュメントや、そのリンク先を変えるPRでは、作者がreadyにする前に次の検査を手元で流します。コマンドと結果はPRの「How was this tested」に記録します。
 
-どちらも`ci-ok`の`needs`には含まれません。
+1. gitが追跡するMarkdownの相対リンクとアンカーを確かめます。`master`に無い`check_links.py`を`next`から取り出して使います。`T`は、リポジトリ外に用意した作業用ディレクトリです。
+
+   ```console
+   $ git fetch origin next
+   $ git show origin/next:site/scripts/check_links.py > "$T/check_links.py"
+   $ git ls-files -z -- '*.md' ':!:mruby/' ':!:dependence/' | xargs -0 python3 "$T/check_links.py" .
+   ```
+
+2. `next`のチェックアウトで、`site/`に移動して`npm ci --ignore-scripts`と`npx playwright install chromium webkit`を実行します。続けて`NGX_MRUBY_V2_TREE=DIR npm run check:ci`を流します。`DIR`には、PRのチェックアウトのルートを指定してください。
+
+このコマンドは、`next`の3.xページとPRの2.xページをビルドし、ブラウザの検査も含めて確かめます。表示された`next`のコミットと、PRのheadを結果に添えてください。Rubyのブロックのコンパイルには、同梱mrubyの`mrbc`を`MRBC`で指定します。無ければ、その検査を省略したことを最後に表示します。
+
+検査は、解決できないリンクやアンカー、gitが追跡しないファイルへのリンク、2.xバナーの欠落を検出します。検索結果に別のバージョンのページが混じった場合も失敗します。
+
+公開に関わるワークフローは、次の2つです。
+
+- `.github/workflows/site-dispatch.yml`は`master`へのpushごとに、`next`の`site.yml`を起動します。新しい`master`から2.xページをビルドして検査し、成功したときだけ公開します。dispatchが拒まれた場合や、起動した実行を特定できない場合は失敗します。
+- `.github/workflows/site-v2.yml`は「Run workflow」でだけ動きます。`gh workflow run site-v2.yml --ref <branch>`で対象ブランチを選び、`next`のサイトと対象ブランチの2.xページを組み合わせて検査します。成果物は`site-v2`です。
+
+公開時の`site.yml`が検査するMarkdownは`next`のファイルです。サイトに載らない`master`のファイルは、作者が上のリンク検査で確かめます。どちらのワークフローも`ci-ok`の`needs`には含まれません。
 
 ## サプライチェーンの検査
 
