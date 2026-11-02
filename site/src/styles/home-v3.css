@@ -16,8 +16,8 @@ html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-9); }
 html:has(.home-v3) .brand-title { display: block; }
 html:has(.home-v3) .brand-showcase { width: 160px; height: 160px; }
 .home-v3 .v3-intro > .brand-showcase { margin: 0; }
-html:has(.home-v3) h1#_top { margin: 0; max-width: 20ch; }
-html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; }
+html:has(.home-v3) h1#_top { margin: 0; max-width: 20ch; letter-spacing: -0.04em; }
+html[lang="ja"]:has(.home-v3) h1#_top { max-width: 15em; letter-spacing: -0.03em; }
 .headline-line { display: block; }
 /* The heading's column is the container whose width sets the English size
    at every width (tokens.css). */
@@ -30,16 +30,20 @@ html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
 }
 /* The column of the Japanese heading, whose width its size follows (tokens.css) */
 .headline-box { min-width: 0; container-type: inline-size; }
-/* The heading and the text under it are as far apart as a section heading
-   and its paragraph (16 px) */
-.home-v3 .v3-intro .lede { max-width: 40rem; margin: var(--space-4) 0 0; color: var(--color-text-muted); }
-/* The text under the heading in three paragraphs (the owner on
-   2026-11-02), as far apart as the paragraphs of the body, in the same
-   size, line height and color */
-.home-v3 .v3-intro .lede + .lede { margin-top: var(--site-content-gap-y); }
+/* Prose shares one reading measure and rhythm from the hero to the last
+   section. Figures and groups of independent articles use the outer container. */
+.home-v3 .home-copy { display: flex; flex-direction: column; gap: var(--space-4); max-width: var(--measure); }
+.home-v3 .home-copy > * { max-width: none; margin: 0; }
+.home-v3 .home-copy p { color: var(--color-text-muted); }
+/* Japanese uses the existing hero column beside its logo. The English
+   introduction has a character-based measure: 68ch keeps its longest line
+   below 90 characters in the current font, without narrowing it to body prose. */
+.home-v3 .v3-hero-text > .home-copy { max-width: 68ch; margin-top: var(--space-4); }
+html[lang="ja"] .home-v3 .v3-hero-text > .home-copy { max-width: none; }
 .home-v3 .v3-entry { margin-top: var(--space-6); }
 .home-v3 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-5); margin: 0; }
-.site-markdown-content .home-v3 .button-primary { padding: var(--space-3) var(--space-5); border: 1px solid var(--color-button-edge); border-radius: var(--radius-control); background: linear-gradient(155deg, var(--color-button-fill), var(--color-button-low)); box-shadow: inset 0 1px 0 var(--color-button-edge); }
+.site-markdown-content .home-v3 .button-primary { padding: var(--space-3) var(--space-5); border: 1px solid var(--color-button-edge); border-radius: var(--radius-control); color: var(--color-button-text); border-bottom-color: var(--color-button-low); background: linear-gradient(155deg, var(--color-button-fill), var(--color-button-low)); box-shadow: inset 0 1px 0 var(--color-button-edge); }
+.site-markdown-content .home-v3 .button-primary:active { border-top-color: var(--color-button-low); border-bottom-color: var(--color-button-edge); }
 /* The status in two lines: the version in development, then the stable
    version's documentation with its release badge */
 .home-v3 .v3-status { color: var(--color-text-muted); margin: var(--space-4) 0 0; }
@@ -51,8 +55,6 @@ html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
 .home-v3 > .project-badges { max-width: none; margin-top: var(--space-6); }
 .home-v3 h2::before { display: none !important; }
 .home-v3 h2 { padding: 0; margin: 0; }
-.home-v3 .v3-section-heading { max-width: 46rem; }
-.home-v3 .v3-section-heading p { margin: var(--space-4) 0 0; color: var(--color-text-muted); }
 /* Steps own their height; neither a disclosure nor a tall response reserves
    an empty neighbouring column. */
 .home-v3 .v3-flow { display: block; max-width: none; margin: var(--space-6) 0 0; padding: 0; border: 1px solid var(--color-scene-edge); border-radius: 12px; background-color: var(--color-bg-primary); background-image: linear-gradient(135deg, var(--color-scene-face), transparent 55%); box-shadow: 0 24px 48px var(--color-scene-deep), inset 0 1px 0 var(--color-text-muted); }
@@ -82,31 +84,40 @@ html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
 .v3-flow[data-route="b"] [data-upstream-title] { color: var(--color-signal-violet); }
 .home-v3 .route-result { margin: 0; }
 .home-v3 .v3-flow > figcaption { display: block; font-size: var(--text-caption); line-height: var(--leading-caption); margin: 0; max-width: none; padding: var(--space-4) var(--space-6); color: var(--color-text-muted); }
-.home-v3 .routing-explanation { max-width: 46rem; margin-top: var(--space-5); }
-.home-v3 .routing-explanation p { color: var(--color-text-muted); }
-.home-v3 .routing-explanation a { display: inline-block; margin-top: var(--space-3); }
+.home-v3 .routing-explanation { margin-top: var(--space-6); }
 .home-v3 .source-proof { margin-top: var(--space-5); max-width: none; padding: 0; border: 0; background: transparent; }
 .source-proof > summary { cursor: pointer; color: var(--color-text-muted); padding-block: var(--space-3); }
+/* The expanded integration evidence keeps its own file labels. The local
+   trial and routing figure do not inherit this file-list presentation. */
 .home-v3 .sample-focused .sample-files { display: block; border: 0; }
-.home-v3 .sample-focused .sample-file { border: 0; }
-.home-v3 .sample-focused .sample-file-label { background-color: var(--color-bg-tertiary); }
+.home-v3 .sample-file { min-width: 0; margin: 0; border: 0; background: var(--color-bg-tertiary); }
+.home-v3 .sample-file-label { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); font-size: var(--text-caption); color: var(--color-text-muted); background: var(--color-bg-tertiary); }
+.home-v3 .sample-file-label > span:last-child { color: var(--color-accent-text); }
+.home-v3 .sample-file-label > span:first-child { min-width: 0; }
+.home-v3 .sample-file-label strong { font-weight: 500; color: var(--color-text-primary); }
+.home-v3 .sample-filename { display: block; margin-top: var(--space-2); padding: 0; background: transparent; font-family: var(--font-mono); overflow-wrap: anywhere; }
+.home-v3 .sample-file .expressive-code mark { margin: 0; padding: 0; border-radius: 0; background: var(--color-border); }
+.home-v3 .sample-file .expressive-code mark::before { display: none; }
+.home-v3 .sample-file .expressive-code { margin: 0; }
+.home-v3 .sample-file .expressive-code .frame { border: 0; border-radius: 0; }
+.home-v3 .sample-file .expressive-code pre { border-radius: 0; background: var(--color-bg-tertiary); }
 .home-v3 .sample-output, .home-v3 .sample-config { max-width: none; margin-top: var(--space-4); }
-.home-v3 .sample-caption { max-width: min(var(--measure), 32rem); }
-.home-v3 .v3-try { padding-top: var(--space-8); border-top: 1px solid var(--color-scene-edge); }
-.try-workspace { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: var(--space-6); align-items: start; margin-top: var(--space-6); }
-.try-workspace > div { min-width: 0; margin: 0; }
-.home-v3 .try-next .button-primary { display: inline-block; margin-top: var(--space-5); }
-.home-v3 .try-next p { color: var(--color-text-muted); margin: 0 0 var(--space-5); }
+.home-v3 .sample-caption { max-width: min(var(--measure), 32rem); margin-top: var(--space-4); }
+/* The trial is a procedure: startup, request, then interpretation and edit.
+   Its code uses the page width; explanatory prose keeps the shared measure. */
+.home-v3 .try-workspace { display: flex; flex-direction: column; gap: var(--space-6); margin-top: var(--space-6); }
+.home-v3 .try-workspace > *, .home-v3 .try-next > *, .home-v3 .try-result > * { min-width: 0; margin: 0; }
+.home-v3 .try-next, .home-v3 .try-result { display: flex; flex-direction: column; gap: var(--space-4); }
 .protocol-list { margin-top: var(--space-6); display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-7); }
 .protocol-list > div { display: grid; grid-template-columns: 80px minmax(0,1fr); gap: var(--space-5); margin: 0; }
 .protocol-list h3 { margin: 0; }
 .protocol-list p { color: var(--color-text-muted); margin-top: var(--space-3); }
 .protocol-list a { display: inline-block; margin-top: var(--space-4); }
-/* The last section ends at its text: the footer's 48 px stand between
-   them (4.10) */
-.home-v3 .v3-docs { padding-top: 0; }
-.documentation-links { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5) var(--space-7); margin-top: var(--space-5); }
-.documentation-links a { display: block; padding-block: var(--space-3); }
+/* Four destinations are a compact list, not a second grid of articles.
+   The shared footer keeps the same outer container and its own boundary. */
+.home-v3 .documentation-links { display: flex; flex-direction: column; gap: var(--space-2); padding: 0; margin: var(--space-4) 0 0; list-style: none; }
+.home-v3 .documentation-links li { margin: 0; }
+.documentation-links a { display: inline-block; padding-block: var(--space-1); }
 @keyframes route-confirm { 0%, 100% { background-color: transparent; } 45% { background-color: var(--color-scene-warm); } }
 .home-v3 .route-pulse { animation: route-confirm 180ms ease-out; }
 .home-v3 .route-pulse[data-step="rule"] { animation-delay: 180ms; }
@@ -125,10 +136,10 @@ html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
   .route-controls:not([hidden]) { padding: var(--space-3) var(--space-5); }
   .v3-flow :is(summary, .copy button) { scroll-margin-top: calc(var(--header-height) + var(--space-9)); }
   .home-v3 .v3-flow > figcaption { padding: var(--space-4) var(--space-5); }
-  .try-workspace, .protocol-list, .documentation-links { grid-template-columns: minmax(0,1fr); gap: var(--space-5); }
+  .protocol-list { grid-template-columns: minmax(0,1fr); gap: var(--space-6); }
   .protocol-list > div { grid-template-columns: 64px minmax(0,1fr); gap: var(--space-4); }
   .protocol-list img { width: 64px; height: 64px; }
-  .home-v3 .v3-try { padding-top: var(--space-7); }
+  .home-v3 .try-workspace { gap: var(--space-5); margin-top: var(--space-5); }
 }
 
 /* Keep the code plane inside its frame. Line padding belongs to Expressive
@@ -138,17 +149,12 @@ html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
 
 /* Each use case keeps its heading, status and explanation together. Two
    complete articles share a row on desktop; mobile follows document order. */
-.home-v3 .directions-context { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--space-7); margin-top: var(--space-5); }
-.directions-context > div { min-width: 0; margin: 0; }
-.home-v3 .directions-context p { color: var(--color-text-muted); margin: 0; }
-.home-v3 .directions-context p + p { margin-top: var(--space-4); }
-.direction-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8) var(--space-7); margin-top: var(--space-8); }
+.direction-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8) var(--space-7); margin-top: var(--space-6); }
 .home-v3 .direction-usecase { min-width: 0; margin: 0; }
 .direction-usecase > * { min-width: 0; margin: 0; }
 .direction-list h3 { margin: 0; }
 .direction-list .direction-status { margin: var(--space-2) 0 var(--space-4); color: var(--color-text); }
 .direction-list p { color: var(--color-text-muted); margin: 0 0 var(--space-4); }
 @media (max-width: 800px) {
-  .home-v3 .directions-context { grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
-  .direction-list { grid-template-columns: minmax(0, 1fr); gap: var(--space-7); margin-top: var(--space-7); }
+  .direction-list { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); margin-top: var(--space-5); }
 }

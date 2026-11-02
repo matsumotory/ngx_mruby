@@ -152,16 +152,12 @@ if (states.size !== cases.length) throw new Error('Homepage cases and proposal l
 const label = status => ja ? (status === 'designing' ? '設計中' : '構想') : (status === 'designing' ? 'Designing' : 'Direction');
 ---
 <section class="v3-directions" aria-labelledby="directions-title">
+  <div class="home-copy">
   <h2 id="directions-title">{ja ? '今後のユースケースと設計状況' : 'Future use cases and their design status'}</h2>
-  <div class="directions-context">
-    <div class="directions-overview">
       <p>{ja ? 'モデル振り分けの例は手元で動かせます。以下は、MCPの認可、モデルAPIの切替、サイトへのアクセス制御に向けた設計です。' : 'The model routing example above runs locally today. The following designs apply nginx and Ruby to MCP authorization, model API fallback and access to websites.'}</p>
       <p>{ja ? '次に何を検索し、どこを読み取るかをモデルが選ぶAIアプリケーションを、ここではエージェントと呼びます。' : 'An agent is an AI application whose model chooses the next search or read.'}</p>
-    </div>
-    <div class="directions-availability">
-      <p>{ja ? '「設計中」は実行例と検証条件を記述済みです。「構想」は方向性のみ示しています。' : '“Designing” means the first recipe and acceptance criteria are documented. “Direction” means only the direction is documented.'}</p>
+      <p>{ja ? '「設計中」は実行例と検証条件を示し、「構想」は用途の方向性を示します。' : '“Designing” means the first recipe and acceptance criteria are documented. “Direction” means only the direction is documented.'}</p>
       <p>{ja ? 'どちらも、用途全体を動かすテストはまだありません。必要な機能と制約は、各項目の設計文書で確認できます。' : 'No test runs a complete use case in either status. Each design document lists the required features and constraints.'}</p>
-    </div>
   </div>
   <div class="direction-list">
     {cases.map(item => <article class="direction-usecase" data-use-case={item.id}>

@@ -581,10 +581,11 @@ terminal examples also supersedes the earlier blanket rejection of terminal
 motifs; this implementation shows the actual HTTP exchange with labelled
 code panels and adds no fictional shell prompt or operating-system chrome.
 
-- `home.css` uses a two-column introduction and nginx/mruby execution
-  structure, followed by a configuration, Ruby handler, request and response
-  workbench. The four panels stack on narrow screens. Selected HTTP phases
-  and links into the existing guides complete the page.
+- `home-v3.css` shares paragraph spacing between the hero and section
+  introductions, with widths chosen for their roles.
+  The routing figure shows the request, Ruby mapping and response; the local
+  trial follows as a sequence. Independent use cases share desktop rows and
+  stack on narrow screens. Each retains its own guide or design link.
 - The home title uses `clamp(2.375rem, 1rem + 4.5vw, 4.5rem)` in English
   and `clamp(2rem, 1rem + 3.5vw, 3.5rem)` in Japanese. Other text retains
   the existing type scale, gutters and spacing tokens. Controls retain a
@@ -1806,7 +1807,7 @@ implementation may choose others and says so in its pull request.
 
 | Piece | Today, Starlight 0.42.6 | Replacement |
 |---|---|---|
-| Page route and layout | Starlight injects the route of every page and renders it with its `Page.astro`, into which the overrides plug | `src/pages/[...slug].astro` renders every entry of the collection through `src/layouts/DocPage.astro`: skip link, the header of 4.10, the frame of `PageFrame.astro` (its own element name and id, no `sl-` names), the content, the table of contents and the footer. The page title is an `h1` with the id `_top`, which the skip link and the first entry of the table of contents link, and which `home.css`, `home-v3.css`, `check-styles.mjs`, `check-japanese-lines.mjs` and `screenshots.mjs` select. The home pages use the same layout without the sidebar and the table of contents, as `template: splash` does today. |
+| Page route and layout | Starlight injects the route of every page and renders it with its `Page.astro`, into which the overrides plug | `src/pages/[...slug].astro` renders every entry of the collection through `src/layouts/DocPage.astro`: skip link, the header of 4.10, the frame of `PageFrame.astro` (its own element name and id, no `sl-` names), the content, the table of contents and the footer. The page title is an `h1` with the id `_top`, which the skip link and the first entry of the table of contents link, and which `home-v3.css`, `check-styles.mjs`, `check-japanese-lines.mjs` and `screenshots.mjs` select. The home pages use the same layout without the sidebar and the table of contents, as `template: splash` does today. |
 | Content collection | `docsLoader()` and `docsSchema()`, with the field `headline` added | `glob()` of `astro/loaders` over `src/content/docs/`, and a schema of the fields that the generator of 5.2 and the home pages write today (in the 55 entries at 6bb35b241: `title` 55, `slug` 53, `lastUpdated` 53, `head` 49, the searchable `identifiers` metadata of "Complete API names in search", `sidebar` 25, `description` 2, `template` 2, `prev` 2, `next` 2, `headline` 1), and `banner`, which `Banner.astro` reads for the 3.x banner of 3.4. The schema is strict, so a field outside it stops the build. MDX for the home pages through `@astrojs/mdx` directly. The generator keeps its output and its front matter. |
 | en/ja routing and the fallback | Starlight's locales `root` (English, unprefixed) and `ja`; under `/ja/`, a page without a Japanese source shows the English entry with `<html lang="ja">`, the English text in an element with `lang="en"`, and `FallbackContentNotice.astro` | Astro's `i18n` configuration (`en` default and unprefixed, `ja`) for the locale of each page and its URLs. The fallback pages are made by `getStaticPaths` of the page route, as Starlight makes them: for each English entry with no Japanese one, a `/ja/` path with the English entry, `<html lang="ja">`, the English text under `lang="en"`, the notice component and the Japanese UI. Not `i18n.fallback`: in Astro 7.3.8, its default `i18n.routing.fallbackType: "redirect"` writes redirect pages, and `"rewrite"` renders the English page as it is, without the notice or the Japanese UI (Astro's configuration reference in `astro/dist/types/public/config.d.ts`, read on 2026-11-01). The generated reference (Q2) and the 2.x pages under `/v2/ja/` keep their notices. |
 | Sidebar | `sidebar` of `astro.config.mjs`: two links and six groups (one link and five groups for `/v2/`), each group `autogenerate`d from a folder, ordered by `sidebar.order`, labels translated in the configuration | `src/sidebar.mjs` holds the same groups and labels for each version, and builds the entries of each group from the collection by folder and `sidebar.order`, which the generator takes from `SIDEBAR_ORDER`; entries with the same order or none follow by id, compared as Starlight compares them (`sortDirEntries` in `utils/navigation.js`). `Sidebar.astro` renders each group as `<details open>`, with the current page marked `aria-current="page"`. Starlight's `SidebarPersister`, which keeps the sidebar's state in `sessionStorage` across pages, becomes a script that scrolls the current entry into view; this is one of the allowed differences of the acceptance below. |
@@ -2625,6 +2626,37 @@ a passing mechanical check; this design is an iteration, not an owner acceptance
 Photos remain private references and are not committed. No benchmark result,
 MCP conformance, formal v3 release or completed planned API is claimed.
 
+### Shared homepage layout
+
+The hero, section headings, examples, use-case groups, documentation links
+and footer share the 1032 px outer container and its left axis. Prose uses
+`--measure` inside that container. The Japanese hero uses its existing text
+column beside the logo without a second width limit. The English hero uses
+68ch: wider than ordinary prose, while its rendered lines stay within the
+90-character limit of 4.4. A common
+`home-copy` stack sets paragraph spacing for both roles. Consecutive
+explanatory paragraphs stay in one column; independent articles can share a
+row. The diagram and standalone commands use the outer width because their
+code and relationships
+need room. These roles do not change the typography tokens.
+
+Section gaps are larger than the gaps between related groups, and those are
+larger than paragraph gaps. Heading-to-description spacing comes from the
+same stack, not from separate rules for each section. `home-v3.css` owns the
+homepage composition, including the file labels of expanded integration
+samples; it does not layer corrections over an earlier homepage stylesheet.
+
+The local trial reads from prerequisites to startup commands, then the request,
+its expected JSON response and the edit/check instructions. The commands and
+response come directly from the runnable example. These are
+successive operations, so they stack on desktop as well as mobile. The four
+final documentation destinations are a compact list. The footer retains the
+shared container, group structure and boundaries of 4.10.
+
+Judge the complete page and screenshots across section boundaries at both
+supported viewports. Equal numeric gaps, successful line-end checks or the
+appearance of one isolated section do not establish a coherent reading order.
+
 ### Reading the planned use cases
 
 The lower homepage keeps each use case's heading, status, explanation and
@@ -2634,16 +2666,16 @@ not extend beside a long explanation. Each explanation has one paragraph
 for the proposed use and one for its responsibility or constraint. The
 linked design owns the full list of required features.
 
-The section introduction separates its scope from the meaning of its
-statuses. Both `designing` and `direction` remain untested as complete use
-cases; the proposal ledger remains the source of those states. The earlier
+The section introduction uses consecutive paragraphs in one column for its
+scope and the meaning of its statuses. Both `designing` and `direction` remain
+untested as complete use cases; the proposal ledger remains the source of those states. The earlier
 model-routing example is explicitly executable. Japanese explanatory copy
 uses the glossary's terms, including モデル, while code identifiers remain
 unchanged.
 
-The documentation links retain their text underlines without individual
-row borders or another section rule. The shared footer boundary and its
-metadata separator retain the footer structure of 4.10. Spacing groups the
+The documentation links form a single list with text underlines, without
+individual row borders or another section rule. The shared footer boundary
+and its metadata separator retain the footer structure of 4.10. Spacing groups the
 use cases and links; there are no ornamental cards or blank placeholder
 columns. The established hero, routing illustration and typography tokens
 remain in use.
