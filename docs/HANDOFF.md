@@ -1,15 +1,14 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-03 (04:12 JST)
+## State as of 2026-11-03 (04:40 JST)
 
-- Heads: `next` is `f1f102966`, the merge of
-  [#756](https://github.com/matsumotory/ngx_mruby/pull/756); `master` is
-  `9acbd8530`, the merge of
-  [#752](https://github.com/matsumotory/ngx_mruby/pull/752).
-  `next` contains `master` through `9acbd8530` in #756, including the
-  filtered-HEAD connection fix, regression coverage and validation guidance.
-  The integration retains the next suite-path handling and API description.
-  `v2.x` mirrors `master`.
+- Heads: `next` is `96e96ec82`, the merge of
+  [#757](https://github.com/matsumotory/ngx_mruby/pull/757); `master` is
+  `382639258`, the merge of
+  [#754](https://github.com/matsumotory/ngx_mruby/pull/754).
+  `next` contains `master` through `382639258` in #757. The workflow-analysis
+  Action uses v0.8.0, with its CLI version, configuration, permissions and
+  triggers unchanged. `v2.x` mirrors `master`.
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
   is published. Two advisories were published with it:
@@ -78,18 +77,26 @@
 - [#751](https://github.com/matsumotory/ngx_mruby/pull/751), the repeated
   HTTP sleep regression, merged as `63c6b7152` at 03:41 JST. Its local
   validation, independent review, CI and publication checks passed.
-- [#756](https://github.com/matsumotory/ngx_mruby/pull/756) merged at
-  04:09 JST. Its combined suite passed all 759 tests, all local checks and
-  15 CI checks passed, and the final independent review had no open findings.
-  Its automatic site publication is being verified.
-- Open: [#754](https://github.com/matsumotory/ngx_mruby/pull/754) (master)
-  and [#755](https://github.com/matsumotory/ngx_mruby/pull/755) (next)
-  update the workflow analysis action.
-  Stream sleep measurement is implemented locally on
-  `codex/stream-sleep-measurement`. Its original suite, 13-scenario soak,
-  16-scenario performance comparison and site checks passed. Verification
-  of the integrated source and independent review are in progress; no PR
-  has been opened for it.
+- [#756](https://github.com/matsumotory/ngx_mruby/pull/756) merged the HEAD
+  connection fix into `next` as `f1f102966` at 04:09 JST. Its combined suite
+  passed 759 cases, local soak/performance/nginx-tests/site/example checks
+  passed, and the independent review and all 15 CI checks passed. The
+  automatic publication and exact public revisions were verified
+  ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/756#issuecomment-6586223151)).
+- [#754](https://github.com/matsumotory/ngx_mruby/pull/754) merged into
+  `master` as `382639258` at 04:18 JST. It updates the pinned workflow-analysis
+  Action from v0.7.1 to v0.8.0 while retaining zizmor 1.31.1 and the existing
+  policy. The PR records the local audit, independent review and CI.
+- [#757](https://github.com/matsumotory/ngx_mruby/pull/757) merged the
+  workflow-analysis Action pin into `next` at 04:38 JST. Its automatic site
+  publication is being verified. The equivalent next proposal in
+  [#755](https://github.com/matsumotory/ngx_mruby/pull/755) was closed.
+- Open: none at this snapshot. Stream sleep measurement is implemented
+  locally on `codex/stream-sleep-measurement`. Its suite evidence, 13-scenario
+  soak, 16-scenario performance comparison, site checks and independent
+  review passed. The workflow-only base update changes no executed test
+  input; final integration metadata review is in progress. No PR has been
+  opened for the stream measurement.
 - [#750](https://github.com/matsumotory/ngx_mruby/pull/750) added current
   3.x documentation before the existing 2.x footer link in both languages.
   It merged as `c440a15dc`; local checks, independent review, CI and
@@ -316,12 +323,12 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement; the matching comment-only update on `master` remains |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `9acbd8530` in [#756](https://github.com/matsumotory/ngx_mruby/pull/756) |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `382639258` in [#757](https://github.com/matsumotory/ngx_mruby/pull/757) |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
-| A known-length HEAD response finalized by an mruby output body filter keeps its connection for the following GET ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1; #628 reproduced it) | `master`, then `next` | Fixed on master in [#752](https://github.com/matsumotory/ngx_mruby/pull/752), with separate failing-test and passing-fix commits. The next integration on `codex/merge-master-head-filter` retains both 2.7.5 notes, adds the 3.0.0 entries and adapts the helper to the suite path; its suite, soak, performance, nginx-tests and site validation passed, and independent code/text review has no findings. The example check passed all 19 commands with Linux file semantics and restored fixtures; [#756](https://github.com/matsumotory/ngx_mruby/pull/756) passed all 759 combined tests after including #751 and awaits updated-head review and CI |
+| A known-length HEAD response finalized by an mruby output body filter keeps its connection for the following GET ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1; #628 reproduced it) | `master`, then `next` | Fixed on master in [#752](https://github.com/matsumotory/ngx_mruby/pull/752) with failing-test and passing-fix commits, and integrated into next in [#756](https://github.com/matsumotory/ngx_mruby/pull/756). The combined suite passed all 759 tests; local validation, independent review, CI and publication checks passed. Both release lines and the current Filter reference describe the known-length HEAD scope |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
 | Site: steps 1 to 4, 6 and 7 are merged (#591, #607, #614, #617–#623, #626, #629–#632, #653–#657), and the site is deployed from `next`. Step 5, the Japanese pages, is merged (#705 for six pages, #703 for the 2.x release notes on `master`); the handoff page stays English with a notice, and `NOTES_ONLY` of `check-japanese-lines.mjs` still lists four release notes (the subsection "Japanese pages of the site" of "Work in progress") | `next` for `site/`; `master` for 2.x sources | Still open: the emptying of `NOTES_ONLY` once `master` is merged into `next`; the site on Astro without Starlight (5.4 of the site proposal, #700, the owner's decision of 2026-11-01), whose first layer, the own shell beside Starlight behind `NGX_MRUBY_SITE_SHELL=own`, is merged in #708, and whose rest is #713 (from a Codex session, taken over by Claude Code for the browser acceptance), which also changes the iPhone width to 402px with the root size of 4.4; the 3.x development banner of 3.4; and the observability and certificate-lookup sample prerequisites of #619. Q9 is done (Discussions on, wiki off, 2026-11-01) |
 | nginx-tests with the modules that its skipped files need: a build with the options of `test.sh` and `--with-http_v2_module`, `--with-http_v3_module`, `--with-stream_ssl_module`, `--with-mail` and the other modules that "Results of nginx-tests" in `docs/test/README.md` lists (in the CI run of #602, 189 of the 209 skipped files need a module that `test.sh` does not build), with and without ngx_mruby, in the `nginx-tests` workflow | `next` | Ready to start: #602 is merged |
@@ -336,7 +343,7 @@ Taken up and still open: none.
 | nginx-tests required: the `nginx-tests` workflow records its results and fails only when a build, the fetch of the suite or `prove` fails. In the runs of 2026-10-28 and 2026-10-29 the build with ngx_mruby and the build without it have the same counts (511 files, 302 passed, 0 failed, 209 skipped). To do: the job fails when the build with ngx_mruby fails a file that the build without it passes, and the job joins the `needs` of `ci-ok` | `next` | Ready to start: the counts are the same in every run since #602 |
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` (the sentences that call the job advisory and say that a `FAIL` does not block a merge, under "Performance comparison with callgrind") aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR` | `next`, then `master` | Ready to start |
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |
-| Soak and perf for stream: the normal TCP `stream_sleep` scenario checks exact response bytes and EOF, observes `stream_timers` and `stream_fibers`, and collects the stream VM before memory samples. The performance build includes stream and counts completed sessions (section 7 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Implemented on `codex/stream-sleep-measurement`; integrated-source verification and independent review in progress |
+| Soak and perf for stream: the normal TCP `stream_sleep` scenario checks exact response bytes and EOF, observes `stream_timers` and `stream_fibers`, and collects the stream VM before memory samples. The performance build includes stream and counts completed sessions (section 7 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Implemented on `codex/stream-sleep-measurement`; local checks passed; final integration metadata review in progress |
 | The case `async_sleep_many.rb` of section 6 of [the core stabilization proposal](proposals/archive/core-stabilization.md): a handler that sleeps 1,000 times for 1 ms answers, and `Nginx::Debug.stats` shows the same `timers` and `gc_root_fibers` before and after | `next` | Merged in [#751](https://github.com/matsumotory/ngx_mruby/pull/751) as `63c6b7152`; local checks, independent review, CI and publication checks passed. The normal test build enables the counters, and each HTTP exchange has a 60-second limit |
 | The comments in `src/` and `test/` that name `docs/proposals/core-stabilization.md` (20 places, `git grep -n core-stabilization -- src test`): the proposal is now `docs/proposals/archive/core-stabilization.md`. To do: the next pull request that changes those files points them at the new path, or at the section "How a handler waits" of `docs/DEVELOPMENT.md` | `next` | The next code pull request that touches those files (a comment-only change of `src/` would run the whole build matrix) |
 | The ASan cell with `-DNGX_DEBUG_PALLOC -DNGX_DEBUG_MALLOC` (3.7 of the plan; the cell of `test.yml` sets only `-fsanitize` and `-fno-omit-frame-pointer`), so that ASan sees an access that runs from one pool allocation into the next. To do: a run of the suite with these flags, whose findings follow [SECURITY.md](../SECURITY.md), then the cell | `next`, `master` | Ready to start |
