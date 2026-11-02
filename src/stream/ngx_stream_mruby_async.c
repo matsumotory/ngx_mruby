@@ -27,9 +27,8 @@ typedef struct {
 // with an exception) or when the connection pool is destroyed while it is still
 // suspended. ctx->fiber_proc and re->fiber point to the first member, so a
 // mrb_value * to the fiber is also an ngx_stream_mrb_fiber_t *. A stream
-// session can start more than one fiber (a second UDP datagram re-runs the
-// handler while a previous fiber of the same session still sleeps), so the
-// GC-root state is tracked per fiber here, not once per session.
+// session owns the cleanup of each fiber; GC-root state is tracked on the
+// fiber that was registered, not on a shared session flag.
 typedef struct {
   mrb_value fiber;
   mrb_state *mrb;
@@ -96,17 +95,9 @@ mrb_value ngx_stream_mrb_start_fiber(ngx_stream_session_t *s, mrb_state *mrb, st
   handler_proc->upper = NULL;
   handler_proc->e.target_class = mrb->object_class;
 
-  // A stream session can start more than one fiber: a second UDP datagram from
-  // the same client re-runs the handler while a previous fiber of the session
-  // is still suspended in Nginx::Stream::Async.sleep. Each fiber has its own
-  // ngx_stream_mrb_fiber_t, so its GC-root state is tracked on its own struct
-  // and a later fiber is kept from GC even while an earlier one of the same
-  // session is. ngx_stream_mrb_fiber_cleanup runs when the connection pool is
-  // destroyed with the fiber still suspended (a worker shutting down or a
-  // configuration reload, or a connection timeout, or another datagram ending
-  // the session); it cancels a still-armed sleep timer so the timer does not
-  // fire on the freed pool and read freed memory, and drops the fiber from the
-  // GC root.
+  // Each fiber owns its GC registration until it finishes or the session
+  // ends. The connection-pool cleanup cancels a pending sleep and drops
+  // the registration before the pool is destroyed.
   f = ngx_pcalloc(s->connection->pool, sizeof(ngx_stream_mrb_fiber_t));
   cln = ngx_pool_cleanup_add(s->connection->pool, 0);
   if (f == NULL || cln == NULL) {
@@ -333,8 +324,8 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   re->stream_status = ictx->stream_status;
 
   ctx = ngx_stream_mrb_get_module_ctx(mrb, s);
-  // The fiber is already a GC root from ngx_stream_mrb_start_fiber (per fiber),
-  // so a second datagram's fiber of the same session is kept from GC too.
+  // The fiber remains a GC root from ngx_stream_mrb_start_fiber until it
+  // finishes or the connection-pool cleanup cancels it.
   re->fiber = ctx->fiber_proc;
 
   ctx->sleep.handler = ngx_stream_mrb_timer_handler;
@@ -345,8 +336,9 @@ static mrb_value ngx_stream_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   ctx->cleanup = ngx_stream_mrb_async_sleep_cleanup;
 
   // A TCP connection reads nothing while the code waits
-  // (ngx_stream_mrb_wait_read_handler). A UDP session keeps its read handler:
-  // nginx gives it the datagrams of its client through that handler.
+  // (ngx_stream_mrb_wait_read_handler). A UDP session keeps its read handler;
+  // ngx_stream_mruby_handler leaves its pending sleep in place when nginx
+  // delivers another datagram of the same session.
   if (s->connection->type == SOCK_STREAM && s->connection->read->handler != ngx_stream_mrb_wait_read_handler) {
     ctx->read_handler = s->connection->read->handler;
     s->connection->read->handler = ngx_stream_mrb_wait_read_handler;

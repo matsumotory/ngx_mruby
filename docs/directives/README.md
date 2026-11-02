@@ -466,6 +466,8 @@ TODO: describe the difference between keepalive and mruby_upstream_keepalive.
 # Stream module directives
 
 ngx_mruby also supports TCP/UDP stream. The stream module directives are similar to The HTTP module directives.
+The code of `mruby_stream` and `mruby_stream_code` runs in the session's access phase. When a UDP handler waits in `Nginx::Stream::Async.sleep`, later datagrams of that session do not restart it or extend its current wait. Those later payloads are discarded, not queued for the phase after the code; the first datagram remains available. See [Nginx::Stream::Async#sleep](../class_and_method/README.md#nginxstreamasyncsleep) before using a wait in a UDP proxy.
+
 Here are examples of the stream module directives.
 
 #### nginx.conf
