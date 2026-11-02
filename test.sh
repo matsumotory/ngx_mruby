@@ -245,7 +245,7 @@ fi
 cp -pr ${STAGED}/html/* ${NGINX_INSTALL_DIR}/html/.
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" ${STAGED}/html/set_ssl_cert_and_key.rb > ${NGINX_INSTALL_DIR}/html/set_ssl_cert_and_key.rb
 
-for f in error.log access.log stderr.log
+for f in error.log access.log stderr.log async_sleep_many.error.log
 do
     if [ -e ${NGINX_INSTALL_DIR}/logs/${f} ]; then
         touch ${NGINX_INSTALL_DIR}/logs/${f}.bak 

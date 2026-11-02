@@ -88,7 +88,8 @@ counters observe pending timers and held fibers, not the request pool size.
 check runs in every suite build. After updating an existing build, run a
 full `sh test.sh` after removing `build/nginx-X.Y.Z/objs/Makefile`
 (`build_dynamic/` for the dynamic module), so nginx configures the flag
-before using `ONLY_BUILD_NGX_MRUBY=1` again. See "Testing" below.
+before using `ONLY_BUILD_NGX_MRUBY=1` again. For a dynamic module, run
+`BUILD_DYNAMIC_MODULE=1 sh test.sh`. See "Testing" below.
 
 A case that starts nginx itself (`nginx_t`, `second_instance`,
 `workers_nginx`) also runs in
