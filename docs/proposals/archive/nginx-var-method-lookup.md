@@ -2,21 +2,18 @@
 
 Status: done except step 4 of section 5 (#610 was merged on 2026-10-28 as
 a0f4b97a2; against mruby 3.3.0, `var` is -4.49% and `auth` +1.15% Ir per
-request without GC). The owner answered the question of section 4 on
-2026-10-15, in a session's question: the change of (a) to introspection is
-accepted as a behavior change of 3.0.0. On 2026-10-19 the owner confirmed
-the content in a session's question, with the option
-"その内容で合っている (推奨)" ("that content is right"): (a) with the rule
-(a2), accessors defined on `Nginx::Var` at the first miss; (d), ngx_mruby's
-own methods read their variables in C; and the change that accessors appear
-in introspection. The implementation is #610. The proposal was written on
+request without GC). The introspection change of (a) was accepted as a
+behavior change of 3.0.0 on 2026-10-15. The complete design was confirmed
+on 2026-10-19: (a) with rule (a2), accessors defined on `Nginx::Var` at
+the first miss; (d), ngx_mruby's own methods read their variables in C;
+and accessors appear in introspection. The implementation is #610. The proposal was written on
 2026-10-14 from `next` at e0dfdc658 (mruby 3.3.0), #561 at a33f939a9
 (mruby 4.0.0; `mruby/` and the build inputs are those of #561's head,
 872f3be2b on 2026-10-14, whose two later commits change only files under
 `docs/`), the mruby tag `4.1.0-rc2` (commit c17ffcc24; its files read with
 the GitHub API on 2026-10-14), nginx 1.31.6 (the version in
 `nginx_version`), and the callgrind comparison of 2026-10-14 in the body of
-#561. Section 4 says what the owner decided, with the recommendation.
+#561. Section 4 records the accepted design and its rationale.
 
 ## 1. The problem
 
@@ -59,9 +56,8 @@ What the numbers mean: they count the work of the user-space code of nginx,
 ngx_mruby, mruby and the C library, not the kernel's work for the
 connection, so the CPU time of a whole request changes by less than these
 percentages. The `auth` difference is 0.31 of a `hello` request of the head
-(11,428 Ir, from #561). The owner accepted the differences of #561 on
-2026-10-14 (its comment "Performance: the owner accepted the remaining FAIL
-rows"), and that comment names this proposal as the follow-up.
+(11,428 Ir, from #561). The differences were accepted in the performance
+review of #561 on 2026-10-14, with this proposal as the follow-up.
 
 The profile counts a lookup as the self Ir of `mrb_vm_find_method`. It does
 not separate lookups that find nothing from lookups that find a method that
@@ -354,8 +350,7 @@ stays as a thin path from `method_missing` into the same getter and setter.
 - The agent proxy baseline `auth` - `proxy_plain_2k` of
   `docs/proposals/v3-plan.md` stays at 25,276 Ir per request with 4.0.0,
   against 21,934 with 3.3.0 (+15.2%, from #561).
-- No compatibility change. This is the state that the owner accepted for
-  #561.
+- No compatibility change. This is the accepted baseline of #561.
 
 ### (d) ngx_mruby's own methods read the variable in C
 
@@ -483,9 +478,11 @@ The same pull request also has:
   `docs/releases/v3.0.0.md` for each compatibility item of section 2 that
   the pull request brings.
 
-## 4. Recommendation and what the owner decides
+<a id="4-recommendation-and-what-the-owner-decides"></a>
 
-Recommended: (a) with the rule (a2) of section 2, and (d), together in one
+## 4. Accepted design and rationale
+
+Accepted: (a) with the rule (a2) of section 2, and (d), together in one
 pull request to `next`, which has mruby 4.0.0 since 0b76bfa6d (#561). (c)
 is the state until that pull request merges. (b), (e) and (f) are not part
 of this work.
@@ -514,16 +511,13 @@ The reasons:
   are also methods of the ancestors, is a separate question of API, which can
   be a proposal of its own.
 
-The owner decides one question:
-
-- **Accept the change of (a) to introspection as a behavior change of
-  3.0.0?** After its first use in a worker, an accessor shows in
-  `respond_to?`, `methods` and `instance_methods` of `Nginx::Var`.
-  Recommended: accept. It does not change a value that a script reads or
-  writes, it applies to `next` only, and a later release can remove the
-  definitions without changing values. If not accepted: (d) alone, (c) for
-  the documented accessor, and (b) as a separate proposal for scripts that
-  want the faster path.
+**Accepted compatibility change:** (a) changes introspection in 3.0.0.
+After its first use in a worker, an accessor shows in `respond_to?`,
+`methods` and `instance_methods` of `Nginx::Var`. It does not change a
+value that a script reads or writes, it applies to `next` only, and a later
+release can remove the definitions without changing values. The fallback
+that was not selected was (d) alone, (c) for the documented accessor, and
+(b) as a separate proposal for scripts that want the faster path.
 
 The rule (a2) and its bound of 16 prefix names are chosen here; the review
 of the implementing pull request can change them.
@@ -531,12 +525,11 @@ of the implementing pull request can change them.
 ## 5. Status and steps
 
 Status: done except step 4, as the Status line at the top says (the
-owner's answer of 2026-10-15 and the confirmation of 2026-10-19). #610
+decision of 2026-10-15 and confirmation of 2026-10-19). #610
 implements (a) with the rule (a2) and (d), with the steps below.
 
-1. After the owner's answer: a pull request to `next` with (a) and (d), or
-   with the fallback of section 4, its tests, the docs and the release notes
-   entries (section 3).
+1. Implement the accepted design in a pull request to `next` with (a) and
+   (d), its tests, the docs and the release notes entries (section 3).
 2. In that pull request: the three comparisons of section 3.
 3. Not needed: `var` and `auth` are below WARN against 3.3.0 in #610 (the
    owner decides only when one of them stays at WARN or above, with the
@@ -588,7 +581,6 @@ Read on 2026-10-14:
   `test/soak/nginx.agent.conf`, `test/soak/handlers/agent_auth.rb` on
   `next` at e0dfdc658.
 - #561: its body (the revision of 2026-10-14, "Leak / performance impact")
-  and its comment "Performance: the owner accepted the remaining FAIL rows"
-  (2026-10-14).
+  and its performance acceptance comment of 2026-10-14.
 - The method counts of section 1.2: the `mruby` binary of the 4.0.0 build
   in a checkout of a33f939a9, run in an aarch64 Linux container.

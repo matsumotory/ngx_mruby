@@ -14,8 +14,8 @@ name: site-dispatch
 # nginx_version, the workflows, ...), and the generator stops on a link to
 # a file that git no longer tracks, so a push that removes such a file
 # must build the site again. There is no pull_request trigger: a pull
-# request does not start runs on next (site-v2.yml builds the site for it
-# instead).
+# request does not start runs on next, and its author checks the 2.x pages
+# locally ("The 2.x pages of the site" in docs/test/README.md).
 on:
   push:
     branches:

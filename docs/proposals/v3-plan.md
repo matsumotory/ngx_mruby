@@ -1,10 +1,9 @@
 # ngx_mruby v3 plan
 
-Status: in effect. The owner accepted the eleven recommendations in section 7
-on 2026-10-03, in the review of this proposal, and set the priority recorded
-in section 6 at the same time. On 2026-10-04 the owner made the agent proxy
-the scheduled use case of v3.0 and set its protocol scope (section 7, items
-12 and 13). Written 2026-10-03 from a read of the code at `master` (78e2f89,
+Status: in effect. Section 7 records the eleven decisions adopted on
+2026-10-03, with the priority in section 6. The agent proxy became the
+scheduled use case of v3.0 on 2026-10-04, with the protocol scope in
+section 7, items 12 and 13. Written 2026-10-03 from a read of the code at `master` (78e2f89,
 four commits after v2.7.0) and a survey of primary sources dated up to
 2026-10-03. Amended 2026-10-04 for the agent proxy, from measurements on
 `next` and primary sources fetched that day, in these places: the
@@ -17,10 +16,9 @@ rows of step 4 and the parallel start of parts (a) and (c) of step 7 were
 decided on 2026-10-29 (section 7, item 15); the order inside step 7, the
 release conditions that steps 7 and 8 add for `v3.0.0-rc.1` and v3.0.0,
 and the targets in section 8 are proposals of that amendment, not
-decisions. On 2026-10-29 the owner also amended items 1 and 6 of section 7
-and decided item 15. On 2026-10-15 the owner decided the frame in which handler code
-runs (#502, section 7, item 14), which had been an open question of section
-7 since earlier that day. Facts cite a file and line or a URL with its
+decisions. Items 1 and 6 of section 7 were amended and item 15 adopted on
+2026-10-29. The handler-code frame decision of 2026-10-15 is recorded in
+section 7, item 14 (#502). Facts cite a file and line or a URL with its
 date. Statements marked "unverified" come from reading code only and still
 need a build and a test. The state of each step is in `docs/HANDOFF.md`,
 Queue.
@@ -33,7 +31,8 @@ this document. They are tracked in the repository's private security advisory
 
 ngx_mruby 2.x embeds mruby 3.3.0 into nginx and has not had a release since
 v2.7.0 (2024-11-07). Its build, tests, documentation, examples and default
-dependencies date from 2014 to 2019. The owner decided on 2026-10-03:
+dependencies date from 2014 to 2019. The development policy adopted on
+2026-10-03 is:
 
 - **v3** (branch `next`) is the base for the next generation of ngx_mruby.
   It is aligned with the 2026 technology background: mruby 4.x, nginx
@@ -45,14 +44,14 @@ dependencies date from 2014 to 2019. The owner decided on 2026-10-03:
   compatibility for existing users and receives only security fixes, nginx
   version tracking and build fixes.
 
-On 2026-10-04 the owner added the use case that v3.0 is built and measured
-against: an agent proxy, a proxy for LLM agents written in Ruby on ngx_mruby
+The use case adopted on 2026-10-04 for building and measuring v3.0 is an
+agent proxy, a proxy for LLM agents written in Ruby on ngx_mruby
 with good performance (section 4, "Agent proxy: the v3.0 use case"; section
 7, items 12 and 13).
 
 This document records the facts the plan rests on, the candidate changes for
-v3 grouped by pillar, the v2 policy, the order of work, and the decisions
-the owner made.
+v3 grouped by pillar, the v2 policy, the order of work, and the adopted
+decisions.
 
 ## 2. Where ngx_mruby stands (2026-10-03)
 
@@ -280,8 +279,8 @@ All claims below were checked against the cited page on 2026-10-03.
   position for ngx_mruby v3 is therefore the small decisions that nginx
   configuration cannot express: authentication, routing, rate limiting,
   observability attributes, and certificate selection from external stores.
-  Not an application platform. The agent proxy that the owner made the v3.0
-  use case on 2026-10-04 (section 4) is a complex proxy built from these
+  Not an application platform. The agent proxy adopted as the v3.0 use
+  case on 2026-10-04 (section 4) is a complex proxy built from these
   decisions, for the traffic of LLM agents: Ruby decides per request and per
   listed stream event, and nginx's proxy module moves the bytes.
 
@@ -350,7 +349,7 @@ use case in "Agent proxy: the v3.0 use case" at the end of this section.
 |---|---|---|
 | Introduce one execution-context type per request (HTTP) and per connection (stream, SSL handshake) and derive every Ruby API from it. Calling an API outside the phase it is designed for raises a Ruby exception. The [core stabilization](archive/core-stabilization.md) (implemented on `next`, 2026-11-02) keeps the record of a waiting handler in the module context of the request or the stream session; left: the execution-context type, and the exceptions outside the phase other than those of `Nginx::Async` (2.7.1). serves: [`mcp-tool-authorization`](edge-control.md#mcp-tool-authorization). | behavior (code that "worked by accident" in the wrong phase now raises) | 2.1 |
 | Redesign response finalization per phase: allow `Nginx.return 200` with an empty body, allow a body with any status, return 500 when an exception follows `rputs`, make `Nginx.return` type-independent of `headers_out.status`, fix the header-filter recursion. The end of a handler after a wait is implemented by the [core stabilization](archive/core-stabilization.md) (2026-11-02). serves: [`mcp-tool-authorization`](edge-control.md#mcp-tool-authorization), [`mcp-next-step-guidance`](edge-control.md#mcp-next-step-guidance). | behavior (#200 is fixed on `next` by #574; #225 is fixed by #566 on 2.x and by #574; #206 is fixed in 2.7.1; #484 was closed on 2026-10-04 with the answer to use `error_page`; an exception after `rputs` answers 500 since 2.7.1, and output followed by a status below 300 is sent since 2.7.2 (#594); `Nginx.return` is independent of `headers_out.status` since #715 and #720 (Q6 of [core stabilization](archive/core-stabilization.md), 2026-11-01), and a rewrite or server rewrite handler that ends without `Nginx.return` goes on as with `NGX_DECLINED` since #720 (decision (b) of 2026-10-04); left: a body with any status) | 2.1 |
-| One fiber lifecycle for HTTP and stream: register once at start, unregister once in the pool cleanup; `sub_request` returns the response directly (`last_response` kept); clear `mrb->exc` on every exit path of `ngx_mrb_run` and `post_fiber`; raise when async APIs are used outside supported phases; replace the `RProc` mutation with public mruby API. For HTTP, registering once (#547), clearing `mrb->exc` (#550) and refusing async APIs where a handler cannot wait (#551) are in 2.7.1, and `Nginx::Async.sleep` in a content handler in 2.7.3. The rewrite of how resumed handlers end lands here, on `next` (item 15 of section 7). The GC roots: on 2026-10-31 the owner chose (option "先に登録のまとめを入れて測り直す (推奨)") to keep the fibers in one holder per mrb_state, registered once, before the update to mruby 4.1.0-rc2 (#678), whose counted GC roots make each registration cost more; #682 does it for HTTP and stream. Done on `next` by the [core stabilization](archive/core-stabilization.md) (#714, #715, #722, #727, #728, #735; 2026-11-02): the stream path, `sub_request` returning the response, the `RProc` prepared once, `mrb->exc` cleared in the one resume function, and the end of resumed handlers by nginx's phase checkers. Left: a wait that starts in a handler that nginx runs inside another mruby call (the location of an internal redirect that an `mruby_set` handler, a log handler or a filter makes inside the Ruby call) is still resumed by its timer or subrequest and ended by `ngx_mrb_post_fiber`. | behavior (async errors become 500; fewer leaks) | 2.1 |
+| One fiber lifecycle for HTTP and stream: register once at start, unregister once in the pool cleanup; `sub_request` returns the response directly (`last_response` kept); clear `mrb->exc` on every exit path of `ngx_mrb_run` and `post_fiber`; raise when async APIs are used outside supported phases; replace the `RProc` mutation with public mruby API. For HTTP, registering once (#547), clearing `mrb->exc` (#550) and refusing async APIs where a handler cannot wait (#551) are in 2.7.1, and `Nginx::Async.sleep` in a content handler in 2.7.3. The rewrite of how resumed handlers end lands here, on `next` (item 15 of section 7). The GC roots: the design adopted on 2026-10-31 keeps the fibers in one holder per mrb_state, registered once, before the update to mruby 4.1.0-rc2 (#678), whose counted GC roots make each registration cost more; #682 does it for HTTP and stream. Done on `next` by the [core stabilization](archive/core-stabilization.md) (#714, #715, #722, #727, #728, #735; 2026-11-02): the stream path, `sub_request` returning the response, the `RProc` prepared once, `mrb->exc` cleared in the one resume function, and the end of resumed handlers by nginx's phase checkers. Left: a wait that starts in a handler that nginx runs inside another mruby call (the location of an internal redirect that an `mruby_set` handler, a log handler or a filter makes inside the Ruby call) is still resumed by its timer or subrequest and ended by `ngx_mrb_post_fiber`. | behavior (async errors become 500; fewer leaks) | 2.1 |
 | Common layer for HTTP and stream (code loading, fiber run/resume, sleep, upstream switching, error logging, duplicate directive check) so a fix lands once. The fiber part (run and resume, the sleep timer, the GC root slot) is `src/common/ngx_mruby_fiber.c` since #714 ([core stabilization](archive/core-stabilization.md)); left: code loading, upstream switching, error logging and the duplicate directive check. | none | 2.1 |
 | Headers: `delete` matches the full name and removes all matches; builtin headers (`Content-Type`, `Content-Length`, `Location`, `Date`) are kept in sync with `headers_out`; setters accept non-String via `to_s` or raise `TypeError`. | behavior | 2.1 |
 | `Nginx::Var`: one setter implementation shared by `set` and assignment through `method_missing`, built on the execution-context type. | behavior (minor) | 2.1 |
@@ -412,8 +411,8 @@ use case in "Agent proxy: the v3.0 use case" at the end of this section.
 
 ### Agent proxy: the v3.0 use case
 
-The owner decided on 2026-10-04 (section 7, item 12) that v3.0 is built and
-measured against an agent proxy: a complex proxy for LLM agents such as
+The use case adopted on 2026-10-04 (section 7, item 12) for building and
+measuring v3.0 is an agent proxy: a complex proxy for LLM agents such as
 Claude Code and Codex, written in Ruby on ngx_mruby with good performance.
 It authenticates the client, checks the client's model
 allowlist and its token and money budgets, chooses the upstream and the
@@ -573,7 +572,7 @@ agent proxy):
 | Non-blocking socket API and Redis on it (the Pillar C rows). serves: [`mcp-trajectory-logging`](edge-control.md#mcp-trajectory-logging), [`ai-crawler-and-bot-control`](edge-control.md#ai-crawler-and-bot-control), [`semantic-cache`](edge-control.md#semantic-cache), [`log-handler-telemetry`](edge-control.md#log-handler-telemetry). | Budgets shared by several proxy hosts in an external store. A log handler cannot wait (`Nginx::Async` raises there since #551), so the charges are queued per worker and sent by a worker timer. | C | additive | 7d |
 | Worker timers: a repeating timer per worker, stopped when the worker exits. serves: [`mcp-trajectory-logging`](edge-control.md#mcp-trajectory-logging), [`log-handler-telemetry`](edge-control.md#log-handler-telemetry). | Sends the queued charges, and refreshes the local copy of the shared budgets and the key and price tables without a reload. | C | additive | 7d |
 | Reference agent proxy: `examples/agent-proxy/` with `compose.yaml` and a README with the expected output, started in CI; `GET /v1/models` answered by a content handler from the client's model allowlist; a how-to page with trace export through `ngx_otel_module` by configuration; the client settings for Claude Code (`ANTHROPIC_BASE_URL`) and Codex (a custom provider). | The demonstration of the use case, and the configuration that the end-to-end perf and soak scenarios measure. | F | none | 7e |
-| Ruby balancer API: `mruby_upstream_balancer` in `upstream {}`, on the peer hook, chooses the peer and rebuilds the request headers for each attempt. When it exists, the documentation of `Nginx::Upstream#server=` and `Nginx::Stream::Connection#upstream_server=` points at it for a script that chooses a server per request (the owner's answer of 2026-10-30 in [the proposal on these setters](archive/upstream-server-setters.md#4-questions-for-the-owner-with-recommendations)). serves: [`llm-api-fallback`](edge-control.md#llm-api-fallback). | Another credential of the same provider on a retry inside one location. A fallback to another provider on 529 does not need it: 529 is not a `proxy_next_upstream` status, and `error_page 529 = @name` sends the request to a named location with its own credential, Host and SNI. | C | additive | after v3.0.0, unless the fallback through a named location fails its test (section 8) |
+| Ruby balancer API: `mruby_upstream_balancer` in `upstream {}`, on the peer hook, chooses the peer and rebuilds the request headers for each attempt. When it exists, the documentation of `Nginx::Upstream#server=` and `Nginx::Stream::Connection#upstream_server=` points at it for a script that chooses a server per request (the decision of 2026-10-30 in [the proposal on these setters](archive/upstream-server-setters.md#4-questions-for-the-owner-with-recommendations)). serves: [`llm-api-fallback`](edge-control.md#llm-api-fallback). | Another credential of the same provider on a retry inside one location. A fallback to another provider on 529 does not need it: 529 is not a `proxy_next_upstream` status, and `error_page 529 = @name` sends the request to a named location with its own credential, Host and SNI. | C | additive | after v3.0.0, unless the fallback through a named location fails its test (section 8) |
 | `sub_request` with a method, a body and headers, and several at once. serves: [`semantic-cache`](edge-control.md#semantic-cache). | Calls from a handler to a key service or a ledger over HTTP. | C | additive | after v3.0.0 |
 
 The proxy also needs four existing Pillar B rows: the execution-context type
@@ -658,7 +657,7 @@ demand from users.
 6. **Docs, site, examples, video** (Pillar F) in parallel from step 4.
    Tag `v3.0.0-beta.1` when the migration guide and examples exist. The site
    proceeds in the steps of section 6 of `site.md`, which do not wait for
-   step 4 of this plan (the owner decided the site proposal on 2026-10-15).
+   step 4 of this plan (the site proposal was adopted on 2026-10-15).
 7. **Agent proxy** (section 4, "Agent proxy: the v3.0 use case"), after the
    safety net (step 2). By the priority above, it does not delay steps 4, 5
    and 6. Decided on 2026-10-29 (item 15 of section 7): parts (a) and (c)
@@ -688,23 +687,24 @@ demand from users.
    Proposed in the 2026-10-04 amendment, not a decision: the reference
    agent proxy is among those examples (on parts (a) to (c) of step 7).
 
-## 7. Decisions (made by the owner on 2026-10-03, 2026-10-04 and 2026-10-15)
+<a id="7-decisions-made-by-the-owner-on-2026-10-03-2026-10-04-and-2026-10-15"></a>
 
-The owner accepted recommendations 1 to 11 below on 2026-10-03, decided
-items 12 and 13 on 2026-10-04, item 14 on 2026-10-15, and on 2026-10-29
-amended items 1 and 6 and decided item 15. The list is kept as
-the record of what was decided and why.
+## 7. Decisions and rationale
+
+Items 1 to 11 were adopted on 2026-10-03, items 12 and 13 on 2026-10-04,
+and item 14 on 2026-10-15. The amendments to items 1 and 6 and the
+decisions in item 15 were adopted on 2026-10-29.
 
 1. mruby target for v3: **4.1.0** (4.1.0-rc2, which contains the
    #7032 fix, until released), not 4.0.0, because 4.1 fixes GC registration counting that the
    async design depends on and adds core regexp/env/process.
-   On 2026-10-04 the owner approved a step before it (#561): `next` bundles
+   The intermediate step adopted on 2026-10-04 (#561) was: `next` bundles
    mruby 4.0.0 first and moves to 4.1.0 when 4.1.0 is tagged, with Prism
    vendored as a subset, mruby-encoding left out of the default build with a
    documented opt-in, and mruby-onig-regexp kept for 3.0. The target of v3
-   stays 4.1.0. On 2026-10-29 the owner amended this, in a session's
-   question, with the option "rc2 へ上げる (推奨)" ("move up to rc2"): `next`
-   bundles mruby 4.1.0-rc2 now, in one pull request, and moves to 4.1.0 in
+   stays 4.1.0. The amendment of 2026-10-29 changes the intermediate
+   version: `next` bundles mruby 4.1.0-rc2 now, in one pull request, and
+   moves to 4.1.0 in
    a small subtree pull request when 4.1.0 is tagged; it no longer waits for
    the tag. Carried out for 4.1.0-rc2 in #678, which keeps
    mruby-onig-regexp, iij/mruby-env and iij/mruby-process (their
@@ -719,8 +719,7 @@ the record of what was decided and why.
    in 2.7.2 (#604); 2.7.1 shipped without mruby-redis.
 6. `auto-ssl`: **remove from the default build in v3**; replace with
    nginx-acme plus store-lookup examples; document breakage in v2. On
-   2026-10-29 the owner amended this, in a session's question, with the
-   option "next から外す (推奨)" ("remove it from next"): `mrbgems/auto-ssl`
+   2026-10-29 the removal scope was extended: `mrbgems/auto-ssl`
    is removed from `next` (3.0.0), with its entry under "Behavior changes:
    read before upgrading" in the 3.0.0 release notes and in the migration
    guide; 2.x keeps it. The replacement by nginx-acme examples is not part
@@ -730,7 +729,7 @@ the record of what was decided and why.
    owner's gem, has had no commit on its default branch since March 2017 and
    does not build on mruby 4, and the ACMEv1
    protocol that its ACME client speaks was turned off at Let's Encrypt in
-   2021. This follows the owner's rule of 2026-10-29 in AGENTS.md ("Other
+   2021. This follows the policy of 2026-10-29 in AGENTS.md ("Other
    repositories"): a library that a gem uses having stopped
    being updated is the reason to drop it.
 7. `mruby_stream`: **keep in v3** and ask users in a GitHub Discussion
@@ -746,7 +745,7 @@ the record of what was decided and why.
     plan says so (section 4, "Agent proxy: the v3.0 use case"; section 6,
     step 7): a complex proxy for LLM agents, written in Ruby on ngx_mruby
     with good performance. Its features are no longer capabilities "only
-    when asked". The owner named it the new killer use case of ngx_mruby.
+    when asked".
     It is made of the decisions that 3.5 gives ngx_mruby (authentication,
     routing, rate limits, observability), taken per request in front of
     long streamed responses, and the perf and soak lanes on `next` already
@@ -783,37 +782,35 @@ the record of what was decided and why.
     `docs/class_and_method/README.md` on how to write such a handler in 2.x
     (#586). Both are merged, and #502 is closed.
 
-15. Decisions of 2026-10-29, each in a session's question with the option
-    named; the amendments of items 1 and 6 are in those items.
+15. Decisions of 2026-10-29; the amendments of items 1 and 6 are in those
+    items.
     - The two agent proxy rows of step 4 of section 6 (mruby log handlers
       run before nginx's `access_log`, a behavior change of 3.0.0, and the
       directive `mruby_variable $name [value];`) are part of step 4 and ship
-      in `v3.0.0-alpha.1`, among the behavior changes of item 8. Option
-      "alpha.1 に入れる (推奨)".
+      in `v3.0.0-alpha.1`, among the behavior changes of item 8.
     - Parts (a) and (c) of step 7 (`mruby_shared_dict NAME SIZE;` with
       `Nginx::SharedDict[name]`, and the upstream peer hook with
       `mruby_upstream_first_byte_timeout TIME;`) start after the safety net
       of step 2 is merged, beside the core stabilization of step 4, not
-      after step 3. Option "安全網の後、コアの安定化と並べて (推奨)".
+      after step 3.
     - The rewrite of how resumed handlers end (the resume of a handler after
       `Nginx::Async::HTTP.sub_request` from its own request) lands on
       `next`, in the core stabilization of 3.0.0; `master` (2.x) gets only
       the minimal fix for `Nginx::Async.sleep` in a content handler, which
       ends the request without a response. This amends the decision of
-      2026-10-04 to put the rewrite into `master` after 2.7.1. Option
-      "master は最小の直し、書き直しは next (推奨)".
+      2026-10-04 to put the rewrite into `master` after 2.7.1.
     - 2.x (the next release, 2.7.3) gets the fix for an output body filter
       that ends with an empty body, the same change as #574 on `next`: the
       response is sent with its status and `Content-Length: 0` instead of
-      nothing. The owner approved changing the expectation "an empty String
-      closes the connection without a response" of
-      `test/t/cases/filter_connection.rb` on `master`. Option "入れる (推奨)".
+      nothing. The expectation in `test/t/cases/filter_connection.rb` on
+      `master` changes accordingly: an empty String now sends an empty
+      response instead of closing the connection without one.
     - In 3.0.0 the content handler of a subrequest that returns
       `Nginx::HTTP_OK` without output keeps answering 500, so that
-      `auth_request` fails closed. Option "500 のまま (推奨)".
+      `auth_request` fails closed.
     - The body of the published GitHub release v2.7.2 gets the section
       "Behavior changes: read before upgrading" in English and then in
-      Japanese, as the body of v2.7.1 has. Option "足す (推奨)".
+      Japanese, as the body of v2.7.1 has.
 
 One question that the 2026-10-04 amendment raises is open. It is not part of
 item 13 or of any decision above. Should a later release add a mode in which

@@ -19,9 +19,8 @@ in the reference ([Nginx::Async](../../class_and_method/README.md#nginxasync-cla
 [migration guide](../../migration/README.md) and in the entries of
 [the 3.0.0 release notes](../../releases/v3.0.0.md). Section 12 lists where
 the implementation differs from the design below, and the parts of sections
-6 and 7 that were not made. The owner decided Q1 to Q6 of section 9 on
-2026-11-01, in a session's question, each as recommended (the chosen
-options are quoted in section 9). The design was written on 2026-11-01 from
+6 and 7 that were not made. Section 9 records the six design decisions
+adopted on 2026-11-01 and their rationale. The design was written on 2026-11-01 from
 `next` at `a654a37f6`, `master` at `6eae5a2df`, and the source of nginx 1.31.8 (the version in
 `nginx_version`). This proposal is the design for the rows of step 4 of section 6 of
 [the v3 plan](../v3-plan.md) on the fiber lifecycle, the response finalization,
@@ -277,7 +276,7 @@ above:
 3. A result that an earlier handler stored in `r->headers_out.status` is the
    result of a later handler that stores none (2.1).
 4. `sub_request` after a sleep raises in a content handler (2.3); the queue
-   has the sessions' proposal to support it.
+   contains a proposal to support it.
 5. The parent's handler is resumed inside the finalization of its
    subrequest (2.3); decision (c) puts the rewrite of how resumed handlers
    end, which includes this, into the core stabilization.
@@ -298,8 +297,8 @@ above:
 
 ## 3. What binds the design
 
-The owner decided the design principles on 2026-10-04 ("Design principles"
-in [AGENTS.md](../../../AGENTS.md)): one `mrb_state` per worker, shared by the
+The design principles adopted on 2026-10-04 are recorded in
+[AGENTS.md](../../../AGENTS.md): one `mrb_state` per worker, shared by the
 requests of that worker; no blocking; keep the existing performance;
 measure performance regularly. For this proposal they mean:
 
@@ -315,9 +314,8 @@ measure performance regularly. For this proposal they mean:
 
 The decisions that bind it, all on `next`:
 
-- The owner's answer of 2026-10-04 to the analysis of `Nginx::Async`,
-  「全部推奨通りでいこう、安全網から始めて」 ("go with all the recommendations,
-  starting from the safety net"): (a) `Nginx::Async.sleep` in a content
+- The async design adopted on 2026-10-04 starts with the test harness and
+  checks before changes to the core: (a) `Nginx::Async.sleep` in a content
   handler is supported; (b) a rewrite handler that ends with no output and no
   `Nginx.return` goes on to the next phase on `next`, as with
   `NGX_DECLINED`; (c) amended on 2026-10-29: the rewrite of how resumed
@@ -543,7 +541,7 @@ for the handler kind; stream through `stream_status`.
   `r->headers_out.status` and in the record, and a return code below 0
   (`Nginx::DECLINED`, `Nginx::DONE` and the like) only in the record. A
   handler that stores nothing has no result, whatever an earlier handler
-  stored (gap 3). The owner decided this in Q6.
+  stored (gap 3), as specified in Q6.
 - A run without a result ends as follows, with or without a wait:
   rewrite handlers go on with the next phase handler, as with
   `NGX_DECLINED` (decision (b), gap 1), and server rewrite handlers the same
@@ -803,33 +801,33 @@ other. Parts (a) and (c) of step 7 of the plan (the shared dictionary and
 the upstream peer hook) do not touch this code; part (d), the socket API,
 waits on the record as one more kind of wait.
 
-## 9. Questions for the owner
+<a id="9-questions-for-the-owner"></a>
 
-Q1. Does 3.0.0 support `Nginx::Async::HTTP.sub_request` in a content
-handler, also after `Nginx::Async.sleep`? Recommendation: yes. With the
+## 9. Decisions and rationale
+
+Q1 to Q6 were adopted on 2026-11-01.
+
+Q1. **3.0.0 supports `Nginx::Async::HTTP.sub_request` in a content
+handler, including after `Nginx::Async.sleep`.** With the
 model, nothing but nginx's checker ends the request after the subrequest,
 which is why 2.7.3 raises there; a content handler that answers from a
 subrequest then works like one in a rewrite handler, the plan's row on
 `sub_request` after v3.0.0 (calls from a handler to a key service or a
-ledger) builds on it, and the sessions' proposal in the queue asks for it. The
+ledger) builds on it, and the queue includes a proposal for it. The
 cost is the cases of `async_subrequest_return.rb`.
-Decided 2026-11-01: yes (the owner chose 「動くようにする (推奨)」).
 
-Q2. Does `Nginx.redirect` with a local URI take effect when the handler ends
-(4.8), instead of running the target inside the call? Recommendation: yes.
+Q2. **`Nginx.redirect` with a local URI takes effect when the handler ends
+(4.8), instead of running the target inside the call.**
 One handler then answers each request, which removes the three cases of 2.4
 and the nested run of mruby handlers inside another fiber, and a redirect
 target can wait like any other location. The cost: code that answers after
 `Nginx.redirect` is no longer sent (a `warn` line says so), and the existing
-cases of section 6 that pin the order change their expectations, which
-needs this answer.
-Decided 2026-11-01: yes (the owner chose 「handler の終わりで効く (推奨)」).
+cases of section 6 that pin the order change their expectations.
 
-Q3. Does a handler that waits keep running when its client closes the
-connection, and is a fiber whose request ends during a wait dropped without
-running its `ensure` clauses, as today? Recommendation: yes for 3.0.0, and
-document both. nginx does not read the client of an HTTP/1.x request during
-the phases. Noticing the close costs no allocation: `ngx_http_test_reading`
+Q3. **In 3.0.0 a waiting handler keeps running when its client closes the
+connection, and a fiber whose request ends during a wait is dropped without
+running its `ensure` clauses.** Both existing behaviors are documented.
+nginx does not read the client of an HTTP/1.x request during the phases. Noticing the close costs no allocation: `ngx_http_test_reading`
 as the read event handler while the request waits, as
 `ngx_http_limit_req_module` sets it while it delays (nginx
 `src/http/modules/ngx_http_limit_req_module.c:322`), and the close would then
@@ -838,30 +836,26 @@ halfway when its client goes away, for example before the script records
 what the request cost, which no handler of 2.x sees. Resuming a fiber with
 an exception from a cleanup, so that `ensure` runs, would run Ruby code
 while nginx frees the request.
-Decided 2026-11-01: yes for 3.0.0, both documented (the owner chose 「いまの動きを保つ (推奨)」).
 
-Q4. Does a UDP stream session run its code once, so that a datagram that
-arrives while the code waits does not start it again? Recommendation: yes.
+Q4. **A UDP stream session runs its code once; a datagram that arrives
+while the code waits does not start it again.**
 nginx gives the datagram to the handler only during that call, so it is not
 proxied or answered; today it runs the code a second time in a second fiber
 of the same session while the first is suspended, which is the path of
 GHSA-86wx-fcwx-m3vh and of #698.
-Decided 2026-11-01: yes (the owner chose 「1回にする (推奨)」).
 
-Q5. Does `Nginx::Async::HTTP.sub_request` in an `mruby_set` handler raise a
-`RuntimeError` in 3.0.0, while `Nginx::Async.sleep` there keeps working as
-described in 4.4? Recommendation: yes. nginx does not wait for that
+Q5. **`Nginx::Async::HTTP.sub_request` in an `mruby_set` handler raises a
+`RuntimeError` in 3.0.0; `Nginx::Async.sleep` there keeps working as
+described in 4.4.** nginx does not wait for that
 subrequest, the request goes on without the variable, and an exception after
 it leaves the client without a response (2.3); a raise tells the script at
 once, as in log handlers since 2.7.1.
-Decided 2026-11-01: yes (the owner chose 「RuntimeError にする (推奨)」).
 
-Q6. Is the result of a handler its own, so that a handler that sets nothing
+Q6. **The result of a handler is its own.** A handler that sets nothing
 does not return the value that an earlier handler of the request stored
-with `Nginx.return` (4.6), and does a server rewrite handler that ends
-without a result go on to the next phase handler like a rewrite handler
-(decision (b) names rewrite handlers)? Recommendation: yes to both. The
-Pillar B row on finalization lists "make `Nginx.return` type-independent of
+with `Nginx.return` (4.6). **A server rewrite handler that ends without a
+result goes on to the next phase handler**, like a rewrite handler
+(decision (b) names rewrite handlers). The Pillar B row on finalization lists "make `Nginx.return` type-independent of
 `headers_out.status`" as a candidate, and item 8 of the plan does not cover
 it. Today a server rewrite handler that returns `Nginx::DECLINED`, as the
 main test server's does, makes every later handler without a result return
@@ -871,9 +865,8 @@ For server rewrite handlers, the reason of (b) holds: an end without a
 response helps no script. The cost: a configuration with such a server
 rewrite handler and content handlers without output changes (item 3 of
 section 5), with its entry.
-Decided 2026-11-01: yes to both (the owner chose 「handler ごとにする (推奨)」).
 
-Not a question: how a handler ends without `Nginx.return` after a wait. The
+Already specified: how a handler ends without `Nginx.return` after a wait. The
 model ends it as without the wait (4.6), which decision (b), #574 and item 15
 already decide, and Q6 extends this to server rewrite handlers.
 
@@ -901,8 +894,8 @@ already decide, and Q6 extends this to server rewrite handlers.
 
 ## 11. Security review
 
-The owner wants the same eyes on this code that found the advisories of
-section 1. A finding on this code goes to the process of
+The security review includes the reviewers who identified the advisories
+of section 1. A finding on this code goes to the process of
 [SECURITY.md](../../../SECURITY.md), not into a pull request or this file.
 The two advisories of 2.7.3 in section 1,
 [GHSA-86wx-fcwx-m3vh](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-86wx-fcwx-m3vh)

@@ -173,6 +173,13 @@ upgrading". New behavior, API cleanups and features go to `next`.
 - v3 work: PR with base `next`.
 - Never push to `master`, `next` or `v2.x` directly. Until v3 is promoted, `v2.x`
   is written only by the mirror automation: never commit to it or open PRs against it.
+- Independent tasks and pull requests may progress in parallel. Assign one
+  writer per worktree or disjoint file set, and track each PR's owner,
+  remaining checks, blocker and next action. Serialize dependent changes,
+  conflicting edits and expensive checks that compete for the same resources.
+  Split investigation, implementation and independent review when it reduces
+  completion time; avoid duplicate work and idle handoffs. Parallel work does
+  not relax the review or merge conditions below. Merge an eligible PR promptly.
 - Topic branches: `claude/<topic>` (other tools: `<tool>/<topic>`).
   Backports to 2.x: `backport/v2.x/<topic>`.
 - Never create branches named like tags (`v2.7.1`, `v3.0.0-rc.1`), and never
@@ -202,12 +209,17 @@ upgrading". New behavior, API cleanups and features go to `next`.
   of minutes. On 2026-11-02 the owner added that CI is not relied on: when
   the local tests are thorough, CI is the minimum, and CI that covers many
   environments stays, but what runs locally is not repeated in CI at the
-  cost of time and money (the owner's words of both days are quoted in
+  cost of time and money (the decisions of both days are summarized in
   "Decisions" of `docs/HANDOFF.md` on `next`). So a PR to `next` runs no
   job of `site.yml`: the author runs `npm run check:ci` in `site/`, and
   `site.yml` runs on the push to `next`, where it builds, checks without a
   browser, deploys and checks the published site ("Site CI" in
-  `docs/test/README.md`). The sessions apply the rule this way (their procedure, not a
+  `docs/test/README.md` on `next`). In the same way, a PR to `master`
+  runs no job of `site-v2.yml`: its author checks the 2.x pages locally
+  ("The 2.x pages of the site" in `docs/test/README.md`), and the push to
+  `master` starts `site.yml` on `next` through `site-dispatch.yml`, which
+  builds `/v2/` from the new `master` before it deploys. The sessions
+  apply the rule this way (their procedure, not a
   decision of the owner): the author runs the checks that the change
   touches locally before marking the PR ready (the suite among them when
   `test/ci/changes.sh` gives `build` `standard` or `full`), and quotes the
@@ -320,12 +332,14 @@ these hold:
    (one of them in each output is enough, since the build runs the tests
    on the code). An overlap of `docs`, `site`, `examples` or `workflows`
    alone runs nothing again. The owner decided on 2026-11-02 that CI is
-   not relied on for what runs locally (the owner's words are quoted in
+   not relied on for what runs locally (the decision is summarized in
    "Decisions" of `docs/HANDOFF.md` on `next`). The sessions apply it
    this way (their procedure, not a decision of the owner): the checks of
    those categories are the author's local runs under "How was this
-   tested" (`npm run check:ci` in `site/` for `docs`, `site` and
-   `examples`, zizmor for `workflows`; "Build and test"), which a run
+   tested" (`npm run check:ci` in `site/` of `next` for `docs`, `site`
+   and `examples`, on `master` the checks of "The 2.x pages of the site"
+   in `docs/test/README.md`, zizmor for `workflows`; "Build and test"),
+   which a run
    on a moved base would only repeat, and on `next` the run of `site.yml`
    on the push of the merge builds and checks the merged tree before it
    deploys, and fails there instead of publishing (a push to `master`
@@ -357,12 +371,9 @@ The owner decided on 2026-10-04 that sessions may change the mrbgem
 repositories that the owner maintains (`matsumotory/mruby-*`), mruby-uname
 included.
 
-The owner decided on 2026-10-29, in the words 「僕管理のmrbgemは更新して対応できるなら更新すべき、なんでも外すとかではなく。只中で使ってるライブラリとかの更新が止まってたらもういいかな」
-("a gem I maintain should be updated, if updating copes with the change, not
-removed; if a library it uses inside has stopped being updated, it is fine to
-drop it"): a gem that the owner maintains is updated to cope with a change and not
-removed from a build. Removing one is
-acceptable when a library that the gem uses inside has stopped being updated.
+The owner decided on 2026-10-29 that an owner-maintained gem should be updated
+when that resolves compatibility rather than removed from a build. Removal
+is acceptable when an underlying library is no longer maintained.
 
 The rest of this subsection is the sessions' procedure, not a decision of
 the owner. It names the branches as they are until v3 is promoted, as the
@@ -449,8 +460,9 @@ How sessions do it (their procedure, not a decision of the owner):
   (`docs/proposals/v3-plan.md` on `next`). A decision of the owner that is
   not written there yet is recorded in `docs/HANDOFF.md` with its date. It
   holds over an older text here until a PR writes it here, but only when
-  its row links the owner's comment or quotes the owner's words; a row
-  without either is a proposal of the sessions and changes no rule.
+  its row records an adopted decision, its date, scope, rationale and
+  constraints, and the older rule it replaces. Link public evidence when
+  available. Label proposals separately; a proposal changes no rule.
 - It never holds unpublished vulnerabilities, the ids of advisories that
   are not published, names of private branches, files from outside the
   repository, or which release or work carries the fix of a vulnerability
@@ -494,6 +506,16 @@ How sessions do it (their procedure, not a decision of the owner):
   blockers, and the next concrete step. Link to existing review/CI evidence
   instead of copying raw logs. Update HANDOFF as above when the queue or
   state changes; do not make another private handoff file the only record.
+- Working documents and handoffs, public or private, state intent, rationale,
+  technical constraints and decisions. Do not quote conversations or use
+  attribution to justify a conclusion; assess its meaning against the evidence.
+- Public records summarize the decision and technical requirements; they
+  never copy private conversation text, message identifiers, personal
+  environment details or internal circumstances. This applies to commit
+  messages, PR and issue text, comments, HANDOFF and other documentation
+  (recording policy, 2026-11-02). Distinguish adopted decisions from
+  proposals. Do not rewrite existing public git history without
+  an explicit decision; report any sensitive historical content privately.
 - Public checkpoints use repository-relative paths and public commit/PR/run
   links. Do not commit private conversation logs, absolute local paths,
   personal reference images, credentials or scratch outputs. Keep local
@@ -526,7 +548,8 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   the change touches: the suite when `test/ci/changes.sh` gives `build`
   `standard` or `full`, `sh test/ci/changes_test.sh` for
   `test/ci/`, `npm run check:ci` in `site/` when it gives `docs`, `site`
-  or `examples` (below), zizmor for `.github/` ("Static analysis of the
+  or `examples` (below), the checks of "The 2.x pages of the site"
+  in `docs/test/README.md` for `docs/` on `master`, zizmor for `.github/` ("Static analysis of the
   workflows" in `docs/test/README.md`), and `sh test/soak/run.sh` or `sh
   test/perf/compare.sh` where the change affects what they measure.
   `docs/test/README.md` describes each of them.
@@ -581,7 +604,7 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
   what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18140,
-  18143-18144, 18147-18170, 18176-18186, 18199, 12345-12359, 12363-12366,
+  18143-18144, 18147-18170, 18176-18187, 18199, 12345-12359, 12363-12366,
   12368-12369, 12372-12379, 12384-12388, 12390-12393; 18116, 12357 and 12385-12388 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18180, 18181, 18185, 12379 and
   12393 to the nginx with several workers that `test/t/cases/_workers.rb` starts, 18158 to the nginx that
@@ -642,8 +665,6 @@ evidence for a change of a shared layout, style or generator.
 - The layout and wrapping checks of the site measure two patterns only, PC
   at full screen (1440px, Chromium) and iPhone Safari (402px, WebKit);
   no other widths, browsers or font combinations are added to the checks.
-  The owner's words (2026-11-01):
-  「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
   The patterns are in `site/scripts/lib/patterns.mjs`.
   The iPhone width is 402px (Safari on an iPhone 17 Pro). At 640px and
   below, the root font size grows with the screen so that the text column
