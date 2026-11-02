@@ -2553,12 +2553,11 @@ and footer share the 1032 px outer container and its left axis. Prose uses
 `--measure` inside that container. The Japanese hero uses its existing text
 column beside the logo without a second width limit. The English hero uses
 68ch: wider than ordinary prose, while its rendered lines stay within the
-90-character limit of 4.4. A common
-`home-copy` stack sets paragraph spacing for both roles. Consecutive
+90-character limit of 4.4. A common `home-copy` stack sets paragraph spacing
+for both roles. Consecutive
 explanatory paragraphs stay in one column; independent articles can share a
 row. The diagram and standalone commands use the outer width because their
-code and relationships
-need room. These roles do not change the typography tokens.
+code and relationships need room. These roles do not change the typography tokens.
 
 Section gaps are larger than the gaps between related groups, and those are
 larger than paragraph gaps. Heading-to-description spacing comes from the
@@ -2568,8 +2567,8 @@ samples; it does not layer corrections over an earlier homepage stylesheet.
 
 The local trial reads from prerequisites to startup commands, then the request,
 its expected JSON response and the edit/check instructions. The commands and
-response come directly from the runnable example. These are
-successive operations, so they stack on desktop as well as mobile. The four
+response come directly from the runnable example. These are successive
+operations, so they stack on desktop as well as mobile. The four
 final documentation destinations are a compact list. The footer retains the
 shared container, group structure and boundaries of 4.10.
 
