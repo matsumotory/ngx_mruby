@@ -1,16 +1,14 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (23:41 JST)
+## State as of 2026-11-03 (00:11 JST)
 
-- Heads: `next` is `e1947aa96`, the merge of
-  [#746](https://github.com/matsumotory/ngx_mruby/pull/746);
-  `master` is `287dda06f`, the merge of
-  [#745](https://github.com/matsumotory/ngx_mruby/pull/745), after the
-  changes of [#740](https://github.com/matsumotory/ngx_mruby/pull/740) and
-  [#739](https://github.com/matsumotory/ngx_mruby/pull/739).
-  `next` contains `master` through `287dda06f` in
-  [#746](https://github.com/matsumotory/ngx_mruby/pull/746). Its measured
-  binary inputs remain identical to the preceding `next` at `83b4cbce2`.
+- Heads: `next` is `fad853820`, the merge of
+  [#747](https://github.com/matsumotory/ngx_mruby/pull/747); `master` is
+  `9e286bb38`, the merge of
+  [#748](https://github.com/matsumotory/ngx_mruby/pull/748).
+  `next` contains `master` through `287dda06f` in #746. This merge on
+  `codex/merge-records-next` imports #748's documentation changes; measured
+  binary inputs, test inputs and site implementation match `next`.
   `v2.x` mirrors `master`.
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
@@ -73,28 +71,32 @@
 - [#739](https://github.com/matsumotory/ngx_mruby/pull/739) (base
   `master`) is merged (`5440e7a0e`): `site-v2.yml` runs only on
   `workflow_dispatch`, and a pull request to `master` checks the 2.x pages
-  locally. It reaches `next` with the next merge of `master`.
+  locally. It is included in `next` through #746.
 - [#740](https://github.com/matsumotory/ngx_mruby/pull/740) is merged on
   `master`: a rewrite handler that returns `Nginx::DECLINED` after
   `Nginx::Async.sleep` keeps the status of the request.
-- Open: none at this snapshot. #745 is merged: the 2.x Japanese release
-  headings and the 2.7.5 status description pass the four rendering checks;
-  previous heading anchors remain valid. Its full local site check passed
-  in 438 seconds and its independent review and CI passed.
-- The master-to-next integration is merged in
-  [#746](https://github.com/matsumotory/ngx_mruby/pull/746). Its Linux suite
-  passed with nginx 1.31.8 (Total 753, OK 753, KO 0, Crash 0), and its full
-  local site check passed on `1f5cc482c` in 446 seconds. Independent review,
-  all four CI build cells, `ci-ok`, CodeQL and zizmor passed.
-- Codex implemented the homepage correction on `codex/home-shared-layout`
-  at `46f078873`: role-based reading widths, continuous introductions,
-  ordered local trial commands and expected JSON, and compact documentation
-  links. The branch includes the maintenance documentation at `1f5cc482c`.
-  The full site check passed on `53ab1f039` in 461 seconds without skips;
-  85 Japanese text blocks pass the Noto/Hiragino checks at both supported
-  viewports. Independent visual review found no must-fix or should-fix
-  items. The remaining work is independent code review and PR checks.
-  The next action is the code review before opening the ready PR.
+- Open: none at this snapshot. The documentation integration on
+  `codex/merge-records-next` is being verified before its ready PR.
+- [#747](https://github.com/matsumotory/ngx_mruby/pull/747), the homepage
+  reading-order and local-trial correction, merged at 2026-11-02 23:59:24
+  JST as `fad853820`. Its local checks, independent review and CI passed.
+  The [site run](https://github.com/matsumotory/ngx_mruby/actions/runs/41467177215)
+  passed and published `fad853820`. The public documentation index matched
+  that clean revision; twelve live-page checks and the English/Japanese
+  desktop/mobile views passed ([publication checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)).
+- [#746](https://github.com/matsumotory/ngx_mruby/pull/746) imported the
+  earlier master changes and aligned the shared recording and coordination
+  rules. Its Linux suite passed with nginx 1.31.8 (Total 753, OK 753,
+  KO 0, Crash 0); its full local site check passed on `1f5cc482c` in
+  446 seconds. Independent review, all four CI build cells, `ci-ok`, CodeQL
+  and zizmor passed.
+- [#748](https://github.com/matsumotory/ngx_mruby/pull/748) aligned the
+  master recording rules and summarized existing decisions in CI guidance
+  and the English/Japanese 2.7.3 release notes. Its full local site check
+  passed in 464 seconds without skips, and independent review and CI passed.
+  This merge retains the next-specific CI guidance and imports both
+  release-note corrections. Verification and independent review are tracked
+  in the current merge PR, which holds the latest head and results.
 
 
 ## How to use this file
@@ -282,8 +284,9 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The comment of `test/ci/changes.sh` on the categories `docs`, `site` and `examples`, which is the same on both branches, still describes the CI before the decisions of 2026-11-02 on CI (#737 on `next`, #739 on `master`, which left the file as it was) | `master` and `next` | The next pull request that touches `test/ci/` |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `287dda06f` (#739, #740 and #745) in [#746](https://github.com/matsumotory/ngx_mruby/pull/746) |
-| The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Implemented at `46f078873` on `codex/home-shared-layout`; full site validation and independent visual review passed; code review and PR checks remain |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `287dda06f` in [#746](https://github.com/matsumotory/ngx_mruby/pull/746); the current `codex/merge-records-next` merge imports `9e286bb38` ([#748](https://github.com/matsumotory/ngx_mruby/pull/748)) |
+| Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; this merge brings the remaining release-note corrections to `next` |
+| The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |
