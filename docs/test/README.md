@@ -2424,7 +2424,7 @@ The Markdown link check recognizes heading anchors and explicit anchors
 written as `<a id="name"></a>`. Use an explicit anchor to preserve an old
 link when renaming a heading. Code examples do not define anchors. Run
 `python3 site/scripts/test_check_links.py` from the repository root to
-check this compatibility behavior.
+check this compatibility behavior; `npm run check:ci` also runs it.
 
 `.github/workflows/site.yml` runs on every push to `next` and on
 `workflow_dispatch` (`site-dispatch.yml` of `master` starts it after every

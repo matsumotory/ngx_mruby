@@ -78,8 +78,9 @@
   `Nginx::Async.sleep` keeps the status of the request.
 - Open: [#743](https://github.com/matsumotory/ngx_mruby/pull/743), the
   edge-control terminology update by Codex, completes that queue item.
-  It remains a draft until local site checks pass, then goes to independent
-  review and CI under the merge conditions in AGENTS.md.
+  Verification and independent review are in progress; the PR records its
+  latest head, local results and CI. It merges only when the conditions in
+  AGENTS.md hold.
 
 ## How to use this file
 
