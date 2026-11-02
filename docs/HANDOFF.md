@@ -1,9 +1,9 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-03 (02:26 JST)
+## State as of 2026-11-03 (03:05 JST)
 
-- Heads: `next` is `c440a15dc`, the merge of
-  [#750](https://github.com/matsumotory/ngx_mruby/pull/750); `master` is
+- Heads: `next` is `189af4999`, the merge of
+  [#753](https://github.com/matsumotory/ngx_mruby/pull/753); `master` is
   `9acbd8530`, the merge of
   [#752](https://github.com/matsumotory/ngx_mruby/pull/752).
   Published `next` contains `master` through `9e286bb38` in #749.
@@ -79,8 +79,13 @@
 - Open: [#751](https://github.com/matsumotory/ngx_mruby/pull/751), the
   repeated HTTP sleep regression, is ready with passing CI and independent
   review; its remaining local example validation is recorded on the PR.
-  The master-to-next integration of #752 is being validated locally before
-  a ready PR is opened.
+  [#754](https://github.com/matsumotory/ngx_mruby/pull/754) (master) and
+  [#755](https://github.com/matsumotory/ngx_mruby/pull/755) (next) update the
+  workflow analysis action and remain open.
+  The master-to-next integration of #752 has passed its local suite
+  (758 tests), all 12 standard soak scenarios, all 15 performance scenarios,
+  the full nginx-tests comparison and the complete site check. Its local
+  example execution remains to finish before a ready PR is opened.
 - [#750](https://github.com/matsumotory/ngx_mruby/pull/750) added current
   3.x documentation before the existing 2.x footer link in both languages.
   It merged as `c440a15dc`; local checks, independent review, CI and
@@ -93,7 +98,13 @@
   the test-only commit failed the three new filtered-HEAD cases, and the fix
   passed all 362 tests. All CI checks and both performance comparisons passed;
   [the independent review](https://github.com/matsumotory/ngx_mruby/pull/752#issuecomment-6583615939)
-  has no outstanding findings.
+  has no outstanding findings. The automatic site publication and the
+  public 2.x revision were verified ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/752#issuecomment-6584119833)).
+- [#753](https://github.com/matsumotory/ngx_mruby/pull/753) groups the
+  Japanese homepage introduction into two paragraphs without changing its
+  CSS or English text. Its full site checks, independent review, CI and
+  [published-page checks](https://github.com/matsumotory/ngx_mruby/pull/753#issuecomment-6584456285)
+  passed. The integration retains that component unchanged.
 - [#747](https://github.com/matsumotory/ngx_mruby/pull/747), the homepage
   reading-order and local-trial correction, merged at 2026-11-02 23:59:24
   JST as `fad853820`. Its local checks, independent review and CI passed.
@@ -306,7 +317,7 @@ Taken up and still open: none.
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
-| A known-length HEAD response finalized by an mruby output body filter keeps its connection for the following GET ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1; #628 reproduced it) | `master`, then `next` | Fixed on master in [#752](https://github.com/matsumotory/ngx_mruby/pull/752), with separate failing-test and passing-fix commits. The next integration on `codex/merge-master-head-filter` retains both 2.7.5 notes, adds the 3.0.0 entries and adapts the helper to the suite path; its local validation and independent review remain in progress |
+| A known-length HEAD response finalized by an mruby output body filter keeps its connection for the following GET ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1; #628 reproduced it) | `master`, then `next` | Fixed on master in [#752](https://github.com/matsumotory/ngx_mruby/pull/752), with separate failing-test and passing-fix commits. The next integration on `codex/merge-master-head-filter` retains both 2.7.5 notes, adds the 3.0.0 entries and adapts the helper to the suite path; its suite, soak, performance, nginx-tests and site validation passed, and independent code/text review has no findings. Local example execution is still required before a ready integration PR |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
 | Site: steps 1 to 4, 6 and 7 are merged (#591, #607, #614, #617–#623, #626, #629–#632, #653–#657), and the site is deployed from `next`. Step 5, the Japanese pages, is merged (#705 for six pages, #703 for the 2.x release notes on `master`); the handoff page stays English with a notice, and `NOTES_ONLY` of `check-japanese-lines.mjs` still lists four release notes (the subsection "Japanese pages of the site" of "Work in progress") | `next` for `site/`; `master` for 2.x sources | Still open: the emptying of `NOTES_ONLY` once `master` is merged into `next`; the site on Astro without Starlight (5.4 of the site proposal, #700, the owner's decision of 2026-11-01), whose first layer, the own shell beside Starlight behind `NGX_MRUBY_SITE_SHELL=own`, is merged in #708, and whose rest is #713 (from a Codex session, taken over by Claude Code for the browser acceptance), which also changes the iPhone width to 402px with the root size of 4.4; the 3.x development banner of 3.4; and the observability and certificate-lookup sample prerequisites of #619. Q9 is done (Discussions on, wiki off, 2026-11-01) |
 | nginx-tests with the modules that its skipped files need: a build with the options of `test.sh` and `--with-http_v2_module`, `--with-http_v3_module`, `--with-stream_ssl_module`, `--with-mail` and the other modules that "Results of nginx-tests" in `docs/test/README.md` lists (in the CI run of #602, 189 of the 209 skipped files need a module that `test.sh` does not build), with and without ngx_mruby, in the `nginx-tests` workflow | `next` | Ready to start: #602 is merged |
