@@ -24,7 +24,9 @@ t.assert('async', '1000 sleeps answer and restore timers and GC root fibers') do
   end
   t.assert_equal 'slept:1000', response[2]
   # Reject absent or malformed counters instead of converting them to zero.
-  t.assert_equal true, /\Atimers=0;gc_root_fibers=\d+\z/.match(before[2]) != nil
+  fibers = before[2].split("=")[-1].to_s.to_i
+  t.assert_equal true, fibers >= 0
+  t.assert_equal "timers=0;gc_root_fibers=#{fibers}", before[2]
   t.assert_equal before[2], after[2]
 end
 
