@@ -1,11 +1,12 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (22:34 JST)
+## State as of 2026-11-02 (23:00 JST)
 
 - Heads: `next` is `83b4cbce2`, the merge of
   [#744](https://github.com/matsumotory/ngx_mruby/pull/744), whose homepage
-  layout is deployed; `master` is `3c4613267`, the merge of
-  [#740](https://github.com/matsumotory/ngx_mruby/pull/740), after
+  layout is deployed; `master` is `287dda06f`, the merge of
+  [#745](https://github.com/matsumotory/ngx_mruby/pull/745), after the
+  changes of [#740](https://github.com/matsumotory/ngx_mruby/pull/740) and
   [#739](https://github.com/matsumotory/ngx_mruby/pull/739).
   `next` contains `master` as of `0f865ed4a` through
   [#734](https://github.com/matsumotory/ngx_mruby/pull/734). Codex is
@@ -76,17 +77,22 @@
 - [#740](https://github.com/matsumotory/ngx_mruby/pull/740) is merged on
   `master`: a rewrite handler that returns `Nginx::DECLINED` after
   `Nginx::Async.sleep` keeps the status of the request.
-- Open: none. The homepage layout (#744) and edge-control terminology
-  (#743) are merged and deployed. The master-to-next merge is being
-  validated before a PR is opened. Its scoped check of the incoming
-  2.7.5 Japanese release note found the existing short final line in the
-  fixed heading and in the "Now" item; no check exemption was added.
-  The candidate merge `62b608451` passed `sh test.sh` in Linux with
-  nginx 1.31.8 (Total 753, OK 753, KO 0, Crash 0). Its measured binary
-  inputs equal the current `next`; the imported workflow passed zizmor.
-  Full site validation remains pending the 2.x release-note correction,
-  which is being completed on master before this merge resumes.
-  The merge candidate is local and unpublished; no PR is waiting for CI.
+- Open: none at this snapshot. #745 is merged: the 2.x Japanese release
+  headings and the 2.7.5 status description pass the four rendering checks;
+  previous heading anchors remain valid. Its full local site check passed
+  in 438 seconds and its independent review and CI passed.
+- Codex is validating the master-to-next merge on `codex/merge-master-275`,
+  now including master through `287dda06f`. The candidate `62b608451`
+  passed `sh test.sh` in Linux with nginx 1.31.8 (Total 753, OK 753,
+  KO 0, Crash 0); later changes are documentation only. Measured binary
+  inputs still equal `next`, and the imported workflow passed zizmor.
+  Full site validation is next, after the documentation edits are final.
+- The homepage correction is being prepared independently on
+  `codex/home-shared-layout`. It covers shared layout rules, continuous
+  introductions, ordered local trial steps and compact documentation links.
+  Its owner completes scoped visual checks before the final site run;
+  there is no implementation dependency on the master-to-next merge.
+
 
 ## How to use this file
 
@@ -141,19 +147,25 @@ checking whether a decision fits the evidence and requirements.
   git history is not rewritten without an explicit decision; any sensitive
   historical content is reported privately.
 - **2026-11-02, homepage follow-up.** Review the entire page, including the
-  hero, section introductions, use cases, documentation links and footer.
+  hero, section introductions, use cases, local trial steps, documentation
+  links and footer.
   Shared styles give each content role a consistent readable width,
   alignment and spacing. Continuous introductory prose stays in one column;
   individual use-case articles may share a row. The four documentation
   links form a compact ordinary list. Keep meaningful paragraphs, glossary
   terms and technical explanations without promotional language. Inspect
   the complete desktop and mobile pages independently; passing mechanical
-  checks alone does not establish visual quality. This follows the current
-  master-to-next merge and updates the current site design in that PR.
+  checks alone does not establish visual quality. The local trial follows
+  prerequisites, startup, request, expected result and further instructions.
+  The homepage PR can progress independently of the master-to-next merge.
 - **2026-11-02, development coordination.** Codex continues PR preparation,
   independent review, eligible merges, handoff maintenance, release
-  preparation and contributor work under AGENTS.md. Complete one PR before
-  opening another. Release publication needs permission for that release;
+  preparation and contributor work under AGENTS.md. Independent PRs may
+  progress in parallel with explicit ownership, remaining work, blockers and
+  next actions. Serialize dependencies, conflicting edits and competing
+  expensive checks; use agents where they shorten completion time without
+  duplicating work. Review and merge gates remain unchanged. Release
+  publication needs permission for that release;
   advisory publication remains with the owner.
 - **2026-11-02, release publication.** After the release check and permission
   for that release, the session publishes the release and its tag; the owner
@@ -267,9 +279,9 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The comment of `test/ci/changes.sh` on the categories `docs`, `site` and `examples`, which is the same on both branches, still describes the CI before the decisions of 2026-11-02 on CI (#737 on `next`, #739 on `master`, which left the file as it was) | `master` and `next` | The next pull request that touches `test/ci/` |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge through `0f865ed4a` is [#734](https://github.com/matsumotory/ngx_mruby/pull/734). Codex is validating `3c4613267` (#739 and #740) on `codex/merge-master-275`; the existing 2.7.5 Japanese release-note wrapping blocks the site check |
-| The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (the owner’s follow-up under "Decisions") | `next` | After the current master-to-next merge |
-| The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. To do: a pull request to `master` that changes the wording of the heading by a few characters, in the release notes and in the template of `docs/releases/README.md` | `master` (reaches `next` by the merge) | Ready to start |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | The merge through `0f865ed4a` is [#734](https://github.com/matsumotory/ngx_mruby/pull/734). Codex is validating `287dda06f` (#739, #740 and #745) on `codex/merge-master-275`; the release-note wrapping correction is merged in #745 |
+| The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | In progress independently on `codex/home-shared-layout` |
+| The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745; included in the current master-to-next merge |
 | Subrequests: the content handler of a subrequest that returns `Nginx::HTTP_OK` without output sets status 500, where nginx's `return 200;` gives 200. 3.0.0 keeps the 500, so that `auth_request` fails closed (#574 keeps it). To do: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` already says that the status stays 500; add that nginx's own `return 200;` gives 200 and that the 500 keeps `auth_request` from allowing the request | `next` | Ready to start |
 | After a HEAD request to a location with an mruby output body filter, nginx sends the header and closes the keep-alive connection: the mruby body filter returns `NGX_ERROR` after it passed on the header of a header-only response (`ngx_mrb_finalize_body_filter`), and `ngx_http_output_filter` then sets `c->error`. The same with output, on 2.7.1, and on the merge of 2.7.2 into `next` (#628, which ran HEAD and then GET on one connection to such a location); `docs/releases/v3.0.0.md` (#574) names it as an exception ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1). To do: a test commit (HEAD, then GET on one connection), then a fix commit | `master` (reaches `next` by the merge) | Ready to start |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |

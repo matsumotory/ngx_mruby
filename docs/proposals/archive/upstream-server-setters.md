@@ -115,41 +115,38 @@ For the details of the setters in v3:
   server needs a zone, which option A refuses. This changes what the HTTP
   setter accepts, a behavior change of 3.0.0.
 
-## 4. Questions for the owner, with recommendations
+<a id="4-questions-for-the-owner-with-recommendations"></a>
 
-1. `master` (2.7.3): refuse a zone upstream in both setters (option A)?
-   Recommended: yes. The zone case with several workers cannot work with the
+## 4. Decisions and rationale
+
+1. **Adopted on 2026-10-29: option A in 2.7.3.** Both setters refuse a
+   zone upstream. The zone case with several workers cannot work with the
    current design, the change is small, and it ends a case that the 2.7.2
    release notes already call unsupported. It is a behavior change of 2.7.3
-   with an entry under "Behavior changes: read before upgrading", which also
-   names `worker_processes 1`. Options 0 and B are not recommended: 0 leaves
-   the case, and B conflicts with `resolve` and needs more code than the 2.x
-   policy asks for. **Decided on 2026-10-29: option A in 2.7.3** (the
-   option "2.7.3で例外にする (推奨)" of a session's question).
-2. v3: keep the two setters with option A, document their per-worker
-   meaning, and point scripts that choose a server per request at the
-   balancer API of the plan once it exists (option C)? Recommended: yes; the
-   hook and the API are already planned for the agent proxy, so no new design
+   with an entry under "Behavior changes: read before upgrading", including
+   configurations with `worker_processes 1`. Option 0 leaves the defect;
+   option B conflicts with `resolve` and needs more code than the 2.x
+   policy calls for.
+2. **Adopted on 2026-10-30: keep both setters with option A in v3.**
+   Document their per-worker meaning and point scripts that choose a server
+   per request at the balancer API once it exists (option C). The hook and
+   the API are already planned for the agent proxy, so no additional design
    is needed.
-   **Decided on 2026-10-30: yes** (the option "そうする (推奨)" of a
-   session's question).
-3. v3: options D and E? Recommended: yes for both, as entries of
+3. **Adopted on 2026-10-30: options D and E in v3.** Record both in
    `docs/releases/v3.0.0.md`. E follows the design principle "No blocking"
-   of `AGENTS.md`.
-   **Decided on 2026-10-30: yes for both** (the options "そろえる (推奨)" for
-   D and "例外にする (推奨)" for E of a session's question, and
-   "すごい！両方進めて！" to the explicit proposal of both). The sessions read
-   D as covering the value of the argument, because its text speaks of
-   arguments and question 2 keeps option A; neither answer names the zone. So
-   a setter called on an upstream with a `zone` keeps the `RuntimeError` of
-   option A (#652), which is about the upstream.
+   of `AGENTS.md`. Implementation interpretation: D covers the argument's
+   value, since it specifies argument validation and decision 2 retains
+   option A. A setter called on an upstream with a `zone` therefore keeps
+   the `RuntimeError` of option A (#652), which concerns the upstream
+   rather than the argument. The decision did not separately change the
+   exception class for a zone.
 
-The owner decided two more changes of the setters for 2.7.3 on 2026-10-29,
-in the same question: both raise `TypeError` for an argument that is not a
-String, recorded as a behavior change ("直していいけどその仕様前提で書いてる人もいるから振る舞いの変更としてちゃんとリリースに書くようにしてね"),
-and `Nginx::Upstream.new` and `Nginx::Stream::Connection.new` find the
-upstream by its whole name, not by a name that starts with the argument (the
-option "2.7.3で完全一致にする (推奨)"). Step 1 makes the three changes.
+Two further changes were adopted for 2.7.3 on 2026-10-29: both setters
+raise `TypeError` for a non-String argument, and `Nginx::Upstream.new` and
+`Nginx::Stream::Connection.new` find the upstream by its whole name rather
+than by a prefix. Both require behavior-change entries because existing
+scripts may rely on the earlier behavior. Step 1 implements these changes
+and option A.
 
 ## 5. Steps
 

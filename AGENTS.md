@@ -173,6 +173,13 @@ upgrading". New behavior, API cleanups and features go to `next`.
 - v3 work: PR with base `next`.
 - Never push to `master`, `next` or `v2.x` directly. Until v3 is promoted, `v2.x`
   is written only by the mirror automation: never commit to it or open PRs against it.
+- Independent tasks and pull requests may progress in parallel. Assign one
+  writer per worktree or disjoint file set, and track each PR's owner,
+  remaining checks, blocker and next action. Serialize dependent changes,
+  conflicting edits and expensive checks that compete for the same resources.
+  Split investigation, implementation and independent review when it reduces
+  completion time; avoid duplicate work and idle handoffs. Parallel work does
+  not relax the review or merge conditions below. Merge an eligible PR promptly.
 - Topic branches: `claude/<topic>` (other tools: `<tool>/<topic>`).
   Backports to 2.x: `backport/v2.x/<topic>`.
 - Never create branches named like tags (`v2.7.1`, `v3.0.0-rc.1`), and never

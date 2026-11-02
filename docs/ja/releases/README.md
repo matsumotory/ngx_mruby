@@ -125,7 +125,7 @@ v3の移行ガイドは、`next`の`docs/proposals/v3-plan.md`で計画してい
 | `vX.Y.Z.md`での表記 | `vX.Y.Z.ja.md`での表記 |
 |---|---|
 | `# ngx_mruby vX.Y.Z` | `# ngx_mruby vX.Y.Z` |
-| `## Behavior changes: read before upgrading` | `## アップグレードの前に読む挙動の変更` |
+| `## Behavior changes: read before upgrading` | `## 更新前に確認する挙動の変更` |
 | `- Before:` | `- 変更前：` |
 | `- Now:` | `- 変更後：` |
 | `- Why it changed:` | `- 変更の理由：` |
