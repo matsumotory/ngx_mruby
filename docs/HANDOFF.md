@@ -1,33 +1,16 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-02 (04:56 JST)
+## State as of 2026-11-02 (21:01 JST)
 
-- Heads: `next` is `f75b2733c`, the merge of
-  [#738](https://github.com/matsumotory/ngx_mruby/pull/738) (the
-  should-fix items of #736, 04:53 JST), after `f5362fffa`, the merge of
-  [#735](https://github.com/matsumotory/ngx_mruby/pull/735) (step 8, the
-  last step of the core stabilization, 04:09 JST), after `e4a55c060`, the
-  merge of [#737](https://github.com/matsumotory/ngx_mruby/pull/737)
-  (04:07 JST), `8a8b8b5f0`, the merge of
-  [#736](https://github.com/matsumotory/ngx_mruby/pull/736) (the Japanese
-  terms in katakana, 03:38 JST), and `3dfe8d05f`, the merge of
-  [#734](https://github.com/matsumotory/ngx_mruby/pull/734) (`master` at
-  `0f865ed4a`), after `0f7ad0b96`, the merge of
-  [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (step 7 of the
-  core stabilization, 02:33 JST), `7a0076e58`, the merge of
-  [#733](https://github.com/matsumotory/ngx_mruby/pull/733) (the
-  should-fix items of the review of #729), and `d70481db6`, the merge of
-  [#732](https://github.com/matsumotory/ngx_mruby/pull/732) (the advisory
-  id of 2.7.4 and the release rule of 2026-11-02 on `next`); `master` is
-  `5440e7a0e`, the merge of
-  [#739](https://github.com/matsumotory/ngx_mruby/pull/739) (04:45 JST:
-  `site-v2.yml` runs only on `workflow_dispatch`), after `0f865ed4a`, the
-  merge of [#731](https://github.com/matsumotory/ngx_mruby/pull/731) (the
-  same on `master`), and `e2aeb5ddd`, the merge of the 2.x form of the fix of
-  GHSA-xjh6-6vgm-56wj, where the tag `v2.7.4` is; `v2.x` mirrors `master`.
-  `next` contains `master` as of `0f865ed4a`, with the merge
-  [#734](https://github.com/matsumotory/ngx_mruby/pull/734) (before it, as of
-  [#701](https://github.com/matsumotory/ngx_mruby/pull/701)).
+- Heads: `next` is `a312ec59e`, the merge of
+  [#742](https://github.com/matsumotory/ngx_mruby/pull/742), after
+  [#741](https://github.com/matsumotory/ngx_mruby/pull/741) archived the
+  core stabilization proposal; `master` is `3c4613267`, the merge of
+  [#740](https://github.com/matsumotory/ngx_mruby/pull/740), after
+  [#739](https://github.com/matsumotory/ngx_mruby/pull/739).
+  `next` contains `master` as of `0f865ed4a` through
+  [#734](https://github.com/matsumotory/ngx_mruby/pull/734); the later
+  changes on `master` still await that merge. `v2.x` mirrors `master`.
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
   is published. Two advisories were published with it:
@@ -90,9 +73,14 @@
   `master`) is merged (`5440e7a0e`): `site-v2.yml` runs only on
   `workflow_dispatch`, and a pull request to `master` checks the 2.x pages
   locally. It reaches `next` with the next merge of `master`.
-- Open: [#740](https://github.com/matsumotory/ngx_mruby/pull/740) (base
+- [#740](https://github.com/matsumotory/ngx_mruby/pull/740) is merged on
   `master`: a rewrite handler that returns `Nginx::DECLINED` after
-  `Nginx::Async.sleep` keeps the status of the request).
+  `Nginx::Async.sleep` keeps the status of the request.
+- Open: [#743](https://github.com/matsumotory/ngx_mruby/pull/743), the
+  edge-control terminology update by Codex, completes that queue item.
+  Verification and independent review are in progress; the PR records its
+  latest head, local results and CI. It merges only when the conditions in
+  AGENTS.md hold.
 
 ## How to use this file
 
@@ -130,6 +118,14 @@ that are not written down elsewhere yet, the work in progress and the queue.
   you act on them: other sessions merge pull requests all the time.
 
 ## Decisions
+
+On 2026-11-02 the owner transferred development coordination to Codex:
+「以降は Codex が、PR の作成からレビュー、マージ、台帳の更新、リリースの準備、他の agent と外部の方の PR の引き取りまでを進めてください。」
+Codex completes one PR before opening another, using the review and merge
+conditions of AGENTS.md. The owner's permission is still required to
+publish each release, and the owner alone publishes advisories. This row
+records ownership; the repository's review and merge rules remain in
+AGENTS.md.
 
 Decisions of the owner that are not yet written in the place their row
 names: (a) and (b) of 2026-10-04, and (1) of 2026-11-01. The owner's choice of 2026-10-29 at 05:34 JST, in a session's
@@ -390,11 +386,10 @@ Taken up and still open: none.
 | The ASan cell with `-DNGX_DEBUG_PALLOC -DNGX_DEBUG_MALLOC` (3.7 of the plan; the cell of `test.yml` sets only `-fsanitize` and `-fno-omit-frame-pointer`), so that ASan sees an access that runs from one pool allocation into the next. To do: a run of the suite with these flags, whose findings follow [SECURITY.md](../SECURITY.md), then the cell | `next`, `master` | Ready to start |
 | A test build with `ngx_otel_module` (nginx/nginx-otel, built with CMake against the nginx source of `test.sh`) and an OTLP receiver for the case of the observability sample of 3.2 of the site proposal | `next` | The harness rewrite (the row above), of which this waits for what is left: the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads |
 | Step 7 of section 6 of the plan, the agent proxy, parts (a) to (e); none exists on `next` | `next` | Parts (a) and (c) start "after the safety net of step 2, beside step 4" (step 7 of section 6 of the plan, decided on 2026-10-29 in item 15 of section 7), so they wait for what is left of that safety net: in the row above for the test harness rewrite, the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads, and its `test/t/cases/_workers.rb` runs the several workers that the test of N concurrent `incr` calls of the shared dictionary needs (section 8 of the plan). (b) and (d) also wait for step 4. The order inside the step is a proposal of the 2026-10-04 amendment until the owner decides it. The `serves:` notes on the rows of the plan name the uses of [the ledger](proposals/edge-control.md#use-cases-and-the-features-they-need) that each part serves |
-| The AI uses of v3 beyond the agent proxy: the next work comes from [the ledger of the uses](proposals/edge-control.md#use-cases-and-the-features-they-need), first its rows at `designing` ([MCP tool authorization](proposals/edge-control.md#mcp-tool-authorization), whose first recipe uses two tenants and read and write mock tools, [MCP tool profiles](proposals/edge-control.md#mcp-tool-profiles), [MCP progressive retrieval](proposals/edge-control.md#mcp-progressive-retrieval), and [LLM API fallback](proposals/edge-control.md#llm-api-fallback), whose test is in section 8 of the plan), then its rows at `direction`. This row copies the ledger; when they disagree, the ledger holds | `next` | What is left of step 4 of the plan (the row of step 4 above); the fallback also waits for step 7 of the plan (the row above). No API for these uses is designed yet |
+| The AI uses of v3 beyond the agent proxy: the next work comes from [the ledger of the uses](proposals/edge-control.md#use-cases-and-the-features-they-need), first its rows at `designing` ([MCP tool authorization](proposals/edge-control.md#mcp-tool-authorization), whose first recipe uses two tenants and read and write mock tools, [MCP tool profiles](proposals/edge-control.md#mcp-tool-profiles), [MCP progressive retrieval](proposals/edge-control.md#mcp-progressive-retrieval), and [Model API fallback](proposals/edge-control.md#llm-api-fallback), whose test is in section 8 of the plan), then its rows at `direction`. This row copies the ledger; when they disagree, the ledger holds | `next` | What is left of step 4 of the plan (the row of step 4 above); the fallback also waits for step 7 of the plan (the row above). No API for these uses is designed yet |
 | Remove `example/` (`README.md`, `nginx.conf`, `proxy.rb`, `set.rb`, `set2.rb`, `unified_hello.rb`): no CI job starts it, no page links it, and its `/proxy` location picks among `test1.example.com` to `test3.example.com`, which are unreachable; `examples/start/` is checked by `examples.yml` | `next` | Ready to start |
 | What is left of the async resume rewrite (decision (c) of 2026-10-04, amended on 2026-10-29: the rewrite of how resumed handlers end): a wait that starts in a handler that nginx runs inside another mruby call (the location of an internal redirect that an `mruby_set` handler, a log handler or a filter makes inside the Ruby call), or after an internal redirect replaced the module context of the handler, is still resumed by its timer or by the end of its subrequest and ended by `ngx_mrb_post_fiber` in `src/http/ngx_http_mruby_async.c`; a content handler there does not keep the request, so the request ends at the sleep. The rest is done in [#715](https://github.com/matsumotory/ngx_mruby/pull/715), [#722](https://github.com/matsumotory/ngx_mruby/pull/722) and [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (section 12 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Ready to start; no design exists yet |
 | The generated reference of the site (Pillar F of the plan): the directives from the `ngx_command_t` tables, the Ruby API with YARD and yard-mruby, the C API with Doxygen. `site/scripts/check-reference.mjs` checks, among other things, that each directive name has a heading in `docs/directives/README.md`; the pages are written by hand | `next` | Ready to start; no step of section 6 of the site proposal produces it yet |
-| The words of the docs that do not follow [the glossary](glossary.md) yet, all in [the edge-control proposal](proposals/edge-control.md): "AI traffic" without a definition at its first use (the title), "AI clients" (Purpose and two rows of the ledger, where the glossary writes AI application or agent), "LLM API fallback" (a row and a heading, where it writes model API). [#729](https://github.com/matsumotory/ngx_mruby/pull/729) replaced "LLM proxy" as the name of the component (the documents index, the home page, the navigation) and updated the glossary's section "Examples in ngx_mruby's pages" to the words of the pages | `next` | Ready to start: a pull request to the proposal that defines "AI traffic" at its first use with the four kinds of traffic it covers, and writes AI application or agent and model API. The anchor `#llm-api-fallback` stays, since the site links it |
 | The "Before" line of the entry on `mruby_set` values that are not Strings in [the 3.0.0 release notes](releases/v3.0.0.md) limits the end of the worker process to the handler that does not wait. The review of [#738](https://github.com/matsumotory/ngx_mruby/pull/738) inferred from the 2.x source (`ngx_mrb_var_set_vector`) that a `to_s` returning something other than a String can end the worker after `Nginx::Async.sleep` too; nobody has run it on 2.x | `next` | Ready to start: run the case on `master` (2.7.4), then write the "Before" line of `docs/releases/v3.0.0.md` and `.ja.md` from the result |
 | The documentation group of the site's footer (4.10 of [the site proposal](proposals/site.md)) links the other version's documentation (「2.xのドキュメント」) but not the documentation of the version that the page describes. A should-fix item of the review of [#738](https://github.com/matsumotory/ngx_mruby/pull/738) | `next` | Ready to start: add the link to `/docs/` (`/ja/docs/`) on the 3.x pages, or name the 2.x link as the stable version, and say so in 4.10 |
 | The 2.x form of the protected conversion of an `mruby_set` value ([#735](https://github.com/matsumotory/ngx_mruby/pull/735) on `next`): convert the value under `mrb_protect_error`, and a `to_s` that is missing, raises or returns a non-String ends the request with 500 instead of reading the result unchecked; a regression test for the three cases, and the entry under "Behavior changes" of `docs/releases/v2.7.5.md` and `.ja.md`. The owner chose on 2026-11-02 (05:25 JST) to start it later ("後にする (キューに書く)"). | `master` | The owner's go |

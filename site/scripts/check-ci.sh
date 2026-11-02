@@ -89,6 +89,7 @@ static_checks() {
         echo "check:ci: the 2.x pages from origin/master $sha"
     fi
     run node scripts/build-v2.mjs --tree "$tree"
+    run python3 scripts/test_check_links.py
     run npm test
     # The relative links and anchors of the Markdown files that git
     # tracks, outside the vendored trees.

@@ -31,7 +31,7 @@ def strip_code(text):
 
 
 def slugs(path):
-    """GitHub heading anchors of a Markdown file."""
+    """GitHub heading anchors and explicit HTML anchors of a Markdown file."""
     seen, result = {}, set()
     in_fence = False
     with open(path, encoding='utf-8') as f:
@@ -41,6 +41,9 @@ def slugs(path):
                 continue
             if in_fence:
                 continue
+            # Explicit anchors keep existing links valid when a heading is renamed.
+            result.update(re.findall(r'<a\s+id=[\"\']([^\"\']+)[\"\']\s*>',
+                                     CODE_SPAN.sub('', line)))
             m = re.match(r'^(#{1,6})\s+(.*?)\s*#*\s*$', line)
             if not m:
                 continue
