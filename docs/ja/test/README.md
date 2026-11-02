@@ -66,7 +66,7 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 |---|---|---|
 | `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`nginx-tests`、`examples`、`codeql`は、それぞれのパスフィルタに従って動く |
 | `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較 |
-| `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | `next`ではジョブなし。作者が`npm run check:ci`を流す([サイトのCI](#サイトのci))。`master`では作者が[2.xページ](#サイトの2xページ)を手元で検査 |
+| `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | ジョブなし。手元で検査：[サイトのCI](#サイトのci)（`next`）、[2.xページの検査](#サイトの2xページ)（`master`） |
 | `site` | `.github/workflows/site.yml`と`site/` | ジョブなし。`docs`と同じ |
 | `examples` | `examples/` | examples。サイトは`docs`と同じ扱い |
 | `workflows` | `.github/`のうち`test.yml`と`site.yml`を除いたもの | zizmorは全ワークフローを検査。`.github/workflows/`と`.github/codeql/`はCodeQLも対象 |
@@ -80,7 +80,9 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 | sanitizerのセル | 1.31.8 | 静的 | ビルドしてインストールしたOpenSSL | AddressSanitizerとUndefinedBehaviorSanitizerを付けてビルドする。[2つのsanitizerの下でテストを実行する](#2つのsanitizerの下でテストを実行する)を参照 |
 | valgrindのセル | 1.31.8 | 静的 | ビルドしてインストールしたOpenSSL | valgrindの下で実行する。[CIのvalgrind](#ciのvalgrind)を参照 |
 
-PRで全セルでなくこの4セルを実行することは、2026年11月1日にオーナーが決めました。セッションの問いに対して、オーナーは「`4 cell に減らす (推奨)`」の選択肢を選びました。オーナーの言葉は[docs/HANDOFF.md](../../HANDOFF.md)の「Decisions」にあります。どのセルも、nginxをビルドする前にOpenSSL 1.1.1wをビルドしてインストールします。1つ目のセルは、`--with-openssl-src`でOpenSSLをnginxにも組み込み、`configure.in`と`Makefile.in`のこの経路を通ります。valgrindのセルは、同じnginxとモジュールを、インストールしたOpenSSLでビルドするので、この経路を通りません。
+PRでは、この4セルを実行します。どのセルも、nginxをビルドする前にOpenSSL 1.1.1wをビルドしてインストールします。1つ目のセルは、`--with-openssl-src`でOpenSSLをnginxにも組み込み、`configure.in`と`Makefile.in`のこの経路を通ります。
+
+valgrindのセルは、同じnginxとモジュールを、インストール済みのOpenSSLでビルドします。ソースから組み込む経路は通りません。
 
 全セルは、nginx 1.31.8、1.30.6、1.28.3、1.26.3と、静的モジュールか動的モジュールか、`--with-openssl-src`を付けるかどうかを組み合わせた16セルに、sanitizerのセルを加えたものです。valgrindのセルは16セルの1つです。全セルは引き続き、夜間のvalgrindの実行、タグのpush、`base`入力のない「Run workflow」で実行します。タグの前のチェックのPRでも実行し、このPRにはラベル`full-matrix`を付けます。[docs/releases/README.md](../releases/README.md)の「タグの前に」を参照してください。ほかのセルでしか確かめられない変更、たとえばnginx 1.26.3向けの変更は、そのバージョンでローカルで確かめます。バージョンは`nginx_version`かセルの`NGINX_VERSION`で選び、モジュールは`BUILD_DYNAMIC_MODULE`で選びます。そのPRにラベル`full-matrix`を付けて、全セルを実行することもできます。
 
@@ -168,7 +170,7 @@ check_added_files.sh: 2 added file(s) checked between origin/master and HEAD and
 
 ngx.mruby.orgは`next`の`site/`でビルドします。`/v2/`の2.xページは`master`の`docs/`から作ります。`master`へのPRでは、2.xページの検査をCIで流しません。
 
-ドキュメントや、そのリンク先を変えるPRでは、作者がreadyにする前に次の検査を手元で流します。コマンドと結果はPRの「How was this tested」に記録します。
+ドキュメントやリンク先を変えるPRでは、readyにする前に手元で検査します。PRの「How was this tested」にコマンドと結果を書いてください。
 
 1. gitが追跡するMarkdownの相対リンクとアンカーを確かめます。`master`に無い`check_links.py`を`next`から取り出して使います。`T`は、リポジトリ外に用意した作業用ディレクトリです。
 
@@ -178,15 +180,19 @@ ngx.mruby.orgは`next`の`site/`でビルドします。`/v2/`の2.xページは
    $ git ls-files -z -- '*.md' ':!:mruby/' ':!:dependence/' | xargs -0 python3 "$T/check_links.py" .
    ```
 
-2. `next`のチェックアウトで、`site/`に移動して`npm ci --ignore-scripts`と`npx playwright install chromium webkit`を実行します。続けて`NGX_MRUBY_V2_TREE=DIR npm run check:ci`を流します。`DIR`には、PRのチェックアウトのルートを指定してください。
+2. `next`のチェックアウトで、`site/`に移動して`npm ci --ignore-scripts`と`npx playwright install chromium webkit`を実行します。続けて`NGX_MRUBY_V2_TREE=DIR npm run check:ci`を流します。
 
-このコマンドは、`next`の3.xページとPRの2.xページをビルドし、ブラウザの検査も含めて確かめます。表示された`next`のコミットと、PRのheadを結果に添えてください。Rubyのブロックのコンパイルには、同梱mrubyの`mrbc`を`MRBC`で指定します。無ければ、その検査を省略したことを最後に表示します。
+   `DIR`は、検査するPRをチェックアウトしたディレクトリです。
+
+このコマンドは、`next`の3.xページとPRの2.xページをビルドし、ブラウザの検査も含めて確かめます。表示された`next`のコミットと、PRのheadを結果に添えてください。Rubyのブロックは、`MRBC`で指定したコンパイラか、同梱mrubyの`mruby/build/host/bin/mrbc`でコンパイルします。どちらも無ければ、その検査を省略したことを最後に表示します。
 
 検査は、解決できないリンクやアンカー、gitが追跡しないファイルへのリンク、2.xバナーの欠落を検出します。検索結果に別のバージョンのページが混じった場合も失敗します。
 
 公開に関わるワークフローは、次の2つです。
 
-- `.github/workflows/site-dispatch.yml`は`master`へのpushごとに、`next`の`site.yml`を起動します。新しい`master`から2.xページをビルドして検査し、成功したときだけ公開します。dispatchが拒まれた場合や、起動した実行を特定できない場合は失敗します。
+- `.github/workflows/site-dispatch.yml`は`master`へのpushごとに、`next`の`site.yml`を起動します。新しい`master`から2.xページをビルドして検査し、成功したときだけ公開します。
+
+  dispatchが拒否された場合や、起動した実行を特定できない場合は失敗します。
 - `.github/workflows/site-v2.yml`は「Run workflow」でだけ動きます。`gh workflow run site-v2.yml --ref <branch>`で対象ブランチを選び、`next`のサイトと対象ブランチの2.xページを組み合わせて検査します。成果物は`site-v2`です。
 
 公開時の`site.yml`が検査するMarkdownは`next`のファイルです。サイトに載らない`master`のファイルは、作者が上のリンク検査で確かめます。どちらのワークフローも`ci-ok`の`needs`には含まれません。
@@ -986,7 +992,11 @@ $ diff base.txt head.txt
 
 ## サイトのCI
 
-`.github/workflows/site.yml`は、`next`へのpushごとと、`workflow_dispatch`で動き、プルリクエストでは動きません。`master`の`site-dispatch.yml`は、`master`へのpushごとに、この`workflow_dispatch`を起こします。オーナーは2026年11月2日に、手元で流せる検査をCIに頼らないと決め、選択肢「`PR では流さず、next への push の時だけ (推奨)`」を選びました。オーナーの発言は、[docs/HANDOFF.md](../../HANDOFF.md)の「Decisions」にあります。
+`.github/workflows/site.yml`は、`next`へのpushごとと、`workflow_dispatch`で動き、プルリクエストでは動きません。
+
+`master`の`site-dispatch.yml`は、`master`へのpushごとに、`next`の`site.yml`を`workflow_dispatch`で起動します。
+
+PRをreadyにする前に、手元でサイトを検査します。デプロイ前には、マージ済みのツリーをビルドして検査します。
 
 | ジョブ | 内容 |
 |---|---|

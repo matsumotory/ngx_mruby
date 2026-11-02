@@ -956,8 +956,7 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   pattern of "Site design acceptance") and 17 px from 412 px; every role
   of the scale follows it, so the roles keep their ratios. Above 640 px
   the root is 16 px. `check-styles.mjs` checks the root size and compares
-  each role in rem (chosen here, following the owner's words of
-  2026-11-01: 「あまりに箇所が多ければ、文字数というかフォントサイズなどで調整してその上で細かいところは分量で調整したら良さそう」).
+  each role in rem, preserving the ratios of the shared type scale.
 - **Seven sizes.** A survey summary of Material Design 3 suggested three to
   six steps, but Material Design 3 itself names five roles in three sizes
   each (summary), so the number here follows the seven roles of the table,
@@ -1013,8 +1012,7 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   allows and inline otherwise. It is decorative: the heading level is in
   the markup.
 - The home page heading takes one line at 1440 px, in both languages,
-  and at most two lines at 402 px (the owner on 2026-11-01:
-  「pcビューのヒーロータイトルは1行に収まるフォントサイズがいいかな、日英ともに」).
+  and at most two lines at 402 px.
   From 801 px, where the showcase image stands beside the heading, its
   size is at most the width of its column divided by the width of the
   heading on one line plus about 2%: 22.6 em in English, whose heading is
@@ -1031,12 +1029,8 @@ windows, a fixed bar of actions at the bottom of narrow screens.
   15.6 em, because its first line is 15.1 em wide. That cap is below the
   size of the scale under about 655 px (17.9 px at 320 px, 23.2 px at
   402 px, 25.0 px at 430 px), and below h2 (22 px) under about 385 px.
-  The headings are the owner's choice of 2026-11-02 (section 7). (The
-  owner on
-  2026-10-31:
-  「ヒーローの見出し、モバイルだとこういう改行で微妙なので2行にしておきたい。シュッと直しといてこれ」,
-  then the choices 「文はそのまま、モバイルだけ字を小さく」 and, for the
-  読点 after 転送を, 「取る (推奨)」).
+  Section 7 records the current headings. The mobile treatment preserves
+  the wording and removes the comma after 転送を.
 - No `text-wrap: pretty` or `balance` anywhere: Safari applies `pretty` to
   every line and Chromium to the last four, so the same CSS wraps
   differently per engine (WebKit blog; MDN). The site’s banner also uses
@@ -1267,9 +1261,8 @@ acceptance; the interaction check covers that separately.
   tests (2023).
 - No horizontal page scroll. WCAG 1.4.10 asks for reflow at 320 CSS px,
   and writers keep that in mind; the check measures the iPhone pattern of
-  "Site design acceptance" (402 px in WebKit). On 2026-10-30 the owner
-  required code to be readable without horizontal scrolling (「横スクロールを
-  強制」は「絶対やめて」). Code blocks soft-wrap, including long paths and
+  "Site design acceptance" (402 px in WebKit). Code must be readable
+  without horizontal scrolling. Code blocks soft-wrap, including long paths and
   tokens; copying keeps the original source. This supersedes the earlier
   cut-off-code treatment. Tables and inline-code cells must also be readable
   without forced sideways scrolling: wrap identifiers and restructure status
@@ -1336,8 +1329,7 @@ acceptance; the interaction check covers that separately.
   Japanese from 1252 px in Hiragino Sans and 1237 px in Noto Sans JP; a
   count of four characters such as 1.2K takes 4 to 5 px more. 76rem and
   88rem stay above them. The labels of the header do not
-  break inside a word (`white-space: nowrap`). The owner on 2026-11-01:
-  「英語はいいんやけど、日本語のとき、英語のヘッダーがバーガーメニューに切り替わるタイミングだとヘッダーの文字列が折れ曲がる。もっとはやくハンバーガーメニューにしないといけないっぽい」.
+  break inside a word (`white-space: nowrap`).
 - **Narrow screens** (640 px and below): logo, wordmark, search, the theme
   toggle and the menu button stay. The language link becomes the first item
   of the menu, under the heading "Language", as on the profile site; the
@@ -1358,9 +1350,7 @@ acceptance; the interaction check covers that separately.
      the language (the language link). The version link leads to the index
      of the other version (3.4): 「2.x docs」 or 「2.xのドキュメント」 to
      `/v2/` on the 3.x pages, 「3.x docs」 or 「3.xのドキュメント」 to
-     `/docs/` on the 2.x pages. The owner decided on 2026-11-01 that it
-     leaves the header for the footer, asking 「版リンクってそもそもいる？」
-     and then choosing 「ヘッダーから外し、footer に置く (推奨)」: the banner
+     `/docs/` on the 2.x pages. The link belongs in the footer: the banner
      of every page (3.4) already leads from 3.x to the 2.x documentation
      and from 2.x to 3.x, and the footer keeps the link after v3.0.0,
      when the 3.x banner goes. The license is labeled MIT and links to the
@@ -1411,12 +1401,8 @@ acceptance; the interaction check covers that separately.
   requests belong to their own branches. `nginx-tests` and `zizmor` run on
   ready pull requests and on "Run workflow", not on pushes, so their
   badges show the push runs of 2026-10-31 until a session runs them on
-  `next` or `master` ("Run workflow"). The
-  owner decided on 2026-11-01 that this strip holds what others can judge
-  the project by, and that a score does not belong there:
-  「スコアボードって結局妥当性がむずいやん？となりとちゃんと静的解析してるとか最低限のプラクティス守ってるとかライセンスはこれとか、テストやセキュリティを色々な観点で検査してるのは良い気がする」,
-  「他にも静的解析とかvalgrindとかもいいじゃんngix-testもさ」,
-  「一般的に見て評価したり得られる開発の工夫が見れるのはいい気がする」.
+  `next` or `master` ("Run workflow"). The strip exposes development
+  practices that readers can assess, rather than an aggregate score.
   The strip shows the project's state and is not decoration (4.3): the
   images keep their services' colors, nothing recolors them, no frame,
   shadow, start-edge line or visible label is added, and no text turns a
@@ -1462,9 +1448,8 @@ acceptance; the interaction check covers that separately.
   42.5rem (680 px), and the menu row at 640 px and below; from 641 px to
   679 px the Japanese header has no room for it (14 px short at 641 px with
   a count of four characters), and the link keeps GitHub without it.
-- The owner decided on 2026-11-01 that the release and the star count
-  stand apart from the strip: 「リリースとスターは置く場所は別に考えてもいい気はしたけど」,
-  then the choice 「帯に7つ、release は状態の行、stars はヘッダー」.
+- The release and the star count stand apart from the strip: the release
+  belongs in the status line and the stars in the header.
   README.md on `next` shows the badges of the strip and the OpenSSF
   Scorecard, whose score the site does not show.
 - **Checks.** `check-project-badges.mjs` checks the exact links, images,
@@ -1521,18 +1506,16 @@ to the documentation layout readers know.
 
 Step 2 rendered the home page and a reference page that holds one diagram
 and one sample, in light and dark, at 390 by 664 and 1440 by 900 px, in
-Chromium and WebKit, once for each choice below (#607). The owner chose on
-2026-10-19, in a session, after seeing one contact sheet per set of the
-workflow artifact `specimens` and a full-size crop of the corners of the
-code blocks, and took the recommendation in each item. The option labels
-the owner chose are quoted.
+Chromium and WebKit, once for each choice below (#607). The selected
+configuration and its reasons follow; the workflow artifact `specimens`
+contains contact sheets and full-size code-block corner crops.
 
-1. **Neutrals: palette A** ("配色 A (推奨)"). On the three sites the
+1. **Neutrals: palette A**. On the three sites the
    neutrals and the accent share one hue (4.2), and palette A keeps that
    rule with the teal. The alternative was palette B, the three sites' warm
    neutrals with the teal accent, whose light `accent` has no margin on
    `surface` (4.6).
-2. **Monospace face: Geist Mono** ("Geist Mono (推奨)"), served by the site
+2. **Monospace face: Geist Mono**, served by the site
    from `@fontsource-variable/geist-mono` 5.3.0 (SIL Open Font License 1.1),
    with the corporate site's system stack `"SFMono-Regular", Menlo,
    Consolas, "Liberation Mono", monospace` after it as the fallback. On this
@@ -1545,13 +1528,13 @@ the owner chose are quoted.
    (7.95 px against 8.73 px in Chromium on macOS, 8.00 px against 9.00 px in
    Chromium on Linux), so JetBrains Mono was not needed. The alternative was
    the system stack alone, which downloads nothing.
-3. **Radius of code blocks: 12 px** ("12 px (推奨)"), inherited from the
+3. **Radius of code blocks: 12 px**, inherited from the
    corporate site's code blocks, the only ones on the owner's sites, and the
    radius of the site's other content frames (asides, diagram frames, the
    home page example), so that a code block matches the frames beside it;
    8 px stays the radius of controls. The alternatives were 8 px and 0,
    Starlight's default.
-4. **How cyber: the means of 4.3** ("4.3 の手段のまま (推奨)"): the teal
+4. **How cyber: the means of 4.3**: the teal
    accent, the dark theme, monospace for code and numbers, the opaque
    header, no shadows, gradients or entrance animation, and fewer radii.
    The specimens also showed the two further steps within 4.11 (the
@@ -1560,8 +1543,7 @@ the owner chose are quoted.
    and the landing page (the gold accent with palette B's neutrals, the
    corporate site's shadow on the header and its entrance animations).
 
-Where the specimens live: the workflow artifact of the `site` run and the
-owner's review in a session ("CI の artifact とこの会話 (推奨)"); no image
+The specimens are reviewed from the workflow artifact of the `site` run; no image
 is committed or attached to the pull request. After the decision the site
 builds only the chosen configuration; the specimen pages and their
 screenshot script stay for the browser checks and the screenshots of the
@@ -1694,21 +1676,20 @@ detection, or that pinned versions do not keep Starlight stable.
   it on 2026-10-30 (#656): with `actions: write` the job's token started
   `site.yml` on `next`, which was not on `master`; with `actions: read`
   GitHub refused the dispatch with HTTP 403. No token or `site.yml` on
-  `master` is needed. The `master` workflows trigger only for `master`, so
-  their copies merged into `next` do not run there.
-- **The 2.x documentation before it merges.** `.github/workflows/site-v2.yml`
-  on `master` runs on every pull request to `master`, without a path
-  filter for the same reason: it checks out `next`, builds the site with `site/` and the 3.x pages of
-  `next` and the 2.x pages of the pull request, and runs the checks of
-  step 6, so a change to the 2.x documentation sees them before it merges.
-  It builds the 3.x pages too, because the 2.x pages link to 3.x pages
-  (the banner and the version link) and the search check needs both
-  indexes.
-  `npm run check:ci` builds both parts, with `docs/` of `origin/master`, so
-  a change to `site/` that breaks `/v2/` fails there, and so does the run
-  of `site.yml` on its push. The deploy job then
-  meets a `/v2/` failure only if `master` and `next` changed in ways that
-  each passed alone.
+  `master` is needed. `site-dispatch.yml` triggers only for pushes to `master`, so its copy
+  merged into `next` does not dispatch on a push there.
+- **The 2.x documentation before it merges.** The author runs
+  `NGX_MRUBY_V2_TREE=DIR npm run check:ci` in a checkout of `next`, with
+  `DIR` the pull request's checkout, and checks its tracked Markdown
+  links with `check_links.py`. The command builds the 3.x pages too,
+  because the 2.x pages link to them and the search check needs both
+  indexes. `.github/workflows/site-v2.yml` runs only on "Run workflow"
+  to build and check the selected branch's 2.x pages; it does not run on
+  pull requests or pushes.
+  Without `NGX_MRUBY_V2_TREE`, `npm run check:ci` uses `origin/master`, so
+  a change to `site/` that breaks `/v2/` fails locally. On a push to
+  `next`, `site.yml` checks the merged tree before deploying. A push to
+  `master` dispatches that run, which builds from the new `master`.
 - Settings, for the owner, both in step 7 and in this order, which follows
   the `actions/deploy-pages` README (Security considerations, items 4 and
   5, quoted in appendix B): with a source branch, the environment's
@@ -1747,16 +1728,12 @@ detection, or that pinned versions do not keep Starlight stable.
 
 ### 5.4 Astro without Starlight (decided 2026-11-01)
 
-On 2026-11-01 the owner decided that the site drops Starlight and is built
-with Astro alone and components of the repository's own. The owner's
-words: 「サイトのドキュメントに既存のドキュメントライブラリ使うの微妙じゃない？あれは人が作る場合の便利ツールであっていまはcodexとかがデザインにあったドキュメントを自前で書いたほうが良さそう、starlightだっけ」.
-Asked whether to keep Starlight, the owner chose 「やめる。構想を書いて Codex に (推奨)」:
-drop it, write the plan here, and have a Codex session implement it. The
-Codex session starts after step 5, after the six remaining translations are merged; the handoff page
-remains English with a notice by the owner’s decision. This
-replaces the tool of Q1 (section 7) and the recommendation of 5.1. The
-place (`site/` on `next`), the generator, the `/v2/` build, the checks, the
-design of section 4 and the deployment of 5.3 stay.
+The site uses Astro alone and repository-owned components, replacing
+Starlight. The implementation follows the remaining translations of step 5;
+the handoff page remains English with a Japanese notice. This replaces the
+tool of Q1 (section 7) and the recommendation of 5.1. The place (`site/` on
+`next`), generator, `/v2/` build, checks, section 4 design and deployment
+of 5.3 stay.
 
 The change is meant to leave every page as it is today, for readers and
 for search engines. Where the output may differ, this section says so;
@@ -1832,11 +1809,10 @@ checks of `site/scripts/`, `tokens.css` and the design of section 4, the
 fonts, `mark-num-cells.mjs` and `export-docs.mjs`, the workflows and the
 deployment of 5.3, and the route of every page.
 
-**Final mobile pattern (owner decision, 2026-11-01).** The first layer
-compares against the existing 390px WebKit pattern. At the end of the
-rebuild, change only `PHONE.width` in `site/scripts/lib/patterns.mjs` to
-402px, the owner's iPhone 17 Pro Safari width. Keep 1440px Chromium.
-The owner's words: 「じゃあ402にしよう」, 「キリがないからpcの幅を超えた画面で綺麗に見えたらよくて、あとは402に調整するぐらいの基準で良さそうね」.
+**Final mobile pattern (2026-11-01).** The first layer compares against
+the existing 390px WebKit pattern. At the end of the rebuild, change only
+`PHONE.width` in `site/scripts/lib/patterns.mjs` to 402px. Keep 1440px
+Chromium.
 If many one- or two-character last lines appear at 402px, adjust the font
 size and characters per line first, then only the remaining fine cases by
 a few characters of wording. Do not mechanically rewrite prose for the
@@ -1990,7 +1966,7 @@ reviews besides that.
 | 3 | home page with the example's test (3.3, item 8), header, footer, language and version links (4.10); the sample mechanism and the diagram mechanism of 3.5, with the request phases diagram | the home page; the first diagram, as the model for the others | the example's case passes in CI and the home page shows the files it compares, with their date; no benchmark image and no performance figure without its date and method (Q8); Chromium and WebKit screenshots at 320, 390 by 664 and 1440 by 900, light and dark; no horizontal scroll at 390 px; gutters of 20 px or more; the home page heading's line count (4.4); the right-edge measurement of 4.9 on Japanese blocks and the `text-wrap` check on English ones; Lighthouse accessibility with no failed audit on three page types in both languages; visible, uncovered focus; the shadow, gradient and backdrop check of item 5 of 4.3 with the search dialog and the menu open, in both engines; language links answer 200; no redirect for `Accept-Language: ja`; the generator stops on a sample whose file or case is missing; the diagram check fails on a missing file or line range and lists changed lines; the drawings hold no `<text>` element and no color outside the tokens; diagram labels are HTML text of 14 px or more at 390 and 1440 px; the generator stops on a diagram block whose keys differ from those of its drawing; the figure has `role="img"` and an `aria-label`, and the drawing is hidden from screen readers (3.5) | the definition (3.3, item 1) and the first diagram |
 | 4 | Start; Guides with the samples of 3.5; Reference with the build diagram; Concepts with the phases, filter, async and lifetime diagrams; the agent proxy page with its three v3 diagrams and today's recipes, labeled as development content; Releases, Security, Contributing; the fixes of 2.2; `README.md` reduced to the definition, links and the branch table | the pages of 3.2 except the Japanese ones and `/v2/` | no broken relative link or anchor in `docs/` or the built site; every directive in the `ngx_command_t` tables of `src/` has a section in the directive reference; `mruby_output_filter` appears in `docs/` only in a removal note; the default gems listed in the docs equal the uncommented `conf.gem` lines of `build_config.rb`; every Ruby block in the docs compiles with the bundled mruby's `mrbc`; each `examples/<use>/` starts in CI and returns the output its README states; every sample on a page names a case that exists, and every use case of `docs/use_case/` is either a sample or marked untested with the reason of 3.5; every diagram names lines that exist; every v3 diagram and sample carries the development label | nothing |
 | 5 | Japanese pages: every page written by hand translated, the generated reference in English under `/ja/` with a notice (Q2) | `docs/ja/` and the `/ja/` pages | every page written by hand except the handoff page has a file in `docs/ja/`, and every generated reference page and the handoff page under `/ja/` show the notice (Q2); `lang` and reciprocal absolute `hreflang` on every page; no space between Japanese and Latin characters in `docs/ja/` outside code and URLs; at most 40 characters per Japanese body line at 1440 px; line height 1.75 to 2.0; `keep-all` and `auto-phrase` only on `h2` and diagram labels; every h1 on one line at 390 px; no h1, `<title>`, sidebar entry, table-of-contents entry or heading `id` on `/ja/` contains the text `wbr` (4.4); the right-edge measurement on `/ja/` at 390 px in WebKit, with the h2 limit of 4.9; every diagram on `/ja/` takes its labels from `docs/ja/`, with the keys of the English block, and no label overflows its place at 390 and 1440 px | nothing |
-| 6 | 2.x under `/v2/` (Q4); `site-v2.yml` and `site-dispatch.yml` on `master` (5.3) | `/v2/` and its banner; the two workflows on `master` | no broken link under `/v2/`; the banner on every 2.x page; 2.x and 3.x search results do not mix; a pull request to `master` that breaks a `/v2/` link fails `site-v2.yml`; a merge into `master` that changes `docs/` starts a `site.yml` run on `next` (`gh run list --workflow site.yml --branch next --event workflow_dispatch`) | nothing |
+| 6 | 2.x under `/v2/` (Q4); `site-v2.yml` and `site-dispatch.yml` on `master` (5.3) | `/v2/` and its banner; the two workflows on `master` | no broken link under `/v2/`; the banner on every 2.x page; 2.x and 3.x search results do not mix; the author's local `NGX_MRUBY_V2_TREE=DIR npm run check:ci` fails when a pull request to `master` breaks a `/v2/` link; `site-v2.yml` runs only on "Run workflow"; a merge into `master` that changes `docs/` starts a `site.yml` run on `next` (`gh run list --workflow site.yml --branch next --event workflow_dispatch`) | nothing |
 | 7 | switch ngx.mruby.org: settings 1 and 2 of 5.3 in that order, then the pull request that adds the deploy job; on `master`, the text that says `gh-pages` holds the site or that the switch is a pull request to it, all from #568: the branch paragraph of `README.md`, and in `docs/DEVELOPMENT.md` the last sentence of promotion step 7 and the open questions "Who gives the go for the promotion and changes the repository settings in steps 2 and 3" and "Which version the site shows after the promotion"; the move of 5.2 added to "Promoting v3 to master"; Google Analytics removed (Q6), the verification file kept (Q5); Discussions turned on and linked from Contributing, the wiki turned off after the launch (Q9) | the live site at https://ngx.mruby.org/ | `https://ngx.mruby.org/` answers 200 with the deployed `index.html`; `http://` redirects to `https://`; `/googleba3435e4002729b6.html` answers 200 with its 54 bytes unchanged; no analytics script in the built site; the `github-pages` environment read back with `gh api` has custom branch policies, and its deployment branch policies list only `next`; the first deployment, and the one after a `docs/` change merged into `master`, come from `next` (`gh api repos/matsumotory/ngx_mruby/deployments?environment=github-pages`); Lighthouse on the live home page | the date of the switch; the owner changes settings 1 and 2 of 5.3 and the custom domain, and gives the go for the session to turn on Discussions and turn off the wiki with `gh api` |
 | 8 | agent proxy how-to with `examples/agent-proxy/` (v3-plan step 7, part (e)); the samples of each planned feature of 3.5 as it merges | the how-to page and its samples | the example starts in CI and answers the requests of its README; each new sample names its case; Claude Code and Codex named only after both have run against the reference proxy | nothing |
 
@@ -2029,9 +2005,8 @@ this section).
   `master` that prepares the switch as a pull request to `gh-pages`.
 - **Q2. Japanese.** Every page written by hand is translated into Japanese;
   the reference generated from `src/` stays in English under `/ja/` with a
-  notice, as recommended. On 2026-10-29 the owner chose, in a session's
-  question, the option 「英語のまま注記つき (推奨)」 ("English, with a notice
-  (recommended)") for the handoff page as well: `/ja/contributing/handoff/`
+  notice. The handoff page follows the same policy:
+  `/ja/contributing/handoff/`
   shows the English text of `docs/HANDOFF.md` with a Japanese notice, as
   the generated reference does.
 - **Q3. A live example on the home page.** No live endpoint: the home page
@@ -2063,64 +2038,31 @@ this section).
   is no comparison page. It is removed from the site map (3.2) and the
   writing plan (3.3).
 
-With these decisions, the owner asked on 2026-10-15 for many diagrams and
-samples, especially for the content towards v3; 3.5 plans them.
+Section 3.5 plans diagrams and samples, especially for v3 content.
 
-On 2026-10-19 the owner decided the four choices of 4.12 on the specimens
-of step 2, each as recommended: palette A ("配色 A (推奨)"), Geist Mono
-("Geist Mono (推奨)"), code blocks at 12 px ("12 px (推奨)") and the means of
-4.3 ("4.3 の手段のまま (推奨)"); and that the specimens live in the workflow
-artifact and the owner's review in a session ("CI の artifact とこの会話
-(推奨)"), with no image committed or attached to the pull request (4.12).
+The specimens of #607 establish palette A, Geist Mono, 12px code-block
+radii and the visual treatment of 4.3. Review uses the workflow artifact;
+images are not committed or attached to pull requests (4.12).
 
-On 2026-10-29 the owner reviewed what step 3 puts before the owner, the
-definition (3.3 item 1) and the first diagram, the request phases diagram,
-on the screenshots of #617 (the workflow artifact `screenshots`,
-`review/`), and chose "小さな直しを入れて承認 (推奨)": approve with two small
-fixes. The Japanese definition says 「ネットワークのI/O」 instead of
-「ネットワークの入出力」, the term that engineers use, as the English says
-"network I/O". The source lines under a diagram are set as a note under
-the caption, a lead line and one item per file, at the caption size of
-14 px, the floor of 4.4, so that at 390 px the Japanese caption does not
-read as a long paragraph (3.5, "Keeping them true").
+The definition and request-phase diagram reviewed in #617 use the term
+"network I/O" (ネットワークのI/O in Japanese). Source lines appear below
+the diagram caption as a lead line and one item per file at 14px, so the
+Japanese caption remains readable at narrow widths (3.5).
 
-On 2026-11-01 the owner decided that the site drops Starlight and is built
-with Astro alone and components of the repository's own, asking
-「サイトのドキュメントに既存のドキュメントライブラリ使うの微妙じゃない？あれは人が作る場合の便利ツールであっていまはcodexとかがデザインにあったドキュメントを自前で書いたほうが良さそう、starlightだっけ」
-and choosing 「やめる。構想を書いて Codex に (推奨)」. This replaces the tool
-of Q1; its place, `site/` on `next`, stands. 5.4 says what replaces each
-piece that Starlight provides, the order (one pull request from a Codex session, after step 5)
-and the acceptance.
+The 2026-11-01 design uses Astro with repository-owned components in
+`site/` on `next`. Section 5.4 describes the replacements and acceptance.
+The replacement is one PR after step 5, including the 402px mobile pattern.
 
-On 2026-11-01 the owner decided that the replacement of Starlight is one
-pull request that a Codex session writes, not several stages: 「今後も分けなくてもできるなら無駄に分けず依頼は一回で終わるようにせよ」.
-The same day the owner decided that the phone width of the layout checks
-becomes 402px (Safari on an iPhone 17 Pro), in the replacement's pull request:
-「じゃあ402にしよう」, 「キリがないからpcの幅を超えた画面で綺麗に見えたらよくて、あとは402に調整するぐらいの基準で良さそうね」.
+The index pages expose development practices in a strip below the hero:
+test, nginx-tests, valgrind-nightly, CodeQL, zizmor, OpenSSF Best Practices
+and the license. The release belongs in the hero status and the star
+count in the GitHub header link. These make concrete practices assessable;
+the strip carries no aggregate score (4.10).
 
-On 2026-11-01 the owner decided that the project's badges are shown on
-the index pages, not in the footer:
-「footerにおいても誰もみないからなぁ、開発プロセスちゃんとやって理という意味では見せるべきな気がするので」.
-The same day the owner chose where they stand:
-「帯に7つ、release は状態の行、stars はヘッダー」. A strip below the hero
-holds test, nginx-tests, valgrind-nightly, CodeQL, zizmor, OpenSSF Best
-Practices and the license; the status line of the hero names the newest
-release, and the GitHub link of the header the star count (4.10). The
-owner's reason:
-「一般的に見て評価したり得られる開発の工夫が見れるのはいい気がする」.
-
-On 2026-11-01 the owner asked 「版リンクってそもそもいる？」 about the
-version link of the header and chose
-「ヘッダーから外し、footer に置く (推奨)」: the link to the other version's
-documentation stands in the footer beside the language link, and the
-header holds the section links, search, the language link, the theme
-toggle and GitHub with its star count (4.10).
-
-On 2026-11-01 the owner decided that the home page heading takes one line
-at the PC width, in both languages:
-「pcビューのヒーロータイトルは1行に収まるフォントサイズがいいかな、日英ともに」.
-4.4 gives the size from 801 px; up to 800 px, and at 402 px, the heading
-keeps its two lines.
+The other version's documentation is linked in the footer. The header
+holds section links, search, language, theme and GitHub with its star count.
+The home heading occupies one line at the PC pattern and two at the mobile
+pattern in both languages; 4.4 specifies its responsive sizing.
 
 On 2026-11-01, step 5 added Japanese sources for Contributing, Development,
 the test guide, the release-note guide, Security and the trust boundary.
@@ -2135,24 +2077,17 @@ that every release note has. The 2.x pages leave the list when a pull request
 to `master` rewrites them and a merge of `master` brings them to `next`; the
 3.0.0 page leaves it with the pull request of step 5 that rewrites it.
 
-On 2026-11-01 the owner asked a Codex session to show the uses planned for
-v3 on the home page, apart from what works today, and to describe them in the
-docs and a proposal. This paragraph is the sessions' record of that request,
-not a quotation. The home page keeps its design and the working routing trial;
-a section after the hero lists four planned uses (MCP policy and client
-profiles, LLM fallback, AI crawler traffic, cache and telemetry hooks), with
-"planned" in its heading and on each item. The bilingual edge-control guide
-and [the proposal](edge-control.md) hold the boundaries and the acceptance.
+The homepage separates planned v3 uses from working features while keeping
+the routing trial. Its planned-use section describes MCP policy and client
+profiles, model API fallback, AI crawler requests, and cache and telemetry
+hooks, with development status on each item. The bilingual edge-control
+guide and [proposal](edge-control.md) define boundaries and acceptance.
 The MCP uses are grouped as protecting, adapting, and guiding/observing; the
 user's AI and the domain backend keep orchestration and the meaning of the
 data. The examples name no product or deployment.
 
-On 2026-11-02 the owner questioned the words that the site and the docs use
-for the traffic and the component of these uses:
-「aiトラフィックでいいの？もっとちゃんと研究サーベイして適切な用語にしたほうがいい気がする」,
-「LLMはかなり範囲狭いよね」. After a survey of standards, papers and the
-documents of model providers, protocols and gateway products, the owner
-chose, in a session's question, 「AI gateway を部品の名、通信は種類ごと (推奨)」.
+The terminology follows standards, papers, and protocol and gateway
+documentation, with sources in the glossary.
 The component in front of model APIs, MCP servers and agents is the AI
 gateway, and its MCP part the MCP gateway. Traffic is named by kind: model
 API traffic, MCP traffic, A2A traffic, requests from AI crawlers and agents
@@ -2161,37 +2096,22 @@ where a page needs one term for several kinds, with its scope defined at
 its first use, and LLM only for text language models. [The
 glossary](../glossary.md) holds the terms with their sources.
 
-Later on 2026-11-02 the owner decided how the Japanese pages write these
-terms: 「ヒーロータイトルがLLMリクエストなのおかしくないか？あとアプリケーションとかモデル、エージェントやリクエスト、クローラー、ゲートウェイあたりはカタカナで統一すべきでは？ここはclaudeでなおしちゃって」,
-and for API names 「Messages・Responses これは一般的なメッセージとレスポンスならカタカナがよい」.
 Japanese text writes AIゲートウェイ, MCPゲートウェイ, AIアプリケーション,
 エージェント, モデル, モデルAPI, リクエスト, AIクローラー and ボット in
 katakana, keeps identifiers (MCP, A2A, API, log handler, JSON field names
 such as `model`) in English, and names Messages API and Responses API in
-full; [用語集](../ja/glossary.md) holds the rule. For the home page heading
-the owner chose 「ヒーローは、様々なAIアプリケーションの認証と転送、とかがいいのかな？」
-and then 「様々はなくてもいいかもね」: 「AIアプリケーションの認証と転送をRubyで制御する。」,
-in English "Authenticate and route AI applications with Ruby.", with a
-definition of AI applications in the paragraph below it (「ヒーローセクションの本文にAIアプリケーションの広い定義は書いておいたほうが良さそう」).
+full; [用語集](../ja/glossary.md) holds the rule. The home heading is
+"AIアプリケーションの認証と転送をRubyで制御する。", or "Authenticate and
+route AI applications with Ruby." The paragraph below defines AI applications.
 
-On 2026-11-02, looking at the published `/ja/` at 1440 px, the owner asked
-about the hero: 「ここみたときにヒーロータイトルの下のマージンが広いようにみえたけど意図的？」,
-「releaseバッジ、v3と2系で二行に分けたほうがいいかもね」,
-「ヒーローのボタンはどっちか減らして、ユースけーすのところにリンクしたいよね。そこをまず最初は見せたいし」
-and 「モデルのふりわけをためすより、さきにユースケースを見る、とかじゃないかな」.
-The heading stood in the middle of a row as high as the logo (160 px), so
-57 px of that row lay under it before the text began; the hero now holds
-the heading, the text under it, the action and the status in one column
-beside the logo, and the heading and the text are 16 px apart, as a
-section heading and its paragraph are. The status takes two lines (the
-version in development; the stable version's documentation with the
-release badge). The hero has one action, 「ユースケースを見る」 ("See the use
-cases"), to the use cases further down the page; the routing example and
-the guide keep their links in their own sections. The same evening the
-owner asked for the footer: 「あとフッター雑。さすがにもうちょっと整理しよう。JSONやら日付がフッターがいにあるし、フッターにまとめて書いとくこともっとありそう。僕がリーディングしてしね」.
-The footer of 4.10 groups its links, names who leads the project, and
-takes the documents index and the last-updated date into its line of
-metadata.
+The hero groups its heading, description, action and status in one column
+beside the logo. The heading and description are 16px apart. The status
+uses separate lines for the development version and stable documentation
+with its release badge. The action "ユースケースを見る" ("See the use
+cases") links to the use-case section; the routing example and guide keep
+their links in their own sections. The footer groups documentation,
+project and language links, identifies the project lead, and includes the
+documents index and last-updated date as metadata (4.10).
 
 ## Appendix A. Where comparable projects put things
 
@@ -2776,14 +2696,9 @@ separate evidence, and neither replaces the other.
 
 **Measure two patterns.** The layout and wrapping checks measure only PC
 at 1440 by 900 px in Chromium and iPhone Safari at 402 by 664 px in WebKit.
-No other widths, browsers or font combinations are added. The owner's words
-(2026-11-01):
-「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
-The words name iPhone 17 as an example. The replacement of Starlight
-(5.4) sets the phone pattern to 402 px, the width of the owner's iPhone 17
-Pro in Safari; the Japanese lines that wrap differently at 402 px are fixed
-in the same pull request, by the size of the type first and then by a few
-characters of text. The content area has a fixed width, so a correct
+No other widths, browsers or font combinations are added. The replacement
+of Starlight (5.4) sets the mobile pattern to 402px. The content area has
+a fixed width, so a correct
 rendering at full screen is what the PC pattern establishes. All Japanese
 pages are validated with the served Noto Sans JP (`--ja-face noto` lets a
 run on macOS see what CI sees), and the Japanese home page also with

@@ -207,10 +207,7 @@ The four standard cells build each link mode and each line of nginx
 | the sanitizer cell | 1.31.8 | static | the installed OpenSSL | built with AddressSanitizer and UndefinedBehaviorSanitizer ([Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer](#running-the-tests-under-addresssanitizer-and-undefinedbehaviorsanitizer)) |
 | the cell under valgrind | 1.31.8 | static | the installed OpenSSL | under valgrind ([valgrind in CI](#valgrind-in-ci)) |
 
-The owner decided on 2026-11-01, in a session's question with the option
-「4 cell に減らす (推奨)」 ("reduce to 4 cells (recommended)"), that a pull
-request runs these four cells instead of every cell ("Decisions" in
-[docs/HANDOFF.md](../HANDOFF.md) has the owner's words). Every cell
+Pull requests run these four cells. Every cell
 builds OpenSSL 1.1.1w and installs it before it builds nginx; the first cell builds it into nginx as well
 (`--with-openssl-src`), the path of `configure.in` and `Makefile.in` that
 the cell under valgrind, the same nginx and module against the installed
@@ -403,11 +400,8 @@ commit removes stays in the history: remove it from the commit that added it
 The site ngx.mruby.org is built on `next` (`site/` there, and
 `docs/proposals/site.md` there for the plan). Its 2.x pages under `/v2/`
 are built from `docs/` on `master`. A pull request to `master` runs no
-job for them: the owner decided on 2026-11-02 that CI is not relied on
-for what runs locally (the words are quoted in "Decisions" of
-`docs/HANDOFF.md` on `next`), with the option
-「PR では流さず、next への push の時だけ (推奨)」 ("not on pull requests,
-only on the push to `next` (recommended)"). The author of a pull request
+job for them: local verification covers the site before a PR is ready,
+while the push to `next` builds and deploys it. The author of a pull request
 that changes `docs/`, the Markdown files at the top, or a file that they
 link to, runs these checks locally before marking it ready, and quotes
 them under "How was this tested":
@@ -430,8 +424,8 @@ them under "How was this tested":
   `docs/test/README.md` on `next`). It builds the 3.x pages of `next` and
   the 2.x pages from `DIR`, and runs the checks of the site on both, the
   browser checks among them; it compiles the Ruby blocks of the pages
-  only when `MRBC` names an `mrbc` of the bundled mruby, and otherwise
-  says that it skipped them. It prints the commit of `next`; quote it
+  with `MRBC` or `mruby/build/host/bin/mrbc` of the bundled mruby; when
+  neither exists, it says that it skipped them. It prints the commit of `next`; quote it
   with the head of the pull request. The generator stops
   on a link of `docs/` to a file that git does not track, and the checks
   fail on a broken link of the built site, on a 2.x page without its
@@ -2465,11 +2459,8 @@ check this compatibility behavior; `npm run check:ci` also runs it.
 
 `.github/workflows/site.yml` runs on every push to `next` and on
 `workflow_dispatch` (`site-dispatch.yml` of `master` starts it after every
-push to `master`), not on pull requests. The owner decided on 2026-11-02
-that CI is not relied on for what runs locally, with the option
-「PR では流さず、next への push の時だけ (推奨)」 ("not on pull requests,
-only on the push to `next` (recommended)"); "Decisions" of
-[docs/HANDOFF.md](../HANDOFF.md) quotes the owner's words.
+push to `master`), not on pull requests. Local site checks cover the PR
+head before it is ready; deployment validates the merged tree.
 
 | Job | What it does |
 |---|---|
@@ -2523,9 +2514,7 @@ pull request of its own (condition 2 of "Review and merge" in
 The layout and wrapping checks of the site (`check-styles.mjs`,
 `check-japanese-lines.mjs`) measure two patterns only, PC at full screen
 (1440px, Chromium) and iPhone Safari (402px, WebKit); no other widths,
-browsers or font combinations are added to the checks. The owner's words
-(2026-11-01):
-「pcビューは決められた幅の表示領域で全画面とかでもちゃんと表示されてたらいいし、モバイルはiPhone17とかのサファリの幅で十分。勝手に色々なパターンを用意して複雑にするな」.
+browsers or font combinations are added to the checks.
 `site/scripts/lib/patterns.mjs` holds them.
 
 The badges of the strip of the four index pages (the workflows `test`,
