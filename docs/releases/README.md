@@ -270,7 +270,7 @@ entry. It follows these conventions:
 | In `vX.Y.Z.md` | In `vX.Y.Z.ja.md` |
 |---|---|
 | `# ngx_mruby vX.Y.Z` | `# ngx_mruby vX.Y.Z` |
-| `## Behavior changes: read before upgrading` | `## アップグレードの前に読む挙動の変更` |
+| `## Behavior changes: read before upgrading` | `## 更新前に確認する挙動の変更` |
 | `- Before:` | `- 変更前：` |
 | `- Now:` | `- 変更後：` |
 | `- Why it changed:` | `- 変更の理由：` |
@@ -362,10 +362,8 @@ tagged files and the release body have them:
   "Why it changed" names the defect only as the difference that "Before"
   describes; the advisory id, added when the advisory is published (below),
   points to the details.
-- The advisory draft is written in English, and after the English sections
-  it has the same content in Japanese. The owner said on 2026-10-29:
-  「日本語でも後半でいいのでしっかりかいておいてほしい、今後は」
-  ("write it carefully in Japanese too, in the second half; from now on").
+- The advisory draft is written in English, followed by the same content
+  in Japanese.
 - When the owner publishes the advisory, a pull request adds the advisory id
   (`GHSA-xxxx-xxxx-xxxx`) to the entries in both files, and the session adds it
   to both texts of the release body. That pull request may also list the
