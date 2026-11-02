@@ -82,12 +82,18 @@ for (const file of pages) {
   const menu = all.find(el => hasClass(el, 'site-menu'));
   assert.ok(header && menu, `${file}: header and menu`);
   for (const [name, part] of [['header', header], ['menu', menu]]) assert.equal(elements(part).filter(el => el.tagName === 'a' && (hasClass(el, 'version-link') || /\/v2\/(ja\/)?$|^\/(ja\/)?docs\/$/.test(String(el.properties.href)) && /x docs|xのドキュメント/.test(textContent(el)))).length, 0, `${file}: no version link in the ${name}`);
-  // The footer's groups (4.10): documentation, whose first link is the
-  // version link; the project; the language, which holds the language link.
+  // The footer's groups (4.10): documentation starts with its own 3.x
+  // index on 3.x pages, then the other version; project; language.
   const groups = elements(footer).filter(el => el.tagName === 'nav' && hasClass(el, 'footer-group'));
   assert.equal(groups.length, 3, `${file}: three groups of links in the footer`);
   const firstLinks = groups.map(group => elements(group).find(el => el.tagName === 'a'));
-  assert.ok(firstLinks[0] && hasClass(firstLinks[0], 'version-link'), `${file}: the version link opens the documentation group of the footer`);
+  const docsLinks = elements(groups[0]).filter(el => el.tagName === 'a');
+  const versionIndex = ref === 'next' ? 1 : 0;
+  if (ref === 'next') {
+    assert.equal(docsLinks[0]?.properties.href, lang === 'ja' ? '/ja/docs/' : '/docs/', `${file}: the current documentation opens the footer group`);
+    assert.equal(textContent(docsLinks[0]), lang === 'ja' ? '3.xのドキュメント' : '3.x docs', `${file}: the current documentation is labeled by version and language`);
+  }
+  assert.ok(docsLinks[versionIndex] && hasClass(docsLinks[versionIndex], 'version-link'), `${file}: the other version follows the current documentation where present`);
   assert.ok(firstLinks[2] && hasClass(firstLinks[2], 'language-link'), `${file}: the language group of the footer holds the language link`);
   assert.ok(footerLinks.some(el => el.properties.href === 'https://github.com/matsumotory'), `${file}: the footer names who leads the project, with a link`);
   // The GitHub links of the header and the menu: the same count or none.

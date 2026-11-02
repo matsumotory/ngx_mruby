@@ -1348,10 +1348,14 @@ acceptance; the interaction check covers that separately.
      GitHub account `matsumotory` (「開発：松本亮介（matsumotory）」, "Led
      by Ryosuke Matsumoto (matsumotory)").
   2. Three groups of links, each with a short title in 14 px at the
-     current weight (not capitals, 4.11): documentation (the other
-     version's documentation, Releases, Security and, on the 3.x pages,
-     the glossary), the project (GitHub, the license and Contributing) and
-     the language (the language link). The version link leads to the index
+     current weight (not capitals, 4.11): documentation (on 3.x pages,
+     the current 3.x documentation first, then the other version's
+     documentation, Releases, Security and the glossary), the project
+     (GitHub, the license and Contributing) and the language (the language
+     link). The current 3.x link is labeled "3.x docs" or
+     「3.xのドキュメント」 and leads to `/docs/` or `/ja/docs/`.
+     The 2.x documentation group keeps its existing links without a second
+     3.x destination. The version link leads to the index
      of the other version (3.4): 「2.x docs」 or 「2.xのドキュメント」 to
      `/v2/` on the 3.x pages, 「3.x docs」 or 「3.xのドキュメント」 to
      `/docs/` on the 2.x pages. The link belongs in the footer: the banner

@@ -47,6 +47,7 @@ if (route.entry.filePath && route.entry.filePath.endsWith('index.mdx')) {
     <nav class="footer-group" aria-labelledby="footer-docs">
       <p class="footer-title" id="footer-docs">{lang === 'ja' ? '文書' : 'Documentation'}</p>
       <ul>
+        {SITE_VERSION === 3 && <li><a href={`${p}/docs/`}>{lang === 'ja' ? '3.xのドキュメント' : '3.x docs'}</a></li>}
         <li><a class="version-link" href={version.href}>{version.label}</a></li>
         <li><a href={`${p}/releases/`}>{t.releases}</a></li>
         <li><a href={`${p}/security/`}>{t.security}</a></li>
