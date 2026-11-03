@@ -8,10 +8,8 @@ html:has(.home-v3) .main-frame {
 }
 html:has(.home-v3) header.header { background-color: var(--color-scene-deep); border-bottom-color: var(--color-scene-edge); }
 html:has(.home-v3) .content-panel:first-of-type { padding-top: var(--space-9); }
-/* The hero: the heading, the text under it, the action and the status in
-   the first column; the logo in the second, both centred on each other
-   (the owner on 2026-11-02, section 7 of the site proposal). The
-   heading's column keeps the width that sets its size (tokens.css). */
+/* The heading keeps its sizing column. The Japanese introduction gives
+   prose a shorter measure and aligns the logo with that reading block. */
 .home-v3 .v3-intro { display: grid; grid-template-columns: minmax(0,1fr) 160px; align-items: center; gap: var(--space-7); }
 html:has(.home-v3) .brand-title { display: block; }
 html:has(.home-v3) .brand-showcase { width: 160px; height: 160px; }
@@ -35,15 +33,30 @@ html:has(.home-v3) .brand-title .hero-heading { container-type: inline-size; }
 .home-v3 .home-copy { display: flex; flex-direction: column; gap: var(--space-4); max-width: var(--measure); }
 .home-v3 .home-copy > * { max-width: none; margin: 0; }
 .home-v3 .home-copy p { color: var(--color-text-muted); }
-/* Japanese uses the existing hero column beside its logo. The English
-   introduction has a character-based measure: 68ch keeps its longest line
-   below 90 characters in the current font, without narrowing it to body prose. */
+/* English keeps a character-based measure. Japanese preserves three
+   semantic paragraphs with a closer rhythm and a measure between the
+   heading column and the shared section prose. */
 .home-v3 .v3-hero-text > .home-copy { max-width: 68ch; margin-top: var(--space-4); }
-html[lang="ja"] .home-v3 .v3-hero-text > .home-copy { max-width: none; }
+html[lang="ja"] .home-v3 .v3-hero-text > .home-copy { max-width: none; gap: var(--space-3); }
+@media (min-width: 801px) {
+  html[lang="ja"] .home-v3 .v3-intro {
+    --hero-heading-width: calc(100% - 160px - var(--space-7));
+    --hero-copy-width: min(var(--hero-heading-width), calc((var(--hero-heading-width) + var(--measure)) / 2));
+    grid-template-columns: minmax(0, var(--hero-copy-width)) var(--space-7) 160px minmax(0, 1fr);
+    gap: 0;
+  }
+  html[lang="ja"] .home-v3 .v3-hero-text { display: contents; }
+  html[lang="ja"] .home-v3 .v3-hero-text > .brand-title { grid-area: 1 / 1 / 2 / -1; width: var(--hero-heading-width); }
+  html[lang="ja"] .home-v3 .v3-hero-text > .home-copy { grid-area: 2 / 1; }
+  html[lang="ja"] .home-v3 .v3-intro > .brand-showcase { grid-area: 2 / 3; margin-top: var(--space-4); }
+  html[lang="ja"] .home-v3 .v3-entry { grid-area: 3 / 1 / 4 / -1; width: var(--hero-heading-width); }
+}
 .home-v3 .v3-entry { margin-top: var(--space-6); }
 .home-v3 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-5); margin: 0; }
-.site-markdown-content .home-v3 .button-primary { padding: var(--space-3) var(--space-5); border: 1px solid var(--color-button-edge); border-radius: var(--radius-control); color: var(--color-button-text); border-bottom-color: var(--color-button-low); background: linear-gradient(155deg, var(--color-button-fill), var(--color-button-low)); box-shadow: inset 0 1px 0 var(--color-button-edge); }
-.site-markdown-content .home-v3 .button-primary:active { border-top-color: var(--color-button-low); border-bottom-color: var(--color-button-edge); }
+/* The copper rim stays visible on all four sides; only the inner light
+   changes sides when pressed, so no edge merges into the dark face. */
+.site-markdown-content .home-v3 .button-primary { padding: var(--space-3) var(--space-5); border: 1px solid var(--color-button-edge); border-radius: var(--radius-control); color: var(--color-button-text); background: linear-gradient(155deg, var(--color-button-fill), var(--color-button-low)); box-shadow: inset 0 1px 0 var(--color-button-edge); }
+.site-markdown-content .home-v3 .button-primary:active { box-shadow: inset 0 -1px 0 var(--color-button-edge); }
 /* The status in two lines: the version in development, then the stable
    version's documentation with its release badge */
 .home-v3 .v3-status { color: var(--color-text-muted); margin: var(--space-4) 0 0; }

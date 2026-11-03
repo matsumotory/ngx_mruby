@@ -2554,7 +2554,9 @@ quotes under "How was this tested". It runs:
    alone on an earlier build: `check-styles.mjs` and
    `check-japanese-lines.mjs` with `--ja-face noto` in Chromium and
    WebKit, `check-japanese-lines.mjs` on `/v2/ja/`, `check-copy-idle.mjs`,
-   `check-home-interaction.mjs`, `check-code-layout.mjs` on the 3.x and
+   `check-home-interaction.mjs`, `check-cta-edges.mjs` (painted CTA rims at
+   rest, hover, keyboard focus and active, including native button/submit
+   probes, in both languages and themes), `check-code-layout.mjs` on the 3.x and
    2.x pages, `check-focus.mjs`, `check-language-links.mjs`,
    `check-lighthouse.mjs`, `check-project-badges.mjs --browser`,
    `check-search-identifiers.mjs`, `check-v2.mjs` with the search in

@@ -121,6 +121,7 @@ browser_checks() {
     run node scripts/check-japanese-lines.mjs --ja-face noto --pages /v2/ja/
     run node scripts/check-copy-idle.mjs
     run node scripts/check-home-interaction.mjs
+    run node scripts/check-cta-edges.mjs
     run node scripts/check-code-layout.mjs
     run node scripts/check-focus.mjs
     run node scripts/check-language-links.mjs

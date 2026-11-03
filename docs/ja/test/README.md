@@ -1042,6 +1042,8 @@ $ diff base.txt head.txt
 
 ## サイトのCI
 
+共有CTAの枠は`check-cta-edges.mjs`で検査します。通常、hover、キーボードでのfocus、押下中を、英日・明暗の両方で描画します。実際のリンクに加え、buttonとsubmitの試験用要素でも、四辺の枠が内側の塗り面から見分けられることを画素で確かめます。この検査も`npm run check:ci`に含まれます。
+
 `.github/workflows/site.yml`は、`next`へのpushごとと、`workflow_dispatch`で動き、プルリクエストでは動きません。
 
 `master`の`site-dispatch.yml`は、`master`へのpushごとに、`next`の`site.yml`を`workflow_dispatch`で起動します。
