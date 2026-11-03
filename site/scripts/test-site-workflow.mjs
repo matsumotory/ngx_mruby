@@ -65,7 +65,7 @@ for (const command of [
   'check-styles.mjs --ja-face noto',
   'check-japanese-lines.mjs --ja-face noto\n',
   'check-japanese-lines.mjs --ja-face noto --pages /v2/ja/',
-  'check-copy-idle.mjs', 'check-home-interaction.mjs', 'check-code-layout.mjs',
+  'check-copy-idle.mjs', 'check-home-interaction.mjs', 'check-cta-edges.mjs', 'check-code-layout.mjs',
   'check-focus.mjs', 'check-language-links.mjs', 'check-lighthouse.mjs',
   'check-project-badges.mjs --browser', 'check-search-identifiers.mjs', 'check-v2.mjs\n',
   'test-read-only-browser.mjs', 'screenshots.mjs --out build-screenshots',
