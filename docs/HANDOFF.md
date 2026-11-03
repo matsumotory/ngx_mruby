@@ -192,6 +192,16 @@ constraints, with dates. Proposals are identified separately from adopted
 decisions. Conversation quotations and attribution are not a substitute for
 checking whether a decision fits the evidence and requirements.
 
+- **2026-11-03, agent assignment.** Choose Codex models and reasoning effort
+  by role and task complexity, using currently available capabilities rather
+  than fixed model names. Routine work uses a sufficient faster, lower-cost
+  model; difficult analysis uses stronger reasoning. The task leader keeps
+  scope, ownership and validation gates, with independent review. The shared
+  coordination rules apply across operating systems and tools; Codex model
+  controls do not become requirements for other tools. This adds selection
+  guidance to the existing coordination procedure without replacing its
+  tests or review and merge gates. The rule is in
+  [Assigning agent work](../AGENTS.md#assigning-agent-work).
 - **2026-11-02, public records.** Public commits, PRs, issues and documents
   contain only the relevant decision and technical requirements. Working
   documents and handoffs, whether public or private, record intent, reasons,

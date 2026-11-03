@@ -274,6 +274,39 @@ upgrading". New behavior, API cleanups and features go to `next`.
   the previous release (see "Before the tag" in `docs/releases/README.md`),
   and compares the performance with that release (see "Design principles").
 
+### Assigning agent work
+
+The task leader preserves the agreed scope, constraints, ownership and review
+and merge gates. Give implementation and independent review separate scopes;
+the reviewer must not be the author. These coordination rules apply across
+operating systems and tools.
+
+For Codex, select models by their currently supported capabilities and the
+task's complexity, rather than a fixed model name or version. Use these
+starting points when the available models and controls support them:
+
+| Role or task | Model capability | Reasoning effort |
+|---|---|---|
+| Task leader: coordination, difficult decisions and final assessment | Strongest available reasoning model | Extra High |
+| Ordinary implementation with a clear scope | Coding model that balances capability, speed and cost | High |
+| Routine, bounded work | Faster, lower-cost model sufficient for the task | Medium |
+| Difficult implementation or review | Strongest available reasoning model | High; Extra High for ambiguous analysis or difficult tradeoffs |
+
+Check the available models and supported effort levels in the current client;
+consult the [official model guidance](https://learn.chatgpt.com/docs/models)
+when capability or effort semantics are uncertain. Effort levels need not mean
+the same thing across models or generations. Increase effort beyond these
+starting points only for analysis that needs it; do not default every task to
+Max or Ultra. More reasoning can take more time and tokens, and does not shorten
+builds, tests or CI waits.
+
+Apply the choice to new assignments; do not restart active agents solely to
+change models. Use an available supported equivalent or report the restriction
+when a model or effort cannot be selected, and never claim a switch that the
+tool did not confirm. This is Codex selection guidance, not a requirement to
+apply Codex model controls to Claude or another tool. Model selection never
+replaces the required tests, independent review or merge gates.
+
 ### Review and merge
 
 Every PR gets a review by an agent (or person) that did not write it, with
