@@ -1860,7 +1860,11 @@ Do non-blocking sleep. It works in the code of `mruby_stream` and `mruby_stream_
 After the sleep, the session goes on as it does when the code does not sleep, by the result of the code: the next handler for `Nginx::Stream::DECLINED` (the default of `Nginx::Stream::Connection.stream_status`), the next phase for `Nginx::Stream::OK`, the wait of the session for `Nginx::Stream::DONE` and `Nginx::Stream::AGAIN`, and the end of the session for `Nginx::Stream::ABORT` or another status, and for an exception, which `error.log` records.
 This holds since 2.7.3; up to 2.7.2 a session whose code raised or set a status other than `Nginx::Stream::DECLINED` after the sleep was neither ended nor continued, and an exception after the sleep also aborted the next session.
 
-While the code of a TCP session sleeps, nginx reads nothing from the client, also on a `listen ... proxy_protocol`: the bytes that the client sends then stay for the phase after the code, such as `proxy_pass`, which sends them to the upstream. When `worker_shutdown_timeout` expires during the sleep, the session ends. This holds since 2.7.4. A UDP session is not changed: each datagram of its client during the sleep runs the code again.
+While the code of a TCP session sleeps, nginx reads nothing from the client, also on a `listen ... proxy_protocol`: the bytes that the client sends then stay for the phase after the code, such as `proxy_pass`, which sends them to the upstream. When `worker_shutdown_timeout` expires during the sleep, the session ends. This holds since 2.7.4.
+
+In a UDP session, datagrams received while the code sleeps do not start the code again or move the deadline of that sleep (since 2.7.5). The session's first datagram remains available to the phase after the code. Later datagrams received during the wait are discarded: ngx_mruby does not queue them or replay their payloads to `proxy_pass` after the wait. This applies to each sleep when the code waits more than once.
+
+Once the code has resumed and the session reaches `proxy_pass`, nginx handles subsequent datagrams of that session normally; they do not run the Ruby code again. `worker_shutdown_timeout` ends a UDP session whose code is still waiting. A configuration that needs every datagram to reach its upstream must avoid sleeping in the UDP stream handler, or arrange retransmission in its application protocol. Use the handler for session-level decisions, not processing that must run once for each datagram. See [the 2.7.5 release notes](../releases/v2.7.5.md).
 
 ```ruby
 # sleep 3000 millisec

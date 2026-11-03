@@ -39,7 +39,8 @@ can live in files of its own:
   and up; 18116 is taken by the second nginx that
   `test/t/cases/_second_instance.rb` starts). Fragments for `stream {}` go
   to `test/conf/conf.d/stream/` (ports 12353 and up; 12357 and 12385 to
-  12388 are taken by the second nginx).
+  12388 are taken by the second nginx; 12393-12396 belong to the independent
+  UDP session checks in `_udp_wait_session.rb`, including its echo upstream).
 - `test/t/cases/<name>.rb`: a test file run after `test/t/ngx_mruby.rb`,
   with `test/t/cases/_prelude.rb` prepended. The prelude defines `base`,
   `base_ssl`, `http_host`, `html_path`, `nginx_t` (runs `nginx -t` on a
@@ -47,7 +48,7 @@ can live in files of its own:
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
   with `_` are helpers and are not run as cases; `_tcp_client.rb`,
   `_filter_connection_client.rb`, `_request_body_client.rb`,
-  `_second_instance.rb` and `_redis_client.rb` are CRuby scripts that the
+  `_second_instance.rb`, `_udp_wait_session.rb` and `_redis_client.rb` are CRuby scripts that the
   prelude helpers and the cases run with `ruby`, and `_wait_for_listen.rb`
   is the CRuby script that test.sh runs to wait for nginx (see "Waiting for
   nginx to listen" below).

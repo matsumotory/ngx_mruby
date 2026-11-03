@@ -707,6 +707,7 @@ static ngx_int_t ngx_stream_mrb_run_conf(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb
 static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
 {
   ngx_stream_mruby_srv_conf_t *mscf;
+  ngx_stream_mruby_ctx_t *ctx;
   mrb_state *mrb;
   mrb_int ai;
   ngx_stream_mruby_internal_ctx_t *ictx;
@@ -715,6 +716,16 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   mscf = ngx_stream_get_module_srv_conf(s, ngx_stream_mruby_module);
   if (mscf->code == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
+  }
+
+  if (s->connection->type == SOCK_DGRAM) {
+    ctx = ngx_stream_get_module_ctx(s, ngx_stream_mruby_module);
+    if (ctx != NULL && ctx->sleep.timer_set) {
+      // A later datagram belongs to the waiting session. Leave its timer
+      // and fiber in place; only the timer resumes the code. A shutdown
+      // timeout ends the session through the normal phase checker.
+      return s->connection->close ? NGX_STREAM_OK : NGX_DONE;
+    }
   }
 
   mrb = ngx_stream_mrb_state(s);
