@@ -50,9 +50,11 @@ nginxを自分で起動するケースは、CIのsanitizerのセルでも動き�
 
 ### UDPの待機と転送のテスト
 
-`test/t/cases/stream_async_sleep_udp_session.rb`は、連続するsleep、バイナリ本文の正確な転送、期限内のshutdownを確かめます。CRubyのヘルパー`_udp_wait_session.rb`は、専用のnginxとエコーの上流にポート12393-12396を使います。
+`test/t/cases/stream_async_sleep_udp_session.rb`は、連続するsleep、バイナリ本文の完全一致、期限内のshutdownを確かめます。
 
-スイートはケースを順に実行します。このヘルパーが自分のnginxを停止してから、同じポート12393を使うworkersのケースが始まります。ヘルパーを`suite_path`から起動するので、`TEST_SH_PORT_OFFSET`で動かしたポートも使えます。
+CRubyのヘルパー`_udp_wait_session.rb`は、nginxとエコーの上流にポート12393-12396を使います。
+
+ケースは順に実行します。ヘルパーがnginxを停止した後、ポート12393を使うworkersのケースが始まります。ヘルパーを`suite_path`から起動するので、`TEST_SH_PORT_OFFSET`で動かしたポートも使えます。
 
 ## 必須のステータスチェック
 
