@@ -1,12 +1,27 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-03 (16:23 JST)
+## State as of 2026-11-04 (15:43 JST)
 
-- Heads: `next` is `60ba72f86`, the merge of
-  [#760](https://github.com/matsumotory/ngx_mruby/pull/760); `master` is
+- Heads: `next` is `4eb847421`, the merge of
+  [#762](https://github.com/matsumotory/ngx_mruby/pull/762); `master` is
   `801d78b48`. `next` contains `master` through `382639258` in
   [#757](https://github.com/matsumotory/ngx_mruby/pull/757). `v2.x` mirrors
-  `master`. The latest published release is 2.7.4.
+  `master`. The latest published release is 2.7.5.
+- The release 2.7.5: [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.5)
+  was published on 2026-11-04 at 14:49:05 JST. Its tag points to
+  `801d78b4831965326adb1f9b216a99740b5ab92e`.
+  [GHSA-wx6w-gpg3-cmc3](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-wx6w-gpg3-cmc3)
+  was published at 15:08:25 JST (Moderate, CVSS 3.1: 5.3): additional
+  datagrams could restart a sleeping UDP stream handler and postpone its
+  pending wait. The advisory confirms 2.7.4 as affected and 2.7.5 as fixed;
+  earlier versions have not been established. The release and advisory
+  contain both English and Japanese text. Public access and reference links
+  were checked. The site's release-version update
+  [passed](https://github.com/matsumotory/ngx_mruby/actions/runs/41781763136).
+  The GitHub release body links the advisory in both languages. The
+  release-note references for `master` are in
+  [#763](https://github.com/matsumotory/ngx_mruby/pull/763); integration into
+  `next`, together with the changes after `382639258`, remains pending.
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
   is published. Two advisories were published with it:
@@ -104,10 +119,16 @@
 - [#760](https://github.com/matsumotory/ngx_mruby/pull/760) merged as
   `60ba72f86` at 14:16 JST. It preserves every copper CTA edge and balances
   the Japanese hero text and logo. The automatic site publication passed.
-- Open: the documentation-only clarification of the unchanged
-  empty-subrequest response is prepared for review on
-  `codex/subrequest-empty-note`. Local site checks and independent semantic
-  and visual review passed; its PR records the final head and checks.
+- Open: [#763](https://github.com/matsumotory/ngx_mruby/pull/763), a draft
+  targeting `master`, adds the advisory reference to both 2.7.5 release-note
+  files. This handoff-record PR targets `next` and remains a draft for review.
+  Codex maintains both. Local site checks and independent review passed;
+  the changes are not merged. Next: record the review on each PR and move
+  it to ready when authorized; draft CI skips are not passing CI evidence.
+- [#761](https://github.com/matsumotory/ngx_mruby/pull/761) merged the
+  unchanged empty-subrequest response clarification as `8cbdf7748`.
+  [#762](https://github.com/matsumotory/ngx_mruby/pull/762) merged the
+  capability-based agent model and reasoning-effort guidance as `4eb847421`.
 - [#750](https://github.com/matsumotory/ngx_mruby/pull/750) added current
   3.x documentation before the existing 2.x footer link in both languages.
   It merged as `c440a15dc`; local checks, independent review, CI and
@@ -348,7 +369,7 @@ Taken up and still open: none.
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
-| Subrequests: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` explains the unchanged 500 from a subrequest content handler that returns `Nginx::HTTP_OK` without output, the 200 from nginx's own `return 200;`, and why `auth_request` treats the retained 500 as an error instead of allowing the request | `next` | Clarified on `codex/subrequest-empty-note`; local site checks and independent semantic and visual review passed |
+| Subrequests: the entry of #574 in `docs/releases/v3.0.0.md` and `.ja.md` explains the unchanged 500 from a subrequest content handler that returns `Nginx::HTTP_OK` without output, the 200 from nginx's own `return 200;`, and why `auth_request` treats the retained 500 as an error instead of allowing the request | `next` | Merged in [#761](https://github.com/matsumotory/ngx_mruby/pull/761); local site checks and independent semantic and visual review passed |
 | A known-length HEAD response finalized by an mruby output body filter keeps its connection for the following GET ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1; #628 reproduced it) | `master`, then `next` | Fixed on master in [#752](https://github.com/matsumotory/ngx_mruby/pull/752) with failing-test and passing-fix commits, and integrated into next in [#756](https://github.com/matsumotory/ngx_mruby/pull/756). The combined suite passed all 759 tests; local validation, independent review, CI and publication checks passed. Both release lines and the current Filter reference describe the known-length HEAD scope |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
 | Site: steps 1 to 4, 6 and 7 are merged (#591, #607, #614, #617–#623, #626, #629–#632, #653–#657), and the site is deployed from `next`. Step 5, the Japanese pages, is merged (#705 for six pages, #703 for the 2.x release notes on `master`); the handoff page stays English with a notice, and `NOTES_ONLY` of `check-japanese-lines.mjs` still lists four release notes (the subsection "Japanese pages of the site" of "Work in progress") | `next` for `site/`; `master` for 2.x sources | Still open: the emptying of `NOTES_ONLY` once `master` is merged into `next`; the site on Astro without Starlight (5.4 of the site proposal, #700, the owner's decision of 2026-11-01), whose first layer, the own shell beside Starlight behind `NGX_MRUBY_SITE_SHELL=own`, is merged in #708, and whose rest is #713 (from a Codex session, taken over by Claude Code for the browser acceptance), which also changes the iPhone width to 402px with the root size of 4.4; the 3.x development banner of 3.4; and the observability and certificate-lookup sample prerequisites of #619. Q9 is done (Discussions on, wiki off, 2026-11-01) |
