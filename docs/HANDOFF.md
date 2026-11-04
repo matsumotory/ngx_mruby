@@ -1,10 +1,11 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-04 (15:43 JST)
+## State as of 2026-11-04 (15:59 JST)
 
 - Heads: `next` is `4eb847421`, the merge of
   [#762](https://github.com/matsumotory/ngx_mruby/pull/762); `master` is
-  `801d78b48`. `next` contains `master` through `382639258` in
+  `1a2e97ee1`, the merge of
+  [#763](https://github.com/matsumotory/ngx_mruby/pull/763). `next` contains `master` through `382639258` in
   [#757](https://github.com/matsumotory/ngx_mruby/pull/757). `v2.x` mirrors
   `master`. The latest published release is 2.7.5.
 - The release 2.7.5: [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.5)
@@ -19,8 +20,10 @@
   were checked. The site's release-version update
   [passed](https://github.com/matsumotory/ngx_mruby/actions/runs/41781763136).
   The GitHub release body links the advisory in both languages. The
-  release-note references for `master` are in
-  [#763](https://github.com/matsumotory/ngx_mruby/pull/763); integration into
+  release-note references for `master` were merged in
+  [#763](https://github.com/matsumotory/ngx_mruby/pull/763) at 15:58:32 JST
+  as `1a2e97ee1aa1426ade91d833be6472842b81aa04`. Its independent review and
+  ready CI passed; the automatic site update started. Integration into
   `next`, together with the changes after `382639258`, remains pending.
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
@@ -119,12 +122,12 @@
 - [#760](https://github.com/matsumotory/ngx_mruby/pull/760) merged as
   `60ba72f86` at 14:16 JST. It preserves every copper CTA edge and balances
   the Japanese hero text and logo. The automatic site publication passed.
-- Open: [#763](https://github.com/matsumotory/ngx_mruby/pull/763), a draft
-  targeting `master`, adds the advisory reference to both 2.7.5 release-note
-  files. This handoff-record PR targets `next` and remains a draft for review.
-  Codex maintains both. Local site checks and independent review passed;
-  the changes are not merged. Next: record the review on each PR and move
-  it to ready when authorized; draft CI skips are not passing CI evidence.
+- Open: [#764](https://github.com/matsumotory/ngx_mruby/pull/764), targeting
+  `next`, records the release and current work state. Codex maintains it.
+  Local site checks and independent review passed; the final state update
+  is being handed to ready review and current-head CI. Merge follows the
+  review and CI gates, then the automatic site update and public verification.
+  Draft CI skips are not passing CI evidence.
 - [#761](https://github.com/matsumotory/ngx_mruby/pull/761) merged the
   unchanged empty-subrequest response clarification as `8cbdf7748`.
   [#762](https://github.com/matsumotory/ngx_mruby/pull/762) merged the
