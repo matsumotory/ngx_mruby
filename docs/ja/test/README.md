@@ -48,6 +48,12 @@ end
 
 nginxを自分で起動するケースは、CIのsanitizerのセルでも動きます。そうしたケースは`nginx_t`か`second_instance`を使います。sanitizerのセルでは、リークしたプロセスがあると、LeakSanitizerがそのプロセスの出力にレポートを書き足し、終了ステータスを変えます。そのため、そうしたケースは、プルリクエストを開く前に、sanitizerのビルドで1回実行してください。手順は下の「2つのsanitizerの下でテストを実行する」にあります。`nginx_t`は、`nginx -t`の実行ではリークの検出を切ります。`nginx -t`は読んだ設定を解放せずに戻るので、検出を切らないと、nginx自身のメモリの確保がすべて報告されるからです。`test/t/ngx_mruby.rb`の最後にあるstreamだけのテストも、自分が起動したnginxを止める`nginx -s quit`で、同じように検出を切ります。そのプロセスは、`main()`が最初に作るプールを解放せずに、nginxの`main()`から戻ります。検出を切らないと、そのレポートはテストのランナーの`stderr.log`に入ります。`second_instance`は、2つ目のnginxの`error.log`か`stderr.log`にある、sanitizerの最初の行を、`sanitizer`として返します。その行があると、ケースは2つ目のnginxの`error.log`を出します。
 
+### UDPの待機と転送のテスト
+
+`test/t/cases/stream_async_sleep_udp_session.rb`は、連続するsleep、バイナリ本文の正確な転送、期限内のshutdownを確かめます。CRubyのヘルパー`_udp_wait_session.rb`は、専用のnginxとエコーの上流にポート12393-12396を使います。
+
+スイートはケースを順に実行します。このヘルパーが自分のnginxを停止してから、同じポート12393を使うworkersのケースが始まります。ヘルパーを`suite_path`から起動するので、`TEST_SH_PORT_OFFSET`で動かしたポートも使えます。
+
 ## 必須のステータスチェック
 
 `.github/workflows/test.yml`は、`master`、`next`、`v*.x`へのプルリクエスト、これらのブランチと`v*`タグへのpush、「Run workflow」で起動します。ルールセットが必須とするステータスチェックは`ci-ok`です。`ci-ok`は、`needs`にある各ジョブが成功したか、`changes`の判定でスキップされた場合だけ成功します。対象は`changes`、`build`マトリクスの全ジョブ、`files`で、`next`では`soak`も含みます。マトリクスを実行する場合はvalgrindのセルも対象なので、そのエラーは`ci-ok`を失敗させます。[CIのvalgrind](#ciのvalgrind)を参照してください。`perf`はまだ`needs`に含まれません。

@@ -46,7 +46,9 @@ can live in files of its own:
   `test/t/cases/_second_instance.rb` starts, and 18180, 18181 and 18185 by
   the nginx of `test/t/cases/_workers.rb`). Fragments for `stream {}` go
   to `test/conf/conf.d/stream/` (ports 12353 to 12399; 12357 and 12385 to
-  12388 are taken by the second nginx, and 12379 by the nginx of `_workers.rb`). Write each port as five digits in these ranges, so that
+  12388 are taken by the second nginx, and 12379 and 12393 by the nginx of
+  `_workers.rb`; 12393-12396 belong to `_udp_wait_session.rb` and its echo
+  upstream, in a separate, sequential case). Write each port as five digits in these ranges, so that
   `TEST_SH_PORT_OFFSET` moves it ("Ports" below).
 - `test/t/cases/<name>.rb`: a test file run after `test/t/ngx_mruby.rb`,
   with `test/t/cases/_prelude.rb` prepended. The prelude defines `base`,
@@ -60,7 +62,7 @@ can live in files of its own:
   with `SimpleTest.new` and ends with `t.report`. Files whose name starts
   with `_` are helpers and are not run as cases; `_tcp_client.rb`,
   `_filter_connection_client.rb`, `_request_body_client.rb`,
-  `_second_instance.rb` and `_workers.rb` are CRuby scripts that the prelude helpers and the
+  `_second_instance.rb`, `_workers.rb` and `_udp_wait_session.rb` are CRuby scripts that the prelude helpers and the
   cases run with `ruby`, and `_wait_for_listen.rb` is the CRuby script that
   test.sh runs to wait for nginx (see "Waiting for nginx to listen" below).
   `_agent_proxy_client.rb` is a CRuby script (3.0 or
@@ -851,7 +853,9 @@ to 18199: the `listen` directives of `test/conf/`, the addresses of
 `add_listener`, the second nginx of `test/t/cases/_second_instance.rb`
 (18116, 12357, and 12385 to 12388), the nginx of `test/t/cases/config_hooks.rb` (18158), the
 nginx with several workers of `test/t/cases/_workers.rb` (18180, 18181,
-18185, 12379 and 12393, in `test/conf/workers/`), the
+18185, 12379 and 12393, in `test/conf/workers/`), the independent UDP
+session helper `_udp_wait_session.rb` (12393-12396, including its echo
+upstream; it finishes before the workers case starts), the
 mock LLM upstream of `test/t/cases/_agent_proxy_client.rb` (12372 and
 12373), the stream-only test of `test/t/ngx_mruby.rb` (12399), and the
 ports that the tests, the hook scripts and the expected outputs of

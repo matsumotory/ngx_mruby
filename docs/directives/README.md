@@ -522,6 +522,8 @@ Use [mruby_output_body_filter and mruby_output_header_filter](#mruby_output_body
 The stream module directives run Ruby for TCP and UDP sessions in the `stream {}` block, which has an mruby state of its own.
 nginx compiles the code of each directive once, when it reads the configuration.
 
+The code of `mruby_stream` and `mruby_stream_code` runs in the session's access phase. When a UDP handler waits in `Nginx::Stream::Async.sleep`, later datagrams of that session do not restart it or extend its current wait. Those later payloads are discarded, not queued for the phase after the code; the first datagram remains available. See [Nginx::Stream::Async#sleep](../class_and_method/README.md#nginxstreamasyncsleep) before using a wait in a UDP proxy.
+
 * [mruby_stream_init and mruby_stream_init_code](#mruby_stream_init-and-mruby_stream_init_code)
 * [mruby_stream_init_worker and mruby_stream_init_worker_code](#mruby_stream_init_worker-and-mruby_stream_init_worker_code)
 * [mruby_stream_exit_worker and mruby_stream_exit_worker_code](#mruby_stream_exit_worker-and-mruby_stream_exit_worker_code)

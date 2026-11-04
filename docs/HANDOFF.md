@@ -1,9 +1,9 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-04 (15:59 JST)
+## State as of 2026-11-04 (16:32 JST)
 
-- Heads: `next` is `4eb847421`, the merge of
-  [#762](https://github.com/matsumotory/ngx_mruby/pull/762); `master` is
+- Heads: `next` is `24f885db2`, the merge of
+  [#764](https://github.com/matsumotory/ngx_mruby/pull/764); `master` is
   `1a2e97ee1`, the merge of
   [#763](https://github.com/matsumotory/ngx_mruby/pull/763). `next` contains `master` through `382639258` in
   [#757](https://github.com/matsumotory/ngx_mruby/pull/757). `v2.x` mirrors
@@ -24,7 +24,8 @@
   [#763](https://github.com/matsumotory/ngx_mruby/pull/763) at 15:58:32 JST
   as `1a2e97ee1aa1426ade91d833be6472842b81aa04`. Its independent review and
   ready CI passed; the automatic site update started. Integration into
-  `next`, together with the changes after `382639258`, remains pending.
+  `next`, together with the changes after `382639258`, is being prepared in
+  this change.
 - The release 2.7.3: the tag `v2.7.3` is on `591147b01` (2026-11-01 00:08
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.3)
   is published. Two advisories were published with it:
@@ -122,12 +123,12 @@
 - [#760](https://github.com/matsumotory/ngx_mruby/pull/760) merged as
   `60ba72f86` at 14:16 JST. It preserves every copper CTA edge and balances
   the Japanese hero text and logo. The automatic site publication passed.
-- Open: [#764](https://github.com/matsumotory/ngx_mruby/pull/764), targeting
-  `next`, records the release and current work state. Codex maintains it.
-  Local site checks and independent review passed; the final state update
-  is being handed to ready review and current-head CI. Merge follows the
-  review and CI gates, then the automatic site update and public verification.
-  Draft CI skips are not passing CI evidence.
+- Open at the start of this integration: none. Codex is preparing the merge of
+  `master` at `1a2e97ee1` into `next`. The next fiber state machine already
+  provides the UDP waiting behavior; keep it and integrate the expanded
+  regression tests, current references and both 2.7.5 release-note files.
+  The final merged tree needs local suite/site checks, independent review
+  and current-head CI before merge, then publication verification.
 - [#761](https://github.com/matsumotory/ngx_mruby/pull/761) merged the
   unchanged empty-subrequest response clarification as `8cbdf7748`.
   [#762](https://github.com/matsumotory/ngx_mruby/pull/762) merged the
@@ -368,7 +369,7 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement; the matching comment-only update on `master` remains |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `382639258` in [#757](https://github.com/matsumotory/ngx_mruby/pull/757) |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `382639258` in [#757](https://github.com/matsumotory/ngx_mruby/pull/757); this change integrates `1a2e97ee1`, preserving next runtime and extending the UDP tests and references |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
