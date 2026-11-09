@@ -1,8 +1,7 @@
 # Proposal: the rest of the v3 core before `v3.0.0-alpha.1`
 
-Status: in progress. The four design decisions of section 5 were made on
-2026-11-09. One point of section 2.12 (whether `error_page` applies to a
-status that a handler sets after its output) is open. Next step: the pull
+Status: in progress. The five design decisions of section 5 were made on
+2026-11-09, and no point of the design is open. Next step: the pull
 requests of section 4 that wait for nothing start, first "Log handlers
 before `access_log`" and "`mruby_variable`", by 2026-11-16.
 
@@ -55,7 +54,7 @@ last Pillar B row). It is additive and not needed for alpha.1.
 | Waits inside another mruby call | 2.9 | `Nginx.redirect` with a local URI raises in `mruby_set` handlers, log handlers and filters |
 | Log handlers before `access_log` | 2.10 | `access_log` writes the variables that mruby log handlers set; the status it writes is the one sent |
 | `mruby_variable` | 2.11 | A new directive |
-| A body with any status | 2.12 | Output followed by `Nginx.return` with a status of 201 or from 300 up is sent with that status, instead of nginx's own page; whether `error_page` still applies is open |
+| A body with any status | 2.12 | Output followed by `Nginx.return` with a status of 201 or from 300 up is sent with that status, instead of nginx's own page, and `error_page` does not apply to it |
 
 ## 2. The items
 
@@ -678,30 +677,23 @@ the plan accepted "body with any status".
   (`:329-333`). An exception still drops the output and answers 500
   (`src/http/ngx_http_mruby_module.c:1148-1177`).
 
-**Open point: `error_page`.** Today an `error_page` of the location for the
-status applies after such output, because nginx sends the response for the
-status. With the design, the handler sends the response, as nginx's
-`return 404 "text"` does, and `error_page` does not apply to it. This needs
-a decision before the pull request starts:
+**`error_page` (decision 5).** Today an `error_page` of the location for
+the status applies after such output, because nginx sends the response for
+the status. With the design, the handler sends its output with the status,
+and `error_page` does not apply to that response. This is how nginx treats
+its own `return` with a text: `ngx_http_script_return_code` sends it with
+`ngx_http_send_response`, which does not go through `error_page`
+(`src/http/ngx_http_script.c:1577-1582` in nginx 1.31.8). A script that
+wants nginx's page, and its `error_page`, sets the status without output,
+as today. Section 5 records the decision and the option not chosen.
 
-- (a) The output is sent, and `error_page` does not apply to a response
-  for which the handler wrote output. A script that wants nginx's page, and
-  its `error_page`, sets the status without output, as today.
-- (b) When the location has an `error_page` for the status, the output is
-  dropped as today and `error_page` applies; otherwise the output is sent.
-
-Recommendation: (a). It gives one rule (the output of a handler is sent
-with its status), the same as nginx's own `return code text`. With (b),
-what a script sends depends on directives elsewhere in the configuration,
-and `ngx_mrb_finalize_rputs` would search the `error_page` list of the
-location for each such response. The cost of (a): a configuration that
-writes output, sets a status from 300 up after it and relies on its
-`error_page` sends the output instead; one entry in the release notes says
-so.
-
-**Behavior change.** Yes, one entry: output followed by a status of 201 or
-from 300 up is sent with that status instead of nginx's page, and output
-followed by a status below 200 answers 500.
+**Behavior change.** Yes, one entry in the release notes of 3.0.0: output
+followed by a status of 201 or from 300 up is sent with that status instead
+of nginx's page, and output followed by a status below 200 answers 500. The
+entry also says that `error_page` no longer applies to such a response: a
+configuration that writes output, sets a status from 300 up after it and
+relies on an `error_page` for that status now sends the output, and gets
+nginx's page again by setting the status without output.
 
 **Test that fails first.** `test/t/cases/body_with_status.rb`: a content
 handler that writes a JSON body and then calls `Nginx.return
@@ -715,7 +707,7 @@ for the owner's approval that `AGENTS.md` asks for.
 **Perf.** No scenario sets a status after its output; the change is in the
 condition of a branch. No change is expected.
 
-**Depends on.** The open point above. It edits
+**Depends on.** Nothing. It edits
 `src/http/ngx_http_mruby_core.c`, as the execution context does
 (`Nginx.send_header`).
 
@@ -760,7 +752,7 @@ and the one that merges second updates its branch.
 | Common upstream switching | 2.7 | nothing | nothing |
 | Common error logging | 2.8 | nothing | execution context (`Nginx.log`) |
 | Directive table and one duplicate check | 2.5 | nothing | log handlers, filter handlers, code loading |
-| A body with any status | 2.12 | the decision on `error_page` (2.12) | execution context (`src/http/ngx_http_mruby_core.c`) |
+| A body with any status | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`) |
 | The check before the tag | 3 | every row above | nothing |
 
 The agent proxy parts (a) and (c) of step 7 of the plan do not touch these
@@ -769,9 +761,9 @@ directive table then lists.
 
 ## 5. Decisions and rationale
 
-The four decisions below were made on 2026-11-09. Each records what was
+The five decisions below were made on 2026-11-09. Each records what was
 chosen, the option that was not, the reason, and what changes. Sections
-2.1, 2.3, 2.5 and 2.9 describe the design with them.
+2.1, 2.3, 2.5, 2.9 and 2.12 describe the design with them.
 
 ### Decision 1: `Nginx.redirect` to a local URI raises in `mruby_set` handlers, log handlers and output filters
 
@@ -842,6 +834,27 @@ runs, and both modules share one rule and one function (section 2.5).
 What changes: a configuration that gives a stream hook twice fails
 `nginx -t` on 3.0.0 and has to remove one of them; one entry in the
 release notes.
+
+### Decision 5: output followed by a status is sent with that status, and `error_page` does not apply to it
+
+Chosen: the output that a handler wrote is sent with the status that the
+handler set after it, and an `error_page` of the location for that status
+does not apply to the response. Not chosen: dropping the output and
+letting `error_page` apply when the location has one for the status, and
+sending the output otherwise.
+
+Reason: one rule (the output of a handler is sent with its status), the
+same as nginx's own `return` with a text, which `ngx_http_script_return_code`
+sends with `ngx_http_send_response` without going through `error_page`
+(`src/http/ngx_http_script.c:1577-1582` in nginx 1.31.8). With the option
+not chosen, what a script sends would depend on directives elsewhere in the
+configuration, and `ngx_mrb_finalize_rputs` would search the `error_page`
+list of the location for each such response.
+
+What changes: a configuration that writes output, sets a status from 300
+up after it and relies on an `error_page` for that status sends the output
+on 3.0.0; it gets nginx's page again by setting the status without output.
+The entry of section 2.12 in the release notes of 3.0.0 says so.
 
 ## 6. Risks
 
