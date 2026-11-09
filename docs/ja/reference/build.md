@@ -68,7 +68,7 @@ modules: その中に<wbr>あるもの：<wbr>`ngx_http_mruby_module`、<wbr>ngi
 - [`mrbgems/ngx_mruby_mrblib`](../../../mrbgems/ngx_mruby_mrblib)：ngx_mrubyのクラスのうち、Rubyで書いた部分
 - [`mrbgems/rack-based-api`](../../../mrbgems/rack-based-api)：Rackと互換のAPIの`run`
 
-`ENV`、`Process`、`Signal`は、コアのgemのmruby-env、mruby-process、mruby-signalが定義します。2.xでは、`ENV`と`Process`をiij/mruby-envとiij/mruby-processが定義していました。2.xのデフォルトのビルドには、`Vedis`を定義するmatsumotory/mruby-vedisと、`Cache`を定義するmatsumotory/mruby-localmemcacheも入っていました。3.0.0では、この2つのgemの行は`build_config.rb`のコメントです。詳しくは[リリースノート](../../releases/v3.0.0.ja.md#アップグレードの前に読む挙動の変更)にあります。
+`ENV`、`Process`、`Signal`は、コアのgemのmruby-env、mruby-process、mruby-signalが定義します。2.xでは、`ENV`と`Process`をiij/mruby-envとiij/mruby-processが定義していました。2.xのデフォルトのビルドには、`Vedis`を定義するmatsumotory/mruby-vedisと、`Cache`を定義するmatsumotory/mruby-localmemcacheも入っていました。3.0.0では、この2つのgemの行は`build_config.rb`のコメントで、理由は[リリースノート](../../releases/v3.0.0.ja.md#アップグレードの前に読む挙動の変更)にあります。
 
 チェックの`site/scripts/check-reference.mjs`は、この一覧を、`build_config.rb`のhostのビルドにある`conf.gem`の行のうち、コメントでなく条件も無い行と比べます。コメントの行には、mruby-discountやmruby-memcachedのような、デフォルトのビルドが入れないgemの名前があります。そのどれかを入れてビルドするには、その行のコメントを外し、`mruby/build`を消してください。
 

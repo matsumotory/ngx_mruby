@@ -50,7 +50,7 @@ mruby-ioはデフォルトに含まれます。ファイル・ソケット・sle
 同梱のmrubyは4.1.0-rc2で、mruby 4.1.0の2つ目のリリース候補です。ngx_mrubyは、mrubyの`full-core.gembox`ではなく、`NGX_MRUBY_CORE_GEMS`が挙げるコアのgemをビルドします。こうすると、ngx_mrubyのスクリプトのクラスとメソッドは、この一覧を変えたときにだけ変わります。一覧は、mruby 3.3.0の`full-core.gembox`が選んでいたgemの集合で、違いは次のとおりです。
 
 - mruby-printはありません。mruby 3.4で削除されました。`Kernel#print`、`#puts`、`#p`はmruby-ioが定義します。
-- mruby 4.1で加わったmruby-env、mruby-process、mruby-signalを入れます。`ENV`と`Process`は、2.xのiij/mruby-envとiij/mruby-processでなく、これらのgemが定義します。mruby-processはmruby-signalに依存するので、スクリプトは`Signal`の`Signal.list`と`Signal.signame`も使えます。iij/mruby-processは`Kernel#sleep`、`#exit`、`#exit!`、`#fork`、`#system`も定義していました。今は`sleep`をmruby-sleepが、`exit`をmruby-exitが定義し、`fork`と`system`はありません。テストのクライアントの`test`のビルドは、mruby-envを入れ、mruby-processとmruby-signalは入れません。
+- mruby 4.1で加わったmruby-env、mruby-process、mruby-signalを入れます。`ENV`と`Process`は、2.xのiij/mruby-envとiij/mruby-processでなく、これらのgemが定義します。mruby-processはmruby-signalに依存するので、スクリプトは`Signal`の`Signal.list`と`Signal.signame`も使えます。iij/mruby-processは`Kernel#sleep`、`#exit`、`#exit!`、`#fork`、`#system`も定義していました。今は`sleep`をmruby-sleepが、`exit`をmruby-exitが定義し、`fork`と`system`はありません。テストのクライアントの`test`のビルドは、mruby-envだけを入れます。
 
 mruby 4.1には、hal-*のgemがありません。mruby-io、mruby-dir、mruby-socketが、POSIXのバックエンドをそれぞれ`ports/posix/`に持つので、一覧にはバックエンドの名前がありません。mruby 4.0.0向けに書いた一覧がhal-posix-io、hal-posix-dir、hal-posix-socketを挙げると、ビルドは止まります。`build_config.rb`の`ngx_mruby_core_gems`は、同梱のmrubyに無い名前があるとビルドを止めるためです。
 
