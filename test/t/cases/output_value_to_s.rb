@@ -155,6 +155,25 @@ t.assert('output value to_s', 'error.log has the TypeError of the calls that the
   t.assert_include log, '#<TypeError: Integer cannot be converted to String>'
 end
 
+# Without a rescue in a body filter, the TypeError ends the filter as any
+# exception there does: the response gets the status 500, and the value
+# that body= or output was given does not replace the body of the file,
+# which the response still carries.
+%w[body output].each do |call|
+  t.assert('output value to_s', "Nginx::Filter##{call == 'body' ? 'body=' : 'output'} with a value whose to_s does not return a String answers 500 with the body of the file when the script does not rescue") do
+    filter_offset = File.size(output_value_to_s_log_path)
+    status, line, _, body = output_value_to_s_get(output_value_to_s_path(call, 'to_s_not_string', false))
+    log = File.open(output_value_to_s_log_path) do |f|
+      f.seek(filter_offset)
+      f.read.to_s
+    end
+    t.assert_equal 'EOF', status
+    t.assert_equal 'HTTP/1.1 500 Internal Server Error', line
+    t.assert_equal "static file\n", body
+    t.assert_include log, '#<TypeError: Integer cannot be converted to String>'
+  end
+end
+
 # The worker that got the values above still answers.
 t.assert('output value to_s', 'the server answers after the values that could not be converted') do
   status, line, _, body = output_value_to_s_get(output_value_to_s_path('rputs', 'string'))
