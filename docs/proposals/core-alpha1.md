@@ -1,8 +1,10 @@
 # Proposal: the rest of the v3 core before `v3.0.0-alpha.1`
 
-Status: proposal, waiting for the owner's answers to the four questions of
-section 5. Next step: the owner answers them, by 2026-11-16. The pull
-requests of section 4 that wait for no answer can start before that.
+Status: in progress. The four design decisions of section 5 were made on
+2026-11-09. One point of section 2.12 (whether `error_page` applies to a
+status that a handler sets after its output) is open. Next step: the pull
+requests of section 4 that wait for nothing start, first "Log handlers
+before `access_log`" and "`mruby_variable`", by 2026-11-16.
 
 This proposal designs what is left of step 4 of section 6 of
 [the v3 plan](v3-plan.md): the work that has to be on `next` before
@@ -26,26 +28,17 @@ async resume rewrite:
   call, which is still ended by `ngx_mrb_post_fiber` (section 2.9);
 - the two agent proxy rows that item 15 of section 7 of the plan puts into
   alpha.1: mruby log handlers run before `access_log`, and the directive
-  `mruby_variable` (sections 2.10 and 2.11).
+  `mruby_variable` (sections 2.10 and 2.11);
+- the part of the Pillar B row on response finalization that is left, a
+  body with any status (section 2.12).
 
 The proposal changes no code. It was written on 2026-11-09 from `next` at
 `ec8efde7c` and nginx 1.31.8 (the version in `nginx_version`). Line numbers
 are those of that commit. Statements marked "unverified" come from reading
 the code and were not run.
 
-Not in this proposal:
-
-- The Pillar B row on response finalization lists "a body with any status"
-  as left. A status set before the output is sent with the output today,
-  and a status below 300 set after it since #594, but output followed by
-  `Nginx.return` with a status from 300 up is dropped, and nginx sends its
-  own page for the status (`ngx_mrb_finalize_rputs`,
-  `src/http/ngx_http_mruby_core.c:364-366`). `docs/HANDOFF.md` does not list
-  this among the work left in step 4. Whether it holds back alpha.1 is for
-  the session that updates the plan to say; this proposal does not design
-  it.
-- The renaming of request and response accessors (the last Pillar B row).
-  It is additive and not needed for alpha.1.
+Not in this proposal: the renaming of request and response accessors (the
+last Pillar B row). It is additive and not needed for alpha.1.
 
 ## 1. What each item changes, in short
 
@@ -53,15 +46,16 @@ Not in this proposal:
 |---|---|---|
 | One execution context, and the phases of the Ruby API | 2.1 | A method called in a handler where it has no effect raises (item 8 of section 7 of the plan accepted this); a per-request store is added |
 | Headers | 2.2 | `delete` removes exactly the named headers; `Content-Type`, `Content-Length`, `Location` and `Date` set through `headers_out` reach nginx's own fields; a name that is not a String raises |
-| One setter for `Nginx::Var` | 2.3 | Nothing, unless the owner chooses that assigning an unknown variable raises (question 3) |
+| One setter for `Nginx::Var` | 2.3 | Assigning a variable that nginx does not know raises `NameError`, and one that nginx does not let scripts change raises `RuntimeError` |
 | Filter handlers | 2.4 | A filter set at `http` or `server` level runs in the locations below it |
-| Directive table and one duplicate check | 2.5 | A stream hook given twice is refused, if the owner chooses so (question 4) |
+| Directive table and one duplicate check | 2.5 | `nginx -t` refuses a stream hook given twice in one context, as it refuses an HTTP one |
 | Common code loading | 2.6 | Nothing |
 | Common upstream switching | 2.7 | Nothing |
 | Common error logging | 2.8 | Stream logs the backtrace of an exception in a build with `--with-debug`, as HTTP does |
-| Waits inside another mruby call | 2.9 | As the owner chooses (question 1): either `Nginx.redirect` with a local URI raises in `mruby_set` handlers, log handlers and filters, or the handlers that such a redirect runs cannot wait |
+| Waits inside another mruby call | 2.9 | `Nginx.redirect` with a local URI raises in `mruby_set` handlers, log handlers and filters |
 | Log handlers before `access_log` | 2.10 | `access_log` writes the variables that mruby log handlers set; the status it writes is the one sent |
 | `mruby_variable` | 2.11 | A new directive |
+| A body with any status | 2.12 | Output followed by `Nginx.return` with a status of 201 or from 300 up is sent with that status, instead of nginx's own page; whether `error_page` still applies is open |
 
 ## 2. The items
 
@@ -154,7 +148,7 @@ three mechanisms, so a new API has no single place to say where it works.
   | The response head: `headers_out[]=` and `delete`, `Nginx.status_code=`, `Nginx.return` and `Nginx.send_header` with a status, `content_type=` | every HTTP request handler and filter, while nginx has not sent the response header (`r->header_sent`) | after the header is sent, log handlers included |
   | Output: `Nginx.rputs`, `Nginx.echo` | post_read, server rewrite, rewrite, access and content handlers | `mruby_set` handlers, log handlers, header filters |
   | The body of a body filter: `Nginx::Filter#body`, `#body=`, `#output` | body filters | everywhere else |
-  | `Nginx.redirect` with a local URI | post_read, server rewrite, rewrite, access and content handlers | as question 1 decides for `mruby_set` handlers, log handlers and filters |
+  | `Nginx.redirect` with a local URI | post_read, server rewrite, rewrite, access and content handlers | `mruby_set` handlers, log handlers, header and body filters (decision 1, section 2.9) |
   | `Nginx::Async` | as today (`src/http/ngx_http_mruby_async.c:124-138`) | none |
   | `Nginx::SSL` | the SSL handshake handler | none (it raises outside today) |
   | `Nginx::Server#add_listener` | the server context code | none (it raises outside today) |
@@ -166,16 +160,28 @@ three mechanisms, so a new API has no single place to say where it works.
 - A per-request store (additive): `Nginx::Request#store` returns a Hash
   that is the same object in every handler of the request, created at the
   first call and kept in a slot of the GC root holder
-  (`src/http/ngx_http_mruby_gc_roots.h`) until a request pool cleanup frees
-  the slot. A request that never calls it allocates nothing. The agent
+  (`src/http/ngx_http_mruby_gc_roots.h`). The store belongs to the request,
+  not to the module context, and survives internal redirects (decision 2):
+  a cleanup of the request pool holds the slot and the request it belongs
+  to, and frees the slot when the pool is destroyed. The module context
+  caches the pointer; after an internal redirect cleared the module
+  context, the first call walks the cleanups of the request pool once to
+  find the store again. A subrequest shares the pool of its main request,
+  so the cleanup records the request, and a subrequest gets a store of its
+  own. A request that never calls the method allocates nothing. The agent
   proxy uses it to carry the key and the budget decision of its
-  authentication handler to its log handler. Whether the store survives an
-  internal redirect is question 2; the method may be renamed in review.
+  authentication handler to its log handler, also after `error_page 529 =
+  @name` sends the request to another provider. The method may be renamed
+  in review.
 
 **Behavior change.** Yes: the "New raise" column, with one entry in the
 release notes that lists the table. The store is a "New features" entry.
 
-**Test that fails first.** `test/t/cases/api_phases.rb` with a location for
+**Test that fails first.** For the store, `test/t/cases/request_store.rb`:
+an access handler stores a value, `error_page 404 = @next` sends the
+request to a named location whose content handler answers the stored
+value, and a subrequest sees its own empty store; today the method does
+not exist. For the phases, `test/t/cases/api_phases.rb` with a location for
 each handler kind that calls one method of each row and asserts the
 `RuntimeError` line in `error.log` and the response (for example, a log
 handler that sets `headers_out` leaves the response as it was, and its
@@ -268,16 +274,30 @@ changed (`:143-173`, `:484-514`).
 that converts the value (`ngx_mrb_var_to_string`), looks the lowercased
 name up once, and does what `ngx_http_script_set_var_code` does for the
 `set` directive. `#set`, `#name=` and the end of `mruby_set` call it.
-Question 3 decides what it does for an unknown or unchangeable variable.
+A name that nginx does not know raises `NameError`, and a variable that
+nginx does not let scripts change (such as `$uri`) raises `RuntimeError`
+(decision 3). The message names the variable.
 
-**Behavior change.** Only if question 3 is answered with a raise.
+When such an error shows. The worker does not stop: the exception goes to
+the handler, and a handler that does not rescue it ends as after any
+exception, so its request answers 500 (a log handler only logs it) and
+`error.log` has the exception. `nginx -t` cannot find these errors,
+because the name of the variable is decided by Ruby code that runs per
+request. What stops nginx when the configuration is read is a syntax
+error in handler code (the code is compiled then, and `nginx -t` fails)
+and a wrong `mruby_variable` declaration (section 2.11). A misspelled
+variable name in an assignment, or an assignment to a variable that nginx
+does not let scripts change, shows at the first request that runs the
+assignment, as that request's 500 and its `error.log` line.
 
-**Test that fails first.** If the answer is a raise:
-`test/t/cases/var_assign.rb`, where `v.no_such_var = "x"` and
-`v.set("uri", "x")` answer 500 with the exception in `error.log`; today
-they return nil. Otherwise there is no new failing test, and the case file
-runs the same assignments through `#set` and `#name=` and compares the
-results.
+**Behavior change.** Yes, one entry: an assignment that logged an error
+line and returned nil now raises.
+
+**Test that fails first.** `test/t/cases/var_assign.rb`, where
+`v.no_such_var = "x"` answers 500 with `NameError` in `error.log`, and
+`v.set("uri", "x")` answers 500 with `RuntimeError`; today both return nil
+and the request goes on. The same file runs the other assignments through
+`#set` and `#name=` and compares the results.
 
 **Perf.** `auth` assigns three variables. The shared function does the
 same work as either copy; no change is expected.
@@ -358,13 +378,13 @@ In stream, a later directive replaces the earlier one without a message
   registration are generated from it. Adding a field touches the table. The
   stream module has its own small table of the same form.
 - One function for both modules sets the code of a directive: it refuses a
-  field that is already set with "is duplicated" (question 4 decides
-  whether stream takes this rule), loads the code through 2.6, and records
-  the use for 2.4.
+  field that is already set with "is duplicated", in HTTP and in stream
+  (decision 4), loads the code through 2.6, and records the use for 2.4.
+  In stream, `mruby_stream` and `mruby_stream_code` share one field, and so
+  do the file and inline forms of each worker and init hook.
 
-**Behavior change.** None in HTTP. In stream, if question 4 is answered
-with the refusal, `nginx -t` refuses a configuration that gives a stream
-hook twice in one context: one entry.
+**Behavior change.** None in HTTP. In stream, `nginx -t` refuses a
+configuration that gives a stream hook twice in one context: one entry.
 
 **Test that fails first.** For the stream refusal, a case in
 `test/t/cases/config_hooks.rb` style that starts nginx with `mruby_stream`
@@ -492,42 +512,39 @@ second ends the request in a way that no phase checker controls. It runs
 Ruby from a timer outside nginx's phases, which is what the core
 stabilization removed elsewhere.
 
-**Design.** Both answers of question 1 share this part:
+**Design** (decision 1):
 
-- A handler that starts while the fiber of another handler runs is marked
-  in its record (`ngx_http_mrb_running` is set when its fiber starts, or
-  the context of 2.1 says so). In such a handler, and in a handler whose
-  module context was replaced during its run, `Nginx::Async.sleep` and
-  `Nginx::Async::HTTP.sub_request` raise `RuntimeError`, as in log handlers
-  since 2.7.1.
+- `Nginx.redirect` with a local URI raises `RuntimeError` in `mruby_set`
+  handlers, log handlers and header and body filters, as `Nginx::Async`
+  does there. The redirect then has one rule: a local URI takes effect when
+  the handler ends, and a handler whose end cannot take it raises. No
+  handler of a request runs inside another mruby call through ngx_mruby
+  any more, except the header filter that `Nginx.send_header` runs, which
+  cannot wait anyway. A redirect with a URL (`http://`, `https://`,
+  `$scheme`) only sets `Location` and the status, and keeps working there.
+- As a guard, a handler that starts while the fiber of another handler
+  runs is marked in its record (`ngx_http_mrb_running` is set when its
+  fiber starts, or the context of 2.1 says so). In such a handler, and in a
+  handler whose module context was replaced during its run,
+  `Nginx::Async.sleep` and `Nginx::Async::HTTP.sub_request` raise
+  `RuntimeError`, as in log handlers since 2.7.1.
 - `ngx_mrb_post_fiber`, `by_post_fiber`, the branch at
   `src/http/ngx_http_mruby_module.c:1137-1143` and the `NGX_AGAIN` that a
   waiting handler returns there are removed. Every wait ends through the
   wake and nginx's checker.
 
-The answers differ in `Nginx.redirect` with a local URI in `mruby_set`
-handlers, log handlers and filters:
-
-- (a) It raises `RuntimeError` there, as `Nginx::Async` does. No handler of
-  a request then runs inside another mruby call through ngx_mruby, except
-  the header filter that `Nginx.send_header` runs, which cannot wait
-  anyway. The redirect has one rule: a local URI takes effect when the
-  handler ends, and a handler whose end cannot take it raises.
-- (b) It keeps redirecting inside the call. The handlers of the target run
-  inside it and cannot wait (the shared part above).
-
-**Behavior change.** Yes, one entry for either answer. With (a): the
-redirect raises in those three kinds of handler. With (b): a handler that
-such a redirect runs raises when it waits, where today a content handler
-ends the request at the sleep and the other handlers are resumed by their
-timer.
+**Behavior change.** Yes, one entry: `Nginx.redirect` with a local URI
+raises in those three kinds of handler, where today it runs the target's
+handlers inside the call, and a content handler there that waits ends the
+request at the sleep.
 
 **Test that fails first.** `test/t/cases/redirect_nested.rb`: an
 `mruby_set_code` handler that calls `Nginx.redirect "/target"`, and a target
-whose content handler sleeps and answers. With (a) the request answers 500
-and `error.log` has the `RuntimeError` of `Nginx.redirect`; with (b) the
-target's sleep raises and the request answers 500. Today the request ends
-at the sleep. No existing case redirects from an `mruby_set` handler, a log
+whose content handler sleeps and answers; the request answers 500 and
+`error.log` has the `RuntimeError` of `Nginx.redirect`. A log handler that
+calls it logs the same exception, and its `access_log` line has the status
+that was sent. Today the redirect runs, and the request ends at the
+sleep. No existing case redirects from an `mruby_set` handler, a log
 handler or a filter (a search of `test/conf` for `Nginx.redirect`).
 
 **Perf.** `sleep` and `sub_request` go through the wake today and keep it;
@@ -613,6 +630,95 @@ comparison of this one stays on the same configuration.
 
 **Depends on.** Nothing.
 
+### 2.12 A body with any status
+
+**Today.** `Nginx.return`, `Nginx.send_header` and `Nginx.status_code=`
+(`ngx_mrb_send_header`, `src/http/ngx_http_mruby_core.c:425-467`) set the
+status, and when the handler wrote output with `Nginx.rputs`, mark its
+last buffer (`:442-445`). When the handler ends,
+`ngx_mrb_finalize_rputs` (`:283-367`) sends the output with the status
+(`:334-361`) when the status is 200, when it was set before the output
+(the last buffer is not marked), or when the content phase would leave the
+client without a response (`ngx_mrb_content_ends_without_response`,
+`:150-161`: a content handler of the main request, and a status below 300
+other than 201 and 204). Otherwise it returns the status (`:364-366`); the
+phase checker passes it to `ngx_http_finalize_request`, and nginx sends its
+own page for the status: the output is dropped, and an `error_page` of the
+location for that status applies. So `Nginx.rputs '{"error":"no key"}'`
+followed by `Nginx.return Nginx::HTTP_UNAUTHORIZED` answers nginx's 401 page,
+in a content handler and in post_read, server rewrite, rewrite and access
+handlers. A status below 200 set after output is sent as the status of the
+final response.
+
+**What is wrong.** Whether the output of a script is sent depends on
+whether it set the status before or after the output. The agent proxy
+answers 401, 403 and 429 with JSON bodies that Ruby builds (section 4 of
+the plan, the Pillar B rows the proxy needs), and item 8 of section 7 of
+the plan accepted "body with any status".
+
+**Design.**
+
+- In `ngx_mrb_finalize_rputs`, output that the handler wrote is sent with
+  the status that the handler set, before or after the output, through
+  the branch that sends output today, as nginx's `return code text` sends
+  a body with any status (`ngx_http_send_response`). This holds for every
+  handler that sends output today: post_read, server rewrite, rewrite,
+  access and content handlers, of the main request and of subrequests.
+- 201 and the statuses from 300 up are sent with the output, and
+  `Content-Length` counts it. A HEAD request gets the header only, as
+  today (`r->header_only`).
+- 204 and 304: nginx's header filter sends no body for them, so the header
+  is sent without the output (unverified for nginx 1.31.8; the test checks
+  it).
+- A status below 200 after output answers 500, as a content handler
+  without output and with such a status does today
+  (`ngx_mrb_answer_missing_body`, `:167-178`).
+- A negative result such as `Nginx::DECLINED` after the output keeps
+  today's handling: the output is not sent, and the phase gets the code
+  (`:329-333`). An exception still drops the output and answers 500
+  (`src/http/ngx_http_mruby_module.c:1148-1177`).
+
+**Open point: `error_page`.** Today an `error_page` of the location for the
+status applies after such output, because nginx sends the response for the
+status. With the design, the handler sends the response, as nginx's
+`return 404 "text"` does, and `error_page` does not apply to it. This needs
+a decision before the pull request starts:
+
+- (a) The output is sent, and `error_page` does not apply to a response
+  for which the handler wrote output. A script that wants nginx's page, and
+  its `error_page`, sets the status without output, as today.
+- (b) When the location has an `error_page` for the status, the output is
+  dropped as today and `error_page` applies; otherwise the output is sent.
+
+Recommendation: (a). It gives one rule (the output of a handler is sent
+with its status), the same as nginx's own `return code text`. With (b),
+what a script sends depends on directives elsewhere in the configuration,
+and `ngx_mrb_finalize_rputs` would search the `error_page` list of the
+location for each such response. The cost of (a): a configuration that
+writes output, sets a status from 300 up after it and relies on its
+`error_page` sends the output instead; one entry in the release notes says
+so.
+
+**Behavior change.** Yes, one entry: output followed by a status of 201 or
+from 300 up is sent with that status instead of nginx's page, and output
+followed by a status below 200 answers 500.
+
+**Test that fails first.** `test/t/cases/body_with_status.rb`: a content
+handler that writes a JSON body and then calls `Nginx.return
+Nginx::HTTP_UNAUTHORIZED` answers 401 with that body and its
+`Content-Length` (today nginx's 401 page); an access handler that does the
+same with 429; a HEAD request to the first location gets the header only;
+output followed by 204 gets 204 without a body; output followed by 101
+gets 500. The pull request lists every existing expectation that changes,
+for the owner's approval that `AGENTS.md` asks for.
+
+**Perf.** No scenario sets a status after its output; the change is in the
+condition of a branch. No change is expected.
+
+**Depends on.** The open point above. It edits
+`src/http/ngx_http_mruby_core.c`, as the execution context does
+(`Nginx.send_header`).
+
 ## 3. Verification for `v3.0.0-alpha.1`
 
 Step 4 of the plan tags alpha.1 "when the v2 suite passes under the new
@@ -635,7 +741,7 @@ The session publishes the tag after the owner's go-ahead for that release.
 One pull request per row, each to `next` with its tests, its release notes
 entries in English and Japanese, and its documentation. A bug fix comes as
 a test commit and a fix commit. "Waits for" names only what the design
-needs: an answer of the owner, or another pull request. "Edits the same
+needs: a decision that is still open, or another pull request. "Edits the same
 code as" names the rows that change the same functions; by "Branches and
 pull requests" in `AGENTS.md`, such rows are not written at the same time,
 and the one that merges second updates its branch.
@@ -647,103 +753,95 @@ and the one that merges second updates its branch.
 | Headers | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
 | Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table |
 | Execution context and the phases of the Ruby API | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging |
-| Per-request store | 2.1 | question 2 | execution context |
-| One setter for `Nginx::Var` | 2.3 | question 3 | execution context (`src/http/ngx_http_mruby_var.c`) |
-| Waits inside another mruby call | 2.9 | question 1 | execution context (`src/http/ngx_http_mruby_async.c`) |
+| Per-request store | 2.1 | nothing | execution context |
+| One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`) |
+| Waits inside another mruby call | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`) |
 | Common code loading | 2.6 | nothing | directive table |
 | Common upstream switching | 2.7 | nothing | nothing |
 | Common error logging | 2.8 | nothing | execution context (`Nginx.log`) |
-| Directive table and one duplicate check | 2.5 | question 4 | log handlers, filter handlers, code loading |
+| Directive table and one duplicate check | 2.5 | nothing | log handlers, filter handlers, code loading |
+| A body with any status | 2.12 | the decision on `error_page` (2.12) | execution context (`src/http/ngx_http_mruby_core.c`) |
 | The check before the tag | 3 | every row above | nothing |
 
 The agent proxy parts (a) and (c) of step 7 of the plan do not touch these
 functions, except that the upstream peer hook adds a directive, which the
 directive table then lists.
 
-## 5. Questions for the owner
+## 5. Decisions and rationale
 
-### Question 1: `Nginx.redirect` to a local URI in `mruby_set` handlers, log handlers and output filters
+The four decisions below were made on 2026-11-09. Each records what was
+chosen, the option that was not, the reason, and what changes. Sections
+2.1, 2.3, 2.5 and 2.9 describe the design with them.
 
-Today such a redirect runs the handlers of the target inside the Ruby call
-that made it, and a handler of the target that waits is ended by its timer
-outside nginx's phases, where a content handler loses the request at the
-sleep. Both answers end every wait through nginx's phase checker and remove
-that second path; they differ in what scripts see.
+### Decision 1: `Nginx.redirect` to a local URI raises in `mruby_set` handlers, log handlers and output filters
 
-- (a) The redirect raises `RuntimeError` in these three kinds of handler,
-  as `Nginx::Async` does there. A script that needs another location sends
-  the request there from a phase handler, where the redirect takes effect
-  when the handler ends.
-- (b) The redirect keeps working inside the call, and a handler of the
-  target that waits raises `RuntimeError` instead.
+Chosen: the redirect raises `RuntimeError` in these three kinds of handler,
+as `Nginx::Async` does there. Not chosen: keeping the redirect inside the
+Ruby call and making a handler of the target raise when it waits.
 
-Recommendation: (a). The redirect then has one rule in every handler (it
-takes effect when the handler ends, or raises where that cannot happen), and
-no handler of a request runs inside another one. In a log handler the
-response is already sent, and in a filter it is being sent, so a redirect
-there has no response left to make; in an `mruby_set` handler the rewrite
-script goes on after the call. No case of the suite uses the redirect in
-these handlers. The cost is the scripts that do; (b) keeps them working as
-long as their target does not wait. Either answer can be changed in a later
-pull request before 3.0.0.
+Reason: the redirect gets one rule in every handler (it takes effect when
+the handler ends, or raises where that cannot happen), and no handler of a
+request runs inside another one, so every wait ends through nginx's phase
+checker and `ngx_mrb_post_fiber` goes away. In a log handler the response
+is already sent, and in a filter it is being sent, so a redirect there has
+no response left to make; in an `mruby_set` handler the rewrite script
+goes on after the call. No case of the suite uses the redirect in these
+handlers.
 
-### Question 2: whether the per-request store of `Nginx::Request#store` survives an internal redirect
+What changes: a script that redirects to a local URI from these handlers
+gets the exception, and sends the request elsewhere from a phase handler
+instead; one entry in the release notes (section 2.9).
 
-nginx clears the module contexts of a request on an internal redirect
-(`error_page`, `try_files`, a named location, `Nginx.redirect`). The store
-can follow the request, or follow nginx's module contexts.
+### Decision 2: the store of `Nginx::Request#store` survives internal redirects
 
-- (a) The store belongs to the request and survives internal redirects. A
-  request pool cleanup holds it, and a handler that runs after a redirect
-  finds it there; the search walks the cleanups of the request pool once
-  per handler, and only for requests that use the store.
-- (b) The store is cleared by an internal redirect, as nginx's module
-  contexts are and as `ngx.ctx` of OpenResty is. A script carries values
-  across a redirect in variables.
+Chosen: the store belongs to the request. A cleanup of the request pool
+holds it, and a handler that runs after an internal redirect (`error_page`,
+`try_files`, a named location, `Nginx.redirect`) finds it there. Not
+chosen: clearing it with the module contexts, as `ngx.ctx` of OpenResty is
+cleared.
 
-Recommendation: (a). The agent proxy sends a request that gets a 529 to
-another provider with `error_page 529 = @name`, an internal redirect, and
-its log handler then charges the usage to the key that the authentication
-handler stored; with (b) that key has to go through a variable. The cost
-is the walk of the cleanups, a few comparisons per handler for requests
-that use the store. The method is new, so either answer changes no
-existing script, and (a) can become (b) before 3.0.0 without breaking a
-release.
+Reason: the agent proxy sends a request that gets a 529 to another provider
+with `error_page 529 = @name`, an internal redirect, and its log handler
+then charges the usage to the key that the authentication handler stored.
+With a store that the redirect clears, that key would have to go through a
+variable. The cost is a walk of the cleanups of the request pool, once per
+handler after a redirect, and only for requests that use the store.
 
-### Question 3: what assigning a variable that nginx does not know, or does not let scripts change, does
+What changes: a new method; no existing script changes (section 2.1).
 
-Today `v.no_such_var = "x"`, `v.set("no_such_var", "x")` and
-`v.set("uri", "x")` log an error line and return nil, and the request goes
-on without the value.
+### Decision 3: assigning a variable that nginx does not know, or does not let scripts change, raises
 
-- (a) They raise: `NameError` for a name that nginx does not know, and
-  `RuntimeError` for a variable that nginx does not let scripts change.
-- (b) They keep logging and returning nil.
+Chosen: `NameError` for a name that nginx does not know, and `RuntimeError`
+for a variable that nginx does not let scripts change. Not chosen: keeping
+the error line and the nil return.
 
-Recommendation: (a). A misspelled variable then fails at the first request
-in a test instead of losing the value without a trace in the response; a
-handler that wants to go on can rescue the exception. With
+Reason: a misspelled variable then fails at the first request that runs
+the assignment, with its exception in `error.log`, instead of losing the
+value with only an error line and the request going on. The worker does
+not stop; a handler that wants to go on rescues the exception. `nginx -t`
+cannot find these mistakes, because Ruby code decides the name per
+request (section 2.3 says which mistakes stop nginx when it reads the
+configuration and which show at the first request). With
 `mruby_variable`, every variable that a script means to assign can be
-declared, so a correct configuration does not hit the raise. The cost: a
-handler that assigns such a variable now answers 500 where it went on, and
-a log handler logs the exception; one entry in the release notes. (b)
-changes nothing for existing scripts.
+declared, so a correct configuration does not reach the exception.
 
-### Question 4: what nginx does when a stream hook is given twice in one context
+What changes: a handler that assigns such a variable answers 500 where it
+went on, and a log handler logs the exception; one entry in the release
+notes (section 2.3).
 
-Today, in a `stream {}` configuration, a second `mruby_stream` or
-`mruby_stream_code` in the same `server {}`, or a second hook such as
-`mruby_stream_init_worker` with its `_code` form, replaces the first
-without a message. In `http {}`, the same mistake makes `nginx -t` fail
-with "is duplicated".
+### Decision 4: a stream hook given twice in one context fails `nginx -t`
 
-- (a) Stream refuses it with "is duplicated", as HTTP does.
-- (b) Stream keeps replacing.
+Chosen: stream refuses the second directive with "is duplicated", as HTTP
+does; `mruby_stream` and `mruby_stream_code` count as the same hook, and so
+do the file and inline forms of each init and worker hook. Not chosen:
+keeping the replacement without a message.
 
-Recommendation: (a). The code that a configuration means to run is then
-the code that runs, and both modules share one rule and one function. The
-cost: a configuration that gives a stream hook twice fails `nginx -t` on
-3.0.0 and has to remove one of them; one entry in the release notes.
+Reason: the code that a configuration means to run is then the code that
+runs, and both modules share one rule and one function (section 2.5).
+
+What changes: a configuration that gives a stream hook twice fails
+`nginx -t` on 3.0.0 and has to remove one of them; one entry in the
+release notes.
 
 ## 6. Risks
 
