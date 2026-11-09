@@ -4,20 +4,10 @@ mruby:
   release_no: 40100
 builds:
   host:
-    https://github.com/iij/mruby-env.git:
-      url: https://github.com/iij/mruby-env.git
-      branch: master
-      commit: 056ae324451ef16a50c7887e117f0ea30921b71b
-      version: 0.0.0
     https://github.com/iij/mruby-digest.git:
       url: https://github.com/iij/mruby-digest.git
       branch: master
       commit: 2bd4627d3430921a4290f7622b3e891979d5cee0
-      version: 0.0.0
-    https://github.com/iij/mruby-process.git:
-      url: https://github.com/iij/mruby-process.git
-      branch: master
-      commit: 95da206a5764f4e80146979b8e35bd7a9afd6850
       version: 0.0.0
     https://github.com/mattn/mruby-json.git:
       url: https://github.com/mattn/mruby-json.git
@@ -29,11 +19,6 @@ builds:
       branch: master
       commit: 4962d7eb42de079f6b3faec4b40560eb2941eeec
       version: 0.0.0
-    https://github.com/matsumotory/mruby-vedis.git:
-      url: https://github.com/matsumotory/mruby-vedis.git
-      branch: master
-      commit: 795b873415c997bfe321b2dda77095fe907c4720
-      version: 0.0.1
     https://github.com/matsumotory/mruby-userdata.git:
       url: https://github.com/matsumotory/mruby-userdata.git
       branch: master
@@ -48,11 +33,6 @@ builds:
       url: https://github.com/matsumotory/mruby-mutex.git
       branch: master
       commit: 032a06887523b5c4d1ee6ba7914e98aa3474288d
-      version: 0.0.0
-    https://github.com/matsumotory/mruby-localmemcache.git:
-      url: https://github.com/matsumotory/mruby-localmemcache.git
-      branch: master
-      commit: 74b0969d3e2a5ccb80811950b22e147c85280d7c
       version: 0.0.0
     https://github.com/monochromegane/mruby-secure-random.git:
       url: https://github.com/monochromegane/mruby-secure-random.git
@@ -104,9 +84,4 @@ builds:
       url: https://github.com/mattn/mruby-json.git
       branch: master
       commit: b9871a463a1c7b7c81a3100aa128a17539ad7e53
-      version: 0.0.0
-    https://github.com/iij/mruby-env.git:
-      url: https://github.com/iij/mruby-env.git
-      branch: master
-      commit: 056ae324451ef16a50c7887e117f0ea30921b71b
       version: 0.0.0
