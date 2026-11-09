@@ -33,15 +33,21 @@
 #   - mruby-strftime (Time#strftime) and mruby-benchmark (Benchmark): new in
 #     mruby 4.0; each would add an API that ngx_mruby has not had, which is
 #     a decision of its own.
-#   - mruby-env (ENV), mruby-process (Process), mruby-regexp (Regexp),
-#     mruby-signal (Signal), mruby-string-bitops (bit operations on String)
-#     and mruby-bin-mrb (the mrb command): new in mruby 4.1. The first three
-#     define the classes that iij/mruby-env, iij/mruby-process and
-#     mattn/mruby-onig-regexp below define, and the gems of iij have the same
-#     names as the core gems; replacing them is the build_config.rb rewrite of
-#     docs/HANDOFF.md, and 3.0 keeps mruby-onig-regexp (item 1 of section 7 of
-#     docs/proposals/v3-plan.md). The other three would add APIs that
-#     ngx_mruby has not had, which is a decision of its own.
+#   - mruby-regexp (Regexp): new in mruby 4.1. mattn/mruby-onig-regexp below
+#     defines Regexp, and 3.0 keeps it (item 1 of section 7 of
+#     docs/proposals/v3-plan.md).
+#   - mruby-string-bitops (bit operations on String) and mruby-bin-mrb (the
+#     mrb command): new in mruby 4.1; each would add an API that ngx_mruby
+#     has not had, which is a decision of its own.
+# - mruby-env (ENV), mruby-process (Process) and mruby-signal (Signal) are
+#   in: new in mruby 4.1, they replace iij/mruby-env and iij/mruby-process,
+#   which have the same gem names and have had no commit since 2018 and
+#   2019 (section 3.3 of docs/proposals/v3-plan.md). mruby-process depends on
+#   mruby-signal, so the list names mruby-signal as well, to show that
+#   scripts get Signal (Signal.list and Signal.signame, no Signal.trap).
+#   iij/mruby-process also defined Kernel#sleep, #exit, #exit!, #fork and
+#   #system, which replaced those of mruby-sleep and mruby-exit; the core
+#   gem defines none of them (docs/releases/v3.0.0.md).
 # - Left out, as full-core leaves them out: mruby-bin-debugger, mruby-test;
 #   and the hardware gems hw-* of mruby 4.1.
 # - mruby-sleep stays: full-core of 4.1.0-rc2 leaves it out in favour of
@@ -52,11 +58,12 @@ NGX_MRUBY_CORE_GEMS = %w[
   mruby-bin-mruby mruby-bin-strip mruby-binding mruby-catch mruby-class-ext
   mruby-cmath mruby-compar-ext mruby-compiler mruby-complex mruby-data
   mruby-dir mruby-enum-chain mruby-enum-ext mruby-enum-lazy mruby-enumerator
-  mruby-errno mruby-error mruby-eval mruby-exit mruby-fiber mruby-hash-ext
-  mruby-io mruby-kernel-ext mruby-math mruby-metaprog mruby-method
-  mruby-numeric-ext mruby-object-ext mruby-objectspace mruby-os-memsize
-  mruby-pack mruby-proc-binding mruby-proc-ext mruby-random
-  mruby-range-ext mruby-rational mruby-set mruby-sleep mruby-socket
+  mruby-env mruby-errno mruby-error mruby-eval mruby-exit mruby-fiber
+  mruby-hash-ext mruby-io mruby-kernel-ext mruby-math mruby-metaprog
+  mruby-method mruby-numeric-ext mruby-object-ext mruby-objectspace
+  mruby-os-memsize mruby-pack mruby-proc-binding mruby-proc-ext
+  mruby-process mruby-random mruby-range-ext mruby-rational mruby-set
+  mruby-signal mruby-sleep mruby-socket
   mruby-sprintf mruby-string-ext mruby-struct mruby-symbol-ext
   mruby-test-inline-struct mruby-time mruby-toplevel-ext
 ].freeze
@@ -104,15 +111,13 @@ MRuby::Build.new('host') do |conf|
   # build_config.rb.lock (see docs/install/README.md). Declare them with
   # github:, not mgem:, so that the URL comes from this file and not from
   # mruby's clone of mruby/mgem-list, which no lock pins.
-  conf.gem github: 'iij/mruby-env'
-  # Dir comes from the core gem mruby-dir (in NGX_MRUBY_CORE_GEMS), which
-  # started as iij/mruby-dir and has every method that one has.
+  # ENV, Process and Dir come from the core gems mruby-env, mruby-process
+  # and mruby-dir (in NGX_MRUBY_CORE_GEMS), in place of iij/mruby-env,
+  # iij/mruby-process and iij/mruby-dir.
   conf.gem github: 'iij/mruby-digest'
-  conf.gem github: 'iij/mruby-process'
   conf.gem github: 'mattn/mruby-json'
   conf.gem github: 'mattn/mruby-onig-regexp'
   conf.gem github: 'matsumotory/mruby-redis'
-  conf.gem github: 'matsumotory/mruby-vedis'
   conf.gem github: 'matsumotory/mruby-userdata'
   # build_config.rb.lock pins mruby-uname (here and in the test build) to the
   # merge commit of matsumotory/mruby-uname#1 on the gem's master, which
@@ -121,12 +126,20 @@ MRuby::Build.new('host') do |conf|
   # failure of Uname".
   conf.gem github: 'matsumotory/mruby-uname'
   conf.gem github: 'matsumotory/mruby-mutex'
-  conf.gem github: 'matsumotory/mruby-localmemcache'
   conf.gem github: 'monochromegane/mruby-secure-random'
 
   # ngx_mruby extended class
   conf.gem './mrbgems/ngx_mruby_mrblib'
   conf.gem './mrbgems/rack-based-api'
+
+  # Left out of the default build since 3.0.0 (docs/releases/v3.0.0.md):
+  # Vedis, an embedded key-value store; its build clones symisc/vedis at the
+  # head of its default branch, which has had no commit since 2021-11.
+  # conf.gem github: 'matsumotory/mruby-vedis'
+  # Cache, a key-value store in shared memory, on a copy of the
+  # localmemcache library in the gem's sources; sck/localmemcache has had
+  # no commit since 2013-05.
+  # conf.gem github: 'matsumotory/mruby-localmemcache'
 
   # use memcached
   # conf.gem :github => 'matsumotory/mruby-memcached'
@@ -177,8 +190,9 @@ MRuby::Build.new('test') do |conf|
   conf.gem github: 'matsumotory/mruby-simpletest'
   conf.gem github: 'mattn/mruby-http'
   conf.gem github: 'mattn/mruby-json'
-  conf.gem github: 'iij/mruby-env'
 
-  # the core gems listed at the top of this file
-  ngx_mruby_core_gems(conf)
+  # The core gems listed at the top of this file (ENV comes from mruby-env),
+  # without Process and Signal: the test client has never had Process, and
+  # the cases that need it are CRuby helpers (test/t/cases/_*.rb).
+  ngx_mruby_core_gems(conf, NGX_MRUBY_CORE_GEMS - %w[mruby-process mruby-signal])
 end

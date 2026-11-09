@@ -73,6 +73,25 @@ stays. The differences:
   `Dir#each_child` leave out `.` and `..`, as in CRuby. (With mruby 3.3.0
   they were aliases of `Dir.entries` and `Dir#each` and included them.)
 
+`ENV` and `Process` come from the mruby core gems mruby-env and
+mruby-process, and `Signal` from mruby-signal, which mruby-process depends
+on. ngx_mruby 2.x took `ENV` and `Process` from iij/mruby-env and
+iij/mruby-process. The differences:
+
+- `ENV.to_hash` is gone; `ENV.to_h` returns the variables as a Hash.
+  `ENV` includes `Enumerable`.
+- `Process.fork`, `Kernel#fork` and `Kernel#system` are gone. `Process`
+  has `clock_gettime`, `times`, `wait` and `wait2`.
+- `exit` in a handler raises `SystemExit`, and the handler answers 500;
+  with 2.x it ended the worker process. `sleep` without an argument
+  raises `ArgumentError`; with 2.x it waited until a signal came.
+
+`Vedis` (matsumotory/mruby-vedis) and `Cache`
+(matsumotory/mruby-localmemcache), which the default build of 2.x has, are
+not in the default build of 3.0.0. The entries of these changes are under
+[Behavior changes: read before upgrading](../releases/v3.0.0.md#behavior-changes-read-before-upgrading)
+in the release notes of v3.0.0.
+
 The `Redis` class was left out of the default build in 2.7.1 and is in it again since 2.7.2 (see "Redis is in the default build again" in [the 2.7.2 release notes](../releases/v2.7.2.md)).
 
 You can also use the classes of the mruby core gems that `NGX_MRUBY_CORE_GEMS` in

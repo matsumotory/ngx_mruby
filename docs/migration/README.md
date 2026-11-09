@@ -357,6 +357,31 @@ not enough, and show the change.
   end
   ```
 
+- [`ENV` comes from mruby's core gem: `ENV.to_hash` is gone, and `ENV` is `Enumerable`](../releases/v3.0.0.md#env-comes-from-mrubys-core-gem-envto_hash-is-gone-and-env-is-enumerable-766),
+  [`Process` comes from mruby's core gem: `Process.fork`, `Kernel#fork` and `Kernel#system` are gone](../releases/v3.0.0.md#process-comes-from-mrubys-core-gem-processfork-kernelfork-and-kernelsystem-are-gone-766),
+  [`exit` in a handler raises `SystemExit` instead of ending the worker process](../releases/v3.0.0.md#exit-in-a-handler-raises-systemexit-instead-of-ending-the-worker-process-766),
+  [`sleep` without an argument raises `ArgumentError`](../releases/v3.0.0.md#sleep-without-an-argument-raises-argumenterror-766)
+  and
+  [The default build leaves out `Vedis` and `Cache` (mruby-vedis and mruby-localmemcache)](../releases/v3.0.0.md#the-default-build-leaves-out-vedis-and-cache-mruby-vedis-and-mruby-localmemcache-766):
+  this finds the calls that change:
+
+  ```sh
+  grep -rnE 'to_hash|fork|system|to_int|Status\.new|exit!|(^|[^_.])exit|sleep *($|[;)}])|Vedis|Cache\.new' /path/to/scripts
+  ```
+
+  ```ruby
+  ENV.to_hash               # 3.0.0: NoMethodError
+  ENV.to_h                  # 3.0.0: the Hash   2.x: NoMethodError
+  ENV.keys.each_with_object({}) { |k, h| h[k] = ENV[k] }   # the Hash on both
+  exit                      # 2.x: ends the worker process   3.0.0: SystemExit, the handler answers 500
+  Nginx.return Nginx::HTTP_SERVICE_UNAVAILABLE              # 503 on both; the code then runs to its end
+  sleep                     # 2.x: waits until a signal comes   3.0.0: ArgumentError
+  ```
+
+  Start other processes outside nginx instead of `fork` and `system`, and
+  keep the data of `Vedis` and `Cache` in Redis or in a store of your own,
+  or uncomment the gem's line in `build_config.rb`.
+
 - [`Nginx::Upstream#server=` and `Nginx::Stream::Connection#upstream_server=` raise `ArgumentError` for a string that cannot be a server](../releases/v3.0.0.md#nginxupstreamserver-and-nginxstreamconnectionupstream_server-raise-argumenterror-for-a-string-that-cannot-be-a-server-680):
   the search above finds both setters and `RuntimeError`; look at the ones
   that rescue an exception of a setter.

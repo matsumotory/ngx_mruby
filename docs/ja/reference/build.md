@@ -57,20 +57,18 @@ modules: その中に<wbr>あるもの：<wbr>`ngx_http_mruby_module`、<wbr>ngi
 
 デフォルトの`build_config.rb`は、`NGX_MRUBY_CORE_GEMS`が挙げるmrubyのコアのgemに加えて、次のmrbgemsを`libmruby.a`に入れてビルドします。コアのgemの説明は[コアのgem](../install/README.md#コアのgem)にあります。`build_config.rb.lock`は、サードパーティの各gemのコミットを固定します。詳しくは[gemのコミット](../install/README.md#gemのコミットとbuild_configrblock)にあります。
 
-- [`iij/mruby-env`](https://github.com/iij/mruby-env)：`ENV`
 - [`iij/mruby-digest`](https://github.com/iij/mruby-digest)：`Digest`。MD5、RMD160、SHA1のハッシュと、SHA256、SHA384、SHA512のハッシュとHMACを計算します
-- [`iij/mruby-process`](https://github.com/iij/mruby-process)：`Process`
 - [`mattn/mruby-json`](https://github.com/mattn/mruby-json)：`JSON`
 - [`mattn/mruby-onig-regexp`](https://github.com/mattn/mruby-onig-regexp)：正規表現の`OnigRegexp`
 - [`matsumotory/mruby-redis`](https://github.com/matsumotory/mruby-redis)：`Redis`。Redisのサーバの応答を、ワーカーの中で1つずつ待つクライアントです。このgemのビルドは、hiredisのライブラリをタグv1.5.0でクローンし、そのコミットを確かめて静的にリンクします。また、このgemが依存するmatsumotory/mruby-pointerもクローンします。`Redis`を呼ぶスクリプトには、動いているRedisのサーバが要ります。
-- [`matsumotory/mruby-vedis`](https://github.com/matsumotory/mruby-vedis)：`Vedis`
 - [`matsumotory/mruby-userdata`](https://github.com/matsumotory/mruby-userdata)：クラスの`Userdata`
 - [`matsumotory/mruby-uname`](https://github.com/matsumotory/mruby-uname)：`Uname`
 - [`matsumotory/mruby-mutex`](https://github.com/matsumotory/mruby-mutex)：`Mutex`
-- [`matsumotory/mruby-localmemcache`](https://github.com/matsumotory/mruby-localmemcache)：`Cache`
 - [`monochromegane/mruby-secure-random`](https://github.com/monochromegane/mruby-secure-random)：`SecureRandom`
 - [`mrbgems/ngx_mruby_mrblib`](../../../mrbgems/ngx_mruby_mrblib)：ngx_mrubyのクラスのうち、Rubyで書いた部分
 - [`mrbgems/rack-based-api`](../../../mrbgems/rack-based-api)：Rackと互換のAPIの`run`
+
+`ENV`、`Process`、`Signal`は、コアのgemのmruby-env、mruby-process、mruby-signalが定義します。2.xでは、`ENV`と`Process`をiij/mruby-envとiij/mruby-processが定義していました。2.xのデフォルトのビルドには、`Vedis`を定義するmatsumotory/mruby-vedisと、`Cache`を定義するmatsumotory/mruby-localmemcacheも入っていました。3.0.0では、この2つのgemの行は`build_config.rb`のコメントで、理由は[リリースノート](../../releases/v3.0.0.ja.md#アップグレードの前に読む挙動の変更)にあります。
 
 チェックの`site/scripts/check-reference.mjs`は、この一覧を、`build_config.rb`のhostのビルドにある`conf.gem`の行のうち、コメントでなく条件も無い行と比べます。コメントの行には、mruby-discountやmruby-memcachedのような、デフォルトのビルドが入れないgemの名前があります。そのどれかを入れてビルドするには、その行のコメントを外し、`mruby/build`を消してください。
 

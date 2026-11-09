@@ -8,7 +8,7 @@ ngx_mrubyは、nginxのサーバーの運用者が書いたRubyのコードを�
 - [`mruby_add_handler on`](../../directives/README.md#mruby_add_handler)では、リクエストのURIで、どのファイルを実行するかが決まります。ngx_mrubyはURIをlocationのrootの下のパスに対応させ、そのファイルをcontentハンドラとして実行します。そのrootの下でlocationにマッチするすべてのファイルが、この種類のコードです。
 - 初期化のコードと、serverの設定のコードは、nginxが設定を読む間にmasterプロセスで動きます。初期化のコードは、`mruby_init`、`mruby_init_code`、`mruby_stream_init`、`mruby_stream_init_code`のコードです。serverの設定のコードは、`mruby_server_context_handler_code`と`mruby_stream_server_context_code`のコードです。これらのコードは、nginxを起動したときの権限で動きます。nginxをrootで起動したなら、rootの権限です。ほかのすべてのコードは、ワーカープロセスで、ワーカーの権限で動きます。ほかのコードとは、init_workerとexit_workerのコード、すべてのハンドラとフィルタ、SSLのハンドシェイクのハンドラ、streamのハンドラです。masterがrootで動くとき、ワーカーの権限は、`user`ディレクティブのユーザーの権限です。
 - `http {}`のブロックのすべてのコードは、ワーカーごとに1つの`mrb_state`で動きます。`stream {}`のブロックにも、ワーカーごとに別の`mrb_state`が1つあります。その`mrb_state`を、ブロックのすべてのserver、location、クライアントが共有します。詳しくは[ワーカーがリクエストをまたいで保つもの](../concepts/lifetimes.md#ワーカーがリクエストをまたいで保つもの)にあります。あるlocationのコードは、別のserverやlocationのコードが定義したグローバル変数、定数、クラス、メソッドを読み、変えられます。ngx_mrubyは、1つのブロックのスクリプトを互いに隔離しません。
-- デフォルトのビルドでは、このコードは、`build_config.rb`の`NGX_MRUBY_CORE_GEMS`に挙げたmrubyのコアのgemと、`build_config.rb`のほかのgemを使えます。詳しくは[コアのgem](../install/README.md#コアのgem)にあります。使える機能には、次のものがあります。mruby-evalの`eval`と`instance_eval`、mruby-ioのファイルと、シェルのコマンドを実行する`IO.popen`とバッククォート、mruby-socketのソケット、mruby-sleepの`sleep`、iij/mruby-processの`Process`、`ENV`、`Dir`です。スクリプトは、そのプロセスのユーザーにできることなら何でもできます。
+- デフォルトのビルドでは、このコードは、`build_config.rb`の`NGX_MRUBY_CORE_GEMS`に挙げたmrubyのコアのgemと、`build_config.rb`のほかのgemを使えます。詳しくは[コアのgem](../install/README.md#コアのgem)にあります。使える機能には、次のものがあります。mruby-evalの`eval`と`instance_eval`、mruby-ioのファイルと、シェルのコマンドを実行する`IO.popen`とバッククォート、mruby-socketのソケット、mruby-sleepの`sleep`、シグナルを送る`Process.kill`を持つmruby-processの`Process`、`ENV`、`Dir`です。スクリプトは、そのプロセスのユーザーにできることなら何でもできます。
 
 そのため、nginxの設定、設定で読み込むスクリプト、そのスクリプトを置くディレクトリ、`build_config.rb`のどれかを変えられる人は、ワーカーとして任意のコードを実行できます。その人は、初期化のコードを通して、masterとしても任意のコードを実行できます。運用者が信頼しない相手からnginxの設定やRubyのコードを受け取る構成では、コードを渡す相手のそれぞれが、この権限を持ちます。その権限は、nginx全体と、ほかの相手のトラフィックに及びます。顧客ごとにスニペットを動かすマルチテナントのサービスは、この構成の例です。ngx_mrubyには、そのようなコードの動作を制限する手段がありません。この使い方はサポート外です。
 
@@ -25,7 +25,7 @@ ngx_mrubyは、nginxのサーバーの運用者が書いたRubyのコードを�
 
 ngx_mrubyは、スクリプトが求めることを実行します。クライアントの入力を先へ渡した結果には、スクリプトが責任を持ちます。
 
-- クライアントの入力は、その入力を使う処理へ渡す前に検証してください。対象には、`eval`と`instance_eval`、シェルのコマンド、ファイルのパス、nginxの変数の名前、upstreamのアドレス、リダイレクトの先、レスポンスヘッダがあります。シェルのコマンドを実行するのは、バッククォート、`IO.popen`、`Process`です。ファイルのパスを使うのは、`File`、`Dir`、[`Nginx::SSL#certificate=`](../../class_and_method/README.md#nginxsslcertificatestring)、`#certificate_key=`です。nginxの変数の名前を使うのは、実行時に組み立てた名前を渡す`Nginx::Var`と、`Nginx::Var#set`です。upstreamのアドレスを使うのは、`mruby_set $backend`と`Nginx::Upstream#server=`です。入力を許可する値のリストと比べるか、コードが期待する型にパースし、合わないものは拒否してください。たとえば、サーバー名から証明書のパスを組み立てるハンドシェイクのハンドラでは、クライアントがパスを選べます。代わりに名前をテーブルで引き、証明書のある名前だけがパスに届くようにしてください。
+- クライアントの入力は、その入力を使う処理へ渡す前に検証してください。対象には、`eval`と`instance_eval`、シェルのコマンド、シグナル、ファイルのパス、nginxの変数の名前、upstreamのアドレス、リダイレクトの先、レスポンスヘッダがあります。シェルのコマンドを実行するのは、バッククォートと`IO.popen`で、シグナルを送るのは`Process.kill`です。ファイルのパスを使うのは、`File`、`Dir`、[`Nginx::SSL#certificate=`](../../class_and_method/README.md#nginxsslcertificatestring)、`#certificate_key=`です。nginxの変数の名前を使うのは、実行時に組み立てた名前を渡す`Nginx::Var`と、`Nginx::Var#set`です。upstreamのアドレスを使うのは、`mruby_set $backend`と`Nginx::Upstream#server=`です。入力を許可する値のリストと比べるか、コードが期待する型にパースし、合わないものは拒否してください。たとえば、サーバー名から証明書のパスを組み立てるハンドシェイクのハンドラでは、クライアントがパスを選べます。代わりに名前をテーブルで引き、証明書のある名前だけがパスに届くようにしてください。
 
   ```nginx
   http {

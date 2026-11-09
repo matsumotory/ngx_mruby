@@ -80,20 +80,23 @@ besides the mruby core gems that `NGX_MRUBY_CORE_GEMS` lists
 the commit of each third-party gem
 ([Gem commits](../install/README.md#gem-commits-build_configrblock)).
 
-- `iij/mruby-env` ([repository](https://github.com/iij/mruby-env)): `ENV`
 - `iij/mruby-digest` ([repository](https://github.com/iij/mruby-digest)): `Digest` (MD5, RMD160, SHA1, SHA256, SHA384, SHA512 and HMAC)
-- `iij/mruby-process` ([repository](https://github.com/iij/mruby-process)): `Process`
 - `mattn/mruby-json` ([repository](https://github.com/mattn/mruby-json)): `JSON`
 - `mattn/mruby-onig-regexp` ([repository](https://github.com/mattn/mruby-onig-regexp)): `OnigRegexp`
 - `matsumotory/mruby-redis` ([repository](https://github.com/matsumotory/mruby-redis)): `Redis`, a client that waits for each answer of the Redis server in the worker. Its build clones the hiredis library at the tag v1.5.0, checks its commit and links it statically, and clones matsumotory/mruby-pointer, which the gem depends on. A script that calls it needs a running Redis server
-- `matsumotory/mruby-vedis` ([repository](https://github.com/matsumotory/mruby-vedis)): `Vedis`
 - `matsumotory/mruby-userdata` ([repository](https://github.com/matsumotory/mruby-userdata)): `Userdata`
 - `matsumotory/mruby-uname` ([repository](https://github.com/matsumotory/mruby-uname)): `Uname`
 - `matsumotory/mruby-mutex` ([repository](https://github.com/matsumotory/mruby-mutex)): `Mutex`
-- `matsumotory/mruby-localmemcache` ([repository](https://github.com/matsumotory/mruby-localmemcache)): `Cache`
 - `monochromegane/mruby-secure-random` ([repository](https://github.com/monochromegane/mruby-secure-random)): `SecureRandom`
 - `mrbgems/ngx_mruby_mrblib` ([source](../../mrbgems/ngx_mruby_mrblib)): the Ruby part of the classes of ngx_mruby
 - `mrbgems/rack-based-api` ([source](../../mrbgems/rack-based-api)): the Rack compatible API (`run`)
+
+`ENV`, `Process` and `Signal` come from the core gems mruby-env,
+mruby-process and mruby-signal, not from iij/mruby-env and
+iij/mruby-process as in 2.x. matsumotory/mruby-vedis (`Vedis`) and
+matsumotory/mruby-localmemcache (`Cache`), which the default build of 2.x
+has, are comments in `build_config.rb` since 3.0.0
+([the release notes](../releases/v3.0.0.md#behavior-changes-read-before-upgrading)).
 
 The check `site/scripts/check-reference.mjs` compares this list with the
 lines `conf.gem` of the host build in `build_config.rb` that are not
