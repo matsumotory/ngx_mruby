@@ -80,10 +80,18 @@ The bundled mruby is 4.1.0-rc2, the second release candidate of mruby
 `NGX_MRUBY_CORE_GEMS` names, not mruby's `full-core.gembox`, so that the
 classes and methods of ngx_mruby scripts change only when that list
 changes. The list is the set that `full-core.gembox` of mruby 3.3.0
-selected, with this difference:
+selected, with these differences:
 
 - mruby-print is gone (mruby 3.4 removed it). `Kernel#print`, `#puts` and
   `#p` come from mruby-io.
+- mruby-env, mruby-process and mruby-signal, new in mruby 4.1, are in.
+  `ENV` and `Process` come from them instead of iij/mruby-env and
+  iij/mruby-process of 2.x, and scripts get `Signal` (`Signal.list` and
+  `Signal.signame`), which mruby-process depends on. iij/mruby-process
+  also defined `Kernel#sleep`, `#exit`, `#exit!`, `#fork` and `#system`;
+  `sleep` now comes from mruby-sleep and `exit` from mruby-exit, and
+  `fork` and `system` are gone. The test client (the `test` build) takes
+  mruby-env but not mruby-process or mruby-signal.
 
 mruby 4.1 has no hal-* gems: mruby-io, mruby-dir and mruby-socket carry
 their POSIX back ends (`ports/posix/`), so the list names no back end. A
@@ -98,8 +106,7 @@ Core gems of mruby 4.1.0-rc2 that the list leaves out, although
 |---|---|---|
 | mruby-task | `Task`; redefines `Kernel#sleep`; every process that opens an mrb_state gets a SIGALRM interval timer (`setitimer`); at most 8 mrb_states (`MRB_TASK_MAX_VMS`) | the timer and the `sleep` of nginx workers; ngx_mruby has its own `Nginx::Async` |
 | mruby-encoding | defines `MRB_UTF8_STRING` for the whole build: `String#size`, `#[]`, `#index` and others count characters instead of bytes; adds `String#valid_encoding?`, `#encoding` and `#force_encoding` | request and response data are bytes, and a script that computes a `Content-Length` from `String#size` would get another number; the owner decided on 2026-10-04 to leave it out of the default build and keep it opt-in. Cost of leaving it out: `String#valid_encoding?`, which mruby 3.3 defined in mruby-string-ext, raises `NoMethodError` (since mruby 3.4 only mruby-encoding defines it) |
-| mruby-env, mruby-process, mruby-regexp | define `ENV`, `Process` and `Regexp` (new in mruby 4.1) | the default build takes these classes from iij/mruby-env, iij/mruby-process and mattn/mruby-onig-regexp, as 2.x does. mruby-regexp and mattn/mruby-onig-regexp would both define `Regexp`; the gems of iij have the same names as these core gems, and this build was not tried with both. Moving `ENV` and `Process` to the core gems is a later change, and 3.0 keeps mruby-onig-regexp (`docs/proposals/v3-plan.md`, section 7, item 1) |
-| mruby-signal | adds `Signal` (new in mruby 4.1) | new API; a decision of its own |
+| mruby-regexp | defines `Regexp` (new in mruby 4.1) | the default build takes `Regexp` from mattn/mruby-onig-regexp, as 2.x does, and both gems would define it. 3.0 keeps mruby-onig-regexp (`docs/proposals/v3-plan.md`, section 7, item 1) |
 | mruby-string-bitops | adds bit operations on `String` (new in mruby 4.1) | new API; a decision of its own |
 | mruby-strftime | adds `Time#strftime` | new API; a decision of its own |
 | mruby-benchmark | adds `Benchmark` | new API, a development tool |
@@ -204,16 +211,18 @@ The lock does not pin everything that the build fetches:
   URL; if the list ever gives another URL, the lock has no entry for it, and
   rake clones the head of that repository. `build_config.rb` therefore
   declares its gems with `github:`.
-- symisc/vedis. The `mrbgem.rake` of matsumotory/mruby-vedis clones it with
+- symisc/vedis, in a build that takes matsumotory/mruby-vedis, which the
+  default build leaves out. The `mrbgem.rake` of that gem clones vedis with
   `git clone` into the build directory of the gem
   (`mruby/build/host/mrbgems/mruby-vedis/vedis`) when that directory does not
   exist, at the head of its default branch.
 
 Because a clone made at a commit has the whole history of the repository,
 the first build fetches more than a build without the lock. The default
-build makes 19 clones: 12 in `mruby/build/repos/host` and 7 in
-`mruby/build/repos/test`. Measured on 2026-10-04 after a build from an
-empty `mruby/build`, they take about 9.3 MiB (7.7 MiB and 1.7 MiB). Before
+build makes 16 clones: 10 in `mruby/build/repos/host` and 6 in
+`mruby/build/repos/test`. Measured with `du -sk` on 2026-11-09 after a
+build from an empty `mruby/build`, they take about 9.0 MiB (7.4 MiB and
+1.5 MiB). Before
 the update to mruby 4.0.0, the `test` build also cloned
 luisbebop/mruby-polarssl with its submodule ARMmbed/mbedtls, which made up
 most of the about 178 MiB that the clones of the default build took then.

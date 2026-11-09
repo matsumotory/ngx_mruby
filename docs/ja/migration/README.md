@@ -209,6 +209,23 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   end
   ```
 
+- [`ENV`をmrubyのコアgemが定義するようになり、`ENV.to_hash`が無くなり、`ENV`が`Enumerable`になる](../../releases/v3.0.0.ja.md#envをmrubyのコアgemが定義するようになりenvto_hashが無くなりenvがenumerableになる766)、[`Process`をmrubyのコアgemが定義するようになり、`Process.fork`、`Kernel#fork`、`Kernel#system`が無くなる](../../releases/v3.0.0.ja.md#processをmrubyのコアgemが定義するようになりprocessforkkernelforkkernelsystemが無くなる766)、[ハンドラの中の`exit`が、ワーカープロセスを終わらせずに`SystemExit`を出す](../../releases/v3.0.0.ja.md#ハンドラの中のexitがワーカープロセスを終わらせずにsystemexitを出す766)、[引数なしの`sleep`が`ArgumentError`を出す](../../releases/v3.0.0.ja.md#引数なしのsleepがargumenterrorを出す766)、[既定のビルドが、mruby-vedisの`Vedis`とmruby-localmemcacheの`Cache`を含まなくなる](../../releases/v3.0.0.ja.md#既定のビルドがmruby-vedisのvedisとmruby-localmemcacheのcacheを含まなくなる766)：次のコマンドで、挙動の変わる呼び出しを探します。
+
+  ```sh
+  grep -rnE 'to_hash|fork|system|to_int|(^|[^_.])exit|sleep *($|[;)}])|Vedis|Cache\.new' /path/to/scripts
+  ```
+
+  ```ruby
+  ENV.to_hash               # 3.0.0: NoMethodError
+  ENV.to_h                  # 3.0.0: the Hash   2.x: NoMethodError
+  ENV.keys.each_with_object({}) { |k, h| h[k] = ENV[k] }   # the Hash on both
+  exit                      # 2.x: ends the worker process   3.0.0: SystemExit, the handler answers 500
+  Nginx.return Nginx::HTTP_SERVICE_UNAVAILABLE              # 503 on both; the code then runs to its end
+  sleep                     # 2.x: waits until a signal comes   3.0.0: ArgumentError
+  ```
+
+  `fork`と`system`を使う処理は、ほかのプロセスをnginxの外で起動する形に変えてください。`Vedis`と`Cache`のデータは、Redisか自分で用意したストアに置くか、`build_config.rb`のそのgemの行のコメントを外してください。
+
 - [`Nginx::Upstream#server=`と`Nginx::Stream::Connection#upstream_server=`が、serverにできない文字列に`ArgumentError`を出す](../../releases/v3.0.0.ja.md#nginxupstreamserverとnginxstreamconnectionupstream_serverがserverにできない文字列にargumenterrorを出す680)：上の検索は、2つのsetterと`RuntimeError`を見つけます。そのうち、setterの例外をrescueする箇所を見てください。
 
   ```ruby

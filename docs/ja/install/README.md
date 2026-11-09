@@ -50,6 +50,7 @@ mruby-ioはデフォルトに含まれます。ファイル・ソケット・sle
 同梱のmrubyは4.1.0-rc2で、mruby 4.1.0の2つ目のリリース候補です。ngx_mrubyは、mrubyの`full-core.gembox`ではなく、`NGX_MRUBY_CORE_GEMS`が挙げるコアのgemをビルドします。こうすると、ngx_mrubyのスクリプトのクラスとメソッドは、この一覧を変えたときにだけ変わります。一覧は、mruby 3.3.0の`full-core.gembox`が選んでいたgemの集合で、違いは次のとおりです。
 
 - mruby-printはありません。mruby 3.4で削除されました。`Kernel#print`、`#puts`、`#p`はmruby-ioが定義します。
+- mruby 4.1で加わったmruby-env、mruby-process、mruby-signalを入れます。`ENV`と`Process`は、2.xのiij/mruby-envとiij/mruby-processでなく、これらのgemが定義します。mruby-processはmruby-signalに依存するので、スクリプトは`Signal`の`Signal.list`と`Signal.signame`も使えます。iij/mruby-processは`Kernel#sleep`、`#exit`、`#exit!`、`#fork`、`#system`も定義していました。今は`sleep`をmruby-sleepが、`exit`をmruby-exitが定義し、`fork`と`system`はありません。テストのクライアントの`test`のビルドは、mruby-envを入れ、mruby-processとmruby-signalは入れません。
 
 mruby 4.1には、hal-*のgemがありません。mruby-io、mruby-dir、mruby-socketが、POSIXのバックエンドをそれぞれ`ports/posix/`に持つので、一覧にはバックエンドの名前がありません。mruby 4.0.0向けに書いた一覧がhal-posix-io、hal-posix-dir、hal-posix-socketを挙げると、ビルドは止まります。`build_config.rb`の`ngx_mruby_core_gems`は、同梱のmrubyに無い名前があるとビルドを止めるためです。
 
@@ -59,8 +60,7 @@ mruby 4.1.0-rc2のコアのgemのうち、4.1.0-rc2の`full-core.gembox`は入�
 |---|---|---|
 | mruby-task | `Task`を加え、`Kernel#sleep`を定義し直す。`mrb_state`を開くすべてのプロセスに、SIGALRMのインターバルタイマーの`setitimer`がかかる。`mrb_state`は8つまでになる。上限は`MRB_TASK_MAX_VMS` | ワーカーのタイマーと`sleep`に関わる。ngx_mrubyには、`Nginx::Async`がある |
 | mruby-encoding | ビルド全体に`MRB_UTF8_STRING`を定義する。`String#size`、`#[]`、`#index`などが、バイトではなく文字を数える。`String#valid_encoding?`、`#encoding`、`#force_encoding`を加える | リクエストとレスポンスのデータはバイト列で、`String#size`から`Content-Length`を計算するスクリプトは、違う数を得る。オーナーは2026年10月4日に、このgemをデフォルトのビルドから外し、オプトインのままにすると決めた。外したため、mruby 3.3ではmruby-string-extが定義していた`String#valid_encoding?`を呼ぶと、`NoMethodError`が起きる。mruby 3.4からは、mruby-encodingだけがこのメソッドを定義する |
-| mruby-env、mruby-process、mruby-regexp | mruby 4.1で加わったgemで、`ENV`、`Process`、`Regexp`を定義する | デフォルトのビルドは、2.xと同じく、これらのクラスをiij/mruby-env、iij/mruby-process、mattn/mruby-onig-regexpから取る。mruby-regexpとmattn/mruby-onig-regexpを両方入れると、どちらも`Regexp`を定義する。iijの2つのgemはこれらのコアのgemと同じ名前を持つ。両方を入れたビルドは試していない。`ENV`と`Process`をコアのgemに移すのは後の変更で、3.0はmruby-onig-regexpを残す。根拠は`docs/proposals/v3-plan.md`の7節の1項 |
-| mruby-signal | `Signal`を加える。mruby 4.1で加わった | 新しいAPIで、別に決める |
+| mruby-regexp | `Regexp`を定義する。mruby 4.1で加わった | デフォルトのビルドは、2.xと同じく`Regexp`をmattn/mruby-onig-regexpから取る。2つのgemを両方入れると、どちらも`Regexp`を定義する。3.0はmruby-onig-regexpを残す。根拠は`docs/proposals/v3-plan.md`の7節の1項 |
 | mruby-string-bitops | `String`のビット演算を加える。mruby 4.1で加わった | 新しいAPIで、別に決める |
 | mruby-strftime | `Time#strftime`を加える | 新しいAPIで、別に決める |
 | mruby-benchmark | `Benchmark`を加える | 新しいAPIで、開発のツール |
@@ -96,9 +96,9 @@ gemを別のコミットに移すには、次のようにします。
 ビルドが取ってくるもののうち、ロックが固定しないものが2つあります。
 
 - mruby/mgem-list。mrubyは、`mgem:`で宣言したgemのリポジトリや、ソースを指定せずに宣言した依存先のうちmruby自身のgemでないもののリポジトリを探すために、このgemの一覧の先頭をクローンします。デフォルトのgemの一覧には、mruby/mgem-listは必要ありません。mruby 4.0.0に更新する前までは、`test`のビルドに要りました。matsumotory/mruby-simplehttpは、`NO_SSL`を設定しない限り、ソースを指定せずにmruby-polarsslに依存し、その一覧がリポジトリのluisbebop/mruby-polarsslを返していました。そのgemはmruby 3.4で削除されたmruby-printに依存するので、今は`build_config.rb`が`test`のビルドに`NO_SSL`を設定しています。テストのクライアントの`SimpleHttp`はHTTPSを使えず、テストスイートはHTTPSのリクエストをcurlと`openssl s_client`で送ります。加えたgemにこの一覧が要る場合、ロックはgemのコミットを固定しますが、URLは一覧が決めます。一覧が別のURLを返すようになると、ロックにはそのエントリーが無いので、rakeはそのリポジトリの先頭をクローンします。そのため、`build_config.rb`はサードパーティのgemを`github:`で宣言します。
-- symisc/vedis。matsumotory/mruby-vedisの`mrbgem.rake`は、gemのビルドのディレクトリの`mruby/build/host/mrbgems/mruby-vedis/vedis`が無いとき、`git clone`でvedisをそこにクローンします。このときクローンするのは、デフォルトのブランチの先頭です。
+- symisc/vedis。デフォルトのビルドが入れないmatsumotory/mruby-vedisを入れたビルドで取ってきます。matsumotory/mruby-vedisの`mrbgem.rake`は、gemのビルドのディレクトリの`mruby/build/host/mrbgems/mruby-vedis/vedis`が無いとき、`git clone`でvedisをそこにクローンします。このときクローンするのは、デフォルトのブランチの先頭です。
 
-コミットを指定したクローンはリポジトリの履歴をすべて持つので、最初のビルドは、ロックの無いビルドより多くのデータを取ってきます。デフォルトのビルドは19個のクローンを作ります。`mruby/build/repos/host`に12個、`mruby/build/repos/test`に7個です。2026年10月4日に、空の`mruby/build`からビルドした後に測ると、クローンは約9.3 MiBで、内訳は7.7 MiBと1.7 MiBでした。mruby 4.0.0に更新する前は、`test`のビルドがluisbebop/mruby-polarsslとそのサブモジュールのARMmbed/mbedtlsもクローンしていました。当時デフォルトのビルドのクローンが使っていた約178 MiBの大部分は、これらでした。
+コミットを指定したクローンはリポジトリの履歴をすべて持つので、最初のビルドは、ロックの無いビルドより多くのデータを取ってきます。デフォルトのビルドは16個のクローンを作ります。`mruby/build/repos/host`に10個、`mruby/build/repos/test`に6個です。2026年11月9日に、空の`mruby/build`からビルドした後に`du -sk`で測ると、クローンは約9.0 MiBで、内訳は7.4 MiBと1.5 MiBでした。mruby 4.0.0に更新する前は、`test`のビルドがluisbebop/mruby-polarsslとそのサブモジュールのARMmbed/mbedtlsもクローンしていました。当時デフォルトのビルドのクローンが使っていた約178 MiBの大部分は、これらでした。
 
 ## 3. バイナリを<wbr>ビルドする
 
