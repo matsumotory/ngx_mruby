@@ -1333,7 +1333,7 @@ resumed:
     } else {
       has_result = ngx_http_mrb_fiber_result(record, &handler_result);
     }
-    return ngx_mrb_finalize_rputs(r, ctx, kind, has_result, handler_result);
+    return ngx_mrb_finalize_rputs(r, ctx, kind, has_result, handler_result, ngx_http_mrb_fiber_status(record));
   }
 
   return NGX_OK;

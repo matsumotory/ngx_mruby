@@ -64,8 +64,8 @@ typedef struct {
  *   Nginx.send_header or Nginx.status_code=, as the code gave it, or 0 when
  *   it set none; Nginx.redirect with a URL resets it to 0. Unlike result, a
  *   200 that such a call answers with 500 when the handler has no output
- *   stays 200. The first Nginx.rputs copies it into the rputs chain, so that
- *   a status set before the output is sent with it (decision 6 of
+ *   stays 200. The caller of ngx_mrb_finalize_rputs passes it, so that a
+ *   status set before the output is sent with it (decision 6 of
  *   docs/proposals/core-alpha1.md).
  * - wake is set when the fiber waits for nginx to call its handler again
  *   (ngx_http_mrb_fiber_wait_on_nginx): the timer then only marks the record
@@ -487,7 +487,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
     // the handler had set before it failed
     if (rc == NGX_OK) {
       has_result = ngx_http_mrb_fiber_result(f, &result);
-      rc = ngx_mrb_finalize_rputs(re->r, ctx, kind, has_result, result);
+      rc = ngx_mrb_finalize_rputs(re->r, ctx, kind, has_result, result, ngx_http_mrb_fiber_status(f));
     }
   } else if (re->fiber != NULL) {
     ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
@@ -800,15 +800,9 @@ void ngx_http_mrb_fiber_set_status(ngx_http_request_t *r, ngx_int_t status)
   f->status = status;
 }
 
-ngx_int_t ngx_http_mrb_fiber_status(ngx_http_request_t *r)
+ngx_int_t ngx_http_mrb_fiber_status(ngx_http_mrb_fiber_t *record)
 {
-  ngx_http_mrb_fiber_t *f = ngx_http_mrb_running;
-
-  if (f == NULL || f->sleep.r != r) {
-    return 0;
-  }
-
-  return f->status;
+  return record != NULL ? record->status : 0;
 }
 
 static void ngx_mrb_timer_handler(ngx_event_t *ev)

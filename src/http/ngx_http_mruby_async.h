@@ -53,12 +53,13 @@ ngx_flag_t ngx_http_mrb_fiber_result(ngx_http_mrb_fiber_t *record, ngx_int_t *re
 // Stores the result of the handler whose fiber runs now for request r.
 void ngx_http_mrb_fiber_set_result(ngx_http_request_t *r, ngx_int_t result);
 
-// The status that the code of the handler whose fiber runs now for request r
-// set with Nginx.return, Nginx.send_header or Nginx.status_code=, as the code
-// gave it: the setter stores it (0 for none), and the getter returns it, or 0
-// when no fiber of r runs or the code set none.
+// The status that the code of a run set with Nginx.return, Nginx.send_header
+// or Nginx.status_code=, as the code gave it: the setter stores it (0 for
+// none) in the record of the handler whose fiber runs now for request r, and
+// the getter returns the one of record, or 0 when record is NULL or the code
+// set none.
 void ngx_http_mrb_fiber_set_status(ngx_http_request_t *r, ngx_int_t status);
-ngx_int_t ngx_http_mrb_fiber_status(ngx_http_request_t *r);
+ngx_int_t ngx_http_mrb_fiber_status(ngx_http_mrb_fiber_t *record);
 
 /*
 // Nginx.redirect with a local URI in a post_read, server rewrite, rewrite,
