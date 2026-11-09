@@ -734,8 +734,11 @@ the plan accepted "body with any status".
   can hold a value that an earlier handler or nginx stored, so only a
   status that this handler set with `Nginx.return`, `Nginx.send_header` or
   `Nginx.status_code=` counts: the record of the handler's fiber keeps it,
-  and the first `Nginx.rputs` copies it into the rputs chain of the
-  module context.
+  and the caller of `ngx_mrb_finalize_rputs` passes it from the record of
+  the handler that ends. It is not kept in the rputs chain: a chain that
+  an earlier handler left in the module context (output followed by
+  `Nginx::DECLINED`) gets the output of the next handler, whose status is
+  its own.
 - `Nginx::HTTP_CLOSE` (444) with output, before or after it (decision 7),
   is the exception to the rule: the output is not sent, its length is
   taken out of `Content-Length` as in the branch that answers 500, and the

@@ -332,7 +332,10 @@ handler:
   `with the output is not the status of a final response. return NGX_HTTP_INTERNAL_SERVER_ERROR`.
 - `Nginx::HTTP_CLOSE` (444), nginx's value for closing a connection without
   a response: the output is not sent, and nginx closes the connection, as
-  for 444 without output.
+  for 444 without output. In a subrequest, this closes the connection of
+  the client, as nginx's own `return 444` does there.
+- `Nginx.redirect` with a URL after the output: the output goes out with
+  200 and the `Location`, also when a status was set before the output.
 - `Nginx.return 0` sets no status, and the output of a content handler gets
   200.
 - A return code below 0, such as `Nginx::DECLINED`, after the output: the
