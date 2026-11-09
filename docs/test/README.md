@@ -393,8 +393,9 @@ them under "How was this tested":
   ```
 
 - The 2.x pages built from the pull request: in a checkout of `next`,
-  with the Node.js of `site/.node-version` there (22.23.3; on a machine with
-  another version, a version manager or `npx -p node@22.23.3` gives it),
+  with the Node.js of `site/.node-version` in that checkout (on a machine
+  with another version, a version manager or `npx -p node@<that version>`
+  gives it),
   after `npm ci --ignore-scripts` and `npx playwright install chromium
   webkit` in its `site/`, `NGX_MRUBY_V2_TREE=DIR npm run check:ci` with
   `DIR` the top of the checkout of the pull request ("Site CI" in
