@@ -134,10 +134,17 @@ writes nothing, as `print nil` does in CRuby. A content handler that writes
 nothing and sets no status answers 500 (see
 [Nginx.return](#nginxreturnnginx_status_code)).
 
+When `to_s` is missing (a `BasicObject`, for example) or raises, `Nginx.rputs`
+raises that exception (`NoMethodError` when `to_s` is missing), and since
+2.7.6 a `to_s` that returns something other than a String makes it raise
+`TypeError`; up to 2.7.5 such a `to_s` could end the worker process. In each
+case nothing is written.
+
 ### Nginx.echo(string)
 
 Puts response text with a newline.
 Like `Nginx.rputs`, the text is not sent when the handler raises an exception afterwards (since 2.7.1).
+An argument that is not a String is converted with `to_s` as for `Nginx.rputs`, which raises the same exceptions when it cannot be converted.
 
 ```ruby
 Nginx.echo "hello ngx_mruby world!"
@@ -349,6 +356,8 @@ Nginx.echo Nginx.configure #=>  --add-module=/home/matsumoto_r/DEV/ngx_mruby \
 ### Nginx.redirect(url_or_internal_location, http_status=Nginx::HTTP_MOVED_TEMPORARILY)
 
 Redirects to the URL or the internal location. It is designed to be used in the rewrite handlers.
+
+A `url_or_internal_location` that is not a String is converted with `to_s`. When `to_s` is missing or raises, `Nginx.redirect` raises that exception, and since 2.7.6 a `to_s` that returns something other than a String makes it raise `TypeError`; up to 2.7.5 such a `to_s` could end the worker process. In each case no redirect is made.
 
 The URL redirect returns HTTP status codes 3xx like `307 Temporary Redirect` with `Location` header to the client.
 
@@ -1395,6 +1404,7 @@ The response is sent with exactly this body, and `Content-Length` is its length;
 Since 2.7.3, an empty replacement string sends the response status with `Content-Length: 0` and no body. Earlier versions closed the connection without a response and logged `zero size buf in writer`. This also applies to the `#output` alias.
 Since 2.7.5, a HEAD response with a known content length that is finalized by the output body filter sends its headers without body bytes and keeps an otherwise reusable connection available for the next request. Earlier versions sent the HEAD headers and then closed the connection even when they advertised keep-alive. This applies to both empty and nonempty replacement bodies; GET responses and other header-only responses keep their behavior.
 It can only be used in an output body filter; anywhere else it raises a `RuntimeError` (since 2.7.1).
+A value that is not a String is converted with `to_s`. When `to_s` is missing or raises, `body=` raises that exception, and since 2.7.6 a `to_s` that returns something other than a String makes it raise `TypeError`; up to 2.7.5 such a `to_s` could end the worker process. In each case the body stays as it was.
 
 ```ruby
 f = Nginx::Filter.new
