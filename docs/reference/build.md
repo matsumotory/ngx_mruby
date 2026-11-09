@@ -80,20 +80,20 @@ besides the mruby core gems that `NGX_MRUBY_CORE_GEMS` lists
 the commit of each third-party gem
 ([Gem commits](../install/README.md#gem-commits-build_configrblock)).
 
-- `iij/mruby-digest` ([repository](https://github.com/iij/mruby-digest)): `Digest` (MD5, RMD160, SHA1, SHA256, SHA384, SHA512 and HMAC)
 - `mattn/mruby-json` ([repository](https://github.com/mattn/mruby-json)): `JSON`
 - `mattn/mruby-onig-regexp` ([repository](https://github.com/mattn/mruby-onig-regexp)): `OnigRegexp`
 - `matsumotory/mruby-redis` ([repository](https://github.com/matsumotory/mruby-redis)): `Redis`, a client that waits for each answer of the Redis server in the worker. Its build clones the hiredis library at the tag v1.5.0, checks its commit and links it statically, and clones matsumotory/mruby-pointer, which the gem depends on. A script that calls it needs a running Redis server
 - `matsumotory/mruby-userdata` ([repository](https://github.com/matsumotory/mruby-userdata)): `Userdata`
 - `matsumotory/mruby-uname` ([repository](https://github.com/matsumotory/mruby-uname)): `Uname`
 - `matsumotory/mruby-mutex` ([repository](https://github.com/matsumotory/mruby-mutex)): `Mutex`
-- `monochromegane/mruby-secure-random` ([repository](https://github.com/monochromegane/mruby-secure-random)): `SecureRandom`
 - `mrbgems/ngx_mruby_mrblib` ([source](../../mrbgems/ngx_mruby_mrblib)): the Ruby part of the classes of ngx_mruby
 - `mrbgems/rack-based-api` ([source](../../mrbgems/rack-based-api)): the Rack compatible API (`run`)
+- `mrbgems/digest` ([source](../../mrbgems/digest)): `Digest`, the hashes MD5, RMD160, SHA1, SHA256, SHA384 and SHA512 and `Digest::HMAC`, on the EVP and `EVP_MAC` APIs of OpenSSL 3. The classes and methods are those of iij/mruby-digest, which the default build of 2.x has ([Digest](../class_and_method/README.md#digest))
+- `mrbgems/secure-random` ([source](../../mrbgems/secure-random)): `SecureRandom`, whose bytes come from `RAND_bytes` of OpenSSL. The methods are those of monochromegane/mruby-secure-random, which the default build of 2.x has ([SecureRandom](../class_and_method/README.md#securerandom))
 
 `ENV`, `Process` and `Signal` come from the core gems mruby-env,
 mruby-process and mruby-signal, not from iij/mruby-env and
-iij/mruby-process as in 2.x. matsumotory/mruby-vedis (`Vedis`) and
+iij/mruby-process as in 2.x. `Digest` and `SecureRandom` come from the two gems of this repository above, not from iij/mruby-digest and monochromegane/mruby-secure-random as in 2.x; both gems need OpenSSL 3.0 or later. matsumotory/mruby-vedis (`Vedis`) and
 matsumotory/mruby-localmemcache (`Cache`), which the default build of 2.x
 has, are comments in `build_config.rb` since 3.0.0
 ([the release notes](../releases/v3.0.0.md#behavior-changes-read-before-upgrading)).
@@ -111,8 +111,8 @@ The workflow `.github/workflows/test.yml` builds ngx_mruby and runs
 
 | nginx | Module | OpenSSL | nginx runs under |
 |---|---|---|---|
-| 1.31.8, 1.30.6, 1.28.3, 1.26.3 | static and dynamic | 1.1.1w, installed, or built into nginx with `--with-openssl-src` | valgrind |
-| 1.31.8 | static | 1.1.1w, installed | AddressSanitizer and UndefinedBehaviorSanitizer |
+| 1.31.8, 1.30.6, 1.28.3, 1.26.3 | static and dynamic | 3.5.9, installed, or built into nginx with `--with-openssl-src` | valgrind |
+| 1.31.8 | static | 3.5.9, installed | AddressSanitizer and UndefinedBehaviorSanitizer |
 
 - The runner is Ubuntu 22.04 with GCC 11 and Ruby 3.0. The bundled mruby is
   4.1.0-rc2 (`build_config.rb.lock` records its version as 4.1.0).

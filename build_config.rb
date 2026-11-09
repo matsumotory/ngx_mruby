@@ -113,8 +113,9 @@ MRuby::Build.new('host') do |conf|
   # mruby's clone of mruby/mgem-list, which no lock pins.
   # ENV, Process and Dir come from the core gems mruby-env, mruby-process
   # and mruby-dir (in NGX_MRUBY_CORE_GEMS), in place of iij/mruby-env,
-  # iij/mruby-process and iij/mruby-dir.
-  conf.gem github: 'iij/mruby-digest'
+  # iij/mruby-process and iij/mruby-dir. Digest and SecureRandom come from
+  # the gems in mrbgems/ below, in place of iij/mruby-digest and
+  # monochromegane/mruby-secure-random.
   conf.gem github: 'mattn/mruby-json'
   conf.gem github: 'mattn/mruby-onig-regexp'
   conf.gem github: 'matsumotory/mruby-redis'
@@ -126,11 +127,14 @@ MRuby::Build.new('host') do |conf|
   # failure of Uname".
   conf.gem github: 'matsumotory/mruby-uname'
   conf.gem github: 'matsumotory/mruby-mutex'
-  conf.gem github: 'monochromegane/mruby-secure-random'
 
   # ngx_mruby extended class
   conf.gem './mrbgems/ngx_mruby_mrblib'
   conf.gem './mrbgems/rack-based-api'
+  # Digest and Digest::HMAC on the EVP and EVP_MAC APIs of OpenSSL 3, and
+  # SecureRandom on RAND_bytes; both need OpenSSL 3.0 or later.
+  conf.gem './mrbgems/digest'
+  conf.gem './mrbgems/secure-random'
 
   # Left out of the default build since 3.0.0 (docs/releases/v3.0.0.md):
   # Vedis, an embedded key-value store; its build clones symisc/vedis at the

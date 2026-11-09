@@ -224,7 +224,7 @@ The four standard cells build each link mode and each line of nginx
 | the cell under valgrind | 1.31.8 | static | the installed OpenSSL | under valgrind ([valgrind in CI](#valgrind-in-ci)) |
 
 Pull requests run these four cells. Every cell
-builds OpenSSL 1.1.1w and installs it before it builds nginx; the first cell builds it into nginx as well
+builds OpenSSL 3.5.9 and installs it before it builds nginx; the first cell builds it into nginx as well
 (`--with-openssl-src`), the path of `configure.in` and `Makefile.in` that
 the cell under valgrind, the same nginx and module against the installed
 OpenSSL, does not take. Every cell (the 16 combinations of nginx 1.31.8,
