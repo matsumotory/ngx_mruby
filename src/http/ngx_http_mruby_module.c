@@ -2043,8 +2043,9 @@ NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(content, mlcf->content_inline_code, N
  * (ngx_http_mruby_handler_init). access_log and the later log handlers write
  * the status that was sent: the status is put back after the code, also
  * when the code raised, which sets 500, and when it set a status itself.
- * After NGX_DONE (a local Nginx.redirect, which ran the handlers of its
- * target) the request is not touched, as in ngx_mrb_run_request.
+ * A log handler ends inside this call: Nginx::Async and a local
+ * Nginx.redirect raise there, and a fiber that yields ends as after an
+ * exception (ngx_mrb_start_fiber).
  */
 static ngx_int_t ngx_http_mruby_run_log_handler(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
                                                 ngx_flag_t cached)
@@ -2054,9 +2055,7 @@ static ngx_int_t ngx_http_mruby_run_log_handler(ngx_http_request_t *r, ngx_mrb_s
 
   status = r->headers_out.status;
   rc = ngx_mrb_run(r, state, code, cached, NULL, NGX_HTTP_MRUBY_HANDLER_LOG);
-  if (rc != NGX_DONE) {
-    r->headers_out.status = status;
-  }
+  r->headers_out.status = status;
 
   return rc;
 }

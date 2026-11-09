@@ -1,6 +1,7 @@
 # The mruby log handlers run before access_log: access_log writes the
 # variables that they set, and the status that was sent, also when a log
-# handler raised or set a status.
+# handler raised or set a status, and Nginx.redirect with a local URI raises
+# in a log handler.
 # Config: test/conf/conf.d/87-log-before-access-log.conf (port 18195).
 #
 # A request is sent with HTTP/1.0, and tcp_client returns when nginx closed
@@ -72,6 +73,20 @@ t.assert('log handler', 'a log handler that sets a status: access_log writes the
   t.assert_equal 'HTTP/1.1 200 OK', line
   t.assert_equal 'set_status', body
   t.assert_equal ['/set_status 200 set-status'], access
+end
+
+t.assert('log handler', 'Nginx.redirect with a local URI raises in a log handler and makes no internal redirect') do
+  status, line, body, access, errors = log_before_access_log_get('/redirect')
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 200 OK', line
+  t.assert_equal 'redirect', body
+  # one line, of /redirect, with the value from before the call and the
+  # status that was sent; no line of /assign
+  t.assert_equal ['/redirect 200 before-redirect'], access
+  raised = errors.select do |l|
+    l.include?('#<RuntimeError: Nginx.redirect with a local URI is not available in a log handler>')
+  end
+  t.assert_equal 1, raised.size
 end
 
 t.assert('log handler', 'a log handler that raises after a 404 of return: access_log writes 404') do
