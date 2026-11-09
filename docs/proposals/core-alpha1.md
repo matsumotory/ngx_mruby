@@ -82,7 +82,7 @@ really depends on.
 - The kind of handler: `ctx->handler_kind` in the module context
   (`src/http/ngx_http_mruby_core.h:80`), set while a fiber runs
   (`src/http/ngx_http_mruby_async.c:336-361`), and the record of the
-  running fiber, `ngx_http_mrb_running` (`:113`). Only `Nginx::Async`
+  running fiber, `ngx_http_mrb_running` (`:115`). Only `Nginx::Async`
   (`:161-174`), `Nginx.redirect` (`:717-751`) and `Nginx.send_header`
   (`src/http/ngx_http_mruby_core.c:451-452`) consult them.
 - The SSL handshake and the server context code: `mrb->ud` points at the
@@ -394,8 +394,11 @@ unchanged.
 **Perf.** The generated handlers do what the written ones do; no change is
 expected, and the pull request measures it.
 
-**Depends on.** Nothing. It rewrites the directive functions, so it goes
-after the pull requests that change them (2.4, 2.6, 2.10), not beside them.
+**Depends on.** Nothing. It rewrites the directive functions, which 2.4
+and 2.6 also change, and the registration in
+`ngx_http_mruby_handler_init`, which 2.4 and 2.10 also change. By the rule
+of section 4, it is not written at the same time as those pull requests,
+and the one that merges second updates its branch.
 
 ### 2.6 Common layer: code loading
 
@@ -503,8 +506,13 @@ log handlers and filters, and in a handler that `ngx_mrb_post_fiber`
 resumes (`src/http/ngx_http_mruby_core.c:671-679`,
 `src/http/ngx_http_mruby_async.c:717-751`); nginx then runs the handlers of
 the target inside that call. The module context is replaced when such a
-redirect happens while another handler of the request runs, for example a
-header filter that `Nginx.send_header` runs from a content handler.
+redirect happens while a handler of the request is ending, for example in
+an mruby header filter, which nginx runs when `ngx_mrb_finalize_rputs`
+(`src/http/ngx_http_mruby_core.c:347`) or `ngx_mrb_send_empty_body`
+(`:241`) sends the response, after the Ruby code of the handler has
+returned. `Nginx.send_header`, `Nginx.return` and `Nginx.status_code=`
+(`ngx_mrb_send_header`, `:425-467`) only set the status and mark the
+output; they do not run the header filters.
 
 **What is wrong.** Two ways to end a handler after a wait remain, and the
 second ends the request in a way that no phase checker controls. It runs
@@ -518,8 +526,9 @@ stabilization removed elsewhere.
   does there. The redirect then has one rule: a local URI takes effect when
   the handler ends, and a handler whose end cannot take it raises. No
   handler of a request runs inside another mruby call through ngx_mruby
-  any more, except the header filter that `Nginx.send_header` runs, which
-  cannot wait anyway. A redirect with a URL (`http://`, `https://`,
+  any more. The mruby filters run when `ngx_mrb_finalize_rputs` or
+  `ngx_mrb_send_empty_body` sends the response, after the Ruby code of the
+  handler has returned, and they cannot wait anyway. A redirect with a URL (`http://`, `https://`,
   `$scheme`) only sets `Location` and the status, and keeps working there.
 - As a guard, a handler that starts while the fiber of another handler
   runs is marked in its record (`ngx_http_mrb_running` is set when its
@@ -640,14 +649,21 @@ last buffer (`:442-445`). When the handler ends,
 (the last buffer is not marked), or when the content phase would leave the
 client without a response (`ngx_mrb_content_ends_without_response`,
 `:150-161`: a content handler of the main request, and a status below 300
-other than 201 and 204). Otherwise it returns the status (`:364-366`); the
-phase checker passes it to `ngx_http_finalize_request`, and nginx sends its
-own page for the status: the output is dropped, and an `error_page` of the
-location for that status applies. So `Nginx.rputs '{"error":"no key"}'`
-followed by `Nginx.return Nginx::HTTP_UNAUTHORIZED` answers nginx's 401 page,
-in a content handler and in post_read, server rewrite, rewrite and access
-handlers. A status below 200 set after output is sent as the status of the
-final response.
+other than 201 and 204). Otherwise it returns the status (`:364-366`) to
+the phase checker, which passes it to `ngx_http_finalize_request`, and the
+output is dropped:
+
+- For 201, 204 and the statuses from 300 up, nginx sends its own page for
+  the status, and an `error_page` of the location for that status applies.
+  So `Nginx.rputs '{"error":"no key"}'` followed by `Nginx.return
+  Nginx::HTTP_UNAUTHORIZED` answers nginx's 401 page, in a content handler
+  and in post_read, server rewrite, rewrite and access handlers.
+- In post_read, server rewrite, rewrite and access handlers and in
+  subrequests, a status below 300 other than 200, 201 and 204 (for example
+  202 after output in an access handler) is returned to the phase checker
+  in the same way, and the output is not sent.
+- In a content handler of the main request, a status below 200 set after
+  output is sent as the status of the final response.
 
 **What is wrong.** Whether the output of a script is sent depends on
 whether it set the status before or after the output. The agent proxy
@@ -659,16 +675,24 @@ the plan accepted "body with any status".
 
 - In `ngx_mrb_finalize_rputs`, output that the handler wrote is sent with
   the status that the handler set, before or after the output, through
-  the branch that sends output today, as nginx's `return code text` sends
-  a body with any status (`ngx_http_send_response`). This holds for every
-  handler that sends output today: post_read, server rewrite, rewrite,
-  access and content handlers, of the main request and of subrequests.
-- 201 and the statuses from 300 up are sent with the output, and
-  `Content-Length` counts it. A HEAD request gets the header only, as
-  today (`r->header_only`).
-- 204 and 304: nginx's header filter sends no body for them, so the header
-  is sent without the output (unverified for nginx 1.31.8; the test checks
-  it).
+  the branch that sends output today. For the statuses other than 301,
+  302, 303, 307 and 308 this is what nginx's `return code text` does
+  (`ngx_http_send_response`). This holds for every handler that sends
+  output today: post_read, server rewrite, rewrite, access and content
+  handlers, of the main request and of subrequests.
+- Every status from 200 up is sent with the output: 201, the statuses
+  below 300 that the phase checkers now get back (202 and the like), and
+  the statuses from 300 up. `Content-Length` counts the output. A HEAD
+  request gets the header only, as today (`r->header_only`).
+- For a status from 300 up, ngx_mruby adds no `Location`: a script that
+  writes output and sets 301, 302, 303, 307 or 308 without setting
+  `Location` itself (with `headers_out` or `Nginx.redirect` with a URL)
+  sends its output with that status and no `Location`.
+- 204 and 304: nginx's header filter sets `r->header_only` for both
+  (`src/http/ngx_http_header_filter_module.c:230-231` and `:248-249` in
+  nginx 1.31.8), and `ngx_mrb_finalize_rputs` does not send the output
+  when `r->header_only` is set (`:349-356`), so the header is sent without
+  the output. The test checks it.
 - A status below 200 after output answers 500, as a content handler
   without output and with such a status does today
   (`ngx_mrb_answer_missing_body`, `:167-178`).
@@ -680,17 +704,29 @@ the plan accepted "body with any status".
 **`error_page` (decision 5).** Today an `error_page` of the location for
 the status applies after such output, because nginx sends the response for
 the status. With the design, the handler sends its output with the status,
-and `error_page` does not apply to that response. This is how nginx treats
-its own `return` with a text: `ngx_http_script_return_code` sends it with
-`ngx_http_send_response`, which does not go through `error_page`
-(`src/http/ngx_http_script.c:1577-1582` in nginx 1.31.8). A script that
-wants nginx's page, and its `error_page`, sets the status without output,
-as today. Section 5 records the decision and the option not chosen.
+and `error_page` does not apply to that response. For the statuses other
+than 301, 302, 303, 307 and 308, this is how nginx treats its own `return`
+with a text: `ngx_http_script_return_code` sends it with
+`ngx_http_send_response`, which sends the response itself and does not go
+through `error_page` (`src/http/ngx_http_script.c:1577-1582` in nginx
+1.31.8; `error_page` is applied by `ngx_http_special_response_handler`).
+For those five statuses, nginx takes the text of `return` as the
+`Location` and answers through `ngx_http_special_response_handler`, where
+`error_page` applies (`ngx_http_send_response`,
+`src/http/ngx_http_core_module.c:1845-1864`); the text is not a body
+there, so nginx has no case to compare with, and the reason for one rule,
+"the output of a handler is sent with its status", applies to them as it
+stands. A script that wants nginx's page, and its `error_page`, sets the
+status without output, as today. Section 5 records the decision and the
+option not chosen.
 
 **Behavior change.** Yes, one entry in the release notes of 3.0.0: output
-followed by a status of 201 or from 300 up is sent with that status instead
-of nginx's page, and output followed by a status below 200 answers 500. The
-entry also says that `error_page` no longer applies to such a response: a
+followed by a status set after it is sent with that status for every
+status from 200 up, instead of nginx's page (201 and from 300 up) or of
+dropping the output (the statuses below 300 other than 200, 201 and 204 in
+post_read, server rewrite, rewrite and access handlers and in
+subrequests), and
+output followed by a status below 200 answers 500. The entry also says that `error_page` no longer applies to such a response: a
 configuration that writes output, sets a status from 300 up after it and
 relies on an `error_page` for that status now sends the output, and gets
 nginx's page again by setting the status without output.
@@ -723,8 +759,14 @@ pull request to `next`:
   `next` (`git diff origin/master origin/next -- test/t`), and for each
   difference the entry of `docs/releases/v3.0.0.md` that explains it; a
   difference without an entry is a "must fix";
-- compares the performance of its head with `v2.7.5`, as "Before a tag" in
-  `AGENTS.md` describes, and sends a `WARN` or `FAIL` to the owner.
+- checks the release notes as "Before the tag" in
+  `docs/releases/README.md` describes: it lists every pull request merged
+  into `next` since the start of the range, the latest 2.x release tag for
+  the first pre-release (`v2.7.5` today), confirms the entries of each in
+  `docs/releases/v3.0.0.md`, and compares `docs/releases/v3.0.0.ja.md` with
+  the English file;
+- compares the performance of its head with the same tag, as "Before a
+  tag" in `AGENTS.md` describes, and sends a `WARN` or `FAIL` to the owner.
 
 The session publishes the tag after the owner's go-ahead for that release.
 
@@ -743,12 +785,12 @@ and the one that merges second updates its branch.
 | Log handlers before `access_log` | 2.10 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
 | `mruby_variable` | 2.11 | nothing | nothing |
 | Headers | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
-| Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table |
-| Execution context and the phases of the Ruby API | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging |
+| Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
+| Execution context and the phases of the Ruby API | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
 | Per-request store | 2.1 | nothing | execution context |
-| One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`) |
-| Waits inside another mruby call | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`) |
-| Common code loading | 2.6 | nothing | directive table |
+| One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`) |
+| Waits inside another mruby call | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |
+| Common code loading | 2.6 | nothing | directive table, filter handlers (the directive functions) |
 | Common upstream switching | 2.7 | nothing | nothing |
 | Common error logging | 2.8 | nothing | execution context (`Nginx.log`) |
 | Directive table and one duplicate check | 2.5 | nothing | log handlers, filter handlers, code loading |
@@ -843,10 +885,14 @@ does not apply to the response. Not chosen: dropping the output and
 letting `error_page` apply when the location has one for the status, and
 sending the output otherwise.
 
-Reason: one rule (the output of a handler is sent with its status), the
-same as nginx's own `return` with a text, which `ngx_http_script_return_code`
-sends with `ngx_http_send_response` without going through `error_page`
-(`src/http/ngx_http_script.c:1577-1582` in nginx 1.31.8). With the option
+Reason: one rule, "the output of a handler is sent with its status". For
+the statuses other than 301, 302, 303, 307 and 308 it is the same as
+nginx's own `return` with a text, which `ngx_http_script_return_code` sends
+with `ngx_http_send_response` without going through `error_page`
+(`src/http/ngx_http_script.c:1577-1582` in nginx 1.31.8). For those five
+statuses, nginx takes the text as the `Location`, not as a body, and
+answers through `error_page`, so nginx has no case to compare with, and
+the reason for the one rule applies to them as it stands. With the option
 not chosen, what a script sends would depend on directives elsewhere in the
 configuration, and `ngx_mrb_finalize_rputs` would search the `error_page`
 list of the location for each such response.
