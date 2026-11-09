@@ -12,6 +12,7 @@
 #include "ngx_http_mruby_gc_roots.h"
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
+#include "ngx_http_mruby_var.h"
 
 #include "mruby/array.h"
 #include "mruby/error.h"
@@ -480,8 +481,10 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
 
   mrb_get_args(mrb, "o", &argv);
 
-  if (mrb_type(argv) != MRB_TT_STRING) {
-    argv = mrb_funcall_id(mrb, argv, MRB_SYM(to_s), 0);
+  // an argument whose to_s is missing, raises or does not return a String
+  // raises the exception of the conversion (TypeError for the last)
+  if (!ngx_mrb_var_to_string(mrb, argv, &argv)) {
+    mrb_exc_raise(mrb, argv);
   }
 
   if (with_lf) {
@@ -619,9 +622,11 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     rc = NGX_HTTP_MOVED_TEMPORARILY;
   }
 
-  // get redirect uri from args
-  if (mrb_type(uri) != MRB_TT_STRING) {
-    uri = mrb_funcall_id(mrb, uri, MRB_SYM(to_s), 0);
+  // get redirect uri from args; a uri whose to_s is missing, raises or does
+  // not return a String raises the exception of the conversion (TypeError
+  // for the last)
+  if (!ngx_mrb_var_to_string(mrb, uri, &uri)) {
+    mrb_exc_raise(mrb, uri);
   }
 
   // save location uri to ns
