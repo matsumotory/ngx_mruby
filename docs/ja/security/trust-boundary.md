@@ -25,7 +25,7 @@ ngx_mrubyは、nginxのサーバーの運用者が書いたRubyのコードを�
 
 ngx_mrubyは、スクリプトが求めることを実行します。クライアントの入力を先へ渡した結果には、スクリプトが責任を持ちます。
 
-- クライアントの入力は、その入力を使う処理へ渡す前に検証してください。対象には、`eval`と`instance_eval`、シェルのコマンド、`Process.kill`のシグナル、ファイルのパス、nginxの変数の名前、upstreamのアドレス、リダイレクトの先、レスポンスヘッダがあります。シェルのコマンドを実行するのは、バッククォートと`IO.popen`です。ファイルのパスを使うのは、`File`、`Dir`、[`Nginx::SSL#certificate=`](../../class_and_method/README.md#nginxsslcertificatestring)、`#certificate_key=`です。nginxの変数の名前を使うのは、実行時に組み立てた名前を渡す`Nginx::Var`と、`Nginx::Var#set`です。upstreamのアドレスを使うのは、`mruby_set $backend`と`Nginx::Upstream#server=`です。入力を許可する値のリストと比べるか、コードが期待する型にパースし、合わないものは拒否してください。たとえば、サーバー名から証明書のパスを組み立てるハンドシェイクのハンドラでは、クライアントがパスを選べます。代わりに名前をテーブルで引き、証明書のある名前だけがパスに届くようにしてください。
+- クライアントの入力は、その入力を使う処理へ渡す前に検証してください。対象には、`eval`と`instance_eval`、シェルのコマンド、シグナル、ファイルのパス、nginxの変数の名前、upstreamのアドレス、リダイレクトの先、レスポンスヘッダがあります。シェルのコマンドを実行するのは、バッククォートと`IO.popen`で、シグナルを送るのは`Process.kill`です。ファイルのパスを使うのは、`File`、`Dir`、[`Nginx::SSL#certificate=`](../../class_and_method/README.md#nginxsslcertificatestring)、`#certificate_key=`です。nginxの変数の名前を使うのは、実行時に組み立てた名前を渡す`Nginx::Var`と、`Nginx::Var#set`です。upstreamのアドレスを使うのは、`mruby_set $backend`と`Nginx::Upstream#server=`です。入力を許可する値のリストと比べるか、コードが期待する型にパースし、合わないものは拒否してください。たとえば、サーバー名から証明書のパスを組み立てるハンドシェイクのハンドラでは、クライアントがパスを選べます。代わりに名前をテーブルで引き、証明書のある名前だけがパスに届くようにしてください。
 
   ```nginx
   http {
