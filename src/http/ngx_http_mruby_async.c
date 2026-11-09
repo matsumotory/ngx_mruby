@@ -349,14 +349,25 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
 
   if (rc != NGX_DECLINED && rc != NGX_DONE) {
     ngx_http_finalize_request(re->r, rc);
-    // the finalization can post requests: the parent of a finalized
-    // subrequest, or, when the response was already sent (for example by the
-    // location that Nginx.redirect ran), the request that
-    // ngx_http_terminate_request posts to close the connection. This timer
-    // runs outside ngx_http_request_handler, so it runs the posted requests
-    // itself, as nginx's ngx_http_file_cache_lock_wait_handler does
-    ngx_http_run_posted_requests(c);
   }
+
+  // This timer runs outside ngx_http_request_handler, which runs the posted
+  // requests after the handlers of a request, so it runs them itself, as
+  // nginx's ngx_http_file_cache_lock_wait_handler does. Every outcome above
+  // can post requests:
+  // - the finalization: the parent of a finalized subrequest, or, when the
+  //   response was already sent (for example by the location that
+  //   Nginx.redirect ran), the request that ngx_http_terminate_request posts
+  //   to close the connection;
+  // - NGX_DONE: the resumed fiber called Nginx::Async::HTTP.sub_request;
+  // - NGX_DECLINED: ngx_mrb_post_fiber ran the next phases, and a handler
+  //   there called it.
+  // Without this, the subrequest started only at the next event of the
+  // connection, and the client got no response until it closed the
+  // connection. When the connection was closed above,
+  // ngx_http_close_connection has set c->destroyed, and the call returns at
+  // once; c points into nginx's array of connections, which stays allocated.
+  ngx_http_run_posted_requests(c);
 }
 
 static void ngx_mrb_async_sleep_cleanup(void *data)
