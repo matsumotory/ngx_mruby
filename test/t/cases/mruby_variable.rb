@@ -81,19 +81,28 @@ t.assert('mruby_variable', '"set" and a content handler assign the declared vari
   t.assert_equal ['/assigned_set [from-set] [from-content]'], log
 end
 
+# The reason for a variable that nginx does not let scripts change, and the
+# one for a changeable variable with a get handler of another module or of
+# a named capture of a regular expression, which nginx does not let a
+# module tell apart.
 OTHER_VALUE = 'another module defines it with a value of its own'
+OTHER_OR_CAPTURE = 'another module defines it with a value of its own, or a named capture of a regular expression assigns it'
 
 [
   ['$uri, which nginx does not let scripts change', 'mruby_variable $uri;',
-   "[emerg] mruby_variable cannot declare \"$uri\": #{OTHER_VALUE}"],
+   "[emerg] mruby_variable cannot declare \"$uri\": #{OTHER_VALUE} in "],
   ['$args, which scripts may change but which has a value of its own', 'mruby_variable $args;',
-   "[emerg] mruby_variable cannot declare \"$args\": #{OTHER_VALUE}"],
+   "[emerg] mruby_variable cannot declare \"$args\": #{OTHER_OR_CAPTURE}"],
   ['$http_x_agent, a request header', 'mruby_variable $http_x_agent;',
    '[emerg] mruby_variable cannot declare "$http_x_agent": nginx gives the variables whose names begin with "http_" their values'],
   ['a variable of an earlier map', "map $request_method $mruby_variable_mapped { default mapped; }\n    mruby_variable $mruby_variable_mapped;",
-   "[emerg] mruby_variable cannot declare \"$mruby_variable_mapped\": #{OTHER_VALUE}"],
+   "[emerg] mruby_variable cannot declare \"$mruby_variable_mapped\": #{OTHER_OR_CAPTURE}"],
   ['a variable of a later map', "mruby_variable $mruby_variable_later;\n    map $request_method $mruby_variable_later { default mapped; }",
    "[emerg] mruby_variable cannot declare \"$mruby_variable_later\" in "],
+  ['a named capture of an earlier location', "server {\n        location ~ ^/agents/(?<mruby_variable_capture>[^/]+) {\n        }\n    }\n    mruby_variable $mruby_variable_capture;",
+   "[emerg] mruby_variable cannot declare \"$mruby_variable_capture\": #{OTHER_OR_CAPTURE}"],
+  ['a named capture of a later location', "mruby_variable $mruby_variable_capture_later;\n    server {\n        location ~ ^/agents/(?<mruby_variable_capture_later>[^/]+) {\n        }\n    }",
+   "[emerg] mruby_variable cannot declare \"$mruby_variable_capture_later\" in "],
   ['a second declaration of the same name', "mruby_variable $mruby_variable_twice;\n    mruby_variable $mruby_variable_twice;",
    '[emerg] mruby_variable "$mruby_variable_twice" is duplicate: it is declared in '],
   ['a name without "$"', 'mruby_variable mruby_variable_no_dollar;',
@@ -116,7 +125,15 @@ t.assert('mruby_variable', 'nginx -t refuses a variable of a later map with the 
   conf = File.join(ENV['NGINX_INSTALL_DIR'], 'conf', 'nginx_t.conf')
   lines = File.open(conf) { |f| f.read.to_s.split("\n") }
   line = lines.index { |l| l.include?('mruby_variable $mruby_variable_later;') } + 1
-  t.assert_include out, "#{conf}:#{line}: #{OTHER_VALUE}"
+  t.assert_include out, "#{conf}:#{line}: #{OTHER_OR_CAPTURE}"
+end
+
+t.assert('mruby_variable', 'nginx -t refuses a named capture of a later location with the file and the line of the declaration') do
+  out = nginx_t("http {\n    mruby_variable $mruby_variable_capture_later;\n    server {\n        location ~ ^/agents/(?<mruby_variable_capture_later>[^/]+) {\n        }\n    }\n}")
+  conf = File.join(ENV['NGINX_INSTALL_DIR'], 'conf', 'nginx_t.conf')
+  lines = File.open(conf) { |f| f.read.to_s.split("\n") }
+  line = lines.index { |l| l.include?('mruby_variable $mruby_variable_capture_later;') } + 1
+  t.assert_include out, "#{conf}:#{line}: #{OTHER_OR_CAPTURE}"
 end
 
 [

@@ -552,6 +552,15 @@ typedef struct {
 } ngx_http_mruby_variable_t;
 
 /*
+ * The reason that the directive and its check give for a changeable
+ * variable that has a get handler of another module, which is either a
+ * module with a value of its own or a named capture of a regular
+ * expression.
+ */
+#define NGX_HTTP_MRUBY_VARIABLE_OTHER                                                                                  \
+  "another module defines it with a value of its own, or a named capture of a regular expression assigns it"
+
+/*
  * The get handler of a declared variable. nginx calls it only while the
  * request has no value for the variable: an assignment through Nginx::Var
  * or "set" writes r->variables[index], and nginx then returns that value
@@ -657,10 +666,19 @@ char *ngx_http_mruby_variable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
       return NGX_CONF_ERROR;
     }
 
-    if (!(v->flags & NGX_HTTP_VAR_CHANGEABLE) ||
-        (v->get_handler != NULL && !ngx_http_mruby_variable_only_assigned(cmcf, v))) {
+    if (!(v->flags & NGX_HTTP_VAR_CHANGEABLE)) {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                          "mruby_variable cannot declare \"%V\": another module defines it with a value of its own",
+                         &value[1]);
+      return NGX_CONF_ERROR;
+    }
+
+    // A changeable variable with a get handler of another kind: a module
+    // with a value of its own ($args, map, geo), or a named capture of a
+    // regular expression, whose get handler nginx keeps static, so that
+    // the two cannot be told apart here
+    if (v->get_handler != NULL && !ngx_http_mruby_variable_only_assigned(cmcf, v)) {
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mruby_variable cannot declare \"%V\": " NGX_HTTP_MRUBY_VARIABLE_OTHER,
                          &value[1]);
       return NGX_CONF_ERROR;
     }
@@ -733,13 +751,13 @@ ngx_int_t ngx_http_mruby_variables_check(ngx_conf_t *cf, ngx_http_mruby_main_con
   }
 
   // A module that declares the variable after mruby_variable, such as
-  // map, replaces the get handler without a check of its own
+  // map, and a later named capture of a regular expression replace the get
+  // handler without a check of their own
   mv = mmcf->variables->elts;
   for (i = 0; i < mmcf->variables->nelts; i++) {
     if (mv[i]->var->get_handler != ngx_http_mruby_variable_get || mv[i]->var->data != (uintptr_t)mv[i]) {
       ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                    "mruby_variable cannot declare \"$%V\" in %V:%ui: another module defines it with a value of its "
-                    "own",
+                    "mruby_variable cannot declare \"$%V\" in %V:%ui: " NGX_HTTP_MRUBY_VARIABLE_OTHER,
                     &mv[i]->var->name, &mv[i]->file, mv[i]->line);
       return NGX_ERROR;
     }
