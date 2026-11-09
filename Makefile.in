@@ -125,14 +125,16 @@ openssl: .openssl_build_done
 
 .openssl_build_done: .openssl_configure_done
 	(cd $(NGX_OPENSSL_SRC) \
-	&& $(MAKE) $(OPENSSL_MAKE_TARGET)) \
+	&& for t in $(OPENSSL_MAKE_TARGET); do \
+		case $$t in install*) $(MAKE) -j1 $$t ;; *) $(MAKE) $$t ;; esac || exit 1; \
+	done) \
 	&& cp /dev/null .openssl_build_done
 
 .openssl_configure_done:
 	(cd $(NGX_OPENSSL_SRC) \
 	&& if [ -f Makefile ]; then $(MAKE) clean; fi \
 	&& echo "Building OpenSSL version: $(OPENSSL_VERSION)" \
-	&& ./config --prefix=$(NGX_OPENSSL_INSTALL_DIR) --shared zlib -fPIC $(OPENSSL_CONFIG_ENABLE_TLSEXT) $(NGX_OPENSSL_OPT) \
+	&& ./config --prefix=$(NGX_OPENSSL_INSTALL_DIR) --libdir=lib --shared zlib -fPIC $(OPENSSL_CONFIG_ENABLE_TLSEXT) $(NGX_OPENSSL_OPT) \
 	&& $(MAKE) depend) \
 	&& cp /dev/null .openssl_configure_done
 

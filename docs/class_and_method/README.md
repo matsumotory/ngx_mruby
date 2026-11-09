@@ -86,6 +86,10 @@ iij/mruby-process. The differences:
   with 2.x it ended the worker process. `sleep` without an argument
   raises `ArgumentError`; with 2.x it waited until a signal came.
 
+`Digest` and `SecureRandom` come from two gems of this repository,
+`mrbgems/digest` and `mrbgems/secure-random`, described below. ngx_mruby
+2.x took them from iij/mruby-digest and monochromegane/mruby-secure-random.
+
 `Vedis` (matsumotory/mruby-vedis) and `Cache`
 (matsumotory/mruby-localmemcache), which the default build of 2.x has, are
 not in the default build of 3.0.0. The entries of these changes are under
@@ -103,6 +107,76 @@ under [Behavior changes: read before upgrading](../releases/v3.0.0.md#behavior-c
 in the release notes of v3.0.0, and
 [Migrating from ngx_mruby 2.x to 3.0.0](../migration/README.md) has the
 steps for finding and changing the scripts that they affect.
+
+### Digest
+
+`mrbgems/digest` computes the hashes with the EVP API of OpenSSL 3 and
+HMAC with its `EVP_MAC` API. It has the classes and methods of
+iij/mruby-digest, the gem of 2.x:
+
+- `Digest::MD5`, `Digest::RMD160`, `Digest::SHA1`, `Digest::SHA256`,
+  `Digest::SHA384` and `Digest::SHA512` are subclasses of `Digest::Base`.
+  `Digest::Base.new` raises `NotImplementedError`. `new` of a class whose
+  algorithm the OpenSSL of the process does not provide raises
+  `NotImplementedError` as well: RIPEMD160 is in the default provider of
+  OpenSSL since 3.0.7, and the FIPS provider has no MD5.
+- The class methods `digest(data)` and `hexdigest(data)` return the digest
+  of a String, as bytes or as lowercase hexadecimal digits. `file(path)`
+  returns a new object that has taken the content of the file.
+- The instance methods: `update(data)` and `<<` add a String and return the
+  object. `digest`, `hexdigest` and `to_s` return the digest of the data so
+  far, and the object can take more data afterwards. `digest!` and
+  `hexdigest!` return the digest and reset the object, and `reset` resets
+  it. `file(path)` adds the content of a file. `digest_length`, `length` and
+  `size` return the length of the digest in bytes, and `block_length` the
+  block size of the hash. `==` compares the digest with that of another
+  object, or the hexdigest with a String. `dup` and `clone` copy the data
+  that the object has taken.
+- `Digest::HMAC.new(key, digest_class)` takes the class of the hash, for
+  example `Digest::SHA256`. An HMAC object has `update`, `<<`, `digest`,
+  `hexdigest`, `digest_length` and `block_length`, and `digest` and
+  `hexdigest` leave it as it was. `dup` and `clone` raise `RuntimeError`.
+  `Digest::HMAC.digest(data, key, digest_class)` and
+  `Digest::HMAC.hexdigest(data, key, digest_class)` compute the HMAC of a
+  String in one call.
+
+```ruby
+Digest::SHA256.hexdigest("abc")
+# => "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+Digest::HMAC.hexdigest("what do ya want for nothing?", "Jefe", Digest::SHA256)
+# => "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+```
+
+`file` reads the whole file in the worker when a script calls it. The
+differences from iij/mruby-digest are in the entry
+[`Digest` and `SecureRandom` come from gems of ngx_mruby that need OpenSSL 3.0 or later](../releases/v3.0.0.md#digest-and-securerandom-come-from-gems-of-ngx_mruby-that-need-openssl-30-or-later-771)
+of the release notes of v3.0.0.
+
+### SecureRandom
+
+`mrbgems/secure-random` takes the random bytes from `RAND_bytes` of
+OpenSSL. OpenSSL seeds its generator from the operating system, and seeds
+it again in each worker process that nginx forks. A call opens no file. It
+has the methods of monochromegane/mruby-secure-random, the gem of 2.x, as
+class methods of the class `SecureRandom`. In the first four, `n` is a
+number of bytes, 16 when it is `nil` or not given, and is converted with
+`to_int`:
+
+- `random_bytes(n)` returns `n` random bytes.
+- `hex(n)` returns `n` bytes as `2 * n` lowercase hexadecimal digits.
+- `base64(n)` returns `n` bytes in Base64, with padding and without line
+  breaks.
+- `urlsafe_base64(n, padding = false)` returns `base64(n)` with `-` and `_`
+  in place of `+` and `/`, and without `=` unless `padding` is true.
+- `random_number(n)` returns an Integer of 0 or more and less than `n`, for
+  an Integer `n` of 1 or more. `n` of 0 or less raises
+  `NotImplementedError`, and a Float raises `ArgumentError`.
+- `uuid` returns a random UUID of version 4, in lowercase.
+
+The other methods call `random_bytes` through `self`, so a subclass of
+`SecureRandom` that redefines `random_bytes` changes them too. The
+differences from monochromegane/mruby-secure-random are in the same entry
+of the release notes.
 
 # Kernel Module
 

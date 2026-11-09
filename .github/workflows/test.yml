@@ -85,7 +85,11 @@ defaults:
     shell: bash
 
 env:
-  OPENSSL_SRC_VERSION: 1.1.1w
+  # The OpenSSL of every cell of the build job: 3.5, the LTS release that
+  # item 3 of section 7 of docs/proposals/v3-plan.md makes the baseline of v3.
+  # mrbgems/digest and mrbgems/secure-random of the default build need 3.0
+  # or later (EVP_MAC).
+  OPENSSL_SRC_VERSION: 3.5.9
 
 jobs:
   # Which build, soak and perf jobs this run needs (docs/test/README.md,
@@ -382,9 +386,14 @@ jobs:
           mkdir openssl-${OPENSSL_SRC_VERSION} && tar -xzf openssl-${OPENSSL_SRC_VERSION}.tar.gz -C openssl-${OPENSSL_SRC_VERSION} --strip-components 1
           rm openssl-${OPENSSL_SRC_VERSION}.tar.gz
           cd openssl-${OPENSSL_SRC_VERSION}
-          ./config --prefix=/usr/local --shared zlib -fPIC >> /dev/null 2>&1
-          make >> /dev/null 2>&1
-          sudo make install >> /dev/null 2>&1
+          # --libdir=lib: OpenSSL 3 puts the libraries of x86_64 into lib64,
+          # which neither ldconfig below nor -L/usr/local/lib of Makefile.in
+          # reads. build_sw and install_sw leave out the manual pages;
+          # install_ssldirs installs /usr/local/ssl/openssl.cnf, without
+          # which the openssl req of test.sh fails with OpenSSL 3.
+          ./config --prefix=/usr/local --libdir=lib --shared zlib -fPIC >> /dev/null 2>&1
+          make -j"$(nproc)" build_sw >> /dev/null 2>&1
+          sudo make install_sw install_ssldirs >> /dev/null 2>&1
           sudo ldconfig /usr/local/lib
           cd -
           openssl version
