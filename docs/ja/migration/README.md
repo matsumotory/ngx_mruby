@@ -341,6 +341,15 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 - [`mruby_set`のハンドラでは`Nginx::Async::HTTP.sub_request`が`RuntimeError`を出す](../../releases/v3.0.0.ja.md#mruby_setのハンドラではnginxasynchttpsub_requestがruntimeerrorを出す735)：`mruby_set`と`mruby_set_code`で、`Nginx::Async::HTTP.sub_request`を探してください。サブリクエストを待てるrewriteかaccessのハンドラで呼び、`Nginx::Var#set`で変数を設定してください。
 - [`mruby_set`の値をStringに変換できないと500で応答する](../../releases/v3.0.0.ja.md#mruby_setの値をstringに変換できないと500で応答する735)：コードがString以外の値を返しうる`mruby_set`と`mruby_set_code`を探し、Stringを返すようにしてください。
 - [logハンドラでは、ローカルのURIへの`Nginx.redirect`が`RuntimeError`を出す](../../releases/v3.0.0.ja.md#logハンドラではローカルのuriへのnginxredirectがruntimeerrorを出す770)：`mruby_log_handler`と`mruby_log_handler_code`のコードで、パスを渡す`Nginx.redirect`を探し、その呼び出しをrewrite、access、contentのどれかのハンドラへ移してください。
+- [出力の後に設定したステータスで出力を送り、`error_page`は効かない](../../releases/v3.0.0.ja.md#出力の後に設定したステータスで出力を送りerror_pageは効かない779)：ハンドラのコードで、`Nginx.rputs`か`Nginx.echo`の後に呼ぶ`Nginx.return`、`Nginx.send_header`、`Nginx.status_code=`を探してください。そのハンドラのロケーションにある`error_page`も探してください。3.0.0では出力をそのステータスで送り、そのステータスの`error_page`は効きません。
+
+  ```ruby
+  # 2.x：nginxの401のページか、401のerror_pageのページ   3.0.0：JSONを付けた401
+  Nginx.rputs '{"error":"no key"}'
+  Nginx.return Nginx::HTTP_UNAUTHORIZED
+  ```
+
+  `Nginx.rputs`が無ければ、どちらのバージョンもnginxの401のページか、`error_page`のページを返します。nginxのページや`error_page`に頼っていたハンドラは、出力を書かずにステータスを設定してください。出力の後に301、302、303、307、308を設定したとき、`Location`は、スクリプトが`Nginx::Headers_out`で設定した場合だけ付きます。出力の後の200未満のステータスでは500を返します。
 
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
