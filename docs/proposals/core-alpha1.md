@@ -630,6 +630,27 @@ never requested; the soak lane does this (`test/soak/nginx.agent.conf:101-110`).
 - Only `http {}`: a declaration is global in nginx, and a value per
   location would need code that runs per location, which is what the
   directive avoids.
+- When `value` is computed (decided on 2026-11-10, in #780):
+  when the request first reads the variable, not in a phase as `set`
+  computes its value. The get handler computes it, and nginx keeps the
+  result in `r->variables` for the rest of the request. The other way,
+  computing it in a phase like `set`, needs a phase handler that runs for
+  every request of every server, also for requests that never read the
+  variable, an order against ngx_mruby's server rewrite handler, and a
+  check that a script has not assigned the variable yet; it adds work to
+  every request, which the design principles avoid. Computing it at every
+  read would give different readers of one request different values. The
+  time of the first read decides what a variable in `value` gives: with
+  `"$request_time"`, an `access_log` that alone reads the variable writes
+  the time of the whole request, where `set` gives `0.000`, and a server
+  rewrite handler that reads it first fixes `0.000` for the rest of the
+  request; with `"$upstream_addr"`, a `log_format` or an `add_header` gets
+  the address of the upstream, where `set` gives the empty string, and a
+  read in a rewrite or access handler fixes the empty string. The value
+  lives in `r->variables`, which an internal redirect keeps and a
+  subrequest shares with its main request, so a default that a subrequest
+  reads first (`"$uri"`) has the subrequest's value for the main request
+  too. `docs/directives/README.md` describes this with the same examples.
 
 **Behavior change.** None; a "New features" entry, and the directive in
 `docs/directives/README.md`.
@@ -791,7 +812,7 @@ and the one that merges second updates its branch.
 | Pull request | Section | Waits for | Edits the same code as |
 |---|---|---|---|
 | Log handlers before `access_log`: [#770](https://github.com/matsumotory/ngx_mruby/pull/770), done when it is merged; #770 also makes `Nginx.redirect` with a local URI raise in log handlers, the log handler part of 2.9 | 2.10, 2.9 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
-| `mruby_variable` | 2.11 | nothing | nothing |
+| `mruby_variable`: [#780](https://github.com/matsumotory/ngx_mruby/pull/780), open, done when it is merged | 2.11 | nothing | nothing |
 | Headers | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
 | Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
 | Execution context and the phases of the Ruby API | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
