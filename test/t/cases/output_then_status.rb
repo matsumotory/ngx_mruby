@@ -1,6 +1,9 @@
 # How a content handler answers when it writes output and then sets a status
 # below 300 other than 200, 201 and 204: it must get a response, its output
-# with the status it set, instead of no response at all.
+# with the status it set, instead of no response at all. Since 3.0.0 the
+# output also goes out with 201 and with the statuses from 300 up, and a
+# status below 200 answers 500 (test/t/cases/body_with_status.rb has the
+# other handlers).
 # Config: test/conf/conf.d/68-output-then-status.conf (port 18154).
 # Hook script: test/html/output_then_status.rb.
 
@@ -29,14 +32,15 @@ end
 
 {
   '/accepted' => ['Nginx.rputs, then Nginx.return Nginx::HTTP_ACCEPTED', 'HTTP/1.1 202 Accepted', 'accepted'],
-  # nginx has no reason phrase for 203 and for a status below 200, and sends
-  # the number with a space, as for its own "return 203 text".
+  # nginx has no reason phrase for 203, and sends the number with a space,
+  # as for its own "return 203 text".
   '/echo_then_status_code_203' => ['Nginx.echo, then Nginx.status_code = 203', 'HTTP/1.1 203 ', "non-authoritative\n"],
   '/send_header_partial_content' => ['Nginx.rputs, then Nginx.send_header Nginx::HTTP_PARTIAL_CONTENT', 'HTTP/1.1 206 Partial Content', 'partial'],
-  '/continue' => ['Nginx.rputs, then Nginx.return Nginx::HTTP_CONTINUE', 'HTTP/1.1 100 ', 'continue'],
   # 0 is no status: the output gets 200, as output without a status does.
   '/zero' => ['Nginx.rputs, then Nginx.return 0', 'HTTP/1.1 200 OK', 'zero'],
   '/sub_request_then_accepted' => ['Nginx::Async::HTTP.sub_request, then Nginx.rputs and Nginx.return Nginx::HTTP_ACCEPTED', 'HTTP/1.1 202 Accepted', 'after sub_request'],
+  '/created' => ['Nginx.rputs, then Nginx.return Nginx::HTTP_CREATED', 'HTTP/1.1 201 Created', 'created'],
+  '/not_found' => ['Nginx.rputs, then Nginx.return Nginx::HTTP_NOT_FOUND', 'HTTP/1.1 404 Not Found', 'not found'],
 }.each do |path, (what, status_line, output)|
   t.assert('ngx_mruby - output, then a status', "#{what} answers the output with that status") do
     status, raw = output_status_get(path)
@@ -69,8 +73,10 @@ t.assert('ngx_mruby - output, then a status', 'a keep-alive connection gets the 
   t.assert_equal 'ok', second_body
 end
 
-# The cases below pass before and after the change: they check that it
-# leaves these answers as they were.
+# The cases below check 200 after output, a status set before the output
+# and HEAD, which keep their answers, and two answers that 3.0.0 changes:
+# 100 after output answers 500, and a subrequest sends its output with the
+# status it set after it.
 
 t.assert('ngx_mruby - output, then a status', 'Nginx.rputs, then Nginx.return Nginx::HTTP_OK still answers the output with 200') do
   status, raw = output_status_get('/ok')
@@ -81,22 +87,12 @@ t.assert('ngx_mruby - output, then a status', 'Nginx.rputs, then Nginx.return Ng
   t.assert_equal 'ok', body
 end
 
-t.assert('ngx_mruby - output, then a status', 'Nginx.rputs, then Nginx.return Nginx::HTTP_CREATED still answers nginx\'s 201 without the output') do
-  status, raw = output_status_get('/created')
-  line, fields, body = output_status_parse(raw)
-  t.assert_equal 'EOF', status
-  t.assert_equal 'HTTP/1.1 201 Created', line
-  t.assert_equal '0', fields['content-length']
-  t.assert_equal '', body
-end
-
-t.assert('ngx_mruby - output, then a status', 'Nginx.rputs, then Nginx.return Nginx::HTTP_NOT_FOUND still answers nginx\'s 404 page without the output') do
-  status, raw = output_status_get('/not_found')
+t.assert('ngx_mruby - output, then a status', 'Nginx.rputs, then Nginx.return Nginx::HTTP_CONTINUE answers 500 without the output') do
+  status, raw = output_status_get('/continue')
   line, _fields, body = output_status_parse(raw)
   t.assert_equal 'EOF', status
-  t.assert_equal 'HTTP/1.1 404 Not Found', line
-  t.assert_include body, '<title>404 Not Found</title>'
-  t.assert_false body.include?('not found')
+  t.assert_equal 'HTTP/1.1 500 Internal Server Error', line
+  t.assert_false body.include?('continue')
 end
 
 t.assert('ngx_mruby - output, then a status', 'Nginx.return Nginx::HTTP_ACCEPTED before the first Nginx.rputs still answers the output with 200') do
@@ -108,12 +104,12 @@ t.assert('ngx_mruby - output, then a status', 'Nginx.return Nginx::HTTP_ACCEPTED
   t.assert_equal 'status first', body
 end
 
-t.assert('ngx_mruby - output, then a status', 'a subrequest whose content handler writes output and sets 202 still ends without a response body') do
+t.assert('ngx_mruby - output, then a status', 'a subrequest whose content handler writes output and sets 202 sends its output with 202') do
   status, raw = output_status_get('/sub_request_to_accepted')
   line, _fields, body = output_status_parse(raw)
   t.assert_equal 'EOF', status
   t.assert_equal 'HTTP/1.1 200 OK', line
-  t.assert_equal 'status:0 body:', body
+  t.assert_equal 'status:202 body:accepted', body
 end
 
 t.assert('ngx_mruby - output, then a status', 'HEAD of a handler that sets 202 after output gets the header without a body') do
