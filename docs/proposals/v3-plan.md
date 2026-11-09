@@ -341,7 +341,7 @@ use case in "Agent proxy: the v3.0 use case" at the end of this section.
 | Update `ngx_devel_kit` to v0.3.4 via `update-devkit-subtree`. | none | 2.2 |
 | Require nginx 1.30 stable and 1.31 mainline; remove `nginx_version` branches older than 1.25.5; raise the floor each April. | breaking (older nginx) | 3.1, 2.1 |
 | Require OpenSSL 3.5 LTS; test 4.0; drop 1.1.1 and 3.0. Check ngx_mruby and bundled gems for ENGINE or removed APIs. | breaking (older OpenSSL) | 3.4 |
-| Replace `mruby-secure-random` with a small gem over `RAND_bytes`/`getrandom`; reimplement `mruby-digest` over OpenSSL 3 EVP or find a maintained one; drop `mruby-vedis` and `mruby-localmemcache` from the default list. | breaking (default gem set) | 3.3 |
+| Replace `mruby-secure-random` with a small gem over `RAND_bytes`/`getrandom`; reimplement `mruby-digest` over OpenSSL 3 EVP or find a maintained one; drop `mruby-vedis` and `mruby-localmemcache` from the default list. Done on `next`: #766 dropped `mruby-vedis` and `mruby-localmemcache`, and #771 replaced the two gems with `mrbgems/secure-random` (`RAND_bytes`) and `mrbgems/digest` (EVP and `EVP_MAC`). | breaking (default gem set) | 3.3 |
 
 ### Pillar B: core design
 

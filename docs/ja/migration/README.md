@@ -15,6 +15,14 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
 ## ビルド
 
 - Ruby 3.0以降でビルドしてください。同梱のmrubyのビルドは、Ruby 2.xでは止まります。詳しくは[同梱のmrubyのビルドにRuby 3.0以降が要る](../../releases/v3.0.0.ja.md#同梱のmrubyのビルドにruby-30以降が要る678)にあります。`ruby --version`は、`PATH`にあるRubyのバージョンを出力します。
+- OpenSSL 3.0以降でビルドしてください。`--with-openssl-src`で渡すOpenSSLも同じです。既定のビルドの`Digest`と`SecureRandom`は、ngx_mrubyのgemが定義します。このgemはOpenSSLの`EVP_MAC`と`RAND_bytes`のAPIを使うので、OpenSSL 1.1.1、LibreSSL、BoringSSLではビルドが止まります。詳しくは[`Digest`と`SecureRandom`を、OpenSSL 3.0以降が要るngx_mrubyのgemが定義する](../../releases/v3.0.0.ja.md#digestとsecurerandomをopenssl-30以降が要るngx_mrubyのgemが定義する771)にあります。`openssl version`は、`PATH`にある`openssl`のコマンドのバージョンを出力し、多くの場合ヘッダのバージョンと同じです。macOSでは、OpenSSL 3を入れ、そのディレクトリをビルドに渡してください。
+
+  ```sh
+  export NGX_MRUBY_CFLAGS="-I$(brew --prefix openssl@3)/include"
+  export NGX_MRUBY_LDFLAGS="-L$(brew --prefix openssl@3)/lib"
+  ```
+
+  iij/mruby-digestかmonochromegane/mruby-secure-randomを足した自前の`build_config.rb`からは、その行を消してください。既定のgemが同じgemの名前を持ちます。
 - このリリースの`build_config.rb`を使うなら、モジュールをビルドし直してください。同梱のmrubyも一緒にビルドします。詳しくは[同梱のmrubyが3.3.0から4.1.0-rc2になる](../../releases/v3.0.0.ja.md#同梱のmrubyが330から410-rc2になる561-678)にあります。
 - 自前の`build_config.rb`を使うなら、コアのgemを選ぶ行を見つけてください。詳しくは[自前の`build_config.rb`は、mruby 4.1のコアgemの変更に合わせる必要がある](../../releases/v3.0.0.ja.md#自前のbuild_configrbはmruby-41のコアgemの変更に合わせる必要がある561-678)にあります。
 
@@ -225,6 +233,20 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   ```
 
   `fork`と`system`を使う処理は、ほかのプロセスをnginxの外で起動する形に変えてください。`Vedis`と`Cache`のデータは、Redisか自分で用意したストアに置くか、`build_config.rb`のそのgemの行のコメントを外してください。
+
+- [`Digest`と`SecureRandom`を、OpenSSL 3.0以降が要るngx_mrubyのgemが定義する](../../releases/v3.0.0.ja.md#digestとsecurerandomをopenssl-30以降が要るngx_mrubyのgemが定義する771)：次のコマンドで、結果の変わる呼び出しを探します。見るのは、`Digest`のオブジェクトの`dup`と`clone`、`digest`か`hexdigest`を2回以上呼ぶHMACのオブジェクト、引数を渡す`urlsafe_base64`です。
+
+  ```sh
+  grep -rnE 'Digest::|\.dup|\.clone|urlsafe_base64|random_bytes' /path/to/scripts
+  ```
+
+  ```ruby
+  d = Digest::SHA256.new.update("ab")
+  d.dup.update("c").hexdigest   # 2.x: the SHA-256 of "c"   3.0.0: the SHA-256 of "abc"
+  Digest::SHA256.new.update("c").hexdigest   # the SHA-256 of "c" on both
+  SecureRandom.urlsafe_base64(32).size       # 2.x: 22   3.0.0: 43
+  SecureRandom.urlsafe_base64.size           # 22 on both
+  ```
 
 - [`Nginx::Upstream#server=`と`Nginx::Stream::Connection#upstream_server=`が、serverにできない文字列に`ArgumentError`を出す](../../releases/v3.0.0.ja.md#nginxupstreamserverとnginxstreamconnectionupstream_serverがserverにできない文字列にargumenterrorを出す680)：上の検索は、2つのsetterと`RuntimeError`を見つけます。そのうち、setterの例外をrescueする箇所を見てください。
 

@@ -35,6 +35,23 @@ and, for 4.1, `NEWS.md` in `mruby/`.
   Ruby 2.x
   ([Building the bundled mruby needs Ruby 3.0 or later](../releases/v3.0.0.md#building-the-bundled-mruby-needs-ruby-30-or-later-678)).
   `ruby --version` prints the version of the Ruby on `PATH`.
+- Build with OpenSSL 3.0 or later, also for `--with-openssl-src`: `Digest`
+  and `SecureRandom` of the default build come from gems of ngx_mruby that
+  use its `EVP_MAC` and `RAND_bytes` APIs, and the build stops on OpenSSL
+  1.1.1, LibreSSL and BoringSSL
+  ([`Digest` and `SecureRandom` come from gems of ngx_mruby that need OpenSSL 3.0 or later](../releases/v3.0.0.md#digest-and-securerandom-come-from-gems-of-ngx_mruby-that-need-openssl-30-or-later-771)).
+  `openssl version` prints the version of the `openssl` command on `PATH`,
+  which is usually that of the headers. On macOS, install OpenSSL 3 and
+  give its directories to the build:
+
+  ```sh
+  export NGX_MRUBY_CFLAGS="-I$(brew --prefix openssl@3)/include"
+  export NGX_MRUBY_LDFLAGS="-L$(brew --prefix openssl@3)/lib"
+  ```
+
+  A `build_config.rb` of your own that adds iij/mruby-digest or
+  monochromegane/mruby-secure-random drops that line: the default gems have
+  the same gem names.
 - With the `build_config.rb` of this release, rebuild the module; the
   bundled mruby is built with it
   ([The bundled mruby is 4.1.0-rc2 instead of 3.3.0](../releases/v3.0.0.md#the-bundled-mruby-is-410-rc2-instead-of-330-561-678)).
@@ -381,6 +398,23 @@ not enough, and show the change.
   Start other processes outside nginx instead of `fork` and `system`, and
   keep the data of `Vedis` and `Cache` in Redis or in a store of your own,
   or uncomment the gem's line in `build_config.rb`.
+
+- [`Digest` and `SecureRandom` come from gems of ngx_mruby that need OpenSSL 3.0 or later](../releases/v3.0.0.md#digest-and-securerandom-come-from-gems-of-ngx_mruby-that-need-openssl-30-or-later-771):
+  this finds the calls whose result changes; look at the `dup` and `clone`
+  of digest objects, the HMAC objects whose `digest` or `hexdigest` is
+  called more than once, and the `urlsafe_base64` calls with an argument.
+
+  ```sh
+  grep -rnE 'Digest::|\.dup|\.clone|urlsafe_base64|random_bytes' /path/to/scripts
+  ```
+
+  ```ruby
+  d = Digest::SHA256.new.update("ab")
+  d.dup.update("c").hexdigest   # 2.x: the SHA-256 of "c"   3.0.0: the SHA-256 of "abc"
+  Digest::SHA256.new.update("c").hexdigest   # the SHA-256 of "c" on both
+  SecureRandom.urlsafe_base64(32).size       # 2.x: 22   3.0.0: 43
+  SecureRandom.urlsafe_base64.size           # 22 on both
+  ```
 
 - [`Nginx::Upstream#server=` and `Nginx::Stream::Connection#upstream_server=` raise `ArgumentError` for a string that cannot be a server](../releases/v3.0.0.md#nginxupstreamserver-and-nginxstreamconnectionupstream_server-raise-argumenterror-for-a-string-that-cannot-be-a-server-680):
   the search above finds both setters and `RuntimeError`; look at the ones

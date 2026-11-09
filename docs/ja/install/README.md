@@ -8,7 +8,7 @@ ngx_mrubyを組み込んだnginxで、インラインとファイルのRubyを�
 
 ### 前提
 
-C/C++コンパイラ、GNU make、Ruby 3.0以降とrake、bison、git、wget、curlが必要です。同梱のmrubyのビルドは、Ruby 2.xでは`mrbc`をリンクするところで止まります。OpenSSL・PCRE・zlibは開発用ヘッダとライブラリも用意します。ビルドはGitHubからサードパーティのmrbgemsを取得します。Docker Hubのアカウントは不要です。
+C/C++コンパイラ、GNU make、Ruby 3.0以降とrake、bison、git、wget、curlが必要です。同梱のmrubyのビルドは、Ruby 2.xでは`mrbc`をリンクするところで止まります。OpenSSL・PCRE・zlibは開発用ヘッダとライブラリも用意します。OpenSSLは3.0以降が要ります。デフォルトのビルドの`Digest`と`SecureRandom`がOpenSSLの`EVP_MAC`と`RAND_bytes`のAPIを使うので、3.0より古いOpenSSLでは同梱のmrubyのビルドが止まります。ビルドはGitHubからサードパーティのmrbgemsを取得します。Docker Hubのアカウントは不要です。
 
 Ubuntu 22.04では、まず管理者権限でパッケージを入れます。以降のビルドは一般ユーザーで行ってください。
 
@@ -179,7 +179,7 @@ NGINX_SRC_ENV="$NGINX_SOURCE_DIR" sh ./build.sh --with-openssl-src=/absolute/pat
 make install
 ```
 
-過去のOpenSSL 1.0.2g取得例を、現在の推奨手順として使わないでください。独自のOpenSSLビルドには別途検証が必要です。
+ソースのOpenSSLにも、同じ理由で3.0以降が要ります。CIは、この方法で3.5.9をビルドします。過去のOpenSSL 1.0.2g取得例を、現在の推奨手順として使わないでください。独自のOpenSSLビルドには別途検証が必要です。
 
 #### 動的モジュールとしてビルドする
 

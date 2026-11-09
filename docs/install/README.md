@@ -15,9 +15,11 @@ Read the [release notes](../releases/README.md) before upgrading an existing ins
 ### Prerequisites
 
 A C/C++ compiler, GNU make, Ruby 3.0 or later with rake, bison, git, wget,
-curl, OpenSSL development headers/libraries, PCRE development
+curl, OpenSSL 3.0 or later development headers/libraries, PCRE development
 headers/libraries, and zlib development headers/libraries are required. The
-build of the bundled mruby stops on Ruby 2.x. The build downloads
+build of the bundled mruby stops on Ruby 2.x, and on an OpenSSL older than
+3.0: `Digest` and `SecureRandom` of the default build use its `EVP_MAC` and
+`RAND_bytes` APIs. The build downloads
 third-party mrbgems from GitHub. A Docker Hub account is not required.
 
 For example, on Ubuntu 22.04, install the packages with administrator
@@ -320,8 +322,10 @@ NGINX_SRC_ENV="$NGINX_SOURCE_DIR" sh ./build.sh --with-openssl-src=/absolute/pat
 make install
 ```
 
-Do not reuse the historical OpenSSL 1.0.2g download example as a current
-installation recommendation. A custom OpenSSL build needs its own validation.
+The source tree is OpenSSL 3.0 or later, for the same reason as above. CI
+builds 3.5.9 this way. Do not reuse the historical OpenSSL 1.0.2g download
+example as a current installation recommendation. A custom OpenSSL build
+needs its own validation.
 
 #### Building ngx_mruby as a dynamic module
 
