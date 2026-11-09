@@ -93,11 +93,10 @@ fallback: ステップ7e：<wbr>参照実装の<wbr>プロキシが<wbr>プロ�
 agent-proxy-stream
 label: development
 caption: v3.0に向けて設計するモデルAPIの中継がストリームのレスポンスをどう中継し、使用量をどう計上するかを、各ステップが現在動くか、v3の計画のどのステップで加わるかとともに示します。
-source: docs/proposals/v3-plan.md 407-447 558-576
+source: docs/proposals/v3-plan.md 412-452 563-581
 source: test/conf/conf.d/60-agent-proxy.conf 44-55
-at: 8d1500bf0 2026-10-29
+at: ce7d10683 2026-11-09
 leg-now: 現在：<wbr>`next`で<wbr>動き、<wbr>`agent_proxy.rb`が<wbr>確かめる
-leg-next: ステップ4：<wbr>v3の<wbr>計画の<wbr>次の<wbr>ステップ
 leg-later: ステップ7aから7e：<wbr>v3の<wbr>計画の<wbr>後の<wbr>ステップ
 
 deadline: ステップ7c：<wbr>最初の<wbr>バイトの<wbr>期限で、<wbr>ヘッダを<wbr>送らない<wbr>プロバイダを<wbr>打ち切る。<wbr>`proxy_read_timeout`は<wbr>アイドルの<wbr>タイムアウトのまま
@@ -105,7 +104,8 @@ relay: 現在：<wbr>nginxが<wbr>プロバイダの<wbr>イベントを、<wbr>
 frame: ステップ7b：<wbr>イベントフィルタが<wbr>Cで<wbr>イベントを<wbr>区切り、<wbr>一覧に<wbr>ある<wbr>イベントごとに<wbr>Rubyを<wbr>1回<wbr>呼ぶ
 usage: ステップ7b：<wbr>Rubyが<wbr>`message_start`と<wbr>`message_delta`、<wbr>または<wbr>最後の<wbr>`response.*`イベントから<wbr>使用量を<wbr>読む
 charge: ステップ7a：<wbr>レスポンスが<wbr>終わるか<wbr>切れたときに、<wbr>共有辞書の<wbr>カウンタに<wbr>計上する
-log: ステップ4：<wbr>log handlerが<wbr>`access_log`の<wbr>前に<wbr>動き、<wbr>その後で<wbr>`access_log`が<wbr>費用と<wbr>トークンを<wbr>ログに<wbr>書く
+log: 現在：<wbr>mrubyの<wbr>log handlerが<wbr>`access_log`の<wbr>前に<wbr>動く
+cost: ステップ7aと7b：<wbr>log handlerが<wbr>計算した<wbr>費用と<wbr>トークンを、<wbr>`access_log`が<wbr>ログに<wbr>書く
 ```
 
 ## v3.0の<wbr>エンドポイント
