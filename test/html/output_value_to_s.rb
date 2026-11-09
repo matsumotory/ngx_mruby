@@ -69,9 +69,10 @@ rescue => e
   when 'rputs', 'echo'
     Nginx.rputs "|#{raised}"
   when 'redirect'
-    # A rewrite handler of 2.x that ends without a result ends the request
-    # without a response, so the script declines to reach the content
-    # handler of /redirect.
+    # The script declines so that the request reaches the content handler
+    # of /redirect. On next, a rewrite handler that ends without a result
+    # declines as well; the line keeps the script the same as on 2.x, where
+    # such a handler ends the request without a response.
     r.headers_out['X-Raised'] = raised
     Nginx.return Nginx::DECLINED
   else
