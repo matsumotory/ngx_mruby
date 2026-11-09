@@ -4,11 +4,6 @@ mruby:
   release_no: 40100
 builds:
   host:
-    https://github.com/iij/mruby-digest.git:
-      url: https://github.com/iij/mruby-digest.git
-      branch: master
-      commit: 2bd4627d3430921a4290f7622b3e891979d5cee0
-      version: 0.0.0
     https://github.com/mattn/mruby-json.git:
       url: https://github.com/mattn/mruby-json.git
       branch: master
@@ -33,11 +28,6 @@ builds:
       url: https://github.com/matsumotory/mruby-mutex.git
       branch: master
       commit: 032a06887523b5c4d1ee6ba7914e98aa3474288d
-      version: 0.0.0
-    https://github.com/monochromegane/mruby-secure-random.git:
-      url: https://github.com/monochromegane/mruby-secure-random.git
-      branch: master
-      commit: 4971702e8cd299054b3220b4adb6bc3031ae2881
       version: 0.0.0
     https://github.com/ksss/mruby-stringio.git:
       url: https://github.com/ksss/mruby-stringio.git
