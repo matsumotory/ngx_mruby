@@ -405,6 +405,8 @@ Since 3.0.0, they run first in the log phase, before `access_log`: an `access_lo
 
 A log handler does not change the status that `access_log` and the later log-phase handlers write. After each log handler, the status of the response is the one that was sent, also when the handler raised an exception, which still goes to `error.log`, or set a status with `Nginx.return`.
 
+In a log handler, `Nginx.redirect` with a local URI raises a `RuntimeError` and makes no internal redirect, because the log-phase handlers after it run on the same request (since 3.0.0; see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxredirect-with-a-local-uri-raises-a-runtimeerror-in-a-log-handler-770)).
+
 On 2.x, the log handlers ran after `access_log`, and the access log line had the values of the variables from before them (see [the release notes of 3.0.0](../releases/v3.0.0.md#access_log-writes-the-variables-that-mruby-log-handlers-set-and-the-status-that-was-sent-770)).
 
 ```nginx

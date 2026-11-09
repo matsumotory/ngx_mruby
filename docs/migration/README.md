@@ -533,6 +533,10 @@ not enough, and show the change.
 - [An `mruby_set` value that cannot be converted to a String answers 500](../releases/v3.0.0.md#an-mruby_set-value-that-cannot-be-converted-to-a-string-answers-500-735):
   look for `mruby_set` and `mruby_set_code` whose code can return a value
   that is not a String, and return a String instead.
+- [`Nginx.redirect` with a local URI raises a `RuntimeError` in a log handler](../releases/v3.0.0.md#nginxredirect-with-a-local-uri-raises-a-runtimeerror-in-a-log-handler-770):
+  look for `Nginx.redirect` with a path in the code of `mruby_log_handler`
+  and `mruby_log_handler_code`, and move the call to a rewrite, access or
+  content handler.
 
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out
