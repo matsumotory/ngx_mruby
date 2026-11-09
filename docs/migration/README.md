@@ -597,7 +597,9 @@ not enough, and show the change.
   status below 200 answers 500. A status set before the first output
   follows the same rule on 3.0.0, where 2.x sent the output with 200: a
   handler that means 200 calls `Nginx.return Nginx::HTTP_OK` after the
-  output.
+  output. `Nginx::HTTP_CLOSE` (444) with output, before or after it, sends
+  nothing and closes the connection, as 2.x does for 444 after the output;
+  2.x sent output written after 444 with 200.
 
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out

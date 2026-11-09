@@ -1,8 +1,8 @@
 # Proposal: the rest of the v3 core before `v3.0.0-alpha.1`
 
 Status: in progress. The design decisions of section 5 were made on
-2026-11-09 (decisions 1 to 5) and on 2026-11-10 (decision 6), and no point
-of the design is open. Next step: the pull
+2026-11-09 (decisions 1 to 5) and on 2026-11-10 (decisions 6 and 7), and
+no point of the design is open. Next step: the pull
 requests of section 4 that wait for nothing start, first "Log handlers
 before `access_log`" and "`mruby_variable`", by 2026-11-16.
 
@@ -736,6 +736,11 @@ the plan accepted "body with any status".
   `Nginx.status_code=` counts: the record of the handler's fiber keeps it,
   and the first `Nginx.rputs` copies it into the rputs chain of the
   module context.
+- `Nginx::HTTP_CLOSE` (444) with output, before or after it (decision 7),
+  is the exception to the rule: the output is not sent, its length is
+  taken out of `Content-Length` as in the branch that answers 500, and the
+  handler returns `NGX_HTTP_CLOSE`, so that nginx closes the connection
+  without a response.
 - A negative result such as `Nginx::DECLINED` after the output keeps
   today's handling: the output is not sent, and the phase gets the code
   (`:329-333`). Before the output, such a code does not apply to it. An exception still drops the output and answers 500
@@ -835,7 +840,7 @@ and the one that merges second updates its branch.
 | Common error logging | 2.8 | nothing | execution context (`Nginx.log`) |
 | Directive table and one duplicate check | 2.5 | nothing | log handlers, filter handlers, code loading |
 | A body with any status: [#779](https://github.com/matsumotory/ngx_mruby/pull/779), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`) |
-| A status set before the output (decision 6), and the cases of the review of #779 for handlers resumed by a subrequest and for 304: [#783](https://github.com/matsumotory/ngx_mruby/pull/783), done when it is merged | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`, `src/http/ngx_http_mruby_async.c`) |
+| A status set before the output (decision 6), `Nginx::HTTP_CLOSE` with output (decision 7), and the cases of the review of #779 for handlers resumed by a subrequest and for 304: [#783](https://github.com/matsumotory/ngx_mruby/pull/783), done when it is merged | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`, `src/http/ngx_http_mruby_async.c`) |
 | The check before the tag | 3 | every row above | nothing |
 
 The agent proxy parts (a) and (c) of step 7 of the plan do not touch these
@@ -844,7 +849,7 @@ directive table then lists.
 
 ## 5. Decisions and rationale
 
-Decisions 1 to 5 below were made on 2026-11-09, and decision 6 on
+Decisions 1 to 5 below were made on 2026-11-09, and decisions 6 and 7 on
 2026-11-10. Each records what was chosen, the option that was not, the
 reason, and what changes. Sections 2.1, 2.3, 2.5, 2.9 and 2.12 describe the
 design with them.
@@ -966,6 +971,25 @@ where #779 and 2.x sent it with 200; a handler that means 200 calls
 `/status_before_output` in `test/t/cases/output_then_status.rb` changes
 from 200 to 202. The entry of section 2.12 in the release notes of 3.0.0
 says so.
+
+### Decision 7: `Nginx::HTTP_CLOSE` with output closes the connection without a response
+
+Chosen: a handler that writes output and sets `Nginx::HTTP_CLOSE` (444)
+before or after it sends nothing: the output is dropped, and nginx closes
+the connection, as for 444 without output. Not chosen: sending the output
+with `HTTP/1.1 444`, which the rule of decisions 5 and 6 gives, as #779
+did for 444 after the output.
+
+Reason: 444 is not an HTTP status but nginx's value for closing a
+connection without a response (`NGX_HTTP_CLOSE`, which
+`ngx_http_finalize_request` handles by closing the connection), and a
+script uses it to drop a client that it decided to refuse. Such a client
+should not get the output that the handler had built before it decided.
+
+What changes: 444 after output closes the connection, as on 2.x (#779 had
+sent the output with 444, which no release shipped); 444 before the
+output closes the connection, where 2.x and #779 sent the output with 200.
+The entry of section 2.12 in the release notes of 3.0.0 says so.
 
 ## 6. Risks
 

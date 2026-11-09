@@ -317,9 +317,9 @@ rewrite, access and content handlers, on the main request and in
 subrequests, also after `Nginx::Async::HTTP.sub_request` resumed the
 handler:
 
-- A status from 200 up: the output goes out with that status and the
-  `Content-Length` of the output, like nginx's own `return 401 "text";`
-  without its `Content-Type`. An `error_page` of the location for the status
+- A status from 200 up, other than `Nginx::HTTP_CLOSE` (below): the output
+  goes out with that status and the `Content-Length` of the output, like
+  nginx's own `return 401 "text";` without its `Content-Type`. An `error_page` of the location for the status
   does not apply to this response, as it does not apply to nginx's `return`
   with a text. For 301, 302, 303, 307 and 308, ngx_mruby adds no `Location`:
   set it with [Nginx::Headers_out](#nginxheaders_out-class) when the client
@@ -330,6 +330,9 @@ handler:
 - A status below 200: 500 with nginx's error page, without the output.
   error.log gets a line at the error level that ends with
   `with the output is not the status of a final response. return NGX_HTTP_INTERNAL_SERVER_ERROR`.
+- `Nginx::HTTP_CLOSE` (444), nginx's value for closing a connection without
+  a response: the output is not sent, and nginx closes the connection, as
+  for 444 without output.
 - `Nginx.return 0` sets no status, and the output of a content handler gets
   200.
 - A return code below 0, such as `Nginx::DECLINED`, after the output: the

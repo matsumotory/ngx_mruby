@@ -349,7 +349,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   Nginx.return Nginx::HTTP_UNAUTHORIZED
   ```
 
-  `Nginx.rputs`が無ければ、どちらのバージョンもnginxの401のページか、`error_page`のページを返します。nginxのページや`error_page`に頼っていたハンドラは、出力を書かずにステータスを設定してください。出力の後に301、302、303、307、308を設定したとき、`Location`は、スクリプトが`Nginx::Headers_out`で設定した場合だけ付きます。出力の後の200未満のステータスでは500を返します。最初の出力の前に設定したステータスにも、3.0.0では同じ規則を当てます。2.xは出力を200で送りました。200で送るつもりのハンドラは、出力の後に`Nginx.return Nginx::HTTP_OK`を呼び、ステータスを200に戻してください。
+  `Nginx.rputs`が無ければ、どちらのバージョンもnginxの401のページか、`error_page`のページを返します。nginxのページや`error_page`に頼っていたハンドラは、出力を書かずにステータスを設定してください。出力の後に301、302、303、307、308を設定したとき、`Location`は、スクリプトが`Nginx::Headers_out`で設定した場合だけ付きます。出力の後の200未満のステータスでは500を返します。最初の出力の前に設定したステータスにも、3.0.0では同じ規則を当てます。2.xは出力を200で送りました。200で送るつもりのハンドラは、出力の後に`Nginx.return Nginx::HTTP_OK`を呼び、ステータスを200に戻してください。`Nginx::HTTP_CLOSE`(444)では、出力の前でも後でも何も送らずに接続を閉じます。出力の後の444は2.xと同じです。2.xは、444の後に書いた出力を200で送りました。
 
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
