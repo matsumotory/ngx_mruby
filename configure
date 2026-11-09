@@ -672,6 +672,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -752,6 +753,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -1004,6 +1006,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1141,7 +1152,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1294,6 +1305,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -3709,8 +3721,8 @@ NGX_MRUBY_LDFLAGS=""
 host_os=`uname -s | tr [:upper:] [:lower:]`
 if test "X$NGX_OPENSSL_SRC" = X ; then
   if test "${host_os}" = darwin; then
-    # Homebrew, pkgsrc
-    for openssl_dir in /usr/local/opt/openssl /opt/pkg
+    # Homebrew on Apple silicon and on Intel, pkgsrc
+    for openssl_dir in /opt/homebrew/opt/openssl /usr/local/opt/openssl /opt/pkg
     do
       if test -d ${openssl_dir}/include/openssl; then
         NGX_MRUBY_LDFLAGS="-L${openssl_dir}/lib -lcrypto"
@@ -3731,6 +3743,13 @@ if test "X$NGX_OPENSSL_SRC" != X ; then
 
   NGX_OPENSSL_INSTALL_DIR=$NGX_OPENSSL_SRC/.openssl
   NGX_CFLAGS=-I$NGX_OPENSSL_INSTALL_DIR/include
+  # The rake of mruby compiles and links the gems of mrbgems/ (Digest and
+  # SecureRandom use libcrypto) with NGX_MRUBY_CFLAGS and NGX_MRUBY_LDFLAGS
+  # only: give them the headers and the libraries of this OpenSSL, which
+  # the target openssl of Makefile.in installs before mruby is built, not
+  # those of the system.
+  NGX_MRUBY_CFLAGS="${NGX_MRUBY_CFLAGS} -I$NGX_OPENSSL_INSTALL_DIR/include"
+  NGX_MRUBY_LDFLAGS="${NGX_MRUBY_LDFLAGS} -L$NGX_OPENSSL_INSTALL_DIR/lib -Wl,-rpath,$NGX_OPENSSL_INSTALL_DIR/lib"
   if test "x$enable_dynamic_module" = xyes ; then
       NGX_LDFLAGS="-L$NGX_OPENSSL_INSTALL_DIR/lib\ -Wl,-rpath,$NGX_OPENSSL_INSTALL_DIR/lib"
   else
@@ -3773,9 +3792,8 @@ if test "X$NGX_OPENSSL_SRC" != X ; then
     $as_echo "$0: Can't find openssl version information." >&2
     exit 255
   fi
-  echo "target openssl version is $OPENSSL_VERSION" >&2
   eval `echo $OPENSSL_VERSION | awk -F '.' '{print "OPENSSL_MAJOR_VERSION=" $1 "\nOPENSSL_MINOR_VERSION=" $2}'`
-  echo "  major=$OPENSSL_MAJOR_VERSION minor=$OPENSSL_MINOR_VERSION"
+  $as_echo "openssl version is $OPENSSL_VERSION ($OPENSSL_MAJOR_VERSION $OPENSSL_MINOR_VERSION)" >&2
   if test $OPENSSL_MAJOR_VERSION -eq 1 -a $OPENSSL_MINOR_VERSION -le 0; then
     OPENSSL_MAKE_TARGET="build_all install_sw"
     OPENSSL_CONFIG_ENABLE_TLSEXT="enable-tlsext"

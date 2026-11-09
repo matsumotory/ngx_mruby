@@ -70,8 +70,8 @@ NGX_MRUBY_LDFLAGS=""
 host_os=`uname -s | tr [[:upper:]] [[:lower:]]`
 if test "X$NGX_OPENSSL_SRC" = X ; then
   if test "${host_os}" = darwin; then
-    # Homebrew, pkgsrc
-    for openssl_dir in /usr/local/opt/openssl /opt/pkg
+    # Homebrew on Apple silicon and on Intel, pkgsrc
+    for openssl_dir in /opt/homebrew/opt/openssl /usr/local/opt/openssl /opt/pkg
     do
       if test -d ${openssl_dir}/include/openssl; then
         NGX_MRUBY_LDFLAGS="-L${openssl_dir}/lib -lcrypto"
@@ -92,6 +92,13 @@ if test "X$NGX_OPENSSL_SRC" != X ; then
 
   NGX_OPENSSL_INSTALL_DIR=$NGX_OPENSSL_SRC/.openssl
   NGX_CFLAGS=-I$NGX_OPENSSL_INSTALL_DIR/include
+  # The rake of mruby compiles and links the gems of mrbgems/ (Digest and
+  # SecureRandom use libcrypto) with NGX_MRUBY_CFLAGS and NGX_MRUBY_LDFLAGS
+  # only: give them the headers and the libraries of this OpenSSL, which
+  # the target openssl of Makefile.in installs before mruby is built, not
+  # those of the system.
+  NGX_MRUBY_CFLAGS="${NGX_MRUBY_CFLAGS} -I$NGX_OPENSSL_INSTALL_DIR/include"
+  NGX_MRUBY_LDFLAGS="${NGX_MRUBY_LDFLAGS} -L$NGX_OPENSSL_INSTALL_DIR/lib -Wl,-rpath,$NGX_OPENSSL_INSTALL_DIR/lib"
   if test "x$enable_dynamic_module" = xyes ; then
       NGX_LDFLAGS="-L$NGX_OPENSSL_INSTALL_DIR/lib\ -Wl,-rpath,$NGX_OPENSSL_INSTALL_DIR/lib"
   else
