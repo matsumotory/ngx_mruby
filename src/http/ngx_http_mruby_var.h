@@ -18,9 +18,9 @@
  * Nginx.redirect and Nginx::Filter#body=, as a String in *out: o itself when
  * it is a String, else what its to_s returns. to_s runs under
  * mrb_protect_error(), so this also works where no Ruby code runs (mrb->jmp
- * is NULL), as at the end of an mruby_set handler. A to_s that is missing, that raises or that does not
- * return a String gives FALSE, with the exception in *out (a TypeError for
- * the last). mrb->exc is NULL afterwards.
+ * is NULL), as at the end of an mruby_set handler. A to_s that is missing,
+ * that raises or that does not return a String gives FALSE, with the
+ * exception in *out (a TypeError for the last). mrb->exc is NULL afterwards.
  */
 mrb_bool ngx_mrb_var_to_string(mrb_state *mrb, mrb_value o, mrb_value *out);
 
