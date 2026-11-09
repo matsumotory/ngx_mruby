@@ -337,6 +337,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   Nginx.rputs "fallback"       # 2.x: sent with the answer of /backend   3.0.0: not sent, warn line
   return                        # leave the handler when the code after the call should not run
   ```
+- [引数の`to_s`がString以外を返すと、`Nginx.rputs`、`Nginx.echo`、`Nginx.redirect`、`Nginx::Filter#body=`が`TypeError`を出す](../../releases/v3.0.0.ja.md#引数のto_sがstring以外を返すとnginxrputsnginxechonginxredirectnginxfilterbodyがtypeerrorを出す776)：これらのメソッドと`Nginx::Filter#output`に、Stringでない引数を渡す呼び出しを探してください。その引数は、String、`nil`、`to_s`がStringを返す値のどれかに替えてください。
 - [`mruby_set`のハンドラでは`Nginx::Async::HTTP.sub_request`が`RuntimeError`を出す](../../releases/v3.0.0.ja.md#mruby_setのハンドラではnginxasynchttpsub_requestがruntimeerrorを出す735)：`mruby_set`と`mruby_set_code`で、`Nginx::Async::HTTP.sub_request`を探してください。サブリクエストを待てるrewriteかaccessのハンドラで呼び、`Nginx::Var#set`で変数を設定してください。
 - [`mruby_set`の値をStringに変換できないと500で応答する](../../releases/v3.0.0.ja.md#mruby_setの値をstringに変換できないと500で応答する735)：コードがString以外の値を返しうる`mruby_set`と`mruby_set_code`を探し、Stringを返すようにしてください。
 - [logハンドラでは、ローカルのURIへの`Nginx.redirect`が`RuntimeError`を出す](../../releases/v3.0.0.ja.md#logハンドラではローカルのuriへのnginxredirectがruntimeerrorを出す770)：`mruby_log_handler`と`mruby_log_handler_code`のコードで、パスを渡す`Nginx.redirect`を探し、その呼び出しをrewrite、access、contentのどれかのハンドラへ移してください。

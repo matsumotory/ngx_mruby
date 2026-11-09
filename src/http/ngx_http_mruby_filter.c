@@ -8,6 +8,7 @@
 
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_request.h"
+#include "ngx_http_mruby_var.h"
 
 #include <mruby/presym.h>
 #include <mruby/string.h>
@@ -45,8 +46,11 @@ static mrb_value ngx_mrb_set_filter_body(mrb_state *mrb, mrb_value self)
   }
 
   mrb_get_args(mrb, "o", &body);
-  if (mrb_type(body) != MRB_TT_STRING) {
-    body = mrb_funcall_id(mrb, body, MRB_SYM(to_s), 0);
+  // a body whose to_s is missing, raises or does not return a String raises
+  // the exception of the conversion (TypeError for the last), and the body
+  // stays as it was
+  if (!ngx_mrb_var_to_string(mrb, body, &body)) {
+    mrb_exc_raise(mrb, body);
   }
 
   ctx->body_length = RSTRING_LEN(body);

@@ -563,6 +563,10 @@ not enough, and show the change.
   Nginx.rputs "fallback"       # 2.x: sent with the answer of /backend   3.0.0: not sent, warn line
   return                        # leave the handler when the code after the call should not run
   ```
+- [`Nginx.rputs`, `Nginx.echo`, `Nginx.redirect` and `Nginx::Filter#body=` raise `TypeError` when `to_s` of the argument does not return a String](../releases/v3.0.0.md#nginxrputs-nginxecho-nginxredirect-and-nginxfilterbody-raise-typeerror-when-to_s-of-the-argument-does-not-return-a-string-776):
+  look for calls of these methods and of `Nginx::Filter#output` with an
+  argument that is not a String, and pass a String, `nil` or a value whose
+  `to_s` returns a String instead.
 - [`Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in an `mruby_set` handler](../releases/v3.0.0.md#nginxasynchttpsub_request-raises-a-runtimeerror-in-an-mruby_set-handler-735):
   look for `Nginx::Async::HTTP.sub_request` in `mruby_set` and
   `mruby_set_code`. Call it in a rewrite or access handler, which waits for

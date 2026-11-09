@@ -47,11 +47,13 @@ typedef enum { NGX_MRB_VAR_LIST(NGX_MRB_VAR_ENUM) NGX_MRB_VAR_COUNT } ngx_mrb_va
 mrb_value ngx_mrb_var_get_fixed(mrb_state *mrb, ngx_mrb_var_id_t id);
 
 /*
- * The value of a variable as a String in *out: o itself when it is a String,
- * else what its to_s returns. The call runs under mrb_protect_error(), so
- * that it also works where no Ruby code runs (mrb->jmp is NULL, where a raise
- * would abort the process). A to_s that is missing, that raises or that does
- * not return a String gives FALSE, with the exception in *out.
+ * The value of a variable, or the argument of Nginx.rputs, Nginx.echo,
+ * Nginx.redirect and Nginx::Filter#body=, as a String in *out: o itself when
+ * it is a String, else what its to_s returns. The call runs under
+ * mrb_protect_error(), so that it also works where no Ruby code runs
+ * (mrb->jmp is NULL, where a raise would abort the process). A to_s that is
+ * missing, that raises or that does not return a String gives FALSE, with the
+ * exception in *out.
  */
 mrb_bool ngx_mrb_var_to_string(mrb_state *mrb, mrb_value o, mrb_value *out);
 
