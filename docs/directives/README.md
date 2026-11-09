@@ -376,6 +376,10 @@ Phase:   NGX_HTTP_SERVER_REWRITE_PHASE, NGX_HTTP_REWRITE_PHASE
 
 'mruby_set' and 'mruby_set_code' are called at one of the rewrite phases to set a nginx variable.
 
+The variable gets the value of the code as a String: a String as it is, `nil` as an empty string, and any other value through its `to_s`.
+Since 2.7.6, a value whose `to_s` is missing (a `BasicObject`, for example), raises, or returns something other than a String counts as an exception of the code, as described below: ngx_mruby logs the exception, which is a `TypeError` when `to_s` returns something other than a String.
+Up to 2.7.5 such a value could end the worker process.
+
 If the code raises an exception before it waits in `Nginx::Async.sleep` or `Nginx::Async::HTTP.sub_request`, ngx_mruby logs it, the variable is set to an empty string (as when the code returns `nil`), also when an earlier directive of the location gave it a value, and the request goes on.
 Text that the code wrote with `Nginx.rputs` or `Nginx.echo` before the exception is not sent and does not count in the `Content-Length` of the response.
 If the code raises after such a call returned, the request gets 500 and the output of `Nginx.rputs` is not sent, as described under [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec).

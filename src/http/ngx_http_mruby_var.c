@@ -47,8 +47,32 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, mrb_value self, const char *c_n
   }
 }
 
+static mrb_value ngx_mrb_var_to_s(mrb_state *mrb, void *userdata)
+{
+  mrb_value v = mrb_funcall(mrb, *(mrb_value *)userdata, "to_s", 0);
+
+  return mrb_ensure_string_type(mrb, v);
+}
+
+mrb_bool ngx_mrb_var_to_string(mrb_state *mrb, mrb_value o, mrb_value *out)
+{
+  mrb_bool failed;
+
+  if (mrb_string_p(o)) {
+    *out = o;
+    return TRUE;
+  }
+  *out = mrb_protect_error(mrb, ngx_mrb_var_to_s, &o, &failed);
+  return !failed;
+}
+
 mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_value o, ngx_http_request_t *r)
 {
+  // Nginx::Var#<name>= runs in Ruby code: a value that cannot be converted
+  // raises the exception of the conversion in the script
+  if (!ngx_mrb_var_to_string(mrb, o, &o)) {
+    mrb_exc_raise(mrb, o);
+  }
   return ngx_mrb_var_set_vector(mrb, self, k, strlen(k), o, r);
 }
 
@@ -62,8 +86,11 @@ mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int le
   ngx_str_t val;
   u_char *valp;
 
-  if (mrb_type(o) != MRB_TT_STRING) {
-    o = mrb_funcall(mrb, o, "to_s", 0, NULL);
+  // the callers convert the value with ngx_mrb_var_to_string()
+  if (!mrb_string_p(o)) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: the value of %*s is not a String", MODULE_NAME,
+                  __func__, __LINE__, (size_t)len, k);
+    return mrb_nil_value();
   }
 
   val.data = (u_char *)RSTRING_PTR(o);
@@ -239,11 +266,13 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
   u_char *keyp, *lowkey, *valp;
 
   mrb_get_args(mrb, "oo", &k, &o);
-  if (mrb_type(k) != MRB_TT_STRING) {
-    k = mrb_funcall(mrb, k, "to_s", 0, NULL);
+  // a name or a value that cannot be converted to a String raises the
+  // exception of the conversion
+  if (!ngx_mrb_var_to_string(mrb, k, &k)) {
+    mrb_exc_raise(mrb, k);
   }
-  if (mrb_type(o) != MRB_TT_STRING) {
-    o = mrb_funcall(mrb, o, "to_s", 0, NULL);
+  if (!ngx_mrb_var_to_string(mrb, o, &o)) {
+    mrb_exc_raise(mrb, o);
   }
 
   r = ngx_mrb_get_request_or_raise(mrb);

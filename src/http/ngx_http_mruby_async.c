@@ -250,6 +250,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
   ngx_int_t rc = NGX_OK;
   ngx_http_request_t *prev_r;
   ngx_http_mruby_handler_kind_t kind;
+  mrb_value value;
   int ai;
 
   ai = mrb_gc_arena_save(re->mrb);
@@ -288,10 +289,16 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
                       "%s NOTICE %s:%d: invalid variable name error name: %s", MODULE_NAME, __func__, __LINE__,
                       ctx->set_var_target.data);
         rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+      } else if (!ngx_mrb_var_to_string(re->mrb, *ctx->async_handler_result, &value)) {
+        // a value whose to_s is missing, raises or does not return a String
+        // ends the handler as an exception after the wait does: logged, and
+        // the request gets 500
+        ngx_mrb_raise_error(re->mrb, value, re->r);
+        rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
       } else {
         // Delete the leading dollar(ctx->set_var_target.data+1)
         ngx_mrb_var_set_vector(re->mrb, mrb_top_self(re->mrb), (char *)ctx->set_var_target.data + 1,
-                               ctx->set_var_target.len - 1, *ctx->async_handler_result, re->r);
+                               ctx->set_var_target.len - 1, value, re->r);
       }
     }
 
