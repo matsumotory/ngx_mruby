@@ -782,7 +782,7 @@ and the one that merges second updates its branch.
 
 | Pull request | Section | Waits for | Edits the same code as |
 |---|---|---|---|
-| Log handlers before `access_log` | 2.10 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
+| Log handlers before `access_log`: [#770](https://github.com/matsumotory/ngx_mruby/pull/770), done when it is merged | 2.10 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
 | `mruby_variable` | 2.11 | nothing | nothing |
 | Headers | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
 | Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |

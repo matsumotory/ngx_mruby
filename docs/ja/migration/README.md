@@ -355,6 +355,14 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 
 - [出力なしで終わるcontentハンドラが、500でなく、空のボディの200で応答する](../../releases/v3.0.0.ja.md#出力なしで終わるcontentハンドラが500でなく空のボディの200で応答する574)：`response body is empty. return NGX_HTTP_INTERNAL_SERVER_ERROR`に対するパターンは、メインのリクエストのcontentハンドラが出力なしで終わり、ステータスを設定していないか、nginxが自分では答えない200から299のステータスを設定しているときには、もう一致しません。200未満のステータスと、ほかのハンドラとサブリクエストで出力なしの`Nginx::HTTP_OK`には、今も一致しています。
 - [空のボディで終わる出力のボディフィルタが、接続を閉じずにレスポンスを送る](../../releases/v3.0.0.ja.md#空のボディで終わる出力のボディフィルタが接続を閉じずにレスポンスを送る574)：nginxがこれらのレスポンスを送るので、`zero size buf in writer`のアラートは、もう出ません。
+- [`access_log`が、mrubyのlogハンドラが設定した変数と、送ったステータスを書く](../../releases/v3.0.0.ja.md#access_logがmrubyのlogハンドラが設定した変数と送ったステータスを書く770)：`mruby_log_handler`と`mruby_log_handler_code`のディレクティブを探し、そのコードが`Nginx::Var`で代入する変数を探してください。代入は`v.NAME = ...`と`v.set "NAME", ...`の形です。次に、それらの変数を書く`log_format`の行を探してください。これらの行には、logハンドラが動く前の値でなく、logハンドラが代入した値が入るようになります。logハンドラが動く前の値を残したい行では、ロケーションで`set`が作ったコピーを書いてください。`set`はlogのフェーズより前に動きます。
+
+  ```nginx
+  set $tokens "-";
+  set $tokens_before_log $tokens;
+  ```
+
+  アクセスログの行のステータスは、logハンドラが例外を出した後も、送ったステータスです。ngx_mrubyは、その例外の`mrb_run failed`の行を、これまでどおり`error.log`に書きます。
 
 ## C拡張と<wbr>mrbgems
 

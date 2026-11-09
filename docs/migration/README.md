@@ -597,6 +597,23 @@ not enough, and show the change.
 - [An output body filter that ends with an empty body sends the response instead of closing the connection](../releases/v3.0.0.md#an-output-body-filter-that-ends-with-an-empty-body-sends-the-response-instead-of-closing-the-connection-574):
   an alert on `zero size buf in writer` no longer fires for these
   responses, because nginx sends them.
+- [`access_log` writes the variables that mruby log handlers set, and the status that was sent](../releases/v3.0.0.md#access_log-writes-the-variables-that-mruby-log-handlers-set-and-the-status-that-was-sent-770):
+  find the `mruby_log_handler` and `mruby_log_handler_code` directives, the
+  variables that their code assigns with `Nginx::Var` (`v.NAME = ...` and
+  `v.set "NAME", ...`), and the `log_format` lines that name those
+  variables. These lines now have the value that the log handler assigned,
+  not the value from before it. A line that should keep the value from
+  before the log handler names a copy that `set` makes in the location,
+  which runs before the log phase:
+
+  ```nginx
+  set $tokens "-";
+  set $tokens_before_log $tokens;
+  ```
+
+  The status in the access log line is the status that was sent, also
+  after a log handler raised; its `mrb_run failed` line still goes to
+  `error.log`.
 
 ## C extensions and mrbgems
 

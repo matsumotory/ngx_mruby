@@ -401,6 +401,28 @@ Phase:   NGX_HTTP_LOG_PHASE
 
 'mruby_log_handler' and 'mruby_log_handler_code' are called at the end of request processing for logging.
 
+Since 3.0.0, they run first in the log phase, before `access_log`: an `access_log` whose `log_format` names a variable that a log handler assigns with `Nginx::Var` writes the assigned value. When a location has both, the handler of `mruby_log_handler` runs before that of `mruby_log_handler_code`. They also run before the log-phase handlers of the other modules whose postconfiguration runs before that of ngx_mruby; a module whose postconfiguration runs later adds its log-phase handlers after them.
+
+A log handler does not change the status that `access_log` and the later log-phase handlers write. After each log handler, the status of the response is the one that was sent, also when the handler raised an exception, which still goes to `error.log`, or set a status with `Nginx.return`.
+
+On 2.x, the log handlers ran after `access_log`, and the access log line had the values of the variables from before them (see [the release notes of 3.0.0](../releases/v3.0.0.md#access_log-writes-the-variables-that-mruby-log-handlers-set-and-the-status-that-was-sent-770)).
+
+```nginx
+log_format with_value '$request_uri $status $log_value';
+
+server {
+    access_log logs/access.log with_value;
+
+    location = /assign {
+        set $log_value "unset";
+        mruby_content_handler_code 'Nginx.rputs "assign"';
+        mruby_log_handler_code 'Nginx::Var.new.log_value = "from-ruby"';
+    }
+}
+```
+
+The access log line of `GET /assign` is `/assign 200 from-ruby`.
+
 ## mruby_set and mruby_set_code
 
 ```

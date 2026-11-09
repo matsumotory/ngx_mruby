@@ -186,6 +186,7 @@ A handler that calls none of `Nginx.return`, `Nginx.send_header` and `Nginx.stat
 On 2.x, a handler without a result returned the value that an earlier handler of the request had set, for example the `Nginx::DECLINED` of a server rewrite handler that runs for every request, so that a content handler without output went on to the next content handler (see [the release notes of 3.0.0](../releases/v3.0.0.md#a-handler-that-sets-no-result-does-not-take-the-result-of-an-earlier-handler-715)).
 A rewrite or server rewrite handler without a result, or with `Nginx::OK`, goes on to the next phase handler, as with `Nginx::DECLINED` (since 3.0.0; on 2.x nginx ended the request without a response, see [the release notes of 3.0.0](../releases/v3.0.0.md#a-rewrite-or-server-rewrite-handler-that-ends-without-a-result-goes-on-to-the-next-phase-handler-720)).
 A return code below 0, such as `Nginx::DECLINED`, is the result of the handler only: it does not change the status of the response.
+In a log handler, the response is already sent, and the status that the method sets does not reach `access_log` or the later log-phase handlers: when the log handler ends, the status is the one that was sent again (since 3.0.0; see [mruby_log_handler](../directives/README.md#mruby_log_handler-and-mruby_log_handler_code)).
 
 A content handler that ends without output answers as nginx's `return 200;`
 does: with the status it set, 200 when it set none, `Content-Length: 0` and an
@@ -1217,6 +1218,8 @@ location /foo {
   proxy_pass  http://backend.example.com;
 }
 ```
+
+A variable that a log handler (`mruby_log_handler`, `mruby_log_handler_code`) assigns is written by an `access_log` whose `log_format` names it: the log handlers run before `access_log` since 3.0.0 (see [mruby_log_handler](../directives/README.md#mruby_log_handler-and-mruby_log_handler_code)).
 
 ## Instance Methods
 
