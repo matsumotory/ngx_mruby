@@ -136,19 +136,19 @@ t.assert('request API', 'send_header 404 without a body sends the nginx error pa
   t.assert_true res["body"].include?('<title>404 Not Found</title>')
 end
 
-t.assert('request API', 'send_header 404 after rputs replaces the body with the nginx error page') do
-  # characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
+# Since 3.0.0 the output goes out with the status set after it (section 2.12
+# of docs/proposals/core-alpha1.md); on 2.x, nginx sent its own response
+# for 404 and 201 without the output.
+t.assert('request API', 'send_header 404 after rputs sends the body with 404') do
   res = HttpRequest.new.get base(REQUEST_API_PORT) + '/request_api/send_header/body_404'
   t.assert_equal 404, res.code
-  t.assert_true res["body"].include?('<title>404 Not Found</title>')
-  t.assert_equal false, res["body"].include?('custom-body')
+  t.assert_equal 'custom-body', res["body"]
 end
 
-t.assert('request API', 'send_header 201 after rputs drops the body') do
-  # characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
+t.assert('request API', 'send_header 201 after rputs sends the body with 201') do
   res = HttpRequest.new.get base(REQUEST_API_PORT) + '/request_api/send_header/body_201'
   t.assert_equal 201, res.code
-  t.assert_equal '', res["body"]
+  t.assert_equal 'created-body', res["body"]
 end
 
 t.assert('request API', 'Nginx.return is send_header') do
