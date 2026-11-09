@@ -1,7 +1,8 @@
 # Proposal: the rest of the v3 core before `v3.0.0-alpha.1`
 
-Status: in progress. The five design decisions of section 5 were made on
-2026-11-09, and no point of the design is open. Next step: the pull
+Status: in progress. The design decisions of section 5 were made on
+2026-11-09 (decisions 1 to 5) and on 2026-11-10 (decision 6), and no point
+of the design is open. Next step: the pull
 requests of section 4 that wait for nothing start, first "Log handlers
 before `access_log`" and "`mruby_variable`", by 2026-11-16.
 
@@ -54,7 +55,7 @@ last Pillar B row). It is additive and not needed for alpha.1.
 | Waits inside another mruby call | 2.9 | `Nginx.redirect` with a local URI raises in `mruby_set` handlers and filters; #770 makes it raise in log handlers |
 | Log handlers before `access_log` | 2.10 | `access_log` writes the variables that mruby log handlers set; the status it writes is the one sent |
 | `mruby_variable` | 2.11 | A new directive |
-| A body with any status | 2.12 | Output followed by `Nginx.return` with a status of 201 or from 300 up is sent with that status, instead of nginx's own page, and `error_page` does not apply to it |
+| A body with any status | 2.12 | Output and `Nginx.return` with a status of 201 or from 300 up, before or after the output, are sent with that status, instead of nginx's own page or 200, and `error_page` does not apply to them |
 
 ## 2. The items
 
@@ -673,10 +674,11 @@ comparison of this one stays on the same configuration.
 (`ngx_mrb_send_header`, `src/http/ngx_http_mruby_core.c:425-467`) set the
 status, and when the handler wrote output with `Nginx.rputs`, mark its
 last buffer (`:442-445`). When the handler ends,
-`ngx_mrb_finalize_rputs` (`:283-367`) sends the output with the status
-(`:334-361`) when the status is 200, when it was set before the output
-(the last buffer is not marked), or when the content phase would leave the
-client without a response (`ngx_mrb_content_ends_without_response`,
+`ngx_mrb_finalize_rputs` (`:283-367`) sends the output (`:334-361`) when
+the status is 200, when it was set before the output (the last buffer is
+not marked; the output then goes out with 200, not with the status that
+was set), or when the content phase would leave the client without a
+response (`ngx_mrb_content_ends_without_response`,
 `:150-161`: a content handler of the main request, and a status below 300
 other than 201 and 204). Otherwise it returns the status (`:364-366`) to
 the phase checker, which passes it to `ngx_http_finalize_request`, and the
@@ -725,9 +727,18 @@ the plan accepted "body with any status".
 - A status below 200 after output answers 500, as a content handler
   without output and with such a status does today
   (`ngx_mrb_answer_missing_body`, `:167-178`).
+- A status set before the first output (decision 6) follows the same
+  rule as one set after it: from 200 up it goes out with the output, below
+  200 the handler answers 500, and 0 gives 200. When the handler sets a
+  status more than once, the last call decides. `r->headers_out.status`
+  can hold a value that an earlier handler or nginx stored, so only a
+  status that this handler set with `Nginx.return`, `Nginx.send_header` or
+  `Nginx.status_code=` counts: the record of the handler's fiber keeps it,
+  and the first `Nginx.rputs` copies it into the rputs chain of the
+  module context.
 - A negative result such as `Nginx::DECLINED` after the output keeps
   today's handling: the output is not sent, and the phase gets the code
-  (`:329-333`). An exception still drops the output and answers 500
+  (`:329-333`). Before the output, such a code does not apply to it. An exception still drops the output and answers 500
   (`src/http/ngx_http_mruby_module.c:1148-1177`).
 
 **`error_page` (decision 5).** Today an `error_page` of the location for
@@ -823,7 +834,8 @@ and the one that merges second updates its branch.
 | Common upstream switching | 2.7 | nothing | nothing |
 | Common error logging | 2.8 | nothing | execution context (`Nginx.log`) |
 | Directive table and one duplicate check | 2.5 | nothing | log handlers, filter handlers, code loading |
-| A body with any status: [#779](https://github.com/matsumotory/ngx_mruby/pull/779), done when it is merged | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`) |
+| A body with any status: [#779](https://github.com/matsumotory/ngx_mruby/pull/779), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`) |
+| A status set before the output (decision 6), and the cases of the review of #779 for handlers resumed by a subrequest and for 304: [#783](https://github.com/matsumotory/ngx_mruby/pull/783), done when it is merged | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`, `src/http/ngx_http_mruby_async.c`) |
 | The check before the tag | 3 | every row above | nothing |
 
 The agent proxy parts (a) and (c) of step 7 of the plan do not touch these
@@ -832,9 +844,10 @@ directive table then lists.
 
 ## 5. Decisions and rationale
 
-The five decisions below were made on 2026-11-09. Each records what was
-chosen, the option that was not, the reason, and what changes. Sections
-2.1, 2.3, 2.5, 2.9 and 2.12 describe the design with them.
+Decisions 1 to 5 below were made on 2026-11-09, and decision 6 on
+2026-11-10. Each records what was chosen, the option that was not, the
+reason, and what changes. Sections 2.1, 2.3, 2.5, 2.9 and 2.12 describe the
+design with them.
 
 ### Decision 1: `Nginx.redirect` to a local URI raises in `mruby_set` handlers, log handlers and output filters
 
@@ -930,6 +943,29 @@ What changes: a configuration that writes output, sets a status from 300
 up after it and relies on an `error_page` for that status sends the output
 on 3.0.0; it gets nginx's page again by setting the status without output.
 The entry of section 2.12 in the release notes of 3.0.0 says so.
+
+### Decision 6: a status set before the output is sent with the output as well
+
+Chosen: a status that a handler sets with `Nginx.return`,
+`Nginx.send_header` or `Nginx.status_code=` before its first output is
+sent with the output, by the rule of decision 5 (from 200 up with the
+output, below 200 an answer of 500), as section 2.12 says ("before or
+after the output"). Not chosen: keeping 200 for such output, as #779 did
+and as 2.x does.
+
+Reason: with 200 kept, one call, `Nginx.return`, had two rules, and what a
+script sent depended on whether it set the status before or after its
+output, which is what section 2.12 calls wrong. A script that builds an
+error body after it decided the status, the usual order for the agent
+proxy's 401, 403 and 429, would have sent its error with 200.
+
+What changes: a handler that sets a status other than 200 before its
+output sends the output with that status on 3.0.0 (or 500 below 200),
+where #779 and 2.x sent it with 200; a handler that means 200 calls
+`Nginx.return Nginx::HTTP_OK` after the output. The expectation of
+`/status_before_output` in `test/t/cases/output_then_status.rb` changes
+from 200 to 202. The entry of section 2.12 in the release notes of 3.0.0
+says so.
 
 ## 6. Risks
 

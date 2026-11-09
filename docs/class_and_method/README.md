@@ -309,11 +309,13 @@ On the 2.x line, a content handler that ends without output and with no
 status or a status from 200 to 299 that nginx does not answer by itself
 answers 500 instead (see [docs/releases/v3.0.0.md](../releases/v3.0.0.md)).
 
-A handler that writes output with `Nginx.rputs` or `Nginx.echo` and then
-calls `Nginx.return` (or `Nginx.send_header`, `Nginx.status_code=`) sends the
-output with that status. This holds for post_read, server rewrite, rewrite,
-access and content handlers, on the main request and in subrequests, also
-after `Nginx::Async::HTTP.sub_request` resumed the handler:
+A handler that writes output with `Nginx.rputs` or `Nginx.echo` and calls
+`Nginx.return` (or `Nginx.send_header`, `Nginx.status_code=`) before or after
+the output sends the output with that status; when it calls them more than
+once, the last call decides. This holds for post_read, server rewrite,
+rewrite, access and content handlers, on the main request and in
+subrequests, also after `Nginx::Async::HTTP.sub_request` resumed the
+handler:
 
 - A status from 200 up: the output goes out with that status and the
   `Content-Length` of the output, like nginx's own `return 401 "text";`
@@ -322,18 +324,17 @@ after `Nginx::Async::HTTP.sub_request` resumed the handler:
   with a text. For 301, 302, 303, 307 and 308, ngx_mruby adds no `Location`:
   set it with [Nginx::Headers_out](#nginxheaders_out-class) when the client
   needs it. For `Nginx::HTTP_NO_CONTENT` and `Nginx::HTTP_NOT_MODIFIED`,
-  nginx sends the header without the output. A HEAD request gets the header,
-  with the `Content-Length` of the output.
+  nginx sends the header without the output. The 304 keeps the
+  `Content-Length` of the output, as nginx's own `return 304 "text";` does.
+  A HEAD request gets the header, with the `Content-Length` of the output.
 - A status below 200: 500 with nginx's error page, without the output.
   error.log gets a line at the error level that ends with
-  `after the output is not the status of a final response. return NGX_HTTP_INTERNAL_SERVER_ERROR`.
+  `with the output is not the status of a final response. return NGX_HTTP_INTERNAL_SERVER_ERROR`.
 - `Nginx.return 0` sets no status, and the output of a content handler gets
   200.
-- A return code below 0, such as `Nginx::DECLINED`: the output is not sent,
-  and the phase gets the code.
-
-A status set before the first `Nginx.rputs` or `Nginx.echo` does not apply to
-the output: the response is 200.
+- A return code below 0, such as `Nginx::DECLINED`, after the output: the
+  output is not sent, and the phase gets the code. Before the output, such a
+  code does not apply to it.
 
 ```nginx
 location /api {
@@ -351,15 +352,17 @@ To answer with nginx's own response for a status, and with the
 `/401.html` in the location above.
 
 This is the behavior since 3.0.0 (see
-[the release notes of 3.0.0](../releases/v3.0.0.md#output-followed-by-a-status-is-sent-with-that-status-and-error_page-does-not-apply-to-it-779)).
-On the 2.x line, only a content handler on the main request sends its output
-with a status set after it, for `Nginx::HTTP_OK` and the statuses below 300
-other than `Nginx::HTTP_CREATED` and `Nginx::HTTP_NO_CONTENT`, a status below
-200 included (since 2.7.2). For `Nginx::HTTP_CREATED`,
-`Nginx::HTTP_NO_CONTENT` and the statuses from 300 up, nginx drops the output
-and sends its own response for the status, through the `error_page` of the
-location. In the other handlers and in subrequests, the output is sent only
-with `Nginx::HTTP_OK` or without a status set after it.
+[the release notes of 3.0.0](../releases/v3.0.0.md#output-is-sent-with-the-status-that-the-handler-set-and-error_page-does-not-apply-to-it-779-783)).
+On the 2.x line, a status set before the first `Nginx.rputs` or
+`Nginx.echo` does not apply to the output, which is sent with 200, and only a
+content handler on the main request sends its output with a status set
+after it, for `Nginx::HTTP_OK` and the statuses below 300 other than
+`Nginx::HTTP_CREATED` and `Nginx::HTTP_NO_CONTENT`, a status below 200
+included (since 2.7.2). For `Nginx::HTTP_CREATED`, `Nginx::HTTP_NO_CONTENT`
+and the statuses from 300 up, nginx drops the output and sends its own
+response for the status, through the `error_page` of the location. In the
+other handlers and in subrequests, the output is sent only with
+`Nginx::HTTP_OK` or without a status set after it.
 
 Don't confuse `Nginx.return` method with mruby's `return` statement.
 ngx_mruby supports `return` statement in handler code as below.

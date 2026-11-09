@@ -243,6 +243,16 @@ value of its `Fiber.yield`.
   handler of the request stored. The exception is a handler whose request
   an internal redirect inside the call sent elsewhere: without a result of
   its own, it returns the status that the target stored.
+- The first three also store the status as the code gave it in the record
+  (`ngx_http_mrb_fiber_set_status`; `Nginx.redirect` with a URL resets it
+  to 0), and the first `Nginx.rputs` or `Nginx.echo` copies it into the
+  rputs chain of the module context. `ngx_mrb_finalize_rputs` sends the
+  output with that status when no status was set after the output, so a
+  status set before the output applies to it (decision 6 of
+  [docs/proposals/core-alpha1.md](proposals/core-alpha1.md)). The result
+  can differ from it: before any output, `Nginx.return Nginx::HTTP_OK` in a
+  handler other than a content handler of the main request sets the result
+  500, and output that follows still goes out with 200.
 - `Nginx.redirect` with a local URI, in a post_read, server rewrite,
   rewrite, access or content handler that `ngx_mrb_post_fiber` does not
   resume, keeps the URI in the record (`ngx_http_mrb_fiber_defer_redirect`).
