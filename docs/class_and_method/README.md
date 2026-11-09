@@ -158,8 +158,9 @@ of the release notes of v3.0.0.
 OpenSSL. OpenSSL seeds its generator from the operating system, and seeds
 it again in each worker process that nginx forks. A call opens no file. It
 has the methods of monochromegane/mruby-secure-random, the gem of 2.x, as
-class methods of the class `SecureRandom`. `n` is a number of bytes, 16
-when it is `nil` or not given, and is converted with `to_int`:
+class methods of the class `SecureRandom`. In the first four, `n` is a
+number of bytes, 16 when it is `nil` or not given, and is converted with
+`to_int`:
 
 - `random_bytes(n)` returns `n` random bytes.
 - `hex(n)` returns `n` bytes as `2 * n` lowercase hexadecimal digits.
