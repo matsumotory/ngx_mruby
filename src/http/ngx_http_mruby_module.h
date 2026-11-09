@@ -88,6 +88,12 @@ typedef struct ngx_http_mruby_main_conf_t {
    */
   struct RClass *var_class;
   ngx_uint_t var_prefix_accessors;
+  /*
+   * The declarations of mruby_variable (pointers to the
+   * ngx_http_mruby_variable_t of ngx_http_mruby_var.c), or NULL when there
+   * is none. Read while nginx reads the configuration only.
+   */
+  ngx_array_t *variables;
 } ngx_http_mruby_main_conf_t;
 
 #define NGX_HTTP_MRUBY_VAR_PREFIX_ACCESSORS_MAX 16

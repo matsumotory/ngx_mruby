@@ -66,4 +66,21 @@ mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int le
 
 void ngx_mrb_var_class_init(mrb_state *mrb, struct RClass *class);
 
+struct ngx_http_mruby_main_conf_t;
+
+/*
+ * The directive mruby_variable $name [value]; of the http {} block. It
+ * refuses a name that another module defines with a value of its own, such
+ * as $uri, $args or a $http_<name> of a request header, and accepts one that
+ * "set" or mruby_set also assigns.
+ */
+char *ngx_http_mruby_variable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+/*
+ * Called by the postconfiguration of the http module: fails when a module
+ * declared a variable of mruby_variable after the directive with a value
+ * of its own (for example with map), which replaced its get handler.
+ */
+ngx_int_t ngx_http_mruby_variables_check(ngx_conf_t *cf, struct ngx_http_mruby_main_conf_t *mmcf);
+
 #endif // NGX_HTTP_MRUBY_VAR_H

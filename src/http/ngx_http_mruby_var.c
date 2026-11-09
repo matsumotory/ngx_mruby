@@ -531,3 +531,219 @@ void ngx_mrb_var_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_var, "exist?", ngx_mrb_var_exist, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, class_var, "set", ngx_mrb_var_set_func, MRB_ARGS_REQ(2));
 }
+
+/*
+ * mruby_variable $name [value];
+ *
+ * Declares $name in the http {} block as a changeable, indexed variable that
+ * scripts assign with Nginx::Var, without a "set" that runs in a phase of
+ * the request. Each declaration has one ngx_http_mruby_variable_t, allocated
+ * on its own so that its address, which the variable keeps as the data of
+ * its get handler, does not move. mmcf->variables holds the pointers, so
+ * that ngx_http_mruby_variables_check() finds the declarations again.
+ */
+typedef struct {
+  ngx_http_variable_t *var;
+  // the value of the variable before a script assigns it; NULL for ""
+  ngx_http_complex_value_t *value;
+  // where the directive is, for the message of the check
+  ngx_str_t file;
+  ngx_uint_t line;
+} ngx_http_mruby_variable_t;
+
+/*
+ * The get handler of a declared variable. nginx calls it only while the
+ * request has no value for the variable: an assignment through Nginx::Var
+ * or "set" writes r->variables[index], and nginx then returns that value
+ * without calling the handler. nginx keeps the value computed here in the
+ * same place, so it is computed once per request at most.
+ */
+static ngx_int_t ngx_http_mruby_variable_get(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data)
+{
+  ngx_http_mruby_variable_t *mv = (ngx_http_mruby_variable_t *)data;
+  ngx_str_t value;
+
+  if (mv->value == NULL) {
+    *v = ngx_http_variable_null_value;
+    return NGX_OK;
+  }
+
+  if (ngx_http_complex_value(r, mv->value, &value) != NGX_OK) {
+    return NGX_ERROR;
+  }
+
+  v->len = value.len;
+  v->data = value.data;
+  v->valid = 1;
+  v->no_cacheable = 0;
+  v->not_found = 0;
+
+  return NGX_OK;
+}
+
+/*
+ * Whether the get handler of v only stands for a variable that a directive
+ * assigns while the request runs, so that the variable has no value of its
+ * own: the handler of "set", and that of the directives of ngx_devel_kit
+ * such as mruby_set, which only log that the variable is not set yet. Both
+ * keep the index of the variable as the data of the handler, which a
+ * handler of a module with a value of its own does not do.
+ */
+static ngx_flag_t ngx_http_mruby_variable_only_assigned(ngx_http_core_main_conf_t *cmcf, ngx_http_variable_t *v)
+{
+  ngx_http_variable_t *indexed;
+
+  if (v->data >= cmcf->variables.nelts) {
+    return 0;
+  }
+
+  indexed = cmcf->variables.elts;
+  indexed = &indexed[v->data];
+
+  return indexed->name.len == v->name.len && ngx_strncmp(indexed->name.data, v->name.data, v->name.len) == 0;
+}
+
+char *ngx_http_mruby_variable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+  ngx_http_mruby_main_conf_t *mmcf = conf;
+  ngx_http_core_main_conf_t *cmcf;
+  ngx_http_mruby_variable_t *mv, **slot;
+  ngx_http_compile_complex_value_t ccv;
+  ngx_http_variable_t *v, *pv;
+  ngx_hash_key_t *key;
+  ngx_str_t *value, name;
+  ngx_uint_t i;
+
+  value = cf->args->elts;
+
+  if (value[1].len < 2 || value[1].data[0] != '$') {
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid variable name \"%V\"", &value[1]);
+    return NGX_CONF_ERROR;
+  }
+
+  name.len = value[1].len - 1;
+  name.data = value[1].data + 1;
+
+  cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+
+  // $http_<name>, $arg_<name>, $cookie_<name> and the like: nginx gives
+  // them their values from the name, and a declaration would hide them
+  pv = cmcf->prefix_variables.elts;
+  for (i = 0; i < cmcf->prefix_variables.nelts; i++) {
+    if (name.len >= pv[i].name.len && ngx_strncasecmp(name.data, pv[i].name.data, pv[i].name.len) == 0) {
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                         "mruby_variable cannot declare \"%V\": nginx gives the variables whose names begin with "
+                         "\"%V\" their values",
+                         &value[1], &pv[i].name);
+      return NGX_CONF_ERROR;
+    }
+  }
+
+  // A variable that an earlier directive or a module declared: refused
+  // when it has a value of its own, accepted when "set" or a directive of
+  // ngx_devel_kit only assigns it
+  key = cmcf->variables_keys->keys.elts;
+  for (i = 0; i < cmcf->variables_keys->keys.nelts; i++) {
+    if (name.len != key[i].key.len || ngx_strncasecmp(name.data, key[i].key.data, name.len) != 0) {
+      continue;
+    }
+
+    v = key[i].value;
+
+    if (v->get_handler == ngx_http_mruby_variable_get) {
+      mv = (ngx_http_mruby_variable_t *)v->data;
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mruby_variable \"%V\" is duplicate: it is declared in %V:%ui",
+                         &value[1], &mv->file, mv->line);
+      return NGX_CONF_ERROR;
+    }
+
+    if (!(v->flags & NGX_HTTP_VAR_CHANGEABLE) ||
+        (v->get_handler != NULL && !ngx_http_mruby_variable_only_assigned(cmcf, v))) {
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                         "mruby_variable cannot declare \"%V\": another module defines it with a value of its own",
+                         &value[1]);
+      return NGX_CONF_ERROR;
+    }
+
+    break;
+  }
+
+  v = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
+  if (v == NULL) {
+    return NGX_CONF_ERROR;
+  }
+
+  // the index makes it an indexed variable, which Nginx::Var assigns in
+  // r->variables
+  if (ngx_http_get_variable_index(cf, &name) == NGX_ERROR) {
+    return NGX_CONF_ERROR;
+  }
+
+  mv = ngx_pcalloc(cf->pool, sizeof(ngx_http_mruby_variable_t));
+  if (mv == NULL) {
+    return NGX_CONF_ERROR;
+  }
+
+  mv->var = v;
+  mv->file = cf->conf_file->file.name;
+  mv->line = cf->conf_file->line;
+
+  if (cf->args->nelts == 3) {
+    mv->value = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t));
+    if (mv->value == NULL) {
+      return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+    ccv.cf = cf;
+    ccv.value = &value[2];
+    ccv.complex_value = mv->value;
+
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+      return NGX_CONF_ERROR;
+    }
+  }
+
+  if (mmcf->variables == NULL) {
+    mmcf->variables = ngx_array_create(cf->pool, 4, sizeof(ngx_http_mruby_variable_t *));
+    if (mmcf->variables == NULL) {
+      return NGX_CONF_ERROR;
+    }
+  }
+
+  slot = ngx_array_push(mmcf->variables);
+  if (slot == NULL) {
+    return NGX_CONF_ERROR;
+  }
+  *slot = mv;
+
+  v->get_handler = ngx_http_mruby_variable_get;
+  v->data = (uintptr_t)mv;
+
+  return NGX_CONF_OK;
+}
+
+ngx_int_t ngx_http_mruby_variables_check(ngx_conf_t *cf, ngx_http_mruby_main_conf_t *mmcf)
+{
+  ngx_http_mruby_variable_t **mv;
+  ngx_uint_t i;
+
+  if (mmcf->variables == NULL) {
+    return NGX_OK;
+  }
+
+  // A module that declares the variable after mruby_variable, such as
+  // map, replaces the get handler without a check of its own
+  mv = mmcf->variables->elts;
+  for (i = 0; i < mmcf->variables->nelts; i++) {
+    if (mv[i]->var->get_handler != ngx_http_mruby_variable_get || mv[i]->var->data != (uintptr_t)mv[i]) {
+      ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                    "mruby_variable cannot declare \"$%V\" in %V:%ui: another module defines it with a value of its "
+                    "own",
+                    &mv[i]->var->name, &mv[i]->file, mv[i]->line);
+      return NGX_ERROR;
+    }
+  }
+
+  return NGX_OK;
+}
