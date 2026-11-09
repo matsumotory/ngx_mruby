@@ -706,12 +706,21 @@ static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
       *h = ngx_http_mruby_content_inline_handler;
       break;
     case NGX_HTTP_LOG_PHASE:
-      *h = ngx_http_mruby_log_handler;
-      h = ngx_array_push(&cmcf->phases[phase].handlers);
-      if (h == NULL) {
+      /*
+       * The mruby log handlers go to the front of the log phase, before the
+       * log handlers that were registered before this postconfiguration,
+       * ngx_http_log_handler (access_log) among them, so that access_log
+       * writes what they set. The modules whose postconfiguration runs later
+       * append after them. The two new elements are at the end of the array
+       * after the push: move the others behind them.
+       */
+      if (ngx_array_push(&cmcf->phases[phase].handlers) == NULL) {
         return NGX_ERROR;
       }
-      *h = ngx_http_mruby_log_inline_handler;
+      h = cmcf->phases[phase].handlers.elts;
+      ngx_memmove(&h[2], &h[0], (cmcf->phases[phase].handlers.nelts - 2) * sizeof(ngx_http_handler_pt));
+      h[0] = ngx_http_mruby_log_handler;
+      h[1] = ngx_http_mruby_log_inline_handler;
       break;
     default:
       // not through
@@ -1969,7 +1978,6 @@ NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(post_read, mlcf->post_read_code, NGX_HTTP_MR
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(server_rewrite, mlcf->server_rewrite_code, NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE)
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(rewrite, mlcf->rewrite_code, NGX_HTTP_MRUBY_HANDLER_REWRITE)
 NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(access, mlcf->access_code, NGX_HTTP_MRUBY_HANDLER_ACCESS)
-NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(log, mlcf->log_code, NGX_HTTP_MRUBY_HANDLER_LOG)
 
 static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
 {
@@ -2029,7 +2037,54 @@ NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(server_rewrite, mlcf->server_rewrite_
 NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(rewrite, mlcf->rewrite_inline_code, NGX_HTTP_MRUBY_HANDLER_REWRITE)
 NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(access, mlcf->access_inline_code, NGX_HTTP_MRUBY_HANDLER_ACCESS)
 NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(content, mlcf->content_inline_code, NGX_HTTP_MRUBY_HANDLER_CONTENT)
-NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(log, mlcf->log_inline_code, NGX_HTTP_MRUBY_HANDLER_LOG)
+
+/*
+ * A log handler runs after the response was sent and before access_log
+ * (ngx_http_mruby_handler_init). access_log and the later log handlers write
+ * the status that was sent: the status is put back after the code, also
+ * when the code raised, which sets 500, and when it set a status itself.
+ * After NGX_DONE (a local Nginx.redirect, which ran the handlers of its
+ * target) the request is not touched, as in ngx_mrb_run_request.
+ */
+static ngx_int_t ngx_http_mruby_run_log_handler(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
+                                                ngx_flag_t cached)
+{
+  ngx_uint_t status;
+  ngx_int_t rc;
+
+  status = r->headers_out.status;
+  rc = ngx_mrb_run(r, state, code, cached, NULL, NGX_HTTP_MRUBY_HANDLER_LOG);
+  if (rc != NGX_DONE) {
+    r->headers_out.status = status;
+  }
+
+  return rc;
+}
+
+static ngx_int_t ngx_http_mruby_log_handler(ngx_http_request_t *r)
+{
+  ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
+  ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+
+  if (mmcf->state == NGX_CONF_UNSET_PTR || mlcf->log_code == NGX_CONF_UNSET_PTR) {
+    return NGX_DECLINED;
+  }
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based log code: %s", mlcf->log_code->code.file);
+  return ngx_http_mruby_run_log_handler(r, mmcf->state, mlcf->log_code, mlcf->cached);
+}
+
+static ngx_int_t ngx_http_mruby_log_inline_handler(ngx_http_request_t *r)
+{
+  ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
+  ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+
+  if (mmcf->state == NGX_CONF_UNSET_PTR || mlcf->log_inline_code == NGX_CONF_UNSET_PTR) {
+    return NGX_DECLINED;
+  }
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline log code: %s",
+                mlcf->log_inline_code->code.string);
+  return ngx_http_mruby_run_log_handler(r, mmcf->state, mlcf->log_inline_code, 1);
+}
 
 #if defined(NDK) && NDK
 static ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r, ngx_str_t *val, ngx_http_variable_value_t *v,
