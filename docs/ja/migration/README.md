@@ -344,7 +344,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 - [出力の後に設定したステータスで出力を送り、`error_page`は効かない](../../releases/v3.0.0.ja.md#出力の後に設定したステータスで出力を送りerror_pageは効かない779)：ハンドラのコードで、`Nginx.rputs`か`Nginx.echo`の後に呼ぶ`Nginx.return`、`Nginx.send_header`、`Nginx.status_code=`を探してください。そのハンドラのロケーションにある`error_page`も探してください。3.0.0では出力をそのステータスで送り、そのステータスの`error_page`は効きません。
 
   ```ruby
-  # 2.x：nginxの401のページか、401のerror_pageのページ   3.0.0：JSONを付けた401
+  # 2.x: nginx's 401 page, or the page of an error_page for 401   3.0.0: 401 with the JSON
   Nginx.rputs '{"error":"no key"}'
   Nginx.return Nginx::HTTP_UNAUTHORIZED
   ```
