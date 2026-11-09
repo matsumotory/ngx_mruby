@@ -1,6 +1,6 @@
 t = SimpleTest.new "ngx_mruby test: Digest, Digest::HMAC and SecureRandom of mrbgems/digest and mrbgems/secure-random (test/conf/conf.d/62-gem-digest-secure-random.conf)"
 
-GEM_DIGEST_SECURE_RANDOM_PORT = 18189
+GEM_DIGEST_SECURE_RANDOM_PORT = 18195
 
 def gem_digest_secure_random_lines(t, path)
   res = HttpRequest.new.get base(GEM_DIGEST_SECURE_RANDOM_PORT) + path
