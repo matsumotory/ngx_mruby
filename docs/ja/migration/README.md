@@ -15,7 +15,7 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
 ## ビルド
 
 - Ruby 3.0以降でビルドしてください。同梱のmrubyのビルドは、Ruby 2.xでは止まります。詳しくは[同梱のmrubyのビルドにRuby 3.0以降が要る](../../releases/v3.0.0.ja.md#同梱のmrubyのビルドにruby-30以降が要る678)にあります。`ruby --version`は、`PATH`にあるRubyのバージョンを出力します。
-- OpenSSL 3.0以降でビルドしてください。`--with-openssl-src`で渡すOpenSSLも同じです。既定のビルドの`Digest`と`SecureRandom`は、ngx_mrubyのgemが定義します。このgemはOpenSSLの`EVP_MAC`と`RAND_bytes`のAPIを使うので、OpenSSL 1.1.1、LibreSSL、BoringSSLではビルドが止まります。詳しくは[`Digest`と`SecureRandom`を、OpenSSL 3.0以降が要るngx_mrubyのgemが定義する](../../releases/v3.0.0.ja.md#digestとsecurerandomをopenssl-30以降が要るngx_mrubyのgemが定義する771)にあります。`openssl version`は、`PATH`にある`openssl`のコマンドのバージョンを出力し、多くの場合ヘッダのバージョンと同じです。macOSでは、OpenSSL 3を入れ、そのディレクトリをビルドに渡してください。
+- OpenSSL 3.0以降でビルドしてください。`--with-openssl-src`で渡すOpenSSLも同じです。既定のビルドの`Digest`と`SecureRandom`は、ngx_mrubyのgemが定義します。このgemはOpenSSLの`EVP_MAC`と`RAND_bytes`のAPIを使うので、OpenSSL 1.1.1、LibreSSL、BoringSSLではビルドが止まります。詳しくは[`Digest`と`SecureRandom`を、OpenSSL 3.0以降が要るngx_mrubyのgemが定義する](../../releases/v3.0.0.ja.md#digestとsecurerandomをopenssl-30以降が要るngx_mrubyのgemが定義する771)にあります。`openssl version`は、`PATH`にある`openssl`のコマンドのバージョンを出力します。ビルドが使うヘッダのバージョンは、これと違うことがあります。`--with-openssl-src`を使うビルドは、渡したソースのヘッダを使います。macOSでは、`configure`がHomebrewのOpenSSLを`/opt/homebrew/opt/openssl`か`/usr/local/opt/openssl`で見つけます。ほかの場所にあるOpenSSL 3は、次の例のように、そのディレクトリをビルドに渡してください。
 
   ```sh
   export NGX_MRUBY_CFLAGS="-I$(brew --prefix openssl@3)/include"

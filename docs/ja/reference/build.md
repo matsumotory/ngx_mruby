@@ -65,7 +65,7 @@ modules: その中に<wbr>あるもの：<wbr>`ngx_http_mruby_module`、<wbr>ngi
 - [`matsumotory/mruby-mutex`](https://github.com/matsumotory/mruby-mutex)：`Mutex`
 - [`mrbgems/ngx_mruby_mrblib`](../../../mrbgems/ngx_mruby_mrblib)：ngx_mrubyのクラスのうち、Rubyで書いた部分
 - [`mrbgems/rack-based-api`](../../../mrbgems/rack-based-api)：Rackと互換のAPIの`run`
-- [`mrbgems/digest`](../../../mrbgems/digest)：`Digest`。MD5、RMD160、SHA1、SHA256、SHA384、SHA512のハッシュと、`Digest::HMAC`を、OpenSSL 3のEVPと`EVP_MAC`のAPIで計算します。クラスとメソッドは、2.xの既定のビルドにあるiij/mruby-digestと同じです。
+- [`mrbgems/digest`](../../../mrbgems/digest)：`Digest`。MD5、RMD160、SHA1、SHA256、SHA384、SHA512のハッシュをOpenSSL 3のEVPのAPIで計算し、HMACを`EVP_MAC`のAPIで計算します。HMACのクラスは`Digest::HMAC`です。クラスとメソッドは、2.xのデフォルトのビルドにあるiij/mruby-digestと同じです。
 - [`mrbgems/secure-random`](../../../mrbgems/secure-random)：`SecureRandom`。乱数のバイト列をOpenSSLの`RAND_bytes`から取ります。メソッドは、2.xのデフォルトのビルドにあるmonochromegane/mruby-secure-randomと同じです。
 
 `ENV`、`Process`、`Signal`は、コアのgemのmruby-env、mruby-process、mruby-signalが定義します。2.xでは、`ENV`と`Process`をiij/mruby-envとiij/mruby-processが定義していました。`Digest`と`SecureRandom`は、上の一覧にあるこのリポジトリの2つのgemが定義します。2.xでは、iij/mruby-digestとmonochromegane/mruby-secure-randomが定義していました。この2つのgemのビルドには、OpenSSL 3.0以降が要ります。2.xのデフォルトのビルドには、`Vedis`を定義するmatsumotory/mruby-vedisと、`Cache`を定義するmatsumotory/mruby-localmemcacheも入っていました。3.0.0では、この2つのgemの行は`build_config.rb`のコメントで、理由は[リリースノート](../../releases/v3.0.0.ja.md#アップグレードの前に読む挙動の変更)にあります。

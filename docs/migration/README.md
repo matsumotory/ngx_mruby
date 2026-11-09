@@ -40,9 +40,12 @@ and, for 4.1, `NEWS.md` in `mruby/`.
   use its `EVP_MAC` and `RAND_bytes` APIs, and the build stops on OpenSSL
   1.1.1, LibreSSL and BoringSSL
   ([`Digest` and `SecureRandom` come from gems of ngx_mruby that need OpenSSL 3.0 or later](../releases/v3.0.0.md#digest-and-securerandom-come-from-gems-of-ngx_mruby-that-need-openssl-30-or-later-771)).
-  `openssl version` prints the version of the `openssl` command on `PATH`,
-  which is usually that of the headers. On macOS, install OpenSSL 3 and
-  give its directories to the build:
+  `openssl version` prints the version of the `openssl` command on `PATH`.
+  The headers that the build uses can be of another version; a build with
+  `--with-openssl-src` uses the headers of that source tree. On macOS,
+  `configure` finds an OpenSSL of Homebrew under `/opt/homebrew/opt/openssl`
+  or `/usr/local/opt/openssl`. For an OpenSSL 3 in another place, give its
+  directories to the build, for example:
 
   ```sh
   export NGX_MRUBY_CFLAGS="-I$(brew --prefix openssl@3)/include"
