@@ -1,9 +1,9 @@
 # How a content handler answers when it writes output and then sets a status
 # below 300 other than 200, 201 and 204: it must get a response, its output
 # with the status it set, instead of no response at all. Since 3.0.0 the
-# output also goes out with 201 and with the statuses from 300 up, and a
-# status below 200 answers 500 (test/t/cases/body_with_status.rb has the
-# other handlers).
+# output also goes out with 201 and with the statuses from 300 up, also when
+# the status was set before the output, and a status below 200 answers 500
+# (test/t/cases/body_with_status.rb has the other handlers).
 # Config: test/conf/conf.d/68-output-then-status.conf (port 18154).
 # Hook script: test/html/output_then_status.rb.
 
@@ -73,10 +73,10 @@ t.assert('ngx_mruby - output, then a status', 'a keep-alive connection gets the 
   t.assert_equal 'ok', second_body
 end
 
-# The cases below check 200 after output, a status set before the output
-# and HEAD, which keep their answers, and two answers that 3.0.0 changes:
-# 100 after output answers 500, and a subrequest sends its output with the
-# status it set after it.
+# The cases below check 200 after output and HEAD, which keep their
+# answers, and three answers that 3.0.0 changes: 100 after output answers
+# 500, a status set before the output is sent with the output, and a
+# subrequest sends its output with the status it set after it.
 
 t.assert('ngx_mruby - output, then a status', 'Nginx.rputs, then Nginx.return Nginx::HTTP_OK still answers the output with 200') do
   status, raw = output_status_get('/ok')
@@ -95,11 +95,11 @@ t.assert('ngx_mruby - output, then a status', 'Nginx.rputs, then Nginx.return Ng
   t.assert_false body.include?('continue')
 end
 
-t.assert('ngx_mruby - output, then a status', 'Nginx.return Nginx::HTTP_ACCEPTED before the first Nginx.rputs still answers the output with 200') do
+t.assert('ngx_mruby - output, then a status', 'Nginx.return Nginx::HTTP_ACCEPTED before the first Nginx.rputs answers the output with 202') do
   status, raw = output_status_get('/status_before_output')
   line, fields, body = output_status_parse(raw)
   t.assert_equal 'EOF', status
-  t.assert_equal 'HTTP/1.1 200 OK', line
+  t.assert_equal 'HTTP/1.1 202 Accepted', line
   t.assert_equal '12', fields['content-length']
   t.assert_equal 'status first', body
 end

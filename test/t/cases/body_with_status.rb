@@ -3,8 +3,8 @@
 # Config: test/conf/conf.d/89-body-with-status.conf (port 18197).
 # Hook script: test/html/body_with_status.rb.
 #
-# The output goes out with the status that the handler set after it, for
-# every status from 200 up and in every handler that sends output, with a
+# The output goes out with the status that the handler set before or after
+# it, for every status from 200 up and in every handler that sends output, with a
 # Content-Length that counts the output. The server has an error_page for
 # 401, 403, 429 and 500, which does not apply to such a response, as it does
 # not to nginx's own "return 401 text". Before the change, nginx dropped the
@@ -88,6 +88,13 @@ end
   end
 end
 
+# nginx's header filter removes Content-Length for 204 but not for 304, as
+# for its own "return 304 text": the 304 keeps the length of the output.
+t.assert('ngx_mruby - body with status', 'output followed by 304 keeps the Content-Length of the output') do
+  _status, _line, headers, _body = body_with_status_request('GET', '/not_modified')
+  t.assert_equal 'not sent with 304'.bytesize.to_s, headers['content-length']
+end
+
 t.assert('ngx_mruby - body with status', 'output followed by 101 answers 500 without the output') do
   status, line, _headers, body = body_with_status_request('GET', '/switching_protocols')
   t.assert_equal 'EOF', status
@@ -100,6 +107,67 @@ t.assert('ngx_mruby - body with status', 'a subrequest sends its output with the
   t.assert_equal 'EOF', status
   t.assert_equal 'HTTP/1.1 200 OK', line
   t.assert_equal 'status:403 body:sub forbidden', body
+end
+
+# After Nginx::Async::HTTP.sub_request resumed the handler, which then ends
+# from the call of its handler that nginx makes again, the output goes out
+# with the status from 300 up that the handler set after it.
+{
+  '/resumed_access_429' => ['an access handler', 'HTTP/1.1 429 Too Many Requests', 'rate limited after sub ok'],
+  '/resumed_content_301' => ['a content handler', 'HTTP/1.1 301 Moved Permanently', 'moved after sub ok'],
+}.each do |path, (handler, status_line, output)|
+  t.assert('ngx_mruby - body with status', "#{handler} resumed after a subrequest sends its output with the status it set after it (#{path})") do
+    status, line, headers, body = body_with_status_request('GET', path)
+    t.assert_equal 'EOF', status
+    t.assert_equal status_line, line
+    t.assert_equal output, body
+    t.assert_equal output.bytesize.to_s, headers['content-length']
+  end
+end
+
+# A status set before the first output is sent with the output as well
+# (decision 6 of docs/proposals/core-alpha1.md), with the same rule as a
+# status set after it.
+t.assert('ngx_mruby - body with status', 'Nginx.status_code = 401 before the output sends the JSON with 401, without the error_page') do
+  status, line, headers, body = body_with_status_request('GET', '/before_content_401')
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 401 Unauthorized', line
+  t.assert_equal '{"error":"status first"}', body
+  t.assert_equal '{"error":"status first"}'.bytesize.to_s, headers['content-length']
+  t.assert_equal 'application/json', headers['content-type']
+end
+
+{
+  '/before_access_429' => ['Nginx.return in an access handler', 'HTTP/1.1 429 Too Many Requests', '{"error":"rate limited first"}'],
+  '/before_rewrite_403' => ['Nginx.send_header in a rewrite handler', 'HTTP/1.1 403 Forbidden', '{"error":"forbidden first"}'],
+  '/before_resumed_rewrite_403' => ['Nginx.status_code= in a rewrite handler that a subrequest then resumes', 'HTTP/1.1 403 Forbidden', 'forbidden after sub ok'],
+  # Passes before and after the change: 200 is the status the output had.
+  '/before_access_200' => ['Nginx.return Nginx::HTTP_OK in an access handler', 'HTTP/1.1 200 OK', 'ok in access'],
+  # Passes before and after the change: the status set after the output
+  # replaces the one set before it.
+  '/before_then_after' => ['a status before the output and another after it', 'HTTP/1.1 403 Forbidden', 'the later status wins'],
+}.each do |path, (what, status_line, output)|
+  t.assert('ngx_mruby - body with status', "#{what} sends the output with the status set last (#{path})") do
+    status, line, headers, body = body_with_status_request('GET', path)
+    t.assert_equal 'EOF', status
+    t.assert_equal status_line, line
+    t.assert_equal output, body
+    t.assert_equal output.bytesize.to_s, headers['content-length']
+  end
+end
+
+t.assert('ngx_mruby - body with status', '101 before the output answers 500 without the output') do
+  status, line, _headers, body = body_with_status_request('GET', '/before_switching_protocols')
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 500 Internal Server Error', line
+  t.assert_false body.include?('not sent with 101')
+end
+
+t.assert('ngx_mruby - body with status', 'a subrequest that sets 202 before its output sends the output with 202') do
+  status, line, _headers, body = body_with_status_request('GET', '/before_sub_request')
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 200 OK', line
+  t.assert_equal 'status:202 body:sub accepted', body
 end
 
 # Passes before and after the change: the way back to nginx's page.
