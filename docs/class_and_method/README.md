@@ -1287,9 +1287,9 @@ Nginx.echo "$http_host is overridden to #{v.http_host}"
 
 Also you can use your own variable.
 
-__Notice__: You must use `set` or `mruby_set_code` directive to define the variable within the accessible context in nginx.conf. You can *NOT* add a new variable from mruby code.
+__Notice__: You must declare the variable in nginx.conf with the `set`, `mruby_set` or `mruby_set_code` directive within the accessible context, or, since 3.0.0, with the [mruby_variable](../directives/README.md#mruby_variable) directive in the `http` block. You can *NOT* add a new variable from mruby code.
 
-Since 3.0.0, [mruby_variable](../directives/README.md#mruby_variable) in the `http` block declares a variable for scripts to assign without a `set` that runs in the request, so that a value that a server rewrite handler assigns is not overwritten by a `set` of the server.
+`mruby_variable` declares a variable for scripts to assign without a `set` that runs in the request, so that a value that a server rewrite handler assigns is not overwritten by a `set` of the server.
 
 ```
 location /foo {
