@@ -170,6 +170,33 @@ t.assert('ngx_mruby - body with status', 'a subrequest that sets 202 before its 
   t.assert_equal 'status:202 body:sub accepted', body
 end
 
+# Only the handler that ends decides the status of the output. An access
+# handler that set 403 before its output and then returned
+# Nginx::DECLINED leaves its rputs chain in the module context, and the
+# content handler's output is appended to it (the earlier output "a-"
+# reaching the response is older behavior that these cases do not pin).
+t.assert('ngx_mruby - body with status', 'a status that an earlier handler set before its output and then declined does not apply to the next handler\'s output') do
+  status, line, _headers, body = body_with_status_request('GET', '/earlier_status_declined')
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 200 OK', line
+  t.assert_true body.end_with?('b'), "body #{body.inspect}"
+end
+
+t.assert('ngx_mruby - body with status', 'a status set before the output applies after an earlier handler declined with its output') do
+  status, line, _headers, body = body_with_status_request('GET', '/later_status_after_declined')
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 403 Forbidden', line
+  t.assert_true body.end_with?('b'), "body #{body.inspect}"
+end
+
+t.assert('ngx_mruby - body with status', 'output followed by Nginx.redirect with a URL goes out with 200 and the Location, also after an earlier status') do
+  status, line, headers, body = body_with_status_request('GET', '/status_then_url_redirect')
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 200 OK', line
+  t.assert_equal 'http://example.com/', headers['location']
+  t.assert_equal 'x', body
+end
+
 # Nginx::HTTP_CLOSE (444) is nginx's value for closing the connection
 # without a response, not a status: with output before or after it, the
 # output is not sent and the client gets no byte (decision 7 of
