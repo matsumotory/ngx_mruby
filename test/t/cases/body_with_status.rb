@@ -170,6 +170,22 @@ t.assert('ngx_mruby - body with status', 'a subrequest that sets 202 before its 
   t.assert_equal 'status:202 body:sub accepted', body
 end
 
+# Nginx::HTTP_CLOSE (444) is nginx's value for closing the connection
+# without a response, not a status: with output before or after it, the
+# output is not sent and the client gets no byte (decision 7 of
+# docs/proposals/core-alpha1.md).
+{
+  '/close_after_output' => 'a content handler that writes output and then sets 444',
+  '/access_close_after_output' => 'an access handler that writes output and then sets 444',
+  '/before_close' => 'a content handler that sets 444 and then writes output',
+}.each do |path, what|
+  t.assert('ngx_mruby - body with status', "#{what} closes the connection without a response (#{path})") do
+    status, raw = tcp_client(BODY_WITH_STATUS_PORT, "GET #{path} HTTP/1.0\r\nHost: localhost\r\n\r\n")
+    t.assert_true %w[EOF RESET].include?(status), "connection status #{status}"
+    t.assert_equal '', raw
+  end
+end
+
 # Passes before and after the change: the way back to nginx's page.
 t.assert('ngx_mruby - body with status', 'the status without output still gets nginx\'s answer through the error_page') do
   status, line, _headers, body = body_with_status_request('GET', '/status_only')

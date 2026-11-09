@@ -60,4 +60,10 @@ when '/before_then_after'
 when '/before_sub_target'
   Nginx.status_code = Nginx::HTTP_ACCEPTED
   Nginx.rputs 'sub accepted'
+when '/close_after_output', '/access_close_after_output'
+  Nginx.rputs 'not sent before 444'
+  Nginx.return Nginx::HTTP_CLOSE
+when '/before_close'
+  Nginx.return Nginx::HTTP_CLOSE
+  Nginx.rputs 'not sent after 444'
 end
