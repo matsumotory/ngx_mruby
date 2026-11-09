@@ -195,6 +195,9 @@ static ngx_command_t ngx_http_mruby_commands[] = {
     {ngx_string("mruby_exit_worker"), NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE12, ngx_http_mruby_exit_worker_phase,
      NGX_HTTP_MAIN_CONF_OFFSET, 0, NULL},
 
+    {ngx_string("mruby_variable"), NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE12, ngx_http_mruby_variable,
+     NGX_HTTP_MAIN_CONF_OFFSET, 0, NULL},
+
     {ngx_string("mruby_cache"), NGX_HTTP_LOC_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_FLAG, ngx_conf_set_flag_slot,
      NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mruby_loc_conf_t, cached), NULL},
 
@@ -584,6 +587,10 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
      notice whatever error_log says (issue #320), so this goes at info. */
   ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "%s/%s (%s/%s) mechanism enabled", MODULE_NAME, MODULE_VERSION,
                      MRUBY_RUBY_ENGINE, MRUBY_VERSION);
+
+  if (ngx_http_mruby_variables_check(cf, mmcf) != NGX_OK) {
+    return NGX_ERROR;
+  }
 
   if (ngx_http_mruby_handler_init(cmcf) != NGX_OK) {
     return NGX_ERROR;

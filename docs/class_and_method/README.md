@@ -1287,7 +1287,9 @@ Nginx.echo "$http_host is overridden to #{v.http_host}"
 
 Also you can use your own variable.
 
-__Notice__: You must use `set` or `mruby_set_code` directive to define the variable within the accessible context in nginx.conf. You can *NOT* add a new variable from mruby code.
+__Notice__: You must declare the variable in nginx.conf with the `set`, `mruby_set` or `mruby_set_code` directive within the accessible context, or, since 3.0.0, with the [mruby_variable](../directives/README.md#mruby_variable) directive in the `http` block. You can *NOT* add a new variable from mruby code.
+
+`mruby_variable` declares a variable for scripts to assign without a `set` that runs in the request, so that a value that a server rewrite handler assigns is not overwritten by a `set` of the server.
 
 ```
 location /foo {
@@ -1317,7 +1319,7 @@ The variable is looked up by the name in lowercase. Since 2.7.2, a name that is 
 
 Since 3.0.0, the first `v.NAME` or `v.NAME = value` of a name in a worker process also defines the accessor as a method of `Nginx::Var`, and the later accesses of that name in the worker call the method instead of `method_missing`. The method reads and writes the variable as `method_missing` does: the same values, `nil` for a name that is not a variable, the same exceptions and the same lines in `error.log`. A worker defines:
 
-- a getter and a setter for each declared variable that scripts use: the variables of nginx and its modules, and the ones that `set` declares;
+- a getter and a setter for each declared variable that scripts use: the variables of nginx and its modules, and the ones that `set` and `mruby_variable` declare;
 - a getter for the first 16 names of prefix variables that scripts use, the variables whose names start with a prefix that nginx defines, such as `arg_`, `http_`, `cookie_` and `upstream_http_`. Any suffix makes such a name, so a worker keeps at most 16 of them.
 
 Only a name in lowercase gets a method: the name has to be made of `a` to `z`, `0` to `9` and `_` (with `=` at the end for a setter). `v.Request_Method` reads `$request_method` through `method_missing` and defines nothing. No method is defined for a name that is not a variable, for a setter of a prefix variable, for an instance of a subclass of `Nginx::Var`, when `Nginx::Var` is frozen, or when `Nginx::Var` or one of its ancestors already has a method of that name.
