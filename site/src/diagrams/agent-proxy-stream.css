@@ -17,7 +17,8 @@
     ". frame"
     ". usage"
     ". charge"
-    ". log";
+    ". log"
+    ". cost";
   row-gap: var(--space-3);
 }
 .diagram-agent-proxy-stream .diagram-drawing-narrow {
@@ -27,14 +28,14 @@
 .diagram-agent-proxy-stream .diagram-drawing-wide {
   display: none;
 }
-.diagram-agent-proxy-stream :is([data-key="leg-now"], [data-key="leg-next"], [data-key="leg-later"]) {
+.diagram-agent-proxy-stream :is([data-key="leg-now"], [data-key="leg-later"]) {
   color: var(--color-text-muted);
 }
 /* Below 36rem the labels start with their status in words, and the
    legend of the symbols, which this arrangement does not draw, is left out
    (it has no row there) so that the diagram fits the screen at 390 by 664
    px (3.5) */
-.diagram-agent-proxy-stream :is([data-key="leg-now"], [data-key="leg-next"], [data-key="leg-later"]) {
+.diagram-agent-proxy-stream :is([data-key="leg-now"], [data-key="leg-later"]) {
   display: none;
 }
 .diagram-agent-proxy-stream .diagram-label code {
@@ -44,10 +45,9 @@
   .diagram-agent-proxy-stream .diagram-grid {
     width: 34rem;
     grid-template-columns: 2rem 32rem;
-    grid-template-rows: 1.75rem 1.75rem 1.75rem 1rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem;
+    grid-template-rows: 1.75rem 1.75rem 1rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem 1.5rem 3.5rem;
     grid-template-areas:
       ". leg-now"
-      ". leg-next"
       ". leg-later"
       ". ."
       ". deadline"
@@ -60,7 +60,9 @@
       ". ."
       ". charge"
       ". ."
-      ". log";
+      ". log"
+      ". ."
+      ". cost";
     row-gap: 0;
   }
   .diagram-agent-proxy-stream .diagram-drawing-wide {
@@ -74,16 +76,13 @@
     align-self: center;
     padding-inline: var(--space-3);
   }
-  .diagram-agent-proxy-stream :is([data-key="leg-now"], [data-key="leg-next"], [data-key="leg-later"]) {
+  .diagram-agent-proxy-stream :is([data-key="leg-now"], [data-key="leg-later"]) {
     display: block;
     padding-inline: var(--space-2);
   }
 }
 .diagram-agent-proxy-stream [data-key="leg-now"] {
   grid-area: leg-now;
-}
-.diagram-agent-proxy-stream [data-key="leg-next"] {
-  grid-area: leg-next;
 }
 .diagram-agent-proxy-stream [data-key="leg-later"] {
   grid-area: leg-later;
@@ -105,4 +104,7 @@
 }
 .diagram-agent-proxy-stream [data-key="log"] {
   grid-area: log;
+}
+.diagram-agent-proxy-stream [data-key="cost"] {
+  grid-area: cost;
 }

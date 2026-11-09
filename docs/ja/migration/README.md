@@ -317,6 +317,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   ```
 - [`mruby_set`のハンドラでは`Nginx::Async::HTTP.sub_request`が`RuntimeError`を出す](../../releases/v3.0.0.ja.md#mruby_setのハンドラではnginxasynchttpsub_requestがruntimeerrorを出す735)：`mruby_set`と`mruby_set_code`で、`Nginx::Async::HTTP.sub_request`を探してください。サブリクエストを待てるrewriteかaccessのハンドラで呼び、`Nginx::Var#set`で変数を設定してください。
 - [`mruby_set`の値をStringに変換できないと500で応答する](../../releases/v3.0.0.ja.md#mruby_setの値をstringに変換できないと500で応答する735)：コードがString以外の値を返しうる`mruby_set`と`mruby_set_code`を探し、Stringを返すようにしてください。
+- [logハンドラでは、ローカルのURIへの`Nginx.redirect`が`RuntimeError`を出す](../../releases/v3.0.0.ja.md#logハンドラではローカルのuriへのnginxredirectがruntimeerrorを出す770)：`mruby_log_handler`と`mruby_log_handler_code`のコードで、パスを渡す`Nginx.redirect`を探し、その呼び出しをrewrite、access、contentのどれかのハンドラへ移してください。
 
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
@@ -355,6 +356,14 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 
 - [出力なしで終わるcontentハンドラが、500でなく、空のボディの200で応答する](../../releases/v3.0.0.ja.md#出力なしで終わるcontentハンドラが500でなく空のボディの200で応答する574)：`response body is empty. return NGX_HTTP_INTERNAL_SERVER_ERROR`に対するパターンは、メインのリクエストのcontentハンドラが出力なしで終わり、ステータスを設定していないか、nginxが自分では答えない200から299のステータスを設定しているときには、もう一致しません。200未満のステータスと、ほかのハンドラとサブリクエストで出力なしの`Nginx::HTTP_OK`には、今も一致しています。
 - [空のボディで終わる出力のボディフィルタが、接続を閉じずにレスポンスを送る](../../releases/v3.0.0.ja.md#空のボディで終わる出力のボディフィルタが接続を閉じずにレスポンスを送る574)：nginxがこれらのレスポンスを送るので、`zero size buf in writer`のアラートは、もう出ません。
+- [`access_log`が、mrubyのlogハンドラが設定した変数と、送ったステータスを書く](../../releases/v3.0.0.ja.md#access_logがmrubyのlogハンドラが設定した変数と送ったステータスを書く770)：`mruby_log_handler`と`mruby_log_handler_code`のディレクティブを探し、そのコードが`Nginx::Var`で代入する変数を探してください。代入は`v.NAME = ...`と`v.set "NAME", ...`の形です。次に、それらの変数を書く`log_format`の行を探してください。これらの行には、logハンドラが動く前の値でなく、logハンドラが代入した値が入るようになります。logハンドラが動く前の値を残したい行では、ロケーションで`set`が作ったコピーを書いてください。`set`はlogのフェーズより前に動きます。
+
+  ```nginx
+  set $tokens "-";
+  set $tokens_before_log $tokens;
+  ```
+
+  アクセスログの行のステータスは、logハンドラが例外を出した後も、送ったステータスです。ngx_mrubyは、その例外の`mrb_run failed`の行を、これまでどおり`error.log`に書きます。
 
 ## C拡張と<wbr>mrbgems
 

@@ -144,7 +144,7 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
  * client without a response, because its parent answers. Nothing changes
  * either when the header was already sent, or when the module context is no
  * longer the one the handler ran with: an internal redirect inside the Ruby
- * call (from an mruby_set handler, a log handler or a filter) clears the
+ * call (from an mruby_set handler or a filter) clears the
  * module contexts, and the location it ran answers the request.
  */
 static ngx_flag_t ngx_mrb_content_ends_without_response(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx,
@@ -270,7 +270,7 @@ static ngx_int_t ngx_mrb_send_empty_body(ngx_http_request_t *r)
  * elsewhere inside the call returns the status that the target stored in
  * r->headers_out.status. Since Q2 of section 9, this applies only to a
  * redirect that still takes effect inside the call (from an mruby_set*
- * handler, a log handler or a filter, and from a handler that
+ * handler or a filter, and from a handler that
  * ngx_mrb_post_fiber resumes); the other handlers make the redirect when
  * they end.
  *
@@ -665,6 +665,13 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     // status is not sent either
     ngx_http_mrb_fiber_after_redirect(r);
   } else {
+    // A log handler runs before access_log and the other log-phase handlers
+    // of the same request, which run after it, so it makes no internal
+    // redirect (decision 1 of docs/proposals/core-alpha1.md).
+    if (ngx_mrb_http_get_module_ctx(mrb, r)->handler_kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx.redirect with a local URI is not available in a log handler");
+    }
+
     // A phase handler redirects when it ends, after its code: the target's
     // handlers then run outside the fiber of this one, and one handler
     // answers the request (Q2 of docs/proposals/core-stabilization.md)
