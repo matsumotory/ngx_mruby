@@ -364,9 +364,13 @@ static void ngx_mrb_timer_handler(ngx_event_t *ev)
   //   there called it.
   // Without this, the subrequest started only at the next event of the
   // connection, and the client got no response until it closed the
-  // connection. When the connection was closed above,
-  // ngx_http_close_connection has set c->destroyed, and the call returns at
-  // once; c points into nginx's array of connections, which stays allocated.
+  // connection. When the request was freed above, c->destroyed is set and
+  // the call returns at once: ngx_http_free_request sets it, also when the
+  // connection is kept alive (ngx_http_set_keepalive), and
+  // ngx_http_close_connection sets it when the connection was closed. A
+  // pipelined request that ngx_http_set_keepalive started clears it again,
+  // and its list of posted requests is empty. c points into nginx's array of
+  // connections, which stays allocated.
   ngx_http_run_posted_requests(c);
 }
 
