@@ -384,6 +384,8 @@ If the code raises an exception before it waits in `Nginx::Async.sleep` or `Ngin
 Text that the code wrote with `Nginx.rputs` or `Nginx.echo` before the exception is not sent and does not count in the `Content-Length` of the response.
 If the code raises after such a call returned, the request gets 500 and the output of `Nginx.rputs` is not sent, as described under [Nginx::Async#sleep](../class_and_method/README.md#nginxasyncsleepmsec).
 
+In 2.x, if the code waits in `Nginx::Async.sleep`, the directives of the same rewrite script after the `mruby_set` run before the sleep ends, without the value, and when the code returns the value, the request ends without a response (the client waits until a timeout), unless an earlier handler of the request had returned `Nginx::DECLINED`; only then does the request go on to the next handler, with the variable set. (The server of the main test configuration returns `Nginx::DECLINED` from its server rewrite handler for every request, which is why its `/sleep_with_proxy_set_code` location answers.) If the code has to wait, use 3.0.0, which fixed this ([release notes of 3.0.0](https://github.com/matsumotory/ngx_mruby/blob/next/docs/releases/v3.0.0.md#an-mruby_set-handler-that-waits-in-nginxasyncsleep-sets-its-variable-and-the-request-goes-on-715)), or wait in a rewrite or access handler instead and set the variable there with `Nginx::Var#set`.
+
 ## mruby_output_body_filter, mruby_output_body_filter_code, mruby_output_header_filter and mruby_output_header_filter_code
 
 ```
