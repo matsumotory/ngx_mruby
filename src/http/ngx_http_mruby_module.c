@@ -10,6 +10,7 @@
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_init.h"
 #include "ngx_http_mruby_request.h"
+#include "ngx_http_mruby_var.h"
 
 #include <mruby/proc.h>
 #include <mruby/string.h>
@@ -1102,6 +1103,16 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
                   MODULE_NAME, __func__, __LINE__);
   }
 
+  // The value of an mruby_set handler as a String (ngx_mrb_var_to_string;
+  // nil stays nil and gives an empty string below). A value whose to_s is
+  // missing, raises or does not return a String ends the handler as an
+  // exception of the code does: its exception is logged below and the
+  // variable gets an empty string.
+  if (result != NULL && state->mrb->exc == NULL && !mrb_nil_p(*mrb_result) &&
+      !ngx_mrb_var_to_string(state->mrb, *mrb_result, mrb_result)) {
+    state->mrb->exc = mrb_obj_ptr(*mrb_result);
+  }
+
   if (state->mrb->exc) {
     raised = 1;
     ngx_mrb_raise_error(state->mrb, mrb_obj_value(state->mrb->exc), r);
@@ -1138,9 +1149,7 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
       result->data = NULL;
       result->len = 0;
     } else {
-      if (mrb_type(*mrb_result) != MRB_TT_STRING) {
-        *mrb_result = mrb_funcall(state->mrb, *mrb_result, "to_s", 0, NULL);
-      }
+      // a String: converted above
       result_len = RSTRING_LEN(*mrb_result);
       result->data = ngx_palloc(r->pool, result_len);
       if (result->data == NULL) {
