@@ -578,6 +578,23 @@ not enough, and show the change.
   look for `Nginx.redirect` with a path in the code of `mruby_log_handler`
   and `mruby_log_handler_code`, and move the call to a rewrite, access or
   content handler.
+- [Output followed by a status is sent with that status, and `error_page` does not apply to it](../releases/v3.0.0.md#output-followed-by-a-status-is-sent-with-that-status-and-error_page-does-not-apply-to-it-779):
+  look for `Nginx.return`, `Nginx.send_header` and `Nginx.status_code=`
+  after `Nginx.rputs` or `Nginx.echo` in the handlers, and for `error_page`
+  in the locations of those handlers. On 3.0.0 the output goes out with the
+  status, and an `error_page` for that status does not apply:
+
+  ```ruby
+  # 2.x: nginx's 401 page, or the page of an error_page for 401   3.0.0: 401 with the JSON
+  Nginx.rputs '{"error":"no key"}'
+  Nginx.return Nginx::HTTP_UNAUTHORIZED
+  ```
+
+  Without the `Nginx.rputs`, both versions answer nginx's 401 page or the
+  page of the `error_page`, so a handler that relied on them sets the
+  status without output. After output, 301, 302, 303, 307 and 308 get no
+  `Location` unless the script sets it with `Nginx::Headers_out`, and a
+  status below 200 answers 500.
 
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out

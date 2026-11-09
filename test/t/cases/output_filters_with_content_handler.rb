@@ -6,8 +6,9 @@
 # The content and rewrite handlers write "origin" with Nginx.rputs. Two
 # locations serve a static file with a body filter that also calls
 # Nginx.rputs, and one of them has a log handler. In one more location an
-# access handler writes with Nginx.rputs and answers 403, and nginx sends its
-# 403 page through both filters at a limited rate. The header filters count
+# access handler writes with Nginx.rputs and returns Nginx::DECLINED, "deny
+# all" answers 403, and nginx sends its 403 page through both filters at a
+# limited rate. The header filters count
 # their runs in the X-Header-Filter-Runs response header, and the body
 # filters turn the body to upper case. Each request is an HTTP/1.0 request
 # through tcp_client, which reads until nginx closes the connection or its
@@ -93,7 +94,7 @@ t.assert('output filters', 'Nginx.rputs in a body filter after a header filter, 
   t.assert_equal 1, marked
 end
 
-t.assert('output filters', 'the 403 page after Nginx.rputs and Nginx.return 403, sent in several writes') do
+t.assert('output filters', 'the 403 page of deny all after Nginx.rputs and Nginx::DECLINED, sent in several writes') do
   # The location has server_tokens off, so the page does not depend on the
   # nginx version. It is longer than the limit_rate of the location (100
   # bytes per second), so nginx needs more than one write to send it.

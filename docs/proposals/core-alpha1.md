@@ -823,7 +823,7 @@ and the one that merges second updates its branch.
 | Common upstream switching | 2.7 | nothing | nothing |
 | Common error logging | 2.8 | nothing | execution context (`Nginx.log`) |
 | Directive table and one duplicate check | 2.5 | nothing | log handlers, filter handlers, code loading |
-| A body with any status | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`) |
+| A body with any status: [#779](https://github.com/matsumotory/ngx_mruby/pull/779), done when it is merged | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`) |
 | The check before the tag | 3 | every row above | nothing |
 
 The agent proxy parts (a) and (c) of step 7 of the plan do not touch these
