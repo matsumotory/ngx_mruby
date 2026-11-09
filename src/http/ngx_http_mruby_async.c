@@ -67,7 +67,7 @@ typedef struct {
  *   timer or the end of the subrequest resumes the fiber itself
  *   (ngx_mrb_post_fiber), as for a fiber that waits in a handler that
  *   nginx runs inside another mruby call (an internal redirect that an
- *   mruby_set handler, a log handler or a filter makes).
+ *   mruby_set handler or a filter makes).
  */
 struct ngx_http_mrb_fiber_s {
   ngx_mrb_fiber_t base;
@@ -109,7 +109,7 @@ typedef struct {
  * The record whose fiber runs now, set by ngx_mrb_run_fiber for the time the
  * fiber runs and restored afterwards, so that it is right also while a
  * handler runs inside another one (an internal redirect inside the Ruby call
- * of an mruby_set handler, a log handler or a filter). Nginx.return stores the
+ * of an mruby_set handler or a filter). Nginx.return stores the
  * result there.
  */
 static ngx_http_mrb_fiber_t *ngx_http_mrb_running;
@@ -406,8 +406,8 @@ static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fibe
  * a call of its handler from nginx's phases is resumed by that handler
  * instead (ngx_http_mrb_fiber_call_again); this function resumes the waits
  * that started elsewhere: in a handler that nginx runs inside another mruby
- * call (an internal redirect that an mruby_set handler, a log handler or a
- * filter makes inside the Ruby call), and after the subrequest of such a
+ * call (an internal redirect that an mruby_set handler or a filter makes
+ * inside the Ruby call), and after the subrequest of such a
  * handler.
  */
 static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_t *ctx)
