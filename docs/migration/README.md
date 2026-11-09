@@ -366,7 +366,7 @@ not enough, and show the change.
   this finds the calls that change:
 
   ```sh
-  grep -rnE 'to_hash|fork|system|to_int|(^|[^_.])exit|sleep *($|[;)}])|Vedis|Cache\.new' /path/to/scripts
+  grep -rnE 'to_hash|fork|system|to_int|Status\.new|exit!|(^|[^_.])exit|sleep *($|[;)}])|Vedis|Cache\.new' /path/to/scripts
   ```
 
   ```ruby

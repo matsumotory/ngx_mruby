@@ -18,7 +18,8 @@ t.assert('mruby-env, mruby-process', 'ENV, Process, Signal and Kernel#sleep from
     "false",           # ENV.key? after the delete
     "NoMethodError",   # ENV.to_hash is gone
     "ArgumentError",   # a name with "=" (RuntimeError with iij/mruby-env)
-    "true",            # Process.pid and $$
+    "true",            # Process.pid == $$, only because the test nginx runs with master_process off:
+                       # $$ is set when nginx reads the configuration, so under a master it is the master's pid
     "Float",           # Process.clock_gettime
     "false",           # no Process.fork
     "false",           # no Kernel#fork

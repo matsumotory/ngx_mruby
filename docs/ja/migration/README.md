@@ -212,7 +212,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
 - [`ENV`をmrubyのコアgemが定義するようになり、`ENV.to_hash`が無くなり、`ENV`が`Enumerable`になる](../../releases/v3.0.0.ja.md#envをmrubyのコアgemが定義するようになりenvto_hashが無くなりenvがenumerableになる766)、[`Process`をmrubyのコアgemが定義するようになり、`Process.fork`、`Kernel#fork`、`Kernel#system`が無くなる](../../releases/v3.0.0.ja.md#processをmrubyのコアgemが定義するようになりprocessforkkernelforkkernelsystemが無くなる766)、[ハンドラの中の`exit`が、ワーカープロセスを終わらせずに`SystemExit`を出す](../../releases/v3.0.0.ja.md#ハンドラの中のexitがワーカープロセスを終わらせずにsystemexitを出す766)、[引数なしの`sleep`が`ArgumentError`を出す](../../releases/v3.0.0.ja.md#引数なしのsleepがargumenterrorを出す766)、[既定のビルドが、mruby-vedisの`Vedis`とmruby-localmemcacheの`Cache`を含まなくなる](../../releases/v3.0.0.ja.md#既定のビルドがmruby-vedisのvedisとmruby-localmemcacheのcacheを含まなくなる766)：次のコマンドで、挙動の変わる呼び出しを探します。
 
   ```sh
-  grep -rnE 'to_hash|fork|system|to_int|(^|[^_.])exit|sleep *($|[;)}])|Vedis|Cache\.new' /path/to/scripts
+  grep -rnE 'to_hash|fork|system|to_int|Status\.new|exit!|(^|[^_.])exit|sleep *($|[;)}])|Vedis|Cache\.new' /path/to/scripts
   ```
 
   ```ruby
