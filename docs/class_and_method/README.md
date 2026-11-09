@@ -1175,11 +1175,15 @@ Set the 2nd arg to the variable if the symbol ends with `=`. Otherwise, returns 
 
 The variable is looked up by the name in lowercase. Since 2.7.2, a name that is empty or made only of `=` raises `NoMethodError`, and a setter called without a value raises `ArgumentError` and leaves the variable as it was.
 
+The setter converts a value that is not a String with its `to_s`. When `to_s` is missing (a `BasicObject`, for example) or raises, the setter raises that exception (`NoMethodError` when `to_s` is missing), and since 2.7.6 a `to_s` that returns something other than a String makes the setter raise `TypeError`; up to 2.7.5 such a `to_s` could end the worker process. In each case the variable keeps its value.
+
 ### Nginx::Var#set(name, value)
 
 Set the value to the nginx variable.
 
 `name` is looked up in lowercase. Since 2.7.2, `set` does not change the String or Symbol passed as `name`.
+
+`name` and `value` that are not Strings are converted with their `to_s`, as the setter above converts its value: a `to_s` that is missing or raises makes `set` raise that exception, and since 2.7.6 a `to_s` that returns something other than a String makes it raise `TypeError` (up to 2.7.5 such a `to_s` could end the worker process). The variable keeps its value.
 
 ```ruby
 v = Nginx::Request.new.var
