@@ -128,14 +128,14 @@ caption: How the model API relay planned for v3.0 relays a streamed response and
 source: docs/proposals/v3-plan.md 412-452 563-581
 source: test/conf/conf.d/60-agent-proxy.conf 44-55
 at: ce7d10683 2026-11-09
-leg-now: Today: on `next`, checked by `agent_proxy.rb`
+leg-now: Today: on `next`, checked by the case that the step names
 leg-later: Steps 7a to 7e: later steps of the v3 plan
 deadline: Step 7c: a first-byte deadline gives up a provider that sends no header; `proxy_read_timeout` stays the idle timeout
-relay: Today: nginx relays the events of the provider byte for byte as they arrive
+relay: Today: nginx relays the events of the provider byte for byte as they arrive; `agent_proxy.rb` checks it
 frame: Step 7b: the event filter frames the events in C and calls Ruby once per listed event
 usage: Step 7b: Ruby reads the usage from `message_start` and `message_delta`, or from the terminal `response.*` event
 charge: Step 7a: the counters of the shared dictionary are charged when the response ends or is cut
-log: Today: the mruby log handlers run before `access_log`
+log: Today: the mruby log handlers run before `access_log`; `log_before_access_log.rb` checks it
 cost: Steps 7a and 7b: `access_log` logs the cost and the tokens that the log handler computes
 ```
 
