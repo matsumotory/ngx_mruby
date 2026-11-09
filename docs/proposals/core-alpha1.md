@@ -51,7 +51,7 @@ last Pillar B row). It is additive and not needed for alpha.1.
 | Common code loading | 2.6 | Nothing |
 | Common upstream switching | 2.7 | Nothing |
 | Common error logging | 2.8 | Stream logs the backtrace of an exception in a build with `--with-debug`, as HTTP does |
-| Waits inside another mruby call | 2.9 | `Nginx.redirect` with a local URI raises in `mruby_set` handlers, log handlers and filters |
+| Waits inside another mruby call | 2.9 | `Nginx.redirect` with a local URI raises in `mruby_set` handlers and filters; #770 makes it raise in log handlers |
 | Log handlers before `access_log` | 2.10 | `access_log` writes the variables that mruby log handlers set; the status it writes is the one sent |
 | `mruby_variable` | 2.11 | A new directive |
 | A body with any status | 2.12 | Output followed by `Nginx.return` with a status of 201 or from 300 up is sent with that status, instead of nginx's own page, and `error_page` does not apply to it |
@@ -501,11 +501,12 @@ of the subrequest resumes the fiber and ends its handler there, in
 `ngx_mrb_finalize_rputs` itself, runs the phases on for `NGX_DECLINED`
 (`:504-507`), and a content handler there does not keep the request, so the
 request ends at the sleep. Such a handler runs because `Nginx.redirect`
-with a local URI redirects inside the Ruby call in `mruby_set` handlers,
-log handlers and filters, and in a handler that `ngx_mrb_post_fiber`
-resumes (`src/http/ngx_http_mruby_core.c:671-679`,
+with a local URI redirects inside the Ruby call in `mruby_set` handlers
+and filters, and in a handler that `ngx_mrb_post_fiber` resumes
+(`src/http/ngx_http_mruby_core.c:671-679`,
 `src/http/ngx_http_mruby_async.c:717-751`); nginx then runs the handlers of
-the target inside that call. The module context is replaced when such a
+the target inside that call. Log handlers did so as well until #770, which
+makes the call raise there. The module context is replaced when such a
 redirect happens while a handler of the request is ending, for example in
 an mruby header filter, which nginx runs when `ngx_mrb_finalize_rputs`
 (`src/http/ngx_http_mruby_core.c:347`) or `ngx_mrb_send_empty_body`
@@ -530,6 +531,11 @@ stabilization removed elsewhere.
   `ngx_mrb_send_empty_body` sends the response, after the Ruby code of the
   handler has returned, and they cannot wait anyway. A redirect with a URL (`http://`, `https://`,
   `$scheme`) only sets `Location` and the status, and keeps working there.
+  The raise in log handlers, with its test and its entry in the release
+  notes, is done by #770, the pull request of 2.10: after it, the
+  log-phase handlers after the mruby log handlers run on the same request.
+  The pull request of this section adds the raise for `mruby_set` handlers
+  and the filters.
 - As a guard, a handler that starts while the fiber of another handler
   runs is marked in its record (`ngx_http_mrb_running` is set when its
   fiber starts, or the context of 2.1 says so). In such a handler, and in a
@@ -542,18 +548,20 @@ stabilization removed elsewhere.
   wake and nginx's checker.
 
 **Behavior change.** Yes, one entry: `Nginx.redirect` with a local URI
-raises in those three kinds of handler, where today it runs the target's
-handlers inside the call, and a content handler there that waits ends the
-request at the sleep.
+raises in `mruby_set` handlers and filters, where today it runs the
+target's handlers inside the call, and a content handler there that waits
+ends the request at the sleep. Log handlers have their own entry, added
+by #770; this pull request does not add a second one.
 
 **Test that fails first.** `test/t/cases/redirect_nested.rb`: an
 `mruby_set_code` handler that calls `Nginx.redirect "/target"`, and a target
 whose content handler sleeps and answers; the request answers 500 and
-`error.log` has the `RuntimeError` of `Nginx.redirect`. A log handler that
-calls it logs the same exception, and its `access_log` line has the status
-that was sent. Today the redirect runs, and the request ends at the
-sleep. No existing case redirects from an `mruby_set` handler, a log
-handler or a filter (a search of `test/conf` for `Nginx.redirect`).
+`error.log` has the `RuntimeError` of `Nginx.redirect`. Today the redirect
+runs, and the request ends at the sleep. The case of a log handler is in
+`test/t/cases/log_before_access_log.rb` (the location `/redirect`), added
+by #770; this pull request does not add a second one. No other case
+redirects from an `mruby_set` handler or a filter (a search of
+`test/conf` for `Nginx.redirect`).
 
 **Perf.** `sleep` and `sub_request` go through the wake today and keep it;
 one comparison is added when a fiber starts. No change is expected.
@@ -782,14 +790,14 @@ and the one that merges second updates its branch.
 
 | Pull request | Section | Waits for | Edits the same code as |
 |---|---|---|---|
-| Log handlers before `access_log` | 2.10 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
+| Log handlers before `access_log`: [#770](https://github.com/matsumotory/ngx_mruby/pull/770), done when it is merged; #770 also makes `Nginx.redirect` with a local URI raise in log handlers, the log handler part of 2.9 | 2.10, 2.9 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
 | `mruby_variable` | 2.11 | nothing | nothing |
 | Headers | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
 | Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
 | Execution context and the phases of the Ruby API | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
 | Per-request store | 2.1 | nothing | execution context |
 | One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`) |
-| Waits inside another mruby call | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |
+| Waits inside another mruby call (the raise of `Nginx.redirect` in log handlers is done by #770) | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |
 | Common code loading | 2.6 | nothing | directive table, filter handlers (the directive functions) |
 | Common upstream switching | 2.7 | nothing | nothing |
 | Common error logging | 2.8 | nothing | execution context (`Nginx.log`) |
