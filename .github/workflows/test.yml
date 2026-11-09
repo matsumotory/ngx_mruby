@@ -388,10 +388,12 @@ jobs:
           cd openssl-${OPENSSL_SRC_VERSION}
           # --libdir=lib: OpenSSL 3 puts the libraries of x86_64 into lib64,
           # which neither ldconfig below nor -L/usr/local/lib of Makefile.in
-          # reads. build_sw and install_sw leave out the manual pages.
+          # reads. build_sw and install_sw leave out the manual pages;
+          # install_ssldirs installs /usr/local/ssl/openssl.cnf, without
+          # which the openssl req of test.sh fails with OpenSSL 3.
           ./config --prefix=/usr/local --libdir=lib --shared zlib -fPIC >> /dev/null 2>&1
           make -j"$(nproc)" build_sw >> /dev/null 2>&1
-          sudo make install_sw >> /dev/null 2>&1
+          sudo make install_sw install_ssldirs >> /dev/null 2>&1
           sudo ldconfig /usr/local/lib
           cd -
           openssl version
