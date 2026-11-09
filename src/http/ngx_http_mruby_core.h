@@ -25,6 +25,11 @@ typedef struct ngx_mrb_rputs_chain_list_t {
   // r->headers_out.content_length_n before Nginx.rputs added the length of
   // the first string of this chain to it
   off_t content_length_n;
+  // the status that the handler had set with Nginx.return, Nginx.send_header
+  // or Nginx.status_code= when Nginx.rputs started this chain, or 0
+  // (ngx_http_mrb_fiber_status): the status of the output while no status
+  // is set after it (decision 6 of docs/proposals/core-alpha1.md)
+  ngx_int_t status;
 } ngx_mrb_rputs_chain_list_t;
 
 /*
@@ -172,9 +177,9 @@ void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
 // kind is the handler that ran: a content handler of the main request that
 // ends without output answers there, with an empty body for no status and the
 // statuses from 200 up, and 500 below 200 (see
-// ngx_mrb_content_ends_without_response). Output followed by a status is sent
-// with that status from 200 up, and answers 500 below 200, in the handlers of
-// ngx_mrb_handler_sends_output. has_result and result are the result that the
+// ngx_mrb_content_ends_without_response). Output is sent with the status that
+// the handler set before or after it from 200 up, and answers 500 below 200,
+// in the handlers of ngx_mrb_handler_sends_output. has_result and result are the result that the
 // handler itself set (ngx_http_mrb_fiber_result).
 ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx, ngx_http_mruby_handler_kind_t kind,
                                  ngx_flag_t has_result, ngx_int_t result);
