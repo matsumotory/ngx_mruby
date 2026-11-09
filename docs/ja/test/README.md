@@ -94,7 +94,7 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 | sanitizerのセル | 1.31.8 | 静的 | ビルドしてインストールしたOpenSSL | AddressSanitizerとUndefinedBehaviorSanitizerを付けてビルドする。[2つのsanitizerの下でテストを実行する](#2つのsanitizerの下でテストを実行する)を参照 |
 | valgrindのセル | 1.31.8 | 静的 | ビルドしてインストールしたOpenSSL | valgrindの下で実行する。[CIのvalgrind](#ciのvalgrind)を参照 |
 
-PRでは、この4セルを実行します。どのセルも、nginxをビルドする前にOpenSSL 1.1.1wをビルドしてインストールします。1つ目のセルは、`--with-openssl-src`でOpenSSLをnginxにも組み込み、`configure.in`と`Makefile.in`のこの経路を通ります。
+PRでは、この4セルを実行します。どのセルも、nginxをビルドする前にOpenSSL 3.5.9をビルドしてインストールします。1つ目のセルは、`--with-openssl-src`でOpenSSLをnginxにも組み込み、`configure.in`と`Makefile.in`のこの経路を通ります。
 
 valgrindのセルは、同じnginxとモジュールを、インストール済みのOpenSSLでビルドします。ソースから組み込む経路は通りません。
 

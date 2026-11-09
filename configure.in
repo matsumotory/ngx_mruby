@@ -98,6 +98,10 @@ if test "X$NGX_OPENSSL_SRC" != X ; then
       NGX_LIBS="$NGX_OPENSSL_INSTALL_DIR/lib/libssl.a $NGX_OPENSSL_INSTALL_DIR/lib/libcrypto.a"
   fi
 
+  # * 3.x tar ball
+  #   * VERSION.dat exists (MAJOR=3, MINOR=5, PATCH=9, ...), but no
+  #     include/openssl/opensslv.h (generated from opensslv.h.in) and no Makefile.
+  #   * Makefile targets are build_all_generated install_sw, as for 1.1.x.
   # * github master branch (as of Feb 3 2020)
   #   * nginx doesn't support it yet.
   #   * VERSION exist, but no include/openssl/opensslv.h and no Makefile.
@@ -111,7 +115,9 @@ if test "X$NGX_OPENSSL_SRC" != X ; then
   #   * include/openssl/opensslv.h is generated at build time.
   #   * enable-tlsext is supported.
   #   * Makefile targets are build_all and install_sw.
-  if test -f $NGX_OPENSSL_SRC/VERSION; then
+  if test -f $NGX_OPENSSL_SRC/VERSION.dat; then
+    OPENSSL_VERSION=`(. $NGX_OPENSSL_SRC/VERSION.dat && echo "${MAJOR}.${MINOR}.${PATCH}")`
+  elif test -f $NGX_OPENSSL_SRC/VERSION; then
     # MAJOR=3
     # MINOR=0
     # PATCH=0

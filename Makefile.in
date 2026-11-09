@@ -132,7 +132,7 @@ openssl: .openssl_build_done
 	(cd $(NGX_OPENSSL_SRC) \
 	&& if [ -f Makefile ]; then $(MAKE) clean; fi \
 	&& echo "Building OpenSSL version: $(OPENSSL_VERSION)" \
-	&& ./config --prefix=$(NGX_OPENSSL_INSTALL_DIR) --shared zlib -fPIC $(OPENSSL_CONFIG_ENABLE_TLSEXT) $(NGX_OPENSSL_OPT) \
+	&& ./config --prefix=$(NGX_OPENSSL_INSTALL_DIR) --libdir=lib --shared zlib -fPIC $(OPENSSL_CONFIG_ENABLE_TLSEXT) $(NGX_OPENSSL_OPT) \
 	&& $(MAKE) depend) \
 	&& cp /dev/null .openssl_configure_done
 
