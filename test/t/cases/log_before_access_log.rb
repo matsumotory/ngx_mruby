@@ -1,7 +1,7 @@
 # The mruby log handlers run before access_log: access_log writes the
 # variables that they set, and the status that was sent, also when a log
 # handler raised or set a status.
-# Config: test/conf/conf.d/87-log-before-access-log.conf (port 18189).
+# Config: test/conf/conf.d/87-log-before-access-log.conf (port 18195).
 #
 # A request is sent with HTTP/1.0, and tcp_client returns when nginx closed
 # the connection. nginx runs the log phase before it closes the connection,
@@ -35,7 +35,7 @@ end
 def log_before_access_log_get(path)
   access_offset = log_before_access_log_size('log_before_access_log.log')
   error_offset = log_before_access_log_size('error.log')
-  status, raw = tcp_client(18189, "GET #{path} HTTP/1.0\r\nHost: localhost\r\n\r\n")
+  status, raw = tcp_client(18195, "GET #{path} HTTP/1.0\r\nHost: localhost\r\n\r\n")
   head, body = raw.split("\r\n\r\n", 2)
   [status, head.to_s.split("\r\n")[0].to_s, body.to_s,
    log_before_access_log_lines('log_before_access_log.log', access_offset),
