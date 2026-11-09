@@ -1126,8 +1126,8 @@ resumed:
      * parent itself when the subrequest ends.
      *
      * A handler that runs inside another mruby call (mrb->jmp is set), in the
-     * location of an internal redirect that an mruby_set handler, a log
-     * handler or a filter makes inside the Ruby call, is resumed by its timer
+     * location of an internal redirect that an mruby_set handler or a
+     * filter makes inside the Ruby call, is resumed by its timer
      * instead (ngx_mrb_post_fiber): the calling code goes on after the call
      * and may answer the request itself, and a content handler there does
      * not keep the request, so the request ends at the sleep, as before.
