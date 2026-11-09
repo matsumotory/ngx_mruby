@@ -82,6 +82,8 @@ lines << check do
   [first, h.hexdigest == first, gem_digest_hex(h.digest) == first, h.digest.bytesize, h.digest_length, h.block_length].join(' ')
 end
 lines << check { gem_digest_hex(Digest::HMAC.digest('what do ya want for nothing?', 'Jefe', Digest::SHA256)) }
+# update after digest goes on from the data so far.
+lines << check { h = Digest::HMAC.new('Jefe', Digest::SHA256); h.update('what do ya want '); h.digest; h.update('for nothing?'); h.hexdigest }
 lines << check { Digest::HMAC.new('k', Digest::SHA256).dup }
 lines << check { Digest::HMAC.new('k', String) }
 lines << check { Digest::HMAC.new('k', 'SHA256') }

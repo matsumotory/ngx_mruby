@@ -24,7 +24,7 @@ HMAC_SHA256_JEFE = '5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec
 
 t.assert('mrbgems/digest', 'the hashes, the methods of Digest::Base and HMAC against known values') do
   lines = gem_digest_secure_random_lines(t, '/gem_digest')
-  t.assert_equal 36, lines.size
+  t.assert_equal 37, lines.size
   # RIPEMD160 is in the default provider of OpenSSL since 3.0.7: with 3.0.0
   # to 3.0.6, Digest::RMD160.new raises NotImplementedError.
   t.assert_true [RMD160_ABC, 'NotImplementedError'].include?(lines[6]), "Digest::RMD160: #{lines[6]}"
@@ -63,6 +63,7 @@ t.assert('mrbgems/digest', 'the hashes, the methods of Digest::Base and HMAC aga
     'b613679a0814d9ec772f95d778c35fc5ff1697c493715653c6c712144292c5ad', # empty key, empty data (Python's hmac)
     "#{HMAC_SHA256_JEFE} true true 32 32 64", # an HMAC object: hexdigest twice, digest, lengths
     HMAC_SHA256_JEFE,                         # Digest::HMAC.digest
+    HMAC_SHA256_JEFE,                         # HMAC#update after HMAC#digest goes on
     'RuntimeError',                           # HMAC#dup: "cannot duplicate HMAC"
     'NameError',                              # HMAC.new with a class that is not a digest
     'TypeError',                              # HMAC.new with a String in place of the class
