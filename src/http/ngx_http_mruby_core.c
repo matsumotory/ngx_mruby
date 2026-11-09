@@ -166,13 +166,13 @@ static ngx_flag_t ngx_mrb_content_ends_without_response(ngx_http_request_t *r, n
 /*
  * Whether a handler that wrote output and set a status before or after it
  * sends the output with that status (section 2.12 of
- * docs/proposals/core-alpha1.md): the
- * post_read, server rewrite, rewrite, access and content handlers, of the
- * main request and of subrequests. ngx_mrb_finalize_rputs sends the output
- * with every status from 200 up, as nginx's "return code text" sends its
- * text (ngx_http_send_response): nginx does not answer the status itself, so
- * an error_page of the location for the status does not apply. It answers
- * 500 for a status below 200.
+ * docs/proposals/core-alpha1.md): the post_read, server rewrite, rewrite,
+ * access and content handlers, of the main request and of subrequests.
+ * ngx_mrb_finalize_rputs sends the output with every status from 200 up, as
+ * nginx's "return code text" sends its text (ngx_http_send_response): nginx
+ * does not answer the status itself, so an error_page of the location for
+ * the status does not apply. It answers 500 for a status below 200, and
+ * closes the connection without the output for NGX_HTTP_CLOSE (444).
  *
  * Log handlers and filters keep their handling, and so does a handler whose
  * header went out already, or whose module context an internal redirect
@@ -381,6 +381,16 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     // last buffer): the output is not sent, and the phase gets the code, as
     // before. A code before the output does not apply to it.
     rc = result;
+  } else if (output_status == NGX_HTTP_CLOSE && ngx_mrb_handler_sends_output(r, ctx, kind)) {
+    // Nginx::HTTP_CLOSE with the output, before or after it (decision 7 of
+    // docs/proposals/core-alpha1.md): nginx's value for closing the
+    // connection without a response, not a status. The output is dropped,
+    // as in the branch below, and the phase gets NGX_HTTP_CLOSE, which
+    // ngx_http_finalize_request answers by closing the connection.
+    r->headers_out.content_length_n = chain->content_length_n;
+    ctx->rputs_chain = NULL;
+    r->headers_out.status = NGX_HTTP_CLOSE;
+    rc = NGX_HTTP_CLOSE;
   } else if (output_status > 0 && output_status < NGX_HTTP_OK && ngx_mrb_handler_sends_output(r, ctx, kind)) {
     // A status below 200 with the output cannot be the status of a final
     // response: 500, as for such a status without output
