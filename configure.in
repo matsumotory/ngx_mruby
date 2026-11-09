@@ -101,7 +101,7 @@ if test "X$NGX_OPENSSL_SRC" != X ; then
   # * 3.x tar ball
   #   * VERSION.dat exists (MAJOR=3, MINOR=5, PATCH=9, ...), but no
   #     include/openssl/opensslv.h (generated from opensslv.h.in) and no Makefile.
-  #   * Makefile targets are build_all_generated install_sw, as for 1.1.x.
+  #   * Makefile targets are build_sw install_sw.
   # * github master branch (as of Feb 3 2020)
   #   * nginx doesn't support it yet.
   #   * VERSION exist, but no include/openssl/opensslv.h and no Makefile.
@@ -139,6 +139,13 @@ if test "X$NGX_OPENSSL_SRC" != X ; then
   if test $OPENSSL_MAJOR_VERSION -eq 1 -a $OPENSSL_MINOR_VERSION -le 0; then 
     OPENSSL_MAKE_TARGET="build_all install_sw"
     OPENSSL_CONFIG_ENABLE_TLSEXT="enable-tlsext"
+  elif test $OPENSSL_MAJOR_VERSION -ge 3; then
+    # build_sw builds the libraries, modules and programs; the Makefile runs
+    # install_sw on its own and without parallel jobs, because install_sw of
+    # 3.x starts a make for each of build_libs, build_modules and
+    # build_programs, which compile the same objects at the same time.
+    OPENSSL_MAKE_TARGET="build_sw install_sw"
+    OPENSSL_CONFIG_ENABLE_TLSEXT=""
   else
     OPENSSL_MAKE_TARGET="build_all_generated install_sw"
     OPENSSL_CONFIG_ENABLE_TLSEXT=""
