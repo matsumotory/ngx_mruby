@@ -791,7 +791,7 @@ and the one that merges second updates its branch.
 | Pull request | Section | Waits for | Edits the same code as |
 |---|---|---|---|
 | Log handlers before `access_log`: [#770](https://github.com/matsumotory/ngx_mruby/pull/770), done when it is merged; #770 also makes `Nginx.redirect` with a local URI raise in log handlers, the log handler part of 2.9 | 2.10, 2.9 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
-| `mruby_variable` | 2.11 | nothing | nothing |
+| `mruby_variable`: [#780](https://github.com/matsumotory/ngx_mruby/pull/780), open, done when it is merged | 2.11 | nothing | nothing |
 | Headers | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
 | Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
 | Execution context and the phases of the Ruby API | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |

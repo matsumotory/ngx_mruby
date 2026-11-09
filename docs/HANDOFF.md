@@ -192,6 +192,12 @@
   `test/t/cases/output_value_to_s.rb`, brings the test of #772 on port
   18190, and leaves the paragraph of #773 out of the `docs/` of `next`,
   which describe 3.0.0.
+- [#780](https://github.com/matsumotory/ngx_mruby/pull/780) (open, to
+  `next`) adds the directive `mruby_variable` of section 2.11 of
+  [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md),
+  the agent proxy row on variable declarations. Its test is
+  `test/t/cases/mruby_variable.rb` (port 18171), and its entries are under
+  "New features" of `docs/releases/v3.0.0.md` and `.ja.md`.
 - [#761](https://github.com/matsumotory/ngx_mruby/pull/761) merged the
   unchanged empty-subrequest response clarification as `8cbdf7748`.
   [#762](https://github.com/matsumotory/ngx_mruby/pull/762) merged the

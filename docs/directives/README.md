@@ -161,6 +161,7 @@ From v3 on, to see them, run `nginx -t -e stderr`, read the startup log after `n
 * [mruby_content_handler and mruby_content_handler_code](#mruby_content_handler-and-mruby_content_handler_code)
 * [mruby_log_handler and mruby_log_handler_code](#mruby_log_handler-and-mruby_log_handler_code)
 * [mruby_set and mruby_set_code](#mruby_set-and-mruby_set_code)
+* [mruby_variable](#mruby_variable)
 * [mruby_output_body_filter, mruby_output_body_filter_code, mruby_output_header_filter and mruby_output_header_filter_code](#mruby_output_body_filter-mruby_output_body_filter_code-mruby_output_header_filter-and-mruby_output_header_filter_code)
 * [mruby_enable_read_request_body](#mruby_enable_read_request_body)
 * [mruby_upstream_keepalive](#mruby_upstream_keepalive)
@@ -452,6 +453,55 @@ The value of the code is converted to a String with `to_s`. When the value has n
 `Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in `mruby_set` and `mruby_set_code`, because nginx does not wait for a subrequest of the rewrite script: call it in a rewrite or access handler, and set the variable there with `Nginx::Var#set`. Since 3.0.0; on 2.x nginx went on without waiting for the variable (see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxasynchttpsub_request-raises-a-runtimeerror-in-an-mruby_set-handler-735)).
 
 When the code waits in `Nginx::Async.sleep`, the directives of the same rewrite script after the `mruby_set` run before the sleep ends, without the value. When the code returns, the variable is set and the request goes on with the next handler of its phase, as without the sleep, so the later phases (`proxy_pass`, a content handler) read the value. A status that the code sets with `Nginx.return` does not end the request, with or without the sleep. Since 3.0.0; on 2.x, a request whose code slept ended without a response, unless an earlier handler of the request had returned `Nginx::DECLINED`, and a status set after the sleep ended the request with that status (see [the release notes of 3.0.0](../releases/v3.0.0.md#an-mruby_set-handler-that-waits-in-nginxasyncsleep-sets-its-variable-and-the-request-goes-on-715)).
+
+## mruby_variable
+
+```
+Syntax:  mruby_variable $VARNAME [value];
+Default: -
+Context: http
+Phase:   initialize master process
+```
+
+Since 3.0.0. Declares the variable `$VARNAME` for scripts to assign with `Nginx::Var`, without a `set` that runs in the request. nginx needs a variable to be declared before a script can assign it, and before `proxy_set_header`, `add_header`, `log_format` and the other directives can read it. A `set` does declare it, but it also runs in its phase: a `set` at the `server` level runs in the server rewrite phase after the handler of `mruby_server_rewrite_handler` or `mruby_server_rewrite_handler_code`, and overwrites the value that the handler assigned.
+
+Until a script, or a `set`, assigns the variable in a request, it reads as `value`, which may contain variables, as the value of `set` may. nginx computes `value` the first time the request reads the variable, and keeps the result for the rest of the request. Without `value`, the variable reads as the empty string. An assignment replaces the value for the rest of the request, as `set` does; the next request starts again from `value`.
+
+`mruby_variable` refuses, when nginx reads the configuration, a name that nginx or another module defines with a value of its own: `nginx -t` fails for `$uri` or `$args`, for the names of the variables of a request header, an argument or a cookie (`$http_NAME`, `$arg_NAME`, `$cookie_NAME` and the other prefixes), for a variable of `map` or `geo` before or after the directive, and for a second `mruby_variable` of the same name. A name that `set`, `mruby_set` or `mruby_set_code` also assigns is accepted, before or after the directive, and both assign it.
+
+The directive is only allowed in the `http` block, because nginx declares a variable for the whole `http` block. Its value is the same in every location.
+
+```nginx
+http {
+    mruby_variable $agent_key;
+    mruby_variable $agent_tier "free";
+
+    log_format agent '$request_uri $agent_key $agent_tier';
+
+    upstream backend {
+        server 127.0.0.1:8080;
+    }
+
+    server {
+        access_log logs/agent.log agent;
+
+        mruby_server_rewrite_handler_code '
+          v = Nginx::Var.new
+          key = Nginx::Request.new.headers_in["X-Agent-Key"].to_s
+          v.agent_key = key
+          v.agent_tier = "paid" if key.start_with?("paid-")
+        ';
+
+        location / {
+            proxy_set_header X-Agent-Key $agent_key;
+            proxy_set_header X-Agent-Tier $agent_tier;
+            proxy_pass http://backend;
+        }
+    }
+}
+```
+
+A request with `X-Agent-Key: paid-1` reaches the backend with `X-Agent-Key: paid-1` and `X-Agent-Tier: paid`, and its access log line is `/ paid-1 paid`. A request without the header reaches it with `X-Agent-Tier: free` and without `X-Agent-Key`, because `proxy_set_header` does not send a header whose value is empty.
 
 ## mruby_output_body_filter, mruby_output_body_filter_code, mruby_output_header_filter and mruby_output_header_filter_code
 
