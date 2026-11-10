@@ -357,6 +357,7 @@ Phase:   NGX_HTTP_LOG_PHASE
 ```
 
 'mruby_log_handler' and 'mruby_log_handler_code' are called at the end of request processing for logging.
+In an HTTP log handler, `Nginx.rputs` and `Nginx.echo` convert their argument as usual and write no response bytes. Use `Nginx.log` to write to the error log.
 
 ## mruby_set and mruby_set_code
 
