@@ -444,15 +444,19 @@ is expected.
 **Today.** `Nginx::Upstream#server=` (`src/http/ngx_http_mruby_upstream.c:150-262`)
 and `Nginx::Stream::Connection#upstream_server=`
 (`src/stream/ngx_stream_mruby_connection.c:113-216`) are copies: the same
-checks of the string, `ngx_parse_url` with `no_resolve`, a per-worker store
+checks of the string, `ngx_parse_url` with `no_resolve` (on `next` since
+#680; the HTTP setter of 2.x still resolves a host name), a per-worker store
 keyed by the peer and reset per cycle, and the assignment to the peer.
-They differ in the peer type, in the locks (HTTP takes the peer locks), and
-in an allocation failure (HTTP returns nil, stream raises).
+They differ in the peer type, in the locks (HTTP takes the peer locks), in
+the port of a string without one (80 for HTTP, 0 for stream), in the check
+of an upstream with a zone (its macro, peer type and message), and in an
+allocation failure (HTTP returns nil, stream raises).
 
 **Design.** `src/common/ngx_mruby_upstream.{h,c}` with the checks and the
-parse, and the per-worker store keyed by an opaque peer pointer. Each
-protocol keeps the assignment to its own peer type, its locks, its
-messages and what it does on an allocation failure.
+parse (which takes the default port), and the per-worker store keyed by an
+opaque peer pointer. Each protocol keeps the check of an upstream with a
+zone, the assignment to its own peer type, its locks, its messages and
+what it does on an allocation failure.
 
 **Behavior change.** None.
 
@@ -830,8 +834,8 @@ and the one that merges second updates its branch.
 
 | Pull request | Section | Waits for | Edits the same code as |
 |---|---|---|---|
-| Log handlers before `access_log`: [#770](https://github.com/matsumotory/ngx_mruby/pull/770), done when it is merged; #770 also makes `Nginx.redirect` with a local URI raise in log handlers, the log handler part of 2.9 | 2.10, 2.9 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
-| `mruby_variable`: [#780](https://github.com/matsumotory/ngx_mruby/pull/780), open, done when it is merged | 2.11 | nothing | nothing |
+| Log handlers before `access_log`: [#770](https://github.com/matsumotory/ngx_mruby/pull/770), merged on 2026-11-09; #770 also makes `Nginx.redirect` with a local URI raise in log handlers, the log handler part of 2.9 | 2.10, 2.9 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
+| `mruby_variable`: [#780](https://github.com/matsumotory/ngx_mruby/pull/780), merged on 2026-11-10 | 2.11 | nothing | nothing |
 | Headers | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
 | Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
 | Execution context and the phases of the Ruby API | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
@@ -839,11 +843,11 @@ and the one that merges second updates its branch.
 | One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`) |
 | Waits inside another mruby call (the raise of `Nginx.redirect` in log handlers is done by #770) | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |
 | Common code loading | 2.6 | nothing | directive table, filter handlers (the directive functions) |
-| Common upstream switching | 2.7 | nothing | nothing |
+| Common upstream switching: [#788](https://github.com/matsumotory/ngx_mruby/pull/788), done when it is merged | 2.7 | nothing | nothing |
 | Common error logging | 2.8 | nothing | execution context (`Nginx.log`) |
 | Directive table and one duplicate check | 2.5 | nothing | log handlers, filter handlers, code loading |
 | A body with any status: [#779](https://github.com/matsumotory/ngx_mruby/pull/779), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`) |
-| A status set before the output (decision 6), `Nginx::HTTP_CLOSE` with output (decision 7), and the cases of the review of #779 for handlers resumed by a subrequest and for 304: [#783](https://github.com/matsumotory/ngx_mruby/pull/783), done when it is merged | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`, `src/http/ngx_http_mruby_async.c`) |
+| A status set before the output (decision 6), `Nginx::HTTP_CLOSE` with output (decision 7), and the cases of the review of #779 for handlers resumed by a subrequest and for 304: [#783](https://github.com/matsumotory/ngx_mruby/pull/783), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`, `src/http/ngx_http_mruby_async.c`) |
 | The check before the tag | 3 | every row above | nothing |
 
 The agent proxy parts (a) and (c) of step 7 of the plan do not touch these
