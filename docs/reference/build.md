@@ -104,6 +104,14 @@ comments and have no condition. The lines that are comments name gems that the d
 leaves out, such as mruby-discount and mruby-memcached: to build with one,
 uncomment its line and remove `mruby/build`.
 
+## Supported nginx versions
+
+v3 supports nginx 1.30 (stable) and 1.31 (mainline), which CI builds and
+tests (the table below). The oldest supported versions move up every
+April, when nginx starts a new stable line. The build does not check the
+version of nginx: [Install](../install/README.md#prerequisites) says what
+happens with an older nginx. Users of an older nginx stay on 2.x.
+
 ## Versions that CI builds and tests
 
 The workflow `.github/workflows/test.yml` builds ngx_mruby and runs
@@ -111,7 +119,7 @@ The workflow `.github/workflows/test.yml` builds ngx_mruby and runs
 
 | nginx | Module | OpenSSL | nginx runs under |
 |---|---|---|---|
-| 1.31.8, 1.30.6, 1.28.3, 1.26.3 | static and dynamic | 3.5.9, installed, or built into nginx with `--with-openssl-src` | valgrind |
+| 1.31.8, 1.30.6 | static and dynamic | 3.5.9, installed, or built into nginx with `--with-openssl-src` | valgrind |
 | 1.31.8 | static | 3.5.9, installed | AddressSanitizer and UndefinedBehaviorSanitizer |
 
 - The runner is Ubuntu 22.04 with GCC 11 and Ruby 3.0. The bundled mruby is

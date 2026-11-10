@@ -84,7 +84,8 @@ that was added and then changed again between two releases was never
 released: edit its entry instead of adding a second one.
 
 Supported nginx versions: ngx_mruby supports the nginx mainline and stable
-lines ([README.md](../../README.md)), built as [`docs/install/`](../install/)
+lines that [README.md](../../README.md) names (for 3.x, 1.30 stable and 1.31
+mainline, raised every April), built as [`docs/install/`](../install/)
 describes. Moving from a superseded mainline version to a newer one (in CI or
 in `nginx_version`) does not drop a supported version: record it under "Build
 and test changes". Dropping support for a stable line (an even minor version,

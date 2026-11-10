@@ -22,6 +22,18 @@ build of the bundled mruby stops on Ruby 2.x, and on an OpenSSL older than
 `RAND_bytes` APIs. The build downloads
 third-party mrbgems from GitHub. A Docker Hub account is not required.
 
+v3 supports nginx 1.30 (stable) and 1.31 (mainline), the lines that CI
+builds and tests. The oldest supported versions move up every April, when
+nginx starts a new stable line. Neither `./configure` nor `build.sh` checks
+the version of nginx. On 2026-11-11, `build.sh` of this development source,
+with and without `--with-stream`, completed with nginx 1.28.3 and 1.26.3,
+which CI does not test, and stopped with nginx 1.24.0 while it compiled
+`src/http/ngx_http_mruby_server.c`, with `'ngx_http_listen_opt_t' has no
+member named 'type'`: the code uses the nginx API of 1.25.5 and later. To
+build with an older nginx, such as the 1.26 and 1.24 packages of Linux
+distributions, use 2.x and its
+[maintenance installation guide](https://ngx.mruby.org/v2/guides/install/).
+
 For example, on Ubuntu 22.04, install the packages with administrator
 privileges, then build as an ordinary user:
 

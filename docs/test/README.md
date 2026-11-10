@@ -227,16 +227,15 @@ Pull requests run these four cells. Every cell
 builds OpenSSL 3.5.9 and installs it before it builds nginx; the first cell builds it into nginx as well
 (`--with-openssl-src`), the path of `configure.in` and `Makefile.in` that
 the cell under valgrind, the same nginx and module against the installed
-OpenSSL, does not take. Every cell (the 16 combinations of nginx 1.31.8,
-1.30.6, 1.28.3 and 1.26.3, the static and the dynamic module, and
-`--with-openssl-src` or not, among them the cell under valgrind, and the
-sanitizer cell) still runs in the nightly run under valgrind, on the push
+OpenSSL, does not take. Every cell (the 8 combinations of nginx 1.31.8
+and 1.30.6, the static and the dynamic module, and `--with-openssl-src` or
+not, among them the cell under valgrind, and the sanitizer cell) still runs in the nightly run under valgrind, on the push
 of a tag, in the check pull request before a tag, which has the label
 `full-matrix` ("Before the tag" in
 [docs/releases/README.md](../releases/README.md)), and on "Run workflow"
 without the input `base` (the second table). A change that only one of the
-other cells can show (for example a change for nginx 1.26.3) is checked
-locally with that version (`nginx_version`, or the `NGINX_VERSION` of the
+other cells can show (for example a change for the dynamic module with
+nginx 1.31.8) is checked locally with that version (`nginx_version`, or the `NGINX_VERSION` of the
 cell, with `BUILD_DYNAMIC_MODULE`), and the pull request can have the
 label `full-matrix` to run every cell.
 

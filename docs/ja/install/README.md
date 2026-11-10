@@ -10,6 +10,8 @@ ngx_mrubyを組み込んだnginxで、インラインとファイルのRubyを�
 
 C/C++コンパイラ、GNU make、Ruby 3.0以降とrake、bison、git、wget、curlが必要です。同梱のmrubyのビルドは、Ruby 2.xでは`mrbc`をリンクするところで止まります。OpenSSL・PCRE・zlibは開発用ヘッダとライブラリも用意します。OpenSSLは3.0以降が要ります。デフォルトのビルドの`Digest`と`SecureRandom`がOpenSSLの`EVP_MAC`と`RAND_bytes`のAPIを使うので、3.0より古いOpenSSLでは同梱のmrubyのビルドが止まります。ビルドはGitHubからサードパーティのmrbgemsを取得します。Docker Hubのアカウントは不要です。
 
+v3がサポートするnginxは、CIがビルドしてテストする1.30のstableと1.31のmainlineです。サポートする最も古いバージョンは、nginxが新しいstableの系列を出す毎年4月に上がります。ngx_mrubyの`./configure`も`build.sh`も、nginxのバージョンを確かめません。2026年11月11日に、この開発版の`build.sh`を`--with-stream`の有無の両方で実行したところ、CIがテストしないnginx 1.28.3と1.26.3ではビルドが最後まで進みました。nginx 1.24.0では、`src/http/ngx_http_mruby_server.c`のコンパイルが`'ngx_http_listen_opt_t' has no member named 'type'`で止まりました。コードが、nginx 1.25.5以降のAPIを使うためです。Linuxのディストリビューションの1.26や1.24のパッケージのような古いnginxでビルドするときは、2.xと[安定版の導入手順](https://ngx.mruby.org/v2/guides/install/)を使ってください。
+
 Ubuntu 22.04では、まず管理者権限でパッケージを入れます。以降のビルドは一般ユーザーで行ってください。
 
 ```sh

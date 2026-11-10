@@ -72,13 +72,17 @@ modules: その中に<wbr>あるもの：<wbr>`ngx_http_mruby_module`、<wbr>ngi
 
 チェックの`site/scripts/check-reference.mjs`は、この一覧を、`build_config.rb`のhostのビルドにある`conf.gem`の行のうち、コメントでなく条件も無い行と比べます。コメントの行には、mruby-discountやmruby-memcachedのような、デフォルトのビルドが入れないgemの名前があります。そのどれかを入れてビルドするには、その行のコメントを外し、`mruby/build`を消してください。
 
+## サポートする<wbr>nginxの<wbr>バージョン
+
+v3がサポートするnginxは、1.30のstableと1.31のmainlineです。CIは、下の表のとおり、この2つでビルドしてテストします。サポートする最も古いバージョンは、nginxが新しいstableの系列を出す毎年4月に上がります。ビルドはnginxのバージョンを確かめません。古いnginxで何が起きるかは、[インストール](../install/README.md#前提)にあります。古いnginxの利用者は2.xを使い続けます。
+
 ## CIが<wbr>ビルドして<wbr>テストする<wbr>バージョン
 
 ワークフローの`.github/workflows/test.yml`は、すべてのプルリクエストで、次の組み合わせごとにngx_mrubyをビルドし、`test.sh`を実行します。
 
 | nginx | モジュール | OpenSSL | nginxを動かす環境 |
 |---|---|---|---|
-| 1.31.8, 1.30.6, 1.28.3, 1.26.3 | 静的と動的 | インストールした3.5.9と、`--with-openssl-src`でnginxに組み込んだ3.5.9 | valgrind |
+| 1.31.8, 1.30.6 | 静的と動的 | インストールした3.5.9と、`--with-openssl-src`でnginxに組み込んだ3.5.9 | valgrind |
 | 1.31.8 | 静的 | システムにインストールした3.5.9 | AddressSanitizerとUndefinedBehaviorSanitizer |
 
 - ランナーは、GCC 11とRuby 3.0のUbuntu 22.04です。同梱のmrubyは4.1.0-rc2です。`build_config.rb.lock`は、そのバージョンを4.1.0と記録します。
