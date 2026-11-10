@@ -14,6 +14,8 @@
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 
+#include "../common/ngx_mruby_upstream.h"
+
 #include <mruby.h>
 #include <mruby/class.h>
 #include <mruby/compile.h>
@@ -132,77 +134,22 @@ static mrb_value ngx_mrb_upstream_get_server(mrb_state *mrb, mrb_value self)
   return mrb_str_new(mrb, (char *)ctx->target->name.data, ctx->target->name.len);
 }
 
-/* Per-peer, worker-lifetime storage for Nginx::Upstream#server=. The round-robin
- * peer (ctx->target) lives for the worker's life (the configuration pool) and is
- * shared by every request that uses the upstream, so its name and sockaddr must
- * not point into the request pool, which is freed when the request ends. One
- * store per peer is allocated once in the cycle pool and reused, so repeated
- * server= calls do not accumulate. Only the non-zone case is handled; a shared
- * memory zone upstream would need the zone's slab (see the 2.7.2 notes). */
-#define NGX_MRB_UPSTREAM_SERVER_MAX 256
-
-typedef struct {
-  ngx_http_upstream_rr_peer_t *peer;
-  ngx_sockaddr_t sockaddr;
-  u_char name[NGX_MRB_UPSTREAM_SERVER_MAX];
-} ngx_mrb_upstream_server_store_t;
-
-static ngx_mrb_upstream_server_store_t *ngx_mrb_upstream_server_store(ngx_http_upstream_rr_peer_t *peer)
-{
-  static ngx_array_t *stores;
-  static ngx_pool_t *stores_pool;
-  ngx_mrb_upstream_server_store_t **elts, *store;
-  ngx_uint_t i;
-
-  /* Compare the saved pool pointer value (never dereference it: after a reload
-   * the old array is in a freed pool) so a fresh cycle gets a fresh array. */
-  if (stores == NULL || stores_pool != ngx_cycle->pool) {
-    stores = ngx_array_create(ngx_cycle->pool, 4, sizeof(ngx_mrb_upstream_server_store_t *));
-    if (stores == NULL) {
-      return NULL;
-    }
-    stores_pool = ngx_cycle->pool;
-  }
-
-  elts = stores->elts;
-  for (i = 0; i < stores->nelts; i++) {
-    if (elts[i]->peer == peer) {
-      return elts[i];
-    }
-  }
-
-  store = ngx_palloc(ngx_cycle->pool, sizeof(ngx_mrb_upstream_server_store_t));
-  if (store == NULL) {
-    return NULL;
-  }
-  store->peer = peer;
-
-  elts = ngx_array_push(stores);
-  if (elts == NULL) {
-    return NULL;
-  }
-  *elts = store;
-
-  return store;
-}
-
+// The checks, the parse and the storage of the peer are in
+// src/common/ngx_mruby_upstream.c, shared with
+// Nginx::Stream::Connection#upstream_server=. This setter keeps the check of
+// an upstream with a zone, the port 80 of a string without one, the locks of
+// the peer, and nil when an allocation fails.
 static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
 {
   ngx_mruby_upstream_context *ctx = DATA_PTR(self);
   ngx_url_t u;
   mrb_value server;
   ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
-  u_char *serverp;
   ngx_mrb_upstream_server_store_t *store;
 
   mrb_get_args(mrb, "S", &server);
 
-  if (RSTRING_LEN(server) <= 0 || (size_t)RSTRING_LEN(server) >= NGX_MRB_UPSTREAM_SERVER_MAX) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid upstream server (empty or too long)");
-  }
-  if (ngx_strlchr((u_char *)RSTRING_PTR(server), (u_char *)RSTRING_END(server), '\0') != NULL) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid upstream server (contains a NUL byte)");
-  }
+  ngx_mrb_upstream_check_server(mrb, server);
 
 #if (NGX_HTTP_UPSTREAM_ZONE)
   // The peers of an upstream with a zone are in shared memory that every
@@ -212,40 +159,20 @@ static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
   }
 #endif
 
-  serverp = ngx_palloc(r->pool, RSTRING_LEN(server) + 1);
-  if (serverp == NULL) {
+  if (ngx_mrb_upstream_parse_server(mrb, r->pool, server, 80, &u) != NGX_OK) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
                   __LINE__);
     return mrb_nil_value();
   }
-  ngx_cpystrn(serverp, (u_char *)RSTRING_PTR(server), RSTRING_LEN(server) + 1);
-
-  ngx_memzero(&u, sizeof(ngx_url_t));
-  u.url.data = serverp;
-  u.url.len = RSTRING_LEN(server);
-  u.default_port = 80;
-  u.no_resolve = 1;
-  if (ngx_parse_url(r->pool, &u) != NGX_OK) {
-    if (u.err) {
-      mrb_raisef(mrb, E_ARGUMENT_ERROR, "%S in upstream %S", mrb_str_new_cstr(mrb, u.err), server);
-    }
-    mrb_raisef(mrb, E_RUNTIME_ERROR, "could not parse upstream server %S", server);
-  }
-  // With no_resolve, nginx accepts a host name and gives it no address.
-  if (u.naddrs == 0) {
-    mrb_raisef(mrb, E_ARGUMENT_ERROR, "upstream server %S is not an IP address or a unix: path", server);
-  }
 
   /* Copy the name and the sockaddr into worker-lifetime storage so the
    * shared peer never points into the freed request pool (use-after-free). */
-  store = ngx_mrb_upstream_server_store(ctx->target);
+  store = ngx_mrb_upstream_server_save(ctx->target, &u);
   if (store == NULL) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
                   __LINE__);
     return mrb_nil_value();
   }
-  ngx_memcpy(store->name, u.url.data, u.url.len);
-  ngx_memcpy(&store->sockaddr, u.addrs[0].sockaddr, u.addrs[0].socklen);
 
   ngx_http_upstream_rr_peers_rlock(ctx->peers);
   ngx_http_upstream_rr_peer_lock(ctx->peers, ctx->target);
