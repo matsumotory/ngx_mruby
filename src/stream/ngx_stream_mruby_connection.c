@@ -9,6 +9,8 @@
 #include "ngx_stream_mruby_core.h"
 #include "ngx_stream_mruby_module.h"
 
+#include "../common/ngx_mruby_upstream.h"
+
 #include <ngx_stream.h>
 
 #include <mruby/class.h>
@@ -96,74 +98,22 @@ static mrb_value ngx_stream_mrb_upstream_get_server(mrb_state *mrb, mrb_value se
   return mrb_str_new(mrb, (char *)ctx->target->name.data, ctx->target->name.len);
 }
 
-/* Per-peer, worker-lifetime storage for Nginx::Stream::Connection#upstream_server=.
- * The round-robin peer (ctx->target) lives for the worker's life and is shared by
- * every connection that uses the upstream, so its name and sockaddr must not point
- * into the Ruby string (RSTRING_PTR, which the mruby GC may free or move) or the
- * connection pool (freed when the connection ends). One store per peer is allocated
- * once in the cycle pool and reused. Only the non-zone case is handled. */
-#define NGX_STREAM_MRB_UPSTREAM_SERVER_MAX 256
-
-typedef struct {
-  ngx_stream_upstream_rr_peer_t *peer;
-  ngx_sockaddr_t sockaddr;
-  u_char name[NGX_STREAM_MRB_UPSTREAM_SERVER_MAX];
-} ngx_stream_mrb_upstream_server_store_t;
-
-static ngx_stream_mrb_upstream_server_store_t *ngx_stream_mrb_upstream_server_store(ngx_stream_upstream_rr_peer_t *peer)
-{
-  static ngx_array_t *stores;
-  static ngx_pool_t *stores_pool;
-  ngx_stream_mrb_upstream_server_store_t **elts, *store;
-  ngx_uint_t i;
-
-  if (stores == NULL || stores_pool != ngx_cycle->pool) {
-    stores = ngx_array_create(ngx_cycle->pool, 4, sizeof(ngx_stream_mrb_upstream_server_store_t *));
-    if (stores == NULL) {
-      return NULL;
-    }
-    stores_pool = ngx_cycle->pool;
-  }
-
-  elts = stores->elts;
-  for (i = 0; i < stores->nelts; i++) {
-    if (elts[i]->peer == peer) {
-      return elts[i];
-    }
-  }
-
-  store = ngx_palloc(ngx_cycle->pool, sizeof(ngx_stream_mrb_upstream_server_store_t));
-  if (store == NULL) {
-    return NULL;
-  }
-  store->peer = peer;
-
-  elts = ngx_array_push(stores);
-  if (elts == NULL) {
-    return NULL;
-  }
-  *elts = store;
-
-  return store;
-}
-
+// The checks, the parse and the storage of the peer are in
+// src/common/ngx_mruby_upstream.c, shared with Nginx::Upstream#server=. This
+// setter keeps the check of an upstream with a zone, the port 0 of a string
+// without one, and RuntimeError when an allocation fails. It takes no lock:
+// the stream peer has none.
 static mrb_value ngx_stream_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
 {
   ngx_stream_mruby_upstream_context *ctx = DATA_PTR(self);
   ngx_url_t u;
   mrb_value server;
   ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
-  u_char *serverp;
-  ngx_stream_mrb_upstream_server_store_t *store;
+  ngx_mrb_upstream_server_store_t *store;
 
   mrb_get_args(mrb, "S", &server);
 
-  if (RSTRING_LEN(server) <= 0 || (size_t)RSTRING_LEN(server) >= NGX_STREAM_MRB_UPSTREAM_SERVER_MAX) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid upstream server (empty or too long)");
-  }
-  if (ngx_strlchr((u_char *)RSTRING_PTR(server), (u_char *)RSTRING_END(server), '\0') != NULL) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid upstream server (contains a NUL byte)");
-  }
+  ngx_mrb_upstream_check_server(mrb, server);
 
 #if (NGX_STREAM_UPSTREAM_ZONE)
   // The peers of an upstream with a zone are in shared memory that every
@@ -174,36 +124,16 @@ static mrb_value ngx_stream_mrb_upstream_set_server(mrb_state *mrb, mrb_value se
   }
 #endif
 
-  serverp = ngx_palloc(s->connection->pool, RSTRING_LEN(server) + 1);
-  if (serverp == NULL) {
+  if (ngx_mrb_upstream_parse_server(mrb, s->connection->pool, server, 0, &u) != NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
-  }
-  ngx_cpystrn(serverp, (u_char *)RSTRING_PTR(server), RSTRING_LEN(server) + 1);
-
-  ngx_memzero(&u, sizeof(ngx_url_t));
-  u.url.data = serverp;
-  u.url.len = RSTRING_LEN(server);
-  u.no_resolve = 1;
-
-  if (ngx_parse_url(s->connection->pool, &u) != NGX_OK) {
-    if (u.err) {
-      mrb_raisef(mrb, E_ARGUMENT_ERROR, "%S in upstream %S", mrb_str_new_cstr(mrb, u.err), server);
-    }
-    mrb_raisef(mrb, E_RUNTIME_ERROR, "could not parse upstream server %S", server);
-  }
-  // With no_resolve, nginx accepts a host name and gives it no address.
-  if (u.naddrs == 0) {
-    mrb_raisef(mrb, E_ARGUMENT_ERROR, "upstream server %S is not an IP address or a unix: path", server);
   }
 
   /* Copy the name and the resolved sockaddr into worker-lifetime storage so the
    * shared peer never points into the Ruby string or the freed connection pool. */
-  store = ngx_stream_mrb_upstream_server_store(ctx->target);
+  store = ngx_mrb_upstream_server_save(ctx->target, &u);
   if (store == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
   }
-  ngx_memcpy(store->name, u.url.data, u.url.len);
-  ngx_memcpy(&store->sockaddr, u.addrs[0].sockaddr, u.addrs[0].socklen);
 
   ctx->target->name.data = store->name;
   ctx->target->name.len = u.url.len;
