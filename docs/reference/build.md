@@ -125,9 +125,15 @@ starts](../test/README.md#which-jobs-a-run-starts)).
 
 | nginx | Module | OpenSSL | nginx runs |
 |---|---|---|---|
-| 1.31.8, 1.30.6 | static and dynamic | 3.5.9, installed, or built into nginx with `--with-openssl-src` | under valgrind in the nightly run; in the other runs, directly, except one cell under valgrind (1.31.8, static, the installed OpenSSL) |
-| 1.31.8 | static | 3.5.9, installed | directly, built with AddressSanitizer and UndefinedBehaviorSanitizer |
+| 1.31.8, 1.30.6 | static and dynamic | 3.5.9, installed, or built into nginx with `--with-openssl-src` | directly or under valgrind |
+| 1.31.8 | static | 3.5.9, installed | directly |
 
+- The nightly run runs nginx under valgrind in every cell except the
+  sanitizer cell. The other runs
+  run it under valgrind only in the cell of 1.31.8 with the static module
+  and the installed OpenSSL.
+- The sanitizer cell builds ngx_mruby, mruby and nginx with
+  AddressSanitizer and UndefinedBehaviorSanitizer.
 - The runner is Ubuntu 22.04 with GCC 11 and Ruby 3.0. The bundled mruby is
   4.1.0-rc2 (`build_config.rb.lock` records its version as 4.1.0).
 - `nginx_version` names the version that `build.sh` and `test.sh`

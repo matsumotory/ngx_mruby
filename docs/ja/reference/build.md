@@ -82,8 +82,10 @@ v3がサポートするnginxは、1.30のstableと1.31のmainlineです。CIは�
 
 | nginx | モジュール | OpenSSL | nginxの動かし方 |
 |---|---|---|---|
-| 1.31.8, 1.30.6 | 静的と動的 | インストールした3.5.9と、`--with-openssl-src`でnginxに組み込んだ3.5.9 | 夜間の実行ではvalgrindの下で動かします。ほかの実行では直接動かし、1.31.8の静的モジュールでインストールしたOpenSSLを使うセルだけをvalgrindの下で動かします |
-| 1.31.8 | 静的 | システムにインストールした3.5.9 | AddressSanitizerとUndefinedBehaviorSanitizerを付けてビルドし、直接動かします |
+| 1.31.8, 1.30.6 | 静的と動的 | インストールした3.5.9と、`--with-openssl-src`でnginxに組み込んだ3.5.9 | 直接か、valgrindの下 |
+| 1.31.8 | 静的 | システムにインストールした3.5.9 | 直接 |
 
+- 夜間の実行では、sanitizerのセルを除く全部のセルで、nginxをvalgrindの下で動かします。ほかの実行では、1.31.8の静的モジュールでインストールしたOpenSSLを使うセルだけを、valgrindの下で動かします。
+- sanitizerのセルは、ngx_mruby、mruby、nginxをAddressSanitizerとUndefinedBehaviorSanitizerを付けてビルドします。
 - ランナーは、GCC 11とRuby 3.0のUbuntu 22.04です。同梱のmrubyは4.1.0-rc2です。`build_config.rb.lock`は、そのバージョンを4.1.0と記録します。
 - `nginx_version`は`build.sh`と`test.sh`がダウンロードするバージョン1.31.8を指定します。
