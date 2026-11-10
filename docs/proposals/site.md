@@ -214,8 +214,7 @@ Docs, Agent proxy, Releases, Security, Contributing, GitHub.
    file of expected output next to the script. The generator copies the
    configuration, the script and that file into the home page, so the page
    shows what `test.sh` checks on every CI run, with the date of the last
-   commit to those files. `example/nginx.conf` is not used, because no CI
-   job starts it.
+   commit to those files.
 
 ### 3.4 Versions and languages
 
