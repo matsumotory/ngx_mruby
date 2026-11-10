@@ -2,7 +2,8 @@
 # test/t/cases/body_with_status.rb. The path of the request names what the
 # handler does: it writes output with Nginx.rputs and then sets a status
 # with Nginx.return, except on /status_only, which sets the status without
-# output.
+# output, and on the paths that start with /before_, which set the status
+# before the output.
 r = Nginx::Request.new
 case r.uri
 when '/content_401'
@@ -36,4 +37,33 @@ when '/status_only'
 when '/sub_target'
   Nginx.rputs 'sub forbidden'
   Nginx.return Nginx::HTTP_FORBIDDEN
+when '/before_content_401'
+  r.content_type = 'application/json'
+  Nginx.status_code = Nginx::HTTP_UNAUTHORIZED
+  Nginx.rputs '{"error":"status first"}'
+when '/before_access_429'
+  Nginx.return Nginx::HTTP_TOO_MANY_REQUESTS
+  Nginx.rputs '{"error":"rate limited first"}'
+when '/before_rewrite_403'
+  Nginx.send_header Nginx::HTTP_FORBIDDEN
+  Nginx.rputs '{"error":"forbidden first"}'
+when '/before_access_200'
+  Nginx.return Nginx::HTTP_OK
+  Nginx.rputs 'ok in access'
+when '/before_switching_protocols'
+  Nginx.return Nginx::HTTP_SWITCHING_PROTOCOLS
+  Nginx.rputs 'not sent with 101'
+when '/before_then_after'
+  Nginx.return Nginx::HTTP_UNAUTHORIZED
+  Nginx.rputs 'the later status wins'
+  Nginx.return Nginx::HTTP_FORBIDDEN
+when '/before_sub_target'
+  Nginx.status_code = Nginx::HTTP_ACCEPTED
+  Nginx.rputs 'sub accepted'
+when '/close_after_output', '/access_close_after_output'
+  Nginx.rputs 'not sent before 444'
+  Nginx.return Nginx::HTTP_CLOSE
+when '/before_close'
+  Nginx.return Nginx::HTTP_CLOSE
+  Nginx.rputs 'not sent after 444'
 end

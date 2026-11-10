@@ -164,14 +164,15 @@ static ngx_flag_t ngx_mrb_content_ends_without_response(ngx_http_request_t *r, n
 }
 
 /*
- * Whether a handler that wrote output and then set a status sends the output
- * with that status (section 2.12 of docs/proposals/core-alpha1.md): the
- * post_read, server rewrite, rewrite, access and content handlers, of the
- * main request and of subrequests. ngx_mrb_finalize_rputs sends the output
- * with every status from 200 up, as nginx's "return code text" sends its
- * text (ngx_http_send_response): nginx does not answer the status itself, so
- * an error_page of the location for the status does not apply. It answers
- * 500 for a status below 200.
+ * Whether a handler that wrote output and set a status before or after it
+ * sends the output with that status (section 2.12 of
+ * docs/proposals/core-alpha1.md): the post_read, server rewrite, rewrite,
+ * access and content handlers, of the main request and of subrequests.
+ * ngx_mrb_finalize_rputs sends the output with every status from 200 up, as
+ * nginx's "return code text" sends its text (ngx_http_send_response): nginx
+ * does not answer the status itself, so an error_page of the location for
+ * the status does not apply. It answers 500 for a status below 200, and
+ * closes the connection without the output for NGX_HTTP_CLOSE (444).
  *
  * Log handlers and filters keep their handling, and so does a handler whose
  * header went out already, or whose module context an internal redirect
@@ -314,13 +315,25 @@ static ngx_int_t ngx_mrb_send_empty_body(ngx_http_request_t *r)
  */
 // TODO: Support rputs by multi directive
 ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx, ngx_http_mruby_handler_kind_t kind,
-                                 ngx_flag_t has_result, ngx_int_t result)
+                                 ngx_flag_t has_result, ngx_int_t result, ngx_int_t status)
 {
   ngx_int_t rc = NGX_OK;
   ngx_mrb_rputs_chain_list_t *chain;
   ngx_flag_t redirected;
+  ngx_int_t output_status;
 
   chain = ctx->rputs_chain;
+  // The status of the output: a status that the handler set after the
+  // output marks the last buffer and is in r->headers_out.status; without
+  // it, the status that the handler that ends set before the output, from
+  // the record of its run (decision 6 of docs/proposals/core-alpha1.md), 0
+  // for none. Neither r->headers_out.status nor the chain is read for the
+  // second case: the first can hold a status that an earlier handler or
+  // nginx stored, or a 200 that Nginx.return answered with 500 for a handler
+  // that had no output yet, and a chain that an earlier handler left in the
+  // module context (output followed by Nginx::DECLINED) gets the output of
+  // the next handler, whose status is its own.
+  output_status = chain == NULL ? 0 : (*chain->last)->buf->last_buf ? (ngx_int_t)r->headers_out.status : status;
 
   // Without a result of its own, a handler that sent the request elsewhere
   // with Nginx.redirect (an internal redirect replaced the module context it
@@ -364,16 +377,25 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     // last buffer): the output is not sent, and the phase gets the code, as
     // before. A code before the output does not apply to it.
     rc = result;
-  } else if ((*chain->last)->buf->last_buf && r->headers_out.status > 0 && r->headers_out.status < NGX_HTTP_OK &&
-             ngx_mrb_handler_sends_output(r, ctx, kind)) {
-    // A status below 200 after the output cannot be the status of a final
+  } else if (output_status == NGX_HTTP_CLOSE && ngx_mrb_handler_sends_output(r, ctx, kind)) {
+    // Nginx::HTTP_CLOSE with the output, before or after it (decision 7 of
+    // docs/proposals/core-alpha1.md): nginx's value for closing the
+    // connection without a response, not a status. The output is dropped,
+    // as in the branch below, and the phase gets NGX_HTTP_CLOSE, which
+    // ngx_http_finalize_request answers by closing the connection.
+    r->headers_out.content_length_n = chain->content_length_n;
+    ctx->rputs_chain = NULL;
+    r->headers_out.status = NGX_HTTP_CLOSE;
+    rc = NGX_HTTP_CLOSE;
+  } else if (output_status > 0 && output_status < NGX_HTTP_OK && ngx_mrb_handler_sends_output(r, ctx, kind)) {
+    // A status below 200 with the output cannot be the status of a final
     // response: 500, as for such a status without output
     // (ngx_mrb_answer_missing_body). The output is dropped, as after an
     // exception, and Content-Length loses its length.
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "%s ERROR %s: status code %ui after the output is not the status of a final response."
+                  "%s ERROR %s: status code %i with the output is not the status of a final response."
                   " return NGX_HTTP_INTERNAL_SERVER_ERROR",
-                  MODULE_NAME, __func__, r->headers_out.status);
+                  MODULE_NAME, __func__, output_status);
     r->headers_out.content_length_n = chain->content_length_n;
     ctx->rputs_chain = NULL;
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -381,13 +403,17 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
   } else if (r->headers_out.status == NGX_HTTP_OK || !(*chain->last)->buf->last_buf ||
              (r->headers_out.status >= NGX_HTTP_OK && ngx_mrb_handler_sends_output(r, ctx, kind)) ||
              ngx_mrb_content_ends_without_response(r, ctx, kind, (ngx_int_t)r->headers_out.status)) {
-    // A status set after the output marks the last buffer. The output goes
-    // out with that status, from 200 up (ngx_mrb_handler_sends_output),
-    // instead of nginx's own response for it, and Content-Length counts the
-    // output. For 204 and 304, nginx's header filter sets r->header_only,
-    // and only the header goes out. 0 is no status, and the output gets 200,
-    // as when the status was set before the output.
-    if (!(*chain->last)->buf->last_buf || r->headers_out.status == 0) {
+    // The output goes out with its status (output_status above), from 200
+    // up, in the handlers of ngx_mrb_handler_sends_output, instead of
+    // nginx's own response for it, and Content-Length counts the output. For
+    // 204 and 304, nginx's header filter sets r->header_only, and only the
+    // header goes out. 0 is no status, and the output gets 200; so does
+    // output that a log handler or a filter wrote without a status after it.
+    if (!(*chain->last)->buf->last_buf) {
+      r->headers_out.status = output_status >= NGX_HTTP_OK && ngx_mrb_handler_sends_output(r, ctx, kind)
+                                  ? (ngx_uint_t)output_status
+                                  : NGX_HTTP_OK;
+    } else if (r->headers_out.status == 0) {
       r->headers_out.status = NGX_HTTP_OK;
     }
     (*chain->last)->buf->last_buf = 1;
@@ -483,6 +509,9 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   // handler only (below), not the status of the response
   if (status >= 0) {
     r->headers_out.status = status;
+    // as the code gave it, for output that follows (the 500 below is the
+    // result of a handler without output)
+    ngx_http_mrb_fiber_set_status(r, (ngx_int_t)status);
   }
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
@@ -713,6 +742,9 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     r->headers_out.location = location;
     r->headers_out.status = rc;
     ngx_http_mrb_fiber_set_result(r, rc);
+    // output after it keeps its handling: a status set before with
+    // Nginx.return does not apply to it
+    ngx_http_mrb_fiber_set_status(r, 0);
     // after a local redirect that waits for the end of the handler, this
     // status is not sent either
     ngx_http_mrb_fiber_after_redirect(r);
