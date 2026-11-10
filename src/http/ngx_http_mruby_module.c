@@ -1301,7 +1301,9 @@ resumed:
   //   handler that finalizes, such as a log handler.
   //   ngx_mrb_finalize_body_filter and a handler that is sending its own
   //   chain through this filter keep their own pointers to the ctx and the
-  //   chain.
+  //   chain. When the response needs more than one write,
+  //   ngx_http_mruby_body_filter_handler_inner then gives the request a new
+  //   ctx without the chain, which only passes the writer's calls on.
   //   Otherwise the ctx stays, as it did. That is the case after Nginx.rputs
   //   and then Nginx.return, Nginx.status_code= or Nginx.send_header with
   //   another status, when nginx sends the response for that status, such
@@ -1313,7 +1315,10 @@ resumed:
   //   ngx_mrb_finalize_rputs: the mruby header filter has held the header
   //   back, so nothing is sent, and running that filter again keeps the
   //   length of the body filter's output once the body filter holds a body,
-  //   which test/t/cases/filter_connection.rb pins.
+  //   which test/t/cases/filter_connection.rb pins. With an rputs chain,
+  //   that function drops the ctx too, and when the response needs more
+  //   than one write, ngx_http_mruby_body_filter_handler_inner gives the
+  //   request the same new ctx as above.
   if (kind == NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER) {
     return NGX_OK;
   }
@@ -2158,6 +2163,7 @@ static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r,
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(NULL, r);
+  ngx_http_mruby_ctx_t *next;
 
   ngx_int_t rc;
 
@@ -2197,7 +2203,38 @@ static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r,
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
   }
-  return ngx_mrb_finalize_body_filter(r, ctx);
+
+  rc = ngx_mrb_finalize_body_filter(r, ctx);
+
+  // When an earlier handler's Nginx.rputs chain is still in the module ctx,
+  // the run of the code above drops the ctx, so that a later handler does not
+  // send that chain after the response. ngx_mrb_run_request drops it when the
+  // location has an mruby header filter or the header is out. Otherwise
+  // ngx_mrb_run_request calls ngx_mrb_finalize_rputs, which drops it: the
+  // phase of the ctx is still NGX_HTTP_MRUBY_FILTER_PROCESS there, so that
+  // function does not make the new ctx that it makes after the body filter
+  // has sent a response. ngx_mrb_finalize_body_filter marked this ctx, which
+  // the request no longer has, with NGX_HTTP_MRUBY_FILTER_PASS. When nginx
+  // could not send the whole response in one write (sendfile_max_chunk,
+  // limit_rate, a client that reads slowly), ngx_http_writer calls this
+  // filter again with no new data, and without a ctx the filter would start
+  // to read a new body and hold the call back until send_timeout. The request
+  // gets a new, empty ctx with that phase instead, as ngx_mrb_finalize_rputs
+  // does: it holds no chain, and the filter passes the writer's calls on. A
+  // response that went out in one write leaves no ctx, as before.
+  if (rc != NGX_ERROR && ngx_http_get_module_ctx(r, ngx_http_mruby_module) == NULL &&
+      (r->buffered || r->connection->buffered)) {
+    next = ngx_pcalloc(r->pool, sizeof(ngx_http_mruby_ctx_t));
+    if (next == NULL) {
+      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
+                    __LINE__);
+      return NGX_ERROR;
+    }
+    next->phase = NGX_HTTP_MRUBY_FILTER_PASS;
+    ngx_http_set_ctx(r, next, ngx_http_mruby_module);
+  }
+
+  return rc;
 }
 
 static ngx_int_t ngx_http_mruby_body_filter_handler(ngx_http_request_t *r, ngx_chain_t *in)
