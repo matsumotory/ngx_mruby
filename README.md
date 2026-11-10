@@ -94,7 +94,7 @@ Until the promotion, `v2.x` has the same commits as `master`, so pinning it does
 
 The 2.x line (`master` until the promotion, then `v2.x`) puts compatibility first. It receives only stability fixes (crashes, hangs, leaks, and build fixes such as those for new nginx, OS, compiler or OpenSSL releases) and security fixes, and it changes behavior only as far as the fix of a defect requires. Since 2.7.1, the release notes in [docs/releases/](docs/releases/) list each such change. 2.x stays supported for twelve months after v3.0.0 (see [SECURITY.md](SECURITY.md#supported-versions)).
 
-v3 (`next` until the promotion) supports nginx 1.30 (stable) and 1.31 (mainline), the lines that its CI builds and tests. The oldest supported versions move up every April, when nginx starts a new stable line. If you build with an older nginx, such as 1.28 or the 1.26 and 1.24 packages of Linux distributions, stay on 2.x: [Install](docs/install/README.md#prerequisites) says what happens when you build v3 with such an nginx.
+v3 (`next` until the promotion) supports nginx 1.30 (stable) and 1.31 (mainline), the lines that its CI builds and tests. The oldest supported versions move up every April, when nginx starts a new stable line. With nginx 1.28 or 1.26, stay on 2.x, whose CI builds and tests them. With nginx 1.24, such as the package of Ubuntu 24.04, 2.x builds only without the stream module. [Install](docs/install/README.md#prerequisites) says what happens when you build v3 or 2.x with an older nginx.
 
 Releases are tagged `vX.Y.Z`. If you contribute a fix, send 2.x fixes to `master` until the promotion and v3 work to `next` (see [AGENTS.md](AGENTS.md#branches-and-pull-requests)).
 
