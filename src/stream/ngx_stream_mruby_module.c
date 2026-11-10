@@ -94,7 +94,6 @@ static ngx_command_t ngx_stream_mruby_commands[] = {
 
     ngx_null_command};
 
-#if (nginx_version > 1011001)
 static ngx_stream_module_t ngx_stream_mruby_module_ctx = {
     NULL,                  /* preconfiguration */
     ngx_stream_mruby_init, /* postconfiguration */
@@ -105,17 +104,6 @@ static ngx_stream_module_t ngx_stream_mruby_module_ctx = {
     ngx_stream_mruby_create_srv_conf, /* create server configuration */
     ngx_stream_mruby_merge_srv_conf   /* merge server configuration */
 };
-#else
-static ngx_stream_module_t ngx_stream_mruby_module_ctx = {
-    ngx_stream_mruby_init, /* postconfiguration */
-
-    ngx_stream_mruby_create_main_conf, /* create main configuration */
-    ngx_stream_mruby_init_main_conf,   /* init main configuration */
-
-    ngx_stream_mruby_create_srv_conf, /* create server configuration */
-    ngx_stream_mruby_merge_srv_conf   /* merge server configuration */
-};
-#endif
 
 ngx_module_t ngx_stream_mruby_module = {NGX_MODULE_V1,
                                         &ngx_stream_mruby_module_ctx, /* module context */
@@ -832,7 +820,6 @@ static ngx_int_t ngx_stream_mruby_init(ngx_conf_t *cf)
 {
   ngx_stream_core_main_conf_t *cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
 
-#if (nginx_version >= 1011005)
   ngx_stream_handler_pt *h;
 
   h = ngx_array_push(&cmcf->phases[NGX_STREAM_ACCESS_PHASE].handlers);
@@ -841,9 +828,6 @@ static ngx_int_t ngx_stream_mruby_init(ngx_conf_t *cf)
   }
 
   *h = ngx_stream_mruby_handler;
-#else
-  cmcf->access_handler = ngx_stream_mruby_handler;
-#endif
 
   return NGX_OK;
 }

@@ -60,11 +60,7 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
   mrb_value listener, address;
   ngx_str_t addr;
   ngx_url_t u;
-#if (nginx_version > 1015009)
   ngx_uint_t i, n;
-#else
-  ngx_uint_t i;
-#endif
   ngx_stream_listen_opt_t ls;
 
   /* set only while mruby_stream_server_context_code runs */

@@ -870,11 +870,9 @@ static ngx_flag_t ngx_http_mruby_request_body_complete(ngx_http_request_t *r)
     return 1;
   }
 
-#if defined(nginx_version) && nginx_version >= 1003009
   if (r->headers_in.chunked) {
     return 0;
   }
-#endif
 
   if (r->headers_in.content_length_n < 0) {
     return 1;
@@ -1025,9 +1023,6 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
       ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                     "%s INFO %s:%d: mrb_run: tried to read request body, but got %d.", MODULE_NAME, __func__, __LINE__,
                     rc);
-#if (nginx_version < 1002006) || (nginx_version >= 1003000 && nginx_version < 1003009)
-      r->main->count--;
-#endif
       return rc;
     }
 
@@ -1077,20 +1072,16 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
          * the count is decremented directly instead of through
          * ngx_http_finalize_request.
          */
-#if defined(nginx_version) && nginx_version >= 8011
         r->main->count--;
-#endif
         return NGX_AGAIN;
       }
     }
 
-#if defined(nginx_version) && nginx_version >= 8011
     // The read completed at once and ngx_http_read_client_request_body has
     // called the callback already. Drop the reference that it took; a log
     // handler runs when the count is already 0, so this is not done through
     // ngx_http_finalize_request either.
     r->main->count--;
-#endif
   }
 
   ai = mrb_gc_arena_save(state->mrb);
