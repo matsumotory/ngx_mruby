@@ -321,6 +321,7 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
   ngx_mrb_rputs_chain_list_t *chain;
   ngx_flag_t redirected;
   ngx_int_t output_status;
+  ngx_http_mruby_ctx_t *next = NULL;
 
   chain = ctx->rputs_chain;
   // The status of the output: a status that the handler set after the
@@ -429,7 +430,32 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
       ngx_http_output_filter(r, chain->out);
     }
 
-    ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
+    // A later handler of the request starts with a new module context, so
+    // that it does not send this output again. When an mruby body filter
+    // made the response from this output (ngx_mrb_finalize_body_filter set
+    // NGX_HTTP_MRUBY_FILTER_PASS) and nginx could not send all of it in one
+    // write (limit_rate, sendfile_max_chunk, a client that reads slowly),
+    // the new context keeps that phase: ngx_http_writer calls the body
+    // filter again with no new data until the rest is sent, and the filter
+    // must pass these calls on. Without a context, the filter would start
+    // to read a new body and hold the call back, and the rest of the
+    // response would wait until send_timeout. This holds for every status
+    // that this branch sends the output with, set before or after it. A
+    // response that went out in one write leaves no context, as before. The
+    // branches above for NGX_HTTP_CLOSE and for a status below 200 send no
+    // output and keep the module context.
+    if (ctx->phase == NGX_HTTP_MRUBY_FILTER_PASS && (r->buffered || r->connection->buffered)) {
+      next = ngx_pcalloc(r->pool, sizeof(ngx_http_mruby_ctx_t));
+      if (next == NULL) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
+                      __LINE__);
+        ngx_http_set_ctx(r, NULL, ngx_http_mruby_module);
+        return NGX_ERROR;
+      }
+      next->phase = NGX_HTTP_MRUBY_FILTER_PASS;
+    }
+
+    ngx_http_set_ctx(r, next, ngx_http_mruby_module);
     if (kind == NGX_HTTP_MRUBY_HANDLER_POST_READ || kind == NGX_HTTP_MRUBY_HANDLER_ACCESS) {
       rc = NGX_HTTP_OK;
     } else {

@@ -34,11 +34,26 @@ def config_time_messages(log, level)
   log.split("\n").select { |l| l.include?("[#{level}] ") }.map { |l| config_time_message(l) }.compact.uniq.sort
 end
 
+# The lines of an error log at the levels notice and info, read one line at
+# a time. The error log of the test nginx is at the debug level and is not
+# read whole: File.read of the test build fails with "string too long" from
+# about 7 MB (its buffer grows past MRB_STR_LENGTH_MAX, 10 MiB in
+# build_config.rb), and the log is about that long when this case runs.
+def config_time_log_lines(path)
+  lines = []
+  File.open(path) do |f|
+    while (line = f.gets)
+      lines << line.chomp if line.include?('[notice] ') || line.include?('[info] ')
+    end
+  end
+  lines.join("\n")
+end
+
 # test.sh empties error.log before it starts nginx, and the configuration of
 # that nginx has every kind of message above (nginx.conf, nginx.stream.conf
 # and the fragments). The startup log and error_log are the same file there.
 t.assert('config-time log - the started nginx logged no configuration-time message at notice', 'logs/error.log') do
-  log = File.read(File.join(ENV['NGINX_INSTALL_DIR'], 'logs', 'error.log'))
+  log = config_time_log_lines(File.join(ENV['NGINX_INSTALL_DIR'], 'logs', 'error.log'))
   t.assert_equal [], config_time_messages(log, 'notice')
   # error_log is at debug, but the startup log drops info.
   t.assert_equal [], config_time_messages(log, 'info')
