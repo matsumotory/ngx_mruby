@@ -2042,18 +2042,18 @@ static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r,
 
   rc = ngx_mrb_finalize_body_filter(r, ctx);
 
-  // ngx_mrb_run drops the module ctx when an earlier handler's Nginx.rputs
-  // chain is still in it, so that a later handler does not send that chain
-  // after the response. ngx_mrb_finalize_body_filter marked this ctx, which
-  // the request no longer has, with NGX_HTTP_MRUBY_FILTER_PASS. When nginx
-  // could not send the whole response in one write (sendfile_max_chunk,
-  // limit_rate, a client that reads slowly), ngx_http_writer calls this
-  // filter again with no new data, and without a ctx the filter would start
-  // to read a new body and hold the call back until send_timeout. The
-  // request gets a new, empty ctx with that phase instead, as
-  // ngx_mrb_finalize_rputs does: it holds no chain, and the filter passes
-  // the writer's calls on. A response that went out in one write leaves no
-  // ctx, as before.
+  // ngx_mrb_run_request drops the module ctx when an earlier handler's
+  // Nginx.rputs chain is still in it, so that a later handler does not send
+  // that chain after the response. ngx_mrb_finalize_body_filter marked this
+  // ctx, which the request no longer has, with NGX_HTTP_MRUBY_FILTER_PASS.
+  // When nginx could not send the whole response in one write
+  // (sendfile_max_chunk, limit_rate, a client that reads slowly),
+  // ngx_http_writer calls this filter again with no new data, and without a
+  // ctx the filter would start to read a new body and hold the call back
+  // until send_timeout. The request gets a new, empty ctx with that phase
+  // instead, as ngx_mrb_finalize_rputs does: it holds no chain, and the
+  // filter passes the writer's calls on. A response that went out in one
+  // write leaves no ctx, as before.
   if (rc != NGX_ERROR && ngx_http_get_module_ctx(r, ngx_http_mruby_module) == NULL &&
       (r->buffered || r->connection->buffered)) {
     next = ngx_pcalloc(r->pool, sizeof(ngx_http_mruby_ctx_t));
