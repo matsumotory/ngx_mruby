@@ -444,9 +444,13 @@ is expected.
 
 ### 2.7 Common layer: upstream switching
 
-**Today.** `Nginx::Upstream#server=` (`src/http/ngx_http_mruby_upstream.c:150-262`)
-and `Nginx::Stream::Connection#upstream_server=`
-(`src/stream/ngx_stream_mruby_connection.c:113-216`) are copies: the same
+**Today** (before #788). `Nginx::Upstream#server=`
+(`ngx_mrb_upstream_set_server` and `ngx_mrb_upstream_server_store` in
+`src/http/ngx_http_mruby_upstream.c`) and
+`Nginx::Stream::Connection#upstream_server=`
+(`ngx_stream_mrb_upstream_set_server` and
+`ngx_stream_mrb_upstream_server_store` in
+`src/stream/ngx_stream_mruby_connection.c`) are copies: the same
 checks of the string, `ngx_parse_url` with `no_resolve` (on `next` since
 #680; the HTTP setter of 2.x still resolves a host name), a per-worker store
 keyed by the peer and reset per cycle, and the assignment to the peer.
