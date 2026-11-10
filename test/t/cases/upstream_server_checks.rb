@@ -34,6 +34,8 @@ end
 {
   'empty' => 'invalid upstream server (empty or too long)',
   'long' => 'invalid upstream server (empty or too long)',
+  # one byte shorter than the limit: refused as a host name, not for its length
+  'long255' => "upstream server #{'a' * 255} is not an IP address or a unix: path",
   'port' => 'invalid port in upstream 192.0.2.6:notaport',
   'nohost' => 'no host in upstream :80',
   'ipv6' => 'invalid IPv6 address in upstream [2001:db8::zz]:80',
