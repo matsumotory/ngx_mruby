@@ -1,12 +1,12 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-10 (20:20 JST)
+## State as of 2026-11-10 (23:20 JST)
 
-- Heads: `master` is `13153ae22`, the merge of
-  [#784](https://github.com/matsumotory/ngx_mruby/pull/784). `next` is
-  `9a09deaeb`, the merge of [#782](https://github.com/matsumotory/ngx_mruby/pull/782).
-  [#785](https://github.com/matsumotory/ngx_mruby/pull/785) (open) brings
-  `master` through `13153ae22` into `next`. `v2.x` mirrors `master`. The latest published release is 2.7.5;
+- Heads: `master` is `10c4cd927`, the merge of
+  [#786](https://github.com/matsumotory/ngx_mruby/pull/786). `next` is
+  `76ebd2fac`, the merge of [#785](https://github.com/matsumotory/ngx_mruby/pull/785).
+  [#787](https://github.com/matsumotory/ngx_mruby/pull/787) (open) brings
+  `master` through `10c4cd927` into `next`. `v2.x` mirrors `master`. The latest published release is 2.7.5;
   `docs/releases/v2.7.6.md` and `.ja.md` on `master` collect the entries of
   the next 2.x release, which is not tagged.
 - The release 2.7.5: [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.5)
@@ -207,9 +207,23 @@
   more than one write to send it (`limit_rate`, `sendfile_max_chunk`, a
   slow client). Its test is `test/t/cases/body_filter_split_write.rb`
   (port 18141) and its entry is in `docs/releases/v2.7.6.md` and `.ja.md`.
-- [#785](https://github.com/matsumotory/ngx_mruby/pull/785) (open, to
-  `next`) merges `master` through `13153ae22` into `next`, with #778,
-  #781 and #784. A test commit before the merge,
+- [#786](https://github.com/matsumotory/ngx_mruby/pull/786) merged into
+  `master` as `10c4cd927` on 2026-11-10 at 23:13 JST: in a location with
+  an mruby body filter, with or without an mruby header filter, a
+  response no longer stops after its first write when an earlier handler
+  wrote with `Nginx.rputs` and returned `Nginx::DECLINED`, so that its
+  output stayed in the module context. The body filter run drops that
+  context; `ngx_http_mruby_body_filter_handler_inner` now gives the
+  request an empty context that passes the writer's later calls on. Its
+  test is `test/t/cases/body_filter_leftover_chain.rb` (port 18145) and
+  its entry is in `docs/releases/v2.7.6.md` and `.ja.md`.
+- [#787](https://github.com/matsumotory/ngx_mruby/pull/787) (open, to
+  `next`) merges `master` through `10c4cd927` into `next`, with #786. The
+  PR body says why the fix works the same on `next`, where
+  `ngx_mrb_finalize_rputs` has more branches than on `master`.
+- [#785](https://github.com/matsumotory/ngx_mruby/pull/785) (merged into
+  `next` as `76ebd2fac` on 2026-11-10 at 21:33 JST) merged `master`
+  through `13153ae22` into `next`, with #778, #781 and #784. A test commit before the merge,
   `test/t/cases/body_filter_split_write_status.rb` (port 18142), shows
   the same stop on `next` for output sent with a status set before or
   after it (#779, #783); the merge applies the fix of #784 to the branch
@@ -462,7 +476,7 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). [#785](https://github.com/matsumotory/ngx_mruby/pull/785) merges through `13153ae22` (#778, #781, #784) and waits for its review and merge; the next merge of `master` after it waits for a merge into `master` |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). [#787](https://github.com/matsumotory/ngx_mruby/pull/787) merges through `10c4cd927` (#786) and waits for its review and merge; the next merge of `master` after it waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
@@ -499,6 +513,9 @@ Taken up and still open: none.
 | On 2.x, an `mruby_set` handler that ends normally after `Nginx::Async.sleep` in the location `/set/` of `test/conf/conf.d/83-var-value-to-s.conf` ends the request without a response: the timer handler finalizes the request with the `NGX_OK` of `ngx_mrb_finalize_rputs`, and the phases do not go on (seen while testing #768; `/sleep_with_proxy_set_code` on port 18080 gets its response). On `next`, `test/t/cases/async_set_var.rb` checks that such a handler sets its variable and the request goes on (#715); the location of `var_value_to_s` has not been run with a valid value after the sleep on `next` | `master` | Done: the 2.x code is not changed, and [#773](https://github.com/matsumotory/ngx_mruby/pull/773) writes the limit in `docs/directives/README.md` of 2.x; 3.0.0 fixed it in [#715](https://github.com/matsumotory/ngx_mruby/pull/715). The decision of 2026-10-29 under "Decisions" puts the rewrite of the async resume on `next` and gives `master` the minimum stability fixes |
 | `test.sh` makes its certificates with `cd ${NGINX_INSTALL_DIR}/html && ... openssl req ... && cd -`. When `openssl req` fails, `set -e` does not stop the script inside the `&&` list, the shell stays in `html`, and the next command does not find `test/t/cases/_wait_for_listen.rb`, which hides the cause (seen in the CI runs of [#771](https://github.com/matsumotory/ngx_mruby/pull/771)). To do: `test.sh` stops when a command of the certificates fails and says which one | `next`, `master` | Ready to start |
 | On 2.x, a rewrite handler that sleeps in `Nginx::Async.sleep` and returns `Nginx::DECLINED`, followed by an access handler of the same location that calls `Nginx::Async::HTTP.sub_request` and declines, leaves the request without a response (seen by the reviewer of [#740](https://github.com/matsumotory/ngx_mruby/pull/740) before and after its fix; without the sleep the answer is immediate). Assess on `next` first, where the fiber record of [#714](https://github.com/matsumotory/ngx_mruby/pull/714), [#715](https://github.com/matsumotory/ngx_mruby/pull/715) and [#722](https://github.com/matsumotory/ngx_mruby/pull/722) may already cover it; if 2.x still hangs, a fix with its regression test | `next`, then `master` if needed | Assessed on 2026-11-03: the normal composition completes with the `next` runtime of `c440a15dc`. A 100 ms sleep and its no-sleep control each returned 200, the expected static body and EOF in three requests bounded at 8 seconds (nginx 1.31.8, static suite build with GC stress and debug counters; runtime C statements unchanged). No next fix is indicated by these six requests. The 2.x follow-up is done in [#772](https://github.com/matsumotory/ngx_mruby/pull/772), whose test `async_sub_request_after_sleep.rb` also runs on `next` since [#777](https://github.com/matsumotory/ngx_mruby/pull/777) |
+| A body filter whose request lost its module context while the response was still being written: [the review of #785](https://github.com/matsumotory/ngx_mruby/pull/785#issuecomment-6767421067) (should fix, "The other place that clears the module context") found that the body filter drops the context when an earlier handler's `Nginx.rputs` output is still in it, and that the response then stopped after its first write until `send_timeout` | `master`, then `next` | Done: fixed on `master` in [#786](https://github.com/matsumotory/ngx_mruby/pull/786) (`10c4cd927`), for locations with and without an mruby header filter, and brought to `next` by [#787](https://github.com/matsumotory/ngx_mruby/pull/787) |
+| Make an mruby body filter run once on a proxied response that goes out in one write after an earlier handler's `Nginx.rputs` (should fix 4 of [the review of #786](https://github.com/matsumotory/ngx_mruby/pull/786#issuecomment-6768923430)). Today the empty last buffer that `ngx_http_upstream_finalize_request` sends runs the code of the body filter a second time on an empty body, and `$sent_http_content_length` logs `0` instead of the length. Since #786, a response sent in more than one write runs the code once and logs the length, so the logged value depends on the number of writes | `next` (a behavior change, not for 2.x) | Ready to start: a test of the one-write case with a proxied location of `test/conf/conf.d/90-body-filter-leftover-chain.conf`, a fix and an entry under "Behavior changes" of `docs/releases/v3.0.0.md` and `.ja.md` |
+| An mruby body filter on a subrequest of SSI (`<!--# include virtual=... -->`): the included part is missing and the main response stops until `send_timeout`, also without any `Nginx.rputs` and with only a body filter (a note of [the review of #786](https://github.com/matsumotory/ngx_mruby/pull/786#issuecomment-6768923430), seen on `master` before and after #786) | `master`, then `next` by the merge | Ready to start: a regression test in a commit of its own, then the fix; the cause is not investigated yet |
 
 ## How a session continues
 
