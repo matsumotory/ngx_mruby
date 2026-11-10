@@ -2,9 +2,12 @@
 
 Status: in progress. The design decisions of section 5 were made on
 2026-11-09 (decisions 1 to 5) and on 2026-11-10 (decisions 6 and 7), and
-no point of the design is open. Next step: the pull
-requests of section 4 that wait for nothing start, first "Log handlers
-before `access_log`" and "`mruby_variable`", by 2026-11-16.
+no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
+(#779 and #783), and 2.7 (#788, when it is merged). Next step: these
+pull requests of section 4 start: "Execution context and the phases of
+the Ruby API" and "Per-request store" (2.1), "Waits inside another mruby
+call" (2.9), "Common code loading" (2.6), "Common error logging" (2.8)
+and "Directive table and one duplicate check" (2.5), by 2026-11-16.
 
 This proposal designs what is left of step 4 of section 6 of
 [the v3 plan](v3-plan.md): the work that has to be on `next` before
