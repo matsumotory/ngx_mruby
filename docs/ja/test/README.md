@@ -98,7 +98,7 @@ PRでは、この4セルを実行します。どのセルも、nginxをビルド
 
 valgrindのセルは、同じnginxとモジュールを、インストール済みのOpenSSLでビルドします。ソースから組み込む経路は通りません。
 
-全セルは、nginx 1.31.8、1.30.6、1.28.3、1.26.3と、静的モジュールか動的モジュールか、`--with-openssl-src`を付けるかどうかを組み合わせた16セルに、sanitizerのセルを加えたものです。valgrindのセルは16セルの1つです。全セルは引き続き、夜間のvalgrindの実行、タグのpush、`base`入力のない「Run workflow」で実行します。タグの前のチェックのPRでも実行し、このPRにはラベル`full-matrix`を付けます。[docs/releases/README.md](../releases/README.md)の「タグの前に」を参照してください。ほかのセルでしか確かめられない変更、たとえばnginx 1.26.3向けの変更は、そのバージョンでローカルで確かめます。バージョンは`nginx_version`かセルの`NGINX_VERSION`で選び、モジュールは`BUILD_DYNAMIC_MODULE`で選びます。そのPRにラベル`full-matrix`を付けて、全セルを実行することもできます。
+全セルは、nginx 1.31.8と1.30.6、静的モジュールか動的モジュールか、`--with-openssl-src`を付けるかどうかを組み合わせた8セルに、sanitizerのセルを加えたものです。valgrindのセルは8セルの1つです。全セルは引き続き、夜間のvalgrindの実行、タグのpush、`base`入力のない「Run workflow」で実行します。タグの前のチェックのPRでも実行し、このPRにはラベル`full-matrix`を付けます。[docs/releases/README.md](../releases/README.md)の「タグの前に」を参照してください。ほかのセルでしか確かめられない変更、たとえばnginx 1.31.8の動的モジュール向けの変更は、そのバージョンでローカルで確かめます。バージョンは`nginx_version`かセルの`NGINX_VERSION`で選び、モジュールは`BUILD_DYNAMIC_MODULE`で選びます。そのPRにラベル`full-matrix`を付けて、全セルを実行することもできます。
 
 `soak`は`code`が真か、`test/soak/`または`test/build_release.sh`の変更時に真になります。`perf`は`code`が真か、性能測定に使う`test/perf/`、`test/build_release.sh`、`test/soak/`のシナリオファイルの変更時に真になります。未分類のファイルは`code`として全検査を実行し、理由を記載したPRで分類を追加するまでそのままです。複数の分類のファイルを変えるPRは、それぞれの分類に必要なジョブを、すべて実行します。
 

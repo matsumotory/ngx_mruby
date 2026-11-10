@@ -104,16 +104,36 @@ comments and have no condition. The lines that are comments name gems that the d
 leaves out, such as mruby-discount and mruby-memcached: to build with one,
 uncomment its line and remove `mruby/build`.
 
+## Supported nginx versions
+
+v3 supports nginx 1.30 (stable) and 1.31 (mainline), which CI builds and
+tests (the table below). The oldest supported versions move up every
+April, when nginx starts a new stable line. The build does not check the
+version of nginx: [Install](../install/README.md#prerequisites) says what
+happens with an older nginx. With nginx 1.28 or 1.26, use 2.x. With nginx
+1.24, 2.x builds only without the stream module (the same page has the
+measurement).
+
 ## Versions that CI builds and tests
 
 The workflow `.github/workflows/test.yml` builds ngx_mruby and runs
-`test.sh` for each of these combinations on every pull request:
+`test.sh` in each of these combinations in its full matrix: the nightly
+run, the push of a tag, a pull request with the label `full-matrix` and
+"Run workflow" without the input `base`. A ready pull request that changes
+the code or the tests runs four of them ([Which jobs a run
+starts](../test/README.md#which-jobs-a-run-starts)).
 
-| nginx | Module | OpenSSL | nginx runs under |
+| nginx | Module | OpenSSL | nginx runs |
 |---|---|---|---|
-| 1.31.8, 1.30.6, 1.28.3, 1.26.3 | static and dynamic | 3.5.9, installed, or built into nginx with `--with-openssl-src` | valgrind |
-| 1.31.8 | static | 3.5.9, installed | AddressSanitizer and UndefinedBehaviorSanitizer |
+| 1.31.8, 1.30.6 | static and dynamic | 3.5.9, installed, or built into nginx with `--with-openssl-src` | directly or under valgrind |
+| 1.31.8 | static | 3.5.9, installed | directly |
 
+- The nightly run runs nginx under valgrind in every cell except the
+  sanitizer cell. The other runs
+  run it under valgrind only in the cell of 1.31.8 with the static module
+  and the installed OpenSSL.
+- The sanitizer cell builds ngx_mruby, mruby and nginx with
+  AddressSanitizer and UndefinedBehaviorSanitizer.
 - The runner is Ubuntu 22.04 with GCC 11 and Ruby 3.0. The bundled mruby is
   4.1.0-rc2 (`build_config.rb.lock` records its version as 4.1.0).
 - `nginx_version` names the version that `build.sh` and `test.sh`

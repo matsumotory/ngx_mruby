@@ -40,10 +40,8 @@ ngx_int_t ngx_mrb_class_init(mrb_state *mrb)
   GC_ARENA_RESTORE;
   ngx_mrb_filter_class_init(mrb, class);
   GC_ARENA_RESTORE;
-#ifdef NGX_USE_MRUBY_UPSTREAM
   ngx_mrb_upstream_class_init(mrb, class);
   GC_ARENA_RESTORE;
-#endif
 #if (NGX_HTTP_SSL)
   ngx_mrb_ssl_class_init(mrb, class);
   GC_ARENA_RESTORE;

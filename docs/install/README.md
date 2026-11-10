@@ -22,6 +22,24 @@ build of the bundled mruby stops on Ruby 2.x, and on an OpenSSL older than
 `RAND_bytes` APIs. The build downloads
 third-party mrbgems from GitHub. A Docker Hub account is not required.
 
+v3 supports nginx 1.30 (stable) and 1.31 (mainline), the lines that CI
+builds and tests. The oldest supported versions move up every April, when
+nginx starts a new stable line. Neither `./configure` nor `build.sh` checks
+the version of nginx. On 2026-11-11, `build.sh` of this development source,
+with and without `--with-stream`, completed with nginx 1.28.3 and 1.26.3,
+which CI does not test, and stopped with nginx 1.24.0 while it compiled
+`src/http/ngx_http_mruby_server.c`, with `'ngx_http_listen_opt_t' has no
+member named 'type'`: the code uses the nginx API of 1.25.5 and later. To
+build with nginx 1.28 or 1.26, use 2.x, whose CI builds and tests them,
+and its
+[maintenance installation guide](https://ngx.mruby.org/v2/guides/install/).
+With nginx 1.24, such as the package of Ubuntu 24.04, 2.x builds only
+without the stream module: on 2026-11-11, `build.sh` of 2.x (`master` at
+`10c4cd927`) with nginx 1.24.0 stopped with the default options
+(`--with-stream`) while it compiled `src/stream/ngx_stream_mruby_core.c`,
+with `unknown type name 'ngx_stream_listen_opt_t'`, and completed without
+`--with-stream`.
+
 For example, on Ubuntu 22.04, install the packages with administrator
 privileges, then build as an ordinary user:
 

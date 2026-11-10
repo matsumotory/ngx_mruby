@@ -9,8 +9,6 @@
 
 #include "ngx_http_mruby_upstream.h"
 
-#ifdef NGX_USE_MRUBY_UPSTREAM
-
 #include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_request.h"
 
@@ -200,5 +198,3 @@ void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_upstream, "server", ngx_mrb_upstream_get_server, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_upstream, "server=", ngx_mrb_upstream_set_server, MRB_ARGS_REQ(1));
 }
-
-#endif /* NGX_USE_MRUBY_UPSTREAM */

@@ -34,10 +34,8 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   ngx_url_t u;
   ngx_http_listen_opt_t lsopt;
   mrb_value listener, address;
-#if (nginx_version > 1015009)
   size_t len;
   u_char *p;
-#endif
 
   /* mscf->cf is set only while mruby_server_context_handler_code runs */
   if (mscf == NULL || mscf->cf == NULL || mscf->cscf == NULL) {
@@ -67,7 +65,6 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 
   ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
 
-#if (nginx_version > 1015009)
   p = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
   if (p == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_add_listener ngx_pcalloc failed");
@@ -76,15 +73,10 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
   lsopt.sockaddr = (struct sockaddr *) p;
 
   ngx_memcpy(lsopt.sockaddr, &u.sockaddr, u.socklen);
-#else
-  ngx_memcpy(&lsopt.sockaddr.sockaddr, &u.sockaddr, u.socklen);
-#endif
 
   lsopt.socklen = u.socklen;
 
-#if (nginx_version >= 1025000)
   lsopt.type = SOCK_STREAM;
-#endif
   lsopt.backlog = NGX_LISTEN_BACKLOG;
   lsopt.rcvbuf = -1;
   lsopt.sndbuf = -1;
@@ -114,7 +106,6 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 #endif
   }
 
-#if (nginx_version > 1015009)
   len = NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1;
 
   p = ngx_pnalloc(cf->pool, len);
@@ -124,9 +115,6 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 
   lsopt.addr_text.data = p;
   lsopt.addr_text.len = ngx_sock_ntop(lsopt.sockaddr, lsopt.socklen, p, len, 1);
-#else
-  (void)ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
-#endif
 
   if (ngx_http_add_listen(cf, cscf, &lsopt) == NGX_OK) {
     ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "add listener %V via mruby", &addr);

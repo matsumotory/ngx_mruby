@@ -72,14 +72,20 @@ modules: その中に<wbr>あるもの：<wbr>`ngx_http_mruby_module`、<wbr>ngi
 
 チェックの`site/scripts/check-reference.mjs`は、この一覧を、`build_config.rb`のhostのビルドにある`conf.gem`の行のうち、コメントでなく条件も無い行と比べます。コメントの行には、mruby-discountやmruby-memcachedのような、デフォルトのビルドが入れないgemの名前があります。そのどれかを入れてビルドするには、その行のコメントを外し、`mruby/build`を消してください。
 
+## サポートする<wbr>nginxの<wbr>バージョン
+
+v3がサポートするnginxは、1.30のstableと1.31のmainlineです。CIは、下の表のとおり、この2つでビルドしてテストします。サポートする最も古いバージョンは、nginxが新しいstableの系列を出す毎年4月に上がります。ビルドはnginxのバージョンを確かめません。古いnginxで何が起きるかは、[インストール](../install/README.md#前提)にあります。nginx 1.28か1.26では、2.xを使ってください。nginx 1.24では、2.xはstreamモジュールを入れないときだけビルドできます。測った結果は同じページにあります。
+
 ## CIが<wbr>ビルドして<wbr>テストする<wbr>バージョン
 
-ワークフローの`.github/workflows/test.yml`は、すべてのプルリクエストで、次の組み合わせごとにngx_mrubyをビルドし、`test.sh`を実行します。
+ワークフローの`.github/workflows/test.yml`は、全部のセルのマトリクスで、次の組み合わせごとにngx_mrubyをビルドし、`test.sh`を実行します。全部のセルを流すのは、夜間の実行、タグのpush、ラベル`full-matrix`の付いたプルリクエスト、`base`入力のない「Run workflow」です。コードかテストを変えるreadyのプルリクエストは、そのうちの4つを流します。[実行するジョブの選択](../test/README.md#実行するジョブの選択)を参照してください。
 
-| nginx | モジュール | OpenSSL | nginxを動かす環境 |
+| nginx | モジュール | OpenSSL | nginxの動かし方 |
 |---|---|---|---|
-| 1.31.8, 1.30.6, 1.28.3, 1.26.3 | 静的と動的 | インストールした3.5.9と、`--with-openssl-src`でnginxに組み込んだ3.5.9 | valgrind |
-| 1.31.8 | 静的 | システムにインストールした3.5.9 | AddressSanitizerとUndefinedBehaviorSanitizer |
+| 1.31.8, 1.30.6 | 静的と動的 | インストールした3.5.9と、`--with-openssl-src`でnginxに組み込んだ3.5.9 | valgrindか直接 |
+| 1.31.8 | 静的 | システムにインストールした3.5.9 | 直接 |
 
+- 夜間の実行では、sanitizerのセルを除く全部のセルで、nginxをvalgrindの下で動かします。ほかの実行では、1.31.8の静的モジュールでインストールしたOpenSSLを使うセルだけを、valgrindの下で動かします。
+- sanitizerのセルは、ngx_mruby、mruby、nginxをAddressSanitizerとUndefinedBehaviorSanitizerを付けてビルドします。
 - ランナーは、GCC 11とRuby 3.0のUbuntu 22.04です。同梱のmrubyは4.1.0-rc2です。`build_config.rb.lock`は、そのバージョンを4.1.0と記録します。
 - `nginx_version`は`build.sh`と`test.sh`がダウンロードするバージョン1.31.8を指定します。

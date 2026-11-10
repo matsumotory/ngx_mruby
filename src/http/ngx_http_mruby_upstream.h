@@ -11,12 +11,6 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-#if (nginx_version > 1007999)
-#define NGX_USE_MRUBY_UPSTREAM
-#endif
-
-#ifdef NGX_USE_MRUBY_UPSTREAM
-
 #include <mruby.h>
 
 void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *class);
@@ -470,6 +464,5 @@ static char *__ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, v
 }
 
 #endif // NGX_HTTP_MRUBY_UPSTREAM_C
-#endif // NGX_USE_MRUBY_UPSTREAM
 
 #endif // NGX_HTTP_MRUBY_UPSTREAM_H
