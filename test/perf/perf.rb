@@ -136,8 +136,9 @@ CONST_LOOKUP_CALLEES = %w[iv_get].freeze
 # function that is not in it, so a clear counts also where gcc inlines
 # mrb_const_cache_clear into a caller; callgrind recorded 2 per call of
 # Module#const_set on aarch64), and a scenario whose head clears
-# the cache more often than its base is judged on the number w/o GC, with
-# the constant lookups counted.
+# the cache more often than its base, or clears it and misses more lookups
+# than its base, is judged on the number w/o GC, with the constant lookups
+# counted (judged_reason).
 CONST_CACHE_CLEARS = %w[mrb_const_cache_clear mrb_const_set mrb_const_remove mrb_define_const_id
                         mrb_define_const mrb_include_module mrb_prepend_module].freeze
 
@@ -879,36 +880,56 @@ def self_test_summary
     got = const_miss_effect([base, head])
     failures << "const_miss_effect with #{calls} calls and #{ir} Ir gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
   end
-# A head that clears the constant cache once more per request is judged
-# w/o GC: 40 more misses (+14000 Ir, +28% w/o GC) are a FAIL there and
-# nothing w/o GC/const; with the same clears it is judged w/o GC/const.
-scenario = Scenario.new(name: 'made_up', mock: [])
-base = ok.merge(recorded_per_request: { const_misses: 0.0, const_clears: 1.0 }, const_ir_per_request: 0.0)
-[
-  # head clears per request (base 1.0), head w/o GC, judged on, verdict, failed, end of the line
-  [2.0, 64_000.0, 'w/o GC', 'FAIL', true, '; head clears the constant cache of mruby more often: judged w/o GC]'],
-  [2.0, 51_800.0, 'w/o GC', 'WARN', false, ': judged w/o GC]'],
-  [1.0, 64_000.0, 'w/o GC/const', 'ok', false, 'const lookups 0/14000 Ir]'],
-  [0.0, 64_000.0, 'w/o GC/const', 'ok', false, 'const lookups 0/14000 Ir]']
-].each do |clears, head_nogc, judged_on, verdict, expected_failed, line_end|
-  head = ok.merge(nogc_per_request: head_nogc, noconst_per_request: 50_000.0, const_ir_per_request: 14_000.0,
-                  recorded_per_request: { const_misses: 40.0, const_clears: clears })
-  _header, rows, _notes, failed = summarize(builds, [scenario], { %w[base made_up] => base, %w[head made_up] => head })
-  got = rows.first.values_at(-2, -1)
-  line = const_cost_line([base, head])
-  next if got == [judged_on, verdict] && failed == expected_failed && line.end_with?(line_end)
+  # Which number judges a scenario, by the clears and the misses per request
+  # of base and head. The head has 14000 Ir more w/o GC (+28%, a FAIL there)
+  # and the same Ir w/o GC/const (ok).
+  scenario = Scenario.new(name: 'made_up', mock: [])
+  more_often = '; head clears the constant cache of mruby more often: judged w/o GC]'
+  clears_and_misses = '; head clears the constant cache of mruby and misses more lookups: judged w/o GC]'
+  [
+    # base clears, head clears, base misses, head misses, judged on, end of the line
+    [0.0, 1.0, 0.0, 40.0, 'w/o GC', more_often],          # the head adds a clear
+    [1.0, 2.0, 40.0, 40.0, 'w/o GC', more_often],         # the head clears more often, the same misses
+    [1.0, 1.0, 0.0, 40.0, 'w/o GC', clears_and_misses],   # both clear, the head adds lookups after it
+    [0.0, 1.0, 40.0, 40.0, 'w/o GC', more_often],         # the head adds a clear, the same misses
+    [1.0, 1.0, 40.0, 40.0, 'w/o GC/const', 'Ir]'],        # both clear, the same misses
+    [1.0, 1.0, 40.0, 0.0, 'w/o GC/const', 'Ir]'],         # both clear, the head misses fewer
+    [1.0, 0.0, 0.0, 40.0, 'w/o GC/const', 'Ir]'],         # only the base clears: the head's misses are the layout
+    [0.0, 0.0, 0.0, 40.0, 'w/o GC/const', 'Ir]']          # nothing clears: the layout (#766)
+  ].each do |base_clears, head_clears, base_misses, head_misses, judged_on, line_end|
+    base = ok.merge(recorded_per_request: { const_misses: base_misses, const_clears: base_clears },
+                    const_ir_per_request: base_misses * 350)
+    head = ok.merge(nogc_per_request: 64_000.0, recorded_per_request: { const_misses: head_misses, const_clears: head_clears },
+                    const_ir_per_request: head_misses * 350)
+    _header, rows, _notes, failed = summarize(builds, [scenario], { %w[base made_up] => base, %w[head made_up] => head })
+    got = rows.first.values_at(-2, -1)
+    expected = [judged_on, judged_on == 'w/o GC' ? 'FAIL' : 'ok']
+    line = const_cost_line([base, head])
+    next if got == expected && failed == (judged_on == 'w/o GC') && line.end_with?(line_end)
 
-  failures << "clears #{clears} with head #{head_nogc} w/o GC gave #{got.inspect} (failed #{failed}), line #{line.inspect}; " \
-              "expected #{[judged_on, verdict].inspect} (failed #{expected_failed}), a line ending #{line_end.inspect}"
-end
-# A call of mrb_vm_const_get into a function outside CONST_LOOKUP_CALLEES
-# is printed, not subtracted.
-a = ok.merge(const_ir_per_request: 300.0, const_unlisted_per_request: { "mrb_vm_exec'2" => 8000.0 })
-b = ok.merge(const_ir_per_request: 300.0, const_unlisted_per_request: {})
-expected = " [const lookups 300/300 Ir; not subtracted: mrb_vm_exec'2 8000/0 Ir]"
-got = const_cost_line([a, b])
-failures << "const_cost_line with an unlisted callee gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
-failures << "const_cost_line without lookups gave #{const_cost_line([ok, ok]).inspect}" unless const_cost_line([ok, ok]) == ''
+    failures << "clears #{base_clears}/#{head_clears} and misses #{base_misses}/#{head_misses} gave #{got.inspect} " \
+                "(failed #{failed}), line #{line.inspect}; expected #{expected.inspect}, a line ending #{line_end.inspect}"
+  end
+  # The threshold of 0.005 per request, for the clears and for the misses.
+  { [0.004, 0.0] => nil, [0.005, 0.0] => 'more often', [0.0, 0.004] => nil, [0.0, 0.005] => 'misses more' }.each do |(dc, dm), expected|
+    # Exact values: the clears from 0 (the base clears nothing), the misses
+    # with one clear per request in both builds.
+    clears = dc.zero? ? 1.0 : 0.0
+    base = ok.merge(recorded_per_request: { const_misses: 0.0, const_clears: clears })
+    head = ok.merge(recorded_per_request: { const_misses: dm, const_clears: clears + dc })
+    got = judged_reason(base, head)
+    next if expected.nil? ? got.nil? : got.to_s.include?(expected)
+
+    failures << "judged_reason with #{dc} more clears and #{dm} more misses gave #{got.inspect}, expected #{expected.inspect}"
+  end
+  # A call of mrb_vm_const_get into a function outside CONST_LOOKUP_CALLEES
+  # is printed, not subtracted.
+  a = ok.merge(const_ir_per_request: 300.0, const_unlisted_per_request: { "mrb_vm_exec'2" => 8000.0 })
+  b = ok.merge(const_ir_per_request: 300.0, const_unlisted_per_request: {})
+  expected = " [const lookups 300/300 Ir; not subtracted: mrb_vm_exec'2 8000/0 Ir]"
+  got = const_cost_line([a, b])
+  failures << "const_cost_line with an unlisted callee gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
+  failures << "const_cost_line without lookups gave #{const_cost_line([ok, ok]).inspect}" unless const_cost_line([ok, ok]) == ''
   {
     'made_up' => 'LOG_REQUEST_FUNCTIONS', 'ruby_call_10' => 'SCENARIO_REQUEST_FUNCTIONS', 'hello' => 'PERF_REQUEST_FUNCTIONS'
   }.each do |name, list|
@@ -1419,12 +1440,28 @@ def summarize(builds, scenarios, results, accepted = {})
   [header, rows, notes, failed]
 end
 
-# The number that judges a scenario: w/o GC/const, or w/o GC when the head
-# clears mruby's constant cache more often than the base (CONST_CACHE_CLEARS),
-# so that the misses that the clears cause count.
+# The number that judges a scenario: w/o GC/const, or w/o GC where the
+# misses may come from a clear of mruby's constant cache in the head
+# (CONST_CACHE_CLEARS; judged_reason).
 def judged_key(base, head)
-  clears = [base, head].map { |r| (r[:recorded_per_request] || {})[:const_clears].to_f }
-  clears[1] - clears[0] >= 0.005 ? :nogc_per_request : :noconst_per_request
+  judged_reason(base, head) ? :nogc_per_request : :noconst_per_request
+end
+
+# Why a scenario is judged w/o GC, or nil when it is judged w/o GC/const.
+# A lookup that a clear made miss costs the code that clears, so the
+# lookups count when the head clears the cache more often than the base,
+# and when the head clears it at all and misses more lookups than the base
+# (a lookup that the head adds after a clear that both builds make misses
+# on every request). Misses without a clear in the head come from the
+# layout of the ireps (CONST_LOOKUP_FUNCTIONS).
+def judged_reason(base, head)
+  clears, misses = %i[const_clears const_misses].map do |key|
+    [base, head].map { |r| (r[:recorded_per_request] || {})[key].to_f }
+  end
+  return 'head clears the constant cache of mruby more often' if clears[1] - clears[0] >= 0.005
+  return 'head clears the constant cache of mruby and misses more lookups' if clears[1] >= 0.005 && misses[1] - misses[0] >= 0.005
+
+  nil
 end
 
 # Lines with the calls per request of RECORDED_FUNCTIONS, which are not
@@ -1498,9 +1535,8 @@ def const_cost_line(rs)
   unlisted.flat_map(&:keys).uniq.sort.each do |name|
     parts << "not subtracted: #{name} #{unlisted.map { |u| format('%.0f', u.fetch(name, 0)) }.join('/')} Ir"
   end
-  if rs.size == 2 && judged_key(*rs) == :nogc_per_request
-    parts << 'head clears the constant cache of mruby more often: judged w/o GC'
-  end
+  reason = rs.size == 2 && judged_reason(*rs)
+  parts << "#{reason}: judged w/o GC" if reason
   parts.empty? ? '' : " [#{parts.join('; ')}]"
 end
 

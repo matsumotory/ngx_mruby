@@ -2069,8 +2069,12 @@ clear counts also where gcc inlines it into its caller. callgrind recorded
 the base and the head of one run are compared. A scenario
 is judged on the number in the column `judged` of the report: `w/o
 GC/const`, or `w/o GC` (the constant lookups counted) when its head clears
-the cache more often than its base, so that the misses that a new clear
-causes count against the change. The report prints the total, the number
+the cache more often than its base, or clears it at all and misses more
+lookups than its base: a lookup that a change adds after a clear that
+both builds make misses on every request as well. So the misses that a
+clear causes count against the change. A head that does not clear, or
+that clears as often as the base and misses no more, is judged `w/o
+GC/const`; its misses come from the layout. The report prints the total, the number
 without GC and the number without GC and constant lookups. A lookup misses
 the cache once after its entry was taken, so a change that makes a request
 look up more constants still pays for the lookups that hit (the
@@ -2175,12 +2179,14 @@ without GC and constant lookups, with "not judged", and from half of
 miss the constant cache of mruby, for example `const_misses 0.00/2.00
 (const_misses +2.00 per request: +671 Ir, +5.86% of base w/o GC/const, not
 judged; more constant lookups of head miss the constant cache of mruby)`
-for `stream_sleep` of the `FAIL` run on #766. When the scenario's
-`const_clears` are the same in both builds, the note shows that the
-addresses of the head took other cache entries: it does not change the
-verdict, and a second run is not needed for it. When the head clears the
-cache more often, the line says `head clears the constant cache of mruby
-more often: judged w/o GC`, and the row is judged with the misses counted.
+for `stream_sleep` of the `FAIL` run on #766. When the head does not
+clear the cache, the note shows that the addresses of the head took other
+cache entries: it does not change the verdict, and a second run is not
+needed for it. When the head clears the cache more often, or clears it
+and misses more lookups, the line ends with `head clears the constant
+cache of mruby more often: judged w/o GC` or `head clears the constant
+cache of mruby and misses more lookups: judged w/o GC`, and the row is
+judged with the misses counted.
 
 First measurement, 2026-10-04: one run of `test/perf/perf.rb` on the head
 build of this checkout (`next` at `f62880c` plus the harness), nginx 1.31.6,
@@ -2247,8 +2253,8 @@ build.
 ### Thresholds and calibration
 
 A scenario is `WARN` when its judged number (the column `judged`: without GC
-and constant lookups, or without GC where the head clears the constant cache
-more often; "What it measures") is 3% or more above
+and constant lookups, or without GC where the misses may come from a clear
+of the constant cache in the head; "What it measures") is 3% or more above
 the base (`PERF_WARN_PERCENT`), and `FAIL` from 5% (`PERF_FAIL_PERCENT`).
 The exit status is 1 when a scenario is `FAIL`, when a measurement fails
 (`ERROR`: an unexpected response, a line at the `error` level or above in
