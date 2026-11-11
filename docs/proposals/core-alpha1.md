@@ -3,7 +3,7 @@
 Status: in progress. The design decisions of section 5 were made on
 2026-11-09 (decisions 1 to 5) and on 2026-11-10 (decisions 6 and 7), and
 no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
-(#779 and #783), 2.7 (#788), and 2.8 (#796, when it is merged). Next
+(#779 and #783), 2.7 (#788), and 2.8 (#796). Next
 step: these pull requests of section 4 start: "Execution context and the
 phases of the Ruby API" and "Per-request store" (2.1), "Waits inside
 another mruby call" (2.9), "Common code loading" (2.6) and "Directive
@@ -874,7 +874,7 @@ and the one that merges second updates its branch.
 | Waits inside another mruby call (the raise of `Nginx.redirect` in log handlers is done by #770) | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |
 | Common code loading | 2.6 | nothing | directive table, filter handlers (the directive functions) |
 | Common upstream switching: [#788](https://github.com/matsumotory/ngx_mruby/pull/788), merged on 2026-11-11 | 2.7 | nothing | nothing |
-| Common error logging: [#796](https://github.com/matsumotory/ngx_mruby/pull/796), done when it is merged | 2.8 | nothing | execution context (`Nginx.log`) |
+| Common error logging: [#796](https://github.com/matsumotory/ngx_mruby/pull/796), merged on 2026-11-12; [#798](https://github.com/matsumotory/ngx_mruby/pull/798) protects the calls of `inspect` and `backtrace` in the logging | 2.8 | nothing | execution context (`Nginx.log`) |
 | Directive table and one duplicate check | 2.5 | nothing | log handlers, filter handlers, code loading |
 | A body with any status: [#779](https://github.com/matsumotory/ngx_mruby/pull/779), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`) |
 | A status set before the output (decision 6), `Nginx::HTTP_CLOSE` with output (decision 7), and the cases of the review of #779 for handlers resumed by a subrequest and for 304: [#783](https://github.com/matsumotory/ngx_mruby/pull/783), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`, `src/http/ngx_http_mruby_async.c`) |
