@@ -15,8 +15,9 @@
 # callgrind_control, sends PERF_N requests or sessions, dumps the profile
 # with callgrind_control, and stops nginx. The dump holds the cost of the
 # PERF_N measured units; Ir per request (per TCP session) is its Ir divided by
-# PERF_N. The GC-excluded number leaves out the calls into mrb_incremental_gc
-# and mrb_full_gc. A window with 0 Ir, or without the expected number of
+# PERF_N. The judged number leaves out the calls into mrb_incremental_gc
+# and mrb_full_gc (the GC) and into mrb_vm_const_get (the misses of mruby's
+# constant cache; see CONST_LOOKUP_FUNCTIONS). A window with 0 Ir, or without the expected number of
 # calls of the scenario's request function (ngx_mrb_start_fiber for the
 # HTTP scenarios; ngx_stream_mrb_start_fiber for stream_sleep; see
 # REQUEST_FUNCTIONS and request_functions), fails the measurement.
@@ -32,7 +33,7 @@
 # process runs the event loop and the request handlers as a worker does.
 #
 # With two builds, the change of head against base is judged per scenario on
-# the GC-excluded number: WARN from PERF_WARN_PERCENT, FAIL from
+# the judged number: WARN from PERF_WARN_PERCENT, FAIL from
 # PERF_FAIL_PERCENT. A line of test/perf/accepted.txt whose condition the
 # comparison matches (see accepted_for: the mruby version of both builds, or
 # the pull request that PERF_PULL_REQUEST and PERF_BASE_REF name) shows a
@@ -98,6 +99,21 @@ GC_ENTRIES = %w[mrb_incremental_gc mrb_full_gc].freeze
 GC_ALLOCATORS = %w[mrb_obj_alloc mrb_malloc mrb_malloc_simple mrb_calloc mrb_realloc mrb_realloc_simple
                    mrb_alloca gc_start mrb_garbage_collect mrb_objspace_each_objects].freeze
 GC_SOURCE = 'mruby/src/gc.c'
+
+# The constant lookups that miss mruby's constant cache: OP_GETCONST of
+# mruby/src/vm.c calls mrb_vm_const_get only when the entry of the cache for
+# its irep and symbol holds another constant. The cache has
+# MRB_CONST_CACHE_SIZE (64) entries, indexed by a hash of the address of the
+# irep and the symbol, so two lookups that a request makes can share an
+# entry and then miss on every request, and whether they share one depends
+# on where the ireps were allocated. The same binary measured about 700 Ir
+# more per TCP session of stream_sleep in one CI run than in another (#766):
+# 2 misses per session. Like the GC, the inclusive cost of these calls (from
+# a function that is not one of them) is left out of the judged number, and
+# their number per request is reported as const_misses (RECORDED_FUNCTIONS).
+# mrb_vm_const_get allocates only when it calls const_missing; a GC that such
+# an allocation runs would be left out twice.
+CONST_LOOKUP_FUNCTIONS = %w[mrb_vm_const_get].freeze
 
 # The function that the scenarios run a known number of times per request.
 # The window must hold exactly PERF_N times that many calls of it. A window
@@ -168,8 +184,11 @@ SCENARIO_REQUEST_FUNCTIONS = { 'ruby_call_1' => SET_CODE_FUNCTIONS, 'ruby_call_1
 #   time, and writes what it read to the client. How many calls a response
 #   takes depends on how much of it had arrived at each call, that is on
 #   timing, and each call costs Ir (NON_BUFFERED_CALL_IR).
+# - const_misses: the calls of CONST_LOOKUP_FUNCTIONS, the misses of mruby's
+#   constant cache, whose cost the judged number leaves out.
 RECORDED_FUNCTIONS = { ruby_calls: %w[ngx_mrb_start_fiber ngx_stream_mrb_start_fiber],
-                       non_buffered_calls: %w[ngx_http_upstream_process_non_buffered_request] }.freeze
+                       non_buffered_calls: %w[ngx_http_upstream_process_non_buffered_request],
+                       const_misses: CONST_LOOKUP_FUNCTIONS }.freeze
 
 # About how many Ir per request one more non_buffered_calls costs. Measured
 # on aarch64 with proxy_stream_plain_50 and the mock writing the stream in
@@ -519,7 +538,9 @@ def scenario_requests(scenario, count)
 end
 
 # Reads a callgrind profile. Returns the total Ir, the Ir and number of the
-# calls into the GC, and the number of calls of the request function: calls
+# calls into the GC, the Ir of the calls into CONST_LOOKUP_FUNCTIONS from a
+# function that is not one of them (const_ir), and the number of calls of
+# the request function: calls
 # into one of functions (REQUEST_FUNCTIONS by default; compared by
 # base_name) from a function that is not one of them. With recorded (a Hash
 # of name => functions), also returns recorded_calls, the number of calls of
@@ -566,6 +587,7 @@ def parse_profile(path, functions = REQUEST_FUNCTIONS, recorded = {})
   self_ir = 0
   gc_ir = 0
   gc_calls = 0
+  const_ir = 0
   request_calls = 0
   recorded_calls = recorded.transform_values { 0 }
   file = fn = fn_file = cfn = nil
@@ -579,6 +601,7 @@ def parse_profile(path, functions = REQUEST_FUNCTIONS, recorded = {})
           gc_ir += ir
           gc_calls += call_count
         end
+        const_ir += ir if CONST_LOOKUP_FUNCTIONS.include?(base_name(cfn)) && !CONST_LOOKUP_FUNCTIONS.include?(base_name(fn))
         request_calls += call_count if functions.include?(base_name(cfn)) && !functions.include?(base_name(fn))
         recorded.each do |key, list|
           recorded_calls[key] += call_count if list.include?(base_name(cfn)) && !list.include?(base_name(fn))
@@ -602,9 +625,15 @@ def parse_profile(path, functions = REQUEST_FUNCTIONS, recorded = {})
   raise PerfError, "#{path}: no totals line" unless totals
   raise PerfError, "#{path}: totals #{totals} differ from the sum of the costs #{self_ir}" unless totals == self_ir
 
-  result = { ir: totals, gc_ir: gc_ir, gc_calls: gc_calls, request_calls: request_calls }
+  result = { ir: totals, gc_ir: gc_ir, gc_calls: gc_calls, const_ir: const_ir, request_calls: request_calls }
   result[:recorded_calls] = recorded_calls unless recorded.empty?
   result
+end
+
+# The Ir of a profile that the comparison judges: the total without the GC
+# and without the constant lookups that missed the cache (CONST_LOOKUP_FUNCTIONS).
+def judged_ir(profile)
+  profile[:ir] - profile[:gc_ir] - profile[:const_ir]
 end
 
 # Fails the measurement unless the window holds the PERF_N requests of the
@@ -632,7 +661,7 @@ SELF_TEST_PROFILE = <<~PROFILE
   version: 1
   positions: line
   events: Ir
-  summary: 86
+  summary: 101
 
   fl=(1) /b/tree/src/http/ngx_http_mruby_module.c
   fn=(1) ngx_http_mruby_content_handler
@@ -680,8 +709,25 @@ SELF_TEST_PROFILE = <<~PROFILE
   cfn=(12) mrb_incremental_gc'2
   calls=1 12
   11 0
+  fl=(3) /b/tree/mruby/src/vm.c
+  fn=(13) mrb_vm_exec
+  13 3
+  cfn=(14) mrb_vm_const_get
+  calls=2 14
+  13 12
+  fl=(4) /b/tree/mruby/src/variable.c
+  fn=(14)
+  14 7
+  cfn=(15) iv_get.constprop.1
+  calls=2 15
+  14 5
+  cfn=(14)
+  calls=1 14
+  14 3
+  fn=(15)
+  15 5
 
-  totals: 86
+  totals: 101
 PROFILE
 
 def self_test
@@ -702,12 +748,15 @@ def self_test
     # handler calls ngx_mrb_run'2 once (counted); ngx_mrb_run_fiber is
     # another function. mrb_obj_alloc calls mrb_incremental_gc.part.0 twice
     # (40 Ir, the GC); the full GC inside it and final_marking_phase calling
-    # mrb_incremental_gc'2 are not counted again.
+    # mrb_incremental_gc'2 are not counted again. mrb_vm_exec calls
+    # mrb_vm_const_get twice (12 Ir with iv_get, the constant lookups); its
+    # call of itself is not counted again.
     # The list is given, not taken from REQUEST_FUNCTIONS, so that the
     # self-test does not depend on PERF_REQUEST_FUNCTIONS.
-    expected = { ir: 86, gc_ir: 40, gc_calls: 2, request_calls: 4 }
+    expected = { ir: 101, gc_ir: 40, gc_calls: 2, const_ir: 12, request_calls: 4 }
     got = parse_profile(path, %w[ngx_mrb_run])
     failures << "parse_profile returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
+    failures << "judged_ir gave #{judged_ir(got)}, expected 49" unless judged_ir(got) == 49
     # Another request function, and recorded functions: the handler calls
     # ngx_mrb_run_fiber twice; nothing calls ngx_http_log_request.
     expected = expected.merge(request_calls: 2, recorded_calls: { ruby_calls: 4, log: 0 })
@@ -717,7 +766,7 @@ def self_test
     # count the HTTP control requests that wake callgrind.
     File.write(path, SELF_TEST_PROFILE.gsub('ngx_mrb_run', 'ngx_stream_mrb_start_fiber'))
     got = parse_profile(path, %w[ngx_stream_mrb_start_fiber], { ruby_calls: %w[ngx_stream_mrb_start_fiber], log: %w[ngx_http_log_request] })
-    expected = { ir: 86, gc_ir: 40, gc_calls: 2, request_calls: 4, recorded_calls: { ruby_calls: 4, log: 0 } }
+    expected = { ir: 101, gc_ir: 40, gc_calls: 2, const_ir: 12, request_calls: 4, recorded_calls: { ruby_calls: 4, log: 0 } }
     failures << "stream profile returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
   ensure
     File.delete(path)
@@ -732,7 +781,7 @@ def self_test_summary
   failures = []
   builds = [Struct.new(:label).new('base'), Struct.new(:label).new('head')]
   scenario = Scenario.new(name: 'made_up', mock: [])
-  ok = { problems: [], ir_per_request: 50_000.0, nogc_per_request: 50_000.0, gc_ir: 0, ir: 1,
+  ok = { problems: [], ir_per_request: 50_000.0, judged_per_request: 50_000.0, gc_ir: 0, ir: 1,
          recorded_per_request: { ruby_calls: 0.0, non_buffered_calls: 5.0 } }
   unexpected = 'ResponseError: /v1/plain: unexpected response 502'
   connect = 'error.made_up.log: [error] connect() failed (111: Connection refused) while connecting to upstream'
@@ -762,12 +811,27 @@ def self_test_summary
     failures << "summarize with base problems #{problems.inspect} gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
   end
   {
-    5.0 => '', 5.08 => '+0.08 per request: about +80 Ir, +0.16% of base w/o GC)',
-    6.6 => '+1.60 per request: about +1600 Ir, +3.20% of base w/o GC; the change of this scenario may come from when the response arrived)'
+    5.0 => '', 5.08 => '+0.08 per request: about +80 Ir, +0.16% of base w/o GC/const)',
+    6.6 => '+1.60 per request: about +1600 Ir, +3.20% of base w/o GC/const; the change of this scenario may come from when the response arrived)'
   }.each do |head_calls, expected|
     head = ok.merge(recorded_per_request: { ruby_calls: 0.0, non_buffered_calls: head_calls })
     got = non_buffered_effect([ok, head])
     failures << "non_buffered_effect with #{head_calls} calls gave #{got.inspect}, expected one ending #{expected.inspect}" unless got.end_with?(expected)
+  end
+  # The misses of the constant cache: stream_sleep of the two runs of #766
+  # missed 2 lookups per session in one (about 700 Ir) and none in the other.
+  base = ok.merge(recorded_per_request: { const_misses: 0.0 }, const_ir_per_request: 0.0)
+  {
+    [0.0, 0.0] => '', [0.001, 0.4] => '',
+    [2.0, 698.0] => ' (const_misses +2.00 per request: +698 Ir, +1.40% of base w/o GC/const, not judged)',
+    [2.0, 750.0] => ' (const_misses +2.00 per request: +750 Ir, +1.50% of base w/o GC/const, not judged; ' \
+                    'more constant lookups of head miss the constant cache of mruby)',
+    [-2.0, -750.0] => ' (const_misses -2.00 per request: -750 Ir, -1.50% of base w/o GC/const, not judged; ' \
+                      'fewer constant lookups of head miss the constant cache of mruby)'
+  }.each do |(calls, ir), expected|
+    head = ok.merge(recorded_per_request: { const_misses: calls }, const_ir_per_request: ir)
+    got = const_miss_effect([base, head])
+    failures << "const_miss_effect with #{calls} calls and #{ir} Ir gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
   end
   {
     'made_up' => 'LOG_REQUEST_FUNCTIONS', 'ruby_call_10' => 'SCENARIO_REQUEST_FUNCTIONS', 'hello' => 'PERF_REQUEST_FUNCTIONS'
@@ -848,7 +912,7 @@ def self_test_accepted(builds, ok)
     failures << "mruby_version_from gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
   end
   scenario = Scenario.new(name: 'auth', mock: [])
-  base = ok.merge(nogc_per_request: 42_599.0)
+  base = ok.merge(judged_per_request: 42_599.0)
   [
     # head w/o GC, base and head mruby, expected verdict, expected failed
     [45_622.0, %w[4.0.0 4.1.0], 'ok (accepted: mruby 4.0.0→4.1.0, +8%)', false],
@@ -858,14 +922,14 @@ def self_test_accepted(builds, ok)
     [45_622.0, %w[4.1.0 4.1.0], 'FAIL', true],
     [45_622.0, %w[4.0.0 4.0.0], 'FAIL', true],
     [45_622.0, [nil, '4.1.0'], 'FAIL', true]
-  ].each do |head_nogc, versions, expected, expected_failed|
-    head = ok.merge(nogc_per_request: head_nogc)
+  ].each do |head_judged, versions, expected, expected_failed|
+    head = ok.merge(judged_per_request: head_judged)
     applied = accepted_for(entries, { 'mruby-version' => versions })
     _header, rows, _notes, failed = summarize(builds, [scenario], { %w[base auth] => base, %w[head auth] => head }, applied)
     got = rows.first.last
     next if got == expected && failed == expected_failed
 
-    failures << "auth at #{head_nogc} w/o GC with mruby #{versions.inspect} gave #{got.inspect} (failed #{failed}), " \
+    failures << "auth at #{head_judged} w/o GC with mruby #{versions.inspect} gave #{got.inspect} (failed #{failed}), " \
                 "expected #{expected.inspect} (failed #{expected_failed})"
   end
   # The boundary: a change equal to the allowance is accepted, one above it is not.
@@ -933,7 +997,7 @@ def self_test_accepted_pull_request(builds, ok, names, file)
     failures << "pull_request_from_env(#{env.inspect}) said #{e.message.inspect}, expected #{(message || expected_pr).inspect}" unless message && e.message.include?(message)
   end
   scenario = Scenario.new(name: 'auth', mock: [])
-  base = ok.merge(nogc_per_request: 11_459.0)
+  base = ok.merge(judged_per_request: 11_459.0)
   accepted_766 = 'ok (accepted: pull request #766 to next, +6%)'
   [
     # head w/o GC, base and head mruby, the pull request, expected verdict, expected failed
@@ -947,14 +1011,14 @@ def self_test_accepted_pull_request(builds, ok, names, file)
     [12_145.0, %w[4.0.0 4.1.0], %w[next 766], accepted_766, false],              # the pull-request line, not mruby's 8%
     [12_300.0, %w[4.0.0 4.1.0], %w[next 766], 'FAIL', true],                     # +7.34%: within 8%, above 6%
     [12_300.0, %w[4.0.0 4.1.0], %w[next 767], 'ok (accepted: mruby 4.0.0→4.1.0, +8%)', false]
-  ].each do |head_nogc, versions, pr, expected, expected_failed|
-    head = ok.merge(nogc_per_request: head_nogc)
+  ].each do |head_judged, versions, pr, expected, expected_failed|
+    head = ok.merge(judged_per_request: head_judged)
     applied = accepted_for(entries, { 'mruby-version' => versions, 'pull-request' => pr })
     _header, rows, _notes, failed = summarize(builds, [scenario], { %w[base auth] => base, %w[head auth] => head }, applied)
     got = rows.first.last
     next if got == expected && failed == expected_failed
 
-    failures << "auth at #{head_nogc} w/o GC with mruby #{versions.inspect} and pull request #{pr.inspect} gave " \
+    failures << "auth at #{head_judged} w/o GC with mruby #{versions.inspect} and pull request #{pr.inspect} gave " \
                 "#{got.inspect} (failed #{failed}), expected #{expected.inspect} (failed #{expected_failed})"
   end
   # The pull-request line applies whichever line comes first in the file.
@@ -1002,7 +1066,8 @@ def measure(build, scenario)
     check_window(scenario, dump, profile, wakes)
     result.merge!(profile, wakes: wakes,
                            ir_per_request: profile[:ir].to_f / N,
-                           nogc_per_request: (profile[:ir] - profile[:gc_ir]).to_f / N,
+                           judged_per_request: judged_ir(profile).to_f / N,
+                           const_ir_per_request: profile[:const_ir].to_f / N,
                            gc_calls_per_1000: profile[:gc_calls] * 1000.0 / N,
                            recorded_per_request: profile[:recorded_calls].transform_values { |n| n.to_f / N })
   rescue PerfError, StreamClient::Error, MockLLM::Child::Error, Client::Timeout, SystemCallError, IOError => e
@@ -1232,7 +1297,7 @@ def summarize(builds, scenarios, results, accepted = {})
     if builds.size == 1
       r = rs.first
       rows << if ok.first
-                [scenario.name, fmt_ir(r[:ir_per_request]), fmt_ir(r[:nogc_per_request]), gc_share(r),
+                [scenario.name, fmt_ir(r[:ir_per_request]), fmt_ir(r[:judged_per_request]), gc_share(r),
                  format('%.1f', r[:gc_calls_per_1000]), 'ok']
               else
                 [scenario.name, '-', '-', '-', '-', 'ERROR']
@@ -1245,11 +1310,11 @@ def summarize(builds, scenarios, results, accepted = {})
     if ok.all?
       compared += 1
       total = percent(base[:ir_per_request], head[:ir_per_request])
-      nogc = percent(base[:nogc_per_request], head[:nogc_per_request])
+      nogc = percent(base[:judged_per_request], head[:judged_per_request])
       v = accepted_verdict(nogc, accepted[scenario.name])
       failed ||= v == 'FAIL'
       rows << [scenario.name, fmt_ir(base[:ir_per_request]), fmt_ir(head[:ir_per_request]), fmt_change(total),
-               fmt_ir(base[:nogc_per_request]), fmt_ir(head[:nogc_per_request]), fmt_change(nogc),
+               fmt_ir(base[:judged_per_request]), fmt_ir(head[:judged_per_request]), fmt_change(nogc),
                "#{gc_share(base)}/#{gc_share(head)}", v]
     elsif ok.last && base[:unexpected_response] && base[:problems].count { |p| !p.match?(MRB_RUN_FAILED_LINE) } == 1
       rows << [scenario.name, '-', '-', '-', '-', '-', '-', '-', 'n/a (base: unexpected response)']
@@ -1263,10 +1328,10 @@ def summarize(builds, scenarios, results, accepted = {})
     notes << 'perf: no scenario was compared'
   end
   header = if builds.size == 1
-             ['scenario', 'Ir/req', 'Ir/req w/o GC', 'GC share', 'GC calls/1000 req', 'result']
+             ['scenario', 'Ir/req', 'Ir/req w/o GC/const', 'GC share', 'GC calls/1000 req', 'result']
            else
              ['scenario', "#{builds[0].label} Ir/req", "#{builds[1].label} Ir/req", 'change',
-              "#{builds[0].label} w/o GC", "#{builds[1].label} w/o GC", 'change w/o GC', 'GC share', 'result']
+              "#{builds[0].label} w/o GC/const", "#{builds[1].label} w/o GC/const", 'change w/o GC/const', 'GC share', 'result']
            end
   [header, rows, notes, failed]
 end
@@ -1285,7 +1350,7 @@ def recorded_lines(builds, scenarios, results)
     values = RECORDED_FUNCTIONS.keys.map do |key|
       "#{key} #{rs.map { |r| format('%.2f', r[:recorded_per_request][key]) }.join('/')}"
     end
-    lines << "perf:   #{scenario.name}: #{values.join(', ')}#{non_buffered_effect(rs)}"
+    lines << "perf:   #{scenario.name}: #{values.join(', ')}#{non_buffered_effect(rs)}#{const_miss_effect(rs)}"
   end
   lines
 end
@@ -1300,9 +1365,32 @@ def non_buffered_effect(rs)
   return '' if diff.abs < 0.005
 
   ir = diff * NON_BUFFERED_CALL_IR
-  share = ir / rs[0][:nogc_per_request] * 100.0
-  note = format(' (non_buffered_calls %+.2f per request: about %+.0f Ir, %+.2f%% of base w/o GC', diff, ir, share)
+  share = ir / rs[0][:judged_per_request] * 100.0
+  note = format(' (non_buffered_calls %+.2f per request: about %+.0f Ir, %+.2f%% of base w/o GC/const', diff, ir, share)
   note += '; the change of this scenario may come from when the response arrived' if share.abs >= WARN_PERCENT / 2
+  "#{note})"
+end
+
+# The note of recorded_lines on the difference of const_misses between base
+# and head ("" with one build or no difference): the Ir of the constant
+# lookups that the judged number leaves out, as a share of the base w/o
+# GC/const; from half of PERF_WARN_PERCENT on, the line says that more (or
+# fewer) lookups of head miss the constant cache. The misses depend on where
+# the ireps were allocated (CONST_LOOKUP_FUNCTIONS), so a change of the code
+# can move them, as can another run of the same code.
+def const_miss_effect(rs)
+  return '' unless rs.size == 2
+
+  base, head = rs.map { |r| r[:recorded_per_request][:const_misses].to_f }
+  diff = head - base
+  return '' if diff.abs < 0.005
+
+  ir = rs[1][:const_ir_per_request].to_f - rs[0][:const_ir_per_request].to_f
+  share = ir / rs[0][:judged_per_request] * 100.0
+  note = format(' (const_misses %+.2f per request: %+.0f Ir, %+.2f%% of base w/o GC/const, not judged', diff, ir, share)
+  if share.abs >= WARN_PERCENT / 2
+    note += "; #{share.positive? ? 'more' : 'fewer'} constant lookups of head miss the constant cache of mruby"
+  end
   "#{note})"
 end
 
@@ -1464,7 +1552,7 @@ scenarios.each do |scenario|
     r = measure(b, scenario)
     results[[b.label, scenario.name]] = r
     detail = if r[:problems].empty?
-               format('%.1f Ir/req, %.1f w/o GC, %s', r[:ir_per_request], r[:nogc_per_request],
+               format('%.1f Ir/req, %.1f w/o GC/const, %s', r[:ir_per_request], r[:judged_per_request],
                       r[:recorded_per_request].map { |k, v| format('%s %.2f/req', k, v) }.join(', '))
              else
                'ERROR'
@@ -1479,7 +1567,8 @@ problems = results.reject { |_k, r| r[:problems].empty? }.flat_map do |(label, n
   ["#{name} (#{label}):", *r[:problems].map { |p| "  #{p}" }]
 end
 report = ["perf: N=#{N} WARMUP=#{WARMUP}; Ir per request of nginx; " \
-          "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number without GC",
+          "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number without GC and const lookups " \
+          '(w/o GC/const: Ir/req minus the GC and the calls of mrb_vm_const_get)',
           "perf: units: stream_sleep = completed TCP session; other rows = HTTP request", *gem_lines,
           *accepted_lines, '', *lines]
 report += ['', *notes] unless notes.empty?

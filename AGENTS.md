@@ -89,9 +89,11 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     a 1 ms wait; its Ir values are per session. Changes to `src/stream/`
     therefore have a measured stream row as well as the HTTP rows.
   - The reviewer writes, for the scenario with the largest change and for
-    each row that is not `ok`: its base and head Ir per request without GC,
+    each row that is not `ok`: its base and head Ir per request without GC
+    and constant lookups (`w/o GC/const`),
     and the change in instructions per request and in percent.
   - A scenario at `WARN` (3% or more instructions per request without GC
+    and constant lookups
     than the base) or `FAIL` (5% or more) holds the merge until the owner
     accepts the difference on the PR; the session asks the owner. `ERROR`
     means that the scenario was not measured: fix the run or run it again.
@@ -105,6 +107,19 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     comparison" in `docs/test/README.md`). Both runs are quoted, and the
     second replaces the first. In every other case, the `WARN` or `FAIL`
     goes to the owner without a second run.
+  - The judged number leaves out the GC and the constant lookups that
+    miss mruby's constant cache (the calls of `mrb_vm_const_get`). Two
+    lookups share an entry of that cache depending on where the ireps
+    were allocated, which can differ between runs of the same binary: on
+    #766, `stream_sleep` measured 671 Ir more per session in one run than
+    in another on the same commits. The report prints these misses per
+    request (`const_misses`) for both builds, and a line whose difference
+    of misses makes half of the `WARN` threshold or more gets the note
+    `more constant lookups of head miss the constant cache of mruby` (or
+    `fewer`) ("What it measures" and "Agent proxy scenarios in the
+    comparison" in `docs/test/README.md`). The note does not change the
+    verdict and asks for no second run; the reviewer quotes it with the
+    row.
   - A session does not merge a PR while the latest run of its `perf` job
     reports `FAIL` or `ERROR`, except for a `FAIL` that the owner accepted
     on the PR. On `next`, `ci-ok` needs the job, so such a run also fails
@@ -113,7 +128,8 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     owner's acceptance is in a comment on the PR, and the comment names the
     run, the scenario and its change. The line has the condition
     `pull-request`, the base branch, the PR's number, the scenario and an
-    allowance at or above the measured change without GC (for example
+    allowance at or above the measured change without GC and constant
+    lookups (for example
     `pull-request next 812 stream_sleep 7`). The run of that push shows the
     row as accepted and passes ("In CI" under "Performance comparison with
     callgrind" in `docs/test/README.md`). On `master`, `ci-ok` does not
