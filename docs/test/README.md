@@ -2444,7 +2444,8 @@ too, so do not run it at the same time.
 | `PERF_PORT_BASE` | 12370 | HTTP port; the next is the HTTP backend or TCP data port, the third is the mock LLM or unused stream GC control port |
 | `PERF_REPORT_DIR` | `build_perf` | where `report.txt` and `report.json` go |
 | `PERF_ACCEPTED_FILE` | `test/perf/accepted.txt` | the accepted differences (see "Known differences"); an empty file shows the verdicts without them |
-| `PERF_BASE_REF`, `PERF_PULL_REQUEST` | unset | the base branch and the number of the pull request that the `pull-request` lines of the accepted file are matched against; set both or neither (the `perf` job sets both) |
+| `PERF_BASE_REF` | unset | the base branch of the pull request, matched against the `pull-request` lines of the accepted file; set with `PERF_PULL_REQUEST` or not at all |
+| `PERF_PULL_REQUEST` | unset | the number of the pull request; the `perf` job sets both variables |
 | `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_start_fiber` | names of the function counted once per request in the seven scenarios of `test/soak/nginx.conf` (see "In CI") |
 
 ### In CI

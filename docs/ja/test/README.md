@@ -983,7 +983,7 @@ baseが同梱するmrubyがheadより古い比較では、このような差が�
 
 `mruby-version`の行が当てはまるのは、両方のビルドが条件に合うときだけです。`pull-request`は下で説明します。行が当てはまると、その行が挙げるシナリオの`WARN`か`FAIL`の行のうち、許容幅に収まるものは、`ok (accepted: mruby 4.0.0→4.1.0, +8%)`と表示されます。この行は実行を失敗させず、ジョブのアノテーションのnoticeになります。許容幅を超える変化は、`WARN`か`FAIL`のままです。`report.txt`のヘッダの1行と、ジョブのサマリーのテーブルの下の1行には、両方のビルドのmrubyのバージョンと、当てはまった差を出力します。たとえば`perf: mruby: base 4.0.0, head 4.1.0; accepted differences (accepted.txt): auth up to +8% (mruby 4.0.0→4.1.0)`で、当てはまる差が無ければ`none apply`です。`perf.rb`は、測る前にこのファイルを読み、書式に合わない行があると、ファイルと行の番号を示して止まります。`--self-test`もこのファイルを確かめます。GCの割合は出力するだけで判定しないので、ファイルにはGCの割合の許容幅の行がありません。
 
-もう1つの条件の`pull-request`は、オーナーがプルリクエストで受け入れた`FAIL`のためのものです。「CIで実行する」を参照してください。この行には、プルリクエストのベースブランチと番号を書きます。たとえば`pull-request next 812 stream_sleep 7`です。この行が当てはまるのは、そのプルリクエストの`perf`ジョブだけです。ジョブは、ベースブランチと番号を`PERF_BASE_REF`と`PERF_PULL_REQUEST`で`perf.rb`に渡します。これらを設定しないローカルの実行では、この行は当てはまりません。前のタグとの比較も同じです。当てはまった行のシナリオは`ok (accepted: pull request #812 to next, +7%)`と表示され、ヘッダの1行には`pull request #812 to next`が加わります。1つのシナリオに`pull-request`の行と`mruby-version`の行が両方当てはまるときは、`pull-request`の行を使います。行はマージの後も記録としてファイルに残り、ほかのプルリクエストには当てはまりません。
+もう1つの条件の`pull-request`は、オーナーがプルリクエストで受け入れた`FAIL`のためのものです。「CIで実行する」を参照してください。この行には、プルリクエストのベースブランチと番号を書きます。たとえば`pull-request next 812 stream_sleep 7`です。この行が当てはまるのは、そのプルリクエストの`perf`ジョブだけです。ジョブは、ベースブランチと番号を`PERF_BASE_REF`と`PERF_PULL_REQUEST`で`perf.rb`に渡します。これらを設定しないローカルの実行では、この行は当てはまりません。前のタグとの比較も同じです。当てはまった行のシナリオは`ok (accepted: pull request #812 to next, +7%)`と表示され、ヘッダの1行には`pull request #812 to next`が加わります。1つのシナリオに`pull-request`の行と`mruby-version`の行が両方当てはまるときは、`pull-request`の行を使います。この行は、マージした後も記録としてファイルに残します。ほかのプルリクエストの比較には当てはまりません。
 
 ### 実行する
 
@@ -1018,7 +1018,8 @@ $ sh test/perf/run.sh                                  # measure this checkout o
 | `PERF_PORT_BASE` | 12370 | HTTP制御のポート。次はHTTPバックエンドかTCP測定用。3つ目はモデルAPIのモック用で、streamのGC制御には接続しない |
 | `PERF_REPORT_DIR` | `build_perf` | `report.txt`と`report.json`を書くディレクトリ |
 | `PERF_ACCEPTED_FILE` | `test/perf/accepted.txt` | 受け入れ済みの差を記録するファイル。空のファイルなら適用前の判定を表示 |
-| `PERF_BASE_REF`、`PERF_PULL_REQUEST` | 未設定 | 受け入れ済みの差のファイルの`pull-request`の行と照らし合わせる、プルリクエストのベースブランチと番号。両方を設定するか、どちらも設定しない。`perf`ジョブは両方を設定する |
+| `PERF_BASE_REF` | 未設定 | プルリクエストのベースブランチ。`pull-request`の行と照らし合わせる。`PERF_PULL_REQUEST`と一緒に設定する |
+| `PERF_PULL_REQUEST` | 未設定 | プルリクエストの番号。`perf`ジョブは、この2つの変数を両方とも設定する |
 | `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_start_fiber` | `test/soak/nginx.conf`の7つのシナリオで、リクエストごとに1回と数える関数の名前。「CIで実行する」を参照 |
 
 ### CIで実行する
