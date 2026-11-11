@@ -134,7 +134,11 @@ for f in test/conf/conf.d/*.conf test/conf/conf.d/stream/*.conf; do
     case "$f" in */stream/*) d=${NGINX_INSTALL_DIR}/conf/conf.d/stream ;; *) d=${NGINX_INSTALL_DIR}/conf/conf.d ;; esac
     sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" "$f" > "$d/$(basename "$f")"
 done
-cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' && sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' && cd -
+(
+    cd ${NGINX_INSTALL_DIR}/html || exit 1
+    sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' || { echo "test.sh: openssl req failed while making the localhost certificate" >&2; exit 1; }
+    sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' || { echo "test.sh: openssl req failed while making the dummy certificate" >&2; exit 1; }
+)
 
 if [ "$NGINX_SRC_VERSION_NUM" -ge 1009006 ]; then
   cat test/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
