@@ -363,6 +363,28 @@ constraints, with dates. Proposals are identified separately from adopted
 decisions. Conversation quotations and attribution are not a substitute for
 checking whether a decision fits the evidence and requirements.
 
+- **2026-11-12, local checks first.** CI is the final check in a clean
+  environment. Every kind of check that CI runs for a change is run
+  locally by the author before the PR is marked ready, and its failures
+  are found there: the suite with the static and the dynamic module, the
+  suite under AddressSanitizer and UndefinedBehaviorSanitizer and under
+  valgrind (for C code and build changes), the callgrind comparison, the
+  soak, the steps of `examples/start`, nginx-tests, the site's checks and
+  the static analysis of the workflows. On macOS the Linux-only checks
+  run in a Linux container. CI keeps only the spread to what one machine
+  does not hold: the other nginx versions and link modes of the build
+  matrix, the x86-64 runner and a clean environment. Rationale: a check
+  whose first run is in CI is found failing there, and each fix costs a
+  push and a CI wait; when the runner itself fails, a local result of the
+  same check is what separates a code defect from a runner problem. #796
+  ran all of these on an arm64 Mac in Docker while three CI attempts on
+  the same head stopped in the package installation. This replaces the
+  text of 2026-10-31 and 2026-11-02 that sent the sanitizers, valgrind and
+  the callgrind comparison to CI as environments a machine does not have;
+  the limits on CI time and the base-move condition stay. Written in
+  AGENTS.md ("Design principles", "Branches and pull requests", "Review
+  and merge", "Build and test"), the PR template and `docs/test/README.md`
+  on `next`; `master` follows (Queue).
 - **2026-11-03, agent assignment.** Choose Codex models and reasoning effort
   by role and task complexity, using currently available capabilities rather
   than fixed model names. Routine work uses a sufficient faster, lower-cost
@@ -555,6 +577,7 @@ Taken up and still open: none.
 | On 2.x, a rewrite handler that sleeps in `Nginx::Async.sleep` and returns `Nginx::DECLINED`, followed by an access handler of the same location that calls `Nginx::Async::HTTP.sub_request` and declines, leaves the request without a response (seen by the reviewer of [#740](https://github.com/matsumotory/ngx_mruby/pull/740) before and after its fix; without the sleep the answer is immediate). Assess on `next` first, where the fiber record of [#714](https://github.com/matsumotory/ngx_mruby/pull/714), [#715](https://github.com/matsumotory/ngx_mruby/pull/715) and [#722](https://github.com/matsumotory/ngx_mruby/pull/722) may already cover it; if 2.x still hangs, a fix with its regression test | `next`, then `master` if needed | Assessed on 2026-11-03: the normal composition completes with the `next` runtime of `c440a15dc`. A 100 ms sleep and its no-sleep control each returned 200, the expected static body and EOF in three requests bounded at 8 seconds (nginx 1.31.8, static suite build with GC stress and debug counters; runtime C statements unchanged). No next fix is indicated by these six requests. The 2.x follow-up is done in [#772](https://github.com/matsumotory/ngx_mruby/pull/772), whose test `async_sub_request_after_sleep.rb` also runs on `next` since [#777](https://github.com/matsumotory/ngx_mruby/pull/777) |
 | A body filter whose request lost its module context while the response was still being written: [the review of #785](https://github.com/matsumotory/ngx_mruby/pull/785#issuecomment-6767421067) (should fix, "The other place that clears the module context") found that the body filter drops the context when an earlier handler's `Nginx.rputs` output is still in it, and that the response then stopped after its first write until `send_timeout` | `master`, then `next` | Done: fixed on `master` in [#786](https://github.com/matsumotory/ngx_mruby/pull/786) (`10c4cd927`), for locations with and without an mruby header filter, and brought to `next` by [#787](https://github.com/matsumotory/ngx_mruby/pull/787) |
 | Make an mruby body filter run once on a proxied response that goes out in one write after an earlier handler's `Nginx.rputs` (should fix 4 of [the review of #786](https://github.com/matsumotory/ngx_mruby/pull/786#issuecomment-6768923430)). Today the empty last buffer that `ngx_http_upstream_finalize_request` sends runs the code of the body filter a second time on an empty body, and `$sent_http_content_length` logs `0` instead of the length. Since #786, a response sent in more than one write runs the code once and logs the length, so the logged value depends on the number of writes | `next` (a behavior change, not for 2.x) | Ready to start: a test of the one-write case with a proxied location of `test/conf/conf.d/90-body-filter-leftover-chain.conf`, a fix and an entry under "Behavior changes" of `docs/releases/v3.0.0.md` and `.ja.md` |
+| Local checks first (the decision of 2026-11-12 under "Decisions") on `master`: the same change to AGENTS.md ("Design principles", "Branches and pull requests", "Review and merge", "Build and test"), `.github/PULL_REQUEST_TEMPLATE.md` and `docs/test/README.md` of `master`, which still send the sanitizers, valgrind and the callgrind comparison to CI | `master` | The release of 2.7.6, which is in progress on `master` |
 | An mruby body filter on a subrequest of SSI (`<!--# include virtual=... -->`): the included part is missing and the main response stops until `send_timeout`, also without any `Nginx.rputs` and with only a body filter (a note of [the review of #786](https://github.com/matsumotory/ngx_mruby/pull/786#issuecomment-6768923430), seen on `master` before and after #786) | `master`, then `next` by the merge | Ready to start: a regression test in a commit of its own, then the fix; the cause is not investigated yet |
 
 ## How a session continues
