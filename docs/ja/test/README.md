@@ -68,7 +68,7 @@ readyのheadへpushすると、前のheadの実行をキャンセルして新し
 
 それ以外の実行では`ci-ok`に`always()`を使います。必要なジョブが終わる前に、新しいpushか「Cancel workflow」で実行がキャンセルされると、`ci-ok`は動いて失敗します。その実行はコミットを最後までテストしていないからです。新しいpushによる失敗は、置き換えられた古いheadに残ります。GitHubの説明では`cancelled()`はワークフローがキャンセルされたことを示しますが、必要なジョブの`timeout-minutes`超過でも真になるかは明記されていません。真になるなら`!cancelled()`の`ci-ok`はスキップされ、そのスキップが必須チェックを満たしてしまいます。`site.yml`は`next`へのpushとdispatchでだけ動き、ルールセットはそのジョブを要求しません。`site.yml`の`deploy`は、`build`が成功したときだけ動きます。[サイトのCI](#サイトのci)を参照してください。
 
-CIは、クリーンな環境での最後の確認です。変更を初めて試す場所ではありません。AGENTS.mdの「Branches and pull requests」にこの決まりがあります。CIが流す種類の検査は、どれも先に手元で流します。対象は、静的なモジュールと動的なモジュールでのテストスイート、2つのsanitizerとvalgrindの下でのテストスイート、callgrindの比較、ソークテスト、`examples/start`の手順、nginx-tests、サイトの検査、zizmorです。sanitizer、valgrind、callgrindの比較、ソークテストにはLinuxが要ります。macOSでは、このページの各節にあるように、Linuxのコンテナで流します。CIは、手元で流した検査を、1台のマシンでは用意しきれない組み合わせへ広げます。`build`マトリクスのほかのセル、x86-64のrunner、クリーンな環境です。こうすると、失敗はCIへpushする前に手元で見つかります。runnerの都合で実行が落ちたときも、同じ検査の手元の結果があれば、コードに問題があるかどうかを切り分けられます。#796では、runnerがパッケージの取得先の名前を引けず、3回の試行が`install`のステップで止まりました。readyにする前に、作者は変更に関係する検査を手元で実行し、PRの「How was this tested」にコマンドと結果を書きます。`test/ci/changes.sh`が`build`を`standard`か`full`と判定したら、テストスイートも対象です。Cのコードかビルドを変えるときは、sanitizerとvalgrindの下でのテストスイートも対象です。レビュアーは記録を確認します。手元で流せる検査をCIに任せません。手元で流せないと書くのは、実際に試して流せなかった検査だけです。
+CIは、クリーンな環境での最後の確認です。変更を初めて試す場所ではありません。AGENTS.mdの「Branches and pull requests」にこの決まりがあります。CIが流す種類の検査は、どれも先に手元で流します。対象は、静的なモジュールと動的なモジュールでのテストスイート、2つのsanitizerとvalgrindの下でのテストスイート、callgrindの比較、ソークテスト、`examples/start`の手順、nginx-tests、サイトの検査、zizmorです。sanitizer、valgrind、callgrindの比較、ソークテストにはLinuxが要ります。macOSでは、このページの各節にあるように、Linuxのコンテナで流します。CIは、手元で流した検査を、1台のマシンでは用意しきれない組み合わせへ広げます。`build`マトリクスのほかのセル、x86-64のrunner、クリーンな環境です。こうすると、失敗はCIへpushする前に手元で見つかります。runnerの都合で実行が落ちたときも、同じ検査の手元の結果があれば、コードに問題があるかどうかを切り分けられます。#796では、runnerがパッケージのミラーの名前解決に失敗し、3回の試行が`install`のステップで止まりました。readyにする前に、作者は変更に関係する検査を手元で実行し、PRの「How was this tested」にコマンドと結果を書きます。`test/ci/changes.sh`が`build`を`standard`か`full`と判定したら、テストスイートも対象です。Cのコードかビルドを変えるときは、sanitizerとvalgrindの下でのテストスイートも対象です。レビュアーは記録を確認します。手元で流せる検査をCIに任せません。手元で流せないと書くのは、実際に試して流せなかった検査だけです。
 
 readyのPRは必要なジョブだけを実行し、全体を約15分で終えます。2026年10月31日の#678では、buildのセルに6〜14分、マトリクス全体に15分かかりました。[実行41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773)がその記録です。CIに検査を加える提案では、その検査をローカルで実行できるか、なぜCIでも要るか、実行が何分延びるかを書きます。
 
@@ -76,7 +76,7 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 
 `test/ci/changes.sh BASE HEAD`が変更ファイルを分類します。変更の種類で実行を決めるワークフローはすべてこのファイルを読み、方針を一か所に集約します。`sh test/ci/changes_test.sh`で検査できます。出力はキーごとに1行で、分類は`code`、`tests`、`docs`、`site`、`examples`、`workflows`、続いて`soak`と`perf`がそれぞれ`true`か`false`になります。最後の`build`は、`build`マトリクスのどのセルを実行するかを表します。`code`か`tests`が真なら`standard`、それ以外は`none`です。renameは`git diff --no-renames`で旧パスと新パスの両方を分類するため、ソースを`docs/`へ移してもビルドします。`test.yml`の`changes`ジョブは、実行の種類もスクリプトに渡します。渡すのは、Draftかどうか、readyのPRのラベル、push、タグ、「Run workflow」とその`valgrind`入力です。下の2つ目のテーブルの実行では、スクリプトは`build`を、全セルを表す`full`か、`none`に決めます。
 
-次のテーブルのジョブは、作者が手元で流した検査を、runnerでもう一度流します。[必須のステータスチェック](#必須のステータスチェック)を参照してください。
+次の2つのテーブルのジョブは、作者が手元で流した検査を、runnerでもう一度流します。[必須のステータスチェック](#必須のステータスチェック)を参照してください。
 
 | 分類 | パス | readyのPRが実行するワークフロー |
 |---|---|---|
@@ -431,7 +431,7 @@ valgrindの下のセルは、次のオプションでnginxを動かします。
 valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=test/valgrind.supp --log-file=$RUNNER_TEMP/valgrind/valgrind.%p.log
 ```
 
-Cのコードかビルドを変えるときは、作者がPRをreadyにする前に、このオプションでvalgrindの下のテストスイートを手元で流します。valgrindのセルは、同じ検査をx86-64のrunnerでもう一度流します。手元では、専用のチェックアウトで流してください。たとえば`git archive HEAD | tar -x -C DIR`で作ります。同じチェックアウトでsanitizerのビルドをすると、別のフラグでビルドしたmrubyが残るからです。valgrindにはLinuxが要ります。macOSでは、そのチェックアウトの最上位で、Linuxのコンテナで流します。
+Cのコードかビルドを変えるときは、作者がPRをreadyにする前に、このオプションでvalgrindの下のテストスイートを手元で流します。valgrindのセルは、同じ検査をx86-64のrunnerでもう一度流します。手元では、専用のチェックアウトで流してください。たとえば`git archive HEAD | tar -x -C DIR`で作ります。同じチェックアウトでsanitizerのビルドをすると、別のフラグでビルドしたmrubyが残るからです。valgrindにはLinuxが要ります。macOSでは、そのチェックアウトの最上位のディレクトリで、Linuxのコンテナを使って流します。
 
 ```console
 $ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev valgrind >/dev/null && mkdir -p build/valgrind && NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=$PWD/test/valgrind.supp --log-file=$PWD/build/valgrind/valgrind.%p.log" sh test.sh && grep -h "ERROR SUMMARY" build/valgrind/valgrind.*.log | sort | uniq -c'
@@ -462,7 +462,7 @@ $ NGINX_RUNNER=exec sh test.sh
 $ grep -HnE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name '*.log')
 ```
 
-macOSでは、そのチェックアウトの最上位で、Linuxのコンテナで流します。`sysctl`の行は要りません。arm64のMacのDocker DesktopのLinuxのVMでは`vm.mmap_rnd_bits`が18で、コンテナからは変えられません。
+macOSでは、そのチェックアウトの最上位のディレクトリで、Linuxのコンテナを使って流します。`sysctl`の行は要りません。arm64のMacのDocker DesktopのLinuxのVMでは`vm.mmap_rnd_bits`が18で、コンテナからは変えられません。
 
 ```console
 $ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev >/dev/null && export NGINX_EXTRA_CC_OPT="-fsanitize=address,undefined -fno-omit-frame-pointer" NGINX_EXTRA_LD_OPT="-fsanitize=address,undefined" NGX_MRUBY_CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" NGX_MRUBY_LDFLAGS="-fsanitize=address,undefined" ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$PWD/test/lsan.supp UBSAN_OPTIONS=print_stacktrace=1:suppressions=$PWD/test/ubsan.supp && NGINX_RUNNER=exec sh test.sh && ! grep -HnE "ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)" $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name "*.log")'
@@ -1016,7 +1016,7 @@ baseが同梱するmrubyがheadより古い比較では、このような差が�
 
 ### 実行する
 
-PRが測るバイナリの入力か測定を変え、`perf`が`true`になるときは、作者がPRをreadyにする前に、baseとの比較を手元で流し、レポートをPRの本文に引きます。[AGENTS.md](../../../AGENTS.md)の「Design principles」を参照してください。その後、`perf`ジョブが同じ比較をrunnerでもう一度流します。[CIで実行する](#ciで実行する)を参照してください。
+PRが測るバイナリの入力か測定を変え、`perf`が`true`になるときは、作者がPRをreadyにする前に、baseとの比較を手元で流し、レポートをPRの本文に引用します。[AGENTS.md](../../../AGENTS.md)の「Design principles」を参照してください。その後、`perf`ジョブが同じ比較をrunnerでもう一度流します。[CIで実行する](#ciで実行する)を参照してください。
 
 ドライバには、CRuby 3.0以降と、`callgrind_control`とその補助の`vgdb`を持つvalgrindが要ります。`callgrind_control`と`vgdb`はLinuxで動きます。これらが無いと、`perf.rb`はすぐに止まります。macOSでは、Linuxのコンテナの中で実行してください。このチェックアウトを`origin/next`とコンテナの中で比べるには、次の1つのコマンドを実行します。
 
