@@ -110,23 +110,43 @@ typedef struct {
   u_char name[NGX_STREAM_MRB_UPSTREAM_SERVER_MAX];
 } ngx_stream_mrb_upstream_server_store_t;
 
+/* See the matching HTTP code in src/http/ngx_http_mruby_upstream.c. */
+static ngx_array_t *ngx_stream_mrb_upstream_server_stores;
+static ngx_pool_t *ngx_stream_mrb_upstream_server_stores_pool;
+
+static void ngx_stream_mrb_upstream_server_stores_cleanup(void *data)
+{
+  (void)data;
+  ngx_stream_mrb_upstream_server_stores = NULL;
+  ngx_stream_mrb_upstream_server_stores_pool = NULL;
+}
+
 static ngx_stream_mrb_upstream_server_store_t *ngx_stream_mrb_upstream_server_store(ngx_stream_upstream_rr_peer_t *peer)
 {
-  static ngx_array_t *stores;
-  static ngx_pool_t *stores_pool;
   ngx_stream_mrb_upstream_server_store_t **elts, *store;
   ngx_uint_t i;
 
-  if (stores == NULL || stores_pool != ngx_cycle->pool) {
-    stores = ngx_array_create(ngx_cycle->pool, 4, sizeof(ngx_stream_mrb_upstream_server_store_t *));
-    if (stores == NULL) {
+  if (ngx_stream_mrb_upstream_server_stores == NULL ||
+      ngx_stream_mrb_upstream_server_stores_pool != ngx_cycle->pool) {
+    ngx_pool_cleanup_t *cln;
+
+    ngx_stream_mrb_upstream_server_stores =
+        ngx_array_create(ngx_cycle->pool, 4, sizeof(ngx_stream_mrb_upstream_server_store_t *));
+    if (ngx_stream_mrb_upstream_server_stores == NULL) {
       return NULL;
     }
-    stores_pool = ngx_cycle->pool;
+    cln = ngx_pool_cleanup_add(ngx_cycle->pool, 0);
+    if (cln == NULL) {
+      ngx_stream_mrb_upstream_server_stores = NULL;
+      return NULL;
+    }
+    cln->handler = ngx_stream_mrb_upstream_server_stores_cleanup;
+    cln->data = NULL;
+    ngx_stream_mrb_upstream_server_stores_pool = ngx_cycle->pool;
   }
 
-  elts = stores->elts;
-  for (i = 0; i < stores->nelts; i++) {
+  elts = ngx_stream_mrb_upstream_server_stores->elts;
+  for (i = 0; i < ngx_stream_mrb_upstream_server_stores->nelts; i++) {
     if (elts[i]->peer == peer) {
       return elts[i];
     }
@@ -138,7 +158,7 @@ static ngx_stream_mrb_upstream_server_store_t *ngx_stream_mrb_upstream_server_st
   }
   store->peer = peer;
 
-  elts = ngx_array_push(stores);
+  elts = ngx_array_push(ngx_stream_mrb_upstream_server_stores);
   if (elts == NULL) {
     return NULL;
   }
