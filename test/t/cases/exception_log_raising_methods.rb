@@ -1,9 +1,10 @@
 # The line of error.log for an exception whose class redefines #inspect or
 # #backtrace so that they raise. ngx_mruby writes the class of the exception
 # in place of its inspect, and the worker goes on to answer the next request
-# or session. Here the handler runs directly under nginx; the cases where it
-# runs inside another mruby call are added with the change that protects the
-# calls of the logging there.
+# or session: when the handler runs directly under nginx, and when it runs
+# inside another mruby call (the target of Nginx.redirect from an mruby_set
+# handler), where the logging protects its calls as ngx_mrb_fiber_resume
+# protects the resumed fiber.
 # Config: test/conf/conf.d/93-exception-log-raising-methods.conf (port 18198)
 # and test/conf/conf.d/stream/51-exception-log-raising-methods.conf (port
 # 12382).
@@ -86,6 +87,42 @@ t.assert('exception log', 'a stream session whose exception has an inspect that 
                    'while initializing session, client: 127.0.0.1, server: 127.0.0.1:12382',
                    raising_methods_message(l)
   end
+end
+
+
+# Inside another mruby call: the content handler of the target of
+# Nginx.redirect from an mruby_set handler raises. The response is the one
+# that the request gets after the exception of the target; the line of the
+# exception and the next request are what these cases check.
+t.assert('exception log', 'inside another mruby call, an exception whose inspect raises: the line names its class, and the worker answers the next request') do
+  offset = File.size(raising_methods_log_path)
+  status, _raw = tcp_client(18198, "GET /exception_log/set_redirect_inspect_raises HTTP/1.0\r\nHost: localhost\r\n\r\n")
+  lines = raising_methods_lines_from(offset)
+  errors = raising_methods_exception_lines(lines)
+  t.assert_equal 'EOF', status
+  t.assert_equal 1, errors.size
+  t.assert_equal [], lines.select { |l| l.include?('exception log: inspect raised 42') }
+  t.assert_true raising_methods_message(errors[0].to_s).start_with?(
+    'mrb_run failed: return 500 HTTP status code to client: error: ' \
+    '#<ExceptionLogInspectRaises> (inspect raised ArgumentError), client: 127.0.0.1'
+  ), errors[0].to_s
+  t.assert_equal 'hello', HttpRequest.new.get(base(18198) + '/exception_log/hello')["body"]
+end
+
+t.assert('exception log', 'inside another mruby call, an exception whose backtrace raises: the line of the exception and a line at the debug level') do
+  offset = File.size(raising_methods_log_path)
+  status, _raw = tcp_client(18198, "GET /exception_log/set_redirect_backtrace_raises HTTP/1.0\r\nHost: localhost\r\n\r\n")
+  lines = raising_methods_lines_from(offset)
+  errors = raising_methods_exception_lines(lines)
+  t.assert_equal 'EOF', status
+  t.assert_equal 1, errors.size
+  t.assert_equal [], lines.select { |l| l.include?('exception log: backtrace raised 42') }
+  t.assert_true raising_methods_message(errors[0].to_s).start_with?(
+    'mrb_run failed: return 500 HTTP status code to client: error: ' \
+    '#<ExceptionLogBacktraceRaises: exception log: backtrace raises 42>, client: 127.0.0.1'
+  ), errors[0].to_s
+  t.assert_equal 1, lines.select { |l| l.include?(' [debug] ') && l.include?('backtrace must be Array. mrb_type=') }.size
+  t.assert_equal 'hello', HttpRequest.new.get(base(18198) + '/exception_log/hello')["body"]
 end
 
 t.report
