@@ -61,7 +61,7 @@ t.assert('exception log', 'an exception of an SSL handshake handler: one line at
   t.assert_include found[0].to_s, ' [error] '
   t.assert_true exception_log_message(found[0].to_s).to_s.start_with?(
     'ngx_mruby : mrb_run failed: return 500 HTTP status code to client: error: ' \
-    '#<RuntimeError: exception log: ssl handshake 42>, client: 127.0.0.1, server: '
+    '#<RuntimeError: exception log: ssl handshake 42> while SSL handshaking, client: 127.0.0.1, server: 0.0.0.0:18193'
   ), found[0].to_s
 end
 
@@ -74,7 +74,7 @@ t.assert('exception log', 'an exception of a stream session: one line at the err
   t.assert_include found[0].to_s, ' [error] '
   t.assert_true exception_log_message(found[0].to_s).to_s.start_with?(
     'mrb_run failed: return NGX_ABORT to client: error: ' \
-    '#<RuntimeError: exception log: stream session 42>, client: 127.0.0.1, server: 127.0.0.1:12380'
+    '#<RuntimeError: exception log: stream session 42> while initializing session, client: 127.0.0.1, server: 127.0.0.1:12380'
   ), found[0].to_s
 end
 
