@@ -15,8 +15,8 @@
 #             pull-request: the base branch and the number of the pull
 #             request (pull-request next 812 ...)
 # SCENARIO    a scenario of test/soak/scenarios.rb
-# ALLOWANCE   the change of Ir per request without GC and constant lookups
-#             (w/o GC/const), in percent, up to
+# ALLOWANCE   the change of the judged number (the column judged of the
+#             report), in percent, up to
 #             which a WARN or FAIL row is shown as ok (accepted); above it,
 #             the row is judged as if the line were not there
 #

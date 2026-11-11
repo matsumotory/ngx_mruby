@@ -89,12 +89,13 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     a 1 ms wait; its Ir values are per session. Changes to `src/stream/`
     therefore have a measured stream row as well as the HTTP rows.
   - The reviewer writes, for the scenario with the largest change and for
-    each row that is not `ok`: its base and head Ir per request without GC
-    and constant lookups (`w/o GC/const`),
-    and the change in instructions per request and in percent.
-  - A scenario at `WARN` (3% or more instructions per request without GC
-    and constant lookups
-    than the base) or `FAIL` (5% or more) holds the merge until the owner
+    each row that is not plain `ok` (an `ok (accepted: ...)` row
+    included): its base and head judged number (the column `judged`:
+    `w/o GC/const`, or `w/o GC` where the head clears mruby's constant
+    cache more often), and the change in instructions per request and in
+    percent.
+  - A scenario at `WARN` (3% or more instructions per request of the
+    judged number than the base) or `FAIL` (5% or more) holds the merge until the owner
     accepts the difference on the PR; the session asks the owner. `ERROR`
     means that the scenario was not measured: fix the run or run it again.
   - The scenarios with an upstream vary with when the upstream's response
@@ -108,18 +109,25 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     second replaces the first. In every other case, the `WARN` or `FAIL`
     goes to the owner without a second run.
   - The judged number leaves out the GC and the constant lookups that
-    miss mruby's constant cache (the calls of `mrb_vm_const_get`). Two
-    lookups share an entry of that cache depending on where the ireps
-    were allocated, which can differ between runs of the same binary: on
-    #766, `stream_sleep` measured 671 Ir more per session in one run than
-    in another on the same commits. The report prints these misses per
-    request (`const_misses`) for both builds, and a line whose difference
-    of misses makes half of the `WARN` threshold or more gets the note
-    `more constant lookups of head miss the constant cache of mruby` (or
-    `fewer`) ("What it measures" and "Agent proxy scenarios in the
-    comparison" in `docs/test/README.md`). The note does not change the
-    verdict and asks for no second run; the reviewer quotes it with the
-    row.
+    miss mruby's constant cache (`w/o GC/const`), except in a scenario
+    whose head clears that cache more often than its base, which is
+    judged with the lookups counted (`w/o GC`). Two lookups share an entry
+    of the cache depending on where the ireps were allocated, which can
+    differ between runs of the same binary: on #766, `stream_sleep`
+    measured 671 Ir more per session in one run than in another on the
+    same commits. A clear of the whole cache (`mrb_const_set`,
+    `mrb_const_remove`, `mrb_define_const_id`, `include`, `prepend`,
+    `extend`) makes every later lookup of the request miss, which is the
+    cost of the code that clears. The report prints both per request for
+    both builds (`const_misses`, `const_clears`), and the Ir of the misses
+    as a share of the base `w/o GC/const` where the misses differ; from half
+    of the `WARN` threshold on, the line notes `more` (or `fewer`)
+    `constant lookups of head miss the constant cache of mruby`, and a
+    head that clears more often is named on the line ("What it measures"
+    and "Agent proxy scenarios in the comparison" in
+    `docs/test/README.md`). With the same clears, the note shows a change
+    of the layout: it does not change the verdict and asks for no second
+    run; the reviewer quotes it with the row.
   - A session does not merge a PR while the latest run of its `perf` job
     reports `FAIL` or `ERROR`, except for a `FAIL` that the owner accepted
     on the PR. On `next`, `ci-ok` needs the job, so such a run also fails
@@ -128,8 +136,8 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     owner's acceptance is in a comment on the PR, and the comment names the
     run, the scenario and its change. The line has the condition
     `pull-request`, the base branch, the PR's number, the scenario and an
-    allowance at or above the measured change without GC and constant
-    lookups (for example
+    allowance at or above the measured change of the judged number (for
+    example
     `pull-request next 812 stream_sleep 7`). The run of that push shows the
     row as accepted and passes ("In CI" under "Performance comparison with
     callgrind" in `docs/test/README.md`). On `master`, `ci-ok` does not
@@ -344,7 +352,9 @@ suite among them when `test/ci/changes.sh` gives `build` `standard` or
 requests"); the CI result on the head commit;
 when an input of the measured binary changed, the performance comparison
 quoted in the PR body and the numbers that "Design principles" asks the
-reviewer to write;
+reviewer to write; every line that the PR adds to `test/perf/accepted.txt`
+has the owner's acceptance in a comment on the PR, which the PR body
+links, and its allowance is not above the change that the owner accepted;
 compatibility notes in the PR body match the diff; a change of behavior that a
 configuration, script or build can observe has an entry under "Behavior
 changes: read before upgrading" in `docs/releases/<version>.md` with every
