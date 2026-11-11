@@ -178,6 +178,7 @@ static ngx_mrb_upstream_server_store_t *ngx_mrb_upstream_server_store(ngx_http_u
     cln = ngx_pool_cleanup_add(ngx_cycle->pool, 0);
     if (cln == NULL) {
       ngx_mrb_upstream_server_stores = NULL;
+      ngx_mrb_upstream_server_stores_pool = NULL;
       return NULL;
     }
     cln->handler = ngx_mrb_upstream_server_stores_cleanup;
