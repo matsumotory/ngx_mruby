@@ -91,8 +91,8 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
   - The reviewer writes, for the scenario with the largest change and for
     each row that is not plain `ok` (an `ok (accepted: ...)` row
     included): its base and head judged number (the column `judged`:
-    `w/o GC/const`, or `w/o GC` where the head clears mruby's constant
-    cache more often), and the change in instructions per request and in
+    `w/o GC/const`, or `w/o GC` where the head may miss lookups because
+    it clears mruby's constant cache), and the change in instructions per request and in
     percent.
   - A scenario at `WARN` (3% or more instructions per request of the
     judged number than the base) or `FAIL` (5% or more) holds the merge until the owner
@@ -110,8 +110,9 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     goes to the owner without a second run.
   - The judged number leaves out the GC and the constant lookups that
     miss mruby's constant cache (`w/o GC/const`), except in a scenario
-    whose head clears that cache more often than its base, which is
-    judged with the lookups counted (`w/o GC`). Two lookups share an entry
+    whose head clears that cache more often than its base, or clears it
+    and misses more lookups than its base, which is judged with the
+    lookups counted (`w/o GC`). Two lookups share an entry
     of the cache depending on where the ireps were allocated, which can
     differ between runs of the same binary: on #766, `stream_sleep`
     measured 671 Ir more per session in one run than in another on the
@@ -122,11 +123,11 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     both builds (`const_misses`, `const_clears`), and the Ir of the misses
     as a share of the base `w/o GC/const` where the misses differ; from half
     of the `WARN` threshold on, the line notes `more` (or `fewer`)
-    `constant lookups of head miss the constant cache of mruby`, and a
-    head that clears more often is named on the line ("What it measures"
-    and "Agent proxy scenarios in the comparison" in
-    `docs/test/README.md`). With the same clears, the note shows a change
-    of the layout: it does not change the verdict and asks for no second
+    `constant lookups of head miss the constant cache of mruby`, and the
+    line names the reason of a `w/o GC` row ("What it measures" and
+    "Agent proxy scenarios in the comparison" in `docs/test/README.md`).
+    When the head does not clear the cache, the note shows a change of
+    the layout: it does not change the verdict and asks for no second
     run; the reviewer quotes it with the row.
   - A session does not merge a PR while the latest run of its `perf` job
     reports `FAIL` or `ERROR`, except for a `FAIL` that the owner accepted
