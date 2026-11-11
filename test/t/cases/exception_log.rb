@@ -78,6 +78,20 @@ t.assert('exception log', 'an exception of a stream session: one line at the err
   ), found[0].to_s
 end
 
+# test.sh builds nginx with --with-debug, where ngx_mruby writes the backtrace
+# of the exception after its line, one line at the error level per frame, as
+# for a request (the backtrace log test of test/t/ngx_mruby.rb).
+t.assert('exception log', 'an exception of a stream session: the backtrace in a debug build, one line per frame') do
+  offset = File.size(exception_log_path)
+  tcp_client(12380)
+  frames = exception_log_lines_from(offset).select { |l| l.include?('/exception_log_stream.rb:') }
+  t.assert_equal 3, frames.size
+  frames.each do |l|
+    t.assert_include l, ' [error] '
+    t.assert_include l, ', client: 127.0.0.1, server: 127.0.0.1:12380'
+  end
+end
+
 # nginx -t writes the lines at warn and above that it logs while it reads
 # the configuration to its standard error as well, with "nginx: " before
 # the level, and ngx_conf_log_error adds the file and the line of the
