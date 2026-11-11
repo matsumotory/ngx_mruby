@@ -11,6 +11,8 @@
 
 #include "ngx_stream_mruby_init.h"
 
+#include "../common/ngx_mruby_log.h"
+
 #include <mruby/presym.h>
 #include <mruby/proc.h>
 #include "mruby/string.h"
@@ -38,7 +40,6 @@ static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ng
 // static ngx_int_t ngx_stream_mrb_run_conf(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code);
 
 /* mruby raise functions */
-static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle);
 // static void ngx_stream_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
 
 /* ngx_mruby stream module init and exit handlers */
@@ -255,30 +256,11 @@ static char *ngx_stream_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void 
 }
 
 /* raise functions */
-static void ngx_stream_mruby_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf)
-{
-  obj = mrb_funcall_id(mrb, obj, MRB_SYM(inspect), 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_run failed: ngx_mruby stream module configuration failed: error: %*s",
-                       RSTRING_LEN(obj), RSTRING_PTR(obj));
-  }
-}
-
+/* The line of an exception of the code of a session (ngx_mrb_log_exception). */
 void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s)
 {
-  obj = mrb_funcall_id(mrb, obj, MRB_SYM(inspect), 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "mrb_run failed: return NGX_ABORT to client: error: %*s",
-                  RSTRING_LEN(obj), RSTRING_PTR(obj));
-  }
-}
-
-static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle)
-{
-  obj = mrb_funcall_id(mrb, obj, MRB_SYM(inspect), 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
-  }
+  ngx_mrb_log_exception(mrb, obj, s->connection->log, NULL, NGX_LOG_ERR,
+                        "mrb_run failed: return NGX_ABORT to client: error: ");
 }
 
 static ngx_int_t ngx_stream_mruby_init_module(ngx_cycle_t *cycle)
@@ -428,7 +410,7 @@ static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ng
     ictx->s = prev_s;
   }
   if (mrb->exc) {
-    ngx_stream_mrb_raise_cycle_error(mrb, mrb_obj_value(mrb->exc), cycle);
+    ngx_mrb_log_exception(mrb, mrb_obj_value(mrb->exc), cycle->log, NULL, NGX_LOG_ERR, "mrb_run failed. error: ");
     mrb_gc_arena_restore(mrb, ai);
     return NGX_ERROR;
   }
@@ -647,7 +629,8 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
   mscf->ctx->cscf = NULL;
 
   if (mrb->exc) {
-    ngx_stream_mruby_raise_conf_error(mrb, mrb_obj_value(mrb->exc), cf);
+    ngx_mrb_log_exception(mrb, mrb_obj_value(mrb->exc), NULL, cf, NGX_LOG_EMERG,
+                          "mrb_run failed: ngx_mruby stream module configuration failed: error: ");
     ngx_stream_mrb_state_clean(mrb);
     mrb_gc_arena_restore(mrb, ai);
     return NGX_CONF_ERROR;

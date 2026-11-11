@@ -14,6 +14,8 @@
 #include "ngx_http_mruby_request.h"
 #include "ngx_http_mruby_var.h"
 
+#include "../common/ngx_mruby_log.h"
+
 #include "mruby/array.h"
 #include "mruby/error.h"
 #include "mruby/string.h"
@@ -60,70 +62,11 @@ void ngx_http_mruby_syms_init(mrb_state *mrb)
   mrb_state_atexit(mrb, ngx_http_mruby_syms_forget);
 }
 
-#if (NGX_DEBUG)
-static void ngx_mrb_log_backtrace(mrb_state *mrb, mrb_value obj, ngx_log_t *log)
-{
-  if (mrb_type(obj) == MRB_TT_EXCEPTION) {
-    mrb_value bt = mrb_funcall_id(mrb, obj, MRB_SYM(backtrace), 0);
-    if (mrb_type(bt) != MRB_TT_ARRAY) {
-      ngx_log_error(NGX_LOG_DEBUG, log, 0, "backtrace must be Array. mrb_type=%d", mrb_type(bt));
-      return;
-    }
-    const mrb_value *p = RARRAY_PTR(bt);
-    const mrb_value *e = p + RARRAY_LEN(bt);
-    while (p < e) {
-      ngx_log_error(NGX_LOG_ERR, log, 0, "%*s", RSTRING_LEN(*p), RSTRING_PTR(*p));
-      p++;
-    }
-  }
-}
-#endif
-
+/* The line of an exception of the code of a request (ngx_mrb_log_exception). */
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value exc, ngx_http_request_t *r)
 {
-  mrb_value s = mrb_funcall_id(mrb, exc, MRB_SYM(inspect), 0);
-  if (mrb_type(s) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(s), RSTRING_PTR(s));
-  }
-#if (NGX_DEBUG)
-  ngx_mrb_log_backtrace(mrb, exc, r->connection->log);
-#endif
-}
-
-void ngx_mrb_raise_connection_error(mrb_state *mrb, mrb_value exc, ngx_connection_t *c)
-{
-  mrb_value s = mrb_funcall_id(mrb, exc, MRB_SYM(inspect), 0);
-  if (mrb_type(s) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                  MODULE_NAME " : mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(s),
-                  RSTRING_PTR(s));
-  }
-#if (NGX_DEBUG)
-  ngx_mrb_log_backtrace(mrb, exc, c->log);
-#endif
-}
-
-void ngx_mrb_raise_cycle_error(mrb_state *mrb, mrb_value exc, ngx_cycle_t *cycle)
-{
-  mrb_value s = mrb_funcall_id(mrb, exc, MRB_SYM(inspect), 0);
-  if (mrb_type(s) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(s), RSTRING_PTR(s));
-  }
-#if (NGX_DEBUG)
-  ngx_mrb_log_backtrace(mrb, exc, cycle->log);
-#endif
-}
-
-void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
-{
-  mrb_value s = mrb_funcall_id(mrb, exc, MRB_SYM(inspect), 0);
-  if (mrb_type(s) == MRB_TT_STRING) {
-    ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "mrb_run failed. error: %*s", RSTRING_LEN(s), RSTRING_PTR(s));
-  }
-#if (NGX_DEBUG)
-  ngx_mrb_log_backtrace(mrb, exc, cf->log);
-#endif
+  ngx_mrb_log_exception(mrb, exc, r->connection->log, NULL, NGX_LOG_ERR,
+                        "mrb_run failed: return 500 HTTP status code to client: error: ");
 }
 
 /*
@@ -660,21 +603,11 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
 {
-  mrb_value msg;
-  mrb_int log_level;
   ngx_http_request_t *r = ngx_mrb_get_request();
   /* outside of a request (init_worker, exit_worker, SSL handshake) log to the cycle's log */
   ngx_log_t *log = (r != NULL) ? r->connection->log : ngx_cycle->log;
 
-  mrb_get_args(mrb, "io", &log_level, &msg);
-  if (log_level < 0) {
-    ngx_log_error(NGX_LOG_ERR, log, 0, "%s ERROR %s: log level is not positive number", MODULE_NAME, __func__);
-    return self;
-  }
-  msg = mrb_obj_as_string(mrb, msg);
-  ngx_log_error((ngx_uint_t)log_level, log, 0, "%*s", RSTRING_LEN(msg), RSTRING_PTR(msg));
-
-  return self;
+  return ngx_mrb_log_method(mrb, self, log, MODULE_NAME, __func__);
 }
 
 static mrb_value ngx_mrb_get_ngx_mruby_name(mrb_state *mrb, mrb_value self)

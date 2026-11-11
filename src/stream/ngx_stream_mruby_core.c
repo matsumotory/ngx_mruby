@@ -8,6 +8,8 @@
 
 #include "ngx_stream_mruby_module.h"
 
+#include "../common/ngx_mruby_log.h"
+
 #include <mruby/hash.h>
 #include <mruby/string.h>
 
@@ -29,21 +31,11 @@ ngx_stream_session_t *ngx_stream_mrb_get_session_or_raise(mrb_state *mrb)
 
 static mrb_value ngx_stream_mrb_errlogger(mrb_state *mrb, mrb_value self)
 {
-  mrb_value msg;
-  mrb_int log_level;
   ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
   /* outside of a session (init_worker, exit_worker) log to the cycle's log */
   ngx_log_t *log = (ictx != NULL && ictx->s != NULL) ? ictx->s->connection->log : ngx_cycle->log;
 
-  mrb_get_args(mrb, "io", &log_level, &msg);
-  if (log_level < 0) {
-    ngx_log_error(NGX_LOG_ERR, log, 0, "%s ERROR %s: log level is not positive number", MODULE_NAME, __func__);
-    return self;
-  }
-  msg = mrb_obj_as_string(mrb, msg);
-  ngx_log_error((ngx_uint_t)log_level, log, 0, "%*s", RSTRING_LEN(msg), RSTRING_PTR(msg));
-
-  return self;
+  return ngx_mrb_log_method(mrb, self, log, MODULE_NAME, __func__);
 }
 
 static mrb_value ngx_stream_mrb_get_ngx_mruby_name(mrb_state *mrb, mrb_value self)

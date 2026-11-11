@@ -13,6 +13,8 @@
 #include "ngx_http_mruby_request.h"
 #include "ngx_http_mruby_var.h"
 
+#include "../common/ngx_mruby_log.h"
+
 #include <mruby/presym.h>
 #include <mruby/proc.h>
 #include <mruby/string.h>
@@ -765,7 +767,8 @@ ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_
   ngx_mrb_push_request(prev_r);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
-    ngx_mrb_raise_cycle_error(state->mrb, mrb_obj_value(state->mrb->exc), cycle);
+    ngx_mrb_log_exception(state->mrb, mrb_obj_value(state->mrb->exc), cycle->log, NULL, NGX_LOG_ERR,
+                          "mrb_run failed. error: ");
     mrb_gc_arena_restore(state->mrb, ai);
     return NGX_ERROR;
   }
@@ -782,7 +785,7 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
-    ngx_mrb_raise_conf_error(state->mrb, mrb_obj_value(state->mrb->exc), cf);
+    ngx_mrb_log_exception(state->mrb, mrb_obj_value(state->mrb->exc), NULL, cf, NGX_LOG_ERR, "mrb_run failed. error: ");
     mrb_gc_arena_restore(state->mrb, ai);
     return NGX_ERROR;
   }
@@ -2633,7 +2636,8 @@ static ngx_int_t ngx_http_mruby_ssl_handshake_run(ngx_http_mruby_srv_conf_t *msc
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_inline_code);
   if (mrb->exc) {
-    ngx_mrb_raise_connection_error(mrb, mrb_obj_value(mrb->exc), c);
+    ngx_mrb_log_exception(mrb, mrb_obj_value(mrb->exc), c->log, NULL, NGX_LOG_ERR,
+                          MODULE_NAME " : mrb_run failed: return 500 HTTP status code to client: error: ");
     rc = NGX_ERROR;
   }
   ngx_mrb_state_clean(NULL, mscf->state);

@@ -92,6 +92,29 @@ t.assert('exception log', 'an exception of a stream session: the backtrace in a 
   end
 end
 
+# A script can redefine #backtrace. In the debug build of test.sh, ngx_mruby
+# logs the Strings of its result in their order and skips the elements that
+# are not Strings, and the worker goes on to answer the next request.
+t.assert('exception log', 'a redefined backtrace with elements that are not Strings: its Strings are logged, the rest is skipped') do
+  offset = File.size(exception_log_path)
+  res = HttpRequest.new.get base(18192) + '/exception_log/backtrace_types'
+  lines = exception_log_lines_from(offset)
+  found = exception_log_find(lines, 'exception log: backtrace types 42')
+  frames = lines.select { |l| l.include?('exception log: first frame 42') || l.include?('exception log: last frame 42') }
+  t.assert_equal 500, res["code"]
+  t.assert_equal 1, found.size
+  t.assert_true exception_log_message(found[0].to_s).to_s.start_with?(
+    'mrb_run failed: return 500 HTTP status code to client: error: ' \
+    '#<ExceptionLogBacktraceTypes: exception log: backtrace types 42>, client: 127.0.0.1'
+  ), found[0].to_s
+  t.assert_equal 2, frames.size
+  t.assert_true exception_log_message(frames[0].to_s).to_s.start_with?('exception log: first frame 42, client: 127.0.0.1'), frames[0].to_s
+  t.assert_true exception_log_message(frames[1].to_s).to_s.start_with?('exception log: last frame 42, client: 127.0.0.1'), frames[1].to_s
+  frames.each { |l| t.assert_include l, ' [error] ' }
+  # the worker that logged the backtrace answers the next request
+  t.assert_equal 500, HttpRequest.new.get(base(18192) + '/exception_log/request')["code"]
+end
+
 # nginx -t writes the lines at warn and above that it logs while it reads
 # the configuration to its standard error as well, with "nginx: " before
 # the level, and ngx_conf_log_error adds the file and the line of the
