@@ -68,7 +68,11 @@ readyのheadへpushすると、前のheadの実行をキャンセルして新し
 
 それ以外の実行では`ci-ok`に`always()`を使います。必要なジョブが終わる前に、新しいpushか「Cancel workflow」で実行がキャンセルされると、`ci-ok`は動いて失敗します。その実行はコミットを最後までテストしていないからです。新しいpushによる失敗は、置き換えられた古いheadに残ります。GitHubの説明では`cancelled()`はワークフローがキャンセルされたことを示しますが、必要なジョブの`timeout-minutes`超過でも真になるかは明記されていません。真になるなら`!cancelled()`の`ci-ok`はスキップされ、そのスキップが必須チェックを満たしてしまいます。`site.yml`は`next`へのpushとdispatchでだけ動き、ルールセットはそのジョブを要求しません。`site.yml`の`deploy`は、`build`が成功したときだけ動きます。[サイトのCI](#サイトのci)を参照してください。
 
-CIは、クリーンな環境での最後の確認です。変更を初めて試す場所ではありません。AGENTS.mdの「Branches and pull requests」にこの決まりがあります。CIが流す種類の検査は、どれも先に手元で流します。対象は、静的なモジュールと動的なモジュールでのテストスイート、2つのsanitizerとvalgrindの下でのテストスイート、callgrindの比較、ソークテスト、`examples/start`の手順、nginx-tests、サイトの検査、zizmorです。sanitizer、valgrind、callgrindの比較、ソークテストにはLinuxが要ります。macOSでは、このページの各節にあるように、Linuxのコンテナで流します。CIは、手元で流した検査を、1台のマシンでは用意しきれない組み合わせへ広げます。`build`マトリクスのほかのセル、x86-64のrunner、クリーンな環境です。こうすると、失敗はCIへpushする前に手元で見つかります。runnerの都合で実行が落ちたときも、同じ検査の手元の結果があれば、コードに問題があるかどうかを切り分けられます。#796では、runnerがパッケージのミラーの名前解決に失敗し、3回の試行が`install`のステップで止まりました。readyにする前に、作者は変更に関係する検査を手元で実行し、PRの「How was this tested」にコマンドと結果を書きます。`test/ci/changes.sh`が`build`を`standard`か`full`と判定したら、テストスイートも対象です。Cのコードかビルドを変えるときは、sanitizerとvalgrindの下でのテストスイートも対象です。レビュアーは記録を確認します。手元で流せる検査をCIに任せません。手元で流せないと書くのは、実際に試して流せなかった検査だけです。
+CIは、クリーンな環境での最後の確認です。変更を初めて試す場所ではありません。AGENTS.mdの「Branches and pull requests」にこの決まりがあります。CIが流す種類の検査は、どれも先に手元で流します。対象は、静的なモジュールと動的なモジュールでのテストスイート、2つのsanitizerとvalgrindの下でのテストスイート、callgrindの比較、ソークテスト、`examples/start`の手順、nginx-tests、サイトの検査、zizmorです。sanitizer、valgrind、callgrindの比較、ソークテストにはLinuxが要ります。macOSでは、このページの各節にあるように、Linuxのコンテナで流します。CIは、手元で流した検査を、1台のマシンでは用意しきれない組み合わせへ広げます。`build`マトリクスのほかのセル、x86-64のrunner、クリーンな環境です。
+
+先に手元で流すと、失敗はCIへpushする前に手元で見つかります。runnerの都合で実行が落ちたときも、同じ検査の手元の結果があれば、コードに問題があるかどうかを切り分けられます。#796では、runnerがパッケージのミラーの名前解決に失敗し、3回の試行が`install`のステップで止まりました。
+
+readyにする前に、作者は変更に関係する検査を手元で実行し、PRの「How was this tested」にコマンドと結果を書きます。`test/ci/changes.sh`が`build`を`standard`か`full`と判定したら、テストスイートも対象です。Cのコードかビルドを変えるときは、sanitizerとvalgrindの下でのテストスイートも対象です。レビュアーは記録を確認します。手元で流せる検査をCIに任せません。手元で流せないと書くのは、実際に試して流せなかった検査だけです。
 
 readyのPRは必要なジョブだけを実行し、全体を約15分で終えます。2026年10月31日の#678では、buildのセルに6〜14分、マトリクス全体に15分かかりました。[実行41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773)がその記録です。CIに検査を加える提案では、その検査をローカルで実行できるか、なぜCIでも要るか、実行が何分延びるかを書きます。
 
@@ -1016,7 +1020,7 @@ baseが同梱するmrubyがheadより古い比較では、このような差が�
 
 ### 実行する
 
-PRが測るバイナリの入力か測定を変え、`perf`が`true`になるときは、作者がPRをreadyにする前に、baseとの比較を手元で流し、レポートをPRの本文に引用します。[AGENTS.md](../../../AGENTS.md)の「Design principles」を参照してください。その後、`perf`ジョブが同じ比較をrunnerでもう一度流します。[CIで実行する](#ciで実行する)を参照してください。
+PRが測るバイナリの入力か測定を変え、`perf`が`true`になるときは、作者がPRをreadyにする前に、baseとの比較を手元で流し、レポートをPRの本文に引用します。[AGENTS.md](../../../AGENTS.md)の「Design principles」を参照してください。その後、[CIで実行する](#ciで実行する)の`perf`ジョブが、同じ比較をrunnerでもう一度流します。
 
 ドライバには、CRuby 3.0以降と、`callgrind_control`とその補助の`vgdb`を持つvalgrindが要ります。`callgrind_control`と`vgdb`はLinuxで動きます。これらが無いと、`perf.rb`はすぐに止まります。macOSでは、Linuxのコンテナの中で実行してください。このチェックアウトを`origin/next`とコンテナの中で比べるには、次の1つのコマンドを実行します。
 
