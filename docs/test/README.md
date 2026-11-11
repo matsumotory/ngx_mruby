@@ -2063,8 +2063,10 @@ the symbol, so a lookup misses for two reasons:
 
 The report counts both per request: `const_misses`, the calls of
 `mrb_vm_const_get`, and `const_clears`, the calls of those functions and
-of `mrb_const_cache_clear` from a function that is not one of them (one
-per clear, also where gcc inlines the clear into its caller). A scenario
+of `mrb_const_cache_clear` from a function that is not one of them, so a
+clear counts also where gcc inlines it into its caller. callgrind recorded
+2 of them per call of `Module#const_set` on aarch64; only the counts of
+the base and the head of one run are compared. A scenario
 is judged on the number in the column `judged` of the report: `w/o
 GC/const`, or `w/o GC` (the constant lookups counted) when its head clears
 the cache more often than its base, so that the misses that a new clear

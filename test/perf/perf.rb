@@ -133,8 +133,9 @@ CONST_LOOKUP_CALLEES = %w[iv_get].freeze
 # them). After a clear, every lookup of the rest of the request misses once:
 # that cost does not depend on the layout, it is the cost of the code that
 # clears. They are reported as const_clears (calls into the list from a
-# function that is not in it, so one per clear, also where gcc inlines
-# mrb_const_cache_clear into a caller), and a scenario whose head clears
+# function that is not in it, so a clear counts also where gcc inlines
+# mrb_const_cache_clear into a caller; callgrind recorded 2 per call of
+# Module#const_set on aarch64), and a scenario whose head clears
 # the cache more often than its base is judged on the number w/o GC, with
 # the constant lookups counted.
 CONST_CACHE_CLEARS = %w[mrb_const_cache_clear mrb_const_set mrb_const_remove mrb_define_const_id
