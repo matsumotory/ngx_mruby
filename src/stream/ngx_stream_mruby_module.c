@@ -39,9 +39,6 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
 static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ngx_mrb_code_t *code);
 // static ngx_int_t ngx_stream_mrb_run_conf(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code);
 
-/* mruby raise functions */
-// static void ngx_stream_mrb_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf);
-
 /* ngx_mruby stream module init and exit handlers */
 static ngx_int_t ngx_stream_mruby_init_module(ngx_cycle_t *cycle);
 static ngx_int_t ngx_stream_mruby_init_worker(ngx_cycle_t *cycle);
