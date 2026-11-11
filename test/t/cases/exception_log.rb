@@ -115,6 +115,29 @@ t.assert('exception log', 'a redefined backtrace with elements that are not Stri
   t.assert_equal 500, HttpRequest.new.get(base(18192) + '/exception_log/request')["code"]
 end
 
+# A redefined #backtrace that does not return an Array: ngx_mruby writes, at
+# the debug level of the error.log of test.sh, that the backtrace must be an
+# Array, and writes no frame, so the line of the exception is the only line
+# at the error level that the request adds.
+t.assert('exception log', 'a redefined backtrace that returns nil: a line at the debug level, and no frame') do
+  offset = File.size(exception_log_path)
+  res = HttpRequest.new.get base(18192) + '/exception_log/backtrace_not_array'
+  lines = exception_log_lines_from(offset)
+  found = exception_log_find(lines, 'exception log: backtrace not array 42')
+  not_array = lines.select { |l| l.include?('backtrace must be Array. mrb_type=') }
+  t.assert_equal 500, res["code"]
+  t.assert_equal 1, found.size
+  t.assert_true exception_log_message(found[0].to_s).to_s.start_with?(
+    'mrb_run failed: return 500 HTTP status code to client: error: ' \
+    '#<ExceptionLogBacktraceNotArray: exception log: backtrace not array 42>, client: 127.0.0.1'
+  ), found[0].to_s
+  t.assert_equal 1, not_array.size
+  t.assert_include not_array[0].to_s, ' [debug] '
+  t.assert_equal [found[0]], lines.select { |l| l.include?(' [error] ') }
+  # the worker answers the next request
+  t.assert_equal 500, HttpRequest.new.get(base(18192) + '/exception_log/request')["code"]
+end
+
 # nginx -t writes the lines at warn and above that it logs while it reads
 # the configuration to its standard error as well, with "nginx: " before
 # the level, and ngx_conf_log_error adds the file and the line of the
