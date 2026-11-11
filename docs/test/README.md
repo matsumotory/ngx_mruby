@@ -2019,8 +2019,15 @@ and the total moves by a share of one cycle. The number without GC does not
 have that step.
 
 **Ir per request without GC and constant lookups** (`w/o GC/const` in the
-report) also leaves out the calls into `mrb_vm_const_get`, with what they
-call. `OP_GETCONST` of mruby's VM (`mruby/src/vm.c`) calls it only when its
+report) also leaves out the constant lookups that miss the constant cache of
+mruby: the self cost of `mrb_vm_const_get` and the cost of what it calls
+(`iv_get`, the lookup in each class), except a run of the VM
+(`mrb_vm_exec`) that callgrind can show below it. In the profile of `auth`,
+callgrind shows `mrb_vm_const_get` calling `mrb_vm_exec`'2 with most of the
+request below it, which the code does not do: the VM leaves functions
+through fibers and non-local exits, which callgrind's call graph does not
+follow, so the inclusive cost of `mrb_vm_const_get` is not the lookup.
+`OP_GETCONST` of mruby's VM (`mruby/src/vm.c`) calls it only when its
 constant cache misses. The cache has 64 entries (`MRB_CONST_CACHE_SIZE`),
 chosen by a hash of the address of the irep and the symbol, so two lookups
 that a request makes can take the same entry and then both miss on every

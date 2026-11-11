@@ -108,12 +108,19 @@ GC_SOURCE = 'mruby/src/gc.c'
 # entry and then miss on every request, and whether they share one depends
 # on where the ireps were allocated. The same binary measured about 700 Ir
 # more per TCP session of stream_sleep in one CI run than in another (#766):
-# 2 misses per session. Like the GC, the inclusive cost of these calls (from
-# a function that is not one of them) is left out of the judged number, and
-# their number per request is reported as const_misses (RECORDED_FUNCTIONS).
+# 2 misses per session. Like the GC, the cost of these lookups is left out of
+# the judged number, and their number per request is reported as
+# const_misses (RECORDED_FUNCTIONS). The cost is the self cost of
+# mrb_vm_const_get and the inclusive cost of what it calls (iv_get, the
+# lookup in each class), except calls into CONST_LOOKUP_NOT_COUNTED: in the
+# profile of auth, callgrind shows mrb_vm_const_get calling mrb_vm_exec'2
+# with most of the request below it, which the code does not do (the VM
+# leaves functions through fibers and non-local exits, and callgrind's call
+# graph does not follow them), so its inclusive cost is not the lookup.
 # mrb_vm_const_get allocates only when it calls const_missing; a GC that such
 # an allocation runs would be left out twice.
 CONST_LOOKUP_FUNCTIONS = %w[mrb_vm_const_get].freeze
+CONST_LOOKUP_NOT_COUNTED = %w[mrb_vm_exec].freeze
 
 # The function that the scenarios run a known number of times per request.
 # The window must hold exactly PERF_N times that many calls of it. A window
@@ -538,8 +545,8 @@ def scenario_requests(scenario, count)
 end
 
 # Reads a callgrind profile. Returns the total Ir, the Ir and number of the
-# calls into the GC, the Ir of the calls into CONST_LOOKUP_FUNCTIONS from a
-# function that is not one of them (const_ir), and the number of calls of
+# calls into the GC, the Ir of the constant lookups that missed the cache
+# (const_ir: see CONST_LOOKUP_FUNCTIONS), and the number of calls of
 # the request function: calls
 # into one of functions (REQUEST_FUNCTIONS by default; compared by
 # base_name) from a function that is not one of them. With recorded (a Hash
@@ -601,7 +608,10 @@ def parse_profile(path, functions = REQUEST_FUNCTIONS, recorded = {})
           gc_ir += ir
           gc_calls += call_count
         end
-        const_ir += ir if CONST_LOOKUP_FUNCTIONS.include?(base_name(cfn)) && !CONST_LOOKUP_FUNCTIONS.include?(base_name(fn))
+        if CONST_LOOKUP_FUNCTIONS.include?(base_name(fn)) && !CONST_LOOKUP_FUNCTIONS.include?(base_name(cfn)) &&
+           !CONST_LOOKUP_NOT_COUNTED.include?(base_name(cfn))
+          const_ir += ir
+        end
         request_calls += call_count if functions.include?(base_name(cfn)) && !functions.include?(base_name(fn))
         recorded.each do |key, list|
           recorded_calls[key] += call_count if list.include?(base_name(cfn)) && !list.include?(base_name(fn))
@@ -609,6 +619,7 @@ def parse_profile(path, functions = REQUEST_FUNCTIONS, recorded = {})
         call_count = nil
       else
         self_ir += ir
+        const_ir += ir if CONST_LOOKUP_FUNCTIONS.include?(base_name(fn))
       end
     when /\Afl=(.*)\z/ then file = resolve.call(:fl, Regexp.last_match(1))
     when /\A(?:fi|fe|cfi|cfl)=(.*)\z/ then resolve.call(:fl, Regexp.last_match(1))
@@ -661,7 +672,7 @@ SELF_TEST_PROFILE = <<~PROFILE
   version: 1
   positions: line
   events: Ir
-  summary: 101
+  summary: 121
 
   fl=(1) /b/tree/src/http/ngx_http_mruby_module.c
   fn=(1) ngx_http_mruby_content_handler
@@ -714,7 +725,7 @@ SELF_TEST_PROFILE = <<~PROFILE
   13 3
   cfn=(14) mrb_vm_const_get
   calls=2 14
-  13 12
+  13 32
   fl=(4) /b/tree/mruby/src/variable.c
   fn=(14)
   14 7
@@ -724,10 +735,16 @@ SELF_TEST_PROFILE = <<~PROFILE
   cfn=(14)
   calls=1 14
   14 3
+  cfn=(16) mrb_vm_exec'2
+  calls=1 16
+  14 20
   fn=(15)
   15 5
+  fl=(3)
+  fn=(16)
+  16 20
 
-  totals: 101
+  totals: 121
 PROFILE
 
 def self_test
@@ -749,14 +766,15 @@ def self_test
     # another function. mrb_obj_alloc calls mrb_incremental_gc.part.0 twice
     # (40 Ir, the GC); the full GC inside it and final_marking_phase calling
     # mrb_incremental_gc'2 are not counted again. mrb_vm_exec calls
-    # mrb_vm_const_get twice (12 Ir with iv_get, the constant lookups); its
-    # call of itself is not counted again.
+    # mrb_vm_const_get twice: the constant lookups are its self cost and its
+    # calls of iv_get (12 Ir); its call of itself is not counted again, and
+    # nor is the call of mrb_vm_exec'2 that callgrind can show below it.
     # The list is given, not taken from REQUEST_FUNCTIONS, so that the
     # self-test does not depend on PERF_REQUEST_FUNCTIONS.
-    expected = { ir: 101, gc_ir: 40, gc_calls: 2, const_ir: 12, request_calls: 4 }
+    expected = { ir: 121, gc_ir: 40, gc_calls: 2, const_ir: 12, request_calls: 4 }
     got = parse_profile(path, %w[ngx_mrb_run])
     failures << "parse_profile returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
-    failures << "judged_ir gave #{judged_ir(got)}, expected 49" unless judged_ir(got) == 49
+    failures << "judged_ir gave #{judged_ir(got)}, expected 69" unless judged_ir(got) == 69
     # Another request function, and recorded functions: the handler calls
     # ngx_mrb_run_fiber twice; nothing calls ngx_http_log_request.
     expected = expected.merge(request_calls: 2, recorded_calls: { ruby_calls: 4, log: 0 })
@@ -766,7 +784,7 @@ def self_test
     # count the HTTP control requests that wake callgrind.
     File.write(path, SELF_TEST_PROFILE.gsub('ngx_mrb_run', 'ngx_stream_mrb_start_fiber'))
     got = parse_profile(path, %w[ngx_stream_mrb_start_fiber], { ruby_calls: %w[ngx_stream_mrb_start_fiber], log: %w[ngx_http_log_request] })
-    expected = { ir: 101, gc_ir: 40, gc_calls: 2, const_ir: 12, request_calls: 4, recorded_calls: { ruby_calls: 4, log: 0 } }
+    expected = { ir: 121, gc_ir: 40, gc_calls: 2, const_ir: 12, request_calls: 4, recorded_calls: { ruby_calls: 4, log: 0 } }
     failures << "stream profile returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
   ensure
     File.delete(path)
