@@ -116,11 +116,13 @@ print the second nginx's `error.log` when the line is set.
 Its `ci-ok` job is the status check that rulesets require: it fails unless
 every job that it lists in `needs` passed or was skipped because the
 `changes` job decided so. These are the `changes` job, every job of the
-`build` matrix and the `files` job, and on `next` also the `soak` job. On
+`build` matrix, the `perf` job and the `files` job, and on `next` also the
+`soak` job. On
 `next`, the job of the cell that runs nginx under valgrind on every run of
 the matrix is one of them, so a valgrind error in that cell fails `ci-ok`
-([valgrind in CI](#valgrind-in-ci)). The `perf` job (see "In CI" under
-"Performance comparison with callgrind") is not among them yet.
+([valgrind in CI](#valgrind-in-ci)), and a `FAIL` or `ERROR` row of the
+`perf` job fails it as well (see "In CI" under "Performance comparison
+with callgrind").
 
 A run of `test.yml` for a pull request starts when the pull request is
 opened or reopened, when a commit is pushed to its head, and when it is
@@ -317,8 +319,12 @@ share the anonymous limit of the runner's IP address; on a rate limit
 (`Retry-After`, `X-RateLimit-Reset`, else 60 s doubling) and repeats at most
 5 times per call, 240 s of waiting in all; any other error fails at once.
 
-`ci-ok` passes a skipped `build`, `soak` or `files` job only when `changes`
-passed and decided that the run does not need it. A job that was skipped
+`ci-ok` passes a skipped `build`, `soak`, `perf` or `files` job only when `changes`
+passed and decided that the run does not need it. For `perf`, which runs
+on pull requests only, that is a run whose `build` is `none`, or a run
+that is not one of a pull request. A `perf` job that starts and finds no
+file to compare (`perf` `false` and no label `perf`) passes without
+measuring. A job that was skipped
 for another reason (a failed `changes` job) fails `ci-ok`, as does a needed
 job that did not pass. A pull request whose run skipped jobs that its
 files do not need meets condition 2 of "Review and merge" with that run.
@@ -2312,8 +2318,7 @@ so it is the change within a run that the thresholds see. The numbers differ fro
 aarch64 because the instruction set differs; on x86_64, callgrind shows no
 recursion suffix on the GC entry points, and the number without GC again
 equals the inclusive cost of `mrb_incremental_gc` that `callgrind_annotate`
-prints. The job is advisory (not needed by `ci-ok`) until it has also run on
-pull requests that change the code; see "In CI" below.
+prints. `ci-ok` needs the job; see "In CI" below.
 
 ### Known differences
 
@@ -2356,12 +2361,13 @@ against 4.1, so the `WARN` and `FAIL` rows of that comparison go to the
 owner as the rule says. `test/perf/accepted.txt`
 lists the accepted differences, one line each: a condition, the scenario,
 and an allowance on the change of Ir per request without GC, in percent.
-The only condition is `mruby-version`, the `MAJOR.MINOR` of
+There are two conditions. `mruby-version` compares the `MAJOR.MINOR` of
 `MRUBY_RELEASE_MAJOR` and `MRUBY_RELEASE_MINOR` in
 `mruby/include/mruby/version.h` of each build's tree; the comment at the
 top of the file has the format. `mruby-version 4.0 4.1 auth 8` applies
-when the base bundles mruby 4.0.x and the head 4.1.x. A line applies only
-when both builds match it. Then a `WARN` or `FAIL` row of its scenario
+when the base bundles mruby 4.0.x and the head 4.1.x; such a line applies
+only when both builds match it. `pull-request` is described below. When
+a line applies, a `WARN` or `FAIL` row of its scenario
 within the allowance shows as `ok (accepted: mruby 4.0.0→4.1.0, +8%)`,
 does not fail the run, and is a notice in the annotations of the job; a
 change above the allowance keeps its `WARN` or `FAIL`. A header line of
@@ -2373,6 +2379,19 @@ example `perf: mruby: base
 measures and stops at a line that is not in the format, with the file and
 the line number; `--self-test` checks the file too. The GC share is
 printed and not judged, so the file has no allowance on it.
+
+The other condition, `pull-request`, is for a `FAIL` that the owner
+accepted on a pull request (see "In CI"). Its line names the base branch
+and the number of the pull request, for example `pull-request next 812
+stream_sleep 7`, and applies only in the `perf` job of that pull
+request, which passes them to `perf.rb` as `PERF_BASE_REF` and
+`PERF_PULL_REQUEST`; a local run without them, the comparison with the
+previous tag among them, applies no such line. The row shows as `ok
+(accepted: pull request #812 to next, +7%)`, and the header line adds
+`pull request #812 to next`. When a `pull-request` line and a
+`mruby-version` line apply to one scenario, the `pull-request` line
+does. The line stays in the file after the merge as the record, and
+applies to no other pull request.
 
 ### Running it
 
@@ -2425,6 +2444,7 @@ too, so do not run it at the same time.
 | `PERF_PORT_BASE` | 12370 | HTTP port; the next is the HTTP backend or TCP data port, the third is the mock LLM or unused stream GC control port |
 | `PERF_REPORT_DIR` | `build_perf` | where `report.txt` and `report.json` go |
 | `PERF_ACCEPTED_FILE` | `test/perf/accepted.txt` | the accepted differences (see "Known differences"); an empty file shows the verdicts without them |
+| `PERF_BASE_REF`, `PERF_PULL_REQUEST` | unset | the base branch and the number of the pull request that the `pull-request` lines of the accepted file are matched against; set both or neither (the `perf` job sets both) |
 | `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_start_fiber` | names of the function counted once per request in the seven scenarios of `test/soak/nginx.conf` (see "In CI") |
 
 ### In CI
@@ -2501,12 +2521,32 @@ for a scenario, and `SCENARIO_REQUEST_FUNCTIONS` another function. `ruby test/pe
 and the reading of a profile on a made-up profile, without a build or
 valgrind; `compare.sh` and `run.sh` run it first.
 
-The job is advisory for now: `ci-ok` does not need it, so a `FAIL` does not
-block a merge. Instruction counts do not vary with the runner's speed
-(calibration above), so the plan (Pillar E of
-`docs/proposals/v3-plan.md`) is to gate on them: once the job has also run
-on pull requests that change `src/` or `mrbgems/` without false alarms, it
-is to be added to the `needs` of `ci-ok`.
+`ci-ok` needs the job, so a `FAIL` or an `ERROR` row fails the required
+check, and a `WARN` row does not. Instruction counts do not vary with the
+runner's speed (calibration above). In the 15 runs of the job that
+compared on the pull requests to `next` from #779 to #791 (2026-11-09 and
+10, 16 scenarios each), every row was `ok`, the largest change 0.60%
+without GC (`responses_stream_plain_50`). "Design principles" in
+[AGENTS.md](../../AGENTS.md) says what each verdict asks of the pull
+request: a `WARN` goes to the owner through the review, and a `FAIL`
+holds the merge until the owner accepts it on the pull request. An
+`ERROR` is a measurement that failed: fix the run or run it again.
+
+To pass a `FAIL` that the owner accepted, the pull request adds a line to
+`test/perf/accepted.txt` after the owner's acceptance is in a comment on
+it (the comment names the run, the scenario and its change): the
+condition `pull-request`, the base branch, the number of the pull
+request, the scenario, and an allowance in percent at or above the
+measured change without GC, for example `pull-request next 812
+stream_sleep 7` for +6.05% ("Known differences"). The push of the line
+runs the job again, which shows the row as `ok (accepted: ...)` and
+passes; a later change above the allowance is a `FAIL` again. A `FAIL`
+that no line covers, or an `ERROR`, keeps `ci-ok` failed.
+
+The same commits can measure differently between runs: on #766 two runs of
+the job measured `stream_sleep` at +6.05% (`FAIL`), and a third run on the
+same base and head commits (`ea3c5996e` and `e7140ba08`) at -0.01%. The
+cause has not been investigated.
 
 The artifact `perf-callgrind` has the report, and for `base` and `head` the
 profiles of the windows (`callgrind/callgrind.out.<scenario>`), the output

@@ -33,9 +33,11 @@
 #
 # With two builds, the change of head against base is judged per scenario on
 # the GC-excluded number: WARN from PERF_WARN_PERCENT, FAIL from
-# PERF_FAIL_PERCENT. A line of test/perf/accepted.txt whose condition both
-# builds match (see accepted_for) shows a WARN or FAIL within its allowance
-# as "ok (accepted: ...)". The exit status is 1 when a scenario is FAIL, when a
+# PERF_FAIL_PERCENT. A line of test/perf/accepted.txt whose condition the
+# comparison matches (see accepted_for: the mruby version of both builds, or
+# the pull request that PERF_PULL_REQUEST and PERF_BASE_REF name) shows a
+# WARN or FAIL within its allowance as "ok (accepted: ...)". The exit status
+# is 1 when a scenario is FAIL, when a
 # measurement fails (in the base, an unexpected response is not an error when
 # its only other problems are ngx_mruby's "mrb_run failed" lines: the
 # scenario is shown as n/a; see summarize), or when no scenario was compared.
@@ -885,6 +887,88 @@ def self_test_accepted(builds, ok)
   line = accepted_line({ 'mruby-version' => %w[4.1.0 4.1.0] }, {})
   expected = "perf: mruby: base 4.1.0, head 4.1.0; accepted differences (#{file}): none apply"
   failures << "accepted_line without differences gave #{line.inspect}, expected #{expected.inspect}" unless line == expected
+  failures + self_test_accepted_pull_request(builds, ok, names, file)
+end
+
+# The checks of self_test on the lines of the condition pull-request: their
+# reading, PERF_BASE_REF and PERF_PULL_REQUEST, and the verdicts of made-up
+# results (the numbers without GC of stream_sleep on #766: base 11459, and
+# head 12152 at +6.05%, a FAIL).
+def self_test_accepted_pull_request(builds, ok, names, file)
+  failures = []
+  text = "mruby-version 4.0 4.1 auth 8\npull-request next 766 auth 6\npull-request next 812 hello 3.5\n"
+  entries = begin
+    parse_accepted(text, 'made_up.txt', names)
+  rescue PerfError => e
+    failures << "parse_accepted rejected pull-request lines: #{e.message}"
+    []
+  end
+  got = entries.map { |e| e.values_at(:condition, :base, :head, :scenario, :allowance) }
+  expected = [['mruby-version', '4.0', '4.1', 'auth', 8.0], ['pull-request', 'next', '766', 'auth', 6.0],
+              ['pull-request', 'next', '812', 'hello', 3.5]]
+  failures << "parse_accepted returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
+  {
+    'pull-request next 0766 auth 6' => '"0766" is not a pull request number',
+    'pull-request next 766x auth 6' => '"766x" is not a pull request number',
+    'pull-request ne$t 766 auth 6' => '"ne$t" is not a branch name',
+    'pull-request next 766 auth' => '4 fields, expected 5',
+    "pull-request next 766 auth 6\npull-request next 766 auth 7" => 'made_up.txt:2: a second line for pull-request next 766 auth'
+  }.each do |bad, message|
+    parse_accepted(bad, 'made_up.txt', names)
+    failures << "parse_accepted accepted #{bad.inspect}"
+  rescue PerfError => e
+    failures << "parse_accepted on #{bad.inspect} said #{e.message.inspect}, expected #{message.inspect}" unless e.message.include?(message)
+  end
+  [
+    [{}, nil, nil],
+    [{ 'PERF_BASE_REF' => 'next', 'PERF_PULL_REQUEST' => '766' }, %w[next 766], nil],
+    [{ 'PERF_BASE_REF' => 'next' }, nil, 'set together'],
+    [{ 'PERF_PULL_REQUEST' => '766' }, nil, 'set together'],
+    [{ 'PERF_BASE_REF' => 'next', 'PERF_PULL_REQUEST' => 'abc' }, nil, '"abc" is not a pull request number']
+  ].each do |env, expected_pr, message|
+    got_pr = pull_request_from_env(env)
+    failures << "pull_request_from_env(#{env.inspect}) gave #{got_pr.inspect}, expected an error with #{message.inspect}" if message
+    failures << "pull_request_from_env(#{env.inspect}) gave #{got_pr.inspect}, expected #{expected_pr.inspect}" unless message || got_pr == expected_pr
+  rescue PerfError => e
+    failures << "pull_request_from_env(#{env.inspect}) said #{e.message.inspect}, expected #{(message || expected_pr).inspect}" unless message && e.message.include?(message)
+  end
+  scenario = Scenario.new(name: 'auth', mock: [])
+  base = ok.merge(nogc_per_request: 11_459.0)
+  accepted_766 = 'ok (accepted: pull request #766 to next, +6%)'
+  [
+    # head w/o GC, base and head mruby, the pull request, expected verdict, expected failed
+    [12_152.0, %w[4.1.0 4.1.0], %w[next 766], 'FAIL', true],                     # +6.05%: above the allowance
+    [12_145.0, %w[4.1.0 4.1.0], %w[next 766], accepted_766, false],              # +5.99%
+    [11_850.0, %w[4.1.0 4.1.0], %w[next 766], accepted_766, false],              # +3.41%: a WARN within it
+    [11_500.0, %w[4.1.0 4.1.0], %w[next 766], 'ok', false],
+    [12_145.0, %w[4.1.0 4.1.0], %w[next 767], 'FAIL', true],                     # another pull request
+    [12_145.0, %w[4.1.0 4.1.0], %w[master 766], 'FAIL', true],                   # another base
+    [12_145.0, %w[4.1.0 4.1.0], nil, 'FAIL', true],                              # not a pull request (a local run)
+    [12_145.0, %w[4.0.0 4.1.0], %w[next 766], accepted_766, false],              # the pull-request line, not mruby's 8%
+    [12_300.0, %w[4.0.0 4.1.0], %w[next 766], 'FAIL', true],                     # +7.34%: within 8%, above 6%
+    [12_300.0, %w[4.0.0 4.1.0], %w[next 767], 'ok (accepted: mruby 4.0.0→4.1.0, +8%)', false]
+  ].each do |head_nogc, versions, pr, expected, expected_failed|
+    head = ok.merge(nogc_per_request: head_nogc)
+    applied = accepted_for(entries, { 'mruby-version' => versions, 'pull-request' => pr })
+    _header, rows, _notes, failed = summarize(builds, [scenario], { %w[base auth] => base, %w[head auth] => head }, applied)
+    got = rows.first.last
+    next if got == expected && failed == expected_failed
+
+    failures << "auth at #{head_nogc} w/o GC with mruby #{versions.inspect} and pull request #{pr.inspect} gave " \
+                "#{got.inspect} (failed #{failed}), expected #{expected.inspect} (failed #{expected_failed})"
+  end
+  # The pull-request line applies whichever line comes first in the file.
+  values = { 'mruby-version' => %w[4.0.0 4.1.0], 'pull-request' => %w[next 766] }
+  reversed = parse_accepted("pull-request next 766 auth 6\nmruby-version 4.0 4.1 auth 8\n", 'made_up.txt', names)
+  [entries, reversed].each do |list|
+    got = accepted_for(list, values)['auth']&.values_at(:allowance, :label)
+    failures << "accepted_for gave #{got.inspect} for auth, expected [6.0, \"pull request #766 to next\"]" unless got == [6.0, 'pull request #766 to next']
+  end
+  values = { 'mruby-version' => %w[4.1.0 4.1.0], 'pull-request' => %w[next 766] }
+  line = accepted_line(values, accepted_for(entries, values))
+  expected = "perf: mruby: base 4.1.0, head 4.1.0; pull request #766 to next; accepted differences (#{file}): " \
+             'auth up to +6% (pull request #766 to next)'
+  failures << "accepted_line with a pull request gave #{line.inspect}, expected #{expected.inspect}" unless line == expected
   failures
 end
 
@@ -951,7 +1035,24 @@ end
 # format). PERF_ACCEPTED_FILE names another file, for example an empty one
 # to see the verdicts without them.
 ACCEPTED_FILE = ENV.fetch('PERF_ACCEPTED_FILE', File.join(ROOT, 'test/perf/accepted.txt'))
-ACCEPTED_CONDITIONS = %w[mruby-version].freeze
+ACCEPTED_CONDITIONS = %w[mruby-version pull-request].freeze
+
+# The check of the BASE and HEAD fields of a line, by condition: the
+# message when a value is not in the format, or nil.
+# - mruby-version: MAJOR.MINOR of the bundled mruby in each build;
+# - pull-request: BASE the base branch of the pull request, HEAD its number.
+def accepted_value_problem(condition, base, head)
+  case condition
+  when 'mruby-version'
+    [base, head].each do |value|
+      return "#{value.inspect} is not a MAJOR.MINOR version such as 4.1" unless value.match?(/\A\d+\.\d+\z/)
+    end
+  when 'pull-request'
+    return "#{base.inspect} is not a branch name such as next" unless base.match?(%r{\A[A-Za-z0-9][A-Za-z0-9._/-]*\z})
+    return "#{head.inspect} is not a pull request number such as 812" unless head.match?(/\A[1-9]\d*\z/)
+  end
+  nil
+end
 
 # The lines of an accepted file as hashes (condition, base, head, scenario,
 # allowance, where). A line that is not in the format raises PerfError with
@@ -972,9 +1073,8 @@ def parse_accepted(text, path, scenario_names)
     unless ACCEPTED_CONDITIONS.include?(condition)
       raise PerfError, "#{where}: unknown condition #{condition.inspect} (known: #{ACCEPTED_CONDITIONS.join(', ')})"
     end
-    [base, head].each do |value|
-      raise PerfError, "#{where}: #{value.inspect} is not a MAJOR.MINOR version such as 4.1" unless value.match?(/\A\d+\.\d+\z/)
-    end
+    problem = accepted_value_problem(condition, base, head)
+    raise PerfError, "#{where}: #{problem}" if problem
     raise PerfError, "#{where}: unknown scenario #{scenario.inspect}" unless scenario_names.include?(scenario)
 
     # Decimal digits only: Float() would also take 0x8, 1e1 and 8_0.
@@ -1011,31 +1111,74 @@ def mruby_version(build)
   File.exist?(path) ? mruby_version_from(File.read(path)) : nil
 end
 
-# The accepted differences that apply to two builds, by scenario:
-# { name => { allowance:, label: } }. versions has the [base, head] values
-# of each condition ({ 'mruby-version' => ['4.0.0', '4.1.0'] }); a value
-# that is nil (not read) matches no line.
-def accepted_for(entries, versions)
-  entries.each_with_object({}) do |e, applied|
-    base, head = versions[e[:condition]]
-    next unless base && head && base.split('.')[0, 2].join('.') == e[:base] && head.split('.')[0, 2].join('.') == e[:head]
-    # Two conditions for one scenario would need a rule for how their
-    # allowances combine; there is one condition now.
-    raise PerfError, "#{e[:where]}: a second accepted difference applies to #{e[:scenario]}" if applied.key?(e[:scenario])
+# The pull request that the comparison measures, as [base branch, number],
+# from PERF_BASE_REF and PERF_PULL_REQUEST (the perf job of test.yml sets
+# both), or nil when neither is set. Raises PerfError when only one is set,
+# or when a value is not in the format of a line of the accepted file.
+def pull_request_from_env(env = ENV)
+  base = env['PERF_BASE_REF'].to_s
+  number = env['PERF_PULL_REQUEST'].to_s
+  return nil if base.empty? && number.empty?
+  raise PerfError, 'PERF_BASE_REF and PERF_PULL_REQUEST are set together or not at all' if base.empty? || number.empty?
 
-    applied[e[:scenario]] = { allowance: e[:allowance], label: "mruby #{base}→#{head}" }
+  problem = accepted_value_problem('pull-request', base, number)
+  raise PerfError, "PERF_BASE_REF or PERF_PULL_REQUEST: #{problem}" if problem
+
+  [base, number]
+end
+
+# Whether a line matches the [base, head] values of its condition.
+def accepted_match?(entry, base, head)
+  case entry[:condition]
+  when 'mruby-version'
+    base.split('.')[0, 2].join('.') == entry[:base] && head.split('.')[0, 2].join('.') == entry[:head]
+  when 'pull-request'
+    base == entry[:base] && head == entry[:head]
+  else
+    false
+  end
+end
+
+# The label of an applied line in the report.
+def accepted_label(condition, base, head)
+  condition == 'pull-request' ? "pull request ##{head} to #{base}" : "mruby #{base}→#{head}"
+end
+
+# The accepted differences that apply to a comparison, by scenario:
+# { name => { allowance:, label: } }. values has the [base, head] values
+# of each condition ({ 'mruby-version' => ['4.0.0', '4.1.0'],
+# 'pull-request' => ['next', '812'] }); a value that is nil (not read, or
+# not a pull request) matches no line. When a pull-request line and a
+# mruby-version line apply to one scenario, the pull-request line does: it
+# is the acceptance of this comparison itself.
+def accepted_for(entries, values)
+  entries.each_with_object({}) do |e, applied|
+    base, head = values[e[:condition]]
+    next unless base && head && accepted_match?(e, base, head)
+
+    previous = applied[e[:scenario]]
+    if previous
+      next if previous[:condition] == 'pull-request' && e[:condition] != 'pull-request'
+      unless e[:condition] == 'pull-request' && previous[:condition] != 'pull-request'
+        raise PerfError, "#{e[:where]}: a second accepted difference applies to #{e[:scenario]}"
+      end
+    end
+    applied[e[:scenario]] = { allowance: e[:allowance], label: accepted_label(e[:condition], base, head),
+                              condition: e[:condition] }
   end
 end
 
 # The header line of the report on the accepted differences.
-def accepted_line(versions, applied)
-  base, head = versions['mruby-version']
+def accepted_line(values, applied)
+  base, head = values['mruby-version']
   list = if applied.empty?
            'none apply'
          else
            applied.map { |name, a| "#{name} up to #{format('%+g%%', a[:allowance])} (#{a[:label]})" }.join(', ')
          end
-  "perf: mruby: base #{base || 'unknown'}, head #{head || 'unknown'}; " \
+  pr_base, pr_number = values['pull-request']
+  pr = pr_number ? "; pull request ##{pr_number} to #{pr_base}" : ''
+  "perf: mruby: base #{base || 'unknown'}, head #{head || 'unknown'}#{pr}; " \
     "accepted differences (#{File.basename(ACCEPTED_FILE)}): #{list}"
 end
 
@@ -1299,7 +1442,11 @@ log("perf: N=#{N} WARMUP=#{WARMUP} PORTS=#{PORT},#{BACKEND_PORT},#{MOCK_PORT} WA
 builds.each { |b| log("perf: #{b.label}: #{b.dir}") }
 gem_lines = builds.size == 2 ? gem_lock_lines(builds) : []
 gem_lines.each { |line| log(line) }
-versions = { 'mruby-version' => builds.map { |b| mruby_version(b) } }
+begin
+  versions = { 'mruby-version' => builds.map { |b| mruby_version(b) }, 'pull-request' => pull_request_from_env }
+rescue PerfError => e
+  abort "perf: #{e.message}"
+end
 accepted = {}
 accepted_lines = []
 if builds.size == 2

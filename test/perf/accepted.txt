@@ -5,18 +5,29 @@
 #
 #   CONDITION BASE HEAD SCENARIO ALLOWANCE
 #
-# CONDITION   what differs between the two builds. The only one is
+# CONDITION   what the line applies to:
 #             mruby-version: MAJOR.MINOR of the bundled mruby
 #             (MRUBY_RELEASE_MAJOR and MRUBY_RELEASE_MINOR of
-#             mruby/include/mruby/version.h in the tree of each build)
-# BASE, HEAD  the value of the condition in the base and in the head
+#             mruby/include/mruby/version.h in the tree of each build);
+#             pull-request: the comparison of one pull request, in the
+#             perf job of its run (PERF_BASE_REF and PERF_PULL_REQUEST)
+# BASE, HEAD  mruby-version: the value in the base and in the head;
+#             pull-request: the base branch and the number of the pull
+#             request (pull-request next 812 ...)
 # SCENARIO    a scenario of test/soak/scenarios.rb
 # ALLOWANCE   the change of Ir per request without GC, in percent, up to
 #             which a WARN or FAIL row is shown as ok (accepted); above it,
 #             the row is judged as if the line were not there
 #
-# A line applies only when both builds match its condition. The GC share
-# is printed but not judged, so it has no allowance.
+# A line applies only when the comparison matches its condition. When a
+# pull-request line and a mruby-version line apply to one scenario, the
+# pull-request line does. The GC share is printed but not judged, so it
+# has no allowance.
+#
+# A pull-request line is added by the pull request itself, after the owner
+# has accepted the difference in a comment on it; the comment names the run
+# and the scenario. The line stays as the record and applies to no other
+# pull request.
 
 # mruby 4.1.0-rc2 against 4.0.0 (#678): auth measured +7.09%.
 # The owner accepted it on 2026-10-31.

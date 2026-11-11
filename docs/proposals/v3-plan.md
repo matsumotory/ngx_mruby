@@ -388,7 +388,7 @@ use case in "Agent proxy: the v3.0 use case" at the end of this section.
 | Coverage: tests for the 15 untested directives and ~20 untested methods before touching the core, so v3 refactors are checked against v2 behaviour. | none | 2.3 |
 | ClusterFuzzLite with a fuzzer that drives request headers, variables and SNI through mruby handlers. | none | 3.7 |
 | Matrix: nginx 1.30.x and 1.31.x current patch, OpenSSL 3.5 and 4.0, gcc and clang, Ubuntu 24.04, Debian, Alpine, FreeBSD; nightly build against mruby master. Throughput benchmarks recorded with Bencher or github-action-benchmark, not gated. | none | 3.1, 3.7 |
-| Instructions per request (callgrind `Ir`) of the base and the head of each PR that changes the code: release builds, the keep-alive soak scenarios, WARN from 3% and FAIL from 5% more instructions without the GC (`test/perf/`, `docs/test/README.md`). Advisory first; gated through `ci-ok` once it has run on PRs that change the code without false alarms. | none | 3.7 |
+| Instructions per request (callgrind `Ir`) of the base and the head of each PR that changes the code: release builds, the keep-alive soak scenarios, WARN from 3% and FAIL from 5% more instructions without the GC (`test/perf/`, `docs/test/README.md`). Gated through `ci-ok` on `next`: a `FAIL` or `ERROR` row fails it, and a `FAIL` that the owner accepted on the PR passes through a `pull-request` line of `test/perf/accepted.txt`; `master` follows in a PR of its own. | none | 3.7 |
 
 ### Pillar F: documentation, site, examples, video
 
@@ -497,7 +497,7 @@ in the required `soak` job: `agent_stream`, `agent_client_abort`,
 `agent_upstream_reset` and `agent_responses_stream`; the first three passed
 their checks in three runs on aarch64 and two on the CI runner on 2026-10-04 (`docs/test/README.md`, "Thresholds and
 calibration" of the soak test). The perf lane (#549, #555) measures the
-scenarios of the table below; the advisory `perf` job runs those of its
+scenarios of the table below; the `perf` job, which `ci-ok` needs, runs those of its
 default set. `test/t/cases/agent_proxy.rb` checks the recipes that work with
 today's build: a server rewrite handler that rejects an unknown key with a
 JSON 401 before the upstream is contacted, an access handler that routes by

@@ -107,12 +107,17 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     goes to the owner without a second run.
   - A session does not merge a PR while the latest run of its `perf` job
     reports `FAIL` or `ERROR`, except for a `FAIL` that the owner accepted
-    on the PR. This holds although `ci-ok` does not need the job yet (on
-    `next`, "In CI" in `docs/test/README.md` still calls the job advisory;
-    a follow-up PR to `next` aligns that text). The plan (Pillar E of
-    `docs/proposals/v3-plan.md` on `next`) adds the job to the `needs` of
-    `ci-ok` once it has run on code changes without false alarms; from then
-    on a `FAIL` or an `ERROR` also fails `ci-ok`.
+    on the PR. On `next`, `ci-ok` needs the job, so such a run also fails
+    the required check; a `WARN` does not. For a `FAIL` that the owner
+    accepted, the PR adds a line to `test/perf/accepted.txt` once the
+    owner's acceptance is in a comment on the PR, and the comment names the
+    run, the scenario and its change. The line has the condition
+    `pull-request`, the base branch, the PR's number, the scenario and an
+    allowance at or above the measured change without GC (for example
+    `pull-request next 812 stream_sleep 7`). The run of that push shows the
+    row as accepted and passes ("In CI" under "Performance comparison with
+    callgrind" in `docs/test/README.md`). On `master`, `ci-ok` does not
+    need the job yet; a PR to `master` adds it there.
 - Before a tag. Each PR is compared only with its base, so changes that
   stay below `WARN` can add up. The check PR of "Before the tag" (see
   `docs/releases/README.md`) therefore also compares its head with the tag

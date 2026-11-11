@@ -58,7 +58,7 @@ CRubyのヘルパー`_udp_wait_session.rb`は、nginxとエコーの上流にポ
 
 ## 必須のステータスチェック
 
-`.github/workflows/test.yml`は、`master`、`next`、`v*.x`へのプルリクエスト、これらのブランチと`v*`タグへのpush、「Run workflow」で起動します。ルールセットが必須とするステータスチェックは`ci-ok`です。`ci-ok`は、`needs`にある各ジョブが成功したか、`changes`の判定でスキップされた場合だけ成功します。対象は`changes`、`build`マトリクスの全ジョブ、`files`で、`next`では`soak`も含みます。マトリクスを実行する場合はvalgrindのセルも対象なので、そのエラーは`ci-ok`を失敗させます。[CIのvalgrind](#ciのvalgrind)を参照してください。`perf`はまだ`needs`に含まれません。
+`.github/workflows/test.yml`は、`master`、`next`、`v*.x`へのプルリクエスト、これらのブランチと`v*`タグへのpush、「Run workflow」で起動します。ルールセットが必須とするステータスチェックは`ci-ok`です。`ci-ok`は、`needs`にある各ジョブが成功したか、`changes`の判定でスキップされた場合だけ成功します。対象は`changes`、`build`マトリクスの全ジョブ、`perf`、`files`で、`next`では`soak`も含みます。マトリクスを実行する場合はvalgrindのセルも対象なので、そのエラーは`ci-ok`を失敗させます。[CIのvalgrind](#ciのvalgrind)を参照してください。`perf`の結果に`FAIL`か`ERROR`の行があるときも、`ci-ok`は失敗します。「callgrindで性能を比べる」の「CIで実行する」を参照してください。
 
 プルリクエストの実行は、作成、再オープン、headへのpush、readyへの変更で始まります。イベントは`pull_request`の`opened`、`synchronize`、`reopened`、`ready_for_review`です。Draftでは`changes`と`ci-ok`以外は動かず、ジョブ名も`ci-ok (draft)`になります。この実行ではテストしません。GitHubはDraftをマージしません。このジョブは別の名前なので、成功してもheadに`ci-ok`は付きません。そのため、readyにして始まる実行が成功するまで、headは必須チェックを満たしません。他のPR用ワークフローもDraftではスキップします。
 
@@ -126,7 +126,7 @@ $ gh workflow run test.yml --ref claude/topic -f base=next
 
 `master`と`next`へのpushでは、`changes`、`files`、`ci-ok`だけが動きます。どちらのブランチも、PRを通してだけ変更を受け付けます。[AGENTS.md](../../../AGENTS.md)の「Review and merge」の条件2により、セッションがPRをマージできるのは、PRの実行がまだそのマージに当てはまる間だけです。baseがその後に進んだときは、PRとbaseの新しいコミットの両方が`code`か`tests`を変えたときだけ、CIを流し直します。ルールセットは`ci-ok`を求めますが、ブランチがbaseに追いついていることは求めません。ブランチの先頭を単独でビルドしてテストするには、`gh workflow run test.yml --ref next`のように「Run workflow」を使います。夜間のvalgrindの実行もこの形の実行で、`master`の`valgrind-nightly.yml`のスケジュールが、`master`と`next`で起動します。説明は[CIのvalgrind](#ciのvalgrind)にあります。ほかのワークフローは、それぞれの条件で動きます。`site`は`next`へのすべてのpushでデプロイします。`codeql`は、`src/`、`mrbgems/`、ワークフロー、CodeQLの設定を変える`master`と`next`へのpushを検査します。説明は[CodeQL](#codeql)にあります。`nginx-tests`、`examples`、`zizmor`は、PRのときにだけ動きます。
 
-`build`、`soak`、`files`がスキップされたとき、`ci-ok`がそれを成功と数えるのは、`changes`が成功し、その実行にそのジョブは要らないと判定した場合だけです。`changes`の失敗のような別の理由でスキップされたジョブがあると、`ci-ok`は失敗します。必要なジョブが成功しなかったときも失敗します。ファイルに要らないジョブをスキップしたPRは、その実行によって「Review and merge」の条件2を満たします。
+`build`、`soak`、`perf`、`files`がスキップされたとき、`ci-ok`がそれを成功と数えるのは、`changes`が成功し、その実行にそのジョブは要らないと判定した場合だけです。`perf`はプルリクエストでだけ動くので、`build`が`none`の実行と、プルリクエストではない実行が、これに当たります。`perf`が始まっても、比べるファイルが無いとき、つまり`perf`が`false`でラベル`perf`も無いときは、測らずに成功します。`changes`の失敗のような別の理由でスキップされたジョブがあると、`ci-ok`は失敗します。必要なジョブが成功しなかったときも失敗します。ファイルに要らないジョブをスキップしたPRは、その実行によって「Review and merge」の条件2を満たします。
 
 <a id="files-that-do-not-belong-in-the-repository"></a>
 
@@ -965,7 +965,7 @@ CIのランナーでは、`perf`ジョブを加えたプルリクエストのそ
 - 1回の実行のベースとヘッドの間では、最大の変化は約0.05%で、`sub_request`の約23命令でした。ほかのシナリオは、どれも0.007%以内でした。
 - 実行の間では、`sub_request`のGCを除いたリクエストあたりのIrは48683から48857までで、差は0.36%でした。ほかのシナリオは、どれも0.015%以内でした。
 
-ばらつくのは、2つ目のサーバへプロキシする`sub_request`です。その1回の実行の中での最大の変化でも、`WARN`の3%の約60分の1です。ベースとヘッドは同じジョブで続けて測るので、しきい値が見るのは1回の実行の中の変化です。命令セットが違うので、数はaarch64のものと違います。x86_64では、callgrindはGCの入口の関数に再帰のサフィックスを付けません。GCを除いた値から除くコストは、ここでも、`callgrind_annotate`が出す`mrb_incremental_gc`のinclusiveのコストに等しくなります。このジョブは、コードを変えるプルリクエストでも実行されるまで、参考のためのジョブで、`ci-ok`はこのジョブを必要としません。下の「CIで実行する」を参照してください。
+ばらつくのは、2つ目のサーバへプロキシする`sub_request`です。その1回の実行の中での最大の変化でも、`WARN`の3%の約60分の1です。ベースとヘッドは同じジョブで続けて測るので、しきい値が見るのは1回の実行の中の変化です。命令セットが違うので、数はaarch64のものと違います。x86_64では、callgrindはGCの入口の関数に再帰のサフィックスを付けません。GCを除いた値から除くコストは、ここでも、`callgrind_annotate`が出す`mrb_incremental_gc`のinclusiveのコストに等しくなります。`ci-ok`はこのジョブを必要とします。下の「CIで実行する」を参照してください。
 
 ### 受け入れ済みの差
 
@@ -979,9 +979,11 @@ CIのランナーでは、`perf`ジョブを加えたプルリクエストのそ
 
 baseが同梱するmrubyがheadより古い比較では、このような差がまた測られます。#678より前の`next`のコミットをbaseにすると、上のmruby 4.0.0との差が出ます。タグの前に前のタグと比べるときも、baseは古くなります。その比較は、AGENTS.mdの「Design principles」にあります。v3の最初のプレリリースの前は、baseはmruby 3.3.0を同梱する`v2.7.2`です。mruby 3.3と4.1の差を扱う行はファイルに無いので、その比較の`WARN`と`FAIL`の行は、規則のとおりオーナーに確かめます。
 
-`test/perf/accepted.txt`には、受け入れ済みの差を1つずつ1行に書きます。行には、条件、シナリオ、GCを除いたリクエストあたりのIrの変化の許容幅を、パーセントで書きます。条件は`mruby-version`だけです。この条件は、各ビルドのツリーの`mruby/include/mruby/version.h`にある`MRUBY_RELEASE_MAJOR`と`MRUBY_RELEASE_MINOR`から作る`MAJOR.MINOR`を比べます。書式は、ファイルの先頭のコメントにあります。`mruby-version 4.0 4.1 auth 8`は、baseがmruby 4.0.xを、headが4.1.xを同梱するときに当てはまります。
+`test/perf/accepted.txt`には、受け入れ済みの差を1つずつ1行に書きます。行には、条件、シナリオ、GCを除いたリクエストあたりのIrの変化の許容幅を、パーセントで書きます。条件は2つあります。`mruby-version`は、各ビルドのツリーの`mruby/include/mruby/version.h`にある`MRUBY_RELEASE_MAJOR`と`MRUBY_RELEASE_MINOR`から作る`MAJOR.MINOR`を比べます。書式は、ファイルの先頭のコメントにあります。`mruby-version 4.0 4.1 auth 8`は、baseがmruby 4.0.xを、headが4.1.xを同梱するときに当てはまります。
 
-行が当てはまるのは、両方のビルドが条件に合うときだけです。そのとき、その行が挙げるシナリオの`WARN`か`FAIL`の行のうち、許容幅に収まるものは、`ok (accepted: mruby 4.0.0→4.1.0, +8%)`と表示されます。この行は実行を失敗させず、ジョブのアノテーションのnoticeになります。許容幅を超える変化は、`WARN`か`FAIL`のままです。`report.txt`のヘッダの1行と、ジョブのサマリーのテーブルの下の1行には、両方のビルドのmrubyのバージョンと、当てはまった差を出力します。たとえば`perf: mruby: base 4.0.0, head 4.1.0; accepted differences (accepted.txt): auth up to +8% (mruby 4.0.0→4.1.0)`で、当てはまる差が無ければ`none apply`です。`perf.rb`は、測る前にこのファイルを読み、書式に合わない行があると、ファイルと行の番号を示して止まります。`--self-test`もこのファイルを確かめます。GCの割合は出力するだけで判定しないので、ファイルにはGCの割合の許容幅の行がありません。
+`mruby-version`の行が当てはまるのは、両方のビルドが条件に合うときだけです。`pull-request`は下で説明します。行が当てはまると、その行が挙げるシナリオの`WARN`か`FAIL`の行のうち、許容幅に収まるものは、`ok (accepted: mruby 4.0.0→4.1.0, +8%)`と表示されます。この行は実行を失敗させず、ジョブのアノテーションのnoticeになります。許容幅を超える変化は、`WARN`か`FAIL`のままです。`report.txt`のヘッダの1行と、ジョブのサマリーのテーブルの下の1行には、両方のビルドのmrubyのバージョンと、当てはまった差を出力します。たとえば`perf: mruby: base 4.0.0, head 4.1.0; accepted differences (accepted.txt): auth up to +8% (mruby 4.0.0→4.1.0)`で、当てはまる差が無ければ`none apply`です。`perf.rb`は、測る前にこのファイルを読み、書式に合わない行があると、ファイルと行の番号を示して止まります。`--self-test`もこのファイルを確かめます。GCの割合は出力するだけで判定しないので、ファイルにはGCの割合の許容幅の行がありません。
+
+もう1つの条件の`pull-request`は、オーナーがプルリクエストで受け入れた`FAIL`のためのものです。「CIで実行する」を参照してください。この行には、プルリクエストのベースブランチと番号を書きます。たとえば`pull-request next 812 stream_sleep 7`です。この行が当てはまるのは、そのプルリクエストの`perf`ジョブだけです。ジョブは、ベースブランチと番号を`PERF_BASE_REF`と`PERF_PULL_REQUEST`で`perf.rb`に渡します。これらを設定しないローカルの実行では、この行は当てはまりません。前のタグとの比較も同じです。当てはまった行のシナリオは`ok (accepted: pull request #812 to next, +7%)`と表示され、ヘッダの1行には`pull request #812 to next`が加わります。1つのシナリオに`pull-request`の行と`mruby-version`の行が両方当てはまるときは、`pull-request`の行を使います。行はマージの後も記録としてファイルに残り、ほかのプルリクエストには当てはまりません。
 
 ### 実行する
 
@@ -1016,6 +1018,7 @@ $ sh test/perf/run.sh                                  # measure this checkout o
 | `PERF_PORT_BASE` | 12370 | HTTP制御のポート。次はHTTPバックエンドかTCP測定用。3つ目はモデルAPIのモック用で、streamのGC制御には接続しない |
 | `PERF_REPORT_DIR` | `build_perf` | `report.txt`と`report.json`を書くディレクトリ |
 | `PERF_ACCEPTED_FILE` | `test/perf/accepted.txt` | 受け入れ済みの差を記録するファイル。空のファイルなら適用前の判定を表示 |
+| `PERF_BASE_REF`、`PERF_PULL_REQUEST` | 未設定 | 受け入れ済みの差のファイルの`pull-request`の行と照らし合わせる、プルリクエストのベースブランチと番号。両方を設定するか、どちらも設定しない。`perf`ジョブは両方を設定する |
 | `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_start_fiber` | `test/soak/nginx.conf`の7つのシナリオで、リクエストごとに1回と数える関数の名前。「CIで実行する」を参照 |
 
 ### CIで実行する
@@ -1034,7 +1037,11 @@ $ sh test/perf/run.sh                                  # measure this checkout o
 
 リクエストの関数の呼び出しは、名前で数えます。GCCが`-O2`で作る関数のコピーは、元の関数として数えます。コピーとは、`ngx_mrb_start_fiber.part.0`、`.isra.0`、`.constprop.0`、`.cold`のようなものです。あるコピーから別のコピーへの呼び出しは1回と数えます。そのため、GCCが関数を分割したりクローンしたりするようになる変更でも、ウィンドウのチェックは失敗しません。次の2種類のプルリクエストは、`test/perf/perf.rb`の`REQUEST_FUNCTIONS`に新しい名前を加え、古い名前を残す必要があります。`ngx_mrb_start_fiber`の名前を変えるプルリクエストと、Rubyの実行のfiberを始める処理を別の関数へ移すプルリクエストです。ヘッドの`perf.rb`はベースも測り、一覧にある2つの名前の間の呼び出しは1回と数えるからです。今は、GCCは`ngx_mrb_start_fiber`をインライン化できません。この関数は`ngx_http_mruby_async.c`で定義し、`ngx_http_mruby_module.c`から呼んでいるからです。コンパイラがこの関数をインライン化できるようにする変更では、プロファイルにこの関数の呼び出しが残りません。たとえば、ただ1つの呼び出し元のファイルの中でこの関数を`static`にする変更や、LTOでのビルドです。そうなると、7つのシナリオのウィンドウは、どれも呼び出しが0回になります。そのため、そうした変更では、実際の呼び出しが残る関数を一覧に挙げる必要があります。ローカルの実行では、カンマで区切った`PERF_REQUEST_FUNCTIONS`で一覧を上書きできます。`REQUEST_FUNCTION_CALLS`ではシナリオのリクエストあたりの呼び出しの数を、`SCENARIO_REQUEST_FUNCTIONS`ではシナリオの関数を、別のものに設定します。`ruby test/perf/perf.rb --self-test`は、名前の規則とプロファイルの読み方を、用意した架空のプロファイルで確かめます。ビルドもvalgrindも要りません。`compare.sh`と`run.sh`は、最初にこれを実行します。
 
-このジョブは、今は参考のためのジョブです。`ci-ok`はこのジョブを必要としないので、`FAIL`でもマージは止まりません。上のキャリブレーションのとおり、命令の数はランナーの速さで変わりません。そこで、`docs/proposals/v3-plan.md`のPillar Eの計画では、命令の数でマージを止めることにしています。`src/`か`mrbgems/`を変えるプルリクエストでもこのジョブが誤検知なしに動いたら、このジョブを`ci-ok`の`needs`に加える計画です。
+`ci-ok`はこのジョブを必要とします。そのため、`FAIL`か`ERROR`の行があると必須のチェックが失敗し、`WARN`の行では失敗しません。上のキャリブレーションのとおり、命令の数はランナーの速さで変わりません。#779から#791までの`next`へのプルリクエストで比較したこのジョブの15回の実行では、どの実行も16のシナリオがすべて`ok`でした。実行は2026年11月9日と10日で、GCを除いた最大の変化は`responses_stream_plain_50`の0.60%です。判定ごとにプルリクエストで何をするかは、[AGENTS.md](../../../AGENTS.md)の「Design principles」にあります。`WARN`はレビューを通じてオーナーに確かめ、`FAIL`はオーナーがプルリクエストで受け入れるまでマージしません。`ERROR`は測定の失敗なので、実行を直すか、もう一度実行します。
+
+オーナーが受け入れた`FAIL`を通すには、オーナーの受け入れがプルリクエストのコメントに書かれた後で、そのプルリクエストが`test/perf/accepted.txt`に1行を加えます。コメントには、実行、シナリオ、その変化を書きます。行には、条件の`pull-request`、ベースブランチ、プルリクエストの番号、シナリオ、許容幅を書きます。許容幅は、GCを除いて測った変化以上のパーセントです。たとえば、+6.05%なら`pull-request next 812 stream_sleep 7`です。「受け入れ済みの差」を参照してください。この行をpushするとジョブがもう一度動き、そのシナリオは`ok (accepted: ...)`と表示されて、ジョブは成功します。後の変更で許容幅を超えると、また`FAIL`になります。どの行にも当てはまらない`FAIL`と、`ERROR`では、`ci-ok`は失敗したままです。
+
+同じコミットでも、実行によって測った値が変わることがあります。#766では、このジョブの2回の実行が`stream_sleep`を+6.05%の`FAIL`と測り、同じベースとヘッドのコミット`ea3c5996e`と`e7140ba08`での3回目の実行は-0.01%と測りました。原因はまだ調べていません。
 
 アーティファクトの`perf-callgrind`には、レポートがあります。また、`base`と`head`のそれぞれについて、ウィンドウのプロファイル、`callgrind_control`とvalgrindの出力、nginxのログがあります。プロファイルは`callgrind/callgrind.out.<scenario>`です。変化がどこから来たかを見るには、同じシナリオの関数を両方のビルドで出力して比べます。
 
