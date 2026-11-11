@@ -13,6 +13,7 @@
 #include "ngx_mruby_log.h"
 
 #include <mruby/array.h>
+#include <mruby/error.h>
 #include <mruby/presym.h>
 #include <mruby/string.h>
 
