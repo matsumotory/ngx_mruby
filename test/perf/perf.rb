@@ -1525,8 +1525,9 @@ end
 # The part of a line of recorded_lines on the cost of the constant lookups
 # ("" when there is none): the Ir per request that w/o GC/const leaves out
 # in each build, the calls of mrb_vm_const_get that it does not leave out
-# (const_unlisted), and which number judges the scenario when the head
-# clears the constant cache more often.
+# (const_unlisted), and why the scenario is judged w/o GC when the head
+# clears the constant cache more often, or clears it and misses more lookups
+# (judged_reason).
 def const_cost_line(rs)
   parts = []
   const = rs.map { |r| r[:const_ir_per_request].to_f }
@@ -1562,7 +1563,8 @@ def write_step_summary(header, rows, notes, reasons, accepted_lines = [])
     rows.each { |row| f.puts "| #{row.join(' | ')} |" }
     f.puts
     f.puts "WARN from #{WARN_PERCENT}% and FAIL from #{FAIL_PERCENT}% more Ir per request on the number in the column judged " \
-           '(w/o GC/const, or w/o GC where the head clears the constant cache more often).'
+           '(w/o GC/const, or w/o GC where the head clears the constant cache more often, or clears it and misses ' \
+           'more lookups).'
     accepted_lines.each { |line| f.puts "\n#{line}" }
     notes.each { |note| f.puts "\n**#{note}**" }
     next if reasons.empty?
@@ -1716,7 +1718,8 @@ end
 report = ["perf: N=#{N} WARMUP=#{WARMUP}; Ir per request of nginx; " \
           "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number in the column judged: " \
           'w/o GC/const (Ir/req minus the GC and the constant lookups that missed the cache), or w/o GC (minus the ' \
-          'GC only) where the head clears the constant cache more often (const_clears)',
+          'GC only) where the head clears the constant cache more often, or clears it and misses more lookups ' \
+          '(const_clears, const_misses)',
           "perf: units: stream_sleep = completed TCP session; other rows = HTTP request", *gem_lines,
           *accepted_lines, '', *lines]
 report += ['', *notes] unless notes.empty?
