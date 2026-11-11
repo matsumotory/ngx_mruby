@@ -110,7 +110,7 @@ void ngx_mrb_log_exception(mrb_state *mrb, mrb_value exc, ngx_log_t *log, ngx_co
   // clears during its calls: the GC arena keeps it until the caller restores
   // the arena.
   mrb_gc_protect(mrb, exc);
-  returned =ngx_mrb_log_call(mrb, exc, MRB_SYM(inspect), FALSE, &s);
+  returned = ngx_mrb_log_call(mrb, exc, MRB_SYM(inspect), FALSE, &s);
   if (returned && mrb_string_p(s)) {
     p = (u_char *)RSTRING_PTR(s);
     len = RSTRING_LEN(s);
