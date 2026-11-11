@@ -172,7 +172,17 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     if (!(*chain->last)->buf->last_buf || r->headers_out.status == 0) {
       r->headers_out.status = NGX_HTTP_OK;
     }
-    (*chain->last)->buf->last_buf = 1;
+    // A subrequest keeps the response of its parent going: its last buffer
+    // must be last_in_chain, not last_buf, so the chunked filter does not
+    // end the parent response at the subrequest's output. A status set with
+    // Nginx.send_header before this marked the buffer last_buf (below), so
+    // clear it here for a subrequest that reaches this send path.
+    if (r == r->main) {
+      (*chain->last)->buf->last_buf = 1;
+    } else {
+      (*chain->last)->buf->last_buf = 0;
+      (*chain->last)->buf->last_in_chain = 1;
+    }
     // Discard a request body that no handler read before the response
     // starts, as nginx's own handlers do (ngx_http_send_response, the
     // special responses): nginx then reads the next request of a kept
@@ -243,7 +253,16 @@ ngx_int_t ngx_mrb_finalize_body_filter(ngx_http_request_t *r, ngx_http_mruby_ctx
   // An empty final buffer must be special, not memory: nginx's writer
   // rejects a zero size memory buffer instead of sending the response.
   b->memory = ctx->body_length ? 1 : 0;
-  b->last_buf = 1;
+  // The body of a subrequest ends with last_in_chain, as nginx's own
+  // handlers end it (ngx_http_send_special): last_buf would end the
+  // response of the main request, which goes on after the subrequest. An
+  // empty final buffer of a subrequest is special through sync instead.
+  if (r == r->main) {
+    b->last_buf = 1;
+  } else {
+    b->last_in_chain = 1;
+    b->sync = ctx->body_length ? 0 : 1;
+  }
 
   r->headers_out.content_length_n = b->last - b->pos;
 

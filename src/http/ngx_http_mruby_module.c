@@ -2264,7 +2264,14 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
     size = (rest < size) ? rest : size;
     p = ngx_cpymem(p, b->pos, size);
     b->pos += size;
-    if (b->last_buf) {
+    // The body of a subrequest (an SSI include, for example) ends with a
+    // buffer marked last_in_chain: only the main request ends its body
+    // with last_buf (ngx_http_send_special, ngx_http_static_handler).
+    // Without this, the filter would hold the body of a subrequest back
+    // for good, and the flag that it sets on the connection below, which
+    // a subrequest shares with its main request, would keep the main
+    // request from ending until send_timeout.
+    if (b->last_buf || (r != r->main && b->last_in_chain)) {
       ctx->last = p;
       ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: reached last buffer", MODULE_NAME, __func__,
                     __LINE__);
