@@ -116,11 +116,14 @@ print the second nginx's `error.log` when the line is set.
 Its `ci-ok` job is the status check that rulesets require: it fails unless
 every job that it lists in `needs` passed or was skipped because the
 `changes` job decided so. These are the `changes` job, every job of the
-`build` matrix and the `files` job, and on `next` also the `soak` job. On
+`build` matrix and the `files` job, and on `next` also the `soak` job and
+the `perf` job (on `master`, `ci-ok` does not need `perf` yet; a later
+pull request to `master` adds it). On
 `next`, the job of the cell that runs nginx under valgrind on every run of
 the matrix is one of them, so a valgrind error in that cell fails `ci-ok`
-([valgrind in CI](#valgrind-in-ci)). The `perf` job (see "In CI" under
-"Performance comparison with callgrind") is not among them yet.
+([valgrind in CI](#valgrind-in-ci)), and a `FAIL` or `ERROR` row of the
+`perf` job fails it as well on `next` (see "In CI" under "Performance
+comparison with callgrind").
 
 A run of `test.yml` for a pull request starts when the pull request is
 opened or reopened, when a commit is pushed to its head, and when it is
@@ -317,8 +320,12 @@ share the anonymous limit of the runner's IP address; on a rate limit
 (`Retry-After`, `X-RateLimit-Reset`, else 60 s doubling) and repeats at most
 5 times per call, 240 s of waiting in all; any other error fails at once.
 
-`ci-ok` passes a skipped `build`, `soak` or `files` job only when `changes`
-passed and decided that the run does not need it. A job that was skipped
+`ci-ok` passes a skipped `build`, `soak`, `perf` or `files` job only when `changes`
+passed and decided that the run does not need it. For `perf`, which runs
+on pull requests only, that is a run whose `build` is `none`, or a run
+that is not one of a pull request. A `perf` job that starts and finds no
+file to compare (`perf` `false` and no label `perf`) passes without
+measuring. A job that was skipped
 for another reason (a failed `changes` job) fails `ci-ok`, as does a needed
 job that did not pass. A pull request whose run skipped jobs that its
 files do not need meets condition 2 of "Review and merge" with that run.
@@ -2010,8 +2017,66 @@ few calls. In `hello`, 20000 requests make 21 calls, about one cycle per
 2000 requests, and the GC is about 6% of the total. A change that allocates a
 few objects more or less per request moves the cycles against the window,
 and the total moves by a share of one cycle. The number without GC does not
-have that step, so the thresholds apply to it; the total is reported as
-well.
+have that step.
+
+**Ir per request without GC and constant lookups** (`w/o GC/const` in the
+report) also leaves out the constant lookups that miss the constant cache of
+mruby: the self cost of `mrb_vm_const_get` and the inclusive cost of its
+calls into `iv_get` (the search of the table of each class), which is all
+that it calls in the profiles of the CI runs (`CONST_LOOKUP_CALLEES` in
+`test/perf/perf.rb`). A call into any other function is not subtracted,
+and the line of the scenario prints it as `not subtracted: <function>
+<base>/<head> Ir`: in a profile of `auth` on aarch64, callgrind shows
+`mrb_vm_const_get` calling `mrb_vm_exec'2` with most of the request below
+it, which the code does not do (the VM leaves functions through fibers and
+non-local exits, which callgrind's call graph does not follow), and the
+Ruby code of a `const_missing` would be such a call as well. Keeping such
+a cost in the judged number cannot hide a change; stopping the comparison
+with `ERROR` would stop the comparison before a tag, which runs on
+aarch64.
+
+`OP_GETCONST` of mruby's VM (`mruby/src/vm.c`) calls `mrb_vm_const_get`
+only when its constant cache misses. The cache has 64 entries
+(`MRB_CONST_CACHE_SIZE`), chosen by a hash of the address of the irep and
+the symbol, so a lookup misses for two reasons:
+
+- Two lookups that a request makes take the same entry, and then both
+  miss on every request. Whether they do depends on where the ireps were
+  allocated, which can differ between two runs of the same binary. On
+  #766, the head of `stream_sleep` missed 2 lookups per TCP session in two
+  runs of the `perf` job and none in a third run on the same base and head
+  commits (`ea3c5996e` and `e7140ba08`): `mrb_vm_const_get` and `iv_get`
+  made 671 Ir more per session, +6.05% without GC, a `FAIL` of a change
+  that the code did not make. The handler looks up `Nginx`, and
+  `Nginx::Stream::Async.sleep` (`mrbgems/ngx_mruby_mrblib`) looks up
+  `Fiber`; which two lookups shared an entry was not observed. In later
+  runs on `next`, `auth` missed 2 or 3 lookups per request in both builds,
+  by run.
+- The whole cache was cleared, and every lookup after the clear misses
+  once. `mrb_const_set`, `mrb_const_remove` and `mrb_define_const_id`
+  (`mruby/src/variable.c`) and `mrb_include_module` and
+  `mrb_prepend_module` (`mruby/src/class.c`) clear it, so a constant set
+  in Ruby (`OP_SETCONST`, `Module#const_set`), `include`, `prepend` and
+  `extend` do as well; `Rack.run` of `mrbgems/rack-based-api` calls
+  `Kernel.const_set` on every request. Such misses are the cost of the
+  code that clears, and do not depend on the layout.
+
+The report counts both per request: `const_misses`, the calls of
+`mrb_vm_const_get`, and `const_clears`, the calls of those functions and
+of `mrb_const_cache_clear` from a function that is not one of them, so a
+clear counts also where gcc inlines it into its caller. callgrind recorded
+2 of them per call of `Module#const_set` on aarch64; only the counts of
+the base and the head of one run are compared. A scenario
+is judged on the number in the column `judged` of the report: `w/o
+GC/const`, or `w/o GC` (the constant lookups counted) when its head clears
+the cache more often than its base, so that the misses that a new clear
+causes count against the change. The report prints the total, the number
+without GC and the number without GC and constant lookups. A lookup misses
+the cache once after its entry was taken, so a change that makes a request
+look up more constants still pays for the lookups that hit (the
+instructions of `OP_GETCONST` in `mrb_vm_exec`). `mrb_vm_const_get`
+allocates only when it calls `const_missing`, and a GC that such an
+allocation would run is left out twice.
 
 The GC also changes the cost of the rest: after a sweep has freed many
 blocks, the next `malloc` calls of the request code take longer. The window
@@ -2069,7 +2134,7 @@ ten calls per request of `ruby_call_10` showed as a call from the handler to
 `ngx_mrb_start_fiber`, and `ruby_call_1` showed none. The `ruby_call_*`
 scenarios therefore count the handler, which nginx calls through a pointer.
 
-Two counts per request are printed after the table and kept in
+Four counts per request are printed after the table and kept in
 `report.json`, but not checked: `ruby_calls`, the calls of
 `ngx_mrb_start_fiber` (`ngx_mrb_run` starts one fiber per run of Ruby code,
 and nothing else calls it; in the seven scenarios of `test/soak/nginx.conf`
@@ -2082,7 +2147,12 @@ from the upstream until `recv()` would block, at most `proxy_buffer_size`
 a count of 4k reads: how many calls a response takes depends on how much of
 it had arrived at each call. It also differs between builds and machines:
 2.00 per request for `proxy_plain_*`, `auth` and `route_json_*` in the
-aarch64 container, 1.00 on the CI runner (x86_64).
+aarch64 container, 1.00 on the CI runner (x86_64). The third and the
+fourth are `const_misses` and `const_clears`, the misses and the clears
+of mruby's constant cache ("What it measures"). When a build made constant
+lookups, the line also gives their Ir per request in both builds
+(`const lookups <base>/<head> Ir`), and the calls of `mrb_vm_const_get`
+that are not subtracted.
 
 Each call costs Ir. On aarch64, `proxy_stream_plain_50` (`PERF_N=2000`)
 with the mock writing the stream in one write, one write per event, and one
@@ -2097,6 +2167,20 @@ change of the scenario may come from when the response arrived. For
 about 3 reach `FAIL`; between the base and the head of one run, its calls
 differed by 0.01 to 0.25 per request in the null changes of "Thresholds and
 calibration".
+
+The line of a scenario whose `const_misses` differ gives the Ir of those
+lookups in each build (measured, not estimated), as a share of the base
+without GC and constant lookups, with "not judged", and from half of
+`PERF_WARN_PERCENT` on it says that more (or fewer) lookups of the head
+miss the constant cache of mruby, for example `const_misses 0.00/2.00
+(const_misses +2.00 per request: +671 Ir, +5.86% of base w/o GC/const, not
+judged; more constant lookups of head miss the constant cache of mruby)`
+for `stream_sleep` of the `FAIL` run on #766. When the scenario's
+`const_clears` are the same in both builds, the note shows that the
+addresses of the head took other cache entries: it does not change the
+verdict, and a second run is not needed for it. When the head clears the
+cache more often, the line says `head clears the constant cache of mruby
+more often: judged w/o GC`, and the row is judged with the misses counted.
 
 First measurement, 2026-10-04: one run of `test/perf/perf.rb` on the head
 build of this checkout (`next` at `f62880c` plus the harness), nginx 1.31.6,
@@ -2162,7 +2246,9 @@ build.
 
 ### Thresholds and calibration
 
-A scenario is `WARN` when its Ir per request without GC is 3% or more above
+A scenario is `WARN` when its judged number (the column `judged`: without GC
+and constant lookups, or without GC where the head clears the constant cache
+more often; "What it measures") is 3% or more above
 the base (`PERF_WARN_PERCENT`), and `FAIL` from 5% (`PERF_FAIL_PERCENT`).
 The exit status is 1 when a scenario is `FAIL`, when a measurement fails
 (`ERROR`: an unexpected response, a line at the `error` level or above in
@@ -2312,8 +2398,7 @@ so it is the change within a run that the thresholds see. The numbers differ fro
 aarch64 because the instruction set differs; on x86_64, callgrind shows no
 recursion suffix on the GC entry points, and the number without GC again
 equals the inclusive cost of `mrb_incremental_gc` that `callgrind_annotate`
-prints. The job is advisory (not needed by `ci-ok`) until it has also run on
-pull requests that change the code; see "In CI" below.
+prints. On `next`, `ci-ok` needs the job; see "In CI" below.
 
 ### Known differences
 
@@ -2355,13 +2440,14 @@ older base as well: before the first pre-release of v3 the base is
 against 4.1, so the `WARN` and `FAIL` rows of that comparison go to the
 owner as the rule says. `test/perf/accepted.txt`
 lists the accepted differences, one line each: a condition, the scenario,
-and an allowance on the change of Ir per request without GC, in percent.
-The only condition is `mruby-version`, the `MAJOR.MINOR` of
+and an allowance on the change of the judged number, in percent.
+There are two conditions. `mruby-version` compares the `MAJOR.MINOR` of
 `MRUBY_RELEASE_MAJOR` and `MRUBY_RELEASE_MINOR` in
 `mruby/include/mruby/version.h` of each build's tree; the comment at the
 top of the file has the format. `mruby-version 4.0 4.1 auth 8` applies
-when the base bundles mruby 4.0.x and the head 4.1.x. A line applies only
-when both builds match it. Then a `WARN` or `FAIL` row of its scenario
+when the base bundles mruby 4.0.x and the head 4.1.x; such a line applies
+only when both builds match it. `pull-request` is described below. When
+a line applies, a `WARN` or `FAIL` row of its scenario
 within the allowance shows as `ok (accepted: mruby 4.0.0→4.1.0, +8%)`,
 does not fail the run, and is a notice in the annotations of the job; a
 change above the allowance keeps its `WARN` or `FAIL`. A header line of
@@ -2373,6 +2459,19 @@ example `perf: mruby: base
 measures and stops at a line that is not in the format, with the file and
 the line number; `--self-test` checks the file too. The GC share is
 printed and not judged, so the file has no allowance on it.
+
+The other condition, `pull-request`, is for a `FAIL` that the owner
+accepted on a pull request (see "In CI"). Its line names the base branch
+and the number of the pull request, for example `pull-request next 812
+stream_sleep 7`, and applies only in the `perf` job of that pull
+request, which passes them to `perf.rb` as `PERF_BASE_REF` and
+`PERF_PULL_REQUEST`; a local run without them, the comparison with the
+previous tag among them, applies no such line. The row shows as `ok
+(accepted: pull request #812 to next, +7%)`, and the header line adds
+`pull request #812 to next`. When a `pull-request` line and a
+`mruby-version` line apply to one scenario, the `pull-request` line
+does. The line stays in the file after the merge as the record, and
+applies to no other pull request.
 
 ### Running it
 
@@ -2420,11 +2519,13 @@ too, so do not run it at the same time.
 | `PERF_SCENARIOS` | `DEFAULT_SCENARIOS` of `test/perf/perf.rb` | comma-separated scenario names |
 | `PERF_N` | 20000 | requests or TCP sessions in the measured window |
 | `PERF_WARMUP` | 2000 | requests or TCP sessions before the window |
-| `PERF_WARN_PERCENT` | 3 | WARN from this change of Ir per request without GC |
+| `PERF_WARN_PERCENT` | 3 | WARN from this change of the judged number (the column `judged`) |
 | `PERF_FAIL_PERCENT` | 5 | FAIL from this change |
 | `PERF_PORT_BASE` | 12370 | HTTP port; the next is the HTTP backend or TCP data port, the third is the mock LLM or unused stream GC control port |
 | `PERF_REPORT_DIR` | `build_perf` | where `report.txt` and `report.json` go |
 | `PERF_ACCEPTED_FILE` | `test/perf/accepted.txt` | the accepted differences (see "Known differences"); an empty file shows the verdicts without them |
+| `PERF_BASE_REF` | unset | the base branch of the pull request, matched against the `pull-request` lines of the accepted file; set with `PERF_PULL_REQUEST` or not at all |
+| `PERF_PULL_REQUEST` | unset | the number of the pull request; the `perf` job sets both variables |
 | `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_start_fiber` | names of the function counted once per request in the seven scenarios of `test/soak/nginx.conf` (see "In CI") |
 
 ### In CI
@@ -2501,12 +2602,37 @@ for a scenario, and `SCENARIO_REQUEST_FUNCTIONS` another function. `ruby test/pe
 and the reading of a profile on a made-up profile, without a build or
 valgrind; `compare.sh` and `run.sh` run it first.
 
-The job is advisory for now: `ci-ok` does not need it, so a `FAIL` does not
-block a merge. Instruction counts do not vary with the runner's speed
-(calibration above), so the plan (Pillar E of
-`docs/proposals/v3-plan.md`) is to gate on them: once the job has also run
-on pull requests that change `src/` or `mrbgems/` without false alarms, it
-is to be added to the `needs` of `ci-ok`.
+On `next`, `ci-ok` needs the job, so a `FAIL` or an `ERROR` row fails the
+required check, and a `WARN` row does not. On `master`, `ci-ok` does not
+need it yet; a later pull request to `master` adds it. Instruction counts do not vary with the
+runner's speed (calibration above). In the 15 runs of the job that
+compared on the pull requests to `next` from #779 to #791 (2026-11-09 and
+10, 16 scenarios each), every row was `ok`, the largest change 0.60%
+without GC (`responses_stream_plain_50`). Judged again without the
+constant lookups as well (the profiles of the runs of #788, #791 and #794),
+every row stays `ok`. "Design principles" in
+[AGENTS.md](../../AGENTS.md) says what each verdict asks of the pull
+request: a `WARN` goes to the owner through the review, and a `FAIL`
+holds the merge until the owner accepts it on the pull request. An
+`ERROR` is a measurement that failed: fix the run or run it again.
+
+To pass a `FAIL` that the owner accepted, the pull request adds a line to
+`test/perf/accepted.txt` after the owner's acceptance is in a comment on
+it (the comment names the run, the scenario and its change): the
+condition `pull-request`, the base branch, the number of the pull
+request, the scenario, and an allowance in percent at or above the
+measured change of the judged number, for example `pull-request next 812
+stream_sleep 7` for +6.05% ("Known differences"). The push of the line
+runs the job again, which shows the row as `ok (accepted: ...)` and
+passes; a later change above the allowance is a `FAIL` again. A `FAIL`
+that no line covers, or an `ERROR`, keeps `ci-ok` failed.
+
+On #766, two runs of the job measured `stream_sleep` at +6.05% (`FAIL`)
+and a third run on the same base and head commits at -0.01%; the
+difference was the misses of mruby's constant cache, which the judged
+number now leaves out ("What it measures"). Judged again from the
+profiles of those runs, both give `ok` (+0.19% and -0.01%), and the first
+has the note on `const_misses`.
 
 The artifact `perf-callgrind` has the report, and for `base` and `head` the
 profiles of the windows (`callgrind/callgrind.out.<scenario>`), the output

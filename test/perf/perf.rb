@@ -15,8 +15,9 @@
 # callgrind_control, sends PERF_N requests or sessions, dumps the profile
 # with callgrind_control, and stops nginx. The dump holds the cost of the
 # PERF_N measured units; Ir per request (per TCP session) is its Ir divided by
-# PERF_N. The GC-excluded number leaves out the calls into mrb_incremental_gc
-# and mrb_full_gc. A window with 0 Ir, or without the expected number of
+# PERF_N. The judged number leaves out the calls into mrb_incremental_gc
+# and mrb_full_gc (the GC) and into mrb_vm_const_get (the misses of mruby's
+# constant cache; see CONST_LOOKUP_FUNCTIONS). A window with 0 Ir, or without the expected number of
 # calls of the scenario's request function (ngx_mrb_start_fiber for the
 # HTTP scenarios; ngx_stream_mrb_start_fiber for stream_sleep; see
 # REQUEST_FUNCTIONS and request_functions), fails the measurement.
@@ -32,10 +33,12 @@
 # process runs the event loop and the request handlers as a worker does.
 #
 # With two builds, the change of head against base is judged per scenario on
-# the GC-excluded number: WARN from PERF_WARN_PERCENT, FAIL from
-# PERF_FAIL_PERCENT. A line of test/perf/accepted.txt whose condition both
-# builds match (see accepted_for) shows a WARN or FAIL within its allowance
-# as "ok (accepted: ...)". The exit status is 1 when a scenario is FAIL, when a
+# the judged number: WARN from PERF_WARN_PERCENT, FAIL from
+# PERF_FAIL_PERCENT. A line of test/perf/accepted.txt whose condition the
+# comparison matches (see accepted_for: the mruby version of both builds, or
+# the pull request that PERF_PULL_REQUEST and PERF_BASE_REF name) shows a
+# WARN or FAIL within its allowance as "ok (accepted: ...)". The exit status
+# is 1 when a scenario is FAIL, when a
 # measurement fails (in the base, an unexpected response is not an error when
 # its only other problems are ngx_mruby's "mrb_run failed" lines: the
 # scenario is shown as n/a; see summarize), or when no scenario was compared.
@@ -96,6 +99,47 @@ GC_ENTRIES = %w[mrb_incremental_gc mrb_full_gc].freeze
 GC_ALLOCATORS = %w[mrb_obj_alloc mrb_malloc mrb_malloc_simple mrb_calloc mrb_realloc mrb_realloc_simple
                    mrb_alloca gc_start mrb_garbage_collect mrb_objspace_each_objects].freeze
 GC_SOURCE = 'mruby/src/gc.c'
+
+# The constant lookups that miss mruby's constant cache: OP_GETCONST of
+# mruby/src/vm.c calls mrb_vm_const_get only when the entry of the cache for
+# its irep and symbol holds another constant. The cache has
+# MRB_CONST_CACHE_SIZE (64) entries, indexed by a hash of the address of the
+# irep and the symbol, so two lookups that a request makes can share an
+# entry and then miss on every request, and whether they share one depends
+# on where the ireps were allocated. The same binary measured about 700 Ir
+# more per TCP session of stream_sleep in one CI run than in another (#766):
+# 2 misses per session. The number w/o GC/const leaves the cost of these
+# lookups out, and their number per request is reported as const_misses
+# (RECORDED_FUNCTIONS). The cost is the self cost of mrb_vm_const_get and
+# the inclusive cost of its calls into CONST_LOOKUP_CALLEES, the search of
+# the table of each class, which is all that it calls in the profiles of
+# the CI runs. A call into any other function is not subtracted, and the
+# report prints it (const_unlisted): in a profile of auth on aarch64,
+# callgrind shows mrb_vm_const_get calling mrb_vm_exec'2 with most of the
+# request below it, which the code does not do (the VM leaves functions
+# through fibers and non-local exits, and callgrind's call graph does not
+# follow them), and the Ruby code of a const_missing would be such a call
+# as well. Not subtracting keeps such cost in the judged number, where an
+# ERROR would stop the comparison before a tag, which runs on aarch64.
+# mrb_vm_const_get allocates only when it calls const_missing; a GC that such
+# an allocation runs would be left out twice.
+CONST_LOOKUP_FUNCTIONS = %w[mrb_vm_const_get].freeze
+CONST_LOOKUP_CALLEES = %w[iv_get].freeze
+
+# The functions that clear the whole constant cache (mrb_const_cache_clear in
+# mruby/src/variable.c, which mrb_const_set, mrb_const_remove and
+# mrb_define_const_id call, and mrb_include_module and mrb_prepend_module in
+# mruby/src/class.c call; Object#extend and OP_SETCONST reach it through
+# them). After a clear, every lookup of the rest of the request misses once:
+# that cost does not depend on the layout, it is the cost of the code that
+# clears. They are reported as const_clears (calls into the list from a
+# function that is not in it, so a clear counts also where gcc inlines
+# mrb_const_cache_clear into a caller; callgrind recorded 2 per call of
+# Module#const_set on aarch64), and a scenario whose head clears
+# the cache more often than its base is judged on the number w/o GC, with
+# the constant lookups counted.
+CONST_CACHE_CLEARS = %w[mrb_const_cache_clear mrb_const_set mrb_const_remove mrb_define_const_id
+                        mrb_define_const mrb_include_module mrb_prepend_module].freeze
 
 # The function that the scenarios run a known number of times per request.
 # The window must hold exactly PERF_N times that many calls of it. A window
@@ -166,8 +210,13 @@ SCENARIO_REQUEST_FUNCTIONS = { 'ruby_call_1' => SET_CODE_FUNCTIONS, 'ruby_call_1
 #   time, and writes what it read to the client. How many calls a response
 #   takes depends on how much of it had arrived at each call, that is on
 #   timing, and each call costs Ir (NON_BUFFERED_CALL_IR).
+# - const_misses: the calls of CONST_LOOKUP_FUNCTIONS, the misses of mruby's
+#   constant cache, whose cost the number w/o GC/const leaves out.
+# - const_clears: the clears of the whole constant cache (CONST_CACHE_CLEARS).
 RECORDED_FUNCTIONS = { ruby_calls: %w[ngx_mrb_start_fiber ngx_stream_mrb_start_fiber],
-                       non_buffered_calls: %w[ngx_http_upstream_process_non_buffered_request] }.freeze
+                       non_buffered_calls: %w[ngx_http_upstream_process_non_buffered_request],
+                       const_misses: CONST_LOOKUP_FUNCTIONS,
+                       const_clears: CONST_CACHE_CLEARS }.freeze
 
 # About how many Ir per request one more non_buffered_calls costs. Measured
 # on aarch64 with proxy_stream_plain_50 and the mock writing the stream in
@@ -517,7 +566,10 @@ def scenario_requests(scenario, count)
 end
 
 # Reads a callgrind profile. Returns the total Ir, the Ir and number of the
-# calls into the GC, and the number of calls of the request function: calls
+# calls into the GC, the Ir of the constant lookups that missed the cache
+# (const_ir: see CONST_LOOKUP_FUNCTIONS), the Ir of the other calls of
+# mrb_vm_const_get by callee (const_unlisted), and the number of calls of
+# the request function: calls
 # into one of functions (REQUEST_FUNCTIONS by default; compared by
 # base_name) from a function that is not one of them. With recorded (a Hash
 # of name => functions), also returns recorded_calls, the number of calls of
@@ -564,6 +616,8 @@ def parse_profile(path, functions = REQUEST_FUNCTIONS, recorded = {})
   self_ir = 0
   gc_ir = 0
   gc_calls = 0
+  const_ir = 0
+  const_unlisted = Hash.new(0)
   request_calls = 0
   recorded_calls = recorded.transform_values { 0 }
   file = fn = fn_file = cfn = nil
@@ -577,6 +631,13 @@ def parse_profile(path, functions = REQUEST_FUNCTIONS, recorded = {})
           gc_ir += ir
           gc_calls += call_count
         end
+        if CONST_LOOKUP_FUNCTIONS.include?(base_name(fn)) && !CONST_LOOKUP_FUNCTIONS.include?(base_name(cfn))
+          if CONST_LOOKUP_CALLEES.include?(base_name(cfn))
+            const_ir += ir
+          else
+            const_unlisted[cfn] += ir
+          end
+        end
         request_calls += call_count if functions.include?(base_name(cfn)) && !functions.include?(base_name(fn))
         recorded.each do |key, list|
           recorded_calls[key] += call_count if list.include?(base_name(cfn)) && !list.include?(base_name(fn))
@@ -584,6 +645,7 @@ def parse_profile(path, functions = REQUEST_FUNCTIONS, recorded = {})
         call_count = nil
       else
         self_ir += ir
+        const_ir += ir if CONST_LOOKUP_FUNCTIONS.include?(base_name(fn))
       end
     when /\Afl=(.*)\z/ then file = resolve.call(:fl, Regexp.last_match(1))
     when /\A(?:fi|fe|cfi|cfl)=(.*)\z/ then resolve.call(:fl, Regexp.last_match(1))
@@ -600,9 +662,16 @@ def parse_profile(path, functions = REQUEST_FUNCTIONS, recorded = {})
   raise PerfError, "#{path}: no totals line" unless totals
   raise PerfError, "#{path}: totals #{totals} differ from the sum of the costs #{self_ir}" unless totals == self_ir
 
-  result = { ir: totals, gc_ir: gc_ir, gc_calls: gc_calls, request_calls: request_calls }
+  result = { ir: totals, gc_ir: gc_ir, gc_calls: gc_calls, const_ir: const_ir, const_unlisted: const_unlisted.to_h,
+             request_calls: request_calls }
   result[:recorded_calls] = recorded_calls unless recorded.empty?
   result
+end
+
+# The Ir of a profile without the GC and without the constant lookups that
+# missed the cache (CONST_LOOKUP_FUNCTIONS): w/o GC/const.
+def noconst_ir(profile)
+  profile[:ir] - profile[:gc_ir] - profile[:const_ir]
 end
 
 # Fails the measurement unless the window holds the PERF_N requests of the
@@ -630,7 +699,7 @@ SELF_TEST_PROFILE = <<~PROFILE
   version: 1
   positions: line
   events: Ir
-  summary: 86
+  summary: 121
 
   fl=(1) /b/tree/src/http/ngx_http_mruby_module.c
   fn=(1) ngx_http_mruby_content_handler
@@ -678,8 +747,31 @@ SELF_TEST_PROFILE = <<~PROFILE
   cfn=(12) mrb_incremental_gc'2
   calls=1 12
   11 0
+  fl=(3) /b/tree/mruby/src/vm.c
+  fn=(13) mrb_vm_exec
+  13 3
+  cfn=(14) mrb_vm_const_get
+  calls=2 14
+  13 32
+  fl=(4) /b/tree/mruby/src/variable.c
+  fn=(14)
+  14 7
+  cfn=(15) iv_get.constprop.1
+  calls=2 15
+  14 5
+  cfn=(14)
+  calls=1 14
+  14 3
+  cfn=(16) mrb_vm_exec'2
+  calls=1 16
+  14 20
+  fn=(15)
+  15 5
+  fl=(3)
+  fn=(16)
+  16 20
 
-  totals: 86
+  totals: 121
 PROFILE
 
 def self_test
@@ -700,12 +792,17 @@ def self_test
     # handler calls ngx_mrb_run'2 once (counted); ngx_mrb_run_fiber is
     # another function. mrb_obj_alloc calls mrb_incremental_gc.part.0 twice
     # (40 Ir, the GC); the full GC inside it and final_marking_phase calling
-    # mrb_incremental_gc'2 are not counted again.
+    # mrb_incremental_gc'2 are not counted again. mrb_vm_exec calls
+    # mrb_vm_const_get twice: the constant lookups are its self cost and its
+    # calls of iv_get (12 Ir); its call of itself is not counted again, and
+    # the call of mrb_vm_exec'2 that callgrind can show below it is not
+    # subtracted but reported (const_unlisted).
     # The list is given, not taken from REQUEST_FUNCTIONS, so that the
     # self-test does not depend on PERF_REQUEST_FUNCTIONS.
-    expected = { ir: 86, gc_ir: 40, gc_calls: 2, request_calls: 4 }
+    expected = { ir: 121, gc_ir: 40, gc_calls: 2, const_ir: 12, const_unlisted: { "mrb_vm_exec'2" => 20 }, request_calls: 4 }
     got = parse_profile(path, %w[ngx_mrb_run])
     failures << "parse_profile returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
+    failures << "judged_ir gave #{noconst_ir(got)}, expected 69" unless noconst_ir(got) == 69
     # Another request function, and recorded functions: the handler calls
     # ngx_mrb_run_fiber twice; nothing calls ngx_http_log_request.
     expected = expected.merge(request_calls: 2, recorded_calls: { ruby_calls: 4, log: 0 })
@@ -715,7 +812,7 @@ def self_test
     # count the HTTP control requests that wake callgrind.
     File.write(path, SELF_TEST_PROFILE.gsub('ngx_mrb_run', 'ngx_stream_mrb_start_fiber'))
     got = parse_profile(path, %w[ngx_stream_mrb_start_fiber], { ruby_calls: %w[ngx_stream_mrb_start_fiber], log: %w[ngx_http_log_request] })
-    expected = { ir: 86, gc_ir: 40, gc_calls: 2, request_calls: 4, recorded_calls: { ruby_calls: 4, log: 0 } }
+    expected = { ir: 121, gc_ir: 40, gc_calls: 2, const_ir: 12, const_unlisted: { "mrb_vm_exec'2" => 20 }, request_calls: 4, recorded_calls: { ruby_calls: 4, log: 0 } }
     failures << "stream profile returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
   ensure
     File.delete(path)
@@ -730,7 +827,7 @@ def self_test_summary
   failures = []
   builds = [Struct.new(:label).new('base'), Struct.new(:label).new('head')]
   scenario = Scenario.new(name: 'made_up', mock: [])
-  ok = { problems: [], ir_per_request: 50_000.0, nogc_per_request: 50_000.0, gc_ir: 0, ir: 1,
+  ok = { problems: [], ir_per_request: 50_000.0, nogc_per_request: 50_000.0, noconst_per_request: 50_000.0, gc_ir: 0, ir: 1,
          recorded_per_request: { ruby_calls: 0.0, non_buffered_calls: 5.0 } }
   unexpected = 'ResponseError: /v1/plain: unexpected response 502'
   connect = 'error.made_up.log: [error] connect() failed (111: Connection refused) while connecting to upstream'
@@ -760,13 +857,58 @@ def self_test_summary
     failures << "summarize with base problems #{problems.inspect} gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
   end
   {
-    5.0 => '', 5.08 => '+0.08 per request: about +80 Ir, +0.16% of base w/o GC)',
-    6.6 => '+1.60 per request: about +1600 Ir, +3.20% of base w/o GC; the change of this scenario may come from when the response arrived)'
+    5.0 => '', 5.08 => '+0.08 per request: about +80 Ir, +0.16% of base w/o GC/const)',
+    6.6 => '+1.60 per request: about +1600 Ir, +3.20% of base w/o GC/const; the change of this scenario may come from when the response arrived)'
   }.each do |head_calls, expected|
     head = ok.merge(recorded_per_request: { ruby_calls: 0.0, non_buffered_calls: head_calls })
     got = non_buffered_effect([ok, head])
     failures << "non_buffered_effect with #{head_calls} calls gave #{got.inspect}, expected one ending #{expected.inspect}" unless got.end_with?(expected)
   end
+  # The misses of the constant cache: stream_sleep of the two runs of #766
+  # missed 2 lookups per session in one (about 700 Ir) and none in the other.
+  base = ok.merge(recorded_per_request: { const_misses: 0.0 }, const_ir_per_request: 0.0)
+  {
+    [0.0, 0.0] => '', [0.001, 0.4] => '',
+    [2.0, 698.0] => ' (const_misses +2.00 per request: +698 Ir, +1.40% of base w/o GC/const, not judged)',
+    [2.0, 750.0] => ' (const_misses +2.00 per request: +750 Ir, +1.50% of base w/o GC/const, not judged; ' \
+                    'more constant lookups of head miss the constant cache of mruby)',
+    [-2.0, -750.0] => ' (const_misses -2.00 per request: -750 Ir, -1.50% of base w/o GC/const, not judged; ' \
+                      'fewer constant lookups of head miss the constant cache of mruby)'
+  }.each do |(calls, ir), expected|
+    head = ok.merge(recorded_per_request: { const_misses: calls }, const_ir_per_request: ir)
+    got = const_miss_effect([base, head])
+    failures << "const_miss_effect with #{calls} calls and #{ir} Ir gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
+  end
+# A head that clears the constant cache once more per request is judged
+# w/o GC: 40 more misses (+14000 Ir, +28% w/o GC) are a FAIL there and
+# nothing w/o GC/const; with the same clears it is judged w/o GC/const.
+scenario = Scenario.new(name: 'made_up', mock: [])
+base = ok.merge(recorded_per_request: { const_misses: 0.0, const_clears: 1.0 }, const_ir_per_request: 0.0)
+[
+  # head clears per request (base 1.0), head w/o GC, judged on, verdict, failed, end of the line
+  [2.0, 64_000.0, 'w/o GC', 'FAIL', true, '; head clears the constant cache of mruby more often: judged w/o GC]'],
+  [2.0, 51_800.0, 'w/o GC', 'WARN', false, ': judged w/o GC]'],
+  [1.0, 64_000.0, 'w/o GC/const', 'ok', false, 'const lookups 0/14000 Ir]'],
+  [0.0, 64_000.0, 'w/o GC/const', 'ok', false, 'const lookups 0/14000 Ir]']
+].each do |clears, head_nogc, judged_on, verdict, expected_failed, line_end|
+  head = ok.merge(nogc_per_request: head_nogc, noconst_per_request: 50_000.0, const_ir_per_request: 14_000.0,
+                  recorded_per_request: { const_misses: 40.0, const_clears: clears })
+  _header, rows, _notes, failed = summarize(builds, [scenario], { %w[base made_up] => base, %w[head made_up] => head })
+  got = rows.first.values_at(-2, -1)
+  line = const_cost_line([base, head])
+  next if got == [judged_on, verdict] && failed == expected_failed && line.end_with?(line_end)
+
+  failures << "clears #{clears} with head #{head_nogc} w/o GC gave #{got.inspect} (failed #{failed}), line #{line.inspect}; " \
+              "expected #{[judged_on, verdict].inspect} (failed #{expected_failed}), a line ending #{line_end.inspect}"
+end
+# A call of mrb_vm_const_get into a function outside CONST_LOOKUP_CALLEES
+# is printed, not subtracted.
+a = ok.merge(const_ir_per_request: 300.0, const_unlisted_per_request: { "mrb_vm_exec'2" => 8000.0 })
+b = ok.merge(const_ir_per_request: 300.0, const_unlisted_per_request: {})
+expected = " [const lookups 300/300 Ir; not subtracted: mrb_vm_exec'2 8000/0 Ir]"
+got = const_cost_line([a, b])
+failures << "const_cost_line with an unlisted callee gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
+failures << "const_cost_line without lookups gave #{const_cost_line([ok, ok]).inspect}" unless const_cost_line([ok, ok]) == ''
   {
     'made_up' => 'LOG_REQUEST_FUNCTIONS', 'ruby_call_10' => 'SCENARIO_REQUEST_FUNCTIONS', 'hello' => 'PERF_REQUEST_FUNCTIONS'
   }.each do |name, list|
@@ -846,7 +988,7 @@ def self_test_accepted(builds, ok)
     failures << "mruby_version_from gave #{got.inspect}, expected #{expected.inspect}" unless got == expected
   end
   scenario = Scenario.new(name: 'auth', mock: [])
-  base = ok.merge(nogc_per_request: 42_599.0)
+  base = ok.merge(noconst_per_request: 42_599.0)
   [
     # head w/o GC, base and head mruby, expected verdict, expected failed
     [45_622.0, %w[4.0.0 4.1.0], 'ok (accepted: mruby 4.0.0→4.1.0, +8%)', false],
@@ -856,14 +998,14 @@ def self_test_accepted(builds, ok)
     [45_622.0, %w[4.1.0 4.1.0], 'FAIL', true],
     [45_622.0, %w[4.0.0 4.0.0], 'FAIL', true],
     [45_622.0, [nil, '4.1.0'], 'FAIL', true]
-  ].each do |head_nogc, versions, expected, expected_failed|
-    head = ok.merge(nogc_per_request: head_nogc)
+  ].each do |head_judged, versions, expected, expected_failed|
+    head = ok.merge(noconst_per_request: head_judged)
     applied = accepted_for(entries, { 'mruby-version' => versions })
     _header, rows, _notes, failed = summarize(builds, [scenario], { %w[base auth] => base, %w[head auth] => head }, applied)
     got = rows.first.last
     next if got == expected && failed == expected_failed
 
-    failures << "auth at #{head_nogc} w/o GC with mruby #{versions.inspect} gave #{got.inspect} (failed #{failed}), " \
+    failures << "auth at #{head_judged} w/o GC with mruby #{versions.inspect} gave #{got.inspect} (failed #{failed}), " \
                 "expected #{expected.inspect} (failed #{expected_failed})"
   end
   # The boundary: a change equal to the allowance is accepted, one above it is not.
@@ -885,6 +1027,88 @@ def self_test_accepted(builds, ok)
   line = accepted_line({ 'mruby-version' => %w[4.1.0 4.1.0] }, {})
   expected = "perf: mruby: base 4.1.0, head 4.1.0; accepted differences (#{file}): none apply"
   failures << "accepted_line without differences gave #{line.inspect}, expected #{expected.inspect}" unless line == expected
+  failures + self_test_accepted_pull_request(builds, ok, names, file)
+end
+
+# The checks of self_test on the lines of the condition pull-request: their
+# reading, PERF_BASE_REF and PERF_PULL_REQUEST, and the verdicts of made-up
+# results (the numbers without GC of stream_sleep on #766: base 11459, and
+# head 12152 at +6.05%, a FAIL).
+def self_test_accepted_pull_request(builds, ok, names, file)
+  failures = []
+  text = "mruby-version 4.0 4.1 auth 8\npull-request next 766 auth 6\npull-request next 812 hello 3.5\n"
+  entries = begin
+    parse_accepted(text, 'made_up.txt', names)
+  rescue PerfError => e
+    failures << "parse_accepted rejected pull-request lines: #{e.message}"
+    []
+  end
+  got = entries.map { |e| e.values_at(:condition, :base, :head, :scenario, :allowance) }
+  expected = [['mruby-version', '4.0', '4.1', 'auth', 8.0], ['pull-request', 'next', '766', 'auth', 6.0],
+              ['pull-request', 'next', '812', 'hello', 3.5]]
+  failures << "parse_accepted returned #{got.inspect}, expected #{expected.inspect}" unless got == expected
+  {
+    'pull-request next 0766 auth 6' => '"0766" is not a pull request number',
+    'pull-request next 766x auth 6' => '"766x" is not a pull request number',
+    'pull-request ne$t 766 auth 6' => '"ne$t" is not a branch name',
+    'pull-request next 766 auth' => '4 fields, expected 5',
+    "pull-request next 766 auth 6\npull-request next 766 auth 7" => 'made_up.txt:2: a second line for pull-request next 766 auth'
+  }.each do |bad, message|
+    parse_accepted(bad, 'made_up.txt', names)
+    failures << "parse_accepted accepted #{bad.inspect}"
+  rescue PerfError => e
+    failures << "parse_accepted on #{bad.inspect} said #{e.message.inspect}, expected #{message.inspect}" unless e.message.include?(message)
+  end
+  [
+    [{}, nil, nil],
+    [{ 'PERF_BASE_REF' => 'next', 'PERF_PULL_REQUEST' => '766' }, %w[next 766], nil],
+    [{ 'PERF_BASE_REF' => 'next' }, nil, 'set together'],
+    [{ 'PERF_PULL_REQUEST' => '766' }, nil, 'set together'],
+    [{ 'PERF_BASE_REF' => 'next', 'PERF_PULL_REQUEST' => 'abc' }, nil, '"abc" is not a pull request number']
+  ].each do |env, expected_pr, message|
+    got_pr = pull_request_from_env(env)
+    failures << "pull_request_from_env(#{env.inspect}) gave #{got_pr.inspect}, expected an error with #{message.inspect}" if message
+    failures << "pull_request_from_env(#{env.inspect}) gave #{got_pr.inspect}, expected #{expected_pr.inspect}" unless message || got_pr == expected_pr
+  rescue PerfError => e
+    failures << "pull_request_from_env(#{env.inspect}) said #{e.message.inspect}, expected #{(message || expected_pr).inspect}" unless message && e.message.include?(message)
+  end
+  scenario = Scenario.new(name: 'auth', mock: [])
+  base = ok.merge(noconst_per_request: 11_459.0)
+  accepted_766 = 'ok (accepted: pull request #766 to next, +6%)'
+  [
+    # head w/o GC, base and head mruby, the pull request, expected verdict, expected failed
+    [12_152.0, %w[4.1.0 4.1.0], %w[next 766], 'FAIL', true],                     # +6.05%: above the allowance
+    [12_145.0, %w[4.1.0 4.1.0], %w[next 766], accepted_766, false],              # +5.99%
+    [11_850.0, %w[4.1.0 4.1.0], %w[next 766], accepted_766, false],              # +3.41%: a WARN within it
+    [11_500.0, %w[4.1.0 4.1.0], %w[next 766], 'ok', false],
+    [12_145.0, %w[4.1.0 4.1.0], %w[next 767], 'FAIL', true],                     # another pull request
+    [12_145.0, %w[4.1.0 4.1.0], %w[master 766], 'FAIL', true],                   # another base
+    [12_145.0, %w[4.1.0 4.1.0], nil, 'FAIL', true],                              # not a pull request (a local run)
+    [12_145.0, %w[4.0.0 4.1.0], %w[next 766], accepted_766, false],              # the pull-request line, not mruby's 8%
+    [12_300.0, %w[4.0.0 4.1.0], %w[next 766], 'FAIL', true],                     # +7.34%: within 8%, above 6%
+    [12_300.0, %w[4.0.0 4.1.0], %w[next 767], 'ok (accepted: mruby 4.0.0→4.1.0, +8%)', false]
+  ].each do |head_judged, versions, pr, expected, expected_failed|
+    head = ok.merge(noconst_per_request: head_judged)
+    applied = accepted_for(entries, { 'mruby-version' => versions, 'pull-request' => pr })
+    _header, rows, _notes, failed = summarize(builds, [scenario], { %w[base auth] => base, %w[head auth] => head }, applied)
+    got = rows.first.last
+    next if got == expected && failed == expected_failed
+
+    failures << "auth at #{head_judged} w/o GC with mruby #{versions.inspect} and pull request #{pr.inspect} gave " \
+                "#{got.inspect} (failed #{failed}), expected #{expected.inspect} (failed #{expected_failed})"
+  end
+  # The pull-request line applies whichever line comes first in the file.
+  values = { 'mruby-version' => %w[4.0.0 4.1.0], 'pull-request' => %w[next 766] }
+  reversed = parse_accepted("pull-request next 766 auth 6\nmruby-version 4.0 4.1 auth 8\n", 'made_up.txt', names)
+  [entries, reversed].each do |list|
+    got = accepted_for(list, values)['auth']&.values_at(:allowance, :label)
+    failures << "accepted_for gave #{got.inspect} for auth, expected [6.0, \"pull request #766 to next\"]" unless got == [6.0, 'pull request #766 to next']
+  end
+  values = { 'mruby-version' => %w[4.1.0 4.1.0], 'pull-request' => %w[next 766] }
+  line = accepted_line(values, accepted_for(entries, values))
+  expected = "perf: mruby: base 4.1.0, head 4.1.0; pull request #766 to next; accepted differences (#{file}): " \
+             'auth up to +6% (pull request #766 to next)'
+  failures << "accepted_line with a pull request gave #{line.inspect}, expected #{expected.inspect}" unless line == expected
   failures
 end
 
@@ -919,6 +1143,9 @@ def measure(build, scenario)
     result.merge!(profile, wakes: wakes,
                            ir_per_request: profile[:ir].to_f / N,
                            nogc_per_request: (profile[:ir] - profile[:gc_ir]).to_f / N,
+                           noconst_per_request: noconst_ir(profile).to_f / N,
+                           const_unlisted_per_request: profile[:const_unlisted].transform_values { |n| n.to_f / N },
+                           const_ir_per_request: profile[:const_ir].to_f / N,
                            gc_calls_per_1000: profile[:gc_calls] * 1000.0 / N,
                            recorded_per_request: profile[:recorded_calls].transform_values { |n| n.to_f / N })
   rescue PerfError, StreamClient::Error, MockLLM::Child::Error, Client::Timeout, SystemCallError, IOError => e
@@ -951,7 +1178,24 @@ end
 # format). PERF_ACCEPTED_FILE names another file, for example an empty one
 # to see the verdicts without them.
 ACCEPTED_FILE = ENV.fetch('PERF_ACCEPTED_FILE', File.join(ROOT, 'test/perf/accepted.txt'))
-ACCEPTED_CONDITIONS = %w[mruby-version].freeze
+ACCEPTED_CONDITIONS = %w[mruby-version pull-request].freeze
+
+# The check of the BASE and HEAD fields of a line, by condition: the
+# message when a value is not in the format, or nil.
+# - mruby-version: MAJOR.MINOR of the bundled mruby in each build;
+# - pull-request: BASE the base branch of the pull request, HEAD its number.
+def accepted_value_problem(condition, base, head)
+  case condition
+  when 'mruby-version'
+    [base, head].each do |value|
+      return "#{value.inspect} is not a MAJOR.MINOR version such as 4.1" unless value.match?(/\A\d+\.\d+\z/)
+    end
+  when 'pull-request'
+    return "#{base.inspect} is not a branch name such as next" unless base.match?(%r{\A[A-Za-z0-9][A-Za-z0-9._/-]*\z})
+    return "#{head.inspect} is not a pull request number such as 812" unless head.match?(/\A[1-9]\d*\z/)
+  end
+  nil
+end
 
 # The lines of an accepted file as hashes (condition, base, head, scenario,
 # allowance, where). A line that is not in the format raises PerfError with
@@ -972,9 +1216,8 @@ def parse_accepted(text, path, scenario_names)
     unless ACCEPTED_CONDITIONS.include?(condition)
       raise PerfError, "#{where}: unknown condition #{condition.inspect} (known: #{ACCEPTED_CONDITIONS.join(', ')})"
     end
-    [base, head].each do |value|
-      raise PerfError, "#{where}: #{value.inspect} is not a MAJOR.MINOR version such as 4.1" unless value.match?(/\A\d+\.\d+\z/)
-    end
+    problem = accepted_value_problem(condition, base, head)
+    raise PerfError, "#{where}: #{problem}" if problem
     raise PerfError, "#{where}: unknown scenario #{scenario.inspect}" unless scenario_names.include?(scenario)
 
     # Decimal digits only: Float() would also take 0x8, 1e1 and 8_0.
@@ -1011,31 +1254,74 @@ def mruby_version(build)
   File.exist?(path) ? mruby_version_from(File.read(path)) : nil
 end
 
-# The accepted differences that apply to two builds, by scenario:
-# { name => { allowance:, label: } }. versions has the [base, head] values
-# of each condition ({ 'mruby-version' => ['4.0.0', '4.1.0'] }); a value
-# that is nil (not read) matches no line.
-def accepted_for(entries, versions)
-  entries.each_with_object({}) do |e, applied|
-    base, head = versions[e[:condition]]
-    next unless base && head && base.split('.')[0, 2].join('.') == e[:base] && head.split('.')[0, 2].join('.') == e[:head]
-    # Two conditions for one scenario would need a rule for how their
-    # allowances combine; there is one condition now.
-    raise PerfError, "#{e[:where]}: a second accepted difference applies to #{e[:scenario]}" if applied.key?(e[:scenario])
+# The pull request that the comparison measures, as [base branch, number],
+# from PERF_BASE_REF and PERF_PULL_REQUEST (the perf job of test.yml sets
+# both), or nil when neither is set. Raises PerfError when only one is set,
+# or when a value is not in the format of a line of the accepted file.
+def pull_request_from_env(env = ENV)
+  base = env['PERF_BASE_REF'].to_s
+  number = env['PERF_PULL_REQUEST'].to_s
+  return nil if base.empty? && number.empty?
+  raise PerfError, 'PERF_BASE_REF and PERF_PULL_REQUEST are set together or not at all' if base.empty? || number.empty?
 
-    applied[e[:scenario]] = { allowance: e[:allowance], label: "mruby #{base}→#{head}" }
+  problem = accepted_value_problem('pull-request', base, number)
+  raise PerfError, "PERF_BASE_REF or PERF_PULL_REQUEST: #{problem}" if problem
+
+  [base, number]
+end
+
+# Whether a line matches the [base, head] values of its condition.
+def accepted_match?(entry, base, head)
+  case entry[:condition]
+  when 'mruby-version'
+    base.split('.')[0, 2].join('.') == entry[:base] && head.split('.')[0, 2].join('.') == entry[:head]
+  when 'pull-request'
+    base == entry[:base] && head == entry[:head]
+  else
+    false
+  end
+end
+
+# The label of an applied line in the report.
+def accepted_label(condition, base, head)
+  condition == 'pull-request' ? "pull request ##{head} to #{base}" : "mruby #{base}→#{head}"
+end
+
+# The accepted differences that apply to a comparison, by scenario:
+# { name => { allowance:, label: } }. values has the [base, head] values
+# of each condition ({ 'mruby-version' => ['4.0.0', '4.1.0'],
+# 'pull-request' => ['next', '812'] }); a value that is nil (not read, or
+# not a pull request) matches no line. When a pull-request line and a
+# mruby-version line apply to one scenario, the pull-request line does: it
+# is the acceptance of this comparison itself.
+def accepted_for(entries, values)
+  entries.each_with_object({}) do |e, applied|
+    base, head = values[e[:condition]]
+    next unless base && head && accepted_match?(e, base, head)
+
+    previous = applied[e[:scenario]]
+    if previous
+      next if previous[:condition] == 'pull-request' && e[:condition] != 'pull-request'
+      unless e[:condition] == 'pull-request' && previous[:condition] != 'pull-request'
+        raise PerfError, "#{e[:where]}: a second accepted difference applies to #{e[:scenario]}"
+      end
+    end
+    applied[e[:scenario]] = { allowance: e[:allowance], label: accepted_label(e[:condition], base, head),
+                              condition: e[:condition] }
   end
 end
 
 # The header line of the report on the accepted differences.
-def accepted_line(versions, applied)
-  base, head = versions['mruby-version']
+def accepted_line(values, applied)
+  base, head = values['mruby-version']
   list = if applied.empty?
            'none apply'
          else
            applied.map { |name, a| "#{name} up to #{format('%+g%%', a[:allowance])} (#{a[:label]})" }.join(', ')
          end
-  "perf: mruby: base #{base || 'unknown'}, head #{head || 'unknown'}; " \
+  pr_base, pr_number = values['pull-request']
+  pr = pr_number ? "; pull request ##{pr_number} to #{pr_base}" : ''
+  "perf: mruby: base #{base || 'unknown'}, head #{head || 'unknown'}#{pr}; " \
     "accepted differences (#{File.basename(ACCEPTED_FILE)}): #{list}"
 end
 
@@ -1089,10 +1375,10 @@ def summarize(builds, scenarios, results, accepted = {})
     if builds.size == 1
       r = rs.first
       rows << if ok.first
-                [scenario.name, fmt_ir(r[:ir_per_request]), fmt_ir(r[:nogc_per_request]), gc_share(r),
+                [scenario.name, fmt_ir(r[:ir_per_request]), fmt_ir(r[:nogc_per_request]), fmt_ir(r[:noconst_per_request]), gc_share(r),
                  format('%.1f', r[:gc_calls_per_1000]), 'ok']
               else
-                [scenario.name, '-', '-', '-', '-', 'ERROR']
+                [scenario.name, '-', '-', '-', '-', '-', 'ERROR']
               end
       failed ||= !ok.first
       next
@@ -1103,16 +1389,19 @@ def summarize(builds, scenarios, results, accepted = {})
       compared += 1
       total = percent(base[:ir_per_request], head[:ir_per_request])
       nogc = percent(base[:nogc_per_request], head[:nogc_per_request])
-      v = accepted_verdict(nogc, accepted[scenario.name])
+      noconst = percent(base[:noconst_per_request], head[:noconst_per_request])
+      judged_on = judged_key(base, head) == :nogc_per_request ? 'w/o GC' : 'w/o GC/const'
+      v = accepted_verdict(judged_on == 'w/o GC' ? nogc : noconst, accepted[scenario.name])
       failed ||= v == 'FAIL'
       rows << [scenario.name, fmt_ir(base[:ir_per_request]), fmt_ir(head[:ir_per_request]), fmt_change(total),
                fmt_ir(base[:nogc_per_request]), fmt_ir(head[:nogc_per_request]), fmt_change(nogc),
-               "#{gc_share(base)}/#{gc_share(head)}", v]
+               fmt_ir(base[:noconst_per_request]), fmt_ir(head[:noconst_per_request]), fmt_change(noconst),
+               "#{gc_share(base)}/#{gc_share(head)}", judged_on, v]
     elsif ok.last && base[:unexpected_response] && base[:problems].count { |p| !p.match?(MRB_RUN_FAILED_LINE) } == 1
-      rows << [scenario.name, '-', '-', '-', '-', '-', '-', '-', 'n/a (base: unexpected response)']
+      rows << [scenario.name, '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', 'n/a (base: unexpected response)']
     else
       failed = true
-      rows << [scenario.name, '-', '-', '-', '-', '-', '-', '-', 'ERROR']
+      rows << [scenario.name, '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', 'ERROR']
     end
   end
   if builds.size == 2 && compared.zero?
@@ -1120,12 +1409,22 @@ def summarize(builds, scenarios, results, accepted = {})
     notes << 'perf: no scenario was compared'
   end
   header = if builds.size == 1
-             ['scenario', 'Ir/req', 'Ir/req w/o GC', 'GC share', 'GC calls/1000 req', 'result']
+             ['scenario', 'Ir/req', 'Ir/req w/o GC', 'Ir/req w/o GC/const', 'GC share', 'GC calls/1000 req', 'result']
            else
              ['scenario', "#{builds[0].label} Ir/req", "#{builds[1].label} Ir/req", 'change',
-              "#{builds[0].label} w/o GC", "#{builds[1].label} w/o GC", 'change w/o GC', 'GC share', 'result']
+              "#{builds[0].label} w/o GC", "#{builds[1].label} w/o GC", 'change w/o GC',
+              "#{builds[0].label} w/o GC/const", "#{builds[1].label} w/o GC/const", 'change w/o GC/const', 'GC share',
+              'judged', 'result']
            end
   [header, rows, notes, failed]
+end
+
+# The number that judges a scenario: w/o GC/const, or w/o GC when the head
+# clears mruby's constant cache more often than the base (CONST_CACHE_CLEARS),
+# so that the misses that the clears cause count.
+def judged_key(base, head)
+  clears = [base, head].map { |r| (r[:recorded_per_request] || {})[:const_clears].to_f }
+  clears[1] - clears[0] >= 0.005 ? :nogc_per_request : :noconst_per_request
 end
 
 # Lines with the calls per request of RECORDED_FUNCTIONS, which are not
@@ -1142,7 +1441,7 @@ def recorded_lines(builds, scenarios, results)
     values = RECORDED_FUNCTIONS.keys.map do |key|
       "#{key} #{rs.map { |r| format('%.2f', r[:recorded_per_request][key]) }.join('/')}"
     end
-    lines << "perf:   #{scenario.name}: #{values.join(', ')}#{non_buffered_effect(rs)}"
+    lines << "perf:   #{scenario.name}: #{values.join(', ')}#{non_buffered_effect(rs)}#{const_miss_effect(rs)}#{const_cost_line(rs)}"
   end
   lines
 end
@@ -1157,10 +1456,52 @@ def non_buffered_effect(rs)
   return '' if diff.abs < 0.005
 
   ir = diff * NON_BUFFERED_CALL_IR
-  share = ir / rs[0][:nogc_per_request] * 100.0
-  note = format(' (non_buffered_calls %+.2f per request: about %+.0f Ir, %+.2f%% of base w/o GC', diff, ir, share)
+  share = ir / rs[0][:noconst_per_request] * 100.0
+  note = format(' (non_buffered_calls %+.2f per request: about %+.0f Ir, %+.2f%% of base w/o GC/const', diff, ir, share)
   note += '; the change of this scenario may come from when the response arrived' if share.abs >= WARN_PERCENT / 2
   "#{note})"
+end
+
+# The note of recorded_lines on the difference of const_misses between base
+# and head ("" with one build or no difference): the Ir of the constant
+# lookups that the judged number leaves out, as a share of the base w/o
+# GC/const; from half of PERF_WARN_PERCENT on, the line says that more (or
+# fewer) lookups of head miss the constant cache. The misses depend on where
+# the ireps were allocated (CONST_LOOKUP_FUNCTIONS), so a change of the code
+# can move them, as can another run of the same code.
+def const_miss_effect(rs)
+  return '' unless rs.size == 2
+
+  base, head = rs.map { |r| r[:recorded_per_request][:const_misses].to_f }
+  diff = head - base
+  return '' if diff.abs < 0.005
+
+  ir = rs[1][:const_ir_per_request].to_f - rs[0][:const_ir_per_request].to_f
+  share = ir / rs[0][:noconst_per_request] * 100.0
+  note = format(' (const_misses %+.2f per request: %+.0f Ir, %+.2f%% of base w/o GC/const, not judged', diff, ir, share)
+  if share.abs >= WARN_PERCENT / 2
+    note += "; #{share.positive? ? 'more' : 'fewer'} constant lookups of head miss the constant cache of mruby"
+  end
+  "#{note})"
+end
+
+# The part of a line of recorded_lines on the cost of the constant lookups
+# ("" when there is none): the Ir per request that w/o GC/const leaves out
+# in each build, the calls of mrb_vm_const_get that it does not leave out
+# (const_unlisted), and which number judges the scenario when the head
+# clears the constant cache more often.
+def const_cost_line(rs)
+  parts = []
+  const = rs.map { |r| r[:const_ir_per_request].to_f }
+  parts << "const lookups #{const.map { |v| format('%.0f', v) }.join('/')} Ir" if const.any?(&:positive?)
+  unlisted = rs.map { |r| r[:const_unlisted_per_request] || {} }
+  unlisted.flat_map(&:keys).uniq.sort.each do |name|
+    parts << "not subtracted: #{name} #{unlisted.map { |u| format('%.0f', u.fetch(name, 0)) }.join('/')} Ir"
+  end
+  if rs.size == 2 && judged_key(*rs) == :nogc_per_request
+    parts << 'head clears the constant cache of mruby more often: judged w/o GC'
+  end
+  parts.empty? ? '' : " [#{parts.join('; ')}]"
 end
 
 # The reasons of the failed measurements, by scenario: { name => ["base: ...", ...] }.
@@ -1184,7 +1525,8 @@ def write_step_summary(header, rows, notes, reasons, accepted_lines = [])
     f.puts "|#{header.map { '---' }.join('|')}|"
     rows.each { |row| f.puts "| #{row.join(' | ')} |" }
     f.puts
-    f.puts "WARN from #{WARN_PERCENT}% and FAIL from #{FAIL_PERCENT}% more Ir per request without the GC."
+    f.puts "WARN from #{WARN_PERCENT}% and FAIL from #{FAIL_PERCENT}% more Ir per request on the number in the column judged " \
+           '(w/o GC/const, or w/o GC where the head clears the constant cache more often).'
     accepted_lines.each { |line| f.puts "\n#{line}" }
     notes.each { |note| f.puts "\n**#{note}**" }
     next if reasons.empty?
@@ -1299,7 +1641,11 @@ log("perf: N=#{N} WARMUP=#{WARMUP} PORTS=#{PORT},#{BACKEND_PORT},#{MOCK_PORT} WA
 builds.each { |b| log("perf: #{b.label}: #{b.dir}") }
 gem_lines = builds.size == 2 ? gem_lock_lines(builds) : []
 gem_lines.each { |line| log(line) }
-versions = { 'mruby-version' => builds.map { |b| mruby_version(b) } }
+begin
+  versions = { 'mruby-version' => builds.map { |b| mruby_version(b) }, 'pull-request' => pull_request_from_env }
+rescue PerfError => e
+  abort "perf: #{e.message}"
+end
 accepted = {}
 accepted_lines = []
 if builds.size == 2
@@ -1317,7 +1663,7 @@ scenarios.each do |scenario|
     r = measure(b, scenario)
     results[[b.label, scenario.name]] = r
     detail = if r[:problems].empty?
-               format('%.1f Ir/req, %.1f w/o GC, %s', r[:ir_per_request], r[:nogc_per_request],
+               format('%.1f Ir/req, %.1f w/o GC, %.1f w/o GC/const, %s', r[:ir_per_request], r[:nogc_per_request], r[:noconst_per_request],
                       r[:recorded_per_request].map { |k, v| format('%s %.2f/req', k, v) }.join(', '))
              else
                'ERROR'
@@ -1332,7 +1678,9 @@ problems = results.reject { |_k, r| r[:problems].empty? }.flat_map do |(label, n
   ["#{name} (#{label}):", *r[:problems].map { |p| "  #{p}" }]
 end
 report = ["perf: N=#{N} WARMUP=#{WARMUP}; Ir per request of nginx; " \
-          "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number without GC",
+          "WARN from #{WARN_PERCENT}%, FAIL from #{FAIL_PERCENT}% on the number in the column judged: " \
+          'w/o GC/const (Ir/req minus the GC and the constant lookups that missed the cache), or w/o GC (minus the ' \
+          'GC only) where the head clears the constant cache more often (const_clears)',
           "perf: units: stream_sleep = completed TCP session; other rows = HTTP request", *gem_lines,
           *accepted_lines, '', *lines]
 report += ['', *notes] unless notes.empty?

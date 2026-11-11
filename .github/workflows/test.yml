@@ -606,8 +606,12 @@ jobs:
   # "true" (the code, or the measurement: test/perf/, test/build_release.sh
   # and the scenario files of test/soak/) or the PR has the label "perf". A
   # change of test.yml alone measures the same binary twice, so it compares
-  # only with the label. Advisory for now: ci-ok does not need it until it
-  # has also run on pull requests that change the code (calibration in the
+  # only with the label. ci-ok needs this job: it fails on a FAIL or an
+  # ERROR row (compare.sh exits with 1) and passes a WARN, which the review
+  # takes to the owner. A FAIL that the owner accepted on the pull request
+  # passes once a line of test/perf/accepted.txt with the condition
+  # pull-request names the pull request, its scenario and the allowance
+  # (PERF_BASE_REF and PERF_PULL_REQUEST below; "Known differences" in the
   # docs).
   perf:
     needs: changes
@@ -662,6 +666,10 @@ jobs:
         if: steps.scope.outputs.run == 'yes'
         env:
           NUM_THREADS_ENV: 1
+          # The pull request that a line of test/perf/accepted.txt with the
+          # condition pull-request names.
+          PERF_BASE_REF: ${{ github.base_ref }}
+          PERF_PULL_REQUEST: ${{ github.event.pull_request.number }}
         run: sh test/perf/compare.sh build_perf/base-src
       - name: Upload the profiles and the report
         if: ${{ !cancelled() && steps.scope.outputs.run == 'yes' }}
@@ -683,7 +691,7 @@ jobs:
   # failed or was cancelled: without it, a failed job would skip this job,
   # and a skipped required check counts as passing. A job that the job
   # "changes" decided not to run is skipped; this job counts it as passed
-  # only then, so a build, soak or files job that was skipped for another
+  # only then, so a build, soak, perf or files job that was skipped for another
   # reason (a failed "changes" job) fails it.
   #
   # The one exception is a cancelled run of a draft pull request, which the
@@ -698,6 +706,13 @@ jobs:
   # "!cancelled()" alone would skip this job, and the skip would pass the
   # required check of a commit whose build did not finish
   # (docs/test/README.md, "Required status check").
+  #
+  # perf starts on a ready pull request whose run builds (build "full" or
+  # "standard"), and is skipped otherwise; this job expects that, as for
+  # build. When it starts and the files need no comparison (perf "false"
+  # and no label perf), it passes without measuring. When it compares, it
+  # fails on a FAIL or an ERROR row and passes a WARN, an "ok (accepted:
+  # ...)" row and an n/a row, so this job fails on the first two only.
   #
   # Its name is "ci-ok" only in the runs whose result the rulesets may take
   # as the check of the commit:
@@ -720,12 +735,12 @@ jobs:
   #   before the pull request's own run had passed.
   ci-ok:
     name: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'ci-ok (draft)' || github.event_name != 'workflow_dispatch' && 'ci-ok' || inputs.base != '' && 'ci-ok (dry run)' || inputs.valgrind && 'ci-ok (valgrind)' || 'ci-ok (manual)' }}
-    needs: [changes, build, soak, files]
+    needs: [changes, build, soak, perf, files]
     if: ${{ always() && !(cancelled() && github.event_name == 'pull_request' && github.event.pull_request.draft) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check that the needed build, soak and files jobs succeeded
+      - name: Check that the needed build, soak, perf and files jobs succeeded
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           DRAFT: ${{ needs.changes.outputs.draft }}
@@ -733,11 +748,14 @@ jobs:
           SOAK_NEEDED: ${{ needs.changes.outputs.soak }}
           BUILD_RESULT: ${{ needs.build.result }}
           SOAK_RESULT: ${{ needs.soak.result }}
+          PERF_RESULT: ${{ needs.perf.result }}
           FILES_RESULT: ${{ needs.files.result }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           echo "changes: ${CHANGES_RESULT} (draft: '${DRAFT}', build: '${BUILD_NEEDED}', soak: '${SOAK_NEEDED}')"
           echo "build: ${BUILD_RESULT}"
           echo "soak: ${SOAK_RESULT}"
+          echo "perf: ${PERF_RESULT} (event: ${EVENT_NAME})"
           echo "files: ${FILES_RESULT}"
           failed=0
           # expect JOB RESULT EXPECTED
@@ -753,6 +771,7 @@ jobs:
               echo "a draft pull request: no job tests it, and GitHub does not merge it; marking it ready for review starts the run that counts"
               expect build "${BUILD_RESULT}" skipped
               expect soak "${SOAK_RESULT}" skipped
+              expect perf "${PERF_RESULT}" skipped
               expect files "${FILES_RESULT}" skipped
               exit "${failed}"
               ;;
@@ -765,10 +784,17 @@ jobs:
           case "${BUILD_NEEDED}" in
             full | standard)
               expect build "${BUILD_RESULT}" success
+              # perf runs on pull requests only (see the job's "if").
+              if [ "${EVENT_NAME}" = pull_request ]; then
+                expect perf "${PERF_RESULT}" success
+              else
+                expect perf "${PERF_RESULT}" skipped
+              fi
               ;;
             none)
-              echo "the job changes found no code and no test to build: build is expected to be skipped"
+              echo "the job changes found no code and no test to build: build and perf are expected to be skipped"
               expect build "${BUILD_RESULT}" skipped
+              expect perf "${PERF_RESULT}" skipped
               ;;
             *)
               echo "::error title=ci-ok::the job changes gave no decision (build: '${BUILD_NEEDED}')"
