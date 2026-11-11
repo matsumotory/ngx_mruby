@@ -3,11 +3,11 @@
 Status: in progress. The design decisions of section 5 were made on
 2026-11-09 (decisions 1 to 5) and on 2026-11-10 (decisions 6 and 7), and
 no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
-(#779 and #783), and 2.7 (#788, when it is merged). Next step: these
-pull requests of section 4 start: "Execution context and the phases of
-the Ruby API" and "Per-request store" (2.1), "Waits inside another mruby
-call" (2.9), "Common code loading" (2.6), "Common error logging" (2.8)
-and "Directive table and one duplicate check" (2.5), by 2026-11-16.
+(#779 and #783), 2.7 (#788), and 2.8 (#796, when it is merged). Next
+step: these pull requests of section 4 start: "Execution context and the
+phases of the Ruby API" and "Per-request store" (2.1), "Waits inside
+another mruby call" (2.9), "Common code loading" (2.6) and "Directive
+table and one duplicate check" (2.5), by 2026-11-16.
 
 This proposal designs what is left of step 4 of section 6 of
 [the v3 plan](v3-plan.md): the work that has to be on `next` before
@@ -476,26 +476,49 @@ unchanged.
 
 ### 2.8 Common layer: error logging
 
-**Today.** HTTP logs an exception in four functions
-(`src/http/ngx_http_mruby_core.c:81-127`) that differ in the log and the
-text, and logs the backtrace in builds with `--with-debug` (`:63-79`).
-Stream has three more (`src/stream/ngx_stream_mruby_module.c:270-294`)
-without the backtrace. `Nginx.log` has two copies
-(`src/http/ngx_http_mruby_core.c:556-573`,
-`src/stream/ngx_stream_mruby_core.c:30-47`).
+**Today** (before #796). HTTP logs an exception in four functions
+(`ngx_mrb_raise_error`, `ngx_mrb_raise_connection_error`,
+`ngx_mrb_raise_cycle_error` and `ngx_mrb_raise_conf_error` in
+`src/http/ngx_http_mruby_core.c`) that differ in the log and the text, and
+logs the backtrace in builds with `--with-debug` (`ngx_mrb_log_backtrace`
+there). Stream has three more (`ngx_stream_mruby_raise_error`,
+`ngx_stream_mrb_raise_cycle_error` and `ngx_stream_mruby_raise_conf_error`
+in `src/stream/ngx_stream_mruby_module.c`) without the backtrace. The two
+for the code that runs while nginx reads the configuration write through
+`ngx_conf_log_error`, which adds the file and the line of the
+configuration. `Nginx.log` has two copies (`ngx_mrb_errlogger` in
+`src/http/ngx_http_mruby_core.c`, `ngx_stream_mrb_errlogger` in
+`src/stream/ngx_stream_mruby_core.c`), whose line for a negative level
+names the module and the C function.
 
-**Design.** One function in `src/common/` logs an exception with a given
-log, level and prefix, and the backtrace in debug builds; the callers pass
-today's texts. One `Nginx.log` takes the log from the current context of
-2.1 (or from the caller's lookup, if 2.1 is not merged yet).
+**Design.** `src/common/ngx_mruby_log.{h,c}`. `ngx_mrb_log_exception` logs
+an exception with a given log, level and prefix, or through
+`ngx_conf_log_error` with a given `ngx_conf_t`, and the backtrace in debug
+builds; the callers pass today's texts. A script can redefine `backtrace`,
+so an element of its result that is not a String is skipped instead of
+being read as a String. `ngx_mrb_log_method` is the body of `Nginx.log` and
+`Nginx::Stream.log`. It takes the log from the caller's lookup, because 2.1
+is not merged yet, and the module name and the C function that the line for
+a negative level names; 2.1 replaces the caller's lookup by the current
+context.
 
 **Behavior change.** Stream logs the backtrace in builds with
-`--with-debug`: a "New features" entry. The lines of `error.log` keep their
-text.
+`--with-debug`, as HTTP does. These are lines at the `error` level that
+`error.log` did not have, which "What counts as a behavior change" in
+`docs/releases/README.md` counts, so the change has an entry under
+"Behavior changes: read before upgrading". The other lines of `error.log`
+keep their text and their level. Skipping the elements of a redefined
+`backtrace` that are not Strings is a "Fixes" entry.
 
-**Test that fails first.** None for the shared function. The stream
-backtrace is checked by a case that runs only in the debug build of the
-suite, if the suite has one; otherwise the pull request quotes a run.
+**Test that fails first.** None for the shared function:
+`test/t/cases/exception_log.rb` and a case of
+`test/t/cases/config_hooks.rb` check the level and the text of the line of
+each of the seven functions, and pass before the change and after it.
+`test.sh` builds nginx with `--with-debug`, so a case of the suite checks
+the stream backtrace and fails before the change. The case of a
+`backtrace` with elements that are not Strings comes with the change:
+before it, the logging read such elements as Strings, which is undefined
+behavior, so the case is not run on the code before the change.
 
 **Perf.** No scenario raises.
 
@@ -850,8 +873,8 @@ and the one that merges second updates its branch.
 | One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`) |
 | Waits inside another mruby call (the raise of `Nginx.redirect` in log handlers is done by #770) | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |
 | Common code loading | 2.6 | nothing | directive table, filter handlers (the directive functions) |
-| Common upstream switching: [#788](https://github.com/matsumotory/ngx_mruby/pull/788), done when it is merged | 2.7 | nothing | nothing |
-| Common error logging | 2.8 | nothing | execution context (`Nginx.log`) |
+| Common upstream switching: [#788](https://github.com/matsumotory/ngx_mruby/pull/788), merged on 2026-11-11 | 2.7 | nothing | nothing |
+| Common error logging: [#796](https://github.com/matsumotory/ngx_mruby/pull/796), done when it is merged | 2.8 | nothing | execution context (`Nginx.log`) |
 | Directive table and one duplicate check | 2.5 | nothing | log handlers, filter handlers, code loading |
 | A body with any status: [#779](https://github.com/matsumotory/ngx_mruby/pull/779), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`) |
 | A status set before the output (decision 6), `Nginx::HTTP_CLOSE` with output (decision 7), and the cases of the review of #779 for handlers resumed by a subrequest and for 304: [#783](https://github.com/matsumotory/ngx_mruby/pull/783), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`, `src/http/ngx_http_mruby_async.c`) |

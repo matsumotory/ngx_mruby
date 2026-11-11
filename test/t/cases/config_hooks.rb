@@ -10,7 +10,9 @@
 # does, so the hooks run in the process that nginx -s quit signals. Its
 # prefix is NGINX_INSTALL_DIR/exit_hooks/. The hooks write with Nginx.log and
 # Nginx::Stream.log, because nginx sends its standard output to /dev/null
-# when it runs as a daemon.
+# when it runs as a daemon. Each hook raises after its line, so that the
+# error log also gets the line that ngx_mruby writes for an exception of the
+# code of a worker hook.
 
 t = SimpleTest.new "ngx_mruby test: configuration-time and exit hooks"
 
@@ -64,7 +66,7 @@ error_log #{prefix}error.log notice;
 events { worker_connections 32; }
 http {
     access_log off;
-    mruby_exit_worker_code 'Nginx.log Nginx::LOG_NOTICE, "mruby_exit_worker_code ran: \#{6 * 7}"';
+    mruby_exit_worker_code 'Nginx.log Nginx::LOG_NOTICE, "mruby_exit_worker_code ran: \#{6 * 7}"; raise "exception log: http exit worker \#{6 * 7}"';
     server {
         listen 127.0.0.1:#{EXIT_HOOKS_PORT};
         location / {
@@ -75,7 +77,7 @@ http {
 stream {
     # The stream block needs no server: the module opens the mrb_state of
     # the block when nginx creates its main configuration.
-    mruby_stream_exit_worker_code 'Nginx::Stream.log Nginx::Stream::LOG_NOTICE, "mruby_stream_exit_worker_code ran: \#{6 * 7}"';
+    mruby_stream_exit_worker_code 'Nginx::Stream.log Nginx::Stream::LOG_NOTICE, "mruby_stream_exit_worker_code ran: \#{6 * 7}"; raise "exception log: stream exit worker \#{6 * 7}"';
 }
 CONF
 end
@@ -136,6 +138,23 @@ t.assert('config hooks - mruby_exit_worker_code and mruby_stream_exit_worker_cod
   t.assert_equal 1, lines.select { |l| l.include?('[notice]') && l.include?('mruby_exit_worker_code ran: 42') }.size
   t.assert_equal 1, lines.select { |l| l.include?('[notice]') && l.include?('mruby_stream_exit_worker_code ran: 42') }.size
   t.assert_equal [], sanitizer
+end
+
+# The lines of the exceptions that the exit hooks above raise after their
+# lines: one each, at the error level, without a request or a connection.
+t.assert('config hooks - an exception of mruby_exit_worker_code and of mruby_stream_exit_worker_code is one line at the error level', "127.0.0.1:#{EXIT_HOOKS_PORT}") do
+  log = File.join(exit_hooks_prefix, 'error.log')
+  lines = File.exist?(log) ? File.read(log).split("\n") : []
+  {
+    'http' => 'mrb_run failed. error: #<RuntimeError: exception log: http exit worker 42>',
+    'stream' => 'mrb_run failed. error: #<RuntimeError: exception log: stream exit worker 42>',
+  }.each do |kind, text|
+    found = lines.select { |l| l.include?("exception log: #{kind} exit worker 42") }
+    t.assert_equal 1, found.size
+    t.assert_include found[0].to_s, ' [error] '
+    # the text after the process and thread ids is the whole rest of the line
+    t.assert_equal text, found[0].to_s.split('] ', 2)[1].to_s.split(': ', 2)[1].to_s
+  end
 end
 
 t.report

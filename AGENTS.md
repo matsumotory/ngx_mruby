@@ -673,8 +673,8 @@ sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this
   cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
   what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18090, 18101-18103, 18110-18145,
-  18147-18171, 18176-18191, 18195-18197, 18199, 12345-12359, 12363-12366,
-  12368-12369, 12372-12379, 12384-12388, 12390-12396; 18116, 12357 and 12385-12388 belong to the second nginx that
+  18147-18171, 18176-18197, 18199, 12345-12359, 12363-12366,
+  12368-12369, 12372-12381, 12384-12388, 12390-12396; 18116, 12357 and 12385-12388 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18180, 18181, 18185, 12379 and
   12393 to the nginx with several workers that `test/t/cases/_workers.rb` starts,
   12393-12396 to the independent nginx and echo upstream of
