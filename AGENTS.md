@@ -73,14 +73,21 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
   those that "In CI" in `docs/test/README.md` lists: `src/`, `mrbgems/`,
   `mruby/`, `dependence/`, `build_config.rb`, `configure`, `config.in`,
   `Makefile.in`, `build.sh`, `nginx_version`, and on `next` the gem lock
-  `build_config.rb.lock` (`master` commits no lock). The `perf` job of
-  `.github/workflows/test.yml` runs the comparison on such PRs, on `master`
-  and on `next`.
-  - The author quotes the comparison in the PR body, under "Leak /
+  `build_config.rb.lock` (`master` commits no lock). The author runs the
+  comparison locally before the PR is marked ready (`sh
+  test/perf/compare.sh` with a checkout of the base, in a Linux container
+  on macOS: "Running it" under "Performance comparison with callgrind" in
+  `docs/test/README.md`), so that a `WARN`, a `FAIL` or an `ERROR` is
+  found before CI runs. The `perf` job of `.github/workflows/test.yml`
+  then runs the same comparison on the runner as the check of CI, on
+  `master` and on `next` (on `next`, `ci-ok` needs it).
+  - The author quotes the local comparison in the PR body, under "Leak /
     performance impact" (see `.github/PULL_REQUEST_TEMPLATE.md`): the table
     with the header lines of `report.txt` above it (the line with `N`,
-    `WARMUP` and the thresholds, and the lines on the gems; in the job's
-    log), the run of the `perf` job, and the commits that its log prints
+    `WARMUP` and the thresholds, and the lines on the gems), the base and
+    head commits that were compared, and the machine (its architecture,
+    and the container image on macOS). Once the PR is ready, the author
+    adds the run of the `perf` job and the commits that its log prints
     (`base: ..., head: ...`). When the base branch gains a change to a
     measured input before the merge, the comparison is made and quoted
     again by the CI run that condition 2 of "Review and merge" asks for.
@@ -230,17 +237,34 @@ upgrading". New behavior, API cleanups and features go to `next`.
   merge: the conditions of "Review and merge" decide that. A PR that stays
   a draft says at the top of its body why (what is unfinished or not
   verified), who continues it, and what ends the draft.
-- CI is limited to what cannot run locally, the environments that a
-  machine does not have (the cells of the build matrix, the sanitizers,
-  valgrind, the callgrind comparison), and to the deploy of the site; the
-  tests are run locally. The owner set the rule on 2026-10-31: CI is only
-  the final check in a clean environment, the tests are done thoroughly
-  locally, and CI is not packed with so many tests that a run takes tens
-  of minutes. On 2026-11-02 the owner added that CI is not relied on: when
-  the local tests are thorough, CI is the minimum, and CI that covers many
-  environments stays, but what runs locally is not repeated in CI at the
-  cost of time and money (the decisions of both days are summarized in
-  "Decisions" of `docs/HANDOFF.md` on `next`). So a PR to `next` runs no
+- CI is the final check in a clean environment. Every kind of check that
+  CI runs for a change is first run locally by the author, before the PR
+  is marked ready, so that its failures are found locally: the suite with
+  the static and with the dynamic module, the suite under
+  AddressSanitizer and UndefinedBehaviorSanitizer, the suite under
+  valgrind, the callgrind comparison (`sh test/perf/compare.sh`), the
+  soak (`sh test/soak/run.sh`), the steps of `examples/start` and
+  nginx-tests where their workflows run, the site's checks and the static
+  analysis of the workflows. CI then spreads the checks that ran locally
+  to the combinations that one machine does not hold: the other cells of
+  the build matrix (nginx versions, link modes, `--with-openssl-src`), the
+  x86-64 runner and a clean environment; and it deploys the site. The
+  reasons: when CI is the first place where a check runs, its failure is
+  found there, and every fix costs one more push and one more wait for
+  CI; and when a run fails for a reason of the runner, only a local
+  result of the same check tells whether the code is at fault. On #796,
+  three attempts of the CI run stopped in the step `install` because the
+  runner could not resolve its package mirror, while the suite, the
+  sanitizers, valgrind, the comparison, the soak, the steps of
+  `examples/start` and nginx-tests had passed on the same head in Docker
+  on an arm64 Mac. The sanitizers, valgrind, the comparison and the soak
+  need Linux; on macOS they run in a Linux container ("Build and test").
+  A check is called one that cannot run locally only after it was tried
+  locally, and the PR says what was tried and why it could not run. CI is
+  not packed with so many checks that a run takes tens of minutes, and
+  what ran locally is not repeated in CI beyond that spread (the
+  decisions of 2026-10-31, 2026-11-02 and 2026-11-12 in "Decisions" of
+  `docs/HANDOFF.md` on `next`). So a PR to `next` runs no
   job of `site.yml`: the author runs `npm run check:ci` in `site/`, and
   `site.yml` runs on the push to `next`, where it builds, checks without a
   browser, deploys and checks the published site ("Site CI" in
@@ -248,20 +272,23 @@ upgrading". New behavior, API cleanups and features go to `next`.
   runs no job of `site-v2.yml`: its author checks the 2.x pages locally
   ("The 2.x pages of the site" in `docs/test/README.md`), and the push to
   `master` starts `site.yml` on `next` through `site-dispatch.yml`, which
-  builds `/v2/` from the new `master` before it deploys. The sessions
-  apply the rule this way (their procedure, not a
-  decision of the owner): the author runs the checks that the change
-  touches locally before marking the PR ready (the suite among them when
-  `test/ci/changes.sh` gives `build` `standard` or `full`), and quotes the
-  commands and their results under "How was this tested"; a check that
-  can run locally is not left to CI ("Build and test" lists the local
-  commands). The run of a ready PR runs the smallest set of jobs that the
-  change needs ("Which jobs a run starts" in `docs/test/README.md`). The
-  owner decided on 2026-11-01 that a change of the code runs four cells
-  of the build matrix, and every cell the scheduled run and the check
-  before a release ("Decisions" in `docs/HANDOFF.md` on `next`). The
-  sessions apply it this way (their procedure): a change of the code or
-  the tests runs nginx 1.31.8 with the static module, 1.30.6 with the
+  builds `/v2/` from the new `master` before it deploys. The author runs
+  the checks that the change touches locally before marking the PR ready
+  (the suite among them when `test/ci/changes.sh` gives `build`
+  `standard` or `full`, and with it, for a change of C code (`src/`, the
+  C sources of `mrbgems/`, `mruby/`, `dependence/`) or of the build, the
+  suite under the sanitizers and under valgrind; the
+  comparison when it gives `perf` `true`, the soak when it gives `soak`
+  `true`), and quotes the commands and their results under "How was this
+  tested"; a check that can run locally is not left to CI ("Build and
+  test" lists the local commands). The run of a ready PR runs the
+  smallest set of jobs that the change needs ("Which jobs a run starts"
+  in `docs/test/README.md`). A change of the code runs four cells of the
+  build matrix, and every cell runs in the scheduled run and in the
+  check before a release ("Decisions" in `docs/HANDOFF.md` on `next`):
+  four cells keep the run of a PR short, and the scheduled run and the
+  check before a release still cover every combination. A change of the
+  code or the tests runs nginx 1.31.8 with the static module, 1.30.6 with the
   dynamic module, the sanitizer cell and the cell under valgrind; every
   cell runs in the nightly run, on the push of a tag, in the check PR
   before a tag (the label `full-matrix`) and on "Run workflow" without the
@@ -349,10 +376,14 @@ results matching what the author quoted); expectations assert
 on real responses, not only on "not 500"; "How was this tested" in the PR
 body quotes the local runs of the checks that the change touches (the
 suite among them when `test/ci/changes.sh` gives `build` `standard` or
-`full`), with their commands and results (see "Branches and pull
-requests"); the CI result on the head commit;
-when an input of the measured binary changed, the performance comparison
-quoted in the PR body and the numbers that "Design principles" asks the
+`full`, and for a change of C code or of the build the suite under the
+sanitizers and under valgrind, with no sanitizer report and every
+valgrind `ERROR SUMMARY` at 0 errors), with their commands, results and
+the commit they ran on (see "Branches and pull requests" and "Build and
+test"); the CI result on the head commit;
+when an input of the measured binary changed, the local performance
+comparison and the run of the `perf` job quoted in the PR body, and the
+numbers that "Design principles" asks the
 reviewer to write; every line that the PR adds to `test/perf/accepted.txt`
 has the owner's acceptance in a comment on the PR, which the PR body
 links, and its allowance is not above the change that the owner accepted;
@@ -602,22 +633,43 @@ headers, and `test.sh` uses `wget` and the `openssl` command. mruby is built wit
 sh test.sh                          # full run: fetch nginx (version in ./nginx_version), configure, build, test
 ONLY_BUILD_NGX_MRUBY=1 sh test.sh   # fast loop: skip fetch/configure, rebuild changed sources, re-run tests
 BUILD_DYNAMIC_MODULE=1 sh test.sh   # build as a dynamic module (uses build_dynamic/ instead of build/)
-NGINX_RUNNER=valgrind sh test.sh   # run nginx under valgrind (NGINX_HEATTIME, 60 s by default, bounds each wait of test.sh for ports and for nginx)
+NGINX_RUNNER=valgrind sh test.sh   # run nginx under valgrind (NGINX_HEATTIME, 60 s by default, bounds each wait of test.sh for ports and for nginx); the options of CI are in docs/test/README.md
+                                    # the sanitizer build: "Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer" in docs/test/README.md
 sh test/soak/run.sh                 # memory soak test (Linux; own build in build_soak/, ports 12360-12362)
 sh test/perf/compare.sh BASE_DIR    # callgrind Ir per request, BASE_DIR vs this checkout (Linux, valgrind; builds in build_perf/, ports 12370-12372)
 ```
 
-- Run these before a PR is marked ready: CI runs only what cannot run
-  locally, and is not the place where a change is first tested (see
+- Run these before a PR is marked ready: CI is the final check in a clean
+  environment that spreads the local checks to other cells and to the
+  x86-64 runner, and is not the place where a change is first tested (see
   "Branches and pull requests"). Run the local commands of the checks that
   the change touches: the suite when `test/ci/changes.sh` gives `build`
-  `standard` or `full`, `sh test/ci/changes_test.sh` for
+  `standard` or `full`, with the static module and with
+  `BUILD_DYNAMIC_MODULE=1`; for a change of C code or of the build, also
+  the suite under AddressSanitizer and UndefinedBehaviorSanitizer and the
+  suite under valgrind with the options of CI ("Running the tests under
+  AddressSanitizer and UndefinedBehaviorSanitizer" and "valgrind in CI" in
+  `docs/test/README.md`); `sh test/perf/compare.sh` when it gives `perf`
+  `true`, `sh test/soak/run.sh` when it gives `soak` `true`, the steps of
+  `examples/start` (`python3 examples/check_example.py examples/start`)
+  and nginx-tests ("Running nginx-tests" in `docs/test/README.md`) when
+  their workflows run for the change; `sh test/ci/changes_test.sh` for
   `test/ci/`, `npm run check:ci` in `site/` when it gives `docs`, `site`
   or `examples` (below), the checks of "The 2.x pages of the site"
-  in `docs/test/README.md` for `docs/` on `master`, zizmor for `.github/` ("Static analysis of the
-  workflows" in `docs/test/README.md`), and `sh test/soak/run.sh` or `sh
-  test/perf/compare.sh` where the change affects what they measure.
-  `docs/test/README.md` describes each of them.
+  in `docs/test/README.md` for `docs/` on `master`, and zizmor for `.github/` ("Static analysis of the
+  workflows" in `docs/test/README.md`).
+  `docs/test/README.md` describes each of them. The sanitizers, valgrind,
+  the comparison and the soak need Linux: on macOS, run them in a Linux
+  container, as the docker form of "Before a tag" above does for the
+  comparison; `docs/test/README.md` has the docker form of each. Each
+  sanitizer or valgrind run builds in a checkout of its own (for example
+  a `git archive` of the head), because the flags of one build do not
+  rebuild mruby for another. A container has ports of its own, but these
+  runs load the machine for minutes and the waits of `test.sh` are
+  bounded: run them one after another, and not while another `test.sh`,
+  soak or comparison runs on the same machine. Before writing that a check cannot run
+  locally, try it, and write in the PR what was tried and why it did not
+  run.
   Before pushing, match the changed paths against the triggers and jobs of
   every applicable workflow, including workflows other than `test.yml`.
   Record the corresponding local commands and results in the PR, and explain
