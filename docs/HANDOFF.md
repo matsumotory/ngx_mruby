@@ -1,17 +1,54 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-11 (19:30 JST)
+## State as of 2026-11-12 (16:55 JST)
 
-- Heads: `master` is `65ce972e1`, the merge of
-  [#792](https://github.com/matsumotory/ngx_mruby/pull/792). `next` is
-  `bf336fd7d`, the merge of [#794](https://github.com/matsumotory/ngx_mruby/pull/794),
-  which adds the `perf` job to the `needs` of `ci-ok` on `next` (the queue
-  row below). [#795](https://github.com/matsumotory/ngx_mruby/pull/795)
-  (open) judges with the constant lookups also where the head clears
-  mruby's constant cache and misses more lookups.
-  `v2.x` mirrors `master`. The latest published release is 2.7.5;
-  `docs/releases/v2.7.6.md` and `.ja.md` on `master` collect the entries of
-  the next 2.x release, which is not tagged.
+- Heads: `master` is `aa3d9798a`, the merge of
+  [#800](https://github.com/matsumotory/ngx_mruby/pull/800). It carries the
+  v2.7.6 release (below) and the two documentation follow-ups merged after
+  it: [#801](https://github.com/matsumotory/ngx_mruby/pull/801) (the
+  advisory ids) and #800 (the "Security fixes" steps of
+  `docs/releases/README.md`). `next` is `592a4c5e9`. This handoff entry is
+  written in the open pull request that merges `master` (at `aa3d9798a`)
+  into `next`, which brings the v2.7.6 security and bug fixes and the two
+  follow-ups to `next`. `v2.x` mirrors `master`. The latest published
+  release is 2.7.6.
+- The release 2.7.6: the tag `v2.7.6` is on `a8ef5ecb8` (2026-11-12 15:53
+  JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.6)
+  is published. Two advisories were published with it at 15:58 JST:
+  [GHSA-r6wq-r8rh-6rc3](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-r6wq-r8rh-6rc3)
+  (Moderate; an HTTP log handler's `Nginx.rputs`/`Nginx.echo` could write an
+  extra response on a persistent connection) and
+  [GHSA-79vp-37cx-547v](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-79vp-37cx-547v)
+  (Moderate; an mruby content handler or body filter in an SSI subrequest
+  could split the parent HTTP response). The release body links both
+  advisories in English and Japanese.
+  [#801](https://github.com/matsumotory/ngx_mruby/pull/801) (`298e0dd11`)
+  added the two advisory ids to `v2.7.6.md`, `.ja.md` and the release body;
+  its independent review found no must-fix, the 2.x pages check passed, and
+  `ci-ok` passed. [#800](https://github.com/matsumotory/ngx_mruby/pull/800)
+  (`aa3d9798a`) added to the "Security fixes" of `docs/releases/README.md`
+  how a security fix is merged from the advisory page and the temporary
+  `protected-lines` bypass that merge needs. Both #801 and #800 are
+  documentation only, and reach `next` with this merge of `master`. The
+  check before the tag: the pull requests merged into `master` from `v2.7.5`
+  to the release are #768, #772, #773, #774, #775, #778, #781, #784, #786,
+  #790 and #792; each has its entry under "Behavior changes", "Fixes" or
+  "Build and test changes" in `v2.7.6.md`/`.ja.md`, or changes nothing a
+  configuration, script or build observes (docs, CI and `test.sh`), so no
+  separate public check pull request was opened. The whole build matrix ran
+  at `65ce972e1` (master before the security fixes) in
+  [run 43018470114](https://github.com/matsumotory/ngx_mruby/actions/runs/43018470114)
+  (success); the tag push ran the whole matrix at `a8ef5ecb8` in
+  [run 43171298562](https://github.com/matsumotory/ngx_mruby/actions/runs/43171298562)
+  (success). The callgrind comparison of `v2.7.5` (`801d78b48`) with the
+  release tree (`master` + both security fixes, `13195fc71`) has every
+  scenario `ok`, the largest change `ruby_call_10` at +0.84% without GC
+  (below the 3% WARN threshold); the fixes add a subrequest branch to three
+  finalization sites and one read-body check and touch no measured
+  scenario's hot path. The two fixes were merged from their advisory pages
+  (the log-handler fix, then the SSI subrequest fix) with the
+  `protected-lines` admin bypass set to `always` for the merges and
+  restored to "pull request only" afterwards.
 - The release 2.7.5: [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.5)
   was published on 2026-11-04 at 14:49:05 JST. Its tag points to
   `801d78b4831965326adb1f9b216a99740b5ab92e`.
