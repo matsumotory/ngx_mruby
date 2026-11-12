@@ -325,6 +325,12 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
     mrb_exc_raise(mrb, argv);
   }
 
+  // A log handler can still convert its argument and run the rest of its
+  // script, but it cannot add to the body or length of the response.
+  if (ctx->handler_kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
+    return self;
+  }
+
   if (with_lf) {
     ns.data = (u_char *)RSTRING_PTR(mrb_str_plus(mrb, argv, mrb_str_new_lit(mrb, "\n")));
     ns.len = RSTRING_LEN(argv) + sizeof("\n") - 1;

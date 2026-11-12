@@ -1187,6 +1187,12 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
     return NGX_OK;
   }
 
+  // Logging runs at request teardown. Even if a previous handler left an
+  // output chain in the context, it must never be flushed from this phase.
+  if (kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
+    return NGX_OK;
+  }
+
   // A filter runs while nginx sends a response (#206).
   // - A header filter runs inside ngx_http_send_header, so it returns here
   //   without ngx_mrb_finalize_rputs, which would call ngx_http_send_header
@@ -1195,8 +1201,6 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   //   it, that handler sends it after the header. When the header filter
   //   wrote it, which is not supported, the body that nginx sends does not
   //   contain it, although Nginx.rputs added its length to Content-Length.
-  //   The next handler that finalizes, such as a log handler, sends the
-  //   chain after the response, and nginx logs "header already sent".
   // - A body filter that runs after a header filter sent the header, or in a
   //   location with an mruby header filter, which holds the header back
   //   until the body filter has run (ngx_http_mruby_header_filter_send),
@@ -1208,7 +1212,7 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   //   function dropped it: when there is an rputs chain and the status is 200
   //   or the last buffer of the chain is not marked as the last one. A chain
   //   left in the ctx there would be sent after the response by the next
-  //   handler that finalizes, such as a log handler.
+  //   handler that finalizes output.
   //   ngx_mrb_finalize_body_filter and a handler that is sending its own
   //   chain through this filter keep their own pointers to the ctx and the
   //   chain. When the response needs more than one write,
