@@ -401,6 +401,7 @@ Phase:   NGX_HTTP_LOG_PHASE
 ```
 
 'mruby_log_handler' and 'mruby_log_handler_code' are called at the end of request processing for logging.
+In an HTTP log handler, `Nginx.rputs` and `Nginx.echo` convert their argument as usual and write no response bytes. Use `Nginx.log` to write to the error log.
 
 Since 3.0.0, they run first in the log phase, before `access_log`: an `access_log` whose `log_format` names a variable that a log handler assigns with `Nginx::Var` writes the assigned value. When a location has both, the handler of `mruby_log_handler` runs before that of `mruby_log_handler_code`. They also run before the log-phase handlers of the other modules whose postconfiguration runs before that of ngx_mruby; a module whose postconfiguration runs later adds its log-phase handlers after them.
 

@@ -213,7 +213,7 @@ end
 
 ### Nginx.rputs(string)
 
-Puts response text.
+Puts response text. In an HTTP log handler, `Nginx.rputs` and `Nginx.echo` convert their argument as usual and write no response bytes. Use `Nginx.log` to write to the error log.
 If a post-read, server rewrite, rewrite, access or content handler raises an exception afterwards, the request gets 500 and the text is not sent, unless the response was already started, for example by the location that `Nginx.redirect` ran.
 Since 2.7.1 this also holds for a handler that raises before it waits in `Nginx::Async`; in 2.7.0 such a handler sent the text with status 200.
 In an `mruby_set*` handler, a log handler or an output filter, the text is not sent after an exception either, and the request goes on as after an exception without output: `Content-Length` does not count the text (since 2.7.1).

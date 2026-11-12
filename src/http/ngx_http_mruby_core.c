@@ -360,7 +360,17 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     } else if (r->headers_out.status == 0) {
       r->headers_out.status = NGX_HTTP_OK;
     }
-    (*chain->last)->buf->last_buf = 1;
+    // A subrequest keeps the response of its parent going: its last buffer
+    // must be last_in_chain, not last_buf, so the chunked filter does not
+    // end the parent response at the subrequest's output. A status set with
+    // Nginx.send_header before this marked the buffer last_buf (below), so
+    // clear it here for a subrequest that reaches this send path.
+    if (r == r->main) {
+      (*chain->last)->buf->last_buf = 1;
+    } else {
+      (*chain->last)->buf->last_buf = 0;
+      (*chain->last)->buf->last_in_chain = 1;
+    }
     ngx_mrb_discard_unread_body(r);
     ngx_http_send_header(r);
 
@@ -433,7 +443,16 @@ ngx_int_t ngx_mrb_finalize_body_filter(ngx_http_request_t *r, ngx_http_mruby_ctx
   // none, for example the empty 200 of a content handler without output, or
   // when it sets one.
   b->memory = ctx->body_length ? 1 : 0;
-  b->last_buf = 1;
+  // The body of a subrequest ends with last_in_chain, as nginx's own
+  // handlers end it (ngx_http_send_special): last_buf would end the
+  // response of the main request, which goes on after the subrequest. An
+  // empty final buffer of a subrequest is special through sync instead.
+  if (r == r->main) {
+    b->last_buf = 1;
+  } else {
+    b->last_in_chain = 1;
+    b->sync = ctx->body_length ? 0 : 1;
+  }
 
   r->headers_out.content_length_n = b->last - b->pos;
 
@@ -530,6 +549,12 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
   // raises the exception of the conversion (TypeError for the last)
   if (!ngx_mrb_var_to_string(mrb, argv, &argv)) {
     mrb_exc_raise(mrb, argv);
+  }
+
+  // A log handler can still convert its argument and run the rest of its
+  // script, but it cannot add to the body or length of the response.
+  if (ctx->handler_kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
+    return self;
   }
 
   if (with_lf) {

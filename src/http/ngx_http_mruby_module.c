@@ -1271,6 +1271,12 @@ resumed:
     return NGX_OK;
   }
 
+  // Logging runs at request teardown. Even if a previous handler left an
+  // output chain in the context, it must never be flushed from this phase.
+  if (kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
+    return NGX_OK;
+  }
+
   // A filter runs while nginx sends a response (#206).
   // - A header filter runs inside ngx_http_send_header, so it returns here
   //   without ngx_mrb_finalize_rputs, which would call ngx_http_send_header
@@ -1279,8 +1285,6 @@ resumed:
   //   it, that handler sends it after the header. When the header filter
   //   wrote it, which is not supported, the body that nginx sends does not
   //   contain it, although Nginx.rputs added its length to Content-Length.
-  //   The next handler that finalizes, such as a log handler, sends the
-  //   chain after the response, and nginx logs "header already sent".
   // - A body filter that runs after a header filter sent the header, or in a
   //   location with an mruby header filter, which holds the header back
   //   until the body filter has run (ngx_http_mruby_header_filter_send),
@@ -1292,7 +1296,7 @@ resumed:
   //   function dropped it: when there is an rputs chain and the status is 200
   //   or the last buffer of the chain is not marked as the last one. A chain
   //   left in the ctx there would be sent after the response by the next
-  //   handler that finalizes, such as a log handler.
+  //   handler that finalizes output.
   //   ngx_mrb_finalize_body_filter and a handler that is sending its own
   //   chain through this filter keep their own pointers to the ctx and the
   //   chain. When the response needs more than one write,
@@ -2419,7 +2423,14 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
       p = ngx_cpymem(p, b->pos, size);
       b->pos += size;
     }
-    if (b->last_buf) {
+    // The body of a subrequest (an SSI include, for example) ends with a
+    // buffer marked last_in_chain: only the main request ends its body
+    // with last_buf (ngx_http_send_special, ngx_http_static_handler).
+    // Without this, the filter would hold the body of a subrequest back
+    // for good, and the flag that it sets on the connection below, which
+    // a subrequest shares with its main request, would keep the main
+    // request from ending until send_timeout.
+    if (b->last_buf || (r != r->main && b->last_in_chain)) {
       ctx->last = p;
       ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: reached last buffer", MODULE_NAME, __func__,
                     __LINE__);
