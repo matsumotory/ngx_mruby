@@ -413,16 +413,18 @@ go through (the sessions' procedure, not a decision of the owner):
   ruleset is enforced all the same: for every such merge, the rule
   `required_status_checks` failed (`ci-ok` is expected), the result is
   `bypass`, and the merge was made while the bypass mode was `always` (`gh
-  api "repos/matsumotory/ngx_mruby/rulesets/rule-suites?ref=refs/heads/master"`
-  lists the results, and the history of the ruleset the modes). So, with the
-  owner's permission for that release, the session sets the bypass mode to
-  `always` right before it asks for the merge:
+  api "repos/matsumotory/ngx_mruby/rulesets/rule-suites?ref=refs/heads/master&time_period=month&per_page=100"`
+  lists the results of the last month, and the history of the ruleset the
+  modes). So, with the owner's permission for that release, the session
+  sets the bypass mode to `always` right before it asks for the merge. `T`
+  is a new directory for this release, outside the repository or under
+  `.claude/tmp/`, and both blocks below need it:
 
   ```sh
-  T=...   # a new directory for this release, outside the repository or under .claude/tmp/
+  mkdir -p "${T:?}"
   R=repos/matsumotory/ngx_mruby/rulesets
   ID=$(gh api $R --jq '.[] | select(.name == "protected-lines") | .id')
-  [ -e "$T/restore.json" ] ||
+  [ -s "$T/restore.json" ] ||
     gh api $R/$ID | jq -S '{name,target,enforcement,conditions,rules,bypass_actors}' > "$T/restore.json"
   jq -e '.bypass_actors | all(.bypass_mode == "pull_request")' "$T/restore.json" > /dev/null &&
     jq '.bypass_actors |= map(.bypass_mode = "always")' "$T/restore.json" > "$T/open.json" &&
@@ -436,11 +438,16 @@ go through (the sessions' procedure, not a decision of the owner):
   with the copy:
 
   ```sh
-  gh api -X PUT $R/$ID --input "$T/restore.json" > /dev/null
+  R=repos/matsumotory/ngx_mruby/rulesets
+  ID=$(gh api $R --jq '.[] | select(.name == "protected-lines") | .id')
+  gh api -X PUT $R/$ID --input "${T:?}/restore.json" > /dev/null
   gh api $R/$ID | jq -S '{name,target,enforcement,conditions,rules,bypass_actors}' | diff "$T/restore.json" -
   ```
 
-  The last line prints nothing when the ruleset is as it was. While the
+  The last line prints nothing when the ruleset is as it was; a difference
+  there means that the ruleset is not restored, and the block is run again.
+  The second block sets `R` and `ID` itself, so that it also works in
+  another shell than the first. While the
   bypass mode is `always`, an admin can also push to `master` and `next`
   directly, so the session does not leave it that way: when the owner merges
   later, the session restores the ruleset, and changes it again then.
