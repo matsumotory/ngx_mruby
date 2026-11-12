@@ -401,5 +401,89 @@ is public for as short a time as possible before the release:
    another pull request is merged between the two, its entries are checked
    before the fix is merged.
 
+With the repository's everyday settings, GitHub refuses the merge of step 2.
+The session prepares it, and asks the owner to merge only when the merge will
+go through (the sessions' procedure, not a decision of the owner):
+
+- The merge is made on the page of the advisory
+  (`https://github.com/matsumotory/ngx_mruby/security/advisories/<id>`): at
+  the bottom of the advisory form, under "This advisory is ready to be
+  merged", the button "Merge pull request(s)"
+  ([GitHub's documentation](https://docs.github.com/en/code-security/tutorials/fix-reported-vulnerabilities/collaborate-in-a-fork#merging-changes-in-a-security-advisory)).
+  The page of the pull request in the private fork cannot merge it, and the
+  required check stays pending there for good, because GitHub runs no CI in
+  a temporary private fork. The request to the owner therefore lists the
+  pages to open and what to press on each, the advisory pages and nothing
+  else: it carries no link to a pull request of the fork.
+- The fix's pull request is the only open pull request of the fork. GitHub
+  merges all open pull requests of a fork at once, and blocks the merge when
+  more than one of them targets the fork's default branch. The session also
+  checks that the pull request is not a draft and has no conflicts.
+- The head of the pull request contains the tip of its base branch. The tree
+  after the merge is then the tree of that head, which the local runs
+  tested. When the fixes of two advisories are merged one after the other,
+  the head of the second pull request contains the head of the first.
+- The ruleset `protected-lines` requires `ci-ok` on `master` and `next`, and
+  lets repository admins bypass it for pull requests only. GitHub's page
+  says that the protection rules of the branch are not enforced for a merge
+  from an advisory. The rule suites of this repository show that this
+  ruleset is enforced all the same: for every such merge, the rule
+  `required_status_checks` failed (`ci-ok` is expected), the result is
+  `bypass`, and the merge was made while the bypass mode was `always` (`gh
+  api "repos/matsumotory/ngx_mruby/rulesets/rule-suites?ref=refs/heads/master&time_period=month&per_page=100"`
+  lists the results of the last month, and the history of the ruleset the
+  modes). So, with the owner's permission for that release, the session
+  sets the bypass mode to `always` right before it asks for the merge. `T`
+  is a new directory for this release, outside the repository or under
+  `.claude/tmp/`, and both blocks below need it:
+
+  ```sh
+  mkdir -p "${T:?}"
+  R=repos/matsumotory/ngx_mruby/rulesets
+  ID=$(gh api $R --jq '.[] | select(.name == "protected-lines") | .id')
+  [ -s "$T/restore.json" ] ||
+    gh api $R/$ID | jq -S '{name,target,enforcement,conditions,rules,bypass_actors}' > "$T/restore.json"
+  jq -e '.bypass_actors | all(.bypass_mode == "pull_request")' "$T/restore.json" > /dev/null &&
+    jq '.bypass_actors |= map(.bypass_mode = "always")' "$T/restore.json" > "$T/open.json" &&
+    gh api -X PUT $R/$ID --input "$T/open.json" > /dev/null
+  ```
+
+  The copy to restore from is written once, and the ruleset is changed only
+  from a copy whose bypass mode is `pull_request`, so that a second run
+  cannot replace the copy with the changed ruleset. As soon as the last
+  merge is on the branch, the session restores the ruleset and compares it
+  with the copy:
+
+  ```sh
+  R=repos/matsumotory/ngx_mruby/rulesets
+  ID=$(gh api $R --jq '.[] | select(.name == "protected-lines") | .id')
+  gh api -X PUT $R/$ID --input "${T:?}/restore.json" > /dev/null
+  gh api $R/$ID | jq -S '{name,target,enforcement,conditions,rules,bypass_actors}' | diff "$T/restore.json" -
+  ```
+
+  The last line prints nothing when the ruleset is as it was; a difference
+  there means that the ruleset is not restored, and the block is run again.
+  The second block sets `R` and `ID` itself, so that it also works in
+  another shell than the first. While the
+  bypass mode is `always`, an admin can also push to `master` and `next`
+  directly, so the session does not leave it that way: when the owner merges
+  later, the session restores the ruleset, and changes it again then.
+- No CI run stands behind this merge. What stands for it is the local runs
+  that the private pull request quotes: the suite with the static and with
+  the dynamic module, the sanitizer build and valgrind
+  ([AGENTS.md "Build and test"](../../AGENTS.md#build-and-test)), and the
+  performance comparison
+  (["Performance comparison with callgrind"](../test/README.md#performance-comparison-with-callgrind)).
+  After the last merge and before the release, the session fetches the base
+  branch and checks that its tree is the tree that those runs tested: `git
+  rev-parse origin/<base>^{tree}` and `git rev-parse <tested commit>^{tree}`
+  print the same id. When they differ, the session publishes no release
+  from that tree, and tells the owner what differs.
+- After the release, the owner publishes the advisory on the same page, with
+  "Publish advisory" at the bottom of the advisory form
+  ([GitHub's documentation](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/fix-reported-vulnerabilities/publish-repository-advisory);
+  the button reads "Request CVE" when "Request CVE ID later" was selected).
+  That needs no change of the ruleset.
+
 Until the advisory is published, nothing in the public repository mentions
 the vulnerability (see [AGENTS.md "Security"](../../AGENTS.md#security)).
