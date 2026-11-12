@@ -26,10 +26,14 @@
 // ngx_conf_log_error, which adds the file and the line of the configuration,
 // the backtrace goes to cf->log, and log is not used.
 //
-// The line is left out when exc.inspect does not return a String. A script
-// can redefine #backtrace: an element of its result that is not a String is
-// skipped, and a result that is not an Array is logged at the debug level
-// instead of the frames.
+// A script can redefine #inspect and #backtrace. When exc.inspect raises or
+// does not return a String, the line has "#<Class> (inspect raised Class)" or
+// "#<Class> (inspect did not return a String)" after prefix. An element of
+// the result of #backtrace that is not a String is skipped, and a result that
+// is not an Array, or a #backtrace that raises, is logged at the debug level
+// instead of the frames. Both calls are protected (ngx_mrb_log_call in
+// ngx_mruby_log.c): an exception that they raise stops in this function, also
+// when another mruby call is on the C stack, and is not left in mrb->exc.
 */
 void ngx_mrb_log_exception(mrb_state *mrb, mrb_value exc, ngx_log_t *log, ngx_conf_t *cf, ngx_uint_t level,
                            const char *prefix);
