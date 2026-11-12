@@ -51,6 +51,20 @@ t.assert('directives - mruby_log_handler and mruby_log_handler_code store values
   t.assert_equal 'file /directives/log?n=2 200|inline', read2["body"]
 end
 
+t.assert('directives - two requests on one connection', 'file and inline log handlers') do
+  first = "GET /directives/log?n=wire HTTP/1.1\r\nHost: localhost\r\n\r\n"
+  second = "GET /directives/log_read HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+  status, raw = tcp_client(18114, first + second)
+  header, following, body = raw.split("\r\n\r\n", 3)
+  expected = 'file /directives/log?n=wire 200|inline'
+  t.assert_equal 'EOF', status
+  t.assert_true header.start_with?("HTTP/1.1 200 OK\r\n")
+  t.assert_include header.split("\r\n"), 'Content-Length: 10'
+  t.assert_true following.start_with?("log targetHTTP/1.1 200 OK\r\n")
+  t.assert_include following.split("\r\n"), "Content-Length: #{expected.bytesize}"
+  t.assert_equal expected, body
+end
+
 t.assert('directives - mruby_cache keeps the compiled file hook', 'locations /directives/cache/* on 18114 and /directives/cache/server on 18115') do
   fname = html_path('directives_cache.rb')
   original = File.read(fname)
