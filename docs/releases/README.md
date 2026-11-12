@@ -384,5 +384,51 @@ is public for as short a time as possible before the release:
    another pull request is merged between the two, its entries are checked
    before the fix is merged.
 
+The merge of step 2 is not accepted as the repository is set up from day to
+day. The session prepares it, and asks the owner to merge only when the merge
+will go through (the sessions' procedure, not a decision of the owner):
+
+- The merge is made on the page of the advisory
+  (`https://github.com/matsumotory/ngx_mruby/security/advisories/<id>`), with
+  the button "Merge pull request" under "Collaborate on a patch" (GitHub's
+  documentation names it "Merge pull request(s)"). The page of the pull
+  request in the private fork cannot merge it, and the required check stays
+  pending there for good, because GitHub runs no CI in a temporary private
+  fork. The request to the owner therefore lists the pages to open and what
+  to press on each, the advisory pages and nothing else: it carries no link
+  to a pull request of the fork.
+- GitHub merges every open pull request of the fork at once. The session
+  checks that each of them is open, not a draft and without conflicts, and
+  that the fork has no other open pull request.
+- The ruleset `protected-lines` requires `ci-ok` on `master` and `next`, and
+  lets the repository admin bypass it for pull requests only. The merge from
+  an advisory arrives as a push, so GitHub refuses it until that bypass is
+  "always". With the owner's permission for that release, the session changes
+  the ruleset right before it asks for the merge, and restores it as soon as
+  the merge is on the branch:
+
+  ```sh
+  R=repos/matsumotory/ngx_mruby/rulesets
+  ID=$(gh api $R --jq '.[] | select(.name == "protected-lines") | .id')
+  gh api $R/$ID | jq -S '{name,target,enforcement,conditions,rules,bypass_actors}' > restore.json
+  jq '.bypass_actors |= map(.bypass_mode = "always")' restore.json > open.json
+  gh api -X PUT $R/$ID --input open.json      # before the merge
+  gh api -X PUT $R/$ID --input restore.json   # after it
+  gh api $R/$ID | jq -S '{name,target,enforcement,conditions,rules,bypass_actors}' | diff restore.json -
+  ```
+
+  The last line prints nothing when the ruleset is as it was. While the
+  bypass is "always", an admin can also push to `master` and `next`
+  directly, so the session does not leave it that way: when the owner will
+  merge later, the session restores the ruleset, and changes it again then.
+- No CI run stands behind this merge. What stands for it is the local runs
+  that the private pull request quotes: the suite with the static and with
+  the dynamic module, the sanitizer build, valgrind and the performance
+  comparison. After the merge and before the release, the session checks
+  that the tree of the branch is the tree that those runs tested (`git
+  rev-parse origin/master^{tree}` against the tree of the tested commit).
+- After the release, the owner publishes the advisory on the same page
+  ("Publish advisory" at its bottom). That needs no change of the ruleset.
+
 Until the advisory is published, nothing in the public repository mentions
 the vulnerability (see [AGENTS.md "Security"](../../AGENTS.md#security)).
