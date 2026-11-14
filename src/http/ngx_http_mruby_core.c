@@ -576,7 +576,8 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   ngx_table_elt_t *location;
 
   ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
-  argc = mrb_get_args(mrb, "o|oo", &uri, &code);
+  // one or two arguments, one variable for each; a third raises ArgumentError
+  argc = mrb_get_args(mrb, "o|o", &uri, &code);
 
   // the status code of a redirect to a URL, read below; an internal redirect
   // has none and ignores the second argument
