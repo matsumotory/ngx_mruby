@@ -578,12 +578,9 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
   argc = mrb_get_args(mrb, "o|oo", &uri, &code);
 
-  // get status code from args
-  if (argc == 2) {
-    rc = mrb_fixnum(code);
-  } else {
-    rc = NGX_HTTP_MOVED_TEMPORARILY;
-  }
+  // the status code of a redirect to a URL, read below; an internal redirect
+  // has none and ignores the second argument
+  rc = NGX_HTTP_MOVED_TEMPORARILY;
 
   // get redirect uri from args; a uri whose to_s is missing, raises or does
   // not return a String raises the exception of the conversion (TypeError
@@ -607,6 +604,15 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   if (ngx_strncmp(ns.data, "http://", sizeof("http://") - 1) == 0 ||
       ngx_strncmp(ns.data, "https://", sizeof("https://") - 1) == 0 ||
       ngx_strncmp(ns.data, "$scheme", sizeof("$scheme") - 1) == 0) {
+
+    // a status code that is not an Integer raises TypeError before the
+    // response is changed; nil, a String or a Float is not converted
+    if (argc == 2) {
+      if (!mrb_integer_p(code)) {
+        mrb_raisef(mrb, E_TYPE_ERROR, "%Y cannot be converted to Integer", code);
+      }
+      rc = mrb_integer(code);
+    }
 
     // build redirect location
     location = ngx_list_push(&r->headers_out.headers);
