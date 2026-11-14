@@ -147,25 +147,47 @@ typedef struct {
   u_char name[NGX_MRB_UPSTREAM_SERVER_MAX];
 } ngx_mrb_upstream_server_store_t;
 
+/* The array of stores lives in the cycle pool and is reused across requests
+ * of one cycle. On reload, the cycle pool is freed; the pool cleanup below
+ * then resets these pointers so the next cycle starts fresh, even when the
+ * new cycle's pool happens to be allocated at the address of the old one. */
+static ngx_array_t *ngx_mrb_upstream_server_stores;
+static ngx_pool_t *ngx_mrb_upstream_server_stores_pool;
+
+static void ngx_mrb_upstream_server_stores_cleanup(void *data)
+{
+  (void)data;
+  ngx_mrb_upstream_server_stores = NULL;
+  ngx_mrb_upstream_server_stores_pool = NULL;
+}
+
 static ngx_mrb_upstream_server_store_t *ngx_mrb_upstream_server_store(ngx_http_upstream_rr_peer_t *peer)
 {
-  static ngx_array_t *stores;
-  static ngx_pool_t *stores_pool;
   ngx_mrb_upstream_server_store_t **elts, *store;
   ngx_uint_t i;
 
-  /* Compare the saved pool pointer value (never dereference it: after a reload
-   * the old array is in a freed pool) so a fresh cycle gets a fresh array. */
-  if (stores == NULL || stores_pool != ngx_cycle->pool) {
-    stores = ngx_array_create(ngx_cycle->pool, 4, sizeof(ngx_mrb_upstream_server_store_t *));
-    if (stores == NULL) {
+  if (ngx_mrb_upstream_server_stores == NULL ||
+      ngx_mrb_upstream_server_stores_pool != ngx_cycle->pool) {
+    ngx_pool_cleanup_t *cln;
+
+    ngx_mrb_upstream_server_stores =
+        ngx_array_create(ngx_cycle->pool, 4, sizeof(ngx_mrb_upstream_server_store_t *));
+    if (ngx_mrb_upstream_server_stores == NULL) {
       return NULL;
     }
-    stores_pool = ngx_cycle->pool;
+    cln = ngx_pool_cleanup_add(ngx_cycle->pool, 0);
+    if (cln == NULL) {
+      ngx_mrb_upstream_server_stores = NULL;
+      ngx_mrb_upstream_server_stores_pool = NULL;
+      return NULL;
+    }
+    cln->handler = ngx_mrb_upstream_server_stores_cleanup;
+    cln->data = NULL;
+    ngx_mrb_upstream_server_stores_pool = ngx_cycle->pool;
   }
 
-  elts = stores->elts;
-  for (i = 0; i < stores->nelts; i++) {
+  elts = ngx_mrb_upstream_server_stores->elts;
+  for (i = 0; i < ngx_mrb_upstream_server_stores->nelts; i++) {
     if (elts[i]->peer == peer) {
       return elts[i];
     }
@@ -177,7 +199,7 @@ static ngx_mrb_upstream_server_store_t *ngx_mrb_upstream_server_store(ngx_http_u
   }
   store->peer = peer;
 
-  elts = ngx_array_push(stores);
+  elts = ngx_array_push(ngx_mrb_upstream_server_stores);
   if (elts == NULL) {
     return NULL;
   }
