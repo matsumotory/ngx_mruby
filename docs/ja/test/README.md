@@ -1116,7 +1116,7 @@ PRをreadyにする前に、手元でサイトを検査します。デプロイ�
 
 baseで`code`か`tests`が変わると、プルリクエストの手元の実行の後に、`src/`、`test/`、`build_config.rb`(ディレクティブのテーブル、テストのケース、gem)を読むサイトの検査が落ちることがあります。マージのpushで動く`site.yml`が、デプロイの前にこれを見つけます。直しは別のプルリクエストにします。AGENTS.mdの「Review and merge」の条件2を参照してください。
 
-`master`を`next`へマージするプルリクエストも`docs/`を変えるので、作者は、readyにする前に、そのheadの`site/`で`npm run check:ci`を流します。`master`の`docs/test/README.md`にある「The 2.x pages of the site」の検査は、この実行の代わりになりません。その検査は、3.xのページを、マージを含まない`next`のcheckoutからビルドし、マージした後のツリーからはビルドしないからです。マージが、`docs/ja/`に日本語のページがある英語のページの変更を運ぶときは、同じプルリクエストで日本語のページも直します。`docs/releases/README.md`がその例です。`check-japanese.mjs`が、2つのページのコードブロックを比べるからです。こうすると、マージのpushで動く`site.yml`が、マージした後のツリーの検査で止まり、サイトをデプロイできなくなることを防げます。
+`master`を`next`へマージするプルリクエストも`docs/`を変えるので、作者は、readyにする前に、そのheadの`site/`で`npm run check:ci`を流します。`master`の`docs/test/README.md`にある「The 2.x pages of the site」の検査は、この実行の代わりになりません。その検査は、3.xのページを、マージを含まない`next`のcheckoutからビルドし、マージした後のツリーからはビルドしないからです。マージで、`docs/ja/`に日本語のページがある英語のページの変更が入るときは、同じプルリクエストで日本語のページも直します。`docs/releases/README.md`がその例です。`check-japanese.mjs`が、2つのページのコードブロックを比べるからです。こうすると、マージのpushで動く`site.yml`が、マージした後のツリーの検査で止まり、サイトをデプロイできなくなることを防げます。
 
 サイトのレイアウトと折り返しの検査(`check-styles.mjs`、`check-japanese-lines.mjs`)は、2つの組み合わせだけを測ります。PCの全画面にあたるChromiumの1440pxと、iPhoneのSafariにあたるWebKitの402pxです。`site/scripts/lib/patterns.mjs`がこの2つを持ちます。
 

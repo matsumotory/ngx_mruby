@@ -33,6 +33,14 @@
   run of `site.yml` that the merge started. Its local `npm run check:ci`
   is quoted in its body. The site is deployed again by the run of
   `site.yml` on the push of its merge.
+- Open, base `master`: [#803](https://github.com/matsumotory/ngx_mruby/pull/803)
+  brings to 2.x the protection of the `inspect` and `backtrace` calls that
+  ngx_mruby makes when it writes an exception to `error.log` (the 2.x
+  counterpart of #799). It is ready, and its review is recorded on the
+  head `dc6e66c29` with one must fix: the release notes described the
+  condition under which a request is left unfinished as narrower than it
+  is. The author answered it in the head `ca91a0e18`, whose re-review of
+  that item and CI run were not finished when this entry was written.
 - The release 2.7.6: the tag `v2.7.6` is on `a8ef5ecb8` (2026-11-12 15:53
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.6)
   is published. Two advisories were published with it at 15:58 JST:
