@@ -10,6 +10,7 @@
 
 #include "ngx_stream_mruby_init.h"
 
+#include <mruby/error.h>
 #include <mruby/proc.h>
 #include "mruby/string.h"
 
@@ -246,31 +247,107 @@ static char *ngx_stream_mruby_merge_srv_conf(ngx_conf_t *cf, void *parent, void 
   return NGX_CONF_OK;
 }
 
+/* The longest text that names the class of an exception in place of its
+   inspect. */
+#define NGX_STREAM_MRB_LOG_TEXT_MAX 512
+
+/* A call that the logging of an exception makes on an object of the script. */
+typedef struct {
+  mrb_value obj;
+  const char *method; /* the method to call, or NULL for the name of the class of obj */
+} ngx_stream_mrb_log_call_t;
+
+static mrb_value ngx_stream_mrb_log_call_body(mrb_state *mrb, void *data)
+{
+  ngx_stream_mrb_log_call_t *call = data;
+
+  if (call->method == NULL) {
+    return mrb_str_new_cstr(mrb, mrb_obj_classname(mrb, call->obj));
+  }
+  return mrb_funcall(mrb, call->obj, call->method, 0);
+}
+
+/* Calls obj.method under mrb_protect_error, as ngx_mrb_log_call in
+   ngx_http_mruby_core.c does, which says why. */
+static mrb_bool ngx_stream_mrb_log_call(mrb_state *mrb, mrb_value obj, const char *method, mrb_value *result)
+{
+  struct RObject *exc = mrb->exc;
+  ngx_stream_mrb_log_call_t call;
+  mrb_bool raised;
+
+  call.obj = obj;
+  call.method = method;
+  mrb->exc = NULL;
+  *result = mrb_protect_error(mrb, ngx_stream_mrb_log_call_body, &call, &raised);
+  mrb->exc = exc;
+  return !raised;
+}
+
+/* The name of the class of obj in *name, or "?" when taking it raised. */
+static void ngx_stream_mrb_log_class_name(mrb_state *mrb, mrb_value obj, ngx_str_t *name)
+{
+  mrb_value s;
+
+  ngx_str_set(name, "?");
+  if (ngx_stream_mrb_log_call(mrb, obj, NULL, &s)) {
+    name->data = (u_char *)RSTRING_PTR(s);
+    name->len = RSTRING_LEN(s);
+  }
+}
+
+/* The text of exc for its line of error.log, as ngx_mrb_exception_text in
+   ngx_http_mruby_core.c makes it. */
+static void ngx_stream_mrb_exception_text(mrb_state *mrb, mrb_value exc, u_char *buf, size_t size, ngx_str_t *text)
+{
+  mrb_value s;
+  mrb_bool returned;
+  ngx_str_t exc_class, raised_class;
+
+  mrb_gc_protect(mrb, exc);
+  returned = ngx_stream_mrb_log_call(mrb, exc, "inspect", &s);
+  if (returned && mrb_type(s) == MRB_TT_STRING) {
+    text->data = (u_char *)RSTRING_PTR(s);
+    text->len = RSTRING_LEN(s);
+    return;
+  }
+  ngx_stream_mrb_log_class_name(mrb, exc, &exc_class);
+  if (returned) {
+    text->len = ngx_snprintf(buf, size, "#<%V> (inspect did not return a String)", &exc_class) - buf;
+  } else {
+    ngx_stream_mrb_log_class_name(mrb, s, &raised_class);
+    text->len = ngx_snprintf(buf, size, "#<%V> (inspect raised %V)", &exc_class, &raised_class) - buf;
+  }
+  text->data = buf;
+}
+
 /* raise functions */
 static void ngx_stream_mruby_raise_conf_error(mrb_state *mrb, mrb_value obj, ngx_conf_t *cf)
 {
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_run failed: ngx_mruby stream module configuration failed: error: %*s",
-                       RSTRING_LEN(obj), RSTRING_PTR(obj));
-  }
+  u_char buf[NGX_STREAM_MRB_LOG_TEXT_MAX];
+  ngx_str_t text;
+
+  ngx_stream_mrb_exception_text(mrb, obj, buf, sizeof(buf), &text);
+  ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_run failed: ngx_mruby stream module configuration failed: error: %*s",
+                     text.len, text.data);
 }
 
 void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s)
 {
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "mrb_run failed: return NGX_ABORT to client: error: %*s",
-                  RSTRING_LEN(obj), RSTRING_PTR(obj));
-  }
+  u_char buf[NGX_STREAM_MRB_LOG_TEXT_MAX];
+  ngx_str_t text;
+
+  ngx_stream_mrb_exception_text(mrb, obj, buf, sizeof(buf), &text);
+  ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "mrb_run failed: return NGX_ABORT to client: error: %*s", text.len,
+                text.data);
 }
 
 static void ngx_stream_mrb_raise_cycle_error(mrb_state *mrb, mrb_value obj, ngx_cycle_t *cycle)
 {
-  obj = mrb_funcall(mrb, obj, "inspect", 0);
-  if (mrb_type(obj) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(obj), RSTRING_PTR(obj));
-  }
+  u_char buf[NGX_STREAM_MRB_LOG_TEXT_MAX];
+  ngx_str_t text;
+
+  ngx_stream_mrb_exception_text(mrb, obj, buf, sizeof(buf), &text);
+  ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", text.len, text.data);
 }
 
 static ngx_int_t ngx_stream_mruby_init_module(ngx_cycle_t *cycle)
