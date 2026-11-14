@@ -482,9 +482,22 @@ them under "How was this tested":
   text, the code blocks, the line breaks) do not read that file. A pull
   request that adds or changes a release note therefore copies that file
   into `docs/releases/` of the checkout of `next` before the run, and
-  stages it there with `git add`, because the generator reads only the
-  files that git tracks. One run then checks it as a 2.x page and as a
-  3.x page. This keeps the push
+  commits it there in a local commit that is never pushed:
+
+  ```console
+  $ git add docs/releases/vX.Y.Z.md docs/releases/vX.Y.Z.ja.md
+  $ git commit -m 'Release notes to check (local only, not pushed)'
+  ```
+
+  The generator reads only the files that git tracks, and
+  `site/scripts/export-docs.mjs` stops with `source must exist at HEAD
+  before export` on a page whose source is not in the commit `HEAD`, so
+  staging alone stops the build for a new file, while a change of a file
+  that `HEAD` already has would go through; the commit serves both. One
+  run then checks the file as a 2.x page and as a 3.x page. `check:ci`
+  prints the local commit: quote it with its parent, the commit of
+  `next`. Afterwards, remove that checkout or reset it to `origin/next`.
+  This keeps the push
   to `next` after the merge of `master` from stopping the deploy of the
   site on those checks.
 

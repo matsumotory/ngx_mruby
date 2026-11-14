@@ -536,8 +536,9 @@ go through (the sessions' procedure, not a decision of the owner):
   last are the checks of
   ["The 2.x pages of the site"](../test/README.md#the-2x-pages-of-the-site),
   run with the pull request's `vX.Y.Z.md` and `vX.Y.Z.ja.md` copied into
-  `docs/releases/` of a local checkout of `next` and staged there with `git
-  add`, as the last paragraph of that list says; the copies stay local.
+  `docs/releases/` of a local checkout of `next` and committed there in a
+  local commit that is never pushed, as the last paragraph of that list
+  says; the copies stay local.
   The files become 3.x pages of the site when `master` is merged into
   `next`, and the site's checks of the Japanese pages would otherwise
   first fail on them after they are public, in that merge or in the
