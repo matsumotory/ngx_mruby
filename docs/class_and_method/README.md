@@ -363,6 +363,8 @@ The URL redirect returns HTTP status codes 3xx like `307 Temporary Redirect` wit
 
 The `http_status` of a URL redirect must be an Integer. Since 2.7.8, another value, `nil` included, makes `Nginx.redirect` raise `TypeError` (`String cannot be converted to Integer`, with the class of the value) and no redirect is made; up to 2.7.7 such a value gave a status line without a valid status, or no response for `nil`. An internal redirect has no status code and ignores `http_status`.
 
+`Nginx.redirect` takes one or two arguments. Since 2.7.8, a third argument makes it raise `ArgumentError` (`wrong number of arguments (given 3, expected 1..2)`) and no redirect is made; up to 2.7.7 a call with three arguments raised no error, and its result was not defined.
+
 ```ruby
 Nginx.redirect "http://ngx.mruby.org/", Nginx::HTTP_MOVED_PERMANENTLY
 ```
