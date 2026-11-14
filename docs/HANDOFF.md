@@ -1,46 +1,46 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-14 (16:30 JST)
+## State as of 2026-11-14 (17:05 JST)
 
-- Heads: `master` is `39bfae179`, the merge of
-  [#804](https://github.com/matsumotory/ngx_mruby/pull/804) (below). It
-  carries the v2.7.6 release (below) and the documentation follow-ups
-  merged after it: [#801](https://github.com/matsumotory/ngx_mruby/pull/801)
+- Heads: `master` is `66b284a94`, the merge of
+  [#803](https://github.com/matsumotory/ngx_mruby/pull/803) (below), after
+  `39bfae179`, the merge of [#804](https://github.com/matsumotory/ngx_mruby/pull/804)
+  (below). It carries the v2.7.6 release (below) and the documentation
+  follow-ups merged after it: [#801](https://github.com/matsumotory/ngx_mruby/pull/801)
   (the advisory ids), [#800](https://github.com/matsumotory/ngx_mruby/pull/800)
   (the "Security fixes" steps of `docs/releases/README.md`) and #804.
-  `next` is `9cf8f8a4e`, the merge of
-  [#802](https://github.com/matsumotory/ngx_mruby/pull/802), which brought
-  `master` at `aa3d9798a` (the v2.7.6 fixes, #801 and #800) into `next`.
-  This entry is written in the open pull request to `next` that merges
-  `master` at `39bfae179` and fixes the site (next bullet). `v2.x` mirrors
-  `master`. The latest published release is 2.7.6.
-- The site: the deploy of ngx.mruby.org is stopped. The run of `site.yml`
+  `next` is `246877177`, the merge of
+  [#805](https://github.com/matsumotory/ngx_mruby/pull/805), which brought
+  `master` at `39bfae179` into `next` and fixed the site (next bullet).
+  This entry is written in [#806](https://github.com/matsumotory/ngx_mruby/pull/806),
+  the open pull request to `next` that merges `master` at `66b284a94`
+  (#803) into `next`. `v2.x` mirrors `master`.
+  The latest published release is 2.7.6.
+- The site: the deploy of ngx.mruby.org works again. The run of `site.yml`
   on the push of `9cf8f8a4e`
   ([run 43188350847](https://github.com/matsumotory/ngx_mruby/actions/runs/43188350847))
-  failed in `node scripts/check-japanese.mjs`, so `deploy` did not run.
-  It found spaces between Japanese and Latin text in
-  `docs/releases/v2.7.6.ja.md`, and a Japanese
-  `docs/ja/releases/README.md` without the steps that #800 added to
-  `docs/releases/README.md` (its code blocks differed from the English
-  page's). #804 (base `master`, merged as `39bfae179`) removed the spaces
-  and reworded three sentences and two labels of `v2.7.6.ja.md`, and added
-  to "The 2.x pages of the site" of `docs/test/README.md` on `master` how
-  a pull request checks a changed release note as a 3.x page. The open
-  pull request translates the steps into `docs/ja/releases/README.md`,
-  takes in #804, and adds to "Site CI" (and its Japanese page) the check
-  of a merge of `master` into `next` on its head, and to condition 2 of
-  "Review and merge" in `AGENTS.md` that the session that merges reads the
-  run of `site.yml` that the merge started. Its local `npm run check:ci`
-  is quoted in its body. The site is deployed again by the run of
-  `site.yml` on the push of its merge.
-- Open, base `master`: [#803](https://github.com/matsumotory/ngx_mruby/pull/803)
-  brings to 2.x the protection of the `inspect` and `backtrace` calls that
-  ngx_mruby makes when it writes an exception to `error.log` (the 2.x
-  counterpart of #799). It is ready, and its review is recorded on the
-  head `dc6e66c29` with one must fix: the release notes described the
-  condition under which a request is left unfinished as narrower than it
-  is. The author answered it in the head `ca91a0e18`, whose re-review of
-  that item and CI run were not finished when this entry was written.
+  had failed in `node scripts/check-japanese.mjs` on
+  `docs/releases/v2.7.6.ja.md` and `docs/ja/releases/README.md`. #804
+  (base `master`) and #805 (base `next`) fixed both pages, and #805 added
+  to "Site CI" of `docs/test/README.md` (and its Japanese page) that a
+  merge of `master` into `next` runs `npm run check:ci` on its own head,
+  and to condition 2 of "Review and merge" in `AGENTS.md` that the
+  session that merges reads the run of `site.yml` that the merge started.
+  The run of `site.yml` on the push of `246877177`
+  ([run 43572439640](https://github.com/matsumotory/ngx_mruby/actions/runs/43572439640))
+  succeeded.
+- [#803](https://github.com/matsumotory/ngx_mruby/pull/803) (merged into
+  `master` on 2026-11-14 at 17:00 JST as `66b284a94`) brings to 2.x the
+  protection of the `inspect` and `backtrace` calls that ngx_mruby makes
+  when it writes an exception to `error.log` (the 2.x counterpart of #796
+  and #799), with its cases (`test/t/cases/exception_log_script_methods.rb`,
+  ports 18091, 12383 and 12389) and the entries of
+  `docs/releases/v2.7.7.md` and `.ja.md`. Its re-review found no must fix
+  and no should fix. [#806](https://github.com/matsumotory/ngx_mruby/pull/806), which merges it into `next`,
+  keeps `next`'s `src/` (which has the same protection in
+  `src/common/ngx_mruby_log.c`), runs the new cases on `next`'s code, and
+  adds the three ports to the list of `AGENTS.md`. Its body has the state
+  and the checks.
 - The release 2.7.6: the tag `v2.7.6` is on `a8ef5ecb8` (2026-11-12 15:53
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.6)
   is published. Two advisories were published with it at 15:58 JST:
@@ -615,7 +615,7 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). [#793](https://github.com/matsumotory/ngx_mruby/pull/793) merges through `65ce972e1` (#790, #792) and waits for its review and merge; the next merge of `master` after it waits for a merge into `master` |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), and through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805). [#806](https://github.com/matsumotory/ngx_mruby/pull/806) merges through `66b284a94` (#803) and waits for its checks, review and merge; the next merge of `master` after it waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
