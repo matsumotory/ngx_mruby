@@ -107,13 +107,14 @@ end
 
 # add_listener runs while nginx reads the configuration, so nginx -t shows
 # it. nginx -t does not open the listening sockets, so the address of the
-# valid case is the port of the server above.
+# valid case is the port of the server above. The stream server has a
+# return directive: nginx 1.26 rejects a stream server without a handler.
 ARGUMENT_TYPES_LISTENERS = {
   'http' => lambda do |hash|
     "http {\n    server {\n        mruby_server_context_handler_code 'Nginx::Server.new.add_listener(#{hash})';\n    }\n}"
   end,
   'stream' => lambda do |hash|
-    "stream {\n    server {\n        mruby_stream_server_context_code 'Nginx::Stream.add_listener(#{hash})';\n    }\n}"
+    "stream {\n    server {\n        mruby_stream_server_context_code 'Nginx::Stream.add_listener(#{hash})';\n        return ok;\n    }\n}"
   end,
 }
 
