@@ -219,7 +219,10 @@ t.assert('exception log', 'inside another mruby call, a redefined backtrace that
   status, raw = tcp_client(18091, "GET /script_methods/set_redirect_backtrace_types HTTP/1.0\r\nHost: localhost\r\n\r\n")
   lines = script_methods_lines_from(offset)
   errors = script_methods_exception_lines(lines)
-  frames = script_methods_errors(lines).reject { |l| l.include?('mrb_run failed') }
+  # On this path nginx also logs, at the error level, the open() of the
+  # static file of the target location: the frames are the lines with the
+  # text of the backtrace.
+  frames = script_methods_errors(lines).select { |l| script_methods_message(l).start_with?('script methods: ') }
   after = script_methods_active
   t.assert_equal 'EOF', status
   t.assert_equal 'HTTP/1.1 500 Internal Server Error', raw.split("\r\n", 2)[0].to_s
