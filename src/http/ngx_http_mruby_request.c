@@ -36,6 +36,7 @@
     if (mrb_nil_p(arg)) {                                                                                              \
       return self;                                                                                                     \
     }                                                                                                                  \
+    arg = mrb_ensure_string_type(mrb, arg);                                                                            \
     len = RSTRING_LEN(arg);                                                                                            \
     member.len = len;                                                                                                  \
     member.data = (u_char *)ngx_palloc(r->pool, len);                                                                  \
@@ -260,6 +261,7 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
     /* If the value is nil, just remove the key from the headers. */
     return NGX_OK;
   }
+  mrb_val = mrb_ensure_string_type(mrb, mrb_val);
 
   val_len = (size_t)RSTRING_LEN(mrb_val);
   val = ngx_pnalloc(pool, val_len);
@@ -453,6 +455,7 @@ static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self)
   r = ngx_mrb_get_request_or_raise(mrb);
 
   mrb_get_args(mrb, "oo", &key, &val);
+  key = mrb_ensure_string_type(mrb, key);
 
   if (mrb_type(val) == MRB_TT_ARRAY) {
     mrb_value v;
@@ -479,6 +482,7 @@ static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self)
   r = ngx_mrb_get_request_or_raise(mrb);
 
   mrb_get_args(mrb, "oo", &key, &val);
+  key = mrb_ensure_string_type(mrb, key);
 
   if (mrb_type(val) == MRB_TT_ARRAY) {
     mrb_value v;
