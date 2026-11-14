@@ -238,12 +238,12 @@ change.
 
 | Category | Paths | What a ready pull request runs |
 |---|---|---|
-| `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below), `soak` and `perf`. `nginx-tests`, `examples` and `codeql` by their own path filters; `gem-heads` for `build_config.rb` |
-| `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `soak` when `soak` is `true`; `perf` compares when `perf` is `true`. `gem-heads` for `test/gem_heads.sh` |
+| `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below), `soak` and `perf`. `nginx-tests`, `examples` and `codeql` by their own path filters |
+| `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `soak` when `soak` is `true`; `perf` compares when `perf` is `true` |
 | `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | No job on `next`: the author runs `npm run check:ci` in `site/` ([Site CI](#site-ci)), and `site.yml` checks the merge on the push to `next`. On `master`, the author checks the 2.x pages locally ([The 2.x pages of the site](#the-2x-pages-of-the-site)) |
 | `site` | `site/`, `.github/workflows/site.yml` | No job: as for `docs` |
 | `examples` | `examples/` | `examples`; the site as for `docs` |
-| `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, these two included); `codeql` for `.github/workflows/` and `.github/codeql/`; `gem-heads` for `.github/workflows/gem-heads.yml` |
+| `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, these two included); `codeql` for `.github/workflows/` and `.github/codeql/` |
 
 The four standard cells build each link mode and each line of nginx
 (mainline 1.31 and stable 1.30) at least once, and run both memory checks:

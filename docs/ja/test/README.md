@@ -86,12 +86,12 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 
 | 分類 | パス | readyのPRが実行するワークフロー |
 |---|---|---|
-| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`nginx-tests`、`examples`、`codeql`は、それぞれのパスフィルタに従って動く。`build_config.rb`では`gem-heads`も動く |
-| `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較。`test/gem_heads.sh`では`gem-heads`も動く |
+| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`nginx-tests`、`examples`、`codeql`は、それぞれのパスフィルタに従って動く |
+| `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較 |
 | `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | ジョブなし。手元で検査：[サイトのCI](#サイトのci)（`next`）、[2.xページの検査](#サイトの2xページ)（`master`） |
 | `site` | `.github/workflows/site.yml`と`site/` | ジョブなし。`docs`と同じ |
 | `examples` | `examples/` | examples。サイトは`docs`と同じ扱い |
-| `workflows` | `.github/`のうち`test.yml`と`site.yml`を除いたもの | zizmorは全ワークフローを検査。`.github/workflows/`と`.github/codeql/`はCodeQLも対象。`.github/workflows/gem-heads.yml`では`gem-heads`も動く |
+| `workflows` | `.github/`のうち`test.yml`と`site.yml`を除いたもの | zizmorは全ワークフローを検査。`.github/workflows/`と`.github/codeql/`はCodeQLも対象 |
 
 標準の4セルは、静的モジュールと動的モジュール、nginxのmainline 1.31とstable 1.30を、それぞれ少なくとも1回ビルドします。メモリの検査も、2種類とも実行します。
 
