@@ -172,4 +172,35 @@ v3の移行ガイドは、`next`の`docs/proposals/v3-plan.md`で計画してい
 1. 「タグの前に」のチェックのプルリクエストを、修正より前にマージします。このプルリクエストは、その時点までにマージしたプルリクエストを扱います。修正の非公開のプルリクエストには、その修正のエントリーがあります。
 2. オーナーが、アドバイザリの非公開のフォークから修正をマージします(アドバイザリの「Merge pull request(s)」)。その直後に、セッションが、修正のマージコミットでリリースを公開します。これは、チェックのプルリクエストのマージコミットでリリースを公開するという決まりの例外です。2つのマージの間に別のプルリクエストをマージしたときは、修正をマージする前に、そのプルリクエストのエントリーを確かめます。
 
+リポジトリの普段の設定のままでは、GitHubは手順2のマージを拒みます。セッションがマージの準備をし、マージが通る状態になってから、オーナーにマージを依頼します。これはセッションの手順で、オーナーの決定ではありません。
+
+- マージは、アドバイザリのページの`https://github.com/matsumotory/ngx_mruby/security/advisories/<id>`で行います。アドバイザリのフォームの一番下で、「This advisory is ready to be merged」の下にあるボタン「Merge pull request(s)」を押します。[GitHubのドキュメント](https://docs.github.com/en/code-security/tutorials/fix-reported-vulnerabilities/collaborate-in-a-fork#merging-changes-in-a-security-advisory)を見てください。非公開のフォークにあるプルリクエストのページからは、マージできません。GitHubは一時的な非公開のフォークでCIを実行しないので、そのページでは必須のチェックがいつまでも保留のままです。そのため、オーナーへの依頼には、開くページと各ページで押すものを挙げ、ページはアドバイザリのページだけにします。フォークのプルリクエストへのリンクは入れません。
+- 修正のプルリクエストを、フォークで開いている唯一のプルリクエストにします。GitHubは、フォークで開いているプルリクエストをすべて一度にマージし、フォークのデフォルトブランチに向いたプルリクエストが2つ以上あるとマージを止めます。セッションは、そのプルリクエストがdraftでないことと、コンフリクトが無いことも確かめます。
+- プルリクエストのヘッドに、ベースブランチの先端を含めます。こうすると、マージ後のツリーはそのヘッドのツリーと同じになり、手元の実行が検査したツリーになります。2つのアドバイザリの修正を続けてマージするときは、2つ目のプルリクエストのヘッドに、1つ目のプルリクエストのヘッドを含めます。
+- ルールセット`protected-lines`は、`master`と`next`に`ci-ok`を必須とし、リポジトリの管理者がプルリクエストに限ってbypassできるようにしています。GitHubのページは、アドバイザリからのマージにはブランチの保護ルールを適用しないと書いています。しかし、このリポジトリのrule suiteを見ると、このルールセットはそれでも適用されています。そのようなマージでは毎回、ルール`required_status_checks`が`ci-ok`を待つ状態で失敗し、結果は`bypass`で、マージはbypassのモードが`always`の間に行われていました。直近1か月の結果は`gh api "repos/matsumotory/ngx_mruby/rulesets/rule-suites?ref=refs/heads/master&time_period=month&per_page=100"`で一覧でき、モードはルールセットの履歴で分かります。そこで、セッションは、そのリリースについてオーナーの許可を得たうえで、マージを依頼する直前にbypassのモードを`always`にします。`T`は、このリリースのために新しく作るディレクトリで、リポジトリの外か`.claude/tmp/`の下に置きます。下の2つのブロックは、どちらも`T`を使います。
+
+  ```sh
+  mkdir -p "${T:?}"
+  R=repos/matsumotory/ngx_mruby/rulesets
+  ID=$(gh api $R --jq '.[] | select(.name == "protected-lines") | .id')
+  [ -s "$T/restore.json" ] ||
+    gh api $R/$ID | jq -S '{name,target,enforcement,conditions,rules,bypass_actors}' > "$T/restore.json"
+  jq -e '.bypass_actors | all(.bypass_mode == "pull_request")' "$T/restore.json" > /dev/null &&
+    jq '.bypass_actors |= map(.bypass_mode = "always")' "$T/restore.json" > "$T/open.json" &&
+    gh api -X PUT $R/$ID --input "$T/open.json" > /dev/null
+  ```
+
+  元に戻すための写しは一度だけ書きます。ルールセットは、bypassのモードが`pull_request`である写しからだけ変えます。こうすると、2回目に実行しても、変えた後のルールセットで写しを上書きしません。最後のマージがブランチに入ったら、セッションはすぐにルールセットを元に戻し、写しと比べます。
+
+  ```sh
+  R=repos/matsumotory/ngx_mruby/rulesets
+  ID=$(gh api $R --jq '.[] | select(.name == "protected-lines") | .id')
+  gh api -X PUT $R/$ID --input "${T:?}/restore.json" > /dev/null
+  gh api $R/$ID | jq -S '{name,target,enforcement,conditions,rules,bypass_actors}' | diff "$T/restore.json" -
+  ```
+
+  ルールセットが元のとおりなら、最後の行は何も出力しません。違いが出たときは、ルールセットが元に戻っていないので、ブロックをもう一度実行します。2つ目のブロックは`R`と`ID`を自分で設定するので、1つ目と別のシェルでも動きます。bypassのモードが`always`の間は、管理者が`master`と`next`へ直接pushすることもできます。そのため、セッションはその状態のまま残しません。オーナーが後でマージするときは、セッションはルールセットを元に戻しておき、そのときにもう一度変えます。
+- このマージを裏付けるCIの実行はありません。その代わりになるのは、非公開のプルリクエストに引用した手元の実行です。静的モジュールと動的モジュールでのスイート、sanitizerのビルド、valgrindは[AGENTS.mdの「Build and test」](../../../AGENTS.md#build-and-test)の手順で、性能の比較は[callgrindで性能を比べる](../test/README.md#callgrindで性能を比べる)の手順で実行します。最後のマージの後、リリースの前に、セッションはベースブランチをfetchし、そのツリーが、それらの実行で検査したツリーと同じかを確かめます。`git rev-parse origin/<base>^{tree}`と`git rev-parse <tested commit>^{tree}`が同じidを出力すれば同じです。違うときは、セッションはそのツリーからリリースを公開せず、何が違うかをオーナーに伝えます。
+- リリースの後に、オーナーが同じページで、アドバイザリのフォームの一番下にある「Publish advisory」を押してアドバイザリを公開します。[GitHubのドキュメント](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/fix-reported-vulnerabilities/publish-repository-advisory)を見てください。「Request CVE ID later」を選んだときは、ボタンの表示が「Request CVE」になります。このときは、ルールセットを変える必要はありません。
+
 アドバイザリを公開するまでは、公開のリポジトリのどこにも、脆弱性について書きません。[AGENTS.mdの「Security」](../../../AGENTS.md#security)を見てください。
