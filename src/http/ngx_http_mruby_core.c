@@ -138,8 +138,8 @@ void ngx_mrb_raise_error(mrb_state *mrb, mrb_value exc, ngx_http_request_t *r)
   ngx_str_t s;
 
   ngx_mrb_exception_text(mrb, exc, buf, sizeof(buf), &s);
-  ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                "mrb_run failed: return 500 HTTP status code to client: error: %*s", s.len, s.data);
+  ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "mrb_run failed: return 500 HTTP status code to client: error: %*s",
+                s.len, s.data);
 #if (NGX_DEBUG)
   ngx_mrb_log_backtrace(mrb, exc, r->connection->log);
 #endif
