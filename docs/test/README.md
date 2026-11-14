@@ -130,18 +130,27 @@ whether a needed job that reaches its `timeout-minutes` makes it true; if
 it did, `ci-ok` on `!cancelled()` would be skipped, and the skip would
 pass the required check.
 
-CI is limited to what cannot run locally, the environments that one
-machine does not have (the cells of the build matrix, the sanitizers,
-valgrind, the callgrind comparison), and to the deploy of the site; it is
-not the place where a change is first tested. These are the owner's rules
-of 2026-10-31 and 2026-11-02, in "Branches and pull requests" of
-[AGENTS.md](../../AGENTS.md). Before marking a pull request
+CI is the final check in a clean environment, not the place where a
+change is first tested ("Branches and pull requests" in
+[AGENTS.md](../../AGENTS.md)). Every kind of check that CI runs for a
+change runs locally first: the suite with the static and the dynamic
+module, the suite under the sanitizers and under valgrind, the callgrind
+comparison with the check of the mock LLM, the checks of the 2.x pages
+and zizmor. The sanitizers, valgrind and the comparison need Linux; on
+macOS they run in a Linux container, as the sections of this file show.
+CI spreads these checks to what one machine does not hold: the other
+cells of the build matrix, the x86-64 runner and a clean environment. A
+failure is then found before the push that would show it in CI, and when
+a run fails for a reason of the runner, the local result of the same
+check shows whether the code is at fault. Before marking a pull request
 ready, its author runs the local commands of the checks that the change
 touches, the suite among them when `test/ci/changes.sh` gives `build`
-`standard` or `full` (this file describes them; "Build and test" in AGENTS.md
-lists them) and quotes them under "How was this tested", and the
-reviewer checks that they are there. A check that can run locally is not
-left to CI. The run of a ready pull request runs only the jobs that the
+`standard` or `full`, and for a change of C code or of the build the
+suite under the sanitizers and under valgrind (this file describes them;
+"Build and test" in AGENTS.md lists them), and quotes them under "How was
+this tested", and the reviewer checks that they are there. A check that
+can run locally is not left to CI, and a check is called one that cannot
+run locally only after it was tried. The run of a ready pull request runs only the jobs that the
 change needs (the tables below) and finishes in about fifteen minutes. On
 2026-10-31, on `next`, a cell of the build matrix took 6 to 14 minutes, and
 the run of `test.yml` with the whole matrix for #678 took 15 minutes from
@@ -167,6 +176,9 @@ and its input `valgrind`), and the script gives `build` `full`, every
 cell, or `none` for the runs of the second table below.
 `master` has no `soak` job, `site/` or `examples/`, so `soak`, `site` and
 `examples` decide nothing here.
+
+The jobs of the tables run on the runner the checks that the author has
+already run locally ([Required status check](#required-status-check)).
 
 | Category | Paths | What a ready pull request to `master` runs |
 |---|---|---|
@@ -761,6 +773,27 @@ A cell under valgrind runs nginx with these options:
 valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=test/valgrind.supp --log-file=$RUNNER_TEMP/valgrind/valgrind.%p.log
 ```
 
+For a change of C code or of the build, the author runs the suite under
+valgrind with these options before marking the pull request ready
+([Testing](#testing) has the commands on Linux); the cell under valgrind
+repeats it on the x86-64 runner. Run it in a checkout of its own (for
+example `git archive HEAD | tar -x -C DIR`), because a sanitizer build in
+the same checkout leaves mruby built with other flags. valgrind needs
+Linux; on macOS, run it in a Linux container, from the top of that
+checkout:
+
+```console
+$ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev valgrind >/dev/null && mkdir -p build/valgrind && NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=$PWD/test/valgrind.supp --log-file=$PWD/build/valgrind/valgrind.%p.log" sh test.sh && grep -h "ERROR SUMMARY" build/valgrind/valgrind.*.log | sed "s/^==[0-9]*== //" | sort | uniq -c'
+```
+
+On Linux, run the part inside the quotes after the installation of the
+packages. The last command prints each distinct `ERROR SUMMARY` line with
+the number of logs that have it; every line has to count 0 errors, and
+at least one log has to have the line, as the step "Check the valgrind
+reports" below requires. The SSL cases of the suite request with `curl`,
+so the container installs it. `--init` makes a process of the container
+reap the processes that the tests leave when they exit.
+
 valgrind counts an error for each memory error that occurs (an invalid
 read or write, a conditional jump or a system call on an uninitialised
 value, an invalid or mismatched free) and for each loss record of the
@@ -876,8 +909,12 @@ tested without an ACME server.
 
 ## Running the tests under AddressSanitizer and UndefinedBehaviorSanitizer
 
-CI builds one matrix cell with `-fsanitize=address,undefined`. To run the
-same build locally (Linux, gcc or clang):
+For a change of C code or of the build, the author runs the suite with
+`-fsanitize=address,undefined` before marking the pull request ready; the
+sanitizer cell of the CI matrix builds the same and repeats it on the
+x86-64 runner. Run it in a checkout of its own (for example `git archive
+HEAD | tar -x -C DIR`): an existing mruby build is not rebuilt when only
+the flags change. On Linux, with gcc or clang:
 
 ```console
 $ sudo sysctl -w vm.mmap_rnd_bits=28     # ASan and the kernel's high-entropy ASLR do not mix
@@ -892,7 +929,20 @@ $ NGINX_RUNNER=exec sh test.sh
 $ grep -HnE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name '*.log')
 ```
 
-The last line reads the files that the "Check for sanitizer reports" step
+On macOS, run it in a Linux container, from the top of that checkout.
+The `sysctl` line is not needed there: the Linux VM of Docker Desktop on
+an arm64 Mac has `vm.mmap_rnd_bits` at 18, and a container cannot change
+it.
+
+```console
+$ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev >/dev/null && export NGINX_EXTRA_CC_OPT="-fsanitize=address,undefined -fno-omit-frame-pointer" NGINX_EXTRA_LD_OPT="-fsanitize=address,undefined" NGX_MRUBY_CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" NGX_MRUBY_LDFLAGS="-fsanitize=address,undefined" ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$PWD/test/lsan.supp UBSAN_OPTIONS=print_stacktrace=1:suppressions=$PWD/test/ubsan.supp && NGINX_RUNNER=exec sh test.sh && ! grep -HnE "ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)" $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name "*.log")'
+```
+
+The command exits 0 when `test.sh` passed and the `grep` found no
+report. The container uses gcc 11 of Ubuntu 22.04, the compiler of the
+sanitizer cell.
+
+The last line of the Linux commands reads the files that the "Check for sanitizer reports" step
 of the CI cell reads, with the same pattern; the step fails when a line
 matches. A report goes to the stderr of the process that wrote it, and that
 is one of these files:
@@ -1328,6 +1378,14 @@ thresholds compare.
 
 ### Running it
 
+When the pull request changes an input of the measured binary or the
+measurement (`perf` `true`), its author runs the comparison with the base
+before marking it ready and quotes the report ("Design principles" in
+[AGENTS.md](../../AGENTS.md)), and runs `ruby test/soak/mock_llm_test.rb`,
+which the `perf` job runs before its comparison ([Mock LLM
+upstream](#mock-llm-upstream)); the `perf` job ([In CI](#in-ci)) then
+runs both again on the runner.
+
 The driver needs CRuby 3.0 or later and valgrind with `callgrind_control`
 and its helper `vgdb`, which work on Linux; `perf.rb` stops at once
 without them. On macOS, run it in a Linux container. To compare this
@@ -1379,7 +1437,10 @@ time.
 
 ### In CI
 
-The `perf` job of `.github/workflows/test.yml` starts on ready pull
+The `perf` job repeats on the runner the comparison that the author ran
+locally before marking the pull request ready ([Running
+it](#running-it)), so that the result does not rest on one machine
+alone. The `perf` job of `.github/workflows/test.yml` starts on ready pull
 requests whose run builds (`build` is `standard` or `full` in [Which jobs a run
 starts](#which-jobs-a-run-starts)), and compares when `test/ci/changes.sh`
 gives `perf` `true`, that is when the pull request changes an input of the
