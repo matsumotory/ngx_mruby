@@ -11,23 +11,121 @@
 #include "ngx_http_mruby_var.h"
 
 #include "mruby/array.h"
+#include "mruby/error.h"
 #include "mruby/string.h"
 #include "mruby/variable.h"
 #include "mruby/internal.h"
+
+/* The longest text that names the class of an exception in place of its
+   inspect. */
+#define NGX_MRB_LOG_TEXT_MAX 512
+
+/* A call that the logging of an exception makes on an object of the script. */
+typedef struct {
+  mrb_value obj;
+  const char *method; /* the method to call, or NULL for the name of the class of obj */
+} ngx_mrb_log_call_t;
+
+static mrb_value ngx_mrb_log_call_body(mrb_state *mrb, void *data)
+{
+  ngx_mrb_log_call_t *call = data;
+
+  if (call->method == NULL) {
+    return mrb_str_new_cstr(mrb, mrb_obj_classname(mrb, call->obj));
+  }
+  return mrb_funcall(mrb, call->obj, call->method, 0);
+}
+
+/*
+ * Calls obj.method (with method NULL, takes the name of the class of obj),
+ * stores what it returned, or the exception that it raised, in *result, and
+ * returns whether it returned. A script can redefine #inspect and #backtrace
+ * so that they raise. mrb_funcall catches that exception itself only when no
+ * other mruby call is on the C stack (mrb->jmp is NULL). Inside another one,
+ * for example in the handler of a location that Nginx.redirect runs from Ruby
+ * code, the exception would go to that call's mrb->jmp past the nginx
+ * functions between the two, and nginx would not finish the request.
+ * mrb_protect_error stops the exception here on both paths. mrb->exc, which
+ * the caller may still hold (the exception that is being logged), is cleared
+ * during the call and put back afterwards, so that the exception of the call
+ * is not left in it.
+ */
+static mrb_bool ngx_mrb_log_call(mrb_state *mrb, mrb_value obj, const char *method, mrb_value *result)
+{
+  struct RObject *exc = mrb->exc;
+  ngx_mrb_log_call_t call;
+  mrb_bool raised;
+
+  call.obj = obj;
+  call.method = method;
+  mrb->exc = NULL;
+  *result = mrb_protect_error(mrb, ngx_mrb_log_call_body, &call, &raised);
+  mrb->exc = exc;
+  return !raised;
+}
+
+/* The name of the class of obj in *name, or "?" when taking it raised. */
+static void ngx_mrb_log_class_name(mrb_state *mrb, mrb_value obj, ngx_str_t *name)
+{
+  mrb_value s;
+
+  ngx_str_set(name, "?");
+  if (ngx_mrb_log_call(mrb, obj, NULL, &s)) {
+    name->data = (u_char *)RSTRING_PTR(s);
+    name->len = RSTRING_LEN(s);
+  }
+}
+
+/*
+ * The text of exc for its line of error.log, in *text: exc.inspect when it
+ * returns a String. When it raises or returns another value, the text is
+ * "#<Class> (inspect raised Class)" or "#<Class> (inspect did not return a
+ * String)", as on 3.x, written into buf. The Strings stay in the GC arena,
+ * which every caller restores after the line is written.
+ */
+static void ngx_mrb_exception_text(mrb_state *mrb, mrb_value exc, u_char *buf, size_t size, ngx_str_t *text)
+{
+  mrb_value s;
+  mrb_bool returned;
+  ngx_str_t exc_class, raised_class;
+
+  // The exception may be held only by mrb->exc, which ngx_mrb_log_call
+  // clears during its calls: the GC arena keeps it.
+  mrb_gc_protect(mrb, exc);
+  returned = ngx_mrb_log_call(mrb, exc, "inspect", &s);
+  if (returned && mrb_type(s) == MRB_TT_STRING) {
+    text->data = (u_char *)RSTRING_PTR(s);
+    text->len = RSTRING_LEN(s);
+    return;
+  }
+  ngx_mrb_log_class_name(mrb, exc, &exc_class);
+  if (returned) {
+    text->len = ngx_snprintf(buf, size, "#<%V> (inspect did not return a String)", &exc_class) - buf;
+  } else {
+    ngx_mrb_log_class_name(mrb, s, &raised_class);
+    text->len = ngx_snprintf(buf, size, "#<%V> (inspect raised %V)", &exc_class, &raised_class) - buf;
+  }
+  text->data = buf;
+}
 
 #if (NGX_DEBUG)
 static void ngx_mrb_log_backtrace(mrb_state *mrb, mrb_value obj, ngx_log_t *log)
 {
   if (mrb_type(obj) == MRB_TT_EXCEPTION) {
-    mrb_value bt = mrb_funcall(mrb, obj, "backtrace", 0);
-    if (mrb_type(bt) != MRB_TT_ARRAY) {
+    mrb_value bt;
+    // a #backtrace that raises is logged as one that does not return an Array
+    if (!ngx_mrb_log_call(mrb, obj, "backtrace", &bt) || mrb_type(bt) != MRB_TT_ARRAY) {
       ngx_log_error(NGX_LOG_DEBUG, log, 0, "backtrace must be Array. mrb_type=%d", mrb_type(bt));
       return;
     }
     const mrb_value *p = RARRAY_PTR(bt);
     const mrb_value *e = p + RARRAY_LEN(bt);
     while (p < e) {
-      ngx_log_error(NGX_LOG_ERR, log, 0, "%*s", RSTRING_LEN(*p), RSTRING_PTR(*p));
+      // a script may redefine #backtrace, so its result can hold any object:
+      // an element that is not a String is skipped
+      if (mrb_type(*p) == MRB_TT_STRING) {
+        ngx_log_error(NGX_LOG_ERR, log, 0, "%*s", RSTRING_LEN(*p), RSTRING_PTR(*p));
+      }
       p++;
     }
   }
@@ -36,11 +134,12 @@ static void ngx_mrb_log_backtrace(mrb_state *mrb, mrb_value obj, ngx_log_t *log)
 
 void ngx_mrb_raise_error(mrb_state *mrb, mrb_value exc, ngx_http_request_t *r)
 {
-  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
-  if (mrb_type(s) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(s), RSTRING_PTR(s));
-  }
+  u_char buf[NGX_MRB_LOG_TEXT_MAX];
+  ngx_str_t s;
+
+  ngx_mrb_exception_text(mrb, exc, buf, sizeof(buf), &s);
+  ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                "mrb_run failed: return 500 HTTP status code to client: error: %*s", s.len, s.data);
 #if (NGX_DEBUG)
   ngx_mrb_log_backtrace(mrb, exc, r->connection->log);
 #endif
@@ -48,12 +147,12 @@ void ngx_mrb_raise_error(mrb_state *mrb, mrb_value exc, ngx_http_request_t *r)
 
 void ngx_mrb_raise_connection_error(mrb_state *mrb, mrb_value exc, ngx_connection_t *c)
 {
-  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
-  if (mrb_type(s) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                  MODULE_NAME " : mrb_run failed: return 500 HTTP status code to client: error: %*s", RSTRING_LEN(s),
-                  RSTRING_PTR(s));
-  }
+  u_char buf[NGX_MRB_LOG_TEXT_MAX];
+  ngx_str_t s;
+
+  ngx_mrb_exception_text(mrb, exc, buf, sizeof(buf), &s);
+  ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                MODULE_NAME " : mrb_run failed: return 500 HTTP status code to client: error: %*s", s.len, s.data);
 #if (NGX_DEBUG)
   ngx_mrb_log_backtrace(mrb, exc, c->log);
 #endif
@@ -61,10 +160,11 @@ void ngx_mrb_raise_connection_error(mrb_state *mrb, mrb_value exc, ngx_connectio
 
 void ngx_mrb_raise_cycle_error(mrb_state *mrb, mrb_value exc, ngx_cycle_t *cycle)
 {
-  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
-  if (mrb_type(s) == MRB_TT_STRING) {
-    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", RSTRING_LEN(s), RSTRING_PTR(s));
-  }
+  u_char buf[NGX_MRB_LOG_TEXT_MAX];
+  ngx_str_t s;
+
+  ngx_mrb_exception_text(mrb, exc, buf, sizeof(buf), &s);
+  ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "mrb_run failed. error: %*s", s.len, s.data);
 #if (NGX_DEBUG)
   ngx_mrb_log_backtrace(mrb, exc, cycle->log);
 #endif
@@ -72,10 +172,11 @@ void ngx_mrb_raise_cycle_error(mrb_state *mrb, mrb_value exc, ngx_cycle_t *cycle
 
 void ngx_mrb_raise_conf_error(mrb_state *mrb, mrb_value exc, ngx_conf_t *cf)
 {
-  mrb_value s = mrb_funcall(mrb, exc, "inspect", 0);
-  if (mrb_type(s) == MRB_TT_STRING) {
-    ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "mrb_run failed. error: %*s", RSTRING_LEN(s), RSTRING_PTR(s));
-  }
+  u_char buf[NGX_MRB_LOG_TEXT_MAX];
+  ngx_str_t s;
+
+  ngx_mrb_exception_text(mrb, exc, buf, sizeof(buf), &s);
+  ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "mrb_run failed. error: %*s", s.len, s.data);
 #if (NGX_DEBUG)
   ngx_mrb_log_backtrace(mrb, exc, cf->log);
 #endif
