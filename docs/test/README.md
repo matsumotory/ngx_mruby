@@ -470,6 +470,21 @@ them under "How was this tested":
   fail on a broken link of the built site, on a 2.x page without its
   banner, and when the search of a version shows pages of the other.
 
+  The release notes in `docs/releases/` (`vX.Y.Z.md` and `vX.Y.Z.ja.md`)
+  are also 3.x pages (`/releases/...` and `/ja/releases/...`) once
+  `master` is merged into `next`. This check builds the 3.x pages from
+  `docs/` of the checkout of `next`, so it does not check a release note
+  that the pull request adds or changes as a 3.x page, and the checks of
+  the Japanese pages of `next` (the spaces between Japanese and Latin
+  text, the code blocks, the line breaks) do not read that file. A pull
+  request that adds or changes a release note therefore copies that file
+  into `docs/releases/` of the checkout of `next` before the run, and
+  stages it there with `git add`, because the generator reads only the
+  files that git tracks. One run then checks it as a 2.x page and as a
+  3.x page. This keeps the push
+  to `next` after the merge of `master` from stopping the deploy of the
+  site on those checks.
+
 Two workflows here serve the 2.x pages:
 
 - `.github/workflows/site-dispatch.yml` runs on every push to `master`,
