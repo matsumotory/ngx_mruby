@@ -526,7 +526,7 @@ static mrb_value ngx_mrb_async_http_sub_request(mrb_state *mrb, mrb_value self)
   ngx_str_t *args = NULL;
   int argc;
 
-  argc = mrb_get_args(mrb, "o|S", &path, &query_params);
+  argc = mrb_get_args(mrb, "S|S", &path, &query_params);
 
   r = ngx_mrb_async_request(mrb, "Nginx::Async::HTTP.sub_request");
 
