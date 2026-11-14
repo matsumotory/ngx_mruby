@@ -106,7 +106,15 @@ PRでは、この4セルを実行します。どのセルも、nginxをビルド
 
 valgrindのセルは、同じnginxとモジュールを、インストール済みのOpenSSLでビルドします。ソースから組み込む経路は通りません。
 
-全セルは、nginx 1.31.8と1.30.6、静的モジュールか動的モジュールか、`--with-openssl-src`を付けるかどうかを組み合わせた8セルに、sanitizerのセルを加えたものです。valgrindのセルは8セルの1つです。全セルは引き続き、夜間のvalgrindの実行、タグのpush、`base`入力のない「Run workflow」で実行します。タグの前のチェックのPRでも実行し、このPRにはラベル`full-matrix`を付けます。[docs/releases/README.md](../releases/README.md)の「タグの前に」を参照してください。ほかのセルでしか確かめられない変更、たとえばnginx 1.31.8の動的モジュール向けの変更は、そのバージョンでローカルで確かめます。バージョンは`nginx_version`かセルの`NGINX_VERSION`で選び、モジュールは`BUILD_DYNAMIC_MODULE`で選びます。そのPRにラベル`full-matrix`を付けて、全セルを実行することもできます。
+全セルは、nginx 1.31.8と1.30.6、静的モジュールか動的モジュールか、`--with-openssl-src`を付けるかどうかを組み合わせた8セルに、sanitizerのセルを加えたものです。valgrindのセルは8セルの1つです。全セルは引き続き、夜間のvalgrindの実行、タグのpush、`base`入力のない「Run workflow」で実行します。タグの前にも、ベースブランチの先頭で実行します。タグの前のチェックのPRがあるときはそのPRの実行で、このPRにはラベル`full-matrix`を付けます。チェックにPRが要らないときは、ベースブランチで「Run workflow」を実行します。[docs/releases/README.md](../releases/README.md)の「タグの前に」を参照してください。ほかのセルでしか確かめられない変更、たとえばnginx 1.31.8の動的モジュール向けの変更は、そのバージョンでローカルで確かめます。バージョンは`nginx_version`かセルの`NGINX_VERSION`で選び、モジュールは`BUILD_DYNAMIC_MODULE`で選びます。そのPRにラベル`full-matrix`を付けて、全セルを実行することもできます。
+
+`master`では、`test/ci/changes.sh`が`build`を`standard`か`full`にするPRは、`build`マトリクスでいちばん古いnginx(`master`では1.26.3)と静的モジュールのスイートも手元で流します。`master`の標準の4セルにそのバージョンが入っていないためで、nginxはバージョンによって受け付ける設定が違います(1.27.1より前のnginxは、コンテンツハンドラの無いstreamの`server`を受け付けません)。`next`では、`.github/workflows/test.yml`の`full_matrix`の`NGINX_VERSION`でいちばん古いバージョンは1.30.6で、これは動的モジュールの標準のセルのnginxです。そのため、そのようなPRの実行がこのバージョンをビルドするので、手元の実行は加えません。マトリクスのほかのバージョンで手元でスイートを流すとき(ほかのセルでしか確かめられない変更や、[docs/releases/README.md](../releases/README.md)の「セキュリティの修正」の実行)は、CIのセルが`NGINX_VERSION`から書くのと同じように`nginx_version`を書きます。`nginx_version`の変更をコミットしないように、専用のチェックアウト(headの`git archive`)で書き、そこで`ONLY_BUILD_NGX_MRUBY`を付けずに`test.sh`を流します。理由は[テストを実行する](#テストを実行する)にあります。
+
+```console
+$ V=1.30.6
+$ printf 'NGINX_SRC_MAJOR=%s\nNGINX_SRC_MINOR=%s\nNGINX_SRC_PATCH=%s\nNGINX_SRC_VER=nginx-%s\n' $(echo $V | tr . ' ') $V > nginx_version
+$ sh test.sh
+```
 
 `soak`は`code`が真か、`test/soak/`または`test/build_release.sh`の変更時に真になります。`perf`は`code`が真か、性能測定に使う`test/perf/`、`test/build_release.sh`、`test/soak/`のシナリオファイルの変更時に真になります。未分類のファイルは`code`として全検査を実行し、理由を記載したPRで分類を追加するまでそのままです。複数の分類のファイルを変えるPRは、それぞれの分類に必要なジョブを、すべて実行します。
 
@@ -209,6 +217,15 @@ ngx.mruby.orgは`next`の`site/`でビルドします。`/v2/`の2.xページは
 このコマンドは、`next`の3.xページとPRの2.xページをビルドし、ブラウザの検査も含めて確かめます。表示された`next`のコミットと、PRのheadを結果に添えてください。Rubyのブロックは、`MRBC`で指定したコンパイラか、同梱mrubyの`mruby/build/host/bin/mrbc`でコンパイルします。どちらも無ければ、その検査を省略したことを最後に表示します。
 
 検査は、解決できないリンクやアンカー、gitが追跡しないファイルへのリンク、2.xバナーの欠落を検出します。検索結果に別のバージョンのページが混じった場合も失敗します。
+
+`docs/releases/`のリリースノート(`vX.Y.Z.md`と`vX.Y.Z.ja.md`)は、`master`を`next`へマージすると、3.xのページ(`/releases/...`と`/ja/releases/...`)にもなります。この検査は3.xのページを`next`のチェックアウトの`docs/`からビルドするので、PRが加えるか変えるリリースノートを、3.xのページとしては検査しません。`next`の日本語のページの検査(和文と英数字の間のスペース、コードブロック、行の折り返し)も、そのファイルを読みません。そのため、リリースノートを加えるか変えるPRは、流す前にそのファイルを`next`のチェックアウトの`docs/releases/`にコピーし、pushしないローカルのコミットにします。
+
+```console
+$ git add docs/releases/vX.Y.Z.md docs/releases/vX.Y.Z.ja.md
+$ git commit -m 'Release notes to check (local only, not pushed)'
+```
+
+ジェネレーターはgitが追跡するファイルだけを読みます。また、`site/scripts/export-docs.mjs`は、ソースがコミット`HEAD`に無いページで、`source must exist at HEAD before export`と出して止まります。そのため、ステージするだけでは、新しいファイルでビルドが止まります。`HEAD`にすでにあるファイルの変更なら通りますが、コミットにすれば、どちらの場合も通ります。こうすると、1回の実行で、そのファイルを2.xのページとしても3.xのページとしても検査します。`check:ci`はローカルのコミットを表示するので、その親である`next`のコミットと一緒に結果に書きます。終わったら、そのチェックアウトを消すか、`origin/next`に戻します。こうすると、`master`をマージした後の`next`へのpushで、これらの検査のためにサイトのデプロイが止まることがありません。
 
 公開に関わるワークフローは、次の2つです。
 
