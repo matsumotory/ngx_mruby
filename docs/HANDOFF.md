@@ -460,23 +460,16 @@ decisions. Conversation quotations and attribution are not a substitute for
 checking whether a decision fits the evidence and requirements.
 
 - **2026-11-12, local checks first.** CI is the final check in a clean
-  environment. The checks that CI runs for a change are run locally by
-  the author before the PR is marked ready, and their failures are found
-  there. The sessions apply it this way (their procedure, kept current in
-  AGENTS.md "Branches and pull requests" and "Build and test"): the check
-  of the added files for every PR; the suite with the static and the
-  dynamic module, under AddressSanitizer and UndefinedBehaviorSanitizer
-  and under valgrind when `test/ci/changes.sh` gives `build` `standard`
-  or `full`; the callgrind comparison, the soak, the steps of
-  `examples/start`, nginx-tests, the report of `test/gem_heads.sh`, the
-  site's checks and the static analysis of the workflows when the change
-  touches what they check. On macOS the Linux-only checks run in a Linux
-  container. CI keeps only what one machine does not hold (the other
-  nginx versions, link modes and the OpenSSL built from source of the
-  build matrix, the x86-64 runner and a clean environment) and the checks
-  kept in CI with their reason written in AGENTS.md: CodeQL on both
-  branches, and on `master` the auto-ssl case for changes outside its
-  paths. Rationale: a check
+  environment. Every kind of check that CI runs for a change is run
+  locally by the author before the PR is marked ready, and its failures
+  are found there: the suite with the static and the dynamic module, the
+  suite under AddressSanitizer and UndefinedBehaviorSanitizer and under
+  valgrind (for C code and build changes), the callgrind comparison, the
+  soak, the steps of `examples/start`, nginx-tests, the site's checks and
+  the static analysis of the workflows. On macOS the Linux-only checks
+  run in a Linux container. CI keeps only the spread to what one machine
+  does not hold: the other nginx versions and link modes of the build
+  matrix, the x86-64 runner and a clean environment. Rationale: a check
   whose first run is in CI is found failing there, and each fix costs a
   push and a CI wait; when the runner itself fails, a local result of the
   same check is what separates a code defect from a runner problem. #796
@@ -487,7 +480,17 @@ checking whether a decision fits the evidence and requirements.
   the limits on CI time and the base-move condition stay. Written in
   AGENTS.md ("Design principles", "Branches and pull requests", "Review
   and merge", "Build and test"), the PR template and `docs/test/README.md`
-  on both branches (`master` in #807).
+  on `next`, and on `master` in #807.
+  The following is the sessions' procedure, not part of the decision of
+  2026-11-12: #807 (on `master`) and #808 (on `next`) settled it after the
+  reviews of #807, and AGENTS.md "Branches and pull requests" and "Build
+  and test" hold its current text. The author runs the check of the added
+  files for every PR, and the suite with the static and the dynamic
+  module, under the sanitizers and under valgrind, when
+  `test/ci/changes.sh` gives `build` `standard` or `full`. Besides what
+  one machine does not hold, CI keeps the checks whose reason AGENTS.md
+  writes down: CodeQL on `next`, and CodeQL and, for changes outside its
+  paths, the auto-ssl case on `master`.
 - **2026-11-03, agent assignment.** Choose Codex models and reasoning effort
   by role and task complexity, using currently available capabilities rather
   than fixed model names. Routine work uses a sufficient faster, lower-cost
@@ -640,7 +643,7 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), , through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), and through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806). [#808](https://github.com/matsumotory/ngx_mruby/pull/808) merges through `7a72306bb` (#807) and waits for its checks, review and merge; the next merge of `master` after it waits for a merge into `master` |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), and through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806). [#808](https://github.com/matsumotory/ngx_mruby/pull/808) merges through `7a72306bb` (#807) and waits for its checks, review and merge; the next merge of `master` after it waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
