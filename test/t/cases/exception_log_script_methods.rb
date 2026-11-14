@@ -193,6 +193,47 @@ t.assert('exception log', 'inside another mruby call, an exception whose backtra
   t.assert_equal 'hello', HttpRequest.new.get(base(18091) + '/script_methods/hello')["body"]
 end
 
+# The same path with an #inspect or a #backtrace that does not raise. Before
+# the fix, these left the request unfinished as well: the method ran while
+# the exception was still pending, and so returned it by a jump to the
+# outer call.
+t.assert('exception log', 'inside another mruby call, an exception whose inspect returns a String: the line has that String, and the worker answers the next request') do
+  before = script_methods_active
+  offset = File.size(script_methods_log_path)
+  status, raw = tcp_client(18091, "GET /script_methods/set_redirect_inspect_string HTTP/1.0\r\nHost: localhost\r\n\r\n")
+  errors = script_methods_exception_lines(script_methods_lines_from(offset))
+  after = script_methods_active
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 500 Internal Server Error', raw.split("\r\n", 2)[0].to_s
+  t.assert_true after <= before, "active connections grew from #{before} to #{after}"
+  t.assert_equal 1, errors.size
+  t.assert_true script_methods_message(errors[0].to_s).start_with?(
+    PREFIX_500 + 'script methods: the inspect of the script 42, client: 127.0.0.1'
+  ), errors[0].to_s
+  t.assert_equal 'hello', HttpRequest.new.get(base(18091) + '/script_methods/hello')["body"]
+end
+
+t.assert('exception log', 'inside another mruby call, a redefined backtrace that returns an Array: its Strings are logged, and the worker answers the next request') do
+  before = script_methods_active
+  offset = File.size(script_methods_log_path)
+  status, raw = tcp_client(18091, "GET /script_methods/set_redirect_backtrace_types HTTP/1.0\r\nHost: localhost\r\n\r\n")
+  lines = script_methods_lines_from(offset)
+  errors = script_methods_exception_lines(lines)
+  frames = script_methods_errors(lines).reject { |l| l.include?('mrb_run failed') }
+  after = script_methods_active
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 500 Internal Server Error', raw.split("\r\n", 2)[0].to_s
+  t.assert_true after <= before, "active connections grew from #{before} to #{after}"
+  t.assert_equal 1, errors.size
+  t.assert_true script_methods_message(errors[0].to_s).start_with?(
+    PREFIX_500 + ScriptMethodsBacktraceTypes.new('script methods: backtrace types 42').inspect + ', client: 127.0.0.1'
+  ), errors[0].to_s
+  t.assert_equal 2, frames.size
+  t.assert_true script_methods_message(frames[0].to_s).start_with?('script methods: first frame 42, client: 127.0.0.1'), frames[0].to_s
+  t.assert_true script_methods_message(frames[1].to_s).start_with?('script methods: last frame 42, client: 127.0.0.1'), frames[1].to_s
+  t.assert_equal 'hello', HttpRequest.new.get(base(18091) + '/script_methods/hello')["body"]
+end
+
 t.assert('exception log', 'a stream session whose exception has an inspect that raises: the line names its class, for each session') do
   offset = File.size(script_methods_log_path)
   tcp_client(12389)
