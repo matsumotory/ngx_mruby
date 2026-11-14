@@ -767,7 +767,7 @@ Nginx.echo r.uri #=> /hello
 
 ### Nginx::Request#uri=(string)
 
-Set the string to uri.
+Set the string to uri. An argument that is not a String raises `TypeError`. The other Request setters that share this behavior are `#args=`, `#content_type=`, `#method=`, `#protocol=`, `#request_line=` and `#unparsed_uri=`.
 
 ```
 r = Nginx::Request.new
@@ -1227,7 +1227,7 @@ Nginx.rputs hin["User-Agent"] #=> curl/7.29.0
 
 ### Nginx::Headers_in#[]=(string, string)
 
-Sets the value to the http request header.
+Sets the value to the http request header. The name and the value must each be a String; a non-String raises `TypeError`.
 
 ```ruby
 hin = Nginx::Headers_in.new
@@ -1286,7 +1286,7 @@ Nginx.rputs hout["X-NGX-MRUBY"] #=> support
 
 ### Nginx::Headers_out#[]=(string, string)
 
-Sets the value to the http response header.
+Sets the value to the http response header. The name and the value must each be a String; a non-String raises `TypeError`.
 
 ```ruby
 hout = Nginx::Headers_out.new
@@ -1520,7 +1520,7 @@ Nginx::Async.sleep 3000    # Sleep 3000 millisec
 
 ### Nginx::Async::HTTP#sub_request(location, string_or_hash=nil)
 
-Sends a sub request in non-blocking way.
+Sends a sub request in non-blocking way. The location must be a String; a non-String raises `TypeError`.
 It's currently supported in the `set`, `rewrite` and `access` handlers.
 In a content handler that has waited in `Nginx::Async.sleep`, it raises a `RuntimeError` (since 2.7.3), because nginx would not finish the request after the subrequest.
 Like `Nginx::Async.sleep`, it raises a `RuntimeError` in a log handler and in
