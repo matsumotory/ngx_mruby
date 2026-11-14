@@ -97,6 +97,22 @@ t.assert('argument types', 'Nginx.redirect with a status code of the wrong type 
   t.assert_include log, 'String cannot be converted to Integer (TypeError)'
 end
 
+# Nginx.redirect takes one or two arguments. A third argument raises
+# ArgumentError before the call does anything, for a URL and for an internal
+# location. Before the fix, the format of the arguments did not match the
+# number of variables that received them, and the result of a call with three
+# arguments was not defined.
+%w[url internal].each do |to|
+  t.assert('argument types', "Nginx.redirect with three arguments (#{to}) raises ArgumentError") do
+    status, line, headers, body = argument_types_get("/redirect?to=#{to}&code=three")
+    t.assert_equal 'EOF', status
+    t.assert_equal 'HTTP/1.1 200 OK', line
+    t.assert_nil headers['location']
+    t.assert_equal 'raised: ArgumentError: wrong number of arguments (given 3, expected 1..2)', headers['x-raised']
+    t.assert_equal 'no redirect', body
+  end
+end
+
 # The worker that got the values above still answers.
 t.assert('argument types', 'the server answers after the status codes of the wrong type') do
   status, line, headers, _ = argument_types_get('/redirect?to=url&code=301')
