@@ -2782,6 +2782,18 @@ on the push of the merge catches it before it deploys, and the fix is a
 pull request of its own (condition 2 of "Review and merge" in
 [AGENTS.md](../../AGENTS.md)).
 
+A pull request that merges `master` into `next` changes `docs/` as well,
+so its author runs `npm run check:ci` in `site/` of its head before
+marking it ready. The check of "The 2.x pages of the site" in
+`docs/test/README.md` on `master` does not stand for this run: it builds
+the 3.x pages from a checkout of `next` without the merge, not from the
+merged tree. When the merge brings a change to an English page that has a
+Japanese page in `docs/ja/` (`docs/releases/README.md`, for example), the
+same pull request updates the Japanese page, because `check-japanese.mjs`
+compares the code blocks of the two pages. This keeps the push of the
+merge from stopping the deploy of the site on the checks of the merged
+tree.
+
 The layout and wrapping checks of the site (`check-styles.mjs`,
 `check-japanese-lines.mjs`) measure two patterns only, PC at full screen
 (1440px, Chromium) and iPhone Safari (402px, WebKit); no other widths,
