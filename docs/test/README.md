@@ -137,14 +137,22 @@ locally first: the check of the added files ([Files that do not belong
 in the repository](#files-that-do-not-belong-in-the-repository)), the
 suite with the static and the dynamic module, the suite under the
 sanitizers and under valgrind, the callgrind comparison with the check
-of the mock LLM, the checks of the 2.x pages and zizmor. The sanitizers,
+of the mock LLM, the report of the heads of the GitHub gems when the
+change touches `build_config.rb`, `test/gem_heads.sh` or
+`.github/workflows/gem-heads.yml` ([Heads of the GitHub
+gems](#heads-of-the-github-gems)), the checks of the 2.x pages and
+zizmor. The sanitizers,
 valgrind and the comparison need Linux; on macOS they run in a Linux
 container, as the sections of this file show. CI keeps for itself only
 what one machine does not hold, the other cells of the build matrix
 (with OpenSSL 1.1.1w built from source), the x86-64 runner and a clean
 environment, to which it spreads the local checks, and the checks that
-"Branches and pull requests" keeps in CI with their reason: today only
-CodeQL ([CodeQL](#codeql)). A failure is then found before the push that
+"Branches and pull requests" keeps in CI with their reason. These are
+two: CodeQL ([CodeQL](#codeql)), and the auto-ssl case for a change that
+touches none of `mrbgems/auto-ssl/`, the `Nginx::SSL` code and
+`test/auto_ssl/`: the case needs the services that
+`test/auto_ssl/deps.sh` starts and skips without them, and every cell of
+CI starts them ([Testing the auto-ssl mrbgem](#testing-the-auto-ssl-mrbgem)). A failure is then found before the push that
 would show it in CI, and when a run fails for a reason of the runner,
 the local result of the same check shows whether the code is at fault.
 Before marking a pull request ready, its author runs the local commands
@@ -185,14 +193,21 @@ cell, or `none` for the runs of the second table below.
 The jobs of the tables, except `codeql`, run on the runner the checks
 that the author has already run locally ([Required status
 check](#required-status-check)); `codeql` runs only in CI
-([CodeQL](#codeql)).
+([CodeQL](#codeql)), and so does the auto-ssl case of the `build` cells
+for a change outside its paths. `gem-heads` (`.github/workflows/gem-heads.yml`)
+decides by its own path filter, not by `test/ci/changes.sh`: it runs on a
+ready pull request that changes `build_config.rb`, `test/gem_heads.sh` or
+the workflow, and its local counterpart is `bash test/gem_heads.sh
+build_config.rb "" .claude/tmp/gem-heads.tsv` ([Heads of the GitHub
+gems](#heads-of-the-github-gems)), which the author runs for such a
+change.
 
 | Category | Paths | What a ready pull request to `master` runs |
 |---|---|---|
-| `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below) and `perf`. `codeql` for `src/` and `mrbgems/` |
-| `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `perf` compares when `perf` is `true` |
+| `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below) and `perf`. `codeql` for `src/` and `mrbgems/`; `gem-heads` for `build_config.rb` |
+| `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `perf` compares when `perf` is `true`. `gem-heads` for `test/gem_heads.sh` |
 | `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | No job: the author checks the 2.x pages locally ([The 2.x pages of the site](#the-2x-pages-of-the-site)) |
-| `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, `test.yml` included); `codeql` for `.github/workflows/` and `.github/codeql/` |
+| `workflows` | `.github/` except `test.yml` and `site.yml` | `zizmor` (all the workflows, `test.yml` included); `codeql` for `.github/workflows/` and `.github/codeql/`; `gem-heads` for `.github/workflows/gem-heads.yml` |
 
 The four standard cells build each link mode and each line of nginx
 (mainline 1.31 and stable 1.30) at least once, and run both memory checks:
@@ -545,8 +560,9 @@ less accurate results than one made from a build
 The actions are pinned by commit id like those of the other workflows, and
 `zizmor` checks the file.
 
-CodeQL is the one check that "Branches and pull requests" in
-[AGENTS.md](../../AGENTS.md) keeps in CI: an author does not run it
+CodeQL is one of the two checks that "Branches and pull requests" in
+[AGENTS.md](../../AGENTS.md) keeps in CI (the other is the auto-ssl case
+for a change outside its paths): an author does not run it
 before marking a pull request ready. The job uploads its results to
 code scanning, and GitHub shows the new alerts on the lines that the pull
 request changes as annotations in the pull request

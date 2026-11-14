@@ -20,8 +20,11 @@ Exact commands and their results, e.g. `sh test.sh`, `BUILD_DYNAMIC_MODULE=1 sh 
 with the nginx version used, the commit each ran on and the machine.
 The checks that CI runs for the change run locally first ("Build and test" in AGENTS.md lists
 them: `sh test/check_added_files.sh`, the suite with the static and the dynamic module, the
-sanitizers and valgrind, the callgrind comparison and the check of the mock LLM, the checks of the
-2.x pages, zizmor); only CodeQL stays in CI ("Branches and pull requests" in AGENTS.md). A check of
+sanitizers and valgrind, the callgrind comparison and the check of the mock LLM, `test/gem_heads.sh`
+when the change touches `build_config.rb`, `test/gem_heads.sh` or `.github/workflows/gem-heads.yml`,
+the checks of the 2.x pages, zizmor). Two checks stay in CI ("Branches and pull requests" in
+AGENTS.md): CodeQL, and the auto-ssl case for a change outside `mrbgems/auto-ssl/`, the
+`Nginx::SSL` code and `test/auto_ssl/`; a change inside them runs that case locally. A check of
 that list that could not run for this PR: what was tried, and why it did not run.
 Bug fixes: the regression test is the first commit and the fix the second; quote `sh test.sh`
 (or the valgrind/sanitizer report) at each commit, failing at the first and passing at the second.

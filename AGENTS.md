@@ -208,27 +208,37 @@ upgrading". New behavior, API cleanups and features go to `next`.
   valgrind, the callgrind comparison (`sh test/perf/compare.sh`) with the
   check of the mock LLM that the `perf` job runs before it, the check of
   the added files (`sh test/check_added_files.sh`, the `files` job), the
-  checks of the 2.x pages of the site and the static analysis of the
-  workflows. CI keeps for itself only what one machine does not hold and
+  report of the heads of the GitHub gems (`bash test/gem_heads.sh`, the
+  `gem-heads` workflow) when the change touches `build_config.rb`,
+  `test/gem_heads.sh` or `.github/workflows/gem-heads.yml`, the checks of
+  the 2.x pages of the site and the static analysis of the workflows. CI keeps for itself only what one machine does not hold and
   the checks kept in CI with their reason written here. What one machine
   does not hold: the other cells of the build matrix (nginx versions, link
   modes, `--with-openssl-src`, OpenSSL 1.1.1w built from source), the
   x86-64 runner and a clean environment; CI spreads the local checks to
-  them. The checks kept in CI: today only CodeQL (the `codeql` job). The
+  them. The checks kept in CI are two. CodeQL (the `codeql` job): the
   job uploads its results to GitHub's code scanning, and GitHub shows the
   new alerts on the changed lines in the PR; a local run would need the
   CodeQL bundle (about 550 MB), whose support for Linux on arm64 and for
   Apple Silicon is in beta (the system requirements of CodeQL), and
   CodeQL has not been run locally for this repository ("CodeQL" in
-  `docs/test/README.md`). CI on `next` also builds and deploys the site.
+  `docs/test/README.md`). The auto-ssl case (`test/t/cases/auto_ssl.rb`),
+  for a change that touches none of `mrbgems/auto-ssl/`, the `Nginx::SSL`
+  code (`src/http/ngx_http_mruby_ssl.c`, `.h`) and `test/auto_ssl/`: the
+  case needs the services that `test/auto_ssl/deps.sh` starts in Docker
+  (Redis, two Pebble ACME servers, pebble-challtestsrv) and the
+  dehydrated client that it downloads, and it skips without them, as in
+  the local runs of the suite; every cell of CI starts them ("Testing the
+  auto-ssl mrbgem" in `docs/test/README.md`). A change that touches one of
+  those paths runs the case locally ("Build and test"). CI on `next` also builds and deploys the site.
   The reasons: when CI is the first place where a check runs, its failure
   is found there, and every fix costs one more push and one more wait for
   CI; and when a run fails for a reason of the runner, only a local result
   of the same check tells whether the code is at fault. The sanitizers,
   valgrind and the comparison need Linux; on macOS they run in a Linux
-  container ("Build and test"). A check that is to stay in CI only gets
-  its reason written here, as the proposal to add it says (the end of
-  this item). CI is not packed with so many checks that a
+  container ("Build and test"). When a check is to stay in CI and not
+  run locally, its reason is written here, and the proposal to add it
+  gives that reason (the end of this item). CI is not packed with so many checks that a
   run takes tens of minutes, and what ran locally is not repeated in CI
   beyond that spread (the decisions of 2026-10-31, 2026-11-02 and
   2026-11-12 in "Decisions" of `docs/HANDOFF.md` on `next`). So a PR to `next` runs no
@@ -586,10 +596,15 @@ sh test/check_added_files.sh origin/<base> HEAD   # the files job: no added file
   change of the tests alone included; `sh test/perf/compare.sh` and `ruby
   test/soak/mock_llm_test.rb` when it gives `perf` `true`; `sh
   test/ci/changes_test.sh` for `test/ci/`, the checks of the 2.x pages
-  for `docs/` ("The 2.x pages of the site" in `docs/test/README.md`), and
-  zizmor for `.github/` ("Static analysis of the workflows" there).
-  `docs/test/README.md` describes each of them. CodeQL is not run locally
-  ("Branches and pull requests" gives the reason). The docker forms build
+  for `docs/` ("The 2.x pages of the site" in `docs/test/README.md`),
+  zizmor for `.github/` ("Static analysis of the workflows" there), and
+  `bash test/gem_heads.sh build_config.rb "" .claude/tmp/gem-heads.tsv`
+  (with `gh` and a token; "Heads of the GitHub gems" in
+  `docs/test/README.md`) when the change touches `build_config.rb`,
+  `test/gem_heads.sh` or `.github/workflows/gem-heads.yml`.
+  `docs/test/README.md` describes each of them. CodeQL, and the auto-ssl
+  case for a change outside its paths, are not run locally ("Branches and
+  pull requests" gives the reasons). The docker forms build
   against the OpenSSL of Ubuntu 22.04 and do not start the services of
   the auto-ssl case, which the cells of CI cover; a change of
   `mrbgems/auto-ssl/`, of the `Nginx::SSL` code
