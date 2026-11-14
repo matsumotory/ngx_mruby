@@ -1,17 +1,19 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-15 (02:50 JST)
+## State as of 2026-11-15 (04:00 JST)
 
-- Heads: `master` is `f736bae0c`, the tag `v2.7.7` (below): the second
-  of the two merges from the advisories, after `7a2724265`, the first, and
-  `cc829db6e`, the merge of [#809](https://github.com/matsumotory/ngx_mruby/pull/809)
-  (below). `next` is `fef20e671`, the second of the two merges of the same
+- Heads: `master` is `91499f767`, the merge of
+  [#811](https://github.com/matsumotory/ngx_mruby/pull/811) (2026-11-15
+  03:59 JST; documentation only, below), after `f736bae0c`, the tag
+  `v2.7.7` (below): the second of the two merges from the advisories,
+  after `7a2724265`, the first, and `cc829db6e`, the merge of
+  [#809](https://github.com/matsumotory/ngx_mruby/pull/809) (below). `next` is `fef20e671`, the second of the two merges of the same
   fixes from the advisories into `next` (2026-11-15 02:02 JST), after
   `4fbe72294`, the first, and `dc6a6a6cd`, the merge of
   [#808](https://github.com/matsumotory/ngx_mruby/pull/808) (2026-11-14
   19:36 JST), which brought `master` at `7a72306bb` (#807) into `next`.
   This entry is written in [#810](https://github.com/matsumotory/ngx_mruby/pull/810),
-  the open pull request to `next` that merges `master` at `f736bae0c`
+  the open pull request to `next` that merges `master` at `91499f767`
   into `next`. `v2.x` mirrors `master`.
   The latest published release is 2.7.7.
 - The release 2.7.7: the tag `v2.7.7` is on `f736bae0c`, and
@@ -51,10 +53,15 @@
   configuration only), and its run on its head passed in all 17 cells. The
   push of the tag ran the whole matrix at `f736bae0c`
   ([run 43619287702](https://github.com/matsumotory/ngx_mruby/actions/runs/43619287702)):
-  17 cells passed. The advisory ids are not in `docs/releases/v2.7.7.md`
-  and `.ja.md` yet: a pull request to `master` adds them ("Security
-  fixes" in `docs/releases/README.md`), and the next merge of `master`
-  brings them to `next`.
+  17 cells passed. #811 (`91499f767`) added the links of the two
+  advisories to `docs/releases/v2.7.7.md` and `.ja.md`, and reworded two
+  lines of the Japanese file whose last line held two characters on the
+  site (`check-japanese-lines.mjs`); the release body links both
+  advisories in English and Japanese. The site: `site.yml` was started on
+  `next` after the release at 03:27 JST
+  ([run 43626723963](https://github.com/matsumotory/ngx_mruby/actions/runs/43626723963),
+  success), and the home page of ngx.mruby.org names v2.7.7 since 03:31
+  JST.
 - [#807](https://github.com/matsumotory/ngx_mruby/pull/807) (merged into
   `master` on 2026-11-14 at 19:02 JST as `7a72306bb`) brings the decision
   of 2026-11-12 under "Decisions" (local checks first) to the documents
@@ -682,7 +689,7 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), and through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808). [#810](https://github.com/matsumotory/ngx_mruby/pull/810) merges through `f736bae0c` (#809 and v2.7.7) and waits for its checks, review and merge; the next merge of `master` after it waits for a merge into `master` |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), and through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808). [#810](https://github.com/matsumotory/ngx_mruby/pull/810) merges through `91499f767` (#809, v2.7.7 and #811) and waits for its checks, review and merge; the next merge of `master` after it waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
@@ -723,6 +730,7 @@ Taken up and still open: none.
 | A body filter whose request lost its module context while the response was still being written: [the review of #785](https://github.com/matsumotory/ngx_mruby/pull/785#issuecomment-6767421067) (should fix, "The other place that clears the module context") found that the body filter drops the context when an earlier handler's `Nginx.rputs` output is still in it, and that the response then stopped after its first write until `send_timeout` | `master`, then `next` | Done: fixed on `master` in [#786](https://github.com/matsumotory/ngx_mruby/pull/786) (`10c4cd927`), for locations with and without an mruby header filter, and brought to `next` by [#787](https://github.com/matsumotory/ngx_mruby/pull/787) |
 | Make an mruby body filter run once on a proxied response that goes out in one write after an earlier handler's `Nginx.rputs` (should fix 4 of [the review of #786](https://github.com/matsumotory/ngx_mruby/pull/786#issuecomment-6768923430)). Today the empty last buffer that `ngx_http_upstream_finalize_request` sends runs the code of the body filter a second time on an empty body, and `$sent_http_content_length` logs `0` instead of the length. Since #786, a response sent in more than one write runs the code once and logs the length, so the logged value depends on the number of writes | `next` (a behavior change, not for 2.x) | Ready to start: a test of the one-write case with a proxied location of `test/conf/conf.d/90-body-filter-leftover-chain.conf`, a fix and an entry under "Behavior changes" of `docs/releases/v3.0.0.md` and `.ja.md` |
 | Local checks first (the decision of 2026-11-12 under "Decisions") on `master`: the same change to AGENTS.md ("Design principles", "Branches and pull requests", "Review and merge", "Build and test"), `.github/PULL_REQUEST_TEMPLATE.md` and `docs/test/README.md` of `master` | `master` | Done: [#807](https://github.com/matsumotory/ngx_mruby/pull/807), merged on 2026-11-14 as `7a72306bb`; its fixes reach `next` in [#808](https://github.com/matsumotory/ngx_mruby/pull/808) |
+| Candidates to add to the release procedure (`docs/releases/README.md`, "Before the tag" and "Security fixes"), seen in the 2.7.7 release: the pull requests of the fixes in the advisories' private forks did not check the release notes they changed as 3.x pages (the check of "The 2.x pages of the site" in `docs/test/README.md` on `master`), so two lines of `v2.7.7.ja.md` failed `check-japanese-lines.mjs` first in #810; the step that starts `site.yml` on `next` after the release was missed until 03:27 JST, so the home page named 2.7.6 until then; the check before the tag was not a public pull request (as for 2.7.6, it is recorded in this file); the "patched versions" of an advisory draft are set before it is published; the commit messages of the fixes in a private fork name neither the advisory id nor the details of the defect; and the whole build matrix runs on the public `master` before the tag | `master` (the procedure of 2.x releases), then `next` by the merge | Not started: a documentation pull request to `master` |
 | An mruby body filter on a subrequest of SSI (`<!--# include virtual=... -->`): the included part is missing and the main response stops until `send_timeout`, also without any `Nginx.rputs` and with only a body filter (a note of [the review of #786](https://github.com/matsumotory/ngx_mruby/pull/786#issuecomment-6768923430), seen on `master` before and after #786) | `master`, then `next` by the merge | Ready to start: a regression test in a commit of its own, then the fix; the cause is not investigated yet |
 
 ## How a session continues
