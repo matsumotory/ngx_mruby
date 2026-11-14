@@ -440,7 +440,12 @@ these hold:
    on the push of the merge builds and checks the merged tree before it
    deploys, and fails there instead of publishing (a push to `master`
    starts that run on `next` through `site-dispatch.yml`). A failure
-   there is fixed by a PR of its own. The rulesets do not require an
+   there is fixed by a PR of its own. The session that merges a PR to
+   `next`, or a PR to `master` that changes `docs/`, reads the result of
+   the run of `site.yml` that the push of the merge started (`gh run
+   list --workflow site.yml --branch next`), because the merge does not
+   wait for that run, and a failure that nobody reads leaves the deploy of
+   the site stopped. The rulesets do not require an
    up-to-date branch, so this condition is the check. A run made green by
    skipping or disabling tests does not count. A run in which the
    `changes` job of `test.yml` skipped jobs that the PR's files do not
