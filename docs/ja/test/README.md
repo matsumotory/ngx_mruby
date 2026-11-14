@@ -68,11 +68,13 @@ readyのheadへpushすると、前のheadの実行をキャンセルして新し
 
 それ以外の実行では`ci-ok`に`always()`を使います。必要なジョブが終わる前に、新しいpushか「Cancel workflow」で実行がキャンセルされると、`ci-ok`は動いて失敗します。その実行はコミットを最後までテストしていないからです。新しいpushによる失敗は、置き換えられた古いheadに残ります。GitHubの説明では`cancelled()`はワークフローがキャンセルされたことを示しますが、必要なジョブの`timeout-minutes`超過でも真になるかは明記されていません。真になるなら`!cancelled()`の`ci-ok`はスキップされ、そのスキップが必須チェックを満たしてしまいます。`site.yml`は`next`へのpushとdispatchでだけ動き、ルールセットはそのジョブを要求しません。`site.yml`の`deploy`は、`build`が成功したときだけ動きます。[サイトのCI](#サイトのci)を参照してください。
 
-CIは、クリーンな環境での最後の確認です。変更を初めて試す場所ではありません。AGENTS.mdの「Branches and pull requests」にこの決まりがあります。CIが流す種類の検査は、どれも先に手元で流します。対象は、静的なモジュールと動的なモジュールでのテストスイート、2つのsanitizerとvalgrindの下でのテストスイート、callgrindの比較、ソークテスト、`examples/start`の手順、nginx-tests、サイトの検査、zizmorです。sanitizer、valgrind、callgrindの比較、ソークテストにはLinuxが要ります。macOSでは、このページの各節にあるように、Linuxのコンテナで流します。CIは、手元で流した検査を、1台のマシンでは用意しきれない組み合わせへ広げます。`build`マトリクスのほかのセル、x86-64のrunner、クリーンな環境です。
+CIは、クリーンな環境での最後の確認です。変更を初めて試す場所ではありません。AGENTS.mdの「Branches and pull requests」にこの決まりがあります。CIが流す検査は、先に手元で流します。対象は、追加したファイルの検査([リポジトリに置かないファイル](#リポジトリに置かないファイル))、静的なモジュールと動的なモジュールでのテストスイート、2つのsanitizerとvalgrindの下でのテストスイート、callgrindの比較、ソークテスト、`examples/start`の手順、nginx-tests、サイトの検査、zizmorです。`build_config.rb`、`test/gem_heads.sh`、`.github/workflows/gem-heads.yml`のどれかを変えるときは、GitHubから取るgemの先頭のコミットのレポートも対象です([GitHubから取るgemの先頭のコミット](#githubから取るgemの先頭のコミット))。sanitizer、valgrind、callgrindの比較、ソークテストにはLinuxが要ります。macOSでは、このページの各節にあるように、Linuxのコンテナで流します。
+
+CIが受け持つのは、1台のマシンでは用意しきれないものと、理由を書いてCIに残すと決めた検査だけです。1台のマシンでは用意しきれないものは、`build`マトリクスのほかのセル(ソースからビルドしたOpenSSL 3.5.9を含みます)、x86-64のrunner、クリーンな環境です。CIは、手元で流した検査をこれらへ広げます。CIに残す検査は、いまはCodeQLの1つだけです([CodeQL](#codeql))。
 
 先に手元で流すと、失敗はCIへpushする前に手元で見つかります。runnerの都合で実行が落ちたときも、同じ検査の手元の結果があれば、コードに問題があるかどうかを切り分けられます。#796では、runnerがパッケージのミラーの名前解決に失敗し、3回の試行が`install`のステップで止まりました。
 
-readyにする前に、作者は変更に関係する検査を手元で実行し、PRの「How was this tested」にコマンドと結果を書きます。`test/ci/changes.sh`が`build`を`standard`か`full`と判定したら、テストスイートも対象です。Cのコードかビルドを変えるときは、sanitizerとvalgrindの下でのテストスイートも対象です。レビュアーは記録を確認します。手元で流せる検査をCIに任せません。手元で流せないと書くのは、実際に試して流せなかった検査だけです。
+readyにする前に、作者は変更に関係する検査を手元で実行し、PRの「How was this tested」にコマンドと結果を書きます。どのPRでも、`sh test/check_added_files.sh`を流します。`test/ci/changes.sh`が`build`を`standard`か`full`と判定したら、CIの標準の4セルと同じく、静的なモジュールと動的なモジュールでのテストスイートと、sanitizerとvalgrindの下でのテストスイートを流します。テストだけを変えるときも同じです。レビュアーは記録を確認します。手元で流せる検査をCIに任せません。
 
 readyのPRは必要なジョブだけを実行し、全体を約15分で終えます。2026年10月31日の#678では、buildのセルに6〜14分、マトリクス全体に15分かかりました。[実行41191594773](https://github.com/matsumotory/ngx_mruby/actions/runs/41191594773)がその記録です。CIに検査を加える提案では、その検査をローカルで実行できるか、なぜCIでも要るか、実行が何分延びるかを書きます。
 
@@ -80,7 +82,7 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 
 `test/ci/changes.sh BASE HEAD`が変更ファイルを分類します。変更の種類で実行を決めるワークフローはすべてこのファイルを読み、方針を一か所に集約します。`sh test/ci/changes_test.sh`で検査できます。出力はキーごとに1行で、分類は`code`、`tests`、`docs`、`site`、`examples`、`workflows`、続いて`soak`と`perf`がそれぞれ`true`か`false`になります。最後の`build`は、`build`マトリクスのどのセルを実行するかを表します。`code`か`tests`が真なら`standard`、それ以外は`none`です。renameは`git diff --no-renames`で旧パスと新パスの両方を分類するため、ソースを`docs/`へ移してもビルドします。`test.yml`の`changes`ジョブは、実行の種類もスクリプトに渡します。渡すのは、Draftかどうか、readyのPRのラベル、push、タグ、「Run workflow」とその`valgrind`入力です。下の2つ目のテーブルの実行では、スクリプトは`build`を、全セルを表す`full`か、`none`に決めます。
 
-次の2つのテーブルのジョブは、作者が手元で流した検査を、runnerでもう一度流します。[必須のステータスチェック](#必須のステータスチェック)を参照してください。
+次の2つのテーブルのジョブのうち、`codeql`以外は、作者が手元で流した検査を、runnerでもう一度流します。[必須のステータスチェック](#必須のステータスチェック)を参照してください。`codeql`はCIでだけ動きます([CodeQL](#codeql))。`gem-heads`(`.github/workflows/gem-heads.yml`)は、`test/ci/changes.sh`ではなく、自分のパスフィルタで動くかを決めます。`build_config.rb`、`test/gem_heads.sh`、このワークフローのどれかを変えるreadyのPRで動きます。そのような変更では、作者が手元で`bash test/gem_heads.sh build_config.rb "" .claude/tmp/gem-heads.tsv`を流します([GitHubから取るgemの先頭のコミット](#githubから取るgemの先頭のコミット))。
 
 | 分類 | パス | readyのPRが実行するワークフロー |
 |---|---|---|
@@ -253,6 +255,8 @@ GitHubは、公開リポジトリで60日間活動が無いと、そのリポジ
 vendoringした`mruby/`と`dependence/`は解析しません。前者にはmruby自身がvendoringしたコードも含み、後者はngx_devel_kitです。`init`が`config-file`として読む`.github/codeql/codeql-config.yml`の`paths-ignore`に指定しています。これらはgit subtreeで取り込むupstreamのコードで、手で編集しません。そのため、警告をこのリポジトリでは直さず、upstreamの変更は次のsubtreeの更新で取り込みます。[AGENTS.md](../../../AGENTS.md)の「Do not」を参照してください。
 
 2026年10月31日にオーナーは、この除外、既存警告をvendored upstream codeとしてdismissすること、upstreamへ報告しないことを決めました。GitHubの[Workflow configuration options for code scanning](https://docs.github.com/en/code-security/reference/code-scanning/workflow-configuration-options)では、`paths-ignore`がRubyなどのインタープリタ言語と、ビルドなしで解析するCとC++に適用されると説明しています。
+
+CodeQLは、[AGENTS.md](../../../AGENTS.md)の「Branches and pull requests」がCIに残すと決めた、ただ1つの検査です。作者は、PRをreadyにする前にCodeQLを流しません。このジョブは結果をcode scanningへ送り、GitHubは、PRが変えた行に出た新しい警告を、PRの中に注釈として表示します([Triaging code scanning alerts in pull requests](https://docs.github.com/en/code-security/code-scanning/managing-code-scanning-alerts/triaging-code-scanning-alerts-in-pull-requests))。手元で流すには、CodeQLのbundleが要ります。固定したアクションが既定で使う版(2.27.3)では、Linuxのarm64向けが約550MBです。CodeQLの[System requirements](https://codeql.github.com/docs/codeql-overview/system-requirements/)では、Linuxのarm64とApple Siliconへの対応はbetaです。このリポジトリでは、CodeQLを手元で流したことはありません。
 
 ### GitHubから取るgemの先頭のコミット
 
@@ -435,13 +439,15 @@ valgrindの下のセルは、次のオプションでnginxを動かします。
 valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=test/valgrind.supp --log-file=$RUNNER_TEMP/valgrind/valgrind.%p.log
 ```
 
-Cのコードかビルドを変えるときは、作者がPRをreadyにする前に、このオプションでvalgrindの下のテストスイートを手元で流します。valgrindのセルは、同じ検査をx86-64のrunnerでもう一度流します。手元では、専用のチェックアウトで流してください。たとえば`git archive HEAD | tar -x -C DIR`で作ります。同じチェックアウトでsanitizerのビルドをすると、別のフラグでビルドしたmrubyが残るからです。valgrindにはLinuxが要ります。macOSでは、そのチェックアウトの最上位のディレクトリで、Linuxのコンテナを使って流します。
+`test/ci/changes.sh`が`build`を`standard`か`full`と判定したら(標準の4セルと同じく、コードかテストを変えるとき)、作者がPRをreadyにする前に、このオプションでvalgrindの下のテストスイートを手元で流します。valgrindのセルは、同じ検査をx86-64のrunnerでもう一度流します。手元では、専用のチェックアウトで流してください。たとえば`git archive HEAD | tar -x -C DIR`で作ります。同じチェックアウトでsanitizerのビルドをすると、別のフラグでビルドしたmrubyが残るからです。valgrindにはLinuxが要ります。macOSでは、そのチェックアウトの最上位のディレクトリで、Linuxのコンテナを使って流します。
 
 ```console
 $ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev valgrind >/dev/null && mkdir -p build/valgrind && NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=$PWD/test/valgrind.supp --log-file=$PWD/build/valgrind/valgrind.%p.log" sh test.sh && grep -h "ERROR SUMMARY" build/valgrind/valgrind.*.log | sed "s/^==[0-9]*== //" | sort | uniq -c'
 ```
 
 Linuxでは、パッケージを入れた後の、引用符の中のコマンドを流します。最後のコマンドは、`ERROR SUMMARY`の行を種類ごとに、その行を持つログの数とともに出力します。下のステップ「Check the valgrind reports」と同じく、どの行もエラーの数が0で、少なくとも1つのログにその行がなければなりません。`--init`を付けると、テストが残したプロセスを、コンテナのinitのプロセスが回収します。
+
+このコマンドと、sanitizerの節のコマンドは、Ubuntu 22.04のOpenSSL(`libssl-dev`のOpenSSL 3.0.2)でビルドします。一方、CIのどのセルも、`libssl-dev`を外し、ソースからビルドしたOpenSSL 3.5.9でビルドします([実行するジョブの選択](#実行するジョブの選択))。この違いは、CIのセルが受け持ちます。
 
 valgrindは、起きたメモリのエラー1つごとに、エラーを1つ数えます。メモリのエラーは、不正な読み込みか書き込み、初期化していない値による条件分岐かシステムコール、不正な解放か対応しない解放です。また、valgrindは、種類が`definite`か`indirect`のloss recordのうち、`test/valgrind.supp`がsuppressしないもの1つごとに、エラーを1つ数えます。nginxが終了するとき、valgrindは、エラーの数と、異なるスタックの数を、`ERROR SUMMARY`の行に出力します。valgrindは、異なるスタックをcontextsと呼びます。たとえば、20のリクエストが動かしたハンドラで不正な読み込みがあると、この行は`20 errors from 1 contexts`になります。`--error-exitcode=99`を付けると、エラーの数が0でないとき、valgrindは99で終了します。`test.sh`は、nginxを止めたときに、nginxの終了ステータスを出力します。valgrindがエラーを数えた後は、`test.sh: nginx (pid 374) exit status 99`です。説明は[nginxを止める](#nginxを止める)にあります。しかし、`test.sh`は、この終了ステータスを自分の終了ステータスに含めません。そのため、ステップ「Check the valgrind reports」は、代わりにログを読みます。このステップは各ログを出力します。そして、少なくとも1つのログに`ERROR SUMMARY`があり、すべての`ERROR SUMMARY`でエラーの数が0のときだけ通ります。それ以外では失敗します。`ERROR SUMMARY`が1つも無いセルも失敗します。そのセルでは、valgrindがレポートを書き終えていません。
 
@@ -451,7 +457,7 @@ possibly lostのブロックは、スタックとともに出力されますが�
 
 ## 2つのsanitizerの下でテストを実行する
 
-Cのコードかビルドを変えるときは、作者がPRをreadyにする前に、AddressSanitizerとUndefinedBehaviorSanitizerを有効にする`-fsanitize=address,undefined`でビルドしたテストスイートを、手元で流します。CIのマトリクスのsanitizerのセルは、同じビルドをx86-64のrunnerでもう一度流します。手元では、専用のチェックアウトで流してください。たとえば`git archive HEAD | tar -x -C DIR`で作ります。フラグだけを変えても、既存のmrubyのビルドは作り直されないからです。Linuxでは、gccかclangを使い、次のようにします。
+`test/ci/changes.sh`が`build`を`standard`か`full`と判定したら(標準の4セルと同じく、コードかテストを変えるとき)、作者がPRをreadyにする前に、AddressSanitizerとUndefinedBehaviorSanitizerを有効にする`-fsanitize=address,undefined`でビルドしたテストスイートを、手元で流します。CIのマトリクスのsanitizerのセルは、同じフラグでビルドし、x86-64のrunnerでもう一度流します。セルが使うのはOpenSSL 3.5.9です([CIのvalgrind](#ciのvalgrind)のdockerのコマンドの後の説明を参照してください)。手元では、専用のチェックアウトで流してください。たとえば`git archive HEAD | tar -x -C DIR`で作ります。フラグだけを変えても、既存のmrubyのビルドは作り直されないからです。Linuxでは、gccかclangを使い、次のようにします。
 
 ```console
 $ sudo sysctl -w vm.mmap_rnd_bits=28     # ASan and the kernel's high-entropy ASLR do not mix
@@ -466,7 +472,13 @@ $ NGINX_RUNNER=exec sh test.sh
 $ grep -HnE 'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)' $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name '*.log')
 ```
 
-macOSでは、そのチェックアウトの最上位のディレクトリで、Linuxのコンテナを使って流します。`sysctl`の行は要りません。arm64のMacのDocker DesktopのLinuxのVMでは`vm.mmap_rnd_bits`が18で、コンテナからは変えられません。
+macOSでは、そのチェックアウトの最上位のディレクトリで、Linuxのコンテナを使って流します。`sysctl`の行が設定するのは、コンテナが共有するカーネルの値で、コンテナからは変えられません。先に値を読みます。
+
+```console
+$ docker run --rm ubuntu:22.04 cat /proc/sys/vm/mmap_rnd_bits
+```
+
+28以下なら、何もしなくて構いません。28より大きければ、そのカーネルが動くところ(コンテナのランタイムのLinuxのVM)で28に設定します。CIのsanitizerのセルも、ビルドの前に`sudo sysctl -w vm.mmap_rnd_bits=28`を実行します。これより大きいと、ASanのシャドウメモリの配置が失敗するからです。
 
 ```console
 $ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev >/dev/null && export NGINX_EXTRA_CC_OPT="-fsanitize=address,undefined -fno-omit-frame-pointer" NGINX_EXTRA_LD_OPT="-fsanitize=address,undefined" NGX_MRUBY_CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" NGX_MRUBY_LDFLAGS="-fsanitize=address,undefined" ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$PWD/test/lsan.supp UBSAN_OPTIONS=print_stacktrace=1:suppressions=$PWD/test/ubsan.supp && NGINX_RUNNER=exec sh test.sh && ! grep -HnE "ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)" $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name "*.log")'

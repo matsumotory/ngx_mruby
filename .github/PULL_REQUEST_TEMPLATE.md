@@ -18,20 +18,23 @@ Do not describe security vulnerabilities here. Report them privately (see SECURI
 <!--
 Exact commands and their results, e.g. `sh test.sh`, `BUILD_DYNAMIC_MODULE=1 sh test.sh`,
 with the nginx version used, the commit each ran on and the machine.
-Every kind of check that CI runs for the change runs locally first ("Build and test" in AGENTS.md
-lists them: the suite, the sanitizers and valgrind, the callgrind comparison, the soak, the steps of
-examples/start, nginx-tests, the site's checks, zizmor). A check that could not run locally: what was
+The checks that CI runs for the change run locally first ("Build and test" in AGENTS.md lists them:
+`sh test/check_added_files.sh`, the suite with the static and the dynamic module, the sanitizers
+and valgrind, the callgrind comparison, the soak, the steps of examples/start, nginx-tests,
+`test/gem_heads.sh` when the change touches `build_config.rb`, `test/gem_heads.sh` or
+`.github/workflows/gem-heads.yml`, the site's checks, zizmor); only CodeQL stays in CI ("Branches
+and pull requests" in AGENTS.md). A check of that list that could not run for this PR: what was
 tried, and why it did not run.
 Bug fixes: the regression test is the first commit and the fix the second; quote `sh test.sh`
 (or the valgrind/sanitizer report) at each commit, failing at the first and passing at the second.
 -->
 
-## Memory / sanitizer checks (C changes)
+## Memory / sanitizer checks
 
 <!--
-Required for a change of C code (`src/`, the C sources of `mrbgems/`, `mruby/`,
-`dependence/`) or of the build; "n/a" otherwise. Run both locally before marking
-the PR ready, on Linux or in a Linux container on macOS (docs/test/README.md),
+Required when `sh test/ci/changes.sh` gives `build` `standard` or `full` (the
+change touches the code or the tests, as for the four cells of CI); "n/a"
+otherwise. Run both locally before marking the PR ready, on Linux or in a Linux container on macOS (docs/test/README.md),
 each in a checkout of its own. That CI runs the sanitizer cell and the cell under
 valgrind does not replace these runs.
 - Sanitizers (ASan with LeakSanitizer, and UBSan), as "Running the tests under
