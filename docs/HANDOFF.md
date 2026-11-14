@@ -1,22 +1,60 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-14 (19:10 JST)
+## State as of 2026-11-15 (02:50 JST)
 
-- Heads: `master` is `7a72306bb`, the merge of
-  [#807](https://github.com/matsumotory/ngx_mruby/pull/807) (below), after
-  `66b284a94`, the merge of [#803](https://github.com/matsumotory/ngx_mruby/pull/803)
-  (below), and `39bfae179`, the merge of [#804](https://github.com/matsumotory/ngx_mruby/pull/804)
-  (below). It carries the v2.7.6 release (below) and the documentation
-  follow-ups merged after it: [#801](https://github.com/matsumotory/ngx_mruby/pull/801)
-  (the advisory ids), [#800](https://github.com/matsumotory/ngx_mruby/pull/800)
-  (the "Security fixes" steps of `docs/releases/README.md`) and #804.
-  `next` is `d83de27d5`, the merge of
-  [#806](https://github.com/matsumotory/ngx_mruby/pull/806) (2026-11-14
-  17:48 JST), which brought `master` at `66b284a94` (#803) into `next`.
-  This entry is written in [#808](https://github.com/matsumotory/ngx_mruby/pull/808),
-  the open pull request to `next` that merges `master` at `7a72306bb`
-  (#807) into `next`. `v2.x` mirrors `master`.
-  The latest published release is 2.7.6.
+- Heads: `master` is `f736bae0c`, the tag `v2.7.7` (below): the second
+  of the two merges from the advisories, after `7a2724265`, the first, and
+  `cc829db6e`, the merge of [#809](https://github.com/matsumotory/ngx_mruby/pull/809)
+  (below). `next` is `fef20e671`, the second of the two merges of the same
+  fixes from the advisories into `next` (2026-11-15 02:02 JST), after
+  `4fbe72294`, the first, and `dc6a6a6cd`, the merge of
+  [#808](https://github.com/matsumotory/ngx_mruby/pull/808) (2026-11-14
+  19:36 JST), which brought `master` at `7a72306bb` (#807) into `next`.
+  This entry is written in [#810](https://github.com/matsumotory/ngx_mruby/pull/810),
+  the open pull request to `next` that merges `master` at `f736bae0c`
+  into `next`. `v2.x` mirrors `master`.
+  The latest published release is 2.7.7.
+- The release 2.7.7: the tag `v2.7.7` is on `f736bae0c`, and
+  [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.7)
+  was published on 2026-11-15 at 02:06 JST. Two advisories were published
+  with it at 02:43 JST:
+  [GHSA-cjxv-4q9m-62pf](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-cjxv-4q9m-62pf)
+  (Moderate; the setters of `Nginx::Request`, the path of
+  `Nginx::Async::HTTP.sub_request` and `Nginx::Headers_in/out#[]=` read
+  an argument that is not a String without checking its type; they now
+  raise `TypeError`) and
+  [GHSA-pmjr-f94r-j47g](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-pmjr-f94r-j47g)
+  (Low; the store of `Nginx::Upstream#server=` and
+  `Nginx::Stream::Connection#upstream_server=` across a reload with
+  `master_process off`). Both fixes were merged from their advisory pages
+  into `master` (`7a2724265`, `f736bae0c`) and into `next` (`4fbe72294`,
+  `fef20e671`, in `next`'s form, with the stores in
+  `src/common/ngx_mruby_upstream.c` and the test on port 18172 instead of
+  18192, which `exception_log.rb` uses on `next`). The tree of
+  `f736bae0c` is the tree of the head of the second fix's pull request,
+  which contains the head of the first. The check before the tag: the pull
+  requests merged into `master` from `v2.7.6` to `cc829db6e` (`master`
+  before the fixes) are [#800](https://github.com/matsumotory/ngx_mruby/pull/800),
+  [#801](https://github.com/matsumotory/ngx_mruby/pull/801),
+  [#803](https://github.com/matsumotory/ngx_mruby/pull/803),
+  [#804](https://github.com/matsumotory/ngx_mruby/pull/804),
+  [#807](https://github.com/matsumotory/ngx_mruby/pull/807) and #809; the
+  release notes needed no correction for them. The callgrind comparison of
+  `v2.7.6` with `7a72306bb` has all 14 scenarios `ok`; the largest change
+  is -2 instructions per request without GC. The whole build matrix at
+  `7a72306bb`
+  ([run 43594266917](https://github.com/matsumotory/ngx_mruby/actions/runs/43594266917))
+  failed in the four cells of nginx 1.26.3: nginx before 1.27.1 does not
+  accept a stream server without a content handler, which the stream
+  servers that #803 added to `test/conf/conf.d/stream/52-exception-log-script-methods.conf`
+  were. #809 gave them a `return` directive (a change of the test
+  configuration only), and its run on its head passed in all 17 cells. The
+  push of the tag ran the whole matrix at `f736bae0c`
+  ([run 43619287702](https://github.com/matsumotory/ngx_mruby/actions/runs/43619287702)):
+  17 cells passed. The advisory ids are not in `docs/releases/v2.7.7.md`
+  and `.ja.md` yet: a pull request to `master` adds them ("Security
+  fixes" in `docs/releases/README.md`), and the next merge of `master`
+  brings them to `next`.
 - [#807](https://github.com/matsumotory/ngx_mruby/pull/807) (merged into
   `master` on 2026-11-14 at 19:02 JST as `7a72306bb`) brings the decision
   of 2026-11-12 under "Decisions" (local checks first) to the documents
@@ -25,8 +63,9 @@
   that the local list missed the `files` job and `gem-heads`, that CodeQL
   ran in CI with no reason written down, and that the condition of the
   sanitizer and valgrind runs ("C code and build changes") was not
-  defined; #807 fixed these on `master`. #808 merges it into `next` and
-  makes the same fixes in `next`'s text: the check of the added files and
+  defined; #807 fixed these on `master`. #808 (merged on 2026-11-14 as
+  `dc6a6a6cd`) merged it into `next` and made the same fixes in `next`'s
+  text: the check of the added files and
   `gem-heads` in the local list, CodeQL as the one check kept in CI with
   its reason, the sanitizer and valgrind runs when `test/ci/changes.sh`
   gives `build` `standard` or `full`, the OpenSSL of the docker forms
@@ -643,7 +682,7 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), and through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806). [#808](https://github.com/matsumotory/ngx_mruby/pull/808) merges through `7a72306bb` (#807) and waits for its checks, review and merge; the next merge of `master` after it waits for a merge into `master` |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), and through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808). [#810](https://github.com/matsumotory/ngx_mruby/pull/810) merges through `f736bae0c` (#809 and v2.7.7) and waits for its checks, review and merge; the next merge of `master` after it waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
@@ -677,7 +716,7 @@ Taken up and still open: none.
 | The "Before" line of the entry on `mruby_set` values that are not Strings in [the 3.0.0 release notes](releases/v3.0.0.md) | `next` | Done in [#769](https://github.com/matsumotory/ngx_mruby/pull/769). [#768](https://github.com/matsumotory/ngx_mruby/pull/768) ran the cases on `master` before its fix: a `to_s` that returns something other than a String ended the worker with a segmentation fault before and after `Nginx::Async.sleep`, and a value without `to_s` or whose `to_s` raises was read as a String although it was the exception, which stayed in the `mrb_state` of the worker. The line in `docs/releases/v3.0.0.md` and `.ja.md` now says this |
 | The documentation group of the site footer links the current 3.x documentation before the other version in both languages, without duplicating the existing 3.x link on 2.x pages (4.10 of [the site proposal](proposals/site.md)) | `next` | Merged in [#750](https://github.com/matsumotory/ngx_mruby/pull/750) as `c440a15dc`; local checks, independent review, CI and publication verification passed |
 | The 2.x form of the protected conversion of an `mruby_set` value ([#735](https://github.com/matsumotory/ngx_mruby/pull/735) on `next`) | `master` | Done in [#768](https://github.com/matsumotory/ngx_mruby/pull/768) (`40578dd63`, 2026-11-09 19:25 JST), with its entries in `docs/releases/v2.7.6.md` and `.ja.md`. On 2.x, a value that cannot be converted counts as an exception of the code: before a wait the variable is empty and the request goes on, after `Nginx::Async.sleep` the request gets 500. It reached `next` in [#769](https://github.com/matsumotory/ngx_mruby/pull/769), which keeps the form of #735 |
-| `Nginx.rputs` and `Nginx.echo` (`ngx_mrb_rputs_inner` in `src/http/ngx_http_mruby_core.c`, the function that both methods call), `Nginx.redirect` (`ngx_mrb_redirect` there) and `Nginx::Filter#body=` (`ngx_mrb_set_filter_body` in `src/http/ngx_http_mruby_filter.c`) call `to_s` on a value that is not a String and read the result with `RSTRING_PTR` without checking that it is a String. They run in Ruby code, so a `to_s` that raises raises in the script, but a `to_s` that returns another object is read as a String. `master` and `next` have the same code. Found while testing [#768](https://github.com/matsumotory/ngx_mruby/pull/768) ("Not changed, found while testing" in its body) | `master`, `next` | Done in [#775](https://github.com/matsumotory/ngx_mruby/pull/775) on `master` and [#776](https://github.com/matsumotory/ngx_mruby/pull/776) on `next`, which convert the argument with `ngx_mrb_var_to_string()` and raise `TypeError` when `to_s` does not return a String, as the setter of `Nginx::Var` does; each has its regression test in `test/t/cases/output_value_to_s.rb` (port 18191) before the fix and its entry under "Behavior changes" (`v2.7.6` and `v3.0.0`). The setters of `Nginx::Request` (`uri=`, `args=` and the others of `NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR`), `Nginx::Headers_in#[]=`, `Nginx::Headers_out#[]=` and the path of `Nginx::Async::HTTP.sub_request` read an argument as a String without converting it or checking its type; they are not part of these two PRs |
+| `Nginx.rputs` and `Nginx.echo` (`ngx_mrb_rputs_inner` in `src/http/ngx_http_mruby_core.c`, the function that both methods call), `Nginx.redirect` (`ngx_mrb_redirect` there) and `Nginx::Filter#body=` (`ngx_mrb_set_filter_body` in `src/http/ngx_http_mruby_filter.c`) call `to_s` on a value that is not a String and read the result with `RSTRING_PTR` without checking that it is a String. They run in Ruby code, so a `to_s` that raises raises in the script, but a `to_s` that returns another object is read as a String. `master` and `next` have the same code. Found while testing [#768](https://github.com/matsumotory/ngx_mruby/pull/768) ("Not changed, found while testing" in its body) | `master`, `next` | Done in [#775](https://github.com/matsumotory/ngx_mruby/pull/775) on `master` and [#776](https://github.com/matsumotory/ngx_mruby/pull/776) on `next`, which convert the argument with `ngx_mrb_var_to_string()` and raise `TypeError` when `to_s` does not return a String, as the setter of `Nginx::Var` does; each has its regression test in `test/t/cases/output_value_to_s.rb` (port 18191) before the fix and its entry under "Behavior changes" (`v2.7.6` and `v3.0.0`). The setters of `Nginx::Request` (`uri=`, `args=` and the others of `NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR`), `Nginx::Headers_in#[]=`, `Nginx::Headers_out#[]=` and the path of `Nginx::Async::HTTP.sub_request`, which these two PRs left, raise `TypeError` for an argument that is not a String since 2.7.7, on `master` and on `next` ([GHSA-cjxv-4q9m-62pf](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-cjxv-4q9m-62pf)). Left, to fix in public pull requests: the second argument of `Nginx.redirect` (`ngx_mrb_redirect` reads it as an Integer without checking its type) and `:address` of `Nginx::Stream.add_listener` (`ngx_stream_mrb_add_listener` in `src/stream/ngx_stream_mruby_core.c` reads it as a String without checking its type) |
 | On 2.x, an `mruby_set` handler that ends normally after `Nginx::Async.sleep` in the location `/set/` of `test/conf/conf.d/83-var-value-to-s.conf` ends the request without a response: the timer handler finalizes the request with the `NGX_OK` of `ngx_mrb_finalize_rputs`, and the phases do not go on (seen while testing #768; `/sleep_with_proxy_set_code` on port 18080 gets its response). On `next`, `test/t/cases/async_set_var.rb` checks that such a handler sets its variable and the request goes on (#715); the location of `var_value_to_s` has not been run with a valid value after the sleep on `next` | `master` | Done: the 2.x code is not changed, and [#773](https://github.com/matsumotory/ngx_mruby/pull/773) writes the limit in `docs/directives/README.md` of 2.x; 3.0.0 fixed it in [#715](https://github.com/matsumotory/ngx_mruby/pull/715). The decision of 2026-10-29 under "Decisions" puts the rewrite of the async resume on `next` and gives `master` the minimum stability fixes |
 | `test.sh` makes its certificates with `cd ${NGINX_INSTALL_DIR}/html && ... openssl req ... && cd -`. When `openssl req` fails, `set -e` does not stop the script inside the `&&` list, the shell stays in `html`, and the next command does not find `test/t/cases/_wait_for_listen.rb`, which hides the cause (seen in the CI runs of [#771](https://github.com/matsumotory/ngx_mruby/pull/771)). To do: `test.sh` stops when a command of the certificates fails and says which one | `next`, `master` | Done: [#792](https://github.com/matsumotory/ngx_mruby/pull/792) on `master` and, by the merge of `master` in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), on `next` |
 | On 2.x, a rewrite handler that sleeps in `Nginx::Async.sleep` and returns `Nginx::DECLINED`, followed by an access handler of the same location that calls `Nginx::Async::HTTP.sub_request` and declines, leaves the request without a response (seen by the reviewer of [#740](https://github.com/matsumotory/ngx_mruby/pull/740) before and after its fix; without the sleep the answer is immediate). Assess on `next` first, where the fiber record of [#714](https://github.com/matsumotory/ngx_mruby/pull/714), [#715](https://github.com/matsumotory/ngx_mruby/pull/715) and [#722](https://github.com/matsumotory/ngx_mruby/pull/722) may already cover it; if 2.x still hangs, a fix with its regression test | `next`, then `master` if needed | Assessed on 2026-11-03: the normal composition completes with the `next` runtime of `c440a15dc`. A 100 ms sleep and its no-sleep control each returned 200, the expected static body and EOF in three requests bounded at 8 seconds (nginx 1.31.8, static suite build with GC stress and debug counters; runtime C statements unchanged). No next fix is indicated by these six requests. The 2.x follow-up is done in [#772](https://github.com/matsumotory/ngx_mruby/pull/772), whose test `async_sub_request_after_sleep.rb` also runs on `next` since [#777](https://github.com/matsumotory/ngx_mruby/pull/777) |
