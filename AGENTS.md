@@ -256,10 +256,9 @@ upgrading". New behavior, API cleanups and features go to `next`.
   (`sh test/check_added_files.sh` for every PR; when `test/ci/changes.sh`
   gives `build` `standard` or `full`, the suite with the static and with
   the dynamic module, under the sanitizers and under valgrind, as the four
-  cells of a code change run it; the comparison when it gives `perf`
-  `true`; for a change that adds or changes a file under `test/conf/`,
-  also the suite with the static module on the oldest nginx of the build
-  matrix, as "Build and test" says), and quotes the commands and their results under
+  cells of a code change run it, and the suite with the static module on
+  the oldest nginx of the build matrix, which those cells do not run; the
+  comparison when it gives `perf` `true`), and quotes the commands and their results under
   "How was this tested"; a check that can run locally is not left to CI
   ("Build and test" lists the local commands). The run of a ready PR runs
   the smallest set of jobs that the change needs ("Which jobs a run
@@ -602,7 +601,8 @@ sh test/check_added_files.sh origin/<base> HEAD   # the files job: no added file
   options of CI ("Running the tests under AddressSanitizer and
   UndefinedBehaviorSanitizer" and "valgrind in CI" in
   `docs/test/README.md`), as the four cells of a code change run them, a
-  change of the tests alone included; `sh test/perf/compare.sh` and `ruby
+  change of the tests alone included, and the suite with the static
+  module on the oldest nginx of the build matrix; `sh test/perf/compare.sh` and `ruby
   test/soak/mock_llm_test.rb` when it gives `perf` `true`; `sh
   test/ci/changes_test.sh` for `test/ci/`, the checks of the 2.x pages
   for `docs/` ("The 2.x pages of the site" in `docs/test/README.md`),
@@ -610,16 +610,19 @@ sh test/check_added_files.sh origin/<base> HEAD   # the files job: no added file
   `bash test/gem_heads.sh build_config.rb "" .claude/tmp/gem-heads.tsv`
   (with `gh` and a token; "Heads of the GitHub gems" in
   `docs/test/README.md`) when the change touches `build_config.rb`,
-  `test/gem_heads.sh` or `.github/workflows/gem-heads.yml`. A change that
-  adds or changes a file under `test/conf/` also runs the suite with the
-  static module, at its head, on the oldest nginx of the build matrix
-  (the oldest version of the list `NGINX_VERSION` of `full_matrix` in
-  `.github/workflows/test.yml`, now 1.26.3): the four cells of a PR do not run that version, and nginx
-  accepts different configurations in different versions (before 1.27.1,
-  it refuses a stream `server` without a content handler), so a test
-  configuration that the oldest version refuses would otherwise first
-  fail in the run of every cell before a tag. "Which jobs a run starts"
-  in `docs/test/README.md` says how to switch the version.
+  `test/gem_heads.sh` or `.github/workflows/gem-heads.yml`. The oldest
+  nginx of the build matrix is the oldest version of the list
+  `NGINX_VERSION` of `full_matrix` in `.github/workflows/test.yml` (now
+  1.26.3). The four cells of a PR do not include it; only the nightly run
+  and the runs of every cell do. nginx accepts different configurations
+  and behaves differently in different versions (before 1.27.1, it
+  refuses a stream `server` without a content handler), and a test
+  configuration under `test/conf/`, a case that writes its own
+  configuration (under `test/t/cases/`, for example) and a change of the
+  code can each depend on the version, so this run is not limited to some
+  paths: without it, such a difference would first fail in the run of
+  every cell before a tag. "Which jobs a run starts" in
+  `docs/test/README.md` says how to switch the version.
   `docs/test/README.md` describes each of them. CodeQL, and the auto-ssl
   case for a change outside its paths, are not run locally ("Branches and
   pull requests" gives the reasons). The docker forms build

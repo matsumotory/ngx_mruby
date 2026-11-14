@@ -160,8 +160,8 @@ of the checks that the change touches: `sh test/check_added_files.sh`
 for every pull request, and when `test/ci/changes.sh` gives `build`
 `standard` or `full`, the suite with the static and the dynamic module,
 under the sanitizers and under valgrind, as the four standard cells run
-it, and for a change under `test/conf/`, the suite with the static module
-on the oldest nginx of the build matrix ([Which jobs a run
+it, and the suite with the static module on the oldest nginx of the build
+matrix, which those cells do not run ([Which jobs a run
 starts](#which-jobs-a-run-starts)); this file describes them, and "Build
 and test" in AGENTS.md lists them.
 The author quotes them under "How was this tested", and the reviewer
@@ -243,16 +243,20 @@ locally with that version (`nginx_version`, or the `NGINX_VERSION` of the
 cell, with `BUILD_DYNAMIC_MODULE`), and the pull request can have the
 label `full-matrix` to run every cell.
 
-A change that adds or changes a file under `test/conf/` is such a change:
-nginx accepts different configurations in different versions (before
-1.27.1, nginx refuses a stream `server` without a content handler, which
-1.30.6 and 1.31.8 accept), and the four standard cells run neither 1.28.3
-nor 1.26.3. Its author also runs, at the head of the pull request, the
-suite with the static module on the oldest nginx of the build matrix, the
-oldest version of the list `NGINX_VERSION` of `full_matrix` in
-`.github/workflows/test.yml` (1.26.3 now), so that such a configuration
-does not first fail in the run of every cell before a tag. The cells of
-CI switch the version by writing `nginx_version` from their
+A pull request for which `test/ci/changes.sh` gives `build` `standard` or
+`full` also runs, locally and at its head, the suite
+with the static module on the oldest nginx of the build matrix, the oldest
+version of the list `NGINX_VERSION` of `full_matrix` in
+`.github/workflows/test.yml` (1.26.3 now). The four standard cells do not
+include that version; only the nightly run and the runs of every cell do.
+nginx accepts different configurations and behaves differently in
+different versions (before 1.27.1, nginx refuses a stream `server` without
+a content handler, which 1.30.6 and 1.31.8 accept). A test configuration
+under `test/conf/`, a case that writes its own configuration (under
+`test/t/cases/`, for example) and a change of the code can each depend on
+the version, so the run is not limited to some paths: without it, such a
+difference would first fail in the run of every cell before a tag. The
+cells of CI switch the version by writing `nginx_version` from their
 `NGINX_VERSION`; locally, write it the same way in a checkout of its own
 (a `git archive` of the head), so that the change of `nginx_version` is
 not committed, and run `test.sh` there without `ONLY_BUILD_NGX_MRUBY`

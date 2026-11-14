@@ -19,9 +19,10 @@ Do not describe security vulnerabilities here. Report them privately (see SECURI
 Exact commands and their results, e.g. `sh test.sh`, `BUILD_DYNAMIC_MODULE=1 sh test.sh`,
 with the nginx version used, the commit each ran on and the machine.
 The checks that CI runs for the change run locally first ("Build and test" in AGENTS.md lists
-them: `sh test/check_added_files.sh`, the suite with the static and the dynamic module, for a
-change under `test/conf/` also the suite with the static module on the oldest nginx of the build
-matrix, the sanitizers and valgrind, the callgrind comparison and the check of the mock LLM, `test/gem_heads.sh`
+them: `sh test/check_added_files.sh`; when `sh test/ci/changes.sh` gives `build` `standard` or
+`full`, the suite with the static and the dynamic module, the sanitizers and valgrind, and the
+suite with the static module on the oldest nginx of the build matrix, which the four cells of a PR
+do not run; the callgrind comparison and the check of the mock LLM, `test/gem_heads.sh`
 when the change touches `build_config.rb`, `test/gem_heads.sh` or `.github/workflows/gem-heads.yml`,
 the checks of the 2.x pages, zizmor). Two checks stay in CI ("Branches and pull requests" in
 AGENTS.md): CodeQL, and the auto-ssl case for a change outside `mrbgems/auto-ssl/`, the

@@ -379,19 +379,37 @@ the files and, after the owner's go-ahead, publish the release (see
 the advisory.
 
 Right after it publishes the release, the same session builds the site
-again: `gh workflow run site.yml --ref next` starts `site.yml` on `next`,
-and the session waits for that run to pass (`gh run watch <run id>
---exit-status`, with the id that `gh run list --workflow site.yml --branch
-next --event workflow_dispatch --limit 1 --json databaseId --jq
-'.[0].databaseId'` prints). The home page of ngx.mruby.org shows the latest
-release, which the build reads from the git tags, and no push starts a
-build when the release creates its tag: the run that the push of the last
-merge started through `site-dispatch.yml` (on `master`) or the push itself
-(on `next`) built the site before the tag existed, so without this run
-the home page keeps naming the previous release as the latest. The session
-then checks the published page: `curl -s https://ngx.mruby.org/ | grep -o
-'Latest release: v[^"<]*'` prints the new version (the Japanese home
-page, `https://ngx.mruby.org/ja/`, prints it after `最新のリリースは`).
+again, by starting `site.yml` on `next`, and waits for that run to pass.
+The home page of ngx.mruby.org shows the latest release, which the build
+reads from the git tags, and no push starts a build when the release
+creates its tag: the run that the push of the last merge started through
+`site-dispatch.yml` (on `master`) or the push itself (on `next`) built the
+site before the tag existed, so without this run the home page keeps
+naming the previous release as the latest. That earlier run is also a
+`workflow_dispatch` run of `site.yml` on `next`, and the new run may not
+be listed yet right after the dispatch, so the newest run in `gh run list`
+is not taken. The id comes, as in `site-dispatch.yml`, from the URL that
+`gh workflow run` prints, or else from the first run created since the
+dispatch:
+
+```sh
+since=$(date -u -v-30S +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '-30 seconds' +%Y-%m-%dT%H:%M:%SZ)
+out=$(gh workflow run site.yml --ref next) && echo "$out"
+run=$(echo "$out" | grep -Eo '/actions/runs/[0-9]+' | head -n 1 | cut -d / -f 4)
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+  [ -n "$run" ] && break
+  sleep 5
+  run=$(gh run list --workflow site.yml --branch next --event workflow_dispatch --limit 5 \
+    --json databaseId,createdAt --jq "[.[] | select(.createdAt >= \"$since\")][0].databaseId // empty")
+done
+gh run watch "${run:?no run of site.yml on next since $since}" --exit-status
+```
+
+The 30 seconds before the dispatch allow for a difference between the
+clocks of the machine and GitHub. The session then checks the published page:
+`curl -s https://ngx.mruby.org/ | grep -o 'Latest release: v[^"<]*'`
+prints the new version (the Japanese home page,
+`https://ngx.mruby.org/ja/`, prints it after `最新のリリースは`).
 
 ## Security fixes
 
@@ -523,15 +541,18 @@ go through (the sessions' procedure, not a decision of the owner):
   The files become 3.x pages of the site when `master` is merged into
   `next`, and the site's checks of the Japanese pages would otherwise
   first fail on them after they are public, in that merge or in the
-  deploy of the site. The suite also runs, on the tree that the release
-  will be published from (the head of the last fix's pull request), with
-  the static module on the oldest nginx of the build matrix and with the
-  dynamic module on the nginx of the standard dynamic cell (on `master`
-  now, 1.26.3 and 1.30.6; "Which jobs a run starts" in
+  deploy of the site. On the tree that the release will be published from
+  (the head of the last fix's pull request), the suite also runs locally
+  with the static module on the oldest nginx of the build matrix and with
+  the dynamic module on the nginx of the standard dynamic cell, both taken
+  from the matrix of `.github/workflows/test.yml` (on `master` now, nginx
+  1.26.3 static and nginx 1.30.6 dynamic; both run in a Linux container,
+  and "Which jobs a run starts" in
   [docs/test/README.md](../test/README.md#which-jobs-a-run-starts) says
-  how to switch the version), as far as the machine runs them: the run of
-  every cell under "Before the tag" did not have the fix, and the run that
-  the push of the tag starts comes after the release.
+  how to switch the version). The run of every cell under "Before the
+  tag" did not have the fix, and the run that the push of the tag starts
+  comes after the release, so these runs are the only check of the fix
+  on those versions.
   After the last merge and before the release, the session fetches the base
   branch and checks that its tree is the tree that those runs tested: `git
   rev-parse origin/<base>^{tree}` and `git rev-parse <tested commit>^{tree}`
