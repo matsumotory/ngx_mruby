@@ -361,6 +361,10 @@ A `url_or_internal_location` that is not a String is converted with `to_s`. When
 
 The URL redirect returns HTTP status codes 3xx like `307 Temporary Redirect` with `Location` header to the client.
 
+The `http_status` of a URL redirect must be an Integer. Since 2.7.8, another value, `nil` included, makes `Nginx.redirect` raise `TypeError` (`String cannot be converted to Integer`, with the class of the value) and no redirect is made; up to 2.7.7 such a value gave a status line without a valid status, or no response for `nil`. An internal redirect has no status code and ignores `http_status`.
+
+`Nginx.redirect` takes one or two arguments. Since 2.7.8, a third argument makes it raise `ArgumentError` (`wrong number of arguments (given 3, expected 1..2)`) and no redirect is made; up to 2.7.7 a call with three arguments raised no error, and its result was not defined.
+
 ```ruby
 Nginx.redirect "http://ngx.mruby.org/", Nginx::HTTP_MOVED_PERMANENTLY
 ```
@@ -1038,6 +1042,7 @@ document_root|/path/to/document
 Create a listener on the specified IP address and the port in the hash.
 The method works only in `mruby_server_context_handler_code`, while nginx reads the configuration.
 Anywhere else, for example in a request handler, it raises a `RuntimeError` (`add_listener can only be used in mruby_server_context_handler_code`, since 2.7.1).
+The `:address` must be a String, such as `"127.0.0.1:58101"` or `"58102"`. Since 2.7.8, a missing `:address` or one that is not a String makes it raise `TypeError` (`nil cannot be converted to String` or `Integer cannot be converted to String`, with the class of the value), and nginx stops reading the configuration with that exception; up to 2.7.7 such a value could end nginx while it read the configuration.
 
 ```ruby
 s = Nginx::Server.new
@@ -1653,6 +1658,7 @@ See [Nginx::Server#add_listener()](#nginxserveradd_listenerhash) for an example 
 
 The method works only in `mruby_stream_server_context_code`, while nginx reads the configuration.
 Anywhere else, for example in `mruby_stream_code` or `mruby_stream_init_worker_code`, it raises a `RuntimeError` (since 2.7.1).
+As for `Nginx::Server#add_listener`, the `:address` must be a String: since 2.7.8, a missing `:address` or one that is not a String raises `TypeError`, and nginx stops reading the configuration.
 
 ### Nginx::Stream.errlogger(log_level, string)
 
