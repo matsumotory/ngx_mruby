@@ -925,7 +925,7 @@ Nginx.echo r.uri #=> /hello
 
 ### Nginx::Request#uri=(string)
 
-Set the string to uri.
+Set the string to uri. An argument that is not a String raises `TypeError`. The other Request setters that share this behavior are `#args=`, `#content_type=`, `#method=`, `#protocol=`, `#request_line=` and `#unparsed_uri=`.
 
 ```
 r = Nginx::Request.new
@@ -1398,7 +1398,7 @@ Nginx.rputs hin["User-Agent"] #=> curl/7.29.0
 
 ### Nginx::Headers_in#[]=(string, string)
 
-Sets the value to the http request header.
+Sets the value to the http request header. The name and the value must each be a String; a non-String raises `TypeError`.
 
 ```ruby
 hin = Nginx::Headers_in.new
@@ -1457,7 +1457,7 @@ Nginx.rputs hout["X-NGX-MRUBY"] #=> support
 
 ### Nginx::Headers_out#[]=(string, string)
 
-Sets the value to the http response header.
+Sets the value to the http response header. The name and the value must each be a String; a non-String raises `TypeError`.
 
 ```ruby
 hout = Nginx::Headers_out.new
@@ -1703,7 +1703,7 @@ Nginx::Async.sleep 3000    # Sleep 3000 millisec
 
 ### Nginx::Async::HTTP#sub_request(location, string_or_hash=nil)
 
-Sends a sub request in non-blocking way, waits for its end, and returns its response, an `Nginx::Async::HTTP::Response` with the same status, headers and body as `Nginx::Async::HTTP.last_response` (since 3.0.0; 2.x returns `nil`).
+Sends a sub request in non-blocking way, waits for its end, and returns its response, an `Nginx::Async::HTTP::Response` with the same status, headers and body as `Nginx::Async::HTTP.last_response` (since 3.0.0; 2.x returns `nil`). The location must be a String; a non-String raises `TypeError`.
 It's supported in the post_read, server rewrite, rewrite, access and content handlers. In an `mruby_set*` handler it raises a `RuntimeError`, because nginx does not wait for a subrequest there: call it in a rewrite or access handler and set the variable with [Nginx::Var#set](#nginxvarsetname-value) (since 3.0.0; on 2.x the request went on without waiting for the variable).
 When the subrequest ends, nginx calls the handler again, which goes on with the code after the call, and the phase of the handler handles its result as for a handler that did not wait, as after [Nginx::Async#sleep](#nginxasyncsleepmsec); the code of the handler runs once.
 A content handler can wait for it also after `Nginx::Async.sleep` (since 3.0.0; 2.7.3 raises a `RuntimeError` there, because nginx would not finish the request after the subrequest).
