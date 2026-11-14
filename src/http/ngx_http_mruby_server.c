@@ -46,6 +46,9 @@ static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 
   mrb_get_args(mrb, "H", &listener);
   address = mrb_hash_get(mrb, listener, mrb_check_intern_cstr(mrb, "address"));
+  // a missing :address is nil; it and any other value that is not a String
+  // raise TypeError, and nginx stops reading the configuration
+  address = mrb_ensure_string_type(mrb, address);
   addr.data = (u_char *)RSTRING_PTR(address);
   addr.len = RSTRING_LEN(address);
 

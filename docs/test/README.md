@@ -262,14 +262,38 @@ the cell under valgrind, the same nginx and module against the installed
 OpenSSL, does not take. Every cell (the 8 combinations of nginx 1.31.8
 and 1.30.6, the static and the dynamic module, and `--with-openssl-src` or
 not, among them the cell under valgrind, and the sanitizer cell) still runs in the nightly run under valgrind, on the push
-of a tag, in the check pull request before a tag, which has the label
-`full-matrix` ("Before the tag" in
+of a tag, before a tag on the tip of the base, in the run of the check
+pull request, which has the label `full-matrix`, or with "Run workflow" on
+the base when the check needs no pull request ("Before the tag" in
 [docs/releases/README.md](../releases/README.md)), and on "Run workflow"
 without the input `base` (the second table). A change that only one of the
 other cells can show (for example a change for the dynamic module with
 nginx 1.31.8) is checked locally with that version (`nginx_version`, or the `NGINX_VERSION` of the
 cell, with `BUILD_DYNAMIC_MODULE`), and the pull request can have the
 label `full-matrix` to run every cell.
+
+On `master`, a pull request for which `test/ci/changes.sh` gives `build`
+`standard` or `full` also runs, locally, the suite with the static module
+on the oldest nginx of its build matrix (1.26.3 there), because its four
+standard cells do not include that version, and nginx accepts different
+configurations in different versions (before 1.27.1, nginx refuses a
+stream `server` without a content handler). On `next`, the oldest version
+of the list `NGINX_VERSION` of `full_matrix` in
+`.github/workflows/test.yml` is 1.30.6, the nginx of the dynamic standard
+cell, so the run of every such pull request builds it, and no local run
+is added. To run the suite with another version of the matrix locally (a
+change that only one of the other cells can show, or the runs of "Security
+fixes" in [docs/releases/README.md](../releases/README.md)), write
+`nginx_version` as the cells of CI do from their `NGINX_VERSION`, in a
+checkout of its own (a `git archive` of the head), so that the change of
+`nginx_version` is not committed, and run `test.sh` there without
+`ONLY_BUILD_NGX_MRUBY` ([Testing](#testing) says why):
+
+```console
+$ V=1.30.6
+$ printf 'NGINX_SRC_MAJOR=%s\nNGINX_SRC_MINOR=%s\nNGINX_SRC_PATCH=%s\nNGINX_SRC_VER=nginx-%s\n' $(echo $V | tr . ' ') $V > nginx_version
+$ sh test.sh
+```
 
 `soak` is `true` when `code` is, or when `test/soak/` or
 `test/build_release.sh` changed; `perf` when `code` is, or when the
@@ -494,9 +518,22 @@ them under "How was this tested":
   text, the code blocks, the line breaks) do not read that file. A pull
   request that adds or changes a release note therefore copies that file
   into `docs/releases/` of the checkout of `next` before the run, and
-  stages it there with `git add`, because the generator reads only the
-  files that git tracks. One run then checks it as a 2.x page and as a
-  3.x page. This keeps the push
+  commits it there in a local commit that is never pushed:
+
+  ```console
+  $ git add docs/releases/vX.Y.Z.md docs/releases/vX.Y.Z.ja.md
+  $ git commit -m 'Release notes to check (local only, not pushed)'
+  ```
+
+  The generator reads only the files that git tracks, and
+  `site/scripts/export-docs.mjs` stops with `source must exist at HEAD
+  before export` on a page whose source is not in the commit `HEAD`, so
+  staging alone stops the build for a new file, while a change of a file
+  that `HEAD` already has would go through; the commit serves both. One
+  run then checks the file as a 2.x page and as a 3.x page. `check:ci`
+  prints the local commit: quote it with its parent, the commit of
+  `next`. Afterwards, remove that checkout or reset it to `origin/next`.
+  This keeps the push
   to `next` after the merge of `master` from stopping the deploy of the
   site on those checks.
 
