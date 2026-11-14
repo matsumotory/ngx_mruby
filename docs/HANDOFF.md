@@ -1,19 +1,38 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-12 (17:13 JST)
+## State as of 2026-11-14 (16:30 JST)
 
-- Heads: `master` is `aa3d9798a`, the merge of
-  [#800](https://github.com/matsumotory/ngx_mruby/pull/800). It carries the
-  v2.7.6 release (below) and the two documentation follow-ups merged after
-  it: [#801](https://github.com/matsumotory/ngx_mruby/pull/801) (the
-  advisory ids) and #800 (the "Security fixes" steps of
-  `docs/releases/README.md`). `next` is `1791b8bf1`, the merge of
-  [#799](https://github.com/matsumotory/ngx_mruby/pull/799) (the follow-up
-  that protects the `inspect` and `backtrace` calls in exception logging).
-  This handoff entry is written in the open pull request that merges
-  `master` (at `aa3d9798a`) into that `next`, which brings the v2.7.6
-  security and bug fixes and the two documentation follow-ups to `next`.
-  `v2.x` mirrors `master`. The latest published release is 2.7.6.
+- Heads: `master` is `39bfae179`, the merge of
+  [#804](https://github.com/matsumotory/ngx_mruby/pull/804) (below). It
+  carries the v2.7.6 release (below) and the documentation follow-ups
+  merged after it: [#801](https://github.com/matsumotory/ngx_mruby/pull/801)
+  (the advisory ids), [#800](https://github.com/matsumotory/ngx_mruby/pull/800)
+  (the "Security fixes" steps of `docs/releases/README.md`) and #804.
+  `next` is `9cf8f8a4e`, the merge of
+  [#802](https://github.com/matsumotory/ngx_mruby/pull/802), which brought
+  `master` at `aa3d9798a` (the v2.7.6 fixes, #801 and #800) into `next`.
+  This entry is written in the open pull request to `next` that merges
+  `master` at `39bfae179` and fixes the site (next bullet). `v2.x` mirrors
+  `master`. The latest published release is 2.7.6.
+- The site: the deploy of ngx.mruby.org is stopped. The run of `site.yml`
+  on the push of `9cf8f8a4e`
+  ([run 43188350847](https://github.com/matsumotory/ngx_mruby/actions/runs/43188350847))
+  failed in `node scripts/check-japanese.mjs`, so `deploy` did not run.
+  It found spaces between Japanese and Latin text in
+  `docs/releases/v2.7.6.ja.md`, and a Japanese
+  `docs/ja/releases/README.md` without the steps that #800 added to
+  `docs/releases/README.md` (its code blocks differed from the English
+  page's). #804 (base `master`, merged as `39bfae179`) removed the spaces
+  and reworded three sentences and two labels of `v2.7.6.ja.md`, and added
+  to "The 2.x pages of the site" of `docs/test/README.md` on `master` how
+  a pull request checks a changed release note as a 3.x page. The open
+  pull request translates the steps into `docs/ja/releases/README.md`,
+  takes in #804, and adds to "Site CI" (and its Japanese page) the check
+  of a merge of `master` into `next` on its head, and to condition 2 of
+  "Review and merge" in `AGENTS.md` that the session that merges reads the
+  run of `site.yml` that the merge started. Its local `npm run check:ci`
+  is quoted in its body. The site is deployed again by the run of
+  `site.yml` on the push of its merge.
 - The release 2.7.6: the tag `v2.7.6` is on `a8ef5ecb8` (2026-11-12 15:53
   JST), and [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.6)
   is published. Two advisories were published with it at 15:58 JST:
@@ -31,7 +50,7 @@
   (`aa3d9798a`) added to the "Security fixes" of `docs/releases/README.md`
   how a security fix is merged from the advisory page and the temporary
   `protected-lines` bypass that merge needs. Both #801 and #800 are
-  documentation only, and reach `next` with this merge of `master`. The
+  documentation only, and reached `next` with #802. The
   check before the tag: the pull requests merged into `master` from `v2.7.5`
   to the release are #768, #772, #773, #774, #775, #778, #781, #784, #786,
   #790 and #792; each has its entry under "Behavior changes", "Fixes" or
