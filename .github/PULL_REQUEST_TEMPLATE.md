@@ -17,28 +17,54 @@ Do not describe security vulnerabilities here. Report them privately (see SECURI
 
 <!--
 Exact commands and their results, e.g. `sh test.sh`, `BUILD_DYNAMIC_MODULE=1 sh test.sh`,
-with the nginx version used.
+with the nginx version used, the commit each ran on and the machine.
+The checks that CI runs for the change run locally first ("Build and test" in AGENTS.md lists
+them: `sh test/check_added_files.sh`, the suite with the static and the dynamic module, the
+sanitizers and valgrind, the callgrind comparison and the check of the mock LLM, `test/gem_heads.sh`
+when the change touches `build_config.rb`, `test/gem_heads.sh` or `.github/workflows/gem-heads.yml`,
+the checks of the 2.x pages, zizmor). Two checks stay in CI ("Branches and pull requests" in
+AGENTS.md): CodeQL, and the auto-ssl case for a change outside `mrbgems/auto-ssl/`, the
+`Nginx::SSL` code and `test/auto_ssl/`; a change inside them runs that case locally. A check of
+that list that could not run for this PR: what was tried, and why it did not run.
 Bug fixes: the regression test is the first commit and the fix the second; quote `sh test.sh`
 (or the valgrind/sanitizer report) at each commit, failing at the first and passing at the second.
 -->
 
-## Memory / sanitizer checks (C changes)
+## Memory / sanitizer checks
 
 <!--
-Which of valgrind (`NGINX_RUNNER=valgrind sh test.sh`), ASan, UBSan
-did you run, and what was the result (ERROR SUMMARY, leak summary, sanitizer
-reports in the logs that the "Check for sanitizer reports" step of
-.github/workflows/test.yml reads)?
+Required when `sh test/ci/changes.sh` gives `build` `standard` or `full` (the
+change touches the code or the tests, as for the four cells of CI); "n/a"
+otherwise. Run both locally before marking the PR ready, on Linux or in a Linux container on macOS (docs/test/README.md),
+each in a checkout of its own. That CI runs the sanitizer cell and the cell under
+valgrind does not replace these runs.
+- Sanitizers (ASan with LeakSanitizer, and UBSan), as "Running the tests under
+  AddressSanitizer and UndefinedBehaviorSanitizer" in docs/test/README.md says:
+  the command, the commit, the machine (architecture, container image), the
+  result of `test.sh`, and the output of the grep of that section on the logs
+  (no line).
+- valgrind with the options of "valgrind in CI": the command, the commit, the
+  machine, the result of `test.sh`, and the `ERROR SUMMARY` line of every log
+  (each with 0 errors).
 -->
+
+- Sanitizers:
+- valgrind:
 
 ## Leak / performance impact
 
 <!--
 Required when async, filter or GC-related code is touched: what was measured, and how.
 Required as well when the change touches an input of the measured binary ("Design principles" in
-`AGENTS.md` lists them): the callgrind comparison goes here, with the header lines of report.txt, the
-table, the run of the `perf` job, and the base and head commits that its log prints.
+`AGENTS.md` lists them): the callgrind comparison that you ran locally (`sh test/perf/compare.sh`,
+in a Linux container on macOS) goes here before the PR is marked ready, with the header lines of
+report.txt, the table, the base and head commits that were compared and the machine, and the result
+of `ruby test/soak/mock_llm_test.rb`. Once the PR is ready, add the run of the `perf` job and the
+base and head commits that its log prints.
 -->
+
+- Local comparison:
+- `perf` job:
 
 ## Compatibility / behavior changes
 

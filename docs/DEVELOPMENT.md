@@ -67,9 +67,14 @@ context, not prerequisites for continuing work.
    independent review and merge gates; a checkpoint does not waive them.
    Use the harness of the checked-out branch: do not assume the port-offset
    support on `next` exists on 2.x.
-   On macOS, use a Linux container matching the packages in
-   [.github/workflows/test.yml](../.github/workflows/test.yml) for the Linux
-   suite, sanitizer and callgrind evidence. The root Dockerfile is a runtime
+   On macOS, use a Linux container for the Linux suite, sanitizer, valgrind
+   and callgrind evidence, with the docker forms of
+   [docs/test/README.md](test/README.md) and of "Before a tag" in AGENTS.md.
+   They build against the OpenSSL of Ubuntu 22.04 and skip the auto-ssl
+   case, where the cells of
+   [.github/workflows/test.yml](../.github/workflows/test.yml) build
+   OpenSSL 1.1.1w from source and run that case ("valgrind in CI" in
+   [docs/test/README.md](test/README.md)). The root Dockerfile is a runtime
    image, not that test environment.
 
 ## Recommended development environment
