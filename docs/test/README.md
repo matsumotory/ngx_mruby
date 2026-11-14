@@ -160,7 +160,10 @@ of the checks that the change touches: `sh test/check_added_files.sh`
 for every pull request, and when `test/ci/changes.sh` gives `build`
 `standard` or `full`, the suite with the static and the dynamic module,
 under the sanitizers and under valgrind, as the four standard cells run
-it (this file describes them; "Build and test" in AGENTS.md lists them).
+it, and the suite with the static module on the oldest nginx of the build
+matrix, which those cells do not run ([Which jobs a run
+starts](#which-jobs-a-run-starts)); this file describes them, and "Build
+and test" in AGENTS.md lists them.
 The author quotes them under "How was this tested", and the reviewer
 checks that they are there. A check that can run locally is not left to
 CI. The run of a ready pull request runs only the jobs that the
@@ -229,14 +232,41 @@ nginx and module against the installed OpenSSL, does not take. Every cell
 (the 16 combinations of nginx 1.31.8, 1.30.6, 1.28.3 and 1.26.3, the
 static and the dynamic module, and `--with-openssl-src` or not, among them
 the cell under valgrind, and the sanitizer cell) still runs in the nightly
-run under valgrind, on the push of a tag, in the check pull request before
-a tag, which has the label `full-matrix` ("Before the tag" in
+run under valgrind, on the push of a tag, before a tag on the tip of the
+base, in the run of the check pull request, which has the label
+`full-matrix`, or with "Run workflow" on the base when the check needs no
+pull request ("Before the tag" in
 [docs/releases/README.md](../releases/README.md)), and on "Run workflow"
 without the input `base` (the second table). A change that only one of the
 other cells can show (for example a change for nginx 1.26.3) is checked
 locally with that version (`nginx_version`, or the `NGINX_VERSION` of the
 cell, with `BUILD_DYNAMIC_MODULE`), and the pull request can have the
 label `full-matrix` to run every cell.
+
+A pull request for which `test/ci/changes.sh` gives `build` `standard` or
+`full` also runs, locally and at its head, the suite
+with the static module on the oldest nginx of the build matrix, the oldest
+version of the list `NGINX_VERSION` of `full_matrix` in
+`.github/workflows/test.yml` (1.26.3 now). The four standard cells do not
+include that version; only the nightly run and the runs of every cell do.
+nginx accepts different configurations and behaves differently in
+different versions (before 1.27.1, nginx refuses a stream `server` without
+a content handler, which 1.30.6 and 1.31.8 accept). A test configuration
+under `test/conf/`, a case that writes its own configuration (under
+`test/t/cases/`, for example) and a change of the code can each depend on
+the version, so the run is not limited to some paths: without it, such a
+difference would first fail in the run of every cell before a tag. The
+cells of CI switch the version by writing `nginx_version` from their
+`NGINX_VERSION`; locally, write it the same way in a checkout of its own
+(a `git archive` of the head), so that the change of `nginx_version` is
+not committed, and run `test.sh` there without `ONLY_BUILD_NGX_MRUBY`
+([Testing](#testing) says why):
+
+```console
+$ V=1.26.3
+$ printf 'NGINX_SRC_MAJOR=%s\nNGINX_SRC_MINOR=%s\nNGINX_SRC_PATCH=%s\nNGINX_SRC_VER=nginx-%s\n' $(echo $V | tr . ' ') $V > nginx_version
+$ sh test.sh
+```
 
 `perf` is `true` when `code` is, or when the measurement of the performance
 comparison changed (`test/perf/`, `test/build_release.sh` and the scenario
