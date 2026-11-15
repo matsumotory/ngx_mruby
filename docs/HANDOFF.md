@@ -14,9 +14,9 @@
   `next` is `41e9bcf54`, the merge of
   [#810](https://github.com/matsumotory/ngx_mruby/pull/810) (2026-11-15
   04:33 JST), which brought `master` at `91499f767` into `next`. This
-  entry is written in the open pull request to `next` that merges
-  `master` at `976015c48` into `next` (the Queue row of the merges of
-  `master`). `v2.x` mirrors `master`. The latest published release is
+  entry is written in [#815](https://github.com/matsumotory/ngx_mruby/pull/815),
+  the open pull request to `next` that merges `master` at `976015c48`
+  into `next`. `v2.x` mirrors `master`. The latest published release is
   2.7.7; the next 2.x release is 2.7.8, whose release notes are
   `docs/releases/v2.7.8.md` and `.ja.md` on `master` (#813).
 - [#812](https://github.com/matsumotory/ngx_mruby/pull/812) and
@@ -48,9 +48,12 @@
   `Nginx::Stream.add_listener` raise `TypeError` for a missing `:address`
   or one that is not a String, which stops nginx while it reads the
   configuration. Its case is `test/t/cases/argument_types.rb` with
-  `test/conf/conf.d/96-argument-types.conf`, on port 18200 on `master`
-  and 18092 on `next`, where the ports of the suite are 12345-12399 and
-  18080-18199. The entries are in `docs/releases/v2.7.8.md` and `.ja.md`.
+  `test/conf/conf.d/96-argument-types.conf`. Its port is 18200 on
+  `master` and 18092 on `next`, where the ports of the suite are
+  12345-12399 and 18080-18199, the ranges that `TEST_SH_PORT_OFFSET`
+  moves. On `next`, the case builds the expected text of the exception
+  with `TypeError#inspect` of the runner, because mruby 4.1 shows an
+  exception as `#<TypeError: message>`. The entries are in `docs/releases/v2.7.8.md` and `.ja.md`.
 - The release 2.7.7: the tag `v2.7.7` is on `f736bae0c`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.7)
   was published on 2026-11-15 at 02:06 JST. Two advisories were published
@@ -724,7 +727,7 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), and through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808). through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810). The open pull request that writes this entry merges through `976015c48` (#812, #814 and #813) and waits for its checks, review and merge; the next merge of `master` after it waits for a merge into `master` |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), and through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808). through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810). [#815](https://github.com/matsumotory/ngx_mruby/pull/815) merges through `976015c48` (#812, #814 and #813) and waits for its checks, review and merge; the next merge of `master` after it waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
