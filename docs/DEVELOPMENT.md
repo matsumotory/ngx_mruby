@@ -196,6 +196,17 @@ a subrequest as the value of its `Fiber.yield`. The Ruby methods read the
 context with `ngx_mrb_exec_require`, which raises where the method does not
 work ("Where the methods work" in `docs/class_and_method/README.md`).
 
+`mrb->ud` of the `mrb_state` of the http module and of the stream module
+belongs to ngx_mruby: it points at the holder of the execution context for
+the life of the state. An mrbgem that puts a pointer of its own in `mrb->ud`
+cannot be added to the build. On 2.x only the state of the stream module was
+like that; the http module set `mrb->ud` only while the SSL handshake
+handler or the server context code ran. The context of a push lives on the C
+stack of the function that pushed it: `ngx_mrb_run`, whose handler can run
+inside another mruby call, goes through `ngx_mrb_exec_run`, which puts the
+context back also when an allocation fails there (the rule is in
+`src/common/ngx_mruby_exec.h`).
+
 ### HTTP: a wait and its end
 
 - `Nginx::Async.sleep` arms the timer of the record, and
