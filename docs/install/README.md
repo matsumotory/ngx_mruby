@@ -30,6 +30,11 @@ For a version-managed Ruby, ensure its `ruby` and `rake` are on `PATH`.
 Do not copy a dynamic module into an unrelated distribution nginx binary:
 its nginx version, configuration and ABI need to match.
 
+The build examples below configure nginx with `--with-stream`, which needs
+nginx 1.25.5 or later. With an older nginx, such as nginx 1.24, read
+[Building with ngx_mruby stream module](#building-with-ngx_mruby-stream-module)
+first.
+
 ## 1. Downloading source from github.com
 
 ```sh
@@ -156,7 +161,7 @@ make install
 #### Building with ngx_mruby stream module
 
 The default `build.sh` options enable stream. When supplying your own nginx
-options, include `--with-stream`. See the [stream directives](../directives/README.md)
+options, include `--with-stream` if your nginx is 1.25.5 or later. See the [stream directives](../directives/README.md)
 and the [test instructions](../test/README.md) for TCP/UDP verification.
 
 ngx_mruby builds its stream module whenever nginx is configured with
@@ -166,8 +171,10 @@ CI of this branch builds nginx 1.26.3 and later.
 
 With an older nginx, such as nginx 1.24 (the version that Ubuntu 24.04
 packages), configure nginx without `--with-stream`. ngx_mruby then builds
-without its stream module: the HTTP handlers work, but the `mruby_stream*`
-directives and `Nginx::Stream` are not available. `build.sh` passes
+its HTTP module without its stream module, so the `mruby_stream*`
+directives and `Nginx::Stream` are not available. The CI of this branch
+does not build or test nginx 1.24, so only the build of that combination
+has been checked, not its behavior. `build.sh` passes
 `--with-stream` by default, so give it the full list of nginx options
 without it:
 
