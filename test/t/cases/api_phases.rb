@@ -38,8 +38,14 @@ def api_phases_results(lines, kind)
     next unless i
 
     name, result = l[(i + prefix.size)..-1].split(': ', 2)
-    # nginx appends ", client: ..." to a line of a request
-    results[name] = result.to_s.split(', client: ', 2)[0]
+    # nginx appends ", client: ..." to a line of a request, and in the log
+    # phase " while logging request" before it
+    result = result.to_s.split(', client: ', 2)[0].to_s
+    suffix = ' while logging request'
+    if result.size >= suffix.size && result[(result.size - suffix.size)..-1] == suffix
+      result = result[0, result.size - suffix.size]
+    end
+    results[name] = result
   end
   results
 end
