@@ -2259,12 +2259,15 @@ static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r,
   // could not send the whole response in one write (sendfile_max_chunk,
   // limit_rate, a client that reads slowly), ngx_http_writer calls this
   // filter again with no new data, and without a ctx the filter would start
-  // to read a new body and hold the call back until send_timeout. The request
-  // gets a new, empty ctx with that phase instead, as ngx_mrb_finalize_rputs
-  // does: it holds no chain, and the filter passes the writer's calls on. A
-  // response that went out in one write leaves no ctx, as before.
+  // to read a new body and hold the call back until send_timeout. A
+  // subrequest that was not the active request (an SSI include after another
+  // one) has its output in r->postponed, which nginx sends through the same
+  // calls once the subrequest is active. The request gets a new, empty ctx
+  // with that phase instead, as ngx_mrb_finalize_rputs does: it holds no
+  // chain, and the filter passes the writer's calls on. A response that went
+  // out in one write leaves no ctx, as before.
   if (rc != NGX_ERROR && ngx_http_get_module_ctx(r, ngx_http_mruby_module) == NULL &&
-      (r->buffered || r->connection->buffered)) {
+      (r->buffered || r->connection->buffered || r->postponed)) {
     next = ngx_pcalloc(r->pool, sizeof(ngx_http_mruby_ctx_t));
     if (next == NULL) {
       ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,

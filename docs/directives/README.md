@@ -550,6 +550,10 @@ A body filter reads the response body with `Nginx::Filter#body` and can replace 
 The response then has exactly that body, and `Content-Length` is its length.
 Since 2.7.1 this also holds when the body was written with `Nginx.rputs` or `Nginx.echo`; in 2.7.0 such a response kept the length that `Nginx.rputs` had produced, so a replacement body of another length was cut or padded.
 
+In a location that a subrequest runs, such as one that an SSI page includes with `<!--# include virtual=... -->`, the body filter works on the body of the subrequest, and the parent response goes on after it with the rest of the page.
+When the page includes more than one location, nginx sends the body of each include in the order of the page, after the includes before it.
+Since 2.7.10 this also holds for an include that is not the first of the page and has a body filter, when its content handler wrote the body with `Nginx.rputs` or `Nginx.echo`, or when a rewrite handler of the location wrote with them before the request went on to the content; up to 2.7.9 the client got at most the part of the page before such an include, and nginx closed the connection after `send_timeout` (see [the 2.7.10 release notes](../releases/v2.7.10.md)).
+
 A header filter runs before the body has been read.
 There `Nginx::Filter#body` and `Nginx::Filter#body=` raise a `RuntimeError` (`#body=` since 2.7.1; `#body` since 3.0.0, it returned an empty string from 2.7.1).
 
