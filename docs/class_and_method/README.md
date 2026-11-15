@@ -1450,6 +1450,8 @@ Creates and returns an Upstream instance.
 
 The string is the whole name of an `upstream {}` block, compared case-insensitively as nginx compares upstream names. The method raises `RuntimeError` when no upstream has that name, and `TypeError` when the argument is not a String. Up to 2.7.2 the method compared only the length of the argument, so it also found the first upstream whose name started with it, and it did not check the class of the argument.
 
+An object has its upstream only when `initialize` found it. On an object whose `initialize` raised, which a script can keep when it calls `initialize` again with `send` or creates the object with `allocate`, `#keepalive_cache`, `#keepalive_cache=`, `#server` and `#server=` raise `ArgumentError` (`uninitialized Nginx::Upstream`) since 2.7.9. Up to 2.7.8 they returned `nil` or ended the worker process (see [the 2.7.9 release notes](../releases/v2.7.9.md)). An `initialize` that succeeds afterwards gives the object its upstream.
+
 ```ruby
 u = Nginx::Upstream.new "YOUR_UPSTREAM_NAME"
 ```
@@ -1749,6 +1751,8 @@ stream {
 get the upstream configuration via upstream name
 
 As for `Nginx::Upstream.new`, the string is the whole name of an `upstream {}` block of the `stream {}` block, compared case-insensitively; the method raises `RuntimeError` when no upstream has that name, and `TypeError` when the argument is not a String (since 2.7.3; up to 2.7.2 it also found an upstream whose name started with the argument).
+
+On an object whose `initialize` raised, or one created with `allocate`, `#upstream_server` and `#upstream_server=` raise `ArgumentError` (`uninitialized Nginx::Stream::Connection`) since 2.7.9; up to 2.7.8 they returned `nil` or ended the worker process (see [the 2.7.9 release notes](../releases/v2.7.9.md)). The other methods do not use the upstream and work on such an object.
 
 ```ruby
 # == nginx.conf ==
