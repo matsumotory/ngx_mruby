@@ -67,6 +67,7 @@ static mrb_value ngx_stream_mrb_connection_init(mrb_state *mrb, mrb_value self)
       ctx->us = usp[i];
       ctx->peers = usp[i]->peer.data;
       if (ctx->peers->number > 1) {
+        mrb_free(mrb, ctx);
         mrb_raise(mrb, E_RUNTIME_ERROR, "don't support multiple server config");
       }
       ctx->target = ctx->peers->peer;
@@ -74,22 +75,38 @@ static mrb_value ngx_stream_mrb_connection_init(mrb_state *mrb, mrb_value self)
     }
   }
 
-  mrb_data_init(self, ctx, &ngx_stream_mrb_upstream_context_type);
-
+  // The object keeps the context only when the upstream and its server were
+  // found, so that the methods of an object whose initialize raised raise.
   if (ctx->us == NULL || ctx->peers == NULL) {
+    mrb_free(mrb, ctx);
     mrb_raisef(mrb, E_RUNTIME_ERROR, "%S not found upstream config", upstream);
   }
 
   if (ctx->target == NULL) {
+    mrb_free(mrb, ctx);
     mrb_raise(mrb, E_RUNTIME_ERROR, "not found server config in upstream");
   }
+
+  mrb_data_init(self, ctx, &ngx_stream_mrb_upstream_context_type);
 
   return self;
 }
 
+/* The context of an object whose initialize found its upstream and server.
+ * An object from allocate, or one whose initialize raised, has none. */
+static ngx_stream_mruby_upstream_context *ngx_stream_mrb_upstream_get_context(mrb_state *mrb, mrb_value self)
+{
+  ngx_stream_mruby_upstream_context *ctx = mrb_data_check_get_ptr(mrb, self, &ngx_stream_mrb_upstream_context_type);
+
+  if (ctx == NULL) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "uninitialized Nginx::Stream::Connection");
+  }
+  return ctx;
+}
+
 static mrb_value ngx_stream_mrb_upstream_get_server(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_mruby_upstream_context *ctx = DATA_PTR(self);
+  ngx_stream_mruby_upstream_context *ctx = ngx_stream_mrb_upstream_get_context(mrb, self);
   if (ctx->target == NULL) {
     return mrb_nil_value();
   }
@@ -170,7 +187,7 @@ static ngx_stream_mrb_upstream_server_store_t *ngx_stream_mrb_upstream_server_st
 
 static mrb_value ngx_stream_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_mruby_upstream_context *ctx = DATA_PTR(self);
+  ngx_stream_mruby_upstream_context *ctx = ngx_stream_mrb_upstream_get_context(mrb, self);
   ngx_url_t u;
   mrb_value server;
   ngx_stream_session_t *s = ngx_stream_mrb_get_session_or_raise(mrb);
