@@ -19,12 +19,12 @@ Do not describe security vulnerabilities here. Report them privately (see SECURI
 Exact commands and their results, e.g. `sh test.sh`, `BUILD_DYNAMIC_MODULE=1 sh test.sh`,
 with the nginx version used, the commit each ran on and the machine.
 The checks that CI runs for the change run locally first ("Build and test" in AGENTS.md lists them:
-`sh test/check_added_files.sh`, the suite with the static and the dynamic module, the sanitizers
-and valgrind, the callgrind comparison, the soak, the steps of examples/start, nginx-tests,
-`test/gem_heads.sh` when the change touches `build_config.rb`, `test/gem_heads.sh` or
-`.github/workflows/gem-heads.yml`, the site's checks, zizmor); only CodeQL stays in CI ("Branches
-and pull requests" in AGENTS.md). A check of that list that could not run for this PR: what was
-tried, and why it did not run.
+`sh test/check_added_files.sh`; when `sh test/ci/changes.sh` gives `build` `standard` or `full`,
+the suite with the static and the dynamic module, the sanitizers and valgrind; the callgrind
+comparison, the soak, the steps of examples/start, nginx-tests, `test/gem_heads.sh` when the
+change touches `build_config.rb`, `test/gem_heads.sh` or `.github/workflows/gem-heads.yml`, the
+site's checks, zizmor); only CodeQL stays in CI ("Branches and pull requests" in AGENTS.md). A
+check of that list that could not run for this PR: what was tried, and why it did not run.
 Bug fixes: the regression test is the first commit and the fix the second; quote `sh test.sh`
 (or the valgrind/sanitizer report) at each commit, failing at the first and passing at the second.
 -->

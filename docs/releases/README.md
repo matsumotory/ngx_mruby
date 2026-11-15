@@ -141,8 +141,9 @@ documentation changes and refactoring need no entry at all.
   before upgrading", a "should fix" in the other sections. An earlier entry
   that lacks "Why it changed" is left to "Before the tag" below and is not a
   finding of that pull request.
-- Before each tag, a pull request checks the file against every pull request
-  merged since the previous release (see "Before the tag" below).
+- Before each tag, the session checks the file against every pull request
+  merged since the previous release, in a pull request when something needs
+  a correction (see "Before the tag" below).
 
 ## File names
 
@@ -299,30 +300,59 @@ entry. It follows these conventions:
 
 ## Before the tag
 
-Before a release is published, a pull request checks the file and its
+Before a release is published, the session checks the file and its
 Japanese version against what was merged. It lists every pull request merged
 into the branch since the previous release (`git log --first-parent --merges <previous tag>..origin/<branch>`),
 confirms for each one that it has its entry or changes nothing that a
-configuration, script or build can observe, and adds the entries that are
-missing. It completes each entry under "Behavior changes: read before
+configuration, script or build can observe, and finds the entries that are
+missing. It looks for each entry under "Behavior changes: read before
 upgrading" that lacks a line of the template ("Why it changed" included). It
-creates the Japanese file by translating the English one if the release has
-none yet. Otherwise it compares the Japanese file with the English one: the
-same sections, and the same entries in the same order, each saying what its
-English entry says. It adds the Japanese entries that are missing and
-corrects those that differ.
-Its body lists each pull request with the section of its entry, or "no entry"
-and the reason, and says that the two files were compared. This catches pull
-requests merged before this convention, pull requests whose author did not
-follow it, and entries that a review missed. The same pull request renames
-both files if the release will be a different version.
+compares the Japanese file with the English one: the same sections, and the
+same entries in the same order, each saying what its English entry says.
+This catches pull requests merged before this convention, pull requests
+whose author did not follow it, and entries that a review missed.
 
-The check pull request has the label `full-matrix`, given when it is opened
+When something needs a correction, a pull request (the check pull request)
+makes it: it adds the missing entries, completes the entries that lack a
+line of the template, creates the Japanese file by translating the English
+one if the release has none yet, adds the Japanese entries that are missing
+and corrects those that differ, and renames both files if the release will
+be a different version. Its body lists each pull request with the section
+of its entry, or "no entry" and the reason, and says that the two files were
+compared. It is merged before the release.
+
+When nothing needs a correction, the session opens no pull request, since
+it would change no file. After the release, the session records the check
+in `docs/HANDOFF.md` on `next` instead, in the pull request that records the
+release there ("Session handoff" in [AGENTS.md](../../AGENTS.md#session-handoff)):
+the list of pull requests with the section of each entry, or "no entry" and
+the reason, and that the two files were compared; the performance
+comparison with the previous release ("Design principles" in
+[AGENTS.md](../../AGENTS.md#design-principles)); and the run of every cell
+below. A `WARN` or `FAIL` of the comparison still goes to the owner before
+the tag.
+
+Before the tag, every cell of the build matrix runs on the tip of the base
+branch, the commit where the check ends. The four cells of a pull request
+and the local checks do not run the other nginx versions and link modes,
+so a change that fails only in one of them (for example a test
+configuration that an older nginx refuses) would otherwise first fail in
+the run that the push of the tag starts, after the release is out. The
+check pull request has the label `full-matrix`, given when it is opened
 (`gh pr create --draft --label full-matrix`; `gh label create full-matrix`
-adds the label once, if the repository has none), so that its run of `test.yml`
-builds every cell of the build matrix and runs `soak`, where other pull
-requests run four cells ("Which jobs a run starts" in
-[docs/test/README.md](../test/README.md)).
+adds the label once, if the repository has none), so that its run of
+`test.yml` builds every cell and runs `soak`, where other pull requests run
+four cells ("Which jobs a run starts" in
+[docs/test/README.md](../test/README.md)). Without a check pull request,
+the session starts the run on the base with `gh workflow run test.yml
+--ref <branch>`: "Run workflow" without the input `base` builds every
+cell, and reports its result as the job `ci-ok (manual)`. A cell that
+fails is fixed before the tag, by a pull request of its own, and every
+cell runs again on the new tip; the run of that pull request counts for
+this when it has the label `full-matrix` and no other pull request is
+merged after it. For a release that ships a security fix, this run is on
+the tip before the fix is merged, and "Security fixes" below says what
+runs locally on the tree with the fix.
 
 On `next`, the range starts at the previous pre-release tag, and for the first
 pre-release at the latest 2.x release tag. A merge of `master` into `next`
@@ -332,15 +362,16 @@ merge, the check confirms that each of those pull requests has its entries in
 the 2.x file (see "File names"), and before the 3.0.0 tag it copies into
 `v3.0.0.md` the entries whose 2.x release is not tagged yet.
 
-The session publishes the release at the merge commit of the check pull
-request, after the owner has given the go-ahead for that release (the
+The session publishes the release at the commit where the check ends,
+the merge commit of the check pull request or, without one, the tip of the
+base that the run of every cell built, after the owner has given the go-ahead for that release (the
 session asks for it with the release notes ready;
 `gh release create <tag> --target <commit> --title <title> --notes-file <body>`
 creates the release and its tag). Pull requests
 merged after it ship in the following release, and the check for that release
 moves their entries to that release's file. If the release is published at a
 later commit instead, the check is repeated for the pull requests merged
-after the check pull request. A release that ships a security fix follows the order in
+after that commit. A release that ships a security fix follows the order in
 "Security fixes" below.
 
 ## The GitHub release
@@ -358,11 +389,38 @@ the files and, after the owner's go-ahead, publish the release (see
 [AGENTS.md](../../AGENTS.md#branches-and-pull-requests)); the owner publishes
 the advisory.
 
-The home page of the site names the newest stable release, which the site
-reads from the git tags when it is built. After publishing a
-release, the session starts the site's workflow on `next`
-(`gh workflow run site.yml --ref next`), so that the home page names the
-new release before the next push to `next` or `master` builds the site.
+Right after it publishes the release, the same session builds the site
+again, by starting `site.yml` on `next`, and waits for that run to pass.
+The home page of ngx.mruby.org names the newest stable release, which the
+build reads from the git tags, and no push starts a build when the release
+creates its tag: the run that the push of the last merge started through
+`site-dispatch.yml` (on `master`) or the push itself (on `next`) built the
+site before the tag existed, so without this run the home page keeps
+naming the previous release as the latest. That earlier run is also a
+`workflow_dispatch` run of `site.yml` on `next`, and the new run may not
+be listed yet right after the dispatch, so the newest run in `gh run list`
+is not taken. The id comes, as in `site-dispatch.yml`, from the URL that
+`gh workflow run` prints, or else from the first run created since the
+dispatch:
+
+```sh
+since=$(date -u -v-30S +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '-30 seconds' +%Y-%m-%dT%H:%M:%SZ)
+out=$(gh workflow run site.yml --ref next) && echo "$out"
+run=$(echo "$out" | grep -Eo '/actions/runs/[0-9]+' | head -n 1 | cut -d / -f 4)
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+  [ -n "$run" ] && break
+  sleep 5
+  run=$(gh run list --workflow site.yml --branch next --event workflow_dispatch --limit 5 \
+    --json databaseId,createdAt --jq "[.[] | select(.createdAt >= \"$since\")][0].databaseId // empty")
+done
+gh run watch "${run:?no run of site.yml on next since $since}" --exit-status
+```
+
+The 30 seconds before the dispatch allow for a difference between the
+clocks of the machine and GitHub. The session then checks the published page:
+`curl -s https://ngx.mruby.org/ | grep -o 'Latest release: v[^"<]*'`
+prints the new version (the Japanese home page,
+`https://ngx.mruby.org/ja/`, prints it after `最新のリリースは`).
 
 ## Security fixes
 
@@ -379,6 +437,15 @@ tagged files and the release body have them:
   "Why it changed" names the defect only as the difference that "Before"
   describes; the advisory id, added when the advisory is published (below),
   points to the details.
+- The commit messages of the private pull request, and the names and
+  comments of its tests, are neutral in the same way: they say what the
+  code does now, not how to trigger the defect or what it allows, and they
+  name no advisory id while the advisory is not published. They become
+  public with the merge, before the users have upgraded and possibly
+  before the advisory is published, so they disclose no more than the
+  entries do ([AGENTS.md "Security"](../../AGENTS.md#security)). The id
+  reaches the repository only through the pull request below, after the
+  advisory is published.
 - The advisory draft is written in English, followed by the same content
   in Japanese.
 - When the owner publishes the advisory, a pull request adds the advisory id
@@ -391,13 +458,15 @@ tagged files and the release body have them:
 A release that ships a security fix is prepared in this order, so that the fix
 is public for as short a time as possible before the release:
 
-1. The check pull request ("Before the tag") is merged before the fix. It
-   covers the pull requests merged until then; the fix's private pull request
-   carries its own entries.
+1. The check of "Before the tag", with its pull request when it needs one,
+   and the run of every cell of the build matrix on the tip of the base,
+   are done before the fix is merged. The check covers the pull requests
+   merged until then; the fix's private pull request carries its own
+   entries.
 2. The owner merges the fix from the advisory's private fork ("Merge pull
    request(s)" on the advisory), and the session publishes the release at the
    fix's merge commit right after. This is the exception to publishing at the
-   merge commit of the check pull request. If
+   commit where the check ends. If
    another pull request is merged between the two, its entries are checked
    before the fix is merged.
 
@@ -471,14 +540,47 @@ go through (the sessions' procedure, not a decision of the owner):
 - No CI run stands behind this merge. What stands for it is the local runs
   that the private pull request quotes: the suite with the static and with
   the dynamic module, the sanitizer build and valgrind
-  ([AGENTS.md "Build and test"](../../AGENTS.md#build-and-test)), and the
+  ([AGENTS.md "Build and test"](../../AGENTS.md#build-and-test)), the
   performance comparison
-  (["Performance comparison with callgrind"](../test/README.md#performance-comparison-with-callgrind)).
+  (["Performance comparison with callgrind"](../test/README.md#performance-comparison-with-callgrind)),
+  and the checks of the release notes that the pull request changes. The
+  last are the checks of
+  ["The 2.x pages of the site"](../test/README.md#the-2x-pages-of-the-site),
+  run with the pull request's `vX.Y.Z.md` and `vX.Y.Z.ja.md` copied into
+  `docs/releases/` of a local checkout of `next` and committed there in a
+  local commit that is never pushed, as the last paragraph of that list
+  says; the copies stay local.
+  The files become 3.x pages of the site when `master` is merged into
+  `next`, and the site's checks of the Japanese pages would otherwise
+  first fail on them after they are public, in that merge or in the
+  deploy of the site. On the tree that the release will be published from
+  (the head of the last fix's pull request), the suite also runs locally
+  with the static module on the oldest nginx of the build matrix and with
+  the dynamic module on the nginx of the standard dynamic cell, both taken
+  from the matrix of `.github/workflows/test.yml` (now nginx 1.26.3 static
+  and nginx 1.30.6 dynamic on `master`, and nginx 1.30.6 static and
+  dynamic on `next`; both run in a Linux container,
+  and "Which jobs a run starts" in
+  [docs/test/README.md](../test/README.md#which-jobs-a-run-starts) says
+  how to switch the version). The run of every cell under "Before the
+  tag" did not have the fix, and the run that the push of the tag starts
+  comes after the release, so these runs are the only check of the fix
+  on those versions.
   After the last merge and before the release, the session fetches the base
   branch and checks that its tree is the tree that those runs tested: `git
   rev-parse origin/<base>^{tree}` and `git rev-parse <tested commit>^{tree}`
   print the same id. When they differ, the session publishes no release
   from that tree, and tells the owner what differs.
+- Before the session asks the owner to publish the advisory, it checks the
+  draft against the release: the patched versions name the version just
+  released (`gh api repos/matsumotory/ngx_mruby/security-advisories/<id>
+  --jq '.vulnerabilities[].patched_versions'` prints them), and the text
+  says nothing that the release notes contradict (the versions, the
+  affected directives and methods, what is observable now). The draft is
+  written before the version is settled, and a published advisory that
+  names another version than the release sends users to the wrong
+  upgrade. When something differs, the request to the owner names it, so
+  that the draft is corrected before it is published.
 - After the release, the owner publishes the advisory on the same page, with
   "Publish advisory" at the bottom of the advisory form
   ([GitHub's documentation](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/fix-reported-vulnerabilities/publish-repository-advisory);

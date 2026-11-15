@@ -151,12 +151,13 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     callgrind" in `docs/test/README.md`). On `master`, `ci-ok` does not
     need the job yet; a PR to `master` adds it there.
 - Before a tag. Each PR is compared only with its base, so changes that
-  stay below `WARN` can add up. The check PR of "Before the tag" (see
-  `docs/releases/README.md`) therefore also compares its head with the tag
-  where the range of the check starts. The base is that tag, and the head
-  must contain the tip of its base branch, so update the branch first. From
-  a checkout of the check PR's head commit (`<base>` is `master` or
-  `next`):
+  stay below `WARN` can add up. The check of "Before the tag" (see
+  `docs/releases/README.md`) therefore also compares the commit that it
+  checks with the tag where the range of the check starts: the head of
+  the check PR, or the tip of the base branch when the check needs no PR.
+  The base is that tag, and the head must contain the tip of its base
+  branch, so update the branch of a check PR first. From a checkout of
+  that commit (`<base>` is `master` or `next`):
 
   ```sh
   git fetch origin <base> --tags
@@ -179,12 +180,13 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
   The report is in `$D/head/build_perf/report.txt`. The measurement
   (`test/perf/`, the scenarios in `test/soak/`) comes from the head, so a
   tag from before the lane was added is measured as well. The check PR
-  quotes the table as above, and a `WARN` or `FAIL` there goes to the
-  owner. The accepted differences of `test/perf/accepted.txt` ("Known
-  differences" in `docs/test/README.md` on `next`) apply to this comparison
-  too: a row within the allowance of a line whose condition both builds
-  match is `ok (accepted: ...)`, and a change above it keeps its `WARN` or
-  `FAIL`.
+  quotes the table as above (without a check PR, the record of the check
+  in `docs/HANDOFF.md` on `next` does), and a `WARN` or `FAIL` there goes
+  to the owner before the tag. The accepted differences of
+  `test/perf/accepted.txt` ("Known differences" in `docs/test/README.md`
+  on `next`) apply to this comparison too: a row within the allowance of a
+  line whose condition both builds match is `ok (accepted: ...)`, and a
+  change above it keeps its `WARN` or `FAIL`.
 - Planned, not in place yet: a benchmark of the test nginx for throughput
   and latency (Pillar E and section 8 of `docs/proposals/v3-plan.md` on
   `next`). Where its results are recorded is decided when it is added.
@@ -290,20 +292,26 @@ upgrading". New behavior, API cleanups and features go to `next`.
   (`sh test/check_added_files.sh` for every PR; when `test/ci/changes.sh`
   gives `build` `standard` or `full`, the suite with the static and with
   the dynamic module, under the sanitizers and under valgrind, as the four
-  cells of a code change run it; the comparison when it gives `perf`
-  `true`, the soak when it gives `soak` `true`), and quotes the commands and their results under "How was this
-  tested"; a check that can run locally is not left to CI ("Build and
-  test" lists the local commands). The run of a ready PR runs the
-  smallest set of jobs that the change needs ("Which jobs a run starts"
-  in `docs/test/README.md`). A change of the code runs four cells of the
-  build matrix, and every cell runs in the scheduled run and in the
+  cells of a code change run it; on `master`, also the suite with the
+  static module on the oldest nginx of its build matrix, which its four
+  cells do not run, while on `next` the oldest nginx of the matrix is a
+  cell of every such PR ("Build and test"); the comparison when it gives
+  `perf` `true`, the soak when it gives `soak` `true`), and quotes the
+  commands and their results under "How was this tested"; a check that can
+  run locally is not left to CI ("Build and test" lists the local
+  commands). The run of a ready PR runs the smallest set of jobs that the
+  change needs ("Which jobs a run starts" in `docs/test/README.md`). A
+  change of the code runs four cells of the build matrix, and every cell
+  runs in the scheduled run and in the
   check before a release ("Decisions" in `docs/HANDOFF.md` on `next`):
   four cells keep the run of a PR short, and the scheduled run and the
   check before a release still cover every combination. A change of the
   code or the tests runs nginx 1.31.8 with the static module, 1.30.6 with the
   dynamic module, the sanitizer cell and the cell under valgrind; every
-  cell runs in the nightly run, on the push of a tag, in the check PR
-  before a tag (the label `full-matrix`) and on "Run workflow" without the
+  cell runs in the nightly run, on the push of a tag, before a tag on the
+  tip of the base (the check PR's label `full-matrix`, or "Run workflow"
+  on the base when the check needs no PR; "Before the tag" in
+  `docs/releases/README.md`) and on "Run workflow" without the
   input `base`. The run finishes in about
   fifteen minutes, not in tens of minutes: on
   2026-10-31, a cell of the build matrix took 6 to 14 minutes and the run
@@ -337,11 +345,14 @@ upgrading". New behavior, API cleanups and features go to `next`.
   advisories: the owner publishes the advisory. A session publishes a
   release, and with it the tag, after the owner, asked by the session,
   has given the go-ahead for that release, once the check of "Before the
-  tag" is merged and, for a security fix, the owner has merged the fix
-  from the advisory's private fork (the owner's decision of 2026-11-02).
-  Before a tag, a PR checks the release notes against every PR merged since
-  the previous release (see "Before the tag" in `docs/releases/README.md`),
-  and compares the performance with that release (see "Design principles").
+  tag" is done (its PR merged, when it needs one) and, for a security fix,
+  the owner has merged the fix from the advisory's private fork (the
+  owner's decision of 2026-11-02). Before a tag, the session checks the
+  release notes against every PR merged since the previous release, in a
+  PR when something needs a correction (see "Before the tag" in
+  `docs/releases/README.md`), compares the performance with that release
+  (see "Design principles"), and runs every cell of the build matrix on
+  the tip of the base.
 
 ### Assigning agent work
 
@@ -682,7 +693,16 @@ sh test/check_added_files.sh origin/<base> HEAD   # the files job: no added file
   build_config.rb "" .claude/tmp/gem-heads.tsv` (with `gh` and a token;
   "Heads of the GitHub gems" in `docs/test/README.md`) when the change
   touches `build_config.rb`, `test/gem_heads.sh` or
-  `.github/workflows/gem-heads.yml`.
+  `.github/workflows/gem-heads.yml`. On `master`, a change for which
+  `test/ci/changes.sh` gives `build` `standard` or `full` also runs the
+  suite with the static module on the oldest nginx of its build matrix,
+  which the four cells of a PR there do not include (`AGENTS.md` on
+  `master`). On `next`, the oldest nginx of the build matrix (1.30.6, the
+  oldest version of `NGINX_VERSION` of `full_matrix` in
+  `.github/workflows/test.yml`) is the nginx of the dynamic cell that
+  every such PR runs, so a difference between nginx versions, such as a
+  test configuration that an older nginx refuses, fails in the run of the
+  PR, and no local run is added for it.
   `docs/test/README.md` describes each of them. CodeQL is not run locally
   ("Branches and pull requests" gives the reason). The docker forms of
   the sanitizer and valgrind runs build against the OpenSSL of Ubuntu
@@ -753,8 +773,8 @@ sh test/check_added_files.sh origin/<base> HEAD   # the files job: no added file
   run starts the build matrix, and every
   cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
   what counts as an error and the suppressions).
-- `test.sh` listens on these ports by default (18080-18091, 18101-18103, 18110-18145,
-  18147-18172, 18176-18199, 12345-12359, 12363-12366,
+- `test.sh` listens on these ports by default (18080-18092, 18101-18103, 18110-18172,
+  18176-18199, 12345-12359, 12363-12366,
   12368-12369, 12372-12396; 18116, 12357 and 12385-12388 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18180, 18181, 18185, 12379 and
   12393 to the nginx with several workers that `test/t/cases/_workers.rb` starts,
