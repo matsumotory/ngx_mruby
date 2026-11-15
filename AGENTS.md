@@ -773,9 +773,9 @@ sh test/check_added_files.sh origin/<base> HEAD   # the files job: no added file
   run starts the build matrix, and every
   cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
   what counts as an error and the suppressions).
-- `test.sh` listens on these ports by default (18080-18092, 18101-18103, 18110-18172,
+- `test.sh` listens on these ports by default (18080-18093, 18101-18103, 18110-18172,
   18176-18199, 12345-12359, 12363-12366,
-  12368-12369, 12372-12396; 18116, 12357 and 12385-12388 belong to the second nginx that
+  12368-12369, 12372-12397; 18116, 12357 and 12385-12388 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18180, 18181, 18185, 12379 and
   12393 to the nginx with several workers that `test/t/cases/_workers.rb` starts,
   12393-12396 to the independent nginx and echo upstream of
