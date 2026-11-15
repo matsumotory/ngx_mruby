@@ -350,16 +350,14 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   ```
 
   `Nginx.rputs`が無ければ、どちらのバージョンもnginxの401のページか、`error_page`のページを返します。nginxのページや`error_page`に頼っていたハンドラは、出力を書かずにステータスを設定してください。出力の後に301、302、303、307、308を設定したとき、`Location`は、スクリプトが`Nginx::Headers_out`で設定した場合だけ付きます。出力の後の200未満のステータスでは500を返します。最初の出力の前に設定したステータスにも、3.0.0では同じ規則を当てます。2.xは出力を200で送りました。200で送るつもりのハンドラは、出力の後に`Nginx.return Nginx::HTTP_OK`を呼び、ステータスを200に戻してください。`Nginx::HTTP_CLOSE`(444)では、出力の前でも後でも何も送らずに接続を閉じます。出力の後の444は2.xと同じです。2.xは、444の後に書いた出力を200で送りました。
-- [ハンドラで効果の無いメソッドは、そのハンドラで`RuntimeError`を出す](../../releases/v3.0.0.ja.md#ハンドラで効果の無いメソッドはそのハンドラでruntimeerrorを出す826)：`mruby_log_handler*`、`mruby_output_header_filter*`、`mruby_output_body_filter*`、`mruby_set`、`mruby_set_code`のコードで、下の表の3列目のハンドラにあたるメソッドを探してください。ボディフィルタの外の`Nginx::Filter#body`も探してください。2.xではレスポンスに影響せずに戻ったこれらの呼び出しが、3.0.0では、メソッドとハンドラを名前で示す`RuntimeError`を出します。呼び出しを消すか、2列目のハンドラへ移してください。
+- [ハンドラで効果の無いメソッドは、そのハンドラで`RuntimeError`を出す](../../releases/v3.0.0.ja.md#ハンドラで効果の無いメソッドはそのハンドラでruntimeerrorを出す826)：`mruby_log_handler*`、`mruby_output_header_filter*`、`mruby_output_body_filter*`、`mruby_set`、`mruby_set_code`のコードで、下の一覧の「新しく例外を出す場所」にあたるメソッドを探してください。2.xではレスポンスに影響せずに戻ったこれらの呼び出しが、3.0.0では、メソッドとハンドラを名前で示す`RuntimeError`を出します。呼び出しを消すか、「動く場所」のハンドラへ移してください。フェーズのハンドラは、post_read、server rewrite、rewrite、access、contentのハンドラを指します。
 
-  | メソッド | 動くハンドラ | 新しく例外を出すハンドラ |
-  |---|---|---|
-  | リクエストを読む：`Nginx::Request`のgetter、`Nginx::Headers_in#[]`、`Nginx::Var`の読み出し、`Nginx::Connection`、`Nginx::Server`のgetter | リクエストのすべてのハンドラとフィルタ | ありません |
-  | リクエストを変える：`uri=`、`args=`、`method=`、`request_line=`、`Nginx::Headers_in#[]=`と`#delete` | `mruby_set`のハンドラと、post_read、server rewrite、rewrite、access、contentのハンドラ | logハンドラ、ヘッダフィルタ、ボディフィルタ |
-  | 変数に代入する：`Nginx::Var#NAME=`、`#set` | リクエストのすべてのハンドラとフィルタ | ありません |
-  | レスポンスのヘッダ：`Nginx::Headers_out#[]=`と`#delete`、`Nginx.status_code=`、ステータスを渡した`Nginx.return`と`Nginx.send_header`、`content_type=` | nginxがレスポンスのヘッダを送るまでの、リクエストのすべてのハンドラとフィルタ | logハンドラと、レスポンスのヘッダを送った後のほかのハンドラ |
-  | 出力：`Nginx.rputs`、`Nginx.echo` | post_read、server rewrite、rewrite、access、contentのハンドラと、ボディフィルタ | `mruby_set`のハンドラ、logハンドラ、ヘッダフィルタ |
-  | ボディフィルタのボディ：`Nginx::Filter#body`、`#body=`、`#output` | ボディフィルタ | ほかのハンドラの`#body`。`#body=`と`#output`は前から例外を出していました |
+  - リクエストを読む`Nginx::Request`のgetter、`Nginx::Headers_in#[]`、`Nginx::Var`の読み出し、`Nginx::Connection`、`Nginx::Server`のgetter：動く場所は、リクエストのすべてのハンドラとフィルタです。新しく例外を出す場所はありません。
+  - リクエストを変える`uri=`、`args=`、`method=`、`request_line=`、`Nginx::Headers_in#[]=`と`#delete`：動く場所は、`mruby_set`のハンドラとフェーズのハンドラです。新しく例外を出す場所は、logハンドラ、ヘッダフィルタ、ボディフィルタです。
+  - 変数に代入する`Nginx::Var#NAME=`と`#set`：動く場所は、リクエストのすべてのハンドラとフィルタです。新しく例外を出す場所はありません。
+  - レスポンスのヘッダを変える`Nginx::Headers_out#[]=`と`#delete`、`Nginx.status_code=`、ステータスを渡した`Nginx.return`と`Nginx.send_header`、`content_type=`：動く場所は、nginxがレスポンスのヘッダを送るまでの、リクエストのすべてのハンドラとフィルタです。新しく例外を出す場所は、logハンドラと、レスポンスのヘッダを送った後のほかのハンドラです。
+  - 出力を書く`Nginx.rputs`と`Nginx.echo`：動く場所は、フェーズのハンドラとボディフィルタです。新しく例外を出す場所は、`mruby_set`のハンドラ、logハンドラ、ヘッダフィルタです。
+  - ボディフィルタのボディを扱う`Nginx::Filter#body`、`#body=`、`#output`：動く場所は、ボディフィルタです。新しく例外を出すのは、ほかのハンドラの`#body`です。`#body=`と`#output`は、前から例外を出していました。
 
   `access_log`へ値を渡すlogハンドラは、logハンドラでも動く`Nginx::Var`で変数に代入してください。
 
