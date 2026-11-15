@@ -21,6 +21,12 @@ def uninit_lines_from(offset)
   end
 end
 
+# error.log shows the exception as its inspect, whose format depends on the
+# bundled mruby: "message (ArgumentError)" with mruby 3 on 2.x,
+# "#<ArgumentError: message>" with mruby 4.1 on next. The runner of the cases
+# is built from the same mruby/ tree as nginx, so the case builds the
+# expected text with ArgumentError#inspect of the runner.
+
 def uninit_get(path)
   HttpRequest.new.get(base(18093) + path)
 end
@@ -35,7 +41,7 @@ UNINIT_OBJECTS.each do |object|
       t.assert_equal 500, res['code']
       lines = uninit_lines_from(offset).select { |l| l.include?(' [error] ') && l.include?('mrb_run failed') }
       t.assert_equal 1, lines.size
-      t.assert_include lines[0].to_s, 'uninitialized Nginx::Upstream (ArgumentError)'
+      t.assert_include lines[0].to_s, ArgumentError.new('uninitialized Nginx::Upstream').inspect
       alive = uninit_get('/alive')
       t.assert_equal 200, alive['code']
       t.assert_equal 'alive', alive['body']
