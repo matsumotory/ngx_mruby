@@ -388,15 +388,86 @@ static ngx_mrb_fiber_outcome_t ngx_mrb_run_fiber(mrb_state *mrb, mrb_value *fibe
  * inside the Ruby call), and after the subrequest of such a
  * handler.
  */
+// The data of ngx_mrb_post_fiber_body
+typedef struct {
+  ngx_mrb_reentrant_t *re;
+  ngx_http_mruby_ctx_t *ctx;
+  ngx_http_mrb_fiber_t *f;
+  int ai;
+} ngx_mrb_post_fiber_t;
+
+/*
+ * The part of ngx_mrb_post_fiber that runs in the execution context of the
+ * request. nginx calls the post handler of a subrequest when it finalizes the
+ * subrequest, which can happen inside another mruby call (a handler of the
+ * subrequest that runs inside the Ruby call of Nginx.redirect), so this part
+ * runs through ngx_mrb_exec_run, which puts the context back also when an
+ * allocation fails there. NGX_DONE: the fiber waits again.
+ */
+static ngx_int_t ngx_mrb_post_fiber_body(mrb_state *mrb, void *data)
+{
+  ngx_mrb_post_fiber_t *pf = data;
+  ngx_mrb_reentrant_t *re = pf->re;
+  ngx_http_mruby_ctx_t *ctx = pf->ctx;
+  ngx_http_mrb_fiber_t *f = pf->f;
+  ngx_http_mruby_handler_kind_t kind = f->kind;
+  ngx_mrb_fiber_outcome_t outcome;
+  ngx_flag_t has_result;
+  ngx_int_t result = NGX_OK;
+  ngx_int_t rc = NGX_OK;
+
+  re->r->headers_out.status = re->fiber_prev_status;
+
+  f->by_post_fiber = 1;
+  outcome = ngx_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result);
+  f->by_post_fiber = 0;
+  if (outcome == NGX_MRB_FIBER_WAITS) {
+    // can resume the fiber and wait the epoll timer
+    mrb_gc_arena_restore(re->mrb, pf->ai);
+    return NGX_DONE;
+  }
+
+  // can not resume the fiber, the fiber was finished (it holds no slot in
+  // the GC root holder any more)
+  re->fiber = NULL;
+
+  if (outcome == NGX_MRB_FIBER_RAISED) {
+    // ngx_mrb_fiber_resume has logged the exception and cleared mrb->exc,
+    // which all requests share
+    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+  } else if (re->sr == NULL && ctx->set_var_target.len > 1) {
+    if (ctx->set_var_target.data[0] != '$') {
+      ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0, "%s NOTICE %s:%d: invalid variable name error name: %s",
+                    MODULE_NAME, __func__, __LINE__, ctx->set_var_target.data);
+      rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    } else {
+      // Delete the leading dollar(ctx->set_var_target.data+1)
+      ngx_mrb_var_set_vector(re->mrb, mrb_top_self(re->mrb), (char *)ctx->set_var_target.data + 1,
+                             ctx->set_var_target.len - 1, *ctx->async_handler_result, re->r);
+      // the conversion of the value to a String raised
+      if (re->mrb->exc != NULL) {
+        ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
+        re->mrb->exc = NULL;
+        rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+      }
+    }
+  }
+
+  // ngx_mrb_finalize_rputs would replace a 500 set above with the status
+  // the handler had set before it failed
+  if (rc == NGX_OK) {
+    has_result = ngx_http_mrb_fiber_result(f, &result);
+    rc = ngx_mrb_finalize_rputs(re->r, ctx, kind, has_result, result, ngx_http_mrb_fiber_status(f));
+  }
+
+  return rc;
+}
+
 static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_t *ctx)
 {
   ngx_int_t rc = NGX_OK;
   ngx_mrb_exec_t exec;
-  ngx_http_mruby_handler_kind_t kind;
-  ngx_mrb_fiber_outcome_t outcome;
-  ngx_http_mrb_fiber_t *f;
-  ngx_flag_t has_result;
-  ngx_int_t result = NGX_OK;
+  ngx_mrb_post_fiber_t pf;
   int ai;
 
   ai = mrb_gc_arena_save(re->mrb);
@@ -406,64 +477,23 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
   // this guards the end of a subrequest that nginx reports after the request
   // cleanups of its main request ran.
   if (re->fiber != NULL && ((ngx_mrb_fiber_t *)re->fiber)->state != NGX_MRB_FIBER_CANCELLED) {
-    // the handler that runs the fiber, for ngx_mrb_finalize_rputs below; read
+    // the handler that runs the fiber, for ngx_mrb_finalize_rputs; read
     // before re->fiber is cleared
-    f = (ngx_http_mrb_fiber_t *)re->fiber;
-    kind = f->kind;
+    pf.re = re;
+    pf.ctx = ctx;
+    pf.f = (ngx_http_mrb_fiber_t *)re->fiber;
+    pf.ai = ai;
     // the execution context of re->r only until this function returns (see
     // ngx_mrb_run())
-    exec.kind = kind;
+    exec.kind = pf.f->kind;
     exec.on = re->r;
     exec.srv_conf = NULL;
     exec.record = NULL;
     exec.log = re->r->connection->log;
-    ngx_mrb_exec_push(re->mrb, &exec);
-    re->r->headers_out.status = re->fiber_prev_status;
-
-    f->by_post_fiber = 1;
-    outcome = ngx_mrb_run_fiber(re->mrb, re->fiber, ctx->async_handler_result);
-    f->by_post_fiber = 0;
-    if (outcome == NGX_MRB_FIBER_WAITS) {
-      // can resume the fiber and wait the epoll timer
-      mrb_gc_arena_restore(re->mrb, ai);
-      ngx_mrb_exec_pop(re->mrb, &exec);
+    rc = ngx_mrb_exec_run(re->mrb, &exec, ngx_mrb_post_fiber_body, &pf);
+    if (rc == NGX_DONE) {
       return NGX_DONE;
     }
-
-    // can not resume the fiber, the fiber was finished (it holds no slot in
-    // the GC root holder any more)
-    re->fiber = NULL;
-
-    if (outcome == NGX_MRB_FIBER_RAISED) {
-      // ngx_mrb_fiber_resume has logged the exception and cleared mrb->exc,
-      // which all requests share
-      rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    } else if (re->sr == NULL && ctx->set_var_target.len > 1) {
-      if (ctx->set_var_target.data[0] != '$') {
-        ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
-                      "%s NOTICE %s:%d: invalid variable name error name: %s", MODULE_NAME, __func__, __LINE__,
-                      ctx->set_var_target.data);
-        rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-      } else {
-        // Delete the leading dollar(ctx->set_var_target.data+1)
-        ngx_mrb_var_set_vector(re->mrb, mrb_top_self(re->mrb), (char *)ctx->set_var_target.data + 1,
-                               ctx->set_var_target.len - 1, *ctx->async_handler_result, re->r);
-        // the conversion of the value to a String raised
-        if (re->mrb->exc != NULL) {
-          ngx_mrb_raise_error(re->mrb, mrb_obj_value(re->mrb->exc), re->r);
-          re->mrb->exc = NULL;
-          rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-      }
-    }
-
-    // ngx_mrb_finalize_rputs would replace a 500 set above with the status
-    // the handler had set before it failed
-    if (rc == NGX_OK) {
-      has_result = ngx_http_mrb_fiber_result(f, &result);
-      rc = ngx_mrb_finalize_rputs(re->r, ctx, kind, has_result, result, ngx_http_mrb_fiber_status(f));
-    }
-    ngx_mrb_exec_pop(re->mrb, &exec);
   } else if (re->fiber != NULL) {
     ngx_log_error(NGX_LOG_NOTICE, re->r->connection->log, 0,
                   "%s NOTICE %s:%d: the fiber is not resumed: its request cleanup has run", MODULE_NAME, __func__,
