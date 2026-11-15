@@ -86,7 +86,7 @@ typedef struct {
 
 // every handler and filter of an HTTP request
 #define NGX_MRB_EXEC_HTTP_REQUEST                                                                                      \
-  (NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_SET) | NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_POST_READ) |                            \
+  (NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_SET) | NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_POST_READ) |                           \
    NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_SERVER_REWRITE) | NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_REWRITE) |                  \
    NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_ACCESS) | NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_CONTENT) |                          \
    NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_LOG) | NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_HEADER_FILTER) |                       \

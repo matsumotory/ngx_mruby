@@ -118,7 +118,8 @@ NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_HEADERS_HASH(out);
 
 // TODO:this declation should be moved to headers_(in|out)
 NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(content_type, r->headers_out.content_type);
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(content_type, r->headers_out.content_type, ngx_http_mrb_response_head(mrb, "Nginx::Request#"));
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(content_type, r->headers_out.content_type,
+                                                   ngx_http_mrb_response_head(mrb, "Nginx::Request#"));
 
 static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
 {
