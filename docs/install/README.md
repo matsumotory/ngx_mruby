@@ -159,6 +159,31 @@ The default `build.sh` options enable stream. When supplying your own nginx
 options, include `--with-stream`. See the [stream directives](../directives/README.md)
 and the [test instructions](../test/README.md) for TCP/UDP verification.
 
+ngx_mruby builds its stream module whenever nginx is configured with
+`--with-stream`. Since v2.7.0, that module needs nginx 1.25.5 or later: it
+uses the type `ngx_stream_listen_opt_t`, which nginx added in 1.25.5. The
+CI of this branch builds nginx 1.26.3 and later.
+
+With an older nginx, such as nginx 1.24 (the version that Ubuntu 24.04
+packages), configure nginx without `--with-stream`. ngx_mruby then builds
+without its stream module: the HTTP handlers work, but the `mruby_stream*`
+directives and `Nginx::Stream` are not available. `build.sh` passes
+`--with-stream` by default, so give it the full list of nginx options
+without it:
+
+```sh
+NGINX_SRC_ENV="$NGINX_SOURCE_DIR" NGINX_CONFIG_OPT_ENV="--prefix=$PWD/build/nginx --with-http_stub_status_module --with-cc-opt=-fno-common" sh ./build.sh
+make install
+```
+
+Neither `build.sh` nor `./configure` checks the version of nginx. With
+nginx 1.24 and `--with-stream`, the build stops while compiling
+`src/stream/ngx_stream_mruby_core.c`:
+
+```text
+src/stream/ngx_stream_mruby_core.c:68:3: error: unknown type name 'ngx_stream_listen_opt_t'; did you mean 'ngx_stream_listen_t'?
+```
+
 #### Building with non-system openssl
 
 The ordinary build uses the system OpenSSL development package. If you
