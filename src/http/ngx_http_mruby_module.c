@@ -807,6 +807,23 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
   return NGX_OK;
 }
 
+// The arguments of ngx_mrb_run_request, for ngx_mrb_exec_run
+typedef struct {
+  ngx_http_request_t *r;
+  ngx_mrb_state_t *state;
+  ngx_mrb_code_t *code;
+  ngx_flag_t cached;
+  ngx_str_t *result;
+  ngx_http_mruby_handler_kind_t kind;
+} ngx_mrb_run_args_t;
+
+static ngx_int_t ngx_mrb_run_body(mrb_state *mrb, void *data)
+{
+  ngx_mrb_run_args_t *a = data;
+
+  return ngx_mrb_run_request(a->r, a->state, a->code, a->cached, a->result, a->kind);
+}
+
 /*
  * Request-scoped Ruby methods find their request and the kind of their
  * handler in the execution context (src/common/ngx_mruby_exec.h). It is
@@ -815,13 +832,16 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
  * previous one back (rather than none) keeps it valid when a handler runs
  * nested, for example through an internal redirect from Ruby code. The fiber
  * of the handler pushes a context of its own, with its record, while it runs
- * (ngx_mrb_run_fiber).
+ * (ngx_mrb_run_fiber). A handler runs inside another mruby call in the
+ * location of Nginx.redirect and as an output filter of such a handler, so
+ * the run goes through ngx_mrb_exec_run, which puts the context back also
+ * when an allocation fails there.
  */
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
                       ngx_str_t *result, ngx_http_mruby_handler_kind_t kind)
 {
-  ngx_int_t rc;
   ngx_mrb_exec_t exec;
+  ngx_mrb_run_args_t args;
 
   if (state == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
@@ -832,11 +852,14 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   exec.srv_conf = NULL;
   exec.record = NULL;
   exec.log = r->connection->log;
-  ngx_mrb_exec_push(state->mrb, &exec);
-  rc = ngx_mrb_run_request(r, state, code, cached, result, kind);
-  ngx_mrb_exec_pop(state->mrb, &exec);
+  args.r = r;
+  args.state = state;
+  args.code = code;
+  args.cached = cached;
+  args.result = result;
+  args.kind = kind;
 
-  return rc;
+  return ngx_mrb_exec_run(state->mrb, &exec, ngx_mrb_run_body, &args);
 }
 
 /*

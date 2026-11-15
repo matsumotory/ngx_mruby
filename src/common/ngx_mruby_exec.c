@@ -6,6 +6,8 @@
 
 #include "ngx_mruby_exec.h"
 
+#include <mruby/error.h>
+
 const char *ngx_mrb_exec_kind_name(ngx_mrb_exec_kind_t kind)
 {
   switch (kind) {
@@ -41,6 +43,52 @@ const char *ngx_mrb_exec_kind_name(ngx_mrb_exec_kind_t kind)
   default:
     return "a context without a request handler";
   }
+}
+
+typedef struct {
+  ngx_mrb_exec_body_pt body;
+  void *data;
+  ngx_int_t rc;
+} ngx_mrb_exec_call_t;
+
+static mrb_value ngx_mrb_exec_call(mrb_state *mrb, void *data)
+{
+  ngx_mrb_exec_call_t *call = data;
+
+  call->rc = call->body(mrb, call->data);
+  return mrb_nil_value();
+}
+
+ngx_int_t ngx_mrb_exec_run(mrb_state *mrb, ngx_mrb_exec_t *exec, ngx_mrb_exec_body_pt body, void *data)
+{
+  ngx_mrb_exec_call_t call;
+  mrb_value exc;
+  mrb_bool raised = FALSE;
+  ngx_int_t rc;
+
+  ngx_mrb_exec_push(mrb, exec);
+
+  // Outside any mruby call a raise that body does not protect aborts the
+  // process, so nothing runs on with the context, and the protection is not
+  // paid for
+  if (mrb->jmp == NULL) {
+    rc = body(mrb, data);
+    ngx_mrb_exec_pop(mrb, exec);
+    return rc;
+  }
+
+  call.body = body;
+  call.data = data;
+  call.rc = NGX_ERROR;
+  exc = mrb_protect_error(mrb, ngx_mrb_exec_call, &call, &raised);
+  ngx_mrb_exec_pop(mrb, exec);
+  if (raised) {
+    // the exception goes on to the outer call, as it did without the
+    // protection, now with the context of the outer call back in place
+    mrb_exc_raise(mrb, exc);
+  }
+
+  return call.rc;
 }
 
 // Where a method that works in one kind of handler can be used, for the

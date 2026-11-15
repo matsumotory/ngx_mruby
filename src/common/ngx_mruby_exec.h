@@ -158,6 +158,34 @@ static ngx_inline void ngx_mrb_exec_pop(mrb_state *mrb, ngx_mrb_exec_t *exec)
  */
 mrb_noreturn void ngx_mrb_exec_raise(mrb_state *mrb, ngx_mrb_exec_t *exec, ngx_uint_t allowed, const char *name);
 
+/*
+ * The context of a push lives on the C stack of the function that pushed it,
+ * so the region between ngx_mrb_exec_push and ngx_mrb_exec_pop is not left
+ * without the pop: when an allocation fails, mruby raises NoMemoryError
+ * from the C function that allocates, and inside another mruby call
+ * (mrb->jmp is set) that longjmps to the outer call, which would go on with
+ * the holder pointing at a frame that is gone. The rule:
+ *
+ * - A region that can run inside another mruby call goes through
+ *   ngx_mrb_exec_run, which protects it there and puts the context back
+ *   before the exception goes on to the outer call. ngx_mrb_run is such a
+ *   region: nginx runs the handlers of a location inside the Ruby call of
+ *   Nginx.redirect, and the output filters inside the call that sends a
+ *   response. Every other push of the http module runs inside it
+ *   (ngx_mrb_run_fiber of a handler) or from nginx's events
+ *   (ngx_mrb_post_fiber, ngx_http_mrb_resume_set, the SSL handshake), and
+ *   ngx_mrb_exec_pop puts back the context from before its own push, so the
+ *   pop of ngx_mrb_run is right also when an inner region was left.
+ * - A region that runs only from nginx's events, or while nginx reads the
+ *   configuration or starts or ends a worker, where mrb->jmp is NULL, pushes
+ *   and pops directly: a raise without a jmp aborts the process (exc_throw
+ *   in mruby's error.c), and the calls that run Ruby code there protect it
+ *   themselves (mrb_toplevel_run, ngx_mrb_fiber_resume).
+ */
+typedef ngx_int_t (*ngx_mrb_exec_body_pt)(mrb_state *mrb, void *data);
+
+ngx_int_t ngx_mrb_exec_run(mrb_state *mrb, ngx_mrb_exec_t *exec, ngx_mrb_exec_body_pt body, void *data);
+
 // Raises "NAME is not available after WHEN", with name as above.
 mrb_noreturn void ngx_mrb_exec_raise_after(mrb_state *mrb, const char *name, const char *when);
 
