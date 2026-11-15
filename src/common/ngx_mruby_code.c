@@ -92,7 +92,8 @@ static mrb_value ngx_mrb_code_load(mrb_state *mrb, ngx_mrb_code_t *code, FILE *f
   return proc;
 }
 
-ngx_int_t ngx_mrb_code_compile(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code, const char *module_name)
+ngx_int_t ngx_mrb_code_compile(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code, const char *module_name,
+                               const char *func)
 {
   FILE *fp = NULL;
   mrb_value proc;
@@ -135,12 +136,12 @@ ngx_int_t ngx_mrb_code_compile(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *c
      configuration through its startup log, which error_log cannot filter. */
   if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
     ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "%s INFO %s:%d: compile info: code->code.file=(%s) code->cache=(%d)",
-                       module_name, __func__, __LINE__, code->code.file, code->cache);
+                       module_name, func, __LINE__, code->code.file, code->cache);
   } else {
     ngx_conf_log_error(NGX_LOG_INFO, cf, 0,
                        "%s INFO %s:%d: compile info: "
                        "code->code.string=(%s) code->cache=(%d)",
-                       module_name, __func__, __LINE__, code->code.string, code->cache);
+                       module_name, func, __LINE__, code->code.string, code->cache);
   }
 
   return NGX_OK;

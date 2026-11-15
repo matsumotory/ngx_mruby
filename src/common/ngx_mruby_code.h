@@ -67,11 +67,14 @@ ngx_mrb_code_t *ngx_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t *string);
 // freed), prepares the proc for the fibers (ngx_mrb_fiber_prepare_proc) and
 // stores it in the slot of the code. The proc is kept by the slot alone: the
 // GC arena gets back the depth it had before the call. Logs a line at the
-// info level through cf, with module_name, the MODULE_NAME of the caller.
-// Returns NGX_ERROR when the file cannot be opened, the code does not
+// info level through cf, with module_name, the MODULE_NAME of the caller,
+// and func, the name of the directive function that compiles the code
+// (test/t/cases/config_time_log.rb tells the lines of the stream module
+// from those of the http module by it). Returns NGX_ERROR when the file cannot be opened, the code does not
 // compile, or the proc cannot be stored; the caller logs the error.
 */
-ngx_int_t ngx_mrb_code_compile(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code, const char *module_name);
+ngx_int_t ngx_mrb_code_compile(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code, const char *module_name,
+                               const char *func);
 
 /*
 // Reads the file of code again and compiles it, for a run of a code without

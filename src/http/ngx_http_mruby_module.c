@@ -1387,7 +1387,7 @@ static char *ngx_http_mruby_initialize_inline_code(ngx_conf_t *cf, ngx_mrb_state
   if (*code == NGX_CONF_UNSET_PTR) {
     return NGX_CONF_ERROR;
   }
-  rc = ngx_mrb_code_compile(cf, state->mrb, *code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, state->mrb, *code, MODULE_NAME, func_name);
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_string(%s) load failed", func_name, value[1].data);
     return NGX_CONF_ERROR;
@@ -1421,7 +1421,7 @@ static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *sta
       return NGX_CONF_ERROR;
     }
   }
-  rc = ngx_mrb_code_compile(cf, state->mrb, *code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, state->mrb, *code, MODULE_NAME, func_name);
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_file(%s) open failed", func_name, value[1].data);
     return NGX_CONF_ERROR;
@@ -1799,7 +1799,7 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
     filter_data->code = ngx_mrb_code_from_string(cf->pool, &filter_data->script);
   }
 
-  rc = ngx_mrb_code_compile(cf, filter_data->state->mrb, filter_data->code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, filter_data->state->mrb, filter_data->code, MODULE_NAME, __func__);
   if (rc != NGX_OK) {
     if (type == NGX_MRB_CODE_TYPE_FILE) {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[2].data);

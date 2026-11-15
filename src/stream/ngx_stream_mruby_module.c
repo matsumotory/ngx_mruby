@@ -345,7 +345,7 @@ static char *ngx_stream_mruby_init_build_file(ngx_conf_t *cf, ngx_command_t *cmd
   if (code == NGX_CONF_UNSET_PTR)
     return NGX_CONF_ERROR;
 
-  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME, __func__);
   ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->init_code, code);
 
   if (rc != NGX_OK) {
@@ -366,7 +366,7 @@ static char *ngx_stream_mruby_init_build_code(ngx_conf_t *cf, ngx_command_t *cmd
   if (code == NGX_CONF_UNSET_PTR)
     return NGX_CONF_ERROR;
 
-  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME, __func__);
   ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->init_code, code);
 
   if (rc != NGX_OK) {
@@ -387,7 +387,7 @@ static char *ngx_stream_mruby_init_worker_build_file(ngx_conf_t *cf, ngx_command
   if (code == NGX_CONF_UNSET_PTR)
     return NGX_CONF_ERROR;
 
-  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME, __func__);
   ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->init_worker_code, code);
 
   if (rc != NGX_OK) {
@@ -408,7 +408,7 @@ static char *ngx_stream_mruby_init_worker_build_code(ngx_conf_t *cf, ngx_command
   if (code == NGX_CONF_UNSET_PTR)
     return NGX_CONF_ERROR;
 
-  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME, __func__);
   ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->init_worker_code, code);
 
   if (rc != NGX_OK) {
@@ -429,7 +429,7 @@ static char *ngx_stream_mruby_exit_worker_build_file(ngx_conf_t *cf, ngx_command
   if (code == NGX_CONF_UNSET_PTR)
     return NGX_CONF_ERROR;
 
-  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME, __func__);
   ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->exit_worker_code, code);
 
   if (rc != NGX_OK) {
@@ -450,7 +450,7 @@ static char *ngx_stream_mruby_exit_worker_build_code(ngx_conf_t *cf, ngx_command
   if (code == NGX_CONF_UNSET_PTR)
     return NGX_CONF_ERROR;
 
-  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, mmcf->ctx->mrb, code, MODULE_NAME, __func__);
   ngx_stream_mruby_replace_code(mmcf->ctx->mrb, &mmcf->exit_worker_code, code);
 
   if (rc != NGX_OK) {
@@ -479,7 +479,7 @@ static char *ngx_stream_mruby_build_file(ngx_conf_t *cf, ngx_command_t *cmd, voi
     return NGX_CONF_ERROR;
   }
 
-  rc = ngx_mrb_code_compile(cf, mrb, code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, mrb, code, MODULE_NAME, __func__);
 
   ngx_stream_mruby_replace_code(mrb, &mscf->code, code);
 
@@ -511,7 +511,7 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
     return NGX_CONF_ERROR;
   }
 
-  rc = ngx_mrb_code_compile(cf, mrb, code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, mrb, code, MODULE_NAME, __func__);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code);
 
   if (rc != NGX_OK) {
@@ -565,7 +565,7 @@ static char *ngx_stream_mruby_build_code(ngx_conf_t *cf, ngx_command_t *cmd, voi
     return NGX_CONF_ERROR;
   }
 
-  rc = ngx_mrb_code_compile(cf, mrb, code, MODULE_NAME);
+  rc = ngx_mrb_code_compile(cf, mrb, code, MODULE_NAME, __func__);
 
   ngx_stream_mruby_replace_code(mrb, &mscf->code, code);
 
