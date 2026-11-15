@@ -327,7 +327,7 @@ Nginx.echo Nginx.module_name #=> ngx_mruby
 Returns ngx_mruby version as a string. 2.7.2 to 2.7.8 return `2.7.1`, not their own version; from 2.7.9 on, it is the version of the release ([v2.7.9.md](../releases/v2.7.9.md)).
 
 ```ruby
-Nginx.echo Nginx.module_version #=> 2.7.9
+Nginx.echo Nginx.module_version #=> 2.7.10
 ```
 
 ### Nginx.nginx_version -> string

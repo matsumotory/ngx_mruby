@@ -314,9 +314,13 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
     // filter again with no new data until the rest is sent, and the filter
     // must pass these calls on. Without a context, the filter would start
     // to read a new body and hold the call back, and the rest of the
-    // response would wait until send_timeout. A response that went out in
-    // one write leaves no context, as before.
-    if (ctx->phase == NGX_HTTP_MRUBY_FILTER_PASS && (r->buffered || r->connection->buffered)) {
+    // response would wait until send_timeout. The same holds for a
+    // subrequest that was not the active request (an SSI include after
+    // another one): nginx keeps its output in r->postponed and sends it
+    // when the subrequest becomes active, through the same calls with no
+    // new data. A response that went out in one write leaves no context,
+    // as before.
+    if (ctx->phase == NGX_HTTP_MRUBY_FILTER_PASS && (r->buffered || r->connection->buffered || r->postponed)) {
       next = ngx_pcalloc(r->pool, sizeof(ngx_http_mruby_ctx_t));
       if (next == NULL) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to allocate memory from r->pool %s:%d", __FUNCTION__,
