@@ -1,6 +1,6 @@
 # Arguments of the wrong type to Nginx.redirect (its status code) and to
 # add_listener (the :address of its Hash), HTTP and stream.
-# Config: test/conf/conf.d/96-argument-types.conf (port 18200). nginx_t is in
+# Config: test/conf/conf.d/96-argument-types.conf (port 18092). nginx_t is in
 # test/t/cases/_prelude.rb.
 #
 # The status code of a redirect to a URL must be an Integer: another value
@@ -17,7 +17,7 @@
 
 t = SimpleTest.new "ngx_mruby test: the status code of Nginx.redirect and the :address of add_listener"
 
-ARGUMENT_TYPES_PORT = 18200
+ARGUMENT_TYPES_PORT = 18092
 
 # Returns the status of the connection, the status line, the response headers
 # (names in lowercase) and the body.

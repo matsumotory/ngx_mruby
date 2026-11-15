@@ -668,8 +668,8 @@ sh test/check_added_files.sh origin/<base> HEAD   # the files job: no added file
   run starts the build matrix, and every
   cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
   what counts as an error and the suppressions).
-- `test.sh` listens on fixed ports (18080-18091, 18093, 18101-18103, 18110-18131,
-  18133-18139, 18141, 18143-18145, 18147-18159, 18171-18174, 18187, 18190-18192, 18200, 12345-12359,
+- `test.sh` listens on fixed ports (18080-18093, 18101-18103, 18110-18131,
+  18133-18139, 18141, 18143-18145, 18147-18159, 18171-18174, 18187, 18190-18192, 12345-12359,
   12363-12365, 12368-12369, 12374-12378, 12383-12397; 18116, 12357 and 12385-12388 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 12393-12396 to the independent nginx
   and echo upstream of `test/t/cases/_udp_wait_session.rb`, 18158 to the nginx that
@@ -706,9 +706,13 @@ sh test.sh
 
 - Prefer a fragment and a case file of their own: a `server {}` in
   `test/conf/conf.d/<name>.conf` (stream: `test/conf/conf.d/stream/`) on a
-  port of its own (HTTP 18110 and up, stream 12353 and up), scripts in
+  port of its own, scripts in
   `test/html/`, and assertions in `test/t/cases/<name>.rb` (see
-  `docs/test/README.md`). Edit `test/conf/nginx.conf` and
+  `docs/test/README.md`). A case of `master` reaches `next` by the merge,
+  so take a port that is free on both branches (`git grep` the number on
+  `origin/master` and on `origin/next`), from 18080 to 18199 for HTTP and
+  from 12345 to 12399 for stream, the ranges that `TEST_SH_PORT_OFFSET`
+  moves on `next`; ports below 18110 are allowed. Edit `test/conf/nginx.conf` and
   `test/t/ngx_mruby.rb` only for tests that need the main server.
 - A bug fix comes as two commits: the first adds the regression test and
   nothing else, the second adds the fix.

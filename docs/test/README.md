@@ -35,12 +35,16 @@ Instead of editing `test/conf/nginx.conf` and `test/t/ngx_mruby.rb`, a test
 can live in files of its own:
 
 - `test/conf/conf.d/<name>.conf`: a fragment included at the end of the
-  `http {}` block. It holds its own `server {}` on a port of its own (18110
-  and up; 18116 is taken by the second nginx that
+  `http {}` block. It holds its own `server {}` on a port of its own
+  (18080 to 18199; 18116 is taken by the second nginx that
   `test/t/cases/_second_instance.rb` starts). Fragments for `stream {}` go
-  to `test/conf/conf.d/stream/` (ports 12353 and up; 12357 and 12385 to
+  to `test/conf/conf.d/stream/` (ports 12345 to 12399; 12357 and 12385 to
   12388 are taken by the second nginx; 12393-12396 belong to the independent
   UDP session checks in `_udp_wait_session.rb`, including its echo upstream).
+  A case of `master` reaches `next` by the merge, where `TEST_SH_PORT_OFFSET`
+  moves only the ports in these ranges, so a new case takes a port that is
+  free on both branches: `git grep` the number on `origin/master` and on
+  `origin/next`. Ports below 18110 are allowed.
 - `test/t/cases/<name>.rb`: a test file run after `test/t/ngx_mruby.rb`,
   with `test/t/cases/_prelude.rb` prepended. The prelude defines `base`,
   `base_ssl`, `http_host`, `html_path`, `nginx_t` (runs `nginx -t` on a
