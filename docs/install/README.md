@@ -30,8 +30,8 @@ For a version-managed Ruby, ensure its `ruby` and `rake` are on `PATH`.
 Do not copy a dynamic module into an unrelated distribution nginx binary:
 its nginx version, configuration and ABI need to match.
 
-The build examples below configure nginx with `--with-stream`, which needs
-nginx 1.25.5 or later. With an older nginx, such as nginx 1.24, read
+The build examples below configure nginx with `--with-stream`, and the
+stream module of ngx_mruby needs nginx 1.25.5 or later. With an older nginx, such as nginx 1.24, read
 [Building with ngx_mruby stream module](#building-with-ngx_mruby-stream-module)
 first.
 
