@@ -17,8 +17,11 @@
   entry is written in [#815](https://github.com/matsumotory/ngx_mruby/pull/815),
   the open pull request to `next` that merges `master` at `976015c48`
   into `next`. `v2.x` mirrors `master`. The latest published release is
-  2.7.7; the next 2.x release is 2.7.8, whose release notes are
-  `docs/releases/v2.7.8.md` and `.ja.md` on `master` (#813).
+  2.7.8: the tag `v2.7.8` is on `976015c48`, and
+  [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.8)
+  was published on 2026-11-15 at 14:48 JST, with the release notes
+  `docs/releases/v2.7.8.md` and `.ja.md` (#813). The check before its tag
+  is not recorded in this file yet.
 - [#812](https://github.com/matsumotory/ngx_mruby/pull/812) and
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (documentation
   of `master`) add to the release procedure what the 2.7.7 release showed
