@@ -19,6 +19,12 @@ t = SimpleTest.new "ngx_mruby test: the status code of Nginx.redirect and the :a
 
 ARGUMENT_TYPES_PORT = 18092
 
+# The log and the output of nginx -t show an exception as its inspect, whose
+# format depends on the bundled mruby: "message (TypeError)" with mruby 3 on
+# 2.x, "#<TypeError: message>" with mruby 4.1 on next. The runner of the
+# cases is built from the same mruby/ tree as nginx, so the cases build the
+# expected text with TypeError#inspect of the runner.
+
 # Returns the status of the connection, the status line, the response headers
 # (names in lowercase) and the body.
 def argument_types_get(path)
@@ -94,7 +100,7 @@ t.assert('argument types', 'Nginx.redirect with a status code of the wrong type 
   t.assert_equal 'HTTP/1.1 500 Internal Server Error', line
   t.assert_nil headers['location']
   t.assert_include body, '<title>500 Internal Server Error</title>'
-  t.assert_include log, 'String cannot be converted to Integer (TypeError)'
+  t.assert_include log, TypeError.new('String cannot be converted to Integer').inspect
 end
 
 # Nginx.redirect takes one or two arguments. A third argument raises
@@ -149,7 +155,7 @@ ARGUMENT_TYPES_LISTENERS.each do |kind, conf|
     t.assert('argument types', "#{kind} add_listener with #{what} fails nginx -t with TypeError") do
       out = nginx_t(conf.call(hash))
       t.assert_include out, 'mrb_run failed'
-      t.assert_include out, "#{message} (TypeError)"
+      t.assert_include out, TypeError.new(message).inspect
       t.assert_include out, 'test failed'
       t.assert_not_include out, 'test is successful'
     end
