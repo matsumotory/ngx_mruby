@@ -394,6 +394,9 @@ typedef struct {
   ngx_http_mruby_ctx_t *ctx;
   ngx_http_mrb_fiber_t *f;
   int ai;
+  // the fiber waits again; the result of the body is then not the result
+  // of the handler, which can also be NGX_DONE (Nginx.return Nginx::DONE)
+  unsigned waits : 1;
 } ngx_mrb_post_fiber_t;
 
 /*
@@ -402,7 +405,7 @@ typedef struct {
  * subrequest, which can happen inside another mruby call (a handler of the
  * subrequest that runs inside the Ruby call of Nginx.redirect), so this part
  * runs through ngx_mrb_exec_run, which puts the context back also when an
- * allocation fails there. NGX_DONE: the fiber waits again.
+ * allocation fails there. pf->waits is set when the fiber waits again.
  */
 static ngx_int_t ngx_mrb_post_fiber_body(mrb_state *mrb, void *data)
 {
@@ -424,6 +427,7 @@ static ngx_int_t ngx_mrb_post_fiber_body(mrb_state *mrb, void *data)
   if (outcome == NGX_MRB_FIBER_WAITS) {
     // can resume the fiber and wait the epoll timer
     mrb_gc_arena_restore(re->mrb, pf->ai);
+    pf->waits = 1;
     return NGX_DONE;
   }
 
@@ -483,6 +487,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
     pf.ctx = ctx;
     pf.f = (ngx_http_mrb_fiber_t *)re->fiber;
     pf.ai = ai;
+    pf.waits = 0;
     // the execution context of re->r only until this function returns (see
     // ngx_mrb_run())
     exec.kind = pf.f->kind;
@@ -491,7 +496,7 @@ static ngx_int_t ngx_mrb_post_fiber(ngx_mrb_reentrant_t *re, ngx_http_mruby_ctx_
     exec.record = NULL;
     exec.log = re->r->connection->log;
     rc = ngx_mrb_exec_run(re->mrb, &exec, ngx_mrb_post_fiber_body, &pf);
-    if (rc == NGX_DONE) {
+    if (pf.waits) {
       return NGX_DONE;
     }
   } else if (re->fiber != NULL) {
