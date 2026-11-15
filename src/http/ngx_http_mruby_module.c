@@ -852,6 +852,19 @@ ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_cod
   exec.srv_conf = NULL;
   exec.record = NULL;
   exec.log = r->connection->log;
+
+  // Outside any mruby call (the handlers that nginx's phases and filters
+  // run), a raise that the region does not protect aborts the process:
+  // push and pop directly, as ngx_mrb_exec_run would, without its call
+  if (state->mrb->jmp == NULL) {
+    ngx_int_t rc;
+
+    ngx_mrb_exec_push(state->mrb, &exec);
+    rc = ngx_mrb_run_request(r, state, code, cached, result, kind);
+    ngx_mrb_exec_pop(state->mrb, &exec);
+    return rc;
+  }
+
   args.r = r;
   args.state = state;
   args.code = code;
