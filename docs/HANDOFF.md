@@ -1,10 +1,12 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-15 (17:00 JST)
+## State as of 2026-11-15 (20:30 JST)
 
-- Heads: `master` is `11f80acfa`, the merge of
-  [#816](https://github.com/matsumotory/ngx_mruby/pull/816) (2026-11-15
-  16:51 JST), after `a745fe8be`, the merge of
+- Heads: `master` is `8f204e061`, the merge of
+  [#819](https://github.com/matsumotory/ngx_mruby/pull/819) (2026-11-15
+  20:18 JST), below; before it, `11f80acfa`, the merge of
+  [#816](https://github.com/matsumotory/ngx_mruby/pull/816) (16:51 JST),
+  after `a745fe8be`, the merge of
   [#817](https://github.com/matsumotory/ngx_mruby/pull/817) (16:34 JST),
   both below; before them, `976015c48`, the merge of
   [#813](https://github.com/matsumotory/ngx_mruby/pull/813) (06:57 JST)
@@ -12,11 +14,12 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `742b37399`, the merge of
-  [#815](https://github.com/matsumotory/ngx_mruby/pull/815) (2026-11-15
-  15:26 JST), which brought `master` at `976015c48` into `next`. This
-  entry is written in [#818](https://github.com/matsumotory/ngx_mruby/pull/818),
-  the open pull request to `next` that merges `master` at `11f80acfa`
+  all below. `next` is `5ac380cf8`, the merge of
+  [#818](https://github.com/matsumotory/ngx_mruby/pull/818) (2026-11-15
+  18:54 JST), which brought `master` at `11f80acfa` into `next` and raised
+  `worker_connections` of `test/conf/nginx.conf` from 200 to 1024. This
+  entry is written in [#820](https://github.com/matsumotory/ngx_mruby/pull/820),
+  the open pull request to `next` that merges `master` at `8f204e061`
   into `next`. `v2.x` mirrors `master`. The latest published release is
   2.7.8: the tag `v2.7.8` is on `976015c48`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.8)
@@ -37,7 +40,7 @@
   `docs/releases/v2.7.7.ja.md` use the word アドバイザリ. The texts of the
   GitHub releases carry the same changes: the release v2.7.8 links the
   advisory in English and in Japanese, and the Japanese part of the
-  release v2.7.7 uses アドバイザリ. This merge brings the three files to
+  release v2.7.7 uses アドバイザリ. #818 brought the three files to
   `next`.
 - [#816](https://github.com/matsumotory/ngx_mruby/pull/816) (`master`,
   for 2.7.9): `Nginx::Upstream#keepalive_cache`, `#keepalive_cache=`,
@@ -56,6 +59,23 @@
   `docs/releases/v2.7.9.md` and `.ja.md`, which #816 created. 2.7.9 is not
   released: its tag waits for the check of "Before the tag" in
   `docs/releases/README.md` and for the owner's go-ahead for the release.
+- [#819](https://github.com/matsumotory/ngx_mruby/pull/819) (`master`,
+  for 2.7.9; tests and documentation, no file under `src/`):
+  `upstream_uninitialized.rb` also calls the upstream methods on copies
+  made with `dup` and `clone` of an object that `.new` returned, on the
+  servers of ports 18093 and 12397: they raise `ArgumentError`, and the
+  original keeps its upstream. The entries of #816 in
+  `docs/releases/v2.7.9.md` and `.ja.md` and the sections of
+  `Nginx::Upstream.new` and `Nginx::Stream::Connection.new` in
+  `docs/class_and_method/README.md` name the copies. On `master`, the
+  server of `argument_types.rb` moved from port 18200 to 18092 (its port on
+  `next`), and `worker_connections` of `test/conf/nginx.conf` is 1024, as
+  on `next`. "Writing tests" of AGENTS.md and `docs/test/README.md` say
+  that a new case takes a port that is free on both branches (`git grep`
+  on `origin/master` and `origin/next`), from 18080 to 18199 for HTTP and
+  from 12345 to 12399 for stream, ports below 18110 included; #820 brings
+  the rule to `next`, where it replaces the ranges 18110-18199 and
+  12353-12399 of those texts and of `docs/ja/test/README.md`.
 - The check before the 2.7.8 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the pull
   requests merged into `master` from `v2.7.7` (`f736bae0c`) to
@@ -781,7 +801,7 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808), through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810), and through `976015c48` (#812, #814, #813 and v2.7.8) in [#815](https://github.com/matsumotory/ngx_mruby/pull/815). [#818](https://github.com/matsumotory/ngx_mruby/pull/818) merges through `11f80acfa` (#817 and #816), raises `worker_connections` of `test/conf/nginx.conf` from 200 to 1024 (the row below), and waits for its review and merge; the next merge of `master` after it waits for a merge into `master` |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808), through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810), through `976015c48` (#812, #814, #813 and v2.7.8) in [#815](https://github.com/matsumotory/ngx_mruby/pull/815), and through `11f80acfa` (#817 and #816) in [#818](https://github.com/matsumotory/ngx_mruby/pull/818), which also raised `worker_connections` of `test/conf/nginx.conf` from 200 to 1024. [#820](https://github.com/matsumotory/ngx_mruby/pull/820) merges through `8f204e061` (#819) and waits for its review and merge; the next merge of `master` after it waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
@@ -824,8 +844,6 @@ Taken up and still open: none.
 | Local checks first (the decision of 2026-11-12 under "Decisions") on `master`: the same change to AGENTS.md ("Design principles", "Branches and pull requests", "Review and merge", "Build and test"), `.github/PULL_REQUEST_TEMPLATE.md` and `docs/test/README.md` of `master` | `master` | Done: [#807](https://github.com/matsumotory/ngx_mruby/pull/807), merged on 2026-11-14 as `7a72306bb`; its fixes reach `next` in [#808](https://github.com/matsumotory/ngx_mruby/pull/808) |
 | Candidates to add to the release procedure (`docs/releases/README.md`, "Before the tag" and "Security fixes"), seen in the 2.7.7 release: the pull requests of the fixes in the advisories' private forks did not check the release notes they changed as 3.x pages (the check of "The 2.x pages of the site" in `docs/test/README.md` on `master`), so two lines of `v2.7.7.ja.md` failed `check-japanese-lines.mjs` first in #810; the step that starts `site.yml` on `next` after the release was missed until 03:27 JST, so the home page named 2.7.6 until then; the check before the tag was not a public pull request (as for 2.7.6, it is recorded in this file); the "patched versions" of an advisory draft are set before it is published; the commit messages of the fixes in a private fork name neither the advisory id nor the details of the defect; and the whole build matrix runs on the public `master` before the tag | `master` (the procedure of 2.x releases), then `next` by the merge | Done: [#812](https://github.com/matsumotory/ngx_mruby/pull/812) and [#814](https://github.com/matsumotory/ngx_mruby/pull/814) on `master`, merged on 2026-11-15; `next` takes them in the merge of `master` through `976015c48`, without the local run on the oldest nginx, which `next` does not need (the state above) |
 | An mruby body filter on a subrequest of SSI (`<!--# include virtual=... -->`): the included part is missing and the main response stops until `send_timeout`, also without any `Nginx.rputs` and with only a body filter (a note of [the review of #786](https://github.com/matsumotory/ngx_mruby/pull/786#issuecomment-6768923430), seen on `master` before and after #786) | `master`, then `next` by the merge | Ready to start: a regression test in a commit of its own, then the fix; the cause is not investigated yet |
-| The port of a new HTTP case: "Writing tests" of AGENTS.md and "Add a test as a fragment and a case file" of `docs/test/README.md` say "18110 and up" on `master` and "18110 to 18199" on `next`, but a case of `master` reaches `next` by the merge and needs a port that is free on both branches and inside the ranges that `TEST_SH_PORT_OFFSET` moves on `next` (18080-18199 and 12345-12399). On 2026-11-15, the only ports from 18110 to 18199 that no file under `test/` names on either branch are 18119-18122, 18125 and 18126; #813 took 18200 on `master` (18092 on `next`, by #815), and #816 took 18093 and 12397 on both. To do: the text names the ranges of `next`, says that a port is checked on both branches (`git grep` on `origin/master` and `origin/next`), and allows the free ports below 18110 | `master` (documentation), then `next` by the merge | Ready to start |
-| `worker_connections` of the test nginx (`test/conf/nginx.conf`): nginx counts each listening socket as a connection. With the merge of `master` at `11f80acfa`, the test nginx of `next` listens on 125 sockets, so 200 left 75, and under valgrind the connections that `_wait_for_listen.rb` opens to each of the 87 ports used them up: nginx closed the connection of the first request of `test/t/ngx_mruby.rb`, which got a reset (2 of 2 local runs; 0 valgrind errors). [#818](https://github.com/matsumotory/ngx_mruby/pull/818) sets 1024 on `next`. `master` has fewer listening sockets and its valgrind cell passes with 200; the same line goes to `master` so that the file is the same on both branches | `master` | The pull request to `master` after #818 is merged |
 
 ## How a session continues
 
