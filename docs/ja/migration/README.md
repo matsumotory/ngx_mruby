@@ -355,7 +355,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   - リクエストを読む`Nginx::Request`のgetter、`Nginx::Headers_in#[]`、`Nginx::Var`の読み出し、`Nginx::Connection`、`Nginx::Server`のgetter：動く場所は、リクエストのすべてのハンドラとフィルタです。新しく例外を出す場所はありません。
   - リクエストを変える`uri=`、`args=`、`method=`、`request_line=`、`Nginx::Headers_in#[]=`と`#delete`：動く場所は、`mruby_set`のハンドラとフェーズのハンドラです。新しく例外を出す場所は、logハンドラ、ヘッダフィルタ、ボディフィルタです。
   - 変数に代入する`Nginx::Var#NAME=`と`#set`：動く場所は、リクエストのすべてのハンドラとフィルタです。新しく例外を出す場所はありません。
-  - レスポンスのヘッダを変える`Nginx::Headers_out#[]=`と`#delete`、`Nginx.status_code=`、ステータスを渡した`Nginx.return`と`Nginx.send_header`、`content_type=`：動く場所は、logハンドラを除くリクエストのすべてのハンドラとフィルタで、nginxがレスポンスのヘッダを送るまでです。新しく例外を出す場所は、logハンドラと、レスポンスのヘッダを送った後のほかのハンドラです。
+  - レスポンスのヘッダを変える`Nginx::Headers_out#[]=`と`#delete`、`Nginx.status_code=`、ステータスを渡した`Nginx.return`と`Nginx.send_header`、`content_type=`：動く場所は、logハンドラを除くリクエストのすべてのハンドラとフィルタで、nginxがレスポンスのヘッダを送るまでです。新しく例外を出す場所は、logハンドラと、nginxがレスポンスのヘッダを送った後に動くほかのハンドラです。
   - 出力を書く`Nginx.rputs`と`Nginx.echo`：動く場所は、フェーズのハンドラとボディフィルタです。新しく例外を出す場所は、`mruby_set`のハンドラ、logハンドラ、ヘッダフィルタです。
   - ボディフィルタのボディを扱う`Nginx::Filter#body`、`#body=`、`#output`：動く場所は、ボディフィルタです。新しく例外を出すのは、ほかのハンドラの`#body`です。`#body=`と`#output`は、前から例外を出していました。
 
