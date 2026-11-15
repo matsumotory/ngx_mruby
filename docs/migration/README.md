@@ -600,6 +600,32 @@ not enough, and show the change.
   output. `Nginx::HTTP_CLOSE` (444) with output, before or after it, sends
   nothing and closes the connection, as 2.x does for 444 after the output;
   2.x sent output written after 444 with 200.
+- [Methods that have no effect in a handler raise a `RuntimeError` there](../releases/v3.0.0.md#methods-that-have-no-effect-in-a-handler-raise-a-runtimeerror-there-826):
+  look in the code of `mruby_log_handler*`, `mruby_output_header_filter*`,
+  `mruby_output_body_filter*`, `mruby_set` and `mruby_set_code` for the
+  methods of the rows below whose handler is in the third column, and for
+  `Nginx::Filter#body` outside a body filter. On 3.0.0 each such call
+  raises a `RuntimeError` that names the method and the handler, where 2.x
+  returned without an effect on the response. Remove the call, or move it
+  to a handler of the second column.
+
+  | Methods | Where they work | New raise |
+  |---|---|---|
+  | Reading the request: the getters of `Nginx::Request`, `Nginx::Headers_in#[]`, the reads of `Nginx::Var`, `Nginx::Connection`, the getters of `Nginx::Server` | every handler and filter of a request | none |
+  | Changing the request: `uri=`, `args=`, `method=`, `request_line=`, `Nginx::Headers_in#[]=` and `#delete` | `mruby_set` handlers, the post_read, server rewrite, rewrite, access and content handlers | log handlers, header and body filters |
+  | Assigning variables: `Nginx::Var#NAME=`, `#set` | every handler and filter of a request | none |
+  | The response head: `Nginx::Headers_out#[]=` and `#delete`, `Nginx.status_code=`, `Nginx.return` and `Nginx.send_header` with a status, `content_type=` | every handler and filter of a request, while nginx has not sent the response header | log handlers, and the other handlers after the response header is sent |
+  | Output: `Nginx.rputs`, `Nginx.echo` | the post_read, server rewrite, rewrite, access and content handlers, and body filters | `mruby_set` handlers, log handlers, header filters |
+  | The body of a body filter: `Nginx::Filter#body`, `#body=`, `#output` | body filters | `#body` elsewhere (`#body=` and `#output` raised there before) |
+
+  A log handler that passes a value to `access_log` assigns a variable
+  with `Nginx::Var`, which works there:
+
+  ```ruby
+  # in mruby_log_handler_code
+  Nginx::Request.new.headers_out["X-Cost"] = cost   # 2.x: no effect   3.0.0: RuntimeError
+  Nginx::Var.new.cost = cost.to_s                   # both: access_log writes $cost
+  ```
 
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out

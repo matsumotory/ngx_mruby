@@ -36,6 +36,47 @@ The ngx_mruby stream module is an optional nginx module to handle TCP and UDP st
 - [Nginx::Stream::Connection Class](#nginxstreamconnection-class)
 - [Nginx::Stream::Async Class](#nginxstreamasync-class)
 
+## Where the methods work
+
+Each method works in the handlers that the table names. Since 3.0.0, a
+method of the HTTP module called in another handler of a request raises a
+`RuntimeError` whose message names the method and the handler, for example
+`Nginx::Headers_out#[]= is not available in a log handler`; it does not
+return as if it had worked. The handler then ends as after any other
+exception. [Methods that have no effect in a handler raise a `RuntimeError` there](../releases/v3.0.0.md#methods-that-have-no-effect-in-a-handler-raise-a-runtimeerror-there-826)
+in the release notes of 3.0.0 lists what raised before.
+
+The handlers of a request are `mruby_set` and `mruby_set_code` (an mruby_set
+handler); the post_read, server rewrite, rewrite, access and content handlers
+(the phase handlers); the log handlers; and the output header and body filters.
+
+| Methods | Where they work | Elsewhere in a request |
+|---|---|---|
+| Reading the request: the getters of `Nginx::Request` (`uri`, `args`, `method`, `get_body` and the others), `Nginx::Headers_in#[]` and `#all`, `Nginx::Headers_out#[]` and `#all`, the reads of `Nginx::Var`, `Nginx::Connection`, the getters of `Nginx::Server` | every handler and filter of a request | none |
+| Changing the request: `Nginx::Request#uri=`, `#args=`, `#method=`, `#request_line=`, `Nginx::Headers_in#[]=` and `#delete` | an mruby_set handler and the phase handlers | log handlers, header filters and body filters raise |
+| Assigning variables: `Nginx::Var#NAME=`, `Nginx::Var#set` | every handler and filter of a request | none |
+| The head of the response: `Nginx::Headers_out#[]=` and `#delete`, `Nginx.status_code=`, `Nginx.return` and `Nginx.send_header` with a status (a value from 0 up), `Nginx::Request#content_type=` | every handler and filter of a request but a log handler, while nginx has not sent the response header | log handlers raise, and so do the other handlers once nginx has sent the response header (`... is not available after the response header is sent`) |
+| Output: `Nginx.rputs`, `Nginx.echo` | the phase handlers and body filters | mruby_set handlers, log handlers and header filters raise |
+| The body of a body filter: `Nginx::Filter#body`, `#body=`, `#output` | body filters | every other handler raises (`... can only be used in an output body filter`) |
+| `Nginx.redirect` | every handler and filter of a request; with a local URI, see [Nginx.redirect](#nginxredirecturl_or_internal_location-http_statusnginxhttp_moved_temporarily) | a local URI raises in log handlers |
+| `Nginx::Async.sleep`, `Nginx::Async::HTTP.sub_request` | see [Nginx::Async Class](#nginxasync-class) | log handlers, header filters and body filters raise; `sub_request` also in an mruby_set handler |
+| `Nginx.return` and `Nginx.send_header` with a return code below 0 (`Nginx::DECLINED`), `Nginx::Request#unparsed_uri=`, `#protocol=`, `Nginx::Upstream`, `Nginx::Async::HTTP.last_response`, `Nginx::Request#sub_request?` | every handler and filter of a request | none |
+| `Nginx.log`, `Nginx.errlogger`, the constants, `Nginx.module_name` and the other methods that need no request | everywhere | none |
+
+Outside a request, in the code of `mruby_init*`, `mruby_init_worker*`,
+`mruby_exit_worker*`, `mruby_ssl_handshake_handler*` and
+`mruby_server_context_handler_code`, the methods of the rows that need a
+request raise `this method can only be used while processing a request`, as
+since 2.7.1 (see [Nginx.errlogger](#nginxerrloggerlog_level-string)).
+`Nginx::SSL` works only in `mruby_ssl_handshake_handler*`, and
+`Nginx::Server#add_listener` only in `mruby_server_context_handler_code`.
+
+In the stream module, the methods of a session (`Nginx::Stream::Connection`
+and `Nginx::Stream::Async.sleep`) work in `mruby_stream` and
+`mruby_stream_code`, and raise `this method can only be used while
+processing a stream session` elsewhere; `Nginx::Stream.add_listener` works
+only in `mruby_stream_server_context_code`.
+
 ## rack-based-api mrbgem 
 
 The rack-based-api mrbgem is an optional bundled mrbgem.
