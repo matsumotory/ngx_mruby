@@ -27,12 +27,6 @@
     conf_code = prev_code;                                                                                             \
   }
 
-#define NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code)                                                                    \
-  if (code != NGX_CONF_UNSET_PTR && mrb && (code)->ctx) {                                                              \
-    mrbc_context_free(mrb, (code)->ctx);                                                                               \
-    (code)->ctx = NULL;                                                                                                \
-  }
-
 ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
@@ -65,11 +59,7 @@ static ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mr
 // ngx_mruby mruby state functions
 */
 
-static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, ngx_mrb_code_t *code);
-static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *code_file_path);
-static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t *code_s);
 static ngx_int_t ngx_http_mruby_shared_state_init(ngx_conf_t *cf, ngx_mrb_state_t *state);
-static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
 
 /*
 // ngx_mruby mruby directive functions
@@ -1092,7 +1082,7 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: mrb_run info: ai=%d", MODULE_NAME, __func__,
                   __LINE__, ai);
     ngx_int_t rc;
-    rc = ngx_http_mruby_state_reinit_from_file(state, code);
+    rc = ngx_mrb_code_reload(state->mrb, code);
     if (rc != NGX_OK) {
       ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, MODULE_NAME " : mrb_run: failed to recompile %s, rc=%d",
                     code->code.file, rc);
@@ -1346,73 +1336,6 @@ resumed:
 // ngx_mruby mruby state functions
 */
 
-static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, ngx_mrb_code_t *code)
-{
-  FILE *mrb_file;
-  mrb_value proc;
-
-  if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
-    return NGX_ERROR;
-  }
-
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
-  code->ctx = mrbc_context_new(state->mrb);
-  mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
-  code->ctx->no_exec = TRUE;
-  proc = mrb_load_file_cxt(state->mrb, mrb_file, code->ctx);
-  fclose(mrb_file);
-
-  if (!mrb_proc_p(proc)) {
-    return NGX_ERROR;
-  }
-
-  code->proc = mrb_proc_ptr(proc);
-  ngx_mrb_fiber_prepare_proc(state->mrb, code->proc);
-
-  return NGX_OK;
-}
-
-static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *code_file_path)
-{
-  ngx_mrb_code_t *code;
-  size_t len;
-
-  code = ngx_pcalloc(pool, sizeof(*code));
-  if (code == NULL) {
-    return NGX_CONF_UNSET_PTR;
-  }
-
-  len = code_file_path->len;
-  code->code.file = ngx_palloc(pool, len + 1);
-  if (code->code.file == NULL) {
-    return NGX_CONF_UNSET_PTR;
-  }
-  ngx_cpystrn((u_char *)code->code.file, (u_char *)code_file_path->data, code_file_path->len + 1);
-  code->code_type = NGX_MRB_CODE_TYPE_FILE;
-  code->cache = OFF;
-  return code;
-}
-
-static ngx_mrb_code_t *ngx_http_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t *code_s)
-{
-  ngx_mrb_code_t *code;
-  size_t len;
-
-  code = ngx_pcalloc(pool, sizeof(*code));
-  if (code == NULL) {
-    return NGX_CONF_UNSET_PTR;
-  }
-  len = code_s->len;
-  code->code.string = ngx_palloc(pool, len + 1);
-  if (code->code.string == NULL) {
-    return NGX_CONF_UNSET_PTR;
-  }
-  ngx_cpystrn((u_char *)code->code.string, code_s->data, len + 1);
-  code->code_type = NGX_MRB_CODE_TYPE_STRING;
-  code->cache = ON;
-  return code;
-}
-
 static ngx_int_t ngx_http_mruby_shared_state_init(ngx_conf_t *cf, ngx_mrb_state_t *state)
 {
   mrb_state *mrb;
@@ -1444,57 +1367,6 @@ static ngx_int_t ngx_http_mruby_shared_state_init(ngx_conf_t *cf, ngx_mrb_state_
   return NGX_OK;
 }
 
-static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
-{
-  FILE *mrb_file;
-  mrb_value proc;
-
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
-  code->ctx = mrbc_context_new(state->mrb);
-  code->ctx->no_exec = TRUE;
-#ifdef NGX_MRUBY_IREP_DEBUG
-  code->ctx->dump_result = TRUE;
-#endif
-
-  if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
-    if ((mrb_file = fopen((char *)code->code.file, "r")) == NULL) {
-      return NGX_ERROR;
-    }
-    mrbc_filename(state->mrb, code->ctx, (char *)code->code.file);
-    proc = mrb_load_file_cxt(state->mrb, mrb_file, code->ctx);
-    fclose(mrb_file);
-  } else {
-    mrbc_filename(state->mrb, code->ctx, "INLINE CODE");
-    proc = mrb_load_string_cxt(state->mrb, (char *)code->code.string, code->ctx);
-  }
-
-  if (!mrb_proc_p(proc)) {
-    return NGX_ERROR;
-  }
-
-  code->proc = mrb_proc_ptr(proc);
-  ngx_mrb_fiber_prepare_proc(state->mrb, code->proc);
-#ifdef NGX_MRUBY_IREP_DEBUG
-  /* mrb_codedump_all() is not declared in mruby headers. So just follows the mruby way. See mruby/src/load.c. */
-  void mrb_codedump_all(mrb_state *, struct RProc *);
-  mrb_codedump_all(state->mrb, code->proc);
-#endif
-
-  /* A debugging aid for each directive, logged while nginx reads the
-     configuration through its startup log, which error_log cannot filter. */
-  if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
-    ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "%s INFO %s:%d: compile info: code->code.file=(%s) code->cache=(%d)",
-                       MODULE_NAME, __func__, __LINE__, code->code.file, code->cache);
-  } else {
-    ngx_conf_log_error(NGX_LOG_INFO, cf, 0,
-                       "%s INFO %s:%d: compile info: "
-                       "code->code.string=(%s) code->cache=(%d)",
-                       MODULE_NAME, __func__, __LINE__, code->code.string, code->cache);
-  }
-
-  return NGX_OK;
-}
-
 /*
 // ngx_mruby mruby directive functions
 */
@@ -1511,11 +1383,11 @@ static char *ngx_http_mruby_initialize_inline_code(ngx_conf_t *cf, ngx_mrb_state
   }
 
   value = cf->args->elts;
-  *code = ngx_http_mruby_mrb_code_from_string(cf->pool, &value[1]);
+  *code = ngx_mrb_code_from_string(cf->pool, &value[1]);
   if (*code == NGX_CONF_UNSET_PTR) {
     return NGX_CONF_ERROR;
   }
-  rc = ngx_http_mruby_shared_state_compile(cf, state, *code);
+  rc = ngx_mrb_code_compile(cf, state->mrb, *code, MODULE_NAME);
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_string(%s) load failed", func_name, value[1].data);
     return NGX_CONF_ERROR;
@@ -1535,7 +1407,7 @@ static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *sta
   }
 
   value = cf->args->elts;
-  *code = ngx_http_mruby_mrb_code_from_file(cf->pool, &value[1]);
+  *code = ngx_mrb_code_from_file(cf->pool, &value[1]);
   if (*code == NGX_CONF_UNSET_PTR) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_file(%s) open failed", func_name, value[1].data);
     return NGX_CONF_ERROR;
@@ -1549,7 +1421,7 @@ static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *sta
       return NGX_CONF_ERROR;
     }
   }
-  rc = ngx_http_mruby_shared_state_compile(cf, state, *code);
+  rc = ngx_mrb_code_compile(cf, state->mrb, *code, MODULE_NAME);
   if (rc != NGX_OK) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_file(%s) open failed", func_name, value[1].data);
     return NGX_CONF_ERROR;
@@ -1908,7 +1780,7 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
   filter_data->size = filter.size;
   filter_data->script = value[2];
   if (type == NGX_MRB_CODE_TYPE_FILE) {
-    filter_data->code = ngx_http_mruby_mrb_code_from_file(cf->pool, &filter_data->script);
+    filter_data->code = ngx_mrb_code_from_file(cf->pool, &filter_data->script);
     if (filter_data->code == NGX_CONF_UNSET_PTR) {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%V) open failed", &value[2]);
       return NGX_CONF_ERROR;
@@ -1924,10 +1796,10 @@ static char *ngx_http_mruby_set_inner(ngx_conf_t *cf, ngx_command_t *cmd, void *
       }
     }
   } else {
-    filter_data->code = ngx_http_mruby_mrb_code_from_string(cf->pool, &filter_data->script);
+    filter_data->code = ngx_mrb_code_from_string(cf->pool, &filter_data->script);
   }
 
-  rc = ngx_http_mruby_shared_state_compile(cf, filter_data->state, filter_data->code);
+  rc = ngx_mrb_code_compile(cf, filter_data->state->mrb, filter_data->code, MODULE_NAME);
   if (rc != NGX_OK) {
     if (type == NGX_MRB_CODE_TYPE_FILE) {
       ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mrb_file(%s) open failed", value[2].data);
@@ -2009,7 +1881,7 @@ static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
                     path.data);
       return NGX_HTTP_NOT_FOUND;
     }
-    code = ngx_http_mruby_mrb_code_from_file(r->pool, &path);
+    code = ngx_mrb_code_from_file(r->pool, &path);
     if (code == NGX_CONF_UNSET_PTR) {
       ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d mrb_file(%s) open failed", __FUNCTION__, __LINE__,
                     path.data);
@@ -2623,7 +2495,7 @@ static ngx_int_t ngx_http_mruby_ssl_handshake_run(ngx_http_mruby_srv_conf_t *msc
 
   ai = mrb_gc_arena_save(mrb);
   if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR && !mscf->ssl_handshake_code->cache) {
-    rc = ngx_http_mruby_state_reinit_from_file(mscf->state, mscf->ssl_handshake_code);
+    rc = ngx_mrb_code_reload(mrb, mscf->ssl_handshake_code);
     if (rc != NGX_OK) {
       ngx_log_error(NGX_LOG_ERR, c->log, 0, MODULE_NAME " : mruby ssl handler: failed to recompile %s, rc=%d",
                     mscf->ssl_handshake_code->code.file, rc);
