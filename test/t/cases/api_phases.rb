@@ -159,4 +159,16 @@ t.assert('api phases', 'a content handler uses every row but the body of a body 
   t.assert_equal 'RuntimeError: Nginx::Filter#body can only be used in an output body filter', results['Filter#body']
 end
 
+t.assert('api phases', 'after nginx has sent the response header, the methods of the response head raise') do
+  status, line, head, body, lines = api_phases_get('/post_action')
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 200 OK', line
+  t.assert_equal [], head.select { |h| h.start_with?('X-Api-Phases') }
+  t.assert_equal 'post_action', body
+  results = api_phases_results(lines, 'post_action')
+  t.assert_equal 'ok', results['uri']
+  t.assert_equal 'RuntimeError: Nginx::Headers_out#[]= is not available after the response header is sent', results['headers_out[]=']
+  t.assert_equal 'RuntimeError: Nginx.return is not available after the response header is sent', results['return']
+end
+
 t.report
