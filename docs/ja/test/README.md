@@ -676,7 +676,7 @@ nginxのワーカーは、何日もリクエストを処理し続けます。終
 どのサンプルの時点でも、ワーカーは同じ状態にあります。それより前に送ったリクエストはすべて終わっていて、動いているリクエストは`/debug/stats`自身だけです。そのため、カウンタの値は、それまでに動いたリクエストの数によって変わりません。
 
 - `gc_live`は、生きているmrubyのオブジェクトの数です。`Nginx::Debug.gc`は最初にフルGCを実行するので、終わったリクエストのオブジェクトは既に解放されています。
-- `gc_root`は、ngx_mrubyがGCから守っているオブジェクトの数で、`fibers`はそのうちのfiberの数です。数えるのは、各mrb_stateのholderと、holderに入れたオブジェクトです。holderはmrb_stateを開くときに1回だけ登録し、その実装は`src/http/ngx_http_mruby_gc_roots.h`にあります。ハンドラは、始まるときにholderへfiberを入れ、終わるときにそのスロットを空けます。そのため、サンプルに残るのは、holderと`/debug/stats`のfiberです。ngx_mrubyは自分の呼び出しを数えるので、このチェックは、mrubyがGCのルートをどう持つかに左右されません。数え方は、下の「ソークのビルドと`Nginx::Debug`」にあります。
+- `gc_root`は、ngx_mrubyがGCから守っているオブジェクトの数で、`fibers`はそのうちのfiberの数です。数えるのは、各mrb_stateのholderと、holderに入れたオブジェクトです。holderはmrb_stateを開くときに1回だけ登録し、その実装は`src/http/ngx_http_mruby_gc_roots.h`にあります。各ディレクティブのコンパイルしたコードは、mrb_stateがある間、holderのスロットに残ります。`cache`を付けないハンドラのファイルは、実行のたびにコンパイルしたコードを同じスロットに入れます（`src/common/ngx_mruby_code.h`）。ハンドラは、始まるときにholderへfiberを入れ、終わるときにそのスロットを空けます。そのため、サンプルに残るのは、holder、コンパイルしたコード、`/debug/stats`のfiberです。ngx_mrubyは自分の呼び出しを数えるので、このチェックは、mrubyがGCのルートをどう持つかに左右されません。数え方は、下の「ソークのビルドと`Nginx::Debug`」にあります。
 - `arena`は、`/debug/stats`が動いている間のmrubyのGCアリーナの深さです。アリーナを保存するコードパスは、どれもアリーナを元に戻します。
 - `timers`は、`Nginx::Async.sleep`のタイマーのうち、発火も削除もされていないものの数です。待っているリクエストが無いので、この数は0です。
 - `fd`は、`/debug/stats`の接続が閉じた後に読みます。そのため、`fd`が数えるのは、listenしているソケット、ログのファイル、nginx自身のディスクリプタです。`active`は`/status`のリクエストから読みます。その時点で開いている接続は、このリクエストの接続だけです。リクエストがソケットやファイルを開いたままにすると、1つにつき、これらの値が1増えます。
@@ -774,7 +774,7 @@ HTTPとstreamは別のmruby状態を持ちます。HTTP側の`Nginx::Debug.gc`�
 - `Nginx::Debug.gc`は、フルGCの`mrb_full_gc`を実行し、`nil`を返します。
 - `Nginx::Debug.stats`は、次のSymbolをキーに持つHashを返します。
   - `gc_live`：`mrb->gc.live`の値です。
-  - `gc_root`：nginxのプロセス全体で、ngx_mrubyがGCから守っているオブジェクトの数です。数えるのは2種類のオブジェクトで、呼び出し1回につき1つと数えます。1つは、`mrb_gc_register()`で登録して、まだ登録を外していないオブジェクトで、各mrb_stateのholderがこれにあたります。holderは`src/http/ngx_http_mruby_gc_roots.h`にあります。もう1つは、`ngx_mrb_gc_roots_add()`でholderに入れて、まだ`ngx_mrb_gc_roots_remove()`で外していないオブジェクトです。httpモジュールの分とstreamモジュールの分を足して数えます。即値はmrubyが登録しないので、数えません。ngx_mrubyが入れた数より多く外すと、この値は負になります。
+  - `gc_root`：nginxのプロセス全体で、ngx_mrubyがGCから守っているオブジェクトの数です。数えるのは2種類のオブジェクトで、呼び出し1回につき1つと数えます。1つは、`mrb_gc_register()`で登録して、まだ登録を外していないオブジェクトで、各mrb_stateのholderがこれにあたります。holderは`src/http/ngx_http_mruby_gc_roots.h`にあります。もう1つは、`ngx_mrb_gc_roots_add()`でholderに入れて、まだ`ngx_mrb_gc_roots_remove()`で外していないオブジェクトです。各ディレクティブのコンパイルしたコードもこれにあたり、mrb_stateがある間スロットに残ります（`src/common/ngx_mruby_code.h`）。httpモジュールの分とstreamモジュールの分を足して数えます。即値はmrubyが登録しないので、数えません。ngx_mrubyが入れた数より多く外すと、この値は負になります。
   - `gc_root_fibers`：`gc_root`が数えるオブジェクトのうちの、fiberの数です。
   - `gc_arena_idx`：`mrb->gc.arena_idx`です。
   - `timers`：`Nginx::Async.sleep`のタイマーのうち、発火も削除もされていないタイマーの数です。

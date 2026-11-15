@@ -142,6 +142,11 @@ state, and one timer event, which each sleep arms again.
   record that waits for nginx to call its handler again.
 - The `RProc` of the code is prepared once, when the code is compiled or
   loaded (`ngx_mrb_fiber_prepare_proc`), not on every run.
+  `ngx_mrb_code_compile` and `ngx_mrb_code_reload` in
+  `src/common/ngx_mruby_code.c` do it, and keep the `RProc` in a slot of
+  the GC root holder for the life of the `mrb_state`. A reload of a
+  handler file without `cache` puts the new `RProc` in the same slot; a
+  fiber that still runs the previous one keeps it alive.
 
 The states of a record:
 
