@@ -44,6 +44,26 @@ t.assert('Nginx.module_version is MODULE_VERSION of the module', 'GET /module/ve
   t.assert_equal expected, module_version
 end
 
+# The newest X.Y.Z among the files docs/releases/vX.Y.Z.md, compared as
+# numbers (2.7.10 is newer than 2.7.9). The Japanese files (vX.Y.Z.ja.md)
+# and README.md do not count.
+def module_and_request_newest_release
+  versions = Dir.entries('docs/releases').map do |name|
+    next nil unless name.start_with?('v') && name.end_with?('.md') && !name.end_with?('.ja.md')
+    version = name[1..-4]
+    module_and_request_dotted_number?(version) ? version : nil
+  end
+  versions.compact.sort { |a, b| a.split('.').map(&:to_i) <=> b.split('.').map(&:to_i) }.last
+end
+
+t.assert('MODULE_VERSION is the newest release in docs/releases/: the pull request that creates docs/releases/vX.Y.Z.md also sets MODULE_VERSION in src/http/ngx_http_mruby_module.h to X.Y.Z', 'src/http/ngx_http_mruby_module.h and docs/releases/') do
+  header = File.read('src/http/ngx_http_mruby_module.h')
+  line = header.split("\n").find { |l| l.start_with?('#define MODULE_VERSION "') }
+  newest = module_and_request_newest_release
+  t.assert_true module_and_request_dotted_number?(newest.to_s)
+  t.assert_equal newest, line.to_s.split('"')[1]
+end
+
 t.assert('Nginx.nginx_version and Nginx.server_version are the version of nginx -v and of the Server header', 'GET /module/versions on 18155') do
   version = module_and_request_nginx_v
   t.assert_true module_and_request_dotted_number?(version)

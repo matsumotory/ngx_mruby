@@ -644,6 +644,12 @@ not enough, and show the change.
   nginx -t -e stderr 2>&1 | grep 'mechanism enabled'
   ```
 
+- [`Nginx.module_version` and the `mechanism enabled` line give 3.0.0](../releases/v3.0.0.md#nginxmodule_version-and-the-mechanism-enabled-line-give-300-823):
+  look in scripts for `Nginx.module_version`, and in log parsers and alert
+  rules for patterns on the version after `ngx_mruby/`. A comparison with a
+  2.x version, such as `2.7.1`, or a pattern such as `ngx_mruby/2\.` no
+  longer matches: 3.0.0 and its pre-releases give `3.0.0`.
+
 - [Syntax errors have the messages of Prism](../releases/v3.0.0.md#syntax-errors-have-the-messages-of-prism-678):
   a pattern on the text after `syntax error`, such as
   `unexpected end of file`, no longer matches. Match on `SyntaxError` and on

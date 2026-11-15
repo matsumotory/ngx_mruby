@@ -379,6 +379,7 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   nginx -t -e stderr 2>&1 | grep 'mechanism enabled'
   ```
 
+- [`Nginx.module_version`と`mechanism enabled`の行が3.0.0を示す](../../releases/v3.0.0.ja.md#nginxmodule_versionとmechanism-enabledの行が300を示す823)：スクリプトで`Nginx.module_version`を探し、ログのパーサとアラートのルールで、`ngx_mruby/`の後のバージョンに対するパターンを探してください。`2.7.1`のような2.xのバージョンとの比較や、`ngx_mruby/2\.`のようなパターンは、もう一致しません。3.0.0とそのプレリリースは`3.0.0`を示します。
 - [構文エラーのメッセージがPrismのものになる](../../releases/v3.0.0.ja.md#構文エラーのメッセージがprismのものになる678)：`unexpected end of file`のような、`syntax error`の後の文面に対するパターンは、もう一致しません。`SyntaxError`と、ファイルの名前と行に一致させてください。
 
   ```
