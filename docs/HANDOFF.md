@@ -1,6 +1,6 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-15 (07:05 JST)
+## State as of 2026-11-15 (15:05 JST)
 
 - Heads: `master` is `976015c48`, the merge of
   [#813](https://github.com/matsumotory/ngx_mruby/pull/813) (2026-11-15
@@ -20,8 +20,30 @@
   2.7.8: the tag `v2.7.8` is on `976015c48`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.8)
   was published on 2026-11-15 at 14:48 JST, with the release notes
-  `docs/releases/v2.7.8.md` and `.ja.md` (#813). The check before its tag
-  is not recorded in this file yet.
+  `docs/releases/v2.7.8.md` and `.ja.md` (#813). Right after the
+  release, `site.yml` ran on `next`
+  ([run 43682658520](https://github.com/matsumotory/ngx_mruby/actions/runs/43682658520),
+  success), and the home page of ngx.mruby.org names v2.7.8. The push of
+  the tag ran the whole build matrix
+  ([run 43682647402](https://github.com/matsumotory/ngx_mruby/actions/runs/43682647402)):
+  17 cells passed.
+- The check before the 2.7.8 tag, recorded here because it needed no
+  pull request ("Before the tag" in `docs/releases/README.md`): the pull
+  requests merged into `master` from `v2.7.7` (`f736bae0c`) to
+  `976015c48` are [#811](https://github.com/matsumotory/ngx_mruby/pull/811),
+  [#812](https://github.com/matsumotory/ngx_mruby/pull/812),
+  [#814](https://github.com/matsumotory/ngx_mruby/pull/814) and
+  [#813](https://github.com/matsumotory/ngx_mruby/pull/813). #813 has its
+  entries under "Behavior changes", "Fixes" and "Build and test changes" in
+  `v2.7.8.md` and `.ja.md`; #811, #812 and #814 change documentation only
+  and need no entry. The two files were compared, and nothing needed a
+  correction, so no check pull request was opened. The callgrind
+  comparison of `v2.7.7` with `976015c48` has all 14 scenarios `ok`; the
+  largest change is `proxy_stream_plain_50`, a scenario that runs no Ruby
+  code, from 54311 to 54379 Ir per request without GC (+68, +0.13%). The
+  whole build matrix ran on the public `master` at `976015c48` before the
+  tag ([run 43678321490](https://github.com/matsumotory/ngx_mruby/actions/runs/43678321490),
+  `gh workflow run test.yml --ref master`): 17 cells passed.
 - [#812](https://github.com/matsumotory/ngx_mruby/pull/812) and
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (documentation
   of `master`) add to the release procedure what the 2.7.7 release showed
@@ -730,7 +752,7 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), and through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808). through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810). [#815](https://github.com/matsumotory/ngx_mruby/pull/815) merges through `976015c48` (#812, #814 and #813) and waits for its checks, review and merge; the next merge of `master` after it waits for a merge into `master` |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808), and through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810). [#815](https://github.com/matsumotory/ngx_mruby/pull/815) merges through `976015c48` (#812, #814 and #813) and waits for its checks, review and merge; the next merge of `master` after it waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
