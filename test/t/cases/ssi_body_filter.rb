@@ -51,6 +51,14 @@ end
   ['an Nginx.rputs content handler, with a header filter', '/ssi/content_header', 'before MIDDLE after'],
   ['an Nginx.rputs content handler with no body filter', '/ssi/content_raw', 'before middle after'],
   ['a static file, included twice', '/ssi/static_twice', 'before MIDDLE and MIDDLE after'],
+  # The second include is not the active request when it writes its output,
+  # so nginx sends that output later, when it calls the subrequest's filters
+  # again with no new data.
+  ['an Nginx.rputs content handler as the second include', '/ssi/content_second', 'before MIDDLE and MIDDLE after'],
+  ['an Nginx.rputs content handler with a header filter as the second include', '/ssi/content_header_second',
+   'before MIDDLE and MIDDLE after'],
+  ['a static file after an Nginx.rputs rewrite handler as the second include', '/ssi/rewrite_rputs_second',
+   'before MIDDLE and MIDDLE after'],
 ].each do |name, path, expected|
   t.assert('ssi body filter', "#{name}, HTTP/1.0") do
     status, line, headers, body = ssi_body_filter_request(path, 'HTTP/1.0')
