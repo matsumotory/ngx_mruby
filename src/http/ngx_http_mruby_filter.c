@@ -15,7 +15,7 @@
 
 static mrb_value ngx_mrb_get_filter_body(mrb_state *mrb, mrb_value self)
 {
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  ngx_http_request_t *r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_BODY_FILTER), "Nginx::Filter#");
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
   /*
@@ -32,7 +32,7 @@ static mrb_value ngx_mrb_get_filter_body(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_set_filter_body(mrb_state *mrb, mrb_value self)
 {
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  ngx_http_request_t *r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_BODY_FILTER), "Nginx::Filter#");
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(mrb, r);
   mrb_value body;
 

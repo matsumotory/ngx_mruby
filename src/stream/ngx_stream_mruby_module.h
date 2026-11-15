@@ -14,14 +14,20 @@
 #include "mruby.h"
 #include "mruby/compile.h"
 
+#include "../common/ngx_mruby_exec.h"
+
 #define MODULE_NAME "ngx_mruby-stream-module"
 
+/*
+ * What mrb->ud of the stream module's mrb_state points at. exec comes first,
+ * so that mrb->ud is the holder of the execution context
+ * (src/common/ngx_mruby_exec.h), which says whether a session runs (its kind
+ * is NGX_MRB_EXEC_STREAM and on is the session) and which server
+ * configuration the server context code runs for.
+ */
 typedef struct {
-  ngx_stream_session_t *s;
+  ngx_mrb_exec_holder_t exec;
   ngx_int_t stream_status;
-  // the ngx_stream_mruby_srv_conf_t whose mruby_stream_server_context_code
-  // runs now, for Nginx::Stream.add_listener; NULL at any other time
-  void *server_context_conf;
 } ngx_stream_mruby_internal_ctx_t;
 
 typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;

@@ -36,7 +36,8 @@ static void ngx_stream_mrb_state_clean(mrb_state *mrb);
 static ngx_mrb_code_t *ngx_stream_mruby_mrb_code_from_file(ngx_pool_t *pool, ngx_str_t *code_s);
 static ngx_mrb_code_t *ngx_stream_mruby_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t *code_s);
 static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code);
-static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ngx_mrb_code_t *code);
+static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ngx_mrb_code_t *code,
+                                         ngx_mrb_exec_kind_t kind);
 // static ngx_int_t ngx_stream_mrb_run_conf(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code);
 
 /* ngx_mruby stream module init and exit handlers */
@@ -191,7 +192,6 @@ static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
   if (ictx == NULL) {
     return NULL;
   }
-  ictx->s = NULL;
   ictx->stream_status = NGX_DECLINED;
   mmcf->ctx->mrb->ud = ictx;
 
@@ -268,7 +268,7 @@ static ngx_int_t ngx_stream_mruby_init_module(ngx_cycle_t *cycle)
     return NGX_OK;
 
   if (mmcf->init_code != NGX_CONF_UNSET_PTR)
-    return ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->init_code);
+    return ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->init_code, NGX_MRB_EXEC_INIT);
 
   return NGX_OK;
 }
@@ -281,7 +281,7 @@ static ngx_int_t ngx_stream_mruby_init_worker(ngx_cycle_t *cycle)
     return NGX_OK;
 
   if (mmcf->init_worker_code != NGX_CONF_UNSET_PTR)
-    return ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->init_worker_code);
+    return ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->init_worker_code, NGX_MRB_EXEC_WORKER);
 
   return NGX_OK;
 }
@@ -294,7 +294,7 @@ static void ngx_stream_mruby_exit_worker(ngx_cycle_t *cycle)
     return;
 
   if (mmcf->exit_worker_code != NGX_CONF_UNSET_PTR)
-    ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->exit_worker_code);
+    ngx_stream_mrb_run_cycle(cycle, mmcf->ctx->mrb, mmcf->exit_worker_code, NGX_MRB_EXEC_WORKER);
 }
 
 /* ngx_mruby stream core functions */
@@ -391,21 +391,18 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
   return NGX_OK;
 }
 
-static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ngx_mrb_code_t *code)
+// kind is NGX_MRB_EXEC_INIT for mruby_stream_init and NGX_MRB_EXEC_WORKER for
+// the worker hooks
+static ngx_int_t ngx_stream_mrb_run_cycle(ngx_cycle_t *cycle, mrb_state *mrb, ngx_mrb_code_t *code,
+                                         ngx_mrb_exec_kind_t kind)
 {
   mrb_int ai = mrb_gc_arena_save(mrb);
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
-  ngx_stream_session_t *prev_s = NULL;
+  ngx_mrb_exec_t exec = {kind, NULL, NULL, NULL, NULL, NULL};
 
-  /* init_worker and exit_worker code runs outside of any session */
-  if (ictx != NULL) {
-    prev_s = ictx->s;
-    ictx->s = NULL;
-  }
+  /* init, init_worker and exit_worker code runs outside of any session */
+  ngx_mrb_exec_push(mrb, &exec);
   mrb_toplevel_run(mrb, code->proc);
-  if (ictx != NULL) {
-    ictx->s = prev_s;
-  }
+  ngx_mrb_exec_pop(mrb, &exec);
   if (mrb->exc) {
     ngx_mrb_log_exception(mrb, mrb_obj_value(mrb->exc), cycle->log, NULL, NGX_LOG_ERR, "mrb_run failed. error: ");
     mrb_gc_arena_restore(mrb, ai);
@@ -591,7 +588,7 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
   ngx_mrb_code_t *code;
   ngx_int_t rc;
   mrb_int ai;
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
+  ngx_mrb_exec_t exec = {NGX_MRB_EXEC_STREAM_SERVER_CONTEXT, cf, mscf, NULL, NULL, NULL};
 
   mscf->ctx->cf = cf;
   mscf->ctx->cscf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_core_module);
@@ -614,14 +611,13 @@ static char *ngx_stream_mruby_server_context_code(ngx_conf_t *cf, ngx_command_t 
   ai = mrb_gc_arena_save(mrb);
 
   /*
-   * mrb->ud stays the module's context (ngx_stream_mruby_create_main_conf),
-   * which every other method reads, and points Nginx::Stream.add_listener
-   * at this server configuration only while the code runs. cf is the parser
-   * state of this directive, so it is cleared when the code returns.
+   * The execution context points Nginx::Stream.add_listener at this server
+   * configuration only while the code runs. cf is the parser state of this
+   * directive, so it is cleared when the code returns.
    */
-  ictx->server_context_conf = mscf;
+  ngx_mrb_exec_push(mrb, &exec);
   mrb_toplevel_run(mrb, code->proc);
-  ictx->server_context_conf = NULL;
+  ngx_mrb_exec_pop(mrb, &exec);
   mscf->ctx->cf = NULL;
   mscf->ctx->cscf = NULL;
 
@@ -701,7 +697,7 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   mrb_state *mrb;
   mrb_int ai;
   ngx_stream_mruby_internal_ctx_t *ictx;
-  ngx_stream_session_t *prev_s;
+  ngx_mrb_exec_t exec;
   ngx_mrb_fiber_outcome_t outcome;
   ngx_stream_mruby_ctx_t *ctx;
   ngx_int_t rc;
@@ -717,12 +713,16 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
   ictx = mrb->ud;
 
   /*
-   * Session-scoped Ruby methods find their session through ictx->s. Set it
-   * only while the code runs and restore the previous value afterwards, so
-   * that it never points to a finished session.
+   * Session-scoped Ruby methods find their session in the execution context.
+   * It is pushed only while the code runs and the previous one comes back
+   * afterwards, so that it never points to a finished session.
    */
-  prev_s = ictx->s;
-  ictx->s = s;
+  exec.kind = NGX_MRB_EXEC_STREAM;
+  exec.on = s;
+  exec.srv_conf = NULL;
+  exec.record = NULL;
+  exec.log = s->connection->log;
+  ngx_mrb_exec_push(mrb, &exec);
   ictx->stream_status = NGX_DECLINED;
 
   // nginx calls the handler again while a record of the session waits: after
@@ -737,7 +737,7 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
       goto resumed;
     }
     mrb_gc_arena_restore(mrb, ai);
-    ictx->s = prev_s;
+    ngx_mrb_exec_pop(mrb, &exec);
     return rc;
   }
 
@@ -746,7 +746,7 @@ static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s)
     ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "%s ERROR %s:%d: failed to allocate the result", MODULE_NAME,
                   __func__, __LINE__);
     mrb_gc_arena_restore(mrb, ai);
-    ictx->s = prev_s;
+    ngx_mrb_exec_pop(mrb, &exec);
     return NGX_ERROR;
   }
   *mrb_result = mrb_nil_value();
@@ -773,7 +773,7 @@ resumed:
     }
 
     mrb_gc_arena_restore(mrb, ai);
-    ictx->s = prev_s;
+    ngx_mrb_exec_pop(mrb, &exec);
     return NGX_DONE;
   } else {
     ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "%s INFO %s:%d: already finish this fiber, can not resume",
@@ -783,13 +783,13 @@ resumed:
   if (outcome == NGX_MRB_FIBER_RAISED) {
     // ngx_stream_mrb_start_fiber has logged the exception and cleared mrb->exc
     mrb_gc_arena_restore(mrb, ai);
-    ictx->s = prev_s;
+    ngx_mrb_exec_pop(mrb, &exec);
     return NGX_ABORT;
   }
 
   ngx_stream_mrb_state_clean(mrb);
   mrb_gc_arena_restore(mrb, ai);
-  ictx->s = prev_s;
+  ngx_mrb_exec_pop(mrb, &exec);
 
   /* default NGX_DECLINED */
   return ictx->stream_status;

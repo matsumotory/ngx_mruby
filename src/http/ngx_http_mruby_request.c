@@ -21,17 +21,17 @@
   static mrb_value ngx_mrb_get_##method_suffix(mrb_state *mrb, mrb_value self);                                        \
   static mrb_value ngx_mrb_get_##method_suffix(mrb_state *mrb, mrb_value self)                                         \
   {                                                                                                                    \
-    ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);                                                         \
+    ngx_http_request_t *r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Request#");                   \
     return mrb_str_new(mrb, (const char *)member.data, member.len);                                                    \
   }
 
-#define NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(method_suffix, member)                                      \
+#define NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(method_suffix, member, lookup)                              \
   static mrb_value ngx_mrb_set_##method_suffix(mrb_state *mrb, mrb_value self);                                        \
   static mrb_value ngx_mrb_set_##method_suffix(mrb_state *mrb, mrb_value self)                                         \
   {                                                                                                                    \
     mrb_value arg;                                                                                                     \
     size_t len;                                                                                                        \
-    ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);                                                         \
+    ngx_http_request_t *r = lookup;                                                                                    \
     mrb_get_args(mrb, "o", &arg);                                                                                      \
     if (mrb_nil_p(arg)) {                                                                                              \
       return self;                                                                                                     \
@@ -55,7 +55,7 @@
     mrb_value hash;                                                                                                    \
     mrb_value key;                                                                                                     \
     mrb_value value;                                                                                                   \
-    r = ngx_mrb_get_request_or_raise(mrb);                                                                             \
+    r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Headers_" #direction "#");                        \
     hash = mrb_hash_new(mrb);                                                                                          \
     part = &(r->headers_##direction.headers.part);                                                                     \
     header = part->elts;                                                                                               \
@@ -75,8 +75,6 @@
     return hash;                                                                                                       \
   }
 
-ngx_http_request_t *ngx_mruby_request = NULL;
-
 static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers, char *mkey, mrb_int mlen);
 static mrb_value ngx_mrb_get_request_headers_in(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_headers_out(mrb_state *mrb, mrb_value self);
@@ -86,30 +84,18 @@ static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self);
 static ngx_int_t ngx_mrb_del_request_header(mrb_state *mrb, ngx_list_t *headers, char *mkey, mrb_int mlen);
 
-ngx_int_t ngx_mrb_push_request(ngx_http_request_t *r)
-{
-  ngx_mruby_request = r;
-  return NGX_OK;
-}
-
-ngx_http_request_t *ngx_mrb_get_request(void)
-{
-  return ngx_mruby_request;
-}
-
 /*
- * The current request is set only while mruby code runs for that request
- * (see ngx_mrb_run() and the Async resume path). Request-scoped methods called
- * from other contexts, such as mruby_init_worker, mruby_exit_worker or
- * mruby_ssl_handshake_handler, raise instead of touching another request.
+ * The methods find their request in the execution context
+ * (src/common/ngx_mruby_exec.h), with the mask of the handlers where each
+ * works (section 2.1 of docs/proposals/core-alpha1.md): reading the request
+ * works in every handler and filter of the request; changing it in mruby_set
+ * and the phase handlers; changing the head of the response in every handler
+ * and filter but a log handler, before nginx has sent the response header.
+ * Outside a request they raise "this method can only be used while processing
+ * a request", as since 2.7.1.
  */
-ngx_http_request_t *ngx_mrb_get_request_or_raise(mrb_state *mrb)
-{
-  if (ngx_mruby_request == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "this method can only be used while processing a request");
-  }
-  return ngx_mruby_request;
-}
+#define NGX_MRB_REQUEST_CHANGE(mrb) ngx_http_mrb_request((mrb), NGX_MRB_EXEC_HTTP_CHANGE_REQUEST, "Nginx::Request#")
+#define NGX_MRB_REQUEST_ANY(mrb) ngx_http_mrb_request((mrb), NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Request#")
 
 // request member getter
 NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(request_request_line, r->request_line);
@@ -120,23 +106,23 @@ NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(request_protocol, r->http_pro
 NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(request_args, r->args);
 
 // request member setter
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_request_line, r->request_line);
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_uri, r->uri);
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_unparsed_uri, r->unparsed_uri);
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_method, r->method_name);
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_protocol, r->http_protocol);
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_args, r->args);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_request_line, r->request_line, NGX_MRB_REQUEST_CHANGE(mrb));
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_uri, r->uri, NGX_MRB_REQUEST_CHANGE(mrb));
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_unparsed_uri, r->unparsed_uri, NGX_MRB_REQUEST_ANY(mrb));
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_method, r->method_name, NGX_MRB_REQUEST_CHANGE(mrb));
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_protocol, r->http_protocol, NGX_MRB_REQUEST_ANY(mrb));
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(request_args, r->args, NGX_MRB_REQUEST_CHANGE(mrb));
 
 NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_HEADERS_HASH(in);
 NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_HEADERS_HASH(out);
 
 // TODO:this declation should be moved to headers_(in|out)
 NGX_MRUBY_DEFINE_METHOD_NGX_GET_REQUEST_MEMBER_STR(content_type, r->headers_out.content_type);
-NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(content_type, r->headers_out.content_type);
+NGX_MRUBY_DEFINE_METHOD_NGX_SET_REQUEST_MEMBER_STR(content_type, r->headers_out.content_type, ngx_http_mrb_response_head(mrb, "Nginx::Request#"));
 
 static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
 {
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  ngx_http_request_t *r = NGX_MRB_REQUEST_ANY(mrb);
 
   if (r->method != NGX_HTTP_POST && r->method != NGX_HTTP_PUT) {
     mrb_raise(mrb, E_RUNTIME_ERROR,
@@ -154,7 +140,7 @@ static mrb_value ngx_mrb_get_request_header(mrb_state *mrb, ngx_list_t *headers,
   ngx_uint_t i;
   ngx_list_part_t *part;
   ngx_table_elt_t *header;
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  ngx_http_request_t *r = NGX_MRB_REQUEST_ANY(mrb);
   mrb_value ary = mrb_ary_new(mrb);
 
   key_len = (size_t)mlen;
@@ -242,7 +228,7 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
   u_char *key, *val;
   size_t key_len, val_len;
   ngx_table_elt_t *new_header;
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  ngx_http_request_t *r = NGX_MRB_REQUEST_ANY(mrb);
 
   key_len = (size_t)RSTRING_LEN(mrb_key);
   key = ngx_pnalloc(pool, key_len);
@@ -309,7 +295,7 @@ static ngx_int_t ngx_mrb_del_request_header(mrb_state *mrb, ngx_list_t *headers,
   ngx_uint_t i;
   ngx_list_part_t *part, *new;
   ngx_table_elt_t *header;
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  ngx_http_request_t *r = NGX_MRB_REQUEST_ANY(mrb);
 
   key_len = (size_t)mlen;
   key = ngx_pnalloc(r->pool, key_len);
@@ -431,7 +417,7 @@ static mrb_value ngx_mrb_get_request_headers_in(mrb_state *mrb, mrb_value self)
   char *mkey;
   mrb_int mlen;
   ngx_http_request_t *r;
-  r = ngx_mrb_get_request_or_raise(mrb);
+  r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Headers_in#");
 
   mrb_get_args(mrb, "s", &mkey, &mlen);
   return ngx_mrb_get_request_header(mrb, &r->headers_in.headers, mkey, mlen);
@@ -442,7 +428,7 @@ static mrb_value ngx_mrb_get_request_headers_out(mrb_state *mrb, mrb_value self)
   char *mkey;
   mrb_int mlen;
   ngx_http_request_t *r;
-  r = ngx_mrb_get_request_or_raise(mrb);
+  r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Headers_out#");
 
   mrb_get_args(mrb, "s", &mkey, &mlen);
   return ngx_mrb_get_request_header(mrb, &r->headers_out.headers, mkey, mlen);
@@ -452,7 +438,7 @@ static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r;
   mrb_value key, val;
-  r = ngx_mrb_get_request_or_raise(mrb);
+  r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_CHANGE_REQUEST, "Nginx::Headers_in#");
 
   mrb_get_args(mrb, "oo", &key, &val);
   key = mrb_ensure_string_type(mrb, key);
@@ -479,7 +465,7 @@ static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r;
   mrb_value key, val;
-  r = ngx_mrb_get_request_or_raise(mrb);
+  r = ngx_http_mrb_response_head(mrb, "Nginx::Headers_out#");
 
   mrb_get_args(mrb, "oo", &key, &val);
   key = mrb_ensure_string_type(mrb, key);
@@ -507,7 +493,7 @@ static mrb_value ngx_mrb_del_request_headers_in(mrb_state *mrb, mrb_value self)
   char *mkey;
   mrb_int mlen;
   ngx_http_request_t *r;
-  r = ngx_mrb_get_request_or_raise(mrb);
+  r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_CHANGE_REQUEST, "Nginx::Headers_in#");
 
   mrb_get_args(mrb, "s", &mkey, &mlen);
   ngx_mrb_del_request_header(mrb, &r->headers_in.headers, mkey, mlen);
@@ -519,7 +505,7 @@ static mrb_value ngx_mrb_del_request_headers_out(mrb_state *mrb, mrb_value self)
   char *mkey;
   mrb_int mlen;
   ngx_http_request_t *r;
-  r = ngx_mrb_get_request_or_raise(mrb);
+  r = ngx_http_mrb_response_head(mrb, "Nginx::Headers_out#");
 
   mrb_get_args(mrb, "s", &mkey, &mlen);
   ngx_mrb_del_request_header(mrb, &r->headers_out.headers, mkey, mlen);
@@ -597,7 +583,7 @@ static mrb_value ngx_mrb_headers_out_obj(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_sub_request_check(mrb_state *mrb, mrb_value str)
 {
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  ngx_http_request_t *r = NGX_MRB_REQUEST_ANY(mrb);
   return (r != r->main) ? mrb_true_value() : mrb_false_value();
 }
 
