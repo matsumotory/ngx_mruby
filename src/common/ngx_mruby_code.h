@@ -26,11 +26,11 @@
 //   compile, until NGX_MRUBY_CODE_MRBC_CONTEXT_FREE frees it.
 // - slot is the slot of proc in the GC root holder of the mrb_state that
 //   compiled it (ngx_http_mruby_gc_roots.h), or NGX_MRB_GC_ROOTS_NONE.
-//   ngx_mrb_code_compile takes the slot, and the proc stays in it for the
-//   life of the state: mrb_close frees the holder with it, so nothing
-//   releases the slot. ngx_mrb_code_reload puts the new proc in the same
-//   slot. The code of a request (mruby_add_handler) is never compiled and
-//   has no slot.
+//   ngx_mrb_code_compile takes the slot, and the proc stays in it until
+//   mrb_close frees the holder, or until a later stream directive replaces
+//   the code (ngx_stream_mruby_replace_code frees the slot then).
+//   ngx_mrb_code_reload puts the new proc in the same slot. The code of a
+//   request (mruby_add_handler) is never compiled and has no slot.
 */
 typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
 
@@ -67,10 +67,12 @@ ngx_mrb_code_t *ngx_mrb_code_from_string(ngx_pool_t *pool, ngx_str_t *string);
 // freed), prepares the proc for the fibers (ngx_mrb_fiber_prepare_proc) and
 // stores it in the slot of the code. The proc is kept by the slot alone: the
 // GC arena gets back the depth it had before the call. Logs a line at the
-// info level through cf, with module_name, the MODULE_NAME of the caller,
-// and func, the name of the directive function that compiles the code
+// info level through cf (which adds the file and the line of the
+// configuration), with module_name, the MODULE_NAME of the caller, and
+// func, the name of the directive function that compiles the code
 // (test/t/cases/config_time_log.rb tells the lines of the stream module
-// from those of the http module by it). Returns NGX_ERROR when the file cannot be opened, the code does not
+// from those of the http module by it). code->cache in the line means
+// something to the http module only. Returns NGX_ERROR when the file cannot be opened, the code does not
 // compile, or the proc cannot be stored; the caller logs the error.
 */
 ngx_int_t ngx_mrb_code_compile(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *code, const char *module_name,

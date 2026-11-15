@@ -80,6 +80,9 @@ static mrb_value ngx_mrb_code_load(mrb_state *mrb, ngx_mrb_code_t *code, FILE *f
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code);
   code->ctx = mrbc_context_new(mrb);
   code->ctx->no_exec = TRUE;
+#ifdef NGX_MRUBY_IREP_DEBUG
+  code->ctx->dump_result = TRUE;
+#endif
 
   if (fp != NULL) {
     mrbc_filename(mrb, code->ctx, code->code.file);
@@ -135,13 +138,13 @@ ngx_int_t ngx_mrb_code_compile(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *c
   /* A debugging aid for each directive, logged while nginx reads the
      configuration through its startup log, which error_log cannot filter. */
   if (code->code_type == NGX_MRB_CODE_TYPE_FILE) {
-    ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "%s INFO %s:%d: compile info: code->code.file=(%s) code->cache=(%d)",
-                       module_name, func, __LINE__, code->code.file, code->cache);
+    ngx_conf_log_error(NGX_LOG_INFO, cf, 0, "%s INFO %s: compile info: code->code.file=(%s) code->cache=(%d)",
+                       module_name, func, code->code.file, code->cache);
   } else {
     ngx_conf_log_error(NGX_LOG_INFO, cf, 0,
-                       "%s INFO %s:%d: compile info: "
+                       "%s INFO %s: compile info: "
                        "code->code.string=(%s) code->cache=(%d)",
-                       module_name, func, __LINE__, code->code.string, code->cache);
+                       module_name, func, code->code.string, code->cache);
   }
 
   return NGX_OK;

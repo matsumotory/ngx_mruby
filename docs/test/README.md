@@ -1684,7 +1684,7 @@ counters therefore do not depend on how many requests ran before:
   `fibers` counts the fibers among them: the holder of each mrb_state
   (`src/http/ngx_http_mruby_gc_roots.h`), registered once when the state is
   opened, and the objects stored in it. The compiled code of each
-  directive stays in a slot of the holder for the life of the state, and a
+  directive stays in a slot of the holder until the state is closed, and a
   handler file without `cache` puts the code of each run in the same slot
   (`src/common/ngx_mruby_code.h`). A handler stores its fiber in the
   holder when it starts and frees the slot when it ends, so the holders, the
@@ -1897,8 +1897,9 @@ including the repeated HTTP sleeps described above.
     mrb_state, see `src/http/ngx_http_mruby_gc_roots.h`), and the objects
     that `ngx_mrb_gc_roots_add()` stored in a holder and
     `ngx_mrb_gc_roots_remove()` has not released, among them the compiled
-    code of each directive, which stays in its slot for the life of the
-    state (`src/common/ngx_mruby_code.h`). Those of the http module
+    code of each directive, which stays in its slot until the state is
+    closed or a later stream directive replaces it
+    (`src/common/ngx_mruby_code.h`). Those of the http module
     and those of the stream module are counted together. Immediate
     values are not counted, because mruby does not register them. The value
     is negative when ngx_mruby released more than it kept.
