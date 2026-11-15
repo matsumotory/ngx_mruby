@@ -105,6 +105,13 @@ documentation changes and refactoring need no entry at all.
   creates the file and its Japanese version from the template below. Later
   pull requests of the cycle add to both, so the files always describe the
   version that will be tagged next.
+- The pull request that creates `vX.Y.Z.md` also sets `MODULE_VERSION` in
+  `src/http/ngx_http_mruby_module.h` to `X.Y.Z`, which `Nginx.module_version`
+  returns and nginx logs at startup. A test of the suite
+  (`test/t/cases/module_and_request.rb`) compares the value with the newest
+  `vX.Y.Z.md` in this directory, so the suite fails on a pull request that
+  creates the file without the value. A pull request that renames the files
+  to another version (see "File names") changes the value with them.
 - A release file that has no Japanese version yet, because it was created
   before the Japanese version was required, gets one from the first pull
   request that adds to it or edits it. That pull request translates the
@@ -299,6 +306,11 @@ missing. It looks for each entry under "Behavior changes: read before
 upgrading" that lacks a line of the template ("Why it changed" included). It
 compares the Japanese file with the English one: the same sections, and the
 same entries in the same order, each saying what its English entry says.
+It checks that `MODULE_VERSION` in `src/http/ngx_http_mruby_module.h` is
+the version of the tag; the suite's test in
+`test/t/cases/module_and_request.rb` fails when the value differs from the
+newest `vX.Y.Z.md`, so the run of every cell below checks it on the commit
+of the release, as long as the file is named after the version of the tag.
 This catches pull requests merged before this convention, pull requests
 whose author did not follow it, and entries that a review missed.
 
