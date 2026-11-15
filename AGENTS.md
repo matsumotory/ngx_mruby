@@ -1237,9 +1237,13 @@ npm run preview           # serves dist/ at http://localhost:4321/
 
 - Prefer a fragment and a case file of their own: a `server {}` in
   `test/conf/conf.d/<name>.conf` (stream: `test/conf/conf.d/stream/`) on a
-  port of its own (HTTP 18110 to 18199, stream 12353 to 12399), scripts in
+  port of its own, scripts in
   `test/html/`, and assertions in `test/t/cases/<name>.rb` (see
-  `docs/test/README.md`). Edit `test/conf/nginx.conf` and
+  `docs/test/README.md`). A case of `master` reaches `next` by the merge,
+  so take a port that is free on both branches (`git grep` the number on
+  `origin/master` and on `origin/next`), from 18080 to 18199 for HTTP and
+  from 12345 to 12399 for stream, the ranges that `TEST_SH_PORT_OFFSET`
+  moves; ports below 18110 are allowed. Edit `test/conf/nginx.conf` and
   `test/t/ngx_mruby.rb` only for tests that need the main server.
 - The test nginx of `test.sh` is a single process. A test that needs a
   master process with several workers, or a reload, adds a mode to

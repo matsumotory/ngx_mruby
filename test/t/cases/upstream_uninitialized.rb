@@ -1,7 +1,9 @@
 # Nginx::Upstream and Nginx::Stream::Connection objects that hold no
 # upstream: one from allocate, one whose initialize raised (no upstream has
-# the name, or the upstream has two servers), and one whose second
-# initialize raised. Their upstream methods raise ArgumentError, and the
+# the name, or the upstream has two servers), one whose second initialize
+# raised, and copies made with dup and clone of an object that new
+# returned. Their upstream methods raise ArgumentError, the original of a
+# copy keeps its upstream, and the
 # worker answers the next request or session. An object whose initialize
 # succeeds after a failure works.
 # Config: test/conf/conf.d/97-upstream-uninitialized.conf (port 18093) and
@@ -32,6 +34,30 @@ def uninit_get(path)
 end
 
 UNINIT_OBJECTS = ['allocate', 'not_found', 'multiple', 'reinit']
+
+# Copies made with dup and clone of an object that new returned. mruby
+# copies the instance variables of a data object and not its data, so the
+# copy holds no upstream. The copies run first: with code that does not
+# check the object, the first call on a copy ends nginx.
+UNINIT_COPIES = ['dup', 'clone']
+
+UNINIT_COPIES.each do |copy|
+  ['server', 'server_set', 'keepalive_cache', 'keepalive_cache_set'].each do |method|
+    t.assert('upstream uninitialized', "Nginx::Upstream (#{copy}): #{method} on the copy raises ArgumentError, the original keeps its upstream, and the worker answers the next request") do
+      offset = File.size(uninit_log_path)
+      res = uninit_get("/copy?#{copy}-#{method}")
+      t.assert_equal 500, res['code']
+      log = uninit_lines_from(offset)
+      lines = log.select { |l| l.include?(' [error] ') && l.include?('mrb_run failed') }
+      t.assert_equal 1, lines.size
+      t.assert_include lines[0].to_s, ArgumentError.new('uninitialized Nginx::Upstream').inspect
+      t.assert_equal 1, log.count { |l| l.include?('upstream copy: original 192.0.2.31:80 end') }
+      alive = uninit_get('/alive')
+      t.assert_equal 200, alive['code']
+      t.assert_equal 'alive', alive['body']
+    end
+  end
+end
 
 UNINIT_OBJECTS.each do |object|
   ['server', 'server_set', 'keepalive_cache', 'keepalive_cache_set'].each do |method|
@@ -81,6 +107,18 @@ UNINIT_OBJECTS.each do |object|
     t.assert('stream upstream uninitialized', "Nginx::Stream::Connection (#{object}): #{method} raises ArgumentError") do
       t.assert_equal 'ArgumentError, uninitialized Nginx::Stream::Connection', results["#{object}-#{method}"]
     end
+  end
+end
+
+UNINIT_COPIES.each do |copy|
+  ['upstream_server', 'upstream_server_set'].each do |method|
+    t.assert('stream upstream uninitialized', "Nginx::Stream::Connection (#{copy}): #{method} on the copy raises ArgumentError") do
+      t.assert_equal 'ArgumentError, uninitialized Nginx::Stream::Connection', results["#{copy}-#{method}"]
+    end
+  end
+
+  t.assert('stream upstream uninitialized', "Nginx::Stream::Connection (#{copy}): the original keeps its upstream after the methods of its copy raised") do
+    t.assert_equal '192.0.2.41:80', results["#{copy}-original"]
   end
 end
 
