@@ -453,6 +453,8 @@ The value of the code is converted to a String with `to_s`. When the value has n
 
 `Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in `mruby_set` and `mruby_set_code`, because nginx does not wait for a subrequest of the rewrite script: call it in a rewrite or access handler, and set the variable there with `Nginx::Var#set`. Since 3.0.0; on 2.x nginx went on without waiting for the variable (see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxasynchttpsub_request-raises-a-runtimeerror-in-an-mruby_set-handler-735)).
 
+`Nginx.redirect` with a local URI raises a `RuntimeError` in `mruby_set` and `mruby_set_code` and makes no internal redirect, because the rewrite script goes on after the handler (since 3.0.0; see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxredirect-with-a-local-uri-raises-a-runtimeerror-in-mruby_set-handlers-and-output-filters-833)). The handler ends as after any other exception: the variable is empty and the request goes on. A redirect with a URL works there. To send the request to another location, call `Nginx.redirect` in a rewrite or access handler.
+
 When the code waits in `Nginx::Async.sleep`, the directives of the same rewrite script after the `mruby_set` run before the sleep ends, without the value. When the code returns, the variable is set and the request goes on with the next handler of its phase, as without the sleep, so the later phases (`proxy_pass`, a content handler) read the value. A status that the code sets with `Nginx.return` does not end the request, with or without the sleep. Since 3.0.0; on 2.x, a request whose code slept ended without a response, unless an earlier handler of the request had returned `Nginx::DECLINED`, and a status set after the sleep ended the request with that status (see [the release notes of 3.0.0](../releases/v3.0.0.md#an-mruby_set-handler-that-waits-in-nginxasyncsleep-sets-its-variable-and-the-request-goes-on-715)).
 
 ## mruby_variable
@@ -558,6 +560,8 @@ A header filter runs before the body has been read.
 There `Nginx::Filter#body` and `Nginx::Filter#body=` raise a `RuntimeError` (`#body=` since 2.7.1; `#body` since 3.0.0, it returned an empty string from 2.7.1).
 
 `Nginx::Async.sleep` and `Nginx::Async::HTTP.sub_request` raise a `RuntimeError` in both kinds of filter (since 2.7.1), because nginx cannot resume a filter that waits.
+
+`Nginx.redirect` with a local URI raises a `RuntimeError` in both kinds of filter and makes no internal redirect, because nginx is sending the response of the request (since 3.0.0; see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxredirect-with-a-local-uri-raises-a-runtimeerror-in-mruby_set-handlers-and-output-filters-833)). A redirect with a URL sets `Location` and the status there, as before.
 
 ## mruby_enable_read_request_body
 

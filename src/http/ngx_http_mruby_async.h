@@ -40,10 +40,17 @@ ngx_int_t ngx_http_mrb_fiber_call_again(ngx_http_request_t *r, ngx_http_mruby_ct
                                         ngx_http_mruby_handler_kind_t kind, mrb_value *result,
                                         ngx_http_mrb_fiber_t **record, ngx_mrb_fiber_outcome_t *outcome);
 
-// The fiber of record yielded to the timer of Nginx::Async.sleep in a call of
-// its handler from nginx: the handler returns NGX_DONE, and nginx calls it
-// again when the timer fires.
+// The fiber of record yielded to the timer of Nginx::Async.sleep or to the end
+// of a subrequest in a call of its handler from nginx: the handler returns
+// NGX_DONE, and nginx calls it again after the wake.
 void ngx_http_mrb_fiber_wait_on_nginx(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx, ngx_http_mrb_fiber_t *record);
+
+// Ends a wait that nginx cannot end by calling the handler again (a handler
+// that runs inside another mruby call, or whose module context was
+// replaced; Nginx::Async raises there, so this is not reached): it deletes
+// the timer, frees the slots of the record and marks it FAILED, so that
+// neither the timer nor the end of the subrequest touches the fiber.
+void ngx_http_mrb_fiber_drop_wait(ngx_http_mrb_fiber_t *record);
 
 // The result that the code of the run set (Nginx.return, Nginx.send_header,
 // Nginx.status_code=, Nginx.redirect with a URL): 1 and *result when it set
@@ -67,8 +74,9 @@ ngx_int_t ngx_http_mrb_fiber_status(ngx_http_mrb_fiber_t *record);
 // access or content handler: the URI is kept in the record of the handler
 // whose fiber runs now in exec, and the internal redirect is made when the handler
 // ends (Q2 of section 9 of docs/proposals/core-stabilization.md). Returns
-// NGX_OK when it is kept, NGX_DECLINED when the handler that runs is of
-// another kind (the redirect is made at once, as before), and NGX_ERROR
+// NGX_OK when it is kept, NGX_DECLINED when no fiber of such a handler runs
+// for the request of exec (the caller raises: no redirect is made inside the
+// Ruby call; section 2.9 of docs/proposals/core-alpha1.md), and NGX_ERROR
 // when the allocation failed.
 */
 ngx_int_t ngx_http_mrb_fiber_defer_redirect(ngx_mrb_exec_t *exec, ngx_str_t *uri);

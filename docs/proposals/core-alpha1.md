@@ -4,9 +4,11 @@ Status: in progress. The design decisions of section 5 were made on
 2026-11-09 (decisions 1 to 5) and on 2026-11-10 (decisions 6 and 7), and
 no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
 (#779 and #783), 2.7 (#788), 2.8 (#796), the execution context and the
-phases of the Ruby API of 2.1 (#826), 2.6 (#825), the per-request
-store of 2.1 (#832), and 2.5 (#834). Next step: the pull request
-"Waits inside another mruby call" (2.9) of section 4, by 2026-11-20.
+phases of the Ruby API of 2.1 (#826), 2.6 (#825), the per-request store
+of 2.1 (#832), 2.9 (#833) and 2.5 (#834). Next step: the rows of section
+4 that are open, "Headers" (2.2), "One setter for `Nginx::Var`" (2.3)
+and "Filter handlers" (2.4), then the check before the tag of section 3;
+their dates are set when they are taken up.
 
 This proposal designs what is left of step 4 of section 6 of
 [the v3 plan](v3-plan.md): the work that has to be on `next` before
@@ -27,7 +29,8 @@ async resume rewrite:
   upstream switching, error logging and the duplicate directive check
   (section 2);
 - a wait that starts in a handler that nginx runs inside another mruby
-  call, which is still ended by `ngx_mrb_post_fiber` (section 2.9);
+  call, which was ended by `ngx_mrb_post_fiber` until #833 removed it
+  (section 2.9);
 - the two agent proxy rows that item 15 of section 7 of the plan puts into
   alpha.1: mruby log handlers run before `access_log`, and the directive
   `mruby_variable` (sections 2.10 and 2.11);
@@ -575,7 +578,12 @@ stabilization removed elsewhere.
   notes, is done by #770, the pull request of 2.10: after it, the
   log-phase handlers after the mruby log handlers run on the same request.
   The pull request of this section adds the raise for `mruby_set` handlers
-  and the filters.
+  and the filters. An `mruby_set` handler that gets it ends as after any
+  other exception there: the exception is logged, the variable is empty,
+  and the request goes on. Ruby code of a phase handler that runs outside
+  the fiber of the handler, such as the `inspect` of its exception, has no
+  end that could take the redirect, and the call raises there as well,
+  for the same reason: the redirect would be made inside that call.
 - As a guard, a handler that starts while the fiber of another handler
   runs is marked in its record (`ngx_http_mrb_running` is set when its
   fiber starts, or the context of 2.1 says so). In such a handler, and in a
@@ -595,13 +603,19 @@ by #770; this pull request does not add a second one.
 
 **Test that fails first.** `test/t/cases/redirect_nested.rb`: an
 `mruby_set_code` handler that calls `Nginx.redirect "/target"`, and a target
-whose content handler sleeps and answers; the request answers 500 and
-`error.log` has the `RuntimeError` of `Nginx.redirect`. Today the redirect
-runs, and the request ends at the sleep. The case of a log handler is in
+whose content handler sleeps and answers; `error.log` has the
+`RuntimeError` of `Nginx.redirect`, the variable is empty, and the content
+handler of the request's own location answers, as after any exception of
+an `mruby_set` handler. Today the redirect runs, and the request ends at
+the sleep. The case of a log handler is in
 `test/t/cases/log_before_access_log.rb` (the location `/redirect`), added
-by #770; this pull request does not add a second one. No other case
-redirects from an `mruby_set` handler or a filter (a search of
-`test/conf` for `Nginx.redirect`).
+by #770; this pull request does not add a second one. Six cases added
+after this design (#799, in `exception_log_raising_methods.rb` and
+`exception_log_script_methods.rb`) used the redirect from an `mruby_set`
+handler to log an exception inside another mruby call. The owner approved
+on 2026-11-16 that they change: they keep what they check with another
+way to make the nested call, or go when no such way is left. None is left
+after this change, so the pull request of this section removes them.
 
 **Perf.** `sleep` and `sub_request` go through the wake today and keep it;
 one comparison is added when a fiber starts. No change is expected.
@@ -875,8 +889,8 @@ and the one that merges second updates its branch.
 | Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
 | Execution context and the phases of the Ruby API: [#826](https://github.com/matsumotory/ngx_mruby/pull/826) | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
 | Per-request store: [#832](https://github.com/matsumotory/ngx_mruby/pull/832) | 2.1 | nothing | execution context |
-| One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`) |
-| Waits inside another mruby call (the raise of `Nginx.redirect` in log handlers is done by #770) | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |
+| One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`, which #833 removed) |
+| Waits inside another mruby call: [#833](https://github.com/matsumotory/ngx_mruby/pull/833) (the raise of `Nginx.redirect` in log handlers is done by #770) | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |
 | Common code loading: [#825](https://github.com/matsumotory/ngx_mruby/pull/825) | 2.6 | nothing | directive table, filter handlers (the directive functions) |
 | Common upstream switching: [#788](https://github.com/matsumotory/ngx_mruby/pull/788), merged on 2026-11-11 | 2.7 | nothing | nothing |
 | Common error logging: [#796](https://github.com/matsumotory/ngx_mruby/pull/796), merged on 2026-11-12; [#799](https://github.com/matsumotory/ngx_mruby/pull/799) protects the calls of `inspect` and `backtrace` in the logging | 2.8 | nothing | execution context (`Nginx.log`) |

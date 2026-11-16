@@ -377,6 +377,14 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   Nginx::Request.new.headers_out["X-Cost"] = cost   # 2.x: no effect   3.0.0: RuntimeError
   Nginx::Var.new.cost = cost.to_s                   # both: access_log writes $cost
   ```
+- [`mruby_set`のハンドラと出力フィルタでは、ローカルのURIへの`Nginx.redirect`が`RuntimeError`を出す](../../releases/v3.0.0.ja.md#mruby_setのハンドラと出力フィルタではローカルのuriへのnginxredirectがruntimeerrorを出す833)：`mruby_set`、`mruby_set_code`、`mruby_output_header_filter*`、`mruby_output_body_filter*`のコードで、パスを渡した`Nginx.redirect`を探してください。2.xでは呼び出しの中でリダイレクト先のロケーションのハンドラが動きましたが、3.0.0では呼び出しが`RuntimeError`を出し、内部リダイレクトをしません。呼び出しは、rewriteかaccessのハンドラへ移してください。そこでは、ハンドラが終わったときにリダイレクトが効きます。
+
+  ```ruby
+  # in mruby_set_code: 2.x: the redirect runs inside the call   3.0.0: RuntimeError, the variable is empty
+  Nginx.redirect "/backend"
+  # in mruby_rewrite_handler_code: the redirect takes effect when the handler ends, on 3.0.0
+  Nginx.redirect "/backend"
+  ```
 
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 

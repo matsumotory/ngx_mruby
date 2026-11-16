@@ -684,10 +684,11 @@ static ngx_int_t ngx_mrb_run_body(mrb_state *mrb, void *data)
  * previous one back (rather than none) keeps it valid when a handler runs
  * nested, for example through an internal redirect from Ruby code. The fiber
  * of the handler pushes a context of its own, with its record, while it runs
- * (ngx_mrb_run_fiber). A handler runs inside another mruby call in the
- * location of Nginx.redirect and as an output filter of such a handler, so
- * the run goes through ngx_mrb_exec_run, which puts the context back also
- * when an allocation fails there.
+ * (ngx_mrb_run_fiber). ngx_mruby runs no handler inside another mruby call
+ * since Nginx.redirect raises where it would redirect inside the Ruby call
+ * (section 2.9 of docs/proposals/core-alpha1.md); a handler that still runs
+ * with mrb->jmp set goes through ngx_mrb_exec_run, which puts the context
+ * back also when an allocation fails there.
  */
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
                       ngx_str_t *result, ngx_http_mruby_handler_kind_t kind)
@@ -894,7 +895,7 @@ static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *sta
   }
   *mrb_result = mrb_nil_value();
 
-  // ngx_mrb_post_fiber assigns the result of a resumed fiber to
+  // ngx_http_mrb_resume_set assigns the result of a resumed fiber to
   // ctx->set_var_target. Only the mruby_set handlers pass a result and set
   // the target before they run, so every other handler clears it.
   if (result == NULL) {
@@ -1036,30 +1037,31 @@ resumed:
      * subrequest: the handler returns NGX_DONE, and the wake makes nginx call
      * it again, so that the checker of its phase handles its result
      * (ngx_http_mrb_fiber_call_again). For a subrequest, nginx wakes the
-     * parent itself when the subrequest ends.
+     * parent itself when the subrequest ends. An mruby_set handler waits
+     * only for a timer: Nginx::Async::HTTP.sub_request raises there (Q5 of
+     * section 9), because nginx does not wait for it.
      *
-     * A handler that runs inside another mruby call (mrb->jmp is set), in the
-     * location of an internal redirect that an mruby_set handler or a
-     * filter makes inside the Ruby call, is resumed by its timer
-     * instead (ngx_mrb_post_fiber): the calling code goes on after the call
-     * and may answer the request itself, and a content handler there does
-     * not keep the request, so the request ends at the sleep, as before.
-     * The same holds when the module context is no longer the one the
-     * handler started with (an internal redirect cleared it). Such a handler
-     * returns NGX_AGAIN while its subrequest runs, as before. An mruby_set
-     * handler waits only for a timer: Nginx::Async::HTTP.sub_request raises
-     * there (Q5 of section 9), because nginx does not wait for it.
+     * nginx cannot call the handler again when it runs inside another mruby
+     * call (mrb->jmp is set) or when its module context is no longer the one
+     * it started with (an internal redirect replaced it). Nginx::Async raises
+     * in such a handler before it arms anything, and ngx_mruby runs no
+     * handler inside another one since Nginx.redirect raises where it would
+     * redirect inside the Ruby call (section 2.9 of
+     * docs/proposals/core-alpha1.md), so the second branch is not reached:
+     * it drops the wait, so that nothing resumes the fiber outside nginx's
+     * phases, and the handler ends with an error.
      */
-    if ((ctx->async_sleep_pending || ctx->sub_response_more) && state->mrb->jmp == NULL &&
-        ngx_http_get_module_ctx(r, ngx_http_mruby_module) == ctx && record != NULL) {
-      ngx_http_mrb_fiber_wait_on_nginx(r, ctx, record);
-      return NGX_DONE;
-    }
+    if ((ctx->async_sleep_pending || ctx->sub_response_more) && record != NULL) {
+      if (state->mrb->jmp == NULL && ngx_http_get_module_ctx(r, ngx_http_mruby_module) == ctx) {
+        ngx_http_mrb_fiber_wait_on_nginx(r, ctx, record);
+        return NGX_DONE;
+      }
 
-    if (ctx->sub_response_more) {
-      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: more sub request processing", MODULE_NAME,
-                    __func__, __LINE__);
-      return NGX_AGAIN;
+      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                    "%s ERROR %s:%d: the handler waits where nginx cannot call it again; the wait is dropped",
+                    MODULE_NAME, __func__, __LINE__);
+      ngx_http_mrb_fiber_drop_wait(record);
+      return NGX_ERROR;
     }
 
     return NGX_DONE;
@@ -1074,8 +1076,7 @@ resumed:
     r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
     // drop the output of Nginx.rputs: with it, ngx_mrb_finalize_rputs would
     // send that output as a 200 response; without it, the function returns
-    // the 500, as ngx_mrb_post_fiber does after an exception in a resumed
-    // fiber. Nginx.rputs also added the length of that output to
+    // the 500. Nginx.rputs also added the length of that output to
     // content_length_n: put back the value from before the first string of
     // the chain, because after an mruby_set handler or a filter the request
     // goes on and its response must not count the dropped output.

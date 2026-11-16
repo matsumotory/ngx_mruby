@@ -4,11 +4,11 @@
 # of Strings. The line names the class of the exception in place of an
 # inspect that raised or did not return a String, the Strings of the
 # backtrace are logged and its other elements skipped, and the worker goes
-# on to answer the next request or session: when the handler runs directly
-# under nginx, and when it runs inside another mruby call (the target of
-# Nginx.redirect from an mruby_set handler). There, an exception of #inspect
-# or #backtrace that went on to the outer call left nginx without finishing
-# the request, and the client waited for the response.
+# on to answer the next request or session. The cases of a handler inside
+# another mruby call (the target of Nginx.redirect from an mruby_set
+# handler) were removed with the change that makes that call raise (section
+# 2.9 of docs/proposals/core-alpha1.md): no configuration runs a handler
+# inside another mruby call any more.
 # Config: test/conf/conf.d/94-exception-log-script-methods.conf (port 18091)
 # and test/conf/conf.d/stream/52-exception-log-script-methods.conf (ports
 # 12389 and 12383).
@@ -50,15 +50,6 @@ end
 # The lines of an exception (not those of its frames).
 def script_methods_exception_lines(lines)
   script_methods_errors(lines).select { |l| l.include?('mrb_run failed') }
-end
-
-# Active connections of the nginx worker (stub_status counts all of them),
-# without the one of this request. Connections that earlier tests kept alive
-# may close between two calls, so the cases check that the count did not
-# grow, as test/t/cases/redirect_to_raising_handler.rb does.
-def script_methods_active
-  res = HttpRequest.new.get base(18091) + '/status'
-  res["body"].split("\n")[0].split(":")[1].strip.to_i - 1
 end
 
 PREFIX_500 = 'mrb_run failed: return 500 HTTP status code to client: error: '
@@ -149,91 +140,6 @@ t.assert('exception log', 'a redefined backtrace that returns nil: a line at the
   t.assert_equal 1, not_array.size
   t.assert_include not_array[0].to_s, ' [debug] '
   t.assert_equal [found[0]], script_methods_errors(lines)
-  t.assert_equal 'hello', HttpRequest.new.get(base(18091) + '/script_methods/hello')["body"]
-end
-
-# Inside another mruby call: the content handler of the target of
-# Nginx.redirect from an mruby_set handler raises. The client gets the 500 of
-# that exception, nginx closes the connection, and the line of the exception
-# is the one of the original exception.
-t.assert('exception log', 'inside another mruby call, an exception whose inspect raises: the line names its class, and the worker answers the next request') do
-  before = script_methods_active
-  offset = File.size(script_methods_log_path)
-  status, raw = tcp_client(18091, "GET /script_methods/set_redirect_inspect_raises HTTP/1.0\r\nHost: localhost\r\n\r\n")
-  lines = script_methods_lines_from(offset)
-  errors = script_methods_exception_lines(lines)
-  after = script_methods_active
-  t.assert_equal 'EOF', status
-  t.assert_equal 'HTTP/1.1 500 Internal Server Error', raw.split("\r\n", 2)[0].to_s
-  t.assert_true after <= before, "active connections grew from #{before} to #{after}"
-  t.assert_equal 1, errors.size
-  t.assert_equal [], lines.select { |l| l.include?('script methods: inspect raised 42') }
-  t.assert_true script_methods_message(errors[0].to_s).start_with?(
-    PREFIX_500 + '#<ScriptMethodsInspectRaises> (inspect raised ArgumentError), client: 127.0.0.1'
-  ), errors[0].to_s
-  t.assert_equal 'hello', HttpRequest.new.get(base(18091) + '/script_methods/hello')["body"]
-end
-
-t.assert('exception log', 'inside another mruby call, an exception whose backtrace raises: the line of the exception and a line at the debug level') do
-  before = script_methods_active
-  offset = File.size(script_methods_log_path)
-  status, raw = tcp_client(18091, "GET /script_methods/set_redirect_backtrace_raises HTTP/1.0\r\nHost: localhost\r\n\r\n")
-  lines = script_methods_lines_from(offset)
-  errors = script_methods_exception_lines(lines)
-  after = script_methods_active
-  t.assert_equal 'EOF', status
-  t.assert_equal 'HTTP/1.1 500 Internal Server Error', raw.split("\r\n", 2)[0].to_s
-  t.assert_true after <= before, "active connections grew from #{before} to #{after}"
-  t.assert_equal 1, errors.size
-  t.assert_equal [], lines.select { |l| l.include?('script methods: backtrace raised 42') }
-  t.assert_true script_methods_message(errors[0].to_s).start_with?(
-    PREFIX_500 + ScriptMethodsBacktraceRaises.new('script methods: backtrace raises 42').inspect + ', client: 127.0.0.1'
-  ), errors[0].to_s
-  t.assert_equal 1, lines.select { |l| l.include?(' [debug] ') && l.include?('backtrace must be Array. mrb_type=') }.size
-  t.assert_equal 'hello', HttpRequest.new.get(base(18091) + '/script_methods/hello')["body"]
-end
-
-# The same path with an #inspect or a #backtrace that does not raise. Before
-# the fix, these left the request unfinished as well: the method ran while
-# the exception was still pending, and so returned it by a jump to the
-# outer call.
-t.assert('exception log', 'inside another mruby call, an exception whose inspect returns a String: the line has that String, and the worker answers the next request') do
-  before = script_methods_active
-  offset = File.size(script_methods_log_path)
-  status, raw = tcp_client(18091, "GET /script_methods/set_redirect_inspect_string HTTP/1.0\r\nHost: localhost\r\n\r\n")
-  errors = script_methods_exception_lines(script_methods_lines_from(offset))
-  after = script_methods_active
-  t.assert_equal 'EOF', status
-  t.assert_equal 'HTTP/1.1 500 Internal Server Error', raw.split("\r\n", 2)[0].to_s
-  t.assert_true after <= before, "active connections grew from #{before} to #{after}"
-  t.assert_equal 1, errors.size
-  t.assert_true script_methods_message(errors[0].to_s).start_with?(
-    PREFIX_500 + 'script methods: the inspect of the script 42, client: 127.0.0.1'
-  ), errors[0].to_s
-  t.assert_equal 'hello', HttpRequest.new.get(base(18091) + '/script_methods/hello')["body"]
-end
-
-t.assert('exception log', 'inside another mruby call, a redefined backtrace that returns an Array: its Strings are logged, and the worker answers the next request') do
-  before = script_methods_active
-  offset = File.size(script_methods_log_path)
-  status, raw = tcp_client(18091, "GET /script_methods/set_redirect_backtrace_types HTTP/1.0\r\nHost: localhost\r\n\r\n")
-  lines = script_methods_lines_from(offset)
-  errors = script_methods_exception_lines(lines)
-  # On this path nginx also logs, at the error level, the open() of the
-  # static file of the target location: the frames are the lines with the
-  # text of the backtrace.
-  frames = script_methods_errors(lines).select { |l| script_methods_message(l).start_with?('script methods: ') }
-  after = script_methods_active
-  t.assert_equal 'EOF', status
-  t.assert_equal 'HTTP/1.1 500 Internal Server Error', raw.split("\r\n", 2)[0].to_s
-  t.assert_true after <= before, "active connections grew from #{before} to #{after}"
-  t.assert_equal 1, errors.size
-  t.assert_true script_methods_message(errors[0].to_s).start_with?(
-    PREFIX_500 + ScriptMethodsBacktraceTypes.new('script methods: backtrace types 42').inspect + ', client: 127.0.0.1'
-  ), errors[0].to_s
-  t.assert_equal 2, frames.size
-  t.assert_true script_methods_message(frames[0].to_s).start_with?('script methods: first frame 42, client: 127.0.0.1'), frames[0].to_s
-  t.assert_true script_methods_message(frames[1].to_s).start_with?('script methods: last frame 42, client: 127.0.0.1'), frames[1].to_s
   t.assert_equal 'hello', HttpRequest.new.get(base(18091) + '/script_methods/hello')["body"]
 end
 
