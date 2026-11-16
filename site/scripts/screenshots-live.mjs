@@ -123,7 +123,7 @@ async function visitContext(engine, width, height, lang, pages) {
       failure = error;
     }
   }
-  return { failure, issues, blocked, htmlDiffers, closeFailed, records: visited };
+  return { failure, errors, issues, blocked, htmlDiffers, closeFailed, records: visited };
 }
 
 // The URLs to wait for, or null when the failure is not one to retry: any
@@ -145,18 +145,25 @@ async function waitFor200(url) {
   for (;;) {
     polls++;
     try {
-      const response = await fetch(url, { redirect: 'manual', cache: 'no-store', signal: AbortSignal.timeout(10_000) });
+      const signal = AbortSignal.timeout(Math.max(1_000, Math.min(10_000, deadline - Date.now())));
+      const response = await fetch(url, { redirect: 'manual', cache: 'no-store', signal });
       last = response.status;
       await response.arrayBuffer();
     } catch (error) {
       last = error.message;
     }
     if (last === 200 || Date.now() >= deadline) break;
-    await sleep(Math.min(POLL_MS, deadline - Date.now()));
+    await sleep(Math.max(0, Math.min(POLL_MS, deadline - Date.now())));
   }
   const elapsed = Date.now() - started;
   waitLimitMs = Math.max(0, waitLimitMs - elapsed);
   return { ok: last === 200, seconds: Math.round(elapsed / 100) / 10, polls, last };
+}
+
+// What failed a context, for the log: the error that stopped it, and every
+// error the context collected, which that error may not show.
+function describe({ failure, errors, blocked }) {
+  return [failure?.message?.split('\n')[0], ...errors, ...blocked.map(item => `blocked: ${item}`)].filter(Boolean);
 }
 
 try {
@@ -168,22 +175,32 @@ try {
         ['v2-entry', lang === 'ja' ? '/v2/ja/' : '/v2/'],
         ...(width === PHONE.width ? [['start', lang === 'ja' ? '/ja/start/' : '/start/'], ['docs', lang === 'ja' ? '/ja/docs/' : '/docs/']] : []),
       ];
+      const name = `${engine}-${lang}-${width}`;
       let result = await visitContext(engine, width, height, lang, pages);
       const urls = result.failure && retryableUrls(result);
       if (urls) {
-        const name = `${engine}-${lang}-${width}`;
+        const firstFailure = describe(result);
+        console.log(`screenshots-live: ${name}: failed on a 5xx of the site:\n  ${firstFailure.join('\n  ')}`);
         for (const url of urls) {
           const status = result.issues.find(i => i.kind === 'status' && i.url === url).status;
           const waited = await waitFor200(url);
-          retries.push({ context: name, url, status, waited_seconds: waited.seconds, polls: waited.polls, recovered: waited.ok, last: waited.last });
+          retries.push({ context: name, url, status, waited_seconds: waited.seconds, polls: waited.polls, recovered: waited.ok, last: waited.last, first_failure: firstFailure });
           console.log(waited.ok
             ? `screenshots-live: ${name}: ${url} answered ${status}; it answered 200 after ${waited.seconds} s (${waited.polls} fetches); checking the context again`
             : `screenshots-live: ${name}: ${url} answered ${status}; it still answered ${waited.last} after ${waited.seconds} s (${waited.polls} fetches), at the limit of the wait`);
           if (!waited.ok) throw result.failure;
         }
+        // The second visit takes the records and screenshots of the context
+        // again; none of the first may stay if it stops at an earlier page.
+        for (const file of fs.readdirSync(out)) {
+          if (pages.some(([id]) => file.startsWith(`${engine}-${id}-${lang}-${width}-`))) fs.rmSync(path.join(out, file));
+        }
         result = await visitContext(engine, width, height, lang, pages);
       }
-      if (result.failure) throw result.failure;
+      if (result.failure) {
+        console.error(`screenshots-live: ${name}: failed${urls ? ' again after the retry' : ''}:\n  ${describe(result).join('\n  ')}`);
+        throw result.failure;
+      }
       records.push(...result.records);
     }
     await browser.close();
@@ -195,4 +212,4 @@ try {
   await server?.close();
   fs.writeFileSync(path.join(out, 'evidence.json'), JSON.stringify({ origin, source_revision: manifest.source_revision, v2_source_revision: v2Manifest.source_revision, working_tree_clean: manifest.working_tree_clean, captured_at: new Date().toISOString(), complete: complete && records.length === 12, pages: records, retries }, null, 2) + '\n');
 }
-console.log(`screenshots-live: ${records.length} read-only page visits at ${origin}${retries.length ? ` (${retries.length} context(s) checked again after a 5xx)` : ''}; exact artifact HTML matched; desktop/mobile pixels saved for independent review`);
+console.log(`screenshots-live: ${records.length} read-only page visits at ${origin}${retries.length ? ` (${new Set(retries.map(r => r.context)).size} context(s) checked again after a 5xx)` : ''}; exact artifact HTML matched; desktop/mobile pixels saved for independent review`);

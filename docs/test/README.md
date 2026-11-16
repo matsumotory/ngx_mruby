@@ -2849,8 +2849,9 @@ failed or blocked request, or HTML that differs from the artifact. Right
 after a deploy, GitHub Pages answers some files with 503 for a short time.
 From 2026-10-29 to 2026-11-16, 8 of the 14 runs of `site.yml` on `next`
 that failed or passed only on a re-run failed on that alone, 1.5 to 2
-minutes after the deploy; the other 6 failed in the build, the deploy or
-the setup of the job. The re-runs of 3 of the 8 started the check 126, 144
+minutes after the deploy; the other 6 failed in the build, the deploy,
+the setup of the verification job or its check of the deployment through
+the GitHub API. The re-runs of 3 of the 8 started the check 126, 144
 and 289 seconds after the failure and got 200, so the 503 ended within 153
 seconds in the quickest case. When the only errors of a context are 5xx
 answers of the site's own origin and failed requests of the same URLs, the
@@ -2860,12 +2861,13 @@ waits of a run share a limit of 240 seconds, which keeps the job within its
 `timeout-minutes: 10`. A URL that does not answer 200 within the limit, a
 second failure of the same context, and every other error fail the step at
 once, as before. The script prints each retry (the context, the URL, its
-status and the seconds until it answered 200), and its `evidence.json`
-lists them under `retries`. `--local` never retries.
+status, the seconds until it answered 200, and the errors of the first
+attempt), and its `evidence.json` lists them under `retries`. `--local` never retries.
 `site/scripts/test-screenshots-live.mjs`, which `npm run check:ci` runs,
-puts a proxy in front of the built site and checks three cases: a 503
+puts a proxy in front of the built site and checks four cases: a 503
 that ends is checked again and passes, a 503 that stays fails at the
-limit, and a 404 fails at once.
+limit, and a 404, alone or with a 503 in the same context, fails at
+once.
 
 No job runs a browser on the built site before the deploy. Every browser
 check runs locally instead, in `npm run check:ci` in `site/`
