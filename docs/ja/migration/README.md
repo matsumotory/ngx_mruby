@@ -56,7 +56,7 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
   nginx: [emerg] "mruby_stream_code" directive is duplicated in /etc/nginx/nginx.conf:42
   ```
 
-  `stream {}`のブロックに1つ、`server {}`に1つ書いたディレクティブは、これまでどおり使えます。そのserverは、自分のコードを動かします。ファイルを読めないstreamのディレクティブの`mrb_string(...) load failed`の行に合わせたアラートは、`mrb_file(`にも合うようにしてください。そのような行は、HTTPのディレクティブと同じく`mrb_file(PATH) open failed`になりました。
+  `stream {}`のブロックに1つ、`server {}`に1つ書いたディレクティブは、これまでどおり使えます。そのserverは、自分のコードを動かします。ファイルを読めないstreamのディレクティブの`mrb_string(...) load failed`の行に合わせたアラートは、`mrb_file(`にも合うようにしてください。そのような行は、3.0.0では、HTTPのディレクティブと同じく`mrb_file(PATH) open failed`になります。
 
 ## スクリプト
 
