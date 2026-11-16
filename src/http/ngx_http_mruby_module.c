@@ -1276,7 +1276,23 @@ static ngx_int_t ngx_http_mruby_state_reinit_from_file(ngx_mrb_state_t *state, n
     return NGX_ERROR;
   }
 
+  // Keep a persistent code's recompiled proc from the GC. ngx_mrb_run saves
+  // the GC arena before this reload and restores it below the new proc after
+  // the run, so the arena no longer holds it; without a root a later GC frees
+  // it, and a location with mruby_cache on that shares this code would then
+  // run a freed proc. Register the new proc and release the one it replaces. A
+  // per-request mruby_add_handler code is not persistent and has no config
+  // proc: its proc stays in the request's arena, as before, so that nothing
+  // holds it after the request ends.
+  if (code->persistent && code->proc_registered) {
+    mrb_gc_unregister(state->mrb, mrb_obj_value(code->proc));
+    code->proc_registered = 0;
+  }
   code->proc = mrb_proc_ptr(proc);
+  if (code->persistent) {
+    mrb_gc_register(state->mrb, mrb_obj_value(code->proc));
+    code->proc_registered = 1;
+  }
 
   return NGX_OK;
 }
@@ -1366,6 +1382,7 @@ static ngx_int_t ngx_http_mruby_shared_state_compile(ngx_conf_t *cf, ngx_mrb_sta
   }
 
   code->proc = mrb_proc_ptr(proc);
+  code->persistent = 1;
 #ifdef NGX_MRUBY_IREP_DEBUG
   /* mrb_codedump_all() is not declared in mruby headers. So just follows the mruby way. See mruby/src/load.c. */
   void mrb_codedump_all(mrb_state *, struct RProc *);
