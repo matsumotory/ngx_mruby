@@ -2842,6 +2842,31 @@ head before it is ready; deployment validates the merged tree.
 | `deploy` | Publishes the artifact `github-pages` to GitHub Pages, on `next` only, after `build` passed |
 | `verify-live` | Reads the deployment back: the artifact's commit and the deployed commit, the branch policy of the environment, the published bytes, the redirect to HTTPS, the kept verification file, Lighthouse on the live home page, and screenshots of the published pages in the two patterns (below) |
 
+The screenshots come from `site/scripts/screenshots-live.mjs`. It opens
+the published pages in one read-only browser context for each engine and
+language, and fails on a response of 400 or more, a page exception, a
+failed or blocked request, or HTML that differs from the artifact. Right
+after a deploy, GitHub Pages answers some files with 503 for a short time.
+From 2026-10-29 to 2026-11-16, 8 of the 14 runs of `site.yml` on `next`
+that failed or passed only on a re-run failed on that alone, 1.5 to 2
+minutes after the deploy; the other 6 failed in the build, the deploy or
+the setup of the job. The re-runs of 3 of the 8 started the check 126, 144
+and 289 seconds after the failure and got 200, so the 503 ended within 153
+seconds in the quickest case. When the only errors of a context are 5xx
+answers of the site's own origin and failed requests of the same URLs, the
+script fetches each of those URLs with Node every 5 seconds until it
+answers 200, then checks that context again from its first page, once. The
+waits of a run share a limit of 240 seconds, which keeps the job within its
+`timeout-minutes: 10`. A URL that does not answer 200 within the limit, a
+second failure of the same context, and every other error fail the step at
+once, as before. The script prints each retry (the context, the URL, its
+status and the seconds until it answered 200), and its `evidence.json`
+lists them under `retries`. `--local` never retries.
+`site/scripts/test-screenshots-live.mjs`, which `npm run check:ci` runs,
+puts a proxy in front of the built site and checks three cases: a 503
+that ends is checked again and passes, a 503 that stays fails at the
+limit, and a 404 fails at once.
+
 No job runs a browser on the built site before the deploy. Every browser
 check runs locally instead, in `npm run check:ci` in `site/`
 (`site/scripts/check-ci.sh`), which the author of a pull request that
@@ -2865,8 +2890,8 @@ quotes under "How was this tested". It runs:
    2.x pages, `check-focus.mjs`, `check-language-links.mjs`,
    `check-lighthouse.mjs`, `check-project-badges.mjs --browser`,
    `check-search-identifiers.mjs`, `check-v2.mjs` with the search in
-   Chromium, `test-read-only-browser.mjs`, `screenshots.mjs` and
-   `screenshots-live.mjs --local`.
+   Chromium, `test-read-only-browser.mjs`, `screenshots.mjs`,
+   `screenshots-live.mjs --local` and `test-screenshots-live.mjs`.
 
 The fresh-clone and offline builds stay in the `build` job; a pull request
 that changes `site/package.json`, `site/package-lock.json` or the build
