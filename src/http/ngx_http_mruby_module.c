@@ -1909,7 +1909,15 @@ static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
 
   if (mlcf->header_filter_handler == NULL && mlcf->body_filter_handler == NULL) {
     return ngx_http_next_header_filter(r);
-  } else {
+  }
+
+  /*
+   * Only the body filter reads the body, from the memory of its buffers, so
+   * only a location with a body filter asks nginx to read a file of the
+   * response into memory. With a header filter alone, nginx keeps sending a
+   * file with sendfile.
+   */
+  if (mlcf->body_filter_handler != NULL) {
     r->filter_need_in_memory = 1;
   }
 
