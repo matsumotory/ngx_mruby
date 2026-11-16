@@ -55,13 +55,17 @@ extern ngx_module_t ngx_http_mruby_module;
  *   phase of a request. Each form has its own field in the location
  *   configuration, code[NGX_HTTP_MRUBY_CODE_KIND][form], and its own handler,
  *   ngx_http_mruby_<name>_handler and ngx_http_mruby_<name>_inline_handler,
- *   which runs the code as NGX_HTTP_MRUBY_HANDLER_KIND. Both handlers are
- *   added to phase, the file handler first, in the order of the rows; the
- *   log phase gets them at its front (ngx_http_mruby_handler_init).
+ *   which runs the code as NGX_HTTP_MRUBY_HANDLER_KIND. The handler of a
+ *   form is added to phase when a directive of the configuration uses that
+ *   form (uses of the main configuration), the file handler first, in the
+ *   order of the rows; the log phase gets them at its front
+ *   (ngx_http_mruby_handler_init).
  * - FILTER(KIND, name, file, inline_, contexts): an output filter, with the
  *   fields of a PHASE row and the filter handlers of ngx_http_mruby_module.c
  *   (ngx_http_mruby_<name>_handler and ngx_http_mruby_<name>_inline_handler),
- *   which the directive sets for its location.
+ *   which the directive sets for its location. A location without a filter
+ *   directive of the kind takes the handler with the code from the level
+ *   above it (ngx_http_mruby_merge_loc_conf).
  *
  * mruby_set and mruby_set_code (a list of codes per location), the SSL
  * handshake handler (one field per form in the server configuration) and
@@ -130,8 +134,11 @@ typedef struct ngx_http_mruby_main_conf_t {
   /*
    * Which handler kinds and forms the directives of the configuration use,
    * anywhere: uses[kind][form] is 1 once a directive of that kind and form
-   * has set its code (ngx_http_mruby_handler_directive). Postconfiguration
-   * adds the output filters only when one is used (ngx_http_mruby_init).
+   * has set its code (ngx_http_mruby_handler_directive), and
+   * uses[NGX_HTTP_MRUBY_CODE_CONTENT][NGX_MRB_CODE_TYPE_FILE] once
+   * mruby_add_handler is on anywhere (ngx_http_mruby_add_handler_directive).
+   * Postconfiguration adds only the phase handlers and the output filters
+   * that are used (ngx_http_mruby_init, ngx_http_mruby_handler_init).
    */
   ngx_flag_t uses[NGX_HTTP_MRUBY_CODES][NGX_MRB_CODE_FORMS];
   /*
@@ -169,8 +176,9 @@ typedef struct ngx_http_mruby_loc_conf_t {
   ngx_flag_t add_handler;
   ngx_flag_t enable_read_request_body;
 
-  // filter handlers
-  ngx_http_handler_pt header_filter_handler;
+  // the filter handlers of the form of the later filter directive of the
+  // location, or, without one, of the level above it; NULL without a filter
+  ngx_http_output_header_filter_pt header_filter_handler;
   ngx_http_output_body_filter_pt body_filter_handler;
 } ngx_http_mruby_loc_conf_t;
 
