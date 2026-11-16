@@ -3,11 +3,11 @@
 Status: in progress. The design decisions of section 5 were made on
 2026-11-09 (decisions 1 to 5) and on 2026-11-10 (decisions 6 and 7), and
 no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
-(#779 and #783), 2.7 (#788), 2.8 (#796), and the execution context and the
-phases of the Ruby API of 2.1 (#826). Next step: these pull requests of
-section 4: "Per-request store" (2.1), "Waits inside another mruby call"
-(2.9), "Common code loading" (2.6) and "Directive table and one duplicate
-check" (2.5), by 2026-11-20.
+(#779 and #783), 2.7 (#788), 2.8 (#796), the execution context and the
+phases of the Ruby API of 2.1 (#826), and 2.6 (#825). Next step: these
+pull requests of section 4: "Per-request store" (2.1), "Waits inside
+another mruby call" (2.9) and "Directive table and one duplicate check"
+(2.5), by 2026-11-20.
 
 This proposal designs what is left of step 4 of section 6 of
 [the v3 plan](v3-plan.md): the work that has to be on `next` before
@@ -423,10 +423,15 @@ registration.
 
 **Design.** `src/common/ngx_mruby_code.{h,c}` with one `ngx_mrb_code_t`
 and four functions: make from a file, make from a string, compile (load,
-prepare the proc with `ngx_mrb_fiber_prepare_proc`, free the compiler
-context), and reload (the HTTP path without cache). The compiled proc is
-kept in a slot of the GC root holder for the life of the state, and a
-reload replaces the proc in the slot; this is the "mark cached procs"
+and prepare the proc with `ngx_mrb_fiber_prepare_proc`; the compiler
+context stays with the code and is freed when it was freed before, after
+a run of an HTTP code without cache and in the cleanup of the
+configuration, because this item changes neither behavior nor the
+handling of resources), and reload (the HTTP path without cache). The
+compiled proc is kept in a slot of the GC root holder until the state is
+closed, or until a later stream directive replaces the code
+(`ngx_stream_mruby_replace_code` frees the slot then), and a reload
+replaces the proc in the slot; this is the "mark cached procs"
 part of the filter row of the plan, done here because it belongs to
 loading. Stream keeps compiling once.
 
@@ -872,7 +877,7 @@ and the one that merges second updates its branch.
 | Per-request store | 2.1 | nothing | execution context |
 | One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`) |
 | Waits inside another mruby call (the raise of `Nginx.redirect` in log handlers is done by #770) | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |
-| Common code loading | 2.6 | nothing | directive table, filter handlers (the directive functions) |
+| Common code loading: [#825](https://github.com/matsumotory/ngx_mruby/pull/825) | 2.6 | nothing | directive table, filter handlers (the directive functions) |
 | Common upstream switching: [#788](https://github.com/matsumotory/ngx_mruby/pull/788), merged on 2026-11-11 | 2.7 | nothing | nothing |
 | Common error logging: [#796](https://github.com/matsumotory/ngx_mruby/pull/796), merged on 2026-11-12; [#799](https://github.com/matsumotory/ngx_mruby/pull/799) protects the calls of `inspect` and `backtrace` in the logging | 2.8 | nothing | execution context (`Nginx.log`) |
 | Directive table and one duplicate check | 2.5 | nothing | log handlers, filter handlers, code loading |

@@ -1683,9 +1683,12 @@ counters therefore do not depend on how many requests ran before:
 - `gc_root` is the number of objects that ngx_mruby keeps from the GC, and
   `fibers` counts the fibers among them: the holder of each mrb_state
   (`src/http/ngx_http_mruby_gc_roots.h`), registered once when the state is
-  opened, and the objects stored in it. A handler stores its fiber in the
-  holder when it starts and frees the slot when it ends, so the holders and
-  the fiber of `/debug/stats` are left.
+  opened, and the objects stored in it. The compiled code of each
+  directive stays in a slot of the holder until the state is closed, and a
+  handler file without `cache` puts the code of each run in the same slot
+  (`src/common/ngx_mruby_code.h`). A handler stores its fiber in the
+  holder when it starts and frees the slot when it ends, so the holders, the
+  compiled code and the fiber of `/debug/stats` are left.
   ngx_mruby counts its own calls (see "The soak build and `Nginx::Debug`"
   below), so the check does not depend on how mruby stores the GC roots.
 - `arena` is the depth of the mruby GC arena while `/debug/stats` runs. Each
@@ -1893,7 +1896,10 @@ including the repeated HTTP sleeps described above.
     `mrb_gc_register()` and not yet unregistered (the holder of each
     mrb_state, see `src/http/ngx_http_mruby_gc_roots.h`), and the objects
     that `ngx_mrb_gc_roots_add()` stored in a holder and
-    `ngx_mrb_gc_roots_remove()` has not released. Those of the http module
+    `ngx_mrb_gc_roots_remove()` has not released, among them the compiled
+    code of each directive, which stays in its slot until the state is
+    closed or a later stream directive replaces it
+    (`src/common/ngx_mruby_code.h`). Those of the http module
     and those of the stream module are counted together. Immediate
     values are not counted, because mruby does not register them. The value
     is negative when ngx_mruby released more than it kept.

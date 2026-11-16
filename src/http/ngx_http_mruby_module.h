@@ -14,27 +14,15 @@
 #include <mruby.h>
 #include <mruby/compile.h>
 
+#include "../common/ngx_mruby_code.h"
+
 #define MODULE_NAME "ngx_mruby"
 #define MODULE_VERSION "3.0.0"
-
-typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
 
 typedef struct ngx_mrb_state_t {
   mrb_state *mrb;
   int ai;
 } ngx_mrb_state_t;
-
-typedef struct ngx_mrb_code_t {
-  union code {
-    char *file;
-    char *string;
-  } code;
-  code_type_t code_type;
-  int n;
-  unsigned int cache;
-  struct RProc *proc;
-  mrbc_context *ctx;
-} ngx_mrb_code_t;
 
 #if defined(NDK) && NDK
 typedef struct {

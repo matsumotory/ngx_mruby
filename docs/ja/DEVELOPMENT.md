@@ -55,7 +55,7 @@ sh apply-clang-format
 
 - HTTPのレコードには、ほかにハンドラの種類、sleepの再開のデータ、wakeで使うpostされたリクエストのエントリ、コードが設定した結果、`Nginx.redirect`のローカルのURI、`sub_request`が返した`Nginx::Async::HTTP::Response`があります。サブリクエストのレスポンスのステータス、ヘッダ、ボディは、親のリクエストのモジュールのコンテキスト（`sub_response_*`）に置き、このレコードの中には置きません。
 - モジュールのコンテキストの`ctx->fiber_proc`は、いま動いている実行のレコードを指します。`ctx->wait`（HTTP）と`ctx->sleeping`（stream）は、nginxがハンドラをもう一度呼ぶのを待つレコードを指します。
-- コードの`RProc`は、コードをコンパイルするときか読み込むときに1回だけ用意します（`ngx_mrb_fiber_prepare_proc`）。実行のたびには変えません。
+- コードの`RProc`は、コードをコンパイルするときか読み込むときに1回だけ用意します（`ngx_mrb_fiber_prepare_proc`）。実行のたびには変えません。用意するのは`src/common/ngx_mruby_code.c`の`ngx_mrb_code_compile`と`ngx_mrb_code_reload`で、どちらも`RProc`を、`mrb_state`がある間GCのルートの保持のスロットに入れておきます。`cache`を付けないハンドラのファイルを読み直すと、新しい`RProc`を同じスロットに入れます。前の`RProc`を実行中のファイバーは、その`RProc`をGCから守ります。
 
 レコードの状態は次のとおりです。
 

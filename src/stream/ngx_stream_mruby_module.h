@@ -14,6 +14,7 @@
 #include "mruby.h"
 #include "mruby/compile.h"
 
+#include "../common/ngx_mruby_code.h"
 #include "../common/ngx_mruby_exec.h"
 
 #define MODULE_NAME "ngx_mruby-stream-module"
@@ -29,18 +30,6 @@ typedef struct {
   ngx_mrb_exec_holder_t exec;
   ngx_int_t stream_status;
 } ngx_stream_mruby_internal_ctx_t;
-
-typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
-
-typedef struct ngx_mrb_code_t {
-  union code {
-    char *file;
-    char *string;
-  } code;
-  code_type_t code_type;
-  struct RProc *proc;
-  mrbc_context *ctx;
-} ngx_mrb_code_t;
 
 typedef struct {
   mrb_state *mrb;
