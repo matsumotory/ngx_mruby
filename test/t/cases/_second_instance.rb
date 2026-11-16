@@ -9,13 +9,17 @@
 # hooks, and the order in which the hooks run. The mode stream_master runs a
 # master process and a worker process, for stream cases that need the worker
 # to shut down (worker_shutdown_timeout) or a worker process of its own.
+# The mode http_filter has what the configuration of test.sh cannot have
+# without changing every other case: an output filter in the http block, a
+# content handler that only mruby_add_handler uses, and a log handler in one
+# form only (test/t/cases/filter_inherit.rb).
 #
-# Usage: ruby test/t/cases/_second_instance.rb http|stream|stream_add_listener|stream_master
+# Usage: ruby test/t/cases/_second_instance.rb http|http_filter|stream|stream_add_listener|stream_master
 #
 # NGINX_INSTALL_DIR names the nginx that test.sh installed. The second nginx
 # runs in the foreground, uses the prefix
 # NGINX_INSTALL_DIR/second_instance/MODE/ and listens on 127.0.0.1:18116 for
-# http, on 127.0.0.1:12357 for the modes stream and stream_add_listener, and on
+# http and http_filter, on 127.0.0.1:12357 for the modes stream and stream_add_listener, and on
 # 127.0.0.1:12385 to 12388 for stream_master. It runs as a single process,
 # except in stream_master, where it has a master process and one worker
 # process. The hook files are the copies of test/html in
@@ -25,6 +29,10 @@
 # The script prints one "key=value" line for each observation:
 #   reply   what the second nginx answered: the HTTP body for http, the bytes
 #           of the stream session for stream
+#   plain, script, log  http_filter only: the status line, the value of the
+#           header X-Http-Filter and the body of GET /plain, of GET
+#           /add_handler_cache.rb and of GET /log, joined with "|"
+#   access_log  http_filter only: the lines of its access log, joined with "|"
 #   trace   stream only: the trace that the session code wrote to error.log
 #   add_listener  stream_add_listener only: what Nginx::Stream.add_listener
 #           did when the session code called it, as the code wrote it to
@@ -54,7 +62,8 @@ require 'socket'
 require 'fileutils'
 
 LIMIT = 30 # seconds for the start, for each exchange and for the stop
-PORTS = { 'http' => 18116, 'stream' => 12357, 'stream_add_listener' => 12357, 'stream_master' => 12385 }.freeze
+PORTS = { 'http' => 18116, 'http_filter' => 18116, 'stream' => 12357, 'stream_add_listener' => 12357,
+          'stream_master' => 12385 }.freeze
 
 HTTP_CONF = <<'CONF'
 http {
@@ -70,6 +79,40 @@ http {
         # The hook files append to $init_order in the order they run.
         location /init_order {
             mruby_content_handler_code 'Nginx.rputs $init_order.join(",")';
+        }
+    }
+}
+CONF
+
+# A header filter in the http block, which each location of the server runs
+# (section 2.4 of docs/proposals/core-alpha1.md). /plain answers with
+# nginx's return. A request for a .rb file runs it with mruby_add_handler,
+# the only directive of the configuration that uses the content handler of
+# the file form. /log has the only log handler, of the inline form; the
+# access log writes the value that it assigns.
+HTTP_FILTER_CONF = <<'CONF'
+http {
+    log_format filter_inherit '$request_uri $filter_inherit_log';
+    access_log access.log filter_inherit;
+
+    mruby_output_header_filter_code 'Nginx::Request.new.headers_out["X-Http-Filter"] = "ran"';
+
+    server {
+        listen 127.0.0.1:__PORT__;
+        root __HTML__;
+        set $filter_inherit_log "unset";
+
+        location = /plain {
+            return 200 "plain";
+        }
+
+        location ~ [.]rb$ {
+            mruby_add_handler on;
+        }
+
+        location = /log {
+            mruby_log_handler_code 'Nginx::Var.new.filter_inherit_log = "from-ruby"';
+            return 200 "log";
         }
     }
 }
@@ -187,7 +230,7 @@ def configuration(mode, install, prefix)
   html = File.join(install, 'html')
   port = PORTS.fetch(mode).to_s
   so = File.join(install, 'modules', 'ngx_http_mruby_module.so')
-  body = { 'http' => HTTP_CONF, 'stream' => STREAM_CONF,
+  body = { 'http' => HTTP_CONF, 'http_filter' => HTTP_FILTER_CONF, 'stream' => STREAM_CONF,
            'stream_master' => STREAM_MASTER_CONF }.fetch(mode, STREAM_ADD_LISTENER_CONF)
   [
     File.exist?(so) ? "load_module #{so};" : '',
@@ -290,6 +333,7 @@ class SecondInstance
 
   def observe
     return observe_master if @mode == 'stream_master'
+    return observe_filter if @mode == 'http_filter'
 
     if @mode == 'http'
       raw = exchange(@port, "GET /init_order HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n")
@@ -297,6 +341,20 @@ class SecondInstance
     else
       @result['reply'] = exchange(@port, '')
     end
+  end
+
+  # http_filter: three requests, then the access log, which nginx has written
+  # when it closed each connection (access_log without a buffer).
+  def observe_filter
+    { 'plain' => '/plain', 'script' => '/add_handler_cache.rb', 'log' => '/log' }.each do |key, path|
+      raw = exchange(@port, "GET #{path} HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n")
+      head, body = raw.split("\r\n\r\n", 2)
+      lines = head.to_s.split("\r\n")
+      header = lines.drop(1).map { |l| l.split(':', 2) }.find { |name, _| name.downcase == 'x-http-filter' }
+      @result[key] = [lines[0].to_s, header ? header[1].strip : '', body.to_s].join('|')
+    end
+    access = File.join(@prefix, 'access.log')
+    @result['access_log'] = File.exist?(access) ? File.read(access).split("\n").join('|') : ''
   end
 
   # stream_master: the sessions without a PROXY source address, one after
@@ -402,7 +460,7 @@ class SecondInstance
       end
     end
     log = File.join(@prefix, 'error.log')
-    return unless @mode != 'http' && File.exist?(log)
+    return unless !@mode.start_with?('http') && File.exist?(log)
 
     # error.log also holds the source of the session code, so the patterns
     # accept only the characters of a trace or of a result, not "#{".
@@ -421,6 +479,6 @@ end
 
 instance = SecondInstance.new(mode)
 instance.run
-%w[error reply trace add_listener pp_unknown pp_local pp_none pp_tcp4 pp_values wait_pp wait_plain started quit_seconds worker_signals stdout exit sanitizer].each do |key|
+%w[error reply plain script log access_log trace add_listener pp_unknown pp_local pp_none pp_tcp4 pp_values wait_pp wait_plain started quit_seconds worker_signals stdout exit sanitizer].each do |key|
   puts "#{key}=#{instance.result[key]}" if instance.result.key?(key)
 end

@@ -5,10 +5,10 @@ Status: in progress. The design decisions of section 5 were made on
 no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
 (#779 and #783), 2.7 (#788), 2.8 (#796), the execution context and the
 phases of the Ruby API of 2.1 (#826), 2.6 (#825), the per-request store
-of 2.1 (#832), 2.9 (#833) and 2.5 (#834). Next step: the rows of section
-4 that are open, "Headers" (2.2), "One setter for `Nginx::Var`" (2.3)
-and "Filter handlers" (2.4), then the check before the tag of section 3;
-their dates are set when they are taken up.
+of 2.1 (#832), 2.9 (#833), 2.5 (#834) and 2.4 (#835). Next step: the
+rows of section 4 that are open, "Headers" (2.2) and "One setter for
+`Nginx::Var`" (2.3), then the check before the tag of section 3, by
+2026-11-20.
 
 This proposal designs what is left of step 4 of section 6 of
 [the v3 plan](v3-plan.md): the work that has to be on `next` before
@@ -886,7 +886,7 @@ and the one that merges second updates its branch.
 | Log handlers before `access_log`: [#770](https://github.com/matsumotory/ngx_mruby/pull/770), merged on 2026-11-09; #770 also makes `Nginx.redirect` with a local URI raise in log handlers, the log handler part of 2.9 | 2.10, 2.9 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
 | `mruby_variable`: [#780](https://github.com/matsumotory/ngx_mruby/pull/780), merged on 2026-11-10 | 2.11 | nothing | nothing |
 | Headers | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
-| Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
+| Filter handlers: type, merge, phase handlers only where used: [#835](https://github.com/matsumotory/ngx_mruby/pull/835) | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
 | Execution context and the phases of the Ruby API: [#826](https://github.com/matsumotory/ngx_mruby/pull/826) | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
 | Per-request store: [#832](https://github.com/matsumotory/ngx_mruby/pull/832) | 2.1 | nothing | execution context |
 | One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`, which #833 removed) |

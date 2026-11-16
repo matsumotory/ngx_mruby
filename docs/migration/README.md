@@ -23,7 +23,7 @@ and, for 4.1, `NEWS.md` in `mruby/`.
 ## Steps
 
 1. Check how you build the module: [Builds](#builds).
-2. Find the directives that 3.0.0 refuses, and change them: [Configurations](#configurations).
+2. Find the directives that 3.0.0 refuses or runs in more locations, and change them: [Configurations](#configurations).
 3. Find the scripts that an entry affects, and change them: [Scripts](#scripts).
 4. Update log parsers and alerts: [Log monitoring](#log-monitoring).
 5. If you maintain an mrbgem or other C code that uses the mruby C API,
@@ -131,6 +131,23 @@ and, for 4.1, `NEWS.md` in `mruby/`.
   `mrb_string(...) load failed` line of a stream directive whose file
   cannot be read matches `mrb_file(` as well: such a line is now
   `mrb_file(PATH) open failed`, as for the HTTP directives.
+
+- [Output filters given at `http` or `server` level, or in a location, run in the locations below them](../releases/v3.0.0.md#output-filters-given-at-http-or-server-level-or-in-a-location-run-in-the-locations-below-them-835):
+  find the filter directives,
+
+  ```sh
+  grep -rnE 'mruby_output_(header|body)_filter' /etc/nginx
+  ```
+
+  and, for each, the block that holds it. A filter in the `http {}` block
+  now runs in every location of every server, one in a `server {}` block
+  in every location of the server, and one in a `location` in its nested
+  locations and its `if` blocks, unless such a level gives a filter of the
+  same kind of its own. Check that the filter can run for every response
+  there, such as those of static files and upstreams, and move a filter
+  that should run in some locations only into those locations. On 2.x,
+  such a filter ran in none of these locations, except that one in a
+  `server {}` block ran for the requests that matched no location.
 
 ## Scripts
 
