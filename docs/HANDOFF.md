@@ -159,10 +159,21 @@
 - [#843](https://github.com/matsumotory/ngx_mruby/pull/843) into `master`
   as `4e6494d1c` on 2026-11-17 at 04:02 JST, and
   [#844](https://github.com/matsumotory/ngx_mruby/pull/844) into `next`
-  (open, ready; the session that coordinates the work merges it):
+  as `89c61e3d2` on 2026-11-17 at 04:38 JST:
   github/codeql-action 4.39.3 for `init`, `analyze` and
   `upload-sarif` together, and a Dependabot group that updates these
   steps in one PR per branch.
+- [#846](https://github.com/matsumotory/ngx_mruby/pull/846) (`next`,
+  open; its author continues it, and the session that coordinates the
+  work merges it): in a location with an mruby header filter and no body
+  filter, ngx_mruby no longer sets `r->filter_need_in_memory`, so nginx
+  sends a static file there with `sendfile`. Since #835, a header filter
+  given at `http` or `server` level runs in every location below it, and
+  turned `sendfile` off for every static file of the server (the note of
+  the review of #835). Behavior change: such a location sends the files
+  of its responses with `sendfile` when `sendfile` is on. Its test is
+  `test/t/cases/filter_sendfile.rb`, with the mode `http_sendfile` of the
+  second nginx of `test/t/cases/_second_instance.rb` (port 18116).
 - The advisory
   [GHSA-8j8w-mcp5-xp3h](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-8j8w-mcp5-xp3h)
   (Low, patched in 2.7.8) was published on 2026-11-15 at 15:39
