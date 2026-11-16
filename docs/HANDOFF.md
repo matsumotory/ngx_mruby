@@ -137,6 +137,15 @@
   both modules. Behavior change: `nginx -t` refuses a stream hook given
   twice in one context (decision 4). Its test is
   `test/t/cases/stream_duplicate_hooks.rb` (`nginx -t` only, port 12398).
+- [#836](https://github.com/matsumotory/ngx_mruby/pull/836) (`next`,
+  open, ready; the session that coordinates the work merges it): the check
+  of the published site after a deploy (`site/scripts/screenshots-live.mjs`
+  in the `verify-live` job of `site.yml`) checks a browser context again,
+  once, when its only errors are 5xx answers of ngx.mruby.org, after the
+  URLs answer 200 (at most 240 seconds in a run). From 2026-10-29 to
+  2026-11-16, 8 of the 14 failed or re-run runs of `site.yml` on `next`
+  failed on such a 503 alone. Its test is
+  `site/scripts/test-screenshots-live.mjs`, in `npm run check:ci`.
 - The advisory
   [GHSA-8j8w-mcp5-xp3h](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-8j8w-mcp5-xp3h)
   (Low, patched in 2.7.8) was published on 2026-11-15 at 15:39

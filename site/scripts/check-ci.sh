@@ -132,6 +132,7 @@ browser_checks() {
     run node scripts/test-read-only-browser.mjs
     run node scripts/screenshots.mjs --out build-screenshots
     run node scripts/screenshots-live.mjs --local --out build-screenshots/predeploy-smoke
+    run node scripts/test-screenshots-live.mjs
 }
 
 if [ "$mode" = all ]; then
