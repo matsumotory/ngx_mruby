@@ -1888,6 +1888,7 @@ static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
   ngx_mrb_code_t *code;
   size_t root;
   ngx_str_t path;
+  ngx_flag_t cached = mlcf->cached;
 
   if (mlcf->add_handler) {
     if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
@@ -1906,6 +1907,11 @@ static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
                     path.data);
       return NGX_ERROR;
     }
+    // mruby_add_handler makes this code from the request path, uncompiled, on
+    // every request, so it has to be compiled on every request. Run it as not
+    // cached, whatever mruby_cache the location sets: a cached run would skip
+    // the compile and pass a null proc to the fiber, which ends the worker.
+    cached = 0;
   } else {
     code = mlcf->content_code;
   }
@@ -1913,7 +1919,7 @@ static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
     return NGX_DECLINED;
   }
   ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based content code: %s", code->code.file);
-  return ngx_mrb_run(r, mmcf->state, code, mlcf->cached, NULL, NGX_HTTP_MRUBY_HANDLER_CONTENT);
+  return ngx_mrb_run(r, mmcf->state, code, cached, NULL, NGX_HTTP_MRUBY_HANDLER_CONTENT);
 }
 
 #define NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(handler_name, _code, _kind)                                         \
