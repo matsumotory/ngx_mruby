@@ -10,8 +10,15 @@
 # wrote one element past its end; and (c) adopted the next part when the first
 # part emptied without moving headers->last, so a header added afterwards was
 # written into the detached part and was not visible. The fix removes the
-# element by moving the rest of the part down, compares the length first, and
-# keeps headers->last in step.
+# element without moving the others -- it advances the part's base (i==0),
+# drops the last element, or splits the part (middle) -- and keeps
+# headers->nalloc at or below the last part's free room, so a later
+# ngx_list_push starts a new part instead of writing past it. It compares the
+# length first and keeps headers->last in step. Not moving the surviving
+# elements keeps nginx's cached ngx_table_elt_t* to a later header (for
+# example r->headers_in.user_agent, read by $http_user_agent) on the same
+# header; /cache-ptr and /cache-ptr0 check that for the split and the i==0
+# branch.
 
 t = SimpleTest.new "ngx_mruby test: delete a request header"
 
@@ -51,6 +58,16 @@ end
 t.assert('header delete - a deleted header keeps a later header cached pointer ($http_user_agent)', 'GET /cache-ptr on 18105') do
   headers = ['X-A: a', 'X-B: b', 'User-Agent: UA-MARK', 'X-C: c']
   status, body = header_del('/cache-ptr', headers)
+  t.assert_equal 'EOF', status
+  t.assert_equal 'ua:UA-MARK', body
+end
+
+# Same preservation for the i==0 branch: X-First is the first list element and
+# User-Agent follows it. Deleting X-First must not move User-Agent. A delete
+# that moved the elements would make $http_user_agent read X-Last.
+t.assert('header delete - deleting the first header keeps a later header cached pointer ($http_user_agent)', 'GET /cache-ptr0 on 18105') do
+  headers = ['X-First: f', 'User-Agent: UA-MARK', 'X-Last: l']
+  status, body = header_del('/cache-ptr0', headers)
   t.assert_equal 'EOF', status
   t.assert_equal 'ua:UA-MARK', body
 end

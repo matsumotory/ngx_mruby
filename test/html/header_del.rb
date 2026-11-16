@@ -28,9 +28,17 @@ when '/overflow'
 when '/cache-ptr'
   # X-B sits before User-Agent, which is followed by X-C. $http_user_agent
   # reads r->headers_in.user_agent, the pointer nginx cached to the
-  # User-Agent element while parsing. Deleting X-B must not move the other
-  # elements, or that pointer would then point at a different header.
+  # User-Agent element while parsing. Deleting X-B (a middle element, the
+  # split branch) must not move the other elements, or that pointer would
+  # then point at a different header.
   h.delete('X-B')
+  Nginx.rputs "ua:#{Nginx::Var.new.http_user_agent}"
+when '/cache-ptr0'
+  # X-First is at index 0 of the list; User-Agent follows it. Deleting the
+  # first element (the i==0 branch, which advances the part's base) must not
+  # move User-Agent, or $http_user_agent (r->headers_in.user_agent) would
+  # read X-Last.
+  h.delete('X-First')
   Nginx.rputs "ua:#{Nginx::Var.new.http_user_agent}"
 else
   Nginx.return Nginx::HTTP_NOT_FOUND
