@@ -176,3 +176,53 @@ ngx_int_t ngx_mrb_code_reload(mrb_state *mrb, ngx_mrb_code_t *code)
 
   return NGX_OK;
 }
+
+const code_type_t ngx_mrb_code_forms[NGX_MRB_CODE_FORMS] = {NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING};
+
+char *ngx_mrb_code_set(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t **field, code_type_t form,
+                       const char *module_name, const char *func)
+{
+  ngx_str_t *value;
+  ngx_mrb_code_t *code;
+
+  if (*field != NGX_CONF_UNSET_PTR) {
+    return "is duplicated";
+  }
+
+  value = cf->args->elts;
+
+  if (form == NGX_MRB_CODE_TYPE_FILE) {
+    code = ngx_mrb_code_from_file(cf->pool, &value[1]);
+    if (code == NGX_CONF_UNSET_PTR) {
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s : %s mrb_file(%s) open failed", module_name, func, value[1].data);
+      return NGX_CONF_ERROR;
+    }
+    if (cf->args->nelts == 3) {
+      if (ngx_strcmp(value[2].data, "cache") != 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
+                           &value[2]);
+        return NGX_CONF_ERROR;
+      }
+      code->cache = 1;
+    }
+  } else {
+    code = ngx_mrb_code_from_string(cf->pool, &value[1]);
+    if (code == NGX_CONF_UNSET_PTR) {
+      return NGX_CONF_ERROR;
+    }
+  }
+
+  *field = code;
+
+  if (ngx_mrb_code_compile(cf, mrb, code, module_name, func) != NGX_OK) {
+    if (form == NGX_MRB_CODE_TYPE_FILE) {
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s : %s mrb_file(%s) open failed", module_name, func, value[1].data);
+    } else {
+      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s : %s mrb_string(%s) load failed", module_name, func,
+                         value[1].data);
+    }
+    return NGX_CONF_ERROR;
+  }
+
+  return NGX_CONF_OK;
+}

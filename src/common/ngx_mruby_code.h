@@ -27,12 +27,18 @@
 // - slot is the slot of proc in the GC root holder of the mrb_state that
 //   compiled it (ngx_http_mruby_gc_roots.h), or NGX_MRB_GC_ROOTS_NONE.
 //   ngx_mrb_code_compile takes the slot, and the proc stays in it until
-//   mrb_close frees the holder, or until a later stream directive replaces
-//   the code (ngx_stream_mruby_replace_code frees the slot then).
-//   ngx_mrb_code_reload puts the new proc in the same slot. The code of a
-//   request (mruby_add_handler) is never compiled and has no slot.
+//   mrb_close frees the holder. ngx_mrb_code_reload puts the new proc in the
+//   same slot. The code of a request (mruby_add_handler) is never compiled
+//   and has no slot.
+//
+// code_type_t is also the form of a directive: the file form takes the path
+// of a script, the inline form (the directive whose name ends in _code) the
+// code itself. It indexes the arrays of codes by form, which have
+// NGX_MRB_CODE_FORMS elements.
 */
 typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
+
+#define NGX_MRB_CODE_FORMS 2
 
 typedef struct ngx_mrb_code_t {
   union code {
@@ -91,5 +97,35 @@ ngx_int_t ngx_mrb_code_compile(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t *c
 // causes (a bug, logged at the alert level by ngx_mrb_gc_roots_add).
 */
 ngx_int_t ngx_mrb_code_reload(mrb_state *mrb, ngx_mrb_code_t *code);
+
+/*
+// Sets *field to the code of the directive that nginx reads now, for the
+// http and the stream modules (section 2.5 of docs/proposals/core-alpha1.md).
+// The first argument of the directive is the path of a script (form
+// NGX_MRB_CODE_TYPE_FILE) or the code (NGX_MRB_CODE_TYPE_STRING); a file
+// directive that takes two arguments accepts only "cache" as the second.
+//
+// A field that is set already (not NGX_CONF_UNSET_PTR) is refused with "is
+// duplicated", which nginx prints as '"NAME" directive is duplicated': each
+// field holds the code of one hook in one context, and the file and the
+// inline form of a hook that share a field count as the same hook. The code
+// is made from cf->pool and compiled into mrb (ngx_mrb_code_compile, which
+// logs the compile line with module_name and func). It is in *field also when
+// the compile fails, so that the cleanup of the configuration frees its
+// compiler context. Returns NGX_CONF_OK, "is duplicated" or NGX_CONF_ERROR,
+// after an error line that names module_name and func.
+*/
+char *ngx_mrb_code_set(ngx_conf_t *cf, mrb_state *mrb, ngx_mrb_code_t **field, code_type_t form,
+                       const char *module_name, const char *func);
+
+/*
+// The forms, for the post of a command entry that ngx_mrb_code_set serves:
+// &ngx_mrb_code_forms[form] tells the directive function the form of the
+// directive.
+*/
+extern const code_type_t ngx_mrb_code_forms[NGX_MRB_CODE_FORMS];
+
+#define NGX_MRB_CODE_FORM_POST(form) ((void *)&ngx_mrb_code_forms[form])
+#define NGX_MRB_CODE_FORM_OF(cmd) (*(const code_type_t *)(cmd)->post)
 
 #endif /* NGX_MRUBY_CODE_H */

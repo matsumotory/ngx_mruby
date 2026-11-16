@@ -53,5 +53,32 @@ typedef struct {
 
 } ngx_stream_mruby_srv_conf_t;
 
+/*
+ * The directives with Ruby code that the stream module keeps for later, in
+ * the form of NGX_HTTP_MRUBY_CODE_TABLE (src/http/ngx_http_mruby_module.h).
+ * ngx_stream_mruby_module.c makes the command entries of each row and the
+ * registration of the session handler. Both forms of a row set one field,
+ * field (an offsetof) of the configuration conf (an
+ * NGX_STREAM_*_CONF_OFFSET), so that a hook or a server takes one of them.
+ * Unlike the http module, both forms take one argument.
+ *
+ * - HOOK(file, inline_, contexts, conf, field): code that runs outside any
+ *   session, once (mruby_stream_init) or in each worker (the worker hooks).
+ * - SESSION(phase, file, inline_, contexts, conf, field): the code of a
+ *   session, which ngx_stream_mruby_handler runs in phase.
+ *
+ * mruby_stream_server_context_code runs while nginx reads the configuration
+ * and is not kept, so it is written out in ngx_stream_mruby_module.c.
+ */
+#define NGX_STREAM_MRUBY_CODE_TABLE(HOOK, SESSION)                                                                     \
+  HOOK("mruby_stream_init", "mruby_stream_init_code", NGX_STREAM_MAIN_CONF, NGX_STREAM_MAIN_CONF_OFFSET,               \
+       offsetof(ngx_stream_mruby_main_conf_t, init_code))                                                              \
+  HOOK("mruby_stream_init_worker", "mruby_stream_init_worker_code", NGX_STREAM_MAIN_CONF, NGX_STREAM_MAIN_CONF_OFFSET, \
+       offsetof(ngx_stream_mruby_main_conf_t, init_worker_code))                                                       \
+  HOOK("mruby_stream_exit_worker", "mruby_stream_exit_worker_code", NGX_STREAM_MAIN_CONF, NGX_STREAM_MAIN_CONF_OFFSET, \
+       offsetof(ngx_stream_mruby_main_conf_t, exit_worker_code))                                                       \
+  SESSION(NGX_STREAM_ACCESS_PHASE, "mruby_stream", "mruby_stream_code", NGX_STREAM_MAIN_CONF | NGX_STREAM_SRV_CONF,    \
+          NGX_STREAM_SRV_CONF_OFFSET, offsetof(ngx_stream_mruby_srv_conf_t, code))
+
 void ngx_stream_mruby_raise_error(mrb_state *mrb, mrb_value obj, ngx_stream_session_t *s);
 #endif // NGX_STREAM_MRUBY_MODULE_H
