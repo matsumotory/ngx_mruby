@@ -83,6 +83,9 @@ static ngx_inline ngx_http_request_t *ngx_http_mrb_response_head(mrb_state *mrb,
 // the record of a handler's fiber (src/http/ngx_http_mruby_async.c)
 struct ngx_http_mrb_fiber_s;
 
+// the store of a request, Nginx::Request#store (src/http/ngx_http_mruby_request.c)
+struct ngx_http_mrb_store_s;
+
 typedef struct ngx_http_mruby_ctx_t {
   ngx_mrb_rputs_chain_list_t *rputs_chain;
   u_char *body;
@@ -106,6 +109,10 @@ typedef struct ngx_http_mruby_ctx_t {
   // the record of the handler of this request that waits for nginx to call
   // it again (ngx_http_mrb_fiber_wait_on_nginx), until that call resumes it
   struct ngx_http_mrb_fiber_s *wait;
+  // the store of this request, once Nginx::Request#store found it; a module
+  // context that an internal redirect cleared, or one that replaced it, has
+  // none, and the next call finds the store again in the request pool
+  struct ngx_http_mrb_store_s *store;
 } ngx_http_mruby_ctx_t;
 
 /*
