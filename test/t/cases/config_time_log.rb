@@ -70,9 +70,9 @@ end
 
 # nginx_t writes the startup log to logs/nginx_t.log, which test.sh keeps
 # between runs, so only the part that this nginx -t appended is read. The
-# stream server follows the one on port 12345 of test/conf/nginx.stream.conf:
-# the file version replaces the inline code as the handler. nginx -t
-# compiles both and runs neither.
+# inline handler is in the stream block and the file version in the server,
+# whose handler it is: a server takes one of the two (nginx refuses both in
+# one context). nginx -t compiles both and runs neither.
 t.assert('config-time log - nginx -t logs the configuration-time messages at info', 'nginx -t') do
   dir = ENV['NGINX_INSTALL_DIR']
   log_path = File.join(dir, 'logs', 'nginx_t.log')
@@ -85,9 +85,9 @@ t.assert('config-time log - nginx -t logs the configuration-time messages at inf
     '    upstream dynamic_server1 {',
     '        server 127.0.0.1:18080;',
     '    }',
+    %q{    mruby_stream_code 'raise "the stream handler of the stream block ran"';},
     '    server {',
     "        listen 127.0.0.1:#{CONFIG_TIME_LOG_PORT};",
-    %q{        mruby_stream_code 'raise "a replaced stream handler ran"';},
     "        mruby_stream #{html_path('stream_lb.rb')};",
     '        proxy_pass dynamic_server1;',
     '    }',
