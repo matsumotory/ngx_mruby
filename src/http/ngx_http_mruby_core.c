@@ -88,9 +88,11 @@ void ngx_mrb_raise_error(mrb_state *mrb, mrb_value exc, ngx_http_request_t *r)
  * Only the main request: a subrequest, with or without output, does not leave the
  * client without a response, because its parent answers. Nothing changes
  * either when the header was already sent, or when the module context is no
- * longer the one the handler ran with: an internal redirect inside the Ruby
- * call (from an mruby_set handler or a filter) clears the
- * module contexts, and the location it ran answers the request.
+ * longer the one the handler ran with: an internal redirect clears the
+ * module contexts, and the location it ran answers the request. Since
+ * Nginx.redirect raises where it would redirect inside the Ruby call
+ * (section 2.9 of docs/proposals/core-alpha1.md), ngx_mruby makes no such
+ * redirect; the check stays for a context that something else replaced.
  */
 static ngx_flag_t ngx_mrb_content_ends_without_response(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx,
                                                         ngx_http_mruby_handler_kind_t kind, ngx_int_t status)
@@ -118,8 +120,8 @@ static ngx_flag_t ngx_mrb_content_ends_without_response(ngx_http_request_t *r, n
  * closes the connection without the output for NGX_HTTP_CLOSE (444).
  *
  * Log handlers and filters keep their handling, and so does a handler whose
- * header went out already, or whose module context an internal redirect
- * inside the Ruby call replaced (the location it ran answers the request).
+ * header went out already, or whose module context was replaced (see
+ * ngx_mrb_content_ends_without_response).
  */
 static ngx_flag_t ngx_mrb_handler_sends_output(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx,
                                                ngx_http_mruby_handler_kind_t kind)
@@ -243,13 +245,12 @@ static ngx_int_t ngx_mrb_send_empty_body(ngx_http_request_t *r)
  * server rewrite handlers), and the other handlers return NGX_OK. A rewrite
  * or server rewrite handler that returns Nginx::OK goes on as well: the
  * rewrite phase would finalize the request with NGX_OK without a response.
- * A handler whose request an internal redirect of Nginx.redirect sent
- * elsewhere inside the call returns the status that the target stored in
- * r->headers_out.status. Since Q2 of section 9, this applies only to a
- * redirect that still takes effect inside the call (from an mruby_set*
- * handler or a filter, and from a handler that
- * ngx_mrb_post_fiber resumes); the other handlers make the redirect when
- * they end.
+ * A handler whose module context an internal redirect replaced during its
+ * run returns the status that the target stored in r->headers_out.status.
+ * Nginx.redirect no longer redirects inside the Ruby call: the phase
+ * handlers make the redirect when they end (Q2 of section 9), and the call
+ * raises in the other handlers (section 2.9 of
+ * docs/proposals/core-alpha1.md).
  *
  * A post_read or access handler that sends its output returns NGX_HTTP_OK,
  * so that its phase checker finalizes the request, as the rewrite and
@@ -279,13 +280,14 @@ ngx_int_t ngx_mrb_finalize_rputs(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ct
   // the next handler, whose status is its own.
   output_status = chain == NULL ? 0 : (*chain->last)->buf->last_buf ? (ngx_int_t)r->headers_out.status : status;
 
-  // Without a result of its own, a handler that sent the request elsewhere
-  // with Nginx.redirect (an internal redirect replaced the module context it
-  // ran with, and the target has answered) returns the status in
-  // r->headers_out.status, as before. A handler that makes the redirect when
-  // it ends (Q2 of section 9 of docs/proposals/core-stabilization.md) has the
-  // module context it ran with here, so this applies only to a redirect that
-  // took effect inside the call.
+  // Without a result of its own, a handler whose request was sent elsewhere
+  // during its run (an internal redirect replaced the module context it ran
+  // with, and the target has answered) returns the status in
+  // r->headers_out.status. A handler that makes the redirect of
+  // Nginx.redirect when it ends (Q2 of section 9 of
+  // docs/proposals/core-stabilization.md) has the module context it ran with
+  // here, and no handler redirects inside the Ruby call any more (section
+  // 2.9 of docs/proposals/core-alpha1.md).
   redirected = ngx_http_get_module_ctx(r, ngx_http_mruby_module) != ctx;
   if (!has_result && redirected && r->headers_out.status >= 100) {
     has_result = 1;
@@ -750,16 +752,17 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     // status is not sent either
     ngx_http_mrb_fiber_after_redirect(exec);
   } else {
-    // A log handler runs before access_log and the other log-phase handlers
-    // of the same request, which run after it, so it makes no internal
-    // redirect (decision 1 of docs/proposals/core-alpha1.md).
-    if (exec->kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
-      mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx.redirect with a local URI is not available in a log handler");
-    }
+    // Only a phase handler can make an internal redirect: it takes effect
+    // when the handler ends, after its code, so the target's handlers run
+    // outside the fiber of this one, and one handler answers the request (Q2
+    // of docs/proposals/core-stabilization.md). An mruby_set handler runs
+    // inside the script of the rewrite module, a log handler before
+    // access_log and the other log-phase handlers, and a filter while nginx
+    // sends the response, so none of them can end with a redirect, and the
+    // call raises there (decision 1 of docs/proposals/core-alpha1.md): no
+    // handler of a request runs inside the Ruby call of another one.
+    ngx_mrb_exec_require(mrb, NGX_MRB_EXEC_HTTP_PHASES, "Nginx.redirect with a local URI");
 
-    // A phase handler redirects when it ends, after its code: the target's
-    // handlers then run outside the fiber of this one, and one handler
-    // answers the request (Q2 of docs/proposals/core-stabilization.md)
     switch (ngx_http_mrb_fiber_defer_redirect(exec, &ns)) {
     case NGX_OK:
       break;
@@ -767,7 +770,10 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
       mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
       break;
     default:
-      ngx_http_internal_redirect(r, &ns, &r->args);
+      // Ruby code of a phase handler that runs outside the fiber of the
+      // handler (the inspect of its exception) has no end to take the
+      // redirect
+      mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx.redirect with a local URI is not available without a running handler fiber");
     }
   }
 

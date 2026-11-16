@@ -626,6 +626,20 @@ not enough, and show the change.
   Nginx::Request.new.headers_out["X-Cost"] = cost   # 2.x: no effect   3.0.0: RuntimeError
   Nginx::Var.new.cost = cost.to_s                   # both: access_log writes $cost
   ```
+- [`Nginx.redirect` with a local URI raises a `RuntimeError` in `mruby_set` handlers and output filters](../releases/v3.0.0.md#nginxredirect-with-a-local-uri-raises-a-runtimeerror-in-mruby_set-handlers-and-output-filters-833):
+  look for `Nginx.redirect` with a path in the code of `mruby_set`,
+  `mruby_set_code`, `mruby_output_header_filter*` and
+  `mruby_output_body_filter*`. On 3.0.0 the call raises a `RuntimeError`
+  and makes no internal redirect, where 2.x ran the handlers of the other
+  location inside the call. Move the call to a rewrite or access handler,
+  where the redirect takes effect when the handler ends:
+
+  ```ruby
+  # in mruby_set_code: 2.x: the redirect runs inside the call   3.0.0: RuntimeError, the variable is empty
+  Nginx.redirect "/backend"
+  # in mruby_rewrite_handler_code: the redirect takes effect when the handler ends, on 3.0.0
+  Nginx.redirect "/backend"
+  ```
 
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out
