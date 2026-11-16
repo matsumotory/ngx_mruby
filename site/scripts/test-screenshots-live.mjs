@@ -90,6 +90,7 @@ try {
   assert.equal(stays.evidence.retries.length, 1);
   assert.equal(stays.evidence.retries[0].recovered, false);
   assert.equal(stays.evidence.retries[0].last, 503);
+  assert.equal(stays.state[0].seen, 1 + stays.evidence.retries[0].polls, 'the context is not checked again when the URL stays 503');
   assert.match(stays.stdout, /still answered 503 after [\d.]+ s/);
   assert.match(stays.stderr, /HTTP 503/);
 

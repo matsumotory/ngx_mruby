@@ -56,7 +56,7 @@ let complete = false;
 async function visitContext(engine, width, height, lang, pages) {
   const { context, blocked, close } = await readOnlyContext(browser, origin, { viewport: { width, height }, colorScheme: 'dark', deviceScaleFactor: 1 }, BADGE_FIXTURES);
   const errors = [], issues = [], visited = [];
-  let closing = false, htmlDiffers = false, closeFailed = false, failure;
+  let closing = false, htmlDiffers = false, closeFailed = false, closeError, failure;
   try {
     const page = await context.newPage();
     page.on('pageerror', error => { errors.push(error.message); issues.push({ kind: 'pageerror' }); });
@@ -113,6 +113,7 @@ async function visitContext(engine, width, height, lang, pages) {
     await close();
   } catch (error) {
     closeFailed = true;
+    closeError = error;
     failure ??= error;
   }
   if (!failure) {
@@ -123,7 +124,7 @@ async function visitContext(engine, width, height, lang, pages) {
       failure = error;
     }
   }
-  return { failure, errors, issues, blocked, htmlDiffers, closeFailed, records: visited };
+  return { failure, closeError, errors, issues, blocked, htmlDiffers, closeFailed, records: visited };
 }
 
 // The URLs to wait for, or null when the failure is not one to retry: any
@@ -162,8 +163,9 @@ async function waitFor200(url) {
 
 // What failed a context, for the log: the error that stopped it, and every
 // error the context collected, which that error may not show.
-function describe({ failure, errors, blocked }) {
-  return [failure?.message?.split('\n')[0], ...errors, ...blocked.map(item => `blocked: ${item}`)].filter(Boolean);
+function describe({ failure, closeError, errors, blocked }) {
+  const closing = closeError && closeError !== failure ? [`closing the context: ${closeError.message}`, ...(closeError.errors ?? []).map(error => `  ${error.message}`)] : [];
+  return [failure?.message?.split('\n')[0], ...closing, ...errors, ...blocked.map(item => `blocked: ${item}`)].filter(Boolean);
 }
 
 try {
