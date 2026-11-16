@@ -27,7 +27,8 @@ async resume rewrite:
   upstream switching, error logging and the duplicate directive check
   (section 2);
 - a wait that starts in a handler that nginx runs inside another mruby
-  call, which is still ended by `ngx_mrb_post_fiber` (section 2.9);
+  call, which was ended by `ngx_mrb_post_fiber` until #833 removed it
+  (section 2.9);
 - the two agent proxy rows that item 15 of section 7 of the plan puts into
   alpha.1: mruby log handlers run before `access_log`, and the directive
   `mruby_variable` (sections 2.10 and 2.11);
@@ -885,7 +886,7 @@ and the one that merges second updates its branch.
 | Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
 | Execution context and the phases of the Ruby API: [#826](https://github.com/matsumotory/ngx_mruby/pull/826) | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
 | Per-request store: [#832](https://github.com/matsumotory/ngx_mruby/pull/832) | 2.1 | nothing | execution context |
-| One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`) |
+| One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`, which #833 removed) |
 | Waits inside another mruby call: [#833](https://github.com/matsumotory/ngx_mruby/pull/833) (the raise of `Nginx.redirect` in log handlers is done by #770) | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |
 | Common code loading: [#825](https://github.com/matsumotory/ngx_mruby/pull/825) | 2.6 | nothing | directive table, filter handlers (the directive functions) |
 | Common upstream switching: [#788](https://github.com/matsumotory/ngx_mruby/pull/788), merged on 2026-11-11 | 2.7 | nothing | nothing |

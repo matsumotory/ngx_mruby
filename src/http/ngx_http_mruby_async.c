@@ -26,7 +26,6 @@
 // The data of the timer of Nginx::Async.sleep: the record (through its
 // fiber) and the request that it runs for
 typedef struct {
-  mrb_state *mrb;
   mrb_value *fiber;
   ngx_http_request_t *r;
 } ngx_mrb_reentrant_t;
@@ -729,7 +728,6 @@ static mrb_value ngx_mrb_async_sleep(mrb_state *mrb, mrb_value self)
   f = ngx_http_mrb_fiber_prepare_wait(mrb, r, ctx);
 
   re = &f->sleep;
-  re->mrb = mrb;
   re->r = r;
   re->fiber = &f->base.fiber;
 

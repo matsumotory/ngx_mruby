@@ -1,5 +1,6 @@
 # Nginx.redirect with a local URI raises a RuntimeError in mruby_set handlers
-# and in header and body filters, and makes no internal redirect: the
+# and in header and body filters, and in Ruby code of a phase handler that
+# runs outside the fiber of the handler, and makes no internal redirect: the
 # request is answered by its own location, not by the target, whose content
 # handler waits. A redirect with a URL keeps working in a filter. The case
 # of a log handler is in log_before_access_log.rb.
@@ -63,6 +64,15 @@ end
                    headers['x-redirect-nested']
     t.assert_equal 'body', body
   end
+end
+
+t.assert('redirect nested', 'the inspect of an exception of a content handler gets the RuntimeError, and the request gets 500') do
+  status, line, _headers, body, errors = redirect_nested_get('/inspect')
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 500 Internal Server Error', line
+  t.assert_not_equal 'target', body
+  t.assert_equal 1, errors.select { |l| l.include?('#<RedirectNestedInspect> (inspect raised RuntimeError)') }.size
+  t.assert_equal [], errors.select { |l| l.include?('redirect nested: inspect went on 42') }
 end
 
 t.assert('redirect nested', 'a redirect with a URL in a header filter sets Location and the status') do

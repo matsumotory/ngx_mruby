@@ -773,7 +773,8 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
       // Ruby code of a phase handler that runs outside the fiber of the
       // handler (the inspect of its exception) has no end to take the
       // redirect
-      mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx.redirect with a local URI is not available without a running handler fiber");
+      mrb_raise(mrb, E_RUNTIME_ERROR,
+                "Nginx.redirect with a local URI is not available without a running handler fiber");
     }
   }
 
