@@ -44,4 +44,15 @@ t.assert('header delete - deleting from the middle of a full part then adding he
   t.assert_equal 'overflow:19', body
 end
 
+# $http_user_agent reads r->headers_in.user_agent, the pointer nginx cached to
+# the User-Agent element. Deleting X-B, which comes before User-Agent (and
+# User-Agent is followed by X-C), must leave that pointer on the same element.
+# A delete that moved the elements would make $http_user_agent read X-C.
+t.assert('header delete - a deleted header keeps a later header cached pointer ($http_user_agent)', 'GET /cache-ptr on 18105') do
+  headers = ['X-A: a', 'X-B: b', 'User-Agent: UA-MARK', 'X-C: c']
+  status, body = header_del('/cache-ptr', headers)
+  t.assert_equal 'EOF', status
+  t.assert_equal 'ua:UA-MARK', body
+end
+
 t.report
