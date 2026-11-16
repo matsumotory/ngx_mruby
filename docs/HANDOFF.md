@@ -146,6 +146,11 @@
   2026-11-16, 8 of the 14 failed or re-run runs of `site.yml` on `next`
   failed on such a 503 alone. Its test is
   `site/scripts/test-screenshots-live.mjs`, in `npm run check:ci`.
+- [#843](https://github.com/matsumotory/ngx_mruby/pull/843) into `master`
+  and [#844](https://github.com/matsumotory/ngx_mruby/pull/844) into `next`
+  (both open): github/codeql-action 4.39.3 for `init`, `analyze` and
+  `upload-sarif` together, and a Dependabot group that updates these
+  steps in one PR per branch.
 - The advisory
   [GHSA-8j8w-mcp5-xp3h](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-8j8w-mcp5-xp3h)
   (Low, patched in 2.7.8) was published on 2026-11-15 at 15:39
