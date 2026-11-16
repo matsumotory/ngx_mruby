@@ -164,8 +164,7 @@
   `upload-sarif` together, and a Dependabot group that updates these
   steps in one PR per branch.
 - [#847](https://github.com/matsumotory/ngx_mruby/pull/847) (`next`,
-  open; its author continues it, and the session that coordinates the
-  work merges it): in a location with an mruby header filter and no body
+  merged on 2026-11-17 at 06:48 JST as `f9ea754a5`): in a location with an mruby header filter and no body
   filter, ngx_mruby no longer sets `r->filter_need_in_memory`, so nginx
   no longer reads the files of the responses there into memory before it
   sends them. Since #835, a header filter given at `http` or `server`
@@ -179,6 +178,19 @@
   second nginx of `test/t/cases/_second_instance.rb` (port 18116). It
   replaces [#846](https://github.com/matsumotory/ngx_mruby/pull/846),
   closed, whose regression test passed before the fix.
+- [#848](https://github.com/matsumotory/ngx_mruby/pull/848) (`next`,
+  open; its author continues it, and the session that coordinates the
+  work merges it): a HEAD request to a location with an mruby header
+  filter and no body filter, or to a location with an mruby body filter
+  whose response has no `Content-Length`, no longer closes its
+  connection after the header. Both paths returned `NGX_ERROR` when
+  nginx had set `r->header_only` for the HEAD response, and nginx closed
+  the connection that the header kept alive; since #835, a header filter
+  at `http` or `server` level put every HEAD request of the server on
+  the first path. They now return the result of sending the header, as
+  the known-length body filter path does. Behavior change, `next` only,
+  like the fix of the known-length path. Its test is
+  `test/t/cases/head_header_filter.rb` (port 18112).
 - The advisory
   [GHSA-8j8w-mcp5-xp3h](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-8j8w-mcp5-xp3h)
   (Low, patched in 2.7.8) was published on 2026-11-15 at 15:39
