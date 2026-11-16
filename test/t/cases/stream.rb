@@ -15,20 +15,22 @@ end
 # one. nginx -t runs the init hook of a configuration that it accepts, and
 # runs none here. test/t/cases/stream_duplicate_hooks.rb has the other hooks.
 t.assert('ngx_mruby - stream init, nginx -t refuses the inline and the file version in one stream block', 'nginx -t') do
-  inline = %q{mruby_stream_init_code 'p "mruby_stream_init_code"';}
+  # the p line of the inline code differs from the name of the directive,
+  # which the message of the refusal quotes
+  inline = %q{mruby_stream_init_code 'p "mruby_stream_init inline"';}
   file = "mruby_stream_init #{html_path('stream_init.rb')};"
 
   out = nginx_t("stream {\n#{inline}\n#{file}\n}")
   t.assert_include out, '"mruby_stream_init" directive is duplicated'
   t.assert_include out, 'test failed'
   t.assert_not_include out, '"mruby_stream_init file"'
-  t.assert_not_include out, '"mruby_stream_init_code"'
+  t.assert_not_include out, '"mruby_stream_init inline"'
 
   out = nginx_t("stream {\n#{file}\n#{inline}\n}")
   t.assert_include out, '"mruby_stream_init_code" directive is duplicated'
   t.assert_include out, 'test failed'
   t.assert_not_include out, '"mruby_stream_init file"'
-  t.assert_not_include out, '"mruby_stream_init_code"'
+  t.assert_not_include out, '"mruby_stream_init inline"'
 end
 
 # The second nginx has the file version of each stream hook. The trace shows
