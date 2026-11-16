@@ -304,7 +304,7 @@ static ngx_int_t ngx_mrb_del_request_header(mrb_state *mrb, ngx_list_t *headers,
   u_char *key;
   size_t key_len;
   ngx_uint_t i;
-  ngx_list_part_t *part, *prev;
+  ngx_list_part_t *part, *prev, *new;
   ngx_table_elt_t *header;
   ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
 
@@ -338,33 +338,66 @@ static ngx_int_t ngx_mrb_del_request_header(mrb_state *mrb, ngx_list_t *headers,
       continue;
     }
 
-    /* Remove element i by moving the rest of this part down over it. The
-     * elements stay contiguous from part->elts, so a later ngx_list_push
-     * still writes inside the part's allocation. The previous code split the
-     * part and left headers->last pointing inside a full array, and the next
-     * ngx_list_push then wrote one element past the end of that array. */
-    if (i + 1 < part->nelts) {
-      ngx_memmove(&header[i], &header[i + 1], (part->nelts - i - 1) * headers->size);
-    }
-    part->nelts--;
-
-    if (part->nelts == 0) {
-      if (part != &headers->part) {
-        /* Unlink an emptied part that is not the embedded first part, so
-         * neither the iteration nor ngx_list_push keeps an empty part. */
+    /* Remove element i without moving the other elements, so the pointers
+     * nginx caches into this list stay valid: the ngx_table_elt_t * it keeps
+     * for a well-known header (r->headers_in.user_agent and the like) and the
+     * same-name "next" chains (for example Cookie or X-Forwarded-For). The
+     * previous code split a full part and left headers->last pointing inside
+     * its array, and the next ngx_list_push then wrote one element past the
+     * end of that array. The list is only ever appended to with
+     * ngx_list_push, which starts a new part once a part reaches
+     * headers->nalloc, so keeping headers->nalloc at or below the free room
+     * of the last part makes a later push allocate a new part instead of
+     * writing past the last part's array. */
+    if (i == 0) {
+      /* Drop the first element by advancing the part's base; the rest keep
+       * their addresses. */
+      part->elts = (char *)part->elts + headers->size;
+      part->nelts--;
+      if (part->nelts != 0) {
+        if (part == headers->last) {
+          headers->nalloc--;
+        }
+      } else if (part != &headers->part) {
+        /* A later part emptied: unlink it. */
         prev->next = part->next;
         if (headers->last == part) {
           headers->last = prev;
+          headers->nalloc = prev->nelts;
         }
-      } else if (part->next != NULL) {
-        /* The first part is embedded in the list and cannot be unlinked.
-         * When it empties and a next part exists, the next part becomes the
-         * first; move headers->last with it when it pointed at that part, so
-         * a later ngx_list_push does not write into the detached part. */
-        if (headers->last == part->next) {
-          headers->last = &headers->part;
-        }
+      } else if (part->next == NULL) {
+        /* The embedded first part is the only part and is now empty; keep it
+         * and restore its base. */
+        part->elts = (char *)part->elts - headers->size;
+      } else if (headers->last == part->next) {
+        /* The first part empties and the next part is the last: adopt it. */
         headers->part = *(part->next);
+        headers->last = &headers->part;
+        headers->nalloc = headers->part.nelts;
+      } else {
+        headers->part = *(part->next);
+      }
+    } else if (i == part->nelts - 1) {
+      /* Drop the last element of the part. */
+      part->nelts--;
+      if (part == headers->last) {
+        headers->nalloc--;
+      }
+    } else {
+      /* Split the part after i. The second part points into this part's
+       * array, so no element moves. */
+      new = ngx_palloc(r->pool, sizeof(ngx_list_part_t));
+      if (new == NULL) {
+        return NGX_ERROR;
+      }
+      new->elts = &header[i + 1];
+      new->nelts = part->nelts - i - 1;
+      new->next = part->next;
+      part->nelts = i;
+      part->next = new;
+      if (part == headers->last) {
+        headers->last = new;
+        headers->nalloc = new->nelts;
       }
     }
 
