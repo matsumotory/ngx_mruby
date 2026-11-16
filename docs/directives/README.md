@@ -521,32 +521,53 @@ A request with `X-Agent-Key: paid-1` reaches the backend with `X-Agent-Key: paid
 ```
 Syntax:  mruby_output_body_filter /PATH/TO/YOUR/MRUBY/SCRIPT.rb [cache];
 Default: -
-Context: server, location
+Context: http, server, location, if in location
 Phase:   
 ```
 
 ```
 Syntax:  mruby_output_body_filter_code 'YOUR MRUBY CODE HERE';
 Default: -
-Context: server, location
+Context: http, server, location, if in location
 Phase:   
 ```
 
 ```
 Syntax:  mruby_output_header_filter /PATH/TO/YOUR/MRUBY/SCRIPT.rb [cache];
 Default: -
-Context: server, location
+Context: http, server, location, if in location
 Phase:   
 ```
 
 ```
 Syntax:  mruby_output_header_filter_code 'YOUR MRUBY CODE HERE';
 Default: -
-Context: server, location
+Context: http, server, location, if in location
 Phase:   
 ```
 
 The filters are used for processing a response. The header filters are for HTTP header, the body filters are for HTTP body.
+
+A filter given in the `http` block, in a `server` block or in a `location` runs in the locations, nested locations and `if` blocks below it that give no filter of the same kind of their own (since 3.0.0; up to 2.x, it ran only at the level of its directive, see [the release notes of 3.0.0](../releases/v3.0.0.md#output-filters-given-at-http-or-server-level-or-in-a-location-run-in-the-locations-below-them-835)).
+A level that gives a filter of one kind runs its own filter of that kind instead of the one above it, and still runs the filter of the other kind from above.
+For example, every location of this server runs the header filter, and `/api` also runs its own body filter:
+
+```nginx
+server {
+    mruby_output_header_filter_code 'Nginx::Request.new.headers_out["X-Served-By"] = "ngx_mruby"';
+
+    location / {
+        root html;
+    }
+
+    location /api {
+        mruby_content_handler /path/to/api.rb cache;
+        mruby_output_body_filter /path/to/body_filter.rb cache;
+    }
+}
+```
+
+There is no directive that turns an inherited filter off: give the filter in the locations that should run it instead.
 
 A body filter reads the response body with `Nginx::Filter#body` and can replace it with `Nginx::Filter#body=` (or `#output`).
 The response then has exactly that body, and `Content-Length` is its length.

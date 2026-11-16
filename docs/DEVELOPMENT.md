@@ -124,6 +124,14 @@ fields in the location configuration (`code[kind][form]`), their create,
 merge and cleanup, the phase handlers and their registration. A new
 directive of such a kind is one row; its comment in the header says what
 each kind of row (`HOOK`, `PHASE`, `FILTER`, `SESSION`) gives and makes.
+Postconfiguration adds the phase handler of a kind and form, and the
+output filters, only when a directive of the configuration uses them:
+`ngx_http_mruby_handler_directive` records the use in `uses[kind][form]`
+of the main configuration, and a directive outside the table that needs a
+phase handler records it itself, as `mruby_add_handler on` does for the
+file form of the content phase. A location without a filter directive of
+a kind takes the filter handler of that kind, with its code, from the
+level above it (`ngx_http_mruby_merge_loc_conf`).
 
 Every directive with Ruby code sets its code with `ngx_mrb_code_set`
 (`src/common/ngx_mruby_code.h`): it refuses a field that is already set

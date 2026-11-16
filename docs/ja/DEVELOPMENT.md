@@ -49,6 +49,8 @@ sh apply-clang-format
 
 ngx_mrubyが後で動かすRubyのコードを持つディレクティブは、各モジュールのヘッダにある表の行です。httpのモジュールは`src/http/ngx_http_mruby_module.h`の`NGX_HTTP_MRUBY_CODE_TABLE`、streamのモジュールは`src/stream/ngx_stream_mruby_module.h`の`NGX_STREAM_MRUBY_CODE_TABLE`です。各行には、1つのフックかハンドラの種類について、ファイルのディレクティブと、名前が`_code`で終わるインラインのディレクティブと、nginxがそれらを受け付けるコンテキストを書きます。モジュールは、行からコマンドの定義を作ります。HTTPのハンドラの種類では、locationの設定のフィールド`code[kind][form]`と、その作成とマージと後始末、フェーズのハンドラとその登録も作ります。この種類のディレクティブを足すときは、表に1行足します。行の種類(`HOOK`、`PHASE`、`FILTER`、`SESSION`)ごとに何を書き、何が作られるかは、ヘッダにある表のコメントに書いてあります。
 
+postconfigurationは、ある種類と形のフェーズのハンドラと出力フィルタを、設定のディレクティブがそれを使うときだけ加えます。`ngx_http_mruby_handler_directive`は、その使用をmainの設定の`uses[kind][form]`に記録します。フェーズのハンドラを必要とする表の外のディレクティブは、自分でその使用を記録します。たとえば、`mruby_add_handler on`は、contentのフェーズのファイルの形を記録します。ある種類のフィルタのディレクティブを持たないlocationは、その種類のフィルタのハンドラを、コードと一緒に1つ上のレベルから引き継ぎます(`ngx_http_mruby_merge_loc_conf`)。
+
 Rubyのコードを持つディレクティブは、すべて`src/common/ngx_mruby_code.h`の`ngx_mrb_code_set`でコードを設定します。この関数は、すでに設定されたフィールドを`"NAME" directive is duplicated`で断ります。そのため、1つのコンテキストでは、フックとハンドラの種類ごとにディレクティブを1つだけ書けます。1つのフィールドを共有するファイルの形とインラインの形は、1つと数えます。表に入らないディレクティブは、モジュールの中に個別に書いてあります。SSLのハンドシェイクのハンドラと`mruby_server_context_handler_code`は、同じ関数を呼びます。1つのlocationに何個でも書ける`mruby_set`と`mruby_set_code`と、コードを残さない`mruby_stream_server_context_code`は、この関数を呼びません。
 
 ## ハンドラが待つ仕組み
