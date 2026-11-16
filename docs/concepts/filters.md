@@ -48,6 +48,12 @@ bw: nginx's write filter sends the body
   script puts into `Nginx::Filter#body=`. A response without
   `Content-Length`, such as a chunked response of an upstream, passes the
   filter unread, and ngx_mruby logs that at the `notice` level.
+- A filter runs at the level of its directive and at the levels below
+  it: a filter given in the `http` block or in a `server` block runs in
+  the locations below it, and one given in a location runs in its nested
+  locations and its `if` blocks (since 3.0.0). A level with a filter of
+  its own of one kind runs that filter instead of the one above it, and
+  each kind is inherited on its own.
 - When a location has a body filter, ngx_mruby holds the header back
   until the body filter has run, so that `Content-Length` is the length of
   the new body.
