@@ -44,8 +44,9 @@
   2.7.10 (#827) is not published: its tag waits for the check of "Before
   the tag" in `docs/releases/README.md` and for the owner's go-ahead for
   the release.
-- [#825](https://github.com/matsumotory/ngx_mruby/pull/825) (base `next`,
-  under review) moves the code of a directive (`ngx_mrb_code_t`), its
+- [#825](https://github.com/matsumotory/ngx_mruby/pull/825) (base `next`;
+  its review and CI are done, and the session that coordinates the work
+  merges it) moves the code of a directive (`ngx_mrb_code_t`), its
   compile and the reload of a handler file without `cache`, which the http
   and the stream modules had as two copies, into
   `src/common/ngx_mruby_code.{h,c}`, the row of section 2.6 of
