@@ -70,6 +70,7 @@ for (const command of [
   'check-project-badges.mjs --browser', 'check-search-identifiers.mjs', 'check-v2.mjs\n',
   'test-read-only-browser.mjs', 'screenshots.mjs --out build-screenshots',
   'screenshots-live.mjs --local --out build-screenshots/predeploy-smoke',
+  'test-screenshots-live.mjs',
 ]) assert.ok(browser.includes(command), `check:browser runs ${command.trim()}`);
 assert.ok(!/--engine|--pages \/[^v]|SITE_CI_PAGES|SITE_CI_VERSION/.test(browser), 'check:browser measures every page in both engines');
 assert.equal(pkg.scripts['check:ci'], 'sh scripts/check-ci.sh');

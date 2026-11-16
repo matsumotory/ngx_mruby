@@ -129,7 +129,7 @@
   [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
   Its test is `test/t/cases/request_store.rb` (port 18094).
 - [#834](https://github.com/matsumotory/ngx_mruby/pull/834) (`next`,
-  open; the session that coordinates the work reviews and merges it): the
+  merged on 2026-11-17 at 01:23 JST as `5b65b1277`): the
   directive table and one duplicate check, the row of section 2.5 of
   [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
   The directives with Ruby code of each module are rows of an X-macro
@@ -147,6 +147,15 @@
   directive uses. Behavior change: an output filter given at `http` or
   `server` level, or in a location, runs in the locations below it. Its
   test is `test/t/cases/filter_inherit.rb` (port 18108).
+- [#836](https://github.com/matsumotory/ngx_mruby/pull/836) (`next`,
+  merged on 2026-11-17 at 02:27 JST as `558a2c3a8`): the check
+  of the published site after a deploy (`site/scripts/screenshots-live.mjs`
+  in the `verify-live` job of `site.yml`) checks a browser context again,
+  once, when its only errors are 5xx answers of ngx.mruby.org, after the
+  URLs answer 200 (at most 240 seconds in a run). From 2026-10-29 to
+  2026-11-16, 8 of the 14 failed or re-run runs of `site.yml` on `next`
+  failed on such a 503 alone. Its test is
+  `site/scripts/test-screenshots-live.mjs`, in `npm run check:ci`.
 - The advisory
   [GHSA-8j8w-mcp5-xp3h](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-8j8w-mcp5-xp3h)
   (Low, patched in 2.7.8) was published on 2026-11-15 at 15:39
