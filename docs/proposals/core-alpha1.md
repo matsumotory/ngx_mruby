@@ -423,8 +423,11 @@ registration.
 
 **Design.** `src/common/ngx_mruby_code.{h,c}` with one `ngx_mrb_code_t`
 and four functions: make from a file, make from a string, compile (load,
-prepare the proc with `ngx_mrb_fiber_prepare_proc`, free the compiler
-context), and reload (the HTTP path without cache). The compiled proc is
+and prepare the proc with `ngx_mrb_fiber_prepare_proc`; the compiler
+context stays with the code and is freed when it was freed before, after
+a run of an HTTP code without cache and in the cleanup of the
+configuration, because this item changes neither behavior nor the
+handling of resources), and reload (the HTTP path without cache). The compiled proc is
 kept in a slot of the GC root holder for the life of the state, and a
 reload replaces the proc in the slot; this is the "mark cached procs"
 part of the filter row of the plan, done here because it belongs to
