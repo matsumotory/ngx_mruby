@@ -1531,14 +1531,51 @@ static ngx_int_t ngx_http_mruby_run_log_handler(ngx_http_request_t *r, ngx_mrb_s
 }
 
 /*
+ * mruby_add_handler: the file handler of the content phase runs the file of
+ * the request path instead of the code of the location.
+ */
+static ngx_int_t ngx_http_mruby_run_add_handler(ngx_http_request_t *r, ngx_mrb_state_t *state)
+{
+  ngx_mrb_code_t *code;
+  size_t root;
+  ngx_str_t path;
+
+  if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d request_file(%s) map failed", __FUNCTION__, __LINE__,
+                  path.data);
+    return NGX_ERROR;
+  }
+  if (access((const char *)path.data, F_OK) != 0) {
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s:%d request_file(%s) not found", __FUNCTION__, __LINE__,
+                  path.data);
+    return NGX_HTTP_NOT_FOUND;
+  }
+  code = ngx_mrb_code_from_file(r->pool, &path);
+  if (code == NGX_CONF_UNSET_PTR) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d mrb_file(%s) open failed", __FUNCTION__, __LINE__,
+                  path.data);
+    return NGX_ERROR;
+  }
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based content code: %s", code->code.file);
+  // mruby_add_handler makes this code from the request path, uncompiled, on
+  // every request, so it has to be compiled on every request. Run it as not
+  // cached, whatever mruby_cache the location sets: a cached run would skip
+  // the compile and pass a null proc to the fiber, which ends the worker.
+  return ngx_mrb_run(r, state, code, 0, NULL, NGX_HTTP_MRUBY_HANDLER_CONTENT);
+}
+
+/*
  * The body of the phase handlers of NGX_HTTP_MRUBY_CODE_TABLE, which call it
  * with constants: the kind of the row (index for the code of the location,
  * and kind for ngx_mrb_run), the form of the handler and the name of the row
  * for the info line. The code of the file form runs with mruby_cache of the
  * location, that of the inline form as cached. With mruby_add_handler, the
  * file handler of the content phase runs the file of the request path
- * instead of its code, and a log handler puts the status back
- * (ngx_http_mruby_run_log_handler).
+ * (ngx_http_mruby_run_add_handler), and a log handler puts the status back
+ * (ngx_http_mruby_run_log_handler). A handler of a location without its
+ * code returns before it reads anything else, as the handlers written out
+ * before the table did: the callgrind comparison counts these returns in
+ * every request.
  */
 static ngx_inline ngx_int_t ngx_http_mruby_phase_handler(ngx_http_request_t *r, ngx_uint_t index, code_type_t form,
                                                          ngx_http_mruby_handler_kind_t kind, const char *name)
@@ -1546,41 +1583,16 @@ static ngx_inline ngx_int_t ngx_http_mruby_phase_handler(ngx_http_request_t *r, 
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
   ngx_mrb_code_t *code;
-  ngx_flag_t cached;
-  size_t root;
-  ngx_str_t path;
 
   if (mmcf->state == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
   }
 
-  code = mlcf->code[index][form];
-  cached = form == NGX_MRB_CODE_TYPE_FILE ? mlcf->cached : 1;
-
   if (kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && form == NGX_MRB_CODE_TYPE_FILE && mlcf->add_handler) {
-    if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d request_file(%s) map failed", __FUNCTION__, __LINE__,
-                    path.data);
-      return NGX_ERROR;
-    }
-    if (access((const char *)path.data, F_OK) != 0) {
-      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s:%d request_file(%s) not found", __FUNCTION__, __LINE__,
-                    path.data);
-      return NGX_HTTP_NOT_FOUND;
-    }
-    code = ngx_mrb_code_from_file(r->pool, &path);
-    if (code == NGX_CONF_UNSET_PTR) {
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d mrb_file(%s) open failed", __FUNCTION__, __LINE__,
-                    path.data);
-      return NGX_ERROR;
-    }
-    // mruby_add_handler makes this code from the request path, uncompiled, on
-    // every request, so it has to be compiled on every request. Run it as not
-    // cached, whatever mruby_cache the location sets: a cached run would skip
-    // the compile and pass a null proc to the fiber, which ends the worker.
-    cached = 0;
+    return ngx_http_mruby_run_add_handler(r, mmcf->state);
   }
 
+  code = mlcf->code[index][form];
   if (code == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
   }
@@ -1592,9 +1604,10 @@ static ngx_inline ngx_int_t ngx_http_mruby_phase_handler(ngx_http_request_t *r, 
   }
 
   if (kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
-    return ngx_http_mruby_run_log_handler(r, mmcf->state, code, cached);
+    return ngx_http_mruby_run_log_handler(r, mmcf->state, code,
+                                          form == NGX_MRB_CODE_TYPE_FILE ? mlcf->cached : 1);
   }
-  return ngx_mrb_run(r, mmcf->state, code, cached, NULL, kind);
+  return ngx_mrb_run(r, mmcf->state, code, form == NGX_MRB_CODE_TYPE_FILE ? mlcf->cached : 1, NULL, kind);
 }
 
 #define NGX_HTTP_MRUBY_DEFINE_HANDLERS(KIND, name, ...)                                                                \
