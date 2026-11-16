@@ -3,11 +3,11 @@
 Status: in progress. The design decisions of section 5 were made on
 2026-11-09 (decisions 1 to 5) and on 2026-11-10 (decisions 6 and 7), and
 no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
-(#779 and #783), 2.7 (#788), 2.8 (#796), and 2.6 (#825). Next
-step: these pull requests of section 4 start: "Execution context and the
-phases of the Ruby API" and "Per-request store" (2.1), "Waits inside
-another mruby call" (2.9) and "Directive
-table and one duplicate check" (2.5), by 2026-11-16.
+(#779 and #783), 2.7 (#788), 2.8 (#796), the execution context and the
+phases of the Ruby API of 2.1 (#826), and 2.6 (#825). Next step: these
+pull requests of section 4: "Per-request store" (2.1), "Waits inside
+another mruby call" (2.9) and "Directive table and one duplicate check"
+(2.5), by 2026-11-20.
 
 This proposal designs what is left of step 4 of section 6 of
 [the v3 plan](v3-plan.md): the work that has to be on `next` before
@@ -868,7 +868,7 @@ and the one that merges second updates its branch.
 | `mruby_variable`: [#780](https://github.com/matsumotory/ngx_mruby/pull/780), merged on 2026-11-10 | 2.11 | nothing | nothing |
 | Headers | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
 | Filter handlers: type, merge, phase handlers only where used | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
-| Execution context and the phases of the Ruby API | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
+| Execution context and the phases of the Ruby API: [#826](https://github.com/matsumotory/ngx_mruby/pull/826) | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
 | Per-request store | 2.1 | nothing | execution context |
 | One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`) |
 | Waits inside another mruby call (the raise of `Nginx.redirect` in log handlers is done by #770) | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |

@@ -27,7 +27,9 @@ static mrb_value ngx_mrb_get_server_var_realpath_root(mrb_state *mrb, mrb_value 
 static mrb_value ngx_mrb_add_listener(mrb_state *mrb, mrb_value self)
 {
   // ref: http/ngx_http_core_module.c ngx_http_core_listen
-  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+  // the server configuration of the server context code that runs
+  ngx_http_mruby_srv_conf_t *mscf =
+      ngx_mrb_exec_require(mrb, NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_HTTP_SERVER_CONTEXT), "add_listener")->srv_conf;
   ngx_http_core_srv_conf_t *cscf;
   ngx_conf_t *cf;
   ngx_str_t addr;

@@ -10,14 +10,19 @@
 
 #include "ngx_http_mruby_module.h"
 
+#include "../common/ngx_mruby_exec.h"
+
 #include <mruby/string.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
 
-/* the handshake state is set only while mruby_ssl_handshake_handler code runs */
+/* the handshake state is set only while mruby_ssl_handshake_handler code
+   runs, in the execution context that ngx_http_mruby_ssl_cert_handler
+   pushes */
 static ngx_http_mruby_srv_conf_t *ngx_mrb_ssl_get_srv_conf(mrb_state *mrb)
 {
-  ngx_http_mruby_srv_conf_t *mscf = mrb->ud;
+  ngx_http_mruby_srv_conf_t *mscf =
+      ngx_mrb_exec_require(mrb, NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_SSL_HANDSHAKE), "Nginx::SSL")->srv_conf;
 
   if (mscf == NULL || mscf->connection == NULL || mscf->servername == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx::SSL can only be used in mruby_ssl_handshake_handler");

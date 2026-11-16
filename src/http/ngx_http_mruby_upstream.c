@@ -10,7 +10,7 @@
 #include "ngx_http_mruby_upstream.h"
 
 #include "ngx_http_mruby_module.h"
-#include "ngx_http_mruby_request.h"
+#include "ngx_http_mruby_core.h"
 
 #include "../common/ngx_mruby_upstream.h"
 
@@ -46,7 +46,7 @@ static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
   ngx_mruby_upstream_context *ctx;
   ngx_http_upstream_main_conf_t *umcf;
   ngx_http_upstream_srv_conf_t **usp;
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  ngx_http_request_t *r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Upstream#");
 
   mrb_get_args(mrb, "S", &upstream);
 
@@ -159,7 +159,7 @@ static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
   ngx_mruby_upstream_context *ctx = ngx_mrb_upstream_get_context(mrb, self);
   ngx_url_t u;
   mrb_value server;
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  ngx_http_request_t *r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Upstream#");
   ngx_mrb_upstream_server_store_t *store;
 
   mrb_get_args(mrb, "S", &server);

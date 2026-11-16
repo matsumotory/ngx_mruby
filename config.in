@@ -37,6 +37,7 @@ NGX_MRUBY_SRCS="$ngx_addon_dir/src/http/ngx_http_mruby_module.c \
                 $ngx_addon_dir/src/common/ngx_mruby_upstream.c \
                 $ngx_addon_dir/src/common/ngx_mruby_log.c \
                 $ngx_addon_dir/src/common/ngx_mruby_code.c \
+                $ngx_addon_dir/src/common/ngx_mruby_exec.c \
                 "
 
 if [ $STREAM = YES ]; then

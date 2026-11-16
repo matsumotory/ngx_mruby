@@ -401,11 +401,11 @@ Phase:   NGX_HTTP_LOG_PHASE
 ```
 
 'mruby_log_handler' and 'mruby_log_handler_code' are called at the end of request processing for logging.
-In an HTTP log handler, `Nginx.rputs` and `Nginx.echo` convert their argument as usual and write no response bytes. Use `Nginx.log` to write to the error log.
+In an HTTP log handler, the methods that change the request, the head of the response or the output, such as `Nginx.rputs`, `Nginx.return` and `Nginx::Headers_out#[]=`, raise a `RuntimeError`, because the response is already sent (since 3.0.0; on 2.x `Nginx.rputs` and `Nginx.echo` wrote no response bytes there; see [Where the methods work](../class_and_method/README.md#where-the-methods-work)). Use `Nginx.log` to write to the error log, and `Nginx::Var` to pass values to `access_log`.
 
 Since 3.0.0, they run first in the log phase, before `access_log`: an `access_log` whose `log_format` names a variable that a log handler assigns with `Nginx::Var` writes the assigned value. When a location has both, the handler of `mruby_log_handler` runs before that of `mruby_log_handler_code`. They also run before the log-phase handlers of the other modules whose postconfiguration runs before that of ngx_mruby; a module whose postconfiguration runs later adds its log-phase handlers after them.
 
-A log handler does not change the status that `access_log` and the later log-phase handlers write. After each log handler, the status of the response is the one that was sent, also when the handler raised an exception, which still goes to `error.log`, or set a status with `Nginx.return`.
+A log handler does not change the status that `access_log` and the later log-phase handlers write. After each log handler, the status of the response is the one that was sent, also when the handler raised an exception, which still goes to `error.log`.
 
 In a log handler, `Nginx.redirect` with a local URI raises a `RuntimeError` and makes no internal redirect, because the log-phase handlers after it run on the same request (since 3.0.0; see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxredirect-with-a-local-uri-raises-a-runtimeerror-in-a-log-handler-770)).
 
@@ -550,8 +550,12 @@ A body filter reads the response body with `Nginx::Filter#body` and can replace 
 The response then has exactly that body, and `Content-Length` is its length.
 Since 2.7.1 this also holds when the body was written with `Nginx.rputs` or `Nginx.echo`; in 2.7.0 such a response kept the length that `Nginx.rputs` had produced, so a replacement body of another length was cut or padded.
 
+In a location that a subrequest runs, such as one that an SSI page includes with `<!--# include virtual=... -->`, the body filter works on the body of the subrequest, and the parent response goes on after it with the rest of the page.
+When the page includes more than one location, nginx sends the body of each include in the order of the page, after the includes before it.
+Since 2.7.10 this also holds for an include that is not the first of the page and has a body filter, when its content handler wrote the body with `Nginx.rputs` or `Nginx.echo`, or when a rewrite handler of the location wrote with them before the request went on to the content; up to 2.7.9 the client got at most the part of the page before such an include, and nginx closed the connection after `send_timeout` (see [the 2.7.10 release notes](../releases/v2.7.10.md)).
+
 A header filter runs before the body has been read.
-There `Nginx::Filter#body` returns an empty string and `Nginx::Filter#body=` raises a `RuntimeError` (both since 2.7.1).
+There `Nginx::Filter#body` and `Nginx::Filter#body=` raise a `RuntimeError` (`#body=` since 2.7.1; `#body` since 3.0.0, it returned an empty string from 2.7.1).
 
 `Nginx::Async.sleep` and `Nginx::Async::HTTP.sub_request` raise a `RuntimeError` in both kinds of filter (since 2.7.1), because nginx cannot resume a filter that waits.
 

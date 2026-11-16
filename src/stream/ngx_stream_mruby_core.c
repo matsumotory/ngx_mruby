@@ -14,26 +14,22 @@
 #include <mruby/string.h>
 
 /*
- * The current session is set only while mruby code runs for that session
- * (ngx_stream_mruby_handler() and the Async resume path). Session-scoped
- * methods called from other contexts, such as mruby_stream_init_worker or
- * mruby_stream_exit_worker, raise instead of touching another session.
+ * The session is in the execution context (src/common/ngx_mruby_exec.h) only
+ * while mruby code runs for that session (ngx_stream_mruby_handler(), which
+ * also resumes a fiber that waits). Session-scoped methods called from other
+ * contexts, such as mruby_stream_init_worker or mruby_stream_exit_worker,
+ * raise instead of touching another session.
  */
 ngx_stream_session_t *ngx_stream_mrb_get_session_or_raise(mrb_state *mrb)
 {
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
-
-  if (ictx == NULL || ictx->s == NULL) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "this method can only be used while processing a stream session");
-  }
-  return ictx->s;
+  return ngx_mrb_exec_require(mrb, NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_STREAM), "Nginx::Stream")->on;
 }
 
 static mrb_value ngx_stream_mrb_errlogger(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
+  ngx_mrb_exec_t *exec = ngx_mrb_exec_require(mrb, NGX_MRB_EXEC_ANY, "Nginx::Stream.");
   /* outside of a session (init_worker, exit_worker) log to the cycle's log */
-  ngx_log_t *log = (ictx != NULL && ictx->s != NULL) ? ictx->s->connection->log : ngx_cycle->log;
+  ngx_log_t *log = (exec->log != NULL) ? exec->log : ngx_cycle->log;
 
   return ngx_mrb_log_method(mrb, self, log, MODULE_NAME, __func__);
 }
@@ -45,7 +41,6 @@ static mrb_value ngx_stream_mrb_get_ngx_mruby_name(mrb_state *mrb, mrb_value sel
 
 static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
 {
-  ngx_stream_mruby_internal_ctx_t *ictx = mrb->ud;
   ngx_stream_mruby_srv_conf_t *mscf;
   ngx_stream_core_srv_conf_t *cscf;
   ngx_conf_t *cf;
@@ -55,8 +50,8 @@ static mrb_value ngx_stream_mrb_add_listener(mrb_state *mrb, mrb_value self)
   ngx_uint_t i, n;
   ngx_stream_listen_opt_t ls;
 
-  /* set only while mruby_stream_server_context_code runs */
-  mscf = (ictx != NULL) ? ictx->server_context_conf : NULL;
+  /* the execution context of mruby_stream_server_context_code */
+  mscf = ngx_mrb_exec_require(mrb, NGX_MRB_EXEC_BIT(NGX_MRB_EXEC_STREAM_SERVER_CONTEXT), "add_listener")->srv_conf;
   if (mscf == NULL || mscf->ctx->cf == NULL || mscf->ctx->cscf == NULL) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "add_listener can only be used in mruby_stream_server_context_code");
   }

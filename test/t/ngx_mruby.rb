@@ -866,10 +866,10 @@ t.assert('ngx_mruby - ssl handshake handler does not reuse the certificate of a 
   t.assert_equal dummy_crt, served_cert_fingerprint('localhost', 18090)
 end
 
-t.assert('ngx_mruby - Nginx::Filter#body in header filter', 'location /filter_body_in_header_filter') do
+t.assert('ngx_mruby - Nginx::Filter#body raises in header filter', 'location /filter_body_in_header_filter') do
   res = HttpRequest.new.get base + '/filter_body_in_header_filter'
   t.assert_equal 200, res.code
-  t.assert_equal '0', res['x-filter-body-size']
+  t.assert_equal 'RuntimeError', res['x-filter-body-size']
 end
 
 t.assert('ngx_mruby - Nginx::Filter#body= raises outside of body filter', 'location /filter_body_set_in_header_filter') do

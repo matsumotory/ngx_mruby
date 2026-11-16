@@ -188,14 +188,29 @@ returns whether the fiber waits, returned, or raised. It refuses a record
 that is `DONE`, `FAILED` or `CANCELLED` without touching its fiber. When
 the fiber raised, it logs the exception once, for its request or session,
 and clears `mrb->exc` before it returns, because all requests of the worker
-share the `mrb_state`. The callers set the current request or session
-for the time the fiber runs: in HTTP `ngx_mrb_run`, `ngx_mrb_post_fiber`
-and `ngx_http_mrb_resume_set` with `ngx_mrb_push_request`, in stream
-`ngx_stream_mruby_handler` through `ictx->s`. The protocol parts,
-`ngx_mrb_run_fiber` and `ngx_stream_mrb_run_fiber`, set `ctx->fiber_proc`
-and, in HTTP, the handler kind and the running record
-(`ngx_http_mrb_running`), and pass the response of a subrequest as the
-value of its `Fiber.yield`.
+share the `mrb_state`. The callers push the execution context of the
+request or session (`ngx_mrb_exec_t` of `src/common/ngx_mruby_exec.h`,
+which `mrb->ud` of the state reaches) for the time the code runs, and put
+back the previous one afterwards: in HTTP `ngx_mrb_run`,
+`ngx_mrb_post_fiber` and `ngx_http_mrb_resume_set`, in stream
+`ngx_stream_mruby_handler`. The protocol parts, `ngx_mrb_run_fiber` and
+`ngx_stream_mrb_run_fiber`, set `ctx->fiber_proc`; in HTTP,
+`ngx_mrb_run_fiber` also pushes a context with the handler kind and the
+record of the fiber for the time the fiber runs, and passes the response of
+a subrequest as the value of its `Fiber.yield`. The Ruby methods read the
+context with `ngx_mrb_exec_require`, which raises where the method does not
+work ("Where the methods work" in `docs/class_and_method/README.md`).
+
+`mrb->ud` of the `mrb_state` of the http module and of the stream module
+belongs to ngx_mruby: it points at the holder of the execution context for
+the life of the state. An mrbgem that puts a pointer of its own in `mrb->ud`
+cannot be added to the build. On 2.x only the state of the stream module was
+like that; the http module set `mrb->ud` only while the SSL handshake
+handler or the server context code ran. The context of a push lives on the C
+stack of the function that pushed it: `ngx_mrb_run`, whose handler can run
+inside another mruby call, goes through `ngx_mrb_exec_run`, which puts the
+context back also when an allocation fails there (the rule is in
+`src/common/ngx_mruby_exec.h`).
 
 ### HTTP: a wait and its end
 
