@@ -4,8 +4,8 @@
 # and mruby_stream_code are the same hook, and so are the file and the inline
 # form of mruby_stream_init_worker and of mruby_stream_exit_worker
 # (test/t/cases/stream.rb has mruby_stream_init). nginx_t and html_path are
-# in test/t/cases/_prelude.rb. Port 12398 is only parsed: nginx -t listens on
-# nothing.
+# in test/t/cases/_prelude.rb. nginx -t opens the listening socket of port
+# 12398 for a moment, and only for the configuration that it accepts.
 
 t = SimpleTest.new "ngx_mruby test: stream hooks given twice"
 

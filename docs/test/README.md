@@ -957,6 +957,7 @@ The ports of the suite are the numbers from 12345 to 12399 and from 18080
 to 18199: the `listen` directives of `test/conf/`, the addresses of
 `add_listener`, the second nginx of `test/t/cases/_second_instance.rb`
 (18116, 12357, and 12385 to 12388), the nginx of `test/t/cases/config_hooks.rb` (18158), the
+`nginx -t` of `test/t/cases/stream_duplicate_hooks.rb` (12398), the
 nginx with several workers of `test/t/cases/_workers.rb` (18180, 18181,
 18185, 12379 and 12393, in `test/conf/workers/`), the independent UDP
 session helper `_udp_wait_session.rb` (12393-12396, including its echo

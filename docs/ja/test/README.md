@@ -409,6 +409,7 @@ test.sh: nginx (pid 374) did not end within 60 seconds (NGINX_STOPTIME) after 6 
 - `add_listener`に渡すアドレスのポート
 - `test/t/cases/_second_instance.rb`が起動する2つ目のnginxが使う、18116と12357
 - `test/t/cases/config_hooks.rb`が起動するnginxが使う18158
+- `test/t/cases/stream_duplicate_hooks.rb`の`nginx -t`が使う12398
 - `test/t/cases/_agent_proxy_client.rb`が動かすLLMのモックのupstreamが使う、12372と12373
 - `test/t/ngx_mruby.rb`にあるstreamだけのテストが使う12399
 - テストと、`test/html/`にあるフックのスクリプトと期待する出力が挙げるポート

@@ -429,7 +429,8 @@ configuration, because this item changes neither behavior nor the
 handling of resources), and reload (the HTTP path without cache). The
 compiled proc is kept in a slot of the GC root holder until the state is
 closed, or until a later stream directive replaces the code
-(`ngx_stream_mruby_replace_code` frees the slot then), and a reload
+(`ngx_stream_mruby_replace_code` frees the slot then; since #834, stream
+refuses such a directive, and the function is gone), and a reload
 replaces the proc in the slot; this is the "mark cached procs"
 part of the filter row of the plan, done here because it belongs to
 loading. Stream keeps compiling once.
