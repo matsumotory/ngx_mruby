@@ -191,8 +191,8 @@ and clears `mrb->exc` before it returns, because all requests of the worker
 share the `mrb_state`. The callers push the execution context of the
 request or session (`ngx_mrb_exec_t` of `src/common/ngx_mruby_exec.h`,
 which `mrb->ud` of the state reaches) for the time the code runs, and put
-back the previous one afterwards: in HTTP `ngx_mrb_run`,
-`ngx_mrb_post_fiber` and `ngx_http_mrb_resume_set`, in stream
+back the previous one afterwards: in HTTP `ngx_mrb_run` and
+`ngx_http_mrb_resume_set`, in stream
 `ngx_stream_mruby_handler`. The protocol parts, `ngx_mrb_run_fiber` and
 `ngx_stream_mrb_run_fiber`, set `ctx->fiber_proc`; in HTTP,
 `ngx_mrb_run_fiber` also pushes a context with the handler kind and the
@@ -207,10 +207,13 @@ the life of the state. An mrbgem that puts a pointer of its own in `mrb->ud`
 cannot be added to the build. On 2.x only the state of the stream module was
 like that; the http module set `mrb->ud` only while the SSL handshake
 handler or the server context code ran. The context of a push lives on the C
-stack of the function that pushed it: `ngx_mrb_run`, whose handler can run
-inside another mruby call, goes through `ngx_mrb_exec_run`, which puts the
+stack of the function that pushed it: `ngx_mrb_run` goes through
+`ngx_mrb_exec_run` when it runs inside another mruby call, which puts the
 context back also when an allocation fails there (the rule is in
-`src/common/ngx_mruby_exec.h`).
+`src/common/ngx_mruby_exec.h`). ngx_mruby runs no handler inside another
+mruby call since `Nginx.redirect` with a local URI raises in `mruby_set`
+handlers, log handlers and filters (section 2.9 of
+[docs/proposals/core-alpha1.md](proposals/core-alpha1.md)).
 
 ### HTTP: a wait and its end
 
@@ -249,14 +252,15 @@ context back also when an allocation fails there (the rule is in
   variable cannot get the value, it finalizes the request with 500, since
   no phase checker is left to end it: the rewrite module's handler
   returned already.
-- A wait that starts in a handler that nginx runs inside another mruby call
-  (the location of an internal redirect that an `mruby_set` handler, a log
-  handler or a filter makes inside the Ruby call), or after an internal
-  redirect replaced the module context of the handler, does not use the
-  wake. The timer or the post handler resumes the fiber itself, and
-  `ngx_mrb_post_fiber` ends the handler; a content handler there does not
-  keep the request, and the handler returns `NGX_AGAIN` while its
-  subrequest runs.
+- Every wait ends through the wake and the checker of its phase: no timer
+  and no post handler resumes a fiber. `Nginx::Async.sleep` and
+  `Nginx::Async::HTTP.sub_request` raise a `RuntimeError` in a handler
+  that runs inside the Ruby call of another handler (an outer execution
+  context has a record of its own) and in a handler whose module context
+  an internal redirect replaced, where nginx could not call the handler
+  again. ngx_mruby makes neither happen since `Nginx.redirect` with a
+  local URI raises outside the phase handlers (below); the check keeps
+  every wait on the path of the wake.
 
 ### HTTP: the result of a handler and `Nginx.redirect`
 
@@ -265,12 +269,12 @@ context back also when an allocation fails there (the rule is in
   that runs (`ngx_http_mrb_fiber_set_result`), and an HTTP status also in
   `r->headers_out.status`. `ngx_mrb_finalize_rputs` reads the result of the
   record, so a handler that sets none has no result, whatever an earlier
-  handler of the request stored. The exception is a handler whose request
-  an internal redirect inside the call sent elsewhere: without a result of
-  its own, it returns the status that the target stored.
+  handler of the request stored. The exception is a handler whose module
+  context an internal redirect replaced during its run: without a result
+  of its own, it returns the status that the target stored.
 - The first three also store the status as the code gave it in the record
   (`ngx_http_mrb_fiber_set_status`; `Nginx.redirect` with a URL resets it
-  to 0). `ngx_mrb_run_request` and `ngx_mrb_post_fiber` pass it from the
+  to 0). `ngx_mrb_run_request` passes it from the
   record of the handler that ends to `ngx_mrb_finalize_rputs` (the record
   is per run of a handler, and an rputs chain that an earlier handler left
   in the module context does not carry it), which sends the output with
@@ -281,15 +285,19 @@ context back also when an allocation fails there (the rule is in
   handler other than a content handler of the main request sets the result
   500, and output that follows still goes out with 200.
 - `Nginx.redirect` with a local URI, in a post_read, server rewrite,
-  rewrite, access or content handler that `ngx_mrb_post_fiber` does not
-  resume, keeps the URI in the record (`ngx_http_mrb_fiber_defer_redirect`).
+  rewrite, access or content handler, keeps the URI in the record
+  (`ngx_http_mrb_fiber_defer_redirect`).
   When the handler has ended, `ngx_mrb_run_request` drops its output, logs
   a line at the `warn` level when the code wrote output or set a status
   after the call, calls `ngx_http_internal_redirect`, drops the reference
   that it took with `ngx_http_finalize_request(r, NGX_DONE)` in every phase
   but content, and returns `NGX_DONE`. The request can be freed in that
-  call, so nothing of it is used afterwards. In the other handlers the
-  redirect runs inside the call.
+  call, so nothing of it is used afterwards. In `mruby_set` handlers, log
+  handlers and header and body filters, the call raises a `RuntimeError`
+  (`Nginx.redirect with a local URI is not available in ...`) through
+  `ngx_mrb_exec_require` with the mask of the phase handlers, and makes no
+  redirect: no handler of a request runs inside the Ruby call of another
+  one (decision 1 of [docs/proposals/core-alpha1.md](proposals/core-alpha1.md)).
 
 ### Stream: a wait and its end
 
@@ -340,6 +348,7 @@ The cases that pin this model are in `test/t/cases/`:
 `async_resume_result.rb` (the same end with and without a wait, per
 phase), `async_result_isolation.rb` (the result of a handler is its own),
 `async_subrequest_return.rb`, `async_set_var.rb`, `redirect_async.rb`,
+`redirect_nested.rb`,
 `stream_async_sleep_udp_once.rb`, `stream_proxy_protocol_wait.rb` and
 `workers.rb` (reloads and `worker_shutdown_timeout`). Their configuration
 is in `test/conf/conf.d/`, and that of `workers.rb` in `test/conf/workers/`. The soak build

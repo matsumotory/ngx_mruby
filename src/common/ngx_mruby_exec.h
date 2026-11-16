@@ -168,17 +168,17 @@ mrb_noreturn void ngx_mrb_exec_raise(mrb_state *mrb, ngx_mrb_exec_t *exec, ngx_u
  *
  * - A region that can run inside another mruby call goes through
  *   ngx_mrb_exec_run, which protects it there and puts the context back
- *   before the exception goes on to the outer call. Two regions are such:
- *   ngx_mrb_run, because nginx runs the handlers of a location inside the
- *   Ruby call of Nginx.redirect, and the output filters inside the call
- *   that sends a response; and ngx_mrb_post_fiber, because nginx calls the
- *   post handler of a subrequest when it finalizes the subrequest, which a
- *   handler of the subrequest can do inside such a call. Every other push
- *   of the http module runs inside one of them (ngx_mrb_run_fiber of a
- *   handler) or from nginx's events (ngx_http_mrb_resume_set from the write
- *   event handler of the request, the SSL handshake), and ngx_mrb_exec_pop
- *   puts back the context from before its own push, so the pop of the outer
- *   region is right also when an inner region was left.
+ *   before the exception goes on to the outer call. ngx_mrb_run is such a
+ *   region: ngx_mruby runs no handler inside another mruby call since
+ *   Nginx.redirect raises where nginx would run the handlers of a location
+ *   inside the Ruby call (section 2.9 of docs/proposals/core-alpha1.md), and
+ *   ngx_mrb_run keeps the protection for a handler that still runs with
+ *   mrb->jmp set. Every other push of the http module runs inside it
+ *   (ngx_mrb_run_fiber of a handler) or from nginx's events
+ *   (ngx_http_mrb_resume_set from the write event handler of the request,
+ *   the SSL handshake), and ngx_mrb_exec_pop puts back the context from
+ *   before its own push, so the pop of the outer region is right also when
+ *   an inner region was left.
  * - A region that runs only from nginx's events, or while nginx reads the
  *   configuration or starts or ends a worker, where mrb->jmp is NULL, pushes
  *   and pops directly: a raise without a jmp aborts the process (exc_throw
