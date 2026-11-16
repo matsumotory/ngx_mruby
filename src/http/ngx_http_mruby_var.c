@@ -126,7 +126,6 @@ mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int le
                       __func__, __LINE__);
         goto ARENA_RESTOR_AND_ERROR;
       }
-      v->set_handler(r, vv, v->data);
     } else if (v->flags & NGX_HTTP_VAR_INDEXED) {
       vv = &r->variables[v->index];
     } else {
@@ -137,8 +136,15 @@ mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int le
     vv->valid = 1;
     vv->not_found = 0;
     vv->no_cacheable = 0;
+    vv->escape = 0;
     vv->data = valp;
     vv->len = val.len;
+    /* nginx fills the value struct before it calls a variable's set_handler;
+     * do the same so a set_handler such as $limit_rate or $args reads an
+     * initialised vv->len and vv->data, not the uninitialised palloc. */
+    if (v->set_handler) {
+      v->set_handler(r, vv, v->data);
+    }
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: set variable key:%s val:%s", MODULE_NAME,
                   __func__, __LINE__, k, valp);
     return mrb_str_new(mrb, (char *)vv->data, vv->len);
@@ -333,7 +339,6 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
                       __func__, __LINE__);
         goto ARENA_RESTOR_AND_ERROR;
       }
-      v->set_handler(r, vv, v->data);
     } else if (v->flags & NGX_HTTP_VAR_INDEXED) {
       vv = &r->variables[v->index];
     } else {
@@ -344,8 +349,15 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     vv->valid = 1;
     vv->not_found = 0;
     vv->no_cacheable = 0;
+    vv->escape = 0;
     vv->data = valp;
     vv->len = val.len;
+    /* nginx fills the value struct before it calls a variable's set_handler;
+     * do the same so a set_handler such as $limit_rate or $args reads an
+     * initialised vv->len and vv->data, not the uninitialised palloc. */
+    if (v->set_handler) {
+      v->set_handler(r, vv, v->data);
+    }
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: set variable key:%s val:%s", MODULE_NAME,
                   __func__, __LINE__, keyp, valp);
     return mrb_str_new(mrb, (char *)vv->data, vv->len);
