@@ -5,8 +5,10 @@ Status: in progress. The design decisions of section 5 were made on
 no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
 (#779 and #783), 2.7 (#788), 2.8 (#796), the execution context and the
 phases of the Ruby API of 2.1 (#826), 2.6 (#825), the per-request store
-of 2.1 (#832) and 2.9 (#833). Next step: this pull request of section 4:
-"Directive table and one duplicate check" (2.5), by 2026-11-20.
+of 2.1 (#832), 2.9 (#833) and 2.5 (#834). Next step: the rows of section
+4 that are open, "Headers" (2.2), "One setter for `Nginx::Var`" (2.3)
+and "Filter handlers" (2.4), then the check before the tag of section 3;
+their dates are set when they are taken up.
 
 This proposal designs what is left of step 4 of section 6 of
 [the v3 plan](v3-plan.md): the work that has to be on `next` before
@@ -430,7 +432,8 @@ configuration, because this item changes neither behavior nor the
 handling of resources), and reload (the HTTP path without cache). The
 compiled proc is kept in a slot of the GC root holder until the state is
 closed, or until a later stream directive replaces the code
-(`ngx_stream_mruby_replace_code` frees the slot then), and a reload
+(`ngx_stream_mruby_replace_code` frees the slot then; since #834, stream
+refuses such a directive, and the function is gone), and a reload
 replaces the proc in the slot; this is the "mark cached procs"
 part of the filter row of the plan, done here because it belongs to
 loading. Stream keeps compiling once.
@@ -891,7 +894,7 @@ and the one that merges second updates its branch.
 | Common code loading: [#825](https://github.com/matsumotory/ngx_mruby/pull/825) | 2.6 | nothing | directive table, filter handlers (the directive functions) |
 | Common upstream switching: [#788](https://github.com/matsumotory/ngx_mruby/pull/788), merged on 2026-11-11 | 2.7 | nothing | nothing |
 | Common error logging: [#796](https://github.com/matsumotory/ngx_mruby/pull/796), merged on 2026-11-12; [#799](https://github.com/matsumotory/ngx_mruby/pull/799) protects the calls of `inspect` and `backtrace` in the logging | 2.8 | nothing | execution context (`Nginx.log`) |
-| Directive table and one duplicate check | 2.5 | nothing | log handlers, filter handlers, code loading |
+| Directive table and one duplicate check: [#834](https://github.com/matsumotory/ngx_mruby/pull/834); `uses` of the main configuration records which kinds and forms the directives use, for 2.4 | 2.5 | nothing | log handlers, filter handlers, code loading |
 | A body with any status: [#779](https://github.com/matsumotory/ngx_mruby/pull/779), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`) |
 | A status set before the output (decision 6), `Nginx::HTTP_CLOSE` with output (decision 7), and the cases of the review of #779 for handlers resumed by a subrequest and for 304: [#783](https://github.com/matsumotory/ngx_mruby/pull/783), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`, `src/http/ngx_http_mruby_async.c`) |
 | The check before the tag | 3 | every row above | nothing |

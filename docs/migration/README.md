@@ -23,11 +23,12 @@ and, for 4.1, `NEWS.md` in `mruby/`.
 ## Steps
 
 1. Check how you build the module: [Builds](#builds).
-2. Find the scripts that an entry affects, and change them: [Scripts](#scripts).
-3. Update log parsers and alerts: [Log monitoring](#log-monitoring).
-4. If you maintain an mrbgem or other C code that uses the mruby C API,
+2. Find the directives that 3.0.0 refuses, and change them: [Configurations](#configurations).
+3. Find the scripts that an entry affects, and change them: [Scripts](#scripts).
+4. Update log parsers and alerts: [Log monitoring](#log-monitoring).
+5. If you maintain an mrbgem or other C code that uses the mruby C API,
    check it: [C extensions and mrbgems](#c-extensions-and-mrbgems).
-5. Check the result: [Checking the result](#checking-the-result).
+6. Check the result: [Checking the result](#checking-the-result).
 
 ## Builds
 
@@ -108,6 +109,28 @@ and, for 4.1, `NEWS.md` in `mruby/`.
   ([Sources that include `mruby.h` need the generated headers](../releases/v3.0.0.md#c-extensions-sources-that-include-mrubyh-need-the-generated-headers-561)).
 - With mrbgems of your own or of third parties, see
   [C extensions and mrbgems](#c-extensions-and-mrbgems).
+
+## Configurations
+
+- [`nginx -t` refuses a stream hook given twice in one context](../releases/v3.0.0.md#nginx--t-refuses-a-stream-hook-given-twice-in-one-context-834):
+  look in each `stream {}` block and each of its `server {}` blocks for
+  more than one of `mruby_stream` and `mruby_stream_code`, and in each
+  `stream {}` block for more than one of `mruby_stream_init` and
+  `mruby_stream_init_code`, of `mruby_stream_init_worker` and
+  `mruby_stream_init_worker_code`, or of `mruby_stream_exit_worker` and
+  `mruby_stream_exit_worker_code`. Keep the later directive of each, whose
+  code ran on 2.x, and remove the others. `nginx -t` with the module of
+  3.0.0 names the second directive and its line:
+
+  ```
+  nginx: [emerg] "mruby_stream_code" directive is duplicated in /etc/nginx/nginx.conf:42
+  ```
+
+  One directive in the `stream {}` block and one in a `server {}` stay
+  valid, and the server runs its own code. An alert that matches the
+  `mrb_string(...) load failed` line of a stream directive whose file
+  cannot be read matches `mrb_file(` as well: such a line is now
+  `mrb_file(PATH) open failed`, as for the HTTP directives.
 
 ## Scripts
 

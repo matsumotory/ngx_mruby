@@ -775,12 +775,13 @@ sh test/check_added_files.sh origin/<base> HEAD   # the files job: no added file
   what counts as an error and the suppressions).
 - `test.sh` listens on these ports by default (18080-18094, 18101-18103, 18110-18172,
   18176-18199, 12345-12359, 12363-12366,
-  12368-12369, 12372-12397; 18116, 12357 and 12385-12388 belong to the second nginx that
+  12368-12369, 12372-12398; 18116, 12357 and 12385-12388 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18180, 18181, 18185, 12379 and
   12393 to the nginx with several workers that `test/t/cases/_workers.rb` starts,
   12393-12396 to the independent nginx and echo upstream of
   `test/t/cases/_udp_wait_session.rb` (the cases run sequentially), 18158 to the nginx that
-  `test/t/cases/config_hooks.rb` starts, 12372 and 12373 to the mock LLM
+  `test/t/cases/config_hooks.rb` starts, 12398 to the `nginx -t` of
+  `test/t/cases/stream_duplicate_hooks.rb`, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
   in `test/t/ngx_mruby.rb`). `TEST_SH_PORT_OFFSET=N` moves every port of the
   suite by N (from -2345 to 47336): two checkouts can run `test.sh` at the

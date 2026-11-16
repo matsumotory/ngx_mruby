@@ -3,8 +3,8 @@
 # it. test/t/cases/directives.rb and test/t/cases/stream.rb run this file with
 # CRuby, because the test build of mruby has no Process module, so it cannot
 # send a signal to nginx or wait for nginx to end. The nginx that test.sh
-# starts already has inline init hooks, and a second hook of the same kind
-# would replace them or be rejected. The second nginx therefore shows what the
+# starts already has inline init hooks, and nginx rejects a second hook of the
+# same kind in one context. The second nginx therefore shows what the
 # first one cannot: the file versions of the init, init_worker and exit_worker
 # hooks, and the order in which the hooks run. The mode stream_master runs a
 # master process and a worker process, for stream cases that need the worker
@@ -75,28 +75,19 @@ http {
 }
 CONF
 
-# Each inline *_code directive comes before the file version of the same
-# hook. nginx accepts both in a stream block, and the later one replaces the
-# earlier one, so only the file versions run. The empty http block is there
+# The file version of each stream hook. A hook takes one of its two
+# versions in a stream block: nginx refuses the second
+# (test/t/cases/stream_duplicate_hooks.rb). The empty http block is there
 # because the nginx built with this module does not start without one.
 STREAM_CONF = <<'CONF'
 http {
 }
 
 stream {
-    mruby_stream_init_code '
-        p "mruby_stream_init_code"
-        Userdata.new.init_trace = "#{Userdata.new.init_trace},init_code"
-    ';
     mruby_stream_init __HTML__/stream_init.rb;
 
-    mruby_stream_init_worker_code '
-        p "mruby_stream_init_worker_code"
-        Userdata.new.init_trace = "#{Userdata.new.init_trace},init_worker_code"
-    ';
     mruby_stream_init_worker __HTML__/stream_init_worker.rb;
 
-    mruby_stream_exit_worker_code 'p "mruby_stream_exit_worker_code"';
     mruby_stream_exit_worker __HTML__/stream_exit_worker.rb;
 
     server {

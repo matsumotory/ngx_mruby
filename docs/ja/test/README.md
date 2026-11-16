@@ -409,6 +409,7 @@ test.sh: nginx (pid 374) did not end within 60 seconds (NGINX_STOPTIME) after 6 
 - `add_listener`に渡すアドレスのポート
 - `test/t/cases/_second_instance.rb`が起動する2つ目のnginxが使う、18116と12357
 - `test/t/cases/config_hooks.rb`が起動するnginxが使う18158
+- `test/t/cases/stream_duplicate_hooks.rb`の`nginx -t`が使う12398
 - `test/t/cases/_agent_proxy_client.rb`が動かすLLMのモックのupstreamが使う、12372と12373
 - `test/t/ngx_mruby.rb`にあるstreamだけのテストが使う12399
 - テストと、`test/html/`にあるフックのスクリプトと期待する出力が挙げるポート
@@ -774,7 +775,7 @@ HTTPとstreamは別のmruby状態を持ちます。HTTP側の`Nginx::Debug.gc`�
 - `Nginx::Debug.gc`は、フルGCの`mrb_full_gc`を実行し、`nil`を返します。
 - `Nginx::Debug.stats`は、次のSymbolをキーに持つHashを返します。
   - `gc_live`：`mrb->gc.live`の値です。
-  - `gc_root`：nginxのプロセス全体で、ngx_mrubyがGCから守っているオブジェクトの数です。数えるのは2種類のオブジェクトで、呼び出し1回につき1つと数えます。1つは、`mrb_gc_register()`で登録して、まだ登録を外していないオブジェクトで、各mrb_stateのholderがこれにあたります。holderは`src/http/ngx_http_mruby_gc_roots.h`にあります。もう1つは、`ngx_mrb_gc_roots_add()`でholderに入れて、まだ`ngx_mrb_gc_roots_remove()`で外していないオブジェクトです。各ディレクティブのコンパイルしたコードもこれにあたり、mrb_stateを閉じるか、後のstreamのディレクティブが置き換えるまで、スロットに残ります（`src/common/ngx_mruby_code.h`）。httpモジュールの分とstreamモジュールの分を足して数えます。即値はmrubyが登録しないので、数えません。ngx_mrubyが入れた数より多く外すと、この値は負になります。
+  - `gc_root`：nginxのプロセス全体で、ngx_mrubyがGCから守っているオブジェクトの数です。数えるのは2種類のオブジェクトで、呼び出し1回につき1つと数えます。1つは、`mrb_gc_register()`で登録して、まだ登録を外していないオブジェクトで、各mrb_stateのholderがこれにあたります。holderは`src/http/ngx_http_mruby_gc_roots.h`にあります。もう1つは、`ngx_mrb_gc_roots_add()`でholderに入れて、まだ`ngx_mrb_gc_roots_remove()`で外していないオブジェクトです。各ディレクティブのコンパイルしたコードもこれにあたり、mrb_stateを閉じるまで、スロットに残ります（`src/common/ngx_mruby_code.h`）。httpモジュールの分とstreamモジュールの分を足して数えます。即値はmrubyが登録しないので、数えません。ngx_mrubyが入れた数より多く外すと、この値は負になります。
   - `gc_root_fibers`：`gc_root`が数えるオブジェクトのうちの、fiberの数です。
   - `gc_arena_idx`：`mrb->gc.arena_idx`です。
   - `timers`：`Nginx::Async.sleep`のタイマーのうち、発火も削除もされていないタイマーの数です。

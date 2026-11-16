@@ -111,6 +111,30 @@ cd ngx_mruby
 sh apply-clang-format
 ```
 
+## Adding a directive with Ruby code
+
+The directives whose Ruby code ngx_mruby keeps for later are the rows of a
+table in the header of each module: `NGX_HTTP_MRUBY_CODE_TABLE` in
+`src/http/ngx_http_mruby_module.h` and `NGX_STREAM_MRUBY_CODE_TABLE` in
+`src/stream/ngx_stream_mruby_module.h`. Each row names the file directive
+and the inline directive (the one whose name ends in `_code`) of one hook or
+handler kind, and the contexts where nginx accepts them. The module makes
+from the rows the command entries, and for an HTTP handler kind also its
+fields in the location configuration (`code[kind][form]`), their create,
+merge and cleanup, the phase handlers and their registration. A new
+directive of such a kind is one row; its comment in the header says what
+each kind of row (`HOOK`, `PHASE`, `FILTER`, `SESSION`) gives and makes.
+
+Every directive with Ruby code sets its code with `ngx_mrb_code_set`
+(`src/common/ngx_mruby_code.h`): it refuses a field that is already set
+with `"NAME" directive is duplicated`, so a hook or handler kind takes one
+directive in a context, and the file and the inline form that share a
+field count as one. The directives that the tables do not cover are
+written out in the module: the SSL handshake handler and
+`mruby_server_context_handler_code` call the same function;
+`mruby_set` and `mruby_set_code`, which a location may have many of, and
+`mruby_stream_server_context_code`, which keeps no code, do not.
+
 ## How a handler waits: the record of its fiber
 
 This section describes the code behind `Nginx::Async.sleep`,

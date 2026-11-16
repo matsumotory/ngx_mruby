@@ -9,32 +9,35 @@ def proxy_v1_line(family, src, dst, port)
   "PROXY #{family} #{src} #{dst} 40000 #{port}\r\n"
 end
 
-# characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
-# nginx accepts both mruby_stream_init_code and mruby_stream_init in one
-# stream block. The later directive replaces the earlier one without a
-# message, so only the later hook runs. nginx -t runs the init hook, and its
-# p line shows which one ran.
-t.assert('ngx_mruby - stream init, the later of the inline and the file version runs', 'nginx -t') do
-  inline = %q{mruby_stream_init_code 'p "mruby_stream_init_code"';}
+# Since 3.0.0, nginx refuses mruby_stream_init_code and mruby_stream_init in
+# one stream block, in either order, as it refuses the second HTTP directive
+# of a hook (decision 4 of docs/proposals/core-alpha1.md); 2.x ran the later
+# one. nginx -t runs the init hook of a configuration that it accepts, and
+# runs none here. test/t/cases/stream_duplicate_hooks.rb has the other hooks.
+t.assert('ngx_mruby - stream init, nginx -t refuses the inline and the file version in one stream block', 'nginx -t') do
+  # the p line of the inline code differs from the name of the directive,
+  # which the message of the refusal quotes
+  inline = %q{mruby_stream_init_code 'p "mruby_stream_init inline"';}
   file = "mruby_stream_init #{html_path('stream_init.rb')};"
 
   out = nginx_t("stream {\n#{inline}\n#{file}\n}")
-  t.assert_include out, 'test is successful'
-  t.assert_include out, '"mruby_stream_init file"'
-  t.assert_not_include out, '"mruby_stream_init_code"'
+  t.assert_include out, '"mruby_stream_init" directive is duplicated'
+  t.assert_include out, 'test failed'
+  t.assert_not_include out, '"mruby_stream_init file"'
+  t.assert_not_include out, '"mruby_stream_init inline"'
 
   out = nginx_t("stream {\n#{file}\n#{inline}\n}")
-  t.assert_include out, 'test is successful'
-  t.assert_include out, '"mruby_stream_init_code"'
+  t.assert_include out, '"mruby_stream_init_code" directive is duplicated'
+  t.assert_include out, 'test failed'
   t.assert_not_include out, '"mruby_stream_init file"'
+  t.assert_not_include out, '"mruby_stream_init inline"'
 end
 
-# characterizes v2 behaviour; see docs/proposals/v3-plan.md on the next branch
-# The second nginx has each inline *_code hook followed by its file version.
-# The trace shows the order: the server context code while nginx reads the
-# configuration, then the init file, then the init_worker file. The p lines
-# show that none of the inline hooks ran and that the exit_worker file ran
-# when nginx stopped. The second nginx runs without valgrind in every cell.
+# The second nginx has the file version of each stream hook. The trace shows
+# the order: the server context code while nginx reads the configuration,
+# then the init file, then the init_worker file. The p lines show that the
+# exit_worker file ran when nginx stopped. The second nginx runs without
+# valgrind in every cell.
 t.assert('ngx_mruby - stream init, init_worker and exit_worker files in a second nginx', '127.0.0.1:12357') do
   r = second_instance('stream')
   # A sanitizer report ends in the second nginx's error.log, which CI does

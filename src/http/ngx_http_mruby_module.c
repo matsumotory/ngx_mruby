@@ -66,34 +66,15 @@ static ngx_int_t ngx_http_mruby_shared_state_init(ngx_conf_t *cf, ngx_mrb_state_
 // ngx_mruby mruby directive functions
 */
 
-static char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_init_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_init_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_init_worker_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_exit_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_exit_worker_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+// the directives of NGX_HTTP_MRUBY_CODE_TABLE: its HOOK rows, and its PHASE
+// and FILTER rows
+static char *ngx_http_mruby_hook_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_http_mruby_handler_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 #if (NGX_HTTP_SSL)
 static char *ngx_http_mruby_ssl_handshake_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 #endif /* NGX_HTTP_SSL */
 static char *ngx_http_mruby_server_config_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-
-static char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_post_read_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_server_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_body_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_body_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_mruby_header_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 /* output directive error */
 static char *ngx_http_mruby_output_filter_error(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -104,27 +85,16 @@ static char *ngx_http_mruby_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mruby_set_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 #endif
 
-/* helpers */
-static char *ngx_http_mruby_initialize_inline_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code,
-                                                   const char *func_name);
-static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code,
-                                            const char *func_name);
-
 /*
-// ngx_mruby mruby handler functions
+// ngx_mruby mruby handler functions: ngx_http_mruby_<name>_handler and
+// ngx_http_mruby_<name>_inline_handler for each PHASE row of
+// NGX_HTTP_MRUBY_CODE_TABLE
 */
-static ngx_int_t ngx_http_mruby_post_read_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mruby_server_rewrite_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mruby_rewrite_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mruby_access_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mruby_log_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mruby_post_read_inline_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mruby_server_rewrite_inline_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mruby_rewrite_inline_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mruby_access_inline_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mruby_content_inline_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mruby_log_inline_handler(ngx_http_request_t *r);
+#define NGX_HTTP_MRUBY_DECLARE_HANDLERS(KIND, name, ...)                                                               \
+  static ngx_int_t ngx_http_mruby_##name##_handler(ngx_http_request_t *r);                                             \
+  static ngx_int_t ngx_http_mruby_##name##_inline_handler(ngx_http_request_t *r);
+
+NGX_HTTP_MRUBY_CODE_TABLE(NGX_HTTP_MRUBY_TABLE_SKIP, NGX_HTTP_MRUBY_DECLARE_HANDLERS, NGX_HTTP_MRUBY_TABLE_SKIP)
 
 #if (NGX_HTTP_SSL)
 #if OPENSSL_VERSION_NUMBER >= 0x1000205fL
@@ -153,7 +123,33 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
 static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx_chain_t *in);
 static ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t *r, ngx_chain_t *in);
 
+/*
+// The two command entries of each row of NGX_HTTP_MRUBY_CODE_TABLE: the file
+// form takes the path of a script and "cache", the inline form the code. The
+// offset of a PHASE or FILTER row is that of its row of code in the location
+// configuration (ngx_http_mruby_handler_directive takes the kind from it).
+*/
+#define NGX_HTTP_MRUBY_HOOK_COMMANDS(file, inline_, contexts, conf, field)                                             \
+  {ngx_string(file), (contexts) | NGX_CONF_TAKE12, ngx_http_mruby_hook_directive, conf, field,                         \
+   NGX_MRB_CODE_FORM_POST(NGX_MRB_CODE_TYPE_FILE)},                                                                    \
+      {ngx_string(inline_), (contexts) | NGX_CONF_TAKE1, ngx_http_mruby_hook_directive, conf, field,                   \
+       NGX_MRB_CODE_FORM_POST(NGX_MRB_CODE_TYPE_STRING)},
+
+#define NGX_HTTP_MRUBY_HANDLER_COMMANDS(KIND, name, file, inline_, contexts)                                           \
+  {ngx_string(file), (contexts) | NGX_CONF_TAKE12, ngx_http_mruby_handler_directive, NGX_HTTP_LOC_CONF_OFFSET,         \
+   offsetof(ngx_http_mruby_loc_conf_t, code[NGX_HTTP_MRUBY_CODE_##KIND]),                                              \
+   NGX_MRB_CODE_FORM_POST(NGX_MRB_CODE_TYPE_FILE)},                                                                    \
+      {ngx_string(inline_), (contexts) | NGX_CONF_TAKE1, ngx_http_mruby_handler_directive, NGX_HTTP_LOC_CONF_OFFSET,   \
+       offsetof(ngx_http_mruby_loc_conf_t, code[NGX_HTTP_MRUBY_CODE_##KIND]),                                          \
+       NGX_MRB_CODE_FORM_POST(NGX_MRB_CODE_TYPE_STRING)},
+
+#define NGX_HTTP_MRUBY_PHASE_COMMANDS(KIND, name, phase, file, inline_, contexts)                                      \
+  NGX_HTTP_MRUBY_HANDLER_COMMANDS(KIND, name, file, inline_, contexts)
+
 static ngx_command_t ngx_http_mruby_commands[] = {
+
+    NGX_HTTP_MRUBY_CODE_TABLE(NGX_HTTP_MRUBY_HOOK_COMMANDS, NGX_HTTP_MRUBY_PHASE_COMMANDS,
+                              NGX_HTTP_MRUBY_HANDLER_COMMANDS)
 
     {ngx_string("mruby_server_context_handler_code"), NGX_HTTP_SRV_CONF | NGX_CONF_TAKE1,
      ngx_http_mruby_server_config_inline, NGX_HTTP_SRV_CONF_OFFSET, 0, NULL},
@@ -170,24 +166,6 @@ static ngx_command_t ngx_http_mruby_commands[] = {
 #endif /* NGX_HTTP_SSL */
 
     /* main config */
-    {ngx_string("mruby_init_code"), NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE1, ngx_http_mruby_init_inline,
-     NGX_HTTP_MAIN_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_init"), NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE12, ngx_http_mruby_init_phase,
-     NGX_HTTP_MAIN_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_init_worker_code"), NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE1, ngx_http_mruby_init_worker_inline,
-     NGX_HTTP_MAIN_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_init_worker"), NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE12, ngx_http_mruby_init_worker_phase,
-     NGX_HTTP_MAIN_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_exit_worker_code"), NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE1, ngx_http_mruby_exit_worker_inline,
-     NGX_HTTP_MAIN_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_exit_worker"), NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE12, ngx_http_mruby_exit_worker_phase,
-     NGX_HTTP_MAIN_CONF_OFFSET, 0, NULL},
-
     {ngx_string("mruby_variable"), NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE12, ngx_http_mruby_variable,
      NGX_HTTP_MAIN_CONF_OFFSET, 0, NULL},
 
@@ -200,52 +178,6 @@ static ngx_command_t ngx_http_mruby_commands[] = {
     {ngx_string("mruby_enable_read_request_body"), NGX_HTTP_LOC_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_FLAG,
      ngx_conf_set_flag_slot, NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mruby_loc_conf_t, enable_read_request_body),
      NULL},
-
-    {ngx_string("mruby_post_read_handler"), NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_TAKE12,
-     ngx_http_mruby_post_read_phase, NGX_HTTP_LOC_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_server_rewrite_handler"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
-     ngx_http_mruby_server_rewrite_phase, NGX_HTTP_LOC_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_rewrite_handler"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
-     ngx_http_mruby_rewrite_phase, NGX_HTTP_LOC_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_access_handler"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
-     ngx_http_mruby_access_phase, NGX_HTTP_LOC_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_content_handler"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
-     ngx_http_mruby_content_phase, NGX_HTTP_LOC_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_log_handler"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
-     ngx_http_mruby_log_phase, NGX_HTTP_LOC_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_post_read_handler_code"), NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_TAKE1,
-     ngx_http_mruby_post_read_inline, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_post_read_inline_handler},
-
-    {ngx_string("mruby_server_rewrite_handler_code"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE1,
-     ngx_http_mruby_server_rewrite_inline, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_server_rewrite_inline_handler},
-
-    {ngx_string("mruby_rewrite_handler_code"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE1,
-     ngx_http_mruby_rewrite_inline, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_rewrite_inline_handler},
-
-    {ngx_string("mruby_access_handler_code"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE1,
-     ngx_http_mruby_access_inline, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_access_inline_handler},
-
-    {ngx_string("mruby_content_handler_code"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE1,
-     ngx_http_mruby_content_inline, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_content_inline_handler},
-
-    {ngx_string("mruby_log_handler_code"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE1,
-     ngx_http_mruby_log_inline, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_log_inline_handler},
 
 #if defined(NDK) && NDK
     {ngx_string("mruby_set"),
@@ -264,22 +196,6 @@ static ngx_command_t ngx_http_mruby_commands[] = {
     {ngx_string("mruby_output_filter_code"),
      NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
      ngx_http_mruby_output_filter_error, NGX_HTTP_LOC_CONF_OFFSET, 0, NULL},
-
-    {ngx_string("mruby_output_body_filter"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
-     ngx_http_mruby_body_filter_phase, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_body_filter_handler},
-
-    {ngx_string("mruby_output_body_filter_code"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE1,
-     ngx_http_mruby_body_filter_inline, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_body_filter_inline_handler},
-
-    {ngx_string("mruby_output_header_filter"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE12,
-     ngx_http_mruby_header_filter_phase, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_header_filter_handler},
-
-    {ngx_string("mruby_output_header_filter_code"),
-     NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE1,
-     ngx_http_mruby_header_filter_inline, NGX_HTTP_LOC_CONF_OFFSET, 0, ngx_http_mruby_header_filter_inline_handler},
 
     ngx_null_command};
 
@@ -455,24 +371,13 @@ static void ngx_http_mruby_loc_conf_cleanup(void *data)
   ngx_http_mruby_loc_conf_t *conf = data;
   ngx_list_part_t *part;
   ngx_mrb_code_t **code;
-  ngx_uint_t i;
+  ngx_uint_t i, form;
 
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->post_read_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->server_rewrite_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->rewrite_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->access_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->content_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->log_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->post_read_inline_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->server_rewrite_inline_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->rewrite_inline_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->access_inline_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->content_inline_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->log_inline_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->body_filter_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->body_filter_inline_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->header_filter_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->header_filter_inline_code);
+  for (i = 0; i < NGX_HTTP_MRUBY_CODES; i++) {
+    for (form = 0; form < NGX_MRB_CODE_FORMS; form++) {
+      NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(conf->state->mrb, conf->code[i][form]);
+    }
+  }
 
   part = &conf->set_code_list->part;
   code = part->elts;
@@ -493,6 +398,7 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
 {
   ngx_http_mruby_loc_conf_t *conf;
   ngx_pool_cleanup_t *cln;
+  ngx_uint_t i, form;
 
   conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mruby_loc_conf_t));
   if (conf == NULL) {
@@ -508,24 +414,11 @@ static void *ngx_http_mruby_create_loc_conf(ngx_conf_t *cf)
     return NULL;
   }
 
-  conf->post_read_code = NGX_CONF_UNSET_PTR;
-  conf->server_rewrite_code = NGX_CONF_UNSET_PTR;
-  conf->rewrite_code = NGX_CONF_UNSET_PTR;
-  conf->access_code = NGX_CONF_UNSET_PTR;
-  conf->content_code = NGX_CONF_UNSET_PTR;
-  conf->log_code = NGX_CONF_UNSET_PTR;
-
-  conf->post_read_inline_code = NGX_CONF_UNSET_PTR;
-  conf->server_rewrite_inline_code = NGX_CONF_UNSET_PTR;
-  conf->rewrite_inline_code = NGX_CONF_UNSET_PTR;
-  conf->access_inline_code = NGX_CONF_UNSET_PTR;
-  conf->content_inline_code = NGX_CONF_UNSET_PTR;
-  conf->log_inline_code = NGX_CONF_UNSET_PTR;
-
-  conf->body_filter_code = NGX_CONF_UNSET_PTR;
-  conf->body_filter_inline_code = NGX_CONF_UNSET_PTR;
-  conf->header_filter_code = NGX_CONF_UNSET_PTR;
-  conf->header_filter_inline_code = NGX_CONF_UNSET_PTR;
+  for (i = 0; i < NGX_HTTP_MRUBY_CODES; i++) {
+    for (form = 0; form < NGX_MRB_CODE_FORMS; form++) {
+      conf->code[i][form] = NGX_CONF_UNSET_PTR;
+    }
+  }
 
   conf->cached = NGX_CONF_UNSET;
   conf->add_handler = NGX_CONF_UNSET;
@@ -541,31 +434,35 @@ static char *ngx_http_mruby_merge_loc_conf(ngx_conf_t *cf, void *parent, void *c
 {
   ngx_http_mruby_loc_conf_t *prev = parent;
   ngx_http_mruby_loc_conf_t *conf = child;
+  ngx_uint_t i, form;
 
-  NGX_MRUBY_MERGE_CODE(conf->post_read_code, prev->post_read_code);
-  NGX_MRUBY_MERGE_CODE(conf->server_rewrite_code, prev->server_rewrite_code);
-  NGX_MRUBY_MERGE_CODE(conf->rewrite_code, prev->rewrite_code);
-  NGX_MRUBY_MERGE_CODE(conf->access_code, prev->access_code);
-  NGX_MRUBY_MERGE_CODE(conf->content_code, prev->content_code);
-  NGX_MRUBY_MERGE_CODE(conf->log_code, prev->log_code);
-
-  NGX_MRUBY_MERGE_CODE(conf->post_read_inline_code, prev->post_read_inline_code);
-  NGX_MRUBY_MERGE_CODE(conf->server_rewrite_inline_code, prev->server_rewrite_inline_code);
-  NGX_MRUBY_MERGE_CODE(conf->rewrite_inline_code, prev->rewrite_inline_code);
-  NGX_MRUBY_MERGE_CODE(conf->access_inline_code, prev->access_inline_code);
-  NGX_MRUBY_MERGE_CODE(conf->content_inline_code, prev->content_inline_code);
-  NGX_MRUBY_MERGE_CODE(conf->log_inline_code, prev->log_inline_code);
-
-  NGX_MRUBY_MERGE_CODE(conf->body_filter_code, prev->body_filter_code);
-  NGX_MRUBY_MERGE_CODE(conf->body_filter_inline_code, prev->body_filter_inline_code);
-  NGX_MRUBY_MERGE_CODE(conf->header_filter_code, prev->header_filter_code);
-  NGX_MRUBY_MERGE_CODE(conf->header_filter_inline_code, prev->header_filter_inline_code);
+  // the code of each kind and form, and not the filter handlers, which only
+  // the location of the filter directive has (section 2.4 of
+  // docs/proposals/core-alpha1.md changes that)
+  for (i = 0; i < NGX_HTTP_MRUBY_CODES; i++) {
+    for (form = 0; form < NGX_MRB_CODE_FORMS; form++) {
+      NGX_MRUBY_MERGE_CODE(conf->code[i][form], prev->code[i][form]);
+    }
+  }
 
   ngx_conf_merge_value(conf->cached, prev->cached, 0);
   ngx_conf_merge_value(conf->add_handler, prev->add_handler, 0);
   ngx_conf_merge_value(conf->enable_read_request_body, prev->enable_read_request_body, 0);
 
   return NGX_CONF_OK;
+}
+
+// whether a directive of the configuration sets the code of kind, in a form
+static ngx_flag_t ngx_http_mruby_uses(ngx_http_mruby_main_conf_t *mmcf, ngx_uint_t kind)
+{
+  ngx_uint_t form;
+
+  for (form = 0; form < NGX_MRB_CODE_FORMS; form++) {
+    if (mmcf->uses[kind][form]) {
+      return 1;
+    }
+  }
+  return 0;
 }
 
 static ngx_int_t ngx_http_mruby_preinit(ngx_conf_t *cf)
@@ -595,10 +492,13 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
     return NGX_ERROR;
   }
 
-  if (mmcf->enabled_header_filter) {
+  // a body filter needs the header filter as well, which holds the header
+  // back until the body filter has made the body
+  if (ngx_http_mruby_uses(mmcf, NGX_HTTP_MRUBY_CODE_HEADER_FILTER) ||
+      ngx_http_mruby_uses(mmcf, NGX_HTTP_MRUBY_CODE_BODY_FILTER)) {
     ngx_http_mruby_header_filter_init();
   }
-  if (mmcf->enabled_body_filter) {
+  if (ngx_http_mruby_uses(mmcf, NGX_HTTP_MRUBY_CODE_BODY_FILTER)) {
     ngx_http_mruby_body_filter_init();
   }
 
@@ -643,94 +543,56 @@ static void ngx_http_mruby_exit_worker(ngx_cycle_t *cycle)
   }
 }
 
+/*
+// The phase handlers of the PHASE rows of NGX_HTTP_MRUBY_CODE_TABLE, in the
+// order of the rows, each with the file handler before the inline handler.
+*/
+typedef struct {
+  ngx_http_phases phase;
+  ngx_http_handler_pt handler[NGX_MRB_CODE_FORMS];
+} ngx_http_mruby_phase_handlers_t;
+
+#define NGX_HTTP_MRUBY_PHASE_HANDLERS(KIND, name, phase, ...)                                                          \
+  {phase, {ngx_http_mruby_##name##_handler, ngx_http_mruby_##name##_inline_handler}},
+
+static ngx_http_mruby_phase_handlers_t ngx_http_mruby_phase_handlers[] = {NGX_HTTP_MRUBY_CODE_TABLE(
+    NGX_HTTP_MRUBY_TABLE_SKIP, NGX_HTTP_MRUBY_PHASE_HANDLERS, NGX_HTTP_MRUBY_TABLE_SKIP)};
+
 static ngx_int_t ngx_http_mruby_handler_init(ngx_http_core_main_conf_t *cmcf)
 {
-  ngx_int_t i;
+  ngx_uint_t i, form;
+  ngx_array_t *handlers;
   ngx_http_handler_pt *h;
-  ngx_http_phases phase;
-  ngx_http_phases phases[] = {
-      NGX_HTTP_POST_READ_PHASE,
-      // NGX_HTTP_FIND_CONFIG_PHASE,
-      NGX_HTTP_SERVER_REWRITE_PHASE,
-      NGX_HTTP_REWRITE_PHASE,
-      // NGX_HTTP_POST_REWRITE_PHASE,
-      // NGX_HTTP_PREACCESS_PHASE,
-      NGX_HTTP_ACCESS_PHASE,
-      // NGX_HTTP_POST_ACCESS_PHASE,
-      // NGX_HTTP_TRY_FILES_PHASE,
-      NGX_HTTP_CONTENT_PHASE,
-      NGX_HTTP_LOG_PHASE,
-  };
-  ngx_int_t phases_c;
 
-  phases_c = sizeof(phases) / sizeof(ngx_http_phases);
-  for (i = 0; i < phases_c; i++) {
-    phase = phases[i];
-    h = ngx_array_push(&cmcf->phases[phase].handlers);
-    if (h == NULL) {
+  for (i = 0; i < sizeof(ngx_http_mruby_phase_handlers) / sizeof(ngx_http_mruby_phase_handlers[0]); i++) {
+    handlers = &cmcf->phases[ngx_http_mruby_phase_handlers[i].phase].handlers;
+
+    if (ngx_http_mruby_phase_handlers[i].phase != NGX_HTTP_LOG_PHASE) {
+      for (form = 0; form < NGX_MRB_CODE_FORMS; form++) {
+        h = ngx_array_push(handlers);
+        if (h == NULL) {
+          return NGX_ERROR;
+        }
+        *h = ngx_http_mruby_phase_handlers[i].handler[form];
+      }
+      continue;
+    }
+
+    /*
+     * The mruby log handlers go to the front of the log phase, before the
+     * log handlers that were registered before this postconfiguration,
+     * ngx_http_log_handler (access_log) among them, so that access_log
+     * writes what they set. The modules whose postconfiguration runs later
+     * append after them. The new elements are at the end of the array after
+     * the push: move the others behind them.
+     */
+    if (ngx_array_push_n(handlers, NGX_MRB_CODE_FORMS) == NULL) {
       return NGX_ERROR;
     }
-    switch (phase) {
-    case NGX_HTTP_POST_READ_PHASE:
-      *h = ngx_http_mruby_post_read_handler;
-      h = ngx_array_push(&cmcf->phases[phase].handlers);
-      if (h == NULL) {
-        return NGX_ERROR;
-      }
-      *h = ngx_http_mruby_post_read_inline_handler;
-      break;
-    case NGX_HTTP_SERVER_REWRITE_PHASE:
-      *h = ngx_http_mruby_server_rewrite_handler;
-      h = ngx_array_push(&cmcf->phases[phase].handlers);
-      if (h == NULL) {
-        return NGX_ERROR;
-      }
-      *h = ngx_http_mruby_server_rewrite_inline_handler;
-      break;
-    case NGX_HTTP_REWRITE_PHASE:
-      *h = ngx_http_mruby_rewrite_handler;
-      h = ngx_array_push(&cmcf->phases[phase].handlers);
-      if (h == NULL) {
-        return NGX_ERROR;
-      }
-      *h = ngx_http_mruby_rewrite_inline_handler;
-      break;
-    case NGX_HTTP_ACCESS_PHASE:
-      *h = ngx_http_mruby_access_handler;
-      h = ngx_array_push(&cmcf->phases[phase].handlers);
-      if (h == NULL) {
-        return NGX_ERROR;
-      }
-      *h = ngx_http_mruby_access_inline_handler;
-      break;
-    case NGX_HTTP_CONTENT_PHASE:
-      *h = ngx_http_mruby_content_handler;
-      h = ngx_array_push(&cmcf->phases[phase].handlers);
-      if (h == NULL) {
-        return NGX_ERROR;
-      }
-      *h = ngx_http_mruby_content_inline_handler;
-      break;
-    case NGX_HTTP_LOG_PHASE:
-      /*
-       * The mruby log handlers go to the front of the log phase, before the
-       * log handlers that were registered before this postconfiguration,
-       * ngx_http_log_handler (access_log) among them, so that access_log
-       * writes what they set. The modules whose postconfiguration runs later
-       * append after them. The two new elements are at the end of the array
-       * after the push: move the others behind them.
-       */
-      if (ngx_array_push(&cmcf->phases[phase].handlers) == NULL) {
-        return NGX_ERROR;
-      }
-      h = cmcf->phases[phase].handlers.elts;
-      ngx_memmove(&h[2], &h[0], (cmcf->phases[phase].handlers.nelts - 2) * sizeof(ngx_http_handler_pt));
-      h[0] = ngx_http_mruby_log_handler;
-      h[1] = ngx_http_mruby_log_inline_handler;
-      break;
-    default:
-      // not through
-      break;
+    h = handlers->elts;
+    ngx_memmove(&h[NGX_MRB_CODE_FORMS], &h[0], (handlers->nelts - NGX_MRB_CODE_FORMS) * sizeof(ngx_http_handler_pt));
+    for (form = 0; form < NGX_MRB_CODE_FORMS; form++) {
+      h[form] = ngx_http_mruby_phase_handlers[i].handler[form];
     }
   }
 
@@ -1432,65 +1294,6 @@ static ngx_int_t ngx_http_mruby_shared_state_init(ngx_conf_t *cf, ngx_mrb_state_
 // ngx_mruby mruby directive functions
 */
 
-/* helpers */
-static char *ngx_http_mruby_initialize_inline_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code,
-                                                   const char *func_name)
-{
-  ngx_str_t *value;
-  ngx_int_t rc;
-
-  if (*code != NGX_CONF_UNSET_PTR) {
-    return "is duplicated";
-  }
-
-  value = cf->args->elts;
-  *code = ngx_mrb_code_from_string(cf->pool, &value[1]);
-  if (*code == NGX_CONF_UNSET_PTR) {
-    return NGX_CONF_ERROR;
-  }
-  rc = ngx_mrb_code_compile(cf, state->mrb, *code, MODULE_NAME, func_name);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_string(%s) load failed", func_name, value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
-}
-
-static char *ngx_http_mruby_initialize_code(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t **code,
-                                            const char *func_name)
-{
-  ngx_str_t *value;
-  ngx_int_t rc;
-
-  if (*code != NGX_CONF_UNSET_PTR) {
-    return "is duplicated";
-  }
-
-  value = cf->args->elts;
-  *code = ngx_mrb_code_from_file(cf->pool, &value[1]);
-  if (*code == NGX_CONF_UNSET_PTR) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_file(%s) open failed", func_name, value[1].data);
-    return NGX_CONF_ERROR;
-  }
-  if (cf->args->nelts == 3) {
-    if (ngx_strcmp(value[2].data, "cache") == 0) {
-      (*code)->cache = ON;
-    } else {
-      ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\", valid parameter is only \"cache\"",
-                         &value[2]);
-      return NGX_CONF_ERROR;
-    }
-  }
-  rc = ngx_mrb_code_compile(cf, state->mrb, *code, MODULE_NAME, func_name);
-  if (rc != NGX_OK) {
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, MODULE_NAME " : %s mrb_file(%s) open failed", func_name, value[1].data);
-    return NGX_CONF_ERROR;
-  }
-
-  return NGX_CONF_OK;
-}
-
 static char *ngx_http_mruby_server_config_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_srv_conf_t *mscf = (ngx_http_mruby_srv_conf_t *)conf;
@@ -1500,7 +1303,8 @@ static char *ngx_http_mruby_server_config_inline(ngx_conf_t *cf, ngx_command_t *
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mscf->state = mmcf->state;
 
-  rc = ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mscf->server_config_inline_code, __func__);
+  rc = ngx_mrb_code_set(cf, mmcf->state->mrb, &mscf->server_config_inline_code, NGX_MRB_CODE_TYPE_STRING,
+                        MODULE_NAME, __func__);
   if (rc != NGX_CONF_OK) {
     return rc;
   }
@@ -1531,7 +1335,8 @@ static char *ngx_http_mruby_ssl_handshake_phase(ngx_conf_t *cf, ngx_command_t *c
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mscf->state = mmcf->state;
 
-  return ngx_http_mruby_initialize_code(cf, mscf->state, &mscf->ssl_handshake_code, __func__);
+  return ngx_mrb_code_set(cf, mscf->state->mrb, &mscf->ssl_handshake_code, NGX_MRB_CODE_TYPE_FILE, MODULE_NAME,
+                          __func__);
 }
 
 static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -1542,50 +1347,22 @@ static char *ngx_http_mruby_ssl_handshake_inline(ngx_conf_t *cf, ngx_command_t *
   /* mmcf->state is initialized in ngx_http_mruby_preinit() */
   mscf->state = mmcf->state;
 
-  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mscf->ssl_handshake_inline_code, __func__);
+  return ngx_mrb_code_set(cf, mmcf->state->mrb, &mscf->ssl_handshake_inline_code, NGX_MRB_CODE_TYPE_STRING,
+                          MODULE_NAME, __func__);
 }
 #endif /* NGX_HTTP_SSL */
 
-static char *ngx_http_mruby_init_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+/*
+ * The directives of the HOOK rows of NGX_HTTP_MRUBY_CODE_TABLE: the file and
+ * the inline form of a hook set one field (the offset of the command) of the
+ * main configuration, and the post of the command gives the form.
+ */
+static char *ngx_http_mruby_hook_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
+  ngx_http_mruby_main_conf_t *mmcf = conf;
+  ngx_mrb_code_t **field = (ngx_mrb_code_t **)((u_char *)conf + cmd->offset);
 
-  return ngx_http_mruby_initialize_code(cf, mmcf->state, &mmcf->init_code, __func__);
-}
-
-static char *ngx_http_mruby_init_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-
-  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mmcf->init_code, __func__);
-}
-
-static char *ngx_http_mruby_init_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-
-  return ngx_http_mruby_initialize_code(cf, mmcf->state, &mmcf->init_worker_code, __func__);
-}
-
-static char *ngx_http_mruby_init_worker_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-
-  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mmcf->init_worker_code, __func__);
-}
-
-static char *ngx_http_mruby_exit_worker_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-
-  return ngx_http_mruby_initialize_code(cf, mmcf->state, &mmcf->exit_worker_code, __func__);
-}
-
-static char *ngx_http_mruby_exit_worker_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-
-  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mmcf->exit_worker_code, __func__);
+  return ngx_mrb_code_set(cf, mmcf->state->mrb, field, NGX_MRB_CODE_FORM_OF(cmd), MODULE_NAME, __func__);
 }
 
 static char *ngx_http_mruby_output_filter_error(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -1597,212 +1374,47 @@ static char *ngx_http_mruby_output_filter_error(ngx_conf_t *cf, ngx_command_t *c
   return NGX_CONF_ERROR;
 }
 
-static char *ngx_http_mruby_post_read_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+/*
+ * The directives of the PHASE and FILTER rows of NGX_HTTP_MRUBY_CODE_TABLE.
+ * The offset of the command is that of the row of the kind in code of the
+ * location configuration, and its post the form. Records the kind and the
+ * form in uses of the main configuration, and a filter directive sets the
+ * filter handler of its location.
+ */
+static char *ngx_http_mruby_handler_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = conf;
+  code_type_t form = NGX_MRB_CODE_FORM_OF(cmd);
+  ngx_uint_t kind = (cmd->offset - offsetof(ngx_http_mruby_loc_conf_t, code)) / sizeof(mlcf->code[0]);
+  char *rv;
 
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
+  /* mmcf->state is initialized in ngx_http_mruby_create_main_conf() */
   mlcf->state = mmcf->state;
 
-  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->post_read_code, __func__);
-}
-
-static char *ngx_http_mruby_server_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->server_rewrite_code, __func__);
-}
-
-static char *ngx_http_mruby_rewrite_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->rewrite_code, __func__);
-}
-
-static char *ngx_http_mruby_access_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->access_code, __func__);
-}
-
-static char *ngx_http_mruby_content_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->content_code, __func__);
-}
-
-static char *ngx_http_mruby_log_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  return ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->log_code, __func__);
-}
-
-static char *ngx_http_mruby_post_read_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->post_read_inline_code, __func__);
-}
-
-static char *ngx_http_mruby_server_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->server_rewrite_inline_code, __func__);
-}
-
-static char *ngx_http_mruby_rewrite_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->rewrite_inline_code, __func__);
-}
-
-static char *ngx_http_mruby_access_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->access_inline_code, __func__);
-}
-
-static char *ngx_http_mruby_content_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->content_inline_code, __func__);
-}
-
-static char *ngx_http_mruby_log_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  return ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->log_inline_code, __func__);
-}
-
-static char *ngx_http_mruby_body_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-  char *rc;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  rc = ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->body_filter_code, __func__);
-  if (rc != NGX_CONF_OK) {
-    return rc;
+  rv = ngx_mrb_code_set(cf, mmcf->state->mrb, &mlcf->code[kind][form], form, MODULE_NAME, __func__);
+  if (rv != NGX_CONF_OK) {
+    return rv;
   }
-  mmcf->enabled_body_filter = 1;
-  mmcf->enabled_header_filter = 1;
-  mlcf->body_filter_handler = cmd->post;
 
-  return NGX_CONF_OK;
-}
+  mmcf->uses[kind][form] = 1;
 
-static char *ngx_http_mruby_header_filter_phase(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-  char *rc;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  rc = ngx_http_mruby_initialize_code(cf, mlcf->state, &mlcf->header_filter_code, __func__);
-  if (rc != NGX_CONF_OK) {
-    return rc;
+  /*
+   * The later filter directive of a location sets the handler, as before 3.0.
+   * header_filter_handler is declared with one argument while its functions
+   * take two, so the pointer goes through void (*)(void), as it went through
+   * the void * of cmd->post before; section 2.4 of
+   * docs/proposals/core-alpha1.md gives the field the type of its functions.
+   */
+  if (kind == NGX_HTTP_MRUBY_CODE_HEADER_FILTER) {
+    mlcf->header_filter_handler =
+        (ngx_http_handler_pt)(void (*)(void))(form == NGX_MRB_CODE_TYPE_FILE
+                                                  ? ngx_http_mruby_header_filter_handler
+                                                  : ngx_http_mruby_header_filter_inline_handler);
+  } else if (kind == NGX_HTTP_MRUBY_CODE_BODY_FILTER) {
+    mlcf->body_filter_handler = form == NGX_MRB_CODE_TYPE_FILE ? ngx_http_mruby_body_filter_handler
+                                                               : ngx_http_mruby_body_filter_inline_handler;
   }
-  mmcf->enabled_header_filter = 1;
-  mlcf->header_filter_handler = cmd->post;
-
-  return NGX_CONF_OK;
-}
-
-static char *ngx_http_mruby_body_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-  char *rc;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  rc = ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->body_filter_inline_code, __func__);
-  if (rc != NGX_CONF_OK) {
-    return rc;
-  }
-  mmcf->enabled_body_filter = 1;
-  mmcf->enabled_header_filter = 1;
-  mlcf->body_filter_handler = cmd->post;
-
-  return NGX_CONF_OK;
-}
-
-static char *ngx_http_mruby_header_filter_inline(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = conf;
-  char *rc;
-
-  /* mmcf->state is initialized in ngx_http_mruby_preinit() */
-  mlcf->state = mmcf->state;
-
-  rc = ngx_http_mruby_initialize_inline_code(cf, mmcf->state, &mlcf->header_filter_inline_code, __func__);
-  if (rc != NGX_CONF_OK) {
-    return rc;
-  }
-  mmcf->enabled_header_filter = 1;
-  mlcf->header_filter_handler = cmd->post;
 
   return NGX_CONF_OK;
 }
@@ -1897,92 +1509,6 @@ static char *ngx_http_mruby_set_inline(ngx_conf_t *cf, ngx_command_t *cmd, void 
 // ngx_mruby mruby handler functions
 */
 
-#define NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(handler_name, _code, _kind)                                                \
-  static ngx_int_t ngx_http_mruby_##handler_name##_handler(ngx_http_request_t *r)                                      \
-  {                                                                                                                    \
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);                        \
-    ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);                          \
-    if (mmcf->state == NGX_CONF_UNSET_PTR) {                                                                           \
-      return NGX_DECLINED;                                                                                             \
-    }                                                                                                                  \
-    if (_code == NGX_CONF_UNSET_PTR) {                                                                                 \
-      return NGX_DECLINED;                                                                                             \
-    }                                                                                                                  \
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based " #handler_name " code: %s",           \
-                  _code->code.file);                                                                                   \
-    return ngx_mrb_run(r, mmcf->state, _code, mlcf->cached, NULL, _kind);                                              \
-  }
-
-NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(post_read, mlcf->post_read_code, NGX_HTTP_MRUBY_HANDLER_POST_READ)
-NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(server_rewrite, mlcf->server_rewrite_code, NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE)
-NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(rewrite, mlcf->rewrite_code, NGX_HTTP_MRUBY_HANDLER_REWRITE)
-NGX_MRUBY_DEFINE_METHOD_NGX_HANDLER(access, mlcf->access_code, NGX_HTTP_MRUBY_HANDLER_ACCESS)
-
-static ngx_int_t ngx_http_mruby_content_handler(ngx_http_request_t *r)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
-
-  ngx_mrb_code_t *code;
-  size_t root;
-  ngx_str_t path;
-  ngx_flag_t cached = mlcf->cached;
-
-  if (mlcf->add_handler) {
-    if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d request_file(%s) map failed", __FUNCTION__, __LINE__,
-                    path.data);
-      return NGX_ERROR;
-    }
-    if (access((const char *)path.data, F_OK) != 0) {
-      ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s:%d request_file(%s) not found", __FUNCTION__, __LINE__,
-                    path.data);
-      return NGX_HTTP_NOT_FOUND;
-    }
-    code = ngx_mrb_code_from_file(r->pool, &path);
-    if (code == NGX_CONF_UNSET_PTR) {
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d mrb_file(%s) open failed", __FUNCTION__, __LINE__,
-                    path.data);
-      return NGX_ERROR;
-    }
-    // mruby_add_handler makes this code from the request path, uncompiled, on
-    // every request, so it has to be compiled on every request. Run it as not
-    // cached, whatever mruby_cache the location sets: a cached run would skip
-    // the compile and pass a null proc to the fiber, which ends the worker.
-    cached = 0;
-  } else {
-    code = mlcf->content_code;
-  }
-  if (code == NGX_CONF_UNSET_PTR) {
-    return NGX_DECLINED;
-  }
-  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based content code: %s", code->code.file);
-  return ngx_mrb_run(r, mmcf->state, code, cached, NULL, NGX_HTTP_MRUBY_HANDLER_CONTENT);
-}
-
-#define NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(handler_name, _code, _kind)                                         \
-  static ngx_int_t ngx_http_mruby_##handler_name##_inline_handler(ngx_http_request_t *r)                               \
-  {                                                                                                                    \
-    ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);                        \
-    ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);                          \
-    if (mmcf->state == NGX_CONF_UNSET_PTR) {                                                                           \
-      return NGX_DECLINED;                                                                                             \
-    }                                                                                                                  \
-    if (_code == NGX_CONF_UNSET_PTR) {                                                                                 \
-      return NGX_DECLINED;                                                                                             \
-    }                                                                                                                  \
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline " #handler_name " code: %s",               \
-                  _code->code.string);                                                                                 \
-    return ngx_mrb_run(r, mmcf->state, _code, 1, NULL, _kind);                                                         \
-  }
-
-NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(post_read, mlcf->post_read_inline_code, NGX_HTTP_MRUBY_HANDLER_POST_READ)
-NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(server_rewrite, mlcf->server_rewrite_inline_code,
-                                           NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE)
-NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(rewrite, mlcf->rewrite_inline_code, NGX_HTTP_MRUBY_HANDLER_REWRITE)
-NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(access, mlcf->access_inline_code, NGX_HTTP_MRUBY_HANDLER_ACCESS)
-NGX_MRUBY_DEFINE_METHOD_NGX_INLINE_HANDLER(content, mlcf->content_inline_code, NGX_HTTP_MRUBY_HANDLER_CONTENT)
-
 /*
  * A log handler runs after the response was sent and before access_log
  * (ngx_http_mruby_handler_init). access_log and the later log handlers write
@@ -2005,30 +1531,108 @@ static ngx_int_t ngx_http_mruby_run_log_handler(ngx_http_request_t *r, ngx_mrb_s
   return rc;
 }
 
-static ngx_int_t ngx_http_mruby_log_handler(ngx_http_request_t *r)
+/*
+ * mruby_add_handler: the file handler of the content phase runs the file of
+ * the request path instead of the code of the location.
+ */
+static ngx_int_t ngx_http_mruby_run_add_handler(ngx_http_request_t *r, ngx_mrb_state_t *state)
+{
+  ngx_mrb_code_t *code;
+  size_t root;
+  ngx_str_t path;
+
+  if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d request_file(%s) map failed", __FUNCTION__, __LINE__,
+                  path.data);
+    return NGX_ERROR;
+  }
+  if (access((const char *)path.data, F_OK) != 0) {
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s:%d request_file(%s) not found", __FUNCTION__, __LINE__,
+                  path.data);
+    return NGX_HTTP_NOT_FOUND;
+  }
+  code = ngx_mrb_code_from_file(r->pool, &path);
+  if (code == NGX_CONF_UNSET_PTR) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d mrb_file(%s) open failed", __FUNCTION__, __LINE__,
+                  path.data);
+    return NGX_ERROR;
+  }
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based content code: %s", code->code.file);
+  // mruby_add_handler makes this code from the request path, uncompiled, on
+  // every request, so it has to be compiled on every request. Run it as not
+  // cached, whatever mruby_cache the location sets: a cached run would skip
+  // the compile and pass a null proc to the fiber, which ends the worker.
+  return ngx_mrb_run(r, state, code, 0, NULL, NGX_HTTP_MRUBY_HANDLER_CONTENT);
+}
+
+/*
+ * The body of the phase handlers of NGX_HTTP_MRUBY_CODE_TABLE, which call it
+ * with constants: the kind of the row (index for the code of the location,
+ * and kind for ngx_mrb_run), the form of the handler and the name of the row
+ * for the info line. The code of the file form runs with mruby_cache of the
+ * location, that of the inline form as cached. With mruby_add_handler, the
+ * file handler of the content phase runs the file of the request path
+ * (ngx_http_mruby_run_add_handler), and a log handler puts the status back
+ * (ngx_http_mruby_run_log_handler). A handler of a location without its
+ * code returns before it reads anything else, as the handlers written out
+ * before the table did: the callgrind comparison counts these returns in
+ * every request.
+ */
+static ngx_inline ngx_int_t ngx_http_mruby_phase_handler(ngx_http_request_t *r, ngx_uint_t index, code_type_t form,
+                                                         ngx_http_mruby_handler_kind_t kind, const char *name)
 {
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+  ngx_mrb_code_t *code;
 
-  if (mmcf->state == NGX_CONF_UNSET_PTR || mlcf->log_code == NGX_CONF_UNSET_PTR) {
+  if (mmcf->state == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
   }
-  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based log code: %s", mlcf->log_code->code.file);
-  return ngx_http_mruby_run_log_handler(r, mmcf->state, mlcf->log_code, mlcf->cached);
-}
 
-static ngx_int_t ngx_http_mruby_log_inline_handler(ngx_http_request_t *r)
-{
-  ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
-  ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
+  if (kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && form == NGX_MRB_CODE_TYPE_FILE && mlcf->add_handler) {
+    return ngx_http_mruby_run_add_handler(r, mmcf->state);
+  }
 
-  if (mmcf->state == NGX_CONF_UNSET_PTR || mlcf->log_inline_code == NGX_CONF_UNSET_PTR) {
+  code = mlcf->code[index][form];
+  if (code == NGX_CONF_UNSET_PTR) {
     return NGX_DECLINED;
   }
-  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline log code: %s",
-                mlcf->log_inline_code->code.string);
-  return ngx_http_mruby_run_log_handler(r, mmcf->state, mlcf->log_inline_code, 1);
+
+  if (form == NGX_MRB_CODE_TYPE_FILE) {
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based %s code: %s", name, code->code.file);
+  } else {
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline %s code: %s", name, code->code.string);
+  }
+
+  /*
+   * The code is read again from the location configuration after the log
+   * line, as the handlers written out before the table did, rather than kept
+   * in code: the file form also needs mlcf for mruby_cache there, and on
+   * x86-64 keeping both across the call to the log took one more saved
+   * register in the entry and the exit of every file handler, also of those
+   * that return NGX_DECLINED above (4 instructions each, in every request).
+   */
+  if (kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
+    return ngx_http_mruby_run_log_handler(r, mmcf->state, mlcf->code[index][form],
+                                          form == NGX_MRB_CODE_TYPE_FILE ? mlcf->cached : 1);
+  }
+  return ngx_mrb_run(r, mmcf->state, mlcf->code[index][form], form == NGX_MRB_CODE_TYPE_FILE ? mlcf->cached : 1,
+                     NULL, kind);
 }
+
+#define NGX_HTTP_MRUBY_DEFINE_HANDLERS(KIND, name, ...)                                                                \
+  static ngx_int_t ngx_http_mruby_##name##_handler(ngx_http_request_t *r)                                              \
+  {                                                                                                                    \
+    return ngx_http_mruby_phase_handler(r, NGX_HTTP_MRUBY_CODE_##KIND, NGX_MRB_CODE_TYPE_FILE,                         \
+                                        NGX_HTTP_MRUBY_HANDLER_##KIND, #name);                                         \
+  }                                                                                                                    \
+  static ngx_int_t ngx_http_mruby_##name##_inline_handler(ngx_http_request_t *r)                                       \
+  {                                                                                                                    \
+    return ngx_http_mruby_phase_handler(r, NGX_HTTP_MRUBY_CODE_##KIND, NGX_MRB_CODE_TYPE_STRING,                       \
+                                        NGX_HTTP_MRUBY_HANDLER_##KIND, #name);                                         \
+  }
+
+NGX_HTTP_MRUBY_CODE_TABLE(NGX_HTTP_MRUBY_TABLE_SKIP, NGX_HTTP_MRUBY_DEFINE_HANDLERS, NGX_HTTP_MRUBY_TABLE_SKIP)
 
 #if defined(NDK) && NDK
 static ngx_int_t ngx_http_mruby_set_handler(ngx_http_request_t *r, ngx_str_t *val, ngx_http_variable_value_t *v,
@@ -2097,6 +1701,7 @@ static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r,
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_ctx_t *ctx = ngx_mrb_http_get_module_ctx(NULL, r);
   ngx_http_mruby_ctx_t *next;
+  ngx_mrb_code_t *code;
 
   ngx_int_t rc;
 
@@ -2121,17 +1726,15 @@ static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r,
 
   r->connection->buffered &= ~0x08;
 
+  code = mlcf->code[NGX_HTTP_MRUBY_CODE_BODY_FILTER][type];
   if (type == NGX_MRB_CODE_TYPE_FILE) {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby file-based body_filter_handler code: %s",
-                  mlcf->body_filter_code->code.file);
-    rc = ngx_mrb_run(r, mmcf->state, mlcf->body_filter_code, mlcf->cached, NULL, NGX_HTTP_MRUBY_HANDLER_BODY_FILTER);
+                  code->code.file);
   } else {
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline body_filter_inline_handler code: %s",
-                  mlcf->body_filter_inline_code->code.string);
-
-    rc = ngx_mrb_run(r, mmcf->state, mlcf->body_filter_inline_code, mlcf->cached, NULL,
-                     NGX_HTTP_MRUBY_HANDLER_BODY_FILTER);
+                  code->code.string);
   }
+  rc = ngx_mrb_run(r, mmcf->state, code, mlcf->cached, NULL, NGX_HTTP_MRUBY_HANDLER_BODY_FILTER);
 
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
@@ -2214,7 +1817,8 @@ static ngx_int_t ngx_http_mruby_header_filter_handler(ngx_http_request_t *r, ngx
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
-  rc = ngx_mrb_run(r, mmcf->state, mlcf->header_filter_code, mlcf->cached, NULL, NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER);
+  rc = ngx_mrb_run(r, mmcf->state, mlcf->code[NGX_HTTP_MRUBY_CODE_HEADER_FILTER][NGX_MRB_CODE_TYPE_FILE],
+                   mlcf->cached, NULL, NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
   }
@@ -2228,8 +1832,8 @@ static ngx_int_t ngx_http_mruby_header_filter_inline_handler(ngx_http_request_t 
   ngx_http_mruby_main_conf_t *mmcf = ngx_http_get_module_main_conf(r, ngx_http_mruby_module);
   ngx_http_mruby_loc_conf_t *mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
-  rc = ngx_mrb_run(r, mmcf->state, mlcf->header_filter_inline_code, mlcf->cached, NULL,
-                   NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER);
+  rc = ngx_mrb_run(r, mmcf->state, mlcf->code[NGX_HTTP_MRUBY_CODE_HEADER_FILTER][NGX_MRB_CODE_TYPE_STRING],
+                   mlcf->cached, NULL, NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
   }
