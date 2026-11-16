@@ -96,6 +96,13 @@
   `ngx_http_mruby_state_reinit_from_file` and `ngx_mrb_code_t`, which are
   not on `next`, is not brought in; the test of `master` comes to `next`
   and runs on `next`'s code. `MODULE_VERSION` of `next` stays `3.0.0`.
+- The advisory
+  [GHSA-2hc3-r8g9-9f9x](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-2hc3-r8g9-9f9x)
+  (Low, 2.7.9 and earlier, patched in 2.7.10) was published on 2026-11-16
+  at 18:14 JST. It is the shared file handler above, fixed on `master` by
+  `8bfe5f987`; on `next`, the GC root slot of #825 keeps the recompiled
+  proc, as the previous item says. `docs/releases/v2.7.10.md` and `.ja.md`
+  at `8bfe5f987` do not name it.
 - [#825](https://github.com/matsumotory/ngx_mruby/pull/825) (`next`,
   merged on 2026-11-16 at 18:03 JST) moves the code of a directive (`ngx_mrb_code_t`), its
   compile and the reload of a handler file without `cache`, which the http
