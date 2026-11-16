@@ -491,18 +491,27 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
 {
   ngx_mrb_rputs_chain_list_t *chain = NULL;
   ngx_http_mruby_ctx_t *ctx;
+  ngx_mrb_exec_t *exec;
+  ngx_http_request_t *r;
 
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
   mrb_int status = NGX_HTTP_OK;
   mrb_get_args(mrb, "i", &status);
-  ngx_http_mrb_fiber_after_redirect(r);
+  // A status changes the head of the response (ngx_http_mrb_response_head);
+  // a return code below 0, such as Nginx::DECLINED, only the result of the
+  // handler, in every handler of the request
+  exec = ngx_mrb_exec_require(mrb, status >= 0 ? NGX_MRB_EXEC_HTTP_RESPONSE_HEAD : NGX_MRB_EXEC_HTTP_REQUEST, "Nginx.");
+  r = exec->on;
+  if (status >= 0 && r->header_sent) {
+    ngx_mrb_exec_raise_after(mrb, "Nginx.", "the response header is sent");
+  }
+  ngx_http_mrb_fiber_after_redirect(exec);
   // A return code below 0, such as Nginx::DECLINED, is the result of the
   // handler only (below), not the status of the response
   if (status >= 0) {
     r->headers_out.status = status;
     // as the code gave it, for output that follows (the 500 below is the
     // result of a handler without output)
-    ngx_http_mrb_fiber_set_status(r, (ngx_int_t)status);
+    ngx_http_mrb_fiber_set_status(exec, (ngx_int_t)status);
   }
 
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
@@ -517,7 +526,7 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
   // status stays 200 there. The other handlers and subrequests answer 500, as
   // the 2.x line does.
   if (status >= 0 && r->headers_out.status == NGX_HTTP_OK &&
-      !(ctx->handler_kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && r == r->main)) {
+      !(exec->kind == NGX_HTTP_MRUBY_HANDLER_CONTENT && r == r->main)) {
     if (chain == NULL) {
       r->headers_out.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
       ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -529,7 +538,7 @@ static mrb_value ngx_mrb_send_header(mrb_state *mrb, mrb_value self)
 
   // The result of the handler that runs now; a return code below 0, such as
   // Nginx::DECLINED, is not an HTTP status
-  ngx_http_mrb_fiber_set_result(r, status < 0 ? (ngx_int_t)status : (ngx_int_t)r->headers_out.status);
+  ngx_http_mrb_fiber_set_result(exec, status < 0 ? (ngx_int_t)status : (ngx_int_t)r->headers_out.status);
 
   return self;
 }
@@ -543,7 +552,10 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
   u_char *str;
   ngx_str_t ns;
 
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  // a log handler, a header filter and an mruby_set handler have no output
+  // of their own (section 2.1 of docs/proposals/core-alpha1.md)
+  ngx_mrb_exec_t *exec = ngx_mrb_exec_require(mrb, NGX_MRB_EXEC_HTTP_OUTPUT, "Nginx.");
+  ngx_http_request_t *r = exec->on;
   ctx = ngx_mrb_http_get_module_ctx(mrb, r);
 
   mrb_get_args(mrb, "o", &argv);
@@ -552,12 +564,6 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
   // raises the exception of the conversion (TypeError for the last)
   if (!ngx_mrb_var_to_string(mrb, argv, &argv)) {
     mrb_exc_raise(mrb, argv);
-  }
-
-  // A log handler can still convert its argument and run the rest of its
-  // script, but it cannot add to the body or length of the response.
-  if (ctx->handler_kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
-    return self;
   }
 
   if (with_lf) {
@@ -570,7 +576,7 @@ static mrb_value ngx_mrb_rputs_inner(mrb_state *mrb, mrb_value self, int with_lf
   if (ns.len == 0) {
     return self;
   }
-  ngx_http_mrb_fiber_after_redirect(r);
+  ngx_http_mrb_fiber_after_redirect(exec);
 
   if (ctx->rputs_chain == NULL) {
     chain = ngx_pcalloc(r->pool, sizeof(ngx_mrb_rputs_chain_list_t));
@@ -631,9 +637,9 @@ static mrb_value ngx_mrb_echo(mrb_state *mrb, mrb_value self)
 
 static mrb_value ngx_mrb_errlogger(mrb_state *mrb, mrb_value self)
 {
-  ngx_http_request_t *r = ngx_mrb_get_request();
+  ngx_mrb_exec_t *exec = ngx_mrb_exec_require(mrb, NGX_MRB_EXEC_ANY, "Nginx.");
   /* outside of a request (init_worker, exit_worker, SSL handshake) log to the cycle's log */
-  ngx_log_t *log = (r != NULL) ? r->connection->log : ngx_cycle->log;
+  ngx_log_t *log = (exec->log != NULL) ? exec->log : ngx_cycle->log;
 
   return ngx_mrb_log_method(mrb, self, log, MODULE_NAME, __func__);
 }
@@ -675,7 +681,8 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
   ngx_str_t ns;
   ngx_table_elt_t *location;
 
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  ngx_mrb_exec_t *exec = ngx_mrb_exec_require(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx.");
+  ngx_http_request_t *r = exec->on;
   // one or two arguments, one variable for each; a third raises ArgumentError
   argc = mrb_get_args(mrb, "o|o", &uri, &code);
 
@@ -735,25 +742,25 @@ static mrb_value ngx_mrb_redirect(mrb_state *mrb, mrb_value self)
     // set location and response code for headers
     r->headers_out.location = location;
     r->headers_out.status = rc;
-    ngx_http_mrb_fiber_set_result(r, rc);
+    ngx_http_mrb_fiber_set_result(exec, rc);
     // output after it keeps its handling: a status set before with
     // Nginx.return does not apply to it
-    ngx_http_mrb_fiber_set_status(r, 0);
+    ngx_http_mrb_fiber_set_status(exec, 0);
     // after a local redirect that waits for the end of the handler, this
     // status is not sent either
-    ngx_http_mrb_fiber_after_redirect(r);
+    ngx_http_mrb_fiber_after_redirect(exec);
   } else {
     // A log handler runs before access_log and the other log-phase handlers
     // of the same request, which run after it, so it makes no internal
     // redirect (decision 1 of docs/proposals/core-alpha1.md).
-    if (ngx_mrb_http_get_module_ctx(mrb, r)->handler_kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
+    if (exec->kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
       mrb_raise(mrb, E_RUNTIME_ERROR, "Nginx.redirect with a local URI is not available in a log handler");
     }
 
     // A phase handler redirects when it ends, after its code: the target's
     // handlers then run outside the fiber of this one, and one handler
     // answers the request (Q2 of docs/proposals/core-stabilization.md)
-    switch (ngx_http_mrb_fiber_defer_redirect(r, &ns)) {
+    switch (ngx_http_mrb_fiber_defer_redirect(exec, &ns)) {
     case NGX_OK:
       break;
     case NGX_ERROR:

@@ -49,27 +49,28 @@ static ngx_mrb_fiber_outcome_t ngx_stream_mrb_run_fiber(mrb_state *mrb, mrb_valu
 {
   ngx_stream_mrb_fiber_t *f = (ngx_stream_mrb_fiber_t *)fiber_proc;
   ngx_stream_mruby_ctx_t *ctx;
-  ngx_stream_mruby_internal_ctx_t *ictx;
+  ngx_stream_session_t *s;
   ngx_mrb_fiber_outcome_t outcome;
 
-  ictx = mrb->ud;
+  // the session of the execution context that ngx_stream_mruby_handler pushed
+  s = ngx_mrb_exec_current(mrb)->on;
   // a failed allocation is logged, not raised: the caller may run outside
   // Ruby code (mrb->jmp is NULL), where a raise would abort the process
-  ctx = ngx_stream_mrb_get_module_ctx(NULL, ictx->s);
+  ctx = ngx_stream_mrb_get_module_ctx(NULL, s);
   if (ctx == NULL) {
     return NGX_MRB_FIBER_RAISED;
   }
   ctx->fiber_proc = fiber_proc;
 
-  outcome = ngx_mrb_fiber_resume(&f->base, NULL, result, ngx_stream_mrb_fiber_log_raise, ictx->s);
+  outcome = ngx_mrb_fiber_resume(&f->base, NULL, result, ngx_stream_mrb_fiber_log_raise, s);
   if (outcome == NGX_MRB_FIBER_REFUSED) {
     // the record has ended: the session ends as after an exception
-    ngx_log_error(NGX_LOG_ERR, ictx->s->connection->log, 0,
+    ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
                   "%s ERROR %s:%d: the fiber is not resumed: its handler has ended", MODULE_NAME, __func__, __LINE__);
     return NGX_MRB_FIBER_RAISED;
   }
   if (outcome == NGX_MRB_FIBER_RAISED) {
-    ngx_log_error(NGX_LOG_NOTICE, ictx->s->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
+    ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0, "%s NOTICE %s:%d: fiber got the raise, leave the fiber",
                   MODULE_NAME, __func__, __LINE__);
   }
 

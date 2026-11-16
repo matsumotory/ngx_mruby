@@ -74,7 +74,9 @@ sh apply-clang-format
 
 ### 再開
 
-`ngx_mrb_fiber_resume`は、ファイバーを始めるか再開し、ファイバーが待つか、返ったか、例外を出したかを返します。ほかのmrubyの呼び出しが動いているとき（`mrb->jmp`がセットされているとき）は、`mrb_protect_error`を通して再開します。レコードが`DONE`、`FAILED`、`CANCELLED`のときは、ファイバーに触れずに断ります。ファイバーが例外を出したときは、そのリクエストかセッションのために例外を1回だけログに書き、返る前に`mrb->exc`を消します。ワーカーのすべてのリクエストが`mrb_state`を共有するためです。ファイバーが動く間のいまのリクエストかセッションは、呼び出し側が設定します。HTTPでは`ngx_mrb_run`、`ngx_mrb_post_fiber`、`ngx_http_mrb_resume_set`が`ngx_mrb_push_request`で設定し、streamでは`ngx_stream_mruby_handler`が`ictx->s`で設定します。プロトコルの部分である`ngx_mrb_run_fiber`と`ngx_stream_mrb_run_fiber`は、`ctx->fiber_proc`を設定し、HTTPではハンドラの種類と動いているレコード（`ngx_http_mrb_running`）も設定します。サブリクエストのレスポンスは、ファイバーの`Fiber.yield`の値として渡します。
+`ngx_mrb_fiber_resume`は、ファイバーを始めるか再開し、ファイバーが待つか、返ったか、例外を出したかを返します。ほかのmrubyの呼び出しが動いているとき（`mrb->jmp`がセットされているとき）は、`mrb_protect_error`を通して再開します。レコードが`DONE`、`FAILED`、`CANCELLED`のときは、ファイバーに触れずに断ります。ファイバーが例外を出したときは、そのリクエストかセッションのために例外を1回だけログに書き、返る前に`mrb->exc`を消します。ワーカーのすべてのリクエストが`mrb_state`を共有するためです。コードが動く間、呼び出し側は、リクエストかセッションの実行コンテキストをpushし、終わったら前のコンテキストに戻します。実行コンテキストは、`src/common/ngx_mruby_exec.h`の`ngx_mrb_exec_t`で、stateの`mrb->ud`からたどります。HTTPでは`ngx_mrb_run`、`ngx_mrb_post_fiber`、`ngx_http_mrb_resume_set`が、streamでは`ngx_stream_mruby_handler`がpushします。プロトコルの部分である`ngx_mrb_run_fiber`と`ngx_stream_mrb_run_fiber`は、`ctx->fiber_proc`を設定します。HTTPの`ngx_mrb_run_fiber`は、ファイバーが動く間、ハンドラの種類とファイバーのレコードを持つコンテキストもpushします。サブリクエストのレスポンスは、ファイバーの`Fiber.yield`の値として渡します。Rubyのメソッドは`ngx_mrb_exec_require`でコンテキストを読み、メソッドが動かないハンドラでは例外を出します。どのメソッドがどのハンドラで動くかは、`docs/class_and_method/README.md`の「Where the methods work」にあります。
+
+httpモジュールとstreamモジュールの`mrb_state`の`mrb->ud`は、ngx_mrubyのものです。stateがある間、`mrb->ud`は実行コンテキストのholderを指します。そのため、`mrb->ud`に自分のポインタを置くmrbgemは、ビルドに加えられません。2.xでこうなっていたのは、streamモジュールのstateだけでした。httpモジュールは、SSLのハンドシェイクのハンドラとserver contextのコードが動く間だけ、`mrb->ud`を設定していました。pushしたコンテキストは、pushした関数のCのスタックにあります。ほかのmrubyの呼び出しの中でハンドラが動くことのある`ngx_mrb_run`は、`ngx_mrb_exec_run`を通して動きます。`ngx_mrb_exec_run`は、そこで割り当てが失敗したときも、コンテキストを元に戻します。決まりは`src/common/ngx_mruby_exec.h`にあります。
 
 ### HTTP：待ちとその終わり
 

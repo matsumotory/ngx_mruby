@@ -13,6 +13,8 @@
 
 #include <mruby.h>
 
+#include "../common/ngx_mruby_exec.h"
+
 #define NGX_HTTP_MRUBY_FILTER_START 0
 #define NGX_HTTP_MRUBY_FILTER_READ 1
 #define NGX_HTTP_MRUBY_FILTER_PROCESS 2
@@ -37,20 +39,46 @@ typedef struct ngx_mrb_rputs_chain_list_t {
  * before the request pool is destroyed, and a filter runs inside
  * ngx_http_send_header or ngx_http_output_filter, which return to their
  * caller, so Nginx::Async raises in those handlers and where no handler fiber
- * runs (NGX_HTTP_MRUBY_HANDLER_NONE, the value of a new context).
+ * runs. The kinds are those of the execution context
+ * (src/common/ngx_mruby_exec.h), which ngx_mrb_run pushes while the code of
+ * a handler runs.
  */
-typedef enum {
-  NGX_HTTP_MRUBY_HANDLER_NONE = 0,
-  NGX_HTTP_MRUBY_HANDLER_SET,
-  NGX_HTTP_MRUBY_HANDLER_POST_READ,
-  NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE,
-  NGX_HTTP_MRUBY_HANDLER_REWRITE,
-  NGX_HTTP_MRUBY_HANDLER_ACCESS,
-  NGX_HTTP_MRUBY_HANDLER_CONTENT,
-  NGX_HTTP_MRUBY_HANDLER_LOG,
-  NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER,
-  NGX_HTTP_MRUBY_HANDLER_BODY_FILTER
-} ngx_http_mruby_handler_kind_t;
+typedef ngx_mrb_exec_kind_t ngx_http_mruby_handler_kind_t;
+
+#define NGX_HTTP_MRUBY_HANDLER_NONE NGX_MRB_EXEC_NONE
+#define NGX_HTTP_MRUBY_HANDLER_SET NGX_MRB_EXEC_HTTP_SET
+#define NGX_HTTP_MRUBY_HANDLER_POST_READ NGX_MRB_EXEC_HTTP_POST_READ
+#define NGX_HTTP_MRUBY_HANDLER_SERVER_REWRITE NGX_MRB_EXEC_HTTP_SERVER_REWRITE
+#define NGX_HTTP_MRUBY_HANDLER_REWRITE NGX_MRB_EXEC_HTTP_REWRITE
+#define NGX_HTTP_MRUBY_HANDLER_ACCESS NGX_MRB_EXEC_HTTP_ACCESS
+#define NGX_HTTP_MRUBY_HANDLER_CONTENT NGX_MRB_EXEC_HTTP_CONTENT
+#define NGX_HTTP_MRUBY_HANDLER_LOG NGX_MRB_EXEC_HTTP_LOG
+#define NGX_HTTP_MRUBY_HANDLER_HEADER_FILTER NGX_MRB_EXEC_HTTP_HEADER_FILTER
+#define NGX_HTTP_MRUBY_HANDLER_BODY_FILTER NGX_MRB_EXEC_HTTP_BODY_FILTER
+
+/*
+ * The HTTP request of the execution context, or a RuntimeError when the
+ * handler that runs is not one of allowed (ngx_mrb_exec_require).
+ */
+static ngx_inline ngx_http_request_t *ngx_http_mrb_request(mrb_state *mrb, ngx_uint_t allowed, const char *name)
+{
+  return ngx_mrb_exec_require(mrb, allowed, name)->on;
+}
+
+/*
+ * The request, for a method that changes the head of the response: it raises
+ * in a log handler and after nginx has sent the response header, where the
+ * change would not reach the client.
+ */
+static ngx_inline ngx_http_request_t *ngx_http_mrb_response_head(mrb_state *mrb, const char *name)
+{
+  ngx_http_request_t *r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_RESPONSE_HEAD, name);
+
+  if (r->header_sent) {
+    ngx_mrb_exec_raise_after(mrb, name, "the response header is sent");
+  }
+  return r;
+}
 
 // the record of a handler's fiber (src/http/ngx_http_mruby_async.c)
 struct ngx_http_mrb_fiber_s;
@@ -75,9 +103,6 @@ typedef struct ngx_http_mruby_ctx_t {
   mrb_value *async_handler_result;
   ngx_str_t set_var_target;
   mrb_value *fiber_proc;
-  // the kind of the handler whose fiber runs now; ngx_mrb_run_fiber sets it
-  // for the time a fiber runs
-  ngx_http_mruby_handler_kind_t handler_kind;
   // the record of the handler of this request that waits for nginx to call
   // it again (ngx_http_mrb_fiber_wait_on_nginx), until that call resumes it
   struct ngx_http_mrb_fiber_s *wait;

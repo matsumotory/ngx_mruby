@@ -59,7 +59,8 @@ static ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_
 static ngx_int_t ngx_mrb_run_request(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
                                      ngx_flag_t cached, ngx_str_t *result, ngx_http_mruby_handler_kind_t kind);
 static ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
-static ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code);
+static ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code,
+                                  ngx_mrb_exec_kind_t kind, void *srv_conf);
 
 /*
 // ngx_mruby mruby state functions
@@ -357,6 +358,12 @@ static void *ngx_http_mruby_create_main_conf(ngx_conf_t *cf)
   if (rc == NGX_ERROR) {
     return NULL;
   }
+  // the holder of the execution context of the state, which lives as long as
+  // the state: the cleanup below closes the state before the pool is freed
+  mmcf->state->mrb->ud = ngx_pcalloc(cf->pool, sizeof(ngx_mrb_exec_holder_t));
+  if (mmcf->state->mrb->ud == NULL) {
+    return NULL;
+  }
   mmcf->var_class = mrb_class_get_under(mmcf->state->mrb, mrb_class_get(mmcf->state->mrb, "Nginx"), "Var");
 
   cln->handler = ngx_http_mruby_main_conf_cleanup;
@@ -606,7 +613,7 @@ static ngx_int_t ngx_http_mruby_init(ngx_conf_t *cf)
   }
 
   if (mmcf->init_code != NGX_CONF_UNSET_PTR) {
-    return ngx_mrb_run_conf(cf, mmcf->state, mmcf->init_code);
+    return ngx_mrb_run_conf(cf, mmcf->state, mmcf->init_code, NGX_MRB_EXEC_INIT, NULL);
   }
 
   return NGX_OK;
@@ -757,14 +764,13 @@ static void ngx_mrb_code_clean(ngx_http_request_t *r, ngx_mrb_state_t *state, ng
 ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
 {
   int ai = mrb_gc_arena_save(state->mrb);
-  ngx_http_request_t *prev_r;
+  ngx_mrb_exec_t exec = {NGX_MRB_EXEC_WORKER, NULL, NULL, NULL, NULL, NULL};
   ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
 
   /* init_worker and exit_worker code runs outside of any request */
-  prev_r = ngx_mrb_get_request();
-  ngx_mrb_push_request(NULL);
+  ngx_mrb_exec_push(state->mrb, &exec);
   mrb_toplevel_run(state->mrb, code->proc);
-  ngx_mrb_push_request(prev_r);
+  ngx_mrb_exec_pop(state->mrb, &exec);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
     ngx_mrb_log_exception(state->mrb, mrb_obj_value(state->mrb->exc), cycle->log, NULL, NGX_LOG_ERR,
@@ -777,11 +783,18 @@ ngx_int_t ngx_mrb_run_cycle(ngx_cycle_t *cycle, ngx_mrb_state_t *state, ngx_mrb_
   return NGX_OK;
 }
 
-ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code)
+// kind is NGX_MRB_EXEC_INIT for mruby_init, and
+// NGX_MRB_EXEC_HTTP_SERVER_CONTEXT for the server context code, with the
+// server configuration that Nginx::Server#add_listener adds to in srv_conf
+ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_mrb_exec_kind_t kind,
+                           void *srv_conf)
 {
   int ai = mrb_gc_arena_save(state->mrb);
+  ngx_mrb_exec_t exec = {kind, cf, srv_conf, NULL, NULL, NULL};
   ngx_log_error(NGX_LOG_INFO, cf->log, 0, "%s INFO %s:%d: mrb_run", MODULE_NAME, __func__, __LINE__);
+  ngx_mrb_exec_push(state->mrb, &exec);
   mrb_toplevel_run(state->mrb, code->proc);
+  ngx_mrb_exec_pop(state->mrb, &exec);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(state->mrb, code);
   if (state->mrb->exc) {
@@ -794,25 +807,72 @@ ngx_int_t ngx_mrb_run_conf(ngx_conf_t *cf, ngx_mrb_state_t *state, ngx_mrb_code_
   return NGX_OK;
 }
 
+// The arguments of ngx_mrb_run_request, for ngx_mrb_exec_run
+typedef struct {
+  ngx_http_request_t *r;
+  ngx_mrb_state_t *state;
+  ngx_mrb_code_t *code;
+  ngx_flag_t cached;
+  ngx_str_t *result;
+  ngx_http_mruby_handler_kind_t kind;
+} ngx_mrb_run_args_t;
+
+static ngx_int_t ngx_mrb_run_body(mrb_state *mrb, void *data)
+{
+  ngx_mrb_run_args_t *a = data;
+
+  return ngx_mrb_run_request(a->r, a->state, a->code, a->cached, a->result, a->kind);
+}
+
 /*
- * Request-scoped Ruby methods find their request through a process-wide
- * pointer. Set it only while the code runs and restore the previous value
- * afterwards, so that it never points to a finished request. Restoring
- * (rather than clearing) keeps it valid when a handler runs nested, for
- * example through an internal redirect from Ruby code.
+ * Request-scoped Ruby methods find their request and the kind of their
+ * handler in the execution context (src/common/ngx_mruby_exec.h). It is
+ * pushed only while the code runs and the previous one comes back
+ * afterwards, so that it never points to a finished request. Putting the
+ * previous one back (rather than none) keeps it valid when a handler runs
+ * nested, for example through an internal redirect from Ruby code. The fiber
+ * of the handler pushes a context of its own, with its record, while it runs
+ * (ngx_mrb_run_fiber). A handler runs inside another mruby call in the
+ * location of Nginx.redirect and as an output filter of such a handler, so
+ * the run goes through ngx_mrb_exec_run, which puts the context back also
+ * when an allocation fails there.
  */
 ngx_int_t ngx_mrb_run(ngx_http_request_t *r, ngx_mrb_state_t *state, ngx_mrb_code_t *code, ngx_flag_t cached,
                       ngx_str_t *result, ngx_http_mruby_handler_kind_t kind)
 {
-  ngx_int_t rc;
-  ngx_http_request_t *prev_r;
+  ngx_mrb_exec_t exec;
+  ngx_mrb_run_args_t args;
 
-  prev_r = ngx_mrb_get_request();
-  ngx_mrb_push_request(r);
-  rc = ngx_mrb_run_request(r, state, code, cached, result, kind);
-  ngx_mrb_push_request(prev_r);
+  if (state == NGX_CONF_UNSET_PTR) {
+    return NGX_DECLINED;
+  }
 
-  return rc;
+  exec.kind = kind;
+  exec.on = r;
+  exec.srv_conf = NULL;
+  exec.record = NULL;
+  exec.log = r->connection->log;
+
+  // Outside any mruby call (the handlers that nginx's phases and filters
+  // run), a raise that the region does not protect aborts the process:
+  // push and pop directly, as ngx_mrb_exec_run would, without its call
+  if (state->mrb->jmp == NULL) {
+    ngx_int_t rc;
+
+    ngx_mrb_exec_push(state->mrb, &exec);
+    rc = ngx_mrb_run_request(r, state, code, cached, result, kind);
+    ngx_mrb_exec_pop(state->mrb, &exec);
+    return rc;
+  }
+
+  args.r = r;
+  args.state = state;
+  args.code = code;
+  args.cached = cached;
+  args.result = result;
+  args.kind = kind;
+
+  return ngx_mrb_exec_run(state->mrb, &exec, ngx_mrb_run_body, &args);
 }
 
 /*
@@ -1574,14 +1634,10 @@ static char *ngx_http_mruby_server_config_inline(ngx_conf_t *cf, ngx_command_t *
 
   if (mscf->server_config_inline_code != NGX_CONF_UNSET_PTR) {
     ngx_int_t ret;
-    void *prev_ud;
     mscf->cf = cf;
     mscf->cscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_core_module);
-    prev_ud = mmcf->state->mrb->ud;
-    mmcf->state->mrb->ud = mscf;
-    ret = ngx_mrb_run_conf(cf, mmcf->state, mscf->server_config_inline_code);
+    ret = ngx_mrb_run_conf(cf, mmcf->state, mscf->server_config_inline_code, NGX_MRB_EXEC_HTTP_SERVER_CONTEXT, mscf);
     /* cf lives only while the configuration is parsed (see ngx_mrb_add_listener()) */
-    mmcf->state->mrb->ud = prev_ud;
     mscf->cf = NULL;
     mscf->cscf = NULL;
     if (ret != NGX_OK) {
@@ -2621,7 +2677,6 @@ static ngx_int_t ngx_http_mruby_ssl_handshake_run(ngx_http_mruby_srv_conf_t *msc
 {
   mrb_state *mrb = mscf->state->mrb;
   mrb_int ai;
-  ngx_http_request_t *prev_r;
   ngx_int_t rc = NGX_OK;
 
   ai = mrb_gc_arena_save(mrb);
@@ -2636,16 +2691,14 @@ static ngx_int_t ngx_http_mruby_ssl_handshake_run(ngx_http_mruby_srv_conf_t *msc
     }
   }
 
-  /* the handshake handler runs outside of any request */
-  prev_r = ngx_mrb_get_request();
-  ngx_mrb_push_request(NULL);
+  /* the handshake handler runs outside of any request, in the execution
+     context that ngx_http_mruby_ssl_cert_handler pushes */
   if (mscf->ssl_handshake_code != NGX_CONF_UNSET_PTR) {
     mrb_toplevel_run(mrb, mscf->ssl_handshake_code->proc);
   }
   if (mscf->ssl_handshake_inline_code != NGX_CONF_UNSET_PTR) {
     mrb_toplevel_run(mrb, mscf->ssl_handshake_inline_code->proc);
   }
-  ngx_mrb_push_request(prev_r);
 
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_code);
   NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, mscf->ssl_handshake_inline_code);
@@ -2668,7 +2721,7 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   ngx_http_mruby_srv_conf_t *mscf;
   ngx_str_t host;
   ngx_str_t cert_path, cert_key_path, cert_data, cert_key_data;
-  void *prev_ud;
+  ngx_mrb_exec_t exec;
   int rc;
 
   c = ngx_ssl_get_connection(ssl_conn);
@@ -2712,12 +2765,18 @@ static int ngx_http_mruby_ssl_cert_handler(ngx_ssl_conn_t *ssl_conn, void *data)
   ngx_http_mruby_ssl_handshake_state_clear(mscf);
   mscf->connection = c;
   mscf->servername = &host;
-  prev_ud = mscf->state->mrb->ud;
-  mscf->state->mrb->ud = mscf;
+  // Nginx::SSL finds the server configuration in the execution context;
+  // Nginx.log writes to the cycle's log, as before
+  exec.kind = NGX_MRB_EXEC_SSL_HANDSHAKE;
+  exec.on = c;
+  exec.srv_conf = mscf;
+  exec.record = NULL;
+  exec.log = NULL;
+  ngx_mrb_exec_push(mscf->state->mrb, &exec);
 
   rc = ngx_http_mruby_ssl_handshake_run(mscf, c);
 
-  mscf->state->mrb->ud = prev_ud;
+  ngx_mrb_exec_pop(mscf->state->mrb, &exec);
 
   /* the certificate strings stay valid until c->pool is destroyed */
   cert_path = mscf->cert_path;

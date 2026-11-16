@@ -7,7 +7,7 @@
 #include "ngx_http_mruby_var.h"
 
 #include "ngx_http_mruby_module.h"
-#include "ngx_http_mruby_request.h"
+#include "ngx_http_mruby_core.h"
 
 #include <ngx_log.h>
 #include <mruby/array.h>
@@ -60,7 +60,7 @@ static mrb_value ngx_mrb_var_get(mrb_state *mrb, ngx_http_request_t *r, ngx_str_
 
 mrb_value ngx_mrb_var_get_fixed(mrb_state *mrb, ngx_mrb_var_id_t id)
 {
-  ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
+  ngx_http_request_t *r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Var#");
 
   return ngx_mrb_var_get(mrb, r, &ngx_mrb_var_fixed[id].name, ngx_mrb_var_fixed[id].key);
 }
@@ -268,7 +268,7 @@ static mrb_value ngx_mrb_var_accessor(mrb_state *mrb, mrb_value self)
   mrb_int alen;
   ngx_http_request_t *r;
 
-  r = ngx_mrb_get_request_or_raise(mrb);
+  r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Var#");
 
   // "!": the arguments are read where they are, without a copy into an Array
   mrb_get_args(mrb, "*!", &a, &alen);
@@ -378,7 +378,7 @@ static mrb_value ngx_mrb_var_method_missing(mrb_state *mrb, mrb_value self)
   mrb_value result;
   ngx_http_request_t *r;
 
-  r = ngx_mrb_get_request_or_raise(mrb);
+  r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Var#");
 
   // get var symble from method_missing(sym, *args)
   mrb_get_args(mrb, "n*", &name, &a, &alen);
@@ -399,7 +399,7 @@ static mrb_value ngx_mrb_var_exist(mrb_state *mrb, mrb_value self)
   ngx_str_t ngx_name;
   ngx_uint_t key;
 
-  r = ngx_mrb_get_request_or_raise(mrb);
+  r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Var#");
 
   mrb_get_args(mrb, "s", &c_name, &m_len);
 
@@ -434,7 +434,7 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
     mrb_exc_raise(mrb, mrb_string_p(k) ? o : k);
   }
 
-  r = ngx_mrb_get_request_or_raise(mrb);
+  r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Var#");
 
   key.data = (u_char *)RSTRING_PTR(k);
   key.len = RSTRING_LEN(k);

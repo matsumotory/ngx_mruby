@@ -36,6 +36,47 @@ The ngx_mruby stream module is an optional nginx module to handle TCP and UDP st
 - [Nginx::Stream::Connection Class](#nginxstreamconnection-class)
 - [Nginx::Stream::Async Class](#nginxstreamasync-class)
 
+## Where the methods work
+
+Each method works in the handlers that the table names. Since 3.0.0, a
+method of the HTTP module called in another handler of a request raises a
+`RuntimeError` whose message names the method and the handler, for example
+`Nginx::Headers_out#[]= is not available in a log handler`; it does not
+return as if it had worked. The handler then ends as after any other
+exception. [Methods that have no effect in a handler raise a `RuntimeError` there](../releases/v3.0.0.md#methods-that-have-no-effect-in-a-handler-raise-a-runtimeerror-there-826)
+in the release notes of 3.0.0 lists what raised before.
+
+The handlers of a request are `mruby_set` and `mruby_set_code` (an mruby_set
+handler); the post_read, server rewrite, rewrite, access and content handlers
+(the phase handlers); the log handlers; and the output header and body filters.
+
+| Methods | Where they work | Elsewhere in a request |
+|---|---|---|
+| Reading the request: the getters of `Nginx::Request` (`uri`, `args`, `method`, `get_body` and the others), `Nginx::Headers_in#[]` and `#all`, `Nginx::Headers_out#[]` and `#all`, the reads of `Nginx::Var`, `Nginx::Connection`, the getters of `Nginx::Server` | every handler and filter of a request | none |
+| Changing the request: `Nginx::Request#uri=`, `#args=`, `#method=`, `#request_line=`, `Nginx::Headers_in#[]=` and `#delete` | an mruby_set handler and the phase handlers | log handlers, header filters and body filters raise |
+| Assigning variables: `Nginx::Var#NAME=`, `Nginx::Var#set` | every handler and filter of a request | none |
+| The head of the response: `Nginx::Headers_out#[]=` and `#delete`, `Nginx.status_code=`, `Nginx.return` and `Nginx.send_header` with a status (a value from 0 up), `Nginx::Request#content_type=` | every handler and filter of a request but a log handler, while nginx has not sent the response header | log handlers raise, and so do the other handlers once nginx has sent the response header (`... is not available after the response header is sent`) |
+| Output: `Nginx.rputs`, `Nginx.echo` | the phase handlers and body filters | mruby_set handlers, log handlers and header filters raise |
+| The body of a body filter: `Nginx::Filter#body`, `#body=`, `#output` | body filters | every other handler raises (`... can only be used in an output body filter`) |
+| `Nginx.redirect` | every handler and filter of a request; with a local URI, see [Nginx.redirect](#nginxredirecturl_or_internal_location-http_statusnginxhttp_moved_temporarily) | a local URI raises in log handlers |
+| `Nginx::Async.sleep`, `Nginx::Async::HTTP.sub_request` | see [Nginx::Async Class](#nginxasync-class) | log handlers, header filters and body filters raise; `sub_request` also in an mruby_set handler |
+| `Nginx.return` and `Nginx.send_header` with a return code below 0 (`Nginx::DECLINED`), `Nginx::Request#unparsed_uri=`, `#protocol=`, `Nginx::Upstream`, `Nginx::Async::HTTP.last_response`, `Nginx::Request#sub_request?` | every handler and filter of a request | none |
+| `Nginx.log`, `Nginx.errlogger`, the constants, `Nginx.module_name` and the other methods that need no request | everywhere | none |
+
+Outside a request, in the code of `mruby_init*`, `mruby_init_worker*`,
+`mruby_exit_worker*`, `mruby_ssl_handshake_handler*` and
+`mruby_server_context_handler_code`, the methods of the rows that need a
+request raise `this method can only be used while processing a request`, as
+since 2.7.1 (see [Nginx.errlogger](#nginxerrloggerlog_level-string)).
+`Nginx::SSL` works only in `mruby_ssl_handshake_handler*`, and
+`Nginx::Server#add_listener` only in `mruby_server_context_handler_code`.
+
+In the stream module, the methods of a session (`Nginx::Stream::Connection`
+and `Nginx::Stream::Async.sleep`) work in `mruby_stream` and
+`mruby_stream_code`, and raise `this method can only be used while
+processing a stream session` elsewhere; `Nginx::Stream.add_listener` works
+only in `mruby_stream_server_context_code`.
+
 ## rack-based-api mrbgem 
 
 The rack-based-api mrbgem is an optional bundled mrbgem.
@@ -213,10 +254,10 @@ end
 
 ### Nginx.rputs(string)
 
-Puts response text. In an HTTP log handler, `Nginx.rputs` and `Nginx.echo` convert their argument as usual and write no response bytes. Use `Nginx.log` to write to the error log.
+Puts response text. In an `mruby_set*` handler, a log handler and a header filter, `Nginx.rputs` and `Nginx.echo` raise a `RuntimeError` (`Nginx.rputs is not available in a log handler`) before they keep any text (since 3.0.0; on 2.x a log handler converted the argument and wrote no response bytes, and the other two added the text to the output of a later handler; see [Where the methods work](#where-the-methods-work)). Use `Nginx.log` to write to the error log.
 If a post-read, server rewrite, rewrite, access or content handler raises an exception afterwards, the request gets 500 and the text is not sent, unless the response was already started, for example by the location that `Nginx.redirect` ran.
 Since 2.7.1 this also holds for a handler that raises before it waits in `Nginx::Async`; in 2.7.0 such a handler sent the text with status 200.
-In an `mruby_set*` handler, a log handler or an output filter, the text is not sent after an exception either, and the request goes on as after an exception without output: `Content-Length` does not count the text (since 2.7.1).
+In an output body filter, the text is not sent after an exception either, and the request goes on as after an exception without output: `Content-Length` does not count the text (since 2.7.1).
 For an `mruby_set*` handler this holds when the code raises before it waits in `Nginx::Async.sleep`. When it raises after the sleep, the request gets 500, as described under [Nginx::Async#sleep](#nginxasyncsleepmsec). `Nginx::Async::HTTP.sub_request` raises a `RuntimeError` in an `mruby_set*` handler (since 3.0.0; on 2.x nginx went on without waiting for the variable, and an exception after the call left the client without a response; see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxasynchttpsub_request-raises-a-runtimeerror-in-an-mruby_set-handler-735)).
 To end a content handler early after writing the text, leave it with `return` instead of `raise`.
 
@@ -267,7 +308,7 @@ A handler that calls none of `Nginx.return`, `Nginx.send_header` and `Nginx.stat
 On 2.x, a handler without a result returned the value that an earlier handler of the request had set, for example the `Nginx::DECLINED` of a server rewrite handler that runs for every request, so that a content handler without output went on to the next content handler (see [the release notes of 3.0.0](../releases/v3.0.0.md#a-handler-that-sets-no-result-does-not-take-the-result-of-an-earlier-handler-715)).
 A rewrite or server rewrite handler without a result, or with `Nginx::OK`, goes on to the next phase handler, as with `Nginx::DECLINED` (since 3.0.0; on 2.x nginx ended the request without a response, see [the release notes of 3.0.0](../releases/v3.0.0.md#a-rewrite-or-server-rewrite-handler-that-ends-without-a-result-goes-on-to-the-next-phase-handler-720)).
 A return code below 0, such as `Nginx::DECLINED`, is the result of the handler only: it does not change the status of the response.
-In a log handler, the response is already sent, and the status that the method sets does not reach `access_log` or the later log-phase handlers: when the log handler ends, the status is put back to the one that was sent (since 3.0.0; see [mruby_log_handler](../directives/README.md#mruby_log_handler-and-mruby_log_handler_code)).
+With a status from 0 up, the method raises a `RuntimeError` in a log handler (`Nginx.return is not available in a log handler`) and in any handler that runs after nginx has sent the response header (`... is not available after the response header is sent`), where the status would not reach the client (since 3.0.0; see [Where the methods work](#where-the-methods-work)). A return code below 0 works there. The status of the response in the log phase stays the one that was sent: when a log handler ends, it is put back, also after an exception (see [mruby_log_handler](../directives/README.md#mruby_log_handler-and-mruby_log_handler_code)).
 
 A content handler that ends without output answers as nginx's `return 200;`
 does: with the status it set, 200 when it set none, `Content-Length: 0` and an
@@ -1502,8 +1543,7 @@ Nginx.rputs hout["X-Remove-Header"] #=> nil
 # Nginx::Filter Class
 
 Nginx::Filter class is designed to be used in the output body handlers.
-Before the body filter has read the body, `Nginx::Filter#body` returns an empty string: in a content handler, as before, and in a header filter (since 2.7.1).
-Outside an output body filter, `Nginx::Filter#body=` and `#output` raise a `RuntimeError` (since 2.7.1).
+Outside an output body filter, `Nginx::Filter#body`, `#body=` and `#output` raise a `RuntimeError` (`Nginx::Filter#body can only be used in an output body filter`): `#body=` and `#output` since 2.7.1, `#body` since 3.0.0 (it returned an empty string before the body filter had read the body, in a content handler and in a header filter).
 
 __Notice__: You can *NOT* use `Nginx.rputs` and `Nginx.echo` in the output header and body handlers
 (`mruby_output_header_filter`, `mruby_output_body_filter` and their `_code` forms).
@@ -1565,8 +1605,8 @@ HELLO
 ### Nginx::Filter#body -> string
 
 Returns the response body.
-In a header filter, which runs before the body has been read, it returns an empty string (since 2.7.1; 2.7.0 returned a string as long as `Content-Length` whose bytes were not the body, or raised an `ArgumentError` when the length was unknown or 10 MB or more).
-To learn the length there, call `Nginx::Var.new.sent_http_content_length`, which reads the variable.
+Outside an output body filter it raises a `RuntimeError` (since 3.0.0). In a header filter, which runs before the body has been read, it returned an empty string from 2.7.1 (2.7.0 returned a string as long as `Content-Length` whose bytes were not the body, or raised an `ArgumentError` when the length was unknown or 10 MB or more).
+To learn the length in a header filter, call `Nginx::Var.new.sent_http_content_length`, which reads the variable.
 
 ```ruby
 f = Nginx::Filter.new

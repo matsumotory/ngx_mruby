@@ -40,7 +40,8 @@ bw: nginx's write filter sends the body
   `--with-http_slice_module`.
 - The header filter reads and changes the status and the headers through
   `Nginx::Request` and `Nginx::Headers_out`. It runs before the body has
-  been read: there `Nginx::Filter#body` returns an empty string.
+  been read: there `Nginx::Filter#body` raises a `RuntimeError`, and so do
+  the methods that change the request and `Nginx.rputs`.
 - The body filter needs the length of the response. For a response with
   `Content-Length`, ngx_mruby collects the whole body into one buffer,
   runs the script once with it in `Nginx::Filter#body`, and sends what the

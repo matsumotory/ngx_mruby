@@ -82,9 +82,9 @@ t.assert('ngx_mruby - Filter#output', 'with an Nginx.rputs origin the client rec
   t.assert_equal '17', res["content-length"]
 end
 
-t.assert('ngx_mruby - Filter#body', 'outside a body filter returns an empty String') do
+t.assert('ngx_mruby - Filter#body', 'outside a body filter raises') do
   res = HttpRequest.new.get base(18112) + '/filter/body_in_content'
-  t.assert_equal '""', res["body"]
+  t.assert_equal 'RuntimeError', res["body"]
 end
 
 # Nginx::Upstream#keepalive_cache and keepalive_cache=
