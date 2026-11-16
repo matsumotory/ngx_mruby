@@ -12,14 +12,18 @@
 # The mode http_filter has what the configuration of test.sh cannot have
 # without changing every other case: an output filter in the http block, a
 # content handler that only mruby_add_handler uses, and a log handler in one
-# form only (test/t/cases/filter_inherit.rb).
+# form only (test/t/cases/filter_inherit.rb). The mode http_sendfile has
+# sendfile on and an error log at the debug level, which the log of the test
+# nginx shares with every other case, so that test/t/cases/filter_sendfile.rb
+# can tell from the lines of its own requests whether nginx sent a static
+# file with sendfile.
 #
-# Usage: ruby test/t/cases/_second_instance.rb http|http_filter|stream|stream_add_listener|stream_master
+# Usage: ruby test/t/cases/_second_instance.rb http|http_filter|http_sendfile|stream|stream_add_listener|stream_master
 #
 # NGINX_INSTALL_DIR names the nginx that test.sh installed. The second nginx
 # runs in the foreground, uses the prefix
 # NGINX_INSTALL_DIR/second_instance/MODE/ and listens on 127.0.0.1:18116 for
-# http and http_filter, on 127.0.0.1:12357 for the modes stream and stream_add_listener, and on
+# http, http_filter and http_sendfile, on 127.0.0.1:12357 for the modes stream and stream_add_listener, and on
 # 127.0.0.1:12385 to 12388 for stream_master. It runs as a single process,
 # except in stream_master, where it has a master process and one worker
 # process. The hook files are the copies of test/html in
@@ -33,6 +37,11 @@
 #           header X-Http-Filter and the body of GET /plain, of GET
 #           /add_handler_cache.rb and of GET /log, joined with "|"
 #   access_log  http_filter only: the lines of its access log, joined with "|"
+#   header_only, with_body  http_sendfile only: the status line, the value of
+#           the header X-Sendfile-Filter, the body without its last newline,
+#           and how many lines of error.log that the request added start
+#           with "sendfile: @", joined with "|"; GET of
+#           /header/filter_sendfile.txt and of /body/filter_sendfile.txt
 #   trace   stream only: the trace that the session code wrote to error.log
 #   add_listener  stream_add_listener only: what Nginx::Stream.add_listener
 #           did when the session code called it, as the code wrote it to
@@ -62,7 +71,7 @@ require 'socket'
 require 'fileutils'
 
 LIMIT = 30 # seconds for the start, for each exchange and for the stop
-PORTS = { 'http' => 18116, 'http_filter' => 18116, 'stream' => 12357, 'stream_add_listener' => 12357,
+PORTS = { 'http' => 18116, 'http_filter' => 18116, 'http_sendfile' => 18116, 'stream' => 12357, 'stream_add_listener' => 12357,
           'stream_master' => 12385 }.freeze
 
 HTTP_CONF = <<'CONF'
@@ -113,6 +122,35 @@ http {
         location = /log {
             mruby_log_handler_code 'Nginx::Var.new.filter_inherit_log = "from-ruby"';
             return 200 "log";
+        }
+    }
+}
+CONF
+
+# sendfile on, and a header filter in the server block, which each location
+# inherits. /header/ serves a static file with that header filter alone;
+# /body/ serves the same file with a body filter of its own as well. The
+# lines that start with "sendfile: @" are those that nginx's sendfile chain
+# writes at the debug level for each file buffer that it sends with
+# sendfile(), on Linux (ngx_linux_sendfile_chain.c) and on macOS
+# (ngx_darwin_sendfile_chain.c); a buffer that nginx has read into memory
+# gets none.
+HTTP_SENDFILE_CONF = <<'CONF'
+http {
+    access_log off;
+    sendfile on;
+
+    server {
+        listen 127.0.0.1:__PORT__;
+        mruby_output_header_filter_code 'Nginx::Request.new.headers_out["X-Sendfile-Filter"] = "ran"';
+
+        location /header/ {
+            alias __HTML__/;
+        }
+
+        location /body/ {
+            alias __HTML__/;
+            mruby_output_body_filter_code 'f = Nginx::Filter.new; f.body = f.body.upcase';
         }
     }
 }
@@ -230,15 +268,15 @@ def configuration(mode, install, prefix)
   html = File.join(install, 'html')
   port = PORTS.fetch(mode).to_s
   so = File.join(install, 'modules', 'ngx_http_mruby_module.so')
-  body = { 'http' => HTTP_CONF, 'http_filter' => HTTP_FILTER_CONF, 'stream' => STREAM_CONF,
-           'stream_master' => STREAM_MASTER_CONF }.fetch(mode, STREAM_ADD_LISTENER_CONF)
+  body = { 'http' => HTTP_CONF, 'http_filter' => HTTP_FILTER_CONF, 'http_sendfile' => HTTP_SENDFILE_CONF,
+           'stream' => STREAM_CONF, 'stream_master' => STREAM_MASTER_CONF }.fetch(mode, STREAM_ADD_LISTENER_CONF)
   [
     File.exist?(so) ? "load_module #{so};" : '',
     'daemon off;',
     mode == 'stream_master' ? 'master_process on;' : 'master_process off;',
     'worker_processes 1;',
     "pid #{prefix}nginx.pid;",
-    "error_log #{prefix}error.log notice;",
+    "error_log #{prefix}error.log #{mode == 'http_sendfile' ? 'debug' : 'notice'};",
     'events { worker_connections 64; }',
     body.gsub('__HTML__', html).gsub('__PORT__', port),
   ].join("\n")
@@ -334,6 +372,7 @@ class SecondInstance
   def observe
     return observe_master if @mode == 'stream_master'
     return observe_filter if @mode == 'http_filter'
+    return observe_sendfile if @mode == 'http_sendfile'
 
     if @mode == 'http'
       raw = exchange(@port, "GET /init_order HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n")
@@ -355,6 +394,24 @@ class SecondInstance
     end
     access = File.join(@prefix, 'access.log')
     @result['access_log'] = File.exist?(access) ? File.read(access).split("\n").join('|') : ''
+  end
+
+  # http_sendfile: one request at a time, each on a connection of its own
+  # that nginx closes after the response (HTTP/1.0), so the lines that
+  # error.log gained during the exchange are those of the request: nginx
+  # writes them before it closes the connection.
+  def observe_sendfile
+    log = File.join(@prefix, 'error.log')
+    { 'header_only' => '/header/filter_sendfile.txt', 'with_body' => '/body/filter_sendfile.txt' }.each do |key, path|
+      from = File.size(log)
+      raw = exchange(@port, "GET #{path} HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n")
+      added = File.binread(log)[from..].to_s
+      head, body = raw.split("\r\n\r\n", 2)
+      lines = head.to_s.split("\r\n")
+      header = lines.drop(1).map { |l| l.split(':', 2) }.find { |name, _| name.downcase == 'x-sendfile-filter' }
+      sent = added.split("\n").count { |l| l.include?(' sendfile: @') }
+      @result[key] = [lines[0].to_s, header ? header[1].strip : '', body.to_s.chomp, sent.to_s].join('|')
+    end
   end
 
   # stream_master: the sessions without a PROXY source address, one after
@@ -479,6 +536,6 @@ end
 
 instance = SecondInstance.new(mode)
 instance.run
-%w[error reply plain script log access_log trace add_listener pp_unknown pp_local pp_none pp_tcp4 pp_values wait_pp wait_plain started quit_seconds worker_signals stdout exit sanitizer].each do |key|
+%w[error reply plain script log access_log header_only with_body trace add_listener pp_unknown pp_local pp_none pp_tcp4 pp_values wait_pp wait_plain started quit_seconds worker_signals stdout exit sanitizer].each do |key|
   puts "#{key}=#{instance.result[key]}" if instance.result.key?(key)
 end
