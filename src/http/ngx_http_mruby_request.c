@@ -304,14 +304,18 @@ static ngx_int_t ngx_mrb_del_request_header(mrb_state *mrb, ngx_list_t *headers,
   u_char *key;
   size_t key_len;
   ngx_uint_t i;
-  ngx_list_part_t *part, *new;
+  ngx_list_part_t *part, *prev;
   ngx_table_elt_t *header;
   ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
 
   key_len = (size_t)mlen;
   key = ngx_pnalloc(r->pool, key_len);
+  if (key == NULL) {
+    return NGX_ERROR;
+  }
   ngx_memcpy(key, (u_char *)mkey, key_len);
 
+  prev = NULL;
   part = &headers->part;
   header = part->elts;
 
@@ -320,104 +324,51 @@ static ngx_int_t ngx_mrb_del_request_header(mrb_state *mrb, ngx_list_t *headers,
       if (part->next == NULL) {
         break;
       }
+      prev = part;
       part = part->next;
       header = part->elts;
       i = 0;
     }
 
-    if (ngx_strncasecmp(header[i].key.data, key, key_len) == 0) {
-      if (i == 0) {
-        // part->elts now points to the next element in the current part
-        part->elts = (char *)part->elts + headers->size;
-        // Decrement the amount of elements in the current part
-        part->nelts--;
-
-        // If this part doesn't have any more elements
-        if (part->nelts == 0) {
-          // Try to find the previous part
-          new = &headers->part;
-
-          // If our part is the first part
-          if (new == part) {
-            // If we don't have a next part
-            if (part->next == NULL) {
-              // Our element pointer is not valid, point it back where
-              // it is valid again
-              part->elts = (char *)part->elts - headers->size;
-            } else {
-              // The new first part is the next part
-              headers->part = *(part->next);
-            }
-
-            return NGX_OK;
-          }
-
-          // Find the previous part by iterating the linked list until
-          // we find our part or exit
-          while (new->next != part) {
-            if (new->next == NULL) {
-              return NGX_ERROR;
-            }
-            new = new->next;
-          }
-
-          // If our part is the last part
-          if (headers->last == part) {
-            // Set the last part to be the previous part
-            headers->last = new;
-          }
-
-          // Remove our part from the list
-          new->next = part->next;
-        }
-
-        return NGX_OK;
-
-      } else if (i == part->nelts - 1) {
-        // The last element in the part
-
-        // Decrement the element count;
-        part->nelts--;
-        // If this is the last part in the headers list
-        if (part == headers->last) {
-          // Decrement the header element count
-          headers->nalloc--;
-        }
-
-        return NGX_OK;
-      }
-
-      // Allocate some memory for our new part
-      new = ngx_palloc(r->pool, sizeof(ngx_list_part_t));
-      if (new == NULL) {
-        return NGX_ERROR;
-      }
-
-      // Insert a new part that contains everything after
-      // the header we want to get rid of
-      new->elts = &header[i + 1];
-      new->nelts = part->nelts - i - 1;
-
-      // Link the new part to the next part
-      new->next = part->next;
-
-      // The previous part only contains elements before the
-      // removed header
-      part->nelts = i;
-
-      // The next part to the previous part is the new part
-      part->next = new;
-
-      // If the previous part was the last one
-      if (part == headers->last) {
-        // Update the header list with the last part to be
-        // the new part
-        headers->last = new;
-
-        return NGX_OK;
-      }
-      return NGX_OK;
+    /* Compare the length before the bytes: neither the name to delete nor
+     * the stored key is NUL-terminated, so ngx_strncasecmp alone could read
+     * past a shorter key and could match a key that only shares its first
+     * key_len bytes. */
+    if (header[i].key.len != key_len || ngx_strncasecmp(header[i].key.data, key, key_len) != 0) {
+      continue;
     }
+
+    /* Remove element i by moving the rest of this part down over it. The
+     * elements stay contiguous from part->elts, so a later ngx_list_push
+     * still writes inside the part's allocation. The previous code split the
+     * part and left headers->last pointing inside a full array, and the next
+     * ngx_list_push then wrote one element past the end of that array. */
+    if (i + 1 < part->nelts) {
+      ngx_memmove(&header[i], &header[i + 1], (part->nelts - i - 1) * headers->size);
+    }
+    part->nelts--;
+
+    if (part->nelts == 0) {
+      if (part != &headers->part) {
+        /* Unlink an emptied part that is not the embedded first part, so
+         * neither the iteration nor ngx_list_push keeps an empty part. */
+        prev->next = part->next;
+        if (headers->last == part) {
+          headers->last = prev;
+        }
+      } else if (part->next != NULL) {
+        /* The first part is embedded in the list and cannot be unlinked.
+         * When it empties and a next part exists, the next part becomes the
+         * first; move headers->last with it when it pointed at that part, so
+         * a later ngx_list_push does not write into the detached part. */
+        if (headers->last == part->next) {
+          headers->last = &headers->part;
+        }
+        headers->part = *(part->next);
+      }
+    }
+
+    return NGX_OK;
   }
 
   return NGX_OK;
