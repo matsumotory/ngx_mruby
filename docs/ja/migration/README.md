@@ -7,10 +7,11 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
 ## 手順
 
 1. モジュールのビルドの方法を確かめます。[ビルド](#ビルド)の節を見てください。
-2. エントリーが影響するスクリプトを見つけて、書き換えます。[スクリプト](#スクリプト)の節を見てください。
-3. ログのパーサとアラートの設定を更新します。[ログの監視](#ログの監視)の節を見てください。
-4. mrubyのC APIを使うmrbgemやほかのCのコードをメンテナンスしているなら、そのコードを確かめます。[C拡張とmrbgems](#c拡張とmrbgems)の節を見てください。
-5. 結果を確かめます。[結果を確かめる](#結果を確かめる)の節を見てください。
+2. 3.0.0が断るディレクティブを見つけて、書き換えます。[設定](#設定)の節を見てください。
+3. エントリーが影響するスクリプトを見つけて、書き換えます。[スクリプト](#スクリプト)の節を見てください。
+4. ログのパーサとアラートの設定を更新します。[ログの監視](#ログの監視)の節を見てください。
+5. mrubyのC APIを使うmrbgemやほかのCのコードをメンテナンスしているなら、そのコードを確かめます。[C拡張とmrbgems](#c拡張とmrbgems)の節を見てください。
+6. 結果を確かめます。[結果を確かめる](#結果を確かめる)の節を見てください。
 
 ## ビルド
 
@@ -46,6 +47,16 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
   ```
 - `./configure --with-mruby-incdir`を使うなら、ディレクトリの一覧に`<mruby_root>/build/host/include`を加えてください。詳しくは[C拡張：`mruby.h`をインクルードするソースに、生成されたヘッダが必要になる](../../releases/v3.0.0.ja.md#c拡張mrubyhをインクルードするソースに生成されたヘッダが必要になる561)にあります。
 - 自前やサードパーティのmrbgemsを使っているなら、[C拡張とmrbgems](#c拡張とmrbgems)の節を見てください。
+
+## 設定
+
+- [1つのコンテキストに2回書いたstreamのフックを、`nginx -t`が断る](../../releases/v3.0.0.ja.md#1つのコンテキストに2回書いたstreamのフックをnginx--tが断る834)：各`stream {}`のブロックとその中の各`server {}`で、`mruby_stream`と`mruby_stream_code`を合わせて2つ以上書いていないかを探してください。各`stream {}`のブロックでは、`mruby_stream_init`と`mruby_stream_init_code`、`mruby_stream_init_worker`と`mruby_stream_init_worker_code`、`mruby_stream_exit_worker`と`mruby_stream_exit_worker_code`のそれぞれについても、2つ以上書いていないかを探してください。2.xでコードが動いていたのは後のディレクティブなので、それを残し、ほかを消してください。3.0.0のモジュールの`nginx -t`は、2つ目のディレクティブとその行を示します。
+
+  ```
+  nginx: [emerg] "mruby_stream_code" directive is duplicated in /etc/nginx/nginx.conf:42
+  ```
+
+  `stream {}`のブロックに1つ、`server {}`に1つ書いたディレクティブは、これまでどおり使えます。そのserverは、自分のコードを動かします。ファイルを読めないstreamのディレクティブの`mrb_string(...) load failed`の行に合わせたアラートは、`mrb_file(`にも合うようにしてください。そのような行は、HTTPのディレクティブと同じく`mrb_file(PATH) open failed`になりました。
 
 ## スクリプト
 

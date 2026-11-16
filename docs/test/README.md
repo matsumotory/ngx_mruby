@@ -1898,8 +1898,7 @@ including the repeated HTTP sleeps described above.
     that `ngx_mrb_gc_roots_add()` stored in a holder and
     `ngx_mrb_gc_roots_remove()` has not released, among them the compiled
     code of each directive, which stays in its slot until the state is
-    closed or a later stream directive replaces it
-    (`src/common/ngx_mruby_code.h`). Those of the http module
+    closed (`src/common/ngx_mruby_code.h`). Those of the http module
     and those of the stream module are counted together. Immediate
     values are not counted, because mruby does not register them. The value
     is negative when ngx_mruby released more than it kept.

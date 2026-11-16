@@ -611,6 +611,8 @@ Use [mruby_output_body_filter and mruby_output_header_filter](#mruby_output_body
 The stream module directives run Ruby for TCP and UDP sessions in the `stream {}` block, which has an mruby state of its own.
 nginx compiles the code of each directive once, when it reads the configuration.
 
+Each hook takes one directive in a context: the file and the inline form of a hook are the same hook. `nginx -t` refuses a second one with `"NAME" directive is duplicated`, as for the HTTP directives: `mruby_stream` and `mruby_stream_code` in one `server` or in the `stream` block, either of them twice, and both forms (or one form twice) of `mruby_stream_init`, `mruby_stream_init_worker` or `mruby_stream_exit_worker` in the `stream` block. One `mruby_stream` or `mruby_stream_code` in the `stream` block and one in a `server` are allowed: the one of the server is its handler. `mruby_stream_server_context_code` runs once per directive. Before 3.0.0, the later directive of a hook replaced the earlier one without a message.
+
 The code of `mruby_stream` and `mruby_stream_code` runs in the session's access phase. When a UDP handler waits in `Nginx::Stream::Async.sleep`, later datagrams of that session do not restart it or extend its current wait. Those later payloads are discarded, not queued for the phase after the code; the first datagram remains available. See [Nginx::Stream::Async#sleep](../class_and_method/README.md#nginxstreamasyncsleep) before using a wait in a UDP proxy.
 
 * [mruby_stream_init and mruby_stream_init_code](#mruby_stream_init-and-mruby_stream_init_code)
