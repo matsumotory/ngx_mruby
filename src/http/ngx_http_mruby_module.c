@@ -1604,11 +1604,20 @@ static ngx_inline ngx_int_t ngx_http_mruby_phase_handler(ngx_http_request_t *r, 
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "hooked mruby inline %s code: %s", name, code->code.string);
   }
 
+  /*
+   * The code is read again from the location configuration after the log
+   * line, as the handlers written out before the table did, rather than kept
+   * in code: the file form also needs mlcf for mruby_cache there, and on
+   * x86-64 keeping both across the call to the log took one more saved
+   * register in the entry and the exit of every file handler, also of those
+   * that return NGX_DECLINED above (4 instructions each, in every request).
+   */
   if (kind == NGX_HTTP_MRUBY_HANDLER_LOG) {
-    return ngx_http_mruby_run_log_handler(r, mmcf->state, code,
+    return ngx_http_mruby_run_log_handler(r, mmcf->state, mlcf->code[index][form],
                                           form == NGX_MRB_CODE_TYPE_FILE ? mlcf->cached : 1);
   }
-  return ngx_mrb_run(r, mmcf->state, code, form == NGX_MRB_CODE_TYPE_FILE ? mlcf->cached : 1, NULL, kind);
+  return ngx_mrb_run(r, mmcf->state, mlcf->code[index][form], form == NGX_MRB_CODE_TYPE_FILE ? mlcf->cached : 1,
+                     NULL, kind);
 }
 
 #define NGX_HTTP_MRUBY_DEFINE_HANDLERS(KIND, name, ...)                                                                \
