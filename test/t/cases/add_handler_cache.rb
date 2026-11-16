@@ -4,11 +4,11 @@
 # a cached run left the per-request code uncompiled and nginx terminated the
 # worker on a request to a script file under this location; now the script runs
 # and the worker stays up.
-# Config: test/conf/conf.d/98-add-handler-cache.conf (port 18117).
+# Config: test/conf/conf.d/98-add-handler-cache.conf (port 18120).
 
 t = SimpleTest.new "ngx_mruby test: mruby_add_handler on with mruby_cache on runs the script"
 
-ADD_HANDLER_CACHE_PORT = 18117
+ADD_HANDLER_CACHE_PORT = 18120
 
 # Sends GET path over HTTP/1.0 and returns the connection status and the body.
 def add_handler_cache_get(path)
