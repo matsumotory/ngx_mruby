@@ -3,7 +3,8 @@
 # blocks inherit those of the location, and a filter given in a location
 # replaces the one of the same kind above it (section 2.4 of
 # docs/proposals/core-alpha1.md).
-# Config: test/conf/conf.d/99-filter-inherit.conf (port 18108).
+# Config: test/conf/conf.d/99-filter-inherit.conf (port 18108), and the mode
+# http_filter of test/t/cases/_second_instance.rb (port 18116).
 #
 # A request is sent with HTTP/1.0, so nginx closes the connection after the
 # response and the body is what follows the header.
@@ -59,6 +60,27 @@ t.assert('filter inherit', 'a request that matches no location runs the header f
   t.assert_equal 'EOF', status
   t.assert_equal 'HTTP/1.1 404 Not Found', line
   t.assert_equal 'ran', fields['x-server-filter']
+end
+
+# A filter in the http block, a content handler that only mruby_add_handler
+# uses, and a log handler of one form only, in the second nginx
+# (test/t/cases/_second_instance.rb, mode http_filter, port 18116): the
+# nginx of test.sh cannot have them without changing every other case.
+# Postconfiguration adds a phase handler only where a directive uses it, so
+# without its record of mruby_add_handler the .rb file would be sent as a
+# static file, and the log handler would not run before access_log.
+t.assert('filter inherit', 'the second nginx: a filter in the http block, mruby_add_handler alone, one log handler') do
+  r = second_instance('http_filter')
+  if r['sanitizer']
+    puts File.read(File.join(ENV['NGINX_INSTALL_DIR'], 'second_instance', 'http_filter', 'error.log'))
+  end
+  t.assert_nil r['error']
+  t.assert_nil r['sanitizer']
+  t.assert_equal 'HTTP/1.1 200 OK|ran|plain', r['plain']
+  t.assert_equal 'HTTP/1.1 200 OK|ran|add_handler cache', r['script']
+  t.assert_equal 'HTTP/1.1 200 OK|ran|log', r['log']
+  t.assert_equal '/plain unset|/add_handler_cache.rb unset|/log from-ruby', r['access_log']
+  t.assert_equal 'exited 0', r['exit']
 end
 
 t.report
