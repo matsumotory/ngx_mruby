@@ -1401,12 +1401,15 @@ static char *ngx_http_mruby_handler_directive(ngx_conf_t *cf, ngx_command_t *cmd
   /*
    * The later filter directive of a location sets the handler, as before 3.0.
    * header_filter_handler is declared with one argument while its functions
-   * take two; section 2.4 of docs/proposals/core-alpha1.md gives it its type.
+   * take two, so the pointer goes through void (*)(void), as it went through
+   * the void * of cmd->post before; section 2.4 of
+   * docs/proposals/core-alpha1.md gives the field the type of its functions.
    */
   if (kind == NGX_HTTP_MRUBY_CODE_HEADER_FILTER) {
-    mlcf->header_filter_handler = (ngx_http_handler_pt)(form == NGX_MRB_CODE_TYPE_FILE
-                                                            ? ngx_http_mruby_header_filter_handler
-                                                            : ngx_http_mruby_header_filter_inline_handler);
+    mlcf->header_filter_handler =
+        (ngx_http_handler_pt)(void (*)(void))(form == NGX_MRB_CODE_TYPE_FILE
+                                                  ? ngx_http_mruby_header_filter_handler
+                                                  : ngx_http_mruby_header_filter_inline_handler);
   } else if (kind == NGX_HTTP_MRUBY_CODE_BODY_FILTER) {
     mlcf->body_filter_handler = form == NGX_MRB_CODE_TYPE_FILE ? ngx_http_mruby_body_filter_handler
                                                                : ngx_http_mruby_body_filter_inline_handler;

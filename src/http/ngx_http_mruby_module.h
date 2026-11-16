@@ -66,9 +66,9 @@ extern ngx_module_t ngx_http_mruby_module;
  * mruby_set and mruby_set_code (a list of codes per location), the SSL
  * handshake handler (one field per form in the server configuration) and
  * mruby_server_context_handler_code (run while nginx reads the
- * configuration) are written out in ngx_http_mruby_module.c. Every directive
- * with Ruby code sets its field with ngx_mrb_code_set, which refuses a field
- * that is set already.
+ * configuration) are written out in ngx_http_mruby_module.c. The rows, the
+ * SSL handshake handler and the server context code set their field with
+ * ngx_mrb_code_set, which refuses a field that is set already.
  */
 #define NGX_HTTP_MRUBY_LOC_CONTEXTS (NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF)
 
