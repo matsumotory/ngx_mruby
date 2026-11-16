@@ -32,6 +32,12 @@ typedef struct ngx_mrb_code_t {
   code_type_t code_type;
   int n;
   unsigned int cache;
+  // persistent is set for a code compiled while nginx reads the configuration
+  // (ngx_http_mruby_shared_state_compile), not the per-request code that
+  // mruby_add_handler makes. proc_registered is set while proc is kept from
+  // the GC with mrb_gc_register (ngx_http_mruby_state_reinit_from_file).
+  unsigned int persistent;
+  unsigned int proc_registered;
   struct RProc *proc;
   mrbc_context *ctx;
 } ngx_mrb_code_t;
