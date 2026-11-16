@@ -1,10 +1,16 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-16 (04:10 JST)
+## State as of 2026-11-16 (18:49 JST)
 
-- Heads: `master` is `22ef61915`, the merge of
-  [#827](https://github.com/matsumotory/ngx_mruby/pull/827) (2026-11-16
-  04:06 JST), after `69fd3b758`, the merge of
+- Heads: `master` is `2c7e833a0`, the merge of
+  [#831](https://github.com/matsumotory/ngx_mruby/pull/831) (2026-11-16
+  18:47 JST), below; before it, `8bfe5f987` (17:22 JST), a merge of two
+  commits for 2.7.10 (below), and the tag `v2.7.10`; before it,
+  `fc44a3cfe`, the merge of
+  [#829](https://github.com/matsumotory/ngx_mruby/pull/829) (15:57 JST),
+  and `22ef61915`, the merge of
+  [#827](https://github.com/matsumotory/ngx_mruby/pull/827) (04:06 JST),
+  after `69fd3b758`, the merge of
   [#824](https://github.com/matsumotory/ngx_mruby/pull/824) (02:09 JST),
   both below; before them, `a7800d865`, the merge of
   [#822](https://github.com/matsumotory/ngx_mruby/pull/822) (2026-11-15
@@ -20,16 +26,27 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `a7d7ea89a`, the merge of
-  [#823](https://github.com/matsumotory/ngx_mruby/pull/823) (2026-11-16
-  01:16 JST), which brought `master` at `a7800d865` into `next` and set
-  `MODULE_VERSION` of `next` to `3.0.0`. This entry is written in
-  [#828](https://github.com/matsumotory/ngx_mruby/pull/828), the open pull
-  request to `next` that merges `master` at `22ef61915` into `next`;
-  [#825](https://github.com/matsumotory/ngx_mruby/pull/825) and
-  [#826](https://github.com/matsumotory/ngx_mruby/pull/826) are open on
-  `next` as well and follow it. `v2.x` mirrors `master`. The latest published release is
-  2.7.9: the tag `v2.7.9` is on `a7800d865`, and
+  all below. `next` is `adc775ae7`, the merge of
+  [#825](https://github.com/matsumotory/ngx_mruby/pull/825) (2026-11-16
+  18:03 JST), after `25da9b050`, the merge of
+  [#826](https://github.com/matsumotory/ngx_mruby/pull/826) (13:52 JST),
+  and `a057df919`, the merge of
+  [#828](https://github.com/matsumotory/ngx_mruby/pull/828) (05:33 JST),
+  which brought `master` at `22ef61915` into `next`. This entry is written
+  in [#830](https://github.com/matsumotory/ngx_mruby/pull/830), the open
+  pull request to `next` that merges `master` at `2c7e833a0` into `next`.
+  `v2.x` mirrors `master`. The latest published release is 2.7.10: the
+  tag `v2.7.10` is on `8bfe5f987`, and
+  [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.10)
+  was published on 2026-11-16 at 17:46 JST, with the release notes
+  `docs/releases/v2.7.10.md` and `.ja.md`, in the form of "The GitHub
+  release" in `docs/releases/README.md`. Right after the release,
+  `site.yml` ran on `next`
+  ([run 43834045818](https://github.com/matsumotory/ngx_mruby/actions/runs/43834045818),
+  success), and the home page of ngx.mruby.org names v2.7.10
+  (`Latest release: v2.7.10`). The push of the tag ran the whole build
+  matrix ([run 43833989570](https://github.com/matsumotory/ngx_mruby/actions/runs/43833989570)):
+  17 cells and `ci-ok` passed. Before it, 2.7.9: the tag `v2.7.9` is on `a7800d865`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.9)
   was published on 2026-11-15 at 23:53 JST, with the release notes
   `docs/releases/v2.7.9.md` and `.ja.md` (#816, #819, #822). Its text
@@ -41,20 +58,70 @@
   instead). Right after the release, `site.yml` ran on `next`
   ([run 43726844028](https://github.com/matsumotory/ngx_mruby/actions/runs/43726844028), success: the build, the deploy and the check of the published site), and the home page of ngx.mruby.org names v2.7.9 (`Latest release: v2.7.9`). The push of the tag ran the whole build matrix
   ([run 43726820701](https://github.com/matsumotory/ngx_mruby/actions/runs/43726820701)): 17 cells and `ci-ok` passed.
-  2.7.10 (#827) is not published: its tag waits for the check of "Before
-  the tag" in `docs/releases/README.md` and for the owner's go-ahead for
-  the release.
-- [#825](https://github.com/matsumotory/ngx_mruby/pull/825) (base `next`;
-  its review and CI are done, and the session that coordinates the work
-  merges it) moves the code of a directive (`ngx_mrb_code_t`), its
+- The check before the 2.7.10 tag, recorded here because it needed no
+  pull request ("Before the tag" in `docs/releases/README.md`): the
+  release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
+  and the fix of a shared file handler recompiled by a location without
+  `mruby_cache` (below), with their tests under "Build and test
+  changes"; #824 changes documentation only. The callgrind comparison of
+  `v2.7.9` with the tree of `dd147ab83` has all 14 scenarios `ok`; the
+  largest change is `ruby_call_10`, from 36203 to 36214 Ir per request
+  without GC (+11, +0.03%). The two commits of that fix were merged into
+  `master` as `8bfe5f987` without a pull request that runs CI, so the
+  whole build matrix ran on `master` at `8bfe5f987` after the merge and
+  before the tag
+  ([run 43831182947](https://github.com/matsumotory/ngx_mruby/actions/runs/43831182947),
+  `gh workflow run test.yml --ref master`): 17 cells and
+  `ci-ok (manual)` passed, and the step "Check the valgrind reports" of
+  `build (1.31.8)` passed with `ERROR SUMMARY: 0 errors from 0 contexts`.
+  The release was published after that run.
+- [#829](https://github.com/matsumotory/ngx_mruby/pull/829) (`master`,
+  for 2.7.10): a location with `mruby_add_handler on` and `mruby_cache on`
+  ended the worker on a request to a script under it, because the code
+  that `mruby_add_handler` makes from the request path on every request
+  ran as cached and reached the fiber without a compiled proc. The content
+  handler now runs that code as not cached. Its test is
+  `test/t/cases/add_handler_cache.rb` (port 18120).
+- `8bfe5f987` (`master`, for 2.7.10; `ecf876042` and `dd147ab83`): a
+  file-based mruby handler shared by locations with different
+  `mruby_cache` settings (a server-level handler without the `cache`
+  keyword, inherited by a location with `mruby_cache on` and one without)
+  keeps its recompiled proc valid for the location that caches it;
+  before, that location could run a proc that was no longer valid.
+  `master` keeps the recompiled proc with `mrb_gc_register`. Its test is
+  `test/t/cases/shared_handler_cache.rb` (port 18121).
+- #830 brings both to `next`. The change of #829 to the content handler
+  merges as on `master`. For the shared handler, `next` keeps its own
+  code: since #825, `ngx_mrb_code_reload` in
+  `src/common/ngx_mruby_code.c` puts a recompiled proc in the GC root
+  slot of its code, so the change of `master` to
+  `ngx_http_mruby_state_reinit_from_file` and `ngx_mrb_code_t`, which are
+  not on `next`, is not brought in; the test of `master` comes to `next`
+  and runs on `next`'s code. `MODULE_VERSION` of `next` stays `3.0.0`.
+- The advisory
+  [GHSA-2hc3-r8g9-9f9x](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-2hc3-r8g9-9f9x)
+  (Low, 2.7.9 and earlier, patched in 2.7.10) was published on 2026-11-16
+  at 18:14 JST. It is the shared file handler above, fixed on `master` by
+  `8bfe5f987`; on `next`, the GC root slot of #825 keeps the recompiled
+  proc, as the previous item says.
+  [#831](https://github.com/matsumotory/ngx_mruby/pull/831) (`master`,
+  documentation) links it in the two entries of `docs/releases/v2.7.10.md`
+  and `.ja.md` on that fix, and on 2026-11-16 at 18:48 JST the English and
+  the Japanese parts of the text of the GitHub release v2.7.10 got the same
+  reference. #830 brings the two files to `next`.
+- [#825](https://github.com/matsumotory/ngx_mruby/pull/825) (`next`,
+  merged on 2026-11-16 at 18:03 JST) moves the code of a directive (`ngx_mrb_code_t`), its
   compile and the reload of a handler file without `cache`, which the http
   and the stream modules had as two copies, into
   `src/common/ngx_mruby_code.{h,c}`, the row of section 2.6 of
   [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
   The compiled proc is kept in a slot of the GC root holder until the
   `mrb_state` is closed, and a reload replaces it there. No behavior changes.
-  Its test is `test/t/cases/code_reload.rb` (port 18125). The PR body has
-  the state and the checks.
+  Its test is `test/t/cases/code_reload.rb` (port 18125).
+- [#826](https://github.com/matsumotory/ngx_mruby/pull/826) (`next`,
+  merged on 2026-11-16 at 13:52 JST): the execution context and the
+  phases of the Ruby API, the row of section 2.1 of
+  [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
 - The advisory
   [GHSA-8j8w-mcp5-xp3h](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-8j8w-mcp5-xp3h)
   (Low, patched in 2.7.8) was published on 2026-11-15 at 15:39
@@ -133,7 +200,7 @@
   `docs/releases/v2.7.10.md` and `.ja.md` (under "Fixes"; no behavior
   change), and `docs/directives/README.md` has a paragraph on SSI
   includes. `MODULE_VERSION` of `master` is `2.7.10`; on `next` it stays
-  `3.0.0`. #828 brings the fix to `next`, with the same condition in both
+  `3.0.0`. #828 brought the fix to `next`, with the same condition in both
   places of `src/http/`.
 - The check before the 2.7.9 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the pull
@@ -908,7 +975,7 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808), through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810), through `976015c48` (#812, #814, #813 and v2.7.8) in [#815](https://github.com/matsumotory/ngx_mruby/pull/815), through `11f80acfa` (#817 and #816) in [#818](https://github.com/matsumotory/ngx_mruby/pull/818), which also raised `worker_connections` of `test/conf/nginx.conf` from 200 to 1024, through `8f204e061` (#819) in [#820](https://github.com/matsumotory/ngx_mruby/pull/820)., and through `a7800d865` (#822) in [#823](https://github.com/matsumotory/ngx_mruby/pull/823), which also set `MODULE_VERSION` of `next` to `3.0.0`. [#828](https://github.com/matsumotory/ngx_mruby/pull/828) merges through `22ef61915` (#824, #827) and waits for its review and merge; the next merge of `master` after it waits for a merge into `master` |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808), through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810), through `976015c48` (#812, #814, #813 and v2.7.8) in [#815](https://github.com/matsumotory/ngx_mruby/pull/815), through `11f80acfa` (#817 and #816) in [#818](https://github.com/matsumotory/ngx_mruby/pull/818), which also raised `worker_connections` of `test/conf/nginx.conf` from 200 to 1024, through `8f204e061` (#819) in [#820](https://github.com/matsumotory/ngx_mruby/pull/820), through `a7800d865` (#822) in [#823](https://github.com/matsumotory/ngx_mruby/pull/823), which also set `MODULE_VERSION` of `next` to `3.0.0`, and through `22ef61915` (#824, #827) in [#828](https://github.com/matsumotory/ngx_mruby/pull/828). [#830](https://github.com/matsumotory/ngx_mruby/pull/830) merges through `2c7e833a0` (2.7.10 and #831) and waits for its review and merge; the next merge of `master` after it waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
@@ -925,7 +992,7 @@ Taken up and still open: none.
 | OpenSSL 3.5 and 4.0 (item 3 of section 7 of the plan): the cells of the `build` matrix of `.github/workflows/test.yml` build OpenSSL 3.5.9 in place of `1.1.1w` since [#771](https://github.com/matsumotory/ngx_mruby/pull/771), whose `Digest` and `SecureRandom` need OpenSSL 3.0 or later, and `configure` reads the version of an OpenSSL 3 source tree. Left: a cell for OpenSSL 4.0, the floor of 3.5 in the docs and the build (the soak and perf jobs take the OpenSSL 3.0.2 of the runner), and a check for ENGINE and the removed APIs in ngx_mruby and the gems | `next` | Ready to start: #601's change to `.github/workflows/test.yml` is on `next` since the merge of `master` at `6b27f08da` |
 | `build_config.rb` rewrite with explicit gems (step 3 of section 6; Pillar A): done. [#771](https://github.com/matsumotory/ngx_mruby/pull/771) replaces `monochromegane/mruby-secure-random` and `iij/mruby-digest` with `mrbgems/secure-random` (`SecureRandom` on `RAND_bytes` of OpenSSL) and `mrbgems/digest` (`Digest` on the EVP and `EVP_MAC` APIs of OpenSSL 3), as decided on 2026-11-09, keeping the classes and methods of the two gems; the differences are in its entry of the 3.0.0 release notes. The reasons of the decision: the list of mruby gems has no maintained replacement (Asmod4n/mruby-sysrandom replaces mruby-secure-random with another API, and nothing replaces mruby-digest), and gems in this repository are checked by the suite, CI and the `perf` job of ngx_mruby as they are. [#766](https://github.com/matsumotory/ngx_mruby/pull/766) did the rest of the row: `iij/mruby-env` and `iij/mruby-process` replaced by the core gems mruby-env and mruby-process (with mruby-signal), `mruby-onig-regexp` kept as item 1 of section 7 decides, and `mruby-vedis` and `mruby-localmemcache` out of the default build | `next` | Done: [#771](https://github.com/matsumotory/ngx_mruby/pull/771) merged as `6196a49f1` on 2026-11-09 |
 | mruby 4.1.0 (step 3 of section 6; item 1 of section 7). The owner decided on 2026-10-29 that `next` bundles `4.1.0-rc2` now and moves to 4.1.0 in a small subtree pull request when it is tagged. `next` bundles `4.1.0-rc2` since [#678](https://github.com/matsumotory/ngx_mruby/pull/678). The step to 4.1.0: `./update-mruby-subtree 4.1.0`, `vendor-mruby-prism` if the gitlink of Prism moves, the lock, and the release notes | `next` | The tag `4.1.0` of mruby |
-| Step 4 of section 6 of the plan, the core stability work of Pillar B (execution context, response finalization, fiber lifecycle, common layer, headers and variables, and the two agent proxy rows; [#770](https://github.com/matsumotory/ngx_mruby/pull/770) does the row on log handlers before `access_log`), then `v3.0.0-alpha.1` | `next` | The core stabilization is done: [the core stabilization proposal](proposals/archive/core-stabilization.md) was implemented in [#712](https://github.com/matsumotory/ngx_mruby/pull/712), [#714](https://github.com/matsumotory/ngx_mruby/pull/714), [#715](https://github.com/matsumotory/ngx_mruby/pull/715), [#720](https://github.com/matsumotory/ngx_mruby/pull/720), [#722](https://github.com/matsumotory/ngx_mruby/pull/722), [#727](https://github.com/matsumotory/ngx_mruby/pull/727), [#728](https://github.com/matsumotory/ngx_mruby/pull/728) and [#735](https://github.com/matsumotory/ngx_mruby/pull/735) (the last on 2026-11-02), is archived, and the model is in [How a handler waits](DEVELOPMENT.md#how-a-handler-waits-the-record-of-its-fiber) of `docs/DEVELOPMENT.md`. Left in this step: the work designed in [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md) (the execution-context type, headers, `Nginx::Var`, the filter handler pointers, the table-driven directives, the common layer beyond the fiber, and the rest of the async resume rewrite; the row on log handlers before `access_log`, with the raise of a local `Nginx.redirect` in log handlers, is done by [#770](https://github.com/matsumotory/ngx_mruby/pull/770), the row on the execution context and the phases of the Ruby API by [#826](https://github.com/matsumotory/ngx_mruby/pull/826), open, the agent proxy row on `mruby_variable` by [#780](https://github.com/matsumotory/ngx_mruby/pull/780), the row on common upstream switching by [#788](https://github.com/matsumotory/ngx_mruby/pull/788), merged on 2026-11-11, the row on common error logging by [#796](https://github.com/matsumotory/ngx_mruby/pull/796), merged on 2026-11-12, with its follow-up [#799](https://github.com/matsumotory/ngx_mruby/pull/799), merged on 2026-11-12, for the calls of `inspect` and `backtrace` in the logging, the row on common code loading by [#825](https://github.com/matsumotory/ngx_mruby/pull/825), and the row on a body with any status by [#779](https://github.com/matsumotory/ngx_mruby/pull/779), merged on 2026-11-10, with its follow-up [#783](https://github.com/matsumotory/ngx_mruby/pull/783), merged on 2026-11-10, for a status set before the output (decision 6), `Nginx::HTTP_CLOSE` with output (decision 7) and the should fix items 2 and 4 of the review of #779), one pull request per row of its section 4, and the check before the tag of its section 3. Its design decisions were made on 2026-11-09 and 2026-11-10 (section 5 of the proposal), and no point of the design is open. Started by the owner's decision of 2026-11-01 to extend the harness so that `test.sh` tests `master_process on`, several workers and reloads, and then to rework the core fiber lifetime and response completion. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) made that extension; the requests from CRuby and the HTTP/2 and HTTP/3 clients of the row above for the test harness rewrite stay there |
+| Step 4 of section 6 of the plan, the core stability work of Pillar B (execution context, response finalization, fiber lifecycle, common layer, headers and variables, and the two agent proxy rows; [#770](https://github.com/matsumotory/ngx_mruby/pull/770) does the row on log handlers before `access_log`), then `v3.0.0-alpha.1` | `next` | The core stabilization is done: [the core stabilization proposal](proposals/archive/core-stabilization.md) was implemented in [#712](https://github.com/matsumotory/ngx_mruby/pull/712), [#714](https://github.com/matsumotory/ngx_mruby/pull/714), [#715](https://github.com/matsumotory/ngx_mruby/pull/715), [#720](https://github.com/matsumotory/ngx_mruby/pull/720), [#722](https://github.com/matsumotory/ngx_mruby/pull/722), [#727](https://github.com/matsumotory/ngx_mruby/pull/727), [#728](https://github.com/matsumotory/ngx_mruby/pull/728) and [#735](https://github.com/matsumotory/ngx_mruby/pull/735) (the last on 2026-11-02), is archived, and the model is in [How a handler waits](DEVELOPMENT.md#how-a-handler-waits-the-record-of-its-fiber) of `docs/DEVELOPMENT.md`. Left in this step: the work designed in [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md) (the execution-context type, headers, `Nginx::Var`, the filter handler pointers, the table-driven directives, the common layer beyond the fiber, and the rest of the async resume rewrite; the row on log handlers before `access_log`, with the raise of a local `Nginx.redirect` in log handlers, is done by [#770](https://github.com/matsumotory/ngx_mruby/pull/770), the row on the execution context and the phases of the Ruby API by [#826](https://github.com/matsumotory/ngx_mruby/pull/826), merged on 2026-11-16, the agent proxy row on `mruby_variable` by [#780](https://github.com/matsumotory/ngx_mruby/pull/780), the row on common upstream switching by [#788](https://github.com/matsumotory/ngx_mruby/pull/788), merged on 2026-11-11, the row on common error logging by [#796](https://github.com/matsumotory/ngx_mruby/pull/796), merged on 2026-11-12, with its follow-up [#799](https://github.com/matsumotory/ngx_mruby/pull/799), merged on 2026-11-12, for the calls of `inspect` and `backtrace` in the logging, the row on common code loading by [#825](https://github.com/matsumotory/ngx_mruby/pull/825), merged on 2026-11-16, and the row on a body with any status by [#779](https://github.com/matsumotory/ngx_mruby/pull/779), merged on 2026-11-10, with its follow-up [#783](https://github.com/matsumotory/ngx_mruby/pull/783), merged on 2026-11-10, for a status set before the output (decision 6), `Nginx::HTTP_CLOSE` with output (decision 7) and the should fix items 2 and 4 of the review of #779), one pull request per row of its section 4, and the check before the tag of its section 3. Its design decisions were made on 2026-11-09 and 2026-11-10 (section 5 of the proposal), and no point of the design is open. Started by the owner's decision of 2026-11-01 to extend the harness so that `test.sh` tests `master_process on`, several workers and reloads, and then to rework the core fiber lifetime and response completion. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) made that extension; the requests from CRuby and the HTTP/2 and HTTP/3 clients of the row above for the test harness rewrite stay there |
 | nginx-tests required: the `nginx-tests` workflow records its results and fails only when a build, the fetch of the suite or `prove` fails. In the runs of 2026-10-28 and 2026-10-29 the build with ngx_mruby and the build without it have the same counts (511 files, 302 passed, 0 failed, 209 skipped). To do: the job fails when the build with ngx_mruby fails a file that the build without it passes, and the job joins the `needs` of `ci-ok` | `next` | Ready to start: the counts are the same in every run since #602 |
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR`. On `next`, [#794](https://github.com/matsumotory/ngx_mruby/pull/794) does it: `ci-ok` needs `perf`, and a `FAIL` that the owner accepted on a pull request passes through a line with the new condition `pull-request` in `test/perf/accepted.txt`. The comparison judges the Ir per request without the GC and without the constant lookups that miss the constant cache of mruby, which made the `stream_sleep` `FAIL` of #766 that another run on the same commits did not repeat, except where the head clears that cache more often, or clears it and misses more lookups than the base ([#795](https://github.com/matsumotory/ngx_mruby/pull/795)); then with the lookups counted. Left: the same on `master`, in a pull request to `master` (its `test.yml`, `test/perf/perf.rb`, `test/perf/accepted.txt`, AGENTS.md and `docs/test/README.md`) | `next`, then `master` | `next`: done by [#794](https://github.com/matsumotory/ngx_mruby/pull/794). `master`: ready to start |
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |
