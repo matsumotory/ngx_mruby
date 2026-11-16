@@ -138,7 +138,7 @@
   twice in one context (decision 4). Its test is
   `test/t/cases/stream_duplicate_hooks.rb` (`nginx -t` only, port 12398).
 - [#835](https://github.com/matsumotory/ngx_mruby/pull/835) (`next`,
-  open; the session that coordinates the work reviews and merges it): the
+  merged on 2026-11-17 at 04:25 JST as `a739bda78`): the
   filter handlers, the row of section 2.4 of
   [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
   The header filter handler has the type of nginx's header filters, the
@@ -156,6 +156,13 @@
   2026-11-16, 8 of the 14 failed or re-run runs of `site.yml` on `next`
   failed on such a 503 alone. Its test is
   `site/scripts/test-screenshots-live.mjs`, in `npm run check:ci`.
+- [#843](https://github.com/matsumotory/ngx_mruby/pull/843) into `master`
+  as `4e6494d1c` on 2026-11-17 at 04:02 JST, and
+  [#844](https://github.com/matsumotory/ngx_mruby/pull/844) into `next`
+  (open, ready; the session that coordinates the work merges it):
+  github/codeql-action 4.39.3 for `init`, `analyze` and
+  `upload-sarif` together, and a Dependabot group that updates these
+  steps in one PR per branch.
 - The advisory
   [GHSA-8j8w-mcp5-xp3h](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-8j8w-mcp5-xp3h)
   (Low, patched in 2.7.8) was published on 2026-11-15 at 15:39
