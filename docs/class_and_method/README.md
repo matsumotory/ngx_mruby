@@ -60,7 +60,7 @@ handler); the post_read, server rewrite, rewrite, access and content handlers
 | The body of a body filter: `Nginx::Filter#body`, `#body=`, `#output` | body filters | every other handler raises (`... can only be used in an output body filter`) |
 | `Nginx.redirect` | every handler and filter of a request; with a local URI, see [Nginx.redirect](#nginxredirecturl_or_internal_location-http_statusnginxhttp_moved_temporarily) | a local URI raises in log handlers |
 | `Nginx::Async.sleep`, `Nginx::Async::HTTP.sub_request` | see [Nginx::Async Class](#nginxasync-class) | log handlers, header filters and body filters raise; `sub_request` also in an mruby_set handler |
-| `Nginx.return` and `Nginx.send_header` with a return code below 0 (`Nginx::DECLINED`), `Nginx::Request#unparsed_uri=`, `#protocol=`, `Nginx::Upstream`, `Nginx::Async::HTTP.last_response`, `Nginx::Request#sub_request?` | every handler and filter of a request | none |
+| `Nginx.return` and `Nginx.send_header` with a return code below 0 (`Nginx::DECLINED`), `Nginx::Request#unparsed_uri=`, `#protocol=`, `Nginx::Upstream`, `Nginx::Async::HTTP.last_response`, `Nginx::Request#sub_request?`, `Nginx::Request#store` | every handler and filter of a request | none |
 | `Nginx.log`, `Nginx.errlogger`, the constants, `Nginx.module_name` and the other methods that need no request | everywhere | none |
 
 Outside a request, in the code of `mruby_init*`, `mruby_init_worker*`,
@@ -956,6 +956,53 @@ r = Nginx::Request.new
 # location / { mruby_content_handler /path/to/hook.rb; }
 Nginx.echo r.sub_request?.to_s #=> "false"
 ```
+
+### Nginx::Request#store -> Hash
+
+Returns the store of the request, a Hash that is the same object in every
+handler and filter of the request: the `mruby_set` handlers, the phase
+handlers, the log handlers and the output header and body filters. The
+first call creates it, empty. A handler uses it to pass values to a later
+handler of the same request, without an nginx variable and without
+turning the values into Strings. Since 3.0.0.
+
+- The store belongs to the request, not to a location: it stays after an
+  internal redirect (`error_page`, `try_files`, a named location,
+  `Nginx.redirect` with a local URI).
+- nginx keeps the store and the objects in it until it frees the request,
+  after the log handlers. Do not keep the store in a global variable: the
+  next request of the worker would see it.
+- A subrequest gets an empty store of its own. It does not see the store of
+  its main request, nor the main request the store of the subrequest. The
+  store of a subrequest is kept until its main request is freed.
+- A request whose handlers do not call the method allocates nothing for it.
+- Outside a request, in the code of `mruby_init*`, `mruby_init_worker*`,
+  `mruby_exit_worker*`, `mruby_ssl_handshake_handler*` and
+  `mruby_server_context_handler_code`, it raises `this method can only be
+  used while processing a request`.
+
+```nginx
+location /app {
+    mruby_access_handler_code '
+      r = Nginx::Request.new
+      r.store[:tenant] = r.headers_in["X-Tenant"].to_s
+    ';
+    try_files $uri @app;
+}
+
+location @app {
+    mruby_content_handler_code '
+      Nginx.rputs "tenant: #{Nginx::Request.new.store[:tenant]}\n"
+    ';
+    mruby_log_handler_code '
+      Nginx.log Nginx::LOG_NOTICE, "tenant=#{Nginx::Request.new.store[:tenant]}"
+    ';
+}
+```
+
+`try_files` sends a request for a file that does not exist to `@app`, an
+internal redirect, and the content handler and the log handler there read
+the value that the access handler stored.
 
 ### Nginx::Request#uri -> string
 

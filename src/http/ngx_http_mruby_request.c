@@ -7,6 +7,8 @@
 #include "ngx_http_mruby_request.h"
 
 #include "ngx_http_mruby_core.h"
+#include "ngx_http_mruby_gc_roots.h"
+#include "ngx_http_mruby_module.h"
 #include "ngx_http_mruby_var.h"
 
 #include <mruby.h>
@@ -588,6 +590,96 @@ static mrb_value ngx_mrb_sub_request_check(mrb_state *mrb, mrb_value str)
   return (r != r->main) ? mrb_true_value() : mrb_false_value();
 }
 
+/*
+ * Nginx::Request#store (section 2.1 of docs/proposals/core-alpha1.md): the
+ * Hash of a request, the same object in every handler and filter of the
+ * request, created at the first call.
+ *
+ * The store belongs to the request, not to the module context, so that it
+ * survives an internal redirect, which clears the module contexts (decision
+ * 2 of the proposal). A cleanup of the request pool holds the record below:
+ * the request, the Hash and its slot in the GC root holder
+ * (ngx_http_mruby_gc_roots.h). nginx runs the cleanup when it destroys the
+ * pool, after the log handlers, and the cleanup frees the slot. A
+ * subrequest shares the pool of its main request, so the record names the
+ * request it belongs to, and a subrequest gets a store of its own, which
+ * lives until the main request ends. The module context caches the record;
+ * after a redirect cleared the module context, the first call walks the
+ * cleanups of the pool once to find it again. A request that never calls the
+ * method allocates nothing.
+ */
+typedef struct ngx_http_mrb_store_s {
+  ngx_http_request_t *r;
+  mrb_state *mrb;
+  mrb_value hash;
+  mrb_int slot;
+} ngx_http_mrb_store_t;
+
+static void ngx_http_mrb_store_cleanup(void *data)
+{
+  ngx_http_mrb_store_t *store = data;
+
+  ngx_mrb_gc_roots_remove(store->mrb, store->slot);
+  store->slot = NGX_MRB_GC_ROOTS_NONE;
+}
+
+static ngx_http_mrb_store_t *ngx_http_mrb_store_find(mrb_state *mrb, ngx_http_request_t *r)
+{
+  ngx_pool_cleanup_t *cln;
+  ngx_http_mrb_store_t *store;
+
+  for (cln = r->pool->cleanup; cln != NULL; cln = cln->next) {
+    if (cln->handler != ngx_http_mrb_store_cleanup) {
+      continue;
+    }
+    store = cln->data;
+    if (store->r == r && store->mrb == mrb) {
+      return store;
+    }
+  }
+  return NULL;
+}
+
+static mrb_value ngx_mrb_get_request_store(mrb_state *mrb, mrb_value self)
+{
+  ngx_http_request_t *r = NGX_MRB_REQUEST_ANY(mrb);
+  ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+  ngx_http_mrb_store_t *store;
+  ngx_pool_cleanup_t *cln;
+  mrb_value hash;
+
+  if (ctx != NULL && ctx->store != NULL) {
+    return ctx->store->hash;
+  }
+
+  store = ngx_http_mrb_store_find(mrb, r);
+  if (store == NULL) {
+    hash = mrb_hash_new(mrb);
+    cln = ngx_pool_cleanup_add(r->pool, sizeof(ngx_http_mrb_store_t));
+    if (cln == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+    }
+    store = cln->data;
+    store->r = r;
+    store->mrb = mrb;
+    store->hash = hash;
+    /* The handler is set once the Hash has its slot: until then the cleanup
+       has no handler, so nginx skips it, and the walk above does not find
+       it. ngx_mrb_gc_roots_add() raises NoMemoryError when the holder cannot
+       grow. */
+    store->slot = ngx_mrb_gc_roots_add(mrb, hash);
+    if (store->slot == NGX_MRB_GC_ROOTS_NONE) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to keep the store of the request");
+    }
+    cln->handler = ngx_http_mrb_store_cleanup;
+  }
+
+  if (ctx != NULL) {
+    ctx->store = store;
+  }
+  return store->hash;
+}
+
 void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
 {
   struct RClass *class_request;
@@ -615,6 +707,7 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_request, "headers_out", ngx_mrb_headers_out_obj, MRB_ARGS_NONE());
 
   mrb_define_method(mrb, class_request, "sub_request?", ngx_mrb_sub_request_check, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_request, "store", ngx_mrb_get_request_store, MRB_ARGS_NONE());
 
   mrb_define_method(mrb, class_request, "hostname", ngx_mrb_get_request_var_hostname, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "authority", ngx_mrb_get_request_var_authority, MRB_ARGS_NONE());
