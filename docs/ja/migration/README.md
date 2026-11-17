@@ -403,6 +403,22 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   Nginx::Request.new.uri = "/other"     # changes the URI on both
   ```
 
+- [`Nginx::Headers_in#delete`と`Nginx::Headers_out#delete`が、その名前のヘッダをすべて取り除く](../../releases/v3.0.0.ja.md#nginxheaders_indeleteとnginxheaders_outdeleteがその名前のヘッダをすべて取り除く855)、[`Nginx::Headers_out`で設定した`Content-Type`、`Location`、`Date`、`Server`を、nginxが自分のヘッダとして扱う](../../releases/v3.0.0.ja.md#nginxheaders_outで設定したcontent-typelocationdateserverをnginxが自分のヘッダとして扱う855)、[ヘッダの名前にシンボルを使え、文字列でない値を`to_s`で変換する](../../releases/v3.0.0.ja.md#ヘッダの名前にシンボルを使え文字列でない値をto_sで変換する855)、[`Nginx::Headers_in#[]=`で足したリクエストヘッダを、`proxy_pass`が見分ける](../../releases/v3.0.0.ja.md#nginxheaders_inで足したリクエストヘッダをproxy_passが見分ける855)：`headers_in`と`headers_out`の`delete`、大文字と小文字を問わず`Content-Type`、`Location`、`Date`、`Server`を扱う呼び出し、同じlocationに`proxy_pass`か`grpc_pass`がある`[]=`を探してください。3.0.0では、`delete`は2.xのように最初の1つではなく、その名前のヘッダをすべて取り除きます。レスポンスの4つのヘッダはnginx自身のヘッダになるので、レスポンスはそれぞれを1行だけ持ち、`[]`はnginxの値を読みます。`/`で始まる`Location`は、`absolute_redirect`がonのときに絶対URLになり、`Server`や`Date`を削除するとnginx自身の値に戻ります。`proxy_pass`は、`proxy_set_header`かproxyモジュールが設定するヘッダについて、スクリプトが足した行ではなく自分の値を送ります。`Content-Length`は2.xと同じく行のままです。文字列でない値は、2.xでは`TypeError`を出しましたが、3.0.0では`to_s`で変換します。
+
+  ```ruby
+  h = Nginx::Request.new.headers_out
+  h["Location"] = "/next"   # 2.x: Location: /next   3.0.0: Location: http://<host>:<port>/next (absolute_redirect off keeps /next)
+  h["Server"] = "edge"
+  h.delete "Server"         # 2.x: no Server line    3.0.0: nginx's own Server line
+  h["X-Count"] = 3          # 2.x: TypeError         3.0.0: X-Count: 3
+  ```
+
+  ```nginx
+  # 3.0.0: the value of a request header that proxy_pass sets itself comes from proxy_set_header
+  mruby_set_code $backend_host 'Nginx::Request.new.headers_in["X-Tenant"].to_s + ".internal"';
+  proxy_set_header Host $backend_host;
+  ```
+
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
 ## ログの<wbr>監視

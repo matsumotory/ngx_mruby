@@ -700,6 +700,37 @@ not enough, and show the change.
   Nginx::Request.new.uri = "/other"     # changes the URI on both
   ```
 
+- [`Nginx::Headers_in#delete` and `Nginx::Headers_out#delete` remove every header of the name](../releases/v3.0.0.md#nginxheaders_indelete-and-nginxheaders_outdelete-remove-every-header-of-the-name-855),
+  [`Content-Type`, `Location`, `Date` and `Server` set through `Nginx::Headers_out` are nginx's own](../releases/v3.0.0.md#content-type-location-date-and-server-set-through-nginxheaders_out-are-nginxs-own-855),
+  [a header name can be a Symbol, and a value that is not a String is converted with `to_s`](../releases/v3.0.0.md#a-header-name-can-be-a-symbol-and-a-value-that-is-not-a-string-is-converted-with-to_s-855)
+  and [a request header that `Nginx::Headers_in#[]=` adds is one that `proxy_pass` recognizes](../releases/v3.0.0.md#a-request-header-that-nginxheaders_in-adds-is-one-that-proxy_pass-recognizes-855):
+  look for `headers_in` and `headers_out` with `delete`, with
+  `Content-Type`, `Location`, `Date` or `Server` in any case, and with
+  `[]=` before `proxy_pass` or `grpc_pass` in the same location. On
+  3.0.0, `delete` removes every header of the name, where 2.x removed the
+  first; the four headers of the response are nginx's own, so the
+  response has one line of each, `[]` reads nginx's value, a `Location`
+  that starts with `/` is made absolute when `absolute_redirect` is on,
+  and deleting `Server` or `Date` gives nginx's own back; and
+  `proxy_pass` sends its own value of a header that `proxy_set_header`
+  or the proxy module sets, instead of the line that the script added.
+  `Content-Length` is a line as on 2.x. A value that is not a String is
+  converted with `to_s` where 2.x raised `TypeError`:
+
+  ```ruby
+  h = Nginx::Request.new.headers_out
+  h["Location"] = "/next"   # 2.x: Location: /next   3.0.0: Location: http://<host>:<port>/next (absolute_redirect off keeps /next)
+  h["Server"] = "edge"
+  h.delete "Server"         # 2.x: no Server line    3.0.0: nginx's own Server line
+  h["X-Count"] = 3          # 2.x: TypeError         3.0.0: X-Count: 3
+  ```
+
+  ```nginx
+  # 3.0.0: the value of a request header that proxy_pass sets itself comes from proxy_set_header
+  mruby_set_code $backend_host 'Nginx::Request.new.headers_in["X-Tenant"].to_s + ".internal"';
+  proxy_set_header Host $backend_host;
+  ```
+
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out
 `.` and `..` (see [New features](../releases/v3.0.0.md#new-features)).

@@ -5,11 +5,11 @@ Status: in progress. The design decisions of section 5 were made on
 no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
 (#779 and #783), 2.7 (#788), 2.8 (#796), the execution context and the
 phases of the Ruby API of 2.1 (#826), 2.6 (#825), the per-request store
-of 2.1 (#832), 2.9 (#833), 2.5 (#834) and 2.4 (#835). Next step: the
-rows of section 4 that are open, "Headers" (2.2) and "One setter for
-`Nginx::Var`" (2.3, in review in
-[#854](https://github.com/matsumotory/ngx_mruby/pull/854)), then the check
-before the tag of section 3, by 2026-11-20.
+of 2.1 (#832), 2.9 (#833), 2.5 (#834), 2.4 (#835) and 2.3 (#854). Next
+step: the row of section 4 that is open, "Headers" (2.2, in review in
+[#855](https://github.com/matsumotory/ngx_mruby/pull/855), without the
+field of `Content-Length`, which 2.2 leaves to a later change), then the
+check before the tag of section 3, by 2026-11-20.
 
 This proposal designs what is left of step 4 of section 6 of
 [the v3 plan](v3-plan.md): the work that has to be on `next` before
@@ -51,7 +51,7 @@ last Pillar B row). It is additive and not needed for alpha.1.
 | Item | Section | What a script, a configuration or a build sees |
 |---|---|---|
 | One execution context, and the phases of the Ruby API | 2.1 | A method called in a handler where it has no effect raises (item 8 of section 7 of the plan accepted this); a per-request store is added |
-| Headers | 2.2 | `delete` removes exactly the named headers; `Content-Type`, `Content-Length`, `Location` and `Date` set through `headers_out` reach nginx's own fields; a name that is not a String raises |
+| Headers | 2.2 | `delete` removes exactly the named headers; `Content-Type`, `Location` and `Date` set through `headers_out` reach nginx's own fields (`Server` already did); a name is a String or a Symbol, and a value that is not a String is converted with `to_s`; a header that `headers_in[]=` adds is one that `proxy_pass` recognizes |
 | One setter for `Nginx::Var` | 2.3 | Assigning a variable that nginx does not know raises `NameError`, and one that nginx does not let scripts change raises `RuntimeError` |
 | Filter handlers | 2.4 | A filter set at `http` or `server` level runs in the locations below it |
 | Directive table and one duplicate check | 2.5 | `nginx -t` refuses a stream hook given twice in one context, as it refuses an HTTP one |
@@ -232,13 +232,22 @@ not run at the same time as the pull requests of 2.2 and 2.3 (section 4).
   the same bytes ignoring case, and no other. `[]=` uses the same match.
 - For `Headers_out`, a table of the headers that nginx keeps in fields:
   `Content-Type` sets `r->headers_out.content_type` (and clears the charset
-  and the lowercase copy) and adds no list entry; `Content-Length` sets
-  `content_length_n` from a decimal value (anything else raises
-  `ArgumentError`) and clears `r->headers_out.content_length`; `Location`,
-  `Date` and `Server` add the list entry and point the field at it, as
-  nginx's `ngx_http_headers_filter_module` does for the headers it sets.
-  Reading one of them returns the field; deleting one clears the field and
+  and the lowercase copy) and adds no list entry; `Location`, `Date` and
+  `Server` add the list entry and point the field at it, as nginx's
+  `ngx_http_headers_filter_module` does for the headers it sets. Reading
+  one of them returns the field; deleting one clears the field and
   removes the entry.
+- `Content-Length` is not in this table, and stays a list entry, as in
+  2.x. The design had `Content-Length` set `content_length_n` from a
+  decimal value and clear `r->headers_out.content_length`. But
+  `Nginx.rputs` adds the length of its output to `content_length_n`
+  (`src/http/ngx_http_mruby_core.c`), so a length that a script set before
+  the output would be sent as the sum of that length and the length of the
+  output, and section 2.12 has `Content-Length` count the output. The
+  relation of a `Content-Length` that a script sets to the output of
+  `Nginx.rputs` is designed first, and the field is set by a later pull
+  request; it is not a condition of alpha.1, so section 4 has no row for
+  it. Decided on 2026-11-17 (the row in "Decisions" of `docs/HANDOFF.md`).
 - The name is a String or a Symbol, or `[]=` and `delete` raise
   `TypeError`. A value is a String, nil (delete), an Array (one header per
   element), or an object whose `to_s` returns a String, converted as
@@ -248,6 +257,18 @@ not run at the same time as the pull requests of 2.2 and 2.3 (section 4).
 **Behavior change.** Yes, three entries: the exact match of `delete` and
 `[]=` (accepted in item 8 of the plan), the four headers that now reach
 nginx's fields, and the `TypeError` for a name.
+
+**Pull request.** [#855](https://github.com/matsumotory/ngx_mruby/pull/855).
+The fix of 2.7.11 (GHSA-2gcp-h74q-c9g6, brought to `next` by #850) had
+already made the delete compare the whole name and remove an element
+without moving the others, and `[]=` remove every header of the exact
+name; #855 makes `delete` remove every header of the name, keeps the
+removal of 2.7.11, and adds the rest of the design but `Content-Length`.
+It also sets the `lowcase_key` and the `next` of the headers that `[]=`
+adds, and the hash of a request header: they were not set, and nginx's
+proxy module read the `lowcase_key` when `proxy_pass` built the request.
+That is a fourth entry of the release notes, because `proxy_pass` now
+recognizes such a header as one that `proxy_set_header` sets.
 
 **Test that fails first.** `test/t/cases/headers_exact.rb`: a request with
 `X-Foo: 1`, `X-Foo-Bar: 2` and `X-Foo: 3`, a handler that calls
@@ -891,7 +912,7 @@ and the one that merges second updates its branch.
 |---|---|---|---|
 | Log handlers before `access_log`: [#770](https://github.com/matsumotory/ngx_mruby/pull/770), merged on 2026-11-09; #770 also makes `Nginx.redirect` with a local URI raise in log handlers, the log handler part of 2.9 | 2.10, 2.9 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
 | `mruby_variable`: [#780](https://github.com/matsumotory/ngx_mruby/pull/780), merged on 2026-11-10 | 2.11 | nothing | nothing |
-| Headers | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
+| Headers: [#855](https://github.com/matsumotory/ngx_mruby/pull/855), without the field of `Content-Length` (2.2) | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
 | Filter handlers: type, merge, phase handlers only where used: [#835](https://github.com/matsumotory/ngx_mruby/pull/835) | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
 | Execution context and the phases of the Ruby API: [#826](https://github.com/matsumotory/ngx_mruby/pull/826) | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
 | Per-request store: [#832](https://github.com/matsumotory/ngx_mruby/pull/832) | 2.1 | nothing | execution context |
