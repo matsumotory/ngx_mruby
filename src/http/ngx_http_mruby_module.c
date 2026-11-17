@@ -1965,6 +1965,7 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
   ngx_http_mruby_loc_conf_t *mlcf;
   ngx_http_mruby_ctx_t *ctx;
   ngx_pool_cleanup_t *cln;
+  ngx_chain_t *cl;
   ngx_int_t rc;
 
   mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
@@ -1980,8 +1981,16 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
         return NGX_ERROR;
       }
       // A response that ends at the header (HEAD, 204, 304): the body is not
-      // passed on, as in ngx_mrb_finalize_body_filter.
+      // passed on, as in ngx_mrb_finalize_body_filter. Its buffers are marked
+      // as sent, as the body filter does when it reads them, so that the
+      // filters before this one (the copy filter) can reuse them for the rest
+      // of the body; a buffer left unsent would hold the request until
+      // send_timeout.
       if (r->header_only) {
+        for (cl = in; cl != NULL; cl = cl->next) {
+          cl->buf->pos = cl->buf->last;
+          cl->buf->file_pos = cl->buf->file_last;
+        }
         return rc;
       }
     }
