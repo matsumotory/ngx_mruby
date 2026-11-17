@@ -179,8 +179,7 @@
   replaces [#846](https://github.com/matsumotory/ngx_mruby/pull/846),
   closed, whose regression test passed before the fix.
 - [#848](https://github.com/matsumotory/ngx_mruby/pull/848) (`next`,
-  open; its author continues it, and the session that coordinates the
-  work merges it): a HEAD request to a location with an mruby header
+  merged on 2026-11-17 at 16:16 JST as `b2c312f50`): a HEAD request to a location with an mruby header
   filter and no body filter, or to a location with an mruby body filter
   whose response has no `Content-Length`, no longer closes its
   connection after the header. Both paths returned `NGX_ERROR` when
@@ -188,9 +187,24 @@
   the connection that the header kept alive; since #835, a header filter
   at `http` or `server` level put every HEAD request of the server on
   the first path. They now return the result of sending the header, as
-  the known-length body filter path does. Behavior change, `next` only,
-  like the fix of the known-length path. Its test is
-  `test/t/cases/head_header_filter.rb` (port 18112).
+  the known-length body filter path does. Behavior change, `next` only;
+  the fix of the known-length path is on `master` as well (2.7.5). Its
+  test is `test/t/cases/head_header_filter.rb` (port 18112).
+- [#849](https://github.com/matsumotory/ngx_mruby/pull/849) (`next`,
+  open; its author continues it, and the session that coordinates the
+  work merges it): a 204 or 304 response that passes an mruby output
+  header or body filter, such as the 304 of a conditional GET of a
+  static file or `return 204;`, no longer closes its connection after
+  the header. The three places that pass the header on
+  (`ngx_http_mruby_header_filter_send`, the branch of
+  `ngx_http_mruby_body_filter` for a response without a length, and
+  `ngx_mrb_finalize_body_filter`) returned `NGX_ERROR` when nginx had set
+  `r->header_only` for a request other than HEAD; they now return the
+  result of sending the header for every method and pass no body on.
+  Since #835, a header filter at `http` or `server` level put every
+  conditional GET of a static file that nginx answered with 304 on the
+  first place. Behavior change, `next` only. Its test is
+  `test/t/cases/header_only_keepalive.rb` (port 18112).
 - The advisory
   [GHSA-8j8w-mcp5-xp3h](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-8j8w-mcp5-xp3h)
   (Low, patched in 2.7.8) was published on 2026-11-15 at 15:39
