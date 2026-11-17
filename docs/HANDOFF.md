@@ -99,7 +99,7 @@
   the same two entries with the same lines in the same order.
   `MODULE_VERSION` of `master` is `2.7.11`. The callgrind comparison of
   `v2.7.10` (`8bfe5f987`) with a local commit that has the tree of
-  `7f0f1c564` (`012fb1376`), in the Docker image `ngx-mruby-dev:22.04`
+  `7f0f1c564` (tree `012fb1376`), in the Docker image `ngx-mruby-dev:22.04`
   with `sh test/perf/compare.sh` (`N=20000 WARMUP=2000`), has all 14
   scenarios `ok`; the largest change is `sub_request`, from 47886 to
   47847 Ir per request without GC (-39, -0.08%). The whole build matrix
