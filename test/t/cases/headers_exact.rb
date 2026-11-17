@@ -58,6 +58,14 @@ t.assert('headers - Headers_in#[]= replaces every header of the name and no othe
   t.assert_equal 'X-Foo="new" X-Foo-Bar="2"', body
 end
 
+t.assert('headers - Headers_in#delete removes a name given many times across the parts of the list', 'GET /in_delete_many on 18095') do
+  headers = (1..45).map { |n| n % 4 == 1 ? "X-Many: #{n}" : 'X-Keep-%02d: %d' % [n, n] }
+  status, status_line, _, body = headers_exact(18095, '/in_delete_many', headers)
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 200 OK', status_line
+  t.assert_equal 'X-Many=nil kept=45 added=30', body
+end
+
 t.assert('headers - Headers_out#delete removes every header of the name', 'GET /out_delete on 18095') do
   status, status_line, fields, body = headers_exact(18095, '/out_delete', ['Host: localhost'])
   t.assert_equal 'EOF', status
@@ -90,6 +98,14 @@ t.assert('headers - a header filter reads and replaces the Content-Type of a sta
   t.assert_equal ['application/x-headers-exact'], headers_exact_values(fields, 'content-type')
   t.assert_equal ['"text/plain"'], headers_exact_values(fields, 'x-before')
   t.assert_equal File.open(html_path('output_filters_static.txt')) { |f| f.read }, body
+end
+
+t.assert('headers - a Content-Type with a charset parameter matches gzip_types by its type', 'GET /content_type_charset_gzip on 18095') do
+  status, status_line, fields, _ = headers_exact(18095, '/content_type_charset_gzip', ['Host: localhost', 'Accept-Encoding: gzip'])
+  t.assert_equal 'EOF', status
+  t.assert_equal 'HTTP/1.1 200 OK', status_line
+  t.assert_equal ['text/plain; charset=utf-8'], headers_exact_values(fields, 'content-type')
+  t.assert_equal ['gzip'], headers_exact_values(fields, 'content-encoding')
 end
 
 t.assert('headers - Date set by a handler replaces the Date of nginx', 'GET /date on 18095') do

@@ -33,6 +33,16 @@ when '/in_set'
   # []= replaces both X-Foo and leaves X-Foo-Bar.
   hin['X-Foo'] = 'new'
   Nginx.rputs "X-Foo=#{hin['X-Foo'].inspect} X-Foo-Bar=#{hin['X-Foo-Bar'].inspect}"
+when '/in_delete_many'
+  # The request has 45 headers, three parts of nginx's list (20 headers
+  # each): X-Many at the first and the last element of parts and between
+  # them, X-Keep-NN at the others. delete removes every X-Many, the other
+  # headers keep their values, and headers added afterwards are read back.
+  hin.delete 'x-many'
+  keep = (1..45).count { |n| n % 4 == 1 || hin['X-Keep-%02d' % n] == n.to_s }
+  (1..30).each { |n| hin['X-Add-%02d' % n] = n.to_s }
+  added = (1..30).count { |n| hin['X-Add-%02d' % n] == n.to_s }
+  Nginx.rputs "X-Many=#{hin['X-Many'].inspect} kept=#{keep} added=#{added}"
 when '/out_delete'
   # Two X-D headers, deleted by a name in other case: the response has none.
   hout['X-D'] = %w[a b]
