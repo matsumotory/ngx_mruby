@@ -236,7 +236,7 @@ static int ngx_mruby_builtin_header_lookup_token(u_char *name, size_t namelen)
 static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers, ngx_pool_t *pool, mrb_value mrb_key,
                                             mrb_value mrb_val, mrb_int update)
 {
-  u_char *key, *val;
+  u_char *key, *val, *lowcase;
   size_t key_len, val_len;
   ngx_table_elt_t *new_header;
   ngx_http_request_t *r = ngx_mrb_get_request_or_raise(mrb);
@@ -286,6 +286,14 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
     break;
   }
 
+  /* nginx's proxy module passes lowcase_key to ngx_hash_find for every
+   * request header, so the added header has it, and next, set */
+  lowcase = ngx_pnalloc(pool, key_len);
+  if (lowcase == NULL) {
+    return NGX_ERROR;
+  }
+  ngx_strlow(lowcase, key, key_len);
+
   new_header = ngx_list_push(headers);
   if (new_header == NULL) {
     return NGX_ERROR;
@@ -295,6 +303,10 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
   new_header->key.len = key_len;
   new_header->value.data = val;
   new_header->value.len = val_len;
+  new_header->lowcase_key = lowcase;
+#if (nginx_version >= 1023000)
+  new_header->next = NULL;
+#endif
 
   return NGX_OK;
 }
