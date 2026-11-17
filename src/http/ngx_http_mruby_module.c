@@ -2306,8 +2306,12 @@ static ngx_int_t ngx_http_mruby_read_body(ngx_http_request_t *r, ngx_chain_t *in
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "%s DEBUG %s:%d: filter buf: %uz rest: %uz", MODULE_NAME,
                   __func__, __LINE__, size, rest);
     size = (rest < size) ? rest : size;
-    p = ngx_cpymem(p, b->pos, size);
-    b->pos += size;
+    // ctx->body is NULL for a response of length 0, and memcpy() must not get
+    // NULL even for 0 bytes
+    if (size > 0) {
+      p = ngx_cpymem(p, b->pos, size);
+      b->pos += size;
+    }
     // The body of a subrequest (an SSI include, for example) ends with a
     // buffer marked last_in_chain: only the main request ends its body
     // with last_buf (ngx_http_send_special, ngx_http_static_handler).
