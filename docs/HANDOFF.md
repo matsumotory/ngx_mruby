@@ -145,6 +145,18 @@
   it was merged on 2026-11-17 at 17:10 JST as `ea531ad88`. The English
   and the Japanese parts of the text of the GitHub release v2.7.11 link
   the two advisories as well. #850 brings the two files to `next`.
+- [#854](https://github.com/matsumotory/ngx_mruby/pull/854) (`next`,
+  section 2.3 and decision 3 of `docs/proposals/core-alpha1.md`): one
+  function, `ngx_mrb_var_assign`, assigns the variables of
+  `Nginx::Var#<name>=`, `Nginx::Var#set` and the end of an `mruby_set`
+  handler that waited, and an assignment to a variable that nginx does
+  not know raises `NameError`, one to a variable that nginx does not let
+  scripts change or keeps no value of raises `RuntimeError`. Its test is
+  `test/t/cases/var_assign.rb` (port 18107). It is ready: the local
+  checks are quoted in its body, and an agent that did not write it
+  reviewed it with no "must fix" item. The CI run on its head, the run
+  of the `perf` job and the merge are recorded on the pull request; the
+  session that opened it continues it.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829

@@ -92,7 +92,10 @@ end
 t.assert('Nginx::Var - a name that is not a variable, and a setter of a prefix variable, get no accessor', 'GET /unknown on 18159') do
   res = var_accessor('/unknown')
   t.assert_equal 200, res.code
-  t.assert_equal "[nil, [false, false]]\n[nil, [false, false]]\n[nil, [false, false]]", res["body"]
+  # the setters raise NameError: nginx declares no variable of these names
+  t.assert_equal "[nil, [false, false]]\n" \
+    "[\"raised: NameError: nginx variable $var_accessor_no_such_variable is not defined (declare it with set or mruby_variable)\", [false, false]]\n" \
+    "[\"raised: NameError: nginx variable $arg_var_accessor_set is not defined (declare it with set or mruby_variable)\", [false, false]]", res["body"]
 end
 
 t.assert('Nginx::Var - names that are not variable names in nginx keep their behavior and get no accessor', 'GET /other_names on 18159') do

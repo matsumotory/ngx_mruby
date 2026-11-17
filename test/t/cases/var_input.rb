@@ -65,7 +65,7 @@ t.assert('Nginx::Var - set leaves a String that shares its bytes with the name u
   name = 'Var_Input_Target_' + 'Shared' * 6
   res = var_input('/set_shared_key')
   t.assert_equal 200, res.code
-  t.assert_equal "returned: [#{name.inspect}, #{name.inspect}]\nvar_input_target: \"initial\"", res["body"]
+  t.assert_equal "returned: [#{name.inspect}, #{name.inspect}, NameError]\nvar_input_target: \"initial\"", res["body"]
 end
 
 t.assert('Nginx::Var - the error line of a variable without a value names the variable exactly', 'GET /realpath_root on 18153') do

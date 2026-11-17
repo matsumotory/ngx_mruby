@@ -55,8 +55,8 @@ lines =
     [[before, value, defined.call(:Var_Accessor_Declared)]]
   when '/unknown'
     get = v.var_accessor_no_such_variable
-    set = v.send(:var_accessor_no_such_variable=, 'x')
-    prefix_set = v.send(:arg_var_accessor_set=, 'x')
+    set = attempt.call(lambda { v.send(:var_accessor_no_such_variable=, 'x') })
+    prefix_set = attempt.call(lambda { v.send(:arg_var_accessor_set=, 'x') })
     [
       [get, defined.call(:var_accessor_no_such_variable)],
       [set, defined.call(:var_accessor_no_such_variable=)],

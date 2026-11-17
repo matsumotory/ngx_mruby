@@ -681,6 +681,25 @@ not enough, and show the change.
   Nginx.redirect "/backend"
   ```
 
+- [Assigning a variable that nginx does not know, or does not let scripts change, raises](../releases/v3.0.0.md#assigning-a-variable-that-nginx-does-not-know-or-does-not-let-scripts-change-raises-854):
+  look for assignments with `Nginx::Var` (`v.<name> =` and `set`), and
+  for the `error` lines `is not found`, `not changeable` and
+  `is not assinged` of `ngx_mrb_var_set_vector` and `ngx_mrb_var_set_func`
+  in the `error.log` of a 2.x server, which name the variables that such
+  an assignment missed. On 3.0.0 the assignment raises `NameError` for a
+  name that nginx does not know and `RuntimeError` for a variable that
+  nginx does not let scripts change, or keeps no value of, where 2.x
+  logged the line, returned `nil` and went on. Declare the variable with
+  `set` or `mruby_variable`, or change the request with the setters of
+  `Nginx::Request` and `Nginx::Headers_in`:
+
+  ```ruby
+  v = Nginx::Var.new
+  v.backend_url = "http://10.0.0.2/"   # no set or mruby_variable declares $backend_url: 2.x: nil and an error line   3.0.0: NameError
+  v.uri = "/other"                      # 2.x: nil and an error line   3.0.0: RuntimeError
+  Nginx::Request.new.uri = "/other"     # changes the URI on both
+  ```
+
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
 `Enumerable` on a `Dir` are new to scripts of 2.x; the first two leave out
 `.` and `..` (see [New features](../releases/v3.0.0.md#new-features)).

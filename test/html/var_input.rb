@@ -38,11 +38,16 @@ begin
       [:Var_Input_Target_Set_By_A_Symbol.to_s, v.var_input_target_set_by_a_symbol]
     when '/set_shared_key'
       # Too long to be kept inside the String object, so dup shares the
-      # bytes of name. No variable has this name.
+      # bytes of name. No variable has this name, so set raises NameError.
       name = 'Var_Input_Target_' + 'Shared' * 6
       copy = name.dup
-      v.set(copy, 'shared key')
-      [name, copy]
+      raised = begin
+        v.set(copy, 'shared key')
+        nil
+      rescue NameError => e
+        e.class
+      end
+      [name, copy, raised]
     when '/realpath_root'
       v.realpath_root
     when '/empty_name'

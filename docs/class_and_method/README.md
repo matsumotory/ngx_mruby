@@ -1404,8 +1404,8 @@ You can use Var instance as below.
 ```ruby
 v = Nginx::Var.new
 Nginx.echo "$http_host core variable is #{v.http_host}"
-v.http_host = "192.168.0.1"
-Nginx.echo "$http_host is overridden to #{v.http_host}"
+v.backend = "192.168.0.1"   # $backend is declared with set or mruby_variable
+Nginx.echo "$backend is #{v.backend}"
 ```
 
 Also you can use your own variable.
@@ -1440,7 +1440,7 @@ Set the 2nd arg to the variable if the symbol ends with `=`. Otherwise, returns 
 
 The variable is looked up by the name in lowercase. Since 2.7.2, a name that is empty or made only of `=` raises `NoMethodError`, and a setter called without a value raises `ArgumentError` and leaves the variable as it was.
 
-Since 3.0.0, the first `v.NAME` or `v.NAME = value` of a name in a worker process also defines the accessor as a method of `Nginx::Var`, and the later accesses of that name in the worker call the method instead of `method_missing`. The method reads and writes the variable as `method_missing` does: the same values, `nil` for a name that is not a variable, the same exceptions and the same lines in `error.log`. A worker defines:
+Since 3.0.0, the first `v.NAME` or `v.NAME = value` of a name in a worker process also defines the accessor as a method of `Nginx::Var`, and the later accesses of that name in the worker call the method instead of `method_missing`. The method reads and writes the variable as `method_missing` does: the same values, `nil` when it reads a name that is not a variable, the same exceptions and the same lines in `error.log`. A worker defines:
 
 - a getter and a setter for each declared variable that scripts use: the variables of nginx and its modules, and the ones that `set` and `mruby_variable` declare;
 - a getter for the first 16 names of prefix variables that scripts use, the variables whose names start with a prefix that nginx defines, such as `arg_`, `http_`, `cookie_` and `upstream_http_`. Any suffix makes such a name, so a worker keeps at most 16 of them.
@@ -1463,6 +1463,16 @@ v.set "backend", "http://192.168.0.9/"  # Set "http://192.168.0.9/" to $backend
 ```
 
 A `name` or a `value` that is not a String is converted with `to_s`. When `to_s` is missing, raises, or returns an object that is not a String, `set` raises that exception (a `TypeError` for the object that is not a String), and so does `Nginx::Var#<name>=`.
+
+Since 3.0.0, `set` and `Nginx::Var#<name>=` raise when nginx cannot take the assignment, and the message names the variable as the script wrote it:
+
+- `NameError` (`nginx variable $<name> is not defined (declare it with set or mruby_variable)`) for a name that nginx does not know. A name that begins with a prefix of nginx, such as `arg_` or `http_`, counts as one when no `set` or `mruby_set` declares it (`mruby_variable` does not declare such names).
+- `RuntimeError` (`nginx variable $<name> cannot be changed by a script`) for a variable that nginx does not let scripts change, such as `$uri` or `$http_host`. Change the URI and the request headers with the setters of `Nginx::Request` and `Nginx::Headers_in`.
+- `RuntimeError` (`nginx variable $<name> cannot be assigned by a script: the configuration does not refer to it`) for a variable without a set handler, such as one of `map` or `geo`, that nothing in the configuration refers to: nginx keeps no value of it in the request.
+
+A handler that does not rescue the exception ends as after any other exception: its request answers 500, a log handler logs it, and `error.log` has the `mrb_run failed` line of the exception. `nginx -t` cannot find these mistakes, because the code decides the name when it runs; they show at the first request that runs the assignment. On 2.x, the assignment wrote a line at the `error` level to `error.log`, returned `nil`, and the request went on with the variable unchanged.
+
+The value that `set` and `Nginx::Var#<name>=` assign is the one that nginx's `set` directive would assign: a variable with a set handler, such as `$args` or `$limit_rate`, gets it through that handler. `set` returns the value as a String.
 
 ## Nginx::Var#.exist? -> true or false
 
