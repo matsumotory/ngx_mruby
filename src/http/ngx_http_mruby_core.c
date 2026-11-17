@@ -480,10 +480,11 @@ ngx_int_t ngx_mrb_finalize_body_filter(ngx_http_request_t *r, ngx_http_mruby_ctx
     return NGX_ERROR;
   }
 
-  // HEAD ends at the headers. Preserve their result without forwarding
-  // body bytes. Other header-only responses keep their previous handling.
+  // A response that ends at the headers (HEAD, 204, 304: nginx's header
+  // filter set r->header_only) keeps their result without forwarding body
+  // bytes, as nginx's own handlers do after r->header_only.
   if (r->header_only) {
-    return r->method == NGX_HTTP_HEAD ? rc : NGX_ERROR;
+    return rc;
   }
 
   return ngx_http_next_body_filter(r, &out);

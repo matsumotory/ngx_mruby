@@ -1,7 +1,11 @@
 #!/usr/bin/env ruby
 # HEAD (or a control GET), then GET /backend on the same connection.
 # Uses the existing filter_connection server on port 18112. The first
-# response ends at its headers for HEAD, regardless of Content-Length.
+# response ends at its headers for HEAD, regardless of Content-Length, and
+# for 204 and 304, which have no body.
+# Usage: ruby _head_filter_client.rb METHOD PATH [HEX_HEADERS]
+# HEX_HEADERS, decoded from hex, is added to the header of the first
+# request, each line ending with CRLF (for example If-Modified-Since).
 # Print STATUS1:HEX1:STATUS2:HEX2, like the other raw socket helpers.
 require 'socket'
 
@@ -26,18 +30,20 @@ rescue Errno::ECONNRESET
   ['RESET', raw]
 end
 
-method, path = ARGV
+method, path, hex_headers = ARGV
+extra_headers = [hex_headers.to_s].pack('H*')
 abort 'expected HEAD or GET' unless %w[HEAD GET].include?(method)
 first_status, first = 'SKIPPED', ''.b
 second_status, second = 'SKIPPED', ''.b
 begin
   Socket.tcp('127.0.0.1', 18112, connect_timeout: LIMIT) do |sock|
-    sock.write "#{method} #{path} HTTP/1.1\r\nHost: localhost\r\n\r\n"
+    sock.write "#{method} #{path} HTTP/1.1\r\nHost: localhost\r\n#{extra_headers}\r\n"
     first_status, first = read_response(sock) do |raw|
       header_end = raw.index("\r\n\r\n")
       if header_end
         length = raw[0, header_end][/^content-length: *(\d+)/i, 1]
-        method == 'HEAD' || (length && raw.bytesize >= header_end + 4 + length.to_i)
+        no_body = raw[/\AHTTP\/1\.[01] (204|304) /]
+        method == 'HEAD' || no_body || (length && raw.bytesize >= header_end + 4 + length.to_i)
       end
     end
     if first_status == 'COMPLETE'

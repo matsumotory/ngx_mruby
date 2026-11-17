@@ -1,6 +1,6 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-17 (17:15 JST)
+## State as of 2026-11-17 (18:00 JST)
 
 - Heads: `master` is `ea531ad88`, the merge of
   [#851](https://github.com/matsumotory/ngx_mruby/pull/851) (2026-11-17
@@ -33,9 +33,11 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `b2c312f50`, the merge of
-  [#848](https://github.com/matsumotory/ngx_mruby/pull/848) (2026-11-17
-  16:16 JST), below; before it, the merges of
+  all below. `next` is `e9c214de2`, the merge of
+  [#849](https://github.com/matsumotory/ngx_mruby/pull/849) (2026-11-17
+  17:52 JST), after `b2c312f50`, the merge of
+  [#848](https://github.com/matsumotory/ngx_mruby/pull/848) (16:16 JST),
+  both below; before them, the merges of
   [#847](https://github.com/matsumotory/ngx_mruby/pull/847) (06:48 JST),
   [#844](https://github.com/matsumotory/ngx_mruby/pull/844) (04:38 JST),
   [#835](https://github.com/matsumotory/ngx_mruby/pull/835) (04:25 JST),
@@ -139,8 +141,10 @@
   [#851](https://github.com/matsumotory/ngx_mruby/pull/851) (`master`,
   documentation) links them in the two entries of
   `docs/releases/v2.7.11.md` and `.ja.md`, and brings the Japanese file
-  to the conventions of "The Japanese file" in `docs/releases/README.md`.
-  #850 brings the two files to `next`.
+  to the conventions of "The Japanese file" in `docs/releases/README.md`;
+  it was merged on 2026-11-17 at 17:10 JST as `ea531ad88`. The English
+  and the Japanese parts of the text of the GitHub release v2.7.11 link
+  the two advisories as well. #850 brings the two files to `next`.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
@@ -270,9 +274,26 @@
   the connection that the header kept alive; since #835, a header filter
   at `http` or `server` level put every HEAD request of the server on
   the first path. They now return the result of sending the header, as
-  the known-length body filter path does. Behavior change, `next` only,
-  like the fix of the known-length path. Its test is
-  `test/t/cases/head_header_filter.rb` (port 18112).
+  the known-length body filter path does. Behavior change, `next` only;
+  the fix of the known-length path is on `master` as well (2.7.5). Its
+  test is `test/t/cases/head_header_filter.rb` (port 18112).
+- [#849](https://github.com/matsumotory/ngx_mruby/pull/849) (`next`,
+  merged on 2026-11-17 at 17:52 JST as `e9c214de2`): a 204 or 304 response that passes an mruby output
+  header or body filter, such as the 304 of a conditional GET of a
+  static file or `return 204;`, no longer closes its connection after
+  the header. The three places that pass the header on
+  (`ngx_http_mruby_header_filter_send`, the branch of
+  `ngx_http_mruby_body_filter` for a response without a length, and
+  `ngx_mrb_finalize_body_filter`) returned `NGX_ERROR` when nginx had set
+  `r->header_only` for a request other than HEAD; they now return the
+  result of sending the header for every method and pass no body on;
+  the branch without a length marks the dropped buffers as sent, so that
+  the copy filter can read the rest of a file larger than
+  `output_buffers` instead of waiting for `send_timeout` (also for HEAD
+  since #848). Since #835, a header filter at `http` or `server` level put every
+  conditional GET of a static file that nginx answered with 304 on the
+  first place. Behavior change, `next` only. Its test is
+  `test/t/cases/header_only_keepalive.rb` (port 18112).
 - The advisory
   [GHSA-8j8w-mcp5-xp3h](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-8j8w-mcp5-xp3h)
   (Low, patched in 2.7.8) was published on 2026-11-15 at 15:39
