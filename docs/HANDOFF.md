@@ -200,8 +200,11 @@
   `ngx_http_mruby_body_filter` for a response without a length, and
   `ngx_mrb_finalize_body_filter`) returned `NGX_ERROR` when nginx had set
   `r->header_only` for a request other than HEAD; they now return the
-  result of sending the header for every method and pass no body on.
-  Since #835, a header filter at `http` or `server` level put every
+  result of sending the header for every method and pass no body on;
+  the branch without a length marks the dropped buffers as sent, so that
+  the copy filter can read the rest of a file larger than
+  `output_buffers` instead of waiting for `send_timeout` (also for HEAD
+  since #848). Since #835, a header filter at `http` or `server` level put every
   conditional GET of a static file that nginx answered with 304 on the
   first place. Behavior change, `next` only. Its test is
   `test/t/cases/header_only_keepalive.rb` (port 18112).
