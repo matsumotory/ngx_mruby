@@ -430,6 +430,9 @@ Since 2.7.10 this also holds for an include that is not the first of the page an
 A header filter runs before the body has been read.
 There `Nginx::Filter#body` returns an empty string and `Nginx::Filter#body=` raises a `RuntimeError` (both since 2.7.1).
 
+A response that ends at its header, the response to a HEAD request or a 204 or 304, sends no body after the header in a location with an output filter, and nginx keeps an otherwise reusable connection for the next request.
+Up to 2.7.11, nginx closed the connection after such a response when it passed a header filter in a location without a body filter, or a body filter, except a HEAD response with a known length through a body filter, which keeps its connection since 2.7.5 (see [the 2.7.12 release notes](../releases/v2.7.12.md)).
+
 `Nginx::Async.sleep` and `Nginx::Async::HTTP.sub_request` raise a `RuntimeError` in both kinds of filter (since 2.7.1), because nginx cannot resume a filter that waits.
 
 ## mruby_enable_read_request_body
