@@ -321,10 +321,10 @@ covers `Nginx::HTTP_OK` and the other statuses from 200 to 299 that nginx does
 not answer by itself (for example `Nginx::HTTP_ACCEPTED`), a handler that
 writes nothing or only `""` or `nil` with `Nginx.rputs`, and a handler that only
 sets response headers. A HEAD request gets the same header, and the output
-filters of the location run on the empty response. After a HEAD request to a
-location with an mruby output body filter, nginx sends the header and closes
-the connection instead of keeping it, as it does there for a handler with
-output. nginx answers
+filters of the location run on the empty response. After the header of a
+HEAD request, nginx keeps an otherwise reusable connection for the next
+request, also in a location with an mruby output header or body filter, as
+it does there for a handler with output. nginx answers
 `Nginx::HTTP_CREATED`, `Nginx::HTTP_NO_CONTENT` (204 without a body) and the
 statuses from 300 up by itself, for example with its error page. A status below
 200 without output answers 500 with nginx's error page, and error.log gets a
