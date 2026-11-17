@@ -1719,7 +1719,7 @@ response = f.body.upcase
 
 Sets the string to the response body.
 The response is sent with exactly this body, and `Content-Length` is its length; since 2.7.1 this also holds when the body was written with `Nginx.rputs` or `Nginx.echo`.
-A HEAD response with a known content length that is finalized by the output body filter sends its headers without body bytes and keeps an otherwise reusable connection available for the next request. This applies to both empty and nonempty replacement bodies.
+A HEAD response with a known content length that is finalized by the output body filter sends its headers without body bytes and keeps an otherwise reusable connection available for the next request. This applies to both empty and nonempty replacement bodies. A 204 or 304 response through the output body filter, and a HEAD response without a known length through it, keep the connection as well, also when nginx needs more than one write for the header.
 It can only be used in an output body filter; anywhere else it raises a `RuntimeError` (since 2.7.1).
 A value that is not a String is converted with `to_s`. When `to_s` is missing or raises, `body=` raises that exception, and since 2.7.6 a `to_s` that returns something other than a String makes it raise `TypeError`; up to 2.7.5 such a `to_s` could end the worker process. In each case the body stays as it was.
 

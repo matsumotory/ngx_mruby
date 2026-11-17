@@ -1985,13 +1985,15 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
       // as sent, as the body filter does when it reads them, so that the
       // filters before this one (the copy filter) can reuse them for the rest
       // of the body; a buffer left unsent would hold the request until
-      // send_timeout.
+      // send_timeout. The next filters still get the call, without the
+      // body, so that the write filter sends the rest of a header that did
+      // not go out in one write when ngx_http_writer calls again.
       if (r->header_only) {
         for (cl = in; cl != NULL; cl = cl->next) {
           cl->buf->pos = cl->buf->last;
           cl->buf->file_pos = cl->buf->file_last;
         }
-        return rc;
+        return ngx_http_next_body_filter(r, NULL);
       }
     }
     return ngx_http_next_body_filter(r, in);
