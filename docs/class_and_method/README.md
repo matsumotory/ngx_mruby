@@ -1466,7 +1466,7 @@ A `name` or a `value` that is not a String is converted with `to_s`. When `to_s`
 
 Since 3.0.0, `set` and `Nginx::Var#<name>=` raise when nginx cannot take the assignment, and the message names the variable as the script wrote it:
 
-- `NameError` (`nginx variable $<name> is not defined (declare it with set or mruby_variable)`) for a name that nginx does not know. A name that begins with a prefix of nginx, such as `arg_` or `http_`, counts as one when no `set` or `mruby_set` declares it.
+- `NameError` (`nginx variable $<name> is not defined (declare it with set or mruby_variable)`) for a name that nginx does not know. A name that begins with a prefix of nginx, such as `arg_` or `http_`, counts as one when no `set` or `mruby_set` declares it (`mruby_variable` does not declare such names).
 - `RuntimeError` (`nginx variable $<name> cannot be changed by a script`) for a variable that nginx does not let scripts change, such as `$uri` or `$http_host`. Change the URI and the request headers with the setters of `Nginx::Request` and `Nginx::Headers_in`.
 - `RuntimeError` (`nginx variable $<name> cannot be assigned by a script: the configuration does not refer to it`) for a variable without a set handler, such as one of `map` or `geo`, that nothing in the configuration refers to: nginx keeps no value of it in the request.
 

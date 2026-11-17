@@ -282,7 +282,12 @@ name up once, and does what `ngx_http_script_set_var_code` does for the
 `set` directive. `#set`, `#name=` and the end of `mruby_set` call it.
 A name that nginx does not know raises `NameError`, and a variable that
 nginx does not let scripts change (such as `$uri`) raises `RuntimeError`
-(decision 3). The message names the variable.
+(decision 3). The message names the variable. A changeable variable
+without a set_handler that has no index, because nothing in the
+configuration refers to it (a variable of `map` or `geo`), has no place in
+the request for a value; its assignment also raises `RuntimeError`, with a
+message that says so, where the old code logged `is not assinged`
+(#854).
 
 When such an error shows. The worker does not stop: the exception goes to
 the handler, and a handler that does not rescue it ends as after any

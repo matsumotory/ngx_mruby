@@ -152,8 +152,11 @@
   handler that waited, and an assignment to a variable that nginx does
   not know raises `NameError`, one to a variable that nginx does not let
   scripts change or keeps no value of raises `RuntimeError`. Its test is
-  `test/t/cases/var_assign.rb` (port 18107). It is a draft while its
-  local checks run; the session that opened it continues it.
+  `test/t/cases/var_assign.rb` (port 18107). It is ready: the local
+  checks are quoted in its body, and an agent that did not write it
+  reviewed it with no "must fix" item. The CI run on its head, the run
+  of the `perf` job and the merge are recorded on the pull request; the
+  session that opened it continues it.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
