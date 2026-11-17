@@ -1851,7 +1851,10 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
  * ngx_mrb_finalize_body_filter sends it with the length of the body that the
  * body filter produced; ngx_http_mruby_body_filter sends it for a response
  * without a known length. The changes that the header filter code made to
- * headers_out go out with it.
+ * headers_out go out with it. A HEAD response ends at that header, and the
+ * result of sending it is returned, as ngx_mrb_finalize_body_filter does:
+ * nginx's handler then sends no body and keeps the connection for the next
+ * request. Other header-only responses keep their previous handling.
  */
 static ngx_int_t ngx_http_mruby_header_filter_send(ngx_http_request_t *r, ngx_http_mruby_loc_conf_t *mlcf)
 {
@@ -1862,8 +1865,11 @@ static ngx_int_t ngx_http_mruby_header_filter_send(ngx_http_request_t *r, ngx_ht
   }
 
   rc = ngx_http_next_header_filter(r);
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+  if (rc == NGX_ERROR || rc > NGX_OK) {
     return NGX_ERROR;
+  }
+  if (r->header_only) {
+    return r->method == NGX_HTTP_HEAD ? rc : NGX_ERROR;
   }
   return rc;
 }
@@ -1972,8 +1978,13 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
 
     if (mlcf->body_filter_handler != NULL) {
       rc = ngx_http_next_header_filter(r);
-      if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+      if (rc == NGX_ERROR || rc > NGX_OK) {
         return NGX_ERROR;
+      }
+      // A HEAD response ends at the header: the body is not passed on, as
+      // in ngx_mrb_finalize_body_filter.
+      if (r->header_only) {
+        return r->method == NGX_HTTP_HEAD ? rc : NGX_ERROR;
       }
     }
     return ngx_http_next_body_filter(r, in);

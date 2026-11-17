@@ -1,8 +1,9 @@
 # HEAD must send no body and leave a kept connection usable by the next
 # request. Reuses test/conf/conf.d/20-filter-connection.conf (port 18112),
 # with the bounded raw socket helper _head_filter_client.rb.
-# This covers the known-length body-filter finalizer, not the separate
-# unknown-length bypass or header-filter-only paths.
+# This covers the known-length body-filter finalizer. The unknown-length
+# bypass of the body filter and the header-filter-only path are covered by
+# test/t/cases/head_header_filter.rb.
 t = SimpleTest.new "ngx_mruby test: HEAD with an output body filter"
 
 def head_filter_parse(raw)
