@@ -1489,20 +1489,45 @@ v.exist? "backend" # => false
 Headers_in class stores HTTP request headers.
 The name comes from [ngx_http_headers_in_t](https://www.nginx.com/resources/wiki/extending/api/http/#ngx-http-headers-in-t).
 
+The methods of `Nginx::Headers_in` and `Nginx::Headers_out` find the
+headers whose name has the same length and the same bytes as the name
+given, in any case: `"x-foo"` finds `X-Foo`, and `"X-Foo"` does not find
+`X-Foo-Bar`. A name is a String or a Symbol; a name of another type raises
+`TypeError`. A value of `[]=` is a String, `nil`, which deletes the
+header, an Array, which adds one header for each element, or an object
+whose `to_s` returns a String, which is converted as `Nginx::Var` converts
+the values that a script assigns. `[]=` converts every value before it
+changes the headers, so a `to_s` that raises, or that does not return a
+String (`TypeError`), leaves them as they were.
+
 ## Instance Methods
 
-### Nginx::Headers_in#\[\](string) -> string
+<a id="nginxheaders_in---string"></a>
 
-Returns the value of the http request header.
+### Nginx::Headers_in#\[\](name) -> string, array or nil
+
+Returns the value of the request header, an Array of the values when the
+request has the header more than once, or `nil` when it has none.
 
 ```ruby
 hin = Nginx::Headers_in.new
 Nginx.rputs hin["User-Agent"] #=> curl/7.29.0
 ```
 
-### Nginx::Headers_in#[]=(string, string)
+<a id="nginxheaders_instring-string"></a>
 
-Sets the value to the http request header. The name and the value must each be a String; a non-String raises `TypeError`.
+### Nginx::Headers_in#[]=(name, value)
+
+Removes every request header of the name, then adds the value. The proxy
+and grpc modules recognize a header that it adds by its name, as they
+recognize the headers that the client sent: `proxy_pass` sends the value
+of `proxy_set_header`, or its own value of `Host`, `Connection` and the
+other headers that it sets itself, instead of the value of the script
+(`grpc_pass` with `grpc_set_header` in the same way). To send the value of
+the script in such a header, put it in a variable and give the variable to
+`proxy_set_header`. nginx's handling of the well-known request headers,
+such as the `$host` and the choice of the server that come from `Host`,
+does not run for a header that `[]=` adds.
 
 ```ruby
 hin = Nginx::Headers_in.new
@@ -1510,6 +1535,8 @@ Nginx.rputs hin["User-Agent"] #=> curl/7.29.0
 
 hin["User-Agent"] = "test-agent"
 Nginx.rputs hin["User-Agent"] #=> test-agent
+
+hin["X-Forwarded-Count"] = 2   # "2"
 ```
 
 ### Nginx::Headers_in#all -> hash
@@ -1531,9 +1558,11 @@ $ curl http://127.0.0.1:8001/hello
 #Accept: */*
 ```
 
-### Nginx::Headers_in#delete(string)
+<a id="nginxheaders_indeletestring"></a>
 
-Delete the field from the http request headers.
+### Nginx::Headers_in#delete(name)
+
+Removes every request header of the name.
 
 ```ruby
 hin = Nginx::Headers_in.new
@@ -1546,12 +1575,32 @@ Nginx.rputs hin["X-Remove-Header"] #=> nil
 
 Headers_out class stores HTTP response headers.
 The name comes from [ngx_http_headers_out_t](https://www.nginx.com/resources/wiki/extending/api/http/#ngx-http-headers-out-t).
+The names and values are those of
+[Nginx::Headers_in](#nginxheaders_in-class).
+
+nginx keeps four response headers in fields of its own, and
+`Nginx::Headers_out` reads and changes them there. The names are matched in
+any case:
+
+| Header | `[]=` | `[]` | `delete` |
+|---|---|---|---|
+| `Content-Type` | sets nginx's type of the response, which nginx's filters (`charset`, `gzip_types` and the others) read and nginx sends in one line; it is not a line of `all`; of an Array, the last element. As for a `Content-Type` from an upstream, a `charset=` parameter becomes nginx's charset and the filters test the type before it | nginx's type, or the lines of the name when nginx has none | clears nginx's type: the response has no `Content-Type` |
+| `Location` | adds a line for each value and points nginx's field at the last; a value that starts with `/` is made absolute by nginx when `absolute_redirect` is on (the default), as for nginx's own redirects | the value of nginx's field, or the lines of the name when the field is not set | clears the field and removes the lines |
+| `Date` | adds a line for each value and points nginx's field at the last: nginx does not send its own `Date` | as for `Location` | as for `Location`: nginx sends its own `Date` |
+| `Server` | as for `Date`: nginx does not send its own `Server` | as for `Location` | as for `Location`: nginx sends its own `Server` |
+
+`Content-Length` is a line of the list, as the other headers: nginx sends
+the length of the output of `Nginx.rputs` (or of the file) as before, and
+a `Content-Length` that a script sets is sent as one more line.
 
 ## Instance Methods
 
-### Nginx::Headers_out#\[\](string) -> string
+<a id="nginxheaders_out---string"></a>
 
-Returns the value of the http response header.
+### Nginx::Headers_out#\[\](name) -> string, array or nil
+
+Returns the value of the response header, an Array of the values when the
+response has the header more than once, or `nil` when it has none.
 
 ```ruby
 hout = Nginx::Headers_out.new
@@ -1559,14 +1608,19 @@ hout["X-NGX-MRUBY"] = "support"
 Nginx.rputs hout["X-NGX-MRUBY"] #=> support
 ```
 
-### Nginx::Headers_out#[]=(string, string)
+<a id="nginxheaders_outstring-string"></a>
 
-Sets the value to the http response header. The name and the value must each be a String; a non-String raises `TypeError`.
+### Nginx::Headers_out#[]=(name, value)
+
+Removes every response header of the name, then adds the value.
 
 ```ruby
 hout = Nginx::Headers_out.new
 hout["X-NGX-MRUBY"] = "support"
 Nginx.rputs hout["X-NGX-MRUBY"] #=> support
+
+hout["Content-Type"] = "application/json"   # one Content-Type line
+hout["Set-Cookie"] = ["a=1", "b=2"]          # two Set-Cookie lines
 ```
 
 ### Nginx::Headers_out#all -> hash
@@ -1587,9 +1641,11 @@ $ curl -v http://192.168.12.9:8001/hello?a=1
 #X-NGX-MRUBY: support
 ```
 
-### Nginx::Headers_out#delete(string)
+<a id="nginxheaders_outdeletestring"></a>
 
-Delete the field from the http response headers.
+### Nginx::Headers_out#delete(name)
+
+Removes every response header of the name.
 
 ```ruby
 hout = Nginx::Headers_out.new
