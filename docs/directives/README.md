@@ -580,6 +580,9 @@ Since 2.7.10 this also holds for an include that is not the first of the page an
 A header filter runs before the body has been read.
 There `Nginx::Filter#body` and `Nginx::Filter#body=` raise a `RuntimeError` (`#body=` since 2.7.1; `#body` since 3.0.0, it returned an empty string from 2.7.1).
 
+A response that ends at its header, the response to a HEAD request or a 204 or 304, sends no body after the header in a location with an output filter, and nginx keeps an otherwise reusable connection for the next request.
+Up to 2.7.11, nginx closed the connection after such a response when it passed a header filter in a location without a body filter, or a body filter, except a HEAD response with a known length through a body filter, which keeps its connection since 2.7.5 (see [the 2.7.12 release notes](../releases/v2.7.12.md)).
+
 `Nginx::Async.sleep` and `Nginx::Async::HTTP.sub_request` raise a `RuntimeError` in both kinds of filter (since 2.7.1), because nginx cannot resume a filter that waits.
 
 `Nginx.redirect` with a local URI raises a `RuntimeError` in both kinds of filter and makes no internal redirect, because nginx is sending the response of the request (since 3.0.0; see [the release notes of 3.0.0](../releases/v3.0.0.md#nginxredirect-with-a-local-uri-raises-a-runtimeerror-in-mruby_set-handlers-and-output-filters-833)). A redirect with a URL sets `Location` and the status there, as before.
