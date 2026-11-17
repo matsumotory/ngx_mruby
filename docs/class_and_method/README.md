@@ -1502,6 +1502,8 @@ String (`TypeError`), leaves them as they were.
 
 ## Instance Methods
 
+<a id="nginxheaders_in---string"></a>
+
 ### Nginx::Headers_in#\[\](name) -> string, array or nil
 
 Returns the value of the request header, an Array of the values when the
@@ -1511,6 +1513,8 @@ request has the header more than once, or `nil` when it has none.
 hin = Nginx::Headers_in.new
 Nginx.rputs hin["User-Agent"] #=> curl/7.29.0
 ```
+
+<a id="nginxheaders_instring-string"></a>
 
 ### Nginx::Headers_in#[]=(name, value)
 
@@ -1554,6 +1558,8 @@ $ curl http://127.0.0.1:8001/hello
 #Accept: */*
 ```
 
+<a id="nginxheaders_indeletestring"></a>
+
 ### Nginx::Headers_in#delete(name)
 
 Removes every request header of the name.
@@ -1589,6 +1595,8 @@ a `Content-Length` that a script sets is sent as one more line.
 
 ## Instance Methods
 
+<a id="nginxheaders_out---string"></a>
+
 ### Nginx::Headers_out#\[\](name) -> string, array or nil
 
 Returns the value of the response header, an Array of the values when the
@@ -1599,6 +1607,8 @@ hout = Nginx::Headers_out.new
 hout["X-NGX-MRUBY"] = "support"
 Nginx.rputs hout["X-NGX-MRUBY"] #=> support
 ```
+
+<a id="nginxheaders_outstring-string"></a>
 
 ### Nginx::Headers_out#[]=(name, value)
 
@@ -1630,6 +1640,8 @@ end
 $ curl -v http://192.168.12.9:8001/hello?a=1
 #X-NGX-MRUBY: support
 ```
+
+<a id="nginxheaders_outdeletestring"></a>
 
 ### Nginx::Headers_out#delete(name)
 
