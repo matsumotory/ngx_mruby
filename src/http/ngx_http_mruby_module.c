@@ -2124,7 +2124,11 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
  * ngx_mrb_finalize_body_filter sends it with the length of the body that the
  * body filter produced; ngx_http_mruby_body_filter sends it for a response
  * without a known length. The changes that the header filter code made to
- * headers_out go out with it.
+ * headers_out go out with it. A response that ends at that header (HEAD, 204,
+ * 304: nginx sets r->header_only) returns the result of sending it, as
+ * ngx_mrb_finalize_body_filter does: nginx's handler then sends no body, as
+ * it does after r->header_only, and keeps the connection for the next
+ * request.
  */
 static ngx_int_t ngx_http_mruby_header_filter_send(ngx_http_request_t *r, ngx_http_mruby_loc_conf_t *mlcf)
 {
@@ -2135,7 +2139,7 @@ static ngx_int_t ngx_http_mruby_header_filter_send(ngx_http_request_t *r, ngx_ht
   }
 
   rc = ngx_http_next_header_filter(r);
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+  if (rc == NGX_ERROR || rc > NGX_OK) {
     return NGX_ERROR;
   }
   return rc;
@@ -2225,6 +2229,7 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
   ngx_http_mruby_loc_conf_t *mlcf;
   ngx_http_mruby_ctx_t *ctx;
   ngx_pool_cleanup_t *cln;
+  ngx_chain_t *cl;
   ngx_int_t rc;
 
   mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
@@ -2236,8 +2241,21 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
 
     if (mlcf->body_filter_handler != NULL) {
       rc = ngx_http_next_header_filter(r);
-      if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+      if (rc == NGX_ERROR || rc > NGX_OK) {
         return NGX_ERROR;
+      }
+      // A response that ends at the header (HEAD, 204, 304): the body is not
+      // passed on, as in ngx_mrb_finalize_body_filter. Its buffers are marked
+      // as sent, as the body filter does when it reads them, so that the
+      // filters before this one (the copy filter) can reuse them for the rest
+      // of the body; a buffer left unsent would hold the request until
+      // send_timeout.
+      if (r->header_only) {
+        for (cl = in; cl != NULL; cl = cl->next) {
+          cl->buf->pos = cl->buf->last;
+          cl->buf->file_pos = cl->buf->file_last;
+        }
+        return rc;
       }
     }
     return ngx_http_next_body_filter(r, in);
