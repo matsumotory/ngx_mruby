@@ -254,7 +254,9 @@
   Symbol, and a value is converted with `to_s`; and a header that `[]=`
   adds has its `lowcase_key` and `next` set, and a request header its
   hash, so `proxy_pass` recognizes it. Its test is
-  `test/t/cases/headers_exact.rb` (ports 18095, 18097 and 18098). Its
+  `test/t/cases/headers_exact.rb` (ports 18095, 18097 and 18098); it also
+  changes the expectations of `test/t/cases/headers_in_proxy.rb` (ports
+  18099 and 18100, from 2.7.12) to that behavior. Its
   state, the CI run on its head and the review are recorded at the top of
   its body; the session that opened it continues it, and the session that
   asked for it merges it.
