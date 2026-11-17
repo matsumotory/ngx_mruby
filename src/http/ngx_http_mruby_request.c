@@ -144,9 +144,16 @@ static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
  * entry: Nginx.rputs adds the length of its output to content_length_n, so
  * the field is left to a later change (section 2.2 of the proposal).
  *
- * A header that []= adds has its lowcase_key and next set, and a request
- * header also its hash: nginx's proxy module looks every request header up
- * by hash and lowcase_key in the table of the headers that it sets itself.
+ * A header that []= adds has its lowcase_key (the lowercase name) and next
+ * set, and a request header also the hash of its name, as nginx sets them
+ * for the headers that it reads: nginx's proxy and grpc modules look every
+ * request header up by hash and lowcase_key in the table of the headers
+ * that they set themselves (proxy_set_header and their own ones), and so
+ * leave out a header of such a name that a script added, as they leave out
+ * the same header from a client. The 2.x line gives an added header the
+ * hash 1 and a lowcase_key that matches no name, so that those modules do
+ * not match it and send it next to their own (section 2.2 of the proposal
+ * and the release notes of 3.0.0).
  */
 typedef enum {
   NGX_MRB_HEADER_LIST = 0,
