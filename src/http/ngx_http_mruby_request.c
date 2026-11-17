@@ -286,13 +286,16 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
     break;
   }
 
-  /* nginx's proxy module passes lowcase_key to ngx_hash_find for every
-   * request header, so the added header has it, and next, set */
-  lowcase = ngx_pnalloc(pool, key_len);
+  /* nginx's proxy and grpc modules pass the lowcase_key of every request
+   * header to ngx_hash_find, so the added header has it, and next, set.
+   * lowcase_key is key_len zero bytes, not the lowercase name: no name of
+   * a header matches it, so on the 2.x line an added header is still not
+   * matched against the names of the headers that those modules set, and
+   * is sent as before. 3.0 sets the hash and the lowercase name instead. */
+  lowcase = ngx_pcalloc(pool, key_len);
   if (lowcase == NULL) {
     return NGX_ERROR;
   }
-  ngx_strlow(lowcase, key, key_len);
 
   new_header = ngx_list_push(headers);
   if (new_header == NULL) {
