@@ -394,6 +394,15 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   Nginx.redirect "/backend"
   ```
 
+- [nginxが知らない変数と、スクリプトからの変更を許さない変数への代入が例外を出す](../../releases/v3.0.0.ja.md#nginxが知らない変数とスクリプトからの変更を許さない変数への代入が例外を出す854)：`Nginx::Var`による代入(`v.<name> =`と`set`)を探してください。2.xのサーバーの`error.log`にある、`ngx_mrb_var_set_vector`と`ngx_mrb_var_set_func`の`is not found`、`not changeable`、`is not assinged`という`error`の行も探してください。これらの行には、代入が届かなかった変数の名前が書いてあります。2.xでは、このような代入は行をログに書いて`nil`を返し、処理を続けました。3.0.0では、nginxが知らない名前への代入は`NameError`を出し、スクリプトからの変更をnginxが許さない変数と、nginxが値を持たない変数への代入は`RuntimeError`を出します。変数を`set`か`mruby_variable`で宣言するか、`Nginx::Request`と`Nginx::Headers_in`のセッターでリクエストを変えてください。
+
+  ```ruby
+  v = Nginx::Var.new
+  v.backend_url = "http://10.0.0.2/"   # no set or mruby_variable declares $backend_url: 2.x: nil and an error line   3.0.0: NameError
+  v.uri = "/other"                      # 2.x: nil and an error line   3.0.0: RuntimeError
+  Nginx::Request.new.uri = "/other"     # changes the URI on both
+  ```
+
 `Dir.children`、`Dir#each_child`、`Dir.empty?`と、`Dir`に対する`Enumerable`のメソッドは、2.xのスクリプトには新しいものです。最初の2つは`.`と`..`を含みません。詳しくは[新機能](../../releases/v3.0.0.ja.md#新機能)にあります。
 
 ## ログの<wbr>監視

@@ -7,8 +7,9 @@ no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
 phases of the Ruby API of 2.1 (#826), 2.6 (#825), the per-request store
 of 2.1 (#832), 2.9 (#833), 2.5 (#834) and 2.4 (#835). Next step: the
 rows of section 4 that are open, "Headers" (2.2) and "One setter for
-`Nginx::Var`" (2.3), then the check before the tag of section 3, by
-2026-11-20.
+`Nginx::Var`" (2.3, in review in
+[#854](https://github.com/matsumotory/ngx_mruby/pull/854)), then the check
+before the tag of section 3, by 2026-11-20.
 
 This proposal designs what is left of step 4 of section 6 of
 [the v3 plan](v3-plan.md): the work that has to be on `next` before
@@ -889,7 +890,7 @@ and the one that merges second updates its branch.
 | Filter handlers: type, merge, phase handlers only where used: [#835](https://github.com/matsumotory/ngx_mruby/pull/835) | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
 | Execution context and the phases of the Ruby API: [#826](https://github.com/matsumotory/ngx_mruby/pull/826) | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
 | Per-request store: [#832](https://github.com/matsumotory/ngx_mruby/pull/832) | 2.1 | nothing | execution context |
-| One setter for `Nginx::Var` | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (the caller of the setter in `ngx_mrb_post_fiber`, which #833 removed) |
+| One setter for `Nginx::Var`: [#854](https://github.com/matsumotory/ngx_mruby/pull/854); the end of an `mruby_set` handler that waited (`ngx_http_mrb_resume_set` in `src/http/ngx_http_mruby_async.c`) calls the setter, as `ngx_mrb_post_fiber` did before #833 removed it | 2.3 | nothing | execution context (`src/http/ngx_http_mruby_var.c`), waits inside another call (`src/http/ngx_http_mruby_async.c`) |
 | Waits inside another mruby call: [#833](https://github.com/matsumotory/ngx_mruby/pull/833) (the raise of `Nginx.redirect` in log handlers is done by #770) | 2.9 | nothing | execution context (`src/http/ngx_http_mruby_async.c`), `Nginx::Var` |
 | Common code loading: [#825](https://github.com/matsumotory/ngx_mruby/pull/825) | 2.6 | nothing | directive table, filter handlers (the directive functions) |
 | Common upstream switching: [#788](https://github.com/matsumotory/ngx_mruby/pull/788), merged on 2026-11-11 | 2.7 | nothing | nothing |
