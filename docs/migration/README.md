@@ -709,7 +709,9 @@ not enough, and show the change.
   `[]=` before `proxy_pass` or `grpc_pass` in the same location. On
   3.0.0, `delete` removes every header of the name, where 2.x removed the
   first; the four headers of the response are nginx's own, so the
-  response has one line of each, `[]` reads nginx's value, a `Location`
+  response has one line of each, `[]` reads nginx's `Content-Type`, a
+  `Content-Type` with a `charset=` parameter matches `gzip_types` and the
+  other type lists by the type before it, a `Location`
   that starts with `/` is made absolute when `absolute_redirect` is on,
   and deleting `Server` or `Date` gives nginx's own back; and
   `proxy_pass` sends its own value of a header that `proxy_set_header`

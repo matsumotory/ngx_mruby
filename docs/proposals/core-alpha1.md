@@ -1087,10 +1087,10 @@ The entry of section 2.12 in the release notes of 3.0.0 says so.
 - Moving log handlers to the front changes the order against third-party
   log-phase modules whose postconfiguration runs before ngx_mruby's. The
   entry says that mruby log handlers run before those modules.
-- `Content-Type` and `Content-Length` set through `headers_out` now reach
-  nginx's fields, which later filters (gzip, charset, range) read. A script
-  that set them for show now changes what those filters do; the entry says
-  so.
+- `Content-Type` set through `headers_out` now reaches
+  nginx's field, which later filters (gzip, charset, range) read. A script
+  that set it for show now changes what those filters do; the entry says
+  so. `Content-Length` stays a header line (2.2).
 - The merge of filters makes a server-level filter run in locations that
   proxy or serve files, with `r->filter_need_in_memory` set there.
 - HTTP/2 and HTTP/3 clients are not in the harness yet (the queue row on

@@ -1514,13 +1514,16 @@ Nginx.rputs hin["User-Agent"] #=> curl/7.29.0
 
 ### Nginx::Headers_in#[]=(name, value)
 
-Removes every request header of the name, then adds the value. A header
-that it adds is one that nginx's modules recognize by its name, as they
+Removes every request header of the name, then adds the value. The proxy
+and grpc modules recognize a header that it adds by its name, as they
 recognize the headers that the client sent: `proxy_pass` sends the value
 of `proxy_set_header`, or its own value of `Host`, `Connection` and the
-other headers that it sets itself, instead of the value of the script. To
-send the value of the script in such a header, put it in a variable and
-give the variable to `proxy_set_header`.
+other headers that it sets itself, instead of the value of the script
+(`grpc_pass` with `grpc_set_header` in the same way). To send the value of
+the script in such a header, put it in a variable and give the variable to
+`proxy_set_header`. nginx's handling of the well-known request headers,
+such as the `$host` and the choice of the server that come from `Host`,
+does not run for a header that `[]=` adds.
 
 ```ruby
 hin = Nginx::Headers_in.new
@@ -1575,7 +1578,7 @@ any case:
 
 | Header | `[]=` | `[]` | `delete` |
 |---|---|---|---|
-| `Content-Type` | sets nginx's type of the response, which nginx's filters (`charset`, `gzip_types` and the others) read and nginx sends in one line; it is not a line of `all`; of an Array, the last element | nginx's type, or the lines of the name when nginx has none | clears nginx's type: the response has no `Content-Type` |
+| `Content-Type` | sets nginx's type of the response, which nginx's filters (`charset`, `gzip_types` and the others) read and nginx sends in one line; it is not a line of `all`; of an Array, the last element. As for a `Content-Type` from an upstream, a `charset=` parameter becomes nginx's charset and the filters test the type before it | nginx's type, or the lines of the name when nginx has none | clears nginx's type: the response has no `Content-Type` |
 | `Location` | adds a line for each value and points nginx's field at the last; a value that starts with `/` is made absolute by nginx when `absolute_redirect` is on (the default), as for nginx's own redirects | the value of nginx's field, or the lines of the name when the field is not set | clears the field and removes the lines |
 | `Date` | adds a line for each value and points nginx's field at the last: nginx does not send its own `Date` | as for `Location` | as for `Location`: nginx sends its own `Date` |
 | `Server` | as for `Date`: nginx does not send its own `Server` | as for `Location` | as for `Location`: nginx sends its own `Server` |
