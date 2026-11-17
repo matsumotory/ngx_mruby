@@ -361,42 +361,70 @@ static ngx_int_t ngx_mrb_header_list_remove(ngx_pool_t *pool, ngx_list_t *header
 }
 
 /*
- * Removes every header of the name from the list. Each removal changes the
- * parts, so the search starts again from the first part after it.
+ * Removes every header of the name from the list, in one scan. A removal
+ * moves no element, so the scan goes on with the element after the removed
+ * one, wherever ngx_mrb_header_list_remove() left it:
+ * - element 0 of the first part: the first part is the embedded
+ *   headers->part, whose base advanced, which was restored when the list
+ *   emptied, or which took the contents of the next part; the scan goes on
+ *   at element 0 of headers->part;
+ * - element 0 of a later part: the part's base advanced, and the scan goes
+ *   on at its element 0; or the part emptied and was unlinked, and the scan
+ *   goes on at element 0 of the part that followed it, after the same prev;
+ * - the last element of a part: the part lost it, and the scan goes on with
+ *   the next part;
+ * - an element in the middle: the part now ends before it, and the new part
+ *   after it starts with the next element, so the scan goes on there.
  */
 static ngx_int_t ngx_mrb_header_list_delete(ngx_pool_t *pool, ngx_list_t *headers, ngx_str_t *name)
 {
   ngx_uint_t i;
-  ngx_list_part_t *part, *prev;
+  ngx_list_part_t *part, *prev, *next;
   ngx_table_elt_t *header;
 
-again:
   prev = NULL;
   part = &headers->part;
-  header = part->elts;
+  i = 0;
 
-  for (i = 0; /* void */; i++) {
+  for (;;) {
     while (i >= part->nelts) {
       if (part->next == NULL) {
         return NGX_OK;
       }
       prev = part;
       part = part->next;
-      header = part->elts;
       i = 0;
     }
+    header = part->elts;
 
     /* Compare the length before the bytes: neither the name nor the stored
      * key is NUL-terminated, so ngx_strncasecmp alone could read past a
      * shorter key and could match a key that only shares its first bytes. */
     if (header[i].key.len != name->len || ngx_strncasecmp(header[i].key.data, name->data, name->len) != 0) {
+      i++;
       continue;
     }
 
+    next = part->next;
     if (ngx_mrb_header_list_remove(pool, headers, part, prev, i) != NGX_OK) {
       return NGX_ERROR;
     }
-    goto again;
+
+    if (i != 0) {
+      /* the last or a middle element: the while above goes on with the next
+       * part, which a split made the new part after the removed element */
+      continue;
+    }
+    if (part == &headers->part) {
+      continue;
+    }
+    if (part->nelts == 0) {
+      /* the part was unlinked; prev stays the part before it */
+      part = next;
+      if (part == NULL) {
+        return NGX_OK;
+      }
+    }
   }
 }
 
@@ -420,6 +448,67 @@ static ngx_int_t ngx_mrb_headers_remove(ngx_http_request_t *r, ngx_list_t *heade
   }
 
   return ngx_mrb_header_list_delete(r->pool, headers, name);
+}
+
+/*
+ * Sets nginx's type of the response, as ngx_http_upstream_copy_content_type()
+ * does for the Content-Type of an upstream: content_type_len ends before a
+ * "; charset=" parameter, whose value (without quotes) becomes the charset,
+ * so that nginx's filters (gzip_types, charset_types, sub_filter_types and
+ * the others) test the type without the parameter. Unlike nginx's function,
+ * it stops at the end of the value, which is not NUL-terminated.
+ */
+static void ngx_mrb_header_set_content_type(ngx_http_request_t *r, ngx_str_t *value)
+{
+  u_char *p, *last, *end;
+
+  r->headers_out.content_type = *value;
+  r->headers_out.content_type_len = value->len;
+  r->headers_out.content_type_hash = 0;
+  r->headers_out.content_type_lowcase = NULL;
+  ngx_str_null(&r->headers_out.charset);
+
+  end = value->data + value->len;
+
+  for (p = value->data; p < end; p++) {
+    if (*p != ';') {
+      continue;
+    }
+
+    last = p;
+
+    do {
+      p++;
+    } while (p < end && *p == ' ');
+
+    if (p == end) {
+      return;
+    }
+
+    if (end - p < (ptrdiff_t)(sizeof("charset=") - 1) ||
+        ngx_strncasecmp(p, (u_char *)"charset=", sizeof("charset=") - 1) != 0) {
+      continue;
+    }
+
+    p += sizeof("charset=") - 1;
+
+    r->headers_out.content_type_len = last - value->data;
+
+    if (p < end && *p == '"') {
+      p++;
+    }
+
+    last = end;
+
+    if (last > p && *(last - 1) == '"') {
+      last--;
+    }
+
+    r->headers_out.charset.len = last - p;
+    r->headers_out.charset.data = p;
+
+    return;
+  }
 }
 
 /* The request whose headers the method reads or changes. */
@@ -537,11 +626,7 @@ static mrb_value ngx_mrb_headers_set(mrb_state *mrb, mrb_value self, ngx_uint_t 
   for (i = 0; i < values->nelts; i++) {
     if (field == NGX_MRB_HEADER_CONTENT_TYPE) {
       /* nginx's field, without a list entry; the last value wins */
-      r->headers_out.content_type = v[i];
-      r->headers_out.content_type_len = v[i].len;
-      r->headers_out.content_type_hash = 0;
-      r->headers_out.content_type_lowcase = NULL;
-      ngx_str_null(&r->headers_out.charset);
+      ngx_mrb_header_set_content_type(r, &v[i]);
       continue;
     }
 
