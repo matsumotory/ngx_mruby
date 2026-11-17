@@ -415,6 +415,21 @@ static void ngx_http_mrb_fiber_wake(ngx_http_mrb_fiber_t *f)
   ngx_http_run_posted_requests(r->connection);
 }
 
+typedef struct {
+  ngx_http_request_t *r;
+  const u_char *name;
+  size_t len;
+  mrb_value value;
+} ngx_http_mrb_set_assign_t;
+
+// For mrb_protect_error: the assignment at the end of an mruby_set handler
+static mrb_value ngx_http_mrb_set_assign(mrb_state *mrb, void *userdata)
+{
+  ngx_http_mrb_set_assign_t *assign = userdata;
+
+  return ngx_mrb_var_assign(mrb, assign->r, assign->name, assign->len, assign->value);
+}
+
 /*
  * The fiber of an mruby_set handler is resumed here, not by its handler: the
  * handler runs inside the script of the rewrite module, which starts the
@@ -433,6 +448,9 @@ static void ngx_http_mrb_resume_set(ngx_http_request_t *r, ngx_http_mruby_ctx_t 
   mrb_state *mrb = f->base.mrb;
   ngx_mrb_exec_t exec;
   ngx_mrb_fiber_outcome_t outcome;
+  ngx_http_mrb_set_assign_t assign;
+  mrb_bool failed;
+  mrb_value exc;
   mrb_value value = mrb_nil_value();
   ngx_int_t rc = NGX_DECLINED;
   int ai;
@@ -463,12 +481,16 @@ static void ngx_http_mrb_resume_set(ngx_http_request_t *r, ngx_http_mruby_ctx_t 
   } else if (ctx->set_var_target.len > 1 && ctx->set_var_target.data[0] == '$') {
     // the value of the ended fiber is in no frame any more
     mrb_gc_protect(mrb, value);
-    // Delete the leading dollar(ctx->set_var_target.data+1)
-    ngx_mrb_var_set_vector(mrb, mrb_top_self(mrb), (char *)ctx->set_var_target.data + 1, ctx->set_var_target.len - 1,
-                           value, r);
-    // the conversion of the value to a String raised
-    if (mrb->exc != NULL) {
-      ngx_mrb_raise_error(mrb, mrb_obj_value(mrb->exc), r);
+    // the name of the variable without the leading dollar
+    assign.r = r;
+    assign.name = ctx->set_var_target.data + 1;
+    assign.len = ctx->set_var_target.len - 1;
+    assign.value = value;
+    // no Ruby code runs here: an exception of the assignment (the
+    // conversion of the value to a String) comes back as the result
+    exc = mrb_protect_error(mrb, ngx_http_mrb_set_assign, &assign, &failed);
+    if (failed) {
+      ngx_mrb_raise_error(mrb, exc, r);
       mrb->exc = NULL;
       rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }

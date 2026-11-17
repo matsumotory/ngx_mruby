@@ -84,102 +84,103 @@ mrb_bool ngx_mrb_var_to_string(mrb_state *mrb, mrb_value o, mrb_value *out)
   return !failed;
 }
 
-mrb_value ngx_mrb_var_set(mrb_state *mrb, mrb_value self, char *k, mrb_value o, ngx_http_request_t *r)
+/*
+ * What the set directive does (ngx_http_script_set_var_code and
+ * ngx_http_script_var_set_handler_code), for a variable that Ruby code names
+ * while the request runs. The checks that nginx makes when it reads a set
+ * directive (ngx_http_rewrite_set, ngx_http_add_variable) are made here per
+ * assignment, and their failures raise.
+ */
+mrb_value ngx_mrb_var_assign(mrb_state *mrb, ngx_http_request_t *r, const u_char *name, size_t len, mrb_value value)
 {
-  mrb_value v = ngx_mrb_var_set_vector(mrb, self, k, strlen(k), o, r);
-  mrb_value exc;
-
-  // called from Ruby code (Nginx::Var#<name>=): the exception of the
-  // conversion goes to the script
-  if (mrb->exc != NULL) {
-    exc = mrb_obj_value(mrb->exc);
-    mrb->exc = NULL;
-    mrb_exc_raise(mrb, exc);
-  }
-  return v;
-}
-
-mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int len, mrb_value o, ngx_http_request_t *r)
-{
+  ngx_http_core_main_conf_t *cmcf;
   ngx_http_variable_t *v;
   ngx_http_variable_value_t *vv;
-  ngx_http_core_main_conf_t *cmcf;
-  ngx_str_t key;
   ngx_uint_t hash;
-  ngx_str_t val;
-  u_char *valp;
+  u_char *copy, *low, *data;
+  size_t vlen;
 
-  // The value as a String (ngx_mrb_var_to_string). When it cannot be
-  // converted, the exception is left in mrb->exc for the caller: the end of
-  // an mruby_set handler logs it and answers 500, and Nginx::Var#<name>=
-  // raises it.
-  if (!ngx_mrb_var_to_string(mrb, o, &o)) {
-    mrb->exc = mrb_obj_ptr(o);
-    return mrb_nil_value();
+  /*
+   * The name as the caller gave it, for the messages, and in lowercase, for
+   * the lookup. Both are copied before the conversion of the value runs Ruby
+   * code, which can change the String or the buffer that name points to.
+   */
+  copy = ngx_pnalloc(r->pool, len * 2);
+  if (copy == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+  }
+  ngx_memcpy(copy, name, len);
+  low = copy + len;
+  hash = ngx_hash_strlow(low, copy, len);
+
+  // the exception of a to_s that is missing, raises or returns no String
+  if (!ngx_mrb_var_to_string(mrb, value, &value)) {
+    mrb_exc_raise(mrb, value);
   }
 
-  val.data = (u_char *)RSTRING_PTR(o);
-  val.len = RSTRING_LEN(o);
-  key.len = len;
-  key.data = (u_char *)k;
-
-  /* RSTRING_PTR(o) is not always null-terminated */
-  valp = ngx_palloc(r->pool, val.len + 1);
-  if (valp == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
-                  __LINE__);
-    goto ARENA_RESTOR_AND_ERROR;
-  }
-  /* copy the whole value; ngx_cpystrn stops at an embedded NUL and would leave
-   * the rest of valp uninitialised while vv->len keeps the full length */
-  ngx_memcpy(valp, val.data, val.len);
-  valp[val.len] = '\0';
-
-  hash = ngx_hash_strlow(key.data, key.data, key.len);
   cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-  v = ngx_hash_find(&cmcf->variables_hash, hash, key.data, key.len);
+  v = ngx_hash_find(&cmcf->variables_hash, hash, low, len);
 
-  if (v) {
-    if (!(v->flags & NGX_HTTP_VAR_CHANGEABLE)) {
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: %s not changeable", MODULE_NAME, __func__,
-                    __LINE__, k);
-      goto ARENA_RESTOR_AND_ERROR;
-    } else if (v->set_handler) {
-      vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
-      if (vv == NULL) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME,
-                      __func__, __LINE__);
-        goto ARENA_RESTOR_AND_ERROR;
-      }
-    } else if (v->flags & NGX_HTTP_VAR_INDEXED) {
-      vv = &r->variables[v->index];
-    } else {
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: %s is not assinged", MODULE_NAME, __func__,
-                    __LINE__, k);
-      goto ARENA_RESTOR_AND_ERROR;
-    }
-    vv->valid = 1;
-    vv->not_found = 0;
-    vv->no_cacheable = 0;
-    vv->escape = 0;
-    vv->data = valp;
-    vv->len = val.len;
-    /* nginx fills the value struct before it calls a variable's set_handler;
-     * do the same so a set_handler such as $limit_rate or $args reads an
-     * initialised vv->len and vv->data, not the uninitialised palloc. */
-    if (v->set_handler) {
-      v->set_handler(r, vv, v->data);
-    }
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: set variable key:%s val:%s", MODULE_NAME,
-                  __func__, __LINE__, k, valp);
-    return mrb_str_new(mrb, (char *)vv->data, vv->len);
+  if (v == NULL) {
+    mrb_raisef(mrb, E_NAME_ERROR, "nginx variable $%l is not defined (declare it with set or mruby_variable)",
+               (const char *)copy, len);
   }
 
-  ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: %s is not found", MODULE_NAME, __func__, __LINE__,
-                k);
+  if (!(v->flags & NGX_HTTP_VAR_CHANGEABLE)) {
+    mrb_raisef(mrb, E_RUNTIME_ERROR, "nginx variable $%l cannot be changed by a script", (const char *)copy, len);
+  }
 
-ARENA_RESTOR_AND_ERROR:
-  return mrb_nil_value();
+  // set gives a variable without a set_handler an index when nginx reads
+  // the configuration; a variable that nothing in the configuration refers
+  // to has none, so the request has no place for its value
+  if (v->set_handler == NULL && !(v->flags & NGX_HTTP_VAR_INDEXED)) {
+    mrb_raisef(mrb, E_RUNTIME_ERROR,
+               "nginx variable $%l cannot be assigned by a script: the configuration does not refer to it",
+               (const char *)copy, len);
+  }
+
+  /*
+   * The value lives as long as the request: a copy in its pool, with a NUL
+   * byte after it for the line of the info level below. The whole value is
+   * copied, also past a NUL byte in it.
+   */
+  vlen = RSTRING_LEN(value);
+  data = ngx_pnalloc(r->pool, vlen + 1);
+  if (data == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+  }
+  ngx_memcpy(data, RSTRING_PTR(value), vlen);
+  data[vlen] = '\0';
+
+  if (v->set_handler) {
+    vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
+    if (vv == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+    }
+  } else {
+    vv = &r->variables[v->index];
+  }
+
+  /*
+   * Every field of the value is set before a set_handler reads it, as nginx
+   * passes the set_handler a value that the script engine filled: a
+   * set_handler such as that of $args or $limit_rate reads len and data.
+   */
+  vv->len = vlen;
+  vv->valid = 1;
+  vv->no_cacheable = 0;
+  vv->not_found = 0;
+  vv->escape = 0;
+  vv->data = data;
+
+  if (v->set_handler) {
+    v->set_handler(r, vv, v->data);
+  }
+
+  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: set variable key:%*s val:%s", MODULE_NAME,
+                __func__, __LINE__, len, copy, data);
+
+  return mrb_str_new(mrb, (char *)vv->data, vv->len);
 }
 
 /*
@@ -251,17 +252,8 @@ static mrb_value ngx_mrb_var_access(mrb_state *mrb, mrb_value self, ngx_http_req
     /* void */
   }
 
-  // ngx_mrb_var_set takes a name that ends with a NUL byte
-  c_name = ngx_pnalloc(r->pool, end - start + 1);
-  if (c_name == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
-                  __LINE__);
-    return mrb_nil_value();
-  }
-  ngx_memcpy(c_name, p + start, end - start);
-  c_name[end - start] = '\0';
-
-  return ngx_mrb_var_set(mrb, self, c_name, a[0], r);
+  // ngx_mrb_var_assign copies the name before it runs any Ruby code
+  return ngx_mrb_var_assign(mrb, r, (const u_char *)p + start, end - start, a[0]);
 }
 
 /*
@@ -303,7 +295,8 @@ static mrb_value ngx_mrb_var_accessor(mrb_state *mrb, mrb_value self)
  *   NGX_HTTP_MRUBY_VAR_PREFIX_ACCESSORS_MAX such names of the worker: a
  *   prefix takes any suffix, so these names are as many as the requests
  *   choose. A setter of such a name finds no variable
- *   (ngx_mrb_var_set_vector assigns only declared variables) and gets none.
+ *   (ngx_mrb_var_assign raises NameError for a name that is not declared)
+ *   and gets none.
  * - Nothing for a name that is not a variable.
  *
  * No method is defined when the receiver is not an instance of Nginx::Var
@@ -425,14 +418,8 @@ static mrb_value ngx_mrb_var_exist(mrb_state *mrb, mrb_value self)
 static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r;
-  ngx_http_variable_t *v;
-  ngx_http_variable_value_t *vv;
-  ngx_http_core_main_conf_t *cmcf;
-  ngx_str_t key, val;
-  ngx_uint_t hash;
   mrb_value k;
   mrb_value o;
-  u_char *keyp, *lowkey, *valp;
 
   mrb_get_args(mrb, "oo", &k, &o);
   // a name or a value that cannot be converted to a String raises
@@ -442,91 +429,9 @@ static mrb_value ngx_mrb_var_set_func(mrb_state *mrb, mrb_value self)
 
   r = ngx_http_mrb_request(mrb, NGX_MRB_EXEC_HTTP_REQUEST, "Nginx::Var#");
 
-  key.data = (u_char *)RSTRING_PTR(k);
-  key.len = RSTRING_LEN(k);
-  val.data = (u_char *)RSTRING_PTR(o);
-  val.len = RSTRING_LEN(o);
-
-  /* RSTRING_PTR(k) is not always null-terminated */
-  keyp = ngx_palloc(r->pool, key.len + 1);
-  if (keyp == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
-                  __LINE__);
-    goto ARENA_RESTOR_AND_ERROR;
-  }
-
-  /* RSTRING_PTR(o) is not always null-terminated */
-  valp = ngx_palloc(r->pool, val.len + 1);
-  if (valp == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
-                  __LINE__);
-    goto ARENA_RESTOR_AND_ERROR;
-  }
-
-  /*
-   * The lookup takes the lowercased name. Lowercase a copy: k is the
-   * caller's String, which can be frozen or share its bytes with other
-   * Strings, or the String of a Symbol, which can share the bytes of the
-   * name that the mrb_state keeps for the Symbol.
-   */
-  lowkey = ngx_pnalloc(r->pool, key.len);
-  if (lowkey == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
-                  __LINE__);
-    goto ARENA_RESTOR_AND_ERROR;
-  }
-
-  ngx_cpystrn(keyp, key.data, key.len + 1);
-  /* copy the whole value; ngx_cpystrn stops at an embedded NUL and would leave
-   * the rest of valp uninitialised while vv->len keeps the full length */
-  ngx_memcpy(valp, val.data, val.len);
-  valp[val.len] = '\0';
-
-  hash = ngx_hash_strlow(lowkey, key.data, key.len);
-  cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-  v = ngx_hash_find(&cmcf->variables_hash, hash, lowkey, key.len);
-
-  if (v) {
-    if (!(v->flags & NGX_HTTP_VAR_CHANGEABLE)) {
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: %s not changeable", MODULE_NAME, __func__,
-                    __LINE__, keyp);
-      goto ARENA_RESTOR_AND_ERROR;
-    } else if (v->set_handler) {
-      vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
-      if (vv == NULL) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME,
-                      __func__, __LINE__);
-        goto ARENA_RESTOR_AND_ERROR;
-      }
-    } else if (v->flags & NGX_HTTP_VAR_INDEXED) {
-      vv = &r->variables[v->index];
-    } else {
-      ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: %s is not assinged", MODULE_NAME, __func__,
-                    __LINE__, keyp);
-      goto ARENA_RESTOR_AND_ERROR;
-    }
-    vv->valid = 1;
-    vv->not_found = 0;
-    vv->no_cacheable = 0;
-    vv->escape = 0;
-    vv->data = valp;
-    vv->len = val.len;
-    /* nginx fills the value struct before it calls a variable's set_handler;
-     * do the same so a set_handler such as $limit_rate or $args reads an
-     * initialised vv->len and vv->data, not the uninitialised palloc. */
-    if (v->set_handler) {
-      v->set_handler(r, vv, v->data);
-    }
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "%s INFO %s:%d: set variable key:%s val:%s", MODULE_NAME,
-                  __func__, __LINE__, keyp, valp);
-    return mrb_str_new(mrb, (char *)vv->data, vv->len);
-  }
-
-  ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: %s is not found", MODULE_NAME, __func__, __LINE__,
-                keyp);
-
-ARENA_RESTOR_AND_ERROR:
-  return mrb_nil_value();
+  // ngx_mrb_var_assign looks the variable up by a lowercased copy of the
+  // name, and leaves the String k as it is
+  return ngx_mrb_var_assign(mrb, r, (const u_char *)RSTRING_PTR(k), RSTRING_LEN(k), o);
 }
 
 void ngx_mrb_var_class_init(mrb_state *mrb, struct RClass *class)

@@ -58,11 +58,18 @@ mrb_value ngx_mrb_var_get_fixed(mrb_state *mrb, ngx_mrb_var_id_t id);
 mrb_bool ngx_mrb_var_to_string(mrb_state *mrb, mrb_value o, mrb_value *out);
 
 /*
- * Sets the variable to the value as a String. When the value cannot be
- * converted, it returns nil with the exception in mrb->exc, which the caller
- * clears.
+ * Assigns value, as a String (ngx_mrb_var_to_string), to the variable whose
+ * name is the len bytes at name, in any case, as the set directive of nginx
+ * does: Nginx::Var#<name>=, Nginx::Var#set and the end of an mruby_set
+ * handler that waited call it. It returns the value as a String. It raises
+ * the exception of the conversion, NameError when nginx has no variable of
+ * the name, and RuntimeError when nginx does not let scripts change the
+ * variable or keeps no value of it in the request; the message names the
+ * variable. name needs to stay valid only until the call starts: it is
+ * copied before any Ruby code runs. Call it from Ruby code, or under
+ * mrb_protect_error() where no Ruby code runs.
  */
-mrb_value ngx_mrb_var_set_vector(mrb_state *mrb, mrb_value self, char *k, int len, mrb_value o, ngx_http_request_t *r);
+mrb_value ngx_mrb_var_assign(mrb_state *mrb, ngx_http_request_t *r, const u_char *name, size_t len, mrb_value value);
 
 void ngx_mrb_var_class_init(mrb_state *mrb, struct RClass *class);
 
