@@ -72,6 +72,24 @@ t.assert('HEAD/body-filter connection', 'HEAD of a response without Content-Leng
   t.assert_equal 'backend body', body2
 end
 
+# The same response sent at 50 bytes a second: the header of the HEAD
+# response needs more than one write, and its rest goes out when nginx
+# calls the filters again with no new data.
+t.assert('HEAD/body-filter connection', 'HEAD of a response without Content-Length sent in more than one write, then GET on the same connection') do
+  status1, first, status2, second = head_header_filter_exchange('HEAD', '/filter/body_unknown_length_slow/')
+  line1, fields1, body1 = first
+  line2, fields2, body2 = second
+  t.assert_equal 'COMPLETE', status1
+  t.assert_equal 'HTTP/1.1 200 OK', line1
+  t.assert_nil fields1['content-length']
+  t.assert_equal 'keep-alive', fields1['connection']
+  t.assert_equal '', body1
+  t.assert_equal 'EOF', status2
+  t.assert_equal 'HTTP/1.1 200 OK', line2
+  t.assert_equal '12', fields2['content-length']
+  t.assert_equal 'backend body', body2
+end
+
 # The GET control of the same location: the listing goes out unchanged,
 # without a length, and the connection closes after it (HTTP/1.0).
 t.assert('HEAD/body-filter connection', 'GET of a response without Content-Length') do
