@@ -1,8 +1,13 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-18 (03:25 JST)
+## State as of 2026-11-25 (00:01 JST)
 
-- Heads: `master` is `49d26b879`, the merge of
+- Heads: `master` is `7ab993a5c`, the merge of
+  [#860](https://github.com/matsumotory/ngx_mruby/pull/860) (2026-11-24
+  23:22 JST), which added the published advisory id to the 2.7.13 notes,
+  after `e0b17ec47`, the fix for 2.7.13 (merged from the advisory's
+  private fork) and the tag `v2.7.13`, below; before it, `49d26b879`, the
+  merge of
   [#858](https://github.com/matsumotory/ngx_mruby/pull/858) (2026-11-18
   01:19 JST), and the tag `v2.7.12`, below; before it, `14bdc5fa6`, the merge of
   [#853](https://github.com/matsumotory/ngx_mruby/pull/853) (2026-11-17
@@ -39,7 +44,10 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `e8643df33`, the merge of
+  all below. `next` is `2072a900b`, the merge of
+  [#859](https://github.com/matsumotory/ngx_mruby/pull/859) (2026-11-18
+  03:56 JST), which brought `master` at `49d26b879` (2.7.12) into `next`;
+  before it, `e8643df33`, the merge of
   [#856](https://github.com/matsumotory/ngx_mruby/pull/856) (2026-11-17
   22:18 JST), which brought `master` at `14bdc5fa6` into `next`; before
   it, `45cf3ae52`, the merge of
@@ -63,9 +71,25 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. This entry is written
-  in [#859](https://github.com/matsumotory/ngx_mruby/pull/859), the open
-  pull request to `next` that merges `master` at `49d26b879` into `next`.
-  `v2.x` mirrors `master`. The latest published release is 2.7.12: the
+  in [#861](https://github.com/matsumotory/ngx_mruby/pull/861), the open
+  pull request to `next` that merges `master` at `7ab993a5c` (2.7.13) into
+  `next`. `v2.x` mirrors `master`. The latest published release is 2.7.13:
+  the tag `v2.7.13` is on `e0b17ec47`, and
+  [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.13)
+  was published on 2026-11-24 at 22:46 JST, with the release notes
+  `docs/releases/v2.7.13.md` and `.ja.md`, in the form of "The GitHub
+  release" in `docs/releases/README.md`, and the published advisory
+  [GHSA-xc5m-h3wm-hcq6](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-xc5m-h3wm-hcq6)
+  (published 2026-11-24 at 23:02 JST); #860 then added the published
+  advisory id to the two release-note files and to the release body
+  (2026-11-24 23:22 JST). Right after the release, `site.yml` ran on
+  `next`
+  ([run 45406966763](https://github.com/matsumotory/ngx_mruby/actions/runs/45406966763),
+  success), and the home page of ngx.mruby.org names v2.7.13
+  (`Latest release: v2.7.13`). The push of the tag ran the whole build
+  matrix on `e0b17ec47`
+  ([run 45406925872](https://github.com/matsumotory/ngx_mruby/actions/runs/45406925872),
+  success). Before it, 2.7.12: the
   tag `v2.7.12` is on `49d26b879`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.12)
   was published on 2026-11-18 at 02:56 JST, with the release notes
@@ -170,6 +194,72 @@
   it was merged on 2026-11-17 at 17:10 JST as `ea531ad88`. The English
   and the Japanese parts of the text of the GitHub release v2.7.11 link
   the two advisories as well. #850 brings the two files to `next`.
+- 2.7.13 (`master`, the fix merged from the advisory's private fork as
+  `e0b17ec47`, "Merge commit from fork"): a subrequest no longer shares
+  the request header-list parts after the embedded first one with its
+  main request. `ngx_mrb_unshare_headers_in` gives a request its own
+  copies of the shared part structs (not their arrays, so the element
+  addresses nginx caches stay valid) and its own `headers->last` before
+  every change, and `ngx_mrb_push_request_header` appends at the true
+  tail. Its test is `test/t/cases/headers_in_subrequest.rb` with
+  `test/conf/conf.d/75-headers-in-subrequest.conf` (ports 18106 and
+  18109, free on `next`). It adds the first entry under "Behavior
+  changes: read before upgrading", a "Fixes" entry and a "Build and test
+  changes" entry of `docs/releases/v2.7.13.md` and `.ja.md`, sets
+  `MODULE_VERSION` of `master` to `2.7.13`, and adds a section on
+  subrequest headers to `docs/class_and_method/README.md`. The published
+  advisory is
+  [GHSA-xc5m-h3wm-hcq6](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-xc5m-h3wm-hcq6).
+- [#860](https://github.com/matsumotory/ngx_mruby/pull/860) (`master`):
+  adds the published advisory id to `docs/releases/v2.7.13.md` and
+  `.ja.md` and to the GitHub release body, after the advisory was
+  published. Merged on 2026-11-24 at 23:22 JST as `7ab993a5c`, after the
+  tag.
+- [#861](https://github.com/matsumotory/ngx_mruby/pull/861) (`next`,
+  open; its author continues it, and the session that coordinates the
+  work merges it): merges `master` at `7ab993a5c` (2.7.13) into `next`.
+  `src/http/ngx_http_mruby_request.c` and
+  `docs/class_and_method/README.md` merge without a conflict; the fix's
+  `ngx_mrb_unshare_headers_in` and `ngx_mrb_push_request_header` land on
+  `next`'s 3.0 `ngx_mrb_set_request_header` (which resolves the request
+  with `NGX_MRB_REQUEST_ANY` and, like 2.x, allocates a zeroed
+  `lowcase_key`), with the unshare at the top of `set` and `del` and
+  `headers->last` pointed at the request's own last part, so the fix's
+  invariants hold on the 3.x code. The only conflict is `MODULE_VERSION`
+  in `src/http/ngx_http_mruby_module.h`, kept at `3.0.0`. #855 (below)
+  takes `next` in after this merge.
+- The check before the 2.7.13 tag, recorded here because it needed no
+  pull request ("Before the tag" in `docs/releases/README.md`): the only
+  change merged into `master` after `v2.7.12` was the 2.7.13 fix
+  (`e0b17ec47`), which adds the first entry under "Behavior changes: read
+  before upgrading", a "Fixes" entry and a "Build and test changes" entry
+  of `docs/releases/v2.7.13.md` and `.ja.md`; #860, which added the
+  advisory id, merged after the tag. The English and the Japanese files
+  have the same sections and entries, and `MODULE_VERSION` of `master` is
+  `2.7.13`. The callgrind comparison of `v2.7.12` (`49d26b879`) with the
+  fix (`e0b17ec47`) (`sh test/perf/compare.sh` in the image
+  `ngx-mruby-dev:22.04`, N=20000 WARMUP=2000) has all 14 scenarios `ok`:
+  `headers`, the path the fix touches, 34767 → 34782 Ir per request
+  without GC (+15, +0.04%); the proxy and stream scenarios vary with
+  response-arrival timing, the largest being `proxy_stream_plain_50` at
+  +0.03%. Because the fix is published through a private fork, every cell
+  of the build matrix ran on `49d26b879`, the tip before the fix
+  ([run 45238684578](https://github.com/matsumotory/ngx_mruby/actions/runs/45238684578),
+  `workflow_dispatch`): 16 cells and `ci-ok (manual)` passed; the fix
+  itself was run on the published tree in the image `ngx-mruby-dev:22.04`
+  (the static suite on nginx 1.26.3 and the dynamic suite on nginx
+  1.30.6). The push of the tag ran the whole build matrix on the tag
+  commit `e0b17ec47`
+  ([run 45406925872](https://github.com/matsumotory/ngx_mruby/actions/runs/45406925872),
+  success).
+- [#855](https://github.com/matsumotory/ngx_mruby/pull/855) (`next`,
+  open): `Headers_in` and `Headers_out` exact names, nginx's fields,
+  value types and the headers that `[]=` adds — the 3.0 work that sets
+  the real hash and the lowercase name of an added request header (the
+  comment in `ngx_mrb_set_request_header` foreshadows it). It was held
+  while 2.7.13 was prepared, because both change
+  `src/http/ngx_http_mruby_request.c`; the hold is lifted, and it takes
+  `next` in after #861 merges.
 - [#858](https://github.com/matsumotory/ngx_mruby/pull/858) (`master`,
   for 2.7.12): `Nginx::Headers_in#[]=` and `Nginx::Headers_out#[]=` set
   the `lowcase_key` and the `next` of the header that they add, so that
