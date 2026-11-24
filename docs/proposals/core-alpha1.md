@@ -893,9 +893,9 @@ pull request to `next`:
 - checks the release notes as "Before the tag" in
   `docs/releases/README.md` describes: it lists every pull request merged
   into `next` since the start of the range, the latest 2.x release tag for
-  the first pre-release (`v2.7.5` today), confirms the entries of each in
-  `docs/releases/v3.0.0.md`, and compares `docs/releases/v3.0.0.ja.md` with
-  the English file;
+  the first pre-release (`v2.7.13` when the check was made, in #862),
+  confirms the entries of each in `docs/releases/v3.0.0.md`, and compares
+  `docs/releases/v3.0.0.ja.md` with the English file;
 - compares the performance of its head with the same tag, as "Before a
   tag" in `AGENTS.md` describes, and sends a `WARN` or `FAIL` to the owner.
 
