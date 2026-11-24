@@ -292,6 +292,93 @@ static mrb_value ngx_mrb_header_list_get(mrb_state *mrb, ngx_list_t *headers, ng
   }
 }
 
+/* Append a header to a request's header list without reusing a part that is
+ * shared with another request. nginx shares a request's header list with its
+ * subrequests: ngx_http_subrequest does sr->headers_in = r->headers_in, which
+ * copies the ngx_list_t, so the embedded first part is a separate struct for
+ * each request but the parts after it (reached through part->next) are the same
+ * structs, while each request keeps its own last. Push into the embedded part
+ * (each request's own) with ngx_list_push; for any later part, append a fresh
+ * part at the true tail of the chain (another request may already have appended
+ * one) and write the header there, so a push never lands in a part another
+ * request may have changed, and no header that another request appended is
+ * unchained. */
+static void *ngx_mrb_push_request_header(ngx_list_t *l)
+{
+  ngx_list_part_t *last, *part;
+
+  if (l->last == &l->part) {
+    return ngx_list_push(l);
+  }
+
+  last = l->last;
+  while (last->next != NULL) {
+    last = last->next;
+  }
+
+  part = ngx_palloc(l->pool, sizeof(ngx_list_part_t));
+  if (part == NULL) {
+    return NULL;
+  }
+  part->elts = ngx_palloc(l->pool, l->nalloc * l->size);
+  if (part->elts == NULL) {
+    return NULL;
+  }
+  part->nelts = 1;
+  part->next = NULL;
+
+  last->next = part;
+  l->last = part;
+
+  return part->elts;
+}
+
+/* Give this request its own copies of the header-list parts after the embedded
+ * first one, so a delete or an add here changes only this request's view, not
+ * the parts it shares with a subrequest (or, for a subrequest, with its main
+ * request). nginx makes a subrequest with sr->headers_in = r->headers_in, which
+ * copies the embedded first part by value but leaves the parts after it (reached
+ * through part->next, with headers->last) the same structs in both requests.
+ * When one request deletes the first element of such a shared part,
+ * ngx_mrb_header_list_remove advances the part's base and decrements its length
+ * in the struct the other request still reads, so the other request would then
+ * read and forward a list that no longer matches its own headers. Copying the
+ * part structs (not their arrays) keeps the element addresses, and the pointers
+ * nginx caches to them (r->headers_in.host and the like), unchanged. It runs
+ * before every change to r->headers_in, not once: a subrequest made after an
+ * earlier change (for example the background subrequest of the mirror directive,
+ * made in the precontent phase after a rewrite-phase change and before a
+ * content-phase one) shares the request's parts again, so copying before each
+ * change leaves that subrequest's copy alone. The copy is cheap, only the part
+ * structs after the embedded one, which a request of 20 headers or fewer does
+ * not have. */
+static ngx_int_t ngx_mrb_unshare_headers_in(ngx_http_request_t *r)
+{
+  ngx_list_t *l;
+  ngx_list_part_t *orig, *prev, *copy;
+
+  l = &r->headers_in.headers;
+  prev = &l->part;
+  orig = l->part.next;
+  while (orig != NULL) {
+    copy = ngx_palloc(l->pool, sizeof(ngx_list_part_t));
+    if (copy == NULL) {
+      return NGX_ERROR;
+    }
+    *copy = *orig;
+    prev->next = copy;
+    prev = copy;
+    orig = copy->next;
+  }
+  /* headers->last is a pointer, so the subrequest copy (sr->headers_in =
+   * r->headers_in) shares it with the main request: when the list is only the
+   * embedded part, it points at the MAIN request's embedded part, and a push
+   * here would add to the main request's list. Point it at this request's own
+   * last part so an add changes only this request's list. */
+  l->last = prev;
+  return NGX_OK;
+}
+
 /*
  * Removes element i of part from the list; prev is the part before part, or
  * NULL for the first part.
@@ -442,6 +529,15 @@ static ngx_int_t ngx_mrb_headers_remove(ngx_http_request_t *r, ngx_list_t *heade
                                         ngx_mrb_header_field_t field)
 {
   ngx_table_elt_t **elt;
+
+  /* Give this request its own copies of the shared header-list parts before any
+   * change, so a change here does not reach a request it shares the list with
+   * (a subrequest, or, for a subrequest, its main request). ngx_mrb_headers_set
+   * removes before it adds and ngx_mrb_headers_delete removes, so both paths
+   * reach this before they change headers_in. */
+  if (headers == &r->headers_in.headers && ngx_mrb_unshare_headers_in(r) != NGX_OK) {
+    return NGX_ERROR;
+  }
 
   if (field == NGX_MRB_HEADER_CONTENT_TYPE) {
     ngx_str_null(&r->headers_out.content_type);
@@ -637,7 +733,7 @@ static mrb_value ngx_mrb_headers_set(mrb_state *mrb, mrb_value self, ngx_uint_t 
       continue;
     }
 
-    h = ngx_list_push(headers);
+    h = ngx_mrb_push_request_header(headers);
     if (h == NULL) {
       mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
     }
