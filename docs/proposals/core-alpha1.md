@@ -5,11 +5,14 @@ Status: in progress. The design decisions of section 5 were made on
 no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
 (#779 and #783), 2.7 (#788), 2.8 (#796), the execution context and the
 phases of the Ruby API of 2.1 (#826), 2.6 (#825), the per-request store
-of 2.1 (#832), 2.9 (#833), 2.5 (#834), 2.4 (#835) and 2.3 (#854). Next
-step: the row of section 4 that is open, "Headers" (2.2, in review in
-[#855](https://github.com/matsumotory/ngx_mruby/pull/855), without the
-field of `Content-Length`, which 2.2 leaves to a later change), then the
-check before the tag of section 3, by 2026-11-20.
+of 2.1 (#832), 2.9 (#833), 2.5 (#834), 2.4 (#835), 2.3 (#854) and 2.2
+([#855](https://github.com/matsumotory/ngx_mruby/pull/855), merged on
+2026-11-25, without the field of `Content-Length`, which 2.2 leaves to a
+later change): every row of section 4 is merged. Next step: the check
+before the tag of section 3, in
+[#862](https://github.com/matsumotory/ngx_mruby/pull/862), by
+2026-11-26; then the tag `v3.0.0-alpha.1` after the owner's go-ahead,
+and the archive of this proposal.
 
 This proposal designs what is left of step 4 of section 6 of
 [the v3 plan](v3-plan.md): the work that has to be on `next` before
@@ -890,9 +893,9 @@ pull request to `next`:
 - checks the release notes as "Before the tag" in
   `docs/releases/README.md` describes: it lists every pull request merged
   into `next` since the start of the range, the latest 2.x release tag for
-  the first pre-release (`v2.7.5` today), confirms the entries of each in
-  `docs/releases/v3.0.0.md`, and compares `docs/releases/v3.0.0.ja.md` with
-  the English file;
+  the first pre-release (`v2.7.13` when the check was made, in #862),
+  confirms the entries of each in `docs/releases/v3.0.0.md`, and compares
+  `docs/releases/v3.0.0.ja.md` with the English file;
 - compares the performance of its head with the same tag, as "Before a
   tag" in `AGENTS.md` describes, and sends a `WARN` or `FAIL` to the owner.
 
@@ -912,7 +915,7 @@ and the one that merges second updates its branch.
 |---|---|---|---|
 | Log handlers before `access_log`: [#770](https://github.com/matsumotory/ngx_mruby/pull/770), merged on 2026-11-09; #770 also makes `Nginx.redirect` with a local URI raise in log handlers, the log handler part of 2.9 | 2.10, 2.9 | nothing | filter handlers, directive table (`ngx_http_mruby_handler_init`) |
 | `mruby_variable`: [#780](https://github.com/matsumotory/ngx_mruby/pull/780), merged on 2026-11-10 | 2.11 | nothing | nothing |
-| Headers: [#855](https://github.com/matsumotory/ngx_mruby/pull/855), without the field of `Content-Length` (2.2) | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
+| Headers: [#855](https://github.com/matsumotory/ngx_mruby/pull/855), merged on 2026-11-25, without the field of `Content-Length` (2.2) | 2.2 | nothing | execution context (`src/http/ngx_http_mruby_request.c`) |
 | Filter handlers: type, merge, phase handlers only where used: [#835](https://github.com/matsumotory/ngx_mruby/pull/835) | 2.4 | nothing | log handlers, directive table, code loading (the directive functions) |
 | Execution context and the phases of the Ruby API: [#826](https://github.com/matsumotory/ngx_mruby/pull/826) | 2.1 | nothing | headers, `Nginx::Var`, per-request store, waits inside another call, error logging, a body with any status |
 | Per-request store: [#832](https://github.com/matsumotory/ngx_mruby/pull/832) | 2.1 | nothing | execution context |
@@ -924,7 +927,7 @@ and the one that merges second updates its branch.
 | Directive table and one duplicate check: [#834](https://github.com/matsumotory/ngx_mruby/pull/834); `uses` of the main configuration records which kinds and forms the directives use, for 2.4 | 2.5 | nothing | log handlers, filter handlers, code loading |
 | A body with any status: [#779](https://github.com/matsumotory/ngx_mruby/pull/779), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`) |
 | A status set before the output (decision 6), `Nginx::HTTP_CLOSE` with output (decision 7), and the cases of the review of #779 for handlers resumed by a subrequest and for 304: [#783](https://github.com/matsumotory/ngx_mruby/pull/783), merged on 2026-11-10 | 2.12 | nothing | execution context (`src/http/ngx_http_mruby_core.c`, `src/http/ngx_http_mruby_async.c`) |
-| The check before the tag | 3 | every row above | nothing |
+| The check before the tag: [#862](https://github.com/matsumotory/ngx_mruby/pull/862) | 3 | every row above | nothing |
 
 The agent proxy parts (a) and (c) of step 7 of the plan do not touch these
 functions, except that the upstream peer hook adds a directive, which the
