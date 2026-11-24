@@ -68,7 +68,7 @@ modules: その中に<wbr>あるもの：<wbr>`ngx_http_mruby_module`、<wbr>ngi
 - [`mrbgems/digest`](../../../mrbgems/digest)：`Digest`。MD5、RMD160、SHA1、SHA256、SHA384、SHA512のハッシュをOpenSSL 3のEVPで計算し、HMACを`EVP_MAC`で計算します。HMACのクラスは`Digest::HMAC`です。クラスとメソッドは、2.xのデフォルトのビルドにあるiij/mruby-digestと同じです。
 - [`mrbgems/secure-random`](../../../mrbgems/secure-random)：`SecureRandom`。乱数のバイト列をOpenSSLの`RAND_bytes`から取ります。メソッドは、2.xのデフォルトのビルドにあるmonochromegane/mruby-secure-randomと同じです。
 
-`ENV`、`Process`、`Signal`は、コアのgemのmruby-env、mruby-process、mruby-signalが定義します。2.xでは、`ENV`と`Process`をiij/mruby-envとiij/mruby-processが定義していました。`Digest`と`SecureRandom`は、上の一覧にあるこのリポジトリの2つのgemが定義します。2.xでは、iij/mruby-digestとmonochromegane/mruby-secure-randomが定義していました。この2つのgemのビルドには、OpenSSL 3.0以降が要ります。2.xのデフォルトのビルドには、`Vedis`を定義するmatsumotory/mruby-vedisと、`Cache`を定義するmatsumotory/mruby-localmemcacheも入っていました。3.0.0では、この2つのgemの行は`build_config.rb`のコメントで、理由は[リリースノート](../../releases/v3.0.0.ja.md#アップグレードの前に読む挙動の変更)にあります。
+`ENV`、`Process`、`Signal`は、コアのgemのmruby-env、mruby-process、mruby-signalが定義します。2.xでは、`ENV`と`Process`をiij/mruby-envとiij/mruby-processが定義していました。`Digest`と`SecureRandom`は、上の一覧にあるこのリポジトリの2つのgemが定義します。2.xでは、iij/mruby-digestとmonochromegane/mruby-secure-randomが定義していました。この2つのgemのビルドには、OpenSSL 3.0以降が要ります。2.xのデフォルトのビルドには、`Vedis`を定義するmatsumotory/mruby-vedisと、`Cache`を定義するmatsumotory/mruby-localmemcacheも入っていました。3.0.0では、この2つのgemの行は`build_config.rb`のコメントで、理由は[リリースノート](../../releases/v3.0.0.ja.md#更新前に確認する挙動の変更)にあります。
 
 チェックの`site/scripts/check-reference.mjs`は、この一覧を、`build_config.rb`のhostのビルドにある`conf.gem`の行のうち、コメントでなく条件も無い行と比べます。コメントの行には、mruby-discountやmruby-memcachedのような、デフォルトのビルドが入れないgemの名前があります。そのどれかを入れてビルドするには、その行のコメントを外し、`mruby/build`を消してください。
 
