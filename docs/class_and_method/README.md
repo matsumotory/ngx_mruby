@@ -1272,6 +1272,35 @@ hin.delete("X-Remove-Header")
 Nginx.rputs hin["X-Remove-Header"] #=> nil
 ```
 
+## Subrequests and the request headers
+
+nginx creates a subrequest (for `auth_request`, for
+`Nginx::Async::HTTP.sub_request`, and for its own features such as `addition` or
+SSI) with a copy of the request headers as they are at that moment. From then on,
+each request changes only its own headers: a `delete` or `[]=` a script runs in
+the main request, after it has started a subrequest, does not reach that
+subrequest, and a `delete` or `[]=` in a subrequest does not reach the main
+request. Each request forwards its own headers (with `proxy_pass` and the like).
+
+| A script's change to the request headers | Seen by the request that makes it | Seen by the other request |
+|---|---|---|
+| `[]=` (add or replace a header) | yes | no |
+| `delete` (remove a header) | yes | no |
+
+A subrequest does see a change the main request made *before* the subrequest was
+created, because the subrequest copies the headers as they are at that moment.
+
+Before 2.7.13, a change in one request could reach the other. A subrequest's
+`[]=` add (and the add half of a replace) reached the main request's forwarded
+headers for any header count, because nginx copies the list's `last` pointer into
+the subrequest, so the subrequest's add was written into the main request's part.
+A `delete` (and the delete half of a replace), and a change in the reverse
+direction, reached the other request only for a header beyond the first 20. A
+list part holds 20 entries, and only the parts after the embedded first one were
+shared. This changed the forwarded headers in some configurations; see the
+[v2.7.13 release notes](../releases/v2.7.13.md) for what to do if a configuration
+relied on it.
+
 # Nginx::Headers_out Class
 
 Headers_out class stores HTTP response headers.
