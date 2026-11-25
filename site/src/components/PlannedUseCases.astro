@@ -1,6 +1,7 @@
 ---
 import fs from 'node:fs';
 import path from 'node:path';
+import { readPerfReport } from '../../scripts/lib/perf-report.mjs';
 const ja = Astro.props.lang === 'ja';
 const proposal = 'https://github.com/matsumotory/ngx_mruby/blob/next/docs/proposals/edge-control.md';
 // The proposal table owns status; the site only supplies explanatory copy.
@@ -149,6 +150,10 @@ for (const item of cases) {
   if (states.get(item.id) !== item.status) throw new Error(`Review homepage use-case copy: ${item.id} is ${states.get(item.id)} in the ledger, ${item.status} in the copy`);
 }
 if (states.size !== cases.length) throw new Error('Homepage cases and proposal ledger differ');
+// The release that V3Now.astro presents: none of the parts below is in it.
+// When the report moves to a newer release, review this list with it.
+const release = readPerfReport(path.resolve(process.cwd(), 'src/data/perf-v3.0.0-alpha.1.txt')).head.version;
+const plan = 'https://github.com/matsumotory/ngx_mruby/blob/next/docs/proposals/v3-plan.md#6-order-of-work-decided-2026-10-03-the-priority-paragraph-and-steps-2-4-7-and-8-amended-2026-10-04';
 const label = status => ja ? (status === 'designing' ? '設計中' : '構想') : (status === 'designing' ? 'Designing' : 'Direction');
 ---
 <section class="v3-directions" aria-labelledby="directions-title">
@@ -156,10 +161,26 @@ const label = status => ja ? (status === 'designing' ? '設計中' : '構想') :
   <h2 id="directions-title">{ja ? '今後のユースケースと設計状況' : 'Future use cases and their design status'}</h2>
     {ja ? <>
       <p>モデル振り分けの実行例は手元で動かせます。以下は、MCPの認可、モデルAPIの切替、サイトへのアクセス制御に向けた設計です。次に何を検索し、どこを読み取るかをモデルが選ぶAIアプリケーションを、ここではエージェントと呼びます。</p>
+      <p>この後のプレリリースでは、これらの用途に要る部品のうち、2.xに無いものを足す予定です。</p>
+      <ul class="planned-parts">
+        <li>予算やレート制限のカウンターに使う、すべてのワーカーが共有する辞書</li>
+        <li>ストリーミングで返るモデルの応答から、SSE(server-sent events)のイベントを1つずつ取り出して読むフィルター</li>
+        <li>モデルAPIのフォールバックに使う、転送先を選び直す仕組みと、最初のバイトまでのタイムアウト</li>
+        <li>これらの部品で作る、リファレンス実装のエージェントプロキシ</li>
+      </ul>
+      <p>どれも{release}にはまだありません。部品と順序は<a href={plan}>v3の計画の6節にあるステップ7</a>に書いています。</p>
       <p>「設計中」は実行例と検証条件を示し、「構想」は用途の方向性を示します。どちらも、用途全体を動かすテストはまだありません。必要な機能と制約の詳細は、各項目の設計文書で確認できます。</p>
     </> : <>
       <p>The model routing example above runs locally today. The following designs apply nginx and Ruby to MCP authorization, model API fallback and access to websites.</p>
       <p>An agent is an AI application whose model chooses the next search or read.</p>
+      <p>Later pre-releases are planned to add the parts that the use cases below need and 2.x does not have:</p>
+      <ul class="planned-parts">
+        <li>a dictionary that all workers share, for budgets and rate-limit counters;</li>
+        <li>a filter that reads the server-sent events (SSE) of a streamed model response one event at a time;</li>
+        <li>re-selecting the upstream, and a first-byte timeout, for model API fallback;</li>
+        <li>a reference agent proxy built on these parts.</li>
+      </ul>
+      <p>None of them is in {release} yet. <a href={plan}>Step 7 in section 6 of the v3 plan</a> lists the parts and their order.</p>
       <p>“Designing” means the first recipe and acceptance criteria are documented. “Direction” means only the direction is documented.</p>
       <p>No test runs a complete use case in either status. Each design document lists the required features and constraints.</p>
     </>}
