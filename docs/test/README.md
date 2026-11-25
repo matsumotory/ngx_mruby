@@ -1183,7 +1183,9 @@ cells of CI build OpenSSL 3.5.9. The case sends no early data, so both
 builds run the same requests. A build directory that was configured
 before these options keeps its old configuration: remove
 `build/nginx-X.Y.Z/objs/Makefile` and run `test.sh` without
-`ONLY_BUILD_NGX_MRUBY` ([Testing](#testing)).
+`ONLY_BUILD_NGX_MRUBY` ([Testing](#testing)). After the install,
+`test.sh` reads the configure options from `nginx -V`, and when one of the
+two modules is missing it stops with a line that names that file.
 
 The clients. `HttpVersions` in `test/t/client.rb` sends one request over
 HTTPS on a connection of its own, and returns the status, the headers, the
@@ -1196,16 +1198,24 @@ body and the version that answered:
 - HTTP/3 goes through `test/t/cases/_h3_client.py`, which `python3` (3.10
   or later) runs with [aioquic](https://github.com/aiortc/aioquic).
   `test.sh` installs aioquic and the packages that it needs with `python3
-  -m pip install --require-hashes --target build/h3client -r
-  test/h3/requirements.txt` (`build_dynamic/h3client` for
+  -m pip install --only-binary :all: --require-hashes --target
+  build/h3client -r test/h3/requirements.txt` (`build_dynamic/h3client` for
   `BUILD_DYNAMIC_MODULE`), before it starts nginx, and installs them again
   when `test/h3/requirements.txt` changes. The first run therefore needs
   pip (`python3-pip` on Ubuntu) and access to PyPI, as it needs access to
-  nginx.org and GitHub. Every file is checked against its sha256 in
-  `test/h3/requirements.txt`. PyPI has wheels of these versions for Linux
-  on x86-64 and arm64 and for macOS, so pip compiles nothing; in a
-  container of Ubuntu 22.04 on an arm64 Mac, the install took about 5
-  seconds on 2026-11-26.
+  nginx.org and GitHub. Without `python3`, with a Python older than 3.10
+  (the `/usr/bin/python3` of macOS is 3.9) or without pip, `test.sh` stops
+  before the install with one line that says which is missing; it does
+  not skip the HTTP/3 case. pip checks every file against its sha256 in
+  `test/h3/requirements.txt`, and takes wheels only (`--only-binary`): a
+  build from an sdist would install build tools whose hashes nobody
+  checks, and would need a C compiler and Rust. PyPI has wheels of these
+  versions for Linux on x86-64 and arm64 (glibc 2.28 or later, or musl
+  1.2) and for macOS on arm64 (11 or later); on other machines (FreeBSD,
+  NetBSD, a Mac with an Intel CPU, for which cryptography 50.0.2 has no
+  wheel) pip stops with `No matching distribution found`. In a container of
+  Ubuntu 22.04 on an arm64 Mac, the install took about 5 seconds on
+  2026-11-26.
 
   `test/h3/requirements.in` pins the version of each package, and `python3
   test/h3/lock.py` writes `test/h3/requirements.txt` from it with the
@@ -1637,11 +1647,20 @@ summary of each run lists every reason with its count. On the runner, the
 job took about 8 minutes: 2 minutes 37 seconds for the two builds and 2
 minutes 37 seconds for `prove` on each build.
 
+The table and the skips above were measured before `test.sh` built the
+`http_v2` and `http_v3` modules. Since #871 it builds both ("HTTP/2 and
+HTTP/3" above), and the files that skipped only for them run. On
+2026-11-26, on `65e8331d2` in the container (aarch64, OpenSSL 3.0.2), both
+builds had 511 test files, 353 passed (52 more than the 301 of the table),
+0 failed and 158 skipped, with 5294 subtests. Of the files of HTTP/2 and
+HTTP/3 (`h2_*.t`, `h3_*.t`), 29 passed and 23 skipped, most of them for
+`no cryptx available` (the perl module CryptX, which the HTTP/3 files
+need).
+
 These results cover nginx with ngx_mruby present and nothing configured for
 it. Two kinds of runs would cover more and are not in place: a build with
-the modules that the skipped files need (`--with-http_v2_module`,
-`--with-http_v3_module`, `--with-stream_ssl_module`, `--with-mail` and the
-others above), and runs in which ngx_mruby's handlers or filters run Ruby
+the other modules that the skipped files need (`--with-stream_ssl_module`,
+`--with-mail` and the others above), and runs in which ngx_mruby's handlers or filters run Ruby
 code on the requests of the suite (`TEST_NGINX_GLOBALS_HTTP`, as Pillar E
 of `docs/proposals/v3-plan.md` names). `docs/HANDOFF.md` lists both in its
 queue.
