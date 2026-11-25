@@ -1673,8 +1673,9 @@ check, and a `WARN` row does not. Instruction counts do not vary with the
 runner's speed (calibration above). The latest runs of the job on the
 pull requests to `master` merged from 2026-10-19 to 2026-11-24 compared
 in 28 runs (14 scenarios each; 23 of the pull requests changed `src/`,
-`mrbgems/`, `mruby/` or `build_config.rb`), and every row was `ok`, the
-largest change 0.62% without GC (`proxy_stream_plain_50`, on #822).
+`mrbgems/`, `mruby/` or `build_config.rb`), and every row was `ok`. The
+largest change in either direction was -0.62% without GC
+(`proxy_stream_plain_50` on #822, 57543 to 57186 Ir per request).
 "Design principles" in [AGENTS.md](../../AGENTS.md) says what each verdict
 asks of the pull request: a `WARN` goes to the owner through the review,
 and a `FAIL` holds the merge until the owner accepts it on the pull
