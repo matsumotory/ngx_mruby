@@ -27,7 +27,7 @@ def module_and_request_nginx_v
   out.split('nginx version: nginx/', 2)[1].to_s.strip
 end
 
-# The test build of mruby has no Regexp, so the parts are checked one by one.
+# The parts are checked one by one.
 def module_and_request_dotted_number?(s)
   parts = s.split('.')
   parts.size == 3 && parts.all? { |part| !part.empty? && part.to_i.to_s == part }

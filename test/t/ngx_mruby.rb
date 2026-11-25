@@ -1,5 +1,8 @@
+# encoding: ascii-8bit
 # rubocop:disable all
-# ngx_mruby test
+# ngx_mruby test. test.sh runs this file with CRuby, which loads the test
+# client test/t/client.rb first. The magic comment above makes the string
+# literals byte strings (see test/t/client.rb).
 #
 
 def http_host(port = 18080)
@@ -660,8 +663,7 @@ end
 
 t.assert('ngx_mruby - fix bug: body filter transfer closed with any bytes remaining to read', 'location /image_filter') do
   res = HttpRequest.new.get base + '/image_filter'
-  # bytesize: the body is binary, and String#size counts characters when the
-  # test client's mruby has MRB_UTF8_STRING
+  # bytesize: the body is binary, so its length is counted in bytes
   t.assert_equal 1160568, res["body"].bytesize
   t.assert_equal 1160568, res["content-length"].to_i
 end

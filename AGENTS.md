@@ -24,6 +24,16 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
   checks (`examples/check_example.py`); `examples/start/` is the start
   page of the site
 
+## Presenting v3
+
+The owner decided on 2026-11-25 that v3 is presented so that users see what it gives them now and where it is heading, and do not conclude that 2.x is enough. This concerns how the work is shown, not its order: the order of work in section 6 of `docs/proposals/v3-plan.md` stays, with stability before new capabilities.
+
+How sessions apply it (their procedure, not a decision of the owner):
+
+- The GitHub release of every pre-release of 3.0.0, and of 3.0.0, starts with what the release brings and what comes next, before the behavior changes ("The GitHub release" in `docs/releases/README.md` has the form). What it brings: the measured changes against the release that the check before the tag compared it with, the capabilities and fixes that a configuration or script can use, and how to try them. What comes next: the planned capabilities that the release does not have, each written as planned, with links to the plan and to the list of uses (`docs/proposals/edge-control.md`).
+- A pull request to `next` that adds a capability, a recipe that runs, or a measured change that these texts quote, updates the pages of the site that present v3 (the home page and its use cases) in the same pull request, or names the pull request that will.
+- Nothing planned is written as available: a use stays "designing" or "direction" until a test runs it, as the list of uses defines.
+
 ## Design principles
 
 The owner decided these on 2026-10-04. They hold on `master` and `next`:
@@ -80,7 +90,7 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
   `docs/test/README.md`), so that a `WARN`, a `FAIL` or an `ERROR` is
   found before CI runs. The `perf` job of `.github/workflows/test.yml`
   then runs the same comparison on the runner as the check of CI, on
-  `master` and on `next` (on `next`, `ci-ok` needs it).
+  `master` and on `next`, and `ci-ok` needs it on both branches.
   - The author quotes the local comparison in the PR body, under "Leak /
     performance impact" (see `.github/PULL_REQUEST_TEMPLATE.md`): the table
     with the header lines of `report.txt` above it (the line with `N`,
@@ -136,10 +146,14 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     When the head does not clear the cache, the note shows a change of
     the layout: it does not change the verdict and asks for no second
     run; the reviewer quotes it with the row.
+    The mruby 3.3.0 of `master` has no constant cache, so `master` judges
+    the number without GC (`w/o GC`) and prints no `const_misses` or
+    `const_clears` ("Known differences" under "Performance comparison with
+    callgrind" in `docs/test/README.md`).
   - A session does not merge a PR while the latest run of its `perf` job
     reports `FAIL` or `ERROR`, except for a `FAIL` that the owner accepted
-    on the PR. On `next`, `ci-ok` needs the job, so such a run also fails
-    the required check; a `WARN` does not. For a `FAIL` that the owner
+    on the PR. `ci-ok` needs the job on both branches, so such a run also
+    fails the required check; a `WARN` does not. For a `FAIL` that the owner
     accepted, the PR adds a line to `test/perf/accepted.txt` once the
     owner's acceptance is in a comment on the PR, and the comment names the
     run, the scenario and its change. The line has the condition
@@ -148,8 +162,7 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     example
     `pull-request next 812 stream_sleep 7`). The run of that push shows the
     row as accepted and passes ("In CI" under "Performance comparison with
-    callgrind" in `docs/test/README.md`). On `master`, `ci-ok` does not
-    need the job yet; a PR to `master` adds it there.
+    callgrind" in `docs/test/README.md`).
 - Before a tag. Each PR is compared only with its base, so changes that
   stay below `WARN` can add up. The check of "Before the tag" (see
   `docs/releases/README.md`) therefore also compares the commit that it
@@ -653,7 +666,9 @@ How sessions do it (their procedure, not a decision of the owner):
 
 Requirements are listed in `docs/install/` (C compiler, `make`, `bison`, `git`,
 Ruby 3.0 or later with `rake`, OpenSSL). nginx also needs the PCRE and zlib development
-headers, and `test.sh` uses `wget` and the `openssl` command. mruby is built with
+headers, and `test.sh` uses `wget` and the `openssl` command. `test.sh` runs
+the tests with that Ruby, with `json` and `socket` of its standard library.
+mruby is built with
 `rake`: if it is not on `PATH` because Ruby is managed by a version manager
 (rbenv, asdf, ...), put that Ruby's `bin` directory on `PATH` first.
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env ruby
 # Runs nginx with a master process and several worker processes, sends it
 # requests, reloads it, stops it, and prints what it observed. The test nginx
-# of test.sh is a single process (master_process off), and the test build of
-# mruby has no Process module, so test/t/cases/workers.rb runs this file with
-# CRuby, as other cases run test/t/cases/_second_instance.rb (see "Several
-# workers and reloads" in docs/test/README.md).
+# of test.sh is a single process (master_process off), so
+# test/t/cases/workers.rb runs this file as a process of its own, as other
+# cases run test/t/cases/_second_instance.rb (see "Several workers and
+# reloads" in docs/test/README.md).
 #
 # Usage: ruby test/t/cases/_workers.rb isolation|reload|shutdown
 #

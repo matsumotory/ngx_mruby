@@ -1,0 +1,138 @@
+---
+// What the newest pre-release of 3.0 gives now ("Presenting v3" in
+// AGENTS.md): the measured change against the 2.x release that the check
+// before its tag compared it with, then what a configuration or script can
+// use in it. Everything here is in the release; the planned parts are in
+// PlannedUseCases.astro, after the example and the trial.
+//
+// The numbers come from the report in src/data/ (lib/perf-report.mjs), with
+// their month and method beside them (docs/proposals/site.md, Q8), and
+// check-home.mjs compares them with it. The release named here is the head
+// of that report, and the build stops when its tag is not in the repository.
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { measuredMonth, readPerfReport } from '../../scripts/lib/perf-report.mjs';
+import { repoDir } from '../../scripts/lib/site.mjs';
+const ja = Astro.props.lang === 'ja';
+const prefix = ja ? '/ja' : '';
+const report = readPerfReport(path.resolve(process.cwd(), 'src/data/perf-v3.0.0-alpha.1.txt'));
+const tags = execFileSync('git', ['-C', repoDir, 'tag', '--list', 'v*'], { encoding: 'utf8' }).trim().split('\n');
+for (const tag of [report.base.tag, report.head.tag]) {
+  if (!tags.includes(tag)) throw new Error(`V3Now: the tag ${tag} of the perf report is not in the repository; fetch the tags before building`);
+}
+const release = report.head.version;
+const base = report.base.version;
+const releaseUrl = `https://github.com/matsumotory/ngx_mruby/releases/tag/${report.head.tag}`;
+const month = measuredMonth(report, ja ? 'ja' : 'en');
+const fewer = report.rows.filter((r) => r.head < r.base);
+const more = report.rows.filter((r) => r.head > r.base);
+// The rows of the table, in the order of the release's text: the three
+// largest decreases that it names, and every row that rose.
+const SHOWN = [
+  ['headers', 'ヘッダを読んで設定する', 'Read and set headers'],
+  ['sub_request', 'サブリクエスト', 'Subrequest'],
+  ['hello', 'helloを返す', 'Handler that returns hello'],
+  ['filter', '出力ボディフィルター', 'Output body filter'],
+];
+const rows = SHOWN.map(([scenario, jaName, enName]) => {
+  const row = report.rows.find((r) => r.scenario === scenario);
+  if (!row) throw new Error(`V3Now: no row ${scenario} in the perf report`);
+  return { ...row, name: ja ? jaName : enName };
+});
+for (const row of more) {
+  if (!rows.some((r) => r.scenario === row.scenario)) throw new Error(`V3Now: the row ${row.scenario} rose and is not shown`);
+}
+const units = report.units;
+const number = (n) => n.toLocaleString('en-US');
+const percent = (s) => s.replace('-', '−');
+// Text in backquotes is code.
+const parts = (text) => text.split('`');
+const items = [
+  {
+    title: ['mruby 4.1.0-rc2を同梱', 'Bundles mruby 4.1.0-rc2'],
+    text: [
+      '同梱のmrubyが3.3.0から上がり、スクリプトでパターンマッチ(`case`/`in`)、ブロックの`it`、mruby 3.4から4.1までに増えたメソッドを使えます。',
+      'The bundled mruby moves up from 3.3.0: scripts can use pattern matching (`case`/`in`), `it` in blocks and the methods that mruby 3.4 to 4.1 added.',
+    ],
+    href: ja ? '/ja/releases/v3.0.0/#同梱のmrubyが330から410-rc2になる561-678' : '/releases/v3.0.0/#the-bundled-mruby-is-410-rc2-instead-of-330-561-678',
+    link: ['同梱のmrubyの変更と移行の注意', 'What changes with the bundled mruby, and what to do'],
+  },
+  {
+    title: ['待つハンドラがどのフェーズでも同じように再開する', 'Handlers that wait behave the same in every phase'],
+    text: [
+      '`Nginx::Async.sleep`や`Nginx::Async::HTTP.sub_request`で待ったハンドラは、どのフェーズでも同じ形で再開し、リクエストを終えます。contentハンドラでも`sub_request`を使えます。',
+      'A handler that waits in `Nginx::Async.sleep` or `Nginx::Async::HTTP.sub_request` resumes and ends the request in the same way in every phase. `sub_request` also works in content handlers.',
+    ],
+    href: prefix + '/concepts/async/',
+    link: ['ブロックせずに待つ仕組み', 'How a handler waits without blocking'],
+  },
+  {
+    title: ['効果の無い呼び出しは例外になる', 'Calls that would do nothing raise an error'],
+    text: [
+      'メソッドが、呼んだハンドラで効果を持たないときは、`RuntimeError`が発生します。誤りは無視されずに`error.log`に出ます。',
+      'A method that has no effect in the handler that calls it raises a `RuntimeError`, so the mistake shows up in `error.log` instead of being ignored.',
+    ],
+    href: ja ? '/ja/releases/v3.0.0/#ハンドラで効果の無いメソッドはそのハンドラでruntimeerrorを出す826' : '/releases/v3.0.0/#methods-that-have-no-effect-in-a-handler-raise-a-runtimeerror-there-826',
+    link: ['対象のメソッドとハンドラ', 'Which methods, in which handlers'],
+  },
+  {
+    title: ['ハンドラの間で値を渡す', 'Pass values between handlers'],
+    text: [
+      '`Nginx::Request#store`で、1つのリクエストのハンドラの間で値を渡せます。`mruby_variable`で、スクリプトが代入するnginxの変数を宣言できます。',
+      '`Nginx::Request#store` passes values between the handlers of one request, and `mruby_variable` declares nginx variables for scripts to assign.',
+    ],
+    href: prefix + '/concepts/lifetimes/',
+    link: ['リクエストのデータを置く場所', 'Where the data of a request lives'],
+  },
+  {
+    title: ['ヘッダがnginxのフィールドに入る', "Headers go into nginx's own fields"],
+    text: [
+      '`Nginx::Headers_out`で設定した`Content-Type`、`Location`、`Date`、`Server`はnginxのフィールドに入り、nginxのフィルターもその値を使います。`Nginx::Headers_in#[]=`で足したリクエストヘッダは、`proxy_pass`が認識します。',
+      "`Content-Type`, `Location`, `Date` and `Server` set through `Nginx::Headers_out` go into nginx's own fields, which nginx's filters use. Request headers added with `Nginx::Headers_in#[]=` are recognized by `proxy_pass`.",
+    ],
+    href: prefix + '/reference/ruby/#nginxheaders_out-class',
+    link: ['Nginx::Headers_outのリファレンス', 'Nginx::Headers_out reference'],
+  },
+  {
+    title: ['モデルごとの振り分けを手元で動かす', 'Run model routing locally'],
+    text: [
+      '`examples/start`は、Docker Composeで、リクエストをモデルごとに2つのモックAPIへ振り分けるnginxを動かします。プロバイダーのAPIキーは不要です。',
+      '`examples/start` uses Docker Compose to run an nginx that routes requests by model to two mock APIs. No provider API key is needed.',
+    ],
+    href: `https://github.com/matsumotory/ngx_mruby/blob/${report.head.tag}/examples/start/README.md`,
+    link: [`${release}のexamples/startの手順`, `The steps of examples/start in ${release}`],
+  },
+];
+---
+<section class="v3-now" aria-labelledby="now-title">
+  <div class="home-copy">
+    <h2 id="now-title">{ja ? `${release}でいま使えるもの` : `What ${release} gives you now`}</h2>
+    <p>{ja
+      ? `${release}は、3.0の最初のプレリリースです。新しいコアが入っていて、ここに挙げるものはこのプレリリースにあります。AIゲートウェイの部品は、この後のプレリリースで足す予定です。下の「今後のユースケースと設計状況」で扱います。本番では安定版の2.x系を使ってください。`
+      : `${release} is the first pre-release of 3.0. It brings the new core, and everything listed here is in it. The parts of an AI gateway are planned for later pre-releases; the future use cases below cover them. For production, use the stable 2.x line.`}</p>
+    <p><a href={releaseUrl}>{ja ? `${release}のリリースノートと、更新前に確認する挙動の変更` : `Release notes of ${release}, with the behavior changes to read before upgrading`}</a></p>
+  </div>
+  <div class="now-measured">
+    <h3>{ja ? `${month}に${base}と比べた、リクエストあたりの命令数` : `Instructions per request against ${base}, measured in ${month}`}</h3>
+    <p>{ja
+      ? `測った${report.rows.length}のシナリオのうち${fewer.length}で、${release}のnginxがリクエストごとに実行した命令の数は、${base}より少なくなりました。増えたのは${more.length}つです。値はcallgrindで数えた命令数で、実行時間ではありません。`
+      : `In ${fewer.length} of the ${report.rows.length} measured scenarios, nginx with ${release} ran fewer instructions per request than with ${base}, and more in the ${more.length === 1 ? 'other one' : `other ${more.length}`}. These are instruction counts from callgrind, not times.`}</p>
+    <table>
+      <thead><tr><th scope="col">{ja ? 'シナリオ' : 'Scenario'}</th><th scope="col" class="num">{base}</th><th scope="col" class="num">{release}</th><th scope="col">{ja ? '変化' : 'Change'}</th></tr></thead>
+      <tbody>{rows.map((r) => <tr data-scenario={r.scenario}><th scope="row">{r.name}</th><td class="num">{number(r.base)}</td><td class="num">{number(r.head)}</td><td class="num">{percent(r.change)}</td></tr>)}</tbody>
+    </table>
+    <p class="now-method">{ja
+      ? <>測り方：<code>sh test/perf/compare.sh</code>で、callgrind上で動かしたnginxに、{number(report.warmup)}件のウォームアップの後、{number(report.n)}件のリクエストを送って命令数を数えました。{units.map((u) => <><code>{u}</code>だけは、リクエストではなくTCPセッションごとに数えています。</>)}arm64のMacのDockerで、Ubuntu 22.04のコンテナを使っています。表の値は、GCを含む命令数の合計です。</>
+      : <>Method: <code>sh test/perf/compare.sh</code> ran nginx under callgrind, sent {number(report.warmup)} requests to warm up, then counted the instructions of {number(report.n)} requests{units.map((u) => <>; <code>{u}</code> counts per TCP session instead</>)}. It ran in an Ubuntu 22.04 container under Docker on an arm64 Mac. The table gives the total per request, GC included.</>}</p>
+    <p class="now-method">{ja
+      ? <>{report.rows.length}のシナリオすべての値と、合否の判定に使う値は、<a href={report.source}>タグを付ける前の確認(#{report.number})</a>にあります。</>
+      : <>The values of all {report.rows.length} scenarios, and the values that decide whether the check passes, are in <a href={report.source}>the check before the tag (#{report.number})</a>.</>}</p>
+  </div>
+  <ul class="now-list">
+    {items.map((item) => <li>
+      <h3>{item.title[ja ? 0 : 1]}</h3>
+      <p>{parts(item.text[ja ? 0 : 1]).map((part, i) => (i % 2 ? <code>{part}</code> : part))}</p>
+      <a href={item.href}>{item.link[ja ? 0 : 1]}</a>
+    </li>)}
+  </ul>
+</section>

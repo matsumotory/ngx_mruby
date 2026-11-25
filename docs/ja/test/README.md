@@ -1,4 +1,4 @@
-ngx_mrubyのテストは、mrubyのテストを使います。ngx_mrubyのテストは、まだごく初期の実験的なバージョンです。
+ngx_mrubyのテストはCRubyで動き、リクエストもCRubyから送ります。ngx_mrubyのテストは、まだごく初期の実験的なバージョンです。
 
 プルリクエストを歓迎します。
 ## テストを追加する
@@ -28,7 +28,16 @@ assert('ngx_mruby', 'location /mruby') do
 end
 ```
 
-テストのクライアントは、`build_config.rb`の`test`のビルドです。このクライアントは`NO_SSL`でビルドするので、`HttpRequest`と`SimpleHttp`は`https`のリクエストを送れません。HTTPSのリクエストを送るには、既存のテストと同じように、`base_ssl(port)`が返すURLで`curl -k`を実行するか、`openssl s_client -connect localhost:<port>`を実行してください。例は、`test/t/ngx_mruby.rb`のテストにある`` `curl -s -k #{base_ssl(18082) + '/'}` ``です。
+テストのクライアントは`test/t/client.rb`です。`test.sh`は、`test/t/ngx_mruby.rb`と各ケースのファイルをCRubyで実行し、その前に`ruby -r`でクライアントを読み込みます。CRubyは、mrubyのビルドと同じく3.0以降が要ります。クライアントは、`HttpRequest`、`SimpleHttp`、`SimpleTest`を定義します。これらは、テストがこれまでmrubyの`test`のビルドから使っていたmrbgemのmatsumotory/mruby-httprequest、mruby-simplehttp、mruby-simpletestと同じように動きます。
+
+- リクエストは、1つの接続に1つずつ、HTTP/1.0で送ります。`Connection: close`、`Host`、`Accept: */*`を付け、ヘッダの名前は、`Content-type`のように先頭だけを大文字にして並べ替えます。クライアントは、nginxが接続を閉じるまで、タイムアウトなしでレスポンスを読みます。
+- レスポンスは`SimpleHttp::SimpleHttpResponse`です。`res["code"]`はステータスのIntegerで、`res["body"]`はボディです。`res["<name>"]`は、小文字のヘッダ名でそのヘッダの値を返します。同じヘッダが2回以上来たときは、値のArrayを返します。
+- `SimpleTest`は、mruby-simpletestのアサーション(`assert_true`、`assert_equal`、`assert_include`、`assert_raise`、`assert_float`ほか)を同じメッセージで持ちます。`skip`も持ちますが、gemと同じく、`skip`を呼んだテストはクラッシュとして数えます。
+- `t.report`は件数を出力し、失敗またはクラッシュしたテストがあると例外を投げます。そのため、ファイルは0以外で終了し、`test.sh`は止まります。
+
+テストは、バイナリの文字列で動きます。`test.sh`は`-E ASCII-8BIT`を渡し、`test/t/ngx_mruby.rb`と`test/t/cases/_prelude.rb`は、先頭にマジックコメントの`# encoding: ascii-8bit`を持ちます。そのため、`String#size`はバイト数を数え、`File.read`とコマンドの出力はバイト列の文字列になります。UTF-8でないバイトを含むログも、行に分けられます。`JSON.parse`は標準ライブラリのJSONを使い、`usleep`はクライアントが定義します。`build_config.rb`には今もmrubyの`test`のビルドがありますが、テストはこれを使いません。
+
+`HttpRequest`と`SimpleHttp`はTLSを持たず、`https`のURLも、TLSなしのHTTPでそのURLのポート(ポートが無ければ443)へ送ります。HTTPSのリクエストを送るには、既存のテストと同じように、`base_ssl(port)`が返すURLで`curl -k`を実行するか、`openssl s_client -connect localhost:<port>`を実行してください。例は、`test/t/ngx_mruby.rb`のテストにある`` `curl -s -k #{base_ssl(18082) + '/'}` ``です。
 
 ## フラグメントとケースのファイルでテストを追加する
 
@@ -58,7 +67,7 @@ CRubyのヘルパー`_udp_wait_session.rb`は、nginxとエコーの上流にポ
 
 ## 必須のステータスチェック
 
-`.github/workflows/test.yml`は、`master`、`next`、`v*.x`へのプルリクエスト、これらのブランチと`v*`タグへのpush、「Run workflow」で起動します。ルールセットが必須とするステータスチェックは`ci-ok`です。`ci-ok`は、`needs`にある各ジョブが成功したか、`changes`の判定でスキップされた場合だけ成功します。対象は`changes`、`build`マトリクスの全ジョブ、`files`で、`next`では`soak`と`perf`も含みます。`master`の`ci-ok`は、まだ`perf`を必要としません。`master`には、この後のプルリクエストで加えます。マトリクスを実行する場合はvalgrindのセルも対象なので、そのエラーは`ci-ok`を失敗させます。[CIのvalgrind](#ciのvalgrind)を参照してください。`next`では、`perf`の結果に`FAIL`か`ERROR`の行があるときも、`ci-ok`は失敗します。「callgrindで性能を比べる」の「CIで実行する」を参照してください。
+`.github/workflows/test.yml`は、`master`、`next`、`v*.x`へのプルリクエスト、これらのブランチと`v*`タグへのpush、「Run workflow」で起動します。ルールセットが必須とするステータスチェックは`ci-ok`です。`ci-ok`は、`needs`にある各ジョブが成功したか、`changes`の判定でスキップされた場合だけ成功します。対象は`changes`、`build`マトリクスの全ジョブ、`perf`、`files`で、`next`では`soak`も含みます。マトリクスを実行する場合はvalgrindのセルも対象なので、そのエラーは`ci-ok`を失敗させます。[CIのvalgrind](#ciのvalgrind)を参照してください。どちらのブランチでも、`perf`の結果に`FAIL`か`ERROR`の行があると、`ci-ok`は失敗します。「callgrindで性能を比べる」の「CIで実行する」を参照してください。
 
 プルリクエストの実行は、作成、再オープン、headへのpush、readyへの変更で始まります。イベントは`pull_request`の`opened`、`synchronize`、`reopened`、`ready_for_review`です。Draftでは`changes`と`ci-ok`以外は動かず、ジョブ名も`ci-ok (draft)`になります。この実行ではテストしません。GitHubはDraftをマージしません。このジョブは別の名前なので、成功してもheadに`ci-ok`は付きません。そのため、readyにして始まる実行が成功するまで、headは必須チェックを満たしません。他のPR用ワークフローもDraftではスキップします。
 
@@ -359,7 +368,7 @@ CIでは、valgrindの下のセルが、起動から10秒たってもまだ設�
 上限があると、次のような競合が起きることがあります。
 
 - 起動が上限より遅いと、nginxがいずれ起動するはずでも、実行は失敗します。遅い環境では、`NGINX_HEATTIME`を上げてください。待ちはnginxがlistenした時点で終わるので、上限を上げて時間が余計にかかるのは、nginxが終了せずにハングしたときだけです。nginxが終了したときは、スクリプトがすぐに報告します。
-- listenしているソケットは、まだ動いているハンドラではありません。nginxがlistenすると、カーネルはすぐに接続を受け付けます。テストのnginxは`master_process off`の1つのプロセスで、どの接続を読むよりも前に、`init_worker`のフックを実行します。その間、最初のリクエストは、nginxが読むまでソケットのbacklogで待ちます。テストのクライアントのmruby-simplehttpはタイムアウトなしで読むので、クライアントも同じく待ちます。
+- listenしているソケットは、まだ動いているハンドラではありません。nginxがlistenすると、カーネルはすぐに接続を受け付けます。テストのnginxは`master_process off`の1つのプロセスで、どの接続を読むよりも前に、`init_worker`のフックを実行します。その間、最初のリクエストは、nginxが読むまでソケットのbacklogで待ちます。テストのクライアントの`SimpleHttp`(`test/t/client.rb`)はタイムアウトなしで読むので、クライアントも同じく待ちます。
 - nginxは後で、スクリプトが待つ間に試した接続を1つずつ読みます。そして、接続がリクエストの無いまま閉じられていると分かると、その接続を閉じます。これらの接続ではハンドラは動きません。nginxは、これらの接続について、`error.log`に`debug`の行だけを書きます。
 
 ### nginxを止める
@@ -660,7 +669,7 @@ nginxのワーカーは、何日もリクエストを処理し続けます。終
 
 ### 何を測るか
 
-`test/soak/soak.rb`は、シナリオごとにnginxを起動します。設定は`master_process on`で、ワーカーは1つです。`soak.rb`は、まず1つのレスポンスを確かめ、`SOAK_WARMUP`個のリクエストを送ります。続いて、`SOAK_N`個のリクエストを、`SOAK_N / 3`個ずつ3つのウィンドウに分けて送ります。サンプルは、ウォームアップの後と各ウィンドウの後に1回ずつ、合わせて4回取ります。各サンプルの前に、`soak.rb`は自分の接続をすべて閉じます。そして、`stub_status`が示す開いた接続が、サンプルを求める接続だけになるまで待ちます。待つのは最大5秒です。サンプルは次のカラムからなります。
+`test/soak/soak.rb`は、シナリオごとにnginxを起動します。設定は`master_process on`で、ワーカーは1つです。`soak.rb`は、まず1つのレスポンスを確かめ、`SOAK_WARMUP`個のリクエストを送ります。続いて、`SOAK_N`個のリクエストを、`SOAK_WINDOWS`個のウィンドウに分けて送ります。デフォルトは6つで、1つのウィンドウは`SOAK_N / 6`個です。サンプルは、ウォームアップの後と各ウィンドウの後に1回ずつ取り、デフォルトでは合わせて7回です。各サンプルの前に、`soak.rb`は自分の接続をすべて閉じます。そして、`stub_status`が示す開いた接続が、サンプルを求める接続だけになるまで待ちます。待つのは最大5秒です。サンプルは次のカラムからなります。
 
 | カラム | 取得元 | 合格の条件 |
 |---|---|---|
@@ -669,10 +678,13 @@ nginxのワーカーは、何日もリクエストを処理し続けます。終
 | `fibers` | `gc_root`と同じHashの`gc_root_fibers` | どのサンプルでも同じ |
 | `arena` | `gc_root`と同じHashの`gc_arena_idx` | どのサンプルでも同じ |
 | `timers` | 同じHashの`timers` | すべてのサンプルで0 |
-| `fd` | `/proc/<worker>/fd`にあるエントリーの数 | `fd`から`up`を引いた値が、すべてのサンプルで同じ |
+| `fd` | `/proc/<worker>/fd`のエントリーの数 | `fd`から`up`を引いた値が、すべてのサンプルで同じ |
 | `up` | モックのLLMの`connections_open`。モックを使わないシナリオでは、常に0 | `SOAK_CONCURRENCY`以下。`abort`と`cut`のシナリオでは、いつも0になる |
 | `active` | `stub_status`の`Active connections` | すべてのサンプルで1 |
-| `rss_kb` | `/proc/<worker>/status`にある`VmRSS` | 最後のサンプルからその前のサンプルを引いた値が`SOAK_RSS_STEP_KB`以下。最後のサンプルから最初のサンプルを引いた差の値が`SOAK_RSS_TOTAL_KB`以下に収まる |
+| `rss_step` | `/proc/<worker>/status`にある`VmRSS` | 最後のサンプルとその前のサンプルの差が、`SOAK_RSS_STEP_KB`を超えないこと |
+| `rss_total` | `rss_step`と同じ | 最後のサンプルと最初のサンプルの差が、`SOAK_RSS_TOTAL_KB`を超えないこと |
+| `pss_slope` | `/proc/<worker>/smaps_rollup`にある`Pss` | すべてのサンプルに最小二乗法で引いた直線の傾きが、リクエストあたり`SOAK_SLOPE_B`バイトを超えないこと。`stream_sleep`ではセッションあたり |
+| `dirty_slope` | `pss_slope`と同じファイルにある`Private_Dirty` | `pss_slope`と同じ |
 
 どのサンプルの時点でも、ワーカーは同じ状態にあります。それより前に送ったリクエストはすべて終わっていて、動いているリクエストは`/debug/stats`自身だけです。そのため、カウンタの値は、それまでに動いたリクエストの数によって変わりません。
 
@@ -684,6 +696,15 @@ nginxのワーカーは、何日もリクエストを処理し続けます。終
 - `up`は、モックのLLMで開いている接続の数です。nginxのupstreamは、これらの接続を次のリクエストのために保ちます。その数は、それまでで最も混んだ時点で同時に使われていたupstreamの接続の数です。そのため、後のウィンドウがたまたまそれより混むと、`up`は1増えることがあります。また、これらの接続は、それぞれ`fd`にも数えられます。そこでソークテストは、サンプルの間で`fd`から`up`を引いた値を比べ、`up`の上限をクライアントの接続の数で押さえます。`abort`と`cut`のシナリオでは、正常に終わるレスポンスが無いので、nginxはupstreamの接続を保ちません。ソークテストは`up`が0になるまで最大5秒待ち、0にならなければそのサンプルを失敗にします。
 
 `VmRSS`は正確な値ではないので、ソークテストは比べずに上限で押さえます。ソークのビルドは、各サンプルの前のフルGCで`malloc_trim(0)`を呼びます。この関数は、Cのヒープの空きページを返します。説明は下の節にあります。この呼び出しが無いと、正しいビルドでも、サンプルの間でVmRSSが増える向きにも減る向きにも最大で約1 MB動きました。どれだけ動くかは、アロケータがたまたまどこに空きメモリを残したかによって決まりました。
+
+`VmRSS`には、ワーカーがマスターと共有するページも入ります。nginxやライブラリのコードのページがその例で、ワーカーがそのコードを初めて実行したときにワーカーのメモリに入ります。正しいビルドでも、多くのシナリオで、`VmRSS`がどこか1つのウィンドウで1回だけ108から136 kB増えました。一方、`Private_Dirty`がサンプルの間で増えたのは、最大で32 kBでした。`/proc/<worker>/smaps_rollup`からは、次の2つの値を取ります。
+
+- `Pss`は、各ページを、そのページをマップしているプロセスの数で割って数えます。ワーカーとマスターだけがマップしているページは半分として数え、ほかのプロセスもマップしている共有ライブラリのページは、それより小さく数えます。
+- `Private_Dirty`は、ワーカーだけがマップしていて、ワーカーが書き込んだページを数えます。Cのヒープとmrubyのヒープはここに入ります。リクエストが確保したまま残したメモリは、この値を増やします。ワーカーが読み込んだファイルのページは、この値を増やしません。
+
+ソークテストは、この2つの値のそれぞれについて、ウォームアップの後に送ったリクエストの数をxとして、サンプルに最小二乗法で直線を引きます。そして、その傾きをリクエストあたりのバイト数で確かめます。傾きはすべてのサンプルを使うので、リークは一定の増加として表れます。一方、1回だけの増加が傾きに与える影響は小さくなります。デフォルトの`SOAK_N`と`SOAK_WINDOWS`では、1回だけ100 kB増えたとき、傾きに加わるのはリクエストあたり最大で約6.6バイトです。最大になるのは、6つのウィンドウのうち3つ目か4つ目で増えたときで、ほかのウィンドウではそれより小さくなります。`VmRSS`、`Pss`、`Private_Dirty`のサンプルごとの値は、結果のテーブルの上に出すメモリのテーブルにあります。
+
+ソークテストが`smaps_rollup`を読めるのは、カーネルがこのファイルを提供していて、ソークテストのプロセスに読む権限があるときだけです。このファイルがあるのは、Linux 4.14以降です。ソークテストをrootで実行すると、nginxはワーカーを`nobody`で動かします。rootがそのワーカーの`smaps_rollup`を読むには`CAP_SYS_PTRACE`が要り、この権限の無いコンテナでは`EACCES`になります。読めないとき、ソークテストは`Pss`と`Private_Dirty`を`-`として記録し、そのことをメモリのテーブルの下に1行で出し、ほかの値はこれまでどおり確かめます。CIの`soak`ジョブは`SOAK_REQUIRE_SMAPS_ROLLUP=1`を設定するので、読めないシナリオは失敗します。このジョブはランナーのユーザーで動き、nginxはワーカーを同じユーザーのまま動かすので、ファイルを読めます。
 
 `test/soak/nginx.conf`のシナリオは、`Nginx::Debug`自身も1回確かめます。確かめるのは、最初のレスポンスの後、ウォームアップの前です。シナリオは`/debug/check`にリクエストを送ります。そのコードは、まず`Nginx::Debug.gc`を実行し、`Nginx::Debug.stats`を読みます。次に、1000回のループの各回で、どこからも参照されないStringを2つ作ります。最後に、2回目の`Nginx::Debug.gc`の前と後に、`gc_live`をもう一度読みます。シナリオは、次のすべてが成り立たないと失敗します。
 
@@ -790,7 +811,7 @@ HTTPとstreamは別のmruby状態を持ちます。HTTP側の`Nginx::Debug.gc`�
 `soak.rb`は`/proc`を読むので、LinuxとCRuby 3.0以降が要ります。ほかのシステムでは、コンテナの中で実行してください。たとえば、次のようにします。
 
 ```console
-$ docker run --rm -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev >/dev/null && sh test/soak/run.sh'
+$ docker run --rm --cap-add SYS_PTRACE -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev >/dev/null && sh test/soak/run.sh'
 ```
 
 Linuxでは、次のように実行します。
@@ -801,7 +822,7 @@ $ ONLY_RUN=1 sh test/soak/run.sh                       # run without building
 $ ONLY_RUN=1 SOAK_SCENARIOS=sleep,disconnect SOAK_N=100000 sh test/soak/run.sh
 ```
 
-最初の実行には数分かかります。gemをクローンし、mrubyとnginxをビルドするからです。シナリオの実行には約1分かかり、aarch64のコンテナでは、そのうち`agent_*`のシナリオが約18秒です。結果のテーブルには、シナリオごとに1つのレコードがあります。ある値がサンプルの間で違うときは、4つの値をすべて`/`で区切って示し、その理由をテーブルの下に挙げます。ログは`build_soak/nginx/soak/logs/`にあり、`error.<scenario>.log`、`stderr.<scenario>.log`、`mock.<scenario>.log`、`soak.log`の4種類です。`mock.<scenario>.log`は、`agent_*`のシナリオでモックのLLMが出力したもので、`soak.log`は`soak.rb`の出力の記録です。
+最初の実行には数分かかります。gemをクローンし、mrubyとnginxをビルドするからです。シナリオの実行には約1分かかり、aarch64のコンテナでは、そのうち`agent_*`のシナリオが約18秒です。メモリのテーブルには、シナリオごとに`VmRSS`、`Pss`、`Private_Dirty`の3つのレコードがあり、各サンプルの値をkBで、傾きをリクエストあたりのバイト数で示します。その下の結果のテーブルには、シナリオごとに1つのレコードがあります。ある値がサンプルの間で違うときは、すべての値を`/`で区切って示し、その理由をテーブルの下に挙げます。ログは`build_soak/nginx/soak/logs/`にあり、`error.<scenario>.log`、`stderr.<scenario>.log`、`mock.<scenario>.log`、`soak.log`の4種類です。`mock.<scenario>.log`は、`agent_*`のシナリオでモックのLLMが出力したもので、`soak.log`は`soak.rb`が出力した内容の記録です。
 
 `test.sh`が止めるのは、自分が起動したnginxだけです。説明は上の「nginxを止める」にあります。また、`test.sh`のポートは、ソークテストのポートとは重なりません。
 
@@ -816,6 +837,9 @@ $ ONLY_RUN=1 SOAK_SCENARIOS=sleep,disconnect SOAK_N=100000 sh test/soak/run.sh
 | `SOAK_PORT_BASE` | 12360 | シナリオのポート。`sub_request`のバックエンドは次の番号を使い、モックのLLMはさらにその次の番号を使う |
 | `SOAK_RSS_STEP_KB` | 512 | 最後のウィンドウでのVmRSSの上限。単位はkB |
 | `SOAK_RSS_TOTAL_KB` | 1024 | 最初のサンプルから最後のサンプルまでのVmRSSの上限。単位はkB |
+| `SOAK_WINDOWS` | 6 | ウォームアップの後のウィンドウの数。2以上にする |
+| `SOAK_SLOPE_B` | 8 | `Pss`と`Private_Dirty`の傾きの上限。単位はリクエストあたりのバイト |
+| `SOAK_REQUIRE_SMAPS_ROLLUP` | 未設定 | 1にすると、`smaps_rollup`を読めないシナリオを失敗にする。CIのジョブが設定する |
 
 ### しきい値とキャリブレーション
 
@@ -831,13 +855,23 @@ VmRSSの2つの上限は、2026年10月3日にデフォルトのシナリオを�
 | aarch64、3回、`SOAK_N=20000`、`agent_*`、2026年10月4日の実行 | +28 kB (`agent_stream`) | +32 kB、シナリオは`agent_upstream_reset` |
 | x86_64のCI、実行37152930938と37156005549、`SOAK_N=20000`、`agent_*`、2026年10月4日の2回の実行 | +16 kB、シナリオは`agent_stream`と`agent_client_abort` | +84 kB (`agent_stream`と`agent_client_abort`) |
 
-`malloc_trim(0)`が無いと、`SOAK_N=300000`の`disconnect`のシナリオでは、VmRSSがウィンドウごとに+2832 kB、-788 kB、+1088 kB動きました。最後のウィンドウの上限を512 kBにすると、この動きは上限を超えます。それでも、このシナリオのカウンタは同じままで、全体の増分は`SOAK_N=100000`のときより小さくなりました。`malloc_trim(0)`があると、最も大きい増分は、最後のウィンドウで144 kB、全体で236 kBです。デフォルトの上限は、最後のウィンドウで512 kB、全体で1024 kBで、それぞれこれらの約3.5倍と約4.3倍です。最後のウィンドウの上限を緩いほうにしたのは、共有のCIのランナーで、1つのウィンドウが144 kB増えたためです。小さなリークを見つけるのは、全体の上限のほうです。リクエストあたり約50バイト未満のリークは、`SOAK_N`がデフォルトの20000なら、1024 kBに届きません。それより小さなリークを探すには、`SOAK_N`を上げてください。比較のために挙げると、リクエストあたり4 kBリークするビルドは、ウィンドウごとに約26 MB増えます。
+`malloc_trim(0)`が無いと、`SOAK_N=300000`の`disconnect`のシナリオでは、VmRSSがウィンドウごとに+2832 kB、-788 kB、+1088 kB動きました。最後のウィンドウの上限を512 kBにすると、この動きは上限を超えます。それでも、このシナリオのカウンタは同じままで、全体の増分は`SOAK_N=100000`のときより小さくなりました。`malloc_trim(0)`があると、最も大きい増分は、最後のウィンドウで144 kB、全体で236 kBです。デフォルトの上限は、最後のウィンドウで512 kB、全体で1024 kBで、それぞれこれらの約3.5倍と約4.3倍です。最後のウィンドウの上限を緩いほうにしたのは、共有のCIのランナーで、1つのウィンドウが144 kB増えたためです。全体の上限が見つけるのは、リクエストあたり約50バイト以上のリークです。それより小さなリークは、`SOAK_N`がデフォルトの20000なら、1024 kBに届きません。比較のために挙げると、リクエストあたり4 kBリークするビルドは、デフォルトの`SOAK_N`と`SOAK_WINDOWS`では、ウィンドウごとに約13 MB増えます。上のテーブルの実行は、ウィンドウが3つでした。6つにすると、最後のウィンドウのリクエストは半分になるので、512 kBの上限はさらに緩くなります。
+
+`Pss`と`Private_Dirty`の傾きの上限は、2026年11月25日にデフォルトのシナリオを実行した結果から決めました。環境は、nginx 1.31.8、Ubuntu 22.04、gcc 11、glibc 2.35、Linux 6.12で、aarch64のコンテナの中で、root以外のユーザーで実行しました。`SOAK_WINDOWS`はデフォルトの6です。そのうえで、x86_64のCIの`soak`ジョブ（[実行45584255847](https://github.com/matsumotory/ngx_mruby/actions/runs/45584255847)）の値とも比べました。テーブルの値は、カラムごとに、そのレコードにあるすべての実行とシナリオのうちで、最も小さい傾きと最も大きい傾きです。単位はリクエストあたりのバイトです。
+
+| マシン | `SOAK_N` | 実行の回数 | `Pss` | `Private_Dirty` | `VmRSS`の傾き。上限では確かめない |
+|---|---|---|---|---|---|
+| aarch64 | 20000 | 5 | -3.8から+2.5 | -1.6から+0.5 | -1.1から+8.4 |
+| aarch64 | 100000 | 1 | -0.3から+0.3 | -0.2から+0.1 | -0.2から+1.4 |
+| x86_64のCI | 20000 | 1 | -1.1から+1.2 | -1.1から+1.2 | -0.7から+8.2 |
+
+`VmRSS`の傾きは、比べるために示すだけです。`VmRSS`は、実行の途中で1回だけ約120 kB増えると、それだけでリクエストあたり約8バイトの傾きになります。上限のリクエストあたり8バイトは、`Pss`の傾きの最大の約3倍、`Private_Dirty`の傾きの最大の6.7倍です。これらの実行で`Private_Dirty`がサンプルの間で増えたのは最大で32 kBでした。3つ目か4つ目のウィンドウで1回だけ約120 kB増えると、それだけで上限に届きます。傾きの上限は、デフォルトの`SOAK_N`で、リクエストあたり8バイト以上のリークを見つけます。これは、`VmRSS`の全体の上限が見つけるリークの約6分の1の大きさです。HTTPのハンドラが動くたびに`malloc(16)`を1つリークさせたビルドで試しました。リークするのはCのヒープの32バイトのチャンクで、このビルドはそのチャンクに書き込みます。このビルドでは、`Pss`と`Private_Dirty`の傾きがリクエストあたり34.6から85.2バイトになり、HTTPの12のシナリオがすべて失敗しました。そのうち9つでは、`VmRSS`は2つの上限に収まっていました。そのときの全体の増分は704から788 kBです。HTTPのハンドラを動かさない`stream_sleep`は通りました。リクエストあたり8バイトより小さなリークを探すには、`SOAK_N`を上げてください。`SOAK_N`を上げると、傾きのばらつきも小さくなるからです。
 
 ### シナリオを追加する
 
 1. `test/soak/nginx.conf`にlocationを加えます。ハンドラを使うなら、ハンドラのファイルを`test/soak/handlers/`に加えます。そのディレクトリのパスには`__SOAK_HANDLERS__`を使い、2つ目のserverには`__SOAK_BACKEND_PORT__`を使います。モックのLLMを後ろに置くシナリオは、代わりに`test/soak/nginx.agent.conf`に加え、モックには`__SOAK_MOCK_PORT__`を使います。
 2. `test/soak/scenarios.rb`の`SCENARIOS`に`Scenario`を加えます。パス、リクエストヘッダ、期待するボディとレスポンスヘッダ、モードを指定します。モードは`:keepalive`、`:disconnect`、`:abort`、`:cut`のどれかです。エージェントのテンプレートのシナリオでは、`conf: 'nginx.agent.conf'`、リクエストのメソッドとボディ、`mock:`も設定します。`mock:`にはモックのオプションを指定し、デフォルトのままなら`[]`にします。フィールドの一覧は、そのファイルの先頭のコメントにあります。
-3. `test/soak/soak.rb`の`DEFAULT_SCENARIOS`にシナリオの名前を加えます。ソークテストを3回実行し、すべてのカウンタが同じままで、VmRSSが上限に収まることを確かめます。あるカウンタが増え続けるなら、そのシナリオは問題を見つけました。シナリオを通すために、上限を上げたり、比較を外したりしないでください。脆弱性の可能性があるときは、`SECURITY.md`に書いてある方法で、非公開で報告してください。
+3. `test/soak/soak.rb`の`DEFAULT_SCENARIOS`にシナリオの名前を加えます。ソークテストを3回実行し、すべてのカウンタが同じままで、VmRSSと、`Pss`と`Private_Dirty`の傾きが上限に収まることを確かめます。あるカウンタが増え続けるなら、そのシナリオは問題を見つけました。シナリオを通すために、上限を上げたり、比較を外したりしないでください。脆弱性の可能性があるときは、`SECURITY.md`に書いてある方法で、非公開で報告してください。
 4. `:keepalive`のシナリオは、下の性能の比較でも測れます。`test/perf/perf.rb`の`DEFAULT_SCENARIOS`に名前を加え、性能の比較の「しきい値とキャリブレーション」にある、変更の無い比較をそこで流して確かめてください。
 
 ## リリースのビルド
@@ -1048,6 +1082,8 @@ baseが同梱するmrubyがheadより古い比較では、このような差が�
 
 もう1つの条件の`pull-request`は、オーナーがプルリクエストで受け入れた`FAIL`のためのものです。「CIで実行する」を参照してください。この行には、プルリクエストのベースブランチと番号を書きます。たとえば`pull-request next 812 stream_sleep 7`です。この行が当てはまるのは、そのプルリクエストの`perf`ジョブだけです。ジョブは、ベースブランチと番号を`PERF_BASE_REF`と`PERF_PULL_REQUEST`で`perf.rb`に渡します。これらを設定しないローカルの実行では、この行は当てはまりません。前のタグとの比較も同じです。当てはまった行のシナリオは`ok (accepted: pull request #812 to next, +7%)`と表示され、ヘッダの1行には`pull request #812 to next`が加わります。1つのシナリオに`pull-request`の行と`mruby-version`の行が両方当てはまるときは、`pull-request`の行を使います。この行は、マージした後も記録としてファイルに残します。ほかのプルリクエストの比較には当てはまりません。
 
+`master`の`test/perf/accepted.txt`も同じ書式で、まだ行がありません。`master`の`pull-request`の行には`master`を書きます。たとえば`pull-request master 812 auth 7`です。`master`が同梱するmruby 3.3.0には、定数のキャッシュがありません。`OP_GETCONST`は、参照のたびに`mrb_vm_const_get`を呼びます。`master`の`mruby/src/vm.c`にある処理です。そのため、定数の参照のコストは、irepを割り当てた場所では変わりません。`master`は、GCを除き、定数の参照を含めた値で判定し、レポートに`const_misses`と`const_clears`を出力しません。
+
 ### 実行する
 
 PRが測るバイナリの入力か測定を変え、`perf`が`true`になるときは、作者がPRをreadyにする前に、baseとの比較を手元で流し、レポートをPRの本文に引用します。[AGENTS.md](../../../AGENTS.md)の「Design principles」を参照してください。その後、[CIで実行する](#ciで実行する)の`perf`ジョブが、同じ比較をrunnerでもう一度流します。
@@ -1103,7 +1139,7 @@ $ sh test/perf/run.sh                                  # measure this checkout o
 
 リクエストの関数の呼び出しは、名前で数えます。GCCが`-O2`で作る関数のコピーは、元の関数として数えます。コピーとは、`ngx_mrb_start_fiber.part.0`、`.isra.0`、`.constprop.0`、`.cold`のようなものです。あるコピーから別のコピーへの呼び出しは1回と数えます。そのため、GCCが関数を分割したりクローンしたりするようになる変更でも、ウィンドウのチェックは失敗しません。次の2種類のプルリクエストは、`test/perf/perf.rb`の`REQUEST_FUNCTIONS`に新しい名前を加え、古い名前を残す必要があります。`ngx_mrb_start_fiber`の名前を変えるプルリクエストと、Rubyの実行のfiberを始める処理を別の関数へ移すプルリクエストです。ヘッドの`perf.rb`はベースも測り、一覧にある2つの名前の間の呼び出しは1回と数えるからです。今は、GCCは`ngx_mrb_start_fiber`をインライン化できません。この関数は`ngx_http_mruby_async.c`で定義し、`ngx_http_mruby_module.c`から呼んでいるからです。コンパイラがこの関数をインライン化できるようにする変更では、プロファイルにこの関数の呼び出しが残りません。たとえば、ただ1つの呼び出し元のファイルの中でこの関数を`static`にする変更や、LTOでのビルドです。そうなると、7つのシナリオのウィンドウは、どれも呼び出しが0回になります。そのため、そうした変更では、実際の呼び出しが残る関数を一覧に挙げる必要があります。ローカルの実行では、カンマで区切った`PERF_REQUEST_FUNCTIONS`で一覧を上書きできます。`REQUEST_FUNCTION_CALLS`ではシナリオのリクエストあたりの呼び出しの数を、`SCENARIO_REQUEST_FUNCTIONS`ではシナリオの関数を、別のものに設定します。`ruby test/perf/perf.rb --self-test`は、名前の規則とプロファイルの読み方を、用意した架空のプロファイルで確かめます。ビルドもvalgrindも要りません。`compare.sh`と`run.sh`は、最初にこれを実行します。
 
-`next`では、`ci-ok`はこのジョブを必要とします。そのため、`FAIL`か`ERROR`の行があると必須のチェックが失敗し、`WARN`の行では失敗しません。`master`の`ci-ok`はまだこのジョブを必要とせず、この後のプルリクエストで加えます。上のキャリブレーションのとおり、命令の数はランナーの速さで変わりません。#779から#791までの`next`へのプルリクエストで比較したこのジョブの15回の実行では、どの実行も16のシナリオがすべて`ok`でした。実行は2026年11月9日と10日で、GCを除いた最大の変化は`responses_stream_plain_50`の0.60%です。#788、#791、#794の実行のプロファイルを、定数の参照も除いて判定し直しても、すべての行が`ok`のままです。判定ごとにプルリクエストで何をするかは、[AGENTS.md](../../../AGENTS.md)の「Design principles」にあります。`WARN`はレビューを通じてオーナーに確かめ、`FAIL`はオーナーがプルリクエストで受け入れるまでマージしません。`ERROR`は測定の失敗なので、原因を直すか、ジョブをもう一度実行します。
+`master`でも`next`でも、`ci-ok`はこのジョブを必要とします。そのため、`FAIL`か`ERROR`の行があると必須のチェックが失敗し、`WARN`の行では失敗しません。上のキャリブレーションのとおり、命令の数はランナーの速さで変わりません。#779から#791までの`next`へのプルリクエストで比較したこのジョブの15回の実行では、どの実行も16のシナリオがすべて`ok`でした。実行は2026年11月9日と10日で、GCを除いた最大の変化は`responses_stream_plain_50`の0.60%です。#788、#791、#794の実行のプロファイルを、定数の参照も除いて判定し直しても、すべての行が`ok`のままです。`master`では、2026年10月19日から11月24日までにマージした`master`へのプルリクエストで、このジョブの最新の実行が28回比較し、どの実行も14のシナリオがすべて`ok`でした。そのうち23本のプルリクエストは、`src/`、`mrbgems/`、`mruby/`、`build_config.rb`のどれかを変えています。どちらの向きでも最大の変化は、#822の`proxy_stream_plain_50`のGCを除いた-0.62%で、リクエストあたりのIrは57543から57186です。判定ごとにプルリクエストで何をするかは、[AGENTS.md](../../../AGENTS.md)の「Design principles」にあります。`WARN`はレビューを通じてオーナーに確かめ、`FAIL`はオーナーがプルリクエストで受け入れるまでマージしません。`ERROR`は測定の失敗なので、原因を直すか、ジョブをもう一度実行します。
 
 オーナーが受け入れた`FAIL`を通すには、オーナーの受け入れがプルリクエストのコメントに書かれた後で、そのプルリクエストが`test/perf/accepted.txt`に1行を加えます。コメントには、実行、シナリオ、その変化を書きます。行には、条件の`pull-request`、ベースブランチ、プルリクエストの番号、シナリオ、許容幅を書きます。許容幅は、判定の値で測った変化以上のパーセントです。たとえば、+6.05%なら`pull-request next 812 stream_sleep 7`です。「受け入れ済みの差」を参照してください。この行をpushするとジョブがもう一度動き、そのシナリオは`ok (accepted: ...)`と表示されて、ジョブは成功します。後の変更で許容幅を超えると、また`FAIL`になります。どの行にも当てはまらない`FAIL`と、`ERROR`では、`ci-ok`は失敗したままです。
 

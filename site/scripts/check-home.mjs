@@ -14,7 +14,14 @@
 // - the hero (the owner on 2026-11-02, section 7): the heading, the text
 //   under it, one action and the status in the first column of .v3-intro;
 //   the one action leads to the heading of the use cases on the same page;
-//   the status has two lines, the second with the release badge.
+//   the status has two lines, the second with the release badge, and the
+//   first links to the newest pre-release above the stable release when the
+//   git tags have one (latestPrereleaseTag), and to no other release;
+// - what the pre-release gives now (V3Now.astro): the performance figures
+//   of the page stand only in .now-measured, which gives the month of the
+//   report in src/data/, callgrind, and a link to its pull request, and
+//   whose table has the numbers of the report's rows; the PERFORMANCE
+//   pattern below still applies to the rest of the page.
 //
 //   node scripts/check-home.mjs [--dist DIR] [--repo DIR]
 import fs from 'node:fs';
@@ -22,6 +29,8 @@ import path from 'node:path';
 import { elements, hasClass, readHtml, textContent, visibleText } from './lib/html.mjs';
 import { loadSample, specFromProps } from './lib/samples.mjs';
 import { HOME_PAGES } from './lib/site.mjs';
+import { latestPrereleaseTag } from './lib/release-state.mjs';
+import { measuredMonth, readPerfReport } from './lib/perf-report.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
@@ -38,7 +47,7 @@ function args() {
 
 // A number with a unit of throughput or latency, or a percentage of faster
 // or slower, in English or in Japanese.
-const PERFORMANCE = /\b\d[\d,.]*\s*(k|K|M)?\s*(req\/s|requests?\s*(per|\/)\s*s(ec(ond)?)?|rps|qps|ops\/s|ms\b|µs|usec|instructions per request)|\b\d+(\.\d+)?\s*%\s*(faster|slower|quicker|less|more)|\b(faster|slower) than\b|[\d０-９][\d０-９,.，．]*\s*[万千億]?\s*(リクエスト|件|回)?\s*(毎秒|\/秒|／秒|ミリ秒|マイクロ秒)|[\d０-９]+\s*[%％]\s*(速|高速|遅|短|少な|多)|倍(速|高速)|より(速|高速|遅)い/;
+const PERFORMANCE = /\b\d[\d,.]*\s*(k|K|M)?\s*(req\/s|requests?\s*(per|\/)\s*s(ec(ond)?)?|rps|qps|ops\/s|ms\b|µs|usec|instructions per request)|\b\d+(\.\d+)?\s*%\s*(faster|slower|quicker|less|more|fewer|lower|higher)|\b(faster|slower) than\b|[\d０-９][\d０-９,.，．]*\s*[万千億]?\s*(リクエスト|件|回)?\s*(毎秒|\/秒|／秒|ミリ秒|マイクロ秒)|[\d０-９]+(\.\d+)?\s*[%％]\s*(速|高速|遅|短|少な|多|減|増)|倍(速|高速)|より(速|高速|遅)い/;
 
 // The text of each code block: Expressive Code renders each line as a
 // div.ec-line inside <pre>.
@@ -76,8 +85,37 @@ function main() {
     const status = heroText && elements(heroText).find((e) => hasClass(e, 'v3-status'));
     const statusLines = status ? (status.children ?? []).filter((e) => e.tagName === 'p') : [];
     if (statusLines.length !== 2 || !elements(statusLines[1]).some((e) => hasClass(e, 'release-badge'))) problems.push(`${where}: the status of the hero is not two lines with the release badge on the second`);
+    const prerelease = latestPrereleaseTag(opt.repo);
+    const releaseLinks = statusLines[0] ? elements(statusLines[0]).filter((e) => e.tagName === 'a' && /\/releases\/tag\//.test(e.properties?.href ?? '')) : [];
+    const expected = prerelease ? [`https://github.com/matsumotory/ngx_mruby/releases/tag/${prerelease}`] : [];
+    if (JSON.stringify(releaseLinks.map((e) => e.properties.href)) !== JSON.stringify(expected)) problems.push(`${where}: the first line of the status links to ${releaseLinks.map((e) => e.properties?.href).join(', ') || 'no release'}, expected ${expected.join(', ') || 'none'} (the newest pre-release of the git tags)`);
+    if (prerelease && !textContent(statusLines[0]).includes(prerelease.slice(1))) problems.push(`${where}: the first line of the status does not name ${prerelease.slice(1)}`);
+    // The measured change: its month, method and source beside the numbers.
+    const report = readPerfReport(path.join(SITE, 'src', 'data', 'perf-v3.0.0-alpha.1.txt'));
+    const measured = elements(tree).find((e) => hasClass(e, 'now-measured'));
+    if (!measured) problems.push(`${where}: no .now-measured with the measured change of ${report.head.tag}`);
+    else {
+      const mtext = visibleText(measured).replace(/\s+/g, ' ');
+      const month = measuredMonth(report, route ? 'ja' : 'en');
+      const heading = elements(measured).find((e) => e.tagName === 'h3');
+      if (!heading || !textContent(heading).includes(month)) problems.push(`${where}: the heading of .now-measured does not give the month ${month}`);
+      if (!mtext.includes('callgrind')) problems.push(`${where}: .now-measured does not name callgrind`);
+      if (!elements(measured).some((e) => e.tagName === 'a' && e.properties?.href === report.source)) problems.push(`${where}: .now-measured does not link to ${report.source}`);
+      const bodyRows = elements(measured).filter((e) => e.tagName === 'tbody').flatMap((b) => elements(b).filter((e) => e.tagName === 'tr'));
+      if (!bodyRows.length) problems.push(`${where}: .now-measured has no table rows`);
+      for (const tr of bodyRows) {
+        const row = report.rows.find((r) => r.scenario === tr.properties?.dataScenario);
+        const cells = elements(tr).filter((e) => e.tagName === 'td').map((e) => textContent(e).trim());
+        const want = row && [row.base.toLocaleString('en-US'), row.head.toLocaleString('en-US'), row.change.replace('-', '\u2212')];
+        if (!want || JSON.stringify(cells) !== JSON.stringify(want)) problems.push(`${where}: the row ${tr.properties?.dataScenario ?? '(no data-scenario)'} of .now-measured is ${cells.join(' | ')}, the report gives ${want ? want.join(' | ') : 'no such row'}`);
+      }
+    }
     const blocks = codeBlockTexts(tree);
+    // The rest of the page is read without the measured block.
+    const kept = measured?.children;
+    if (measured) measured.children = [];
     const text = visibleText(tree);
+    if (measured) measured.children = kept;
     // The prominent interactive table is a verbatim excerpt from the local
     // walkthrough, not a different fixture presented as the same exercise.
     const localHandler = fs.readFileSync(path.join(opt.repo, 'examples/start/route.rb'), 'utf8');
@@ -120,7 +158,7 @@ function main() {
     console.log(`check-home: ${problems.length} problem(s); ${HOME_PAGES.length} home pages`);
     process.exit(1);
   }
-  console.log(`check-home: ok; ${HOME_PAGES.length} home pages show the ${files} files that their case compares, with the case, the date and the commit, and no benchmark image or performance figure`);
+  console.log(`check-home: ok; ${HOME_PAGES.length} home pages show the ${files} files that their case compares, with the case, the date and the commit; performance figures only in the measured block, with its month, method and source, and none elsewhere`);
 }
 
 main();

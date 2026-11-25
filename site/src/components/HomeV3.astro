@@ -2,7 +2,7 @@
 import AgentFlow from './AgentFlow.astro';
 import HomeTitle from './HomeTitle.astro';
 import ProjectBadges from './ProjectBadges.astro';
-import { latestReleaseTag } from '../../scripts/lib/release-state.mjs';
+import { latestPrereleaseTag, latestReleaseTag } from '../../scripts/lib/release-state.mjs';
 import { releaseBadge } from '../../scripts/lib/project-badges.mjs';
 import { repoDir } from '../../scripts/lib/site.mjs';
 import { Code } from 'astro-expressive-code/components';
@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import '../styles/home-v3.css';
 import PlannedUseCases from './PlannedUseCases.astro';
+import V3Now from './V3Now.astro';
 const ja = Astro.props.lang === 'ja';
 const lang = ja ? 'ja' : 'en';
 const prefix = ja ? '/ja' : '';
@@ -22,6 +23,9 @@ if (!requestBlock) throw new Error('The local walkthrough has no request and res
 // build time from the git tags (4.10): no other origin, and the next build
 // after a tag shows it.
 const release = releaseBadge(latestReleaseTag(repoDir), lang);
+// The newest pre-release above that stable release, from the git tags as
+// well: the status line offers it to try, apart from the stable release.
+const prerelease = latestPrereleaseTag(repoDir);
 const startCommands = startBlock[1].split('\n').filter(line => line.startsWith('$ ')).map(line => line.slice(2)).join('\n');
 ---
 <div class="home home-v3">
@@ -33,12 +37,14 @@ const startCommands = startBlock[1].split('\n').filter(line => line.startsWith('
     <p>{ja ? 'ここでのAIアプリケーションは、チャットの画面からエージェントやMCPのホストまで、モデルAPIやMCPサーバーを呼び出すソフトウェア全般です。' : 'Here an AI application is any software that calls a model API or an MCP server, from chat front ends to agents and MCP hosts.'}</p>
     <p>{ja ? '下のv3開発版の例では、リクエストされたモデルに応じた振り分けを手元ですぐに試せます。MCPゲートウェイなどへの拡張は、後半のユースケースで設計状況とともに説明しています。' : 'The v3 development example below lets you run model-based routing locally. Later use cases describe proposed extensions, including an MCP gateway, with their design status.'}</p>
     </div>
-    <div class="v3-entry"><p class="actions"><a class="button-primary" href="#directions-title">{ja ? 'ユースケースを見る' : 'See the use cases'}</a></p><div class="v3-status"><p>{ja ? 'v3開発中' : 'v3 · In development'}</p><p><a href={ja ? '/v2/ja/' : '/v2/'}>{ja ? '安定版2.7の導入と仕様' : 'Stable 2.7: install and reference'}</a>{' '}<a class="release-badge" data-badge="release" data-release={release.tag} href={release.href}><img src={release.src} alt={release.alt} width={release.width} height={release.height} decoding="async" /></a></p></div></div>
+    <div class="v3-entry"><p class="actions"><a class="button-primary" href="#directions-title">{ja ? 'ユースケースを見る' : 'See the use cases'}</a></p><div class="v3-status"><p>{ja ? 'v3開発中' : 'v3 · In development'}{prerelease && <>{ja ? '・' : ' · '}<a class="prerelease-link" data-prerelease={prerelease} href={`https://github.com/matsumotory/ngx_mruby/releases/tag/${prerelease}`}>{ja ? `プレリリース${prerelease.slice(1)}を試す` : `Try the pre-release ${prerelease.slice(1)}`}</a></>}</p><p><a href={ja ? '/v2/ja/' : '/v2/'}>{ja ? '安定版2.7の導入と仕様' : 'Stable 2.7: install and reference'}</a>{' '}<a class="release-badge" data-badge="release" data-release={release.tag} href={release.href}><img src={release.src} alt={release.alt} width={release.width} height={release.height} decoding="async" /></a></p></div></div>
     </div>
     <img class="brand-showcase" src="/brand/ngx-mruby-llm-proxy.svg" alt="" width="128" height="128" />
   </div>
 
   <ProjectBadges />
+
+  <V3Now lang={lang} />
 
   <section class="v3-routing" aria-labelledby="routing">
     <div class="home-copy"><h2 id="routing">{ja ? 'リクエストされたモデルで、転送先を変える' : 'Route each model to its API'}</h2><p>{ja ? 'たとえば、チャットと文書要約で別のモデルを使う構成。アプリには共通のURLと利用者キーだけを設定し、リクエストで指定されたモデルから接続先を選びます。API用のキーを各アプリに配る必要はありません。下のボタンで、送信から応答までの違いを確かめられます。' : 'For example, use different models for chat and document summarization. Configure your apps with the same proxy URL and client key, then select a destination by model. You do not need to distribute upstream API keys to each app. Switch the model below to follow the request and response.'}</p></div>

@@ -34,3 +34,29 @@ export function newestStableTag(tags) {
 export function latestReleaseTag(repo) {
   return newestStableTag(execFileSync('git', ['-C', repo, 'tag', '--list', 'v*'], { encoding: 'utf8' }).trim().split('\n'));
 }
+
+// The newest pre-release (vX.Y.Z-alpha.N, -beta.N or -rc.N) of a version
+// that has no stable release yet and is newer than the newest stable
+// release, for the status line of the home pages, which offers it to try
+// beside the stable release. null when there is none, as after the stable
+// release of that version.
+const PRERELEASE = /^v(\d+)\.(\d+)\.(\d+)-(alpha|beta|rc)\.(\d+)$/;
+const STAGES = ['alpha', 'beta', 'rc'];
+export function newestPrereleaseTag(tags) {
+  const key = (t) => { const m = PRERELEASE.exec(t); return [Number(m[1]), Number(m[2]), Number(m[3]), STAGES.indexOf(m[4]), Number(m[5])]; };
+  const newer = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] > b[i]; return false; };
+  const pre = tags.filter((t) => PRERELEASE.test(t));
+  if (!pre.length) return null;
+  const newest = pre.reduce((best, t) => (newer(key(t), key(best)) ? t : best));
+  const stable = tags.filter((t) => /^v\d+\.\d+\.\d+$/.test(t));
+  if (stable.length) {
+    const s = newestStableTag(stable).replace(/^v/, '').split('.').map(Number);
+    // Only a pre-release of a version above the newest stable one: a
+    // stable release of the same version replaces its pre-releases.
+    if (!newer(key(newest).slice(0, 3), s)) return null;
+  }
+  return newest;
+}
+export function latestPrereleaseTag(repo) {
+  return newestPrereleaseTag(execFileSync('git', ['-C', repo, 'tag', '--list', 'v*'], { encoding: 'utf8' }).trim().split('\n'));
+}

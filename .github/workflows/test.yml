@@ -575,6 +575,10 @@ jobs:
       - name: soak
         env:
           NUM_THREADS_ENV: 1
+          # The job runs as the runner's user, which can read the worker's
+          # /proc/<pid>/smaps_rollup: a scenario fails instead of leaving out
+          # the slopes of Pss and Private_Dirty when it cannot.
+          SOAK_REQUIRE_SMAPS_ROLLUP: 1
         run: sh test/soak/run.sh
       - name: after_failure
         if: failure()

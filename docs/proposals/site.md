@@ -610,6 +610,50 @@ code panels and adds no fictional shell prompt or operating-system chrome.
   `site/scripts/__pycache__/`; source, tests and documentation remain
   visible to Git. Screenshots and local work records are not committed.
 
+### What the newest pre-release gives now (2026-11-25)
+
+"Presenting v3" in AGENTS.md asks the pages that present v3 to show what
+it gives now and where it is heading. The home pages do it in three places,
+each kept apart from what is planned:
+
+- **The status line of the hero** keeps two lines. The first names the
+  version in development and links to the newest pre-release above the
+  stable release (`latestPrereleaseTag` in `site/scripts/lib/release-state.mjs`,
+  from the git tags at build time, none once that version has its stable
+  release); the second keeps the stable documentation and the release badge
+  of the newest stable tag. A reader sees in one place which release to try
+  and which to run in production.
+- **"What 3.0.0-alpha.1 gives you now"** (`V3Now.astro`) follows the hero,
+  before the routing example, so that the measured change and what a
+  configuration or script can use come before the example of one use. It
+  has three parts:
+  - the introduction at the reading measure (4.4), with the link to the
+    release;
+  - the measured change: a heading that gives the month and the release it
+    was compared with, a table of four rows (the three largest decreases
+    that the release names and every row that rose), and the method under
+    it. Values compared side by side go into a table, and an enumeration
+    into a list (Digital Agency design system, description list, updated
+    2026-09-09: https://design.digital.go.jp/dads/components/description-list/).
+    The month stays in the heading, not in a note, and the numbers are in
+    the monospace face (4.3, item 2; Q8). The table fits 402 px without
+    scrolling (4.9): its cells drop the minimum width of the documentation
+    tables, numbers do not break, and the labels of the first column wrap.
+    The rows come from `site/src/data/perf-v3.0.0-alpha.1.txt`, the report
+    of the check before the tag copied from #862, and `check-home.mjs`
+    compares the table with it, so no number is typed by hand;
+  - the capabilities: six items in one `ul`, each a heading, one or two
+    sentences and one link whose text says where it leads, two per row from
+    801 px and one column below, as the use cases are laid out. The U.S. Web
+    Design System's collection asks for six items or fewer, a `ul` with an
+    `li` per item, a heading per item and unique link text instead of "read
+    more" (https://designsystem.digital.gov/components/collection/, read on
+    2026-11-25).
+- **The future use cases** keep their statuses and add, before them, the
+  parts of an AI gateway that later pre-releases are planned to add, with
+  the statement that the release above has none of them, and a link to
+  step 7 of the plan.
+
 ### 4.1 The three sites and their sources
 
 | Site | Built with | Sources read on 2026-10-15 | Served publicly that day |

@@ -398,7 +398,16 @@ after that commit. A release that ships a security fix follows the order in
 When the session publishes a release, its body carries both texts, English
 first: the "Behavior changes: read before upgrading" section copied from the
 English file ("None." when there are none), then the same section copied from
-the Japanese file, then links to the two files. The body does not copy the
+the Japanese file, then links to the two files. For a pre-release of 3.0.0 and
+for 3.0.0, each text of the body starts with two sections before the behavior
+changes, as "Presenting v3" in AGENTS.md describes: "What <version> brings"
+("<version>で得られるもの" in the Japanese text) and "What comes next" ("これから入るもの").
+The first gives the changes of the instructions per request that the check
+before the tag measured, with a link to its pull request, the capabilities and
+fixes that a configuration or script can use, and how to try them. The second
+lists the planned capabilities that the release does not have, each written as
+planned, with links to the plan and to the list of uses. The body of
+`v3.0.0-alpha.1` has this form. The body does not copy the
 list of pull requests that GitHub generates; the release notes name the pull
 requests. A pre-release on `next` copies, from both files, the
 entries added or changed since the previous pre-release;
