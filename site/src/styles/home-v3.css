@@ -171,3 +171,35 @@ html[lang="ja"] .home-v3 .v3-hero-text > .home-copy { max-width: none; gap: var(
 @media (max-width: 800px) {
   .direction-list { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); margin-top: var(--space-5); }
 }
+
+/* What the pre-release gives now (V3Now.astro): the introduction at the
+   reading measure, the measured change as a table of compared values beside
+   its month and method, then the capabilities as one list whose items share
+   a row on desktop, like the use cases, and stack on narrow screens. */
+.home-v3 .now-measured { max-width: var(--measure); margin-top: var(--space-6); }
+.home-v3 .now-measured > * { max-width: none; margin: 0; }
+.home-v3 .now-measured h3 { margin: 0; }
+.home-v3 .now-measured > p { color: var(--color-text-muted); margin-top: var(--space-3); }
+/* Four short columns fit the narrow screen, so the table keeps its width
+   instead of scrolling in its own box (4.9): the cells drop the site's
+   minimum width, and the labels of the first column wrap. */
+.home-v3 .now-measured table { display: table; width: 100%; margin-top: var(--space-4); }
+.site-markdown-content .home-v3 .now-measured :is(th, td) { min-width: 0; padding-inline: var(--space-3) 0; vertical-align: top; }
+.site-markdown-content .home-v3 .now-measured :is(th, td):first-child { padding-inline: 0; }
+.home-v3 .now-measured :is(th, td).num, .home-v3 .now-measured thead th:last-child { text-align: right; }
+/* A number stays whole; a version in the header row breaks only after its
+   hyphen. */
+.site-markdown-content .home-v3 .now-measured td.num { white-space: nowrap; overflow-wrap: normal; }
+.site-markdown-content .home-v3 .now-measured thead th { overflow-wrap: normal; }
+/* The note keeps about 40 Japanese characters a line at 14 px (4.4) */
+.home-v3 .now-measured .now-method { max-width: 35rem; font-size: var(--text-caption); line-height: var(--leading-caption); margin-top: var(--space-4); }
+.home-v3 .now-list { max-width: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-7); margin: var(--space-8) 0 0; padding: 0; list-style: none; }
+.home-v3 .now-list > li { min-width: 0; margin: 0; }
+.home-v3 .now-list h3 { margin: 0; }
+.home-v3 .now-list p { color: var(--color-text-muted); margin: var(--space-3) 0 var(--space-3); }
+.home-v3 .planned-parts { margin: 0; }
+.home-v3 .planned-parts li { color: var(--color-text-muted); }
+@media (max-width: 800px) {
+  .home-v3 .now-measured { margin-top: var(--space-5); }
+  .home-v3 .now-list { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); margin-top: var(--space-7); }
+}

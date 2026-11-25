@@ -22,3 +22,32 @@ for (const [count, short] of [['997', '997'], ['1000', '1K'], ['1234', '1.2K'], 
 assert.equal(githubStars('ja', { NGX_MRUBY_SITE_STARS: '1234', NGX_MRUBY_SITE_STARS_DATE: '2026-11-01' }).label, '、2026年11月1日時点のスターは1,234件');
 for (const env of [{ NGX_MRUBY_SITE_STARS: '997' }, { NGX_MRUBY_SITE_STARS: 'many', NGX_MRUBY_SITE_STARS_DATE: '2026-11-01' }, { NGX_MRUBY_SITE_STARS: '997', NGX_MRUBY_SITE_STARS_DATE: '11/01' }]) assert.throws(() => githubStars('en', env), /must be digits/);
 console.log('test-release-state: numeric ordering, prerelease exclusion, localized-note exclusion, release advancement and missing-tag failure pass; the newest stable tag, the release badge and the star count pass');
+// The pre-release of the status line: the newest pre-release above the
+// newest stable release, in the order alpha, beta, rc, and none once the
+// version has its stable release.
+import { newestPrereleaseTag } from './lib/release-state.mjs';
+assert.equal(newestPrereleaseTag(['v2.7.13', 'v3.0.0-alpha.1']), 'v3.0.0-alpha.1');
+assert.equal(newestPrereleaseTag(['v2.7.13', 'v3.0.0-alpha.2', 'v3.0.0-alpha.10', 'v3.0.0-beta.1', 'v3.0.0-alpha.1']), 'v3.0.0-beta.1');
+assert.equal(newestPrereleaseTag(['v3.0.0-rc.1', 'v3.0.0-beta.3', 'v2.7.13']), 'v3.0.0-rc.1');
+assert.equal(newestPrereleaseTag(['v2.7.13', 'v3.0.0-alpha.2', 'v3.0.0-alpha.10']), 'v3.0.0-alpha.10');
+assert.equal(newestPrereleaseTag(['v2.7.13', 'v3.0.0', 'v3.0.0-rc.2']), null);
+assert.equal(newestPrereleaseTag(['v2.7.13', 'v2.7.0-rc.1']), null);
+assert.equal(newestPrereleaseTag(['v2.7.13']), null);
+assert.equal(newestPrereleaseTag(['v3.0.0', 'v3.1.0-alpha.1']), 'v3.1.0-alpha.1');
+// The perf report of the home pages.
+import { parsePerfReport, measuredMonth } from './lib/perf-report.mjs';
+import fs from 'node:fs';
+const report = parsePerfReport(fs.readFileSync(new URL('../src/data/perf-v3.0.0-alpha.1.txt', import.meta.url), 'utf8'));
+assert.equal(report.number, 862);
+assert.equal(report.base.tag, 'v2.7.13');
+assert.equal(report.head.tag, 'v3.0.0-alpha.1');
+assert.equal(report.n, 20000);
+assert.equal(report.warmup, 2000);
+assert.equal(report.rows.length, 16);
+assert.deepEqual(report.units, ['stream_sleep']);
+assert.deepEqual(report.rows.find((r) => r.scenario === 'headers'), { scenario: 'headers', base: 36620, head: 30037, change: '-17.98%', noGcBase: 34649, noGcHead: 24851, judgedBase: 33899, judgedHead: 24851, judgedChange: '-26.69%', result: 'ok' });
+assert.equal(report.rows.filter((r) => r.head < r.base).length, 15);
+assert.equal(measuredMonth(report, 'en'), 'November 2026');
+assert.equal(measuredMonth(report, 'ja'), '2026年11月');
+assert.throws(() => parsePerfReport('# source: https://example.com/\n'), /no "# measured:" line|not a pull request/);
+console.log('test-release-state: the newest pre-release above the newest stable release, and the perf report of the home pages, pass');
