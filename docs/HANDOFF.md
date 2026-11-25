@@ -1,6 +1,6 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-25 (18:30 JST)
+## State as of 2026-11-25 (19:05 JST)
 
 - Heads: `master` is `9cd91ff26`, the merge of
   [#865](https://github.com/matsumotory/ngx_mruby/pull/865) (2026-11-25
@@ -46,10 +46,12 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `f913a5cbe`, the merge of
-  [#866](https://github.com/matsumotory/ngx_mruby/pull/866) (2026-11-25
-  17:21 JST), which brought `master` at `9cd91ff26` (#865) into `next`;
-  before it, `d6ebb4251`, the merge of
+  all below. `next` is `0110ca3f8`, the merge of
+  [#867](https://github.com/matsumotory/ngx_mruby/pull/867) (2026-11-25
+  18:59 JST), after `f913a5cbe`, the merge of
+  [#866](https://github.com/matsumotory/ngx_mruby/pull/866) (17:21 JST),
+  which brought `master` at `9cd91ff26` (#865) into `next`;
+  before them, `d6ebb4251`, the merge of
   [#864](https://github.com/matsumotory/ngx_mruby/pull/864) (15:39 JST), after `4e50baf6a`, the merge of
   [#863](https://github.com/matsumotory/ngx_mruby/pull/863) (14:10 JST),
   both below; before them, `574a0e4f6`, the merge of
@@ -87,10 +89,8 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  requests are [#867](https://github.com/matsumotory/ngx_mruby/pull/867)
-  (`next`, "soak: record Pss and Private_Dirty and bound their slope") and
-  [#868](https://github.com/matsumotory/ngx_mruby/pull/868) (`next`), which
-  writes the rule "Presenting v3" and this entry, below. `v2.x` mirrors `master`.
+  request is [#868](https://github.com/matsumotory/ngx_mruby/pull/868)
+  (`next`), which writes the rule "Presenting v3" and this entry, below. `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.1: the tag `v3.0.0-alpha.1` is
   on `574a0e4f6`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.1)
@@ -434,6 +434,9 @@
   and `docs/test/README.md` (English and Japanese) now say that `ci-ok`
   needs `perf` on both branches, and that `master` judges the number
   without GC. It was merged on 2026-11-25 at 17:21 JST as `f913a5cbe`.
+- [#867](https://github.com/matsumotory/ngx_mruby/pull/867) (`next`): the
+  soak test records `Pss` and `Private_Dirty` and bounds their slope (see
+  "Queue"). It was merged on 2026-11-25 at 18:59 JST as `0110ca3f8`.
 - [#868](https://github.com/matsumotory/ngx_mruby/pull/868) (`next`, writes this entry): adds "Presenting v3" to AGENTS.md and
   the matching text of "The GitHub release" in `docs/releases/README.md`
   and its Japanese page, records the decision of 2026-11-25 below, and
