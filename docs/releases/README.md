@@ -409,7 +409,16 @@ two copies together are longer than GitHub accepts for a release body
 each language, each linked to its entry in the file at the tag
 (`https://github.com/matsumotory/ngx_mruby/blob/<tag>/docs/releases/v3.0.0.md#<anchor>`,
 and `v3.0.0.ja.md` for the Japanese headings), as the body of
-`v3.0.0-alpha.1` does for its 78 entries. Agents prepare the files and,
+`v3.0.0-alpha.1` does for its 78 entries. On `next`, each text of the body
+starts with two sections before the behavior changes, as "Presenting v3" in
+AGENTS.md describes: "What <version> brings" ("<version>で得られるもの" in the
+Japanese text) and "What comes next" ("これから入るもの"). The first gives the changes
+of the instructions per request that the check before the tag measured, with a
+link to its pull request, the capabilities and fixes that a configuration or
+script can use, and how to try them. The second lists the planned capabilities
+that the release does not have, each written as planned, with links to the
+plan and to the list of uses. The body of `v3.0.0-alpha.1` has this form.
+Agents prepare the files and,
 after the owner's go-ahead, publish the release (see
 [AGENTS.md](../../AGENTS.md#branches-and-pull-requests)); the owner publishes
 the advisory.

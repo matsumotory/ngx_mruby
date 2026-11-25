@@ -24,6 +24,16 @@ Ruby. It is built as a static or dynamic module of unpatched nginx.
   checks (`examples/check_example.py`); `examples/start/` is the start
   page of the site
 
+## Presenting v3
+
+The owner decided on 2026-11-25 that v3 is presented so that users see what it gives them now and where it is heading, and do not conclude that 2.x is enough. This concerns how the work is shown, not its order: the order of work in section 6 of `docs/proposals/v3-plan.md` stays, with stability before new capabilities.
+
+How sessions apply it (their procedure, not a decision of the owner):
+
+- The GitHub release of every pre-release of 3.0.0, and of 3.0.0, starts with what the release brings and what comes next, before the behavior changes ("The GitHub release" in `docs/releases/README.md` has the form). What it brings: the measured changes against the release that the check before the tag compared it with, the capabilities and fixes that a configuration or script can use, and how to try them. What comes next: the planned capabilities that the release does not have, each written as planned, with links to the plan and to the list of uses (`docs/proposals/edge-control.md`).
+- A pull request to `next` that adds a capability, a recipe that runs, or a measured change that these texts quote, updates the pages of the site that present v3 (the home page and its use cases) in the same pull request, or names the pull request that will.
+- Nothing planned is written as available: a use stays "designing" or "direction" until a test runs it, as the list of uses defines.
+
 ## Design principles
 
 The owner decided these on 2026-10-04. They hold on `master` and `next`:
