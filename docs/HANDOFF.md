@@ -99,7 +99,10 @@
   `.ja.md` are together longer than GitHub accepts for a release body,
   so its body lists their 78 headings in each language, each linked to
   its entry in the file at the tag ("The GitHub release" in
-  `docs/releases/README.md`). Right after the release, `site.yml` ran on
+  `docs/releases/README.md`). Since 2026-11-25 the body starts, in English
+  and in Japanese, with the sections "What 3.0.0-alpha.1 brings" and "What
+  comes next" ("3.0.0-alpha.1で得られるもの" and "これから入るもの"),
+  before those headings. Right after the release, `site.yml` ran on
   `next`
   ([run 45545801552](https://github.com/matsumotory/ngx_mruby/actions/runs/45545801552),
   success); the home page of ngx.mruby.org names the newest stable
