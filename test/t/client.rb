@@ -60,7 +60,9 @@ class HttpRequest
     raise ArgumentError, 'invalid URL' unless m
 
     host = m[2].delete_prefix('[').delete_suffix(']')
-    port = m[3] && Integer(m[3], 10)
+    # Without a port, mruby-http gives 443 for https and nothing otherwise,
+    # and SimpleHttp then takes 80.
+    port = m[3] ? Integer(m[3], 10) : (m[1] == 'https' ? 443 : nil)
     path = m[4].empty? ? nil : m[4]
     query = m[5].nil? || m[5].empty? ? nil : m[5]
     request = create_http_request(method, body, headers)
@@ -107,7 +109,7 @@ class SimpleHttp
   WRITE_BUF_SIZE = ENV['WRITE_BUF_SIZE'] || ENV['BUF_SIZE'] || 4096
 
   # Without HTTPS (NO_SSL), an https URL is sent in plain text, to its port
-  # or to 80, as the test build of mruby-simplehttp did.
+  # (443 when the URL has none), as the test build of mruby-simplehttp did.
   def initialize(scheme, address, port = nil)
     @uri = { scheme: scheme }
     if scheme == 'unix'
