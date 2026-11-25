@@ -1,6 +1,6 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-25 (13:40 JST)
+## State as of 2026-11-25 (13:25 JST)
 
 - Heads: `master` is `7ab993a5c`, the merge of
   [#860](https://github.com/matsumotory/ngx_mruby/pull/860) (2026-11-24
@@ -97,7 +97,7 @@
   release only, so it still prints `Latest release: v2.7.13`. The push of
   the tag runs the whole build matrix on `574a0e4f6`
   ([run 45545779294](https://github.com/matsumotory/ngx_mruby/actions/runs/45545779294),
-  running at 13:22 JST).
+  running at 13:25 JST).
   The latest stable release is 2.7.13:
   the tag `v2.7.13` is on `e0b17ec47`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.13)
