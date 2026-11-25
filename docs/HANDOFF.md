@@ -79,9 +79,9 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is the one to `next` that archives
-  the proposal for the rest of the core before alpha.1 and writes this
-  entry, below. `v2.x` mirrors `master`.
+  request is [#863](https://github.com/matsumotory/ngx_mruby/pull/863)
+  (`next`), which archives the proposal for the rest of the core before
+  alpha.1 and writes this entry, below. `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.1: the tag `v3.0.0-alpha.1` is
   on `574a0e4f6`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.1)
@@ -389,8 +389,8 @@
   2026-11-25 at 04:23 JST as `574a0e4f6`, where `v3.0.0-alpha.1` is
   tagged. Left from it: 22 lines of `v3.0.0.ja.md` that put a Japanese
   clause in half-width parentheses (see "Queue").
-- The pull request to `next` after `v3.0.0-alpha.1` (open, writes this
-  entry): moves the proposal for the rest of the core before alpha.1 to
+- [#863](https://github.com/matsumotory/ngx_mruby/pull/863) (`next`,
+  after `v3.0.0-alpha.1`, writes this entry): moves the proposal for the rest of the core before alpha.1 to
   `docs/proposals/archive/core-alpha1.md` and points the links of
   `docs/` at it, marks step 4 of section 6 of the plan done, and writes
   in "The GitHub release" of `docs/releases/README.md` and its Japanese
