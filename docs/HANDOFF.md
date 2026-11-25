@@ -89,8 +89,8 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is [#868](https://github.com/matsumotory/ngx_mruby/pull/868)
-  (`next`), which writes the rule "Presenting v3" and this entry, below. `v2.x` mirrors `master`.
+  request is [#870](https://github.com/matsumotory/ngx_mruby/pull/870)
+  (`next`), which runs the test suite with CRuby, below. `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.1: the tag `v3.0.0-alpha.1` is
   on `574a0e4f6`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.1)
@@ -437,11 +437,15 @@
 - [#867](https://github.com/matsumotory/ngx_mruby/pull/867) (`next`): the
   soak test records `Pss` and `Private_Dirty` and bounds their slope (see
   "Queue"). It was merged on 2026-11-25 at 18:59 JST as `0110ca3f8`.
-- [#868](https://github.com/matsumotory/ngx_mruby/pull/868) (`next`, writes this entry): adds "Presenting v3" to AGENTS.md and
+- [#868](https://github.com/matsumotory/ngx_mruby/pull/868) (`next`): adds "Presenting v3" to AGENTS.md and
   the matching text of "The GitHub release" in `docs/releases/README.md`
   and its Japanese page, records the decision of 2026-11-25 below, and
-  adds the follow-up for the site pages to "Queue". Its state, CI run and
-  review are recorded on the pull request.
+  adds the follow-up for the site pages to "Queue". It was merged on
+  2026-11-25 at 19:14 JST as `380a42f6a`.
+- [#870](https://github.com/matsumotory/ngx_mruby/pull/870) (`next`, writes this entry): runs `test/t/ngx_mruby.rb` and the
+  case files with CRuby, which sends their requests through
+  `test/t/client.rb` (the "Test harness rewrite" row of "Queue"). Its
+  state, CI run and review are recorded on the pull request.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829

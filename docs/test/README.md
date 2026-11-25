@@ -44,6 +44,10 @@ the tests took from the `test` build of mruby before:
   status as an Integer, `res["body"]` the body, and `res["<name>"]` the
   value of a header by its name in lower case (an Array when the header
   comes more than once).
+- `SimpleTest` has the assertions of mruby-simpletest (`assert_true`,
+  `assert_equal`, `assert_include`, `assert_raise`, `assert_float` and the
+  others) with the same messages, and `skip`, after which the test counts
+  as crashed, as with the gem.
 - `t.report` prints the counts and raises when a test failed or crashed, so
   the file exits non-zero and `test.sh` stops.
 
@@ -56,7 +60,8 @@ the standard library (`JSON.parse`), and `usleep` from the client.
 `build_config.rb` still has the `test` build of mruby, which the tests do
 not use.
 
-`HttpRequest` and `SimpleHttp` send no `https` requests. For HTTPS, run
+`HttpRequest` and `SimpleHttp` have no TLS: an `https` URL is sent as plain
+HTTP to its port (443 when it has none). For HTTPS, run
 `curl -k` with a URL from `base_ssl(port)`, or
 `openssl s_client -connect localhost:<port>`, as the existing tests do (for
 example `` `curl -s -k #{base_ssl(18082) + '/'}` `` in `test/t/ngx_mruby.rb`).

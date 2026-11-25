@@ -110,7 +110,8 @@ selected, with these differences:
   `Signal.signame`), which mruby-process depends on. iij/mruby-process
   also defined `Kernel#sleep`, `#exit`, `#exit!`, `#fork` and `#system`;
   `sleep` now comes from mruby-sleep and `exit` from mruby-exit, and
-  `fork` and `system` are gone. The test client (the `test` build) takes
+  `fork` and `system` are gone. The `test` build, which the tests no
+  longer run (they run with CRuby, see `docs/test/README.md`), takes
   mruby-env but not mruby-process or mruby-signal.
 
 mruby 4.1 has no hal-* gems: mruby-io, mruby-dir and mruby-socket carry
@@ -224,9 +225,9 @@ The lock does not pin everything that the build fetches:
   matsumotory/mruby-simplehttp depends on mruby-polarssl without a source
   unless `NO_SSL` is set, and the list gave the repository
   luisbebop/mruby-polarssl. That gem depends on mruby-print, which mruby 3.4
-  removed, so `build_config.rb` now sets `NO_SSL` for the `test` build, and
-  the test client has `SimpleHttp` without HTTPS (the suite sends its HTTPS
-  requests with curl and `openssl s_client`). If a gem that you add needs
+  removed, so `build_config.rb` now sets `NO_SSL` for the `test` build,
+  whose `SimpleHttp` has no HTTPS. The tests no longer run that build; the
+  suite sends its HTTPS requests with curl and `openssl s_client`. If a gem that you add needs
   the list, the lock pins the commit of the gem but the list supplies its
   URL; if the list ever gives another URL, the lock has no entry for it, and
   rake clones the head of that repository. `build_config.rb` therefore

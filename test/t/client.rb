@@ -12,8 +12,8 @@
 #   response read until the server closes the connection. The response is
 #   parsed in the same way, so res["body"], res["code"], res.headers and the
 #   lower-case header keys mean what they meant.
-# - SimpleTest, as in matsumotory/mruby-simpletest: the assertions, their
-#   messages and the report, which raises when a test failed or crashed, so
+# - SimpleTest, as in matsumotory/mruby-simpletest: the assertions and
+#   skip, their messages and the report, which raises when a test failed or crashed, so
 #   that the test file exits non-zero.
 # - Kernel#usleep, as in mruby-sleep.
 # - JSON and TCPSocket, from the standard library.
@@ -55,9 +55,14 @@ class HttpRequest
     request('DELETE', url, nil, headers, &b)
   end
 
+  # Bytes that the URL parser of mattn/mruby-http rejects: controls, the
+  # space, DEL and bytes that are not ASCII.
+  NOT_URL = /[\x00-\x20\x7f-\xff]/n.freeze
+
   def request(method, url, body, headers, &b)
-    m = URL.match(url.to_s)
-    raise ArgumentError, 'invalid URL' unless m
+    url = url.to_s.b
+    m = URL.match(url)
+    raise ArgumentError, 'invalid URL' if m.nil? || NOT_URL.match?(url)
 
     host = m[2].delete_prefix('[').delete_suffix(']')
     # Without a port, mruby-http gives 443 for https and nothing otherwise,
@@ -344,7 +349,9 @@ class SimpleTest
 
   # Runs the block as one test. The test fails when the block returns false
   # or nil, or when an assertion inside it failed, and crashes when the block
-  # raises.
+  # raises. The gem compares the class name of the exception with
+  # 'MRubyTestSkip', which the nested class SimpleTest::MRubyTestSkip never
+  # has, so a test that calls skip counts as crashed there and here.
   def assert(str = 'Assertion failed', iso = '')
     @mrbtest_assert = []
     @mrbtest_assert_idx = 0
@@ -357,9 +364,14 @@ class SimpleTest
       t_print('.')
     end
   rescue Exception => e # rubocop:disable Lint/RescueException
-    @asserts.push(assertion_string("#{e.class}: ", str, iso, e))
-    @kill_test += 1
-    t_print('X')
+    if e.class.to_s == 'MRubyTestSkip'
+      @asserts.push "Skip: #{str} #{iso} #{e.cause}"
+      t_print('?')
+    else
+      @asserts.push(assertion_string("#{e.class}: ", str, iso, e))
+      @kill_test += 1
+      t_print('X')
+    end
   ensure
     @mrbtest_assert = nil
   end
@@ -424,9 +436,80 @@ class SimpleTest
     assert_false(collection.include?(obj), msg, diff)
   end
 
+  def assert_raise(*exp)
+    ret = true
+    if @mrbtest_assert
+      @mrbtest_assert_idx += 1
+      msg = exp.last.instance_of?(String) ? exp.pop : nil
+      msg = msg.to_s + ' : ' if msg
+      should_raise = false
+      begin
+        yield
+        should_raise = true
+      rescue Exception => e # rubocop:disable Lint/RescueException
+        msg = "#{msg}#{exp.inspect} exception expected, not"
+        diff = "      Class: <#{e.class}>\n" \
+               "    Message: #{e.message}"
+        unless exp.any? { |ex| ex.instance_of?(Module) ? e.is_a?(ex) : ex == e.class }
+          @mrbtest_assert.push([@mrbtest_assert_idx, msg, diff])
+          ret = false
+        end
+      end
+      exp = exp.first if exp.first
+      if should_raise
+        msg = "#{msg}#{exp.inspect} expected but nothing was raised."
+        @mrbtest_assert.push([@mrbtest_assert_idx, msg, nil])
+        ret = false
+      end
+    end
+    ret
+  end
+
+  def assert_nothing_raised(*exp)
+    ret = true
+    if @mrbtest_assert
+      @mrbtest_assert_idx += 1
+      msg = exp.last.instance_of?(String) ? exp.pop : ''
+      begin
+        yield
+      rescue Exception => e # rubocop:disable Lint/RescueException
+        msg = "#{msg} exception raised."
+        diff = "      Class: <#{e.class}>\n" \
+               "    Message: #{e.message}"
+        @mrbtest_assert.push([@mrbtest_assert_idx, msg, diff])
+        ret = false
+      end
+    end
+    ret
+  end
+
   def assert_kind_of(cls, obj, msg = nil)
     msg ||= "Expected #{obj.inspect} to be a kind of #{cls}, not #{obj.class}"
     assert_true(obj.is_a?(cls), msg, assertion_diff(cls, obj.class))
+  end
+
+  def assert_float(exp, act, msg = nil)
+    msg ||= "Float #{exp} expected to be equal to float #{act}"
+    assert_true(check_float(exp, act), msg, assertion_diff(exp, act))
+  end
+
+  def check_float(a, b)
+    a = a.to_f
+    b = b.to_f
+    a.finite? && b.finite? ? (a - b).abs < 1e-12 : true
+  end
+
+  class MRubyTestSkip < NotImplementedError
+    attr_accessor :cause
+
+    def initialize(cause)
+      super()
+      @cause = cause
+    end
+  end
+
+  def skip(cause = '')
+    raise MRubyTestSkip.new(cause)
   end
 
   # Prints the failed tests and the counts, and raises when a test failed or

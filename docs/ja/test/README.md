@@ -32,11 +32,12 @@ end
 
 - リクエストは、1つの接続に1つずつ、HTTP/1.0で送ります。`Connection: close`、`Host`、`Accept: */*`を付け、ヘッダの名前は、`Content-type`のように先頭だけを大文字にして並べ替えます。クライアントは、nginxが接続を閉じるまで、タイムアウトなしでレスポンスを読みます。
 - レスポンスは`SimpleHttp::SimpleHttpResponse`です。`res["code"]`はステータスのIntegerで、`res["body"]`はボディです。`res["<name>"]`は、小文字のヘッダ名でそのヘッダの値を返します。同じヘッダが2回以上来たときは、値のArrayを返します。
+- `SimpleTest`は、mruby-simpletestのアサーション(`assert_true`、`assert_equal`、`assert_include`、`assert_raise`、`assert_float`ほか)を同じメッセージで持ちます。`skip`も持ちますが、gemと同じく、`skip`を呼んだテストはクラッシュとして数えます。
 - `t.report`は件数を出力し、失敗またはクラッシュしたテストがあると例外を投げます。そのため、ファイルは0以外で終了し、`test.sh`は止まります。
 
 テストは、バイナリの文字列で動きます。`test.sh`は`-E ASCII-8BIT`を渡し、`test/t/ngx_mruby.rb`と`test/t/cases/_prelude.rb`は、先頭にマジックコメントの`# encoding: ascii-8bit`を持ちます。そのため、`String#size`はバイト数を数え、`File.read`とコマンドの出力はバイト列の文字列になります。UTF-8でないバイトを含むログも、行に分けられます。`JSON.parse`は標準ライブラリのJSONを使い、`usleep`はクライアントが定義します。`build_config.rb`には今もmrubyの`test`のビルドがありますが、テストはこれを使いません。
 
-`HttpRequest`と`SimpleHttp`は、`https`のリクエストを送りません。HTTPSのリクエストを送るには、既存のテストと同じように、`base_ssl(port)`が返すURLで`curl -k`を実行するか、`openssl s_client -connect localhost:<port>`を実行してください。例は、`test/t/ngx_mruby.rb`のテストにある`` `curl -s -k #{base_ssl(18082) + '/'}` ``です。
+`HttpRequest`と`SimpleHttp`はTLSを持たず、`https`のURLも、TLSなしのHTTPでそのURLのポート(ポートが無ければ443)へ送ります。HTTPSのリクエストを送るには、既存のテストと同じように、`base_ssl(port)`が返すURLで`curl -k`を実行するか、`openssl s_client -connect localhost:<port>`を実行してください。例は、`test/t/ngx_mruby.rb`のテストにある`` `curl -s -k #{base_ssl(18082) + '/'}` ``です。
 
 ## フラグメントとケースのファイルでテストを追加する
 
