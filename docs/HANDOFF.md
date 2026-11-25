@@ -87,8 +87,10 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is [#868](https://github.com/matsumotory/ngx_mruby/pull/868) (`next`), which writes the rule "Presenting v3" and
-  this entry, below. `v2.x` mirrors `master`.
+  requests are [#867](https://github.com/matsumotory/ngx_mruby/pull/867)
+  (`next`, "soak: record Pss and Private_Dirty and bound their slope") and
+  [#868](https://github.com/matsumotory/ngx_mruby/pull/868) (`next`), which
+  writes the rule "Presenting v3" and this entry, below. `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.1: the tag `v3.0.0-alpha.1` is
   on `574a0e4f6`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.1)
