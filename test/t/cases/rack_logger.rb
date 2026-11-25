@@ -23,8 +23,7 @@ t.assert('Rack logger - each method writes one error.log line at its nginx level
 
   # A line of nginx's error log is "TIME [LEVEL] PID#TID: *CONN MESSAGE,
   # client: ...". nginx leaves out the part from ", client: " at the debug
-  # level. The test build of mruby has no Regexp, so the line is cut at the
-  # known separators.
+  # level. The line is cut at the known separators.
   found = []
   rack_logger_log_lines(offset).each do |l|
     next unless l.include?('rack logger case ')

@@ -1,5 +1,8 @@
+# encoding: ascii-8bit
 # Shared prelude for test/t/cases/*.rb. test.sh concatenates this file in
-# front of each case before running it with the test build of mruby.
+# front of each case and runs the result with CRuby, which loads the test
+# client test/t/client.rb first. The magic comment above makes the string
+# literals of the case byte strings (see test/t/client.rb).
 
 def http_host(port = 18080)
   "127.0.0.1:#{port}"

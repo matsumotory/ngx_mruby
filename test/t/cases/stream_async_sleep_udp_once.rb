@@ -3,8 +3,8 @@
 # sessions also assert that normal execution and subsequent sessions work.
 # Config: test/conf/conf.d/stream/47-async-sleep-udp-once.conf. Port 12392.
 t = SimpleTest.new "ngx_mruby test: UDP session code while Async.sleep waits"
-# Read only the recent log window, as the complete suite can exceed the
-# mruby client's maximum String size before this case runs.
+# Read only the last 2 MB of the log, which the suite has made long by the
+# time this case runs.
 def udp_once_lines(text)
   path = File.join(ENV['NGINX_INSTALL_DIR'], 'logs/error.log')
   log = File.open(path) do |f|
