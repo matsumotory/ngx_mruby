@@ -421,7 +421,7 @@ test.sh: nginx (pid 374) did not end within 60 seconds (NGINX_STOPTIME) after 6 
 - `test/t/cases/stream_duplicate_hooks.rb`の`nginx -t`が使う12398
 - `test/t/cases/_agent_proxy_client.rb`が動かすLLMのモックのupstreamが使う、12372と12373
 - `test/t/ngx_mruby.rb`にあるstreamだけのテストが使う12399
-- `test/t/cases/http2_http3.rb`のHTTP/3が使うUDPの18173。同じ番号のTCPのポートは、このケースのHTTP/1.1とHTTP/2が使います。[HTTP/2とHTTP/3](#http2とhttp3)を参照してください
+- `test/t/cases/http2_http3.rb`のHTTP/3が使うUDPの18173。同じ番号のTCPのポートは、このケースのHTTP/1.1とHTTP/2が使います([HTTP/2とHTTP/3](#http2とhttp3))
 - テストと、`test/html/`にあるフックのスクリプトと期待する出力が挙げるポート
 
 `TEST_SH_PORT_OFFSET`は整数で、デフォルトは0です。この変数を設定すると、これらのポートがすべて同じ数だけずれます。そのため、2つのチェックアウトが、それぞれ別のオフセットで、1台のマシンで同時に`test.sh`を実行できます。
@@ -459,19 +459,19 @@ nginx：`test.sh`は、nginxのconfigureのオプション(`NGINX_DEFAULT_OPT`)�
 
   `test/h3/requirements.in`は、各パッケージのバージョンを固定します。`python3 test/h3/lock.py`は、`requirements.in`をもとに、そのバージョンでPyPIにあるすべてのファイルのハッシュを付けて、`test/h3/requirements.txt`を書きます。aioquic 1.3.0は、公開からDependabotが待つ7日(`.github/dependabot.yml`)を過ぎたリリースのうち、Ubuntu 22.04のPython 3.10向けのwheelがある最新のリリースです。1.4.0から1.9.0はPython 3.11を求めます。Dependabotはこれらのファイルを更新しません。バージョンを変えるときは、`lock.py`で`requirements.txt`を書き直し、スイートを流して、PRを作ります。
 
-  curlもHTTP/3を送れますが、Ubuntu 22.04とrunnerのcurlはHTTP/3なしでビルドされています(`Features`に`HTTP3`がありません)。HTTP/3に対応したcurlを使うには、各セルでcurlをngtcp2とnghttp3と一緒にビルドするか、コンテナのイメージから取る必要があります。Homebrewの`/opt/homebrew/bin/curl`はHTTP/3に対応していますが、どのマシンでも同じクライアントを使えば、結果を比べられます。
+  curlもHTTP/3を送れますが、Ubuntu 22.04とrunnerのcurlはHTTP/3なしでビルドされています(`Features`に`HTTP3`がありません)。HTTP/3に対応したcurlを使うには、各セルでcurlをngtcp2とnghttp3と一緒にビルドするか、コンテナのイメージから取る必要があります。Homebrewの`/opt/homebrew/bin/curl`はHTTP/3に対応していますが、どのマシンでも同じクライアントを使えば、マシンの間で結果を比べられます。
 
 ケース：`test/conf/conf.d/78-http2-http3.conf`には、ポート18173のserverが1つあります。TCP(TLS、`http2 on`。ALPNでHTTP/1.1かHTTP/2を選びます)とUDP(`listen 18173 quic`、HTTP/3)の両方で受けます。`test.sh`が待つのはTCPのポートだけなので([nginxがlistenするまで待つ](#nginxがlistenするまで待つ))、`quic`のlistenには、同じserverのTCPのlistenと同じ番号を使います。`master`では18173はauto-sslのケースのポートですが、`next`にそのケースは無く、このケースは`next`にだけあります。ケースは、リクエストごとに、まず、リクエストが求めたバージョンでレスポンスが返ったことを確かめます。別のバージョンに切り替わったときに、ケースが通ってしまわずに失敗するようにするためです。そのうえで、どのバージョンでも同じになるはずの値を確かめます。
 
 | パス | ngx_mrubyがすること |
 |---|---|
 | `/protocol` | `$server_protocol`(`HTTP/1.1`、`HTTP/2.0`、`HTTP/3.0`) |
-| `/content` | コンテンツハンドラが、ステータス(201)、Content-Type、ヘッダを1つと、2回の`Nginx.rputs`でボディを設定する |
+| `/content` | コンテンツハンドラが、ステータス(201)とContent-Typeとヘッダを1つ設定し、`Nginx.rputs`を2回呼んで、ボディを2つに分けて書く |
 | `/headers_in` | `Nginx::Headers_in`が、リクエストのヘッダを読み、1つ足し、1つ消す。Hostヘッダも読み、`$http_host`と同じ値を返す。HTTP/1.1とHTTP/2ではホストを返し、HTTP/3では`nil`を返す。HTTP/3では、nginxは`:authority`を`$host`に使い、Hostヘッダを足さない |
 | `/headers_out` | `Nginx::Headers_out`が、ヘッダを設定し、置き換え、消す。Content-Typeと相対のLocationも設定し、nginxがLocationを絶対のURLにする |
 | `/body` | コンテンツハンドラがリクエストボディを読んで返す。10バイトのボディと、何回かの読み込みかフレームに分かれて届く100,000バイトのボディ。`Nginx::Request#body`はnginxの`$request_body`で、どのバージョンでも、一時ファイルに置いたボディでは空になる。そのため、このlocationは`client_body_buffer_size`を128kにする |
-| `/filter` | ヘッダのフィルターとボディのフィルターが、コンテンツハンドラの出力を変える |
-| `/sleep` | コンテンツハンドラの`Nginx::Async.sleep` |
+| `/filter` | コンテンツハンドラの出力に、ヘッダのフィルターがヘッダを1つ足し、ボディのフィルターがボディを書き換える |
+| `/sleep` | コンテンツハンドラが、`Nginx::Async.sleep`で待ってから応答する |
 | `/sub_request` | コンテンツハンドラからの`Nginx::Async::HTTP.sub_request` |
 | `/handshake` | serverのSSL handshake handlerが、リクエストごとの接続で1回ずつ動き、クライアントが送ったサーバー名とTLS 1.3を受け取った |
 
