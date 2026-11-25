@@ -42,7 +42,10 @@ escape_spaces() {
 # The tests use these modules of nginx besides the default ones:
 # http_auth_request lets a test run a phase handler of nginx that waits for a
 # subrequest after an mruby handler (test/t/cases/request_body_later.rb).
-NGINX_DEFAULT_OPT="--with-debug --with-http_stub_status_module --with-http_ssl_module --with-http_auth_request_module --with-cc-opt=`escape_spaces "$NGINX_CC_OPT"`"
+# http_v2 and http_v3 let the tests send the same requests over HTTP/2 and
+# HTTP/3 (test/t/cases/http2_http3.rb); http_v3 needs OpenSSL 1.1.1 or later
+# ("HTTP/2 and HTTP/3" in docs/test/README.md).
+NGINX_DEFAULT_OPT="--with-debug --with-http_stub_status_module --with-http_ssl_module --with-http_auth_request_module --with-http_v2_module --with-http_v3_module --with-cc-opt=`escape_spaces "$NGINX_CC_OPT"`"
 if [ -n "`escape_spaces "$NGINX_LD_OPT"`" ]; then
     NGINX_DEFAULT_OPT="$NGINX_DEFAULT_OPT --with-ld-opt=`escape_spaces "$NGINX_LD_OPT"`"
 fi
@@ -122,6 +125,20 @@ if [ -n "$TEST_SH_SKIP_TESTS" ]; then
     echo "test.sh ... built and installed to ${NGINX_INSTALL_DIR}; tests skipped (TEST_SH_SKIP_TESTS)"
     exit 0
 fi
+
+# The HTTP/3 client of the tests (test/t/cases/_h3_client.py) runs on
+# aioquic, which pip installs here from test/h3/requirements.txt, each file
+# checked by its hash. The directory is kept with a copy of the
+# requirements, and installed again when they change. HTTP/2 goes through
+# curl ("HTTP/2 and HTTP/3" in docs/test/README.md).
+H3_PYDIR=`pwd`/${BUILD_DIR}/h3client
+if ! cmp -s test/h3/requirements.txt ${H3_PYDIR}/requirements.txt; then
+    echo "test.sh: installing the HTTP/3 client (aioquic) into ${H3_PYDIR}"
+    rm -rf ${H3_PYDIR}
+    python3 -m pip install --quiet --disable-pip-version-check --no-cache-dir --require-hashes --target ${H3_PYDIR} -r test/h3/requirements.txt
+    cp test/h3/requirements.txt ${H3_PYDIR}/requirements.txt
+fi
+export TEST_SH_H3_PYTHONPATH=${H3_PYDIR}
 
 # test.sh stops only the nginx processes that it started, by their pid (see
 # "Stopping nginx" in docs/test/README.md). It never signals an nginx by its
