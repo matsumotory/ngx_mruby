@@ -1844,6 +1844,64 @@ static ngx_int_t ngx_http_mruby_body_filter_inline_handler(ngx_http_request_t *r
 }
 
 /*
+ * Reconciles a Content-Length that a script set through Nginx::Headers_out
+ * with the body that nginx frames (r->headers_out.content_length_n), before
+ * the response headers go out. The top header filter runs this for every
+ * response where []= or #delete of Content-Length ran, in any phase. []=
+ * records the length in the module context and sets one list entry that
+ * r->headers_out.content_length points at, without touching content_length_n;
+ * the content phase (a static file, proxy_pass, or Nginx.rputs) sets
+ * content_length_n to the real body length. The entry a script set is dropped,
+ * so that nginx sends its own Content-Length from content_length_n, the one
+ * canonical line, or sends the response chunked when the length is not known.
+ * An mruby body filter that rewrites the body sets content_length_n and clears
+ * the entry in ngx_mrb_finalize_body_filter instead; a body filter on a
+ * response whose length is not known reaches this from ngx_http_mruby_body_filter.
+ */
+static void ngx_http_mruby_reconcile_content_length(ngx_http_request_t *r, ngx_http_mruby_ctx_t *ctx)
+{
+  ngx_int_t action = ctx->content_length_action;
+  off_t set = ctx->script_content_length;
+
+  if (action == 0) {
+    return;
+  }
+  ctx->content_length_action = 0;
+
+  /* Drop any entry a script set, so nginx sends its own Content-Length from
+   * content_length_n, the one canonical line, as it does for a response that
+   * no script touched. */
+  if (r->headers_out.content_length != NULL) {
+    r->headers_out.content_length->hash = 0;
+    r->headers_out.content_length = NULL;
+  }
+
+  /* 204 and 304 carry no body: clear content_length_n so nginx sends no
+   * Content-Length (it clears it itself for 204, not for 304). */
+  if (r->headers_out.status == NGX_HTTP_NO_CONTENT || r->headers_out.status == NGX_HTTP_NOT_MODIFIED) {
+    r->headers_out.content_length_n = -1;
+    return;
+  }
+
+  if (action == 2) {
+    /* #delete / []= nil: no Content-Length; the response is sent chunked. */
+    r->headers_out.content_length_n = -1;
+    return;
+  }
+
+  /* action == 1: nginx sends content_length_n (the output's length, or the
+   * proxied or static length), or the response chunked when it is not known.
+   * Warn when that is not the value the script asked for. */
+  if (r->headers_out.content_length_n != set) {
+    ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                  "%s the Content-Length %O set through Nginx::Headers_out does not match the response body of %O "
+                  "bytes; sending %s instead",
+                  MODULE_NAME, set, r->headers_out.content_length_n,
+                  r->headers_out.content_length_n < 0 ? "the response chunked" : "the body's length");
+  }
+}
+
+/*
  * Passes the header on after the code of an mruby header filter has run,
  * unless an mruby body filter is configured too. The body filter can change
  * the length of the body, so the header then waits, as it does in a location
@@ -1863,6 +1921,13 @@ static ngx_int_t ngx_http_mruby_header_filter_send(ngx_http_request_t *r, ngx_ht
 
   if (mlcf->body_filter_handler != NULL) {
     return NGX_OK;
+  }
+
+  {
+    ngx_http_mruby_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+    if (ctx != NULL) {
+      ngx_http_mruby_reconcile_content_length(r, ctx);
+    }
   }
 
   rc = ngx_http_next_header_filter(r);
@@ -1912,6 +1977,12 @@ static ngx_int_t ngx_http_mruby_header_filter(ngx_http_request_t *r)
   mlcf = ngx_http_get_module_loc_conf(r, ngx_http_mruby_module);
 
   if (mlcf->header_filter_handler == NULL && mlcf->body_filter_handler == NULL) {
+    /* a phase handler or content handler may have set Content-Length through
+     * Nginx::Headers_out without this location having an mruby filter */
+    ngx_http_mruby_ctx_t *clctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+    if (clctx != NULL) {
+      ngx_http_mruby_reconcile_content_length(r, clctx);
+    }
     return ngx_http_next_header_filter(r);
   }
 
@@ -1976,6 +2047,15 @@ static ngx_int_t ngx_http_mruby_body_filter(ngx_http_request_t *r, ngx_chain_t *
     }
 
     if (mlcf->body_filter_handler != NULL) {
+      /* The body filter does not run for a response whose length nginx does not
+       * know (content_length_n < 0), so ngx_mrb_finalize_body_filter does not
+       * reconcile a Content-Length a header or phase handler set through
+       * Nginx::Headers_out. Reconcile here before the header goes out, so the
+       * response is sent chunked without a stale Content-Length. */
+      ngx_http_mruby_ctx_t *clctx = ngx_http_get_module_ctx(r, ngx_http_mruby_module);
+      if (clctx != NULL) {
+        ngx_http_mruby_reconcile_content_length(r, clctx);
+      }
       rc = ngx_http_next_header_filter(r);
       if (rc == NGX_ERROR || rc > NGX_OK) {
         return NGX_ERROR;
