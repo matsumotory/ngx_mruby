@@ -448,20 +448,20 @@ stage: copied 164 files to /path/to/build/nginx/harness/test; 593 port numbers m
 
 ### HTTP/2とHTTP/3
 
-HTTP/2とHTTP/3では、nginxはリクエストをフレームで受け取ります。リクエスト行とヘッダの行では受け取りません。ヘッダとリクエストボディを読むのも、レスポンスを書く出力のフィルターも、バージョンごとのnginxのコードです。`test/t/cases/http2_http3.rb`は、同じリクエストをHTTP/1.1、HTTP/2、HTTP/3で1つのserverに送り、どのバージョンでもngx_mrubyから同じレスポンスが返ることを確かめます。
+HTTP/2とHTTP/3では、nginxはリクエストをフレームで受け取ります。リクエスト行とヘッダの行では受け取りません。ヘッダとリクエストボディを読むコードも、レスポンスを書く出力のフィルターも、バージョンごとに別のnginxのコードです。`test/t/cases/http2_http3.rb`は、同じリクエストをHTTP/1.1、HTTP/2、HTTP/3で1つのserverに送り、どのバージョンでもngx_mrubyから同じレスポンスが返ることを確かめます。
 
-nginx：`test.sh`は、nginxのconfigureのオプション(`NGINX_DEFAULT_OPT`)に`--with-http_v2_module`と`--with-http_v3_module`を足します。CIのセルを含め、スイートのすべてのビルドが対象です。`http2`ディレクティブにはnginx 1.25.1以降が、http3のモジュールにはnginx 1.25.0以降が要ります。`next`がビルドするのは、nginx 1.30と1.31です。http3のモジュールには、OpenSSL 1.1.1以降が要ります([ngx_http_v3_module](https://nginx.org/en/docs/http/ngx_http_v3_module.html))。OpenSSLが3.5.1より古いと、nginxはQUICにOpenSSLの互換レイヤーを使います。互換レイヤーはearly data(0-RTT)に対応しません([QUIC and HTTP/3](https://nginx.org/en/docs/quic.html))。Ubuntu 22.04のOpenSSL 3.0.2(このページのDockerの手順)では互換レイヤーを使い、CIのセルはOpenSSL 3.5.9をビルドします。このケースはearly dataを送らないので、どちらのビルドでも同じリクエストを流します。これらのオプションより前にconfigureしたビルドのディレクトリは、古い設定のままです。`build/nginx-X.Y.Z/objs/Makefile`を消し、`ONLY_BUILD_NGX_MRUBY`を付けずに`test.sh`を流してください([テストを実行する](#テストを実行する))。
+nginx：`test.sh`は、nginxのconfigureのオプション(`NGINX_DEFAULT_OPT`)に`--with-http_v2_module`と`--with-http_v3_module`を足します。CIのセルを含め、スイートのすべてのビルドが対象です。`http2`ディレクティブにはnginx 1.25.1以降が、http3のモジュールにはnginx 1.25.0以降が要ります。`next`がビルドするのは、nginx 1.30と1.31です。http3のモジュールには、OpenSSL 1.1.1以降が要ります([ngx_http_v3_module](https://nginx.org/en/docs/http/ngx_http_v3_module.html))。OpenSSLが3.5.1より古いと、nginxはQUICにOpenSSLの互換レイヤーを使います。互換レイヤーはearly data(0-RTT)に対応しません([QUIC and HTTP/3](https://nginx.org/en/docs/quic.html))。このページのDockerの手順で使うUbuntu 22.04のOpenSSL 3.0.2では、nginxは互換レイヤーを使います。CIのセルは、OpenSSL 3.5.9をビルドします。このケースはearly dataを送らないので、どちらのビルドでも同じリクエストを流します。これらのオプションより前にconfigureしたビルドのディレクトリは、古い設定のままです。`build/nginx-X.Y.Z/objs/Makefile`を消し、`ONLY_BUILD_NGX_MRUBY`を付けずに`test.sh`を流してください([テストを実行する](#テストを実行する))。
 
 クライアント：`test/t/client.rb`の`HttpVersions`は、1つのリクエストを専用の接続でHTTPSで送り、ステータス、ヘッダ、ボディと、応答したバージョンを返します。
 
 - HTTP/1.1とHTTP/2は`curl`(`--http1.1`、`--http2`)で送ります。curlはALPNでバージョンを選びます。curlにはHTTP/2の対応が要ります(`curl --version`の`Features`の`HTTP2`)。Ubuntu 22.04とrunnerのcurl(7.81.0、nghttp2付き)と、macOSの`/usr/bin/curl`は対応しています。
-- HTTP/3は`test/t/cases/_h3_client.py`で送ります。これを`python3`(3.10以降)が[aioquic](https://github.com/aiortc/aioquic)で実行します。`test.sh`は、nginxを起動する前に、aioquicとそれが要るパッケージを`python3 -m pip install --require-hashes --target build/h3client -r test/h3/requirements.txt`で入れます。`BUILD_DYNAMIC_MODULE`では、入れる先は`build_dynamic/h3client`です。`test/h3/requirements.txt`が変わると、入れ直します。そのため、最初の実行には、nginx.orgとGitHubと同じように、pip(Ubuntuでは`python3-pip`)とPyPIへの接続が要ります。すべてのファイルを、`test/h3/requirements.txt`にあるsha256と照合します。PyPIには、これらのバージョンのLinux(x86-64とarm64)とmacOSのwheelがあるので、pipは何もコンパイルしません。2026年11月26日に、arm64のMacで動かしたUbuntu 22.04のコンテナでは、入れるのに約5秒かかりました。
+- HTTP/3は`test/t/cases/_h3_client.py`で送ります。このスクリプトは[aioquic](https://github.com/aiortc/aioquic)を使い、`python3`(3.10以降)で動きます。`test.sh`は、nginxを起動する前に、aioquicと、aioquicが依存するパッケージを`python3 -m pip install --require-hashes --target build/h3client -r test/h3/requirements.txt`で入れます。`BUILD_DYNAMIC_MODULE`では、入れる先は`build_dynamic/h3client`です。`test/h3/requirements.txt`が変わると、入れ直します。そのため、最初の実行には、nginx.orgとGitHubへの接続に加えて、pip(Ubuntuでは`python3-pip`)とPyPIへの接続が要ります。pipは、入れるすべてのファイルを、`test/h3/requirements.txt`にあるsha256と照合します。PyPIには、これらのバージョンのLinux(x86-64とarm64)とmacOSのwheelがあるので、pipは何もコンパイルしません。2026年11月26日に、arm64のMacで動かしたUbuntu 22.04のコンテナでは、入れるのに約5秒かかりました。
 
-  `test/h3/requirements.in`が各パッケージのバージョンを固定し、`python3 test/h3/lock.py`が、そのバージョンでPyPIにあるすべてのファイルのハッシュを付けて`test/h3/requirements.txt`を書きます。aioquic 1.3.0は、Dependabotが待つ7日(`.github/dependabot.yml`)より古いリリースのうち、Ubuntu 22.04のPython 3.10向けのwheelがある最新のリリースです。1.4.0から1.9.0はPython 3.11を求めます。Dependabotはこれらのファイルを更新しません。バージョンを変えるときは、`lock.py`とスイートを流すPRを作ります。
+  `test/h3/requirements.in`は、各パッケージのバージョンを固定します。`python3 test/h3/lock.py`は、`requirements.in`をもとに、そのバージョンでPyPIにあるすべてのファイルのハッシュを付けて、`test/h3/requirements.txt`を書きます。aioquic 1.3.0は、公開からDependabotが待つ7日(`.github/dependabot.yml`)を過ぎたリリースのうち、Ubuntu 22.04のPython 3.10向けのwheelがある最新のリリースです。1.4.0から1.9.0はPython 3.11を求めます。Dependabotはこれらのファイルを更新しません。バージョンを変えるときは、`lock.py`で`requirements.txt`を書き直し、スイートを流して、PRを作ります。
 
-  curlもHTTP/3を送れますが、Ubuntu 22.04とrunnerのcurlはHTTP/3なしでビルドされています(`Features`に`HTTP3`がありません)。HTTP/3のあるcurlを使うには、各セルでngtcp2とnghttp3と一緒にビルドするか、コンテナのイメージから取る必要があります。Homebrewの`/opt/homebrew/bin/curl`はHTTP/3に対応していますが、どのマシンでも同じクライアントを使うほうが、結果を比べられます。
+  curlもHTTP/3を送れますが、Ubuntu 22.04とrunnerのcurlはHTTP/3なしでビルドされています(`Features`に`HTTP3`がありません)。HTTP/3に対応したcurlを使うには、各セルでcurlをngtcp2とnghttp3と一緒にビルドするか、コンテナのイメージから取る必要があります。Homebrewの`/opt/homebrew/bin/curl`はHTTP/3に対応していますが、どのマシンでも同じクライアントを使えば、結果を比べられます。
 
-ケース：`test/conf/conf.d/78-http2-http3.conf`には、ポート18173のserverが1つあります。TCP(TLS、`http2 on`。ALPNでHTTP/1.1かHTTP/2を選びます)とUDP(`listen 18173 quic`、HTTP/3)の両方で受けます。`test.sh`が待つのはTCPのポートだけなので([nginxがlistenするまで待つ](#nginxがlistenするまで待つ))、`quic`のlistenには、同じserverのTCPのlistenと同じ番号を使います。`master`では18173はauto-sslのケースのポートですが、`next`にそのケースは無く、このケースは`next`にだけあります。ケースは、リクエストごとに、まず、リクエストが求めたバージョンでレスポンスが返ったことを確かめます。別のバージョンに切り替わったときに、気づかずに通らないようにするためです。そのうえで、どのバージョンでも同じになるはずの値を確かめます。
+ケース：`test/conf/conf.d/78-http2-http3.conf`には、ポート18173のserverが1つあります。TCP(TLS、`http2 on`。ALPNでHTTP/1.1かHTTP/2を選びます)とUDP(`listen 18173 quic`、HTTP/3)の両方で受けます。`test.sh`が待つのはTCPのポートだけなので([nginxがlistenするまで待つ](#nginxがlistenするまで待つ))、`quic`のlistenには、同じserverのTCPのlistenと同じ番号を使います。`master`では18173はauto-sslのケースのポートですが、`next`にそのケースは無く、このケースは`next`にだけあります。ケースは、リクエストごとに、まず、リクエストが求めたバージョンでレスポンスが返ったことを確かめます。別のバージョンに切り替わったときに、ケースが通ってしまわずに失敗するようにするためです。そのうえで、どのバージョンでも同じになるはずの値を確かめます。
 
 | パス | ngx_mrubyがすること |
 |---|---|
@@ -473,7 +473,7 @@ nginx：`test.sh`は、nginxのconfigureのオプション(`NGINX_DEFAULT_OPT`)�
 | `/filter` | ヘッダのフィルターとボディのフィルターが、コンテンツハンドラの出力を変える |
 | `/sleep` | コンテンツハンドラの`Nginx::Async.sleep` |
 | `/sub_request` | コンテンツハンドラからの`Nginx::Async::HTTP.sub_request` |
-| `/handshake` | serverのSSL handshake handlerが、リクエストごとの接続で1回ずつ、クライアントのサーバー名とTLS 1.3で動いた |
+| `/handshake` | serverのSSL handshake handlerが、リクエストごとの接続で1回ずつ動き、クライアントが送ったサーバー名とTLS 1.3を受け取った |
 
 このケースで確かめないもの：early data(0-RTT)、Encrypted Client Hello(`docs/proposals/v3-plan.md`の項目「Confirm HTTP/3 and ECH paths call the SSL handshake handler」の残りの半分。nginxの`ssl_ech_file`にはOpenSSL 4.0が要り、これらのビルドのOpenSSLは3.5.9か3.0.2です)、複数のworkerでのHTTP/3(nginxは`quic`のlistenに`reuseport`を要します)。
 
