@@ -7,9 +7,30 @@
 # memcpy() with a length of 0.
 nonnull-attribute:src/core/ngx_string.c
 
+# nginx core: over HTTP/3 the chain of a request body can end with an empty
+# buffer whose pos is NULL, and ngx_http_variable_request_body() ($request_body,
+# which Nginx::Request#body reads) copies every buffer of the chain with
+# ngx_cpymem(), so it passes that NULL to memcpy() with a length of 0
+# (POST /body of test/t/cases/http2_http3.rb).
+nonnull-attribute:ngx_http_variable_request_body
+
 # nginx core: on x86 (NGX_HAVE_NONALIGNED) ngx_http_parse_request_line()
 # compares the method with one uint32_t load (ngx_str3_cmp and friends). A
 # request line that starts at an odd offset of the buffer, as the one after
 # the 45 byte PROXY protocol header of the request_api case does, makes that
 # load misaligned. The CPU defines it, the C standard does not.
 alignment:src/http/ngx_http_parse.c
+
+# nginx core: on x86 (NGX_HAVE_NONALIGNED) the HTTP/2 module and QUIC read
+# and write the 16- and 32-bit numbers of their frames and packets with one
+# load or store at any offset of the buffer (ngx_http_v2_parse_uint32 and
+# ngx_http_v2_write_uint32 in src/http/v2/ngx_http_v2.h, ngx_quic_parse_uint32
+# and ngx_quic_write_uint32 in src/event/quic/ngx_event_quic_transport.c), as
+# for the request line above. test/t/cases/http2_http3.rb sends HTTP/2 and
+# HTTP/3 requests. The CPU defines such an access, the C standard does not,
+# and on arm64, where the macros copy byte by byte, there is no report. The
+# HTTP/3 module (src/http/v3/) has no such access: it reads its numbers byte
+# by byte and through the QUIC code. The patterns name the directories of
+# these modules of nginx, which hold no file of ngx_mruby.
+alignment:src/http/v2/
+alignment:src/event/quic/
