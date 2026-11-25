@@ -1,4 +1,4 @@
-ngx_mrubyのテストは、mrubyのテストを使います。ngx_mrubyのテストは、まだごく初期の実験的なバージョンです。
+ngx_mrubyのテストは、CRubyで動き、CRubyからリクエストを送ります。ngx_mrubyのテストは、まだごく初期の実験的なバージョンです。
 
 プルリクエストを歓迎します。
 ## テストを追加する
@@ -28,7 +28,15 @@ assert('ngx_mruby', 'location /mruby') do
 end
 ```
 
-テストのクライアントは、`build_config.rb`の`test`のビルドです。このクライアントは`NO_SSL`でビルドするので、`HttpRequest`と`SimpleHttp`は`https`のリクエストを送れません。HTTPSのリクエストを送るには、既存のテストと同じように、`base_ssl(port)`が返すURLで`curl -k`を実行するか、`openssl s_client -connect localhost:<port>`を実行してください。例は、`test/t/ngx_mruby.rb`のテストにある`` `curl -s -k #{base_ssl(18082) + '/'}` ``です。
+テストのクライアントは`test/t/client.rb`です。`test.sh`は、`test/t/ngx_mruby.rb`と各ケースのファイルをCRubyで実行し、その前に`ruby -r`でクライアントを読み込みます。CRubyは、mrubyのビルドと同じく3.0以降が要ります。クライアントは、`HttpRequest`、`SimpleHttp`、`SimpleTest`を定義します。これらは、テストがこれまでmrubyの`test`のビルドから使っていたmrbgemのmatsumotory/mruby-httprequest、mruby-simplehttp、mruby-simpletestと同じように動きます。
+
+- リクエストは、1つの接続に1つずつ、HTTP/1.0で送ります。`Connection: close`、`Host`、`Accept: */*`を付け、ヘッダの名前は、`Content-type`のように先頭だけを大文字にして並べ替えます。クライアントは、nginxが接続を閉じるまで、タイムアウトなしでレスポンスを読みます。
+- レスポンスは`SimpleHttp::SimpleHttpResponse`です。`res["code"]`はステータスのIntegerで、`res["body"]`はボディです。`res["<name>"]`は、小文字のヘッダ名でそのヘッダの値を返します。同じヘッダが2回以上来たときは、値のArrayを返します。
+- `t.report`は件数を出力し、失敗またはクラッシュしたテストがあると例外を投げます。そのため、ファイルは0以外で終了し、`test.sh`は止まります。
+
+テストは、バイナリの文字列で動きます。`test.sh`は`-E ASCII-8BIT`を渡し、`test/t/ngx_mruby.rb`と`test/t/cases/_prelude.rb`は、先頭にマジックコメントの`# encoding: ascii-8bit`を持ちます。そのため、`String#size`はバイト数を数え、`File.read`とコマンドの出力はバイト列の文字列になります。UTF-8でないバイトを含むログも、行に分けられます。`JSON.parse`は標準ライブラリのJSONを使い、`usleep`はクライアントが定義します。`build_config.rb`には今もmrubyの`test`のビルドがありますが、テストはこれを使いません。
+
+`HttpRequest`と`SimpleHttp`は、`https`のリクエストを送りません。HTTPSのリクエストを送るには、既存のテストと同じように、`base_ssl(port)`が返すURLで`curl -k`を実行するか、`openssl s_client -connect localhost:<port>`を実行してください。例は、`test/t/ngx_mruby.rb`のテストにある`` `curl -s -k #{base_ssl(18082) + '/'}` ``です。
 
 ## フラグメントとケースのファイルでテストを追加する
 
@@ -359,7 +367,7 @@ CIでは、valgrindの下のセルが、起動から10秒たってもまだ設�
 上限があると、次のような競合が起きることがあります。
 
 - 起動が上限より遅いと、nginxがいずれ起動するはずでも、実行は失敗します。遅い環境では、`NGINX_HEATTIME`を上げてください。待ちはnginxがlistenした時点で終わるので、上限を上げて時間が余計にかかるのは、nginxが終了せずにハングしたときだけです。nginxが終了したときは、スクリプトがすぐに報告します。
-- listenしているソケットは、まだ動いているハンドラではありません。nginxがlistenすると、カーネルはすぐに接続を受け付けます。テストのnginxは`master_process off`の1つのプロセスで、どの接続を読むよりも前に、`init_worker`のフックを実行します。その間、最初のリクエストは、nginxが読むまでソケットのbacklogで待ちます。テストのクライアントのmruby-simplehttpはタイムアウトなしで読むので、クライアントも同じく待ちます。
+- listenしているソケットは、まだ動いているハンドラではありません。nginxがlistenすると、カーネルはすぐに接続を受け付けます。テストのnginxは`master_process off`の1つのプロセスで、どの接続を読むよりも前に、`init_worker`のフックを実行します。その間、最初のリクエストは、nginxが読むまでソケットのbacklogで待ちます。テストのクライアントの`SimpleHttp`(`test/t/client.rb`)はタイムアウトなしで読むので、クライアントも同じく待ちます。
 - nginxは後で、スクリプトが待つ間に試した接続を1つずつ読みます。そして、接続がリクエストの無いまま閉じられていると分かると、その接続を閉じます。これらの接続ではハンドラは動きません。nginxは、これらの接続について、`error.log`に`debug`の行だけを書きます。
 
 ### nginxを止める

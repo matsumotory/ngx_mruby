@@ -666,7 +666,9 @@ How sessions do it (their procedure, not a decision of the owner):
 
 Requirements are listed in `docs/install/` (C compiler, `make`, `bison`, `git`,
 Ruby 3.0 or later with `rake`, OpenSSL). nginx also needs the PCRE and zlib development
-headers, and `test.sh` uses `wget` and the `openssl` command. mruby is built with
+headers, and `test.sh` uses `wget` and the `openssl` command. `test.sh` runs
+the tests with that Ruby, with `json` and `socket` of its standard library.
+mruby is built with
 `rake`: if it is not on `PATH` because Ruby is managed by a version manager
 (rbenv, asdf, ...), put that Ruby's `bin` directory on `PATH` first.
 

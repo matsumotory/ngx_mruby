@@ -1,4 +1,4 @@
-ngx_mruby test uses mruby test.
+The tests of ngx_mruby run with CRuby and send their requests from it.
 ngx_mruby test is very earlier and experimental version. 
 
 Welcome pull-request!
@@ -29,9 +29,35 @@ assert('ngx_mruby', 'location /mruby') do
 end
 ```
 
-The test client (the `test` build of `build_config.rb`) is built with
-`NO_SSL`, so `HttpRequest` and `SimpleHttp` cannot send `https` requests.
-For HTTPS, run `curl -k` with a URL from `base_ssl(port)`, or
+The test client is `test/t/client.rb`. `test.sh` runs `test/t/ngx_mruby.rb`
+and each case file with CRuby (3.0 or later, as for the build of mruby) and
+loads the client first with `ruby -r`. The client defines `HttpRequest`,
+`SimpleHttp` and `SimpleTest` with the behavior of the mrbgems
+matsumotory/mruby-httprequest, mruby-simplehttp and mruby-simpletest, which
+the tests took from the `test` build of mruby before:
+
+- Each request is HTTP/1.0 on a connection of its own, with
+  `Connection: close`, `Host`, `Accept: */*` and the header names
+  capitalized (`Content-type`) and sorted. The client reads the response
+  until nginx closes the connection, without a timeout.
+- The response is a `SimpleHttp::SimpleHttpResponse`: `res["code"]` is the
+  status as an Integer, `res["body"]` the body, and `res["<name>"]` the
+  value of a header by its name in lower case (an Array when the header
+  comes more than once).
+- `t.report` prints the counts and raises when a test failed or crashed, so
+  the file exits non-zero and `test.sh` stops.
+
+The tests run with binary strings: `test.sh` passes `-E ASCII-8BIT`, and
+`test/t/ngx_mruby.rb` and `test/t/cases/_prelude.rb` start with the magic
+comment `# encoding: ascii-8bit`. `String#size` therefore counts bytes,
+`File.read` and the output of a command are byte strings, and a log with
+bytes that are not UTF-8 can still be split into lines. JSON comes from
+the standard library (`JSON.parse`), and `usleep` from the client.
+`build_config.rb` still has the `test` build of mruby, which the tests do
+not use.
+
+`HttpRequest` and `SimpleHttp` send no `https` requests. For HTTPS, run
+`curl -k` with a URL from `base_ssl(port)`, or
 `openssl s_client -connect localhost:<port>`, as the existing tests do (for
 example `` `curl -s -k #{base_ssl(18082) + '/'}` `` in `test/t/ngx_mruby.rb`).
 
@@ -844,8 +870,8 @@ The upper bound can create these races:
   connection as soon as nginx listens, and the test nginx is a single
   process (`master_process off`) that runs the `init_worker` hooks before it
   reads any connection. The first request then waits in the socket's backlog
-  until nginx reads it; the test client (mruby-simplehttp) reads without a
-  timeout, so it waits too.
+  until nginx reads it; the test client (`SimpleHttp` of `test/t/client.rb`)
+  reads without a timeout, so it waits too.
 - nginx later reads each probe connection of the wait, finds it closed
   without a request, and closes it. No handler runs for it, and nginx writes
   only `debug` lines about it to `error.log`.
