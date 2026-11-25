@@ -1654,8 +1654,9 @@ the x86-64 runner.
 
 `test/soak/soak.rb` starts nginx (`master_process on`, one worker) for each
 scenario, checks one response, sends `SOAK_WARMUP` requests, and then sends
-`SOAK_N` requests in three windows of `SOAK_N / 3`. It takes a sample after
-the warmup and after each window, four samples in all. Before each sample it
+`SOAK_N` requests in `SOAK_WINDOWS` windows (6 by default, of `SOAK_N / 6`
+requests each). It takes a sample after the warmup and after each window,
+seven samples by default. Before each sample it
 closes all of its connections and waits (up to 5 seconds) until `stub_status`
 shows that the only open connection is the one asking for it. A sample is:
 
@@ -1671,7 +1672,10 @@ shows that the only open connection is the one asking for it. A sample is:
 | `fd` | entries in `/proc/<worker>/fd` | `fd` minus `up` the same in all samples |
 | `up` | `connections_open` of the mock LLM (0 in a scenario without one) | at most `SOAK_CONCURRENCY`; 0 in the `abort` and `cut` scenarios |
 | `active` | `Active connections` of `stub_status` | 1 in all samples |
-| `rss_kb` | `VmRSS` in `/proc/<worker>/status` | last sample minus the one before it at most `SOAK_RSS_STEP_KB`; last sample minus the first at most `SOAK_RSS_TOTAL_KB` |
+| `rss_step` | `VmRSS` in `/proc/<worker>/status` | last sample minus the one before it at most `SOAK_RSS_STEP_KB` |
+| `rss_total` | same as `rss_step` | last sample minus the first at most `SOAK_RSS_TOTAL_KB` |
+| `pss_slope` | `Pss` in `/proc/<worker>/smaps_rollup` | least-squares slope over all samples at most `SOAK_SLOPE_B` bytes per request (per session in `stream_sleep`) |
+| `dirty_slope` | `Private_Dirty` in the same file | same as `pss_slope` |
 
 The worker is in the same state at every sample: every request sent before it
 has finished, and the only request running is `/debug/stats` itself. The
@@ -1713,6 +1717,41 @@ calls `malloc_trim(0)` in the full GC before each sample (see below), which
 returns the free pages of the C heap; without it, VmRSS moved by up to about
 1 MB in both directions between samples of a correct build, depending on
 where the allocator happened to leave free memory.
+
+`VmRSS` also counts the pages that the worker shares with the master, such
+as the code of nginx and of the libraries, which come into the worker's
+memory the first time it runs that code. In a correct build, `VmRSS` grew
+once by 108 to 136 kB in one of the windows in most scenarios, while
+`Private_Dirty` never grew by more than 32 kB from one sample to the next. Two more values come from
+`/proc/<worker>/smaps_rollup`:
+
+- `Pss` counts each page divided by the number of processes that map it, so
+  a page that only the worker and the master map counts half, and a page of
+  a shared library that other processes map as well counts less;
+- `Private_Dirty` counts the pages that only the worker maps and has
+  written to. The C heap and the heap of mruby are there, and memory that a
+  request leaves allocated adds to it; a file page read in by the worker
+  does not.
+
+For each of them, the soak fits a straight line to the samples by least
+squares, with the number of requests sent after the warmup as x, and checks
+its slope in bytes per request. A slope uses every sample, so a leak shows
+as a steady growth, while a single step changes the slope less: at the
+default `SOAK_N` and `SOAK_WINDOWS`, a step of 100 kB adds at most about 6.6
+bytes per request to the slope, when it comes in the third or the fourth of
+the six windows, and less in the others. The values of all three,
+sample by sample, are in a table printed above the result table.
+
+The soak reads `smaps_rollup` only where the kernel gives it (Linux 4.14 or
+later) and lets the reading process read it. When the soak runs as root,
+nginx runs its worker as `nobody`, and the kernel lets root read the
+worker's `smaps_rollup` only with `CAP_SYS_PTRACE`; a container without it
+gets `EACCES`. Where it cannot be read, the soak records `-` for `Pss` and
+`Private_Dirty`, prints a line that says so below the memory table, and
+checks the other values as before. The `soak` job of CI sets
+`SOAK_REQUIRE_SMAPS_ROLLUP=1`, which fails such a scenario instead: the job
+runs as the runner's user, nginx keeps the worker under that user, and the
+file is readable there.
 
 A scenario of `test/soak/nginx.conf` also checks `Nginx::Debug` itself, once,
 after its first response and before the warmup. It requests `/debug/check`,
@@ -1946,7 +1985,7 @@ The driver reads `/proc` and needs Linux and CRuby 3.0 or later. On other
 systems, run it in a container, for example:
 
 ```console
-$ docker run --rm -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev >/dev/null && sh test/soak/run.sh'
+$ docker run --rm --cap-add SYS_PTRACE -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates zlib1g-dev libpcre3-dev libssl-dev >/dev/null && sh test/soak/run.sh'
 ```
 
 On Linux:
@@ -1959,9 +1998,12 @@ $ ONLY_RUN=1 SOAK_SCENARIOS=sleep,disconnect SOAK_N=100000 sh test/soak/run.sh
 
 The first run takes a few minutes (it clones the gems and builds mruby and
 nginx); the scenarios themselves take about a minute (the `agent_*` ones
-about 18 seconds of it, on the aarch64 container). The table has one row
-per scenario; when a value differs between samples, all four values are shown,
-separated by `/`, and the reasons are listed below the table. The logs are in
+about 18 seconds of it, on the aarch64 container). The memory table has
+three rows per scenario (`VmRSS`, `Pss`, `Private_Dirty`) with the value of
+each sample in kB and the slope in bytes per request. The result table below
+it has one row per scenario; when a value differs between samples, all the
+values are shown, separated by `/`, and the reasons are listed below the
+table. The logs are in
 `build_soak/nginx/soak/logs/`: `error.<scenario>.log`,
 `stderr.<scenario>.log`, `mock.<scenario>.log` (the mock LLM's output, for
 the `agent_*` scenarios) and `soak.log` (the output of the driver).
@@ -1980,6 +2022,9 @@ and its ports are not those of the soak.
 | `SOAK_PORT_BASE` | 12360 | port of the scenarios; the backend of `sub_request` uses the next one, the mock LLM the one after |
 | `SOAK_RSS_STEP_KB` | 512 | VmRSS limit for the last window, in kB |
 | `SOAK_RSS_TOTAL_KB` | 1024 | VmRSS limit from the first to the last sample, in kB |
+| `SOAK_WINDOWS` | 6 | windows after the warmup (2 or more) |
+| `SOAK_SLOPE_B` | 8 | limit of the slope of `Pss` and of `Private_Dirty`, in bytes per request |
+| `SOAK_REQUIRE_SMAPS_ROLLUP` | unset | set to 1 to fail a scenario whose `smaps_rollup` cannot be read (the CI job does) |
 
 ### Thresholds and calibration
 
@@ -2005,11 +2050,42 @@ less in all than at `SOAK_N=100000`. With it, the largest growth is 144 kB in
 the last window and 236 kB in all. The default limits, 512 kB for the last
 window and 1024 kB in all, are about 3.5 and 4.3 times these. The limit for
 the last window is the looser one because one window of a shared CI runner
-grew by 144 kB; the limit in all is the one that finds small leaks: a leak
-below about 50 bytes per request stays under 1024 kB over the 20000 requests
-of the default `SOAK_N`, so raise `SOAK_N` to look for smaller ones. For
-comparison, a build that leaks 4 kB per request grows by about 26 MB per
-window.
+grew by 144 kB; the limit in all finds leaks of about 50 bytes per request
+or more: a smaller one stays under 1024 kB over the 20000 requests of the
+default `SOAK_N`. For comparison, a build that leaks 4 kB per request grows
+by about 13 MB per window of the default `SOAK_N` and `SOAK_WINDOWS`. These
+runs had three windows; with six, the last window has half as many
+requests, and the 512 kB limit for it is looser still.
+
+The limit of the slopes of `Pss` and `Private_Dirty` was set from runs of the
+default scenarios on 2026-11-25 with nginx 1.31.8 on Ubuntu 22.04 (gcc 11,
+glibc 2.35, Linux 6.12) in a container on aarch64, as a user other than root,
+with the default `SOAK_WINDOWS` of 6, and checked against the `soak` job of
+CI on x86_64 ([run 45584255847](https://github.com/matsumotory/ngx_mruby/actions/runs/45584255847)). The values are the
+smallest and the largest slope over all scenarios and runs of a row, in
+bytes per request:
+
+| Machine | `SOAK_N` | Runs | `Pss` | `Private_Dirty` | `VmRSS` (not checked) |
+|---|---|---|---|---|---|
+| aarch64 | 20000 | 5 | -3.8 to +2.5 | -1.6 to +0.5 | -1.1 to +8.4 |
+| aarch64 | 100000 | 1 | -0.3 to +0.3 | -0.2 to +0.1 | -0.2 to +1.4 |
+| x86_64 (CI) | 20000 | 1 | -1.1 to +1.2 | -1.1 to +1.2 | -0.7 to +8.2 |
+
+The `VmRSS` slope is shown for comparison only: its one-time growth of
+about 120 kB in the middle of a run alone gives a slope of about 8 bytes per
+request. The limit, 8 bytes per request, is about 3 times the largest `Pss`
+slope and 6.7 times the largest `Private_Dirty` slope. `Private_Dirty`
+grew by at most 32 kB from one sample to the next in these runs; a single
+step of about 120 kB in the third or the fourth window would reach the
+limit on its own. It finds a leak of 8
+bytes per request or more at the default `SOAK_N`, about 6 times smaller
+than the leaks that the `VmRSS` limit in all finds. In a build changed to
+leak one `malloc(16)` (a 32-byte chunk of the C heap, written to) each time
+an HTTP handler runs, the slopes of `Pss` and `Private_Dirty` were 34.6 to
+85.2 bytes per request and failed all 12 HTTP scenarios; in 9 of them,
+`VmRSS` stayed within both of its limits (it grew 704 to 788 kB in all).
+`stream_sleep`, which runs no HTTP handler, passed. Raise `SOAK_N` to look
+for smaller leaks: the noise of the slopes falls with it.
 
 ### Adding a scenario
 
@@ -2026,7 +2102,7 @@ window.
    defaults); the comment at the top of that file lists the fields.
 3. Add its name to `DEFAULT_SCENARIOS` in `test/soak/soak.rb`, run the soak
    three times, and check that all counters stay the same and that VmRSS
-   stays within the limits. If a counter keeps growing, the scenario has
+   and the slopes of `Pss` and `Private_Dirty` stay within the limits. If a counter keeps growing, the scenario has
    found a problem: do not raise a limit or drop the comparison to make it
    pass. Report it as described in `SECURITY.md` when it may be a
    vulnerability.
