@@ -126,16 +126,45 @@ if [ -n "$TEST_SH_SKIP_TESTS" ]; then
     exit 0
 fi
 
+# A build directory whose nginx was configured before test.sh added the
+# http_v2 and http_v3 modules keeps that configuration: the Makefile
+# configures nginx again only when objs/Makefile is missing, and the test
+# configuration would stop nginx with "unknown directive". nginx -V lists
+# the configure options; LeakSanitizer is off for this run, as for nginx -t.
+nginx_v=`ASAN_OPTIONS=detect_leaks=0 ${NGINX_INSTALL_DIR}/sbin/nginx -V 2>&1` || true
+for m in --with-http_v2_module --with-http_v3_module; do
+    case "$nginx_v" in
+        *"$m"*) ;;
+        *)
+            echo "test.sh: ${NGINX_INSTALL_DIR}/sbin/nginx was configured without $m; remove ${BUILD_DIR}/${NGINX_SRC_VER}/objs/Makefile and run test.sh without ONLY_BUILD_NGX_MRUBY, so that nginx is configured again (\"Testing\" in docs/test/README.md)" >&2
+            exit 1 ;;
+    esac
+done
+
 # The HTTP/3 client of the tests (test/t/cases/_h3_client.py) runs on
-# aioquic, which pip installs here from test/h3/requirements.txt, each file
-# checked by its hash. The directory is kept with a copy of the
-# requirements, and installed again when they change. HTTP/2 goes through
-# curl ("HTTP/2 and HTTP/3" in docs/test/README.md).
+# aioquic, which pip installs here from test/h3/requirements.txt: wheels
+# only (--only-binary), each file checked by its hash. The directory is kept
+# with a copy of the requirements, and installed again when they change.
+# HTTP/2 goes through curl ("HTTP/2 and HTTP/3" in docs/test/README.md).
+# Without python3 3.10 or later and its pip, test.sh stops here and says
+# what is missing; it does not skip the HTTP/3 case.
 H3_PYDIR=`pwd`/${BUILD_DIR}/h3client
 if ! cmp -s test/h3/requirements.txt ${H3_PYDIR}/requirements.txt; then
+    h3_missing=
+    if ! command -v python3 >/dev/null 2>&1; then
+        h3_missing="python3 is not on PATH"
+    elif ! python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))' >/dev/null 2>&1; then
+        h3_missing="python3 is `python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>&1`, older than 3.10"
+    elif ! python3 -m pip --version >/dev/null 2>&1; then
+        h3_missing="python3 has no pip (python3-pip on Ubuntu)"
+    fi
+    if [ -n "$h3_missing" ]; then
+        echo "test.sh: the HTTP/3 client needs python3 3.10 or later with pip: $h3_missing (\"HTTP/2 and HTTP/3\" in docs/test/README.md)" >&2
+        exit 1
+    fi
     echo "test.sh: installing the HTTP/3 client (aioquic) into ${H3_PYDIR}"
     rm -rf ${H3_PYDIR}
-    python3 -m pip install --quiet --disable-pip-version-check --no-cache-dir --require-hashes --target ${H3_PYDIR} -r test/h3/requirements.txt
+    python3 -m pip install --quiet --disable-pip-version-check --no-cache-dir --only-binary :all: --require-hashes --target ${H3_PYDIR} -r test/h3/requirements.txt
     cp test/h3/requirements.txt ${H3_PYDIR}/requirements.txt
 fi
 export TEST_SH_H3_PYTHONPATH=${H3_PYDIR}
