@@ -301,18 +301,24 @@ trap 'exit 143' TERM
 echo ""
 echo ""
 ruby test/t/cases/_wait_for_listen.rb listen ${NGINX_HEATTIME} $nginx_pid ${STAGED}/conf/nginx.conf ${STAGED}/conf/conf.d/*.conf
+# The tests run with CRuby, which loads the test client of the copy first
+# (test/t/client.rb: HttpRequest, SimpleHttp and SimpleTest). -E ASCII-8BIT
+# makes File.read and the output of commands byte strings, and the magic
+# comment at the top of test/t/ngx_mruby.rb and test/t/cases/_prelude.rb does
+# the same for the string literals (see "Add test" in docs/test/README.md).
 # The tests run the CRuby helpers of the copy (suite_path in
 # test/t/cases/_prelude.rb and test/t/ngx_mruby.rb). They run from the root
 # of the checkout, as nginx does, because the configuration names the hook
 # scripts with paths relative to it (build/nginx/html/...).
 export TEST_SH_STAGE_DIR=${STAGE_DIR}
-./mruby/build/test/bin/mruby ${STAGED}/t/ngx_mruby.rb 2> ${NGINX_INSTALL_DIR}/logs/stderr.log
+TEST_RUBY="ruby -E ASCII-8BIT -r ${STAGED}/t/client.rb"
+${TEST_RUBY} ${STAGED}/t/ngx_mruby.rb 2> ${NGINX_INSTALL_DIR}/logs/stderr.log
 for f in ${STAGED}/t/cases/*.rb; do
     [ -e "$f" ] || continue
     case "${f##*/}" in _*) continue ;; esac
     echo "ngx_mruby testing case: ${f#${STAGE_DIR}/}"
     cat ${STAGED}/t/cases/_prelude.rb "$f" > ${NGINX_INSTALL_DIR}/logs/case.rb
-    ./mruby/build/test/bin/mruby ${NGINX_INSTALL_DIR}/logs/case.rb 2>> ${NGINX_INSTALL_DIR}/logs/stderr.log
+    ${TEST_RUBY} ${NGINX_INSTALL_DIR}/logs/case.rb 2>> ${NGINX_INSTALL_DIR}/logs/stderr.log
 done
 echo "ngx_mruby testing ... Done"
 

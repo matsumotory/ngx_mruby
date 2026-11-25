@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 # Starts a second nginx with a generated configuration, observes it, and stops
-# it. test/t/cases/directives.rb and test/t/cases/stream.rb run this file with
-# CRuby, because the test build of mruby has no Process module, so it cannot
-# send a signal to nginx or wait for nginx to end. The nginx that test.sh
+# it. test/t/cases/directives.rb and test/t/cases/stream.rb run this file as
+# a process of its own, which sends signals to that nginx and waits for it to
+# end. The nginx that test.sh
 # starts already has inline init hooks, and nginx rejects a second hook of the
 # same kind in one context. The second nginx therefore shows what the
 # first one cannot: the file versions of the init, init_worker and exit_worker

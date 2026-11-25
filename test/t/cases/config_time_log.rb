@@ -35,10 +35,8 @@ def config_time_messages(log, level)
 end
 
 # The lines of an error log at the levels notice and info, read one line at
-# a time. The error log of the test nginx is at the debug level and is not
-# read whole: File.read of the test build fails with "string too long" from
-# about 7 MB (its buffer grows past MRB_STR_LENGTH_MAX, 10 MiB in
-# build_config.rb), and the log is about that long when this case runs.
+# a time. The error log of the test nginx is at the debug level and is about
+# 7 MB long when this case runs, so it is not read whole.
 def config_time_log_lines(path)
   lines = []
   File.open(path) do |f|
