@@ -377,6 +377,16 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
     break;
   }
 
+  /* Content-Length is nginx's own response field: nginx writes it from
+   * r->headers_out.content_length_n. A value a script sets through
+   * Nginx::Headers_out is not added as a response header line;
+   * content_length_n is left as nginx set it, so the response keeps nginx's
+   * own framing. On the 2.x line the length cannot be changed this way. */
+  if (headers == &r->headers_out.headers && key_len == sizeof("Content-Length") - 1 &&
+      ngx_strncasecmp(key, (u_char *)"Content-Length", sizeof("Content-Length") - 1) == 0) {
+    return NGX_OK;
+  }
+
   /* nginx's proxy and grpc modules pass the lowcase_key of every request
    * header to ngx_hash_find, so the added header has it, and next, set.
    * On the 2.x line a header that a script adds is not matched against the
