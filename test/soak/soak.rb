@@ -464,7 +464,8 @@ def judge(samples, scenario)
     end
 
     slope = slope_b(values)
-    problems << format('%s grew %.1f B per request over the samples (limit %d)', name, slope, SLOPE_B) if slope > SLOPE_B
+    unit = scenario.mode == :tcp ? 'session' : 'request'
+    problems << format('%s grew %.1f B per %s over the samples (limit %d)', name, slope, unit, SLOPE_B) if slope > SLOPE_B
   end
   problems
 end

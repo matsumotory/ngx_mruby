@@ -1726,7 +1726,8 @@ once by 108 to 136 kB in one of the windows in most scenarios, while
 `/proc/<worker>/smaps_rollup`:
 
 - `Pss` counts each page divided by the number of processes that map it, so
-  the pages that the worker shares with the master count half;
+  a page that only the worker and the master map counts half, and a page of
+  a shared library that other processes map as well counts less;
 - `Private_Dirty` counts the pages that only the worker maps and has
   written to. The C heap and the heap of mruby are there, and memory that a
   request leaves allocated adds to it; a file page read in by the worker
@@ -1735,9 +1736,10 @@ once by 108 to 136 kB in one of the windows in most scenarios, while
 For each of them, the soak fits a straight line to the samples by least
 squares, with the number of requests sent after the warmup as x, and checks
 its slope in bytes per request. A slope uses every sample, so a leak shows
-as a steady growth, while a single step changes the slope less: a step of
-100 kB in the middle window adds at most about 6.6 bytes per request to the
-slope at the default `SOAK_N` and `SOAK_WINDOWS`. The values of all three,
+as a steady growth, while a single step changes the slope less: at the
+default `SOAK_N` and `SOAK_WINDOWS`, a step of 100 kB adds at most about 6.6
+bytes per request to the slope, when it comes in the third or the fourth of
+the six windows, and less in the others. The values of all three,
 sample by sample, are in a table printed above the result table.
 
 The soak reads `smaps_rollup` only where the kernel gives it (Linux 4.14 or
@@ -2058,18 +2060,24 @@ requests, and the 512 kB limit for it is looser still.
 The limit of the slopes of `Pss` and `Private_Dirty` was set from runs of the
 default scenarios on 2026-11-25 with nginx 1.31.8 on Ubuntu 22.04 (gcc 11,
 glibc 2.35, Linux 6.12) in a container on aarch64, as a user other than root,
-with the default `SOAK_WINDOWS` of 6. The values are the smallest and the
-largest slope over all scenarios and runs of a row, in bytes per request:
+with the default `SOAK_WINDOWS` of 6, and checked against the `soak` job of
+CI on x86_64 ([run 45584255847](https://github.com/matsumotory/ngx_mruby/actions/runs/45584255847)). The values are the
+smallest and the largest slope over all scenarios and runs of a row, in
+bytes per request:
 
-| `SOAK_N` | Runs | `Pss` | `Private_Dirty` | `VmRSS` (not checked) |
-|---|---|---|---|---|
-| 20000 | 5 | -3.8 to +2.5 | -1.6 to +0.5 | -1.1 to +8.4 |
-| 100000 | 1 | -0.3 to +0.3 | -0.2 to +0.1 | -0.2 to +1.4 |
+| Machine | `SOAK_N` | Runs | `Pss` | `Private_Dirty` | `VmRSS` (not checked) |
+|---|---|---|---|---|---|
+| aarch64 | 20000 | 5 | -3.8 to +2.5 | -1.6 to +0.5 | -1.1 to +8.4 |
+| aarch64 | 100000 | 1 | -0.3 to +0.3 | -0.2 to +0.1 | -0.2 to +1.4 |
+| x86_64 (CI) | 20000 | 1 | -1.1 to +1.2 | -1.1 to +1.2 | -0.7 to +8.2 |
 
 The `VmRSS` slope is shown for comparison only: its one-time growth of
 about 120 kB in the middle of a run alone gives a slope of about 8 bytes per
 request. The limit, 8 bytes per request, is about 3 times the largest `Pss`
-slope and 16 times the largest `Private_Dirty` slope. It finds a leak of 8
+slope and 6.7 times the largest `Private_Dirty` slope. `Private_Dirty`
+grew by at most 32 kB from one sample to the next in these runs; a single
+step of about 120 kB in the third or the fourth window would reach the
+limit on its own. It finds a leak of 8
 bytes per request or more at the default `SOAK_N`, about 6 times smaller
 than the leaks that the `VmRSS` limit in all finds. In a build changed to
 leak one `malloc(16)` (a 32-byte chunk of the C heap, written to) each time
