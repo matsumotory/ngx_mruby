@@ -47,7 +47,7 @@ function args() {
 
 // A number with a unit of throughput or latency, or a percentage of faster
 // or slower, in English or in Japanese.
-const PERFORMANCE = /\b\d[\d,.]*\s*(k|K|M)?\s*(req\/s|requests?\s*(per|\/)\s*s(ec(ond)?)?|rps|qps|ops\/s|ms\b|µs|usec|instructions per request)|\b\d+(\.\d+)?\s*%\s*(faster|slower|quicker|less|more)|\b(faster|slower) than\b|[\d０-９][\d０-９,.，．]*\s*[万千億]?\s*(リクエスト|件|回)?\s*(毎秒|\/秒|／秒|ミリ秒|マイクロ秒)|[\d０-９]+\s*[%％]\s*(速|高速|遅|短|少な|多)|倍(速|高速)|より(速|高速|遅)い/;
+const PERFORMANCE = /\b\d[\d,.]*\s*(k|K|M)?\s*(req\/s|requests?\s*(per|\/)\s*s(ec(ond)?)?|rps|qps|ops\/s|ms\b|µs|usec|instructions per request)|\b\d+(\.\d+)?\s*%\s*(faster|slower|quicker|less|more|fewer|lower|higher)|\b(faster|slower) than\b|[\d０-９][\d０-９,.，．]*\s*[万千億]?\s*(リクエスト|件|回)?\s*(毎秒|\/秒|／秒|ミリ秒|マイクロ秒)|[\d０-９]+(\.\d+)?\s*[%％]\s*(速|高速|遅|短|少な|多|減|増)|倍(速|高速)|より(速|高速|遅)い/;
 
 // The text of each code block: Expressive Code renders each line as a
 // div.ec-line inside <pre>.
@@ -101,11 +101,13 @@ function main() {
       if (!heading || !textContent(heading).includes(month)) problems.push(`${where}: the heading of .now-measured does not give the month ${month}`);
       if (!mtext.includes('callgrind')) problems.push(`${where}: .now-measured does not name callgrind`);
       if (!elements(measured).some((e) => e.tagName === 'a' && e.properties?.href === report.source)) problems.push(`${where}: .now-measured does not link to ${report.source}`);
-      for (const tr of elements(measured).filter((e) => e.tagName === 'tr' && e.properties?.dataScenario)) {
-        const row = report.rows.find((r) => r.scenario === tr.properties.dataScenario);
+      const bodyRows = elements(measured).filter((e) => e.tagName === 'tbody').flatMap((b) => elements(b).filter((e) => e.tagName === 'tr'));
+      if (!bodyRows.length) problems.push(`${where}: .now-measured has no table rows`);
+      for (const tr of bodyRows) {
+        const row = report.rows.find((r) => r.scenario === tr.properties?.dataScenario);
         const cells = elements(tr).filter((e) => e.tagName === 'td').map((e) => textContent(e).trim());
         const want = row && [row.base.toLocaleString('en-US'), row.head.toLocaleString('en-US'), row.change.replace('-', '\u2212')];
-        if (!want || JSON.stringify(cells) !== JSON.stringify(want)) problems.push(`${where}: the row ${tr.properties.dataScenario} of .now-measured is ${cells.join(' | ')}, the report gives ${want ? want.join(' | ') : 'no such row'}`);
+        if (!want || JSON.stringify(cells) !== JSON.stringify(want)) problems.push(`${where}: the row ${tr.properties?.dataScenario ?? '(no data-scenario)'} of .now-measured is ${cells.join(' | ')}, the report gives ${want ? want.join(' | ') : 'no such row'}`);
       }
     }
     const blocks = codeBlockTexts(tree);
@@ -156,7 +158,7 @@ function main() {
     console.log(`check-home: ${problems.length} problem(s); ${HOME_PAGES.length} home pages`);
     process.exit(1);
   }
-  console.log(`check-home: ok; ${HOME_PAGES.length} home pages show the ${files} files that their case compares, with the case, the date and the commit, and no benchmark image or performance figure`);
+  console.log(`check-home: ok; ${HOME_PAGES.length} home pages show the ${files} files that their case compares, with the case, the date and the commit; performance figures only in the measured block, with its month, method and source, and none elsewhere`);
 }
 
 main();

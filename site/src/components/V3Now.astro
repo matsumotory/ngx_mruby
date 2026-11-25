@@ -132,7 +132,7 @@ const items = [
       ? <>測り方：<code>sh test/perf/compare.sh</code>で、callgrind上で動かしたnginxに、{number(report.warmup)}件のウォームアップの後、{number(report.n)}件のリクエストを送って命令数を数えました。{units.map((u) => <><code>{u}</code>だけは、リクエストではなくTCPセッションごとに数えています。</>)}arm64のMacのDockerで、Ubuntu 22.04のコンテナを使っています。表の値は、GCを含む命令数の合計です。</>
       : <>Method: <code>sh test/perf/compare.sh</code> ran nginx under callgrind, sent {number(report.warmup)} requests to warm up, then counted the instructions of {number(report.n)} requests{units.map((u) => <>; <code>{u}</code> counts per TCP session instead</>)}. It ran in an Ubuntu 22.04 container under Docker on an arm64 Mac. The table gives the total per request, GC included.</>}</p>
     <p class="now-method">{ja
-      ? <>{report.rows.length}のシナリオすべての値は、<a href={report.source}>タグを付ける前の確認(#{report.number})</a>にあります。合否の判定には、GCと、mrubyの定数キャッシュにヒットしなかった定数の参照を除いた値を使います。この値では{judgedRose.map((r, i) => <>{i ? 'と' : ''}<code>{r.scenario}</code></>)}が増えていますが、差し引く参照があるのは{base}だけだからです。合計とGCだけを除いた値では、どちらも減っています。</>
+      ? <>{report.rows.length}のシナリオすべての値は、<a href={report.source}>タグを付ける前の確認(#{report.number})</a>にあります。合否の判定には、GCと、mrubyの定数キャッシュにヒットしなかった定数の参照を除いた値を使います。この値では{judgedRose.map((r, i) => <>{i ? 'と' : ''}<code>{r.scenario}</code></>)}が増えています。差し引く参照が{base}にしかないためです。合計とGCだけを除いた値では、どちらも減っています。</>
       : <><a href={report.source}>#{report.number}, the check before the tag,</a> has all {report.rows.length} scenarios and the figures it gates on, which leave out GC and the constant lookups that missed mruby's cache. In those, {judgedRose.map((r, i) => <>{i ? ' and ' : ''}<code>{r.scenario}</code></>)} rose, because only {base} has such misses to leave out; their totals and their figures without GC alone fell.</>}</p>
   </div>
   <ul class="now-list">
