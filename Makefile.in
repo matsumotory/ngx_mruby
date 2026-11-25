@@ -26,8 +26,15 @@ NDK_ROOT=@NDK_ROOT@
 
 # libmruby.flags.mak contains MRUBY_* variables. It is created while building mruby.
 MRUBY_MAK_FILE := $(MRUBY_ROOT)/build/host/lib/libmruby.flags.mak
-ifneq ($(wildcard $(MRUBY_MAK_FILE)),) 
+ifneq ($(wildcard $(MRUBY_MAK_FILE)),)
 include $(MRUBY_MAK_FILE)
+# libmruby.flags.mak sets MRUBY_PACKAGE_DIR with "!=", which GNU make 4.0 added.
+# GNU make 3.81 (the make of macOS) leaves it empty, and the paths built from it
+# start at "/" (-L/lib, /lib/libmruby.a). Set it the same way in that case. The
+# MRUBY_* variables that use it are recursively expanded, so this takes effect.
+ifeq ($(strip $(MRUBY_PACKAGE_DIR)),)
+MRUBY_PACKAGE_DIR := $(shell dirname "$(MRUBY_PACKAGE_DIR_GNU)")
+endif
 endif
 MRUBY_LIBDIR=@MRUBY_LIBDIR@ # comes from configure
 MRUBY_BUILD_DEPEND_TARGETS=@MRUBY_BUILD_DEPEND_TARGETS@
