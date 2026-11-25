@@ -1,8 +1,10 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-25 (13:45 JST)
+## State as of 2026-11-25 (16:57 JST)
 
-- Heads: `master` is `7ab993a5c`, the merge of
+- Heads: `master` is `9cd91ff26`, the merge of
+  [#865](https://github.com/matsumotory/ngx_mruby/pull/865) (2026-11-25
+  16:51 JST), below; before it, `7ab993a5c`, the merge of
   [#860](https://github.com/matsumotory/ngx_mruby/pull/860) (2026-11-24
   23:22 JST), which added the published advisory id to the 2.7.13 notes,
   after `e0b17ec47`, the fix for 2.7.13 (merged from the advisory's
@@ -44,9 +46,13 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `574a0e4f6`, the merge of
-  [#862](https://github.com/matsumotory/ngx_mruby/pull/862) (2026-11-25
-  04:23 JST), with the tag `v3.0.0-alpha.1`, both below; before it,
+  all below. `next` is `d6ebb4251`, the merge of
+  [#864](https://github.com/matsumotory/ngx_mruby/pull/864) (2026-11-25
+  15:39 JST), after `4e50baf6a`, the merge of
+  [#863](https://github.com/matsumotory/ngx_mruby/pull/863) (14:10 JST),
+  both below; before them, `574a0e4f6`, the merge of
+  [#862](https://github.com/matsumotory/ngx_mruby/pull/862) (04:23 JST),
+  with the tag `v3.0.0-alpha.1`, both below; before it,
   `56366c038`, the merge of
   [#855](https://github.com/matsumotory/ngx_mruby/pull/855) (2026-11-25
   02:47 JST), below; before it, `ad77c29bf`, the merge of
@@ -79,9 +85,9 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is [#863](https://github.com/matsumotory/ngx_mruby/pull/863)
-  (`next`), which archives the proposal for the rest of the core before
-  alpha.1 and writes this entry, below. `v2.x` mirrors `master`.
+  request is [#866](https://github.com/matsumotory/ngx_mruby/pull/866)
+  (`next`), which merges `master` at `9cd91ff26` (#865) into `next` and
+  writes this entry, below. `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.1: the tag `v3.0.0-alpha.1` is
   on `574a0e4f6`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.1)
@@ -391,13 +397,38 @@
   tagged. Left from it: 22 lines of `v3.0.0.ja.md` that put a Japanese
   clause in half-width parentheses (see "Queue").
 - [#863](https://github.com/matsumotory/ngx_mruby/pull/863) (`next`,
-  after `v3.0.0-alpha.1`, writes this entry): moves the proposal for the rest of the core before alpha.1 to
+  after `v3.0.0-alpha.1`): moves the proposal for the rest of the core before alpha.1 to
   `docs/proposals/archive/core-alpha1.md` and points the links of
   `docs/` at it, marks step 4 of section 6 of the plan done, and writes
   in "The GitHub release" of `docs/releases/README.md` and its Japanese
   page how a release body lists the headings when the two sections are
-  longer than GitHub accepts. Its state, CI run and review are recorded
-  on the pull request.
+  longer than GitHub accepts. It was merged on 2026-11-25 at 14:10 JST
+  as `4e50baf6a`.
+- [#864](https://github.com/matsumotory/ngx_mruby/pull/864) (`next`):
+  rewrites the Japanese clauses in half-width parentheses of
+  `docs/releases/v3.0.0.ja.md` as clauses or sentences of their own
+  (see "Queue"). It was merged on 2026-11-25 at 15:39 JST as
+  `d6ebb4251`.
+- [#865](https://github.com/matsumotory/ngx_mruby/pull/865) (`master`):
+  makes `ci-ok` of `master` need the `perf` job, and brings to
+  `master`'s `test/perf/perf.rb` the accepted differences of `next`
+  (`test/perf/accepted.txt`, the conditions `mruby-version` and
+  `pull-request`, their self-test), with an `accepted.txt` that has no
+  line. `master` keeps judging the Ir per request without GC: its mruby
+  3.3.0 has no constant cache, so the judged number of `next`, which also
+  leaves out the lookups that miss that cache, does not apply. It creates
+  `docs/releases/v2.7.14.md` and `.ja.md` with one "Build and test
+  changes" entry and sets `MODULE_VERSION` of `master` to `2.7.14`. It
+  was merged on 2026-11-25 at 16:51 JST as `9cd91ff26`.
+- [#866](https://github.com/matsumotory/ngx_mruby/pull/866) (`next`,
+  writes this entry): merges `master` at `9cd91ff26` (#865) into `next`.
+  The conflicts keep `next`'s content: `MODULE_VERSION` stays `3.0.0`,
+  and `test.yml`, `test/perf/perf.rb` and `test/perf/accepted.txt` stay
+  as on `next`, which already had what #865 brings to `master`. AGENTS.md
+  and `docs/test/README.md` (English and Japanese) now say that `ci-ok`
+  needs `perf` on both branches, and that `master` judges the number
+  without GC. Its state, CI run and review are recorded on the pull
+  request.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
@@ -1428,7 +1459,7 @@ Taken up and still open: none.
 | Follow-up | Target branch | Waits for |
 |---|---|---|
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
-| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808), through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810), through `976015c48` (#812, #814, #813 and v2.7.8) in [#815](https://github.com/matsumotory/ngx_mruby/pull/815), through `11f80acfa` (#817 and #816) in [#818](https://github.com/matsumotory/ngx_mruby/pull/818), which also raised `worker_connections` of `test/conf/nginx.conf` from 200 to 1024, through `8f204e061` (#819) in [#820](https://github.com/matsumotory/ngx_mruby/pull/820), through `a7800d865` (#822) in [#823](https://github.com/matsumotory/ngx_mruby/pull/823), which also set `MODULE_VERSION` of `next` to `3.0.0`, through `22ef61915` (#824, #827) in [#828](https://github.com/matsumotory/ngx_mruby/pull/828), and through `2c7e833a0` (2.7.10 and #831) in [#830](https://github.com/matsumotory/ngx_mruby/pull/830). Merged through `ea531ad88` (#843, 2.7.11 and #851) in [#850](https://github.com/matsumotory/ngx_mruby/pull/850), merged on 2026-11-17 at 18:19 JST as `4c78c56a3`, and through `14bdc5fa6` (#852, #853) in [#856](https://github.com/matsumotory/ngx_mruby/pull/856), merged on 2026-11-17 at 22:18 JST as `e8643df33`, and through `49d26b879` (2.7.12, #858) in [#859](https://github.com/matsumotory/ngx_mruby/pull/859), merged on 2026-11-18 at 03:56 JST as `2072a900b`; the next merge of `master` waits for a merge into `master` |
+| Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808), through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810), through `976015c48` (#812, #814, #813 and v2.7.8) in [#815](https://github.com/matsumotory/ngx_mruby/pull/815), through `11f80acfa` (#817 and #816) in [#818](https://github.com/matsumotory/ngx_mruby/pull/818), which also raised `worker_connections` of `test/conf/nginx.conf` from 200 to 1024, through `8f204e061` (#819) in [#820](https://github.com/matsumotory/ngx_mruby/pull/820), through `a7800d865` (#822) in [#823](https://github.com/matsumotory/ngx_mruby/pull/823), which also set `MODULE_VERSION` of `next` to `3.0.0`, through `22ef61915` (#824, #827) in [#828](https://github.com/matsumotory/ngx_mruby/pull/828), and through `2c7e833a0` (2.7.10 and #831) in [#830](https://github.com/matsumotory/ngx_mruby/pull/830). Merged through `ea531ad88` (#843, 2.7.11 and #851) in [#850](https://github.com/matsumotory/ngx_mruby/pull/850), merged on 2026-11-17 at 18:19 JST as `4c78c56a3`, and through `14bdc5fa6` (#852, #853) in [#856](https://github.com/matsumotory/ngx_mruby/pull/856), merged on 2026-11-17 at 22:18 JST as `e8643df33`, and through `49d26b879` (2.7.12, #858) in [#859](https://github.com/matsumotory/ngx_mruby/pull/859), merged on 2026-11-18 at 03:56 JST as `2072a900b`, through `7ab993a5c` (2.7.13, #860) in [#861](https://github.com/matsumotory/ngx_mruby/pull/861), merged on 2026-11-25 at 01:07 JST as `ad77c29bf`, and through `9cd91ff26` (#865) in [#866](https://github.com/matsumotory/ngx_mruby/pull/866), open; the next merge of `master` waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |
 | The homepage shares coherent width, alignment and spacing across the hero, section introductions, use cases and footer; continuous introductions read in one column (see "Decisions") | `next` | Merged in [#747](https://github.com/matsumotory/ngx_mruby/pull/747) as `fad853820`; site deployment and publication checks passed ([checkpoint](https://github.com/matsumotory/ngx_mruby/pull/747#issuecomment-6580515876)) |
 | The fixed heading 「アップグレードの前に読む挙動の変更」 of the Japanese release notes ends with one character on its own line at 402 px, in `v2.7.5.ja.md` and in `v2.7.4.ja.md`. The heading and template are corrected in #745, with the previous anchors preserved | `master` (reaches `next` by the merge) | Merged in #745 and included in `next` through #746 |
@@ -1448,7 +1479,7 @@ Taken up and still open: none.
 | `Content-Length` set through `Nginx::Headers_out` and the output of `Nginx.rputs`: design how a length that a script sets relates to the length that `Nginx.rputs` adds to `content_length_n`, then let `headers_out["Content-Length"]` set nginx's field (the part of section 2.2 of `docs/proposals/archive/core-alpha1.md` that [#855](https://github.com/matsumotory/ngx_mruby/pull/855) leaves out; see "Decisions") | `next` | Ready to design; not a condition of `v3.0.0-alpha.1` |
 | `docs/releases/v3.0.0.ja.md`: lines that put a Japanese clause in half-width parentheses; "The Japanese file" in `docs/releases/README.md` turns such a clause into a clause or a sentence of its own (#862 left them, see its body) | `next` | Done in [#864](https://github.com/matsumotory/ngx_mruby/pull/864), which rewrites the 33 lines that the tip of `next` had (#862 counted 22) with the meaning of the English entries |
 | nginx-tests required: the `nginx-tests` workflow records its results and fails only when a build, the fetch of the suite or `prove` fails. In the runs of 2026-10-28 and 2026-10-29 the build with ngx_mruby and the build without it have the same counts (511 files, 302 passed, 0 failed, 209 skipped). To do: the job fails when the build with ngx_mruby fails a file that the build without it passes, and the job joins the `needs` of `ci-ok` | `next` | Ready to start: the counts are the same in every run since #602 |
-| The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR`. On `next`, [#794](https://github.com/matsumotory/ngx_mruby/pull/794) does it: `ci-ok` needs `perf`, and a `FAIL` that the owner accepted on a pull request passes through a line with the new condition `pull-request` in `test/perf/accepted.txt`. The comparison judges the Ir per request without the GC and without the constant lookups that miss the constant cache of mruby, which made the `stream_sleep` `FAIL` of #766 that another run on the same commits did not repeat, except where the head clears that cache more often, or clears it and misses more lookups than the base ([#795](https://github.com/matsumotory/ngx_mruby/pull/795)); then with the lookups counted. Left: the same on `master`, in a pull request to `master` (its `test.yml`, `test/perf/perf.rb`, `test/perf/accepted.txt`, AGENTS.md and `docs/test/README.md`) | `next`, then `master` | `next`: done by [#794](https://github.com/matsumotory/ngx_mruby/pull/794). `master`: ready to start |
+| The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR`. On `next`, [#794](https://github.com/matsumotory/ngx_mruby/pull/794) does it: `ci-ok` needs `perf`, and a `FAIL` that the owner accepted on a pull request passes through a line with the new condition `pull-request` in `test/perf/accepted.txt`. The comparison judges the Ir per request without the GC and without the constant lookups that miss the constant cache of mruby, which made the `stream_sleep` `FAIL` of #766 that another run on the same commits did not repeat, except where the head clears that cache more often, or clears it and misses more lookups than the base ([#795](https://github.com/matsumotory/ngx_mruby/pull/795)); then with the lookups counted. On `master`, [#865](https://github.com/matsumotory/ngx_mruby/pull/865) does the same: `ci-ok` needs `perf`, with the `pull-request` condition and an `accepted.txt` that has no line; `master` judges the number without GC, since its mruby 3.3.0 has no constant cache | `next`, then `master` | `next`: done by [#794](https://github.com/matsumotory/ngx_mruby/pull/794). `master`: done by [#865](https://github.com/matsumotory/ngx_mruby/pull/865) |
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |
 | Soak and perf for stream: the normal TCP `stream_sleep` scenario checks exact response bytes and EOF, observes `stream_timers` and `stream_fibers`, and collects the stream VM before memory samples. The performance build includes stream and counts completed sessions (section 7 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Merged in [#758](https://github.com/matsumotory/ngx_mruby/pull/758) as `8beaaa381`; local checks, independent review, CI, publication verification and cleanup passed |
 | The case `async_sleep_many.rb` of section 6 of [the core stabilization proposal](proposals/archive/core-stabilization.md): a handler that sleeps 1,000 times for 1 ms answers, and `Nginx::Debug.stats` shows the same `timers` and `gc_root_fibers` before and after | `next` | Merged in [#751](https://github.com/matsumotory/ngx_mruby/pull/751) as `63c6b7152`; local checks, independent review, CI and publication checks passed. The normal test build enables the counters, and each HTTP exchange has a 60-second limit |
