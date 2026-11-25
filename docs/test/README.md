@@ -119,14 +119,12 @@ print the second nginx's `error.log` when the line is set.
 Its `ci-ok` job is the status check that rulesets require: it fails unless
 every job that it lists in `needs` passed or was skipped because the
 `changes` job decided so. These are the `changes` job, every job of the
-`build` matrix and the `files` job, and on `next` also the `soak` job and
-the `perf` job (on `master`, `ci-ok` does not need `perf` yet; a later
-pull request to `master` adds it). On
-`next`, the job of the cell that runs nginx under valgrind on every run of
-the matrix is one of them, so a valgrind error in that cell fails `ci-ok`
-([valgrind in CI](#valgrind-in-ci)), and a `FAIL` or `ERROR` row of the
-`perf` job fails it as well on `next` (see "In CI" under "Performance
-comparison with callgrind").
+`build` matrix, the `perf` job and the `files` job, and on `next` also
+the `soak` job. On `next`, the job of the cell that runs nginx under
+valgrind on every run of the matrix is one of them, so a valgrind error in
+that cell fails `ci-ok` ([valgrind in CI](#valgrind-in-ci)). A `FAIL` or
+`ERROR` row of the `perf` job fails it on both branches (see "In CI" under
+"Performance comparison with callgrind").
 
 A run of `test.yml` for a pull request starts when the pull request is
 opened or reopened, when a commit is pushed to its head, and when it is
@@ -2637,6 +2635,15 @@ previous tag among them, applies no such line. The row shows as `ok
 does. The line stays in the file after the merge as the record, and
 applies to no other pull request.
 
+On `master`, `test/perf/accepted.txt` has the same format and no line
+yet; there, a `pull-request` line names `master` (for example
+`pull-request master 812 auth 7`). The mruby 3.3.0 of `master` has no
+constant cache: `OP_GETCONST` calls `mrb_vm_const_get` on every lookup
+(`mruby/src/vm.c` on `master`), so the cost of a constant lookup does not
+depend on where the ireps were allocated. `master` therefore judges the
+number without GC, with the lookups counted, and its report prints no
+`const_misses` or `const_clears`.
+
 ### Running it
 
 When the pull request changes an input of the measured binary or the
@@ -2775,15 +2782,21 @@ for a scenario, and `SCENARIO_REQUEST_FUNCTIONS` another function. `ruby test/pe
 and the reading of a profile on a made-up profile, without a build or
 valgrind; `compare.sh` and `run.sh` run it first.
 
-On `next`, `ci-ok` needs the job, so a `FAIL` or an `ERROR` row fails the
-required check, and a `WARN` row does not. On `master`, `ci-ok` does not
-need it yet; a later pull request to `master` adds it. Instruction counts do not vary with the
-runner's speed (calibration above). In the 15 runs of the job that
+`ci-ok` needs the job on `master` and on `next`, so a `FAIL` or an
+`ERROR` row fails the required check, and a `WARN` row does not.
+Instruction counts do not vary with the runner's speed (calibration
+above). In the 15 runs of the job that
 compared on the pull requests to `next` from #779 to #791 (2026-11-09 and
 10, 16 scenarios each), every row was `ok`, the largest change 0.60%
 without GC (`responses_stream_plain_50`). Judged again without the
 constant lookups as well (the profiles of the runs of #788, #791 and #794),
-every row stays `ok`. "Design principles" in
+every row stays `ok`. On `master`, the latest runs of the job on the pull
+requests to `master` merged from 2026-10-19 to 2026-11-24 compared in 28
+runs (14 scenarios each; 23 of the pull requests changed `src/`,
+`mrbgems/`, `mruby/` or `build_config.rb`), and every row was `ok`; the
+largest change in either direction was -0.62% without GC
+(`proxy_stream_plain_50` on #822, 57543 to 57186 Ir per request).
+"Design principles" in
 [AGENTS.md](../../AGENTS.md) says what each verdict asks of the pull
 request: a `WARN` goes to the owner through the review, and a `FAIL`
 holds the merge until the owner accepts it on the pull request. An

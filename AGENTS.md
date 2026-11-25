@@ -80,7 +80,7 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
   `docs/test/README.md`), so that a `WARN`, a `FAIL` or an `ERROR` is
   found before CI runs. The `perf` job of `.github/workflows/test.yml`
   then runs the same comparison on the runner as the check of CI, on
-  `master` and on `next` (on `next`, `ci-ok` needs it).
+  `master` and on `next`, and `ci-ok` needs it on both branches.
   - The author quotes the local comparison in the PR body, under "Leak /
     performance impact" (see `.github/PULL_REQUEST_TEMPLATE.md`): the table
     with the header lines of `report.txt` above it (the line with `N`,
@@ -136,10 +136,14 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     When the head does not clear the cache, the note shows a change of
     the layout: it does not change the verdict and asks for no second
     run; the reviewer quotes it with the row.
+    The mruby 3.3.0 of `master` has no constant cache, so `master` judges
+    the number without GC (`w/o GC`) and prints no `const_misses` or
+    `const_clears` ("Known differences" under "Performance comparison with
+    callgrind" in `docs/test/README.md`).
   - A session does not merge a PR while the latest run of its `perf` job
     reports `FAIL` or `ERROR`, except for a `FAIL` that the owner accepted
-    on the PR. On `next`, `ci-ok` needs the job, so such a run also fails
-    the required check; a `WARN` does not. For a `FAIL` that the owner
+    on the PR. `ci-ok` needs the job on both branches, so such a run also
+    fails the required check; a `WARN` does not. For a `FAIL` that the owner
     accepted, the PR adds a line to `test/perf/accepted.txt` once the
     owner's acceptance is in a comment on the PR, and the comment names the
     run, the scenario and its change. The line has the condition
@@ -148,8 +152,7 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     example
     `pull-request next 812 stream_sleep 7`). The run of that push shows the
     row as accepted and passes ("In CI" under "Performance comparison with
-    callgrind" in `docs/test/README.md`). On `master`, `ci-ok` does not
-    need the job yet; a PR to `master` adds it there.
+    callgrind" in `docs/test/README.md`).
 - Before a tag. Each PR is compared only with its base, so changes that
   stay below `WARN` can add up. The check of "Before the tag" (see
   `docs/releases/README.md`) therefore also compares the commit that it
