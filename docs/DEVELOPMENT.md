@@ -245,7 +245,7 @@ context back also when an allocation fails there (the rule is in
 `src/common/ngx_mruby_exec.h`). ngx_mruby runs no handler inside another
 mruby call since `Nginx.redirect` with a local URI raises in `mruby_set`
 handlers, log handlers and filters (section 2.9 of
-[docs/proposals/core-alpha1.md](proposals/core-alpha1.md)).
+[docs/proposals/archive/core-alpha1.md](proposals/archive/core-alpha1.md)).
 
 ### HTTP: a wait and its end
 
@@ -312,7 +312,7 @@ handlers, log handlers and filters (section 2.9 of
   in the module context does not carry it), which sends the output with
   that status when no status was set after the output, so a
   status set before the output applies to it (decision 6 of
-  [docs/proposals/core-alpha1.md](proposals/core-alpha1.md)). The result
+  [docs/proposals/archive/core-alpha1.md](proposals/archive/core-alpha1.md)). The result
   can differ from it: before any output, `Nginx.return Nginx::HTTP_OK` in a
   handler other than a content handler of the main request sets the result
   500, and output that follows still goes out with 200.
@@ -329,7 +329,7 @@ handlers, log handlers and filters (section 2.9 of
   (`Nginx.redirect with a local URI is not available in ...`) through
   `ngx_mrb_exec_require` with the mask of the phase handlers, and makes no
   redirect: no handler of a request runs inside the Ruby call of another
-  one (decision 1 of [docs/proposals/core-alpha1.md](proposals/core-alpha1.md)).
+  one (decision 1 of [docs/proposals/archive/core-alpha1.md](proposals/archive/core-alpha1.md)).
 
 ### Stream: a wait and its end
 

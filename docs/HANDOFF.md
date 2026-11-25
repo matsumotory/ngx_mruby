@@ -1,6 +1,6 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-25 (03:20 JST)
+## State as of 2026-11-25 (13:40 JST)
 
 - Heads: `master` is `7ab993a5c`, the merge of
   [#860](https://github.com/matsumotory/ngx_mruby/pull/860) (2026-11-24
@@ -44,7 +44,10 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `56366c038`, the merge of
+  all below. `next` is `574a0e4f6`, the merge of
+  [#862](https://github.com/matsumotory/ngx_mruby/pull/862) (2026-11-25
+  04:23 JST), with the tag `v3.0.0-alpha.1`, both below; before it,
+  `56366c038`, the merge of
   [#855](https://github.com/matsumotory/ngx_mruby/pull/855) (2026-11-25
   02:47 JST), below; before it, `ad77c29bf`, the merge of
   [#861](https://github.com/matsumotory/ngx_mruby/pull/861) (2026-11-25
@@ -76,9 +79,26 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is [#862](https://github.com/matsumotory/ngx_mruby/pull/862) (`next`), the check before `v3.0.0-alpha.1`,
-  below, which writes this entry. `v2.x` mirrors `master`.
-  The latest published release is 2.7.13:
+  request is the one to `next` that archives
+  the proposal for the rest of the core before alpha.1 and writes this
+  entry, below. `v2.x` mirrors `master`.
+  The latest pre-release is 3.0.0-alpha.1: the tag `v3.0.0-alpha.1` is
+  on `574a0e4f6`, and
+  [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.1)
+  was published as a pre-release on 2026-11-25 at 13:17 JST. The two
+  sections "Behavior changes: read before upgrading" of `v3.0.0.md` and
+  `.ja.md` are together longer than GitHub accepts for a release body,
+  so its body lists their 78 headings in each language, each linked to
+  its entry in the file at the tag ("The GitHub release" in
+  `docs/releases/README.md`). Right after the release, `site.yml` ran on
+  `next`
+  ([run 45545801552](https://github.com/matsumotory/ngx_mruby/actions/runs/45545801552),
+  success); the home page of ngx.mruby.org names the newest stable
+  release only, so it still prints `Latest release: v2.7.13`. The push of
+  the tag runs the whole build matrix on `574a0e4f6`
+  ([run 45545779294](https://github.com/matsumotory/ngx_mruby/actions/runs/45545779294),
+  running at 13:22 JST).
+  The latest stable release is 2.7.13:
   the tag `v2.7.13` is on `e0b17ec47`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.13)
   was published on 2026-11-24 at 22:46 JST, with the release notes
@@ -319,7 +339,7 @@
   change of #853 that #849 did not have. Its first commit adds the case
   of #853 with `limit_rate 50` to `test/t/cases/head_header_filter.rb`.
 - [#854](https://github.com/matsumotory/ngx_mruby/pull/854) (`next`,
-  section 2.3 and decision 3 of `docs/proposals/core-alpha1.md`): one
+  section 2.3 and decision 3 of `docs/proposals/archive/core-alpha1.md`): one
   function, `ngx_mrb_var_assign`, assigns the variables of
   `Nginx::Var#<name>=`, `Nginx::Var#set` and the end of an `mruby_set`
   handler that waited, and an assignment to a variable that nginx does
@@ -328,7 +348,7 @@
   `test/t/cases/var_assign.rb` (port 18107). It was merged on
   2026-11-17 at 19:42 JST as `45cf3ae52`.
 - [#855](https://github.com/matsumotory/ngx_mruby/pull/855) (`next`,
-  section 2.2 of `docs/proposals/core-alpha1.md`, without the field of
+  section 2.2 of `docs/proposals/archive/core-alpha1.md`, without the field of
   `Content-Length`; see "Decisions"): `Nginx::Headers_in#delete` and
   `Nginx::Headers_out#delete` remove every header of the name;
   `Content-Type`, `Location`, `Date` and `Server` set through
@@ -348,26 +368,35 @@
   `ngx_mrb_unshare_headers_in` before every `headers_in` change, and
   `ngx_mrb_push_request_header` for an add, at the true tail. It was
   merged on 2026-11-25 at 02:47 JST as `56366c038`, the last row of
-  section 4 of `docs/proposals/core-alpha1.md`: every row of that section
+  section 4 of `docs/proposals/archive/core-alpha1.md`: every row of that section
   is merged.
-- [#862](https://github.com/matsumotory/ngx_mruby/pull/862) (`next`, the check before `v3.0.0-alpha.1` of section 3 of
-  `docs/proposals/core-alpha1.md`, with the label `full-matrix`): checks
-  `docs/releases/v3.0.0.md` and `.ja.md` against the 204 pull requests
-  merged into `next` since `v2.7.13`, the latest 2.x release ("Before the
-  tag" in `docs/releases/README.md`; section 3 of the proposal named
-  `v2.7.5`, the latest when it was written), and against the case files
-  of `test/t` whose expectations differ from `master`: every difference
-  of an expectation has its entry. It adds the "Why it changed" lines of
-  the 18 entries of #561, removes three entries that the 2.x files of
-  2.7.4 and 2.7.5 already carry, adds the line of #712, adds missing pull
-  request numbers, and brings the Japanese file and its heading to the
-  English file and the README. The performance comparison of the tip of
-  `next` with `v2.7.13` reports `FAIL` for `sleep` and `stream_sleep` in
-  the judged column (without GC and constant cache misses), while both
-  are lower without GC alone; the comparison is quoted in its body and
-  goes to the owner before the tag. Its state, CI run and review are
-  recorded on the pull request. The session that opened it continues it,
-  and the session that coordinates the work merges it.
+- [#862](https://github.com/matsumotory/ngx_mruby/pull/862) (`next`,
+  the check before `v3.0.0-alpha.1` of section 3 of
+  `docs/proposals/archive/core-alpha1.md`, with the label `full-matrix`):
+  checked `docs/releases/v3.0.0.md` and `.ja.md` against the 204 pull
+  requests merged into `next` since `v2.7.13`, the latest 2.x release
+  ("Before the tag" in `docs/releases/README.md`), and against the case
+  files of `test/t` whose expectations differ from `master`: every
+  difference of an expectation has its entry. It added the "Why it
+  changed" lines of the 18 entries of #561, removed three entries that
+  the 2.x files of 2.7.4 and 2.7.5 already carry, added the line of
+  #712 and missing pull request numbers, and brought the Japanese file
+  and its heading to the English file and the README. Its comparison of
+  the performance with `v2.7.13` reported `FAIL` for `sleep` and
+  `stream_sleep` in the judged column (without GC and constant cache
+  misses), while both are lower in total and without GC alone; the owner
+  accepted both on 2026-11-25 (see "Decisions"). It was merged on
+  2026-11-25 at 04:23 JST as `574a0e4f6`, where `v3.0.0-alpha.1` is
+  tagged. Left from it: 22 lines of `v3.0.0.ja.md` that put a Japanese
+  clause in half-width parentheses (see "Queue").
+- The pull request to `next` after `v3.0.0-alpha.1` (open, writes this
+  entry): moves the proposal for the rest of the core before alpha.1 to
+  `docs/proposals/archive/core-alpha1.md` and points the links of
+  `docs/` at it, marks step 4 of section 6 of the plan done, and writes
+  in "The GitHub release" of `docs/releases/README.md` and its Japanese
+  page how a release body lists the headings when the two sections are
+  longer than GitHub accepts. Its state, CI run and review are recorded
+  on the pull request.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
@@ -424,24 +453,24 @@
   compile and the reload of a handler file without `cache`, which the http
   and the stream modules had as two copies, into
   `src/common/ngx_mruby_code.{h,c}`, the row of section 2.6 of
-  [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
+  [the proposal for the rest of the core before alpha.1](proposals/archive/core-alpha1.md).
   The compiled proc is kept in a slot of the GC root holder until the
   `mrb_state` is closed, and a reload replaces it there. No behavior changes.
   Its test is `test/t/cases/code_reload.rb` (port 18125).
 - [#826](https://github.com/matsumotory/ngx_mruby/pull/826) (`next`,
   merged on 2026-11-16 at 13:52 JST): the execution context and the
   phases of the Ruby API, the row of section 2.1 of
-  [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
+  [the proposal for the rest of the core before alpha.1](proposals/archive/core-alpha1.md).
 - [#832](https://github.com/matsumotory/ngx_mruby/pull/832) (`next`):
   `Nginx::Request#store`, the Hash of a request that every handler and
   filter of the request gets and that stays after an internal redirect,
   the row "Per-request store" of section 2.1 of
-  [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
+  [the proposal for the rest of the core before alpha.1](proposals/archive/core-alpha1.md).
   Its test is `test/t/cases/request_store.rb` (port 18094).
 - [#834](https://github.com/matsumotory/ngx_mruby/pull/834) (`next`,
   merged on 2026-11-17 at 01:23 JST as `5b65b1277`): the
   directive table and one duplicate check, the row of section 2.5 of
-  [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
+  [the proposal for the rest of the core before alpha.1](proposals/archive/core-alpha1.md).
   The directives with Ruby code of each module are rows of an X-macro
   table, and `ngx_mrb_code_set` sets the code of every such directive of
   both modules. Behavior change: `nginx -t` refuses a stream hook given
@@ -450,7 +479,7 @@
 - [#835](https://github.com/matsumotory/ngx_mruby/pull/835) (`next`,
   merged on 2026-11-17 at 04:25 JST as `a739bda78`): the
   filter handlers, the row of section 2.4 of
-  [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
+  [the proposal for the rest of the core before alpha.1](proposals/archive/core-alpha1.md).
   The header filter handler has the type of nginx's header filters, the
   merge of the location configuration copies the filter handlers with
   their code, and postconfiguration adds only the phase handlers that a
@@ -879,7 +908,7 @@
   every browser check locally (the owner's decision of 2026-11-02 under
   "Decisions").
 - The core stabilization is done with #735, and its proposal is archived
-  (the row of step 4 under "Queue").
+  (`docs/proposals/archive/core-stabilization.md`).
 - [#739](https://github.com/matsumotory/ngx_mruby/pull/739) (base
   `master`) is merged (`5440e7a0e`): `site-v2.yml` runs only on
   `workflow_dispatch`, and a pull request to `master` checks the 2.x pages
@@ -926,7 +955,7 @@
   2.7.5 release-note files.
 - [#767](https://github.com/matsumotory/ngx_mruby/pull/767) merged into
   `next` as `ea3c5996e` on 2026-11-09 at 18:33 JST. It adds
-  [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
+  [the proposal for the rest of the core before alpha.1](proposals/archive/core-alpha1.md).
 - [#766](https://github.com/matsumotory/ngx_mruby/pull/766) merged into
   `next` as `46bf09566` on 2026-11-09 at 19:21 JST: the `build_config.rb`
   rewrite of the queue. `ENV` and `Process` come from mruby's core gems,
@@ -1058,7 +1087,7 @@
   `next` as `e6d2efdae` on 2026-11-12 at 02:20 JST) moves the logging of an exception of Ruby code, seven functions of
   the HTTP and the stream modules, and the two copies of `Nginx.log` into
   `src/common/ngx_mruby_log.{h,c}`, the row of section 2.8 of
-  [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
+  [the proposal for the rest of the core before alpha.1](proposals/archive/core-alpha1.md).
   The lines of `error.log` keep their text and their level; stream also
   logs the backtrace in a build with `--with-debug` (its entry under
   "Behavior changes" of `docs/releases/v3.0.0.md` and `.ja.md`), and an
@@ -1071,12 +1100,12 @@
   `Nginx::Upstream#server=` and `Nginx::Stream::Connection#upstream_server=`
   shared as two copies into `src/common/ngx_mruby_upstream.{h,c}`, the row
   of section 2.7 of
-  [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md).
+  [the proposal for the rest of the core before alpha.1](proposals/archive/core-alpha1.md).
   No behavior changes. The PR body has the state, the checks and the table
   of what is shared and what each setter keeps.
 - [#780](https://github.com/matsumotory/ngx_mruby/pull/780) (merged into
   `next` as `f14cceaeb` on 2026-11-10 at 02:48 JST) adds the directive `mruby_variable` of section 2.11 of
-  [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md),
+  [the proposal for the rest of the core before alpha.1](proposals/archive/core-alpha1.md),
   the agent proxy row on variable declarations. Its test is
   `test/t/cases/mruby_variable.rb` (port 18171), and its entries are under
   "New features" of `docs/releases/v3.0.0.md` and `.ja.md`.
@@ -1168,9 +1197,23 @@ constraints, with dates. Proposals are identified separately from adopted
 decisions. Conversation quotations and attribution are not a substitute for
 checking whether a decision fits the evidence and requirements.
 
+- **2026-11-25, the performance of `v3.0.0-alpha.1`.** The two `FAIL`
+  rows of the comparison of `v3.0.0-alpha.1` with `v2.7.13` in #862,
+  `sleep` (+5.91% per request in the judged column, without GC and
+  constant cache misses) and `stream_sleep` (+5.45% per session), are
+  accepted. Scope: this comparison of the tag only; a later `perf` job or
+  check before a tag that reports `FAIL` goes to the owner again
+  (AGENTS.md "Design principles"). Rationale: in both scenarios the head
+  runs fewer instructions in total and without GC alone; the judged
+  column grows because only the base misses the constant cache, and the
+  rest is the fiber functions that resume the Ruby code after a wait,
+  which v3 changed; alpha.1 is a pre-release. Constraints: the
+  instructions that the fiber functions add stay in the measured binary.
+  It replaces no rule. The record is
+  [the comment on #862](https://github.com/matsumotory/ngx_mruby/pull/862#issuecomment-7152686137).
 - **2026-11-17, `Content-Length` through `Nginx::Headers_out`.** The
   field of `Content-Length` in section 2.2 of
-  `docs/proposals/core-alpha1.md` is left out of the pull request of 2.2
+  `docs/proposals/archive/core-alpha1.md` is left out of the pull request of 2.2
   ([#855](https://github.com/matsumotory/ngx_mruby/pull/855)) and handled
   separately; until then, `headers_out["Content-Length"]` adds a header
   line, as on 2.x. Scope: `Nginx::Headers_out#[]=`, `#[]` and `#delete`
@@ -1401,20 +1444,20 @@ Taken up and still open: none.
 | OpenSSL 3.5 and 4.0 (item 3 of section 7 of the plan): the cells of the `build` matrix of `.github/workflows/test.yml` build OpenSSL 3.5.9 in place of `1.1.1w` since [#771](https://github.com/matsumotory/ngx_mruby/pull/771), whose `Digest` and `SecureRandom` need OpenSSL 3.0 or later, and `configure` reads the version of an OpenSSL 3 source tree. Left: a cell for OpenSSL 4.0, the floor of 3.5 in the docs and the build (the soak and perf jobs take the OpenSSL 3.0.2 of the runner), and a check for ENGINE and the removed APIs in ngx_mruby and the gems | `next` | Ready to start: #601's change to `.github/workflows/test.yml` is on `next` since the merge of `master` at `6b27f08da` |
 | `build_config.rb` rewrite with explicit gems (step 3 of section 6; Pillar A): done. [#771](https://github.com/matsumotory/ngx_mruby/pull/771) replaces `monochromegane/mruby-secure-random` and `iij/mruby-digest` with `mrbgems/secure-random` (`SecureRandom` on `RAND_bytes` of OpenSSL) and `mrbgems/digest` (`Digest` on the EVP and `EVP_MAC` APIs of OpenSSL 3), as decided on 2026-11-09, keeping the classes and methods of the two gems; the differences are in its entry of the 3.0.0 release notes. The reasons of the decision: the list of mruby gems has no maintained replacement (Asmod4n/mruby-sysrandom replaces mruby-secure-random with another API, and nothing replaces mruby-digest), and gems in this repository are checked by the suite, CI and the `perf` job of ngx_mruby as they are. [#766](https://github.com/matsumotory/ngx_mruby/pull/766) did the rest of the row: `iij/mruby-env` and `iij/mruby-process` replaced by the core gems mruby-env and mruby-process (with mruby-signal), `mruby-onig-regexp` kept as item 1 of section 7 decides, and `mruby-vedis` and `mruby-localmemcache` out of the default build | `next` | Done: [#771](https://github.com/matsumotory/ngx_mruby/pull/771) merged as `6196a49f1` on 2026-11-09 |
 | mruby 4.1.0 (step 3 of section 6; item 1 of section 7). The owner decided on 2026-10-29 that `next` bundles `4.1.0-rc2` now and moves to 4.1.0 in a small subtree pull request when it is tagged. `next` bundles `4.1.0-rc2` since [#678](https://github.com/matsumotory/ngx_mruby/pull/678). The step to 4.1.0: `./update-mruby-subtree 4.1.0`, `vendor-mruby-prism` if the gitlink of Prism moves, the lock, and the release notes | `next` | The tag `4.1.0` of mruby |
-| Step 4 of section 6 of the plan, the core stability work of Pillar B (execution context, response finalization, fiber lifecycle, common layer, headers and variables, and the two agent proxy rows; [#770](https://github.com/matsumotory/ngx_mruby/pull/770) does the row on log handlers before `access_log`), then `v3.0.0-alpha.1` | `next` | The core stabilization is done: [the core stabilization proposal](proposals/archive/core-stabilization.md) was implemented in [#712](https://github.com/matsumotory/ngx_mruby/pull/712), [#714](https://github.com/matsumotory/ngx_mruby/pull/714), [#715](https://github.com/matsumotory/ngx_mruby/pull/715), [#720](https://github.com/matsumotory/ngx_mruby/pull/720), [#722](https://github.com/matsumotory/ngx_mruby/pull/722), [#727](https://github.com/matsumotory/ngx_mruby/pull/727), [#728](https://github.com/matsumotory/ngx_mruby/pull/728) and [#735](https://github.com/matsumotory/ngx_mruby/pull/735) (the last on 2026-11-02), is archived, and the model is in [How a handler waits](DEVELOPMENT.md#how-a-handler-waits-the-record-of-its-fiber) of `docs/DEVELOPMENT.md`. Left in this step: the work designed in [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md) (the execution-context type, headers, `Nginx::Var`, the filter handler pointers, the table-driven directives, the common layer beyond the fiber, and the rest of the async resume rewrite; the row on log handlers before `access_log`, with the raise of a local `Nginx.redirect` in log handlers, is done by [#770](https://github.com/matsumotory/ngx_mruby/pull/770), the row on the execution context and the phases of the Ruby API by [#826](https://github.com/matsumotory/ngx_mruby/pull/826), merged on 2026-11-16, the row on the per-request store by [#832](https://github.com/matsumotory/ngx_mruby/pull/832), the agent proxy row on `mruby_variable` by [#780](https://github.com/matsumotory/ngx_mruby/pull/780), the row on common upstream switching by [#788](https://github.com/matsumotory/ngx_mruby/pull/788), merged on 2026-11-11, the row on common error logging by [#796](https://github.com/matsumotory/ngx_mruby/pull/796), merged on 2026-11-12, with its follow-up [#799](https://github.com/matsumotory/ngx_mruby/pull/799), merged on 2026-11-12, for the calls of `inspect` and `backtrace` in the logging, the row on common code loading by [#825](https://github.com/matsumotory/ngx_mruby/pull/825), merged on 2026-11-16, the row on the directive table and one duplicate check by [#834](https://github.com/matsumotory/ngx_mruby/pull/834), the row on the filter handlers by [#835](https://github.com/matsumotory/ngx_mruby/pull/835), and the row on a body with any status by [#779](https://github.com/matsumotory/ngx_mruby/pull/779), merged on 2026-11-10, with its follow-up [#783](https://github.com/matsumotory/ngx_mruby/pull/783), merged on 2026-11-10, for a status set before the output (decision 6), `Nginx::HTTP_CLOSE` with output (decision 7) and the should fix items 2 and 4 of the review of #779), one pull request per row of its section 4, and the check before the tag of its section 3. The row on headers, [#855](https://github.com/matsumotory/ngx_mruby/pull/855), merged on 2026-11-25, was the last row of section 4. Left: the check before the tag, in [#862](https://github.com/matsumotory/ngx_mruby/pull/862), then the tag `v3.0.0-alpha.1` after the owner's go-ahead, then the archive of the proposal. Its design decisions were made on 2026-11-09 and 2026-11-10 (section 5 of the proposal), and no point of the design is open. Started by the owner's decision of 2026-11-01 to extend the harness so that `test.sh` tests `master_process on`, several workers and reloads, and then to rework the core fiber lifetime and response completion. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) made that extension; the requests from CRuby and the HTTP/2 and HTTP/3 clients of the row above for the test harness rewrite stay there |
-| `Content-Length` set through `Nginx::Headers_out` and the output of `Nginx.rputs`: design how a length that a script sets relates to the length that `Nginx.rputs` adds to `content_length_n`, then let `headers_out["Content-Length"]` set nginx's field (the part of section 2.2 of `docs/proposals/core-alpha1.md` that [#855](https://github.com/matsumotory/ngx_mruby/pull/855) leaves out; see "Decisions") | `next` | Ready to design; not a condition of `v3.0.0-alpha.1` |
+| `Content-Length` set through `Nginx::Headers_out` and the output of `Nginx.rputs`: design how a length that a script sets relates to the length that `Nginx.rputs` adds to `content_length_n`, then let `headers_out["Content-Length"]` set nginx's field (the part of section 2.2 of `docs/proposals/archive/core-alpha1.md` that [#855](https://github.com/matsumotory/ngx_mruby/pull/855) leaves out; see "Decisions") | `next` | Ready to design; not a condition of `v3.0.0-alpha.1` |
+| `docs/releases/v3.0.0.ja.md`: 22 lines put a Japanese clause in half-width parentheses; "The Japanese file" in `docs/releases/README.md` turns such a clause into a clause or a sentence of its own. To do: rewrite the 22 lines so, with the meaning of the English entries (#862 left them, see its body) | `next` | Ready to start |
 | nginx-tests required: the `nginx-tests` workflow records its results and fails only when a build, the fetch of the suite or `prove` fails. In the runs of 2026-10-28 and 2026-10-29 the build with ngx_mruby and the build without it have the same counts (511 files, 302 passed, 0 failed, 209 skipped). To do: the job fails when the build with ngx_mruby fails a file that the build without it passes, and the job joins the `needs` of `ci-ok` | `next` | Ready to start: the counts are the same in every run since #602 |
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR`. On `next`, [#794](https://github.com/matsumotory/ngx_mruby/pull/794) does it: `ci-ok` needs `perf`, and a `FAIL` that the owner accepted on a pull request passes through a line with the new condition `pull-request` in `test/perf/accepted.txt`. The comparison judges the Ir per request without the GC and without the constant lookups that miss the constant cache of mruby, which made the `stream_sleep` `FAIL` of #766 that another run on the same commits did not repeat, except where the head clears that cache more often, or clears it and misses more lookups than the base ([#795](https://github.com/matsumotory/ngx_mruby/pull/795)); then with the lookups counted. Left: the same on `master`, in a pull request to `master` (its `test.yml`, `test/perf/perf.rb`, `test/perf/accepted.txt`, AGENTS.md and `docs/test/README.md`) | `next`, then `master` | `next`: done by [#794](https://github.com/matsumotory/ngx_mruby/pull/794). `master`: ready to start |
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). Today `test/soak/soak.rb` bounds `VmRSS` by a step and a total and checks the counters of `Nginx::Debug.stats` | `next` | Ready to start |
 | Soak and perf for stream: the normal TCP `stream_sleep` scenario checks exact response bytes and EOF, observes `stream_timers` and `stream_fibers`, and collects the stream VM before memory samples. The performance build includes stream and counts completed sessions (section 7 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Merged in [#758](https://github.com/matsumotory/ngx_mruby/pull/758) as `8beaaa381`; local checks, independent review, CI, publication verification and cleanup passed |
 | The case `async_sleep_many.rb` of section 6 of [the core stabilization proposal](proposals/archive/core-stabilization.md): a handler that sleeps 1,000 times for 1 ms answers, and `Nginx::Debug.stats` shows the same `timers` and `gc_root_fibers` before and after | `next` | Merged in [#751](https://github.com/matsumotory/ngx_mruby/pull/751) as `63c6b7152`; local checks, independent review, CI and publication checks passed. The normal test build enables the counters, and each HTTP exchange has a 60-second limit |
-| The comments in `src/` and `test/` that name `docs/proposals/core-stabilization.md` (20 places, `git grep -n core-stabilization -- src test`): the proposal is now `docs/proposals/archive/core-stabilization.md`. To do: the next pull request that changes those files points them at the new path, or at the section "How a handler waits" of `docs/DEVELOPMENT.md` | `next` | The next code pull request that touches those files (a comment-only change of `src/` would run the whole build matrix) |
+| The comments in `src/` and `test/` that name `docs/proposals/core-stabilization.md` (21 places, `git grep -n core-stabilization -- src test`) and `docs/proposals/core-alpha1.md` (47 places, `git grep -n core-alpha1 -- src test`): the two proposals are now in `docs/proposals/archive/`. To do: the next pull request that changes those files points them at the new paths, or at the section "How a handler waits" of `docs/DEVELOPMENT.md` | `next` | The next code pull request that touches those files (a comment-only change of `src/` would run the whole build matrix) |
 | The ASan cell with `-DNGX_DEBUG_PALLOC -DNGX_DEBUG_MALLOC` (3.7 of the plan; the cell of `test.yml` sets only `-fsanitize` and `-fno-omit-frame-pointer`), so that ASan sees an access that runs from one pool allocation into the next. To do: a run of the suite with these flags, whose findings follow [SECURITY.md](../SECURITY.md), then the cell | `next`, `master` | Ready to start |
 | A test build with `ngx_otel_module` (nginx/nginx-otel, built with CMake against the nginx source of `test.sh`) and an OTLP receiver for the case of the observability sample of 3.2 of the site proposal | `next` | The harness rewrite (the row above), of which this waits for what is left: the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads |
 | Step 7 of section 6 of the plan, the agent proxy, parts (a) to (e); none exists on `next` | `next` | Parts (a) and (c) start "after the safety net of step 2, beside step 4" (step 7 of section 6 of the plan, decided on 2026-10-29 in item 15 of section 7), so they wait for what is left of that safety net: in the row above for the test harness rewrite, the requests from CRuby instead of the client built into the test mruby, and the HTTP/2 and HTTP/3 clients. [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added `master_process on`, several workers and reloads, and its `test/t/cases/_workers.rb` runs the several workers that the test of N concurrent `incr` calls of the shared dictionary needs (section 8 of the plan). (b) and (d) also wait for step 4. The order inside the step is a proposal of the 2026-10-04 amendment until the owner decides it. The `serves:` notes on the rows of the plan name the uses of [the ledger](proposals/edge-control.md#use-cases-and-the-features-they-need) that each part serves |
 | The AI uses of v3 beyond the agent proxy: the next work comes from [the ledger of the uses](proposals/edge-control.md#use-cases-and-the-features-they-need), first its rows at `designing` ([MCP tool authorization](proposals/edge-control.md#mcp-tool-authorization), whose first recipe uses two tenants and read and write mock tools, [MCP tool profiles](proposals/edge-control.md#mcp-tool-profiles), [MCP progressive retrieval](proposals/edge-control.md#mcp-progressive-retrieval), and [Model API fallback](proposals/edge-control.md#llm-api-fallback), whose test is in section 8 of the plan), then its rows at `direction`. This row copies the ledger; when they disagree, the ledger holds | `next` | What is left of step 4 of the plan (the row of step 4 above); the fallback also waits for step 7 of the plan (the row above). No API for these uses is designed yet |
 | Remove `example/` (`README.md`, `nginx.conf`, `proxy.rb`, `set.rb`, `set2.rb`, `unified_hello.rb`): no CI job starts it, no page links it, and its `/proxy` location picks among `test1.example.com` to `test3.example.com`, which are unreachable; `examples/start/` is checked by `examples.yml` | `next` | Done in [#791](https://github.com/matsumotory/ngx_mruby/pull/791): the directory and the sentence about `example/nginx.conf` in `docs/proposals/site.md` are removed; no other reference existed, and no release note is needed because no configuration, script or build reads the directory |
-| What is left of the async resume rewrite (decision (c) of 2026-10-04, amended on 2026-10-29: the rewrite of how resumed handlers end): a wait that starts in a handler that nginx runs inside another mruby call (the location of an internal redirect that an `mruby_set` handler, a log handler or a filter makes inside the Ruby call), or after an internal redirect replaced the module context of the handler, is still resumed by its timer or by the end of its subrequest and ended by `ngx_mrb_post_fiber` in `src/http/ngx_http_mruby_async.c`; a content handler there does not keep the request, so the request ends at the sleep. The rest is done in [#715](https://github.com/matsumotory/ngx_mruby/pull/715), [#722](https://github.com/matsumotory/ngx_mruby/pull/722) and [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (section 12 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Done in [#833](https://github.com/matsumotory/ngx_mruby/pull/833), as section 2.9 of [the proposal for the rest of the core before alpha.1](proposals/core-alpha1.md) designs it: `Nginx.redirect` with a local URI raises in `mruby_set` handlers and output filters (decision 1 of 2026-11-09; #770 did log handlers), and `ngx_mrb_post_fiber` is removed, so every wait ends through the wake and nginx's phase checker |
+| What is left of the async resume rewrite (decision (c) of 2026-10-04, amended on 2026-10-29: the rewrite of how resumed handlers end): a wait that starts in a handler that nginx runs inside another mruby call (the location of an internal redirect that an `mruby_set` handler, a log handler or a filter makes inside the Ruby call), or after an internal redirect replaced the module context of the handler, is still resumed by its timer or by the end of its subrequest and ended by `ngx_mrb_post_fiber` in `src/http/ngx_http_mruby_async.c`; a content handler there does not keep the request, so the request ends at the sleep. The rest is done in [#715](https://github.com/matsumotory/ngx_mruby/pull/715), [#722](https://github.com/matsumotory/ngx_mruby/pull/722) and [#728](https://github.com/matsumotory/ngx_mruby/pull/728) (section 12 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Done in [#833](https://github.com/matsumotory/ngx_mruby/pull/833), as section 2.9 of [the proposal for the rest of the core before alpha.1](proposals/archive/core-alpha1.md) designs it: `Nginx.redirect` with a local URI raises in `mruby_set` handlers and output filters (decision 1 of 2026-11-09; #770 did log handlers), and `ngx_mrb_post_fiber` is removed, so every wait ends through the wake and nginx's phase checker |
 | The generated reference of the site (Pillar F of the plan): the directives from the `ngx_command_t` tables, the Ruby API with YARD and yard-mruby, the C API with Doxygen. `site/scripts/check-reference.mjs` checks, among other things, that each directive name has a heading in `docs/directives/README.md`; the pages are written by hand | `next` | Ready to start; no step of section 6 of the site proposal produces it yet |
 | The "Before" line of the entry on `mruby_set` values that are not Strings in [the 3.0.0 release notes](releases/v3.0.0.md) | `next` | Done in [#769](https://github.com/matsumotory/ngx_mruby/pull/769). [#768](https://github.com/matsumotory/ngx_mruby/pull/768) ran the cases on `master` before its fix: a `to_s` that returns something other than a String ended the worker with a segmentation fault before and after `Nginx::Async.sleep`, and a value without `to_s` or whose `to_s` raises was read as a String although it was the exception, which stayed in the `mrb_state` of the worker. The line in `docs/releases/v3.0.0.md` and `.ja.md` now says this |
 | The documentation group of the site footer links the current 3.x documentation before the other version in both languages, without duplicating the existing 3.x link on 2.x pages (4.10 of [the site proposal](proposals/site.md)) | `next` | Merged in [#750](https://github.com/matsumotory/ngx_mruby/pull/750) as `c440a15dc`; local checks, independent review, CI and publication verification passed |
