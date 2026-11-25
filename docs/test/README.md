@@ -99,6 +99,9 @@ can live in files of its own:
   `_second_instance.rb`, `_workers.rb` and `_udp_wait_session.rb` are CRuby scripts that the prelude helpers and the
   cases run with `ruby`, and `_wait_for_listen.rb` is the CRuby script that
   test.sh runs to wait for nginx (see "Waiting for nginx to listen" below).
+  `_h3_client.py` is the Python script that `HttpVersions` of
+  `test/t/client.rb` runs to send a request over HTTP/3 (see "HTTP/2 and
+  HTTP/3" below).
   `_agent_proxy_client.rb` is a CRuby script (3.0 or
   later) that `agent_proxy.rb` runs itself: it loads `test/soak/mock_llm.rb`
   and `test/soak/http_client.rb`, runs the mock LLM upstream on 12372 and
@@ -1234,9 +1237,9 @@ then the values that every version must give:
 |---|---|
 | `/protocol` | `$server_protocol` (`HTTP/1.1`, `HTTP/2.0`, `HTTP/3.0`) |
 | `/content` | A content handler sets the status (201), the Content-Type, a header and a body in two `Nginx.rputs` |
-| `/headers_in` | `Nginx::Headers_in` reads a header of the request and the Host (`:authority` in HTTP/2 and HTTP/3), adds one and deletes one |
+| `/headers_in` | `Nginx::Headers_in` reads a header of the request, adds one and deletes one, and reads the Host header, which gives what `$http_host` gives: the host over HTTP/1.1 and HTTP/2, and `nil` over HTTP/3, where nginx takes `:authority` for `$host` and adds no Host header |
 | `/headers_out` | `Nginx::Headers_out` sets, replaces and deletes headers, and sets the Content-Type and a relative Location, which nginx makes absolute |
-| `/body` | A content handler reads the request body and writes it back: 10 bytes, and 100,000 bytes, which nginx keeps in a temporary file |
+| `/body` | A content handler reads the request body and writes it back: 10 bytes, and 100,000 bytes, which arrive in several reads or frames. `Nginx::Request#body` is nginx's `$request_body`, which is empty for a body in a temporary file, with every version, so the location has a `client_body_buffer_size` of 128k |
 | `/filter` | A header filter and a body filter change the output of a content handler |
 | `/sleep` | `Nginx::Async.sleep` in a content handler |
 | `/sub_request` | `Nginx::Async::HTTP.sub_request` from a content handler |

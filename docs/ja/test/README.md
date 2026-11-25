@@ -44,7 +44,7 @@ end
 `test/conf/nginx.conf`と`test/t/ngx_mruby.rb`を編集する代わりに、テストを専用のファイルに置くこともできます。
 
 - `test/conf/conf.d/<name>.conf`：`http {}`ブロックの最後でインクルードするフラグメントです。フラグメントは、専用のポートの`server {}`を持ちます。ポートは18080から18199です。ただし18116は、`test/t/cases/_second_instance.rb`が起動する2つ目のnginxが使います。`stream {}`のフラグメントは`test/conf/conf.d/stream/`に置きます。そのポートは12345から12399で、12357は2つ目のnginxが使います。各ポートは、これらの範囲の5桁の数で書いてください。そう書くと、`TEST_SH_PORT_OFFSET`で、そのポートがずれます。説明は下の「ポート」にあります。`master`のケースはマージで`next`に入るので、新しいケースには、両方のブランチで空いているポートを選んでください。`origin/master`と`origin/next`で、その番号を`git grep`して確かめます。18110より小さいポートも使えます。
-- `test/t/cases/<name>.rb`：`test/t/ngx_mruby.rb`の後に実行するテストのファイルです。`test.sh`は、このファイルの先頭に`test/t/cases/_prelude.rb`を付けて実行します。`_prelude.rb`は、`base`、`base_ssl`、`http_host`、`html_path`、`nginx_t`、`tcp_client`、`second_instance`、`suite_path`を定義します。`nginx_t`は、生成した設定で`nginx -t`を実行します。`suite_path`は、`test.sh`が実行するスイートのコピーの中で、スイートのファイルのパスを返します。CRubyのヘルパーは、`` `ruby #{suite_path('test/t/cases/_x.rb')}` ``のように実行してください。説明は下の「ポート」にあります。ケースのファイルは`SimpleTest.new`で始まり、`t.report`で終わります。名前が`_`で始まるファイルはヘルパーで、ケースとしては実行しません。`_tcp_client.rb`、`_filter_connection_client.rb`、`_request_body_client.rb`、`_second_instance.rb`は、`_prelude.rb`のヘルパーとケースが`ruby`で実行するCRubyのスクリプトです。`_wait_for_listen.rb`は、test.shがnginxを待つために実行するCRubyのスクリプトです。説明は下の「nginxがlistenするまで待つ」にあります。`_agent_proxy_client.rb`は、`agent_proxy.rb`が自分で実行するCRubyのスクリプトで、CRuby 3.0以降が要ります。このスクリプトは`test/soak/mock_llm.rb`と`test/soak/http_client.rb`を読み込み、リクエストを送る間、LLMのモックのupstreamを12372と12373で動かします。説明は下の「LLMのモックのupstream」にあります。このスクリプトは、`key=value`の行を出力します。
+- `test/t/cases/<name>.rb`：`test/t/ngx_mruby.rb`の後に実行するテストのファイルです。`test.sh`は、このファイルの先頭に`test/t/cases/_prelude.rb`を付けて実行します。`_prelude.rb`は、`base`、`base_ssl`、`http_host`、`html_path`、`nginx_t`、`tcp_client`、`second_instance`、`suite_path`を定義します。`nginx_t`は、生成した設定で`nginx -t`を実行します。`suite_path`は、`test.sh`が実行するスイートのコピーの中で、スイートのファイルのパスを返します。CRubyのヘルパーは、`` `ruby #{suite_path('test/t/cases/_x.rb')}` ``のように実行してください。説明は下の「ポート」にあります。ケースのファイルは`SimpleTest.new`で始まり、`t.report`で終わります。名前が`_`で始まるファイルはヘルパーで、ケースとしては実行しません。`_tcp_client.rb`、`_filter_connection_client.rb`、`_request_body_client.rb`、`_second_instance.rb`は、`_prelude.rb`のヘルパーとケースが`ruby`で実行するCRubyのスクリプトです。`_wait_for_listen.rb`は、test.shがnginxを待つために実行するCRubyのスクリプトです。説明は下の「nginxがlistenするまで待つ」にあります。`_h3_client.py`は、`test/t/client.rb`の`HttpVersions`がHTTP/3でリクエストを送るために実行するPythonのスクリプトです。説明は下の「HTTP/2とHTTP/3」にあります。`_agent_proxy_client.rb`は、`agent_proxy.rb`が自分で実行するCRubyのスクリプトで、CRuby 3.0以降が要ります。このスクリプトは`test/soak/mock_llm.rb`と`test/soak/http_client.rb`を読み込み、リクエストを送る間、LLMのモックのupstreamを12372と12373で動かします。説明は下の「LLMのモックのupstream」にあります。このスクリプトは、`key=value`の行を出力します。
 - フックのスクリプトは、これまでどおり`test/html/`に置きます。フラグメントは、そのスクリプトを`build/nginx/html/<name>.rb`として参照します。
 
 `test.sh`は、スイートのコピーにあるフラグメントに`nginx.conf`と同じ置き換えをして、ビルドしたnginxの`conf/conf.d/`にコピーします。スイートのコピーの説明は、下の「ポート」にあります。そして、ケースのファイルを1つずつ順に実行します。ケースが失敗すると、`test/t/ngx_mruby.rb`のアサーションが失敗したときと同じく、`test.sh`は0以外のステータスで終了します。
@@ -467,9 +467,9 @@ nginx：`test.sh`は、nginxのconfigureのオプション(`NGINX_DEFAULT_OPT`)�
 |---|---|
 | `/protocol` | `$server_protocol`(`HTTP/1.1`、`HTTP/2.0`、`HTTP/3.0`) |
 | `/content` | コンテンツハンドラが、ステータス(201)、Content-Type、ヘッダを1つと、2回の`Nginx.rputs`でボディを設定する |
-| `/headers_in` | `Nginx::Headers_in`が、リクエストのヘッダとHost(HTTP/2とHTTP/3では`:authority`)を読み、ヘッダを1つ足し、1つ消す |
+| `/headers_in` | `Nginx::Headers_in`が、リクエストのヘッダを読み、1つ足し、1つ消す。Hostヘッダも読み、`$http_host`と同じ値を返す。HTTP/1.1とHTTP/2ではホストを返し、HTTP/3では`nil`を返す。HTTP/3では、nginxは`:authority`を`$host`に使い、Hostヘッダを足さない |
 | `/headers_out` | `Nginx::Headers_out`が、ヘッダを設定し、置き換え、消す。Content-Typeと相対のLocationも設定し、nginxがLocationを絶対のURLにする |
-| `/body` | コンテンツハンドラがリクエストボディを読んで返す。10バイトのボディと、nginxが一時ファイルに置く100,000バイトのボディ |
+| `/body` | コンテンツハンドラがリクエストボディを読んで返す。10バイトのボディと、何回かの読み込みかフレームに分かれて届く100,000バイトのボディ。`Nginx::Request#body`はnginxの`$request_body`で、どのバージョンでも、一時ファイルに置いたボディでは空になる。そのため、このlocationは`client_body_buffer_size`を128kにする |
 | `/filter` | ヘッダのフィルターとボディのフィルターが、コンテンツハンドラの出力を変える |
 | `/sleep` | コンテンツハンドラの`Nginx::Async.sleep` |
 | `/sub_request` | コンテンツハンドラからの`Nginx::Async::HTTP.sub_request` |
