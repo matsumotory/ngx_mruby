@@ -1,27 +1,29 @@
 # Proposal: the rest of the v3 core before `v3.0.0-alpha.1`
 
-Status: in progress. The design decisions of section 5 were made on
-2026-11-09 (decisions 1 to 5) and on 2026-11-10 (decisions 6 and 7), and
-no point of the design is open. Done: 2.10 (#770), 2.11 (#780), 2.12
-(#779 and #783), 2.7 (#788), 2.8 (#796), the execution context and the
-phases of the Ruby API of 2.1 (#826), 2.6 (#825), the per-request store
-of 2.1 (#832), 2.9 (#833), 2.5 (#834), 2.4 (#835), 2.3 (#854) and 2.2
-([#855](https://github.com/matsumotory/ngx_mruby/pull/855), merged on
-2026-11-25, without the field of `Content-Length`, which 2.2 leaves to a
-later change): every row of section 4 is merged. Next step: the check
-before the tag of section 3, in
-[#862](https://github.com/matsumotory/ngx_mruby/pull/862), by
-2026-11-26; then the tag `v3.0.0-alpha.1` after the owner's go-ahead,
-and the archive of this proposal.
+Status: implemented, and tagged as `v3.0.0-alpha.1` on 2026-11-25
+(`574a0e4f6`, a pre-release). Every row of section 4 is merged: 2.10
+(#770), 2.11 (#780), 2.12 (#779 and #783), 2.7 (#788), 2.8 (#796), the
+execution context and the phases of the Ruby API of 2.1 (#826), 2.6
+(#825), the per-request store of 2.1 (#832), 2.9 (#833), 2.5 (#834), 2.4
+(#835), 2.3 (#854) and 2.2
+([#855](https://github.com/matsumotory/ngx_mruby/pull/855)), without the
+field of `Content-Length`, which 2.2 leaves to a later change. Section 5
+records the design decisions of 2026-11-09 (decisions 1 to 5) and
+2026-11-10 (decisions 6 and 7). The check before the tag of section 3 was
+made in [#862](https://github.com/matsumotory/ngx_mruby/pull/862). Its
+comparison of the performance with `v2.7.13` reported `FAIL` for the
+scenarios `sleep` and `stream_sleep`, and the owner accepted both on
+2026-11-25
+([the comment on #862](https://github.com/matsumotory/ngx_mruby/pull/862#issuecomment-7152686137)).
 
 This proposal designs what is left of step 4 of section 6 of
-[the v3 plan](v3-plan.md): the work that has to be on `next` before
+[the v3 plan](../v3-plan.md): the work that has to be on `next` before
 `v3.0.0-alpha.1` is tagged. The plan says to tag it "when the v2 suite
 passes under the new core with sanitizers clean". The fiber of a handler
 and how a request ends after a wait were designed in
-[the core stabilization proposal](archive/core-stabilization.md),
+[the core stabilization proposal](core-stabilization.md),
 implemented by #712 to #735 and are described in
-[How a handler waits](../DEVELOPMENT.md#how-a-handler-waits-the-record-of-its-fiber).
+[How a handler waits](../../DEVELOPMENT.md#how-a-handler-waits-the-record-of-its-fiber).
 What is left has had no design. The items are those of the row of step 4
 under "Queue" in `docs/HANDOFF.md` and of the row there on the rest of the
 async resume rewrite:
@@ -1103,6 +1105,6 @@ The entry of section 2.12 in the release notes of 3.0.0 says so.
 
 The pull requests of section 4 change code where several of the advisories
 of 2026 were (see section 1 of
-[the core stabilization proposal](archive/core-stabilization.md)). A
-finding on this code goes to the process of [SECURITY.md](../../SECURITY.md),
+[the core stabilization proposal](core-stabilization.md)). A
+finding on this code goes to the process of [SECURITY.md](../../../SECURITY.md),
 not into a pull request or this file.

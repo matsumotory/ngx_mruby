@@ -403,8 +403,14 @@ list of pull requests that GitHub generates; the release notes name the pull
 requests. A pre-release on `next` copies, from both files, the
 entries added or changed since the previous pre-release;
 `git diff <previous pre-release tag> <new tag> -- docs/releases/v3.0.0.md docs/releases/v3.0.0.ja.md`
-shows them. The first pre-release copies the whole section. Agents prepare
-the files and, after the owner's go-ahead, publish the release (see
+shows them. The first pre-release copies the whole section, unless the
+two copies together are longer than GitHub accepts for a release body
+(125,000 characters): then the body lists the headings of the section in
+each language, each linked to its entry in the file at the tag
+(`https://github.com/matsumotory/ngx_mruby/blob/<tag>/docs/releases/v3.0.0.md#<anchor>`,
+and `v3.0.0.ja.md` for the Japanese headings), as the body of
+`v3.0.0-alpha.1` does for its 78 entries. Agents prepare the files and,
+after the owner's go-ahead, publish the release (see
 [AGENTS.md](../../AGENTS.md#branches-and-pull-requests)); the owner publishes
 the advisory.
 
@@ -440,6 +446,9 @@ clocks of the machine and GitHub. The session then checks the published page:
 `curl -s https://ngx.mruby.org/ | grep -o 'Latest release: v[^"<]*'`
 prints the new version (the Japanese home page,
 `https://ngx.mruby.org/ja/`, prints it after `最新のリリースは`).
+The home page names the newest stable release only, so after a
+pre-release it prints the same stable version as before; the session
+still starts the run of `site.yml` and checks that it passes.
 
 ## Security fixes
 
