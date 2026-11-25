@@ -47,12 +47,23 @@ t.assert('http2_http3 - a content handler sets the status, the Content-Type, a h
   end
 end
 
+# The host of the request: curl sends a Host header over HTTP/1.1 and
+# :authority over HTTP/2, for which nginx adds a Host header to the headers
+# of the request. Over HTTP/3, nginx takes :authority for $host and adds no
+# Host header, so $http_host is empty as well. Headers_in["Host"] gives what
+# $http_host gives, in each version.
+HOST_HEADER = {
+  '1.1' => 'host="localhost:18173" http_host="localhost:18173"',
+  '2' => 'host="localhost:18173" http_host="localhost:18173"',
+  '3' => 'host=nil http_host=nil'
+}.freeze
+
 t.assert('http2_http3 - Nginx::Headers_in reads, adds and deletes the headers of the request', 'GET /headers_in') do
   responses = http2_http3_responses('/headers_in', headers: { 'X-Test' => 'from client', 'X-Deleted' => 'here' })
   http2_http3_each(t, responses) do |version, res|
     t.assert_equal 200, res.code, "status over HTTP/#{version}"
-    t.assert_equal 'x-test="from client" host="localhost:18173" x-added="added" x-deleted=nil', res.body,
-                   "body over HTTP/#{version}"
+    t.assert_equal "x-test=\"from client\" x-added=\"added\" x-deleted=nil #{HOST_HEADER[version]} var_host=\"localhost\"",
+                   res.body, "body over HTTP/#{version}"
   end
 end
 
@@ -76,9 +87,10 @@ t.assert('http2_http3 - a content handler reads a short request body', 'POST /bo
   end
 end
 
-# 100,000 bytes, more than client_body_buffer_size (16k on 64-bit
-# platforms), so nginx keeps the body in a temporary file; the response is
-# as long, so that the output also goes out in several frames.
+# 100,000 bytes, which reach nginx in several reads or frames, and fit in
+# the client_body_buffer_size of the location (128k): Nginx::Request#body
+# is nginx's $request_body, which is empty for a body in a temporary file.
+# The response is as long, so the output also goes out in several frames.
 LARGE_BODY = (0...100_000).map { |i| (97 + i % 26).chr }.join.b
 
 t.assert('http2_http3 - a content handler reads a request body of 100,000 bytes and writes it back', 'POST /body') do
