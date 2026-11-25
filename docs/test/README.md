@@ -1672,8 +1672,10 @@ shows that the only open connection is the one asking for it. A sample is:
 | `fd` | entries in `/proc/<worker>/fd` | `fd` minus `up` the same in all samples |
 | `up` | `connections_open` of the mock LLM (0 in a scenario without one) | at most `SOAK_CONCURRENCY`; 0 in the `abort` and `cut` scenarios |
 | `active` | `Active connections` of `stub_status` | 1 in all samples |
-| `rss_step`, `rss_total` | `VmRSS` in `/proc/<worker>/status` | last sample minus the one before it (`rss_step`) at most `SOAK_RSS_STEP_KB`; last sample minus the first (`rss_total`) at most `SOAK_RSS_TOTAL_KB` |
-| `pss_slope`, `dirty_slope` | `Pss` and `Private_Dirty` in `/proc/<worker>/smaps_rollup` | least-squares slope over all samples at most `SOAK_SLOPE_B` bytes per request (per session in `stream_sleep`) |
+| `rss_step` | `VmRSS` in `/proc/<worker>/status` | last sample minus the one before it at most `SOAK_RSS_STEP_KB` |
+| `rss_total` | same as `rss_step` | last sample minus the first at most `SOAK_RSS_TOTAL_KB` |
+| `pss_slope` | `Pss` in `/proc/<worker>/smaps_rollup` | least-squares slope over all samples at most `SOAK_SLOPE_B` bytes per request (per session in `stream_sleep`) |
+| `dirty_slope` | `Private_Dirty` in the same file | same as `pss_slope` |
 
 The worker is in the same state at every sample: every request sent before it
 has finished, and the only request running is `/debug/stats` itself. The
@@ -2018,7 +2020,7 @@ and its ports are not those of the soak.
 | `SOAK_PORT_BASE` | 12360 | port of the scenarios; the backend of `sub_request` uses the next one, the mock LLM the one after |
 | `SOAK_RSS_STEP_KB` | 512 | VmRSS limit for the last window, in kB |
 | `SOAK_RSS_TOTAL_KB` | 1024 | VmRSS limit from the first to the last sample, in kB |
-| `SOAK_WINDOWS` | 6 | windows after the warmup (2 or more); one sample after each |
+| `SOAK_WINDOWS` | 6 | windows after the warmup (2 or more) |
 | `SOAK_SLOPE_B` | 8 | limit of the slope of `Pss` and of `Private_Dirty`, in bytes per request |
 | `SOAK_REQUIRE_SMAPS_ROLLUP` | unset | set to 1 to fail a scenario whose `smaps_rollup` cannot be read (the CI job does) |
 
@@ -2059,10 +2061,10 @@ glibc 2.35, Linux 6.12) in a container on aarch64, as a user other than root,
 with the default `SOAK_WINDOWS` of 6. The values are the smallest and the
 largest slope over all scenarios and runs of a row, in bytes per request:
 
-| Runs | `Pss` | `Private_Dirty` | `VmRSS` (not checked) |
-|---|---|---|---|
-| aarch64, 5 runs, `SOAK_N=20000` | -3.8 to +2.5 | -1.6 to +0.5 | -1.1 to +8.4 |
-| aarch64, 1 run, `SOAK_N=100000` | -0.3 to +0.3 | -0.2 to +0.1 | -0.2 to +1.4 |
+| `SOAK_N` | Runs | `Pss` | `Private_Dirty` | `VmRSS` (not checked) |
+|---|---|---|---|---|
+| 20000 | 5 | -3.8 to +2.5 | -1.6 to +0.5 | -1.1 to +8.4 |
+| 100000 | 1 | -0.3 to +0.3 | -0.2 to +0.1 | -0.2 to +1.4 |
 
 The `VmRSS` slope is shown for comparison only: its one-time growth of
 about 120 kB in the middle of a run alone gives a slope of about 8 bytes per

@@ -669,11 +669,13 @@ nginxのワーカーは、何日もリクエストを処理し続けます。終
 | `fibers` | `gc_root`と同じHashの`gc_root_fibers` | どのサンプルでも同じ |
 | `arena` | `gc_root`と同じHashの`gc_arena_idx` | どのサンプルでも同じ |
 | `timers` | 同じHashの`timers` | すべてのサンプルで0 |
-| `fd` | `/proc/<worker>/fd`にあるエントリーの数 | `fd`から`up`を引いた値が、すべてのサンプルで同じ |
+| `fd` | `/proc/<worker>/fd`のエントリーの数 | `fd`から`up`を引いた値が、すべてのサンプルで同じ |
 | `up` | モックのLLMの`connections_open`。モックを使わないシナリオでは、常に0 | `SOAK_CONCURRENCY`以下。`abort`と`cut`のシナリオでは、いつも0になる |
 | `active` | `stub_status`の`Active connections` | すべてのサンプルで1 |
-| `rss_step`、`rss_total` | `/proc/<worker>/status`にある`VmRSS` | 最後のサンプルからその前のサンプルを引いた値（`rss_step`）が`SOAK_RSS_STEP_KB`以下。最後のサンプルから最初のサンプルを引いた値（`rss_total`）が`SOAK_RSS_TOTAL_KB`以下 |
-| `pss_slope`、`dirty_slope` | `/proc/<worker>/smaps_rollup`にある`Pss`と`Private_Dirty` | すべてのサンプルに最小二乗法で引いた直線の傾きが、リクエストあたり`SOAK_SLOPE_B`バイト以下。`stream_sleep`ではセッションあたり |
+| `rss_step` | `/proc/<worker>/status`にある`VmRSS` | 最後のサンプルとその前のサンプルの差が、`SOAK_RSS_STEP_KB`を超えないこと |
+| `rss_total` | `rss_step`と同じ | 最後のサンプルと最初のサンプルの差が、`SOAK_RSS_TOTAL_KB`を超えないこと |
+| `pss_slope` | `/proc/<worker>/smaps_rollup`にある`Pss` | すべてのサンプルに最小二乗法で引いた直線の傾きが、リクエストあたり`SOAK_SLOPE_B`バイトを超えないこと。`stream_sleep`ではセッションあたり |
+| `dirty_slope` | `pss_slope`と同じファイルにある`Private_Dirty` | `pss_slope`と同じ |
 
 どのサンプルの時点でも、ワーカーは同じ状態にあります。それより前に送ったリクエストはすべて終わっていて、動いているリクエストは`/debug/stats`自身だけです。そのため、カウンタの値は、それまでに動いたリクエストの数によって変わりません。
 
@@ -811,7 +813,7 @@ $ ONLY_RUN=1 sh test/soak/run.sh                       # run without building
 $ ONLY_RUN=1 SOAK_SCENARIOS=sleep,disconnect SOAK_N=100000 sh test/soak/run.sh
 ```
 
-最初の実行には数分かかります。gemをクローンし、mrubyとnginxをビルドするからです。シナリオの実行には約1分かかり、aarch64のコンテナでは、そのうち`agent_*`のシナリオが約18秒です。メモリのテーブルには、シナリオごとに`VmRSS`、`Pss`、`Private_Dirty`の3つのレコードがあり、各サンプルの値をkBで、傾きをリクエストあたりのバイト数で示します。その下の結果のテーブルには、シナリオごとに1つのレコードがあります。ある値がサンプルの間で違うときは、すべての値を`/`で区切って示し、その理由をテーブルの下に挙げます。ログは`build_soak/nginx/soak/logs/`にあり、`error.<scenario>.log`、`stderr.<scenario>.log`、`mock.<scenario>.log`、`soak.log`の4種類です。`mock.<scenario>.log`は、`agent_*`のシナリオでモックのLLMが出力したもので、`soak.log`は`soak.rb`の出力の記録です。
+最初の実行には数分かかります。gemをクローンし、mrubyとnginxをビルドするからです。シナリオの実行には約1分かかり、aarch64のコンテナでは、そのうち`agent_*`のシナリオが約18秒です。メモリのテーブルには、シナリオごとに`VmRSS`、`Pss`、`Private_Dirty`の3つのレコードがあり、各サンプルの値をkBで、傾きをリクエストあたりのバイト数で示します。その下の結果のテーブルには、シナリオごとに1つのレコードがあります。ある値がサンプルの間で違うときは、すべての値を`/`で区切って示し、その理由をテーブルの下に挙げます。ログは`build_soak/nginx/soak/logs/`にあり、`error.<scenario>.log`、`stderr.<scenario>.log`、`mock.<scenario>.log`、`soak.log`の4種類です。`mock.<scenario>.log`は、`agent_*`のシナリオでモックのLLMが出力したもので、`soak.log`は`soak.rb`が出力した内容の記録です。
 
 `test.sh`が止めるのは、自分が起動したnginxだけです。説明は上の「nginxを止める」にあります。また、`test.sh`のポートは、ソークテストのポートとは重なりません。
 
@@ -826,7 +828,7 @@ $ ONLY_RUN=1 SOAK_SCENARIOS=sleep,disconnect SOAK_N=100000 sh test/soak/run.sh
 | `SOAK_PORT_BASE` | 12360 | シナリオのポート。`sub_request`のバックエンドは次の番号を使い、モックのLLMはさらにその次の番号を使う |
 | `SOAK_RSS_STEP_KB` | 512 | 最後のウィンドウでのVmRSSの上限。単位はkB |
 | `SOAK_RSS_TOTAL_KB` | 1024 | 最初のサンプルから最後のサンプルまでのVmRSSの上限。単位はkB |
-| `SOAK_WINDOWS` | 6 | ウォームアップの後のウィンドウの数。2以上。各ウィンドウの後にサンプルを取る |
+| `SOAK_WINDOWS` | 6 | ウォームアップの後のウィンドウの数。2以上にする |
 | `SOAK_SLOPE_B` | 8 | `Pss`と`Private_Dirty`の傾きの上限。単位はリクエストあたりのバイト |
 | `SOAK_REQUIRE_SMAPS_ROLLUP` | 未設定 | 1にすると、`smaps_rollup`を読めないシナリオを失敗にする。CIのジョブが設定する |
 
@@ -848,12 +850,12 @@ VmRSSの2つの上限は、2026年10月3日にデフォルトのシナリオを�
 
 `Pss`と`Private_Dirty`の傾きの上限は、2026年11月25日にデフォルトのシナリオを実行した結果から決めました。環境は、nginx 1.31.8、Ubuntu 22.04、gcc 11、glibc 2.35、Linux 6.12で、aarch64のコンテナの中で、root以外のユーザーで実行しました。`SOAK_WINDOWS`はデフォルトの6です。テーブルの値は、カラムごとに、そのレコードにあるすべての実行とシナリオのうちで、最も小さい傾きと最も大きい傾きです。単位はリクエストあたりのバイトです。
 
-| 実行 | `Pss` | `Private_Dirty` | `VmRSS`の傾き。上限では確かめない |
-|---|---|---|---|
-| aarch64、5回、`SOAK_N=20000` | -3.8から+2.5 | -1.6から+0.5 | -1.1から+8.4 |
-| aarch64、1回、`SOAK_N=100000` | -0.3から+0.3 | -0.2から+0.1 | -0.2から+1.4 |
+| `SOAK_N` | 実行の回数 | `Pss` | `Private_Dirty` | `VmRSS`の傾き。上限では確かめない |
+|---|---|---|---|---|
+| 20000 | 5 | -3.8から+2.5 | -1.6から+0.5 | -1.1から+8.4 |
+| 100000 | 1 | -0.3から+0.3 | -0.2から+0.1 | -0.2から+1.4 |
 
-`VmRSS`の傾きは、比べるために示すだけです。`VmRSS`は、実行の途中で1回だけ約120 kB増えると、それだけでリクエストあたり約8バイトの傾きになります。上限のリクエストあたり8バイトは、`Pss`の傾きの最大の約3倍、`Private_Dirty`の傾きの最大の16倍です。傾きの上限は、デフォルトの`SOAK_N`で、リクエストあたり8バイト以上のリークを見つけます。これは、`VmRSS`の全体の上限が見つけるリークの約6分の1の大きさです。HTTPのハンドラが動くたびに`malloc(16)`を1つリークさせたビルドで試しました。リークするのはCのヒープの32バイトのチャンクで、このビルドはそのチャンクに書き込みます。このビルドでは、`Pss`と`Private_Dirty`の傾きがリクエストあたり34.6から85.2バイトになり、HTTPの12のシナリオがすべて失敗しました。そのうち9つでは、`VmRSS`は2つの上限に収まっていました。そのときの全体の増分は704から788 kBです。HTTPのハンドラを動かさない`stream_sleep`は通りました。リクエストあたり8バイトより小さなリークを探すには、`SOAK_N`を上げてください。傾きのばらつきは、`SOAK_N`を上げると小さくなります。
+`VmRSS`の傾きは、比べるために示すだけです。`VmRSS`は、実行の途中で1回だけ約120 kB増えると、それだけでリクエストあたり約8バイトの傾きになります。上限のリクエストあたり8バイトは、`Pss`の傾きの最大の約3倍、`Private_Dirty`の傾きの最大の16倍です。傾きの上限は、デフォルトの`SOAK_N`で、リクエストあたり8バイト以上のリークを見つけます。これは、`VmRSS`の全体の上限が見つけるリークの約6分の1の大きさです。HTTPのハンドラが動くたびに`malloc(16)`を1つリークさせたビルドで試しました。リークするのはCのヒープの32バイトのチャンクで、このビルドはそのチャンクに書き込みます。このビルドでは、`Pss`と`Private_Dirty`の傾きがリクエストあたり34.6から85.2バイトになり、HTTPの12のシナリオがすべて失敗しました。そのうち9つでは、`VmRSS`は2つの上限に収まっていました。そのときの全体の増分は704から788 kBです。HTTPのハンドラを動かさない`stream_sleep`は通りました。リクエストあたり8バイトより小さなリークを探すには、`SOAK_N`を上げてください。`SOAK_N`を上げると、傾きのばらつきもそれだけ小さくなるからです。
 
 ### シナリオを追加する
 
