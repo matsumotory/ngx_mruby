@@ -7,6 +7,13 @@
 # memcpy() with a length of 0.
 nonnull-attribute:src/core/ngx_string.c
 
+# nginx core: over HTTP/3 the chain of a request body can end with an empty
+# buffer whose pos is NULL, and ngx_http_variable_request_body() ($request_body,
+# which Nginx::Request#body reads) copies every buffer of the chain with
+# ngx_cpymem(), so it passes that NULL to memcpy() with a length of 0
+# (POST /body of test/t/cases/http2_http3.rb).
+nonnull-attribute:ngx_http_variable_request_body
+
 # nginx core: on x86 (NGX_HAVE_NONALIGNED) ngx_http_parse_request_line()
 # compares the method with one uint32_t load (ngx_str3_cmp and friends). A
 # request line that starts at an odd offset of the buffer, as the one after
