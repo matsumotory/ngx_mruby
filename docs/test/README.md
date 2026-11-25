@@ -1465,7 +1465,14 @@ sends its stderr to `error.log` once the configuration is loaded, so reports
 from code that runs while nginx parses the configuration (directive handlers,
 script compilation, `mruby_init_code`) appear on the terminal instead; read
 both. `test/ubsan.supp` lists the reports that come from nginx itself, each
-with the reason. `test/lsan.supp` does the same for LeakSanitizer: nginx
+with the reason. Among them are the `alignment` reports of nginx's HTTP/2
+module and QUIC code (`src/http/v2/`, `src/event/quic/`): on x86, where
+nginx defines `NGX_HAVE_NONALIGNED`, they read and write the 16- and 32-bit
+numbers of frames and packets with one load or store at any offset, and
+the HTTP/2 and HTTP/3 requests of `test/t/cases/http2_http3.rb` run that
+code. On arm64, nginx copies those numbers byte by byte, so a local run
+in a container on an Apple Silicon Mac shows no `alignment` report that
+the x86-64 cell of CI would show. `test/lsan.supp` does the same for LeakSanitizer: nginx
 never frees `cycle->connections` and the two event arrays it allocates in
 `ngx_event_process_init`, and whether LeakSanitizer reports them at exit
 depends on whether anything outside them still points at them, so without
