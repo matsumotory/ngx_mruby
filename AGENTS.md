@@ -77,7 +77,7 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
   `docs/test/README.md`), so that a `WARN`, a `FAIL` or an `ERROR` is
   found before CI runs. The `perf` job of `.github/workflows/test.yml`
   then runs the same comparison on the runner as the check of CI, on
-  `master` and on `next`.
+  `master` and on `next`, and `ci-ok` needs it.
   - The author quotes the local comparison in the PR body, under "Leak /
     performance impact" (see `.github/PULL_REQUEST_TEMPLATE.md`): the table
     with the header lines of `report.txt` above it (the line with `N`,
@@ -93,8 +93,13 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     binary. Such a PR says so and states instead what the change adds per
     session, as read from the diff (calls, allocations, copies).
   - The reviewer writes, for the scenario with the largest change and for
-    each row that is not `ok`: its base and head Ir per request without GC,
-    and the change in instructions per request and in percent.
+    each row that is not plain `ok` (an `ok (accepted: ...)` row
+    included): its base and head Ir per request without GC, and the change
+    in instructions per request and in percent. On `next`, the judged
+    number also leaves out the constant lookups that miss mruby's constant
+    cache; the mruby 3.3.0 of `master` has no such cache, so `master`
+    judges the number without GC ("Known differences" under "Performance
+    comparison with callgrind" in `docs/test/README.md`).
   - A scenario at `WARN` (3% or more instructions per request without GC
     than the base) or `FAIL` (5% or more) holds the merge until the owner
     accepts the difference on the PR; the session asks the owner. `ERROR`
@@ -111,12 +116,16 @@ file. Read it before you change `src/`, `mrbgems/` or the build.
     goes to the owner without a second run.
   - A session does not merge a PR while the latest run of its `perf` job
     reports `FAIL` or `ERROR`, except for a `FAIL` that the owner accepted
-    on the PR. This holds although `ci-ok` does not need the job yet (on
-    `next`, "In CI" in `docs/test/README.md` still calls the job advisory;
-    a follow-up PR to `next` aligns that text). The plan (Pillar E of
-    `docs/proposals/v3-plan.md` on `next`) adds the job to the `needs` of
-    `ci-ok` once it has run on code changes without false alarms; from then
-    on a `FAIL` or an `ERROR` also fails `ci-ok`.
+    on the PR. `ci-ok` needs the job, so such a run also fails the
+    required check; a `WARN` does not. For a `FAIL` that the owner
+    accepted, the PR adds a line to `test/perf/accepted.txt` once the
+    owner's acceptance is in a comment on the PR, and the comment names the
+    run, the scenario and its change. The line has the condition
+    `pull-request`, the base branch, the PR's number, the scenario and an
+    allowance at or above the measured change without GC (for example
+    `pull-request master 812 auth 7`). The run of that push shows the row
+    as accepted and passes ("In CI" under "Performance comparison with
+    callgrind" in `docs/test/README.md`).
 - Before a tag. Each PR is compared only with its base, so changes that
   stay below `WARN` can add up. The check of "Before the tag" (see
   `docs/releases/README.md`) therefore also compares the commit that it

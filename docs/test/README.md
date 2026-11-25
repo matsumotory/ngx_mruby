@@ -86,9 +86,9 @@ print the second nginx's `error.log` when the line is set.
 Its `ci-ok` job is the status check that rulesets require: it fails unless
 every job that it lists in `needs` passed or was skipped because the
 `changes` job decided so. These are the `changes` job, every job of the
-`build` matrix and the `files` job, and on `next` also the `soak` job. The
-`perf` job (see "In CI" under "Performance comparison with callgrind") is
-not among them yet.
+`build` matrix, the `perf` job and the `files` job, and on `next` also the
+`soak` job. A `FAIL` or `ERROR` row of the `perf` job fails it (see "In
+CI" under "Performance comparison with callgrind").
 
 A run of `test.yml` for a pull request starts when the pull request is
 opened or reopened, when a commit is pushed to its head, and when it is
@@ -346,8 +346,12 @@ build and deploy of the site on `next` after every push to `master`,
 `zizmor` and `gem-heads` run on ready pull requests (and `gem-heads`
 weekly), and `site-v2` only on "Run workflow".
 
-`ci-ok` passes a skipped `build` or `files` job only when `changes` passed
-and decided that the run does not need it. A job that was skipped for
+`ci-ok` passes a skipped `build`, `perf` or `files` job only when `changes`
+passed and decided that the run does not need it. For `perf`, which runs
+on pull requests only, that is a run whose `build` is `none`, or a run
+that is not one of a pull request. A `perf` job that starts and finds no
+file to compare (`perf` `false` and no label `perf`) passes without
+measuring. A job that was skipped for
 another reason (a failed `changes` job) fails `ci-ok`, as does a needed job
 that did not pass. A pull request whose run skipped jobs that its files do
 not need meets condition 2 of "Review and merge" with that run.
@@ -1486,6 +1490,51 @@ at the heads of their branches at that time (both builds of one run at the
 same commits). The change between base and head of one run is what the
 thresholds compare.
 
+### Known differences
+
+`test/perf/accepted.txt` lists the differences that are accepted, one line
+each: a condition, its values in the base and the head, the scenario, and
+an allowance on the change of Ir per request without GC, in percent; the
+comment at the top of the file has the format. When a line applies, a
+`WARN` or `FAIL` row of its scenario within the allowance shows as `ok
+(accepted: ...)`, does not fail the run, and is a notice in the
+annotations of the job; a change above the allowance keeps its `WARN` or
+`FAIL`. A header line of `report.txt`, and a line below the table of the
+job summary, print the mruby version of both builds and the differences
+that applied, or `none apply`. `perf.rb` reads the file before it
+measures and stops at a line that is not in the format, with the file and
+the line number; `--self-test` checks the file too. The GC share is
+printed and not judged, so the file has no allowance on it. The file and
+its format are the ones of `next`; the file on `master` has no line yet.
+
+There are two conditions:
+
+- `mruby-version` compares the `MAJOR.MINOR` of `MRUBY_RELEASE_MAJOR` and
+  `MRUBY_RELEASE_MINOR` in `mruby/include/mruby/version.h` of each build's
+  tree, and applies only when both builds match it: `mruby-version 3.3 3.4
+  auth 8` would apply when the base bundles mruby 3.3.x and the head
+  3.4.x. `master` bundles mruby 3.3.0, and no difference of another mruby
+  is accepted on `master`.
+- `pull-request` is for a `FAIL` that the owner accepted on a pull request
+  (see "In CI"). Its line names the base branch and the number of the
+  pull request, for example `pull-request master 812 auth 7`, and applies
+  only in the `perf` job of that pull request, which passes them to
+  `perf.rb` as `PERF_BASE_REF` and `PERF_PULL_REQUEST`; a local run
+  without them, the comparison with the previous tag among them, applies
+  no such line. The row shows as `ok (accepted: pull request #812 to
+  master, +7%)`, and the header line adds `pull request #812 to master`.
+  When a `pull-request` line and a `mruby-version` line apply to one
+  scenario, the `pull-request` line does. The line stays in the file after
+  the merge as the record, and applies to no other pull request.
+
+On `next`, the number that the thresholds judge also leaves out the
+constant lookups that miss the constant cache of mruby 4 ("What it
+measures" in `docs/test/README.md` on `next`). The mruby 3.3.0 of
+`master` has no such cache: `OP_GETCONST` calls `mrb_vm_const_get` on
+every lookup (`mruby/src/vm.c`), so the cost of a constant lookup does not
+depend on where the ireps were allocated, and the number without GC keeps
+it on `master`.
+
 ### Running it
 
 When the pull request changes an input of the measured binary or the
@@ -1543,6 +1592,9 @@ time.
 | `PERF_FAIL_PERCENT` | 5 | FAIL from this change |
 | `PERF_PORT_BASE` | 12370 | port of the scenarios; the backend of `sub_request` uses the next one, the mock LLM the one after |
 | `PERF_REPORT_DIR` | `build_perf` | where `report.txt` and `report.json` go |
+| `PERF_ACCEPTED_FILE` | `test/perf/accepted.txt` | the accepted differences (see "Known differences"); an empty file shows the verdicts without them |
+| `PERF_BASE_REF` | unset | the base branch of the pull request, matched against the `pull-request` lines of the accepted file; set with `PERF_PULL_REQUEST` or not at all |
+| `PERF_PULL_REQUEST` | unset | the number of the pull request; the `perf` job sets both variables |
 | `PERF_REQUEST_FUNCTIONS` | `ngx_mrb_start_fiber` | names of the function counted once per request in the seven scenarios of `test/soak/nginx.conf` (see "In CI") |
 
 ### In CI
@@ -1616,13 +1668,29 @@ function. `ruby test/perf/perf.rb --self-test` checks the name rules and the
 reading of a profile on a made-up profile, without a build or valgrind;
 `compare.sh` and `run.sh` run it first.
 
-`ci-ok` does not need the job yet, so a `FAIL` does not fail `ci-ok`.
-"Design principles" in `AGENTS.md` still holds the merge of a pull request
-whose latest `perf` run reports `FAIL` or `ERROR` (unless the owner
-accepted the `FAIL` on the pull request), and a `WARN` until the owner
-accepts it. The plan (Pillar E of `docs/proposals/v3-plan.md` on `next`) is
-to add the job to the `needs` of `ci-ok` once it has run on pull requests
-that change `src/` or `mrbgems/` without false alarms.
+`ci-ok` needs the job, so a `FAIL` or an `ERROR` row fails the required
+check, and a `WARN` row does not. Instruction counts do not vary with the
+runner's speed (calibration above). The latest runs of the job on the
+pull requests to `master` merged from 2026-10-19 to 2026-11-24 compared
+in 28 runs (14 scenarios each; 23 of the pull requests changed `src/`,
+`mrbgems/`, `mruby/` or `build_config.rb`), and every row was `ok`, the
+largest change 0.62% without GC (`proxy_stream_plain_50`, on #822).
+"Design principles" in [AGENTS.md](../../AGENTS.md) says what each verdict
+asks of the pull request: a `WARN` goes to the owner through the review,
+and a `FAIL` holds the merge until the owner accepts it on the pull
+request. An `ERROR` is a measurement that failed: fix the run or run it
+again.
+
+To pass a `FAIL` that the owner accepted, the pull request adds a line to
+`test/perf/accepted.txt` after the owner's acceptance is in a comment on
+it (the comment names the run, the scenario and its change): the
+condition `pull-request`, the base branch, the number of the pull
+request, the scenario, and an allowance in percent at or above the
+measured change without GC, for example `pull-request master 812 auth 7`
+for +6.05% ("Known differences"). The push of the line runs the job
+again, which shows the row as `ok (accepted: ...)` and passes; a later
+change above the allowance is a `FAIL` again. A `FAIL` that no line
+covers, or an `ERROR`, keeps `ci-ok` failed.
 
 The artifact `perf-callgrind` has the report, and for `base` and `head` the
 profiles of the windows (`callgrind/callgrind.out.<scenario>`), the output
