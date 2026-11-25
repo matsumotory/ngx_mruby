@@ -3,13 +3,18 @@
 # Memory soak test driver for ngx_mruby (CRuby 3.0 or later, Linux).
 #
 # For each scenario, soak.rb starts the nginx built by test/soak/run.sh, sends
-# SOAK_WARMUP requests or TCP sessions, then SOAK_N in three windows,
+# SOAK_WARMUP requests or TCP sessions, then SOAK_N in SOAK_WINDOWS windows,
 # and takes a sample before the first window and after each window.
 # A sample is taken while no scenario request or session is open:
 # Nginx::Debug.stats after HTTP GC (and stream GC for stream_sleep),
-# and the worker's VmRSS, open file descriptors and the
-# stub_status connection counts. The counters must stay the same from sample
-# to sample, and VmRSS must stay within SOAK_RSS_STEP_KB and SOAK_RSS_TOTAL_KB.
+# the worker's VmRSS, its Pss and Private_Dirty (/proc/<pid>/smaps_rollup),
+# its open file descriptors and the stub_status connection counts. The
+# counters must stay the same from sample to sample, VmRSS must stay within
+# SOAK_RSS_STEP_KB and SOAK_RSS_TOTAL_KB, and the least-squares slope of Pss
+# and of Private_Dirty over the samples, in bytes per request or session,
+# must stay within SOAK_SLOPE_B. Where smaps_rollup cannot be read, the two
+# values are not recorded and their slope is not checked, unless
+# SOAK_REQUIRE_SMAPS_ROLLUP is 1 (the CI job), which fails the scenario.
 # A scenario with a mock LLM upstream (the agent_* scenarios) also starts
 # test/soak/mock_llm.rb on port base + 2 and reads its counters. The exit
 # status is 1 when any scenario fails.
@@ -45,7 +50,9 @@ WARMUP = env_int('SOAK_WARMUP', 2000)
 CONCURRENCY = env_int('SOAK_CONCURRENCY', 8)
 RSS_STEP_KB = env_int('SOAK_RSS_STEP_KB', 512)
 RSS_TOTAL_KB = env_int('SOAK_RSS_TOTAL_KB', 1024)
-WINDOWS = 3
+WINDOWS = env_int('SOAK_WINDOWS', 6)
+SLOPE_B = env_int('SOAK_SLOPE_B', 8)
+REQUIRE_SMAPS_ROLLUP = env_int('SOAK_REQUIRE_SMAPS_ROLLUP', 0) == 1
 
 IO_TIMEOUT = 30       # seconds to wait for one response
 START_TIMEOUT = 10    # seconds to wait for the worker and the listening port
@@ -98,6 +105,29 @@ end
 
 def vm_rss_kb(pid)
   File.read("/proc/#{pid}/status")[/^VmRSS:\s+(\d+)\s+kB/, 1].to_i
+end
+
+# Pss and Private_Dirty of the process in kB, or nil when
+# /proc/<pid>/smaps_rollup cannot be read (Linux before 4.14, or a /proc
+# that hides it) or lacks one of them.
+def smaps_rollup_kb(pid)
+  text = File.read("/proc/#{pid}/smaps_rollup")
+  pss = text[/^Pss:\s+(\d+)\s+kB/, 1]
+  dirty = text[/^Private_Dirty:\s+(\d+)\s+kB/, 1]
+  pss && dirty ? { pss_kb: pss.to_i, dirty_kb: dirty.to_i } : nil
+rescue SystemCallError
+  nil
+end
+
+# The least-squares slope of the values (kB) over the samples, in bytes per
+# request or session: x is the number sent after the warmup at each sample.
+def slope_b(values)
+  xs = Array.new(WINDOWS + 1) { |w| N * w / WINDOWS }
+  mx = xs.sum.to_f / xs.size
+  my = values.sum.to_f / values.size
+  sxx = xs.sum { |x| (x - mx)**2 }
+  sxy = xs.zip(values).sum { |x, y| (x - mx) * (y - my) }
+  sxy / sxx * 1024
 end
 
 def fd_count(pid)
@@ -361,6 +391,7 @@ def take_sample(nginx, mock, scenario)
   end
   fd = fd_count(nginx.worker)
   stats.merge(status).merge(rss_kb: vm_rss_kb(nginx.worker), fd: fd, upstream: upstream, fd_own: fd - upstream)
+       .merge(smaps_rollup_kb(nginx.worker) || { pss_kb: nil, dirty_kb: nil })
 end
 
 # The keys of Nginx::Debug.stats: always these, and the two keys of mruby's
@@ -425,6 +456,17 @@ def judge(samples, scenario)
   total = rss[-1] - rss[0]
   problems << "VmRSS grew #{step} kB in the last window (limit #{RSS_STEP_KB})" if step > RSS_STEP_KB
   problems << "VmRSS grew #{total} kB from the first sample (limit #{RSS_TOTAL_KB})" if total > RSS_TOTAL_KB
+  { pss_kb: 'Pss', dirty_kb: 'Private_Dirty' }.each do |key, name|
+    values = samples.map { |s| s[key] }
+    if values.include?(nil)
+      problems << "#{name} missing: /proc/<worker>/smaps_rollup could not be read" if REQUIRE_SMAPS_ROLLUP
+      next
+    end
+
+    slope = slope_b(values)
+    unit = scenario.mode == :tcp ? 'session' : 'request'
+    problems << format('%s grew %.1f B per %s over the samples (limit %d)', name, slope, unit, SLOPE_B) if slope > SLOPE_B
+  end
   problems
 end
 
@@ -554,8 +596,42 @@ def format_values(values)
   values.uniq.size == 1 ? values.first.to_s : values.join('/')
 end
 
+def log_table(header, rows)
+  widths = header.each_index.map { |i| ([header] + rows).map { |row| row[i].size }.max }
+  log
+  log([header, *rows].map { |row| row.each_with_index.map { |cell, i| cell.ljust(widths[i]) }.join('  ').rstrip })
+end
+
+# The slope of one memory value of a scenario's samples, or '-' when the
+# samples are not complete or a sample lacks the value.
+def format_slope(samples, key)
+  values = samples.map { |x| x[key] }
+  return '-' if samples.size != WINDOWS + 1 || values.include?(nil)
+
+  format('%+.1f', slope_b(values))
+end
+
+# The memory of the worker at each sample, one row per scenario and value.
+def memory_report(results)
+  header = ['scenario', 'kB', *Array.new(WINDOWS + 1) { |i| "s#{i}" }, 'B/request']
+  rows = results.flat_map do |r|
+    s = r[:samples]
+    { rss_kb: 'VmRSS', pss_kb: 'Pss', dirty_kb: 'Private_Dirty' }.map do |key, name|
+      cells = Array.new(WINDOWS + 1) { |i| s[i] && s[i][key] ? s[i][key].to_s : '-' }
+      [r[:scenario].name, name, *cells, format_slope(s, key)]
+    end
+  end
+  log_table(header, rows)
+  return unless results.any? { |r| r[:samples].any? { |x| x[:pss_kb].nil? } }
+
+  log
+  log('soak: /proc/<worker>/smaps_rollup could not be read in some samples: ' \
+      'Pss and Private_Dirty are not recorded there, and their slope is not checked ' \
+      '(a soak run as root reads it only with CAP_SYS_PTRACE; see "Soak test for memory" in docs/test/README.md)')
+end
+
 def report(results)
-  header = %w[scenario result secs requests sessions gc_live gc_root fibers arena timers stream_timers stream_fibers fd up active rss_kb rss_step rss_total]
+  header = %w[scenario result secs requests sessions gc_live gc_root fibers arena timers stream_timers stream_fibers fd up active rss_step rss_total pss_slope dirty_slope]
   rows = results.map do |r|
     s = r[:samples]
     full = s.size == WINDOWS + 1
@@ -567,14 +643,14 @@ def report(results)
       full ? s.last[:requests].to_s : '-',
       full && s.last[:sessions] ? s.last[:sessions].to_s : '-',
       *%i[gc_live gc_root gc_root_fibers gc_arena_idx timers stream_timers stream_fibers fd upstream active].map { |k| full ? format_values(s.map { |x| x[k] }) : '-' },
-      full ? rss.join(' ') : '-',
       full ? format('%+d', rss[-1] - rss[-2]) : '-',
-      full ? format('%+d', rss[-1] - rss[0]) : '-'
+      full ? format('%+d', rss[-1] - rss[0]) : '-',
+      format_slope(s, :pss_kb),
+      format_slope(s, :dirty_kb)
     ]
   end
-  widths = header.each_index.map { |i| ([header] + rows).map { |row| row[i].size }.max }
-  log
-  log([header, *rows].map { |row| row.each_with_index.map { |cell, i| cell.ljust(widths[i]) }.join('  ').rstrip })
+  memory_report(results)
+  log_table(header, rows)
   results.reject { |r| r[:problems].empty? }.each do |r|
     log
     log("#{r[:scenario].name}:")
@@ -600,8 +676,9 @@ FileUtils.rm_f(Dir.glob(File.join(LOG_DIR, '{error,stderr,mock}.*.log')))
 File.write(REPORT_PATH, '')
 scenarios = selected_scenarios
 write_confs(scenarios)
-log("soak: N=#{N} WARMUP=#{WARMUP} CONCURRENCY=#{CONCURRENCY} PORTS=#{PORT},#{BACKEND_PORT},#{MOCK_PORT} " \
-    "RSS_STEP_KB=#{RSS_STEP_KB} RSS_TOTAL_KB=#{RSS_TOTAL_KB}")
+abort "soak: SOAK_WINDOWS must be 2 or more, and SOAK_N at least SOAK_WINDOWS" if WINDOWS < 2 || N < WINDOWS
+log("soak: N=#{N} WARMUP=#{WARMUP} WINDOWS=#{WINDOWS} CONCURRENCY=#{CONCURRENCY} PORTS=#{PORT},#{BACKEND_PORT},#{MOCK_PORT} " \
+    "RSS_STEP_KB=#{RSS_STEP_KB} RSS_TOTAL_KB=#{RSS_TOTAL_KB} SLOPE_B=#{SLOPE_B}")
 results = scenarios.map do |scenario|
   log("soak: #{scenario.name} ...")
   run_scenario(scenario)
