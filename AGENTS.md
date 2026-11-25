@@ -666,7 +666,10 @@ How sessions do it (their procedure, not a decision of the owner):
 
 Requirements are listed in `docs/install/` (C compiler, `make`, `bison`, `git`,
 Ruby 3.0 or later with `rake`, OpenSSL). nginx also needs the PCRE and zlib development
-headers, and `test.sh` uses `wget` and the `openssl` command. `test.sh` runs
+headers, and `test.sh` uses `wget` and the `openssl` command. Its HTTP/2 and
+HTTP/3 clients need `curl` with HTTP/2 and `python3` (3.10 or later) with
+pip, which installs aioquic into the build directory on the first run
+("HTTP/2 and HTTP/3" in `docs/test/README.md`). `test.sh` runs
 the tests with that Ruby, with `json` and `socket` of its standard library.
 mruby is built with
 `rake`: if it is not on `PATH` because Ruby is managed by a version manager
@@ -788,7 +791,7 @@ sh test/check_added_files.sh origin/<base> HEAD   # the files job: no added file
   run starts the build matrix, and every
   cell except the sanitizer cell in the nightly run ("valgrind in CI" in `docs/test/README.md` has the options,
   what counts as an error and the suppressions).
-- `test.sh` listens on these ports by default (18080-18095, 18097-18105, 18107-18108, 18110-18172,
+- `test.sh` listens on these ports by default (18080-18095, 18097-18105, 18107-18108, 18110-18173,
   18176-18199, 12345-12359, 12363-12366,
   12368-12369, 12372-12398; 18116, 12357 and 12385-12388 belong to the second nginx that
   `test/t/cases/_second_instance.rb` starts, 18180, 18181, 18185, 12379 and
@@ -798,7 +801,8 @@ sh test/check_added_files.sh origin/<base> HEAD   # the files job: no added file
   `test/t/cases/config_hooks.rb` starts, 12398 to the `nginx -t` of
   `test/t/cases/stream_duplicate_hooks.rb`, 12372 and 12373 to the mock LLM
   upstream that `test/t/cases/_agent_proxy_client.rb` starts, 12399 to a test
-  in `test/t/ngx_mruby.rb`). `TEST_SH_PORT_OFFSET=N` moves every port of the
+  in `test/t/ngx_mruby.rb`; 18173 is also a UDP port, for the HTTP/3 of
+  `test/t/cases/http2_http3.rb`). `TEST_SH_PORT_OFFSET=N` moves every port of the
   suite by N (from -2345 to 47336): two checkouts can run `test.sh` at the
   same time on one machine with offsets 120 or more apart (the other limits
   are under "Ports" in `docs/test/README.md`); with the same ports, the

@@ -315,7 +315,7 @@ $ bash test/gem_heads.sh build_config.rb "" .claude/tmp/gem-heads.tsv
 sh test.sh
 ```
 
-`test.sh`は、`--with-debug`、`--with-http_stub_status_module`、`--with-http_ssl_module`、`--with-http_auth_request_module`、`--with-stream`を付けて、nginxをconfigureします。これらのオプションは、`test.sh`の`NGINX_DEFAULT_OPT`と`NGINX_CONFIG_OPT`にあります。そのため、テストの設定は、これらのモジュールのディレクティブを使えます。CIは、新しいチェックアウトで同じ`test.sh`を実行します。手元のビルドのディレクトリは、nginxを最初にconfigureしたときのオプションを保ちます。Makefileがnginxを再びconfigureするのは、`build/nginx-X.Y.Z/objs/Makefile`が無いときだけだからです。`BUILD_DYNAMIC_MODULE`のビルドでは、このファイルは`build_dynamic/...`にあります。これらのオプションを変えたら、そのファイルを消し、`ONLY_BUILD_NGX_MRUBY`を付けずに`test.sh`を1回実行してください。そうしないと、nginxは、テストの設定で「unknown directive」のエラーを出して止まります。`nginx_version`か`BUILD_DYNAMIC_MODULE`を変えた後も、`ONLY_BUILD_NGX_MRUBY`を付けずに`test.sh`を1回実行してください。そのとき`test.sh`は、新しいバージョンの`build/nginx-X.Y.Z`か`build_dynamic/`という、別のビルドのディレクトリを使います。そのディレクトリにそのファイルが無ければ、そこでnginxをconfigureします。
+`test.sh`は、`--with-debug`、`--with-http_stub_status_module`、`--with-http_ssl_module`、`--with-http_auth_request_module`、`--with-http_v2_module`、`--with-http_v3_module`、`--with-stream`を付けて、nginxをconfigureします。これらのオプションは、`test.sh`の`NGINX_DEFAULT_OPT`と`NGINX_CONFIG_OPT`にあります。http3のモジュールに要るOpenSSLは、[HTTP/2とHTTP/3](#http2とhttp3)にあります。そのため、テストの設定は、これらのモジュールのディレクティブを使えます。CIは、新しいチェックアウトで同じ`test.sh`を実行します。手元のビルドのディレクトリは、nginxを最初にconfigureしたときのオプションを保ちます。Makefileがnginxを再びconfigureするのは、`build/nginx-X.Y.Z/objs/Makefile`が無いときだけだからです。`BUILD_DYNAMIC_MODULE`のビルドでは、このファイルは`build_dynamic/...`にあります。これらのオプションを変えたら、そのファイルを消し、`ONLY_BUILD_NGX_MRUBY`を付けずに`test.sh`を1回実行してください。そうしないと、nginxは、テストの設定で「unknown directive」のエラーを出して止まります。`nginx_version`か`BUILD_DYNAMIC_MODULE`を変えた後も、`ONLY_BUILD_NGX_MRUBY`を付けずに`test.sh`を1回実行してください。そのとき`test.sh`は、新しいバージョンの`build/nginx-X.Y.Z`か`build_dynamic/`という、別のビルドのディレクトリを使います。そのディレクトリにそのファイルが無ければ、そこでnginxをconfigureします。
 
 valgrindの下でnginxを動かすには、環境変数`NGINX_RUNNER`に値を設定します。
 
@@ -421,6 +421,7 @@ test.sh: nginx (pid 374) did not end within 60 seconds (NGINX_STOPTIME) after 6 
 - `test/t/cases/stream_duplicate_hooks.rb`の`nginx -t`が使う12398
 - `test/t/cases/_agent_proxy_client.rb`が動かすLLMのモックのupstreamが使う、12372と12373
 - `test/t/ngx_mruby.rb`にあるstreamだけのテストが使う12399
+- `test/t/cases/http2_http3.rb`のHTTP/3が使うUDPの18173。同じ番号のTCPのポートは、このケースのHTTP/1.1とHTTP/2が使います。[HTTP/2とHTTP/3](#http2とhttp3)を参照してください
 - テストと、`test/html/`にあるフックのスクリプトと期待する出力が挙げるポート
 
 `TEST_SH_PORT_OFFSET`は整数で、デフォルトは0です。この変数を設定すると、これらのポートがすべて同じ数だけずれます。そのため、2つのチェックアウトが、それぞれ別のオフセットで、1台のマシンで同時に`test.sh`を実行できます。
@@ -444,6 +445,37 @@ stage: copied 164 files to /path/to/build/nginx/harness/test; 593 port numbers m
 - オフセットは、すべてのポートを10000から65535の間に保ち、すべての数を5桁のままにする値にしてください。そのようなオフセットは-2345から47336までで、それ以外のオフセットでは`_stage.rb`が失敗します。また、オフセットは、ポートをほかの実行のポートから離しておく値にしてください。ソークテストのポートは12360から12362で、`SOAK_PORT_BASE`で決まります。性能の比較のポートは12370から12372で、`PERF_PORT_BASE`で決まります。nginx-testsのポートは8000から8999です。オフセットが0だと、`test.sh`と性能の比較は、どちらも12372を使います。
 
 2つの実行には、2つのオフセットのほかに、2つのチェックアウトが要ります。1つのビルドのディレクトリには、1つのテストのnginxと、そのログと、そのスイートのコピーが入るからです。2つのオフセットは、2つの実行の範囲を離しておく必要があります。18080から18199の範囲には120個の数があるので、オフセットの差は120以上にします。オフセットの差が5681から5854のとき、一方の実行の12345から12399の範囲は、もう一方の実行の18080から18199の範囲に重なります。差の符号は問いません。5681は18080 - 12399で、5854は18199 - 12345です。そのため、差はこの区間に入らないようにします。オフセットが14568を超えると、18080から18199のポートは、Linuxがデフォルトでエフェメラルポートに使う範囲に入ります。14568は32767 - 18199で、その範囲は32768から60999です。その範囲では、nginxがbindする前に、クライアントのソケットがそのポートを取ることがあります。例のオフセットの0と1000は、3つの条件をすべて満たします。
+
+### HTTP/2とHTTP/3
+
+HTTP/2とHTTP/3では、nginxはリクエストをフレームで受け取ります。リクエスト行とヘッダの行では受け取りません。ヘッダとリクエストボディを読むのも、レスポンスを書く出力のフィルターも、バージョンごとのnginxのコードです。`test/t/cases/http2_http3.rb`は、同じリクエストをHTTP/1.1、HTTP/2、HTTP/3で1つのserverに送り、どのバージョンでもngx_mrubyから同じレスポンスが返ることを確かめます。
+
+nginx：`test.sh`は、nginxのconfigureのオプション(`NGINX_DEFAULT_OPT`)に`--with-http_v2_module`と`--with-http_v3_module`を足します。CIのセルを含め、スイートのすべてのビルドが対象です。`http2`ディレクティブにはnginx 1.25.1以降が、http3のモジュールにはnginx 1.25.0以降が要ります。`next`がビルドするのは、nginx 1.30と1.31です。http3のモジュールには、OpenSSL 1.1.1以降が要ります([ngx_http_v3_module](https://nginx.org/en/docs/http/ngx_http_v3_module.html))。OpenSSLが3.5.1より古いと、nginxはQUICにOpenSSLの互換レイヤーを使います。互換レイヤーはearly data(0-RTT)に対応しません([QUIC and HTTP/3](https://nginx.org/en/docs/quic.html))。Ubuntu 22.04のOpenSSL 3.0.2(このページのDockerの手順)では互換レイヤーを使い、CIのセルはOpenSSL 3.5.9をビルドします。このケースはearly dataを送らないので、どちらのビルドでも同じリクエストを流します。これらのオプションより前にconfigureしたビルドのディレクトリは、古い設定のままです。`build/nginx-X.Y.Z/objs/Makefile`を消し、`ONLY_BUILD_NGX_MRUBY`を付けずに`test.sh`を流してください([テストを実行する](#テストを実行する))。
+
+クライアント：`test/t/client.rb`の`HttpVersions`は、1つのリクエストを専用の接続でHTTPSで送り、ステータス、ヘッダ、ボディと、応答したバージョンを返します。
+
+- HTTP/1.1とHTTP/2は`curl`(`--http1.1`、`--http2`)で送ります。curlはALPNでバージョンを選びます。curlにはHTTP/2の対応が要ります(`curl --version`の`Features`の`HTTP2`)。Ubuntu 22.04とrunnerのcurl(7.81.0、nghttp2付き)と、macOSの`/usr/bin/curl`は対応しています。
+- HTTP/3は`test/t/cases/_h3_client.py`で送ります。これを`python3`(3.10以降)が[aioquic](https://github.com/aiortc/aioquic)で実行します。`test.sh`は、nginxを起動する前に、aioquicとそれが要るパッケージを`python3 -m pip install --require-hashes --target build/h3client -r test/h3/requirements.txt`で入れます。`BUILD_DYNAMIC_MODULE`では、入れる先は`build_dynamic/h3client`です。`test/h3/requirements.txt`が変わると、入れ直します。そのため、最初の実行には、nginx.orgとGitHubと同じように、pip(Ubuntuでは`python3-pip`)とPyPIへの接続が要ります。すべてのファイルを、`test/h3/requirements.txt`にあるsha256と照合します。PyPIには、これらのバージョンのLinux(x86-64とarm64)とmacOSのwheelがあるので、pipは何もコンパイルしません。2026年11月26日に、arm64のMacで動かしたUbuntu 22.04のコンテナでは、入れるのに約5秒かかりました。
+
+  `test/h3/requirements.in`が各パッケージのバージョンを固定し、`python3 test/h3/lock.py`が、そのバージョンでPyPIにあるすべてのファイルのハッシュを付けて`test/h3/requirements.txt`を書きます。aioquic 1.3.0は、Dependabotが待つ7日(`.github/dependabot.yml`)より古いリリースのうち、Ubuntu 22.04のPython 3.10向けのwheelがある最新のリリースです。1.4.0から1.9.0はPython 3.11を求めます。Dependabotはこれらのファイルを更新しません。バージョンを変えるときは、`lock.py`とスイートを流すPRを作ります。
+
+  curlもHTTP/3を送れますが、Ubuntu 22.04とrunnerのcurlはHTTP/3なしでビルドされています(`Features`に`HTTP3`がありません)。HTTP/3のあるcurlを使うには、各セルでngtcp2とnghttp3と一緒にビルドするか、コンテナのイメージから取る必要があります。Homebrewの`/opt/homebrew/bin/curl`はHTTP/3に対応していますが、どのマシンでも同じクライアントを使うほうが、結果を比べられます。
+
+ケース：`test/conf/conf.d/78-http2-http3.conf`には、ポート18173のserverが1つあります。TCP(TLS、`http2 on`。ALPNでHTTP/1.1かHTTP/2を選びます)とUDP(`listen 18173 quic`、HTTP/3)の両方で受けます。`test.sh`が待つのはTCPのポートだけなので([nginxがlistenするまで待つ](#nginxがlistenするまで待つ))、`quic`のlistenには、同じserverのTCPのlistenと同じ番号を使います。`master`では18173はauto-sslのケースのポートですが、`next`にそのケースは無く、このケースは`next`にだけあります。ケースは、リクエストごとに、まず、リクエストが求めたバージョンでレスポンスが返ったことを確かめます。別のバージョンに切り替わったときに、気づかずに通らないようにするためです。そのうえで、どのバージョンでも同じになるはずの値を確かめます。
+
+| パス | ngx_mrubyがすること |
+|---|---|
+| `/protocol` | `$server_protocol`(`HTTP/1.1`、`HTTP/2.0`、`HTTP/3.0`) |
+| `/content` | コンテンツハンドラが、ステータス(201)、Content-Type、ヘッダを1つと、2回の`Nginx.rputs`でボディを設定する |
+| `/headers_in` | `Nginx::Headers_in`が、リクエストのヘッダとHost(HTTP/2とHTTP/3では`:authority`)を読み、ヘッダを1つ足し、1つ消す |
+| `/headers_out` | `Nginx::Headers_out`が、ヘッダを設定し、置き換え、消す。Content-Typeと相対のLocationも設定し、nginxがLocationを絶対のURLにする |
+| `/body` | コンテンツハンドラがリクエストボディを読んで返す。10バイトのボディと、nginxが一時ファイルに置く100,000バイトのボディ |
+| `/filter` | ヘッダのフィルターとボディのフィルターが、コンテンツハンドラの出力を変える |
+| `/sleep` | コンテンツハンドラの`Nginx::Async.sleep` |
+| `/sub_request` | コンテンツハンドラからの`Nginx::Async::HTTP.sub_request` |
+| `/handshake` | serverのSSL handshake handlerが、リクエストごとの接続で1回ずつ、クライアントのサーバー名とTLS 1.3で動いた |
+
+このケースで確かめないもの：early data(0-RTT)、Encrypted Client Hello(`docs/proposals/v3-plan.md`の項目「Confirm HTTP/3 and ECH paths call the SSL handshake handler」の残りの半分。nginxの`ssl_ech_file`にはOpenSSL 4.0が要り、これらのビルドのOpenSSLは3.5.9か3.0.2です)、複数のworkerでのHTTP/3(nginxは`quic`のlistenに`reuseport`を要します)。
 
 ### CIのvalgrind
 
@@ -469,7 +501,7 @@ valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indire
 `test/ci/changes.sh`が`build`を`standard`か`full`と判定したら(標準の4セルと同じく、コードかテストを変えるとき)、作者がPRをreadyにする前に、このオプションでvalgrindの下のテストスイートを手元で流します。valgrindのセルは、同じ検査をx86-64のrunnerでもう一度流します。手元では、専用のチェックアウトで流してください。たとえば`git archive HEAD | tar -x -C DIR`で作ります。同じチェックアウトでsanitizerのビルドをすると、別のフラグでビルドしたmrubyが残るからです。valgrindにはLinuxが要ります。macOSでは、そのチェックアウトの最上位のディレクトリで、Linuxのコンテナを使って流します。
 
 ```console
-$ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev valgrind >/dev/null && mkdir -p build/valgrind && NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=$PWD/test/valgrind.supp --log-file=$PWD/build/valgrind/valgrind.%p.log" sh test.sh && grep -h "ERROR SUMMARY" build/valgrind/valgrind.*.log | sed "s/^==[0-9]*== //" | sort | uniq -c'
+$ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev python3-pip valgrind >/dev/null && mkdir -p build/valgrind && NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=$PWD/test/valgrind.supp --log-file=$PWD/build/valgrind/valgrind.%p.log" sh test.sh && grep -h "ERROR SUMMARY" build/valgrind/valgrind.*.log | sed "s/^==[0-9]*== //" | sort | uniq -c'
 ```
 
 Linuxでは、パッケージを入れた後の、引用符の中のコマンドを流します。最後のコマンドは、`ERROR SUMMARY`の行を種類ごとに、その行を持つログの数とともに出力します。下のステップ「Check the valgrind reports」と同じく、どの行もエラーの数が0で、少なくとも1つのログにその行がなければなりません。`--init`を付けると、テストが残したプロセスを、コンテナのinitのプロセスが回収します。
@@ -508,7 +540,7 @@ $ docker run --rm ubuntu:22.04 cat /proc/sys/vm/mmap_rnd_bits
 28以下なら、何もしなくて構いません。28より大きければ、そのカーネルが動くところ(コンテナのランタイムのLinuxのVM)で28に設定します。CIのsanitizerのセルも、ビルドの前に`sudo sysctl -w vm.mmap_rnd_bits=28`を実行します。これより大きいと、ASanのシャドウメモリの配置が失敗するからです。
 
 ```console
-$ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev >/dev/null && export NGINX_EXTRA_CC_OPT="-fsanitize=address,undefined -fno-omit-frame-pointer" NGINX_EXTRA_LD_OPT="-fsanitize=address,undefined" NGX_MRUBY_CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" NGX_MRUBY_LDFLAGS="-fsanitize=address,undefined" ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$PWD/test/lsan.supp UBSAN_OPTIONS=print_stacktrace=1:suppressions=$PWD/test/ubsan.supp && NGINX_RUNNER=exec sh test.sh && ! grep -HnE "ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)" $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name "*.log")'
+$ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev python3-pip >/dev/null && export NGINX_EXTRA_CC_OPT="-fsanitize=address,undefined -fno-omit-frame-pointer" NGINX_EXTRA_LD_OPT="-fsanitize=address,undefined" NGX_MRUBY_CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" NGX_MRUBY_LDFLAGS="-fsanitize=address,undefined" ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$PWD/test/lsan.supp UBSAN_OPTIONS=print_stacktrace=1:suppressions=$PWD/test/ubsan.supp && NGINX_RUNNER=exec sh test.sh && ! grep -HnE "ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)" $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name "*.log")'
 ```
 
 このコマンドは、`test.sh`が通り、`grep`がレポートを1行も見つけなかったときに0で終わります。コンテナのコンパイラは、sanitizerのセルと同じく、Ubuntu 22.04のgcc 11です。
