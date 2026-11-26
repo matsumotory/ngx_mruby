@@ -1,6 +1,9 @@
 # Content-Length through Nginx::Headers_out
 
-Status: accepted for v3 (3.0.0). This proposal makes `Content-Length` one of
+Status: implemented in [#874](https://github.com/matsumotory/ngx_mruby/pull/874),
+merged into `next` on 2026-11-26 (`3747aa37f`); sections 2 to 4 shipped, with
+the tests of `test/t/cases/content_length.rb`, and the published advisory is
+GHSA-2cf7-qh69-j29q. This proposal makes `Content-Length` one of
 nginx's own response fields in `Nginx::Headers_out`, as `Content-Type`,
 `Location`, `Date` and `Server` already are, so that a response carries one
 `Content-Length`, the length nginx frames the body by.
