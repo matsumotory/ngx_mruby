@@ -91,6 +91,14 @@ typedef struct ngx_http_mruby_ctx_t {
   u_char *body;
   u_char *last;
   size_t body_length;
+  // Nginx::Headers_out#[]= / #delete of Content-Length records what the script
+  // asked for, and ngx_http_mruby_header_filter reconciles it with the length
+  // nginx frames the body by (content_length_n) before the headers go out, so
+  // the response carries one Content-Length that matches the body, or is sent
+  // chunked. 0 none, 1 set a length (script_content_length), 2 remove it (send
+  // the response chunked).
+  ngx_int_t content_length_action;
+  off_t script_content_length;
   unsigned request_body_more : 1;
   unsigned read_request_body_done : 1;
   ngx_uint_t phase;

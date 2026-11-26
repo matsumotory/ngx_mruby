@@ -140,9 +140,11 @@ static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
  * Headers_out keeps Content-Type, Location, Date and Server where nginx
  * reads them: Content-Type in r->headers_out.content_type, without a list
  * entry; the others in a list entry that r->headers_out.location, .date or
- * .server points at, as nginx's own modules do. Content-Length stays a list
- * entry: Nginx.rputs adds the length of its output to content_length_n, so
- * the field is left to a later change (section 2.2 of the proposal).
+ * .server points at, as nginx's own modules do. Content-Length also keeps a
+ * list entry that r->headers_out.content_length points at, with the length in
+ * r->headers_out.content_length_n; ngx_http_mruby_header_filter reconciles a
+ * length that a script sets with the body that nginx frames, before the
+ * headers go out (section 2.2 of the proposal and the 3.0.0 release notes).
  *
  * A header that []= adds has its lowcase_key (the lowercase name) and next
  * set, and a request header also the hash of its name, as nginx sets them
@@ -158,6 +160,7 @@ static mrb_value ngx_mrb_get_request_body(mrb_state *mrb, mrb_value self)
 typedef enum {
   NGX_MRB_HEADER_LIST = 0,
   NGX_MRB_HEADER_CONTENT_TYPE,
+  NGX_MRB_HEADER_CONTENT_LENGTH,
   NGX_MRB_HEADER_LOCATION,
   NGX_MRB_HEADER_DATE,
   NGX_MRB_HEADER_SERVER,
@@ -190,6 +193,11 @@ static ngx_mrb_header_field_t ngx_mrb_header_out_field(u_char *name, size_t len)
       return NGX_MRB_HEADER_CONTENT_TYPE;
     }
     break;
+  case sizeof("Content-Length") - 1:
+    if (NGX_MRB_HEADER_NAME_IS(name, len, "Content-Length")) {
+      return NGX_MRB_HEADER_CONTENT_LENGTH;
+    }
+    break;
   }
   return NGX_MRB_HEADER_LIST;
 }
@@ -204,6 +212,8 @@ static ngx_table_elt_t **ngx_mrb_header_out_elt(ngx_http_request_t *r, ngx_mrb_h
     return &r->headers_out.date;
   case NGX_MRB_HEADER_SERVER:
     return &r->headers_out.server;
+  case NGX_MRB_HEADER_CONTENT_LENGTH:
+    return &r->headers_out.content_length;
   default:
     return NULL;
   }
@@ -649,6 +659,19 @@ static mrb_value ngx_mrb_headers_get(mrb_state *mrb, ngx_uint_t out)
   if ((elt = ngx_mrb_header_out_elt(r, field)) != NULL && *elt != NULL) {
     return mrb_str_new(mrb, (const char *)(*elt)->value.data, (*elt)->value.len);
   }
+  if (field == NGX_MRB_HEADER_CONTENT_LENGTH) {
+    /* no entry set by a script: the length nginx knows for the response, as
+     * ngx_lua returns it, or nil when the length is not known yet */
+    u_char *p;
+    if (r->headers_out.content_length_n < 0) {
+      return mrb_nil_value();
+    }
+    p = ngx_pnalloc(r->pool, NGX_OFF_T_LEN);
+    if (p == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+    }
+    return mrb_str_new(mrb, (const char *)p, ngx_sprintf(p, "%O", r->headers_out.content_length_n) - p);
+  }
   return ngx_mrb_header_list_get(mrb, &r->headers_out.headers, &n);
 }
 
@@ -721,6 +744,35 @@ static mrb_value ngx_mrb_headers_set(mrb_state *mrb, mrb_value self, ngx_uint_t 
     field = NGX_MRB_HEADER_LIST;
   }
 
+  if (out && field == NGX_MRB_HEADER_CONTENT_LENGTH) {
+    /* Content-Length is nginx's field: []= records the length the script
+     * asks for and sets one entry that r->headers_out.content_length points
+     * at (below); ngx_http_mruby_header_filter reconciles it with the body
+     * that nginx frames before the headers go out, so a value that differs
+     * from the body is not sent. The value is one non-negative decimal. */
+    ngx_http_mruby_ctx_t *clctx = ngx_mrb_http_get_module_ctx(NULL, r);
+    if (clctx == NULL) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate context");
+    }
+    if (values->nelts == 0) {
+      /* []= nil removes the length, like #delete: the response is sent chunked */
+      clctx->content_length_action = 2;
+      clctx->script_content_length = -1;
+    } else {
+      off_t cl;
+      if (values->nelts != 1) {
+        mrb_raise(mrb, E_ARGUMENT_ERROR, "Content-Length takes one non-negative integer");
+      }
+      v = values->elts;
+      cl = ngx_atoof(v[0].data, v[0].len);
+      if (cl == NGX_ERROR) {
+        mrb_raise(mrb, E_ARGUMENT_ERROR, "Content-Length must be a non-negative integer");
+      }
+      clctx->content_length_action = 1;
+      clctx->script_content_length = cl;
+    }
+  }
+
   if (ngx_mrb_headers_remove(r, headers, &key, field) != NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
   }
@@ -766,6 +818,16 @@ static mrb_value ngx_mrb_headers_delete(mrb_state *mrb, mrb_value self, ngx_uint
   field = out ? ngx_mrb_header_out_field(n.data, n.len) : NGX_MRB_HEADER_LIST;
   if (ngx_mrb_headers_remove(r, out ? &r->headers_out.headers : &r->headers_in.headers, &n, field) != NGX_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+  }
+  if (out && field == NGX_MRB_HEADER_CONTENT_LENGTH) {
+    /* send the response chunked, as ngx_http_clear_content_length() would:
+     * ngx_http_mruby_header_filter clears content_length_n after the content
+     * phase has set it, so a phase handler's delete takes effect too */
+    ngx_http_mruby_ctx_t *clctx = ngx_mrb_http_get_module_ctx(NULL, r);
+    if (clctx != NULL) {
+      clctx->content_length_action = 2;
+      clctx->script_content_length = -1;
+    }
   }
   return self;
 }
