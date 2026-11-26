@@ -99,6 +99,9 @@ can live in files of its own:
   `_second_instance.rb`, `_workers.rb` and `_udp_wait_session.rb` are CRuby scripts that the prelude helpers and the
   cases run with `ruby`, and `_wait_for_listen.rb` is the CRuby script that
   test.sh runs to wait for nginx (see "Waiting for nginx to listen" below).
+  `_h3_client.py` is the Python script that `HttpVersions` of
+  `test/t/client.rb` runs to send a request over HTTP/3 (see "HTTP/2 and
+  HTTP/3" below).
   `_agent_proxy_client.rb` is a CRuby script (3.0 or
   later) that `agent_proxy.rb` runs itself: it loads `test/soak/mock_llm.rb`
   and `test/soak/http_client.rb`, runs the mock LLM upstream on 12372 and
@@ -750,8 +753,11 @@ sh test.sh
 ```
 
 `test.sh` configures nginx with `--with-debug`, `--with-http_stub_status_module`,
-`--with-http_ssl_module`, `--with-http_auth_request_module` and `--with-stream`
-(see `NGINX_DEFAULT_OPT` and `NGINX_CONFIG_OPT` in `test.sh`), so the test
+`--with-http_ssl_module`, `--with-http_auth_request_module`,
+`--with-http_v2_module`, `--with-http_v3_module` and `--with-stream`
+(see `NGINX_DEFAULT_OPT` and `NGINX_CONFIG_OPT` in `test.sh`, and
+[HTTP/2 and HTTP/3](#http2-and-http3) for the OpenSSL that the http3 module
+needs), so the test
 configuration can use the directives of these modules. CI runs the same
 `test.sh` on a fresh checkout. A local build directory keeps the options that
 nginx was first configured with: the Makefile configures nginx again only when
@@ -992,7 +998,10 @@ nginx with several workers of `test/t/cases/_workers.rb` (18180, 18181,
 session helper `_udp_wait_session.rb` (12393-12396, including its echo
 upstream; it finishes before the workers case starts), the
 mock LLM upstream of `test/t/cases/_agent_proxy_client.rb` (12372 and
-12373), the stream-only test of `test/t/ngx_mruby.rb` (12399), and the
+12373), the stream-only test of `test/t/ngx_mruby.rb` (12399), the UDP port
+18173 of the HTTP/3 of `test/t/cases/http2_http3.rb` (the TCP port of the
+same number is that of its HTTP/1.1 and HTTP/2; see "HTTP/2 and HTTP/3"
+below), and the
 ports that the tests, the hook scripts and the expected outputs of
 `test/html/` name. `TEST_SH_PORT_OFFSET` (an integer, default 0) moves all
 of them by the same amount, so that two checkouts can run `test.sh` at the
@@ -1151,6 +1160,107 @@ requests, the mode `reload` 0.37 to 0.42 seconds), and 5.1 seconds of the
 the options of CI, where each of the 10 processes of the two nginx writes
 its leak report when it exits.
 
+### HTTP/2 and HTTP/3
+
+HTTP/2 and HTTP/3 give nginx a request in frames, not in a request line and
+header lines: nginx's code for each version reads the headers and the
+request body, and writes the response through output filters of its own.
+`test/t/cases/http2_http3.rb` sends the same requests over HTTP/1.1,
+HTTP/2 and HTTP/3 to one server and expects the same response from
+ngx_mruby for each version.
+
+nginx. `test.sh` adds `--with-http_v2_module` and `--with-http_v3_module`
+to the configure options of nginx (`NGINX_DEFAULT_OPT`), in every build
+of the suite, the cells of CI included. The `http2` directive needs nginx
+1.25.1 or later and the http3 module nginx 1.25.0 or later; `next` builds
+nginx 1.30 and 1.31. The http3 module needs OpenSSL 1.1.1 or later
+([ngx_http_v3_module](https://nginx.org/en/docs/http/ngx_http_v3_module.html)).
+With an OpenSSL older than 3.5.1, nginx uses its OpenSSL compatibility
+layer for QUIC, which does not support early data (0-RTT)
+([QUIC and HTTP/3](https://nginx.org/en/docs/quic.html)). The OpenSSL of
+Ubuntu 22.04 (3.0.2, the docker forms of this file) takes that layer; the
+cells of CI build OpenSSL 3.5.9. The case sends no early data, so both
+builds run the same requests. A build directory that was configured
+before these options keeps its old configuration: remove
+`build/nginx-X.Y.Z/objs/Makefile` and run `test.sh` without
+`ONLY_BUILD_NGX_MRUBY` ([Testing](#testing)). After the install,
+`test.sh` reads the configure options from `nginx -V`, and when one of the
+two modules is missing it stops with a line that names that file.
+
+The clients. `HttpVersions` in `test/t/client.rb` sends one request over
+HTTPS on a connection of its own, and returns the status, the headers, the
+body and the version that answered:
+
+- HTTP/1.1 and HTTP/2 go through `curl` (`--http1.1`, `--http2`), which
+  chooses the version with ALPN and needs HTTP/2 support (`HTTP2` in the
+  `Features` of `curl --version`). The curl of Ubuntu 22.04 and of the
+  runner (7.81.0, with nghttp2) and `/usr/bin/curl` of macOS have it.
+- HTTP/3 goes through `test/t/cases/_h3_client.py`, which `python3` (3.10
+  or later) runs with [aioquic](https://github.com/aiortc/aioquic).
+  `test.sh` installs aioquic and the packages that it needs with `python3
+  -m pip install --only-binary :all: --require-hashes --target
+  build/h3client -r test/h3/requirements.txt` (`build_dynamic/h3client` for
+  `BUILD_DYNAMIC_MODULE`), before it starts nginx, and installs them again
+  when `test/h3/requirements.txt` changes. The first run therefore needs
+  pip (`python3-pip` on Ubuntu) and access to PyPI, as it needs access to
+  nginx.org and GitHub. Without `python3`, with a Python older than 3.10
+  (the `/usr/bin/python3` of macOS is 3.9) or without pip, `test.sh` stops
+  before the install with one line that says which is missing; it does
+  not skip the HTTP/3 case. pip checks every file against its sha256 in
+  `test/h3/requirements.txt`, and takes wheels only (`--only-binary`): a
+  build from an sdist would install build tools whose hashes nobody
+  checks, and would need a C compiler and Rust. PyPI has wheels of these
+  versions for Linux on x86-64 and arm64 (glibc 2.28 or later, or musl
+  1.2) and for macOS on arm64 (11 or later); on other machines (FreeBSD,
+  NetBSD, a Mac with an Intel CPU, for which cryptography 50.0.2 has no
+  wheel) pip stops with `No matching distribution found`. In a container of
+  Ubuntu 22.04 on an arm64 Mac, the install took about 5 seconds on
+  2026-11-26.
+
+  `test/h3/requirements.in` pins the version of each package, and `python3
+  test/h3/lock.py` writes `test/h3/requirements.txt` from it with the
+  hashes of every file that PyPI has for those versions. aioquic 1.3.0 is
+  the newest release with wheels for Python 3.10, the Python of Ubuntu
+  22.04, among the releases older than the seven days that Dependabot
+  waits for (`.github/dependabot.yml`): 1.4.0 to 1.9.0 require Python
+  3.11. Dependabot does not update these files; a change of a version is
+  a pull request that runs `lock.py` and the suite.
+
+  curl could send HTTP/3 too, but the curl of Ubuntu 22.04 and of the
+  runner is built without it (no `HTTP3` in its `Features`): a curl with
+  HTTP/3 would have to be built in each cell with ngtcp2 and nghttp3, or
+  come from a container image. `/opt/homebrew/bin/curl` of Homebrew has
+  HTTP/3, but one client for every machine keeps the results comparable.
+
+The case. `test/conf/conf.d/78-http2-http3.conf` has one server on port
+18173, over TCP (TLS, `http2 on`, so that ALPN chooses HTTP/1.1 or HTTP/2)
+and over UDP (`listen 18173 quic`, HTTP/3). `test.sh` waits only for the
+TCP ports ([Waiting for nginx to listen](#waiting-for-nginx-to-listen)), so
+a `quic` listen takes the number of a TCP listen of the same server. On
+`master`, 18173 belongs to the auto-ssl case, which `next` does not have,
+and this case is only on `next`. For each request, the case first checks
+that the response came with the version that the request asked for, so
+that a fallback to another version fails instead of passing unseen, and
+then the values that every version must give:
+
+| Path | What ngx_mruby does |
+|---|---|
+| `/protocol` | `$server_protocol` (`HTTP/1.1`, `HTTP/2.0`, `HTTP/3.0`) |
+| `/content` | A content handler sets the status (201), the Content-Type, a header and a body in two `Nginx.rputs` |
+| `/headers_in` | `Nginx::Headers_in` reads a header of the request, adds one and deletes one, and reads the Host header, which gives what `$http_host` gives: the host over HTTP/1.1 and HTTP/2, and `nil` over HTTP/3, where nginx takes `:authority` for `$host` and adds no Host header |
+| `/headers_out` | `Nginx::Headers_out` sets, replaces and deletes headers, and sets the Content-Type and a relative Location, which nginx makes absolute |
+| `/body` | A content handler reads the request body and writes it back: 10 bytes, and 100,000 bytes, which arrive in several reads or frames. `Nginx::Request#body` is nginx's `$request_body`, which is empty for a body in a temporary file, with every version, so the location has a `client_body_buffer_size` of 128k |
+| `/filter` | A header filter and a body filter change the output of a content handler |
+| `/sleep` | `Nginx::Async.sleep` in a content handler |
+| `/sub_request` | `Nginx::Async::HTTP.sub_request` from a content handler |
+| `/handshake` | The SSL handshake handler of the server ran once for the connection of each request, with the server name of the client and TLS 1.3 |
+
+Not covered: early data (0-RTT), Encrypted Client Hello (the other half of
+the item "Confirm HTTP/3 and ECH paths call the SSL handshake handler" of
+`docs/proposals/v3-plan.md`: nginx's `ssl_ech_file` needs OpenSSL 4.0,
+and these builds have 3.5.9 or 3.0.2), and HTTP/3 with several workers, where nginx
+needs `reuseport` on the `quic` listen.
+
 ### valgrind in CI
 
 The `build` matrix of `.github/workflows/test.yml` runs `test.sh` in each
@@ -1210,7 +1320,7 @@ valgrind needs Linux; on macOS, run it in a Linux container, from the top
 of that checkout:
 
 ```console
-$ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev valgrind >/dev/null && mkdir -p build/valgrind && NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=$PWD/test/valgrind.supp --log-file=$PWD/build/valgrind/valgrind.%p.log" sh test.sh && grep -h "ERROR SUMMARY" build/valgrind/valgrind.*.log | sed "s/^==[0-9]*== //" | sort | uniq -c'
+$ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev python3-pip valgrind >/dev/null && mkdir -p build/valgrind && NGINX_RUNNER="valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect,possible --errors-for-leak-kinds=definite,indirect --suppressions=$PWD/test/valgrind.supp --log-file=$PWD/build/valgrind/valgrind.%p.log" sh test.sh && grep -h "ERROR SUMMARY" build/valgrind/valgrind.*.log | sed "s/^==[0-9]*== //" | sort | uniq -c'
 ```
 
 On Linux, run the part inside the quotes after the installation of the
@@ -1322,7 +1432,7 @@ cell of CI does with `sudo sysctl -w vm.mmap_rnd_bits=28` before it
 builds: ASan's shadow memory layout fails with a higher entropy.
 
 ```console
-$ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev >/dev/null && export NGINX_EXTRA_CC_OPT="-fsanitize=address,undefined -fno-omit-frame-pointer" NGINX_EXTRA_LD_OPT="-fsanitize=address,undefined" NGX_MRUBY_CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" NGX_MRUBY_LDFLAGS="-fsanitize=address,undefined" ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$PWD/test/lsan.supp UBSAN_OPTIONS=print_stacktrace=1:suppressions=$PWD/test/ubsan.supp && NGINX_RUNNER=exec sh test.sh && ! grep -HnE "ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)" $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name "*.log")'
+$ docker run --rm --init -v "$PWD":/work -w /work ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential rake ruby bison git gperf wget ca-certificates curl zlib1g-dev libpcre3-dev libssl-dev python3-pip >/dev/null && export NGINX_EXTRA_CC_OPT="-fsanitize=address,undefined -fno-omit-frame-pointer" NGINX_EXTRA_LD_OPT="-fsanitize=address,undefined" NGX_MRUBY_CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" NGX_MRUBY_LDFLAGS="-fsanitize=address,undefined" ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$PWD/test/lsan.supp UBSAN_OPTIONS=print_stacktrace=1:suppressions=$PWD/test/ubsan.supp && NGINX_RUNNER=exec sh test.sh && ! grep -HnE "ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:|SUMMARY: (AddressSanitizer|UndefinedBehaviorSanitizer)" $(find build/nginx/logs $(ls -d build/nginx/second_instance 2>/dev/null) -type f -name "*.log")'
 ```
 
 The command exits 0 when `test.sh` passed and the `grep` found no
@@ -1355,7 +1465,14 @@ sends its stderr to `error.log` once the configuration is loaded, so reports
 from code that runs while nginx parses the configuration (directive handlers,
 script compilation, `mruby_init_code`) appear on the terminal instead; read
 both. `test/ubsan.supp` lists the reports that come from nginx itself, each
-with the reason. `test/lsan.supp` does the same for LeakSanitizer: nginx
+with the reason. Among them are the `alignment` reports of nginx's HTTP/2
+module and QUIC code (`src/http/v2/`, `src/event/quic/`): on x86, where
+nginx defines `NGX_HAVE_NONALIGNED`, they read and write the 16- and 32-bit
+numbers of frames and packets with one load or store at any offset, and
+the HTTP/2 and HTTP/3 requests of `test/t/cases/http2_http3.rb` run that
+code. On arm64, nginx copies those numbers byte by byte, so a local run
+in a container on an Apple Silicon Mac shows no `alignment` report that
+the x86-64 cell of CI would show. `test/lsan.supp` does the same for LeakSanitizer: nginx
 never frees `cycle->connections` and the two event arrays it allocates in
 `ngx_event_process_init`, and whether LeakSanitizer reports them at exit
 depends on whether anything outside them still points at them, so without
@@ -1537,11 +1654,20 @@ summary of each run lists every reason with its count. On the runner, the
 job took about 8 minutes: 2 minutes 37 seconds for the two builds and 2
 minutes 37 seconds for `prove` on each build.
 
+The table and the skips above were measured before `test.sh` built the
+`http_v2` and `http_v3` modules. Since #871 it builds both ("HTTP/2 and
+HTTP/3" above), and the files that skipped only for them run. On
+2026-11-26, on `65e8331d2` in the container (aarch64, OpenSSL 3.0.2), both
+builds had 511 test files, 353 passed (52 more than the 301 of the table),
+0 failed and 158 skipped, with 5294 subtests. Of the files of HTTP/2 and
+HTTP/3 (`h2_*.t`, `h3_*.t`), 29 passed and 23 skipped, most of them for
+`no cryptx available` (the perl module CryptX, which the HTTP/3 files
+need).
+
 These results cover nginx with ngx_mruby present and nothing configured for
 it. Two kinds of runs would cover more and are not in place: a build with
-the modules that the skipped files need (`--with-http_v2_module`,
-`--with-http_v3_module`, `--with-stream_ssl_module`, `--with-mail` and the
-others above), and runs in which ngx_mruby's handlers or filters run Ruby
+the other modules that the skipped files need (`--with-stream_ssl_module`,
+`--with-mail` and the others above), and runs in which ngx_mruby's handlers or filters run Ruby
 code on the requests of the suite (`TEST_NGINX_GLOBALS_HTTP`, as Pillar E
 of `docs/proposals/v3-plan.md` names). `docs/HANDOFF.md` lists both in its
 queue.

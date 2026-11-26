@@ -17,6 +17,9 @@
 #   that the test file exits non-zero.
 # - Kernel#usleep, as in mruby-sleep.
 # - JSON and TCPSocket, from the standard library.
+# - HttpVersions, which sends one request over HTTPS with HTTP/1.1, HTTP/2
+#   or HTTP/3, so that a case can compare the responses of the three
+#   versions ("HTTP/2 and HTTP/3" in docs/test/README.md).
 #
 # The test files run with binary source and external encodings (test.sh
 # passes -E ASCII-8BIT, and the test files start with a magic comment), so
@@ -24,7 +27,9 @@
 # MRB_UTF8_STRING.
 
 require 'json'
+require 'open3'
 require 'socket'
+require 'tmpdir'
 
 def usleep(usec)
   sleep(usec / 1_000_000.0)
@@ -317,6 +322,99 @@ class SimpleHttp
         end
       end
     end
+  end
+end
+
+# One request over HTTPS to 127.0.0.1 with HTTP/1.1, HTTP/2 or HTTP/3, on a
+# connection of its own, with HOST as the TLS server name (SNI) and in the
+# Host header (:authority in HTTP/2 and HTTP/3). The certificate of the
+# server is not verified.
+#
+#   res = HttpVersions.request('2', 18173, '/path', method: 'POST',
+#                              headers: { 'X-Test' => 'v' }, body: 'data')
+#   res.version  # the version of the response: "1.1", "2" or "3"
+#   res.code     # the status, an Integer
+#   res.headers  # lower-case name => value, or an Array of the values of a
+#                # name that comes more than once
+#   res.body     # a byte string
+#
+# HTTP/1.1 and HTTP/2 go through the curl command, which negotiates the
+# version with ALPN. HTTP/3 goes through test/t/cases/_h3_client.py, run by
+# python3 with the aioquic that test.sh installed (TEST_SH_H3_PYTHONPATH). A
+# failure of the client raises, with what the client printed. The response
+# says which version answered, so that a case can check that the request
+# did not fall back to another one.
+module HttpVersions
+  VERSIONS = %w[1.1 2 3].freeze
+  TIMEOUT = 30 # seconds for one request
+  Response = Struct.new(:version, :code, :headers, :body)
+
+  def self.request(version, port, path, method: 'GET', headers: {}, body: nil, host: 'localhost')
+    case version
+    when '1.1', '2' then curl(version, port, path, method, headers, body, host)
+    when '3' then h3(port, path, method, headers, body, host)
+    else raise ArgumentError, "HttpVersions: no HTTP version #{version.inspect}; use one of #{VERSIONS.join(', ')}"
+    end
+  end
+
+  def self.curl(version, port, path, method, headers, body, host)
+    Dir.mktmpdir('http_versions') do |dir|
+      head_file = File.join(dir, 'head')
+      body_file = File.join(dir, 'body')
+      args = ['curl', '-sS', '-k', '--max-time', TIMEOUT.to_s, version == '2' ? '--http2' : '--http1.1',
+              '--resolve', "#{host}:#{port}:127.0.0.1", '-D', head_file, '-o', body_file,
+              '-w', '%{http_version}', '-X', method]
+      headers.each { |name, value| args += ['-H', "#{name}: #{value}"] }
+      if body
+        File.binwrite(File.join(dir, 'request'), body)
+        # Without "Expect: 100-continue", which curl adds to a large body
+        # over HTTP/1.1 and not over HTTP/2.
+        args += ['--data-binary', "@#{File.join(dir, 'request')}", '-H', 'Expect:']
+      end
+      args << "https://#{host}:#{port}#{path}"
+      out, err, status = Open3.capture3(*args)
+      raise "HttpVersions: curl failed (#{status}): #{err.strip}" unless status.success?
+
+      code, response_headers = parse_head(File.binread(head_file))
+      Response.new(out.strip, code, response_headers, File.binread(body_file))
+    end
+  end
+
+  # The last block of the header lines that curl wrote: the one of the final
+  # response, after the blocks of any 1xx response.
+  def self.parse_head(text)
+    block = text.split(/\r\n\r\n/).reject(&:empty?).last.to_s
+    lines = block.split("\r\n")
+    code = lines.shift.to_s.split(' ')[1].to_i
+    fields = lines.map do |line|
+      name, value = line.split(':', 2)
+      [name.downcase, value.to_s.strip]
+    end
+    [code, merge(fields)]
+  end
+
+  def self.merge(fields)
+    fields.each_with_object({}) do |(name, value), h|
+      h[name] = h.key?(name) ? Array(h[name]) + [value] : value
+    end
+  end
+
+  def self.h3(port, path, method, headers, body, host)
+    pythonpath = ENV['TEST_SH_H3_PYTHONPATH']
+    raise 'HttpVersions: TEST_SH_H3_PYTHONPATH is not set; test.sh sets it after installing aioquic' if pythonpath.to_s.empty?
+
+    req = { 'method' => method, 'path' => path, 'authority' => "#{host}:#{port}",
+            'headers' => headers.to_a, 'body' => [body.to_s].pack('m0') }
+    script = File.expand_path('cases/_h3_client.py', __dir__)
+    out, err, status = Open3.capture3({ 'PYTHONPATH' => pythonpath }, 'python3', script, '127.0.0.1', port.to_s,
+                                      host, stdin_data: JSON.generate(req))
+    raise "HttpVersions: the HTTP/3 client failed (#{status}): #{err.strip}" unless status.success?
+
+    res = JSON.parse(out)
+    raise "HttpVersions: the HTTP/3 client negotiated #{res['alpn'].inspect}, not h3" unless res['alpn'] == 'h3'
+
+    fields = res['headers'].map { |name, value| [name.b, value.b] }
+    Response.new('3', res['status'], merge(fields), res['body'].unpack1('m0'))
   end
 end
 
