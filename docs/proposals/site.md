@@ -1873,7 +1873,10 @@ the existing 390px WebKit pattern. At the end of the rebuild, change only
 Chromium.
 If many one- or two-character last lines appear at 402px, adjust the font
 size and characters per line first, then only the remaining fine cases by
-a few characters of wording. Do not mechanically rewrite prose for the
+a few characters of wording. Since 2026-11-27 the checks measure this for
+headings (h1 to h4) only; body text, lists, captions and table cells may
+end with a short last line (the decision of that day in "Decisions" of
+`docs/HANDOFF.md`). Do not mechanically rewrite prose for the
 checker or add more width/browser combinations. The parity baseline of
 #708 was measured at 390px; 390px, decided in
 [#707](https://github.com/matsumotory/ngx_mruby/pull/707), was the earlier baseline; this rebuild changes the pattern to 402px.

@@ -1428,6 +1428,17 @@ constraints, with dates. Proposals are identified separately from adopted
 decisions. Conversation quotations and attribution are not a substitute for
 checking whether a decision fits the evidence and requirements.
 
+- **2026-11-27, short last lines of Japanese text on the site.** The rule
+  that no Japanese text of the site ends with a last line of one or two
+  characters applies to headings only (h1 to h4). Scope: `site/`, both
+  checks that measured it (`check-styles.mjs` and
+  `check-japanese-lines.mjs`); paragraphs, list items, captions, table
+  cells and the notice above an English page under `/ja/` are not
+  measured for it any more. Rationale: a short last line of body text
+  does not keep a reader from reading it, while the rule made sessions
+  reword sentences and run the checks again many times for it. Replaces
+  the text of AGENTS.md, of the two scripts and of section 4 of
+  `docs/proposals/site.md` that applied the rule to body text.
 - **2026-11-25, how v3 is presented.** v3 is presented so that users see what it gives now and where it is heading, and do not conclude that 2.x is enough. This concerns how the work is shown, not its order, which stays: stability before new capabilities, and parts (a) and (c) of step 7 of the plan still wait for the rest of the safety net. Scope: the GitHub releases of `next` and the pages of the site that present v3. Rationale: the body of `v3.0.0-alpha.1` first listed only the headings of the behavior changes, which shows the cost of moving from 2.x and not what 3.0 gives; it now starts with what the release brings and what comes next. Constraints: planned capabilities are written as planned. Written in "Presenting v3" in AGENTS.md and in "The GitHub release" of `docs/releases/README.md`.
 - **2026-11-25, the performance of `v3.0.0-alpha.1`.** The two `FAIL`
   rows of the comparison of `v3.0.0-alpha.1` with `v2.7.13` in #862,

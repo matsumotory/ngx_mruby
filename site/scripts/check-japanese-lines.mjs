@@ -14,9 +14,10 @@
 //   the longest line ends less than 2 em from the block's right edge; an h2
 //   takes at most two lines and its longest line ends less than 6 em from
 //   the edge (4.9);
-// - in both patterns, no paragraph, list item, caption, table cell, definition
-//   or heading whose last line holds one or two characters (the owner's
-//   rule for text);
+// - in both patterns, no heading (h1 to h4) whose last line holds one or
+//   two characters (the owner's rule for titles; the owner decided on
+//   2026-11-27 that it no longer applies to paragraphs, list items,
+//   captions, table cells, definitions or the notice);
 // - in both patterns, every diagram label is 14 px or more and its text
 //   stays inside its place (3.5);
 // - the notice above an English page under /ja/ (FallbackContentNotice.astro):
@@ -119,7 +120,6 @@ function inspect(cfg) {
     if (!notice) return { fails: ['the page has no [data-notice]'], counts };
     const ls = lines(notice);
     counts.lines += ls.length;
-    if (ls.length >= 2 && ls.at(-1).text.trim().length <= 2) fail(notice, `the last line holds "${ls.at(-1).text.trim()}", ${ls.at(-1).text.trim().length} character(s)`);
     if (cfg.phone && ls.length >= 2) {
       const box = notice.getBoundingClientRect();
       const fsz = parseFloat(getComputedStyle(notice).fontSize);
@@ -171,8 +171,8 @@ function inspect(cfg) {
       } else if (gap >= 2 * fsz) fail(el, `the longest line ends ${gap.toFixed(1)} px from the right edge, 2 em (${2 * fsz} px) or more`);
     }
   }
-  // Last lines of one or two characters
-  for (const el of document.querySelectorAll('main :is(p, li, figcaption, figcaption > span, td, th, dd, h1, h2, h3, h4)')) {
+  // Last lines of one or two characters, of headings only
+  for (const el of document.querySelectorAll('main :is(h1, h2, h3, h4)')) {
     if (!visible(el) || el.closest('.expressive-code, .diagram-grid') || el.querySelector('p, ul, ol')) continue;
     const ls = lines(el);
     counts.lines += ls.length;
