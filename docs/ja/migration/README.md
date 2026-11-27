@@ -15,6 +15,13 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
 
 ## ビルド
 
+- nginx 1.30のstableか1.31のmainlineでビルドしてください。詳しくは[nginx 1.30のstableと1.31のmainlineが、サポートする最も古いバージョンになる](../../releases/v3.0.0.ja.md#nginx-130のstableと131のmainlineがサポートする最も古いバージョンになる789)にあります。CIは1.30.6と1.31.8でビルドしてテストします。サポートする最も古いバージョンは、nginxが新しいstableの系列を出す毎年4月に上がります。ngx_mrubyの`./configure`も`build.sh`も、nginxのバージョンを確かめません。2026年11月11日に`build.sh`を`--with-stream`の有無の両方で実行したところ、CIがテストしないnginx 1.28.3と1.26.3ではビルドが最後まで進み、Ubuntu 24.04のパッケージのようなnginx 1.24.0では、`src/http/ngx_http_mruby_server.c`のコンパイルが次のエラーで止まりました。
+
+  ```
+  'ngx_http_listen_opt_t' has no member named 'type'
+  ```
+
+  nginx 1.28か1.26を使い続けるときは、2.xのブランチ`v2.x`か、最新の`v2.*`のタグを使ってください。2.xは、v3.0.0の後12か月サポートします。[サポート対象のバージョン](../security/README.md#サポート対象のバージョン)を参照してください。nginx 1.24では、2.xは`--with-stream`を付けないときだけビルドできます。
 - Ruby 3.0以降でビルドしてください。同梱のmrubyのビルドは、Ruby 2.xでは止まります。詳しくは[同梱のmrubyのビルドにRuby 3.0以降が要る](../../releases/v3.0.0.ja.md#同梱のmrubyのビルドにruby-30以降が要る678)にあります。`ruby --version`は、`PATH`にあるRubyのバージョンを出力します。
 - OpenSSL 3.0以降でビルドしてください。`--with-openssl-src`で渡すOpenSSLも同じです。既定のビルドの`Digest`と`SecureRandom`は、ngx_mrubyのgemが定義します。このgemはOpenSSLの`EVP_MAC`と`RAND_bytes`のAPIを使うので、OpenSSL 1.1.1、LibreSSL、BoringSSLではビルドが止まります。詳しくは[`Digest`と`SecureRandom`を、OpenSSL 3.0以降が要るngx_mrubyのgemが定義する](../../releases/v3.0.0.ja.md#digestとsecurerandomをopenssl-30以降が要るngx_mrubyのgemが定義する771)にあります。`openssl version`は、`PATH`にある`openssl`のコマンドのバージョンを出力します。ビルドが使うヘッダのバージョンは、これと違うことがあります。`--with-openssl-src`を使うビルドは、渡したソースのヘッダを使います。macOSでは、`configure`がHomebrewのOpenSSLを`/opt/homebrew/opt/openssl`か`/usr/local/opt/openssl`で見つけます。ほかの場所にあるOpenSSL 3は、次の例のように、そのディレクトリをビルドに渡してください。
 
@@ -48,6 +55,19 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
 - `./configure --with-mruby-incdir`を使うなら、ディレクトリの一覧に`<mruby_root>/build/host/include`を加えてください。詳しくは[C拡張：`mruby.h`をインクルードするソースに、生成されたヘッダが必要になる](../../releases/v3.0.0.ja.md#c拡張mrubyhをインクルードするソースに生成されたヘッダが必要になる561)にあります。
 - 自前やサードパーティのmrbgemsを使っているなら、[C拡張とmrbgems](#c拡張とmrbgems)の節を見てください。
 
+次の2つのエントリーは、このリポジトリのテストと測定のビルドについてのものです。`build.sh`によるビルドは変わりません。
+
+- [結合テストのビルドが`Nginx::Debug`を有効にする](../../releases/v3.0.0.ja.md#結合テストのビルドがnginxdebugを有効にする751)：`test.sh`は、nginxとngx_mrubyに`NGX_MRUBY_DEBUG_STATS`を定義します。そのため、テストのビルドでは、ハンドラスクリプトから`Nginx::Debug.stats`と`Nginx::Debug.gc`を呼べます。性能の比較のフラグは変わりません。既存のテストのビルドでは、nginxの`objs/Makefile`を削除し、`ONLY_BUILD_NGX_MRUBY`を付けずに`test.sh`を実行してください。これで、nginxの設定が作り直され、カウンタを含めてコンパイルし直されます。
+
+  ```sh
+  . ./nginx_version
+  rm build/${NGINX_SRC_VER}/objs/Makefile    # build_dynamic/${NGINX_SRC_VER}/objs/Makefile for a dynamic module
+  sh test.sh                                 # BUILD_DYNAMIC_MODULE=1 sh test.sh for a dynamic module
+  ```
+
+  新しく作るテストのビルドには、追加の手順は要りません。
+- [測定用のビルドがstreamのセッションを含む](../../releases/v3.0.0.ja.md#測定用のビルドがstreamのセッションを含む758)：`test/build_release.sh`は、測定する両方のチェックアウトを`--with-stream`付きでビルドします。ソークと性能の比較では、既定のシナリオに`stream_sleep`が加わります。これは、1ms待ってから、決まったバイト列をEOFまで返す1つのTCPのセッションです。更新した後は、`ONLY_RUN`を付けずに`test/soak/run.sh`と`test/perf/compare.sh`を流し直してください。`test/build_release.sh`のビルドのスタンプが変わるので、ソークのビルドと、性能の比較の両方のチェックアウトで、設定とビルドをやり直します。ソークは、サンプルごとに`stream_timers`と`stream_fibers`を判定して表示し、`sessions`の列を加えます。性能の比較の新しい行は、完了したTCPのセッションあたりの命令数です。結果を比べるときは、既存のHTTPの行としきい値をそのまま使ってください。
+
 ## 設定
 
 - [1つのコンテキストに2回書いたstreamのフックを、`nginx -t`が断る](../../releases/v3.0.0.ja.md#1つのコンテキストに2回書いたstreamのフックをnginx--tが断る834)：各`stream {}`のブロックとその中の各`server {}`で、`mruby_stream`と`mruby_stream_code`を合わせて2つ以上書いていないかを探してください。各`stream {}`のブロックでは、`mruby_stream_init`と`mruby_stream_init_code`、`mruby_stream_init_worker`と`mruby_stream_init_worker_code`、`mruby_stream_exit_worker`と`mruby_stream_exit_worker_code`のそれぞれについても、2つ以上書いていないかを探してください。2.xでコードが動いていたのは後のディレクティブなので、それを残し、ほかを消してください。3.0.0のモジュールの`nginx -t`は、2つ目のディレクティブとその行を示します。
@@ -65,6 +85,11 @@ ngx_mruby 2.xは、mruby 3.3.0を同梱しています。ngx_mruby 3の開発の
   ```
 
   それぞれを書いたブロックを確かめてください。`http {}`のブロックに書いたフィルタは、すべてのserverのすべてのlocationで動くようになります。`server {}`のブロックに書いたフィルタはそのserverのすべてのlocationで、`location`に書いたフィルタは入れ子のlocationとその`if`のブロックで動くようになります。ただし、同じ種類の自分のフィルタを書いたレベルでは、そのフィルタが動きます。静的なファイルやupstreamのレスポンスを含め、そこでのすべてのレスポンスでフィルタが動いてよいかを確かめ、一部のlocationだけで動かすフィルタは、それらのlocationに移してください。2.xでは、こうしたフィルタはこれらのlocationでは動かず、`server {}`のブロックに書いたフィルタだけが、どのlocationにも一致しないリクエストで動いていました。
+
+- [mrubyのヘッダフィルタだけを持ち、ボディフィルタを持たないlocationが、ファイルをメモリに読み込まない](../../releases/v3.0.0.ja.md#mrubyのヘッダフィルタだけを持ちボディフィルタを持たないlocationがファイルをメモリに読み込まない847)：変えるものはありません。レスポンスは変わりません。`mruby_output_header_filter`か`mruby_output_header_filter_code`を持ち、mrubyのボディフィルタを持たないlocationでは、静的なファイルのようにファイルを返すレスポンスについて、nginxがそのファイルを`output_buffers`のバッファへ読み込まなくなります。ボディフィルタを持たないとは、location自身のボディフィルタも、引き継いだボディフィルタも無いことです。`sendfile on`のとき、nginxは、mrubyのフィルタの無いlocationと同じように、先に読み込まずにファイルを`sendfile`で送ります。`sendfile off`のとき、カーネルTLSを使わないHTTPSの接続のとき、gzip、SSI、subのようなフィルタがレスポンスを処理するときは、何も変わりません。
+- [mrubyのヘッダフィルタだけを通るHEADのレスポンスの後と、`Content-Length`の無いレスポンスでmrubyのボディフィルタを通るHEADのレスポンスの後も、接続を使える](../../releases/v3.0.0.ja.md#mrubyのヘッダフィルタだけを通るheadのレスポンスの後とcontent-lengthの無いレスポンスでmrubyのボディフィルタを通るheadのレスポンスの後も接続を使える848)：変えるものはありません。mrubyのヘッダフィルタを持ち、mrubyのボディフィルタを持たないlocationへのHEADのリクエストと、mrubyのボディフィルタを持つlocationへの、`Content-Length`の無いレスポンスになるHEADのリクエストで、nginxはヘッダの後に接続を閉じなくなります。`Content-Length`の無いレスポンスには、`autoindex`の一覧や、`Content-Length`の無いupstreamのレスポンスがあります。nginxは、再利用できる接続を次のリクエストのために開いておきます。クライアントが受け取るヘッダは変わりません。接続を意図して閉じる場合は、nginxのkeep-aliveの設定(`keepalive_timeout`、`keepalive_requests`)を使ってください。
+- [mrubyの出力フィルタを通る204と304のレスポンスの後も、接続を使える](../../releases/v3.0.0.ja.md#mrubyの出力フィルタを通る204と304のレスポンスの後も接続を使える849)：変えるものはありません。mrubyのヘッダフィルタかボディフィルタを通る204と304のレスポンスで、nginxはヘッダの後に接続を閉じなくなります。こうしたレスポンスには、静的なファイルへの`If-Modified-Since`か`If-None-Match`の付いたGETにnginxが返す304と、`return 204;`の204があります。クライアントが受け取るステータスとヘッダは変わらず、ヘッダの後にボディは続きません。接続を意図して閉じる場合は、nginxのkeep-aliveの設定(`keepalive_timeout`、`keepalive_requests`)を使ってください。
+- [ローカルの導入例をループバックに限定し、mockのモデル振り分けを加える](../../releases/v3.0.0.ja.md#ローカルの導入例をループバックに限定しmockのモデル振り分けを加える672)：自分の設定で変えるものはありません。このエントリーは、開発版の`examples/start/`の導入例についてのものです。その`compose.yaml`は、ホストの全インターフェースではなく、`127.0.0.1`だけでポート8080を公開します(`127.0.0.1:8080:8080`)。この導入例は`/hello`を残し、`/v1/responses`を加えます。`/v1/responses`は、公開されているデモ用のキーを検査し、モデルに応じて、ループバックの2つのmockへ転送します。更新した`examples/start/README.md`の手順をローカルで実行してください。同梱のキーはデモ用です。mockの応答は、LLMによる生成ではなく、プロバイダとの互換性の試験やAPI形式の変換でもありません。この導入例を、公開のサービスにしないでください。
 
 ## スクリプト
 
@@ -446,6 +471,15 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   ```
 
   `\(RuntimeError\)$`のようなパターンは、`#<RuntimeError: `に書き換えます。
+- [`--with-debug`のビルドでは、例外を出したstreamのセッションとフックも、例外のbacktraceを書く](../../releases/v3.0.0.ja.md#--with-debugのビルドでは例外を出したstreamのセッションとフックも例外のbacktraceを書く796)：ほとんどのビルドでは、変えるものはありません。`--with-debug`でビルドしたnginxでは、次のコードで発生した例外の後にも、HTTPと同じようにbacktraceが続くようになります。対象は、`mruby_stream`、`mruby_stream_init`、`mruby_stream_init_worker`、`mruby_stream_exit_worker`とそれぞれの`_code`の形、`mruby_stream_server_context_code`です。backtraceは、フレームごとに1行ずつ`error`のレベルで書きます。行の例は`/path/to/handler.rb:10:in bar`です。セッションのコードでは、各行にセッションのクライアントとサーバーが付きます。`mrb_run failed`の行は、文言もレベルも変わりません。`build.sh`の既定のビルドのように`--with-debug`を付けないビルドは、backtraceを書きません。`error`のレベルの行で例外を数えるアラートやログの解析では、代わりに`mrb_run failed`の行を数えてください。
+- [`inspect`が例外を出すかString以外を返す例外は、クラス名で`error.log`に書く](../../releases/v3.0.0.ja.md#inspectが例外を出すかstring以外を返す例外はクラス名でerrorlogに書く799)：変えるものはありません。例外のクラスの`inspect`を定義し直し、例外を出すか、String以外を返すようにしたスクリプトでは、そのような例外ごとに、`error.log`に行が書かれるようになります。2.xは、この行を書いていませんでした。この行のレベルと、例外の前の文言は、ほかの`mrb_run failed`の行と同じです。レベルは`error`で、`mruby_stream_server_context_code`では`emerg`です。この行は、例外の`inspect`の代わりに、例外のクラスを示します。
+
+  ```
+  error: #<MyError> (inspect raised ArgumentError)
+  error: #<MyError> (inspect did not return a String)
+  ```
+
+  そのような例外のメッセージを`error.log`で見るには、`inspect`がStringを返すようにしてください。
 - [`NoMethodError`のメッセージがレシーバのクラスを示す](../../releases/v3.0.0.ja.md#nomethoderrorのメッセージがレシーバのクラスを示す561)：メッセージの後に` for <class>`が続くので、`undefined method 'foo'`で終わるパターンはもう一致しなくなりました。
 - [nginxが設定を読む間のメッセージのレベルが`notice`から`info`になる](../../releases/v3.0.0.ja.md#nginxが設定を読む間のメッセージのレベルがnoticeからinfoになる565)：ログのパーサ、アラートのルール、起動のスクリプトで、`mechanism enabled`、`compile info`、`target variable`、`ngx_mruby NOTICE`を探してください。nginxは、起動しても、もうこれらの行を書きません。`nginx -t`は、これらを`[info]`で起動時のログに書きます。起動時のログは`-e`で指定したファイルで、指定しなければnginxに組み込んだエラーログのパスです。デフォルトでは、プレフィックスの下の`logs/error.log`です。nginxが起動時のログの行を端末にも出すのは`warn`以上だけなので、`nginx -t`の出力にはこれらの行が出ません。
 

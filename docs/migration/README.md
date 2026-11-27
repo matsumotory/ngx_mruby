@@ -32,6 +32,24 @@ and, for 4.1, `NEWS.md` in `mruby/`.
 
 ## Builds
 
+- Build with nginx 1.30 (stable) or 1.31 (mainline)
+  ([nginx 1.30 (stable) and 1.31 (mainline) are the oldest supported versions](../releases/v3.0.0.md#nginx-130-stable-and-131-mainline-are-the-oldest-supported-versions-789)).
+  CI builds and tests 1.30.6 and 1.31.8, and the oldest supported
+  versions move up every April, when nginx starts a new stable line.
+  Neither `./configure` nor `build.sh` checks the version of nginx: on
+  2026-11-11, `build.sh`, with and without `--with-stream`, completed
+  with nginx 1.28.3 and 1.26.3, which CI does not test, and stopped with
+  nginx 1.24.0, for example the package of
+  Ubuntu 24.04, while it compiled `src/http/ngx_http_mruby_server.c`:
+
+  ```
+  'ngx_http_listen_opt_t' has no member named 'type'
+  ```
+
+  To keep nginx 1.28 or 1.26, stay on 2.x (the branch `v2.x` or the
+  latest `v2.*` tag), which is supported for twelve months after v3.0.0
+  ([Supported versions](../../SECURITY.md#supported-versions)). With
+  nginx 1.24, 2.x builds only without `--with-stream`.
 - Build with Ruby 3.0 or later: the build of the bundled mruby stops on
   Ruby 2.x
   ([Building the bundled mruby needs Ruby 3.0 or later](../releases/v3.0.0.md#building-the-bundled-mruby-needs-ruby-30-or-later-678)).
@@ -110,6 +128,38 @@ and, for 4.1, `NEWS.md` in `mruby/`.
 - With mrbgems of your own or of third parties, see
   [C extensions and mrbgems](#c-extensions-and-mrbgems).
 
+The next two entries are about the test and measurement builds of this
+repository. Builds with `build.sh` do not change.
+
+- [The integration test build enables `Nginx::Debug`](../releases/v3.0.0.md#the-integration-test-build-enables-nginxdebug-751):
+  `test.sh` defines `NGX_MRUBY_DEBUG_STATS` for nginx and ngx_mruby, so
+  handler scripts of the test build can call `Nginx::Debug.stats` and
+  `Nginx::Debug.gc`. The performance comparison keeps its flags. In an
+  existing test build, remove nginx's `objs/Makefile` and run `test.sh`
+  without `ONLY_BUILD_NGX_MRUBY`, so that nginx is configured again and
+  compiled with the counters:
+
+  ```sh
+  . ./nginx_version
+  rm build/${NGINX_SRC_VER}/objs/Makefile    # build_dynamic/${NGINX_SRC_VER}/objs/Makefile for a dynamic module
+  sh test.sh                                 # BUILD_DYNAMIC_MODULE=1 sh test.sh for a dynamic module
+  ```
+
+  A new test build needs no extra step.
+- [The measurement builds include stream sessions](../releases/v3.0.0.md#the-measurement-builds-include-stream-sessions-758):
+  `test/build_release.sh` builds both measured checkouts with
+  `--with-stream`, and the default sets of the soak and of the performance
+  comparison add `stream_sleep`, one TCP session that waits 1 ms and
+  returns exact bytes through EOF. After updating, run
+  `test/soak/run.sh` and `test/perf/compare.sh` without `ONLY_RUN`; the
+  build stamp of `test/build_release.sh` changes, so the soak build and
+  both checkouts of the performance comparison are configured and built
+  again. The soak samples
+  check and print `stream_timers` and `stream_fibers` and add a `sessions`
+  column, and the new row of the performance report counts instructions
+  per completed TCP session. Keep the existing HTTP rows and thresholds
+  when you compare results.
+
 ## Configurations
 
 - [`nginx -t` refuses a stream hook given twice in one context](../releases/v3.0.0.md#nginx--t-refuses-a-stream-hook-given-twice-in-one-context-834):
@@ -148,6 +198,46 @@ and, for 4.1, `NEWS.md` in `mruby/`.
   that should run in some locations only into those locations. On 2.x,
   such a filter ran in none of these locations, except that one in a
   `server {}` block ran for the requests that matched no location.
+
+- [A location with an mruby header filter and no body filter does not read files into memory](../releases/v3.0.0.md#a-location-with-an-mruby-header-filter-and-no-body-filter-does-not-read-files-into-memory-847):
+  nothing to change; the responses are the same. In a location with
+  `mruby_output_header_filter` or `mruby_output_header_filter_code` and no
+  mruby body filter, its own or one that it inherits, nginx no longer
+  reads a file of the response, such as a static file, into the buffers of
+  `output_buffers`: with `sendfile on`, it sends the file with `sendfile`
+  without reading it first, as in a location without an mruby filter.
+  Nothing changes with `sendfile off`, on an HTTPS connection without
+  kernel TLS, or when a filter such as gzip, SSI or sub handles the
+  response.
+- [A HEAD response through an mruby header filter alone, or through a body filter without `Content-Length`, keeps its connection available](../releases/v3.0.0.md#a-head-response-through-an-mruby-header-filter-alone-or-through-a-body-filter-without-content-length-keeps-its-connection-available-848):
+  nothing to change. After the header of a HEAD request to a location
+  with an mruby header filter and no mruby body filter, and of one to a
+  location with an mruby body filter whose response has no
+  `Content-Length`, such as a listing of `autoindex` or a response of an
+  upstream without a length, nginx no longer closes the connection: it
+  keeps an otherwise reusable connection for the next request. The header that the client receives is
+  the same. To close a connection deliberately, configure nginx's
+  keep-alive policy (`keepalive_timeout`, `keepalive_requests`).
+- [A 204 or 304 response through an mruby output filter keeps its connection available](../releases/v3.0.0.md#a-204-or-304-response-through-an-mruby-output-filter-keeps-its-connection-available-849):
+  nothing to change. After the header of a 204 or 304 response that
+  passes an mruby header filter or body filter, such as the 304 that nginx
+  answers to a GET with `If-Modified-Since` or `If-None-Match` for a
+  static file, or the 204 of `return 204;`, nginx no longer closes the
+  connection. The
+  status and the header that the client receives are the same, and no body
+  follows the header. To close a connection deliberately, configure
+  nginx's keep-alive policy (`keepalive_timeout`, `keepalive_requests`).
+- [The local start example binds to loopback and adds mock model routing](../releases/v3.0.0.md#the-local-start-example-binds-to-loopback-and-adds-mock-model-routing-672):
+  nothing to change in a configuration of your own; the entry is about
+  the development example in `examples/start/`. Its `compose.yaml`
+  publishes port 8080 on `127.0.0.1` only (`127.0.0.1:8080:8080`), where it
+  published it on all interfaces, and next to `/hello` the trial adds
+  `/v1/responses`, which checks a public demonstration key and sends the
+  request to one of two loopback mocks by model. Run the updated
+  walkthrough of `examples/start/README.md` locally. The bundled keys are
+  demonstration values, and the mock response is not LLM inference, a
+  provider compatibility test or API-format conversion. Do not publish
+  this trial as a service.
 
 ## Scripts
 
@@ -776,6 +866,34 @@ not enough, and show the change.
   ```
 
   A pattern such as `\(RuntimeError\)$` becomes `#<RuntimeError: `.
+- [A stream session or stream hook that raises logs the backtrace of the exception in a build with `--with-debug`](../releases/v3.0.0.md#a-stream-session-or-stream-hook-that-raises-logs-the-backtrace-of-the-exception-in-a-build-with---with-debug-796):
+  nothing to change for most builds. In an nginx built with
+  `--with-debug`, an exception of `mruby_stream`, `mruby_stream_init`,
+  `mruby_stream_init_worker`, `mruby_stream_exit_worker`, their `_code`
+  forms and `mruby_stream_server_context_code` is now followed by its
+  backtrace, as in HTTP: one line at the `error` level per frame (for
+  example `/path/to/handler.rb:10:in bar`), with the client and the server
+  of the session for the code of a session. The `mrb_run failed` lines
+  keep their text and their level, and a build without `--with-debug`,
+  which `build.sh` makes by default, writes no backtrace. An alert or a
+  log parser that counts exceptions by the lines at the `error` level
+  counts the `mrb_run failed` lines instead.
+- [An exception whose `inspect` raises or does not return a String is logged with the name of its class](../releases/v3.0.0.md#an-exception-whose-inspect-raises-or-does-not-return-a-string-is-logged-with-the-name-of-its-class-799):
+  nothing to change. For a script that redefines `inspect` of an exception
+  class so that it raises or returns an object that is not a String,
+  `error.log` now gets a line for each such exception, where 2.x wrote
+  none. The line has the level and the text before the exception of the
+  other `mrb_run failed` lines (`error`, or `emerg` for
+  `mruby_stream_server_context_code`), and names the class in place of
+  the `inspect`:
+
+  ```
+  error: #<MyError> (inspect raised ArgumentError)
+  error: #<MyError> (inspect did not return a String)
+  ```
+
+  To see the message of such an exception in `error.log`, make its
+  `inspect` return a String.
 - [The message of `NoMethodError` names the class of the receiver](../releases/v3.0.0.md#the-message-of-nomethoderror-names-the-class-of-the-receiver-561):
   a pattern that ends at `undefined method 'foo'` no longer matches, because
   the message goes on with ` for <class>`.
