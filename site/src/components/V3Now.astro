@@ -71,8 +71,8 @@ const items = [
   {
     title: ['設定したヘッダをproxy_passとフィルターが正しく使う', "proxy_pass and nginx's filters use the headers you set"],
     text: [
-      '2.xでは、スクリプトが足したリクエストヘッダと、`proxy_set_header`の同じ名前のヘッダが、2行とも転送されました。3.0では1行だけが送られ、`Content-Type`など5つの応答ヘッダも、nginxのフィルターが読む値になります。',
-      "On 2.x, a request header that a script added and the header of the same name from `proxy_set_header` both went to the upstream. On 3.0 one line goes, and five response headers, `Content-Type` among them, become the values that nginx's filters read.",
+      '2.xでは、スクリプトが足したリクエストヘッダと、`proxy_set_header`の同じ名前のヘッダが、2行とも転送されました。3.0では1行だけが送られ、`Content-Type`、`Location`、`Date`、`Server`、`Content-Length`の応答ヘッダも、nginxのフィルターが読む値になります。',
+      "On 2.x, a request header that a script added and the header of the same name from `proxy_set_header` both went to the upstream. On 3.0 one line goes, and the response headers `Content-Type`, `Location`, `Date`, `Server` and `Content-Length` become the values that nginx's filters read.",
     ],
     href: prefix + '/reference/ruby/#nginxheaders_out-class',
     link: ['ヘッダのクラスのリファレンス', 'Reference of the header classes'],
@@ -114,6 +114,7 @@ const items = [
       ? `${release}は、3.0に向けたプレリリースです。2.xと比べて、下に挙げる6つの点が変わり、下の表のとおり、nginxが1リクエストで実行する命令の数も減りました。AIゲートウェイの部品は、この後のプレリリースで足す予定で、下の「今後のユースケースと設計状況」で扱います。プレリリースなので、本番に入れる前に、テスト環境で試してください。`
       : `${release} is a pre-release of 3.0. Against 2.x, the six points below change, and as the table shows, nginx runs fewer instructions per request. The parts of an AI gateway are planned for later pre-releases, which the future use cases below cover. As a pre-release, try it in a test environment before production.`}</p>
     <p><a href={releaseUrl}>{ja ? `${release}のリリースノートと、更新前に確認する挙動の変更` : `Release notes of ${release}, with the behavior changes to read before upgrading`}</a></p>
+    <p><a href={prefix + '/releases/migration/'}>{ja ? '2.xから3.0への移行の手引き' : 'Migrating from 2.x to 3.0'}</a></p>
   </div>
   <div class="now-measured">
     <h3>{ja ? `${month}に${base}と比べた、リクエストあたりの命令数` : `Instructions per request against ${base}, measured in ${month}`}</h3>
