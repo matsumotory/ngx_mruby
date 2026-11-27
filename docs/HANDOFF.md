@@ -628,6 +628,13 @@
   `site/src/data/perf-v3.0.0-alpha.2.txt`, a comparison of
   `v3.0.0-alpha.2` with `v2.7.14` made with `test/perf/compare.sh` for
   the site, which replaces the report of 3.0.0-alpha.1 against 2.7.13.
+- [#881](https://github.com/matsumotory/ngx_mruby/pull/881) (`next`, writes this entry): the section of the home
+  page on 3.0.0-alpha.2 says, for each of its six items, what 2.x did and
+  what 3.0 does (#770, #722, #855 and #874, #826 and #854, #832 and #780,
+  mruby 4.1), and links the migration guide; the home pages are dated by
+  the last commit to their MDX or to the files they show
+  (`HOME_SOURCES`); and the checks measure short last lines of Japanese
+  text on headings only (the decision of 2026-11-27 in "Decisions").
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
