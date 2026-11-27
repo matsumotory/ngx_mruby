@@ -51,68 +51,70 @@ const percent = (s) => s.replace('-', '−');
 const parts = (text) => text.split('`');
 const items = [
   {
-    title: ['mruby 4.1.0-rc2を同梱', 'Bundles mruby 4.1.0-rc2'],
+    title: ['logハンドラで作った値をaccess_logに書く', 'Write what a log handler computes into access_log'],
     text: [
-      '同梱のmrubyが3.3.0から上がり、スクリプトでパターンマッチ(`case`/`in`)、ブロックの`it`、mruby 3.4から4.1までに増えたメソッドを使えます。',
-      'The bundled mruby moves up from 3.3.0: scripts can use pattern matching (`case`/`in`), `it` in blocks and the methods that mruby 3.4 to 4.1 added.',
+      '2.xでは、mrubyのlogハンドラがaccess_logの後に動くため、ハンドラが代入したnginxの変数を、その行に出せませんでした。3.0では先に動くので、利用者や転送先のモデルのように、リクエストごとに決まる値を同じ行に書けます。',
+      "On 2.x, mruby log handlers ran after access_log, so the nginx variables they assigned could not reach its line. On 3.0 they run first, so values that each request decides, such as the user or the model it was routed to, go into the same line.",
     ],
-    href: ja ? '/ja/releases/v3.0.0/#同梱のmrubyが330から410-rc2になる561-678' : '/releases/v3.0.0/#the-bundled-mruby-is-410-rc2-instead-of-330-561-678',
-    link: ['同梱のmrubyの変更と移行の注意', 'What changes with the bundled mruby, and what to do'],
+    href: ja ? '/ja/releases/v3.0.0/#access_logがmrubyのlogハンドラが設定した変数と送ったステータスを書く770' : '/releases/v3.0.0/#access_log-writes-the-variables-that-mruby-log-handlers-set-and-the-status-that-was-sent-770',
+    link: ['access_logに書く順序の変更', 'How the order against access_log changed'],
   },
   {
-    title: ['待つハンドラがどのフェーズでも同じように再開する', 'Handlers that wait behave the same in every phase'],
+    title: ['contentハンドラでサブリクエストを使う', 'Answer from a subrequest in a content handler'],
     text: [
-      '`Nginx::Async.sleep`や`Nginx::Async::HTTP.sub_request`で待ったハンドラは、どのフェーズでも同じ形で再開し、リクエストを終えます。contentハンドラでも`sub_request`を使えます。',
-      'A handler that waits in `Nginx::Async.sleep` or `Nginx::Async::HTTP.sub_request` resumes and ends the request in the same way in every phase. `sub_request` also works in content handlers.',
+      '2.xでは、contentハンドラでの`sub_request`はドキュメントに書かれておらず、`sleep`の後に呼ぶと例外になりました。3.0では、contentハンドラがブロックせずにサブリクエストの応答を待ち、その内容でレスポンスを返せます。',
+      'On 2.x, `sub_request` in a content handler was not documented, and calling it after `sleep` raised. On 3.0 a content handler waits for the response of the subrequest without blocking and can send its own response from it.',
     ],
     href: prefix + '/concepts/async/',
     link: ['ブロックせずに待つ仕組み', 'How a handler waits without blocking'],
   },
   {
-    title: ['効果の無い呼び出しは例外になる', 'Calls that would do nothing raise an error'],
+    title: ['ヘッダが二重に送られず、nginxのフィールドに入る', "Headers are not sent twice, and go into nginx's own fields"],
     text: [
-      'メソッドが、呼んだハンドラで効果を持たないときは、`RuntimeError`が発生します。誤りは無視されずに`error.log`に出ます。',
-      'A method that has no effect in the handler that calls it raises a `RuntimeError`, so the mistake shows up in `error.log` instead of being ignored.',
+      '2.xでは、スクリプトが足したリクエストヘッダと、`proxy_set_header`の同じ名前のヘッダが、2行とも転送されました。3.0では`proxy_set_header`の値の1行だけが送られ、`Content-Type`、`Location`、`Date`、`Server`、`Content-Length`の応答ヘッダも、nginx自身のフィールドに入ります。',
+      "On 2.x, a request header that a script added and the header of the same name from `proxy_set_header` both went to the upstream. On 3.0 only the line of `proxy_set_header` goes, and the response headers `Content-Type`, `Location`, `Date`, `Server` and `Content-Length` go into nginx's own fields.",
     ],
-    href: ja ? '/ja/releases/v3.0.0/#ハンドラで効果の無いメソッドはそのハンドラでruntimeerrorを出す826' : '/releases/v3.0.0/#methods-that-have-no-effect-in-a-handler-raise-a-runtimeerror-there-826',
-    link: ['対象のメソッドとハンドラ', 'Which methods, in which handlers'],
+    href: prefix + '/reference/ruby/#nginxheaders_out-class',
+    link: ['ヘッダのクラスのリファレンス', 'Reference of the header classes'],
   },
   {
-    title: ['ハンドラの間で値を渡す', 'Pass values between handlers'],
+    title: ['設定とスクリプトの誤りが例外になる', 'Mistakes in configurations and scripts raise'],
     text: [
-      '`Nginx::Request#store`で、1つのリクエストのハンドラの間で値を渡せます。`mruby_variable`で、スクリプトが代入するnginxの変数を宣言できます。',
-      '`Nginx::Request#store` passes values between the handlers of one request, and `mruby_variable` declares nginx variables for scripts to assign.',
+      '2.xでは、そのハンドラでは効かないメソッドを呼んでもエラーにならず、nginxが受け付けない変数への代入も、`error.log`に行を書いて処理が続きました。3.0では、どちらも例外になってスクリプトが止まり、`error.log`に原因が出ます。',
+      'On 2.x, calling a method that has no effect in the handler raised no error, and an assignment that nginx refused wrote a line to `error.log` and let the code go on. On 3.0 both raise, so the script stops and `error.log` shows the cause.',
+    ],
+    href: ja ? '/ja/releases/v3.0.0/#ハンドラで効果の無いメソッドはそのハンドラでruntimeerrorを出す826' : '/releases/v3.0.0/#methods-that-have-no-effect-in-a-handler-raise-a-runtimeerror-there-826',
+    link: ['例外になるメソッドとハンドラ', 'Which methods raise, in which handlers'],
+  },
+  {
+    title: ['リクエストごとの値をハンドラの間で渡す', 'Pass the values of a request between handlers'],
+    text: [
+      '`Userdata`に置いた値は、ワーカーのグローバル変数に残り、次のリクエストからも見えます。3.0で入った`Nginx::Request#store`は1つのリクエストだけのHashで、`mruby_variable`は、スクリプトが代入する変数を`http`ブロックで宣言します。',
+      'A value put into `Userdata` stays in a global variable of the worker, where the next request sees it. `Nginx::Request#store`, new in 3.0, is a Hash of one request, and `mruby_variable` declares in the `http` block a variable for scripts to assign.',
     ],
     href: prefix + '/concepts/lifetimes/',
     link: ['リクエストのデータを置く場所', 'Where the data of a request lives'],
   },
   {
-    title: ['ヘッダがnginxのフィールドに入る', "Headers go into nginx's own fields"],
+    title: ['mruby 4.1の文法とメソッドを使う', 'Use the syntax and methods of mruby 4.1'],
     text: [
-      '`Nginx::Headers_out`で設定した`Content-Type`、`Location`、`Date`、`Server`、`Content-Length`はnginxのフィールドに入り、nginxのフィルターもその値を使います。`Nginx::Headers_in#[]=`で足したリクエストヘッダは、`proxy_pass`が認識します。',
-      "`Content-Type`, `Location`, `Date`, `Server` and `Content-Length` set through `Nginx::Headers_out` go into nginx's own fields, which nginx's filters use. Request headers added with `Nginx::Headers_in#[]=` are recognized by `proxy_pass`.",
+      '2.xが同梱するmrubyは3.3.0です。3.0のプレリリースはmruby 4.1.0-rc2を同梱し、パターンマッチ(`case`/`in`)、ブロックの`it`、mruby 3.4から4.1までに増えたメソッドを使えます。',
+      '2.x bundles mruby 3.3.0. The pre-releases of 3.0 bundle mruby 4.1.0-rc2, so scripts can use pattern matching (`case`/`in`), `it` in blocks, and the methods that mruby 3.4 to 4.1 added.',
     ],
-    href: prefix + '/reference/ruby/#nginxheaders_out-class',
-    link: ['Nginx::Headers_outのリファレンス', 'Nginx::Headers_out reference'],
-  },
-  {
-    title: ['モデルごとの振り分けを手元で動かす', 'Run model routing locally'],
-    text: [
-      '`examples/start`は、Docker Composeで、リクエストをモデルごとに2つのモックAPIへ振り分けるnginxを動かします。プロバイダーのAPIキーは不要です。',
-      '`examples/start` uses Docker Compose to run an nginx that routes requests by model to two mock APIs. No provider API key is needed.',
-    ],
-    href: `https://github.com/matsumotory/ngx_mruby/blob/${report.head.tag}/examples/start/README.md`,
-    link: [`${release}のexamples/startの手順`, `The steps of examples/start in ${release}`],
+    href: ja ? '/ja/releases/v3.0.0/#同梱のmrubyが330から410-rc2になる561-678' : '/releases/v3.0.0/#the-bundled-mruby-is-410-rc2-instead-of-330-561-678',
+    link: ['同梱のmrubyの変更と移行の注意', 'What changes with the bundled mruby, and what to do'],
   },
 ];
+
 ---
 <section class="v3-now" aria-labelledby="now-title">
   <div class="home-copy">
     <h2 id="now-title">{ja ? `${release}でいま使えるもの` : `What ${release} gives you now`}</h2>
     <p>{ja
-      ? `${release}は、3.0に向けたプレリリースです。新しいコアが入っていて、ここに挙げるものはこのプレリリースにあります。AIゲートウェイの部品は、この後のプレリリースで足す予定です。下の「今後のユースケースと設計状況」で扱います。本番では安定版の2.x系を使ってください。`
-      : `${release} is a pre-release of 3.0. It brings the new core, and everything listed here is in it. The parts of an AI gateway are planned for later pre-releases; the future use cases below cover them. For production, use the stable 2.x line.`}</p>
+      ? `${release}は、3.0に向けたプレリリースです。2.xと比べて、下に挙げる6つの点が変わりました。下の表は、nginxが1リクエストで実行する命令の数を、${base}と比べたものです。AIゲートウェイの部品は、この後のプレリリースで足す予定で、下の「今後のユースケースと設計状況」で扱います。プレリリースなので、本番では安定版の2.7を使い、3.0はテスト環境で試してください。`
+      : `${release} is a pre-release of 3.0. Against 2.x, the six points below change. The table compares the instructions that nginx runs per request with ${base}. The parts of an AI gateway are planned for later pre-releases, which the future use cases below cover. As a pre-release, use the stable 2.7 line in production and try 3.0 in a test environment.`}</p>
     <p><a href={releaseUrl}>{ja ? `${release}のリリースノートと、更新前に確認する挙動の変更` : `Release notes of ${release}, with the behavior changes to read before upgrading`}</a></p>
+    <p><a href={prefix + '/releases/migration/'}>{ja ? '2.xから3.0への移行の手引き' : 'Migrating from 2.x to 3.0'}</a></p>
   </div>
   <div class="now-measured">
     <h3>{ja ? `${month}に${base}と比べた、リクエストあたりの命令数` : `Instructions per request against ${base}, measured in ${month}`}</h3>

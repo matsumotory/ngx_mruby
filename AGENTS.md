@@ -1141,8 +1141,8 @@ npm run preview           # serves dist/ at http://localhost:4321/
     1440 px, no horizontal scroll, gutters of 20 px or more at 402 px, the
     line count of the home page heading, the right edge of Japanese text
     at 402 px and no `text-wrap` pretty or balance on
-    English text, no paragraph, list item, caption, table cell or heading
-    whose last line holds one or two characters, in both patterns, the
+    English text, no heading whose last line holds one or two characters,
+    in both patterns, the
     diagrams (`role="img"` and an `aria-label`, drawings
     hidden from screen readers, labels of 14 px or more inside their
     place, the drawing and its labels within one screen), and the theme
@@ -1154,8 +1154,8 @@ npm run preview           # serves dist/ at http://localhost:4321/
     WebKit: at most 40 Japanese characters on a line of body text and a
     line height of 1.75 to 2.0 at 1440 px, the page title on one line at
     402 px, the right edge of Japanese blocks at 402 px (2 em; an h2 at
-    most two lines and 6 em), no last line of one or two characters in
-    either pattern, and diagram labels of 14 px or more inside their place
+    most two lines and 6 em), no heading with a last line of one or two
+    characters in either pattern, and diagram labels of 14 px or more inside their place
     in both, and the notice above an English
     page under `/ja/` on one page of each kind; on the release notes of
     `NOTES_ONLY` in the script, failures are notes until step 5 rewrites

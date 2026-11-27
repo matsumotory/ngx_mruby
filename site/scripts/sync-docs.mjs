@@ -60,7 +60,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { containsHtml, isFirstBlock, parseMarkdown, plainText, titleHeading } from './lib/markdown.mjs';
-import { BASE, contentDir, contentRoot, GITHUB_REF, GITHUB_URL, HOME_PAGES, isShallow, lastCommitDate, manifestFile, repoDir, SIDEBAR_ORDER, siteDir, SITE_VERSION, SOURCE_ROUTES } from './lib/site.mjs';
+import { BASE, contentDir, contentRoot, GITHUB_REF, GITHUB_URL, HOME_PAGES, homeLastCommitDate, isShallow, lastCommitDate, manifestFile, repoDir, SIDEBAR_ORDER, siteDir, SITE_VERSION, SOURCE_ROUTES } from './lib/site.mjs';
 import { checkKeys, diagramHtml, diagramMarkdown, loadDrawings, parseDiagramBlock } from './lib/diagrams.mjs';
 import { loadSample, parseSampleBlock, sampleMarkdown } from './lib/samples.mjs';
 
@@ -483,7 +483,7 @@ for (const [lang, rel, route] of [['en', HOME_PAGES[0], ''], ['ja', HOME_PAGES[1
   const title = /^title:\s*(.+)$/m.exec(fs.readFileSync(file, 'utf8'))?.[1]?.replace(/^["']|["']$/g, '');
   if (!title) fail(`site/src/content/docs/${rel} has no title in its front matter`);
   const source = path.relative(repoDir, file).split(path.sep).join('/');
-  manifest.push({ source, lang, route, title, lastUpdated: lastCommitDate(repoDir, source), home: true, diagrams: [] });
+  manifest.push({ source, lang, route, title, lastUpdated: homeLastCommitDate(repoDir, source), home: true, diagrams: [] });
 }
 fs.mkdirSync(path.dirname(manifestFile), { recursive: true });
 fs.writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
