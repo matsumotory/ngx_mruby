@@ -274,7 +274,7 @@ change.
 | Category | Paths | What a ready pull request runs |
 |---|---|---|
 | `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below), `soak` and `perf`. `examples` and `codeql` by their own path filters. No run of `nginx-tests`: the author runs it locally ([Running nginx-tests](#running-nginx-tests)) |
-| `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `soak` when `soak` is `true`; `perf` compares when `perf` is `true` |
+| `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `soak` when `soak` is `true`; `perf` compares when `perf` is `true`. For a change of `test.sh` or `test/nginx-tests/`, the author also runs nginx-tests locally ([Running nginx-tests](#running-nginx-tests)) |
 | `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | No job on `next`: the author runs `npm run check:ci` in `site/` ([Site CI](#site-ci)), and `site.yml` checks the merge on the push to `next`. On `master`, the author checks the 2.x pages locally ([The 2.x pages of the site](#the-2x-pages-of-the-site)) |
 | `site` | `site/`, `.github/workflows/site.yml` | No job: as for `docs` |
 | `examples` | `examples/` | `examples`; the site as for `docs` |
@@ -1537,7 +1537,7 @@ the change touches an input of the nginx binary (`sh test/ci/changes.sh
 BASE HEAD` gives `code` `true`), `test.sh` or `test/nginx-tests/`, and
 quotes the counts of `summary.md` and the exit status under "How was this
 tested" ("Build and test" in [AGENTS.md](../../AGENTS.md)). A test file
-that fails with ngx_mruby and passes without it fails the run, and the
+that fails with ngx_mruby and not without it fails the run, and the
 author fixes the change; pull requests do not run nginx-tests in CI.
 
 `run.sh` needs Linux, a user other than root (the test files write their
@@ -1613,13 +1613,17 @@ on purpose, differently for the two builds (the table at the top of
 `run.sh` exits with 0 when both builds were tested, their results were
 read and no test file fails with ngx_mruby only; files that fail on both
 builds do not change it. It exits with 1 when a test file fails with
-ngx_mruby and passes or skips without it (the files of `only-mruby.txt`,
-which it prints), after writing all the output above. It exits with
-another status when a build, the fetch or `prove` itself failed, or when
-a log is not a complete run. `compare.pl`, whose status `run.sh` passes
-on, exits with 0, with 1 for files that fail with ngx_mruby only, and
-with 2 when it cannot compare (a missing result file, or builds that ran
-different files); the self-test checks the three.
+ngx_mruby and not without it, where it passes or is skipped (the files
+of `only-mruby.txt`, which it prints), after writing all the output above. It exits with 2
+when `compare.pl` cannot compare the results (a missing result file, or
+builds that ran different files), and with 3 when it stops before the
+comparison: run from another directory or as root, the suite at another
+commit, a failed fetch, a failed build of either nginx, or a log that is
+not a complete run of `prove`. The 0, 1 and 2 are the status of
+`compare.pl`, which `run.sh` passes on. The self-test checks the statuses
+0, 1 and 2 of `compare.pl` (a file that fails with ngx_mruby and passes
+without it, and one that is skipped without it, both give 1), and the
+status 3 of `run.sh` outside a checkout.
 
 ### nginx-tests in CI
 

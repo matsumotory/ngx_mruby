@@ -307,7 +307,7 @@ upgrading". New behavior, API cleanups and features go to `next`.
   from `test/ci/changes.sh`), `test.sh` or `test/nginx-tests/` runs `sh
   test/nginx-tests/run.sh` locally before marking the PR ready, in a Linux
   container on macOS, and fixes the change when a test file fails with
-  ngx_mruby and passes without it (the run then exits with 1); PRs do not
+  ngx_mruby and not without it (the run then exits with 1); PRs do not
   run `nginx-tests.yml`, which CI keeps only as a nightly run of `next`
   ("nginx-tests in CI" in `docs/test/README.md` on `next`; the decision
   is in "Decisions" of `docs/HANDOFF.md` on `next`). The reason: the

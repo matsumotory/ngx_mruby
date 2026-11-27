@@ -96,7 +96,7 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 | 分類 | パス | readyのPRが実行するワークフロー |
 |---|---|---|
 | `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`examples`と`codeql`は、それぞれのパスフィルタに従って動く。`nginx-tests`は作者が手元で流す |
-| `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較 |
+| `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較。`test.sh`か`test/nginx-tests/`を変えたときは、作者が手元でnginx-testsも流す |
 | `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | ジョブなし。手元で検査：[サイトのCI](#サイトのci)（`next`）、[2.xページの検査](#サイトの2xページ)（`master`） |
 | `site` | `.github/workflows/site.yml`と`site/` | ジョブなし。`docs`と同じ |
 | `examples` | `examples/` | examples。サイトは`docs`と同じ扱い |
@@ -573,7 +573,7 @@ nginx-testsには、リリースもタグもありません。`run.sh`は、`NGI
 
 ### nginx-testsを実行する
 
-PRの作者は、変更がnginxのバイナリの入力、`test.sh`、`test/nginx-tests/`のどれかを変えるとき、PRをreadyにする前に`run.sh`を流します。nginxのバイナリの入力を変える変更は、`sh test/ci/changes.sh BASE HEAD`が`code`を`true`にする変更です。作者は、`summary.md`の件数と終了ステータスを、PRの本文の「How was this tested」に引用します。この決まりは、[AGENTS.md](../../../AGENTS.md)の「Build and test」にあります。ngx_mrubyを入れると失敗し、入れないと通るテストファイルがあると、`run.sh`は失敗します。そのときは、作者が変更を直します。PRのCIでは、nginx-testsは動きません。
+PRの作者は、変更がnginxのバイナリの入力、`test.sh`、`test/nginx-tests/`のどれかを変えるとき、PRをreadyにする前に`run.sh`を流します。nginxのバイナリの入力を変える変更は、`sh test/ci/changes.sh BASE HEAD`が`code`を`true`にする変更です。作者は、`summary.md`の件数と終了ステータスを、PRの本文の「How was this tested」に引用します。この決まりは、[AGENTS.md](../../../AGENTS.md)の「Build and test」にあります。ngx_mrubyを入れると失敗し、入れないと失敗しないテストファイルがあると、`run.sh`は失敗します。そのときは、作者が変更を直します。PRのCIでは、nginx-testsは動きません。
 
 `run.sh`には、Linuxと、root以外のユーザーと、`test.sh`が必要とするものが要ります。root以外のユーザーが要る理由は2つあります。テストファイルは、そのユーザーだけが読めるディレクトリに設定を書きます。また、rootが起動したnginxは、ワーカーを`nobody`で動かします。テストファイルが必要とするperlのモジュールやプログラムが無いとき、そのテストファイルは失敗でなくスキップになります。Ubuntu 22.04では、ジョブは次のものをインストールします。
 
@@ -609,7 +609,7 @@ docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEB
 
 `test/nginx-tests/results.pl`は`prove.log`を読みます。proveの「Test Summary Report」にあるファイルのエントリーに、失敗したサブテスト、0以外のwait status、パースのエラーのどれかがあると、そのファイルは失敗です。パースのエラーは、planが無いか、planが間違っている場合です。エントリーにあるのが、通ったTODOのサブテストだけなら、そのファイルは通ったことになります。ログがproveの完全な実行でないとき、`results.pl`は止まります。`test/nginx-tests/compare.pl`は、一覧とサマリーを書きます。`sh test/nginx-tests/self-test.sh`は、この2つのスクリプトを、`test/nginx-tests/self-test/`にある小さなテストファイルの`prove`の出力で確かめます。これらのテストファイルは、わざと通るか、失敗するか、スキップするか、planを壊します。その動きは2つのビルドで違い、組み合わせは、`self-test.sh`の先頭のテーブルに書いてあります。
 
-両方のビルドをテストし、その結果を読めて、ngx_mrubyを入れたビルドでだけ失敗するテストファイルが無いとき、`run.sh`は0で終わります。両方のビルドで失敗するファイルがあっても、0のままです。ngx_mrubyを入れると失敗し、入れないと通るかスキップになるテストファイルがあるとき、`run.sh`は上の出力をすべて書いた後に、そのファイルの名前を出力し、1で終わります。同じ名前は`only-mruby.txt`にも書きます。ビルド、fetch、`prove`自身のどれかが失敗したときと、ログがproveの実行を最後まで記録していないときは、`run.sh`はそれ以外の0でないステータスで終わります。`run.sh`は、`compare.pl`の終了ステータスをそのまま返します。`compare.pl`は、比べた結果に問題が無いときに0、ngx_mrubyを入れたビルドでだけ失敗するファイルがあるときに1、比べられないときに2で終わります。比べられないのは、結果のファイルが無いときと、2つのビルドが違うテストファイルを実行したときです。セルフテストは、この3つの終了ステータスを確かめます。
+両方のビルドをテストし、その結果を読めて、ngx_mrubyを入れたビルドでだけ失敗するテストファイルが無いとき、`run.sh`は0で終わります。両方のビルドで失敗するファイルがあっても、0のままです。ngx_mrubyを入れると失敗し、入れないと失敗しないテストファイルがあるとき、`run.sh`は上の出力をすべて書いた後に、そのファイルの名前を出力し、1で終わります。同じ名前は`only-mruby.txt`にも書きます。入れない側で通るファイルも、スキップになるファイルも、これに当たります。`compare.pl`が結果を比べられないとき、`run.sh`は2で終わります。比べられないのは、結果のファイルが無いときと、2つのビルドが違うテストファイルを実行したときです。比べる前に止まったときは、`run.sh`は3で終わります。止まるのは、ほかのディレクトリかrootで実行したとき、スイートがほかのコミットにあるとき、fetchか、どちらかのnginxのビルドが失敗したとき、ログが`prove`の実行を最後まで記録していないときです。0、1、2は`compare.pl`の終了ステータスで、`run.sh`はそれをそのまま返します。セルフテストは、`compare.pl`の0、1、2と、チェックアウトの外で実行した`run.sh`の3を確かめます。1の確認には、ngx_mrubyを入れないと通るファイルと、入れないとスキップになるファイルの両方を使います。
 
 ### CIで実行するnginx-tests
 
