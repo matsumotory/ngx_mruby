@@ -1410,7 +1410,12 @@ acceptance; the interaction check covers that separately.
      `LICENSE` file of the page's version.
   3. A line of the page's metadata, below a 1 px rule, in muted text: the
      Markdown of the page (on documentation pages), the documents index
-     JSON, and the last-updated date.
+     JSON, and the last-updated date. A page of `docs/` is dated by the
+     last commit to its source; a home page by the last commit to its MDX
+     or to the files that it shows (`HOME_SOURCES` in
+     `site/scripts/lib/site.mjs`: its components and style, the perf
+     report, the sample and `examples/start`, and the ledger of the uses),
+     so that a change of what the page shows moves its date.
   The groups stand side by side from 641 px and one under the other at
   640 px and below; no group is collapsed. The footer holds text links
   only. The owner asked for this order on 2026-11-02 (section 7).

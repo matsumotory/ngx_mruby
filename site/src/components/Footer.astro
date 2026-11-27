@@ -5,13 +5,12 @@ import { getSiteRoute } from '../route.mjs';
 // (documentation, the project, the language) and a line of the page's
 // metadata (its Markdown, the documents index and the last-updated date).
 import fs from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import LastUpdated from './LastUpdated.astro';
 import Pagination from './Pagination.astro';
 import LanguageLink from './LanguageLink.astro';
 import { GITHUB_URL, strings, versionLink } from '../site-nav.mjs';
-import { BASE, GITHUB_REF, SITE_VERSION, pageOfRoute } from '../../scripts/lib/site.mjs';
+import { BASE, GITHUB_REF, SITE_VERSION, homeLastCommitDate, pageOfRoute, repoDir } from '../../scripts/lib/site.mjs';
 
 const lang = getSiteRoute(Astro.locals).locale === 'ja' ? 'ja' : 'en';
 const t = strings(lang);
@@ -22,16 +21,17 @@ const version = versionLink(lang);
 // and to the license on master.
 const p = `${BASE}${lang === 'ja' ? '/ja' : ''}`;
 // The home pages are committed MDX files: their last-updated date is the
-// date of the last commit to them, as git log --format=%cs gives it, which
-// is how the generator dates the pages of docs/. Using the commit-local
-// date preserves the day during the hours after midnight JST.
+// date of the last commit to them or to the files they show (HOME_SOURCES
+// in scripts/lib/site.mjs), as git log --format=%cs gives it, which is how
+// the generator dates the pages of docs/. Using the commit-local date
+// preserves the day during the hours after midnight JST.
 const route = getSiteRoute(Astro.locals);
 const routePath = Astro.url.pathname.slice(BASE.length).replace(/^\/|\/$/g, '');
 const { page: sourcePage, fallback } = pageOfRoute(JSON.parse(fs.readFileSync(path.join(process.cwd(), 'generated/pages.json'), 'utf8')), routePath);
 const markdown = sourcePage && !sourcePage.home ? `${BASE}/markdown/${sourcePage.route || 'index'}.md` : null;
 if (route.entry.filePath && route.entry.filePath.endsWith('index.mdx')) {
-  const file = path.resolve(process.cwd(), route.entry.filePath);
-  const date = execFileSync('git', ['log', '-1', '--format=%cs', '--', file], { cwd: process.cwd(), encoding: 'utf8' }).trim();
+  const file = path.relative(repoDir, path.resolve(process.cwd(), route.entry.filePath)).split(path.sep).join('/');
+  const date = homeLastCommitDate(repoDir, file);
   if (date) route.lastUpdated = new Date(`${date}T00:00:00Z`);
 }
 ---
