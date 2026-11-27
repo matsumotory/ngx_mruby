@@ -95,7 +95,7 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 
 | 分類 | パス | readyのPRが実行するワークフロー |
 |---|---|---|
-| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`examples`と`codeql`は、それぞれのパスフィルタに従って動く。`nginx-tests`は動かず、作者が手元で流す([nginx-testsを実行する](#nginx-testsを実行する)) |
+| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`examples`と`codeql`は、それぞれのパスフィルタに従って動く。`nginx-tests`は作者が手元で流す |
 | `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較 |
 | `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | ジョブなし。手元で検査：[サイトのCI](#サイトのci)（`next`）、[2.xページの検査](#サイトの2xページ)（`master`） |
 | `site` | `.github/workflows/site.yml`と`site/` | ジョブなし。`docs`と同じ |
@@ -593,7 +593,7 @@ rm -rf "$D" && mkdir -p "$D" && git archive HEAD | tar -x -C "$D"
 docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential perl rake ruby bison git gperf wget ca-certificates openssl zlib1g-dev libpcre3-dev libssl-dev libio-socket-ssl-perl libnet-ssleay-perl libfcgi-perl libscgi-perl libcache-memcached-perl libcache-memcached-fast-perl libprotocol-websocket-perl memcached >/dev/null && useradd -m nt && chown -R nt "$PWD" && su nt -c "NGX_MRUBY_COMMIT='"$(git rev-parse HEAD)"' sh test/nginx-tests/run.sh"'
 ```
 
-2026年11月27日に、arm64のMacのDocker Desktopでこのコマンドを流すと、約6分かかりました。コンテナのCPUは11で、イメージは取得済みでした。内訳は、パッケージのインストールが30秒、`run.sh`が5分13秒です。`run.sh`は、ngx_mrubyを入れたnginxと入れないnginxをビルドし、それぞれで`prove`を実行します。ngx_mrubyを入れたnginxのビルドでは、mrubyとgemも最初からビルドします。同じコピーで2回目に流すと、nginxのバージョンとconfigureのオプションが同じ間は、ngx_mrubyを入れないビルドを再利用します(`build_nginxtests/plain/build_stamp`)。1つのチェックアウトでは、`run.sh`と`test.sh`は同じ`build/`にビルドします。そのため、同じチェックアウトで2つを同時に流さないでください。
+2026年11月27日に、arm64のMacのDocker Desktopでこのコマンドを流すと、約6分かかりました。コンテナのCPUは11で、イメージは取得済みでした。内訳は、パッケージのインストールが30秒、`run.sh`が5分13秒です。`run.sh`は、ngx_mrubyを入れたnginxと入れないnginxをビルドし、それぞれで`prove`を実行します。ngx_mrubyを入れたnginxのビルドでは、mrubyとgemも最初からビルドします。同じコピーで2回目に流すと、nginxのバージョンとconfigureのオプションが同じ間は、ngx_mrubyを入れないビルドを再利用します(`build_nginxtests/plain/build_stamp`)。1つのチェックアウトでは、`run.sh`と`test.sh`が同じ`build/`にビルドするので、2つを同時に流さないでください。
 
 テストファイルは、8000から8999のポートのうち自分がロックしたポートで、nginxを起動します。そのため、テストファイルは並列に動きます。並列の数は`NGINX_TESTS_JOBS`で決まり、デフォルトはCPUの数です。テストファイルは`test.sh`のポートを使いません。また、`test.sh`が止めるのは、自分が起動したnginxだけです。詳しい説明は上の「nginxを止める」にあります。
 
