@@ -1451,10 +1451,12 @@ acceptance; the interaction check covers that separately.
   `master` and `next`, so both versions show its runs on `master`; and
   `nginx-tests` exists on `next` only, so the 2.x pages leave it out. A
   workflow badge shows the latest run on its branch itself; runs of pull
-  requests belong to their own branches. `nginx-tests` and `zizmor` run on
-  ready pull requests and on "Run workflow", not on pushes, so their
-  badges show the push runs of 2026-10-31 until a session runs them on
-  `next` or `master` ("Run workflow"). The strip exposes development
+  requests belong to their own branches. `nginx-tests` runs only on "Run
+  workflow" on `next`, the nightly run among them ("nginx-tests in CI" in
+  `docs/test/README.md`), so its badge shows the latest of those runs.
+  `zizmor` runs on ready pull requests and on "Run workflow", not on
+  pushes, so its badges show the push runs of 2026-10-31 until a session
+  runs it on `next` or `master` ("Run workflow"). The strip exposes development
   practices that readers can assess, rather than an aggregate score.
   The strip shows the project's state and is not decoration (4.3): the
   images keep their services' colors, nothing recolors them, no frame,

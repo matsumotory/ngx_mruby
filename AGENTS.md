@@ -258,8 +258,9 @@ upgrading". New behavior, API cleanups and features go to `next`.
   the static and with the dynamic module, the suite under
   AddressSanitizer and UndefinedBehaviorSanitizer, the suite under
   valgrind, the callgrind comparison (`sh test/perf/compare.sh`), the
-  soak (`sh test/soak/run.sh`), the steps of `examples/start` and
-  nginx-tests where their workflows run, the check of the added files
+  soak (`sh test/soak/run.sh`), the steps of `examples/start` where its
+  workflow runs, nginx-tests (`sh test/nginx-tests/run.sh`, which PRs do
+  not run in CI; below), the check of the added files
   (`sh test/check_added_files.sh`, the `files` job), the report of the
   heads of the GitHub gems (`bash test/gem_heads.sh`, the `gem-heads`
   workflow) when the change touches `build_config.rb`, `test/gem_heads.sh`
@@ -300,7 +301,18 @@ upgrading". New behavior, API cleanups and features go to `next`.
   runs no job of `site-v2.yml`: its author checks the 2.x pages locally
   ("The 2.x pages of the site" in `docs/test/README.md`), and the push to
   `master` starts `site.yml` on `next` through `site-dispatch.yml`, which
-  builds `/v2/` from the new `master` before it deploys. The author runs
+  builds `/v2/` from the new `master` before it deploys. The owner
+  decided on 2026-11-27 that nginx-tests runs in the same way: the author
+  of a change that touches an input of the nginx binary (`code` `true`
+  from `test/ci/changes.sh`), `test.sh` or `test/nginx-tests/` runs `sh
+  test/nginx-tests/run.sh` locally before marking the PR ready, in a Linux
+  container on macOS, and fixes the change when a test file fails with
+  ngx_mruby and passes without it (the run then exits with 1); PRs do not
+  run `nginx-tests.yml`, which CI keeps only as a nightly run of `next`
+  ("nginx-tests in CI" in `docs/test/README.md` on `next`; the decision
+  is in "Decisions" of `docs/HANDOFF.md` on `next`). The reason: the
+  rules above run locally what can run locally and do not repeat it in
+  CI, and nginx-tests runs in Docker. The author runs
   the checks that the change touches locally before marking the PR ready
   (`sh test/check_added_files.sh` for every PR; when `test/ci/changes.sh`
   gives `build` `standard` or `full`, the suite with the static and with
@@ -702,8 +714,11 @@ sh test/check_added_files.sh origin/<base> HEAD   # the files job: no added file
   change of the tests alone included; `sh test/perf/compare.sh` when it gives `perf`
   `true`, `sh test/soak/run.sh` when it gives `soak` `true`, the steps of
   `examples/start` (`python3 examples/check_example.py examples/start`)
-  and nginx-tests ("Running nginx-tests" in `docs/test/README.md`) when
-  their workflows run for the change; `sh test/ci/changes_test.sh` for
+  when its workflow runs for the change, `sh test/nginx-tests/run.sh`
+  ("Running nginx-tests" in `docs/test/README.md`) when it gives `code`
+  `true` or the change touches `test.sh` or `test/nginx-tests/` (it exits
+  with 1 when a test file fails with ngx_mruby only, and the author fixes
+  the change); `sh test/ci/changes_test.sh` for
   `test/ci/`, `npm run check:ci` in `site/` when it gives `docs`, `site`
   or `examples` (below), the checks of "The 2.x pages of the site"
   in `docs/test/README.md` for `docs/` on `master`, zizmor for `.github/` ("Static analysis of the
