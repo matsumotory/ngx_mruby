@@ -22,15 +22,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { elements, findElement, readHtml, textContent } from './lib/html.mjs';
-import { checkOptions, fileOfRoute, finish, htmlFiles, lastCommitDate, loadManifest, pageOfRoute, routeOfFile } from './lib/site.mjs';
+import { checkOptions, fileOfRoute, finish, homeLastCommitDate, htmlFiles, lastCommitDate, loadManifest, pageOfRoute, routeOfFile } from './lib/site.mjs';
 
 const { dist, repo, manifest } = checkOptions();
 const pages = loadManifest(manifest);
 const problems = [];
 const dates = new Map();
-const dateOf = (source) => {
-  if (!dates.has(source)) dates.set(source, lastCommitDate(repo, source));
-  return dates.get(source);
+const dateOf = (page) => {
+  if (!dates.has(page.source)) dates.set(page.source, page.home ? homeLastCommitDate(repo, page.source) : lastCommitDate(repo, page.source));
+  return dates.get(page.source);
 };
 
 let checked = 0;
@@ -60,7 +60,7 @@ for (const file of htmlFiles(dist)) {
     problems.push(`${file}: <title> is "${title}", expected "${heading} | ngx_mruby"`);
   }
 
-  const expected = dateOf(page.source);
+  const expected = dateOf(page);
   const footer = main && findElement(main, (e) => e.tagName === 'footer');
   const times = footer ? elements(footer).filter((e) => e.tagName === 'time' && e.properties?.dateTime) : [];
   if (!expected) {
@@ -70,7 +70,7 @@ for (const file of htmlFiles(dist)) {
   } else {
     const shown = String(times[0].properties.dateTime).slice(0, 10);
     if (shown !== expected) {
-      problems.push(`${file}: last updated ${shown}, but the last commit to ${page.source} is of ${expected}`);
+      problems.push(`${file}: last updated ${shown}, but the last commit to ${page.source}${page.home ? ' or to the files it shows' : ''} is of ${expected}`);
     }
   }
 }

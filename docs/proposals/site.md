@@ -1410,7 +1410,12 @@ acceptance; the interaction check covers that separately.
      `LICENSE` file of the page's version.
   3. A line of the page's metadata, below a 1 px rule, in muted text: the
      Markdown of the page (on documentation pages), the documents index
-     JSON, and the last-updated date.
+     JSON, and the last-updated date. A page of `docs/` is dated by the
+     last commit to its source; a home page by the last commit to its MDX
+     or to the files that it shows (`HOME_SOURCES` in
+     `site/scripts/lib/site.mjs`: its components and style, the perf
+     report, the sample and `examples/start`, and the ledger of the uses),
+     so that a change of what the page shows moves its date.
   The groups stand side by side from 641 px and one under the other at
   640 px and below; no group is collapsed. The footer holds text links
   only. The owner asked for this order on 2026-11-02 (section 7).
@@ -1868,7 +1873,10 @@ the existing 390px WebKit pattern. At the end of the rebuild, change only
 Chromium.
 If many one- or two-character last lines appear at 402px, adjust the font
 size and characters per line first, then only the remaining fine cases by
-a few characters of wording. Do not mechanically rewrite prose for the
+a few characters of wording. Since 2026-11-27 the checks measure this for
+headings (h1 to h4) only; body text, lists, captions and table cells may
+end with a short last line (the decision of that day in "Decisions" of
+`docs/HANDOFF.md`). Do not mechanically rewrite prose for the
 checker or add more width/browser combinations. The parity baseline of
 #708 was measured at 390px; 390px, decided in
 [#707](https://github.com/matsumotory/ngx_mruby/pull/707), was the earlier baseline; this rebuild changes the pattern to 402px.

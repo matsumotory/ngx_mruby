@@ -34,6 +34,37 @@ export const contentRoot = path.join(siteDir, 'src', 'content', 'docs');
 export const contentDir = contentRoot;
 // The 2.x build has no home pages: docs/README.md is its index, /v2/.
 export const HOME_PAGES = SITE_VERSION === 2 ? [] : ['index.mdx', 'ja/index.mdx'];
+// The files, beside their MDX, that the home pages show: the components and
+// the style of the home page, the perf report and the sample of V3Now and
+// the example, the walkthrough of examples/start, the ledger of the uses
+// that PlannedUseCases reads, and the scripts that make text of the page.
+// The list is kept by hand: a new import or read of the home components
+// adds its file here, and so does a new <Sample> of the MDX files. The
+// last-updated date of a home page is
+// the date of the last commit to its MDX or to one of these
+// (homeLastCommitDate), so that a change of what the page shows moves it.
+export const HOME_SOURCES = SITE_VERSION === 2 ? [] : [
+  'site/src/components/HomeV3.astro',
+  'site/src/components/HomeTitle.astro',
+  'site/src/components/DocTitle.astro',
+  'site/src/components/AgentFlow.astro',
+  'site/src/components/ProjectBadges.astro',
+  'site/src/components/V3Now.astro',
+  'site/src/components/PlannedUseCases.astro',
+  'site/src/components/Sample.astro',
+  'site/scripts/lib/release-state.mjs',
+  'site/scripts/lib/project-badges.mjs',
+  'site/scripts/lib/perf-report.mjs',
+  'site/scripts/lib/samples.mjs',
+  'site/src/styles/home-v3.css',
+  'site/src/data',
+  'examples/start',
+  'test/t/cases/agent_proxy.rb',
+  'test/conf/conf.d/60-agent-proxy.conf',
+  'test/html/agent_proxy_route.rb',
+  'test/html/agent_proxy_route.expected',
+  'docs/proposals/edge-control.md',
+];
 export const manifestFile = path.join(siteDir, 'generated', 'pages.json');
 export const distDir = path.join(siteDir, 'dist');
 // What scripts/build-v2.mjs leaves beside the 3.x build: the 2.x pages in
@@ -215,6 +246,12 @@ export function pageOfRoute(pages, route) {
 // committer date), or '' when no commit changed it.
 export function lastCommitDate(repo, file) {
   return execFileSync('git', ['-C', repo, 'log', '-1', '--format=%cs', '--', file], { encoding: 'utf8' }).trim();
+}
+
+// The last-updated date of a home page: the last commit to its MDX (a path
+// relative to the repository) or to one of HOME_SOURCES.
+export function homeLastCommitDate(repo, source) {
+  return execFileSync('git', ['-C', repo, 'log', '-1', '--format=%cs', '--', source, ...HOME_SOURCES], { encoding: 'utf8' }).trim();
 }
 
 export function isShallow(repo) {

@@ -29,8 +29,9 @@
 //   402 px (4.4);
 // - at 402 px the right edge of Japanese text blocks (4.9), and on English
 //   blocks no computed text-wrap pretty or balance (4.9);
-// - in both patterns, no paragraph, list item, caption, table cell or heading
-//   whose last line holds only one or two characters (the owner's rule);
+// - in both patterns, no heading (h1 to h4) whose last line holds only one
+//   or two characters (the owner's rule for titles; since 2026-11-27 it
+//   does not apply to paragraphs, list items, captions or table cells);
 // - diagrams (3.5): the drawing and its labels have role="img" and an
 //   aria-label, the caption is outside them, the
 //   drawings are hidden from screen readers and hold no text, every label
@@ -342,11 +343,12 @@ function inspect(cfg) {
       } else if (gap >= 2 * fsz) fail(el, `the longest line ends ${gap.toFixed(1)} px from the right edge, 2 em (${2 * fsz} px) or more: "${el.textContent.trim().slice(0, 30)}..."`);
     }
   }
-  // No paragraph, list item, caption, table cell or heading ends with a
-  // last line of one or two characters (the owner's rule for text: fix it
-  // by adding or removing a few characters, not by breaking lines)
+  // No heading ends with a last line of one or two characters (the owner's
+  // rule for titles: fix it by adding or removing a few characters, not by
+  // breaking lines). Body text, lists, captions and table cells are not
+  // checked (the owner's decision of 2026-11-27).
   if (cfg.width > 0) {
-    for (const el of document.querySelectorAll('main :is(p, li, figcaption, figcaption > span, td, th, dd, h1, h2, h3, h4)')) {
+    for (const el of document.querySelectorAll('main :is(h1, h2, h3, h4)')) {
       if (!visible(el) || el.closest('.expressive-code, .diagram-grid') || el.querySelector('p, ul, ol')) continue;
       const ls = lines(el);
       if (ls.length < 2) continue;
