@@ -1631,11 +1631,11 @@ workflow run nginx-tests.yml --ref next`): GitHub runs a schedule only
 from the workflow files on the default branch, `master`, which has no
 copy of this workflow, so the nightly run is a dispatch from a workflow
 on `master`, as `valgrind-nightly.yml` on `master` dispatches the nightly
-runs of `test.yml` ([valgrind in CI](#valgrind-in-ci)). Until that
-workflow is on `master`, the runs are the dispatches by hand. The job
-summary is `summary.md`, each file that fails with ngx_mruby only is an
-error annotation, and the artifact `nginx-tests` has the output above
-without the copy of the nginx source.
+runs of `test.yml` ([valgrind in CI](#valgrind-in-ci)). Until the
+workflow that starts the nightly run is on `master`, the runs are the
+dispatches by hand. The job summary is `summary.md`, each file that fails
+with ngx_mruby only is an error annotation, and the artifact
+`nginx-tests` has the output above without the copy of the nginx source.
 
 The job fails when a test file fails with ngx_mruby only, and when the
 self-test, a build, the fetch or `prove` itself fails, or `summary.md` is
