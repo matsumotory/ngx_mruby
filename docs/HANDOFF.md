@@ -1,6 +1,6 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-27 (13:56 JST)
+## State as of 2026-11-27 (14:23 JST)
 
 - Heads: `master` is `06725f0cc`, the merge of
   [#873](https://github.com/matsumotory/ngx_mruby/pull/873) (2026-11-26
@@ -51,7 +51,9 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `3f5b1391b`, the merge of
+  all below. `next` is `b92e8c0ca`, the merge of
+  [#875](https://github.com/matsumotory/ngx_mruby/pull/875) (2026-11-27
+  14:22 JST), below; before it, `3f5b1391b`, the merge of
   [#876](https://github.com/matsumotory/ngx_mruby/pull/876) (2026-11-27
   13:55 JST), below; before it, `3747aa37f`, the merge of
   [#874](https://github.com/matsumotory/ngx_mruby/pull/874) (2026-11-26
@@ -101,8 +103,8 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is [#875](https://github.com/matsumotory/ngx_mruby/pull/875)
-  (`next`), which brings `master` at `06725f0cc` into `next`, below. `v2.x` mirrors `master`.
+  request is [#877](https://github.com/matsumotory/ngx_mruby/pull/877)
+  (`next`), the check before the `v3.0.0-alpha.2` tag, below. `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.1: the tag `v3.0.0-alpha.1` is
   on `574a0e4f6`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.1)
@@ -130,9 +132,9 @@
   `docs/releases/v2.7.14.md` and `.ja.md`, in the form of "The GitHub
   release" in `docs/releases/README.md`, and the published advisory
   [GHSA-2cf7-qh69-j29q](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-2cf7-qh69-j29q)
-  (published 2026-11-26 at 18:34 JST); #873 then added the published
-  advisory id to the two release-note files and to the release body
-  (2026-11-26 18:53 JST). Right after the release, `site.yml` ran on
+  (published 2026-11-26 at 18:34 JST); the session then added the
+  published advisory id to the release body (18:51 JST), and #873 added
+  it to the two release-note files (merged at 18:53 JST). Right after the release, `site.yml` ran on
   `next`
   ([run 45676373093](https://github.com/matsumotory/ngx_mruby/actions/runs/45676373093),
   success), and the home page of ngx.mruby.org names v2.7.14
@@ -501,8 +503,9 @@
   before upgrading"); #872 and #873 merged after the tag. The English and
   the Japanese files have the same sections and entries, and
   `MODULE_VERSION` of `master` is `2.7.14`. The callgrind comparison of
-  `v2.7.13` (`e0b17ec47`) with the fix (`af98f7df9`, whose code differs
-  from the published `0a5b6dbaa` only in a comment) (`sh
+  `v2.7.13` (`e0b17ec47`) with the fix as it was in the advisory's private
+  fork, whose code differs from the published `0a5b6dbaa` only in a
+  comment (`sh
   test/perf/compare.sh`, N=20000 WARMUP=2000) has all 14 scenarios `ok`:
   `headers`, the path the fix touches, 34803 → 34815 Ir per request
   without GC (+12, +0.03%); `proxy_stream_plain_50`, which varies with
@@ -555,15 +558,26 @@
   filter on a response whose length nginx knows sends the length of the
   body the filter produces, without the reconciliation. It was merged on
   2026-11-27 at 13:55 JST as `3f5b1391b`.
-- [#875](https://github.com/matsumotory/ngx_mruby/pull/875) (`next`, writes this entry): merges `master` at `06725f0cc`
+- [#875](https://github.com/matsumotory/ngx_mruby/pull/875) (`next`): merges `master` at `06725f0cc`
   (the 2.7.14 fix, #872 and #873) into `next`. The conflicts keep
   `next`'s side: `src/http/ngx_http_mruby_request.c`,
   `test/t/cases/content_length.rb` and
   `test/conf/conf.d/76-content-length.conf` stay as #874 left them,
   `MODULE_VERSION` stays `3.0.0`, and AGENTS.md keeps `next`'s list of
   the ports of `test.sh`. The merged tree differs from `next` only in
-  `Makefile.in` (#872) and the 2.x release notes. Its state, CI run and
-  review are recorded on the pull request.
+  `Makefile.in` (#872) and the 2.x release notes. Its review had no
+  "must fix" item, and its three "should fix" items are fixed in #877.
+  It was merged on 2026-11-27 at 14:22 JST as `b92e8c0ca`.
+- [#877](https://github.com/matsumotory/ngx_mruby/pull/877) (`next`, writes this entry): the check before the
+  `v3.0.0-alpha.2` tag ("Before the tag" in `docs/releases/README.md`),
+  from `v3.0.0-alpha.1`. It adds an item for #874 to the migration
+  guide (English and Japanese), which still said that `Content-Length`
+  stays a header line, updates step 2 of `docs/proposals/v3-plan.md` for
+  #874, writes the heading of the #874 entry as the other headings of
+  `v3.0.0.md` and `.ja.md`, and adds 18096, 18106 and 18109 to the ports
+  of `test.sh` in AGENTS.md. Its body lists the pull requests of the
+  range with the section of each entry and quotes the performance
+  comparison with `v3.0.0-alpha.1`; its run has the label `full-matrix`.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
