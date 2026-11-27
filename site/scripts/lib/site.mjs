@@ -46,6 +46,7 @@ export const HOME_PAGES = SITE_VERSION === 2 ? [] : ['index.mdx', 'ja/index.mdx'
 export const HOME_SOURCES = SITE_VERSION === 2 ? [] : [
   'site/src/components/HomeV3.astro',
   'site/src/components/HomeTitle.astro',
+  'site/src/components/DocTitle.astro',
   'site/src/components/AgentFlow.astro',
   'site/src/components/ProjectBadges.astro',
   'site/src/components/V3Now.astro',
@@ -54,6 +55,7 @@ export const HOME_SOURCES = SITE_VERSION === 2 ? [] : [
   'site/scripts/lib/release-state.mjs',
   'site/scripts/lib/project-badges.mjs',
   'site/scripts/lib/perf-report.mjs',
+  'site/scripts/lib/samples.mjs',
   'site/src/styles/home-v3.css',
   'site/src/data',
   'examples/start',

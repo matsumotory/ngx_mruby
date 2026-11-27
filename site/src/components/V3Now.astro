@@ -69,10 +69,10 @@ const items = [
     link: ['ブロックせずに待つ仕組み', 'How a handler waits without blocking'],
   },
   {
-    title: ['ヘッダが二重に送られず、フィルターにも効く', "Headers are not sent twice, and nginx's filters read them"],
+    title: ['ヘッダが二重に送られず、nginxのフィールドに入る', "Headers are not sent twice, and go into nginx's own fields"],
     text: [
-      '2.xでは、スクリプトが足したリクエストヘッダと、`proxy_set_header`の同じ名前のヘッダが、2行とも転送されました。3.0では`proxy_set_header`の値の1行だけが送られ、`Content-Type`、`Location`、`Date`、`Server`、`Content-Length`の応答ヘッダも、nginxのフィルターが読む値になります。',
-      "On 2.x, a request header that a script added and the header of the same name from `proxy_set_header` both went to the upstream. On 3.0 only the line of `proxy_set_header` goes, and the response headers `Content-Type`, `Location`, `Date`, `Server` and `Content-Length` become the values that nginx's filters read.",
+      '2.xでは、スクリプトが足したリクエストヘッダと、`proxy_set_header`の同じ名前のヘッダが、2行とも転送されました。3.0では`proxy_set_header`の値の1行だけが送られ、`Content-Type`、`Location`、`Date`、`Server`、`Content-Length`の応答ヘッダも、nginx自身のフィールドに入ります。',
+      "On 2.x, a request header that a script added and the header of the same name from `proxy_set_header` both went to the upstream. On 3.0 only the line of `proxy_set_header` goes, and the response headers `Content-Type`, `Location`, `Date`, `Server` and `Content-Length` go into nginx's own fields.",
     ],
     href: prefix + '/reference/ruby/#nginxheaders_out-class',
     link: ['ヘッダのクラスのリファレンス', 'Reference of the header classes'],
@@ -89,8 +89,8 @@ const items = [
   {
     title: ['リクエストごとの値をハンドラの間で渡す', 'Pass the values of a request between handlers'],
     text: [
-      '2.xでは、ハンドラの間の値を`Userdata`に置くと、ワーカーのグローバル変数に残り、次のリクエストからも見えました。3.0の`Nginx::Request#store`は1つのリクエストだけのHashで、`mruby_variable`で`http`ブロックに変数を宣言すれば、locationごとの`set`も要りません。',
-      'On 2.x, a value put into `Userdata` stayed in a global variable of the worker, where the next request saw it. On 3.0 `Nginx::Request#store` is a Hash of one request, and `mruby_variable` declares a variable in the `http` block, so locations need no `set` for it.',
+      '`Userdata`に置いた値は、ワーカーのグローバル変数に残り、次のリクエストからも見えます。3.0で入った`Nginx::Request#store`は1つのリクエストだけのHashで、`mruby_variable`は、スクリプトが代入する変数を`http`ブロックで宣言します。',
+      'A value put into `Userdata` stays in a global variable of the worker, where the next request sees it. `Nginx::Request#store`, new in 3.0, is a Hash of one request, and `mruby_variable` declares in the `http` block a variable for scripts to assign.',
     ],
     href: prefix + '/concepts/lifetimes/',
     link: ['リクエストのデータを置く場所', 'Where the data of a request lives'],
@@ -111,8 +111,8 @@ const items = [
   <div class="home-copy">
     <h2 id="now-title">{ja ? `${release}でいま使えるもの` : `What ${release} gives you now`}</h2>
     <p>{ja
-      ? `${release}は、3.0に向けたプレリリースです。2.xと比べて、下に挙げる6つの点が変わりました。下の表は、nginxが1リクエストで実行する命令の数を、2.7.14と比べたものです。AIゲートウェイの部品は、この後のプレリリースで足す予定で、下の「今後のユースケースと設計状況」で扱います。プレリリースなので、本番では安定版の2.7を使い、3.0はテスト環境で試してください。`
-      : `${release} is a pre-release of 3.0. Against 2.x, the six points below change. The table compares the instructions that nginx runs per request with 2.7.14. The parts of an AI gateway are planned for later pre-releases, which the future use cases below cover. As a pre-release, use the stable 2.7 line in production and try 3.0 in a test environment.`}</p>
+      ? `${release}は、3.0に向けたプレリリースです。2.xと比べて、下に挙げる6つの点が変わりました。下の表は、nginxが1リクエストで実行する命令の数を、${base}と比べたものです。AIゲートウェイの部品は、この後のプレリリースで足す予定で、下の「今後のユースケースと設計状況」で扱います。プレリリースなので、本番では安定版の2.7を使い、3.0はテスト環境で試してください。`
+      : `${release} is a pre-release of 3.0. Against 2.x, the six points below change. The table compares the instructions that nginx runs per request with ${base}. The parts of an AI gateway are planned for later pre-releases, which the future use cases below cover. As a pre-release, use the stable 2.7 line in production and try 3.0 in a test environment.`}</p>
     <p><a href={releaseUrl}>{ja ? `${release}のリリースノートと、更新前に確認する挙動の変更` : `Release notes of ${release}, with the behavior changes to read before upgrading`}</a></p>
     <p><a href={prefix + '/releases/migration/'}>{ja ? '2.xから3.0への移行の手引き' : 'Migrating from 2.x to 3.0'}</a></p>
   </div>
