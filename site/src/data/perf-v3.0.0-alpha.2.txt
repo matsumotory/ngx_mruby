@@ -1,0 +1,52 @@
+# The comparison of 3.0.0-alpha.2 with 2.7.14 for the home pages: the report
+# of sh test/perf/compare.sh, run as "Before a tag" in AGENTS.md describes,
+# with the newest 2.x release as the base and the newest pre-release of 3.0
+# as the head, copied unchanged from the body of the pull request that
+# recorded it. The home pages read the table below (V3Now.astro), and
+# check-home.mjs compares the page with it.
+#
+# source: https://github.com/matsumotory/ngx_mruby/pull/879
+# measured: 2026-11
+# base: v2.7.14 cde3facbc
+# head: v3.0.0-alpha.2 2d87575b0
+# where: ubuntu:22.04 under Docker on an arm64 Mac (aarch64 container)
+perf: N=20000 WARMUP=2000; Ir per request of nginx; WARN from 3.0%, FAIL from 5.0% on the number in the column judged: w/o GC/const (Ir/req minus the GC and the constant lookups that missed the cache), or w/o GC (minus the GC only) where the head clears the constant cache more often, or clears it and misses more lookups (const_clears, const_misses)
+perf: units: stream_sleep = completed TCP session; other rows = HTTP request
+perf: gems: 8 in both builds, 0 at different commits, 15 only in base, 0 only in head
+perf: mruby: base 3.3.0, head 4.1.0; accepted differences (accepted.txt): none apply
+
+scenario                   base Ir/req  head Ir/req   change  base w/o GC  head w/o GC  change w/o GC  base w/o GC/const  head w/o GC/const  change w/o GC/const     GC share        judged  result
+hello                            12077        11219   -7.10%        11404        10508         -7.85%              11028              10508               -4.71%    5.6%/6.3%  w/o GC/const      ok
+headers                          36632        30073  -17.90%        34661        24887        -28.20%              33911              24887              -26.61%   5.4%/17.2%  w/o GC/const      ok
+var                              21515        20377   -5.29%        20022        17340        -13.39%              19249              17340               -9.92%   6.9%/14.9%  w/o GC/const      ok
+filter                           14297        14754   +3.20%        13410        12984         -3.17%              13036              12984               -0.40%   6.2%/12.0%  w/o GC/const      ok
+sleep                            15889        15443   -2.81%        15142        14226         -6.05%              13422              14226               +5.99%    4.7%/7.9%  w/o GC/const    FAIL
+sub_request                      49216        43751  -11.11%        48049        42090        -12.40%              46131              42090               -8.76%    2.4%/3.8%  w/o GC/const      ok
+file                             14349        14381   +0.22%        13462        12611         -6.32%              12712              12611               -0.79%   6.2%/12.3%  w/o GC/const      ok
+proxy_plain_2k                   22141        21812   -1.48%        22141        21812         -1.48%              22141              21812               -1.48%    0.0%/0.0%  w/o GC/const      ok
+proxy_plain_64k                  22448        22120   -1.46%        22448        22120         -1.46%              22448              22120               -1.46%    0.0%/0.0%  w/o GC/const      ok
+proxy_stream_plain_50            54532        54112   -0.77%        54532        54112         -0.77%              54532              54112               -0.77%    0.0%/0.0%  w/o GC/const      ok
+responses_stream_plain_50        55769        55350   -0.75%        55769        55350         -0.75%              55769              55350               -0.75%    0.0%/0.0%  w/o GC/const      ok
+auth                             49433        48145   -2.61%        47270        41957        -11.24%              44435              41957               -5.58%   4.4%/12.9%  w/o GC/const      ok
+route_json_2k                   110068       106737   -3.03%       106932        98205         -8.16%             104630              98205               -6.14%    2.8%/8.0%  w/o GC/const      ok
+ruby_call_1                      11417        10966   -3.96%        10737        10239         -4.64%              10737              10239               -4.64%    6.0%/6.6%  w/o GC/const      ok
+ruby_call_10                     42687        41491   -2.80%        36266        34172         -5.77%              36266              34172               -5.77%  15.0%/17.6%  w/o GC/const      ok
+stream_sleep                     12878        12232   -5.01%        12110        11289         -6.78%              10704              11289               +5.47%    6.0%/7.7%  w/o GC/const    FAIL
+
+perf: calls per request (not checked): ruby_calls = ngx_mrb_start_fiber/ngx_stream_mrb_start_fiber; non_buffered_calls = ngx_http_upstream_process_non_buffered_request; const_misses = mrb_vm_const_get; const_clears = mrb_const_cache_clear/mrb_const_set/mrb_const_remove/mrb_define_const_id/mrb_define_const/mrb_include_module/mrb_prepend_module
+perf:   hello: ruby_calls 1.00/1.00, non_buffered_calls 0.00/0.00, const_misses 1.00/0.00, const_clears 0.00/0.00 (const_misses -1.00 per request: -376 Ir, -3.41% of base w/o GC/const, not judged; fewer constant lookups of head miss the constant cache of mruby) [const lookups 376/0 Ir; not subtracted: mrb_str_new 1166/0 Ir]
+perf:   headers: ruby_calls 1.00/1.00, non_buffered_calls 0.00/0.00, const_misses 2.00/0.00, const_clears 0.00/0.00 (const_misses -2.00 per request: -750 Ir, -2.21% of base w/o GC/const, not judged; fewer constant lookups of head miss the constant cache of mruby) [const lookups 750/0 Ir; not subtracted: mrb_const_get 24406/0 Ir; not subtracted: mrb_str_new'2 2324/0 Ir]
+perf:   var: ruby_calls 1.00/1.00, non_buffered_calls 0.00/0.00, const_misses 2.00/0.00, const_clears 0.00/0.00 (const_misses -2.00 per request: -773 Ir, -4.02% of base w/o GC/const, not judged; fewer constant lookups of head miss the constant cache of mruby) [const lookups 773/0 Ir; not subtracted: mrb_const_get 10746/0 Ir; not subtracted: mrb_vm_exec'2 2584/0 Ir]
+perf:   filter: ruby_calls 1.00/1.00, non_buffered_calls 0.00/0.00, const_misses 1.00/0.00, const_clears 0.00/0.00 (const_misses -1.00 per request: -374 Ir, -2.87% of base w/o GC/const, not judged; fewer constant lookups of head miss the constant cache of mruby) [const lookups 374/0 Ir; not subtracted: mrb_const_get 3018/0 Ir]
+perf:   sleep: ruby_calls 1.00/1.00, non_buffered_calls 0.00/0.00, const_misses 4.00/0.00, const_clears 0.00/0.00 (const_misses -4.00 per request: -1720 Ir, -12.82% of base w/o GC/const, not judged; fewer constant lookups of head miss the constant cache of mruby) [const lookups 1720/0 Ir; not subtracted: mrb_const_get 2950/0 Ir; not subtracted: mrb_str_new 2450/0 Ir; not subtracted: mrb_vm_exec'2 463/0 Ir]
+perf:   sub_request: ruby_calls 1.00/1.00, non_buffered_calls 0.00/0.00, const_misses 6.00/0.00, const_clears 0.00/0.00 (const_misses -6.00 per request: -1918 Ir, -4.16% of base w/o GC/const, not judged; fewer constant lookups of head miss the constant cache of mruby) [const lookups 1918/0 Ir; not subtracted: mrb_const_get 13252/0 Ir; not subtracted: mrb_vm_exec'2 8243/0 Ir]
+perf:   file: ruby_calls 1.00/1.00, non_buffered_calls 0.00/0.00, const_misses 2.00/0.00, const_clears 0.00/0.00 (const_misses -2.00 per request: -750 Ir, -5.90% of base w/o GC/const, not judged; fewer constant lookups of head miss the constant cache of mruby) [const lookups 750/0 Ir; not subtracted: mrb_const_get 3352/0 Ir; not subtracted: mrb_str_new 1535/0 Ir]
+perf:   proxy_plain_2k: ruby_calls 0.00/0.00, non_buffered_calls 2.00/2.00, const_misses 0.00/0.00, const_clears 0.00/0.00
+perf:   proxy_plain_64k: ruby_calls 0.00/0.00, non_buffered_calls 2.00/2.00, const_misses 0.00/0.00, const_clears 0.00/0.00
+perf:   proxy_stream_plain_50: ruby_calls 0.00/0.00, non_buffered_calls 4.99/4.99, const_misses 0.00/0.00, const_clears 0.00/0.00
+perf:   responses_stream_plain_50: ruby_calls 0.00/0.00, non_buffered_calls 6.00/6.00, const_misses 0.00/0.00, const_clears 0.00/0.00
+perf:   auth: ruby_calls 1.00/1.00, non_buffered_calls 2.00/2.00, const_misses 5.00/0.00, const_clears 0.00/0.00 (const_misses -5.00 per request: -2835 Ir, -6.38% of base w/o GC/const, not judged; fewer constant lookups of head miss the constant cache of mruby) [const lookups 2835/0 Ir; not subtracted: mrb_const_get 22416/0 Ir; not subtracted: mrb_const_get'2 37950/0 Ir]
+perf:   route_json_2k: ruby_calls 1.00/1.00, non_buffered_calls 2.00/2.00, const_misses 5.00/0.00, const_clears 0.00/0.00 (const_misses -5.00 per request: -2302 Ir, -2.20% of base w/o GC/const, not judged; fewer constant lookups of head miss the constant cache of mruby) [const lookups 2302/0 Ir; not subtracted: mrb_const_get 82279/0 Ir; not subtracted: mrb_const_get'2 158967/0 Ir; not subtracted: mrb_vm_exec'2 77821/0 Ir]
+perf:   ruby_call_1: ruby_calls 1.00/1.00, non_buffered_calls 0.00/0.00, const_misses 0.00/0.00, const_clears 0.00/0.00
+perf:   ruby_call_10: ruby_calls 10.00/10.00, non_buffered_calls 0.00/0.00, const_misses 0.00/0.00, const_clears 0.00/0.00
+perf:   stream_sleep: ruby_calls 1.00/1.00, non_buffered_calls 0.00/0.00, const_misses 4.00/0.00, const_clears 0.00/0.00 (const_misses -4.00 per request: -1406 Ir, -13.14% of base w/o GC/const, not judged; fewer constant lookups of head miss the constant cache of mruby) [const lookups 1406/0 Ir; not subtracted: mrb_const_get 4098/0 Ir; not subtracted: mrb_const_get'2 641/0 Ir; not subtracted: mrb_vm_exec'2 430/0 Ir]

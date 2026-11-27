@@ -1,6 +1,6 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-27 (15:38 JST)
+## State as of 2026-11-27 (16:13 JST)
 
 - Heads: `master` is `06725f0cc`, the merge of
   [#873](https://github.com/matsumotory/ngx_mruby/pull/873) (2026-11-26
@@ -51,7 +51,9 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `2d87575b0`, the merge of
+  all below. `next` is `64da154d8`, the merge of
+  [#878](https://github.com/matsumotory/ngx_mruby/pull/878) (2026-11-27
+  15:59 JST), below; before it, `2d87575b0`, the merge of
   [#877](https://github.com/matsumotory/ngx_mruby/pull/877) (2026-11-27
   15:12 JST), where `v3.0.0-alpha.2` is tagged, below; before it, `b92e8c0ca`, the merge of
   [#875](https://github.com/matsumotory/ngx_mruby/pull/875) (2026-11-27
@@ -105,7 +107,7 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is [#878](https://github.com/matsumotory/ngx_mruby/pull/878)
+  request is [#879](https://github.com/matsumotory/ngx_mruby/pull/879)
   (`next`), below. `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.2: the tag `v3.0.0-alpha.2` is
   on `2d87575b0`, the merge of the check before the tag (#877), and
@@ -610,14 +612,22 @@
   #751, #758, #789, #796, #799, #847, #848 and #849); #878 adds them.
   It was merged on 2026-11-27 at 15:12 JST as `2d87575b0`, where
   `v3.0.0-alpha.2` is tagged.
-- [#878](https://github.com/matsumotory/ngx_mruby/pull/878) (`next`, writes this entry): records `v3.0.0-alpha.2`
+- [#878](https://github.com/matsumotory/ngx_mruby/pull/878) (`next`): records `v3.0.0-alpha.2`
   here, and adds to the migration guide (English and Japanese) the items
   of the nine entries above, so that the guide links to all 79 entries
   of "Behavior changes" of `v3.0.0.md`: #789 (build with nginx 1.30 or
   1.31; stay on 2.x for 1.28 or 1.26) at the top of "Builds", #751 and
   #758 (the test and measurement builds of the repository) at its end,
   #672, #847, #848 and #849 next to the item of #835 under
-  "Configurations", and #796 and #799 under "Log monitoring".
+  "Configurations", and #796 and #799 under "Log monitoring". It was
+  merged on 2026-11-27 at 15:59 JST as `64da154d8`.
+- [#879](https://github.com/matsumotory/ngx_mruby/pull/879) (`next`, writes this entry): the section of the home
+  page on what the newest pre-release of 3.0 gives now names
+  `v3.0.0-alpha.2`, lists `Content-Length` (#874) among the headers that
+  go into nginx's own fields, and reads its table from
+  `site/src/data/perf-v3.0.0-alpha.2.txt`, a comparison of
+  `v3.0.0-alpha.2` with `v2.7.14` made with `test/perf/compare.sh` for
+  the site, which replaces the report of 3.0.0-alpha.1 against 2.7.13.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
@@ -1648,7 +1658,7 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
-| The pages of the site that present v3 (the home page and its use cases) show what 3.0 gives now, from the body of `v3.0.0-alpha.1`: the measured instructions per request against 2.7.13, mruby 4.1, the defined behavior of handlers that wait, `Nginx::Request#store` and `mruby_variable`, beside the use cases and their status ("Presenting v3" in AGENTS.md) | `next` | Done in [#869](https://github.com/matsumotory/ngx_mruby/pull/869): the section "What 3.0.0-alpha.1 gives you now" after the hero, with the measured instructions per request read from `site/src/data/perf-v3.0.0-alpha.1.txt`, the pre-release link in the status line from the git tags, and the planned parts at the start of the future use cases. A later pre-release that adds a capability or a measurement updates that section in its pull request ("Presenting v3" in AGENTS.md) |
+| The pages of the site that present v3 (the home page and its use cases) show what 3.0 gives now, from the body of `v3.0.0-alpha.1`: the measured instructions per request against 2.7.13, mruby 4.1, the defined behavior of handlers that wait, `Nginx::Request#store` and `mruby_variable`, beside the use cases and their status ("Presenting v3" in AGENTS.md) | `next` | Done in [#869](https://github.com/matsumotory/ngx_mruby/pull/869): the section "What 3.0.0-alpha.1 gives you now" after the hero, with the measured instructions per request read from `site/src/data/perf-v3.0.0-alpha.1.txt`, the pre-release link in the status line from the git tags, and the planned parts at the start of the future use cases. A later pre-release that adds a capability or a measurement updates that section in its pull request ("Presenting v3" in AGENTS.md). For `v3.0.0-alpha.2`, [#879](https://github.com/matsumotory/ngx_mruby/pull/879) names it in the section and reads `site/src/data/perf-v3.0.0-alpha.2.txt`, the comparison of `v3.0.0-alpha.2` with `v2.7.14` |
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
 | Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808), through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810), through `976015c48` (#812, #814, #813 and v2.7.8) in [#815](https://github.com/matsumotory/ngx_mruby/pull/815), through `11f80acfa` (#817 and #816) in [#818](https://github.com/matsumotory/ngx_mruby/pull/818), which also raised `worker_connections` of `test/conf/nginx.conf` from 200 to 1024, through `8f204e061` (#819) in [#820](https://github.com/matsumotory/ngx_mruby/pull/820), through `a7800d865` (#822) in [#823](https://github.com/matsumotory/ngx_mruby/pull/823), which also set `MODULE_VERSION` of `next` to `3.0.0`, through `22ef61915` (#824, #827) in [#828](https://github.com/matsumotory/ngx_mruby/pull/828), and through `2c7e833a0` (2.7.10 and #831) in [#830](https://github.com/matsumotory/ngx_mruby/pull/830). Merged through `ea531ad88` (#843, 2.7.11 and #851) in [#850](https://github.com/matsumotory/ngx_mruby/pull/850), merged on 2026-11-17 at 18:19 JST as `4c78c56a3`, and through `14bdc5fa6` (#852, #853) in [#856](https://github.com/matsumotory/ngx_mruby/pull/856), merged on 2026-11-17 at 22:18 JST as `e8643df33`, and through `49d26b879` (2.7.12, #858) in [#859](https://github.com/matsumotory/ngx_mruby/pull/859), merged on 2026-11-18 at 03:56 JST as `2072a900b`, through `7ab993a5c` (2.7.13, #860) in [#861](https://github.com/matsumotory/ngx_mruby/pull/861), merged on 2026-11-25 at 01:07 JST as `ad77c29bf`, and through `9cd91ff26` (#865) in [#866](https://github.com/matsumotory/ngx_mruby/pull/866), merged on 2026-11-25 at 17:21 JST as `f913a5cbe`; the next merge of `master` waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |

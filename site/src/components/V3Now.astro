@@ -27,13 +27,14 @@ const releaseUrl = `https://github.com/matsumotory/ngx_mruby/releases/tag/${repo
 const month = measuredMonth(report, ja ? 'ja' : 'en');
 const fewer = report.rows.filter((r) => r.head < r.base);
 const more = report.rows.filter((r) => r.head > r.base);
-// The rows of the table, in the order of the release's text: the three
-// largest decreases that it names, and every row that rose.
+// The rows of the table: the three largest decreases of the total per
+// request, and every row that rose.
 const SHOWN = [
   ['headers', 'ヘッダを読んで設定する', 'Read and set headers'],
   ['sub_request', 'サブリクエスト', 'Subrequest'],
   ['hello', 'helloを返す', 'Handler that returns hello'],
   ['filter', '出力ボディフィルター', 'Output body filter'],
+  ['file', 'ファイルのハンドラ', 'Handler from a file'],
 ];
 const rows = SHOWN.map(([scenario, jaName, enName]) => {
   const row = report.rows.find((r) => r.scenario === scenario);
