@@ -578,6 +578,10 @@
   of `test.sh` in AGENTS.md. Its body lists the pull requests of the
   range with the section of each entry and quotes the performance
   comparison with `v3.0.0-alpha.1`; its run has the label `full-matrix`.
+  Its review found that the migration guide also has no item for nine
+  entries of "Behavior changes" that `v3.0.0-alpha.1` already had (#672,
+  #751, #758, #789, #796, #799, #847, #848 and #849); the pull request
+  after the `v3.0.0-alpha.2` tag adds them.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829

@@ -419,14 +419,14 @@ grep -rnE 'valid_encoding\?|allbits\?|anybits\?|nobits\?|remove_const|module_fun
   proxy_set_header Host $backend_host;
   ```
 
-- [`Nginx::Headers_out`で設定した`Content-Length`が、nginx自身の長さになる](../../releases/v3.0.0.ja.md#nginxheaders_outで設定したcontent-lengthがnginx自身の長さになる874)：大文字と小文字を問わず、`Content-Length`を扱う`headers_out`の呼び出しを探してください。3.0.0では、`[]=`はnginxが本文を区切る長さを設定するので、レスポンスの`Content-Length`は1行だけになります。2.7.13までは、スクリプトの値がnginxの行とは別の2行目になりました。[2.7.14](../../releases/v2.7.14.ja.md#nginxheaders_outで設定したcontent-lengthを応答のヘッダ行として送らなくなりました)は、スクリプトの値を送りません。ヘッダを送る前に、nginxが送る本文の長さと違う値はその長さに置き換え、`error.log`に`warn`の行を出します。長さが分からないレスポンスは、chunkedで送ります。`[]`はnginxがそのレスポンスに持つ長さを読み、`delete`はその長さを外すので、レスポンスはchunkedになります。非負の十進でない値は`ArgumentError`になります。
+- [`Nginx::Headers_out`で設定した`Content-Length`が、nginx自身の長さになる](../../releases/v3.0.0.ja.md#nginxheaders_outで設定したcontent-lengthがnginx自身の長さになる874)：大文字と小文字を問わず、`Content-Length`を扱う`headers_out`の呼び出しを探してください。2.7.13までは、スクリプトの値がnginxの行とは別の2行目になりました。[2.7.14](../../releases/v2.7.14.ja.md#nginxheaders_outで設定したcontent-lengthを応答のヘッダ行として送らなくなりました)は、スクリプトの値を送りません。3.0.0では、`[]=`はnginxがボディを区切る長さを設定するので、レスポンスの`Content-Length`は1行だけになります。3.0.0は、ヘッダを送る前に、nginxが送るボディの長さと違う値をその長さに置き換え、`error.log`に`warn`の行を出します。長さが分からないレスポンスは、chunkedで送ります。`[]`は、スクリプトが設定した値を返し、設定が無ければ、nginxがそのレスポンスに持つ長さを返します。`delete`は長さを外すので、レスポンスはchunkedになります。`[]=`に非負の十進でない値を渡すと、`ArgumentError`になります。
 
   ```ruby
   # each line on its own, in a content handler that then writes "hello world" with Nginx.rputs
   h = Nginx::Request.new.headers_out
   h["Content-Length"] = "3"    # 2.7.13: Content-Length: 11 and Content-Length: 3   2.7.14: Content-Length: 11   3.0.0: Content-Length: 11, and a warn line
   h["Content-Length"] = "11"   # 2.7.13: two Content-Length: 11 lines              2.7.14 and 3.0.0: Content-Length: 11
-  h["Content-Length"] = "-1"   # 2.7.13: Content-Length: -1 as well                 2.7.14: not sent             3.0.0: ArgumentError
+  h["Content-Length"] = "-1"   # 2.7.13: Content-Length: 11 and Content-Length: -1  2.7.14: Content-Length: 11   3.0.0: ArgumentError
   ```
 
   ```ruby
