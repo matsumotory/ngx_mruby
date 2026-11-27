@@ -1441,7 +1441,9 @@ checking whether a decision fits the evidence and requirements.
   branch. Rationale: the CI rules of 2026-10-31 and 2026-11-02 (below)
   run locally what can run locally and do not repeat it in CI, and
   nginx-tests runs in Docker; a PR's CI run loses a job of about 8
-  minutes, and the local checks of a code PR gain about TIME_HANDOFF. This
+  minutes, and the local checks of a code PR gain about 6 minutes (in a container
+  on an arm64 Mac on 2026-11-27: 30 seconds for the packages and 5
+  minutes 13 seconds for `run.sh`, both builds included). This
   replaces the row "nginx-tests run against nginx with ngx_mruby loaded"
   of Pillar E in `docs/proposals/v3-plan.md`, which recorded the results
   first and made the job required in CI once they were stable. Written in

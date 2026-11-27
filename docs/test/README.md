@@ -1565,12 +1565,14 @@ docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEB
 ```
 
 On 2026-11-27, on an arm64 Mac (Docker Desktop, 11 CPUs in the
-container), this command took about TIME_TOTAL: TIME_INSTALL for the
-packages, and TIME_RUN for `run.sh`, which builds both nginx (with
-ngx_mruby, mruby and its gems from scratch) and runs `prove` on each. A
-second run in the same copy of the tree reuses both builds. In one
-checkout, `run.sh` and `test.sh` build into the same `build/`, so do not
-run them there at the same time.
+container, the image already pulled), this command took about 6
+minutes: 30 seconds for the packages, and 5 minutes 13 seconds for
+`run.sh`, which builds the two nginx (the one with ngx_mruby with mruby
+and its gems, from scratch) and runs `prove` on each. A second run in
+the same copy reuses the build without ngx_mruby while its nginx version
+and configure options stay the same (`build_nginxtests/plain/build_stamp`).
+In one checkout, `run.sh` and `test.sh` build into the same `build/`, so
+do not run them there at the same time.
 
 The test files start nginx on ports from 8000 to 8999 that they lock, so
 they run in parallel (`NGINX_TESTS_JOBS`, by default the number of CPUs).
