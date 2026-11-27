@@ -152,7 +152,9 @@ repository. Builds with `build.sh` do not change.
   comparison add `stream_sleep`, one TCP session that waits 1 ms and
   returns exact bytes through EOF. After updating, run
   `test/soak/run.sh` and `test/perf/compare.sh` without `ONLY_RUN`; the
-  build stamp configures and builds both sides again. The soak samples
+  build stamp of `test/build_release.sh` changes, so the soak build and
+  both checkouts of the performance comparison are configured and built
+  again. The soak samples
   check and print `stream_timers` and `stream_fibers` and add a `sessions`
   column, and the new row of the performance report counts instructions
   per completed TCP session. Keep the existing HTTP rows and thresholds
@@ -204,8 +206,8 @@ repository. Builds with `build.sh` do not change.
   reads a file of the response, such as a static file, into the buffers of
   `output_buffers`: with `sendfile on`, it sends the file with `sendfile`
   without reading it first, as in a location without an mruby filter.
-  Nothing changes with `sendfile off`, nor on an HTTPS connection without
-  kernel TLS, nor when a filter such as gzip, SSI or sub handles the
+  Nothing changes with `sendfile off`, on an HTTPS connection without
+  kernel TLS, or when a filter such as gzip, SSI or sub handles the
   response.
 - [A HEAD response through an mruby header filter alone, or through a body filter without `Content-Length`, keeps its connection available](../releases/v3.0.0.md#a-head-response-through-an-mruby-header-filter-alone-or-through-a-body-filter-without-content-length-keeps-its-connection-available-848):
   nothing to change. After the header of a HEAD request to a location
