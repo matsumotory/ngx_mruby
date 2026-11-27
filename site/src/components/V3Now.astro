@@ -51,10 +51,10 @@ const percent = (s) => s.replace('-', '−');
 const parts = (text) => text.split('`');
 const items = [
   {
-    title: ['ログのハンドラで作った値をaccess_logに書く', 'Write what a log handler computes into access_log'],
+    title: ['logハンドラで作った値をaccess_logに書く', 'Write what a log handler computes into access_log'],
     text: [
-      '2.xでは、mrubyのログのハンドラがaccess_logの後に動き、代入した変数はその行に出ませんでした。3.0では先に動くので、利用者やモデルのようなリクエストごとの値を、同じ行に記録できます。',
-      "On 2.x, mruby log handlers ran after access_log, so the variables they assigned did not reach its line. On 3.0 they run first, so values per request, such as the user or the model, go into the same line.",
+      '2.xでは、mrubyのlogハンドラがaccess_logの後に動くため、ハンドラが代入したnginxの変数を、その行に出せませんでした。3.0では先に動くので、利用者や転送先のモデルのように、リクエストごとに決まる値を同じ行に記録できます。',
+      "On 2.x, mruby log handlers ran after access_log, so the nginx variables they assigned could not reach its line. On 3.0 they run first, so values that each request decides, such as the user or the model it was routed to, go into the same line.",
     ],
     href: ja ? '/ja/releases/v3.0.0/#access_logがmrubyのlogハンドラが設定した変数と送ったステータスを書く770' : '/releases/v3.0.0/#access_log-writes-the-variables-that-mruby-log-handlers-set-and-the-status-that-was-sent-770',
     link: ['access_logに書く順序の変更', 'How the order against access_log changed'],
@@ -62,17 +62,17 @@ const items = [
   {
     title: ['contentハンドラでサブリクエストの応答を使う', 'Answer from a subrequest in a content handler'],
     text: [
-      '2.xでは、contentハンドラの`Nginx::Async::HTTP.sub_request`は文書に無く、`Nginx::Async.sleep`の後では例外でした。3.0では、contentハンドラがブロックせずに応答を待ち、その結果で答えられます。',
-      'On 2.x, `Nginx::Async::HTTP.sub_request` in a content handler was not documented and raised after `Nginx::Async.sleep`. On 3.0 a content handler waits for the response without blocking and can answer with it.',
+      '2.xでは、contentハンドラでの`sub_request`はドキュメントに書かれておらず、`sleep`の後に呼ぶと例外になりました。3.0では、contentハンドラがブロックせずにサブリクエストの応答を待ち、その内容でレスポンスを返せます。',
+      'On 2.x, `sub_request` in a content handler was not documented, and calling it after `sleep` raised. On 3.0 a content handler waits for the response of the subrequest without blocking and can send its own response from it.',
     ],
     href: prefix + '/concepts/async/',
     link: ['ブロックせずに待つ仕組み', 'How a handler waits without blocking'],
   },
   {
-    title: ['設定したヘッダがproxy_passとフィルターに効く', "Headers you set reach proxy_pass and nginx's filters"],
+    title: ['設定したヘッダをproxy_passとフィルターが正しく使う', "proxy_pass and nginx's filters use the headers you set"],
     text: [
-      '2.xでは、スクリプトが足したリクエストヘッダが、`proxy_set_header`の値と重ねて転送されました。3.0では、その名前のヘッダは1行で送られ、`Content-Type`など5つの応答ヘッダもnginxのフィールドに入ります。',
-      "On 2.x, a request header that a script added went to the upstream next to the value of `proxy_set_header`. On 3.0 such a header is sent once, and five response headers, `Content-Type` among them, go into nginx's own fields.",
+      '2.xでは、スクリプトが足したリクエストヘッダと、`proxy_set_header`の同じ名前のヘッダが、2行とも転送されました。3.0では1行だけが送られ、`Content-Type`など5つの応答ヘッダも、nginxのフィルターが読む値になります。',
+      "On 2.x, a request header that a script added and the header of the same name from `proxy_set_header` both went to the upstream. On 3.0 one line goes, and five response headers, `Content-Type` among them, become the values that nginx's filters read.",
     ],
     href: prefix + '/reference/ruby/#nginxheaders_out-class',
     link: ['ヘッダのクラスのリファレンス', 'Reference of the header classes'],
@@ -80,8 +80,8 @@ const items = [
   {
     title: ['設定とスクリプトの誤りがerror.logに出る', 'Mistakes in configurations and scripts show up in error.log'],
     text: [
-      '2.xでは、呼んだハンドラで効果の無いメソッドが何も起こさずに終わり、nginxが受け付けない変数への代入も処理が続きました。3.0では、どちらも例外になり、そこでスクリプトが止まって誤りが`error.log`に出ます。',
-      'On 2.x, a method with no effect in the handler that called it did nothing, and an assignment that nginx refused let the code go on. On 3.0 both raise, so the script stops there and the mistake shows up in `error.log`.',
+      '2.xでは、そのハンドラでは効かないメソッドを呼んでもエラーにならず、nginxが受け付けない変数に代入しても処理が続きました。3.0では、どちらも例外になってスクリプトが止まり、`error.log`に原因が出ます。',
+      'On 2.x, calling a method that has no effect in the handler raised no error, and an assignment that nginx refused let the code go on. On 3.0 both raise, so the script stops and `error.log` shows the cause.',
     ],
     href: ja ? '/ja/releases/v3.0.0/#ハンドラで効果の無いメソッドはそのハンドラでruntimeerrorを出す826' : '/releases/v3.0.0/#methods-that-have-no-effect-in-a-handler-raise-a-runtimeerror-there-826',
     link: ['例外になるメソッドとハンドラ', 'Which methods raise, in which handlers'],
@@ -89,8 +89,8 @@ const items = [
   {
     title: ['ハンドラの間で値を渡す', 'Pass values between handlers'],
     text: [
-      '2.xには、1つのリクエストのハンドラの間で値を渡すAPIがありませんでした。3.0では、`Nginx::Request#store`で値を渡し、`mruby_variable`でスクリプトが代入するnginxの変数を宣言できます。',
-      'On 2.x, no API passed values between the handlers of one request. On 3.0, `Nginx::Request#store` passes them, and `mruby_variable` declares nginx variables for scripts to assign.',
+      '2.xには、同じリクエストのハンドラの間で値を渡す専用のAPIがありませんでした。3.0では`Nginx::Request#store`で値を渡せ、`mruby_variable`で変数を`http`ブロックに宣言すれば、locationごとの`set`も要りません。',
+      'On 2.x, no API of its own passed values between the handlers of one request. On 3.0 `Nginx::Request#store` passes them, and `mruby_variable` declares a variable in the `http` block, so locations need no `set` for it.',
     ],
     href: prefix + '/concepts/lifetimes/',
     link: ['リクエストのデータを置く場所', 'Where the data of a request lives'],
@@ -111,8 +111,8 @@ const items = [
   <div class="home-copy">
     <h2 id="now-title">{ja ? `${release}でいま使えるもの` : `What ${release} gives you now`}</h2>
     <p>{ja
-      ? `${release}は、3.0に向けたプレリリースです。2.xと比べて、ここに挙げる6つの点が変わり、リクエストあたりの命令数も減りました。AIゲートウェイの部品は、この後のプレリリースで足す予定で、下の「今後のユースケースと設計状況」で扱います。プレリリースなので、本番に入れる前に、試験の環境で試してください。`
-      : `${release} is a pre-release of 3.0. Against 2.x, the six points below change, and nginx runs fewer instructions per request. The parts of an AI gateway are planned for later pre-releases, which the future use cases below cover. As a pre-release, try it in a test environment before production.`}</p>
+      ? `${release}は、3.0に向けたプレリリースです。2.xと比べて、下に挙げる6つの点が変わり、下の表のとおり、nginxが1リクエストで実行する命令の数も減りました。AIゲートウェイの部品は、この後のプレリリースで足す予定で、下の「今後のユースケースと設計状況」で扱います。プレリリースなので、本番に入れる前に、テスト環境で試してください。`
+      : `${release} is a pre-release of 3.0. Against 2.x, the six points below change, and as the table shows, nginx runs fewer instructions per request. The parts of an AI gateway are planned for later pre-releases, which the future use cases below cover. As a pre-release, try it in a test environment before production.`}</p>
     <p><a href={releaseUrl}>{ja ? `${release}のリリースノートと、更新前に確認する挙動の変更` : `Release notes of ${release}, with the behavior changes to read before upgrading`}</a></p>
   </div>
   <div class="now-measured">
