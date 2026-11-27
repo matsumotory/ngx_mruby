@@ -53,14 +53,14 @@ const items = [
   {
     title: ['logハンドラで作った値をaccess_logに書く', 'Write what a log handler computes into access_log'],
     text: [
-      '2.xでは、mrubyのlogハンドラがaccess_logの後に動くため、ハンドラが代入したnginxの変数を、その行に出せませんでした。3.0では先に動くので、利用者や転送先のモデルのように、リクエストごとに決まる値を同じ行に記録できます。',
+      '2.xでは、mrubyのlogハンドラがaccess_logの後に動くため、ハンドラが代入したnginxの変数を、その行に出せませんでした。3.0では先に動くので、利用者や転送先のモデルのように、リクエストごとに決まる値を同じ行に書けます。',
       "On 2.x, mruby log handlers ran after access_log, so the nginx variables they assigned could not reach its line. On 3.0 they run first, so values that each request decides, such as the user or the model it was routed to, go into the same line.",
     ],
     href: ja ? '/ja/releases/v3.0.0/#access_logがmrubyのlogハンドラが設定した変数と送ったステータスを書く770' : '/releases/v3.0.0/#access_log-writes-the-variables-that-mruby-log-handlers-set-and-the-status-that-was-sent-770',
     link: ['access_logに書く順序の変更', 'How the order against access_log changed'],
   },
   {
-    title: ['contentハンドラでサブリクエストの応答を使う', 'Answer from a subrequest in a content handler'],
+    title: ['contentハンドラでサブリクエストを使う', 'Answer from a subrequest in a content handler'],
     text: [
       '2.xでは、contentハンドラでの`sub_request`はドキュメントに書かれておらず、`sleep`の後に呼ぶと例外になりました。3.0では、contentハンドラがブロックせずにサブリクエストの応答を待ち、その内容でレスポンスを返せます。',
       'On 2.x, `sub_request` in a content handler was not documented, and calling it after `sleep` raised. On 3.0 a content handler waits for the response of the subrequest without blocking and can send its own response from it.',
