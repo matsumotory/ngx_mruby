@@ -78,7 +78,7 @@ const items = [
     link: ['ヘッダのクラスのリファレンス', 'Reference of the header classes'],
   },
   {
-    title: ['設定とスクリプトの誤りで、スクリプトが止まる', 'Mistakes in configurations and scripts stop the script'],
+    title: ['設定とスクリプトの誤りが例外になる', 'Mistakes in configurations and scripts raise'],
     text: [
       '2.xでは、そのハンドラでは効かないメソッドを呼んでもエラーにならず、nginxが受け付けない変数への代入も、`error.log`に行を書いて処理が続きました。3.0では、どちらも例外になってスクリプトが止まり、`error.log`に原因が出ます。',
       'On 2.x, calling a method that has no effect in the handler raised no error, and an assignment that nginx refused wrote a line to `error.log` and let the code go on. On 3.0 both raise, so the script stops and `error.log` shows the cause.',
