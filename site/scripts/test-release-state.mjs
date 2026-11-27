@@ -37,16 +37,16 @@ assert.equal(newestPrereleaseTag(['v3.0.0', 'v3.1.0-alpha.1']), 'v3.1.0-alpha.1'
 // The perf report of the home pages.
 import { parsePerfReport, measuredMonth } from './lib/perf-report.mjs';
 import fs from 'node:fs';
-const report = parsePerfReport(fs.readFileSync(new URL('../src/data/perf-v3.0.0-alpha.1.txt', import.meta.url), 'utf8'));
-assert.equal(report.number, 862);
-assert.equal(report.base.tag, 'v2.7.13');
-assert.equal(report.head.tag, 'v3.0.0-alpha.1');
+const report = parsePerfReport(fs.readFileSync(new URL('../src/data/perf-v3.0.0-alpha.2.txt', import.meta.url), 'utf8'));
+assert.equal(report.number, 879);
+assert.equal(report.base.tag, 'v2.7.14');
+assert.equal(report.head.tag, 'v3.0.0-alpha.2');
 assert.equal(report.n, 20000);
 assert.equal(report.warmup, 2000);
 assert.equal(report.rows.length, 16);
 assert.deepEqual(report.units, ['stream_sleep']);
-assert.deepEqual(report.rows.find((r) => r.scenario === 'headers'), { scenario: 'headers', base: 36620, head: 30037, change: '-17.98%', noGcBase: 34649, noGcHead: 24851, judgedBase: 33899, judgedHead: 24851, judgedChange: '-26.69%', result: 'ok' });
-assert.equal(report.rows.filter((r) => r.head < r.base).length, 15);
+assert.deepEqual(report.rows.find((r) => r.scenario === 'headers'), { scenario: 'headers', base: 36632, head: 30073, change: '-17.90%', noGcBase: 34661, noGcHead: 24887, judgedBase: 33911, judgedHead: 24887, judgedChange: '-26.61%', result: 'ok' });
+assert.equal(report.rows.filter((r) => r.head < r.base).length, 14);
 assert.equal(measuredMonth(report, 'en'), 'November 2026');
 assert.equal(measuredMonth(report, 'ja'), '2026年11月');
 assert.throws(() => parsePerfReport('# source: https://example.com/\n'), /no "# measured:" line|not a pull request/);

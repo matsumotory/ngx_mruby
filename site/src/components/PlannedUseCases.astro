@@ -152,7 +152,7 @@ for (const item of cases) {
 if (states.size !== cases.length) throw new Error('Homepage cases and proposal ledger differ');
 // The release that V3Now.astro presents: none of the parts below is in it.
 // When the report moves to a newer release, review this list with it.
-const release = readPerfReport(path.resolve(process.cwd(), 'src/data/perf-v3.0.0-alpha.1.txt')).head.version;
+const release = readPerfReport(path.resolve(process.cwd(), 'src/data/perf-v3.0.0-alpha.2.txt')).head.version;
 const plan = 'https://github.com/matsumotory/ngx_mruby/blob/next/docs/proposals/v3-plan.md#6-order-of-work-decided-2026-10-03-the-priority-paragraph-and-steps-2-4-7-and-8-amended-2026-10-04';
 const label = status => ja ? (status === 'designing' ? '設計中' : '構想') : (status === 'designing' ? 'Designing' : 'Direction');
 ---
