@@ -36,8 +36,11 @@ export const contentDir = contentRoot;
 export const HOME_PAGES = SITE_VERSION === 2 ? [] : ['index.mdx', 'ja/index.mdx'];
 // The files, beside their MDX, that the home pages show: the components and
 // the style of the home page, the perf report and the sample of V3Now and
-// the example, the walkthrough of examples/start, and the ledger of the
-// uses that PlannedUseCases reads. The last-updated date of a home page is
+// the example, the walkthrough of examples/start, the ledger of the uses
+// that PlannedUseCases reads, and the scripts that make text of the page.
+// The list is kept by hand: a new import or read of the home components
+// adds its file here, and so does a new <Sample> of the MDX files. The
+// last-updated date of a home page is
 // the date of the last commit to its MDX or to one of these
 // (homeLastCommitDate), so that a change of what the page shows moves it.
 export const HOME_SOURCES = SITE_VERSION === 2 ? [] : [
@@ -48,6 +51,9 @@ export const HOME_SOURCES = SITE_VERSION === 2 ? [] : [
   'site/src/components/V3Now.astro',
   'site/src/components/PlannedUseCases.astro',
   'site/src/components/Sample.astro',
+  'site/scripts/lib/release-state.mjs',
+  'site/scripts/lib/project-badges.mjs',
+  'site/scripts/lib/perf-report.mjs',
   'site/src/styles/home-v3.css',
   'site/src/data',
   'examples/start',

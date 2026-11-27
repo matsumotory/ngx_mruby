@@ -69,28 +69,28 @@ const items = [
     link: ['ブロックせずに待つ仕組み', 'How a handler waits without blocking'],
   },
   {
-    title: ['設定したヘッダをproxy_passとフィルターが正しく使う', "proxy_pass and nginx's filters use the headers you set"],
+    title: ['ヘッダが二重に送られず、フィルターにも効く', "Headers are not sent twice, and nginx's filters read them"],
     text: [
-      '2.xでは、スクリプトが足したリクエストヘッダと、`proxy_set_header`の同じ名前のヘッダが、2行とも転送されました。3.0では1行だけが送られ、`Content-Type`、`Location`、`Date`、`Server`、`Content-Length`の応答ヘッダも、nginxのフィルターが読む値になります。',
-      "On 2.x, a request header that a script added and the header of the same name from `proxy_set_header` both went to the upstream. On 3.0 one line goes, and the response headers `Content-Type`, `Location`, `Date`, `Server` and `Content-Length` become the values that nginx's filters read.",
+      '2.xでは、スクリプトが足したリクエストヘッダと、`proxy_set_header`の同じ名前のヘッダが、2行とも転送されました。3.0では`proxy_set_header`の値の1行だけが送られ、`Content-Type`、`Location`、`Date`、`Server`、`Content-Length`の応答ヘッダも、nginxのフィルターが読む値になります。',
+      "On 2.x, a request header that a script added and the header of the same name from `proxy_set_header` both went to the upstream. On 3.0 only the line of `proxy_set_header` goes, and the response headers `Content-Type`, `Location`, `Date`, `Server` and `Content-Length` become the values that nginx's filters read.",
     ],
     href: prefix + '/reference/ruby/#nginxheaders_out-class',
     link: ['ヘッダのクラスのリファレンス', 'Reference of the header classes'],
   },
   {
-    title: ['設定とスクリプトの誤りがerror.logに出る', 'Mistakes in configurations and scripts show up in error.log'],
+    title: ['設定とスクリプトの誤りで、スクリプトが止まる', 'Mistakes in configurations and scripts stop the script'],
     text: [
-      '2.xでは、そのハンドラでは効かないメソッドを呼んでもエラーにならず、nginxが受け付けない変数に代入しても処理が続きました。3.0では、どちらも例外になってスクリプトが止まり、`error.log`に原因が出ます。',
-      'On 2.x, calling a method that has no effect in the handler raised no error, and an assignment that nginx refused let the code go on. On 3.0 both raise, so the script stops and `error.log` shows the cause.',
+      '2.xでは、そのハンドラでは効かないメソッドを呼んでもエラーにならず、nginxが受け付けない変数への代入も、`error.log`に行を書いて処理が続きました。3.0では、どちらも例外になってスクリプトが止まり、`error.log`に原因が出ます。',
+      'On 2.x, calling a method that has no effect in the handler raised no error, and an assignment that nginx refused wrote a line to `error.log` and let the code go on. On 3.0 both raise, so the script stops and `error.log` shows the cause.',
     ],
     href: ja ? '/ja/releases/v3.0.0/#ハンドラで効果の無いメソッドはそのハンドラでruntimeerrorを出す826' : '/releases/v3.0.0/#methods-that-have-no-effect-in-a-handler-raise-a-runtimeerror-there-826',
     link: ['例外になるメソッドとハンドラ', 'Which methods raise, in which handlers'],
   },
   {
-    title: ['ハンドラの間で値を渡す', 'Pass values between handlers'],
+    title: ['リクエストごとの値をハンドラの間で渡す', 'Pass the values of a request between handlers'],
     text: [
-      '2.xには、同じリクエストのハンドラの間で値を渡す専用のAPIがありませんでした。3.0では`Nginx::Request#store`で値を渡せ、`mruby_variable`で変数を`http`ブロックに宣言すれば、locationごとの`set`も要りません。',
-      'On 2.x, no API of its own passed values between the handlers of one request. On 3.0 `Nginx::Request#store` passes them, and `mruby_variable` declares a variable in the `http` block, so locations need no `set` for it.',
+      '2.xでは、ハンドラの間の値を`Userdata`に置くと、ワーカーのグローバル変数に残り、次のリクエストからも見えました。3.0の`Nginx::Request#store`は1つのリクエストだけのHashで、`mruby_variable`で`http`ブロックに変数を宣言すれば、locationごとの`set`も要りません。',
+      'On 2.x, a value put into `Userdata` stayed in a global variable of the worker, where the next request saw it. On 3.0 `Nginx::Request#store` is a Hash of one request, and `mruby_variable` declares a variable in the `http` block, so locations need no `set` for it.',
     ],
     href: prefix + '/concepts/lifetimes/',
     link: ['リクエストのデータを置く場所', 'Where the data of a request lives'],
@@ -98,8 +98,8 @@ const items = [
   {
     title: ['mruby 4.1の文法とメソッドを使う', 'Use the syntax and methods of mruby 4.1'],
     text: [
-      '2.xが同梱するmrubyは3.3.0です。3.0ではmruby 4.1.0-rc2を同梱し、パターンマッチ(`case`/`in`)、ブロックの`it`、mruby 3.4から4.1までに増えたメソッドを使えます。',
-      '2.x bundles mruby 3.3.0. 3.0 bundles mruby 4.1.0-rc2, so scripts can use pattern matching (`case`/`in`), `it` in blocks, and the methods that mruby 3.4 to 4.1 added.',
+      '2.xが同梱するmrubyは3.3.0です。3.0のプレリリースはmruby 4.1.0-rc2を同梱し、パターンマッチ(`case`/`in`)、ブロックの`it`、mruby 3.4から4.1までに増えたメソッドを使えます。',
+      '2.x bundles mruby 3.3.0. The pre-releases of 3.0 bundle mruby 4.1.0-rc2, so scripts can use pattern matching (`case`/`in`), `it` in blocks, and the methods that mruby 3.4 to 4.1 added.',
     ],
     href: ja ? '/ja/releases/v3.0.0/#同梱のmrubyが330から410-rc2になる561-678' : '/releases/v3.0.0/#the-bundled-mruby-is-410-rc2-instead-of-330-561-678',
     link: ['同梱のmrubyの変更と移行の注意', 'What changes with the bundled mruby, and what to do'],
@@ -111,8 +111,8 @@ const items = [
   <div class="home-copy">
     <h2 id="now-title">{ja ? `${release}でいま使えるもの` : `What ${release} gives you now`}</h2>
     <p>{ja
-      ? `${release}は、3.0に向けたプレリリースです。2.xと比べて、下に挙げる6つの点が変わり、下の表のとおり、nginxが1リクエストで実行する命令の数も減りました。AIゲートウェイの部品は、この後のプレリリースで足す予定で、下の「今後のユースケースと設計状況」で扱います。プレリリースなので、本番に入れる前に、テスト環境で試してください。`
-      : `${release} is a pre-release of 3.0. Against 2.x, the six points below change, and as the table shows, nginx runs fewer instructions per request. The parts of an AI gateway are planned for later pre-releases, which the future use cases below cover. As a pre-release, try it in a test environment before production.`}</p>
+      ? `${release}は、3.0に向けたプレリリースです。2.xと比べて、下に挙げる6つの点が変わりました。下の表は、nginxが1リクエストで実行する命令の数を、2.7.14と比べたものです。AIゲートウェイの部品は、この後のプレリリースで足す予定で、下の「今後のユースケースと設計状況」で扱います。プレリリースなので、本番では安定版の2.7を使い、3.0はテスト環境で試してください。`
+      : `${release} is a pre-release of 3.0. Against 2.x, the six points below change. The table compares the instructions that nginx runs per request with 2.7.14. The parts of an AI gateway are planned for later pre-releases, which the future use cases below cover. As a pre-release, use the stable 2.7 line in production and try 3.0 in a test environment.`}</p>
     <p><a href={releaseUrl}>{ja ? `${release}のリリースノートと、更新前に確認する挙動の変更` : `Release notes of ${release}, with the behavior changes to read before upgrading`}</a></p>
     <p><a href={prefix + '/releases/migration/'}>{ja ? '2.xから3.0への移行の手引き' : 'Migrating from 2.x to 3.0'}</a></p>
   </div>

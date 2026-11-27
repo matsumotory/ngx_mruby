@@ -43,8 +43,8 @@ import { GENERATED_REFERENCE, japaneseNoticePages, loadManifest, manifestFile, N
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 // The release notes in Japanese, longer than any other page, still have
-// last lines of one or two characters and table cells with long names that
-// end far from the right edge. The 2.x notes come from master as released
+// headings with a last line of one or two characters and table cells with
+// long names that end far from the right edge. The 2.x notes come from master as released
 // (2.7.4 included), and their heading 「アップグレードの前に読む挙動の変更」
 // takes two lines at 402 px. Their failures are printed as notes until a
 // rewrite takes a page out of this list: for a 2.x page, a pull request to
