@@ -37,8 +37,9 @@ and, for 4.1, `NEWS.md` in `mruby/`.
   CI builds and tests 1.30.6 and 1.31.8, and the oldest supported
   versions move up every April, when nginx starts a new stable line.
   Neither `./configure` nor `build.sh` checks the version of nginx: on
-  2026-11-11 the build completed with nginx 1.28.3 and 1.26.3, which CI
-  does not test, and stopped with nginx 1.24.0, for example the package of
+  2026-11-11, `build.sh`, with and without `--with-stream`, completed
+  with nginx 1.28.3 and 1.26.3, which CI does not test, and stopped with
+  nginx 1.24.0, for example the package of
   Ubuntu 24.04, while it compiled `src/http/ngx_http_mruby_server.c`:
 
   ```
@@ -203,23 +204,24 @@ repository. Builds with `build.sh` do not change.
   reads a file of the response, such as a static file, into the buffers of
   `output_buffers`: with `sendfile on`, it sends the file with `sendfile`
   without reading it first, as in a location without an mruby filter.
-  Nothing changes with `sendfile off`, on an HTTPS connection without
-  kernel TLS, and when a filter such as gzip, SSI or sub handles the
+  Nothing changes with `sendfile off`, nor on an HTTPS connection without
+  kernel TLS, nor when a filter such as gzip, SSI or sub handles the
   response.
 - [A HEAD response through an mruby header filter alone, or through a body filter without `Content-Length`, keeps its connection available](../releases/v3.0.0.md#a-head-response-through-an-mruby-header-filter-alone-or-through-a-body-filter-without-content-length-keeps-its-connection-available-848):
-  nothing to change. A HEAD request to a location with an mruby header
-  filter and no mruby body filter, and one to a location with an mruby
-  body filter whose response has no `Content-Length`, such as a listing of
-  `autoindex` or a response of an upstream without a length, no longer
-  close the connection after the header: nginx keeps an otherwise reusable
-  connection for the next request. The header that the client receives is
+  nothing to change. After the header of a HEAD request to a location
+  with an mruby header filter and no mruby body filter, and of one to a
+  location with an mruby body filter whose response has no
+  `Content-Length`, such as a listing of `autoindex` or a response of an
+  upstream without a length, nginx no longer closes the connection: it
+  keeps an otherwise reusable connection for the next request. The header that the client receives is
   the same. To close a connection deliberately, configure nginx's
   keep-alive policy (`keepalive_timeout`, `keepalive_requests`).
 - [A 204 or 304 response through an mruby output filter keeps its connection available](../releases/v3.0.0.md#a-204-or-304-response-through-an-mruby-output-filter-keeps-its-connection-available-849):
-  nothing to change. A 204 or 304 response that passes an mruby header
-  filter or body filter, such as the 304 that nginx answers to a GET with
-  `If-Modified-Since` or `If-None-Match` for a static file, or the 204 of
-  `return 204;`, no longer closes the connection after its header. The
+  nothing to change. After the header of a 204 or 304 response that
+  passes an mruby header filter or body filter, such as the 304 that nginx
+  answers to a GET with `If-Modified-Since` or `If-None-Match` for a
+  static file, or the 204 of `return 204;`, nginx no longer closes the
+  connection. The
   status and the header that the client receives are the same, and no body
   follows the header. To close a connection deliberately, configure
   nginx's keep-alive policy (`keepalive_timeout`, `keepalive_requests`).

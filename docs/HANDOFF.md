@@ -53,7 +53,7 @@
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
   all below. `next` is `2d87575b0`, the merge of
   [#877](https://github.com/matsumotory/ngx_mruby/pull/877) (2026-11-27
-  15:12 JST) and the tag `v3.0.0-alpha.2`, below; before it, `b92e8c0ca`, the merge of
+  15:12 JST), where `v3.0.0-alpha.2` is tagged, below; before it, `b92e8c0ca`, the merge of
   [#875](https://github.com/matsumotory/ngx_mruby/pull/875) (2026-11-27
   14:22 JST), below; before it, `3f5b1391b`, the merge of
   [#876](https://github.com/matsumotory/ngx_mruby/pull/876) (2026-11-27
@@ -114,8 +114,8 @@
   starts, in English and in Japanese, with "What 3.0.0-alpha.2 brings"
   and "What comes next" (the `Content-Length` change of #874 and #876,
   the comparison with `v3.0.0-alpha.1` of #877, the tests over HTTP/2
-  and HTTP/3, the memory soak, the build with GNU make 3.81, and the
-  same planned parts as alpha.1), then copies the two entries of
+  and HTTP/3, the memory soak, the build with GNU make 3.81, the local
+  trial of `examples/start`, and the same planned parts as alpha.1), then copies the two entries of
   "Behavior changes" added or changed in meaning since `v3.0.0-alpha.1`
   (#855 and #874) and says that the other changes of the section are
   the paths of links to archived proposals and the wording of the
