@@ -655,11 +655,12 @@ demand from users.
    Done: the rest of the step was designed in
    [core-alpha1.md](archive/core-alpha1.md) and merged by #770 to #855,
    #862 checked the release notes and the performance before the tag, and
-   `v3.0.0-alpha.1` was tagged on 2026-11-25 as a pre-release. Left from
-   the Pillar B row on headers: `Content-Length` set through `headers_out`
-   still adds a header line, and its relation to the output of
-   `Nginx.rputs` is designed in a later change (the decision of 2026-11-17
-   in "Decisions" of `docs/HANDOFF.md`).
+   `v3.0.0-alpha.1` was tagged on 2026-11-25 as a pre-release. The part of
+   the Pillar B row on headers that this step left, `Content-Length` set
+   through `headers_out` and its relation to the output of `Nginx.rputs`
+   (the decision of 2026-11-17 in "Decisions" of `docs/HANDOFF.md`), was
+   designed in [content-length.md](archive/content-length.md) and
+   implemented by #874 (2026-11-26).
 5. **Distribution** (Pillar D): `.so` per nginx version, images, releases
    with attestations.
 6. **Docs, site, examples, video** (Pillar F) in parallel from step 4.
