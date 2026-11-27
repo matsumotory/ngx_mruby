@@ -27,8 +27,8 @@ const releaseUrl = `https://github.com/matsumotory/ngx_mruby/releases/tag/${repo
 const month = measuredMonth(report, ja ? 'ja' : 'en');
 const fewer = report.rows.filter((r) => r.head < r.base);
 const more = report.rows.filter((r) => r.head > r.base);
-// The rows of the table: the three largest decreases of the total per
-// request, and every row that rose.
+// The rows of the table: the three largest decreases in percent of the
+// total per request, and every row that rose.
 const SHOWN = [
   ['headers', 'ヘッダを読んで設定する', 'Read and set headers'],
   ['sub_request', 'サブリクエスト', 'Subrequest'],
@@ -89,8 +89,8 @@ const items = [
   {
     title: ['ヘッダがnginxのフィールドに入る', "Headers go into nginx's own fields"],
     text: [
-      '`Nginx::Headers_out`で設定した`Content-Type`、`Location`、`Date`、`Server`、`Content-Length`はnginxのフィールドに入り、レスポンスに付くのはそれぞれ1行までです。`Nginx::Headers_in#[]=`で足したリクエストヘッダは、`proxy_pass`が認識します。',
-      "`Content-Type`, `Location`, `Date`, `Server` and `Content-Length` set through `Nginx::Headers_out` go into nginx's own fields, so a response carries at most one line of each. Request headers added with `Nginx::Headers_in#[]=` are recognized by `proxy_pass`.",
+      '`Nginx::Headers_out`で設定した`Content-Type`、`Location`、`Date`、`Server`、`Content-Length`はnginxのフィールドに入り、nginxのフィルターもその値を使います。`Nginx::Headers_in#[]=`で足したリクエストヘッダは、`proxy_pass`が認識します。',
+      "`Content-Type`, `Location`, `Date`, `Server` and `Content-Length` set through `Nginx::Headers_out` go into nginx's own fields, which nginx's filters use. Request headers added with `Nginx::Headers_in#[]=` are recognized by `proxy_pass`.",
     ],
     href: prefix + '/reference/ruby/#nginxheaders_out-class',
     link: ['Nginx::Headers_outのリファレンス', 'Nginx::Headers_out reference'],
@@ -110,8 +110,8 @@ const items = [
   <div class="home-copy">
     <h2 id="now-title">{ja ? `${release}でいま使えるもの` : `What ${release} gives you now`}</h2>
     <p>{ja
-      ? `${release}は、3.0の最新のプレリリースです。新しいコアが入っていて、ここに挙げるものはこのプレリリースにあります。AIゲートウェイの部品は、この後のプレリリースで足す予定です。下の「今後のユースケースと設計状況」で扱います。本番では安定版の2.x系を使ってください。`
-      : `${release} is the newest pre-release of 3.0. It brings the new core, and everything listed here is in it. The parts of an AI gateway are planned for later pre-releases; the future use cases below cover them. For production, use the stable 2.x line.`}</p>
+      ? `${release}は、3.0のプレリリースです。新しいコアが入っていて、ここに挙げるものはこのプレリリースにあります。AIゲートウェイの部品は、この後のプレリリースで足す予定です。下の「今後のユースケースと設計状況」で扱います。本番では安定版の2.x系を使ってください。`
+      : `${release} is a pre-release of 3.0. It brings the new core, and everything listed here is in it. The parts of an AI gateway are planned for later pre-releases; the future use cases below cover them. For production, use the stable 2.x line.`}</p>
     <p><a href={releaseUrl}>{ja ? `${release}のリリースノートと、更新前に確認する挙動の変更` : `Release notes of ${release}, with the behavior changes to read before upgrading`}</a></p>
   </div>
   <div class="now-measured">
@@ -127,8 +127,8 @@ const items = [
       ? <>測り方：<code>sh test/perf/compare.sh</code>で、callgrind上で動かしたnginxに、{number(report.warmup)}件のウォームアップの後、{number(report.n)}件のリクエストを送って命令数を数えました。{units.map((u) => <><code>{u}</code>だけは、リクエストではなくTCPセッションごとに数えています。</>)}arm64のMacのDockerで、Ubuntu 22.04のコンテナを使っています。表の値は、GCを含む命令数の合計です。</>
       : <>Method: <code>sh test/perf/compare.sh</code> ran nginx under callgrind, sent {number(report.warmup)} requests to warm up, then counted the instructions of {number(report.n)} requests{units.map((u) => <>; <code>{u}</code> counts per TCP session instead</>)}. It ran in an Ubuntu 22.04 container under Docker on an arm64 Mac. The table gives the total per request, GC included.</>}</p>
     <p class="now-method">{ja
-      ? <>{report.rows.length}のシナリオすべての値と、GCと定数の参照を除いた値は、<a href={report.source}>この比較を記録したPR(#{report.number})</a>にあります。</>
-      : <>The values of all {report.rows.length} scenarios, and the values without the GC and the constant lookups, are in <a href={report.source}>the pull request that recorded this comparison (#{report.number})</a>.</>}</p>
+      ? <>{report.rows.length}のシナリオすべての値と、GCと、キャッシュに当たらなかった定数の参照を除いた値は、<a href={report.source}>この比較を記録したPR(#{report.number})</a>にあります。</>
+      : <>The values of all {report.rows.length} scenarios, and the values without GC and without the constant lookups that missed mruby's cache, are in <a href={report.source}>the pull request that recorded this comparison (#{report.number})</a>.</>}</p>
   </div>
   <ul class="now-list">
     {items.map((item) => <li>

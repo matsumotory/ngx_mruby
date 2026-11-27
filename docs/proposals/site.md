@@ -630,8 +630,8 @@ each kept apart from what is planned:
   - the introduction at the reading measure (4.4), with the link to the
     release;
   - the measured change: a heading that gives the month and the release it
-    was compared with, a table of the three largest decreases of the total
-    per request and every row that rose (five rows for 3.0.0-alpha.2), and
+    was compared with, a table of the three largest decreases in percent of
+    the total per request and every row that rose (five rows for 3.0.0-alpha.2), and
     the method under it. Values compared side by side go into a table, and an enumeration
     into a list (Digital Agency design system, description list, updated
     2026-09-09: https://design.digital.go.jp/dads/components/description-list/).
